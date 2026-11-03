@@ -5122,13 +5122,13 @@
 0x00301710 0x34 func_00301710  # OVL1
 0x00301750 0x48 GetFriendsList__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendsList' 0x27A2E0 calls it on theLobby; the friends list 0x44FDC0 emptied and asked for)
 0x003017A0 0x70 func_003017A0  # OVL1
-0x00301810 0x108 func_00301810  # OVL1
-0x00301920 0x150 func_00301920  # OVL1
-0x00301A70 0x1CC func_00301A70  # OVL1
+0x00301810 0x108 UpdateDisplay__22FriendInvitationVectorFv  # OVL1; ours, the online lane round 11 (the invitations into FriendConfirmationListVar, each its account as text and its name; FriendInvitationVector::Add 0x301DB0 and Remove 0x301CF0 call it on their list)
+0x00301920 0x150 UpdateDisplay__12IgnoreVectorFv  # OVL1; ours, the online lane round 11 (the ignored into IgnoreListVar: account, name and mark; the ignore list's callback 0x300F70 calls it on 0x44FDE0)
+0x00301A70 0x1CC UpdateDisplay__12FriendVectorFv  # OVL1; ours, the online lane round 11 (the friends into FriendListVar: account, name, mark and where they are; the friends list's callback 0x3017A0 calls it on FriendVec)
 0x00301C40 0xB0 Find__12FriendVectorFPCc  # OVL1; ours (the friend by name, strcasecmp on +0x20, the null test inside: the state handler 0x2F0020 calls it on 0x44FDC0; byte-exact)
 0x00301CF0 0xBC Remove__22FriendInvitationVectorFi  # OVL1; ours, the online lane round 8 (FriendInvitationVector::Remove: every invitation from an account erased, the list shown again; ConfirmFriend and RejectFriend call it; open, 35 instructions)
 0x00301DB0 0x120 Add__22FriendInvitationVectorFP20FriendInvitationItem  # OVL1; ours, the online lane round 8 (FriendInvitationVector::Add: an invitation kept unless empty or its account is there, assigned to a local first -- member by member -- and pushed, the list shown again; cbGetFriendInvitations and the invitation callback 0x3009C0 call it; byte-exact)
-0x00301ED0 0x1D0 func_00301ED0  # OVL1
+0x00301ED0 0x1D0 Add__12IgnoreVectorFP10IgnoreItem  # OVL1; ours, the online lane round 11 (an ignored account kept unless its account is there, copied whole and pushed back through the class insert 0x3022F0; the ignore list's callback 0x300F70 hands it each response)
 0x003020A0 0x164 Add__12FriendVectorFP36MediusGetBuddyList_ExtraInfoResponse  # OVL1; ours (GetFriendsList's callback 0x3017A0 keeps a friend through it: the 0xD0-byte buddy response copied whole unless its account is there; byte-exact)
 0x00302210 0xD4 DeleteAll__12FriendVectorFv  # OVL1; ours (the friends 0x44FDC0 deleted and the list emptied -- std::transform with a deleter, then clear, as the clan lists' DeleteAll: GetFriendsList, ReleaseUIResources and the list's destructor 0x303410; byte-exact)
 0x003022F0 0x554 insert__Q23std60__vector_imp<10IgnoreItem,Q23std23allocator<10IgnoreItem>,0>FP10IgnoreItemUiRC10IgnoreItem  # OVL1; ours, the online lane round 10 (the ignore list's class-vector insert: resize 0x303250 calls it with its blank T())

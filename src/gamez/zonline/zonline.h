@@ -506,6 +506,7 @@ public:
     FriendItem *Find(const char *name);
     void Add(MediusGetBuddyList_ExtraInfoResponse *resp);
     void DeleteAll();
+    void UpdateDisplay();
 };
 
 extern FriendVector FriendVec;

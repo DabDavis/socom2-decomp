@@ -98,6 +98,8 @@ public:
                 return &*i;
         return 0;
     }
+    void Add(IgnoreItem *item);
+    void UpdateDisplay();
 };
 
 /* a friend's invitation, as the list keeps it (0x40 bytes) */
@@ -131,6 +133,7 @@ public:
     }
     void Add(FriendInvitationItem *item);
     void Remove(int id);
+    void UpdateDisplay();
 };
 
 /* an invitation as it comes: its status ahead of the account */
@@ -529,10 +532,113 @@ void CZOnlineLobby::ConfirmFriend(int id)
     data_0044FE00.Remove(id);
 }
 
-extern "C" void func_00301810(FriendInvitationVector *list);   /* the invitations shown again */
+/* an account's mark in the lists: the font's online and offline glyphs (the name ours: a switch
+ * with only `case 0` and `default` -- the target's beqz to the zero case, a `b` to the other) */
+inline const char *OnlineMark(int status)
+{
+    const char *mark;
 
-/* The invitations' members its callers call out of line. Pinned: never inlined */
+    switch (status) {
+    case 0:
+        mark = "\xaa";
+        break;
+    default:
+        mark = "\xa7";
+        break;
+    }
+    return mark;
+}
+
+/* The lists' members their callers call out of line. Pinned: never inlined */
 #pragma auto_inline off
+
+/* an account ignored kept, unless its account's is there: copied whole (OVL1 0x301ED0: the ignore
+ * list's callback 0x300F70 hands it each response). It first asks whether the name is ignored --
+ * IsIgnored inlined, its walk of this very list made -- and does nothing with the answer: both
+ * outcomes go on to the test by account */
+void IgnoreVector::Add(IgnoreItem *item)
+{
+    theLobby.IsIgnored(item->AccountName);
+    if (!Find(item->AccountID)) {
+        IgnoreItem copy = *item;
+
+        push_back(copy);
+    }
+}
+
+/* the friends shown: each its account as text, its name, whether it is online (the font's two
+ * marks) and where -- the main menu when its lobby is Medius's own, else the lobby and the game --
+ * or two blanks (OVL1 0x301A70: the friends list's callback 0x3017A0 calls it; the name ours) */
+void FriendVector::UpdateDisplay()
+{
+    CRdrEditor ed;
+    char text[64];
+
+    ed.push(0);
+    for (iterator i = begin(); i != end(); ++i) {
+        FriendItem *f = *i;
+
+        sprintf(text, "%d", f->AccountID);
+        ed.push(0);
+        ed.addstringnode(text);
+        ed.addstringnode(f->AccountName);
+        ed.addstringnode(OnlineMark(f->OnlineState.ConnectStatus));
+        if (f->OnlineState.ConnectStatus) {
+            if (!strncmp(f->OnlineState.LobbyName, "Medius", 6)) {
+                ed.addstringnode("MAIN MENU");
+                ed.addstringnode(" ");
+            } else {
+                ed.addstringnode(f->OnlineState.LobbyName);
+                ed.addstringnode(f->OnlineState.GameName);
+            }
+        } else {
+            ed.addstringnode("");
+            ed.addstringnode("");
+        }
+        ed.pop();
+    }
+    ed.pop();
+    theUIVarManager.Add("FriendListVar", 0, UIVL_TEMPORARY)->Set(&ed);
+}
+
+/* the ignored shown: each its account as text, its name and its mark (OVL1 0x301920: the ignore
+ * list's callback 0x300F70 calls it; the name ours) */
+void IgnoreVector::UpdateDisplay()
+{
+    CRdrEditor ed;
+    char text[64];
+
+    ed.push(0);
+    for (iterator i = begin(); i != end(); ++i) {
+        sprintf(text, "%d", (*i).AccountID);
+        ed.push(0);
+        ed.addstringnode(text);
+        ed.addstringnode((*i).AccountName);
+        ed.addstringnode(OnlineMark((*i)._40));
+        ed.pop();
+    }
+    ed.pop();
+    theUIVarManager.Add("IgnoreListVar", 0, UIVL_TEMPORARY)->Set(&ed);
+}
+
+/* the invitations shown: each its account as text and its name, kept for good (OVL1 0x301810; the
+ * name ours) */
+void FriendInvitationVector::UpdateDisplay()
+{
+    CRdrEditor ed;
+    char text[64];
+
+    ed.push(0);
+    for (iterator i = begin(); i != end(); ++i) {
+        sprintf(text, "%d", (*i).AccountID);
+        ed.push(0);
+        ed.addstringnode(text);
+        ed.addstringnode((*i).AccountName);
+        ed.pop();
+    }
+    ed.pop();
+    theUIVarManager.Add("FriendConfirmationListVar", 0, UIVL_PERMANENT)->Set(&ed);
+}
 
 /* an invitation kept, unless it is empty or its account's is there, and the list shown again
  * (OVL1 0x301DB0): copied by assignment first -- the odd-length id makes it member by member,
@@ -545,7 +651,7 @@ void FriendInvitationVector::Add(FriendInvitationItem *item)
         copy = *item;
 
         push_back(copy);
-        func_00301810(this);
+        UpdateDisplay();
     }
 }
 
@@ -566,7 +672,7 @@ void FriendInvitationVector::Remove(int id)
         else
             ++i;
     }
-    func_00301810(this);
+    UpdateDisplay();
 }
 
 #pragma auto_inline reset
