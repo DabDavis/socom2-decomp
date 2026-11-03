@@ -3620,6 +3620,54 @@ of 2), `asr/osspi.c` (4 of 4), `asr/fastallo.c` (2 of 3), `asr/gsapi.c` (+12, 21
 functions new to the map's byte-exact rows (4,016 bytes), the rest superseding matching drafts;
 101 rows named (65 `s1:slot`, 30 `s1:order`, 3 `s1:align`, 3 `s1:calls`).
 
+**Round 6b: the RT objects, whole.** The RT library's objects in 0x62C000-0x640000 read off SOCOM 1's
+in order; SOCOM II grew most of them (a third channel kind, a connect test, an interrupt mask), so
+each function is written from the binary in the vendor's shape and SOCOM 1's copy is the check
+where it is s1:exact.
+
+- **The unit list, by link order**: `rt_comm.c` (0x62C958, the channel is an allocated 0x18
+  block whose address is its id), `rt_comm_platform2.c` (0x62DA90, sockets over libnetb),
+  rt_comm_platform (0x62EA58, forwarders; drafts), `rt_crypt.c` (0x62EBF8, IsNullRSAKey first),
+  ..., `rt_mt.c` (0x638CF0: Cokus's MT19937 as SCEA kept it -- no `$Header`, the name is the
+  alphabetical link order's, between rt_msg.c and rt_mutex.c), setNewSeed_platform's object
+  (0x639058), `rt_time_platform.c` (0x63D4E0).
+- **Narrow return types stop sibling calls**: SOCOM II's internal functions return a type
+  narrower than the API's `int` (rt_msg_client_map_comm_error, rt_msg_client_is_valid_connection,
+  the platform's interrupt mask 0x639568), so `return f(...)` from an int function is a `jal` with
+  nothing after it (the callee promotes): ccsweep, the void and int declarations give `j`.
+- **A call returned after a guard on its own result is no sibling call** (rt_comm_metric_add_data:
+  `result = f(); if (result != 0) return result; return 0;`), where `return f();` and a result
+  variable both give `j`.
+- **A leaf's loop sits inside its positive test**: `if (p != 0) { for (...) if (...) return 0; }
+  return 1;` (IsNullRSAKey/IsNullRCKey); the guard-clause spelling gives the leaf a second `jr ra`.
+  `i = 64; while (i-- > 0)` is the target's bgtz on the old index (func_0062FDD8); a signature's
+  null inputs are one `||` (KM_DigiSign/Verify); nested `if (n > 1000) {...}` keeps the branch the
+  store-flag fold would remove (rt_comm_metric_update/print).
+- **A clamp passed as an argument**: `f(..., n > 4096 ? 4096 : n, ...)` to a libnetb parameter
+  declared `unsigned short` gives 2.96's `sltiu; xori v0,v0,0; movz` in the argument register; a
+  clamped local (int or short) re-extends.
+- **Float literals are the vendor's short spellings**: `0.015734f` and `0.003390842f` give the
+  target's 0x3C80E496/0x3B5E38E3 through 2.96's parser, where the exact decimals of those bits
+  come out an ulp low (`build/scratch/gcc/fconst.py` compiles spellings and reads the bits).
+- **Aggregate alignment shows in a struct copy**: the RC cipher state (0x10C) is word-aligned --
+  KM_CopyKeys moves its last word with `lw/sw`, a byte array gives `lwl/lwr`.
+- **Names**: 0x62CEF8 was not rt_comm_receive (the align pass's pair; it sends on the third channel
+  kind) -- 0x62CFA0 is, by SOCOM 1's callees; rt_comm's own rows, the platform/platform2
+  forwarders (startup, shutdown, create, send, receive, get_local_ip) by the calls into them, and
+  the MT rows by order and Cokus's constants. 0x62CB68 is rt_comm's set_default_options by
+  SOCOM 1's create (it calls it at the same point), but the map gives that name to 0x634958
+  (`s1:exact`, a six-instruction body in rt_msg_client's object): left a placeholder.
+- **Open, diagnosed in place**: KM_Create (8: a delay-slot choice), func_0062F818 (8 bytes: the
+  result's zero set in each branch), rt_comm_platform2_receive_from (41s: flags and port in the
+  other frame order), rt_msg_client_is_valid_connection_id (1: beqz against beqzl);
+  setNewSeed_platform (the EE timers read with `lw; dsll32; dsra32` -- no spelling tried gives it).
+
+Hand-written in round 6b: `medius/rt_comm.c` (33 of 33, new), `medius/rt_comm_platform2.c` (17 of 18,
+new), `medius/rt_crypt.c` (22 of 24, new), `medius/rt_mt.c` (6 of 6, new), `medius/rt_time_platform.c`
+(6 of 6, new), `medius/rt_mutex.c` (+2), `medius/rt_msg_client.c` (+8 of 9 internals) -- 94
+functions byte-exact, 77 new to the map's byte-exact rows (17 supersede matching drafts); 27 rows
+named (`s1:order` 18, `s1:calls` 9), one name withdrawn (0x62CEF8, `s1~`); 12,976 bytes.
+
 **Round 6c: the queues, the scheduler's small functions, 117 names.**
 
 - **SOCOM 1's call sites name the callees** (`build/scratch/gcc/callvotes.py`): every map row
