@@ -1647,6 +1647,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 13** (ai_perception.cpp, char_type.cpp's sounds, LODs and references):
+  - the no-op `lw; dsll32 0; dsrl32 0; sw` before a bit set is CAiPath::SetFlags' `x &= ~clear; x |= set`
+    called with a clear of 0 (the scan 0x60AA20 does it six times);
+  - a lerp `lo*(1-x) + hi*x` read straight off a table element swaps the madd operands; reading lo and
+    hi through a `const T &` element reference keeps the target's order (the scale through the same
+    reference moves its load);
+  - `Item((unsigned int)i)` on Item(int) stops pointer stepping; `Item((unsigned int)(i + 1))` computes
+    i+1 after the count, `Item(i + 1)` before it;
+  - `n += p ? strlen(p) : 0` leaves both joins unpadded, the if/else form pads them as the target
+    does; `played = true;` written before a call fills the jal's delay slot and orders the float
+    constants f12 first, f13 last; a float field taken into a local hoists its load above nested
+    tests;
+  - ai_perception.cpp runs 0x53ABE0-0x53B00B (its .data 0x64FA70-0x64FC3C between the walker unit's
+    and char_type.cpp's); the voice-font getters 0x53B010-0x53B06F close either it or char_type.cpp
+    (identical bytes); 0x53C940 is SOCOM 1's CCharacterGear::CreateInstance (same body, same place).
 - **Tells from the online lobby, round 10** (nine units' static initialisers, the lobby's state queue):
   - defining a unit's globals in order gave seven of the lobby units' `__sinit_` byte-exact at once
     (zNetMedius, Room, Clan, Ladder, Lobby, Friends, LANLobby; Chat and Dme followed);
