@@ -68,12 +68,12 @@
 0x00183C00 0x344 NextAction__FP14ActionIterator  # MAIN; s1:align
 0x00183F50 0x1C0 FindExceptionRecord__FPcP13ExceptionInfo  # MAIN; s1:align
 0x00184110 0xC what__Q23std13bad_exceptionCFv  # MAIN; vtable (slot +12 of bad_exception's vtable 0x1D4FC0)
-0x00184120 0x70 __TransferControl__FP12ThrowContextP13ExceptionInfoPc  # MAIN; s1:align
-0x00184190 0x80 __throw  # MAIN; s1:align
+0x00184120 0x64 __TransferControl__FP12ThrowContextP13ExceptionInfoPc  # MAIN; s1:align; size 0x64, not 0x70: the seed counted three words of zero padding (SOCOM 1's symbol is 0x64; asm: src/main/runtime/ExceptionMIPS.cpp)
+0x00184190 0x7C __throw  # MAIN; s1:align; size 0x7C, not 0x80: the seed counted a word of zero padding (SOCOM 1's symbol is 0x7C; asm: src/main/runtime/ExceptionMIPS.cpp)
 0x00184210 0x50 __SkipUnwindInfo__FPc  # MAIN; s1:align
 0x00184260 0x20 __FindExceptionTable__FP13ExceptionInfoPc  # MAIN; s1:align
 0x00184280 0xB4 __SetupFrameInfo__FP12ThrowContextP13ExceptionInfo  # MAIN; s1:align
-0x00184340 0x2B8 func_00184340  # MAIN
+0x00184340 0x2B8 __PopStackFrame__FP12ThrowContextP13ExceptionInfo  # MAIN; by hand (MAIN runtime lane round 4): SOCOM 1's __PopStackFrame__FP12ThrowContextP13ExceptionInfo (0x144600, the last function of its runtime's exception handling, as here): restores the s-registers, s8 and $f20.. saved in the frame the context points at, sets the caller's SP, returns the saved ra; called by UnwindStack and NextAction where SOCOM 1's call __PopStackFrame; src/main/runtime/ExceptionMIPS.cpp
 0x00184600 0x58 __dt__Q23std6localeFv  # MAIN; s1:ref (taken by address where SOCOM 1 takes __dt__Q23std6localeFv's)
 0x00184660 0x78 __dt__Q33std8ios_base7failureFv  # MAIN; s1:calls
 0x001846E0 0xD4 __dt__Q23std8ios_baseFv  # MAIN; s1:calls
