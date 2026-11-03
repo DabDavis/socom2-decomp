@@ -2417,8 +2417,8 @@
 0x00246930 0x44 func_00246930  # OVL1
 0x00246978 0x44 func_00246978  # OVL1 unaligned
 0x002469C0 0x74 func_002469C0  # OVL1
-0x00246A38 0xD4 func_00246A38  # OVL1 unaligned
-0x00246B10 0x7C func_00246B10  # OVL1
+0x00246A38 0xD4 sceLibnetInitialize  # OVL1 unaligned; by its own message ('sceLibnetInitialize() buffersize'); the demo's libnet object opens with its older libnet_init (the same bind loop, RPC 0x80001201)
+0x00246B10 0x7C sceLibnetTerminate  # OVL1; by body: the demo's libnet_term (sceSifMUnBindRpc until it returns 1, the 0x10000 delay between), here returning -540 on failure; the newer release's pair of sceLibnetInitialize, whose own message names it
 0x00246B90 0x40 func_00246B90  # OVL1
 0x00246BD0 0x40 func_00246BD0  # OVL1
 0x00246C10 0x44 func_00246C10  # OVL1
