@@ -156,6 +156,20 @@ public:
      * weapon (OVL2 0x5C67D0, new in SOCOM II: the launcher-mode tests, GetReticuleByIndex and four
      * more call it; the name ours) */
     CZFTSWeapon *GetFiringItem(int index);
+    /* the mode after the selected item's: from its launcher ammunition's item when the mode is one
+     * (4 and up, the mode the item kind), through 0x5C3EE0 with the item it fires from (OVL2
+     * 0x5C4480, new in SOCOM II: 0x5C4600 passes the selected item, which it reads again itself --
+     * the index unused; the name ours) */
+    int NextFireMode(int index);
+    /* an explosive of a kind taken in hand and placed: the item before it kept to go back to, a
+     * direct-fire weapon's selection undone, else -- the body able, the wait run out, the placing
+     * allowed (0x5BD530) -- placed (0x5BE9A0), or the item before it taken back (OVL2 0x5C0020;
+     * SOCOM 1's HandlePlacingExlosive, sic, which placed it inline) */
+    void HandlePlacingExlosive(EQUIP_ITEM item, float a, float b);
+    /* the item of a kind taken in hand (OVL2 0x5C8A20: SOCOM 1's, unwritten) and the item at an
+     * index (OVL2 0x5C4B10: SOCOM 1's, unwritten) */
+    bool SetCurItemEnum(EQUIP_ITEM item);
+    void SetCurItemByIndex(int index);
     /* the item pointer of an index, as GetItemPtr but the bound compared signed (inline: 0x5C6980
      * expands it -- its slt where GetItemPtr's own copy has sltu; the name ours) */
     void *ItemPtr(int index) const
@@ -362,7 +376,9 @@ public:
     EQUIP_ITEM m_hand_item;   // 0x7f0: the hand slot's item kind
     unsigned char m_iteminuse[30];   // 0x7f1 (SOCOM 1's 0x7d8: 0x5B9A00 closes it up with the items)
     int m_cur_zoom;   // 0x810 (SOCOM 1's 0x7f8)
-    unsigned char _814[0x820 - 0x814];
+    unsigned char _814[0x81c - 0x814];
+    float m_81c;   // 0x81c: a wait the explosive's placing needs run out (SOCOM 1's tested its
+                   // m_fire_delay there; the name ours)
     float m_fire_delay;   // 0x820 (SOCOM 1's 0x804)
     int m_selected_item;   // 0x824 (SOCOM 1's 0x808)
     int m_last_selected;   // 0x828

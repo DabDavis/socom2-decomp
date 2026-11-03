@@ -11018,7 +11018,7 @@
 0x005BFAC0 0x378 func_005BFAC0  # OVL2
 0x005BFE40 0x18 func_005BFE40  # OVL2
 0x005BFE60 0x1C0 func_005BFE60  # OVL2
-0x005C0020 0x108 func_005C0020  # OVL2
+0x005C0020 0x108 HandlePlacingExlosive__5CZKitF10EQUIP_ITEMff  # OVL2; s1:calls by hand (the kit lane, round 12): CSealCtrl::OnActionButton calls it with an explosive's kind (151, 152, 154) and two floats where SOCOM 1's OnActionButton calls HandlePlacingExlosive__5CZKitF10EQUIP_ITEMff (sic; 0x2A94F0 there), and it opens as SOCOM 1's does -- the selection kept, SetCurItemEnum(item), IsDirectFire's undo, CanFire, the wait -- the placing itself moved out (0x5BD530, 0x5BE9A0); seal_kit.cpp byte-exact
 0x005C0130 0x11C func_005C0130  # OVL2
 0x005C0250 0x6E4 func_005C0250  # OVL2
 0x005C0940 0xA8 GetShotCount__5CZKitFv  # OVL2; by hand (the kit lane, round 11): the rounds a trigger pull fires -- 1 without ammunition, 0 on safety, 3 in burst, 10000 in auto -- SOCOM 1's WillFireWeapon's inline switch moved out (new in SOCOM II, the name ours); called beside GetFireDelay by 0x5C0AE0 and 0x5C0FD0
@@ -11046,7 +11046,7 @@
 0x005C3CE0 0x8 func_005C3CE0  # OVL2
 0x005C3CF0 0x1E4 GetMaxAmmoCount__5CZKitFi  # OVL2; s1:calls (the HUD lane's round 15, vetted by the integrator: PlaceWeaponText calls it where SOCOM 1's calls GetMaxAmmoCount__5CZKitFi)
 0x005C3EE0 0x59C func_005C3EE0  # OVL2
-0x005C4480 0x134 func_005C4480  # OVL2
+0x005C4480 0x134 NextFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member -- the selected item's mode (m_firemode, 0x6FC), and when it is 4 or more (a launcher ammunition's item kind) that kind's first item with ammunition (kit.h's FindItemWithAmmo inlined) and the kind, handed to 0x5C3EE0 with the selected item's firing item (GetFiringItem); 0x5C4600 calls it with the selected index, which it does not read; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C45C0 0x40 func_005C45C0  # OVL2
 0x005C4600 0x288 func_005C4600  # OVL2
 0x005C4890 0x8 func_005C4890  # OVL2
@@ -11094,7 +11094,7 @@
 0x005C8930 0x4C GetSecondaryEnum__5CZKitCFv  # OVL2; by hand: GetCurItemEnum's code on item 1 (new in SOCOM II, before it; the name ours)
 0x005C8980 0x4C GetPrimaryEnum__5CZKitCFv  # OVL2; by hand: GetCurItemEnum's code on item 0 (new in SOCOM II, before it; the name ours)
 0x005C89D0 0x4C GetCurItemEnum__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's GetCurItemEnum, after HasItem and the index lookups as there: the selected item through unwrap(sel, 255), its m_equip (lb 0x7C), 255 without one)
-0x005C8A20 0x778 func_005C8A20  # OVL2
+0x005C8A20 0x778 SetCurItemEnum__5CZKitF10EQUIP_ITEM  # OVL2; s1:calls by hand (the kit lane, round 12): HandlePlacingExlosive (0x5C0020) calls it first with its item kind, as SOCOM 1's calls SetCurItemEnum__5CZKitF10EQUIP_ITEM (0x2AF610 there), and it sits after GetCurItemEnum as SOCOM 1's (0x778 here, 0x374 there)
 0x005C91A0 0xC func_005C91A0  # OVL2
 0x005C91B0 0x7C sealSaveFireModes__Fv  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's sealSaveFireModes -- the local player's kit's item count into g_iNumSavedFireModes (0x66B670), each item's id and fire mode into g_arrSavedFireModeInfo (0x66B580) -- right before CSavedFireModeInfo's constructor as there; CMPExitState::Init calls it
 0x005C9230 0x14 __ct__Q222@unnamed@seal_kit_cpp@18CSavedFireModeInfoFv  # OVL2; s1:exact

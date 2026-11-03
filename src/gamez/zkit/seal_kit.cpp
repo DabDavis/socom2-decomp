@@ -49,8 +49,17 @@ void func_00592D40(CKitCtrl *ctrl);
  * the weapons' shared record of a running delay: its address, value and a byte, marked set (OVL1
  * 0x3D00D0, unclaimed) */
 float func_003D2C20(CZFTSWeapon *w);
+/* the body able to fire (SOCOM 1's CZSealBody::CanFire, called from the same place in
+ * HandlePlacingExlosive; SOCOM II's takes two more: OVL2 0x5A7DE0, the SEAL lane's row), the
+ * placing allowed and the explosive placed (OVL2 0x5BD530, 0x5BE9A0: this unit's, unwritten) */
+bool func_005A7DE0(CZSealBody *body, int a, int b);
+bool func_005BD530(CZKit *kit);
+void func_005BE9A0(CZKit *kit, int index, float a, float b);
 /* a launcher's grenades of class 145's launcher (OVL1 0x3C5C20, unclaimed: GetFiringItem's test) */
 bool func_003C5C20(CZFTSWeapon *w);
+/* a fire mode found from an item index on, for the item a mode fires from and an ammunition kind
+ * (OVL2 0x5C3EE0, this unit's, unwritten: NextFireMode and 0x5C45C0 call it) */
+int func_005C3EE0(CZKit *kit, int index, CZFTSWeapon *w, EQUIP_ITEM kind);
 /* a body's part by name (CBody::FindPart, OVL1 0x28E7B0): its node at +0xC */
 struct CKitBodyPart {
     unsigned char _0[0xc];
@@ -616,6 +625,20 @@ CZFTSWeapon *CZKit::GetItemByIndex(int index) const
     return m_item[unwrap(index, FIREMODE_CURRENT)];
 }
 
+/* (OVL2 0x5C4480) The mode read in place each time, MW sharing the one load: taken into a local
+ * first, it lands in t1 and every temporary of the inlined walk shifts a register (21 words) */
+int CZKit::NextFireMode(int index)
+{
+    int i = 0;
+    EQUIP_ITEM kind = EQUIP_NONE;
+
+    if (m_firemode[m_selected_item] > 3) {
+        i = FindItemWithAmmo((EQUIP_ITEM)m_firemode[m_selected_item]);
+        kind = (EQUIP_ITEM)m_firemode[m_selected_item];
+    }
+    return func_005C3EE0(this, i, GetFiringItem(m_selected_item), kind);
+}
+
 /* (OVL2 0x5C67D0) */
 CZFTSWeapon *CZKit::GetFiringItem(int index)
 {
@@ -671,6 +694,29 @@ void CZKit::SetFireDelay(float delay, bool alt)
         m_fire_delay = delay;
     func_003D00D0(&m_fire_delay, m_fire_delay, 0);
     m_alt_firedelay = alt;
+}
+
+/* (OVL2 0x5C0020) */
+void CZKit::HandlePlacingExlosive(EQUIP_ITEM item, float a, float b)
+{
+    m_last_selected = m_selected_item;
+    if (!SetCurItemEnum(item)) {
+        m_last_selected = -1;
+        return;
+    }
+    if (m_item[m_selected_item]->IsDirectFire()) {
+        if (m_last_selected >= 0) {
+            SetCurItemByIndex(m_last_selected);
+            m_last_selected = -1;
+        }
+        return;
+    }
+    if (func_005A7DE0(m_body, 0, 0) && m_81c <= 0.0f && func_005BD530(this)) {
+        func_005BE9A0(this, m_selected_item, a, b);
+        return;
+    }
+    SetCurItemByIndex(m_last_selected);
+    m_hotswap = false;
 }
 
 /* the fire delay still running (OVL2 0x5C2400, new in SOCOM II; the name ours) */
