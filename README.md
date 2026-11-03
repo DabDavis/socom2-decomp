@@ -1888,6 +1888,28 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 18** (THE Is() FALSE ARM, SetRoute, seven seal_ai.cpp/seal_body.cpp rows):
+  - THE KIT'S OPEN `Is()` SHAPE: the target builds the state test whole in one register with an explicit `move v0,zero`
+    false arm -- `StackNotEmpty() ? (m_stateStack.GetState()->m_state == s ? true : false) : false` (the first operand an
+    inline bool; the inner `? true : false` keeps the false arm; with `&&`, a plain ternary or if/else MW sees v0 already
+    0 on that path and drops the arm) -- CSealCtrlAi::AiStateIs(AI_STATE) const in zseal.h, calling the const GetState
+    0x5F8330; 0x572190 matched with it, and the lane's scan (build/scratch/seal-r18/farm.py) finds 22 open functions
+    with the pattern, the kit's Pop(ai, AI_STATE) 0x5F7990, PopTo 0x5F7B10 and 0x5F43B0 among them;
+  - MW 3.0 aligns branch targets to 8 bytes with nops, so "label pads" in OPEN notes move whenever an instruction is
+    missing upstream; an inline returning the same constant from several arms is held in $f20 across a later call,
+    returned once straight it folds into the caller's store; a bool result declared at the top takes a saved register,
+    declared just before its first test it stays in v0; a pointer local declared after the others is numbered last
+    though computed first; inline tests taking the state stack by const reference recompute its address for each call,
+    handed the controller MW keeps it in a saved register; `bool empty = !f(); if (empty)` gives sltu/xori/andi before
+    the branch where `!f()` or `== false` inside the `if` branches on v0; a switch assigning one bool, returned once,
+    gives one andi at the join;
+  - SetRoute(loc *, int) 0x562200 and GetDefaultRouteType 0x5627E0 by SOCOM 1's order (SetRoute(loc *, int),
+    SetRoute(loc &), GetDefaultRouteBias -- no copy in SOCOM II: an inline --, GetDefaultRouteType, ClearRoute);
+    identified, not renamed: 0x5623B0 SetRoute(const CAiMapLoc &) and 0x562030 AnimSignal (0x180 against SOCOM 1's
+    0x404: check the signature); for the AI core (passed on): 0x52C5C0 RegisterPathPlan, 0x524CD0 SetPathType;
+  - open: SetMaxMotion 0x58BCB0 (4: the member-call GetScript respelled, but the strafe lookups' load order is the
+    scheduler's -- BlendedClimb's identical call loads the type first; nine spellings), 0x5623B0 (0x3DC), 0x562030,
+    0x567690 (a guarded function-local `Rfloat(10, 15)` static at 0x66B208/0x66B210), 0x56A130 (MAP_LINEWALK_STRUCT).
 - **Tells from the game states, round 22** (__sinit_fts_mission.cpp, the CUIVariable tail, the persona lists):
   - WITH TWO `_zrdr` STAND-INS A UNIT CAN INCLUDE BOTH zui.h AND zanim.h if zanim.h's copy is skipped after zui.h's
     (`#ifndef ZUI_H`): fts_mission.cpp includes zui.h first and reaches CUIVariable -- __sinit_fts_mission.cpp
