@@ -71,16 +71,16 @@ public:
     class generic_iterator {
     public:
         generic_iterator() {}
-        generic_iterator(node_base *n) : node_(n) {}
-        generic_iterator(const node_base *n) : node_((node_base *)n) {}
+        generic_iterator(node_base *n) : node_((node *)n) {}
+        generic_iterator(const node_base *n) : node_((node *)n) {}
         /* iterator's copy constructor, so iterators are passed by address (erase's are); the
          * copy assignment stays implicit, a bitwise copy (lwc1/swc1). For const_iterator it is a
          * conversion, and its copy constructor implicit: passed by value, bitwise */
         generic_iterator(const generic_iterator<false> &x) : node_(x.node_) {}
-        T &operator*() const { return ((node *)node_)->data_; }
+        T &operator*() const { return node_->data_; }
         generic_iterator &operator++()
         {
-            node_ = node_->next_;
+            node_ = (node *)node_->next_;
             return *this;
         }
         /* the copy, the step, the copy given back (graph_tree.cpp's queue walks: OVL1 0x2D1EB0 out
@@ -89,13 +89,17 @@ public:
         {
             generic_iterator tmp(*this);
 
-            node_ = node_->next_;
+            node_ = (node *)node_->next_;
             return tmp;
         }
         bool operator==(const generic_iterator &x) const { return node_ == x.node_; }
         bool operator!=(const generic_iterator &x) const { return node_ != x.node_; }
 
-        node_base *node_;
+        /* SOCOM 1's DWARF: the iterator holds `node *` (its links are `node *` too) -- an uncast
+         * `*` with the cast at each step keeps a walk's element address in a saved register across
+         * calls (the world lane's round 6, applied 2026-11-04: SerializeValves and
+         * CLobbySaveManager::Load byte-exact, nothing lost over every hand-written unit) */
+        node *node_;
     };
     typedef generic_iterator<false> iterator;
     typedef generic_iterator<true> const_iterator;
@@ -273,7 +277,7 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last)
         node_alloc().destroy(&((node *)first.node_)->data_);
         node_base *n = first.node_;
 
-        first.node_ = n->next_;
+        first.node_ = (node *)n->next_;
         node_alloc().deallocate(n);
         --size_;
     }
