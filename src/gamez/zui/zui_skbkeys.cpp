@@ -1,12 +1,17 @@
-/* zui_skbkeys.cpp -- the soft keyboard's USB-keyboard keys (OVL1 ~0x39AD00-0x39ADFF so far: the unit's
- * extent is not settled -- it lies between the keyboard's display unit, initialiser 0x403800, and the
- * buffered file at 0x39BBC0; the CRenderableString globals of initialiser 0x404110 may be its): the
- * handlers zui_skb.cpp's USB loop (0x38C630) calls for a key by its HID usage -- the letters, the digit row, the
- * punctuation, the dash -- each typing its character, shifted or not, through 0x399040. SOCOM 1 has
- * none of it: the file's name and every name here are ours. Defined in reverse of their image
- * order (-inline deferred).
+/* zui_skbkeys.cpp -- the soft keyboard's text and USB-keyboard keys (OVL1 ~0x398AE0-0x39BBBF, its
+ * initialiser 0x404110 building the three CRenderableString statics that 0x398B50-0x39A790 use):
+ * the text being typed (two edited strings and a third), its taking and testing for OnEnterKey,
+ * the jamo typed, and the handlers zui_skb.cpp's USB loop (0x38C630) calls for a key by its HID
+ * usage -- the letters, the digit row, the punctuation, the dash -- each typing its character,
+ * shifted or not, through 0x399040. SOCOM 1 has none of it: the file's name and every name here
+ * are ours. Defined in reverse of their image order (-inline deferred).
  *
- * OPEN, not written yet: the rest of the unit. */
+ * The unit inlines none of its own small functions: 0x398C00 (two calls) is called out of line by
+ * 0x398AE0, 0x3999D0 and 0x399C20, 0x399040 by the USB handlers -- a unit without auto-inlining, or
+ * pins on each (con_ps2.cpp and ai_util.cpp are the same, README "The inlining mode, measured").
+ *
+ * OPEN, not written yet: the rest of the unit (0x39AE50-0x39BBB0 holds the string assign through
+ * the template replace, 0x39B620, the MSL lane's request). */
 
 #include "zui_skb.h"
 #include "../znode/znode.h"
@@ -140,6 +145,63 @@ void SkbTakeText(CGameMenu *menu)
 
     *theUIVarManager.Add(SkbGetText(true), 0, UIVL_TEMPORARY) = s ? s : "";
     func_00367810(menu, func_00396EF0() ? 15 : 14, text.c_str());
+}
+
+extern "C" {
+unsigned short func_003910E0();
+void func_00398C00(unsigned short c, CSoftKeyboard *skb);
+void func_00398C40(CSoftKeyboard *skb);
+void func_003952F0();
+}
+int UTF8CharLen(const char *&s);
+
+/* two words of the text's (0x4A1348, 0x4A1350: one says whether string 1 counts, the other is
+ * added to its count; the names ours) */
+static int s_textCount1;
+static int s_textCount0;
+
+/* a character's length (a copy of the pointer handed on: the target stores it for each call) */
+static inline int CharLen(const char *s)
+{
+    return UTF8CharLen(s);
+}
+
+/* the string has a character at p (ours: materialised before the loop's branch) */
+static inline bool HasChar(const char *p)
+{
+    return p && *p;
+}
+
+/* the composition's character typed, if there is one; else 0x398C40 when the text has characters
+ * (string 1's counted when s_textCount1 says so, plus s_textCount0), 0x3952F0 when not; then
+ * state 3 (0x399C20; the name ours).
+ * OPEN, 13 instructions (same size, same blocks): the saved registers are numbered otherwise --
+ * the target keeps the count in s0, skb in s1 and the pointer in s2 (here p s0, the count s1, skb
+ * s2) -- and does the count's ++ in UTF8CharLen's delay slot, after the pointer's store. Tried: the
+ * count as an inline CountChars(p) with its own locals (13 again), p and the count declared ahead
+ * (0x10 short) */
+void SkbTypeOrBack(CSoftKeyboard *skb)
+{
+    unsigned short c = func_003910E0();
+
+    if (c) {
+        func_00398C00(c, skb);
+    } else {
+        int n;
+
+        if (s_textCount1) {
+            n = 0;
+            for (const char *p = ShownText(&s_textString1); HasChar(p); n++)
+                p += CharLen(p);
+        } else {
+            n = 0;
+        }
+        if (s_textCount0 + n > 0)
+            func_00398C40(skb);
+        else
+            func_003952F0();
+    }
+    func_00395DE0(3);
 }
 
 /* the text cleared: whether there was any, the composition flushed and the keyboard put in state 3

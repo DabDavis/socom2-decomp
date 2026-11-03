@@ -1,5 +1,9 @@
-/* zui_hangul.cpp -- the soft keyboard's Korean input (OVL1 0x3903A0-~0x39441F, its initialiser
- * 0x403770 building two vectors and a word at 0x49ED08-0x49ED40): the 33 jamo by name, the 2-set
+/* zui_hangul.cpp -- the soft keyboard's Korean input (OVL1 0x3903A0-0x3941CF, its initialiser
+ * 0x403770 building two vectors and a word at 0x49ED08-0x49ED40; its template tail ends on the two
+ * vectors' destructors the initialiser registers, 0x3940F0 and 0x394170, so 0x3941D0-0x39441F --
+ * CSkbKeyProps' members zui_skb.cpp calls, ~CSkbKeyProps 0x394370, SkbLoadUiParams -- open the
+ * next unit, whichever file that is: SkbLoadUiParams stays here until its unit is written, as
+ * nothing inlines it): the 33 jamo by name, the 2-set
  * keyboard's letters mapped to jamo (shifted and not), the syllable being composed, and the rdr
  * helpers the keyboard units share (an rdr array's count, an rdr array walked by index). SOCOM 1 has
  * none of it: the file's name and every name here are ours. Defined in reverse of their image order
