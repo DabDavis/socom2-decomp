@@ -246,17 +246,16 @@ CVisData *CVisData::SelectVertexHead(CVisual *vis, unsigned int view, unsigned i
     return SearchVertex(false);
 }
 
-/* the same, over the selects its head's seventh and eighth halfwords bound. OPEN, 1 instruction:
- * the first select's sum is `addu v0,v0,v1` (the scaled count first) in the target and `addu
- * v0,v1,v0` here, as SelectVertexHead's end is in both; m_head + n + 1, n + m_head + 1, &m_head[n +
- * 1], m_head + (n + 1), 1 + m_head + n, &m_head[n] + 1, a local count, and char/int arithmetic
- * (four forms) all keep the head first */
+/* the same, over the selects its head's seventh and eighth halfwords bound. The first select is an
+ * integer sum, the count shifted by hand ahead of the head (the target's `addu v0,v0,v1`): every
+ * pointer form -- m_head + n + 1, &m_head[n + 1], n + m_head + 1, a local count, or the count scaled by
+ * `* 16` or `* sizeof` -- adds the head first */
 CVisData *CVisData::SelectVertexTail(CVisual *vis, unsigned int view, unsigned int index)
 {
     Clear();
     m_head = (_word128 *)vis->m_lodMesh[view];
     m_end = m_head + m_head->u16[7];
-    m_cur = m_head + m_head->u16[6] + 1;
+    m_cur = (_word128 *)((m_head->u16[6] << 4) + (unsigned int)m_head) + 1;
     m_index = index;
     return SearchVertex(false);
 }
