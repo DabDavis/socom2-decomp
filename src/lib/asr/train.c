@@ -33,6 +33,7 @@ typedef struct TRAINREC {
 } TRAINREC;
 
 extern void heap_Free(void *heap, void *p);
+extern float logf(float x);
 
 extern const short log_p_average_[511];
 static const short *const global_log_p_average = &log_p_average_[255];
@@ -77,6 +78,45 @@ void TrainSmoothCounts(CASR *c)
             r->totals[s] = total;
         }
         k++;
+    }
+}
+
+/* each record's counts turned into scaled log probabilities, state by state: floored and
+ * normalised into +1060, then -log(p / sum) * 255 / scale, rounded, back into the counts */
+void TrainProbsFromCounts(CASR *c, int pron)
+{
+    TRAINREC *r;
+    unsigned short nstates = c->nstates;
+    float scale = c->f1056;
+    float floor = c->f1052;
+
+    for (r = c->trainrecs; r != 0; r = r->next) {
+        unsigned int ncw = r->size / nstates;
+        float norm = floor * ncw + 1.0f;
+        unsigned int s;
+
+        for (s = 0; s < nstates; s++) {
+            unsigned short *cnt = r->counts + s;
+            float *prob = c->train1060;
+            float total = r->totals[s];
+            float sum = 0;
+            unsigned int i;
+
+            for (i = 0; i < ncw; i++) {
+                float t = (*cnt / total + floor) / norm;
+
+                sum += t;
+                *prob = t;
+                cnt += nstates;
+                prob++;
+            }
+            prob = c->train1060;
+            cnt = r->counts + s;
+            for (i = 0; i < ncw; i++) {
+                *cnt = -logf(*prob++ / sum) * 255.0 / scale + 0.5;
+                cnt += nstates;
+            }
+        }
     }
 }
 
@@ -218,7 +258,6 @@ __inline__ void CalcEntropyMerged4bit(unsigned int *out, unsigned char *p, int l
     }
 }
 
-extern void TrainProbsFromCounts(CASR *c, int pron);
 extern void TrainSelectPhenom(CASR *c, int pron);
 
 /* the training's models from every utterance's labels: counted, smoothed if asked, turned into

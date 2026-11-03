@@ -142,9 +142,9 @@ typedef struct CASR {
     short pad1026;
     float *smooth[5];                   /* +1028: each record's smoothing matrix (train.c) */
     float *train1048;                   /* +1048: the smoothing's row sums; freed by TrainFree */
-    float f1052;                        /* +1052: 0.0001 (casrOpen) */
-    int pad1056;
-    void *train1060;                    /* +1060: freed by TrainFree */
+    float f1052;                        /* +1052: 0.0001 (casrOpen): the probabilities' floor */
+    float f1056;                        /* +1056: the log probabilities' scale (train.c) */
+    float *train1060;                   /* +1060: one state's probabilities; freed by TrainFree */
     int pad1064;
     short **segtab;                     /* +1068 */
     int pad1072;
