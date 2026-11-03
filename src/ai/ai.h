@@ -398,6 +398,15 @@ public:
         void SetName(const char *s);
         /* the name ended at its last byte (SOCOM 1's) */
         void ValidateName() { m_name[15] = 0; }
+        /* a default name: empty, its two bytes 8 and 0, the cell left unbuilt (resize<name>'s
+         * temporary, 0x51C630: three byte stores in the body's order -- a mem-initializer list
+         * moves m_14 and m_15 ahead of the name) */
+        name()
+        {
+            m_name[0] = 0;
+            m_14 = 8;
+            m_15 = 0;
+        }
 
         CAiMapLoc m_loc;   // 0x0
         char m_name[16];   // 0x4
@@ -541,6 +550,9 @@ public:
     /* a cell an AI reads a script from (SOCOM 1's DWARF, 0x10 bytes) */
     class reader {
     public:
+        /* no script, no flags, no bytes, the cell left unbuilt (SOCOM 1's, out of line in both
+         * builds: ai_maptable.cpp's 0x52FD70, resize<reader> 0x51C3F0 calls it) */
+        reader();
         /* the old script freed and the new one kept (SOCOM 1's; inlined into ~readers) */
         void SetReader(CRdrFile *r);
 
@@ -568,6 +580,10 @@ public:
     /* where a SEAL can appear (SOCOM 1's DWARF, 0xC bytes) */
     class spore {
     public:
+        /* the bits cleared, each a word read, masked and written back (the mem-initializer list's
+         * way); the cell and the altitude left unbuilt (resize<spore>'s temporary, 0x51CA40) */
+        spore() : m_dir(0), m_id(0), m_unused(0) {}
+
         CAiMapLoc m_loc;   // 0x0
         unsigned int m_dir : 4;   // 0x4
         unsigned int m_id : 12;
@@ -596,7 +612,16 @@ public:
     /* a line drawn on the map: its cells and four bytes of data (SOCOM 1's DWARF, 0x10 bytes) */
     class line_data {
     public:
-        unsigned int m_data;   // 0x0
+        /* a new line's bits, each cleared in a word read, masked and written back (the
+         * mem-initializer list's way) but the new bit 15, set (resize<line>'s temporary, 0x51C070) */
+        line_data() : m_type(0), m_id(0), m_polygon(0), m_outline(0), m_unk15(1), m_unused(0) {}
+
+        unsigned int m_type : 5;   // 0x0 (SOCOM 1's DWARF)
+        unsigned int m_id : 8;
+        unsigned int m_polygon : 1;
+        unsigned int m_outline : 1;
+        unsigned int m_unk15 : 1;   // new in SOCOM II (SOCOM 1's m_unused was 17 bits)
+        unsigned int m_unused : 16;
     };
     class line : public CAiMapLocVec, public line_data {
     };
@@ -620,11 +645,14 @@ public:
                 i = m_index + (int)(x - m_start);
             return i;
         }
+        /* an empty run: both ends, the index and the byte at 8 zeroed in declaration order
+         * (resize<scanline>'s temporary, 0x519700 -- a byte store, so +8 is a byte now) */
+        scanline() : m_start(0), m_end(0), m_index(0), m_unk8(0) {}
 
         unsigned short m_start;   // 0x0
         unsigned short m_end;   // 0x2
         int m_index;   // 0x4
-        unsigned int m_unk8;   // 0x8
+        unsigned char m_unk8;   // 0x8: SOCOM 1's m_mapEx pointer; a byte in SOCOM II
     };
     class scanlines : public std::vector<scanline> {
     };
@@ -637,6 +665,18 @@ public:
         enum TYPE { NONE = 0, DOOR = 1, TYPE_MAX = 31 };
 
         TYPE GetType() const { return m_type_invalid == 0 ? (TYPE)m_type : NONE; }
+        /* a new action: no id (invalid, read at run time), every bit cleared but the side, 8 for
+         * none -- each a word read, masked and written back (the mem-initializer list's way;
+         * resize<action>'s temporary, 0x51C6D0) */
+        action()
+            : m_direction(0), m_actionId(invalid), m_state(0), m_type(0), m_locExValid(0), m_offset(8),
+              m_type_invalid(0)
+        {
+        }
+
+        /* no action's id (SOCOM 1's invalid__Q26CAiMap6action, 4 bytes; 0xFFFF at OVL2's 0x65AB30,
+         * its low halfword read with lhu into the 16-bit id) */
+        static const unsigned int invalid;
         /* the side it opens toward, 8 for none (the name ours: GetCellCenter's, out of line at
          * 0x516910) */
         DIR GetDir() const { return (DIR)m_offset; }
