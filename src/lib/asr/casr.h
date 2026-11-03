@@ -69,9 +69,9 @@ typedef struct CASR {
     int uw_state;                       /* +620: also the sample format */
     int f624;                           /* +624 */
     void *f628;                         /* +628 */
-    int f632[3];                        /* +632 */
-    int f644[3];                        /* +644 */
-    char pad656[12];
+    char *lab_buf[3];                   /* +632: each training utterance's labels */
+    char *lab_pos[3];                   /* +644: where the next label goes */
+    char *lab_end[3];                   /* +656: the buffer's end */
     int frames;                         /* +668 */
     unsigned char f672;
     unsigned char f673;

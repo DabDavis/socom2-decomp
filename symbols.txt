@@ -8783,7 +8783,7 @@
 0x004D98F0 0x1D8 func_004D98F0  # OVL2
 0x004D9AC8 0x400 casrEnableGenders  # OVL2 unaligned; s1:calls (SOCOM 1's casrSetParam, casrStart, casrStartUserWordTraining call casrEnableGenders where ours call this row, 3 call sites; the same position in SOCOM 1's object)
 0x004D9EC8 0x210 casrOpen  # OVL2 unaligned; s1:align
-0x004DA0D8 0x1C4 func_004DA0D8  # OVL2 unaligned
+0x004DA0D8 0x1C4 casrGetSessionData  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: the static after casrOpen, 0x1BC; the same callee sequence -- _tosControl 39 for the size, heap_Alloc, _tosControl 39 for the data, heap_Free on failure -- and immediates) -- the gcc lane, round 9c
 0x004DA2A0 0x158 casrClose  # OVL2; s1:align
 0x004DA3F8 0x184 casrStart  # OVL2 unaligned; s1:align
 0x004DA580 0x178 casrReadLabelInQueue  # OVL2; s1:calls
