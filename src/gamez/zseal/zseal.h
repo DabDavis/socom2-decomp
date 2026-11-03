@@ -109,6 +109,13 @@ class CSealCtrlAi;
 
 /* CAiState, its stack and AI_STATE are ai/ai_states.h's (the AI-states lane's header) */
 
+/* an AI sound's priority, passed by value: the level in the low byte (new in SOCOM II; the names
+ * ours) */
+struct AI_SOUND_PRIORITY {
+    unsigned int m_level : 8;
+    unsigned int m_rest : 24;
+};
+
 /* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
 
@@ -640,7 +647,13 @@ public:
     unsigned char _6fc[0x74c - 0x6fc];
     float m_spraytimer;   // 0x74c: SetSprayTimer's time (the name ours)
     CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
-    unsigned char _75c[0x76c - 0x75c];
+    /* the sound the AI last made (0x571010: the sound, when it may be made again, and its
+     * priority with the alertness band it was made at in the low byte; the names ours) */
+    short m_sound;   // 0x75c
+    unsigned char _75e[0x760 - 0x75e];
+    float m_sound_time;   // 0x760
+    AI_SOUND_PRIORITY m_sound_priority;   // 0x764
+    unsigned char _768[0x76c - 0x768];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
     unsigned char _76d[0x7c0 - 0x76d];
 };
