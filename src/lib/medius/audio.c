@@ -1,5 +1,5 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
-/* audio.c: the voice library's session (OVL2 0x60FF00-0x6126A0), SCEA's rt_audio
+/* audio.c: the voice library's session (OVL2 0x60FB50-0x6126A0), SCEA's rt_audio
  * (/projects/rtime/CVS/rt_audio/src/audio.c,v 1.67 2003/10/10, its $Header and audio.h's first in
  * the libraries' .rodata), prebuilt with ee-gcc 2.96 at -O2 -G0 (README "The GCC front"); built
  * with sibling calls (0x6113F8 and 0x611388 end in `j` under a vestigial frame). SOCOM 1 has no
@@ -59,9 +59,15 @@ typedef struct PEER {                   /* a peer's record (the list object at 0
     int x18;                            /* 0x18 */
     int tHeard;                         /* 0x1C: when last heard */
     PEER_INFO info;                     /* 0x20 */
-    char x40[0x808];                    /* 0x40 */
+    char x40[0x800];                    /* 0x40 */
+    void *pFrame;                       /* 0x840: the decoded frame */
+    void *pStream;                      /* 0x844 */
     void *pIn;                          /* 0x848 */
     void *pOut;                         /* 0x84C */
+    int x850;                           /* 0x850 */
+    int x854;                           /* 0x854 */
+    int nPending;                       /* 0x858: a frame received, its length */
+    void *pPending;                     /* 0x85C */
 } PEER;
 
 typedef struct GRID_NODE {              /* a group's member list (the list object at 0x629DA0) */
@@ -82,11 +88,19 @@ typedef struct AUDIO {
     int nSeq;                           /* 0x00: every message's sequence number */
     int nSeqA;                          /* 0x04: type 0x2F's */
     int nSeqB;                          /* 0x08: type 0x30's */
-    char x0C[0x3C];                     /* 0x0C */
+    char x0C[0x1C];                     /* 0x0C */
+    int nIn;                            /* 0x28 */
+    int nOut;                           /* 0x2C */
+    int nInBytes;                       /* 0x30 */
+    int nOutBytes;                      /* 0x34 */
+    int nEncoded;                       /* 0x38 */
+    int nDecoded;                       /* 0x3C */
+    int tEncode;                        /* 0x40: the time spent encoding */
+    int tDecode;                        /* 0x44 */
     int (*pfnRead)(struct AUDIO *pAudio, int *pnType, char *pBuf, int nSize); /* 0x48 */
     int x4C;                            /* 0x4C */
-    void *x50;                          /* 0x50 */
-    int x54;                            /* 0x54 */
+    int (*pfnCapture)(struct AUDIO *pAudio, void *p1, void *p2, void *p3); /* 0x50 */
+    void (*pfnPlay)(struct AUDIO *pAudio, int nId, void *pFrame); /* 0x54 */
     int nLastRead;                      /* 0x58 */
     void *pCodec;                       /* 0x5C */
     void *pFrame;                       /* 0x60: the codec's, while talking */
@@ -103,8 +117,9 @@ typedef struct AUDIO {
     int x90;                            /* 0x90 */
     int x94;                            /* 0x94 */
     int nGrid;                          /* 0x98: the group spoken in, if positive */
-    char x9C[8];                        /* 0x9C */
-    void *pHandles[6];                  /* 0xA4 */
+    void *pCodecA;                      /* 0x9C */
+    void *pCodecB;                      /* 0xA0 */
+    void *pHandles[6];                  /* 0xA4: the encoder's three, the decoder's three */
     AUDIO_CONNECT nConnect;             /* 0xBC */
     char szHost[16];                    /* 0xC0 */
     int nPort;                          /* 0xD0 */
@@ -161,9 +176,20 @@ extern void func_0062A8C8(void *pCodec);
 extern void func_0062A138(PEER *p, unsigned int nFlags);
 extern void func_0062A148(PEER *p, unsigned int nFlags);
 extern void func_00624DC0(GRID *p);
-extern void func_0060FC90(AUDIO *pAudio, PEER *p);
-extern void func_0060FD98(AUDIO *pAudio, PEER *p);
-extern void func_0060FEB8(AUDIO *pAudio);
+extern int func_0062C070(void);         /* the clock, in milliseconds */
+extern int func_006456C0(void *pCodecA, void *pCodecB, void *p1, void *p2, void *p3, char *pBuf);
+extern void func_006456C8(void *pCodecA, void *pCodecB, void *p1, void *p2, void *p3, void *pData);
+extern void *func_006456F8(void *pCodecA, void *pCodecB);
+extern void func_00645708(void *p1, void *p2, void *p3, void *pFrame);
+extern int func_00645528(void *pStream, char *pBuf, int nSize);
+extern int func_00642C48(void *pIn, int *pnType, char *pBuf, int nSize);
+void *func_0060FFB0(AUDIO *pAudio);
+GRID *func_00611348(AUDIO *pAudio, int nId, int nMaxMembers);
+int func_0060FC90(AUDIO *pAudio, PEER *p);
+int func_0060FD98(AUDIO *pAudio, PEER *p);
+void func_0060FEB8(AUDIO *pAudio);
+int func_00611438(AUDIO *pAudio, PEER *p, int nType, char *pBuf, int nLen);
+int func_006117F0(AUDIO *pAudio, void *pData, int nLen);
 extern void func_0062B090(void *pCodec, void *pIn);
 extern void func_0062AE10(void *pCodec, void *pFrame);
 extern void func_0063DEA0(void *pSocket);
@@ -186,6 +212,118 @@ void func_0060FFC0(AUDIO *pAudio);
 void func_00611420(AUDIO *pAudio, unsigned int nFlags);
 void func_00612138(AUDIO *pAudio, int nId);
 GRID *func_006113A0(AUDIO *pAudio, GRID *p);
+
+static int nTimerStart = 0;           /* the codec timer's start */
+
+void func_0060FB50(void)
+{
+    nTimerStart = func_0062C070();
+}
+
+int func_0060FB78(void)
+{
+    return func_0062C070() - nTimerStart;
+}
+
+void func_0060FBA0(AUDIO *pAudio, int n, int nBytes)
+{
+    pAudio->nInBytes += nBytes;
+    pAudio->nIn += n;
+}
+
+void func_0060FBC0(AUDIO *pAudio, int n, int nBytes)
+{
+    pAudio->nOutBytes += nBytes;
+    pAudio->nOut += n;
+}
+
+/* Captures and encodes a frame while this client talks in a group (its length, or 0). */
+int func_0060FBE0(AUDIO *pAudio, char *pBuf, int nSize)
+{
+    int n = 0;
+
+    if (pAudio->pfnCapture != 0
+        && pAudio->pfnCapture(pAudio, pAudio->pHandles[0], pAudio->pHandles[1], pAudio->pHandles[2]) > 0
+        && pAudio->nGrid > 0) {
+        func_0060FB50();
+        n = func_006456C0(pAudio->pCodecA, pAudio->pCodecB, pAudio->pHandles[0], pAudio->pHandles[1],
+                          pAudio->pHandles[2], pBuf);
+        pAudio->tEncode += func_0060FB78();
+        pAudio->nEncoded++;
+    }
+    return n;
+}
+
+/* Decodes a peer's pending (or streamed) frame and plays it.
+ * OPEN (52s): the target keeps the frame's length in v1 (a `move v1,v0` after the stream's read),
+ * 2.96 here in v0, and stores the decode count before the time -- every spelling of the length's
+ * variable tried (its own test, assigned in the test, declared first) gives the same. */
+int func_0060FC90(AUDIO *pAudio, PEER *p)
+{
+    char buf[32256];
+    void *pData = p->pPending;
+    int n = p->nPending;
+
+    if (n != 0) {
+        p->nPending = 0;
+    } else if (p->pStream != 0) {
+        n = func_00645528(p->pStream, buf, sizeof(buf));
+        pData = buf;
+    }
+    if (n == 0 || pAudio->pfnPlay == 0)
+        return 0;
+    if (p->pFrame == 0)
+        p->pFrame = func_006456F8(pAudio->pCodecA, pAudio->pCodecB);
+    func_0060FB50();
+    func_006456C8(pAudio->pCodecA, pAudio->pCodecB, pAudio->pHandles[3], pAudio->pHandles[4],
+                  pAudio->pHandles[5], pData);
+    pAudio->tDecode += func_0060FB78();
+    pAudio->nDecoded++;
+    func_00645708(pAudio->pHandles[3], pAudio->pHandles[4], pAudio->pHandles[5], p->pFrame);
+    pAudio->pfnPlay(pAudio, p->info.nId, p->pFrame);
+    return 0;
+}
+
+/* Drains a peer's incoming stream (flag 0x2000), closing it unless it still talks (0x4000). */
+int func_0060FD98(AUDIO *pAudio, PEER *p)
+{
+    char buf[2048];
+    int nType;
+    unsigned int nFlags = func_0062A130(p);
+    int nTotal = 0;
+    int n;
+
+    if (nFlags & 0x2000) {
+        int nRead = 0;
+
+        nType = 0;
+        do {
+            n = func_00642C48(p->pIn, &nType, buf, sizeof(buf));
+            nRead += n;
+            if (nRead == 0 || n != 0)
+                nTotal += func_00611438(pAudio, p, nType, buf, n);
+        } while (n != 0);
+        if (!(nFlags & 0x4000)) {
+            func_0062B090(func_0060FFB0(pAudio), p->pIn);
+            p->pIn = 0;
+            func_0062A138(p, 0x1000);
+        }
+        func_0062A148(p, 0x2000);
+    } else if (nFlags & 0x1000) {
+        func_00611438(pAudio, p, p->x18, buf, 0);
+    }
+    return nTotal;
+}
+
+/* Sends what was captured to the group spoken in. */
+void func_0060FEB8(AUDIO *pAudio)
+{
+    char buf[32256];
+    int n = func_0060FBE0(pAudio, buf, sizeof(buf));
+
+    if (n > 0)
+        func_006117F0(pAudio, buf, n);
+}
 
 AUDIO *func_0060FF00(void)
 {
@@ -387,7 +525,7 @@ int func_00610788(AUDIO *pAudio)
     n = 0;
     if (pAudio->pfnRead != 0)
         n = func_00610668(pAudio, nNow);
-    if (n <= 8000 && pAudio->x50 != 0)
+    if (n <= 8000 && pAudio->pfnCapture != 0)
         func_0060FEB8(pAudio);
     if (pAudio->nGrid != 0) {
         g = func_00611388(pAudio, pAudio->nGrid);
