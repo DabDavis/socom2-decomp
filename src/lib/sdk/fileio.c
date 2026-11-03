@@ -7,7 +7,20 @@
  * _rcv_data_rpc (read uncached), the result written back through the request's pointer by the
  * reply interrupt, which signals the request's own semaphore. A descriptor is an index into
  * _iob[32] (each the server's fd and a busy flag). The statics carry the demo's names (data.txt).
- * Written in round 16a (the GCC lane): see each function's note; the ones not here are not written. */
+ * Round 16a (the GCC lane) wrote 26 of the 40, all byte-exact: the iob and semaphore helpers, the
+ * power-off handler and its interrupt, _fs_version, sceFsReset, the path calls (_sceCallCode and its
+ * five wrappers, sceMkdir, sceGetstat, sceSync, sceRename, sceSymlink), sceAddDrv and the descriptor
+ * calls sceClose, sceDopen, sceDclose, sceDread. Not written: _sceFs_Rcv_Intr, sceFsInit (its
+ * version reply sets the unnamed .data word at 0x1CCD50), sceOpen, sceLseek and sceLseek64 (a
+ * no-wait path through _fs_fsq_semid and a 32-slot table at 0x1CCCC8), sceRead, sceWrite, sceIoctl,
+ * sceIoctl2, sceFormat, sceChstat, sceMount, sceDevctl, sceReadlink.
+ *
+ * Shapes read off the target: a request pointer initialised at its declaration (&_send_data in a
+ * saved register from the entry) while the RPC call names &_send_data itself (rebuilt from the
+ * %hi); each path is copied char by char with the 1024 cap and its fix-up, the call's own argument
+ * stored after it; sceGetstat's request names its path unsigned char (the loop tests the loaded
+ * byte, no sll 24); the descriptor calls take the iob before the library semaphore and return
+ * `if (result < 0) return result; return 0;` (li -1; slt; movn). */
 
 typedef unsigned int u_int;
 
@@ -666,4 +679,47 @@ int sceSync(const char *name, int flag)
 int sceUmount(const char *name)
 {
 	return _sceCallCode(name, 21);
+}
+
+int sceSymlink(const char *existing, const char *newname)
+{
+	struct _sceFsRename *p = (struct _sceFsRename *)&_send_data;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(17);
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->oldname[i] = existing[i]) == 0)
+			break;
+	if (i == 1024)
+		p->oldname[1023] = 0;
+	for (i = 0; i < 1024; i++)
+		if ((p->newname[i] = newname[i]) == 0)
+			break;
+	if (i == 1024)
+		p->newname[1023] = 0;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->result = &result;
+	p->sema = sema;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 24, 0, &_send_data, sizeof(struct _sceFsRename), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
 }
