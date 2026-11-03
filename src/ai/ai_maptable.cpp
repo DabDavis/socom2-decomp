@@ -445,11 +445,6 @@ int CAiMap::GetRouteIndex(const route *r)
     return -1;
 }
 
-/* SOCOM II's CGraph::CreateNode (OVL1 0x2D0930) takes no name: it never reads a1, and both its AI
- * callers leave a1 unset -- its row still carries SOCOM 1's CreateNode(const char *), so it is
- * called here by its address */
-extern "C" CGNode *func_002D0930(CGraph *graph);
-
 /* the region a route's end lies on (SOCOM 1's FindByLocation<regions, region>, inlined here) */
 inline CAiMap::region *find_region(CAiMap::regions &t, const CAiMapLoc &loc)
 {
@@ -475,7 +470,8 @@ void CAiMap::CreateGraph(bool force)
 
     for (regions::iterator r = m_regionTable.begin(); r != m_regionTable.end(); ++r) {
         if ((*r).m_type == 4) {
-            CGNode *node = func_002D0930(g);
+            /* SOCOM II's CreateNode takes no name (OVL1 0x2D0930, CreateNode__6CGraphFv) */
+            CGNode *node = g->CreateNode();
 
             ((CAiMap::region **)node)[2] = &*r;
         }

@@ -322,7 +322,9 @@ public:
                           void (*edge)(CGraph *, CGEdge *, bool, unsigned int &, void *), void *data);
     static CGraph *Create(const char *name);
     static void Destroy(CGraph *graph);
-    CGNode *CreateNode(const char *name);
+    /* SOCOM 1's CreateNode(const char *) without the name (OVL1 0x2D0930: it never reads a1, both AI
+     * callers leave it unset; graph_main.cpp's) */
+    CGNode *CreateNode();
     CGEdge *CreateEdge(CGNode *a, CGNode *b);
     CGNode *GetNodeByNodeEx(const void *ex);
 
