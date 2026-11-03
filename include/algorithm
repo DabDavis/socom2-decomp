@@ -274,6 +274,90 @@ void sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
     }
 }
 
+/* MSL's heap (SOCOM 1's push_heap, pop_heap and __insert_heap_down over the A* node, 0x183960,
+ * 0x183AF0, 0x184FE0 in the demo; SOCOM II's over the open list's class iterators, ai_astar.cpp's
+ * tail: 0x5132B0, 0x513460, 0x515270 -- all three byte-exact, the AI core's round 17). The new
+ * element's place is first + (len - 1), not --last (both builds compute it from the length), the
+ * climb stops when it reaches first; the hole is sunk from the top, the smaller child chosen
+ * (comp's way round). The shapes that settled them: `len >= 2` (`len > 1` branches on at, the
+ * image materialises the test in v1), the index updates in place (`--parent; parent /= 2;` and
+ * `++child; child *= 2;` -- the expression forms compute into a temporary first), and the node's
+ * `>` written `b.f() < a.f()` (ai.h: its right operand is evaluated first, so each compare loads
+ * its left node before its right as the image does) */
+template <class RandomAccessIterator, class Compare>
+void push_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+{
+    typedef typename iterator_traits<RandomAccessIterator>::difference_type difference_type;
+    typedef typename iterator_traits<RandomAccessIterator>::value_type value_type;
+
+    difference_type len = last - first;
+
+    if (len >= 2) {
+        difference_type parent = (len - 2) / 2;
+        RandomAccessIterator ip = first + parent;
+        RandomAccessIterator i = first + (len - 1);
+
+        if (comp(*ip, *i)) {
+            value_type tmp(*i);
+
+            do {
+                *i = *ip;
+                i = ip;
+                if (i == first)
+                    break;
+                --parent;
+                parent /= 2;
+                ip = first + parent;
+            } while (comp(*ip, tmp));
+            *i = tmp;
+        }
+    }
+}
+
+template <class RandomAccessIterator, class Distance, class T, class Compare>
+void __insert_heap_down(RandomAccessIterator first, Distance len, Distance hole, const T &value, Compare comp)
+{
+    RandomAccessIterator ip = first + hole;
+    Distance child = 2 * (hole + 1);
+
+    while (child <= len) {
+        RandomAccessIterator cp = first + child;
+
+        if (child == len || comp(*cp, *(cp - 1))) {
+            --child;
+            --cp;
+        }
+        if (!comp(value, *cp))
+            break;
+        *ip = *cp;
+        ip = cp;
+        ++child;
+        child *= 2;
+    }
+    *ip = value;
+}
+
+template <class RandomAccessIterator, class Compare>
+void pop_heap(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+{
+    typedef typename iterator_traits<RandomAccessIterator>::difference_type difference_type;
+    typedef typename iterator_traits<RandomAccessIterator>::value_type value_type;
+
+    difference_type len = last - first;
+
+    if (len >= 2) {
+        --last;
+        if (len == 2) {
+            iter_swap(first, last);
+        } else {
+            value_type tmp(*last);
+
+            *last = *first;
+            __insert_heap_down(first, len - 1, difference_type(0), tmp, comp);
+        }
+    }
+}
+
 /* The element moves a class vector makes (include/vector: the erase's copy down, the insert's
  * copy up and fill), MSL 3.0's as SOCOM II's instances show them: each algorithm an inline wrapper
  * over an inline helper doing the loop. An element whose assignment expands past inline_max_size

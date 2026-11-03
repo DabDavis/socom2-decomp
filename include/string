@@ -101,7 +101,14 @@ public:
     ~basic_string();
 
     basic_string &operator=(const charT *s) { return assign(s); }
-    basic_string &operator=(const basic_string &str);
+    /* inline over assign(str), as SOCOM 1's MSL has it (its 0xC-byte __as__ and assign(const
+     * basic_string &) wrappers): a tail that cannot inline it calls this copy, `j assign` (the world
+     * lane's round 4: zrdr_parse.cpp's 0x32FD70, the symbol copies' member assignment). Applied by
+     * the AI core's round 17: +5 over every hand-written unit, nothing lost; an element's implicit
+     * assignment inlines it and calls assign, so OVL2's copy 0x5410C0 is marked assign's and
+     * do_assign<LOD> 0x53F730 holds unchanged */
+    basic_string &operator=(const basic_string &str) { return assign(str); }
+    basic_string &assign(const basic_string &str);
     basic_string &assign(const charT *s);
     basic_string &assign(const charT *s, size_type n);
     basic_string &append(const charT *s);
@@ -223,7 +230,7 @@ basic_string<charT, traits, Allocator>::basic_string(const basic_string &str)
 
 /* assigned from another (0x22E4D0): two short forms copied whole, else the whole text replaced */
 template <class charT, class traits, class Allocator>
-basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::operator=(const basic_string &str)
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::assign(const basic_string &str)
 {
     if (is_long() == false && !str.is_long()) {
         copy_rep(str);

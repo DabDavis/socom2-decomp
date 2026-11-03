@@ -552,6 +552,9 @@ void __vector_pod<char, Allocator>::insert(T *position, unsigned int n, const T 
     typedef ELEMENT elem_t;                                                                     \
     class iterator {                                                                            \
     public:                                                                                     \
+        /* (iterator_traits': the heap functions over the A* open list, ai_astar.cpp) */          \
+        typedef elem_t value_type;                                                              \
+        typedef int difference_type;                                                            \
         iterator() {}                                                                           \
         iterator(elem_t *p) : m_p(p) {}                                                         \
         bool operator==(const iterator &o) const { return m_p == o.m_p; }                       \

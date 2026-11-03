@@ -12,3 +12,4 @@ zlibVersion                   # zlib zutil.c: never referenced
 zError                        # zlib zutil.c: never referenced
 AfterCloseFirst__16CInGameWeaponSelFv # hud_ingame_weaponsel.cpp: only UnInit calls it in SOCOM II, which inlines it (SOCOM 1 linked a copy, 0x3FB040); then stripped
 __dt__7CFileIOFv              # zutil.h's inline ~CFileIO (Close()): util_bufio.cpp emits it from CBufferIO's constructor's clean-up; the linker stripped it
+Shutdown__7CAiStarFv          # ai_astar.cpp: the A* lists' storage freed (the name ours) -- never called, dead-stripped; its FreeVector<vector<CAiMapLoc> > copies 0x512820-0x5128DF survive for CAiMaps::FreeTables

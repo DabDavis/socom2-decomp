@@ -28,6 +28,13 @@ struct less : public binary_function<T, T, bool> {
     bool operator()(const T &x, const T &y) const { return x < y; }
 };
 
+/* the heap's order for the A* search's open list (SOCOM 1's greater<4node>: a min-heap by f; one
+ * byte, passed by value from a static -- ai_astar.cpp's) */
+template <class T>
+struct greater : public binary_function<T, T, bool> {
+    bool operator()(const T &x, const T &y) const { return x > y; }
+};
+
 template <class Operation, class T>
 class binder2nd : public unary_function<T, bool> {
 public:
