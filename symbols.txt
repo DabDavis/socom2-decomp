@@ -12264,16 +12264,16 @@
 0x006281B8 0x1D8 func_006281B8  # OVL2 unaligned
 0x00628390 0x64 func_00628390  # OVL2
 0x006283F8 0x74C func_006283F8  # OVL2 unaligned
-0x00628B48 0x80 func_00628B48  # OVL2 unaligned
-0x00628BC8 0x74 func_00628BC8  # OVL2 unaligned
-0x00628C3C 0x74 func_00628C3C  # OVL2 unaligned
-0x00628CB0 0x80 func_00628CB0  # OVL2
-0x00628D30 0x80 func_00628D30  # OVL2
-0x00628DB0 0x138 func_00628DB0  # OVL2
-0x00628EE8 0x14C func_00628EE8  # OVL2 unaligned
-0x00629034 0x84 func_00629034  # OVL2 unaligned
+0x00628B48 0x80 lintGetBits  # OVL2 unaligned; s1:body+assert (the gcc lane, round 14b): LargeInt.c's prime search asserts `nBits == lintGetBits(pPrime)` on this call's result (0x628214, the string at 0x6640D8); hand-written EE assembly (plzcw on the top nonzero word), the first of the asm run 0x628B48-0x629A44
+0x00628BC8 0x74 IsGreater  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's IsGreater in EE assembly -- the words compared from the top, 1 at the first a > b, 0 at a < b or all equal; first of SOCOM 1's four comparisons in their order
+0x00628C3C 0x74 IsSMaller  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's IsSMaller (its spelling) in EE assembly -- 1 at the first a < b from the top, else 0; second of the four
+0x00628CB0 0x80 IsNotGreater  # OVL2; s1:body (the gcc lane, round 14b): SOCOM 1's IsNotGreater in EE assembly -- 1 at a < b or all equal, 0 at a > b; third of the four
+0x00628D30 0x80 IsNotSmaller  # OVL2; s1:body (the gcc lane, round 14b): SOCOM 1's IsNotSmaller in EE assembly -- 1 at a > b or all equal, 0 at a < b; fourth of the four
+0x00628DB0 0x138 ShiftRight  # OVL2; s1:body (the gcc lane, round 14b): SOCOM 1's ShiftRight(p, n) in EE assembly -- each word from the one n/32 up, combined with the next (dsrlv/dsllv), the top words cleared; before ShiftLeft as there
+0x00628EE8 0x14C ShiftLeft  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's ShiftLeft(p, n) in EE assembly -- from the top down, each word combined with the one below, the bottom words cleared; after ShiftRight as there
+0x00629034 0x84 lintAddIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintAddIP(a, b) in EE assembly -- a += b in place over all 32 words, the carry in a doubleword's upper half (daddu; dsrl32); rt_crypt.c's RSA re-check calls it
 0x006290B8 0x9C func_006290B8  # OVL2 unaligned
-0x00629154 0x84 func_00629154  # OVL2 unaligned
+0x00629154 0x84 lintSubIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintSubIP(a, b) in EE assembly -- a -= b in place over all 32 words, the borrow by dsra32; after the bit-limited add as lintSubIP follows lintAddIP there
 0x006291D8 0x9C func_006291D8  # OVL2 unaligned
 0x00629274 0x42C func_00629274  # OVL2 unaligned
 0x006296A0 0x1C8 func_006296A0  # OVL2
