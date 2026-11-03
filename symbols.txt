@@ -12015,7 +12015,7 @@
 0x00618AD0 0x68 func_00618AD0  # OVL2
 0x00618B38 0x434 func_00618B38  # OVL2 unaligned
 0x00618F70 0x180 func_00618F70  # OVL2
-0x006190F0 0x48 func_006190F0  # OVL2
+0x006190F0 0x48 FindFreePingSlot  # OVL2; s1:order (SOCOM 1's FindFreePingSlot in the same place after NetLeave, the same loop: the first ping slot whose in-use word is 0, else the count -- 127 slots of 28 bytes where SOCOM 1 had 32 of 12; the gcc lane, round 4b)
 0x00619138 0x168 func_00619138  # OVL2 unaligned
 0x006192A0 0x154 func_006192A0  # OVL2
 0x006193F8 0x1E8 func_006193F8  # OVL2 unaligned
