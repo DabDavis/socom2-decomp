@@ -486,13 +486,18 @@ static short *_langGetpGastone(LANG *l)
     return (short *)(d->warp + d->nbr_warp_factors * 2);
 }
 
-/* the gastone term onto the base through a pointer of its own, then the warp factors and the
- * header: a pointer local stops 2.96's fold from merging the terms into one halfword index (round
- * 16c; one expression gives `(s * c + w * 4) * 2` or the warp factors first). OPEN, the next two
- * (6 and 11 words, the same instructions in another order): the target sums each section's offset
- * in its own order -- the counts as integers before the base in the penalties'; 30 spellings of the
- * three (halfword and byte arithmetic, the base first or last, the constant folded or not:
- * build/scratch/gcc/spec_erg*.py) and round 16c's dozen give neither. */
+/* The section getters' sums, and what 2.96's fold does to them (round 18c's probes,
+ * build/scratch/gcc/lang/fold2.c, read off the `-dr` dump): `(A + B) + (C + D)` is regrouped
+ * `(A + C) + (B + D)`, `A + (B + C)` becomes `(A + B) + C` when C is a sum, a sum and a product
+ * `(M + x) + N` becomes `(M + N) + x`, and two products of one power of two are factored (`w * 8 +
+ * x * 2` is `(w * 4 + x) * 2`). So the target's groupings are fold's, not the vendor's spelling:
+ * build/scratch/gcc/lang/treesearch.py compiles every tree of a sum's terms and reads each one's
+ * expanded dataflow back -- 50 of the penalties' 30,240 give the target's, the sections in file
+ * order among them.
+ *
+ * the gastone term onto the base through a pointer of its own, then the warp factors and the
+ * header: a pointer local stops fold merging the terms into one halfword index (round 16c; one
+ * expression gives `(s * c + w * 4) * 2` or the warp factors first). */
 static unsigned short *_langGetpErgodicStates(LANG *l)
 {
     LANGDATA *d = l->data;
@@ -501,21 +506,31 @@ static unsigned short *_langGetpErgodicStates(LANG *l)
     return p + d->nbr_warp_factors * 4 + 112;
 }
 
+/* the gastone section's address as an integer of its own (`w * 8 + d`, the warp factors first:
+ * the target's `addu v1,v1,a1`), then the gastone, the ergodic states and their state lists past
+ * it in halfwords: as a pointer, or in one expression, fold factors `w * 8` into the halfword
+ * index (the target keeps it apart) -- and `ses + (sc + es)` is the one tree of the three counts
+ * that comes out as the target sums them. */
 static unsigned short *_langGetpErgodicPhenomes(LANG *l)
 {
     LANGDATA *d = l->data;
+    int g = d->nbr_warp_factors * 8 + (int)d;
 
-    return (unsigned short *)(d->warp + d->nbr_warp_factors * 2)
-           + (d->nbr_state_ergodic_states + (d->nbr_state * d->nbr_codebook + d->nbr_ergodic_states)) + 1;
+    return (unsigned short *)((d->nbr_state_ergodic_states
+                               + (d->nbr_state * d->nbr_codebook + d->nbr_ergodic_states)) * 2 + g + 226);
 }
 
+/* the sections up to the penalties in file order -- warp factors, gastone, ergodic states and
+ * phenomes (their counts and their state lists) -- as a byte offset of its own, the base added
+ * last: fold regroups the sum into the target's `((w * 4 + sep) + (ses + es)) + (sc + ep)` */
 static short *_langGetpErgodicPenalty(LANG *l)
 {
     LANGDATA *d = l->data;
+    int off = 0xE4 + (d->nbr_warp_factors * 4 + d->nbr_state * d->nbr_codebook + d->nbr_ergodic_states
+                      + d->nbr_state_ergodic_states + d->nbr_ergodic_phenomes
+                      + d->nbr_state_ergodic_phenomes) * 2;
 
-    return (short *)((char *)d + (0xE4 + (d->nbr_warp_factors * 4 + d->nbr_state_ergodic_phenomes
-                                          + (d->nbr_state_ergodic_states + d->nbr_ergodic_states)
-                                          + (d->nbr_state * d->nbr_codebook + d->nbr_ergodic_phenomes)) * 2));
+    return (short *)((char *)d + off);
 }
 
 /* OPEN: m2c's shape of the codebook walk */
