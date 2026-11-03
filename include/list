@@ -153,6 +153,9 @@ public:
         void deallocate(node_base *p) { operator delete(p); }
         /* the value built in place (MSL's allocator construct: placement new, so a null test) */
         void construct(T *p, const T &x) { new (p) T(x); }
+        /* the value destroyed in place (MSL's allocator destroy: the destructor called with -1, a
+         * complete object not freed -- nothing for the pointer lists) */
+        void destroy(T *p) { p->~T(); }
     };
     node_allocator &node_alloc() { return end_first(); }
     node_allocator &end_first() { return *(node_allocator *)&end_; }
@@ -214,7 +217,11 @@ void __list_deleter<T, Allocator>::init(InputIterator first, InputIterator last)
 /* the nodes [first, last) unlinked around the last one's links, then freed one by one
  * (0x1EAAF0, and every type's 0xBC copy). first's node is taken into a local before the test,
  * which compares it with last's: the node then keeps the register it was loaded into (a2), where
- * `first == last` first and the local after gave the last node that register and first's a1 */
+ * `first == last` first and the local after gave the last node that register and first's a1.
+ * Each element is destroyed through the node allocator before its node is read and freed (the MSL
+ * headers round 13: the kit lane's step list, OVL2 0x60EA90 -- ~step called with -1, first.node_
+ * re-read after it -- byte-exact from ai_group.cpp's tail; nothing for the pointer lists, nothing
+ * lost over every hand-written unit) */
 template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator
 __list_deleter<T, Allocator>::erase(iterator first, iterator last)
@@ -228,6 +235,7 @@ __list_deleter<T, Allocator>::erase(iterator first, iterator last)
     f->prev_->next_ = l->next_;
     l->next_->prev_ = f->prev_;
     while (first != last) {
+        node_alloc().destroy(&((node *)first.node_)->data_);
         node_base *n = first.node_;
 
         first.node_ = n->next_;
@@ -260,7 +268,8 @@ __list_deleter<T, Allocator>::insert(iterator position, const T &x)
 }
 
 /* one node unlinked and freed, the iterator after it given back (SOCOM II's for the pointer lists
- * is 0x20CC50) */
+ * is 0x20CC50); the element destroyed between the unlinking and the free (the step list's 0x60EB60,
+ * byte-exact as a probe, build/p13/erase1.cpp: CAiGroup::Tick's, the kit lane's unit) */
 template <class T, class Allocator>
 typename __list_deleter<T, Allocator>::iterator
 __list_deleter<T, Allocator>::erase(iterator position)
@@ -270,6 +279,7 @@ __list_deleter<T, Allocator>::erase(iterator position)
     ++position;
     n->prev_->next_ = n->next_;
     n->next_->prev_ = n->prev_;
+    node_alloc().destroy(&((node *)n)->data_);
     operator delete(n);
     --size_;
     return position;
