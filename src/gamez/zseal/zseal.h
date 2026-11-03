@@ -1045,6 +1045,9 @@ public:
      * goal came of it (made the unit -z when asked, should none) -- SOCOM 1's; OVL2 0x5DF600 and
      * 0x5DF8B0, seal_weapon.cpp (the kit lane) */
     bool CalcAimGoal(const CPnt3D *from, const CPnt3D *dir, CPnt3D *goal);
+    /* the aim and fire points found once, by name, and their positions taken (SOCOM 1's; OVL2
+     * 0x5DF450, seal_weapon.cpp -- the kit lane) */
+    void UpdateAimParams();
     bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
