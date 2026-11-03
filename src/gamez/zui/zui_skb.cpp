@@ -136,8 +136,17 @@ namespace {
  * straight to the store's inline (by reference and by value), a written operator= (casts or the
  * union views, either order) -- none moves the reads off one base. It stays for the member
  * constructors it emits (0x38E550, 0x38E620, 0x38E730, 0x38E770, 0x38E890, 0x38E8D0 byte-exact),
- * CSkbLook() (0x38E790, code-exact: its sources' destructor 0x38D130 is ~vector of a 0x2C-byte
- * record, not of CSkbKey -- zui_skb.h's m_sources) and the key vectors' instances */
+ * CSkbLook() (0x38E790, byte-exact since round 13 made m_sources CSkbBgPieces, a class over
+ * vector<CSkbBgPiece>: its destructor 0x38D130 tests `this` three times) and the key vectors'
+ * instances: with the pieces' element real, the tail generates in the target's order, and
+ * insert<CSkbKey> 0x38F1F0 and the grid's clear 0x38FEF0 match, with the grid's resize 0x38EDC0 and
+ * erase 0x38F640.
+ * OPEN, the grid's insert 0x38F7D0 (0x5C0 against 0x5D8): the old block's rows destroyed in the
+ * target call the deleter's clear and then, for a row's block, two out-of-line accessors that
+ * return `this` (0x38FDB0, 0x38FDC0: the capacity pair's first()/alloc(), as SOCOM 1's ~vector<T *>
+ * copies call compressed_pair_imp's second() and first()) -- a destructor chain cut at its leaves,
+ * one inline level deeper than these headers (README "Level 6, or 8?"); the in-place copies also
+ * swap s0/s1 (the class insert's end register, include/vector's insert comment) */
 void CreateSoftKeyboard(_zrdr *rdr)
 {
     CSoftKeyboard *skb = new CSoftKeyboard;
