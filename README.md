@@ -1857,6 +1857,26 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 22** (__sinit_fts_mission.cpp, the CUIVariable tail, the persona lists):
+  - WITH TWO `_zrdr` STAND-INS A UNIT CAN INCLUDE BOTH zui.h AND zanim.h if zanim.h's copy is skipped after zui.h's
+    (`#ifndef ZUI_H`): fts_mission.cpp includes zui.h first and reaches CUIVariable -- __sinit_fts_mission.cpp
+    (theLobbySaveManager 0x4364A0, theValveSaveManager 0x43FF00, CUIVarManager's vtable 0x407CF0) and erase<CUIVariable>
+    byte-exact, the deleter's clear and destructor, ~CUIVarSTable and the thunks from source; zui.h's CSaveModule stand-in
+    is 0x18 bytes (SOCOM 1's DWARF and zsave.h agree) and CUIVarManager declares its virtuals before its members (its
+    vptr at 0x24, where the initialiser and destructor store it) -- no member moved;
+  - a const inline accessor called through a non-const pointer reloads the field it just tested, a non-const one
+    reuses it; a test materialising `sltu v0` rather than comparing into `at` comes from an inline bool (a plain load MW
+    hoists ahead of the call needs a local inside that inline); a bool-returning call keeps the caller's `andi 0xff`
+    only written `== false`; an inline on a value read once keeps the target's temporaries where a named local shifts
+    them; `a = b = c = d = 0` stores the last-named global first;
+  - open: resize<CUIVariable> 0x2B1390 (0x240 vs 0x19C: an inline_max_size cut -- under `#pragma inline_max_size(180)`
+    the body matches but for one callee, and a pointer __vector_imp `reserve` forwarder makes it byte-exact calling
+    0x2B1600 whose own copy is then a `j` where 0x2B1600 holds the pod reserve's body: neither adopted, the note in
+    fts_mission.cpp), insert<CUIVariable> 0x2B1BD0 (the class insert's end register), func_002AF410 (0x100 vs 0x140).
+  - the integrator's fix on the way: tools/automatch.py's rename in place inserted the `as=` line above a C++ draft's
+    `/* sc: c++ */` marker, pushing it past the third line -- refused since GCC round 16a's directive check (0x2B20E0's
+    draft failed to build); the rename now joins the marker line (`/* sc: c++; as=OLD NEW */`), and a fresh C++ hit is
+    emitted the same way.
 - **Tells from the online lobby, round 12** (the lobby's save on zsav_lobby.h, Open, the voice, lobby and chat rows, the
   placeholders):
   - zNetMediusUniverse.cpp includes the world lane's zsav_lobby.h: CAcctDB's overrides take what the manager passes --
