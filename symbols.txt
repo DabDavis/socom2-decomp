@@ -8936,7 +8936,7 @@
 0x004EB3E0 0xC4 InitIsoWordTokenDpProcess  # OVL2; s1:align
 0x004EB4A8 0x118 func_004EB4A8  # OVL2 unaligned
 0x004EB5C0 0x8 func_004EB5C0  # OVL2
-0x004EB5C8 0x20 func_004EB5C8  # OVL2 unaligned
+0x004EB5C8 0x20 ScoreCompare@isowdp  # OVL2 unaligned; s1:order (SOCOM 1's iso-word token DP object at 0x356970 ends with its LOCAL ScoreCompare, as this object ends at 0x4EB5E8; a qsort comparator of the tokens' int at +4: -1, 0, 1) -- the gcc lane, round 11c
 0x004EB5E8 0x1EC func_004EB5E8  # OVL2 unaligned
 0x004EB7D8 0x3C0 func_004EB7D8  # OVL2 unaligned
 0x004EBB98 0x114 InitNBestDynProgProcess  # OVL2 unaligned; s1:align
@@ -8984,7 +8984,7 @@
 0x004F3828 0x680 ProcessAcne  # OVL2 unaligned; s1:align
 0x004F3EA8 0x2A8 ControlAcne  # OVL2 unaligned; s1:align
 0x004F4150 0x250 InitAcne  # OVL2; s1:calls
-0x004F43A0 0x3C func_004F43A0  # OVL2
+0x004F43A0 0x3C ConstructAcne  # OVL2; s1:order (SOCOM 1's acne object at 0x360460 ends with ConstructAcne; this constructor hands ProcessAcne, InitAcne and ControlAcne to tosBaseBlockConstruct with the block's 0x98 bytes) -- the gcc lane, round 11c
 0x004F43E0 0x30C func_004F43E0  # OVL2
 0x004F46F0 0x3C func_004F46F0  # OVL2
 0x004F4730 0x1CC func_004F4730  # OVL2
