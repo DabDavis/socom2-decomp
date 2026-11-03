@@ -603,7 +603,8 @@ static inline void DecodeSpecification(char *p, ex_specification *spec)
 {
     p = __DecodeUnsignedNumber(p + 1, &spec->specs);
     p = __DecodeUnsignedNumber(p, &spec->pcoffset);
-    spec->spec = __DecodeSignedNumber(p, &spec->cinfo_ref);
+    p = __DecodeSignedNumber(p, &spec->cinfo_ref);
+    spec->spec = p;
 }
 
 static inline int IsInSpecification(char *extype, ex_specification *spec)
@@ -613,7 +614,8 @@ static inline int IsInSpecification(char *extype, ex_specification *spec)
     unsigned int i;
 
     for (i = 0, p = spec->spec; i < spec->specs; i++, p += 4) {
-        char *type = (char *)GET_ADDRESS(p);
+        char *type;
+        *(unsigned int *)&type = GET_ADDRESS(p);
         if (__throw_catch_compare(extype, type, &offset))
             return 1;
     }
@@ -623,13 +625,12 @@ static inline int IsInSpecification(char *extype, ex_specification *spec)
 extern "C" void __unexpected(CatchInfo *catchinfo)
 {
     char *unexp = (char *)catchinfo->stacktop;
+    ex_specification spec;
 
 #pragma exception_magic
     try {
         std::unexpected();
     } catch (...) {
-        ex_specification spec;
-
         DecodeSpecification(unexp, &spec);
         if (IsInSpecification((char *)((CatchInfo *)&__exception_magic)->typeinfo, &spec))
             throw;
@@ -639,10 +640,15 @@ extern "C" void __unexpected(CatchInfo *catchinfo)
     std::terminate();
 }
 
+/* the catch block's fields: the type string (0 for catch (...)) through memory and relocated -- by
+ * nothing on this target, which leaves its test -- then the handler's offset and its CatchInfo's */
 static inline char *DecodeCatchBlock(char *p, ex_catchblock *cb)
 {
-    cb->catch_type = (char *)GET_ADDRESS(p + 1);
-    p = __DecodeUnsignedNumber(p + 5, &cb->catch_pcoffset);
+    char *q = p + 5;
+
+    *(unsigned int *)&cb->catch_type = GET_ADDRESS(p + 1);
+    cb->catch_type = cb->catch_type ? cb->catch_type : 0;
+    p = __DecodeUnsignedNumber(q, &cb->catch_pcoffset);
     return __DecodeSignedNumber(p, &cb->cinfo_ref);
 }
 
@@ -659,9 +665,9 @@ static char *FindExceptionHandler(ThrowContext *context, ExceptionInfo *info, lo
         case EXACTION_CATCHBLOCK: {
             ex_catchblock cb;
             DecodeCatchBlock(iter.info.action_pointer, &cb);
-            if (__throw_catch_compare(context->throwtype, cb.catch_type, result_offset))
-                break;
-            continue;
+            if (!__throw_catch_compare(context->throwtype, cb.catch_type, result_offset))
+                continue;
+            break;
         }
         case EXACTION_SPECIFICATION: {
             ex_specification spec;
@@ -709,6 +715,7 @@ void __ThrowHandler(ThrowContext *context)
     ex_catchblock cb;
     CatchInfo *catchinfo;
     long offset;
+    long cinfo_ref, off;
 
     FindExceptionRecord(context->returnaddr, &info);
     if (info.exception_record == 0)
@@ -724,15 +731,17 @@ void __ThrowHandler(ThrowContext *context)
     DecodeCatchBlock(catchblock, &cb);
     UnwindStack(context, &info, catchblock);
 
-    catchinfo = (CatchInfo *)(context->FP + cb.cinfo_ref);
+    cinfo_ref = cb.cinfo_ref;
+    off = offset;
+    catchinfo = (CatchInfo *)(context->FP + cinfo_ref);
     catchinfo->location = context->location;
     catchinfo->typeinfo = context->throwtype;
     catchinfo->dtor = context->dtor;
     if (*context->throwtype == '*') {
         catchinfo->sublocation = &catchinfo->pointercopy;
-        catchinfo->pointercopy = *(int *)context->location + offset;
+        catchinfo->pointercopy = *(int *)context->location + off;
     } else {
-        catchinfo->sublocation = (char *)context->location + offset;
+        catchinfo->sublocation = (char *)context->location + off;
     }
 
     __TransferControl(context, &info, info.code_start + cb.catch_pcoffset);
