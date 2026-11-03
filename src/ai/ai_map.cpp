@@ -422,6 +422,55 @@ bool CAiMap::_validate_cell(const MAP_FOREACH_STRUCT &s, void *data)
     return true;
 }
 
+/* whether a step may end on the cell: CAiMap::IsTraversable's body (ai_maps.cpp's), an inline of
+ * this unit's too big to inline whole -- ValidateCells inlines it one level, GetCell and the cell's
+ * test (ai_astar.cpp's copy, 0x511F40) called out of line (ai_mapwalk.cpp has the same) */
+inline bool _traversable(const CAiMap *map, const CAiMapLoc &loc)
+{
+    CAiCell *cell = map->GetCell(loc, 0);
+
+    return cell ? cell->IsTraversable() : false;
+}
+
+/* every name ended and given the map's id, its cell marked named; every action's and link's cell
+ * looked up (the result unused: whatever read it is not in this build); the links whose cell no
+ * step may end on counted; the regions given the map's id; then every cell validated (SOCOM 1's;
+ * the walks over the tables through their class iterators, each test materialised; each map id
+ * read into a local before the compare, which puts the field first in the beq) */
+int CAiMap::ValidateCells()
+{
+    int bad = 0;
+
+    for (names::iterator n = m_namesTable.begin(); n != m_namesTable.end(); ++n) {
+        (*n).ValidateName();
+        unsigned int id = (*n).m_loc.m_mapid;
+
+        if (id != m_mapid)
+            (*n).m_loc.m_mapid = m_mapid;
+        if (IsMapCell((*n).m_loc)) {
+            CAiCell *cell = GetCell((*n).m_loc, 0);
+
+            if (cell && !cell->HasName())
+                cell->SetName(true);
+        }
+    }
+    for (actions::iterator a = m_actionTable.begin(); a != m_actionTable.end(); ++a)
+        GetCell((*a).m_loc, 0);
+    for (links::iterator l = m_linksTable.begin(); l != m_linksTable.end(); ++l) {
+        GetCell((*l).m_loc, 0);
+        if (!_traversable(this, (*l).m_loc))
+            bad++;
+    }
+    for (regions::iterator r = m_regionTable.begin(); r != m_regionTable.end(); ++r) {
+        unsigned int id = (*r).m_loc.m_mapid;
+
+        if (id != m_mapid)
+            (*r).m_loc.m_mapid = m_mapid;
+    }
+    ForEachCell(0, _validate_cell, 0, 0);
+    return bad;
+}
+
 /* every cell of the first layer reset through _reset_cell (SOCOM 1's ResetCells, a loop of its own
  * there): the walk inlined one level, its pieces called out of line in reverse of their first use
  * after it (0x5176D0-0x51784F, all byte-exact from here); false whatever the walk did. The walk

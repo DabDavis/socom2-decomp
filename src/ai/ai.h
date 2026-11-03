@@ -226,6 +226,9 @@ public:
     /* three fields read through accessors (the names ours: the tile callbacks test a field so
      * and load it again for the setter's read-modify-write) */
     bool IsOccupied() const { return m_occupied; }
+    /* whether a name is on the cell (the name ours: ValidateCells tests it so and loads the byte
+     * again for the setter) */
+    bool HasName() const { return m_name; }
     /* whether the cell holds an action (the name ours: GetCellCenter's test, out of line at
      * 0x516920 where the centre is inlined one level) */
     bool HasAction() const { return m_action; }
@@ -401,8 +404,9 @@ public:
     public:
         /* the name copied in, cut to fifteen characters (new in SOCOM II, the name ours) */
         void SetName(const char *s);
-        /* the name ended at its last byte (SOCOM 1's) */
-        void ValidateName() { m_name[15] = 0; }
+        /* the name ended at its last byte (SOCOM 1's; out of line in ai_maptable.cpp, 0x530FF0 --
+         * SetName there inlines it, ai_map.cpp's ValidateCells calls it) */
+        void ValidateName();
         /* a default name: empty, its two bytes 8 and 0, the cell left unbuilt (resize<name>'s
          * temporary, 0x51C630: three byte stores in the body's order -- a mem-initializer list
          * moves m_14 and m_15 ahead of the name) */
@@ -932,7 +936,9 @@ public:
     void DestroyGraph();
     void CreateGraph(bool force);
     void ValidateRoutes(bool force);
-    void ValidateCells();
+    /* every name, action and link checked against the cells, the regions given the map's id,
+     * every cell validated; the links on a cell no step may end on counted (SOCOM 1's) */
+    int ValidateCells();
     bool FindActionLocation(unsigned int id, CAiMapLoc &loc, action **pa);
     action *GetCellAction(const CAiMapLoc &loc) const;
     bool GetLocation(const char *name, CAiMapLoc &loc);
