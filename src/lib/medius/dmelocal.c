@@ -75,7 +75,18 @@ typedef struct DmeObject {
     unsigned char field_03;
     int nOwner;                         /* 0x04: -1 when unowned */
     int nCreator;                       /* 0x08: the client that made it */
-} DmeObject;
+} DmeObject;                            /* a named object's name follows at 0x0C */
+
+/* a client's own record (clients.c's): its block of networked objects */
+typedef struct DmeClient {
+    int field_00;
+    unsigned short nMyObject;           /* 0x04 */
+    unsigned short nFirstObject;        /* 0x06 */
+    unsigned short nObjects;            /* 0x08 */
+    unsigned short nFirstStream;        /* 0x0A */
+    unsigned short nStreams;            /* 0x0C */
+    char szName[14];                    /* 0x0E */
+} DmeClient;
 
 extern int func_0061C720(unsigned int nWorld, unsigned int nClient, DmeClientInfo **ppClient);
 extern int func_00614EC8(void **ppObject, unsigned int nIndex);
@@ -907,6 +918,62 @@ int func_006161D0(unsigned int nIndex)
         NetFreeRemoteObject(nIndex);
     return DME_OK;
 }
+extern int strcmp(const char *a, const char *b);
+
+/* SOCOM 1's LocalObjectName2Index grown (0x616290): a client's named object by its name, -1 for none.
+ * OPEN (8 bytes short): the target tests the name's address for null as computed (`addiu v0,v0,12;
+ * beqz v0`, the sum then strcmp's argument); 2.96 here folds `p + 12 != 0` into `p != -12` and keeps
+ * -12 in a fifth saved register. */
+int func_00616290(char *szName, unsigned int nWorld, unsigned int nClient)
+{
+    DmeClient *pClient;
+    DmeObject *pObject;
+    int i, nIndex;
+
+    if (szName == 0)
+        return -1;
+    if (nWorld >= DME_MAX_WORLDS)
+        return -1;
+    if (nClient >= DME_MAX_CLIENTS)
+        return -1;
+    func_006126E8((void **)&pClient, nWorld, nClient);
+    if (pClient == 0)
+        return -1;
+    for (i = 0; i < pClient->nObjects; i++) {
+        nIndex = i + pClient->nFirstObject;
+        if (NetObjectStatus[nIndex] == 2) {
+            func_00614EC8((void **)&pObject, nIndex);
+            if ((char *)pObject + 12 != 0 && strcmp((char *)pObject + 12, szName) == 0)
+                return nIndex;
+        }
+    }
+    return -1;
+}
+
+/* SOCOM 1's FindFreeLocalObject grown (0x6163A0): the first of this client's objects not in use */
+int func_006163A0(void)
+{
+    DmeWorld *pWorld = 0;
+    DmeClient *pClient = 0;
+    int i, nIndex;
+    int result;
+
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return -1;
+    result = func_0061C600(data_00651178, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    func_006126E8((void **)&pClient, data_00651178, pWorld->nMyClient);
+    if (pClient == 0)
+        return -1;
+    for (i = 0; i < pClient->nObjects; i++) {
+        nIndex = i + pClient->nFirstObject;
+        if (NetObjectStatus[nIndex] != 2)
+            return nIndex;
+    }
+    return -1;
+}
+
 
 extern unsigned char data_0067C5B0[4];
 extern int data_0067B7AC;
@@ -915,6 +982,38 @@ extern unsigned short data_0067B7A8;
 extern void func_00616478(int nWorld, int nClient, unsigned short nConnection, int nValue,
                           unsigned short nPort);
 extern int RtMsgToDmeConnectionIndex(unsigned short nConnection);
+
+extern unsigned short data_0067B7A8;
+extern unsigned short data_0067A6E0;
+extern int RtMsgToDmeConnectionIndex(unsigned short nConnection);
+extern int func_00614B18(int nWorld, int nClient, char *szIp, unsigned short nPort);
+extern int func_006164E0(int nWorld, int nClient);
+
+/* SOCOM 1's RemoteClientEvent grown (0x616748): a client of a world connected or left */
+void func_00616748(unsigned short nConnection, unsigned short nClient, char *szIp, unsigned char bConnected)
+{
+    DmeWorld *pWorld = 0;
+    unsigned int nWorld = RtMsgToDmeConnectionIndex(nConnection);
+    unsigned short nPort;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return;
+    if (szIp == 0)
+        return;
+    if (func_0061C600(nWorld, &pWorld) != 0)
+        return;
+    if (pWorld == 0)
+        return;
+    if (bConnected) {
+        pWorld->field_440++;
+        if (data_0067B7A8 == 0)
+            nPort = data_0067A6E0;
+        else
+            nPort = data_0067B7A8;
+        func_00614B18(nWorld, nClient, szIp, nPort);
+    } else
+        func_006164E0(nWorld, nClient);
+}
 
 /* the server's address for the peer layer (0x616C10): the transport brought up first */
 int func_00616C10(char *szIp, int nPort)
