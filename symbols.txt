@@ -7785,7 +7785,7 @@
 0x003ACC00 0x10 OnMissionStart__8CVehicleFv  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x4C -- a "Vehicle" compass anchor, type 11); veh_vehicle.cpp
 0x003ACC10 0x5DC func_003ACC10  # OVL1
 0x003AD1F0 0x1C0 func_003AD1F0  # OVL1
-0x003AD3B0 0x118 func_003AD3B0  # OVL1
+0x003AD3B0 0x118 SampleDynamics__8CVehicleFf  # OVL1; by hand (the wep lane, round 15: veh_vehicle.cpp -- the node 0x1D0's frame rebuilt into 0x1E0 (unit matrix, BuildMTW), the cosine between its old and new Z kept in 0x29C, the step from the position 0x1C to the frame's origin in 0x2A0 and the velocity 0x38 as the step over dT; PreTick's last call -- the turret's SampleDynamics twin, the name ours)
 0x003AD4D0 0x8 ComputeNextPosition__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x28, empty); veh_vehicle.cpp
 0x003AD4E0 0x1C UpdatePosW__8CVehicleFv  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x10 -- the position out of the matrix at 0x1E0's translation row); veh_vehicle.cpp
 0x003AD500 0x8 PrePostTick__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x20, a tail call of CEntity::UpdateCompassAnchor); veh_vehicle.cpp

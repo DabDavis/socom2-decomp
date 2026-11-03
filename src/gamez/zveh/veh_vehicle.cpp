@@ -14,7 +14,6 @@ extern "C" {
 /* not yet written here (placeholders): the vehicle's half of the tick and the AI map's region
  * fill (OVL2) */
 void func_003ACC10(CVehicle *vehicle, float dT);
-void func_003AD3B0(CVehicle *vehicle);
 void func_003ADAB0(CVehicle *vehicle, CNode *node, const CVehicleDef *def);
 void func_00515880(void *map, CPnt3D *corners, void *region);
 /* the vehicles made, and the most there may be (-1: no limit) -- the unit's statics */
@@ -272,7 +271,7 @@ void CVehicle::PreTick(float dT)
             SetFlag(1, false);
             m_isAlive = false;
         }
-        func_003AD3B0(this);
+        SampleDynamics(dT);
     }
 }
 
@@ -317,6 +316,34 @@ void CVehicle::Tick(float dT)
     m_root->BuildMTW(m);
     m.Transform(m_corners, 4);
     func_00515880(map, m_corners, &m_region);
+}
+
+/* the node's frame sampled into 0x1E0: the cosine between its old and new Z (the turn), the step
+ * from the position to the frame's origin and the velocity as the step over the frame (the
+ * turret's SampleDynamics, its twin). The old Z assigned, so scalarised into $f20-$f22 across the
+ * calls (copy-constructed it stays on the stack) */
+void CVehicle::SampleDynamics(float dT)
+{
+    if (m_1d0) {
+        CPnt3D z;
+
+        z = *(CPnt3D *)m_1e0.m_matrix[2];
+
+        sceVu0UnitMatrix(m_1e0.m_matrix);
+        m_1d0->BuildMTW(m_1e0);
+
+        CPnt3D *nz = (CPnt3D *)m_1e0.m_matrix[2];
+
+        m_turn = z.x * nz->x + z.y * nz->y + z.z * nz->z;
+
+        CPnt3D d = *(CPnt3D *)m_1e0.m_matrix[3] - m_posW;
+
+        m_step = d;
+
+        CPnt3D v = m_step * (1.0f / dT);
+
+        m_velW = v;
+    }
 }
 
 void CVehicle::PrePostTick(float dT)

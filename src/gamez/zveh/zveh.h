@@ -425,6 +425,9 @@ public:
     virtual void UpdateAiMapLoc();
     virtual void OnMissionStart();
 
+    /* the node's frame sampled: the turn, the step and the velocity over the frame (the turret's
+     * SampleDynamics; the name ours) */
+    void SampleDynamics(float dT);
     static int Init(const char *name, const char *path);
     static void LoadVehicles();
     static int ScanForVehicleDefinitionHookups(zdb::CNode *node, bool recurse);
@@ -454,7 +457,12 @@ public:
     CMatrix m_220;   // 0x220
     unsigned char _260[0x268 - 0x260];
     CPnt3D m_bounds[4];   // 0x268
-    unsigned char _298[0x2ac - 0x298];
+    unsigned char _298[0x29c - 0x298];
+    /* the turn over the last frame: the cosine between the node's old and new Z (SampleDynamics; the
+     * name ours) */
+    float m_turn;   // 0x29c
+    /* the step over the last frame (SampleDynamics; the name ours) */
+    CPnt3D m_step;   // 0x2a0
     unsigned int m_flags;   // 0x2ac
 
     /* the definitions (0x4A4138; the name ours, after the turret's) */
