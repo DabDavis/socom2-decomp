@@ -397,6 +397,41 @@ void CZOnlineLobby::SendEndGameReport()
     CheckMediusError(MediusSendEndGameReport(&req));
 }
 
+/* a server's addresses (the DME SDK's NetAddressList: a plain struct, copied as words -- the chat
+ * unit's) */
+struct NetAddressList {
+    int AddressType0;   // 0x0
+    char Address0[16];   // 0x4
+    int BinaryAddress0;   // 0x14
+    int AddressType1;   // 0x18
+    char Address1[16];   // 0x1c
+    int BinaryAddress1;   // 0x2c
+};   // 0x30
+
+/* where a server is and how to talk to it (the DME SDK's NetConnectionInfo, 0x9C bytes, the chat
+ * unit's: a class with a constructor of its own, so MW copies it member by member) */
+struct NetConnectionInfo {
+    NetConnectionInfo() {}
+
+    int Type;   // 0x0
+    NetAddressList AddressList;   // 0x4
+    int WorldID;   // 0x34
+    unsigned int ServerKey[16];   // 0x38
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x78
+    char AccessKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x89
+};   // 0x9c
+
+extern "C" {
+extern NetConnectionInfo data_0066A8F0;   /* the game's server (OVL2 bss; the chat unit's) */
+}
+
+/* the game's server handed to the network's connect (SOCOM 1's SetConnectionInfo, which CZNetwork's
+ * zNetConnect calls on theLobby as SOCOM 1's does; OVL1 0x2F7FA0) */
+void CZOnlineLobby::SetConnectionInfo(NetConnectionInfo *info)
+{
+    *info = data_0066A8F0;
+}
+
 /* a page of the usage policy: added to the lines kept so far in 'TempUsagePolicy', all of them
  * handed to 'UsagePolicy' with the last page (SOCOM II's, the name ours: GetUsagePolicy's callback,
  * its status 'GetPolicyRequest'; OVL1 0x2F7AC0) */

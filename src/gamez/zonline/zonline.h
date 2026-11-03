@@ -926,6 +926,7 @@ public:
     void ChangeState(LOBBY_STATE state);
     bool Logout();
     void BanSelfFromGame();
+    void SetConnectionInfo(struct NetConnectionInfo *info);
     void GetMissionSequence(unsigned char *idx, unsigned char *seq);
     void SetMissionSequence(unsigned char idx, unsigned char *seq);
     void ResetMissionSequence();

@@ -74,6 +74,7 @@ public:
     void AddToFixList(TypeRTimeFixStruct *fix);
     void zNetPlayFixList();
     int zNetJoin(NetCreateObjectCallback join, NetCreateObjectCallback leave);
+    int zNetConnect(void (*connect)(struct ClientConnectArgs *), void (*disconnect)(struct ClientConnectArgs *));
     int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
                          int b, unsigned int c, int d, void *data, char *name, int e);
     int zNetSendApplicationMessage(char type, int conn, int to, int msg, int size,

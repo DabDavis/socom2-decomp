@@ -4990,7 +4990,7 @@
 0x002F7AC0 0x180 cbGetPolicy__FiiiP23MediusGetPolicyResponse  # OVL1; ours (GetUsagePolicy's MediusGetPolicy callback: 'GetPolicyRequest' checked, the policy text built into 'UsagePolicy' through a CRdrEditor)
 0x002F7C40 0x144 func_002F7C40  # OVL1
 0x002F7D90 0x210 func_002F7D90  # OVL1
-0x002F7FA0 0x114 func_002F7FA0  # OVL1
+0x002F7FA0 0x114 SetConnectionInfo__13CZOnlineLobbyFP17NetConnectionInfo  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's SetConnectionInfo 0x329F00, 0x118 bytes: the game server's NetConnectionInfo copied member by member into the caller's; CZNetwork's two connects 0x30D380/0x30D1B0 call it on theLobby, as SOCOM 1's zNetConnect does)
 0x002F80C0 0x54 SendEndGameReport__13CZOnlineLobbyFv  # OVL1; s1:ui ('DisconnectFromGameServer' 0x27E420 calls it before RejoinRoom, as SOCOM 1's UIDisconnectFromGameServer does; the session key copied and one Medius call)
 0x002F8120 0x108 AdvanceMissionSequence__13CZOnlineLobbyFv  # OVL1; s1:ui ('AdvanceMPMission' 0x279490, as SOCOM 1's UIAdvanceMPMission)
 0x002F8230 0x40 ResetMissionSequence__13CZOnlineLobbyFv  # OVL1; s1:ui ('SetMPMissionSeq' 0x278EB0, as SOCOM 1's UISetMPMissionSeq calls ResetMissionSequence)
@@ -5317,7 +5317,7 @@
 0x0030D060 0xA8 zNetJoin__9CZNetworkFPFii_vPFii_v  # OVL1; s1 by hand (SOCOM 1's zNetJoin, two client callbacks: here kept at +0x110C/+0x1110 and the game connection's session joined through a parameter block -- NetSetDefaultJoinParams 0x621DB8, NetJoin 0x621E50 -- m_bJoined set on success, the answer returned)
 0x0030D110 0xA0 zNetClientCallback__FP18NetClientEventInfo  # OVL1; ours (zNetJoin's client-event callback: the lobby's own connection skipped, event 0 to the join callback at +0x110C, 1 to the leave one at +0x1110)
 0x0030D1B0 0x1C8 func_0030D1B0  # OVL1
-0x0030D380 0x188 func_0030D380  # OVL1
+0x0030D380 0x188 zNetConnect__9CZNetworkFPFP17ClientConnectArgs_vPFP17ClientConnectArgs_v  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's zNetConnect 0x321630: NetSetDefaultConnectParams, theLobby's SetConnectionInfo into the parameters, the two client callbacks, NetConnect, the connection's index kept and m_bConnected set unless it failed, m_bJoined cleared; SOCOM II's returns the error and drops a failed connection; 0x2B85C0 calls it with SOCOM II's cbClientConnect/cbClientDisconnect pair 0x2BC620/0x2BC530); the callbacks retyped: SOCOM II's take a pointer, fts_remote.cpp's ClientConnectArgs
 0x0030D510 0x28 zNetGetValidGameClientCount__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
 0x0030D540 0x8 zNetGetLocalTime__9CZNetworkFv  # OVL1; s1:calls+order (right before zNetGetTime as SOCOM 1's; the same 8 bytes) -- the UI-commands lane
 0x0030D550 0x8 zNetGetTime__9CZNetworkFv  # OVL1; s1:calls (CZNetGame::TenSecondLaunch, as SOCOM 1's; the same 8 bytes) -- the states lane
