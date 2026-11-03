@@ -47,3 +47,56 @@ unsigned char _tosWarningLog(TOSLOG *log, unsigned short code)
         t->warning_cb(t, t->warning);
     return code;
 }
+
+/* a block: the log record's head (the scheduler, its id), then its input queues, each a queue
+ * and the block's reader in it */
+typedef struct QREQ {
+    void *q;
+    unsigned short reader;
+} QREQ;
+
+typedef struct TOSBLOCK {
+    TOS *tos;                           /* +0 */
+    unsigned char id;                   /* +4 */
+    char pad5[3];
+    unsigned char ninputs;              /* +8 */
+    char pad9[3];
+    QREQ *inputs;                       /* +12 */
+} TOSBLOCK;
+
+extern int qQueueControl(void *q, unsigned char cmd, int arg, int n);
+
+/* the block's readers in its input queues disabled (6), stopped (8) or started (5, or 7 moved
+ * back n); a 1 when any queue refused */
+unsigned char tosBaseBlockStopInputQueues(TOSBLOCK *b)
+{
+    unsigned char err = 0;
+    unsigned int i;
+
+    for (i = 0; i < b->ninputs; i++)
+        err |= !qQueueControl(b->inputs[i].q, 6, b->inputs[i].reader, 0);
+    return err;
+}
+
+unsigned char tosBaseBlockDisableInputQueues(TOSBLOCK *b)
+{
+    unsigned char err = 0;
+    unsigned int i;
+
+    for (i = 0; i < b->ninputs; i++)
+        if (b->inputs[i].q != 0)
+            err |= !qQueueControl(b->inputs[i].q, 8, b->inputs[i].reader, 0);
+    return err;
+}
+
+unsigned char tosBaseBlockStartInputQueues(TOSBLOCK *b, int n)
+{
+    unsigned char err = 0;
+    unsigned char cmd = n ? 7 : 5;
+    unsigned int i;
+
+    for (i = 0; i < b->ninputs; i++)
+        if (b->inputs[i].q != 0)
+            err |= !qQueueControl(b->inputs[i].q, cmd, b->inputs[i].reader, n);
+    return err;
+}
