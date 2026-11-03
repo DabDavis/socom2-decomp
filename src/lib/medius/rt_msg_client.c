@@ -8,7 +8,16 @@
  * variable's first value -- the target keeps that 1 in the register the result later takes
  * (s0); a literal gives a temporary (ccsweep: 1 of 7 shapes, SOCOM 1's copies the same).
  * Names are SOCOM 1's (s1:exact); argument types are the entry's narrowing. Only the functions
- * written so far are here, in image order. */
+ * written so far are here, in image order.
+ * Round 12b: the object starts at 0x6325B8 (below); the startup, shutdown, ishutdown, iupdate_all
+ * and create_send_buf_space written from SOCOM 1's bodies, byte-exact (a positive test around the
+ * shutdown's mutex teardown and the space's refill; the table cleared before its count, by store
+ * order). OPEN: rt_msg_client_iget_metrics (37s: its copy -- thirteen field assignments, floats
+ * through FPRs, tStart a struct member -- is exact; the call's `return result` is a block of its
+ * own in the target, a fall-through `b`, as rt_udp's length tests -- an empty asm statement there
+ * gives 1 word, the shape rt_udp.c's RT_UDP_BARRIER stands in for), rt_msg_client_iudp_disable_
+ * heartbeat (9: SOCOM II's UDP poll under SOCOM 1's name, whose body it is not; the flag's reload
+ * takes v1 where the target's takes v0). */
 
 #define RT_MSG_CLIENT_LOCK_FAILED   26
 
@@ -36,7 +45,8 @@ extern int func_00634550(int);
 extern int rt_msg_client_iget_host_by_name(char *, char *);
 extern int rt_msg_client_iget_connection_ip(unsigned short, char *);
 extern int func_00634660(unsigned short, unsigned char);
-extern int rt_msg_client_iget_metrics(int, int);
+struct rt_msg_client_metrics;
+extern int rt_msg_client_iget_metrics(int, struct rt_msg_client_metrics *);
 extern int func_006347C8(unsigned short, int);
 extern int func_00634850(unsigned short, int);
 /* a connection's options (rt_msg_client_connect's): SOCOM 1's 64-byte block grown to 76, its
@@ -785,6 +795,56 @@ int func_00634660(unsigned short nConnection, unsigned char bEnable)
     return rt_msg_client_store_msg_in_send_buf(pConnection->pComm, 13, 0xFFFF, abMsg, 2, 0);
 }
 
+typedef struct rt_msg_client_time {
+    unsigned int secs;
+    unsigned int usecs;
+} rt_msg_client_time;
+
+typedef struct rt_msg_client_metric {
+    unsigned int nCount;
+    float fRate;
+    float fMaxRate;
+} rt_msg_client_metric;
+
+typedef struct rt_msg_client_metrics {  /* rt_comm's rt_comm_metric_data */
+    rt_msg_client_time tStart;          /* 0x00 */
+    rt_msg_client_metric sends;         /* 0x08 */
+    rt_msg_client_metric bytesSent;     /* 0x14 */
+    rt_msg_client_metric recvs;         /* 0x20 */
+    rt_msg_client_metric bytesReceived; /* 0x2C */
+} rt_msg_client_metrics;                /* 0x38 */
+
+extern int rt_comm_get_metrics(rt_msg_client_metrics *pMetrics);
+
+/* SOCOM 1's: rt_comm's metrics copied out field by field (only connection 0 has them) */
+int rt_msg_client_iget_metrics(int nConnection, rt_msg_client_metrics *pMetrics)
+{
+    rt_msg_client_metrics metrics;
+    unsigned char result;
+
+    if (pMetrics == 0)
+        return 2;
+    if (nConnection != 0)
+        return 3;
+    result = rt_msg_client_map_comm_error(rt_comm_get_metrics(&metrics));
+    if (result != 0)
+        return result;
+    pMetrics->tStart = metrics.tStart;
+    pMetrics->sends.nCount = metrics.sends.nCount;
+    pMetrics->sends.fRate = metrics.sends.fRate;
+    pMetrics->sends.fMaxRate = metrics.sends.fMaxRate;
+    pMetrics->bytesSent.nCount = metrics.bytesSent.nCount;
+    pMetrics->bytesSent.fRate = metrics.bytesSent.fRate;
+    pMetrics->bytesSent.fMaxRate = metrics.bytesSent.fMaxRate;
+    pMetrics->recvs.nCount = metrics.recvs.nCount;
+    pMetrics->recvs.fRate = metrics.recvs.fRate;
+    pMetrics->recvs.fMaxRate = metrics.recvs.fMaxRate;
+    pMetrics->bytesReceived.nCount = metrics.bytesReceived.nCount;
+    pMetrics->bytesReceived.fRate = metrics.bytesReceived.fRate;
+    pMetrics->bytesReceived.fMaxRate = metrics.bytesReceived.fMaxRate;
+    return 0;
+}
+
 typedef struct rt_msg_client_channel {
     char pad0[0x40];
     int nValue;                         /* 0x40 */
@@ -867,6 +927,33 @@ int func_006349A8(unsigned short nConnection, int **pphPlatform)
     if (result != 0)
         return result;
     return rt_msg_client_map_comm_error(func_0062D478(pConnection->pComm->nChannelId, pphPlatform));
+}
+
+extern int func_0062D178(int nChannelId, unsigned char *pbReceived, char *szAddress, unsigned short *pnPort);
+
+/* SOCOM II's UDP poll (SOCOM 1's function of this name is another body): every datagram waiting
+ * on the UDP channel is handed to the enable call's callback with its sender's address and port */
+int rt_msg_client_iudp_disable_heartbeat(void)
+{
+    char szAddress[16];
+    unsigned short nPort = 0;
+    unsigned char bReceived = 0;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (gUDPInfo.bEnabled != 1)
+        return 5;
+    do {
+        result = rt_msg_client_map_comm_error(func_0062D178(gUDPInfo.nChannel, &bReceived, szAddress, &nPort));
+        if (result != 0)
+            return result;
+        if (bReceived != 1)
+            return 0;
+        if (gUDPInfo.pfnCallback != 0)
+            ((void (*)(char *, unsigned short))gUDPInfo.pfnCallback)(szAddress, nPort);
+    } while (bReceived == 1);
+    return 0;
 }
 
 typedef struct rt_msg_client_link {    /* an rt_comm channel's view: its connection's id */
