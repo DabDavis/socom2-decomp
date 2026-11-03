@@ -18,6 +18,8 @@ struct TOS {
     char pad44[8];
     int error;                          /* +52: the first error, block << 16 | code */
     int warning;                        /* +56 */
+    char pad60[20];
+    void *heap;                         /* +80 */
 };
 
 typedef struct TOSLOG {
@@ -25,7 +27,35 @@ typedef struct TOSLOG {
     unsigned char block;                /* +4 */
 } TOSLOG;
 
-unsigned char _tosErrorLog(TOSLOG *log, unsigned short code)
+/* a block: the log record's head (the scheduler, its id), its input queues (each a queue and
+ * the block's reader in it), its output queues, the three functions the scheduler calls, and the
+ * block's own data after the table */
+typedef struct QREQ {
+    void *q;
+    unsigned short reader;
+} QREQ;
+
+typedef int (*TOSFUNC)();
+
+typedef struct TOSBLOCK {
+    TOS *tos;                           /* +0 */
+    unsigned char id;                   /* +4 */
+    char pad5[3];
+    unsigned char ninputs;              /* +8 */
+    unsigned char noutputs;             /* +9 */
+    char pad10[2];
+    QREQ *inputs;                       /* +12 */
+    QREQ *outputs;                      /* +16 */
+    TOSFUNC init;                       /* +20 */
+    TOSFUNC process;                    /* +24 */
+    TOSFUNC control;                    /* +28 */
+    unsigned char state;                /* +32 */
+} TOSBLOCK;
+
+extern void *func_00243398(void *heap, int count, int size);       /* the heap's calloc */
+
+/* inline: tosBaseBlockConstruct has it inlined (the log record still built on the stack) */
+__inline__ unsigned char _tosErrorLog(TOSLOG *log, unsigned short code)
 {
     TOS *t = log->tos;
     int code32 = log->block << 16 | code;
@@ -49,21 +79,41 @@ unsigned char _tosWarningLog(TOSLOG *log, unsigned short code)
     return code;
 }
 
-/* a block: the log record's head (the scheduler, its id), then its input queues, each a queue
- * and the block's reader in it */
-typedef struct QREQ {
-    void *q;
-    unsigned short reader;
-} QREQ;
+/* a block allocated with its queue tables and data (size rounded to words) after it; a failed
+ * allocation is the scheduler's error 2. OPEN (16 words): _tosErrorLog is inlined here in the
+ * target (the log record still built on the stack, so the logger is a public __inline__ -- its
+ * own copy stays byte-exact so), but the target computes the code inside the `error == 0` test
+ * where this inlining computes it before (computing it inside in the logger's source breaks the
+ * logger, 22 words), and keeps the outputs' address in a1 for the stores that follow. */
+TOSBLOCK *tosBaseBlockConstruct(TOS *tos, unsigned char id, unsigned char ninputs, unsigned char noutputs,
+                                TOSFUNC process, TOSFUNC init, TOSFUNC control, unsigned int size)
+{
+    TOSBLOCK *b;
+    TOSLOG log;
+    QREQ *inputs;
 
-typedef struct TOSBLOCK {
-    TOS *tos;                           /* +0 */
-    unsigned char id;                   /* +4 */
-    char pad5[3];
-    unsigned char ninputs;              /* +8 */
-    char pad9[3];
-    QREQ *inputs;                       /* +12 */
-} TOSBLOCK;
+    if (size & 3)
+        size = size - (size & 3) + 4;
+    b = func_00243398(tos->heap, 1, (ninputs + noutputs) * sizeof(QREQ) + size);
+    log.tos = tos;
+    log.block = id;
+    inputs = (QREQ *)((char *)b + size);
+    if (b == 0) {
+        _tosErrorLog(&log, 2);
+        return 0;
+    }
+    b->outputs = inputs + ninputs;
+    b->state = 1;
+    b->tos = tos;
+    b->id = id;
+    b->ninputs = ninputs;
+    b->noutputs = noutputs;
+    b->init = init;
+    b->control = control;
+    b->process = process;
+    b->inputs = inputs;
+    return b;
+}
 
 extern int qQueueControl(void *q, unsigned char cmd, int arg, int n);
 
