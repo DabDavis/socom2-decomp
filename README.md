@@ -1842,6 +1842,25 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 5** (zrdr_read, the headset and instance pool, a new zsav_lobby.cpp):
+  - a temporary bound to a const reference takes its stack slot ahead of temporaries created before it: Pop binding
+    end() and erase's result to const references gives zrdr_read the target's slots;
+  - "REGISTERS ONLY" CAN BE A CONSTANT OR A PROTOTYPE: Headset::SoundSysCallback's refused start stores the case
+    chain's last-loaded constant (state 1, not 2); ReleaseSoundInstance's callee 0x346270 takes the instance in a0, and
+    the placeholder declared without it shifted every register in the caller;
+  - `unsigned n = v.size(); for (; i < n;)` swaps the bound and cursor registers against `i < v.size()`; a list walk
+    written `i != end()` rebuilds the end each pass, `iterator e = end();` in a block before the walk holds it in a
+    saved register as the target does; keeping a member's address in a saved register needs a named pointer local;
+  - zsav_lobby.cpp (0x33E7F0-0x33F04F, names ours) is the lobby's save: CLobbySaveManager (a pointer list of modules,
+    a CLobbyFileIO, a blob of 40-byte entries) and CLobbySaveModule -- SOCOM 1's null-safe CSaferStr::operator=(const
+    char *) reproduces the module constructor's slots, a CSaferStr member gives one this-test before ~basic_string in
+    an implicit destructor; `bool r = p != 0; if (p && c) { ...; r = false; } return r;` is 0x10 shorter than returning
+    inside the test; 0x34D180-0x34E06F is an unwritten subtitle-table unit (SetLanguage calls 0x34D190, the initialiser
+    0x402FF0 builds 0x34D500: two vectors of 12-byte records looked up by hash);
+  - open: CLobbySaveManager::Load 0x33E850 (0x1A4 vs 0x1B4: the walk's end lifted out of both loops into a block after
+    the return -- SortNearToFar's unreproduced shape -- and the element read off the node each time), ReadArray (17:
+    the depth test, every spelling 17 or 47), 0x346270 (its loop keeps the iterator in a stack slot, 0x90 against the
+    plain loop's 0x68 -- the MSL lane's iterator-in-memory question, which also holds SerializeValves).
 - **Tells from the AI core, round 17** (the string patch, include/algorithm's heap, the A* search):
   - the world lane's basic_string patch is in -- operator=(const basic_string &) an inline over a new assign(const
     basic_string &) (0x22E4D0 assign; 0x32FD70, the image's only `j 0x22E4D0` stub, __as__) -- and its "regression" of
