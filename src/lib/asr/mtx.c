@@ -53,3 +53,33 @@ long imtxConstruct(ASRENGINE *eng)              /* the integer matrix: as mtxCon
 {
     return (long)func_00243398(eng->heap, 1, 24);
 }
+
+/* the integer matrix's data allocated cleared (mtxInit's twin: calloc for alloc and memset); the
+ * matrix itself freed when that fails (round 10c) */
+typedef struct IMTX {
+    int rows;
+    int cols;
+    int n;
+    int *data;
+    int *end;
+    unsigned char owned;
+} IMTX;
+
+IMTX *imtxInit(IMTX *m, int rows, int cols, ASRENGINE *eng)
+{
+    int n = rows * cols;
+    int *p;
+
+    m->rows = rows;
+    m->cols = cols;
+    m->n = n;
+    p = func_00243398(eng->heap, n, sizeof(int));
+    m->data = p;
+    if (p == 0) {
+        heap_Free(eng->heap, m);
+        return 0;
+    }
+    m->owned = 1;
+    m->end = p + n;
+    return m;
+}
