@@ -47,8 +47,8 @@ using namespace zdb;
 CMesh::CMesh()
 {
     m_type = 1;
-    m_68 = 0;
-    m_70 = 0;
+    m_original = 0;
+    m_owner = 0;
     m_1c = 3;
 
     CMeshLOD lod;
@@ -114,6 +114,86 @@ void CMesh::SetLOD(unsigned int view, unsigned int lod)
     if (lod >= m_lods.size())
         lod = m_lods.size() - 1;
     m_lodMesh[view] = m_lods[lod].m_mesh;
+}
+
+/* a copy of the mesh for a node: the visual's and the mesh's members assigned, a reference to this
+ * mesh taken, its own matrices, and its first level's selects copied and pointed at this mesh's
+ * buffer (SOCOM 1's took no node) */
+CMesh *CMesh::Clone(CNode *owner)
+{
+    CMesh *mesh = new CMesh;
+
+    *mesh = *this;
+    mesh->m_refs = 0;
+    m_refs++;
+    mesh->m_original = dynamic_cast<CMesh *>((CVisual *)this);
+    mesh->InitMatrices();
+    mesh->m_owner = owner;
+    m_74 = 0;
+
+    _word128 *buffer = (*m_lods.begin()).m_buffer;
+    _word128 *selects = (_word128 *)(*m_lods.begin()).m_mesh;
+    unsigned int size = (selects->u16[0] + 1) << 4;
+    _word128 *copy = (_word128 *)_malloc(size, 0, 0);
+
+    memcpy(copy, selects, size);
+    mesh->SetMeshBuffer(copy, buffer, selects);
+    mesh->m_dynTexList.Add(&m_dynTexList);
+
+    CMeshLOD &lod = mesh->m_lods.back();
+
+    lod.m_mesh = (CMesh *)copy;
+    lod.m_buffer = buffer;
+    mesh->m_lodMesh[0] = (CMesh *)copy;
+    return mesh;
+}
+
+/* its decals let go of, each to the pool its life says; a clone's reference given back, the
+ * original deleted by its last holder, and the levels' select blocks freed; its matrices deleted
+ * (SOCOM 1's gave every decal back as temporary and marked the original 0xDEADBEEF) */
+CMesh::~CMesh()
+{
+    CMeshDecal *d;
+    bool clone = m_original != 0;
+
+    d = m_decals;
+
+    if (d) {
+        do {
+            CMeshDecal *next = d->m_next;
+            float life = d->m_life;
+
+            d->FreeMem();
+            d->Reset();
+            if (life >= 0.0f)
+                CMeshDecal::PutTempDecal(d);
+            else
+                CMeshDecal::PutPermDecal(d);
+            d = next;
+        } while (d);
+    }
+    m_decals = 0;
+    if (clone) {
+        if (m_original->Release() == 0) {
+            delete m_original;
+            m_original = 0;
+        }
+        while (m_lods.size()) {
+            CMeshLOD &lod = m_lods.back();
+
+            if (lod.m_mesh)
+                _free(lod.m_mesh, 0, 0);
+            lod.m_mesh = 0;
+            m_lods.pop_back();
+        }
+    }
+    while (m_palette.size()) {
+        CMatrix *m = m_palette.back();
+
+        m_palette.pop_back();
+        if (m)
+            delete m;
+    }
 }
 
 /* a block of selects pointed at a buffer: its decals dropped, the buffer recorded in the head,

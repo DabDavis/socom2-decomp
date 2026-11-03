@@ -101,8 +101,8 @@ CVisual::CVisual() : m_refs(0), m_lodMesh(0)
     m_5 = 0;
     *(unsigned char *)&m_type = 255;
     m_1c = 3;
-    m_8 = 0;
-    m_a = 0;
+    m_8s.m_8 = 0;
+    m_8s.m_a = 0;
     m_centroid = CPnt3D::zero;
     m_numDetails = 0;
     m_details = 0;
