@@ -186,6 +186,15 @@ public:
     unsigned int m_base;   // 0xc
 };   // 0x10 bytes
 
+/* MEASURED (the MSL headers round 14, build/p14/zs1.py, untracked): with 0x333330 named
+ * __dt__Q23std54__vector_imp<8zrdr_sym,...,0>Fv and 0x333390 __dt__11zrdr_symtabFv, this unit's
+ * symbol-table destructor and __sinit_zrdr_parse.cpp are byte-exact (+2) -- but its ~__vector_imp
+ * copy inlines the deleter's destructor (0x108 against 0x58: generated before it in this tail), so
+ * 0x333330 would stand on its draft alone (an `sc: as=` line, an eleventh draft-only row): left to
+ * the integrator. A dead-stripped stand-in that builds a symbol table (`new zrdr_symtab`, anywhere in
+ * the unit: the constructor emits the implicit destructor levels at once) makes ~__vector_imp
+ * byte-exact too, and costs the class insert 0x3325E0, which then inlines its temporary's deleter
+ * destructor where the target calls it (0x3331F0) -- no order found that keeps both */
 static zrdr_symtab g_symbols;
 
 /* remove_if's test: a symbol #undef'd (0x331E20, the unit's first function) */

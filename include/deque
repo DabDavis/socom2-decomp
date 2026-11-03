@@ -84,7 +84,14 @@
  * the const make_iterator at the target's 0x138 -- but its implicit copy is then an FPU block copy (the
  * target's is word by word through the fields' registers) and the deque's own begin()/end() (0x2E0940,
  * byte-exact) grow to 0x60; an empty std::iterator base changes nothing. So the cdeque iterator's real
- * shape keeps its objects in memory AND copies them member-wise -- not found. */
+ * shape keeps its objects in memory AND copies them member-wise -- not found.
+ * The chat's range destroy (0x2F5B10, round 14, build/p14/ds1.py): the target inlines the block
+ * iterators' difference and reads both by-value iterators in place through a1/a2 (a 16-byte frame:
+ * only the count, for min); here the chat unit's inline_max_size(100) keeps that difference a call
+ * (0x20C), without the pragma it inlines but both iterators are copied into the frame at entry (0x270)
+ * -- by value, by member, by const reference and const by-value parameters alike (the last 0x1F8, the
+ * target's size, by coincidence: the copies stay). The class deque's init (0x2E0830, 0x3A5ED0) through
+ * __convert_iterator (with or without its converter member) is 0x118 against 0xB0. */
 
 #ifndef _MSL_DEQUE
 #define _MSL_DEQUE

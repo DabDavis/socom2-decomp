@@ -1759,6 +1759,27 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 14** (the deques' instances; probes build/p14/, untracked):
+  - the circular buffer's end() takes its index (`cap ? (start + size) % cap : 0`) into a local before it loads
+    data_ -- written inside the iterator constructor's first argument MW loads data_ first: ~__deque_buf byte-exact
+    for the pointer deques, the lobby queue and the state machine (0x2CEFB0, 0x2E19E0, 0x3A6E60);
+  - __deque_imp::push_back's growth path holds its new block in MSL's alloc_ptr WITH ITS COUNT KEPT ({allocator,
+    128, block} on the stack: include/msl_utility's alloc_ptr<T, A, unsigned int>), released after the buffer's
+    push_back; `*(back() = ap.get()) = x` loads x and the block before either store (two statements reload the
+    block after the back() store); the other path's block goes from the allocator straight into back() (named
+    `last`/`b` locals swap their saved registers); a count `c ? (c - 1) * k : 0` lays the nonzero arm first,
+    `c == 0 ? 0 : (c - 1) * k` the zero arm, as the target -- 0x2CF970 and the lobby's 0x2E1610 byte-exact;
+    the function-local guarded statics need data.txt rows (`@GUARD@<fn>@max`, `@LOCAL@<fn>@max`) to resolve;
+  - MW's scalariser splits an iterator object unless its fields live in a BASE class (an empty base does not
+    stop it): with the fields in a base every make_iterator object stays in memory, but the implicit copy
+    becomes an FPU block copy where the target copies word by word through the fields' registers -- the
+    make_iterator shape that does both is not found (include/deque's comment lists twenty variants); a
+    constructor (`new X`) emits X's implicit destructor levels at once, before any of the unit's deferred
+    functions: a stand-in that builds one reorders the whole tail (zrdr_parse.cpp's comment);
+  - open: every make_iterator, the chat's push_back (its growth path builds and swaps a temporary buffer),
+    the chat's range destroy and teardown, the copy chain's generation order (init, the buffers' copies), the
+    class insert/erase end register; measured for the integrator: renaming 0x333330/0x333390 gains
+    ~zrdr_symtab and __sinit_zrdr_parse.cpp at the cost of an eleventh draft-only row.
 - **Tells from completing the MSL headers, round 13** (the instances other lanes waited on):
   - include/list's range and single erases DESTROY each element (its destructor called with -1) before freeing the
     node -- pointer lists unaffected; the list erase re-reads the iterator's node after the element's destructor
