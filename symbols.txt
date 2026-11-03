@@ -11634,9 +11634,9 @@
 0x00600150 0x34 func_00600150  # OVL2
 0x00600190 0x5C func_00600190  # OVL2
 0x006001F0 0x98 func_006001F0  # OVL2
-0x00600290 0x1A8 func_00600290  # OVL2
-0x00600440 0xE8 func_00600440  # OVL2
-0x00600530 0x18 func_00600530  # OVL2
+0x00600290 0x1A8 DoHandSignal__10CZSealBodyF15SEAL_HANDSIGNAL  # OVL2; s1:calls by hand (the kit lane, round 18): SOCOM 1's DoHandSignal -- the same state tests (dead, carrying, hanging, on a ladder, on the body or its top blend) and stance switch into m_handSignal, the anim pushed through 0x588BC0 unless on top; SOCOM II's adds the top blend's flag-0x40 test and the carry test, and returns a short -- src/gamez/zseal/seal_handsig.cpp
+0x00600440 0xE8 InitHandSignals__10CZSealBodyFv  # OVL2; s1:calls by hand (the kit lane, round 18): SOCOM 1's InitHandSignals (sprintf and FindAnimType per signal and stance into m_handSignal), a loop over a name table in SOCOM II; static (reads no member, its caller 0x5A49F0 passes none) -- src/gamez/zseal/seal_handsig.cpp
+0x00600530 0x18 __ct__11CHandSignalFv  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's CHandSignal() after InitHandSignals, the three anims set to -1 (shorts in SOCOM II); __sinit_seal_handsig.cpp passes it to __construct_array -- src/gamez/zseal/seal_handsig.cpp
 0x00600550 0x79C func_00600550  # OVL2
 0x00600CF0 0x50 func_00600CF0  # OVL2
 0x00600D40 0x8C ClearLook__9CSealCtrlF7AI_LOOK  # OVL2; s1:order by hand (the kit lane, round 4): CSealCtrl::ClearLook(AI_LOOK) -- SOCOM 1's ClearLook__9CSealCtrlF7AI_LOOK (0x2E4310), the same stores 4 bytes on (the look's point to CPnt3D::unit_nz, type 3, mode 0, timer CAiTimer::infinite, flags 0) and the same tail call to SetDefaultLookParams (0x601400), SOCOM II's passing whether the type was not 3; a placeholder because zseal.h's CSealCtrl does not declare it (seal_look.cpp); by hand (the kit lane, round 18): written as CSealCtrl's member, seal_look.cpp
@@ -13368,4 +13368,4 @@
 0x00668F30 0x24 func_00668F30  # OVL2 data area; a static initialiser
 0x00668F60 0x50 func_00668F60  # OVL2 data area; a static initialiser; s1~ zwep_global.cpp (shape 0.48, a hint)
 0x00668FB0 0x110 func_00668FB0  # OVL2 data area; a static initialiser
-0x006690C0 0x20 func_006690C0  # OVL2 data area; a static initialiser
+0x006690C0 0x20 __sinit_seal_handsig.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (the kit lane, round 18): SOCOM 1's __sinit_seal_handsig.cpp builds m_handSignal; SOCOM II's builds the six-entry array through __construct_array with CHandSignal() (0x600530) -- src/gamez/zseal/seal_handsig.cpp

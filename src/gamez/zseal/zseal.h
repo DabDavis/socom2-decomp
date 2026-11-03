@@ -49,6 +49,13 @@ enum SEAL_STATE {
     stateCarried = 10, stateDone = 11
 };
 
+/* a hand signal (SOCOM 1's SEAL_HANDSIGNAL, a byte -- no DWARF; the names ours, after the anim names
+ * the kit lane's seal_handsig.cpp looks up) */
+enum SEAL_HANDSIGNAL {
+    HANDSIGNAL_NULL = 0, HANDSIGNAL_FOLLOW = 1, HANDSIGNAL_HOLDPOSITION = 2, HANDSIGNAL_FIREATWILL = 3,
+    HANDSIGNAL_DEPLOY = 4, HANDSIGNAL_POINT = 5, HANDSIGNAL_COUNT = 6, HANDSIGNAL_LAST = 255
+};
+
 /* a kind of collision polygon (SOCOM 1's CDIType; no DWARF, only the size matters here) */
 enum CDIType { CDI_TYPE_0 = 0, CDI_TYPE_LAST = 255 };
 
@@ -1139,6 +1146,11 @@ public:
     bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
+    /* the hand signals: each one's anims looked up by name (static: no member read, its caller
+     * passes none), and one played -- the anim, or -1 (SOCOM 1's; OVL2 0x600440, 0x600290: the kit
+     * lane's seal_handsig.cpp) */
+    static void InitHandSignals();
+    AnimType DoHandSignal(SEAL_HANDSIGNAL sig);
     /* the stances' blends (SOCOM 1's seal_body.cpp, in its order: BlendedClimb 0x581110 to Stand
      * 0x581DC0 -- Stand_0 gained a float in SOCOM II) */
     CZBodyAnimBlend *BlendedClimb(float h);
