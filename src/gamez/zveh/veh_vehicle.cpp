@@ -11,13 +11,11 @@
 using namespace zdb;
 
 extern "C" {
-/* not yet written here (placeholders): the vehicle's half of the tick and the AI maps' cell
- * lookup, map and region fill (OVL2) */
+/* not yet written here (placeholders): the vehicle's half of the tick and the AI map's region
+ * fill (OVL2) */
 void func_003ACC10(CVehicle *vehicle, float dT);
 void func_003AD3B0(CVehicle *vehicle);
 void func_003ADAB0(CVehicle *vehicle, CNode *node, const CVehicleDef *def);
-int func_0052DC70(CAiMaps *maps, const CPnt3D *pos, unsigned int *loc);
-void *func_0052E6B0(CAiMaps *maps, unsigned int mapid);
 void func_00515880(void *map, CPnt3D *corners, void *region);
 /* the vehicles made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4120;
@@ -295,9 +293,9 @@ void CVehicle::Tick(float dT)
     func_003ACC10(this, dT);
     if (!GetNode())
         return;
-    if (!func_0052DC70(&AiMaps, &m_posW, &loc))
+    if (!AiMaps.GetLocation(&m_posW, *(CAiMapLoc *)&loc))
         return;
-    map = func_0052E6B0(&AiMaps, ((CAiMapLoc *)&loc)->m_mapid);
+    map = AiMaps.GetMapByIndex(((CAiMapLoc *)&loc)->m_mapid);
     if (!map)
         return;
     float d = 5.0f;
@@ -362,7 +360,7 @@ void CVehicle::UpdateAiMapLoc()
 {
     unsigned int loc;
 
-    if (func_0052DC70(&AiMaps, &m_posW, &loc)) {
+    if (AiMaps.GetLocation(&m_posW, *(CAiMapLoc *)&loc)) {
         *(unsigned int *)&m_mapLoc = loc;
         *(unsigned int *)&m_mapLocValid = loc;
     }

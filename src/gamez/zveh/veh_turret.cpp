@@ -12,8 +12,15 @@
 
 using namespace zdb;
 
-/* not yet written here (placeholders): the turret list's remove, the turret's halves of the
- * tick, the network turret's send (fts_*'s, 0x2C7A60) and the AI maps' cell lookup */
+/* the network platform's state (fts_net_platform.cpp's class): only the send a gunner's turret
+ * makes */
+class CZPlatformState {
+public:
+    static void UpdateLocalPlatform(CTurret *turret, bool now);
+};
+
+/* not yet written here (placeholders): the turret list's remove and the turret's halves of the
+ * tick */
 extern "C" {
 void func_003A7350(CTurret *turret, float dT);
 void func_003A78E0(CTurret *turret, float dT);
@@ -21,8 +28,6 @@ void func_003A82C0(CTurret *turret);
 void func_003A84E0(CTurret *turret);
 void func_003A88C0(CTurret *turret, float dT);
 void func_003A8D20(CTurret *turret);
-void func_002C7A60(CTurret *turret, int n);
-int func_0052DC70(CAiMaps *maps, const CPnt3D *pos, unsigned int *loc);
 /* the turrets made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4020;
 extern int data_003E0800;
@@ -271,7 +276,7 @@ void CTurret::UpdateAiMapLoc()
 {
     unsigned int loc;
 
-    if (func_0052DC70(&AiMaps, &m_posW, &loc)) {
+    if (AiMaps.GetLocation(&m_posW, *(CAiMapLoc *)&loc)) {
         *(unsigned int *)&m_mapLoc = loc;
         *(unsigned int *)&m_mapLocValid = loc;
     }
@@ -384,7 +389,7 @@ void CTurret::PrePostTick(float dT)
         CZSealBody *player = ftsGetPlayer();
 
         if (m_control == player->m_control)
-            func_002C7A60(this, 0);
+            CZPlatformState::UpdateLocalPlatform(this, false);
     }
 }
 
