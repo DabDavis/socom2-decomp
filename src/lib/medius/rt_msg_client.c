@@ -455,9 +455,17 @@ typedef struct rt_msg_client_comm {
     int nChannelId;                     /* 0x1C: the connection's rt_comm channel */
 } rt_msg_client_comm;
 
+/* a connection's state: an enum in SCEA's header, so compared unsigned (is_valid_connection's
+ * `sltiu`); 8 is connected */
+typedef enum rt_msg_client_state {
+    RT_MSG_CLIENT_STATE_FREE,
+    RT_MSG_CLIENT_STATE_CONNECTED = 8
+} rt_msg_client_state;
+
 typedef struct rt_msg_client_connection {
-    char pad0[8];
-    int nState;                         /* 0x08: 8 connected */
+    unsigned short nId;                 /* 0x00 */
+    char pad02[6];
+    rt_msg_client_state nState;         /* 0x08 */
     char pad0C[0x50];
     char szIP[0x1C];                    /* 0x5C: the server's address, dotted */
     struct rt_msg_client_channel *apChannels[2]; /* 0x78 */
@@ -697,6 +705,38 @@ int func_006349A8(unsigned short nConnection, int **pphPlatform)
     return rt_msg_client_map_comm_error(func_0062D478(pConnection->pComm->nChannelId, pphPlatform));
 }
 
+typedef struct rt_msg_client_link {    /* an rt_comm channel's view: its connection's id */
+    char pad0[6];
+    unsigned short nId;                 /* 0x06 */
+} rt_msg_client_link;
+
+extern int func_00635898(void *pComm);
+
+/* SOCOM 1's is_valid_connection: the connection past its first states, its channel alive, each of
+ * its two links its own and alive */
+unsigned char rt_msg_client_is_valid_connection(rt_msg_client_connection *pConnection)
+{
+    unsigned int i;
+
+    if (pConnection == 0)
+        return 0;
+    if (pConnection->nState < 2)
+        return 0;
+    if (!func_00635898(pConnection->pComm))
+        return 0;
+    for (i = 0; i < 2; i++) {
+        rt_msg_client_link *pLink = (rt_msg_client_link *)pConnection->apChannels[i];
+
+        if (pLink != 0) {
+            if (pConnection->nId != pLink->nId)
+                return 0;
+            if (!func_00635898(pLink))
+                return 0;
+        }
+    }
+    return 1;
+}
+
 int rt_msg_client_is_valid_connection_id(unsigned short nConnection)
 {
     if (gapConnections == 0)
@@ -739,19 +779,35 @@ int func_00635CD0(unsigned short nConnection, unsigned short *pnId)
     return 0;
 }
 
-int rt_msg_client_is_wait_state(int nState)
-{
-    if (nState == 2 || nState == 4 || nState == 3 || nState == 5 || nState == 6 || nState == 7 || nState == 9
-        || nState == 10)
-        return 1;
-    return 0;
-}
-
 /* a message's header: its type byte and its length, network order (SOCOM 1's, s1:exact) */
 typedef struct rt_msg_client_header {
     unsigned char nType;                /* 0x00 */
     unsigned short nLength;             /* 0x02 */
 } rt_msg_client_header;
+
+int rt_msg_client_set_header(unsigned char *pMsg, rt_msg_client_header *pHeader, unsigned short *pnLength);
+extern int rt_msg_client_send_buffer(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned short nLength,
+                                     int nTimeout);
+
+/* SOCOM 1's send_disconnect: a bare header of type 1 sent at once */
+int rt_msg_client_send_disconnect(rt_msg_client_comm *pComm)
+{
+    unsigned char abMsg[16];
+    rt_msg_client_header header;
+    unsigned short nLength = 0;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    header.nType = 1;
+    header.nLength = 0;
+    result = rt_msg_client_set_header(abMsg, &header, &nLength);
+    if (result != 0)
+        return result;
+    return rt_msg_client_send_buffer(pComm, abMsg, nLength, 10000);
+}
 
 extern int rt_msg_set_ubyte(unsigned char *msg, unsigned char value);
 extern int rt_msg_get_ubyte(const unsigned char *msg, unsigned char *value);
@@ -791,6 +847,74 @@ int rt_msg_client_get_header(unsigned char *pMsg, rt_msg_client_header *pHeader,
     if (rt_msg_get_u2byte(pMsg + 1, &pHeader->nLength) != 0)
         return 7;
     *pnLength += 2;
+    return 0;
+}
+
+int rt_msg_client_is_wait_state(int nState)
+{
+    if (nState == 2 || nState == 4 || nState == 3 || nState == 5 || nState == 6 || nState == 7 || nState == 9
+        || nState == 10)
+        return 1;
+    return 0;
+}
+
+
+/* the link's types to the server's, and the reverse map's */
+int func_006380C0(int *pnType, unsigned char nType)
+{
+    if (pnType == 0)
+        return 2;
+    switch (nType) {
+    case 0:
+        *pnType = 2;
+        break;
+    case 1:
+        *pnType = 4;
+        break;
+    case 2:
+        *pnType = 5;
+        break;
+    case 3:
+        *pnType = 6;
+        break;
+    case 4:
+        *pnType = 7;
+        break;
+    case 5:
+        *pnType = 8;
+        break;
+    case 6:
+        *pnType = 9;
+        break;
+    default:
+        return 1;
+    }
+    return 0;
+}
+
+int func_00638178(int *pnType, unsigned char nType)
+{
+    if (pnType == 0)
+        return 2;
+    switch (nType) {
+    case 0:
+        *pnType = 0;
+        break;
+    case 1:
+        *pnType = 1;
+        break;
+    case 2:
+        *pnType = 2;
+        break;
+    case 3:
+        *pnType = 3;
+        break;
+    case 4:
+        *pnType = 4;
+        break;
+    default:
+        return 1;
+    }
     return 0;
 }
 
@@ -867,3 +991,4 @@ int func_006387E0(unsigned int nType, char *pa, char *pb, char *pc)
     *pc = -124;
     return 0;
 }
+
