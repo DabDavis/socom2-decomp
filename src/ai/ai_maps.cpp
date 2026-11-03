@@ -167,6 +167,50 @@ struct IPNT2D {
     int x, y;
 };
 
+/* the point's place in the cell, 0 to 1 each way (its corner taken off, the map's inverse cell
+ * sizes applied), in x and y of a three-float point; none off the map (the name ours: the frame's
+ * point handed back. A PNT2D local sits at sp+8 of the 16-byte frame, the target's at sp+0: the
+ * local is 12 bytes or more) */
+inline PNT3D *cell_fraction(const CAiMap *map, const CAiMapLoc &loc, const CPnt3D *pos, PNT3D &f)
+{
+    if (map->IsCell(loc)) {
+        float z = map->m_bbox.m_min.z + loc.y * map->m_dy;
+
+        f.x = map->m_idx * (pos->x - (map->m_bbox.m_min.x + loc.x * map->m_dx));
+        f.y = map->m_idy * (pos->z - z);
+        return &f;
+    }
+    return 0;
+}
+
+/* one axis of the blend: the neighbour toward the point's half of the cell, and the cell's own
+ * share (the name ours: read through the reference twice, as the target reads f.y through its
+ * address) */
+inline void split_axis(const float &f, int &d, float &t)
+{
+    if (f > 0.5f) {
+        d = 1;
+        t = 1.5f - f;
+    } else {
+        d = -1;
+        t = 0.5f + f;
+    }
+}
+
+/* the cell's neighbours toward the point, one step each way, and the cell's share of the blend
+ * each way; false off the map (SOCOM 1's, the same body) */
+bool CAiMap::GetInterpolationCells(const CAiMapLoc &loc, const CPnt3D *pos, IPNT2D *d, PNT2D *t) const
+{
+    PNT3D f;
+
+    if (cell_fraction(this, loc, pos, f)) {
+        split_axis(f.x, d->x, t->x);
+        split_axis(f.y, d->y, t->y);
+        return true;
+    }
+    return false;
+}
+
 /* the map's blend (SOCOM 1's CAiMaps::GetInterpolatedShadow body): the cell's three neighbours
  * toward the point found and each tap's shadow (3 for a cell indoors when asked, else its shadow
  * bits) weighed by the point's place between the centres, the sum renormalised when taps fell off
