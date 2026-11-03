@@ -43,15 +43,15 @@
 0x00181F40 0x12C __construct_array  # MAIN; s1:callee by hand (called where SOCOM 1's __sinit_zmath_matrix.cpp calls __construct_array; MW's runtime)
 0x00182070 0x154 __construct_new_array  # MAIN; s1:prologue (SOCOM 1's MSL runtime __construct_new_array, 0x1423F0: the same 192-byte frame and save order; every new T[n] calls it with (block, constructor, destructor, size, count); beside __destroy_new_array 0x181E30) -- the body lane
 0x001821D0 0x23C __dynamic_cast  # MAIN; s1:calls
-0x00182410 0x4C func_00182410  # MAIN
-0x00182460 0x5C func_00182460  # MAIN
-0x001824C0 0xC func_001824C0  # MAIN
-0x001824D0 0xC func_001824D0  # MAIN
+0x00182410 0x4C __dt__Q23std9exceptionFv  # MAIN; MW's runtime (std::exception's destructor: writes __vt__Q23std9exception, 0x1D4FB0, whose dtor slot holds it; SOCOM 1's runtime order: __dynamic_cast, the two dtors, the two what()s); src/main/runtime/NMWException.cpp
+0x00182460 0x5C __dt__Q23std8bad_castFv  # MAIN; MW's runtime (std::bad_cast's destructor: writes bad_cast's vtable 0x1D4FA0 then exception's; the dtor slot of 0x1D4FA0, the destructor __dynamic_cast's throw passes); src/main/runtime/NMWException.cpp
+0x001824C0 0xC what__Q23std8bad_castCFv  # MAIN; MW's runtime (the what() slot of bad_cast's vtable 0x1D4FA0; returns "bad_cast"); src/main/runtime/NMWException.cpp
+0x001824D0 0xC what__Q23std9exceptionCFv  # MAIN; MW's runtime (the what() slot of exception's vtable 0x1D4FB0; returns "exception"); src/main/runtime/NMWException.cpp
 0x001824E0 0x278 __throw_catch_compare  # MAIN; s1:align
-0x00182760 0x24 func_00182760  # MAIN
-0x00182790 0x24 func_00182790  # MAIN
-0x001827C0 0x24 func_001827C0  # MAIN
-0x001827F0 0x1C func_001827F0  # MAIN
+0x00182760 0x24 unexpected__3stdFv  # MAIN; s1:order (SOCOM 1's runtime: __throw_catch_compare, unexpected, terminate, duhandler, dthandler; calls the handler at 0x1CA408) and NMWException.cp's body; src/main/runtime/NMWException.cpp
+0x00182790 0x24 terminate__3stdFv  # MAIN; s1:order (the same; calls the handler at 0x1CA400); src/main/runtime/NMWException.cpp
+0x001827C0 0x24 duhandler__3stdFv  # MAIN; s1:order (the same; static: terminate() inlined); src/main/runtime/NMWException.cpp
+0x001827F0 0x1C dthandler__3stdFv  # MAIN; s1:order (the same; static: abort()); src/main/runtime/NMWException.cpp
 0x00182810 0x24 __register_global_object  # MAIN; s1:exact
 0x00182840 0x54 __initialize_cpp_rts  # MAIN; s1:align
 0x001828A0 0x40 __ptmf_scall  # MAIN; s1:callee
