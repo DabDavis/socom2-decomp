@@ -128,8 +128,9 @@ extern AccountInfoType AccountInfo;
 extern StoredClanInfoType StoredClanInfo;
 extern int PlayerClanID;   /* -1 outside a clan */
 extern int RemovePlayerFromClanID;   /* the member being put out */
-void func_002E6AF0();   /* the roster's UI variable rebuilt */
 }
+
+void UpdateClanRoster();   /* the roster's UI variable rebuilt */
 
 /* A clan game's team: the clan's id in the low 28 bits, the side (1-4) as 0xA-0xD in the top four
  * (0x2E99F0 builds it back). The helpers sit after the lists' members in the image, 0x2E9820-0x2E9B3F;
@@ -927,6 +928,88 @@ bool CZOnlineLobby::GetInvitedPlayers()
     return true;
 }
 
+/* a UI variable given an integer, its watchers told when it changes (as zui.h's float setter; the
+ * name ours) */
+inline void SetVarInt(CUIVariable *var, int i)
+{
+    if (var->type != 1 || var->integer != i) {
+        var->DeleteChildren();
+        var->type = 1;
+        var->integer = i;
+        var->UpdateDependents();
+    }
+}
+
+/* the members handed to the menus, best first: each one's account (as VALUE), name, whether online,
+ * description, ladder position and rank, the leader marked, and where he is (the main menu, a room
+ * and a game, or nothing offline); the clan's rating -- its eight best members' average, as
+ * UpdateClanRanking's -- kept and shown (SOCOM II's, the name ours; OVL1 0x2E6AF0). The member's account
+ * compared and its stat added as unsigned give the target's registers (int operands swap v1 and a0,
+ * as in UpdateClanRanking); the online mark is a switch, its zero case laid out first */
+void UpdateClanRoster()
+{
+    CRdrEditor ed;
+    char id[32];
+    char rank[64];
+
+    data_0044F770 = 0;
+    int n = 8;
+
+    std::sort(ClanMemberVec.begin(), ClanMemberVec.end(), ClanMemberOrder());
+    ed.push(0);
+    for (ClanMemberVector::iterator i = ClanMemberVec.begin(); i != ClanMemberVec.end(); ++i) {
+        bool leader = StoredClanInfo.LeaderAccountID == (unsigned int)(*i)->AccountID;
+        bool counted = false;
+
+        if (ClanMemberVec.size() >= 8 && n-- > 0)
+            counted = true;
+        ed.push(0);
+        ed.push(0);
+        sprintf(id, "%d", (*i)->AccountID);
+        ed.addSTRING("VALUE", id);
+        ed.pop();
+        ed.addstringnode((*i)->AccountName);
+        const char *mark;
+
+        switch ((*i)->OnlineState.ConnectStatus) {
+        case 0:
+            mark = "\xaa";
+            break;
+        default:
+            mark = "\xa7";
+            break;
+        }
+        ed.addstringnode(mark);
+        ed.addstringnode(&(*i)->Stats[0x9f]);
+        sprintf(rank, "%d", (*i)->LadderPosition);
+        ed.addstringnode(rank);
+        if (leader)
+            ed.addstringnode("(Leader)");
+        else
+            ed.addstringnode(" ");
+        ed.addintnode(theLobby.GetRankLevel((*i)->LadderPosition));
+        if ((*i)->OnlineState.ConnectStatus) {
+            if (!strncmp((*i)->OnlineState.LobbyName, "Medius", 6)) {
+                ed.addstringnode("MAIN MENU");
+                ed.addstringnode(" ");
+            } else {
+                ed.addstringnode((*i)->OnlineState.LobbyName);
+                ed.addstringnode((*i)->OnlineState.GameName);
+            }
+        } else {
+            ed.addstringnode("");
+            ed.addstringnode("");
+        }
+        ed.pop();
+        if (counted)
+            data_0044F770 += (unsigned int)(*i)->LadderStat;
+    }
+    data_0044F770 /= 8;
+    ed.pop();
+    theLobby.uiv_ClanRoster->Set(&ed);
+    SetVarInt(theUIVarManager.Add("ClanRating", 0, UIVL_TEMPORARY), data_0044F770);
+}
+
 /* the member list asked for again, the old one shown emptied (SOCOM 1's; OVL1 0x2E69F0) */
 bool CZOnlineLobby::GetClanRoster()
 {
@@ -935,7 +1018,7 @@ bool CZOnlineLobby::GetClanRoster()
     if (m_current_state != LOBBY_ACTIVE)
         return false;
     ClanMemberVec.DeleteAll();
-    func_002E6AF0();
+    UpdateClanRoster();
     MediusGetClanMemberListRequest req;
 
     memset(&req, 0, sizeof(req));
@@ -959,7 +1042,7 @@ void cbDisbandClan(MediusErrorCode, MediusErrorCode, MediusErrorCode,
         func_003862A0(theLobby.uiv_ClanDescription, " ");
         func_003862A0(theLobby.uiv_ClanMessages, "No clan messages.");
         ClanMemberVec.DeleteAll();
-        func_002E6AF0();
+        UpdateClanRoster();
         PlayerClanID = -1;
         StoredClanInfo.ClanID = -1;
         StoredClanInfo.LeaderAccountID = -1;
@@ -1028,6 +1111,41 @@ void ClanMessageVector::Add(MediusGetAllClanMessagesResponse *resp)
 }
 
 #pragma auto_inline reset
+
+/* the leader's messages handed to the menus, numbered from 1 -- each one's id, text and number --
+ * with an empty one (id -1) to write next while there are fewer than five (SOCOM II's, the name
+ * ours after the UI variable it fills; OVL1 0x2E6400: cbGetLeaderMessages calls it) */
+void UpdateLeaderMessages()
+{
+    CRdrEditor ed;
+    char text[512];
+
+    ed.push(0);
+    int n = 1;   /* (after the push: declared ahead of it, MW sets it in the push's delay slot) */
+
+    for (ClanMessageVector::iterator i = ClanMessageVec.begin(); i != ClanMessageVec.end(); ++i) {
+        ClanMessageItem *m = *i;
+
+        ed.push(0);
+        sprintf(text, "%d", m->ClanMessageID);
+        ed.addstringnode(text);
+        ed.addstringnode(m->Message);
+        sprintf(text, "Message %d:", n);
+        ed.addstringnode(text);
+        ed.pop();
+        n++;
+    }
+    if (ClanMessageVec.size() < 5) {
+        ed.push(0);
+        ed.addstringnode("-1");
+        ed.addstringnode(" ");
+        sprintf(text, "Message %d:", n);
+        ed.addstringnode(text);
+        ed.pop();
+    }
+    ed.pop();
+    theUIVarManager.Add("ClanLeaderMessages", 0, UIVL_TEMPORARY)->Set(&ed);
+}
 
 /* the leader's messages emptied and asked for (SOCOM II's; OVL1 0x2E6310). Never inlined in the
  * target, though three callbacks of this unit call it: pinned */
