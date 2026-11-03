@@ -295,7 +295,7 @@ public:
     /* a range copied over the contents (OVL1 0x259D20, operator='s): the char pod's assign with init's
      * word loop */
     template <class InputIterator>
-    void assign(InputIterator first, InputIterator last, forward_iterator_tag);
+    void do_assign(InputIterator first, InputIterator last, forward_iterator_tag);
     /* n copies of value (SOCOM 1's init__...FUiRCUi, the same 0xE8 bytes as SOCOM II's 0x3C45B0) */
     void init(unsigned int n, const T &value);
     /* grown by copies of c through insert, or cut through erase (out of class: CVisual::Init calls
@@ -410,7 +410,7 @@ public:
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
     template <class InputIterator>
-    void assign(InputIterator first, InputIterator last, forward_iterator_tag);
+    void do_assign(InputIterator first, InputIterator last, forward_iterator_tag);
     void resize(unsigned int sz, const T &c);
     void push_back(const T &x) { insert(data() + size_, 1, x); }
 
@@ -434,7 +434,7 @@ template <class Allocator>
 __vector_pod<char, Allocator> &__vector_pod<char, Allocator>::operator=(const __vector_pod &x)
 {
     if (this != &x)
-        assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+        do_assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
     return *this;
 }
 
@@ -455,7 +455,7 @@ void __vector_pod<char, Allocator>::init(InputIterator first, InputIterator last
 /* a range copied over the contents (0x393FB0): a fresh block when it does not fit, the old freed */
 template <class Allocator>
 template <class InputIterator>
-void __vector_pod<char, Allocator>::assign(InputIterator first, InputIterator last, forward_iterator_tag)
+void __vector_pod<char, Allocator>::do_assign(InputIterator first, InputIterator last, forward_iterator_tag)
 {
     unsigned int n = distance(first, last);
 
@@ -675,11 +675,11 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     __vector_imp &operator=(const __vector_imp &x)
     {
         if (this != &x)
-            assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+            do_assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
         return *this;
     }
     template <class InputIterator>
-    void assign(InputIterator first, InputIterator last, forward_iterator_tag);
+    void do_assign(InputIterator first, InputIterator last, forward_iterator_tag);
 };
 
 template <class T, class Allocator>
@@ -881,7 +881,7 @@ template <class T, class Allocator>
 __vector_pod<T, Allocator> &__vector_pod<T, Allocator>::operator=(const __vector_pod &x)
 {
     if (this != &x)
-        assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+        do_assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
     return *this;
 }
 
@@ -890,7 +890,7 @@ __vector_pod<T, Allocator> &__vector_pod<T, Allocator>::operator=(const __vector
  * it 8x, as init's) and the count set */
 template <class T, class Allocator>
 template <class InputIterator>
-void __vector_pod<T, Allocator>::assign(InputIterator first, InputIterator last, forward_iterator_tag)
+void __vector_pod<T, Allocator>::do_assign(InputIterator first, InputIterator last, forward_iterator_tag)
 {
     unsigned int n = last - first;
 
@@ -1277,7 +1277,7 @@ inline const T &__vector_min(const T &a, const T &b)
 
 template <class T, class Allocator, bool IsPOD>
 template <class InputIterator>
-void __vector_imp<T, Allocator, IsPOD>::assign(InputIterator first, InputIterator last, forward_iterator_tag)
+void __vector_imp<T, Allocator, IsPOD>::do_assign(InputIterator first, InputIterator last, forward_iterator_tag)
 {
     unsigned int n = last - first;
 
