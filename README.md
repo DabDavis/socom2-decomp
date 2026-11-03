@@ -4263,6 +4263,18 @@ MediusGetPolicy moved, the three ignore-list requests by call), 4 data rows.
   6, 7, 8, 9, 10, 17, 11, 13, 12, 14); a local pointer for a struct copy's destination whose address
   is used again (casrGetSessionData: with `s->lng` 2.96 folds the data pointer to s+152, 87s); one
   float variable for x and the result (CalcSentenceConfidence: two move every register, 17 words).
+- **The user-word DP blocks** (dpgenuw.c, dpscoreuw.c, extevdp.c; SOCOM 1's objects 0x352770,
+  0x3539F0, 0x354AD0): `x += c ? (cache[i] = f()) : cache[i]` gives the target's add in both arms
+  with x loaded before the test (a local and if/else does not); `if (c == 0) r.f = 100; else r.f =
+  x;` gives the constant arm falling through (fold turns the `?:` round); small inline helpers whose
+  argument is loaded before their test (FreeCells/FreeBacktrace's early `lw tos`; CheckAlloc's
+  `unsigned char` return, the `andi` at the join); a loop bound through the block is reloaded and
+  the loop not unrolled -- the target's is a local; `e->chunks[n++] = chunk; e->nchunks = n;` (n + 1
+  does not increment in place); `bt = node` after the node's stores (before them CSE stores through
+  bt). ccsweep's and ccperm's probes qualify a `NAME@UNIT` static by the file's stem: a probe must be
+  `<dir>/<unit>.c` (helpers in build/scratch/gcc/h1/). The call-site vote's ControlDpScoreUw at
+  0x4E5668 is ControlDpGenUw (its constructor's control slot); func_004E5538 (ControlDpGenUw's
+  command 23, split off) and func_004E6BC0 (uncalled) are SOCOM II's own.
 - **Open, diagnosed in place**: UpdateExevStatus (1 word: `bnez` there, `bnezl` here),
   casrGetSessionData (38 words, the right size: which stores go through s+8), cbDoSecondPassIfEnabled
   (9: the result's register), casrInitSegmentation (44s: the row pointer), and the earlier opens
@@ -4275,7 +4287,10 @@ cbTOSAbnormalCond, CopyContextInfo); 19 rows named (casrCreateResult, cbIsoWordR
 cbDoSecondPassIfEnabled `s1:calls`; casrGetSessionData, cbTSDetected, cbTSAfterStartDetected,
 cbStartDetected, cbTOSRecognised, cbSpellRecognised, cbNothingRecognised, cbSpellNothingRecognised,
 the NoClearErrorLog pair, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond,
-Set_EndBackTraceMask_In_StateDict, CopyContextInfo `s1:order`).
+Set_EndBackTraceMask_In_StateDict, CopyContextInfo `s1:order`); `asr/dpgenuw.c` (7 of 8; InitViterbi
+OPEN, the wrong size), `asr/dpscoreuw.c` (11 of 11), `asr/extevdp.c` (5 of 5), all new -- 17 rows new
+(6,616 bytes), 6 superseding matching drafts, 9 rows named (`s1:order`, `s1:slot`). DynProgUserWords,
+SendResultUserWords and DynProgScoreUserWords are not written.
 
 ## Open, and next
 
