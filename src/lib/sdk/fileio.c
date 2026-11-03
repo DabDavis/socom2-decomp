@@ -76,6 +76,24 @@ struct _sceFsCall {
 	} u;
 };
 
+/* the path calls with an argument before the path */
+struct _sceFsMode {
+	int sema;
+	int *result;
+	int rsize;
+	int mode;
+	char name[1024];
+};
+
+struct _sceFsSync {
+	int sema;
+	int *result;
+	int rsize;
+	int pad;
+	int flag;
+	char name[1024];
+};
+
 static int _fs_init = 0;
 static int _fs_semid = -1;
 static int _fs_iob_semid = -1;
@@ -300,6 +318,47 @@ int sceRemove(const char *name)
 	return _sceCallCode(name, 6);
 }
 
+int sceMkdir(const char *name, int mode)
+{
+	struct _sceFsMode *p = (struct _sceFsMode *)&_send_data;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(7);
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->name[i] = name[i]) == 0)
+			break;
+	if (i == 1024) {
+		p->name[1023] = 0;
+		i = 1023;
+	}
+	p->mode = mode;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->result = &result;
+	p->sema = sema;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 7, 0, &_send_data, i + 17, _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
 int sceRmdir(const char *name)
 {
 	return _sceCallCode(name, 8);
@@ -460,6 +519,45 @@ int sceDread(int fd, void *buf)
 int sceChdir(const char *name)
 {
 	return _sceCallCode(name, 18);
+}
+
+int sceSync(const char *name, int flag)
+{
+	struct _sceFsSync *p = (struct _sceFsSync *)&_send_data;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(19);
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->name[i] = name[i]) == 0)
+			break;
+	if (i == 1024)
+		p->name[1023] = 0;
+	p->flag = flag;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->result = &result;
+	p->sema = sema;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 19, 0, &_send_data, sizeof(struct _sceFsSync), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
 }
 
 int sceUmount(const char *name)
