@@ -11,6 +11,7 @@
 #define ZUI_2D_H
 
 #include "../ztwod/ztwod.h"
+#include "zui_uivar.h"
 #include "zui_spec.h"
 
 /* a texture by name, prepared for drawing (zui.cpp's PrepTexture, 0x36A230) */

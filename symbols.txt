@@ -2128,53 +2128,53 @@
 0x0022EBF0 0x98 Init__12CRebootStateFv  # OVL1; by hand (the states lane, round 19: slot 0x10 of CRebootState's vtable 0x405B10, CGameState's Init's -- the system shut down and the game's ELF rerun with dlgAfterReboot.rdr; st_reboot.cpp)
 0x0022EC90 0x74 __ct__12CRebootStateFv  # OVL1; s1:vtable by hand (the states lane: CGameState's base inlined, then CRebootState's vtable 0x405B10, RTTI-named)
 0x0022ED10 0x94 RebootAfterError__Fv  # OVL1; by hand (the states lane, round 19: st_reboot.cpp's -- CRebootState::Init's reboot with dlgAfterErrorReboot.rdr, called by zVid_Assert (both overlays' copies) and 0x365A00; the name ours)
-0x0022EDB0 0x38 func_0022EDB0  # OVL1
-0x0022EDF0 0x30 func_0022EDF0  # OVL1
-0x0022EE20 0x40 func_0022EE20  # OVL1
-0x0022EE60 0x48 func_0022EE60  # OVL1
-0x0022EEB0 0x60 func_0022EEB0  # OVL1
-0x0022EF10 0xEC func_0022EF10  # OVL1
-0x0022F000 0xE4 func_0022F000  # OVL1
-0x0022F0F0 0x114 func_0022F0F0  # OVL1
-0x0022F210 0x118 func_0022F210  # OVL1
-0x0022F330 0x68 func_0022F330  # OVL1
-0x0022F3A0 0xC func_0022F3A0  # OVL1
-0x0022F3B0 0xC func_0022F3B0  # OVL1
-0x0022F3C0 0x80 func_0022F3C0  # OVL1
-0x0022F440 0x74 func_0022F440  # OVL1
-0x0022F4C0 0x64 func_0022F4C0  # OVL1
-0x0022F530 0x7C func_0022F530  # OVL1
-0x0022F5B0 0x130 func_0022F5B0  # OVL1
-0x0022F6E0 0x12C func_0022F6E0  # OVL1
-0x0022F810 0x6C func_0022F810  # OVL1
-0x0022F880 0x68 func_0022F880  # OVL1
-0x0022F8F0 0x58 func_0022F8F0  # OVL1
-0x0022F950 0x6C func_0022F950  # OVL1
-0x0022F9C0 0xC8 func_0022F9C0  # OVL1
-0x0022FA90 0x168 func_0022FA90  # OVL1
-0x0022FC00 0x104 func_0022FC00  # OVL1
-0x0022FD10 0x50 func_0022FD10  # OVL1
-0x0022FD60 0x8 func_0022FD60  # OVL1
-0x0022FD70 0x114 func_0022FD70  # OVL1
-0x0022FE90 0x9C func_0022FE90  # OVL1
-0x0022FF30 0x120 func_0022FF30  # OVL1
-0x00230050 0x174 func_00230050  # OVL1
-0x002301D0 0x10 func_002301D0  # OVL1
-0x002301E0 0xE4 func_002301E0  # OVL1
-0x002302D0 0x104 func_002302D0  # OVL1
-0x002303E0 0x160 func_002303E0  # OVL1
-0x00230540 0xC func_00230540  # OVL1
-0x00230550 0xC func_00230550  # OVL1
-0x00230560 0xB8 func_00230560  # OVL1
-0x00230620 0xB8 func_00230620  # OVL1
-0x002306E0 0x18C func_002306E0  # OVL1
+0x0022EDB0 0x38 tcmCueScaryMusic__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the radio command menu's CUE SCARY MUSIC command, MUS_SCARY to the jukebox; the cache builder 0x2344E0 registers it with that name)
+0x0022EDF0 0x30 tcmReportStatus__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the REPORT STATUS command, registered by 0x2344E0 with that name)
+0x0022EE20 0x40 tcmWhassup__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the WHASSUP command, unit 1's gesture 77; registered by 0x2344E0 with that name)
+0x0022EE60 0x48 tcmSayAgain__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the SAY AGAIN command, registered by 0x2344E0 with that name)
+0x0022EEB0 0x60 tcmNiceOne__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the NICE ONE command, the mission's COMPLIMENT cue; registered by 0x2344E0 with that name)
+0x0022EF10 0xEC tcmUpdateNodeAction__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the NODEACTION items' test, registered by 0x2344E0 beside tcmNodeAction)
+0x0022F000 0xE4 tcmNodeAction__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the NODEACTION items' command: the node's CNodeAction run, as CanPerformAction allows)
+0x0022F0F0 0x114 tcmVoteAll__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- VOTE ALL ON:OFF's command, registered by 0x2344E0 with that name)
+0x0022F210 0x118 tcmUpdateVoteAll__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- VOTE ALL ON:OFF's test: VOTE ALL RETAIN/REMOVE)
+0x0022F330 0x68 tcmRecoCancel__Fv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- reco.cpp's cbrecoResult calls it twice: the team's order cleared)
+0x0022F3A0 0xC tcmSetRecoMode__Fb  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the tree's 0x234F40 sets s_tcmRecoMode through it)
+0x0022F3B0 0xC tcmResetVoteAll__Fv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- ~CHUD calls it: s_tcmVoteAll cleared)
+0x0022F3C0 0x80 tcmVote__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- VOTE RETAIN:REMOVE's command: SendVoteMessage)
+0x0022F440 0x74 tcmUpdateVote__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- VOTE RETAIN:REMOVE's test: VOTE RETAIN/VOTE REMOVE)
+0x0022F4C0 0x64 tcmMute__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- MUTE ON:OFF's command)
+0x0022F530 0x7C tcmUpdateMute__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- MUTE ON:OFF's test: MUTE ON/MUTE OFF)
+0x0022F5B0 0x130 tcmSelectPlayer__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the PLAYER n items' command: s_tcmTarget picked walking CEntity::m_list)
+0x0022F6E0 0x12C tcmUpdatePlayer__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the PLAYER n items' test: labelled with the player's name)
+0x0022F810 0x6C tcmUpdateRadio__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the test of NODEACTION ROOT, TAUNTS, TEAMMATES and the radio items)
+0x0022F880 0x68 tcmRadioOnOff__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- RADIO ONOFF's command)
+0x0022F8F0 0x58 tcmUpdateRadioOnOff__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- RADIO ONOFF's test: RADIO OFF/RADIO ON)
+0x0022F950 0x6C tcmSetChannel__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the TEAM/OFFENSE/DEFENSE channel items' command)
+0x0022F9C0 0xC8 tcmCharacterTaunt__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- CHARACTER TAUNT's command: a random message 59-65)
+0x0022FA90 0x168 tcmUpdateMessage__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the orders', taunts' and messages' test: the custom text as the caption)
+0x0022FC00 0x104 tcmSendMessage__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the orders', taunts' and messages' command: SendMessageMessage, PlayRemoteMsg)
+0x0022FD10 0x50 tcmIntimidate__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- INTIMIDATE's command, registered by 0x2344E0 with that name)
+0x0022FD60 0x8 tcmUpdateIntimidate__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- INTIMIDATE's test: always shown)
+0x0022FD70 0x114 tcmTeamCommand__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the team orders' command (0x2344E0's 1..41))
+0x0022FE90 0x9C tcmUpdateTeamCommand__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the team orders' test)
+0x0022FF30 0x120 tcmTeamMember__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the team members' command (0x2344E0's 0..23): s_tcmMember)
+0x00230050 0x174 tcmUpdateTeamMember__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the team members' test)
+0x002301D0 0x10 tcmSelectTeam__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the teams' command (0x2344E0's six): s_tcmTeam)
+0x002301E0 0xE4 tcmUpdateTeam__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the teams' test: team 18's leader names the item, CHA SOLDIER as SOLDIER)
+0x002302D0 0x104 tcmCloseNode__FP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- a node closed: its parent's column back (the path popped, the columns' slide directions swapped), the recogniser resumed; the tree's 0x235D40 calls it)
+0x002303E0 0x160 tcmOpenNode__FP10CZSealBodyP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- a node opened: its last child selected on the path, a column slid in, the children shown; the tree calls it with no player when an item's command returns 1)
+0x00230540 0xC tcmClearCurNode__Fv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- s_tcmCurNode cleared; the tree calls it after each test, out of line)
+0x00230550 0xC tcmSetCurNode__FP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- s_tcmCurNode set; the tree calls it before each test, out of line: the unit boundary)
+0x00230560 0xB8 Find__9CTCMCacheFPCc  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the radio command menu cache's item by name, strcasecmp on each; inlined into Add, called by the menu object 0x237000)
+0x00230620 0xB8 __dt__9CTCMCacheFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the cache's destructor, registered by the initialiser 0x3FF4A0 for mpCache 0x414550 and spCache 0x4144F0: its items deleted from the back, then the vector's three this-tests)
+0x002306E0 0x18C Add__9CTCMCacheFPCcPFP10CZSealBodyi_iiPFP10CZSealBodyi_ii  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- an item (0x70 bytes: a 0x60 name, command, test and their arguments) made and kept unless held; the cache builder 0x2344E0 calls it for every item)
 0x00230870 0x7EC func_00230870  # OVL1
 0x00231060 0xE8 func_00231060  # OVL1
 0x00231150 0x1C0 func_00231150  # OVL1
 0x00231310 0x22C func_00231310  # OVL1
 0x00231540 0x150 func_00231540  # OVL1
 0x00231690 0x380 func_00231690  # OVL1
-0x00231A10 0x14 func_00231A10  # OVL1
+0x00231A10 0x14 __ct__10CTCMColumnFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- CTCMColumn's inline constructor (1.0f, 0), the unit's tail: __construct_array takes it for g_tcmColumns)
 0x00231A30 0x16C func_00231A30  # OVL1
 0x00231BA0 0x228 func_00231BA0  # OVL1
 0x00231DD0 0x8 func_00231DD0  # OVL1
@@ -2217,19 +2217,19 @@
 0x002359A0 0x394 func_002359A0  # OVL1
 0x00235D40 0x384 func_00235D40  # OVL1
 0x002360D0 0x180 func_002360D0  # OVL1
-0x00236250 0x8 func_00236250  # OVL1
+0x00236250 0x8 Set__8CTCMModeFi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the radio command menu's mode byte at theTCM+0x750 set; the commands' layout and the tree call it out of line: the unit boundary)
 0x00236260 0x1C8 func_00236260  # OVL1
 0x00236430 0x618 func_00236430  # OVL1
-0x00236A50 0x50 func_00236A50  # OVL1
-0x00236AA0 0x80 func_00236AA0  # OVL1
+0x00236A50 0x50 Hold__4CTCMFbf  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the menu's input hold at +0xDB4: added to unless reset, cleared for t <= 0)
+0x00236AA0 0x80 GetColumn__4CTCMFUi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the node of a depth's column, the path at +0x754 walked down from the root; the layout and the tree call it)
 0x00236B20 0x180 func_00236B20  # OVL1
-0x00236CA0 0x78 func_00236CA0  # OVL1
+0x00236CA0 0x78 SetCache__4CTCMFP9CTCMCache  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item cache at +0x760 and its name at +0x764, "No Cache Available" without one; inlined into Reset)
 0x00236D20 0x2E0 func_00236D20  # OVL1
-0x00237000 0xCC func_00237000  # OVL1
-0x002370D0 0xCC func_002370D0  # OVL1
+0x00237000 0xCC tcmAddItem__FPCciPCcPCcPCci  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- an item's node from theTCM's cache entry of that name (Find), the captions defaulting to the name; the menu builders 0x2329F0/0x232BC0 call it)
+0x002370D0 0xCC Reset__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the tree emptied, the cache cleared, the strings wiped, the lists cleared; CHUD calls it on theTCM)
 0x002371A0 0x170 func_002371A0  # OVL1
-0x00237310 0x38 func_00237310  # OVL1; tu: node_world.cpp~ (1.0 beta)
-0x00237350 0x3C func_00237350  # OVL1
+0x00237310 0x38 ClearItems__4CTCMFv  # OVL1; tu: node_world.cpp~ (1.0 beta); ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item list bitmap's list at +0xDE0 cleared; CHUD calls it)
+0x00237350 0x3C Init__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the caches built (0x2344E0), the path and the root's children reserved)
 0x00237390 0x1E8 func_00237390  # OVL1
 0x00237580 0x1E0 func_00237580  # OVL1
 0x00237760 0x3D8 Update__12CAmmoDisplayFv  # OVL1; by hand (the HUD lane: the ammo counts from the HUD owner's kit, the unit's first function in the image; the name ours)
@@ -8507,7 +8507,7 @@
 0x003FE980 0x9D0 func_003FE980  # OVL1 data area; a static initialiser
 0x003FF350 0x64 func_003FF350  # OVL1 data area; a static initialiser
 0x003FF3C0 0x64 func_003FF3C0  # OVL1 data area; a static initialiser
-0x003FF430 0x70 func_003FF430  # OVL1 data area; a static initialiser
+0x003FF430 0x70 __sinit_hud_tcmcmds.cpp  # OVL1 data area; a static initialiser; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp's static initialiser -- its layout statics s_tcmLeft/s_tcmSpan (off the data statics 0x3DC9F0, 0x3DCA80) and s_tcmCursorColor, then g_tcmColumns built through __construct_array)
 0x003FF4A0 0x168 func_003FF4A0  # OVL1 data area; a static initialiser
 0x003FF610 0x64 __sinit_hud_ammo.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_ammo.cpp's initialiser (between the radio menu's 0x3FF4A0 and hud_mpinfobox.cpp's 0x3FF680, as the code): its four bss floats computed off s_polyy and s_ammox (s_texty, s_magx, s_magy, s_bitmapy)
 0x003FF680 0x124 __sinit_hud_mpinfobox.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_mpinfobox.cpp's initialiser (between hud_ammo.cpp's and 0x3FF7B0, as the code): thirteen bss floats of the box's places computed off its data variables, in their order

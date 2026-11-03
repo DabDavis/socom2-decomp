@@ -796,6 +796,8 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
         T &operator[](unsigned int n) { return ((T *)__base::data())[n]; }                      \
         T &at(unsigned int n) { return (T &)__base::at(n); }                                    \
         void push_back(const T &x) { __base::push_back((const unsigned int &)x); }              \
+        /* (the HUD lane, round 23: the radio command menu's path, 0x2302D0's size decrement) */ \
+        void pop_back() { this->size_--; }                                                      \
         void clear() { __base::clear(); }                                                       \
         void swap(__vector_imp &x) { __base::swap(x); }                                         \
     };                                                                                          \
