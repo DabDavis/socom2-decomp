@@ -31,6 +31,17 @@ class CTextureRelocMgr;
 }
 class CGameMenu;
 
+/* the pad (zinput.h's CPad, whose enums zui_spec.h repeats, so the two cannot meet in one unit): the
+ * keyboard units read only its button states, a KEY_STATE byte each from 0x1 (0x38D200's pad: L1
+ * at 0xD, triangle 0x7, circle 0x8, R1 0xB) */
+#ifndef ZINPUT_H
+class CPad {
+public:
+    unsigned char m_0;   // 0x0
+    unsigned char m_state[PAD_MAX_BUTTONS];   // 0x1
+};
+#endif
+
 /* the iterator before i, i taken BY VALUE (ours): the keyboard units' last-element reads build the
  * end iterator, copy it into a slot of its own and fold the step into the access (0x390820's
  * `lhu -4`, SkbWrapText's and SkbWrapTokens' last pieces) -- the shape of a by-value iterator
@@ -181,19 +192,37 @@ struct CIntPair {
 /* the pair of ints a tag names (SOCOM 1's ReadIntPair; the display unit's, 0x395300) */
 CIntPair ReadIntPair(_zrdr *rdr, const char *tag);
 
+/* the display unit's locks and shift (zui_skbview.cpp; the names ours): whether the keys type
+ * shifted (L1 against the shift lock, 0x396E60; and against the second lock, 0x396CB0), the
+ * second lock toggled (0x3948F0), the shift lock toggled or hidden (0x3947D0) */
+bool SkbShifted(CPad *pad);
+bool SkbShifted2(CPad *pad);
+void SkbToggleLock2();
+void SkbToggleShiftLock(bool toggle);
+
 /* four words: a place and a size (a rectangle, the names ours; the look's rectangles) */
 struct CSkbRect {
-    CSkbRect() : m_x(0), m_y(0), m_w(0), m_h(0) {}
+    CSkbRect()
+    {
+        m_pos[0] = 0;
+        m_pos[1] = 0;
+        m_size[0] = 0;
+        m_size[1] = 0;
+    }
     /* (ours) */
     void Set(const CIntPair &pos, const CIntPair &size)
     {
-        m_x = pos.Get1st();
-        m_y = pos.Get2nd();
-        m_w = size.Get1st();
-        m_h = size.Get2nd();
+        m_pos[0] = pos.Get1st();
+        m_pos[1] = pos.Get2nd();
+        m_size[0] = size.Get1st();
+        m_size[1] = size.Get2nd();
     }
 
-    int m_x, m_y, m_w, m_h;
+    /* two int pairs: SetRect's block copy moves each through the FPRs as a unit of its own (two
+     * loads, two stores, twice), which named members (lw/sw) or one int[4] (four loads first) do
+     * not give */
+    int m_pos[2];   // 0x0
+    int m_size[2];   // 0x8
 };   // 0x10 bytes
 
 /* what the rdr says about a keyboard's look (the look parser 0x3963F0's: Name, Background,
@@ -214,6 +243,9 @@ struct CSkbLook {
     int m_c0, m_c4, m_c8, m_cc, m_d0, m_d4, m_d8, m_dc;   // 0xc0
     CSkbCapLook m_caps[3];   // 0xe0
     std::vector<CSaferStr> m_strings;   // 0x14c
+
+    /* a rectangle set by index (the look parser's five, out of line: zui_skbview.cpp's 0x396BD0) */
+    void SetRect(unsigned char i, const CSkbRect &r);
 };   // 0x158 bytes
 
 /* the keyboard (SOCOM II's 0x710 bytes: the key map at 0x164 where SOCOM 1's is at 0x2C, the grid

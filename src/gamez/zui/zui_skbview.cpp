@@ -80,6 +80,39 @@ const char *SkbGetText(bool edited)
     return edited ? s_editText : s_openText.c_str();
 }
 
+/* whether a bitmap's node is shown (ours) */
+static inline bool SkbShown(const CBmpWithNode &b)
+{
+    return b.m_node && b.m_node->m_active;
+}
+
+/* L1 held or just pressed (ours) */
+static inline bool SkbPadShift(const CPad *pad)
+{
+    return pad->m_state[PAD_TRIGGER_L1] == KEY_FALLING || pad->m_state[PAD_TRIGGER_L1] == KEY_DOWN;
+}
+
+/* whether the keys type shifted: L1 against the shift lock (bitmap 5); 0x399070 asks (0x396E60;
+ * the names ours) */
+bool SkbShifted(CPad *pad)
+{
+    bool shift = SkbPadShift(pad);
+
+    return shift != SkbShown(s_bmp5);
+}
+
+/* the same, against the second lock (bitmap 0) as well (0x38D200 asks; 0x396CB0, ours) */
+bool SkbShifted2(CPad *pad)
+{
+    return SkbShifted(pad) != SkbShown(s_bmp0);
+}
+
+/* a look rectangle set by index (the look parser's five, out of line; 0x396BD0, ours) */
+void CSkbLook::SetRect(unsigned char i, const CSkbRect &r)
+{
+    m_rects[i] = r;
+}
+
 /* a rectangle read from an rdr block's Pos and Size pairs (the look parser 0x3963F0 calls it) */
 void ReadSkbRect(CSkbRect *r, _zrdr *rdr)
 {
@@ -122,6 +155,12 @@ void SkbToggleCaption2(CSoftKeyboard *skb)
     PlaceCaption(skb, 0.0f);
 }
 
+/* the second lock (bitmap 0) toggled (0x3948F0; the name ours) */
+void SkbToggleLock2()
+{
+    s_bmp0.m_node->SetActive(!s_bmp0.m_node->m_active);
+}
+
 /* how far mode 1 raises the caption: the look's float at 0x64, or nothing (ours) */
 static inline float CaptionRaise(CSoftKeyboard *skb, bool on)
 {
@@ -141,4 +180,13 @@ bool SkbToggleCaption1(CSoftKeyboard *skb)
     s_captionNode->SetPosition((float)x, dy + (float)y, 0.0f);
     SetCaption(on ? s_captionText1 : s_captionText0);
     return on;
+}
+
+/* the shift lock (bitmap 5) toggled, or hidden (0x3947D0; the name ours) */
+void SkbToggleShiftLock(bool toggle)
+{
+    if (toggle)
+        s_bmp5.m_node->SetActive(!s_bmp5.m_node->m_active);
+    else if (s_bmp5.m_node)
+        s_bmp5.m_node->SetActive(false);
 }
