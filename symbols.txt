@@ -2014,10 +2014,10 @@
 0x00224BF0 0x88 GetTimeInGameSec__9CNetClockFv  # OVL1; by hand (the HUD lane, round 18): SOCOM 1's GetTimeInGameSec (0.001 * the total time, made unsigned; SOCOM 1's read 0x14, SOCOM II's 0x10) -- SetMpStatUiVars' second time ('TimeInGame', PTMF 0x3DC840)
 0x00224C80 0x88 GetTimeInRoundSec__9CNetClockFv  # OVL1; by hand (the HUD lane, round 18): SOCOM 1's GetTimeInRoundSec (0.001 * the round's time; SOCOM 1's read 0xC, SOCOM II's 8) -- SetMpStatUiVars' first time ('TimeInRound', PTMF 0x3DC830)
 0x00224D10 0x358 GetRoundResult__23@unnamed@st_mpexit_cpp@FP10CZSealBodyPiPi  # OVL1; ours (the HUD lane, round 20: st_mpexit.cpp's anonymous namespace, between SetMvpUiVars and SetMpStatUiVars -- a SEAL's round: the living SEALs, terrorists and third side (team 0x20000) counted over CEntityItr, two round counters (0x1C, 0x38) of the SEALs summed, then a win by the network game's type 1-5 against the SEAL's side and m_isAlive, and its round counter 0x3A added to the score; Init's call)
-0x00225070 0x34C func_00225070  # OVL1
-0x002253C0 0x330 func_002253C0  # OVL1
+0x00225070 0x34C UpdateCareerRecord__23@unnamed@st_mpexit_cpp@Fii  # OVL1; ours (the HUD lane, round 21: st_mpexit.cpp's anonymous namespace, Init's one call -- the player's career record read (0x2F98F0, 0xE8 bytes by the two frames), the game stats' counters summed into it, the hit percentage averaged over the 22-bit game count, the game's seconds (CNetClock::GetTimeInGameSec inlined) and the two arguments added, the count stepped, written back (0x2F96F0, 1))
+0x002253C0 0x330 ComputeNewRating__23@unnamed@st_mpexit_cpp@Fv  # OVL1; ours (the HUD lane, round 21: st_mpexit.cpp's anonymous namespace, UnInit's one call -- a CRatingMatch (mp_rating.cpp) new'd, its two teams added (0, the SEALs' rounds won, 1118.0f; 8, the terrorists', 982.0f), each living counted SEAL added with its game score floored at 0 and its rating 0x2C3500, computed, the player's new rating read back and halved towards the career record's (0x2F98F0, the word at 4) when 0x2C2DC0 says the player has one; returns it)
 0x002256F0 0x304 SetMvpUiVars__23@unnamed@st_mpexit_cpp@FPCcPCc  # OVL1; by hand (the HUD lane, round 17): the name ours -- the MVP (the living, counted SEAL first by CompareSeals over the game stats, SOCOM 1's TickMpStats' search) named with its clan tag ('[%s] %s') into one UI variable and its three c_arrStatFuncs totals into another; SetFinalStatsUiVars and Tick call it
-0x00225A00 0x1C0 SetPlayerStatsUiVar__23@unnamed@st_mpexit_cpp@FPCc  # OVL1; by hand (the HUD lane, round 17): the name ours -- the player's game stats (ftsGetPlayer's GetGameStats: the three totals, the hit percentage, five more counters) as a list of decimal strings in a temporary UI variable; Init calls it (SOCOM 1's SetMpStatUiVars built it with the rest)
+0x00225A00 0x1C0 SetPlayerStatsUiVar__23@unnamed@st_mpexit_cpp@FPCcii  # OVL1; by hand (the HUD lane, round 17): the name ours -- the player's game stats (ftsGetPlayer's GetGameStats: the three totals, the hit percentage, five more counters) as a list of decimal strings in a temporary UI variable; Init calls it (SOCOM 1's SetMpStatUiVars built it with the rest); by hand (the HUD lane, round 21: Init calls it with the variable's name, the rounds won and the rounds lost in a0-a2 -- two int parameters its code never reads; the same code)
 0x00225BC0 0x280 SetFinalTeamTotalsUiVar__23@unnamed@st_mpexit_cpp@FbPCc  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's SetFinalTeamTotalsUiVar(bool, const char *) -- a CRdrEditor list of each c_arrStatFuncs total summed over a side's SEALs' game stats, added as a temporary UI variable; SOCOM II's three totals and the hit-percentage average
 0x00225E40 0x30 GetHitPct__10CSealStatsCFv  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's GetHitPct (0.5 + 100 * the hit percentage, made an int); its copy follows SetFinalTeamTotalsUiVar, whose function-local static PTMF takes its address (0x3DC7A0)
 0x00225E70 0xA8 CompareGameSeals__23@unnamed@st_mpexit_cpp@FP10CZSealBodyP10CZSealBody  # OVL1; by hand (the HUD lane, round 17): SOCOM 1's CompareSeals (MVP score, then the name) over the game stats (PTMF 0x3DC790 = GetGameStats); the name ours; std::sort's comparator (0x224210)
@@ -2104,11 +2104,11 @@
 0x0022DDC0 0x24 func_0022DDC0  # OVL1
 0x0022DDF0 0x6C func_0022DDF0  # OVL1
 0x0022DE60 0x194 GetTeamMembers__28@unnamed@hud_scorepopup_cpp@FPP10CZSealBodyPib  # OVL1; s1:calls by hand (the HUD lane: hud_scorepopup.cpp -- SOCOM 1's GetTeamMembers: the entity walk (CEntityItr's IsSeal/GetSeal/Advance), a side's SEALs, at most eight, and two kill counts summed; SetupTeam (0x229D00) calls it as SOCOM 1's does; SOCOM II adds the network game's dead test and the side tests 0x2C31D0/0x2C30B0)
-0x0022E000 0x460 func_0022E000  # OVL1
-0x0022E460 0x68 func_0022E460  # OVL1
+0x0022E000 0x460 insert__Q23std56__vector_imp<9CSaferStr,Q23std21allocator<9CSaferStr>,0>FP9CSaferStrUiRC9CSaferStr  # OVL1; by hand (the HUD lane, round 21, on the UI lane's lead: vector<CSaferStr>'s class insert(T *, n, const T &), the name zui_skbkeys.cpp emits -- resize<CSaferStr> 0x383800 calls it as insert(end(), n - size(), T()), the push_back 0x22DD60 tail-jumps to it with (data + size, 1, x) over 12-byte elements, LoadFromDesign, the font stretch (0x35AB70, 0x35AF70, 0x35B4B0, 0x35B9D0), 0x381550 and 0x3963F0 call it; its body calls basic_string's copy constructor 0x22E560 and assignment 0x22E4D0 out of line and the deleter's clear 0x22E5F0. zui_skbkeys.cpp's copy is 0x690 bytes, inlining the string's copies)
+0x0022E460 0x68 __dt__Q23std58__vector_deleter<9CSaferStr,Q23std21allocator<9CSaferStr>>Fv  # OVL1; by hand (the HUD lane, round 21, on the UI lane's lead: vector<CSaferStr>'s deleter destructor, the name zui_skb.cpp and zui_skbkeys.cpp emit -- their copy is byte-exact once its one call, the deleter's clear 0x22E5F0, is named; ~CGameMenu, ~CSoftKeyboard, 0x39A5B0, 0x22B4A0 and the font stretch's 0x35B7F0 call it)
 0x0022E4D0 0x84 __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: include/string's copy assignment compiles to its 0x84 bytes -- two short forms copied whole, else replace(0, size(), str))
 0x0022E560 0x90 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: include/string's copy constructor compiles to its 0x90 bytes -- the short form's words copied whole, the long form reserved and replaced in)
-0x0022E5F0 0x9C func_0022E5F0  # OVL1
+0x0022E5F0 0x9C clear__Q23std58__vector_deleter<9CSaferStr,Q23std21allocator<9CSaferStr>>Fv  # OVL1; by hand (the HUD lane, round 21: vector<CSaferStr>'s deleter clear, the name zui_skbkeys.cpp emits, its copy byte-exact here; the deleter's destructor 0x22E460, the class insert 0x22E000, CGameMenu::Clear and 0x381550 call it)
 0x0022E690 0x54 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; by hand (the MSL lane: replace(pos, n1, const basic_string &), the template replace over the other's text; the copy assignment 0x22E4D0 calls it)
 0x0022E6F0 0x70 func_0022E6F0  # OVL1
 0x0022E760 0x70 func_0022E760  # OVL1
@@ -2754,10 +2754,10 @@
 0x002597B0 0x1F4 func_002597B0  # OVL1
 0x002599B0 0x7C func_002599B0  # OVL1
 0x00259A30 0xB8 func_00259A30  # OVL1
-0x00259AF0 0x4C func_00259AF0  # OVL1
+0x00259AF0 0x4C __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1; the MSL headers round 10: include/vector's 4-byte pod operator= (out of class, the char pod's: assign over the other's words unless this one), byte-exact as a probe (build/p10/e/podas.cpp); calls 0x259D20
 0x00259B40 0x4C __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1 ; SOCOM 1 name (its copy of the pointer vectors' implementation, the same 0x4C: zeroed, then init over the other's elements)
 0x00259B90 0x190 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1 ; SOCOM 1 name with MW 3.0's return type (_v); the copy calls it as SOCOM 1's does
-0x00259D20 0x1C0 func_00259D20  # OVL1
+0x00259D20 0x1C0 assign<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 10: include/vector's 4-byte pod assign (the char pod's with init's word loop, "vector::assign length error"), byte-exact as a probe (build/p10/e/podas.cpp)
 0x00259EE0 0x11C FetchLIP__Q23zar4CZARFPQ23zar4CKeyPPv  # OVL1; s1:order by hand (SOCOM 1's FetchLIP 0x1DAF80, first of zar_search.cpp there as here before Fetch(CKey *, ...): dynamic_cast of the file to CBufferIO, its fread(size, void **); CRdrFile and CVisual's readers call it as SOCOM 1's do)
 0x0025A000 0x11C Fetch__Q23zar4CZARFPQ23zar4CKeyPviUi  # OVL1; s1:calls (CRdrFile::Load calls it with SOCOM 1's (key, buf, size, 0)) -- the rdr lane
 0x0025A120 0x1C4 Insert__Q23zar4CZARFPQ23zar4CKeyPCvi  # OVL1; s1:calls (CRdrFile::Insert calls it where SOCOM 1's calls zar::CZAR::Insert) -- the rdr lane
@@ -5070,7 +5070,7 @@
 0x002FE1D0 0x54 Start__16CSMGetServerListFv  # OVL1; ours (CSMGetServerList's slot 0, its vtable 0x406730 by the RTTI at 0x3F5E48: the base's Start inlined, then the Connect state) -- byte-exact, zNetMediusUniverse.cpp
 0x002FE230 0x1AC erase__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecord  # OVL1; ours (the accounts vector's one-element erase: CAcctDB::Delete 0x2FBAE0 passes the iterator's word, the tail assigned down member by member, the count cut, the position returned in v0; include/vector's erase(T *))
 0x002FE3E0 0x6E8 insert__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecordUiRC10AcctRecord  # OVL1; ours (the accounts' insert: CAcctDB::Add 0x2FBCE0 pushes a blank record through it; it calls the record's copy constructor 0x2FEAD0 and placement new 0x2FECA0 out of line)
-0x002FEAD0 0x1C4 func_002FEAD0  # OVL1
+0x002FEAD0 0x1C4 __ct__10AcctRecordFRC10AcctRecord  # OVL1; the MSL headers round 10: AcctRecord's copy constructor, byte-exact as zNetMediusUniverse.cpp emits it; the accounts' insert 0x2FE3E0 calls it at the target's six sites (its only miss was this row's name)
 0x002FECA0 0x8 __nw__FUiPv  # OVL1; by hand, the MSL headers round 4 (include/new's placement new, out of line: the class vectors' construct() cut to one level calls it before the element's copy constructor -- six times in each such insert, LOD's, CDesignDlgObj's, the turret's -- and vector<C2DPoly>::reserve once, byte-exact through it; jr ra; move v0,a1)
 0x002FECB0 0x19C func_002FECB0  # OVL1
 0x002FEE50 0xB0C insert__Q23std68__vector_imp<14UniverseStatus,Q23std27allocator<14UniverseStatus>,0>FP14UniverseStatusUiRC14UniverseStatus  # OVL1; ours (the universe list's insert: cbGetUniverseStatusList 0x2FDAF0 pushes each 0x3D8-byte universe through it)
@@ -8701,30 +8701,30 @@
 0x004CA118 0x284 asrspi_ActivateLng  # OVL2 unaligned; s1:align
 0x004CA3A0 0x280 asrspi_ActivateCtx  # OVL2; s1:calls
 0x004CA620 0x438 asrspi_SetParamList  # OVL2; s1:align
-0x004CAA58 0x2E0 func_004CAA58  # OVL2 unaligned
+0x004CAA58 0x2E0 asrspi_GetParamList  # OVL2 unaligned; s1:order (SOCOM 1's asrspi_GetParamList, 0x28C, after asrspi_SetParamList in the asrspi object: the same body -- each entry's id translated by the same switch as SetParamList's, casrGetParam into the entry's value, ConvErr on failure) -- the gcc lane, round 7c
 0x004CAD38 0x200 asrspi_GetActiveWords  # OVL2 unaligned; s1:calls
 0x004CAF38 0x5A0 asrspi_ActivateWords  # OVL2 unaligned; s1:calls
 0x004CB4D8 0x390 asrspi_DeActivateWords  # OVL2 unaligned; s1:align
 0x004CB868 0x28C asrspi_Start  # OVL2 unaligned; s1:align
 0x004CBAF8 0x170 asrspi_Stop  # OVL2 unaligned; s1:align
-0x004CBC68 0x104 func_004CBC68  # OVL2 unaligned
+0x004CBC68 0x104 asrspi_GainSet  # OVL2 unaligned; s1:calls (SOCOM 1's asrspi_GainSet, 0x100, moved: SOCOM 1's object holds it after GetCtxVersion, SOCOM II's after asrspi_Stop; the same body -- the gain as an unsigned short, casrGainSet under the busy flag, ConvErr on failure -- and the same callee sequence) -- the gcc lane, round 7c
 0x004CBD70 0x1F4 intAcquisition  # OVL2; s1:align
 0x004CBF68 0x178 asrspi_Acquisition  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessAudio calls asrspi_Acquisition where ours call this row, 1 call site; the same position in SOCOM 1's object)
-0x004CC0E0 0x178 func_004CC0E0  # OVL2
+0x004CC0E0 0x178 asrspi_UswAcquisition  # OVL2; s1:order (SOCOM 1's asrspi_UswAcquisition, 0x16C, after asrspi_Acquisition in the asrspi object: the same body, intAcquisition in the user-word recording state 4, state 5 once the utterance is in) -- the gcc lane, round 7c
 0x004CC258 0x10C asrspi_EnableAGC  # OVL2 unaligned; s1:align
 0x004CC368 0xF8 asrspi_DisableAGC  # OVL2 unaligned; s1:align
 0x004CC460 0x1C0 asrspi_ExportSessionData  # OVL2; s1:calls
 0x004CC620 0x1F0 asrspi_ActivateSessionData  # OVL2; s1:align
-0x004CC810 0xC func_004CC810  # OVL2
-0x004CC820 0x138 func_004CC820  # OVL2
-0x004CC958 0x138 func_004CC958  # OVL2 unaligned
+0x004CC810 0xC asrspi_GetLngGenders  # OVL2; s1:order (SOCOM 1's asrspi_GetLngGenders, 0xC, the same position in the asrspi object between ActivateSessionData and GetLngVersion; the same body, `return 0x80040081`) -- the gcc lane, round 7c
+0x004CC820 0x138 asrspi_GetLngVersion  # OVL2; s1:order (SOCOM 1's asrspi_GetLngVersion, 0x130, after GetLngGenders in the asrspi object: the same body -- FillLanguageVirtualTable on the stack, the language's CheckDataType, then its 128-byte version info copied out; 0x80040008 for a wrong type) -- the gcc lane, round 7c
+0x004CC958 0x138 asrspi_GetCtxVersion  # OVL2 unaligned; s1:order (SOCOM 1's asrspi_GetCtxVersion, 0x130, after GetLngVersion: the same body over FillContextV2VirtualTable; 0x80040009 for a wrong type) -- the gcc lane, round 7c
 0x004CCA90 0x3C asrspi_GetVersion  # OVL2; s1:align
 0x004CCAD0 0x14 asrspi_GetUswVersion  # OVL2; s1:exact
 0x004CCAE8 0x44 asrspi_GetState  # OVL2 unaligned; s1:calls (SOCOM 1's asrspi_GetState, the same position in the asrspi object: 0x8xxx0083 for a null pointer, the 11111 magic test; gsapi_EngineStop calls it where SOCOM 1's calls asrspi_GetState)
 0x004CCB30 0x120 asrspi_UswGetRecordingInfo  # OVL2; s1:align
-0x004CCC50 0x18 func_004CCC50  # OVL2
-0x004CCC68 0x18 func_004CCC68  # OVL2 unaligned
-0x004CCC80 0x2C func_004CCC80  # OVL2
+0x004CCC50 0x18 _engineMalloc  # OVL2; s1:order (SOCOM 1's _engineMalloc, 0x1C, after asrspi_UswGetRecordingInfo in the asrspi object: heap_Alloc on the engine's heap at +208, as here) -- the gcc lane, round 7c
+0x004CCC68 0x18 _engineCalloc  # OVL2 unaligned; s1:order (SOCOM 1's _engineCalloc, 0x1C, after _engineMalloc: heap_Calloc on the engine's heap) -- the gcc lane, round 7c
+0x004CCC80 0x2C _engineFree  # OVL2; s1:order (SOCOM 1's _engineFree, 0x18: heap_Free on the engine's heap when the block is not null, as here; SOCOM 1's object holds it first, SOCOM II's after _engineCalloc, its two siblings) -- the gcc lane, round 7c
 0x004CCCB0 0x8C ASRSPICBABNORM  # OVL2; s1:align
 0x004CCD40 0x38 ASRSPICBAGC  # OVL2; s1:align
 0x004CCD78 0x20 ASRSPICBASKCURRENTGAIN  # OVL2 unaligned; s1:align
@@ -10149,7 +10149,7 @@
 0x0055C740 0x130 func_0055C740  # OVL2
 0x0055C870 0x42C func_0055C870  # OVL2
 0x0055CCA0 0x30 func_0055CCA0  # OVL2
-0x0055CCD0 0xF0 func_0055CCD0  # OVL2
+0x0055CCD0 0xF0 OnSignal__11CAiSGrenadeFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable by hand (the SEALs, round 13): slot 0x8 of __vt__11CAiSGrenade (0x669358), OnSignal's slot in every state table (CAiSPursue's 0x55A8D0, CAiSAnimate's 0x55ABC0); SOCOM 1's CAiSGrenade::OnSignal (0x25D0C0) clears a byte on signal 0 as this one clears 0x60 -- SOCOM II adds the reset and signal 1's inlined ChangeStanceDelayed
 0x0055CDC0 0x35C func_0055CDC0  # OVL2
 0x0055D120 0x1288 Tick__10CAiSDeployFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x0055E3B0 0x2AC func_0055E3B0  # OVL2
@@ -10362,10 +10362,10 @@
 0x00575C50 0x2C _max<f>__2aiFRCfRCf_RCf  # OVL2; s1:order (seal_ai.cpp's template tail after CSealCtrlAi's inline copies, as SOCOM 1's _max<f>__2aiFRCfRCf at 0x26C8A0; MW 3.0 mangles the return type); the larger by reference; CDynGrenade::ComputeTimeToImpact calls it where SOCOM 1's does
 0x00575C80 0x2C _min<f>__2aiFRCfRCf_RCf  # OVL2; s1:order (after _max<f>; SOCOM 1's _min<f>__2aiFRCfRCf is another unit's, 0x1FAC10); the smaller by reference
 0x00575CB0 0x38 _close_enough<i>__FRCiRCiRCi_b  # OVL2; s1:order (the tail's last, as SOCOM 1's _close_enough<i>__FRCiRCiRCi at 0x26C8D0; MW 3.0 mangles the return type): |a - b| within eps on ints
-0x00575CF0 0xBC func_00575CF0  # OVL2
+0x00575CF0 0xBC erase__Q23std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>FQ33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>Q33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>  # OVL2; ours (the SEALs, round 13): the range erase of CAiSAnimate's list at 0x64 -- ~CAiSAnimate (0x5759A0) calls it for that member alone, and the list's insert (0x575E30) builds 0x14-byte nodes, 12-byte timed calls; seal_ai.cpp's template tail, not seal_anim.cpp's
 0x00575DB0 0x74 func_00575DB0  # OVL2
 0x00575E30 0x110 func_00575E30  # OVL2
-0x00575F40 0xBC func_00575F40  # OVL2
+0x00575F40 0xBC erase__Q23std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>FQ33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>Q33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>  # OVL2; ours (the SEALs, round 13): the range erase of CAiSAnimate's list at 0x70 -- ~CAiSAnimate (0x5759A0) calls it for that member alone, and the list's insert (0x576000) builds 0x18-byte nodes, 16-byte span calls; seal_ai.cpp's template tail
 0x00576000 0x118 func_00576000  # OVL2
 0x00576120 0x84 func_00576120  # OVL2
 0x005761B0 0x128 func_005761B0  # OVL2
@@ -11337,9 +11337,9 @@
 0x005E6A50 0x4C GetJumpFlag__11CRemoteCtrlCFv  # OVL2; by hand: CRemoteCtrl's vtable slot +0xA4 (zseal.h's GetJumpFlag, moved into CSealCtrl in SOCOM II): the network state's first byte, through GetAiNetState (slot +0x6C) and a memcpy, when the entity has its +0xC
 0x005E6AA0 0x10 func_005E6AA0  # OVL2
 0x005E6AB0 0x1D4 func_005E6AB0  # OVL2
-0x005E6C90 0xD0 func_005E6C90  # OVL2
-0x005E6D60 0x64 func_005E6D60  # OVL2
-0x005E6DD0 0x70 func_005E6DD0  # OVL2
+0x005E6C90 0xD0 ClearAiStates__9CSealUnitFbb  # OVL2; by hand (the kit lane, round 14): the squad's SEALs' AI controllers told ClearAiState (0x5F5F20) through GetSealCtrlAi (slot 0x38), then the sub-squads walked -- against begin(), so never; new in SOCOM II, the name ours
+0x005E6D60 0x64 GetDataPtr__9CSealUnitFv  # OVL2; by hand (the kit lane, round 14): the squad's 4-byte order data (size 0x34, bytes 0x38) as a pointer, GetData (0x5EF1D0) inlined; the HUD's command menu (0x230050) and CSealCtrlAi::OnCommand read it -- the name ours
+0x005E6DD0 0x70 SetDataPtr__9CSealUnitFPv  # OVL2; by hand (the kit lane, round 14): the squad's order data set to a pointer (the inline setter: memcpy and the size, or memset 32 and 0) -- the name ours
 0x005E6E40 0x1E8 func_005E6E40  # OVL2
 0x005E7030 0x1F8 func_005E7030  # OVL2
 0x005E7230 0x15C func_005E7230  # OVL2
@@ -11350,7 +11350,7 @@
 0x005E76D0 0x160 func_005E76D0  # OVL2
 0x005E7830 0x130 func_005E7830  # OVL2
 0x005E7960 0x5BC func_005E7960  # OVL2
-0x005E7F20 0x84 func_005E7F20  # OVL2
+0x005E7F20 0x84 PlayRemoteMsg__FP7CEntityii  # OVL2; by hand (the kit lane, round 14): SOCOM 1's PlayRemoteMsg(CEntity *, int) with a third word -- the same callers (MessagePacketHandler 0x2BAC40 four times passing 1, OnDeath three, CZKit::Fire two, CSealCtrlAi::OnCommand); message 43 is sent on (SendMessageMessage) unless it is 1, then 0x5E7960 plays it
 0x005E7FB0 0xC SetPlayAutoMessages__Fb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's SetPlayAutoMessages (0x2CF720), the same sb to bgAutoMessagesOn (0x650B08 here), before GetPlayAutoMessages as there; UILoadConfig and UIToggleAutoMessages call it
 0x005E7FC0 0xC GetPlayAutoMessages__Fv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's GetPlayAutoMessages (0x2CF730), the same lbu of bgAutoMessagesOn (0x650B08 here), before TickAll as there; UIToggleAutoMessages calls it and then the setter
 0x005E7FD0 0x84 TickAll__9CSealUnitFfPv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's TickAll (0x2CF740) -- the same test of m_created_units_test (OVL1 0x44D5C0), the same walk of m_list ticking each squad with no parent (0x60 here, 0x3C there); CCoreState::Init registers it as the scheduler's UnitTick
@@ -11379,7 +11379,7 @@
 0x005EA7C0 0x14 func_005EA7C0  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x005EA7E0 0x88 __ct__9CAiMapLocFRC9CAiMapLoc  # OVL2; s1:exact
 0x005EA870 0x8 func_005EA870  # OVL2
-0x005EA880 0x34 func_005EA880  # OVL2
+0x005EA880 0x34 IsAi__10CZSealBodyFv  # OVL2; by hand (the kit lane, round 14): the SEAL's controller tested and its IsAi (CSealCtrl slot 0x30) called, the shape of zseal.h's IsPlayer/IsRemote; an inline's copy among IssueCommand's (IssueCommand calls it on 0x5EEDB0's SEAL) -- the name ours
 0x005EA8C0 0x1B0 func_005EA8C0  # OVL2
 0x005EAA70 0x128 func_005EAA70  # OVL2
 0x005EABA0 0x1C4 func_005EABA0  # OVL2
@@ -11400,7 +11400,7 @@
 0x005EC6A0 0x348 func_005EC6A0  # OVL2
 0x005EC9F0 0x2D4 func_005EC9F0  # OVL2
 0x005ECCD0 0x214 func_005ECCD0  # OVL2
-0x005ECEF0 0x9C func_005ECEF0  # OVL2
+0x005ECEF0 0x9C UnInit__9CSealUnitFv  # OVL2; s1:order by hand (the kit lane, round 14): SOCOM 1's UnInit -- every squad erased from m_list (0x44D5B0) and deleted (~CSealUnit 0x5EE4D0 with the delete flag), then m_created_units_test (0x44D5C0) cleared; ReOpen_Unload1 calls it
 0x005ECF90 0x1AC func_005ECF90  # OVL2
 0x005ED140 0x3A8 func_005ED140  # OVL2
 0x005ED4F0 0x1F0 func_005ED4F0  # OVL2
@@ -11433,18 +11433,18 @@
 0x005EDF90 0x1D0 SealLeaveUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5): EscorteeJoinUnit and SealJoinUnit (0x5EE160, 0x5EE250) call it first with the seal alone, as SOCOM 1's call SealLeaveUnit (static)
 0x005EE160 0xE8 EscorteeJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls EscorteeJoinUnit (twice, after ftsGetPlayer's GetUnitByTeam and after Create)
 0x005EE250 0x278 SealJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls SealJoinUnit (twice, after Create and after GetUnitByTeam); recursive as SOCOM 1's
-0x005EE4D0 0x220 func_005EE4D0  # OVL2
+0x005EE4D0 0x220 __dt__9CSealUnitFv  # OVL2; by hand (the kit lane, round 14): CSealUnit's destructor -- it stores CSealUnit's table (0x669650) at +4, deletes the compass anchor and empties the lists; CSealUnit::UnInit (0x5ECEF0) calls it with the delete flag for every squad, between SealJoinUnit and the constructor as defined after it
 0x005EE6F0 0xF4 __ct__9CSealUnitFUi  # OVL2; s1:calls by hand (the kit lane, round 5): CSealUnit::Create (0x5EF380) calls it on a new 200-byte block with the team, where SOCOM 1's Create calls __ct__9CSealUnitFUi (164 bytes there)
 0x005EE7F0 0x5BC AllowCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable by hand (CSealUnit's vtable slot +0xC, the demo's AllowCommand in the same slot of its two-slot table; 0x5BC bytes against 0x6C8)
 0x005EEDB0 0x1C4 func_005EEDB0  # OVL2
 0x005EEF80 0x248 func_005EEF80  # OVL2
-0x005EF1D0 0x44 func_005EF1D0  # OVL2
-0x005EF220 0xC8 func_005EF220  # OVL2
+0x005EF1D0 0x44 GetData__9CSealUnitFPvUi  # OVL2; by hand (the kit lane, round 14): the squad's order data copied out when the size asked is the size stored (0x34); CSealCtrlAi's OnCommand and AllowCommand call it -- the name ours
+0x005EF220 0xC8 run_anim__FPCcPv  # OVL2; by hand (the kit lane, round 14): an anim of a name run (ActivateArg(1, 4, arg) or Activate(0)) when SOCOM 1's can_run_anim, inlined here, finds it runnable -- its guarded static is the plain byte 0x650AE0; IssueCommand calls it twice; new in SOCOM II, the name ours
 0x005EF2F0 0x50 GetUnitByTeam__9CSealUnitFUi  # OVL2; s1:calls by hand (the seal lane's lead, verified: SOCOM 1's GetUnitByTeam walks m_list__9CSealUnit for the unit whose number (0x38 there, 0x58 here) is the argument -- the same walk over the same static, 0x44D5B0 here; CSealCtrl::OnMissionStart calls it with 24)
 0x005EF340 0x40 func_005EF340  # OVL2
 0x005EF380 0xEC Create__9CSealUnitFUi  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): CZSealState::UpdateRollandsUnitStuff calls it where SOCOM 1's calls CSealUnit::Create (after GetUnitByTeam, twice); its body is SOCOM 1's (the list searched, new CSealUnit(team) pushed, team 24's valve)
 0x005EF470 0x198 func_005EF470  # OVL2
-0x005EF610 0xBC func_005EF610  # OVL2
+0x005EF610 0xBC erase__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>FQ33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>Q33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 14): the squad orders' range erase -- seal_unit.cpp emits the instance (the clear its code instantiates) byte-exact here, where SOCOM 1's seal_unit.cpp tail has the same instance after Create; IssueCommand and 0x5EE4D0 call it; the words are those of 12 other pod-list range erases
 0x005EF6D0 0x100 func_005EF6D0  # OVL2
 0x005EF7D0 0x18 __ct__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>Fv  # OVL2; s1:callee by hand (the kit lane, round 13): CSealUnit's constructor (0x5EE6F0) calls it on the orders list (0x94) where SOCOM 1's calls __ct__Q23std60__list_deleter<10FT_COMMAND,...>Fv (0x2D79E0) on its clist (0x70) -- the deleter's three-word zeroing constructor, seal_unit.cpp's out-of-line copy in its template tail
 0x005EF7F0 0xE0 func_005EF7F0  # OVL2
@@ -11576,7 +11576,7 @@
 0x005F8D40 0x884 func_005F8D40  # OVL2
 0x005F95D0 0x1504 func_005F95D0  # OVL2
 0x005FAAE0 0x218 func_005FAAE0  # OVL2
-0x005FAD00 0x4C func_005FAD00  # OVL2
+0x005FAD00 0x4C SetAiEvent__11CSealCtrlAiFQ28CAiEvent5EVENTfPC6CPnt3D  # OVL2; s1:order by hand (the kit lane, round 14): SOCOM 1's SetAiEvent (0x2DEFF0), the same words with the event 0x1A8 further on (0x628), between EventTick and CAiDodge::Destroy as in SOCOM 1's seal_aievent.cpp
 0x005FAD50 0x98 Destroy__8CAiDodgeFv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's CAiDodge::Destroy (0x2DF040), after SetAiEvent as there (0x5FAD00 is SOCOM 1's SetAiEvent, the same words with the event 0x1A8 on) -- the same size test, front, erase and delete over m_list (0x44D648)
 0x005FADF0 0x78 __dt__10CAiSFollowFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FAE70 0x348 func_005FAE70  # OVL2
@@ -11900,20 +11900,20 @@
 0x00612518 0xB4 func_00612518  # OVL2 unaligned
 0x006125D0 0x60 func_006125D0  # OVL2
 0x00612630 0x70 func_00612630  # OVL2
-0x006126A0 0x44 func_006126A0  # OVL2
-0x006126E8 0x64 func_006126E8  # OVL2 unaligned
-0x00612750 0x7C func_00612750  # OVL2
-0x006127D0 0xAC func_006127D0  # OVL2
-0x00612880 0x68 func_00612880  # OVL2
-0x006128E8 0x64 func_006128E8  # OVL2 unaligned
-0x00612950 0x4C func_00612950  # OVL2
+0x006126A0 0x44 NetInitializeClients  # OVL2; s1:order (the gcc lane, round 7b): first of SOCOM 1's first DME object (0x4181C0), the same order here; DMEmalloc's table into NetClientPointerList, MyClientIsJoined cleared, the table memset -- SOCOM 1's body at one world's 256 clients
+0x006126E8 0x64 func_006126E8  # OVL2 unaligned; the body of SOCOM 1's NetGetClient (s1:order, the gcc lane round 7b: second of SOCOM 1's first DME object, *ppClient = 0, the range checks, NetClientPointerList[nClient]); the public name is the Dme.c wrapper's, 0x622A20
+0x00612750 0x7C func_00612750  # OVL2; the body of SOCOM 1's NetGetClientStatus (s1:order, round 7b: third of the object; (pStatus, world, client), the range checks returning 8, the status from the world's client record); the public name is the Dme.c wrapper's, 0x622968
+0x006127D0 0xAC NetCreateClient  # OVL2; s1:order (round 7b): fourth; DMEmalloc(28) zeroed field by field and stored in NetClientPointerList, returned -- SOCOM 1's body
+0x00612880 0x68 NetFreeClient  # OVL2; s1:order (round 7b): fifth; DmeFree of the client's NetClientPointerList slot -- SOCOM 1's body
+0x006128E8 0x64 NetFreeClients  # OVL2 unaligned; s1:order (round 7b): sixth; NetFreeClient over a world's clients, then MyClientIsJoined cleared -- SOCOM 1's body
+0x00612950 0x4C NetFreeAllClients  # OVL2; s1:order (round 7b): seventh; NetFreeClients over the four worlds, then MyClientIsJoined cleared -- SOCOM 1's body
 0x006129A0 0x30 NetFreeClientPointers  # OVL2; s1:exact
-0x006129D0 0xDC func_006129D0  # OVL2
-0x00612AB0 0x138 func_00612AB0  # OVL2
-0x00612BE8 0x98 func_00612BE8  # OVL2 unaligned
-0x00612C80 0x100 func_00612C80  # OVL2
-0x00612D80 0xC4 func_00612D80  # OVL2
-0x00612E48 0x310 func_00612E48  # OVL2 unaligned
+0x006129D0 0xDC ReserveNetObjectsAndDataStreamsForClient  # OVL2; s1:order (round 7b): ninth (after NetFreeClientPointers); NetObjectStatus 0 -> 1 over the client's object block, each of its data streams' state set to 1 -- SOCOM 1's body with null tests
+0x00612AB0 0x138 func_00612AB0  # OVL2; the body of SOCOM 1's NetSendMyClientUpdate (s1:order, round 7b: tenth of the object; SOCOM 1's 36-byte client update, field for field); the public name is the Dme.c wrapper's, 0x622620
+0x00612BE8 0x98 MyClientJoins  # OVL2 unaligned; s1:order (round 7b): eleventh; NetGetClient, NetCreateClient when none, the object 0x1000, NetSendMyClientUpdate(world, -1), ReserveNetObjectsAndDataStreamsForClient -- SOCOM 1's sequence
+0x00612C80 0x100 NetClientJoins  # OVL2; s1:order (round 7b): twelfth; NetGetClient, NetCreateClient when none, ReserveNetObjectsAndDataStreamsForClient, the joins callback, NetSendMyClientUpdate(world, client) -- SOCOM 1's sequence
+0x00612D80 0xC4 func_00612D80  # OVL2; the body of SOCOM 1's NetSetMyClientObject (s1:order, round 7b: thirteenth of the object; NetGetClient's body on this client, NetGetObject's body on the index, the owner test, NetSendMyClientUpdate's body); the public name is the Dme.c wrapper's, 0x6233D8
+0x00612E48 0x310 NetClientLeaves  # OVL2 unaligned; s1:order (round 7b): fourteenth; the leaves callback, the object walk up to ActiveNetObjectCount (status 2: creator and owner reassigned, NetFreeRemoteObject, RemoteObjectUpdate(-1, i, -2)), the client's reserved objects and streams released, NetFreeClient -- SOCOM 1's body with the session master's hand-over (0x613158) new
 0x00613158 0x160 func_00613158  # OVL2 unaligned
 0x006132B8 0x498 func_006132B8  # OVL2 unaligned
 0x00613750 0x3C func_00613750  # OVL2
@@ -12110,9 +12110,9 @@
 0x006204B8 0x2C func_006204B8  # OVL2 unaligned
 0x006204E8 0x2C func_006204E8  # OVL2 unaligned
 0x00620518 0x12C NetGetBuildTimeStamp  # OVL2 unaligned; s1:calls (the DME's build stamp: 'Time of build: %.2d.%.2d.%.4s...' and Dme.c's date 'Oct 9 2003' right after Dme.c's $Header; SOCOM 1's NetGetBuildTimeStamp, byte-identical there to MediusGetBuildTimeStamp; the gcc lane, round 3b)
-0x00620648 0x60 func_00620648  # OVL2 unaligned
-0x006206A8 0x164 func_006206A8  # OVL2 unaligned
-0x00620810 0xF8 func_00620810  # OVL2
+0x00620648 0x60 NetSetDefaultInitializeParams  # OVL2 unaligned; s1:calls (round 7b): MediusInitialize calls it where SOCOM 1's does (and the game's init, as zNetInitialize); it calls KM_GetSoftwareID's place (0x64F5F8) as SOCOM 1's
+0x006206A8 0x164 NetInitialize  # OVL2 unaligned; s1:calls (round 7b): MediusInitialize calls it where SOCOM 1's calls NetInitialize; Dme.c's locked wrapper over 0x616820, SOCOM 1's NetInitialize body
+0x00620810 0xF8 NetClose  # OVL2; s1:calls (round 7b): MediusClose calls it where SOCOM 1's calls NetClose; Dme.c's locked wrapper over 0x61C2F0
 0x00620908 0xA4 func_00620908  # OVL2 unaligned
 0x006209B0 0xD8 func_006209B0  # OVL2
 0x00620A88 0xB8 func_00620A88  # OVL2 unaligned
@@ -12133,8 +12133,8 @@
 0x00621610 0xA4 func_00621610  # OVL2
 0x006216B8 0x14 func_006216B8  # OVL2 unaligned
 0x006216D0 0xA4 func_006216D0  # OVL2
-0x00621778 0x98 func_00621778  # OVL2 unaligned
-0x00621810 0xA4 func_00621810  # OVL2
+0x00621778 0x98 NetSetDefaultConnectParams  # OVL2 unaligned; s1:calls (round 7b): MediusConnect calls it where SOCOM 1's calls NetSetDefaultConnectParams
+0x00621810 0xA4 NetConnect  # OVL2; s1:calls (round 7b): MediusConnect calls it where SOCOM 1's calls NetConnect
 0x006218B8 0x98 func_006218B8  # OVL2 unaligned
 0x00621950 0xA4 func_00621950  # OVL2
 0x006219F8 0x98 func_006219F8  # OVL2 unaligned
@@ -12154,20 +12154,20 @@
 0x00622428 0xB8 func_00622428  # OVL2 unaligned
 0x006224E0 0x98 func_006224E0  # OVL2
 0x00622578 0xA4 func_00622578  # OVL2 unaligned
-0x00622620 0xA4 func_00622620  # OVL2
+0x00622620 0xA4 NetSendMyClientUpdate  # OVL2; s1:order (the gcc lane, round 7b): Dme.c's locked wrapper over 0x612AB0, the body SOCOM 1's NetSendMyClientUpdate has
 0x006226C8 0xA4 func_006226C8  # OVL2 unaligned
 0x00622770 0xA4 func_00622770  # OVL2
 0x00622818 0xA4 NetGetObject  # OVL2 unaligned; s1:calls (zNetGetObject's callee, the prebuilt DME code, as SOCOM 1's) -- the states lane
 0x006228C0 0xA4 func_006228C0  # OVL2
-0x00622968 0xB8 func_00622968  # OVL2 unaligned
-0x00622A20 0xB8 func_00622A20  # OVL2
+0x00622968 0xB8 NetGetClientStatus  # OVL2 unaligned; s1:order (the gcc lane, round 7b): Dme.c's locked wrapper over 0x612750, the body SOCOM 1's NetGetClientStatus has (the wrappers carry SOCOM 1's API names, as NetGetObject and NetSendMessage do)
+0x00622A20 0xB8 NetGetClient  # OVL2; s1:calls (the gcc lane, round 7b): zNetGetGameClient calls it where SOCOM 1's calls NetGetClient; Dme.c's locked wrapper over 0x6126E8, the body SOCOM 1's NetGetClient has
 0x00622AD8 0x98 func_00622AD8  # OVL2 unaligned
 0x00622B70 0xB8 func_00622B70  # OVL2
 0x00622C28 0x98 func_00622C28  # OVL2 unaligned
 0x00622CC0 0xA4 func_00622CC0  # OVL2
 0x00622D68 0xA4 func_00622D68  # OVL2 unaligned
-0x00622E10 0x98 func_00622E10  # OVL2
-0x00622EA8 0x98 func_00622EA8  # OVL2 unaligned
+0x00622E10 0x98 NetGetLocalTime  # OVL2; s1:calls (round 7b): zNetUpdate calls it after NetGetObject where SOCOM 1's calls NetGetLocalTime; MediusInitialize(Bare) and the updates call it where SOCOM 1's do
+0x00622EA8 0x98 NetGetTime  # OVL2 unaligned; s1:calls (round 7b): zNetUpdate calls it right after NetGetLocalTime as SOCOM 1's calls NetGetTime
 0x00622F40 0xA4 func_00622F40  # OVL2
 0x00622FE8 0xA4 func_00622FE8  # OVL2 unaligned
 0x00623090 0xA4 func_00623090  # OVL2
@@ -12175,16 +12175,16 @@
 0x006231E0 0xA4 func_006231E0  # OVL2
 0x00623288 0xA4 func_00623288  # OVL2 unaligned
 0x00623330 0xA4 func_00623330  # OVL2
-0x006233D8 0x98 func_006233D8  # OVL2 unaligned
+0x006233D8 0x98 NetSetMyClientObject  # OVL2 unaligned; s1:calls (the gcc lane, round 7b): Dme.c's locked wrapper over 0x612D80, the body SOCOM 1's NetSetMyClientObject has; OVL1's thunk 0x30CDE0 jumps to it (SOCOM 1's ftsNetworkPlayerInit calls NetSetMyClientObject)
 0x00623470 0x98 NetFreeObject  # OVL2; s1:calls (the DME's; UpdateLocalGrenade calls it where SOCOM 1's does) -- the states lane
 0x00623508 0x88 func_00623508  # OVL2 unaligned
 0x00623590 0x98 func_00623590  # OVL2
 0x00623628 0x98 func_00623628  # OVL2 unaligned
-0x006236C0 0x88 func_006236C0  # OVL2
+0x006236C0 0x88 NetUpdate  # OVL2; s1:calls (round 7b): zNetUpdate and MediusUpdate call it where SOCOM 1's call NetUpdate
 0x00623748 0x98 func_00623748  # OVL2 unaligned
 0x006237E0 0x88 func_006237E0  # OVL2
 0x00623868 0x98 func_00623868  # OVL2 unaligned
-0x00623900 0x98 func_00623900  # OVL2
+0x00623900 0x98 NetDisconnect  # OVL2; s1:calls (round 7b): MediusDisconnect calls it where SOCOM 1's calls NetDisconnect
 0x00623998 0xA4 func_00623998  # OVL2 unaligned
 0x00623A40 0xA4 func_00623A40  # OVL2
 0x00623AE8 0xB8 func_00623AE8  # OVL2 unaligned
@@ -12374,7 +12374,7 @@
 0x0062C968 0x158 rt_comm_get_build_timestamp  # OVL2 unaligned; s1:order (second in the object, as SOCOM 1's; formats rt_comm.c's own __DATE__/__TIME__)
 0x0062CAC0 0x5C rt_comm_startup  # OVL2; s1:calls (the platform's startup, then rt_comm_metric_init, under the startup count -- SOCOM 1's body)
 0x0062CB20 0x48 rt_comm_shutdown  # OVL2; s1:callee
-0x0062CB68 0x3C func_0062CB68  # OVL2 unaligned
+0x0062CB68 0x3C rt_comm_set_default_options  # OVL2 unaligned; s1:calls by hand, the gcc lane round 7b: rt_comm.c's object (between rt_comm_shutdown and rt_comm_create), its one caller rt_comm_create calls it where SOCOM 1's calls rt_comm_set_default_options (no options given: after get_new_channel_id and get_channel, before the platform's create); SOCOM 1's body with the grown 12-byte options memset first. The s1:exact name 0x634958 carried was the old body's six instructions, met again in rt_msg_client
 0x0062CBA8 0x114 rt_comm_create  # OVL2 unaligned; s1:calls (new channel id, get_channel, the default options, the platform's create -- SOCOM 1's sequence)
 0x0062CCC0 0x60 rt_comm_destroy  # OVL2; s1:calls
 0x0062CD20 0x10C rt_comm_send  # OVL2; s1:align
@@ -12538,8 +12538,8 @@
 0x00633378 0xA0 rt_msg_client_get_metrics  # OVL2 unaligned; s1:callee
 0x00633418 0xA0 func_00633418  # OVL2 unaligned
 0x006334B8 0xA0 func_006334B8  # OVL2 unaligned
-0x00633558 0x8C rt_msg_client_udp_set_default_options  # OVL2 unaligned; s1:calls
-0x006335E8 0x8C func_006335E8  # OVL2 unaligned
+0x00633558 0x8C rt_msg_client_set_default_connect_options  # OVL2 unaligned; s1:calls; s1:calls by hand, the gcc lane round 7b (was s1:calls rt_msg_client_udp_set_default_options, a row off): its one caller func_00617788 has SOCOM 1's NetConnect_ClientServerTCP's callee sequence (strlen, strlen, memset, strncpy, strncpy, this, NetMapMsgClientError, strcpy, rt_msg_client_connect), where SOCOM 1 calls rt_msg_client_set_default_connect_options; its internal 0x6348E0 sets the connect options' constants
+0x006335E8 0x8C rt_msg_client_udp_set_default_options  # OVL2 unaligned; s1:calls by hand, the gcc lane round 7b: the locked wrapper after set_default_connect_options and before display_comm_state, as in SOCOM 1's object; its one caller func_006195E0 calls it on a stack options block and then rt_msg_client_enable_udp with that block, as SOCOM 1's NetEnableUDP calls rt_msg_client_udp_set_default_options then rt_msg_client_enable_udp
 0x00633678 0x78 rt_msg_client_display_comm_state  # OVL2 unaligned; s1:exact
 0x006336F0 0xA0 func_006336F0  # OVL2
 0x00633790 0x188 rt_msg_client_ishutdown  # OVL2; s1:callee
@@ -12562,8 +12562,8 @@
 0x00634708 0xBC rt_msg_client_iget_metrics  # OVL2 unaligned; s1:callee
 0x006347C8 0x88 func_006347C8  # OVL2 unaligned
 0x00634850 0x8C func_00634850  # OVL2
-0x006348E0 0x74 rt_msg_client_iudp_set_default_options  # OVL2; s1:align
-0x00634958 0x18 rt_comm_set_default_options  # OVL2 unaligned; s1:exact
+0x006348E0 0x74 rt_msg_client_iset_default_connect_options  # OVL2; s1:align; s1:order by hand, the gcc lane round 7b (was s1:align rt_msg_client_iudp_set_default_options, a row off): SOCOM 1's iset_default_connect_options body -- memset, 0x8000 twice, 30, 15000, the trailing zeroed words -- in a block grown from 64 to 76 bytes, called by the connect wrapper 0x633558; the internals run iset_default_connect_options, iudp_set_default_options, idisplay_comm_state in both builds
+0x00634958 0x18 rt_msg_client_iudp_set_default_options  # OVL2 unaligned; s1:exact; s1:order by hand, the gcc lane round 7b (was s1:exact rt_comm_set_default_options: SOCOM 1's six-instruction rt_comm body met again): between iset_default_connect_options and idisplay_comm_state as in SOCOM 1's object, the internal of the udp wrapper 0x6335E8; it clears the one-word UDP options whose word rt_msg_client's enable-UDP internal 0x633960 keeps as its callback
 0x00634970 0x38 rt_msg_client_idisplay_comm_state  # OVL2; s1:exact
 0x006349A8 0x5C func_006349A8  # OVL2 unaligned
 0x00634A08 0xCC func_00634A08  # OVL2 unaligned
@@ -12931,35 +12931,35 @@
 0x00646958 0xA8 func_00646958  # OVL2 unaligned
 0x00646A00 0x74 MediusSetNatServiceAddress  # OVL2; s1:exact
 0x00646A78 0x3C MediusGetNatServiceAddress  # OVL2 unaligned; s1:exact
-0x00646AB8 0xC func_00646AB8  # OVL2 unaligned
-0x00646AC8 0xC func_00646AC8  # OVL2 unaligned
+0x00646AB8 0xC MediusSetProcessingState  # OVL2 unaligned; s1:order (the gcc lane, round 7b): SOCOM 1's static after MediusGetNatServiceAddress in its object (0x3B2198), the same one store of the processing state; MediusResolveAddrCallback and MediusCheckRequestQueue call it as SOCOM 1's
+0x00646AC8 0xC MediusGetProcessingState  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next static (0x3B21A4), the same one load
 0x00646AD8 0xD4 MediusSetClientAddrList  # OVL2 unaligned; s1:exact
 0x00646BB0 0x6C MediusGetClientAddrList  # OVL2; s1:exact
-0x00646C20 0x58 func_00646C20  # OVL2
-0x00646C78 0x1B4 func_00646C78  # OVL2 unaligned
-0x00646E30 0x10 func_00646E30  # OVL2
-0x00646E40 0x1AC func_00646E40  # OVL2
-0x00646FF0 0x114 func_00646FF0  # OVL2
-0x00647108 0x4C func_00647108  # OVL2 unaligned
-0x00647158 0xC func_00647158  # OVL2 unaligned
-0x00647168 0xC func_00647168  # OVL2 unaligned
-0x00647178 0xC func_00647178  # OVL2 unaligned
+0x00646C20 0x58 MediusResolveAddrCallback  # OVL2; s1:order (round 7b): SOCOM 1's static after MediusGetClientAddrList (0x3B22F0): the result's two words tested, MediusSetClientAddrList, the processing state 2 or 1 -- SOCOM 1's body
+0x00646C78 0x1B4 MediusSetQueuedRequest  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next static (0x3B233C): the type stored first, then the queued CreateGameOnSelf or JoinGame request copied in -- SOCOM 1's body at SOCOM II's request types and sizes
+0x00646E30 0x10 MediusGetQueuedRequestType  # OVL2; s1:order (round 7b): SOCOM 1's next static (0x3B24D8), the same one load and store
+0x00646E40 0x1AC MediusGetQueuedRequest  # OVL2; s1:order (round 7b): SOCOM 1's next static (0x3B24E8), the copy out by the queued type
+0x00646FF0 0x114 MediusCheckRequestQueue  # OVL2; s1:order (round 7b): SOCOM 1's next static (0x3B2684): the processing state tested, the queued request fetched, the client's addresses filled in and NetSendMessage with PacketTypeCreateGameOnSelfRequest or PacketTypeJoinGameRequest -- SOCOM 1's body
+0x00647108 0x4C MediusLocalConnectCallback  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next static (0x3B2788): MyConnectionIndex set, the client's connect callback called with it
+0x00647158 0xC MediusSetClientConnectCallback  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next static (0x3B27F4), one store of the callback
+0x00647168 0xC MediusGetClientConnectCallback  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B2800), its load
+0x00647178 0xC MediusClearClientConnectCallback  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B280C), its clear
 0x00647188 0x3C func_00647188  # OVL2 unaligned
 0x006471C8 0xC func_006471C8  # OVL2 unaligned
 0x006471D8 0xC func_006471D8  # OVL2 unaligned
-0x006471E8 0x12C func_006471E8  # OVL2 unaligned
-0x00647318 0xD8 func_00647318  # OVL2 unaligned
+0x006471E8 0x12C MediusInitialize  # OVL2 unaligned; s1:order (round 7b): after the statics as SOCOM 1's (0x3B2818): -18 when initialised, MediusSetProcessingState(0), NetSetDefaultInitializeParams, NetInitialize, the callbacks stored, NetGetLocalTime(&KeepAliveTimestamp), RegisterPackets, GlobalInitFlag = 1 -- SOCOM 1's sequence
+0x00647318 0xD8 MediusInitializeBare  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B2914): -19 when initialised, the same stores without DME, RegisterPackets -- SOCOM 1's sequence
 0x006473F0 0x124 MediusGetBuildTimeStamp  # OVL2; s1:exact; s1:order (between MediusInitializeBare and MediusVersionClient as SOCOM 1's; it formats the Medius library's own build date, 0x667D20 'Sep 18 2003' beside 'Medius Client Library Version 1.50.0013' -- the s1:exact NetGetBuildTimeStamp was SOCOM 1's byte-identical DME twin, which is 0x620518 here; the gcc lane, round 3b)
-0x00647518 0x2C func_00647518  # OVL2 unaligned
+0x00647518 0x2C MediusVersionClient  # OVL2 unaligned; s1:order (round 7b): between MediusGetBuildTimeStamp and MediusVersionServer as SOCOM 1's (0x3B2B00): the client's version string copied out
 0x00647548 0x74 MediusVersionServer  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: the lobby's connect handlers calls it where SOCOM 1's counterpart calls MediusVersionServer; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
-0x006475C0 0x5C func_006475C0  # OVL2
-0x00647620 0x74 func_00647620  # OVL2
-0x00647698 0x48 func_00647698  # OVL2 unaligned
-0x006476E0 0x2D8 func_006476E0  # OVL2
-0x006479B8 0x64 func_006479B8  # OVL2 unaligned
-0x00647A20 0xA0 func_00647A20  # OVL2
+0x006475C0 0x5C MediusGetMySessionKey  # OVL2; s1:order (round 7b): after MediusVersionServer as SOCOM 1's (0x3B2BD4): -11 when CurrentSessionKey is empty, else it is copied out -- SOCOM 1's body
+0x00647620 0x74 MediusClose  # OVL2; s1:order (round 7b): SOCOM 1's next (0x3B2C08): -15 uninitialised, MediusDisconnect when connected, NetClose, GlobalInitFlag cleared -- SOCOM 1's sequence, CurrentSessionKey cleared first
+0x00647698 0x48 MediusCloseBare  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B2C64): -15 uninitialised, GlobalInitFlag cleared
+0x006476E0 0x2D8 MediusConnect  # OVL2; s1:order (round 7b): SOCOM 1's next (0x3B2C8C): NetSetDefaultConnectParams, MediusSetClientConnectCallback twice, NetConnect, MediusClearClientConnectCallback -- SOCOM 1's callee sequence
+0x006479B8 0x64 MediusDisconnect  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B2E94): -15, -16, NetDisconnect(MyConnectionIndex), MyConnectionIndex = -1, -3 on failure -- SOCOM 1's body
+0x00647A20 0xA0 MediusUpdate  # OVL2; s1:order (round 7b): SOCOM 1's next (0x3B2EF8): NetGetLocalTime, MediusCheckRequestQueue, the keep-alive test, NetUpdate with its error kept in LastDMENetError -- SOCOM 1's sequence without the client-state request
 0x00647AC0 0x114 func_00647AC0  # OVL2
-0x00647BD8 0x88 func_00647BD8  # OVL2 unaligned
+0x00647BD8 0x88 MediusUpdateBare  # OVL2 unaligned; s1:order (round 7b): the third update, before MediusUpdateClientState as SOCOM 1's MediusUpdateBare (0x3B2FD0): NetGetLocalTime, MediusCheckRequestQueue, the keep-alive test, no NetUpdate -- SOCOM 1's sequence without the request; 0x647AC0 between them is new
 0x00647C60 0x88 MediusUpdateClientState  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: LobbyActiveStateHandler and the lobby's state changes calls it where SOCOM 1's counterpart calls MediusUpdateClientState; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00647CE8 0x9C MediusSessionBegin  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: SessionBeginStateHandler calls it where SOCOM 1's counterpart calls MediusSessionBegin; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00647D88 0xAC MediusSessionEnd  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: EndSessionStateHandler calls it where SOCOM 1's counterpart calls MediusSessionEnd; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
@@ -13017,7 +13017,7 @@
 0x00649E28 0x9C MediusAccountGetID  # OVL2 unaligned; s1 by call site (InvitePlayerToClan 0x2E7600 with cbInvitePlayerToClanGetID, as SOCOM 1's; the online lane)
 0x00649EC8 0x9C MediusGetLocations  # OVL2 unaligned; s1:order (after MediusAccountGetID as SOCOM 1's; the GetLocationsCallbackFunctionPtr slot 0x656270; the gcc lane, round 3b)
 0x00649F68 0x9C MediusPickLocation  # OVL2 unaligned; s1:order (the PickLocationCallbackFunctionPtr slot 0x656274; the gcc lane, round 3b)
-0x0064A008 0xC func_0064A008  # OVL2 unaligned
+0x0064A008 0xC MediusGetLastNetUpdateError  # OVL2 unaligned; s1:calls (round 7b): zNetUpdate calls it right after the update, as SOCOM 1's calls MediusGetLastNetUpdateError after MediusUpdate; it returns LastDMENetError
 0x0064A018 0x9C MediusLadderPosition  # OVL2 unaligned; s1:slot (SOCOM 1's MediusLadderPosition: 56 bytes with the session key, a 32-byte response, its callback slot 0x656278 between PickLocation's and LadderList's as in SOCOM 1 -- the online lane's round 9 verdict)
 0x0064A0B8 0x9C MediusLadderList  # OVL2 unaligned; s1:order (after SOCOM 1's MediusLadderPosition's place; the MediusLadderListCallbackFunctionPtr slot 0x65627C; the gcc lane, round 3b)
 0x0064A158 0x9C MediusChatToggleFilter  # OVL2 unaligned; s1:order (the MediusChatToggleCallbackFunctionPtr slot 0x656280; the gcc lane, round 3b)
@@ -13331,7 +13331,7 @@
 0x0064DA98 0x2C func_0064DA98  # OVL2 unaligned
 0x0064DAC8 0x8 func_0064DAC8  # OVL2 unaligned
 0x0064DAD0 0x2C func_0064DAD0  # OVL2
-0x0064DB00 0x18D8 func_0064DB00  # OVL2
+0x0064DB00 0x18D8 RegisterPackets  # OVL2; s1:calls (round 7b): MediusInitialize and MediusInitializeBare call it after NetGetLocalTime where SOCOM 1's call RegisterPackets
 0x0064F3D8 0x24 iTerminateString  # OVL2 unaligned; s1:exact
 0x0064F400 0x30 iCreateAndAllocateMessageID  # OVL2; s1:order (SOCOM 1's object at 0x3B1FB0, between iTerminateString and iGetMessageIDValues as there; sprintf's the id into the output buffer and returns 0; MediusCreateMessageID calls it from the same place as SOCOM 1's)
 0x0064F430 0xAC iGetMessageIDValues  # OVL2; s1:calls
@@ -13351,7 +13351,7 @@
 0x0064F5E0 0x8 func_0064F5E0  # OVL2
 0x0064F5E8 0x8 func_0064F5E8  # OVL2 unaligned
 0x0064F5F0 0x8 func_0064F5F0  # OVL2
-0x0064F5F8 0xC func_0064F5F8  # OVL2 unaligned
+0x0064F5F8 0xC KM_GetSoftwareID  # OVL2 unaligned; s1:calls (round 7b): NetSetDefaultInitializeParams calls it where SOCOM 1's calls KM_GetSoftwareID
 0x0064F604 0x118 KM_GetSoftwareKeyPair  # OVL2 unaligned; s1:exact
 0x00668480 0xB4 __sinit_ai_events.cpp  # OVL2 data area; a static initialiser; s1:unit ai_events.cpp (exact)
 0x00668540 0xE4 __sinit_ai_astar.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_astar.cpp builds ai::path_queue -- the list AbortPathPlan removes from, 0x49B160 there -- and three words after it; SOCOM II's builds the same at 0x66A180 (the list AbortPathPlan 0x5107B0 removes from) after three new statics)

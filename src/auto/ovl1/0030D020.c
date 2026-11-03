@@ -7,13 +7,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK NetDisconnect(s32);                         /* extern */
 M2C_UNK func_00623868(s32);                         /* extern */
-M2C_UNK func_00623900(s32);                         /* extern */
 
 void func_0030D020(char *arg0) {
     func_00623868(SC_MEMBER(arg0, s32 *, 0xF4));
     SC_MEMBER(arg0, s8 *, 3) = 0;
-    func_00623900(SC_MEMBER(arg0, s32 *, 0xF4));
+    NetDisconnect(SC_MEMBER(arg0, s32 *, 0xF4));
     SC_MEMBER(arg0, s8 *, 2) = 0;
     SC_MEMBER(arg0, s8 *, 0) = 0;
     SC_MEMBER(arg0, s8 *, 6) = 0;

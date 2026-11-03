@@ -7,14 +7,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK NetClose();                                 /* extern */
 M2C_UNK __dt__5CHeapFv(s32, M2C_UNK);               /* extern */
 M2C_UNK func_0030C030();                            /* extern */
-M2C_UNK func_00620810();                            /* extern */
 extern s32 data_0045B328;
 
 void func_0030D770(char *arg0) {
     if (SC_MEMBER(arg0, u8 *, 1) != 0) {
-        func_00620810();
+        NetClose();
         __dt__5CHeapFv(data_0045B328, 1);
         data_0045B328 = 0;
         SC_MEMBER(arg0, s8 *, 5) = 0;
