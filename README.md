@@ -4494,7 +4494,7 @@ What is open across lanes, and what comes next:
   pointer vector's); the shape that adds them unseen. CPnt3D's copy constructor (0x387F90,
   vis_mesh.cpp's) was matched only through grid_main.cpp's level-4 mis-inlining of GetMidPoint;
   at level 5 no unit emits it (a draft can take it).
-- **Level 6?** Two SOCOM II structures need a level more than 5: ~__list_deleter written
+- **Level 6, or 8?** Two SOCOM II structures need a level more than 5: ~__list_deleter written
   `erase(begin(), end())` (OVL2's ~__list_imp copy 0x510080 and ent_main's tail call begin() and
   end() out of line) inlines whole in ~C2D only at 6, and SOCOM 1's push_back chain through the
   base's push_back (ai_events.cpp's two copies, 0x50F810/0x50FE80, whose map names are swapped)
@@ -4511,6 +4511,21 @@ What is open across lanes, and what comes next:
   10): `__sinit_zNetMediusUniverse.cpp` 0x4022D0 matches at `-inline level=6` and not at 5 once
   theAcctDB is modelled as the member at offset 0 of an outer CZUniversInformationServer (the
   destructor it registers, 0x300570, is not CAcctDB's vtable's) -- open at 5 (0xC4 vs 0x144).
+  MEASURED OVER THE WHOLE TREE (2026-11-03, master 914fce13, `SC_FLAGS` with level=N, everything
+  else as now): level 5 gives 9,295 byte-exact, 6 gives 9,246 (56 lost, 5 gained), 7 9,240, 8 and 9
+  9,241 (64 lost, 14 gained). The five that every level from 6 gains are non-recursive:
+  ClearGroups 0x3C2A10 (the weapons' round 12: the group's whole destructor inlined at the delete,
+  six levels here), WipeoutTextureAssetCharacters, `__sinit_zNetMediusUniverse.cpp`,
+  `__sinit_zui_hangul.cpp` and vector<SKBCOMPLETE>'s resize; from 8 on, zdb::CNode::GetBBox
+  (0x262550, the self-recursive inline) matches too -- at 9 as well, so it bounds the level from
+  below only, while CSealUnit::GetTop's copy (the SEALs' round 14: seven, eight and nine self-copies
+  at depths 7, 8 and 9) asks for exactly 8 (seal_ai.cpp carries `#pragma inline_depth(8)`). What the
+  higher levels lose is what headers too shallow predict: vector constructors, clears and deleter
+  swaps, a list iterator's operators and FreeVector inlined away ("gone": 37 at 8), destructors that
+  now inline one level more (24), and a handful of the game's small constructors (CGameState(const
+  char *), CSaferStr(), C2DPoly's copy, CJamoStr()) -- so level 8 with the original's deeper MSL
+  stays the likely answer, and moving to it is a header refit (the MSL lane), not a flag flip. The
+  lists: build/scratch/lvl/summary_2026-11-03.txt.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
   structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
