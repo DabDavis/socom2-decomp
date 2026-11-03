@@ -10,11 +10,13 @@
 #include "zchar.h"
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
+#include "../../ai/ai.h"
+#include "../../ai/ai_maps.h"
 
 class CRdrFile;
 
 _zrdr *zrdr_read(const char *name, const char *file, int line);
-void zrdr_free(CRdrFile *file);
+int zrdr_free(CRdrFile *file);
 /* zrdr.h's readers (its _zrdr is zanim.h's, so the header itself stays out) */
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
@@ -262,6 +264,50 @@ void CVehicleRdrEntry::Randomize(bool reset)
         m_respawnIndex = 0;
     else
         m_respawnIndex = RandomIndex(m_respawn.m_count - 1);
+}
+
+/* the start's place as a matrix (SOCOM 1's): the start picked -- at random for -1, Randomize
+ * inlined -- then its name and direction, its location, its cell's centre, the direction's rotation
+ * with the centre as the translation; false at the first step that fails.
+ * OPEN (0x21C against 0x22C): the inlined Randomize is Randomize's own question -- the target pads
+ * each random pick's block and the store after its mfhi with a nop (16 bytes, Randomize's 0x140
+ * against 0x150) -- and every saved register is one off (the target keeps this in s3, the matrix in
+ * s2, the pick's count in s4; this build this in s4, the matrix in s3, the count in s0) */
+bool CVehicleRdrEntry::GetStartMatrix(CMatrix &m, unsigned int index)
+{
+    if (index == (unsigned int)-1)
+        Randomize(false);
+    else
+        m_startIndex = index;
+    const char *name;
+    int dir;
+    bool ok = false;
+
+    if (m_startIndex < m_start.m_count) {
+        name = m_start.m_start[m_startIndex].m_name;
+        dir = m_start.m_start[m_startIndex].m_dir;
+        ok = true;
+    }
+    if (ok) {
+        CAiMapLoc loc;
+
+        ok = AiMaps.GetLocation(name, loc);
+        if (ok) {
+            CPnt3D pos;
+
+            ok = AiMaps.GetCellCenter(loc, &pos) != 0;
+            if (ok) {
+                CQuat q;
+
+                CAiMap::GetDirQuat((CAiMap::DIR)dir, q, true);
+                q.ToMatrix(&m);
+                m.m_matrix[3][0] = pos.x;
+                m.m_matrix[3][1] = pos.y;
+                m.m_matrix[3][2] = pos.z;
+            }
+        }
+    }
+    return ok;
 }
 
 /* the current start's location name and direction, or none (SOCOM 1's) */

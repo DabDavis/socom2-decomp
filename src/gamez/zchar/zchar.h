@@ -121,6 +121,9 @@ public:
     int GetRespawnDir() const;
     void SetCharacterName(const char *name);
     void Randomize(bool reset);
+    /* the start's place as a matrix: the start picked (at random for -1), its location found and
+     * its cell's centre taken, the rotation its direction gives (SOCOM 1's; 0x532D10) */
+    bool GetStartMatrix(class CMatrix &m, unsigned int index);
     /* one entry out of the file's item (SOCOM 1's CVehicleRdr::Load did every entry; the name is
      * ours) */
     void Load(_zrdr *rdr);
