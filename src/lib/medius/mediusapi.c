@@ -1975,6 +1975,12 @@ MediusErrorCode func_0064A1F8(MediusRequest_0064A1F8 *request, MediusCallback ca
  * error codes' names, in the vendor's enum order -- MediusWorldCreatedSizeReduced (3, a status code
  * the server also sends as an error) sits after MediusErrorItemAlreadyExists there, and its case
  * block does here: GCC lays the cases out in source order. */
+/* NetUpdate's last error, as MediusUpdate kept it (SOCOM 1's; zNetUpdate asks for it) */
+int MediusGetLastNetUpdateError(void)
+{
+    return LastDMENetError;
+}
+
 /* every MediusCallbackStatus named, in the enum's order: 40 cases over 1005 values, so no table --
  * 2.96 builds the balanced decision tree the target has (round 7b) */
 char *MediusGetCallbackStatusString(MediusCallbackStatus status)
