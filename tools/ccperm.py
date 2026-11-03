@@ -19,8 +19,11 @@ vf = D / "build" / "ccsweep" / f"perm_variants_{os.getpid()}.c"
 vf.parent.mkdir(parents=True, exist_ok=True)
 vf.write_text("\n".join(out))
 try:
+    # the variants are written under build/ccsweep: the probe's own directory stays on the include
+    # path, so a probe may #include the header beside it
     r = subprocess.run([sys.executable, str(D / "tools" / "ccsweep.py"), str(vf), "--variants", "-t", tc,
-                        "-F", fl, "-f", f"^{fn}$"], capture_output=True, text=True, cwd=D)
+                        "-F", fl, "-f", f"^{fn}$", "-I", str(Path(sys.argv[1]).resolve().parent)],
+                       capture_output=True, text=True, cwd=D)
     perms = list(itertools.permutations(stmts))
     hits = 0
     for line in r.stdout.splitlines():
