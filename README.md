@@ -4818,6 +4818,82 @@ unit's `.text` and relocations exactly, under master's asmunit (with 3 `.word`s:
 crt0's `ctc1`) and under this one (none); between the two runs the regenerated texts differ in those
 three lines only. Neither tool scores: scdiff.py, sccheck.py, scdecomp.py and `include/` are master's.
 
+**The tools, round 16a**: (1) **a directive takes effect or the unit does not build.** The kit lane's
+question -- does `sc: compiler=` without `flags=` take effect? -- it does, in sccheck, scdiff and
+tools/try.py alike: each hands the named toolchain to `compile_cmd` with the default flags
+(`build/scratch/gcc/dirtest.py` logs the toolchain every path builds with: zlib's inflate_codes builds
+other bytes under 3.0b22-020926 in all three and misses on size, while FaceXZ is byte-identical under
+3.0b52, b50, b38 and b22-020926 -- the function, not the tool). What was silent is refused now
+(`sccheck.directive_problem`: a build failure in sccheck and try.py, an error exit in scdiff): an
+`sc:` line past the third line (never read), a key no tool reads (`compilr=` built under the
+defaults), a toolchain toolchains/ does not hold (that raised a traceback that ended sccheck's run).
+All 2,753 units in src/ pass it; the canary's `test_directive_takes_effect_or_refuses` pairs adler32
+under 3.0b22-020926 named alone (misses) with the three refusals, and fails with the check switched
+off. (2) **automatch's GCC repairs**: a GCC prelude (`GCC_PRELUDE`; MW's drafts keep `PRELUDE`) defines
+what m2c writes for GNU C and nothing defined -- `M2C_BITWISE` as fdlibm's own union (20 rows' parse
+errors), the TImode `s128`/`u128`, `M2C_SYNC` as `sync.l`; GCC's "invalid operands to binary -" is
+m2c's byte difference of incompatible pointers, cast `(s32) (a) - (s32) (p)` (`_byte_differences`);
+`_pointerish` reads a cast to an integer as no pointer, so `*((s32) p | 0x20000000)` (every uncached
+SIF read) is repaired as an `s32` load; and `tools/sigs.py` reads stack parameters (`stack_params`: a
+callee's loads at its frame size and up, 8 bytes a slot, `f32` for an lwc1 -- sceSifCallRpc 9,
+huft_build 10, _initRefImages 14, sceVu0ViewScreenMatrix's tenth a float), so a nine-argument call
+is no longer "too many arguments" against an eight-register prototype (m2c reads the stack word given
+the ninth). `SC_AM_GCC_PRELUDE`, `SC_AM_GCC_PTRDIFF`, `SC_AM_STACK_PARAMS=0` switch each off. Over
+the lane's four ranges (`--max-size 0x400 --no-prune`, 2 jobs, the lane's `src/lib` build as
+`--obj-dir`): **349 tried, 0 hits before and after; build failures 87 -> 38** (MAIN 60 -> 15, OVL1
+27 -> 23), misses 226 -> 275, m2c refusals 36. The 38 left: an int dereferenced in a float context
+or an `M2C_UNK` sum (20), an int subscripted (9), m2c's undeclared `saved_reg_*`/`sp` (8), a call
+disagreeing with another of the draft's (9; a row can hold several kinds). **Proved**: master's (0e731c93) sccheck.py, scdiff.py and
+scdecomp.py and these over one frozen snapshot of the tree, every unit (`--files .`, 2 jobs): the
+10,746 output lines are identical (`build/scratch/gcc/proof.sh`). automatch and sigs score nothing.
+
+**Round 16a** (2026-11-03, the tools above first, then the densest stretches): 46 rows newly
+byte-exact (19,004 bytes), 13 matched drafts superseded -- 59 functions byte-exact of 60 written --
+and 4 rows named. libvu0 whole (`sdk/libvu0.c` 42 of 42: RotMatrixZ/X/Y, CameraMatrix,
+NormalLightMatrix, ViewScreenMatrix, DropShadowMatrix new; RotMatrix, LightColorMatrix,
+CopyVectorXYZ over their drafts); newlib's float libm whole (`libm/`: floorf, ceilf, cosf, sinf,
+tanf, atanf, `__kernel_cosf/sinf/tanf/rem_pio2f`, `__ieee754_sqrtf/expf/logf/log10f/atan2f/asinf/
+acosf/powf/rem_pio2f`, scalbnf -- 20 new, log10f and powf over their drafts; tan OPEN); libkernl's
+file I/O client (`sdk/fileio.c`, new: 26 of the object's 40 written, all byte-exact -- the iob and
+semaphore helpers, the power-off handler, `_fs_version`, the path calls `_sceCallCode` (and its five
+wrappers), sceMkdir, sceGetstat, sceSync, sceRename, sceSymlink, then sceAddDrv, sceClose, sceDopen,
+sceDclose, sceDread); the codec's dot product
+(`ovl1/sase_vdot.s`, an assembler unit by asmunit). Named by body and the objects' alphabetical
+order: `__ieee754_log10f` (0x1AFC30: `__ieee754_logf` scaled by log10_2lo/ivln10/log10_2hi),
+`__ieee754_powf` (0x1AFD18), their wrappers log10f (0x1B3928) and powf (0x1B3940). What they showed:
+
+- **newlib's float libm compiles as newlib wrote it, under the R5900's float model**: ieeefp.h
+  defines `_FLT_LARGEST_EXPONENT_IS_NORMAL` (no infinity: floorf returns a large x as it is, no
+  `x+x`) and `_FLT_NO_DENORMALS` (a zero is an exponent of 0: `0x7fffff < ix`) -- fp-bit's model
+  (round 4a); `libm/fdlibm.h` carries newlib's `FLT_UWORD_*` under them. Fifteen of the twenty were
+  byte-exact as first written; where the first text was not this newlib's, the target said which
+  line: `zero` is in the const block (logf, log10f: `-two25/zero` folded to a constant), atanf keeps
+  fdlibm's `|x| < 0.4375` block around the tiny test, expf sets k in each path (fdlibm's `else k =
+  0;`, not the declaration's initialiser: a move at the entry).
+- **newlib is built with -fno-builtin**: GCC's builtin fabsf is an `abs.s`; the target calls fabsf
+  (`__kernel_tanf` 0x14 bytes short without the flag; s_fabs.c already carried it).
+- **The double routines stay the runtime compiler's**: tan (s_tan.c, OPEN) misses on round 4a's DFmode
+  delay slots (`jal dpsub; nop` where this 2.96 fills the slot with the double's `move a1,t0`); exp,
+  pow, rem_pio2, sqrt, the three double kernels, cos, sin and floor wait on the same difference.
+- **libvu0's matrices**: DropShadowMatrix reads the light point into three locals first (through `lp`
+  every read reloads after the stores to `m`, which may alias it: 0x1EC against 0x190) and assigns
+  the elements column by column, as the target's schedule stores them (row by row: 72 words off);
+  ViewScreenMatrix's tenth argument, the ninth float, is read from the caller's stack.
+- **The file I/O client's shapes**: a request pointer initialised at its declaration holds
+  `&_send_data` in a saved register from the entry while the RPC call names `&_send_data` itself
+  (rebuilt from the %hi in another saved register: one more saved register, 0x1A4 against 0x198);
+  get_iob forms `&_iob[fd]` before its SignalSema; sceDopen signals in each path; the descriptor
+  calls return `if (result < 0) return result; return 0;` (`li -1; slt; movn` -- the conditional
+  expression folds to a `<= 0` test); sceGetstat's request names its path `unsigned char` (the copy
+  loop tests the loaded byte, no `sll 24`); sceDread's failed RPC waits on its semaphore where every
+  other call deletes it (the vendor's, kept).
+- **The codec's dot product 0x248F60** is mula.s/madda.s/madd.s, which GCC never emits from C: assembly,
+  or a C function whose body is all asm (libvu0's shape) -- the same bytes.
+- **Open, diagnosed in place**: tan (above). Not written: fileio's `_sceFs_Rcv_Intr`, sceFsInit,
+  sceOpen, sceLseek/sceLseek64 (a no-wait path through `_fs_fsq_semid` and a 32-slot table at
+  0x1CCCC8), sceRead, sceWrite, sceIoctl, sceIoctl2, sceFormat, sceChstat, sceMount, sceDevctl,
+  sceReadlink; libusbkb's Read result and key-code conversion; the OVL1 codec's stretches.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
