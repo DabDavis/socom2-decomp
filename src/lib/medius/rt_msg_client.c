@@ -32,8 +32,8 @@ extern int func_00634278(int, int, unsigned short);
 extern int rt_msg_client_iget_buffer_status(unsigned short, int, int, int, int);
 extern int func_00634508(int);
 extern int func_00634550(int);
-extern int rt_msg_client_iget_host_by_name(int, int);
-extern int rt_msg_client_iget_connection_ip(unsigned short, int);
+extern int rt_msg_client_iget_host_by_name(char *, char *);
+extern int rt_msg_client_iget_connection_ip(unsigned short, char *);
 extern int func_00634660(unsigned short, unsigned char);
 extern int rt_msg_client_iget_metrics(int, int);
 extern int func_006347C8(unsigned short, int);
@@ -41,7 +41,7 @@ extern int func_00634850(unsigned short, int);
 extern int rt_msg_client_iudp_set_default_options(int);
 extern int rt_comm_set_default_options(int);
 extern int rt_msg_client_idisplay_comm_state(void);
-extern int func_006349A8(unsigned short, int);
+extern int func_006349A8(unsigned short, int **);
 
 /* The client's build stamp, rt_msg_client.c's own __DATE__ and __TIME__ (Oct 3 2003, 15:51:32 --
  * spelled out, since a rebuild's would be today's), formatted as Medius's and DME's are and copied
@@ -411,3 +411,134 @@ int func_006336F0(unsigned short arg0, int arg1)
     return result;
 }
 
+/* ---- the internal functions (rt_msg_client_i* and the helpers), below the wrappers ----
+ * Nine written (round 6b), eight byte-exact. The internals return a narrower type than the API's
+ * int (map_comm_error, is_valid_connection, the connect step 0x634A08): an int function returning
+ * their result makes a jal, not a sibling call, as the target does. OPEN:
+ * rt_msg_client_is_valid_connection_id (1 word: the size test is a beqz to the epilogue in the
+ * target, a beqzl here -- the brief's 0x6189C8 kind). */
+
+typedef struct rt_msg_client_comm {
+    char pad0[0x1C];
+    int nChannelId;                     /* 0x1C: the connection's rt_comm channel */
+} rt_msg_client_comm;
+
+typedef struct rt_msg_client_connection {
+    char pad0[8];
+    int nState;                         /* 0x08: 8 connected */
+    char pad0C[0x50];
+    char szIP[0x24];                    /* 0x5C: the server's address, dotted */
+    rt_msg_client_comm *pComm;          /* 0x80 */
+} rt_msg_client_connection;
+
+extern unsigned char data_00655614;     /* the client is started */
+extern unsigned short gnConnectionArraySize;
+extern rt_msg_client_connection **gapConnections;
+
+extern char *strcpy(char *dst, const char *src);
+extern int rt_comm_get_host_by_name(char *szName, char *szAddress);
+extern int func_0062D478(int nChannelId, int **pphPlatform);
+/* the internal functions return a narrower type than the API's int (the internals' result
+ * returned by an int function is a jal, not a sibling call: the modes differ) */
+extern unsigned char rt_msg_client_map_comm_error(int nCommError);
+extern unsigned char func_00634A08(unsigned short nConnection, unsigned char bFlag);
+extern unsigned char rt_msg_client_is_valid_connection(rt_msg_client_connection *pConnection);
+int rt_msg_client_get_connection(unsigned short nConnection, rt_msg_client_connection **ppConnection);
+int rt_msg_client_get_valid_connection(unsigned short nConnection, rt_msg_client_connection **ppConnection);
+
+int func_00634078(unsigned short nConnection, unsigned char bFlag)
+{
+    return func_00634A08(nConnection, bFlag);
+}
+
+int rt_msg_client_iget_host_by_name(char *szName, char *szAddress)
+{
+    if (data_00655614 != 1)
+        return 5;
+    if (szName == 0)
+        return 2;
+    if (szAddress == 0)
+        return 2;
+    return rt_msg_client_map_comm_error(rt_comm_get_host_by_name(szName, szAddress));
+}
+
+int rt_msg_client_iget_connection_ip(unsigned short nConnection, char *szIP)
+{
+    rt_msg_client_connection *pConnection = 0;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (szIP == 0)
+        return 2;
+    result = rt_msg_client_get_valid_connection(nConnection, &pConnection);
+    if (result != 0)
+        return result;
+    if (pConnection->nState != 8)
+        return 23;
+    strcpy(szIP, pConnection->szIP);
+    return 0;
+}
+
+int func_006349A8(unsigned short nConnection, int **pphPlatform)
+{
+    rt_msg_client_connection *pConnection = 0;
+    int result;
+
+    if (pphPlatform == 0)
+        return 2;
+    result = rt_msg_client_get_valid_connection(nConnection, &pConnection);
+    if (result != 0)
+        return result;
+    return rt_msg_client_map_comm_error(func_0062D478(pConnection->pComm->nChannelId, pphPlatform));
+}
+
+int rt_msg_client_is_valid_connection_id(unsigned short nConnection)
+{
+    if (gapConnections == 0)
+        return 0;
+    if (nConnection >= gnConnectionArraySize)
+        return 0;
+    return rt_msg_client_is_valid_connection(gapConnections[nConnection]);
+}
+
+int rt_msg_client_get_connection(unsigned short nConnection, rt_msg_client_connection **ppConnection)
+{
+    if (ppConnection == 0)
+        return 2;
+    if (gapConnections == 0)
+        return 1;
+    if (gnConnectionArraySize == 0)
+        return 1;
+    if (nConnection >= gnConnectionArraySize)
+        return 2;
+    *ppConnection = gapConnections[nConnection];
+    return 0;
+}
+
+int rt_msg_client_get_valid_connection(unsigned short nConnection, rt_msg_client_connection **ppConnection)
+{
+    if (ppConnection == 0)
+        return 2;
+    if (rt_msg_client_get_connection(nConnection, ppConnection) != 0)
+        return 11;
+    if (!rt_msg_client_is_valid_connection(*ppConnection))
+        return 11;
+    return 0;
+}
+
+int func_00635CD0(unsigned short nConnection, unsigned short *pnId)
+{
+    if (pnId == 0)
+        return 2;
+    *pnId = nConnection + 0x49;
+    return 0;
+}
+
+int rt_msg_client_is_wait_state(int nState)
+{
+    if (nState == 2 || nState == 4 || nState == 3 || nState == 5 || nState == 6 || nState == 7 || nState == 9
+        || nState == 10)
+        return 1;
+    return 0;
+}
