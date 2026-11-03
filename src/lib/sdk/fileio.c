@@ -22,6 +22,8 @@
  * byte, no sll 24); the descriptor calls take the iob before the library semaphore and return
  * `if (result < 0) return result; return 0;` (li -1; slt; movn). */
 
+#include <stdarg.h>
+
 typedef unsigned int u_int;
 
 struct SemaParam {
@@ -123,8 +125,102 @@ struct _sceFsRename {
 	char newname[1024];
 };
 
-extern void sceSifWriteBackDCache(void *, int);
+/* sceOpen's: the flag without its top bit, the mode (the variadic argument), the path, then the
+ * iob's index */
+struct _sceFsOpen {
+	int sema;
+	int *result;
+	int rsize;
+	int flag;
+	int mode;
+	char name[1024];
+	int iob;
+};
 
+/* sceIoctl2's: the descriptor and request, the argument copied in, the reply buffer */
+struct _sceFsIoctl2 {
+	int sema;
+	int *result;
+	int rsize;
+	int fd;
+	int request;
+	char arg[1024];
+	void *bufp;
+	u_int buflen;
+	u_int arglen;
+};
+
+/* sceFormat's and sceMount's: two paths and an argument block */
+struct _sceFsFormat {
+	int sema;
+	int *result;
+	int rsize;
+	char dev[1024];
+	char blockdev[1024];
+	char arg[1024];
+	int arglen;
+};
+
+struct _sceFsMount {
+	int sema;
+	int *result;
+	int rsize;
+	char fsname[1024];
+	char devname[1024];
+	char arg[1024];
+	int flag;
+	int arglen;
+};
+
+/* sceChstat's: the change bits, the stat block, the path (unsigned, as sceGetstat's) */
+struct _sceFsChstat {
+	int sema;
+	int *result;
+	int rsize;
+	u_int cbit;
+	char stat[64];
+	unsigned char name[1024];
+};
+
+/* sceDevctl's: the path, the argument copied in, the command and the reply buffer */
+struct _sceFsDevctl {
+	int sema;
+	int *result;
+	int rsize;
+	char name[1024];
+	char arg[1024];
+	int cmd;
+	u_int arglen;
+	void *bufp;
+	u_int buflen;
+};
+
+/* sceReadlink's: the reply buffer before the path; sent as large as sceRename's */
+struct _sceFsReadlink {
+	int sema;
+	int *result;
+	int rsize;
+	u_int bufsize;
+	char *buf;
+	char name[1024];
+};
+
+/* sceLseek64's: the 64-bit offset (this compiler's long) on an 8-byte boundary */
+struct _sceFsLseek64 {
+	int sema;
+	int *result;
+	int rsize;
+	int fd;
+	long offset;
+	int whence;
+	int iob;
+};
+
+extern void sceSifWriteBackDCache(void *, int);
+extern void *memcpy(void *, const void *, unsigned int);
+
+int _sceFs_q[32] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+		     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 static int _fs_init = 0;
 static int _fs_semid = -1;
 static int _fs_iob_semid = -1;
@@ -258,6 +354,71 @@ int sceFsReset(void)
 	return 0;
 }
 
+int sceOpen(const char *filename, int flag, ...)
+{
+	struct _sceFsOpen *p = (struct _sceFsOpen *)&_send_data;
+	struct _sceFsIob *io;
+	int i, sema, ret, mode;
+	struct SemaParam s;
+	int result;
+	va_list ap;
+
+	_sceFsWaitS(0);
+	if (!_fs_init)
+		sceFsInit();
+	if (_fs_version()) {
+		_sceFsSigSema();
+		return -0x10004;
+	}
+	if ((io = new_iob()) == 0) {
+		_sceFsSigSema();
+		return -19;
+	}
+	va_start(ap, flag);
+	mode = va_arg(ap, int);
+	va_end(ap);
+	for (i = 0; i < 1024; i++)
+		if ((p->name[i] = filename[i]) == 0)
+			break;
+	if (i == 1024)
+		p->name[1023] = 0;
+	p->flag = flag & 0x7fffffff;
+	p->mode = mode;
+	p->iob = io - _iob;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->result = &result;
+	p->sema = sema;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 0, 0, &_send_data, sizeof(struct _sceFsOpen), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	if (result < 0) {
+		WaitSema(_fs_iob_semid);
+		io->i_flag = 0;
+		SignalSema(_fs_iob_semid);
+		return result;
+	}
+	WaitSema(_fs_iob_semid);
+	io->i_fd = result;
+	io->i_flag |= flag;
+	ret = io - _iob;
+	SignalSema(_fs_iob_semid);
+	return ret;
+}
+
 int sceClose(int fd)
 {
 	struct _sceFsCall *p = &_send_data;
@@ -302,6 +463,119 @@ int sceClose(int fd)
 	if (result < 0)
 		return result;
 	return 0;
+}
+
+int sceLseek(int fd, int offset, int whence)
+{
+	struct _sceFsCall *p = &_send_data;
+	struct _sceFsIob *io;
+	int i, sema, ret, flag;
+	struct SemaParam s;
+	int result;
+
+	io = get_iob(fd);
+	_sceFsWaitS(4);
+	if (!_fs_init) {
+		_sceFsSigSema();
+		return -1;
+	}
+	if (io == 0 || (flag = io->i_flag) == 0) {
+		_sceFsSigSema();
+		return -9;
+	}
+	p->u.arg[0] = io->i_fd;
+	p->u.arg[1] = offset;
+	p->u.arg[2] = whence;
+	p->u.arg[3] = io - _iob;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	if (flag & 0x8000) {
+		WaitSema(_fs_fsq_semid);
+		for (i = 0; i < 32; i++) {
+			if (_sceFs_q[i] == -1) {
+				_sceFs_q[i] = p->sema;
+				p->sema = -p->sema;
+				break;
+			}
+		}
+		SignalSema(_fs_fsq_semid);
+	}
+	if (sceSifCallRpc(&_cd, 4, 0, &_send_data, 28, _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	if (flag & 0x8000) {
+		DeleteSema(sema);
+		return 0;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
+int sceIoctl2(int fd, int request, void *argp, u_int arglen, void *bufp, u_int buflen)
+{
+	struct _sceFsIoctl2 *p = (struct _sceFsIoctl2 *)&_send_data;
+	struct _sceFsIob *io;
+	int sema, ret;
+	struct SemaParam s;
+	int result;
+
+	io = get_iob(fd);
+	_sceFsWaitS(26);
+	if (!_fs_init)
+		sceFsInit();
+	if (io == 0 || io->i_flag == 0) {
+		_sceFsSigSema();
+		return -9;
+	}
+	if (arglen > 1024 || buflen > 1024) {
+		_sceFsSigSema();
+		return -22;
+	}
+	if (argp == 0)
+		p->arglen = 0;
+	else
+		memcpy(p->arg, argp, arglen);
+	p->fd = io->i_fd;
+	p->request = request;
+	p->arglen = arglen;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	p->bufp = bufp;
+	p->buflen = buflen;
+	sceSifWriteBackDCache(&_send_data, sizeof(struct _sceFsIoctl2));
+	if (sceSifCallRpc(&_cd, 26, 0, &_send_data, sizeof(struct _sceFsIoctl2), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
 }
 
 static int _sceCallCode(const char *name, int code)
@@ -393,6 +667,61 @@ int sceMkdir(const char *name, int mode)
 int sceRmdir(const char *name)
 {
 	return _sceCallCode(name, 8);
+}
+
+int sceFormat(const char *devname, const char *blockdevname, void *arg, int arglen)
+{
+	struct _sceFsFormat *p = (struct _sceFsFormat *)&_send_data;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(14);
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->dev[i] = devname[i]) == 0)
+			break;
+	if (i == 1024)
+		p->dev[1023] = 0;
+	if (blockdevname == 0)
+		p->blockdev[0] = 0;
+	else {
+		for (i = 0; i < 1024; i++)
+			if ((p->blockdev[i] = blockdevname[i]) == 0)
+				break;
+		if (i == 1024)
+			p->blockdev[1023] = 0;
+	}
+	if (arglen > 1024) {
+		_sceFsSigSema();
+		return -7;
+	}
+	for (i = 0; i < arglen; i++)
+		p->arg[i] = ((char *)arg)[i];
+	p->arglen = arglen;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	sceSifWriteBackDCache(&_send_data, sizeof(struct _sceFsFormat));
+	if (sceSifCallRpc(&_cd, 14, 0, &_send_data, sizeof(struct _sceFsFormat), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
 }
 
 int sceAddDrv(void *device)
@@ -588,6 +917,49 @@ int sceGetstat(const char *name, void *buf)
 	return result;
 }
 
+int sceChstat(const char *name, void *buf, u_int cbit)
+{
+	struct _sceFsChstat *p = (struct _sceFsChstat *)&_send_data;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(13);
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->name[i] = name[i]) == 0)
+			break;
+	if (i == 1024) {
+		p->name[1023] = 0;
+		i = 1023;
+	}
+	memcpy(p->stat, buf, 64);
+	p->cbit = cbit;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	sceSifWriteBackDCache(&_send_data, sizeof(struct _sceFsChstat));
+	if (sceSifCallRpc(&_cd, 13, 0, &_send_data, i + 81, _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
 int sceRename(const char *oldname, const char *newname)
 {
 	struct _sceFsRename *p = (struct _sceFsRename *)&_send_data;
@@ -676,9 +1048,171 @@ int sceSync(const char *name, int flag)
 	return result;
 }
 
+int sceMount(const char *fsname, const char *devname, int flag, void *arg, int arglen)
+{
+	struct _sceFsMount *p = (struct _sceFsMount *)&_send_data;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(20);
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->fsname[i] = fsname[i]) == 0)
+			break;
+	if (i == 1024)
+		p->fsname[1023] = 0;
+	for (i = 0; i < 1024; i++)
+		if ((p->devname[i] = devname[i]) == 0)
+			break;
+	if (i == 1024)
+		p->devname[1023] = 0;
+	if (arglen > 1024) {
+		_sceFsSigSema();
+		return -7;
+	}
+	for (i = 0; i < arglen; i++)
+		p->arg[i] = ((char *)arg)[i];
+	p->arglen = arglen;
+	p->flag = flag;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	sceSifWriteBackDCache(&_send_data, sizeof(struct _sceFsMount));
+	if (sceSifCallRpc(&_cd, 20, 0, &_send_data, sizeof(struct _sceFsMount), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
 int sceUmount(const char *name)
 {
 	return _sceCallCode(name, 21);
+}
+
+long sceLseek64(int fd, long offset, int whence)
+{
+	struct _sceFsLseek64 *p = (struct _sceFsLseek64 *)&_send_data;
+	struct _sceFsIob *io;
+	int i, sema, ret, flag;
+	struct SemaParam s;
+	long result;
+
+	io = get_iob(fd);
+	_sceFsWaitS(22);
+	if (!_fs_init) {
+		_sceFsSigSema();
+		return -1;
+	}
+	if (io == 0 || (flag = io->i_flag) == 0) {
+		_sceFsSigSema();
+		return -9;
+	}
+	p->fd = io->i_fd;
+	p->offset = offset;
+	p->whence = whence;
+	p->iob = io - _iob;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = (int *)&result;
+	p->rsize = 8;
+	if (flag & 0x8000) {
+		WaitSema(_fs_fsq_semid);
+		for (i = 0; i < 32; i++) {
+			if (_sceFs_q[i] == -1) {
+				_sceFs_q[i] = p->sema;
+				p->sema = -p->sema;
+				break;
+			}
+		}
+		SignalSema(_fs_fsq_semid);
+	}
+	if (sceSifCallRpc(&_cd, 22, 0, &_send_data, sizeof(struct _sceFsLseek64), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	if (flag & 0x8000) {
+		DeleteSema(sema);
+		return 0;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
+int sceDevctl(const char *name, int cmd, void *arg, u_int arglen, void *bufp, u_int buflen)
+{
+	struct _sceFsDevctl *p;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(23);
+	p = (struct _sceFsDevctl *)&_send_data;
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->name[i] = name[i]) == 0)
+			break;
+	if (i == 1024)
+		p->name[1023] = 0;
+	if (arglen > 1024 || buflen > 1024) {
+		_sceFsSigSema();
+		return -22;
+	}
+	for (i = 0; i < arglen; i++)
+		p->arg[i] = ((char *)arg)[i];
+	p->arglen = arglen;
+	p->cmd = cmd;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	p->bufp = bufp;
+	p->buflen = buflen;
+	sceSifWriteBackDCache(&_send_data, sizeof(struct _sceFsDevctl));
+	if (sceSifCallRpc(&_cd, 23, 0, &_send_data, sizeof(struct _sceFsDevctl), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
 }
 
 int sceSymlink(const char *existing, const char *newname)
@@ -709,6 +1243,49 @@ int sceSymlink(const char *existing, const char *newname)
 	p->sema = sema;
 	p->rsize = 4;
 	if (sceSifCallRpc(&_cd, 24, 0, &_send_data, sizeof(struct _sceFsRename), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
+int sceReadlink(const char *name, char *buf, u_int bufsize)
+{
+	struct _sceFsReadlink *p = (struct _sceFsReadlink *)&_send_data;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(17);
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->name[i] = name[i]) == 0)
+			break;
+	if (i == 1024)
+		p->name[1023] = 0;
+	if (bufsize >= 1024)
+		bufsize = 1023;
+	p->buf = buf;
+	p->bufsize = bufsize;
+	sceSifWriteBackDCache(buf, bufsize);
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->result = &result;
+	p->sema = sema;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 25, 0, &_send_data, sizeof(struct _sceFsRename), _rcv_data_rpc, 4, 0, 0) < 0) {
 		DeleteSema(sema);
 		_sceFsSigSema();
 		return -11;
