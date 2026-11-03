@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00194F28(s32, s32);                        /* extern */
+s32 _malloc_r(s32, s32);                            /* extern */
 M2C_UNK memcpy(s32, s32, s32);                      /* extern */
 s32 strlen(s32);                                    /* extern */
 
@@ -17,7 +17,7 @@ s32 _strdup_r(s32 arg0, s32 arg1) {
     s32 temp_v0;
 
     temp_s2 = strlen(arg1) + 1;
-    temp_v0 = func_00194F28(arg0, temp_s2);
+    temp_v0 = _malloc_r(arg0, temp_s2);
     if (temp_v0 != 0) {
         memcpy(temp_v0, arg1, temp_s2);
     }
