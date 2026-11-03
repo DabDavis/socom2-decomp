@@ -10,7 +10,11 @@
  * hoists the mask out of this loop and returns early: the mask is not a loop invariant GCC could
  * see -- the original's test must sit inside the asm (or behind a volatile), with the loop head
  * aligned by an `.p2align 3` (the nop before `di`). ps2sdk's spelling (the mask in C, an
- * asm(".p2align 3")) gives 16s, a single exit 14s. */
+ * asm(".p2align 3")) gives 16s, a single exit 14s. Round 6a: the reload is a goto loop's -- GCC
+ * 2.9's loop optimiser hoists only from while/do/for -- and `if (eie) { asm(".p2align 3");
+ * again: di; sync.p; mfc0; if (sr & 0x10000) goto again; }` gives 7s with the mask in the loop
+ * (build/scratch/gcc/v_dintr.c); what remains is the loop's v0/v1 pair and the target's own
+ * `move a0,zero; jr ra; move v0,a0` for the disabled path. */
 int DIntr(void)
 {
 	int eie, res;

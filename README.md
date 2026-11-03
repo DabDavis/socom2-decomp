@@ -1647,6 +1647,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 13** (small rows: CAiSAnimate's list instances, CAiSGrenade::OnSignal, the blender):
+  - MW 3.0b52 refuses an explicit instantiation of a class template's member function ("illegal
+    explicit template specialization"); `template class X<T>;` compiles but emits every member, so
+    list instances need their real callers;
+  - a class deriving from std::list<T> adds one this-test level to an inlined member destructor (four
+    tests, not three: ~CAiSAnimate); a stand-in for an out-of-class template member's copy must be
+    pinned with `#pragma auto_inline off`, or the unit's own callers inline it;
+  - `unsigned int` bitfields read or written one at a time come out as `lbu`/`sb` (CEntity's
+    m_isAlive, the 0x264 bits) -- CPickup's lw/sw is not universal;
+  - `bool b = !on && bit;` computes `!on` (sltu/xori) before branching; `if (!on && bit) b = true;`
+    branches on the register (0x561E20); a global loop bound's load is never hoisted out of a loop
+    storing through a pointer, even `const` (so AnimPop's count in a3 is something else);
+  - seal_ai.cpp's template tail runs to 0x576117 (CAiSAnimate's list instances); seal_anim.cpp starts
+    at 0x576120 (CGame::StopEngine calls it where SOCOM 1 called ~CSealAnim); OVL1's
+    siNumBodyObjects (0x3DE1E8) behaves as `unsigned int` in SOCOM II.
 - **Tells from the AI core, round 12** (ai_mapio.cpp's tail, vehicle_rdr.cpp's entry, char_type.cpp's weapon list):
   - a class vector's resize matches through include/vector once the element's default constructor is
     right: body assignments give byte stores in statement order, bitfields in a mem-initializer list
@@ -3396,6 +3411,55 @@ as drafts (m2c refused 283 of the 896, 83 drafts would not build). No tool that 
 master's, so every MW and GCC unit scores as before, row for row (`./sccheck.py --files
 '^(?!auto/)'`: scdiff.py, sccheck.py, scdecomp.py and `include/` are byte-identical to dc0c477's, so no
 unit can score differently; every `src/lib` unit: 820 byte-exact of 862, each miss OPEN in place).
+
+**Round 6a** (2026-11-03, MAIN first): 124 functions byte-exact of 132 written -- 102 rows newly
+byte-exact (19,776 bytes), 22 matched drafts superseded -- and 71 rows named (69 `s1:order`: the
+demo's newlib objects sit in the same alphabetical link order, each checked by its calls; 2 by body).
+`sdk/inet_bsd.c` (33 of 33) and `sdk/inet_addr.c` (5 of 8): the socket library at 0x1C0948; newlib
+(`libc/`, 71 of 74): findfp.c, exit, fclose, fflush, fgets, fwalk, fwrite, refill.c, rget, wbuf,
+wsetup, fread, fseek, ftell, makebuf, ungetc, flags, fopen, puts, the `_r` forms of printf/sprintf/
+vsprintf, mprec.c (14 of 17), signal.c, `_getpid_r`, getenv_r, envlock, locale, mbtowc_r, strcspn,
+qsort, fvwrite, bsearch, bcopy, `_calloc_r` and `setjmp.s` (an assembler unit: newlib's
+machine/mips/setjmp.S, sq of every saved GPR); libkernl's `sdk/iopheap.c` (10 of 11) and
+`sdk/loadfile.c` (5 of 6 written). data.txt gains `__mprec_tens`/`bigtens`/`tinytens`, `p_environ`
+and `__ps2_klibinfo__`. What they showed:
+
+- **The socket layer over libinet was built at -O0** with the SDK's own toolchain: 33 BSD-name
+  wrappers (socket, bind, connect, the receive calls with a 600000 receive timeout first ...) with
+  -O0's frame pointer and spilled arguments, byte-exact only under the dtls13010 build (991111, -01,
+  a, 990721 12 words off, 2.95.x 14, 2.96 11, 3.2 11) -- its GNU as fills the calls' delay slots. A
+  struct in_addr passed or returned by value goes through a local copy of the library's own address
+  type (-O0 keeps the store and load). The address routines are FreeBSD's inet_aton (strtoul per
+  part) and 4.4BSD's class functions at -O2 under dtls13010, **with 32-bit types**: this compiler's
+  `long` is 64 bits and the BSD text's `u_long` would be doublewords. Its isxdigit tests an
+  uninitialised variable (the target hoists `(u_char)(t5 - '0') < 10` of a register nothing sets).
+- **newlib compiles as written, and is newlib 1.9's text** -- each difference from the text first
+  tried was read off the target and is a later 1.9 line, not a compiler effect: lflush's
+  parenthesised test, `CHECK_INIT(fp)` in __swsetup, `mode[1] &&` before the '+' in __sflags,
+  ftell's and fseek's flushes, getenv_r's static `p_environ` (NULL returned without unlocking),
+  `_sprintf_r`/`_vsprintf_r` calling vfprintf. The whole `struct _reent` is now in `libc/newlib.h`
+  (`_atexit` 0x148, `_sig_func` 0x1D4, `__sglue` 0x1D8, `__sf[3]` 0x1E4), with struct stat (st_mode
+  at 4). mprec's `__ULong` is a word (Balloc's size is 20 + 4 * 2^k); `_ulp`, `_ratio`, `_d2b` are
+  the runtime compiler's DFmode delay slots again (round 4a).
+- **The SDK's statics have the demo's names**: its symbol table keeps every object's LOCAL labels
+  (`cd`, `rdata`, `sdata`, `_lih_data`, `_bind_check`, `_lfwildcard`, `_senddata`, `_lfversion`), and
+  the loader compares the server's version with `__ps2_klibinfo__`+12 ("PsIIlibkernl2710", another
+  object's global). The IOP heap's queries return unsigned (failure is lui/ori 0xffffffff).
+- **A goto loop keeps an invariant in the loop**: GCC 2.9's loop optimiser hoists only from
+  while/do/for, so DIntr's mask reload (open since round 2a) appears with `again: ... if (sr &
+  0x10000) goto again;` -- 14 words to 7, the rest a register pair and the duplicated `res = 0`
+  return (not adopted: still open).
+
+**The tools, round 6a**: `scdiff.gnu_static_size` -- a GNU object relocates its statics against the
+section, so `local_object_ok` sized a `.data` scalar by its heuristics, and an int of -1 followed by
+a pointer read as a 5-byte string (loadfile's `_bind_check`, then `_lfwildcard`: a false WRONG
+REFERENCE); plain data now takes its LOCAL OBJECT symbol's size, an object holding a relocation keeps
+the old extent. Proved: every MW hand-written unit (`--files '^(?!auto/|lib/)'`, 5,015 rows) gives
+byte-identical output under master's scdiff and this one; every GCC unit (src/lib and the 713 GCC
+drafts after merging master d75bccc: 1,279 rows) the same rows but sceSifLoadFileReset, WRONG ->
+match. Found on the way, left for its lane: the recogniser's FillLanguageVirtualTable is checked
+against one byte of its table (the first slot is null, so the heuristic reads a string); checked to
+the symbol's size, one slot names another address. automatch was not run this round.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

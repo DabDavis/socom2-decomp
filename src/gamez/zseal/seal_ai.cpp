@@ -1,7 +1,10 @@
 /* seal_ai.cpp -- the AI's controller, CSealCtrlAi, and its states (SOCOM 1's unit,
  * __sinit_seal_ai.cpp; SOCOM 1's order: the states' small virtuals and CAiSRescued first, the
- * controller's constructor and the template tail -- ai::_max, ai::_min, _close_enough<i> -- last).
- * OVL2 0x5552C0-0x575CE7. Defined in reverse of their image order (-inline deferred). */
+ * controller's constructor and the template tail -- ai::_max, ai::_min, _close_enough<i> -- last;
+ * SOCOM II's tail ends with the animate state's list instances, 0x575CF0-0x576117: the timed calls'
+ * range erase, single erase and insert, the spans' range erase and insert -- used by seal_ai.cpp's
+ * functions alone, and seal_anim.cpp's first row, 0x576120, is SOCOM 1's ~CSealAnim's job).
+ * OVL2 0x5552C0-0x576117. Defined in reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
 #include "../../ai/ai.h"
@@ -54,22 +57,63 @@ public:
     signed char m_5c;   // 0x5c (the name ours)
 };
 
+class CAiSAnimate;
+
+/* the animate state's timed calls (new in SOCOM II; the names ours): at a time of the anim, a call
+ * told the state, the controller and a word -- Tick erases each once it answers true -- and over a
+ * span of it, the same call every tick inside the span (0x55AC20 pushes 0x55C740, 0x55C690, 0x55C480
+ * and 0x55C5E0 with the state itself as the word) */
+typedef bool (*ANIM_CALL)(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data);
+
+struct ANIM_TIMED_CALL {
+    float m_time;   // 0x0
+    ANIM_CALL m_func;   // 0x4
+    unsigned int m_data;   // 0x8
+};
+
+struct ANIM_SPAN_CALL {
+    float m_start;   // 0x0
+    float m_end;   // 0x4
+    ANIM_CALL m_func;   // 0x8
+    unsigned int m_data;   // 0xc
+};
+
+/* the two lists (classes over std::list: their implicit destructors are four this-tested levels) */
+class CAnimTimedCallList : public std::list<ANIM_TIMED_CALL> {
+};
+
+class CAnimSpanCallList : public std::list<ANIM_SPAN_CALL> {
+};
+
 class CAiSAnimate : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
-    /* (0x5759A0, matched as a draft: two lists at 0x64 and 0x70 destroyed, each with its own
-     * erase -- declared so this unit emits no implicit one) */
+    /* (0x5759A0: the two lists destroyed, each through its own range erase -- 0x575CF0 and
+     * 0x575F40, the unit's template tail) */
     virtual ~CAiSAnimate();
 
     unsigned char _58[0x5a - 0x58];
     unsigned char m_5a;   // 0x5a (SOCOM 1's 0x28)
     float m_5c;   // 0x5c (SOCOM 1's 0x30)
     unsigned int m_60;   // 0x60 (SOCOM 1's 0x8)
+    CAnimTimedCallList m_timed;   // 0x64
+    CAnimSpanCallList m_spans;   // 0x70
 };
 
 class CAiSGrenade : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
     virtual ~CAiSGrenade();
+
+    /* (the names ours: what OnSignal's reset clears) */
+    unsigned int m_58;   // 0x58
+    unsigned int m_5c;   // 0x5c
+    unsigned char m_60;   // 0x60
+    unsigned char _61[0x6c - 0x61];
+    unsigned char m_6c;   // 0x6c
+    unsigned char _6d[0x7c - 0x6d];
+    CAiMapLoc m_7c;   // 0x7c
+    CAiMapLoc m_80;   // 0x80
 };
 
 class CAiSDeploy : public CAiState {
@@ -158,14 +202,12 @@ void CSealCtrlAi::OnMissionStart()
 
 extern "C" {
 float tanf(float x);
-/* the SEAL's aim set relative to it (SOCOM 1's SetAimDirR, which SOCOM 1's SetSprayTimer calls at the
- * same place; OVL2 0x5DF8B0, the kit lane's range) */
-void func_005DF8B0(CZSealBody *seal, const CPnt3D *dir, bool b);
 }
 
 /* a spray of fire timed: refused in mode 2, with nothing in hand, or when the item cannot fire fully
- * automatic; the weapon raised, the aim straight ahead (OVL2 0x565AE0; SOCOM 1's SetSprayTimer, its
- * mode and null tests new) */
+ * automatic; the weapon raised, the aim straight ahead through SetAimDirR (seal_weapon.cpp's, OVL2
+ * 0x5DF8B0, as SOCOM 1's SetSprayTimer calls it) (OVL2 0x565AE0; SOCOM 1's SetSprayTimer, its mode and
+ * null tests new) */
 void CSealCtrlAi::SetSprayTimer(float t)
 {
     CZSealBody *seal = (CZSealBody *)m_entity;
@@ -174,7 +216,7 @@ void CSealCtrlAi::SetSprayTimer(float t)
     if (m_26e == 2 || !item || item->m_maxfiremode < 3)
         return;
     seal->SetWeaponState((WEAPON_STATE)1);
-    func_005DF8B0(seal, &CPnt3D::unit_nz, false);
+    seal->SetAimDirR(&CPnt3D::unit_nz, false);
     m_spraytimer = t;
 }
 
@@ -351,6 +393,12 @@ CAiSGrenade::~CAiSGrenade()
 {
 }
 
+/* (OVL2 0x5759A0: its two lists' implicit destructors inlined whole, each erase called out of line --
+ * the unit's template tail's 0x575F40 and 0x575CF0 -- then the base's) */
+CAiSAnimate::~CAiSAnimate()
+{
+}
+
 CAiSPursue::~CAiSPursue()
 {
 }
@@ -460,6 +508,42 @@ extern "C" unsigned char func_00560A60(CAlertness *a)
     return 4;
 }
 
+extern "C" {
+/* (OVL2 0x571150, not written yet: the sound made, or not, by the stance -- 11 for the SEAL's own) */
+bool func_00571150(CSealCtrlAi *ai, short sound, unsigned char stance);
+/* (OVL2 data: how long a sound holds before another) */
+extern float data_0064FE50;
+/* (OVL1 data: the game's clock, as this unit reads it) */
+extern float data_004365C0;
+}
+
+/* an AI sound made if its priority reaches the controller's alertness band (0x560A60 inlined); once
+ * made, remembered with when the next may come and the band (OVL2 0x571010, new in SOCOM II: the
+ * event and shot-at states call it, with a priority 2 and a stance 11; the name unknown).
+ * OPEN, 0xE0 against 0xEC: the target narrows the priority's low byte into a1 at entry (`andi
+ * a1,a2,0xff`), keeps the whole word in s0 for the store `(pri & ~0xFF) | band`, takes the band
+ * from the inline's v0 into s3 (`andi s3,v0,0xff`) and branches on `slt at,a1,s3` -- the word in a
+ * register throughout; the struct here is homed on the stack (sw a2, lbu). Tried: the priority as an
+ * unsigned int with the masks written out (0xF4: the band in s0, the low byte taken late), its low
+ * byte in a local first, the band an int, the made flag declared first, the test as `band <=
+ * level`, the struct's level a plain byte (0x100). */
+extern "C" bool func_00571010(CSealCtrlAi *ai, short sound, AI_SOUND_PRIORITY pri, unsigned char stance)
+{
+    unsigned char band = func_00560A60((CAlertness *)ai);
+    bool made = false;
+
+    if (pri.m_level >= band) {
+        made = func_00571150(ai, sound, stance);
+        if (made) {
+            ai->m_sound = sound;
+            ai->m_sound_time = data_0064FE50 + data_004365C0;
+            ai->m_sound_priority = pri;
+            ai->m_sound_priority.m_level = band;
+        }
+    }
+    return made;
+}
+
 /* a figure of the current row (OVL2 0x5750D0; before sealai::get_stance) */
 extern "C" float func_005750D0(unsigned char i)
 {
@@ -558,6 +642,24 @@ void CSealCtrlAi::RestoreAiMode()
 static inline CZSealBody *SealOf(CSealCtrlAi *ai)
 {
     return (CZSealBody *)ai->m_entity;
+}
+
+/* bit 7 set or cleared -- never set with bit 1 -- its byte and block reset as it is set, the range
+ * put back to its goal as it is cleared; the bit returned (OVL2 0x561E20, new in SOCOM II:
+ * CAiSNoAmmo::Tick sets it with -1; the name unknown) */
+extern "C" bool func_00561E20(CSealCtrlAi *ai, bool on, signed char c)
+{
+    bool cleared = !on && ai->m_aibit7;
+
+    if (ai->m_navyseal)
+        on = false;
+    ai->m_aibit7 = on;
+    if (ai->m_aibit7) {
+        memset(ai->m_3e4, 0, sizeof(ai->m_3e4));
+        ai->m_3e0 = c;
+    } else if (cleared)
+        ai->m_6f4 = ai->m_6f8;
+    return ai->m_aibit7;
 }
 
 /* (OVL2 0x56D890).
@@ -886,6 +988,35 @@ extern "C" void func_002707C0(CZAnim *anim, bool now);
 
 extern "C" {
 extern float data_004365C0;   /* (OVL1 data: the delay a new stance waits, read as a variable) */
+/* (OVL2 data: how long after its time at 0x40C the controller stays busy) */
+extern float data_00650000;
+}
+
+/* whether a stack's current state is of a kind, through the const GetState (0x5F8330) */
+static inline bool StateIs(const CAiStateStack &stack, AI_STATE state)
+{
+    return !(stack.size() == 0) && stack.GetState()->m_state == state;
+}
+
+/* whether the controller is busy: never a navy SEAL's; within a while of its time at 0x40C, or in
+ * state 28 (OVL2 0x572190, new in SOCOM II: 0x5D4770, ai::PARAM's tick, asks it; the name unknown).
+ * OPEN, 0x9C against 0xAC: the stack test is the kit lane's open Is() shape (seal_aistate.cpp's
+ * Pop(ai, AI_STATE)): the target materialises `!(size() == 0) && GetState()->m_state == 28` whole --
+ * xor/sltiu/xori, the compare's sltiu in a `b` to the join, `move v0,zero` as the false arm -- and
+ * branches once on the value; MW here branches on each operand. Tried: the const GetState through a
+ * const-stack inline (the target calls 0x5F8330, the const one: kept), the inline as an if/else
+ * assigning a bool local (0x9C, the andi back). */
+extern "C" bool func_00572190(CSealCtrlAi *ai)
+{
+    bool r = false;
+
+    if (!ai->IsNavySeal()) {
+        if (data_004365C0 - ai->m_40c < data_00650000)
+            r = true;
+        else if (StateIs(ai->m_stateStack, (AI_STATE)28))
+            r = true;
+    }
+    return r;
 }
 
 /* a stance changed with the state: taken as the goal after the delay, unless either end has none
@@ -993,6 +1124,33 @@ void CAiSAnimate::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
     case SIGNAL_0:
         break;
     case SIGNAL_1:
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        break;
+    }
+}
+
+/* (OVL2 0x55CCD0, new in SOCOM II's form: SOCOM 1's cleared one byte on signal 0) signal 4 resets
+ * the state, its two cells made the invalid one; signal 0 clears the byte at 0x60; signal 1 has a
+ * prone SEAL (or one about to go prone) crouch after a random delay -- ChangeStanceDelayed inlined */
+void CAiSGrenade::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        m_60 = 0;
+        m_58 = 0;
+        m_5c = 0;
+        m_6c = 0;
+        m_7c = CAiMapLoc::invalid;
+        m_80 = m_7c;
+        break;
+    case SIGNAL_0:
+        m_60 = 0;
+        break;
+    case SIGNAL_1:
+        ctrl->ChangeStanceDelayed(STANCE_PRONE, STANCE_CROUCH, -1.0f);
         break;
     case SIGNAL_2:
         break;
@@ -1427,3 +1585,10 @@ extern "C" void func_00567340(CEntityCtrl *ctrl, unsigned int axis, float value)
 {
     ctrl->m_throttle[axis] = value;
 }
+
+/* the template tail's other two instances, explicit until their callers are written: ai::_min over
+ * floats (OVL2 0x575C80: CSealCtrl::CreepTick 0x566DC0 and 0x567900 call it) and _close_enough over
+ * ints (OVL2 0x575CB0: 0x567900 calls it twice, as UpdateAiMapLoc does) -- _max<f> (0x575C50), the
+ * tail's first, comes with seal_control.cpp's caller */
+template const float &ai::_min<float>(const float &, const float &);
+template bool _close_enough<int>(const int &, const int &, const int &);
