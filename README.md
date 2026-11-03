@@ -156,7 +156,7 @@ its directive (`/* sc: compiler=mwcps2-3.0b52-030722; flags=... */`), as the GCC
 |---|---|---|---|---|
 | the game's own MAIN units | the pool unit zmalloc.cpp 0x1801E0-0x18194F (the name ours; its `__sinit` 0x1D4B00), MAIN's copies of zsys_memory.cpp (0x181950-0x181C1F) and zvid.cpp (0x181C20) | 3.0b52 | the game's | `__nwa__FUi` is a tail call (`j`), which needs exceptions off; `_delete_vec` exact on every 3.0 build; round 2: the pool unit's 17 rows and its initialiser at the game's flags |
 | MW's C++ runtime | runtime/: gcc_wrapper.c 0x181C50, mwoverlay.c 0x181C90-0x181E2F, NMWException.cpp 0x181E30-0x18280F, global_destructor_chain.c 0x182810, __init_cpp_rts.c 0x182840, ptmf.c 0x1828A0; the exception-handling unit 0x182930-0x1845FF | 3.0b38, b50 or b52 | the game's plus `-Cpp_exceptions on`, deferred | `__destroy_arr`/`__destroy_new_array` match only on 3.0b22-020926 and 3.0b38+; `__initialize_cpp_rts`'s short-loop nops rule out 3.0b22-020926; with exceptions off `terminate`/`unexpected` become tail calls (9 words off); `,p` required; without `-sdatathreshold 0` `__register_global_object` is 8 words off; the image holds the PowerPC runtime's source order reversed |
-| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on`, NOT deferred (round 2: the default small-data threshold, not 0 -- `locale::global`'s 8-byte static locale is `addiu a0,gp,-31928` and `__use_facet`'s facet ids `lw -31904(gp)`; round 1 had carried the runtime group's 0 over; and an explicit level: `~__locale_imp<1>` inlines the facet vector's three destructor levels only at level>=3 or with bottomup, plain auto calls it -- nothing tells the two apart, so the game's pair) | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
+| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -inline auto,bottomup,level=8 -enum min -Cpp_exceptions on -wchar_t on -str readonly`, NOT deferred (round 5: THE LEVEL IS AT LEAST 6, NOT THE GAME'S 5 -- the ostream sentry constructors inline setstate whole, a six-high chain (clear, the failure, its counted string, the counted pointer's constructor) that level 5 cuts to one level; levels 6-9 score alike over the library's 142 functions, so the units carry 8; round 4 added `-str readonly`; round 2: the default small-data threshold, not 0 -- `locale::global`'s 8-byte static locale is `addiu a0,gp,-31928` and `__use_facet`'s facet ids `lw -31904(gp)`; round 1 had carried the runtime group's 0 over; and an explicit level: `~__locale_imp<1>` inlines the facet vector's three destructor levels only at level>=3 or with bottomup, plain auto calls it -- nothing tells the two apart, so the game's pair) | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
 
 So SOCOM II's prebuilt MSL is **not CodeWarrior 2.4's build**, though SOCOM 1's DWARF names that
 install; and none of the 81 rows separates 3.0b38 from 3.0b50 or 3.0b52. The `.comment`'s
@@ -257,6 +257,21 @@ MSL's string internals and the logic_error family with exceptions on are modelle
 locale.cpp's `__sinit` 0x1D4C20 fills `__ctype_map` entries 9-127, the ones holding several mask bits:
 the mask is likely a two-byte enum whose `operator|` is a function, which renames the wide ctype rows
 (SOCOM 1's one-byte names); ~bad_exception is generated last where the image has it before __unexpected.
+
+Round 5 (211 of 244: 28 more) wrote the facet lookups (the four `__use_facet` instances), ctype<wchar_t> (its
+constructor, destructor, do_is twice, do_scan_is/not, do_toupper/tolower twice), four std::lower_bound instances,
+`__locale_imp::replace`, the pod vector's resize and MAIN's copy of its erase, the logic_error family's destructors and
+`what`, and basic_ostream's flush<char>/<wchar_t> and sentry constructors -- the sentries are the library's level
+evidence above. `ctype_base::mask` is a TWO-BYTE enum (copied memberwise with lh/sh, loaded with lhu for arithmetic),
+which renamed do_is/do_scan_is/do_scan_not and ctype<char>'s constructor (`const mask *`); the library's vector has
+CodeWarrior 3.0's shape. Measured: MW's DWARF 1 lists a block's locals in reverse declaration order; an integer literal
+bound to `const unsigned int &` becomes a $gp small-data constant, a null pointer bound to `T * const &` a stack
+temporary; inline size()/end() accessors make MW reload a member the plain field reuses from an earlier compare; a try
+around a single call inside an `if` puts the try marker (`sw sp,N(s8)`) in that call's delay slot. Open: MAIN's pod
+insert copy 0x18B810 (0x470 vs 0x488, registers), the range-map inserts 0x18B0C0/0x18B320 and operator[]s
+0x18CB70/0x18CC60, the class-vector inserts 0x18BE10/0x18C510 (declared), the __sinit rows 0x1D4BF0/0x1D4C20 (their
+guards look like the facet ids' template static members' guards: model the facets as instances of their primary
+templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
 
 ## What the source has to reproduce
 
@@ -1842,6 +1857,25 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 19** (seal_unit.cpp's queries, CAiHidePlanner, the follow master, AnimSet's
+  scripts):
+  - a whole-body `if (x == K)` that compiles to `beq; b end` is a one-case switch (SOCOM 1's copy has the same shape);
+    two single-bit `unsigned int` bitfields in a stand-in class share one byte, so the pad after them starts at +1; a
+    stack byte the target tests with lbu and copies with lb wants the test written `*(unsigned char *)&b` (a stand-in
+    spelling);
+  - an inline distance helper taking `const CAiMapLoc &` lets MW reuse the x fields an inlined `operator!=` already
+    extracted (written in place, MW reloads them); a float call argument the target loads with lwc1 is a variable (a
+    literal 8.0f is built with lui and mtc1); `while ((p = f()) != 0)` tests v0 with the copy in the delay slot, a `for`
+    tests the copy; a short field taken into a `short` local is sign-extended again at each use, an `int` local uses
+    the lh result as is;
+  - CAiHidePlanner (the RTTI's name) is seal_aistate.cpp's: reset takes (map, start, goal) and keeps the start, dist
+    beside it, its constructor inlined in 0x5F0990/0x5F0B30; GetFollowMaster inlines itself four times at level 5
+    with its accessors' copies; 0x5E3D90 is AnimSet::GetScript(type) (kind 0: every caller passes m_animset in a0) --
+    seal_cfg.cpp calls it as a free function, and as `m_animset->GetScript(type)` the type loads before the set, as
+    the SEALs' open SetMaxMotion wants (a member call evaluates its arguments before loading `this`);
+  - open: CAiHidePlanner::is_goal 0x5F8570 (0x130 vs 0x138: the distance test's delay slot empty and the next label
+    padded in the target), GetTail/GetLeader 0x5E7830/0x5E8850/0x5E8A90 (include/list's depth problem, GetSealCount's:
+    the MSL lane's).
 - **Tells from the weapons, round 15** (vis_ripple.h, the turret's and the vehicle's Ticks, CMesh::AddDecal):
   - MW PADS A FUNCTION'S LABELS TO 8 BYTES WHEN A SEPARATE VARIABLE HOLDS AN INTERMEDIATE VALUE -- CTurret::Tick's
     random factor in its own `float r`, AddDecal's decal in a local in each arm (round 14's "both arms padded with a
