@@ -699,8 +699,11 @@ def main(argv=None) -> int:
     ap.add_argument("-I", dest="includes", action="append", type=Path, default=[])
     ap.add_argument("-v", "--verbose", action="store_true", help="list every relocation")
     a = ap.parse_args(argv)
-    from sccheck import tu_options             # (sccheck imports this module)
+    from sccheck import tu_options, directive_problem     # (sccheck imports this module)
     opts = tu_options(a.src)
+    bad = directive_problem(a.src)
+    if bad and not (a.compiler and "toolchain" in bad):     # --compiler overrides the unit's own
+        raise SystemExit(bad)
     a.compiler = a.compiler or opts.get("compiler", COMPILER)
     a.flags = a.flags or opts.get("flags")
     img, st = E.image(), E.symbols()
