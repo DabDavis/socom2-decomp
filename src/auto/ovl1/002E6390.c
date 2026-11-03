@@ -11,7 +11,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 void cbGetLeaderMessages__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP32MediusGetAllClanMessagesResponse(s32 arg0, s32 arg1, s32 arg2, char * arg3);
 M2C_UNK Add__17ClanMessageVectorFP32MediusGetAllClanMessagesResponse(char * arg0, char * arg1);
 s32 CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(char * arg0, s32 arg1);
-M2C_UNK func_002E6400(void);
+M2C_UNK UpdateLeaderMessages__Fv(void);
 extern M2C_UNK ClanMessageVec;
 extern M2C_UNK data_003F3EE0;
 
@@ -19,9 +19,9 @@ void cbGetLeaderMessages__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP3
     if (CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(&data_003F3EE0, SC_MEMBER(arg3, s32 *, 0x18)) != 0) {
         Add__17ClanMessageVectorFP32MediusGetAllClanMessagesResponse(&ClanMessageVec, arg3);
         if (SC_MEMBER(arg3, s8 *, 0xEC) != 0) {
-            func_002E6400();
+            UpdateLeaderMessages__Fv();
         }
     } else {
-        func_002E6400();
+        UpdateLeaderMessages__Fv();
     }
 }
