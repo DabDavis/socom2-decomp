@@ -19,6 +19,27 @@ inline void swap(T &a, T &b)
 
 namespace Metrowerks {
 
+namespace details {
+
+/* SOCOM 1's DWARF: compressed_pair_imp<T1, T2, 1> (T1 empty, a base; T2 the member second_):
+ * the constructor from the second (msl_utility line 848), first() 850, second() 853, swap 859 */
+template <class T1, class T2, int>
+class compressed_pair_imp;
+
+template <class T1, class T2>
+class compressed_pair_imp<T1, T2, 1> : public T1 {
+public:
+    compressed_pair_imp() {}
+    explicit compressed_pair_imp(T2 y) : second_(y) {}
+    T1 &first() { return *this; }
+    T2 &second() { return second_; }
+    void swap(compressed_pair_imp &y) { std::swap(second_, y.second_); }
+
+    T2 second_;
+};
+
+}
+
 /* a pointer an allocator made, given back to it unless released: MSL's guard for a node while its
  * value is built (SOCOM 1's DWARF: alloc_ptr<node, allocator<node> &>, 8 bytes, a compressed pair
  * of the allocator reference and the pointer; its destructor at msl_utility line 1092). The list's

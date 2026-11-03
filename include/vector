@@ -88,14 +88,13 @@ namespace std {
 /* the capacity, its own member as SOCOM 1's DWARF has it (a compressed_pair with the allocator):
  * the extra constructor level a vector of a class has and a vector of pointers has not */
 template <class Allocator>
-class __vector_capacity {
-public:
-    __vector_capacity() { n_ = 0; }
-    operator unsigned int() const { return n_; }
-    /* the pair's swap (SOCOM 1's compressed_pair_imp::swap, msl_utility lines 859-860) */
-    void swap(__vector_capacity &x) { std::swap(n_, x.n_); }
+class __vector_capacity : public Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> {
+    typedef Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> base;
 
-    unsigned int n_;
+public:
+    __vector_capacity() : base(0) {}
+    operator unsigned int() const { return this->second_; }
+    void swap(__vector_capacity &x) { base::swap(x); }
 };
 
 /* the pair swapped through its member (MSL's free swap of a compressed_pair) */
@@ -104,6 +103,14 @@ inline void swap(__vector_capacity<Allocator> &x, __vector_capacity<Allocator> &
 {
     x.swap(y);
 }
+
+/* the 4-byte pod's capacity: the same pair, built empty (the pod's constructor stores the count) */
+template <class Allocator>
+class __vector_pod_capacity : public Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> {
+public:
+    __vector_pod_capacity() {}
+    operator unsigned int() const { return this->second_; }
+};
 
 template <class T, class Allocator>
 class __vector_deleter {
@@ -219,12 +226,12 @@ public:
     {
         unsigned int z = 0;
 
-        capacity_ = z;
+        capacity_.second_ = z;
         size_ = z;
         data_ = 0;
     }
     /* n copies of value: the words zeroed, then init (CVisual's m_lodMesh(0): init called out of line) */
-    __vector_pod(unsigned int n, const T &value) { capacity_ = 0; size_ = 0; data_ = 0; init(n, value); }
+    __vector_pod(unsigned int n, const T &value) { capacity_.second_ = 0; size_ = 0; data_ = 0; init(n, value); }
     __vector_pod(const __vector_pod &x);
     /* the storage given back through the allocator (CW 2.5's MSL: the pod's destructor calls
      * alloc() and deallocate): a pointer vector's destructor is four high, one more than its
@@ -233,7 +240,7 @@ public:
     ~__vector_pod()
     {
         if (data_)
-            deallocate(data_);
+            alloc().deallocate(data_, cap());
     }
     /* the assignment, out of class as the char pod's (OVL1 0x259AF0: assign over the other's words
      * unless it is this one) -- what an implicit assignment of a class holding pointer vectors calls
@@ -252,7 +259,8 @@ public:
     void swap(__vector_pod &x) { std::swap(*this, x); }
     /* references to the fields (SOCOM 1 keeps out-of-line copies: data() is this + 8, cap() this) */
     T *&data() { return data_; }
-    unsigned int &cap() { return capacity_; }
+    unsigned int &cap() { return capacity_.second(); }
+    Allocator &alloc() { return capacity_.first(); }
     /* the raw iterators a vector of pointers makes its own from, both through data()'s reference:
      * end() so keeps a local vector's &data_ in its register across a call (CGrid::Destroy,
      * CWorld::GenerateLandmarkList and DeleteChildren, CAssetLib::AddPalette -- the zdb world's
@@ -293,7 +301,7 @@ public:
      * now emits four list-iterator copies out of line from a function that does not match yet) */
     void push_back(const T &x) { insert(data() + size_, 1, x); }
 public:
-    unsigned int capacity_;
+    __vector_pod_capacity<Allocator> capacity_;
     unsigned int size_;
     T *data_;
 };
@@ -304,7 +312,7 @@ template <class T, class Allocator>
 inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
 {
     if (&x != &y) {
-        std::swap(x.capacity_, y.capacity_);
+        std::swap(x.capacity_.second_, y.capacity_.second_);
         std::swap(x.data_, y.data_);
         std::swap(x.size_, y.size_);
     }
@@ -838,7 +846,7 @@ T *__vector_pod<T, Allocator>::erase(T *position)
 template <class T, class Allocator>
 __vector_pod<T, Allocator>::__vector_pod(const __vector_pod &x)
 {
-    capacity_ = 0;
+    capacity_.second_ = 0;
     size_ = 0;
     data_ = 0;
     init((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
@@ -880,17 +888,17 @@ void __vector_pod<T, Allocator>::assign(InputIterator first, InputIterator last,
 {
     unsigned int n = last - first;
 
-    if (n > capacity_) {
+    if (n > capacity_.second_) {
         if (n > max_size())
             __msl_error("vector::assign length error\n");
         size_ = 0;
         if (data_) {
             deallocate(data_);
             data_ = 0;
-            capacity_ = 0;
+            capacity_.second_ = 0;
         }
         data() = allocate(n);
-        capacity_ = n;
+        capacity_.second_ = n;
     }
     T *d = data_;
 
@@ -957,7 +965,7 @@ void __vector_imp<T, Allocator, IsPOD>::reserve(unsigned int n)
         __vector_deleter<T, Allocator> temp;
 
         temp.data_ = temp.allocate(n);
-        temp.capacity_.n_ = n;
+        temp.capacity_.second_ = n;
         T *d = temp.data_;
         T *p = this->data_;
         T *last = p + this->size_;
@@ -1172,7 +1180,7 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
                 newcap = max_size();
         }
         tmp.data_ = tmp.allocate(newcap);
-        tmp.capacity_.n_ = newcap;
+        tmp.capacity_.second_ = newcap;
         T *i = tmp.data_;
         T *j = this->data_;
         T *e = this->data_ + this->size_;
@@ -1238,7 +1246,7 @@ void __vector_imp<T, Allocator, IsPOD>::init(InputIterator first, InputIterator 
         __msl_error("vector length error\n");
     if (n) {
         this->data() = this->allocate(n);
-        this->capacity_.n_ = n;
+        this->capacity_.second_ = n;
         for (T *p = this->data_; first != last; ++first, ++p) {
             this->construct(p, *first);
             ++this->size_;
@@ -1291,10 +1299,10 @@ void __vector_imp<T, Allocator, IsPOD>::assign(InputIterator first, InputIterato
         if (this->data_) {
             operator delete(this->data_);
             this->data_ = 0;
-            this->capacity_.n_ = 0;
+            this->capacity_.second_ = 0;
         }
         this->data() = this->allocate(n);
-        this->capacity_.n_ = n;
+        this->capacity_.second_ = n;
         for (T *p = this->data_; first != last; ++first, ++p) {
             this->construct(p, *first);
             ++this->size_;
