@@ -337,7 +337,40 @@ void func_00626140(GRID *p)
     p->x68 = 0;
 }
 
-/* 0x626240: not written */
+typedef struct GRID_SLOTS {             /* a type-5 message: the room left in the group */
+    unsigned short nSize;               /* 0x00: sizeof (GRID_SLOTS) */
+    unsigned short nGrid;               /* 0x02: the group spoken in */
+    unsigned short nFree;               /* 0x04: free slots, the receiver's own counted */
+    unsigned short x06;
+    int nId;                            /* 0x08: this client */
+} GRID_SLOTS;                           /* 0x0C */
+
+/* The free member slots to one peer -- its own slot counted free, one for a growing table --
+ * unless there are none and it is not forced; the send's result. */
+int func_00626240(GRID *p, unsigned int nTo, int bForce)
+{
+    GRID_HEADER h;
+    GRID_SLOTS msg;
+    int nId = 0xFFFF;
+    int i;
+
+    func_00611E60(p->pAudio, &nId);
+    msg.nId = nId;
+    msg.nGrid = func_00611E70(p->pAudio);
+    msg.nSize = sizeof msg;
+    msg.nFree = 0;
+    for (i = 0; i < p->nMembers; i++) {
+        if (p->pMembers[i].nState == 0 || p->pMembers[i].nId == nTo)
+            msg.nFree++;
+    }
+    if (msg.nFree == 0 && p->nMaxMembers == 0)
+        msg.nFree++;
+    if (bForce != 0 || msg.nFree != 0) {
+        func_00624BE0(p, &h, 5, sizeof msg);
+        return func_00610FA0(p->pAudio, nTo, &h, &msg, sizeof msg);
+    }
+    return 0;
+}
 
 GRID_MEMBER *func_00626350(GRID *p, unsigned int nId)
 {
