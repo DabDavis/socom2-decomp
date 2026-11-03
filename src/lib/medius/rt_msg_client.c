@@ -1229,6 +1229,38 @@ int rt_msg_client_iudp_disable_heartbeat(void)
     return 0;
 }
 
+extern int rt_circ_buf_destroy(rt_circ_buf *cb);
+extern void KM_Destroy(int nKMID);
+
+/* SOCOM 1's free_connection_index, grown (round 16b): each of the connection's two channels has its
+ * rings destroyed and is freed (SOCOM 1's one channel was in the record), then the connect data,
+ * the record cleared and freed, its slot emptied; the connection's key is destroyed either way */
+unsigned char rt_msg_client_free_connection_index(unsigned short nConnection)
+{
+    unsigned int i;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (nConnection >= gnConnectionArraySize)
+        return 2;
+    if (gapConnections[nConnection] != 0) {
+        for (i = 0; i < 2; i++) {
+            if (gapConnections[nConnection]->apChannels[i] != 0) {
+                rt_circ_buf_destroy(&gapConnections[nConnection]->apChannels[i]->recvBuf);
+                rt_circ_buf_destroy(&gapConnections[nConnection]->apChannels[i]->sendBuf);
+                rt_memory_free((void **)&gapConnections[nConnection]->apChannels[i]);
+            }
+        }
+        if (gapConnections[nConnection]->pConnectData != 0)
+            rt_memory_free(&gapConnections[nConnection]->pConnectData);
+        memset(gapConnections[nConnection], 0, sizeof(rt_msg_client_connection));
+        rt_memory_free((void **)&gapConnections[nConnection]);
+        gapConnections[nConnection] = 0;
+    }
+    KM_Destroy(nConnection);
+    return 0;
+}
+
 typedef struct rt_msg_client_link {    /* an rt_comm channel's view: its connection's id */
     char pad0[6];
     unsigned short nId;                 /* 0x06 */
@@ -1494,6 +1526,77 @@ int rt_msg_client_create_send_buf_space(void *pChannel, unsigned int nSize)
             return 21;
         if (nAvail < nSize)
             return 20;
+    }
+    return 0;
+}
+
+extern int rt_circ_buf_get_used_nowrap(rt_circ_buf *cb, unsigned int *pnUsed);
+extern int rt_circ_buf_is_wrapped(rt_circ_buf *cb, unsigned char *pbWrapped);
+extern int rt_circ_buf_get_start_used_ptr(rt_circ_buf *cb, unsigned char **ppStart);
+extern int rt_circ_buf_free(rt_circ_buf *cb, unsigned int nBytes);
+extern int func_006364C0(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, int nType,
+                         unsigned char *pMsg, unsigned short nLength);
+unsigned char rt_msg_client_get_header(unsigned char *pMsg, rt_msg_client_header *pHeader, unsigned short *pnLength);
+
+/* SOCOM 1's process_recv_buf, grown (round 16b): the connection and its channel valid and its own
+ * (0x635078's tests), the receive ring normalised when it wraps, then every whole message at its
+ * start processed (0x6364C0) and freed while three bytes are left and the connection's state
+ * holds; a flagged message (type bit 7) with a body carries a 4-byte trailer */
+int rt_msg_client_process_recv_buf(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm)
+{
+    rt_msg_client_header header;
+    unsigned char bWrapped;
+    unsigned char *pMsg = 0;
+    unsigned int nUsed = 0;
+    unsigned short nHeaderLength = 0;
+    rt_circ_buf *pBuf;
+    rt_msg_client_state nState;
+    unsigned int nSize;
+    int result;
+
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (pComm->bKind != 1)
+        return 2;
+    if (pConnection->nId != pComm->nId)
+        return 2;
+    pBuf = &pComm->recvBuf;
+    if (rt_circ_buf_is_wrapped(pBuf, &bWrapped) != 0)
+        return 21;
+    if (bWrapped == 1) {
+        if (rt_circ_buf_normalize_with_buf(pBuf, 1, gpScratchBuffer) != 0)
+            return 21;
+    }
+    if (rt_circ_buf_get_used_nowrap(pBuf, &nUsed) != 0)
+        return 21;
+    if (nUsed >= 3) {
+        nState = pConnection->nState;
+        for (;;) {
+            if (rt_circ_buf_get_start_used_ptr(pBuf, &pMsg) != 0)
+                return 21;
+            result = rt_msg_client_get_header(pMsg, &header, &nHeaderLength);
+            if (result != 0)
+                return result;
+            nSize = nHeaderLength + header.nLength;
+            if (header.nLength != 0 && (header.nType & 0x80))
+                nSize += 4;
+            if (nUsed < nSize)
+                break;
+            pMsg += nHeaderLength;
+            result = func_006364C0(pConnection, pComm, header.nType, pMsg, header.nLength);
+            if (result != 0)
+                return result;
+            if (rt_circ_buf_free(pBuf, nSize) != 0)
+                return 21;
+            if (rt_circ_buf_get_used_nowrap(pBuf, &nUsed) != 0)
+                return 21;
+            if (nUsed < 3)
+                break;
+            if (nState != pConnection->nState)
+                break;
+        }
     }
     return 0;
 }
