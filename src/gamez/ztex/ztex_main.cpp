@@ -13,6 +13,9 @@
 
 char *_strdup(const char *s, const char *file, int line);
 
+/* the name every unnamed texture shares (by address: SOCOM 1's gp-relative static) */
+extern char *data_003E02D8;
+
 namespace zdb {
 
 /* a palette made with its name: the next palette id its GS address (SOCOM 1's, the same code) */
@@ -53,6 +56,96 @@ void CTexHandle::SetTexture(CTexture *tex)
         SetName(tex->m_name);
         tex->m_htex_count++;
     }
+}
+
+/* SOCOM 1's: every field cleared, a 16-bit bilinear texture of no size, the name copied. The
+ * fields from the name on are initialised ahead of the mip list (the target's stores before its
+ * three words), TEXTURE_PARAMS' in the body */
+CTexture::CTexture(const char *name)
+    : m_name(data_003E02D8), m_buffer(0), m_palette(0), m_gifSelect(0), m_vuSelect(0), m_format(0),
+      m_palID(0), m_htex_count(0), m_gsWords(0)
+{
+    m_texelBitSize = 16;
+    m_height = 0;
+    m_width = 0;
+    m_gsaddr = 0;
+    m_selectQwc = 0;
+    m_pal_offset = 0;
+    SetTransparent(false);
+    SetPalettized(false);
+    SetIsMipChild(false);
+    SetBumpmap(false);
+    SetBilinear(true);
+    SetTransp1Bit(false);
+    SetDynamic(false);
+    SetContext(false);
+    m_AssetLib = 0;
+    SetName(name);
+    m_loadimage = 0;
+    m_TEX0 = 0;
+    m_MIP1 = 0;
+    m_MIP2 = 0;
+}
+
+/* SOCOM 1's: the name and the image buffer freed, the mip list torn down. The name goes through
+ * SetName(0), inlined -- its strdup arm left in place behind an unconditional branch -- then the
+ * default again (SOCOM 1's does the same two stores) */
+CTexture::~CTexture()
+{
+    SetName(0);
+    m_name = data_003E02D8;
+    if (m_loadimage)
+        _free(m_loadimage, 0, 0);
+    m_loadimage = 0;
+}
+
+/* SOCOM 1's: the old name freed unless it is the shared default */
+void CTexture::SetName(const char *name)
+{
+    if (m_name && m_name != data_003E02D8)
+        _free(m_name, 0, 0);
+    m_name = name ? _strdup(name, 0, 0) : data_003E02D8;
+}
+
+/* translucent and blended: neither bump-mapped nor 1-bit (SOCOM II's; the name ours -- the
+ * particles' draw asks it) */
+bool CTexture::IsAlphaBlended()
+{
+    return m_transparent && !m_bumpmap && !m_transp_1bit;
+}
+
+/* SOCOM 1's: the texture's GS memory in 64-word blocks, rounded up -- a narrow low-depth texture
+ * takes twice its texels */
+unsigned int CTexture::Compute64WordMemoryUsage()
+{
+    unsigned int n = m_width * m_height;
+
+    if (m_texelBitSize < 9 && m_height * 2 < m_width && m_texelBitSize * m_width < 2048)
+        n *= 2;
+    switch (m_texelBitSize) {
+    case 4:
+        n >>= 3;
+        break;
+    case 8:
+        n >>= 2;
+        break;
+    case 16:
+        if (m_palettized)
+            n >>= 2;
+        else
+            n >>= 1;
+        break;
+    case 24:
+    case 32:
+        if (m_palettized)
+            n >>= 2;
+        else if (m_transp_1bit)
+            n >>= 1;
+        break;
+    }
+    if (n & 0x3f)
+        n += 64 - (n & 0x3f);
+    return n >> 6;
 }
 
 /* CTexList::GetHandle(const char *)'s test: a handle's texture of that name, any case (ours) */

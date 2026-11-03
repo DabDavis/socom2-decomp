@@ -6470,8 +6470,8 @@
 0x003549B0 0x44 CopyTextureSelect__Q23zdb8CTextureFP8_word128  # OVL1; s1:exact
 0x00354A00 0x88 func_00354A00  # OVL1
 0x00354A90 0xC func_00354A90  # OVL1
-0x00354AA0 0x110 func_00354AA0  # OVL1
-0x00354BB0 0x48 func_00354BB0  # OVL1
+0x00354AA0 0x110 Compute64WordMemoryUsage__Q23zdb8CTextureFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's Compute64WordMemoryUsage between CopyTextureSelect and SetName, the same switch over the texel size; Read and LoadGS call it) -- ztex_main.cpp
+0x00354BB0 0x48 IsAlphaBlended__Q23zdb8CTextureFv  # OVL1; SOCOM II's, the name ours (the world lane: transparent and neither bump-mapped nor 1-bit; the particles' 0x322DF0 asks it) -- ztex_main.cpp
 0x00354C00 0x74 SetName__Q23zdb8CTextureFPCc  # OVL1; s1:align
 0x00354C80 0xE8 __dt__Q23zdb8CTextureFv  # OVL1; s1:align
 0x00354D70 0x14 Release_HTEX__Q23zdb8CTextureFv  # OVL1; tu: ztex_main.cpp~ (1.0 beta); s1:exact

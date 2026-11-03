@@ -794,23 +794,59 @@ public:
     bool Read(CSaveLoad &io);
     /* a handle let go of it (ztex_main.cpp, SOCOM 1's) */
     void Release_HTEX();
+    /* ztex_main.cpp's (SOCOM 1's): the name copied, or the shared default; the GS memory it takes,
+     * in 64-word blocks */
+    void SetName(const char *name);
+    unsigned int Compute64WordMemoryUsage();
+    /* SOCOM II's (ours): translucent, and blended rather than bump-mapped or 1-bit */
+    bool IsAlphaBlended();
+    CTexture(const char *name);
+    /* TEXTURE_PARAMS' flag setters (ours, inline: a constant through them is masked at run time,
+     * as the constructor's byte read-modify-writes are) */
+    void SetTransparent(bool b) { m_transparent = b; }
+    void SetPalettized(bool b) { m_palettized = b; }
+    void SetIsMipChild(bool b) { m_is_mip_child = b; }
+    void SetBumpmap(bool b) { m_bumpmap = b; }
+    void SetBilinear(bool b) { m_bilinear = b; }
+    void SetTransp1Bit(bool b) { m_transp_1bit = b; }
+    void SetDynamic(bool b) { m_dynamic = b; }
+    void SetContext(bool b) { m_context = b; }
 
     unsigned short m_width;   // 0x0
     unsigned short m_height;   // 0x2
-    unsigned char _4[0x10 - 4];   // the rest of TEXTURE_PARAMS
+    unsigned int m_size;   // 0x4 (TEXTURE_PARAMS, SOCOM 1's DWARF)
+    unsigned int m_gsaddr;   // 0x8
+    unsigned int m_texelBitSize : 8;   // 0xc
+    unsigned int m_selectQwc : 8;   // 0xc
+    unsigned int m_pal_offset : 8;   // 0xc
+    unsigned int m_transparent : 1;   // 0xc
+    unsigned int m_palettized : 1;   // 0xc
+    unsigned int m_is_mip_child : 1;   // 0xc
+    unsigned int m_bumpmap : 1;   // 0xc
+    unsigned int m_bilinear : 1;   // 0xc
+    unsigned int m_transp_1bit : 1;   // 0xc
+    unsigned int m_dynamic : 1;   // 0xc
+    unsigned int m_context : 1;   // 0xc
     CAssetLib *m_AssetLib;   // 0x10 (AddTexture sets it)
     char *m_name;   // 0x14
     void *m_buffer;   // 0x18 (SOCOM 1's DWARF, from here; the wep lane's)
     CTexPalette *m_palette;   // 0x1c
-    unsigned char _20[0x2c - 0x20];
-    unsigned short m_htex_count;   // 0x2c: the handles on it (SOCOM 1's DWARF; ztex_main.cpp's)
-    unsigned char _2e[0x40 - 0x2e];
+    union _word128 *m_gifSelect;   // 0x20 (SOCOM 1's DWARF, ztex_main.cpp's names from here)
+    union _word128 *m_vuSelect;   // 0x24
+    unsigned short m_format;   // 0x28
+    unsigned short m_palID;   // 0x2a
+    unsigned short m_htex_count;   // 0x2c: the handles on it
+    unsigned short m_gsWords;   // 0x2e
+    u_long128 m_dmaRef;   // 0x30
     /* the VU's DMA reference to its select (SOCOM 1's _word128; ResolveTextureName copies it) */
     u_long128 m_dmaRefVu;   // 0x40
-    unsigned char _50[0x54 - 0x50];
+    void *m_TEX0;   // 0x50 (SOCOM 1's sceGsTex0 *)
     /* the first mip level's register (SOCOM 1's sceGsMiptbp1 *): a texture with mip levels has one
      * (the asset manager's mip walk tests it) */
     void *m_MIP1;   // 0x54
+    void *m_MIP2;   // 0x58 (SOCOM 1's sceGsMiptbp2 *)
+    std::vector<CTexture *> m_reverse_miplist;   // 0x5c (SOCOM 1's DWARF; its mip levels)
+    void *m_loadimage;   // 0x68 (SOCOM 1's CLoadImage *)
 };
 
 /* a texture's handle (SOCOM 1's DWARF) */
