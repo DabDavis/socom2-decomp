@@ -19,8 +19,9 @@
  * thread, 2 words); the result variable zeroed at the top and returned once (its zero stays live
  * in s1; early returns propagate the constant and swap s0/s1); a frame-resident node's two links
  * as one chained store, `p->pPrev = p->pNext = p` (two statements reload p between them); the
- * codec's reset returns an int (declared void, the constant after it takes v0, not v1). Not
- * written: the stream's destroy 0x62A8C8 (four ring drains) and the decoder getter 0x62ABE0. */
+ * codec's reset returns an int (declared void, the constant after it takes v0, not v1); the free
+ * pool's trim decrements in its test after the unlink, `if (--n <= 0)` (PRE then feeds the body
+ * from both loop edges: the target's copy at the bottom test). Not written: the destroy 0x62A8C8. */
 
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
@@ -103,6 +104,64 @@ void *func_0062AB10(VSTREAM *s, int nType, int nCount)
     if (pCodec != 0) {
         func_00613790(pCodec);
         s->bEncoding = 1;
+    }
+    return pCodec;
+}
+
+/* a decoder of the type: a free one of that type, else -- the free pool trimmed while the two
+ * pools together are at the limit -- a new one while under it; on the used ring, reset */
+void *func_0062ABE0(VSTREAM *s, int nType)
+{
+    VNODE *pTrim;
+    VNODE *p;
+    void *pCodec = 0;
+
+    for (p = s->pDecFree; p != 0; ) {
+        if (func_006137E8(p->pData) == nType)
+            break;
+        p = p->pNext;
+        if (p == s->pDecFree)
+            p = 0;
+    }
+    if (p != 0) {
+        p->pNext->pPrev = p->pPrev;
+        p->pPrev->pNext = p->pNext;
+        if (--s->nDecFree <= 0)
+            s->pDecFree = 0;
+        else if (s->pDecFree == p)
+            s->pDecFree = s->pDecFree->pNext;
+    } else {
+        while (s->nDecFree > 0 && s->nDecUsed + s->nDecFree >= s->nMax) {
+            pTrim = s->pDecFree->pPrev;
+            pTrim->pPrev->pNext = pTrim->pNext;
+            pTrim->pNext->pPrev = pTrim->pPrev;
+            if (--s->nDecFree <= 0)
+                s->pDecFree = 0;
+            func_00613750(pTrim->pData);
+            rt_memory_free((void **)&pTrim);
+        }
+        if (s->nDecUsed < s->nMax) {
+            rt_memory_allocate_init_zero((void **)&p, sizeof(VNODE));
+            if (p != 0) {
+                p->pData = func_006132B8(s->nKind, nType, 2);
+                if (p->pData == 0)
+                    rt_memory_free((void **)&p);
+            }
+        }
+    }
+    if (p != 0) {
+        if (s->pDecUsed == 0) {
+            p->pPrev = p->pNext = p;
+            s->pDecUsed = p;
+        } else {
+            p->pNext = s->pDecUsed;
+            p->pPrev = s->pDecUsed->pPrev;
+            p->pNext->pPrev = p;
+            p->pPrev->pNext = p;
+        }
+        s->nDecUsed++;
+        pCodec = p->pData;
+        func_00613790(pCodec);
     }
     return pCodec;
 }
