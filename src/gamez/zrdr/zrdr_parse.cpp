@@ -22,10 +22,9 @@ extern "C" double func_0019A9B0(const char *s, char **end);
 /* the values allocator (zrdr_pack.cpp's unit, 0x335BC0): `n` zeroed values, the first typed */
 extern "C" _zrdr *func_00335BC0(unsigned char type, int n);
 
-/* basic_string's members the map has not named (placeholders, `this` first): find_last_of and
- * find over a C string, substr, and the assignment from a string */
-extern "C" unsigned int func_00331F30(const std::string *s, const char *chars, unsigned int pos);
-extern "C" unsigned int func_00331ED0(const std::string *s, const char *str, unsigned int pos);
+/* basic_string's members the map has not named (placeholders, `this` first): substr, and the
+ * assignment from a string (find_last_of and find_first_of over a C string are include/string's
+ * since the MSL headers round 13, 0x331F30 and 0x331ED0 with their cores in this unit's tail) */
 extern "C" std::string func_0032FC40(const std::string *s, unsigned int pos, unsigned int n);
 extern "C" void *func_0022E4D0(std::string *s, const std::string &x);
 
@@ -191,13 +190,13 @@ bool CRdrIO::Open(const char *name, unsigned int mode)
 {
     m_name = name;
     m_path.erase();
-    unsigned int pos = func_00331F30(&m_name, "\\/", (unsigned int)std::string::npos);
+    unsigned int pos = m_name.find_last_of("\\/", (unsigned int)std::string::npos);
 
     if (pos != (unsigned int)std::string::npos) {
         m_path = func_0032FC40(&m_name, 0, pos);
         string_erase(m_name, 0, pos + 1);
         unsigned int i;
-        while ((i = func_00331ED0(&m_path, "\\", 0)) != (unsigned int)std::string::npos)
+        while ((i = m_path.find_first_of("\\", 0)) != (unsigned int)std::string::npos)
             string_at(m_path, i) = '/';
     }
     return CBufferIO::Open(name, mode);
