@@ -166,6 +166,52 @@ CDecal *CDecalPool::Get(bool b)
     return d;
 }
 
+/* the VU0 decal builder's batch (0x3B8680 makes it on first use: new in SOCOM II, no SOCOM 1
+ * counterpart -- the names ours): a list of indices, 296 items and a count (0x2E50 bytes) */
+namespace zdb {
+
+class CDecalBatchItem {
+public:
+    /* (out of line at 0x3BEC40: the two lists, then the point and the two halfwords) */
+    CDecalBatchItem()
+    {
+        m_pos = CPnt3D::zero;
+        m_c = 0;
+        m_e = -1;
+    }
+    /* (out of line at 0x3BEB00: the second list cleared, then both destroyed) */
+    ~CDecalBatchItem() { m_1c.clear(); }
+
+    CPnt3D m_pos;   // 0x0
+    short m_c;   // 0xc
+    short m_e;   // 0xe
+    std::vector<unsigned int> m_10;   // 0x10
+    std::vector<unsigned int> m_1c;   // 0x1c
+};   // 0x28 bytes
+
+class CDecalBatch {
+public:
+    CDecalBatch()
+    {
+        m_list.reserve(296);
+        m_count = 0;
+    }
+
+    std::vector<unsigned int> m_list;   // 0x0
+    CDecalBatchItem m_items[296];   // 0xc
+    int m_count;   // 0x2e4c
+};
+
+}
+
+extern "C" CDecalBatch *data_004B5078;
+
+/* the batch made (0x3B8680's first use) */
+extern "C" void func_003BEBD0()
+{
+    data_004B5078 = new CDecalBatch;
+}
+
 void CMeshDecalPool::Init(unsigned int count, unsigned int extra)
 {
     m_max = count;

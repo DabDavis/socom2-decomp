@@ -7999,10 +7999,10 @@
 0x003BE9B0 0x6C Init__Q23zdb14CMeshDecalPoolFUiUi  # OVL1; s1:align
 0x003BEA20 0x3C func_003BEA20  # OVL1
 0x003BEA60 0x98 func_003BEA60  # OVL1
-0x003BEB00 0xB0 func_003BEB00  # OVL1
+0x003BEB00 0xB0 __dt__Q23zdb15CDecalBatchItemFv  # OVL1; by hand (the weapons lane round 16: the decal batch's item destructor -- 0x3BEBD0's __construct_array and 0x3BEA60's __destroy_arr take it; the names ours, vis_decal.cpp)
 0x003BEBB0 0x1C func_003BEBB0  # OVL1
 0x003BEBD0 0x70 func_003BEBD0  # OVL1
-0x003BEC40 0x50 func_003BEC40  # OVL1
+0x003BEC40 0x50 __ct__Q23zdb15CDecalBatchItemFv  # OVL1; by hand (the weapons lane round 16: the decal batch's item constructor -- 0x3BEBD0 passes it to __construct_array with 0x3BEB00, 40-byte items, 296 of them, at +0xC of the 0x2E50-byte batch the VU0 decal builder 0x3B8680 makes; the names ours, vis_decal.cpp)
 0x003BEC90 0x8 Tick__Q23zdb6CDecalFf  # OVL1; s1:calls (SOCOM 1's VisualEffectsTick calls CDecal::Tick first; SOCOM II's is empty)
 0x003BECA0 0x334 func_003BECA0  # OVL1
 0x003BEFE0 0x24 PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal  # OVL1; s1:align
