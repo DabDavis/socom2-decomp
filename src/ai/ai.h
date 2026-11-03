@@ -226,11 +226,17 @@ public:
     /* three fields read through accessors (the names ours: the tile callbacks test a field so
      * and load it again for the setter's read-modify-write) */
     bool IsOccupied() const { return m_occupied; }
+    /* whether a name is on the cell (the name ours: ValidateCells tests it so and loads the byte
+     * again for the setter) */
+    bool HasName() const { return m_name; }
     /* whether the cell holds an action (the name ours: GetCellCenter's test, out of line at
      * 0x516920 where the centre is inlined one level) */
     bool HasAction() const { return m_action; }
     unsigned char GetBoundary() const { return m_boundary; }
     unsigned int GetShadow() const { return m_shadow; }
+    /* whether the cell is indoors (the name ours: GetInterpolatedShadow's test, out of line at
+     * 0x52D280 beside GetShadow's 0x52D270 where the map's shadow is inlined one level) */
+    bool IsInside() const { return m_inside; }
     /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
      * (the names ours) */
     void SetOccupied(unsigned int b) { m_occupied = b; }
@@ -298,6 +304,8 @@ int zrdr_free(CRdrFile *file);
 extern "C" int func_001993C0(const char *a, const char *b, unsigned int n);
 
 class CGNode;
+/* two ints (SOCOM 1's IPNT2D: units that use one define it themselves) */
+struct IPNT2D;
 class CGEdge;
 class CGraph;
 
@@ -396,8 +404,9 @@ public:
     public:
         /* the name copied in, cut to fifteen characters (new in SOCOM II, the name ours) */
         void SetName(const char *s);
-        /* the name ended at its last byte (SOCOM 1's) */
-        void ValidateName() { m_name[15] = 0; }
+        /* the name ended at its last byte (SOCOM 1's; out of line in ai_maptable.cpp, 0x530FF0 --
+         * SetName there inlines it, ai_map.cpp's ValidateCells calls it) */
+        void ValidateName();
         /* a default name: empty, its two bytes 8 and 0, the cell left unbuilt (resize<name>'s
          * temporary, 0x51C630: three byte stores in the body's order -- a mem-initializer list
          * moves m_14 and m_15 ahead of the name) */
@@ -794,6 +803,21 @@ public:
     static int GetDirDelta(DIR a, DIR b);
     /* the whole map as a region: its first cell, its width and height (SOCOM 1's) */
     void GetMapRegion(region &r) const;
+    /* a cell of this map as the cell of another map under the same point, false when that map
+     * has none there (SOCOM 1's TransformTo, by its place: 0x517050, between the repel parameters
+     * and ResetCells as the demo's 0x185B50; CAiMaps::GetLocationDelta's two calls) */
+    bool TransformTo(const CAiMapLoc &loc, CAiMap *map, CAiMapLoc &out);
+    /* the file's cell count, by value (the name ours: GetLocationDelta hands two to _max through
+     * temporaries) */
+    unsigned int GetCellCount() const { return m_cellcount; }
+    /* the cell's three neighbours toward a point and the point's place between their centres
+     * (SOCOM 1's, by its place: 0x52D290 after GetInterpolatedShadow's copies, before
+     * GetCellCenter, as the demo's 0x19BA90) */
+    bool GetInterpolationCells(const CAiMapLoc &loc, const CPnt3D *pos, IPNT2D *d, PNT2D *t) const;
+    /* the cell's shadow blended with its three neighbours' by the point's place between them, 0
+     * to 1 (SOCOM 1's CAiMaps::GetInterpolatedShadow body: ai_maps.cpp's inline, inlined one
+     * level into it) */
+    float GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *pos, bool inside);
     /* the map's id (new in SOCOM II's layout, SOCOM 1's m_mapid; the name ours: ai_astar.cpp's
      * copy 0x5120A0) */
     int GetMapId() const { return m_mapid; }
@@ -806,17 +830,35 @@ public:
 
         return l ? l->m_cells : 0;
     }
-    /* every cell of the map handed to a callback, row by row, until one returns false (SOCOM
-     * 1's foreach, the name ours): too big to inline whole, so a caller inlines it one level and
-     * calls its pieces out of line -- the region's constructor and size, the walk struct's
-     * constructor, the scanlines' size and [], the layer's cells, _saturate, _max, _min */
-    bool ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
     /* a region of a layer's cells (the whole map for none) set to a value -- a soil, a shadow, a
      * boundary, the occupied bit, as the flags choose -- whether any cell changed (SOCOM 1's
      * Tile(region, value, flags); the layer new: the walker unit's 0x536230) */
     bool Tile(const region *r, unsigned int value, unsigned int flags, int layer);
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
+    /* each direction's step in cells, x then y, N to NW (SOCOM 1's CAiMap::neighbor, the demo's
+     * 0x4390B0; OVL2 0x64F910 in the walker unit's data) */
+    static const int neighbor[8][2];
+    /* the cell a step in a direction reaches and its first layer's cell, false off the map or
+     * without a cell (SOCOM 1's GetNeighbor, out of line there; an inline in SOCOM II, which
+     * FloodFill inlines one level -- GetMapId and GetCell called out of line) */
+    bool GetNeighbor(const CAiMapLoc &loc, DIR dir, CAiMapLoc &out, CAiCell *&cell) const
+    {
+        int x = loc.x + neighbor[dir][0];
+        int y = loc.y + neighbor[dir][1];
+
+        if (x >= 0 && x < m_nx && y >= 0 && y < m_ny) {
+            out.x = x;
+            out.y = y;
+            out.m_mapid = GetMapId();
+            cell = GetCell(out, 0);
+            return cell != 0;
+        }
+        return false;
+    }
+    /* every cell of a region, the whole map for none, handed to a callback until one returns
+     * false (SOCOM 1's foreach, the name ours: below, after MAP_FOREACH_STRUCT) */
+    bool ForEachCell(const region *pr, bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
     /* the cells around one flooded out to a radius from a direction, each handed to a callback
      * until one returns true (SOCOM 1's FloodFill, 0x536C80) */
     bool FloodFill(const CAiMapLoc &loc, DIR dir, int radius, bool (*f)(MAP_FLOODFILL_STRUCT &s, void *data),
@@ -894,7 +936,9 @@ public:
     void DestroyGraph();
     void CreateGraph(bool force);
     void ValidateRoutes(bool force);
-    void ValidateCells();
+    /* every name, action and link checked against the cells, the regions given the map's id,
+     * every cell validated; the links on a cell no step may end on counted (SOCOM 1's) */
+    int ValidateCells();
     bool FindActionLocation(unsigned int id, CAiMapLoc &loc, action **pa);
     action *GetCellAction(const CAiMapLoc &loc) const;
     bool GetLocation(const char *name, CAiMapLoc &loc);
@@ -955,9 +999,14 @@ public:
  * fields as the callbacks read them) */
 struct MAP_FLOODFILL_STRUCT {
     CAiMap *m_map;   // 0x0
-    unsigned int m_unk4[2];   // 0x4
+    /* the fill's first cell and its direction (FloodFill sets them; no callback written reads
+     * them -- the names ours) */
+    CAiMapLoc m_first;   // 0x4
+    CAiMap::DIR m_firstDir;   // 0x8
     CAiMapLoc m_loc;   // 0xc: the cell reached
-    CAiMapLoc m_start;   // 0x10: the cell the fill started from
+    /* the neighbour of m_loc being offered, in mode 0 (FloodFill's GetNeighbor writes it; the
+     * name an earlier guess) */
+    CAiMapLoc m_start;   // 0x10
     CAiCell *m_cell;   // 0x14
     /* the direction the fill was sent: a DIR, which MW loads with lb (a one-byte enum, its values
      * unsigned) and hands on unconverted -- a `signed char` cast to DIR is narrowed to an lbu
@@ -979,18 +1028,24 @@ struct MAP_FOREACH_STRUCT {
     CAiMapLoc m_loc;   // 0xc
 };
 
-/* every cell of the map handed to a callback, row by row, until one returns false (SOCOM 1's
- * foreach, the name ours): too big to inline whole, so a caller inlines it one level and calls its
- * pieces out of line -- the region's constructor and size, GetMapRegion, the walk struct's
- * constructor, the scanlines' size and [], the layer's cells, _saturate, _max, _min. The region is
- * read through the walk struct, so after each call it is read again */
-inline bool CAiMap::ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer)
+/* every cell of a region (the whole map for none) handed to a callback, row by row, until one
+ * returns false (SOCOM 1's foreach, the name ours): too big to inline whole, so a caller inlines it
+ * one level and calls its pieces out of line -- the region's constructor and size, GetMapRegion,
+ * the walk struct's constructor, the scanlines' size and [], the layer's cells, _saturate, _max,
+ * _min. The region is a pointer assigned in a branch, which MW cannot resolve: ResetCells (none
+ * given) reads the row through it twice as the target does, where a walk always over its own
+ * region shared the loads; FloodFill and Tile pass theirs (the branch folds away, the region's
+ * constructor stays a call) and share the walk's constant pool (0x64F9D0) */
+inline bool CAiMap::ForEachCell(const region *pr, bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data,
+                                 int layer)
 {
     region r;
 
-    GetMapRegion(r);
+    if (!pr) {
+        GetMapRegion(r);
+        pr = &r;
+    }
     MAP_FOREACH_STRUCT s;
-    const region *pr = &r;
 
     s.m_map = this;
     s.m_region = pr;

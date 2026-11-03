@@ -80,6 +80,12 @@ char *CAiMap::GetMapEx(const CAiMapLoc &loc)
     return 0;
 }
 
+/* the name ended at its last byte (SOCOM 1's, between GetCellName and GetMapEx in both builds) */
+void CAiMap::name::ValidateName()
+{
+    m_name[15] = 0;
+}
+
 /* the name of a cell, or none (SOCOM 1's) */
 CAiMap::name *CAiMap::GetCellName(const CAiMapLoc &loc)
 {
