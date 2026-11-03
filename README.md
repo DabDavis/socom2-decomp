@@ -1647,6 +1647,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 12** (ai_mapio.cpp's tail, vehicle_rdr.cpp's entry, char_type.cpp's weapon list):
+  - a class vector's resize matches through include/vector once the element's default constructor is
+    right: body assignments give byte stores in statement order, bitfields in a mem-initializer list
+    word read-mask-writes;
+  - a placement new followed by a call in an insert is MSL's construct(), not an assignment: with a
+    user-declared constructor the implicit copy constructor goes out of line -- the vehicle entry's
+    class insert 0x534630 matches that way (a lead for the class inserts' end register);
+  - `(EQUIP_ITEM)*(const char *)&w.m_wepId` lets remove_copy_if share one `lb` between the compare and
+    the element copy; a function too long for -inline auto inlines once its body goes through an
+    inline accessor (`Item(i)->Int()`, ParseTeams);
+  - an `unsigned` loop counter through `operator[](unsigned)` is strength-reduced, an `int` counter
+    keeps the per-pass index; `if (p != 0)` branches directly where a bare `if (p)` in a for/break
+    search is materialised first; a name-table loop indexes from the table's start (`names[i]`, i =
+    1..2);
+  - char_type.cpp starts at 0x53B070 at the latest (InsertWeapon inlines SetupCharacterWeapon);
+    ai_mapio.cpp's tail runs 0x51B6C0-~0x52416F; 0x534D40 is the entry's copy constructor, not `__as__`.
 - **Tells from the UI, round 10** (the keyboard's vector<char> instances and assign(s, n) through their callers):
   - an end iterator copied to a stack slot, then read with the step folded into the access (`lhu
     -4`), is an iterator passed by value to an inline (zui_skb.h's SkbPrev): every back()/end()-1
