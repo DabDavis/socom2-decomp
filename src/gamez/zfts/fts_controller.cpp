@@ -1,7 +1,9 @@
 /* fts_controller.cpp -- the controller configurations: CCtrlrConfigs (SOCOM 1's fts_controller.cpp:
  * the pad layouts read from controller.rdr, the current one's button for each game function).
- * OVL1 from 0x2C5C90, after fts_net_persona.cpp. Only some of it so far. Defined in reverse of
- * their image order (-inline deferred). */
+ * OVL1 from 0x2C5C90, after fts_net_persona.cpp. Only some of it so far: the edited layout's
+ * buttons, the pressures, the jump/action test, and SOCOM II's stick readers (the strafe 0x2C6110,
+ * a function's button held 0x2C61E0, a stick's axis 0x2C6520, the pitch 0x2C65B0 and its caller,
+ * the look 0x2C6290 open). Defined in reverse of their image order (-inline deferred). */
 
 /* a game function's button (SOCOM 1's PadBtnFunc::_) */
 namespace PadBtnFunc {
@@ -17,7 +19,23 @@ enum PAD_BUTTON {
     PAD_BUTTON_NONE = 16
 };
 
-/* the pad (only the pressures this unit reads) */
+/* a button's state (SOCOM 1's KEY_STATE, a byte enum: copied with lb, compared zero-extended) */
+enum KEY_STATE {
+    KEY_UP = 0,
+    KEY_FALLING = 1,
+    KEY_DOWN = 2,
+    KEY_RISING = 3
+};
+
+/* a stick a layout gives a function, none, the left or the right (a byte; the names ours) */
+enum STICK {
+    STICK_NONE = 0,
+    STICK_LEFT = 1,
+    STICK_RIGHT = 2
+};
+
+/* the pad (only what this unit reads: the buttons' states and pressures, the sticks' positions --
+ * raw and dilated, each stick's x then y) */
 class CPad {
 public:
     /* a button's pressure, none for no button (the name ours: the button arrives through an
@@ -29,16 +47,36 @@ public:
         return 0.0f;
     }
 
-    unsigned char _0[0x14];
+    unsigned char _0;
+    KEY_STATE m_state[16];   // 0x1
+    unsigned char _11[0x14 - 0x11];
     float m_pressure[16];   // 0x14
+    unsigned char _54[0x210 - 0x54];
+    float m_raw[2][2];   // 0x210
+    float m_dilated[2][2];   // 0x220
 };
 
-/* a layout: each game function's button (SOCOM 1's at 10) */
+/* a layout: each game function's button (SOCOM 1's at 10), and SOCOM II's stick settings ahead of
+ * them -- the look's stick (0xC), the strafe's (0xD), the pitch's two stick masks (0xF while
+ * function 1's button is held, 0x10 otherwise) and whether that button holds the look (0x11) */
 class CCtrlrConfig {
 public:
     PAD_BUTTON GetButton(int func) const { return m_btns[func]; }
+    /* a function's button's state on the pad, up for no button */
+    KEY_STATE GetButtonState(int func, const CPad *pad) const
+    {
+        return m_btns[func] != PAD_BUTTON_NONE ? pad->m_state[m_btns[func]] : KEY_UP;
+    }
+    bool IsDown(int func, const CPad *pad) const { return GetButtonState(func, pad) == KEY_DOWN; }
+    bool HoldsLook() const { return m_11; }
 
-    unsigned char _0[0x12];
+    unsigned char _0[0xc];
+    STICK m_lookStick;   // 0xc
+    STICK m_strafeStick;   // 0xd
+    unsigned char _e;
+    unsigned char m_pitchSticksHeld;   // 0xf: the pitch's sticks while function 1's button is down
+    unsigned char m_pitchSticks;   // 0x10: bit 0 the left stick's y, bit 1 the right's
+    unsigned char m_11;   // 0x11
     PAD_BUTTON m_btns[16];   // 0x12
 };
 
@@ -54,7 +92,108 @@ CCtrlrConfig *g_pCurrentConfig;
 
 extern "C" {
 extern CCtrlrConfig *data_004415B0;   /* (a second layout: the one being edited) */
-void func_002C65B0(CCtrlrConfig *config, int arg);
+}
+
+#pragma auto_inline off
+/* the pitch from the sticks a layout gives it -- the held set while function 1's button is down
+ * -- summed and clamped to -1..1 (OVL1 0x2C65B0: 0x2C6280's tail call, out of line, pinned) */
+extern "C" float func_002C65B0(const CCtrlrConfig *config, const CPad *pad)
+{
+    const unsigned char *sticks;
+
+    if (config->GetButtonState(1, pad) == KEY_DOWN)
+        sticks = &config->m_pitchSticksHeld;
+    else
+        sticks = &config->m_pitchSticks;
+    unsigned char mask = *sticks;
+    float pos = 0.0f;
+
+    if (mask & 1)
+        pos += pad->m_dilated[0][1];
+    if (mask & 2)
+        pos += pad->m_dilated[1][1];
+    if (pos < -1.0f)
+        pos = -1.0f;
+    else if (pos > 1.0f)
+        pos = 1.0f;
+    return pos;
+}
+
+/* a stick's position on one axis, raw or dilated, x negated (OVL1 0x2C6520: the strafe's call,
+ * out of line, pinned; each case's ternary joins before its break, and the negation is a returned
+ * ternary -- an if-assign leaves a nop before the return) */
+extern "C" float func_002C6520(const CPad *pad, STICK stick, int axis, bool dilated)
+{
+    float pos = 0.0f;
+
+    switch (stick) {
+    case STICK_LEFT:
+        pos = dilated ? pad->m_dilated[0][axis] : pad->m_raw[0][axis];
+        break;
+    case STICK_RIGHT:
+        pos = dilated ? pad->m_dilated[1][axis] : pad->m_raw[1][axis];
+        break;
+    }
+    return axis == 0 ? -pos : pos;
+}
+
+/* whether a function's button is held down (OVL1 0x2C61E0: the strafe's calls, out of line,
+ * pinned) */
+extern "C" bool func_002C61E0(const CCtrlrConfig *config, unsigned char func, const CPad *pad)
+{
+    return config->GetButtonState(func, pad) == KEY_DOWN;
+}
+#pragma auto_inline reset
+
+/* a layout's stick read out of line (OVL1 0x2C6220, a draft's: `lb v0,0(a0)`) */
+extern "C" STICK func_002C6220(const STICK *stick);
+
+/* the look's pitch: the layout's stick's raw y, unless function 1's button holds the look (OVL1
+ * 0x2C6290). The test is `!A || !B` over two inline bools: the target materialises both negations
+ * (sltu; xori and xori; sltiu; xori) with the true in the first branch's delay slot.
+ * OPEN, 6 instructions: the layout's pointer and its button trade registers (the target holds the
+ * layout in v1 and the button in a2, this the other way round). Tried: the global read at each use
+ * (worse: a1/a2), `bool look;` declared first, HoldsLook as `!= 0`, IsDown through a button local or
+ * an if-assigned state (both 0x10 shorter) */
+extern "C" float func_002C6290(const CPad *pad)
+{
+    const CCtrlrConfig *config = g_pCurrentConfig;
+    bool look = !config->HoldsLook() || !config->IsDown(1, pad);
+
+    if (look) {
+        float pos = 0.0f;
+
+        switch (config->m_lookStick) {
+        case STICK_LEFT:
+            pos = pad->m_raw[0][1];
+            break;
+        case STICK_RIGHT:
+            pos = pad->m_raw[1][1];
+            break;
+        }
+        return pos;
+    }
+    return 0.0f;
+}
+
+/* the strafe: the layout's stick's x when it has one, else its two buttons, left -1 and right 1
+ * (OVL1 0x2C6110; the buttons' value through a result local -- returned straight, the 1.0f's
+ * branch lands on the zero's nop) */
+extern "C" float func_002C6110(const CPad *pad)
+{
+    const CCtrlrConfig *config = g_pCurrentConfig;
+
+    if (func_002C6220(&config->m_strafeStick) != STICK_NONE)
+        return func_002C6520(pad, func_002C6220(&config->m_strafeStick), 0, false);
+    float pos;
+
+    if (func_002C61E0(config, 7, pad))
+        pos = -1.0f;
+    else if (func_002C61E0(config, 8, pad))
+        pos = 1.0f;
+    else
+        pos = 0.0f;
+    return pos;
 }
 
 /* the edited layout's button for a function, set (OVL1 0x2C6460) */
@@ -103,8 +242,8 @@ bool CCtrlrConfigs::IsJumpAndActionShared()
            g_pCurrentConfig->GetButton(PadBtnFunc::BTN_JUMP);
 }
 
-/* (OVL1 0x2C6280) */
-extern "C" void func_002C6280(int arg)
+/* the pitch from the current layout's sticks (OVL1 0x2C6280) */
+extern "C" float func_002C6280(const CPad *pad)
 {
-    func_002C65B0(g_pCurrentConfig, arg);
+    return func_002C65B0(g_pCurrentConfig, pad);
 }

@@ -41,6 +41,8 @@ const T &_min(const T &a, const T &b)
 /* the cell a walk hands out off the map (SOCOM 1's, returned by CAiMap::dummy_cell) and the
  * cosine of 45 degrees, computed at start-up (GetDirCos reads it from data) */
 static CAiCell s_dummy_cell;
+/* no action's id (SOCOM 1's static member; OVL2 0x65AB30, just ahead of the cosine) */
+const unsigned int CAiMap::action::invalid = 0xffff;
 static float s_cos45 = 0.5f * sqrtf(2.0f);
 
 /* a vector's three components set from values taken first (the name ours: the diagonals' static

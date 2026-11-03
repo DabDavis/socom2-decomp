@@ -10,11 +10,17 @@
 #include "zchar.h"
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
+#include "../../ai/ai.h"
+#include "../../ai/ai_maps.h"
 
 class CRdrFile;
 
 _zrdr *zrdr_read(const char *name, const char *file, int line);
-void zrdr_free(CRdrFile *file);
+int zrdr_free(CRdrFile *file);
+/* zrdr.h's readers (its _zrdr is zanim.h's, so the header itself stays out) */
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
 extern "C" float cosf(float);
 
 /* an array's item, or none: an unsigned index (zanim.h's Item takes an int, which lets MW
@@ -53,7 +59,9 @@ void startvec::Load(_zrdr *rdr)
 /* a team block: its numbers as a mask, or the first number out of range (new in SOCOM II, the name
  * ours: the same code as fts_player.cpp's ParseTeamBlock (OVL1 0x2B34A0), a second global function
  * -- the turret and vehicle definitions' parsers, CTRegion::Parse and OVL1's 0x2B4F40 call this one,
- * only CTInView::Parse the other) */
+ * only CTInView::Parse the other). Short enough for -inline auto only with the item's number through
+ * _zrdr::Int(): CVehicleRdrEntry::Load inlines it whole (the written-out type switch is over the
+ * 15 statements) */
 unsigned int ParseTeams(_zrdr *rdr)
 {
     unsigned int mask = 0;
@@ -61,15 +69,8 @@ unsigned int ParseTeams(_zrdr *rdr)
     if (!rdr || rdr->type != 4)
         return 0;
     for (unsigned int i = 0; i < rdr->Count(); i++) {
-        _zrdr *item = rdr->Item(i);
-        int team;
+        int team = rdr->Item(i)->Int();
 
-        if (item->type == 1)
-            team = item->integer;
-        else if (item->type == 2)
-            team = (int)item->real;
-        else
-            team = 0;
         if (team < 0 || team > 31) {
             mask = team;
             break;
@@ -111,10 +112,6 @@ float AI_PARAMS::GetAimConeCos() const
     return wide * (1.0f - target_discipline) + narrow * target_discipline;
 }
 
-/* the entry vector's resize, out of line (0x534320, the map's resize__Q23std72__vector_imp<16CVehicleRdrEntry,
- * ...,0>FUi); include/vector has no resize yet, so it is called through its placeholder */
-extern "C" void func_00534320(std::vector<CVehicleRdrEntry> *v, unsigned int n);
-
 extern "C" int strcasecmp(const char *, const char *);
 
 /* the vehicle file read: one entry per item of its first array, true if it had one (SOCOM 1's
@@ -129,7 +126,7 @@ bool CVehicleRdr::Open(const char *file)
     if (list) {
         int n = list->Count();
 
-        func_00534320(this, n);
+        resize(n);
         for (int i = 0; i < n; i++) {
             CVehicleRdrEntry &e = (*this)[i];
 
@@ -183,6 +180,74 @@ static inline int RandomIndex(int max)
     return i;
 }
 
+/* the entry kinds' names, by kind (OVL2 0x64F9C0: "Undefined", then the two tags an entry's
+ * character can be named by, then "Max"; the name ours) -- Load keeps the kind found at 0x70 */
+static const char *s_entryTypeNames[] = {"Undefined", "character", "vehicle", "Max"};
+
+/* one entry out of the file's item (SOCOM 1's CVehicleRdr::Load did every entry in place; SOCOM II's
+ * Open hands each item here): the names and the teams found first, the six flags read, the AI's
+ * parameters parsed, the names copied or emptied, the character's name by the first tag present,
+ * then the team mask, the flags (byte read-mask-writes) and both start sets. ParseTeams and
+ * SetCharacterName inline; the found test written `!= 0` branches (a bare test materialised) */
+void CVehicleRdrEntry::Load(_zrdr *rdr)
+{
+    bool debug = false;
+    bool disabled = false;
+    bool nofade = false;
+    bool noshoot = false;
+    bool recycle = false;
+    bool nosnooze = false;
+    const char *name = zrdr_findstring(rdr, "name");
+    const char *display = zrdr_findstring(rdr, "display");
+    unsigned int teams = ParseTeams(zrdr_findtag(rdr, "team"));
+
+    zrdr_findbool(rdr, "debug", &debug);
+    zrdr_findbool(rdr, "disabled", &disabled);
+    zrdr_findbool(rdr, "nofade", &nofade);
+    zrdr_findbool(rdr, "noshoot", &noshoot);
+    zrdr_findbool(rdr, "recycle", &recycle);
+    zrdr_findbool(rdr, "nosnooze", &nosnooze);
+    m_aiParams.Parse(zrdr_findtag(rdr, "ai_params"));
+    if (name)
+        strncpy(m_name, name, sizeof(m_name));
+    else
+        m_name[0] = 0;
+    if (display)
+        strncpy(m_display_name, display, sizeof(m_display_name));
+    else
+        m_display_name[0] = 0;
+    for (int i = 1; i < 3; i++) {
+        const char *ch = zrdr_findstring(rdr, s_entryTypeNames[i]);
+
+        if (ch != 0) {
+            SetCharacterName(ch);
+            m_unk70 = i;
+            break;
+        }
+    }
+    m_teamMask = teams;
+    m_debug = debug;
+    m_disabled = disabled;
+    m_nofade = nofade;
+    m_noshoot = noshoot;
+    m_recycle = recycle;
+    m_nosnooze = nosnooze;
+    m_start.Load(zrdr_findtag(rdr, "setup"));
+    m_respawn.Load(zrdr_findtag(rdr, "respawn_setup"));
+}
+
+/* an empty entry: the byte at 0x70, both start sets, the team mask, the AI's defaults and the flags
+ * built in declaration order, then the three names emptied -- the name, the display name, the
+ * character (SOCOM 1's had no constructor of its own; out of line, the resize's fill value) */
+CVehicleRdrEntry::CVehicleRdrEntry()
+    : m_unk70(0), m_teamMask(0), m_debug(0), m_disabled(0), m_nofade(0), m_noshoot(0), m_recycle(0),
+      m_nosnooze(0), m_startIndex(0)
+{
+    m_name[0] = 0;
+    m_display_name[0] = 0;
+    m_character[0] = 0;
+}
+
 /* the start, and the respawn start, picked at random, or the first when asked to reset or when
  * there are none (SOCOM 1's picked the one start).
  * OPEN (0x140 against 0x150): label padding only -- the target pads the random pick's block and
@@ -199,6 +264,50 @@ void CVehicleRdrEntry::Randomize(bool reset)
         m_respawnIndex = 0;
     else
         m_respawnIndex = RandomIndex(m_respawn.m_count - 1);
+}
+
+/* the start's place as a matrix (SOCOM 1's): the start picked -- at random for -1, Randomize
+ * inlined -- then its name and direction, its location, its cell's centre, the direction's rotation
+ * with the centre as the translation; false at the first step that fails.
+ * OPEN (0x21C against 0x22C): the inlined Randomize is Randomize's own question -- the target pads
+ * each random pick's block and the store after its mfhi with a nop (16 bytes, Randomize's 0x140
+ * against 0x150) -- and every saved register is one off (the target keeps this in s3, the matrix in
+ * s2, the pick's count in s4; this build this in s4, the matrix in s3, the count in s0) */
+bool CVehicleRdrEntry::GetStartMatrix(CMatrix &m, unsigned int index)
+{
+    if (index == (unsigned int)-1)
+        Randomize(false);
+    else
+        m_startIndex = index;
+    const char *name;
+    int dir;
+    bool ok = false;
+
+    if (m_startIndex < m_start.m_count) {
+        name = m_start.m_start[m_startIndex].m_name;
+        dir = m_start.m_start[m_startIndex].m_dir;
+        ok = true;
+    }
+    if (ok) {
+        CAiMapLoc loc;
+
+        ok = AiMaps.GetLocation(name, loc);
+        if (ok) {
+            CPnt3D pos;
+
+            ok = AiMaps.GetCellCenter(loc, &pos) != 0;
+            if (ok) {
+                CQuat q;
+
+                CAiMap::GetDirQuat((CAiMap::DIR)dir, q, true);
+                q.ToMatrix(&m);
+                m.m_matrix[3][0] = pos.x;
+                m.m_matrix[3][1] = pos.y;
+                m.m_matrix[3][2] = pos.z;
+            }
+        }
+    }
+    return ok;
 }
 
 /* the current start's location name and direction, or none (SOCOM 1's) */

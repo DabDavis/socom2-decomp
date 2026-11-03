@@ -1273,10 +1273,10 @@
 0x001C15E0 0x78 func_001C15E0  # MAIN
 0x001C1658 0x40 func_001C1658  # MAIN unaligned
 0x001C1698 0x1BC func_001C1698  # MAIN unaligned
-0x001C1858 0x60 func_001C1858  # MAIN unaligned
-0x001C18B8 0x64 func_001C18B8  # MAIN unaligned
-0x001C1920 0x7C func_001C1920  # MAIN
-0x001C19A0 0x330 func_001C19A0  # MAIN
+0x001C1858 0x60 inet_ntoa  # MAIN unaligned; by body: BIND's inet_ntoa -- its own message '[inet_ntoa error]' copied into an 18-byte static, then inet_ntop(AF_INET, &in, ret, 18)
+0x001C18B8 0x64 inet_ntop  # MAIN unaligned; by body: BIND's inet_ntop -- AF_INET (2) to inet_ntop4, AF_INET6 (28) to inet_ntop6, else errno EAFNOSUPPORT (106) and NULL
+0x001C1920 0x7C inet_ntop4  # MAIN; by body: BIND's static inet_ntop4 -- its format '%u.%u.%u.%u', ENOSPC (28) when the text exceeds size
+0x001C19A0 0x330 inet_ntop6  # MAIN; by body: BIND's static inet_ntop6 -- inet_ntop's AF_INET6 case, '%x' per word, inet_ntop4 for the mapped tail
 0x001C1CD0 0x38 func_001C1CD0  # MAIN
 0x001C1D08 0x34 func_001C1D08  # MAIN unaligned
 0x001C1D40 0x150 func_001C1D40  # MAIN
@@ -1404,7 +1404,7 @@
 0x001E8230 0x78 startrecording  # OVL1; s1:exact
 0x001E82A8 0x74 stoprecording  # OVL1 unaligned; s1:exact
 0x001E8320 0x98 SidInit  # OVL1; s1:calls
-0x001E83B8 0x8 func_001E83B8  # OVL1 unaligned
+0x001E83B8 0x8 SidIsRecording  # OVL1 unaligned; s1:order (the demo's SidIsRecording 0x3B76A0: the same 8-byte body, after SidInit as here)
 0x001E83C0 0x44 SidClose  # OVL1; s1:exact
 0x001E8408 0x20 SidStart  # OVL1 unaligned; s1:exact
 0x001E8428 0x20 SidStop  # OVL1 unaligned; s1:exact
@@ -1521,7 +1521,7 @@
 0x001EF400 0x4C func_001EF400  # OVL1
 0x001EF450 0x2A8 __sort132<Q33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator,7CueLess>__3stdFQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator7CueLess_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; __sort132 of st_core.cpp's film cues (0x1EDA60 calls it with an empty comparator by value comparing m_time, its name ours: struct CueLess { bool operator()(CMovieCue a, CMovieCue b) const }); the probe build/p6/cue.cpp; byte-exact as written, its shuffle static's relocations aside)
 0x001EF700 0x1C0 __selection_sort<Q33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator,7CueLess>__3stdFQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator7CueLess_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; __selection_sort of st_core.cpp's film cues (0x1EDA60 calls it with an empty comparator by value comparing m_time, its name ours: struct CueLess { bool operator()(CMovieCue a, CMovieCue b) const }); the probe build/p6/cue.cpp; byte-exact as written, its shuffle static's relocations aside)
-0x001EF8C0 0x80 func_001EF8C0  # OVL1
+0x001EF8C0 0x80 __dt__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 18): the cue vector's destructor, which __sinit_st_core.cpp registers for s_cues; the tail's last function, generated after the deleter's clear and destructor and inlining them whole (four this-tests) -- st_core.cpp's own copy is generated earlier (0x60, open), so the draft keeps it under an sc: as= line
 0x001EF940 0x10C ResetLensColors__10CameraZoomFv  # OVL1; the name ours (SOCOM II's: the four lens colours LoadLensFx keeps from 0x4B4D40 put back to white with alpha 0, func_003B78D0 handed white, thePipe+0x6E0 and +0x6D0 cleared, the three blindplayer anims stopped)
 0x001EFA50 0x1E0 HoldLensFx__10CameraZoomFUc  # OVL1; the name ours (SOCOM II's: the lens effects' hold, 0x408CF0, or-ed with its byte; held, the kit's lens effects off through 0x5C1800 and the playing effect stopped, the effect then 9; SeeFarther(false, 0); on 1 the first person's effect activated unless running; ResetLensColors' colours inlined and the blindplayer anims restarted)
 0x001EFC30 0x250 ReleaseLensFx__10CameraZoomFUc  # OVL1; the name ours (SOCOM II's: the lens effects' hold, 0x408CF0, xor-ed with its byte; unheld, the effect before put back through SetLensFx inlined, SeeFarther with its notes at 0x408CD8/0x408CE0, ResetLensColors' colours, the blindplayer anims restarted, the first person's effect stopped if running -- HoldLensFx's counterpart)
@@ -2346,25 +2346,25 @@
 0x00242BB0 0x3C8 func_00242BB0  # OVL1
 0x00242F80 0xE0 __dt__14CSpectatorInfoFv  # OVL1; s1:vtable by hand (the HUD lane: slot 0 of CSpectatorInfo's vtable 0x405F60)
 0x00243060 0x8C __ct__14CSpectatorInfoFv  # OVL1; s1:vtable by hand (the HUD lane: stores CSpectatorInfo's vtable 0x405F60, found by its RTTI's name; CHUD's constructor calls it for a member)
-0x002430F0 0x1A4 func_002430F0  # OVL1
-0x00243298 0xFC func_00243298  # OVL1 unaligned
-0x00243398 0x118 func_00243398  # OVL1 unaligned
+0x002430F0 0x1A4 heap_Realloc  # OVL1; by body: realloc's wrapper (no heap: `j realloc`; a null block: the alloc path), its table entry moved and resized; the demo heap object 0x378348 holds heap_Realloc beside heap_Alloc/heap_Calloc/heap_Free
+0x00243298 0xFC heap_Alloc  # OVL1 unaligned; by body: malloc's wrapper (no heap: `j malloc`), the block entered in the table; the demo heap object 0x378348's heap_Alloc
+0x00243398 0x118 heap_Calloc  # OVL1 unaligned; by body: calloc's wrapper (no heap: `j calloc`), n*size entered in the table; the demo heap object 0x378348's heap_Calloc (ContextSetParam calls it for its 84 bytes, as SOCOM 1's calls heap_Calloc)
 0x002434B0 0xEC heap_Free  # OVL1; s1:callee
-0x002435A0 0x78 func_002435A0  # OVL1
+0x002435A0 0x78 heap_GetMemInfo  # OVL1; by body: the table's four counters through four optional pointers (zeros without a heap); the demo heap object's heap_GetMemInfo, before heap_GetVersion as here
 0x00243618 0x24 heap_GetVersion  # OVL1 unaligned; s1:order (the demo heap object 0x378348: heap_GetVersion before heap_Open, 0x20 bytes there; stores the version 0x01000001, 0x800B0183 for a null pointer, as the demo's)
 0x00243640 0xC8 heap_Open  # OVL1; s1:calls
-0x00243708 0x58 func_00243708  # OVL1 unaligned
+0x00243708 0x58 heap_Close  # OVL1 unaligned; by body: frees the table's two arrays and the heap; after heap_Open as in the demo heap object 0x378348
 0x00243760 0xDC SearchFor  # OVL1; s1:order (the demo heap object 0x378348: its last function, SearchFor -- the same search of a counted list, unrolled by four here (-funroll-loops))
-0x00243840 0x3A4 func_00243840  # OVL1
+0x00243840 0x3A4 lgAudInit  # OVL1; by its messages ('lgAudInit: rpc binding error', 'lgAudInit version 1.08.002: max streaming data size: %d'); the demo's lgAud object 0x3B5980 opens with lgAudInit as this one does
 0x00243BE8 0x7C lgAudEnumHint  # OVL1 unaligned; s1:exact
 0x00243C68 0x1D8 lgAudEnumerate  # OVL1 unaligned; s1:callee
 0x00243E40 0x16C lgAudOpen  # OVL1; s1:callee
 0x00243FB0 0xD4 lgAudClose  # OVL1; s1:callee
 0x00244088 0x178 lgAudRead  # OVL1 unaligned; s1:calls
-0x00244200 0x178 func_00244200  # OVL1
-0x00244378 0x178 func_00244378  # OVL1 unaligned
-0x002444F0 0x128 func_002444F0  # OVL1
-0x00244618 0x120 func_00244618  # OVL1 unaligned
+0x00244200 0x178 lgAudWrite  # OVL1; by its messages ('lgAudWrite: invalid parameter (src)', 'lgAudWrite: rpc call failed'); RPC 9; after lgAudRead as in the demo's lgAud object
+0x00244378 0x178 lgAudWriteVag  # OVL1 unaligned; by its messages ('lgAudWriteVag: invalid parameter (src)', 'lgAudWriteVag: rpc call failed'); RPC 21, lgAudWrite's body (the demo has no WriteVag)
+0x002444F0 0x128 lgAudGetMixer  # OVL1; by its messages ('lgAudGetMixer: invalid parameter (mr)', 'lgAudGetMixer: rpc call failed'); RPC 11; the demo's lgAudGetMixer 0x3B6358 has the same body
+0x00244618 0x120 lgAudSetMixer  # OVL1 unaligned; by its message ('lgAudSetMixer: invalid parameter (mr)'; its rpc failure prints GetMixer's); RPC 12; after lgAudGetMixer as in the demo's lgAud object
 0x00244738 0xE8 lgAudGetRemainingPlaybackBytes  # OVL1 unaligned; s1:order (the demo's lgAud object 0x3B5980: after lgAudSetMixer as there; RPC 0x13 and the message 'lgAudGetRemainingPlaybackBytes: rpc call failed')
 0x00244820 0xE8 lgAudGetAvailableRecordingBytes  # OVL1; s1:order (the demo's lgAud object: after GetRemainingPlaybackBytes; RPC 0x12 and its own message)
 0x00244908 0xD4 lgAudStartRecording  # OVL1 unaligned; s1:callee
@@ -2379,8 +2379,8 @@
 0x00245080 0x80 fnReadEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudASync, before lgAudARead; copies the reply's data out, the read's end callback)
 0x00245100 0x13C lgAudARead  # OVL1; s1:callee
 0x00245240 0x58 fnWriteEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudARead, before lgAudAWrite)
-0x00245298 0x164 func_00245298  # OVL1 unaligned
-0x00245400 0x164 func_00245400  # OVL1
+0x00245298 0x164 lgAudAWrite  # OVL1 unaligned; by its messages ('lgAudAWrite: invalid parameter (src)', 'lgAudAWrite: rpc call failed'); RPC 9 async through fnWriteEndFunc; after fnWriteEndFunc as in the demo's lgAud object
+0x00245400 0x164 lgAudAWriteVag  # OVL1; by its messages ('lgAudAWriteVag: invalid parameter (src)', 'lgAudAWriteVag: rpc call failed'); RPC 21 async, lgAudAWrite's body
 0x00245568 0x58 fnCheckDeviceChangeEndFunc  # OVL1 unaligned; s1:order (the demo's lgAud object: the static before lgAudAEnumHint; stores the device-change hint)
 0x002455C0 0xCC lgAudAEnumHint  # OVL1; s1:callee
 0x00245690 0xB8 libnetb_is_data_waiting  # OVL1; s1:callee
@@ -2396,23 +2396,23 @@
 0x00245CD0 0xA8 func_00245CD0  # OVL1
 0x00245D78 0xE8 sceInetName2Address  # OVL1 unaligned; s1:callee
 0x00245E60 0xA4 sceInetAddress2String  # OVL1; s1:callee
-0x00245F08 0xE4 func_00245F08  # OVL1 unaligned
-0x00245FF0 0x74 func_00245FF0  # OVL1
-0x00246068 0x48 func_00246068  # OVL1 unaligned
-0x002460B0 0x48 func_002460B0  # OVL1
-0x002460F8 0xC8 func_002460F8  # OVL1 unaligned
-0x002461C0 0x110 func_002461C0  # OVL1
-0x002462D0 0xA8 func_002462D0  # OVL1
-0x00246378 0xE4 func_00246378  # OVL1 unaligned
-0x00246460 0x48 func_00246460  # OVL1
-0x002464A8 0xB0 func_002464A8  # OVL1 unaligned
-0x00246558 0x90 func_00246558  # OVL1 unaligned
-0x002465E8 0xB0 func_002465E8  # OVL1 unaligned
-0x00246698 0xA0 func_00246698  # OVL1 unaligned
-0x00246738 0x90 func_00246738  # OVL1 unaligned
-0x002467C8 0x44 func_002467C8  # OVL1 unaligned
-0x00246810 0x94 func_00246810  # OVL1
-0x002468A8 0x40 func_002468A8  # OVL1 unaligned
+0x00245F08 0xE4 sceInetAddress2Name  # OVL1 unaligned; s1:order (the demo's libnet object 0x4223A0: after sceInetAddress2String as here; RPC 18, its name copied back as Address2String's)
+0x00245FF0 0x74 sceInetCreate  # OVL1; s1:order (the demo's libnet object: after sceInetAddress2Name; RPC 1) and s1:callee (sceBInetCreate calls it where the demo's calls sceInetCreate)
+0x00246068 0x48 sceInetOpen  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetCreate; RPC 2)
+0x002460B0 0x48 sceInetClose  # OVL1; s1:order (the demo's libnet object: after sceInetOpen; RPC 3)
+0x002460F8 0xC8 sceInetRecv  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetClose; RPC 4)
+0x002461C0 0x110 sceInetRecvFrom  # OVL1; s1:order (the demo's libnet object: after sceInetRecv; RPC 13)
+0x002462D0 0xA8 sceInetSend  # OVL1; s1:order (the demo's libnet object: after sceInetRecvFrom; RPC 5)
+0x00246378 0xE4 sceInetSendTo  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetSend; RPC 14)
+0x00246460 0x48 sceInetAbort  # OVL1; s1:order (the demo's libnet object: after sceInetSendTo; RPC 15)
+0x002464A8 0xB0 sceInetControl  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetAbort; RPC 19) and s1:callee (sceBInetControl calls it as the demo's calls sceInetControl)
+0x00246558 0x90 sceInetGetInterfaceList  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetControl; RPC 8)
+0x002465E8 0xB0 sceInetInterfaceControl  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetInterfaceList; RPC 9)
+0x00246698 0xA0 sceInetGetRoutingTable  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetInterfaceControl; RPC 10)
+0x00246738 0x90 sceInetGetNameServers  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetRoutingTable; RPC 11)
+0x002467C8 0x44 sceInetChangeThreadPriority  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetNameServers; RPC 12, one word in)
+0x00246810 0x94 sceInetGetLog  # OVL1; s1:order (the demo's libnet object: after sceInetChangeThreadPriority; RPC 17)
+0x002468A8 0x40 sceInetAbortLog  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetLog; RPC 16, nothing sent)
 0x002468E8 0x44 func_002468E8  # OVL1 unaligned
 0x00246930 0x44 func_00246930  # OVL1
 0x00246978 0x44 func_00246978  # OVL1 unaligned
@@ -2432,9 +2432,9 @@
 0x00246F10 0x7C func_00246F10  # OVL1
 0x00246F90 0x78 func_00246F90  # OVL1
 0x00247008 0x34 func_00247008  # OVL1 unaligned
-0x00247040 0xC func_00247040  # OVL1
+0x00247040 0xC sceBInetGetVersionStringPtr  # OVL1; s1:order (the demo's libnetb object 0x423D38 opens with sceBInetGetVersionStringPtr, 0xC bytes, returning the version string's pointer as this does)
 0x00247050 0x154 sceBInetGetBuildTimestamp  # OVL1; s1:exact
-0x002471A8 0x11C func_002471A8  # OVL1 unaligned
+0x002471A8 0x11C sceBInetCreate  # OVL1 unaligned; s1:calls (rt_memory_allocate_init_zero, libnetb_alloc_bufs, sceInetCreate, as the demo's sceBInetCreate 0x423EA0; after sceBInetGetBuildTimestamp as there)
 0x002472C8 0x198 func_002472C8  # OVL1 unaligned
 0x00247460 0x98 sceBInetClose  # OVL1; s1:exact
 0x002474F8 0x144 func_002474F8  # OVL1 unaligned
@@ -2454,7 +2454,7 @@
 0x00247F58 0x8C func_00247F58  # OVL1 unaligned
 0x00247FE8 0x210 libnetb_send_to  # OVL1 unaligned; s1:calls
 0x002481F8 0x80 func_002481F8  # OVL1 unaligned
-0x00248278 0x7C func_00248278  # OVL1 unaligned
+0x00248278 0x7C libnetb_alloc_bufs  # OVL1 unaligned; s1:callee (sceBInetCreate calls it where the demo's calls libnetb_alloc_bufs; before libnetb_free_bufs as there)
 0x002482F8 0x54 libnetb_free_bufs  # OVL1 unaligned; s1:callee
 0x00248350 0xA8 func_00248350  # OVL1
 0x002483F8 0xA8 func_002483F8  # OVL1 unaligned
@@ -4213,7 +4213,7 @@
 0x002C6220 0x8 func_002C6220  # OVL1
 0x002C6230 0x48 func_002C6230  # OVL1
 0x002C6280 0x10 func_002C6280  # OVL1
-0x002C6290 0xC0 func_002C6290  # OVL1
+0x002C6290 0xB8 func_002C6290  # OVL1 ; size by hand (the states lane, round 18: the seed counted the two zero words padding after jr ra's delay slot to 0x2C6350)
 0x002C6350 0x80 func_002C6350  # OVL1
 0x002C63D0 0x1C IsJumpAndActionShared__13CCtrlrConfigsFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's IsJumpAndActionShared instruction for instruction -- the current layout's buttons 0 and 5 compared -- at SOCOM II's offsets 18/23 for SOCOM 1's 10/15) ; size by hand (the states lane: the seed counted the trailing zero padding after jr ra's delay slot)
 0x002C63F0 0x40 func_002C63F0  # OVL1
@@ -7098,7 +7098,7 @@
 0x00383620 0xB0 __dt__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836D0 0xC GetType__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836E0 0x11C init<PC10ActionItem>__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FPC10ActionItemPC10ActionItemQ23std20forward_iterator_tag_v  # OVL1; s1:exact-shape (SOCOM 1's init<PC10ActionItem> at 0x39AE40, two saved registers swapped: each element built by ActionItem's inline copy, then its assignment 0x369FA0) -- zui_spec.cpp's template tail
-0x00383800 0xAC func_00383800  # OVL1
+0x00383800 0xAC resize__Q23std56__vector_imp<9CSaferStr,Q23std21allocator<9CSaferStr>,0>FUi  # OVL1; the UI lane round 10: vector<CSaferStr>::resize(n) (a zeroed string temporary inserted through 0x22E000 -- the CSaferStr insert, the look parser's and LoadFromDesign's push_backs -- its long text freed, else erase 0x383BC0); SkbWrapTokens 0x39B350 calls it as lines.resize(size() + 1), and 0x381550 twice
 0x003838B0 0xA4 resize__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FUi  # OVL1; s1:order (SOCOM 1's resize__...<10ActionItem>FUi in zui_spec.cpp's tail: insert 0x383F20 with a default ActionItem destroyed after, else the erase 0x383E00; the map control's and the button's ANIMATIONS grow through it) -- zui_spec.cpp's template tail
 0x00383960 0x138 resize__Q23std66__vector_imp<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>,0>FUi  # OVL1; s1:order (SOCOM 1's resize__...<13CDesignDlgObj>FUi: insert 0x384620 with a default design object destroyed after, else the erase 0x384410; the map control's ELEMENTS and the dialogs' objects grow through it) -- zui_spec.cpp's template tail
 0x00383AA0 0x11C func_00383AA0  # OVL1
@@ -7334,30 +7334,30 @@
 0x00390390 0x8 @128@__dt__12CBmpWithNodeFv  # OVL1; s1:order (SOCOM 1's zui_skb.cpp ends on the same thunk: j ~CBmpWithNode, this - 128, the UIVarMixin's) -- zui_skb.cpp's last function; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x003903A0 0x2E4 func_003903A0  # OVL1
 0x00390690 0x88 func_00390690  # OVL1
-0x00390720 0xC func_00390720  # OVL1
+0x00390720 0xC AddPiece__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: resize(size() + 1) through 0x392670)
 0x00390730 0x8 func_00390730  # OVL1
 0x00390740 0x20 func_00390740  # OVL1
 0x00390760 0x88 func_00390760  # OVL1
-0x003907F0 0x2C func_003907F0  # OVL1
-0x00390820 0x38 func_00390820  # OVL1
-0x00390860 0x40 func_00390860  # OVL1
-0x003908A0 0x100 func_003908A0  # OVL1
-0x003909A0 0x18 func_003909A0  # OVL1
+0x003907F0 0x2C PrevCode__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the code of the piece before the last, 0 for fewer than two)
+0x00390820 0x38 LastCode__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the last piece's code)
+0x00390860 0x40 LastJamo__10CSkbPiecesFi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the last piece's jamo i, read through the end iterator copied by value)
+0x003908A0 0x100 Append__10CSkbPiecesFR6SKBSEQb  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: a sequence's jamo pushed onto the last piece's, its Val or Val2 -- by the flag, a reference selected -- added to the piece's 16-bit code)
+0x003909A0 0x18 Seq__7SKBRULEFi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: a production's sequence i, 20-byte elements of the vector at 0xC)
 0x003909C0 0x2C More__11CSkbRdrIterCFv  # OVL1; ours (zui_hangul.cpp: an rdr array walked by index, {rdr, index}: the index still under the count; the look parser 0x3963F0 calls it four times)
 0x003909F0 0x3C func_003909F0  # OVL1
-0x00390A30 0x174 func_00390A30  # OVL1
+0x00390A30 0x174 SkbHangulType__FP10CSkbPiecesc  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composition's jamo plus the one typed composed into the pieces by 0x391670; a pair<bool, bool> returned -- composed, and whether s_compose held fewer strings than the pieces -- the pooled false/true at 0x3E04A8/0x3E04B0/0x3E04B8; 0x399200 calls it)
 0x00390BB0 0x90 FindJamo__FPCc  # OVL1; ours (zui_hangul.cpp: a jamo by name against the 33 names at 0x3FB170 (A_Hang .. Yu, alphabetical), 33 for none; zui_skb.cpp's 0x38DA70 calls it)
-0x00390C40 0x464 func_00390C40  # OVL1
+0x00390C40 0x464 SkbParseKoreanRules__FP5_zrdr  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: KeyboardsRdr's KoreanInputRules -- each Productions entry a new 24-byte SKBRULE pushed onto s_rules, its Name, its Sequences' Seq jamo by FindJamo (inlined), Val and Val2 -- then CompleteCharacter through 0x392130; the display unit's 0x397070 calls it)
 0x003910B0 0x24 SkbRdrCount__FP5_zrdr  # OVL1; ours (zui_hangul.cpp: an rdr array's count -- type 4's halfword length -- 0 for anything else or none; zui_skb.cpp's ZuiInit, CreateSoftKeyboard and 0x38DCB0 call it out of line)
-0x003910E0 0x190 func_003910E0  # OVL1
-0x00391270 0x8 func_00391270  # OVL1
-0x00391280 0x14 func_00391280  # OVL1
-0x003912A0 0x80 func_003912A0  # OVL1
-0x00391320 0x18 func_00391320  # OVL1
-0x00391340 0x8 func_00391340  # OVL1
-0x00391350 0xF8 func_00391350  # OVL1
+0x003910E0 0x190 SkbHangulBack__Fv  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composed string's last jamo dropped; none left, the composition ends with 0; else the rest composed into a local piece vector by 0x391670 and the last piece's code returned; SkbTypeOrBack calls it)
+0x00391270 0x8 SetCount__25CSkbFixedVec<8CJamoStr,1>Fi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the fixed array's count set)
+0x00391280 0x14 __ct__8CJamoStrFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the jamo string's constructor, three words zeroed; the fixed array's resizes build in place with it)
+0x003912A0 0x80 __dt__8CJamoStrFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the jamo string's destructor, five this-tests)
+0x00391320 0x18 Item__25CSkbFixedVec<8CJamoStr,1>Fi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the fixed array's element i, 12-byte strings from +4)
+0x00391340 0x8 Count__25CSkbFixedVec<8CJamoStr,1>CFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the composition's fixed array's count, out of line where its resizes are inlined one level)
+0x00391350 0xF8 SkbHangulClear__Fv  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: s_compose resized to none, its strings destroyed through 0x3912A0; zui_skbkeys.cpp's text functions and SkbClearText call it)
 0x00391450 0x48 KeyToJamo__Fc  # OVL1; ours (zui_hangul.cpp: a letter key's jamo, a-z through the table at 0x3FB000, else the shifted table at 0x3FB020 indexed from 'A'; 0x39ADA0 calls it)
-0x003914A0 0x1C4 func_003914A0  # OVL1
+0x003914A0 0x1C4 SkbHangulRestart__FP10CSkbPieces  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composition's single jamo string -- s_compose resized to one, the string emptied through resize(0, 0) -- refilled with the last piece's jamo through LastJamo 0x390860; 0x390A30 calls it)
 0x00391670 0x358 func_00391670  # OVL1
 0x003919D0 0x360 func_003919D0  # OVL1
 0x00391D30 0xC func_00391D30  # OVL1
@@ -7380,35 +7380,35 @@
 0x00391F60 0x20 func_00391F60  # OVL1
 0x00391F80 0x190 func_00391F80  # OVL1
 0x00392110 0x14 func_00392110  # OVL1
-0x00392130 0x2A4 func_00392130  # OVL1
+0x00392130 0x2A4 SkbParseComplete__FP15CSkbCompleteVecP5_zrdrPCc  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries -- each Seq's production names by their index in s_rules, pushed onto the entry's index vector, and a Val2 flag -- the vector grown to each index through 0x392770; 0x390C40 calls it with s_complete); the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries, each Seq's production names by index in s_rules pushed onto the entry's index vector, a Val2 flag; the vector grown through 0x392770; 0x390C40 calls it with s_complete)
 0x003923E0 0x220 insert__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod insert (memmove, memset, memcpy), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's template tail, the composition's push_backs call it
 0x00392600 0x64 resize__Q23std36__vector_pod<c,Q23std12allocator<c>>FUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod resize(n, c), insert or erase, byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's tail
-0x00392670 0xCC func_00392670  # OVL1
+0x00392670 0xCC resize__Q23std54__vector_imp<8SKBPIECE,Q23std20allocator<8SKBPIECE>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the piece vector's resize(n) (a temporary piece inserted through 0x392BE0, else erase 0x392AB0)
 0x00392740 0x8 func_00392740  # OVL1
 0x00392750 0x8 func_00392750  # OVL1
-0x00392760 0xC func_00392760  # OVL1
-0x00392770 0xA8 func_00392770  # OVL1
-0x00392820 0xC0 func_00392820  # OVL1
+0x00392760 0xC __ct__11CInit<Us,0>Fv  # OVL1; the UI lane round 10: zui_skb.h's CInit<unsigned short, 0> (SOCOM 1's CInit), the piece's code zeroed; zui_hangul.cpp's tail, the piece vector's resize builds its temporary with it
+0x00392770 0xA8 resize__Q23std62__vector_imp<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' resize(n) (insert 0x3931A0, erase 0x393030)
+0x00392820 0xC0 resize__Q23std50__vector_imp<6SKBSEQ,Q23std18allocator<6SKBSEQ>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, a production's sequence vector resize(n) (insert 0x393790, erase 0x3935F0)
 0x003928E0 0x68 func_003928E0  # OVL1
-0x00392950 0x68 func_00392950  # OVL1
+0x00392950 0x68 __dt__Q23std52__vector_deleter<6SKBSEQ,Q23std18allocator<6SKBSEQ>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the sequences' deleter destructor (clear 0x393C60, the block freed)
 0x003929C0 0x6C func_003929C0  # OVL1
 0x00392A30 0x80 erase__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcPc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range erase (the tail memcpy'd down), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's tail, resize calls it
-0x00392AB0 0x128 func_00392AB0  # OVL1
-0x00392BE0 0x450 func_00392BE0  # OVL1
-0x00393030 0x168 func_00393030  # OVL1
-0x003931A0 0x450 func_003931A0  # OVL1
-0x003935F0 0x1A0 func_003935F0  # OVL1
-0x00393790 0x4C8 func_00393790  # OVL1
-0x00393C60 0xC8 func_00393C60  # OVL1
+0x00392AB0 0x128 erase__Q23std54__vector_imp<8SKBPIECE,Q23std20allocator<8SKBPIECE>,0>FP8SKBPIECEP8SKBPIECE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the piece vector's range erase
+0x00392BE0 0x450 insert__Q23std54__vector_imp<8SKBPIECE,Q23std20allocator<8SKBPIECE>,0>FP8SKBPIECEUiRC8SKBPIECE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the piece vector's insert (the jamo strings copied through vector<char>'s copy 0x393D80 and assignment 0x393D30)
+0x00393030 0x168 erase__Q23std62__vector_imp<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>,0>FP11SKBCOMPLETEP11SKBCOMPLETE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' range erase
+0x003931A0 0x450 insert__Q23std62__vector_imp<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>,0>FP11SKBCOMPLETEUiRC11SKBCOMPLETE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' insert (the index vectors copied through the 4-byte pod's copy 0x259B40 and its out-of-class operator= 0x259AF0)
+0x003935F0 0x1A0 erase__Q23std50__vector_imp<6SKBSEQ,Q23std18allocator<6SKBSEQ>,0>FP6SKBSEQP6SKBSEQ  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the sequences' range erase
+0x00393790 0x4C8 insert__Q23std50__vector_imp<6SKBSEQ,Q23std18allocator<6SKBSEQ>,0>FP6SKBSEQUiRC6SKBSEQ  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the sequences' insert
+0x00393C60 0xC8 clear__Q23std52__vector_deleter<6SKBSEQ,Q23std18allocator<6SKBSEQ>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the sequences' deleter clear
 0x00393D30 0x44 __as__Q23std36__vector_pod<c,Q23std12allocator<c>>FRCQ23std36__vector_pod<c,Q23std12allocator<c>>  # OVL1; the MSL headers round 9: include/vector's 1-byte pod assignment (assign over the other's bytes), byte-exact as a probe (build/p9/vc1.cpp); the keyboard elements' copies call it
 0x00393D80 0x48 __ct__Q23std36__vector_pod<c,Q23std12allocator<c>>FRCQ23std36__vector_pod<c,Q23std12allocator<c>>  # OVL1; the MSL headers round 9: include/vector's 1-byte pod copy (zeroed, then init), byte-exact as a probe (build/p9/vc1.cpp); the keyboard elements' inserts call it
-0x00393DD0 0x68 func_00393DD0  # OVL1
-0x00393E40 0xC0 func_00393E40  # OVL1
+0x00393DD0 0x68 __dt__Q23std64__vector_deleter<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' deleter destructor (clear 0x393E40, the block freed)
+0x00393E40 0xC0 clear__Q23std64__vector_deleter<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' deleter clear
 0x00393F00 0xA8 init<PCc>__Q23std36__vector_pod<c,Q23std12allocator<c>>FPCcPCcQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range init (memcpy), byte-exact as a probe (build/p9/vc1.cpp); the copy calls it
 0x00393FB0 0xD8 assign<PCc>__Q23std36__vector_pod<c,Q23std12allocator<c>>FPCcPCcQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range assign (memcpy), byte-exact as a probe (build/p9/vc1.cpp); the assignment calls it
-0x00394090 0x60 func_00394090  # OVL1
-0x003940F0 0x78 func_003940F0  # OVL1
-0x00394170 0x60 func_00394170  # OVL1
+0x00394090 0x60 __dt__Q23std54vector<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, ~vector<SKBCOMPLETE> (two this-tests, the deleter's destructor 0x393DD0 called)
+0x003940F0 0x78 __dt__18CSkbVec<P7SKBRULE>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_rules' destructor (four this-tests; the initialiser registers it)
+0x00394170 0x60 __dt__15CSkbCompleteVecFv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_complete's destructor (the initialiser registers it; ~vector 0x394090 called); the UI lane round 10: zui_hangul.cpp, s_complete's destructor (the initialiser registers it; two this-tests, ~vector<SKBCOMPLETE> 0x394090 called)
 0x003941D0 0x34 func_003941D0  # OVL1
 0x00394210 0x80 func_00394210  # OVL1
 0x00394290 0x88 func_00394290  # OVL1
@@ -7507,14 +7507,14 @@
 0x0039AD50 0x30 SkbUsbPunct__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's punctuation, HID usages 49-56 through the tables at 0x3FBA20 and, shifted, 0x3FB9F0, typed through 0x399040; 0x38C630 calls it)
 0x0039AD80 0x1C SkbUsbDash__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's dash key -- '_' shifted (the key's word at 4), else '-' -- typed through 0x399040 with the second argument passed on; zui_skb.cpp's USB loop 0x38C630 calls it)
 0x0039ADA0 0xB0 SkbUsbLetter__FPC9SKBUSBKEYib  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's letters, HID usages 4-29 as 'a' + usage - 4: in Korean input (the third argument) the jamo of the letter, toupper'd when shifted, typed through 0x399200; else the letter cased by shift against caps lock (the word at 0x14) through 0x39A8D0 and typed through 0x399040; 0x38C630 calls it)
-0x0039AE50 0x378 func_0039AE50  # OVL1
+0x0039AE50 0x378 SkbWrapText__FRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PCcP7C2DFontbff  # OVL1; the UI lane round 10: ours, by its body (zui_skbkeys.cpp: the text cut into 12-byte pieces -- after each run of white space through newlib's _ctype_ when the flag is set, else words, spaces and line breaks -- and wrapped into the line vector by 0x39B350; true for no text; 0x39A5B0 and 0x22B4A0 call it)
 0x0039B1D0 0x17C func_0039B1D0  # OVL1
-0x0039B350 0x260 func_0039B350  # OVL1
-0x0039B5B0 0x6C func_0039B5B0  # OVL1
+0x0039B350 0x260 SkbWrapTokens__FRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>RQ23std46vector<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>>P7C2DFontff  # OVL1; the UI lane round 10: ours, by its body (zui_skbkeys.cpp: each line as many pieces as a C2DString measures within the width, a break piece ending one; the line resized in (0x383800) and assigned through assign(s, n) 0x39B620; false when one word alone is too wide)
+0x0039B5B0 0x6C __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCcUi  # OVL1; the UI lane round 10: include/string's basic_string(const char *, n) (the words zeroed, reserve(n), the template replace over s..s+n), zui_skbkeys.cpp's tail: SkbWrapTokens builds each word's string with it
 0x0039B620 0x50 assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCcUi  # OVL1; the MSL headers round 9: include/string's assign(const char *, n), out of class, replace(0, size(), s, s + n) through the template replace 0x1EE780 with its category byte; byte-exact as a probe (build/p9/sa.cpp); zui_skbkeys.cpp's tail, 0x39B350 calls it
-0x0039B670 0x4CC func_0039B670  # OVL1
-0x0039BB40 0x68 func_0039BB40  # OVL1
-0x0039BBB0 0x8 func_0039BBB0  # OVL1
+0x0039B670 0x4CC insert__Q23std54__vector_imp<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>,0>FP8SKBTOKENUiRC8SKBTOKEN  # OVL1; the UI lane round 10: the class vector's insert for the wrap's 12-byte pieces (the type byte copied lb/sb), zui_skbkeys.cpp's tail: SkbWrapText's push_backs
+0x0039BB40 0x68 __dt__Q23std56__vector_deleter<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>>Fv  # OVL1; the UI lane round 10: the pieces' deleter destructor (clear 0x39BBB0 called, the block freed), zui_skbkeys.cpp's tail: SkbWrapText's local vector destroyed with 0
+0x0039BBB0 0x8 clear__Q23std56__vector_deleter<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>>Fv  # OVL1; the UI lane round 10: the pieces' deleter clear (a trivial element: the size zeroed), zui_skbkeys.cpp's tail
 0x0039BBC0 0xD0 fwrite__9CBufferIOFPCvi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4); falls back on CFileIO's slot 0x2C; SOCOM 1's slot 0x2C is fwrite__9CBufferIOFPCvi)
 0x0039BC90 0xA0 fwrite__9CBufferIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BD30 0x2C fflush__9CBufferIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7938,55 +7938,55 @@
 0x003BA280 0x68 __dt__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:align
 0x003BA2F0 0x8 clear__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:order (SOCOM 1's clear of the CMeshLOD vector's deleter, 0x310410, closes vis_mesh.cpp's tail as here; SOCOM II's is the 8-byte size store -- the trivially destroyed elements' loop deleted -- that the deleter's destructor 0x3BA280 and reserve 0x3BA0D0 call; byte-exact from vis_mesh.cpp, the wep lane)
 0x003BA300 0xE4 ColConvTo3D__FUi  # OVL1; s1:align
-0x003BA3F0 0xE4 func_003BA3F0  # OVL1
-0x003BA4E0 0xB4 func_003BA4E0  # OVL1
-0x003BA5A0 0x1C func_003BA5A0  # OVL1
-0x003BA5C0 0xD4 func_003BA5C0  # OVL1
-0x003BA6A0 0xF4 func_003BA6A0  # OVL1
-0x003BA7A0 0x174 func_003BA7A0  # OVL1
-0x003BA920 0x74 func_003BA920  # OVL1
+0x003BA3F0 0xE4 FindStrip__Q23zdb8CVisDataFUi  # OVL1; by hand (the wep lane, vis_data.cpp: a CVisData method -- it clears the cursor through Clear 0x3BB000 at the block's end and steps 0x2C/0x30 as SOCOM 1's SearchVertex does; walks the strip at 0x18 for the id in a1; SearchStrip 0x3BA4E0 tail-calls it; the name ours)
+0x003BA4E0 0xB4 SearchStrip__Q23zdb8CVisDataFUi  # OVL1; by hand (the wep lane, vis_data.cpp: a CVisData method stepping the select cursor 0x2C to a type-10 select, its counts and vertices taken, then FindStrip 0x3BA3F0 with the id passed through; called from 0x3BE5F0; the name ours)
+0x003BA5A0 0x1C Resume__Q23zdb8CVisDataFPQ23zdb8CVisData  # OVL1; by hand (the wep lane, vis_data.cpp: one CVisData's cursor set from another's strip mark 0x54 and block end 0x30, `this` returned; the name ours)
+0x003BA5C0 0xD4 NextIndex__Q23zdb8CVisDataFPb  # OVL1; by hand (the wep lane, vis_data.cpp: NextVertex(Ui)'s twin over the strip vertex 0x18, a bool out set when it runs on to SearchIndexedStrip 0x3BA7A0; the name ours)
+0x003BA6A0 0xF4 SearchIndices__Q23zdb8CVisDataFv  # OVL1; by hand (the wep lane, vis_data.cpp: SearchVertex's twin for the index-list select, type 11; SearchIndexedStrip 0x3BA7A0 tail-calls it; the name ours)
+0x003BA7A0 0x174 SearchIndexedStrip__Q23zdb8CVisDataFv  # OVL1; by hand (the wep lane, vis_data.cpp: the strip select of the id at 0x50 found, then SearchIndices 0x3BA6A0; SelectIndexedStrip 0x3BAA70 and NextIndex 0x3BA5C0 call it; the name ours)
+0x003BA920 0x74 NextVertex__Q23zdb8CVisDataFv  # OVL1; by hand (the wep lane, vis_data.cpp: NextVertex(Ui) 0x3BA9A0 for one vertex of a mesh's own -- the vertex and colour pointers stepped, SearchVertex(true) past the range; the name ours, the overload's)
 0x003BA9A0 0xCC NextVertex__Q23zdb8CVisDataFUi  # OVL1; s1:align
-0x003BAA70 0x78 func_003BAA70  # OVL1
-0x003BAAF0 0xA0 func_003BAAF0  # OVL1
-0x003BAB90 0x20C func_003BAB90  # OVL1
-0x003BADA0 0x98 func_003BADA0  # OVL1
-0x003BAE40 0x98 func_003BAE40  # OVL1
-0x003BAEE0 0x8C func_003BAEE0  # OVL1
-0x003BAF70 0x8C func_003BAF70  # OVL1
+0x003BAA70 0x78 SelectIndexedStrip__Q23zdb8CVisDataFPQ23zdb5CMeshUi  # OVL1; by hand (the wep lane, vis_data.cpp: Clear, the block from the mesh's first level 0x3B9480, the id at 0x50, then SearchIndexedStrip 0x3BA7A0; SOCOM 1's SelectVertex shape; the name ours)
+0x003BAAF0 0xA0 ReplaceTextureData__Q23zdb8CVisDataFP8_word128  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CVisData::ReplaceTextureData 0x310700 -- the same select walk copying the quadword into type 5 and 6 selects, the count of a select before a type 8 decremented; over SOCOM II's cursor at 0x2C)
+0x003BAB90 0x20C SearchVertex__Q23zdb8CVisDataFb  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CVisData::SearchVertex 0x3107B0 -- the same switch over select types 1, 5, 3, 10, 2, 4 -- with a flag choosing the range count; NextVertex and the SelectVertex family call it)
+0x003BADA0 0x98 SelectVertexTail__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's SelectVertex shape -- Clear, the view's block from the visual's 0x30 vector, the index at 0x44, SearchVertex -- over the head's halfwords 6 and 7; the name ours)
+0x003BAE40 0x98 SelectVertexHead__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's SelectVertex shape, the block's end short by the head's halfword 7; the name ours)
+0x003BAEE0 0x8C SelectVertexStrips__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SelectVertex 0x3BAF70 with SearchVertex(true); the name ours)
+0x003BAF70 0x8C SelectVertex__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CVisData::SelectVertex 0x3109A0 -- Clear, the view's select block from the visual's vector at 0x30, its end and first select, the index, SearchVertex -- the same 0x8C bytes)
 0x003BB000 0x44 Clear__Q23zdb8CVisDataFv  # OVL1; s1:align
 0x003BB050 0xC0 Read__Q23zdb24CScrollingTexture_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB110 0x68 __dt__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:align
 0x003BB180 0x1C __ct__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_ScrollingTexture_Object at 0x5cc through it)
-0x003BB1A0 0x90 func_003BB1A0  # OVL1; s1:align; by hand (the entity lane: not list<FILTER_PLANE*>'s destructor -- it tests this on s1 once, then four times on s1+36 before the erase: the implicit destructor of a class holding a list-derived member at +36)
+0x003BB1A0 0x90 __dt__Q23zdb14CPreLight_bandFv  # OVL1; s1:align; by hand (the entity lane: not list<FILTER_PLANE*>'s destructor -- it tests this on s1 once, then four times on s1+36 before the erase: the implicit destructor of a class holding a list-derived member at +36); by hand (the wep lane, vis_data.cpp: the implicit destructor of SOCOM 1's CPreLight_band (DWARF: 0x30 bytes, CFilterPlaneObj, a list, at 0x24) -- clear<CPreLight_band> 0x3BD920 calls it on every 0x30-byte element; the entity lane's reading)
 0x003BB230 0x68 __dt__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls
 0x003BB2A0 0x1C __ct__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_PreLight_Object at 0x5bc through it)
-0x003BB2C0 0x1B0 func_003BB2C0  # OVL1
+0x003BB2C0 0x1B0 Read__Q23zdb16CMaterial_ObjectFPQ23zdb9CSaveLoad  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CMaterial_Object::Read 0x310D50 by its key "Material_Palette", now a key per 0x3C-byte band; CSaveLoad::Load calls it)
 0x003BB470 0x68 __dt__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:align, checked by hand (right before CMaterial_Object's constructor, as each *_Object's destructor precedes its constructor here and in SOCOM 1; calls a band vector deleter's destructor, 0x3BCDF0)
 0x003BB4E0 0x1C __ct__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_Material_Object at 0x59c through it)
-0x003BB500 0x114 func_003BB500  # OVL1
+0x003BB500 0x114 __as__Q23zdb14CMaterial_bandFRCQ23zdb14CMaterial_band  # OVL1; by hand (the wep lane, vis_data.cpp: CMaterial_band's assignment -- erase<CMaterial_band> 0x3BD6C0 moves the tail down through it and the insert 0x3BC680 constructs and assigns through it; the owned texture name duplicated)
 0x003BB620 0x68 __dt__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:align, checked by hand (right before CSubSurf_Object's constructor, the same pattern)
 0x003BB690 0x1C __ct__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_SubSurf_Object at 0x5ac through it)
 0x003BB6B0 0x98 Read__Q23zdb11CLOD_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB750 0x68 __dt__Q23zdb11CLOD_ObjectFv  # OVL1; s1:align
 0x003BB7C0 0x1C __ct__Q23zdb11CLOD_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_LOD_Object at 0x58c through it; the five *_Object constructors keep SOCOM 1's relative order)
 0x003BB7E0 0x75C insert__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FPQ23zdb22CScrollingTexture_bandUiRCQ23zdb22CScrollingTexture_band  # OVL1; s1:align
-0x003BBF40 0x9C func_003BBF40  # OVL1
-0x003BBFE0 0x5CC func_003BBFE0  # OVL1
+0x003BBF40 0x9C resize__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FUi  # OVL1; by hand (the wep lane, vis_data.cpp: CScrollingTexture_Object::Read 0x3BB050 calls it with the key's size / 0x208 where SOCOM 1's calls this resize; it calls the band insert 0x3BB7E0 and erase 0x3BCED0)
+0x003BBFE0 0x5CC insert__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FPQ23zdb9CLOD_bandUiRCQ23zdb9CLOD_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CLOD_band> 0x3BC5B0 grows through it with (end, n - size, &band))
 0x003BC5B0 0xC4 resize__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FUi  # OVL1; s1:align
-0x003BC680 0x460 func_003BC680  # OVL1
-0x003BCAE0 0x1BC func_003BCAE0  # OVL1
-0x003BCCA0 0x68 func_003BCCA0  # OVL1
-0x003BCD10 0x68 func_003BCD10  # OVL1
-0x003BCD80 0x68 func_003BCD80  # OVL1
-0x003BCDF0 0x68 func_003BCDF0  # OVL1
+0x003BC680 0x460 insert__Q23std80__vector_imp<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>,0>FPQ23zdb14CMaterial_bandUiRCQ23zdb14CMaterial_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CMaterial_band> 0x3BCAE0 grows through it; 0x3C-byte elements)
+0x003BCAE0 0x1BC resize__Q23std80__vector_imp<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>,0>FUi  # OVL1; by hand (the wep lane, vis_data.cpp: CMaterial_Object::Read 0x3BB2C0 calls it with the key's count; it calls the insert 0x3BC680 and erase 0x3BD6C0, its temporary a default band)
+0x003BCCA0 0x68 __dt__Q23std98__vector_deleter<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CScrollingTexture_Object 0x3BB110 calls it as SOCOM 1's calls this destructor; it calls clear 0x3BD840)
+0x003BCD10 0x68 __dt__Q23std70__vector_deleter<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CLOD_Object 0x3BB750 calls it; it calls clear 0x3BD850)
+0x003BCD80 0x68 __dt__Q23std80__vector_deleter<Q23zdb13CSubSurf_band,Q23std32allocator<Q23zdb13CSubSurf_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CSubSurf_Object 0x3BB620 calls it; it calls clear 0x3BD860)
+0x003BCDF0 0x68 __dt__Q23std82__vector_deleter<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CMaterial_Object 0x3BB470 calls it; it calls clear 0x3BD870)
 0x003BCE60 0x68 __dt__Q23std82__vector_deleter<Q23zdb14CPreLight_band,Q23std33allocator<Q23zdb14CPreLight_band>>Fv  # OVL1; s1:calls
-0x003BCED0 0x4E0 func_003BCED0  # OVL1
-0x003BD3B0 0x310 func_003BD3B0  # OVL1
-0x003BD6C0 0x180 func_003BD6C0  # OVL1
-0x003BD840 0x8 func_003BD840  # OVL1
-0x003BD850 0x8 func_003BD850  # OVL1
-0x003BD860 0x8 func_003BD860  # OVL1
-0x003BD870 0xA4 func_003BD870  # OVL1
+0x003BCED0 0x4E0 erase__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FPQ23zdb22CScrollingTexture_bandPQ23zdb22CScrollingTexture_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CScrollingTexture_band> 0x3BBF40 cuts through it with (data + n, data + size))
+0x003BD3B0 0x310 erase__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FPQ23zdb9CLOD_bandPQ23zdb9CLOD_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CLOD_band> 0x3BC5B0 cuts through it)
+0x003BD6C0 0x180 erase__Q23std80__vector_imp<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>,0>FPQ23zdb14CMaterial_bandPQ23zdb14CMaterial_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CMaterial_band> 0x3BCAE0 cuts through it; the tail moved down by the band's assignment 0x3BB500)
+0x003BD840 0x8 clear__Q23std98__vector_deleter<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCCA0 calls it; the 8-byte size store of a trivially destroyed element, as SOCOM 1's clear 0x312C10 without its empty loop)
+0x003BD850 0x8 clear__Q23std70__vector_deleter<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCD10 calls it)
+0x003BD860 0x8 clear__Q23std80__vector_deleter<Q23zdb13CSubSurf_band,Q23std32allocator<Q23zdb13CSubSurf_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCD80 calls it)
+0x003BD870 0xA4 clear__Q23std82__vector_deleter<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCDF0 calls it; each 0x3C-byte band's owned name freed)
 0x003BD920 0x7C clear__Q23std82__vector_deleter<Q23zdb14CPreLight_band,Q23std33allocator<Q23zdb14CPreLight_band>>Fv  # OVL1; s1:align
 0x003BD9A0 0x38 Uninit__Q23zdb14CMeshDecalPoolFv  # OVL1; s1:exact
 0x003BD9E0 0xC08 func_003BD9E0  # OVL1
@@ -8485,7 +8485,7 @@
 0x003D5860 0xE8 __ct__7CFlyoutFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's CFlyout constructor, the image's last function -- CreateXRef, SetName "FlyoutXRef", the box's corners (1,1,1), the two points zeroed)
 0x003FD680 0x8C __sinit_main.cpp  # OVL1 data area; a static initialiser; s1~ ai_events.cpp (shape 0.53, a hint); s1:unit by hand (the states lane: builds theGame with COurGame's constructor and registers 0x1E7100, ~COurGame, as its destructor -- main.cpp's initialiser, not ai_events.cpp's)
 0x003FD710 0x94 func_003FD710  # OVL1 data area; a static initialiser
-0x003FD7B0 0x98 func_003FD7B0  # OVL1 data area; a static initialiser
+0x003FD7B0 0x98 __sinit_st_core.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 18): st_core.cpp's initialiser -- <iostream>'s two init objects, then the film's cue vector s_cues (0x408BD0) zeroed and its destructor 0x1EF8C0 registered; the unit's statics defined in order
 0x003FD850 0x7C func_003FD850  # OVL1 data area; a static initialiser
 0x003FD8D0 0x64 func_003FD8D0  # OVL1 data area; a static initialiser; s1~ ai_vismap.cpp (shape 0.60, a hint)
 0x003FD940 0x90 func_003FD940  # OVL1 data area; a static initialiser
@@ -8530,7 +8530,7 @@
 0x00400160 0x1D0 func_00400160  # OVL1 data area; a static initialiser
 0x00400330 0x68 __sinit_fts_player.cpp  # OVL1 data area; a static initialiser; a static initialiser: fts_player.cpp's (the states lane's round 16: the unit emits it byte-exact but for its reference to ~CSpawners 0x2B4030, still open)
 0x004003A0 0x3C func_004003A0  # OVL1 data area; a static initialiser; s1~ fts_missioncam.cpp (shape 0.45, a hint)
-0x004003E0 0x20 func_004003E0  # OVL1 data area; a static initialiser
+0x004003E0 0x20 __sinit_fts_message.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 18): fts_message.cpp's initialiser -- __construct_array over its six message colours (0x440C70, s_msgColors) with CPnt4D's empty constructor 0x2110E0 and no destructor, a tail call; the unit's one dynamically initialised static
 0x00400400 0x244 func_00400400  # OVL1 data area; a static initialiser
 0x00400650 0x58 __sinit_fts_net_seal.cpp  # OVL1 data area; a static initialiser; s1~ game_state.cpp (shape 0.46, a hint); by hand (the states lane, round 13: builds CZSealState::m_RemoteGuyList (0x441000) with CRemoteGuyList's inline constructor -- three words zeroed, reserve(30) -- and registers 0x2BFFC0; not game_state.cpp's)
 0x004006B0 0x8 func_004006B0  # OVL1 data area; a static initialiser
@@ -8591,7 +8591,7 @@
 0x00403620 0x9C func_00403620  # OVL1 data area; a static initialiser
 0x004036C0 0x64 func_004036C0  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint)
 0x00403730 0x34 __sinit_zui_skb.cpp  # OVL1 data area; a static initialiser; by hand (g_arrSkbs zeroed and its destructor 0x38D5C0 registered: SOCOM 1's .p__sinit_zui_skb.cpp does the same) -- zui_skb.cpp's static initialiser
-0x00403770 0x84 func_00403770  # OVL1 data area; a static initialiser
+0x00403770 0x84 __sinit_zui_hangul.cpp  # OVL1 data area; a static initialiser; the UI lane round 10: zui_hangul.cpp's static initialiser (the file name ours): s_complete (0x49ED08) and s_rules (0x49ED28) zeroed and their destructors 0x394170 and 0x3940F0 registered, s_compose's count (0x49ED40) zeroed
 0x00403800 0x90C __sinit_zui_skbview.cpp  # OVL1 data area; a static initialiser; the UI lane round 9: zui_skbview.cpp's static initialiser (the file name ours): the four rows, eight CBmpWithNode, a CSkbRect, a CRenderableString and nine CSaferStr, in declaration order -- byte-exact from source
 0x00404110 0x8C __sinit_zui_skbkeys.cpp  # OVL1 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.54, a hint); the UI lane round 9: zui_skbkeys.cpp's static initialiser (the file name ours, the USB keys' unit C): three CRenderableString statics 0x4A1370/0x4A1450/0x4A1520, used by 0x398B50-0x39A790 -- byte-exact from source
 0x004041A0 0x94 func_004041A0  # OVL1 data area; a static initialiser
@@ -8628,31 +8628,31 @@
 0x004C5E48 0x48 ContextGetParam  # OVL2 unaligned; s1:order (SOCOM 1's object at 0x3372C8, same position; the parameter mask and 0x80CC0008 as there)
 0x004C5E90 0x94 ContextSetParam  # OVL2; s1:order (SOCOM 1's object at 0x3372C8, same position; heap_Calloc of 84 bytes and 0x80CC0086 as there)
 0x004C5F28 0x150 ContextActivateParams  # OVL2 unaligned; s1:order (SOCOM 1's object at 0x3372C8, same position; the 18-parameter loop unrolled by 3 into asrspi_SetParamList as there)
-0x004C6078 0x80 func_004C6078  # OVL2 unaligned
+0x004C6078 0x80 gsapi_ErrorGetString  # OVL2 unaligned; s1:calls (SOCOM 1's gsapi_ErrorGetString's body: the {code, string} table walked to its 127 sentinel, a code outside module 0xCC read as 0x80CC007F -- SOCOM II adds a bit-7 test; CReco hands each error to it where SOCOM 1's reco calls gsapi_ErrorGetString -- the HUD lane's lead. It sits at the end of the context object here, not in gsapi's: the extaudio object lies between)
 0x004C60F8 0x20 ExtAudioClose  # OVL2 unaligned; s1:exact
 0x004C6118 0x38 ExtAudioInit  # OVL2 unaligned; s1:align
-0x004C6150 0x10 func_004C6150  # OVL2
-0x004C6160 0xC func_004C6160  # OVL2
+0x004C6150 0x10 ExtAudioStart  # OVL2; s1:order (SOCOM 1's extaudio object at 0x337B10, the 3rd function: stores 1, the same 4 instructions; StartListening calls it where SOCOM 1's calls ExtAudioStart)
+0x004C6160 0xC ExtAudioStop  # OVL2; s1:order (SOCOM 1's extaudio object, the 4th: the same 3 instructions; StopListening and gsapi_EngineStop call it where SOCOM 1's call ExtAudioStop)
 0x004C6170 0x2C ExtAudioGetSamples  # OVL2; s1:align
-0x004C61A0 0x8 func_004C61A0  # OVL2
+0x004C61A0 0x8 ExtAudioGetSamplesLeft  # OVL2; s1:order (SOCOM 1's extaudio object, the 6th and last: the same 2 instructions)
 0x004C61A8 0x88 InitDefaultParams  # OVL2 unaligned; s1:align
 0x004C6230 0x1C8 ProcessAudio  # OVL2; s1:align
 0x004C63F8 0xD0 CreateWordIdList  # OVL2 unaligned; s1:calls
-0x004C64C8 0x104 func_004C64C8  # OVL2 unaligned
+0x004C64C8 0x104 gsapi_Close  # OVL2 unaligned; s1:calls (SOCOM 1's gsapi_Close: gsapi_EngineClose, gsapi_LanguageUnLoad, heap_Free, rsrc_Close, heap_Close in that order)
 0x004C65D0 0x144 gsapi_ContextActivate  # OVL2; s1:calls
 0x004C6718 0x120 gsapi_ContextDeActivate  # OVL2 unaligned; s1:calls
 0x004C6838 0x108 gsapi_ContextDisableWords  # OVL2 unaligned; s1:callee (gsapi_ContextDisableAllWords calls it, as SOCOM 1's calls gsapi_ContextDisableWords)
 0x004C6940 0x108 gsapi_ContextEnableWords  # OVL2; s1:callee (gsapi_ContextEnableAllWords calls it with every word, as SOCOM 1's calls gsapi_ContextEnableWords)
 0x004C6A48 0x108 gsapi_ContextUnLoad  # OVL2 unaligned; s1:calls
-0x004C6B50 0x184 func_004C6B50  # OVL2; size 0x184 (the seed cut it at 0x4C6C28, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C6CD8 0x1C0 func_004C6CD8  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C6DF0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C6E98 0x158 func_004C6E98  # OVL2 unaligned
-0x004C6FF0 0x174 func_004C6FF0  # OVL2
-0x004C7168 0x1C0 func_004C7168  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C7238, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C7328 0xF4 func_004C7328  # OVL2 unaligned; size 0xF4 (the seed cut it at 0x4C73F0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C7420 0xE4 func_004C7420  # OVL2
-0x004C7508 0x20C func_004C7508  # OVL2 unaligned; size 0x20C (the seed cut it at 0x4C76A0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C7718 0xDC func_004C7718  # OVL2 unaligned; size 0xDC (the seed cut it at 0x4C77B8, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
+0x004C6B50 0x184 gsapi_EngineClose  # OVL2; size 0x184 (the seed cut it at 0x4C6C28, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_EngineClose, the same position: gsapi_EngineStop, ExtAudioClose, SidIsRecording, SidStop, SidClose, ContextDeActivate, ContextUnLoad, memset, asrspi_CloseEngine in that order)
+0x004C6CD8 0x1C0 gsapi_EngineOpen  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C6DF0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_EngineOpen, the same position: ExtAudioInit, SidInit, memset, asrspi_OpenEngine, asrspi_ActivateLng in that order; CReco passes (0, &engine) -- the HUD lane's lead)
+0x004C6E98 0x158 gsapi_EngineSetParam  # OVL2 unaligned; s1:calls (SOCOM 1's gsapi_EngineSetParam, the same position: ContextSetParam then ContextActivateParams, 0x80CC0089/0x80CC000C/0x80CC000D, the 18 parameters)
+0x004C6FF0 0x174 gsapi_EngineStart  # OVL2; s1:calls (SOCOM 1's gsapi_EngineStart, the same position: asrspi_Start then StartListening, 0x80CC0089)
+0x004C7168 0x1C0 gsapi_EngineStop  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C7238, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_EngineStop, the same position: ExtAudioStop, SidIsRecording, SidStop, asrspi_GetState, asrspi_Stop, 0x80CC0089; gsapi_EngineClose calls it where SOCOM 1's calls gsapi_EngineStop; CReco's stop -- the HUD lane's lead)
+0x004C7328 0xF4 gsapi_Init  # OVL2 unaligned; size 0xF4 (the seed cut it at 0x4C73F0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_Init, the same position in the gsapi object: 0x80CC0083 for a null callback, the safe-handle test, heap_Open, heap_Calloc of n*108 (0x80CC0086), rsrc_Open; CReco's init passes it the result callback and 0 where SOCOM 1's recoInit2 calls gsapi_Init -- the HUD lane's lead)
+0x004C7420 0xE4 gsapi_GetVersion  # OVL2; s1:calls (SOCOM 1's gsapi_GetVersion, the same position: strncpy, strlen, asrspi_GetVersion, sprintf, the 30-byte buffer)
+0x004C7508 0x20C gsapi_LanguageLoadBuffer  # OVL2 unaligned; size 0x20C (the seed cut it at 0x4C76A0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_LanguageLoadBuffer, the same position: the safe-handle test, gsapi_LanguageUnLoad, InitDefaultParams, the same constants 116/24/9/12/17; CReco calls it after gsapi_Init as recoSetupLanguage does -- the HUD lane's lead)
+0x004C7718 0xDC gsapi_LanguageUnLoad  # OVL2 unaligned; size 0xDC (the seed cut it at 0x4C77B8, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_LanguageUnLoad, the same position after gsapi_LanguageLoadBuffer: the safe-handle test, the same constants; gsapi_LanguageLoadBuffer and gsapi_Close call it where SOCOM 1's call gsapi_LanguageUnLoad)
 0x004C77F8 0x14C gsapi_EngineSetImmediateContext  # OVL2 unaligned; s1:calls
 0x004C7948 0xFC gsapi_ContextLoadBuffer  # OVL2 unaligned; s1:calls
 0x004C7A48 0x8C gsapi_ContextSetGcdData  # OVL2 unaligned; s1:order (SOCOM 1's gsapi object 0x337BC8: after gsapi_ContextLoadBuffer, before gsapi_ContextSetWrdData; hands on to ContextSetGcdData as SOCOM 1's does; the gcc lane, round 3b)
@@ -8663,9 +8663,9 @@
 0x004C7CC0 0x104 gsapi_EngineDisableWords  # OVL2; s1:callee (gsapi_EngineDisableAllWords calls it, as SOCOM 1's calls gsapi_EngineDisableWords)
 0x004C7DC8 0x28 gsapi_EngineEnableAllWords  # OVL2 unaligned; s1:order (SOCOM 1's object at 0x337BC8, same position; through gsapi_EngineEnableWords as there)
 0x004C7DF0 0x28 gsapi_EngineDisableAllWords  # OVL2; s1:order (SOCOM 1's object at 0x337BC8, same position; through gsapi_EngineDisableWords as there)
-0x004C7E18 0x118 func_004C7E18  # OVL2 unaligned
-0x004C7F30 0xC0 func_004C7F30  # OVL2
-0x004C7FF0 0x134 func_004C7FF0  # OVL2
+0x004C7E18 0x118 gsapi_ContextSetParam  # OVL2 unaligned; s1:calls (SOCOM 1's gsapi_ContextSetParam, the same position: ContextSetParam then ContextActivateParams, 0x80CC0089/0x80CC000C)
+0x004C7F30 0xC0 gsapi_ContextGetParam  # OVL2; s1:calls (SOCOM 1's gsapi_ContextGetParam, the same position: ContextGetParam, 0x80CC0089/0x80CC0083/0x80CC000C)
+0x004C7FF0 0x134 gsapi_EngineGetParam  # OVL2; s1:calls (SOCOM 1's gsapi_EngineGetParam, the same position: the engine check, ContextGetParam, 0x80CC0089/0x80CC0083/0x80CC000C/0x80CC000D)
 0x004C8128 0x104 gsapi_EngineSetMode  # OVL2 unaligned; s1:order (SOCOM 1's gsapi object, before gsapi_ExecServer: the handle and engine checks, a mode of 0 or with both low bits set refused with 0x80CC0007, stored at the engine's +4)
 0x004C8230 0xC0 gsapi_ExecServer  # OVL2; s1:calls
 0x004C82F0 0x13C func_004C82F0  # OVL2
@@ -8676,19 +8676,19 @@
 0x004C8758 0x68 gsapi_GetHeapHandle  # OVL2 unaligned; s1:align
 0x004C87C0 0x60 gsapi_SetHeapUserData  # OVL2; s1:align
 0x004C8820 0x5C gsapi_UseExternalAudio  # OVL2; s1:align
-0x004C8880 0xC func_004C8880  # OVL2
+0x004C8880 0xC gsapi_GetNumContextsLoaded  # OVL2; s1:order (SOCOM 1's gsapi_GetNumContextsLoaded, after gsapi_UseExternalAudio as there: it returns gGSAPI+136, the count gsapi_Init zeroes and gsapi_ContextUnLoad decrements; 0x4C8890 beside it, returning gGSAPI+16, is new in SOCOM II)
 0x004C8890 0xC func_004C8890  # OVL2
-0x004C88A0 0x11C func_004C88A0  # OVL2
+0x004C88A0 0x11C ActivateDefaultParams  # OVL2; s1:calls (SOCOM 1's ActivateDefaultParams, the same position: asrspi_SetParamList over the 18 parameters, 255 for an unset one)
 0x004C89C0 0xBC RestartEngine  # OVL2; s1:align
 0x004C8A80 0x14 TranslateGsapiParamId2AsrSpiParamId  # OVL2; s1:callee (ContextActivateParams calls it from the same three sites as SOCOM 1's)
-0x004C8A98 0xD0 func_004C8A98  # OVL2 unaligned
-0x004C8B68 0xD0 func_004C8B68  # OVL2 unaligned
+0x004C8A98 0xD0 StartListening  # OVL2 unaligned; s1:calls (SOCOM 1's StartListening: SidIsRecording, ExtAudioStart, SidStart, state 2; gsapi_EngineStart calls it where SOCOM 1's calls StartListening)
+0x004C8B68 0xD0 StopListening  # OVL2 unaligned; s1:calls (SOCOM 1's StopListening: SidIsRecording, ExtAudioStop, SidStop, state 3; after StartListening as there)
 0x004C8C38 0x7C func_004C8C38  # OVL2 unaligned
 0x004C8CB8 0x58 func_004C8CB8  # OVL2 unaligned
 0x004C8D10 0x158 func_004C8D10  # OVL2
-0x004C8E68 0xA4 func_004C8E68  # OVL2 unaligned
+0x004C8E68 0xA4 WrdCreateWordList  # OVL2 unaligned; s1:calls (SOCOM 1's ContextSetWrdData calls WrdCreateWordList where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004C8F10 0x30 WrdDestroyWordList  # OVL2; s1:align
-0x004C8F40 0x264 func_004C8F40  # OVL2
+0x004C8F40 0x264 ConvErr  # OVL2; s1:calls (SOCOM 1's ASRSPICBTRAIN, asrspi_UswContinue, asrspi_UswStartRecording and others call ConvErr where ours call this row, 21 call sites; the same position in SOCOM 1's object)
 0x004C91A8 0x12C ASRSPICBTRAIN  # OVL2 unaligned; s1:align
 0x004C92D8 0x2A8 asrspi_UswStartRecording  # OVL2 unaligned; s1:calls
 0x004C9580 0x1F8 asrspi_UswContinue  # OVL2; s1:align
@@ -8709,7 +8709,7 @@
 0x004CBAF8 0x170 asrspi_Stop  # OVL2 unaligned; s1:align
 0x004CBC68 0x104 func_004CBC68  # OVL2 unaligned
 0x004CBD70 0x1F4 intAcquisition  # OVL2; s1:align
-0x004CBF68 0x178 func_004CBF68  # OVL2 unaligned
+0x004CBF68 0x178 asrspi_Acquisition  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessAudio calls asrspi_Acquisition where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004CC0E0 0x178 func_004CC0E0  # OVL2
 0x004CC258 0x10C asrspi_EnableAGC  # OVL2 unaligned; s1:align
 0x004CC368 0xF8 asrspi_DisableAGC  # OVL2 unaligned; s1:align
@@ -8720,7 +8720,7 @@
 0x004CC958 0x138 func_004CC958  # OVL2 unaligned
 0x004CCA90 0x3C asrspi_GetVersion  # OVL2; s1:align
 0x004CCAD0 0x14 asrspi_GetUswVersion  # OVL2; s1:exact
-0x004CCAE8 0x44 func_004CCAE8  # OVL2 unaligned
+0x004CCAE8 0x44 asrspi_GetState  # OVL2 unaligned; s1:calls (SOCOM 1's asrspi_GetState, the same position in the asrspi object: 0x8xxx0083 for a null pointer, the 11111 magic test; gsapi_EngineStop calls it where SOCOM 1's calls asrspi_GetState)
 0x004CCB30 0x120 asrspi_UswGetRecordingInfo  # OVL2; s1:align
 0x004CCC50 0x18 func_004CCC50  # OVL2
 0x004CCC68 0x18 func_004CCC68  # OVL2 unaligned
@@ -8731,33 +8731,33 @@
 0x004CCD98 0x2C ASRSPICBTS  # OVL2 unaligned; s1:exact
 0x004CCDC8 0x2C ASRSPICBSTARTDET  # OVL2 unaligned; s1:exact
 0x004CCDF8 0x98 ASRSPICBRESULT  # OVL2 unaligned; s1:align
-0x004CCE90 0x300 func_004CCE90  # OVL2
-0x004CD190 0x48C func_004CD190  # OVL2
+0x004CCE90 0x300 CreateSecondPassInfo  # OVL2; s1:calls (SOCOM 1's CreateCtxInfo calls CreateSecondPassInfo where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x004CD190 0x48C CreateExEvCtxInfo  # OVL2; s1:calls (SOCOM 1's UpdateExevStatus calls CreateExEvCtxInfo where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004CD620 0xC34 CreateCtxInfo  # OVL2; s1:calls
 0x004CE258 0x1D4 FreeCtxInfo  # OVL2 unaligned; s1:align
-0x004CE430 0xB8 func_004CE430  # OVL2
-0x004CE4E8 0x104 func_004CE4E8  # OVL2 unaligned
-0x004CE5F0 0x764 func_004CE5F0  # OVL2
-0x004CED58 0x4F8 func_004CED58  # OVL2 unaligned
-0x004CF250 0x4AC func_004CF250  # OVL2
-0x004CF700 0x460 func_004CF700  # OVL2
-0x004CFB60 0x4A8 func_004CFB60  # OVL2
-0x004D0008 0xF8 func_004D0008  # OVL2 unaligned
+0x004CE430 0xB8 CalcAccuracyCtxInfo  # OVL2; s1:calls (SOCOM 1's casrActivateContext calls CalcAccuracyCtxInfo where ours call this row, 1 call site; the object's second-last function, as there (the align pass had it one row on))
+0x004CE4E8 0x104 CreateMenuMasks  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext, CreateSecondPassTreeContext call CreateMenuMasks where ours call this row, 2 call sites; the object's last function, as there)
+0x004CE5F0 0x764 Build_Tree_ForChinese  # OVL2; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Build_Tree_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x004CED58 0x4F8 Translate_Prons_Into_Items_And_Tones  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Translate_Prons_Into_Items_And_Tones where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x004CF250 0x4AC SplitUp_Finals  # OVL2; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls SplitUp_Finals where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x004CF700 0x460 Swap_Finals  # OVL2; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Swap_Finals where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x004CFB60 0x4A8 FillOut_Syntax_Statedict_And_Wordprops_ForChinese  # OVL2; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls FillOut_Syntax_Statedict_And_Wordprops_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x004D0008 0xF8 FreeSecondPassContext_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese and others call FreeSecondPassContext_ForChinese where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004D0100 0x880 CreateSecondPassContext_ForChinese  # OVL2; s1:calls
 0x004D0980 0x24 func_004D0980  # OVL2
-0x004D09A8 0x100 func_004D09A8  # OVL2 unaligned
-0x004D0AA8 0x130 func_004D0AA8  # OVL2 unaligned
+0x004D09A8 0x100 Calculate_NbrOfStatesInDict_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfStatesInDict_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x004D0AA8 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0BD8 0xF48 CreateSecondPassContext  # OVL2 unaligned; s1:calls
-0x004D1B20 0xF8 func_004D1B20  # OVL2
-0x004D1C18 0x284 func_004D1C18  # OVL2 unaligned
-0x004D1EA0 0x2F8 func_004D1EA0  # OVL2
+0x004D1B20 0xF8 FreeSecondPassContext  # OVL2; s1:calls (SOCOM 1's CreateSecondPassContext, CreateSecondPassTreeContext and others call FreeSecondPassContext where ours call this row, 8 call sites)
+0x004D1C18 0x284 GetSecondPassInfo  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassTreeContext and others call GetSecondPassInfo where ours call this row, 2 call sites; the same position in SOCOM 1's object)
+0x004D1EA0 0x2F8 putWordInDict  # OVL2; s1:calls (SOCOM 1's CreateSecondPassTreeContext calls putWordInDict where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D2198 0x1180 CreateSecondPassTreeContext  # OVL2 unaligned; s1:calls
 0x004D3318 0x134 AllocateNodeAndFreePrevious  # OVL2 unaligned; s1:align
 0x004D3450 0x30C func_004D3450  # OVL2
-0x004D3760 0x8EC func_004D3760  # OVL2
+0x004D3760 0x8EC AddFollowers  # OVL2; s1:calls (SOCOM 1's intCreateCtxTree calls AddFollowers where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D4050 0x554 intCreateCtxTree  # OVL2; s1:callee
 0x004D45A8 0x208 CalcNrNodes10  # OVL2 unaligned; s1:calls
-0x004D47B0 0x8A4 func_004D47B0  # OVL2
+0x004D47B0 0x8A4 GetIsolatedWordDpActiveWords  # OVL2; s1:calls (SOCOM 1's casrGetActiveWords calls GetIsolatedWordDpActiveWords where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D5058 0x2A0 func_004D5058  # OVL2 unaligned
 0x004D52F8 0x20 CreateCtxTree  # OVL2 unaligned; s1:exact
 0x004D5318 0xB0 func_004D5318  # OVL2 unaligned
@@ -8774,14 +8774,14 @@
 0x004D6BC0 0x400 func_004D6BC0  # OVL2
 0x004D6FC0 0x4A0 func_004D6FC0  # OVL2
 0x004D7460 0xDC func_004D7460  # OVL2
-0x004D7540 0xC00 func_004D7540  # OVL2
+0x004D7540 0xC00 CreateSecondPassTreeContext_ForChinese  # OVL2; s1:calls (SOCOM 1's casrDoIsoWordSecondPass calls CreateSecondPassTreeContext_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D8140 0x24 func_004D8140  # OVL2
 0x004D8168 0x100 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8268 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8398 0xEE0 func_004D8398  # OVL2 unaligned
 0x004D9278 0x678 func_004D9278  # OVL2 unaligned
 0x004D98F0 0x1D8 func_004D98F0  # OVL2
-0x004D9AC8 0x400 func_004D9AC8  # OVL2 unaligned
+0x004D9AC8 0x400 casrEnableGenders  # OVL2 unaligned; s1:calls (SOCOM 1's casrSetParam, casrStart, casrStartUserWordTraining call casrEnableGenders where ours call this row, 3 call sites; the same position in SOCOM 1's object)
 0x004D9EC8 0x210 casrOpen  # OVL2 unaligned; s1:align
 0x004DA0D8 0x1C4 func_004DA0D8  # OVL2 unaligned
 0x004DA2A0 0x158 casrClose  # OVL2; s1:align
@@ -8790,23 +8790,23 @@
 0x004DA6F8 0x134 casrStop  # OVL2 unaligned; s1:align
 0x004DA830 0x1D0 casrGetActiveWords  # OVL2; s1:align
 0x004DAA00 0xDC InitParamList  # OVL2; s1:align
-0x004DAAE0 0x1C8 func_004DAAE0  # OVL2
+0x004DAAE0 0x1C8 casrGetParam  # OVL2; s1:calls (SOCOM 1's CreateCtxInfo, casrDoIsoWordSecondPass, casrDoNormalSecondPass and others call casrGetParam where ours call this row, 8 call sites; the same position in SOCOM 1's object)
 0x004DACA8 0xE4 UpdateExevStatus  # OVL2 unaligned; s1:align
 0x004DAD90 0x5C0 casrSetParam  # OVL2; s1:align
-0x004DB350 0x620 func_004DB350  # OVL2
+0x004DB350 0x620 casrActivateData  # OVL2; s1:calls (SOCOM 1's asrspi_ActivateLng, asrspi_ActivateSessionData call casrActivateData where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004DB970 0x43C casrActivateContext  # OVL2; s1:calls
 0x004DBDB0 0x1BC casrDoNormalSecondPass  # OVL2; s1:calls
 0x004DBF70 0x204 casrDoIsoWordSecondPass  # OVL2; s1:align
-0x004DC178 0x958 func_004DC178  # OVL2 unaligned
+0x004DC178 0x958 casrDoSpelling  # OVL2 unaligned; s1:calls (SOCOM 1's casrAcquisition, casrDoSecondPass call casrDoSpelling where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004DCAD0 0x184 casrInitSampleFormat  # OVL2; s1:align
 0x004DCC58 0x418 casrAcquisition  # OVL2 unaligned; s1:calls
 0x004DD070 0x164 casrStartUserWordTraining  # OVL2; s1:align
 0x004DD1D8 0x42C cbCheckConfusion  # OVL2 unaligned; s1:ref (taken by address where SOCOM 1 takes cbCheckConfusion's)
 0x004DD608 0x93C casrCheckUserWordConfusion  # OVL2 unaligned; s1:calls
-0x004DDF48 0xFC func_004DDF48  # OVL2 unaligned
+0x004DDF48 0xFC casrInitSegmentation  # OVL2 unaligned; s1:calls (SOCOM 1's DoDurationModeling, ScoreTranscriptions call casrInitSegmentation where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004DE048 0xDC casrAcknowledge  # OVL2 unaligned; s1:align
-0x004DE128 0x24 func_004DE128  # OVL2 unaligned
-0x004DE150 0x24 func_004DE150  # OVL2
+0x004DE128 0x24 casrCloseContext  # OVL2 unaligned; s1:calls (SOCOM 1's asrspi_CloseEngine, asrspi_UswCheckConfusion and others call casrCloseContext where ours call this row, 6 call sites; the same position in SOCOM 1's object)
+0x004DE150 0x24 casrCloseData  # OVL2; s1:calls (SOCOM 1's asrspi_ActivateLng, asrspi_CloseEngine and others call casrCloseData where ours call this row, 4 call sites; the same position in SOCOM 1's object)
 0x004DE178 0xE0 casrExportData  # OVL2 unaligned; s1:align
 0x004DE258 0x68 casrGainSet  # OVL2 unaligned; s1:align
 0x004DE2C0 0x34 casrGetActivatedContext  # OVL2; s1:align
@@ -8816,13 +8816,13 @@
 0x004DE4D0 0x40 casrGetLastWarning  # OVL2; s1:order (SOCOM 1's casr object at 0x348248, same position; returns and clears the warning at +56, as there)
 0x004DE510 0x60 casrGetSignalLevel  # OVL2; s1:align
 0x004DE570 0x80 casrGetSNR  # OVL2; s1:align
-0x004DE5F0 0x8 func_004DE5F0  # OVL2
+0x004DE5F0 0x8 casrGetSPIVersion  # OVL2; s1:calls (SOCOM 1's asrspi_GetVersion calls casrGetSPIVersion where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004DE5F8 0x5C casrGetState  # OVL2 unaligned; s1:align
 0x004DE658 0x60 casrImportContext  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, same position; wraps a type-6 context in an 8-byte heap_Alloc'd record, as there)
 0x004DE6B8 0x54 casrImportData  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, same position; the same record for data, as there)
-0x004DE710 0x1C0 func_004DE710  # OVL2
+0x004DE710 0x1C0 casrSetActiveWords  # OVL2; s1:calls (SOCOM 1's asrspi_ActivateWords, asrspi_DeActivateWords and others call casrSetActiveWords where ours call this row, 3 call sites)
 0x004DE8D0 0x40 casrGetCallbackErr  # OVL2; s1:align
-0x004DE910 0x20 func_004DE910  # OVL2
+0x004DE910 0x20 casrGetSegmStart  # OVL2; s1:calls (SOCOM 1's DoDurationModeling and others call casrGetSegmStart where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004DE930 0x54 casrStoreSegmentation  # OVL2; s1:align
 0x004DE988 0x4C casrEnableLabelInQueue  # OVL2 unaligned; s1:align
 0x004DE9D8 0x60 casrDoSecondPass  # OVL2 unaligned; s1:align
@@ -8862,15 +8862,15 @@
 0x004E14E0 0x228 func_004E14E0  # OVL2
 0x004E1708 0x420 func_004E1708  # OVL2 unaligned
 0x004E1B28 0x1DC userwordAcknowledge  # OVL2 unaligned; s1:align
-0x004E1D08 0x124 func_004E1D08  # OVL2 unaligned
+0x004E1D08 0x124 InitUserWordTraining  # OVL2 unaligned; s1:calls (SOCOM 1's userwordStartUserWordTraining calls InitUserWordTraining where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E1E30 0xD4 ExitUserWordTraining  # OVL2; s1:align
-0x004E1F08 0x100 func_004E1F08  # OVL2 unaligned
+0x004E1F08 0x100 SendLabelsToEngine  # OVL2 unaligned; s1:calls (SOCOM 1's ScoreTranscriptions, casrDoIsoWordSecondPass, casrDoNormalSecondPass call SendLabelsToEngine where ours call this row, 3 call sites; the same position in SOCOM 1's object)
 0x004E2008 0x238 func_004E2008  # OVL2 unaligned
-0x004E2240 0x398 func_004E2240  # OVL2
+0x004E2240 0x398 FindBestTranscription  # OVL2; s1:calls (SOCOM 1's DoUserWordTraining calls FindBestTranscription where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E25D8 0x6A0 DoDurationModeling  # OVL2 unaligned; s1:calls
 0x004E2C78 0x950 ScoreTranscriptions  # OVL2 unaligned; s1:calls
-0x004E35C8 0x230 func_004E35C8  # OVL2 unaligned
-0x004E37F8 0x22C func_004E37F8  # OVL2 unaligned
+0x004E35C8 0x230 CheckConsistency  # OVL2 unaligned; s1:calls (SOCOM 1's DoUserWordTraining calls CheckConsistency where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x004E37F8 0x22C RejectTrainUtters  # OVL2 unaligned; s1:calls (SOCOM 1's DoUserWordTraining and others call RejectTrainUtters where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004E3A28 0x2A0 DoUserWordTraining  # OVL2 unaligned; s1:calls
 0x004E3CC8 0x54 userwordStartUserWordTraining  # OVL2 unaligned; s1:align
 0x004E3D20 0xE8 SendPartOfLabelsToEngine  # OVL2; s1:align
@@ -8891,7 +8891,7 @@
 0x004E47F8 0x248 InitViterbi  # OVL2 unaligned; s1:align
 0x004E4A40 0x120 InitDpGenUw  # OVL2; s1:align
 0x004E4B60 0x260 func_004E4B60  # OVL2
-0x004E4DC0 0x61C func_004E4DC0  # OVL2
+0x004E4DC0 0x61C DynProgUserWords  # OVL2; s1:calls (SOCOM 1's DpGenUwProcess calls DynProgUserWords where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E53E0 0x158 DpGenUwProcess  # OVL2; s1:align
 0x004E5538 0x12C func_004E5538  # OVL2 unaligned
 0x004E5668 0x27C ControlDpScoreUw  # OVL2 unaligned; s1:calls
@@ -8901,7 +8901,7 @@
 0x004E5960 0x1D4 func_004E5960  # OVL2
 0x004E5B38 0x234 func_004E5B38  # OVL2 unaligned
 0x004E5D70 0x28C SendResultScoreUserWords  # OVL2; s1:align
-0x004E6000 0x4DC func_004E6000  # OVL2
+0x004E6000 0x4DC DynProgScoreUserWords  # OVL2; s1:calls (SOCOM 1's DpScoreUwProcess calls DynProgScoreUserWords where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E64E0 0x12C DpScoreUwProcess  # OVL2; s1:align
 0x004E6610 0x1A0 func_004E6610  # OVL2
 0x004E67B0 0x22C func_004E67B0  # OVL2
@@ -8910,7 +8910,7 @@
 0x004E6A48 0xA8 InitDpScoreUw  # OVL2 unaligned; s1:align
 0x004E6AF0 0xCC MakeScoreUserWordsActiveDist  # OVL2; s1:align
 0x004E6BC0 0x60 func_004E6BC0  # OVL2
-0x004E6C20 0x2C8 func_004E6C20  # OVL2
+0x004E6C20 0x2C8 DynProgExtraEventsProcess  # OVL2; s1:calls (SOCOM 1's ProcessExtraEventDP calls DynProgExtraEventsProcess where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E6EE8 0x234 ControlExtraEventDP  # OVL2 unaligned; s1:align
 0x004E7120 0x3C ConstructExtraEventDp  # OVL2; s1:align
 0x004E7160 0x58 ProcessExtraEventDP  # OVL2; s1:align
@@ -8922,7 +8922,7 @@
 0x004E8710 0x2AC func_004E8710  # OVL2
 0x004E89C0 0x8C ConstructFFTMod  # OVL2; s1:align
 0x004E8A50 0x94 ControlFFTMod  # OVL2; s1:align
-0x004E8AE8 0x28C func_004E8AE8  # OVL2 unaligned
+0x004E8AE8 0x28C InitIsoWordTokenDpContext  # OVL2 unaligned; s1:calls (SOCOM 1's ControlIsoWordTokenDp calls InitIsoWordTokenDpContext where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E8D78 0x130 FreeIsoWordTokenDp  # OVL2 unaligned; s1:align
 0x004E8EA8 0x1D4 InitNewUtterance  # OVL2 unaligned; s1:align
 0x004E9080 0x2DC ExtendNodeWheel  # OVL2; s1:calls
@@ -8930,7 +8930,7 @@
 0x004EA0F8 0x92C func_004EA0F8  # OVL2 unaligned
 0x004EAA28 0x104 func_004EAA28  # OVL2 unaligned; s1~ ExpandGarbageArrays (one of 2)
 0x004EAB30 0x308 func_004EAB30  # OVL2
-0x004EAE38 0x23C func_004EAE38  # OVL2 unaligned
+0x004EAE38 0x23C GetNBest  # OVL2 unaligned; s1:calls (SOCOM 1's ControlIsoWordTokenDp calls GetNBest where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004EB078 0x328 ControlIsoWordTokenDp  # OVL2 unaligned; s1:align
 0x004EB3A0 0x3C ConstructIsoWordTokenDp  # OVL2; s1:align
 0x004EB3E0 0xC4 InitIsoWordTokenDpProcess  # OVL2; s1:align
@@ -8942,23 +8942,23 @@
 0x004EBB98 0x114 InitNBestDynProgProcess  # OVL2 unaligned; s1:align
 0x004EBCB0 0x47C func_004EBCB0  # OVL2
 0x004EC130 0xC8 func_004EC130  # OVL2
-0x004EC1F8 0x1A8 func_004EC1F8  # OVL2 unaligned
+0x004EC1F8 0x1A8 CleanUpParBTProc  # OVL2 unaligned; s1:calls (SOCOM 1's BacktraceWordsParBT and others call CleanUpParBTProc where ours call this row, 4 call sites; the same position in SOCOM 1's object)
 0x004EC3A0 0x1F4 func_004EC3A0  # OVL2
 0x004EC598 0x1144 func_004EC598  # OVL2 unaligned
 0x004ED6E0 0x198C func_004ED6E0  # OVL2
 0x004EF070 0x11C CopyParBT  # OVL2; s1:align
 0x004EF190 0x534 BacktraceWordsParBT  # OVL2; s1:align
-0x004EF6C8 0x288 func_004EF6C8  # OVL2 unaligned
+0x004EF6C8 0x288 FindBestBacktraces  # OVL2 unaligned; s1:calls (SOCOM 1's FindBestRecognised calls FindBestBacktraces where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004EF950 0x1C4 FindBestRecognised  # OVL2; s1:calls
-0x004EFB18 0x144 func_004EFB18  # OVL2 unaligned; s1~ ExpandGarbageArrays (one of 2)
+0x004EFB18 0x144 ExpandGarbageArrays  # OVL2 unaligned; s1~ ExpandGarbageArrays (one of 2); s1:calls (SOCOM 1's NBestDynProgProcess calls ExpandGarbageArrays where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004EFC60 0x308 NBestDynProgProcess  # OVL2; s1:align
 0x004EFF68 0xC54 func_004EFF68  # OVL2 unaligned
 0x004F0BC0 0x3C ConstructNBestDynProg  # OVL2; s1:align
 0x004F0C00 0x7C ExtendBacktraceStack  # OVL2; s1:align
 0x004F0C80 0x30 func_004F0C80  # OVL2
 0x004F0CB0 0x8 IdleProcess  # OVL2; s1:ref (taken by address where SOCOM 1 takes IdleProcess's)
-0x004F0CB8 0x404 func_004F0CB8  # OVL2 unaligned
-0x004F10C0 0x438 func_004F10C0  # OVL2
+0x004F0CB8 0x404 Actual_DP  # OVL2 unaligned; s1:calls (SOCOM 1's FlushPitchDP, ProcessPitchDP call Actual_DP where ours call this row, 2 call sites; the same position in SOCOM 1's object)
+0x004F10C0 0x438 BackTracking  # OVL2; s1:calls (SOCOM 1's FlushPitchDP, ProcessPitchDP call BackTracking where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004F14F8 0x39C func_004F14F8  # OVL2 unaligned
 0x004F1898 0x1B0 FlushPitchDP  # OVL2 unaligned; s1:calls
 0x004F1A48 0x338 ProcessPitchDP  # OVL2 unaligned; s1:calls
@@ -8980,7 +8980,7 @@
 0x004F3498 0x30 ControlUndersampler  # OVL2 unaligned; s1:align
 0x004F34C8 0xD8 func_004F34C8  # OVL2 unaligned
 0x004F35A0 0xF0 Reset  # OVL2; s1:calls
-0x004F3690 0x194 func_004F3690  # OVL2
+0x004F3690 0x194 NormalizeAndEnQ  # OVL2; s1:calls (SOCOM 1's ProcessAcne and others call NormalizeAndEnQ where ours call this row, 6 call sites; the same position in SOCOM 1's object)
 0x004F3828 0x680 ProcessAcne  # OVL2 unaligned; s1:align
 0x004F3EA8 0x2A8 ControlAcne  # OVL2 unaligned; s1:align
 0x004F4150 0x250 InitAcne  # OVL2; s1:calls
@@ -8990,8 +8990,8 @@
 0x004F4730 0x1CC func_004F4730  # OVL2
 0x004F4900 0x4C ControlDCTLift  # OVL2; s1:align
 0x004F4950 0x58C ControlGender  # OVL2; s1:calls
-0x004F4EE0 0x548 func_004F4EE0  # OVL2
-0x004F5428 0x2DC func_004F5428  # OVL2 unaligned
+0x004F4EE0 0x548 GenderDataCompute  # OVL2; s1:calls (SOCOM 1's ProcessGender and others call GenderDataCompute where ours call this row, 3 call sites; after ControlGender, as there)
+0x004F5428 0x2DC GenderSelection  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessGender and others call GenderSelection where ours call this row, 3 call sites; after GenderDataCompute, as there)
 0x004F5708 0x238 InitGender  # OVL2 unaligned; s1:align
 0x004F5940 0x52C ProcessGender  # OVL2; s1:align
 0x004F5E70 0x3C ConstructGender  # OVL2; s1:align
@@ -9003,7 +9003,7 @@
 0x004F6958 0x1AC func_004F6958  # OVL2 unaligned
 0x004F6B08 0x170 ControlMel  # OVL2 unaligned; s1:calls
 0x004F6C78 0x64 InitMel  # OVL2 unaligned; s1:align
-0x004F6CE0 0x32C func_004F6CE0  # OVL2
+0x004F6CE0 0x32C QrDeleteCol  # OVL2; s1:calls (SOCOM 1's Smoothing calls QrDeleteCol where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F7010 0x24 mtxConstruct  # OVL2; s1:align
 0x004F7038 0x50 func_004F7038  # OVL2 unaligned
 0x004F7088 0x18 mtxAssociateEntr  # OVL2 unaligned; s1:exact
@@ -9016,15 +9016,15 @@
 0x004F7580 0xF4 mtxMax  # OVL2; s1:align
 0x004F7678 0x24 imtxConstruct  # OVL2 unaligned; s1:align
 0x004F76A0 0x50 func_004F76A0  # OVL2
-0x004F76F0 0x88 func_004F76F0  # OVL2
+0x004F76F0 0x88 imtxInit  # OVL2; s1:calls (SOCOM 1's smtConstruct calls imtxInit where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F7778 0x80 imtxDeleteCol  # OVL2 unaligned; s1:align
 0x004F77F8 0x88 mtxFillX  # OVL2 unaligned; s1:align
 0x004F7880 0x24 func_004F7880  # OVL2
-0x004F78A8 0x19C func_004F78A8  # OVL2 unaligned
+0x004F78A8 0x19C QrPreMult  # OVL2 unaligned; s1:calls (SOCOM 1's Smoothing calls QrPreMult where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F7A48 0x200 smtConstruct  # OVL2 unaligned; s1:calls
 0x004F7C48 0x45C Smoothing  # OVL2 unaligned; s1:calls
 0x004F80A8 0x84 func_004F80A8  # OVL2 unaligned
-0x004F8130 0x244 func_004F8130  # OVL2
+0x004F8130 0x244 SpecSubPutSession  # OVL2; s1:calls (SOCOM 1's ControlSpecSub calls SpecSubPutSession where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F8378 0xF0 SpecSubGetSession  # OVL2 unaligned; s1:align
 0x004F8468 0x1208 func_004F8468  # OVL2 unaligned
 0x004F9670 0x224 ControlSpecSub  # OVL2; s1:align
@@ -9098,9 +9098,9 @@
 0x005028F0 0x114 func_005028F0  # OVL2
 0x00502A08 0x508 func_00502A08  # OVL2 unaligned
 0x00502F10 0x3C ConstructPitchCombiner  # OVL2; s1:align
-0x00502F50 0x4C0 func_00502F50  # OVL2
+0x00502F50 0x4C0 spline2  # OVL2; s1:calls (SOCOM 1's Lin_2_Log calls spline2 where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x00503410 0x398 Lin_2_Log  # OVL2; s1:calls
-0x005037A8 0x3D4 func_005037A8  # OVL2 unaligned
+0x005037A8 0x3D4 SubHarmonicSummation_and_VUVDetermination  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessSHS_VUV calls SubHarmonicSummation_and_VUVDetermination where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x00503B80 0x640 ProcessSHS_VUV  # OVL2; s1:calls
 0x005041C0 0xF8 ControlSHS_VUV  # OVL2; s1:align
 0x005042B8 0x264 func_005042B8  # OVL2 unaligned
@@ -9108,7 +9108,7 @@
 0x00504980 0x3C ConstructSHS_VUV  # OVL2; s1:align
 0x005049C0 0x100 SlidingHisto_NewItem  # OVL2; s1:align
 0x00504AC0 0x19C SlidingHisto_Init  # OVL2; s1:align
-0x00504C60 0x104 func_00504C60  # OVL2
+0x00504C60 0x104 SlidingHisto_LowerQuantile  # OVL2; s1:calls (SOCOM 1's TriggerLR_FindSpeech and others call SlidingHisto_LowerQuantile where ours call this row, 3 call sites; the same position in SOCOM 1's object)
 0x00504D68 0x7C SlidingHisto_Clear  # OVL2 unaligned; s1:align
 0x00504DE8 0x60 func_00504DE8  # OVL2 unaligned
 0x00504E48 0x10 func_00504E48  # OVL2 unaligned
@@ -9231,48 +9231,48 @@
 0x005096D8 0x8 _exevGetpBeginOfProns  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +308, as the demo's)
 0x005096E0 0x20 _GetNbrStatesInPhenome  # OVL2; s1:exact
 0x00509700 0x30 _ConvPhenomesToStates  # OVL2; s1:exact
-0x00509730 0x3BC func_00509730  # OVL2
-0x00509AF0 0xF8 func_00509AF0  # OVL2
-0x00509BE8 0x31C func_00509BE8  # OVL2 unaligned
-0x00509F08 0x1E4 func_00509F08  # OVL2 unaligned
-0x0050A0F0 0x280 func_0050A0F0  # OVL2
-0x0050A370 0x7C func_0050A370  # OVL2
-0x0050A3F0 0x10C func_0050A3F0  # OVL2
-0x0050A500 0xC0 func_0050A500  # OVL2
-0x0050A5C0 0x170 func_0050A5C0  # OVL2
-0x0050A730 0x1D0 func_0050A730  # OVL2
-0x0050A900 0xF8 func_0050A900  # OVL2
-0x0050A9F8 0x48 func_0050A9F8  # OVL2 unaligned
-0x0050AA40 0xD4 func_0050AA40  # OVL2
-0x0050AB18 0x108 func_0050AB18  # OVL2 unaligned
-0x0050AC20 0xCC func_0050AC20  # OVL2
-0x0050ACF0 0x34 func_0050ACF0  # OVL2
-0x0050AD28 0x1B0 func_0050AD28  # OVL2 unaligned
+0x00509730 0x3BC qQueueControl  # OVL2; s1:calls (SOCOM 1's ControlGender, ControlIsoWordTokenDp, casrEnableLabelInQueue call qQueueControl where ours call this row, 3 call sites; the same position in SOCOM 1's object)
+0x00509AF0 0xF8 qQueueInit  # OVL2; s1:order (SOCOM 1's queue object at 0x3745D0, after qQueueControl as there; called by ConstructQueue and tosInit, as the demo's)
+0x00509BE8 0x31C qUpdateReadPtrsAndIncNbrOfEnqueues  # OVL2 unaligned; s1:order (SOCOM 1's queue object, after qQueueInit as there; called by qEnQueue and qEnQueueOne, as the demo's static)
+0x00509F08 0x1E4 qFreeUnusedElemements  # OVL2 unaligned; s1:calls (SOCOM 1's casrReadLabelInQueue calls qFreeUnusedElemements where ours call this row, 1 call site; after qUpdateReadPtrsAndIncNbrOfEnqueues as there; the demo's qFreeElem is gone)
+0x0050A0F0 0x280 qCheckInputQueues  # OVL2; s1:calls (SOCOM 1's CombinerControl calls qCheckInputQueues where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x0050A370 0x7C qQueueConstruct  # OVL2; s1:calls (SOCOM 1's InitAcne calls qQueueConstruct where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x0050A3F0 0x10C qQueueInitEx  # OVL2; s1:calls (SOCOM 1's InitAcne calls qQueueInitEx where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x0050A500 0xC0 qQueueReDimension  # OVL2; s1:calls (SOCOM 1's ResizeQueues and others call qQueueReDimension where ours call this row, 2 call sites; the same position in SOCOM 1's object)
+0x0050A5C0 0x170 qEnQueue  # OVL2; s1:calls (SOCOM 1's SendPartOfLabelsToEngine, casrAcquisition call qEnQueue where ours call this row, 2 call sites; the same position in SOCOM 1's object)
+0x0050A730 0x1D0 qDeQueue  # OVL2; s1:order (SOCOM 1's queue object, between qEnQueue and qEnQueueOne as there; no caller in either build)
+0x0050A900 0xF8 qEnQueueOne  # OVL2; s1:calls (SOCOM 1's ProcessDelayBlock, casrAcquisition and others call qEnQueueOne where ours call this row, 21 call sites; the same position in SOCOM 1's object)
+0x0050A9F8 0x48 qDeQueueOne  # OVL2 unaligned; s1:calls (SOCOM 1's ResizeQueues, casrReadLabelInQueue call qDeQueueOne where ours call this row, 2 call sites; the same position in SOCOM 1's object)
+0x0050AA40 0xD4 qQueueReset  # OVL2; s1:calls (SOCOM 1's ControlDpScoreUw, Reset call qQueueReset where ours call this row, 2 call sites; the same position in SOCOM 1's object)
+0x0050AB18 0x108 qQueueJumpBack  # OVL2 unaligned; s1:order (SOCOM 1's queue object, after qQueueReset as there; called by qQueueControl, as the demo's)
+0x0050AC20 0xCC qQueueJumpBackOne  # OVL2; s1:order (SOCOM 1's queue object, after qQueueJumpBack as there; called by qQueueControl, as the demo's)
+0x0050ACF0 0x34 qQueueNbrElements  # OVL2; s1:calls (SOCOM 1's ProcessAcne and others call qQueueNbrElements where ours call this row, 4 call sites; the same position in SOCOM 1's object)
+0x0050AD28 0x1B0 qCheckDeQueueOne  # OVL2 unaligned; s1:order (SOCOM 1's queue object, its last as there; called twice by tosRun, as the demo's)
 0x0050AED8 0x3E8 func_0050AED8  # OVL2 unaligned
-0x0050B2C0 0x2FC func_0050B2C0  # OVL2
-0x0050B5C0 0x368 func_0050B5C0  # OVL2
-0x0050B928 0x220 func_0050B928  # OVL2 unaligned
-0x0050BB48 0x598 func_0050BB48  # OVL2 unaligned
-0x0050C0E0 0x11C func_0050C0E0  # OVL2
-0x0050C200 0x1F0 func_0050C200  # OVL2
-0x0050C3F0 0x32C func_0050C3F0  # OVL2
-0x0050C720 0x228 func_0050C720  # OVL2
-0x0050C948 0x218 func_0050C948  # OVL2 unaligned
-0x0050CB60 0x40 func_0050CB60  # OVL2
-0x0050CBA0 0x40 func_0050CBA0  # OVL2
-0x0050CBE0 0x1BC func_0050CBE0  # OVL2
-0x0050CDA0 0x44 func_0050CDA0  # OVL2
+0x0050B2C0 0x2FC ConstructBlock  # OVL2; s1:order (SOCOM 1's tos object at 0x3759E8, after SetAndControlQSizes as there; opcode similarity 0.86)
+0x0050B5C0 0x368 ConstructQueue  # OVL2; s1:order (SOCOM 1's tos object, after ConstructBlock as there; calls qQueueInit as the demo's; similarity 0.81)
+0x0050B928 0x220 DestructQueue  # OVL2 unaligned; s1:order (SOCOM 1's tos object, after ConstructQueue as there; similarity 0.80)
+0x0050BB48 0x598 ConstructArchitecture  # OVL2 unaligned; s1:order (SOCOM 1's tos object, after DestructQueue as there; similarity 0.82)
+0x0050C0E0 0x11C DestructArchitecture  # OVL2; s1:order (SOCOM 1's tos object, after ConstructArchitecture as there; similarity 0.80)
+0x0050C200 0x1F0 tosCallControlFunc  # OVL2; s1:order (SOCOM 1's tos object, after DestructArchitecture as there; called twice by _tosControl and calls tosBaseBlockControl, as the demo's)
+0x0050C3F0 0x32C tosRun  # OVL2; s1:calls (SOCOM 1's SendPartOfLabelsToEngine, casrAcquisition call tosRun where ours call this row, 2 call sites; the same position in SOCOM 1's object)
+0x0050C720 0x228 _tosControl  # OVL2; s1:calls (SOCOM 1's casrClose, casrOpen and others call _tosControl where ours call this row, 87 call sites; the same position in SOCOM 1's object)
+0x0050C948 0x218 tosBaseBlockControl  # OVL2 unaligned; s1:order (SOCOM 1's tos object; called by tosCallControlFunc, as the demo's; similarity 0.79)
+0x0050CB60 0x40 tosGetBlockPtr  # OVL2; s1:order (SOCOM 1's tos object, after tosBaseBlockControl as there; similarity 0.97)
+0x0050CBA0 0x40 tosGetQueuePtr  # OVL2; s1:order (SOCOM 1's tos object, after tosGetBlockPtr as there; similarity 0.97)
+0x0050CBE0 0x1BC tosInit  # OVL2; s1:calls (SOCOM 1's casrOpen calls tosInit where ours call this row, 1 call site; the same position in SOCOM 1's object)
+0x0050CDA0 0x44 tosDestruct  # OVL2; s1:calls (SOCOM 1's casrClose calls tosDestruct where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x0050CDE8 0x58 _tosErrorLog  # OVL2 unaligned; s1:order (SOCOM 1's tos object at 0x3759E8, after tosDestruct; the same body: keeps the first block<<16|code at +52, calls the callback at +32, returns the code as a byte; casrGetState calls it with 18 from the same instruction as SOCOM 1's)
 0x0050CE40 0x58 _tosWarningLog  # OVL2; s1:order (SOCOM 1's tos object at 0x3759E8, after _tosErrorLog; the same body over +56 and +36)
-0x0050CE98 0x118 func_0050CE98  # OVL2 unaligned
-0x0050CFB0 0x1CC func_0050CFB0  # OVL2
-0x0050D180 0x8 func_0050D180  # OVL2
-0x0050D188 0x88 func_0050D188  # OVL2 unaligned
-0x0050D210 0x98 func_0050D210  # OVL2
-0x0050D2A8 0xB8 func_0050D2A8  # OVL2 unaligned
-0x0050D360 0xFC func_0050D360  # OVL2
-0x0050D460 0xF4 func_0050D460  # OVL2
-0x0050D558 0x8 func_0050D558  # OVL2 unaligned
+0x0050CE98 0x118 tosBaseBlockConstruct  # OVL2 unaligned; s1:calls (SOCOM 1's ConstructDelayBlock, ConstructDpGenUw, ConstructDpScoreUw and others call tosBaseBlockConstruct where ours call this row, 25 call sites; the same position in SOCOM 1's object)
+0x0050CFB0 0x1CC tosBaseBlockDestruct  # OVL2; s1:calls (SOCOM 1's ControlDelayBlock, ControlDpScoreUw, ControlExtraEventDP and others call tosBaseBlockDestruct where ours call this row, 19 call sites; after tosBaseBlockConstruct here (before tosBaseBlockControl in the demo))
+0x0050D180 0x8 tosBaseBlockIdleProcess  # OVL2; s1:order (SOCOM 1's tos object, after tosBaseBlockConstruct as there: the same two instructions)
+0x0050D188 0x88 tosBaseBlockStopInputQueues  # OVL2 unaligned; s1:order (SOCOM 1's tos object, after tosBaseBlockIdleProcess as there; similarity 0.68)
+0x0050D210 0x98 tosBaseBlockDisableInputQueues  # OVL2; s1:order (SOCOM 1's tos object, after tosBaseBlockStopInputQueues as there; similarity 0.71)
+0x0050D2A8 0xB8 tosBaseBlockStartInputQueues  # OVL2 unaligned; s1:order (SOCOM 1's tos object, after tosBaseBlockDisableInputQueues as there; similarity 0.63)
+0x0050D360 0xFC _tosGetProfileU32  # OVL2; s1:calls (SOCOM 1's InitDelayBlock, InitDpGenUw and others call _tosGetProfileU32 where ours call this row, 54 call sites; the same position in SOCOM 1's object)
+0x0050D460 0xF4 _tosGetProfileFloat  # OVL2; s1:calls (SOCOM 1's InitAcne and others call _tosGetProfileFloat where ours call this row, 14 call sites; the same position in SOCOM 1's object)
+0x0050D558 0x8 DisabledProcess  # OVL2 unaligned; s1:order (SOCOM 1's tos object, its last, a static: the same two instructions)
 0x0050D560 0x118 fastallo_AllocateMemoryFromChunk  # OVL2; s1:align (SOCOM 1's fastallo object at 0x377C70: the same 0x118 body, chunks grown through the heap's realloc, a block of up to 64 words cut from the current chunk; SOCOM II defines it first)
 0x0050D678 0x4C fastallo_Init  # OVL2 unaligned; s1:align (SOCOM 1's fastallo object: the same 0x4C body, the 280-byte state cleared and the heap and chunk size kept)
 0x0050D6C8 0x144 fastallo_Terminate  # OVL2 unaligned; s1:align (SOCOM 1's fastallo object: every chunk freed, then the chunk table)
@@ -9480,8 +9480,8 @@
 0x00519A40 0x68 __dt__Q23std70__vector_deleter<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>>Fv  # OVL2; s1:order by hand (the seventh of the nine deleter destructors; CAiMap::readers::~readers calls it with 0 after freeing each reader's script)
 0x00519AB0 0x68 __dt__Q23std74__vector_deleter<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>>Fv  # OVL2; s1:order by hand (the eighth of the nine deleter destructors, SOCOM 1's order: see 0x5197A0)
 0x00519B20 0x68 __dt__Q23std68__vector_deleter<Q26CAiMap5route,Q23std26allocator<Q26CAiMap5route>>Fv  # OVL2; s1:order by hand (the ninth of the nine deleter destructors; it calls 0x51A3C0, the clear that destroys 0x24-byte routes' two vectors)
-0x00519B90 0x220 func_00519B90  # OVL2
-0x00519DB0 0x504 func_00519DB0  # OVL2
+0x00519B90 0x220 erase__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>FPQ26CAiMap8scanlinePQ26CAiMap8scanline  # OVL2; by hand, the AI core round 12 (the scanlines' range erase: resize<scanline> 0x519700 calls it on its shrinking arm with data + n and data + size)
+0x00519DB0 0x504 insert__Q23std72__vector_imp<Q26CAiMap8scanline,Q23std29allocator<Q26CAiMap8scanline>,0>FPQ26CAiMap8scanlineUiRCQ26CAiMap8scanline  # OVL2; by hand, the AI core round 12 (the scanlines' class insert: resize<scanline> 0x519700 calls it on its growing arm with the end, the count and an empty run)
 0x0051A2C0 0x8 clear__Q23std66__vector_deleter<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>Fv  # OVL2; s1:order by hand (the first of the nine deleter clears 0x51A2C0-0x51A3C0, SOCOM 1's nine at 0x188A20 in the same order; name's deleter destructor 0x5197A0 calls it)
 0x0051A2D0 0x8 clear__Q23std70__vector_deleter<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>>Fv  # OVL2; s1:order by hand (the second deleter clear; action's deleter destructor 0x519810 calls it)
 0x0051A2E0 0x8 clear__Q23std66__vector_deleter<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>>Fv  # OVL2; s1:order by hand (the third deleter clear; link's deleter destructor 0x519880 calls it)
@@ -9498,7 +9498,7 @@
 0x0051AD90 0x160 read_v19__6CAiMapFR7CFileIO  # OVL2; ours (CAiMap::Read, 0x51AFE0, calls it for version 19, the oldest it reads: SOCOM 1's Read body -- the 0xA4-byte header, the cells into the layer, the scanlines, the seven tables, the lines, readers and routes, the extra data)
 0x0051AEF0 0xE4 read_scanlines__6CAiMapFR7CFileIO  # OVL2; s1:order by hand (the demo's 0x188E90 before read_cells and Read, as here before Read: the scanlines resized to m_ny and read whole, each run's index the running count of cells -- SOCOM 1 pointed each run into the cells instead; every version reader calls it)
 0x0051AFE0 0x170 Read__6CAiMapFR7CFileIO  # OVL2; s1:order by hand (the demo's 0x189390 after read_cells: the version read, 19-23 handed to the five readers 0x51AD90, 0x51AB50, 0x51A910, 0x51A6D0, 0x51A490, then m_alt_quant = (max.y - min.y) / 1024, ValidateCells, ValidateRoutes(false), CreateGraph(false) -- SOCOM 1's Read's last three calls)
-0x0051B150 0xFC func_0051B150  # OVL2
+0x0051B150 0xFC read_layer__6CAiMapFR7CFileIObPP11CAiMapLayer  # OVL2; ours, the AI core round 12 (new in SOCOM II: the version readers 20-23 call it in their layer loop with the map, the file, 1 and a zeroed layer pointer; reads the 40-byte header into a new CAiMapLayer, then the cells unless version >= 22 and the header's flag 2; returns false always)
 0x0051B250 0x54 _fixupEdge__FP6CGraphP6CGEdgebRUiPv  # OVL2; s1:calls by hand (the version readers hand it to CGraph::Create as the edge fixup, where SOCOM 1's hands _fixupEdge__FP6CGraphP6CGEdgebRUiPv)
 0x0051B2B0 0xE0 _fixupNode__FP6CGraphP6CGNodebRUiPv  # OVL2; s1:calls by hand (the version readers hand it to CGraph::Create as the node fixup, where SOCOM 1's ReadMapSet hands _fixupNode__FP6CGraphP6CGNodebRUiPv; 0xE0 here against the demo's 0x188)
 0x0051B390 0x100 read_readers__6CAiMapFR7CFileIO  # OVL2; s1:calls
@@ -9511,8 +9511,8 @@
 0x0051B9A0 0xB4 ReadCellTable<Q26CAiMap6spores,Q26CAiMap5spore>__FR7CFileIORQ26CAiMap6spores_b  # OVL2; by hand (the ReadCellTable shape with 12-byte elements whose resize (0x51CA40) is not the link's -- the spores; SOCOM 1's spore is 12 bytes)
 0x0051BA60 0xB4 ReadCellTable<Q26CAiMap5names,Q26CAiMap4name>__FR7CFileIORQ26CAiMap5names_b  # OVL2; by hand (the ReadCellTable shape with 24-byte elements -- CAiMap::name)
 0x0051BB20 0xB4 ReadCellTable<Q26CAiMap5links,Q26CAiMap4link>__FR7CFileIORQ26CAiMap5links_b  # OVL2; by hand (the ReadCellTable shape with 12-byte elements whose resize (0x51C840) builds each new element with the link's constructor (0x5309D0's store of 8 at +8))
-0x0051BBE0 0x160 func_0051BBE0  # OVL2
-0x0051BD40 0x188 func_0051BD40  # OVL2
+0x0051BBE0 0x160 ReadCellTableCvt<Q26CAiMap5names,Q26CAiMap4name,9names_v20,8name_v20>__FR7CFileIORQ26CAiMap5names_b  # OVL2; ours, the AI core round 12 (SOCOM 1's ReadCellTableCvt by its shape -- the count, the old elements read whole into a vector of their own, the table resized, each converted; read_v19 and read_v20 call it for the names, read_v21 on read the names as they lie: the old element 0x18 bytes, its name at 8 cut to fifteen, a byte at 0x17; the old types' names ours, after SOCOM 1's action_v15)
+0x0051BD40 0x188 ReadCellTableCvt<Q26CAiMap5links,Q26CAiMap4link,9links_v22,8link_v22>__FR7CFileIORQ26CAiMap5links_b  # OVL2; ours, the AI core round 12 (SOCOM 1's ReadCellTableCvt by its shape; read_v19 to read_v22 call it for the links, read_v23 reads them as they lie: the old link is SOCOM 1's 8 bytes, each made a 12-byte link of kind 8)
 0x0051BED0 0x198 func_0051BED0  # OVL2; OVL2's copy of the pod vectors' reserve (OVL1 0x1EEBA0, the same 0x198 bytes but for relocated fields; the AI map's version readers reserve the layers with it); ovl-copy: reserve__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi
 0x0051C070 0x144 resize__Q23std64__vector_imp<Q26CAiMap4line,Q23std25allocator<Q26CAiMap4line>,0>FUi  # OVL2; s1:callee by hand (read_lines calls it on the lines at 0x128 with the count, as the demo's calls this resize)
 0x0051C1C0 0x68 func_0051C1C0  # OVL2
@@ -9526,39 +9526,39 @@
 0x0051C840 0xA4 resize__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FUi  # OVL2; by hand (ReadCellTable<links, link> 0x51BB20 calls it with the count; it builds the new elements with the link's constructor and inserts through the links' insert 0x520A90, push_back's callee)
 0x0051C8F0 0x150 resize__Q23std68__vector_imp<Q26CAiMap6region,Q23std27allocator<Q26CAiMap6region>,0>FUi  # OVL2; by hand (ReadCellTable<regions, region> 0x51B8E0 calls it with the count)
 0x0051CA40 0xF4 resize__Q23std66__vector_imp<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>,0>FUi  # OVL2; by hand (ReadCellTable<spores, spore> 0x51B9A0 calls it with the count)
-0x0051CB40 0x188 func_0051CB40  # OVL2
+0x0051CB40 0x188 erase__Q23std64__vector_imp<Q26CAiMap4line,Q23std25allocator<Q26CAiMap4line>,0>FPQ26CAiMap4linePQ26CAiMap4line  # OVL2; by hand, the AI core round 12 (the lines' range erase: resize<line> 0x51C070 calls it on its shrinking arm with data + n and data + size)
 0x0051CCD0 0x8 func_0051CCD0  # OVL2
 0x0051CCE0 0x8 func_0051CCE0  # OVL2
-0x0051CCF0 0x4B8 func_0051CCF0  # OVL2
+0x0051CCF0 0x4B8 insert__Q23std64__vector_imp<Q26CAiMap4line,Q23std25allocator<Q26CAiMap4line>,0>FPQ26CAiMap4lineUiRCQ26CAiMap4line  # OVL2; by hand, the AI core round 12 (the lines' class insert: resize<line> 0x51C070 calls it on its growing arm with the end, the count and an empty line)
 0x0051D1B0 0x5C func_0051D1B0  # OVL2
 0x0051D210 0x8 func_0051D210  # OVL2; OVL2's copy of include/new's placement new (the MSL headers round 4: insert<CVehicleRdrEntry> 0x534630 and the AI map tables' inserts 0x51CCF0/0x51DD50 call it six times each through construct()); ovl-copy: __nw__FUiPv
-0x0051D220 0x1F0 func_0051D220  # OVL2
-0x0051D410 0x78C func_0051D410  # OVL2
+0x0051D220 0x1F0 erase__Q23std68__vector_imp<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>,0>FPQ26CAiMap6readerPQ26CAiMap6reader  # OVL2; by hand, the AI core round 12 (the readers' range erase: resize<reader> 0x51C3F0 calls it on its shrinking arm with data + n and data + size)
+0x0051D410 0x78C insert__Q23std68__vector_imp<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>,0>FPQ26CAiMap6readerUiRCQ26CAiMap6reader  # OVL2; by hand, the AI core round 12 (the readers' class insert: resize<reader> 0x51C3F0 calls it on its growing arm with the end, the count and a reader built by 0x52FD70)
 0x0051DBA0 0x1A8 func_0051DBA0  # OVL2
 0x0051DD50 0x568 func_0051DD50  # OVL2
 0x0051E2C0 0x168 func_0051E2C0  # OVL2
-0x0051E430 0x9C func_0051E430  # OVL2
-0x0051E4D0 0x6C func_0051E4D0  # OVL2
-0x0051E540 0x68 func_0051E540  # OVL2
-0x0051E5B0 0x68 func_0051E5B0  # OVL2
+0x0051E430 0x9C resize__Q23std54__vector_imp<8name_v20,Q23std20allocator<8name_v20>,0>FUi  # OVL2; by hand, the AI core round 12 (the old names' resize: ReadCellTableCvt<names> 0x51BBE0 calls it on its local vector with the count)
+0x0051E4D0 0x6C resize__Q23std54__vector_imp<8link_v22,Q23std20allocator<8link_v22>,0>FUi  # OVL2; by hand, the AI core round 12 (the old links' resize: ReadCellTableCvt<links> 0x51BD40 calls it on its local vector with the count)
+0x0051E540 0x68 __dt__Q23std56__vector_deleter<8name_v20,Q23std20allocator<8name_v20>>Fv  # OVL2; by hand, the AI core round 12 (ReadCellTableCvt<names> 0x51BBE0 destroys its local vector of old names with it, a1 0)
+0x0051E5B0 0x68 __dt__Q23std56__vector_deleter<8link_v22,Q23std20allocator<8link_v22>>Fv  # OVL2; by hand, the AI core round 12 (ReadCellTableCvt<links> 0x51BD40 destroys its local vector of old links with it, a1 0)
 0x0051E620 0x17C func_0051E620  # OVL2
 0x0051E7A0 0x368 func_0051E7A0  # OVL2
-0x0051EB10 0x378 func_0051EB10  # OVL2
-0x0051EE90 0x90C func_0051EE90  # OVL2
-0x0051F7A0 0x3D0 func_0051F7A0  # OVL2
-0x0051FB70 0xD3C func_0051FB70  # OVL2
-0x005208B0 0x1D8 func_005208B0  # OVL2
+0x0051EB10 0x378 erase__Q23std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>FPQ26CAiMap4namePQ26CAiMap4name  # OVL2; by hand, the AI core round 12 (the names' range erase: resize<name> 0x51C630 calls it on its shrinking arm with data + n and data + size)
+0x0051EE90 0x90C insert__Q23std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>FPQ26CAiMap4nameUiRCQ26CAiMap4name  # OVL2; by hand, the AI core round 12 (the names' class insert: resize<name> 0x51C630 calls it on its growing arm with the end, the count and a default name)
+0x0051F7A0 0x3D0 erase__Q23std68__vector_imp<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>,0>FPQ26CAiMap6actionPQ26CAiMap6action  # OVL2; by hand, the AI core round 12 (the actions' range erase: resize<action> 0x51C6D0 calls it on its shrinking arm with data + n and data + size)
+0x0051FB70 0xD3C insert__Q23std68__vector_imp<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>,0>FPQ26CAiMap6actionUiRCQ26CAiMap6action  # OVL2; by hand, the AI core round 12 (the actions' class insert: resize<action> 0x51C6D0 calls it on its growing arm with the end, the count and a default action)
+0x005208B0 0x1D8 erase__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FPQ26CAiMap4linkPQ26CAiMap4link  # OVL2; by hand, the AI core round 12 (the links' range erase: resize<link> 0x51C840 calls it on its shrinking arm with data + n and data + size, as MSL's resize erases)
 0x00520A90 0x99C insert__Q23std64__vector_imp<Q26CAiMap4link,Q23std25allocator<Q26CAiMap4link>,0>FPQ26CAiMap4linkUiRCQ26CAiMap4link  # OVL2; by hand (the links' class insert: max_size 0xFFFFFFFF/12 = 0x15555555, the links' resize 0x51C840 and push_back 0x5309A0 call it with (end, n, x))
-0x00521430 0x388 func_00521430  # OVL2
-0x005217C0 0x914 func_005217C0  # OVL2
-0x005220E0 0x1D8 func_005220E0  # OVL2
-0x005222C0 0x78C func_005222C0  # OVL2
-0x00522A50 0x358 func_00522A50  # OVL2
-0x00522DB0 0x90C func_00522DB0  # OVL2
-0x005236C0 0x160 func_005236C0  # OVL2
-0x00523820 0x924 func_00523820  # OVL2
-0x00524150 0x8 func_00524150  # OVL2
-0x00524160 0x8 func_00524160  # OVL2
+0x00521430 0x388 erase__Q23std68__vector_imp<Q26CAiMap6region,Q23std27allocator<Q26CAiMap6region>,0>FPQ26CAiMap6regionPQ26CAiMap6region  # OVL2; by hand, the AI core round 12 (the regions' range erase: resize<region> 0x51C8F0 calls it on its shrinking arm with data + n and data + size)
+0x005217C0 0x914 insert__Q23std68__vector_imp<Q26CAiMap6region,Q23std27allocator<Q26CAiMap6region>,0>FPQ26CAiMap6regionUiRCQ26CAiMap6region  # OVL2; by hand, the AI core round 12 (the regions' class insert: resize<region> 0x51C8F0 calls it on its growing arm with the end, the count and a default region)
+0x005220E0 0x1D8 erase__Q23std66__vector_imp<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>,0>FPQ26CAiMap5sporePQ26CAiMap5spore  # OVL2; by hand, the AI core round 12 (the spores' range erase: resize<spore> 0x51CA40 calls it on its shrinking arm with data + n and data + size)
+0x005222C0 0x78C insert__Q23std66__vector_imp<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>,0>FPQ26CAiMap5sporeUiRCQ26CAiMap5spore  # OVL2; by hand, the AI core round 12 (the spores' class insert: resize<spore> 0x51CA40 calls it on its growing arm with the end, the count and a default spore)
+0x00522A50 0x358 erase__Q23std54__vector_imp<8name_v20,Q23std20allocator<8name_v20>,0>FP8name_v20P8name_v20  # OVL2; by hand, the AI core round 12 (resize<name_v20> 0x51E430 calls it on its shrinking arm with data + n and data + size)
+0x00522DB0 0x90C insert__Q23std54__vector_imp<8name_v20,Q23std20allocator<8name_v20>,0>FP8name_v20UiRC8name_v20  # OVL2; by hand, the AI core round 12 (resize<name_v20> 0x51E430 calls it on its growing arm with the end, the count and an empty old name)
+0x005236C0 0x160 erase__Q23std54__vector_imp<8link_v22,Q23std20allocator<8link_v22>,0>FP8link_v22P8link_v22  # OVL2; by hand, the AI core round 12 (resize<link_v22> 0x51E4D0 calls it on its shrinking arm with data + n and data + size)
+0x00523820 0x924 insert__Q23std54__vector_imp<8link_v22,Q23std20allocator<8link_v22>,0>FP8link_v22UiRC8link_v22  # OVL2; by hand, the AI core round 12 (resize<link_v22> 0x51E4D0 calls it on its growing arm with the end, the count and an old link)
+0x00524150 0x8 clear__Q23std56__vector_deleter<8name_v20,Q23std20allocator<8name_v20>>Fv  # OVL2; by hand, the AI core round 12 (the old names' deleter destructor 0x51E540 calls it first, as every deleter destructor calls its clear)
+0x00524160 0x8 clear__Q23std56__vector_deleter<8link_v22,Q23std20allocator<8link_v22>>Fv  # OVL2; by hand, the AI core round 12 (the old links' deleter destructor 0x51E5B0 calls it first, as every deleter destructor calls its clear)
 0x00524170 0x4E8 func_00524170  # OVL2
 0x00524660 0xF4 func_00524660  # OVL2
 0x00524760 0x120 func_00524760  # OVL2
@@ -9763,7 +9763,7 @@
 0x00534400 0x50 _saturate<Ui>__FPUiRCUiRCUi_b  # OVL2; by hand, the AI core round 11 (startvec::Load 0x533A60, byte-exact from source, calls it as _saturate(&m_count, 0u, 4u) -- zmath.h's template, the unsigned instance: sltu compares, its two literals in the caller's constant pool 0x64F9A8/0x64F9B0; vehicle_rdr.cpp's template tail)
 0x00534450 0x1E0 erase__Q23std72__vector_imp<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>,0>FP16CVehicleRdrEntryP16CVehicleRdrEntry  # OVL2; by hand (the resize's shrinking arm: called with data + n and data + size, as MSL's resize erases the tail; SOCOM 1's erase of the same vector)
 0x00534630 0x708 insert__Q23std72__vector_imp<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>,0>FP16CVehicleRdrEntryUiRC16CVehicleRdrEntry  # OVL2; one function 0x534630-0x534D37 (merged: the seed cut it at 0x534830 and 0x534848, jal targets of the DNAS clients in MAIN 0x1C5AA0/0x1C5C20 and OVL1 0x2CA890, which call DNAS.BIN in the OVL2 slot; one frame of 176 with s0-s8, the code after each cut on the same saved registers, one epilogue at 0x534D08); by hand (the resize's growing arm: called with the end, the count and the default entry; new, the allocation-failure message and the entry assignment 0x534D40 inside, as SOCOM 1's insert of the same vector)
-0x00534D40 0x2F8 __as__16CVehicleRdrEntryFRC16CVehicleRdrEntry  # OVL2; one function 0x534D40-0x535037 (merged: the seed cut it at 0x535018, a jal target of MAIN's DNAS client 0x1C5E38/0x1C6120; a leaf copying an entry field by field, 0x160 bytes, straight through to its one jr ra); by hand (an entry assigned field by field, 0x160 bytes -- the names bytewise, then the words; the insert 0x534630 calls it six times, as SOCOM 1's insert calls __as__16CVehicleRdrEntryFRC16CVehicleRdrEntry)
+0x00534D40 0x2F8 __ct__16CVehicleRdrEntryFRC16CVehicleRdrEntry  # OVL2; one function 0x534D40-0x535037 (merged: the seed cut it at 0x535018, a jal target of MAIN's DNAS client 0x1C5E38/0x1C6120; a leaf copying an entry field by field, 0x160 bytes, straight through to its one jr ra); by hand (an entry assigned field by field, 0x160 bytes -- the names bytewise, then the words; the insert 0x534630 calls it six times, as SOCOM 1's insert calls __as__16CVehicleRdrEntryFRC16CVehicleRdrEntry); the AI core round 12: the COPY CONSTRUCTOR, not the assignment -- the insert 0x534630 calls it right after each placement new (0x51D210) on the new slot, MSL's construct(); with the entry's user-declared constructor (0x5331D0) MW makes the implicit copy constructor member-wise and calls it out of line, the insert byte-exact so
 0x00535040 0x8 clear__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter clear, out of class: the entry has no destructor, so only the size is zeroed; Close calls it first, as SOCOM 1's Close calls clear__Q23std74__vector_deleter<16CVehicleRdrEntry,...>)
 0x00535050 0x68 __dt__Q23std74__vector_deleter<16CVehicleRdrEntry,Q23std29allocator<16CVehicleRdrEntry>>Fv  # OVL2; by hand (the entry vector's deleter destructor, out of class: size zeroed, data deleted, this deleted if asked; the vector destructor 0x533970 calls it)
 0x005350C0 0x210 func_005350C0  # OVL2
@@ -9823,9 +9823,9 @@
 0x0053B040 0x8 func_0053B040  # OVL2
 0x0053B050 0x8 func_0053B050  # OVL2
 0x0053B060 0x8 func_0053B060  # OVL2
-0x0053B070 0xE4 func_0053B070  # OVL2
-0x0053B160 0x194 func_0053B160  # OVL2
-0x0053B300 0x9C func_0053B300  # OVL2
+0x0053B070 0xE4 PadWeaponSlots__18CCharacterWeapListFv  # OVL2; ours, the AI core round 12 (new in SOCOM II: CreateCustomCharTypes calls it on a custom type's weapons at +0x2E8; for each weapon whose GetIDType is not 145, OVL1's 0x3D3750 slot count, and InsertWeapon(i + j + 1, EQUIP_END) for each slot past the first)
+0x0053B160 0x194 InsertWeapon__18CCharacterWeapListFi10EQUIP_ITEM  # OVL2; ours, the AI core round 12 (new in SOCOM II: a CCharacterWeap built and set up for the item -- SetupCharacterWeapon inlined, so char_type.cpp's -- then from the index on each weapon swapped through a held copy, the last pushed through the class insert 0x53FD60; 0x53B070 calls it with EQUIP_END)
+0x0053B300 0x9C RemoveWeapon__18CCharacterWeapListF10EQUIP_ITEM  # OVL2; s1:order by hand, the AI core round 12 (SOCOM 1's RemoveWeapon 0x247720, char_type.cpp's first function in the demo and its last here, right before AddWeapon and GetWeaponByIndex: the end taken, remove_if with compare_item(item) by value, erase(i, e), i != e returned -- byte-exact from source)
 0x0053B3A0 0x4C AddWeapon__18CCharacterWeapListF10EQUIP_ITEM  # OVL2; s1:order by hand, the AI core round 11 (SOCOM 1's AddWeapon 0x24B060: an empty CCharacterWeap -- 255, 255, 0, 0 -- inserted at the end, the item unread; the HUD lane's lead (hud_ingame_weaponsel.cpp calls it with SetupCharacterWeapon 0x53EEE0 after); byte-exact from source)
 0x0053B3F0 0x30 GetWeaponByIndex__14CCharacterTypeCFUi  # OVL2; s1:order by hand (char_type.cpp's first function as in the demo's 0x2477A0, the same 0x30 shape: the index tested against m_weapons' size, the weapon id read signed, EQUIP_NONE 255 otherwise; m_weapons at 0x2E8, SOCOM 1's 0x250 + 0x98)
 0x0053B420 0x88 GetBaseName__14CCharacterTypeFv  # OVL2; s1:order by hand (the demo's 0x2477E0, next: m_parentID tested against m_char_list's size, the list walked that many steps, the found type's name -- SOCOM II also refuses the type itself)
@@ -9861,29 +9861,29 @@
 0x0053EC60 0xEC UnPack__14CCharacterTypeFPC20CCharacterWeapPackedP14CCharacterType  # OVL2; s1:order by hand, the AI core round 11 (SOCOM 1's UnPack 0x24ADA0, right after Open as here: the weapons cleared and the eight packed ones unpacked through CZWeapon::UnpackItemAndAmmoEnums and pushed until an empty item -- CZSealBody::RemoteRespawn and CreateRemoteSeal call it; byte-exact from source)
 0x0053ED50 0xB4 PackWeapons__14CCharacterTypeFP20CCharacterWeapPackedP14CCharacterType  # OVL2; ours, the AI core round 11 (new in SOCOM II: KorusGetPackedWeapons 0x53EE10's only callee, its packing loop -- SOCOM 1's KorusGetPackedWeapons did it in place, the same loop: up to eight of the type's weapons packed through CZWeapon::PackItemAndAmmoEnums with their counts; byte-exact from source, pinned)
 0x0053EE10 0xC8 KorusGetPackedWeapons__14CCharacterTypeFP20CCharacterWeapPacked  # OVL2; s1:order by hand, the AI core round 11 (SOCOM 1's KorusGetPackedWeapons 0x24AEA0, after UnPack as here: the type found by name -- GetByNameMod inlined, SOCOM II's name at +300 of OVL1's 0x437CE8 -- and its weapons packed, through PackWeapons 0x53ED50 here; OVL1's 0x2BD640 calls it; byte-exact from source)
-0x0053EEE0 0x6C func_0053EEE0  # OVL2
+0x0053EEE0 0x6C SetupCharacterWeapon__14CCharacterWeapF10EQUIP_ITEM  # OVL2; s1:order by hand, the AI core round 12 (SOCOM 1's SetupCharacterWeapon 0x24AFF0 word for word but a padding nop: the item stored, CZWeapon::m_listWeapons.GetWeapon(item), then GetAmmoCapacity, GetNumMags and GetDefaultAmmoId into +4, +8 and +1; after KorusGetPackedWeapons in both builds; hud_ingame_weaponsel.cpp calls it after AddWeapon -- byte-exact from source)
 0x0053EF50 0x44 func_0053EF50  # OVL2
 0x0053EFA0 0x28 func_0053EFA0  # OVL2
 0x0053EFD0 0x1C func_0053EFD0  # OVL2
 0x0053EFF0 0xB8 FindGear__18CCharacterGearListFPCc  # OVL2; s1:order by hand, the AI core round 11 (SOCOM 1's FindGear__18CCharacterGearListCFPCc 0x24B0C0, after AddWeapon and SetupCharacterWeapon as here after 0x53EEE0: the gear whose name (+0xC) strcmp's equal, none without a name; CZKit::SetItemByIndex calls it on CCharacterType::m_gear_list; SOCOM II's walks the pointer vector, non-const -- byte-exact from source)
 0x0053F0B0 0xF0 ResetGears__14CCharacterTypeFv  # OVL2; ours, the AI core round 11 (new in SOCOM II, after FindGear: every made gear's model (+0x18) and count (+0) zeroed, with an empty walk of m_char_list the first time a held one is met -- a compiled-out report; OVL1's 0x2AB3F0 calls it before CleanupTemporary; written, open)
 0x0053F1A0 0xEC remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator  # OVL2; s1:callee by hand (CCharacterType::CleanupTemporary calls it with the list's begin, end and DeleteTemporaryCharType, as SOCOM 1's calls remove_if<PP14CCharacterType,PFP14CCharacterType_b>; SOCOM II's vector iterators are classes, by value, the result through a hidden pointer)
-0x0053F290 0xE0 func_0053F290  # OVL2
+0x0053F290 0xE0 remove_if<Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator,12compare_item>__3stdFQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iteratorQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator12compare_item_Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator  # OVL2; s1:callee by hand, the AI core round 12 (RemoveWeapon 0x53B300 calls it as SOCOM 1's calls remove_if<P14CCharacterWeap,12compare_item>: the item's byte compared with each weapon's, over SOCOM II's class iterators)
 0x0053F370 0x3C0 func_0053F370  # OVL2
 0x0053F730 0x368 func_0053F730  # OVL2
 0x0053FAA0 0x30 func_0053FAA0  # OVL2; OVL2's copy of assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc (0x1eeb40, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc
 0x0053FAD0 0x68 func_0053FAD0  # OVL2; OVL2's copy of __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv (0x1e7ef0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv
-0x0053FB40 0x220 func_0053FB40  # OVL2
+0x0053FB40 0x220 erase__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FP14CCharacterWeapP14CCharacterWeap  # OVL2; s1:callee by hand, the AI core round 12 (RemoveWeapon 0x53B300 calls it with the new end and the end, as SOCOM 1's calls erase__...FP14CCharacterWeapP14CCharacterWeap)
 0x0053FD60 0x504 insert__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FP14CCharacterWeapUiRC14CCharacterWeap  # OVL2; s1:callee by hand, the AI core round 11 (SOCOM 1's AddWeapon calls insert__...<14CCharacterWeap...> from the instruction SOCOM II's AddWeapon 0x53B3A0 calls this from, with (end, 1, the temporary); UnPack 0x53EC60 pushes through it too; 12-byte elements)
 0x00540270 0x1A0 func_00540270  # OVL2
 0x00540410 0x500 func_00540410  # OVL2
 0x00540910 0x8 clear__Q23std70__vector_deleter<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>>Fv  # OVL2; s1:callee by hand, the AI core round 11 (SOCOM 1's UnPack calls clear__Q23std70__vector_deleter<14CCharacterWeap,...>Fv from the instruction SOCOM II's UnPack 0x53EC60 calls this from, on the type's weapons at +0x2E8: the size zeroed; char_type.cpp's template tail)
 0x00540920 0x68 __dt__Q23std70__vector_deleter<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>>Fv  # OVL2; by hand, the AI core round 11 (~CCharacterType 0x53D5F0 destroys m_weapons at +0x2E8 through it with 0; char_type.cpp's tail, right after the deleter's clear 0x540910; emitted byte-exact from char_type.cpp since AddWeapon/UnPack instantiate the CCharacterWeap vector's insert)
-0x00540990 0xBC func_00540990  # OVL2
-0x00540A50 0xF8 func_00540A50  # OVL2
+0x00540990 0xBC clear__Q23std82__vector_deleter<Q214CCharacterType3LOD,Q23std33allocator<Q214CCharacterType3LOD>>Fv  # OVL2; by hand, the AI core round 12 (the LODs' deleter clear: each 0x1C-byte LOD's two strings freed back to front, the size zeroed -- the deleter destructor 0x540A50 inlines the same loop)
+0x00540A50 0xF8 __dt__Q23std82__vector_deleter<Q214CCharacterType3LOD,Q23std33allocator<Q214CCharacterType3LOD>>Fv  # OVL2; by hand, the AI core round 12 (~CCharacterType 0x53D5F0 destroys m_LODs at 0x2BC through it with 0, as SOCOM 1's ~CCharacterType calls __dt__Q23std46__vector_deleter<3LOD,...>Fv; the element 0x1C bytes, two strings and the distance -- SOCOM 1's global LOD, nested in CCharacterType here against zanim.h's enum LOD)
 0x00540B50 0x68 func_00540B50  # OVL2; OVL2's copy of replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCc (0x1ef390, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCc
 0x00540BC0 0xAC remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator  # OVL2; s1:calls (char_type.cpp's remove_if, byte-exact but this call, calls it where SOCOM 1's remove_if calls remove_copy_if at 0x24C190; the name as char_type.cpp emits it) -- the AI-core lane
-0x00540C70 0x8C func_00540C70  # OVL2
+0x00540C70 0x8C remove_copy_if<Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator,Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator,12compare_item>__3stdFQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iteratorQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iteratorQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator12compare_item_Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator  # OVL2; s1:callee by hand, the AI core round 12 (remove_if<..., compare_item> 0x53F290 tail-calls it, as SOCOM 1's remove_if calls remove_copy_if<...,12compare_item>)
 0x00540D00 0x3BC func_00540D00  # OVL2
 0x005410C0 0x84 func_005410C0  # OVL2; OVL2's copy of __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>> (0x22e4d0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __as__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
 0x00541150 0x90 func_00541150  # OVL2; OVL2's copy of __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>> (0x22e560, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>

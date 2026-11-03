@@ -57,6 +57,21 @@ void CCharacterType::ResetGears()
     }
 }
 
+/* SOCOM 1's SetupCharacterWeapon (its demo's 0x24AFF0, between KorusGetPackedWeapons and AddWeapon
+ * there, after KorusGetPackedWeapons here): the item stored first, the weapon looked up in the
+ * weapons' list, its counts and ammunition copied when it is known */
+void CCharacterWeap::SetupCharacterWeapon(EQUIP_ITEM item)
+{
+    m_wepId = item;
+    CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon(item);
+
+    if (w) {
+        m_ammoCount = w->GetAmmoCapacity();
+        m_magCount = w->GetNumMags();
+        m_ammoId = w->GetDefaultAmmoId();
+    }
+}
+
 /* SOCOM 1's FindGear (its demo's 0x24B0C0, after AddWeapon), over SOCOM II's vector of pointers:
  * the name tested first, the end re-read every pass (CZKit::SetItemByIndex calls it on
  * CCharacterType::m_gear_list) */
@@ -437,6 +452,28 @@ void CCharacterType::ClearMultiplayerMessageSounds()
             (*j)->m_sound = 0;
 }
 
+/* a type let go (SOCOM 1's): each string freed and cleared -- the name, the texture asset, the
+ * model's name and file -- the animation sets emptied, the multiplayer messages deleted; then the
+ * vectors' own teardown */
+CCharacterType::~CCharacterType()
+{
+    if (m_name)
+        _free(m_name, 0, 0);
+    m_name = 0;
+    if (m_anim_sets.size())
+        m_anim_sets.clear();
+    if (m_texture_asset)
+        _free(m_texture_asset, 0, 0);
+    m_texture_asset = 0;
+    if (m_model_name)
+        _free(m_model_name, 0, 0);
+    m_model_name = 0;
+    if (m_model_file)
+        _free(m_model_file, 0, 0);
+    m_model_file = 0;
+    DeleteMultiplayerMessages();
+}
+
 /* a sound by kind, none out of range (new in SOCOM II; the name ours) */
 CSnd *CCharacterType::GetSound(CHARACTER_SOUND s) const
 {
@@ -477,6 +514,70 @@ char *CCharacterType::GetBaseName()
 EQUIP_ITEM CCharacterType::GetWeaponByIndex(unsigned int i) const
 {
     return i < m_weapons.size() ? ((CCharacterWeapList &)m_weapons)[i].m_wepId : EQUIP_NONE;
+}
+
+/* a weapon of the item (SOCOM 1's compare_item, the predicate of its remove_if over the weapons:
+ * a byte passed by value). The weapon's item is read as a char and converted back: remove_copy_if
+ * (0x540C70, SOCOM 1's 0x24C210 alike) shares that lb with the copy's and masks it for the compare
+ * (andi 0xff) where a plain EQUIP_ITEM read is a separate lbu; find_if inside remove_if folds it to
+ * the lbu either way */
+struct compare_item {
+    compare_item(EQUIP_ITEM item) : m_item(item) {}
+    bool operator()(const CCharacterWeap &w) const { return m_item == (EQUIP_ITEM)*(const char *)&w.m_wepId; }
+
+    EQUIP_ITEM m_item;
+};
+
+/* SOCOM 1's (its demo's 0x247720, char_type.cpp's first function there and its last here): the end
+ * taken first, remove_if's new end next, both copied into erase's parameters, the result whether
+ * anything went */
+bool CCharacterWeapList::RemoveWeapon(EQUIP_ITEM item)
+{
+    iterator e = end();
+    iterator i = std::remove_if(begin(), e, compare_item(item));
+
+    erase(i, e);
+    return i != e;
+}
+
+/* a weapon's slots in a loadout, 1 for an unknown item (OVL1's 0x3D3750: the weapon list's
+ * GetWeapon, then the weapon's count) */
+extern "C" int func_003D3750(EQUIP_ITEM item);
+
+/* the item's weapon set up and put at the index, each weapon from there on moved up by one through
+ * a held copy, the last pushed at the end (new in SOCOM II, the name ours; SetupCharacterWeapon
+ * inlined -- the constructor's item store dead) */
+void CCharacterWeapList::InsertWeapon(int index, EQUIP_ITEM item)
+{
+    CCharacterWeap w;
+
+    w.SetupCharacterWeapon(item);
+    CCharacterWeap tmp;
+
+    for (; index < size(); index++) {
+        tmp = (*this)[index];
+        (*this)[index] = w;
+        w = tmp;
+    }
+    push_back(w);
+}
+
+/* a weapon taking more than one slot (its class not 145) followed by an EQUIP_END for each slot
+ * past its first (new in SOCOM II, the name ours) */
+void CCharacterWeapList::PadWeaponSlots()
+{
+    for (int i = 0; i < size(); i++) {
+        EQUIP_ITEM item = (*this)[i].m_wepId;
+
+        if (CZWeapon::GetIDType(item) != 145) {
+            int slots = func_003D3750(item);
+
+            if (slots > 1) {
+                for (int j = 0; j < slots - 1; j++)
+                    InsertWeapon(i + j + 1, EQUIP_END);
+            }
+        }
+    }
 }
 
 /* SOCOM 1's (its demo's 0x24B060, with Open's stretch there; SOCOM II's sits by GetWeaponByIndex):
