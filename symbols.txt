@@ -6468,7 +6468,7 @@
 0x00354790 0xC8 GetHandle__Q23zdb8CTexListFPQ23zdb8CTexture  # OVL1; s1:order+calls (right after GetHandle(const char *) as SOCOM 1's; AddTextureAssetDecals calls it where SOCOM 1's does) -- the zdb-world lane
 0x00354860 0x148 SetGifPtrs__Q23zdb8CTextureFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's SetGifPtrs right after the two GetHandles, the same three searches of the GIF select for TEX0 (6), MIPTBP1 (0x34) and MIPTBP2 (0x36) plus the context bit; Read and SetupSpecialTextures call it) -- ztex_main.cpp
 0x003549B0 0x44 CopyTextureSelect__Q23zdb8CTextureFP8_word128  # OVL1; s1:exact
-0x00354A00 0x88 func_00354A00  # OVL1
+0x00354A00 0x88 SetGifReg__3zdbFP8_word128UiUliP8_word128  # OVL1; SOCOM II's, the name ours (the world lane: a GIF select's entry for a register given new data and, unless 127, a new register, searched from a start entry; 0x354A90 wraps it for a texture's own select) -- ztex_main.cpp; zdb's (the function is in the namespace)
 0x00354A90 0xC func_00354A90  # OVL1
 0x00354AA0 0x110 Compute64WordMemoryUsage__Q23zdb8CTextureFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's Compute64WordMemoryUsage between CopyTextureSelect and SetName, the same switch over the texel size; Read and LoadGS call it) -- ztex_main.cpp
 0x00354BB0 0x48 IsAlphaBlended__Q23zdb8CTextureFv  # OVL1; SOCOM II's, the name ours (the world lane: transparent and neither bump-mapped nor 1-bit; the particles' 0x322DF0 asks it) -- ztex_main.cpp

@@ -261,6 +261,32 @@ unsigned int CTexture::Compute64WordMemoryUsage()
     return n >> 6;
 }
 
+/* a GIF select's register entry for `reg` given new data -- and, unless 127, a new register --
+ * searched from `start` (or the first entry); the entry, or none (SOCOM II's; the name ours: the
+ * texture's wrapper 0x354A90 searches its own select from the top) */
+_word128 *SetGifReg(_word128 *select, unsigned int reg, unsigned long data, int newreg, _word128 *start)
+{
+    _word128 *found = 0;
+    unsigned int i = 0;
+    unsigned short n = select->u16[0] & 0x7fff;
+
+    /* the parameter stepped past the tag (the target keeps the cursor in a0) */
+    select++;
+    if (start) {
+        i = start - select;
+        select = start;
+    }
+    _word128 *p = select;
+    for (; i < n && !found; i++, p++)
+        if (p->u32[2] == reg) {
+            p->u64[0] = data;
+            if (newreg != 127)
+                p->u32[2] = newreg;
+            found = p;
+        }
+    return found;
+}
+
 /* a GIF select's register entry for a register address, or none: the tag's NLOOP entries after it
  * (ours, inline -- SetGifPtrs expands it three times) */
 static inline _word128 *FindGifReg(_word128 *select, unsigned int reg)
