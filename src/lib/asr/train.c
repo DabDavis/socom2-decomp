@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -ffast-math */
 /* train: the recogniser's user-word model training (OVL2 0x4DF470-0x4E1B28, SOCOM 1's object at
  * 0x34E8E0: TrainSmoothCounts .. CalcEntropyMerged4bit), ScanSoft's speech recogniser, prebuilt
  * with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The GCC front"). Names
@@ -26,7 +26,7 @@
 /* a training record: two count tables and the next record */
 typedef struct TRAINREC {
     unsigned short *counts;             /* +0: per codeword and state */
-    int f4;
+    unsigned int size;                  /* +4: the counts' length (codewords times states) */
     unsigned short *totals;             /* +8: per state */
     int f12;
     struct TRAINREC *next;              /* +16 */
@@ -38,23 +38,51 @@ extern const short log_p_average_[511];
 static const short *const global_log_p_average = &log_p_average_[255];
 extern const unsigned int p_Log_p[256];
 
-void TrainFree(CASR *c)
+/* each record's counts smoothed through its matrix, state by state: the row sums kept at +1048,
+ * then rounded back into the counts, the state's total recounted */
+void TrainSmoothCounts(CASR *c)
 {
-    TRAINREC *r, *next;
+    TRAINREC *r;
+    unsigned short nstates = c->nstates;
+    unsigned int k = 0;
 
-    for (r = c->trainrecs; r != 0; r = next) {
-        next = r->next;
-        heap_Free(c->heap, r->counts);
-        heap_Free(c->heap, r->totals);
-        heap_Free(c->heap, r);
+    for (r = c->trainrecs; r != 0; r = r->next) {
+        unsigned int ncw = r->size / nstates;
+        unsigned int s;
+
+        for (s = 0; s < nstates; s++) {
+            float *acc = c->train1048;
+            float *mat = c->smooth[k];
+            unsigned short *cnt;
+            unsigned int i, j, total = 0;
+
+            for (i = 0; i < ncw; i++) {
+                cnt = r->counts + s;
+                *acc = 0;
+                for (j = 0; j < ncw; j++) {
+                    *acc += *mat * *cnt;
+                    cnt += nstates;
+                    mat++;
+                }
+                acc++;
+            }
+            acc = c->train1048;
+            cnt = r->counts + s;
+            for (i = 0; i < ncw; i++) {
+                *cnt = *acc + 0.5;
+                total += *cnt;
+                cnt += nstates;
+                acc++;
+            }
+            r->totals[s] = total;
+        }
+        k++;
     }
-    heap_Free(c->heap, c->train1060);
-    heap_Free(c->heap, c->train1048);
 }
 
 /* one utterance's labels counted into every record's tables along its segmentation: each state's
  * frames, from the last back, add 50 to the codeword's count and to the state's total */
-void TrainCountsFromAcq(CASR *c, int utt, int pron)
+__inline__ void TrainCountsFromAcq(CASR *c, int utt, int pron)
 {
     unsigned short stride = ((SAMPLEFMT *)c->slot[3].cb)->frame;
     unsigned short *seg = (unsigned short *)c->segtab[pron * 3 + utt];
@@ -81,8 +109,22 @@ void TrainCountsFromAcq(CASR *c, int utt, int pron)
     }
 }
 
+__inline__ void TrainFree(CASR *c)
+{
+    TRAINREC *r, *next;
+
+    for (r = c->trainrecs; r != 0; r = next) {
+        next = r->next;
+        heap_Free(c->heap, r->counts);
+        heap_Free(c->heap, r->totals);
+        heap_Free(c->heap, r);
+    }
+    heap_Free(c->heap, c->train1060);
+    heap_Free(c->heap, c->train1048);
+}
+
 /* the entropy of n labels, stride bytes apart */
-unsigned int CalcEntropy(unsigned char *p, unsigned int n, int stride)
+__inline__ unsigned int CalcEntropy(unsigned char *p, unsigned int n, int stride)
 {
     unsigned int i, sum = 0;
 
@@ -94,7 +136,7 @@ unsigned int CalcEntropy(unsigned char *p, unsigned int n, int stride)
 }
 
 /* the same over 4-bit labels, two to a byte: the low nibble or the high */
-unsigned int CalcEntropy4bit(unsigned char *p, int low, unsigned int n, unsigned int dim)
+__inline__ unsigned int CalcEntropy4bit(unsigned char *p, int low, unsigned int n, unsigned int dim)
 {
     unsigned int i, sum = 0;
     unsigned int stride = (dim + 1) >> 1;
@@ -116,7 +158,7 @@ unsigned int CalcEntropy4bit(unsigned char *p, int low, unsigned int n, unsigned
 /* each of n candidates' entropy over m labels merged with its own, summed into out: the average
  * table's pointer moved back by the label and forward again around each row (in place, as the
  * target's subu/addu on one register) */
-void CalcEntropyMerged(unsigned int *out, unsigned char *p, int stride, unsigned short *idx,
+__inline__ void CalcEntropyMerged(unsigned int *out, unsigned char *p, int stride, unsigned short *idx,
                        unsigned int n, unsigned int m)
 {
     unsigned int i, j;
@@ -138,7 +180,7 @@ void CalcEntropyMerged(unsigned int *out, unsigned char *p, int stride, unsigned
 }
 
 /* the same over 4-bit labels */
-void CalcEntropyMerged4bit(unsigned int *out, unsigned char *p, int low, unsigned int dim,
+__inline__ void CalcEntropyMerged4bit(unsigned int *out, unsigned char *p, int low, unsigned int dim,
                            unsigned short *idx, unsigned int n, unsigned int m)
 {
     unsigned int i, j;
@@ -174,4 +216,22 @@ void CalcEntropyMerged4bit(unsigned int *out, unsigned char *p, int low, unsigne
             avg += c;
         }
     }
+}
+
+extern void TrainProbsFromCounts(CASR *c, int pron);
+extern void TrainSelectPhenom(CASR *c, int pron);
+
+/* the training's models from every utterance's labels: counted, smoothed if asked, turned into
+ * probabilities, the phonemes selected; then the records freed */
+void TrainModels(CASR *c, int pron)
+{
+    unsigned int i;
+
+    for (i = 0; i < c->uw_recs_needed; i++)
+        TrainCountsFromAcq(c, i, pron);
+    if (c->smooth[0])
+        TrainSmoothCounts(c);
+    TrainProbsFromCounts(c, pron);
+    TrainSelectPhenom(c, pron);
+    TrainFree(c);
 }

@@ -139,8 +139,9 @@ typedef struct CASR {
     short pad1018;
     struct TRAINREC *trainrecs;         /* +1020: the training's records (train.c) */
     unsigned short nstates;             /* +1024: the training's states (train.c) */
-    char pad1026[22];
-    void *train1048;                    /* +1048: freed by TrainFree */
+    short pad1026;
+    float *smooth[5];                   /* +1028: each record's smoothing matrix (train.c) */
+    float *train1048;                   /* +1048: the smoothing's row sums; freed by TrainFree */
     float f1052;                        /* +1052: 0.0001 (casrOpen) */
     int pad1056;
     void *train1060;                    /* +1060: freed by TrainFree */
