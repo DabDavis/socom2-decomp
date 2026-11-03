@@ -4850,6 +4850,71 @@ KM_Cleanup: 24 of 26) -- 75 functions byte-exact, 58 new to the map's byte-exact
 bytes), 17 superseding matching drafts; 4 data rows (gapUdp, gnTableCols, gnTableRows, gnTableBufSize, ours).
 No row renamed; no tool changed.
 
+**Round 11c: the scheduler, the subsampler, round 10c's half-written blocks.**
+
+- **A public `__inline__` is output at its object's end, in declaration order.** The subsampler's
+  and the voicing record's Init each hold Reset's body inlined (2.96 inlines only a body it has
+  seen), so Reset is a public `__inline__` defined above Init; 2.96 defers an inlinable
+  function's own copy to the object's end. With Free an `__inline__` too, declared after Reset,
+  the copies come out Reset, Free -- the image's order in both objects; SOCOM 1's subsampler
+  (Free, then Reset) is Reset alone deferred.
+- **GNU extern inlines keep their copies in place** (tos.c): the input-queue commands are inlined
+  into tosBaseBlockControl and the id lookups into tosCallControlFunc, from `extern __inline__`
+  bodies above them; the real functions stay where the image has them. ConstructBlock, earlier in
+  the object, calls tosGetQueuePtr out of line -- the bodies are not visible from the object's top.
+- **An inlined helper's returns give one result tested once**: tosInit's failures each set 1 in
+  one register and jump to a single `andi; beqz` (the success path sets 0 and falls into it) -- a
+  `static __inline__` with a `return 1` per failure and a final `return 0`, called in a `&&`.
+- **ScanSoft's shapes, measured**: the positive test with `else ret = 0` (tosBaseBlockControl:
+  `if (!enabled) { ret = 0; break; }` makes reorg steal the slot from the target, the target fills
+  from the fall-through); a list walk testing `*l` in its condition and taking `c = *l` after
+  (_tosControl: a `c = *l` in the condition is threaded into the error call); a pointer and a
+  `char` index of their own per table walk, the id compared first (`id == r[0]`: DestructQueue);
+  the host's 24-byte callback block copied through a pointer (a by-value struct is copied to the
+  frame first); `*s->pos++ = x << s->shift1` as one expression (`&s->pos` kept in a register);
+  `*a = *b = x * c` (b stored first); `acc += *s->mid; *out++ = acc >> s->shift`; the error block
+  of `if (coef == 0)` entered by `goto` from the earlier allocation tests (Subsampler_Init keeps it
+  mid-function, the success path after it).
+- **Doubles from 2.96's parser land an ulp low too**: three of the subsampler's 23 taps are spelled
+  an ulp above the target's bits (`build/scratch/gcc/dconst.py ADDR COUNT` compiles candidate
+  spellings and reads them back); a local `double h[23] = {...}` is the block move from `.rodata`
+  at Init's top; one function's two uses of `1e-15` are two pool entries, as the target's.
+- **window.c's object is built with `-ffast-math`**: InitWindow's Hamming loop is unrolled by two
+  and the peeled first step calls `cosf(0.0f)` -- the `0 * 2pi / (n - 1)` folded away, which 2.96
+  does only without IEEE semantics (8 words longer without); nothing else in the object changes.
+- **The four rows after the casr object (0x4DF470-0x4E0D00) are the training object's head**:
+  three are called only by TrainSmoothCounts (0x4E0D00), the fourth only by DoUserWordTraining,
+  and 0x4E0050 ends in `j heap_Free` -- the casr object, built with -fno-optimize-sibling-calls,
+  holds no `j` (TrainFree, the same object's, ends in one too).
+- **One word, three functions**: tosCallControlFunc, cbDoUserWordTraining and round 9c's
+  UpdateExevStatus each miss by a branch-likely: reorg takes a `move v0,...` from the branch's
+  target into its slot and annuls it here (`bnezl`) where the target's does not (`bnez`), the
+  fall-through in each a call that sets v0. Every source spelling tried leaves it.
+- **Open, diagnosed in place**: Subsampler_CheckImpulseResponse (49 words, 0x16C against 0x174:
+  the centre tap's test and the odd taps' loop share one tail, cross-jumped the other way round
+  here), tosCallControlFunc and cbDoUserWordTraining (above; cbDoUserWordTraining was 10 words:
+  the flag test and the last call as one `&&` keep the final branch 2.96 folded into `sltu`).
+
+Hand-written in round 11c: `asr/subsmp.c` (4 of 5, new: the trigger's subsampler), `asr/tos.c` (+7:
+DestructQueue, DestructArchitecture, _tosControl, tosBaseBlockControl, tosInit, tosBaseBlockDestruct,
+DisabledProcess over its draft; 14 of 16), `asr/voicing.c` (+3: InitVoicing,
+Voicing_MaintainNoiseEner, Voicing_AddSignal; 5 of 5), `asr/fftmod.c` (+1, InitFFTMod; 3 of 3
+written), `asr/window.c` (+2, ProcessWindow and InitWindow; 4 of 4 written), `asr/nbestdp.c`
+(2, new: ExtendBacktraceStack, and ScoreCompare@nbestdp over its draft), `asr/isowdp.c`
+(ScoreCompare@isowdp, new), `asr/train.c` (TrainFree, new: the training object's span and head),
+`asr/acne.c` (4 of 5, new: Reset, NormalizeAndEnQ, InitAcne, ConstructAcne over its draft; its two
+21-float 11 kHz tables statics checked by content; SOCOM 1's FreeResourcesAcne a `static __inline__`
+inlined into ControlAcne, which is OPEN: 48 words, the right size, the session pointer and the
+array size swap s0/s1 over five shapes) -- 22 rows new to the map's byte-exact rows (11,280 bytes),
+three matched drafts superseded (DisabledProcess, ScoreCompare@nbestdp, ConstructAcne);
+`src/lib/asr` 387 of 424. gender.c waits on a shape: InitGender inlines ResetGender while
+ControlGender calls it twice, so ResetGender is a `static __inline__` between them whose copy
+exists only once ControlGender (0x58C) is written. Named: Subsampler_Process,
+Subsampler_CheckImpulseResponse, ScoreCompare@isowdp, ScoreCompare@nbestdp, ConstructAcne
+(`s1:order`), SetAndControlQSizes (`s1:calls`: SOCOM 1's tosInit calls it at the same point),
+smtDestruct (`s1:calls`: SOCOM 1's FreeResourcesAcne tail-calls it where ControlAcne's inlined copy
+calls 0x4F80A8). No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
