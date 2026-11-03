@@ -2,8 +2,8 @@
  * the wait on it (SOCOM 1's CZSealBody functions in this order, right before AnimSet's; OVL2 from
  * ~0x5DF370 to ~0x5E0023: GetFP/GetAP, Virtual64, WeaponsTick, SetWeaponState, WepWaitOn/Off,
  * GetWeaponState; SOCOM II's 0x5DF4E0, 0x5DF600 and 0x5DF8B0 are SOCOM 1's SetAimPointW, CalcAimGoal
- * and SetAimDirR). The unit's name is ours. So far SetAimDirR and GetWeaponState. Defined in reverse
- * of their image order (-inline deferred). */
+ * and SetAimDirR). The unit's name is ours. So far CalcAimGoal (round 14), SetAimDirR and
+ * GetWeaponState. Defined in reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
 
