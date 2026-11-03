@@ -2199,6 +2199,45 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 11** (MW's colouring replayed offline, where MW's
+  temporaries come from; no header change gained a match without losing one -- the measurements are in
+  include/vector's insert, include/algorithm's remove_if, include/deque's deque() and include/list):
+  - MW'S COLOURING REPLAYS EXACTLY OFFLINE: build/p11/igreplay.py (untracked, with the round 10 tools
+    it builds on) reruns simplify/colour from an igdump record -- K = 25, simplify's ascending sweeps,
+    the spill pick MW's own (`spillCost / degree` as a float, the first least in a descending-index list,
+    mweppc's SpillCode.c: reads add the block's loop weight, twice for a register not rematerialisable;
+    igdump now reads each node's cost +0xC and each block's weight +0x24) -- and reproduces every
+    colouring of the probes and of st_core.cpp (61); igmap.py reads the TARGET's register for each
+    virtual register by aligning the pcode with the final code (the cue insert: 71 vregs, no conflict),
+    so a candidate graph is scored against the target before any source is written (igexp.py);
+  - the class insert's end: the target's colouring needs e numbered after the loop optimiser's else-loop
+    cursor and before the CSE pass's n*8 -- a window no declared local reaches, while m, i and both j's
+    must stay declared locals; the turret's insert needs e before m, CMeshLOD's after it. So the end is a
+    declared local that small elements (copy_backward inlined) replace by a later temporary; the source
+    that does it is not found (include/vector's insert comment lists eleven shapes);
+  - WHERE MW'S TEMPORARIES COME FROM: tmpdump.py breaks on CParser_GetUniqueID (0x42F590 in 3.0b52, the
+    `@N` counter at 0x5841AA) and records each creator's return addresses: the inliner, then the loop
+    optimiser (one cycle of temps per loop: an induction temp replaces a cursor whose initial value is a
+    copy -- @2517, the else loop's i), a hoisting pass, the class scalariser (iterator objects, in IR order
+    of first appearance), CSE (size_, n*8, (m-n)*8 here), then one late pass; a temp's vreg number is its
+    creation order, which is the colouring order of every node that is not deferred;
+  - MW'S DWARF DROPS A LOCAL IRO ABSORBED: `int b = inline_f(a);` leaves no `b` in the DWARF (folded into
+    the inline's return temp) while a merely dead local (the insert's xp) stays listed, 3.0b22 and 3.0b52
+    alike -- so SOCOM 1's insert list (i, j, newcap, newsize, tmp, j, i, k, j, xp, t1) lacking an end and
+    an m says those were absorbed, not that the source had none; it also lists locals in plain
+    declaration order with nested scopes flattened, and never an inlined function's;
+  - copies merge into the earlier variable: a copy `@N = v` whose source dies merges into whichever has
+    the lower VarRecord index (e keeps copy_backward's parameter temp; that temp keeps a CSE temp when no
+    e exists); PCode copy propagation cannot remove a copy whose destination is read-modify-written;
+  - the list remove_if instances' swapped copies are the order MW BUILDS argument temporaries (left to
+    right) against the order it EVALUATES plain arguments (right to left): out of line (valve_list.cpp
+    0x352500, ai_events.cpp 0x50F670) the stack slots agree and only the copies' order differs;
+  - a class element's deque() calls only the buffer's constructor while its copy constructor calls
+    allocator<const void *>() at +0x18 (lobby 0x2E0D90/0x2E07B0, chat 0x2F6230, the state machine
+    0x3A6410/0x3A5E50); `public Allocator` as __deque_imp's second base gains the default constructors
+    and loses both copy constructors;
+  - not reached: SOCOM 1's list shape for CGTree::Destroy (request 3), CRegistrant's element copy,
+    CMaterial_band's tail order, the IgnoreItem insert/erase and the three reserves.
 - **Tells from completing the MSL headers, round 10** (MW's register allocator read out, the 4-byte pod's
   operator= and assign):
   - READING MW'S REGISTER ALLOCATOR: gdb runs the compiler under wibo (break on wibo's
