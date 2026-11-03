@@ -36,9 +36,28 @@ typedef struct RECOGCB {
     SIGNALCB *signal;
 } RECOGCB;
 
-/* a loaded context, as far as the engine calls read it */
+typedef struct WORDLIST {               /* a context's word strings (WrdCreateWordList's) */
+    unsigned int n;
+    char **words;
+} WORDLIST;
+
+typedef struct CTXPARAMS {              /* a context's parameters (context.c's) */
+    int f0;
+    int f4;
+    unsigned int set;                   /* +8: a bit per parameter */
+    int value[18];                      /* +12 */
+} CTXPARAMS;
+
+/* a context: 40 bytes, gsapi_ContextLoadBuffer's or an engine's own at +8 */
 typedef struct GSCONTEXT {
-    char pad[32];
+    void *data;                         /* +0 */
+    int f4;
+    void *f8;                           /* +8 */
+    CTXPARAMS *params;                  /* +12 */
+    void *actions;                      /* +16 */
+    int f20;
+    int f24;
+    WORDLIST *wordlist;                 /* +28 */
     unsigned int nwords;                /* +32: the active words */
     unsigned int *words;                /* +36: their ids (gGSAPI.heap) */
 } GSCONTEXT;
@@ -89,6 +108,16 @@ extern int StopListening(GSENGINE *e);
 extern int gsapi_LanguageUnLoad(void);
 extern int gsapi_EngineStop(GSENGINE *e);
 extern int gsapi_EngineClose(GSENGINE *e);
+extern int ContextSetParam(void *ctx, int id, int value);
+extern int ContextGetParam(void *ctx, int id, int *value);
+extern int ContextActivateParams(void *dst, void *ctx);
+extern int ContextSetCtxData(void *ctx, void *data);
+extern int ExtAudioInit(void *heap, void **audio);
+extern int ExtAudioStart(void *src);
+extern int SidInit(void *heap, int mic, void **sid);
+extern int SidStart(void *sid);
+extern int asrspi_OpenEngine(SAFEH rsrc, int mode, GSENGINE *e);
+extern int asrspi_ActivateLng(int engine, void *language);
 extern int printf(const char *fmt, ...);
 extern int sprintf(char *buf, const char *fmt, ...);
 extern char *strncpy(char *dst, const char *src, unsigned int n);
@@ -109,6 +138,13 @@ extern void *memset(void *p, int c, unsigned int n);
 
 #define GSAPI_ERR_NO_MEMORY  0x80CC0086
 #define GSAPI_ERR_SAMPLES    0x80CC0006
+#define GSAPI_ERR_NO_LANGUAGE 0x80CC0002
+#define GSAPI_ERR_NO_ENGINE  0x80CC0005
+#define GSAPI_ERR_NO_WORDS   0x80CC000A
+#define GSAPI_ERR_BAD_WORD   0x80CC000B
+#define GSAPI_ERR_BAD_PARAM  0x80CC000C
+#define GSAPI_ERR_BAD_VALUE  0x80CC000F
+#define GSAPI_ERR_NO_WORDLIST 0x80CC0080
 
 extern int RestartEngine(GSENGINE *e);
 
@@ -120,21 +156,6 @@ extern int asrspi_DeActivateWords(int engine, int words, int n);
 extern int ContextDeActivate(GSENGINE *e);
 extern int ContextUnLoad(void *ctx);
 extern void heap_Free(void *heap, void *p);
-
-/* SOCOM 1's CheckEngineHandle, inlined into every engine call in SOCOM II (its out-of-line copy is
- * gone): an engine is a live slot of gGSAPI's array. The base is read first and the result starts
- * at 0 -- the order that schedules as the target's (an early-return or one-expression form keeps
- * a 0 per failing test, or loads the base after the null test). */
-static __inline__ int CheckEngineHandle(GSENGINE *e)
-{
-    GSENGINE *base = gGSAPI.engines;
-    int ok = 0;
-
-    if (e != 0 && e >= base && ((char *)e - (char *)base) % sizeof(GSENGINE) == 0
-        && e <= base + gGSAPI.nengines)
-        ok = e->f0 != 0;
-    return ok;
-}
 
 /* the engines' default parameters, set when a language is loaded */
 static void InitDefaultParams(void)
@@ -396,6 +417,69 @@ int gsapi_EngineClose(GSENGINE *e)
     return gGSAPI.status;
 }
 
+/* an engine opened in the first free slot, on the microphone `mic` or the host's audio */
+int gsapi_EngineOpen(int mic, GSENGINE **out)
+{
+    GSENGINE *e = 0;
+    int i;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (out == 0)
+        return GSAPI_ERR_NULL_ARG;
+    if (gGSAPI.language == 0)
+        return GSAPI_ERR_NO_LANGUAGE;
+    if (gGSAPI.nopen == gGSAPI.nengines)
+        return GSAPI_ERR_NO_ENGINE;
+    for (i = 0; i < gGSAPI.nengines; i++) {
+        e = &gGSAPI.engines[i];
+        if (e->f0 == 0)
+            break;
+    }
+    e->closing = 0;
+    e->flags = 1;
+    e->in_callback = 0;
+    e->f96 = 0;
+    e->f104 = 0;
+    e->ctx = 0;
+    e->energy_interval = DEFAULTENERGYINTERVAL;
+    e->listening = 0;
+    e->loaded = 0;
+    e->user = 0;
+    if (gGSAPI.read_audio != 0)
+        gGSAPI.status = ExtAudioInit(gGSAPI.heap, &e->audio);
+    else
+        gGSAPI.status = SidInit(gGSAPI.heap, mic, &e->audio);
+    if (gGSAPI.status < 0)
+        return gGSAPI.status;
+    memset(&e->f8, 0, 40);
+    gGSAPI.status = asrspi_OpenEngine(gGSAPI.handle, 0, e);
+    if (gGSAPI.status >= 0) {
+        gGSAPI.nopen++;
+        gGSAPI.status = asrspi_ActivateLng(e->f0, gGSAPI.language);
+        *out = e;
+    }
+    return gGSAPI.status;
+}
+
+int gsapi_EngineSetParam(GSENGINE *e, unsigned int id, int value)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    if (id >= 18)
+        return GSAPI_ERR_BAD_PARAM;
+    if (id == 8 && value < 0)
+        return GSAPI_ERR_BAD_VALUE;
+    if (e->f8 == 0)
+        return GSAPI_ERR_NO_CONTEXT;
+    gGSAPI.status = ContextSetParam(&e->f8, id, value);
+    if (gGSAPI.status != 0)
+        return gGSAPI.status;
+    return gGSAPI.status = ContextActivateParams(e, &e->f8);
+}
+
 int gsapi_EngineStart(GSENGINE *e)
 {
     int err;
@@ -519,6 +603,111 @@ int gsapi_GetVersion(char *buf, int size)
     return 0;
 }
 
+/* a language file, with or without its 16-byte header (74 18 09 00); the engines' defaults then
+ * taken from a parameter block -- read through a pointer the vendor never sets: the target loads
+ * the set mask from address 8 and the values from 12 on (the block's +8 and +12). OPEN (37 words,
+ * the right size): the copy loop's source pointer starts at 12 in the target (`li a3,12`, loads
+ * at 0(a3)) -- a giv whose base was a register at loop time and 0 only later -- where here the
+ * null pointer is known first and 12 becomes the loads' displacement; a local value pointer,
+ * walking pointers, a temporary and the pointer set to 0 in both header branches
+ * (build/scratch/gcc/r10c/gsapi.c, -DL=2..8) do not give it. */
+int gsapi_LanguageLoadBuffer(unsigned char *buf, void *params)
+{
+    CTXPARAMS *p = 0;
+    unsigned int set;
+    int i;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (buf == 0)
+        return GSAPI_ERR_NULL_ARG;
+    gsapi_LanguageUnLoad();
+    if (buf[0] == 0x74 && buf[1] == 0x18 && buf[2] == 0x09 && buf[3] == 0) {
+        gGSAPI.langbuf = buf;
+        gGSAPI.language = buf + 16;
+    } else {
+        gGSAPI.language = buf;
+        gGSAPI.langbuf = 0;
+    }
+    InitDefaultParams();
+    if (params != 0) {
+        set = p->set;
+        for (i = 0; i < 18; i++) {
+            if (set & 1)
+                gGSAPI.params[i] = p->value[i];
+            set >>= 1;
+        }
+    }
+    return 0;
+}
+
+/* the engines are walked and nothing is done with them (the loop is the vendor's, empty) */
+int gsapi_LanguageUnLoad(void)
+{
+    int i;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (gGSAPI.language == 0)
+        return GSAPI_ERR_NO_LANGUAGE;
+    for (i = 0; i < gGSAPI.nengines; i++)
+        ;
+    gGSAPI.language = 0;
+    gGSAPI.langbuf = 0;
+    return 0;
+}
+
+/* a context's data, grammar and words made the engine's own and activated */
+int gsapi_EngineSetImmediateContext(GSENGINE *e, void *ctxdata, void *gcd, void *wrd)
+{
+    int err;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    if (ctxdata == 0)
+        return GSAPI_ERR_NULL_ARG;
+    err = ContextAPIDeActivate(e);
+    if (err >= 0) {
+        err = ContextSetCtxData(&e->f8, ctxdata);
+        if (err >= 0) {
+            err = ContextSetGcdData(&e->f8, gcd);
+            if (err >= 0) {
+                err = ContextSetWrdData(&e->f8, wrd);
+                if (err >= 0)
+                    err = ContextActivate(e, &e->f8);
+            }
+        }
+    }
+    return err;
+}
+
+/* a context allocated on the API's heap and loaded from its data */
+int gsapi_ContextLoadBuffer(void *data, GSCONTEXT **out)
+{
+    GSCONTEXT *ctx;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (data == 0)
+        return GSAPI_ERR_NULL_ARG;
+    if (out == 0)
+        return GSAPI_ERR_NULL_ARG;
+    ctx = heap_Alloc(gGSAPI.heap, sizeof(GSCONTEXT));
+    if (ctx == 0)
+        return GSAPI_ERR_NO_MEMORY;
+    memset(ctx, 0, sizeof(GSCONTEXT));
+    gGSAPI.status = ContextSetCtxData(ctx, data);
+    if (gGSAPI.status < 0) {
+        heap_Free(gGSAPI.heap, ctx);
+        return gGSAPI.status;
+    }
+    gGSAPI.ncontexts++;
+    *out = ctx;
+    return 0;
+}
+
 /* a context's grammar and word data handed on (2.96 makes the call a sibling call) */
 int gsapi_ContextSetGcdData(void *ctx, void *data)
 {
@@ -596,6 +785,59 @@ int gsapi_EngineDisableAllWords(GSENGINE *eng)
     return gsapi_EngineDisableWords(eng, all);
 }
 
+/* a parameter of a loaded context, re-applied to every engine the context is loaded into */
+int gsapi_ContextSetParam(void *ctx, unsigned int id, int value)
+{
+    GSENGINE *e;
+    int i;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (ctx == 0)
+        return GSAPI_ERR_NULL_CTX;
+    if (id >= 18)
+        return GSAPI_ERR_BAD_PARAM;
+    if (id == 8 && value < 0)
+        return GSAPI_ERR_BAD_VALUE;
+    gGSAPI.status = ContextSetParam(ctx, id, value);
+    if (gGSAPI.status != 0)
+        return gGSAPI.status;
+    for (i = 0; i < gGSAPI.nengines; i++) {
+        e = &gGSAPI.engines[i];
+        if (e->loaded == ctx)
+            ContextActivateParams(e, ctx);
+    }
+    return 0;
+}
+
+int gsapi_ContextGetParam(void *ctx, unsigned int id, int *value)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (ctx == 0)
+        return GSAPI_ERR_NULL_CTX;
+    if (value == 0)
+        return GSAPI_ERR_NULL_ARG;
+    if (id >= 18)
+        return GSAPI_ERR_BAD_PARAM;
+    return ContextGetParam(ctx, id, value);
+}
+
+int gsapi_EngineGetParam(GSENGINE *e, unsigned int id, int *value)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    if (value == 0)
+        return GSAPI_ERR_NULL_ARG;
+    if (id >= 18)
+        return GSAPI_ERR_BAD_PARAM;
+    if (e->f8 == 0)
+        return GSAPI_ERR_NO_CONTEXT;
+    return ContextGetParam(&e->f8, id, value);
+}
+
 int gsapi_EngineSetMode(GSENGINE *e, int mode)
 {
     if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
@@ -628,6 +870,31 @@ void gsapi_ExecServer(void)
     }
 }
 
+/* a word's string by its id, out of the active context's word list (SOCOM II's; CReco prints the
+ * recognised words with it) */
+int func_004C82F0(GSENGINE *e, unsigned int id, char **word)
+{
+    GSCONTEXT *ctx;
+    WORDLIST *wl;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    if (word == 0)
+        return GSAPI_ERR_NULL_ARG;
+    ctx = e->ctx;
+    if (ctx->f8 == 0)
+        return GSAPI_ERR_NO_WORDS;
+    wl = ctx->wordlist;
+    if (wl == 0)
+        return GSAPI_ERR_NO_WORDLIST;
+    if (id > wl->n)
+        return GSAPI_ERR_BAD_WORD;
+    *word = wl->words[id];
+    return 0;
+}
+
 int gsapi_NotifySetCallback(GSCALLBACK cb)
 {
     if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
@@ -636,10 +903,28 @@ int gsapi_NotifySetCallback(GSCALLBACK cb)
     return 0;
 }
 
-/* OPEN, and gsapi_EngineSetUserData (35 words, one short): the same inlined check matches in
- * five other calls, but here the target zeroes the result a second time after the base test
- * and holds 108 in v0 and the difference in v1 (the round-3b diagnosis); the guard, an if
- * around the store and a result variable (build/scratch/gcc/spec_ei.py) do not give it. */
+/* SOCOM 1's CheckEngineHandle, the real function, nothing calling it. It redefines gsapi.h's
+ * extern inline here, and 2.96 does two things with that: it outputs the function at the end of
+ * the file (deferred, as an inline's out-of-line copy is), where the target holds it after
+ * StopListening; and it inlines THIS body into the functions after it -- the early-return form,
+ * which zeroes the result again after the base test (NotifySetEnergyInterval and
+ * EngineSetUserData, open since round 3b on exactly that), where every function before it has the
+ * extern inline's single-result form. */
+int CheckEngineHandle(GSENGINE *e)
+{
+    GSENGINE *base = gGSAPI.engines;
+
+    if (e == 0)
+        return 0;
+    if (e < base)
+        return 0;
+    if (((char *)e - (char *)base) % sizeof(GSENGINE) != 0)
+        return 0;
+    if (e > base + gGSAPI.nengines)
+        return 0;
+    return e->f0 != 0;
+}
+
 int gsapi_NotifySetEnergyInterval(GSENGINE *e, int interval)
 {
     if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
@@ -697,10 +982,92 @@ int gsapi_UseExternalAudio(int (*read)(void *src, void *buf, int *count))
     return 0;
 }
 
-void func_004C8CB8(void)
+int gsapi_GetNumContextsLoaded(void)
 {
-    memset(&gGSAPI, 0, sizeof(gGSAPI));
-    memset(data_0064F89C, 0, data_006568F8);
-    MAXRECOGNIZERS = 4;
-    DEFAULTENERGYINTERVAL = 500;
+    return gGSAPI.ncontexts;
+}
+
+/* the last call's result (SOCOM II's) */
+int func_004C8890(void)
+{
+    return gGSAPI.status;
+}
+
+/* the defaults gsapi_LanguageLoadBuffer set, made the engine's (ContextActivate's) */
+int ActivateDefaultParams(GSENGINE *e)
+{
+    PARAM list[18];
+    int n = 0;
+    unsigned int i;
+
+    for (i = 0; i < 18; i++) {
+        if (TranslateParamTable[i] != 255) {
+            list[n].id = TranslateParamTable[i];
+            list[n].value = gGSAPI.params[i];
+            n++;
+        }
+    }
+    return asrspi_SetParamList(e->f0, list, n);
+}
+
+/* an engine started again after a result (gsapi_ExecServer's, ProcessAudio's); inside a callback
+ * only marked, unless it was stopped meanwhile */
+int RestartEngine(GSENGINE *e)
+{
+    if (e->in_callback != 0) {
+        if (e->f100 == 0)
+            e->f96 = 1;
+        return 0;
+    }
+    if (e->energy_interval != 0) {
+        AsrSpiSignalCallBacks.energy_level = asrspi_cbEnergyLevel;
+        AsrSpiSignalCallBacks.snr_level = asrspi_cbSNRLevel;
+    } else {
+        AsrSpiSignalCallBacks.energy_level = 0;
+        AsrSpiSignalCallBacks.snr_level = 0;
+    }
+    gGSAPI.status = asrspi_Start(e->f0, e->energy_interval, &AsrSpiRecogCallBacks, e);
+    if (gGSAPI.status < 0)
+        return gGSAPI.status;
+    return gGSAPI.status = StartListening(e);
+}
+
+int TranslateGsapiParamId2AsrSpiParamId(int id)
+{
+    return TranslateParamTable[id];
+}
+
+/* the engine's audio started, the host told first */
+int StartListening(GSENGINE *e)
+{
+    if (e->audio != 0) {
+        if (gGSAPI.read_audio != 0) {
+            if (gGSAPI.notify != 0)
+                gGSAPI.notify(e, 2, 0, e->user);
+            return ExtAudioStart(e->audio);
+        }
+        if (!SidIsRecording(e->audio)) {
+            if (gGSAPI.notify != 0)
+                gGSAPI.notify(e, 2, 0, e->user);
+            return SidStart(e->audio);
+        }
+    }
+    return 0;
+}
+
+int StopListening(GSENGINE *e)
+{
+    if (e->audio != 0) {
+        if (gGSAPI.read_audio != 0) {
+            if (gGSAPI.notify != 0)
+                gGSAPI.notify(e, 3, 0, e->user);
+            return ExtAudioStop(e->audio);
+        }
+        if (SidIsRecording(e->audio)) {
+            if (gGSAPI.notify != 0)
+                gGSAPI.notify(e, 3, 0, e->user);
+            return SidStop(e->audio);
+        }
+    }
+    return 0;
 }

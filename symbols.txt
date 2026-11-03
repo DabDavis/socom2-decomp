@@ -8683,7 +8683,7 @@
 0x004C8A80 0x14 TranslateGsapiParamId2AsrSpiParamId  # OVL2; s1:callee (ContextActivateParams calls it from the same three sites as SOCOM 1's)
 0x004C8A98 0xD0 StartListening  # OVL2 unaligned; s1:calls (SOCOM 1's StartListening: SidIsRecording, ExtAudioStart, SidStart, state 2; gsapi_EngineStart calls it where SOCOM 1's calls StartListening)
 0x004C8B68 0xD0 StopListening  # OVL2 unaligned; s1:calls (SOCOM 1's StopListening: SidIsRecording, ExtAudioStop, SidStop, state 3; after StartListening as there)
-0x004C8C38 0x7C func_004C8C38  # OVL2 unaligned
+0x004C8C38 0x7C CheckEngineHandle  # OVL2 unaligned; s1:order (SOCOM 1's CheckEngineHandle, 0x33A550, the gsapi object's function after StopListening: the same body -- an engine is a live 108-byte slot of gGSAPI.engines -- and nothing calls it; SOCOM II's callers inline it, and 2.96 outputs the redefined extern inline last in gsapi.c) -- the gcc lane, round 10c
 0x004C8CB8 0x58 func_004C8CB8  # OVL2 unaligned
 0x004C8D10 0x158 func_004C8D10  # OVL2
 0x004C8E68 0xA4 WrdCreateWordList  # OVL2 unaligned; s1:calls (SOCOM 1's ContextSetWrdData calls WrdCreateWordList where ours call this row, 1 call site; the same position in SOCOM 1's object)

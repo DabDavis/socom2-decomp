@@ -50,7 +50,10 @@ typedef struct GSAPI {
     GSCALLBACK result;                  /* +24 */
     GSCALLBACK notify;                  /* +28 */
     int (*read_audio)(void *src, void *buf, int *count);   /* +32 */
-    char pad36[16];
+    void *language;                     /* +36: the loaded language's data */
+    void *langbuf;                      /* +40: its buffer, when a 16-byte header precedes it */
+    int f44;
+    int f48;
     int f52;                            /* +52: 0x1FFFF by default */
     int params[18];                     /* +56: the engines' defaults, by gsapi parameter id
                                          * (TranslateParamTable maps them to asrspi's);
@@ -62,5 +65,22 @@ typedef struct GSAPI {
 } GSAPI;                                /* 0x8C */
 
 extern GSAPI gGSAPI;
+
+/* SOCOM 1's CheckEngineHandle, a GNU `extern __inline__` body here: inlined into every engine call
+ * of gsapi.c and its neighbour gsapi2.c, while gsapi.c keeps SOCOM 1's real function (uncalled)
+ * -- 2.96 outputs a redefined inline at the end of its file, which is where it stands (0x4C8C38,
+ * after StopListening). An engine is a live slot of gGSAPI's array. The base is read first and
+ * the result starts at 0 -- the order that schedules as the target's (an early-return or
+ * one-expression form keeps a 0 per failing test, or loads the base after the null test). */
+extern __inline__ int CheckEngineHandle(GSENGINE *e)
+{
+    GSENGINE *base = gGSAPI.engines;
+    int ok = 0;
+
+    if (e != 0 && e >= base && ((char *)e - (char *)base) % sizeof(GSENGINE) == 0
+        && e <= base + gGSAPI.nengines)
+        ok = e->f0 != 0;
+    return ok;
+}
 
 #endif
