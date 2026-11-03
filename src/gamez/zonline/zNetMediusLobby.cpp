@@ -33,7 +33,13 @@ struct MediusBanPlayerRequest {
     int _34;   // 0x34
 };   // 0x38
 
-struct MediusGetAnnouncementsResponse { MEDIUS_RESPONSE_HEAD };
+/* an announcement (the SDK's: its id, the text, the list's end) */
+struct MediusGetAnnouncementsResponse {
+    MEDIUS_RESPONSE_HEAD
+    int AnnouncementID;   // 0x1c
+    char Announcement[1000];   // 0x20
+    char EndOfList;   // 0x408
+};
 struct MediusBanPlayerResponse { MEDIUS_RESPONSE_HEAD };
 
 /* the account logged in (OVL2 bss; SOCOM 1's AccountInfo) */
@@ -111,7 +117,12 @@ struct MediusGetGamePlayersRequest {
     int MediusWorldID;   // 0x28
 };   // 0x2c
 
-struct MediusGetPolicyResponse { MEDIUS_RESPONSE_HEAD };
+/* a page of the policy (the SDK's: the text, the list's end) */
+struct MediusGetPolicyResponse {
+    MEDIUS_RESPONSE_HEAD
+    char Policy[256];   // 0x1c
+    char EndOfList;   // 0x11c
+};
 struct MediusClearGameListFilterResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusSetGameListFilterResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusGetGamePlayersResponse {
@@ -382,6 +393,33 @@ void CZOnlineLobby::SendEndGameReport()
     CheckMediusError(MediusSendEndGameReport(&req));
 }
 
+/* a page of the usage policy: added to the lines kept so far in 'TempUsagePolicy', all of them
+ * handed to 'UsagePolicy' with the last page (SOCOM II's, the name ours: GetUsagePolicy's callback,
+ * its status 'GetPolicyRequest'; OVL1 0x2F7AC0) */
+void cbGetPolicy(int, int, int, MediusGetPolicyResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetPolicyRequest", resp->StatusCode)) {
+        CRdrEditor ed;
+        CUIVariable *var = theUIVarManager.Add("TempUsagePolicy", 0, UIVL_TEMPORARY);
+
+        ed.push(0);
+        if (var->Type() == 4) {
+            for (int i = 0; i < var->Count(); i++) {
+                _zrdr *line = var->Item(i);
+
+                if (line->type == 3)
+                    ed.addstringnode(line->type == 3 ? line->string : 0);
+            }
+        }
+        ed.addstringnode(resp->Policy);
+        ed.pop();
+        if (!resp->EndOfList)
+            var->Set(&ed);
+        else
+            theUIVarManager.Add("UsagePolicy", 0, UIVL_TEMPORARY)->Set(&ed);
+    }
+}
+
 /* the usage policy asked for, the menu told meanwhile (SOCOM II's; OVL1 0x2F79F0:
  * UIGetUsagePolicy calls it on theLobby; the name ours) */
 void CZOnlineLobby::GetUsagePolicy()
@@ -397,6 +435,51 @@ void CZOnlineLobby::GetUsagePolicy()
         req.Policy = 0;
         CheckMediusError(func_006495E0(&req, cbGetPolicy));
     }
+}
+
+/* a variable's text when it holds one (as the clan unit's) */
+inline char *ZString(_zrdr *z)
+{
+    return z->type == 3 ? z->string : 0;
+}
+
+/* an announcement: shown first, a blank line after it, then as many of the lines shown before as
+ * fit in 800 characters with it (a line's two characters each besides), the newest kept; on a
+ * failure the menu told there are none (SOCOM 1's; OVL1 0x2F77A0) */
+void cbGetAnnouncements(int, int, int, MediusGetAnnouncementsResponse *resp)
+{
+    if (CheckMediusCallbackStatus("MediusGetAnnouncements", resp->StatusCode)) {
+        CRdrEditor ed;
+
+        ed.push(0);
+        ed.addstringnode(resp->Announcement);
+        ed.addstringnode("\n");
+        if (theLobby.uiv_MediusMOTD->Type() == 4) {
+            int n = theLobby.uiv_MediusMOTD->Count();
+            int len = strlen(resp->Announcement);   /* (an int: the unsigned sum swaps the addu) */
+            int left = 800 - (len + n * 2);
+            int i;
+
+            for (i = theLobby.uiv_MediusMOTD->Count() - 1; i >= 0; i--) {
+                _zrdr *line = theLobby.uiv_MediusMOTD->Item(i);
+
+                if (line->type == 3) {
+                    left -= strlen(ZString(line));
+                    if (left < 0)
+                        break;
+                }
+            }
+            for (i++; i < theLobby.uiv_MediusMOTD->Count(); i++) {
+                _zrdr *line = theLobby.uiv_MediusMOTD->Item(i);
+
+                if (line->type == 3)
+                    ed.addstringnode(ZString(line));
+            }
+        }
+        ed.pop();
+        theLobby.uiv_MediusMOTD->Set(&ed);
+    } else
+        func_003862A0(theLobby.uiv_MediusMOTD, "No server messages.");
 }
 
 /* the announcements asked for, the menu told meanwhile (SOCOM 1's; OVL1 0x2F7710) */

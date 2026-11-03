@@ -95,7 +95,7 @@ extern "C" {
 extern AccountInfoType AccountInfo;
 void func_002F4080(void *msg, int type);   /* a request put into the network's order (empty) */
 
-MediusErrorCode MediusLadderPosition(MediusLadderPositionRequest *req,
+MediusErrorCode MediusLadderPositionFast(MediusLadderPositionRequest *req,
                                      void (*cb)(int, int, int, MediusLadderPositionResponse *));
 MediusErrorCode func_006467A8(MediusGetClanLadderListRequest *req,
                               void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
@@ -598,7 +598,7 @@ void CZOnlineLobby::GetLadderInfo()
         req.SortOrder = 1;
         req.AccountID = AccountInfo.AccountID;
         req.LadderStatIndex = 0;
-        CheckMediusError(MediusLadderPosition(&req, cbGetLadderPosition));
+        CheckMediusError(MediusLadderPositionFast(&req, cbGetLadderPosition));
     }
 }
 
@@ -611,7 +611,7 @@ void CZOnlineLobby::GetLadderRanking()
     req.SortOrder = 1;
     req.AccountID = AccountInfo.AccountID;
     req.LadderStatIndex = 0;
-    CheckMediusError(MediusLadderPosition(&req, cbGetLadderRanking));
+    CheckMediusError(MediusLadderPositionFast(&req, cbGetLadderRanking));
 }
 
 /* the clan ladder's leaders emptied and the first n asked for (SOCOM II's; OVL1 0x2EA6B0) */

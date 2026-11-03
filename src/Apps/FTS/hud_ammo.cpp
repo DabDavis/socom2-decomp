@@ -88,13 +88,13 @@ public:
     int GetCurNumMags();
     EQUIP_IDTYPE GetCurItemIDType();
     bool NVG_Enabled() const;
+    int GetAmmoItemIndex(FIREMODE mode);
 };
 
 /* the kit's rounds left in the clip and in all (both pass the current item's index on; no names
  * yet), the index of a fire mode's graphic, and two tests of an item's type */
 extern "C" int func_005C3CE0(CZKit *kit);
 extern "C" int func_005C3890(CZKit *kit);
-extern "C" int func_005C6530(CZKit *kit, FIREMODE mode);
 extern "C" bool func_003D1DA0(EQUIP_IDTYPE type);
 extern "C" bool func_003D1DB0(EQUIP_IDTYPE type);
 
@@ -323,7 +323,7 @@ void CAmmoDisplay::Update()
         zdb::CTexHandle *tex = 0;
 
         if (mode > 3)
-            tex = kit->GetFiremodeGraphic(func_005C6530(kit, (FIREMODE)mode));
+            tex = kit->GetFiremodeGraphic(kit->GetAmmoItemIndex((FIREMODE)mode));
         SetMags(mode, tex);
         data_003DCBD8 = mode;
         data_004145E0 = tex;

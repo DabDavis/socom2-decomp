@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 GetFiringItem__5CZKitFi();                      /* extern */
 s32 func_005C3EE0(s32, M2C_UNK, s32, M2C_UNK);      /* extern */
-s32 func_005C67D0();                                /* extern */
 
 s32 func_005C45C0(s32 arg0) {
-    return func_005C3EE0(arg0, 0, func_005C67D0(), 0xFF) >= 4;
+    return func_005C3EE0(arg0, 0, GetFiringItem__5CZKitFi(), 0xFF) >= 4;
 }
