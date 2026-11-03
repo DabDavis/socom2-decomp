@@ -87,7 +87,7 @@ typedef struct ex_specification {
 
 /* a function pointer in an action: four unaligned bytes */
 #define GET_ADDRESS(p) \
-    ((unsigned char)(p)[0] | ((unsigned char)(p)[1] << 8) | ((unsigned char)(p)[2] << 16) | ((unsigned char)(p)[3] << 24))
+    (((unsigned char *)(p))[0] | (((unsigned char *)(p))[1] << 8) | (((unsigned char *)(p))[2] << 16) | (((unsigned char *)(p))[3] << 24))
 
 #define DTORCALL_COMPLETE(dtor, objptr) (((DestroyFunc)(dtor))(objptr, -1))
 #define DTORCALL_PARTIAL(dtor, objptr) (((DestroyFunc)(dtor))(objptr, 0))
@@ -97,12 +97,29 @@ const char *std::bad_exception::what() const
     return "bad_exception";
 }
 
+/* the table entry whose function holds the address (binary search), or 0 */
+static inline ExceptionTableIndex *FindTableIndex(ExceptionTableIndex *table, int count, char *returnaddr)
+{
+    ExceptionTableIndex *p;
+    int i, m, n;
+
+    for (i = 0, n = count - 1; i <= n;) {
+        p = &table[m = (i + n) >> 1];
+        if (returnaddr < p->function)
+            n = m - 1;
+        else if (returnaddr > p->function + (p->size & ~1))
+            i = m + 1;
+        else
+            return p;
+    }
+    return 0;
+}
+
 static void FindExceptionRecord(char *returnaddr, ExceptionInfo *info)
 {
-    ExceptionTableIndex *table, *p;
+    ExceptionTableIndex *p;
     unsigned int returnoffset, offset, skip, size, action;
     char *ptr;
-    int i, m, n;
 
     info->exception_record = 0;
     info->action_pointer = 0;
@@ -110,19 +127,9 @@ static void FindExceptionRecord(char *returnaddr, ExceptionInfo *info)
     if (!__FindExceptionTable(info, returnaddr))
         return;
 
-    returnaddr = (char *)((long)returnaddr & ~1);
-    table = (ExceptionTableIndex *)info->table_start;
-    p = 0;
-    for (i = 0, n = (ExceptionTableIndex *)info->table_end - table - 1; i <= n;) {
-        p = &table[m = (i + n) >> 1];
-        if (returnaddr < p->function) {
-            n = m - 1;
-        } else if (returnaddr > p->function + (p->size & ~1)) {
-            i = m + 1;
-        } else
-            break;
-        p = 0;
-    }
+    returnaddr = (char *)((int)returnaddr & ~1L);
+    p = FindTableIndex((ExceptionTableIndex *)info->table_start,
+                       (ExceptionTableIndex *)info->table_end - (ExceptionTableIndex *)info->table_start, returnaddr);
     if (p == 0)
         return;
 
@@ -152,21 +159,20 @@ static void FindExceptionRecord(char *returnaddr, ExceptionInfo *info)
 
 static exaction_type NextAction(ActionIterator *iter)
 {
+    ThrowContext *context = &iter->context;
     char *p;
     exaction_type action;
 
     for (;;) {
-        if ((p = iter->info.action_pointer) == 0 || ((action = *p) & EXACTION_ENDBIT)) {
-            FindExceptionRecord(__PopStackFrame(&iter->context, &iter->info), &iter->info);
+        if (!(p = iter->info.action_pointer) || (*(unsigned char *)p & EXACTION_ENDBIT)) {
+            FindExceptionRecord(__PopStackFrame(context, &iter->info), &iter->info);
             if (iter->info.exception_record == 0)
                 std::terminate();
-            __SetupFrameInfo(&iter->context, &iter->info);
+            __SetupFrameInfo(context, &iter->info);
             if (iter->info.action_pointer == 0)
                 continue;
-            break;
-        }
-
-        switch (action & EXACTION_MASK) {
+        } else {
+        switch (*(unsigned char *)p & EXACTION_MASK) {
         case EXACTION_DESTROYLOCAL: {
             int local;
             p = __DecodeSignedNumber(p + 1, &local);
@@ -244,7 +250,7 @@ static exaction_type NextAction(ActionIterator *iter)
             char *catch_type;
             unsigned int catch_pcoffset;
             int cinfo_ref;
-            catch_type = (char *)GET_ADDRESS(p + 1);
+            *(unsigned int *)&catch_type = GET_ADDRESS(p + 1);
             p = __DecodeUnsignedNumber(p + 5, &catch_pcoffset);
             iter->info.action_pointer = __DecodeSignedNumber(p, &cinfo_ref);
             break;
@@ -266,15 +272,15 @@ static exaction_type NextAction(ActionIterator *iter)
         default:
             std::terminate();
         }
-        break;
-    }
+        }
 
-    while ((*iter->info.action_pointer & EXACTION_MASK) == EXACTION_BRANCH) {
-        int target;
-        __DecodeSignedNumber(iter->info.action_pointer + 1, &target);
-        iter->info.action_pointer += target;
+        while ((action = *(unsigned char *)iter->info.action_pointer & EXACTION_MASK) == EXACTION_BRANCH) {
+            int target;
+            __DecodeSignedNumber(iter->info.action_pointer + 1, &target);
+            iter->info.action_pointer += target;
+        }
+        return action;
     }
-    return *iter->info.action_pointer & EXACTION_MASK;
 }
 
 static void UnwindStack(ThrowContext *context, ExceptionInfo *info, char *catcher)
