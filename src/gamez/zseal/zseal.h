@@ -116,6 +116,16 @@ public:
     bool ItemHasAmmo(int index) const;
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
     class CZFTSWeapon *GetCurItem() const;
+    /* whether the item in hand has rounds left (kit.h's; OVL2 0x5BDB00) */
+    bool CurItemHasAmmo();
+    /* the items held, an item set at an index, its magazines and rounds, its ammunition set -- with a
+     * count of rounds (kit.h's; OVL2 0x5BE030, 0x5BDFB0, 0x5C4970, 0x5C3C10, 0x5BDE20, 0x5BDEC0) */
+    int GetNumItems() const;
+    bool SetItem(unsigned int index, EQUIP_ITEM item);
+    int GetNumMags(int index);
+    int GetAmmoTotal(int index);
+    bool SetItemAmmo(unsigned int index, void *ammo);
+    bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
@@ -683,7 +693,9 @@ public:
     float m_280;   // 0x280: the delay before the asked stance is taken (cleared by SetStance)
     unsigned char _284[0x364 - 0x284];
     CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
-    unsigned char _370[0x3e0 - 0x370];
+    unsigned char _370[0x3d0 - 0x370];
+    unsigned int m_3d0;   // 0x3d0: zeroed with each burst of the spray (0x5659E0; the name ours)
+    unsigned char _3d4[0x3e0 - 0x3d4];
     /* what 0x561E20 stores as it sets bit 7: a byte and 16 bytes zeroed (the names ours) */
     signed char m_3e0;   // 0x3e0
     unsigned char _3e1[0x3e4 - 0x3e1];

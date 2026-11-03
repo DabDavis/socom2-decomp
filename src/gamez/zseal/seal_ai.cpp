@@ -235,6 +235,143 @@ void CSealCtrlAi::SetSprayTimer(float t)
     m_spraytimer = t;
 }
 
+extern "C" {
+/* the kit's fire mode set (CZKit::SetCurFireMode, the kit lane's; OVL2 0x5C37B0 -- by its address:
+ * FIREMODE is zweapon.h's, which zseal.h's kit stand-in cannot see) and the target's word at 0x44
+ * copied to 0x40 when asked (OVL2 0x60A2D0, the AI states' range) */
+bool func_005C37B0(CZKit *kit, FIREMODE mode);
+void func_0060A2D0(void *target, bool on);
+}
+
+/* the spray kept up while its timer runs: none for a Navy SEAL; with the item in hand empty the timer
+ * stops, else it runs down by the tick, the item fires fully automatic with the trigger held, and the
+ * timer stops at 0; whether it fired (OVL2 0x5659E0, new in SOCOM II between AttackTick and SetSprayTimer:
+ * AttackTick and PreTick call it; the name unknown). The ammunition's negation is a bool local: the
+ * target's sltu, xori and andi before the branch (tested in the `if`, `!` or `== false` branch on the
+ * call's v0) */
+extern "C" bool func_005659E0(CSealCtrlAi *ai, float dT)
+{
+    bool r = false;
+
+    if (!ai->IsNavySeal() && ai->m_spraytimer > 0.0f) {
+        CZKit *kit = &((CZSealBody *)ai->m_entity)->m_kit;
+
+        bool empty = !kit->CurItemHasAmmo();
+
+        if (empty)
+            ai->m_spraytimer = 0.0f;
+        else {
+            ai->m_spraytimer -= dT;
+            ai->m_3d0 = 0;
+            func_0060A2D0(ai->m_67c, true);
+            func_005C37B0(kit, AUTOFIRE);
+            ai->SetTrigger(true, 0.0f);
+            if (ai->m_spraytimer <= 0.0f)
+                ai->m_spraytimer = 0.0f;
+            r = true;
+        }
+    }
+    return r;
+}
+
+/* the AI's target (SOCOM 1's CAiTarget at 0x67C, ai_target.cpp's; only its flags: SEAL_AI_PARAMS's
+ * m_6a8) -- whether it has one (OVL2 0x60A850, the AI states' range) */
+struct CAiTargetFlags {
+    unsigned char _0[0x2c];
+    unsigned int m_flags;   // 0x2c
+};
+
+extern "C" bool func_0060A850(void *target);
+
+/* whether the current state is of kind 2 with flag 0x20 (0x559000's shape) */
+static inline bool IsKind2Flag20(CAiState *s)
+{
+    bool r = false;
+
+    AI_STATE st = s->m_state;
+
+    if (st == (AI_STATE)2 && (s->m_flags & 0x20))
+        r = true;
+    return r;
+}
+
+static inline bool InKind2Flag20(const CAiStateStack &st)
+{
+    CAiState *s;
+
+    if (st.size() == 0)
+        s = 0;
+    else
+        s = st.GetState();
+
+    return s ? IsKind2Flag20(s) : false;
+}
+
+/* whether a state of kind 8 on the stack has flag 0x100 (the stack's kinds tested first) */
+static inline bool HasKind8Flag100(const CAiStateStack &st)
+{
+    bool r = false;
+
+    if (st.m_10 & (1 << 8)) {
+        CAiState *p = st.Find((AI_STATE)8);
+
+        r = p && (p->m_flags & 0x100);
+    }
+    return r;
+}
+
+/* whether the AI holds its fire at its target: none without one; with one, while the current state is
+ * of kind 2 with flag 0x20, a kind 8 state on the stack has flag 0x100, or a kind 10 is on it -- else
+ * by the target's flag 0x800 (OVL2 0x5658D0, new in SOCOM II: AttackTick asks it; the name unknown).
+ * The tests take the stack by reference: handed the controller, MW keeps the stack's address in a saved
+ * register for both calls, where the target recomputes it for each */
+extern "C" bool func_005658D0(CSealCtrlAi *ai)
+{
+    bool r = false;
+
+    if (func_0060A850(ai->m_67c)) {
+        CAiTargetFlags *t = (CAiTargetFlags *)ai->m_67c;
+
+        if (InKind2Flag20(ai->m_stateStack) || HasKind8Flag100(ai->m_stateStack) || (ai->m_stateStack.m_10 & (1 << 10)))
+            return true;
+        r = (t->m_flags & 0x800) != 0;
+    }
+    return r;
+}
+
+/* an item given the SEAL with its rounds: added at the kit's end unless it holds one, the rounds set
+ * -- none for 0, else topped up to the count; whether it holds the item (OVL2 0x5657C0, new in SOCOM II:
+ * CAiSDeploy::Tick, 0x565110 and 0x573130 call it; the name unknown). The ammunition and magazine
+ * queries' answers are never read (their calls stay); the kit's pointer is declared after the other
+ * locals, numbered last as the target's s2 (declared first it takes s5 and shifts the rest) */
+extern "C" bool func_005657C0(CSealCtrlAi *ai, EQUIP_ITEM item, int rounds)
+{
+    int index;
+    bool held;
+    bool full;
+    bool ok;
+    CZKit *kit = &((CZSealBody *)ai->m_entity)->m_kit;
+
+    index = kit->GetItemIndex(item);
+    held = index != -1;
+    full = held && kit->ItemHasAmmo(index);
+    ok = true;
+
+    if (!held) {
+        index = kit->GetNumItems();
+        ok = kit->SetItem(index, item);
+    }
+    if (ok) {
+        int mags = kit->GetNumMags(index);
+
+        if (rounds == 0)
+            kit->SetItemAmmo(index, 0);
+        else if (kit->GetAmmoTotal(index) < rounds)
+            kit->SetItemAmmo(index, 0, rounds, 1);
+    }
+    return ok;
+}
+
 /* the aim's error cone set, as its tangent (OVL2 0x574BA0; SOCOM 1's, after PlayAiSound in both
  * builds -- CCharacterType::Open calls it) */
 void CSealCtrlAi::SetAiAccuracyAngle(float angle)
@@ -562,14 +699,14 @@ static inline bool IsKind8Flag1(CAiState *s)
     return r;
 }
 
-static inline bool InKind8Flag1(const CSealCtrlAi *ai)
+static inline bool InKind8Flag1(const CAiStateStack &st)
 {
     CAiState *s;
 
-    if (ai->m_stateStack.size() == 0)
+    if (st.size() == 0)
         s = 0;
     else
-        s = ai->m_stateStack.GetState();
+        s = st.GetState();
 
     return s ? IsKind8Flag1(s) : false;
 }
@@ -582,7 +719,7 @@ static inline bool InKind8Flag1(const CSealCtrlAi *ai)
 inline float CSealCtrlAi::GetDefaultRouteBias()
 {
     if (IsNavySeal()) {
-        bool b = InKind8Flag1(this) || AiStateIs((AI_STATE)8);
+        bool b = InKind8Flag1(m_stateStack) || AiStateIs((AI_STATE)8);
     }
     return 1.0f;
 }
