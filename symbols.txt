@@ -7098,7 +7098,7 @@
 0x00383620 0xB0 __dt__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836D0 0xC GetType__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836E0 0x11C init<PC10ActionItem>__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FPC10ActionItemPC10ActionItemQ23std20forward_iterator_tag_v  # OVL1; s1:exact-shape (SOCOM 1's init<PC10ActionItem> at 0x39AE40, two saved registers swapped: each element built by ActionItem's inline copy, then its assignment 0x369FA0) -- zui_spec.cpp's template tail
-0x00383800 0xAC func_00383800  # OVL1
+0x00383800 0xAC resize__Q23std56__vector_imp<9CSaferStr,Q23std21allocator<9CSaferStr>,0>FUi  # OVL1; the UI lane round 10: vector<CSaferStr>::resize(n) (a zeroed string temporary inserted through 0x22E000 -- the CSaferStr insert, the look parser's and LoadFromDesign's push_backs -- its long text freed, else erase 0x383BC0); SkbWrapTokens 0x39B350 calls it as lines.resize(size() + 1), and 0x381550 twice
 0x003838B0 0xA4 resize__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FUi  # OVL1; s1:order (SOCOM 1's resize__...<10ActionItem>FUi in zui_spec.cpp's tail: insert 0x383F20 with a default ActionItem destroyed after, else the erase 0x383E00; the map control's and the button's ANIMATIONS grow through it) -- zui_spec.cpp's template tail
 0x00383960 0x138 resize__Q23std66__vector_imp<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>,0>FUi  # OVL1; s1:order (SOCOM 1's resize__...<13CDesignDlgObj>FUi: insert 0x384620 with a default design object destroyed after, else the erase 0x384410; the map control's ELEMENTS and the dialogs' objects grow through it) -- zui_spec.cpp's template tail
 0x00383AA0 0x11C func_00383AA0  # OVL1
@@ -7334,30 +7334,30 @@
 0x00390390 0x8 @128@__dt__12CBmpWithNodeFv  # OVL1; s1:order (SOCOM 1's zui_skb.cpp ends on the same thunk: j ~CBmpWithNode, this - 128, the UIVarMixin's) -- zui_skb.cpp's last function; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x003903A0 0x2E4 func_003903A0  # OVL1
 0x00390690 0x88 func_00390690  # OVL1
-0x00390720 0xC func_00390720  # OVL1
+0x00390720 0xC AddPiece__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: resize(size() + 1) through 0x392670)
 0x00390730 0x8 func_00390730  # OVL1
 0x00390740 0x20 func_00390740  # OVL1
 0x00390760 0x88 func_00390760  # OVL1
-0x003907F0 0x2C func_003907F0  # OVL1
-0x00390820 0x38 func_00390820  # OVL1
-0x00390860 0x40 func_00390860  # OVL1
-0x003908A0 0x100 func_003908A0  # OVL1
-0x003909A0 0x18 func_003909A0  # OVL1
+0x003907F0 0x2C PrevCode__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the code of the piece before the last, 0 for fewer than two)
+0x00390820 0x38 LastCode__10CSkbPiecesFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the last piece's code)
+0x00390860 0x40 LastJamo__10CSkbPiecesFi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the last piece's jamo i, read through the end iterator copied by value)
+0x003908A0 0x100 Append__10CSkbPiecesFR6SKBSEQb  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: a sequence's jamo pushed onto the last piece's, its Val or Val2 -- by the flag, a reference selected -- added to the piece's 16-bit code)
+0x003909A0 0x18 Seq__7SKBRULEFi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: a production's sequence i, 20-byte elements of the vector at 0xC)
 0x003909C0 0x2C More__11CSkbRdrIterCFv  # OVL1; ours (zui_hangul.cpp: an rdr array walked by index, {rdr, index}: the index still under the count; the look parser 0x3963F0 calls it four times)
 0x003909F0 0x3C func_003909F0  # OVL1
-0x00390A30 0x174 func_00390A30  # OVL1
+0x00390A30 0x174 SkbHangulType__FP10CSkbPiecesc  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composition's jamo plus the one typed composed into the pieces by 0x391670; a pair<bool, bool> returned -- composed, and whether s_compose held fewer strings than the pieces -- the pooled false/true at 0x3E04A8/0x3E04B0/0x3E04B8; 0x399200 calls it)
 0x00390BB0 0x90 FindJamo__FPCc  # OVL1; ours (zui_hangul.cpp: a jamo by name against the 33 names at 0x3FB170 (A_Hang .. Yu, alphabetical), 33 for none; zui_skb.cpp's 0x38DA70 calls it)
-0x00390C40 0x464 func_00390C40  # OVL1
+0x00390C40 0x464 SkbParseKoreanRules__FP5_zrdr  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: KeyboardsRdr's KoreanInputRules -- each Productions entry a new 24-byte SKBRULE pushed onto s_rules, its Name, its Sequences' Seq jamo by FindJamo (inlined), Val and Val2 -- then CompleteCharacter through 0x392130; the display unit's 0x397070 calls it)
 0x003910B0 0x24 SkbRdrCount__FP5_zrdr  # OVL1; ours (zui_hangul.cpp: an rdr array's count -- type 4's halfword length -- 0 for anything else or none; zui_skb.cpp's ZuiInit, CreateSoftKeyboard and 0x38DCB0 call it out of line)
-0x003910E0 0x190 func_003910E0  # OVL1
-0x00391270 0x8 func_00391270  # OVL1
-0x00391280 0x14 func_00391280  # OVL1
-0x003912A0 0x80 func_003912A0  # OVL1
-0x00391320 0x18 func_00391320  # OVL1
-0x00391340 0x8 func_00391340  # OVL1
-0x00391350 0xF8 func_00391350  # OVL1
+0x003910E0 0x190 SkbHangulBack__Fv  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composed string's last jamo dropped; none left, the composition ends with 0; else the rest composed into a local piece vector by 0x391670 and the last piece's code returned; SkbTypeOrBack calls it)
+0x00391270 0x8 SetCount__25CSkbFixedVec<8CJamoStr,1>Fi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the fixed array's count set)
+0x00391280 0x14 __ct__8CJamoStrFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the jamo string's constructor, three words zeroed; the fixed array's resizes build in place with it)
+0x003912A0 0x80 __dt__8CJamoStrFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the jamo string's destructor, five this-tests)
+0x00391320 0x18 Item__25CSkbFixedVec<8CJamoStr,1>Fi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the fixed array's element i, 12-byte strings from +4)
+0x00391340 0x8 Count__25CSkbFixedVec<8CJamoStr,1>CFv  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: the composition's fixed array's count, out of line where its resizes are inlined one level)
+0x00391350 0xF8 SkbHangulClear__Fv  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: s_compose resized to none, its strings destroyed through 0x3912A0; zui_skbkeys.cpp's text functions and SkbClearText call it)
 0x00391450 0x48 KeyToJamo__Fc  # OVL1; ours (zui_hangul.cpp: a letter key's jamo, a-z through the table at 0x3FB000, else the shifted table at 0x3FB020 indexed from 'A'; 0x39ADA0 calls it)
-0x003914A0 0x1C4 func_003914A0  # OVL1
+0x003914A0 0x1C4 SkbHangulRestart__FP10CSkbPieces  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composition's single jamo string -- s_compose resized to one, the string emptied through resize(0, 0) -- refilled with the last piece's jamo through LastJamo 0x390860; 0x390A30 calls it)
 0x00391670 0x358 func_00391670  # OVL1
 0x003919D0 0x360 func_003919D0  # OVL1
 0x00391D30 0xC func_00391D30  # OVL1
@@ -7380,35 +7380,35 @@
 0x00391F60 0x20 func_00391F60  # OVL1
 0x00391F80 0x190 func_00391F80  # OVL1
 0x00392110 0x14 func_00392110  # OVL1
-0x00392130 0x2A4 func_00392130  # OVL1
+0x00392130 0x2A4 SkbParseComplete__FP15CSkbCompleteVecP5_zrdrPCc  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries -- each Seq's production names by their index in s_rules, pushed onto the entry's index vector, and a Val2 flag -- the vector grown to each index through 0x392770; 0x390C40 calls it with s_complete); the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries, each Seq's production names by index in s_rules pushed onto the entry's index vector, a Val2 flag; the vector grown through 0x392770; 0x390C40 calls it with s_complete)
 0x003923E0 0x220 insert__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod insert (memmove, memset, memcpy), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's template tail, the composition's push_backs call it
 0x00392600 0x64 resize__Q23std36__vector_pod<c,Q23std12allocator<c>>FUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod resize(n, c), insert or erase, byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's tail
-0x00392670 0xCC func_00392670  # OVL1
+0x00392670 0xCC resize__Q23std54__vector_imp<8SKBPIECE,Q23std20allocator<8SKBPIECE>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the piece vector's resize(n) (a temporary piece inserted through 0x392BE0, else erase 0x392AB0)
 0x00392740 0x8 func_00392740  # OVL1
 0x00392750 0x8 func_00392750  # OVL1
-0x00392760 0xC func_00392760  # OVL1
-0x00392770 0xA8 func_00392770  # OVL1
-0x00392820 0xC0 func_00392820  # OVL1
+0x00392760 0xC __ct__11CInit<Us,0>Fv  # OVL1; the UI lane round 10: zui_skb.h's CInit<unsigned short, 0> (SOCOM 1's CInit), the piece's code zeroed; zui_hangul.cpp's tail, the piece vector's resize builds its temporary with it
+0x00392770 0xA8 resize__Q23std62__vector_imp<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' resize(n) (insert 0x3931A0, erase 0x393030)
+0x00392820 0xC0 resize__Q23std50__vector_imp<6SKBSEQ,Q23std18allocator<6SKBSEQ>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, a production's sequence vector resize(n) (insert 0x393790, erase 0x3935F0)
 0x003928E0 0x68 func_003928E0  # OVL1
-0x00392950 0x68 func_00392950  # OVL1
+0x00392950 0x68 __dt__Q23std52__vector_deleter<6SKBSEQ,Q23std18allocator<6SKBSEQ>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the sequences' deleter destructor (clear 0x393C60, the block freed)
 0x003929C0 0x6C func_003929C0  # OVL1
 0x00392A30 0x80 erase__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcPc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range erase (the tail memcpy'd down), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's tail, resize calls it
-0x00392AB0 0x128 func_00392AB0  # OVL1
-0x00392BE0 0x450 func_00392BE0  # OVL1
-0x00393030 0x168 func_00393030  # OVL1
-0x003931A0 0x450 func_003931A0  # OVL1
-0x003935F0 0x1A0 func_003935F0  # OVL1
-0x00393790 0x4C8 func_00393790  # OVL1
-0x00393C60 0xC8 func_00393C60  # OVL1
+0x00392AB0 0x128 erase__Q23std54__vector_imp<8SKBPIECE,Q23std20allocator<8SKBPIECE>,0>FP8SKBPIECEP8SKBPIECE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the piece vector's range erase
+0x00392BE0 0x450 insert__Q23std54__vector_imp<8SKBPIECE,Q23std20allocator<8SKBPIECE>,0>FP8SKBPIECEUiRC8SKBPIECE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the piece vector's insert (the jamo strings copied through vector<char>'s copy 0x393D80 and assignment 0x393D30)
+0x00393030 0x168 erase__Q23std62__vector_imp<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>,0>FP11SKBCOMPLETEP11SKBCOMPLETE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' range erase
+0x003931A0 0x450 insert__Q23std62__vector_imp<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>,0>FP11SKBCOMPLETEUiRC11SKBCOMPLETE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' insert (the index vectors copied through the 4-byte pod's copy 0x259B40 and its out-of-class operator= 0x259AF0)
+0x003935F0 0x1A0 erase__Q23std50__vector_imp<6SKBSEQ,Q23std18allocator<6SKBSEQ>,0>FP6SKBSEQP6SKBSEQ  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the sequences' range erase
+0x00393790 0x4C8 insert__Q23std50__vector_imp<6SKBSEQ,Q23std18allocator<6SKBSEQ>,0>FP6SKBSEQUiRC6SKBSEQ  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the sequences' insert
+0x00393C60 0xC8 clear__Q23std52__vector_deleter<6SKBSEQ,Q23std18allocator<6SKBSEQ>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the sequences' deleter clear
 0x00393D30 0x44 __as__Q23std36__vector_pod<c,Q23std12allocator<c>>FRCQ23std36__vector_pod<c,Q23std12allocator<c>>  # OVL1; the MSL headers round 9: include/vector's 1-byte pod assignment (assign over the other's bytes), byte-exact as a probe (build/p9/vc1.cpp); the keyboard elements' copies call it
 0x00393D80 0x48 __ct__Q23std36__vector_pod<c,Q23std12allocator<c>>FRCQ23std36__vector_pod<c,Q23std12allocator<c>>  # OVL1; the MSL headers round 9: include/vector's 1-byte pod copy (zeroed, then init), byte-exact as a probe (build/p9/vc1.cpp); the keyboard elements' inserts call it
-0x00393DD0 0x68 func_00393DD0  # OVL1
-0x00393E40 0xC0 func_00393E40  # OVL1
+0x00393DD0 0x68 __dt__Q23std64__vector_deleter<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' deleter destructor (clear 0x393E40, the block freed)
+0x00393E40 0xC0 clear__Q23std64__vector_deleter<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' deleter clear
 0x00393F00 0xA8 init<PCc>__Q23std36__vector_pod<c,Q23std12allocator<c>>FPCcPCcQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range init (memcpy), byte-exact as a probe (build/p9/vc1.cpp); the copy calls it
 0x00393FB0 0xD8 assign<PCc>__Q23std36__vector_pod<c,Q23std12allocator<c>>FPCcPCcQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range assign (memcpy), byte-exact as a probe (build/p9/vc1.cpp); the assignment calls it
-0x00394090 0x60 func_00394090  # OVL1
-0x003940F0 0x78 func_003940F0  # OVL1
-0x00394170 0x60 func_00394170  # OVL1
+0x00394090 0x60 __dt__Q23std54vector<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, ~vector<SKBCOMPLETE> (two this-tests, the deleter's destructor 0x393DD0 called)
+0x003940F0 0x78 __dt__18CSkbVec<P7SKBRULE>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_rules' destructor (four this-tests; the initialiser registers it)
+0x00394170 0x60 __dt__15CSkbCompleteVecFv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_complete's destructor (the initialiser registers it; ~vector 0x394090 called); the UI lane round 10: zui_hangul.cpp, s_complete's destructor (the initialiser registers it; two this-tests, ~vector<SKBCOMPLETE> 0x394090 called)
 0x003941D0 0x34 func_003941D0  # OVL1
 0x00394210 0x80 func_00394210  # OVL1
 0x00394290 0x88 func_00394290  # OVL1
@@ -7507,14 +7507,14 @@
 0x0039AD50 0x30 SkbUsbPunct__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's punctuation, HID usages 49-56 through the tables at 0x3FBA20 and, shifted, 0x3FB9F0, typed through 0x399040; 0x38C630 calls it)
 0x0039AD80 0x1C SkbUsbDash__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's dash key -- '_' shifted (the key's word at 4), else '-' -- typed through 0x399040 with the second argument passed on; zui_skb.cpp's USB loop 0x38C630 calls it)
 0x0039ADA0 0xB0 SkbUsbLetter__FPC9SKBUSBKEYib  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's letters, HID usages 4-29 as 'a' + usage - 4: in Korean input (the third argument) the jamo of the letter, toupper'd when shifted, typed through 0x399200; else the letter cased by shift against caps lock (the word at 0x14) through 0x39A8D0 and typed through 0x399040; 0x38C630 calls it)
-0x0039AE50 0x378 func_0039AE50  # OVL1
+0x0039AE50 0x378 SkbWrapText__FRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PCcP7C2DFontbff  # OVL1; the UI lane round 10: ours, by its body (zui_skbkeys.cpp: the text cut into 12-byte pieces -- after each run of white space through newlib's _ctype_ when the flag is set, else words, spaces and line breaks -- and wrapped into the line vector by 0x39B350; true for no text; 0x39A5B0 and 0x22B4A0 call it)
 0x0039B1D0 0x17C func_0039B1D0  # OVL1
-0x0039B350 0x260 func_0039B350  # OVL1
-0x0039B5B0 0x6C func_0039B5B0  # OVL1
+0x0039B350 0x260 SkbWrapTokens__FRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>RQ23std46vector<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>>P7C2DFontff  # OVL1; the UI lane round 10: ours, by its body (zui_skbkeys.cpp: each line as many pieces as a C2DString measures within the width, a break piece ending one; the line resized in (0x383800) and assigned through assign(s, n) 0x39B620; false when one word alone is too wide)
+0x0039B5B0 0x6C __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCcUi  # OVL1; the UI lane round 10: include/string's basic_string(const char *, n) (the words zeroed, reserve(n), the template replace over s..s+n), zui_skbkeys.cpp's tail: SkbWrapTokens builds each word's string with it
 0x0039B620 0x50 assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCcUi  # OVL1; the MSL headers round 9: include/string's assign(const char *, n), out of class, replace(0, size(), s, s + n) through the template replace 0x1EE780 with its category byte; byte-exact as a probe (build/p9/sa.cpp); zui_skbkeys.cpp's tail, 0x39B350 calls it
-0x0039B670 0x4CC func_0039B670  # OVL1
-0x0039BB40 0x68 func_0039BB40  # OVL1
-0x0039BBB0 0x8 func_0039BBB0  # OVL1
+0x0039B670 0x4CC insert__Q23std54__vector_imp<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>,0>FP8SKBTOKENUiRC8SKBTOKEN  # OVL1; the UI lane round 10: the class vector's insert for the wrap's 12-byte pieces (the type byte copied lb/sb), zui_skbkeys.cpp's tail: SkbWrapText's push_backs
+0x0039BB40 0x68 __dt__Q23std56__vector_deleter<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>>Fv  # OVL1; the UI lane round 10: the pieces' deleter destructor (clear 0x39BBB0 called, the block freed), zui_skbkeys.cpp's tail: SkbWrapText's local vector destroyed with 0
+0x0039BBB0 0x8 clear__Q23std56__vector_deleter<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>>Fv  # OVL1; the UI lane round 10: the pieces' deleter clear (a trivial element: the size zeroed), zui_skbkeys.cpp's tail
 0x0039BBC0 0xD0 fwrite__9CBufferIOFPCvi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4); falls back on CFileIO's slot 0x2C; SOCOM 1's slot 0x2C is fwrite__9CBufferIOFPCvi)
 0x0039BC90 0xA0 fwrite__9CBufferIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BD30 0x2C fflush__9CBufferIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -8591,7 +8591,7 @@
 0x00403620 0x9C func_00403620  # OVL1 data area; a static initialiser
 0x004036C0 0x64 func_004036C0  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint)
 0x00403730 0x34 __sinit_zui_skb.cpp  # OVL1 data area; a static initialiser; by hand (g_arrSkbs zeroed and its destructor 0x38D5C0 registered: SOCOM 1's .p__sinit_zui_skb.cpp does the same) -- zui_skb.cpp's static initialiser
-0x00403770 0x84 func_00403770  # OVL1 data area; a static initialiser
+0x00403770 0x84 __sinit_zui_hangul.cpp  # OVL1 data area; a static initialiser; the UI lane round 10: zui_hangul.cpp's static initialiser (the file name ours): s_complete (0x49ED08) and s_rules (0x49ED28) zeroed and their destructors 0x394170 and 0x3940F0 registered, s_compose's count (0x49ED40) zeroed
 0x00403800 0x90C __sinit_zui_skbview.cpp  # OVL1 data area; a static initialiser; the UI lane round 9: zui_skbview.cpp's static initialiser (the file name ours): the four rows, eight CBmpWithNode, a CSkbRect, a CRenderableString and nine CSaferStr, in declaration order -- byte-exact from source
 0x00404110 0x8C __sinit_zui_skbkeys.cpp  # OVL1 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.54, a hint); the UI lane round 9: zui_skbkeys.cpp's static initialiser (the file name ours, the USB keys' unit C): three CRenderableString statics 0x4A1370/0x4A1450/0x4A1520, used by 0x398B50-0x39A790 -- byte-exact from source
 0x004041A0 0x94 func_004041A0  # OVL1 data area; a static initialiser

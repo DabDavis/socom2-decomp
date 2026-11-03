@@ -16,6 +16,10 @@
 #include "zui_skb.h"
 #include "../znode/znode.h"
 
+/* the SDK libc's character table (newlib's _ctype_, MAIN 0x1D08D0): bit 8 is white space */
+extern "C" const char _ctype_[];
+#define rdr_isspace(c) ((_ctype_ + 1)[c] & 8)
+
 /* the text being typed: which of the two edited strings is current (0x4A1330: string 0 when set),
  * the node shown while it is (0x4A1358), and the three strings on screen (0x4A1370, 0x4A1450,
  * 0x4A1520: the initialiser 0x404110 builds them). The names ours */
@@ -65,8 +69,10 @@ extern "C" void func_00399040(unsigned short c, int arg);
  * (0x399200: the argument first) */
 extern "C" unsigned short func_0039A8D0(int c, bool upper, int x);
 extern "C" void func_00399200(int arg, signed char jamo);
-/* the jamo a key types (zui_hangul.cpp's) */
+/* the jamo a key types, the composition dropped, its last jamo taken back (zui_hangul.cpp's) */
 signed char KeyToJamo(char c);
+void SkbHangulClear();
+unsigned short SkbHangulBack();
 extern "C" int toupper(int c);
 
 /* the digit row's characters, HID usages 30-39 (1 .. 0), and shifted */
@@ -75,6 +81,159 @@ static const int s_shiftDigitChars[12] = {'!', '@', '#', '$', '%', '^', '&', '*'
 /* the punctuation's, HID usages 49-56, and shifted */
 static const int s_shiftPunctChars[12] = {'|', '}', ':', '"', '~', '<', '>', '?'};
 static const int s_punctChars[12] = {'\\', ']', ';', '\'', '`', ',', '.', '/'};
+
+/* a piece of the text the wrap lays out (ours): a word, a run of spaces, a line break */
+enum SKBTOKENTYPE {
+    SKBTOKEN_WORD,
+    SKBTOKEN_SPACE,
+    SKBTOKEN_NEWLINE
+};
+
+/* where the cut is (ours): before any piece or after a break, in a word, in spaces */
+enum SKBWRAPSTATE {
+    SKBWRAP_NONE,
+    SKBWRAP_WORD,
+    SKBWRAP_SPACE
+};
+
+/* a piece and its extent (ours: 12 bytes, the type a byte -- the insert 0x39B670 copies it lb/sb) */
+struct SKBTOKEN {
+    SKBTOKEN(SKBTOKENTYPE type, const char *start) : m_type(type), m_start(start), m_end(0) {}
+
+    SKBTOKENTYPE m_type;   // 0x0
+    const char *m_start;   // 0x4
+    const char *m_end;   // 0x8
+};
+
+/* a string's measured width (ours: the extent UpdatePos leaves at 0x3C, read through its address) */
+static inline const float &StringWidth(const C2DString &s)
+{
+    return s.m_charheight;
+}
+
+/* the pieces laid out in lines no wider than width at the scale: each line as many pieces as fit,
+ * measured as a C2DString in the font, a line break ending one; false when a single word is too
+ * wide (0x39B350; the name ours). The word's string is a std::string built by the (s, n) constructor
+ * (0x39B5B0, destroyed with -1, as the C2DString), the line assigned through assign(s, n) (0x39B620).
+ * OPEN, 5 instructions (same size): the outer loop's first block schedules the first piece's read
+ * otherwise -- the target loads the data pointer first, then i * 12, `first = i` between; here the
+ * index first. Tried: the three declarations in every order, `tokens[first]`, `begin() + i`, a
+ * reference to the piece, a for loop, an int index */
+bool SkbWrapTokens(std::vector<CSaferStr> &lines, std::vector<SKBTOKEN> &tokens, C2DFont *font, float scale,
+                   float width)
+{
+    unsigned int i = 0;
+
+    while (i < tokens.size()) {
+        unsigned int first = i;
+        bool fits = true;
+        const char *start = tokens[i].m_start;
+        const char *end = start;
+
+        while (fits && i < tokens.size()) {
+            SKBTOKEN &t = tokens[i];
+
+            switch (t.m_type) {
+            case SKBTOKEN_WORD: {
+                std::string s(start, t.m_end - start);
+                C2DString str;
+
+                str.Load(scale, s.c_str(), font, 0.0f, 0.0f, false);
+                str.UpdatePos();
+                fits = StringWidth(str) <= width;
+                if (fits) {
+                    end = t.m_end;
+                    i++;
+                } else if (first == i) {
+                    return false;
+                }
+                break;
+            }
+            case SKBTOKEN_SPACE:
+                i++;
+                break;
+            case SKBTOKEN_NEWLINE:
+                fits = false;
+                i++;
+                break;
+            }
+        }
+        lines.resize(lines.size() + 1);
+        SkbPrev(lines.end())->assign(start, end - start);
+    }
+    return true;
+}
+
+/* a flag's negation (ours: materialised, sltu and xori, before each test branches on it) */
+static inline bool SkbNot(int x)
+{
+    return !(bool)x;
+}
+
+/* the text cut into pieces and wrapped into lines (SkbWrapTokens): split after each run of white
+ * space when byWord, else into words, spaces and line breaks; true for no text (0x39AE50; the name
+ * ours: the keyboard's text layout 0x39A5B0 and 0x22B4A0 call it). The pieces are built in place by
+ * their constructor (the push_back's temporary, its fields' addresses hoisted), the last one's end
+ * set through SkbPrev; the state is a byte enum (held unnarrowed, `movz` into a1), the flags' tests
+ * materialised through SkbNot.
+ * OPEN, 3 instructions (same size): `state == SKBWRAP_WORD` takes its xori temporary in v1 in the
+ * target (then v1 zeroed for wordChar), here in a0, inWord's own register. Tried: the flags in
+ * every declaration order, `!(state != ...)`, an int inWord, `(int)state == 1` */
+bool SkbWrapText(std::vector<CSaferStr> &lines, const char *text, C2DFont *font, bool byWord, float scale,
+                 float width)
+{
+    if (!text || !*text)
+        return true;
+
+    std::vector<SKBTOKEN> tokens;
+
+    if (byWord) {
+        tokens.push_back(SKBTOKEN(SKBTOKEN_WORD, text));
+        for (;;) {
+            char c = *++text;
+
+            if (!c)
+                break;
+            if (rdr_isspace(text[-1]) && !rdr_isspace(c)) {
+                SkbPrev(tokens.end())->m_end = text;
+                tokens.push_back(SKBTOKEN(SKBTOKEN_WORD, text));
+            }
+        }
+        SkbPrev(tokens.end())->m_end = text;
+    } else {
+        SKBWRAPSTATE state = SKBWRAP_NONE;
+
+        for (;;) {
+            char c = *text;
+            bool notEnd = false;
+            bool inWord = state == SKBWRAP_WORD;
+            bool wordChar = false;
+            int newline = c == '\n';
+            int space = c == ' ';
+
+            if (!SkbNot(c) && SkbNot(newline))
+                notEnd = true;
+            if (notEnd && SkbNot(space))
+                wordChar = true;
+            if (inWord && !wordChar)
+                SkbPrev(tokens.end())->m_end = text;
+            bool newSpace = false;
+
+            if (state != SKBWRAP_SPACE && space)
+                newSpace = true;
+            if (newline || newSpace || (!inWord && wordChar)) {
+                tokens.push_back(SKBTOKEN(newline ? SKBTOKEN_NEWLINE : (space ? SKBTOKEN_SPACE : SKBTOKEN_WORD), text));
+                state = newline ? SKBWRAP_NONE : (space ? SKBWRAP_SPACE : SKBWRAP_WORD);
+            }
+            if (!*text)
+                break;
+            text++;
+        }
+    }
+    bool ok = SkbWrapTokens(lines, tokens, font, scale, width);
+
+    return ok;
+}
 
 /* a letter key, HID usages 4-29: a jamo in Korean input (the shifted letter's), else the letter
  * cased by shift against caps lock */
@@ -112,7 +271,6 @@ void SkbUsbDigit(const SKBUSBKEY *key, int arg)
 extern "C" {
 void func_0039A5B0(const char *text, CSoftKeyboard *skb);
 void func_0039A1D0(int a, CSoftKeyboard *skb, int b);
-void func_00391350();
 void func_00395DE0(int state);
 void func_0039A400(CSoftKeyboard *skb);
 bool func_00394840(CSoftKeyboard *skb);
@@ -148,7 +306,6 @@ void SkbTakeText(CGameMenu *menu)
 }
 
 extern "C" {
-unsigned short func_003910E0();
 void func_00398C00(unsigned short c, CSoftKeyboard *skb);
 void func_00398C40(CSoftKeyboard *skb);
 void func_003952F0();
@@ -182,7 +339,7 @@ static inline bool HasChar(const char *p)
  * (0x10 short) */
 void SkbTypeOrBack(CSoftKeyboard *skb)
 {
-    unsigned short c = func_003910E0();
+    unsigned short c = SkbHangulBack();
 
     if (c) {
         func_00398C00(c, skb);
@@ -214,7 +371,7 @@ bool SkbClearText(CSoftKeyboard *skb)
         had = true;
     func_0039A5B0("", skb);
     func_0039A1D0(0, skb, 0);
-    func_00391350();
+    SkbHangulClear();
     func_00395DE0(3);
     return had;
 }
