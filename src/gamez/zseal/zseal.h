@@ -424,7 +424,9 @@ public:
 
     /* the goals: a direction, a position (a point or a map cell's centre), cleared (seal_ai.cpp,
      * SOCOM 1's; OVL2 0x56D920, 0x56DAA0, 0x56DBA0, 0x56DCA0) */
-    bool SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool b);
+    /* (SOCOM 1's returns the facing's dot product with the new direction, 1 when none is set: a
+     * float in $f0 in both builds) */
+    float SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat);
     bool SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance);
     bool SetGoalPos(GOAL_TYPE type, const CAiMapLoc &loc, float tolerance);
     void ClearGoal(GOAL_TYPE type);

@@ -739,6 +739,40 @@ float CSealCtrl::ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, floa
     return ::ComputeTurnThrottle(dir, goal, dot, 1.5f);
 }
 
+static inline bool InRegion(const CAiMap::region *r, const CEntity *e)
+{
+    return r->Contains(e->m_mapLoc);
+}
+
+/* whether a live entity of a team in the mask stands in a map region: the entity list walked by a
+ * const view, its iterator assigned (OVL2 0x56D530, new in SOCOM II: 0x56D2B0 and CTRegion::Tick
+ * call it; the name unknown).
+ * OPEN, 12 instructions (the size right): the target holds the entity in t2, takes &e->m_mapLoc
+ * into a2 right after reading its map byte and reuses t2 for Contains's `in` (`move t2,zero` in the
+ * map test's delay slot); here the entity is t3 and the address is taken in that slot. Calling
+ * region::Contains straight folds the address into the loads and drops the chain's join pad (0x168);
+ * through this wrapper taking the entity both come back. Tried: the entity declared before the walk
+ * or outside the loop, the wrapper taking the cell by reference or pointer, a reference or pointer
+ * local to the cell, the region by reference, Contains written out with the cell's pointer first,
+ * `in` returned through a local. */
+extern "C" bool func_0056D530(const CAiMap::region *r, unsigned int team)
+{
+    bool found = false;
+
+    if (r && team) {
+        const CEntityList &list = CEntity::m_list;
+        CEntityList::const_iterator i;
+
+        for (i = list.begin(); !found && i != list.end(); ++i) {
+            CEntity *e = *i;
+
+            if (e && e->m_isAlive && (team & e->m_team))
+                found = InRegion(r, e);
+        }
+    }
+    return found;
+}
+
 extern "C" {
 /* CSealCtrl::ClearLook(AI_LOOK) (OVL2 0x600D40, the kit lane's seal_look.cpp) */
 void func_00600D40(CSealCtrl *ctrl, int look);
@@ -1312,12 +1346,8 @@ void CSealCtrlAi::OnStateChange(SEAL_STATE from, SEAL_STATE to)
 }
 
 /* the goal cleared: of the given kind, or whatever is set; the position and direction dropped and
- * the goal's timer stopped (OVL2 0x56DCA0; SOCOM 1's, SetGoalPos inlined).
- * OPEN, 2 instructions (0xB0 against 0xA8): the target puts the inlined `type < m_goal_type` test
- * in the `m_goal_type == type` branch's delay slot as `slt at` and branches on it; here MW
- * computes it into v0 after a nop and leaves a nop before the call's join. The same with the
- * position's clearing written out (`if (type >= m_goal_type) {...}`), `(void)`, or an early
- * return for the outer test -- the out-of-line SetGoalPos, the same test, matches. */
+ * the goal's timer stopped (OVL2 0x56DCA0; SOCOM 1's, SetGoalPos inlined -- its test written
+ * `m_goal_type > type`, which alone puts the inlined copy's `slt at` in this function's delay slot). */
 void CSealCtrl::ClearGoal(GOAL_TYPE type)
 {
     if (type == GOAL_NONE)
@@ -1347,7 +1377,9 @@ bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CAiMapLoc &loc, float tolerance
  * kind with it once no direction is left (OVL2 0x56DAA0; SOCOM 1's) */
 bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance)
 {
-    if (type < m_goal_type)
+    /* the member first: inlined (ClearGoal, SetGoalDir) the test then branches on `slt at` from
+     * the delay slot before it, where `type < m_goal_type` computes it into v0 after a nop */
+    if (m_goal_type > type)
         return false;
     if (pos) {
         m_goal_pos = *pos;
@@ -1362,6 +1394,54 @@ bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance)
             m_goal_type = GOAL_NONE;
     }
     return true;
+}
+
+/* a direction as the goal, unless a goal of a higher kind is set: flattened, and made a unit
+ * vector unless it came flat and asked to stay so; a position of another kind cleared (SetGoalPos
+ * inlined), the facing's dot product with it returned -- none clears the direction, and the kind
+ * once no position is left (OVL2 0x56D920; SOCOM 1's, its sqrtf now sqrt.s).
+ * OPEN, 8 instructions (the size right): the target reads x again for the scaling after the sqrt
+ * (`lwc1 $f0,0x174(a0)` after `mtc1 1.0`), x and z loaded into f1/f2, x*x in the mula, the root in
+ * f2; MW here keeps the x it loaded for the length in a register across the sqrt and the test, as
+ * the matched CPnt3D::Normalize does in the target (so sqrt.s is no barrier). The sum is written
+ * z first, which gets the rest (`x*x + z*z`, SOCOM 1's order, is 18 off: x in f2 kept). Tried: the
+ * components by value into a length inline, the scaling or the whole normalisation through an
+ * inline taking the point by pointer, a scalar copy of the point, `len = 1.0f / len`, the two
+ * scalings each `*= 1.0f / len`. The three-float constructor gives the stores (z loaded first) and
+ * m_matrix's elements read straight give the dot's operand order (through operator() they swap) */
+float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
+{
+    float dot = 1.0f;
+
+    if (type < m_goal_type)
+        return dot;
+    if (dir) {
+        m_goal_dir = CPnt3D(dir->x, 0.0f, dir->z);
+        if (!flat || dir->y != 0.0f) {
+            float len = sqrtf(m_goal_dir.z * m_goal_dir.z + m_goal_dir.x * m_goal_dir.x);
+
+            if (len != 0.0f) {
+                float inv = 1.0f / len;
+
+                m_goal_dir.x *= inv;
+                m_goal_dir.z *= inv;
+            }
+        }
+        m_goal_dir_valid = true;
+        {
+            const CMatrix &m = m_entity->m_node->m_matrix;
+
+            dot = -m.m_matrix[2][0] * m_goal_dir.x + -m.m_matrix[2][2] * m_goal_dir.z;
+        }
+        if (m_goal_pos_valid && m_goal_type != type)
+            SetGoalPos(m_goal_type, 0, 0.0f);
+        m_goal_type = type;
+    } else {
+        m_goal_dir_valid = false;
+        if (!m_goal_pos_valid)
+            m_goal_type = GOAL_NONE;
+    }
+    return dot;
 }
 
 /* the destructor of the network's controller (OVL2 0x56F460: CSealCtrl's called as a base) */

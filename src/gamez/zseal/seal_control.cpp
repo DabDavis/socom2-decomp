@@ -27,6 +27,14 @@ extern "C" float func_005975B0(const CPnt3D *v)
     return v->x * v->x + v->z * v->z;
 }
 
+/* points turned by a matrix's rotation, in place (OVL2 0x597530: an inline's copy, right after its
+ * first caller CSealCtrl::PostTick -- zmath.h's TransformVectors with one array for both, so the
+ * input cursor is a copy of the output's; the kit calls it too, 0x5B8920 and 0x5C1970) */
+extern "C" void func_00597530(const CMatrix *m, CPnt3D *p, int count)
+{
+    TransformVectors(m, p, p, count);
+}
+
 /* the world's camera and its far plane (zdb::CWorld holds it at 0x128, the plane at 0xEC) */
 struct CViewCamera {
     unsigned char _0[0xec];
