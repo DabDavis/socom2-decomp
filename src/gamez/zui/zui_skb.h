@@ -168,9 +168,11 @@ struct CSkbFonts {
     C2DFont m_fonts[3];
 };
 
-/* four node lists (the constructor's out-of-line copy is 0x38E6F0) */
-struct CSkbNodeLists {
-    std::vector<zdb::CNode *> m_lists[4];
+/* four texture-handle lists (the constructor's out-of-line copy is 0x38E6F0: __construct_array over
+ * vector<zdb::CTexHandle *>'s constructor and destructor copies 0x1FB3D0/0x1FB300, so the elements
+ * are texture handles, not nodes; the name ours) */
+struct CSkbTexLists {
+    std::vector<zdb::CTexHandle *> m_lists[4];
 };
 
 /* a key cap's look: a texture name, a scale and a colour (the names ours) */
@@ -281,7 +283,7 @@ public:
     zdb::CNode *m_node;   // 0x178
     int m_17c;   // 0x17c
     int m_180;   // 0x180
-    CSkbNodeLists m_nodeLists;   // 0x184
+    CSkbTexLists m_texLists;   // 0x184
     CBmpWithNode m_1c0;   // 0x1c0
     CBmpWithNode m_270;   // 0x270
     CBmpWithNode m_320;   // 0x320

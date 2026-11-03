@@ -143,7 +143,7 @@ void CreateSoftKeyboard(_zrdr *rdr)
 /* (the next units' and this one's not yet written, by address: the node lists' layout from a grid
  * size, a keyboard's elements shown or hidden) */
 extern "C" {
-void func_00395140(int w, int h, CSkbNodeLists *lists, CSoftKeyboard *skb);
+void func_00395140(int w, int h, CSkbTexLists *lists, CSoftKeyboard *skb);
 void func_0038B580(CSoftKeyboard *skb, int which);
 void func_00394420();
 void func_00398B50();
@@ -160,6 +160,33 @@ int func_00395110();
 int func_003996B0();
 void func_00399D20(CGameMenu *menu);
 void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu);
+}
+
+/* the cursor's axis (ours: a byte enum, passed as `li 1; movz`) */
+enum SKBAXIS { SKB_AXIS_ROW, SKB_AXIS_COLUMN };
+
+extern "C" {
+/* the cursor moved along an axis by a step until it lands on another key (0x38C130), and its two
+ * steps (0x38C4B0, 0x38C4C0) */
+void func_0038C130(CSoftKeyboard *skb, SKBAXIS axis, int (*step)(int));
+int func_0038C4B0(int i);
+int func_0038C4C0(int i);
+}
+
+/* up or down (directions 1 and 2) move within the column (ours) */
+static inline bool SkbIsVertical(unsigned char dir)
+{
+    return dir == 1 || dir == 2;
+}
+
+/* the cursor moved one key in a direction: 1 up, 2 down, 3 left, 4 right (0x38C450; 0x38CB80 jumps
+ * here; the name ours) */
+void SkbMoveCursor(CSoftKeyboard *skb, unsigned char dir)
+{
+    /* the axis into a local first: in the call's list it would be chosen after the step */
+    SKBAXIS axis = SkbIsVertical(dir) ? SKB_AXIS_ROW : SKB_AXIS_COLUMN;
+
+    func_0038C130(skb, axis, dir == 2 || dir == 4 ? func_0038C4C0 : func_0038C4B0);
 }
 
 /* a count of none (ours: an inline bool returning the negation, materialised before each branch) */
@@ -212,7 +239,7 @@ void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
  * active one and its two element sets shown (SOCOM II's; the name ours) */
 void CSoftKeyboard::SwitchTo(CSoftKeyboard *to)
 {
-    func_00395140(to->m_17c, to->m_180, &to->m_nodeLists, to);
+    func_00395140(to->m_17c, to->m_180, &to->m_texLists, to);
     void (C2DButton::*normal)() = &C2DButton::SetNormal;
 
     if (GetCurKeyProps())
