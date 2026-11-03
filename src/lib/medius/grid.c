@@ -337,7 +337,40 @@ void func_00626140(GRID *p)
     p->x68 = 0;
 }
 
-/* 0x626240: not written */
+typedef struct GRID_SLOTS {             /* a type-5 message: the room left in the group */
+    unsigned short nSize;               /* 0x00: sizeof (GRID_SLOTS) */
+    unsigned short nGrid;               /* 0x02: the group spoken in */
+    unsigned short nFree;               /* 0x04: free slots, the receiver's own counted */
+    unsigned short x06;
+    int nId;                            /* 0x08: this client */
+} GRID_SLOTS;                           /* 0x0C */
+
+/* The free member slots to one peer -- its own slot counted free, one for a growing table --
+ * unless there are none and it is not forced; the send's result. */
+int func_00626240(GRID *p, unsigned int nTo, int bForce)
+{
+    GRID_HEADER h;
+    GRID_SLOTS msg;
+    int nId = 0xFFFF;
+    int i;
+
+    func_00611E60(p->pAudio, &nId);
+    msg.nId = nId;
+    msg.nGrid = func_00611E70(p->pAudio);
+    msg.nSize = sizeof msg;
+    msg.nFree = 0;
+    for (i = 0; i < p->nMembers; i++) {
+        if (p->pMembers[i].nState == 0 || p->pMembers[i].nId == nTo)
+            msg.nFree++;
+    }
+    if (msg.nFree == 0 && p->nMaxMembers == 0)
+        msg.nFree++;
+    if (bForce != 0 || msg.nFree != 0) {
+        func_00624BE0(p, &h, 5, sizeof msg);
+        return func_00610FA0(p->pAudio, nTo, &h, &msg, sizeof msg);
+    }
+    return 0;
+}
 
 GRID_MEMBER *func_00626350(GRID *p, unsigned int nId)
 {
@@ -378,7 +411,48 @@ void func_00626410(GRID *p)
         func_00624510(&p->pMembers[i]);
 }
 
-/* 0x6264C0: not written */
+typedef struct PEER_INFO {              /* what a peer tells of itself (audio.c's, 32 bytes at 0x20) */
+    int nAddr;                          /* 0x00 */
+    int nAddr2;                         /* 0x04 */
+    int nPort;                          /* 0x08 */
+    int nPort2;                         /* 0x0C */
+    int nGrid;                          /* 0x10 */
+    int nId;                            /* 0x14 */
+    unsigned int nFlags;                /* 0x18 */
+    int x1C;                            /* 0x1C */
+} PEER_INFO;
+
+extern void *memcpy(void *d, const void *s, unsigned int n);
+extern unsigned int func_0062A130(void *pPeer);         /* peer.c: the peer's flags */
+
+/* Each joined member's self-description (0x8000 set when its peer's flags hold 0x4000) to the
+ * caller's function, until it returns 0 -- audio.c's 0x611BA0 over a group's table. The element's
+ * address and its peer each a local (the peer read through the member twice keeps the call's
+ * argument out of a0 until after the copy, 23 words; indexing swaps the sum's operands, 1). */
+int func_006264C0(GRID *p, int (*pfn)(void *pAudio, void *pUser, PEER_INFO *pInfo), void *pUser)
+{
+    PEER_INFO info;
+    GRID_MEMBER *m;
+    void *pPeer;
+    int i;
+
+    for (i = 0; i < p->nMembers; i++) {
+        m = &p->pMembers[i];
+        if (m->nState == 2) {
+            pPeer = m->pPeer;
+            if (pPeer != 0) {
+                memcpy(&info, (char *)pPeer + 0x20, sizeof(info));
+                if (func_0062A130(pPeer) & 0x4000)
+                    info.nFlags |= 0x8000;
+                else
+                    info.nFlags &= ~0x8000;
+                if (pfn(p->pAudio, pUser, &info) == 0)
+                    break;
+            }
+        }
+    }
+    return 0;
+}
 
 void func_006265F0(GRID *p)
 {

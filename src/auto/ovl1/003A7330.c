@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_003A7350(s32 arg0, f32 arg1);
+M2C_UNK Rotate__7CTurretFf(char * arg0, f32 arg1);
 void func_003A7330(char *arg0, f32 fparg0) {
-    M2C_FIELD(arg0, f32 *, 0x3C0) = fparg0;
-    func_003A7350((s32) arg0, 0.0f);
+    SC_MEMBER(arg0, f32 *, 0x3C0) = fparg0;
+    Rotate__7CTurretFf(arg0, 0.0f);
 }

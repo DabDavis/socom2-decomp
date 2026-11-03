@@ -4,16 +4,17 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-void *func_005E3D90(s32);                           /* extern */
+char *GetScript__7AnimSetF8AnimType(s32);           /* extern */
 
-f32 func_0058C2B0(void *arg0) {
-    void *temp_v0;
+f32 func_0058C2B0(char *arg0) {
+    char *temp_v0;
 
-    temp_v0 = func_005E3D90(M2C_FIELD(arg0, s32 *, 0x528));
-    if (M2C_FIELD(temp_v0, u8 *, 0x4B) & 1) {
-        return M2C_FIELD(temp_v0, f32 *, 0x50);
+    temp_v0 = GetScript__7AnimSetF8AnimType(SC_MEMBER(arg0, s32 *, 0x528));
+    if (SC_MEMBER(temp_v0, u8 *, 0x4B) & 1) {
+        return SC_MEMBER(temp_v0, f32 *, 0x50);
     }
     return 0.0f;
 }

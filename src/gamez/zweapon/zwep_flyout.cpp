@@ -242,16 +242,14 @@ void CFlyoutMachine::SetTracerModel(CModel *model)
 
 /* ---- CPlacedExplosiveList (0x3D4810-0x3D4B7F) ---- */
 
-/* MSL's single-element erase of the pod storage (0x28F220: body.cpp's tail emits it; include/vector
- * has no single erase -- called through its placeholder) */
-extern "C" unsigned int *func_0028F220(void *v, unsigned int *position);
-
 /* one element erased, the iterator after it given back (inline: the iterator handed over by value,
  * copied bitwise, and the raw pointer the erase returns made the iterator) */
 static inline CPlacedExplosiveList::iterator Erase(CPlacedExplosiveList *list,
                                                    CPlacedExplosiveList::iterator pos)
 {
-    return CPlacedExplosiveList::iterator((PlacedExplosive **)func_0028F220(list, (unsigned int *)pos.m_p));
+    return CPlacedExplosiveList::iterator(
+        (PlacedExplosive **)list->std::__vector_pod<unsigned int, std::allocator<unsigned int> >::erase(
+            (unsigned int *)pos.m_p));
 }
 
 /* the storage cleared, then emptied element by element (Clear inlined) */

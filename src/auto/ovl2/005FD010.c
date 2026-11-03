@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_005FCF10(void *, s32);                 /* extern */
+M2C_UNK SetFollowMaster__11CSealCtrlAiFP10CZSealBody(char *, s32); /* extern */
 
-void func_005FD010(void *arg0, void *arg1, s32 arg2) {
-    func_005FCF10(arg1, arg2);
-    M2C_FIELD(arg0, s32 *, 0x58) = (s32) M2C_FIELD(arg1, s32 *, 0x5D4);
+void func_005FD010(char *arg0, char *arg1, s32 arg2) {
+    SetFollowMaster__11CSealCtrlAiFP10CZSealBody(arg1, arg2);
+    SC_MEMBER(arg0, s32 *, 0x58) = (s32) SC_MEMBER(arg1, s32 *, 0x5D4);
 }

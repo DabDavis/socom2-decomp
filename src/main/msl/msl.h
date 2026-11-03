@@ -130,6 +130,7 @@ public:
     ~_RefCountedPtr();
     _RefCountedPtr &operator=(const _RefCountedPtr &other);
     T *get() const { return ptr_; }
+    T *operator->() const { return ptr_; }
 private:
     T *ptr_;
     int *refCount_;
@@ -202,9 +203,40 @@ basic_string<charT, traits, Allocator>::~basic_string()
 
 typedef basic_string<char> string;
 
-/* the facets' table: a pointer vector over the pod vector (capacity, size, data), its destructor
- * three this-tested levels */
-template <class T>
+class exception {
+public:
+    exception() {}
+    virtual ~exception() {}
+    virtual const char *what() const;
+};
+
+/* <stdexcept>: the logic errors carry their message in the library's counted string; the vector's and
+ * the string's length and range checks throw them (vtables 0x1D5250, 0x1D5240, 0x1D5290) */
+class logic_error : public exception {
+public:
+    explicit logic_error(const char *what_arg) : what_(what_arg) {}
+    virtual const char *what() const { return what_.c_str(); }
+private:
+    _MSLstring what_;
+};
+
+class length_error : public logic_error {
+public:
+    explicit length_error(const char *what_arg) : logic_error(what_arg) {}
+};
+
+class out_of_range : public logic_error {
+public:
+    explicit out_of_range(const char *what_arg) : logic_error(what_arg) {}
+};
+
+/* <vector>, CodeWarrior 3.0's MSL shape (the game's map names its instances so): a vector of
+ * pointers is __vector_imp<T, A, 1> over the pod vector of unsigned int (capacity, size, data -- the
+ * facets' table, its destructor three this-tested levels, resize on the pod), a vector of a class
+ * __vector_imp<T, A, 0> over its deleter (the same three words), with class iterators nested in it
+ * (one word: copied through an FPR, passed by value in a register, returned through a hidden
+ * pointer -- the range map's walks) and the class insert out of line on the element pointer */
+template <class T, class Allocator>
 class __vector_pod {
 public:
     __vector_pod() : capacity_(0), size_(0), data_(0) {}
@@ -215,32 +247,200 @@ public:
     }
     size_t size() const { return size_; }
     T &operator[](size_t i) { return data_[i]; }
+    T *begin() { return data_; }
+    T *end() { return data_ + size_; }
+    static size_t max_size() { return 0x3FFFFFFF; }
+    void resize(size_t sz, const T &c);
+    void insert(T *position, size_t n, const T &x);
+    T *erase(T *first, T *last);
 protected:
     size_t capacity_;
     size_t size_;
     T *data_;
 };
 
-template <class T>
-class __vector_imp : public __vector_pod<T> {
+/* <algorithm>'s copy, forward over random-access iterators */
+template <class InputIterator, class OutputIterator>
+inline OutputIterator copy(InputIterator first, InputIterator last, OutputIterator result)
+{
+    for (; first < last; ++first, ++result)
+        *result = *first;
+    return result;
+}
+
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::resize(size_t sz, const T &c)
+{
+    if (sz > size())
+        insert(end(), sz - size(), c);
+    else if (sz < size())
+        erase(begin() + sz, end());
+}
+
+/* n copies of x at position: in place when the capacity holds them (x itself moved with the tail
+ * when it lies there), else into a buffer grown by doubling from the old capacity (SOCOM 1's
+ * <vector> 486-530: newcap, newsize, olddata, pos, xp, t1 -- MW's DWARF lists a block's locals in
+ * REVERSE declaration order: flush's `failed` before its sentry `ok`).
+ * OPEN (MAIN's copy 0x18B810), 0x470 against 0x488: the throw (length_error through the counted
+ * string, its constructor inlined once flush has generated it), both branches and the 8x copies are
+ * the target's; the registers are numbered otherwise (the target: this s3, position s2, n s1, xp s4
+ * from entry, newsize s0, olddata s5, pos s6 -- here this s2, position s1, n s0, x s6) and the in-place
+ * branch is 0x18 short. Written so that iostream.cpp emits ~logic_error, ~length_error and what(). */
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
+{
+    if (n == 0)
+        return;
+    if (n > max_size() || size_ > max_size() - n)
+        throw length_error("vector::insert length error");
+    size_t newsize = size_ + n;
+    if (newsize <= capacity_) {
+        T *e = data_ + size_;
+        size_t t1 = (size_t)(e - position);
+        const T *xp = &x;
+        if (!(xp < e - (t1 - n)) && xp < e)
+            xp += n;
+        if (t1 != 0)
+            for (T *i = e, *j = e + n; position < i;)
+                *--j = *--i;
+        for (size_t k = n; k != 0; --k)
+            *position++ = *xp;
+        size_ += n;
+    } else {
+        T *olddata = data_;
+        size_t pos = (size_t)(position - olddata);
+        size_t newcap = capacity_ ? capacity_ : 1;
+        while (newcap < newsize)
+            newcap = newcap < max_size() / 2 ? newcap * 2 : max_size();
+        data_ = (T *)operator new(newcap * sizeof(T));
+        T *p = data_ + pos;
+        for (size_t k = n; k != 0; --k)
+            *p++ = x;
+        if (olddata) {
+            copy(olddata, olddata + pos, data_);
+            copy(olddata + pos, olddata + size_, data_ + pos + n);
+            operator delete(olddata);
+        }
+        size_ = newsize;
+        capacity_ = newcap;
+    }
+}
+
+template <class T, class Allocator>
+T *__vector_pod<T, Allocator>::erase(T *first, T *last)
+{
+    if (first == last)
+        return first;
+    T *e = data_ + size_;
+    if (e - last != 0)
+        copy(last, e, first);
+    size_ -= last - first;
+    return first;
+}
+
+template <class T, class Allocator>
+class __vector_deleter {
 public:
-    ~__vector_imp() {}
+    __vector_deleter() : capacity_(0), size_(0), data_(0) {}
+    ~__vector_deleter()
+    {
+        if (data_)
+            operator delete(data_);
+    }
+protected:
+    size_t capacity_;
+    size_t size_;
+    T *data_;
 };
 
-template <class T>
-class vector : public __vector_imp<T> {
+template <class T, class Allocator, bool IsPOD> class __vector_imp;
+
+template <class T, class Allocator>
+class __vector_imp<T, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
+    typedef __vector_pod<unsigned int, allocator<unsigned int> > base;
+public:
+    ~__vector_imp() {}
+    T &operator[](size_t i) { return (T &)base::operator[](i); }
+};
+
+template <class T, class Allocator>
+class __vector_imp<T, Allocator, false> : public __vector_deleter<T, Allocator> {
+public:
+    class iterator {
+    public:
+        typedef int difference_type;
+        iterator(T *p) : m_p(p) {}
+        T &operator*() const { return *m_p; }
+        T *operator->() const { return m_p; }
+        iterator &operator++() { ++m_p; return *this; }
+        iterator &operator+=(difference_type n) { m_p += n; return *this; }
+        iterator operator+(difference_type n) const { iterator t(*this); return t += n; }
+        difference_type operator-(const iterator &o) const { return m_p - o.m_p; }
+        bool operator==(const iterator &o) const { return m_p == o.m_p; }
+        T *m_p;
+    };
+    class const_iterator {
+    public:
+        typedef int difference_type;
+        const_iterator(const T *p) : m_p(p) {}
+        const T &operator*() const { return *m_p; }
+        const T *operator->() const { return m_p; }
+        const_iterator &operator++() { ++m_p; return *this; }
+        const_iterator &operator+=(difference_type n) { m_p += n; return *this; }
+        difference_type operator-(const const_iterator &o) const { return m_p - o.m_p; }
+        bool operator==(const const_iterator &o) const { return m_p == o.m_p; }
+        const T *m_p;
+    };
+    ~__vector_imp() {}
+    iterator begin() { return iterator(this->data_); }
+    iterator end() { return iterator(this->data_ + this->size_); }
+    const_iterator begin() const { return const_iterator(this->data_); }
+    const_iterator end() const { return const_iterator(this->data_ + this->size_); }
+    /* NOT WRITTEN: the class insert (0x18BE10 for the mask map's 12-byte entries, 0x6F8; 0x18C510 for
+     * the case maps' 16-byte ones, 0x658) -- the pod insert's shape over a class element (memberwise
+     * copies, the wchar_t fields lhu/sh, the mask's lh/sh), the same length_error throw */
+    void insert(T *position, size_t n, const T &x);
+    void insert(iterator position, const T &x) { insert(position.m_p, 1, x); }
+};
+
+template <class T> struct __is_pointer { enum { value = false }; };
+template <class T> struct __is_pointer<T *> { enum { value = true }; };
+
+template <class T, class Allocator = allocator<T> >
+class vector : public __vector_imp<T, Allocator, __is_pointer<T>::value> {
 public:
     ~vector() {}
 };
 
-class exception {
-public:
-    exception() {}
-    virtual ~exception() {}
-    virtual const char *what() const;
-};
+/* <iterator>'s distance and <algorithm>'s lower_bound, over random-access iterators by value */
+template <class Iterator>
+inline typename Iterator::difference_type distance(Iterator first, Iterator last)
+{
+    return last - first;
+}
+
+template <class ForwardIterator, class T>
+ForwardIterator lower_bound(ForwardIterator first, ForwardIterator last, const T &value)
+{
+    typename ForwardIterator::difference_type len = distance(first, last);
+    while (len > 0) {
+        ForwardIterator i = first;
+        typename ForwardIterator::difference_type len2 = len / 2;
+        i += len2;
+        if (*i < value) {
+            first = ++i;
+            len -= len2 + 1;
+        } else
+            len = len2;
+    }
+    return first;
+}
+
 
 template <int N> class __locale_imp;
+template <bool b> struct __chooser {};
+class locale;
+template <class Facet> const Facet &__use_facet(const locale &loc, __chooser<true>);
 
 class locale {
 public:
@@ -251,11 +451,27 @@ public:
         virtual ~facet() {}
         unsigned int ref_;
     };
+    /* a facet's index in a locale's table, numbered on first use (SOCOM 1's locale::id: one word, the
+     * count a static member) */
+    class id {
+    public:
+        id() {}
+        operator size_t()
+        {
+            if (id_ == 0)
+                id_ = ++id_count_s;
+            return id_;
+        }
+    private:
+        size_t id_;
+        static size_t id_count_s;
+    };
     locale();
     locale &operator=(const locale &rhs) { imp_ = rhs.imp_; return *this; }
     static locale &global() throw();
     static locale &classic() throw();
 private:
+    template <class Facet> friend const Facet &__use_facet(const locale &loc, __chooser<true>);
     typedef _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > > imp_ptr;
     locale(const imp_ptr &imp) : imp_(imp) {}
     imp_ptr imp_;
@@ -269,10 +485,35 @@ class __locale_imp {
 public:
     __locale_imp(const char *name) : name_(name) {}
     ~__locale_imp() throw();
+    void replace(const locale::facet &f, size_t id);
 private:
+    typedef locale::facet facet;
+    template <class Facet> friend const Facet &__use_facet(const locale &loc, __chooser<true>);
     vector<locale::facet *> facets_;    /* 0x00 */
     string name_;                       /* 0x0C */
 };
+
+/* a facet installed at its id, the table grown to hold it; the facet's count taken first and given
+ * back if the growth throws */
+template <int N>
+void __locale_imp<N>::replace(const locale::facet &f, size_t id)
+{
+    facet &nf = const_cast<facet &>(f);
+    ++nf.ref_;
+    if (id >= facets_.size()) {
+        try {
+            facets_.resize(id + 1, 0);
+        } catch (...) {
+            delete (--nf.ref_ == 0 ? &nf : 0);
+            throw;
+        }
+    }
+    facet *&p = facets_[id];
+    facet *old = p;
+    if (old != 0)
+        delete (--old->ref_ == 0 ? old : 0);
+    p = &nf;
+}
 
 template <int N>
 __locale_imp<N>::~__locale_imp() throw()
@@ -290,6 +531,7 @@ public:
     class failure : public exception {
     public:
         explicit failure(const string &msg);
+        explicit failure(const char *msg) : what_(msg) {}
         virtual ~failure() {}
         virtual const char *what() const;
     private:
@@ -314,10 +556,17 @@ public:
     }
     locale imbue(const locale &loc);
     locale getloc() const;
+    fmtflags flags() const { return fmtflags_; }
+    iostate rdstate() const { return iostate(iostate_); }
+    iostate exceptions() const { return iostate(exceptions_); }
+    bool good() const { return iostate_ == 0; }
+    bool fail() const;
+    void clear(iostate state = goodbit);
+    void setstate(iostate state);
 protected:
     ios_base() {}
     void init(void *sb);
-private:
+public:     /* the state words are the stream classes' and their guards' (MSL reaches them directly) */
     struct callback_pair { event_callback first; int second; };
 
     void do_callbacks(event e)
@@ -350,6 +599,32 @@ inline ios_base::openmode operator&(ios_base::openmode x, ios_base::openmode y)
     { return ios_base::openmode(int(x) & int(y)); }
 inline ios_base::openmode operator|(ios_base::openmode x, ios_base::openmode y)
     { return ios_base::openmode(int(x) | int(y)); }
+inline ios_base::iostate operator&(ios_base::iostate x, ios_base::iostate y)
+    { return ios_base::iostate(int(x) & int(y)); }
+inline ios_base::iostate operator|(ios_base::iostate x, ios_base::iostate y)
+    { return ios_base::iostate(int(x) | int(y)); }
+inline ios_base::fmtflags operator&(ios_base::fmtflags x, ios_base::fmtflags y)
+    { return ios_base::fmtflags(int(x) & int(y)); }
+
+inline bool ios_base::fail() const
+{
+    return (rdstate() & (badbit | failbit)) != 0;
+}
+
+/* clear's check: a stream without a buffer is bad; a state the exceptions mask names throws */
+inline void ios_base::clear(iostate state)
+{
+    iostate_ = (unsigned char)state;
+    if (rdbuf_ == 0)
+        iostate_ |= badbit;
+    if (rdstate() & exceptions())
+        throw failure("ios_base failure in clear");
+}
+
+inline void ios_base::setstate(iostate state)
+{
+    clear(rdstate() | state);
+}
 
 /* streambuf */
 template <class charT, class traits>
@@ -363,6 +638,7 @@ public:
     virtual ~basic_streambuf();
     locale getloc() const;
     basic_streambuf *pubsetbuf(char_type *s, streamsize n) { return setbuf(s, n); }
+    int pubsync() { return sync(); }
     int_type sbumpc()
     {
         if (gnext_ < gend_)
@@ -454,6 +730,8 @@ public: \
 template <>
 class codecvt<char, char, int> : public locale::facet, public codecvt_base {
     _MSL_CODECVT_PUBLIC(char, char, int)
+    explicit codecvt(size_t refs = 0) : locale::facet(refs) {}
+    static locale::id id;
 protected:
     virtual result do_out(int &state, const char *from, const char *from_end, const char *&from_next,
                           char *to, char *to_end, char *&to_next) const;
@@ -469,6 +747,8 @@ protected:
 template <>
 class codecvt<wchar_t, char, int> : public locale::facet, public codecvt_base {
     _MSL_CODECVT_PUBLIC(wchar_t, char, int)
+    explicit codecvt(size_t refs = 0) : locale::facet(refs) {}
+    static locale::id id;
 protected:
     virtual result do_out(int &state, const wchar_t *from, const wchar_t *from_end,
                           const wchar_t *&from_next, char *to, char *to_limit, char *&to_next) const;
@@ -481,10 +761,21 @@ protected:
     virtual int do_max_length() const;
 };
 
-/* ctype */
+/* ctype: the classification mask is a two-byte enum (-enum min) whose bitmask operators are
+ * functions -- inline, so a mask built with them folds in code but is no constant expression (the
+ * classic table fills its multi-bit entries in locale.cpp's static initialiser), and their result is
+ * the enum again (`andi 0xffff` after the and) */
 struct ctype_base {
-    typedef unsigned char mask;
+    enum mask {
+        alpha = 0x0001, blank = 0x0002, cntrl = 0x0004, digit = 0x0008, graph = 0x0010, lower = 0x0020,
+        print = 0x0040, punct = 0x0080, space = 0x0100, upper = 0x0200, xdigit = 0x0400
+    };
 };
+
+inline ctype_base::mask operator&(ctype_base::mask x, ctype_base::mask y)
+    { return ctype_base::mask(int(x) & int(y)); }
+inline ctype_base::mask operator|(ctype_base::mask x, ctype_base::mask y)
+    { return ctype_base::mask(int(x) | int(y)); }
 
 template <class charT> class ctype;
 
@@ -498,6 +789,7 @@ class ctype<char> : public locale::facet, public ctype_base {
 public:
     explicit ctype(const mask *tab = 0, bool del = false, size_t refs = 0);
     char widen(char c) const { return do_widen(c); }
+    static locale::id id;
 protected:
     ~ctype();
     virtual char do_toupper(char c) const;
@@ -509,16 +801,91 @@ protected:
     virtual char do_narrow(char c, char dfault) const;
     virtual const char *do_narrow(const char *low, const char *high, char dfault, char *to) const;
 
-    const unsigned char *__table_;          /* 0x08 */
+    const mask *__table_;                   /* 0x08 */
     const unsigned char *__lower_map_;      /* 0x0C */
     const unsigned char *__upper_map_;      /* 0x10 */
     bool __owns_;                           /* 0x14 */
 };
 
+}
+
+/* localeimp's range map (Metrowerks::range_map, SOCOM 1's DWARF: a vector of entries, each a range
+ * x1_..x2_ mapped linearly, y = m_ * x + b_) -- ctype<wchar_t>'s classification and case tables */
+namespace Metrowerks {
+
+template <class T, class U>
+class range_map {
+public:
+    void insert(const T &x1, const T &x2, const U &y1, const U &y2);
+    void insert(const T &x1, const T &x2, const U &y) { insert(x1, x2, y, y); }
+    void insert(const T &x, const U &y) { insert(x, x, y, y); }
+    U operator[](const T &x) const;
+private:
+    struct entry {
+        entry(const T &x1, const T &x2, const U &y1, const U &y2)
+            : x1_(x1), x2_(x2), m_(x2 == x1 ? U(0) : U((y2 - y1) / (x2 - x1))), b_(U(y1 - m_ * x1)) {}
+        bool contains(const T &x) const { return !(x < x1_) && !(x2_ < x); }
+        bool operator<(const entry &e) const { return x2_ < e.x1_; }
+        bool operator<(const T &x) const { return x2_ < x; }
+        T x1_;
+        T x2_;
+        U m_;
+        U b_;
+    };
+    std::vector<entry> table_;
+};
+
+/* OPEN, 0x264/0x234 against 0x260/0x240 (0x18B0C0, 0x18B320): the walk and the three class-vector
+ * inserts are the target's; the frame is 0x10 larger and one more saved register (this in s3, &e.x2_ in
+ * s1 against s2/s0), and the entry's slope test is laid out the other way (the target falls through to
+ * the division, the zero arm after it) -- `x2 != x1 ? ... : 0`, an if/else body and declaring oldi
+ * ahead of pos were tried (build/scratch/rt/ri1.py) */
+template <class T, class U>
+void range_map<T, U>::insert(const T &x1, const T &x2, const U &y1, const U &y2)
+{
+    entry e(x1, x2, y1, y2);
+    typename std::vector<entry>::iterator i = std::lower_bound(table_.begin(), table_.end(), e);
+    if (i == table_.end() || e.x2_ < i->x1_) {
+        table_.insert(i, e);
+        return;
+    }
+    std::size_t pos = std::size_t(i - table_.begin());
+    entry oldi = *i;
+    if (oldi.x1_ < e.x1_) {
+        i->x2_ = T(e.x1_ - 1);
+        table_.insert(++i, e);
+        ++pos;
+    } else
+        *i = e;
+    if (e.x2_ < oldi.x2_) {
+        oldi.x1_ = T(e.x2_ + 1);
+        table_.insert(table_.begin() + (pos + 1), oldi);
+    }
+}
+
+/* OPEN, 0xDC/0xCC against 0xEC/0xDC (0x18CB70, 0x18CC60): the target materialises the range test
+ * and negates it (sltu, xori before the branch -- not a bool's !, an int's) and re-reads the found
+ * iterator's word for x1_ but not for x2_; `contains(x) == false` (0xE4), an int-returning contains
+ * (0xE4) and the test written out (0xCC) were tried (build/scratch/rt/vc1.py, vc2.py) */
+template <class T, class U>
+U range_map<T, U>::operator[](const T &x) const
+{
+    typename std::vector<entry>::const_iterator i = std::lower_bound(table_.begin(), table_.end(), x);
+    if (i == table_.end() || !i->contains(x))
+        return U(0);
+    return U(i->m_ * x + i->b_);
+}
+
+}
+
+namespace std {
+
 template <>
 class ctype<wchar_t> : public locale::facet, public ctype_base {
 public:
+    explicit ctype(size_t refs = 0);
     wchar_t widen(char c) const { return do_widen(c); }
+    static locale::id id;
 protected:
     virtual bool do_is(mask m, wchar_t c) const;
     virtual const wchar_t *do_is(const wchar_t *low, const wchar_t *high, mask *vec) const;
@@ -532,11 +899,27 @@ protected:
     virtual const char *do_widen(const char *low, const char *high, wchar_t *to) const;
     virtual char do_narrow(wchar_t c, char dfault) const;
     virtual const wchar_t *do_narrow(const wchar_t *low, const wchar_t *high, char dfault, char *to) const;
+
+    Metrowerks::range_map<wchar_t, mask> __table_;          /* 0x08 */
+    Metrowerks::range_map<wchar_t, wchar_t> __lower_map_;   /* 0x14 */
+    Metrowerks::range_map<wchar_t, wchar_t> __upper_map_;   /* 0x20 */
 };
 
-/* localeimp: the facet a locale holds, made and installed on first use */
-template <bool b> struct __chooser {};
-template <class Facet> const Facet &__use_facet(const locale &loc, __chooser<true>);
+/* localeimp: the facet a locale holds, made and installed on first use (0x189470-0x1897EB, the four
+ * instances iostream.cpp's streams use) */
+template <class Facet>
+const Facet &__use_facet(const locale &loc, __chooser<true>)
+{
+    size_t i = Facet::id;
+    const locale::facet *f;
+    if (i >= loc.imp_->facets_.size() || (f = loc.imp_->facets_[i]) == 0) {
+        Facet *nf = new Facet;
+        loc.imp_->replace(*nf, Facet::id);
+        f = loc.imp_->facets_[i];
+    }
+    return static_cast<const Facet &>(*f);
+}
+
 template <class Facet>
 inline const Facet &use_facet(const locale &loc)
 {
@@ -592,6 +975,8 @@ class basic_ios : public ios_base {
 public:
     typedef charT char_type;
     char_type widen(char c) const { return use_facet<ctype<char_type> >(getloc()).widen(c); }
+    basic_ostream<charT, traits> *tie() const { return tiestr_; }
+    basic_streambuf<charT, traits> *rdbuf() const { return (basic_streambuf<charT, traits> *)rdbuf_; }
     basic_ostream<charT, traits> *tie(basic_ostream<charT, traits> *tiestr)
     {
         basic_ostream<charT, traits> *old = tiestr_;
@@ -624,6 +1009,21 @@ class basic_ostream : virtual public basic_ios<charT, traits> {
 public:
     explicit basic_ostream(basic_streambuf<charT, traits> *sb);
     basic_ostream &flush();
+    /* the output guard: the tied stream flushed, the state checked; on the way out a unit-buffered
+     * stream is flushed unless the guard's flag says not to (flush sets it) */
+    class sentry {
+    public:
+        explicit sentry(basic_ostream &os);
+        ~sentry()
+        {
+            if (!os_.fail() && (os_.flags() & ios_base::unitbuf) && !uncaught_exception_)
+                os_.flush();
+        }
+        operator bool() const { return ok_; }
+        bool ok_;
+        bool uncaught_exception_;
+        basic_ostream &os_;
+    };
 };
 
 typedef basic_streambuf<char, char_traits<char> > streambuf;

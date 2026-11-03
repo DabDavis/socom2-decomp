@@ -54,9 +54,12 @@ public:
 using namespace zdb;
 
 /* a mesh decal built over a strip of the mesh's vertices, posed by its matrices (SOCOM II's, not
- * named: vis_data.cpp's span) */
-extern "C" void func_003BD9E0(CMeshDecal *d, void *strip, CTexHandle *tex, CMesh *mesh,
-                              std::vector<CMatrix *> *palette, float life);
+ * named: vis_decal.cpp's first function, likely CMeshDecal's own AddDecal -- SOCOM 1's
+ * CDecal::AddDecal takes the life first too). The life is the first parameter after the decal:
+ * AddDecal's set-up moves it into $f12 ahead of the pointers, as only that order (or the life
+ * first of all) gives; last, it is set up after the strip and the texture */
+extern "C" void func_003BD9E0(CMeshDecal *d, float life, void *strip, CTexHandle *tex, CMesh *mesh,
+                              std::vector<CMatrix *> *palette);
 
 /* the decal list's end reached (inline: the walk's materialised test; the name ours) */
 static inline bool DecalEnd(CMeshDecal *d) { return !d; }
@@ -137,25 +140,29 @@ void CMesh::SetLOD(unsigned int view, unsigned int lod)
 
 /* a decal added over a strip of the mesh, last in its list: taken from the permanent pool for a
  * life below zero, else from the temporary one, cleared and built (SOCOM II's; the name ours).
- * OPEN, 0x11C against 0x124: the target pads both arms of the pool choice with a nop before the
- * next label and fills the second call's delay slot with the li; the decal's clear then interleaves
- * the life's mov.s earlier -- a ternary, the tests reversed, a bool, a pool pointer, inline helpers
- * (if/return, a result local, a ternary) and an early return all miss */
+ * Each arm takes its decal into a local of its own: with it MW pads the function's labels to 8
+ * bytes (the nop ending each arm, the loop's), as the target's -- the plain arms, a ternary and the
+ * helpers round 14 tried give none (CTurret's timer reset pads so for its arm's random factor) */
 void CMesh::AddDecal(void *strip, CTexHandle *tex, float life)
 {
     CMeshDecal *d;
 
-    if (life < 0.0f)
-        d = CMeshDecal::m_permPool.Get(false);
-    else
-        d = CMeshDecal::m_tempPool.Get(true);
+    if (life < 0.0f) {
+        CMeshDecal *t = CMeshDecal::m_permPool.Get(false);
+
+        d = t;
+    } else {
+        CMeshDecal *t = CMeshDecal::m_tempPool.Get(true);
+
+        d = t;
+    }
     if (d) {
         CMeshDecal *last = m_decals;
 
         while (!DecalEnd(last) && last->m_next)
             last = last->m_next;
         d->Reset();
-        func_003BD9E0(d, strip, tex, this, &m_palette, life);
+        func_003BD9E0(d, life, strip, tex, this, &m_palette);
         d->m_next = 0;
         if (last)
             last->m_next = d;

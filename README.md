@@ -156,7 +156,7 @@ its directive (`/* sc: compiler=mwcps2-3.0b52-030722; flags=... */`), as the GCC
 |---|---|---|---|---|
 | the game's own MAIN units | the pool unit zmalloc.cpp 0x1801E0-0x18194F (the name ours; its `__sinit` 0x1D4B00), MAIN's copies of zsys_memory.cpp (0x181950-0x181C1F) and zvid.cpp (0x181C20) | 3.0b52 | the game's | `__nwa__FUi` is a tail call (`j`), which needs exceptions off; `_delete_vec` exact on every 3.0 build; round 2: the pool unit's 17 rows and its initialiser at the game's flags |
 | MW's C++ runtime | runtime/: gcc_wrapper.c 0x181C50, mwoverlay.c 0x181C90-0x181E2F, NMWException.cpp 0x181E30-0x18280F, global_destructor_chain.c 0x182810, __init_cpp_rts.c 0x182840, ptmf.c 0x1828A0; the exception-handling unit 0x182930-0x1845FF | 3.0b38, b50 or b52 | the game's plus `-Cpp_exceptions on`, deferred | `__destroy_arr`/`__destroy_new_array` match only on 3.0b22-020926 and 3.0b38+; `__initialize_cpp_rts`'s short-loop nops rule out 3.0b22-020926; with exceptions off `terminate`/`unexpected` become tail calls (9 words off); `,p` required; without `-sdatathreshold 0` `__register_global_object` is 8 words off; the image holds the PowerPC runtime's source order reversed |
-| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on`, NOT deferred (round 2: the default small-data threshold, not 0 -- `locale::global`'s 8-byte static locale is `addiu a0,gp,-31928` and `__use_facet`'s facet ids `lw -31904(gp)`; round 1 had carried the runtime group's 0 over; and an explicit level: `~__locale_imp<1>` inlines the facet vector's three destructor levels only at level>=3 or with bottomup, plain auto calls it -- nothing tells the two apart, so the game's pair) | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
+| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -inline auto,bottomup,level=8 -enum min -Cpp_exceptions on -wchar_t on -str readonly`, NOT deferred (round 5: THE LEVEL IS AT LEAST 6, NOT THE GAME'S 5 -- the ostream sentry constructors inline setstate whole, a six-high chain (clear, the failure, its counted string, the counted pointer's constructor) that level 5 cuts to one level; levels 6-9 score alike over the library's 142 functions, so the units carry 8; round 4 added `-str readonly`; round 2: the default small-data threshold, not 0 -- `locale::global`'s 8-byte static locale is `addiu a0,gp,-31928` and `__use_facet`'s facet ids `lw -31904(gp)`; round 1 had carried the runtime group's 0 over; and an explicit level: `~__locale_imp<1>` inlines the facet vector's three destructor levels only at level>=3 or with bottomup, plain auto calls it -- nothing tells the two apart, so the game's pair) | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
 
 So SOCOM II's prebuilt MSL is **not CodeWarrior 2.4's build**, though SOCOM 1's DWARF names that
 install; and none of the 81 rows separates 3.0b38 from 3.0b50 or 3.0b52. The `.comment`'s
@@ -257,6 +257,21 @@ MSL's string internals and the logic_error family with exceptions on are modelle
 locale.cpp's `__sinit` 0x1D4C20 fills `__ctype_map` entries 9-127, the ones holding several mask bits:
 the mask is likely a two-byte enum whose `operator|` is a function, which renames the wide ctype rows
 (SOCOM 1's one-byte names); ~bad_exception is generated last where the image has it before __unexpected.
+
+Round 5 (211 of 244: 28 more) wrote the facet lookups (the four `__use_facet` instances), ctype<wchar_t> (its
+constructor, destructor, do_is twice, do_scan_is/not, do_toupper/tolower twice), four std::lower_bound instances,
+`__locale_imp::replace`, the pod vector's resize and MAIN's copy of its erase, the logic_error family's destructors and
+`what`, and basic_ostream's flush<char>/<wchar_t> and sentry constructors -- the sentries are the library's level
+evidence above. `ctype_base::mask` is a TWO-BYTE enum (copied memberwise with lh/sh, loaded with lhu for arithmetic),
+which renamed do_is/do_scan_is/do_scan_not and ctype<char>'s constructor (`const mask *`); the library's vector has
+CodeWarrior 3.0's shape. Measured: MW's DWARF 1 lists a block's locals in reverse declaration order; an integer literal
+bound to `const unsigned int &` becomes a $gp small-data constant, a null pointer bound to `T * const &` a stack
+temporary; inline size()/end() accessors make MW reload a member the plain field reuses from an earlier compare; a try
+around a single call inside an `if` puts the try marker (`sw sp,N(s8)`) in that call's delay slot. Open: MAIN's pod
+insert copy 0x18B810 (0x470 vs 0x488, registers), the range-map inserts 0x18B0C0/0x18B320 and operator[]s
+0x18CB70/0x18CC60, the class-vector inserts 0x18BE10/0x18C510 (declared), the __sinit rows 0x1D4BF0/0x1D4C20 (their
+guards look like the facet ids' template static members' guards: model the facets as instances of their primary
+templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
 
 ## What the source has to reproduce
 
@@ -1842,6 +1857,47 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 19** (seal_unit.cpp's queries, CAiHidePlanner, the follow master, AnimSet's
+  scripts):
+  - a whole-body `if (x == K)` that compiles to `beq; b end` is a one-case switch (SOCOM 1's copy has the same shape);
+    two single-bit `unsigned int` bitfields in a stand-in class share one byte, so the pad after them starts at +1; a
+    stack byte the target tests with lbu and copies with lb wants the test written `*(unsigned char *)&b` (a stand-in
+    spelling);
+  - an inline distance helper taking `const CAiMapLoc &` lets MW reuse the x fields an inlined `operator!=` already
+    extracted (written in place, MW reloads them); a float call argument the target loads with lwc1 is a variable (a
+    literal 8.0f is built with lui and mtc1); `while ((p = f()) != 0)` tests v0 with the copy in the delay slot, a `for`
+    tests the copy; a short field taken into a `short` local is sign-extended again at each use, an `int` local uses
+    the lh result as is;
+  - CAiHidePlanner (the RTTI's name) is seal_aistate.cpp's: reset takes (map, start, goal) and keeps the start, dist
+    beside it, its constructor inlined in 0x5F0990/0x5F0B30; GetFollowMaster inlines itself four times at level 5
+    with its accessors' copies; 0x5E3D90 is AnimSet::GetScript(type) (kind 0: every caller passes m_animset in a0) --
+    seal_cfg.cpp calls it as a free function, and as `m_animset->GetScript(type)` the type loads before the set, as
+    the SEALs' open SetMaxMotion wants (a member call evaluates its arguments before loading `this`);
+  - open: CAiHidePlanner::is_goal 0x5F8570 (0x130 vs 0x138: the distance test's delay slot empty and the next label
+    padded in the target), GetTail/GetLeader 0x5E7830/0x5E8850/0x5E8A90 (include/list's depth problem, GetSealCount's:
+    the MSL lane's).
+- **Tells from the weapons, round 15** (vis_ripple.h, the turret's and the vehicle's Ticks, CMesh::AddDecal):
+  - MW PADS A FUNCTION'S LABELS TO 8 BYTES WHEN A SEPARATE VARIABLE HOLDS AN INTERMEDIATE VALUE -- CTurret::Tick's
+    random factor in its own `float r`, AddDecal's decal in a local in each arm (round 14's "both arms padded with a
+    nop"); without the variable there is no padding, whatever its scope;
+  - a float parameter's position in the callee's prototype sets the caller's argument set-up order (0x3BD9E0 takes the
+    life right after the decal, where SOCOM 1's CDecal::AddDecal takes it first; the turret's joint functions take dT
+    and the rate ahead of the pointers); `CMatrix m;` already makes the unit-matrix call, a SetIdentity after it is a
+    second call;
+  - `(pl = ftsGetPlayer(), m_control != pl->m_control)` keeps the call ahead of `this`'s load, `m_control !=
+    f()->m_control` hoists the load into a saved register; a CPnt3D local assigned from a pointer stays in registers
+    across calls, copy-constructed it stays on the stack; a walk pointer stepped with the index (`a++, i++`) gets the
+    target's register where a strength-reduced `&corners[i]` is numbered last; `zoomed = 1` on a bool reuses a
+    register holding 1 and narrows it (`andi`), `= true` gets a daddiu of its own; a controller in a local tested
+    twice gives the target's `beqz; beqz` on one load;
+  - vis_ripple.h holds CWaterRippleGroup, CWaterRipple, CWaterRippleManager and theWaterRippleManager: zanim_cmd_tick.cpp's
+    RIPPLE commands call them as members, both objects byte-identical (the stand-in's two inline setters were
+    CWaterRipple's SetDir and SetTime); renamed at integration: 0x311EA0 CNodeVector::GetNode(int) (node_vector.cpp
+    defines the member) and 0x3D22B0 CZWeapon::GetFireAnim(bool) (`zoomed ? m_88 : m_84`; SOCOM 1's Fire calls it at
+    the same site); zweapon.h's Slot0C is CZWeapon's virtual Fire (slot 0xC, 0x3D2D70, unwritten);
+  - open: CTurret::Fire 0x3A8D20 (2: in the weapon's virtual Fire call the target loads the shooter id before the
+    node), CZProjectileList::Clear (it looks like the missing label padding, but the trigger that fixed Tick and
+    AddDecal does not fix it), ~CVehicle (one inline level more).
 - **Tells from the game states, round 21** (the ~CSpawners chain, two initialisers, the mission's commands, the
   placeholders respelled):
   - A MEMBER DESTRUCTOR CODED `this-test; call X(0)` MEANS X IS THE BASE DESTRUCTOR OF THE MEMBER'S TYPE, and one
@@ -6269,6 +6325,57 @@ process_recv_buf, process_message, process_connect_result, the type-26 handler 0
 recv_circ_buf, update_connection, the connect step 0x634C48, and the channel check 0x635898 over its
 draft; 87 of 92) -- 9 rows new to the map's byte-exact rows (4,668 bytes; `src/lib/medius` 862 -> 872 of
 932), one superseding a matched draft; 6 rows named or corrected. No tool changed.
+
+**Round 17b: the voice library's small objects, RSA.c, and two opens closed by rules already known.**
+
+- **The objects between peer.c and rt_circ_buf.c, by what each reads**: the RC cipher (rc.c), then a
+  voice-stream object of ours, `voicebuf.c` (0x62A870-0x62B168: a 0x30-byte stream record -- the codec
+  kind and a limit, a pool of rt_window.c frame buffers and a pool of codec.c decoders, each two rings of
+  16-byte nodes, in use and free, and the one encoder; audio.c and grid.c call it), then 0x62B168 and
+  **RSA.c** -- SOCOM 1's RSA object in its order, the sizes agreeing (RSADecryptBlock 0x298 and
+  RSADecrypt 0x94 in both builds; `s1:order`): the parameters read off the two wrappers, which pass a
+  static 64-byte exponent 17 each (0x655530, 0x655570) where SOCOM 1 built it on the stack -- then
+  **rt_audio.c** from 0x62BCA8 (its first function returns "rt_audio version: 1.08.0009", whose `$Header`
+  follows md5_platform.h's in .rodata): the dotted-quad parser and printer, the forwarders, and a copy of
+  rt_time_platform.c's helpers -- the count register (`mfc0 $9; sync.p`), a millisecond clock over it
+  (294912 counts a millisecond), the alarm callback and libmc's delay. codec.c's small functions (the
+  record's destroy and reset, four accessors, a call counter and four stubs) are written; its create and
+  frame calls are not. The fifteen 8-byte stubs after the server key are a dummy codec's entry points
+  (codec.c's create stores 0x64F588/0x64F590 as a codec's reset and destroy), all matched drafts.
+- **Round 13c's rule closed round 13b's one-word open**: func_006189C8's `beq` on 0xFFFF (`beql` here)
+  keeps its slot once its fall-through's DmeToRtMsgConnectionIndex is compiled above it -- written with its
+  twin and func_00614290 at their place in DmeLocal.c (all three matched drafts). **Round 14b's join
+  rule closed rt_udp's 0x63E230**: each arm ends in the one `return 0` (an else arm stores the flag where a
+  `return 0` after the call's test let CSE reuse the known-zero v0; 8 words).
+- **A ring search with a head test and a do-while**: voicebuf.c's releases test the head, then walk
+  `do { p = p->pNext; if (p == pHead) p = 0; } while (p != 0 && p->pData != pData);` (a `for` with a
+  `break` lays the loop out the other way, 53s); a frame-resident node's two links are one chained store
+  (`p->pPrev = p->pNext = p`: two statements reload p between them, the store order following the
+  chain); a result variable zeroed at the top and returned once keeps its zero live in a saved register
+  (early returns propagate the constant and swap s0/s1); a field tested again after the block that may
+  clear it reloads at the join (a local copy lets the jump thread); a pool trimmed in a loop decrements
+  in its test after the unlink, `if (--n <= 0)` -- PRE then feeds the body from both loop edges, the
+  target's `move` at the bottom test.
+- **Shapes, measured**: the clock's quotient a variable of its own (computed twice, its two constants
+  take each other's registers); the address printer's tens digit one block that the hundreds enter by
+  `goto` (written twice, 2.96 schedules the copies apart and cross-jumping misses them: 35-43s); a
+  `char` digit test is a range (`c >= '0' && c <= '9'` folds to the target's `andi; sltiu`); rt_msg_client's
+  last function 0x638828 is two spins on one counter -- the second starts at 16 and 2.96's loop optimizer
+  leaves its entry test reading an unset v0 (the target's `beqz v0`); a group's member walk takes the
+  element's address and its peer into locals (the peer read through the member twice: 23 words; indexing
+  swaps the address sum's operands: 1); codec.c's reset returns an int (declared void, the constant
+  stored after the call takes v0 where the target has v1).
+- **Open, diagnosed in place**: serverkey.c's 0x64F4E0 (round 15b's, five more return shapes: the
+  target's v0 is free for the key's address through the copy -- its null test's slot empty -- where this
+  sets the return value first), and the earlier opens.
+
+Hand-written in round 17b: `medius/voicebuf.c` (10 of 10, new), `medius/codec.c` (11 of 11, new),
+`medius/rt_audio.c` (7 of 7, new), `medius/rsa.c` (4 of 4, new), `medius/grid.c` (+2, 0x626240 and
+0x6264C0: 30 of 31), `medius/dmelocal.c` (+4: func_006189C8 closed, the connection-index pair and
+func_00614290 over their drafts; 77 of 87), `medius/rt_udp.c` (+1, 0x63E230 closed: 38 of 46),
+`medius/rt_msg_client.c` (+1, 0x638828: 88 of 93) -- 19 rows new to the map's byte-exact rows (4,812
+bytes; `src/lib/medius` 872 -> 912 of 970), 21 superseding matched drafts; 4 rows named (RSAEncryptBlock,
+RSADecryptBlock, RSAEncrypt, RSADecrypt: `s1:order`). No tool changed.
 
 ## Open, and next
 

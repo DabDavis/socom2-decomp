@@ -43,12 +43,15 @@ public:
 };
 extern CZNetwork theNetwork;
 
-/* the AI maps (OVL2's AiMaps): a point's cell, and the shadow's darkness there (0 lit .. 1 dark;
- * zanim's shadow-light handler reads it the same way) -- not named */
-class CAiMaps;
+/* the AI maps (ai_maps.h's class; OVL2's AiMaps): a point's cell, and the shadow's darkness there
+ * (0 lit .. 1 dark; zanim's shadow-light handler reads it the same way) */
+class CAiMapLoc;
+class CAiMaps {
+public:
+    bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
+    float GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *pos, bool inside);
+};
 extern CAiMaps AiMaps;
-extern "C" int func_0052DC70(CAiMaps *maps, const CPnt3D *pos, unsigned int *loc);
-extern "C" float func_0052CE10(CAiMaps *maps, unsigned int *loc, const CPnt3D *pos, int a);
 
 /* no node (inline: the attachment walk's test is materialised, sltu/xori, before its branch) */
 static inline bool NoNode(CNode *node)
@@ -85,8 +88,8 @@ bool PlacedExplosive::PostTick(float dT)
     }
     unsigned int loc;
 
-    if (func_0052DC70(&AiMaps, &m_frameendpos, &loc)) {
-        float light = func_0052CE10(&AiMaps, &loc, &m_frameendpos, 0);
+    if (AiMaps.GetLocation(&m_frameendpos, *(CAiMapLoc *)&loc)) {
+        float light = AiMaps.GetInterpolatedShadow(*(CAiMapLoc *)&loc, &m_frameendpos, false);
 
         _saturate(&light, 0.0f, 1.0f);
         m_instance->m_socom2_a0 = (int)(127.0f * (1.0f - light));
