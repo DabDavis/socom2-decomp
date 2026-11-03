@@ -327,7 +327,9 @@ int func_0030F5F0(VoicePlayer *p, const short *in, int len)
 
 /* a packet of 8 bytes decoded frame by frame into the caller's samples (OVL1 0x3106A0). The
  * count returned is the original's slip: it doubles itself (`addu s0,s0,s0`) where the frames'
- * counts were surely meant, so it stays 0 */
+ * counts were surely meant, so it stays 0. The packet handler 0x30F7E0, its one caller, calls it
+ * out of line: pinned */
+#pragma auto_inline off
 int func_003106A0(VoiceDecoder *d, const void *packet, short *out)
 {
     int n = 0;
@@ -346,6 +348,7 @@ int func_003106A0(VoiceDecoder *d, const void *packet, short *out)
     } while (!(bool)done);
     return n * 2;
 }
+#pragma auto_inline reset
 
 /* the radio's two messages registered: "Radio", three bytes, and "Channel Status", the twelve
  * slots' clients as halfwords (OVL1 0x310210) */
@@ -606,10 +609,15 @@ VoiceCodec *func_00310830()
 }
 
 /* the voice object itself (0x45B718's: the radio's slots, the headset's switches and volumes,
- * the codec, the mute table; only what its set-up writes) */
+ * the codec, the mute table; only what its set-up and the packet handler touch) */
 struct VoiceChat {
     unsigned char m_state;   // 0x0
-    unsigned char _1[0x30 - 1];
+    unsigned char m_hearing;   // 0x1: a packet of our channel being played
+    unsigned char _2[0x8 - 0x2];
+    int m_talker;   // 0x8: the client last heard
+    unsigned char _c[0x24 - 0xc];
+    int m_slot;   // 0x24: our channel
+    unsigned char _28[0x30 - 0x28];
     int m_port;   // 0x30
     int m_port2;   // 0x34: the port + 5000
     unsigned char _38[0x3c - 0x38];
@@ -635,7 +643,7 @@ struct VoiceChat {
     float m_settings[6];   // 0x1084: the canceller's
     int m_109c;   // 0x109c
     int m_gain;   // 0x10a0
-    unsigned char m_mute[24];   // 0x10a4: a client's voice not played
+    bool m_mute[24];   // 0x10a4: a client's voice not played
 
     /* a client muted or not, when it is one (ours) */
     void SetMute(int i, bool on)
@@ -649,7 +657,77 @@ struct VoiceChat {
         m_gain = gain;
         func_00310480((VoiceEcho *)m_codec, gain);
     }
+    /* a client muted, or no client (ours) */
+    bool IsMuted(int i)
+    {
+        if (i >= 0 && i < 24)
+            return m_mute[i];
+        return true;
+    }
 };
+
+/* a voice packet as the DME hands it over: raw samples or the codec's 8-byte frames, the bytes
+ * taken handed back (the names ours) */
+struct VoicePacket {
+    int m_type;   // 0x0: 1, the codec's frames
+    int m_client;   // 0x4
+    const unsigned char *m_data;   // 0x8
+    unsigned int m_length;   // 0xc
+    int m_taken;   // 0x10
+};
+
+/* the voice object, read through its global at each use (the target reloads it after every
+ * store and call) */
+inline VoiceChat *Voice() { return (VoiceChat *)data_0045B718; }
+
+extern "C" {
+extern int data_0045BD80;   /* the decoded samples' bytes waiting */
+extern unsigned char data_0045BD90[];   /* and the samples */
+int func_0030F5F0(VoicePlayer *p, const short *in, int len);
+int func_003106A0(VoiceDecoder *d, const void *packet, short *out);
+
+/* a voice packet heard: from a client on our channel and not muted, the codec's frames decoded
+ * and played one by one, raw samples played as they are; the talker kept (OVL1 0x30F7E0, the
+ * callback 0x30FC70 registers) */
+void func_0030F7E0(VoicePacket *p)
+{
+    if (p && p->m_length) {
+        VoiceChannelInfo info;
+
+        if (func_00623BA0(theNetwork.m_GameConnectionIndex, p->m_client, &info) ||
+            info.m_channel != Voice()->m_slot)
+            return;
+        Voice()->m_hearing = 1;
+        if (Voice()->IsMuted(p->m_client)) {
+            p->m_taken = p->m_length;
+            return;
+        }
+        if (p->m_type == 1) {
+            if (!Voice()->m_codec) {
+                Voice()->m_hearing = 0;
+                return;
+            }
+            unsigned int i = 0;
+            const unsigned char *data = p->m_data;
+
+            /* the frame counted before it is played: the target's `i += 8` sits in the play
+             * call's delay slot */
+            for (; i < p->m_length;) {
+                func_003106A0((VoiceDecoder *)Voice()->m_codec, data + i,
+                              (short *)(data_0045BD90 + data_0045BD80));
+                data_0045BD80 += 320;
+                i += 8;
+                func_0030F5F0((VoicePlayer *)Voice(), (short *)data_0045BD90, data_0045BD80);
+                data_0045BD80 = 0;
+            }
+            p->m_taken = i;
+        } else {
+            p->m_taken = func_0030F5F0((VoicePlayer *)Voice(), (const short *)p->m_data, p->m_length);
+        }
+        Voice()->m_talker = p->m_client;
+    }
+}
+}
 
 extern "C" {
 
