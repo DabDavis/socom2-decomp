@@ -23,10 +23,13 @@
  * 33s), 0x63E230 (8: the shared path keeps its 1 in v0 and the delay slots differ), 0x63E4A0 (11:
  * the index lives in v1 and the -2 in v0), 0x63E5E8 (10, the connect), 0x63F168 and 0x6419E8 (2
  * each: the call's arguments scheduled the other way -- the -1 key-manager id in the delay slot),
- * 0x641E30 (3: a bnez/bnezl choice and a register after the shared channel's port query); the
- * datagram handlers 0x63E928, 0x63ECC8, 0x63EF38, 0x63F4C8, 0x63FA28, 0x63FC08, 0x6400A8, 0x6404D8,
- * 0x640940, 0x640B70, 0x640D38, 0x640EA0, 0x641308, 0x641490, 0x641748, 0x6418A0, 0x641BA0 are not
- * written. */
+ * 0x641E30 (3: a bnez/bnezl choice and a register after the shared channel's port query),
+ * 0x63ECC8 (round 12b, 93s: the receive -- the reliable test reads the header's first word, `lw;
+ * andi 6`, as a word-wide `& 6` gives; the loop's message pointer lives in a0 where the target's is
+ * v0, and the endpoint path's free does not cross-jump with the connection's). Round 12b: 0x63E928
+ * (the connection send) is byte-exact with RT_UDP_BARRIER below, a stand-in. Not written: the
+ * datagram handlers 0x63EF38, 0x63F4C8, 0x63FA28, 0x63FC08, 0x6400A8, 0x6404D8, 0x640940, 0x640B70,
+ * 0x640D38, 0x640EA0, 0x641308, 0x641490, 0x641748, 0x6418A0, 0x641BA0. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern void *memcpy(void *d, const void *s, unsigned int n);
