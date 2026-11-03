@@ -7,15 +7,21 @@
  * it. Names are SOCOM 1's by position (s1:order: SOCOM II's object is SOCOM 1's in the same order,
  * rt_circ_buf_is_valid gone), create and destroy s1:exact.
  *
- * Byte-exact: create, destroy, clear, normalize, get_used, get_used_nowrap, get_avail. The stores'
- * orders are ccperm's; a test whose else-block the target carries in a branch-likely's delay slot is
- * written inverted, as the vendor did (get_used_nowrap: `if (nUsed != 0) {...} else *p = 0;`).
- * OPEN, nine, one shared diagnosis: after `result = getter(cb, &n); if (result) return result;` the
- * target loads n into v0 (the dead result's register) and tests it there, where 2.96 here takes v1
- * -- every shape tried (result declared first, scoped, kept in a nested if, the test inverted) gives
- * v1 (free and use 7 words, get_start_used_ptr/get_start_avail_ptr 8, copy 32s, store 46s,
- * normalize_with_buf 40s; get_avail_nowrap 6 and is_wrapped 16 are branch orders). free's and use's
- * start/end update is byte-exact only under -fno-sched-interblock, which no other RT unit takes. */
+ * Byte-exact: all but is_wrapped. The stores' orders are ccperm's; a test whose else-block the
+ * target carries in a branch-likely's delay slot is written inverted, as the vendor did
+ * (get_used_nowrap: `if (nUsed != 0) {...} else *p = 0;`).
+ * Round 14b: SCEA's room and count tests are POSITIVE tests around the body with the error in an
+ * else -- `if (nUsed >= nBytes) {...} else return RT_CIRC_BUF_ERR_SPACE;`, `if (cb->nStart != 0)
+ * {...} return OK;` -- which closed the nine round 4b left open on one diagnosis (after `result =
+ * getter(cb, &n); if (result) return result;` the target tests n in v0, 2.96 here in v1). Written
+ * as a guard (`if (n < nBytes) return 1;`) the return is a one-insn THEN block that 2.96's first
+ * if-conversion pass (ifcvt's find_if_case_1, before register allocation; no flag turns it off)
+ * hoists above the branch as `li v0,1`, so v0 is live across n's load and n takes v1; as an else
+ * the block is not hoisted and n gets v0 (rt_list.c's own guard-clause function 0x631FD8 keeps the
+ * v1: the vendor wrote both). free and use normalise after the if/else; store's wrap counts the
+ * used bytes before setting the end; copy's two cases are an if/else joining at one return.
+ * OPEN: is_wrapped (16: the target stores a 1 materialised as `sltu a2,zero,a0` -- cb != 0 --
+ * hoisted into the first guard's delay slot, and tests nStart != 0 with a bnezl; no source yet). */
 
 typedef struct rt_circ_buf {
     unsigned int nStart;                /* 0x00: the first used byte */
@@ -100,14 +106,15 @@ int rt_circ_buf_free(rt_circ_buf *cb, unsigned int nBytes)
         result = rt_circ_buf_get_used(cb, &nUsed);
         if (result != RT_CIRC_BUF_OK)
             return result;
-        if (nUsed < nBytes)
+        if (nUsed >= nBytes) {
+            nToEnd = cb->nSize - cb->nStart;
+            if (nBytes < nToEnd)
+                cb->nStart += nBytes;
+            else
+                cb->nStart = nBytes - nToEnd;
+            cb->nUsed -= nBytes;
+        } else
             return RT_CIRC_BUF_ERR_SPACE;
-        nToEnd = cb->nSize - cb->nStart;
-        if (nBytes < nToEnd)
-            cb->nStart += nBytes;
-        else
-            cb->nStart = nBytes - nToEnd;
-        cb->nUsed -= nBytes;
         result = rt_circ_buf_normalize(cb, 0);
         if (result != RT_CIRC_BUF_OK)
             return result;
@@ -127,14 +134,15 @@ int rt_circ_buf_use(rt_circ_buf *cb, unsigned int nBytes)
         result = rt_circ_buf_get_avail(cb, &nAvail);
         if (result != RT_CIRC_BUF_OK)
             return result;
-        if (nAvail < nBytes)
+        if (nAvail >= nBytes) {
+            nToEnd = cb->nSize - cb->nEnd;
+            if (nBytes < nToEnd)
+                cb->nEnd += nBytes;
+            else
+                cb->nEnd = nBytes - nToEnd;
+            cb->nUsed += nBytes;
+        } else
             return RT_CIRC_BUF_ERR_SPACE;
-        nToEnd = cb->nSize - cb->nEnd;
-        if (nBytes < nToEnd)
-            cb->nEnd += nBytes;
-        else
-            cb->nEnd = nBytes - nToEnd;
-        cb->nUsed += nBytes;
         result = rt_circ_buf_normalize(cb, 0);
         if (result != RT_CIRC_BUF_OK)
             return result;
@@ -157,23 +165,24 @@ int rt_circ_buf_store(rt_circ_buf *cb, const void *pData, unsigned int nBytes)
     result = rt_circ_buf_get_avail(cb, &nAvail);
     if (result != RT_CIRC_BUF_OK)
         return result;
-    if (nAvail < nBytes)
+    if (nAvail >= nBytes) {
+        nToEnd = cb->nSize - cb->nEnd;
+        if (nToEnd >= nBytes) {
+            memcpy(cb->pBuf + cb->nEnd, pData, nBytes);
+            cb->nUsed += nBytes;
+            cb->nEnd += nBytes;
+            if (cb->nEnd == cb->nSize)
+                cb->nEnd = 0;
+        } else {
+            memcpy(cb->pBuf + cb->nEnd, pData, nToEnd);
+            cb->nUsed += nToEnd;
+            nBytes -= nToEnd;
+            memcpy(cb->pBuf, (const char *)pData + nToEnd, nBytes);
+            cb->nUsed += nBytes;
+            cb->nEnd = nBytes;
+        }
+    } else
         return RT_CIRC_BUF_ERR_SPACE;
-    nToEnd = cb->nSize - cb->nEnd;
-    if (nToEnd < nBytes) {
-        memcpy(cb->pBuf + cb->nEnd, pData, nToEnd);
-        cb->nUsed += nToEnd;
-        nBytes -= nToEnd;
-        memcpy(cb->pBuf, (const char *)pData + nToEnd, nBytes);
-        cb->nEnd = nBytes;
-        cb->nUsed += nBytes;
-    } else {
-        memcpy(cb->pBuf + cb->nEnd, pData, nBytes);
-        cb->nUsed += nBytes;
-        cb->nEnd += nBytes;
-        if (cb->nEnd == cb->nSize)
-            cb->nEnd = 0;
-    }
     return RT_CIRC_BUF_OK;
 }
 
@@ -192,17 +201,18 @@ int rt_circ_buf_copy(void *pDest, rt_circ_buf *cb, unsigned int nBytes)
     result = rt_circ_buf_get_used(cb, &nUsed);
     if (result != RT_CIRC_BUF_OK)
         return result;
-    if (nUsed < nBytes)
+    if (nUsed >= nBytes) {
+        result = rt_circ_buf_get_used_nowrap(cb, &nUsedNoWrap);
+        if (result != RT_CIRC_BUF_OK)
+            return result;
+        if (nUsedNoWrap >= nBytes)
+            memcpy(pDest, cb->pBuf + cb->nStart, nBytes);
+        else {
+            memcpy(pDest, cb->pBuf + cb->nStart, nUsedNoWrap);
+            memcpy((char *)pDest + nUsedNoWrap, cb->pBuf, nBytes - nUsedNoWrap);
+        }
+    } else
         return RT_CIRC_BUF_ERR_SPACE;
-    result = rt_circ_buf_get_used_nowrap(cb, &nUsedNoWrap);
-    if (result != RT_CIRC_BUF_OK)
-        return result;
-    if (nUsedNoWrap < nBytes) {
-        memcpy(pDest, cb->pBuf + cb->nStart, nUsedNoWrap);
-        memcpy((char *)pDest + nUsedNoWrap, cb->pBuf, nBytes - nUsedNoWrap);
-        return RT_CIRC_BUF_OK;
-    }
-    memcpy(pDest, cb->pBuf + cb->nStart, nBytes);
     return RT_CIRC_BUF_OK;
 }
 
@@ -224,27 +234,25 @@ int rt_circ_buf_normalize_with_buf(rt_circ_buf *cb, unsigned char bUseBuffer, vo
         return RT_CIRC_BUF_ERR_INVALID;
     if (bUseBuffer && pBuffer == 0)
         return RT_CIRC_BUF_ERR_INVALID;
-    if (cb->nStart == 0)
-        return RT_CIRC_BUF_OK;
-    result = rt_circ_buf_get_used(cb, &nUsed);
-    if (result != RT_CIRC_BUF_OK)
-        return result;
-    if (nUsed == 0) {
-        cb->nEnd = 0;
-        cb->nStart = 0;
-        return RT_CIRC_BUF_OK;
+    if (cb->nStart != 0) {
+        result = rt_circ_buf_get_used(cb, &nUsed);
+        if (result != RT_CIRC_BUF_OK)
+            return result;
+        if (nUsed == 0) {
+            cb->nStart = 0;
+            cb->nEnd = 0;
+        } else if (bUseBuffer == 1) {
+            result = rt_circ_buf_copy(pBuffer, cb, nUsed);
+            if (result != RT_CIRC_BUF_OK)
+                return result;
+            result = rt_circ_buf_clear(cb);
+            if (result != RT_CIRC_BUF_OK)
+                return result;
+            result = rt_circ_buf_store(cb, pBuffer, nUsed);
+            if (result != RT_CIRC_BUF_OK)
+                return result;
+        }
     }
-    if (bUseBuffer != 1)
-        return RT_CIRC_BUF_OK;
-    result = rt_circ_buf_copy(pBuffer, cb, nUsed);
-    if (result != RT_CIRC_BUF_OK)
-        return result;
-    result = rt_circ_buf_clear(cb);
-    if (result != RT_CIRC_BUF_OK)
-        return result;
-    result = rt_circ_buf_store(cb, pBuffer, nUsed);
-    if (result != RT_CIRC_BUF_OK)
-        return result;
     return RT_CIRC_BUF_OK;
 }
 
@@ -292,10 +300,10 @@ int rt_circ_buf_get_avail_nowrap(rt_circ_buf *cb, unsigned int *pnAvail)
         return RT_CIRC_BUF_ERR_INVALID;
     if (cb->nUsed == cb->nSize)
         *pnAvail = 0;
-    else if (cb->nEnd < cb->nStart)
-        *pnAvail = cb->nStart - cb->nEnd;
-    else
+    else if (cb->nEnd >= cb->nStart)
         *pnAvail = cb->nSize - cb->nEnd;
+    else
+        *pnAvail = cb->nStart - cb->nEnd;
     return RT_CIRC_BUF_OK;
 }
 
@@ -311,9 +319,10 @@ int rt_circ_buf_get_start_used_ptr(rt_circ_buf *cb, char **ppStart)
     result = rt_circ_buf_get_used(cb, &nUsed);
     if (result != RT_CIRC_BUF_OK)
         return result;
-    if (nUsed == 0)
+    if (nUsed != 0)
+        *ppStart = cb->pBuf + cb->nStart;
+    else
         return RT_CIRC_BUF_ERR_SPACE;
-    *ppStart = cb->pBuf + cb->nStart;
     return RT_CIRC_BUF_OK;
 }
 
@@ -329,9 +338,10 @@ int rt_circ_buf_get_start_avail_ptr(rt_circ_buf *cb, char **ppStart)
     result = rt_circ_buf_get_avail(cb, &nAvail);
     if (result != RT_CIRC_BUF_OK)
         return result;
-    if (nAvail == 0)
+    if (nAvail != 0)
+        *ppStart = cb->pBuf + cb->nEnd;
+    else
         return RT_CIRC_BUF_ERR_SPACE;
-    *ppStart = cb->pBuf + cb->nEnd;
     return RT_CIRC_BUF_OK;
 }
 
