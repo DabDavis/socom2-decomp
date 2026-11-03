@@ -681,6 +681,89 @@ wchar_t ctype<wchar_t>::do_widen(char c) const
     return (wchar_t)c;
 }
 
+/* the classic classification of the first 128 characters, and the case maps over 0-0xFFFF */
+ctype<wchar_t>::ctype(size_t refs)
+    : locale::facet(refs)
+{
+    __table_.insert(0, 8, cntrl);
+    __table_.insert(9, cntrl | space | blank);
+    __table_.insert(10, 13, cntrl | space);
+    __table_.insert(14, 31, cntrl);
+    __table_.insert(32, space | blank | print);
+    __table_.insert(33, 47, punct | graph | print);
+    __table_.insert(48, 57, digit | xdigit | graph | print);
+    __table_.insert(58, 64, punct | graph | print);
+    __table_.insert(65, 70, upper | xdigit | alpha | graph | print);
+    __table_.insert(71, 90, upper | alpha | graph | print);
+    __table_.insert(91, 96, punct | graph | print);
+    __table_.insert(97, 102, lower | xdigit | alpha | graph | print);
+    __table_.insert(103, 122, lower | alpha | graph | print);
+    __table_.insert(123, 126, punct | graph | print);
+    __table_.insert(127, cntrl);
+    __lower_map_.insert(0, 0xFFFF, 0, 0xFFFF);
+    __lower_map_.insert('A', 'Z', 'a', 'z');
+    __upper_map_.insert(0, 0xFFFF, 0, 0xFFFF);
+    __upper_map_.insert('a', 'z', 'A', 'Z');
+}
+
+bool ctype<wchar_t>::do_is(mask m, wchar_t c) const
+{
+    return (__table_[c] & m) != 0;
+}
+
+const wchar_t *ctype<wchar_t>::do_is(const wchar_t *low, const wchar_t *high, mask *vec) const
+{
+    for (const wchar_t *p = low; p < high; ++p, ++vec)
+        *vec = __table_[*p];
+    return high;
+}
+
+const wchar_t *ctype<wchar_t>::do_scan_is(mask m, const wchar_t *low, const wchar_t *high) const
+{
+    const wchar_t *p;
+    for (p = low; p < high; ++p) {
+        mask t = __table_[*p];
+        if ((t & m) != 0)
+            break;
+    }
+    return p;
+}
+
+const wchar_t *ctype<wchar_t>::do_scan_not(mask m, const wchar_t *low, const wchar_t *high) const
+{
+    const wchar_t *p;
+    for (p = low; p < high; ++p) {
+        mask t = __table_[*p];
+        if ((t & m) == 0)
+            break;
+    }
+    return p;
+}
+
+wchar_t ctype<wchar_t>::do_toupper(wchar_t c) const
+{
+    return __upper_map_[c];
+}
+
+const wchar_t *ctype<wchar_t>::do_toupper(wchar_t *low, const wchar_t *high) const
+{
+    for (; low < high; ++low)
+        *low = __upper_map_[*low];
+    return high;
+}
+
+wchar_t ctype<wchar_t>::do_tolower(wchar_t c) const
+{
+    return __lower_map_[c];
+}
+
+const wchar_t *ctype<wchar_t>::do_tolower(wchar_t *low, const wchar_t *high) const
+{
+    for (; low < high; ++low)
+        *low = __lower_map_[*low];
+    return high;
+}
+
 const char *ctype<wchar_t>::do_widen(const char *low, const char *high, wchar_t *to) const
 {
     for (; low < high; ++low, ++to)

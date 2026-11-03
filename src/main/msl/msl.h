@@ -203,9 +203,13 @@ basic_string<charT, traits, Allocator>::~basic_string()
 
 typedef basic_string<char> string;
 
-/* the facets' table: a pointer vector over the pod vector (capacity, size, data), its destructor
- * three this-tested levels */
-template <class T>
+/* <vector>, CodeWarrior 3.0's MSL shape (the game's map names its instances so): a vector of
+ * pointers is __vector_imp<T, A, 1> over the pod vector of unsigned int (capacity, size, data -- the
+ * facets' table, its destructor three this-tested levels, resize on the pod), a vector of a class
+ * __vector_imp<T, A, 0> over its deleter (the same three words), with class iterators nested in it
+ * (one word: copied through an FPR, passed by value in a register, returned through a hidden
+ * pointer -- the range map's walks) and the class insert out of line on the element pointer */
+template <class T, class Allocator>
 class __vector_pod {
 public:
     __vector_pod() : capacity_(0), size_(0), data_(0) {}
@@ -216,23 +220,108 @@ public:
     }
     size_t size() const { return size_; }
     T &operator[](size_t i) { return data_[i]; }
+    void resize(size_t sz, const T &c);
 protected:
     size_t capacity_;
     size_t size_;
     T *data_;
 };
 
-template <class T>
-class __vector_imp : public __vector_pod<T> {
+template <class T, class Allocator>
+class __vector_deleter {
 public:
-    ~__vector_imp() {}
+    __vector_deleter() : capacity_(0), size_(0), data_(0) {}
+    ~__vector_deleter()
+    {
+        if (data_)
+            operator delete(data_);
+    }
+protected:
+    size_t capacity_;
+    size_t size_;
+    T *data_;
 };
 
-template <class T>
-class vector : public __vector_imp<T> {
+template <class T, class Allocator, bool IsPOD> class __vector_imp;
+
+template <class T, class Allocator>
+class __vector_imp<T, Allocator, true> : public __vector_pod<unsigned int, allocator<unsigned int> > {
+    typedef __vector_pod<unsigned int, allocator<unsigned int> > base;
+public:
+    ~__vector_imp() {}
+    T &operator[](size_t i) { return (T &)base::operator[](i); }
+    void resize(size_t sz, const T &c) { base::resize(sz, (const unsigned int &)c); }
+};
+
+template <class T, class Allocator>
+class __vector_imp<T, Allocator, false> : public __vector_deleter<T, Allocator> {
+public:
+    class iterator {
+    public:
+        typedef int difference_type;
+        iterator(T *p) : m_p(p) {}
+        T &operator*() const { return *m_p; }
+        T *operator->() const { return m_p; }
+        iterator &operator++() { ++m_p; return *this; }
+        iterator &operator+=(difference_type n) { m_p += n; return *this; }
+        iterator operator+(difference_type n) const { iterator t(*this); return t += n; }
+        difference_type operator-(const iterator &o) const { return m_p - o.m_p; }
+        bool operator==(const iterator &o) const { return m_p == o.m_p; }
+        T *m_p;
+    };
+    class const_iterator {
+    public:
+        typedef int difference_type;
+        const_iterator(const T *p) : m_p(p) {}
+        const T &operator*() const { return *m_p; }
+        const T *operator->() const { return m_p; }
+        const_iterator &operator++() { ++m_p; return *this; }
+        const_iterator &operator+=(difference_type n) { m_p += n; return *this; }
+        difference_type operator-(const const_iterator &o) const { return m_p - o.m_p; }
+        bool operator==(const const_iterator &o) const { return m_p == o.m_p; }
+        const T *m_p;
+    };
+    ~__vector_imp() {}
+    iterator begin() { return iterator(this->data_); }
+    iterator end() { return iterator(this->data_ + this->size_); }
+    const_iterator begin() const { return const_iterator(this->data_); }
+    const_iterator end() const { return const_iterator(this->data_ + this->size_); }
+    void insert(T *position, size_t n, const T &x);
+    void insert(iterator position, const T &x) { insert(position.m_p, 1, x); }
+};
+
+template <class T> struct __is_pointer { enum { value = false }; };
+template <class T> struct __is_pointer<T *> { enum { value = true }; };
+
+template <class T, class Allocator = allocator<T> >
+class vector : public __vector_imp<T, Allocator, __is_pointer<T>::value> {
 public:
     ~vector() {}
 };
+
+/* <iterator>'s distance and <algorithm>'s lower_bound, over random-access iterators by value */
+template <class Iterator>
+inline typename Iterator::difference_type distance(Iterator first, Iterator last)
+{
+    return last - first;
+}
+
+template <class ForwardIterator, class T>
+ForwardIterator lower_bound(ForwardIterator first, ForwardIterator last, const T &value)
+{
+    typename ForwardIterator::difference_type len = distance(first, last);
+    while (len > 0) {
+        ForwardIterator i = first;
+        typename ForwardIterator::difference_type len2 = len / 2;
+        i += len2;
+        if (*i < value) {
+            first = ++i;
+            len -= len2 + 1;
+        } else
+            len = len2;
+    }
+    return first;
+}
 
 class exception {
 public:
@@ -507,10 +596,21 @@ protected:
     virtual int do_max_length() const;
 };
 
-/* ctype */
+/* ctype: the classification mask is a two-byte enum (-enum min) whose bitmask operators are
+ * functions -- inline, so a mask built with them folds in code but is no constant expression (the
+ * classic table fills its multi-bit entries in locale.cpp's static initialiser), and their result is
+ * the enum again (`andi 0xffff` after the and) */
 struct ctype_base {
-    typedef unsigned char mask;
+    enum mask {
+        alpha = 0x0001, blank = 0x0002, cntrl = 0x0004, digit = 0x0008, graph = 0x0010, lower = 0x0020,
+        print = 0x0040, punct = 0x0080, space = 0x0100, upper = 0x0200, xdigit = 0x0400
+    };
 };
+
+inline ctype_base::mask operator&(ctype_base::mask x, ctype_base::mask y)
+    { return ctype_base::mask(int(x) & int(y)); }
+inline ctype_base::mask operator|(ctype_base::mask x, ctype_base::mask y)
+    { return ctype_base::mask(int(x) | int(y)); }
 
 template <class charT> class ctype;
 
@@ -536,7 +636,7 @@ protected:
     virtual char do_narrow(char c, char dfault) const;
     virtual const char *do_narrow(const char *low, const char *high, char dfault, char *to) const;
 
-    const unsigned char *__table_;          /* 0x08 */
+    const mask *__table_;                   /* 0x08 */
     const unsigned char *__lower_map_;      /* 0x0C */
     const unsigned char *__upper_map_;      /* 0x10 */
     bool __owns_;                           /* 0x14 */
@@ -557,6 +657,11 @@ public:
     U operator[](const T &x) const;
 private:
     struct entry {
+        entry(const T &x1, const T &x2, const U &y1, const U &y2)
+            : x1_(x1), x2_(x2), m_(x2 == x1 ? U(0) : U((y2 - y1) / (x2 - x1))), b_(U(y1 - m_ * x1)) {}
+        bool contains(const T &x) const { return !(x < x1_) && !(x2_ < x); }
+        bool operator<(const entry &e) const { return x2_ < e.x1_; }
+        bool operator<(const T &x) const { return x2_ < x; }
         T x1_;
         T x2_;
         U m_;
@@ -564,6 +669,38 @@ private:
     };
     std::vector<entry> table_;
 };
+
+template <class T, class U>
+void range_map<T, U>::insert(const T &x1, const T &x2, const U &y1, const U &y2)
+{
+    entry e(x1, x2, y1, y2);
+    typename std::vector<entry>::iterator i = std::lower_bound(table_.begin(), table_.end(), e);
+    if (i == table_.end() || e.x2_ < i->x1_) {
+        table_.insert(i, e);
+        return;
+    }
+    std::size_t pos = std::size_t(i - table_.begin());
+    entry oldi = *i;
+    if (oldi.x1_ < e.x1_) {
+        i->x2_ = T(e.x1_ - 1);
+        table_.insert(++i, e);
+        ++pos;
+    } else
+        *i = e;
+    if (e.x2_ < oldi.x2_) {
+        oldi.x1_ = T(e.x2_ + 1);
+        table_.insert(table_.begin() + (pos + 1), oldi);
+    }
+}
+
+template <class T, class U>
+U range_map<T, U>::operator[](const T &x) const
+{
+    typename std::vector<entry>::const_iterator i = std::lower_bound(table_.begin(), table_.end(), x);
+    if (i == table_.end() || !i->contains(x))
+        return U(0);
+    return U(i->m_ * x + i->b_);
+}
 
 }
 
