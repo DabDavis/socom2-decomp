@@ -11,52 +11,12 @@
  * server's, which the RT layer calls -1. The world and client records are reached by offset until
  * their layout is written down. */
 
-#define DME_MAX_OBJECTS     4096
-#define DME_MAX_STREAMS     2048
-#define DME_MAX_WORLDS      4
-#define DME_MAX_CLIENTS     256
-
-typedef struct DmeIp { unsigned char b[4]; } DmeIp;
-
-/* a world's record of one client (0x2C bytes, 256 a world: func_0061C720 hands one out) */
-typedef struct DmeClientInfo {
-    char szName[16];
-    unsigned short nPort;               /* 0x10 */
-    int nState;                         /* 0x14: 4 and 5 are joined */
-    int field_18;
-    int field_1C;
-    int field_20;
-    int nValue;                         /* 0x24 */
-    unsigned char bConnected;           /* 0x28 */
-    unsigned char field_29;
-    unsigned char field_2A;
-} DmeClientInfo;
-
-/* a world (4 of them; func_0061C600 hands one out): its clients' records, then this client's index
- * and the world's state; the layout is the code's, names where a function says what a field is */
-typedef struct DmeWorld {
-    DmeClientInfo *apClients[DME_MAX_CLIENTS];  /* 0x000 */
-    unsigned int nMyClient;             /* 0x400 */
-    int nSessionMaster;                 /* 0x404 */
-    char szName[16];                    /* 0x408 */
-    char szServerVersion[16];           /* 0x418 */
-    void (*pfnClientCallback)(void *pInfo, DmeClientInfo *pClient, struct DmeWorld *pWorld); /* 0x428 */
-    int field_42C;
-    int field_430;
-    int field_434;
-    int field_438;                      /* 0x438 */
-    int field_43C;                      /* 0x43C */
-    int field_440;                      /* 0x440 */
-    int field_444;
-    int field_448;                      /* 0x448 */
-    int field_44C;                      /* 0x44C: 4 when the world is client-server */
-} DmeWorld;
+#include "dmelocal.h"
 
 extern int strcmp(const char *a, const char *b);
 extern char *strcpy(char *dst, const char *src);
 extern char *strncpy(char *dst, const char *src, unsigned int n);
 
-extern int func_0061C600(int nWorld, DmeWorld **ppWorld);
 extern int func_0061C720(int nWorld, int nClient, char **ppClient);
 extern int func_006126E8(char **ppClient, int nWorld, int nClient);
 extern char *func_006127D0(int nWorld, int nClient);

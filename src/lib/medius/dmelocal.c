@@ -18,12 +18,12 @@
  * does not -- guard, nested and single-exit forms tried). func_0061BEB8 returns the second call's
  * result through a variable: no sibling call then. */
 
+#include "dmelocal.h"
+
 #define DME_OK              0
 #define DME_ERR_RANGE       8
 #define DME_ERR_ARGUMENT    23
 
-#define DME_MAX_OBJECTS     4096
-#define DME_MAX_WORLDS      4
 #define DME_MAX_PING_SLOTS  127
 
 typedef struct DmePingSlot {
@@ -43,7 +43,6 @@ extern int sprintf(char *buf, const char *fmt, ...);
 extern void *memset(void *p, int c, unsigned int n);
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 
-extern int func_0061C600(int nWorld, char **ppWorld);
 extern int func_00639A90(int nConnection, int *pValue);
 extern int func_00614F58(int nIndex, void **ppObject);
 extern int NetFreeRemoteObject(int nIndex);
@@ -82,10 +81,10 @@ int func_00614758(int nReserved, int *pValue)
 
 int func_006147E0(void)
 {
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
     if ((unsigned int)data_00651178 < DME_MAX_WORLDS) {
         if (func_0061C600(data_00651178, &pWorld) == 0 && pWorld != 0)
-            return *(int *)(pWorld + 1084);
+            return pWorld->field_43C;
     }
     return -1;
 }
@@ -134,7 +133,7 @@ int func_00614F10(void **ppObject, int nIndex)
 
 int func_00615090(int *pValue, unsigned int nWorld)
 {
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
     int result;
 
     if (nWorld >= DME_MAX_WORLDS)
@@ -146,13 +145,13 @@ int func_00615090(int *pValue, unsigned int nWorld)
     if (result != DME_OK)
         return result;
     if (pWorld != 0)
-        *pValue = *(int *)(pWorld + 1028);
+        *pValue = pWorld->nSessionMaster;
     return result;
 }
 
 int func_006150F8(int *pValue, unsigned int nWorld)
 {
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
     int result;
 
     if (nWorld >= DME_MAX_WORLDS)
@@ -164,7 +163,7 @@ int func_006150F8(int *pValue, unsigned int nWorld)
     if (result != DME_OK)
         return result;
     if (pWorld != 0)
-        *pValue = *(int *)(pWorld + 1080);
+        *pValue = pWorld->field_438;
     return result;
 }
 
@@ -263,7 +262,7 @@ int func_0061C6C8(unsigned int nWorld)
 
 char *func_0061C8E8(unsigned int nWorld)
 {
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
 
     if (nWorld >= DME_MAX_WORLDS)
         return 0;
@@ -271,12 +270,12 @@ char *func_0061C8E8(unsigned int nWorld)
         return 0;
     if (pWorld == 0)
         return 0;
-    return pWorld + 1032;
+    return pWorld->szName;
 }
 
 int func_0061C930(unsigned int nWorld, const char *szName)
 {
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
     int result;
 
     if (nWorld >= DME_MAX_WORLDS)
@@ -287,7 +286,7 @@ int func_0061C930(unsigned int nWorld, const char *szName)
     if (result != DME_OK)
         return result;
     if (pWorld != 0) {
-        strncpy(pWorld + 1032, szName, 16);
+        strncpy(pWorld->szName, szName, 16);
         return DME_OK;
     }
     return result;
@@ -295,7 +294,7 @@ int func_0061C930(unsigned int nWorld, const char *szName)
 
 int func_0061C998(unsigned int nWorld, int nValue)
 {
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
     int result;
 
     if (nWorld >= DME_MAX_WORLDS)
@@ -304,6 +303,6 @@ int func_0061C998(unsigned int nWorld, int nValue)
     if (result != DME_OK)
         return result;
     if (pWorld != 0)
-        *(int *)(pWorld + 1028) = nValue;
+        pWorld->nSessionMaster = nValue;
     return result;
 }
