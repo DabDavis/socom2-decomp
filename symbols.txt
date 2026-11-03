@@ -9118,8 +9118,8 @@
 0x00505288 0x13C InitStationarity  # OVL2 unaligned; s1:align
 0x005053C8 0x3C ConstructStationarity  # OVL2 unaligned; s1:align
 0x00505408 0x78 ControlStationarity  # OVL2 unaligned; s1:align
-0x00505480 0x2AC func_00505480  # OVL2
-0x00505730 0x174 func_00505730  # OVL2
+0x00505480 0x2AC Subsampler_Process  # OVL2; s1:order (SOCOM 1's subsampler object at 0x370368 starts with Subsampler_Process; the same body: every second sample filtered through the ring of partial products, the others delayed) -- the gcc lane, round 11c
+0x00505730 0x174 Subsampler_CheckImpulseResponse  # OVL2; s1:order (SOCOM 1's subsampler object's second, a LOCAL there; Subsampler_Init calls it with the 23-tap table as SOCOM 1's does, and it logs error 300) -- the gcc lane, round 11c
 0x005058A8 0x348 Subsampler_Init  # OVL2 unaligned; s1:calls
 0x00505BF0 0xD8 Subsampler_Reset  # OVL2; s1:calls (SOCOM 1's Voicing_Reset tail-calls Subsampler_Reset at the same point -- its body is SOCOM II's Voicing_Reset's with the voicing fields 4 bytes lower; the subsampler object's row between Subsampler_Init and Subsampler_Free) -- the gcc lane, round 10c
 0x00505CC8 0xC4 Subsampler_Free  # OVL2 unaligned; s1:align
