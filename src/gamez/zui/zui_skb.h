@@ -233,6 +233,20 @@ struct CIntPair {
     int m_2nd;   // 0x4
 };
 
+/* an rdr array walked by index: the array a tag names, and the index (the look parser's; the Korean
+ * input unit's constructor and More, 0x3909F0 and 0x3909C0, the look parser calls out of line; ours) */
+struct CSkbRdrIter {
+    CSkbRdrIter(_zrdr *rdr, const char *tag);
+    /* the index is still inside the array */
+    bool More() const;
+    /* the item at the index, or none (ours) */
+    _zrdr *Item() const { return m_rdr->Item(m_index); }
+    void Next() { m_index++; }
+
+    _zrdr *m_rdr;   // 0x0
+    int m_index;   // 0x4
+};
+
 /* the pair of ints a tag names (SOCOM 1's ReadIntPair; the display unit's, 0x395300) */
 CIntPair ReadIntPair(_zrdr *rdr, const char *tag);
 
@@ -252,6 +266,19 @@ struct CSkbRect {
         m_pos[1] = 0;
         m_size[0] = 0;
         m_size[1] = 0;
+    }
+    /* a place and a size (the display unit's out-of-line copy, 0x396C80: the look parser's
+     * background pieces; ours) */
+    CSkbRect(const CIntPair &pos, const CIntPair &size);
+    /* a copy, word by word: CSkbBgPiece's implicit copy (0x398910) moves the rectangles with lw/sw,
+     * where the implicit assignment (SetRect, the look parser's pieces) block-copies each int pair
+     * through the FPRs -- a user-declared copy constructor beside the implicit operator= */
+    CSkbRect(const CSkbRect &r)
+    {
+        m_pos[0] = r.m_pos[0];
+        m_pos[1] = r.m_pos[1];
+        m_size[0] = r.m_size[0];
+        m_size[1] = r.m_size[1];
     }
     /* (ours) */
     void Set(const CIntPair &pos, const CIntPair &size)

@@ -358,14 +358,10 @@ std::pair<bool, bool> SkbHangulType(CSkbPieces *pieces, char c)
     return std::pair<bool, bool>(true, more);
 }
 
-/* an rdr array walked by index (the look parser's) */
-struct CSkbRdrIter {
-    /* the index is still inside the array */
-    bool More() const;
-
-    _zrdr *m_rdr;   // 0x0
-    int m_index;   // 0x4
-};
+/* (0x3909F0; the look parser calls it out of line) */
+CSkbRdrIter::CSkbRdrIter(_zrdr *rdr, const char *tag) : m_rdr(zrdr_flat_findtag_startidx(rdr, tag, 0)), m_index(0)
+{
+}
 
 bool CSkbRdrIter::More() const
 {

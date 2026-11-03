@@ -7344,7 +7344,7 @@
 0x003908A0 0x100 Append__10CSkbPiecesFR6SKBSEQb  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: a sequence's jamo pushed onto the last piece's, its Val or Val2 -- by the flag, a reference selected -- added to the piece's 16-bit code)
 0x003909A0 0x18 Seq__7SKBRULEFi  # OVL1; the UI lane round 10: ours (zui_hangul.cpp: a production's sequence i, 20-byte elements of the vector at 0xC)
 0x003909C0 0x2C More__11CSkbRdrIterCFv  # OVL1; ours (zui_hangul.cpp: an rdr array walked by index, {rdr, index}: the index still under the count; the look parser 0x3963F0 calls it four times)
-0x003909F0 0x3C func_003909F0  # OVL1
+0x003909F0 0x3C __ct__11CSkbRdrIterFP5_zrdrPCc  # OVL1; the UI lane round 14: ours, by its body (zui_hangul.cpp: {zrdr_flat_findtag_startidx(rdr, tag, 0), 0} stored, this returned -- the {rdr, index} walker More 0x3909C0 tests; the look parser constructs its two walkers with it)
 0x00390A30 0x174 SkbHangulType__FP10CSkbPiecesc  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composition's jamo plus the one typed composed into the pieces by 0x391670; a pair<bool, bool> returned -- composed, and whether s_compose held fewer strings than the pieces -- the pooled false/true at 0x3E04A8/0x3E04B0/0x3E04B8; 0x399200 calls it)
 0x00390BB0 0x90 FindJamo__FPCc  # OVL1; ours (zui_hangul.cpp: a jamo by name against the 33 names at 0x3FB170 (A_Hang .. Yu, alphabetical), 33 for none; zui_skb.cpp's 0x38DA70 calls it)
 0x00390C40 0x464 SkbParseKoreanRules__FP5_zrdr  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: KeyboardsRdr's KoreanInputRules -- each Productions entry a new 24-byte SKBRULE pushed onto s_rules, its Name, its Sequences' Seq jamo by FindJamo (inlined), Val and Val2 -- then CompleteCharacter through 0x392130; the display unit's 0x397070 calls it)
@@ -7437,11 +7437,11 @@
 0x00395F40 0x2D4 func_00395F40  # OVL1
 0x00396220 0xDC SkbTogglePair__FP12CBmpWithNodeP12CBmpWithNodePFb_v  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: two bitmaps' nodes toggled when both exist, a callback told whether the second is on, sound 3)
 0x00396300 0xE4 SkbToggleBmp4__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 4's node toggled, bitmap 3's shown when it comes on, the float 0x3E04C8 cleared, sound 3)
-0x003963F0 0x7D8 func_003963F0  # OVL1
+0x003963F0 0x7D8 ParseLook__13CSoftKeyboardFP5_zrdr  # OVL1; the UI lane round 14: ours, by its body (zui_skbview.cpp: CreateSoftKeyboard calls it with the new keyboard and its rdr block after push_back; it reads Name, Background, ShiftBackground, the four piece lists, StartGridPos ... SwitchTargets into the look's members)
 0x00396BD0 0x30 SetRect__8CSkbLookFUcRC8CSkbRect  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the look's rectangle i (0x70 + 16 i) assigned, a block copy; the look parser 0x3963F0 calls it five times)
 0x00396C00 0x70 ReadSkbRect__FP8CSkbRectP5_zrdr  # OVL1; ours (zui_skbview.cpp: a look rectangle from its block's Pos and Size pairs through ReadIntPair; the look parser 0x3963F0 calls it)
-0x00396C70 0x8 func_00396C70  # OVL1
-0x00396C80 0x28 func_00396C80  # OVL1
+0x00396C70 0x8 SkbFindTag__FP5_zrdrPCc  # OVL1; the UI lane round 14: ours, by its body (zui_skbview.cpp: a tail call of zrdr_flat_findtag_startidx with start 0; the look parser's five toggle rectangles)
+0x00396C80 0x28 __ct__8CSkbRectFRC8CIntPairRC8CIntPair  # OVL1; the UI lane round 14: ours, by its body (zui_skbview.cpp: two int pairs stored as a place and a size, this returned -- a constructor; the look parser's piece rectangles and 0x397070 call it)
 0x00396CB0 0x88 SkbShifted2__FP4CPad  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: SkbShifted inlined, then against bitmap 0's node active; 0x38D200 asks)
 0x00396D40 0x118 SkbTextFits__FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>b  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a std::string within the look's byte and UTF-8 character limits for string 0 or 1, 0x4A10C8-0x4A10E0; 0x399EC0 asks)
 0x00396E60 0x54 SkbShifted__FP4CPad  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: CPad's L1 state, 0xD, held or falling, against bitmap 5's node active -- the shift lock; SkbTypeJamo 0x399070 asks)
@@ -7461,10 +7461,10 @@
 0x00397950 0x268 func_00397950  # OVL1
 0x00397BC0 0x164 SkbFindSounds__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the six CSnd statics from CSnd::GetSoundByName of strings 2, 3, 4, 5, 6 and 1; 0x3958D0 calls it)
 0x00397D30 0x2AC func_00397D30  # OVL1
-0x00397FE0 0xE4 func_00397FE0  # OVL1
-0x003980D0 0x220 func_003980D0  # OVL1
-0x003982F0 0x618 func_003982F0  # OVL1
-0x00398910 0xD0 func_00398910  # OVL1
+0x00397FE0 0xE4 resize__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FUi  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' resize (the look parser's only request: m_sources[i].resize(size() + 1)), byte-exact from source with erase/insert named
+0x003980D0 0x220 erase__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FP11CSkbBgPieceP11CSkbBgPiece  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' range erase (resize 0x397FE0 calls it)
+0x003982F0 0x618 insert__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FP11CSkbBgPieceUiRC11CSkbBgPiece  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, the background pieces' fill insert (resize 0x397FE0 calls it)
+0x00398910 0xD0 __ct__11CSkbBgPieceFRC11CSkbBgPiece  # OVL1; the UI lane round 14: zui_skbview.cpp's tail, CSkbBgPiece's implicit copy constructor (the string's copy inlined, the two rectangles block-copied; the insert 0x3982F0 calls it after placement new)
 0x003989E0 0x60 __dt__11CSkbBmpRowsFv  # OVL1; the UI lane round 9: the four rows' implicit destructor (__destroy_arr over four 0x6E0-byte rows with 0x398A40), registered by zui_skbview.cpp's initialiser for 0x49ED70; the class name ours -- byte-exact from source
 0x00398A40 0x60 __dt__10CSkbBmpRowFv  # OVL1; the UI lane round 9: a row's implicit destructor (__destroy_arr over ten CBmpWithNode with zui_skb.cpp's 0x38E490); the class name ours -- byte-exact from source
 0x00398AA0 0x40 __ct__10CSkbBmpRowFv  # OVL1; the UI lane round 9: a row's implicit constructor (__construct_array over ten CBmpWithNode with zui_skb.cpp's 0x38E620/0x38E490), the initialiser's __construct_array element constructor; the class name ours -- byte-exact from source
