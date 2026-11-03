@@ -9026,11 +9026,11 @@
 0x004F80A8 0x84 smtDestruct  # OVL2 unaligned; s1:calls (SOCOM 1's FreeResourcesAcne tail-calls smtDestruct(smoother, tos) at the point where ours -- FreeResourcesAcne inlined into ControlAcne -- calls this row; the smoothing object's, after smtConstruct) -- the gcc lane, round 11c (found by its helper)
 0x004F8130 0x244 SpecSubPutSession  # OVL2; s1:calls (SOCOM 1's ControlSpecSub calls SpecSubPutSession where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F8378 0xF0 SpecSubGetSession  # OVL2 unaligned; s1:align
-0x004F8468 0x1208 func_004F8468  # OVL2 unaligned
+0x004F8468 0x1208 SpectralSubtraction  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessSpecSub calls SpectralSubtraction, ours 0x4F9CE8 calls this row at the same point, its five arguments alike; third in SOCOM 1's object as here) -- the gcc lane, round 15c
 0x004F9670 0x224 ControlSpecSub  # OVL2; s1:align
-0x004F9898 0x40C func_004F9898  # OVL2 unaligned
+0x004F9898 0x40C InitSpecSub  # OVL2 unaligned; s1:order (ConstructSpecSub's init slot, as SOCOM 1's LOCAL InitSpecSub, 0x40C in both builds; after ControlSpecSub in both objects) -- the gcc lane, round 15c
 0x004F9CA8 0x3C ConstructSpecSub  # OVL2 unaligned; s1:align
-0x004F9CE8 0xD4 func_004F9CE8  # OVL2 unaligned
+0x004F9CE8 0xD4 ProcessSpecSub  # OVL2 unaligned; s1:order (ConstructSpecSub's process slot, as SOCOM 1's LOCAL ProcessSpecSub; the object's last in both) -- the gcc lane, round 15c
 0x004F9DC0 0x2D8 ChangeMike  # OVL2; s1:calls
 0x004FA098 0x164 TestChangeMike  # OVL2 unaligned; s1:align
 0x004FA200 0x240 CheckForAbnormalConditions  # OVL2; s1:calls

@@ -169,7 +169,7 @@ struct LANGVT {
     void *s16[9];
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
     void *s26[5];
-    unsigned int (*GetFirstCdbSize)(void *cb);        /* +124, slot 31 */
+    unsigned int (*GetSecondCdbSize)(void *cb);       /* +124, slot 31 */
     void *s32[9];
     void *(*GetpCodeBook)(LANGVT *l, int n);          /* +164, slot 41 */
     void *s42[4];

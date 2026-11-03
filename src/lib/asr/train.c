@@ -138,7 +138,7 @@ int TrainInit(CASR *c)
     c->maxcw = 0;
     n = l->GetNbrCodeBook(l);
     for (i = 0; i < n; i++) {
-        unsigned int ncw = l->GetFirstCdbSize(l->GetpCodeBook(l, i));
+        unsigned int ncw = l->GetSecondCdbSize(l->GetpCodeBook(l, i));
         TRAINREC *r;
 
         if (c->maxcw < ncw)
@@ -161,7 +161,7 @@ int TrainInit(CASR *c)
     }
     maxent = 0;
     for (i = 0; i < n; i++) {
-        unsigned int ncw = l->GetFirstCdbSize(l->GetpCodeBook(l, i));
+        unsigned int ncw = l->GetSecondCdbSize(l->GetpCodeBook(l, i));
         float e = -logf(c->f1052 / (ncw * c->f1052 + 1.0f));
 
         if (maxent < e)
