@@ -670,7 +670,8 @@ void MediusGetClientAddrList(NetAddressList *list)
 typedef enum MediusProcessingState {
     MediusProcessingNone,               /* 0 */
     MediusProcessingQueued,             /* 1: a request waits for the address resolution */
-    MediusProcessingFailed              /* 2 */
+    MediusProcessingFailed,             /* 2 */
+    MediusProcessingResolving           /* 3: JoinGame's and CreateGameOnSelf's resolution started */
 } MediusProcessingState;
 
 /* the two requests that wait for the client's addresses: their packets' last 48 bytes are the
@@ -678,14 +679,22 @@ typedef enum MediusProcessingState {
 typedef struct MediusJoinGameRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];
     char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
-    char Data38[110];
+    int Field28;                        /* 0x28 */
+    int Field2C;                        /* 0x2C */
+    char GamePassword[32];              /* 0x30 (terminated at 32) */
+    int GameHostType;                   /* 0x50: 2 the addresses are resolved first (the NAT) */
+    char Data54[64];                    /* 0x54 */
     NetAddressList AddressList;         /* 0x94 */
 } MediusJoinGameRequest;                /* 0xC4 */
 
 typedef struct MediusCreateGameOnSelfRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];
     char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
-    char Data38[150];
+    char Data26[26];
+    char GameName[64];                  /* 0x40 (terminated at 64) */
+    char GamePassword[32];              /* 0x80 (terminated at 32) */
+    char DataA0[24];
+    int GameHostType;                   /* 0xB8: 2 the addresses are resolved first (the NAT) */
     NetAddressList AddressList;         /* 0xBC */
 } MediusCreateGameOnSelfRequest;        /* 0xEC */
 
@@ -1377,6 +1386,56 @@ MediusErrorCode MediusTextFilter(MediusTextFilterRequest *request, MediusCallbac
     return MediusErrorNone;
 }
 
+/* the resolution DME runs for the two requests behind a NAT (DME's NetSetDefaultResolveAddrParams
+ * 0x621A90 fills it, 0x621B28 starts it): MediusResolveAddrCallback gets the client's addresses */
+typedef struct NetResolveAddrParams {
+    int Field00;
+    void (*pfnCallback)(int *pResult);  /* 0x04 */
+    NetAddress ServerAddr;              /* 0x08: the NAT service's */
+} NetResolveAddrParams;                 /* 0x20 */
+
+extern int func_00621A90(NetResolveAddrParams *pParams);
+extern int func_00621B28(NetResolveAddrParams *pParams, void *pResult);
+extern MediusCallback data_006561FC;    /* CreateGameOnSelf's callback slot */
+extern MediusCallback data_00656204;    /* JoinGame's callback slot */
+extern int data_00686BA8;               /* PacketTypeCreateGameOnSelfRequest */
+
+/* SOCOM 1's MediusCreateGameOnSelf (queued type 18): a host behind a NAT resolves its addresses first -- the
+ * request is queued and sent from MediusCheckRequestQueue with the list filled in -- else it is
+ * sent at once */
+MediusErrorCode MediusCreateGameOnSelf(MediusCreateGameOnSelfRequest *request, MediusCallback callback)
+{
+    NetResolveAddrParams params;
+    char abResult[16];
+
+    iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
+    iTerminateString(request->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
+    iTerminateString(request->GameName, 64);
+    iTerminateString(request->GamePassword, 32);
+    if (GlobalInitFlag != 1)
+        return MediusErrorNotInitialized;
+    if (MyConnectionIndex < 0)
+        return MediusErrorNotConnected;
+    data_006561FC = callback;
+    if (request->GameHostType == 2) {
+        if (func_00621A90(&params) != 0)
+            return -2;
+        MediusGetNatServiceAddress(&params.ServerAddr);
+        params.pfnCallback = MediusResolveAddrCallback;
+        MediusSetProcessingState(MediusProcessingResolving);
+        MediusSetQueuedRequest(MEDIUS_REQUEST_CREATEGAMEONSELF, request);
+        if (func_00621B28(&params, abResult) != 0) {
+            MediusSetProcessingState(MediusProcessingNone);
+            return -2;
+        }
+        return MediusErrorNone;
+    }
+    if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686BA8,
+                       sizeof(*request), request) != 0)
+        return MediusErrorSendingMessage;
+    return MediusErrorNone;
+}
+
 MediusErrorCode MediusCreateChannel(MediusCreateChannelRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
@@ -1389,6 +1448,39 @@ MediusErrorCode MediusCreateChannel(MediusCreateChannelRequest *request, MediusC
         return MediusErrorNotConnected;
     CreateChannelCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 4, data_00686BB0,
+                       sizeof(*request), request) != 0)
+        return MediusErrorSendingMessage;
+    return MediusErrorNone;
+}
+
+/* JoinGame (queued type 44), as CreateGameOnSelf: a host behind a NAT resolves first */
+MediusErrorCode MediusJoinGame(MediusJoinGameRequest *request, MediusCallback callback)
+{
+    NetResolveAddrParams params;
+    char abResult[16];
+
+    iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
+    iTerminateString(request->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
+    iTerminateString(request->GamePassword, 32);
+    if (GlobalInitFlag != 1)
+        return MediusErrorNotInitialized;
+    if (MyConnectionIndex < 0)
+        return MediusErrorNotConnected;
+    data_00656204 = callback;
+    if (request->GameHostType == 2) {
+        if (func_00621A90(&params) != 0)
+            return -2;
+        MediusGetNatServiceAddress(&params.ServerAddr);
+        params.pfnCallback = MediusResolveAddrCallback;
+        MediusSetProcessingState(MediusProcessingResolving);
+        MediusSetQueuedRequest(MEDIUS_REQUEST_JOINGAME, request);
+        if (func_00621B28(&params, abResult) != 0) {
+            MediusSetProcessingState(MediusProcessingNone);
+            return -2;
+        }
+        return MediusErrorNone;
+    }
+    if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686BC0,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
     return MediusErrorNone;

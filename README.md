@@ -5964,6 +5964,49 @@ use, store, copy, normalize_with_buf, get_avail_nowrap, get_start_used_ptr, get_
 rows (`src/lib/medius` 810 -> 850 of 905), none superseding a draft; 9 rows named (above). No tool
 changed.
 
+**Round 15b: rt_msg_client's internals from SOCOM 1's bodies, two NAT requests, the server key.**
+
+- **A length test against an offset variable**: SCEA's message handlers compare the length with an
+  offset still zero there -- `if (nLength > nOffset + 1)` (process_app_message), `if (nLength >
+  nOffset)` (process_disconnect_message). The MIPS expander keeps `sltu t,y,x` for `x > y` only when
+  y is no constant (gen_int_relational); CSE then substitutes the register known to hold 1 -- the
+  target's `sltu v1,a0,s3`, a0 the validity test's result. A constant 1 gives `sltiu v1,s3,2` and the
+  inverted branch; SOCOM 1's copies carry the same `sltu`.
+- **The rt_msg_client internals return `unsigned char`** -- get_connection, get_valid_connection,
+  get_header, 0x638500, 0x634A08 (no `andi` on any result they return; 0x634078 calls 0x634A08 with
+  a jal, not a sibling call): declared so, nothing matched before moved.
+- **loop.c moves a loop's `return` out of the loop** (find_and_verify_loops): the block goes after
+  the barrier nearest before its target label -- iget_buffer_status's `return 21` landed inside the
+  last guard's code until that guard was written POSITIVE with its error in an else (round 14b's rule),
+  which left the barrier at the function's end, where the target has the block.
+- **A store-flag the target lacks**: `if (fits) b = 1; else b = 0;` folds into `slti`; `b = 1; if
+  (!fits) b = 0;` stays a branch pair as the target's (store_msg_in_send_buf). Its flagged-target
+  chain is positive too (`if (bTargetSet == 1) {...} else last = target;`): the 0xFFFF case's store then
+  threads as a likely branch.
+- **A final `return 0` that is a join keeps its `move v0,zero`**: 2.96 folds `if (r) return r;
+  return 0;` into `return r` (3 words short) unless another path reaches that `return 0` (0x6385F0's
+  nothing-to-send path: a label stands in for SCEA's shape there, OPEN).
+- **Zeroed locals are stored in declaration order, the last in a branch's delay slot** (send_buffer,
+  iget_buffer_status, recv_circ_buf): reversing the declarations gave the target's order each time.
+- **A struct passed from a byte record is a 1-aligned block move**: serverkey.c's 64-byte key copy is
+  `ldl/ldr` and `sdl/sdr` on both sides (a record of a `char` array; memcpy of an array word-aligns
+  the static) -- OPEN on registers only (the source address in v0/a3, scratches v1/a1/a2 in the
+  target).
+- **Named**: 0x648720 `MediusCreateGameOnSelf` (s1:order+calls: SOCOM 1's at 0x3B3A40, before
+  MediusCreateChannel and MediusJoinGame as here; it queues MediusSetQueuedRequest's CreateGameOnSelf
+  case, type 18, and sends the queue's create packet 0x686BA8).
+- **Open, diagnosed in place**: rt_msg_client_iget_buffer_status (10, registers: the send sum and the
+  strength-reduced channel offset swap s1/s2), 0x6385F0 (17, above), serverkey.c's 0x64F4E0 (37,
+  registers).
+
+Hand-written in round 15b: `medius/rt_msg_client.c` (11 written, +9 byte-exact: idisconnect,
+isend_target, send_buffer, process_app_message, process_disconnect_message, store_msg_in_send_buf,
+recv_circ_buf, 0x634A08, 0x638500; iget_buffer_status and 0x6385F0 OPEN; 77 of 80), `medius/mediusapi.c` (+2:
+MediusCreateGameOnSelf, MediusJoinGame; 109 of 109), `medius/mediusutil.c` (+1, iGetMessageIDValues,
+SOCOM 1's body with its value unsigned: 3 of 3), `medius/serverkey.c` (new, 0 of 1) -- 12 rows new to
+the map's byte-exact rows (`src/lib/medius` 850 -> 862 of 920), none superseding a draft; 1 row named.
+No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
