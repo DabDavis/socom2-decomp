@@ -10927,7 +10927,7 @@
 0x005B7BA0 0x5EC UpdateAiMapLoc__10CZSealBodyFv  # OVL2; slot 0x48 of __vt__10CZSealBody (CEntity's UpdateAiMapLoc slot; SOCOM II's takes no argument, as UpdateAiMapLoc__7CEntityFv)
 0x005B8190 0xC8 ftmask_create__FP5_zrdr  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's ftmask_create__FP5_zrdr sits right before CSealEx::OnWeaponHit as this does before 0x5B8260 -- the same array walk, a bit per number (SOCOM II's arrays count in length, items from 0)
 0x005B8260 0x10 OnWeaponHit__7CSealExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:exact
-0x005B8270 0x60 func_005B8270  # OVL2
+0x005B8270 0x60 TurnSetup__10CZSealBodyFi  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's TurnSetup__10CZSealBodyFi in the same place -- after CSealEx::OnWeaponHit, before the kit (seal_ik.cpp) -- called likewise from two stance functions (0x584C60, 0x586050, as SOCOM 1's InStateCrouch and StandTurning) that pass a second word; SOCOM II's body only clears the bits at 0x1060 7 and 6 when both feet (0x2F0, 0x2F4) exist
 0x005B82D0 0x8 func_005B82D0  # OVL2
 0x005B82E0 0x2B8 func_005B82E0  # OVL2
 0x005B85A0 0x8C func_005B85A0  # OVL2
