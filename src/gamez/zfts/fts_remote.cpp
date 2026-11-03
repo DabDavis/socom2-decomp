@@ -46,6 +46,8 @@ public:
         unsigned char m_kind;   // 0x0
         int m_client;   // 0x4
     };
+
+    void AddToFixList(TypeRTimeFixStruct *fix);   /* 0x30D870 */
 };
 
 
@@ -110,6 +112,13 @@ struct CNodeName {
     char *m_name;   // 0x90
 };
 
+/* a SEAL's command (zseal.h's FT_COMMAND: a byte under -enum min) */
+enum FT_COMMAND {
+    CMD_UNKNOWN = 0,
+    CMD_ACTION = 1,
+    CMD_LAST = 255
+};
+
 class CZSealBody {
 public:
     unsigned char _0[4];
@@ -130,6 +139,8 @@ public:
     unsigned char _fdc[0x1044 - 0xfdc];
     float m_1044;   // 0x1044
 
+    /* a command given to another SEAL (OVL2's, SOCOM 1's at the same call) */
+    void IssueCommand(CZSealBody *who, FT_COMMAND cmd, void *data, bool b);   /* OVL2 0x590AC0 */
     void RemoteWeaponDamageNonVictim(DAMAGE_LOCATION where, CZSealBody *victim, CZSealBody *shooter,
                                      unsigned char c, bool flag);
     void RemoteWeaponDamageVictim(DAMAGE_LOCATION where, float damage, float f, CZSealBody *victim,
@@ -268,6 +279,17 @@ struct NetObject {
     char m_type;   // 0xc
 };
 
+/* the pickups' network side (OVL2's CPickup: only its statics here) and a remote message played
+ * (OVL2's) */
+class CPickup {
+public:
+    static int GetEntityIDFromNetID(unsigned int id);   /* OVL2 0x541CC0 */
+    static void NetTick(const CPnt3D *pos, float dT);   /* OVL2 0x5423E0 */
+};
+
+class CEntity;
+void PlayRemoteMsg(CEntity *e, int msg, int arg);   /* OVL2 0x5E7F20 */
+
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
 extern CZNetwork theNetwork;   /* see the head of the file */
@@ -275,11 +297,9 @@ extern unsigned char data_004412D8;
 extern CZOnlineLobby theLobby;
 
 void NetFreeObject(int index);
-void func_005423E0(int a, float b);
 void func_002BD640(CZSealBody *body, int arg);   /* CZSealState::UpdateLocalSeal */
 int func_002C3B10(int arg);
 void func_002F9690(void *lobby, int arg, int mode);
-int func_00541CC0(int id);
 void func_0059E830(CZSealBody *body, unsigned short who, int id, void *c, int obj);
 void func_002C0040(bool on);
 void func_002C4290(int me);   /* CZPersonaState::RequestTeamSwitch (SOCOM II's one argument) */
@@ -296,8 +316,6 @@ void func_00273780(CZAnimMain *zanim, void *data, int who);
 void func_00545530(void *list, CZSealBody *body, int arg);
 void func_005880E0(CZSealBody *body, short a, unsigned char b, bool c, unsigned short d);
 void func_0059E9E0(CZSealBody *body, unsigned char a, void *b, void *c, int d, CPnt3D *pos);
-void func_0030D870(CZNetwork *net, void *msg);
-void func_00590AC0(CZSealBody *a, CZSealBody *b, unsigned char c, int d, int e);
 void func_002B6530(void *queue, const char *text, int a, int b, int c, float d);   /* C2DMessage_Q::Add_Message */
 bool func_002C2FA0();
 void func_002A47B0(CMission *mission, const char *dialog);
@@ -311,7 +329,6 @@ void func_002C3550();
 int sprintf(char *buf, const char *fmt, ...);
 bool func_002C31A0();
 bool func_002C3080();
-void func_005E7F20(CZSealBody *body, short msg, int arg);
 /* what the DME's connect and disconnect callbacks are handed (SOCOM 1's callbacks took the
  * connection, the client and its name as arguments; SOCOM II's read the first two through a
  * pointer) */
@@ -437,7 +454,7 @@ void zRemoteClientLeavesCallback(int index, int client)
 
         m.kind = 2;
         m.client = client;
-        func_0030D870(&theNetwork, &m);
+        theNetwork.AddToFixList((CZNetwork::TypeRTimeFixStruct *)&m);
     }
 }
 
@@ -684,7 +701,7 @@ extern "C" int func_002BB8E0(int, int, int, void *data)
         CZSealBody *b = CZSealState::GetBodyFromObjectIndex(p->b);
 
         if (a && b)
-            func_00590AC0(b, a, p->arg, 0, 0);
+            b->IssueCommand(a, (FT_COMMAND)p->arg, 0, false);
     }
     return 8;
 }
@@ -975,20 +992,20 @@ extern "C" int func_002BAC40(int, int, int, void *data)
         switch (to) {
         case R_SEND_TO_3:
             if (func_002C31A0())
-                func_005E7F20(body, p->msg, 1);
+                PlayRemoteMsg((CEntity *)body, p->msg, 1);
             break;
         case R_SEND_TO_2:
             if (func_002C3080())
-                func_005E7F20(body, p->msg, 1);
+                PlayRemoteMsg((CEntity *)body, p->msg, 1);
             break;
         case R_SEND_TO_ALL:
-            func_005E7F20(body, p->msg, 1);
+            PlayRemoteMsg((CEntity *)body, p->msg, 1);
             break;
         default: {
             CZSealBody *player = ftsGetPlayer();
 
             if (p->to == player->m_4)
-                func_005E7F20(body, p->msg, 1);
+                PlayRemoteMsg((CEntity *)body, p->msg, 1);
             break;
         }
         }
@@ -1189,7 +1206,7 @@ int WeaponPUPacketHandler(int, int, int, void *data)
     float rz = 0.0061419215f * (float)(p->angles & 0x3ff) - 3.1415927f;
 
     q.MakeYXZRot(ry, rx, rz);
-    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(func_00541CC0(p->id));
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(CPickup::GetEntityIDFromNetID(p->id));
 
     if (body)
         func_0059EC60(body, p->who, p->id, &pos, &q);
@@ -1234,7 +1251,7 @@ int AmmoPUPacketHandler(int, int, int, void *data)
 {
     AmmoPUPacket *p = (AmmoPUPacket *)data;
     CPnt3D pos(p->x, p->y, p->z);
-    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(func_00541CC0(p->id));
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex(CPickup::GetEntityIDFromNetID(p->id));
 
     if (body)
         func_0059E9E0(body, p->who, p->m_4, p->m_14, p->id, &pos);
@@ -1277,7 +1294,7 @@ struct MayIPacket {
 int PickupMayIPacketHandler(int, int, int, void *data)
 {
     MayIPacket *p = (MayIPacket *)data;
-    CZSealBody *body = CZSealState::GetBodyFromObjectIndex((unsigned short)func_00541CC0(p->m_0));
+    CZSealBody *body = CZSealState::GetBodyFromObjectIndex((unsigned short)CPickup::GetEntityIDFromNetID(p->m_0));
 
     if (body)
         func_0059E830(body, p->m_16, p->m_0, p->m_4, p->m_14);
@@ -1676,7 +1693,7 @@ void ftsNetworkGameInit()
 void ftsNetworkGameUninit()
 {
     CZPersonaState::ClearPersonaList();
-    func_005423E0(0, 0.0f);
+    CPickup::NetTick(0, 0.0f);
 }
 
 /* (SOCOM II's: every network object of kind 'T' handed to OVL2; OVL1 0x2B7950) */

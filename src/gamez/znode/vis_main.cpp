@@ -109,9 +109,8 @@ CVisual::CVisual() : m_refs(0), m_lodMesh(0)
 }
 
 /* OVL1's copy of the pod vector's resize(n, value) (include/vector does not model it: MAIN's
- * 0x18B050 carries the name) and the pointer deque's pop_back (out of line in an earlier unit) */
+ * 0x18B050 carries the name) */
 extern "C" void func_0028B0E0(void *v, unsigned int n, const unsigned int &value);
-extern "C" void func_003349C0(void *deque);
 
 /* the stack's blocks grown for 32 ids and emptied again, the three map lists sized (SOCOM 1's) */
 void CVisual::Init()
@@ -121,7 +120,7 @@ void CVisual::Init()
     for (i = 0; i < 32; i++)
         m_stack_vid.push((void *)i);
     for (i = 0; i < 32; i++)
-        func_003349C0(&m_stack_vid);
+        m_stack_vid.pop();
     func_0028B0E0(&m_lightMapList, 16, 0);
     func_0028B0E0(&m_shadowMapList, 4, 0);
     func_0028B0E0(&m_projectedMapList, 8, 0);

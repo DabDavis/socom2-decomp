@@ -252,6 +252,11 @@ public:
     }
 
     void SampleDynamics(float dT);
+    /* a round fired (SOCOM 1's Fire: through the weapon's virtual Fire in SOCOM II) */
+    void Fire();
+    /* the yaw and pitch joints turned at their rates over a step, the aim and the scope's frame
+     * taken from the pitch joint (SOCOM 1's Rotate, its two joints split out; the name ours) */
+    void Rotate(float dT);
     /* SOCOM 1's statics: the definitions read, the world's landmarks scanned for nodes they name */
     static int Init(const char *name, const char *path);
     static void LoadTurrets();
@@ -285,7 +290,11 @@ public:
      * (the names ours) */
     unsigned char m_target[0x2c];   // 0x194
     unsigned int m_targetFlags;   // 0x1c0
-    unsigned char _1c4[0x220 - 0x1c4];
+    unsigned char _1c4[0x208 - 0x1c4];
+    /* the AI's aim error, handed to the target's ModifyAimDir as each round is fired (the name
+     * ours) */
+    float m_aimError;   // 0x208
+    unsigned char _20c[0x220 - 0x20c];
     float m_220;   // 0x220
     unsigned char _224[0x240 - 0x224];
     int m_240;   // 0x240: cleared at the mission's start
@@ -304,10 +313,14 @@ public:
     zdb::CNode *m_scope;   // 0x290: "scope"
     zdb::CNode *m_thermalScope;   // 0x294: "thermal_scope"
     bool m_thermal;   // 0x298
-    unsigned char _299[0x2a8 - 0x299];
+    unsigned char _299[0x2a4 - 0x299];
+    /* the ammunition fired, the weapon's default when none (Fire; the name ours) */
+    CZAmmo *m_ammoType;   // 0x2a4
     int m_ammo;   // 0x2a8
     CZWeapon *m_weapon;   // 0x2ac
-    unsigned char _2b0[0x2c0 - 0x2b0];
+    /* the rounds fired, each projectile's tracer count (SOCOM 1's at 0x254; the name ours) */
+    unsigned int m_shots;   // 0x2b0
+    unsigned char _2b4[0x2c0 - 0x2b4];
     CMatrix m_2c0;   // 0x2c0
     CMatrix m_300;   // 0x300
     CMatrix m_340;   // 0x340
@@ -412,6 +425,9 @@ public:
     virtual void UpdateAiMapLoc();
     virtual void OnMissionStart();
 
+    /* the node's frame sampled: the turn, the step and the velocity over the frame (the turret's
+     * SampleDynamics; the name ours) */
+    void SampleDynamics(float dT);
     static int Init(const char *name, const char *path);
     static void LoadVehicles();
     static int ScanForVehicleDefinitionHookups(zdb::CNode *node, bool recurse);
@@ -441,7 +457,12 @@ public:
     CMatrix m_220;   // 0x220
     unsigned char _260[0x268 - 0x260];
     CPnt3D m_bounds[4];   // 0x268
-    unsigned char _298[0x2ac - 0x298];
+    unsigned char _298[0x29c - 0x298];
+    /* the turn over the last frame: the cosine between the node's old and new Z (SampleDynamics; the
+     * name ours) */
+    float m_turn;   // 0x29c
+    /* the step over the last frame (SampleDynamics; the name ours) */
+    CPnt3D m_step;   // 0x2a0
     unsigned int m_flags;   // 0x2ac
 
     /* the definitions (0x4A4138; the name ours, after the turret's) */

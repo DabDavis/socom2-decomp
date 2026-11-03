@@ -486,16 +486,19 @@ static short *_langGetpGastone(LANG *l)
     return (short *)(d->warp + d->nbr_warp_factors * 2);
 }
 
-/* OPEN, with the next two (4-18 words, the same instructions in another order): the target sums
- * each section's offset in its own order -- the gastone term onto the base before the warp
- * factors' here, the counts as integers before the base in the penalties'; 30 spellings of the
+/* the gastone term onto the base through a pointer of its own, then the warp factors and the
+ * header: a pointer local stops 2.96's fold from merging the terms into one halfword index (round
+ * 16c; one expression gives `(s * c + w * 4) * 2` or the warp factors first). OPEN, the next two
+ * (6 and 11 words, the same instructions in another order): the target sums each section's offset
+ * in its own order -- the counts as integers before the base in the penalties'; 30 spellings of the
  * three (halfword and byte arithmetic, the base first or last, the constant folded or not:
- * build/scratch/gcc/spec_erg*.py) give none of them. */
+ * build/scratch/gcc/spec_erg*.py) and round 16c's dozen give neither. */
 static unsigned short *_langGetpErgodicStates(LANG *l)
 {
     LANGDATA *d = l->data;
+    unsigned short *p = (unsigned short *)d + d->nbr_state * d->nbr_codebook;
 
-    return (unsigned short *)d + (d->nbr_state * d->nbr_codebook + d->nbr_warp_factors * 4 + 112);
+    return p + d->nbr_warp_factors * 4 + 112;
 }
 
 static unsigned short *_langGetpErgodicPhenomes(LANG *l)
