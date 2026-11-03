@@ -48,7 +48,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
 | `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
-| `tools/try.py` | compile one unit with one textual substitution at a time and score one symbol, in a scratch copy of `src/` |
+| `tools/try.py` | compile one unit with one textual substitution at a time and score one symbol, in a scratch copy of `src/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`) |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
@@ -4043,6 +4043,59 @@ lost and every order failed to build). No tool that scores changed: scdiff.py, s
 scdecomp.py and `include/` are byte-identical to master's (3daf64e5), so no unit can score
 differently. automatch was not run this round.
 
+**Round 11a** (2026-11-03, by hand; the tools below first): 46 functions byte-exact of 57 written --
+39 rows newly byte-exact (9,514 -> 9,553), 7 matched drafts superseded -- and 3 rows and 1 data row
+named. libmpeg's reference interpolators (`sdk/mpeg_dec.c`, 35 of 38: the sixteen `_rix_`/`_ri0_`,
+`_copyAddRefImage`, `_ipuSetMPEG1`, `_dmVector`); libkernl's SIF RPC object (`sdk/sifrpc.c`, 13 of 23),
+its thread helpers whole (`sdk/thread.c`, 5 of 5), its DECI2 console (`sdk/tty.c`, 4 of 7) and its
+console output object's writers and entry points (`sdk/kprintf.c`, 5 written of 8: kputchar,
+deci2Putchar, serialPutchar, kprintf, scePrintf). Named: `_sceRpcFreePacket`, `_request_end`
+(s1:order, the demo's sifrpc object; libmrpc's copies are 0x1BCF00/0x1BCF20), `_request_rdata`
+(s1:ref: cmd 0x8000000C's handler, a later release's), data `_data_table` (the demo's label). What
+they showed:
+
+- **libmpeg's interpolators are inline asm in noreorder mode**: written for reorder mode (each filled
+  slot handed back to GNU as) 13 of 16 refill as the target under the dtls13010 build's as and
+  2.96's -- none under 991111's (10-51 words off), libvu0's tell again -- but four clear a flag in the
+  slot of the branch that tests it (`bnez t8; move t8,zero`), which reorder mode cannot write.
+  `_copyRefImage` carries its clamp constant `_maxval` behind `.align 4` (lq needs 16 bytes): its nops
+  follow the object's own layout, so it is OPEN until the four C functions before the interpolators
+  are written (byte-exact with 8 bytes put before `_rix_000`).
+- **A function-local static is `NAME.N` in the demo** (InitThread's `stack.6`): this compile numbers it
+  `stack.9`, so its data row would not resolve; the reference stays unchecked. A bare static label
+  resolves through the data map by its bare name -- a `.bss` table libmrpc's copy already names
+  (`_packet_buffer`) cannot be named for sifrpc's without qualifying data labels too.
+- **Sony's libkernl is not ps2sdk's reconstruction**, near as it is: the thread helpers return the
+  id they queued (ps2sdk 0), test it unsigned and read the running thread with an inlined syscall
+  -47; the console's queue is `{size, count, rp, wp, buf}` advanced by peek-then-done calls;
+  `_request_end` is a switch with an empty third case (0x8000000C), which gives the target's case tree
+  (0x8000000A at its root: two cases alone make a chain); the console writers take an int.
+- **Volatile, field by field**: the console's `tinfo.socket` is read back after its store
+  (sceTtyInit) and `writing` is spun on (sceTtyWrite); `read_queue` is plain -- sceTtyRead is
+  byte-exact only so.
+- **Open, diagnosed in place**: sifrpc's ten share one cause first -- the target never hoists a load
+  above a store through another structure, which this build does under strict aliasing; the unit
+  keeps strict aliasing (without it _request_bind comes to 9 and _request_rdata to 8, but four matched
+  functions are lost), so the vendor's packet field types are not yet these; sceTtyInit (16:
+  the failure return jumps to the shared epilogue), sceTtyHandler, sceTtyWrite, _copyRefImage (above).
+
+**The tools, round 11a**: (1) **a unit names its overlay**: `/* sc: overlay=MAIN|OVL1|OVL2 */` --
+each function scores against its row in that overlay (the named row there, else the row an
+`ovl-copy:` mark names), `no-target` when the overlay has neither, an unknown overlay a build
+failure. MAIN's zvid.cpp (0x181C20, marked `ovl-copy: zVid_Assert__FbUiPci`) then scores at its own
+address, and a MAIN unit defining `main` does once 0x1C4CC0 carries `ovl-copy: main` (tested with
+the mark: it scores against the 0xCF8 row). (2) **`tools/try.py` builds as sccheck does**
+(`sccheck.build_one`, now given the tree's root): the unit's toolchain and flags, an assembler unit,
+`as=`, `NAME@UNIT` statics, `overlay=`; `-n` reads `\n` and `\t` in a substitution (the MAIN runtime
+lane's var.py folded in). (3) **`scdiff.code_label`**: a GNU object's `.text`+N reference at a
+local label the data map names resolves by its address (libmpeg's `_maxval`), whatever the unit's
+layout before it; the canary's `test_gnu_code_label_resolves_by_the_map` moves the label as its
+negative. Proved over every unit (`--files .`, 2,889 units, 12,038 lines) under master's scdiff,
+sccheck and scdecomp and these: identical but `_copyAddRefImage`'s `_maxval`, unchecked -> ok; no
+verdict changed. automatch over this lane's GCC ranges (`--range 18DB90 1C4CC0`, `1CCD78 1CE2A4`,
+`1E7F58 1E8FD4`, `243000 256FD0`, `--max-size 0x400 --emit --no-prune`, 2 jobs): 526 tried, 0 hits
+(m2c refused 44, 99 drafts would not build).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -4757,6 +4810,45 @@ and member lists, 0x629DA0-0x62A3B0), `medius/rt_msg_client.c` (+17 and the OPEN
 -- 96 functions byte-exact, 76 new to the map's byte-exact rows (11,216 bytes), 20 superseding
 matching drafts; 4 data rows (gbInitialized@streammedia, gnInitCount@streammedia,
 gpszVersion@rt_upnp by SCEA's convention; gapStreamSessions, ours). No row renamed; no tool changed.
+
+**Round 11b: rt_udp.c, rt_p2p.c and the RT objects between them.**
+
+- **What 0x6311E8-0x63CF20 holds**: after rt_crypt.c's ciphers an interrupt-handler object
+  (0x6311E8, drafts) and **rt_list.c** (ours, 0x6313D8-0x6322C8: a message list in a ring buffer --
+  an 8-byte head per message, an empty message always ending the chain -- the lists rt_udp keeps per
+  endpoint and per connection); after rt_mutex_platform **rt_p2p.c** (0x6395B8-0x63C700, its
+  `$Header`; a peer table over one rt_udp endpoint of 256 connections and the key manager, id -1)
+  and **rt_table.c** (ours, 0x63C700: a rows-by-columns word table, .data 0x656000-0x656010); then
+  rt_time. **rt_udp.c** is SCEA's reliable UDP ("rt_udp version: 01.02.0048", a .data array): an
+  endpoint of 0x54 bytes on its own channel or one of eight shared ones (`gapUdp`, by the slot at
+  0x48), 0x90-byte connections with a TCP-like RTT estimator (srtt, rttvar, an RTO of at most 500
+  ms), 12-byte headers (flags, slot, length, id, sequence) and a 4-byte trailer. SOCOM 1's
+  rt_rel_udp keeps none of these bodies: every name is a placeholder.
+- **A statement macro again stops sibling calls**: rt_p2p's three relay handlers are jals only as
+  `do { f(...); } while (0)` (2.96 tail-calls a void function's last call to an int function
+  otherwise) -- round 7b's NetFreeClient finding, met a second time.
+- **A narrow return type, a third time**: rt_list's end-marker writer returns `unsigned char`, so
+  the clear returns its result through a jal; and KM_Cleanup (rt_crypt.c, 0x630508) is void, as its
+  sibling KM_Destroy: declared int, rt_p2p's destroy takes v1 for the record it reloads after it.
+- **Shapes, each measured**: a two-way choice as `if (n == 0) {...; return 0;} if (n == 1) {...;
+  return 0;} return 1;` (an if/else lets the two bodies' tails cross-jump; a switch moves every
+  block); a result kept in a saved register to one `return result` across a call (0x641230); a value
+  read once into a local before three class tests (KM_Cleanup's id: the struct field reloads in
+  every test otherwise); a row index for a fixed table (`aSlots[i]`, i < 32), which 2.96 turns into
+  the target's count-down loop, where a walking pointer moves the registers; the RTO as `n = srtt +
+  MAX(rttvar, 1); if (n > 500) n = 500;`; header stores by `tools/ccperm.py` (five functions).
+- **An unrotated search loop**: rt_p2p's peer searches test the bound at the top, recompute
+  `i * 40` and hoist only the count -- `for (i = 0; ; i++) { if (i >= n) break; ... }` gives that
+  loop where a plain `for` is rotated and strength-reduced (the guards before it still differ).
+- **Open, diagnosed in place**: rt_udp's create (the allocation laid out after the option copy) and
+  raw send, rt_p2p's searches and create, rt_list's init, rt_table's five accessors (the result
+  constant held in v0 from the entry), four functions 2-3 words off on argument scheduling.
+
+Hand-written in round 11b: `medius/rt_udp.c` (36 of 44, new), `medius/rt_p2p.c` (22 of 29, new),
+`medius/rt_list.c` (15 of 16, new), `medius/rt_table.c` (1 of 6, new), `medius/rt_crypt.c` (+1,
+KM_Cleanup: 24 of 26) -- 75 functions byte-exact, 58 new to the map's byte-exact rows (7,860
+bytes), 17 superseding matching drafts; 4 data rows (gapUdp, gnTableCols, gnTableRows, gnTableBufSize, ours).
+No row renamed; no tool changed.
 
 ## Open, and next
 

@@ -366,6 +366,17 @@ def bss_local(elf: E.Elf, sec_index: int, off: int, st: E.SymbolTable) -> tuple[
     return best.name, st.data_by_name[best.name].addr + off - best.value
 
 
+def code_label(elf: E.Elf, sec_index: int, off: int, st: E.SymbolTable) -> tuple[str, int] | None:
+    """A GNU object's reference into its own code at a label that is no function (`.text`+N: an
+    asm's data label, GNU as relocating a local label against its section) as (label, address),
+    when a LOCAL label sits exactly at N and the data map names it. None otherwise."""
+    for s in elf.symbols:
+        if (s.shndx == sec_index and s.bind == 0 and s.value == off and s.name
+                and s.type not in ("SECTION", "FUNC") and s.name in st.data_by_name):
+            return s.name, st.data_by_name[s.name].addr
+    return None
+
+
 def gnu_hi_partners(elf: E.Elf, fsym: E.ElfSymbol, cand: bytes) -> dict[int, int]:
     """In a GNU object, each R_MIPS_LO16's R_MIPS_HI16 (offsets from the function's start).
 
@@ -432,6 +443,11 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
         a = _sym_address(st, callee, taddr) if callee else None
         if a is not None:
             return RelocFinding(r.offset, r.type, callee, want, a, "ok" if a == want else "MISMATCH")
+        if callee is None and (lab := code_label(elf, sec_index, value, st)) is not None:
+            # an asm label inside the unit's code that the data map names (libmpeg's _maxval, the
+            # clamp constant _copyRefImage's asm carries and _copyAddRefImage loads): its address,
+            # whatever the unit's layout before it
+            return RelocFinding(r.offset, r.type, lab[0], want, lab[1], "ok" if lab[1] == want else "MISMATCH")
         if want - taddr == value - fsym.value:
             return RelocFinding(r.offset, r.type, callee or name, want, want, "ok")
         return RelocFinding(r.offset, r.type, callee or name, want, None, "unchecked")
