@@ -11,6 +11,16 @@ typedef struct TOS TOS;
 
 typedef void (*TOSLOGCB)(TOS *t, int code);
 
+/* the host's callbacks, copied in by tosInit (24 bytes) */
+typedef struct TOSCB {
+    unsigned char (*setmode)(TOS *t, unsigned short mode);   /* +0 */
+    void *f4;
+    void *f8;
+    void *f12;
+    TOSLOGCB error_cb;                  /* +16 */
+    TOSLOGCB warning_cb;                /* +20 */
+} TOSCB;
+
 struct TOS {
     unsigned short nblocks;             /* +0 */
     unsigned short blockbase;           /* +2: the first block's id */
@@ -18,19 +28,19 @@ struct TOS {
     unsigned short nqueues;             /* +8 */
     unsigned short queuebase;           /* +10: the first queue's id */
     void **queues;                      /* +12: by id - queuebase */
-    unsigned char (*setmode)(TOS *t, unsigned short mode);   /* +16 */
-    char pad20[12];
-    TOSLOGCB error_cb;                  /* +32 */
-    TOSLOGCB warning_cb;                /* +36 */
+    TOSCB cb;                           /* +16 */
     struct PROFILE *profiles;           /* +40: one per block id */
     struct TOSCMDS ***cmds;             /* +44: [arch][mode], each block's command list */
     unsigned short arch;                /* +48 */
     unsigned short mode;                /* +50 */
     int error;                          /* +52: the first error, block << 16 | code */
     int warning;                        /* +56 */
-    char pad60[16];
+    char pad60[8];
+    unsigned char *writers;             /* +68: {queue, -, block} for each block writing a queue */
+    unsigned char *readers;             /* +72: {queue, block} for each block reading one, ended by 255 */
     void *f76;                          /* +76: freed with the tables */
     void *heap;                         /* +80 */
+    struct FASTALLO { char pad[280]; } fa;   /* +84: the small-block allocator (fastallo.c) */
 };
 
 typedef struct TOSLOG {
@@ -129,6 +139,67 @@ extern __inline__ void *tosGetQueuePtr(TOS *t, unsigned char id)
 extern unsigned char ConstructBlock(TOS *t, unsigned char id, int i);    /* not yet written */
 extern unsigned char ConstructQueue(TOS *t, unsigned char id, int i);    /* not yet written */
 int tosBaseBlockControl(TOSBLOCK *b, unsigned char cmd, int arg, int n);
+
+extern void qQueueReset(void *q);
+
+/* a queue as the scheduler sees it: the scheduler and its id */
+typedef struct TOSQUEUE {
+    TOS *tos;                           /* +0 */
+    unsigned char id;                   /* +4: 255 for a queue outside the tables */
+} TOSQUEUE;
+
+/* a queue reset and freed: every block writing it and every block reading it forgets it, and the
+ * scheduler's slot is cleared (block id 0 is the scheduler itself, which keeps no slots) */
+unsigned char DestructQueue(TOSQUEUE *q)
+{
+    unsigned char id = q->id;
+    TOS *t = q->tos;
+    unsigned char *w;
+    unsigned char *r;
+
+    qQueueReset(q);
+    if (id != 255) {
+        for (w = t->writers; w[0] != id; w += 3)
+            ;
+        do {
+            TOSBLOCK *b = w[2] != 0 ? t->blocks[w[2] - t->blockbase] : (TOSBLOCK *)t;
+            char i;
+
+            if (b != (TOSBLOCK *)t && b != 0) {
+                for (i = 0; i < b->noutputs; i++) {
+                    if (b->outputs[i].q == q) {
+                        b->outputs[i].q = 0;
+                        break;
+                    }
+                }
+            }
+            w += 3;
+        } while (w[0] == id);
+    }
+    for (r = t->readers; r[0] != 255; r += 2) {
+        if (id == r[0]) {
+            unsigned char j = id - t->queuebase;
+            void *qq;
+            TOSBLOCK *b;
+            char i;
+
+            b = r[1] != 0 ? t->blocks[r[1] - t->blockbase] : (TOSBLOCK *)t;
+            qq = t->queues[j];
+            if (b != 0 && b != (TOSBLOCK *)t) {
+                for (i = 0; i < b->ninputs; i++) {
+                    if (b->inputs[i].q == qq) {
+                        b->inputs[i].q = 0;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if (q->id != 255)
+        t->queues[q->id - t->queuebase] = 0;
+    heap_Free(t->heap, q);
+    return 0;
+}
 
 /* every block's control called to destroy it (255), every queue destroyed, the tables freed; a 1
  * when any refused */
@@ -246,7 +317,7 @@ unsigned char _tosControl(TOSLOG *log, unsigned char cmd, int arg, int n)
             t->mode++;
         else
             t->mode = c->mode;
-        ret = t->setmode(t, t->mode);
+        ret = t->cb.setmode(t, t->mode);
         if (ret != 0)
             return ret;
     }
@@ -309,6 +380,53 @@ int tosBaseBlockControl(TOSBLOCK *b, unsigned char cmd, int arg, int n)
     return ret;
 }
 
+extern unsigned char ConstructArchitecture(TOS *t, void *a, void *b, void *c);   /* not yet written */
+extern unsigned char SetAndControlQSizes(TOS *t);                                       /* not yet written */
+extern int qQueueInit(void *q);
+extern void fastallo_Init(struct FASTALLO *fa, void *heap, unsigned short chunk_size);
+extern void fastallo_Terminate(struct FASTALLO *fa);
+
+/* every block's init, the queues' sizes settled, every queue's init: a 1 at the first failure */
+static __inline__ unsigned char InitArchitecture(TOS *t)
+{
+    int i;
+
+    for (i = 0; i < t->nblocks; i++) {
+        TOSBLOCK *b = t->blocks[i];
+
+        if (b != 0 && b->init != 0 && b->init(b) != 0)
+            return 1;
+    }
+    if (SetAndControlQSizes(t) != 0)
+        return 1;
+    for (i = 0; i < t->nqueues; i++) {
+        void *q = t->queues[i];
+
+        if (q != 0 && qQueueInit(q) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+/* the scheduler set up: its heap and allocator, the host's callbacks, the profiles and command
+ * lists, the architecture built and initialised; a 1 (the allocator torn down) on failure */
+unsigned char tosInit(TOS *t, void *heap, TOSCB *cb, struct PROFILE *profiles, void *a, void *b,
+                      void *c, struct TOSCMDS ***cmds, unsigned short arch, unsigned short mode)
+{
+    t->heap = heap;
+    fastallo_Init(&t->fa, heap, 4096);
+    t->profiles = profiles;
+    t->cmds = cmds;
+    t->error = 0;
+    t->cb = *cb;
+    t->arch = arch;
+    t->mode = mode;
+    if (ConstructArchitecture(t, a, b, c) == 0 && InitArchitecture(t) == 0)
+        return 0;
+    fastallo_Terminate(&t->fa);
+    return 1;
+}
+
 /* inline: tosBaseBlockConstruct has it inlined (the log record still built on the stack) */
 __inline__ unsigned char _tosErrorLog(TOSLOG *log, unsigned short code)
 {
@@ -317,8 +435,8 @@ __inline__ unsigned char _tosErrorLog(TOSLOG *log, unsigned short code)
 
     if (t->error == 0)
         t->error = code32;
-    if (t->error_cb != 0)
-        t->error_cb(t, t->error);
+    if (t->cb.error_cb != 0)
+        t->cb.error_cb(t, t->error);
     return code;
 }
 
@@ -329,8 +447,8 @@ unsigned char _tosWarningLog(TOSLOG *log, unsigned short code)
 
     if (t->warning == 0)
         t->warning = code32;
-    if (t->warning_cb != 0)
-        t->warning_cb(t, t->warning);
+    if (t->cb.warning_cb != 0)
+        t->cb.warning_cb(t, t->warning);
     return code;
 }
 
@@ -485,3 +603,4 @@ float _tosGetProfileFloat(TOSBLOCK *b, unsigned short key, float def)
 static void DisabledProcess()
 {
 }
+
