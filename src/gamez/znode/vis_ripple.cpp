@@ -82,7 +82,7 @@ bool CWaterRippleManager::Tick(float dt)
         int i = 0;
         CNode *n;
 
-        for (n = func_00311EA0(&m_nodes, 0); n; n = func_00311EA0(&m_nodes, i)) {
+        for (n = m_nodes.GetNode(0); n; n = m_nodes.GetNode(i)) {
             Ripple(n);
             i++;
         }

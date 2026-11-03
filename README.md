@@ -1842,6 +1842,28 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 15** (vis_ripple.h, the turret's and the vehicle's Ticks, CMesh::AddDecal):
+  - MW PADS A FUNCTION'S LABELS TO 8 BYTES WHEN A SEPARATE VARIABLE HOLDS AN INTERMEDIATE VALUE -- CTurret::Tick's
+    random factor in its own `float r`, AddDecal's decal in a local in each arm (round 14's "both arms padded with a
+    nop"); without the variable there is no padding, whatever its scope;
+  - a float parameter's position in the callee's prototype sets the caller's argument set-up order (0x3BD9E0 takes the
+    life right after the decal, where SOCOM 1's CDecal::AddDecal takes it first; the turret's joint functions take dT
+    and the rate ahead of the pointers); `CMatrix m;` already makes the unit-matrix call, a SetIdentity after it is a
+    second call;
+  - `(pl = ftsGetPlayer(), m_control != pl->m_control)` keeps the call ahead of `this`'s load, `m_control !=
+    f()->m_control` hoists the load into a saved register; a CPnt3D local assigned from a pointer stays in registers
+    across calls, copy-constructed it stays on the stack; a walk pointer stepped with the index (`a++, i++`) gets the
+    target's register where a strength-reduced `&corners[i]` is numbered last; `zoomed = 1` on a bool reuses a
+    register holding 1 and narrows it (`andi`), `= true` gets a daddiu of its own; a controller in a local tested
+    twice gives the target's `beqz; beqz` on one load;
+  - vis_ripple.h holds CWaterRippleGroup, CWaterRipple, CWaterRippleManager and theWaterRippleManager: zanim_cmd_tick.cpp's
+    RIPPLE commands call them as members, both objects byte-identical (the stand-in's two inline setters were
+    CWaterRipple's SetDir and SetTime); renamed at integration: 0x311EA0 CNodeVector::GetNode(int) (node_vector.cpp
+    defines the member) and 0x3D22B0 CZWeapon::GetFireAnim(bool) (`zoomed ? m_88 : m_84`; SOCOM 1's Fire calls it at
+    the same site); zweapon.h's Slot0C is CZWeapon's virtual Fire (slot 0xC, 0x3D2D70, unwritten);
+  - open: CTurret::Fire 0x3A8D20 (2: in the weapon's virtual Fire call the target loads the shooter id before the
+    node), CZProjectileList::Clear (it looks like the missing label padding, but the trigger that fixed Tick and
+    AddDecal does not fix it), ~CVehicle (one inline level more).
 - **Tells from the game states, round 21** (the ~CSpawners chain, two initialisers, the mission's commands, the
   placeholders respelled):
   - A MEMBER DESTRUCTOR CODED `this-test; call X(0)` MEANS X IS THE BASE DESTRUCTOR OF THE MEMBER'S TYPE, and one

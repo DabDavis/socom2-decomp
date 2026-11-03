@@ -134,12 +134,12 @@ bool CDIVector::Exists(const CDI *di)
     return it != end();
 }
 
-/* the element at an index of some list of nodes, or none (new in SOCOM II; its callers' lists are
- * not placed, so it keeps its placeholder) */
-extern "C" CNode *func_00311EA0(CNodeVector *v, int i)
+/* the element at an index, or none (new in SOCOM II: the water ripple groups' node accessor --
+ * vis_ripple.h's CWaterRippleGroup and CWaterRippleManager::Tick call it on their CNodeVectors) */
+CNode *CNodeVector::GetNode(int i)
 {
-    if (v->size() && i >= 0 && i < v->size())
-        return v->at(i);
+    if (size() && i >= 0 && i < size())
+        return at(i);
     return 0;
 }
 

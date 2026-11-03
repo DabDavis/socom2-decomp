@@ -9,10 +9,6 @@
 #include "znode.h"
 #include "../zsys/zsys.h"
 
-/* the element at an index of a list of nodes, or none (node_vector.cpp's placeholder: the groups' and
- * the manager's surface accessor) */
-extern "C" zdb::CNode *func_00311EA0(zdb::CNodeVector *v, int i);
-
 namespace zdb {
 
 /* a named set of water surfaces (RIPPLE_NODE_GROUP's; 0x10 bytes) */
@@ -35,7 +31,7 @@ public:
         m_nodes.clear();
     }
     /* the i-th surface, none past the last */
-    CNode *GetNode(int i) { return func_00311EA0(&m_nodes, i); }
+    CNode *GetNode(int i) { return m_nodes.GetNode(i); }
     void Add(CNode *node);
 
     char *m_name;   // 0x0

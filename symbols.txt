@@ -5413,7 +5413,7 @@
 0x00311C50 0x6C func_00311C50  # OVL1
 0x00311CC0 0x14C Remove__Q23zdb11CNodeVectorFPCQ23zdb5CNode  # OVL1; s1:order (CNodeVector's Remove, Exists, GetNode as SOCOM 1's; DeleteChild removes a child with it, as SOCOM 1's); std::remove inlined
 0x00311E10 0x90 Exists__Q23zdb11CNodeVectorFPCQ23zdb5CNode  # OVL1; s1:order (CNodeVector's Remove, Exists, GetNode as SOCOM 1's; DeleteChild tests a child with it before removing it, as SOCOM 1's)
-0x00311EA0 0x4C func_00311EA0  # OVL1
+0x00311EA0 0x4C GetNode__Q23zdb11CNodeVectorFi  # OVL1; the integrator 2026-11-04, by the weapons lane round 15: CNodeVector's element at an index, or none (its callers, the ripple group's GetNode and CWaterRippleManager::Tick, call it on CNodeVector members; the class has GetNode(const char *) beside it); node_vector.cpp defines it as the member
 0x00311EF0 0x110 GetNode__Q23zdb11CNodeVectorFPCc  # OVL1; s1:callee by hand (GetDatabaseNode's GLOBAL scope calls it on zdb::NodeUniverse where SOCOM 1's does; the same find over the nodes' names)
 0x00312000 0x90 Exists__Q23zdb9CDIVectorFPCQ23zdb3CDI  # OVL1; s1:order (after CNodeVector::GetNode and before CVisualVector::Exists, as SOCOM 1's)
 0x00312090 0x90 Exists__Q23zdb13CVisualVectorFPCQ23zdb7CVisual  # OVL1; s1:order (SOCOM 1's CNodeVector Remove, Exists, GetNode, then CDIVector and CVisualVector Exists; AddVisual calls it where SOCOM 1's does)
@@ -8359,7 +8359,7 @@
 0x003D2280 0x8 func_003D2280  # OVL1
 0x003D2290 0x8 func_003D2290  # OVL1
 0x003D22A0 0x8 func_003D22A0  # OVL1
-0x003D22B0 0x1C func_003D22B0  # OVL1
+0x003D22B0 0x1C GetFireAnim__8CZWeaponFb  # OVL1; the integrator 2026-11-04, by the weapons lane round 15: its body is zoomed ? m_88 : m_84, and SOCOM 1's Fire calls GetFireAnim at the same site (CTurret::Fire 0x3A8D20 calls it)
 0x003D22D0 0x8 func_003D22D0  # OVL1
 0x003D22E0 0x2C GetHitAnim__8CZWeaponFi  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim[i], 0 unless i is below CMaterialExArray's list size)
 0x003D2310 0x8 func_003D2310  # OVL1

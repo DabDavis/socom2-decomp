@@ -105,6 +105,7 @@ public:
     bool Remove(const CNode *node);
     bool Exists(const CNode *node);
     CNode *GetNode(const char *name);
+    CNode *GetNode(int i);   // 0x311EA0 (new in SOCOM II: the element at an index, or none)
 };   // 0xc bytes
 
 /* a node's collision piece: only its reference count placed (SOCOM 1's DWARF has it at 0x14 of

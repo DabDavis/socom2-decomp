@@ -4271,7 +4271,7 @@
 0x00311C30 func_00311C30
 0x00311CC0 Remove__Q23zdb11CNodeVectorFPCQ23zdb5CNode
 0x00311E10 Exists__Q23zdb11CNodeVectorFPCQ23zdb5CNode
-0x00311EA0 func_00311EA0
+0x00311EA0 GetNode__Q23zdb11CNodeVectorFi
 0x00311EF0 GetNode__Q23zdb11CNodeVectorFPCc
 0x00312000 Exists__Q23zdb9CDIVectorFPCQ23zdb3CDI
 0x00312090 Exists__Q23zdb13CVisualVectorFPCQ23zdb7CVisual
@@ -6047,6 +6047,7 @@
 0x003A71D0 Virtual68__7CTurretFP6CPnt3D
 0x003A71F0 Remove__11CTurretListFP7CTurret
 0x003A7330 func_003A7330
+0x003A7350 Rotate__7CTurretFf
 0x003A78E0 func_003A78E0
 0x003A7DA0 func_003A7DA0
 0x003A7DD0 func_003A7DD0
@@ -6059,6 +6060,7 @@
 0x003A9310 ComputeNextPosition__7CTurretFf
 0x003A9320 UpdatePosW__7CTurretFv
 0x003A9340 PrePostTick__7CTurretFf
+0x003A93F0 Tick__7CTurretFf
 0x003A95B0 PreTick__7CTurretFf
 0x003A9730 UpdateAiMapLoc__7CTurretFv
 0x003A9780 ScanForTurretDefinitionHookups__7CTurretFPQ23zdb5CNodeb
@@ -6097,9 +6099,12 @@
 0x003ACB00 UpdateAiMapLoc__8CVehicleFv
 0x003ACB50 GetNeckPosW__8CVehicleFP6CPnt3D
 0x003ACC00 OnMissionStart__8CVehicleFv
+0x003AD1F0 func_003AD1F0
+0x003AD3B0 SampleDynamics__8CVehicleFf
 0x003AD4D0 ComputeNextPosition__8CVehicleFf
 0x003AD4E0 UpdatePosW__8CVehicleFv
 0x003AD500 PrePostTick__8CVehicleFf
+0x003AD510 Tick__8CVehicleFf
 0x003AD680 PreTick__8CVehicleFf
 0x003AD760 ScanForVehicleByName__8CVehicleFPCcPC11CVehicleDefPQ23zdb5CNodeb
 0x003AD910 ScanForVehicleDefinitionHookups__8CVehicleFPQ23zdb5CNodeb
@@ -6188,6 +6193,7 @@
 0x003B8430 func_003B8430
 0x003B8440 DereferenceDecals__Q23zdb5CMeshFUi
 0x003B84F0 RemoveMeshDecal__Q23zdb5CMeshFPQ23zdb10CMeshDecal
+0x003B8550 AddDecal__Q23zdb5CMeshFPvPQ23zdb10CTexHandlef
 0x003B8C20 Read__Q23zdb8CSubMeshFRQ23zar4CZAR
 0x003B8C70 __dt__Q23zdb8CSubMeshFv
 0x003B8CD0 __ct__Q23zdb8CSubMeshFPQ23zdb5CMesh
@@ -6593,7 +6599,7 @@
 0x003D2280 func_003D2280
 0x003D2290 func_003D2290
 0x003D22A0 func_003D22A0
-0x003D22B0 func_003D22B0
+0x003D22B0 GetFireAnim__8CZWeaponFb
 0x003D22D0 func_003D22D0
 0x003D22E0 GetHitAnim__8CZWeaponFi
 0x003D2310 func_003D2310
