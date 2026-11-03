@@ -1273,10 +1273,10 @@
 0x001C15E0 0x78 func_001C15E0  # MAIN
 0x001C1658 0x40 func_001C1658  # MAIN unaligned
 0x001C1698 0x1BC func_001C1698  # MAIN unaligned
-0x001C1858 0x60 func_001C1858  # MAIN unaligned
-0x001C18B8 0x64 func_001C18B8  # MAIN unaligned
-0x001C1920 0x7C func_001C1920  # MAIN
-0x001C19A0 0x330 func_001C19A0  # MAIN
+0x001C1858 0x60 inet_ntoa  # MAIN unaligned; by body: BIND's inet_ntoa -- its own message '[inet_ntoa error]' copied into an 18-byte static, then inet_ntop(AF_INET, &in, ret, 18)
+0x001C18B8 0x64 inet_ntop  # MAIN unaligned; by body: BIND's inet_ntop -- AF_INET (2) to inet_ntop4, AF_INET6 (28) to inet_ntop6, else errno EAFNOSUPPORT (106) and NULL
+0x001C1920 0x7C inet_ntop4  # MAIN; by body: BIND's static inet_ntop4 -- its format '%u.%u.%u.%u', ENOSPC (28) when the text exceeds size
+0x001C19A0 0x330 inet_ntop6  # MAIN; by body: BIND's static inet_ntop6 -- inet_ntop's AF_INET6 case, '%x' per word, inet_ntop4 for the mapped tail
 0x001C1CD0 0x38 func_001C1CD0  # MAIN
 0x001C1D08 0x34 func_001C1D08  # MAIN unaligned
 0x001C1D40 0x150 func_001C1D40  # MAIN
@@ -1404,7 +1404,7 @@
 0x001E8230 0x78 startrecording  # OVL1; s1:exact
 0x001E82A8 0x74 stoprecording  # OVL1 unaligned; s1:exact
 0x001E8320 0x98 SidInit  # OVL1; s1:calls
-0x001E83B8 0x8 func_001E83B8  # OVL1 unaligned
+0x001E83B8 0x8 SidIsRecording  # OVL1 unaligned; s1:order (the demo's SidIsRecording 0x3B76A0: the same 8-byte body, after SidInit as here)
 0x001E83C0 0x44 SidClose  # OVL1; s1:exact
 0x001E8408 0x20 SidStart  # OVL1 unaligned; s1:exact
 0x001E8428 0x20 SidStop  # OVL1 unaligned; s1:exact
@@ -2346,25 +2346,25 @@
 0x00242BB0 0x3C8 func_00242BB0  # OVL1
 0x00242F80 0xE0 __dt__14CSpectatorInfoFv  # OVL1; s1:vtable by hand (the HUD lane: slot 0 of CSpectatorInfo's vtable 0x405F60)
 0x00243060 0x8C __ct__14CSpectatorInfoFv  # OVL1; s1:vtable by hand (the HUD lane: stores CSpectatorInfo's vtable 0x405F60, found by its RTTI's name; CHUD's constructor calls it for a member)
-0x002430F0 0x1A4 func_002430F0  # OVL1
-0x00243298 0xFC func_00243298  # OVL1 unaligned
-0x00243398 0x118 func_00243398  # OVL1 unaligned
+0x002430F0 0x1A4 heap_Realloc  # OVL1; by body: realloc's wrapper (no heap: `j realloc`; a null block: the alloc path), its table entry moved and resized; the demo heap object 0x378348 holds heap_Realloc beside heap_Alloc/heap_Calloc/heap_Free
+0x00243298 0xFC heap_Alloc  # OVL1 unaligned; by body: malloc's wrapper (no heap: `j malloc`), the block entered in the table; the demo heap object 0x378348's heap_Alloc
+0x00243398 0x118 heap_Calloc  # OVL1 unaligned; by body: calloc's wrapper (no heap: `j calloc`), n*size entered in the table; the demo heap object 0x378348's heap_Calloc (ContextSetParam calls it for its 84 bytes, as SOCOM 1's calls heap_Calloc)
 0x002434B0 0xEC heap_Free  # OVL1; s1:callee
-0x002435A0 0x78 func_002435A0  # OVL1
+0x002435A0 0x78 heap_GetMemInfo  # OVL1; by body: the table's four counters through four optional pointers (zeros without a heap); the demo heap object's heap_GetMemInfo, before heap_GetVersion as here
 0x00243618 0x24 heap_GetVersion  # OVL1 unaligned; s1:order (the demo heap object 0x378348: heap_GetVersion before heap_Open, 0x20 bytes there; stores the version 0x01000001, 0x800B0183 for a null pointer, as the demo's)
 0x00243640 0xC8 heap_Open  # OVL1; s1:calls
-0x00243708 0x58 func_00243708  # OVL1 unaligned
+0x00243708 0x58 heap_Close  # OVL1 unaligned; by body: frees the table's two arrays and the heap; after heap_Open as in the demo heap object 0x378348
 0x00243760 0xDC SearchFor  # OVL1; s1:order (the demo heap object 0x378348: its last function, SearchFor -- the same search of a counted list, unrolled by four here (-funroll-loops))
-0x00243840 0x3A4 func_00243840  # OVL1
+0x00243840 0x3A4 lgAudInit  # OVL1; by its messages ('lgAudInit: rpc binding error', 'lgAudInit version 1.08.002: max streaming data size: %d'); the demo's lgAud object 0x3B5980 opens with lgAudInit as this one does
 0x00243BE8 0x7C lgAudEnumHint  # OVL1 unaligned; s1:exact
 0x00243C68 0x1D8 lgAudEnumerate  # OVL1 unaligned; s1:callee
 0x00243E40 0x16C lgAudOpen  # OVL1; s1:callee
 0x00243FB0 0xD4 lgAudClose  # OVL1; s1:callee
 0x00244088 0x178 lgAudRead  # OVL1 unaligned; s1:calls
-0x00244200 0x178 func_00244200  # OVL1
-0x00244378 0x178 func_00244378  # OVL1 unaligned
-0x002444F0 0x128 func_002444F0  # OVL1
-0x00244618 0x120 func_00244618  # OVL1 unaligned
+0x00244200 0x178 lgAudWrite  # OVL1; by its messages ('lgAudWrite: invalid parameter (src)', 'lgAudWrite: rpc call failed'); RPC 9; after lgAudRead as in the demo's lgAud object
+0x00244378 0x178 lgAudWriteVag  # OVL1 unaligned; by its messages ('lgAudWriteVag: invalid parameter (src)', 'lgAudWriteVag: rpc call failed'); RPC 21, lgAudWrite's body (the demo has no WriteVag)
+0x002444F0 0x128 lgAudGetMixer  # OVL1; by its messages ('lgAudGetMixer: invalid parameter (mr)', 'lgAudGetMixer: rpc call failed'); RPC 11; the demo's lgAudGetMixer 0x3B6358 has the same body
+0x00244618 0x120 lgAudSetMixer  # OVL1 unaligned; by its message ('lgAudSetMixer: invalid parameter (mr)'; its rpc failure prints GetMixer's); RPC 12; after lgAudGetMixer as in the demo's lgAud object
 0x00244738 0xE8 lgAudGetRemainingPlaybackBytes  # OVL1 unaligned; s1:order (the demo's lgAud object 0x3B5980: after lgAudSetMixer as there; RPC 0x13 and the message 'lgAudGetRemainingPlaybackBytes: rpc call failed')
 0x00244820 0xE8 lgAudGetAvailableRecordingBytes  # OVL1; s1:order (the demo's lgAud object: after GetRemainingPlaybackBytes; RPC 0x12 and its own message)
 0x00244908 0xD4 lgAudStartRecording  # OVL1 unaligned; s1:callee
@@ -2379,8 +2379,8 @@
 0x00245080 0x80 fnReadEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudASync, before lgAudARead; copies the reply's data out, the read's end callback)
 0x00245100 0x13C lgAudARead  # OVL1; s1:callee
 0x00245240 0x58 fnWriteEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudARead, before lgAudAWrite)
-0x00245298 0x164 func_00245298  # OVL1 unaligned
-0x00245400 0x164 func_00245400  # OVL1
+0x00245298 0x164 lgAudAWrite  # OVL1 unaligned; by its messages ('lgAudAWrite: invalid parameter (src)', 'lgAudAWrite: rpc call failed'); RPC 9 async through fnWriteEndFunc; after fnWriteEndFunc as in the demo's lgAud object
+0x00245400 0x164 lgAudAWriteVag  # OVL1; by its messages ('lgAudAWriteVag: invalid parameter (src)', 'lgAudAWriteVag: rpc call failed'); RPC 21 async, lgAudAWrite's body
 0x00245568 0x58 fnCheckDeviceChangeEndFunc  # OVL1 unaligned; s1:order (the demo's lgAud object: the static before lgAudAEnumHint; stores the device-change hint)
 0x002455C0 0xCC lgAudAEnumHint  # OVL1; s1:callee
 0x00245690 0xB8 libnetb_is_data_waiting  # OVL1; s1:callee
@@ -2396,23 +2396,23 @@
 0x00245CD0 0xA8 func_00245CD0  # OVL1
 0x00245D78 0xE8 sceInetName2Address  # OVL1 unaligned; s1:callee
 0x00245E60 0xA4 sceInetAddress2String  # OVL1; s1:callee
-0x00245F08 0xE4 func_00245F08  # OVL1 unaligned
-0x00245FF0 0x74 func_00245FF0  # OVL1
-0x00246068 0x48 func_00246068  # OVL1 unaligned
-0x002460B0 0x48 func_002460B0  # OVL1
-0x002460F8 0xC8 func_002460F8  # OVL1 unaligned
-0x002461C0 0x110 func_002461C0  # OVL1
-0x002462D0 0xA8 func_002462D0  # OVL1
-0x00246378 0xE4 func_00246378  # OVL1 unaligned
-0x00246460 0x48 func_00246460  # OVL1
-0x002464A8 0xB0 func_002464A8  # OVL1 unaligned
-0x00246558 0x90 func_00246558  # OVL1 unaligned
-0x002465E8 0xB0 func_002465E8  # OVL1 unaligned
-0x00246698 0xA0 func_00246698  # OVL1 unaligned
-0x00246738 0x90 func_00246738  # OVL1 unaligned
-0x002467C8 0x44 func_002467C8  # OVL1 unaligned
-0x00246810 0x94 func_00246810  # OVL1
-0x002468A8 0x40 func_002468A8  # OVL1 unaligned
+0x00245F08 0xE4 sceInetAddress2Name  # OVL1 unaligned; s1:order (the demo's libnet object 0x4223A0: after sceInetAddress2String as here; RPC 18, its name copied back as Address2String's)
+0x00245FF0 0x74 sceInetCreate  # OVL1; s1:order (the demo's libnet object: after sceInetAddress2Name; RPC 1) and s1:callee (sceBInetCreate calls it where the demo's calls sceInetCreate)
+0x00246068 0x48 sceInetOpen  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetCreate; RPC 2)
+0x002460B0 0x48 sceInetClose  # OVL1; s1:order (the demo's libnet object: after sceInetOpen; RPC 3)
+0x002460F8 0xC8 sceInetRecv  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetClose; RPC 4)
+0x002461C0 0x110 sceInetRecvFrom  # OVL1; s1:order (the demo's libnet object: after sceInetRecv; RPC 13)
+0x002462D0 0xA8 sceInetSend  # OVL1; s1:order (the demo's libnet object: after sceInetRecvFrom; RPC 5)
+0x00246378 0xE4 sceInetSendTo  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetSend; RPC 14)
+0x00246460 0x48 sceInetAbort  # OVL1; s1:order (the demo's libnet object: after sceInetSendTo; RPC 15)
+0x002464A8 0xB0 sceInetControl  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetAbort; RPC 19) and s1:callee (sceBInetControl calls it as the demo's calls sceInetControl)
+0x00246558 0x90 sceInetGetInterfaceList  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetControl; RPC 8)
+0x002465E8 0xB0 sceInetInterfaceControl  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetInterfaceList; RPC 9)
+0x00246698 0xA0 sceInetGetRoutingTable  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetInterfaceControl; RPC 10)
+0x00246738 0x90 sceInetGetNameServers  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetRoutingTable; RPC 11)
+0x002467C8 0x44 sceInetChangeThreadPriority  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetNameServers; RPC 12, one word in)
+0x00246810 0x94 sceInetGetLog  # OVL1; s1:order (the demo's libnet object: after sceInetChangeThreadPriority; RPC 17)
+0x002468A8 0x40 sceInetAbortLog  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetLog; RPC 16, nothing sent)
 0x002468E8 0x44 func_002468E8  # OVL1 unaligned
 0x00246930 0x44 func_00246930  # OVL1
 0x00246978 0x44 func_00246978  # OVL1 unaligned
@@ -2432,9 +2432,9 @@
 0x00246F10 0x7C func_00246F10  # OVL1
 0x00246F90 0x78 func_00246F90  # OVL1
 0x00247008 0x34 func_00247008  # OVL1 unaligned
-0x00247040 0xC func_00247040  # OVL1
+0x00247040 0xC sceBInetGetVersionStringPtr  # OVL1; s1:order (the demo's libnetb object 0x423D38 opens with sceBInetGetVersionStringPtr, 0xC bytes, returning the version string's pointer as this does)
 0x00247050 0x154 sceBInetGetBuildTimestamp  # OVL1; s1:exact
-0x002471A8 0x11C func_002471A8  # OVL1 unaligned
+0x002471A8 0x11C sceBInetCreate  # OVL1 unaligned; s1:calls (rt_memory_allocate_init_zero, libnetb_alloc_bufs, sceInetCreate, as the demo's sceBInetCreate 0x423EA0; after sceBInetGetBuildTimestamp as there)
 0x002472C8 0x198 func_002472C8  # OVL1 unaligned
 0x00247460 0x98 sceBInetClose  # OVL1; s1:exact
 0x002474F8 0x144 func_002474F8  # OVL1 unaligned
@@ -2454,7 +2454,7 @@
 0x00247F58 0x8C func_00247F58  # OVL1 unaligned
 0x00247FE8 0x210 libnetb_send_to  # OVL1 unaligned; s1:calls
 0x002481F8 0x80 func_002481F8  # OVL1 unaligned
-0x00248278 0x7C func_00248278  # OVL1 unaligned
+0x00248278 0x7C libnetb_alloc_bufs  # OVL1 unaligned; s1:callee (sceBInetCreate calls it where the demo's calls libnetb_alloc_bufs; before libnetb_free_bufs as there)
 0x002482F8 0x54 libnetb_free_bufs  # OVL1 unaligned; s1:callee
 0x00248350 0xA8 func_00248350  # OVL1
 0x002483F8 0xA8 func_002483F8  # OVL1 unaligned
@@ -7938,55 +7938,55 @@
 0x003BA280 0x68 __dt__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:align
 0x003BA2F0 0x8 clear__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:order (SOCOM 1's clear of the CMeshLOD vector's deleter, 0x310410, closes vis_mesh.cpp's tail as here; SOCOM II's is the 8-byte size store -- the trivially destroyed elements' loop deleted -- that the deleter's destructor 0x3BA280 and reserve 0x3BA0D0 call; byte-exact from vis_mesh.cpp, the wep lane)
 0x003BA300 0xE4 ColConvTo3D__FUi  # OVL1; s1:align
-0x003BA3F0 0xE4 func_003BA3F0  # OVL1
-0x003BA4E0 0xB4 func_003BA4E0  # OVL1
-0x003BA5A0 0x1C func_003BA5A0  # OVL1
-0x003BA5C0 0xD4 func_003BA5C0  # OVL1
-0x003BA6A0 0xF4 func_003BA6A0  # OVL1
-0x003BA7A0 0x174 func_003BA7A0  # OVL1
-0x003BA920 0x74 func_003BA920  # OVL1
+0x003BA3F0 0xE4 FindStrip__Q23zdb8CVisDataFUi  # OVL1; by hand (the wep lane, vis_data.cpp: a CVisData method -- it clears the cursor through Clear 0x3BB000 at the block's end and steps 0x2C/0x30 as SOCOM 1's SearchVertex does; walks the strip at 0x18 for the id in a1; SearchStrip 0x3BA4E0 tail-calls it; the name ours)
+0x003BA4E0 0xB4 SearchStrip__Q23zdb8CVisDataFUi  # OVL1; by hand (the wep lane, vis_data.cpp: a CVisData method stepping the select cursor 0x2C to a type-10 select, its counts and vertices taken, then FindStrip 0x3BA3F0 with the id passed through; called from 0x3BE5F0; the name ours)
+0x003BA5A0 0x1C Resume__Q23zdb8CVisDataFPQ23zdb8CVisData  # OVL1; by hand (the wep lane, vis_data.cpp: one CVisData's cursor set from another's strip mark 0x54 and block end 0x30, `this` returned; the name ours)
+0x003BA5C0 0xD4 NextIndex__Q23zdb8CVisDataFPb  # OVL1; by hand (the wep lane, vis_data.cpp: NextVertex(Ui)'s twin over the strip vertex 0x18, a bool out set when it runs on to SearchIndexedStrip 0x3BA7A0; the name ours)
+0x003BA6A0 0xF4 SearchIndices__Q23zdb8CVisDataFv  # OVL1; by hand (the wep lane, vis_data.cpp: SearchVertex's twin for the index-list select, type 11; SearchIndexedStrip 0x3BA7A0 tail-calls it; the name ours)
+0x003BA7A0 0x174 SearchIndexedStrip__Q23zdb8CVisDataFv  # OVL1; by hand (the wep lane, vis_data.cpp: the strip select of the id at 0x50 found, then SearchIndices 0x3BA6A0; SelectIndexedStrip 0x3BAA70 and NextIndex 0x3BA5C0 call it; the name ours)
+0x003BA920 0x74 NextVertex__Q23zdb8CVisDataFv  # OVL1; by hand (the wep lane, vis_data.cpp: NextVertex(Ui) 0x3BA9A0 for one vertex of a mesh's own -- the vertex and colour pointers stepped, SearchVertex(true) past the range; the name ours, the overload's)
 0x003BA9A0 0xCC NextVertex__Q23zdb8CVisDataFUi  # OVL1; s1:align
-0x003BAA70 0x78 func_003BAA70  # OVL1
-0x003BAAF0 0xA0 func_003BAAF0  # OVL1
-0x003BAB90 0x20C func_003BAB90  # OVL1
-0x003BADA0 0x98 func_003BADA0  # OVL1
-0x003BAE40 0x98 func_003BAE40  # OVL1
-0x003BAEE0 0x8C func_003BAEE0  # OVL1
-0x003BAF70 0x8C func_003BAF70  # OVL1
+0x003BAA70 0x78 SelectIndexedStrip__Q23zdb8CVisDataFPQ23zdb5CMeshUi  # OVL1; by hand (the wep lane, vis_data.cpp: Clear, the block from the mesh's first level 0x3B9480, the id at 0x50, then SearchIndexedStrip 0x3BA7A0; SOCOM 1's SelectVertex shape; the name ours)
+0x003BAAF0 0xA0 ReplaceTextureData__Q23zdb8CVisDataFP8_word128  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CVisData::ReplaceTextureData 0x310700 -- the same select walk copying the quadword into type 5 and 6 selects, the count of a select before a type 8 decremented; over SOCOM II's cursor at 0x2C)
+0x003BAB90 0x20C SearchVertex__Q23zdb8CVisDataFb  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CVisData::SearchVertex 0x3107B0 -- the same switch over select types 1, 5, 3, 10, 2, 4 -- with a flag choosing the range count; NextVertex and the SelectVertex family call it)
+0x003BADA0 0x98 SelectVertexTail__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's SelectVertex shape -- Clear, the view's block from the visual's 0x30 vector, the index at 0x44, SearchVertex -- over the head's halfwords 6 and 7; the name ours)
+0x003BAE40 0x98 SelectVertexHead__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's SelectVertex shape, the block's end short by the head's halfword 7; the name ours)
+0x003BAEE0 0x8C SelectVertexStrips__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SelectVertex 0x3BAF70 with SearchVertex(true); the name ours)
+0x003BAF70 0x8C SelectVertex__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CVisData::SelectVertex 0x3109A0 -- Clear, the view's select block from the visual's vector at 0x30, its end and first select, the index, SearchVertex -- the same 0x8C bytes)
 0x003BB000 0x44 Clear__Q23zdb8CVisDataFv  # OVL1; s1:align
 0x003BB050 0xC0 Read__Q23zdb24CScrollingTexture_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB110 0x68 __dt__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:align
 0x003BB180 0x1C __ct__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_ScrollingTexture_Object at 0x5cc through it)
-0x003BB1A0 0x90 func_003BB1A0  # OVL1; s1:align; by hand (the entity lane: not list<FILTER_PLANE*>'s destructor -- it tests this on s1 once, then four times on s1+36 before the erase: the implicit destructor of a class holding a list-derived member at +36)
+0x003BB1A0 0x90 __dt__Q23zdb14CPreLight_bandFv  # OVL1; s1:align; by hand (the entity lane: not list<FILTER_PLANE*>'s destructor -- it tests this on s1 once, then four times on s1+36 before the erase: the implicit destructor of a class holding a list-derived member at +36); by hand (the wep lane, vis_data.cpp: the implicit destructor of SOCOM 1's CPreLight_band (DWARF: 0x30 bytes, CFilterPlaneObj, a list, at 0x24) -- clear<CPreLight_band> 0x3BD920 calls it on every 0x30-byte element; the entity lane's reading)
 0x003BB230 0x68 __dt__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls
 0x003BB2A0 0x1C __ct__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_PreLight_Object at 0x5bc through it)
-0x003BB2C0 0x1B0 func_003BB2C0  # OVL1
+0x003BB2C0 0x1B0 Read__Q23zdb16CMaterial_ObjectFPQ23zdb9CSaveLoad  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CMaterial_Object::Read 0x310D50 by its key "Material_Palette", now a key per 0x3C-byte band; CSaveLoad::Load calls it)
 0x003BB470 0x68 __dt__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:align, checked by hand (right before CMaterial_Object's constructor, as each *_Object's destructor precedes its constructor here and in SOCOM 1; calls a band vector deleter's destructor, 0x3BCDF0)
 0x003BB4E0 0x1C __ct__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_Material_Object at 0x59c through it)
-0x003BB500 0x114 func_003BB500  # OVL1
+0x003BB500 0x114 __as__Q23zdb14CMaterial_bandFRCQ23zdb14CMaterial_band  # OVL1; by hand (the wep lane, vis_data.cpp: CMaterial_band's assignment -- erase<CMaterial_band> 0x3BD6C0 moves the tail down through it and the insert 0x3BC680 constructs and assigns through it; the owned texture name duplicated)
 0x003BB620 0x68 __dt__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:align, checked by hand (right before CSubSurf_Object's constructor, the same pattern)
 0x003BB690 0x1C __ct__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_SubSurf_Object at 0x5ac through it)
 0x003BB6B0 0x98 Read__Q23zdb11CLOD_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB750 0x68 __dt__Q23zdb11CLOD_ObjectFv  # OVL1; s1:align
 0x003BB7C0 0x1C __ct__Q23zdb11CLOD_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_LOD_Object at 0x58c through it; the five *_Object constructors keep SOCOM 1's relative order)
 0x003BB7E0 0x75C insert__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FPQ23zdb22CScrollingTexture_bandUiRCQ23zdb22CScrollingTexture_band  # OVL1; s1:align
-0x003BBF40 0x9C func_003BBF40  # OVL1
-0x003BBFE0 0x5CC func_003BBFE0  # OVL1
+0x003BBF40 0x9C resize__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FUi  # OVL1; by hand (the wep lane, vis_data.cpp: CScrollingTexture_Object::Read 0x3BB050 calls it with the key's size / 0x208 where SOCOM 1's calls this resize; it calls the band insert 0x3BB7E0 and erase 0x3BCED0)
+0x003BBFE0 0x5CC insert__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FPQ23zdb9CLOD_bandUiRCQ23zdb9CLOD_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CLOD_band> 0x3BC5B0 grows through it with (end, n - size, &band))
 0x003BC5B0 0xC4 resize__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FUi  # OVL1; s1:align
-0x003BC680 0x460 func_003BC680  # OVL1
-0x003BCAE0 0x1BC func_003BCAE0  # OVL1
-0x003BCCA0 0x68 func_003BCCA0  # OVL1
-0x003BCD10 0x68 func_003BCD10  # OVL1
-0x003BCD80 0x68 func_003BCD80  # OVL1
-0x003BCDF0 0x68 func_003BCDF0  # OVL1
+0x003BC680 0x460 insert__Q23std80__vector_imp<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>,0>FPQ23zdb14CMaterial_bandUiRCQ23zdb14CMaterial_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CMaterial_band> 0x3BCAE0 grows through it; 0x3C-byte elements)
+0x003BCAE0 0x1BC resize__Q23std80__vector_imp<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>,0>FUi  # OVL1; by hand (the wep lane, vis_data.cpp: CMaterial_Object::Read 0x3BB2C0 calls it with the key's count; it calls the insert 0x3BC680 and erase 0x3BD6C0, its temporary a default band)
+0x003BCCA0 0x68 __dt__Q23std98__vector_deleter<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CScrollingTexture_Object 0x3BB110 calls it as SOCOM 1's calls this destructor; it calls clear 0x3BD840)
+0x003BCD10 0x68 __dt__Q23std70__vector_deleter<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CLOD_Object 0x3BB750 calls it; it calls clear 0x3BD850)
+0x003BCD80 0x68 __dt__Q23std80__vector_deleter<Q23zdb13CSubSurf_band,Q23std32allocator<Q23zdb13CSubSurf_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CSubSurf_Object 0x3BB620 calls it; it calls clear 0x3BD860)
+0x003BCDF0 0x68 __dt__Q23std82__vector_deleter<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CMaterial_Object 0x3BB470 calls it; it calls clear 0x3BD870)
 0x003BCE60 0x68 __dt__Q23std82__vector_deleter<Q23zdb14CPreLight_band,Q23std33allocator<Q23zdb14CPreLight_band>>Fv  # OVL1; s1:calls
-0x003BCED0 0x4E0 func_003BCED0  # OVL1
-0x003BD3B0 0x310 func_003BD3B0  # OVL1
-0x003BD6C0 0x180 func_003BD6C0  # OVL1
-0x003BD840 0x8 func_003BD840  # OVL1
-0x003BD850 0x8 func_003BD850  # OVL1
-0x003BD860 0x8 func_003BD860  # OVL1
-0x003BD870 0xA4 func_003BD870  # OVL1
+0x003BCED0 0x4E0 erase__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FPQ23zdb22CScrollingTexture_bandPQ23zdb22CScrollingTexture_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CScrollingTexture_band> 0x3BBF40 cuts through it with (data + n, data + size))
+0x003BD3B0 0x310 erase__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FPQ23zdb9CLOD_bandPQ23zdb9CLOD_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CLOD_band> 0x3BC5B0 cuts through it)
+0x003BD6C0 0x180 erase__Q23std80__vector_imp<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>,0>FPQ23zdb14CMaterial_bandPQ23zdb14CMaterial_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CMaterial_band> 0x3BCAE0 cuts through it; the tail moved down by the band's assignment 0x3BB500)
+0x003BD840 0x8 clear__Q23std98__vector_deleter<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCCA0 calls it; the 8-byte size store of a trivially destroyed element, as SOCOM 1's clear 0x312C10 without its empty loop)
+0x003BD850 0x8 clear__Q23std70__vector_deleter<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCD10 calls it)
+0x003BD860 0x8 clear__Q23std80__vector_deleter<Q23zdb13CSubSurf_band,Q23std32allocator<Q23zdb13CSubSurf_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCD80 calls it)
+0x003BD870 0xA4 clear__Q23std82__vector_deleter<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCDF0 calls it; each 0x3C-byte band's owned name freed)
 0x003BD920 0x7C clear__Q23std82__vector_deleter<Q23zdb14CPreLight_band,Q23std33allocator<Q23zdb14CPreLight_band>>Fv  # OVL1; s1:align
 0x003BD9A0 0x38 Uninit__Q23zdb14CMeshDecalPoolFv  # OVL1; s1:exact
 0x003BD9E0 0xC08 func_003BD9E0  # OVL1

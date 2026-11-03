@@ -73,8 +73,8 @@ def cxx_draft(*a, **k):
     return _cxx_draft(*a, **k)
 
 
-def try_one(tmp, src, sym, real, addr, img, st, suffix=".c"):
-    """automatch.try_one, keeping the comparison's details."""
+def try_one(tmp, src, sym, real, addr, img, st, suffix=".c", cc=None):
+    """automatch.try_one, keeping the comparison's details (cc: a GCC range's toolchain and flags)."""
     kind = _stage["kind"]
     if kind == "c":
         kind = f"{_stage['prefix']}v{_stage['n']}"
@@ -83,7 +83,10 @@ def try_one(tmp, src, sym, real, addr, img, st, suffix=".c"):
     (tmp / f"f{suffix}").write_text(src)
     rec = {"stage": label}
     try:
-        D.compile_obj(tmp / f"f{suffix}", tmp / "f.o")
+        if cc is None:
+            D.compile_obj(tmp / f"f{suffix}", tmp / "f.o")
+        else:                                   # a GCC-built library row (automatch.GCC_RANGES)
+            D.compile_obj(tmp / f"f{suffix}", tmp / "f.o", cc[0], cc[1].split())
         if real != sym.name:
             import sccheck
             sccheck.rename_symbol(tmp / "f.o", sym.name, real)

@@ -17,6 +17,8 @@
 class CZProjectile;
 /* a quadword seen every way (zsys_public.h's union: the visuals' texture selects are arrays of them) */
 union _word128;
+/* MAIN's allocator (zsys_public.h's; CMaterial_band's destructor frees its name) */
+void _free(void *p, const char *file, int line);
 namespace zar {
 class CZAR;
 }
@@ -1421,59 +1423,242 @@ class CRenderMapVector : public std::vector<CRenderMap *> {
 class CTextureAssetCharacterList : public std::list<CTextureAssetCharacters *> {
 };   // 0xc bytes
 
-/* the per-band render tables a world reads (SOCOM 1's DWARF: each a vector and its band count,
- * 0x10 bytes; their constructors, destructors and readers are vis code, out of line) */
-class CLOD_Object {
+/* the per-band render tables a world reads (SOCOM 1's DWARF: each a vector of its bands and the
+ * band count, 0x10 bytes; their constructors, destructors and readers are vis_data.cpp's, out of
+ * line -- the wep lane's, round 11). The bands are SOCOM 1's DWARF classes where SOCOM II's code
+ * keeps their size; CMaterial_band is SOCOM II's own (0x3C bytes against SOCOM 1's 0x1C). */
+
+/* a level of detail's band of squared distances: drawn between the near minimum and the far
+ * maximum, faded in up to the far minimum and out past the near maximum (SOCOM 1's DWARF, 0x20
+ * bytes). Built zeroed with both fades off (the resize's temporary, 0x3BC5B0: the bits set in the
+ * mem-initializer list, word read-mask-writes) */
+class CLOD_band {
+public:
+    CLOD_band()
+        : m_minRangeNearSq(0), m_minRangeFarSq(0), m_minInvDeltaRangeSq(0), m_maxRangeNearSq(0),
+          m_maxRangeFarSq(0), m_maxInvDeltaRangeSq(0), m_minFade(0), m_maxFade(0)
+    {
+    }
+
+    float m_minRangeNearSq;   // 0x0
+    float m_minRangeFarSq;   // 0x4
+    float m_minInvDeltaRangeSq;   // 0x8
+    float m_maxRangeNearSq;   // 0xc
+    float m_maxRangeFarSq;   // 0x10
+    float m_maxInvDeltaRangeSq;   // 0x14
+    unsigned int m_minFade : 1;   // 0x18
+    unsigned int m_maxFade : 1;
+    unsigned int m_unused : 30;
+    unsigned int m_padding;   // 0x1c
+};
+
+/* a scrolling texture: the model and node it scrolls, and its rate (SOCOM 1's DWARF, 0x208 bytes;
+ * built with both names empty and no rate -- the resize's temporary, 0x3BBF40) */
+class CScrollingTexture_band {
+public:
+    CScrollingTexture_band()
+    {
+        m_du = 0;
+        m_dv = 0;
+        m_modelname[0] = 0;
+        m_nodename[0] = 0;
+    }
+
+    char m_modelname[256];   // 0x0
+    char m_nodename[256];   // 0x100
+    float m_du;   // 0x200
+    float m_dv;   // 0x204
+};
+
+/* SOCOM 1's DWARF (0x14 bytes); SOCOM II's code never reads one */
+class CSubSurf_band {
+public:
+    float m_distanceSq_Near;   // 0x0
+    float m_distanceSq_Far;   // 0x4
+    int m_density_Near;   // 0x8
+    int m_density_Far;   // 0xc
+    float m_pushFactor;   // 0x10
+};
+
+/* a light's filter planes (SOCOM 1's DWARF: CFilterPlaneObj : list) */
+class FILTER_PLANE;
+class CFilterPlaneObj : public std::list<FILTER_PLANE *> {
+};
+
+/* a prelight: its position, colour and ranges, and its filter planes (SOCOM 1's DWARF, 0x30
+ * bytes). Its destructor is written out of line in vis_data.cpp (0x3BB1A0, among the unit's own
+ * functions, tearing the list down at 0x24): -inline auto refuses it to the vector's clear, which
+ * calls it, as the list's chain below it cannot inline whole there */
+class CPreLight_band {
+public:
+    ~CPreLight_band();
+
+    CPnt3D m_position;   // 0x0
+    CPnt3D m_color;   // 0xc
+    float m_minRange;   // 0x18
+    float m_maxRangeSq;   // 0x1c
+    unsigned char m_dynamic;   // 0x20
+    CFilterPlaneObj m_filterPlane_Obj;   // 0x24
+};
+
+/* a material of the world's table (SOCOM II's, 0x3C bytes: SOCOM 1's was 0x1C, its colour,
+ * opacity, intensity, id and blend mode): built from CPnt3D::zero and a static colour with a
+ * falloff of 0.8 and its inverse (the resize's temporary, 0x3BCAE0); copied through its
+ * assignment, out of line (0x3BB500), which duplicates a texture name the band owns; destroyed by
+ * freeing that name. CMaterial_Object::Read reads them 0x3C bytes at a time and turns an owned
+ * name into a texture handle, type 2 (LightList_Search tests the type). The names are ours */
+class CMaterial_band {
+public:
+    CMaterial_band()
+        : m_opacity(0), m_intensity(0), m_type(0), m_18(0), m_ownsName(0)
+    {
+        m_rgb = CPnt3D::zero;
+        m_1c = 0;
+        m_color = m_defaultColor;
+        m_falloff = 0.8f;
+        m_invFalloff = m_falloff != 0.0f ? 1.0f / m_falloff : 0.0f;
+        m_name = 0;
+    }
+    CMaterial_band(const CMaterial_band &b) { *this = b; }
+    ~CMaterial_band()
+    {
+        if (m_ownsName) {
+            if (m_name)
+                _free(m_name, 0, 0);
+            m_name = 0;
+        }
+    }
+    CMaterial_band &operator=(const CMaterial_band &b);
+    void SetFalloff(float f)
+    {
+        m_falloff = f;
+        m_invFalloff = f != 0.0f ? 1.0f / f : 0.0f;
+    }
+    /* the colour a band starts with (0x4B5020, BSS: not named yet) */
+    static PNT4D m_defaultColor;
+
+    CPnt3D m_rgb;   // 0x0
+    float m_opacity;   // 0xc
+    float m_intensity;   // 0x10
+    int m_type;   // 0x14: 2 once its texture is resolved
+    int m_18;   // 0x18
+    unsigned int m_ownsName : 1;   // 0x1c: the name below is a string the band owns
+    unsigned int m_1c : 31;
+    PNT4D m_color;   // 0x20 (unaligned: the band is 0x3C bytes)
+    float m_falloff;   // 0x30
+    float m_invFalloff;   // 0x34
+    union {
+        char *m_name;   // 0x38: read as a texture name ...
+        CTexHandle *m_tex;   // ... and resolved into its handle
+    };
+};
+/* (node_world.cpp's name for it) */
+typedef CMaterial_band MATERIAL_ENTRY;
+
+class CLOD_Object : public std::vector<CLOD_band> {
 public:
     CLOD_Object();
     ~CLOD_Object();
-    bool Read(CSaveLoad *io);
-    unsigned char _0[0x10];
+    void Read(CSaveLoad *io);
+
+    int m_bandMax;   // 0xc: 256
 };
-/* a material of the world's table: 0x3C bytes, its type at 0x14 (LightList_Search tests 2; the
- * names ours) */
-struct MATERIAL_ENTRY {
-    unsigned char _0[0x14];
-    int m_type;   // 0x14
-    unsigned char _18[0x3c - 0x18];
-};
-class CMaterial_Object {
+class CMaterial_Object : public std::vector<CMaterial_band> {
 public:
     CMaterial_Object();
     ~CMaterial_Object();
-    bool Read(CSaveLoad *io);
+    void Read(CSaveLoad *io);
     /* a material by its 1-based index, none for 0 or past the end (inline: LightList_Search's
      * copy tests the index twice; the name ours) */
     MATERIAL_ENTRY *GetMaterial(unsigned int i)
     {
         if (i == 0)
             return 0;
-        return i <= m_size ? &m_data[i - 1] : 0;
+        return i <= size_ ? &data_[i - 1] : 0;
     }
 
-    unsigned int m_capacity;   // 0x0 (the table's vector)
-    unsigned int m_size;   // 0x4
-    MATERIAL_ENTRY *m_data;   // 0x8
-    unsigned char _c[4];   // 0xc
+    int m_bandMax;   // 0xc: 256
 };
-class CSubSurf_Object {
+class CSubSurf_Object : public std::vector<CSubSurf_band> {
 public:
     CSubSurf_Object();
     ~CSubSurf_Object();
-    unsigned char _0[0x10];
+
+    int m_bandMax;   // 0xc: 256
 };
-class CPreLight_Object {
+class CPreLight_Object : public std::vector<CPreLight_band> {
 public:
     CPreLight_Object();
     ~CPreLight_Object();
-    unsigned char _0[0x10];
+
+    int m_bandMax;   // 0xc: 256
 };
-class CScrollingTexture_Object {
+class CScrollingTexture_Object : public std::vector<CScrollingTexture_band> {
 public:
     CScrollingTexture_Object();
     ~CScrollingTexture_Object();
-    bool Read(CSaveLoad *io);
-    unsigned char _0[0x10];
+    void Read(CSaveLoad *io);
+
+    int m_bandMax;   // 0xc: 256
+};
+
+class CVisual;
+class CMesh;
+
+/* a cursor over a visual's VU select block: the select it stands on and the block's end, the
+ * vertex it is at and the range of vertices the current mesh select covers, and the texture and
+ * colours last selected (SOCOM 1's class, no DWARF: SOCOM II's is 0x58 bytes and walks strips and
+ * index lists besides -- the names are ours). Its destructor is empty (the out-of-line copy
+ * 0x321EA0) */
+class CVisData {
+public:
+    /* a mesh select's counts, 0x28 into its data (its vertices start at 0x50) */
+    struct MESH {
+        unsigned int _0[2];
+        unsigned int m_numVerts;   // 0x8
+        unsigned int m_numTris;   // 0xc
+    };
+
+    ~CVisData() {}
+    void Clear();
+    CVisData *SelectVertex(CVisual *vis, unsigned int view, unsigned int index);
+    CVisData *SelectVertexStrips(CVisual *vis, unsigned int view, unsigned int index);
+    CVisData *SelectVertexHead(CVisual *vis, unsigned int view, unsigned int index);
+    CVisData *SelectVertexTail(CVisual *vis, unsigned int view, unsigned int index);
+    CVisData *SearchVertex(bool strips);
+    void ReplaceTextureData(_word128 *data);
+    CVisData *SelectIndexedStrip(CMesh *mesh, unsigned int id);
+    CVisData *NextVertex(unsigned int n);
+    CVisData *NextVertex();
+    CVisData *SearchIndexedStrip();
+    CVisData *SearchIndices();
+    CVisData *NextIndex(bool *next);
+    CVisData *Resume(CVisData *from);
+    CVisData *SearchStrip(unsigned int id);
+    CVisData *FindStrip(unsigned int id);
+
+    unsigned int m_texture;   // 0x0: the last texture select's word
+    unsigned int m_numVerts;   // 0x4
+    unsigned int m_numTris;   // 0x8
+    _word128 *m_head;   // 0xc: the select block
+    MESH *m_mesh;   // 0x10
+    unsigned char *m_14;   // 0x14 (its data + 0x38)
+    _word128 *m_strip;   // 0x18: the strip vertex at
+    unsigned int *m_colors;   // 0x1c: the last colour select's array
+    unsigned char *m_20;   // 0x20
+    unsigned char *m_indices;   // 0x24: the index at (every fourth byte skipped)
+    _word128 *m_verts;   // 0x28: the mesh select's vertices
+    _word128 *m_cur;   // 0x2c: the select at
+    _word128 *m_end;   // 0x30: the block's last select
+    unsigned int m_34;   // 0x34
+    _word128 *m_vertex;   // 0x38: the vertex at
+    unsigned int *m_color;   // 0x3c: its colour
+    unsigned char *m_40;   // 0x40
+    unsigned int m_index;   // 0x44: the vertex index
+    unsigned int m_first;   // 0x48: the mesh select's range
+    unsigned int m_last;   // 0x4c
+    unsigned int m_id;   // 0x50: the strip id looked for, 0xFFFF for none
+    _word128 *m_mark;   // 0x54: the select the strip was found at
 };
 
 /* the scene's root; SOCOM 1's DWARF has its 0x6BE0 bytes of members, and SOCOM II's is the same

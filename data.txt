@@ -1162,6 +1162,7 @@
 0x004B4DE0 0xC m_lightMapList__Q23zdb7CVisual  # OVL1 bss; s1:data by hand (the wep lane: CVisual::Init resizes it to 16, as SOCOM 1's Init resizes m_lightMapList; 0x404570 builds it; 5 references in 3 functions)
 0x004B4E08 0xC m_shadowMapList__Q23zdb7CVisual  # OVL1 bss; s1:data by hand (the wep lane: CVisual::Init resizes it to 4, as SOCOM 1's Init resizes m_shadowMapList; 5 references in 3 functions)
 0x004B4E30 0xC m_projectedMapList__Q23zdb7CVisual  # OVL1 bss; s1:data by hand (the wep lane: CVisual::Init resizes it to 8, as SOCOM 1's Init resizes m_projectedMapList; 4 references in 3 functions)
+0x004B5020 0x10 m_defaultColor__Q23zdb14CMaterial_band  # OVL1 bss; by hand (the wep lane, vis_data.cpp: 1 reference, four loads -- the default constructor of CMaterial_band copies it into a band's colour at 0x20, inlined in resize<CMaterial_band> 0x3BCAE0; nothing writes it; just ahead of vis_decal.cpp's m_tempPool, so this unit's; the name ours)
 0x004B5030 0x14 m_tempPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb6CDecalFPQ23zdb6CDecal +2)
 0x004B5050 0x14 m_permPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal +1)
 0x004B5080 0x14 m_tempPool__Q23zdb10CMeshDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb10CMeshDecalFPQ23zdb10CMeshDecal +1)
