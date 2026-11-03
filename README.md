@@ -1729,6 +1729,43 @@ wholly another overlay's copy -- a scorer change for the tools' owner (with the 
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 12** (THE INLINE LEVEL, measured header by header and not
+  adopted: is SOCOM II built at `-inline level=8` with MSL deeper than include/*? -- build/scratch/msl-r12/
+  table.txt and its logs, probes build/p12/, untracked):
+  - MW's level stops at 8: the integrator's whole-tree logs at 8 and 9 are byte-identical; a chain probe at 8
+    inlines an 8-high callee whole and a 9-high one one level;
+  - SOCOM 1's DWARF and SOCOM II's image agree on the vector's capacity pair: SOCOM 1's ~vector<T *> copies
+    call compressed_pair_imp<allocator<Ui>,Ui,1>::second() then first() out of line (0x1735A0, 0x173590 --
+    the pod's destructor `if (data_) alloc().deallocate(data_, cap())`, <vector> 230-233), SOCOM II's
+    func_002B55E0 (a list of actions deleted) calls its OVL1 copies 0x2B5750/0x2B5740 the same way, and
+    zui_hangul.cpp's deleter clear 0x393C60 calls the char pod's 0x392750/0x392740 five this-tests deep: a
+    destructor chain cut at its LEAVES, which the one-level model does not produce (open);
+  - modelled (compressed_pair_imp<A, Ui, 1> deriving from the allocator: the class constructor 6 high and
+    its swap 6, the pod's constructor 6 and destructor 6, 95 units), level 8 gives 6761 over every
+    hand-written unit (master's headers: 6746 at 8, 6800 at 5), +15 and nothing lost: ~CCell, ~CHUD,
+    ~CVisual, ~CGSTexBuffer, doAddBuffer, SaveNodeStates with its four constructors, st_core.cpp's FreeCues
+    path, ai_path.cpp's TrimVector -- and every level-5 witness holds at 8 (CreateAnchor,
+    __sinit_compass.cpp, CVisual(), ~CGame, ~C2D, CCharacterType(), the chat deque). ~CVisual's cut is a
+    SIZE cut there: CDynTexList's two member chains come to 259 units, while ClearGroups' group destructor,
+    the same height (8) with one chain (157 units), inlines whole -- no height separates the two, only size;
+  - NOT CLOSED: a class FreeVector is then 7 high and 250 units and inlines whole at 8, where the target
+    calls its four pieces (FreeTables, DestroyPool, ~MapCompass, Close, WipePktBuf: 25 rows), as the
+    pointer TrimVector (GarbageCollect). They need the class swap 8 high and the pod's 8 (or FreeVector past
+    256 units): two and three forwarding levels no DWARF or image shows. With them (a measurement, branch
+    commit 69f18387): 6788 at 8 (+27, nothing lost), 6739 at 7, 6672 at 6, 6624 at 5 -- still under 6800;
+  - the list's sentinel through SOCOM 1's tail() (<list> 174) over the end pair's second() (853) -- the
+    image's 0x2D2530 and 0x207560 -- in begin()/end()/~__list_deleter alone loses 32 at 8 (the walks'
+    shared &end_.next_: ~CValve, DeleteCallbacks, GenerateLightList, ~CCell, ClearEffectors, ~CSealUnit, the
+    remove_if copies) and brings back none of the target's list cuts (~CEntityList, ~CAssetList,
+    ~CAiEventList, valve_list.cpp's iterator pieces, SelectNext/PreviousObjective through GetObjective's
+    walk): SOCOM 1's whole list shape (size_ and end_ both compressed pairs) is a round of its own;
+  - unexplained at 8 by any header tried (26 rows against level 5): the string constructor's chain (main.cpp's
+    CGameState(const char *), SetDefaultMenu, CSaferStr(), COurGame() -- SOCOM 1's DWARF has the older
+    string), placement new and the element copies (C2DPoly's copy and vector<C2DPoly>::reserve, CInit<Us,0>(),
+    CJamoStr()), zui_skb.cpp's ShutdownBegin/SwitchTo, ~CWaterRippleManager, ~CTextureFXManager, ~CZNetwork,
+    RTArray<CDecal>'s destructor and the list family above;
+  - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
+    so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
 - **Tells from the online lobby, round 11** (the Medius names respelled, the lobby's Tick, the chat callbacks, the
   friend lists, zNetConnect):
   - MSL's deque blocks hold AT LEAST 8 elements: include/deque's buf_size is `sizeof(T) * 8 <= 512 ? 512 /
@@ -4806,7 +4843,13 @@ What is open across lanes, and what comes next:
   now inline one level more (24), and a handful of the game's small constructors (CGameState(const
   char *), CSaferStr(), C2DPoly's copy, CJamoStr()) -- so level 8 with the original's deeper MSL
   stays the likely answer, and moving to it is a header refit (the MSL lane), not a flag flip. The
-  lists: build/scratch/lvl/summary_2026-11-03.txt.
+  lists: build/scratch/lvl/summary_2026-11-03.txt. THE REFIT, TRIED (the MSL headers' round 12, "Tells
+  from completing the MSL headers, round 12"): SOCOM 1's compressed pair under both vector capacities,
+  DWARF- and image-backed, recovers 15 of level 8's losses at no cost there (6761 against level 5's
+  6800 over every hand-written unit) and leaves 39 open; the FreeVector/TrimVector cuts (27 rows) need
+  swap levels nothing shows, the list's (about 10) SOCOM 1's whole list shape, and the strings,
+  element copies and four destructors (about 15) evidence not found. The flag stays at 5, the headers
+  at their level-5 shapes, seal_ai.cpp's pragma with them.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
   structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
