@@ -93,8 +93,6 @@ void func_00567840(CSealCtrlAi *ai, int x);
 /* the kit's reload (OVL2 0x5C2A90, seal_kit.cpp's range, unwritten: called on the SEAL's kit at
  * 0x5E0 by the reload state's sub-step) */
 void func_005C2A90(void *kit);
-/* a SEAL's check of a kind, a byte (OVL2 0x58A720, the SEAL lane's row) */
-ORDER_KIND func_0058A720(CEntity *seal, int x);
 void func_00570D60(CSealCtrlAi *ai, int x, float f);
 /* the AI's target held (OVL2 0x60A850, after the response states: CAiTarget's, the target at
  * CSealCtrlAi 0x67C) and a look pushed at a point (OVL2 0x5F0B30, seal_aistate.cpp's) */
@@ -484,7 +482,7 @@ done:
 }
 
 /* a callout: the sound played at a volume, and with `order` the order of kind 0 given when the
- * SEAL's 0x58A720 check (with 1) fails (OVL2 0x605770: the AI's 0x5CA470 and the stack's
+ * SEAL stands (GetStance(true), OVL2 0x58A720) (OVL2 0x605770: the AI's 0x5CA470 and the stack's
  * 0x5F8D40 call it; the name unknown) */
 extern "C" void func_00605770(CSealCtrlAi *ai, bool order, CHARACTER_SOUND sound, float vol)
 {
@@ -492,10 +490,10 @@ extern "C" void func_00605770(CSealCtrlAi *ai, bool order, CHARACTER_SOUND sound
 
     ai->PlayAiSound(sound, vol, -1);
     if (order) {
-        ORDER_KIND r = func_0058A720(seal, 1);
+        SEAL_STATE r = ((CZSealBody *)seal)->GetStance(true);
 
-        if (r == ORDER_KIND_0)
-            func_00571010(ai, func_00609530(0), 2, r);
+        if (r == stateStand)
+            func_00571010(ai, func_00609530(0), 2, (ORDER_KIND)r);
     }
 }
 
