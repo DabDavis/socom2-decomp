@@ -795,11 +795,11 @@ void casrInitSegmentation(CASR *c)
         heap_Free(c->heap, seg[0]);
     total = 0;
     for (i = 0; i < 3; i++)
-        total += c->seginfo[i].n + 2;
+        total += c->utt[i].n + 2;
     p = seg[0] = heap_Alloc(c->heap, total * 3 * sizeof(short));
     q = seg;
     for (i = 0; i < 3; i++) {
-        len = c->seginfo[i].n + 2;
+        len = c->utt[i].n + 2;
         for (j = 0; j < 3; j++) {
             p += len;
             *++q = p;

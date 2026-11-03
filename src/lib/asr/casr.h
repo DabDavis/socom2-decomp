@@ -15,10 +15,13 @@ typedef struct CBSLOT {
     int data;
 } CBSLOT;
 
-typedef struct SEGINFO {
-    int n;                              /* the segment's length */
-    int pad[2];
-} SEGINFO;
+/* a training utterance (three at +980): its frames, its segmentation's length and the
+ * segmentation itself (freed when the utterance is rejected) */
+typedef struct UTTREC {
+    unsigned int frames;                /* +0: below parameter +428, too short */
+    int n;                              /* +4: the segmentation's length */
+    void *seg;                          /* +8 */
+} UTTREC;
 
 #define CASR_MAGIC      0x218DF4F5      /* +552 of a live handle */
 #define CASR_ERR_NULL   6
@@ -125,8 +128,11 @@ typedef struct CASR {
     char pad916[12];
     int uw_recs_needed;                 /* +928 */
     unsigned short uw_recs_done;        /* +932 */
-    char pad934[50];
-    SEGINFO seginfo[3];                 /* +984 */
+    char pad934[6];
+    unsigned char rejected;             /* +940: the last utterance was too short */
+    char pad941[39];
+    UTTREC utt[3];                      /* +980 */
+    int pad1016;
     struct TRAINREC *trainrecs;         /* +1020: the training's records (train.c) */
     char pad1024[24];
     void *train1048;                    /* +1048: freed by TrainFree */
