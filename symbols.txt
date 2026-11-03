@@ -9436,7 +9436,7 @@
 0x005169B0 0x558 func_005169B0  # OVL2
 0x00516F10 0xA4 func_00516F10  # OVL2
 0x00516FC0 0x88 Alloc__7CAiCellFUi  # OVL2; ours (new in SOCOM II: n cells from _calloc, each through CAiCell::Reset; the layers' allocation 0x53A8F0 calls it)
-0x00517050 0x388 func_00517050  # OVL2
+0x00517050 0x388 TransformTo__6CAiMapFRC9CAiMapLocP6CAiMapR9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 15 (the demo's TransformTo 0x185B50, after GetCellRepelParams and before GetMapRegion/ResetCells as here; GetLocationDelta 0x52C320 calls it twice with (loc, map, &out) as the demo's calls it)
 0x005173E0 0x84 GetMapRegion__6CAiMapCFRQ26CAiMap6region  # OVL2; s1:order by hand (the demo's 0x185FF0, the same 0x84 bytes: a CAiMapLoc(0, 0, 0) temporary copied into the region's cell, then m_nx and m_ny as its width and height; 0x517470 and ValidateCells call it)
 0x00517470 0x254 ResetCells__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x186080, after GetMapRegion in both builds: every cell of the map visited row by row through the scanlines and handed to _reset_cell 0x5180B0 -- SOCOM II's walk, inlined one level, its pieces called out of line after it; CAiMaps' 0x52E720 calls it)
 0x005176D0 0x8 GetDx__Q26CAiMap6regionCFv  # OVL2; ours (the region's width, lhu at 4: out of line after ResetCells where the walk is inlined one level)
@@ -9642,17 +9642,17 @@
 0x0052BB70 0x274 func_0052BB70  # OVL2
 0x0052BDF0 0x518 func_0052BDF0  # OVL2
 0x0052C310 0x8 func_0052C310  # OVL2
-0x0052C320 0x284 func_0052C320  # OVL2
+0x0052C320 0x284 GetLocationDelta__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 15 (the demo's GetLocationDelta 0x199610, between SmoothPath and RegisterPathPlan as 0x52C310/0x52C5B0 are here: the same-map Manhattan sum, two TransformTo calls, _max<Ui> of the maps' cell counts; SOCOM II adds map 0 as the common grid)
 0x0052C5B0 0xC func_0052C5B0  # OVL2
 0x0052C5C0 0x608 func_0052C5C0  # OVL2
 0x0052CBD0 0xAC CanSeeLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A480, after ComputeLineVisibility: the two cells' common map's CanSeeLine, false across maps)
 0x0052CC80 0xAC CanTravelLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A570, after CanSeeLine: the common map's CanTravelLine)
 0x0052CD30 0xDC GetAltitude__7CAiMapsFRC9CAiMapLocRf  # OVL2; s1:order by hand (the demo's 0x19A660, after CanTravelLine in both builds: the cell's map's altitude, its lookup inlined one level -- GetCell 0x511F80 and the cell's altitude 0x516940 called)
-0x0052CE10 0x3E8 func_0052CE10  # OVL2
+0x0052CE10 0x3E8 GetInterpolatedShadow__7CAiMapsFRC9CAiMapLocPC6CPnt3Db  # OVL2; s1:order by hand, the AI core round 15 (the demo's GetInterpolatedShadow 0x19B290, after GetAltitude and before GetInterpolationCells/GetCellCenter as here; called (AiMaps, &loc, &pos, 0) for the explosions' and projectiles' light, 1.0 off the maps)
 0x0052D200 0x6C __ct__9CAiMapLocFUiUiUi  # OVL2; s1:exact
-0x0052D270 0x10 func_0052D270  # OVL2
-0x0052D280 0x10 func_0052D280  # OVL2
-0x0052D290 0x1F0 func_0052D290  # OVL2
+0x0052D270 0x10 GetShadow__7CAiCellCFv  # OVL2; by hand, the AI core round 15 (CAiCell's shadow bits 22-23 read out: GetInterpolatedShadow's out-of-line copy, after the three-argument CAiMapLoc as its first use orders them)
+0x0052D280 0x10 IsInside__7CAiCellCFv  # OVL2; by hand, the AI core round 15 (CAiCell's bit 24 as a bool: GetInterpolatedShadow's indoor test, out of line after GetShadow)
+0x0052D290 0x1F0 GetInterpolationCells__6CAiMapCFRC9CAiMapLocPC6CPnt3DP6IPNT2DP5PNT2D  # OVL2; s1:order by hand, the AI core round 15 (the demo's 0x19BA90, between GetInterpolatedShadow and GetCellCenter as here; GetInterpolatedShadow calls it (map, loc, pos, &d, &t) as the demo's)
 0x0052D480 0x21C GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D  # OVL2; s1:calls (CMission::LoadVehicle and GetStartMatrix call it on AiMaps after GetLocation, as SOCOM 1's call GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D)
 0x0052D6A0 0x12C GetCell__7CAiMapsFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19BFC0, after GetCellCenter in both builds: the cell's map's first-layer cell, GetCell inlined one level)
 0x0052D7D0 0x3C GetBoundary__7CAiMapsFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's GetBoundary__7CAiMapsFRC9CAiMapLoc follows GetCell as here; SOCOM II's reads the cell's two boundary bits, 0 off the maps)

@@ -37,8 +37,15 @@ public:
     CAiCell *GetCell(const CAiMapLoc &loc);
     unsigned int GetBoundary(const CAiMapLoc &loc);
     bool GetAltitude(const CAiMapLoc &loc, float &alt);
+    /* the shadow at a point over a cell, blended over the cell and its three neighbours toward
+     * the point, 0 to 1; 1 off the maps (SOCOM 1's; 0x52CE10 -- the explosions' and the
+     * projectiles' light) */
+    float GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *pos, bool inside);
     bool CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
     bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
+    /* how many cells apart two cells are, across maps on the first map's grid (SOCOM 1's
+     * GetLocationDelta, by its place: 0x52C320) */
+    unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
     /* a line between two points walked over the maps, each cell handed to a callback (new in
      * SOCOM II, the name ours: the visibility tests' walk, 0x5352D0, the step 0.2 as the maps'
      * own WalkLines take it) */

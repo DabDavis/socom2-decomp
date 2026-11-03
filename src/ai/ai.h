@@ -231,6 +231,9 @@ public:
     bool HasAction() const { return m_action; }
     unsigned char GetBoundary() const { return m_boundary; }
     unsigned int GetShadow() const { return m_shadow; }
+    /* whether the cell is indoors (the name ours: GetInterpolatedShadow's test, out of line at
+     * 0x52D280 beside GetShadow's 0x52D270 where the map's shadow is inlined one level) */
+    bool IsInside() const { return m_inside; }
     /* the fields' setters: their arguments masked at run time, `(0 & 1) << n` for a constant
      * (the names ours) */
     void SetOccupied(unsigned int b) { m_occupied = b; }
@@ -298,6 +301,8 @@ int zrdr_free(CRdrFile *file);
 extern "C" int func_001993C0(const char *a, const char *b, unsigned int n);
 
 class CGNode;
+/* two ints (SOCOM 1's IPNT2D: units that use one define it themselves) */
+struct IPNT2D;
 class CGEdge;
 class CGraph;
 
@@ -794,6 +799,21 @@ public:
     static int GetDirDelta(DIR a, DIR b);
     /* the whole map as a region: its first cell, its width and height (SOCOM 1's) */
     void GetMapRegion(region &r) const;
+    /* a cell of this map as the cell of another map under the same point, false when that map
+     * has none there (SOCOM 1's TransformTo, by its place: 0x517050, between the repel parameters
+     * and ResetCells as the demo's 0x185B50; CAiMaps::GetLocationDelta's two calls) */
+    bool TransformTo(const CAiMapLoc &loc, CAiMap *map, CAiMapLoc &out);
+    /* the file's cell count, by value (the name ours: GetLocationDelta hands two to _max through
+     * temporaries) */
+    unsigned int GetCellCount() const { return m_cellcount; }
+    /* the cell's three neighbours toward a point and the point's place between their centres
+     * (SOCOM 1's, by its place: 0x52D290 after GetInterpolatedShadow's copies, before
+     * GetCellCenter, as the demo's 0x19BA90) */
+    bool GetInterpolationCells(const CAiMapLoc &loc, const CPnt3D *pos, IPNT2D *d, PNT2D *t) const;
+    /* the cell's shadow blended with its three neighbours' by the point's place between them, 0
+     * to 1 (SOCOM 1's CAiMaps::GetInterpolatedShadow body: ai_maps.cpp's inline, inlined one
+     * level into it) */
+    float GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *pos, bool inside);
     /* the map's id (new in SOCOM II's layout, SOCOM 1's m_mapid; the name ours: ai_astar.cpp's
      * copy 0x5120A0) */
     int GetMapId() const { return m_mapid; }
