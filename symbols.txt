@@ -6870,7 +6870,7 @@
 0x00370990 0x284 HandlePad__12CPopUpDialogFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370C20 0x88 func_00370C20  # OVL1
 0x00370CB0 0x58 func_00370CB0  # OVL1
-0x00370D10 0x9C func_00370D10  # OVL1
+0x00370D10 0x9C ShowChoice__11CRadioStripFv  # OVL1; ours by hand (the HUD lane, round 24: zui_2d.cpp -- the radio strip's buttons shown after a new choice, the chosen one through slot 18 (SetActive), the others slot 19 (SetNormal); CRadioStrip::TickZAnimCmd calls it out of line)
 0x00370DB0 0x1B0 func_00370DB0  # OVL1
 0x00370F60 0x15C func_00370F60  # OVL1
 0x003710C0 0xC func_003710C0  # OVL1
@@ -6913,7 +6913,7 @@
 0x00376530 0x68 func_00376530  # OVL1
 0x003765A0 0xEC HandlePad__14CHandlerButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376690 0x8 func_00376690  # OVL1
-0x003766A0 0x120 func_003766A0  # OVL1
+0x003766A0 0x120 SetActive__9C2DButtonFv  # OVL1; by hand (the HUD lane, round 24: zui_2d.cpp -- slot 18 of every button's table, C2D's SetActive: the state at 0xFC shown and the button's type-1 event-2 actions run)
 0x003767C0 0xA8 GetZAnimCmdType__9C2DButtonFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376870 0x150 TickZAnimCmd__9C2DButtonFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 22: slot +0x64 of C2DButton's table 0x407790; CRadioStrip::TickZAnimCmd 0x3710D0 falls through to it)
 0x003769C0 0x180 ParseZAnimCmd__9C2DButtonFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
