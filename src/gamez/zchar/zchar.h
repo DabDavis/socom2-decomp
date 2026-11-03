@@ -5,6 +5,7 @@
 #ifndef ZCHAR_H
 #define ZCHAR_H
 
+#include <string>
 #include <vector>
 
 #include "../zweapon/zweapon.h"
@@ -331,6 +332,20 @@ public:
 class CMultiplayerMsgVec : public std::vector<MultiplayerMsg *> {
 };
 
+/* the type's animation sets' names (SOCOM 1's `vector m_anim_sets`; a pointer vector in a class of
+ * its own here -- ~CCharacterType tests it four times, as a derived pointer vector; the name ours) */
+class CAnimSetVec : public std::vector<char *> {
+};
+
+/* the gears (SOCOM 1's CCharacterGearList; SOCOM II's a vector of pointers -- CCharacterType::
+ * m_gear_list stays declared as the plain vector, which its users bind; zseal.h has CCharacterGear) */
+class CCharacterGearList : public std::vector<class CCharacterGear *> {
+public:
+    /* the gear of that name, none for no name (SOCOM 1's FindGear, const there; SOCOM II's is not -- the
+     * walk reads the size and data off `this` each pass: 0x53EFF0, called on m_gear_list) */
+    CCharacterGear *FindGear(const char *name);
+};
+
 /* a kind of character: model, sounds, gear, weapons, AI and health (SOCOM 1's DWARF, 0x2FC bytes;
  * SOCOM II's is 0x3AC -- 85 sounds where SOCOM 1 had 66, each name a plain pointer where SOCOM 1
  * kept a 4-byte CSaferStr, so everything from the LODs on sits 0x98 further, the temporary flag at
@@ -340,6 +355,19 @@ namespace zdb { class CNode; }
 
 class CCharacterType {
 public:
+    /* a level of detail: a model file and name and the distance it starts at (SOCOM 1's global
+     * LOD, nested here: zanim.h's enum LOD shares the name and units see both; SOCOM II's strings
+     * are 12 bytes, so 0x1C -- the vector's teardown 0x540A50 frees both) */
+    class LOD {
+    public:
+        std::string m_file;   // 0x0
+        std::string m_name;   // 0xc
+        float m_dist;   // 0x18
+    };
+    /* the type's levels of detail (SOCOM 1's DWARF: a vector and nothing more) */
+    class LODVec : public std::vector<LOD> {
+    };
+
     CCharacterType(const char *name, const CCharacterType *base);
     ~CCharacterType();
 
@@ -380,11 +408,11 @@ public:
     unsigned int m_parentID;   // 0x10
     char *m_arrSoundNames[CHRSND_MAX];   // 0x14
     CSnd *m_sounds[CHRSND_MAX];   // 0x168
-    unsigned char m_LODs[0xc];   // 0x2bc: LODVec
-    unsigned char m_anim_sets[0xc];   // 0x2c8: a vector
+    LODVec m_LODs;   // 0x2bc
+    CAnimSetVec m_anim_sets;   // 0x2c8
     char *m_texture_asset;   // 0x2d4
     CModel *m_model;   // 0x2d8
-    unsigned char m_gear[0xc];   // 0x2dc: CCharacterGearList
+    CCharacterGearList m_gear;   // 0x2dc
     CCharacterWeapList m_weapons;   // 0x2e8
     int m_strength;   // 0x2f4
     int m_recovery_factor;   // 0x2f8
@@ -404,15 +432,6 @@ public:
      * vector of pointers, OVL1 bss 0x44CD68, the same 0x20 on: CZSealBody::FindGear walks its data
      * and size) -- added by the SEAL lane */
     static std::vector<class CCharacterGear *> m_gear_list;
-};
-
-/* the gears (SOCOM 1's CCharacterGearList; SOCOM II's a vector of pointers -- CCharacterType::
- * m_gear_list stays declared as the plain vector, which its users bind; zseal.h has CCharacterGear) */
-class CCharacterGearList : public std::vector<class CCharacterGear *> {
-public:
-    /* the gear of that name, none for no name (SOCOM 1's FindGear, const there; SOCOM II's is not -- the
-     * walk reads the size and data off `this` each pass: 0x53EFF0, called on m_gear_list) */
-    CCharacterGear *FindGear(const char *name);
 };
 
 /* the types (SOCOM 1's DWARF: a vector of pointers and nothing more) */

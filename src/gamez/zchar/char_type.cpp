@@ -452,6 +452,28 @@ void CCharacterType::ClearMultiplayerMessageSounds()
             (*j)->m_sound = 0;
 }
 
+/* a type let go (SOCOM 1's): each string freed and cleared -- the name, the texture asset, the
+ * model's name and file -- the animation sets emptied, the multiplayer messages deleted; then the
+ * vectors' own teardown */
+CCharacterType::~CCharacterType()
+{
+    if (m_name)
+        _free(m_name, 0, 0);
+    m_name = 0;
+    if (m_anim_sets.size())
+        m_anim_sets.clear();
+    if (m_texture_asset)
+        _free(m_texture_asset, 0, 0);
+    m_texture_asset = 0;
+    if (m_model_name)
+        _free(m_model_name, 0, 0);
+    m_model_name = 0;
+    if (m_model_file)
+        _free(m_model_file, 0, 0);
+    m_model_file = 0;
+    DeleteMultiplayerMessages();
+}
+
 /* a sound by kind, none out of range (new in SOCOM II; the name ours) */
 CSnd *CCharacterType::GetSound(CHARACTER_SOUND s) const
 {
