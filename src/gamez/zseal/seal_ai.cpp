@@ -158,14 +158,12 @@ void CSealCtrlAi::OnMissionStart()
 
 extern "C" {
 float tanf(float x);
-/* the SEAL's aim set relative to it (SOCOM 1's SetAimDirR, which SOCOM 1's SetSprayTimer calls at the
- * same place; OVL2 0x5DF8B0, the kit lane's range) */
-void func_005DF8B0(CZSealBody *seal, const CPnt3D *dir, bool b);
 }
 
 /* a spray of fire timed: refused in mode 2, with nothing in hand, or when the item cannot fire fully
- * automatic; the weapon raised, the aim straight ahead (OVL2 0x565AE0; SOCOM 1's SetSprayTimer, its
- * mode and null tests new) */
+ * automatic; the weapon raised, the aim straight ahead through SetAimDirR (seal_weapon.cpp's, OVL2
+ * 0x5DF8B0, as SOCOM 1's SetSprayTimer calls it) (OVL2 0x565AE0; SOCOM 1's SetSprayTimer, its mode and
+ * null tests new) */
 void CSealCtrlAi::SetSprayTimer(float t)
 {
     CZSealBody *seal = (CZSealBody *)m_entity;
@@ -174,7 +172,7 @@ void CSealCtrlAi::SetSprayTimer(float t)
     if (m_26e == 2 || !item || item->m_maxfiremode < 3)
         return;
     seal->SetWeaponState((WEAPON_STATE)1);
-    func_005DF8B0(seal, &CPnt3D::unit_nz, false);
+    seal->SetAimDirR(&CPnt3D::unit_nz, false);
     m_spraytimer = t;
 }
 
@@ -1427,3 +1425,10 @@ extern "C" void func_00567340(CEntityCtrl *ctrl, unsigned int axis, float value)
 {
     ctrl->m_throttle[axis] = value;
 }
+
+/* the template tail's other two instances, explicit until their callers are written: ai::_min over
+ * floats (OVL2 0x575C80: CSealCtrl::CreepTick 0x566DC0 and 0x567900 call it) and _close_enough over
+ * ints (OVL2 0x575CB0: 0x567900 calls it twice, as UpdateAiMapLoc does) -- _max<f> (0x575C50), the
+ * tail's first, comes with seal_control.cpp's caller */
+template const float &ai::_min<float>(const float &, const float &);
+template bool _close_enough<int>(const int &, const int &, const int &);
