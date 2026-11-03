@@ -8701,7 +8701,7 @@
 0x004CA118 0x284 asrspi_ActivateLng  # OVL2 unaligned; s1:align
 0x004CA3A0 0x280 asrspi_ActivateCtx  # OVL2; s1:calls
 0x004CA620 0x438 asrspi_SetParamList  # OVL2; s1:align
-0x004CAA58 0x2E0 func_004CAA58  # OVL2 unaligned
+0x004CAA58 0x2E0 asrspi_GetParamList  # OVL2 unaligned; s1:order (SOCOM 1's asrspi_GetParamList, 0x28C, after asrspi_SetParamList in the asrspi object: the same body -- each entry's id translated by the same switch as SetParamList's, casrGetParam into the entry's value, ConvErr on failure) -- the gcc lane, round 7c
 0x004CAD38 0x200 asrspi_GetActiveWords  # OVL2 unaligned; s1:calls
 0x004CAF38 0x5A0 asrspi_ActivateWords  # OVL2 unaligned; s1:calls
 0x004CB4D8 0x390 asrspi_DeActivateWords  # OVL2 unaligned; s1:align

@@ -101,6 +101,11 @@ typedef struct ASRSPI {
     CRITSEC *cs;                        /* +212 */
 } ASRSPI;                               /* 0xD8 */
 
+typedef struct PARAM {                  /* a parameter list's entry */
+    int id;
+    int value;
+} PARAM;
+
 typedef struct CASRCB {                 /* what the casr engine hands its callbacks */
     void *f0;
     ASRSPI *engine;                     /* +4: casrOpen's user data */
@@ -129,6 +134,7 @@ extern void *casrImportContext(void *heap, int *ctx);
 extern int casrCloseContext(void *ctx);
 extern int casrCheckUserWordConfusion(CASR *c, void *ctx, int a2, int a3);
 extern int casrSetParam(CASR *c, int id, int value);
+extern int casrGetParam(CASR *c, int id, int *value);
 extern int casrStartUserWordTraining(CASR *c, void **rec, void **rec_info);
 extern void heap_Free(void *heap, void *p);
 extern void *memset(void *p, int c, unsigned int n);
@@ -147,6 +153,7 @@ extern int casrGetSignalLevel(CASR *c, short *level);
 extern int casrGetSNR(CASR *c, short *snr);
 extern int casrStart(CASR *c);
 extern int casrExportData(CASR *c, int what, void **data, unsigned int *size);
+extern int casrGetActiveWords(CASR *c, int **words, unsigned int *count);
 extern void FillContextV2VirtualTable(CONTEXTV2 *vt);
 extern void FillLanguageVirtualTable(LANG *vt);
 extern void *heap_Alloc(void *heap, int size);
@@ -666,6 +673,124 @@ int asrspi_ActivateCtx(ASRSPI *e, int *ctxdata, int a2)
         e->state = 2;
     else
         e->state = 1;
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+/* the API's parameter ids, as the casr engine's */
+static __inline__ int TranslateParamId(int id, int *casr_id)
+{
+    switch (id) {
+    case 0:  *casr_id = 1; break;
+    case 1:  *casr_id = 2; break;
+    case 2:  *casr_id = 3; break;
+    case 3:  *casr_id = 5; break;
+    case 17: *casr_id = 9; break;
+    case 6:  *casr_id = 10; break;
+    case 11: *casr_id = 17; break;
+    case 7:  *casr_id = 13; break;
+    case 8:  *casr_id = 12; break;
+    case 9:  *casr_id = 11; break;
+    case 4:  *casr_id = 15; break;
+    case 18: *casr_id = 18; break;
+    case 10: *casr_id = 14; break;
+    case 12: *casr_id = 16; break;
+    case 15: *casr_id = 7; break;
+    case 16: *casr_id = 8; break;
+    case 14: *casr_id = 6; break;
+    case 13: *casr_id = 4; break;
+    default: return 0x80040014;
+    }
+    return 0;
+}
+
+int asrspi_SetParamList(ASRSPI *e, PARAM *list, unsigned int n)
+{
+    int err, id;
+    unsigned int i;
+
+    if (list == 0)
+        return ASRSPI_E_NULLPTR;
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError4(e, 0, 1, 6, 2);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    for (i = 0; i < n; i++) {
+        err = TranslateParamId(list[i].id, &id);
+        if (err) {
+            ENGINE_LEAVE(e);
+            return err;
+        }
+        if (id == 14 && e->state == 0)
+            return 0x80040013;
+    }
+    for (i = 0; i < n; i++) {
+        TranslateParamId(list[i].id, &id);
+        if (casrSetParam(e->casr, id, list[i].value) != 0) {
+            ENGINE_LEAVE(e);
+            return ConvErr(e, casrGetLastError(e->casr));
+        }
+    }
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+int asrspi_GetParamList(ASRSPI *e, PARAM *list, unsigned int n)
+{
+    int err, id;
+    unsigned int i;
+
+    if (list == 0)
+        return ASRSPI_E_NULLPTR;
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    for (i = 0; i < n; i++) {
+        err = TranslateParamId(list[i].id, &id);
+        if (err) {
+            ENGINE_LEAVE(e);
+            return err;
+        }
+        if (casrGetParam(e->casr, id, &list[i].value) != 0) {
+            ENGINE_LEAVE(e);
+            return ConvErr(e, casrGetLastError(e->casr));
+        }
+    }
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+int asrspi_GetActiveWords(ASRSPI *e, int *ids, unsigned int *count)
+{
+    int *words;
+    unsigned int n;
+    int err;
+
+    if (count == 0)
+        return ASRSPI_E_NULLPTR;
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError2(e, 2, 3);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    if (casrGetActiveWords(e->casr, &words, &n) != 0) {
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    if (ids) {
+        if (*count < n) {
+            heap_Free(e->heap, words);
+            ENGINE_LEAVE(e);
+            return 0x80040085;
+        }
+        memcpy(ids, words, n * 4);
+    }
+    *count = n;
+    heap_Free(e->heap, words);
     ENGINE_LEAVE(e);
     return 0;
 }
