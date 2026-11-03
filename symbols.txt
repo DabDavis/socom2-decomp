@@ -11344,17 +11344,17 @@
 0x005E7030 0x1F8 func_005E7030  # OVL2
 0x005E7230 0x15C func_005E7230  # OVL2
 0x005E7390 0x1F0 func_005E7390  # OVL2
-0x005E7580 0xD8 func_005E7580  # OVL2
+0x005E7580 0xD8 GetMyPointOutTurnDir__9CSealUnitFP10CZSealBodyPP6CPnt3D  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's GetMyPointOutTurnDir (0x2CF010, 0xF4) -- the same test of the AI's navyseal bit (0x264 here, 0x280 there), then the point-out byte (9 here, 8 there), the first SEAL's leader data (0x21/0x24) and the second's follower data (0xD/0x10), the same offsets as SOCOM 1's
 0x005E7660 0x24 func_005E7660  # OVL2
 0x005E7690 0x38 func_005E7690  # OVL2
 0x005E76D0 0x160 func_005E76D0  # OVL2
 0x005E7830 0x130 func_005E7830  # OVL2
 0x005E7960 0x5BC func_005E7960  # OVL2
 0x005E7F20 0x84 func_005E7F20  # OVL2
-0x005E7FB0 0xC func_005E7FB0  # OVL2
-0x005E7FC0 0xC func_005E7FC0  # OVL2
-0x005E7FD0 0x84 func_005E7FD0  # OVL2
-0x005E8060 0x7F0 func_005E8060  # OVL2
+0x005E7FB0 0xC SetPlayAutoMessages__Fb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's SetPlayAutoMessages (0x2CF720), the same sb to bgAutoMessagesOn (0x650B08 here), before GetPlayAutoMessages as there; UILoadConfig and UIToggleAutoMessages call it
+0x005E7FC0 0xC GetPlayAutoMessages__Fv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's GetPlayAutoMessages (0x2CF730), the same lbu of bgAutoMessagesOn (0x650B08 here), before TickAll as there; UIToggleAutoMessages calls it and then the setter
+0x005E7FD0 0x84 TickAll__9CSealUnitFfPv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's TickAll (0x2CF740) -- the same test of m_created_units_test (OVL1 0x44D5C0), the same walk of m_list ticking each squad with no parent (0x60 here, 0x3C there); CCoreState::Init registers it as the scheduler's UnitTick
+0x005E8060 0x7F0 Tick__9CSealUnitFf  # OVL2; s1:callee by hand (the kit lane, round 13): TickAll (0x5E7FD0) calls it on each top squad where SOCOM 1's TickAll calls Tick__9CSealUnitFfPv (0xBB8 there, 0x7F0 here), and it recurses as that one does; SOCOM II passes no data (a1 never set), hence Ff
 0x005E8850 0x1E8 func_005E8850  # OVL2
 0x005E8A40 0xC func_005E8A40  # OVL2
 0x005E8A50 0xC func_005E8A50  # OVL2
@@ -11426,9 +11426,9 @@
 0x005ED9A0 0xC func_005ED9A0  # OVL2
 0x005ED9B0 0x1F8 func_005ED9B0  # OVL2
 0x005EDBB0 0x108 func_005EDBB0  # OVL2
-0x005EDCC0 0xF8 func_005EDCC0  # OVL2
+0x005EDCC0 0xF8 IsMemberOfUnit__9CSealUnitFP10CZSealBodyb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's IsMemberOfUnit(CZSealBody *, bool) (0x2D6040) -- the SEALs (0x64), the escortees (0x70), then with the flag each sub-squad (0x7C) asked again, recursing as there; before its by-number overload as there
 0x005EDDC0 0x10 func_005EDDC0  # OVL2
-0x005EDDD0 0x70 func_005EDDD0  # OVL2
+0x005EDDD0 0x70 IsMemberOfUnit__9CSealUnitFUiP10CZSealBodyb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's IsMemberOfUnit(unsigned int, CZSealBody *, bool) (0x2D61B0) -- the squad of the number found (GetUnitByTeam inlined: m_list, the number at 0x58) and asked through 0x5EDCC0
 0x005EDE40 0x150 func_005EDE40  # OVL2
 0x005EDF90 0x1D0 SealLeaveUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5): EscorteeJoinUnit and SealJoinUnit (0x5EE160, 0x5EE250) call it first with the seal alone, as SOCOM 1's call SealLeaveUnit (static)
 0x005EE160 0xE8 EscorteeJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls EscorteeJoinUnit (twice, after ftsGetPlayer's GetUnitByTeam and after Create)
