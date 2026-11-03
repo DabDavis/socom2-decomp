@@ -5524,6 +5524,55 @@ keep placeholders: DME's API names belong to Dme.c's locked wrappers, round 7b, 
 -- NetGetBufferStatus's and NetSetSendAggregationInterval's wrappers by their bodies -- are left for a
 call-site check); no tool changed.
 
+**Round 14c: GenderDataCompute, two of the pitch DP's six, the Chinese second pass's helpers.** Three
+of the four were "registers only" or "store order" and each fell to one structural fact about 2.96,
+read off cc1's own dumps (`-dl -dg` for allocation, `-dS -fsched-verbose=4` for the first scheduling
+pass: `build/scratch/gcc/dump.py UNIT.c FLAGS...` writes them under build/scratch/gcc/dumps/).
+
+- **A pointer shared by two loops is one pseudo; a pointer local to one unrolled loop is one per
+  copy.** global.c allocates in priority order, refs x log2(refs) / live length, and the unroller
+  renames a register whose whole life lies inside the loop it copies. GenderDataCompute's frame walker
+  served both search stages, so it was one pseudo with 204 references against the codeword walker's
+  152 and took a2 first (the target's codeword walker has a2): with a frame walker of its own in the
+  second stage (the codeword walker still shared), each unrolled copy gets a fresh short-lived frame
+  pseudo and the allocation comes out as the target's -- byte-exact. New pointers for both walkers in
+  the second stage (round 12c's try) leave the swap. The `.greg` dump's "regs to allocate" line gives
+  the order directly.
+- **The first scheduling pass puts a store that frees a register first.** Before register allocation
+  haifa-sched ranks equal-priority insns by INSN_REG_WEIGHT -- births less REG_DEAD notes -- then
+  source order, so a store that is the last use of its value goes ahead of the rest. ControlPitchDP's
+  ten reset stores, written in the target's output order, came out with unflushed, block and len
+  first (each its value's last use); the target's order needs `fresh` after `unflushed` (fresh then
+  frees the 1), `len` before `last` before `block`, and the stores that free nothing in output order --
+  one such source matched at once (10 words to byte-exact). Predict with the rule, then measure.
+- **An `unsigned short` loop counter is masked at every step and blocks strength reduction.**
+  BackTracking's backtrace decrements its column without `andi 0xffff` and walks `&track[t]` and the
+  cell offset as pointers stepped by 4 and 12: the index is register-wide, assigned through
+  `(unsigned short)(ncols - 1)` (the target's `andi` at each assignment) -- 68 words to byte-exact,
+  the registers following with the loop.
+- **Tone_Of_Final, inlined and kept**: the Chinese second pass's tone test (SOCOM 1's name and position,
+  both objects; uncalled as a function in both builds) is inlined into the item-node walk with an
+  `unsigned char` result (`andi 0xff` at the join, as SOCOM 1's) while its copy stays: a GNU `extern
+  __inline__` body above the real one (2.96 outputs the redefinition at the object's end; scoring is
+  per function). SOCOM II's body returns 1 and 0 explicitly where SOCOM 1's returned the compare.
+- **Open, diagnosed in place**: InitPitchDP (its queue size an int -- `mult` frames first, no `andi`,
+  238 words against 241 -- and the extra saved register is bpo: sched1 hoists the pseudo-only
+  `(float)bpo` across calls into the first free issue slot before the fmax call, where the target
+  converts after the fmin call), ProcessPitchDP (the same pass: the `p->col` load floats across the
+  soft-float compare's const libcalls), Actual_DP (jf[j] is loaded once per bin in the target, a local
+  gives that, 264 words against 257; the k loop's &f[k] and &rows[k] are not strength-reduced here),
+  InitJumpFactors (the unrolled copies keep three FP temps where this reuses a dying input's
+  register), Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree and its `_TreeCtx` copy (19
+  words: the first child's *8 shares the recursion loop's pseudo).
+
+Hand-written in round 14c: `asr/gender.c` (+1, GenderDataCompute; 7 of 7), `asr/pitchdp.c` (+2,
+ControlPitchDP and BackTracking; 5 of 9), `asr/ctxutil.c` (+1, CreateActiveWordsCtxTree: 3 of 3),
+`asr/chinese.c` (new: Tone_Of_Final, Calculate_NbrOfStatesInDict_ForChinese and the item-node walk, 2
+of 3) and `asr/chinese_tree.c` (new: their `_TreeCtx` copies, 2 of 3) -- 8 functions byte-exact, all
+new to the map's byte-exact rows (3,588 bytes); `src/lib/asr` 425 of 467 (417 of 460 before). 2 rows
+named (Tone_Of_Final, Tone_Of_Final_TreeCtx: `s1:order`, SOCOM 1's objects 0x3404E8 and 0x345CD0). No
+tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
