@@ -51,6 +51,8 @@ def main(argv=None) -> int:
     ap.add_argument("--unit", action="store_true",
                     help="one unit as it stands: its own directive's toolchain and flags (unless -t/-F), "
                          "one function per line")
+    ap.add_argument("--stem", help="qualify the object's statics as unit STEM's (`NAME@STEM` rows: "
+                                   "a variants file or a probe scored as the unit it copies)")
     ap.add_argument("-j", "--jobs", type=int, default=2)
     a = ap.parse_args(argv)
     if a.unit:
@@ -80,7 +82,7 @@ def main(argv=None) -> int:
         label = f"{v} " * bool(v) + f"{tc} {fl}"
         try:
             D.compile_obj(srcs[v], obj, tc, fl.split(), includes)
-            D.qualify_statics(obj, a.src.stem, st)  # the unit's statics, as sccheck scores them
+            D.qualify_statics(obj, a.stem or a.src.stem, st)  # the unit's statics, as sccheck scores them
         except Exception as e:                      # a failed build is not evidence
             return label, None, (str(e).strip().splitlines() or ["?"])[-1][:120]
         out = {}

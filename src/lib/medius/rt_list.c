@@ -11,10 +11,12 @@
  * returned: 1 not found, 2 a bad argument or list, 3 no room.
  *
  * The end marker's writer returns a narrow type (`unsigned char`): the clear and init return its
- * result through a jal, not a sibling call. OPEN: func_006313D8 (the init, 22s: the target returns
- * the allocation's known-zero result when the buffer is null and keeps nSize in s2). Not written:
- * the store/remove/copy bodies 0x631508, 0x631670, 0x631748, 0x631848, 0x631BC0, 0x631D18,
- * 0x6321B8. */
+ * result through a jal, not a sibling call. OPEN: func_006313D8 (the init, 28s: the target returns
+ * the allocation's known-zero result when the buffer is null and keeps nSize in s2).
+ * Round 14b: the store after a message (0x631508: its room test a positive `if (nFree >= nLength)
+ * {...} else return 3;`, as rt_circ_buf's), the store at the head, the removal, the compaction and
+ * the resize (the header copied out as a struct -- ldl/ldr -- and rebuilt message by message), the
+ * end's recomputation. Not written: 0x631848. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern int rt_memory_allocate(void **ppMemory, unsigned long nSize);
@@ -43,7 +45,14 @@ unsigned char func_00631ED0(RT_LIST *pList);
 int func_00631F08(RT_LIST *pList, unsigned int *pnFree);
 int func_00631F30(RT_LIST *pList, unsigned int *pnFree);
 int func_00631F80(RT_LIST *pList, unsigned int *pnFree);
-extern int func_00631BC0(RT_LIST *pList, RT_LIST_MSG **ppMsg);
+int func_00631B60(RT_LIST *pList, RT_LIST_MSG **ppMsg);
+int func_00631FD8(RT_LIST *pList, RT_LIST_MSG **ppMsg, unsigned int nNeed);
+int func_006320A8(RT_LIST *pList, RT_LIST_MSG *pMsg, RT_LIST_MSG **ppPrev);
+int func_00632140(RT_LIST *pList);
+int func_006321B8(RT_LIST *pList);
+char *func_00631E58(RT_LIST_MSG *pMsg);
+int func_00631BC0(RT_LIST *pList, RT_LIST_MSG **ppMsg);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
 
 int func_006313D8(RT_LIST *pList, unsigned int nSize)
 {
@@ -84,6 +93,116 @@ int func_006314C0(RT_LIST *pList)
     return func_00631ED0(pList);
 }
 
+/* a message stored after pAfter: written over the end marker when pAfter is it (the room at the
+ * ring's end checked), else in a new place found for its head and bytes and linked in after it */
+int func_00631508(RT_LIST *pList, RT_LIST_MSG *pAfter, const void *pData, unsigned int nLength)
+{
+    unsigned int nFree = 0;
+    RT_LIST_MSG *pMsg;
+    int result;
+
+    if (func_00631EA0(pList) == 0)
+        return 2;
+    if (pAfter == 0)
+        return 2;
+    if (pData == 0)
+        return 2;
+    if (nLength == 0)
+        return 2;
+    if (func_00631E70(pAfter) == 0) {
+        result = func_00631F30(pList, &nFree);
+        if (result != 0)
+            return result;
+        if (nFree >= nLength) {
+            pAfter->nLength = nLength;
+            pAfter->pNext = 0;
+            memcpy(pAfter->data, pData, nLength);
+            pList->nEnd += (nLength + 3) & ~3;
+            pList->nUsed += (nLength + 3) & ~3;
+        } else
+            return 3;
+    } else {
+        result = func_00631FD8(pList, &pAfter, nLength + 8);
+        if (result != 0)
+            return result;
+        pMsg = (RT_LIST_MSG *)(pList->pBuf + pList->nEnd);
+        pMsg->pNext = pAfter->pNext;
+        pMsg->nLength = nLength;
+        memcpy(pMsg->data, pData, nLength);
+        pAfter->pNext = pMsg;
+        pList->nEnd += ((nLength + 3) & ~3) + 8;
+        pList->nUsed += ((nLength + 3) & ~3) + 8;
+    }
+    if (pList->nEnd == pList->nSize)
+        pList->nEnd = 0;
+    return 0;
+}
+
+/* a message stored at the head: after the first, then swapped in front of it */
+int func_00631670(RT_LIST *pList, const void *pData, unsigned int nLength)
+{
+    RT_LIST_MSG *pFirst = 0;
+    RT_LIST_MSG *pMsg;
+    int result;
+
+    if (func_00631EA0(pList) == 0)
+        return 2;
+    if (pData == 0)
+        return 2;
+    if (nLength == 0)
+        return 2;
+    result = func_00631B10(pList, &pFirst);
+    if (result != 0)
+        return result;
+    result = func_00631508(pList, pFirst, pData, nLength);
+    if (result != 0)
+        return result;
+    result = func_00631B10(pList, &pFirst);
+    if (result != 0)
+        return result;
+    pMsg = func_00631E88(pFirst);
+    if (pMsg != 0) {
+        pList->pFirst = pMsg;
+        pFirst->pNext = pMsg->pNext;
+        pMsg->pNext = pFirst;
+    }
+    if (pList->nEnd == pList->nSize)
+        pList->nEnd = 0;
+    return 0;
+}
+
+/* a message removed: unlinked from the one before it (the first's successor made first), its
+ * bytes given back, the start found again and the end moved to the last message's */
+int func_00631748(RT_LIST *pList, RT_LIST_MSG *pMsg)
+{
+    RT_LIST_MSG *pPrev = 0;
+    int result;
+
+    if (func_00631EA0(pList) == 0)
+        return 2;
+    if (pMsg != pList->pFirst) {
+        result = func_006320A8(pList, pMsg, &pPrev);
+        if (result != 0)
+            return result;
+        pPrev->pNext = func_00631E88(pMsg);
+        pList->nUsed = pList->nUsed - func_00631E70(pMsg) - 8;
+    } else if (func_00631E88(pMsg) == 0) {
+        pList->nStart = 0;
+        pList->nEnd = 0;
+        pList->nUsed = 0;
+        result = func_00631ED0(pList);
+        if (result != 0)
+            return result;
+    } else {
+        pList->nUsed = pList->nUsed - func_00631E70(pMsg) - 8;
+        pList->pFirst = func_00631E88(pMsg);
+    }
+    result = func_00632140(pList);
+    if (result != 0)
+        return result;
+    return func_006321B8(pList);
+}
+
 int func_00631B10(RT_LIST *pList, RT_LIST_MSG **ppMsg)
 {
     if (func_00631EA0(pList) == 0)
@@ -99,6 +218,61 @@ int func_00631B60(RT_LIST *pList, RT_LIST_MSG **ppMsg)
     *ppMsg = pList->pFirst;
     while (func_00631E88(*ppMsg) != 0)
         *ppMsg = func_00631E88(*ppMsg);
+    return 0;
+}
+
+/* the list compacted: rebuilt from its own messages in a new buffer of the same size, the caller's
+ * message pointer moved with its message */
+int func_00631BC0(RT_LIST *pList, RT_LIST_MSG **ppMsg)
+{
+    RT_LIST old;
+    RT_LIST_MSG *pLast = 0;
+    RT_LIST_MSG *p;
+    int result;
+
+    if (func_00631EA0(pList) == 0)
+        return 2;
+    old = *pList;
+    memset(pList, 0, sizeof(RT_LIST));
+    result = func_006313D8(pList, old.nSize);
+    if (result != 0) {
+        *pList = old;
+        return result;
+    }
+    for (p = old.pFirst; p != 0; p = func_00631E88(p)) {
+        func_00631B60(pList, &pLast);
+        func_00631508(pList, pLast, func_00631E58(p), func_00631E70(p));
+        if (ppMsg != 0 && p == *ppMsg)
+            func_00631B60(pList, ppMsg);
+    }
+    func_00631460(&old);
+    return 0;
+}
+
+/* the list resized: as the compaction, into a buffer of the new size (not below the bytes used) */
+int func_00631D18(RT_LIST *pList, unsigned int nSize)
+{
+    RT_LIST old;
+    RT_LIST_MSG *pLast = 0;
+    RT_LIST_MSG *p;
+    int result;
+
+    if (func_00631EA0(pList) == 0)
+        return 2;
+    if (nSize < pList->nUsed)
+        return 1;
+    old = *pList;
+    memset(pList, 0, sizeof(RT_LIST));
+    result = func_006313D8(pList, nSize);
+    if (result != 0) {
+        *pList = old;
+        return result;
+    }
+    for (p = old.pFirst; p != 0; p = func_00631E88(p)) {
+        func_00631B60(pList, &pLast);
+        func_00631508(pList, pLast, func_00631E58(p), func_00631E70(p));
+    }
+    func_00631460(&old);
     return 0;
 }
 
@@ -249,5 +423,29 @@ int func_00632140(RT_LIST *pList)
         p = func_00631E88(p);
     }
     pList->nStart = nStart;
+    return 0;
+}
+
+/* the end found again: past the furthest message (an empty one's head), word-aligned, wrapped */
+int func_006321B8(RT_LIST *pList)
+{
+    RT_LIST_MSG *p = 0;
+    unsigned int nEnd = 0;
+    int result;
+
+    result = func_00631B10(pList, &p);
+    if (result != 0)
+        return result;
+    while (p != 0) {
+        if (func_00631E58(p) == 0) {
+            if (nEnd < (char *)p - pList->pBuf + 8)
+                nEnd = (char *)p - pList->pBuf + 8;
+        } else if (nEnd < func_00631E58(p) + func_00631E70(p) - pList->pBuf)
+            nEnd = func_00631E58(p) + func_00631E70(p) - pList->pBuf;
+        p = func_00631E88(p);
+    }
+    pList->nEnd = (nEnd + 3) & ~3;
+    if (pList->nEnd == pList->nSize)
+        pList->nEnd = 0;
     return 0;
 }

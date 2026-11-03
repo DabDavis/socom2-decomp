@@ -6,11 +6,15 @@
  * alphabetical link order) and every name are ours. Error codes are the values returned: 1 already
  * started, 2 a bad argument, 3 not started, 5 the row is full, 6 out of memory.
  *
- * Byte-exact: func_0063C810 (the teardown). OPEN, one diagnosis for the five others: the target
- * loads its result constant into v0 once at the entry (`li v0,3` right after the flag's load) and
- * keeps it through the chain of tests, where 2.96 here sinks each constant into a branch's delay
- * slot -- guard clauses, one nested result variable and `&&` chains tried (32-67 words). 0x63C950
- * (0x1F4) and the thread-status functions after it (0x63CD18-0x63CF20) are not written. */
+ * Byte-exact: func_0063C810 (the teardown), func_0063CB48 and func_0063CC60 (round 14b). The
+ * accessors are guard clauses, one return per test: the target's single `li v0,3` at the entry,
+ * kept through the chain, is each `return 3` hoisted above its branch by 2.96's if-conversion and
+ * the copies after the first deleted by the post-reload CSE (round 11b read it as a constant held
+ * from the entry and wrote result variables). OPEN: func_0063CBD0 (1 word: memset's row address
+ * is `addu a0,a3,a0` in the target, base first -- six spellings of the sum give the offset
+ * first), func_0063C8A0 (32: registers -- the target keeps nRow in a1 and moves pnCol to t3, here
+ * both move; five spellings of the count update), func_0063C700 (the init, 67s). 0x63C950 (0x1F4)
+ * and the thread-status functions after it (0x63CD18-0x63CF20) are not written. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
@@ -69,71 +73,85 @@ int func_0063C810(void)
 
 int func_0063C8A0(unsigned int *pnCol, unsigned int nRow, int nValue)
 {
-    int result = 3;
     unsigned int *pCount;
     unsigned int n;
 
-    if (gbInitialized == 1 && gpTable != 0 && gpTableCounts != 0) {
-        result = 2;
-        if (pnCol != 0 && nRow < gnTableRows) {
-            pCount = gpTableCounts + nRow;
-            n = *pCount;
-            result = 5;
-            if (n <= gnTableCols) {
-                *pCount = n + 1;
-                result = 0;
-                *pnCol = n;
-                gpTable[nRow * gnTableCols + n] = nValue;
-            }
-        }
-    }
-    return result;
+    if (gbInitialized != 1)
+        return 3;
+    if (gpTable == 0)
+        return 3;
+    if (gpTableCounts == 0)
+        return 3;
+    if (pnCol == 0)
+        return 2;
+    if (nRow >= gnTableRows)
+        return 2;
+    pCount = gpTableCounts + nRow;
+    n = *pCount;
+    if (n > gnTableCols)
+        return 5;
+    *pCount = n + 1;
+    *pnCol = n;
+    gpTable[nRow * gnTableCols + n] = nValue;
+    return 0;
 }
 
 int func_0063CB48(unsigned int nRow, unsigned int nCol, int *pnValue)
 {
-    int result = 2;
-
-    if (pnValue != 0) {
-        *pnValue = 0;
-        result = 3;
-        if (gbInitialized == 1 && gpTable != 0 && gpTableCounts != 0) {
-            result = 2;
-            if (nRow < gnTableRows && nCol < gnTableCols) {
-                *pnValue = gpTable[nRow * gnTableCols + nCol];
-                result = *pnValue != 0 ? 0 : 2;
-            }
-        }
-    }
-    return result;
+    if (pnValue == 0)
+        return 2;
+    *pnValue = 0;
+    if (gbInitialized != 1)
+        return 3;
+    if (gpTable == 0)
+        return 3;
+    if (gpTableCounts == 0)
+        return 3;
+    if (nRow >= gnTableRows)
+        return 2;
+    if (nCol >= gnTableCols)
+        return 2;
+    *pnValue = gpTable[nRow * gnTableCols + nCol];
+    if (*pnValue == 0)
+        return 2;
+    return 0;
 }
 
 int func_0063CBD0(unsigned int nRow)
 {
-    int result = 3;
-
-    if (gbInitialized == 1 && gpTable != 0 && gpTableCounts != 0 && gpTable2 != 0) {
-        result = 2;
-        if (nRow < gnTableRows) {
-            memset(gpTable2 + nRow * gnTableCols, 0, gnTableCols * 4);
-            result = 0;
-        }
-    }
-    return result;
+    if (gbInitialized != 1)
+        return 3;
+    if (gpTable == 0)
+        return 3;
+    if (gpTableCounts == 0)
+        return 3;
+    if (gpTable2 == 0)
+        return 3;
+    if (nRow >= gnTableRows)
+        return 2;
+    memset(gpTable2 + nRow * gnTableCols, 0, gnTableCols * 4);
+    return 0;
 }
 
 int func_0063CC60(unsigned int nRow, int *pOut, unsigned int nOut)
 {
-    int result = 3;
     unsigned int i;
 
-    if (gbInitialized == 1 && gpTable != 0 && gpTableCounts != 0 && gpTable2 != 0) {
-        result = 2;
-        if (nRow < gnTableRows && pOut != 0 && nOut >= gnTableCols) {
-            for (i = 0; i < gnTableCols; i++)
-                *pOut++ = gpTable2[nRow * gnTableCols + i];
-            result = 0;
-        }
-    }
-    return result;
+    if (gbInitialized != 1)
+        return 3;
+    if (gpTable == 0)
+        return 3;
+    if (gpTableCounts == 0)
+        return 3;
+    if (gpTable2 == 0)
+        return 3;
+    if (nRow >= gnTableRows)
+        return 2;
+    if (pOut == 0)
+        return 2;
+    if (nOut < gnTableCols)
+        return 2;
+    for (i = 0; i < gnTableCols; i++)
+        *pOut++ = gpTable2[nRow * gnTableCols + i];
+    return 0;
 }

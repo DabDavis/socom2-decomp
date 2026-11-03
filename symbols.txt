@@ -742,7 +742,7 @@
 0x001A5C40 0xC _change_addr  # MAIN; s1:ref (taken by address where SOCOM 1 takes _change_addr's)
 0x001A5C50 0x18 sceSifGetSreg  # MAIN; s1:callee
 0x001A5C68 0x1C sceSifSetSreg  # MAIN unaligned; s1:exact
-0x001A5C88 0xC func_001A5C88  # MAIN unaligned
+0x001A5C88 0xC sceSifGetDataTable  # MAIN unaligned; s1:order (the GCC lane r14a: the demo's sifcmd object holds sceSifGetDataTable, 0xC, between sceSifSetSreg and sceSifInitCmd, as here; it returns _data_table@sifcmd's address; src/lib/sdk/sifcmd.c)
 0x001A5C98 0x280 sceSifInitCmd  # MAIN unaligned; s1:exact
 0x001A5F18 0x34 sceSifExitCmd  # MAIN unaligned; s1:exact
 0x001A5F50 0x18 sceSifSetCmdBuffer  # MAIN; s1:exact
@@ -1165,11 +1165,11 @@
 0x001BE5B0 0xEC func_001BE5B0  # MAIN
 0x001BE6A0 0x1F8 func_001BE6A0  # MAIN
 0x001BE898 0xC8 func_001BE898  # MAIN unaligned
-0x001BE960 0xA8 func_001BE960  # MAIN
-0x001BEA08 0xDC func_001BEA08  # MAIN unaligned
-0x001BEAE8 0xDC func_001BEAE8  # MAIN unaligned
-0x001BEBC8 0xD8 func_001BEBC8  # MAIN unaligned
-0x001BECA0 0xFC func_001BECA0  # MAIN
+0x001BE960 0xA8 sceUsbKbGetInfo  # MAIN; its own message (the GCC lane r14a: "sceUsbKbGetInfo: sceSifCallRpc -> %d" when its RPC, command 1, fails; libusbkb is not in SOCOM 1; src/lib/sdk/libusbkb.c)
+0x001BEA08 0xDC sceUsbKbRead  # MAIN unaligned; its own message (the GCC lane r14a: "sceUsbKbRead: sceSifCallRpc -> %d" when its RPC, command 2, fails; src/lib/sdk/libusbkb.c)
+0x001BEAE8 0xDC sceUsbKbGetLocation  # MAIN unaligned; its own message (the GCC lane r14a: "sceUsbKbGetLocation: sceSifCallRpc -> %d" when its RPC, command 3, fails; src/lib/sdk/libusbkb.c)
+0x001BEBC8 0xD8 sceUsbKbSetLEDStatus  # MAIN unaligned; its own message (the GCC lane r14a: "sceUsbKbSetLEDStatus: sceSifCallRpc -> %d" when its RPC, command 4, fails; src/lib/sdk/libusbkb.c)
+0x001BECA0 0xFC sceUsbKbSetLEDMode  # MAIN; its own message (the GCC lane r14a: "sceUsbKbSetLEDMode: sceSifCallRpc -> %d" when its RPC, command 5, fails; src/lib/sdk/libusbkb.c)
 0x001BEDA0 0x44 func_001BEDA0  # MAIN
 0x001BEDE8 0x4C func_001BEDE8  # MAIN unaligned
 0x001BEE38 0x4C func_001BEE38  # MAIN unaligned
@@ -4201,12 +4201,12 @@
 0x002C5C90 0x80 func_002C5C90  # OVL1
 0x002C5D10 0x44 func_002C5D10  # OVL1
 0x002C5D60 0x110 SelectConfig__13CCtrlrConfigsFPCc  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls it from the same place; the name strcasecmp'd against each config's string as SOCOM 1's (a0, a const char *), the match stored as the current config -- SOCOM II's then updates the pad's settings)
-0x002C5E70 0x174 func_002C5E70  # OVL1
-0x002C5FF0 0x34 func_002C5FF0  # OVL1
-0x002C6030 0xC func_002C6030  # OVL1
-0x002C6040 0xC func_002C6040  # OVL1
-0x002C6050 0xC func_002C6050  # OVL1
-0x002C6060 0x5C func_002C6060  # OVL1
+0x002C5E70 0x174 Init__13CCtrlrConfigsFv  # OVL1; s1:calls by hand (the states lane, round 20: SOCOM 1's CCtrlrConfigs::Init -- controller.rdr from data/common, its ControllerConfigs, SelectConfig("Default"), a "NoDefaultDummy" layout without one; SOCOM II's parse moved out to 0x2C67F0, the dummy kept nowhere; CMission::Init calls it; byte-exact in fts_controller.cpp)
+0x002C5FF0 0x34 __ct__11CCfgButtonsFv  # OVL1; ours (the states lane, round 20: the layout's thirteen buttons' implicit constructor -- MW's array construction, a never-unrolled pointer loop storing PAD_BUTTON_NONE (16) through the element's inlined constructor; called for 0x12)
+0x002C6030 0xC __ct__8CCfgFlagFv  # OVL1; ours (the states lane, round 20: a layout's flag's constructor, a byte cleared -- called for 0x11 by the layout's constructor inlined one level)
+0x002C6040 0xC __ct__10CCfgSticksFv  # OVL1; ours (the states lane, round 20: a layout's stick mask's constructor, a byte cleared -- called for 0xF and 0x10 by the layout's constructor inlined one level)
+0x002C6050 0xC __ct__9CCfgStickFv  # OVL1; ours (the states lane, round 20: a layout's stick setting's constructor, a byte cleared -- the layout's constructor, inlined one level in Init and the parser, calls it for 0xC, 0xD and 0xE; a class of its own, three distinct one-byte constructor copies follow Init)
+0x002C6060 0x5C __ct__9CSaferStrFPCc  # OVL1; ours (the states lane, round 20: CSaferStr from a C string -- the three words cleared, then the text assigned or the string emptied -- the layout's name; the copy fts_controller.cpp emits after Init, its first caller; the parser 0x2C67F0 calls it too)
 0x002C60C0 0x4C func_002C60C0  # OVL1
 0x002C6110 0xC4 func_002C6110  # OVL1
 0x002C61E0 0x38 func_002C61E0  # OVL1
@@ -4411,7 +4411,7 @@
 0x002D0620 0x54 GetNodeByIndex__6CGraphFUi  # OVL1; s1:order by hand (the states lane: between GetNodeByNodeEx and CreateEdge as SOCOM 1's GetNodeByIndex; steps index nodes into the node list at 4, none past its end; Read calls it with each edge's two indices)
 0x002D0680 0xF8 CreateEdge__6CGraphFP6CGNodeP6CGNode  # OVL1; s1:align
 0x002D0780 0x1A8 DeleteNode__6CGraphFP6CGNode  # OVL1; s1:order by hand (the states lane: between CreateEdge and CreateNode as SOCOM 1's DeleteNode: each of the node's edges taken out of the other end's list and the graph's and deleted through CGEdge::Delete, then the node removed and deleted)
-0x002D0930 0x5C CreateNode__6CGraphFPCc  # OVL1; s1:align
+0x002D0930 0x5C CreateNode__6CGraphFv  # OVL1; s1:align; by hand (the states lane, round 20, on the AI core's lead: SOCOM II's CreateNode takes no name -- it never reads a1 and every caller, CGraph::Read 0x2D0C90 and the AI maps' graph builders, leaves a1 unset; new CGNode, push_back, the node returned; byte-exact in graph_main.cpp)
 0x002D0990 0x1E0 __dt__6CGraphFv  # OVL1; s1:order by hand (the states lane: after CreateNode as SOCOM 1's ~CGraph: the name freed, every node's and edge's object deleted through its virtual destructor, both lists cleared; Destroy tail-calls it with 1)
 0x002D0B70 0x80 __ct__6CGraphFPCc  # OVL1; s1:order by hand (the states lane: after ~CGraph as SOCOM 1's CGraph(const char *); the name cleared, both lists built, the name copied; inlined whole by Create(name); byte-exact in graph_tree.cpp)
 0x002D0BF0 0x8 Destroy__6CGraphFP6CGraph  # OVL1; s1:order by hand (the states lane: between the constructor and Create as SOCOM 1's Destroy; ~CGraph tail-called with 1, a delete; byte-exact in graph_tree.cpp)
@@ -8744,7 +8744,7 @@
 0x004CFB60 0x4A8 FillOut_Syntax_Statedict_And_Wordprops_ForChinese  # OVL2; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls FillOut_Syntax_Statedict_And_Wordprops_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0008 0xF8 FreeSecondPassContext_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese and others call FreeSecondPassContext_ForChinese where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004D0100 0x880 CreateSecondPassContext_ForChinese  # OVL2; s1:calls
-0x004D0980 0x24 func_004D0980  # OVL2
+0x004D0980 0x24 Tone_Of_Final  # OVL2; s1:order (SOCOM 1's object 0x3404E8: after CreateSecondPassContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese, as here; the same zero test and compare of two unsigned shorts; uncalled in both) -- the gcc lane, round 14c
 0x004D09A8 0x100 Calculate_NbrOfStatesInDict_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfStatesInDict_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0AA8 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0BD8 0xF48 CreateSecondPassContext  # OVL2 unaligned; s1:calls
@@ -8775,7 +8775,7 @@
 0x004D6FC0 0x4A0 func_004D6FC0  # OVL2
 0x004D7460 0xDC func_004D7460  # OVL2
 0x004D7540 0xC00 CreateSecondPassTreeContext_ForChinese  # OVL2; s1:calls (SOCOM 1's casrDoIsoWordSecondPass calls CreateSecondPassTreeContext_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
-0x004D8140 0x24 func_004D8140  # OVL2
+0x004D8140 0x24 Tone_Of_Final_TreeCtx  # OVL2; s1:order (SOCOM 1's object 0x345CD0: after CreateSecondPassTreeContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese_TreeCtx, as here; Tone_Of_Final's body; uncalled in both) -- the gcc lane, round 14c
 0x004D8168 0x100 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8268 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8398 0xEE0 casrCreateResult  # OVL2 unaligned; s1:calls (SOCOM 1's cbTOSRecognised and cbDoSecondPassIfEnabled call casrCreateResult where ours call this row, with the same arguments -- the result's address, the frame, 1); s1:order, the head of SOCOM 1's casr object (0x348248), its static CalcWordConfidence before it not a row here -- the gcc lane, round 9c
@@ -10434,7 +10434,7 @@
 0x0057E540 0x228 func_0057E540  # OVL2
 0x0057E770 0x5A0 func_0057E770  # OVL2
 0x0057ED10 0xE4 func_0057ED10  # OVL2
-0x0057EE00 0x1E0 func_0057EE00  # OVL2
+0x0057EE00 0x1E0 DropBody__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 DropBody__10CZSealBodyFv, right before OKToStand in both builds: the carried body at 0xEAC, SOCOM 1 m_carry 0xDA8, let go with a drop anim and cleared; the SEALs round 16)
 0x0057EFE0 0x168 OKToStand__FP10CZSealBody  # OVL2; s1:calls
 0x0057F150 0x150 func_0057F150  # OVL2
 0x0057F2A0 0x70 func_0057F2A0  # OVL2
@@ -10455,23 +10455,23 @@
 0x005807D0 0x2B0 func_005807D0  # OVL2
 0x00580A80 0xE8 func_00580A80  # OVL2
 0x00580B70 0x59C func_00580B70  # OVL2
-0x00581110 0x1A8 func_00581110  # OVL2
-0x005812C0 0x168 func_005812C0  # OVL2
-0x00581430 0x104 func_00581430  # OVL2
-0x00581540 0x118 func_00581540  # OVL2
-0x00581660 0x16C func_00581660  # OVL2
-0x005817D0 0x1BC func_005817D0  # OVL2
-0x00581990 0x280 func_00581990  # OVL2
-0x00581C10 0x1AC func_00581C10  # OVL2
-0x00581DC0 0x104 func_00581DC0  # OVL2
-0x00581ED0 0x628 func_00581ED0  # OVL2
+0x00581110 0x1A8 BlendedClimb__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 seal_body.cpp order, BlendedClimb to Stand one to one from 0x581110 to 0x581DC0: the same height weights 12/26.5/14.5, newanims cleared, the ClimbMedium blend; the SEALs round 16)
+0x005812C0 0x168 Hang_0__10CZSealBodyFii  # OVL2; s1:order by hand (SOCOM 1 Hang_0, after BlendedClimb: the same two switches, itself and Stand_0 called for stances 1 and 2; the SEALs round 16)
+0x00581430 0x104 SetStanceIdle__10CZSealBodyF8AnimType  # OVL2; s1:order by hand (SOCOM 1 SetStanceIdle: the same state-7 tests, the pops and the anim kept at 0x1334, SOCOM 1 0xFA4, before the push in state 7; the SEALs round 16)
+0x00581540 0x118 Prone_0__10CZSealBodyFi  # OVL2; s1:order by hand (SOCOM 1 Prone_0, after SetStanceIdle: the same switch over stances 1, 0, 4 and the 0x14CC store, SOCOM 1 0x112C m_last_foot; the SEALs round 16)
+0x00581660 0x16C Prone__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 Prone, after Prone_0: the state-2 tests, the pops and Prone_0 asked from the old stance; in deep water a crouch, as Crouch calls; the SEALs round 16)
+0x005817D0 0x1BC Crouch_0__10CZSealBodyFif  # OVL2; s1:order by hand (SOCOM 1 Crouch_0__10CZSealBodyFif, after Prone: the same switch over stances 2, 0, 4, itself called for a hang; the SEALs round 16)
+0x00581990 0x280 Crouch__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 Crouch, after Crouch_0: CanCrouch and Stand(1) inlined in both builds, Crouch_0 asked from the old stance; the SEALs round 16)
+0x00581C10 0x1AC Stand_0__10CZSealBodyFiif  # OVL2; s1:callee by hand (Hang_0 calls it where SOCOM 1 Hang_0 calls Stand_0__10CZSealBodyFii, with a float -1 added; the SEALs round 16)
+0x00581DC0 0x104 Stand__10CZSealBodyFi  # OVL2; s1:order by hand (SOCOM 1 Stand__10CZSealBodyFi, after Stand_0: the state-0 tests, ClearStack inlined and Stand_0 asked at the old top time; the SEALs round 16)
+0x00581ED0 0x628 SetStance__10CZSealBodyF10SEAL_STATE  # OVL2; s1:order by hand (SOCOM 1 SetStance__10CZSealBodyF10SEAL_STATE, after Stand and before StanceChanged in both builds: BodySetState first, then a switch on the state at 0x174 over 4, 2, 1, 0, Crouch and Prone called; the SEALs round 16)
 0x00582500 0x38 StanceChanged__10CZSealBodyFv  # OVL2; s1:exact (SOCOM 1's: the stance-changed bit tested and cleared; PoseBitmap::Tick calls it)
 0x00582540 0x7CC func_00582540  # OVL2
 0x00582D10 0x314 func_00582D10  # OVL2
 0x00583030 0x318 func_00583030  # OVL2
 0x00583350 0x1A4 func_00583350  # OVL2
 0x00583500 0x45C func_00583500  # OVL2
-0x00583960 0x18C func_00583960  # OVL2
+0x00583960 0x18C TurnControl__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 TurnControl__10CZSealBodyFff, after ProneControl: the top blend weight made 1, the turn doubled and negated, capped 0.6/0.3/0.35/0.6 by state as in SOCOM 1; SOCOM II takes one float, every caller sets f12 alone; the SEALs round 16)
 0x00583AF0 0x374 func_00583AF0  # OVL2
 0x00583E70 0x3C8 func_00583E70  # OVL2
 0x00584240 0x144 func_00584240  # OVL2
@@ -10513,8 +10513,8 @@
 0x00589900 0x19C func_00589900  # OVL2
 0x00589AA0 0x9C4 func_00589AA0  # OVL2
 0x0058A470 0x58 func_0058A470  # OVL2
-0x0058A4D0 0x10C func_0058A4D0  # OVL2
-0x0058A5E0 0xC8 func_0058A5E0  # OVL2
+0x0058A4D0 0x10C ClearToBase__10CZSealBodyFb  # OVL2; s1:calls by hand (SOCOM 1 ClearToBase__10CZSealBodyFb: the same pops stopping at the base anims 1, 18 and 26 with signed counts, the extra pop when the bool says, the top blend control cleared and stance 2 asked, the top returned; SOCOM II adds a limit of twelve; the SEALs round 16)
+0x0058A5E0 0xC8 ClearStack__10CZSealBodyFUib  # OVL2; s1:order by hand (SOCOM 1 ClearStack__10CZSealBodyFUib, after PopBlend and before BodySetState in both builds: the blends popped down to a count, the top blend control cleared and stance 2 asked when the bool says; SOCOM II adds a limit of twelve; the SEALs round 16)
 0x0058A6B0 0x60 BodySetState__10CZSealBodyFi  # OVL2; s1:exact by hand (SOCOM 1's BodySetState__10CZSealBodyFi: the controller's OnStateChange (slot 0x64) when the state changes, then CBody's; SOCOM II's tests m_control first, and is virtual: CZSealBody's slot 0x90, through the thunk 0x555290 in its CBody table) -- the SEAL lane, round 4
 0x0058A710 0x8 func_0058A710  # OVL2; slot 0x64 of __vt__9CSealCtrl, which CSealCtrlSquirm and CRemoteCtrl inherit (the vtables pass withheld it: CRemoteCtrl's misnamed OnMissionStart override at 0x5E6270 pulled the alignment); s1~ OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE after all: CSealCtrlCopy's OVL1 table holds an OVL1 copy at slot 0x64 (0x2B3BE0), so the base's OnStateChange is inline and this is OVL2's copy (one of 2 copies of an inline)
 0x0058A720 0x100 GetStance__10CZSealBodyCFb  # OVL2; s1:calls by hand (the integrator's lead from the kit lane's round 11: the kick code hands its result to TargetMods where SOCOM 1's CZKit::Fire calls GetStance; SOCOM 1's GetStance__10CZSealBodyCFb (0x27D2A0) is the same body -- with the flag, the top blend's flags 0x40 and 0x20 and the anims 17/19/25 decide stand/crouch/prone, else CBody's state byte read lbu (a SEAL_STATE) -- SOCOM II adding the crouch-as-stand bit 2 of 0x21C)
@@ -12264,16 +12264,16 @@
 0x006281B8 0x1D8 func_006281B8  # OVL2 unaligned
 0x00628390 0x64 func_00628390  # OVL2
 0x006283F8 0x74C func_006283F8  # OVL2 unaligned
-0x00628B48 0x80 func_00628B48  # OVL2 unaligned
-0x00628BC8 0x74 func_00628BC8  # OVL2 unaligned
-0x00628C3C 0x74 func_00628C3C  # OVL2 unaligned
-0x00628CB0 0x80 func_00628CB0  # OVL2
-0x00628D30 0x80 func_00628D30  # OVL2
-0x00628DB0 0x138 func_00628DB0  # OVL2
-0x00628EE8 0x14C func_00628EE8  # OVL2 unaligned
-0x00629034 0x84 func_00629034  # OVL2 unaligned
+0x00628B48 0x80 lintGetBits  # OVL2 unaligned; s1:body+assert (the gcc lane, round 14b): LargeInt.c's prime search asserts `nBits == lintGetBits(pPrime)` on this call's result (0x628214, the string at 0x6640D8); hand-written EE assembly (plzcw on the top nonzero word), the first of the asm run 0x628B48-0x629A44
+0x00628BC8 0x74 IsGreater  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's IsGreater in EE assembly -- the words compared from the top, 1 at the first a > b, 0 at a < b or all equal; first of SOCOM 1's four comparisons in their order
+0x00628C3C 0x74 IsSMaller  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's IsSMaller (its spelling) in EE assembly -- 1 at the first a < b from the top, else 0; second of the four
+0x00628CB0 0x80 IsNotGreater  # OVL2; s1:body (the gcc lane, round 14b): SOCOM 1's IsNotGreater in EE assembly -- 1 at a < b or all equal, 0 at a > b; third of the four
+0x00628D30 0x80 IsNotSmaller  # OVL2; s1:body (the gcc lane, round 14b): SOCOM 1's IsNotSmaller in EE assembly -- 1 at a > b or all equal, 0 at a < b; fourth of the four
+0x00628DB0 0x138 ShiftRight  # OVL2; s1:body (the gcc lane, round 14b): SOCOM 1's ShiftRight(p, n) in EE assembly -- each word from the one n/32 up, combined with the next (dsrlv/dsllv), the top words cleared; before ShiftLeft as there
+0x00628EE8 0x14C ShiftLeft  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's ShiftLeft(p, n) in EE assembly -- from the top down, each word combined with the one below, the bottom words cleared; after ShiftRight as there
+0x00629034 0x84 lintAddIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintAddIP(a, b) in EE assembly -- a += b in place over all 32 words, the carry in a doubleword's upper half (daddu; dsrl32); rt_crypt.c's RSA re-check calls it
 0x006290B8 0x9C func_006290B8  # OVL2 unaligned
-0x00629154 0x84 func_00629154  # OVL2 unaligned
+0x00629154 0x84 lintSubIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintSubIP(a, b) in EE assembly -- a -= b in place over all 32 words, the borrow by dsra32; after the bit-limited add as lintSubIP follows lintAddIP there
 0x006291D8 0x9C func_006291D8  # OVL2 unaligned
 0x00629274 0x42C func_00629274  # OVL2 unaligned
 0x006296A0 0x1C8 func_006296A0  # OVL2
