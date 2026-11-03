@@ -3,7 +3,7 @@
  * its nine functions in the same order. Each exit first copies the file name and up to fifteen
  * arguments into the kernel's argument area (_kExecArg, found by InitTLBFunctions) through a byte-copy
  * kCopy run in kernel mode, then restores the default TLB (TerminateLibrary) and makes the kernel
- * call. Names are SOCOM 1's (s1:exact; its statics by position, `Copy@exit`: README "The GCC front"). */
+ * call. Names are SOCOM 1's (s1:exact; its statics by position, `Copy@sdk/exit` -- the stem exit is libc's too: README "The GCC front"). */
 
 typedef unsigned int u_int;
 typedef unsigned char u_char;

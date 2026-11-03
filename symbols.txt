@@ -889,9 +889,9 @@
 0x001ACB80 0x10 GetEntryAddress@libosd  # MAIN; s1~ GetEntryAddress (one of 3); s1:order (the demo's InitExecPS2 object 0x164428: its static GetEntryAddress, the fourth, syscall 0x5B)
 0x001ACB90 0x68 PatchIsNeeded  # MAIN; s1:exact
 0x001ACBF8 0xAC InitExecPS2  # MAIN unaligned; s1:exact
-0x001ACCA8 0x10 Copy@exit  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static Copy, the first function, syscall 0x5A)
-0x001ACCB8 0x30 kCopy@exit  # MAIN unaligned; s1:exact; s1:order (the demo's ExecPS2 object 0x1645A8: its static kCopy, the byte copy; qualified as the other four objects' are)
-0x001ACCE8 0x10 setup@exit  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static setup, the third, syscall 0x74)
+0x001ACCA8 0x10 Copy@sdk/exit  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static Copy, the first function, syscall 0x5A)
+0x001ACCB8 0x30 kCopy@sdk/exit  # MAIN unaligned; s1:exact; s1:order (the demo's ExecPS2 object 0x1645A8: its static kCopy, the byte copy; qualified as the other four objects' are)
+0x001ACCE8 0x10 setup@sdk/exit  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static setup, the third, syscall 0x74)
 0x001ACCF8 0x118 SetArg  # MAIN unaligned; s1:exact
 0x001ACE10 0x8 TerminateLibrary  # MAIN; s1:callee
 0x001ACE18 0x70 ExecPS2  # MAIN unaligned; s1:exact

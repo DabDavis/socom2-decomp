@@ -335,27 +335,72 @@ def is_gnu(elf: E.Elf) -> bool:
     return any(s.name == ".reginfo" for s in elf.sections)
 
 
-def qualify_statics(obj: Path, stem: str, st: E.SymbolTable) -> list[tuple[str, str]]:
+_SHARED_STEMS: dict[Path, set[str]] = {}
+
+
+def shared_stems(root: Path) -> set[str]:
+    """The source stems more than one unit under `root` carries (exit, locale, zsys_memory, zvid
+    in src/ on 2026-11-03: `lib/sdk/exit.c` beside `lib/libc/exit.c` ...), read once per tree."""
+    root = root.resolve()
+    if root not in _SHARED_STEMS:
+        seen: dict[str, int] = {}
+        for p in root.rglob("*"):
+            if p.suffix in (".c", ".cpp", ".s") and p.is_file():
+                seen[p.stem] = seen.get(p.stem, 0) + 1
+        _SHARED_STEMS[root] = {s for s, n in seen.items() if n > 1}
+    return _SHARED_STEMS[root]
+
+
+def unit_qualifiers(unit: Path | str, root: Path | None = None) -> list[str]:
+    """The UNITs a unit's statics may be qualified with (`NAME@UNIT` rows), most specific first:
+    its path under the tree without the suffix and each shorter tail of it -- `lib/sdk/tlbfunc`,
+    `sdk/tlbfunc`, `tlbfunc`. The bare stem stands only while no other unit in the tree shares it:
+    four stems recur across directories, and a bare `NAME@exit` would score two objects' statics
+    as one (round 17a's hazard); such a unit's rows name a path tail (`NAME@sdk/exit`). A file
+    outside the tree (a probe) is its stem, and a string (ccsweep's `--stem`) is taken as given,
+    with its tails after it."""
+    if isinstance(unit, str):
+        parts = unit.split("/")
+        return ["/".join(parts[i:]) for i in range(len(parts))]
+    root = (root or HERE / "src").resolve()
+    try:
+        rel = unit.resolve().with_suffix("").relative_to(root)
+    except ValueError:
+        return [unit.stem]
+    parts = rel.parts
+    tails = ["/".join(parts[i:]) for i in range(len(parts) - 1)]
+    if unit.stem not in shared_stems(root):
+        tails.append(unit.stem)
+    return tails
+
+
+def qualify_statics(obj: Path, unit: Path | str, st: E.SymbolTable,
+                    root: Path | None = None) -> list[tuple[str, str]]:
     """A GCC unit's static functions are its own, and several objects of one library can define a
     static of the same name -- libkernl's syscall wrappers `Copy`, `kCopy`, `setup` and
     `GetEntryAddress` sit in five objects. The map holds such a row as `NAME@UNIT` (UNIT the source
-    file's stem: `Copy@tlbfunc`), and a GNU object's LOCAL function `NAME` is renamed so before it
-    is scored, when the map has that row; a static the map names bare scores bare. Its static DATA
-    labels likewise, by the data map (`_data_table@sifcmd`: libkernl's sifcmd, sifrpc and libmrpc
-    objects each label a `_data_table` and a `_packet_buffer` of their own). Metrowerks objects are
-    left alone. Returns the renames made."""
+    file's stem, `Copy@tlbfunc`, or a tail of its path, `unit_qualifiers`), and a GNU object's
+    LOCAL function `NAME` is renamed so before it is scored, when the map has that row (the most
+    specific UNIT first); a static the map names bare scores bare. Its static DATA labels likewise,
+    by the data map (`_data_table@sifcmd`: libkernl's sifcmd, sifrpc and libmrpc objects each label
+    a `_data_table` and a `_packet_buffer` of their own). Metrowerks objects are left alone.
+    Returns the renames made."""
     elf = E.Elf.read(obj)
     if not is_gnu(elf):
         return []
+    quals = unit_qualifiers(unit, root)
     pairs = []
     for f in elf.functions():
-        q = f"{f.name}@{stem}"
-        if f.bind == 0 and f.name and q in st._by_name and (f.name, q) not in pairs:
+        if f.bind != 0 or not f.name:
+            continue
+        q = next((f"{f.name}@{u}" for u in quals if f"{f.name}@{u}" in st._by_name), None)
+        if q and (f.name, q) not in pairs:
             pairs.append((f.name, q))
     for s in elf.symbols:
-        q = f"{s.name}@{stem}"
-        if (s.bind == 0 and s.name and s.type not in ("FUNC", "SECTION", "FILE")
-                and q in st.data_by_name and (s.name, q) not in pairs):
+        if s.bind != 0 or not s.name or s.type in ("FUNC", "SECTION", "FILE"):
+            continue
+        q = next((f"{s.name}@{u}" for u in quals if f"{s.name}@{u}" in st.data_by_name), None)
+        if q and (s.name, q) not in pairs:
             pairs.append((s.name, q))
     if pairs:
         subprocess.run([E.tool("objcopy")] + [f"--redefine-sym={a}={b}" for a, b in pairs] + [str(obj)],
@@ -719,7 +764,7 @@ def main(argv=None) -> int:
     obj = HERE / "build" / "scdiff" / f"{tag}.{os.getpid()}.o"
     compile_obj(a.src, obj, a.compiler, a.flags.split() if a.flags else None,
                 [HERE / "include"] + a.includes)
-    qualify_statics(obj, a.src.stem, st)
+    qualify_statics(obj, a.src, st)
     try:
         res = compare(obj, a.symbol, sym, img, st)
     finally:
