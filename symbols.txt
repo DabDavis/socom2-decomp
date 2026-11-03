@@ -9085,7 +9085,7 @@
 0x00501458 0x10C ProcessLookAhead  # OVL2 unaligned; s1:align
 0x00501568 0x64 ControlLookAhead  # OVL2 unaligned; s1:align
 0x005015D0 0xC0 InitLookAhead  # OVL2; s1:align
-0x00501690 0x284 func_00501690  # OVL2
+0x00501690 0x284 ProcessMedian  # OVL2; s1:order (SOCOM 1's object 0x36CAB8 holds ProcessMedian, ConstructMedian, ControlMedian, Median_Reset, InitMedian in this order; ConstructMedian passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00501918 0x3C ConstructMedian  # OVL2 unaligned; s1:align
 0x00501958 0x54 ControlMedian  # OVL2 unaligned; s1:align
 0x005019B0 0x18 Median_Reset  # OVL2; s1:exact
@@ -9114,7 +9114,7 @@
 0x00504E48 0x10 func_00504E48  # OVL2 unaligned
 0x00504E58 0x114 func_00504E58  # OVL2 unaligned
 0x00504F70 0x3C func_00504F70  # OVL2
-0x00504FB0 0x2D8 func_00504FB0  # OVL2
+0x00504FB0 0x2D8 ProcessStationarity  # OVL2; s1:order (SOCOM 1's object 0x36FF88 holds ProcessStationarity, InitStationarity, ConstructStationarity, ControlStationarity in this order; ConstructStationarity passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00505288 0x13C InitStationarity  # OVL2 unaligned; s1:align
 0x005053C8 0x3C ConstructStationarity  # OVL2 unaligned; s1:align
 0x00505408 0x78 ControlStationarity  # OVL2 unaligned; s1:align
