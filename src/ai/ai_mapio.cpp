@@ -33,9 +33,6 @@ inline void table_resize(CAiMap::spores &t, unsigned int n) { t.resize(n); }
 inline void table_resize(CAiMap::names &t, unsigned int n) { t.resize(n); }
 inline void table_resize(CAiMap::links &t, unsigned int n) { t.resize(n); }
 
-/* a further layer of cells read (0x51B150, called from the version-20 readers on) */
-extern "C" bool func_0051B150(CAiMap *map, CFileIO &f, int n, CAiMapLayer **layer);
-
 /* the graph's pieces as the fixups see them (graph_tree.cpp's CGEdge and CGNode: what each stands
  * for, a route at an edge's 0x14 and a region at a node's 8) */
 class CGEdge {
@@ -206,7 +203,7 @@ bool CAiMap::read_v19(CFileIO &f)
         for (unsigned int i = 1; i < m_layercount; i++) {                    \
             CAiMapLayer *layer = 0;                                          \
                                                                              \
-            if (func_0051B150(this, f, 1, &layer))                           \
+            if (read_layer(f, true, &layer))                                 \
                 m_layers.push_back(layer);                                   \
         }                                                                    \
         m_layercount = m_layers.size();                                      \
@@ -433,6 +430,34 @@ void _fixupNode(CGraph *, CGNode *node, bool fix, unsigned int &n, void *data)
 /* the scanlines' reader and the three table readers are called by every version reader, never
  * inlined: pinned */
 #pragma auto_inline off
+
+/* a further layer read (new in SOCOM II, the name ours): its header -- into a new layer when none
+ * is given -- and, unless a map from version 22 on marks the layer empty (flag 2), its cells. The
+ * result is never set: every caller's push_back is dead, and m_layercount ends at the layers'
+ * size. Pinned with the table readers (the version readers call it); the bytes declared ahead of
+ * the count, which takes the higher saved register */
+bool CAiMap::read_layer(CFileIO &f, bool header, CAiMapLayer **layer)
+{
+    bool ok = false;
+    unsigned int bytes;
+    unsigned int count = m_cellcount;
+    bool skip = false;
+
+    bytes = count * sizeof(CAiCell);
+
+    if (header) {
+        if (!*layer)
+            *layer = new CAiMapLayer(0);
+        f.fread(*layer, 40);
+        skip = m_version >= 22 && ((*layer)->m_flags & 2);
+    }
+    if (!skip) {
+        (*layer)->AllocCells(count);
+        f.fread((*layer)->m_cells, bytes);
+    }
+    return ok;
+}
+
 
 /* the rows' runs read whole, then each run's first cell numbered on from the last (SOCOM 1's
  * pointed each run into the cells and zeroed its extra data instead). The target keeps &data_ in

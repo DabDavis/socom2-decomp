@@ -887,6 +887,10 @@ public:
     bool read_lines(CFileIO &f);
     bool read_routes(CFileIO &f);
     bool read_readers(CFileIO &f);
+    /* a further layer: its 40-byte header (the layer made first if none is given), then its
+     * cells unless a version-22 map's header says it has none (flag 2) -- and false, always (new in
+     * SOCOM II, the name ours: 0x51B150, the version readers' layer loop) */
+    bool read_layer(CFileIO &f, bool header, CAiMapLayer **layer);
     void DestroyGraph();
     void CreateGraph(bool force);
     void ValidateRoutes(bool force);

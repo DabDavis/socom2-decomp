@@ -111,10 +111,6 @@ float AI_PARAMS::GetAimConeCos() const
     return wide * (1.0f - target_discipline) + narrow * target_discipline;
 }
 
-/* the entry vector's resize, out of line (0x534320, the map's resize__Q23std72__vector_imp<16CVehicleRdrEntry,
- * ...,0>FUi); include/vector has no resize yet, so it is called through its placeholder */
-extern "C" void func_00534320(std::vector<CVehicleRdrEntry> *v, unsigned int n);
-
 extern "C" int strcasecmp(const char *, const char *);
 
 /* the vehicle file read: one entry per item of its first array, true if it had one (SOCOM 1's
@@ -129,7 +125,7 @@ bool CVehicleRdr::Open(const char *file)
     if (list) {
         int n = list->Count();
 
-        func_00534320(this, n);
+        resize(n);
         for (int i = 0; i < n; i++) {
             CVehicleRdrEntry &e = (*this)[i];
 
@@ -181,6 +177,18 @@ static inline int RandomIndex(int max)
     else
         i = rand() % (max + 1);
     return i;
+}
+
+/* an empty entry: the byte at 0x70, both start sets, the team mask, the AI's defaults and the flags
+ * built in declaration order, then the three names emptied -- the name, the display name, the
+ * character (SOCOM 1's had no constructor of its own; out of line, the resize's fill value) */
+CVehicleRdrEntry::CVehicleRdrEntry()
+    : m_unk70(0), m_teamMask(0), m_debug(0), m_disabled(0), m_nofade(0), m_noshoot(0), m_recycle(0),
+      m_nosnooze(0), m_startIndex(0)
+{
+    m_name[0] = 0;
+    m_display_name[0] = 0;
+    m_character[0] = 0;
 }
 
 /* the start, and the respawn start, picked at random, or the first when asked to reset or when

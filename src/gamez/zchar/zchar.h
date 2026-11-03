@@ -17,6 +17,27 @@ class CRdrFile;
  * 0x120-0x15B) */
 class AI_PARAMS {
 public:
+    /* the defaults (SOCOM 1's __ct__9AI_PARAMSFv, out of line there; SOCOM II's visual sensitivity
+     * 1 where SOCOM 1's was 0.8 -- zveh.h's CTurretAiParams has the same): inline, CVehicleRdrEntry's
+     * constructor stores them in place (0x5331D0) */
+    AI_PARAMS()
+    {
+        mask = 0;
+        accuracy = 0.8f;
+        courage = 0.6f;
+        surrender = 0.2f;
+        stealth = 0.5f;
+        training = 0.5f;
+        visual_sens = 1.0f;
+        visual_range = 400.0f;
+        visual_fov = 60.0f;
+        aware_decay = -0.075f;
+        thip_range = 25.0f;
+        respawn = 0;
+        target_delay = 0.75f;
+        target_discipline = 0.5f;
+        m_veh = 0;
+    }
     void Parse(_zrdr *rdr);
     /* each field the first set has (its mask bit), else the second's, else the first's; the masks
      * joined (SOCOM 1's Merge, 0x533DB0) */
@@ -45,6 +66,10 @@ public:
 /* a starting point: a map location's name and a direction (SOCOM 1's DWARF) */
 class start {
 public:
+    /* no direction, no name (CVehicleRdrEntry's constructor builds the four of each set in a loop:
+     * the direction stored, then the name's first byte) */
+    start() : m_dir(0) { m_name[0] = 0; }
+
     char m_name[16];   // 0x0
     int m_dir;   // 0x10
 };
@@ -52,6 +77,9 @@ public:
 /* up to four of them (SOCOM 1's DWARF) */
 class startvec {
 public:
+    /* none (the count zeroed, then each start built) */
+    startvec() : m_count(0) {}
+
     unsigned int m_count;   // 0x0
     start m_start[4];   // 0x4
 
@@ -83,6 +111,8 @@ public:
  * 0x70, a second set of starts for respawning, the start index packed into the flags word) */
 class CVehicleRdrEntry {
 public:
+    /* an empty entry (out of line, 0x5331D0: the resize's fill value, 0x534320) */
+    CVehicleRdrEntry();
     const char *GetStartPos() const;
     int GetStartDir() const;
     /* the respawning set's (new in SOCOM II; the names are ours) */
@@ -97,20 +127,22 @@ public:
     char m_name[32];   // 0x0
     char m_character[48];   // 0x20
     char m_display_name[32];   // 0x50
-    unsigned int m_unk70;   // 0x70
+    char m_unk70;   // 0x70: a byte (Load stores it with sb, the assignment copies it lb/sb)
     startvec m_start;   // 0x74
     startvec m_respawn;   // 0xc8: new in SOCOM II ("respawn_setup")
     int m_teamMask;   // 0x11c
     AI_PARAMS m_aiParams;   // 0x120
-    unsigned short m_debug : 1;   // 0x15c: a halfword of flags in SOCOM II (lhu, no masking)
-    unsigned short m_disabled : 1;
-    unsigned short m_nofade : 1;
-    unsigned short m_noshoot : 1;
-    unsigned short m_recycle : 1;
-    unsigned short m_nosnooze : 1;
-    unsigned short m_startIndex : 4;   // SOCOM 1's m_startIndex, a word at 0x108 there
-    unsigned short m_respawnIndex : 4;   // new (the name is ours)
-    unsigned short m_unused : 2;
+    /* 0x15c: a word of flags in SOCOM II -- the constructor's mem-initializer list clears them with
+     * word read-mask-writes, the getters read the index through lhu (MW narrows it) */
+    unsigned int m_debug : 1;
+    unsigned int m_disabled : 1;
+    unsigned int m_nofade : 1;
+    unsigned int m_noshoot : 1;
+    unsigned int m_recycle : 1;
+    unsigned int m_nosnooze : 1;
+    unsigned int m_startIndex : 4;   // SOCOM 1's m_startIndex, a word at 0x108 there
+    unsigned int m_respawnIndex : 4;   // new (the name is ours)
+    unsigned int m_unused : 2;
 };
 
 /* the vehicle file: every entry (SOCOM 1's DWARF: a vector and nothing more) */
