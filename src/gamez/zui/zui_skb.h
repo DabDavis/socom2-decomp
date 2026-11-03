@@ -269,6 +269,22 @@ struct CSkbRect {
     int m_size[2];   // 0x8
 };   // 0x10 bytes
 
+/* a piece of a keyboard's background: a texture, the part of it taken and where it is drawn (the
+ * look parser's BackgroundPieces, ShiftBgPieces, TwoEditsBgPieces and TwoEditsShiftBgPieces, each
+ * piece a Source {Texture, Pos, Size} and a Display {Pos, Size}; the names ours). Its vector's
+ * destructor chain is zui_skb.cpp's (CSkbLook's __construct_array, 0x38D130, 0x38EE70, 0x38FDD0),
+ * its resize, erase, insert and copy the display unit's (0x397FE0-0x3989DF) */
+struct CSkbBgPiece {
+    CSaferStr m_texture;   // 0x0
+    CSkbRect m_source;   // 0xc
+    CSkbRect m_display;   // 0x1c
+};   // 0x2c bytes
+
+/* a list of them (ours): a class of its own over the vector -- its implicit destructor's copy
+ * (0x38D130, CSkbLook's __construct_array takes it) tests `this` three times before it calls the
+ * deleter's destructor, one level more than a plain vector's */
+struct CSkbBgPieces : public std::vector<CSkbBgPiece> {};
+
 /* what the rdr says about a keyboard's look (the look parser 0x3963F0's: Name, Background,
  * ShiftBackground, the sources ... TwoEditsGrowUp, StartGridPos; the names ours) */
 struct CSkbLook {
@@ -281,7 +297,7 @@ struct CSkbLook {
     CSaferStr m_name;   // 0x0
     CSaferStr m_background;   // 0xc
     CSaferStr m_shiftBackground;   // 0x18
-    std::vector<CSkbKey> m_sources[4];   // 0x24
+    CSkbBgPieces m_sources[4];   // 0x24: the four background piece lists
     int m_54, m_58, m_5c, m_60, m_64, m_68, m_6c;   // 0x54
     CSkbRect m_rects[5];   // 0x70
     int m_c0, m_c4, m_c8, m_cc, m_d0, m_d4, m_d8, m_dc;   // 0xc0
