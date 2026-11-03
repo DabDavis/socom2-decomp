@@ -13,13 +13,15 @@
  * for_each inlined one level -- its iterator pieces, functor and copy out of line after it), the AI's
  * group members, Find, EndCameras and the template tail's remove_copy/remove_copy_if. Each member is
  * a class over its container (one this-test more in ~CAiGroup than the container's own chain).
+ * Round 17 wrote the rest: Tick, AddMember, act_camera::Tick with its point reader (campoint::Get,
+ * byte-exact) and LookAt, and FaceXZ -- with act_camera::Tick in the unit, its table and destructor
+ * (0x60C190) come out byte-exact too.
  * OPEN: Start and TickStep (registers / the camera flag's negation), RemoveMember (two registers),
- * the group remove_if (the list remove_if family), the step list's insert (code-exact; its call to
- * the deleter's allocator constructor resolves only once OVL2's copy 0x5EF9B0 carries an ovl-copy
- * note), the step list's erase(position) 0x60EB60 and its range erase 0x60EA90 (MSL's erase destroys
- * each element: include/list's does not). Not written: Tick (0x60C3E0, 0x6E4 bytes), AddMember
- * (0x60D020), act_camera::Tick (0x60DB60) with its helpers 0x60DCF0/0x60DE30 and the look-at matrix
- * 0x60CAD0. Defined in reverse of their image order (-inline deferred) where it matters. */
+ * the group remove_if (the list remove_if family), the step list's erase(position) 0x60EB60 and its
+ * range erase 0x60EA90 (MSL's erase destroys each element: include/list's does not), Tick (the cell
+ * index's strength reduction), AddMember (Is() materialised), act_camera::Tick, LookAt and FaceXZ
+ * (frame-address CSE and the translation row's copy) -- each with its note. Defined in reverse of
+ * their image order (-inline deferred) where it matters. */
 
 #include <list>
 #include <vector>
@@ -32,21 +34,82 @@
 #include "ai_states.h"
 
 class CAiGroup;
+class CTarget;
+
+/* zseal.h's enums, as this unit's calls mangle them */
+enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
+enum SEAL_STANCE {
+    STANCE_NONE = -1, STANCE_STAND = 0, STANCE_CROUCH = 1, STANCE_PRONE = 2, STANCE_IDLE = 3,
+    STANCE_MAX = 4
+};
+enum AI_MODE { AI_MODE_0 = 0, AI_MODE_LAST = 255 };
+
+/* the SEAL controller as far as this unit calls it (zseal.h's CSealCtrl): ClearGoal, and the
+ * virtual SetTarget at +0xB0 -- the slots between CEntityCtrl's last (+0x20) and it placeholders */
+class CSealCtrl : public CEntityCtrl {
+public:
+    virtual void V24();
+    virtual void V28();
+    virtual void V2C();
+    virtual void V30();
+    virtual void V34();
+    virtual void V38();
+    virtual void V3C();
+    virtual void V40();
+    virtual void V44();
+    virtual void V48();
+    virtual void V4C();
+    virtual void V50();
+    virtual void V54();
+    virtual void V58();
+    virtual void V5C();
+    virtual void V60();
+    virtual void V64();
+    virtual void V68();
+    virtual void V6C();
+    virtual void V70();
+    virtual void V74();
+    virtual void V78();
+    virtual void V7C();
+    virtual void V80();
+    virtual void V84();
+    virtual void V88();
+    virtual void V8C();
+    virtual void V90();
+    virtual void V94();
+    virtual void V98();
+    virtual void V9C();
+    virtual void VA0();
+    virtual void VA4();
+    virtual void VA8();
+    virtual void VAC();
+    virtual void SetTarget(CTarget *target);   /* +0xB0 */
+
+    void ClearGoal(GOAL_TYPE type);
+};
 
 /* the AI controller as far as this unit reads it (zseal.h's CSealCtrlAi, which this unit does not
  * include): its entity (CEntityCtrl's), the bits at 0x264, its state stack, its group's id and the
  * three throttle points a group's member starts from -- and its group members, which this unit
  * defines (SetGroup, InGroup, GetGroup: OVL2 0x60E6F0, 0x60E6E0, 0x60E7A0; the names ours) */
-class CSealCtrlAi : public CEntityCtrl {
+class CSealCtrlAi : public CSealCtrl {
 public:
     bool PopToAiState(AI_STATE state, bool inclusive);
+    AI_STATE PopAiState(AI_STATE state);
+    bool PushAiState(AI_STATE state, unsigned int flags);
+    CAiState *GetAiState();
+    void SetAiMode(AI_MODE mode);
+    void SetStance(SEAL_STANCE stance);
     void StopThrottles(bool keep);
     void SetGroup(CAiGroup *g);
     bool InGroup();
     CAiGroup *GetGroup();
+    /* the bit at 0x264 (inline; the name ours) */
+    void SetAiBit0(bool b) { m_aibit0 = b; }
 
     unsigned char _18[0x264 - 0x18];
-    unsigned int m_aibits : 19;   // 0x264 (zseal.h's SEAL_AI_PARAMS bits)
+    unsigned int m_aibit0 : 1;   // 0x264 bit 0 (cleared when the AI joins a group)
+    unsigned int m_aibits : 18;   // (zseal.h's SEAL_AI_PARAMS bits)
     unsigned int m_aibit19 : 1;   // bit 19 (the byte at 0x266, bit 3): set while not in a group's camera
     unsigned int m_aibit20 : 1;
     unsigned int m_aibit21 : 1;   // bit 21 (0x266 bit 5)
@@ -84,6 +147,40 @@ public:
 
 extern CAiMaps AiMaps;
 
+/* the player's camera as far as a group's camera move sets it (camera.h's CAppCamera, which this
+ * unit does not include): its camera's node at 0xb4 */
+class CAppCamera {
+public:
+    unsigned char _0[0xb4];
+    zdb::CNode *m_camera;   // 0xb4
+};
+
+extern CAppCamera *appCamera;
+
+extern "C" {
+/* libvu0's turns (libvu0.h declares the z one) and the maths library's */
+void sceVu0RotMatrixX(sceVu0FMATRIX m0, sceVu0FMATRIX m1, float rx);
+void sceVu0RotMatrixY(sceVu0FMATRIX m0, sceVu0FMATRIX m1, float ry);
+float sinf(float);
+float cosf(float);
+/* a cell for a point near another (OVL2 0x58F6E0, unnamed: the members' ring points of a group
+ * gathering without cells of their own) */
+bool func_0058F6E0(const CPnt3D *p, const CPnt3D *near, CAiMapLoc *loc, int x);
+/* CSealCtrl's look setters (seal_look.cpp's range, unwritten): SOCOM 1's SetLookDirR (OVL2
+ * 0x600DD0), SetLookPosW (0x601330), SetLookFlags (0x601850) and SetLookTimer (0x601860) */
+void func_00600DD0(CSealCtrlAi *ai, signed char look, const CPnt3D *dir, bool b);
+void func_00601330(CSealCtrlAi *ai, signed char look, const CPnt3D *pos);
+void func_00601850(CSealCtrlAi *ai, unsigned int flags);
+void func_00601860(CSealCtrlAi *ai, float t);
+/* a controller's state of a kind (OVL2 0x560A60, the SEAL lane's: a byte) and two of its resets
+ * a group's new member runs (0x56D0C0, 0x56D6A0), a setting (0x565B80) and another (0x5604D0) */
+unsigned char func_00560A60(CSealCtrlAi *ai);
+void func_0056D0C0(CSealCtrlAi *ai, int x);
+void func_0056D6A0(CSealCtrlAi *ai, int x);
+void func_00565B80(CSealCtrlAi *ai, int x);
+void func_005604D0(CSealCtrlAi *ai, int x);
+}
+
 /* two cells apart by their x or y (an inline: the target compares x, then y, materialised; the map
  * id unread -- the name ours) */
 static inline bool CellDiffers(const CAiMapLoc &a, const CAiMapLoc &b)
@@ -91,9 +188,13 @@ static inline bool CellDiffers(const CAiMapLoc &a, const CAiMapLoc &b)
     return a.x != b.x || a.y != b.y;
 }
 
-/* the look a group clears and sets (OVL2 data 0x651130, 4: a byte the target loads with lb; the name
- * ours) */
+/* the look a group clears and sets (OVL2 data 0x651130, 4: a byte the target loads with lb), the look
+ * flags (0x651138) and time (0x651140) it gives its gathering members, and a byte that keeps a
+ * suspended AI suspended when a group takes it (OVL1 data 0x3DF188) -- the names ours */
 extern signed char data_00651130;
+extern unsigned int data_00651138;
+extern float data_00651140;
+extern unsigned char data_003DF188;
 
 /* a group (the names ours) */
 class CAiGroup {
@@ -122,8 +223,13 @@ public:
     };
 
     /* a camera move (0x30 bytes; the name its RTTI's) */
-    /* a camera point: a position and how to read it (the names ours) */
+    /* a camera point: a position and how to read it -- 0x100 it has one, 0x400 in a member's frame
+     * (the member's index the low byte), 0x800 around the group's centre, else a world point; 0x200
+     * (a camera's end point only) Euler angles to turn by (the names ours) */
     struct campoint {
+        /* the point in the world, for a group; whether it has one (OVL2 0x60DE30) */
+        bool Get(CAiGroup *g, CPnt3D *out) const;
+
         CPnt3D m_pos;   // 0x0
         unsigned int m_flags;   // 0xc
     };
@@ -208,13 +314,14 @@ public:
     /* the group's frame: false while it runs (OVL2 0x60C3E0) */
     bool Tick();
     /* the group begun: each member's bits set (19 while the group runs no cameras), its stack's bits
-     * updated; the centre taken from the goal cell when it has one (state 1), else state 5 (OVL2
+     * updated; the centre taken from the goal cell when it has one (state 1), else done (OVL2
      * 0x60CBD0; the name ours) */
     void Start();
     /* whether the group runs its cameras (flag 1; inline) */
     bool CamerasOn() { return (m_flags & 1) ? true : false; }
-    /* a member let go (OVL2 0x60CE40) */
+    /* a member let go (OVL2 0x60CE40), and an AI taken in -- whether it joined (OVL2 0x60D020) */
     void RemoveMember(CSealCtrlAi *ai);
+    bool AddMember(CSealCtrlAi *ai);
     /* every group ticked, the finished ones dropped (OVL2 0x60E590), and every group dropped (OVL2
      * 0x60E4E0); the ids begun again (OVL2 0x60E580) -- the names ours */
     static void TickAll(float dT);
@@ -273,6 +380,15 @@ public:
     /* the current step ticked: its actions started on its first frame, then ticked on the step's
      * clock until every one is done (OVL2 0x60C220; the name ours) */
     step::STATE TickStep();
+    /* the cell a member is sent to, when it has one (inline; the name ours) */
+    bool GetLoc(unsigned int i, CAiMapLoc *loc)
+    {
+        if (i < m_locs.size()) {
+            *loc = m_locs[i];
+            return true;
+        }
+        return false;
+    }
     /* a member by index, or 0 past the members (inline; the name ours) */
     CSealCtrlAi *GetMember(unsigned int i)
     {
@@ -294,13 +410,13 @@ public:
     float m_radius;   // 0x18: the ring the members stand on around it (10 when new)
     memberlist m_members;   // 0x1c
     steplist m_steps;   // 0x28
-    /* the group's state: 0 new, 1 gathering at the goal, 5 begun without one (a byte enum; the
-     * names ours) */
-    enum STATE { NEW = 0, GATHER = 1, BEGUN = 5, STATE_LAST = 255 };
+    /* the group's state: 0 new, 1 gathering at the goal, 2 its members on their way, 4 a pause, 3
+     * its steps run, 5 done -- Tick's bool (a byte enum; the names ours) */
+    enum STATE { NEW = 0, GATHER = 1, GOING = 2, STEPPING = 3, PAUSE = 4, DONE = 5, STATE_LAST = 255 };
     STATE m_state;   // 0x34
     unsigned char _35[0x38 - 0x35];
     float m_time;   // 0x38: the current step's clock
-    unsigned char _3c[0x40 - 0x3c];
+    float m_wait;   // 0x3c: the pause's time left
     step *m_cur;   // 0x40: the step being built
     loclist m_locs;   // 0x44: where each member is sent
     unsigned int m_50;   // 0x50
@@ -483,6 +599,212 @@ void CAiGroup::RemoveMember(CSealCtrlAi *ai)
     m_members.erase(i, end);
 }
 
+/* the matrix at a point facing another in the ground plane: the xz direction normalised into rows 0
+ * and 2, the point the translation (OVL2 0x60CAD0; Tick turns a member at its cell to the group's
+ * centre with it -- the name ours; pinned: Tick calls it).
+ * OPEN, 36 instructions at the right size: the same frame-address CSE as LookAt -- MW holds &d.z in
+ * a2 (and keeps d.x in $f2 into the normalise) where the target reads d.x and d.z at sp offsets in
+ * both blocks; the saved registers come out from/m swapped (s1/s0 against s0/s1) and the
+ * translation copy is act_camera::Tick's. Tried: an inline NormalizeXZ(CPnt3D *), a reference
+ * local, optimisation_level 3 / opt_common_subs off */
+static inline void NormalizeXZ(CPnt3D *v)
+{
+    float len = sqrtf(v->x * v->x + v->z * v->z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        v->x *= inv;
+        v->z *= inv;
+    }
+}
+
+#pragma auto_inline off
+static void FaceXZ(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
+{
+    m->SetIdentity();
+    CPnt3D d = *to - *from;
+
+    NormalizeXZ(&d);
+    m->m_matrix[0][0] = -d.z;
+    m->m_matrix[0][2] = -d.x;
+    m->m_matrix[2][0] = d.x;
+    m->m_matrix[2][2] = -d.z;
+    *(CPnt3D *)m->m_matrix[3] = *from;
+}
+#pragma auto_inline reset
+
+/* (OVL2 0x60C3E0: m_ticking set for the actions; the state a byte-enum local, stored back at the
+ * end; the cases listed 0, 1, 2, 4, 3 for the target's 3, 4, 2, 1, 0 compare chain; sin and cos
+ * taken before the ring point's stores; FaceXZ pinned).
+ * OPEN, 285 instructions at the right size, registers and the cell index: MW strength-reduces
+ * m_locs[i]'s `i * 4` into an induction register of its own (s0) where the target shifts the
+ * counter in the loop (`sll v1,s3,2`); with that register taken every saved register shifts, and
+ * &p.z (the target's s8, hoisted with &p.y into s7) is computed in the loop. `#pragma
+ * opt_strength_reduction off` drops the index register but the &p.y/&p.z hoisting with it (0x6C8).
+ * Tried: the increments in the for header, `int i`, an inline GetLoc (0x6FC). The step list's
+ * erase(begin()) calls OVL2 0x60EB60, which the map does not name yet (the MSL lane's) */
+bool CAiGroup::Tick()
+{
+    STATE state = m_state;
+
+    m_ticking = this;
+    switch (state) {
+    case NEW:
+        break;
+    case GATHER: {
+        int n = m_members.size();
+        float step = 6.2831855f / (float)n;
+        CPnt3D sum = CPnt3D::zero;
+        unsigned int i = 0;
+        float angle = 0.0f;
+
+        for (memberlist::iterator it = m_members.begin(); it != m_members.end(); ++it, angle += step, i++) {
+            CSealCtrlAi *ai = *it;
+            CEntity *e = ai->m_entity;
+            CAiMapLoc loc(CAiMapLoc::invalid);
+            bool have;
+
+            if (i < m_locs.size()) {
+                loc = m_locs[i];
+                have = true;
+            } else {
+                float sn = sinf(angle);
+                float cs = cosf(angle);
+                CPnt3D p;
+
+                p.x = sn;
+                p.y = 0.0f;
+                p.z = -cs;
+                p.Scale(m_radius);
+                p.Add(&m_center);
+                have = func_0058F6E0(&p, &m_center, &loc, 1);
+            }
+            if (have) {
+                CPnt3D c;
+
+                AiMaps.GetCellCenter(loc, &c);
+                sum.Add(&c);
+                if (m_flags & 4) {
+                    CMatrix m;
+                    CPnt3D at;
+
+                    AiMaps.GetCellCenter(loc, &at);
+                    FaceXZ(&at, &m_center, &m);
+                    e->TeleportTo(&m);
+                    ai->StopThrottles(true);
+                    func_00600DD0(ai, data_00651130, &CPnt3D::unit_nz, true);
+                    func_00601850(ai, data_00651138);
+                    state = STEPPING;
+                } else if (ai->PushAiState(AI_STATE_GOTO, 0)) {
+                    CAiState *s = ai->GetAiState();
+                    CAiSGoto *g = s && s->m_state == AI_STATE_GOTO ? (CAiSGoto *)s : 0;
+
+                    state = GOING;
+                    g->m_6c = 0.5f;
+                    g->m_cell = loc;
+                }
+            }
+        }
+        if (n > 0) {
+            sum = sum * (1.0f / (float)n);
+            m_center = sum;
+            sum.y += 18.0f;
+            for (memberlist::iterator it = m_members.begin(); it != m_members.end(); ++it) {
+                CSealCtrlAi *ai = *it;
+
+                func_00600D40(ai, -1);
+                func_00601330(ai, data_00651130, &sum);
+                func_00601850(ai, data_00651138 | 1);
+                func_00601860(ai, data_00651140);
+            }
+        }
+        break;
+    }
+    case GOING: {
+        bool there = true;
+
+        for (memberlist::iterator it = m_members.begin(); it != m_members.end(); ++it) {
+            if ((*it)->m_stateStack.Is(AI_STATE_GOTO)) {
+                there = false;
+                break;
+            }
+        }
+        if (there) {
+            state = PAUSE;
+            m_wait = 1.0f;
+        }
+        break;
+    }
+    case PAUSE:
+        m_wait -= m_dT;
+        if (m_wait <= 0.0f)
+            state = STEPPING;
+        break;
+    case STEPPING:
+        for (memberlist::iterator it = m_members.begin(); it != m_members.end(); ++it) {
+            CSealCtrlAi *ai = *it;
+
+            if (!(m_flags & 1) && func_00560A60(ai) == 4)
+                state = DONE;
+            else {
+                func_00600DD0(ai, data_00651130, &CPnt3D::unit_nz, true);
+                func_00601850(ai, data_00651138);
+            }
+        }
+        if (state != DONE) {
+            switch (TickStep()) {
+            case step::DONE:
+                m_steps.erase(m_steps.begin());
+                state = PAUSE;
+                m_wait = 0.5f;
+                break;
+            case 0:
+                state = DONE;
+                break;
+            }
+        }
+        break;
+    }
+    m_state = state;
+    m_ticking = 0;
+    return m_state == DONE;
+}
+
+/* (OVL2 0x60D020: the AI held in the frame -- its address is push_back's).
+ * OPEN, 4 instructions: Is(AI_STATE_SUSPENDED) -- the target materialises it whole (xor/sltiu/xori,
+ * the second operand's sltiu, a `b` past the false arm's `move v0,zero`, label pads) and tests that,
+ * MW here branches on each operand: the open shape of CAiStateStack::Pop(ai, AI_STATE)
+ * (seal_aistate.cpp). The rest is byte-exact */
+bool CAiGroup::AddMember(CSealCtrlAi *ai)
+{
+    bool ok = false;
+
+    if (ai && !ai->InGroup()) {
+        if (ai->m_stateStack.Is(AI_STATE_SUSPENDED) && !data_003DF188)
+            ai->PopAiState(AI_STATE_SUSPENDED);
+        func_0056D0C0(ai, 0);
+        func_0056D6A0(ai, 0);
+        if (ai->PushAiState(AI_STATE_HOLD, 3)) {
+            CAiState *s = ai->GetAiState();
+            CAiState *h = s && s->m_state == AI_STATE_HOLD ? s : 0;
+
+            h->SetFlags(0x108, 0);
+            ok = true;
+            m_members.push_back(ai);
+            ai->SetAiBit0(false);
+            ai->SetGroup(this);
+            ai->SetAiMode((AI_MODE)2);
+            ai->ClearGoal(GOAL_NONE);
+            func_00565B80(ai, 2);
+            func_005604D0(ai, 6);
+            ai->SetStance(STANCE_STAND);
+            ai->SetTarget(0);
+        }
+    }
+    return ok;
+}
+
 /* (OVL2 0x60C220: the first member found running is kept, and never read; begin() taken once
  * before the switch, the result zeroed first so the empty list branches straight to the end).
  * OPEN, 11 instructions, registers only: the walk's iterator comes out in s2 and the end in s1 in
@@ -546,7 +868,7 @@ CAiGroup::step::STATE CAiGroup::TickStep()
 void CAiGroup::Start()
 {
     if (m_state == NEW) {
-        STATE state = BEGUN;
+        STATE state = DONE;
         bool cams = !CamerasOn();
 
         for (memberlist::iterator i = m_members.begin(); i != m_members.end(); ++i) {
@@ -717,6 +1039,130 @@ CAiGroup::action::STATE CAiGroup::act_zanim::Tick(CSealCtrlAi *ai, float t)
     case WAITING:
         if (!(t < m_time)) {
             m_anim->Activate(0);
+            m_state = RUNNING;
+        }
+        break;
+    case RUNNING:
+        m_state = DONE;
+        break;
+    }
+    return m_state;
+}
+
+/* (OVL2 0x60DE30) */
+bool CAiGroup::campoint::Get(CAiGroup *g, CPnt3D *out) const
+{
+    bool ok = false;
+    unsigned int f = m_flags;
+
+    if (f & 0x100) {
+        if (f & 0x400) {
+            CSealCtrlAi *ai = g->GetMember(m_flags & 0xff);
+
+            if (ai) {
+                ok = true;
+                ai->m_entity->m_node->m_matrix.Transform(&m_pos, out, 1);
+            }
+        } else if (f & 0x800) {
+            *out = g->m_center + m_pos;
+            ok = true;
+        } else {
+            ok = true;
+            *out = m_pos;
+        }
+    }
+    return ok;
+}
+
+/* the matrix at one point looking at another: level (its x axis in the ground plane), up from the
+ * cross product, looking down -z (OVL2 0x60DCF0: CAppCamera::LookAt's body, 0x29BC90, the eye not
+ * noted; the name ours).
+ * OPEN, 0x154 against 0x138 -- camera.cpp's LookAt's open shape, the same code: MW keeps the
+ * addresses of vView.y, vView.z and v2D.z in saved registers (as SOCOM 1's 2.4 build did for
+ * vView's two) where the target reads them at sp offsets and holds -v2D.z and v2D.x in $f21/$f20
+ * across sceVu0OuterProduct; and the translation copy as act_camera::Tick's. Tried: the element
+ * stores in the target's order, CPnt4D(x, y, z, w) vectors, scalar rx/rz locals with initialised
+ * arrays (0x15C), optimisation_level 3 (the address still CSE'd) */
+static void LookAt(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
+{
+    CPnt3D vView = *to - *from;
+
+    vView.Normalize();
+    CPnt3D v2D = vView;
+
+    v2D.y = 0.0f;
+    v2D.Normalize();
+    sceVu0FVECTOR right;
+    sceVu0FVECTOR view;
+    sceVu0FVECTOR up;
+
+    right[3] = 1.0f;
+    view[3] = 1.0f;
+    right[1] = 0.0f;
+    right[2] = v2D.x;
+    view[0] = vView.x;
+    view[1] = vView.y;
+    view[2] = vView.z;
+    right[0] = -v2D.z;
+    sceVu0OuterProduct(up, right, view);
+    m->m_matrix[0][0] = -v2D.z;
+    m->m_matrix[0][1] = 0.0f;
+    m->m_matrix[0][2] = v2D.x;
+    m->m_matrix[1][0] = up[0];
+    m->m_matrix[1][1] = up[1];
+    m->m_matrix[1][2] = up[2];
+    m->m_matrix[2][0] = -vView.x;
+    m->m_matrix[2][1] = -vView.y;
+    m->m_matrix[2][2] = -vView.z;
+    *(PNT3D *)m->m_matrix[3] = *from;
+}
+
+/* (OVL2 0x60DB60: the camera put at the start point once the step's clock reaches the move's time,
+ * turned by the end point's angles or to look at it; done the tick after -- at once when the
+ * group runs no cameras: the flag tested bare, not through CamerasOn(); the unused matrix is the
+ * target's two sceVu0UnitMatrix calls on one slot; the group read into a local ahead of the end
+ * point's flags, as the target loads it there for the second Get).
+ * OPEN, 0x194 against 0x18C: the start point copied into the translation row -- the target loads
+ * its three floats and then stores them at sp offsets (a copy construction's shape), here each
+ * float goes through &m[3] kept in a saved register (tried: `*(PNT3D *)`, the element stores, a
+ * scalar copy first, the three-float constructor, a by-value inline setter: 0x194-0x1AC), and with
+ * it every saved register numbered one off (`this` s3 against s1) */
+CAiGroup::action::STATE CAiGroup::act_camera::Tick(CSealCtrlAi *ai, float t)
+{
+    if (!(m_ticking->m_flags & 1))
+        return DONE;
+    switch (m_state) {
+    case WAITING:
+        if (!(t < m_time)) {
+            zdb::CNode *cam = appCamera->m_camera;
+            CMatrix unused;
+            CPnt3D pos;
+
+            unused.SetIdentity();
+            if (m_from.Get(m_ticking, &pos)) {
+                CMatrix m = CMatrix::identity;
+                bool set = false;
+                CPnt3D *t = (CPnt3D *)m.m_matrix[3];
+                CAiGroup *g;
+
+                *t = pos;
+                g = m_ticking;
+                if (m_to.m_flags & 0x200) {
+                    sceVu0RotMatrixY(m.m_matrix, m.m_matrix, m_to.m_pos.y);
+                    sceVu0RotMatrixX(m.m_matrix, m.m_matrix, m_to.m_pos.x);
+                    sceVu0RotMatrixZ(m.m_matrix, m.m_matrix, m_to.m_pos.z);
+                    set = true;
+                } else if (m_to.m_flags & 0x100) {
+                    CPnt3D at;
+
+                    if (m_to.Get(g, &at)) {
+                        LookAt(t, &at, &m);
+                        set = true;
+                    }
+                }
+                if (set)
+                    cam->SetMatrix(&m);
+            }
             m_state = RUNNING;
         }
         break;
