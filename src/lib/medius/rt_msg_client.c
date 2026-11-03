@@ -478,6 +478,27 @@ extern unsigned char rt_msg_client_is_valid_connection(rt_msg_client_connection 
 int rt_msg_client_get_connection(unsigned short nConnection, rt_msg_client_connection **ppConnection);
 int rt_msg_client_get_valid_connection(unsigned short nConnection, rt_msg_client_connection **ppConnection);
 
+int rt_msg_client_is_valid_connection_id(unsigned short nConnection);
+
+/* SOCOM 1's idisconnect_all (s1:exact): every valid connection disconnected, the first failure
+ * returned */
+int rt_msg_client_idisconnect_all(void)
+{
+    unsigned int i = 0;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    for (; i < gnConnectionArraySize; i++) {
+        if (rt_msg_client_is_valid_connection_id(i) == 1) {
+            result = rt_msg_client_idisconnect(i);
+            if (result != 0)
+                return result;
+        }
+    }
+    return 0;
+}
+
 int func_00634078(unsigned short nConnection, unsigned char bFlag)
 {
     return func_00634A08(nConnection, bFlag);
@@ -602,5 +623,71 @@ int rt_msg_client_is_wait_state(int nState)
     if (nState == 2 || nState == 4 || nState == 3 || nState == 5 || nState == 6 || nState == 7 || nState == 9
         || nState == 10)
         return 1;
+    return 0;
+}
+
+/* a message's header: its type byte and its length, network order (SOCOM 1's, s1:exact) */
+typedef struct rt_msg_client_header {
+    unsigned char nType;                /* 0x00 */
+    unsigned short nLength;             /* 0x02 */
+} rt_msg_client_header;
+
+extern int rt_msg_set_ubyte(unsigned char *msg, unsigned char value);
+extern int rt_msg_get_ubyte(const unsigned char *msg, unsigned char *value);
+extern int rt_msg_set_u2byte(unsigned char *msg, unsigned short value);
+extern int rt_msg_get_u2byte(const unsigned char *msg, unsigned short *value);
+
+int rt_msg_client_set_header(unsigned char *pMsg, rt_msg_client_header *pHeader, unsigned short *pnLength)
+{
+    if (pMsg == 0)
+        return 2;
+    if (pHeader == 0)
+        return 2;
+    if (pnLength == 0)
+        return 2;
+    *pnLength = 0;
+    if (rt_msg_set_ubyte(pMsg, pHeader->nType) != 0)
+        return 7;
+    (*pnLength)++;
+    if (rt_msg_set_u2byte(pMsg + 1, pHeader->nLength) != 0)
+        return 7;
+    *pnLength += 2;
+    return 0;
+}
+
+int rt_msg_client_get_header(unsigned char *pMsg, rt_msg_client_header *pHeader, unsigned short *pnLength)
+{
+    if (pMsg == 0)
+        return 2;
+    if (pHeader == 0)
+        return 2;
+    if (pnLength == 0)
+        return 2;
+    *pnLength = 0;
+    if (rt_msg_get_ubyte(pMsg, &pHeader->nType) != 0)
+        return 7;
+    (*pnLength)++;
+    if (rt_msg_get_u2byte(pMsg + 1, &pHeader->nLength) != 0)
+        return 7;
+    *pnLength += 2;
+    return 0;
+}
+
+extern void *gpScratchBuffer;
+extern unsigned int gScratchBufferSize;
+extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
+extern int rt_memory_free(void **ppMemory);
+
+int rt_msg_client_set_scratch_buf_min_size(unsigned int nSize)
+{
+    if (nSize == 0)
+        return 2;
+    if (gScratchBufferSize < nSize) {
+        if (gpScratchBuffer != 0)
+            rt_memory_free(&gpScratchBuffer);
+        if (rt_memory_allocate_init_zero(&gpScratchBuffer, nSize) != 0)
+            return 8;
+        gScratchBufferSize = nSize;
+    }
     return 0;
 }
