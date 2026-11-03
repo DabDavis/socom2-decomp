@@ -169,6 +169,7 @@
 0x001DA580 0x0 _csdata  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifInitCmd)
 0x001DA5C0 0x0 _sys_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifInitCmd)
 0x001DA6C0 0x0 soft_reg  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifGetSreg +2)
+0x001DBF40 0x40 _data_table  # MAIN bss; s1:label (the GCC lane r11a: the sifrpc object's state, the demo's _data_table at sceSifSetRpcQueue's reference, its .bss after _packet_buffer, _free_buffer and _free_buffer2 0x800 apart and 0x80 before _send_data, as here -- those three unnamed: libmrpc's copy holds _packet_buffer; the demo's sifcmd and libmrpc objects hold a _data_table of their own; src/lib/sdk/sifrpc.c)
 0x001DBFC0 0x0 _send_data  # MAIN bss; s1:data-exact (size SOCOM 1's; via _sceCallCode +19)
 0x001DCC00 0x0 _rcv_data_rpc  # MAIN bss; s1:data-exact (size SOCOM 1's; via _sceCallCode +19)
 0x001DD2F0 0x0 _gp  # MAIN; the linker's $gp value (CCoreState::StartLoadThread gives it to the load thread, where SOCOM 1's passed gp itself): 7 references in 7 functions take 0x1DD2F0
