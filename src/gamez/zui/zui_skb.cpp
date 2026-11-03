@@ -175,9 +175,13 @@ extern "C" {
 void func_00394420();
 void func_00398B50();
 void func_00399C10(CSoftKeyboard *skb);
-/* CGameMenu::RunEventAnim (zui.cpp's 0x367810: the menu, an event, a flag) */
-void func_00367810(CGameMenu *menu, int event, int flag);
 }
+
+/* the game menu (zui.cpp's: only its event runner) */
+class CGameMenu {
+public:
+    bool RunEventAnim(ActionItem::EVENT event, const char *arg);
+};
 void SkbPlaySound(unsigned char which);
 
 extern "C" {
@@ -553,7 +557,7 @@ void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
     func_00394420();
     func_00398B50();
     func_00399C10(this);
-    func_00367810(menu, 16, 0);
+    menu->RunEventAnim(ActionItem::ON_SKB_CLOSE, 0);
     SkbPlaySound(1);
 }
 

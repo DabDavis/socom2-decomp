@@ -6758,7 +6758,7 @@
 0x003677B0 0x14 func_003677B0  # OVL1
 0x003677D0 0x14 func_003677D0  # OVL1
 0x003677F0 0x14 func_003677F0  # OVL1
-0x00367810 0x138 func_00367810  # OVL1
+0x00367810 0x138 RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc  # OVL1; the UI lane round 15: SOCOM 1's RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc by its body (the 30 commands at 0x6F8 walked to m_numCommands 0x8D8 as SOCOM 1's at 0x68C/0x86C, each event action of the event started through CZAnim::ActivateArg(1, 8, arg) or Activate(0); TickMPEG passes ONMPEGEND), byte-exact from zui.cpp
 0x00367950 0xBE8 LoadFromDesign__9CGameMenuFRC14CGameDlgDesignP9CZAnimZAR  # OVL1; s1:calls by hand (the menu's design loader: this, the design and the ZAR in a0-a2 as SOCOM 1's; its first call 0x369210 at +0x34 as SOCOM 1's Clear, then UiSetCounterSpeedFactor and UiSetTtySpeedFactor with 1.0 in that order, as SOCOM 1's at +0x44/+0x54; SOCOM II adds a flag block between; 0xBE8 against 0xBA4)
 0x00368540 0x8 NumChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368550 0x8 GetChild__11CDlgObjSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
