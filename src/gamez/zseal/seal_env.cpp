@@ -145,14 +145,50 @@ bool CZSealBody::PostCheckDILadder()
 /* where a hit lands (SOCOM 1's DAMAGE_LOCATION, a byte: only the name matters here) */
 enum DAMAGE_LOCATION { DAMAGE_LOCATION_0 = 0, DAMAGE_LOCATION_LAST = 255 };
 
-/* a SEAL's animations (SOCOM 1's DWARF: AnimSet) -- only its readers of the damage animations,
- * static: each reads a location's block, its STAND, CROUCH and PRONE lists */
+/* an animation set's anims by the item in hand (anim.cpp's CAnimsByFP: only the setter) */
+class CAnimsByFP {
+public:
+    void SetPistolAnim(AnimType rifle, AnimType pistol);
+};
+
+/* a list of anim types (SOCOM 1's vector<AnimType>): SOCOM II's MSL runs a 2-byte element on
+ * __vector_pod<unsigned short> (the insert's name, OVL2 0x5B68E0), and an element read back is
+ * the signed type again (lh) */
+class CAnimTypeVector : public std::__vector_pod<unsigned short, std::allocator<unsigned short> > {
+    typedef std::__vector_pod<unsigned short, std::allocator<unsigned short> > __base;
+
+public:
+    void push_back(const AnimType &x) { __base::push_back((const unsigned short &)x); }
+    unsigned int size() const { return size_; }
+    AnimType &operator[](unsigned int n) { return ((AnimType *)data())[n]; }
+};
+
+/* a SEAL's animations (SOCOM 1's DWARF: AnimSet) -- its readers of the damage animations, static:
+ * each reads a location's block, its STAND, CROUCH and PRONE lists; the tables they fill, by
+ * location and state (SOCOM 1's six static members of 0xD8 bytes, in its order; OVL1 bss
+ * 0x44CE70-0x44D3F7 here), the sets, and a set's anims by the item in hand */
 class AnimSet {
 public:
     static void ReadFlinchAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc);
     static void ReadDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc);
     static void ReadTeammateDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc);
+    static void InitDeathAndFlinchAnimations();
+
+    static CAnimTypeVector deathanim[6][3];
+    static CAnimTypeVector pistoldeathanim[6][3];
+    static CAnimTypeVector teammatedeathanim[6][3];
+    static CAnimTypeVector teammatepistoldeathanim[6][3];
+    static CAnimTypeVector damageanim[6][3];
+    static CAnimTypeVector pistoldamageanim[6][3];
+    /* every set (SOCOM 1's AnimSet::List, a pointer vector; OVL1 bss 0x44D430) */
+    static std::vector<AnimSet *> list;
+
+    unsigned char _0[0x5c];
+    CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's m_animgps at 0x60)
 };
+
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+AnimType FindAnimType(const char *name);
 
 /* an array's item by an unsigned index (zrdr.h's Item, which this unit cannot include beside
  * zanim.h's _zrdr: the index unsigned keeps MW from strength-reducing an int counter's walk) */
@@ -162,11 +198,42 @@ static inline _zrdr *ItemAt(_zrdr *a, unsigned int i)
 }
 
 extern "C" {
-/* one animation of a list read into the location's and the state's tables: a flinch, a death, a
- * teammate's death (OVL2 0x5A3D30, 0x5A3E90, 0x5A3FF0; SOCOM 1's readers did it inline) */
-void func_005A3D30(_zrdr *anim, int state, DAMAGE_LOCATION loc);
-void func_005A3E90(_zrdr *anim, int state, DAMAGE_LOCATION loc);
-void func_005A3FF0(_zrdr *anim, int state, DAMAGE_LOCATION loc);
+/* one animation of a list read into the location's and the state's tables (its rifle and its
+ * pistol type) and the pistol type set as the rifle type's in the first set: a flinch, a death, a
+ * teammate's death (OVL2 0x5A3D30, 0x5A3E90, 0x5A3FF0, defined after the readers; SOCOM 1's
+ * readers did it inline) */
+void func_005A3D30(_zrdr *anim, SEAL_STATE state, DAMAGE_LOCATION loc);
+void func_005A3E90(_zrdr *anim, SEAL_STATE state, DAMAGE_LOCATION loc);
+void func_005A3FF0(_zrdr *anim, SEAL_STATE state, DAMAGE_LOCATION loc);
+}
+
+#define READ_DAMAGE_ANIM(f, rifles, pistols)                                                        \
+    void f(_zrdr *anim, SEAL_STATE state, DAMAGE_LOCATION loc)                                      \
+    {                                                                                               \
+        char *name = zrdr_findstring(anim, "NAME");                                                 \
+        char *pistol = zrdr_findstring(anim, "PISTOL_NAME");                                        \
+                                                                                                    \
+        AnimSet::rifles[loc][state].push_back(FindAnimType(name));                                  \
+        AnimSet::pistols[loc][state].push_back(FindAnimType(pistol));                               \
+        int last = AnimSet::rifles[loc][state].size() - 1;                                          \
+                                                                                                    \
+        AnimSet::list[0]->m_animsbyfp->SetPistolAnim(AnimSet::rifles[loc][state][last],              \
+                                                     AnimSet::pistols[loc][state][last]);            \
+    }
+
+/* room for eight anims in each table's every location and state (OVL2 0x5A46C0, which the set
+ * loader 0x5E30F0 calls; SOCOM 1's, between the readers and ReadDeathAndFlinchAnims as here) */
+void AnimSet::InitDeathAndFlinchAnimations()
+{
+    for (int i = 0; i < 6; i++)
+        for (int j = 0; j < 3; j++) {
+            deathanim[i][j].reserve(8);
+            pistoldeathanim[i][j].reserve(8);
+            teammatedeathanim[i][j].reserve(8);
+            teammatepistoldeathanim[i][j].reserve(8);
+            damageanim[i][j].reserve(8);
+            pistoldamageanim[i][j].reserve(8);
+        }
 }
 
 /* a location's teammate deaths: each list's animations by stance (OVL2 0x5A44F0; SOCOM 1's, the
@@ -255,6 +322,15 @@ void AnimSet::ReadFlinchAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION
     for (int k = 0; k < np; k++)
         func_005A3D30(ItemAt(prone, k), stateProne, loc);
 }
+
+/* (short enough to auto-inline into the readers, which call them: pinned) */
+#pragma auto_inline off
+extern "C" {
+READ_DAMAGE_ANIM(func_005A3FF0, teammatedeathanim, teammatepistoldeathanim)
+READ_DAMAGE_ANIM(func_005A3E90, deathanim, pistoldeathanim)
+READ_DAMAGE_ANIM(func_005A3D30, damageanim, pistoldamageanim)
+}
+#pragma auto_inline reset
 
 /* the regions the SEAL stands in: on a change each region's OnEnterRegion anim run, region 0's
  * when it is in none (OVL2 0x5A2F90; SOCOM 1's word for word) */
