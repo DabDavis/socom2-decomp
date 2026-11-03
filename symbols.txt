@@ -10762,7 +10762,7 @@
 0x005A2680 0x8 func_005A2680  # OVL2
 0x005A2690 0x900 func_005A2690  # OVL2
 0x005A2F90 0xD4 CheckForRegionTrigger__10CZSealBodyFUi  # OVL2; s1:calls
-0x005A3070 0xF0 func_005A3070  # OVL2
+0x005A3070 0xF0 GetHeadParams__10CZSealBodyFP6CPnt3DP6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's GetHeadParams__10CZSealBodyFP6CPnt3DP6CPnt3D, after CheckForRegionTrigger in both builds: the head part's place through PartInSpace and the node's matrix, the look's direction through its rotation -- SOCOM II tests each pointer first) -- the SEAL lane, round 12
 0x005A3160 0x58 GetNeckPosW__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x38 of __vt__10CZSealBody (CEntity's slot 0x38, GetNeckPosW in zentity.h; the name ours)
 0x005A31C0 0x58 GetHeadPosW__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x34 of __vt__10CZSealBody (CEntity's slot 0x34, GetHeadPosW in zentity.h; the name ours)
 0x005A3220 0x58 GetTargetPosW__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x30 of __vt__10CZSealBody (CEntity's GetTargetPosW slot)
@@ -10824,14 +10824,14 @@
 0x005A7DE0 0x3F0 func_005A7DE0  # OVL2
 0x005A81D0 0x108 func_005A81D0  # OVL2
 0x005A82E0 0x4B0 func_005A82E0  # OVL2
-0x005A8790 0xC0 func_005A8790  # OVL2
+0x005A8790 0xC0 AimWeapon__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's AimWeapon__10CZSealBodyFv, before CanUseBodyCarry and CanChangeItem in both builds: PartInSpace of the item's part, the quaternion applied to unit_x into the aim (SOCOM 1's m_aim_dir 0x10a0 = 0x1440), unit_nz otherwise; the item byte SOCOM 1's m_item 0xe58 = 0xF79) -- the SEAL lane, round 12
 0x005A8850 0x70 func_005A8850  # OVL2
 0x005A88C0 0xF8 func_005A88C0  # OVL2
 0x005A89C0 0x2E4 func_005A89C0  # OVL2
 0x005A8CB0 0xF0 CanChangeItem__10CZSealBodyFv  # OVL2; s1:calls (the HUD lane's round 16, vetted by the integrator: CWeaponSel::OnOpen/HandleOpenState call it where SOCOM 1's call CanChangeItem__10CZSealBodyFv; 0xF0 here against SOCOM 1's 0x78)
 0x005A8DA0 0x310 func_005A8DA0  # OVL2
 0x005A90B0 0x370 func_005A90B0  # OVL2
-0x005A9420 0xD8 func_005A9420  # OVL2
+0x005A9420 0xD8 FindDeathAnimTypeCQB__10CZSealBodyFP10CZSealBody  # OVL2; s1:order by hand (SOCOM 1's FindDeathAnimTypeCQB__10CZSealBodyFP10CZSealBody, after CanUseRestraint's place in both builds: the same code -- the victim's facing negated and flattened against the offset, two anim types picked by the sign) -- the SEAL lane, round 12
 0x005A9500 0x3B0 func_005A9500  # OVL2
 0x005A98B0 0x3B8 func_005A98B0  # OVL2
 0x005A9C70 0x2C8 func_005A9C70  # OVL2
@@ -10873,8 +10873,8 @@
 0x005AE6A0 0x84 InitLookAnims__10CZSealBodyFv  # OVL2; s1:callee
 0x005AE730 0x24C GetLookQuat__FP6CPnt3DffP5CQuat  # OVL2; s1:calls
 0x005AE980 0xAE8 func_005AE980  # OVL2
-0x005AF470 0x90 func_005AF470  # OVL2
-0x005AF500 0x90 func_005AF500  # OVL2
+0x005AF470 0x90 RotateHead__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1's RotateHead__10CZSealBodyFff, after GetLookQuat and before GetLookDirW in both builds: the same body -- MakeXRot into the forward look, SOCOM 1's m_fwdlook 0xf60 = 0x1070, else the identity; every SOCOM II caller sets only $f12 (both app-camera transitions, 0x29A180, CZSealBody(), 0x594600), so its second float is gone) -- the SEAL lane, round 12
+0x005AF500 0x90 GetLookDirW__10CZSealBodyCFP6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's GetLookDirW__10CZSealBodyCFP6CPnt3D, after RotateHead in both builds: the same VU0 rotation of the look's direction by the node's matrix, the look held at 0x1190) -- the SEAL lane, round 12
 0x005AF590 0x39C func_005AF590  # OVL2
 0x005AF930 0xAD4 func_005AF930  # OVL2
 0x005B0410 0xC func_005B0410  # OVL2

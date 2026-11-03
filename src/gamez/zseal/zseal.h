@@ -1034,6 +1034,17 @@ public:
     bool SetLookDir(const CPnt3D *dir, float rate);
     static void InitLookAnims();
     bool CanHeadLook();
+    /* the head turned forward by a pitch, and the look's direction in the world (SOCOM 1's
+     * RotateHead, its second float gone, and GetLookDirW; OVL2 0x5AF470, 0x5AF500) */
+    void RotateHead(float pitch);
+    CPnt3D *GetLookDirW(CPnt3D *out) const;
+    /* the head's place and its look's direction in the world, each when asked (SOCOM 1's; OVL2
+     * 0x5A3070) */
+    void GetHeadParams(CPnt3D *pos, CPnt3D *dir);
+    /* the aim along the item in hand, and the death a CQB attack gives its victim (SOCOM 1's; OVL2
+     * 0x5A8790, 0x5A9420) */
+    void AimWeapon();
+    AnimType FindDeathAnimTypeCQB(CZSealBody *victim);
     /* the SEAL's own AI event made where it stands (SOCOM 1's; OVL2 0x550E50, seal.cpp) */
     void CreateAiEvent();
     /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */
@@ -1085,14 +1096,14 @@ public:
     unsigned char _368[0x374 - 0x368];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
-    unsigned char _376[0x390 - 0x376];
-    /* the rifle and the pistol worn as gear: the part SetPartAsGear makes of each and the gear (SOCOM
-     * 1's m_rifle_as_gear and m_pistol_as_gear were the gear alone; the part names ours) */
-    CZBodyPart *m_rifle_as_gear_part;   // 0x390
-    class CCharacterGear *m_rifle_as_gear;   // 0x394
-    CZBodyPart *m_pistol_as_gear_part;   // 0x398
-    class CCharacterGear *m_pistol_as_gear;   // 0x39c
-    unsigned char _3a0[0x3b0 - 0x3a0];
+    unsigned char _376[0x388 - 0x376];
+    /* the items worn as gear, by SOCOM 1's SEAL_ITEM (1 the rifle, 2 the pistol; AimWeapon aims along
+     * 1, 2 and 4): the part SetPartAsGear makes of each and the gear (SOCOM 1's m_rifle_as_gear and
+     * m_pistol_as_gear were the gear alone; the names ours) */
+    struct CItemGear {
+        CZBodyPart *m_part;   // 0x0
+        class CCharacterGear *m_gear;   // 0x4
+    } m_item_gear[5];   // 0x388 (the rifle's 0x390, the pistol's 0x398)
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
     unsigned char _3b4[0x3dc - 0x3b4];
     zdb::CNode *m_3dc;   // 0x3dc: a node 0x5AA620 takes the SEAL of (the name ours)
@@ -1133,7 +1144,10 @@ public:
     unsigned char _ee4[0xf74 - 0xee4];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
-    unsigned char _f78[0xf7a - 0xf78];
+    unsigned char _f78[0xf79 - 0xf78];
+    /* the item in hand (SOCOM 1's m_item, a SEAL_ITEM byte at 0xe58: 1 the rifle, 2 the pistol, 3 a
+     * throwable; zweapon.h's SEAL_ITEM is a word-sized stand-in, so a byte here) */
+    unsigned char m_item;   // 0xf79
     /* the SEAL's life as the network reports it: 2 and 3 down, 1 up again (0x544210 sets it;
      * the names ours) */
     unsigned char m_netlife;   // 0xf7a
@@ -1210,7 +1224,7 @@ public:
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
     unsigned char _1064[0x1070 - 0x1064];
-    CQuat m_1070;   // 0x1070: a turn about x the app camera's transitions set (0x5AF470; the name ours)
+    CQuat m_fwdlook;   // 0x1070 (SOCOM 1's 0xf60: RotateHead sets it, the app camera's transitions call that)
     unsigned char _1080[0x10d0 - 0x1080];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
     unsigned char _10d4[0x1190 - 0x10d4];
@@ -1237,7 +1251,9 @@ public:
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
     unsigned char _1338[0x1350 - 0x1338];
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
-    unsigned char _135c[0x14e0 - 0x135c];   // (0x14E0 bytes: Create news 5344)
+    unsigned char _135c[0x1440 - 0x135c];
+    CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
+    unsigned char _144c[0x14e0 - 0x144c];   // (0x14E0 bytes: Create news 5344)
 };
 
 inline void *CSealCtrlAi::GetSelect()

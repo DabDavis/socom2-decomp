@@ -370,7 +370,7 @@ extern "C" void func_005A73C0(void *data, void *arg)
         seal->SetBodyPart(data_003DF148, 0);
         rifle->SetActive(false);
     }
-    seal->SetPartAsGear(seal->m_rifle_as_gear_part, seal->m_rifle_as_gear);
+    seal->SetPartAsGear(seal->m_item_gear[1].m_part, seal->m_item_gear[1].m_gear);
 }
 
 /* the rifle taken into the right hand (OVL2 0x5A7480, new in SOCOM II: 0x5807D0 calls it) */
@@ -413,7 +413,7 @@ void ParentPistolToRThighAsGearCallback(void *data, void *arg)
         seal->SetBodyPart(data_003DF150, 0);
         pistol->SetActive(false);
     }
-    seal->SetPartAsGear(seal->m_pistol_as_gear_part, seal->m_pistol_as_gear);
+    seal->SetPartAsGear(seal->m_item_gear[2].m_part, seal->m_item_gear[2].m_gear);
 }
 
 /* the pistol taken into the right hand (OVL2 0x5A7690, new in SOCOM II: 0x5807D0 calls it) */
@@ -482,17 +482,38 @@ extern "C" void func_005AA620(CZSealBody *seal, bool on)
     }
 }
 
-/* the turn at 0x1070 set to an angle about x, or none (OVL2 0x5AF470, new in SOCOM II: the app
- * camera's first- and third-person transitions call it; the names ours) */
-extern "C" void func_005AF470(CZSealBody *seal, float angle)
+/* the head's place and its look's direction in the world, each when asked (OVL2 0x5A3070; SOCOM 1's
+ * GetHeadParams, after CheckForRegionTrigger in both builds -- SOCOM 1's filled both always) */
+void CZSealBody::GetHeadParams(CPnt3D *pos, CPnt3D *dir)
 {
-    if (angle != 0.0f) {
+    if (pos) {
+        PartInSpace(m_head, 0, pos, 0);
+        m_node->m_matrix.Transform(pos, 1);
+    }
+    if (dir)
+        TransformVectors(&m_node->m_matrix, &m_look.m_curr_dir, dir, 1);
+}
+
+/* the head's look's direction in the world: through the node's rotation (OVL2 0x5AF500; SOCOM 1's,
+ * the look held) */
+CPnt3D *CZSealBody::GetLookDirW(CPnt3D *out) const
+{
+    TransformVectors(&m_node->m_matrix, &m_look.m_curr_dir, out, 1);
+    return out;
+}
+
+/* the head turned forward by a pitch, or not at all (OVL2 0x5AF470; SOCOM 1's RotateHead, after
+ * GetLookQuat in both builds: the app camera's first- and third-person transitions and the SEAL's
+ * constructor call it, setting only $f12 -- SOCOM 1's second float, unread there too, is gone) */
+void CZSealBody::RotateHead(float pitch)
+{
+    if (pitch != 0.0f) {
         CQuat q;
 
-        q.MakeXRot(angle);
-        seal->m_1070 = q;
+        q.MakeXRot(pitch);
+        m_fwdlook = q;
     } else
-        seal->m_1070 = CQuat::identity;
+        m_fwdlook = CQuat::identity;
 }
 
 /* whether the SEAL's timed action is due: set at all, and offline at once, online once the network's
@@ -511,6 +532,55 @@ extern "C" bool func_005A8850(CZSealBody *seal)
             due = true;
     }
     return due;
+}
+
+extern "C" {
+/* the CQB deaths, from in front and from behind (OVL1 data, anim types; SOCOM 1's small-data pair) */
+extern AnimType data_003DEE30;
+extern AnimType data_003DEE38;
+}
+
+/* the death a CQB attack gives its victim: from behind or in front, by the attacker's offset against
+ * the victim's facing, flattened (OVL2 0x5A9420; SOCOM 1's FindDeathAnimTypeCQB, after CanUseRestraint
+ * in both builds, the same arithmetic).
+ * OPEN, 0xDC against 0xD8: the target loads both nodes before the facing's three stores (the last in
+ * the call's delay slot) and holds only &fwd.y in a register; MW here loads this node after the stores
+ * and keeps &fwd.z in a register too. Tried: the nodes in locals first, the offset computed first, the
+ * facing assigned after it, y through a pointer, Negate(fwd.y). */
+AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
+{
+    CPnt3D fwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
+    CPnt3D d = *(const CPnt3D *)m_node->m_matrix.m_matrix[3] - *(const CPnt3D *)victim->m_node->m_matrix.m_matrix[3];
+
+    fwd.x = -fwd.x;
+    fwd.y = -fwd.y;
+    fwd.z = -fwd.z;
+    fwd.y = 0.0f;
+    d.y = 0.0f;
+    if (Dot(d, fwd) < 0.0f)
+        return data_003DEE38;
+    return data_003DEE30;
+}
+
+/* the aim along the item in hand: its gear part's x axis, or straight ahead without one (OVL2
+ * 0x5A8790; SOCOM 1's AimWeapon, before CanUseBodyCarry in both builds -- SOCOM 1's took the rifle
+ * and the pistol themselves, SOCOM II's the item's part out of the table, item 4 too) */
+void CZSealBody::AimWeapon()
+{
+    switch (m_item) {
+    case 1:
+    case 2:
+    case 4: {
+        CPnt3D pos;
+        CQuat q;
+
+        PartInSpace(m_item_gear[m_item].m_part, 0, &pos, &q);
+        q.Apply(&CPnt3D::unit_x, &m_aim_dir, 1);
+        break;
+    }
+    default:
+        m_aim_dir = CPnt3D::unit_nz;
+    }
 }
 
 /* (CZWeapon::RemoveWeaponEventCallback is zweapon.h's, through zchar.h) */
