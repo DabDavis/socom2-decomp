@@ -189,14 +189,14 @@ extern FriendInvitationVector data_0044FE00;   /* the friend invitations */
 void func_00300BE0(int, int, int, MediusStatusResponse *);   /* the confirmation's callback */
 MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer? */
-MediusErrorCode func_006492D8(MediusAddToBuddyListConfirmationRequest *req,
+MediusErrorCode MediusBuddyGetPermission(MediusAddToBuddyListConfirmationRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));
 
 MediusErrorCode MediusAccountGetID(MediusAccountGetIDRequest *req,
                                    void (*cb)(int, int, int, MediusAccountGetIDResponse *));
-MediusErrorCode func_006494A0(MediusAccountRequest *req,
+MediusErrorCode MediusAddToIgnoreList(MediusAccountRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));   /* add to the ignored */
-MediusErrorCode func_00649540(MediusAccountRequest *req,
+MediusErrorCode MediusRemoveFromIgnoreList(MediusAccountRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));   /* remove from them */
 
 }
@@ -217,7 +217,7 @@ void func_00300C10(int, int, int, MediusBuddyResponse *);
 MediusErrorCode func_0064AE58(MediusIDRequest *req, MediusBuddyCallback cb);
 MediusErrorCode MediusRemoveFromBuddyList(MediusAccountRequest *req, MediusBuddyCallback cb);
 MediusErrorCode func_0064B368(MediusIDRequest *req, MediusBuddyCallback cb);
-MediusErrorCode func_00649400(MediusGetIgnoreListRequest *req, MediusBuddyCallback cb);
+MediusErrorCode MediusGetIgnoreList(MediusGetIgnoreListRequest *req, MediusBuddyCallback cb);
 MediusErrorCode MediusAddToBuddyList(MediusAccountRequest *req, MediusBuddyCallback cb);
 MediusErrorCode MediusBuddyAddConfirmation(MediusBuddyConfirmationResponse *req);
 }
@@ -321,7 +321,7 @@ void cbFindBuddyListPlayerID(int, int, int, MediusFindPlayerResponse *resp)
         SetSessionKey(req.SessionKey);
         req.TargetAccountID = id;
         req.AddType = 0;
-        CheckMediusError(func_006492D8(&req, func_00300BE0));
+        CheckMediusError(MediusBuddyGetPermission(&req, func_00300BE0));
         LobbyEvent("MP_FRIEND_CONFIRMATION_REQUESTED", 0);
     } else {
         LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
@@ -417,7 +417,7 @@ void CZOnlineLobby::RemoveFromIgnore(int id)
         memset(&req, 0, sizeof(req));
         SetSessionKey(req.SessionKey);
         req.AccountID = id;
-        CheckMediusError(func_00649540(&req, cbRemoveFromIgnoreList));
+        CheckMediusError(MediusRemoveFromIgnoreList(&req, cbRemoveFromIgnoreList));
     }
 }
 
@@ -429,7 +429,7 @@ void CZOnlineLobby::GetIgnoreList()
 
     memset(&req, 0, sizeof(req));
     SetSessionKey(req.SessionKey);
-    CheckMediusError(func_00649400(&req, func_00300F70));
+    CheckMediusError(MediusGetIgnoreList(&req, func_00300F70));
 }
 
 /* the account ignored: the list asked for again, or the menu told it is full (OVL1 0x300E60) */
@@ -450,7 +450,7 @@ void cbFindIgnoreListPlayerID(int, int, int, MediusAccountGetIDResponse *resp)
         memset(&req, 0, sizeof(req));
         SetSessionKey(req.SessionKey);
         req.AccountID = resp->AccountID;
-        CheckMediusError(func_006494A0(&req, cbAddToIgnoreList));
+        CheckMediusError(MediusAddToIgnoreList(&req, cbAddToIgnoreList));
     } else {
         LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
     }

@@ -1102,7 +1102,7 @@ void func_002F0020(int, int, int, MediusPlayerInfoResponse *);   /* the player's
 void func_00300670();   /* the Medius library closed */
 void func_0030D770(CZNetwork *net);   /* the DME left (CZNetwork's) */
 void func_0030E3A0(CZNetwork *net, int);   /* and closed (CZNetwork's) */
-MediusErrorCode func_00649060(MediusSendDirectMessageRequest *req);   /* the direct message sent */
+MediusErrorCode MediusSendChatMessage(MediusSendDirectMessageRequest *req);   /* the direct message sent */
 void func_002A4050(void *chat, const char *text, CHAT_COLOR color, const char *name);   /* a line added to the chat */
 extern char data_00437690[];   /* the chat's window */
 }
@@ -1273,7 +1273,7 @@ extern "C" void func_002F4D60(CZOnlineLobby *lobby, int account, int type, const
         memcpy(req.Message, text, sizeof(req.Message));
     req.MessageType = type;
     req.Message[sizeof(req.Message) - 1] = 0;
-    CheckMediusError(func_00649060(&req));
+    CheckMediusError(MediusSendChatMessage(&req));
 }
 
 /* the filtered text handed to the waiting callback, which is then forgotten (SOCOM 1's; OVL1

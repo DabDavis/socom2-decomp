@@ -149,7 +149,7 @@ extern "C" {
 void func_002F4030(void *msg, int type);
 void func_002F4080(void *msg, int type);
 
-MediusErrorCode func_006495E0(MediusGetPolicyRequest *req,
+MediusErrorCode MediusGetPolicy(MediusGetPolicyRequest *req,
                               void (*cb)(int, int, int, MediusGetPolicyResponse *));
 MediusErrorCode MediusSetGameListFilter(MediusSetGameListFilterRequest *req,
                               void (*cb)(int, int, int, MediusSetGameListFilterResponse *));
@@ -437,7 +437,7 @@ void CZOnlineLobby::GetUsagePolicy()
         memset(&req, 0, sizeof(req));
         SetSessionKey(req.SessionKey);
         req.Policy = 0;
-        CheckMediusError(func_006495E0(&req, cbGetPolicy));
+        CheckMediusError(MediusGetPolicy(&req, cbGetPolicy));
     }
 }
 
