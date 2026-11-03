@@ -169,6 +169,32 @@ bool CZSealBody::IsCurrentBlend(AnimType type) const
     return m_curblend == func_005E1A90(m_animset, type);
 }
 
+/* a part's node placed where the part is (CZBodyPart::Orient's body, body.cpp's, written out: SOCOM
+ * II inlines it here, through the null-tested pointer setters) */
+static inline void OrientPart(CZBodyPart *part)
+{
+    CNode *node = part->m_node;
+
+    node->SetPosition(&part->m_pos);
+    node->SetRotation(&part->m_rot);
+}
+
+/* the parts' poses saved unless the body interpolates, then every live part with a node placed on
+ * it (OVL2 0x5762E0, new in SOCOM II: PrePostTick calls it; the name unknown) */
+extern "C" void func_005762E0(CZSealBody *seal)
+{
+    if (seal->m_interp1 <= 0.0f)
+        seal->SaveParts();
+    std::vector<CZBodyPart *> &parts = seal->m_body_parts;
+
+    for (std::vector<CZBodyPart *>::iterator i = parts.begin(); i != parts.end(); ++i) {
+        CZBodyPart *part = *i;
+
+        if (part && part->m_id >= 0 && part->m_node)
+            OrientPart(part);
+    }
+}
+
 /* the SEAL's blender made (OVL2 0x5761B0: CGame::StartEngine calls it where SOCOM 1's builds a
  * CSealAnim with its constructor out of line; the name unknown) */
 extern "C" void func_005761B0()
