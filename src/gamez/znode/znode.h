@@ -19,6 +19,8 @@ class CZProjectile;
 union _word128;
 /* MAIN's allocator (zsys_public.h's; CMaterial_band's destructor frees its name) */
 void _free(void *p, const char *file, int line);
+/* (zsys_public.h's; CVisBase's constructor allocates its block) */
+void *_malloc(unsigned int size, const char *file, int line);
 namespace zar {
 class CZAR;
 }
@@ -345,6 +347,19 @@ void _free(void *p, const char *file, int line);
  * to free (the names ours but the count's) */
 class CVisBase {
 public:
+    /* a block of the size allocated unless it is static (SOCOM 1's, out of line there; inline in
+     * SOCOM II -- CopyBuffer's copy) */
+    CVisBase(unsigned int size, bool isStatic)
+    {
+        if (!isStatic && size)
+            m_data = _malloc(size, 0, 0);
+        else
+            m_data = 0;
+        m_refs = 0;
+        m_size = size;
+        m_instance_count++;
+        m_static = isStatic;
+    }
     ~CVisBase()
     {
         if (!m_static) {
@@ -375,6 +390,27 @@ namespace zdb {
 
 class CLight;
 class CLOD_band;
+class CVidStack;
+
+/* a detail layer of a visual (SOCOM 1's zdb::tag_DETAIL_PARAMS by VuDetailMap's mangled name, no
+ * DWARF; the members' names ours): the squared distance it draws within, its textures, and the
+ * chain's quadwords up to it (GetChainData cuts the chain there) */
+struct tag_DETAIL_PARAMS {
+    /* a texture of the layer: its select's first halfword (when not 0) and a float the VU code
+     * reads at the command's 0x70 */
+    struct ENTRY {
+        CTexture *m_tex;   // 0x0
+        unsigned short m_select;   // 0x4
+        float m_8;   // 0x8
+    };
+
+    float m_rangeSq;   // 0x0: VuDetailMap draws it while the visual is no farther
+    unsigned short m_count;   // 0x4: its entries, 0xc bytes each
+    unsigned short m_6;   // 0x6
+    unsigned short m_count8;   // 0x8
+    unsigned short m_a;   // 0xa
+    ENTRY *m_data;   // 0xc: set at load, into the block
+};
 
 class CVisual : public tag_VISUAL_HEAD {
 public:
@@ -443,10 +479,44 @@ public:
     /* the view ids' stack primed, the map lists sized, the meshes' statics set (SOCOM 1's static;
      * the wep lane's) */
     static void Init();
-    /* the free view ids (SOCOM 1's stack<unsigned int>; SOCOM II's calls the pointer deque's
-     * push_back and pop_back, so it is spelled as that deque here), and the light, shadow and
-     * projected maps' lists (SOCOM 1's statics: vis's initialiser 0x404570 builds them) */
-    static std::deque<const void *> m_stack_vid;
+    /* the free view ids (SOCOM 1's stack<unsigned int>; SOCOM II's is a stack of pointers -- its
+     * pushes and pops are the pointer deque's push_back and pop_back, and the out-of-line empty()
+     * and top() GetVid calls, 0x321F40 and 0x321EF0, are std::stack<T *>'s byte for byte: the
+     * element's type is ours). Its type, CVidStack, is std::stack<void *> defined where it is used
+     * (vis_vu.cpp, vis_main.cpp): zrdr.h carries a std::stack of its own that <stack> would clash
+     * with. The light, shadow and projected maps' lists (SOCOM 1's statics: vis's initialiser
+     * 0x404570 builds them) */
+    static CVidStack m_stack_vid;
+    /* the view id in use, the stack's top behind a `break` (inline, defined with CVidStack) */
+    static unsigned int GetVid();
+    /* a view's VU buffer copied for this visual: a new owner with its own block, its first list's
+     * references made relative to the source's block and its texture lists copied (SOCOM 1's) */
+    _word128 *CopyBuffer(CVisBase **out, unsigned int vid);
+    /* the view's VU chain found: its start, its quadwords and its subface part, and whether the
+     * detail layers draw (SOCOM 1's, 0x3B6E10) */
+    bool GetChainData();
+    /* the map passes' setups, each a command quadword (the VU program's tag, the context count, 1)
+     * and its data written at the packet's cursor, the cursor moved past them -- false, nothing
+     * written, when the scratchpad's packet has no room (SOCOM 1's VuShadowMap/VuLightMap took and
+     * gave back the cursor; SOCOM II's take it by address and the tag: the names ours) */
+    bool VuProjectedMap(_word128 **cursor, unsigned int tag);
+    bool VuShadowMap(_word128 **cursor, unsigned int tag);
+    bool VuLightMap(_word128 **cursor, unsigned int tag);
+    bool VuDetailMap(_word128 **cursor, unsigned int tag, tag_DETAIL_PARAMS *detail);
+    /* the specular map's frame, band and camera written into its command's data (ours) */
+    void VuSpecularSetup(_word128 *q, CPnt4D *dir, CPnt3D *rgb, float opacity);
+    bool VuSpecularMap(_word128 **cursor, unsigned int tag);
+    /* the object header written, the cursor after it given back (SOCOM 1's VuObjectSetup's first
+     * part) */
+    _word128 *VuObjectSetup(_word128 *p);
+    /* the packet closed: its head tagged, the saved selects copied in (SOCOM 1's, one argument) */
+    static _word128 *VuExecuteState0(_word128 *p);
+    /* a packet's map passes, between an opening and a closing command (ours) */
+    _word128 *VuMapPasses(_word128 *p, tag_DETAIL_PARAMS *detail);
+    /* a texture select saved for the VU code: a DMA reference to it at _savedTS and, unless the
+     * blend word is the default or already the select's, the blend register's update (SOCOM 1's
+     * static, 0x3B6FA0) */
+    static void SaveTextureSelect(_word128 *select, CTexture *tex, unsigned long blend);
     static std::vector<CLightMap *> m_lightMapList;
     static std::vector<CLightMap *> m_shadowMapList;
     static std::vector<void *> m_projectedMapList;
@@ -466,14 +536,9 @@ public:
     /* its textures and palettes (ResolveTextureName adds to it) */
     CDynTexList m_dynTexList;   // 0x48
     /* its detail layers: a count and one allocated block, each layer 0x10 bytes with its
-     * vertices after them (CVisual::Read; the names ours) */
-    struct DETAIL {
-        unsigned int m_0;   // 0x0
-        unsigned short m_count;   // 0x4: its entries, 0xc bytes each
-        unsigned short m_6;   // 0x6
-        unsigned int m_8;   // 0x8
-        void *m_data;   // 0xc: set at load, into the block
-    };
+     * vertices after them (CVisual::Read; SOCOM 1's tag_DETAIL_PARAMS, by VuDetailMap's mangled
+     * name -- the members' names ours) */
+    typedef tag_DETAIL_PARAMS DETAIL;
     DETAIL *m_details;   // 0x60
     unsigned int m_numDetails;   // 0x64
 };   // 0x68 bytes
@@ -834,6 +899,8 @@ public:
     unsigned int UpdateTextureSelect(unsigned int oldAddr, unsigned int newAddr);
     bool FindPalette(CTexPalList *list);
     bool HasMipLevel(CTexture *tex);
+    /* its GIF select copied into a packet (SOCOM 1's; the VU map setups call it -- the wep lane) */
+    void CopyTextureSelect(_word128 *to);
 
     /* the GS memory textures may use, from and to (SOCOM 1's statics) */
     static unsigned int m_baseAddress;
