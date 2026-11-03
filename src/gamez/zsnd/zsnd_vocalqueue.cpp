@@ -45,11 +45,13 @@ void CSndVocalQueue::Open()
     m_sound = 0;
 }
 
-/* OPEN, 4 instructions: the target tests GetFreeEntry's result in v0, then stores the pushed copy
- * (`sw v0,124(sp)` after the branch, its delay slot a nop) and loads the entry back from it into
- * s1; here MW forwards the copy (`move s1,v0`) or, with `if ((entry = GetFreeEntry()) != 0)`, puts
- * the store in the branch's delay slot (otherwise byte-exact). Tried: the copy as its own local, a
- * pointer reference, casts at every use, the early return, the arms swapped */
+/* Byte-exact only with constant propagation off (the world lane's round 1; as ztex_main.cpp's
+ * CTexture::Read and SetGifPtrs): the target tests GetFreeEntry's result in v0, then stores the
+ * pushed copy (`sw v0,124(sp)` after the branch, its delay slot a nop) and loads the entry back
+ * from it into s1, where MW otherwise forwards the copy (`move s1,v0`) or, with `if ((entry =
+ * GetFreeEntry()) != 0)`, puts the store in the branch's delay slot. Tried before: the copy as its
+ * own local, a pointer reference, casts at every use, the early return, the arms swapped */
+#pragma opt_propagation off
 void CSndVocalQueue::Add(CSnd *sound, int id, const CPnt3D *pos, float delay, float vol)
 {
     CSndQueueEntry *entry = GetFreeEntry();
@@ -71,6 +73,7 @@ void CSndVocalQueue::Add(CSnd *sound, int id, const CPnt3D *pos, float delay, fl
         m_queue.push_back(kept);
     }
 }
+#pragma opt_propagation reset
 
 void CSndVocalQueue::Stop()
 {
