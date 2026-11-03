@@ -67,7 +67,16 @@ public:
  * come first and its vtable pointer follows them at 0x910). Only what is written so far is placed */
 class CGameMenu {
 public:
-    unsigned char _0[0x8e0];
+    /* the background movie (SOCOM 1's TickMPEG/RestartBackgroundMPEG/HaltBackgroundMPEG, SOCOM II's
+     * restart taking a name) */
+    bool RestartBackgroundMPEG(const char *name);
+    bool HaltBackgroundMPEG();
+
+    unsigned char _0[0x278];
+    bool m_movierunning;          // 0x278 (SOCOM 1's at 0x244)
+    bool m_has_mpeg_background;   // 0x279
+    CSaferStr m_MPEGName;         // 0x27c
+    unsigned char _288[0x8e0 - 0x288];
     CSaferStr m_ReaderName;     // 0x8e0: the menu's rdr
     unsigned char _8ec[0x910 - 0x8ec];
 
@@ -87,6 +96,16 @@ enum STICK_DIR {
     STICK_DOWN = 4,
     STICK_CENTERED = 5
 };
+
+/* the movie player (zmpeg.h's CMPEG: all static) and the DMA FIFO it takes over (zsys_public.h) */
+class CMPEG {
+public:
+    static int Run(const char *name, bool a, bool background, int arg);
+    static void End();
+};
+void zSysFifoEnd();
+void zSysFifoEnable(unsigned int mode);
+void zSysFifoDisable();
 
 /* a sound (zsnd.h's CSnd: only its lookup by name) */
 class CSnd {
@@ -245,6 +264,42 @@ const char *CGameMenu::GetReaderFileName()
 
 /* the relocator's three GS buffers, each a third of the texture memory's upper part (SOCOM II's;
  * the name ours) */
+/* the background movie stopped, if one runs (SOCOM 1's HaltBackgroundMPEG, 0x366B10) */
+bool CGameMenu::HaltBackgroundMPEG()
+{
+    bool halted = false;
+
+    if (m_has_mpeg_background && m_movierunning) {
+        CMPEG::End();
+        m_movierunning = false;
+        halted = true;
+    }
+    return halted;
+}
+
+/* the background movie started again -- stopped first if it runs -- under a new name when one is
+ * given (SOCOM 1's RestartBackgroundMPEG, SOCOM II's taking the name: CMenuState::OnPop passes
+ * none; 0x366A00) */
+bool CGameMenu::RestartBackgroundMPEG(const char *name)
+{
+    bool running = false;
+
+    if (m_has_mpeg_background) {
+        if (m_movierunning)
+            HaltBackgroundMPEG();
+        if (!m_movierunning) {
+            zSysFifoEnd();
+            zSysFifoDisable();
+            if (name)
+                m_MPEGName = name;
+            running = CMPEG::Run(m_MPEGName.c_str(), true, false, 0) != 0;
+            m_movierunning = running;
+            zSysFifoEnable(1);
+        }
+    }
+    return running;
+}
+
 void CDblBufTextureRelocator::Init()
 {
     _arrGsBufs[0] = zdb::CTexManager::m_texmanager.m_buffers[zdb::CTexManager::m_texmanager.doAddBuffer("Reloc0", 0.0f, 0.4f)];

@@ -6745,8 +6745,8 @@
 0x00365D50 0x9D8 ParseButtonAnim__FP5_zrdrP10ActionItem  # OVL1; s1:calls by hand (CCheckBoxSpec(_zrdr *) calls it with ONCHECK's and ONUNCHECK's tags and the two new ActionItems where SOCOM 1's calls ParseButtonAnim__FP5_zrdrP10ActionItem; the rdr in a0, the item filled through a1, void) -- zui.cpp
 0x00366730 0x208 func_00366730  # OVL1
 0x00366940 0xC0 func_00366940  # OVL1
-0x00366A00 0x104 func_00366A00  # OVL1
-0x00366B10 0x48 func_00366B10  # OVL1; tu: zui.cpp~ (1.0 beta)
+0x00366A00 0x104 RestartBackgroundMPEG__9CGameMenuFPCc  # OVL1; s1:order by hand (the UI lane, round 13: SOCOM 1's TickMPEG, RestartBackgroundMPEG, HaltBackgroundMPEG run in that order, SOCOM II's 0x366940, 0x366A00, 0x366B10 likewise; the same fields -- SOCOM 1's DWARF m_movierunning 0x244, m_has_mpeg_background 0x245, m_MPEGName 0x248, at 0x278/0x279/0x27C -- the FIFO ended and disabled around CMPEG::Run; SOCOM II's takes a name, null from CMenuState::OnPop, and halts a running movie first through Halt inlined) -- zui.cpp, byte-exact
+0x00366B10 0x48 HaltBackgroundMPEG__9CGameMenuFv  # OVL1; tu: zui.cpp~ (1.0 beta); s1:order by hand (the UI lane, round 13: SOCOM 1's HaltBackgroundMPEG after RestartBackgroundMPEG, instruction for instruction at SOCOM II's offsets: CMPEG::End when the menu has a background movie running, the flag cleared, true) -- zui.cpp, byte-exact
 0x00366B60 0x210 func_00366B60  # OVL1
 0x00366D70 0x35C func_00366D70  # OVL1
 0x003670D0 0x35C func_003670D0  # OVL1
