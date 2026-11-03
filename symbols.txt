@@ -12358,20 +12358,20 @@
 0x0062C180 0x38 mcDelayThread  # OVL2; s1:calls
 0x0062C1B8 0x9C rt_circ_buf_create  # OVL2 unaligned; s1:exact
 0x0062C258 0x50 rt_circ_buf_destroy  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta); s1:exact
-0x0062C2A8 0x20 func_0062C2A8  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta)
-0x0062C2C8 0xA4 func_0062C2C8  # OVL2 unaligned
-0x0062C370 0xA4 func_0062C370  # OVL2
-0x0062C418 0x110 func_0062C418  # OVL2 unaligned
-0x0062C528 0xE0 func_0062C528  # OVL2 unaligned
-0x0062C608 0x4C func_0062C608  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta)
-0x0062C658 0xD0 func_0062C658  # OVL2 unaligned
-0x0062C728 0x24 func_0062C728  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta)
-0x0062C750 0x54 func_0062C750  # OVL2; tu: rt_circ_buf.c~ (1.0 beta)
-0x0062C7A8 0x30 func_0062C7A8  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta)
-0x0062C7D8 0x50 func_0062C7D8  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta)
-0x0062C828 0x70 func_0062C828  # OVL2 unaligned
-0x0062C898 0x70 func_0062C898  # OVL2 unaligned
-0x0062C908 0x4C func_0062C908  # OVL2 unaligned
+0x0062C2A8 0x20 rt_circ_buf_clear  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta); s1:order (SOCOM 1's rt_circ_buf object in its order, is_valid gone: zeroes used, start and end; the gcc lane, round 4b)
+0x0062C2C8 0xA4 rt_circ_buf_free  # OVL2 unaligned; s1:order (frees bytes from the start: tests get_used, moves the start, normalises; the gcc lane, round 4b)
+0x0062C370 0xA4 rt_circ_buf_use  # OVL2; s1:order (takes bytes at the end: tests get_avail, moves the end, normalises; the gcc lane, round 4b)
+0x0062C418 0x110 rt_circ_buf_store  # OVL2 unaligned; s1:order (copies in at the end, wrapping: get_avail, two memcpys; the gcc lane, round 4b)
+0x0062C528 0xE0 rt_circ_buf_copy  # OVL2 unaligned; s1:order (copies out from the start without freeing: get_used, get_used_nowrap, memcpy; the gcc lane, round 4b)
+0x0062C608 0x4C rt_circ_buf_normalize  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta); s1:order (normalize_with_buf through the buffer's own scratch; the gcc lane, round 4b)
+0x0062C658 0xD0 rt_circ_buf_normalize_with_buf  # OVL2 unaligned; s1:order (copy, clear, store through a scratch buffer; the gcc lane, round 4b)
+0x0062C728 0x24 rt_circ_buf_get_used  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta); s1:order (the used count; the gcc lane, round 4b)
+0x0062C750 0x54 rt_circ_buf_get_used_nowrap  # OVL2; tu: rt_circ_buf.c~ (1.0 beta); s1:order (used bytes up to the end; the gcc lane, round 4b)
+0x0062C7A8 0x30 rt_circ_buf_get_avail  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta); s1:order (size less used; the gcc lane, round 4b)
+0x0062C7D8 0x50 rt_circ_buf_get_avail_nowrap  # OVL2 unaligned; tu: rt_circ_buf.c~ (1.0 beta); s1:order (free bytes up to the end; the gcc lane, round 4b)
+0x0062C828 0x70 rt_circ_buf_get_start_used_ptr  # OVL2 unaligned; s1:order (buffer + start; the gcc lane, round 4b)
+0x0062C898 0x70 rt_circ_buf_get_start_avail_ptr  # OVL2 unaligned; s1:order (buffer + end; the gcc lane, round 4b)
+0x0062C908 0x4C rt_circ_buf_is_wrapped  # OVL2 unaligned; s1:order (start not below end, bytes used, start not 0; the gcc lane, round 4b)
 0x0062C958 0xC func_0062C958  # OVL2 unaligned
 0x0062C968 0x158 func_0062C968  # OVL2 unaligned
 0x0062CAC0 0x5C func_0062CAC0  # OVL2
