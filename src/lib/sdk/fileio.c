@@ -239,6 +239,18 @@ struct _sceFsPoff {
 };
 static struct _sceFsPoff _sif_FsPoff_Data;
 
+/* the reply side (round 17a): the reply interrupt's data (the demo's LOCAL _sif_FsRcv_Data), the
+ * two 1088-byte receive buffers at _rcv_data_cmd (the demo's LOCAL, 0x40 past _rcv_data_rpc),
+ * the server's double-buffering flag sceFsInit sets (the .data word at 0x1CCD50, unnamed: not in
+ * the demo's release) and the buffer the last reply used (0x1CCD48, _sceFs_Rcv_Intr's, sceIoctl's) */
+static int _sif_FsRcv_Data[16];
+extern char _rcv_data_cmd[];
+extern int data_001CCD50;
+extern void _sceFs_Rcv_Intr(void *, void *);
+extern int sceSifAddCmdHandler(u_int, void (*)(void *, void *), void *);
+extern int sceSifInitRpc(u_int);
+extern int sceSifBindRpc(sceSifClientData *, u_int, u_int);
+
 int sceFsInit(void);
 
 static void _sceFsIobSemaMK(void)
@@ -336,6 +348,50 @@ static void _sceFs_Poff_Intr(void *pkt, void *arg)
 	if (p->func)
 		p->func(p->addr);
 	__asm__ volatile ("sync.l; ei");
+}
+
+/* The client's first use: the power-off and reply handlers installed, the bind retried until the
+ * server is up, every iob freed, then request 255 hands the server the two receive buffers and
+ * takes back its version (kept for _fs_version) and its mode -- 2 when it double-buffers its
+ * replies. The buffer pair is a function-local static (the demo's rcv_adr.30). */
+int sceFsInit(void)
+{
+	static void *rcv_adr[2];
+	struct _sceFsPoff *p = &_sif_FsPoff_Data;
+	struct _sceFsIob *io;
+	int oldei, i, mode;
+
+	sceSifInitRpc(0);
+	p->func = 0;
+	p->addr = 0;
+	oldei = DIntr();
+	sceSifAddCmdHandler(0x80000011, _sceFs_Rcv_Intr, _sif_FsRcv_Data);
+	sceSifAddCmdHandler(0x80000013, _sceFs_Poff_Intr, p);
+	if (oldei)
+		EIntr();
+	while (1) {
+		if (sceSifBindRpc(&_cd, 0x80000001, 0) < 0)
+			return -1;
+		if (_cd.serve != 0)
+			break;
+		i = 0x100000;
+		while (i--)
+			;
+	}
+	_sceFsIobSemaMK();
+	WaitSema(_fs_iob_semid);
+	for (io = _iob; io < &_iob[32]; io++)
+		io->i_flag = 0;
+	SignalSema(_fs_iob_semid);
+	rcv_adr[0] = _rcv_data_cmd;
+	rcv_adr[1] = _rcv_data_cmd + 1088;
+	if (sceSifCallRpc(&_cd, 255, 0, rcv_adr, 8, _rcv_data_rpc, 8, 0, 0) < 0)
+		return -0x10001;
+	memcpy(_fsversion, (void *)UNCACHED(_rcv_data_rpc), 4);
+	memcpy(&mode, (void *)UNCACHED(&_rcv_data_rpc[1]), 4);
+	data_001CCD50 = mode == 2;
+	_fs_init = 1;
+	return 0;
 }
 
 static int _fs_version(void)
