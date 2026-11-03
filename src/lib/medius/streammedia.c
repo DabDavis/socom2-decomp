@@ -10,7 +10,14 @@
  * (rt_audio.c's API, 0x62BD30-0x62C060, each call's error mapped to 42 by the last function here),
  * its members (one 8-byte record per client), the stream ids, three callbacks the application
  * registers and two replies the voice library's callbacks fill in. Every entry point tests that
- * the library is started (17), its arguments (23), and a session's validity (41). */
+ * the library is started (17), its arguments (23), and a session's validity (41).
+ *
+ * SCEA's shapes, measured: a boolean query as one `&&` after its guards (0x644060, 0x644390: a
+ * guard per test is if-converted to `xor; sltiu`); the callbacks' user data a pointer, its own
+ * alias class, so its load is scheduled above the int stores into the callback's record; the
+ * handle compared as `hAudio == pSession->hAudio`; a call's error returned from inside the
+ * positive test (`if (connected) { r = f(); if (r) return r; } return 0;`). 33 of 39 byte-exact;
+ * the six OPEN are diagnosed in place. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
@@ -379,6 +386,9 @@ int func_00643790(void)
     return 0;
 }
 
+/* OPEN (20 words, the right size): the 21 default stores schedule in another order than the
+ * target's (1, 0, 9, 10, 2..8, 11..20 there); 17 source orders tried -- offset order, grouped by
+ * value, each constant's last use first -- past ccperm's reach (21 statements). */
 int func_006437E0(STREAM_PARAMS *pParams)
 {
     if (pParams == 0)
@@ -537,17 +547,18 @@ int func_00644100(int nWorld, unsigned int nMembers)
         return 41;
     if (pSession->pMembers != 0)
         rt_memory_free((void **)&pSession->pMembers);
-    if (rt_memory_allocate_init_zero((void **)&pSession->pMembers, nMembers * sizeof(STREAM_MEMBER)) != 0
-        || pSession->pMembers == 0) {
+    if (rt_memory_allocate_init_zero((void **)&pSession->pMembers, nMembers * sizeof(STREAM_MEMBER)) != 0) {
         rt_memory_free((void **)ppSession);
         *ppSession = 0;
         return 41;
     }
+    if (pSession->pMembers == 0)
+        return 41;
     pSession->nMembers = nMembers;
     pSession->nWorld = nWorld;
     pSession->nMaxMembers = 256;
-    pSession->bValid = 0;
     pSession->bReady = 0;
+    pSession->bValid = 0;
     return 0;
 }
 
@@ -669,6 +680,8 @@ int func_00644588(STREAM_SESSION *pSession, int nMember, STREAM_MEMBER **ppMembe
     return 0;
 }
 
+/* OPEN (5 words): store order -- the target loads each port before storing the type word (`li;
+ * lw; addiu; sw; sw`), here the type is stored first; both groups of two. */
 int func_00644610(STREAM_PEER *pPeer, STREAM_INFO *pInfo)
 {
     if (pPeer == 0)
@@ -715,11 +728,11 @@ int func_00644698(int nWorld, int nClient)
     if (result != 0)
         return result;
     pMember->bJoined = 1;
-    if (pSession->bConnected != 1)
-        return 0;
-    result = func_00644BD0(pSession, pMember);
-    if (result != 0)
-        return result;
+    if (pSession->bConnected == 1) {
+        result = func_00644BD0(pSession, pMember);
+        if (result != 0)
+            return result;
+    }
     return 0;
 }
 
@@ -752,6 +765,8 @@ int func_006447C0(int nWorld, int nClient)
     return 0;
 }
 
+/* OPEN (wrong size, 0x120 against 0x11C): the peer description's seven fields and the frame;
+ * not diagnosed further. */
 int func_006448A0(STREAM_CLIENT *pClient)
 {
     STREAM_PEER peer;
@@ -926,6 +941,9 @@ int func_00644C90(void *hAudio, int a1, unsigned short *pMsg)
     return 1;
 }
 
+/* OPEN (wrong size): the client query's reply. The target materialises 1 in v0 once and uses it
+ * for the waiting test and as the return value of the next three tests; nine shapes tried (guards,
+ * one `&&`, nested ifs, a result variable set to 1, the 0x644C90 shape that matched). */
 int func_00644D20(void *hAudio, int a1, int *pMsg)
 {
     STREAM_SESSION *pSession = 0;
@@ -993,6 +1011,8 @@ typedef struct STREAM_CB_DATA {
     void *pData;
 } STREAM_CB_DATA;
 
+/* OPEN (5 words): registers -- the type and a3 take s1/s2 the other way round, and the user
+ * data is loaded between the stores in the target. */
 int func_00644EA0(void *hAudio, int nType, int a2, int a3, int t0)
 {
     STREAM_CB_DATA cb;
@@ -1074,6 +1094,9 @@ int func_00645018(void *hAudio, int a1, int a2)
 }
 
 /* the voice library's connect callback: the local address known, every joined member announced */
+/* OPEN (37 words, the right size): the member loop -- `bJoined == 1 && bAnnounced == 0` folds
+ * into the target's one word load and 0x00FF00FF mask (fold_truthop), here too; the registers
+ * around the two voice-library calls differ. Not iterated. */
 int func_006450B0(void *hAudio, int nAddr, int nPort)
 {
     STREAM_SESSION *pSession = 0;
