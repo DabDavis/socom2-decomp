@@ -1647,6 +1647,17 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 13** (seal_unit.cpp, SetAimDirR, CTPaint::Tick, seal_aievent.cpp):
+  - a bool masked in v0 (`andi v0,v0,0xff`) live to the epilogue is the function's return value:
+    SetAimDirR returns its callee's bool, which SOCOM 1's mangled name never showed;
+  - passing a member's address as `(T *)((char *)this + K)` stops MW keeping it in a saved register
+    for later stores to that member (the existing tell, confirmed for stores);
+  - a single-element list walk `if (!found) { walk; if (!found && flag) walk; }` gives the target's
+    jump straight to the return after the first loop; two separate ifs do not (IsMemberOfUnit);
+  - a pointer-list member constructed in an out-of-line constructor calls OVL2's deleter-constructor
+    copy (0x50FFA0) out of line; a `list<FT_COMMAND>` member makes the unit emit its own copy;
+  - units: seal_kit.cpp starts at ~0x5B82D0 (SOCOM II's CZKit additions at the source's end);
+    seal_aievent.cpp runs 0x5F8D40-0x5FADEF in SOCOM 1's order.
 - **Tells from the SEALs, round 12** (seal_env.cpp's look, blink and aim functions):
   - a CQuat copied into a pointed-to member through an inline taking it by const reference gives the
     target's registers; the plain assignment swaps them (ApplyBlinkAnim, ApplyEyeLookAnim);
