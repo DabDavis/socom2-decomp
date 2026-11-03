@@ -6727,10 +6727,15 @@
 0x004CCDF8 ASRSPICBRESULT
 0x004CE258 FreeCtxInfo
 0x004D0008 FreeSecondPassContext_ForChinese
+0x004D0980 Tone_Of_Final
+0x004D09A8 Calculate_NbrOfStatesInDict_ForChinese
 0x004D1B20 FreeSecondPassContext
 0x004D52F8 CreateCtxTree
 0x004D5AA8 CompareIDs
+0x004D5AB8 CreateActiveWordsCtxTree
 0x004D7460 func_004D7460
+0x004D8140 Tone_Of_Final_TreeCtx
+0x004D8168 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx
 0x004D9EC8 casrOpen
 0x004DA2A0 casrClose
 0x004DA3F8 casrStart
@@ -6839,8 +6844,10 @@
 0x004F0C00 ExtendBacktraceStack
 0x004F0C80 ScoreCompare@nbestdp
 0x004F0CB0 IdleProcess
+0x004F10C0 BackTracking
 0x004F14F8 PostDP
 0x004F1898 FlushPitchDP
+0x004F1D80 ControlPitchDP
 0x004F28C0 ConstructPitchDP
 0x004F2900 CreateWindow
 0x004F2B30 InitPitchWindow
@@ -6864,6 +6871,7 @@
 0x004F4730 ProcessDCTLift
 0x004F4900 ControlDCTLift
 0x004F4950 ControlGender
+0x004F4EE0 GenderDataCompute
 0x004F5428 GenderSelection
 0x004F5708 InitGender
 0x004F5940 ProcessGender
