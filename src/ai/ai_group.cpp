@@ -207,6 +207,10 @@ public:
     /* every group ticked, the finished ones dropped (OVL2 0x60E590), and every group dropped (OVL2
      * 0x60E4E0); the ids begun again (OVL2 0x60E580) -- the names ours */
     static void TickAll(float dT);
+    /* every group's cameras ended when asked: its members' bits 19 and 21 set and their stacks'
+     * bits updated, flag 1 cleared, the group aborted on flag 8 (OVL2 0x60E280: SetAiEnabled calls
+     * it; the name ours) */
+    static void EndCameras(bool end);
     static void DeleteAll();
     static void ResetIds();
     /* the flag `f` set or cleared (inlined: `on ? f : 0` set, `on ? 0 : f` cleared; the name ours) */
@@ -356,6 +360,32 @@ void CAiGroup::TickAll(float dT)
     std::list<CAiGroup *>::iterator i = std::remove_if(m_list.begin(), e, TickGroup);
 
     m_list.erase(i, e);
+}
+
+/* (OVL2 0x60E280: the groups walked with an assigned iterator, as Find) */
+void CAiGroup::EndCameras(bool end)
+{
+    if (end) {
+        std::list<CAiGroup *>::iterator e = m_list.end();
+        std::list<CAiGroup *>::iterator i;
+
+        for (i = m_list.begin(); i != e; ++i) {
+            CAiGroup *g = *i;
+
+            if (g->m_flags & 1) {
+                for (memberlist::iterator j = g->m_members.begin(); j != g->m_members.end(); ++j) {
+                    CSealCtrlAi *ai = *j;
+
+                    ai->m_aibit19 = true;
+                    ai->m_aibit21 = true;
+                    func_005F7470(&ai->m_stateStack, ai, 1);
+                }
+                g->m_flags &= ~1;
+                if (g->m_flags & 8)
+                    g->Abort();
+            }
+        }
+    }
 }
 
 /* (OVL2 0x60E580) */
@@ -696,23 +726,25 @@ void CAiGroup::SetMemberLoc(unsigned int i, const CAiMapLoc &loc)
     }
 }
 
-/* (OVL2 0x60E460).
- * OPEN, 12 instructions, registers only: the shape is the target's (an assigned iterator living in
- * the frame, its begin() copied bitwise; the found group kept in a result zeroed in the first
- * test's delay slot), but the target keeps the first node in a2, the sentinel in a3 and the group
- * in a1 and compares `bne v1,a0` (the field first); here they rotate (a3, a1, a2; `bne a0,v1`).
- * Tried: the result declared after the iterator, the group in a local of its own (11), the test
- * `id == ...`, the assignment inside the test (8 bytes short) */
+/* (OVL2 0x60E460: the end taken into a local first, as EndCameras and DeleteAll do, the iterator
+ * assigned (it lives in the frame, begin() copied bitwise), the group read into a local before its
+ * id is compared -- which puts the field first in the `bne`. Pinned: GetGroup (0x60E7A0) tail-jumps
+ * to it, never inlining it) */
 #pragma auto_inline off
 CAiGroup *CAiGroup::Find(int id)
 {
     CAiGroup *found = 0;
+    std::list<CAiGroup *>::iterator e = m_list.end();
     std::list<CAiGroup *>::iterator i;
 
-    for (i = m_list.begin(); i != m_list.end(); ++i)
-        if ((*i)->m_id == id) {
-            found = *i;
-            break;
+    for (i = m_list.begin(); i != e; ++i)
+        {
+            CAiGroup *g = *i;
+
+            if (g->m_id == id) {
+                found = g;
+                break;
+            }
         }
     return found;
 }
