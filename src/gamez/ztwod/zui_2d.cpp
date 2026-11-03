@@ -200,6 +200,8 @@ class CTeleType : public CRenderableString {
 public:
     virtual ~CTeleType();
     virtual int GetZAnimCmdType(const char *name);
+    virtual void Tick(float dT);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual void SetString(const char *s, bool translate);
 
     CSaferStr m_text;   // 0xc0
@@ -207,7 +209,8 @@ public:
     int m_len;   // 0xd0: the text's length
     int m_typed;   // 0xd4: the characters shown
     int m_d8;   // 0xd8
-    unsigned char _dc[0xe8 - 0xdc];
+    unsigned char _dc[0xe4 - 0xdc];
+    int m_shown;   // 0xe4: the lines the window shows
     int m_e8;   // 0xe8
     unsigned char _ec[0xf0 - 0xec];
     int m_f0;   // 0xf0
@@ -365,6 +368,7 @@ extern "C" void func_00370DB0(CRadioStrip *strip);
 class C2DCounter : public CRenderableString {
 public:
     virtual ~C2DCounter();
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
 
@@ -533,6 +537,12 @@ void CHProgressBar::Tick(float dT)
 namespace {
 float g_fCounterSpeedFactor = 1.0f;
 float g_fTtySpeedFactor = 1.0f;
+}
+
+/* the teletype's typing noise (SOCOM II's, the name ours: 1 in the image; CTeleType::Tick reads it,
+ * TickZAnimCmd's finish clears it around each step it types out at once) */
+namespace {
+bool g_bTtyNoise = true;
 }
 
 void UiSetCounterSpeedFactor(float f)
@@ -739,6 +749,67 @@ bool CSliderBar::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
     default:
         return C2DButton::TickZAnimCmd(hdr, dT, done);
     }
+}
+
+/* Continue (1) restarts the pause; scroll up/down (2, 3) move the window a line once all is typed;
+ * finish (4) types the rest at once, quietly, and goes on to the renderable string's commands as
+ * any other does (it falls through). Only Continue and the base report a command handled */
+bool CTeleType::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+    bool handled = false;
+
+    switch (cmd->m_type - CRenderableString::GetZAnimCmdType(0)) {
+    case 1:
+        m_1a0 = 0;
+        handled = true;
+        break;
+    case 2:
+        if (!(m_typed < m_len)) {
+            int lines = m_numLines;
+
+            if ((lines - m_1a8) * GetSpacing() > m_shown)
+                m_1a8++;
+        }
+        break;
+    case 3:
+        if (!(m_typed < m_len) && m_1a8 > 0)
+            m_1a8--;
+        break;
+    case 4:
+        while (m_typed < m_len) {
+            g_bTtyNoise = false;
+            Tick(100000.0f);
+            g_bTtyNoise = true;
+        }
+    default:
+        handled = CRenderableString::TickZAnimCmd(hdr, dT, done);
+        break;
+    }
+    return handled;
+}
+
+/* START and FINISH as commands of their own, their argument zeroed; anything else the renderable
+ * string's (SOCOM 1's two, its slots moved) */
+C2DAnimCmdHdr *C2DCounter::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+
+    if (zrdr_findtag(rdr, "START")) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("START");
+        cmd->m_arg = 0;
+    } else if (zrdr_findtag(rdr, "FINISH")) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("FINISH");
+        cmd->m_arg = 0;
+    } else
+        cmd = CRenderableString::ParseZAnimCmd(rdr);
+    return cmd;
 }
 
 /* Start: the count's start taken from 0xD0; Finish: the count stopped at its value, shown and the
