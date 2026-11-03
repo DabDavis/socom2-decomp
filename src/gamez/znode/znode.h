@@ -19,6 +19,8 @@ class CZProjectile;
 union _word128;
 /* MAIN's allocator (zsys_public.h's; CMaterial_band's destructor frees its name) */
 void _free(void *p, const char *file, int line);
+/* (zsys_public.h's; CVisBase's constructor allocates its block) */
+void *_malloc(unsigned int size, const char *file, int line);
 namespace zar {
 class CZAR;
 }
@@ -336,6 +338,19 @@ void _free(void *p, const char *file, int line);
  * to free (the names ours but the count's) */
 class CVisBase {
 public:
+    /* a block of the size allocated unless it is static (SOCOM 1's, out of line there; inline in
+     * SOCOM II -- CopyBuffer's copy) */
+    CVisBase(unsigned int size, bool isStatic)
+    {
+        if (!isStatic && size)
+            m_data = _malloc(size, 0, 0);
+        else
+            m_data = 0;
+        m_refs = 0;
+        m_size = size;
+        m_instance_count++;
+        m_static = isStatic;
+    }
     ~CVisBase()
     {
         if (!m_static) {
@@ -465,6 +480,9 @@ public:
     static CVidStack m_stack_vid;
     /* the view id in use, the stack's top behind a `break` (inline, defined with CVidStack) */
     static unsigned int GetVid();
+    /* a view's VU buffer copied for this visual: a new owner with its own block, its first list's
+     * references made relative to the source's block and its texture lists copied (SOCOM 1's) */
+    _word128 *CopyBuffer(CVisBase **out, unsigned int vid);
     /* the view's VU chain found: its start, its quadwords and its subface part, and whether the
      * detail layers draw (SOCOM 1's, 0x3B6E10) */
     bool GetChainData();

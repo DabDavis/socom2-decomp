@@ -280,6 +280,73 @@ CTexture *CVisual::ResolveTextureName(_word128 *names, _word128 *select)
     return tex;
 }
 
+/* a view's VU buffer copied for this visual: a new owner of the same size (its constructor inline
+ * in SOCOM II), the block copied, and when the head's list is open, each select of the list whose
+ * kind is 5 made relative to the source's block and each of kind 8 given its own copy (SOCOM 1's).
+ * The copies are do-while loops (no entry test), the flag's address taken once, the cursor
+ * stepped in the loop's increment, the kinds a switch (tested 5 first, kind 8's code first). OPEN,
+ * 8 bytes long and 7 instructions off: the switch's second test is `beq 8; b out` where the
+ * target branches `bne 8, out` into kind 8's code (nested ifs not tried), and the block copy's
+ * two loads are scheduled ahead of the length where the target loads them after it */
+_word128 *CVisual::CopyBuffer(CVisBase **out, unsigned int vid)
+{
+    CVisBase *src = (CVisBase *)((_word128 *)m_lodMesh[vid])->u32[2];
+    _word128 *sh;
+    char *base = (char *)src->m_data;
+
+    sh = (_word128 *)(base + src->m_c);
+
+    CVisBase *b = new CVisBase(src->m_size, false);
+
+    b->m_c = src->m_c;
+
+    _word128 *d = (_word128 *)b->m_data;
+    _word128 *s = (_word128 *)src->m_data;
+    int n = (int)src->m_size / 16;
+
+    do {
+        *d = *s;
+        s++;
+        d++;
+    } while (--n);
+
+    _word128 *h = (_word128 *)((char *)b->m_data + b->m_c);
+    unsigned char *open = &h->u8[2];
+
+    if (*open == 1) {
+        *open = 0;
+        sh++;
+
+        unsigned int i = 0;
+        unsigned int count = h->u16[0];
+
+        h++;
+        for (; i < count; i++, h++, sh++) {
+            switch (h->u8[2]) {
+            case 8: {
+                unsigned int k = h->u16[0];
+                _word128 *v = (_word128 *)_malloc(k * 16, 0, 0);
+                _word128 *t = v;
+                _word128 *f = (_word128 *)h->u32[1];
+
+                do {
+                    *t = *f;
+                    f++;
+                    t++;
+                } while (--k);
+                h->u32[1] = (unsigned int)v;
+                break;
+            }
+            case 5:
+                h->u32[1] = sh->u32[1] - (unsigned int)base;
+                break;
+            }
+        }
+    }
+    *out = b;
+    return (_word128 *)((char *)b->m_data + b->m_c);
+}
+
 /* the head's parameters, then the detail layers: their count, the block's size and the block,
  * each layer's data pointer set into the block after the layers (SOCOM 1's) */
 bool CVisual::Read(zar::CZAR &zar)
