@@ -279,7 +279,13 @@ void __vector_pod<T, Allocator>::resize(size_t sz, const T &c)
 
 /* n copies of x at position: in place when the capacity holds them (x itself moved with the tail
  * when it lies there), else into a buffer grown by doubling from the old capacity (SOCOM 1's
- * <vector> 486-530: newcap, newsize, olddata, pos, xp, t1) */
+ * <vector> 486-530: newcap, newsize, olddata, pos, xp, t1 -- MW's DWARF lists a block's locals in
+ * REVERSE declaration order: flush's `failed` before its sentry `ok`).
+ * OPEN (MAIN's copy 0x18B810), 0x470 against 0x488: the throw (length_error through the counted
+ * string, its constructor inlined once flush has generated it), both branches and the 8x copies are
+ * the target's; the registers are numbered otherwise (the target: this s3, position s2, n s1, xp s4
+ * from entry, newsize s0, olddata s5, pos s6 -- here this s2, position s1, n s0, x s6) and the in-place
+ * branch is 0x18 short. Written so that iostream.cpp emits ~logic_error, ~length_error and what(). */
 template <class T, class Allocator>
 void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
 {
@@ -390,6 +396,9 @@ public:
     iterator end() { return iterator(this->data_ + this->size_); }
     const_iterator begin() const { return const_iterator(this->data_); }
     const_iterator end() const { return const_iterator(this->data_ + this->size_); }
+    /* NOT WRITTEN: the class insert (0x18BE10 for the mask map's 12-byte entries, 0x6F8; 0x18C510 for
+     * the case maps' 16-byte ones, 0x658) -- the pod insert's shape over a class element (memberwise
+     * copies, the wchar_t fields lhu/sh, the mask's lh/sh), the same length_error throw */
     void insert(T *position, size_t n, const T &x);
     void insert(iterator position, const T &x) { insert(position.m_p, 1, x); }
 };
@@ -826,6 +835,11 @@ private:
     std::vector<entry> table_;
 };
 
+/* OPEN, 0x264/0x234 against 0x260/0x240 (0x18B0C0, 0x18B320): the walk and the three class-vector
+ * inserts are the target's; the frame is 0x10 larger and one more saved register (this in s3, &e.x2_ in
+ * s1 against s2/s0), and the entry's slope test is laid out the other way (the target falls through to
+ * the division, the zero arm after it) -- `x2 != x1 ? ... : 0`, an if/else body and declaring oldi
+ * ahead of pos were tried (build/scratch/rt/ri1.py) */
 template <class T, class U>
 void range_map<T, U>::insert(const T &x1, const T &x2, const U &y1, const U &y2)
 {
@@ -849,6 +863,10 @@ void range_map<T, U>::insert(const T &x1, const T &x2, const U &y1, const U &y2)
     }
 }
 
+/* OPEN, 0xDC/0xCC against 0xEC/0xDC (0x18CB70, 0x18CC60): the target materialises the range test
+ * and negates it (sltu, xori before the branch -- not a bool's !, an int's) and re-reads the found
+ * iterator's word for x1_ but not for x2_; `contains(x) == false` (0xE4), an int-returning contains
+ * (0xE4) and the test written out (0xCC) were tried (build/scratch/rt/vc1.py, vc2.py) */
 template <class T, class U>
 U range_map<T, U>::operator[](const T &x) const
 {
