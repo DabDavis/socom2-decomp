@@ -1841,6 +1841,33 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 13** (CUIVariable's UIVarMixin base, the look's background pieces, the hangul functions,
+  CGameMenu's background film):
+  - CUIVariable is `: _zrdr, UIVarMixin` -- the mixin at 0x8 with its own vptr at 0x10 (vtable 0x4062B0), an inline
+    virtual destructor and UpdateUIVar, an inline default constructor, the longevity a byte enum, a callback pair at
+    0x28/0x2C (its copy constructor 0x386BF0 byte-exact); zui_var.cpp emits the vtable's four slots, so fts_mission.cpp's
+    tail rows 0x2B1530, 0x2B1A10, 0x2B2170 and 0x2B2180 carry CUIVariable's names (renamed at integration:
+    ~CUIVariable byte-exact, the three others from source where drafts matched them);
+  - A WRONG STAND-IN ELEMENT IN ONE MEMBER CAN COST UNRELATED TEMPLATE INSTANCES: m_sources[4]'s real element --
+    CSkbBgPiece {CSaferStr texture; CSkbRect source, display}, 0x2C bytes, inside CSkbBgPieces, a class over the
+    vector (its destructor tests `this` three times where a plain vector's tests twice) -- put zui_skb.cpp's template
+    tail in the target's order, which brought insert<CSkbKey> and the grid's clear 0x38FEF0 in (no longer a
+    draft-only row);
+  - with a constant n, `Count() > n` branches straight on `blez`, `n < Count()` keeps `slt`/`beqz`; a push_back
+    argument the target first copies to a stack byte is an rvalue (`(char)x`), and taking the receiver into a
+    reference local first puts its address ahead of that copy; a store in a call's delay slot was written before the
+    call; an inline inlined one level turns its by-value parameter into a stack copy, its callees appearing as
+    out-of-line copies beside the caller;
+  - SOCOM 1's CGameMenu film trio, by order and fields: TickMPEG 0x366940 (SOCOM II loops by the byte at 0x27A),
+    RestartBackgroundMPEG(const char *) 0x366A00 (the restart takes a name), HaltBackgroundMPEG 0x366B10;
+  - open: Attach 0x3869F0 (0xE4 vs 0xC0: the target inlines IsAttached one level and calls the vector's begin, end,
+    find and != out of line -- the original's tree is taller than five), the grid's insert 0x38F7D0 (0x5C0 vs 0x5D8:
+    row destructors through two out-of-line `return this` accessors 0x38FDB0/0x38FDC0, a chain cut at its leaves,
+    and an s0/s1 swap), SkbHangulBack 0x3910E0 (0x19C vs 0x190: the local pieces' size and data address kept in
+    s0/s1 across the call), CSkbPieces::Append 0x3908A0 (1: the add's operand order, about fifteen forms), the display
+    unit's piece tail 0x397FE0-0x3989DF (resize exact under a probe; erase and insert wait on the look parser
+    0x3963F0 using CSaferStr's copy and assignment first), CreateSoftKeyboard, GetCurKeyProps (perhaps an inline too
+    tall for its callers: untested).
 - **Tells from the HUD, round 23** (the radio command menu: hud_tcmcmds.cpp and hud_tcm.cpp):
   - the menu 0x22EDB0-0x23775F is THREE units, cut where calls stop inlining: hud_tcmcmds.cpp 0x22EDB0-0x231A2F (its
     initialiser 0x3FF430 matches; the tree calls its two 8-byte node setters out of line), the tree 0x231A30-0x23624F
@@ -3832,7 +3859,7 @@ constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' 
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0, 0x2F6230
-and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the keyboard grid's clear 0x38FEF0 and the hangul pieces' clear 0x3929C0 (their elements' destructors one inline level deeper in the original; drafts with `sc: as=` lines), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line) -- ELEVEN rows in all -- 0x29FF60 and
+and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line) -- TEN rows in all -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
 

@@ -3915,7 +3915,7 @@
 0x002B1310 0x8 func_002B1310  # OVL1
 0x002B1320 0x68 func_002B1320  # OVL1
 0x002B1390 0x19C func_002B1390  # OVL1
-0x002B1530 0xC8 func_002B1530  # OVL1
+0x002B1530 0xC8 __dt__11CUIVariableFv  # OVL1; the integrator 2026-11-04, by the UI lane round 13: CUIVariable's vtable 0x4062B0 slot (its inline virtual destructor's copy; zui_var.cpp emits it under this name)
 0x002B1600 0x198 func_002B1600  # OVL1
 0x002B17A0 0x14 func_002B17A0  # OVL1
 0x002B17C0 0x18 func_002B17C0  # OVL1
@@ -3924,12 +3924,12 @@
 0x002B1910 0x60 __dt__17CValveSaveManagerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B1970 0x60 func_002B1970  # OVL1
 0x002B19D0 0x3C __ct__12CUIVarSTableFv  # OVL1; s1:align
-0x002B1A10 0x2C func_002B1A10  # OVL1
+0x002B1A10 0x2C UpdateUIVar__11CUIVariableFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the UI lane round 13: vtable 0x4062B0's UpdateUIVar slot (inline virtual; zui_var.cpp emits it)
 0x002B1A40 0x190 erase__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FP11CUIVariableP11CUIVariable  # OVL1; s1:align
 0x002B1BD0 0x510 func_002B1BD0  # OVL1
 0x002B20E0 0x84 func_002B20E0  # OVL1
-0x002B2170 0x8 func_002B2170  # OVL1
-0x002B2180 0x8 func_002B2180  # OVL1
+0x002B2170 0x8 @8@UpdateUIVar__11CUIVariableFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the UI lane round 13: the UIVarMixin-base thunk of UpdateUIVar (zui_var.cpp emits it)
+0x002B2180 0x8 @8@__dt__11CUIVariableFv  # OVL1; the integrator 2026-11-04, by the UI lane round 13: the UIVarMixin-base thunk of ~CUIVariable (vtable 0x4062B0's second part; zui_var.cpp emits it)
 0x002B2190 0x38 Clear__9CSpawnersFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
 0x002B21D0 0x13C Tick__9CSpawnersFf  # OVL1; s1:align
 0x002B2310 0x90 RecycleEntity__8CMissionFP7CEntity  # OVL1; s1:order by hand (the states lane: after CSpawners::Tick as in SOCOM 1; both restart the spawners' timer at 2.0, count one more spawn and call CEntity::RecycleEntity(e); SOCOM II's first stops a flagged entity's anims)
