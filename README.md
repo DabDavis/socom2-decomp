@@ -3546,7 +3546,42 @@ an object, 11 GNU tables (FillLanguageVirtualTable 1 -> 316 bytes, FillContextV2
 (the codec's `.lit4` floats 1 -> 4). `test_scdecomp.py`'s `test_gnu_table_is_compared_whole` pairs
 both with a corrupted image (a slot +8; the codec's 1.40234375f, 0x3FB38000, as 0x3FB48000): each
 was a MATCH under master's scdiff, each fails now. Still by address only: a GLOBAL a unit defines
-(its content is data, scored nowhere).
+(its content is data, scored nowhere). Re-proved after merging master 7ba1b5ba (7b's and 7c's units
+in): 11,110 lines, one verdict changed -- **asrspi_OpenEngine, WRONG REFERENCE -> MATCH**: its
+`g_APIRecogCallBacks` (eight callbacks, slot 3 null) was read as its first three relocated words
+and checked by distance, and asrspi_ActivateWords, open and 311 words off in size, sits between the
+function and the callbacks; by name all eight slots are right (checked apart, slot by slot). A
+false WRONG on master's tools, not a hole in these.
+
+**Round 7a** (2026-11-03, by hand; the tools above first): 32 rows newly byte-exact (8,870 -> 8,902 on
+master's tools, 8,903 on these), 13 matched drafts superseded, 12 rows and 4 data rows named. libkernl's `sdk/loadfile.c` whole (18 of 18: `_lf_bind`, open since round
+6a, and the six module/ELF/IOP-memory calls), libmc whole but one (`sdk/libmc.c`, 27 of 28: 21 new;
+12 rows named by the demo's order, each checked by its RPC number -- sceMcInit, sceMcEnd,
+mcHearAlarm, `mcDelayThread@libmc` (OVL2's copy at 0x62C180 holds the bare name), sceMcChdir,
+sceMcFormat, sceMcDelete, sceMcFlush, sceMcSetFileInfo, sceMcRename, sceMcUnformat,
+sceMcGetEntSpace; data.txt gains the demo's labels buffFileInfo, sifParamFname, sifParamNext and the
+newer release's semaidDelay), and five libgraph objects (`sdk/gs_*.c`, `sdk/libgraph.h`: 5 of 6 --
+sceGsPutDispEnv, sceGszbufaddr, sceGsSyncV, sceGsSetDefAlphaEnv, sceGsGetGParam over its draft).
+What they showed:
+
+- **A constant-size memcpy is GCC's block move**: loadfile's 252-byte argument copy (the run-time
+  alignment test, an `ld`/`sd` loop and an `ldl`/`ldr` one) and libmc's 64-byte file-info copy
+  (`ldl`/`sdl` both sides: a `char *` source makes both unaligned) are `memcpy` calls with a constant
+  size, never a struct assignment (aligned `ld`/`sd`).
+- **A result read before a store that may alias it**: loadfile's module calls return `_senddata.id`
+  read into a local before `*result` is stored (`int *` may alias the static).
+- **Block layout follows the source's nesting**: `_lf_bind`'s bind loop sits inside
+  `if (_bind_check < 0)`, its success path returning from inside the loop -- the delay loop is laid
+  out last and the first test jumps to the final `return 0`; libmc's null-argument cases come last
+  as `if (argp != 0) {...} else`.
+- **libmc is a later release than the demo's** (functions 4-16 bytes apart, a second semaphore for
+  the delay alarm): its rows had no exact names; the demo's order and the RPC numbers (ps2sdk's libmc
+  reconstructs the same protocol and command layouts) name them.
+- **Sony's sceGsGParam is 16-aligned**: only then does GCC fold sceGszbufaddr's `InterMode == 1 &&
+  FFMode == 0` into one 64-bit load and a 0x0000FFFF0000FFFF mask; libgraph's demo objects hold one
+  function each.
+- **Open, diagnosed in place**: sceMcWrite (the head split's `buff - 16` is reassociated here, kept in
+  the target), sceGsResetGraph (4 words, a v0/v1 swap).
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
