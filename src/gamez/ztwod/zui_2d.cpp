@@ -11,6 +11,7 @@
  * The classes' layouts are zui_2d.h's (the UI lane's), redeclared here with the virtuals these
  * functions need. Defined in reverse of their image order (-inline deferred). */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
@@ -40,9 +41,27 @@ _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
 
+/* a ZRDR value as the UI variable's base: only the member the variable's setter calls (zrdr.h's
+ * _zrdr; empty here, laid at offset 0) */
+struct _zrdr {
+    void DeleteChildren();
+};
+
 /* a UI variable as the plain bitmap reads it: its type (3 a string) and the string */
-class CUIVariable {
+class CUIVariable : public _zrdr {
 public:
+    void UpdateDependents();
+    /* a real set, the watchers told, unless it already holds it (zui.h's operator=(float)) */
+    void SetReal(float f)
+    {
+        if (m_type != 2 || m_real != f) {
+            DeleteChildren();
+            m_type = 2;
+            m_real = f;
+            UpdateDependents();
+        }
+    }
+
     bool IsString() const { return m_type == 3; }
     const char *GetString() const { return m_type == 3 ? m_str : 0; }
     /* the value as a number (zrdr.h's _zrdr::Real and Int: 2 a real, 1 an integer) */
@@ -119,6 +138,8 @@ public:
 class CRenderableString : public C2DString, public UIVarMixin {
 public:
     virtual ~CRenderableString();
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     /* its own slot after the tables (+0xA0; 0x37A630, empty -- SOCOM 1's Update, between Draw and
      * the destructor in both builds), then UpdateUIVar's primary slot (+0xA4, 0x379260) */
@@ -133,8 +154,15 @@ public:
 class CWrappedText : public CRenderableString {
 public:
     virtual ~CWrappedText();
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
+    virtual int GetZAnimCmdType(const char *name);
 
-    unsigned char _c0[0x250 - 0xc0];
+    int m_c0;   // 0xc0
+    int m_shown;   // 0xc4: the lines the window shows (zui_2d.h's m_line, -1 at first)
+    int m_c8;   // 0xc8
+    float m_offset;   // 0xcc: the scroll, in the string's spacing
+    unsigned char _d0[0x250 - 0xd0];
 };   // 0x250 bytes
 
 /* wrapped text scrolling by itself (SOCOM 1's CScrollText; SOCOM II's 0x270 bytes, zui_2d.h's
@@ -236,6 +264,7 @@ public:
     virtual void SetCanHandleInput(bool val);
     virtual void SetNormal();
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     virtual void UpdateUIVar(CUIVariable *var);
 
@@ -302,6 +331,7 @@ public:
     virtual ~CSliderBar();
     virtual void UpdateUIVar(CUIVariable *var);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
 
     float m_value;   // 0x440
@@ -319,23 +349,30 @@ class CRadioStrip : public C2DButton {
 public:
     virtual ~CRadioStrip();
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
 
     int m_choice;   // 0x440
 } __attribute__((aligned(16)));   // 0x450 bytes
+
+/* the strip's two refreshes after a new choice (SOCOM II's: SOCOM 1 walked the buttons inline;
+ * 0x370D10 and 0x370DB0, no rows named yet) */
+extern "C" void func_00370D10(CRadioStrip *strip);
+extern "C" void func_00370DB0(CRadioStrip *strip);
 
 /* a counting string (SOCOM 1's C2DCounter; zui_2d.h's layout: 0xD8 bytes), its destructor declared
  * first for the same reason */
 class C2DCounter : public CRenderableString {
 public:
     virtual ~C2DCounter();
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
 
     float m_start;   // 0xc0
     bool m_counting;   // 0xc4
     float m_end;   // 0xc8
     int m_value;   // 0xcc
-    int m_elapsed;   // 0xd0
+    float m_rate;   // 0xd0: what Start puts at 0xC0 (a float: lwc1/swc1)
     int m_last;   // 0xd4
 };   // 0xd8 bytes
 
@@ -648,6 +685,153 @@ int C2DCounter::GetZAnimCmdType(const char *name)
     if (!strcasecmp("Start", name))
         return CRenderableString::GetZAnimCmdType(0) + 1;
     if (!strcasecmp("Finish", name))
+        return CRenderableString::GetZAnimCmdType(0) + 2;
+    return CRenderableString::GetZAnimCmdType(name);
+}
+
+/* SELECTION: a choice within the strip's buttons taken and shown, the command done at once;
+ * anything else the button's (SOCOM 1's; its choice a byte at 7, SOCOM II's the halfword at 8) */
+bool CRadioStrip::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+    bool handled;
+
+    switch (cmd->m_type - C2DButton::GetZAnimCmdType(0)) {
+    case 1: {
+        int choice = cmd->m_arg;
+
+        if (choice >= 0 && choice <= size() - 1) {
+            m_choice = choice;
+            func_00370D10(this);
+            func_00370DB0(this);
+        }
+        *done = true;
+        handled = true;
+        break;
+    }
+    default:
+        handled = C2DButton::TickZAnimCmd(hdr, dT, done);
+        break;
+    }
+    return handled;
+}
+
+/* SETVALUE: the value, a percentage, taken and handed to the slider's variable, the command done;
+ * anything else the button's (the halfword converted as an unsigned int, the target's sequence;
+ * divided in place, `v /= 100`, so the quotient keeps the dividend's register) */
+bool CSliderBar::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+
+    switch (cmd->m_type - C2DButton::GetZAnimCmdType(0)) {
+    case 1: {
+        CUIVariable *var;
+        float v = (unsigned int)cmd->m_arg;
+
+        v /= 100.0f;
+        m_value = v;
+        var = UIVarMixin::m_uivar;
+        if (var)
+            var->SetReal(m_value);
+        *done = true;
+        return true;
+    }
+    default:
+        return C2DButton::TickZAnimCmd(hdr, dT, done);
+    }
+}
+
+/* Start: the count's start taken from 0xD0; Finish: the count stopped at its value, shown and the
+ * string brought up to date, the command done; anything else the renderable string's (SOCOM 1's
+ * shape, its slots moved). Each case returns true straight: Start's true is the 1 the compare
+ * chain left in v0, Finish's `li v0,1` serves *done too; the base's result goes back unmasked */
+bool C2DCounter::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+
+    switch (cmd->m_type - CRenderableString::GetZAnimCmdType(0)) {
+    case 1:
+        m_start = m_rate;
+        return true;
+    case 2: {
+        m_counting = false;
+        m_end = 0.0f;
+        m_last = m_value;
+
+        char buf[16] = {0};
+
+        sprintf(buf, "%d", m_value);
+        SetString(buf, true);
+        Update();
+        *done = true;
+        return true;
+    }
+    default:
+        return CRenderableString::TickZAnimCmd(hdr, dT, done);
+    }
+}
+
+/* Scroll_Up a line while above the top, Scroll_Down a line while the lines below the window
+ * last; anything else the renderable string's (SOCOM II's; the compare chain tests the cases in
+ * reverse, the bool through a local -- the base's result masked, true assigned) */
+bool CWrappedText::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+    bool handled;
+
+    switch (cmd->m_type - CRenderableString::GetZAnimCmdType(0)) {
+    case 1:
+        if (m_offset > 0.0f)
+            m_offset -= GetSpacing();
+        handled = true;
+        break;
+    case 2: {
+        int lines = m_numLines;
+
+        if (m_offset < lines * GetSpacing() - m_shown)
+            m_offset += GetSpacing();
+        handled = true;
+        break;
+    }
+    default:
+        handled = CRenderableString::TickZAnimCmd(hdr, dT, done);
+        break;
+    }
+    return handled;
+}
+
+/* SCROLL_UP and SCROLL_DOWN as commands of their own (no argument), anything else the renderable
+ * string's (the wrapped text's: slot 24 of CWrappedText's table 0x4079E0, which SOCOM 1's vtable
+ * names gave CRenderableString -- its own table holds 0x36FE40 there, the base called here) */
+C2DAnimCmdHdr *CWrappedText::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+
+    if (zrdr_findtag(rdr, "SCROLL_UP")) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("SCROLL_UP");
+    } else if (zrdr_findtag(rdr, "SCROLL_DOWN")) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("SCROLL_DOWN");
+    } else
+        cmd = CRenderableString::ParseZAnimCmd(rdr);
+    return cmd;
+}
+
+/* the wrapped text's commands after the renderable string's two: Scroll_Up and Scroll_Down */
+int CWrappedText::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return CRenderableString::GetZAnimCmdType(0) + 3;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Scroll_Up", name))
+        return CRenderableString::GetZAnimCmdType(0) + 1;
+    if (!strcasecmp("Scroll_Down", name))
         return CRenderableString::GetZAnimCmdType(0) + 2;
     return CRenderableString::GetZAnimCmdType(name);
 }

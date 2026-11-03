@@ -6857,8 +6857,8 @@
 0x0036E860 0x1C func_0036E860  # OVL1
 0x0036E880 0x1390 ParseZAnimCmd__12CPopUpDialogFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036FC10 0xA8 GetZAnimCmdType__17CRenderableStringFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0036FCC0 0x17C func_0036FCC0  # OVL1
-0x0036FE40 0x320 func_0036FE40  # OVL1
+0x0036FCC0 0x17C TickZAnimCmd__17CRenderableStringFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 22: slot +0x64 of CRenderableString's own table 0x407A90)
+0x0036FE40 0x320 ParseZAnimCmd__17CRenderableStringFP5_zrdr  # OVL1; by hand (the HUD lane, round 22: slot +0x60 of CRenderableString's own table 0x407A90; CWrappedText::ParseZAnimCmd 0x379C50 calls it as its base)
 0x00370160 0x54 __ct__9C2DVisualFP3C2DPQ23zdb16CTextureRelocMgr  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:exact
 0x003701C0 0xB4 HandlePad__11CScrollTextFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370280 0xBC Tick__11CScrollTextFf  # OVL1; s1:calls
@@ -6915,7 +6915,7 @@
 0x00376690 0x8 func_00376690  # OVL1
 0x003766A0 0x120 func_003766A0  # OVL1
 0x003767C0 0xA8 GetZAnimCmdType__9C2DButtonFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00376870 0x150 func_00376870  # OVL1
+0x00376870 0x150 TickZAnimCmd__9C2DButtonFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 22: slot +0x64 of C2DButton's table 0x407790; CRadioStrip::TickZAnimCmd 0x3710D0 falls through to it)
 0x003769C0 0x180 ParseZAnimCmd__9C2DButtonFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376B40 0x90 UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D0E0 (-192, C2DButton's UIVarMixin table) jumps to it; its own variable's text (0x3860F0 into a 10500-byte buffer) made the caption, as SOCOM 1's C2DButton::UpdateUIVar)
 0x00376BD0 0x464 func_00376BD0  # OVL1
@@ -6939,10 +6939,10 @@
 0x00379260 0x90 UpdateUIVar__17CRenderableStringFP11CUIVariable  # OVL1; by hand (the HUD lane, round 22: the slot at +0xA4 of CRenderableString's table 0x407A90, the override's primary slot, and the target of the thunk 0x37D150; SOCOM 1's UpdateUIVar__17CRenderableString clears a 10500-byte buffer the same way)
 0x003792F0 0x1B4 LoadSpec__17CRenderableStringFRC9CTextSpec  # OVL1; s1:calls (SOCOM 1's CClockSpec::CreateDisplayObj calls CRenderableString::LoadSpec at the same place) -- the UI-widgets lane
 0x003794B0 0x4C0 func_003794B0  # OVL1
-0x00379970 0x138 func_00379970  # OVL1
+0x00379970 0x138 GetZAnimCmdType__12CWrappedTextFPCc  # OVL1; by hand (the HUD lane, round 22: slot +0x68 of CWrappedText's table 0x4079E0 -- Scroll_Up and Scroll_Down after the renderable string's commands, whose lookup it inlines; zui_2d.cpp, byte-exact)
 0x00379AB0 0x60 func_00379AB0  # OVL1
-0x00379B10 0x134 TickZAnimCmd__17CRenderableStringFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00379C50 0x140 ParseZAnimCmd__17CRenderableStringFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00379B10 0x134 TickZAnimCmd__12CWrappedTextFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the HUD lane, round 22: slot +0x64 of CWrappedText's table 0x4079E0 (and CScrollText's), where CRenderableString's own 0x407A90 holds 0x36FCC0 -- SOCOM 1's vtable names slid one class)
+0x00379C50 0x140 ParseZAnimCmd__12CWrappedTextFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the HUD lane, round 22: SOCOM 1's vtable names slid one class here -- slot +0x60 of CWrappedText's table 0x4079E0 (and CScrollText's 0x4072F0) holds 0x379C50, CRenderableString's own 0x407A90 holds 0x36FE40; it parses SCROLL_UP and SCROLL_DOWN, the wrapped text's commands, and calls 0x36FE40 as its base; zui_2d.cpp, byte-exact)
 0x00379D90 0x1E0 __dt__12CWrappedTextFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00379F70 0x4C0 SetString__12CWrappedTextFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037A430 0x108 func_0037A430  # OVL1
