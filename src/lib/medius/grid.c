@@ -22,10 +22,22 @@ extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
 extern unsigned int func_0062C070(void);
 
-typedef struct RT_LIST {                /* the list object at 0x629DA0 */
+typedef struct RT_LIST_NODE {           /* the list object at 0x629DA0: a ring */
+    struct RT_LIST_NODE *pNext;         /* 0x00 */
+    struct RT_LIST_NODE *pPrev;         /* 0x04 */
+    void *pData;                        /* 0x08: audio.c's peer record */
+    unsigned int nIds[4];               /* 0x0C: 0xFFFF when free */
+} RT_LIST_NODE;                         /* 0x1C */
+
+typedef struct RT_LIST {
     int nCount;                         /* 0x00 */
-    void *pHead;                        /* 0x04 */
+    RT_LIST_NODE *pHead;                /* 0x04 */
 } RT_LIST;
+
+typedef struct GRID_PEER {              /* audio.c's peer record, as far as grid.c reads it */
+    char x00[0x34];                     /* 0x00 */
+    int nId;                            /* 0x34 */
+} GRID_PEER;
 
 extern int func_0062A2E8(RT_LIST *pList);   /* the count */
 extern void func_0062A360(RT_LIST *pList);  /* frees every entry */
@@ -82,6 +94,9 @@ typedef struct GRID_ENTRY {             /* a group as a list reports it */
     short nQueued;                      /* 0x02 */
     char szName[60];                    /* 0x04 */
 } GRID_ENTRY;                           /* 0x40 */
+
+int func_00624830(GRID *p, int nSrc, GRID_HEADER *h, void *pData, int nLen);
+int func_00626140(GRID *p);
 
 static int nSeed = 0;
 
@@ -197,7 +212,7 @@ void func_006247C8(GRID *p)
     p->pPrev->pNext = p->pNext;
 }
 
-void *func_006247E8(GRID *p)
+RT_LIST_NODE *func_006247E8(GRID *p)
 {
     return p->list.pHead;
 }
@@ -276,4 +291,117 @@ int func_00624C60(GRID *p)
         p->pMembers[i].nTime = now;
     }
     return 0;
+}
+
+/* 0x624DC0, 0x6250D0, 0x6253B8, 0x625690: not written */
+
+int func_00626110(GRID *p)
+{
+    func_00626140(p);
+    return p->x68 != 0 ? 0 : -1;
+}
+
+/* 0x626140, 0x626240: not written */
+
+GRID_MEMBER *func_00626350(GRID *p, unsigned int nId)
+{
+    int i;
+
+    for (i = 0; i < p->nMembers; i++) {
+        if (p->pMembers[i].nId == nId)
+            return &p->pMembers[i];
+    }
+    return 0;
+}
+
+/* An empty message of type 15 to the group. */
+int func_00626398(GRID *p)
+{
+    GRID_HEADER h;
+    int nId = 0xFFFF;
+
+    if (p == 0 || p->nId == 0)
+        return -1;
+    func_00611E60(p->pAudio, &nId);
+    func_00624BE0(p, &h, 15, 0);
+    return func_00624830(p, nId, &h, 0, 0);
+}
+
+/* An empty message of type 16, then the queue and the members cleared. */
+void func_00626410(GRID *p)
+{
+    GRID_HEADER h;
+    int nId = 0xFFFF;
+    int i = 0;
+
+    func_00611E60(p->pAudio, &nId);
+    func_00624BE0(p, &h, 16, 0);
+    func_00624830(p, nId, &h, 0, 0);
+    func_0062A360(&p->list);
+    for (; i < p->nMembers; i++)
+        func_00624510(&p->pMembers[i]);
+}
+
+/* 0x6264C0: not written */
+
+void func_006265F0(GRID *p)
+{
+    int i;
+
+    for (i = 0; i < p->nMembers; i++)
+        func_00624510(&p->pMembers[i]);
+}
+
+/* 0x626658, 0x626788: not written */
+
+int func_00626830(GRID *p)
+{
+    return func_0062A2E8(&p->list);
+}
+
+/* 0x626848: not written */
+
+/* A client's id cleared from every queued item. */
+void func_00626948(GRID *p, unsigned int nId)
+{
+    RT_LIST_NODE *n = p->list.pHead;
+    RT_LIST_NODE *pFirst = n;
+    unsigned int i;
+
+    while (n != 0) {
+        for (i = 0; i < 4; i++) {
+            if (n->nIds[i] == nId)
+                n->nIds[i] = 0xFFFF;
+        }
+        n = n->pPrev;
+        if (n == pFirst)
+            n = 0;
+    }
+}
+
+/* A client's id moved to the first free slot of a peer's queued item. */
+void func_006269A8(GRID *p, unsigned int nId, int nPeer)
+{
+    RT_LIST_NODE *n = p->list.pHead;
+    RT_LIST_NODE *pFirst = n;
+    int i, nSlot;
+
+    while (n != 0) {
+        if (((GRID_PEER *)n->pData)->nId == nPeer)
+            break;
+        n = n->pPrev;
+        if (n == pFirst)
+            n = 0;
+    }
+    if (n != 0) {
+        nSlot = -1;
+        for (i = 0; i < 4; i++) {
+            if (n->nIds[i] == nId)
+                n->nIds[i] = 0xFFFF;
+            if (n->nIds[i] == 0xFFFF && nSlot < 0) {
+                n->nIds[i] = nId;
+                nSlot = i;
+            }
+        }
+    }
 }
