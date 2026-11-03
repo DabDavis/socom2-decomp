@@ -1796,6 +1796,24 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 19** (st_shutdown.cpp and st_reboot.cpp, DisplayMessage, Purge, C2DMessage_Q()):
+  - MW pools identical literals within a unit, so a duplicated literal in adjacent code marks a unit boundary:
+    0x22EA50-0x22EBCF (st_shutdown.cpp) and 0x22EBD0-0x22EDAF (st_reboot.cpp) each carry their own copy of the
+    literals both use; a unit's code strings are laid out in emission order;
+  - a byte-enum parameter is tested with `lbu` and passed on with `lb`, a `char` parameter tested with `lb` -- the
+    message type is a byte enum (MSGTYPE, ours: the three DisplayMessage rows are `...UcUc7MSGTYPE`);
+  - `for (iterator i = next = begin(); i != end(); i = next)` was the only one of 21 forms whose loop-entry test
+    compares the register (a while loop, `iterator i = next` or a separate begin() reload the iterator's slot); `int
+    i` over a pointer vector's operator[] keeps the per-pass `sll` (SelectConfig, as the HUD's round 13 found); a
+    1-bit bool field set false is `andi zero,1` shifted, set true a pre-shifted `daddiu`;
+  - SOCOM 1's C2DMessage_Q members sit 0x2E0 further on in SOCOM II, its bools bits of the byte at 0x4DC;
+    LobbyPlayerInfo is 0xE8 bytes; 0x2A9680 is not ~vector<CLadderData> (it transforms a box's eight corners:
+    withdrawn to a placeholder) -- 0x2A96B0/0x2A9680/0x2A9550 are fts_mission.cpp's copies of shared inlines whose
+    first caller 0x2A9260 (CMission's world bboxes) brings them; CUIVariable has UIVarMixin as a base at 0x8 and its
+    own vptr at 0x10 (0x2B1530's RTTI: zui.h's "m_8 table pointer" is the base's vptr);
+  - open: 0x2C6350 (1: the byte-enum family's `lb; andi 0xff` that MW folds to one `lbu`); not written: 0x2B1530
+    (a ~CUIVariable copy), 0x2B1390 (vector<CUIVariable>::resize), 0x2C5E70, 0x2CD8A0/0x2CD9F0 (an unidentified unit,
+    mostly static destructors).
 - **Tells from the weapons, round 14** (zvid_SetVideoMode, CMesh's destructor and Clone, the turret, CVehicleDef::Parse):
   - MW's scheduler reorders independent constant stores within a switch arm: SetVideoMode's 480p arm matched only
     with the aspect stores written ahead of the `= 18` store, though the image stores the 18 first;

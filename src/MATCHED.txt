@@ -996,7 +996,7 @@
 0x001E7C50 OnPush__10CGameStateFi
 0x001E7C60 OnPop__10CGameStateFi
 0x001E7C70 SetSkipSwap__10CGameStateFi
-0x001E7C80 DisplayMessage__10CGameStateFPCcPCciiiUcUcc
+0x001E7C80 DisplayMessage__10CGameStateFPCcPCciiiUcUc7MSGTYPE
 0x001E7EF0 __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv
 0x001E7F58 flushbuffer
 0x001E7F98 openmic
@@ -1077,7 +1077,7 @@
 0x001ECA50 __ct__10CCoreStateFv
 0x001ECB10 OnPop__10CCoreStateFi
 0x001ECC00 OnPush__10CCoreStateFi
-0x001ECC40 DisplayMessage__10CCoreStateFPCcPCciiiUcUcc
+0x001ECC40 DisplayMessage__10CCoreStateFPCcPCciiiUcUc7MSGTYPE
 0x001ECCF0 UnInit__15CCinematicStateFv
 0x001ECF60 FreeVector<Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>>__FRQ23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>_v
 0x001ED000 clear__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv
@@ -1140,6 +1140,7 @@
 0x001F45E0 OnPop__10CMenuStateFi
 0x001F4630 OnPush__10CMenuStateFi
 0x001F4640 Tick__10CMenuStateFf
+0x001F4D20 DisplayMessage__10CMenuStateFPCcPCciiiUcUc7MSGTYPE
 0x001F5620 GetReaderFileName__14CMenuStateMenuFv
 0x001F5630 func_001F5630
 0x001F5C30 __dt__Q23std82__vector_deleter<20MediusChatFwdMessage,Q23std33allocator<20MediusChatFwdMessage>>Fv
@@ -1557,12 +1558,15 @@
 0x0022E9A0 func_0022E9A0
 0x0022E9C0 __dt__Q228@unnamed@hud_scorepopup_cpp@9CScoreBmpFv
 0x0022EA30 func_0022EA30
-0x0022EA50 func_0022EA50
-0x0022EA60 func_0022EA60
+0x0022EA50 UnInit__14CShutdownStateFv
+0x0022EA60 Tick__14CShutdownStateFf
+0x0022EA70 Init__14CShutdownStateFv
 0x0022EB50 __ct__14CShutdownStateFv
-0x0022EBD0 func_0022EBD0
-0x0022EBE0 func_0022EBE0
+0x0022EBD0 UnInit__12CRebootStateFv
+0x0022EBE0 Tick__12CRebootStateFf
+0x0022EBF0 Init__12CRebootStateFv
 0x0022EC90 __ct__12CRebootStateFv
+0x0022ED10 RebootAfterError__Fv
 0x0022EDB0 func_0022EDB0
 0x0022EDF0 func_0022EDF0
 0x0022EE60 func_0022EE60
@@ -2771,7 +2775,7 @@
 0x002A8F30 __ct__6CPnt3DFfff
 0x002A9210 GetLadderByIndex__11CLadderListFi
 0x002A94E0 func_002A94E0
-0x002A9680 __dt__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>Fv
+0x002A9680 func_002A9680
 0x002A97C0 FadeToEndMission__8CMissionFfi
 0x002A98A0 fadeToEndMissionTick__8CMissionFfPv
 0x002A98B0 FadeToEndMissionTick__8CMissionFf
@@ -2902,6 +2906,7 @@
 0x002B6EE0 __dt__12C2DMessage_QFv
 0x002B7520 func_002B7520
 0x002B7530 func_002B7530
+0x002B7610 __ct__12C2DMessage_QFv
 0x002B7720 SetString__16C2DMessageStringFPCcb
 0x002B77A0 Tick__16C2DMessageStringFf
 0x002B7950 func_002B7950
@@ -3064,6 +3069,7 @@
 0x002C57D0 RemotePersonaPostUpdateCallback__14CZPersonaStateFiii
 0x002C5800 RemotePersonaUpdateCallback__14CZPersonaStateFiii
 0x002C5A10 zNetRegisterPersona__14CZPersonaStateFv
+0x002C5D60 SelectConfig__13CCtrlrConfigsFPCc
 0x002C5FF0 func_002C5FF0
 0x002C6030 func_002C6030
 0x002C6040 func_002C6040
@@ -3117,6 +3123,7 @@
 0x002C8AE0 GetName__17CMultiMissionListFib
 0x002C8B80 GetMultiValue__17CMultiMissionListFi
 0x002C9040 Find__17CMultiMissionListFib
+0x002C90B0 Purge__17CMultiMissionListFv
 0x002C93E0 Clear__17CMultiMissionListFv
 0x002C94F0 func_002C94F0
 0x002C9720 func_002C9720
