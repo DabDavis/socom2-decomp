@@ -65,6 +65,21 @@ void func_005604C0(CSealCtrlAi *ai);
 void func_00600D40(CSealCtrlAi *ai, signed char look);
 }
 
+/* the AI's maps, as far as the group asks them (SOCOM 1's CAiMaps; the global AiMaps) */
+class CAiMaps {
+public:
+    bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+};
+
+extern CAiMaps AiMaps;
+
+/* two cells apart by their x or y (an inline: the target compares x, then y, materialised; the map
+ * id unread -- the name ours) */
+static inline bool CellDiffers(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    return a.x != b.x || a.y != b.y;
+}
+
 /* the look a group clears and sets (OVL2 data 0x651130, 4: a byte the target loads with lb; the name
  * ours) */
 extern signed char data_00651130;
@@ -181,6 +196,12 @@ public:
     void Abort();
     /* the group's frame: false while it runs (OVL2 0x60C3E0) */
     bool Tick();
+    /* the group begun: each member's bits set (19 while the group runs no cameras), its stack's bits
+     * updated; the centre taken from the goal cell when it has one (state 1), else state 5 (OVL2
+     * 0x60CBD0; the name ours) */
+    void Start();
+    /* whether the group runs its cameras (flag 1; inline) */
+    bool CamerasOn() { return (m_flags & 1) ? true : false; }
     /* a member let go (OVL2 0x60CE40) */
     void RemoveMember(CSealCtrlAi *ai);
     /* every group ticked, the finished ones dropped (OVL2 0x60E590), and every group dropped (OVL2
@@ -234,6 +255,20 @@ public:
         m_flags &= ~clear;
         m_flags |= set;
     }
+    /* the current step ticked: its actions started on its first frame, then ticked on the step's
+     * clock until every one is done (OVL2 0x60C220; the name ours) */
+    step::STATE TickStep();
+    /* a member by index, or 0 past the members (inline; the name ours) */
+    CSealCtrlAi *GetMember(unsigned int i)
+    {
+        CSealCtrlAi *ai = 0;
+
+        if (i < m_members.size())
+            ai = m_members[i];
+        return ai;
+    }
+    /* the first step, by the list's sentinel (the name ours) */
+    step &FirstStep() { return ((std::list<step>::node *)m_steps.end_node().next_)->data_; }
     /* the last step, by the list's sentinel (the name ours) */
     step &LastStep() { return ((std::list<step>::node *)m_steps.end_node().prev_)->data_; }
 
@@ -244,7 +279,10 @@ public:
     float m_radius;   // 0x18: the ring the members stand on around it (10 when new)
     memberlist m_members;   // 0x1c
     steplist m_steps;   // 0x28
-    unsigned char m_state;   // 0x34: 0 new (the names ours)
+    /* the group's state: 0 new, 1 gathering at the goal, 5 begun without one (a byte enum; the
+     * names ours) */
+    enum STATE { NEW = 0, GATHER = 1, BEGUN = 5, STATE_LAST = 255 };
+    STATE m_state;   // 0x34
     unsigned char _35[0x38 - 0x35];
     float m_time;   // 0x38: the current step's clock
     unsigned char _3c[0x40 - 0x3c];
@@ -343,7 +381,7 @@ CAiGroup::CAiGroup()
     m_id = m_nextId++;
     m_center = CPnt3D::zero;
     m_radius = 10.0f;
-    m_state = 0;
+    m_state = NEW;
 }
 
 /* (OVL2 0x60D310: the members' destructors) */
@@ -402,6 +440,85 @@ void CAiGroup::RemoveMember(CSealCtrlAi *ai)
     memberlist::iterator i = std::remove(m_members.begin(), end, ai);
 
     m_members.erase(i, end);
+}
+
+/* (OVL2 0x60C220: the first member found running is kept, and never read; begin() taken once
+ * before the switch, the result zeroed first so the empty list branches straight to the end).
+ * OPEN, 11 instructions, registers only: the walk's iterator comes out in s2 and the end in s1 in
+ * both loops, the target has them the other way round (the end numbered below the iterator). Tried:
+ * the end declared before the switch and assigned per case (75 lines off: the assigned iterator
+ * goes through memory), `done` as a bool (`daddiu` for the target's `li`: an int) */
+CAiGroup::step::STATE CAiGroup::TickStep()
+{
+    step::STATE r = (step::STATE)0;
+
+    if (m_steps.size() != 0) {
+        step &s = FirstStep();
+        step::iterator i = s.begin();
+        CSealCtrlAi *first = 0;
+
+        switch (s.m_state) {
+        case step::NEW: {
+            step::iterator e = s.end();
+
+            m_time = 0.0f;
+            for (; i != e; ++i) {
+                action *a = *i;
+                CSealCtrlAi *ai = GetMember(a->m_member);
+                action::STATE st = a->Tick(ai, m_time);
+
+                if (!first && st == action::RUNNING)
+                    first = ai;
+            }
+            s.m_state = step::RUNNING;
+            break;
+        }
+        case step::RUNNING: {
+            step::iterator e = s.end();
+            int done = 1;
+
+            m_time += m_dT;
+            for (; i != e; ++i) {
+                action *a = *i;
+
+                if (a->Tick(GetMember(a->m_member), m_time) != action::DONE)
+                    done = 0;
+            }
+            if (done)
+                s.m_state = step::DONE;
+            break;
+        }
+        }
+        r = s.m_state;
+    }
+    return r;
+}
+
+/* (OVL2 0x60CBD0: the state a byte-enum local (`li`); the members walked with the vector's class
+ * iterators, the end re-read each pass, the test materialised).
+ * OPEN, 5 instructions: the camera flag's negation. The target computes CamerasOn() into a0 in the
+ * loop test's delay slot and then, in the preheader, normalises it again before flipping it (`sltu
+ * v0,zero,a0; xori; andi s0,v0,0xff`); every form here flips the first normalisation directly
+ * (`sltu; xori` before the test, `andi 0xff` twice after). Tried: `!CamerasOn()` into a bool local
+ * before the loop, `CamerasOn() == false` (xor/sltiu), the accessor as `? true : false`, the
+ * negation inside the loop (not hoisted: recomputed each pass, one saved register fewer) */
+void CAiGroup::Start()
+{
+    if (m_state == NEW) {
+        STATE state = BEGUN;
+        bool cams = !CamerasOn();
+
+        for (memberlist::iterator i = m_members.begin(); i != m_members.end(); ++i) {
+            CSealCtrlAi *ai = *i;
+
+            ai->m_aibit19 = cams;
+            ai->m_aibit21 = true;
+            func_005F7470(&ai->m_stateStack, ai, 1);
+        }
+        if (CellDiffers(m_goal, CAiMapLoc::invalid) && AiMaps.GetCellCenter(m_goal, &m_center))
+            state = GATHER;
+        m_state = state;
+    }
 }
 
 /* (OVL2 0x60D4B0) */

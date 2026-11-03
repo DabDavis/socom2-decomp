@@ -11767,11 +11767,11 @@
 0x0060C170 0x18 func_0060C170  # OVL2
 0x0060C190 0x78 __dt__Q28CAiGroup10act_cameraFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::act_camera's vtable (0x669EC0) -- its table, then action's destructor inlined
 0x0060C210 0xC Stop__Q28CAiGroup6actionFv  # OVL2; by hand (the kit lane, round 16): slot +0x10 of CAiGroup::action's vtable (0x669EE0, act_camera's and act_zanim's too) -- the state at 0xC set to 2 (done); ai_group.cpp emits it with the table; the name ours
-0x0060C220 0x1A4 func_0060C220  # OVL2
+0x0060C220 0x1A4 TickStep__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the group's first step ticked -- its actions started on its first frame (the clock at 0x38 zeroed, the step then 2), then ticked on the clock (m_dT added) until all are done (3); each action's member by index or 0; Tick (0x60C3E0) calls it; the name ours
 0x0060C3D0 0x10 Tick__Q28CAiGroup6actionFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::action's vtable (0x669EE0) -- done at once (the state at 0xC set to 2 and returned); the signature the overrides' (the member's AI in a1, the step's clock in $f12); the name ours
 0x0060C3E0 0x6E4 Tick__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): a group's frame (TickGroup 0x60E410 calls it, its bool the done flag): the members sent to their cells by the group's state, the current step ticked (0x60C220) -- the name ours
 0x0060CAD0 0xF4 func_0060CAD0  # OVL2
-0x0060CBD0 0x164 func_0060CBD0  # OVL2
+0x0060CBD0 0x164 Start__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the group begun (state 0 only): each member's bit 19 set to !(flag 1), bit 21 set and its stack's bits updated (0x5F7470); the goal cell's centre fetched when it is not the invalid cell (state 1), else state 5 -- CTGroup::Begin calls it last; the name ours
 0x0060CD40 0x78 SetMemberLoc__8CAiGroupFUiRC9CAiMapLoc  # OVL2; by hand (the kit lane, round 16): CTGroup::Begin's per-member cell -- below the member count, the vector<CAiMapLoc> at 0x44 resized to it when short (0x51C4A0), the cell stored; the name ours
 0x0060CDC0 0x8 EndStep__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the step being built (0x40) cleared -- CTGroup::Begin calls it after each step's actions; the name ours
 0x0060CDD0 0x6C AddStep__8CAiGroupFUi  # OVL2; by hand (the kit lane, round 16): a new step pushed on the list at 0x28 (its insert 0x60EBF0, the temporary's destructor 0x60DA50) and made current (0x40, the last node's value); CTGroup::Begin passes the step's action count, unread; the name ours
