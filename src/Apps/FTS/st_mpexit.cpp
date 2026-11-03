@@ -129,6 +129,7 @@ public:
 
     CZSealBody &GetSeal() const;
     bool IsLiveSeal() const;
+    bool IsSeal() const;
     void Advance();
 
     static const std::list<CEntity *> &GetEntityList() { return CEntity::m_list; }
@@ -201,7 +202,14 @@ public:
  * at 0xA0), the game's type and each side's rounds won (SOCOM 1's at 0xEC/0xF0) */
 class CNetGameState {
 public:
-    unsigned char _0[0xe0];
+    unsigned char _0[0x7c];
+    int m_7c;   // 0x7c: cleared with the SEALs' team score valve (unproven)
+    int m_80;   // 0x80: cleared with the terrorists'
+    unsigned char _84[0xd2 - 0x84];
+    unsigned char m_d2;   // 0xd2
+    unsigned char _d3[0xdc - 0xd3];
+    unsigned char m_dc;   // 0xdc: set, the stats screen rates no one (unproven)
+    unsigned char _dd[0xe0 - 0xdd];
     CNetClock m_clock;   // 0xe0
     unsigned char _f4[0x111 - 0xf4];
     unsigned char m_type;   // 0x111: the game's type (1-5)
@@ -304,6 +312,100 @@ void func_00544D60(CZSealBody *seal, int arg);   /* (the SEAL lane's) */
 void func_002A7D40(CMission *mission);
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
+}
+
+/* what the state's uninitialisation calls (only that; the names the map's) */
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+/* a named value (zanim.h's CValve: the bits and the inline setter) */
+class CValve {
+public:
+    static CValve *GetByName(const char *name);
+    void MakeCallbacks(VALVE_STATE state);
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;
+    unsigned int m_flags : 8;
+};
+
+class CZLANLobby {
+public:
+    bool IsActive();
+};
+extern CZLANLobby data_0044FE10;   /* the LAN lobby */
+
+class CStringTables {
+public:
+    void Unload(const char *name);
+};
+CStringTables *GetStringTables();
+
+class CMenuStack {
+public:
+    void FlushHistory(bool all);
+};
+CMenuStack *GetMenuStack();
+
+class CZAnimSet {
+public:
+    void Stop();
+    void Reset();
+    void Start();
+};
+
+class CNodeAction {
+public:
+    static void Reset();
+};
+
+class CZAnim;
+
+class CameraZoom {
+public:
+    static void SetLensFxAnim(CZAnim *anim);
+};
+
+namespace zdb {
+void EmptyAssetRecycleBin();
+}
+
+/* the mission's flags byte (fts_state.h's m_fc: bit 0 the core state's fade) */
+struct CMissionFlags {
+    unsigned char m_fade : 1;
+};
+
+/* the fade flag set (ours: an inline's parameter keeps the target's unfolded `andi v1,zero,1`) */
+inline void SetMissionFade(bool b)
+{
+    ((CMissionFlags *)&theMission.m_fc)->m_fade = b;
+}
+
+extern CZAnimZAR *data_0040DBC0;   /* the stats screen's anims */
+extern unsigned char data_004A4511;
+
+extern "C" {
+void func_00545200(CSealStats *stats);   /* (the SEAL lane's: the round's stats cleared) */
+bool func_002C2FA0();
+void func_00543B90(CZSealBody *seal);
+void func_00327E40(int ms);
 }
 
 /* the final screen once the game is over, else the round's */
@@ -876,6 +978,82 @@ bool CMPExitState::Tick(float dT)
     zSysFifoEnd();
     func_003AFF30(true, true);
     return false;
+}
+
+/* the stats screen closed: the player's new rating written to its career record (when the game
+ * rates), every SEAL's round stats cleared, the two team score valves and their counts zeroed, the
+ * menu deleted, the screen's strings, anims and archive released, the anim sets restarted, the
+ * death camera, lens effects, the asset bin, the UI's variables and the menu history reset (SOCOM
+ * 1's UnInit, SOCOM II's rating and valves added) */
+void CMPExitState::UnInit()
+{
+    zSysFifoEnd();
+    sceGsSyncPath(0, 0);
+    data_004A4511 = 0;
+    if (!data_00437CE8->m_dc && !data_0044FE10.IsActive()) {
+        m_28 = ComputeNewRating();
+        if (m_28 > 0) {
+            CareerRecord rec;
+
+            func_002F98F0(&rec);
+            rec.m_rating = m_28;
+            func_002F96F0(&rec, 1);
+        }
+    }
+    for (CEntityItr it; it.More(); it.Advance()) {
+        if (it.IsSeal())
+            func_00545200(&it.GetSeal().GetRoundStats());
+    }
+
+    CValve *pValve = CValve::GetByName("seals_team_score");
+
+    if (pValve)
+        pValve->SetValue(0);
+    data_00437CE8->m_7c = 0;
+    pValve = CValve::GetByName("terrs_team_score");
+    if (pValve)
+        pValve->SetValue(0);
+    data_00437CE8->m_80 = 0;
+
+    if (m_menu)
+        delete m_menu;
+    GetStringTables()->Unload("UIMPX");
+    if (data_0040DBC0) {
+        ZAnim.CloseZAR(data_0040DBC0);
+        data_0040DBC0 = 0;
+    }
+    m_menu = 0;
+    if (data_00437CE8->m_d2 && !func_002C2FA0()) {
+        data_00437CE8->m_d2 = 0;
+        func_00543B90(ftsGetPlayer());
+    }
+
+    CZAnimSet *pCommon = ZAnim.GetAnimSet("common");
+
+    if (pCommon) {
+        pCommon->Stop();
+        pCommon->Reset();
+    }
+
+    CZAnimSet *pMission = ZAnim.GetAnimSet("mission");
+
+    if (pMission) {
+        pMission->Stop();
+        pMission->Reset();
+    }
+    if (pCommon)
+        pCommon->Start();
+    if (pMission)
+        pMission->Start();
+    func_00327E40(2000);
+    CNodeAction::Reset();
+    appCamera->ResetDeathCam();
+    SetMissionFade(false);
+    CameraZoom::SetLensFxAnim(0);
+    zdb::EmptyAssetRecycleBin();
+    theUIVarManager.Reset();
+    CRdrArchive::RemoveArchive("readerx.zar", "run/ui");
+    GetMenuStack()->FlushHistory(true);
 }
 
 /* nothing to load (SOCOM 1's, empty there too; st_core.cpp calls it, 0x1EBC30 and 0x1EBE00) */
