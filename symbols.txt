@@ -10259,8 +10259,8 @@
 0x0056BEF0 0x120 func_0056BEF0  # OVL2
 0x0056C010 0x68 func_0056C010  # OVL2
 0x0056C080 0x194 func_0056C080  # OVL2
-0x0056C220 0x118 func_0056C220  # OVL2
-0x0056C340 0x208 func_0056C340  # OVL2
+0x0056C220 0x118 ComputeTurnThrottle__9CSealCtrlFPC6CPnt3DPC6CPnt3DPf  # OVL2; slot 0x9C of __vt__9CSealCtrl (virtual in SOCOM II); s1:order by hand -- SOCOM 1's non-virtual ComputeTurnThrottle__9CSealCtrlFPC6CPnt3DPC6CPnt3DPf (0x266AB0; PathFollowTick calls it twice) has the same body: the dead zone, the cone, the gain on the cross product, its sign beyond, the dot handed back; CreepTick (0x56727C) calls the slot with a heading, &m_goal_dir and a float (the SEAL lane, round 15)
+0x0056C340 0x208 ComputeTurnThrottle__11CSealCtrlAiFPC6CPnt3DPC6CPnt3DPf  # OVL2; slot 0x9C of __vt__11CSealCtrlAi: CSealCtrl's body inlined with the AI's rate (2.0, slowed by m_speed in low alertness or when the look deploys) -- the same inline, its statics 0x650110-0x650120 shared (the SEAL lane, round 15)
 0x0056C550 0x698 func_0056C550  # OVL2
 0x0056CBF0 0x49C SetAiMode__11CSealCtrlAiF7AI_MODE  # OVL2; s1:calls by hand (CSealCtrlAi::OnMissionEnd calls it with 2 at the place SOCOM 1's calls SetAiMode__11CSealCtrlAiF7AI_MODE, last, after ClearAiState and the anim's Stop; OnMissionEnd byte-exact against it)
 0x0056D090 0x30 RestoreAiMode__11CSealCtrlAiFv  # OVL2; ours (new in SOCOM II): CTHold::End calls it where SOCOM 1's called SetAiMode; SetAiMode with the signed byte at 0x3F5, then 1 stored there -- the SEAL lane, round 9

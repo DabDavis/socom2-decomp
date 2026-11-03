@@ -665,6 +665,115 @@ void CSealCtrlAi::RestoreAiMode()
     m_3f5 = (AI_MODE)1;
 }
 
+/* the AI's turn rate (OVL2 data 0x64FD98, 2.0: read with lwc1, so a variable; the name ours) */
+extern "C" float data_0064FD98;
+
+/* the turn toward a goal direction in the ground plane, at most `max`: none inside the dead zone,
+ * proportional to the cross product (clamped) within 20 degrees, the whole rate by its sign beyond,
+ * the dot product handed back (SOCOM 1's ComputeTurnThrottle, its body with the rate a parameter:
+ * both controllers' copies share its statics, OVL2 data 0x650110, 0x650118, 0x650120 -- 1.0, cos 20
+ * degrees, 1.25, 8 bytes apart as SOCOM 1's guarded ones; SOCOM 1's were 1.0, cos 30 and 1.75 with
+ * the rate 1.0). `max` is homed on the stack: a reference to it is passed on */
+static inline float ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot, float max)
+{
+    static float dead = 1.0f;
+    static float cone = 0.9396899938583374f;
+    static float gain = 1.25f;
+    float turn;
+
+    *dot = dir->x * goal->x + dir->z * goal->z;
+    turn = 0.0f;
+    if (*dot > dead)
+        turn = 0.0f;
+    else if (*dot > cone) {
+        turn = dir->z * goal->x - dir->x * goal->z;
+        turn *= gain;
+        _saturate(&turn, -max, max);
+    } else
+        turn = max * (dir->z * goal->x - dir->x * goal->z >= 0.0f ? 1.0f : -1.0f);
+    return turn;
+}
+
+/* the alertness's band as a level (0x560A60's walk inlined, its 4 an enumerator: `li`, where the
+ * unsigned char's is `daddiu`; the names ours) */
+enum ALERT_BAND { ALERT_BAND_0 = 0, ALERT_BAND_1 = 1, ALERT_BAND_2 = 2, ALERT_BAND_3 = 3, ALERT_BAND_4 = 4 };
+
+static inline ALERT_BAND AlertBand(float x)
+{
+    for (int i = 0; i <= 4; i++)
+        if (InBand(x, i))
+            return (ALERT_BAND)i;
+    return ALERT_BAND_4;
+}
+
+/* the AI's turn: at its own rate, slowed by the speed (between 0.35 and the whole, OVL2 data
+ * 0x650100/0x650108 -- this function's statics) when the alertness is low or the look deploys,
+ * unless a Navy SEAL in mode 6 (OVL2 0x56C340: slot 0x9C; the bands are a switch, its chain ending
+ * on a `b`) */
+float CSealCtrlAi::ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot)
+{
+    static float slowest = 0.35f;
+    static float fastest = 1.0f;
+    float max = data_0064FD98;
+
+    if (!(m_3f4 == 6 && IsNavySeal())) {
+        bool slow = false;
+
+        switch (AlertBand(((CAlertness *)this)->m_alert)) {
+        case ALERT_BAND_0:
+        case ALERT_BAND_1:
+            slow = true;
+        }
+        if (m_look_mode == 9)
+            slow = true;
+        if (slow)
+            max *= slowest * (1.0f - m_speed) + fastest * m_speed;
+    }
+    return ::ComputeTurnThrottle(dir, goal, dot, max);
+}
+
+/* (OVL2 0x56C220: slot 0x9C -- SOCOM 1's non-virtual CSealCtrl::ComputeTurnThrottle, virtual in
+ * SOCOM II, at a rate of 1.5) */
+float CSealCtrl::ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot)
+{
+    return ::ComputeTurnThrottle(dir, goal, dot, 1.5f);
+}
+
+extern "C" {
+/* CSealCtrl::ClearLook(AI_LOOK) (OVL2 0x600D40, the kit lane's seal_look.cpp) */
+void func_00600D40(CSealCtrl *ctrl, int look);
+}
+
+/* the leg to walk: with a planned path's points, from the cell to the path's last point -- both
+ * centres flat on the ground, the direction and length between them, the leg's words cleared; else
+ * just the cell (the SEAL's own when none is given) and the deploying look dropped (OVL2 0x56C080,
+ * new in SOCOM II: SetAiMode, PathFollowTick and 0x56C010's pop of a point call it; the name
+ * unknown) */
+extern "C" void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *loc)
+{
+    CEntity *e = ai->m_entity;
+
+    ai->m_614 = 0;
+    if (!path->m_points.size() || !path->HasPoints() || path->IsPlanning()) {
+        ai->m_60c = 0;
+        loc = loc->x == CAiMapLoc::invalid.x && loc->y == CAiMapLoc::invalid.y ? &e->m_mapLocValid : loc;
+        ai->m_leg_cell = *loc;
+        func_00600D40(ai, 9);
+    } else {
+        ai->m_leg_cell = *loc;
+        AiMaps.GetCellCenter(*loc, &ai->m_leg_from);
+        AiMaps.GetCellCenter(path->m_points.back().m_loc, &ai->m_leg_to);
+        ai->m_leg_to.y = 0.0f;
+        ai->m_leg_from.y = 0.0f;
+        ai->m_leg_dir = ai->m_leg_to - ai->m_leg_from;
+        ai->m_leg_len = ai->m_leg_dir.Normalize();
+        ai->m_608 = 0;
+        ai->m_60c = 0;
+        ai->m_614 = 0;
+        ai->m_610 = 0;
+    }
+}
+
 /* the controller's SEAL (an inline: the kit's test reads m_entity again through it) */
 static inline CZSealBody *SealOf(CSealCtrlAi *ai)
 {
