@@ -94,18 +94,32 @@ public:
     CSealStats m_round_stats;   // 0x58c
     unsigned char _5d4[0xfc8 - 0x5d4];
     int m_fc8;   // 0xfc8: what its clan's tag is looked up by
-    unsigned char _fcc[0xfd2 - 0xfcc];
+    unsigned char _fcc[0xfd1 - 0xfcc];
+    unsigned char m_fd1;   // 0xfd1: kept from respawning at the round's end (unproven)
     unsigned char m_fd2;   // 0xfd2
+
+    void RemoteRespawn(bool b);
 };
 
 /* a SEAL's clan tag, or none (unnamed yet) */
 extern "C" const char *func_002C3AC0(int id);
 
-/* a thing in the world (st_exit.cpp's stub: only the list here) */
+/* a thing in the world (st_exit.cpp's stub: the list, the purge and the type byte) */
 class CEntity {
 public:
+    static void PurgeEntities();
+
     static std::list<CEntity *> m_list;
+
+    unsigned char _0[0x10];
+    unsigned char m_type;   // 0x10: 2 a SEAL
 };
+
+/* the entity as a SEAL, if it is one (seal.cpp's AsSeal) */
+inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == 2 ? (CZSealBody *)e : 0;
+}
 
 /* a walk over the world's entities, counting (SOCOM 1's DWARF; hud_scorepopup.cpp's view) */
 class CEntityItr {
@@ -160,6 +174,7 @@ public:
 class CUIVarManager {
 public:
     CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+    void Reset();
 };
 extern CUIVarManager theUIVarManager;
 
@@ -190,7 +205,9 @@ public:
     CNetClock m_clock;   // 0xe0
     unsigned char _f4[0x111 - 0xf4];
     unsigned char m_type;   // 0x111: the game's type (1-5)
-    unsigned char _112[0x11c - 0x112];
+    unsigned char _112;
+    unsigned char m_113;   // 0x113: the game's state (1 back to the menus, 3 and 5 the round over)
+    unsigned char _114[0x11c - 0x114];
     int m_11c;   // 0x11c: the rating match's rounds (unproven)
     int m_seals_won;   // 0x120
     int m_terrs_won;   // 0x124
@@ -263,6 +280,31 @@ public:
     int m_rounds;   // 0xc
     int m_k;   // 0x10
 };
+
+/* what the state's tick calls (only that) */
+class CSndInstance {
+public:
+    static void PostTick(float dT, void *data);
+};
+
+const char *GetDatabase();
+
+class CZGameState {
+public:
+    static void UpdateLocalGame(CZNetGame *game);
+};
+
+class CTurret {
+public:
+    static void ResetAmmo();
+};
+
+extern "C" {
+void func_00544D60(CZSealBody *seal, int arg);   /* (the SEAL lane's) */
+void func_002A7D40(CMission *mission);
+void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
+void func_003AFF30(bool a, bool b);              /* zVid_Swap */
+}
 
 /* the final screen once the game is over, else the round's */
 const char *CMPExitMenu::GetReaderFileName()
@@ -775,6 +817,65 @@ CMPExitState::CMPExitState() : CGameState("MPExitState")
     func_001EEB40(&m_libname, "common/assetlib/splash");
     m_menu = 0;
     m_28 = 0;
+}
+
+/* the stats screen's tick: by the game's state (the network game's byte at 0x113), the round's
+ * end pops the state -- the SEALs respawned, the entities purged, the turrets' ammunition and the
+ * mission reset (3 and 5) -- or returns to the menus (1); otherwise the stats are listed, the menu
+ * ticked and drawn (SOCOM 1's Tick, a switch over SOCOM II's states) */
+bool CMPExitState::Tick(float dT)
+{
+    unsigned char bMaster = theNetwork.m_8;
+
+    CSndInstance::PostTick(dT, 0);
+    CInput::Tick(dT);
+
+    CNetGameState *pGame = data_00437CE8;
+
+    switch (pGame->m_113) {
+    case 4:
+        break;
+    case 6: {
+        const char *szDatabase = GetDatabase();
+
+        if (szDatabase && *szDatabase)
+            CZGameState::UpdateLocalGame((CZNetGame *)pGame);
+        break;
+    }
+    case 5:
+    case 3:
+        if (bMaster)
+            CZGameState::UpdateLocalGame((CZNetGame *)pGame);
+        CEntity::PurgeEntities();
+        std::list<CEntity *>::const_iterator it;
+
+        for (it = CEntityItr::GetEntityList().begin(); it != CEntityItr::GetEntityList().end(); ++it) {
+            CZSealBody *pSeal = AsSeal(*it);
+
+            if (pSeal && !pSeal->m_fd1)
+                pSeal->RemoteRespawn(false);
+        }
+        CTurret::ResetAmmo();
+        func_002A7D40(&theMission);
+        func_002CF2F0(&theGame, 0);
+        theUIVarManager.Reset();
+        return true;
+    case 1:
+        func_002CF2F0(&theGame, 0);
+        func_002CF410(&theGame, &theGame.m_menuState, 0);
+        return true;
+    }
+    func_00544D60(ftsGetPlayer(), 0);
+    SetStatLbUiVar(true, "RoundStatLbContentsSeals", &CZSealBody::GetRoundStats, false);
+    SetStatLbUiVar(false, "RoundStatLbContentsTerrs", &CZSealBody::GetRoundStats, false);
+    SetStatLbUiVar(true, "GameStatLbContentsSeals", &CZSealBody::GetGameStats, true);
+    SetStatLbUiVar(false, "GameStatLbContentsTerrs", &CZSealBody::GetGameStats, true);
+    SetMvpUiVars("MvpName", "MvpLbContents");
+    func_003654C0(m_menu, dT);
+    m_menu->Draw2dOnly();
+    zSysFifoEnd();
+    func_003AFF30(true, true);
+    return false;
 }
 
 /* nothing to load (SOCOM 1's, empty there too; st_core.cpp calls it, 0x1EBC30 and 0x1EBE00) */

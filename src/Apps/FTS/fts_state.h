@@ -75,6 +75,8 @@ public:
 
 class CInput {
 public:
+    static void Tick(float dT);   /* 0x2D9E40 (st_mpexit.cpp's call) */
+
     static CPad *m_pads[2];
 };
 
