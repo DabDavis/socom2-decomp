@@ -4229,6 +4229,54 @@ matching drafts (IsEven, lintSetBit, lintClearBit); 17 rows named or corrected (
 get_time_string `s1:calls`, KM_Initialize, the four RC and seven LargeInt functions `s1:order`,
 MediusGetPolicy moved, the three ignore-list requests by call), 4 data rows.
 
+**Round 9c: the casr object, whole** (resumed after a power cut: the first agent's casr.c batch,
+11 of 13, re-scored and committed, then the round carried on).
+
+- **casr.c and cb.c were one object**: SOCOM 1's casr object (0x348248) is SOCOM II's
+  0x4D8398-0x4DF46C -- this round's casr.c the head, rounds 1 and 2b's cb.c the tail, interleaved
+  in the image (casrGetSNR between casrGetSignalLevel and casrGetState) and sharing statics. cb.c
+  is merged into casr.c, image order. The object is built with `-fno-optimize-sibling-calls`
+  (casrStartUserWordTraining returns its call through a jal, 18s with sibling calls, and the
+  object holds no `j`); cb.c's functions score the same with it. The four rows after it
+  (0x4DF470-0x4E0D00) have no partner in SOCOM 1's object.
+- **SOCOM 1's statics, inlined**: casrFreeResult is a `static __inline__` (in cbTOSRecognised
+  and cbDoSecondPassIfEnabled, no copy left); casrGet/SetParamNoClearErrorLog are inlined into
+  the second passes (last_error restored in the branch's slot, both paths) yet keep their copies
+  further on -- GNU `extern __inline__` bodies at the top, the real functions at their place (GNU C
+  allows the redefinition; 2.96 inlines only a body it has seen). cbDoSecondPassIfEnabled moved up
+  to after cbIsoWordRecognised; SOCOM 1's CalcWordConfidence is no row here.
+- **Two calls, not one with a chosen argument**: `_tosControl(c->event, fmt != 0 ? 106 : 107, ...)`
+  is if-converted into a movn (71s); the target's two calls in an if/else share one tail after
+  cross-jumping (casrInitSampleFormat; casrStart's 8/6/1; the second passes' context constructors,
+  where one result variable copies v0 aside: 82 words).
+- **The host's callbacks take (ms, info)**: SOCOM 1's and ours leave a2/a3 as they came -- a frame
+  count in a3 is a register choice, not an argument; cbTSAfterStartDetected adds its frame offset
+  before setting its flag (5 words the other way).
+- **Literals**: 2.96's parser lands an ulp below even an exact decimal for CalcSentenceConfidence's
+  two slope constants (76.9f gives the target's 0x4299CCCC); they are spelled just above the
+  target's floats. SOCOM II calls expf where SOCOM 1 calls exp.
+- **Shapes, each measured**: the allocation first and `else p = 0` (casrGetActiveWords: the null
+  first leaves the slot unannulled); a bitmap byte taken into a local per outer iteration (the store
+  through p reloads it per bit); the next write position computed inside the reallocation block
+  before its stores, PRE supplying the copy's size (casrReadLabelInQueue -- the demo orders its loads
+  the same); a switch's case bodies in the target's order (casrGetParam: 1, 2, 3, 4, 5, 15, 18, 16,
+  6, 7, 8, 9, 10, 17, 11, 13, 12, 14); a local pointer for a struct copy's destination whose address
+  is used again (casrGetSessionData: with `s->lng` 2.96 folds the data pointer to s+152, 87s); one
+  float variable for x and the result (CalcSentenceConfidence: two move every register, 17 words).
+- **Open, diagnosed in place**: UpdateExevStatus (1 word: `bnez` there, `bnezl` here),
+  casrGetSessionData (38 words, the right size: which stores go through s+8), cbDoSecondPassIfEnabled
+  (9: the result's register), casrInitSegmentation (44s: the row pointer), and the earlier opens
+  (casrGetLastError/Warning, casrImportContext, casrDoSecondPass, cbGenderDisable).
+
+Hand-written in round 9c: `asr/casr.c` (44 of 53, new; cb.c's 12 matched functions merged in) --
+24 functions new to the map's byte-exact rows (6,960 bytes), 8 superseding matching drafts
+(cbTSDetected, cbSpellRecognised, casrSet/GetParamNoClearErrorLog, cbGainRequest, cbAskCurrentGain,
+cbTOSAbnormalCond, CopyContextInfo); 19 rows named (casrCreateResult, cbIsoWordRecognised,
+cbDoSecondPassIfEnabled `s1:calls`; casrGetSessionData, cbTSDetected, cbTSAfterStartDetected,
+cbStartDetected, cbTOSRecognised, cbSpellRecognised, cbNothingRecognised, cbSpellNothingRecognised,
+the NoClearErrorLog pair, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond,
+Set_EndBackTraceMask_In_StateDict, CopyContextInfo `s1:order`).
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
