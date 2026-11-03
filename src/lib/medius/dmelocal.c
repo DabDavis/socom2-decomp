@@ -1535,6 +1535,51 @@ int func_0061A078(unsigned int nStream)
 extern int func_0061A800(int nOwner, unsigned int nIndex);
 extern int data_00686A38;               /* the ownership release's message type */
 
+extern unsigned int data_00686A34;
+extern unsigned int data_00686A10;
+extern int func_0061D448(int nClient);
+
+/* an object's ownership asked for (0x61A118, SOCOM 1's NetRequestObjectPrivateOwnership's place): taken
+ * at once when this client made it, else asked of its creator.
+ * OPEN (8 bytes short): the two sends cross-jump into one call here where the target keeps both (each
+ * with its own `move v0,zero`), and the creator's message takes its slot before pWorld's; four shapes
+ * (the message at the top, an else, a result kept from either call) tried */
+int func_0061A118(unsigned int nIndex)
+{
+    struct { unsigned char nOwner; unsigned char pad; unsigned short nIndex; } msg;
+    DmeWorld *pWorld = 0;
+    DmeObject *pObject = 0;
+    int result;
+
+    if (nIndex >= DME_MAX_OBJECTS)
+        return DME_ERR_ARGUMENT;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    result = func_0061C600(data_00651178, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return DME_ERR_RANGE;
+    if (pObject->nCreator != pWorld->nMyClient) {
+        unsigned short nMsg;
+
+        if (pObject->nOwner != -1)
+            return 11;
+        nMsg = nIndex;
+        func_00615DE0(80, data_00651178, pObject->nCreator, data_00686A34, 2, &nMsg);
+        return DME_OK;
+    }
+    if (pObject->nOwner != -1)
+        return 11;
+    pObject->nOwner = pObject->nCreator;
+    RemoteObjectUpdate(pObject->nCreator, nIndex, -2);
+    msg.nIndex = nIndex;
+    msg.nOwner = func_0061D448(pObject->nOwner);
+    func_00615DE0(80, data_00651178, -1, data_00686A10, 4, &msg);
+    return DME_OK;
+}
+
 int func_0061A240(unsigned int nIndex)
 {
     DmeWorld *pWorld;
@@ -1595,6 +1640,97 @@ int func_0061B650(unsigned int *pnAvail, unsigned int nStream)
     }
     return 9;
 }
+
+typedef struct DmeStreamHead {          /* a stream slot's words (the slot itself stays a char array) */
+    int field_00;
+    int field_04;
+    int field_08;
+    int nOwner;                         /* 0x0C */
+    void *pBuffer;                      /* 0x10 */
+    int field_14[6];
+    int nCircStart;                     /* 0x2C: the slot's rt_circ_buf */
+    int nCircEnd;
+    int nCircSize;                      /* 0x34 */
+    int nCircUsed;
+    void *pCircBuf;                     /* 0x3C */
+} DmeStreamHead;
+
+extern int rt_circ_buf_store(void *pCircBuf, void *pData, int nBytes);
+extern int rt_circ_buf_normalize(void *pCircBuf, unsigned char bUseBuffer);
+
+/* SOCOM 1's NetAddToDataStream grown (0x61ABD8): the data stored in the stream's ring, the ring
+ * normalised and copied out to the stream's buffer */
+int func_0061ABD8(unsigned int nStream, void *pData, int nLength)
+{
+    DmeWorld *pWorld = 0;
+    DmeStreamSlot *pSlot = 0;
+    unsigned int nAvail = 0;
+    int result;
+
+    if (nStream >= DME_MAX_STREAMS)
+        return DME_ERR_ARGUMENT;
+    if (pData == 0)
+        return DME_ERR_ARGUMENT;
+    if (nLength <= 0)
+        return DME_ERR_ARGUMENT;
+    result = func_0061B650(&nAvail, nStream);
+    if (result != DME_OK)
+        return result;
+    if ((int)nAvail < nLength)
+        return 31;
+    result = func_00614F58(nStream, (void **)&pSlot);
+    if (result != DME_OK || pSlot == 0)
+        return result;
+    result = func_0061C600(data_00651178, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    if (pWorld->nMyClient != ((DmeStreamHead *)pSlot)->nOwner)
+        return 9;
+    if (rt_circ_buf_store(pSlot->circ, pData, nLength) != 0)
+        return 31;
+    rt_circ_buf_normalize(pSlot->circ, 1);
+    memcpy(((DmeStreamHead *)pSlot)->pBuffer, ((DmeStreamHead *)pSlot)->pCircBuf, ((DmeStreamHead *)pSlot)->nCircSize);
+    return DME_OK;
+}
+
+extern int func_00615090(int *pValue, unsigned int nWorld);
+extern int data_0067E948[];
+extern unsigned int data_00686A28;
+
+/* SOCOM 1's NetReleaseObjectPrivateOwnership's place (0x61B538): the release sent to the given client,
+ * or for an object whose class wants it, to the session's host when none is given.
+ * OPEN (the right size, the frame): the target's slots run pWorld 0, pObject 4, nHost 8, the byte
+ * message 12; 2.96 here gives the message slot 0 wherever it is declared (top, inner block) and moves
+ * the others up -- zeroing by statement and the `||` range guard (folded to one unsigned test) tried */
+void func_0061B538(int nTarget, unsigned int nIndex)
+{
+    DmeWorld *pWorld = 0;
+    DmeObject *pObject = 0;
+    int nHost;
+
+    if (nIndex >= DME_MAX_OBJECTS)
+        return;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(data_00651178, &pWorld) != DME_OK || pWorld == 0)
+        return;
+    if (func_00614F10((void **)&pObject, nIndex) != DME_OK || pWorld == 0)
+        return;
+    if (func_00615090(&nHost, data_00651178) != DME_OK)
+        return;
+    if (nHost < 0)
+        return;
+    if (nHost >= DME_MAX_CLIENTS)
+        return;
+    if (data_0067E948[pObject->field_03] != 0 && pWorld->nMyClient != nHost && nTarget == -1)
+        nTarget = nHost;
+    {
+        unsigned char nMsg = nIndex;
+
+        func_00615DE0(80, data_00651178, nTarget, data_00686A28, 1, &nMsg);
+    }
+}
+
 
 int func_0061BEB8(void)
 {
