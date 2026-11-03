@@ -146,11 +146,28 @@ public:
 };
 }
 
+namespace zdb {
+/* a GS texture buffer (node_world.h has the whole class): only what the states call */
+class CGSTexBuffer {
+public:
+    void *Load(bool now);   /* (node_world.h's returns the chain, a u_long128 *: no caller reads it) */
+    void WipePktBuf();
+    void ReservePktBuf(unsigned int n);
+};
+}
+
+/* the sound system (zsnd.h has the whole class): its post-tick, a scheduler task the states also
+ * call straight */
+class CSnd {
+public:
+    static bool PostTick(float dT, void *data);
+};
+
 /* the mission's texture buffers: a vector of them (zdb::CTexManager::m_texmanager's) */
 struct TexBufferVector {
     unsigned int capacity_;
     unsigned int size_;
-    void **data_;
+    zdb::CGSTexBuffer **data_;
 };
 
 /* the render pipe (SOCOM 1's CPipe: the camera at 0x628, the UI node it draws at 0x630, a flag at
@@ -176,10 +193,17 @@ public:
 };
 
 namespace zdb {
-/* the texture manager: the buffers' vector, and each render phase's buffer index (SOCOM 1's) */
+/* the texture manager: the buffers' vector, and each render phase's buffer index (SOCOM 1's;
+ * node_world.h has the whole class) */
 class CTexManager {
 public:
-    static TexBufferVector m_texmanager;
+    static bool DestroyBuffers(CTexManager &tm, bool all);
+    void doSetupBuffers();
+    int doAddBuffer(const char *name, float start, float end);
+
+    TexBufferVector m_buffer;   // 0x0 (a std::vector<CGSTexBuffer *>)
+
+    static CTexManager m_texmanager;
     static int TexPhase[55];
 };
 
@@ -215,6 +239,16 @@ public:
     virtual const char *GetReaderFileName();
 };
 
+/* a message's kind (SOCOM II's: a byte enum -- CMenuState::DisplayMessage compares it lbu and
+ * copies it lb, the displays it hands it to switch on it after an andi 0xff -- and the colour the
+ * front end's display gives each: 0 white, 1 yellow, 5 red; 1 with the d argument 2 is the menu's
+ * MP_SYSTEM_MESSAGE event. The names ours) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+
 /* a state of the game's stack: named, and told when it is pushed, popped, set up and torn down.
  * SOCOM II added two virtuals after OnPop (the second takes a dialog's arguments) */
 class CGameState {
@@ -237,7 +271,7 @@ public:
      * ones: the text, no sender, the flag 1, the message's type last). The name and the middle
      * parameters' meaning are ours */
     virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
-                        unsigned char d, unsigned char e, char type) {}
+                        unsigned char d, unsigned char e, MSGTYPE type) {}
 
     void SetName(const char *name)
     {
@@ -264,7 +298,7 @@ public:
     virtual void OnPop(int userdata);
     virtual void SetSkipSwap(int swap) { m_skip_swap = swap; }
     virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
-                                unsigned char d, unsigned char e, char type);
+                                unsigned char d, unsigned char e, MSGTYPE type);
 
     /* whether the mission is done loading (the load state's tests materialise the bool: the
      * name ours) */
@@ -492,6 +526,8 @@ public:
     virtual void UnInit();
     virtual void OnPush(int userdata);
     virtual void OnPop(int userdata);
+    virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
+                                unsigned char d, unsigned char e, MSGTYPE type);
 
     bool RunEventAnim(const char *eventname, const char *argument);
 
@@ -559,8 +595,9 @@ public:
     unsigned char _3e[0x64 - 0x3e];
 };
 
-/* SOCOM II's states for turning the console off and rebooting it (vtables 0x405AE0 and 0x405B10:
- * their own Init, Tick and UnInit; their constructors, 0x22EB50 and 0x22EC90, in their own unit) */
+/* SOCOM II's states for leaving for the network GUI and rebooting the game (vtables 0x405AE0 and
+ * 0x405B10: their own Init, Tick and UnInit), each its own unit inside the HUD's range:
+ * st_shutdown.cpp 0x22EA50-0x22EBCF, st_reboot.cpp 0x22EBD0-0x22EDAF */
 class CShutdownState : public CGameState {
 public:
     CShutdownState();
@@ -655,6 +692,7 @@ class CZSealBody;
 class CAppCamera {
 public:
     void ResetDeathCam();   /* 0x299150 (st_mpexit.cpp's call) */
+    static bool TickTask(float dT, void *data);   /* the scheduler's appCamera_tick */
 
     unsigned char _0[0xb4];
     zdb::CCamera *m_camera;   // 0xb4

@@ -193,12 +193,13 @@ int strcmp(const char *a, const char *b);
 unsigned char func_002EAEE0(CZOnlineLobby *lobby, int a);   /* (the lobby's: the persona's byte at 0x42) */
 }
 
-/* the lobby's account of this player (0xF0 bytes, filled by 0x2F98F0: only the word at 4 read
- * here; the names ours) */
+/* the lobby's account of this player (0xE8 bytes, filled by 0x2F98F0 -- its last copy ends at
+ * 0xE1 -- and st_mpexit.cpp's CareerRecord, 0xE8 by two stack frames; UpdateLocalPersona's frame
+ * is the same at 0xF0. Only the word at 4 read here; the names ours) */
 struct LobbyPlayerInfo {
     int m_0;
     int m_4;
-    unsigned char _8[0xf0 - 0x8];
+    unsigned char _8[0xe8 - 0x8];
 };
 
 extern "C" void func_002F98F0(LobbyPlayerInfo *info);

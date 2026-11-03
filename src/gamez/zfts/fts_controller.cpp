@@ -5,6 +5,9 @@
  * a function's button held 0x2C61E0, a stick's axis 0x2C6520, the pitch 0x2C65B0 and its caller,
  * the look 0x2C6290 open). Defined in reverse of their image order (-inline deferred). */
 
+#include <string>
+#include <vector>
+
 /* a game function's button (SOCOM 1's PadBtnFunc::_) */
 namespace PadBtnFunc {
 enum _ {
@@ -51,9 +54,27 @@ public:
     KEY_STATE m_state[16];   // 0x1
     unsigned char _11[0x14 - 0x11];
     float m_pressure[16];   // 0x14
-    unsigned char _54[0x210 - 0x54];
+    unsigned char _54[0xd8 - 0x54];
+    int m_port;   // 0xd8: the libpad2 port (zinput.h's)
+    unsigned char _dc[0xe4 - 0xdc];
+    unsigned char m_e4[256];   // 0xe4: the pad's read buffer (zinput.h's)
+    unsigned char _1e4[0x210 - 0x1e4];
     float m_raw[2][2];   // 0x210
     float m_dilated[2][2];   // 0x220
+    unsigned char _230[0x2a8 - 0x230];
+    /* each stick's two flags in its CStickType (zinput.h's m_stickType[2] at 0x284: +0x24, +0x25),
+     * set from the layout by SelectConfig (the names ours) */
+    unsigned char m_leftFlagX;   // 0x2a8
+    unsigned char m_leftFlagY;   // 0x2a9
+    unsigned char _2aa[0x2d0 - 0x2aa];
+    unsigned char m_rightFlagX;   // 0x2d0
+    unsigned char m_rightFlagY;   // 0x2d1
+};
+
+/* the pads (zinput.h's) */
+class CInput {
+public:
+    static CPad *m_pads[2];
 };
 
 /* a layout: each game function's button (SOCOM 1's at 10), and SOCOM II's stick settings ahead of
@@ -70,10 +91,10 @@ public:
     bool IsDown(int func, const CPad *pad) const { return GetButtonState(func, pad) == KEY_DOWN; }
     bool HoldsLook() const { return m_11; }
 
-    unsigned char _0[0xc];
+    std::string m_name;   // 0x0: SelectConfig's key
     STICK m_lookStick;   // 0xc
     STICK m_strafeStick;   // 0xd
-    unsigned char _e;
+    unsigned char m_e;   // 0xe: a stick (1 left, 2 right) SelectConfig flags at the pad (x)
     unsigned char m_pitchSticksHeld;   // 0xf: the pitch's sticks while function 1's button is down
     unsigned char m_pitchSticks;   // 0x10: bit 0 the left stick's y, bit 1 the right's
     unsigned char m_11;   // 0x11
@@ -83,7 +104,13 @@ public:
 class CCtrlrConfigs {
 public:
     static bool IsJumpAndActionShared();
+    static void SelectConfig(const char *name);
+
+    /* the layouts read from controller.rdr (SOCOM 1's static vector of them) */
+    static std::vector<CCtrlrConfig *> m_configs;
 };
+
+extern "C" int strcasecmp(const char *a, const char *b);
 
 namespace {
 /* the layout in use (SOCOM 1's) */
@@ -196,6 +223,27 @@ extern "C" float func_002C6110(const CPad *pad)
     return pos;
 }
 
+/* the layout of a name made the current one (and the edited one), the first pad's stick flags set
+ * from it: x by the stick at 0xE, y by the pitch's sticks at 0x10 (OVL1 0x2C5D60; SOCOM 1's walk,
+ * which stopped at the current one) */
+void CCtrlrConfigs::SelectConfig(const char *name)
+{
+    for (int i = 0; i < m_configs.size(); i++) {
+        if (!strcasecmp(name, m_configs[i]->m_name.c_str())) {
+            g_pCurrentConfig = m_configs[i];
+            CCtrlrConfig *config = g_pCurrentConfig;
+            CPad *pad = CInput::m_pads[0];
+
+            pad->m_leftFlagX = config->m_e == 1;
+            pad->m_leftFlagY = config->m_pitchSticks == 1;
+            pad->m_rightFlagX = config->m_e == 2;
+            pad->m_rightFlagY = config->m_pitchSticks == 2;
+            data_004415B0 = g_pCurrentConfig;
+            return;
+        }
+    }
+}
+
 /* the edited layout's button for a function, set (OVL1 0x2C6460) */
 extern "C" bool func_002C6460(unsigned char func, PAD_BUTTON btn)
 {
@@ -240,6 +288,24 @@ bool CCtrlrConfigs::IsJumpAndActionShared()
 {
     return g_pCurrentConfig->m_btns[PadBtnFunc::BTN_ACTION] ==
            g_pCurrentConfig->GetButton(PadBtnFunc::BTN_JUMP);
+}
+
+extern "C" int func_001BDA78(int port, unsigned char *data, int n);   /* (libpad2: the pad read) */
+
+/* function 2's button's pressure as the pad reports it, for the two buttons it is asked of (10 and
+ * 9: the pad's bytes 29 and 26), none for any other (OVL1 0x2C6350: CSealCtrl::PreTick's).
+ * OPEN, 1 instruction (0x7C against 0x80): the byte-enum family's lb/andi pair -- the target loads
+ * the button with lb and narrows it with andi 0xff before the first compare, this folds both into
+ * one lbu (the tests' order and the two calls are the target's) */
+extern "C" float func_002C6350(CPad *pad)
+{
+    PAD_BUTTON btn = g_pCurrentConfig->GetButton(2);
+
+    if (btn == 10)
+        return func_001BDA78(pad->m_port, pad->m_e4, 29);
+    if (btn == 9)
+        return func_001BDA78(pad->m_port, pad->m_e4, 26);
+    return 0.0f;
 }
 
 /* the pitch from the current layout's sticks (OVL1 0x2C6280) */

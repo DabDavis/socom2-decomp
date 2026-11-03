@@ -1394,7 +1394,7 @@
 0x001E7C50 0x8 OnPush__10CGameStateFi  # OVL1; s1:vtable by hand (CGameState's OnPush slot, 0x20: the base's empty inline)
 0x001E7C60 0x8 OnPop__10CGameStateFi  # OVL1; s1:vtable by hand (CGameState's OnPop slot, 0x24: the base's empty inline)
 0x001E7C70 0x8 SetSkipSwap__10CGameStateFi  # OVL1; the name ours (CGameState's new slot 0x28, empty; CCoreState's sets m_skip_swap)
-0x001E7C80 0x8 DisplayMessage__10CGameStateFPCcPCciiiUcUcc  # OVL1; the name ours (CGameState's new slot 0x2C, empty: a message for the player -- CMenuState::Tick passes the network's queued ones, CMenuState and CCoreState override it)
+0x001E7C80 0x8 DisplayMessage__10CGameStateFPCcPCciiiUcUc7MSGTYPE  # OVL1; the name ours (CGameState's new slot 0x2C, empty: a message for the player -- CMenuState::Tick passes the network's queued ones, CMenuState and CCoreState override it); (the states lane, round 19: the last parameter is a byte enum -- CMenuState's override compares it lbu and copies it lb, its displays switch on it after andi 0xff; the enum's name ours)
 0x001E7C90 0x258 reserve__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi  # OVL1; by hand (MSL's basic_string::reserve: "basic_string::reserve length_error", operator new, memcpy, the short form's 11 characters; SOCOM 1's CMenuState constructor reserves 64 in both sound names, as COurGame's constructor does here through it)
 0x001E7EF0 0x68 __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv  # OVL1; by hand (MSL's basic_string destructor: the long form's buffer deleted (bit 0 of the first word), then the object when asked; ~CSaferStr calls it with 0, the states' destructors with -1 for their member strings; the instance closing main.cpp)
 0x001E7F58 0x3C flushbuffer  # OVL1 unaligned; s1:exact
@@ -1493,7 +1493,7 @@
 0x001ECA50 0xB8 __ct__10CCoreStateFv  # OVL1; s1:calls (stores CGameState's then CCoreState's vtable; the two unit matrices)
 0x001ECB10 0xE4 OnPop__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001ECC00 0x38 OnPush__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001ECC40 0xA8 DisplayMessage__10CCoreStateFPCcPCciiiUcUcc  # OVL1; by hand (the states lane, round 15): slot 0x2C of CCoreState's vtable (0x404F60), CGameState::DisplayMessage's override; byte-exact from st_core.cpp
+0x001ECC40 0xA8 DisplayMessage__10CCoreStateFPCcPCciiiUcUc7MSGTYPE  # OVL1; by hand (the states lane, round 15): slot 0x2C of CCoreState's vtable (0x404F60), CGameState::DisplayMessage's override; byte-exact from st_core.cpp; (the states lane, round 19: the last parameter a byte enum, MSGTYPE, as CMenuState's override shows)
 0x001ECCF0 0x264 UnInit__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's UnInit slot)
 0x001ECF60 0x94 FreeVector<Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>>__FRQ23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>_v  # OVL1; by hand (the states lane, round 15): zsys.h's FreeVector as a plain function template over the film's cue vector (8-byte elements, a float and a word: 0x1EF190's copy loop), its instance following its one caller CCinematicState::UnInit; CMovieCue is our name
 0x001ED000 0x8 clear__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 17): the cue vector's clear() (`j` to the deleter's clear 0x1EF310), its out-of-line copy following UnInit with FreeVector's (0x1ECF60), reverse of their first use: both called from an inline helper inlined one level (FreeVector is zsys.h's inline, taller than the budget)
@@ -1570,7 +1570,7 @@
 0x001F4630 0x8 OnPush__10CMenuStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F4640 0x220 Tick__10CMenuStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F4860 0x4BC Init__10CMenuStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F4D20 0xC4 func_001F4D20  # OVL1
+0x001F4D20 0xC4 DisplayMessage__10CMenuStateFPCcPCciiiUcUc7MSGTYPE  # OVL1; by hand (the states lane, round 19: slot 0x2C of CMenuState's vtable 0x405010, CGameState's DisplayMessage's -- its MP_SYSTEM_MESSAGE event and the two displays); (the states lane, round 19: the last parameter a byte enum, MSGTYPE -- lbu for its test, lb for the copies it passes on)
 0x001F4DF0 0x224 func_001F4DF0  # OVL1
 0x001F5020 0x3AC func_001F5020  # OVL1
 0x001F53D0 0x24C func_001F53D0  # OVL1
@@ -2119,15 +2119,15 @@
 0x0022E9A0 0x1C func_0022E9A0  # OVL1
 0x0022E9C0 0x70 __dt__Q228@unnamed@hud_scorepopup_cpp@9CScoreBmpFv  # OVL1; by hand (the HUD lane: slot 0 of the vtable 0x405A70, whose RTTI names @unnamed@hud_scorepopup_cpp@::CScoreBmp; the unit's initialiser registers it for each box bitmap)
 0x0022EA30 0x1C func_0022EA30  # OVL1
-0x0022EA50 0x8 func_0022EA50  # OVL1
-0x0022EA60 0x8 func_0022EA60  # OVL1
-0x0022EA70 0xE0 func_0022EA70  # OVL1
+0x0022EA50 0x8 UnInit__14CShutdownStateFv  # OVL1; by hand (the states lane, round 19: slot 0x1C of CShutdownState's vtable 0x405AE0, CGameState's UnInit's; st_shutdown.cpp, byte-exact)
+0x0022EA60 0x8 Tick__14CShutdownStateFf  # OVL1; by hand (the states lane, round 19: slot 0x14 of CShutdownState's vtable 0x405AE0, CGameState's Tick's; st_shutdown.cpp, byte-exact)
+0x0022EA70 0xE0 Init__14CShutdownStateFv  # OVL1; by hand (the states lane, round 19: slot 0x10 of CShutdownState's vtable 0x405AE0, CGameState's Init's -- the system shut down and SCUSNGUI.ELF run; st_shutdown.cpp, byte-exact)
 0x0022EB50 0x74 __ct__14CShutdownStateFv  # OVL1; s1:vtable by hand (the states lane: CGameState's base inlined -- its vtable 0x404F30 and name -- then CShutdownState's vtable 0x405AE0, RTTI-named)
-0x0022EBD0 0x8 func_0022EBD0  # OVL1
-0x0022EBE0 0x8 func_0022EBE0  # OVL1
-0x0022EBF0 0x98 func_0022EBF0  # OVL1
+0x0022EBD0 0x8 UnInit__12CRebootStateFv  # OVL1; by hand (the states lane, round 19: slot 0x1C of CRebootState's vtable 0x405B10, CGameState's UnInit's; st_reboot.cpp)
+0x0022EBE0 0x8 Tick__12CRebootStateFf  # OVL1; by hand (the states lane, round 19: slot 0x14 of CRebootState's vtable 0x405B10, CGameState's Tick's; st_reboot.cpp)
+0x0022EBF0 0x98 Init__12CRebootStateFv  # OVL1; by hand (the states lane, round 19: slot 0x10 of CRebootState's vtable 0x405B10, CGameState's Init's -- the system shut down and the game's ELF rerun with dlgAfterReboot.rdr; st_reboot.cpp)
 0x0022EC90 0x74 __ct__12CRebootStateFv  # OVL1; s1:vtable by hand (the states lane: CGameState's base inlined, then CRebootState's vtable 0x405B10, RTTI-named)
-0x0022ED10 0x94 func_0022ED10  # OVL1
+0x0022ED10 0x94 RebootAfterError__Fv  # OVL1; by hand (the states lane, round 19: st_reboot.cpp's -- CRebootState::Init's reboot with dlgAfterErrorReboot.rdr, called by zVid_Assert (both overlays' copies) and 0x365A00; the name ours)
 0x0022EDB0 0x38 func_0022EDB0  # OVL1
 0x0022EDF0 0x30 func_0022EDF0  # OVL1
 0x0022EE20 0x40 func_0022EE20  # OVL1
@@ -3829,7 +3829,7 @@
 0x002A9260 0x280 func_002A9260  # OVL1
 0x002A94E0 0x68 func_002A94E0  # OVL1
 0x002A9550 0x128 func_002A9550  # OVL1
-0x002A9680 0x30 __dt__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>Fv  # OVL1; s1:align
+0x002A9680 0x30 func_002A9680  # OVL1; s1:align; s1~ (the states lane, round 19: NOT a vector destructor -- it hands a matrix and an 8-point array to CMatrix::Transform(pts, pts, 8) and returns the points; called after 0x2A96B0's box corners and before 0x2A9550's bbox of them, by 0x2A9260 and by grid_main.cpp's gridAddNodeToGrids, which passes the node as the matrix: out-of-line copies of shared inlines, the first unit's kept; the s1:align name withdrawn)
 0x002A96B0 0x108 func_002A96B0  # OVL1
 0x002A97C0 0xD4 FadeToEndMission__8CMissionFfi  # OVL1; s1:calls
 0x002A98A0 0x8 fadeToEndMissionTick__8CMissionFfPv  # OVL1; s1:exact by hand (the states lane: SOCOM 1's fadeToEndMissionTick__8CMissionFfPv is the same 8-byte jump to FadeToEndMissionTick, and FadeToEndMission hands this to AddTask as SOCOM 1's hands that) -- fts_mission.cpp
@@ -4010,7 +4010,7 @@
 0x002B6FC0 0x558 func_002B6FC0  # OVL1
 0x002B7520 0xC func_002B7520  # OVL1
 0x002B7530 0xD8 func_002B7530  # OVL1
-0x002B7610 0x110 func_002B7610  # OVL1
+0x002B7610 0x110 __ct__12C2DMessage_QFv  # OVL1; by hand (the states lane, round 19: C2D's constructor, the queue's vtable 0x4063B0, the two C2DBitmapPoly backgrounds, then SOCOM 1's C2DMessage_Q() field for field)
 0x002B7720 0x74 SetString__16C2DMessageStringFPCcb  # OVL1; s1:align; by hand (the states lane, round 17): SOCOM II's override of C2DString's slot 26, SetString(const char *, bool) -- the target passes its own a2 on to C2DString::SetString untouched (SOCOM 1's took the string only); fts_message.cpp
 0x002B77A0 0x1A8 Tick__16C2DMessageStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B7950 0x98 func_002B7950  # OVL1

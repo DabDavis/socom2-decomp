@@ -6,7 +6,6 @@
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
 void func_0030E300(void *net);
-void func_00356080(TexBufferVector *texmanager, bool all);  /* zdb::CTexManager::DestroyBuffers */
 void func_003654A0(void *reloc);                 /* (SOCOM 1 cleared g_relocDblBuf's two words) */
 void func_0038D4E0();                            /* UnloadTheWorld */
 void func_001E8FE0();
@@ -25,20 +24,18 @@ void func_00366B10(CMenuStateMenu *menu);            /* CGameMenu::HaltBackgroun
 
 /* a message from the network's queue: its type, then its text */
 struct CQueuedMessage {
-    char type;
+    MSGTYPE type;
     char text[0xaf];
 };
 
 extern "C" {
 void func_00366940(CMenuStateMenu *menu);        /* CGameMenu::TickMPEG */
 void func_002D9E40(float dT);                    /* CInput::Tick */
-void func_00341A60(float dT, void *data);        /* CSndInstance::PostTick */
 void func_00341250(float dT);
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_002A4290(CQueuedMessage *msg);
 bool func_002A4270(void *queue);
 void func_002A3E60(void *queue, CQueuedMessage *msg);
-void func_00356BE0(void *texbuffer, bool now);   /* zdb::CGSTexBuffer::Load */
 void func_0033BF30(CPipe *pipe, void *texbuffer);   /* CPipe::FIFO_Signal */
 void func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
@@ -69,6 +66,16 @@ CZAnimZAR *animfile;
 
 void zUISchedulerClear();
 
+/* the two ways a message reaches the player (0x1F5020 while the game mode byte is 11, 0x1F4DF0
+ * otherwise: unwritten) */
+extern "C" {
+void func_001F4DF0(const char *text, const char *who, int a, int b, int c, unsigned char d,
+                   unsigned char e, MSGTYPE type);
+void func_001F5020(const char *text, const char *who, int a, int b, int c, unsigned char d,
+                   unsigned char e, MSGTYPE type);
+}
+extern unsigned char data_0044F3D0;
+
 const char *CMenuStateMenu::GetReaderFileName()
 {
     return theGame.m_menuState.m_DefaultMenu;
@@ -80,13 +87,33 @@ const char *CMenuStateMenu::GetReaderFileName()
  * waited for while swaps are skipped. (SOCOM 1 cleared the relocator through a virtual; SOCOM II's
  * clear is an inline loop over three words, which is what keeps the second and third words'
  * addresses in s1/s0 for the second clear and, being the last values made, puts this in s2) */
+/* a message for the player (CGameState's slot 0x2C): a system message of the multiplayer kind is
+ * the menu's MP_SYSTEM_MESSAGE event, any other goes to one of two displays by the mode byte (a
+ * switch: the target tests the one case and branches to the default) */
+void CMenuState::DisplayMessage(const char *text, const char *who, int a, int b, int c,
+                                unsigned char d, unsigned char e, MSGTYPE type)
+{
+    if (type == 1 && d == 2) {
+        RunEventAnim("MP_SYSTEM_MESSAGE", text);
+        return;
+    }
+    switch (data_0044F3D0) {
+    case 11:
+        func_001F5020(text, who, a, b, c, d, e, type);
+        break;
+    default:
+        func_001F4DF0(text, who, a, b, c, d, e, type);
+        break;
+    }
+}
+
 bool CMenuState::Tick(float dT)
 {
     CQueuedMessage msg;
 
     func_00366940(m_menu);
     func_002D9E40(dT);
-    func_00341A60(dT, 0);
+    CSnd::PostTick(dT, 0);
     func_00341250(dT);
     func_003654C0(m_menu, dT);
     void *queue = theMission.m_netQueue;
@@ -100,16 +127,16 @@ bool CMenuState::Tick(float dT)
     thePipe.m_renderingUi = 1;
     thePipe.RenderUiNode(m_menu->m_pBackplaneNode);
     thePipe.m_renderingUi = 0;
-    func_00356BE0(zdb::CTexManager::m_texmanager.data_[0], true);
+    zdb::CTexManager::m_texmanager.m_buffer.data_[0]->Load(true);
     g_relocDblBuf.ClearSaved();
     if (zdb::CWorld::m_world) {
-        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[0]]);
+        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
         if (zdb::CWorld::m_world->m_camera)
             zdb::CWorld::m_world->m_camera->Update(zdb::ZCAM_TYPE_0);
         func_00339DE0(&thePipe, zdb::CWorld::m_world);
     }
     m_menu->DrawForeplane();
-    func_00356BE0(zdb::CTexManager::m_texmanager.data_[0], true);
+    zdb::CTexManager::m_texmanager.m_buffer.data_[0]->Load(true);
     g_relocDblBuf.ClearSaved();
     zSysFifoEnd();
     if (m_skip_swap > 0) {
@@ -145,7 +172,7 @@ void CMenuState::UnInit()
     zSysFifoEnd();
     zVid.m_7d = 1;
     sceGsSyncPath(0, 0);
-    func_00356080(&zdb::CTexManager::m_texmanager, false);
+    zdb::CTexManager::DestroyBuffers(zdb::CTexManager::m_texmanager, false);
     func_003654A0(&g_relocDblBuf);
     delete m_menu;
     m_menu = 0;
