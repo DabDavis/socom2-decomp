@@ -822,8 +822,11 @@ public:
      * DestroyProjectileList passes 1) */
     CZProjectileList(int count);
     ~CZProjectileList();
-    /* the slots and intersection tables made (SOCOM 1's; 0x3CD480) */
-    bool Init();
+    /* the slots and intersection tables made, each slot's projectile given a node (SOCOM 1's;
+     * 0x3CD480 -- no result in either build) */
+    void Init();
+    /* everything made by Init deleted (SOCOM 1's; 0x3CCBC0) */
+    void UnInit();
     /* the next free projectile, given the weapon and the ammunition (SOCOM 1's) */
     CZProjectile *AcquireProjectile(CZWeapon &weapon, CZAmmo &ammo);
     /* a shooter's charges (of one weapon, when given one) and, unless a weapon is given, his
