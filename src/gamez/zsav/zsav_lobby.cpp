@@ -138,14 +138,21 @@ bool CLobbySaveManager::Fetch(const char *name, int a, int b)
 
 /* the fetched blob handed out: each entry to the modules of its name, with the file's checksum,
  * when the header's version is the one asked for; the blob dropped and the file closed.
- * OPEN, 0x1A4 of 0x1B4: (1) the target hoists the walk's end (this + 4) out of both loops into a
- * preheader placed after the function's return -- the outer loop entered by a `b` to it, its
- * `0 < count` guard there, then a `b` to the bottom test -- the shape SortNearToFar and
- * CGrid::Create wait on (README, the zdb world round 6): include/list's end() is not an
- * expression MW hoists (written `iterator e = end()` ahead of the loops it is hoisted but placed
- * in line, 0x1A8); (2) the element is read three times, each a load folded from the node
- * (8(node)), where `*i` and `*i.i_` alike keep node + 8 in a saved register across the calls --
- * the pointer list's `*` by value (an MSL headers item) would give the target's loads */
+ * OPEN, 0x1A4 of 0x1B4, both causes include/list's (measured, the world lane r6,
+ * build/scratch/wld/v_load*.py): (1) the target hoists the walk's end (this + 4) out of both
+ * loops into a preheader placed after the function's return -- the outer loop entered by a `b` to
+ * it, its `0 < count` guard there, then a `b` to the bottom test. include/list's end(), built from
+ * `&this->end_`, is never hoisted; built from SOCOM 1's tail() --
+ * `iterator(__list_deleter<...>::iterator(tail()))` -- it is, and the whole loop shape becomes the
+ * target's (0x1C8: the rest is (2)'s extra saved register); (2) the element is read three times,
+ * each a load folded from the node (8(node)), where MW keeps node + 8 in a saved register across
+ * the calls: the CAST in the iterator's `((node *)node_)->data_` does it -- `*i`, `*i.i_`, the node
+ * read directly, through an inline by value and even a volatile read all keep it, a walk through an
+ * uncast node pointer folds all three loads and if-converts the name's c_str() ternary as the
+ * target does. SOCOM 1's DWARF has exactly that: list's node_base links are `node *prev_, *next_`
+ * and generic_iterator holds `node *node_` (include/list holds node_base * and casts) -- an MSL
+ * headers item. The name is read through CLobbySaveModule::GetName(), which folds the string's
+ * offset into the module's as the target's c_str() does */
 bool CLobbySaveManager::Load(const char *name, int version)
 {
     int result;
@@ -160,7 +167,7 @@ bool CLobbySaveManager::Load(const char *name, int version)
                 Entry *e = &m_entries[k];
 
                 for (iterator i = begin(); i != end(); ++i) {
-                    if (!strcmp((*i)->m_name.c_str(), e->m_name)) {
+                    if (!strcmp((*i)->GetName(), e->m_name)) {
                         (*i)->Load(m_buffer + e->m_offset, e->m_size);
                         (*i)->SetChecksum(m_file->GetChecksum());
                     }

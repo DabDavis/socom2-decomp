@@ -137,6 +137,9 @@ public:
     virtual void SetChecksum(const unsigned char *sum) = 0;   // 0x10
 
     void Write(const char *data, int size);
+    /* the name as a C string (ours, inline: through it the inlined c_str() folds the name's
+     * offset into the module's, as the manager's Load reads it) */
+    const char *GetName() const { return m_name.c_str(); }
 
     CLobbySaveManager *m_manager;   // 0x4
     CSaferStr m_name;   // 0x8
