@@ -1,10 +1,14 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
-/* rt_window.c: a table of 64 slots of 256 bytes (OVL2 0x642968-0x642A58), in SCEA's RT library,
+/* rt_window.c: a table of 64 slots of 256 bytes (OVL2 0x642968-0x642C48), in SCEA's RT library,
  * prebuilt with ee-gcc 2.96 at -O2 -G0 (README "The GCC front"): round 10b's "three-function table
  * object" between rt_upnp.c and SHA1.c. It has no $Header, no data and no SOCOM 1 counterpart, so the
  * file name (after rt_upnp.c in the alphabetical link order) and every name are ours. Its create and
  * destroy are rt_frag.c's (0x6451F0) over another layout: a table (0x4010 bytes, allocated zeroed)
- * holds four words, the first 1 when reset, and 64 slots whose first two words are cleared. */
+ * holds four words, the first 1 when reset, and 64 slots whose first two words are cleared. The
+ * object runs on past the three: 0x642BF8, the bytes held from the third word's slot on, is its own
+ * (a leaf: the walk's `break` to one `return`, where returning from inside the loop gives a second
+ * `jr ra`), and 0x642A58 between them -- a fragment stored by sequence in its slot, five arguments
+ * -- is not written; SHA1.c starts after them. */
 
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
@@ -61,4 +65,24 @@ void func_00642A10(RT_WINDOW *pWindow)
         pWindow->aSlots[i].x00 = 0;
         pWindow->aSlots[i].x04 = 0;
     }
+}
+
+/* the bytes held in the slots from the third word's slot on, up to the first empty one */
+unsigned int func_00642BF8(RT_WINDOW *pWindow)
+{
+    unsigned int nTotal = 0;
+    unsigned int nStart;
+    unsigned int i;
+
+    if (pWindow == 0)
+        return 0;
+    nStart = pWindow->x08 & (RT_WINDOW_SLOTS - 1);
+    i = nStart;
+    do {
+        if (pWindow->aSlots[i].x04 == 0)
+            break;
+        nTotal += pWindow->aSlots[i].x04;
+        i = (i + 1) & (RT_WINDOW_SLOTS - 1);
+    } while (i != nStart);
+    return nTotal;
 }
