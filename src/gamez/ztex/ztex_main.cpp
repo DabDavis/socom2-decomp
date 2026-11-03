@@ -10,6 +10,23 @@
 #include <string.h>
 
 #include "../znode/node_world.h"
+#include "../zsys/zsys_public.h"
+
+/* the GS TEX0 register (the SDK's libgraph sceGsTex0) */
+struct sceGsTex0 {
+    unsigned long TBP0 : 14;
+    unsigned long TBW : 6;
+    unsigned long PSM : 6;
+    unsigned long TW : 4;
+    unsigned long TH : 4;
+    unsigned long TCC : 1;
+    unsigned long TFX : 2;
+    unsigned long CBP : 14;
+    unsigned long CPSM : 4;
+    unsigned long CSM : 1;
+    unsigned long CSA : 5;
+    unsigned long CLD : 3;
+};
 
 char *_strdup(const char *s, const char *file, int line);
 
@@ -32,6 +49,38 @@ CTexPalette::CTexPalette(const char *name)
     m_AssetLib = 0;
     m_palId++;
 }
+
+}
+
+/* the power of two a size rounds up to, as its exponent, from 1 (2) to 10 (1024) (SOCOM 1's po2,
+ * a global function): one result assigned in every arm, the last two a ternary (written as an
+ * else-if it is two words longer) */
+int po2(unsigned int n)
+{
+    int r;
+
+    if (n < 3)
+        r = 1;
+    else if (n < 5)
+        r = 2;
+    else if (n < 9)
+        r = 3;
+    else if (n < 17)
+        r = 4;
+    else if (n < 33)
+        r = 5;
+    else if (n < 65)
+        r = 6;
+    else if (n < 129)
+        r = 7;
+    else if (n < 257)
+        r = 8;
+    else
+        r = n < 513 ? 9 : 10;
+    return r;
+}
+
+namespace zdb {
 
 /* a handle made on a texture, counted (SOCOM 1's). Never inlined in the target (CTexList::Append
  * calls it, as SOCOM 1's does), though -inline auto would take its three statements: pinned */
@@ -57,6 +106,70 @@ void CTexHandle::SetTexture(CTexture *tex)
         tex->m_htex_count++;
     }
 }
+
+/* a texdat's header (ours): TEXTURE_PARAMS, then the gaps before the pixels and the select */
+struct TexDatHeader {
+    unsigned char params[0x10];   // 0x0
+    int pixels;   // 0x10
+    int select;   // 0x14
+    int _18;   // 0x18
+};
+
+/* SOCOM 1's: the texture's "texdat" key fetched in place -- its parameters copied, its pixels and
+ * GIF select found after them, the VU select built -- and its pixel format and palette id set.
+ * Byte-exact only with constant propagation off (as SetGifPtrs): the target keeps `ok` in s0, set
+ * true from the start (`daddiu s0,zero,1` in FindKey's delay slot; SOCOM 1's was false until the
+ * fetch succeeded) and returns it with `move v0,s0`, where MW otherwise folds it to `li v0,1` --
+ * `bool ok; ok = true;`, an inline returning true and volatile all fold or miss. The palette id goes
+ * through `(int)`: the target sign-extends CBP before its halfword store */
+#pragma opt_propagation off
+bool CTexture::Read(CSaveLoad &io)
+{
+    bool ok = true;
+    char *buf = 0;
+    zar::CKey *key = io.m_zfile.FindKey("texdat");
+
+    if (key && io.m_zfile.FetchLIP(key, (void **)&buf)) {
+        memcpy(this, buf, 16);
+        m_loadimage = _malloc(96, 0, 0);
+        TexDatHeader *h = (TexDatHeader *)buf;
+        buf += 0x18;
+        buf += h->pixels;
+        m_buffer = buf;
+        buf += m_size;
+        buf += h->select;
+        m_gifSelect = (_word128 *)buf;
+        m_vuSelect = CVisual::GetTextureSelectBlock_ver2(m_selectQwc, &m_gifSelect, (_word128 *)&m_dmaRef,
+                                                         (_word128 *)&m_dmaRefVu);
+        m_gsWords = Compute64WordMemoryUsage();
+        m_gifSelect->u32[3] = (unsigned int)this;
+        SetGifPtrs();
+    }
+    switch (m_texelBitSize) {
+    case 32:
+        m_format = 0;
+        break;
+    case 24:
+        m_format = 1;
+        break;
+    default:
+    case 16:
+        if (m_palettized)
+            m_format = 19;
+        else
+            m_format = 2;
+        break;
+    case 8:
+        m_format = 19;
+        break;
+    case 4:
+        m_format = 20;
+        break;
+    }
+    m_palID = (int)((sceGsTex0 *)m_TEX0)->CBP;
+    return ok;
+}
+#pragma opt_propagation reset
 
 /* SOCOM 1's: every field cleared, a 16-bit bilinear texture of no size, the name copied. The
  * fields from the name on are initialised ahead of the mip list (the target's stores before its
@@ -147,6 +260,40 @@ unsigned int CTexture::Compute64WordMemoryUsage()
         n += 64 - (n & 0x3f);
     return n >> 6;
 }
+
+/* a GIF select's register entry for a register address, or none: the tag's NLOOP entries after it
+ * (ours, inline -- SetGifPtrs expands it three times) */
+static inline _word128 *FindGifReg(_word128 *select, unsigned int reg)
+{
+    _word128 *p = select;
+    unsigned int n = p->u16[0] & 0x7fff;
+
+    p++;
+    for (unsigned int i = 0; i < n; i++, p++)
+        if (p->u32[2] == reg)
+            return p;
+    return 0;
+}
+
+/* SOCOM 1's: the select's TEX0 register for the texture's context, and its MIPTBP1/2 when it has
+ * them. Byte-exact only with constant propagation off: the target tests each search's counter (0)
+ * against the count in a register (`sltu at,a2,a1`) where MW otherwise folds it (`sltu at,zero,a1`)
+ * -- no loop form tried keeps it (a while, a found pointer, a break and a test after, the counter a
+ * parameter or declared first); the original's form is not known */
+#pragma opt_propagation off
+void CTexture::SetGifPtrs()
+{
+    _word128 *p;
+
+    m_TEX0 = FindGifReg(m_gifSelect, 6 + m_context);
+    p = FindGifReg(m_gifSelect, 0x34 + m_context);
+    if (p)
+        m_MIP1 = p;
+    p = FindGifReg(m_gifSelect, 0x36 + m_context);
+    if (p)
+        m_MIP2 = p;
+}
+#pragma opt_propagation reset
 
 /* CTexList::GetHandle(const char *)'s test: a handle's texture of that name, any case (ours) */
 struct CTexHandleNamed {

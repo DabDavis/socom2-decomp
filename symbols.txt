@@ -6466,7 +6466,7 @@
 0x003545F0 0x80 Append__Q23zdb8CTexListFPQ23zdb8CTextureb  # OVL1; s1:order+calls (after Free as SOCOM 1's; CAssetLib::AddTexture calls it with true as SOCOM 1's does) -- the zdb-world lane
 0x00354670 0x118 GetHandle__Q23zdb8CTexListFPCc  # OVL1; s1:order+calls (after Append as SOCOM 1's; CAssetList::GetTexHandle calls it at SOCOM 1's call site) -- the zdb-world lane
 0x00354790 0xC8 GetHandle__Q23zdb8CTexListFPQ23zdb8CTexture  # OVL1; s1:order+calls (right after GetHandle(const char *) as SOCOM 1's; AddTextureAssetDecals calls it where SOCOM 1's does) -- the zdb-world lane
-0x00354860 0x148 func_00354860  # OVL1
+0x00354860 0x148 SetGifPtrs__Q23zdb8CTextureFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's SetGifPtrs right after the two GetHandles, the same three searches of the GIF select for TEX0 (6), MIPTBP1 (0x34) and MIPTBP2 (0x36) plus the context bit; Read and SetupSpecialTextures call it) -- ztex_main.cpp
 0x003549B0 0x44 CopyTextureSelect__Q23zdb8CTextureFP8_word128  # OVL1; s1:exact
 0x00354A00 0x88 func_00354A00  # OVL1
 0x00354A90 0xC func_00354A90  # OVL1
@@ -6480,7 +6480,7 @@
 0x00354F80 0x1D0 Read__Q23zdb8CTextureFRQ23zdb9CSaveLoad  # OVL1; s1:align
 0x00355150 0x250 SetupSpecialTextures__Q23zdb8CTextureFv  # OVL1; s1:align
 0x003553A0 0xF4 LoadGS__Q23zdb8CTextureFUiPcPvUiUiUi  # OVL1; s1:align
-0x003554A0 0xE0 func_003554A0  # OVL1
+0x003554A0 0xE0 po2__FUi  # OVL1; s1:order by hand (the world lane: SOCOM 1's po2 between LoadGS and SetTexture, the same nine size thresholds 3..513; SetupSpecialTextures calls it twice) -- ztex_main.cpp
 0x00355580 0xA0 SetTexture__Q23zdb10CTexHandleFPQ23zdb8CTexture  # OVL1; s1:align
 0x00355620 0x98 Destroy__Q23zdb10CTexHandleFPQ23zdb10CTexHandle  # OVL1; s1:align
 0x003556C0 0xD0 Create__Q23zdb10CTexHandleFPQ23zdb8CTexture  # OVL1; s1:align

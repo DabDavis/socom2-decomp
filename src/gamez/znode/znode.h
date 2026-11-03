@@ -801,6 +801,8 @@ public:
     /* SOCOM II's (ours): translucent, and blended rather than bump-mapped or 1-bit */
     bool IsAlphaBlended();
     CTexture(const char *name);
+    /* ztex_main.cpp's (SOCOM 1's): the TEX0 and MIPTBP registers found in the GIF select */
+    void SetGifPtrs();
     /* TEXTURE_PARAMS' flag setters (ours, inline: a constant through them is masked at run time,
      * as the constructor's byte read-modify-writes are) */
     void SetTransparent(bool b) { m_transparent = b; }
