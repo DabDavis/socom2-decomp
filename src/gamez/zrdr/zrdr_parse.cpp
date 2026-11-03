@@ -10,6 +10,8 @@
 #include "zrdr.h"
 #include <string>
 #include <list>
+#include <vector>
+#include <algorithm>
 #include <string.h>
 #include <stdlib.h>
 
@@ -43,12 +45,28 @@ static inline char &string_at(std::string &s, unsigned int pos)
 }
 
 /* the file being parsed (SOCOM II's; the RTTI names it, 0x3F70F0): a CBufferIO, the name and
- * directory it was opened by, and the preprocessed text (its capacity, the buffer, its length) */
+ * directory it was opened by, and the preprocessed text (its capacity, the buffer, its length).
+ * Its destructor is the vtable's slot 0x4C, after CBufferIO's freadchar */
 class CRdrIO : public CBufferIO {
 public:
+    CRdrIO() : m_capacity(0), m_text(0), m_length(0) {}
     virtual ~CRdrIO();
     bool Open(const char *name, unsigned int mode);
     bool Open(void *buf, unsigned int size);
+    /* text appended to the preprocessed buffer, grown by the text's length when it is full (ours) */
+    void Append(const char *text)
+    {
+        int n = text ? strlen(text) : 0;
+
+        if (n > 0) {
+            if (m_length + n >= m_capacity) {
+                m_text = (char *)_realloc(m_text, n + m_capacity, 0, 0);
+                m_capacity += n;
+            }
+            memcpy(m_text + m_length, text, n);
+            m_length += n;
+        }
+    }
 
     int m_capacity;      // 0x24
     char *m_text;        // 0x28
@@ -56,6 +74,125 @@ public:
     std::string m_path;  // 0x30
     std::string m_name;  // 0x3c
 };   // 0x48 bytes
+
+/* a preprocessor symbol (SOCOM 1's zrdr_sym, two char pointers there that its destructor freed,
+ * kept in a list; SOCOM II's a flag and two strings, 0x1C bytes, kept in a vector): #define sets
+ * it, #undef marks it undefined -- the flag set, the symbol hidden from #ifdef -- and a file's own
+ * symbols are dropped when it is done. The strings are plain basic_strings -- the vector's clear and
+ * erase destroy each with ONE this-test (a CSaferStr member gives two). OPEN, the element copies
+ * (__copy 0x332560, __fill_n 0x332A60, __copy_backward 0x332AD0, remove_copy_if 0x333120): code-exact,
+ * but they call basic_string's assignment 0x22E4D0 where the target calls 0x32FD70, `j 0x22E4D0`:
+ * SOCOM II's MSL has operator=(const basic_string &) INLINE over an out-of-class assign(const
+ * basic_string &) (SOCOM 1's MSL has both as 0xC-byte wrappers, 0x39C3A0 and 0x24C020), so 0x22E4D0 is
+ * assign and 0x32FD70 operator='s out-of-line copy, which the preprocessor's Define requests first.
+ * Measured (the world lane's round 4): include/string so, with 0x22E4D0 renamed, makes all four and
+ * 0x32FD70 byte-exact and loses nothing over every hand-written unit -- the rename is outside this
+ * lane's range (the integrator's request) */
+struct zrdr_sym {
+    zrdr_sym(const std::string &name, const std::string &value, int defined)
+    {
+        m_name = name;
+        m_value = value;
+        m_undefined = !defined;
+    }
+    /* written as the constructor is: the strings assigned, then the flag (0x332B50, the insert's
+     * construct calls it) */
+    zrdr_sym(const zrdr_sym &x)
+    {
+        m_name = x.m_name;
+        m_value = x.m_value;
+        m_undefined = x.m_undefined;
+    }
+
+    /* (ours, inline) the searches materialise its test (sltu, xori) before they branch */
+    bool Defined() const { return !m_undefined; }
+
+    unsigned char m_undefined;   // 0x0
+    std::string m_name;          // 0x4
+    std::string m_value;         // 0x10
+};   // 0x1c bytes
+
+/* the symbol table (0x488630; the class and its names ours): the symbols, and the count there was
+ * before the file being read, whose own symbols it drops after (Pop) */
+class zrdr_symtab : public std::vector<zrdr_sym> {
+public:
+    zrdr_symtab() : m_base(0) {}
+    /* the newest symbol of that name -- from the file's own (local) or from all, an undefined one
+     * only when asked for (any) */
+    zrdr_sym *Find(const std::string &name, bool any, bool local)
+    {
+        zrdr_sym *found = 0;
+        int i = size();
+        int first = local ? m_base : 0;
+
+        for (i--; i >= first; i--) {
+            zrdr_sym *sym = &(*this)[i];
+
+            if (sym->m_name != name)
+                continue;
+            if (any || sym->Defined())
+                found = sym;
+            break;
+        }
+        return found;
+    }
+    void Define(const std::string &name, const std::string &value)
+    {
+        zrdr_sym *sym = Find(name, true, true);
+
+        if (sym) {
+            sym->m_value = value;
+            sym->m_undefined = 0;
+        } else
+            push_back(zrdr_sym(name, value, 1));
+    }
+    void Undefine(const std::string &name)
+    {
+        zrdr_sym *sym = Find(name, true, true);
+
+        if (sym)
+            sym->m_undefined = 1;
+        else
+            push_back(zrdr_sym(name, "", 0));
+    }
+    /* a walk with its body compiled out (0x32FB10) */
+    void Dump()
+    {
+        for (iterator i = begin(); i != end(); i++)
+            ;
+    }
+    /* the file's own symbols dropped, then every undefined one: too tall to inline whole, zrdr_read
+     * inlines its body and calls each piece out of line (0x32FB80-0x32FC30, the erase 0x32FB90) */
+    void Pop()
+    {
+        iterator last;
+        iterator first;
+
+        if (size() > m_base) {
+            iterator i = begin();
+
+            for (unsigned int n = 0; n < m_base; n++, i++)
+                ;
+            erase(i, end());
+        }
+        last = end();
+        first = std::remove_if(begin(), last, IsUndefined);
+        erase(first, last);
+        m_base = 0;
+        Dump();
+    }
+    static bool IsUndefined(const zrdr_sym &sym);
+
+    unsigned int m_base;   // 0xc
+};   // 0x10 bytes
+
+static zrdr_symtab g_symbols;
+
+/* remove_if's test: a symbol #undef'd (0x331E20, the unit's first function) */
+bool zrdr_symtab::IsUndefined(const zrdr_sym &sym)
+{
+    return sym.m_undefined != 0;
+}
 
 /* SOCOM 1's: a token made a value -- an integer when all of it reads as one, else a real, else
  * (or quoted) a string in the file's table */
@@ -177,12 +314,14 @@ _zrdr *CRdrFile::ReadArray(CRdrIO *io, int depth)
     return array;
 }
 
-/* a buffer parsed in place: no name, no directory */
-bool CRdrIO::Open(void *buf, unsigned int size)
+/* the preprocessed text freed with the name and directory (the vtable's slot 0x4C) */
+CRdrIO::~CRdrIO()
 {
-    m_name.erase();
-    m_path.erase();
-    return CBufferIO::Open(buf, size);
+    if (m_text)
+        _free(m_text, 0, 0);
+    m_text = 0;
+    m_capacity = 0;
+    m_length = 0;
 }
 
 /* the file opened by name, its directory split off it with forward slashes */
@@ -200,4 +339,373 @@ bool CRdrIO::Open(const char *name, unsigned int mode)
             string_at(m_path, i) = '/';
     }
     return CBufferIO::Open(name, mode);
+}
+
+/* a buffer parsed in place: no name, no directory */
+bool CRdrIO::Open(void *buf, unsigned int size)
+{
+    m_name.erase();
+    m_path.erase();
+    return CBufferIO::Open(buf, size);
+}
+
+/* basic_string's (str, pos, n) constructor (0x332320) and the 6-argument replace under it (0x332CF0),
+ * which include/string does not have yet: placeholders, the new string built in the return slot */
+extern "C" std::string func_00332320(const std::string *s, unsigned int pos, unsigned int n);
+
+/* a string trimmed of the characters given at both ends (ours, inline) */
+static inline void zrdr_trim(std::string &s, const char *set)
+{
+    unsigned int i = s.find_first_not_of(set, 0);
+
+    if (i)
+        string_erase(s, 0, i);
+    i = s.find_last_not_of(set, (unsigned int)std::string::npos);
+    if (i + 1 != s.size())
+        string_erase(s, i + 1, (unsigned int)std::string::npos);
+}
+
+/* the preprocessor's directives (SOCOM 1's _get_pptoken, its codes 1, 2 and 4 the same; SOCOM II
+ * compares each directive's length with strncmp where SOCOM 1 called strcmp) */
+enum {
+    ZRDR_PP_DEFINE = 1,
+    ZRDR_PP_UNDEF = 2,
+    ZRDR_PP_IFDEF = 4,
+    ZRDR_PP_ELSE = 8,
+    ZRDR_PP_ENDIF = 16,
+    ZRDR_PP_INCLUDE = 32
+};
+
+int _get_pptoken(const char *line)
+{
+    int token = 0;
+
+    if (!strncmp(line, "#ifdef", 6))
+        token = ZRDR_PP_IFDEF;
+    else if (!strncmp(line, "#else", 5))
+        token = ZRDR_PP_ELSE;
+    else if (!strncmp(line, "#endif", 6))
+        token = ZRDR_PP_ENDIF;
+    else if (!strncmp(line, "#define", 7))
+        token = ZRDR_PP_DEFINE;
+    else if (!strncmp(line, "#include", 8))
+        token = ZRDR_PP_INCLUDE;
+    else if (!strncmp(line, "#undef", 6))
+        token = ZRDR_PP_UNDEF;
+    return token;
+}
+
+/* SOCOM 1's ValidateFormat: the parentheses balance, outside quotes and ';' comments (SOCOM II reads
+ * the file given, rewound before and after) */
+bool CRdrFile::ValidateFormat(CRdrIO *io)
+{
+    int depth = 0;
+    bool comment = false;
+    bool quoted = false;
+    char c;
+
+    io->fseek(0, 0);
+    while (io->fread(&c, 1) == 1) {
+        switch (c) {
+        case '"':
+            if (!comment)
+                quoted = !quoted;
+            break;
+        case ';':
+            if (!quoted)
+                comment = true;
+            break;
+        case '\r':
+        case '\n':
+            if (!quoted)
+                comment = false;
+            break;
+        case '(':
+            if (!quoted && !comment)
+                depth++;
+            break;
+        case ')':
+            if (!quoted && !comment)
+                depth--;
+            break;
+        }
+    }
+    io->fseek(0, 0);
+    return depth == 0;
+}
+
+/* SOCOM 1's _preproc_filter (a buffer there): the file read line by line into its preprocessed
+ * text -- #include'd files preprocessed and spliced in, #define and #undef kept in the symbol table,
+ * #ifdef/#else/#endif skipping lines (eight levels), every other line's tokens replaced by the
+ * values of the symbols they name -- and the text then made the file's buffer.
+ * The symbol table's Define and Undefine are too tall to inline whole and inlined one level here,
+ * their pieces called out of line -- the copies 0x32FC50-0x32FD80, which sit before this recursive
+ * function in reverse of their first use; #ifdef's and the substitution's Find inline whole. Written
+ * so, the unit's template tail comes out as the target's: the element's copy constructor 0x332B50,
+ * the insert 0x3325E0 and its helpers.
+ * OPEN, 1196 instructions at the target's size (0x1588): not reconciled yet -- the skip stack's
+ * zeroing loop keeps a null test of its address in the target, the line's c_str() bases are hoisted
+ * into stack slots (0xA0, 0xB0), and the registers differ throughout */
+bool _preproc_filter(CRdrIO *io)
+{
+    std::string white(" \t");
+    std::string newline("\n");
+    std::string comment(";");
+    std::string quote("\"");
+    std::string delims(" \t()");
+    std::string space(" \t");
+
+    if (!CRdrFile::ValidateFormat(io))
+        return false;
+    io->fseek(0, 0);
+    bool skip[8];
+
+    for (int k = 0; k < 8; k++)
+        skip[k] = false;
+    int depth = 0;
+    bool skipping = false;
+    int error = 0;
+
+    io->m_capacity = io->m_filesize;
+    bool quoted = false;
+
+    io->m_text = (char *)_malloc(io->m_capacity, 0, 0);
+    bool eof = false;
+
+    io->m_length = 0;
+    std::string line;
+
+    while (!error && !eof) {
+        line.erase();
+        bool end = false;
+        char c;
+
+        for (;;) {
+            if (!io->fread(&c, 1)) {
+                line.push_back('\n');
+                end = true;
+                break;
+            }
+            line.push_back(c);
+            if (c == '\n')
+                break;
+        }
+        eof = end;
+        unsigned int pos = line.find_first_not_of(" \t", 0);
+        bool directive = pos != (unsigned int)std::string::npos && line.at(pos) == '#';
+
+        if (directive && pos)
+            string_erase(line, 0, pos);
+        if (directive) {
+            unsigned short token = _get_pptoken(line.c_str());
+
+            if (quoted)
+                continue;
+            unsigned int end = line.find_first_of(comment, 0);
+
+            if (end != (unsigned int)std::string::npos)
+                string_erase(line, end, (unsigned int)std::string::npos);
+            switch (token) {
+            case ZRDR_PP_INCLUDE:
+                if (!skipping) {
+                    std::string name = func_00332320(&line, line.find_first_of(white, 0),
+                                                     (unsigned int)std::string::npos);
+
+                    zrdr_trim(name, " \t\n\r\f\"");
+                    CRdrIO inc;
+                    const char *found = zrdr_findfile(name.c_str(), io->m_path.c_str());
+
+                    if (inc.Open(found, 1)) {
+                        if (_preproc_filter(&inc)) {
+                            io->Append(";; RDR_INCLUDE: ");
+                            io->Append(name.c_str());
+                            io->Append("\n");
+                            int n = inc.GetSize();
+
+                            if (n > 0) {
+                                io->m_text = (char *)_realloc(io->m_text, n + io->m_capacity, 0, 0);
+                                io->m_capacity += n;
+                                memcpy(io->m_text + io->m_length, inc.m_buffer, n);
+                                io->m_length += n;
+                                io->Append("\n\n");
+                            }
+                        }
+                        inc.Close();
+                    }
+                }
+                break;
+            case ZRDR_PP_DEFINE:
+                if (!skipping) {
+                    unsigned int first = line.find_first_of(white, 0);
+                    unsigned int last = line.find_first_of(white, first + 1);
+                    std::string name = func_00332320(&line, first, last - first);
+
+                    if (last != (unsigned int)std::string::npos) {
+                        std::string value = func_00332320(&line, last, (unsigned int)std::string::npos);
+
+                        zrdr_trim(name, " \t\n\r\f");
+                        zrdr_trim(value, " \t\n\r\f");
+                        g_symbols.Define(name, value);
+                    } else {
+                        std::string value("");
+
+                        zrdr_trim(name, " \t\n\r\f");
+                        g_symbols.Define(name, value);
+                    }
+                }
+                break;
+            case ZRDR_PP_UNDEF:
+                if (!skipping) {
+                    std::string name = func_00332320(&line, line.find_first_of(white, 0),
+                                                     (unsigned int)std::string::npos);
+
+                    zrdr_trim(name, " \t\n\r\f");
+                    g_symbols.Undefine(name);
+                }
+                break;
+            case ZRDR_PP_IFDEF: {
+                std::string name = func_00332320(&line, line.find_first_of(white, 0),
+                                                 (unsigned int)std::string::npos);
+
+                depth++;
+                if (!skipping) {
+                    zrdr_trim(name, " \t\n\r\f");
+                    if (g_symbols.Find(name, false, false))
+                        skip[depth] = false;
+                    else
+                        skip[depth] = true;
+                    skipping = skip[depth];
+                } else
+                    skip[depth] = true;
+                break;
+            }
+            case ZRDR_PP_ELSE:
+                if (!depth)
+                    error = ZRDR_PP_ELSE;
+                else if (!skip[depth - 1]) {
+                    skip[depth] = !skip[depth];
+                    skipping = skip[depth];
+                }
+                break;
+            case ZRDR_PP_ENDIF:
+                if (!depth)
+                    error = ZRDR_PP_ENDIF;
+                depth--;
+                skipping = skip[depth];
+                break;
+            }
+        } else {
+            unsigned int i = 0;
+
+            if (skipping)
+                continue;
+            if (!quoted) {
+                i = line.find_first_not_of(space, 0);
+                if (i) {
+                    string_erase(line, 0, i);
+                    i = 0;
+                }
+            }
+            unsigned int start = (unsigned int)std::string::npos;
+            unsigned int mark = (unsigned int)std::string::npos;
+
+            for (; i < line.size(); i++) {
+                char ch = line[i];
+
+                if (quoted) {
+                    if (ch == '"')
+                        quoted = false;
+                } else if (ch == ';') {
+                    if (!i)
+                        line.erase();
+                    else
+                        string_erase(line, i, line.size() - i - 1);
+                } else if (ch == '"')
+                    quoted = true;
+                else if (rdr_isspace(ch) || ch == '(' || ch == ')') {
+                    if (start == mark)
+                        mark = start = i;
+                    else {
+                        std::string word = func_0032FC40(&line, start, i - start);
+
+                        zrdr_trim(word, " \t\n\r\f");
+                        zrdr_sym *sym = g_symbols.Find(word, false, false);
+
+                        if (sym && sym->m_value.size()) {
+                            string_erase(line, start, word.size());
+                            line.replace(start, 0, sym->m_value);
+                            i = start + sym->m_value.size();
+                        }
+                        mark = start = i;
+                    }
+                } else if (start == mark)
+                    start = i;
+            }
+            if (line.size())
+                io->Append(line.c_str());
+        }
+    }
+    char *old = io->m_buffer;
+
+    io->m_buffer = io->m_text;
+    io->m_reserve = io->m_capacity;
+    io->m_size = io->m_length;
+    io->m_filesize = io->m_length;
+    io->m_ptr = io->m_buffer + io->m_size;
+    _free(old, 0, 0);
+    io->fseek(0, 0);
+    io->m_text = 0;
+    io->m_capacity = 0;
+    io->m_length = 0;
+    return true;
+}
+
+/* an .rdr read: from the archives unless the flags say not (1), else from its file, preprocessed
+ * (its text dumped beside it as "<name>pp" when the flags ask, 2) and parsed; the symbols the file
+ * defined are dropped after. CRdrIO's GetSize and Close are called through the vtable on the local
+ * (MW devirtualises a member only when the object's own class declares it: CFileIO's are direct).
+ * OPEN, 3 instructions: inside the inlined Pop the postfix ++'s result takes sp+0x140 and end()'s
+ * sp+0x148 where the target has them the other way round (the target's block allocates end()'s
+ * and erase's temporaries before the loop's) -- the counter loop written with the step in the
+ * body, in the for's third clause, as a while, in a block, the iterator built by direct
+ * initialisation, its counter declared first: none moves them */
+_zrdr *zrdr_read(const char *name, const char *path, int flags)
+{
+    CRdrFile *file = 0;
+
+    if (!(flags & 1)) {
+        file = CRdrArchive::FindRdr(name, flags);
+        if (file)
+            return file;
+    }
+    CRdrIO io;
+    const char *found = zrdr_findfile(name, path);
+
+    if (io.Open(found, 1)) {
+        g_symbols.m_base = g_symbols.size();
+        if (_preproc_filter(&io)) {
+            if (flags & 2) {
+                std::string pp(name);
+
+                pp.append("pp");
+                CFileIO out;
+
+                if (out.Open(pp.c_str(), 26)) {
+                    char *buf = io.m_buffer;
+
+                    out.fwrite(buf, io.GetSize());
+                    out.Close();
+                }
+            }
+            file = new CRdrFile;
+            file->ReadArray(&io, 0);
+            if (!file->array) {
+                delete file;
+                file = 0;
+            }
+        }
+        g_symbols.Pop();
+        io.Close();
+    }
+    return file;
 }
