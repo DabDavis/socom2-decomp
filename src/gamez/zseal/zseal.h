@@ -45,6 +45,10 @@ enum ZOOMSTATE {
     ZOOMSTATE_BINOCS = 3, ZOOMSTATE_WEAPONDEF1 = 4, NUM_ZOOMSTATES = 12
 };
 
+/* what a SEAL holds (SOCOM 1's SEAL_ITEM, a byte enum: zweapon.h keeps a word-sized stand-in of
+ * that name, so this one's name is ours) */
+enum SEAL_ITEM_BYTE { ITEM_NONE = 0, ITEM_RIFLE = 1, ITEM_PISTOL = 2, ITEM_THROWABLE = 3, ITEM_DONE = 4 };
+
 /* the fire trigger's edge state (SOCOM 1's DWARF, a byte) */
 enum TRIGGER { TRIGGER_UP = 0, TRIGGER_DOWN = 1, TRIGGER_FALLING = 2, TRIGGER_RISING = 3, TRIGGER_FINISH = 4 };
 
@@ -1511,7 +1515,9 @@ public:
     unsigned char _ee4[0xf74 - 0xee4];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
-    unsigned char _f78[0xf79 - 0xf78];
+    /* an item the anim choice falls back on with no base blend (0x58C820 copies it with lb, tests it
+     * with lbu: a byte enum; new in SOCOM II, the name ours) */
+    SEAL_ITEM_BYTE m_lastitem;   // 0xf78
     /* the item in hand (SOCOM 1's m_item, a SEAL_ITEM byte at 0xe58: 1 the rifle, 2 the pistol, 3 a
      * throwable; zweapon.h's SEAL_ITEM is a word-sized stand-in, so a byte here) */
     unsigned char m_item;   // 0xf79
@@ -1628,7 +1634,9 @@ public:
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     unsigned char _135c[0x1440 - 0x135c];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
-    unsigned char _144c[0x14cc - 0x144c];
+    unsigned char _144c[0x14b0 - 0x144c];
+    CPnt3D m_curr_firepos;   // 0x14b0 (SOCOM 1's 0x1110, m_aim_dir's 0x3a0 on as here)
+    unsigned char _14bc[0x14cc - 0x14bc];
     short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
     unsigned char _14ce[0x14e0 - 0x14ce];   // (0x14E0 bytes: Create news 5344)
 };

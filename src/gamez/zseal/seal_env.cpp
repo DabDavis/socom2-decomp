@@ -730,6 +730,39 @@ extern "C" void func_005AA620(CZSealBody *seal, bool on)
     }
 }
 
+/* the fire point's offset, none while it is unset (an inline: its three compares with zero) */
+static inline const CPnt3D *FireOffset(const CZSealBody *seal)
+{
+    if (seal->m_curr_firepos.x == 0.0f && seal->m_curr_firepos.y == 0.0f && seal->m_curr_firepos.z == 0.0f)
+        return &CPnt3D::zero;
+    return &seal->m_curr_firepos;
+}
+
+/* online, the MP bomb lying within 20 of the SEAL's fire point, if any (OVL2 0x5AA110: TickPickups
+ * 0x593DA0 asks it; new in SOCOM II, the name ours).
+ * OPEN, 0x128 against 0x130, ~12 instructions: (1) the target compares each field with zero as
+ * `c.eq.s field,zero`, MW here always puts the literal first (`c.eq.s zero,field`) -- `x == 0.0f`,
+ * `0.0f == x` and `!=` alike; (2) after the three tests the target branches over the offset's
+ * &field block to the &zero block (`b`), the early-return inline here falls into &zero (the `==`
+ * forms) or inverts the last test (`!=`); the ternary materialises the &&; (3) the network test's
+ * return 0 is its own `b epilogue; move v0,zero` in the target, merged with the last return here */
+extern "C" CPickup *func_005AA110(CZSealBody *seal)
+{
+    if (!theNetwork.m_9)
+        return 0;
+    CPnt3D pos = seal->m_posW + *FireOffset(seal);
+    CPickup *bomb = CPickup::GetClosest(&pos, 20.0f, CPickup::PU_MPBOMB, 0, true);
+
+    if (bomb) {
+        CPnt3D d;
+
+        pos.Sub(bomb->GetPosW(), &d);
+        if (d.x * d.x + d.y * d.y + d.z * d.z < 400.0f)
+            return bomb;
+    }
+    return 0;
+}
+
 /* the head's place and its look's direction in the world, each when asked (OVL2 0x5A3070; SOCOM 1's
  * GetHeadParams, after CheckForRegionTrigger in both builds -- SOCOM 1's filled both always) */
 void CZSealBody::GetHeadParams(CPnt3D *pos, CPnt3D *dir)
