@@ -1647,6 +1647,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the UI, round 10** (the keyboard's vector<char> instances and assign(s, n) through their callers):
+  - an end iterator copied to a stack slot, then read with the step folded into the access (`lhu
+    -4`), is an iterator passed by value to an inline (zui_skb.h's SkbPrev): every back()/end()-1
+    form scalarises it;
+  - an element built directly in push_back's temporary, its field addresses hoisted out of the loop,
+    is `push_back(T(a, b))`; a helper returning T by value adds a copy; a pooled true/false constant
+    read with `lbu` into a hidden result is `std::pair<bool, bool>(...)`'s const-reference constructor;
+  - a materialised `!x` (sltu, xori) inside an `&&` needs an inline `return !(bool)x;` -- the cast in
+    the condition is simplified away; a byte-enum is assigned unnarrowed (movz) and narrowed with
+    `andi 0xff` at each read, an unsigned char at the assignment;
+  - `return n >= 2 ? (unsigned short)x : 0;` gives `slti v0`, `bnez` and an `andi 0xffff` at the join;
+    `(T *)(buf + i * sizeof(T))` adds `this` first, `(T *)buf + i` the index first;
+  - include/string has `basic_string(const charT *, size_type)`, the char vector pop_back(); the
+    hangul element vectors' destructor chain is one level deeper in the original than these headers
+    (six this-tests inlined there) -- about 15 hangul rows wait on it (the MSL lane's).
 - **Tells from the game states, round 18** (two initialisers, the controller's stick and button readers):
   - an array static of a class with an inline empty constructor gives an `__sinit` that tail-calls
     `__construct_array` with the constructor's out-of-line copy and no destructor (fts_message.cpp);
@@ -2964,7 +2979,8 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
 matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
-constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- and 0x510080, OVL2's
+constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- 0x1EF8C0, st_core.cpp's
+~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
