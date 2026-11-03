@@ -555,35 +555,6 @@ void FriendInvitationVector::Remove(int id)
 
 #pragma auto_inline reset
 
-/* a state of the game's stack, as far as the player is told things (Apps/FTS/fts_state.h's
- * CGameState: its first ten slots, DisplayMessage at 0x2C) */
-class CMessageState {
-public:
-    virtual ~CMessageState();
-    virtual void PreInit();
-    virtual bool Init();
-    virtual bool Tick(float dT);
-    virtual void PreUnInit();
-    virtual void UnInit();
-    virtual void OnPush(int userdata);
-    virtual void OnPop(int userdata);
-    virtual void SetSkipSwap(int swap);
-    virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
-                                unsigned char d, unsigned char e, char type);
-};
-
-/* the game's stack of states (zgame.h's CGame: the current state's index at 0xC, the stack 0x14) */
-struct CMessageGame {
-    CMessageState *GetCurrentState() { return m_CurrentState >= 16 ? 0 : m_Stack[m_CurrentState]; }
-
-    unsigned char _0[0xc];
-    unsigned int m_CurrentState;   // 0xc
-    CMessageState *m_TestVariable;   // 0x10
-    CMessageState *m_Stack[16];   // 0x14
-};
-
-extern CMessageGame theGame;   /* 0x4084C0 */
-
 /* an invitation to be a friend received: kept, and the player told (OVL1 0x3009C0: MediusInit's
  * second callback; its response is the invitation's record) */
 void func_003009C0(int, int, int, void *data)

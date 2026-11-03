@@ -4942,8 +4942,8 @@
 0x002F42E0 0x18 CheckMediusError__F15MediusErrorCode  # OVL1; ours (every Medius request in OVL1 0x2DF560-0x306670 hands the API call's result to it and drops the answer: true for 0, MediusSuccess)
 0x002F4300 0x560 LookupMediusCallbackStatus__F20MediusCallbackStatus  # OVL1; s1 by hand (the callbacks sprintf its string for a failed status, as SOCOM 1's callbacks call LookupMediusCallbackStatus for theirs: cbSendClanMessage's 'Failed To Send Message. Error -> %s', cbDisbandClan's 'Clan Disband Error: %s')
 0x002F4860 0x1B4 SendChat__13CZOnlineLobbyFPCcPCc  # OVL1; s1 by hand (the UI-commands lane's lead: SOCOM 1's chat senders call CZOnlineLobby::SendChat where these call it on theLobby; SOCOM II's takes the text and a second string, a whisper's target -- null for the room, a type 1 message otherwise)
-0x002F4A20 0x180 func_002F4A20  # OVL1
-0x002F4BA0 0x1B8 func_002F4BA0  # OVL1
+0x002F4A20 0x180 cbFindChatPlayerID__FiiiP24MediusFindPlayerResponse  # OVL1; ours, the online lane round 11 (the callback SendChat's MediusFindPlayer is given for a private line; named by the status it checks, 'FindChatPlayerID', as the friends unit's cbFindBuddyListPlayerID)
+0x002F4BA0 0x1B8 cbFilterChat__FPCcPv  # OVL1; s1:ref by hand, the online lane round 11 (SOCOM 1's SendChat hands cbFilterChat to Censor; SOCOM II's SendChat 0x2F4860 hands this to its inlined censor for a public line, and 0x2F4A20 for a private one: the line taken off the filter's queue and sent as a direct message)
 0x002F4D60 0x90 func_002F4D60  # OVL1
 0x002F4DF0 0xA8 Censor__13CZOnlineLobbyFPCcPFPCcPv_vPv  # OVL1; s1:ui (UINetCensorText and SendChatMsg call it, as SOCOM 1's call Censor)
 0x002F4EA0 0x44 cbCensor__FiiiP24MediusTextFilterResponse  # OVL1; s1:calls by hand (CZOnlineLobby::Censor hands it to MediusTextFilter as SOCOM 1's Censor hands cbCensor: the filtered text at +0x15 to the waiting callback, then the callback and its data cleared)
@@ -4955,7 +4955,7 @@
 0x002F56B0 0x50 swap__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FRQ210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>  # OVL1; s1:exact
 0x002F5700 0x238 func_002F5700  # OVL1
 0x002F5940 0xE4 func_002F5940  # OVL1
-0x002F5A30 0xD8 func_002F5A30  # OVL1
+0x002F5A30 0xD8 clear__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 11 (the chat deque's clear: its pop_front 0x2F51E0 calls it when one line is left, as the lobby queue's pop_front 0x2E1560 calls its clear 0x2E1B20; it leaves start_ at 4, half of the 8-line block)
 0x002F5B10 0x1F8 func_002F5B10  # OVL1
 0x002F5D10 0x13C func_002F5D10  # OVL1
 0x002F5E50 0x70 __dt__10CChatQueueFv  # OVL1; ours, the online lane round 10 (the chat queues' destructor: __sinit_zNetMediusChat.cpp registers it for both)

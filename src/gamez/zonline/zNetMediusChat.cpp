@@ -1067,7 +1067,17 @@ struct MediusFindPlayerRequest {
     char Name[32];   // 0x30
 };   // 0x50
 
-struct MediusFindPlayerResponse { MEDIUS_RESPONSE_HEAD };
+/* the player found (the friends unit's layout) */
+struct MediusFindPlayerResponse {
+    MEDIUS_RESPONSE_HEAD
+    int ApplicationID;   // 0x1c
+    char ApplicationName[32];   // 0x20
+    int ApplicationType;   // 0x40
+    int MediusWorldID;   // 0x44
+    int AccountID;   // 0x48
+    char AccountName[32];   // 0x4c
+    char EndOfList;   // 0x6c
+};
 
 /* a queue of chat lines (the name ours): four blank lines pushed and popped at the start, so its
  * first block is there before the first line -- the constructor is too tall to inline whole into
@@ -1093,8 +1103,6 @@ extern "C" {
 void func_002F5290(void *queue, const MediusChatMessage *msg);   /* a line queued */
 MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer */
-void func_002F4A20(int, int, int, MediusFindPlayerResponse *);   /* the private line's player found */
-void func_002F4BA0(const char *text, void *data);   /* the public line filtered: sent */
 MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
                               void (*cb)(int, int, int, MediusPlayerInfoResponse *));   /* MediusGetPlayerInfo */
 void func_002F0020(int, int, int, MediusPlayerInfoResponse *);   /* the player's info shown */
@@ -1110,6 +1118,9 @@ extern "C" {
 extern CensorCallback data_0044FA00;
 extern void *data_0044FA08;
 }
+
+void cbFindChatPlayerID(int, int, int, MediusFindPlayerResponse *resp);   /* the private line's player found */
+void cbFilterChat(const char *text, void *data);   /* the public line filtered: sent */
 
 /* a chat line sent: queued, then a private one's player looked up, a public one filtered first
  * (SOCOM 1's SendChat filtered every line; OVL1 0x2F4860). The filter is Censor, inlined */
@@ -1136,12 +1147,12 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
         find.SearchType = 1;
         if (to)
             memcpy(find.Name, to, sizeof(find.Name));
-        CheckMediusError(MediusFindPlayer(&find, func_002F4A20));
+        CheckMediusError(MediusFindPlayer(&find, cbFindChatPlayerID));
     } else {
         msg.TargetID = -1;
         msg.MessageType = 0;
         func_002F5290(&data_0044FA20, &msg);
-        Censor(msg.Message, func_002F4BA0, &msg);
+        Censor(msg.Message, cbFilterChat, &msg);
     }
     return true;
 }
@@ -1273,6 +1284,40 @@ extern "C" void func_002F4D60(CZOnlineLobby *lobby, int account, int type, const
     req.MessageType = type;
     req.Message[sizeof(req.Message) - 1] = 0;
     CheckMediusError(MediusSendChatMessage(&req));
+}
+
+/* the public line filtered: taken off the filter's queue (the block's front() inline) and sent to
+ * its target as a direct message -- the text above inlined -- and shown to us unless it was to
+ * ourselves, a private line in its own colour (SOCOM 1's cbFilterChat, which SendChat hands the
+ * censor as SOCOM 1's did, and which looked the room's players up instead; OVL1 0x2F4BA0) */
+void cbFilterChat(const char *text, void *data)
+{
+    MediusChatMessage msg = data_0044FA20.front();
+
+    data_0044FA20.pop();
+    func_002F4D60(&theLobby, msg.TargetID, msg.MessageType, text);
+    if (msg.TargetID != AccountInfo.AccountID)
+        theGame.GetCurrentState()->DisplayMessage(msg.Message, AccountInfo.AccountName, 0, 0, 0, 1, 0,
+                                                  msg.MessageType == 1 ? 5 : 0);
+}
+
+/* the private line's player found: the line, taken off the private queue, gets the account as its
+ * target and goes through the censor as a public one does -- else it is dropped and the menus told
+ * (SOCOM II's; OVL1 0x2F4A20, the callback SendChat's MediusFindPlayer is given; the name ours, by
+ * the status it checks, as the friends unit's cbFindBuddyListPlayerID) */
+void cbFindChatPlayerID(int, int, int, MediusFindPlayerResponse *resp)
+{
+    if (CheckMediusCallbackStatus("FindChatPlayerID", resp->StatusCode)) {
+        MediusChatMessage msg = data_0044FA50.front();
+
+        data_0044FA50.pop();
+        msg.TargetID = resp->AccountID;
+        func_002F5290(&data_0044FA20, &msg);
+        theLobby.Censor(msg.Message, cbFilterChat, 0);
+    } else {
+        data_0044FA50.pop();
+        LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+    }
 }
 
 /* the filtered text handed to the waiting callback, which is then forgotten (SOCOM 1's; OVL1
