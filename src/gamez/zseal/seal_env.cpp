@@ -15,39 +15,8 @@ public:
     static void RequestNewBombState(int id, EnumBombState state, const CPnt3D *pos);
 };
 
-/* CSequence, the timed sequence a look is, is zbody.h's (through zseal.h) */
-
-/* a head's turn toward a direction, eased over a time (SOCOM 1's DWARF: CLook : CSequence, 0x80
- * bytes; SOCOM II's drops a quaternion: m_goal_dir and everything after it 0x10 earlier) */
-class CLook : public CSequence {
-public:
-    CLook();
-    void SetDir(const CPnt3D *dir, float rate);
-    void LookTick(float dT);
-
-    CPnt3D m_curr_dir;   // 0x10
-    float m_rate;   // 0x1c
-    CQuat m_quat0;   // 0x20
-    CQuat m_quat1;   // 0x30
-    CPnt3D m_goal_dir;   // 0x40 (SOCOM 1's 0x50)
-    float m_deltaT;   // 0x4c
-    CPnt3D m_cross;   // 0x50
-    float m_fracT;   // 0x5c
-    unsigned char m_done;   // 0x60
-    bool IsDone() const { return m_done; }
-    unsigned char _61[0x70 - 0x61];   // (SOCOM II's CLook is 0x70: CBlink's m_org at 0x70)
-};
-
-/* the eyelids: a look down and back up (SOCOM 1's DWARF: CBlink : CLook) */
-class CBlink : public CLook {
-public:
-    CBlink();
-    void Blink(int org);
-    void BlinkTick(float dT);
-
-    int m_org;   // 0x70 (SOCOM 1's 0x80)
-    float m_nextT;   // 0x74
-};
+/* CSequence, the timed sequence a look is, is zbody.h's; the looks themselves, CLook and CBlink, are
+ * zseal.h's (SOCOM II's SEAL holds its three) */
 
 extern "C" {
 /* SOCOM 1's quadW (OVL1 0x2874F0, unowned): the look's easing curve */
@@ -718,6 +687,86 @@ void CZSealBody::SetHudHitFlag()
     m_hudwashit = true;
 }
 
+extern "C" {
+/* the look anims: four sources (OVL2 data), what each is built into and the turn tables ApplyLookAnim
+ * reads (OVL1 bss) -- the head's, then up the spine -- and their builder (OVL2 0x5AE980, not written
+ * yet; the names unknown) */
+extern unsigned char data_00650820[];
+extern unsigned char data_006507B0[];
+extern unsigned char data_00650740[];
+extern unsigned char data_006506D0[];
+extern unsigned char data_0044C7A0[];
+extern unsigned char data_0044C860[];
+extern unsigned char data_0044C920[];
+extern unsigned char data_0044C9E0[];
+extern CPnt3D data_0044CAA0[];
+extern CPnt3D data_0044CB30[];
+extern CPnt3D data_0044CBC0[];
+extern CPnt3D data_0044CC50[];
+void func_005AE980(void *src, void *anim, CPnt3D *table);
+/* the eyes' limits: up, down and sideways (OVL1 data; SOCOM 1's were constants, 8, -14 and 17
+ * degrees) */
+extern float data_0044C2D0;
+extern float data_0044C2D4;
+extern float data_0044C2D8;
+}
+
+/* a look anim's turn for a yaw and a pitch (SOCOM 1's GetLookQuat__FP6CPnt3DffP5CQuat; OVL2 0x5AE730,
+ * not written yet) */
+void GetLookQuat(CPnt3D *table, float yaw, float pitch, CQuat *q);
+
+/* the look anims built, the head's and up the spine (OVL2 0x5AE6A0; SOCOM 1's) */
+void CZSealBody::InitLookAnims()
+{
+    func_005AE980(data_00650820, data_0044C7A0, data_0044CAA0);
+    func_005AE980(data_006507B0, data_0044C860, data_0044CB30);
+    func_005AE980(data_00650740, data_0044C920, data_0044CBC0);
+    func_005AE980(data_006506D0, data_0044C9E0, data_0044CC50);
+}
+
+/* the head turned toward a direction when it may turn (OVL2 0x5AE640; SOCOM 1's, the look held) */
+bool CZSealBody::SetLookDir(const CPnt3D *dir, float rate)
+{
+    if (CanHeadLook())
+        return m_look.SetLookDir(this, dir, rate);
+    return false;
+}
+
+/* the eyes turned by a pitch and a yaw, when an eye is drawn: the pitch's limit up or down, the yaw's
+ * sideways, the goal kept within the limits off the current direction (OVL2 0x5AE4B0; SOCOM 1's, the
+ * constants made globals and the yaw's two equal arms one; `dir` unread in both builds) */
+bool CZSealBody::SetEyeLookDir(float pitch, float yaw, const CPnt3D *dir, float rate)
+{
+    if (m_reyeball && m_leyeball &&
+        ((m_reyeball->m_node && m_reyeball->m_node->Rendered(2)) ||
+         (m_leyeball->m_node && m_leyeball->m_node->Rendered(2)))) {
+        float up = data_0044C2D0;
+        float down = data_0044C2D4;
+        float side = data_0044C2D8;
+        /* (SOCOM 1 passed it twice, to SetDir as the start too) */
+        const CPnt3D *cur = &m_eyelook.m_curr_dir;
+        CPnt3D look;
+        CPnt3D goal;
+        CQuat q;
+        CQuat qx;
+        CQuat qy;
+
+        if (pitch >= 0.0f)
+            qx.MakeXRot(up * pitch);
+        else
+            qx.MakeXRot(down * pitch);
+        float left = -side;
+
+        qy.MakeYRot(left * yaw);
+        qx.Mul(&qy, &q);
+        q.Apply(&CPnt3D::unit_nz, &look, 1);
+        CalcGoalDir(cur, &look, &goal, up, down, left, side);
+        m_eyelook.SetDir(&goal, 1.5f * rate);
+        return true;
+    }
+    return false;
+}
+
 /* the look made: the sequence cleared, looking straight ahead (down -z), done (OVL2 0x5AE450; SOCOM
  * 1's, CZSealBody's constructor calls it for its two looks) */
 CLook::CLook()
@@ -803,6 +852,71 @@ void CBlink::Blink(int org)
             m_org = -1;
             SetDir(&CPnt3D::unit_nz, rate);
         }
+    }
+}
+
+/* the head and the three parts above it each turned by its look anim's quaternion for the yaw and
+ * the pitch (OVL2 0x5AD5B0; SOCOM 1's, the tables OVL1's) */
+void CZSealBody::ApplyLookAnim(float yaw, float pitch)
+{
+    CZBodyPart *part = m_head;
+    CQuat q;
+    CQuat r;
+
+    GetLookQuat(data_0044CAA0, yaw, pitch, &q);
+    part->m_rot.Mul(&q, &r);
+    part->m_rot = r;
+    part = part->m_parent;
+    GetLookQuat(data_0044CB30, yaw, pitch, &q);
+    part->m_rot.Mul(&q, &r);
+    part->m_rot = r;
+    part = part->m_parent;
+    GetLookQuat(data_0044CBC0, yaw, pitch, &q);
+    part->m_rot.Mul(&q, &r);
+    part->m_rot = r;
+    part = part->m_parent;
+    GetLookQuat(data_0044CC50, yaw, pitch, &q);
+    part->m_rot.Mul(&q, &r);
+    part->m_rot = r;
+}
+
+/* the head's look's direction (OVL2 0x5AD5A0; SOCOM 1's, the look held) */
+const CPnt3D *CZSealBody::GetLookDir() const
+{
+    return &m_look.m_curr_dir;
+}
+
+/* a part's rotation set (an inline taking the quaternion by reference) */
+static inline void SetPartRot(CZBodyPart *part, const CQuat &q)
+{
+    part->m_rot = q;
+}
+
+/* the eyeballs turned to the eyes' look (OVL2 0x5AD4D0; SOCOM 1's, the look held) */
+void CZSealBody::ApplyEyeLookAnim()
+{
+    if (m_reyeball && m_leyeball) {
+        CQuat q;
+
+        q.Align(CPnt3D::unit_nz, m_eyelook.m_curr_dir);
+        SetPartRot(m_reyeball, q);
+        SetPartRot(m_leyeball, q);
+        m_reyeball->m_node->SetRotation(&m_reyeball->m_rot);
+        m_leyeball->m_node->SetRotation(&m_leyeball->m_rot);
+    }
+}
+
+/* the eyelids turned to the blink (OVL2 0x5AD400; SOCOM 1's, the blink held) */
+void CZSealBody::ApplyBlinkAnim()
+{
+    if (m_reyelid && m_leyelid) {
+        CQuat q;
+
+        q.Align(CPnt3D::unit_nz, m_blink.m_curr_dir);
+        SetPartRot(m_reyelid, q);
+        SetPartRot(m_leyelid, q);
+        m_reyelid->m_node->SetRotation(&m_reyelid->m_rot);
+        m_leyelid->m_node->SetRotation(&m_leyelid->m_rot);
     }
 }
 

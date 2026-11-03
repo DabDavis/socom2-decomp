@@ -10496,7 +10496,7 @@
 0x00587760 0x20 func_00587760  # OVL2
 0x00587780 0x2B0 func_00587780  # OVL2
 0x00587A30 0x108 func_00587A30  # OVL2
-0x00587B40 0xD8 func_00587B40  # OVL2
+0x00587B40 0xD8 CanHeadLook__10CZSealBodyFv  # OVL2; s1:callee by hand (SetLookDir 0x5AE640 calls it first where SOCOM 1's SetLookDir calls CanHeadLook__10CZSealBodyFv; the same body: no blend true, state 8 / the top blend's 8, 9, 10 false, then the overlays' bit) -- the SEAL lane, round 12
 0x00587C20 0x1DC func_00587C20  # OVL2
 0x00587E00 0x74 func_00587E00  # OVL2
 0x00587E80 0x90 func_00587E80  # OVL2
@@ -10856,20 +10856,20 @@
 0x005AC670 0x394 func_005AC670  # OVL2
 0x005ACA10 0x5C func_005ACA10  # OVL2
 0x005ACA70 0x98C func_005ACA70  # OVL2
-0x005AD400 0xC8 func_005AD400  # OVL2
-0x005AD4D0 0xC8 func_005AD4D0  # OVL2
-0x005AD5A0 0x8 func_005AD5A0  # OVL2
-0x005AD5B0 0x178 func_005AD5B0  # OVL2
+0x005AD400 0xC8 ApplyBlinkAnim__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's ApplyBlinkAnim__10CZSealBodyFv, first of the look stretch ApplyBlinkAnim, ApplyEyeLookAnim, GetLookDir, ApplyLookAnim, BlinkTick ... in both builds; the same body: both lids aligned from unit_nz to the blink's direction, SOCOM 1's 0x2e8/0x2ec = SOCOM II's 0x360/0x364, the blink held at 0x1270) -- the SEAL lane, round 12
+0x005AD4D0 0xC8 ApplyEyeLookAnim__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's ApplyEyeLookAnim__10CZSealBodyFv, after ApplyBlinkAnim in both builds; the same body over the eyeballs, SOCOM 1's 0x2e0/0x2e4 = 0x358/0x35c, the eye look held at 0x1200) -- the SEAL lane, round 12
+0x005AD5A0 0x8 GetLookDir__10CZSealBodyCFv  # OVL2; s1:order by hand (SOCOM 1's GetLookDir__10CZSealBodyCFv, after ApplyEyeLookAnim in both builds: the look's direction, m_look+0x10 there, this+0x11A0 with the look held at 0x1190) -- the SEAL lane, round 12
+0x005AD5B0 0x178 ApplyLookAnim__10CZSealBodyFff  # OVL2; s1:order by hand (SOCOM 1's ApplyLookAnim__10CZSealBodyFff, after GetLookDir in both builds; the same four GetLookQuat/Mul turns from the head (0x308, SOCOM 1's 0x28c) up its parents) -- the SEAL lane, round 12
 0x005AD730 0x140 BlinkTick__6CBlinkFf  # OVL2; s1:calls
 0x005AD870 0xAC Blink__6CBlinkFi  # OVL2; s1:calls
 0x005AD920 0xA8 LookTick__5CLookFf  # OVL2; s1:calls
 0x005AD9D0 0x29C SetDir__5CLookFPC6CPnt3Df  # OVL2; s1:calls by hand (CBlink::Blink calls it twice where SOCOM 1's calls SetDir__5CLookFPC6CPnt3DPC6CPnt3Df: SOCOM II passes the direction and the rate, the start dropped; the row after LookTick as SOCOM 1's SetDir)
-0x005ADC70 0x3C4 func_005ADC70  # OVL2
-0x005AE040 0x36C func_005AE040  # OVL2
+0x005ADC70 0x3C4 SetLookDir__5CLookFP10CZSealBodyPC6CPnt3Df  # OVL2; s1:callee by hand (CZSealBody::SetLookDir 0x5AE640 calls it on this+0x1190 with (this, dir, rate) where SOCOM 1's calls SetLookDir__5CLookFP10CZSealBodyPC6CPnt3Df on m_look; after SetDir in both builds) -- the SEAL lane, round 12
+0x005AE040 0x36C CalcGoalDir__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3Dffff  # OVL2; s1:callee by hand (SetEyeLookDir 0x5AE4B0 calls it with (this, &eyelook dir, &dir, &goal, four limits) where SOCOM 1's SetEyeLookDir calls CalcGoalDir__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3Dffff; after SetLookDir(CLook) in both builds) -- the SEAL lane, round 12
 0x005AE3B0 0x9C __ct__6CBlinkFv  # OVL2; s1:calls (SOCOM 1's __ct__6CBlinkFv: the look's constructor inlined, then the origin zeroed and the next blink 2 + 6 * a random fraction; CZSealBody's constructor calls it; seal_env.cpp)
 0x005AE450 0x5C __ct__5CLookFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order by hand (SOCOM 1's __ct__5CLookFv, the same 0x5C bytes: CSequence::Clear, the direction (0, 0, -1), the rate zeroed, done, the goal copied from the direction -- at SOCOM II's offsets; CZSealBody's constructor calls it twice; seal_env.cpp)
-0x005AE4B0 0x18C func_005AE4B0  # OVL2
-0x005AE640 0x60 func_005AE640  # OVL2
+0x005AE4B0 0x18C SetEyeLookDir__10CZSealBodyFffPC6CPnt3Df  # OVL2; s1:order by hand (SOCOM 1's SetEyeLookDir__10CZSealBodyFffPC6CPnt3Df, after CLook() in both builds; the same body: the eyeballs' Rendered tests, MakeXRot by the pitch's limit, MakeYRot, Mul, Apply, CalcGoalDir, SetDir with 1.5 * rate) -- the SEAL lane, round 12
+0x005AE640 0x60 SetLookDir__10CZSealBodyFPC6CPnt3Df  # OVL2; s1:order by hand (SOCOM 1's SetLookDir__10CZSealBodyFPC6CPnt3Df, after SetEyeLookDir in both builds; the same body: CanHeadLook, then the look's SetLookDir(this, dir, rate)) -- the SEAL lane, round 12
 0x005AE6A0 0x84 InitLookAnims__10CZSealBodyFv  # OVL2; s1:callee
 0x005AE730 0x24C GetLookQuat__FP6CPnt3DffP5CQuat  # OVL2; s1:calls
 0x005AE980 0xAE8 func_005AE980  # OVL2

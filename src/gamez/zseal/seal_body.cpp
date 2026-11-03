@@ -133,16 +133,16 @@ extern "C" void func_00588B40(CZSealBody *seal, int time)
 
 /* whether the SEAL may look about: always without a blend; never dead (8, the top blend's state too),
  * nor in states 9 and 10; else as the last overlay of the top blend's first anim says (OVL2
- * 0x587B40, new in SOCOM II) */
-extern "C" bool func_00587B40(CZSealBody *seal)
+ * 0x587B40; SOCOM 1's CanHeadLook, the same tests -- SetLookDir calls it in both builds) */
+bool CZSealBody::CanHeadLook()
 {
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
 
     if (!top)
         return true;
-    if (seal->m_state == 8 || top->m_state == 8)
+    if (m_state == 8 || top->m_state == 8)
         return false;
-    if (seal->m_state == 9 || seal->m_state == 10)
+    if (m_state == 9 || m_state == 10)
         return false;
     bool r = false;
 

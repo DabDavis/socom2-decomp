@@ -804,6 +804,41 @@ public:
     float m_hit_percent;   // 0x44 (SOCOM 1's 0x28)
 };
 
+/* a head's turn toward a direction, eased over a time (SOCOM 1's DWARF: CLook : CSequence, 0x80
+ * bytes; SOCOM II's drops a quaternion: m_goal_dir and everything after it 0x10 earlier). SOCOM II's
+ * SEAL holds its three looks (SOCOM 1's held pointers): seal_env.cpp's */
+class CLook : public CSequence {
+public:
+    CLook();
+    void SetDir(const CPnt3D *dir, float rate);
+    void LookTick(float dT);
+    /* the look turned toward a direction from the SEAL (SOCOM 1's; OVL2 0x5ADC70, not written yet) */
+    bool SetLookDir(CZSealBody *seal, const CPnt3D *dir, float rate);
+
+    CPnt3D m_curr_dir;   // 0x10
+    float m_rate;   // 0x1c
+    CQuat m_quat0;   // 0x20
+    CQuat m_quat1;   // 0x30
+    CPnt3D m_goal_dir;   // 0x40 (SOCOM 1's 0x50)
+    float m_deltaT;   // 0x4c
+    CPnt3D m_cross;   // 0x50
+    float m_fracT;   // 0x5c
+    unsigned char m_done;   // 0x60
+    bool IsDone() const { return m_done; }
+    unsigned char _61[0x70 - 0x61];   // (SOCOM II's CLook is 0x70: CBlink's m_org at 0x70)
+};
+
+/* the eyelids: a look down and back up (SOCOM 1's DWARF: CBlink : CLook) */
+class CBlink : public CLook {
+public:
+    CBlink();
+    void Blink(int org);
+    void BlinkTick(float dT);
+
+    int m_org;   // 0x70 (SOCOM 1's 0x80)
+    float m_nextT;   // 0x74
+};
+
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
  * 0x170, after its 0x170-byte CEntity, the SEAL's own members from 0x200 -- the constructor at
  * 0x553EA0 builds the CBody at 0x170 and stores the second table there) -- only what the written
@@ -983,6 +1018,22 @@ public:
     /* the ground under a point found, the SEAL's own node off for it (SOCOM 1's; OVL2 0x5B4F30,
      * seal_env.cpp), and the hits handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40) */
     void SealGetAltitude(CPnt3D *pos, float f);
+    /* the looks (SOCOM 1's, seal_env.cpp's in its order): the lids and the eyes turned to their looks'
+     * directions, the head's direction, the head and the three parts above it turned by the look
+     * anims (OVL2 0x5AD400, 0x5AD4D0, 0x5AD5A0, 0x5AD5B0); a look's goal off the current direction
+     * within limits (OVL2 0x5AE040, not written yet); the eyes' look and the head's set, each saying
+     * whether it was (OVL2 0x5AE4B0, 0x5AE640); the look anims built (static in SOCOM II: `this`
+     * unread; OVL2 0x5AE6A0); whether the head may turn (OVL2 0x587B40, seal_body.cpp's) */
+    void ApplyBlinkAnim();
+    void ApplyEyeLookAnim();
+    const CPnt3D *GetLookDir() const;
+    void ApplyLookAnim(float yaw, float pitch);
+    void CalcGoalDir(const CPnt3D *cur, const CPnt3D *dir, CPnt3D *goal, float up, float down, float left,
+                     float right);
+    bool SetEyeLookDir(float pitch, float yaw, const CPnt3D *dir, float rate);
+    bool SetLookDir(const CPnt3D *dir, float rate);
+    static void InitLookAnims();
+    bool CanHeadLook();
     /* the SEAL's own AI event made where it stands (SOCOM 1's; OVL2 0x550E50, seal.cpp) */
     void CreateAiEvent();
     /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */
@@ -1025,7 +1076,13 @@ public:
     unsigned char _31c[0x350 - 0x31c];
     CZBodyPart *m_rifle;   // 0x350 (SOCOM 1's 0x2d4)
     CZBodyPart *m_pistol;   // 0x354 (SOCOM 1's 0x2d8)
-    unsigned char _358[0x374 - 0x358];
+    /* the eyes and their lids (SOCOM 1's 0x2e0-0x2ec: SOCOM II drops m_grenade before them, so
+     * 0x78 on; the looks' Apply* turn them) */
+    CZBodyPart *m_reyeball;   // 0x358
+    CZBodyPart *m_leyeball;   // 0x35c
+    CZBodyPart *m_reyelid;   // 0x360
+    CZBodyPart *m_leyelid;   // 0x364
+    unsigned char _368[0x374 - 0x368];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
     unsigned char _376[0x390 - 0x376];
@@ -1156,7 +1213,14 @@ public:
     CQuat m_1070;   // 0x1070: a turn about x the app camera's transitions set (0x5AF470; the name ours)
     unsigned char _1080[0x10d0 - 0x1080];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
-    unsigned char _10d4[0x1314 - 0x10d4];
+    unsigned char _10d4[0x1190 - 0x10d4];
+    /* the head's look, the eyes' and the lids' blink (SOCOM 1's m_look, m_eyelook, m_blink were
+     * pointers at 0xf90-0xf98; SOCOM II's are held: GetLookDir returns this + 0x11A0, SetLookDir
+     * hands this + 0x1190 on, the eyes and lids align to 0x1210 and 0x1280) */
+    CLook m_look;   // 0x1190
+    CLook m_eyelook;   // 0x1200
+    CBlink m_blink;   // 0x1270
+    unsigned char _12e8[0x1314 - 0x12e8];
     /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
      * (the names ours) */
     CPnt3D m_1314;   // 0x1314
