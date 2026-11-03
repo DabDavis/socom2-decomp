@@ -145,6 +145,34 @@ compile against wine's ~2 s, and the 2003 builds — which wait forever on a Fle
 prompt under wine — just run. `SC_WINE=1` falls back to wine. `-gccinc` makes `-I` paths
 serve `<...>` includes; `-nostdinc` keeps the host's headers out.
 
+### MAIN's Metrowerks runtime: three groups, three flag sets
+
+MAIN 0x180000-0x18DB90 is MW-built code outside the game's overlays (the MAIN runtime lane, round
+1, 2026-11-03: none of it matched before, 81 rows after). A unit names its own build and flags in
+its directive (`/* sc: compiler=mwcps2-3.0b52-030722; flags=... */`), as the GCC units do:
+
+| group | units (src/main/) | build | flags | evidence |
+|---|---|---|---|---|
+| the game's own MAIN units | the pool unit 0x1801E0-0x18194F (alloc.cpp?), MAIN's copies of zsys_memory.cpp (0x181950-0x181C1F) and zvid.cpp (0x181C20) | 3.0b52 | the game's | `__nwa__FUi` is a tail call (`j`), which needs exceptions off; `_delete_vec` exact on every 3.0 build |
+| MW's C++ runtime | runtime/: gcc_wrapper.c 0x181C50, mwoverlay.c 0x181C90-0x181E2F, NMWException.cpp 0x181E30-0x18280F, global_destructor_chain.c 0x182810, __init_cpp_rts.c 0x182840, ptmf.c 0x1828A0; the exception-handling unit 0x182930-0x1845FF | 3.0b38, b50 or b52 | the game's plus `-Cpp_exceptions on`, deferred | `__destroy_arr`/`__destroy_new_array` match only on 3.0b22-020926 and 3.0b38+; `__initialize_cpp_rts`'s short-loop nops rule out 3.0b22-020926; with exceptions off `terminate`/`unexpected` become tail calls (9 words off); `,p` required; without `-sdatathreshold 0` `__register_global_object` is 8 words off; the image holds the PowerPC runtime's source order reversed |
+| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -sdatathreshold 0 -inline auto -enum min -Cpp_exceptions on -wchar_t on`, NOT deferred | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
+
+So SOCOM II's prebuilt MSL is **not CodeWarrior 2.4's build**, though SOCOM 1's DWARF names that
+install; and none of the 81 rows separates 3.0b38 from 3.0b50 or 3.0b52. The `.comment`'s
+2.4.1.01 comes from none of these groups -- MW's assembler writes DWARF but no `.comment`, and
+crt0.s (`_start`, `_exit`, `_root` 0x1801D0) is one MW-assembled object (SOCOM 1's DWARF has its
+unit), which scdiff has no MW assembler path for (GNU as through tools/asmunit.py should give the
+same bytes). Rules measured on the way: with `-wchar_t on` a `wchar_t` is a 4-byte built-in from
+3.0b22-020926 on yet loaded and stored 16-bit (`sh`/`lhu` with a 4-byte step); six-instruction loops
+tell builds apart (3.0b38+ leave the delay slot empty and pad two nops, 3.0b22-020926 fills it); in
+the non-deferred library an inline callee is inlined only if generated before its caller (`template
+class fpos<int>;` goes first); each overlay links its own copy of non-template units as well as
+templates (one source order reproduces MAIN's and OVL1's zsys_memory.cpp); the PowerPC runtime's
+bodies compile byte-exact on MIPS once adapted to the ABI (the destructor flag `short`, 64-bit
+`long`); MW inline `asm` functions reproduce an assembly runtime function byte-exact; a local copy of
+a pointer parameter is numbered right after the parameters. The sweep (ccsweep extended to the MW
+builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.py.
+
 ## What the source has to reproduce
 
 - **Function order inside a TU is REVERSE definition order** (`-inline deferred`): the image's
@@ -3026,7 +3054,7 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   explicit instantiation makes one an ordinary auto-inline function) -- but measure such changes
   on the real units, which the probes did not predict. SOCOM 1's DWARF names two MSL installs:
   `C:\apps\cw301` (the game's headers) and CodeWarrior 2.4's (the prebuilt MSL library: locale,
-  iostreams).
+  iostreams) -- but SOCOM II's prebuilt library is a 3.0b38+ build ("MAIN's Metrowerks runtime").
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); when a renamed row's re-draft misses, `automatch --stale` now keeps the old draft
   and renames the function it defines (an `sc: as=` line for a template name) instead of
@@ -4262,9 +4290,11 @@ What is open across lanes, and what comes next:
   (con_ps2.cpp, ai_util.cpp) may want a file-wide `#pragma auto_inline off` instead of their pins.
 - **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW) has not yet closed a
   function: its finds so far trade correctness for score.
-- Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses. The
-  MSL runtime in MAIN (`_delete_vec` and friends) is MW-built library code -- a second calibration
-  set once its source is pinned down.
+- Tell 3.0b50 from 3.0b52 (MAIN's runtime does not: "MAIN's Metrowerks runtime"); port
+  eqrefcheck's data-reference audit to absolute addresses. MAIN's runtime is calibrated (2026-11-03):
+  next, the pool unit's big functions (`_strdup`/`_free`/`__nw__`/`__dl__`, func_001805A0), the
+  exception-handling unit, the MSL filebuf bodies, crt0.s, the four `__sinit` rows at
+  0x1D4B00-0x1D4C2F (the runtime units', outside its range).
 
 ## Credits and licence scope
 
