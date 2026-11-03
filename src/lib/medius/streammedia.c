@@ -155,8 +155,8 @@ typedef struct STREAM_ANNOUNCE {        /* the message func_00644BD0 sends (28) 
     int nInfo4;
 } STREAM_ANNOUNCE;
 
-static unsigned char gbStreamMediaStarted = 0;
-static short gnStreamMediaStartups = 0;
+static unsigned char gbInitialized = 0;
+static short gnInitCount = 0;
 static STREAM_SESSION *gapStreamSessions[4];
 
 int func_006443D8(int nWorld, STREAM_SESSION **ppSession);
@@ -179,9 +179,9 @@ int func_00643168(int nWorld, unsigned int nStream)
     STREAM_SESSION *pSession;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (nStream >= 64)
         return 23;
@@ -203,9 +203,9 @@ int func_00643220(int nWorld, unsigned int nStream)
     STREAM_SESSION *pSession;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (nStream >= 64)
         return 23;
@@ -227,9 +227,9 @@ int func_006432C8(int nWorld, unsigned int nStream, STREAM_REPLY *pReply)
     int result;
     int err;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (pReply == 0)
         return 23;
@@ -267,9 +267,9 @@ int func_006433D8(int nWorld, int nClient, STREAM_QUERY *pQuery)
     pQuery->nClient = nClient;
     pQuery->nFound = 0;
     pQuery->nIndex = 0;
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     bValid = func_0061D440(nClient);
     if (bValid != 1)
@@ -295,9 +295,9 @@ int func_00643530(int nWorld, int nType)
     int nAudioType;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     result = func_006443D8(nWorld, &pSession);
     if (result != 0)
@@ -313,9 +313,9 @@ int func_006435B8(int nWorld, int *pbConnected)
     STREAM_SESSION *pSession;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (pbConnected == 0)
         return 23;
@@ -334,9 +334,9 @@ int func_00643650(STREAM_TALK *pTalk)
     STREAM_SESSION *pSession;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (pTalk == 0)
         return 23;
@@ -359,23 +359,23 @@ int func_00643650(STREAM_TALK *pTalk)
 
 int func_00643730(void)
 {
-    if (gnStreamMediaStartups == 0) {
+    if (gnInitCount == 0) {
         memset(gapStreamSessions, 0, sizeof(gapStreamSessions));
-        gbStreamMediaStarted = 1;
+        gbInitialized = 1;
     }
-    gnStreamMediaStartups++;
+    gnInitCount++;
     return 0;
 }
 
 int func_00643790(void)
 {
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
-    if (gnStreamMediaStartups == 1)
-        gbStreamMediaStarted = 0;
-    gnStreamMediaStartups--;
+    if (gnInitCount == 1)
+        gbInitialized = 0;
+    gnInitCount--;
     return 0;
 }
 
@@ -414,9 +414,9 @@ int func_00643878(int nWorld, unsigned char bEnabled)
     int result;
     int err;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     result = func_006443D8(nWorld, &pSession);
     if (result != 0)
@@ -432,9 +432,9 @@ int func_00643E48(int nWorld)
     STREAM_SESSION *pSession;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     result = func_006443D8(nWorld, &pSession);
     if (result != 0)
@@ -458,9 +458,9 @@ int func_00643EF0(int nWorld, int nClient)
     int bValid;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     bValid = func_0061D440(nClient);
     if (bValid != 1)
@@ -498,9 +498,9 @@ int func_00644060(int nWorld)
     STREAM_SESSION *pSession;
     int bValid;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 0;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 0;
     bValid = func_0061D450(nWorld);
     if (bValid != 1)
@@ -515,9 +515,9 @@ int func_00644100(int nWorld, unsigned int nMembers)
     STREAM_SESSION **ppSession;
     STREAM_SESSION *pSession;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (func_0061D450(nWorld) != 1)
         return 23;
@@ -555,9 +555,9 @@ int func_00644258(int nWorld)
 {
     STREAM_SESSION **ppSession;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (func_0061D450(nWorld) != 1)
         return 23;
@@ -575,9 +575,9 @@ int func_00644258(int nWorld)
 
 int func_00644308(int nWorld, STREAM_SESSION **ppSession)
 {
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (func_0061D450(nWorld) != 1)
         return 23;
@@ -598,9 +598,9 @@ int func_006443D8(int nWorld, STREAM_SESSION **ppSession)
 {
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (func_0061D450(nWorld) != 1)
         return 23;
@@ -618,9 +618,9 @@ int func_00644480(void *hAudio, STREAM_SESSION **ppSession)
     int result;
     int i;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (ppSession == 0)
         return 23;
@@ -693,9 +693,9 @@ int func_00644698(int nWorld, int nClient)
     int bValid;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     bValid = func_0061D440(nClient);
     if (bValid != 1)
@@ -730,9 +730,9 @@ int func_006447C0(int nWorld, int nClient)
     int bValid;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     bValid = func_0061D440(nClient);
     if (bValid != 1)
@@ -761,9 +761,9 @@ int func_006448A0(STREAM_CLIENT *pClient)
     int bValid;
     int result;
 
-    if (gnStreamMediaStartups <= 0)
+    if (gnInitCount <= 0)
         return 17;
-    if (gbStreamMediaStarted != 1)
+    if (gbInitialized != 1)
         return 17;
     if (pClient == 0)
         return 23;
