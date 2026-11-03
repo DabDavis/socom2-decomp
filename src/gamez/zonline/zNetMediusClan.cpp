@@ -3,7 +3,8 @@
  * zNetMedius.cpp's clan code; the unit and its name are ours). OVL1 0x2E5FE0-0x2EA5BF: after the
  * room list's unit (its vector's destructor 0x2E5F60 closes that one) and before the ladder's
  * (0x2EA5C0); its static initialiser 0x401EB0 builds the four vectors (0x44F700, 0x44F720,
- * 0x44F740, 0x44F760) whose destructors close it (0x2EA3C0-0x2EA5BF). Only some of it so far.
+ * 0x44F740, 0x44F760) whose destructors close it (0x2EA3C0-0x2EA5BF). Complete since the online
+ * lane's round 9: every row of the range byte-exact (the order below is not strictly the image's).
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
