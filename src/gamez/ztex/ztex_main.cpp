@@ -2,11 +2,9 @@
  * its palette, the batch relocator (OVL1 0x354510-, after valve_main.cpp). The unit name is SOCOM
  * 1's (the press beta's asserts put CTexture::Release_HTEX in a ztex_main.cpp); its functions in
  * SOCOM 1's order (CTexList's Free, Append and two GetHandles, CTexture's, po2, CTexHandle's
- * SetTexture/Destroy/Create, CTexPalette's, CBatchRelocator's). Where the unit ends is not settled
- * (after CBatchRelocator's StartBatchReloc, 0x355A50, or after the select updates 0x355A70/0x355C70):
- * the texture manager, ztex_manager.cpp, follows (its tail is src/gamez/ztwod/ztex_manager.cpp, the
- * HUD lane's, with a CTexture of its own). Not written yet: SetupSpecialTextures (0x355150) and the
- * drafts' rows (CopyTextureSelect, the select wrapper 0x354A90, Release_HTEX, Init, LoadGS,
+ * SetTexture/Destroy/Create, CTexPalette's, CBatchRelocator's). The unit ends at 0x35597F: the
+ * texture manager, ztex_manager.cpp, follows (CBatchRelocator's four slots 0x355980-0x355A6F are its,
+ * the vtable's unit). Not written yet: the drafts' rows (CopyTextureSelect, the select wrapper 0x354A90, Release_HTEX, Init, LoadGS,
  * CTexHandle::Destroy, CTexPalette's Read and destructor, CBatchRelocator's). Defined in reverse of
  * their image order (-inline deferred). */
 
@@ -109,6 +107,85 @@ void CTexHandle::SetTexture(CTexture *tex)
         SetName(tex->m_name);
         tex->m_htex_count++;
     }
+}
+
+/* the GIF tag's fields (libgraph.h's sceGifTag, in our own words) */
+struct GifTag {
+    unsigned long NLOOP : 15;
+    unsigned long EOP : 1;
+    unsigned long pad16 : 16;
+    unsigned long id : 14;
+    unsigned long PRE : 1;
+    unsigned long PRIM : 11;
+    unsigned long FLG : 2;
+    unsigned long NREG : 4;
+    unsigned long REGS0 : 4;
+    unsigned long REGS1 : 4;
+};
+
+/* the GS register words a select carries (the SDK's libgraph macros, the fields this unit sets) */
+#define SCE_GS_SET_TEX0(tbp, tbw, psm, tw, th, tcc)                                                    \
+    ((unsigned long)(tbp) | ((unsigned long)(tbw) << 14) | ((unsigned long)(psm) << 20) |             \
+     ((unsigned long)(tw) << 26) | ((unsigned long)(th) << 30) | ((unsigned long)(tcc) << 34))
+#define SCE_GS_SET_ALPHA(a, b, c, d, fix)                                                              \
+    ((unsigned long)(a) | ((unsigned long)(b) << 2) | ((unsigned long)(c) << 4) |                     \
+     ((unsigned long)(d) << 6) | ((unsigned long)(fix) << 32))
+
+/* the select block's builder (SOCOM 1's CVisual::GetTextureSelectBlock, vis_main.cpp's: its row is
+ * still a placeholder) */
+extern "C" _word128 *func_003C3D90(unsigned int n, _word128 **cursor, _word128 *ref, _word128 *tag);
+
+/* a shadow or reflection texture (by its name) given a select of its own: six registers -- TEX0
+ * at its GS address, TEX1, TEXA, CLAMP and ALPHA, the shadow's blend, the reflection's or the
+ * plain one -- in a fresh VU select block (SOCOM 1's, the same code); any other texture is left
+ * alone */
+int CTexture::SetupSpecialTextures()
+{
+    bool shadow = false;
+    bool reflection = false;
+
+    if (strstr(m_name, "ShadowX_"))
+        shadow = true;
+    else if (strstr(m_name, "ReflectionX_"))
+        reflection = true;
+    if (!shadow && !reflection)
+        return 0;
+
+    unsigned int tbw = m_width > 64 ? m_width / 64 : 1;
+
+    m_selectQwc = 6;
+    if (m_vuSelect)
+        _free(m_vuSelect, 0, 0);
+    m_vuSelect = 0;
+    m_vuSelect = func_003C3D90(m_selectQwc, &m_gifSelect, (_word128 *)&m_dmaRef, (_word128 *)&m_dmaRefVu);
+    m_loadimage = m_vuSelect;
+
+    _word128 *p = m_gifSelect;
+
+    p[0].u128 = 0;
+    ((GifTag *)p)->NLOOP = m_selectQwc - 1;
+    ((GifTag *)p)->EOP = 1;
+    ((GifTag *)p)->NREG = 1;
+    ((GifTag *)p)->REGS0 = 0xe;
+    p[1].u64[1] = 6;
+    p[1].u64[0] = SCE_GS_SET_TEX0(m_gsaddr, tbw, m_format, (unsigned int)po2(m_width),
+                                  (unsigned int)po2(m_height), 1);
+    p[2].u64[1] = 0x14;
+    p[2].u64[0] = 0x61;
+    p[3].u64[1] = 0x3b;
+    p[3].u64[0] = (unsigned long)0x80 << 32;
+    p[4].u64[1] = 8;
+    p[4].u64[0] = 5;
+    if (shadow)
+        p[5].u64[0] = SCE_GS_SET_ALPHA(2, 1, 0, 1, 0);
+    else if (reflection)
+        p[5].u64[0] = SCE_GS_SET_ALPHA(0, 1, 2, 1, 20);
+    else
+        p[5].u64[0] = SCE_GS_SET_ALPHA(0, 1, 0, 1, 0);
+    p[5].u64[1] = 0x42;
+    m_gifSelect->u32[3] = (unsigned int)this;
+    SetGifPtrs();
+    return 0;
 }
 
 /* a texdat's header (ours): TEXTURE_PARAMS, then the gaps before the pixels and the select */

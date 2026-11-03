@@ -783,9 +783,9 @@ bool CZSealBody::Virtual60(CPnt3D *out)
     return false;
 }
 
-int CZSealBody::Virtual5C()
+bool CZSealBody::Virtual5C(CZSealBody *seal, CTurret *turret)
 {
-    return 0;
+    return false;
 }
 
 /* a fade of the SEAL's opacity asked for, unless a higher priority's runs: the target and rate kept,

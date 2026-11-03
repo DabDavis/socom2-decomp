@@ -244,7 +244,7 @@ public:
         *out = m_380;
         return true;
     }
-    virtual zdb::CNode *Virtual64() { return m_288; }
+    virtual zdb::CNode *GetFirepointNode(const char *name) { return m_288; }
     virtual bool Virtual68(CPnt3D *out)
     {
         *out = m_38c;
