@@ -1236,7 +1236,7 @@ public:
     virtual void PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font, float scale,
                               zdb::CTextureRelocMgr *mgr) = 0;
     virtual void SetFont(C2DFont *font) = 0;
-    virtual void SetPos(int x, int y, int w, int h) = 0;
+    virtual void SetPos(int x, int y) = 0;
     virtual void SetScale(float scale) = 0;
     virtual void SetColor(int r, int g, int b) = 0;
     virtual float SetSequenceTime(float start, float length) { return start; }
@@ -1398,9 +1398,13 @@ class CListItemStringTypeImpl : public CListItemTypeImpl {
 public:
     CListItemStringTypeImpl()
     {
-        m_colored = false;
+        SetColored(false);
         SetString(&m_text);
     }
+    /* the flag SetColor sets (an inline of its own: it is what makes the derived looks'
+     * constructors expand past inline_max_size, inlined one level in the makers, and ListItem's
+     * setters too large for -inline auto) */
+    void SetColored(bool on) { m_colored = on; }
 
     virtual void DrawPrep(const CUIListBox &box, int x, int y, int idx);
     virtual const char *GetString()
@@ -1415,7 +1419,7 @@ public:
     {
     }
     virtual void SetFont(C2DFont *font) { m_str->SetFont(font); }
-    virtual void SetPos(int x, int y, int w, int h) { m_str->SetPos(x, y); }
+    virtual void SetPos(int x, int y) { m_str->SetPos(x, y); }
     virtual void SetScale(float scale) { m_str->m_scale = scale; }
     virtual void SetColor(int r, int g, int b)
     {
@@ -1521,7 +1525,7 @@ public:
     {
     }
     virtual void SetFont(C2DFont *font) {}
-    virtual void SetPos(int x, int y, int w, int h) { m_bmp.SetPos(x, y, x + m_width, y + m_height); }
+    virtual void SetPos(int x, int y) { m_bmp.SetPos(x, y, x + m_width, y + m_height); }
     virtual void SetScale(float scale) {}
     virtual void SetColor(int r, int g, int b) { m_bmp.SetColor(r, g, b); }
     /* the bitmap at the depth, drawn through an identity matrix */
@@ -1570,7 +1574,7 @@ public:
         for (int i = 0; i < m_items.size(); i++)
             m_items[i]->SetFont(font);
     }
-    virtual void SetPos(int x, int y, int w, int h) {}
+    virtual void SetPos(int x, int y) {}
     virtual void SetScale(float scale)
     {
         for (int i = 0; i < m_items.size(); i++)
@@ -1738,7 +1742,12 @@ static inline ZRdrNode *RdrElem(const ZRdrNode *r, unsigned int i)
 }
 
 /* an item per string of the reader's array, as many as there are columns (SOCOM 1's; ready while
- * every item is) */
+ * every item is).
+ * OPEN, 10 instructions, all in the prologue: the target builds CListItemTypeImpl's table address,
+ * stores it, then builds this class's and stores it (one register, v0, serialised); here both
+ * addresses are built up front in v1/v0 (as the string look's constructor 0x36B330 does in the
+ * target too). The rest -- the reader's count clamped to the columns (RdrCount evaluated twice),
+ * the walk, the push_back through the pod insert -- is byte-exact */
 CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols)
 {
     const ZRdrNode *r = (const ZRdrNode *)rdr;
@@ -1822,6 +1831,29 @@ void CListItemArrayTypeImpl::DrawPrep(const CUIListBox &box, int x, int y, int i
                 str->SetScale(box.m_columns[i]->m_scale);
         }
     }
+}
+
+/* the look's font, scale and place, a text look made first when the item has none (SOCOM II's;
+ * out of line in the array look's walks; the names ours) */
+void ListItem::SetFont(C2DFont *font)
+{
+    if (!m_impl)
+        m_impl = new CListItemStringTypeImpl;
+    m_impl->SetFont(font);
+}
+
+void ListItem::SetScale(float scale)
+{
+    if (!m_impl)
+        m_impl = new CListItemStringTypeImpl;
+    m_impl->SetScale(scale);
+}
+
+void ListItem::SetPos(int x, int y)
+{
+    if (!m_impl)
+        m_impl = new CListItemStringTypeImpl;
+    m_impl->SetPos(x, y);
 }
 
 /* the item's look a timed text (SOCOM II's: out of line in ListItem's constructor, the look's
