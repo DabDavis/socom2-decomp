@@ -30,7 +30,6 @@ int func_00622EA8(int *t);   /* NetGetTime */
 int func_0064A008();   /* the Medius library's last update error */
 
 int func_003006D0();   /* the Medius connection updated (the lobby's) */
-void func_002DFE50(CZOnlineLobby *lobby);   /* CZOnlineLobby::Tick */
 void func_0030BF20();   /* (the IOP stretch's per-frame update) */
 }
 
@@ -91,6 +90,102 @@ int func_00621E50(NetJoinParams *p, NetJoinResult *r);   /* NetJoin */
 const char *func_002FA7E0(CZOnlineLobby *lobby);   /* the game's session name (the lobby's) */
 }
 
+/* --- the DME's start (SOCOM 1's zNetInitialize, SOCOM II's newer library) ------------------- */
+
+/* a message from the server, as the DME hands it on in parts (the names ours) */
+struct NetServerMessage {
+    int m_0;   // 0x0
+    unsigned char m_level;   // 0x4: below 128 urgent, below 192 a warning
+    unsigned char _5[0x10 - 0x5];
+    unsigned char m_last;   // 0x10: the message's last part
+    const char *m_text;   // 0x14
+};
+
+/* the DME's start-up parameters (SOCOM II's library; 0x20 bytes) */
+struct NetInitializeParams {
+    int m_0;   // 0x0
+    int m_4;   // 0x4: 10472
+    void *m_state;   // 0x8: the lobby's DME state
+    int m_c;   // 0xc
+    int m_10;   // 0x10
+    void (*m_message)(NetServerMessage *msg);   // 0x14
+    int m_18;   // 0x18
+    int m_1c;   // 0x1c
+};
+
+/* what the start-up answers (24 bytes) */
+struct NetInitializeResult {
+    int m_0;   // 0x0
+    int m_err;   // 0x4
+    int m_8[4];
+};
+
+extern "C" {
+void NetSetDefaultInitializeParams(NetInitializeParams *p);
+int NetInitialize(NetInitializeParams *p, NetInitializeResult *r);
+int NetClose();
+void func_00623330(int a, int b);   /* (the DME's buffers sized) */
+void func_00622AD8(char *ip);   /* (the DME: our address as text -- SOCOM 1's NetGetMyIpAddress) */
+extern char data_0045B330[];   /* the server's message so far */
+}
+
+/* the server's message, a part at a time: kept until its last part and then shown, its level
+ * deciding how (SOCOM II's; OVL1 0x30DCE0, the DME's message callback zNetInitialize registers).
+ * The part's fit is a bool of its own (the target materialises the compare into v0 before the
+ * branch; tested in the ternary itself MW branches on it), the level an int (each case a `li`) */
+extern "C" void func_0030DCE0(NetServerMessage *msg)
+{
+    const char *text = msg->m_text;
+
+    if (strlen(data_0045B330) + strlen(text) < 1000) {
+        strcat(data_0045B330, text);
+    } else {
+        bool fits = strlen(text) < 1000;
+
+        strcpy(data_0045B330, fits ? text : "[Server message too long]");
+    }
+    if (msg->m_last) {
+        int level = 0;
+
+        if (msg->m_level < 128)
+            level = 2;
+        else if (msg->m_level < 192)
+            level = 1;
+        theGame.GetCurrentState()->DisplayMessage(data_0045B330, "Server", 0, 0, 0, level, 0, 1);
+        data_0045B330[0] = 0;
+    }
+}
+
+/* the DME started: its defaults, the lobby's DME state and the server's messages to the callback
+ * above, its buffers sized for a LAN game or for the lobby, the network's start flag set (else the
+ * DME closed again), our address fetched and the objects' changed flags cleared; the error
+ * returned (SOCOM 1's; OVL1 0x30DBB0: UIDMEInit calls it on theNetwork) */
+int CZNetwork::zNetInitialize()
+{
+    NetInitializeParams p;
+    NetInitializeResult r = {0};
+
+    NetSetDefaultInitializeParams(&p);
+    p.m_4 = 10472;
+    p.m_state = theLobby.DMEInit();
+    p.m_message = func_0030DCE0;
+    p.m_18 = 0;
+    NetInitialize(&p, &r);
+    if (func_003045B0(&data_0044FE10))
+        func_00623330(0x8000, 0x8000);
+    else
+        func_00623330(8192, 0x8000);
+    if (!r.m_err)
+        theNetwork.m_network_init = 1;
+    else
+        NetClose();
+    m_my_ip[0] = 0;
+    func_00622AD8(m_my_ip);
+    for (int i = 0; i < 4096; i++)
+        m_ObjectFieldUpdate[i] = 0;
+    return r.m_err;
+}
+
 /* a host name's address as text, 30 when it cannot be had (SOCOM II's; OVL1 0x30DE30: the server
  * list's connect, 0x2FDF60, asks it of theNetwork; the name ours) */
 int CZNetwork::zNetLookupHost(const char *host, char *ip, int len)
@@ -124,12 +219,12 @@ int CZNetwork::zNetUpdate()
                 err = func_0064A008();
                 theLobby.RecoverFromNetError(err);
             }
-            func_002DFE50(&theLobby);
+            theLobby.Tick();
         } else {
             err = func_006236C0();
             if (err)
                 theLobby.RecoverFromNetError(err);
-            func_002DFE50(&theLobby);
+            theLobby.Tick();
         }
         func_0030BF20();
         if (m_fix_list.size())
@@ -201,6 +296,205 @@ void CZNetwork::zNetPlayFixList()
     m_fix_list.clear();
 }
 #pragma auto_inline reset
+
+/* --- the connection to a game's server (SOCOM 1's zNetConnect, SOCOM II's newer DME) ---------- */
+
+/* a server's addresses and where it is (the DME SDK's NetAddressList and NetConnectionInfo, the
+ * chat unit's) */
+struct NetAddressList {
+    int AddressType0;   // 0x0
+    char Address0[16];   // 0x4
+    int BinaryAddress0;   // 0x14
+    int AddressType1;   // 0x18
+    char Address1[16];   // 0x1c
+    int BinaryAddress1;   // 0x2c
+};   // 0x30
+
+struct NetConnectionInfo {
+    NetConnectionInfo() {}
+
+    int Type;   // 0x0
+    NetAddressList AddressList;   // 0x4
+    int WorldID;   // 0x34
+    unsigned int ServerKey[16];   // 0x38
+    char SessionKey[17];   // 0x78
+    char AccessKey[17];   // 0x89
+};   // 0x9c
+
+/* a client connecting or leaving (the connect's two callbacks, fts_remote.cpp's 0x2BC620 and
+ * 0x2BC530: SOCOM 1's cbClientConnect and cbClientDisconnect took the connection, the client and
+ * its name, SOCOM II's read them through a pointer -- fts_remote.cpp's ClientConnectArgs) */
+typedef void (*NetClientConnectCallback)(struct ClientConnectArgs *);
+
+/* the voice's stream as the DME carries it (zNetVoice.cpp's 0x30FC70 fills it from the radio;
+ * 0x38 bytes) */
+struct NetVoiceStreamParams {
+    unsigned char _0[0x38];
+};
+
+/* the DME's connect parameters (SOCOM II's library: 0x128 bytes, the server at 8; the names
+ * ours) */
+struct NetConnectParams {
+    int m_0;   // 0x0
+    int m_4;   // 0x4
+    NetConnectionInfo m_info;   // 0x8
+    unsigned char _a4[0xb4 - 0xa4];
+    NetClientConnectCallback m_connect;   // 0xb4
+    int m_b8;   // 0xb8
+    NetClientConnectCallback m_disconnect;   // 0xbc
+    unsigned char _c0[0xcc - 0xc0];
+    NetVoiceStreamParams m_voice;   // 0xcc
+    unsigned char _104[0x120 - 0x104];
+    unsigned int m_flags;   // 0x120: 1 a spectator, 2 our clan's team; on a LAN the password's hash
+    int m_124;   // 0x124
+};   // 0x128
+
+/* what the connect answers: its error, the connection's index */
+struct NetConnectResult {
+    int m_0;   // 0x0
+    int m_err;   // 0x4
+    int m_index;   // 0x8
+};
+
+class VoiceRadio;
+
+extern "C" {
+void NetSetDefaultConnectParams(NetConnectParams *p);
+int NetConnect(NetConnectParams *p, NetConnectResult *r);
+int NetDisconnect(int conn);
+void func_0030FC70(VoiceRadio *radio, NetVoiceStreamParams *p);   /* the voice's stream (zNetVoice.cpp's) */
+extern VoiceRadio *data_0045B718;   /* the radio (zNetVoice.cpp's) */
+unsigned int func_003A59C0(const char *s);   /* a text's CRC-32 (CRC32String's wrapper) */
+int func_002E9B30();   /* we are on a clan's team (the clan unit's) */
+int func_002E9820();   /* and it is our clan's (the clan unit's) */
+int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator (the lobby unit's) */
+}
+
+/* a variable's text when it holds one (zNetMediusClan.cpp's ZString) */
+inline char *VarText(_zrdr *z)
+{
+    return z->type == 3 ? z->string : 0;
+}
+
+/* the game's server connected, the client events to the two callbacks: the room's connection info,
+ * the voice's stream, on a LAN the game's password hashed into the flags -- elsewhere our clan's
+ * team -- and a spectator's flag; the connection kept, dropped again when the connect failed; the
+ * error returned (SOCOM 1's zNetConnect, which returned nothing; OVL1 0x30D380: 0x2B85C0 calls it) */
+int CZNetwork::zNetConnect(NetClientConnectCallback connect, NetClientConnectCallback disconnect)
+{
+    NetConnectResult r;
+    NetConnectParams p;
+
+    memset(&p, 0, sizeof(p));
+    NetSetDefaultConnectParams(&p);
+    theLobby.SetConnectionInfo(&p.m_info);
+    func_0030FC70(data_0045B718, &p.m_voice);
+    p.m_connect = connect;
+    p.m_disconnect = disconnect;
+    if (func_003045B0(&data_0044FE10)) {
+        m_e8 = 0;
+        CUIVariable *var = theUIVarManager.Find("PlayerGamePassword");
+
+        if (var && var->type == 3)
+            m_e8 = func_003A59C0(VarText(var)) & 0x7F0000FE;
+        p.m_flags = m_e8;
+    } else if (func_002E9B30() && func_002E9820()) {
+        p.m_flags |= 2;
+    }
+    if (func_002F6D00(&theLobby))
+        p.m_flags |= 1;
+    NetConnect(&p, &r);
+    int err = r.m_err;
+
+    m_GameConnectionIndex = r.m_index;
+    if (err)
+        NetDisconnect(r.m_index);
+    else
+        m_bConnected = 1;
+    m_bJoined = 0;
+    return err;
+}
+
+/* the DME's other connect, a LAN game's (SOCOM II's library: its parameters 0x80 bytes, the
+ * clients' limit at 0x1c, the voice's stream at 0x20, the flags at 0x74; the names ours) */
+struct NetLanConnectParams {
+    int m_0;   // 0x0
+    int m_4;   // 0x4
+    int m_8;   // 0x8
+    NetClientConnectCallback m_connect;   // 0xc
+    int m_10;   // 0x10
+    NetClientConnectCallback m_disconnect;   // 0x14
+    int m_18;   // 0x18
+    int m_maxClients;   // 0x1c
+    NetVoiceStreamParams m_voice;   // 0x20
+    unsigned char _58[0x74 - 0x58];
+    unsigned int m_flags;   // 0x74
+    unsigned char _78[0x80 - 0x78];
+};   // 0x80
+
+struct LanGameInfo;   /* (below: the game-info exchange's) */
+
+extern "C" {
+int func_006218B8(NetLanConnectParams *p);   /* (the DME: its LAN connect's defaults) */
+int func_00621950(NetLanConnectParams *p, NetConnectResult *r);   /* (and the connect) */
+int func_00622FE8(int *status, int conn);   /* (a connection's state: 2 still connecting) */
+void func_00303780(CLanRoom *room, LanGameInfo *info);   /* the LAN lobby's game info (GetGameInfo) */
+}
+
+/* the LAN game's server connected and waited for: the LAN lobby's game info (its clients' limit),
+ * the voice's stream, the game's password hashed into the flags, a spectator's flag; the DME
+ * updated until the connection is no longer under way, dropped again on an error (SOCOM II's;
+ * OVL1 0x30D1B0: DMEConnectToGameServer calls it on theNetwork, where SOCOM 1's called
+ * zNetConnect). The room's connection info is fetched and not used. The loop's two calls are
+ * assigned inside their tests: the target branches on v0 and copies it to s1 in the delay slot,
+ * where `err = f(); if (err)` branches on the copy */
+extern "C" int func_0030D1B0(CZNetwork *net, NetClientConnectCallback connect,
+                             NetClientConnectCallback disconnect)
+{
+    int status;
+    NetConnectResult r;
+    NetLanConnectParams p;
+    NetConnectionInfo info;
+    LANGameInfo game;
+    int err;
+
+    err = func_006218B8(&p);
+    if (err)
+        return err;
+    theLobby.SetConnectionInfo(&info);
+    func_00303780(&data_0044FE10, (LanGameInfo *)&game);
+    p.m_maxClients = game.m_maxPlayers;
+    func_0030FC70(data_0045B718, &p.m_voice);
+    p.m_connect = connect;
+    p.m_disconnect = disconnect;
+    p.m_4 = 0;
+    net->m_e8 = 0;
+    CUIVariable *var = theUIVarManager.Find("PlayerGamePassword");
+
+    if (var && var->type == 3)
+        net->m_e8 = func_003A59C0(VarText(var)) & 0x7F0000FE;
+    p.m_flags = net->m_e8;
+    if (func_002F6D00(&theLobby))
+        p.m_flags |= 1;
+    err = func_00621950(&p, &r);
+    if (err)
+        return err;
+    net->m_bConnected = 1;
+    net->m_bJoined = 0;
+    net->m_GameConnectionIndex = r.m_index;
+    status = 2;
+    do {
+        if ((err = func_006236C0()) != 0 && err != 12) {
+            NetDisconnect(net->m_GameConnectionIndex);
+            return err;
+        }
+        if ((err = func_00622FE8(&status, net->m_GameConnectionIndex)) != 0) {
+            NetDisconnect(net->m_GameConnectionIndex);
+            return err;
+        }
+    } while (status == 2);
+    return err;
+}
 
 /* a client's event in the joined game, past to the join's callbacks unless it is the lobby's own
  * connection (SOCOM II's; OVL1 0x30D110: zNetJoin hands it to the DME; the name ours) */

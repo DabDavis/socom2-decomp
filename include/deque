@@ -405,8 +405,12 @@ template <class T, class Allocator>
 class __deque_imp : public __deque_buf<T, Allocator>, public allocator<const void *> {
 public:
     /* 512-byte blocks: 128 pointers, 42 of CSimpleStateMachine's 12-byte member pointers (its
-     * pop_front 0x3A6C40 and clear 0x3A6FA0 keep 84 and 21) */
-    enum { buf_size = sizeof(T) < 512 ? 512 / sizeof(T) : 1 };
+     * pop_front 0x3A6C40 and clear 0x3A6FA0 keep 84 and 21) -- but never fewer than 8 elements: the
+     * chat's 112-byte lines go 8 to a block (its pop_front 0x2F51E0 keeps 16, and the private-line
+     * callbacks' inlined front() 0x2F4A20/0x2F4BA0 divide the start by 8; 512 / 112 would give 4).
+     * The only element in the tree past 64 bytes, so the minimum moves nothing else (the online
+     * lane, round 11) */
+    enum { buf_size = sizeof(T) * 8 <= 512 ? 512 / sizeof(T) : 8 };
 
     /* the iterator: the block buffer's position, the element, the block's end */
     class iterator {

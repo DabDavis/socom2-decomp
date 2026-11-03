@@ -205,30 +205,33 @@ int func_0030F6E0(VoicePlayer *p, const unsigned char *buf, int len)
     return total;
 }
 
-/* mono samples written as stereo, 256 at a time (OVL1 0x30F5F0).
- * OPEN, 2 instructions: the target copies the sample pointer (`move s1,a1`) after the loop's guard
- * (`blez s3`), this before it; declared after `done`, or set in a for's init, it moves registers
- * instead (8 differ) or stays put. The samples are unsigned (lhu), the halfword pair a chained
- * assignment (the second stored first) */
+/* mono samples written as stereo, 256 at a time (OVL1 0x30F5F0). The samples are unsigned (lhu),
+ * the halfword pair a chained assignment (the second stored first). Open since round 4 (2
+ * instructions): the target copies the sample pointer after the loop's guard (`blez s3`), so the
+ * guard is written out with the pointer and the count inside it and the loop a do-while -- a
+ * plain while left MW its rotated guard below the pointer's copy */
 int func_0030F5F0(VoicePlayer *p, const short *in, int len)
 {
     unsigned char buf[1024] = {0};
     int total = 0;
-    const unsigned short *s = (const unsigned short *)in;
-    int done = 0;
 
-    while (len - done > 0) {
-        int i = 0;
-        unsigned short *q = (unsigned short *)buf;
+    if (len > 0) {
+        const unsigned short *s = (const unsigned short *)in;
+        int done = 0;
 
-        while (i < 256 && len - done > 0) {
-            q[0] = q[1] = *s;
-            i++;
-            done += 2;
-            s++;
-            q += 2;
-        }
-        total += func_0030F6E0(p, buf, i * 4);
+        do {
+            int i = 0;
+            unsigned short *q = (unsigned short *)buf;
+
+            while (i < 256 && len - done > 0) {
+                q[0] = q[1] = *s;
+                i++;
+                done += 2;
+                s++;
+                q += 2;
+            }
+            total += func_0030F6E0(p, buf, i * 4);
+        } while (len - done > 0);
     }
     return total;
 }

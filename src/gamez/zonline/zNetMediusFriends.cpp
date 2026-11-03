@@ -98,6 +98,8 @@ public:
                 return &*i;
         return 0;
     }
+    void Add(IgnoreItem *item);
+    void UpdateDisplay();
 };
 
 /* a friend's invitation, as the list keeps it (0x40 bytes) */
@@ -131,6 +133,7 @@ public:
     }
     void Add(FriendInvitationItem *item);
     void Remove(int id);
+    void UpdateDisplay();
 };
 
 /* an invitation as it comes: its status ahead of the account */
@@ -189,14 +192,14 @@ extern FriendInvitationVector data_0044FE00;   /* the friend invitations */
 void func_00300BE0(int, int, int, MediusStatusResponse *);   /* the confirmation's callback */
 MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer? */
-MediusErrorCode func_006492D8(MediusAddToBuddyListConfirmationRequest *req,
+MediusErrorCode MediusBuddyGetPermission(MediusAddToBuddyListConfirmationRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));
 
 MediusErrorCode MediusAccountGetID(MediusAccountGetIDRequest *req,
                                    void (*cb)(int, int, int, MediusAccountGetIDResponse *));
-MediusErrorCode func_006494A0(MediusAccountRequest *req,
+MediusErrorCode MediusAddToIgnoreList(MediusAccountRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));   /* add to the ignored */
-MediusErrorCode func_00649540(MediusAccountRequest *req,
+MediusErrorCode MediusRemoveFromIgnoreList(MediusAccountRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));   /* remove from them */
 
 }
@@ -217,7 +220,7 @@ void func_00300C10(int, int, int, MediusBuddyResponse *);
 MediusErrorCode func_0064AE58(MediusIDRequest *req, MediusBuddyCallback cb);
 MediusErrorCode MediusRemoveFromBuddyList(MediusAccountRequest *req, MediusBuddyCallback cb);
 MediusErrorCode func_0064B368(MediusIDRequest *req, MediusBuddyCallback cb);
-MediusErrorCode func_00649400(MediusGetIgnoreListRequest *req, MediusBuddyCallback cb);
+MediusErrorCode MediusGetIgnoreList(MediusGetIgnoreListRequest *req, MediusBuddyCallback cb);
 MediusErrorCode MediusAddToBuddyList(MediusAccountRequest *req, MediusBuddyCallback cb);
 MediusErrorCode MediusBuddyAddConfirmation(MediusBuddyConfirmationResponse *req);
 }
@@ -321,7 +324,7 @@ void cbFindBuddyListPlayerID(int, int, int, MediusFindPlayerResponse *resp)
         SetSessionKey(req.SessionKey);
         req.TargetAccountID = id;
         req.AddType = 0;
-        CheckMediusError(func_006492D8(&req, func_00300BE0));
+        CheckMediusError(MediusBuddyGetPermission(&req, func_00300BE0));
         LobbyEvent("MP_FRIEND_CONFIRMATION_REQUESTED", 0);
     } else {
         LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
@@ -329,36 +332,26 @@ void cbFindBuddyListPlayerID(int, int, int, MediusFindPlayerResponse *resp)
 }
 
 /* the named player asked to be a friend -- not one already, not invited, not ourselves ('AddFriend'
- * 0x27A050 calls it on theLobby; OVL1 0x3013C0): looked for by name first.
- * OPEN, 3 instructions (0x204 both): the finds match through FriendVector::Last (see zonline.h)
- * and the event is written twice, as the target has it; the first copy's null test branches past
- * a jump block to the epilogue where the target's goes straight there, its call followed by the
- * jump. Tried: the event expanded with the return inside its test, if/else arms throughout. */
+ * 0x27A050 calls it on theLobby; OVL1 0x3013C0): looked for by name first. The finds match
+ * through FriendVector::Last (see zonline.h) and the event is written twice, as the target has it:
+ * the three tests one `&&` chain and both events else-arms -- with the tests nested and the event
+ * followed by a `return`, the first event's null test branched to a jump block instead of straight
+ * to the epilogue (open since round 8, 3 instructions) */
 void CZOnlineLobby::AddFriend(const char *name)
 {
-    if (name) {
-        FriendItem *f = FriendVec.Find(name);
+    if (name && !FriendVec.Find(name) && !data_0044FE00.Find(name)) {
+        if (strcasecmp(name, AccountInfo.AccountName)) {
+            MediusFindPlayerRequest req;
 
-        if (!f) {
-            FriendInvitationItem *inv = data_0044FE00.Find(name);
-
-            if (!inv) {
-                if (strcasecmp(name, AccountInfo.AccountName)) {
-                    MediusFindPlayerRequest req;
-
-                    memset(&req, 0, sizeof(req));
-                    SetSessionKey(req.SessionKey);
-                    strncpy(req.Name, name, sizeof(req.Name));
-                    req.SearchType = 1;
-                    CheckMediusError(MediusFindPlayer(&req, cbFindBuddyListPlayerID));
-                    return;
-                }
-                LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
-                return;
-            }
-        }
-    }
-    LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
+            memset(&req, 0, sizeof(req));
+            SetSessionKey(req.SessionKey);
+            strncpy(req.Name, name, sizeof(req.Name));
+            req.SearchType = 1;
+            CheckMediusError(MediusFindPlayer(&req, cbFindBuddyListPlayerID));
+        } else
+            LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
+    } else
+        LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
 }
 
 /* an invitation received kept (GetFriendInvitations' callback, its status not looked at; OVL1
@@ -399,6 +392,32 @@ void CZOnlineLobby::GetFriendInvitations()
     }
 }
 
+/* a friend's whereabouts for the menu: the name, and the game and lobby it is in -- the main menu
+ * when its lobby is Medius's own -- or blanks for no such friend ('GetFriendInfo' 0x279AB0 calls it
+ * on theLobby with atoi of its argument; OVL1 0x301140, the name ours, after the command) */
+void CZOnlineLobby::GetFriendInfo(int id)
+{
+    CUIVariable *name = theUIVarManager.Add("FriendInfoName", 0, UIVL_TEMPORARY);
+    CUIVariable *game = theUIVarManager.Add("FriendInfoGame", 0, UIVL_TEMPORARY);
+    CUIVariable *lobby = theUIVarManager.Add("FriendInfoLobby", 0, UIVL_TEMPORARY);
+    FriendItem *f = FriendVec.Find(id);
+
+    if (f) {
+        *name = f->AccountName;
+        if (!strncmp(f->OnlineState.LobbyName, "Medius", 6)) {
+            *game = "MAIN MENU";
+            *lobby = " ";
+        } else {
+            *game = f->OnlineState.GameName;
+            *lobby = f->OnlineState.LobbyName;
+        }
+    } else {
+        *name = "";
+        *game = "";
+        *lobby = "";
+    }
+}
+
 /* the ignored account let go of: the list asked for again (OVL1 0x3010C0; the name ours, after
  * the status it reports) */
 void cbRemoveFromIgnoreList(int, int, int, MediusStatusResponse *resp)
@@ -417,7 +436,7 @@ void CZOnlineLobby::RemoveFromIgnore(int id)
         memset(&req, 0, sizeof(req));
         SetSessionKey(req.SessionKey);
         req.AccountID = id;
-        CheckMediusError(func_00649540(&req, cbRemoveFromIgnoreList));
+        CheckMediusError(MediusRemoveFromIgnoreList(&req, cbRemoveFromIgnoreList));
     }
 }
 
@@ -429,7 +448,7 @@ void CZOnlineLobby::GetIgnoreList()
 
     memset(&req, 0, sizeof(req));
     SetSessionKey(req.SessionKey);
-    CheckMediusError(func_00649400(&req, func_00300F70));
+    CheckMediusError(MediusGetIgnoreList(&req, func_00300F70));
 }
 
 /* the account ignored: the list asked for again, or the menu told it is full (OVL1 0x300E60) */
@@ -450,7 +469,7 @@ void cbFindIgnoreListPlayerID(int, int, int, MediusAccountGetIDResponse *resp)
         memset(&req, 0, sizeof(req));
         SetSessionKey(req.SessionKey);
         req.AccountID = resp->AccountID;
-        CheckMediusError(func_006494A0(&req, cbAddToIgnoreList));
+        CheckMediusError(MediusAddToIgnoreList(&req, cbAddToIgnoreList));
     } else {
         LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
     }
@@ -513,10 +532,113 @@ void CZOnlineLobby::ConfirmFriend(int id)
     data_0044FE00.Remove(id);
 }
 
-extern "C" void func_00301810(FriendInvitationVector *list);   /* the invitations shown again */
+/* an account's mark in the lists: the font's online and offline glyphs (the name ours: a switch
+ * with only `case 0` and `default` -- the target's beqz to the zero case, a `b` to the other) */
+inline const char *OnlineMark(int status)
+{
+    const char *mark;
 
-/* The invitations' members its callers call out of line. Pinned: never inlined */
+    switch (status) {
+    case 0:
+        mark = "\xaa";
+        break;
+    default:
+        mark = "\xa7";
+        break;
+    }
+    return mark;
+}
+
+/* The lists' members their callers call out of line. Pinned: never inlined */
 #pragma auto_inline off
+
+/* an account ignored kept, unless its account's is there: copied whole (OVL1 0x301ED0: the ignore
+ * list's callback 0x300F70 hands it each response). It first asks whether the name is ignored --
+ * IsIgnored inlined, its walk of this very list made -- and does nothing with the answer: both
+ * outcomes go on to the test by account */
+void IgnoreVector::Add(IgnoreItem *item)
+{
+    theLobby.IsIgnored(item->AccountName);
+    if (!Find(item->AccountID)) {
+        IgnoreItem copy = *item;
+
+        push_back(copy);
+    }
+}
+
+/* the friends shown: each its account as text, its name, whether it is online (the font's two
+ * marks) and where -- the main menu when its lobby is Medius's own, else the lobby and the game --
+ * or two blanks (OVL1 0x301A70: the friends list's callback 0x3017A0 calls it; the name ours) */
+void FriendVector::UpdateDisplay()
+{
+    CRdrEditor ed;
+    char text[64];
+
+    ed.push(0);
+    for (iterator i = begin(); i != end(); ++i) {
+        FriendItem *f = *i;
+
+        sprintf(text, "%d", f->AccountID);
+        ed.push(0);
+        ed.addstringnode(text);
+        ed.addstringnode(f->AccountName);
+        ed.addstringnode(OnlineMark(f->OnlineState.ConnectStatus));
+        if (f->OnlineState.ConnectStatus) {
+            if (!strncmp(f->OnlineState.LobbyName, "Medius", 6)) {
+                ed.addstringnode("MAIN MENU");
+                ed.addstringnode(" ");
+            } else {
+                ed.addstringnode(f->OnlineState.LobbyName);
+                ed.addstringnode(f->OnlineState.GameName);
+            }
+        } else {
+            ed.addstringnode("");
+            ed.addstringnode("");
+        }
+        ed.pop();
+    }
+    ed.pop();
+    theUIVarManager.Add("FriendListVar", 0, UIVL_TEMPORARY)->Set(&ed);
+}
+
+/* the ignored shown: each its account as text, its name and its mark (OVL1 0x301920: the ignore
+ * list's callback 0x300F70 calls it; the name ours) */
+void IgnoreVector::UpdateDisplay()
+{
+    CRdrEditor ed;
+    char text[64];
+
+    ed.push(0);
+    for (iterator i = begin(); i != end(); ++i) {
+        sprintf(text, "%d", (*i).AccountID);
+        ed.push(0);
+        ed.addstringnode(text);
+        ed.addstringnode((*i).AccountName);
+        ed.addstringnode(OnlineMark((*i)._40));
+        ed.pop();
+    }
+    ed.pop();
+    theUIVarManager.Add("IgnoreListVar", 0, UIVL_TEMPORARY)->Set(&ed);
+}
+
+/* the invitations shown: each its account as text and its name, kept for good (OVL1 0x301810; the
+ * name ours) */
+void FriendInvitationVector::UpdateDisplay()
+{
+    CRdrEditor ed;
+    char text[64];
+
+    ed.push(0);
+    for (iterator i = begin(); i != end(); ++i) {
+        sprintf(text, "%d", (*i).AccountID);
+        ed.push(0);
+        ed.addstringnode(text);
+        ed.addstringnode((*i).AccountName);
+        ed.pop();
+    }
+    ed.pop();
+    theUIVarManager.Add("FriendConfirmationListVar", 0, UIVL_PERMANENT)->Set(&ed);
+}
 
 /* an invitation kept, unless it is empty or its account's is there, and the list shown again
  * (OVL1 0x301DB0): copied by assignment first -- the odd-length id makes it member by member,
@@ -529,7 +651,7 @@ void FriendInvitationVector::Add(FriendInvitationItem *item)
         copy = *item;
 
         push_back(copy);
-        func_00301810(this);
+        UpdateDisplay();
     }
 }
 
@@ -550,39 +672,10 @@ void FriendInvitationVector::Remove(int id)
         else
             ++i;
     }
-    func_00301810(this);
+    UpdateDisplay();
 }
 
 #pragma auto_inline reset
-
-/* a state of the game's stack, as far as the player is told things (Apps/FTS/fts_state.h's
- * CGameState: its first ten slots, DisplayMessage at 0x2C) */
-class CMessageState {
-public:
-    virtual ~CMessageState();
-    virtual void PreInit();
-    virtual bool Init();
-    virtual bool Tick(float dT);
-    virtual void PreUnInit();
-    virtual void UnInit();
-    virtual void OnPush(int userdata);
-    virtual void OnPop(int userdata);
-    virtual void SetSkipSwap(int swap);
-    virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
-                                unsigned char d, unsigned char e, char type);
-};
-
-/* the game's stack of states (zgame.h's CGame: the current state's index at 0xC, the stack 0x14) */
-struct CMessageGame {
-    CMessageState *GetCurrentState() { return m_CurrentState >= 16 ? 0 : m_Stack[m_CurrentState]; }
-
-    unsigned char _0[0xc];
-    unsigned int m_CurrentState;   // 0xc
-    CMessageState *m_TestVariable;   // 0x10
-    CMessageState *m_Stack[16];   // 0x14
-};
-
-extern CMessageGame theGame;   /* 0x4084C0 */
 
 /* an invitation to be a friend received: kept, and the player told (OVL1 0x3009C0: MediusInit's
  * second callback; its response is the invitation's record) */

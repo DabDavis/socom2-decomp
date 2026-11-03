@@ -4650,7 +4650,7 @@
 0x002DF560 0xD4 SyncGameClock__13CZOnlineLobbyFi  # OVL1; s1:calls
 0x002DF640 0xC MediusConnectionIndex__13CZOnlineLobbyFv  # OVL1; s1:calls by hand (the states lane: the network senders take the connection index through it where SOCOM 1's do)
 0x002DF650 0x4C UnInit__13CZOnlineLobbyFv  # OVL1; s1:callee
-0x002DF6A0 0x23C func_002DF6A0  # OVL1
+0x002DF6A0 0x23C CreateUIResources__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 11 (the lobby's UI variables made: SOCOM 1's Open made them in its tail, SOCOM II's Open 0x2E0030 calls this, as do the LAN lobby's Connect, LobbyReadyToConnectStateHandler and UIDisconnectFromGameServer; the name after SOCOM 1's ReleaseUIResources)
 0x002DF8E0 0x170 ReleaseUIResources__13CZOnlineLobbyFv  # OVL1; s1 by hand (called by UnInit, Close and the destructor, as SOCOM 1's UnInit, Close and destructor call ReleaseUIResources; frees the lobby's lists)
 0x002DFA50 0x7C ReleaseVector<36MediusGetBuddyList_ExtraInfoResponse>__FRQ23std106vector<P36MediusGetBuddyList_ExtraInfoResponse,Q23std50allocator<P36MediusGetBuddyList_ExtraInfoResponse>>_v  # OVL1; ours (ReleaseVector on the friends 0x44FDC0, from ReleaseUIResources; byte-exact)
 0x002DFAD0 0x7C ReleaseVector<8RoomGame>__FRQ23std48vector<P8RoomGame,Q23std21allocator<P8RoomGame>>_v  # OVL1; ours (ReleaseVector on a room's games, 0x44FAB0's and *0x44FE10's, from ReleaseUIResources; byte-exact)
@@ -4661,7 +4661,7 @@
 0x002DFD50 0x7C ReleaseVector<10LadderItem>__FRQ23std54vector<P10LadderItem,Q23std24allocator<P10LadderItem>>_v  # OVL1; ours (a vector cleared and swapped with an empty one, the temporary's storage freed -- a non-inline template's instance: ReleaseUIResources on the two player ladders; byte-exact)
 0x002DFDD0 0x38 Close__13CZOnlineLobbyFv  # OVL1; s1:ui (the UI command table's 'UnInitNetwork' handler 0x27E5C0 calls it on theLobby where SOCOM 1's UIUnInitNetwork calls Close)
 0x002DFE10 0x34 RunStateHandler__13CZOnlineLobbyF11LOBBY_STATE16LOBBY_STATE_FLAG  # OVL1; ours (the state's handler, m_state_handler[state] at +0, called with the flag when there is one; the state an int narrowed inside, andi 0xff; the state machine 0x2ED460 calls it on theLobby)
-0x002DFE50 0x1D4 func_002DFE50  # OVL1
+0x002DFE50 0x1D4 Tick__13CZOnlineLobbyFv  # OVL1; s1:order by hand, the online lane round 11 (SOCOM 1's CZOnlineLobby::Tick 0x327C50 instruction for instruction but the game clock now a member read through this and its float setter's equality test; CZNetwork::zNetUpdate calls it on theLobby as SOCOM 1's does)
 0x002E0030 0x410 func_002E0030  # OVL1
 0x002E0440 0x10 func_002E0440  # OVL1
 0x002E0450 0x17C Init__13CZOnlineLobbyFv  # OVL1; s1 by hand (COurGame::StartEngine calls it on theLobby where SOCOM 1's StartEngine calls CZOnlineLobby::Init)
@@ -4942,20 +4942,20 @@
 0x002F42E0 0x18 CheckMediusError__F15MediusErrorCode  # OVL1; ours (every Medius request in OVL1 0x2DF560-0x306670 hands the API call's result to it and drops the answer: true for 0, MediusSuccess)
 0x002F4300 0x560 LookupMediusCallbackStatus__F20MediusCallbackStatus  # OVL1; s1 by hand (the callbacks sprintf its string for a failed status, as SOCOM 1's callbacks call LookupMediusCallbackStatus for theirs: cbSendClanMessage's 'Failed To Send Message. Error -> %s', cbDisbandClan's 'Clan Disband Error: %s')
 0x002F4860 0x1B4 SendChat__13CZOnlineLobbyFPCcPCc  # OVL1; s1 by hand (the UI-commands lane's lead: SOCOM 1's chat senders call CZOnlineLobby::SendChat where these call it on theLobby; SOCOM II's takes the text and a second string, a whisper's target -- null for the room, a type 1 message otherwise)
-0x002F4A20 0x180 func_002F4A20  # OVL1
-0x002F4BA0 0x1B8 func_002F4BA0  # OVL1
+0x002F4A20 0x180 cbFindChatPlayerID__FiiiP24MediusFindPlayerResponse  # OVL1; ours, the online lane round 11 (the callback SendChat's MediusFindPlayer is given for a private line; named by the status it checks, 'FindChatPlayerID', as the friends unit's cbFindBuddyListPlayerID)
+0x002F4BA0 0x1B8 cbFilterChat__FPCcPv  # OVL1; s1:ref by hand, the online lane round 11 (SOCOM 1's SendChat hands cbFilterChat to Censor; SOCOM II's SendChat 0x2F4860 hands this to its inlined censor for a public line, and 0x2F4A20 for a private one: the line taken off the filter's queue and sent as a direct message)
 0x002F4D60 0x90 func_002F4D60  # OVL1
 0x002F4DF0 0xA8 Censor__13CZOnlineLobbyFPCcPFPCcPv_vPv  # OVL1; s1:ui (UINetCensorText and SendChatMsg call it, as SOCOM 1's call Censor)
 0x002F4EA0 0x44 cbCensor__FiiiP24MediusTextFilterResponse  # OVL1; s1:calls by hand (CZOnlineLobby::Censor hands it to MediusTextFilter as SOCOM 1's Censor hands cbCensor: the filtered text at +0x15 to the waiting callback, then the callback and its data cleared)
 0x002F4EF0 0xCC cbChatMessage__FiiiP20MediusChatFwdMessage  # OVL1; s1 by hand (MediusInit 0x300840 hands it as the library's first callback, where SOCOM 1's AuxInitNetwork hands cbChatMessage: a MediusChatFwdMessage shown with sprintf '%s: %s' through 0x2A4050, private and clan ones anywhere)
 0x002F4FC0 0x60 func_002F4FC0  # OVL1
-0x002F5020 0x1B8 func_002F5020  # OVL1
+0x002F5020 0x1B8 UpdateChatDisplay__Fv  # OVL1; ours, the online lane round 11 (the room's chat shown: its lines from the room's vector<MediusChatFwdMessage> 0x88, coloured by type, into MEDIUS_CHAT_RECV_VAR -- what SOCOM 1's cbFilterChat did at its end; cbLobbyServerConnect and the menu state's line insert 0x1F5020 call it; named as SOCOM 1's UpdateGameListDisplay)
 0x002F51E0 0xA8 pop_front__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's pop: the private-line callbacks and the queue's pop 0x2F5ED0; open in include/deque)
 0x002F5290 0x420 push_back__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FRC17MediusChatMessage  # OVL1; ours, the online lane round 10 (the chat deque's push: SendChat and the queue's push 0x2F5EE0; open in include/deque, 0x370 against 0x420)
 0x002F56B0 0x50 swap__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FRQ210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>  # OVL1; s1:exact
 0x002F5700 0x238 func_002F5700  # OVL1
 0x002F5940 0xE4 func_002F5940  # OVL1
-0x002F5A30 0xD8 func_002F5A30  # OVL1
+0x002F5A30 0xD8 clear__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 11 (the chat deque's clear: its pop_front 0x2F51E0 calls it when one line is left, as the lobby queue's pop_front 0x2E1560 calls its clear 0x2E1B20; it leaves start_ at 4, half of the 8-line block)
 0x002F5B10 0x1F8 func_002F5B10  # OVL1
 0x002F5D10 0x13C func_002F5D10  # OVL1
 0x002F5E50 0x70 __dt__10CChatQueueFv  # OVL1; ours, the online lane round 10 (the chat queues' destructor: __sinit_zNetMediusChat.cpp registers it for both)
@@ -4990,7 +4990,7 @@
 0x002F7AC0 0x180 cbGetPolicy__FiiiP23MediusGetPolicyResponse  # OVL1; ours (GetUsagePolicy's MediusGetPolicy callback: 'GetPolicyRequest' checked, the policy text built into 'UsagePolicy' through a CRdrEditor)
 0x002F7C40 0x144 func_002F7C40  # OVL1
 0x002F7D90 0x210 func_002F7D90  # OVL1
-0x002F7FA0 0x114 func_002F7FA0  # OVL1
+0x002F7FA0 0x114 SetConnectionInfo__13CZOnlineLobbyFP17NetConnectionInfo  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's SetConnectionInfo 0x329F00, 0x118 bytes: the game server's NetConnectionInfo copied member by member into the caller's; CZNetwork's two connects 0x30D380/0x30D1B0 call it on theLobby, as SOCOM 1's zNetConnect does)
 0x002F80C0 0x54 SendEndGameReport__13CZOnlineLobbyFv  # OVL1; s1:ui ('DisconnectFromGameServer' 0x27E420 calls it before RejoinRoom, as SOCOM 1's UIDisconnectFromGameServer does; the session key copied and one Medius call)
 0x002F8120 0x108 AdvanceMissionSequence__13CZOnlineLobbyFv  # OVL1; s1:ui ('AdvanceMPMission' 0x279490, as SOCOM 1's UIAdvanceMPMission)
 0x002F8230 0x40 ResetMissionSequence__13CZOnlineLobbyFv  # OVL1; s1:ui ('SetMPMissionSeq' 0x278EB0, as SOCOM 1's UISetMPMissionSeq calls ResetMissionSequence)
@@ -5113,7 +5113,7 @@
 0x00300F70 0x70 func_00300F70  # OVL1
 0x00300FE0 0xE0 RemoveFromIgnore__13CZOnlineLobbyFi  # OVL1; ours ('RemoveFromIgnore' 0x2798E0 calls it on theLobby with atoi of its argument: an account found in the ignore list 0x44FDE0 by id is let go of through 0x649540 with 0x3010C0; byte-exact)
 0x003010C0 0x74 cbRemoveFromIgnoreList__FiiiP20MediusStatusResponse  # OVL1; ours (RemoveFromIgnore's callback: reports 'RemoveFromIgnoreList', then GetIgnoreList inlined; byte-exact)
-0x00301140 0x1A8 func_00301140  # OVL1
+0x00301140 0x1A8 GetFriendInfo__13CZOnlineLobbyFi  # OVL1; ours, the online lane round 11 (the 'GetFriendInfo' UI command's handler 0x279AB0 calls it on theLobby with atoi of its argument: the friend found by id in FriendVec, its name, game and lobby set in FriendInfoName/Game/Lobby)
 0x003012F0 0x5C GetFriendInvitations__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendInvitations' 0x27A2B0 calls it on theLobby, in the active lobby only)
 0x00301350 0x70 cbGetFriendInvitations__FiiiP33MediusGetBuddyInvitationsResponse  # OVL1; ours (GetFriendInvitations' callback: the response's id, account, name and add type copied into a 0x40-byte item and kept through 0x301DB0 on 0x44FE00; byte-exact)
 0x003013C0 0x204 AddFriend__13CZOnlineLobbyFPCc  # OVL1; ours ('AddFriend' 0x27A050 calls it on theLobby: a name neither a friend, invited nor our own is looked for (0x648F10, search type 1, with 0x3015D0), else 'MP_PLAYER_IS_FRIEND')
@@ -5122,13 +5122,13 @@
 0x00301710 0x34 func_00301710  # OVL1
 0x00301750 0x48 GetFriendsList__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendsList' 0x27A2E0 calls it on theLobby; the friends list 0x44FDC0 emptied and asked for)
 0x003017A0 0x70 func_003017A0  # OVL1
-0x00301810 0x108 func_00301810  # OVL1
-0x00301920 0x150 func_00301920  # OVL1
-0x00301A70 0x1CC func_00301A70  # OVL1
+0x00301810 0x108 UpdateDisplay__22FriendInvitationVectorFv  # OVL1; ours, the online lane round 11 (the invitations into FriendConfirmationListVar, each its account as text and its name; FriendInvitationVector::Add 0x301DB0 and Remove 0x301CF0 call it on their list)
+0x00301920 0x150 UpdateDisplay__12IgnoreVectorFv  # OVL1; ours, the online lane round 11 (the ignored into IgnoreListVar: account, name and mark; the ignore list's callback 0x300F70 calls it on 0x44FDE0)
+0x00301A70 0x1CC UpdateDisplay__12FriendVectorFv  # OVL1; ours, the online lane round 11 (the friends into FriendListVar: account, name, mark and where they are; the friends list's callback 0x3017A0 calls it on FriendVec)
 0x00301C40 0xB0 Find__12FriendVectorFPCc  # OVL1; ours (the friend by name, strcasecmp on +0x20, the null test inside: the state handler 0x2F0020 calls it on 0x44FDC0; byte-exact)
 0x00301CF0 0xBC Remove__22FriendInvitationVectorFi  # OVL1; ours, the online lane round 8 (FriendInvitationVector::Remove: every invitation from an account erased, the list shown again; ConfirmFriend and RejectFriend call it; open, 35 instructions)
 0x00301DB0 0x120 Add__22FriendInvitationVectorFP20FriendInvitationItem  # OVL1; ours, the online lane round 8 (FriendInvitationVector::Add: an invitation kept unless empty or its account is there, assigned to a local first -- member by member -- and pushed, the list shown again; cbGetFriendInvitations and the invitation callback 0x3009C0 call it; byte-exact)
-0x00301ED0 0x1D0 func_00301ED0  # OVL1
+0x00301ED0 0x1D0 Add__12IgnoreVectorFP10IgnoreItem  # OVL1; ours, the online lane round 11 (an ignored account kept unless its account is there, copied whole and pushed back through the class insert 0x3022F0; the ignore list's callback 0x300F70 hands it each response)
 0x003020A0 0x164 Add__12FriendVectorFP36MediusGetBuddyList_ExtraInfoResponse  # OVL1; ours (GetFriendsList's callback 0x3017A0 keeps a friend through it: the 0xD0-byte buddy response copied whole unless its account is there; byte-exact)
 0x00302210 0xD4 DeleteAll__12FriendVectorFv  # OVL1; ours (the friends 0x44FDC0 deleted and the list emptied -- std::transform with a deleter, then clear, as the clan lists' DeleteAll: GetFriendsList, ReleaseUIResources and the list's destructor 0x303410; byte-exact)
 0x003022F0 0x554 insert__Q23std60__vector_imp<10IgnoreItem,Q23std23allocator<10IgnoreItem>,0>FP10IgnoreItemUiRC10IgnoreItem  # OVL1; ours, the online lane round 10 (the ignore list's class-vector insert: resize 0x303250 calls it with its blank T())
@@ -5317,7 +5317,7 @@
 0x0030D060 0xA8 zNetJoin__9CZNetworkFPFii_vPFii_v  # OVL1; s1 by hand (SOCOM 1's zNetJoin, two client callbacks: here kept at +0x110C/+0x1110 and the game connection's session joined through a parameter block -- NetSetDefaultJoinParams 0x621DB8, NetJoin 0x621E50 -- m_bJoined set on success, the answer returned)
 0x0030D110 0xA0 zNetClientCallback__FP18NetClientEventInfo  # OVL1; ours (zNetJoin's client-event callback: the lobby's own connection skipped, event 0 to the join callback at +0x110C, 1 to the leave one at +0x1110)
 0x0030D1B0 0x1C8 func_0030D1B0  # OVL1
-0x0030D380 0x188 func_0030D380  # OVL1
+0x0030D380 0x188 zNetConnect__9CZNetworkFPFP17ClientConnectArgs_vPFP17ClientConnectArgs_v  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's zNetConnect 0x321630: NetSetDefaultConnectParams, theLobby's SetConnectionInfo into the parameters, the two client callbacks, NetConnect, the connection's index kept and m_bConnected set unless it failed, m_bJoined cleared; SOCOM II's returns the error and drops a failed connection; 0x2B85C0 calls it with SOCOM II's cbClientConnect/cbClientDisconnect pair 0x2BC620/0x2BC530); the callbacks retyped: SOCOM II's take a pointer, fts_remote.cpp's ClientConnectArgs
 0x0030D510 0x28 zNetGetValidGameClientCount__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
 0x0030D540 0x8 zNetGetLocalTime__9CZNetworkFv  # OVL1; s1:calls+order (right before zNetGetTime as SOCOM 1's; the same 8 bytes) -- the UI-commands lane
 0x0030D550 0x8 zNetGetTime__9CZNetworkFv  # OVL1; s1:calls (CZNetGame::TenSecondLaunch, as SOCOM 1's; the same 8 bytes) -- the states lane
@@ -5333,7 +5333,7 @@
 0x0030D900 0xB0 zNetFlushMessages__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the message list at +0x1248 is not empty: each queued message sent through NetSendApplicationMessage 0x621458 and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)
 0x0030D9B0 0x48 func_0030D9B0  # OVL1
 0x0030DA00 0x1B0 zNetUpdate__9CZNetworkFv  # OVL1; s1 by hand (SOCOM 1's zNetUpdate: game_main.cpp calls it at SOCOM 1's call site; the messages flushed, the Medius or DME update and the lobby's Tick, the delayed actions, the post-update callbacks over the 4096 field flags, NetGetLocalTime and NetGetTime into +0x104/+0x100)
-0x0030DBB0 0x130 func_0030DBB0  # OVL1
+0x0030DBB0 0x130 zNetInitialize__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's zNetInitialize 0x321CA0: NetSetDefaultInitializeParams, NetInitialize, the network's init flag set when it answers no error, our address asked for into the object at 0xD0 (SOCOM 1's 0xAF), the 4096 object-field flags cleared, the error returned; SOCOM II's adds the DME state from DMEInit, a server-message callback 0x30DCE0 and the buffer sizes; UIDMEInit 0x276CF0 calls it on theNetwork)
 0x0030DCE0 0x148 func_0030DCE0  # OVL1
 0x0030DE30 0xAC zNetLookupHost__9CZNetworkFPCcPci  # OVL1; ours (the server list's connect 0x2FDF60 calls it on theNetwork: sceInetName2Address then sceInetAddress2String into the caller's buffer, 30 on failure)
 0x0030DEE0 0x37C func_0030DEE0  # OVL1

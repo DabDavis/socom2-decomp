@@ -102,7 +102,6 @@ void func_002E1E00(RoomGame *game, unsigned char seq);
 void func_002F4030(void *msg, int type);   /* a message's byte order converted */
 void func_002F7C40(void *rules);   /* the game's rules filled in */
 /* the lobby's */
-void func_002DF6A0(CZOnlineLobby *lobby);
 int func_002EF9F0();   /* (the game's type for the info) */
 void func_002F3EF0(void *rules);   /* a type-129 response's tail converted (the chat unit's) */
 void func_002F3FF0(void *slots);   /* a free slot looked for (the chat unit's) */
@@ -183,7 +182,7 @@ void cbLANGameInfo(LANGameInfo *info)
 /* the LAN lobby entered: its room in use, the announced games' callback set */
 bool CZLANLobby::Connect()
 {
-    func_002DF6A0(&theLobby);
+    theLobby.CreateUIResources();
     func_0030CB90(&theNetwork, cbLANGameInfo);
     m_room = &data_0044FFC0;
     return true;
