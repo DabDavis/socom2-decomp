@@ -946,8 +946,8 @@
 0x001B3928 0x14 func_001B3928  # MAIN unaligned
 0x001B3940 0x14 func_001B3940  # MAIN
 0x001B3958 0x14 sqrtf  # MAIN unaligned; s1:exact
-0x001B3970 0x1CC func_001B3970  # MAIN
-0x001B3B40 0x4C func_001B3B40  # MAIN
+0x001B3970 0x1CC sceMcInit  # MAIN; s1:order (the demo's libmc object 0x171070 opens with sceMcInit: two semaphores, the 0x80000400 bind, RPC 0xFE, the mcserv/mcman version checks; src/lib/sdk/libmc.c)
+0x001B3B40 0x4C sceMcEnd  # MAIN; s1:order (the demo's second, after sceMcInit: deletes the library's semaphores; src/lib/sdk/libmc.c)
 0x001B3B90 0x30 _lmcGetClientPtr  # MAIN; s1:exact
 0x001B3BC0 0xB8 sceMcChangeThreadPriority  # MAIN; s1:gap
 0x001B3C78 0xC4 sceMcGetSlotMax  # MAIN unaligned; s1:gap
@@ -958,22 +958,22 @@
 0x001B4030 0x90 mceIntrReadFixAlign  # MAIN; s1:exact
 0x001B40C0 0x114 sceMcRead  # MAIN; s1:align
 0x001B41D8 0x174 sceMcWrite  # MAIN unaligned; s1:align
-0x001B4350 0x8 func_001B4350  # MAIN
-0x001B4358 0x38 func_001B4358  # MAIN unaligned
+0x001B4350 0x8 mcHearAlarm  # MAIN; s1:order (the demo's static after sceMcWrite: the alarm handler, iSignalSema of its argument)
+0x001B4358 0x38 mcDelayThread@libmc  # MAIN unaligned; s1:order (the demo's static after mcHearAlarm: SetAlarm(mcHearAlarm) then WaitSema, sceMcSync's 60-tick wait; @libmc: OVL2's copy at 0x62C180 holds the bare name)
 0x001B4390 0xE0 sceMcSync  # MAIN; s1:exact
 0x001B4470 0x54 mceGetInfoApdx  # MAIN; s1:exact
 0x001B44C8 0x17C sceMcGetInfo  # MAIN unaligned; s1:gap
 0x001B4648 0x6C sceMcUdCheckNewCard  # MAIN unaligned; s1:exact
 0x001B46B8 0x148 sceMcGetDir  # MAIN unaligned; s1:gap
 0x001B4800 0x84 mceStorePwd  # MAIN; s1:exact
-0x001B4888 0x140 func_001B4888  # MAIN unaligned
-0x001B49C8 0xCC func_001B49C8  # MAIN unaligned
-0x001B4A98 0x118 func_001B4A98  # MAIN unaligned
-0x001B4BB0 0xB8 func_001B4BB0  # MAIN
-0x001B4C68 0x1C8 func_001B4C68  # MAIN unaligned
-0x001B4E30 0x158 func_001B4E30  # MAIN
-0x001B4F88 0xCC func_001B4F88  # MAIN unaligned
-0x001B5058 0x108 func_001B5058  # MAIN unaligned
+0x001B4888 0x140 sceMcChdir  # MAIN unaligned; s1:order (the demo's sceMcChdir after mceStorePwd: RPC 0xC, mceStorePwd as its end function)
+0x001B49C8 0xCC sceMcFormat  # MAIN unaligned; s1:order (the demo's next: RPC 0x10, port and slot)
+0x001B4A98 0x118 sceMcDelete  # MAIN unaligned; s1:order (the demo's next: RPC 0xF, the name block, flags 0)
+0x001B4BB0 0xB8 sceMcFlush  # MAIN; s1:order (the demo's next: RPC 0xA, the descriptor's fd)
+0x001B4C68 0x1C8 sceMcSetFileInfo  # MAIN unaligned; s1:order (the demo's next: RPC 0xE, the 64-byte entry copied to buffFileInfo, flags valid&7)
+0x001B4E30 0x158 sceMcRename  # MAIN; s1:order (the demo's next: RPC 0xE with flags 0x10 and the new name in buffFileInfo, command 0x13)
+0x001B4F88 0xCC sceMcUnformat  # MAIN unaligned; s1:order (the demo's next: RPC 0x11, port and slot)
+0x001B5058 0x108 sceMcGetEntSpace  # MAIN unaligned; s1:order (the demo's last libmc function: RPC 0x12, the name block)
 0x001B5160 0x250 _motionComp0  # MAIN; s1:exact
 0x001B53B0 0x704 _getAllRefs  # MAIN; s1:exact
 0x001B5AB8 0x41C _getRef0  # MAIN unaligned; s1:exact

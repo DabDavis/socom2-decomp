@@ -179,6 +179,51 @@ def test_jump_table_is_checked_by_target():
     ck(not r.match and any(f.status == "CONTENT-MISMATCH" for f in r.relocs), "a corrupted entry is caught")
 
 
+def _image_with_word(img: E.Image, addr: int, value: int) -> E.Image:
+    """A copy of the image with one word changed."""
+    segs = []
+    for seg in img.segments:
+        if seg.base <= addr < seg.base + len(seg.data):
+            bad = bytearray(seg.data)
+            struct.pack_into("<I", bad, addr - seg.base, value)
+            seg = replace(seg, data=bytes(bad))
+        segs.append(seg)
+    img2 = E.Image.__new__(E.Image)
+    img2.segments = segs
+    return img2
+
+
+def test_gnu_table_is_compared_whole():
+    """A GNU object relocates its statics against the section, so only the label's size says how
+    far a table reaches. FillLanguageVirtualTable copies the recogniser's 79-slot _LangVirtualTable,
+    whose first slot is null: read as a string, it was compared over one byte (round 6a). Whole, its
+    slots resolve through the candidate's own functions by name (language.c's OPEN functions compile
+    to other sizes, so 73 slots sit at other distances than the target's): a slot pointing elsewhere
+    must fail. And a GNU float literal is compared over the width its load reads -- the codec's
+    1.40234375f (0x3FB38000) starts with a zero byte, which the string rule read as the whole."""
+    img, st = E.image(), E.symbols()
+    lang = HERE / "src" / "lib" / "asr" / "language.c"
+    opts = C.tu_options(lang)
+    obj = build(lang, "language", opts["compiler"], opts["flags"].split())
+    D.qualify_statics(obj, lang.stem, st)
+    sym = st.get("FillLanguageVirtualTable")
+    r = D.compare(obj, sym.name, sym, img, st)
+    table = st.data_by_name["_LangVirtualTable"]
+    ck(r.match and any(f.symbol == "_LangVirtualTable" and f.status == "ok" for f in r.relocs),
+       f"the table resolves, slot by slot: {r.verdict}")
+    slot40 = table.addr + 40 * 4
+    r = D.compare(obj, sym.name, sym, _image_with_word(img, slot40, img.word(slot40) + 8), st)
+    ck(not r.match and any(f.status == "CONTENT-MISMATCH" for f in r.relocs), "a slot naming another address fails")
+    nelly = HERE / "src" / "lib" / "ovl1" / "nelly.c"
+    opts = C.tu_options(nelly)
+    obj = build(nelly, "nelly", opts["compiler"], opts["flags"].split())
+    sym = st.get("func_00251700")
+    lits = [f.want for f in D.compare(obj, sym.name, sym, img, st).relocs if f.type == "R_MIPS_LITERAL"]
+    lit = next(a for a in lits if img.word(a) == 0x3FB38000)
+    r = D.compare(obj, sym.name, sym, _image_with_word(img, lit, 0x3FB48000), st)
+    ck(not r.match and any(f.status == "CONTENT-MISMATCH" for f in r.relocs), "a float literal's high bytes count")
+
+
 def test_padding_after_a_function_must_be_zero():
     """A candidate one instruction short of a function whose next word is code fails."""
     img, st = E.image(), E.symbols()
