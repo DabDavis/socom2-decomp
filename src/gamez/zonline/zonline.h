@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <queue>
 #include "../zui/zui.h"
 
 /* a field copied when both ends are there (the items' constructors test both addresses, as SOCOM
@@ -526,6 +527,7 @@ typedef MediusGetClanLadderListResponse ClanLadderItem;
  * initialiser 0x401FA0 zeroes them and sets +0x10 to 2): the clans and the lowest position seen */
 class ClanLadderList : public std::vector<ClanLadderItem *> {
 public:
+    ClanLadderList() { m_10 = 2; m_lowest = 0; }
     ~ClanLadderList() { DeleteAll(); }
     ClanLadderItem *Find(int pos)
     {
@@ -631,6 +633,8 @@ struct LadderItem {
 
 class LadderList : public std::vector<LadderItem *> {
 public:
+    LadderList() { m_c = 2; m_10 = 0; }
+    ~LadderList() { DeleteAll(); }
     LadderItem *Find(int pos)
     {
         for (iterator i = begin(), e = end(); i != e; ++i)
@@ -816,6 +820,8 @@ void UpdateGameListDisplay(BriefingRoom *room);
 /* the room list (SOCOM 1's BriefingRoomDB: 0x44F568, the rooms' unit's) */
 class BriefingRoomDB : public std::vector<BriefingRoom *> {
 public:
+    /* the rooms deleted with the list (0x2E5F60, which __sinit_zNetMediusRoom.cpp registers) */
+    ~BriefingRoomDB() { DeleteAll(); }
     BriefingRoom *FindRoom(const char *name);
     /* FindRoom again, as an inline (CanJoinRoom expands it where the game list's request calls
      * FindRoom out of line) */
@@ -879,11 +885,19 @@ class CValve;
 class CUIVariable;
 class C2D;
 
+/* the states waiting to be entered (SOCOM 1's queue<LOBBY_STATE>; a class of its own around it,
+ * as util_ssm.cpp's CStateQueue: ~CZOnlineLobby tests `this` four times before calling the block
+ * buffer's destructor, 0x2E19E0. The name ours) */
+class CLobbyStateQueue : public std::queue<LOBBY_STATE> {
+};
+
 typedef void (*LobbyStateHandler)(LOBBY_STATE_FLAG flag);
 typedef void (*LobbyEventHandler)(const char *event, const char *arg);
 
 class CZOnlineLobby {
 public:
+    CZOnlineLobby();
+    ~CZOnlineLobby();
     bool Init();
     void UnInit();
     void Close();
@@ -969,8 +983,8 @@ public:
     LobbyEventHandler m_event_handler;   // 0x58
     bool (*m_net_error_handler)(int err);   // 0x5c: offered a network error first
     LOBBY_STATE m_current_state;   // 0x60
-    unsigned int m_state_change_fifo[6];   // 0x64: a queue<LOBBY_STATE> (SOCOM 1's 0x1c)
-    unsigned char m_isinit;   // 0x7c
+    CLobbyStateQueue m_state_change_fifo;   // 0x64 (SOCOM 1's 0x1c)
+    bool m_isinit;   // 0x7c (a bool: Init returns it unconverted)
     unsigned char m_isopen;   // 0x7d
     CValve *socom_online_state;   // 0x80
     unsigned char m_MissionSequence[32];   // 0x84 (SOCOM 1's 12)

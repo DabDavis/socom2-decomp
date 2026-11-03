@@ -51,6 +51,10 @@ struct AccountInfoType {
 void cbGetAnnouncements(int, int, int, MediusGetAnnouncementsResponse *);
 void cbBanSelfFromGame(int, int, int, MediusBanPlayerResponse *);
 
+/* a room (0x44FAB0; ReleaseUIResources empties its games): the unit's one dynamically initialised
+ * static, built empty and its destructor registered by the unit's initialiser 0x402250 */
+BriefingRoom data_0044FAB0(0);
+
 extern "C" {
 extern AccountInfoType AccountInfo;
 extern int MediusWorldID;   /* the game joined (SOCOM 1's) */
@@ -147,7 +151,7 @@ void func_002F4080(void *msg, int type);
 
 MediusErrorCode func_006495E0(MediusGetPolicyRequest *req,
                               void (*cb)(int, int, int, MediusGetPolicyResponse *));
-MediusErrorCode func_00649960(MediusSetGameListFilterRequest *req,
+MediusErrorCode MediusSetGameListFilter(MediusSetGameListFilterRequest *req,
                               void (*cb)(int, int, int, MediusSetGameListFilterResponse *));
 MediusErrorCode func_0064B008(MediusGameListRequest *req,
                               void (*cb)(int, int, int, MediusGameListResponse *));
@@ -198,13 +202,13 @@ void func_002FAB80(char *stats);   /* our stats as a text */
 extern char data_0066A648[256];   /* our stats' text kept */
 extern GamePlayerStats data_0066A750;   /* and unpacked */
 extern int data_0066A754;   /* the ladder figure in it */
-MediusErrorCode func_006482B0(MediusUpdateAccountStatsRequest *req,
+MediusErrorCode MediusAccountUpdateStats(MediusUpdateAccountStatsRequest *req,
                               void (*cb)(int, int, int, MediusUpdateAccountStatsResponse *));
 MediusErrorCode func_0064B248(MediusUpdateLadderStatsRequest *req,
                               void (*cb)(int, int, int, MediusUpdateLadderStatsResponse *));
 void func_002FAB70(int, int, int, MediusUpdateAccountStatsResponse *);
 void func_002FAB60(int, int, int, MediusUpdateLadderStatsResponse *);
-MediusErrorCode func_00648D30(MediusPlayerInfoRequest *req,
+MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
                               void (*cb)(int, int, int, MediusPlayerInfoResponse *));   /* MediusGetPlayerInfo */
 void func_002FA8F0(int, int, int, MediusPlayerInfoResponse *);   /* our info shown */
 }
@@ -245,7 +249,7 @@ extern "C" void func_002FAA80(CZOnlineLobby *lobby)
         if (data_0066A648)
             memcpy(data_0066A648, stats, sizeof(data_0066A648));
         func_002F9AC0(&data_0066A750, stats);
-        CheckMediusError(func_006482B0(&req, func_002FAB70));
+        CheckMediusError(MediusAccountUpdateStats(&req, func_002FAB70));
         memset(&ladder, 0, sizeof(ladder));
         ladder.LadderType = 0;
         ladder.Stat = data_0066A754;
@@ -262,7 +266,7 @@ extern "C" void func_002FA870(CZOnlineLobby *lobby)
         memset(&req, 0, sizeof(req));
         SetSessionKey(req.SessionKey);
         req.AccountID = AccountInfo.AccountID;
-        CheckMediusError(func_00648D30(&req, func_002FA8F0));
+        CheckMediusError(MediusGetPlayerInfo(&req, func_002FA8F0));
     }
 }
 
@@ -323,7 +327,7 @@ void cbClearGameListFilter(int, int, int, MediusClearGameListFilterResponse *res
     req.FilterField = 1;
     req.ComparisonOperator = 3;
     req.BaselineValue = 1;
-    CheckMediusError(func_00649960(&req, cbSetGameListFilter));
+    CheckMediusError(MediusSetGameListFilter(&req, cbSetGameListFilter));
 }
 
 /* the mission sequence handed out: its index and the 32 missions (SOCOM 1's 12; OVL1 0x2F82E0) */

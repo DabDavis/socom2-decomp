@@ -196,17 +196,97 @@ def _sym_address(st: E.SymbolTable, name: str, near: int | None = None) -> int |
     return None
 
 
+SHF_EXECINSTR = 0x4
+
+# the bytes a load or store moves, by its major opcode (lb lh lw lbu lhu lwu sb sh sw lwc1 swc1 ld sd,
+# the EE's lq/sq and VU0's lqc2/sqc2); an addiu or ori only computes an address
+ACCESS_WIDTH = {0x20: 1, 0x24: 1, 0x28: 1, 0x21: 2, 0x25: 2, 0x29: 2, 0x23: 4, 0x27: 4, 0x2B: 4,
+                0x31: 4, 0x39: 4, 0x37: 8, 0x3F: 8, 0x1E: 16, 0x1F: 16, 0x36: 16, 0x3E: 16}
+
+
+def access_width(code: bytes, off: int) -> int:
+    """How many bytes the instruction at `off` loads or stores (0: it only takes an address)."""
+    if off + 4 > len(code):
+        return 0
+    return ACCESS_WIDTH.get(struct.unpack_from("<I", code, off)[0] >> 26, 0)
+
+
+def local_extent(elf: E.Elf, sec_index: int, off: int, rsym: E.ElfSymbol,
+                 st: E.SymbolTable) -> tuple[int, int, str] | None:
+    """The TU-local object a reference to `sec_index`+`off` lands in, whole: (its start, its size,
+    its name). Metrowerks relocates against the object itself (`@123`, a static's own symbol); a
+    GNU object relocates against the section, and GCC labels every static there with a sized LOCAL
+    OBJECT symbol (`.size x,N`) -- the one containing `off`. A label with no size (an assembler
+    unit's) takes the size of the data map's row of its name. None when no sized symbol covers
+    `off` (a GNU string or float literal, which has no symbol)."""
+    if rsym.type != "SECTION" and rsym.shndx == sec_index:
+        cands = [rsym]
+    else:
+        cands = [s for s in elf.symbols if s.shndx == sec_index and s.bind == 0 and s.name
+                 and s.type in ("OBJECT", "NOTYPE") and s.value <= off]
+    best = None
+    for s in cands:
+        size = s.size or (st.data_by_name[s.name].size if s.name in st.data_by_name else 0)
+        if size and s.value <= off < s.value + size and (best is None or s.value > best[0]):
+            best = (s.value, size, s.name)
+    return best
+
+
+def table_word_ok(elf: E.Elf, s: E.ElfSymbol, field: int, tw: int, fsym: E.ElfSymbol, taddr: int,
+                  st: E.SymbolTable, img: E.Image, depth: int) -> bool | None:
+    """Does a relocated word of the candidate's TU-local object -- symbol `s` + `field` -- name what
+    the target's word `tw` does? None when it cannot be resolved (it is then not compared).
+
+    A pointer into code resolves through the CANDIDATE's own function at that offset: into the
+    function under comparison (a switch's jump table) at the same offset into the target function;
+    into another function by that function's map address (a GNU table of static functions is
+    `.text`+N, and an OPEN function earlier in the unit, compiling to another size, moves every
+    later one -- the recogniser's _LangVirtualTable); a function the map does not name by the same
+    distance from this one as in the target. A pointer to a mapped symbol: its address. A pointer
+    into the object's own data (a string, another static): what it points at, one level deep."""
+    mask32 = 0xFFFFFFFF
+    known = 0 < s.shndx < len(elf.sections)
+    if known and elf.sections[s.shndx].flags & SHF_EXECINSTR:
+        off = (0 if s.type == "SECTION" else s.value) + field
+        f = next((g for g in elf.functions() if g.shndx == s.shndx
+                  and g.value <= off < g.value + max(g.size, 1)), None)
+        if f is not None and f.shndx == fsym.shndx and f.value == fsym.value:
+            return tw == (taddr + off - fsym.value) & mask32
+        if f is not None:
+            a = _sym_address(st, f.name, taddr)
+            if a is not None:
+                return tw == (a + off - f.value) & mask32
+        if s.shndx == fsym.shndx:
+            return tw == (taddr - fsym.value + off) & mask32
+        return None
+    if s.name and s.type != "SECTION":
+        a = _sym_address(st, s.name, taddr)
+        if a is not None:
+            return tw == (a + field) & mask32
+    if known and s.bind == 0 and depth == 0:
+        off = (0 if s.type == "SECTION" else s.value) + field
+        ext = local_extent(elf, s.shndx, off, s, st)
+        if ext is not None and ext[2] in st.data_by_name:
+            return tw == (st.data_by_name[ext[2]].addr + off - ext[0]) & mask32
+        start, size = (ext[0], ext[1]) if ext is not None else (off, 0)
+        return local_object_ok(elf, s.shndx, start, (tw - (off - start)) & mask32, fsym, taddr, st,
+                               img, size, depth=depth + 1)
+    return None
+
+
 def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.ElfSymbol,
-                    taddr: int, st: E.SymbolTable, img: E.Image, size: int = 0) -> bool | None:
+                    taddr: int, st: E.SymbolTable, img: E.Image, size: int = 0,
+                    at_least: int = 0, depth: int = 0) -> bool | None:
     """Does the candidate's TU-local object at `sec_index`+`start` hold what the target
     holds at `want`? None when there is nothing to compare.
 
-    Words the object's OWN relocations cover are resolved rather than compared raw: an
-    entry pointing into the function under comparison -- a switch's jump table -- must
-    point at the same offset into the target function, and one naming a mapped symbol
-    at that symbol's address. Everything else (string text, float bits) compares byte
-    for byte. The extent is the symbol's size when MW gives one, else the run of
-    relocated words (a table), else the string up to its terminator."""
+    Words the object's OWN relocations cover are resolved rather than compared raw
+    (table_word_ok): a jump table's entries, a table of functions, of strings. Everything
+    else (string text, float bits, a null slot) compares byte for byte. The extent is the
+    object's whole size when a symbol gives one (local_extent); else, for an unnamed literal,
+    the run of relocated words (a table), the string up to its terminator, or 16 bytes --
+    and at least `at_least`, the width the referencing instruction loads (a float literal
+    whose first byte is zero is not a one-byte string)."""
     sec = elf.sections[sec_index]
     data = sec.data
     if sec.type == 8:                           # SHT_NOBITS (.bss): a zeroed static's bytes
@@ -222,46 +302,25 @@ def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.E
             size = data.index(b"\0", start) - start + 1
         else:
             size = min(16, len(data) - start)
+        size = max(size, at_least)
+    size = min(size, len(data) - start)
     if size <= 0 or not img.covers(want, size):
         return None
     tb = img.read(want, size)
-    func_sec_base = taddr - fsym.value          # where the function's section would sit
     i = 0
     while i < size:
         r = rels.get(start + i)
         if r is not None and r.type == "R_MIPS_32" and i + 4 <= size:
             field = struct.unpack_from("<I", data, start + i)[0] if r.addend is None else r.addend
             tw = struct.unpack_from("<I", tb, i)[0]
-            s = r.sym
-            if s.shndx == fsym.shndx:
-                base = 0 if s.type == "SECTION" else s.value
-                if tw != (func_sec_base + base + field) & 0xFFFFFFFF:
-                    return False
-            elif s.name and _sym_address(st, s.name, taddr) is not None:
-                if tw != (_sym_address(st, s.name, taddr) + field) & 0xFFFFFFFF:
-                    return False
+            if table_word_ok(elf, r.sym, field, tw, fsym, taddr, st, img, depth) is False:
+                return False
             i += 4                              # an unresolvable pointer is not compared
             continue
         if tb[i] != data[start + i]:
             return False
         i += 1
     return True
-
-
-def gnu_static_size(elf: E.Elf, sec_index: int, off: int) -> int:
-    """The extent of a GNU object's static variable at `sec`+off: GCC labels each with a sized
-    LOCAL OBJECT symbol (`.size x,N`), which GNU as keeps while relocating every reference against
-    the section. 0 when no such symbol starts there (then local_object_ok's heuristics -- a
-    relocated table, a string to its NUL -- decide, and an int before a pointer read as a 5-byte
-    string: loadfile.c's _bind_check, -1, then _lfwildcard). Only plain data takes it: an object
-    holding a relocation (a table of pointers) keeps the heuristics' extent, as before -- the
-    recogniser's virtual tables, whose first slot is null, are still read to that byte."""
-    for s in elf.symbols:
-        if s.shndx == sec_index and s.bind == 0 and s.type == "OBJECT" and s.value == off and s.size:
-            if any(off <= r.offset < off + s.size for r in elf.relocs_for(sec_index)):
-                return 0
-            return s.size
-    return 0
 
 
 def is_gnu(elf: E.Elf) -> bool:
@@ -445,7 +504,17 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
                 out.append(found)
             elif addr is not None:
                 got = (addr + add) & 0xFFFFFFFF
-                out.append(RelocFinding(r.offset, r.type, name, want, got, "ok" if got == want else "MISMATCH"))
+                status = "ok" if got == want else "MISMATCH"
+                s = r.sym
+                if (status == "ok" and s.bind == 0 and s.type != "FUNC"
+                        and 0 < s.shndx < len(elf.sections)):
+                    # a TU-local static the data map names: its address, and what it holds -- whole
+                    ext = local_extent(elf, s.shndx, s.value + add, s, st)
+                    if ext is not None:
+                        ok = local_object_ok(elf, s.shndx, ext[0], (want - (s.value + add - ext[0])) & 0xFFFFFFFF,
+                                             fsym, taddr, st, img, ext[1])
+                        status = "CONTENT-MISMATCH" if ok is False else status
+                out.append(RelocFinding(r.offset, r.type, name, want, got, status))
             elif r.sym.bind != 0 and r.sym.name and not r.sym.name.startswith("@STRING@"):
                 out.append(RelocFinding(r.offset, r.type, name, want, None, "UNKNOWN"))   # see R_MIPS_26
             elif local_sec is not None and (named := bss_local(elf, local_sec, local_base + add, st)) is not None:
@@ -454,12 +523,26 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
                 got = named[1]
                 out.append(RelocFinding(r.offset, r.type, named[0], want, got, "ok" if got == want else "MISMATCH"))
             elif local_sec is not None:
-                size = r.sym.size if (r.sym.type == "OBJECT" and add == 0) else 0
-                if not size and gnu:
-                    size = gnu_static_size(elf, local_sec, local_base + add)
-                ok = local_object_ok(elf, local_sec, local_base + add, want, fsym, taddr, st, img, size)
+                # a TU-local object: compared whole (local_extent), at the target address the
+                # reference's offset into it implies; a GNU static the data map names (relocated
+                # against its section, so only its label knows the name) by its address too
+                off = local_base + add
+                ext = local_extent(elf, local_sec, off, r.sym, st)
+                if ext is not None:
+                    start, size, oname = ext
+                    ok = local_object_ok(elf, local_sec, start, (want - (off - start)) & 0xFFFFFFFF,
+                                         fsym, taddr, st, img, size)
+                else:
+                    oname = None
+                    ok = local_object_ok(elf, local_sec, off, want, fsym, taddr, st, img,
+                                         at_least=access_width(cand, r.offset))
                 status = "unchecked" if ok is None else ("content-ok" if ok else "CONTENT-MISMATCH")
-                out.append(RelocFinding(r.offset, r.type, name, want, None, status))
+                got = None
+                if gnu and r.sym.type == "SECTION" and oname in st.data_by_name:
+                    got = (st.data_by_name[oname].addr + off - ext[0]) & 0xFFFFFFFF
+                    name = oname
+                    status = "MISMATCH" if got != want else ("CONTENT-MISMATCH" if ok is False else "ok")
+                out.append(RelocFinding(r.offset, r.type, name, want, got, status))
             else:
                 out.append(RelocFinding(r.offset, r.type, name, want, None, "unchecked"))
         else:

@@ -65,6 +65,9 @@ struct MediusStatusResponse { MEDIUS_RESPONSE_HEAD };
 
 /* someone ignored (0x48 bytes, a vector of them: the class vector's clear out of line, 0x302FC0) */
 struct IgnoreItem {
+    /* a blank entry (resize's T(): the memset call 0x303250 makes) */
+    IgnoreItem() { memset(this, 0, sizeof(*this)); }
+
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
     MediusCallbackStatus StatusCode;   // 0x18
     int AccountID;   // 0x1c
@@ -75,6 +78,10 @@ struct IgnoreItem {
 
 class IgnoreVector : public std::vector<IgnoreItem> {
 public:
+    /* sized to 64 blank entries at the start (the initialiser calls the resize 0x303250 with 64) */
+    IgnoreVector() { resize(64); }
+    /* emptied first (the destructor's first store, ahead of the bases' three this-tests) */
+    ~IgnoreVector() { clear(); }
     /* the ignored by name (the null test inside, though the caller made it) */
     IgnoreItem *Find(const char *name)
     {
@@ -104,6 +111,9 @@ struct FriendInvitationItem {
 /* the invitations: a vector of them (its insert and erase out of line, 0x302AA0 and 0x302850) */
 class FriendInvitationVector : public std::vector<FriendInvitationItem> {
 public:
+    /* room for 64 at the start (the initialiser calls the reserve 0x3030B0 with 64) */
+    FriendInvitationVector() { reserve(64); }
+    ~FriendInvitationVector() { clear(); }
     FriendInvitationItem *Find(const char *name)
     {
         if (name)
@@ -177,12 +187,11 @@ extern AccountInfoType AccountInfo;
 extern IgnoreVector data_0044FDE0;   /* the ignored */
 extern FriendInvitationVector data_0044FE00;   /* the friend invitations */
 void func_00300BE0(int, int, int, MediusStatusResponse *);   /* the confirmation's callback */
-MediusErrorCode func_00648F10(MediusFindPlayerRequest *req,
+MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer? */
 MediusErrorCode func_006492D8(MediusAddToBuddyListConfirmationRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));
 
-void func_00302FC0(IgnoreVector *list);   /* the ignored cleared (the class vector's clear) */
 MediusErrorCode MediusAccountGetID(MediusAccountGetIDRequest *req,
                                    void (*cb)(int, int, int, MediusAccountGetIDResponse *));
 MediusErrorCode func_006494A0(MediusAccountRequest *req,
@@ -190,6 +199,15 @@ MediusErrorCode func_006494A0(MediusAccountRequest *req,
 MediusErrorCode func_00649540(MediusAccountRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));   /* remove from them */
 
+}
+
+/* the unit's three lists, in the order its static initialiser (0x402420) builds them and registers
+ * their destructors (0x303410, 0x303390, 0x303310: the unit's last functions but the erase) */
+FriendVector FriendVec;
+IgnoreVector data_0044FDE0;
+FriendInvitationVector data_0044FE00;
+
+extern "C" {
 void func_003017A0(int, int, int, MediusBuddyResponse *);   /* the callbacks */
 void func_00301710(int, int, int, MediusBuddyResponse *);
 void func_00300F70(int, int, int, MediusBuddyResponse *);
@@ -197,11 +215,11 @@ void func_00300C10(int, int, int, MediusBuddyResponse *);
 
 /* the Medius buddy calls (unnamed) */
 MediusErrorCode func_0064AE58(MediusIDRequest *req, MediusBuddyCallback cb);
-MediusErrorCode func_00649238(MediusAccountRequest *req, MediusBuddyCallback cb);
+MediusErrorCode MediusRemoveFromBuddyList(MediusAccountRequest *req, MediusBuddyCallback cb);
 MediusErrorCode func_0064B368(MediusIDRequest *req, MediusBuddyCallback cb);
 MediusErrorCode func_00649400(MediusGetIgnoreListRequest *req, MediusBuddyCallback cb);
-MediusErrorCode func_00649198(MediusAccountRequest *req, MediusBuddyCallback cb);
-MediusErrorCode func_00649378(MediusBuddyConfirmationResponse *req);
+MediusErrorCode MediusAddToBuddyList(MediusAccountRequest *req, MediusBuddyCallback cb);
+MediusErrorCode MediusBuddyAddConfirmation(MediusBuddyConfirmationResponse *req);
 }
 
 /* The friends' list members, defined first: in the image they follow the buddy code (0x3020A0,
@@ -332,7 +350,7 @@ void CZOnlineLobby::AddFriend(const char *name)
                     SetSessionKey(req.SessionKey);
                     strncpy(req.Name, name, sizeof(req.Name));
                     req.SearchType = 1;
-                    CheckMediusError(func_00648F10(&req, cbFindBuddyListPlayerID));
+                    CheckMediusError(MediusFindPlayer(&req, cbFindBuddyListPlayerID));
                     return;
                 }
                 LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
@@ -366,7 +384,7 @@ void CZOnlineLobby::RemoveFriend(int id)
     memset(&req, 0, sizeof(req));
     SetSessionKey(req.SessionKey);
     req.AccountID = id;
-    func_00649238(&req, func_00301710);
+    MediusRemoveFromBuddyList(&req, func_00301710);
     CheckMediusError(MediusSuccess);
 }
 
@@ -406,7 +424,7 @@ void CZOnlineLobby::RemoveFromIgnore(int id)
 /* the ignore list emptied and asked for (OVL1 0x300F00) */
 void CZOnlineLobby::GetIgnoreList()
 {
-    func_00302FC0(&data_0044FDE0);
+    data_0044FDE0.clear();
     MediusGetIgnoreListRequest req;
 
     memset(&req, 0, sizeof(req));
@@ -464,7 +482,7 @@ void CZOnlineLobby::AddFriendDirectly(int id)
     memset(&req, 0, sizeof(req));
     SetSessionKey(req.SessionKey);
     req.AccountID = id;
-    CheckMediusError(func_00649198(&req, func_00300C10));
+    CheckMediusError(MediusAddToBuddyList(&req, func_00300C10));
 }
 
 /* a friend's request refused, and its invitation dropped (OVL1 0x300AF0) */
@@ -477,7 +495,7 @@ void CZOnlineLobby::RejectFriend(int id)
     req.StatusCode = -985;
     req.TargetAccountID = id;
     req.AddType = 0;
-    CheckMediusError(func_00649378(&req));
+    CheckMediusError(MediusBuddyAddConfirmation(&req));
     data_0044FE00.Remove(id);
 }
 
@@ -491,7 +509,7 @@ void CZOnlineLobby::ConfirmFriend(int id)
     req.StatusCode = 2;
     req.TargetAccountID = id;
     req.AddType = 0;
-    CheckMediusError(func_00649378(&req));
+    CheckMediusError(MediusBuddyAddConfirmation(&req));
     data_0044FE00.Remove(id);
 }
 
