@@ -967,13 +967,13 @@ int rt_msg_client_set_scratch_buf_min_size(unsigned int nSize)
 }
 
 /* the platform's queries: a connection's crypt state and the link's capabilities */
-extern int func_00630690(unsigned short nConnection, unsigned short nTarget, int a2, int a3);
+extern int KM_Encrypt(unsigned short nConnection, unsigned short nTarget, int a2, int a3);
 
 int func_006386F8(unsigned short nConnection, int *pnState)
 {
     if (pnState == 0)
         return 2;
-    *pnState = func_00630690(nConnection, 0xFFFF, 0, 0);
+    *pnState = KM_Encrypt(nConnection, 0xFFFF, 0, 0);
     return 0;
 }
 

@@ -12474,9 +12474,9 @@
 0x006305C8 0x38 func_006305C8  # OVL2 unaligned
 0x00630600 0x38 func_00630600  # OVL2
 0x00630638 0x58 KM_CreateRandomRCKey  # OVL2 unaligned; s1:align
-0x00630690 0x2A8 func_00630690  # OVL2
+0x00630690 0x2A8 KM_Encrypt  # OVL2; s1:order (the gcc lane, round 12b): SOCOM 1's rt_crypt object ends KM_Encrypt, KM_Decrypt; this is its body grown -- GetKeyMaster, the 4-byte SHA of the data masked to 29 bits, GetKeyChain, then RCSaltyInitialize/RCEncrypt under the client's or the session's RC key (tags 0x60000000/0x20000000) or RSAEncrypt under the client's public key (0xE0000000), plus SOCOM II's KM_GetSoftwareKeyPair path (0x80000000)
 0x00630938 0x258 func_00630938  # OVL2 unaligned
-0x00630B90 0x260 func_00630B90  # OVL2
+0x00630B90 0x260 KM_Decrypt  # OVL2; s1:order (the gcc lane, round 12b): SOCOM 1's rt_crypt object ends KM_Encrypt, KM_Decrypt; this is its body grown -- GetKeyMaster, the header's top three bits switched over (the session's or the client's RC key through RCSaltyInitialize/RCDecrypt, the local key pair's or the software key pair's RSA), then the data's 4-byte SHA checked against the header (-2 when it differs)
 0x00630DF0 0x214 func_00630DF0  # OVL2
 0x00631008 0x1DC func_00631008  # OVL2 unaligned
 0x006311E8 0x19C func_006311E8  # OVL2 unaligned
