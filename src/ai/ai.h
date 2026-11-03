@@ -731,6 +731,14 @@ public:
         /* the side it opens toward, 8 for none (the name ours: GetCellCenter's, out of line at
          * 0x516910) */
         DIR GetDir() const { return (DIR)m_offset; }
+        /* a door of either kind, 1 or 4 (the name ours: the A* search materialises the test, the
+         * raw kind read once, before it branches) */
+        bool IsDoor() const
+        {
+            unsigned int t = m_type;
+
+            return t == DOOR || t == 4;
+        }
         /* the setters (the names ours: masked at run time) */
         void SetState(unsigned int s) { m_state = s; }
         void SetTypeInvalid(unsigned int b) { m_type_invalid = b; }
@@ -1247,6 +1255,9 @@ public:
     public:
         point() : m_width(0), m_flags(0), m_unused(0) {}
         point(const point &p) : m_loc(p.m_loc), m_width(p.m_width), m_flags(p.m_flags), m_unused(0) {}
+        /* a point on a cell, the bits zeroed (the A* search's trace back: the cell through
+         * CAiMapLoc's copy, then the word's three read-mask-writes) */
+        point(const CAiMapLoc &loc) : m_loc(loc), m_width(0), m_flags(0), m_unused(0) {}
 
         CAiMapLoc m_loc;   // 0x0
         unsigned int m_width : 8;   // 0x4
@@ -1345,6 +1356,23 @@ public:
     unsigned int m_pathId;   // 0xa4
 };
 
+/* a node of the A* search: a cell, the cost so far and the estimate to the goal (SOCOM 1's node,
+ * 8 bytes, greater<node>'s element in both builds: the open list is a min-heap by f). Its copy
+ * builds the cell through CAiMapLoc's copy constructor (the heap's temporaries), its assignment
+ * copies the cell's word (through $f0) and the two costs */
+struct node {
+    /* the cost so far plus the estimate (the name ours) */
+    int f() const { return m_g + m_h; }
+
+    CAiMapLoc m_loc;   // 0x0
+    short m_g;   // 0x4
+    short m_h;   // 0x6
+};
+inline bool operator>(const node &a, const node &b)
+{
+    return b.f() < a.f();
+}
+
 /* the A* search of one leg (SOCOM 1's was 0x2C bytes, its open and closed lists two vectors of
  * nodes; SOCOM II's is 0x14 -- the lists became the unit's statics -- and CreatePlanner inlines
  * its constructor: the planner, the leg's map, its two ends, the path's tallies. The ends are
@@ -1359,6 +1387,17 @@ public:
     }
     ~CAiStar();
     void find_path(CAiPath *path);
+    /* a step from a cell in a direction: onto the map, the planner's test, and not onto an
+     * occupied cell when the path keeps off them (flag 0x10) -- new in SOCOM II, the name ours
+     * (0x5121C0; SOCOM 1's find_path did it in place) */
+    bool step(CAiPath *path, const CAiMapLoc &from, CAiMap::DIR dir, CAiMapLoc &to, CAiCell *&cell);
+    /* the open node on a cell, the list's end for none (new in SOCOM II, the name ours: 0x5123A0) */
+    std::vector<node>::iterator find_open(const CAiMapLoc &loc);
+    /* the lists' storage reserved once, at the engine's start (new in SOCOM II, the name ours:
+     * 0x5128F0, which CGame::StartEngine calls) */
+    static void Init();
+    /* their storage given up (the name ours; dead-stripped, see ai_astar.cpp) */
+    static void Shutdown();
 
     CAiPlanner *m_planner;   // 0x0
     CAiMap *m_map;   // 0x4
@@ -1447,7 +1486,10 @@ void FlushPlannerQueue();
  * +0x28, 8 bytes each) -- the cell left 0 when either test fails */
 class CAiPlanner {
 public:
-    virtual void reset();
+    /* the search about to start, from a cell toward another (SOCOM 1's took nothing: SOCOM II's
+     * find_path hands it the map and both ends, and CAiHidePlanner's 0x5F8560 keeps the start --
+     * the base's is empty) */
+    virtual void reset(CAiMap &map, const CAiMapLoc &start, const CAiMapLoc &goal);
     /* whether two cells are the same cell, the map aside (new in SOCOM II; the name is ours) */
     virtual bool is_goal(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b);
     virtual int dist(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b);
