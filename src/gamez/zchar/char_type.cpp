@@ -587,6 +587,60 @@ CSnd *CCharacterType::GetSound(CHARACTER_SOUND s) const
     return m_sounds[s];
 }
 
+/* the sound kind a name gives, none for no name or no match (SOCOM 1's GetCharacterSoundType,
+ * out of line there at 0x248110; SOCOM II inlines it into ParseSounds and keeps no copy) */
+static CHARACTER_SOUND GetCharacterSoundType(const char *name)
+{
+    if (name) {
+        for (int i = 0; i < CHRSND_MAX; i++) {
+            CHARACTER_SOUND s = (CHARACTER_SOUND)i;
+
+            if (!strcasecmp(name, GetCharacterSoundTypeString(s)))
+                return s;
+        }
+    }
+    return CHRSND_NONE;
+}
+
+/* the sound names' bytes, counted as they are parsed (OVL2 bss 0x66A4B8; nothing reads it here --
+ * a debug total, likely) */
+static int s_soundNameBytes;
+
+/* the sound list's pairs: a kind's name, then a list whose first item is the file -- kept as the
+ * kind's sound name (a plain pointer in SOCOM II, SOCOM 1 assigned a string); any other name is
+ * compared with "multiplayer" and left (that block is read after the loop); then the multiplayer
+ * messages (SOCOM 1's Parse did all of it in place) */
+void CCharacterType::ParseSounds(_zrdr *list)
+{
+    int n = list ? list->Count() : 0;
+
+    for (int i = 0; i < n; i += 2) {
+        /* the indices passed unsigned: with the int counter MW steps a pointer for the first and
+         * takes i + 1 before the second's count */
+        _zrdr *tag = list->Item((unsigned int)i);
+        _zrdr *value = list->Item((unsigned int)(i + 1));
+        const char *name = tag ? tag->String() : 0;
+        CHARACTER_SOUND s = GetCharacterSoundType(name);
+
+        if (s != CHRSND_NONE) {
+            char *file = value->Item(0)->String();
+
+            int len;
+
+            m_arrSoundNames[s] = file;
+            /* an if/else: the ternary leaves its two joins unpadded */
+            if (file)
+                len = strlen(file);
+            else
+                len = 0;
+            s_soundNameBytes += len;
+        } else if (!strcmp(name, "multiplayer")) {
+        }
+    }
+    if (list)
+        InitMultiplayerMessages(list);
+}
+
 /* the list's copy of an anim set's name, else a copy pushed (SOCOM 1's Parse inlined this walk,
  * SOCOM II's calls it -- the push's insert out of line keeps -inline auto off it). The iterator
  * assigned, so it lives in memory; the end in a register */

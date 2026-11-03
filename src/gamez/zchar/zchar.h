@@ -405,6 +405,11 @@ public:
     /* the type's multiplayer messages deleted and their storage given up (new in SOCOM II, the
      * name ours: 0x53B930) */
     void DeleteMultiplayerMessages();
+    /* the multiplayer messages read off the sound list (SOCOM 1's; OVL2 0x53BBD0) */
+    void InitMultiplayerMessages(_zrdr *rdr);
+    /* the sound list's kind/file pairs into the sound names, then its multiplayer messages (new in
+     * SOCOM II as a function, the name ours: SOCOM 1's Parse did it in place; OVL2 0x53BEF0) */
+    void ParseSounds(_zrdr *list);
     static CCharacterType *RdrFetch_CharacterType(const char *name);
     /* a type's weapons replaced by the eight a packed loadout holds, up to its first empty one
      * (SOCOM 1's UnPack, 0x53EC60: CZSealBody's remote respawn and creation call it) */
