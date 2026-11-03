@@ -16,7 +16,15 @@
  * ~list one level (~CEntityList, ~CAssetList, ~CAiEventList); insert, written with MSL's alloc_ptr
  * (its copies byte-exact in 21 units), expands past inline_max_size in an out-of-line push_back
  * (253 units -- 3 under -- without the allocator's construct) and makes ai_events.cpp's remove_if
- * cut find_if. */
+ * cut find_if.
+ *
+ * OPEN (the MSL headers round 11, not started): SOCOM 1's list shape for CGTree::Destroy (0x2D22F0,
+ * graph_tree.cpp's comment) -- its self-inlined inner copy calls the BASE list's pieces (!= 0x2D2220,
+ * prefix ++ 0x2D2240, * 0x2D2500, the copy 0x2D24F0), tail() 0x2D2530 and the iterator's constructors
+ * from a node 0x2D2520 and from the sentinel 0x2D2510, and reads clear()'s sentinel through
+ * compressed_pair_imp::second() 0x207560: the end node inside SOCOM 1's compressed pair, a level deeper
+ * than this header everywhere -- the restructuring "Open, and next" warns breaks the level-5 fits of
+ * every list user, left for a round of its own. */
 
 #ifndef _MSL_LIST
 #define _MSL_LIST

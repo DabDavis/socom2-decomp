@@ -1305,3 +1305,81 @@ void CZKit::SetItemPtr(int index, void *p)
         m_itemptr.push_back(0);
     m_itemptr[index + 1] = p;
 }
+
+extern "C" {
+/* a class's tests (OVL1 0x3D1DB0: the rifles -- 31, 51, 81, 91, 141, 101 -- 0x3D1DA0: the pistol,
+ * 4, 0x3D1D90: 145; CZWeapon's statics after IsSecondary, unclaimed -- the byte enum masked in each) */
+bool func_003D1DB0(EQUIP_IDTYPE t);
+bool func_003D1DA0(EQUIP_IDTYPE t);
+bool func_003D1D90(EQUIP_IDTYPE t);
+}
+
+/* the current item's fire class: 1 for the rifles, 2 the pistol, 4 class 145, 3 the grenades and
+ * explosives (121, 151), else none (OVL2 0x5B8760, new in SOCOM II among the kit's additions at
+ * the unit's start: CHUD::Tick and the SEAL's fire point lookups call it) */
+CZKit::FIRE_CLASS CZKit::GetCurItemFireClass()
+{
+    FIRE_CLASS c = FIRE_CLASS_NONE;
+    CZFTSWeapon *w = m_item[m_selected_item];
+
+    if (w) {
+        EQUIP_IDTYPE t = func_003D1A60(w->m_ID);
+
+        if (func_003D1DB0(t))
+            c = FIRE_CLASS_RIFLE;
+        else if (func_003D1DA0(t))
+            c = FIRE_CLASS_PISTOL;
+        else if (func_003D1D90(t))
+            c = FIRE_CLASS_145;
+        else if (t == IDTYPE_GRENADE || t == IDTYPE_EXPLOSIVE)
+            c = FIRE_CLASS_THROWN;
+    }
+    return c;
+}
+
+/* the body's table as far as its slot 0x64 (CZSealBody's fire point of a name, OVL2 0x5DFAD0: SOCOM
+ * 1's GetFirepointNode -- zseal.h is not included here, the 23 slots before it unnamed) */
+struct CKitBodyTable {
+    virtual void Slot08();
+    virtual void Slot0C();
+    virtual void Slot10();
+    virtual void Slot14();
+    virtual void Slot18();
+    virtual void Slot1C();
+    virtual void Slot20();
+    virtual void Slot24();
+    virtual void Slot28();
+    virtual void Slot2C();
+    virtual void Slot30();
+    virtual void Slot34();
+    virtual void Slot38();
+    virtual void Slot3C();
+    virtual void Slot40();
+    virtual void Slot44();
+    virtual void Slot48();
+    virtual void Slot4C();
+    virtual void Slot50();
+    virtual void Slot54();
+    virtual void Slot58();
+    virtual void Slot5C();
+    virtual void Slot60();
+    virtual zdb::CNode *GetFirepointNode(const char *name);   /* +0x64 */
+};
+
+/* for the two items that show their round (186 and 146), the fire point's "projectile" child made
+ * active (OVL2 0x5B85A0, new in SOCOM II among the kit's additions; 0x5A78C0 jumps to it).
+ * OPEN, 2 instructions, scheduling only: the target materialises the name (lui/addiu) before it
+ * moves the fire point into a0 for FindChild; here the move sits between the two halves. Tried:
+ * the fire point in a local, the name in a local (0x98), the name as an external array, the call
+ * through an inline helper (an @STRING@ pool), the id read twice in the test */
+void CZKit::ShowProjectile()
+{
+    EQUIP_ITEM id = m_item[m_selected_item]->m_ID;
+
+    if (id == 186 || id == 146) {
+        zdb::CNode *n = ((CKitBodyTable *)m_body)->GetFirepointNode(0)->FindChild("projectile", true);
+
+        if (n)
+            n->SetActive(true);
+    }
+}
