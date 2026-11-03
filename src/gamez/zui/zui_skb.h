@@ -102,6 +102,15 @@ public:
     CSkbKey() : m_row(0), m_code(0) {}
     CSkbKey(signed char row, unsigned short code) : m_row(row), m_code(code) {}
     CSkbKey(const CSkbKey &k) : m_row(k.m_row), m_code(k.m_code) {}
+    /* a jamo's key (row 2), the null key for none -- jamo 33 (ours: StrToSkbKey's last case, built
+     * in its result: the zeroing stores, then the test) */
+    explicit CSkbKey(unsigned char jamo) : m_row(0), m_code(0)
+    {
+        if (jamo != 33) {
+            m_row = 2;
+            m_code = jamo;
+        }
+    }
     bool operator<(const CSkbKey &k) const
     {
         if ((unsigned char)m_row != (unsigned char)k.m_row)
@@ -112,6 +121,12 @@ public:
     bool operator!=(const CSkbKey &k) const { return *this < k || k < *this; }
     /* a key there, not the null key (ours: the bare conversions -- `m_row != 0` re-extends the row byte) */
     bool IsSet() const { return m_row || m_code; }
+    /* (ours: StrToSkbKey sets its keys so, the arguments evaluated before either store) */
+    void Set(signed char row, unsigned short code)
+    {
+        m_row = row;
+        m_code = code;
+    }
 
     union {
         unsigned char m_urow;

@@ -602,6 +602,54 @@ inline void CSoftKeyboard::SetCurKeyState(void (C2DButton::*state)())
         GetCurKeyProps()->SetButtonState(state);
 }
 
+/* the keys named in a keyboard's rdr beside the letters (0x3FACC0, 0x3FACE0 and 0x3FAC60; the names
+ * ours): the five characters' names and the characters, and the fourteen action keys */
+static const char *s_charKeyNames[5] = {"Quote1", "Quote2", "ParenL", "ParenR", "Space"};
+static const char *s_charKeyChars = "'\"() ";
+static const char *s_actionKeyNames[14] = {"CapsLock", "Recip", "BackSpace", "Clear", "Enter", "Exit", "Apply",
+                                           "Shift", "Legend", "Dakuten", "Handakuten", "WideNarrow",
+                                           "MsgPlayer", "Action2"};
+
+extern "C" int strncasecmp(const char *a, const char *b, size_t n);
+/* zui_hangul.cpp's jamo by name (its JAMO: JAMO_COUNT for none) */
+enum JAMO { JAMO_COUNT = 33 };
+JAMO FindJamo(const char *name);
+
+
+namespace {
+
+/* the key a name in the rdr gives (0x38DA70, SOCOM 1's StrToSkbKey; ParseKeyProps and
+ * CreateSoftKeyboard call it): none for no name, a single character as itself, "Switch<n>" the
+ * switch key n (row 3, SOCOM II's), a named character, an action key (row 1, by its index) or a
+ * jamo (row 2, SOCOM II's), else none. The switch key is built in a frame slot and copied out (a
+ * local returned through a reference: returned by name, MW scalarises it), the jamo's in the
+ * result itself (a constructor: a named local is scalarised and stored at the end) */
+CSkbKey StrToSkbKey(const char *name)
+{
+    if (!name)
+        return CSkbKey();
+    if (strlen(name) == 1)
+        return CSkbKey(0, (unsigned char)name[0]);
+    if (!strncasecmp(name, "Switch", 6)) {
+        CSkbKey k;
+        CSkbKey &r = k;
+
+        k.Set(3, atoi(name + 6));
+        return r;
+    }
+    for (unsigned int i = 0; i < 5; i++) {
+        if (!strcasecmp(name, s_charKeyNames[i]))
+            return CSkbKey(0, (unsigned char)s_charKeyChars[i]);
+    }
+    for (unsigned int i = 0; i < 14; i++) {
+        if (!strcasecmp(name, s_actionKeyNames[i]))
+            return CSkbKey(1, (unsigned char)i);
+    }
+    return CSkbKey((unsigned char)FindJamo(name));
+}
+
+}
+
 /* a key and its props paired for the map, the key taken by value (ours: as SOCOM 1's make_pair,
  * whose key parameter is a copy -- the target block-copies it, then copies it into the pair and
  * that into the map's value) */
