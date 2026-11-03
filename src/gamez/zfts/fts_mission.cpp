@@ -264,9 +264,14 @@ CValveSaveManager theValveSaveManager;      // 0x43FF00
  * OPEN, resize<CUIVariable> 0x2B1390 (0x240 against 0x19C): the target inlines CUIVariable() one
  * level -- _zrdr() 0x2B17E0, UIVarMixin() 0x2B17C0, vector<UIVarMixin *>() 0x2B17A0 and the watchers'
  * reserve 0x2B1600 (a reserve of its own whose body is the pod's, its string this unit's) called --
- * where MW inlines the whole constructor, four high here (the pointer vector's constructor three);
- * the original's is taller or past inline_max_size. A forwarder reserve in the pointer vector
- * (include/vector) changes nothing alone (probe: still inlined whole, the pod's reserve called).
+ * where MW inlines the whole constructor, four high here (the pointer vector's constructor three).
+ * A SIZE cut: under `#pragma inline_max_size(180)` (its expansion here is between 180 and 200
+ * units; the original's passed 256) the body is the target's but for that reserve's callee, the
+ * pod's 0x1EEBA0; with a forwarder `void reserve(unsigned int n) { __base::reserve(n); }` added to
+ * include/vector's pointer __vector_imp as well, resize is byte-exact calling
+ * reserve__Q23std62__vector_imp<P10UIVarMixin,Q23std24allocator<P10UIVarMixin>,1>FUi at 0x2B1600 --
+ * but that forwarder's own copy is then a `j` to the pod's, where 0x2B1600 holds the pod's body
+ * inlined (probes: build/scratch/states/, the states lane's round 22; neither change adopted).
  * OPEN, insert<CUIVariable> 0x2B1BD0 (0x510, 46 instructions, registers only): the copy loops'
  * end pointer takes s6 where the target's takes s0 (and the cursors s1/s6 against s0/s1) -- the
  * class insert's end register, as the cue vector's 0x1EED40 (include/vector's, the MSL lane's) */

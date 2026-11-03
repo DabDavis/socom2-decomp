@@ -4180,7 +4180,7 @@
 0x002C3CF0 0x2CC CheckStateSwitch__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: the deletion callback's second call, after UpdatePersonaLists, as SOCOM 1's calls CheckStateSwitch; just before ToggleReady, as in SOCOM 1's order)
 0x002C3FC0 0x54 ToggleReady__14CZPersonaStateFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's ToggleReady, 0x54 both, instruction for instruction: theMission's net game, its minor state 2 -> 1 else 2, then UpdateLocalPersona)
 0x002C4020 0x98 func_002C4020  # OVL1
-0x002C40C0 0x1D0 func_002C40C0  # OVL1
+0x002C40C0 0x1D0 AllReadyToLoad__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane, round 22): CheckStateSwitch calls it where SOCOM 1's calls AllReadyToLoad, the same body (the launch clock, the personas' ready walk, the ready count's valve at +0x48) with SOCOM II's flagged-persona skip and MP_EIGHTY_READY warning
 0x002C4290 0x1A4 func_002C4290  # OVL1
 0x002C4440 0xB4 func_002C4440  # OVL1
 0x002C4500 0x230 func_002C4500  # OVL1

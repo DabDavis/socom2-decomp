@@ -21,8 +21,37 @@ struct BlatherData {
     char m_taunt[5][46];   // 0xe6
 };
 
+/* a valve (zanim.h's CValve: its value, a 16-bit field, and the callbacks told of a change) */
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+class CValve {
+public:
+    void MakeCallbacks(VALVE_STATE state);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;   // 0x4
+};
+
+/* CValve::SetValue, inlined in both builds (as fts_mission.cpp spells it) */
+inline void SetValveValue(CValve *valve, int value)
+{
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != value)
+        state = value == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = value;
+    if (state != VALVE_SAME)
+        valve->MakeCallbacks(state);
+}
+
 class CZNetwork {
 public:
+    unsigned int zNetGetTime();
     void zNetRegisterRemoteObjectCallback(int index, void (*creation)(int, int),
                                           void (*update)(int, int, int),
                                           void (*postupdate)(int, int, int),
@@ -53,9 +82,15 @@ public:
 
     MP_MINOR_GAME_STATE MyMinorGameState(MP_MINOR_GAME_STATE state);
 
-    unsigned char _0[0xac];
+    unsigned char _0[0x48];
+    CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
+    unsigned char _4c[0xac - 0x4c];
     int m_persona_object;   // 0xac: this client's persona object (the name ours)
-    unsigned char _b0[0x114 - 0xb0];
+    unsigned char _b0[0xd8 - 0xb0];
+    bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
+    unsigned char _d9[0xe4 - 0xd9];
+    int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
+    unsigned char _e8[0x114 - 0xe8];
     MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
     MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
 };
@@ -120,6 +155,7 @@ struct PersonaEntry {
 class CZPersonaState {
 public:
     static void ClearPersonaList();
+    static bool AllReadyToLoad();
     static void CheckStateSwitch();
     static void ToggleReady();
     static void UpdatePersonaLists();
@@ -454,6 +490,59 @@ extern "C" int func_002C4810()
         if (!data_004414A0[i])
             return i;
     return -1;
+}
+
+/* the menu's event handler (the lobby's: an event's name and its argument) and whether the eighty
+ * per cent warning was given (a byte of the lobby's; OVL1 0x2E99E0) */
+extern "C" bool (*data_0044F3C8)(const char *event, const char *arg);
+extern "C" bool func_002E99E0();
+
+/* a persona flagged 0x10000, a null one not (ours) */
+inline bool IsPersonaFlagged(PersonaData *p)
+{
+    return p ? p->IsFlagged() : false;
+}
+
+/* whether every persona is ready to load -- at once when the ten-second launch has run out; the
+ * ready count given to its valve, and the menu told when eighty per cent of the teams are ready
+ * (SOCOM 1's AllReadyToLoad, CheckStateSwitch's call: SOCOM II skips the flagged personas and adds
+ * the warning; OVL1 0x2C40C0) */
+/* the ten-second launch still counting down (ours: through an inline, its result materialised --
+ * `sltu v0` where the test written in the `if` compares into at -- and the launch time read ahead of
+ * the clock, as SOCOM 1's AllReadyToLoad has it) */
+inline bool LaunchPending(CZNetGame *game)
+{
+    int t = game->m_launch_time;
+
+    return theNetwork.zNetGetTime() < t;
+}
+
+bool CZPersonaState::AllReadyToLoad()
+{
+    bool ready;
+    int count;
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game->m_ten_second_launch && !LaunchPending(game))
+        return true;
+    ready = true;
+    count = 0;
+
+    for (int i = 0; i < 24; i++) {
+        PersonaData *p = GetPersona(i);
+
+        if (p && !IsPersonaFlagged(p)) {
+            if (p->m_41 != CZNetGame::MP_MINOR_READY)
+                ready = false;
+            else
+                count++;
+        }
+    }
+    SetValveValue(game->m_pPlayerReadyCountValve, count);
+    if (!game->m_ten_second_launch && !ready && data_00441448 && data_00441450 &&
+        !(count < 0.8f * (data_00441448 + data_00441450)) && func_002E99E0() == false && data_0044F3C8)
+        data_0044F3C8("MP_EIGHTY_READY", 0);
+    return ready;
 }
 
 /* whether no persona without the flag 0x10000 waits in state 2 at 0x40 with 0x41 not yet 2
