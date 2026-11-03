@@ -475,7 +475,11 @@ void CSkbKeyProps::SetButtonState(void (C2DButton::*state)())
  * then andi 0xff) before branching on it, as SOCOM 1's GetSkbKey does; here it branches straight.
  * No change from a bool local, `!= false`, `== true`, a ternary, an int, signed or unsigned char
  * return, an early return, or splitting the column tests into an inline of their own (which
- * makes the tree a level too tall: end() then calls out of line) */
+ * makes the tree a level too tall: end() then calls out of line). A lead (round 13, untested): the
+ * cursor setter 0x38B8A0 and 0x38C130 call GetCurKey (0x38CB90, whose copy materialises the same
+ * test) and FindKeyProps out of line where this copy inlines both -- the shape of GetCurKeyProps
+ * declared inline and too tall, inlined one level into its callers, its own out-of-line copy
+ * inlining everything */
 CSkbKeyProps *CSoftKeyboard::GetCurKeyProps()
 {
     return FindKeyProps(GetCurKey());
