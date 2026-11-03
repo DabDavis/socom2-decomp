@@ -1,0 +1,323 @@
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
+/* queue: the recogniser's data queues between its blocks (OVL2 0x509730-0x50AED8, SOCOM 1's object
+ * at 0x3745D0: qQueueControl .. qCheckDeQueueOne, the same functions in the same order),
+ * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
+ * -funroll-loops (README "The GCC front"). The names are SOCOM 1's (s1:calls, s1:order). A queue
+ * is a list of fixed-size elements with one read pointer per reader: a reader's pointer is its
+ * next element, the queue itself when it has read everything, &first when the reader is stopped
+ * and 0 when it is disabled. An element of up to seven words comes from the scheduler's fast
+ * allocator and goes back on its free list; SOCOM 1's static qFreeElem, which does that, is
+ * inlined everywhere here (its out-of-line copy is gone). */
+
+typedef struct QELEM {
+    struct QELEM *next;
+    /* the element's data follows */
+} QELEM;
+
+typedef struct FASTALLO {
+    void *heap;
+    unsigned short chunk_size;
+    unsigned short left;
+    int nchunks;
+    int **chunks;
+    int *next;
+    QELEM *free[65];                    /* +20: by size in words */
+} FASTALLO;
+
+typedef struct TOS {
+    char pad0[60];
+    int nenqueues;                      /* +60 */
+    char pad64[16];
+    void *heap;                         /* +80 */
+    FASTALLO fa;                        /* +84 */
+} TOS;
+
+typedef struct QUEUE {
+    TOS *tos;                           /* +0 */
+    unsigned char id;                   /* +4: the queue's id in error reports */
+    char pad5[3];
+    unsigned short elemsize;            /* +8: bytes */
+    unsigned short maxelems;            /* +10: 0 for unbounded */
+    unsigned char state;                /* +12: 1 running, 2 stopped */
+    unsigned char nreaders;             /* +13 */
+    char pad14[2];
+    QELEM *first;                       /* +16 */
+    QELEM *read[1];                     /* +20: one per reader */
+} QUEUE;
+
+#define Q_STOPPED(q)    ((QELEM *)&(q)->first)
+#define Q_END(q)        ((QELEM *)(q))
+
+typedef struct TOSLOG {
+    TOS *tos;
+    unsigned char block;
+} TOSLOG;
+
+extern void *func_00243298(void *heap, int size);                  /* the heap's malloc */
+extern void *func_00243398(void *heap, int count, int size);       /* the heap's calloc */
+extern void heap_Free(void *heap, void *p);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+extern QELEM *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
+extern unsigned char _tosErrorLog(TOSLOG *log, unsigned short code);
+extern int _tosGetProfileU32(void *block, int key, int def);
+
+
+/* SOCOM 1's qFreeElem: an element of up to seven words back on the fast allocator's free list
+ * of its size, a bigger one to the heap */
+static __inline__ void qFreeElem(QUEUE *q, QELEM *e)
+{
+    if (q->elemsize + sizeof(QELEM) < 32) {
+        QELEM **list = &q->tos->fa.free[(q->elemsize + sizeof(QELEM) + 3) >> 2];
+
+        e->next = *list;
+        *list = e;
+    } else
+        heap_Free(q->tos->heap, e);
+}
+
+/* the other way: a small element from its free list, else from the allocator's chunks */
+static __inline__ QELEM *qAllocElem(QUEUE *q)
+{
+    QELEM *e;
+
+    if (q->elemsize + sizeof(QELEM) < 32) {
+        unsigned short n = (q->elemsize + sizeof(QELEM) + 3) >> 2;
+        QELEM **list = &q->tos->fa.free[n];
+
+        if (*list != 0) {
+            e = *list;
+            *list = e->next;
+        } else
+            e = fastallo_AllocateMemoryFromChunk(&q->tos->fa, n);
+    } else
+        e = func_00243298(q->tos->heap, q->elemsize + sizeof(QELEM));
+    return e;
+}
+
+void qQueueReset(QUEUE *q);
+static void qUpdateReadPtrsAndIncNbrOfEnqueues(QUEUE *q, QELEM *e);
+void qFreeUnusedElemements(QUEUE *q);
+int qQueueJumpBack(QUEUE *q, unsigned short n);
+int qQueueJumpBackOne(QUEUE *q, unsigned short reader, unsigned short n);
+
+/* the queue's own settings out of the scheduler's profile: the element size (2), whether the
+ * readers start running (3) and the bound (4) */
+QUEUE *qQueueInit(QUEUE *q)
+{
+    int size;
+    unsigned int i;
+
+    size = _tosGetProfileU32(q, 2, -1);
+    if (size == -1 || size == q->elemsize) {
+        qQueueReset(q);
+        if ((unsigned char)_tosGetProfileU32(q, 3, 1)) {
+            for (i = 0; i < q->nreaders; i++)
+                if (q->read[i] != Q_STOPPED(q))
+                    q->read[i] = Q_END(q);
+        } else {
+            for (i = 0; i < q->nreaders; i++)
+                q->read[i] = 0;
+        }
+        q->maxelems = (unsigned char)_tosGetProfileU32(q, 4, 0);
+        return q;
+    }
+    return 0;
+}
+
+QUEUE *qQueueConstruct(TOS *tos, unsigned char id, unsigned char nreaders)
+{
+    QUEUE *q = func_00243398(tos->heap, 1, sizeof(QUEUE) - sizeof(QELEM *) + nreaders * sizeof(QELEM *));
+    TOSLOG log;
+
+    if (q == 0) {
+        log.tos = tos;
+        log.block = id;
+        _tosErrorLog(&log, 2);
+        return 0;
+    }
+    q->nreaders = nreaders;             /* this order schedules as the target's */
+    q->id = id;
+    q->tos = tos;
+    return q;
+}
+
+QUEUE *qQueueInitEx(QUEUE *q, unsigned short elemsize, unsigned char run, unsigned short maxelems)
+{
+    unsigned short size;
+    unsigned int i;
+
+    if (elemsize != 0)
+        size = elemsize;
+    else
+        size = _tosGetProfileU32(q, 2, -1);
+    q->elemsize = size;
+    qQueueReset(q);
+    if (run == 0xFF)
+        run = _tosGetProfileU32(q, 3, 1);
+    if (run) {
+        for (i = 0; i < q->nreaders; i++)
+            q->read[i] = Q_END(q);
+    } else {
+        for (i = 0; i < q->nreaders; i++)
+            q->read[i] = 0;
+    }
+    if (maxelems != 0xFFFF)
+        q->maxelems = maxelems;
+    else
+        q->maxelems = _tosGetProfileU32(q, 4, 0);
+    return q;
+}
+
+QUEUE *qQueueReDimension(QUEUE *q, unsigned short elemsize)
+{
+    QELEM *e = q->first;
+    QELEM *p;
+    unsigned short size;
+
+    if (elemsize != 0)
+        size = elemsize;
+    else
+        size = _tosGetProfileU32(q, 2, -1);
+    while (e != 0) {
+        p = e;
+        e = e->next;
+        qFreeElem(q, p);
+    }
+    q->elemsize = size;
+    q->first = 0;
+    return q;
+}
+
+/* n elements copied in at the end; each reader at the end now reads the first of them */
+int qEnQueue(QUEUE *q, char *data, unsigned int n)
+{
+    QELEM *first = 0;
+    QELEM *last = 0;
+    QELEM *e;
+    unsigned int i;
+
+    if (q->state == 2 && q->maxelems == 0)
+        return 0;
+    for (e = q->first; e != 0; e = e->next)
+        last = e;
+    for (i = 0; i < n; i++) {
+        e = qAllocElem(q);
+        if (first == 0)
+            first = e;
+        if (last != 0)
+            last->next = e;
+        else
+            q->first = e;
+        last = e;
+        memcpy(e + 1, data, q->elemsize);
+        data += q->elemsize;
+    }
+    if (last != 0)
+        last->next = 0;
+    qUpdateReadPtrsAndIncNbrOfEnqueues(q, first);
+    return 1;
+}
+
+void *qEnQueueOne(QUEUE *q)
+{
+    QELEM *e;
+    QELEM *p;
+
+    if (q->state == 2 && q->maxelems == 0)
+        return 0;
+    e = qAllocElem(q);
+    p = q->first;
+    if (p != 0) {
+        while (p->next != 0)
+            p = p->next;
+        p->next = e;
+    } else
+        q->first = e;
+    e->next = 0;
+    qUpdateReadPtrsAndIncNbrOfEnqueues(q, e);
+    return e + 1;
+}
+
+void *qDeQueueOne(QUEUE *q, int reader)
+{
+    QELEM *e = q->read[reader];
+
+    if (e == Q_STOPPED(q) || e == 0 || e == Q_END(q))
+        return 0;
+    q->read[reader] = e->next ? e->next : Q_END(q);
+    return e + 1;
+}
+
+void qQueueReset(QUEUE *q)
+{
+    QELEM *e = q->first;
+    QELEM *p;
+    unsigned int i;
+
+    while (e != 0) {
+        p = e;
+        e = e->next;
+        qFreeElem(q, p);
+    }
+    for (i = 0; i < q->nreaders; i++)
+        if (q->read[i] != Q_STOPPED(q))
+            q->read[i] = Q_END(q);
+    q->first = 0;
+    q->state = 1;
+}
+
+/* every running reader moved back to the n-th element from the end */
+int qQueueJumpBack(QUEUE *q, unsigned short n)
+{
+    QELEM *e;
+    unsigned int count;
+    unsigned int i;
+
+    if (n != 0) {
+        count = 0;
+        for (e = q->first; e != 0; e = e->next)
+            count++;
+        if (count < n)
+            return 0;
+        count -= n;
+        e = q->first;
+        for (i = 0; i < count; i++)
+            e = e->next;
+        for (i = 0; i < q->nreaders; i++)
+            if (q->read[i] != Q_STOPPED(q) && q->read[i] != 0)
+                q->read[i] = e;
+        qFreeUnusedElemements(q);
+    }
+    return 1;
+}
+
+int qQueueJumpBackOne(QUEUE *q, unsigned short reader, unsigned short n)
+{
+    QELEM *e;
+    unsigned int count;
+    unsigned int i;
+
+    if (n != 0) {
+        count = 0;
+        for (e = q->first; e != 0; e = e->next)
+            count++;
+        if (count < n)
+            return 0;
+        count -= n;
+        e = q->first;
+        for (i = 0; i < count; i++)
+            e = e->next;
+        q->read[reader] = e;
+    }
+    return 1;
+}
+
+unsigned int qQueueNbrElements(QUEUE *q)
+{
+    QELEM *e;
+    unsigned int n = 0;
+
+    for (e = q->first; e != 0; e = e->next)
+        n++;
+    return n;
+}
