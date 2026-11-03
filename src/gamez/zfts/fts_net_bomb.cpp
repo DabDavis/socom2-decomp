@@ -60,12 +60,10 @@ public:
     unsigned char m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
 };
 
-class CMission;
-
-extern "C" int func_002A6AD0(CMission *mission);   /* (the mission's bomb time) */
-
 class CMission {
 public:
+    unsigned int GetTimeLeft();   /* 0x2A6AD0: the round's time left */
+
     unsigned char _0[0x1808];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
 };
@@ -76,14 +74,24 @@ class CZAnim;
 
 /* a SEAL's body: only what the bomb's changes reach -- its kit at 0x5E0 (SOCOM 1's at 0x520) and
  * the member at 0x58C the bomb's events go to (zseal.h has the whole of it) */
+/* a SEAL's kit (zkit's CZKit: only the MP bomb's pickup and placing, OVL2's) */
+class CZKit {
+public:
+    void PickupMPBomb();   /* OVL2 0x5BBF10 */
+    void HandlePlaceMPBomb(const CPnt3D *pos);   /* OVL2 0x5BC200 */
+
+    unsigned char _0[4];
+};
+
 class CZSealBody {
 public:
     void DropAllItems();
+    void HandleBombDefuse();   /* OVL2 0x59DA70 */
     static void CreateMPBombPickup(const CPnt3D *pos, bool placed);
 
     unsigned char _0[0x58c];
     unsigned char m_58c[0x5e0 - 0x58c];   // 0x58c
-    unsigned char m_kit[4];   // 0x5e0: its CZKit
+    CZKit m_kit;   // 0x5e0
 };
 
 /* the pickups' MP bomb node (CPickup::m_mpbombnode, OVL1 bss 0x44D4A0) */
@@ -192,11 +200,7 @@ void func_0059DCE0(int state);
 void *memset(void *dst, int c, unsigned int n);
 void *memcpy(void *dst, const void *src, unsigned int n);
 void func_002A6AC0(CNetClock *clock, unsigned int time, bool set);   /* (SOCOM 1's CNetClock::SetInitialRead) */
-/* the SEAL's side of the bomb (OVL2; SOCOM 1's CZKit::PickupMPBomb, CZKit::HandlePlaceMPBomb and
- * CZSealBody::HandleBombDefuse at the same calls, then the three events SOCOM II adds) */
-void func_005BBF10(void *kit);
-void func_005BC200(void *kit, const CPnt3D *pos);
-void func_0059DA70(CZSealBody *body);
+/* the three events SOCOM II adds to the SEAL's side of the bomb (OVL2) */
 void func_005455D0(void *events, CZSealBody *body);
 void func_00545650(void *events, CZSealBody *body, int a);
 void func_00545750(void *events, CZSealBody *body, int a);
@@ -335,7 +339,7 @@ int CZBombState::CreateLocalBomb()
     if (m_BombStatus.NewBombState == BOMB_GROUNDED)
         m_BombStatus.HolderObjectIndex = 0;
     if (m_BombStatus.NewBombState == BOMB_PLACED)
-        data_004413A0 = func_002A6AD0((CMission *)&theMission);
+        data_004413A0 = theMission.GetTimeLeft();
     else
         data_004413A0 = 30;
     return index;
@@ -452,12 +456,12 @@ void CZBombState::ChangeBombState()
     case BOMB_CAPTURED:
         body = CZSealState::GetBodyFromObjectIndex(m_BombStatus.HolderObjectIndex);
         if (body)
-            func_005BBF10(body->m_kit);
+            body->m_kit.PickupMPBomb();
         break;
     case BOMB_PLACED:
         body = CZSealState::GetBodyFromObjectIndex(m_BombStatus.HolderObjectIndex);
         if (body) {
-            func_005BC200(body->m_kit, &m_BombStatus.BombLocation);
+            body->m_kit.HandlePlaceMPBomb(&m_BombStatus.BombLocation);
             func_005455D0(body->m_58c, body);
         } else
             CZSealBody::CreateMPBombPickup(&m_BombStatus.BombLocation, true);
@@ -465,7 +469,7 @@ void CZBombState::ChangeBombState()
     case BOMB_DEFUSED:
         body = CZSealState::GetBodyFromObjectIndex(m_BombStatus.DefuserObjectIndex);
         if (body) {
-            func_0059DA70(body);
+            body->HandleBombDefuse();
             func_00545650(body->m_58c, body, 0);
         }
         if (game)

@@ -112,6 +112,10 @@ struct NetObject {
 class CSealUnit {
 public:
     static CSealUnit *GetUnitByTeam(unsigned int team);
+    /* (OVL2; SOCOM 1's at the same calls) */
+    static CSealUnit *Create(unsigned int team);   /* 0x5EF380 */
+    void SealJoinUnit(CZSealBody *body);   /* 0x5EE250 */
+    void EscorteeJoinUnit(CZSealBody *body);   /* 0x5EE160 */
 };
 
 /* a SEAL's controller (only its unit, SOCOM 1's at 0xdc, and the virtual at +0x34 its unit's update
@@ -249,8 +253,11 @@ public:
 enum NetOwnershipStatus {};
 enum NetObjectLifespan {};
 
+struct GameClient;
+
 class CZNetwork {
 public:
+    GameClient *zNetGetGameClient(int client);   /* 0x30D5E0 */
     int zNetGetTime();
     int zNetGetLocalTime();
     int zNetGetMyGameClientIndex();
@@ -269,7 +276,6 @@ struct GameClient {
     unsigned short m_object;   // 0x4
 };
 
-extern "C" GameClient *func_0030D5E0(CZNetwork *net, int client);   /* (SOCOM 1's zNetGetGameClient) */
 
 /* CZSealBody::CreateRemoteSeal (OVL2 0x599690) under the map's name, which carries SOCOM 1's
  * signature: SOCOM II's sixth parameter is a word of flags (the body tests it against 0x10020000;
@@ -285,10 +291,6 @@ extern "C" {
 int NetGetObject(NetObject **obj, int index);   /* the DME's (prebuilt C) */
 int strcmp(const char *a, const char *b);
 void *memset(void *dst, int c, unsigned int n);
-/* (OVL2; SOCOM 1's CSealUnit::Create, SealJoinUnit and EscorteeJoinUnit at the same calls) */
-CSealUnit *func_005EF380(unsigned int team);
-void func_005EE250(CSealUnit *unit, CZSealBody *body);
-void func_005EE160(CSealUnit *unit, CZSealBody *body);
 int func_002C3B10(int client);   /* (fts_net_persona.cpp's: a client's persona's word at 4) */
 const char *func_002C3A70(int client);   /* (fts_net_persona.cpp's: a client's persona's name) */
 int sprintf(char *buf, const char *fmt, ...);
@@ -445,9 +447,9 @@ void CZSealState::UpdateRollandsUnitStuff(CZSealBody *body, TypeSealState *state
         CSealUnit *unit = CSealUnit::GetUnitByTeam(state->m_unit_id);
 
         if (!unit)
-            unit = func_005EF380(state->m_unit_id);
+            unit = CSealUnit::Create(state->m_unit_id);
         if (cur != unit) {
-            func_005EE250(unit, body);
+            unit->SealJoinUnit(body);
             body->m_joined = 1;
         }
     } else if (body->m_c8 & 0x20000) {
@@ -456,7 +458,7 @@ void CZSealState::UpdateRollandsUnitStuff(CZSealBody *body, TypeSealState *state
             CSealUnit *unit = CSealUnit::GetUnitByTeam(17);
 
             if (cur != unit)
-                func_005EE250(unit, body);
+                unit->SealJoinUnit(body);
         } else {
             CZSealBody *player = ftsGetPlayer();
 
@@ -465,15 +467,15 @@ void CZSealState::UpdateRollandsUnitStuff(CZSealBody *body, TypeSealState *state
                 CSealUnit *unit = CSealUnit::GetUnitByTeam(0);
 
                 if (cur != unit)
-                    func_005EE160(unit, body);
+                    unit->EscorteeJoinUnit(body);
             } else {
                 CSealUnit *cur = body->m_ctrl->m_unit;
                 CSealUnit *unit = CSealUnit::GetUnitByTeam(state->m_unit_id);
 
                 if (!unit)
-                    unit = func_005EF380(state->m_unit_id);
+                    unit = CSealUnit::Create(state->m_unit_id);
                 if (cur != unit)
-                    func_005EE160(unit, body);
+                    unit->EscorteeJoinUnit(body);
             }
         }
     }
@@ -562,7 +564,7 @@ void CZSealState::RemoteSealCreationCallback(int client, int index)
 
         if (ctrl)
             body->Slot3C(ctrl->m_1fc, ctrl->m_210);
-        GameClient *gc = func_0030D5E0(&theNetwork, client);
+        GameClient *gc = theNetwork.zNetGetGameClient(client);
 
         if (gc && gc->m_object == 0x1000)
             gc->m_object = index;

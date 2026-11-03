@@ -125,16 +125,23 @@ _zanim_cmd_hdr *func_002B4230(_zrdr *rdr);
 }
 
 /* an AI map's action (SOCOM 1's CAiMap::action: only its state, three bits of byte 6) */
-struct AiMapAction {
-    unsigned char _0[6];
-    unsigned char m_6_0 : 4;
-    unsigned char m_state : 3;   // 0x6, bits 4-6
+class CAiMap {
+public:
+    struct action {
+        unsigned char _0[6];
+        unsigned char m_6_0 : 4;
+        unsigned char m_state : 3;   // 0x6, bits 4-6
+    };
+};
+
+/* the AI maps (OVL2's: only the action lookup) */
+class CAiMaps {
+public:
+    bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **action);   /* OVL2 0x52DAA0 */
 };
 
 extern "C" {
-extern unsigned char data_0066A1B0[];   /* (OVL2: the AI maps, SOCOM 1's theAiMaps) */
-bool func_0052DAA0(void *maps, unsigned int id, CAiMapLoc *loc,
-                   AiMapAction **action);   /* CAiMaps::GetActionById (OVL2, a placeholder) */
+extern CAiMaps data_0066A1B0;   /* (OVL2: the AI maps, SOCOM 1's theAiMaps) */
 }
 
 /* an action's valve changed: the AI map's action of the same id takes the valve's value (SOCOM 1's,
@@ -144,10 +151,10 @@ void _actionValveCallback(CValve *valve, void *data)
     CNodeAction *action = (CNodeAction *)data;
 
     if (action) {
-        AiMapAction *a = 0;
+        CAiMap::action *a = 0;
         CAiMapLoc loc;
 
-        if (func_0052DAA0(data_0066A1B0, action->m_id, &loc, &a))
+        if (data_0066A1B0.GetActionById(action->m_id, loc, &a))
             a->m_state = valve->m_value;
     }
 }

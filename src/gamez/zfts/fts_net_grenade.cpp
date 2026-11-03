@@ -43,8 +43,20 @@ public:
 extern CZNetwork theNetwork;
 
 /* a projectile (SOCOM 1's CZProjectile, at SOCOM II's offsets: only what this unit touches) */
+/* a grenade's state (zweapon.h's: a byte under -enum min) */
+enum GRENADE_STATE {
+    CREATE = 0,
+    NEWPOS = 1,
+    DETONATE = 2,
+    REMOVE = 3
+};
+
 class CZProjectile {
 public:
+    void UpdateGrenadeState(GRENADE_STATE state);   /* 0x3C6F60 */
+    void UpdateGrenadeVelocity(const CPnt3D *vel);   /* 0x3C7060 */
+    void UpdateGrenadePosition(const CPnt3D *pos);   /* 0x3C70E0: SOCOM II's */
+
     unsigned char _0[8];
     unsigned char m_grenadestate;   // 0x8 (a GRENADE_STATE)
     unsigned char _9[0x48 - 0x9];
@@ -63,10 +75,6 @@ public:
 
 extern "C" {
 extern CZProjectileList *m_pProjectilelist__8CZWeapon;   /* CZWeapon::m_pProjectilelist */
-
-void func_003C70E0(CZProjectile *proj, const CPnt3D *pos);   /* (SOCOM II's: the position) */
-void func_003C7060(CZProjectile *proj, const CPnt3D *vel);   /* (the velocity) */
-void func_003C6F60(CZProjectile *proj, int state);   /* (the grenade's state: an int, its byte loaded after the projectile) */
 }
 
 /* the kit and the SEAL (only the kit's grenade) */
@@ -181,15 +189,15 @@ void CZGrenadeState::RemoteGrenadeUpdateCallback(int client, int index, int fiel
             if (field == data_00441358 || field == -1) {
                 CPnt3D pos(data->pos.x, data->pos.y, data->pos.z);
 
-                func_003C70E0(data->proj, &pos);
+                data->proj->UpdateGrenadePosition(&pos);
             }
             if (field == data_00441360 || field == -1) {
                 CPnt3D vel(data->vel.x, data->vel.y, data->vel.z);
 
-                func_003C7060(data->proj, &vel);
+                data->proj->UpdateGrenadeVelocity(&vel);
             }
             if (field == data_00441368 || field == -1)
-                func_003C6F60(data->proj, data->state);
+                data->proj->UpdateGrenadeState((GRENADE_STATE)data->state);
         }
     }
 }

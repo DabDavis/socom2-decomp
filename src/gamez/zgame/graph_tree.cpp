@@ -294,7 +294,7 @@ CGEdge::CGEdge(CGNode *from, CGNode *to, float weight)
 }
 
 /* SOCOM II's: the flag 0x40000000 of the word at 0x1c set or cleared, and on setting it the two
- * ends replaced when the first differs (OVL1 0x2D1410; OVL2's func_0052A8C0 calls it twice -- the name ours) */
+ * ends replaced when the first differs (OVL1 0x2D1410; OVL2's CAiMaps::CreateGraph 0x52A8C0 calls it twice -- the name ours) */
 extern "C" void func_002D1410(CGEdge *edge, bool on, CGNode *from, CGNode *to)
 {
     if (on)
