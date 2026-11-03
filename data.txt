@@ -539,9 +539,13 @@
 0x003F8B90 0x8 __RTTI__7C2DPoly  # RTTI of C2DPoly: found by its RTTI's name
 0x003F8C18 0x8 __RTTI__23CDblBufTextureRelocator  # RTTI of CDblBufTextureRelocator: found by its RTTI's name
 0x003F8F28 0x8 __RTTI__17CListItemTypeImpl  # RTTI of CListItemTypeImpl: found by its RTTI's name
+0x003F8F40 0x8 __RTTI__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImpl  # by hand (the HUD lane, round 25): RTTI of @unnamed@zui_2d_cpp@::CListItemStringTypeImpl (its name at 0x3F8EE0, the base's RTTI 0x3F8F28 at +4): the array look's DrawPrep 0x37AB90 dynamic_casts to it (1 reference); zui_2d.cpp
 0x003F8FA8 0x8 __RTTI__9CPlainBmp  # RTTI of CPlainBmp: found by its RTTI's name
 0x003F9010 0x8 __RTTI__17CRenderableString  # RTTI of CRenderableString: found by its RTTI's name
 0x003F9058 0x8 __RTTI__11CSecureText  # RTTI of CSecureText: found by its RTTI's name
+0x003F9480 0x8 __RTTI__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImpl  # by hand (the HUD lane, round 25): RTTI of @unnamed@zui_2d_cpp@::CListItemImageTypeImpl (name at 0x3F9440), the first word of its table 0x407050; zui_2d.cpp
+0x003F94E8 0x8 __RTTI__Q220@unnamed@zui_2d_cpp@26CListItemTimedTextTypeImpl  # by hand (the HUD lane, round 25): RTTI of @unnamed@zui_2d_cpp@::CListItemTimedTextTypeImpl (name at 0x3F9490), the first word of its table 0x4070A0; zui_2d.cpp
+0x003F9548 0x8 __RTTI__Q220@unnamed@zui_2d_cpp@28CListItemWrappedTextTypeImpl  # by hand (the HUD lane, round 25): RTTI of @unnamed@zui_2d_cpp@::CListItemWrappedTextTypeImpl (name at 0x3F94F0), the first word of its table 0x407140; zui_2d.cpp
 0x003F9598 0x8 __RTTI__8C2DClock  # RTTI of C2DClock: found by its RTTI's name
 0x003F95B0 0x8 __RTTI__8ListItem  # RTTI of ListItem: found by its RTTI's name
 0x003F95F0 0x8 __RTTI__10CUIMapCtrl  # RTTI of CUIMapCtrl: found by its RTTI's name
@@ -558,6 +562,7 @@
 0x003F9970 0x8 __RTTI__10CUIListBox  # RTTI of CUIListBox: found by its RTTI's name
 0x003F99C8 0x8 __RTTI__14CHandlerButton  # RTTI of CHandlerButton: found by its RTTI's name
 0x003F9A18 0x8 __RTTI__9CTeleType  # RTTI of CTeleType: found by its RTTI's name
+0x003F9A60 0x8 __RTTI__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImpl  # by hand (the HUD lane, round 25): RTTI of @unnamed@zui_2d_cpp@::CListItemArrayTypeImpl (name at 0x3F9A20), the first word of its table 0x407B90; zui_2d.cpp
 0x003F9AB8 0x8 __RTTI__10C2DCounter  # RTTI of C2DCounter: found by its RTTI's name
 0x003F9B28 0x8 __RTTI__11CDlgObjSpec  # RTTI of CDlgObjSpec: found by its RTTI's name
 0x003F9B50 0x8 __RTTI__9CTextSpec  # RTTI of CTextSpec: found by its RTTI's name
