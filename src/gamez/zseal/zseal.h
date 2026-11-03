@@ -881,6 +881,17 @@ public:
     virtual void Initalize();
     /* a Navy SEAL (SOCOM 1's bit; the accessor ours, as the code tests it materialised) */
     bool IsNavySeal() const { return m_navyseal ? true : false; }
+    /* the planner a new route takes (SOCOM 1's; OVL2 0x5627E0, seal_ai.cpp's) */
+    CAiPath::PATH_TYPE GetDefaultRouteType();
+    /* whether the current state is of a kind (SOCOM 1's AiStateIs, const: the stack's const GetState,
+     * 0x5F8330). Built whole in a register with an explicit false arm, as the target does: the first
+     * operand a materialised inline bool, the second a `? true : false` of its own -- `&&`, a plain
+     * ternary or an if/else let MW reuse the first operand's zero and drop the false arm */
+    bool StackNotEmpty() const { return !(m_stateStack.size() == 0); }
+    bool AiStateIs(AI_STATE state) const
+    {
+        return StackNotEmpty() ? (m_stateStack.GetState()->m_state == state ? true : false) : false;
+    }
     /* the body's task argument (an inline: expanded ahead of the call it is passed with) */
     inline void *GetSelect();
     /* the state on top of SEAL_AI_PARAMS's stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the

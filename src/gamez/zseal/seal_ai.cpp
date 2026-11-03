@@ -510,6 +510,37 @@ extern "C" signed char func_00562960(CSealCtrlAi *ai)
     return ai->m_path.m_status;
 }
 
+extern "C" {
+/* theNetwork's online byte (OVL1 bss 0x45A0C1, theNetwork + 1: SOCOM 1's network flag at 9) */
+extern unsigned char data_0045A0C1;
+}
+
+/* the planner a new route takes: a Navy SEAL in state 8 with flag 1 or 0x100 the stealthy one, else the
+ * default; an enemy the basic one, or -- offline and restrained -- the restrained one, its bit 17 cleared
+ * (OVL2 0x5627E0: SOCOM 1's GetDefaultRouteType, between GetDefaultRouteBias and ClearRoute in both
+ * builds; SOCOM 1's tested the state's kind alone and had no restrained case). The body is taken before
+ * the first test (the target loads it there); the bit cleared before the kind is set (the other order
+ * swaps the insert's registers) */
+CAiPath::PATH_TYPE CSealCtrlAi::GetDefaultRouteType()
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CAiPath::PATH_TYPE t = CAiPath::PATH_DEFAULT;
+
+    if (IsNavySeal()) {
+        if (AiStateIs((AI_STATE)8)) {
+            CAiState *s = GetAiState();
+
+            if (s->m_flags & 1 || s->m_flags & 0x100)
+                t = CAiPath::PATH_STEALTH;
+        }
+    } else if (!data_0045A0C1 && seal->m_restrained) {
+        m_bit17 = false;
+        t = CAiPath::PATH_RESTRAINED;
+    } else
+        t = CAiPath::PATH_BASIC;
+    return t;
+}
+
 /* the five bands of an alertness (OVL2 data 0x65C700: 0.05, 0.4, 0.6, 0.8, 1) */
 extern "C" float data_0065C700[5];
 
@@ -1358,20 +1389,10 @@ extern "C" void func_00572240(CSealCtrlAi *ai, CAiAlert *alert, float amount)
     }
 }
 
-/* whether a stack's current state is of a kind, through the const GetState (0x5F8330) */
-static inline bool StateIs(const CAiStateStack &stack, AI_STATE state)
-{
-    return !(stack.size() == 0) && stack.GetState()->m_state == state;
-}
-
 /* whether the controller is busy: never a navy SEAL's; within a while of its time at 0x40C, or in
  * state 28 (OVL2 0x572190, new in SOCOM II: 0x5D4770, ai::PARAM's tick, asks it; the name unknown).
- * OPEN, 0x9C against 0xAC: the stack test is the kit lane's open Is() shape (seal_aistate.cpp's
- * Pop(ai, AI_STATE)): the target materialises `!(size() == 0) && GetState()->m_state == 28` whole --
- * xor/sltiu/xori, the compare's sltiu in a `b` to the join, `move v0,zero` as the false arm -- and
- * branches once on the value; MW here branches on each operand. Tried: the const GetState through a
- * const-stack inline (the target calls 0x5F8330, the const one: kept), the inline as an if/else
- * assigning a bool local (0x9C, the andi back). */
+ * The stack test is AiStateIs (zseal.h): the target's `Is()` built whole with its explicit false arm,
+ * through the const GetState (0x5F8330) -- open on that shape until round 18 */
 extern "C" bool func_00572190(CSealCtrlAi *ai)
 {
     bool r = false;
@@ -1379,7 +1400,7 @@ extern "C" bool func_00572190(CSealCtrlAi *ai)
     if (!ai->IsNavySeal()) {
         if (data_004365C0 - ai->m_40c < data_00650000)
             r = true;
-        else if (StateIs(ai->m_stateStack, (AI_STATE)28))
+        else if (ai->AiStateIs((AI_STATE)28))
             r = true;
     }
     return r;
