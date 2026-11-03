@@ -151,8 +151,12 @@ public:
      * the destructor in both builds), then UpdateUIVar's primary slot (+0xA4, 0x379260) */
     virtual void Update();
     virtual void UpdateUIVar(CUIVariable *var);
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
 
-    unsigned char _a0[0xc0 - 0xa0];
+    C2DFont *m_alternateFont;   // 0xa0
+    CPnt3D m_offset;   // 0xa4
+    CPnt3D m_Color;   // 0xb0
+    int m_socom2_bc;   // 0xbc
 };   // 0xc0 bytes
 
 /* wrapped text (SOCOM 1's CWrappedText; zui_2d.h's layout, 0x250 bytes), its destructor declared
@@ -236,6 +240,7 @@ public:
     virtual ~C3StateButton();
     /* slot 12: the caption ticks with the button (0x37C600) */
     virtual void Tick(float dT) { _strCaption.Tick(dT); }
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void SetBackgroundAlpha(float a);
     virtual void Slot27();
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
@@ -309,9 +314,14 @@ public:
     virtual ~CCheckBox();
     /* the check box ignores its variable (0x37C3E0, empty; reached through the thunk 0x37D0C0) */
     virtual void UpdateUIVar(CUIVariable *var) {}
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
 
     bool m_checked;   // 0x440
-    unsigned char _441[0x454 - 0x441];
+    /* the check's place against the button's and its size (the names ours) */
+    int m_checkX;   // 0x444
+    int m_checkY;   // 0x448
+    int m_checkW;   // 0x44c
+    int m_checkH;   // 0x450
     ActionItem m_action0;   // 0x454
     ActionItem m_action1;   // 0x464
     unsigned char _474[0x480 - 0x474];
@@ -394,6 +404,7 @@ public:
 class CHandlerButton : public C2DButton {
 public:
     virtual ~CHandlerButton();
+    virtual bool HandlePad(const CPad *pad, int port);
 } __attribute__((aligned(16)));   // 0x440 bytes
 
 /* the pop-up dialog as its command-type lookup sees it (slot 24 of its vtable, 0x36D970; the
@@ -1053,6 +1064,31 @@ int CPopUpDialog::GetZAnimCmdType(const char *name)
     return C2D::GetZAnimCmdType(name);
 }
 
+/* the map control (SOCOM 1's CUIMapCtrl, a C2D: only its command lookup here; its destructor
+ * declared first so that this unit does not take its table) */
+class CUIMapCtrl : public C2D {
+public:
+    virtual ~CUIMapCtrl();
+    virtual int GetZAnimCmdType(const char *name);
+};
+
+/* the map control's commands: panning and the two zooms, after the UI's own (SOCOM 1's; SOCOM
+ * II's counts four) */
+int CUIMapCtrl::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return C2D::GetZAnimCmdType(name) + 4;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Pan", name))
+        return C2D::GetZAnimCmdType(name) + 1;
+    if (!strcasecmp("ZOOM_IN", name))
+        return C2D::GetZAnimCmdType(name) + 2;
+    if (!strcasecmp("ZOOM_OUT", name))
+        return C2D::GetZAnimCmdType(name) + 3;
+    return C2D::GetZAnimCmdType(name);
+}
+
 /* an .rdr built in memory (zrdr.h's CRdrEditor: only the three node adders the list items call) */
 class CRdrEditor {
 public:
@@ -1169,6 +1205,126 @@ void CListItemStringTypeImpl::Tick(float dT)
  * reached only through the thunk 0x37D030) */
 CTeleType::~CTeleType()
 {
+}
+
+/* the render pipe as a 2D visual reads it: the opacity stack (zrndr_pipe.cpp's CPipe, OVL1 bss
+ * 0x4887C0; its 0x720 bytes stood in) */
+class CPipe {
+public:
+    unsigned char _0[0x668];
+    float *m_opacity_stack;   // 0x668
+    int m_opacity_stack_size;   // 0x66c
+    int m_opacity_stack_index;   // 0x670
+    unsigned char _674[0x720 - 0x674];
+};
+
+extern CPipe thePipe;
+
+/* a 2D object drawn by the world's render pipe (SOCOM 1's C2DVisual, a zdb::CVisual made from a
+ * C2D: zanim_menu.h's, the object at 0x68; its destructor declared first so that this unit does
+ * not take its table) */
+class C2DVisual {
+public:
+    virtual ~C2DVisual();
+    virtual void Render(CMatrix *m);
+
+    unsigned char _4[0x68 - 4];
+    C2D *m_2d;   // 0x68
+    zdb::CTextureRelocMgr *m_mgr;   // 0x6c
+};
+
+/* the object drawn through the matrix, faded to the pipe's opacity first when it is not opaque (a
+ * fade within a hundredth of the end drawn opaque: SOCOM 1's C2DVisual::Render; the scale applied
+ * in place, `*=`, keeps the opacity in the argument's register) */
+void C2DVisual::Render(CMatrix *m)
+{
+    float opacity = thePipe.m_opacity_stack[thePipe.m_opacity_stack_index];
+
+    if (opacity < 1.0f) {
+        if (opacity == 0.99f)
+            opacity = 1.0f;
+        opacity *= 128.0f;
+        m_2d->SetTrans(opacity);
+    }
+    m_2d->Draw(*m, m_mgr);
+}
+
+/* the string drawn at its offset through the matrix, placed again (and its own slot told,
+ * +0xA0) when the position has moved (SOCOM 1's CRenderableString::Draw, slot 2) */
+void CRenderableString::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = m_offset;
+
+    m.Transform(&p, 1);
+    if (p.x != (int)(m_posx + m_socom2_7c) || p.y != (int)(m_posy + m_socom2_80)) {
+        SetPos((int)p.x, (int)p.y);
+        Update();
+    }
+    C2DString::Draw(mgr, 0, (int)p.z);
+}
+
+/* the check box drawn: the button, then, when checked, its check placed by the matrix at its
+ * offset and drawn with no matrix of its own (SOCOM 1's CCheckBox::Draw, slot 2) */
+void CCheckBox::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    C3StateButton::Draw(m, mgr);
+    if (m_checked) {
+        CMatrix mat;
+        CPnt3D p = CPnt3D::zero;
+
+        m.Transform(&p, 1);
+        p.x += m_checkX;
+        p.y += m_checkY;
+        m_check.SetPos((int)p.x, (int)p.y, (int)(p.x + m_checkW), (int)(p.y + m_checkH));
+        m_check.Draw(mat, mgr);
+    }
+}
+
+/* the button drawn: its background (slot 28), then its caption, placed by the matrix at its
+ * offset (SOCOM 1's C3StateButton::Draw, slot 2) */
+void C3StateButton::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    if (IsOn()) {
+        DrawBackground(m, mgr);
+        if (_szCaption) {
+            CPnt3D p = CPnt3D::zero;
+
+            m.Transform(&p, 1);
+            _strCaption.SetPos((int)(p.x + _iTextX), (int)(p.y + _iTextY));
+            _strCaption.Draw(mgr, 0, (int)p.z);
+        }
+    }
+}
+
+/* the pad as the handler button reads it: each button's key state (zinput.h's CPad::m_state from
+ * 0x1; 2 a press) */
+class CPad {
+public:
+    unsigned char m_0;   // 0x0
+    unsigned char m_state[16];   // 0x1
+};
+
+/* a press of button 9 (SOCOM 1's button 27) shows the button pressed and hands the pad to its
+ * children, the first to take it ending the walk -- taken either way (SOCOM 1's, slot 15).
+ * OPEN, 11 instructions: two saved registers swapped -- the target keeps this (then the end,
+ * this + 4) in s3 and the walk's node in s2, MW here the other way round; the code is otherwise
+ * the target's, the `!` of the child's answer materialised included. Tried: end declared first,
+ * end in the loop test (13), an assigned iterator (0x110), a while walk (11), the base deleter's
+ * iterator (11), the walk in an inline helper (0xF4) */
+bool CHandlerButton::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    if (size() && pad->m_state[9] == 2) {
+        Slot27();
+        iterator i = begin();
+        iterator e = end();
+        for (; i != e; ++i)
+            if ((*i)->HandlePad(pad, port))
+                return true;
+        return true;
+    }
+    return false;
 }
 
 /* the handler button's destructor (implicit: the button's; reached through the thunk 0x37D050) */
