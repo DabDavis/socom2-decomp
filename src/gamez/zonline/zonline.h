@@ -206,11 +206,18 @@ struct MediusGetClanInvitationsSentResponse {
     char AccountName[32];   // 0x20
     char Message[200];   // 0x40
     int ResponseStatus;   // 0x108
-    char EndOfList;   // 0x10c
+    int ResponseTime;   // 0x10c (the SDK's; cbGetClanInvitationsSent reads the list's end after it)
+    char EndOfList;   // 0x110
 };
 struct MediusRespondToClanInvitationResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusDeleteClanMessageResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusGetMyClanMessagesResponse { MEDIUS_RESPONSE_HEAD };
+/* a message of our clan's (the SDK's: the clan, the text, the list's end) */
+struct MediusGetMyClanMessagesResponse {
+    MEDIUS_RESPONSE_HEAD
+    int ClanID;   // 0x1c
+    char Message[200];   // 0x20
+    char EndOfList;   // 0xe8
+};
 struct MediusSendClanMessageResponse { MEDIUS_RESPONSE_HEAD };
 /* the filter's answer: the text handed back, its status after it */
 struct MediusTextFilterResponse {
@@ -226,7 +233,10 @@ struct MediusCreateClanRequest {
     char ClanName[32];   // 0x2c
 };   // 0x4c
 
-struct MediusCreateClanResponse { MEDIUS_RESPONSE_HEAD };
+struct MediusCreateClanResponse {
+    MEDIUS_RESPONSE_HEAD
+    int ClanID;   // 0x1c: the new clan's
+};
 
 typedef void (*MediusCreateClanCallback)(MediusErrorCode, MediusErrorCode, MediusErrorCode,
                                          MediusCreateClanResponse *);
@@ -248,8 +258,8 @@ typedef void (*MediusTransferClanLeadershipCallback)(MediusErrorCode, MediusErro
 extern "C" {
 MediusErrorCode MediusTransferClanLeadership(MediusTransferClanLeadershipRequest *req,
                                              MediusTransferClanLeadershipCallback cb);
-void func_006460B0(MediusDeleteClanMessageRequest *req, MediusDeleteClanMessageCallback cb);   /* MediusDeleteClanMessage? */
-MediusErrorCode func_00646520(MediusGetAllClanMessagesRequest *req, MediusGetAllClanMessagesCallback cb);
+MediusErrorCode MediusDeleteClanMessage(MediusDeleteClanMessageRequest *req, MediusDeleteClanMessageCallback cb);
+MediusErrorCode MediusGetAllClanMessages(MediusGetAllClanMessagesRequest *req, MediusGetAllClanMessagesCallback cb);
 MediusErrorCode MediusGetMyClanMessages(MediusGetMyClanMessagesRequest *req,
                                         MediusGetMyClanMessagesCallback cb);
 MediusErrorCode MediusSendClanMessage(MediusSendClanMessageRequest *req,
@@ -408,6 +418,15 @@ public:
     {
         for (iterator i = begin(), e = end(); i != e; ++i)
             if (id == (*i)->AccountID)
+                return *i;
+        return 0;
+    }
+    /* the invitation sent to the named player, 0 none (InvitePlayerToClan's; the end re-read
+     * every pass, as the call in the loop makes MW do) */
+    ClanInvitationItem *Find(const char *name)
+    {
+        for (iterator i = begin(); i != end(); ++i)
+            if (!strcasecmp((*i)->AccountName, name))
                 return *i;
         return 0;
     }
@@ -874,6 +893,8 @@ public:
 
     bool IsMemberOfClan();
     bool IsLeaderOfClan(const char *name);
+    bool InvitePlayerToClan(const char *name);
+    bool OnCorrectClanTeam();
     void DisbandClan();
     bool GetClanRoster();
     bool GetInvitedPlayers();
@@ -900,6 +921,7 @@ public:
     bool SendClanMessage(const char *text);
     void GetClanMessages();
     void GetLeaderMessages();
+    void ModifyClanMessage(int id, const char *text);
     void DeleteClanMessage(int id);
 
     void *DMEInit();
@@ -933,6 +955,7 @@ public:
     void AddFriend(const char *name);
     bool RevokeInvite(const char *name);
     void UpdateClanStats();
+    void UpdateClanRanking();
     bool GetClan();
     bool IsIgnored(const char *name);
     void Censor(const char *text, void (*cb)(const char *text, void *data), void *data);
