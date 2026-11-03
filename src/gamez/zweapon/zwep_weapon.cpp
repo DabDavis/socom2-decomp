@@ -402,22 +402,43 @@ EQUIP_ITEM CZWeapon::GetIDType()
     return GetIDType(m_ID);
 }
 
-/* a primary class (inline: its true an assignment in IsPrimary -- daddiu; the name is ours) */
-static inline bool is_primary_type(EQUIP_ITEM type)
+/* a primary class -- SMGs, assault rifles, shotguns, machine guns, heavy weapons, sniper rifles
+ * (0x3D1DB0: out of line its true is `li`, inlined into IsPrimary an assignment, daddiu; the kit's
+ * SetCurItemEnum/SetCurItemByIndex, the HUD's CAmmoDisplay::Update and the SEALs call it with a
+ * class -- the name ours) */
+bool CZWeapon::IsPrimaryType(EQUIP_ITEM type)
 {
     if (type == 31 || type == 51 || type == 81 || type == 91 || type == 141 || type == 101)
         return true;
     return false;
 }
 
+/* the pistols' class, 4 (0x3D1DA0; IsSecondary inlines it -- the name ours) */
+bool CZWeapon::IsSecondaryType(EQUIP_ITEM type)
+{
+    return type == 4;
+}
+
+/* the launchers' class, 145 ("LAUNCHERS" to GetIDTypeName; 0x3D1D90, which IsLauncher inlines --
+ * the name ours) */
+bool CZWeapon::IsLauncherType(EQUIP_ITEM type)
+{
+    return type == 145;
+}
+
 bool CZWeapon::IsPrimary(EQUIP_ITEM id)
 {
-    return is_primary_type(GetIDType(id));
+    return IsPrimaryType(GetIDType(id));
 }
 
 bool CZWeapon::IsSecondary(EQUIP_ITEM id)
 {
-    return GetIDType(id) == 4;
+    return IsSecondaryType(GetIDType(id));
+}
+
+bool CZWeapon::IsLauncher(EQUIP_ITEM id)
+{
+    return IsLauncherType(GetIDType(id));
 }
 
 /* OPEN, 2 instructions short (SOCOM 1's is byte-identical): the target zero-extends the halfword's

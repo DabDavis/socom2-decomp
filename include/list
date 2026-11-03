@@ -162,6 +162,10 @@ public:
     /* the sentinel's address (SOCOM 1's tail(), this + 4: 0x173510 in the demo) */
     node_base *tail() { return &end_; }
     const node_base *tail() const { return &end_; }
+    /* the other list's nodes moved in before position, whole (SOCOM 1's splice(iterator,
+     * __list_deleter &), 0x1DAF10 in the demo; SOCOM II's for the pointer lists is 0x33E790, the
+     * same 0x58 bytes). Out of class, as the rest */
+    void splice(iterator position, __list_deleter &x);
 
 protected:
     unsigned int size_;
@@ -271,6 +275,30 @@ __list_deleter<T, Allocator>::erase(iterator position)
     return position;
 }
 
+/* x's first and last nodes linked in before position, x left empty, the counts moved (SOCOM 1's
+ * 0x1DAF10 and SOCOM II's 0x33E790: x's size tested first, its links read next_ then prev_ and
+ * reset next_ then prev_) */
+template <class T, class Allocator>
+void __list_deleter<T, Allocator>::splice(iterator position, __list_deleter &x)
+{
+    if (x.size_) {
+        node_base *f = x.end_.next_;
+        node_base *l = x.end_.prev_;
+        node_base *t = &x.end_;
+
+        t->next_ = t;
+        t->prev_ = t;
+        node_base *p = position.node_;
+
+        p->prev_->next_ = f;
+        f->prev_ = p->prev_;
+        p->prev_ = l;
+        l->next_ = p;
+        size_ += x.size_;
+        x.size_ = 0;
+    }
+}
+
 template <class T, class Allocator>
 class __list_imp : public __list_deleter<T, Allocator> {
 public:
@@ -289,7 +317,79 @@ public:
     /* the binder made here, not through bind2nd: a level shorter, which CModel::RemoveInstance's
      * inlining in CNode::Delete needs */
     void remove(const T &value) { remove_if(binder2nd<equal_to<T>, T>(equal_to<T>(), value)); }
+
+    /* SOCOM 1's sized members, out of class (the demo's resize, insert(iterator, n, x), init(n, x)
+     * and advance_to over the pointer lists, 0x2322C0, 0x232340, 0x2324C0, 0x1DAE20): resize grows
+     * through insert, which builds the new nodes in a list of its own and splices it in, and
+     * shrinks through an erase from the n-th node on (vis_texfx.cpp's RTPool<CTextureFX>(n) is
+     * SOCOM II's one caller: 0x3C0AC0, 0x3C0B90, 0x3C0C20) */
+    __list_imp(const Allocator &a) : __list_deleter<T, Allocator>(a) {}
+    /* the deleter's insert(position, x) and range init stay visible beside the sized ones */
+    using __list_deleter<T, Allocator>::insert;
+    using __list_deleter<T, Allocator>::init;
+    void resize(unsigned int n, const T &x);
+    void insert(typename __list_deleter<T, Allocator>::iterator position, unsigned int n, const T &x);
+    void init(unsigned int n, const T &x);
+    typename __list_deleter<T, Allocator>::iterator advance_to(unsigned int n);
 };
+
+template <class T, class Allocator>
+void __list_imp<T, Allocator>::resize(unsigned int n, const T &x)
+{
+    unsigned int s = this->size_;
+
+    if (n > s)
+        insert(this->end(), n - s, x);
+    else if (n < s)
+        this->erase(advance_to(n), this->end());
+}
+
+template <class T, class Allocator>
+void __list_imp<T, Allocator>::insert(typename __list_deleter<T, Allocator>::iterator position,
+                                      unsigned int n, const T &x)
+{
+    __list_imp tmp(*(const Allocator *)this);
+
+    tmp.init(n, x);
+    this->splice(position, tmp);
+}
+
+template <class T, class Allocator>
+void __list_imp<T, Allocator>::init(unsigned int n, const T &x)
+{
+    if (n)
+        do
+            this->push_back(x);
+        while (--n);
+}
+
+/* the n-th node's iterator, walked from the nearer end (SOCOM II's for the pointer lists is
+ * 0x359740) */
+template <class T, class Allocator>
+typename __list_deleter<T, Allocator>::iterator __list_imp<T, Allocator>::advance_to(unsigned int n)
+{
+    typedef typename __list_deleter<T, Allocator>::node_base node_base;
+    node_base *p;
+    int k;
+
+    if (n > this->size_ / 2) {
+        p = &this->end_;
+        k = n - this->size_;
+    } else {
+        p = this->end_.next_;
+        k = n;
+    }
+    if (k < 0) {
+        do
+            p = p->prev_;
+        while (++k < 0);
+    } else if (k > 0) {
+        do
+            p = p->next_;
+        while (--k > 0);
+    }
+    return typename __list_deleter<T, Allocator>::iterator(p);
+}
 
 /* the runs that satisfy the predicate erased, one after another, the range erase inlined: SOCOM II's
  * pointer lists' 0x20CB50 and the graph queue's 0x2D2540, byte-exact (the MSL headers round 5) with
@@ -362,6 +462,11 @@ public:
         base::insert(typename base::iterator(&this->end_node()), (const void *const &)x);
     }
     void remove(T *const &x) { base::remove((const void *const &)x); }
+    /* n elements, new ones x: MSL's resize(n, const value_type &x = value_type()), the default made by
+     * the caller and passed on by reference (SOCOM 1's RTPool<CTextureFX>(n) stores the zero in a stack
+     * slot it passes, as SOCOM II's 0x3C09C0 -- above the walk's begin() temporary there only as a
+     * default argument: a by-value parameter, a local or a literal put it below) */
+    void resize(unsigned int n, T *const &x = 0) { base::resize(n, (const void *const &)x); }
     /* the last element, and taking it off (CNode::DeleteDeferredVisuals empties its list so; on
      * the pointer list only, where the node is always complete -- ai_events.cpp instantiates a
      * deleter over an incomplete type) */

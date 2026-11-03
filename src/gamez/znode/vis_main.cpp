@@ -208,6 +208,30 @@ struct TEXSELECT_HEAD {
     unsigned int m_c2 : 30;
 };
 
+/* a texture-select block of its own: n selects between a head and an end, allocated, the cursor
+ * set past the head (SOCOM 1's; _ver2 builds the same in place at the cursor) */
+void CVisual::GetTextureSelectBlock(unsigned int n, _word128 **cursor, _word128 *ref, _word128 *tag)
+{
+    unsigned int size = n + 2;
+    _word128 *head = (_word128 *)_calloc(1, size * sizeof(_word128), 0, 0);
+
+    *cursor = head + 1;
+    ((TEXSELECT_HEAD *)head)->m_ver2 = 1;
+    _word128 *end = *cursor + n;
+    end->u32[0] = 0x15000000;
+    end->u32[1] = 0;
+    end->u32[2] = 0;
+    end->u32[3] = 0;
+    ref->u32[0] = n | 0x30000000;
+    ref->u32[1] = (unsigned int)*cursor;
+    ref->u32[2] = 0x11000000;
+    ref->u32[3] = n | 0x50000000;
+    tag->u32[0] = size | 0x30000000;
+    tag->u32[1] = (unsigned int)head;
+    tag->u32[2] = 0x01000101;
+    tag->u32[3] = ((n + 1) << 16) | 0x6C008000;
+}
+
 _word128 *CVisual::GetTextureSelectBlock_ver2(unsigned int n, _word128 **cursor, _word128 *ref,
                                          _word128 *tag)
 {

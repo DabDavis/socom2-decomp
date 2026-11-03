@@ -180,6 +180,15 @@ public:
     /* the first class, the sidearms (SOCOM 1's, right before IsPrimary in both builds: its class 0,
      * SOCOM II's 4 -- 0x3D1CE0) */
     static bool IsSecondary(EQUIP_ITEM id);
+    /* the class tests themselves, of a GetIDType class (new in SOCOM II: IsPrimary's and
+     * IsSecondary's tests made functions, which they inline, and the launchers' -- the kit, the HUD's
+     * ammo display and the SEALs call them with a class; the names ours) */
+    static bool IsPrimaryType(EQUIP_ITEM type);
+    static bool IsSecondaryType(EQUIP_ITEM type);
+    static bool IsLauncherType(EQUIP_ITEM type);
+    /* an item of the launchers' class (0x3D1CB0: IsLauncherType of its GetIDType, as IsSecondary;
+     * CZKit::GetClass145Index's test -- the name ours) */
+    static bool IsLauncher(EQUIP_ITEM id);
     /* an item's name, the fall's (253) "falling damage" (SOCOM 1's static, 0x3D19A0) */
     static char *GetWeaponName(EQUIP_ITEM id);
     /* a class's display name, "PISTOLS" .. "TURRETED LAUNCHERS" or "UNKNOWN" (new in SOCOM II,
