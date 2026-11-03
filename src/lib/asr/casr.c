@@ -325,9 +325,79 @@ static int InitParamList(CASR *c)
         return 1;
     if (_tosControl(c->event, 72, &c->gender, 0) != 0)
         return 1;
-    if (_tosControl(c->event, 73, &c->p484, 0) != 0)
+    if (_tosControl(c->event, 73, (int)c->p484, 0) != 0)
         return 1;
     return _tosControl(c->event, 74, &c->p488, 0);
+}
+
+int casrGetParam(CASR *c, int id, unsigned int *value)
+{
+    int err;
+
+    err = casrCheckHandle(c);
+    if (err)
+        return err;
+    if (value == 0)
+        return _tosErrorLog(c->event, CASR_ERR_ARG);
+    switch (id) {
+    case 1:
+        *value = c->p460;
+        break;
+    case 2:
+        *value = c->f456;
+        break;
+    case 3:
+        *value = c->p504;
+        break;
+    case 4:
+        *value = c->p464;
+        break;
+    case 5:
+        *value = c->p420 / 100;
+        break;
+    case 15:
+        *value = c->p424;
+        break;
+    case 18:
+        *value = c->exev;
+        break;
+    case 16:
+        *value = c->f1088;
+        break;
+    case 6:
+        *value = c->p488;
+        break;
+    case 7:
+        *value = 50 - c->p484[1];
+        break;
+    case 8:
+        *value = 50 - c->p484[0];
+        break;
+    case 9:
+        *value = c->p468;
+        break;
+    case 10:
+        *value = c->p472;
+        break;
+    case 17:
+        *value = c->p476;
+        break;
+    case 11:
+        *value = c->p444[0];
+        break;
+    case 13:
+        *value = c->p492;
+        break;
+    case 12:
+        *value = c->p444[1];
+        break;
+    case 14:
+        *value = c->gender;
+        break;
+    default:
+        return _tosErrorLog(c->event, 10);
+    }
+    return 0;
 }
 
 /* OPEN (1 word): the last test's branch -- the target's `bnez v0` keeps `li v0,1` in a plain delay

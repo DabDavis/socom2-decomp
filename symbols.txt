@@ -8836,13 +8836,13 @@
 0x004DEC08 0x5C func_004DEC08  # OVL2 unaligned
 0x004DEC68 0x58 func_004DEC68  # OVL2 unaligned
 0x004DECC0 0x164 CalcSentenceConfidence  # OVL2; s1:align
-0x004DEE28 0x74 func_004DEE28  # OVL2 unaligned
-0x004DEEA0 0x80 func_004DEEA0  # OVL2
-0x004DEF20 0x74 func_004DEF20  # OVL2
+0x004DEE28 0x74 cbTSDetected  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the talk-spurt callback at +508 with frame * 110) -- the gcc lane, round 9c
+0x004DEEA0 0x80 cbTSAfterStartDetected  # OVL2; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the same callback, the frame offset added and 1 passed) -- the gcc lane, round 9c
+0x004DEF20 0x74 cbStartDetected  # OVL2; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the start callback at +512 with (end - start) * 110) -- the gcc lane, round 9c
 0x004DEF98 0x120 func_004DEF98  # OVL2 unaligned
-0x004DF0B8 0xC func_004DF0B8  # OVL2 unaligned
-0x004DF0C8 0x90 func_004DF0C8  # OVL2 unaligned
-0x004DF158 0x90 func_004DF158  # OVL2 unaligned
+0x004DF0B8 0xC cbSpellRecognised  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; 0xC, the demo's size) -- the gcc lane, round 9c
+0x004DF0C8 0x90 cbNothingRecognised  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the result callback at +516 with reason 2 or 0, immediates 2 27) -- the gcc lane, round 9c
+0x004DF158 0x90 cbSpellNothingRecognised  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the same body as cbNothingRecognised) -- the gcc lane, round 9c
 0x004DF1E8 0x18 cbDoSecondPass  # OVL2 unaligned; s1:exact
 0x004DF200 0x58 cbTrain  # OVL2; s1:align
 0x004DF258 0x20 cbNewUserWordUtterance  # OVL2 unaligned; s1:exact

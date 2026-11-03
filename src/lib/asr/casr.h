@@ -38,19 +38,29 @@ typedef struct CASR {
     unsigned short queue_id;            /* +376 */
     CBSLOT cur;                         /* +380: the sample format's slot in use */
     CBSLOT slot[4];                     /* +388 */
-    int p420;                           /* +420: the parameter list (InitParamList) */
-    int p424;
+    /* the parameters (InitParamList's defaults; casrGetParam's ids in the comments) */
+    unsigned int p420;                  /* +420: id 5, read in hundredths */
+    int p424;                           /* +424: id 15 */
     int p428;
     int p432;
     int p436;
-    int exev;                           /* +440: extra events on */
-    int p444[3];                        /* +444 */
-    int f456;                           /* +456 */
-    char pad460[20];
-    int gender;                         /* +480 */
-    int p484;                           /* +484 */
-    int p488;                           /* +488 */
-    char pad492[28];
+    int exev;                           /* +440: id 18, extra events on */
+    int p444[3];                        /* +444: ids 11, 12 */
+    int f456;                           /* +456: id 2 */
+    int p460;                           /* +460: id 1 */
+    int p464;                           /* +464: id 4 */
+    int p468;                           /* +468: id 9 */
+    int p472;                           /* +472: id 10 */
+    int p476;                           /* +476: id 17 */
+    int gender;                         /* +480: id 14 */
+    short p484[2];                      /* +484: ids 8, 7 (read as 50 - x) */
+    int p488;                           /* +488: id 6 */
+    int p492;                           /* +492: id 13 */
+    char pad496[8];
+    int p504;                           /* +504: id 3 */
+    int (*ts_cb)(int ms, void *info);   /* +508: a talk spurt */
+    int (*start_cb)(int ms, void *info);    /* +512: speech started */
+    int (*result_cb)(void *result, void *info);                 /* +516: a result, or none */
     int (*state_cb)(int state, int ms, void *info);    /* +520 */
     int (*train_cb)(int state, void *info);             /* +524 */
     char pad528[20];
@@ -83,7 +93,8 @@ typedef struct CASR {
     char pad688[218];
     unsigned short f906;
     unsigned short *signal;             /* +908: the input level */
-    char pad912[16];
+    int *frame_base;                    /* +912: the frame count the talk spurts are told from */
+    char pad916[12];
     int uw_recs_needed;                 /* +928 */
     unsigned short uw_recs_done;        /* +932 */
     char pad934[50];
@@ -92,7 +103,9 @@ typedef struct CASR {
     short **segtab;                     /* +1068 */
     int pad1072;
     int last_state;                     /* +1076 */
-    char pad1080[16];
+    char pad1080[8];
+    int f1088;                          /* +1088: parameter 16 */
+    int pad1092;
     int f1096;                          /* +1096 */
 } CASR;
 

@@ -14,6 +14,13 @@ typedef struct IMPORT {
 } IMPORT;
 
 extern int qQueueControl(int queue, int what, int id, int arg);
+
+/* the result the host is handed when nothing was recognised */
+typedef struct NORESULT {
+    int a;
+    int b;
+    int reason;                         /* +8: 2 the timeout, else 0 */
+} NORESULT;
 extern int casrDoSpelling(CASR *c);
 extern int casrDoIsoWordSecondPass(CASR *c);
 extern int casrDoNormalSecondPass(CASR *c);
@@ -183,6 +190,96 @@ int func_004DEB58(CASR *c, int cb)
     else
         return 1;
     *p = cb;
+    return 0;
+}
+
+/* the engine's events, passed on to the host's callbacks (a frame is 11 ms: ms = frames * 110 / 10) */
+int cbTSDetected(CASR *c, int a1, int a2, int frame)
+{
+    int err;
+
+    c->f672 = 1;
+    err = c->ts_cb(frame * 110, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    c->f628 = 0;
+    return 0;
+}
+
+int cbTSAfterStartDetected(CASR *c, int a1, int a2, int frame)
+{
+    int err;
+
+    frame += *c->frame_base;
+    c->f672 = 1;
+    err = c->ts_cb(frame * 110, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    c->f628 = 0;
+    return 0;
+}
+
+int cbStartDetected(CASR *c, int a1, int a2, int start, int end)
+{
+    int err;
+    int n;
+
+    n = end - start;
+    c->f673 = 1;
+    err = c->start_cb(n * 110, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    return 0;
+}
+
+int cbSpellRecognised(CASR *c, int a1, int a2, int arg1)
+{
+    c->sp_arg1 = arg1;
+    return 0;
+}
+
+/* nothing recognised: the result's reason is 2 when the utterance outran the timeout (parameter 5) */
+int cbNothingRecognised(CASR *c)
+{
+    NORESULT r;
+    int err;
+
+    r.a = 0;
+    r.b = 0;
+    if (c->p420 != 0 && c->p420 < c->frames)
+        r.reason = 2;
+    else
+        r.reason = 0;
+    err = c->result_cb(&r, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    return 0;
+}
+
+int cbSpellNothingRecognised(CASR *c)
+{
+    NORESULT r;
+    int err;
+
+    r.a = 0;
+    r.b = 0;
+    if (c->p420 != 0 && c->p420 < c->frames)
+        r.reason = 2;
+    else
+        r.reason = 0;
+    err = c->result_cb(&r, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
     return 0;
 }
 
