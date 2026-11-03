@@ -9000,7 +9000,7 @@
 0x004F6000 0x10C LogAdd  # OVL2; s1:calls (SOCOM 1's NormalizeAndEnQ calls LogAdd where ours, 0x4F3690, calls this row; the object SOCOM 1's 0x3629D0 with HLnOnePlusExpHFloat, here after it and calling it where SOCOM 1's inlined it) -- the gcc lane, round 16c; src/lib/asr/logadd.c
 0x004F6110 0x808 MelInitBands  # OVL2; s1:align
 0x004F6918 0x3C ConstructMel  # OVL2 unaligned; s1:align
-0x004F6958 0x1AC func_004F6958  # OVL2 unaligned
+0x004F6958 0x1AC ProcessMel  # OVL2 unaligned; s1:slot (ConstructMel hands this row to tosBaseBlockConstruct as its process function, where SOCOM 1's ConstructMel hands ProcessMel, 0x3635D0) -- the gcc lane, round 16c
 0x004F6B08 0x170 ControlMel  # OVL2 unaligned; s1:calls
 0x004F6C78 0x64 InitMel  # OVL2 unaligned; s1:align
 0x004F6CE0 0x32C QrDeleteCol  # OVL2; s1:calls (SOCOM 1's Smoothing calls QrDeleteCol where ours call this row, 1 call site; the same position in SOCOM 1's object)
