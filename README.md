@@ -1775,6 +1775,37 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 15** (the instances other lanes waited on; probes build/p15/, untracked):
+  - AN ITERATOR ASSIGNED FROM begin() STAYS IN ITS STACK SLOT, re-read and re-stored at each step with the base iterator
+    copied in through $f0 (the wrapper's implicit assignment); initialised from begin() it lives in a register. That is
+    the "iterator in memory" of the world's 0x346270 (zsnd_csnd.cpp: `iterator e = end(); iterator i; for (i = begin();
+    i != e; ++i)`, end in a local first or the sentinel's address takes another register) and of the kit's 0x5E7830
+    (seal_unit.cpp: four empty walks, one slist iterator re-assigned for three lists, a ulist one declared after) --
+    source forms, no header change; SerializeValves' one instruction is the by-reference `*`, not this;
+  - MW's SELF-INLINED COPIES CUT THEIR CALLEES ONE LEVEL SHORTER PER COPY, the deepest copy the raw body (probe
+    build/p15/rec1.cpp: a recursive function over a 1-6 high chain at level 5 -- six copies, the chain whole in the
+    first, then 3, 2, 0 levels), and a call written as the self-call's argument expands a level deeper than the copy's
+    other calls (GetLeader's `m_sub_units.front()->GetLeader()`; GetTail takes its sub-squad into a local first, so its
+    back() is cut like the rest). So a recursive walk reads its accessors' heights off directly: CSealUnit::GetLeader
+    0x5E8A90 (five copies) cuts front() at the end pair's second(), then tail(), the base's front(), the wrapper's, and
+    empty() at the count pair's second(), then sz(), then empty() -- SOCOM 1's MSL list exactly (its const GetLeader
+    calls the same pieces under the same names, one copy fewer). include/list now has them BESIDE the fields (sz(),
+    empty(), tail() by reference over Metrowerks::details::compressed_pair_imp<A, T, 1>::second() in include/msl_utility,
+    the ends through tail()), GetLeader const and GetTail written in seal_unit.cpp, 11 piece rows named (0x5E8A40-0x5E8A80,
+    0x5E8C40-0x5E8C90); the const walks' begin()/end() through the new tail() lose SetOccupied, GetTeamMembers,
+    SetMvpUiVars, SetStatLbUiVar and CMPExitState::UnInit, so they keep a one-level sentinel (tail_ptr, ours);
+  - GetSealCount 0x5ED9B0: with size() over sz() and the wrapper's begin()/end() through the base's every call is the
+    target's, copy by copy; its outer copy's begin()/end() temporaries (built in stack slots, copied in through $f0)
+    are not reproduced (0x1B0 against 0x1F8; the assigned walk 0x1F4 keeps the iterator in memory throughout) -- not
+    applied;
+  - the soft keyboard pieces' erase/insert (0x3980D0, 0x3982F0) are a HEIGHT cut: inline_max_size(2000) changes
+    nothing, the unit at level 8 makes the insert byte-exact and the erase the target's size (a register permutation),
+    63 -> 64 in zui_skbview.cpp; copy's tree there is eight high (copy, __copy, the piece's, CSaferStr's and the
+    string's operator=, assign, size(), is_long()), each level evidenced elsewhere -- at level 5 not met (include/vector's
+    erase note);
+  - the deque's make_iterator with the four fields in a base class that has a member-wise user copy constructor,
+    `return t += n` and the buffer's begin() in class: objects in memory, copied field by field through address
+    registers, 0x12C against 0x130/0x138 -- ~147 lines off in slots (include/deque's comment), not applied.
 - **Tells from completing the MSL headers, round 14** (the deques' instances; probes build/p14/, untracked):
   - the circular buffer's end() takes its index (`cap ? (start + size) % cap : 0`) into a local before it loads
     data_ -- written inside the iterator constructor's first argument MW loads data_ first: ~__deque_buf byte-exact
