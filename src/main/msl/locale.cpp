@@ -1,4 +1,4 @@
-/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -sdatathreshold 0 -inline auto -enum min -Cpp_exceptions on -wchar_t on */
+/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -sdatathreshold 0 -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on */
 /* locale.cpp -- the prebuilt MSL C++ library's locale unit (MAIN 0x18CF20-0x18DB8F): SOCOM 1's
  * DWARF names it (CodeWarrior 2.4's MSL_Common\Src\locale.cpp: locale::global and classic, then
  * ctype<char>, lines 221-291 for its conversions). What is written so far: ctype<char>'s case and

@@ -1,4 +1,4 @@
-/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -sdatathreshold 0 -inline auto -enum min -Cpp_exceptions on -wchar_t on */
+/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -sdatathreshold 0 -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on */
 /* iostream.cpp -- the prebuilt MSL C++ library's standard streams unit (MAIN 0x184C80-0x18CF1F):
  * SOCOM 1's DWARF names it (CodeWarrior 2.4's MSL_Common\Src\iostream.cpp) and puts there the
  * stream objects' Init classes (__nInit, __wInit) and every template the streams instantiate --
@@ -13,7 +13,8 @@
  * fills the slot, 7 words off); the game's 3.0b52 here. -Cpp_exceptions ON (getloc keeps its frame
  * around the copy constructor's call; off, it is `j`), -wchar_t on (the `w` in every name), and
  * NOT deferred: SOCOM 1's DWARF lines rise with the addresses in this library (locale.cpp's
- * ctype<char> 221..288), the order SOCOM II keeps. */
+ * ctype<char> 221..288), the order SOCOM II keeps. The inline depth is explicit (`bottomup,level=5`,
+ * the game's): ios.cpp's ~__locale_imp needs it (round 2). */
 
 #include "msl.h"
 
@@ -80,11 +81,11 @@ template class basic_streambuf<wchar_t, char_traits<wchar_t> >;
 template class basic_filebuf<char, char_traits<char> >;
 template class basic_filebuf<wchar_t, char_traits<wchar_t> >;
 
-/* OPEN: the two codecvt destructors (0x18A550, 0x18A5B0, 0x5C each) are generated here 0x60, one
- * word long: this header's codecvt has no members of its own and no written destructor, the
- * library's (SOCOM 1's 0x14A570, 0x60 there) is not modelled yet. xsgetn<wchar_t> (0x185EB0,
- * 0x214) instantiates from the char body 0x134: the wide traits' copy is a loop there, not
- * memcpy -- not written. ~ctype<char> (locale.cpp) is generated, not written.
+/* The two codecvt destructors (0x18A550, 0x18A5B0, 0x5C each) are implicit: they match once
+ * locale::facet's destructor is inline (msl.h), its vtable store folded into theirs.
+ * OPEN: xsgetn<wchar_t> (0x185EB0, 0x214) instantiates from the char body 0x134: the wide traits'
+ * copy is a loop there, not memcpy -- not written. ~ctype<char> (locale.cpp) is generated, not
+ * written.
  *
  * codecvt<char, char, int>: no conversion */
 codecvt_base::result codecvt<char, char, int>::do_out(int &, const char *from, const char *, const char *&from_next,
