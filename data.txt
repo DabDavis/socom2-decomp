@@ -172,6 +172,10 @@
 0x003DC860 0x4 @LOCAL@sort<Q33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iterator,PFP10CZSealBodyP10CZSealBody_b>__3stdFQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorPFP10CZSealBodyP10CZSealBody_b_v@shuffle  # OVL1 data; ours (the MSL headers round 6): std::sort's static shuffle (-4 in data, stepped -4..4 twice a pass) for the instance at 0x226060
 0x003DC868 0x4 s_bitmap1Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the ok-to-talk bitmap's size, 32.0 -- 4 references in 4 functions (CMPTeammateNames::Tick, both Inits, the unit's initialiser 0x3FE940)
 0x003DC870 0x4 s_bitmap2Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the off arrow's size, 32.0 -- 5 references in 4 functions (CMPTeammateNames::Tick x2, both Inits, the initialiser)
+0x003DCCD8 0x4 s_delay  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the push-to-talk delay (1.0) -- 1 reference in 1 function (CReco::Suspend)
+0x003DCD68 0x4 s_volume  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the recording volume (50) -- 3 references in 1 function (CReco::AdjustVolume: read twice, written)
+0x003DCD70 0x4 s_volume_max  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the recording volume's ceiling (100) -- 1 reference in 1 function (CReco::AdjustVolume)
+0x003DCD78 0x4 s_volume_min  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the recording volume's floor (20) -- 1 reference in 1 function (CReco::AdjustVolume)
 0x003DCFB4 0x0 devRpcData  # OVL1; s1:data-seq (size SOCOM 1's; via lgAudClose +4)
 0x003DCFB8 0x4 devicechanged  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +3)
 0x003DCFBC 0x4 threadsafeSema  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +4)
@@ -752,6 +756,7 @@
 0x00414648 0x4 s_box_w  # OVL1 bss; ours (the HUD lane, round 17): hud_mpinfobox.cpp's file static, the box's width (s_namewidth), computed by the unit's initialiser 0x3FF680 -- read by none in code
 0x00414650 0x4 s_box_x2  # OVL1 bss; ours (the HUD lane, round 17): hud_mpinfobox.cpp's file static, the box's right (s_box_x1 + s_box_w), computed by the unit's initialiser 0x3FF680 -- read by Init, ReInit
 0x00414658 0x4 s_box_y2  # OVL1 bss; ours (the HUD lane, round 17): hud_mpinfobox.cpp's file static, the box's bottom (s_box_y1 + 20), computed by the unit's initialiser 0x3FF680 -- read by Init, ReInit
+0x00414680 0x40 theReco  # OVL1 bss; ours (the HUD lane, round 19): reco.cpp's global, the voice recogniser (CReco, 0x40 bytes), built by __sinit_reco.cpp 0x3FF7B0 -- 25 references (main, CCoreState::Tick, CHUD::Init/Tick/~CHUD, the mission cams, the radio menu, the recogniser's own functions)
 0x004148B0 0xC s_hbHealthColor  # OVL1 bss; hud_healthbar.cpp's static (0, 128, 64), name ours: the health left -- the initialiser 0x3FF9C0 builds it, CHealthBar's constructor sets its first bitmap to it, the Tick fades the flash back to it; 9 references in 3 functions -- the HUD lane
 0x004148C0 0xC s_hbFlashColor  # OVL1 bss; hud_healthbar.cpp's static (128, 128, 128), name ours: the flash a rise starts from (CHealthBar::Tick); 5 references in 2 functions (the Tick, the initialiser) -- the HUD lane
 0x004148D0 0xC s_hbRestColor  # OVL1 bss; hud_healthbar.cpp's static (128, 64, 64), name ours: the rest of the bar while its owner lives (the constructor, Update); 5 references in 3 functions -- the HUD lane

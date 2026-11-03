@@ -577,12 +577,15 @@ public:
 void hudTurnOffScorePopup();
 struct CHudNetState;
 extern CHudNetState data_00413120;
-struct CHudScoreState;
-extern CHudScoreState data_00414680;
+/* the voice recogniser (reco.cpp's; only what is called) */
+class CReco {
+public:
+    void UnInit();
+};
+extern CReco theReco;
 extern unsigned char data_003DC3E0;
 extern "C" void func_002370D0(CHudNetState *state);
 extern "C" void func_0022F3B0();
-extern "C" void func_0023B200(CHudScoreState *state);
 extern "C" void func_003A3740(CStringTables *tables, const char *name);
 extern "C" void func_002CA050(C2DMessage_Q *q);
 extern "C" void func_00363E60(float f);
@@ -604,7 +607,7 @@ CHUD::~CHUD()
     func_002370D0(&data_00413120);
     func_0022F3B0();
     if (!theNetwork.m_bNetwork)
-        func_0023B200(&data_00414680);
+        theReco.UnInit();
     if (m_newmap) {
         delete m_newmap;
         m_newmap = 0;
