@@ -139,6 +139,14 @@
 0x001D5780 0x28 s_pool4  # MAIN bss; by hand (MAIN runtime lane round 2): the 4-byte pool (_zmalloc<four>, 8800 blocks); the same users (src/main/zmalloc.cpp)
 0x001D5800 0x144 _args  # MAIN bss; by hand (MAIN runtime lane round 2): crt0.s's argument block (argc, then argv and the strings: Sony's `_args: .space 256+16*4+1*4`, 64-aligned), handed to SetupThread and read for main's argc/argv; 2 references: _start (src/main/crt0.s, its own .bss)
 0x001D5948 0x4 __global_destructor_chain  # MAIN bss; s1:data-exact (size SOCOM 1's; via __register_global_object)
+0x001D5950 0x68 cin__3std  # MAIN bss; SOCOM 1's (iostream.cpp's istream, 104 bytes, first of the eight streams in the same order): __nInit's constructor builds it in place over the static stdin filebuf and ties it to cout, ~__nInit destroys it; 3 references in 2 functions (src/main/msl/iostream.cpp)
+0x001D59C0 0x58 cout__3std  # MAIN bss; SOCOM 1's (an ostream, 88 bytes): built over the stdout filebuf, flushed and destroyed by ~__nInit; 5 references in 2 functions (src/main/msl/iostream.cpp)
+0x001D5A20 0x58 clog__3std  # MAIN bss; SOCOM 1's (an ostream over the stderr filebuf, before cerr as in SOCOM 1); 3 references in 2 functions (src/main/msl/iostream.cpp)
+0x001D5A80 0x58 cerr__3std  # MAIN bss; SOCOM 1's (an ostream over the stderr filebuf, unitbuf set); 4 references in 2 functions (src/main/msl/iostream.cpp)
+0x001D5AE0 0x68 wcin__3std  # MAIN bss; SOCOM 1's (the wide istream, built by __wInit's constructor over the wide stdin filebuf); 3 references in 2 functions (src/main/msl/iostream.cpp)
+0x001D5B50 0x58 wcout__3std  # MAIN bss; SOCOM 1's (the wide ostream over stdout); 5 references in 2 functions (src/main/msl/iostream.cpp)
+0x001D5BB0 0x58 wclog__3std  # MAIN bss; SOCOM 1's (the wide ostream over stderr, before wcerr); 3 references in 2 functions (src/main/msl/iostream.cpp)
+0x001D5C10 0x58 wcerr__3std  # MAIN bss; SOCOM 1's (the wide ostream over stderr, unitbuf set); 4 references in 2 functions (src/main/msl/iostream.cpp)
 0x001D5F80 0x0 sceCdCbfunc  # MAIN bss; s1:data-exact (size SOCOM 1's; via _Cdvd_cbLoop +1)
 0x001D5F98 0x0 my_thid  # MAIN bss; s1:data-exact (size SOCOM 1's; via _sceCd_ncmd_prechk +3)
 0x001D6000 0x0 _sf_data  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdLayerSearchFile)
@@ -1237,6 +1245,10 @@
 0x004B5338 0x4 pFlyout_Model_Ally__14CFlyoutMachine  # OVL1 bss; SOCOM 1's static (HookupReset's "tracer_ally") -- the wep lane; 3 references in 2 functions
 0x004B5340 0x4 pFlyout_Anim_Ally__14CFlyoutMachine  # OVL1 bss; by hand (the wep lane: HookupReset's "tracer_ally_anim", new in SOCOM II -- the name ours); 4 references in 2 functions
 0x004B5348 0x4 pFlyout_Anim_Enemy__14CFlyoutMachine  # OVL1 bss; by hand (the wep lane: HookupReset's "tracer_enemy_anim", new in SOCOM II -- the name ours); 4 references in 2 functions
+0x0064F780 0x18 AsrSpiSignalCallBacks  # OVL2 data; s1:data (SOCOM 1's GLOBAL 0x43B7D8, 24 bytes, the asrspi_cb object's .data: asrspi_cbAbnorm, cbSpeechDetected, cbTsDetected, cbAgc, cbEnergyLevel, cbSNRLevel in both; gsapi_EngineStart and RestartEngine set or clear the last two) -- the gcc lane, round 10c
+0x0064F798 0x8 AsrSpiRecogCallBacks  # OVL2 data; s1:data (SOCOM 1's GLOBAL 0x43B7F0, 8 bytes after it: asrspi_cbResult and &AsrSpiSignalCallBacks in both; asrspi_Start's third argument) -- the gcc lane, round 10c
+0x0064F7A0 0x2 MAXRECOGNIZERS  # OVL2 data; s1:data (SOCOM 1's GLOBAL 0x43B7F8, 2 bytes, the gsapi object's .data, 4 in both: gsapi_Init sizes the engine array by it) -- the gcc lane, round 10c
+0x0064F7A2 0x2 DEFAULTENERGYINTERVAL  # OVL2 data; s1:data (SOCOM 1's GLOBAL 0x43B7FA, 2 bytes, 500 in both) -- the gcc lane, round 10c
 0x0064F7A8 0x8C gGSAPI  # OVL2; s1:data-seq (size SOCOM 1's; via CreateWordIdList +1)
 0x0064F8A0 0x4 bit_count__8CAiEvent  # OVL2; s1:data-seq (size SOCOM 1's; via __ct__8CAiEventFv)
 0x0064F8A8 0x4 s_eventMinDuration  # OVL2 data; ours (ai_events.cpp's static, 0.1: CAiEvent::Create clamps a running event's duration to it, read from data; 1 reference in 1 function)
@@ -1261,6 +1273,9 @@
 0x00655628 0x1 gbMutexInitialized  # OVL2; s1:data-exact (size SOCOM 1's; via rt_msg_client_disconnect +12)
 0x00656018 0x1 gbBaseTimeInitialized  # OVL2; s1:data-exact (size SOCOM 1's; via rt_time_get_base_diff +1)
 0x00656021 0x1 gbTimeDateSet  # OVL2; s1:data (round 8b): SOCOM 1's gbTimeDateSet, the byte after the base stamp's flag as there; set by rt_time_platform_get_time_string once gCurTimeDate is read
+0x00656060 0x4 gpszVersion@rt_upnp  # OVL2 data; SCEA's name by convention (the gcc lane, round 10b): every SOCOM 1 RT object keeps its version as a static `char *gpszVersion` (rt_comm's 0x43D5A8, rt_msg_client's 0x43D7C8); rt_upnp.c's points at "rt_upnp version: 1.01.0007" (.rodata 0x6658B8, just before its $Header), returned by 0x642330 -- 1 reference
+0x006560C8 0x1 gbInitialized@streammedia  # OVL2 data; SCEA's name by convention (the gcc lane, round 10b): every SOCOM 1 RT object keeps a byte gbInitialized and a short gnInitCount (rt_msg_client's at 0x43D7CC/0x43D7CE, the same layout); StreamMedia.c's started flag, set by its startup (0x643730) when the count is 0 and cleared by its shutdown (0x643790) at the last; every entry point tests it == 1 after the count; zero in data (2.96 puts an explicitly zeroed static in .data); 22 functions read it, all StreamMedia.c's
+0x006560CA 0x2 gnInitCount@streammedia  # OVL2 data; SCEA's name by convention (round 10b, as gbInitialized@streammedia): StreamMedia.c's startup count (a short: `lh`, tested > 0 by every entry point, incremented by the startup, decremented by the shutdown); 22 functions, all StreamMedia.c's
 0x00656188 0x2 GlobalInitFlag  # OVL2 data; SOCOM 1's (0x43B930, 2 bytes): 1 once MediusInitialize has run; every Medius request tests it with `lh` at the instruction SOCOM 1's tests its own (MediusSessionBegin: 0x43B930 there, 0x656188 here; the clan and file objects read it as a word): 133 references in 132 functions (MediusCreateClan, MediusDisbandClan, MediusGetClanByName, MediusGetClanByID ...) -- the gcc lane, round 4b
 0x0065618C 0x4 MyConnectionIndex  # OVL2 data; SOCOM 1's (0x43B934): the DME connection to the lobby server, negative before MediusConnect; every request tests it and passes it to NetSendMessage where SOCOM 1's does (MediusSessionBegin: 0x43B934 there): 132 references in 128 functions (MediusCreateClan, MediusDisbandClan, MediusGetClanByName, MediusGetClanByID ...) -- the gcc lane, round 4b
 0x00656190 0x4 KeepAliveInterval  # OVL2 data; s1:data by hand (the gcc lane, round 7b): SOCOM 1's KeepAliveInterval (0x43B938, after MyConnectionIndex as here): MediusInitialize stores its parameters' last word there and MediusInitializeBare its fifth, as SOCOM 1's do; MediusUpdate compares the time since KeepAliveTimestamp with it
@@ -1321,6 +1336,8 @@
 0x006562E8 0x4 geQueuedRequestType  # OVL2 data; s1:data by hand (round 7b): SOCOM 1's static geQueuedRequestType (0x43BA28): MediusSetQueuedRequest stores its type there first, MediusGetQueuedRequestType returns it
 0x00656348 0x40 pubKey.0  # OVL2; s1:data-exact (size SOCOM 1's; via KM_GetSoftwareKeyPair)
 0x00656388 0x40 priKey.1  # OVL2; s1:data-exact (size SOCOM 1's; via KM_GetSoftwareKeyPair)
+0x00656818 0x2F szGSAPIVersion  # OVL2 rodata; s1:data (SOCOM 1's LOCAL 0x45C0A0, the gsapi object's .rodata head: the API's version string, "Game Speech API V2.02.01 for Sony PlayStation2" here; gsapi_GetVersion copies it) -- the gcc lane, round 10c
+0x00656848 0x48 TranslateParamTable  # OVL2 rodata; s1:data (SOCOM 1's GLOBAL 0x45C0C8, 72 bytes after the version string: 18 asrspi parameter ids by gsapi id, 255 none; ActivateDefaultParams and TranslateGsapiParamId2AsrSpiParamId read it) -- the gcc lane, round 10c
 0x00656900 0x4 UswVersionCode  # OVL2; s1:data (SOCOM 1's LOCAL 0x45C150 in the asrspi object's .rodata, 4 bytes, the same value 0x16000001 -- asrspi_GetUswVersion's literal; the object's four statics in SOCOM 1's order and sizes) -- the gcc lane, round 7c
 0x00656904 0x4 g_ApiVersion  # OVL2; s1:data (SOCOM 1's LOCAL 0x45C154, 4 bytes, 0 in both) -- the gcc lane, round 7c
 0x00656908 0x4 _sizeof_asrspi_engine  # OVL2; s1:data (SOCOM 1's GLOBAL 0x45C158, 4 bytes: 0xD8 in both, the engine block asrspi_OpenEngine allocates) -- the gcc lane, round 7c
@@ -1476,6 +1493,7 @@
 0x00676418 0x0 szTime.0  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_time_get_time_string_ptr)
 0x00676430 0x0 gBaseTimeStamp  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_time_platform_get_time_stamp +2)
 0x00676440 0x20 gCurTimeDate  # OVL2 bss; s1:data (round 8b): SOCOM 1's gCurTimeDate (the RTC's date and time, read by 0x63D648), after gBaseTimeStamp as there, grown by the milliseconds
+0x00676480 0x10 gapStreamSessions  # OVL2 bss; ours (round 10b): StreamMedia.c's four sessions, one per DME world (0x228 bytes each, allocated by 0x644100, freed by 0x644258, cleared by the startup's memset of 16 bytes)
 0x00676490 0x0 gstNatServiceAddress  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetNatServiceAddress +1)
 0x006764A8 0x0 gstClientAddressList  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetClientAddrList +1)
 0x0067A7A8 0x1000 NetObjectStatus  # OVL2 bss; s1:data-exact (size SOCOM 1's; via NetFreeAllObjects)

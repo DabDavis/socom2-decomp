@@ -2,11 +2,13 @@
  * 0x2ED460 registers (SOCOM 1's Open registered the same ones, by state) and their Medius
  * callbacks, the player-info pages, the chat queues, the censor, the messages' byte-order
  * converters (SOCOM 1's zNetMedius.cpp's code; the unit and its name are ours: OVL1 from about
- * 0x2ED460, after the ladder unit, to 0x2F628F, its static initialiser 0x4020E0 building the two
- * queues 0x44FA20 and 0x44FA50, whose destructor 0x2F5E50 and deque instances close it). Still
- * unwritten: the game's world report 0x2EF590 and details 0x2EF7F0, the player-info callback
- * 0x2F0020 and the player lists 0x2F0EA0-0x2F3B90 (class-vector walks and their sort), the chat's
- * private-line callbacks 0x2F4A20/0x2F4BA0 (cdeque front() inline) and the deque instances.
+ * 0x2ED460, after the ladder unit, to 0x2F6CFF, its static initialiser 0x4020E0 building the two
+ * queues 0x44FA20 and 0x44FA50, whose destructor 0x2F5E50 and deque instances close it -- the
+ * instances run on past 0x2F62B0 to 0x2F6CF7: 0x2F6340, 0x2F6600, 0x2F6A70 and 0x2F6BC0 are
+ * called only from this unit's deque copy constructor 0x2F5F80, its 0x2F6090 and ~__deque_buf
+ * 0x2F62B0, so they are its copies, and the lobby unit starts at 0x2F6D00). Still unwritten: the
+ * game's world report 0x2EF590 and details 0x2EF7F0, the player-info callback 0x2F0020 and the
+ * player lists 0x2F0EA0-0x2F3B90 (class-vector walks and their sort) and the deque instances.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
@@ -298,18 +300,16 @@ unsigned char func_003A4460();   /* the console's language */
 extern NetConnectionInfo data_0066A840;   /* the account's lobby server (OVL2 bss) */
 extern int data_0066A5E0;   /* the lobby server's connection (OVL2 bss) */
 extern float data_0044F8D0;   /* when the lobby server was asked for */
-int func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
+bool func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
 MediusErrorCode MediusUpdateClientState(MediusUpdateClientStateRequest *req);   /* MediusUpdateClientState */
 MediusErrorCode MediusSetGameListFilter(MediusSetGameListFilterRequest *req,
                               void (*cb)(int, int, int, MediusSetGameListFilterResponse *));   /* MediusSetGameListFilter */
 void func_002EFE10(int, int, int, MediusSetGameListFilterResponse *);   /* its callback */
-void func_002F5020();   /* the chat shown again */
 void func_002F3FF0(struct ChatSlot *slots);   /* a free slot looked for (below) */
 void func_002F7690();   /* (the lobby unit's) */
 void func_002F4FC0(int ready);   /* our readiness told the server */
 void func_002EF7F0();   /* the game's details sent to the lobby (below) */
 int func_002EF590(CValve *locked);   /* the game's world updated, the delay to the next returned */
-void func_002DF6A0(CZOnlineLobby *lobby);   /* the lobby's UI variables made again (the lobby's unit) */
 extern CValve *data_0044F9D0;   /* the game's lock, while it is up */
 extern unsigned int data_0044F9D8;   /* when the game's details next go to the lobby */
 extern unsigned char data_0066A5F8;   /* the details to go at once */
@@ -349,6 +349,7 @@ void func_002FA870(CZOnlineLobby *lobby);   /* the player's info asked for (the 
 void func_002FAA80(CZOnlineLobby *lobby);   /* and refreshed */
 }
 
+void UpdateChatDisplay();   /* the room's chat shown (below) */
 
 /* the lobby's state changed: pushed onto its queue (SOCOM 1 pushed inline; OVL1 0x2EFE20) */
 extern "C" void func_002E1610(void *fifo, const LOBBY_STATE *state);   /* the queue's push_back */
@@ -658,7 +659,7 @@ void cbLobbyServerConnect(int index)
         SetSessionKey(ver.SessionKey);
         CheckMediusError(MediusVersionServer(&ver, func_002EFE00));
         if (theLobby.uiv_MediusChatRecvVar)
-            func_002F5020();
+            UpdateChatDisplay();
     } else {
         theLobby.ChangeState(CONNECT_ERROR);
     }
@@ -708,7 +709,7 @@ void LobbyReadyToConnectStateHandler(LOBBY_STATE_FLAG flag)
     case EXIT: {
         MediusUpdateClientStateRequest upd;
 
-        func_002DF6A0(&theLobby);
+        theLobby.CreateUIResources();
         SetSessionKey(upd.SessionKey);
         upd.UserAction = 2;
         CheckMediusError(MediusUpdateClientState(&upd));
@@ -1068,7 +1069,17 @@ struct MediusFindPlayerRequest {
     char Name[32];   // 0x30
 };   // 0x50
 
-struct MediusFindPlayerResponse { MEDIUS_RESPONSE_HEAD };
+/* the player found (the friends unit's layout) */
+struct MediusFindPlayerResponse {
+    MEDIUS_RESPONSE_HEAD
+    int ApplicationID;   // 0x1c
+    char ApplicationName[32];   // 0x20
+    int ApplicationType;   // 0x40
+    int MediusWorldID;   // 0x44
+    int AccountID;   // 0x48
+    char AccountName[32];   // 0x4c
+    char EndOfList;   // 0x6c
+};
 
 /* a queue of chat lines (the name ours): four blank lines pushed and popped at the start, so its
  * first block is there before the first line -- the constructor is too tall to inline whole into
@@ -1094,15 +1105,13 @@ extern "C" {
 void func_002F5290(void *queue, const MediusChatMessage *msg);   /* a line queued */
 MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer */
-void func_002F4A20(int, int, int, MediusFindPlayerResponse *);   /* the private line's player found */
-void func_002F4BA0(const char *text, void *data);   /* the public line filtered: sent */
 MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
                               void (*cb)(int, int, int, MediusPlayerInfoResponse *));   /* MediusGetPlayerInfo */
 void func_002F0020(int, int, int, MediusPlayerInfoResponse *);   /* the player's info shown */
 void func_00300670();   /* the Medius library closed */
 void func_0030D770(CZNetwork *net);   /* the DME left (CZNetwork's) */
 void func_0030E3A0(CZNetwork *net, int);   /* and closed (CZNetwork's) */
-MediusErrorCode func_00649060(MediusSendDirectMessageRequest *req);   /* the direct message sent */
+MediusErrorCode MediusSendChatMessage(MediusSendDirectMessageRequest *req);   /* the direct message sent */
 void func_002A4050(void *chat, const char *text, CHAT_COLOR color, const char *name);   /* a line added to the chat */
 extern char data_00437690[];   /* the chat's window */
 }
@@ -1111,6 +1120,9 @@ extern "C" {
 extern CensorCallback data_0044FA00;
 extern void *data_0044FA08;
 }
+
+void cbFindChatPlayerID(int, int, int, MediusFindPlayerResponse *resp);   /* the private line's player found */
+void cbFilterChat(const char *text, void *data);   /* the public line filtered: sent */
 
 /* a chat line sent: queued, then a private one's player looked up, a public one filtered first
  * (SOCOM 1's SendChat filtered every line; OVL1 0x2F4860). The filter is Censor, inlined */
@@ -1137,12 +1149,12 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
         find.SearchType = 1;
         if (to)
             memcpy(find.Name, to, sizeof(find.Name));
-        CheckMediusError(MediusFindPlayer(&find, func_002F4A20));
+        CheckMediusError(MediusFindPlayer(&find, cbFindChatPlayerID));
     } else {
         msg.TargetID = -1;
         msg.MessageType = 0;
         func_002F5290(&data_0044FA20, &msg);
-        Censor(msg.Message, func_002F4BA0, &msg);
+        Censor(msg.Message, cbFilterChat, &msg);
     }
     return true;
 }
@@ -1273,7 +1285,89 @@ extern "C" void func_002F4D60(CZOnlineLobby *lobby, int account, int type, const
         memcpy(req.Message, text, sizeof(req.Message));
     req.MessageType = type;
     req.Message[sizeof(req.Message) - 1] = 0;
-    CheckMediusError(func_00649060(&req));
+    CheckMediusError(MediusSendChatMessage(&req));
+}
+
+/* the public line filtered: taken off the filter's queue (the block's front() inline) and sent to
+ * its target as a direct message -- the text above inlined -- and shown to us unless it was to
+ * ourselves, a private line in its own colour (SOCOM 1's cbFilterChat, which SendChat hands the
+ * censor as SOCOM 1's did, and which looked the room's players up instead; OVL1 0x2F4BA0) */
+void cbFilterChat(const char *text, void *data)
+{
+    MediusChatMessage msg = data_0044FA20.front();
+
+    data_0044FA20.pop();
+    func_002F4D60(&theLobby, msg.TargetID, msg.MessageType, text);
+    if (msg.TargetID != AccountInfo.AccountID)
+        theGame.GetCurrentState()->DisplayMessage(msg.Message, AccountInfo.AccountName, 0, 0, 0, 1, 0,
+                                                  msg.MessageType == 1 ? 5 : 0);
+}
+
+/* the private line's player found: the line, taken off the private queue, gets the account as its
+ * target and goes through the censor as a public one does -- else it is dropped and the menus told
+ * (SOCOM II's; OVL1 0x2F4A20, the callback SendChat's MediusFindPlayer is given; the name ours, by
+ * the status it checks, as the friends unit's cbFindBuddyListPlayerID) */
+void cbFindChatPlayerID(int, int, int, MediusFindPlayerResponse *resp)
+{
+    if (CheckMediusCallbackStatus("FindChatPlayerID", resp->StatusCode)) {
+        MediusChatMessage msg = data_0044FA50.front();
+
+        data_0044FA50.pop();
+        msg.TargetID = resp->AccountID;
+        func_002F5290(&data_0044FA20, &msg);
+        theLobby.Censor(msg.Message, cbFilterChat, 0);
+    } else {
+        data_0044FA50.pop();
+        LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+    }
+}
+
+/* the room's chat shown: each line in its colour -- white, grey, a public line's red, a clan line's
+ * yellow -- with its sender when it has one, one line of text each (SOCOM 1's cbFilterChat built
+ * the list itself; OVL1 0x2F5020: the lobby server's connect callback and the menu state's line
+ * insert 0x1F5020 call it; the name ours, as SOCOM 1's UpdateGameListDisplay). The counter is
+ * declared first (it takes s2, the room s1) and the line's sender and text are read through the
+ * iterator's `*` (through `->` the name's address fills the test's delay slot) */
+void UpdateChatDisplay()
+{
+    if (theLobby.uiv_MediusChatRecvVar) {
+        int n;
+        CRdrEditor ed;
+
+        ed.push(0);
+        BriefingRoom *room = ((BriefingRoomDB *)data_0044F568)->FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+
+        if (room) {
+            n = 1;
+
+            for (std::vector<MediusChatFwdMessage>::iterator i = room->m_chat.begin(); i != room->m_chat.end();
+                 ++i, ++n) {
+                const char *colour = "#C\xff\xff\xff";
+                char text[256];
+
+                switch (i->MessageType) {
+                case 0:
+                    colour = "#C\x80\x80\x80";
+                    break;
+                case 1:
+                    colour = "#C\x80\x40\x40";
+                    break;
+                case 2:
+                    colour = "#C\x80\x80\x40";
+                    break;
+                }
+                if (i->OriginatorAccountName[0])
+                    sprintf(text, "%s %s: %s", colour, (*i).OriginatorAccountName, (*i).Message);
+                else
+                    sprintf(text, "%s%s", colour, i->Message);
+                ed.addstringnode(text);
+                if (n < room->m_chat.size())
+                    ed.addstringnode("\n");
+            }
+        }
+        ed.pop();
+        theLobby.uiv_MediusChatRecvVar->Set(&ed);
+    }
 }
 
 /* the filtered text handed to the waiting callback, which is then forgotten (SOCOM 1's; OVL1
@@ -1319,40 +1413,35 @@ void func_002F3FF0(ChatSlot *slots)
 
 /* a game's rules written out as a list of numbers -- the 32 bytes after an 'A' block's five-byte
  * head or a 'B' block's six -- into a buffer nothing reads (a debug print gone; OVL1 0x2F3EF0:
- * the converter below and the LAN unit's JoinGame and CreateGame call it).
- * OPEN, 12 instructions (0xFC both): the target's stack puts 'A''s number buffer highest (sp+240),
- * 'B''s next (224) and the text lowest (48) -- this order gives text 80, the numbers 64 and 48 --
- * and case 'A' swaps s0/s1 (the target keeps the bytes' base in s1 and the counter in s0 in both
- * cases). Measured on the way: the base must be copied per case (a local pointer in each case:
- * the parameter used directly is copied to s0 at the entry) and indexed `p[i + 5]` with the counter
- * outside the loop (a `bytes[i]` pointer or `rules + 5` folds the offset and strength-reduces the
- * walk: 0x104); per-case text buffers do not share a slot (a 432-byte frame) */
+ * the converter below and the LAN unit's JoinGame and CreateGame call it). Open since round 9 (12
+ * instructions): the stack wants a number buffer per case, both declared ahead of the text (the
+ * first-declared takes the top slot: 'A''s 240, 'B''s 224, the text 48), and each case its own base
+ * copy and counter, the counter declared last (base s1, counter s0 in both) */
 void func_002F3EF0(char *rules)
 {
+    char numA[16];
+    char numB[16];
     char text[176];
-    int i;
 
     switch (rules[0]) {
     case 'A': {
         const unsigned char *p = (const unsigned char *)rules;
-        char num[16];
 
         sprintf(text, "[");
-        for (i = 0; i < 32; i++) {
-            sprintf(num, "%d, ", p[i + 5]);
-            strcat(text, num);
+        for (int i = 0; i < 32; i++) {
+            sprintf(numA, "%d, ", p[i + 5]);
+            strcat(text, numA);
         }
         strcat(text, "]");
         break;
     }
     case 'B': {
         const unsigned char *p = (const unsigned char *)rules;
-        char num[16];
 
         sprintf(text, "[");
-        for (i = 0; i < 32; i++) {
-            sprintf(num, "%d, ", p[i + 6]);
-            strcat(text, num);
+        for (int i = 0; i < 32; i++) {
+            sprintf(numB, "%d, ", p[i + 6]);
+            strcat(text, numB);
         }
         strcat(text, "]");
         break;

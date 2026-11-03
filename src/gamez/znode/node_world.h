@@ -8,10 +8,22 @@
 
 #include "znode.h"
 #include "../zar/zar.h"
+/* FreeVector, for the texture classes' inlines below: included, not declared ahead -- a function
+ * template declared before its definition is no longer inlined one level where it is called after
+ * the definition (ztex_manager.cpp's four FreeVector users all missed so) */
+#include "../zsys/zsys.h"
 
 namespace zdb {
 
 class CTexPalette;
+
+/* both lists' storage given up, each through FreeVector on its base vector (the temporaries
+ * three this-tests deep: SOCOM II instantiates FreeVector on the base std::vector) */
+inline void CDynTexList::Free()
+{
+    FreeVector<std::vector<CTexHandle *> >(m_tex_list);
+    FreeVector<std::vector<CTexPalette *> >(m_pal_list);
+}
 
 /* the libraries loaded, a list of them (SOCOM 1's DWARF: CAssetList : list, the model last found
  * cached at 0xc). node_assetlib.cpp's */
@@ -255,6 +267,31 @@ public:
     /* the chain dropped, to be rebuilt at the next load (SOCOM II's, out of line: SOCOM 1 stored
      * the zero in place; the name ours) */
     void DropChain();
+    /* SOCOM II's inlines, the names ours. The dynamic lists emptied and the chain dropped (the
+     * chain's zero stored in place, as SOCOM 1's Flush does); the packet buffer emptied and given
+     * up, the chain dropped (WipePktBuf's body: zrndr_pipe.cpp's copy 0x33B960 is byte-identical to
+     * 0x356B30); and all three -- what CPipe::Flush (for the two alpha buffers, each tested) and
+     * CGameMenu::Clear (for buffer 0) inline ONE level, calling the three out of line: its tree
+     * (Free, CDynTexList::Free, FreeVector's six) is taller than the level, while SOCOM 1's Flush
+     * inlined it whole. zrndr_pipe.cpp's copies are the ones the linker kept (0x33BA90, 0x33BAA0,
+     * 0x33B960, after Flush) */
+    void ClearDynTex()
+    {
+        m_dyntex_list.Clear();
+        m_chainp = 0;
+    }
+    void FreePktBuf()
+    {
+        m_pktbuf.clear();
+        FreeVector(m_pktbuf);
+        m_chainp = 0;
+    }
+    void Free()
+    {
+        ClearDynTex();
+        m_dyntex_list.Free();
+        FreePktBuf();
+    }
 
     char *m_name;   // 0x0
     unsigned char m_checkForOverflow;   // 0x4

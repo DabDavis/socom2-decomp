@@ -20,22 +20,61 @@ void func_006305C8(void *a, void *b);   /* (OVL2: the DME's set up) */
 
 extern BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
 extern BriefingRoom data_0044FAB0;   /* a room (the lobby unit's) */
-extern BriefingRoom *data_0044FE10;   /* the room we are in, if any */
 void func_002E81A0();   /* the clan team forgotten (the clan unit's) */
+void func_002E3AA0(CZOnlineLobby *lobby, C2D *page);   /* the room list asked for (the rooms' unit's) */
 }
+
+/* the LAN lobby (zNetLANLobby.cpp's CZLANLobby: here only its room, the one we are in, and its test) */
+class CZLANLobby {
+public:
+    bool IsActive();
+
+    BriefingRoom *m_room;   // 0x0
+};
+
+extern CZLANLobby data_0044FE10;   /* the LAN lobby */
 
 void ReleaseFileTransfers();   /* the Medius file API's transfers forgotten (zNetMediusFile.cpp) */
 
-/* a valve (zanim.h's CValve: only its look-up here) */
+/* a valve (zanim.h's CValve: its look-up and its setter here) */
 enum VALVE_TYPE {
     VALVE_TYPE_0,
     VALVE_TYPE_1
 };
 
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+    /* the value set, the callbacks told when it turns on or off (the chat unit's, zanim.h's) */
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
+
+    char *m_name;   // 0x0
+    unsigned short m_value;   // 0x4
+    unsigned short m_flags;   // 0x6
 };
+
+extern "C" {
+extern float data_004A449C;   /* the frame's time (fts_patch.cpp's) */
+}
 
 /* the clan's record (the clan unit's StoredClanInfo: Init clears the clan, its leader and name) */
 struct LobbyClanInfo {
@@ -168,12 +207,86 @@ void CZOnlineLobby::ReleaseUIResources()
     uiv_ClanLadderLeaders = 0;
     uiv_ClanLadderRanking = 0;
     g_bJoiningRandomGame = false;
-    BriefingRoom *room = data_0044FE10;
+    BriefingRoom *room = data_0044FE10.m_room;
 
     if (room) {
         room->DeleteGames();
         ReleaseVector<RoomGame>(*room);
     }
+}
+
+/* the lobby run each frame (SOCOM 1's Tick, zNetUpdate's call; OVL1 0x2DFE50): a state waiting is
+ * entered -- the current one's handler told it is left, the next taken off the queue (the block's
+ * front() inline, SOCOM 1 called the circular buffer's [] out of line) and told it is entered, the
+ * online valve set to it -- else the current one ticked; then the game clock counted down by the
+ * frame's time while it is not negative */
+/* a variable's number, read as zrdr.h's const Real() reads it (zui.h's Real() is not const: read
+ * through a non-const view, MW reuses its type byte for the float setter's test, where the target
+ * loads it again -- a const and a non-const access are not one expression to MW's CSE) */
+inline float ClockReal(const _zrdr *z)
+{
+    if (z->type == 2)
+        return z->real;
+    else if (z->type == 1)
+        return (float)z->integer;
+    else
+        return 0.0f;
+}
+
+void CZOnlineLobby::Tick()
+{
+    if (m_isopen) {
+        if (!m_state_change_fifo.empty()) {
+            RunStateHandler(m_current_state, EXIT);
+            m_current_state = m_state_change_fifo.front();
+            m_state_change_fifo.pop();
+            RunStateHandler(m_current_state, ENTRY);
+            if (socom_online_state)
+                socom_online_state->SetValue(m_current_state);
+        } else {
+            RunStateHandler(m_current_state, TICK);
+        }
+        if (uiv_GameClock) {
+            float t = ClockReal(uiv_GameClock);
+
+            if (!(t < 0.0f)) {
+                t -= data_004A449C;
+                *uiv_GameClock = t;
+            }
+        }
+    }
+}
+
+/* the lobby's UI variables made (SOCOM II's, out of SOCOM 1's Open; OVL1 0x2DF6A0: Open, the LAN
+ * lobby's Connect, the ready-to-connect state and UIDisconnectFromGameServer call it; the name ours,
+ * after SOCOM 1's ReleaseUIResources): the lists' variables, the chat's an empty list, the messages'
+ * empty strings; no game clock; the room list asked for unless on a LAN; the counts cleared */
+void CZOnlineLobby::CreateUIResources()
+{
+    uiv_GameList = theUIVarManager.Add("GAMELISTVAR", 0, UIVL_TEMPORARY);
+    uiv_RoomList = theUIVarManager.Add("ROOMLISTVAR", 0, UIVL_TEMPORARY);
+    uiv_RoomPlayerList = theUIVarManager.Add("ROOMPLAYERLISTVAR", 0, UIVL_TEMPORARY);
+    CRdrEditor ed;
+
+    ed.push(0);
+    ed.pop();
+    uiv_MediusChatRecvVar = theUIVarManager.Add("MEDIUS_CHAT_RECV_VAR", &ed, UIVL_TEMPORARY);
+    uiv_MediusMOTD = theUIVarManager.Add("MEDIUS_MOTD", 0, UIVL_TEMPORARY);
+    *uiv_MediusMOTD = "";
+    uiv_ClanMessages = theUIVarManager.Add("MEDIUS_CLAN_MESSAGES", 0, UIVL_TEMPORARY);
+    *uiv_ClanMessages = "";
+    uiv_ClanInvitations = theUIVarManager.Add("INVITED_PLAYERS", 0, UIVL_TEMPORARY);
+    uiv_ClanRoster = theUIVarManager.Add("CLAN_ROSTER", 0, UIVL_TEMPORARY);
+    uiv_MediusMyInvites = theUIVarManager.Add("MY_CLAN_INVITES", 0, UIVL_TEMPORARY);
+    uiv_MediusLadderTop10 = theUIVarManager.Add("LADDER_LEADERS", 0, UIVL_TEMPORARY);
+    uiv_MediusLadderRanking = theUIVarManager.Add("LADDER_RANKING", 0, UIVL_TEMPORARY);
+    uiv_ClanLadderLeaders = theUIVarManager.Add("CLAN_LADDER_LEADERS", 0, UIVL_TEMPORARY);
+    uiv_ClanLadderRanking = theUIVarManager.Add("CLAN_LADDER_RANKING", 0, UIVL_TEMPORARY);
+    uiv_GameClock = 0;
+    if (!data_0044FE10.IsActive())
+        func_002E3AA0(this, 0);
+    data_0066A9A0 = 0;
+    data_0066A998 = 0;
 }
 
 /* the state's handler called with the flag, when the state has one (SOCOM II's; OVL1 0x2DFE10) */

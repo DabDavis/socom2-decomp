@@ -7,19 +7,19 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Add__12IgnoreVectorFP10IgnoreItem(M2C_UNK *, char *); /* extern */
 s32 CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(M2C_UNK *, s32); /* extern */
-M2C_UNK func_00301920(M2C_UNK *);                   /* extern */
-M2C_UNK func_00301ED0(M2C_UNK *, char *);           /* extern */
+M2C_UNK UpdateDisplay__12IgnoreVectorFv(M2C_UNK *); /* extern */
 extern M2C_UNK data_003F6028;
 extern M2C_UNK data_0044FDE0;
 
 void func_00300F70(s32 arg0, s32 arg1, s32 arg2, char *arg3) {
     if (CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(&data_003F6028, SC_MEMBER(arg3, s32 *, 0x18)) != 0) {
-        func_00301ED0(&data_0044FDE0, arg3);
+        Add__12IgnoreVectorFP10IgnoreItem(&data_0044FDE0, arg3);
         if (SC_MEMBER(arg3, s8 *, 0x44) != 0) {
-            func_00301920(&data_0044FDE0);
+            UpdateDisplay__12IgnoreVectorFv(&data_0044FDE0);
         }
     } else {
-        func_00301920(&data_0044FDE0);
+        UpdateDisplay__12IgnoreVectorFv(&data_0044FDE0);
     }
 }

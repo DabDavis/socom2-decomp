@@ -146,7 +146,7 @@
 0x001874D0 0x1C4 uflow__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:gap
 0x001876A0 0x20C underflow__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:gap
 0x001878B0 0x18 showmanyc__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:exact
-0x001878D0 0x134 func_001878D0  # MAIN
+0x001878D0 0x134 __ct__Q23std39basic_filebuf<c,Q23std14char_traits<c>>FP7__sFILE  # MAIN; by hand (MAIN runtime lane round 3): basic_filebuf<char>'s FILE constructor -- __nInit's constructor builds its three static filebufs with it on stdin/stdout/stderr (0x184CB0..), and it sits after showmanyc<char> as SOCOM 1's DWARF __ct__...FP7__sFILE (0x147A50) does; src/main/msl/iostream.cpp
 0x00187A10 0xE0 imbue__Q23std39basic_filebuf<w,Q23std14char_traits<w>>FRCQ23std6locale  # MAIN; s1:calls
 0x00187AF0 0x8 do_always_noconv__Q23std14codecvt<w,c,i>CFv  # MAIN; vtable (slot +28 of 0x1D51A0; false); src/main/msl/iostream.cpp
 0x00187B00 0x1C getloc__Q23std41basic_streambuf<w,Q23std14char_traits<w>>CFv  # MAIN; s1:order (SOCOM 1's 0x147C80 between do_always_noconv<wchar_t> and sync<wchar_t>, as here); src/main/msl/iostream.cpp
@@ -159,13 +159,13 @@
 0x001885F0 0x1C4 uflow__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
 0x001887C0 0x21C underflow__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
 0x001889E0 0x28 showmanyc__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
-0x00188A10 0x134 func_00188A10  # MAIN
+0x00188A10 0x134 __ct__Q23std39basic_filebuf<w,Q23std14char_traits<w>>FP7__sFILE  # MAIN; by hand (MAIN runtime lane round 3): basic_filebuf<wchar_t>'s FILE constructor -- __wInit's constructor builds its three static filebufs with it, after showmanyc<wchar_t> as SOCOM 1's (0x148A70); src/main/msl/iostream.cpp
 0x00188B50 0x98 __as__Q23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>FRCQ23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>  # MAIN; s1:calls
 0x00188BF0 0xB8 read1__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fb  # MAIN; s1:align
 0x00188CB0 0x1B4 unshift__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:align
 0x00188E70 0xB8 read1__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fb  # MAIN; s1:align
-0x00188F30 0x190 func_00188F30  # MAIN
-0x001890C0 0x1E0 func_001890C0  # MAIN
+0x00188F30 0x190 read2__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fib  # MAIN; by hand (MAIN runtime lane round 3): uflow<char> and underflow<char> call it with (this, encoding(), peek) when the encoding is fixed, as SOCOM 1's call read2 (0x148F80); after read1<char> as in SOCOM 1's DWARF order; src/main/msl/iostream.cpp
+0x001890C0 0x1E0 read3__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fb  # MAIN; by hand (MAIN runtime lane round 3): uflow<char> and underflow<char> call it with (this, peek) when the encoding is variable, as SOCOM 1's call read3 (0x149110); after read2<char> as in SOCOM 1's DWARF order; src/main/msl/iostream.cpp
 0x001892A0 0x1C4 write2__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fic  # MAIN; s1:align
 0x00189470 0xE0 __use_facet<Q23std8ctype<c>>__3stdFRCQ23std6localeQ23std12__chooser<1>_RCQ23std8ctype<c>  # MAIN; s1:calls; by hand (MAIN runtime lane round 2): SOCOM 1's name with the return type MW 3.0 appends to a function template instance's name (min<i>__3stdFRCiRCi_RCi alike) -- the name basic_ios<char>::init's widen calls (src/main/msl/msl.h)
 0x00189550 0xD8 __use_facet<Q23std8ctype<w>>__3stdFRCQ23std6localeQ23std12__chooser<1>_RCQ23std8ctype<w>  # MAIN; s1:calls; by hand (MAIN runtime lane round 2): SOCOM 1's name with MW 3.0's return-type suffix (as 0x189470) -- the name basic_ios<wchar_t>::init's widen calls (src/main/msl/msl.h)
@@ -175,8 +175,8 @@
 0x00189800 0x10 do_in__Q23std14codecvt<c,c,i>CFRiPCcPCcRPCcPcPcRPc  # MAIN; vtable (slot +16 of 0x1D51D0; noconv); src/main/msl/iostream.cpp
 0x00189810 0xC do_unshift__Q23std14codecvt<c,c,i>CFRiPcPcRPc  # MAIN; vtable (slot +20 of 0x1D51D0); src/main/msl/iostream.cpp
 0x00189820 0x1C4 write2__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fiw  # MAIN; s1:align
-0x001899F0 0x1E0 func_001899F0  # MAIN
-0x00189BD0 0x190 func_00189BD0  # MAIN
+0x001899F0 0x1E0 read3__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fb  # MAIN; by hand (MAIN runtime lane round 3): uflow<wchar_t>/underflow<wchar_t>'s variable-encoding read, after write2<wchar_t> as SOCOM 1's read3<wchar_t> (0x1499F0); src/main/msl/iostream.cpp
+0x00189BD0 0x190 read2__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fib  # MAIN; by hand (MAIN runtime lane round 3): uflow<wchar_t>/underflow<wchar_t>'s fixed-encoding read, after read3<wchar_t> as SOCOM 1's read2<wchar_t> (0x149BA0); src/main/msl/iostream.cpp
 0x00189D60 0x1B4 unshift__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
 0x00189F20 0xC do_unshift__Q23std14codecvt<w,c,i>CFRiPcPcRPc  # MAIN; vtable (slot +20 of codecvt<wchar_t,char,int>'s vtable 0x1D51A0); src/main/msl/iostream.cpp
 0x00189F30 0x2D4 func_00189F30  # MAIN
@@ -1062,7 +1062,7 @@
 0x001BB688 0xB0 sceMpegInit  # MAIN unaligned; s1:calls (startPss calls it just before sceMpegCreate where SOCOM 1's calls sceMpegInit; 0xB0 against 0xA8) -- the online lane
 0x001BB738 0x20C sceMpegCreate  # MAIN unaligned; s1:calls
 0x001BB948 0x8 sceMpegDelete  # MAIN unaligned; s1:calls (stopPss's call where SOCOM 1's calls sceMpegDelete; 8 bytes in both) -- the online lane
-0x001BB950 0x3C func_001BB950  # MAIN
+0x001BB950 0x3C sceMpegAddBs  # MAIN; s1:order (the demo's object 0x1593B8: after sceMpegDelete, the same body -- _sendDataToIPU(mp->sys, bs, (size + 19) / 16 * 16) -- a jal and return 1 where the demo tail-calls)
 0x001BB990 0x48 sceMpegGetPicture  # MAIN; s1:exact
 0x001BB9D8 0x44 sceMpegGetPictureRAW8  # MAIN unaligned; s1:exact
 0x001BBA20 0x50 sceMpegGetPictureRAW8xy  # MAIN; s1:exact
@@ -1076,17 +1076,17 @@
 0x001BBB88 0x24 sceMpegAddCallback  # MAIN unaligned; s1:exact
 0x001BBBB0 0x50 _dispatchMpegCallback  # MAIN; s1:exact
 0x001BBC00 0x28 _dispatchMpegCbNodata  # MAIN; s1:callee
-0x001BBC28 0x18 func_001BBC28  # MAIN unaligned
-0x001BBC40 0x14 func_001BBC40  # MAIN
-0x001BBC58 0x10 func_001BBC58  # MAIN unaligned
-0x001BBC68 0xC func_001BBC68  # MAIN unaligned
-0x001BBC78 0xC func_001BBC78  # MAIN unaligned
-0x001BBC88 0xC func_001BBC88  # MAIN unaligned
-0x001BBC98 0xC func_001BBC98  # MAIN unaligned
+0x001BBC28 0x18 sceMpegSetDefaultPtsGap  # MAIN unaligned; s1:order (after _dispatchMpegCbNodata: sys+0x78 = gap, sys+0x70 = 1, as the demo's)
+0x001BBC40 0x14 sceMpegResetDefaultPtsGap  # MAIN; s1:order (the next: sys+0x78 and sys+0x70 cleared, as the demo's)
+0x001BBC58 0x10 sceMpegSetImageBuff  # MAIN unaligned; s1:order (the next: sys+0xD8 = buf, as the demo's)
+0x001BBC68 0xC sceMpegDispWidth  # MAIN unaligned; s1:order (the next: returns sys+0xCC, as the demo's)
+0x001BBC78 0xC sceMpegDispHeight  # MAIN unaligned; s1:order (the next: returns sys+0xD0, as the demo's)
+0x001BBC88 0xC sceMpegDispCenterOffX  # MAIN unaligned; s1:order (the next: returns sys+0xB4, as the demo's)
+0x001BBC98 0xC sceMpegDispCenterOffY  # MAIN unaligned; s1:order (the next: returns sys+0xB4, as the demo's)
 0x001BBCA8 0x10 sceSetBrokenLink  # MAIN unaligned; s1:exact
-0x001BBCB8 0x18 func_001BBCB8  # MAIN unaligned
+0x001BBCB8 0x18 sceSetPtm  # MAIN unaligned; s1:order (after sceSetBrokenLink: sys+0xF8 = 1, sys+0xF0 = ptm, as the demo's)
 0x001BBCD0 0x14 _alalcInit  # MAIN; s1:exact
-0x001BBCE8 0xC func_001BBCE8  # MAIN unaligned
+0x001BBCE8 0xC _alalcSetDynamic  # MAIN unaligned; s1:order (after _alalcInit: mark = cur, as the demo's)
 0x001BBCF8 0xC _alalcFree  # MAIN unaligned; s1:callee
 0x001BBD08 0x6C _alalcAlloc  # MAIN unaligned; s1:exact
 0x001BBD78 0x18 _alalcRest  # MAIN unaligned; s1:exact
@@ -1095,7 +1095,7 @@
 0x001BC018 0x44 _decodeOrSkip  # MAIN unaligned; s1:exact
 0x001BC060 0x15C _decodeOrSkipField  # MAIN; s1:exact
 0x001BC1C0 0x68 _sceMpegFlush  # MAIN; s1:exact
-0x001BC228 0xC func_001BC228  # MAIN unaligned
+0x001BC228 0xC _initSeqAgain  # MAIN unaligned; s1:order (the first of the demo's object 0x159F10: sys+0x848 = 0, _ipuSetMPEG1(1), as the demo's)
 0x001BC238 0x7C _lastFrame  # MAIN unaligned; s1:exact
 0x001BC2B8 0x60 _clearOnce  # MAIN unaligned; s1:exact
 0x001BC318 0xC8 _clearEach  # MAIN unaligned; s1:exact
@@ -1110,12 +1110,12 @@
 0x001BCA50 0xE0 _setDefaultQM  # MAIN; s1:exact
 0x001BCB30 0x130 _sequenceExtension  # MAIN; s1:exact
 0x001BCC60 0x8C _sequenceDisplayExtension  # MAIN; s1:exact
-0x001BCCF0 0xC func_001BCCF0  # MAIN
-0x001BCD00 0xC func_001BCD00  # MAIN
-0x001BCD10 0xC func_001BCD10  # MAIN
-0x001BCD20 0xC func_001BCD20  # MAIN
-0x001BCD30 0x24 func_001BCD30  # MAIN
-0x001BCD58 0x24 func_001BCD58  # MAIN unaligned
+0x001BCCF0 0xC _sequenceScalableExtension  # MAIN; s1:order (after _sequenceDisplayExtension in the demo's object 0x159F10; _Error with its own message '_sequenceScalableExtension() is not implemented')
+0x001BCD00 0xC _unknown_extension  # MAIN; s1:order (the next; _Error 'Unknown Extension')
+0x001BCD10 0xC _pictureSpatialScalableExtension  # MAIN; s1:order (the next; _Error '_pictureSpatialScalableExtension is not supported')
+0x001BCD20 0xC _pictureTemporalScalableExtension  # MAIN; s1:order (the next; _Error '_pictureTemporalScalableExtension is not supported')
+0x001BCD30 0x24 _defStopDMA  # MAIN; s1:order (the demo's object 0x15AA18, its first: sceIpuStopDMA(&sys->dmaEnv); the callback sceMpegCreate installs for sceMpegCbStopDMA)
+0x001BCD58 0x24 _defRestartDMA  # MAIN unaligned; s1:order (the demo's object 0x15AA18, its second: sceIpuRestartDMA(&sys->dmaEnv); installed for sceMpegCbRestartDMA)
 0x001BCD80 0xC4 sceSifMInitRpc  # MAIN; s1:exact
 0x001BCE48 0xC func_001BCE48  # MAIN unaligned
 0x001BCE58 0xA8 func_001BCE58  # MAIN unaligned; s1~ _sceRpcGetPacket (one of 2)
@@ -1620,10 +1620,10 @@
 0x001F9F20 0x3D8 SetupGhostText__4CHUDF10MENU_STATE  # OVL1; by hand (hud_main.cpp: CHUD::Tick's two calls with the menu state; puts 'You are a ghost.  You will play the next' (a ghost) or 'You have died.  Use the ...' on the piggyback strings, turns theHUD off and places the six lines, SOCOM II's own; the name ours)
 0x001FA300 0x5C PauseGame__4CHUDFv  # OVL1; s1:order by hand (hud_main.cpp: between Tick and Init as SOCOM 1's PauseGame; returns the bool CCoreState::Tick tests before ticking the world, as SOCOM 1's -- the menu state among pause/map/orders and not networked)
 0x001FA360 0xF98 Init__4CHUDFPQ23zdb6CWorld  # OVL1; s1:callee (CCoreState::Init's call after the constructor, with the world, as SOCOM 1's; 0xF98 to SOCOM 1's 0xFA0)
-0x001FB300 0x70 __dt__Q23std62vector<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>>Fv  # OVL1; by hand (a pointer vector's destructor, three this tests and data_ at 8 freed, as include/vector's; hud_main.cpp emits vector<CAssetLib *>'s for Add2D's C2D::CLibList, and the font code's callers (0x35A650 frees the font's list at +0x10 through a swapped temporary) link this copy)
+0x001FB300 0x70 __dt__Q23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>Fv  # OVL1; by hand (a pointer vector's destructor, three this tests and data_ at 8 freed, as include/vector's; hud_main.cpp emits vector<CAssetLib *>'s for Add2D's C2D::CLibList, and the font code's callers (0x35A650 frees the font's list at +0x10 through a swapped temporary) link this copy); the integrator (the world lane r3's request, vetted): vector<CTexHandle *>'s, not vector<CAssetLib *>'s -- FreeVector's temporary at 0x35A650 is destroyed through it (the pipe's vector<CTexHandle *> clear/swap copies beside it); hud_main.cpp emits three pointer-vector destructors where the HUD's range holds two (this and 0x1FDDA0)
 0x001FB370 0x44 func_001FB370  # OVL1
 0x001FB3C0 0x8 __ct__6CPnt3DFv  # OVL1; zmath.h's inline CPnt3D() {} out of line (jr ra; move v0,a0): new CZBodyPart calls it for the points at 0x0 and 0x10 before CQuat's copy 0x28EB60 for 0x20/0x30, and CHUD::Init calls it -- the body lane
-0x001FB3D0 0x14 __ct__Q23std62vector<PQ23zdb9CAssetLib,Q23std28allocator<PQ23zdb9CAssetLib>>Fv  # OVL1; by hand (the UI lane's round 6, vetted by the integrator: a pointer vector's default constructor -- three words zeroed, this returned -- paired with ~vector<CAssetLib *> (0x1FB300) in the keyboard's __construct_array 0x38E6F0)
+0x001FB3D0 0x14 __ct__Q23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>Fv  # OVL1; by hand (the UI lane's round 6, vetted by the integrator: a pointer vector's default constructor -- three words zeroed, this returned -- paired with ~vector<CAssetLib *> (0x1FB300) in the keyboard's __construct_array 0x38E6F0); the integrator (the world lane r3's request, vetted): vector<CTexHandle *>'s, not vector<CAssetLib *>'s -- the font code at 0x35A650 builds FreeVector's temporary through it beside the pipe's own vector<CTexHandle *> clear and swap copies 0x33BBC0/0x33BB80, and Add2D, the old name's basis, inlines its CLibList's constructor; measured: the pipe's CDynTexList::Free byte-exact, nothing lost
 0x001FB3F0 0x30 func_001FB3F0  # OVL1
 0x001FB420 0x36C ReInit_Init__4CHUDFv  # OVL1; s1:order (hud_main.cpp: after Init, as SOCOM 1's; the states' call)
 0x001FB790 0x2A0 ReInit_Uninit__4CHUDFv  # OVL1; s1:calls (SOCOM 1's sequence: the map's UninitMap, the team names' Clear, both weapon selectors' UnInit, the mission cameras', the action bitmap's and the reticle's UnInit, in order)
@@ -1659,7 +1659,7 @@
 0x001FDBE0 0xA0 __dt__9CPlainBmpFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FDC80 0x60 __dt__10UIVarMixinFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FDCE0 0xC0 func_001FDCE0  # OVL1
-0x001FDDA0 0x70 func_001FDDA0  # OVL1
+0x001FDDA0 0x70 __dt__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>Fv  # OVL1; the integrator (the world lane r3's request, vetted): vector<CTexPalette *>'s destructor -- CDynTexList::Free 0x33BAA0 calls it for the palette list; hud_main.cpp's own copy matches here with the name
 0x001FDE10 0x20 SetCanHandleInput__3C2DFb  # OVL1; s1:vtable by hand (C2D's slot 17, inline: the flag's top bit set)
 0x001FDE30 0x74 func_001FDE30  # OVL1
 0x001FDEB0 0x28 func_001FDEB0  # OVL1
@@ -4650,7 +4650,7 @@
 0x002DF560 0xD4 SyncGameClock__13CZOnlineLobbyFi  # OVL1; s1:calls
 0x002DF640 0xC MediusConnectionIndex__13CZOnlineLobbyFv  # OVL1; s1:calls by hand (the states lane: the network senders take the connection index through it where SOCOM 1's do)
 0x002DF650 0x4C UnInit__13CZOnlineLobbyFv  # OVL1; s1:callee
-0x002DF6A0 0x23C func_002DF6A0  # OVL1
+0x002DF6A0 0x23C CreateUIResources__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 11 (the lobby's UI variables made: SOCOM 1's Open made them in its tail, SOCOM II's Open 0x2E0030 calls this, as do the LAN lobby's Connect, LobbyReadyToConnectStateHandler and UIDisconnectFromGameServer; the name after SOCOM 1's ReleaseUIResources)
 0x002DF8E0 0x170 ReleaseUIResources__13CZOnlineLobbyFv  # OVL1; s1 by hand (called by UnInit, Close and the destructor, as SOCOM 1's UnInit, Close and destructor call ReleaseUIResources; frees the lobby's lists)
 0x002DFA50 0x7C ReleaseVector<36MediusGetBuddyList_ExtraInfoResponse>__FRQ23std106vector<P36MediusGetBuddyList_ExtraInfoResponse,Q23std50allocator<P36MediusGetBuddyList_ExtraInfoResponse>>_v  # OVL1; ours (ReleaseVector on the friends 0x44FDC0, from ReleaseUIResources; byte-exact)
 0x002DFAD0 0x7C ReleaseVector<8RoomGame>__FRQ23std48vector<P8RoomGame,Q23std21allocator<P8RoomGame>>_v  # OVL1; ours (ReleaseVector on a room's games, 0x44FAB0's and *0x44FE10's, from ReleaseUIResources; byte-exact)
@@ -4661,7 +4661,7 @@
 0x002DFD50 0x7C ReleaseVector<10LadderItem>__FRQ23std54vector<P10LadderItem,Q23std24allocator<P10LadderItem>>_v  # OVL1; ours (a vector cleared and swapped with an empty one, the temporary's storage freed -- a non-inline template's instance: ReleaseUIResources on the two player ladders; byte-exact)
 0x002DFDD0 0x38 Close__13CZOnlineLobbyFv  # OVL1; s1:ui (the UI command table's 'UnInitNetwork' handler 0x27E5C0 calls it on theLobby where SOCOM 1's UIUnInitNetwork calls Close)
 0x002DFE10 0x34 RunStateHandler__13CZOnlineLobbyF11LOBBY_STATE16LOBBY_STATE_FLAG  # OVL1; ours (the state's handler, m_state_handler[state] at +0, called with the flag when there is one; the state an int narrowed inside, andi 0xff; the state machine 0x2ED460 calls it on theLobby)
-0x002DFE50 0x1D4 func_002DFE50  # OVL1
+0x002DFE50 0x1D4 Tick__13CZOnlineLobbyFv  # OVL1; s1:order by hand, the online lane round 11 (SOCOM 1's CZOnlineLobby::Tick 0x327C50 instruction for instruction but the game clock now a member read through this and its float setter's equality test; CZNetwork::zNetUpdate calls it on theLobby as SOCOM 1's does)
 0x002E0030 0x410 func_002E0030  # OVL1
 0x002E0440 0x10 func_002E0440  # OVL1
 0x002E0450 0x17C Init__13CZOnlineLobbyFv  # OVL1; s1 by hand (COurGame::StartEngine calls it on theLobby where SOCOM 1's StartEngine calls CZOnlineLobby::Init)
@@ -4942,20 +4942,20 @@
 0x002F42E0 0x18 CheckMediusError__F15MediusErrorCode  # OVL1; ours (every Medius request in OVL1 0x2DF560-0x306670 hands the API call's result to it and drops the answer: true for 0, MediusSuccess)
 0x002F4300 0x560 LookupMediusCallbackStatus__F20MediusCallbackStatus  # OVL1; s1 by hand (the callbacks sprintf its string for a failed status, as SOCOM 1's callbacks call LookupMediusCallbackStatus for theirs: cbSendClanMessage's 'Failed To Send Message. Error -> %s', cbDisbandClan's 'Clan Disband Error: %s')
 0x002F4860 0x1B4 SendChat__13CZOnlineLobbyFPCcPCc  # OVL1; s1 by hand (the UI-commands lane's lead: SOCOM 1's chat senders call CZOnlineLobby::SendChat where these call it on theLobby; SOCOM II's takes the text and a second string, a whisper's target -- null for the room, a type 1 message otherwise)
-0x002F4A20 0x180 func_002F4A20  # OVL1
-0x002F4BA0 0x1B8 func_002F4BA0  # OVL1
+0x002F4A20 0x180 cbFindChatPlayerID__FiiiP24MediusFindPlayerResponse  # OVL1; ours, the online lane round 11 (the callback SendChat's MediusFindPlayer is given for a private line; named by the status it checks, 'FindChatPlayerID', as the friends unit's cbFindBuddyListPlayerID)
+0x002F4BA0 0x1B8 cbFilterChat__FPCcPv  # OVL1; s1:ref by hand, the online lane round 11 (SOCOM 1's SendChat hands cbFilterChat to Censor; SOCOM II's SendChat 0x2F4860 hands this to its inlined censor for a public line, and 0x2F4A20 for a private one: the line taken off the filter's queue and sent as a direct message)
 0x002F4D60 0x90 func_002F4D60  # OVL1
 0x002F4DF0 0xA8 Censor__13CZOnlineLobbyFPCcPFPCcPv_vPv  # OVL1; s1:ui (UINetCensorText and SendChatMsg call it, as SOCOM 1's call Censor)
 0x002F4EA0 0x44 cbCensor__FiiiP24MediusTextFilterResponse  # OVL1; s1:calls by hand (CZOnlineLobby::Censor hands it to MediusTextFilter as SOCOM 1's Censor hands cbCensor: the filtered text at +0x15 to the waiting callback, then the callback and its data cleared)
 0x002F4EF0 0xCC cbChatMessage__FiiiP20MediusChatFwdMessage  # OVL1; s1 by hand (MediusInit 0x300840 hands it as the library's first callback, where SOCOM 1's AuxInitNetwork hands cbChatMessage: a MediusChatFwdMessage shown with sprintf '%s: %s' through 0x2A4050, private and clan ones anywhere)
 0x002F4FC0 0x60 func_002F4FC0  # OVL1
-0x002F5020 0x1B8 func_002F5020  # OVL1
+0x002F5020 0x1B8 UpdateChatDisplay__Fv  # OVL1; ours, the online lane round 11 (the room's chat shown: its lines from the room's vector<MediusChatFwdMessage> 0x88, coloured by type, into MEDIUS_CHAT_RECV_VAR -- what SOCOM 1's cbFilterChat did at its end; cbLobbyServerConnect and the menu state's line insert 0x1F5020 call it; named as SOCOM 1's UpdateGameListDisplay)
 0x002F51E0 0xA8 pop_front__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's pop: the private-line callbacks and the queue's pop 0x2F5ED0; open in include/deque)
 0x002F5290 0x420 push_back__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FRC17MediusChatMessage  # OVL1; ours, the online lane round 10 (the chat deque's push: SendChat and the queue's push 0x2F5EE0; open in include/deque, 0x370 against 0x420)
 0x002F56B0 0x50 swap__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FRQ210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>  # OVL1; s1:exact
 0x002F5700 0x238 func_002F5700  # OVL1
 0x002F5940 0xE4 func_002F5940  # OVL1
-0x002F5A30 0xD8 func_002F5A30  # OVL1
+0x002F5A30 0xD8 clear__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 11 (the chat deque's clear: its pop_front 0x2F51E0 calls it when one line is left, as the lobby queue's pop_front 0x2E1560 calls its clear 0x2E1B20; it leaves start_ at 4, half of the 8-line block)
 0x002F5B10 0x1F8 func_002F5B10  # OVL1
 0x002F5D10 0x13C func_002F5D10  # OVL1
 0x002F5E50 0x70 __dt__10CChatQueueFv  # OVL1; ours, the online lane round 10 (the chat queues' destructor: __sinit_zNetMediusChat.cpp registers it for both)
@@ -4990,7 +4990,7 @@
 0x002F7AC0 0x180 cbGetPolicy__FiiiP23MediusGetPolicyResponse  # OVL1; ours (GetUsagePolicy's MediusGetPolicy callback: 'GetPolicyRequest' checked, the policy text built into 'UsagePolicy' through a CRdrEditor)
 0x002F7C40 0x144 func_002F7C40  # OVL1
 0x002F7D90 0x210 func_002F7D90  # OVL1
-0x002F7FA0 0x114 func_002F7FA0  # OVL1
+0x002F7FA0 0x114 SetConnectionInfo__13CZOnlineLobbyFP17NetConnectionInfo  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's SetConnectionInfo 0x329F00, 0x118 bytes: the game server's NetConnectionInfo copied member by member into the caller's; CZNetwork's two connects 0x30D380/0x30D1B0 call it on theLobby, as SOCOM 1's zNetConnect does)
 0x002F80C0 0x54 SendEndGameReport__13CZOnlineLobbyFv  # OVL1; s1:ui ('DisconnectFromGameServer' 0x27E420 calls it before RejoinRoom, as SOCOM 1's UIDisconnectFromGameServer does; the session key copied and one Medius call)
 0x002F8120 0x108 AdvanceMissionSequence__13CZOnlineLobbyFv  # OVL1; s1:ui ('AdvanceMPMission' 0x279490, as SOCOM 1's UIAdvanceMPMission)
 0x002F8230 0x40 ResetMissionSequence__13CZOnlineLobbyFv  # OVL1; s1:ui ('SetMPMissionSeq' 0x278EB0, as SOCOM 1's UISetMPMissionSeq calls ResetMissionSequence)
@@ -5113,7 +5113,7 @@
 0x00300F70 0x70 func_00300F70  # OVL1
 0x00300FE0 0xE0 RemoveFromIgnore__13CZOnlineLobbyFi  # OVL1; ours ('RemoveFromIgnore' 0x2798E0 calls it on theLobby with atoi of its argument: an account found in the ignore list 0x44FDE0 by id is let go of through 0x649540 with 0x3010C0; byte-exact)
 0x003010C0 0x74 cbRemoveFromIgnoreList__FiiiP20MediusStatusResponse  # OVL1; ours (RemoveFromIgnore's callback: reports 'RemoveFromIgnoreList', then GetIgnoreList inlined; byte-exact)
-0x00301140 0x1A8 func_00301140  # OVL1
+0x00301140 0x1A8 GetFriendInfo__13CZOnlineLobbyFi  # OVL1; ours, the online lane round 11 (the 'GetFriendInfo' UI command's handler 0x279AB0 calls it on theLobby with atoi of its argument: the friend found by id in FriendVec, its name, game and lobby set in FriendInfoName/Game/Lobby)
 0x003012F0 0x5C GetFriendInvitations__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendInvitations' 0x27A2B0 calls it on theLobby, in the active lobby only)
 0x00301350 0x70 cbGetFriendInvitations__FiiiP33MediusGetBuddyInvitationsResponse  # OVL1; ours (GetFriendInvitations' callback: the response's id, account, name and add type copied into a 0x40-byte item and kept through 0x301DB0 on 0x44FE00; byte-exact)
 0x003013C0 0x204 AddFriend__13CZOnlineLobbyFPCc  # OVL1; ours ('AddFriend' 0x27A050 calls it on theLobby: a name neither a friend, invited nor our own is looked for (0x648F10, search type 1, with 0x3015D0), else 'MP_PLAYER_IS_FRIEND')
@@ -5122,13 +5122,13 @@
 0x00301710 0x34 func_00301710  # OVL1
 0x00301750 0x48 GetFriendsList__13CZOnlineLobbyFv  # OVL1; ours ('GetFriendsList' 0x27A2E0 calls it on theLobby; the friends list 0x44FDC0 emptied and asked for)
 0x003017A0 0x70 func_003017A0  # OVL1
-0x00301810 0x108 func_00301810  # OVL1
-0x00301920 0x150 func_00301920  # OVL1
-0x00301A70 0x1CC func_00301A70  # OVL1
+0x00301810 0x108 UpdateDisplay__22FriendInvitationVectorFv  # OVL1; ours, the online lane round 11 (the invitations into FriendConfirmationListVar, each its account as text and its name; FriendInvitationVector::Add 0x301DB0 and Remove 0x301CF0 call it on their list)
+0x00301920 0x150 UpdateDisplay__12IgnoreVectorFv  # OVL1; ours, the online lane round 11 (the ignored into IgnoreListVar: account, name and mark; the ignore list's callback 0x300F70 calls it on 0x44FDE0)
+0x00301A70 0x1CC UpdateDisplay__12FriendVectorFv  # OVL1; ours, the online lane round 11 (the friends into FriendListVar: account, name, mark and where they are; the friends list's callback 0x3017A0 calls it on FriendVec)
 0x00301C40 0xB0 Find__12FriendVectorFPCc  # OVL1; ours (the friend by name, strcasecmp on +0x20, the null test inside: the state handler 0x2F0020 calls it on 0x44FDC0; byte-exact)
 0x00301CF0 0xBC Remove__22FriendInvitationVectorFi  # OVL1; ours, the online lane round 8 (FriendInvitationVector::Remove: every invitation from an account erased, the list shown again; ConfirmFriend and RejectFriend call it; open, 35 instructions)
 0x00301DB0 0x120 Add__22FriendInvitationVectorFP20FriendInvitationItem  # OVL1; ours, the online lane round 8 (FriendInvitationVector::Add: an invitation kept unless empty or its account is there, assigned to a local first -- member by member -- and pushed, the list shown again; cbGetFriendInvitations and the invitation callback 0x3009C0 call it; byte-exact)
-0x00301ED0 0x1D0 func_00301ED0  # OVL1
+0x00301ED0 0x1D0 Add__12IgnoreVectorFP10IgnoreItem  # OVL1; ours, the online lane round 11 (an ignored account kept unless its account is there, copied whole and pushed back through the class insert 0x3022F0; the ignore list's callback 0x300F70 hands it each response)
 0x003020A0 0x164 Add__12FriendVectorFP36MediusGetBuddyList_ExtraInfoResponse  # OVL1; ours (GetFriendsList's callback 0x3017A0 keeps a friend through it: the 0xD0-byte buddy response copied whole unless its account is there; byte-exact)
 0x00302210 0xD4 DeleteAll__12FriendVectorFv  # OVL1; ours (the friends 0x44FDC0 deleted and the list emptied -- std::transform with a deleter, then clear, as the clan lists' DeleteAll: GetFriendsList, ReleaseUIResources and the list's destructor 0x303410; byte-exact)
 0x003022F0 0x554 insert__Q23std60__vector_imp<10IgnoreItem,Q23std23allocator<10IgnoreItem>,0>FP10IgnoreItemUiRC10IgnoreItem  # OVL1; ours, the online lane round 10 (the ignore list's class-vector insert: resize 0x303250 calls it with its blank T())
@@ -5317,7 +5317,7 @@
 0x0030D060 0xA8 zNetJoin__9CZNetworkFPFii_vPFii_v  # OVL1; s1 by hand (SOCOM 1's zNetJoin, two client callbacks: here kept at +0x110C/+0x1110 and the game connection's session joined through a parameter block -- NetSetDefaultJoinParams 0x621DB8, NetJoin 0x621E50 -- m_bJoined set on success, the answer returned)
 0x0030D110 0xA0 zNetClientCallback__FP18NetClientEventInfo  # OVL1; ours (zNetJoin's client-event callback: the lobby's own connection skipped, event 0 to the join callback at +0x110C, 1 to the leave one at +0x1110)
 0x0030D1B0 0x1C8 func_0030D1B0  # OVL1
-0x0030D380 0x188 func_0030D380  # OVL1
+0x0030D380 0x188 zNetConnect__9CZNetworkFPFP17ClientConnectArgs_vPFP17ClientConnectArgs_v  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's zNetConnect 0x321630: NetSetDefaultConnectParams, theLobby's SetConnectionInfo into the parameters, the two client callbacks, NetConnect, the connection's index kept and m_bConnected set unless it failed, m_bJoined cleared; SOCOM II's returns the error and drops a failed connection; 0x2B85C0 calls it with SOCOM II's cbClientConnect/cbClientDisconnect pair 0x2BC620/0x2BC530); the callbacks retyped: SOCOM II's take a pointer, fts_remote.cpp's ClientConnectArgs
 0x0030D510 0x28 zNetGetValidGameClientCount__9CZNetworkFv  # OVL1; tu: zNetDme.cpp~ (1.0 beta); s1:calls by hand (the states lane: at SOCOM 1's call sites; tu: zNetDme.cpp~)
 0x0030D540 0x8 zNetGetLocalTime__9CZNetworkFv  # OVL1; s1:calls+order (right before zNetGetTime as SOCOM 1's; the same 8 bytes) -- the UI-commands lane
 0x0030D550 0x8 zNetGetTime__9CZNetworkFv  # OVL1; s1:calls (CZNetGame::TenSecondLaunch, as SOCOM 1's; the same 8 bytes) -- the states lane
@@ -5333,7 +5333,7 @@
 0x0030D900 0xB0 zNetFlushMessages__9CZNetworkFv  # OVL1; ours (zNetUpdate calls it when the message list at +0x1248 is not empty: each queued message sent through NetSendApplicationMessage 0x621458 and freed, the list cleared -- SOCOM 1's zNetUpdate did this in place)
 0x0030D9B0 0x48 func_0030D9B0  # OVL1
 0x0030DA00 0x1B0 zNetUpdate__9CZNetworkFv  # OVL1; s1 by hand (SOCOM 1's zNetUpdate: game_main.cpp calls it at SOCOM 1's call site; the messages flushed, the Medius or DME update and the lobby's Tick, the delayed actions, the post-update callbacks over the 4096 field flags, NetGetLocalTime and NetGetTime into +0x104/+0x100)
-0x0030DBB0 0x130 func_0030DBB0  # OVL1
+0x0030DBB0 0x130 zNetInitialize__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's zNetInitialize 0x321CA0: NetSetDefaultInitializeParams, NetInitialize, the network's init flag set when it answers no error, our address asked for into the object at 0xD0 (SOCOM 1's 0xAF), the 4096 object-field flags cleared, the error returned; SOCOM II's adds the DME state from DMEInit, a server-message callback 0x30DCE0 and the buffer sizes; UIDMEInit 0x276CF0 calls it on theNetwork)
 0x0030DCE0 0x148 func_0030DCE0  # OVL1
 0x0030DE30 0xAC zNetLookupHost__9CZNetworkFPCcPci  # OVL1; ours (the server list's connect 0x2FDF60 calls it on theNetwork: sceInetName2Address then sceInetAddress2String into the caller's buffer, 30 on failure)
 0x0030DEE0 0x37C func_0030DEE0  # OVL1
@@ -5666,8 +5666,8 @@
 0x00321DB0 0x48 func_00321DB0  # OVL1
 0x00321E00 0x98 __dt__Q23zdb10CLensFlareFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00321EA0 0x44 __dt__Q23zdb8CVisDataFv  # OVL1; s1:align
-0x00321EF0 0x4C func_00321EF0  # OVL1
-0x00321F40 0x10 func_00321F40  # OVL1
+0x00321EF0 0x4C top__Q23std49stack<Pv,Q23std31deque<Pv,Q23std13allocator<Pv>>>Fv  # OVL1; the integrator (the weapons lane r13's request, vetted): std::stack<void *>'s out-of-line top() -- the deque<void *>'s back() over 128-element blocks inlined, as the world lane's round 2 read it; a probe compiles to this row's code byte for byte, and GetChainData and VuUpdate call it
+0x00321F40 0x10 empty__Q23std49stack<Pv,Q23std31deque<Pv,Q23std13allocator<Pv>>>CFv  # OVL1; the integrator (the weapons lane r13's request, vetted): std::stack<void *>'s out-of-line empty() -- the zdb vid stack's (CVisual::m_stack_vid); a probe of it compiles to this row's code byte for byte, and GetChainData 0x3B6E10 and VuUpdate call it
 0x00321F50 0x180 Tick__Q23zdb7CRippleFf  # OVL1; s1:calls (SOCOM 1's VisualEffectsTick calls CRipple::Tick second)
 0x003220D0 0xF0 func_003220D0  # OVL1
 0x003221C0 0x2C Uninit__Q23zdb7CRippleFv  # OVL1; s1:align
@@ -5973,8 +5973,8 @@
 0x003371B0 0x1F8 func_003371B0  # OVL1
 0x003373B0 0x10C func_003373B0  # OVL1
 0x003374C0 0x3DC func_003374C0  # OVL1
-0x003378A0 0x100 func_003378A0  # OVL1
-0x003379A0 0x60 func_003379A0  # OVL1
+0x003378A0 0x100 __dt__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's ~CAlpha (inline in SOCOM 1's ~CPipe: the cursor back at the start, the draw list and the texture lists emptied, the buffer freed with SOCOM 1's line 2276); ~CPipe calls it out of line -- zrndr_pipe.cpp
+0x003379A0 0x60 __ct__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's CAlpha() (inline in SOCOM 1's CPipe(): the draw list, the texture lists, _malloc(0x36B00) into the walk's start and cursor); CPipe() calls it out of line -- zrndr_pipe.cpp
 0x00337A00 0x2D0 RenderMeshShadow__5CPipeFPQ23zdb5CNodePQ23zdb5CMeshP7CMatrix  # OVL1; s1:align
 0x00337CD0 0x264 func_00337CD0  # OVL1
 0x00337F40 0x2AC func_00337F40  # OVL1
@@ -5996,27 +5996,27 @@
 0x0033B570 0x40 func_0033B570  # OVL1
 0x0033B5B0 0x40 func_0033B5B0  # OVL1
 0x0033B5F0 0x12C RenderLineWorld__F6CPnt4D6CPnt4D6CPnt4D6CPnt4D  # OVL1; s1:align
-0x0033B720 0x154 func_0033B720  # OVL1
-0x0033B880 0x70 func_0033B880  # OVL1
-0x0033B8F0 0x40 func_0033B8F0  # OVL1
-0x0033B930 0x8 func_0033B930  # OVL1
-0x0033B940 0x14 func_0033B940  # OVL1
-0x0033B960 0x54 func_0033B960  # OVL1
+0x0033B720 0x154 Flush__5CPipeFv  # OVL1; the world lane r3: SOCOM 1's Flush (DeleteDeferredVisuals, the delayed nodes freed, the alpha pass's draw list and textures, the two TexAlpha buffers through TexPhase[11][0..1] each tested, CVisual::Flush, the texture indices zeroed) with SOCOM II's cell list, flares and overlay -- zrndr_pipe.cpp
+0x0033B880 0x70 __dt__Q23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the cell list: the temporary's destructor (the unit's initialiser registers it for the static too) -- zrndr_pipe.cpp
+0x0033B8F0 0x40 swap__Q23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>FRQ23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>  # OVL1; the world lane r3: Flush's FreeVector of the cell list: the swap -- zrndr_pipe.cpp
+0x0033B930 0x8 clear__Q23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the cell list: the clear -- zrndr_pipe.cpp
+0x0033B940 0x14 __ct__Q23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the cell list 0x488790 (RenderWorld pushes CGridAtom::GetCell's results onto it): the temporary's constructor -- zrndr_pipe.cpp
+0x0033B960 0x54 FreePktBuf__Q23zdb12CGSTexBufferFv  # OVL1; the world lane r3: ours, an inline's out-of-line copy, byte-identical to WipePktBuf 0x356B30 (the packet vector cleared, FreeVector one level, the chain dropped); CPipe::Flush and CGameMenu::Clear call it -- zrndr_pipe.cpp, node_world.h
 0x0033B9C0 0x60 __dt__Q23std30vector<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: an out-of-line copy of ~vector<u_long128> (~__vector_imp inlined, the deleter's destructor 0x33C360 called), FreeVector's temporary inlined one level (called with -1)
 0x0033BA20 0x40 swap__Q23std40__vector_deleter<1,Q23std12allocator<1>>FRQ23std40__vector_deleter<1,Q23std12allocator<1>>  # OVL1; the world lane r2: an out-of-line copy of vector<u_long128>'s deleter member swap (the this test, the three words traded; ztex_manager.cpp emits the same 0x40 bytes), FreeVector inlined one level calls it
 0x0033BA60 0x8 clear__Q23std30vector<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: an out-of-line copy of vector<u_long128>::clear() (a j to the deleter's 0x33C350), emitted after its first caller in zrndr_pipe.cpp; FreeVector inlined one level calls it
 0x0033BA70 0x14 __ct__Q23std30vector<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: an out-of-line copy of vector<u_long128>'s constructor (three words zeroed), FreeVector's temporary inlined one level
-0x0033BA90 0x10 func_0033BA90  # OVL1; tu: vis_main.cpp~ (1.0 beta)
-0x0033BAA0 0x70 func_0033BAA0  # OVL1
-0x0033BB10 0x40 func_0033BB10  # OVL1
-0x0033BB50 0x8 func_0033BB50  # OVL1
-0x0033BB60 0x14 func_0033BB60  # OVL1
-0x0033BB80 0x40 func_0033BB80  # OVL1
-0x0033BBC0 0x8 func_0033BBC0  # OVL1
-0x0033BBD0 0x60 func_0033BBD0  # OVL1
-0x0033BC30 0x40 func_0033BC30  # OVL1
-0x0033BC70 0x8 func_0033BC70  # OVL1
-0x0033BC80 0x14 func_0033BC80  # OVL1
+0x0033BA90 0x10 ClearDynTex__Q23zdb12CGSTexBufferFv  # OVL1; tu: vis_main.cpp~ (1.0 beta); the world lane r3: ours, an inline's out-of-line copy (the two dynamic lists' sizes zeroed, the chain dropped: SOCOM 1's Flush does the same stores in place); CPipe::Flush and CGameMenu::Clear call it -- zrndr_pipe.cpp, node_world.h
+0x0033BAA0 0x70 Free__Q23zdb11CDynTexListFv  # OVL1; the world lane r3: ours, an inline's out-of-line copy (FreeVector on each list's base vector, inlined one level: SOCOM 1's Flush frees the alpha pass's texture lists so); CPipe::Flush and CGameMenu::Clear call it -- zrndr_pipe.cpp, znode.h/node_world.h
+0x0033BB10 0x40 swap__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>FRQ23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the palette list: the swap -- zrndr_pipe.cpp
+0x0033BB50 0x8 clear__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>Fv  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the palette list: the clear -- zrndr_pipe.cpp
+0x0033BB60 0x14 __ct__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>Fv  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the palette list: the temporary's constructor -- zrndr_pipe.cpp
+0x0033BB80 0x40 swap__Q23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>FRQ23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the texture list: the swap (the font code 0x35A650 links it too) -- zrndr_pipe.cpp
+0x0033BBC0 0x8 clear__Q23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>Fv  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the texture list: the clear (the font code 0x35A650 links it for its own list at +0x10) -- zrndr_pipe.cpp
+0x0033BBD0 0x60 __dt__Q23std62vector<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the delayed nodes: the temporary's destructor -- zrndr_pipe.cpp
+0x0033BC30 0x40 swap__Q23std72__vector_deleter<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>FRQ23std72__vector_deleter<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>  # OVL1; the world lane r3: Flush's FreeVector of the delayed nodes: the deleter's swap -- zrndr_pipe.cpp
+0x0033BC70 0x8 clear__Q23std62vector<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the delayed nodes: the vector's clear -- zrndr_pipe.cpp
+0x0033BC80 0x14 __ct__Q23std62vector<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the delayed nodes, inlined one level: the temporary's constructor -- zrndr_pipe.cpp
 0x0033BCA0 0x2C Uninit__5CPipeFv  # OVL1; s1:calls
 0x0033BCD0 0x50 Init__5CPipeFv  # OVL1; s1:align
 0x0033BD20 0x68 func_0033BD20  # OVL1
@@ -6024,20 +6024,20 @@
 0x0033BE70 0xB4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBuffer  # OVL1; s1:align
 0x0033BF30 0xD4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBufferPUi  # OVL1; s1:calls
 0x0033C010 0x104 InterruptFromVIF1__Fi  # OVL1; the rdr lane: s1:order (SOCOM 1's InterruptFromVIF1, after FIFO_Insert: cause 5, thePipe's texture command at m_texIntIdx taken -- SOCOM II's flush bit wakes the thread at 0x3E1418 --, a load's chain sent through D2 after sceDmaSync of the GIF channel, a signal's buffer updated, VIF1_FBRST 8, sync, ei)
-0x0033C120 0xA0 func_0033C120  # OVL1
-0x0033C1C0 0xD4 func_0033C1C0  # OVL1
-0x0033C2A0 0xAC func_0033C2A0  # OVL1
+0x0033C120 0xA0 __dt__5CPipeFv  # OVL1; the world lane r3: SOCOM 1's ~CPipe (the opacity stack freed, the delayed nodes cleared, the members' destructors after: the effect's 0x33D110 and the alpha pass's 0x3378A0 out of line); the initialiser registers it -- zrndr_pipe.cpp
+0x0033C1C0 0xD4 __ct__5CPipeFv  # OVL1; the world lane r3: SOCOM 1's CPipe() (the two flags in the initialiser list after the alpha pass, the delayed nodes' vector and the effect; the opacity stack of 32, resize(48), the texture indices zeroed) with SOCOM II's colours and overlay; __sinit_zrndr_pipe.cpp builds thePipe through it -- zrndr_pipe.cpp
+0x0033C2A0 0xAC resize__Q23std70__vector_imp<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>,0>FUi  # OVL1; the world lane r3: the delayed nodes' resize (SOCOM 1's resize__Q23std70__vector_imp<15tag_DelayedNode,...,0>FUi: insert(end(), n - size(), T()) with CMatrix's unit temporary, else the erase); CPipe() and SaveDelayedNode call it -- zrndr_pipe.cpp's tail
 0x0033C350 0x8 clear__Q23std40__vector_deleter<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: zrndr_pipe.cpp's template tail -- vector<u_long128>'s deleter clear (the trivial element's: size_ = 0), the copy the linker kept; ztex_manager.cpp's clears and ~CGSTexBuffer call it
 0x0033C360 0x68 __dt__Q23std40__vector_deleter<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: zrndr_pipe.cpp's template tail -- vector<u_long128>'s deleter destructor (one this-test, the block deleted), the copy the linker kept; ~CGSTexBuffer and FreeVector's temporary call it
-0x0033C3D0 0x8 func_0033C3D0  # OVL1
-0x0033C3E0 0x68 func_0033C3E0  # OVL1
-0x0033C450 0x164 func_0033C450  # OVL1
-0x0033C5C0 0x710 func_0033C5C0  # OVL1
-0x0033CCD0 0x80 func_0033CCD0  # OVL1
+0x0033C3D0 0x8 clear__Q23std72__vector_deleter<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: the delayed nodes' deleter clear (out of class: ~CPipe's clear and the destructors call it) -- zrndr_pipe.cpp's tail
+0x0033C3E0 0x68 __dt__Q23std72__vector_deleter<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: the delayed nodes' deleter destructor (out of class: ~CPipe's member chain stops at it) -- zrndr_pipe.cpp's tail
+0x0033C450 0x164 erase__Q23std70__vector_imp<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>,0>FP15tag_DelayedNodeP15tag_DelayedNode  # OVL1; the world lane r3: the delayed nodes' range erase (the 112-byte elements copied down, the matrix through sceVu0CopyMatrix) -- zrndr_pipe.cpp's tail
+0x0033C5C0 0x710 insert__Q23std70__vector_imp<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>,0>FP15tag_DelayedNodeUiRC15tag_DelayedNode  # OVL1; the world lane r3: the delayed nodes' insert(position, n, x) (the length error, the in-place and reallocating branches) -- zrndr_pipe.cpp's tail
+0x0033CCD0 0x80 __dt__12CFlareSystemFv  # OVL1; the world lane r3: the flare system's implicit destructor (its pointer vector's three this-tested levels, the delete flag), generated last in zrndr_pipe.cpp's tail; the unit's initialiser registers it for the system at 0x488F10 -- zrndr_pipe.cpp
 0x0033CD50 0x3A8 func_0033CD50  # OVL1
-0x0033D100 0x10 func_0033D100  # OVL1
-0x0033D110 0x44 func_0033D110  # OVL1
-0x0033D160 0x80 func_0033D160  # OVL1
+0x0033D100 0x10 SetOn__11CPipeEffectFb  # OVL1; the world lane r3: ours (the flag byte at 0x31 set and mirrored into the byte at 0x4A4548; CCoreState's 0x264610 calls it twice) -- zrndr_postfx.cpp
+0x0033D110 0x44 __dt__11CPipeEffectFv  # OVL1; the world lane r3: ours (the effect's destructor, empty: ~CPipe calls it out of line) -- declared in zrndr_pipe.cpp
+0x0033D160 0x80 __ct__11CPipeEffectFv  # OVL1; the world lane r3: ours, the class and its name (SOCOM II's effect at thePipe+0x688, its unit 0x33CD50-0x33D22F after zrndr_pipe.cpp's tail: CPipe() calls its constructor out of line) -- declared in zrndr_pipe.cpp
 0x0033D1E0 0x4C func_0033D1E0  # OVL1
 0x0033D230 0x8 UnSerialize__11CSaveModuleFPCcPQ23zar4CZARi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0033D240 0x8 UnSerialize__11CSaveModuleFPCcP8CRdrFilei  # OVL1; s1:vtable by hand (slot 0x10 of CSaveModule's table 0x406AA0, before the CZAR UnSerialize at 0x14 that s1vtables named; SOCOM 1's UnSerialize(const char *, CRdrFile *, int), the same empty 8 bytes, next in SOCOM 1's order)
@@ -7866,25 +7866,25 @@
 0x003B5270 0x24 func_003B5270  # OVL1
 0x003B52A0 0x8 func_003B52A0  # OVL1
 0x003B52B0 0x10 func_003B52B0  # OVL1
-0x003B52C0 0x78 func_003B52C0  # OVL1
+0x003B52C0 0x78 GetVid__Q23zdb7CVisualFv  # OVL1; by hand (the wep lane, round 13: CVisual::GetVid's out-of-line copy (vis_vu.cpp, inline: the name ours) -- the top of m_stack_vid behind the break/nop intrinsics with empty() and top() inlined whole, as GetChainData inlines the same function one level (calling 0x321F40/0x321EF0); it follows VuUpdate, its one caller, among VuUpdate's other out-of-line helpers 0x3B5250-0x3B52B0; emitted once VuUpdate is written)
 0x003B5340 0x2C Render__Q23zdb7CVisualFP7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003B5370 0x164 func_003B5370  # OVL1
-0x003B54E0 0x244 func_003B54E0  # OVL1
-0x003B5730 0x180 func_003B5730  # OVL1
-0x003B58B0 0xF0 func_003B58B0  # OVL1
+0x003B5370 0x164 VuSpecularSetup__Q23zdb7CVisualFP8_word128P6CPnt4DP6CPnt3Df  # OVL1; by hand (the wep lane, round 13: 0x3B5B90's specular pass calls it with the command's data, a copy of m_mtl_band's colour, the band's rgb and opacity: a frame along the direction about CPnt4D::unit_w (0x307700) times m_ModelToWorld, the band's intensity and falloffs, m_camera's position through m_WorldToModel. SOCOM II's; the name ours)
+0x003B54E0 0x244 VuLightMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: SOCOM 1's VuLightMap in role -- 0x3B5B90 calls it last on &cursor with the tag 56/58 when m_lightMapCnt is set; the first map's texture select, SaveTextureSelect with its blend word, then per map of m_lightMapList its position through m_WorldToModel, falloff, range, colour and opacity, as SOCOM 1's; the signature SOCOM II's)
+0x003B5730 0x180 VuShadowMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: SOCOM 1's VuShadowMap in role -- 0x3B5B90 calls it on &cursor with the tag 60/62 when m_shadowMapCnt is set; per map of m_shadowMapList a command, its texture select, position and direction through m_WorldToModel, its world-to-UV matrix times m_ModelToWorld, range, falloff, colour and opacity, as SOCOM 1's wrote once for the first map; the signature SOCOM II's)
+0x003B58B0 0xF0 VuProjectedMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: the projected map's pass -- 0x3B5B90 calls it on &cursor with the tag 118/120 when m_projectedMapList is not empty, between the specular and shadow passes; it walks m_projectedMapList's first map: its texture select, its node's position through m_WorldToModel, its matrix times m_ModelToWorld. SOCOM II's, the name ours, after SOCOM 1's VuShadowMap/VuLightMap)
 0x003B59A0 0x68 func_003B59A0  # OVL1
 0x003B5A10 0x20 func_003B5A10  # OVL1
-0x003B5A30 0x158 func_003B5A30  # OVL1
-0x003B5B90 0x388 func_003B5B90  # OVL1
+0x003B5A30 0x158 VuDetailMap__Q23zdb7CVisualFPP8_word128UiPQ23zdb17tag_DETAIL_PARAMS  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's VuDetailMap -- 0x3B5B90 calls it first on &cursor with the tag 48/50 and its detail-layer argument; per texture while m_rangeSqdToCamera is within the layer's range: CopyTextureSelect, the entry's halfword and float at the same offsets as SOCOM 1's; SOCOM II adds the command quadword and the texture base offset)
+0x003B5B90 0x388 VuMapPasses__Q23zdb7CVisualFP8_word128PQ23zdb17tag_DETAIL_PARAMS  # OVL1; by hand (the wep lane, round 13: one of the two rearranged parts of SOCOM 1's VuBatchProgram -- 0x3B5F20 calls it with the packet and the detail layer; VuDetailMap, an opening command 114, the specular pass inlined (tag 52/54, VuSpecularSetup), VuProjectedMap, VuShadowMap and VuLightMap as their counts say, a closing command 116, the tags two apart by 0x4B4EB0. SOCOM II's; the name ours)
 0x003B5F20 0x61C func_003B5F20  # OVL1
-0x003B6540 0x140 func_003B6540  # OVL1
-0x003B6680 0x198 func_003B6680  # OVL1
+0x003B6540 0x140 VuExecuteState0__Q23zdb7CVisualFP8_word128  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's VuExecuteState0, the same code with the packet's head the static 0x4B4AE0 (0x3B6820 keeps it) instead of an argument -- the flush when _savedTS is at m_savedTS (0x4B4610), the head's DMA tag and unpack from the packet's length, the saved selects copied with CSPR::Copy and a flush; VuUpdate, 0x3B5F20 and 0x3B6B20 call it, 0x3B41D0 tail-calls it)
+0x003B6680 0x198 VuObjectSetup__Q23zdb7CVisualFP8_word128  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's VuObjectSetup's first part, the same code -- the clip word (63 for 0x1c == -2, else m_fovClipWord >> 8), m_GlobalLightScale/m_AmbientLightScale by flags 0x40/0x20, the fog plane and vector (the landmark's, the camera's alternate, or NoAltFogBottomV 0x3FC200) through m_WorldToModel with 255/0 or the camera's range; SOCOM II adds the 0x4B4D30 quadword and the head flag; VuUpdate calls it twice, 0x3B6820's packet after it)
 0x003B6820 0x4C func_003B6820  # OVL1
 0x003B6870 0x2A8 func_003B6870  # OVL1
 0x003B6B20 0x1E4 func_003B6B20  # OVL1
 0x003B6D10 0xF4 NodeSetup__Q23zdb7CVisualFPQ23zdb5CNodePQ23zdb5CNodeP7CMatrixi  # OVL1; s1:align
-0x003B6E10 0x190 func_003B6E10  # OVL1
-0x003B6FA0 0xE0 func_003B6FA0  # OVL1
+0x003B6E10 0x190 GetChainData__Q23zdb7CVisualFv  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's CVisual::GetChainData -- VuUpdate's first call, whose bool it keeps in _DoDetail as SOCOM 1's; the top of m_stack_vid behind a break, the view's VU buffer from m_lodMesh, m_dmaChain/m_dmaQwc/m_dmaSubfaceQwc from its head and the detail layers' cut, store for store; SOCOM II keeps the subface offset 0x4B4ED0)
+0x003B6FA0 0xE0 SaveTextureSelect__Q23zdb7CVisualFP8_word128PQ23zdb8CTextureUl  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's CVisual::SaveTextureSelect, the same code -- the select's DMA reference written at _savedTS (0x3E1440) through the uncached mirror, the blend register's when the word is not the default 0x4000000000000000 nor the select's; VuLightMap and 0x3B5B90 call it as SOCOM 1's VuLightMap does)
 0x003B7080 0xA4 AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D  # OVL1; s1:align
 0x003B7130 0x1C func_003B7130  # OVL1
 0x003B7150 0x18 func_003B7150  # OVL1
@@ -8577,7 +8577,7 @@
 0x00402DB0 0x3C __sinit_zrdr_parse.cpp  # OVL1 data area; a static initialiser; by its body (the preprocessor's define table at 0x488630, its destructor 0x333390 registered) -- the rdr lane
 0x00402DF0 0x64 __sinit_zrndr_init.cpp  # OVL1 data area; a static initialiser; s1~ zrdr_parse.cpp (shape 0.60, a hint); by its body (iostream's init objects; ZDB its bss) -- the rdr lane
 0x00402E60 0x11C __sinit_zrndr_pipe.cpp  # OVL1 data area; a static initialiser; by its body (thePipe built through CPipe's constructor 0x33C1C0, 0x33C120 registered) -- the rdr lane
-0x00402F80 0x64 func_00402F80  # OVL1 data area; a static initialiser; s1~ zrndr_init.cpp (shape 0.46, a hint)
+0x00402F80 0x64 __sinit_zrndr_postfx.cpp  # OVL1 data area; a static initialiser; s1~ zrndr_init.cpp (shape 0.46, a hint); the world lane r3: ours, the unit after zrndr_pipe.cpp (0x33CD50-0x33D22F, CPipeEffect's): its initialiser builds only <iostream>'s two objects, right after the pipe's -- zrndr_postfx.cpp
 0x00402FF0 0x240 func_00402FF0  # OVL1 data area; a static initialiser
 0x00403230 0xA4 __sinit_zsnd_csndinstance.cpp  # OVL1 data area; a static initialiser; s1~ pickup_main.cpp (shape 0.25, a hint); registers zsnd_csndinstance.cpp's list (0x347B20), pool and vector destructors -- the sound lane
 0x004032E0 0x8C __sinit_zsnd_jukebox.cpp  # OVL1 data area; a static initialiser; constructs and registers the jukebox's two arrays (destructors 0x349A50, 0x349A30) -- the sound lane
@@ -8683,7 +8683,7 @@
 0x004C8A80 0x14 TranslateGsapiParamId2AsrSpiParamId  # OVL2; s1:callee (ContextActivateParams calls it from the same three sites as SOCOM 1's)
 0x004C8A98 0xD0 StartListening  # OVL2 unaligned; s1:calls (SOCOM 1's StartListening: SidIsRecording, ExtAudioStart, SidStart, state 2; gsapi_EngineStart calls it where SOCOM 1's calls StartListening)
 0x004C8B68 0xD0 StopListening  # OVL2 unaligned; s1:calls (SOCOM 1's StopListening: SidIsRecording, ExtAudioStop, SidStop, state 3; after StartListening as there)
-0x004C8C38 0x7C func_004C8C38  # OVL2 unaligned
+0x004C8C38 0x7C CheckEngineHandle  # OVL2 unaligned; s1:order (SOCOM 1's CheckEngineHandle, 0x33A550, the gsapi object's function after StopListening: the same body -- an engine is a live 108-byte slot of gGSAPI.engines -- and nothing calls it; SOCOM II's callers inline it, and 2.96 outputs the redefined extern inline last in gsapi.c) -- the gcc lane, round 10c
 0x004C8CB8 0x58 func_004C8CB8  # OVL2 unaligned
 0x004C8D10 0x158 func_004C8D10  # OVL2
 0x004C8E68 0xA4 WrdCreateWordList  # OVL2 unaligned; s1:calls (SOCOM 1's ContextSetWrdData calls WrdCreateWordList where ours call this row, 1 call site; the same position in SOCOM 1's object)
@@ -8918,8 +8918,8 @@
 0x004E71F8 0x8BC func_004E71F8  # OVL2 unaligned
 0x004E7AB8 0x1C0 func_004E7AB8  # OVL2 unaligned
 0x004E7C78 0x410 func_004E7C78  # OVL2 unaligned
-0x004E8088 0x684 func_004E8088  # OVL2 unaligned
-0x004E8710 0x2AC func_004E8710  # OVL2
+0x004E8088 0x684 ProcessFFTMod  # OVL2 unaligned; s1:order (the process slot ConstructFFTMod hands tosBaseBlockConstruct, as SOCOM 1's ConstructFFTMod hands its LOCAL ProcessFFTMod; the FFT object's row before InitFFTMod, as in SOCOM 1's object at 0x355A38) -- the gcc lane, round 10c
+0x004E8710 0x2AC InitFFTMod  # OVL2; s1:order (ConstructFFTMod's init slot, as SOCOM 1's LOCAL InitFFTMod; the row before the constructor, as there) -- the gcc lane, round 10c
 0x004E89C0 0x8C ConstructFFTMod  # OVL2; s1:align
 0x004E8A50 0x94 ControlFFTMod  # OVL2; s1:align
 0x004E8AE8 0x28C InitIsoWordTokenDpContext  # OVL2 unaligned; s1:calls (SOCOM 1's ControlIsoWordTokenDp calls InitIsoWordTokenDpContext where ours call this row, 1 call site; the same position in SOCOM 1's object)
@@ -9051,11 +9051,11 @@
 0x004FC168 0x98 Vq1500Process  # OVL2 unaligned; s1:align
 0x004FC200 0x40 FreeVq1500  # OVL2; s1:calls (SOCOM 1's ControlVq1500Process calls LoadCodeBooks and FreeVq1500 where ours call LoadCodeBooks and this row; the same body, the codebooks freed then tosBaseBlockDestruct; SOCOM II defines it last in the object) -- the gcc lane, round 8c
 0x004FC240 0x3E0 WindowFlush  # OVL2; s1:align
-0x004FC620 0x50C func_004FC620  # OVL2
-0x004FCB30 0x274 func_004FCB30  # OVL2
+0x004FC620 0x50C ProcessWindow  # OVL2; s1:order (ConstructWindow's process slot, as SOCOM 1's ConstructWindow hands its LOCAL ProcessWindow; the window object's first row here -- SOCOM 1's WindowFlush, called only by ProcessWindow, has no row: inlined) -- the gcc lane, round 10c
+0x004FCB30 0x274 InitWindow  # OVL2; s1:order (ConstructWindow's init slot, as SOCOM 1's LOCAL InitWindow; the row before the constructor, as there) -- the gcc lane, round 10c
 0x004FCDA8 0x3C ConstructWindow  # OVL2 unaligned; s1:align
 0x004FCDE8 0xBC ControlWindow  # OVL2 unaligned; s1:align
-0x004FCEA8 0x3FC func_004FCEA8  # OVL2 unaligned
+0x004FCEA8 0x3FC CombinerProcess  # OVL2 unaligned; s1:order (ConstructCombiner's process slot, as SOCOM 1's LOCAL CombinerProcess, the first function of SOCOM 1's combiner object at 0x368FC0) -- the gcc lane, round 10c
 0x004FD2A8 0x3C ConstructCombiner  # OVL2 unaligned; s1:align
 0x004FD2E8 0xFC func_004FD2E8  # OVL2 unaligned
 0x004FD3E8 0xFC CombinerControl  # OVL2 unaligned; s1:calls
@@ -9121,7 +9121,7 @@
 0x00505480 0x2AC func_00505480  # OVL2
 0x00505730 0x174 func_00505730  # OVL2
 0x005058A8 0x348 Subsampler_Init  # OVL2 unaligned; s1:calls
-0x00505BF0 0xD8 func_00505BF0  # OVL2
+0x00505BF0 0xD8 Subsampler_Reset  # OVL2; s1:calls (SOCOM 1's Voicing_Reset tail-calls Subsampler_Reset at the same point -- its body is SOCOM II's Voicing_Reset's with the voicing fields 4 bytes lower; the subsampler object's row between Subsampler_Init and Subsampler_Free) -- the gcc lane, round 10c
 0x00505CC8 0xC4 Subsampler_Free  # OVL2 unaligned; s1:align
 0x00505D90 0x630 TriggerLR_FindSpeech  # OVL2; s1:align
 0x005063C0 0x18C ProcessTriggerLR  # OVL2; s1:align
@@ -9129,9 +9129,9 @@
 0x00506978 0x3E0 InitTriggerLR  # OVL2 unaligned; s1:align
 0x00506D58 0x3C ConstructTriggerLR  # OVL2 unaligned; s1:align
 0x00506D98 0xA48 Voicing_GetMaxVoicing  # OVL2 unaligned; s1:align
-0x005077E0 0x360 func_005077E0  # OVL2
-0x00507B40 0x318 func_00507B40  # OVL2
-0x00507E58 0x2E4 func_00507E58  # OVL2 unaligned
+0x005077E0 0x360 InitVoicing  # OVL2; s1:calls (the voicing object's; its one caller is InitTriggerLR, as SOCOM 1's InitVoicing's is, and it calls Subsampler_Reset) -- the gcc lane, round 10c
+0x00507B40 0x318 Voicing_MaintainNoiseEner  # OVL2; s1:calls (the voicing object's; its one caller is TriggerLR_FindSpeech, as SOCOM 1's Voicing_MaintainNoiseEner's is) -- the gcc lane, round 10c
+0x00507E58 0x2E4 Voicing_AddSignal  # OVL2 unaligned; s1:calls (the voicing object's; its one caller is ProcessTriggerLR, as SOCOM 1's Voicing_AddSignal's is) -- the gcc lane, round 10c
 0x00508140 0xA4 Voicing_Reset  # OVL2; s1:align
 0x005081E8 0x6C Voicing_Free  # OVL2 unaligned; s1:align
 0x00508258 0xD8 FillContextV2VirtualTable  # OVL2 unaligned; s1:align

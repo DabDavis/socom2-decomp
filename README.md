@@ -199,6 +199,34 @@ inline flag reproduces both of. Not started: the filebuf bodies (26 rows), the e
 unit (18), `__nInit`/`__wInit`, `ctype<wchar_t>`'s range maps, `__locale_imp::replace`, the rest of
 locale.cpp, the logic_error family, the other three `__sinit` rows.
 
+Round 3 (161 of 244 in the range: 27 more, all iostream.cpp -- the filebuf members for char and
+wchar_t: imbue, sync, pbackfail, uflow, underflow, read1-3, write2, unshift, seekpos<wchar_t>;
+`__nInit`/`__wInit`'s constructors and destructors; xsputn<char>; the standard streams' data rows)
+measured: MW decides an inline when a template member is INSTANTIATED, not when it is emitted -- a
+member instantiated mid-unit keeps calling a template already called out of line, one instantiated
+at the unit's end (the vtables' pass) inlines it (build/scratch/rt-r3/t2.cpp) -- which is why the
+FILE constructors and ~basic_filebuf stay open (the target's constructors inline the locale
+pointer's destructor yet call its copy constructor); codecvt<wchar_t>'s do_out/do_in keep their
+4-byte copy a loop only under `#pragma opt_unroll_loops off` (`-O3,p` and `-opt nounroll` change
+nothing; every build fails them alike, so 3.0b38/b50/b52 stay undecided); a one-byte enum's bitmask
+operator returns the enum, so the image masks again (`andi 0xff`); case labels in any order give the
+compare chain in the reverse order; `!(a < b)` on two plain loads materialises a bool, `a <= b` with
+the operand loaded first on the left branches directly; for 4-byte locals the later-declared gets
+the lower address, a 1-byte local packs at the end; `ungetc(buf[--n], f)` recomputes the index each
+pass, `--n;` alone is strength-reduced; MW's explicit instantiation takes single member functions
+but not constructors or destructors, and none once the class is instantiated; msl.h's `_impure_ptr`
+is `__attribute__((section(".data")))` (a plain 4-byte extern is $gp-addressed; the image reaches it
+absolutely, 0x1CC750). THE `__sinit` ROWS, corrected: 0x1D4BF0 is iostream.cpp's (two init guards,
+0x1D5628/0x1D562C, beside the codecvt<wchar_t>/ctype<wchar_t> ids -- SOCOM 1's guard-only shape),
+0x1D4C20 locale.cpp's (a 128-entry table of shorts at 0x1CA420, two guards after ctype<char>'s id),
+and 0x1D4B80, round 2's "iostream.cpp's", is a game MAIN unit's (it addresses its `__nInit` object
+without $gp: every game unit including <iostream> builds one -- 25 more such initialisers in the
+overlays). A try harness that honours a unit's own compiler and flags line is
+build/scratch/rt-r3/var.py (tools/try.py takes scdiff's defaults, so the library units fail under
+it). MAIN's zvid.cpp copy (0x181C20, marked `ovl-copy: zVid_Assert__FbUiPci`) still scores against
+OVL1's row: sccheck takes a unit's home from its functions' named rows, all OVL1's for a unit that is
+wholly another overlay's copy -- a scorer change for the tools' owner (with the boot ELF's `main`).
+
 ## What the source has to reproduce
 
 - **Function order inside a TU is REVERSE definition order** (`-inline deferred`): the image's
@@ -1701,6 +1729,76 @@ locale.cpp, the logic_error family, the other three `__sinit` rows.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the online lobby, round 11** (the Medius names respelled, the lobby's Tick, the chat callbacks, the
+  friend lists, zNetConnect):
+  - MSL's deque blocks hold AT LEAST 8 elements: include/deque's buf_size is `sizeof(T) * 8 <= 512 ? 512 /
+    sizeof(T) : 8` -- the chat's 112-byte lines go 8 to a block (pop_front 0x2F51E0 keeps 16, the private-line
+    callbacks' inlined front() divide the start by 8, where 512 / 112 would give 4); MediusChatMessage is the only
+    element in the tree past 64 bytes, so the minimum moves nothing else;
+  - MW's CSE treats a field read through a const view and through a non-const one as different expressions
+    (Tick needed zrdr.h's const `Real()` for the float setter to reload the type byte);
+  - a user-declared non-inline destructor counts as the unit's own function and never inlines an out-of-class
+    template member; an implicit destructor's tail copy does (~CLobbySaveModule, ~basic_string) --
+    ~CLobbySaveModule is defined in zNetMediusUniverse.cpp, inside that unit's span, by image order;
+  - stack slots follow declaration order across scopes: per-case buffers declared at function scope ahead of a
+    shared buffer take the top slots; a per-case base and counter, counter declared last, give base s1 and
+    counter s0 in every case;
+  - `if ((err = f()) != 0)` branches on v0 with the copy in the delay slot, `err = f(); if (err)` on the copy; a
+    compare materialised in v0 before a ternary's branch is a bool local (`bool fits = n < 1000; fits ? a : b`);
+    an initialisation the target places after a loop's guard means an explicit guard around a do-while;
+  - on a class iterator `(*i).f` and `i->f` schedule a call's arguments differently; one `&&` chain with both
+    event calls in else-arms lets the inline event's null test branch straight to the epilogue, nested ifs
+    with `return` leave a jump block (AddFriend); a ternary passed to a `char`/`unsigned char` parameter adds
+    an extension, to an `int` parameter it matches (cbFilterChat, the server-message callback);
+  - open: func_0030BD40 (2: the counter's zero ahead of the loop guard), the lobby's Open 0x2E0030 (0x410,
+    unwritten: CZOnlineLobby::Open(host, port), called from UILobbyConnect), the deque instances whose callers
+    are all written now (their sizes against include/deque in the MSL queue), the IgnoreItem class insert
+    0x3022F0 (0x78C against 0x554); func_00300740 is declared bool in both callers' units, as defined.
+- **Tells from the weapons, round 13** (vis_vu.cpp's VU chain, GetChainData, the vid stack):
+  - SOCOM II's vid stack is `std::stack<void *>`: its out-of-line empty() (`xor v0,v0,zero; sltiu`) and top()
+    (the deque's back() over 128-element blocks inlined) match 0x321F40/0x321EF0, renamed by the integrator;
+    znode.h forward-declares CVidStack and vis_vu.cpp/vis_main.cpp define it -- <stack> cannot go in znode.h
+    because zrdr.h defines a std::stack of its own and the two clash; GetVid is six inline levels high, so
+    its callers inline it one level;
+  - MW refuses `break` as an asm mnemonic: the intrinsic is `__I_break(0)`, and the game's trap is
+    `__I_break(0); __I_nop();` -- inlined one level it pads `break; nop; nop`, inlined whole `break; nop`;
+  - a command helper that returns `p + 1` lets a caller step a cursor whose address is taken without
+    reloading it after the helper's stores;
+  - `!(p + n >= end)` through an inline bool gives `sltu; xori; xori; bnez`, written inline as
+    `!(p + n < end)` it branches on the sltu; an int flag is `li` stored unmasked, a bool flag `daddiu` plus
+    `andi 0xff`; a bool result set at the top of its if block (`r = true;` before the work, else `r = false`)
+    puts the daddiu ahead of the loop; a 1-bit field read is `dsll32`/`dsrl32` where a mask is `andi`;
+  - a 15-statement function in the same unit is auto-inlined into its caller (VuProjectedMap needed `#pragma
+    auto_inline off`); the detail struct is SOCOM 1's zdb::tag_DETAIL_PARAMS (CVisual keeps its DETAIL typedef);
+  - VuUpdate's tail calls even 8-byte helpers out of line (0x3B5250-0x3B52C0 sit right after it): its inline
+    budget runs out partway -- a THIRD limit, probably `inline_max_total_size`, not measured yet;
+  - open: VuLightMap 0x3B54E0 (5: the loop test's end() colours the size and the iterator word the other way
+    round), CopyBuffer 0x3C36D0 (8 bytes long: the switch's second test `beq 8; b out` where the target
+    branches straight into kind 8's code, the block copy's two loads ahead of the length); not written:
+    VuUpdate, 0x3B5F20 (VuBatchProgram's command list), 0x3B41D0, 0x3B6870, 0x3B6B20, 0x3B7170, 0x3B76B0,
+    0x3B78D0, SetBuffer, the vid stack's deque copy chain.
+- **Tells from the world, rdr and sound, round 3** (zrndr_pipe.cpp on the real texture classes, zrndr_postfx.cpp):
+  - a function template DECLARED ahead of its definition (`template <class V> inline void FreeVector(V &);`)
+    is no longer inlined one level, even at calls written after the definition (ztex_manager.cpp's four
+    FreeVector users all missed): include the defining header instead; and a template the header's inline
+    bodies call must be defined before them, or their copies call it out of line;
+  - in `a = b = x;` the store to `b` comes first (`CAlpha()` needed `m_next = m_visualList = ...`); MW keeps
+    the source order of constant stores to `this` (`CPipeEffect()`'s sixteen matched only in the target's);
+  - a header inline whose tree is taller than the level, used by two units (`CPipe::Flush`,
+    `CGameMenu::Clear`), is inlined one level in both, and its callees' copies sit after the FIRST caller in
+    link order; a unit's statics defined in its initialiser's order (`<iostream>`'s first) make its
+    `__sinit` byte-exact (`__sinit_zrndr_pipe.cpp`, `__sinit_zrndr_postfx.cpp`);
+  - zrndr_pipe.cpp ends at 0x33CD4F (its template tail 0x33C2A0-0x33CCCF, ~CFlareSystem 0x33CCD0 last);
+    0x33CD50-0x33D22F is a unit of its own, SOCOM II's effect at thePipe+0x688 (named zrndr_postfx.cpp and
+    CPipeEffect by us), whose initialiser 0x402F80 follows the pipe's; zsav_module.cpp starts at 0x33D230;
+    the pipe interrupt's test at 0x1C is the packet vector's capacity;
+  - 0x1FB3D0/0x1FB300 are vector<CTexHandle *>'s constructor and destructor, not vector<CAssetLib *>'s (the
+    font code 0x35A650 builds and destroys FreeVector's temporary through them beside the pipe's own clear
+    and swap copies; Add2D, the old names' basis, inlines its CLibList's) and 0x1FDDA0 vector<CTexPalette
+    *>'s destructor -- renamed by the integrator, which made CDynTexList::Free 0x33BAA0 byte-exact;
+  - open: the delayed nodes' class insert 0x33C5C0 (109, registers only: the in-place end pointer in s6
+    where the target has s0 -- include/vector's class-insert end register, the MSL lane's); 0x1EA580, a
+    pointer list's clear() out of line in an unwritten unit's tail, is unnamed (CAlpha::Free calls it).
 - **Tells from the weapons, round 12** (vis_texfx.cpp whole, a new unit vis_ripple.cpp, GetTextureSelectBlock):
   - vis_ripple.cpp (0x3C0CF0-0x3C356F, its initialiser 0x404B30; vis_main.cpp starts at 0x3C3570) is
     SOCOM II's water ripples, with no SOCOM 1 counterpart: a manager global (theWaterRippleManager
@@ -1885,7 +1983,9 @@ locale.cpp, the logic_error family, the other three `__sinit` rows.
     constructor; returning a member unconverted wants it declared `bool` (`unsigned char` adds an
     sltu); `p[i + k]` through a per-case local pointer stays base-plus-index, while `bytes = p + k`
     is strength-reduced into a walking pointer;
-  - 0x2F62B0 is the chat unit's tail, so zNetMediusLobby.cpp starts at 0x2F6340.
+  - 0x2F62B0 is the chat unit's tail, so zNetMediusLobby.cpp starts at 0x2F6340 (corrected by round 11: the chat
+    deque's instances run to 0x2F6CF7 -- 0x2F6340, 0x2F6600, 0x2F6A70, 0x2F6BC0 are called only from them --, so
+    zNetMediusLobby.cpp starts at 0x2F6D00).
 - **Tells from the HUD, round 21** (st_mpexit.cpp written whole, reco.cpp's gsapi calls by name):
   - a switch's compare chain runs its labels in reverse source order and lays the blocks out in
     source order: Tick's target order 1, 3, 5, 6, 4 is `case 4: break; case 6; case 5: case 3; case 1;`
@@ -3863,6 +3963,49 @@ What they showed:
 - **Open, diagnosed in place**: sceMcWrite (the head split's `buff - 16` is reassociated here, kept in
   the target), sceGsResetGraph (4 words, a v0/v1 swap).
 
+**Round 10a** (2026-11-03, by hand, MAIN's densest library first): Sony's libmpeg, five of the
+demo's six objects -- 46 rows newly byte-exact (7,072 bytes), 31 matched drafts superseded, 77
+functions byte-exact of 82 written, 17 rows named. `sdk/libmpeg.h` (the public sceMpeg and its
+callback data as Sony's libmpeg.h declares them; the decoder's private state, sceMpeg.sys, 0x10C0
+bytes, its offsets checked by `MPEG_AT` typedefs), `sdk/mpeg_api.c` (the demo's object 0x1593B8:
+sceMpegInit ... _sceMpegFlush, the allocator, the picture loop; 35 of 36), `sdk/mpeg_sysbit.c`
+(7 of 7, the system-stream bit reader), `sdk/mpeg_seq.c` (0x159F10: the resets, the error path,
+_sendDataToIPU's DMA chain, the sequence header and extensions; 17 of 19), `sdk/mpeg_defcb.c`
+(2 of 2) and `sdk/mpeg_dec.c` (the decoder object's bitstream layer and header parsers, 16 of 18;
+its motion compensation and picture output are not written). Named `s1:order`, each body checked
+against the demo's: sceMpegAddBs, sceMpegSetDefaultPtsGap, sceMpegResetDefaultPtsGap,
+sceMpegSetImageBuff, sceMpegDispWidth/Height, sceMpegDispCenterOffX/Y, sceSetPtm,
+_alalcSetDynamic, _initSeqAgain, the four extension stubs (by their own messages too),
+_defStopDMA, _defRestartDMA. What they showed:
+
+- **libmpeg is 991111's**: sibling calls in void context only (`_sysbitInit`'s `j _sysbitFlush`,
+  `_pictureHeader`'s `j _updateTempTackData`), loops aligned to 8 (the padding nop at a loop's
+  head), every function byte-exact under the dtls13010 build as written.
+- **The IPU's idle wait and command write are macros**, expanded in the bit readers as well as
+  standing as functions (`_waitIpuIdle`, `_sendIpuCommand`): the expansions keep no constant in a
+  saved register where the functions do. The command's `>> 28` index into `_isDirty` is `srl` or
+  `sra` by the command expression's own type at each site.
+- **A value fold would distribute is its own statement**: `(size ? 3 : 0) << 28` folds into a
+  ternary of shifted constants and a branch, `ps != (c ? 2 : 1)` into two compares -- the target's
+  movn means the value was computed first (`_sendDataToIPU`'s tag id). And `ret = ret &&
+  _decPicture(d)` after `ret = _updateRefImage(d, 0)` routes the result through a temporary (the
+  target's `move s2,v1` at the join): `ret` in its own expression is not a safe target.
+- **Field extraction order shows in the registers**: `_sequenceExtension` takes the extension's
+  fields from the low bits up (bit_rate, vertical, horizontal, chroma) before its first check.
+- **Stores, measured** (`tools/ccperm.py`, 14 functions): with independent stores at a function's
+  end the last source store is often scheduled first and the delay slot takes the next-to-last --
+  but not always; measuring was quicker than predicting every time.
+- **Open, diagnosed in place**: _decodeOrSkipField (the constant 1 lives in s1 across the calls and
+  feeds three movn's), _initSeq (right size, the reallocation block's schedule), _initRefImages
+  (the target multiplies by 384 once per picture, GCC CSEs every spelling), _ipuVdec (IPU_TOP read
+  as `lui; ld 0x2030(reg)`), _extensionAndUserData (both start codes hoisted into saved registers).
+
+**The tools, round 10a**: `tools/ccperm.py` keeps the probe's own directory on the include path
+(its variants are compiled under build/ccsweep, so a probe's `#include` of a header beside it was
+lost and every order failed to build). No tool that scores changed: scdiff.py, sccheck.py,
+scdecomp.py and `include/` are byte-identical to master's (3daf64e5), so no unit can score
+differently. automatch was not run this round.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -4478,6 +4621,105 @@ and 0x626110-0x626B10 but 0x626240, 0x626658, 0x6264C0; 0x624830, 0x624DC0 and g
 large functions 0x6250D0-0x625690 not written) -- 85 functions byte-exact, 51 new to the map's
 byte-exact rows (9,600 bytes), 34 superseding matching drafts; 2 data rows (nSeed, nTimerStart,
 ours); one row resized (0x60FFF8). No tool changed.
+
+**Round 10c: the gsapi object whole, and the small block functions.**
+
+- **A redefined `extern __inline__` is output at the end of its file, and inlined in its new form
+  after it.** SOCOM 1's gsapi object ends with a real CheckEngineHandle; SOCOM II's callers inline
+  it, and the map's func_004C8C38 (after StopListening, called by nothing) is SOCOM 1's function --
+  so gsapi.h carries the GNU `extern __inline__` body and gsapi.c the real one, which 2.96 defers
+  to the end of the object as an inline's out-of-line copy (a probe: defined anywhere, it comes out
+  last). Defined in the source just before gsapi_NotifySetEnergyInterval, its own early-return body
+  is what the two functions after it inline -- the result zeroed again after the base test, the
+  round-3b diagnosis of NotifySetEnergyInterval and EngineSetUserData, open since: both byte-exact
+  now, with every earlier caller keeping the extern inline's single-result form. And the two
+  SOCOM II functions after CheckEngineHandle (0x4C8CB8, 0x4C8D10) are therefore another object:
+  `gsapi2.c` (ours), inlining the header's form.
+- **The gsapi object's data are SOCOM 1's globals** (`data.txt`, `s1:data`): AsrSpiSignalCallBacks
+  and AsrSpiRecogCallBacks (the asrspi_cb object's .data: the engine start sets or clears the
+  energy and SNR callbacks), MAXRECOGNIZERS and DEFAULTENERGYINTERVAL (4 and 500, the shorts
+  func_004C8CB8 resets), the .rodata's szGSAPIVersion ("Game Speech API V2.02.01 for Sony
+  PlayStation2", SOCOM 1's "GAME ASDK ... 1.00.02") and TranslateParamTable (18 asrspi ids, 255
+  none: ActivateDefaultParams and the translator read it).
+- **The vendor reads its default parameters through a null pointer**: gsapi_LanguageLoadBuffer
+  copies the engines' defaults from a block it never sets (`lw v1,8(zero)`, values from 12).
+- **ScanSoft's shapes, measured**: a guard on the stored status, then `return status = f()`
+  (RestartEngine; the `>= 0` test with one return reloads); the start's two calls with the error
+  copied in the `< 0` arm (`err = status`) so the join's own test is not threaded; nested tests
+  with one `return err` where a call must not be a sibling call (EngineSetImmediateContext:
+  guard clauses tail-call ContextActivate); a `switch (state) { case 0: break; case 1: ... }`
+  where `== 0` returned early lets CSE drop the target's `move v0,zero` (ProcessAudio); a block's
+  control `break`s to one shared `return 1`, its error path returning its own (the FFT, window
+  controls); stores by `tools/ccperm.py` (the engine open's five, ResetGender's four, the
+  window's three).
+- **Names, each a call site or a slot**: Subsampler_Reset (SOCOM 1's Voicing_Reset tail-calls it
+  at the same point, the body its own with the fields 4 bytes lower), InitVoicing,
+  Voicing_MaintainNoiseEner, Voicing_AddSignal (one caller each, as SOCOM 1's), ProcessFFTMod,
+  InitFFTMod, ProcessWindow, InitWindow, CombinerProcess (their constructors' slots, SOCOM 1's
+  LOCALs in the same objects).
+- **Open, diagnosed in place**: gsapi_EngineStop (2 words longer: GCSE's PRE keeps the stop's
+  e->audio load for the external-audio branch -- byte-exact only under
+  `-fno-expensive-optimizations`, which costs two other functions), gsapi_LanguageLoadBuffer (37,
+  the right size: the copy loop's source pointer starts at 12 where here 12 is the loads'
+  displacement), func_004C8D10 (11: id and gGSAPI's address swap s1/s2). Tried without result:
+  casrGetLastError's movz through the handle inline, six caller shapes (C4, the nested `?:`,
+  comes out the right size).
+
+Hand-written in round 10c: `asr/gsapi.c` (47 of 49: 22 new, the two round-3b opens closed, 3 over
+their drafts -- gsapi_GetNumContextsLoaded, func_004C8890, TranslateGsapiParamId2AsrSpiParamId),
+`asr/gsapi2.c` (1 of 2, new: func_004C8CB8 moved from gsapi.c), `asr/voicing.c` (2 of 2 written,
+new: Voicing_Reset, Voicing_Free over its draft), `asr/gender.c` (2: ResetGender, ConstructGender
+over its draft), `asr/fftmod.c` (2, new), `asr/window.c` (2: ControlWindow, ConstructWindow over its
+draft), `asr/vad.c` (ConstructVad), `asr/mtx.c` (+1, imtxInit) -- 31 rows new to the map's
+byte-exact rows (7,500 bytes), 6 superseding matching drafts; `src/lib/asr` 362 of 396 (325 of 358
+before). 10 rows named, 6 data rows. No tool changed (ccperm's `-I` gap was worked round with an
+absolute include; master's round 10a fixed it).
+
+**Round 10b: the objects after the RT library, the voice library's lists, rt_msg_client whole.**
+
+- **What 0x63DC90-0x645710 holds, by the `.rodata` each row reads**: rt_udp.c from 0x63DC90 (its
+  version at 0x656040, its jump tables at 0x665840/0x665880), **rt_upnp.c from 0x642330** (its
+  first function returns `gpszVersion`, "rt_upnp version: 1.01.0007", the string just before its
+  `$Header`; '%u.%u.%u.%u' after it), a three-function table object at 0x642968, SHA1.c to 0x643168
+  (0x643140 reads its `.rodata`), **StreamMedia.c 0x643168-0x6451E8** (DME's media streams: its two
+  switch tables follow its `$Header`; it alone reads 0x6560C8/0x6560CA and the session table at
+  0x676480), then a fragment-buffer object at 0x6451F0 (64 slots of 512 bytes) before the Medius
+  client. They are not Medius API objects: every call they make goes to rt_comm, rt_time, DmeLocal.c
+  or the voice library's API (rt_audio.c's forwarders, 0x62BDF0-0x62C060).
+- **md5.c is RFC 1321 with a byte count** (0x629B38: MD5Init's four constants): SCEA counts input
+  in bytes and makes the bits only in MD5Final, and the transform and Encode are md5_platform.c's,
+  called at 0x6641D0/0x664F80 where no map row is (a placeholder resolves by its address). The
+  update's index must be zeroed right after the first copy -- it then lives across the transforms
+  in s4 and the last copy is shared; zeroed after the loop, 2.96 keeps it in a3 and splits the copy.
+  The names are placeholders: RFC 1321's are a prediction, not this library's evidence.
+- **SCEA's statics carry SOCOM 1's names**: every SOCOM 1 RT object keeps a `char *gpszVersion`, a
+  byte `gbInitialized` and a short `gnInitCount` (its symtab's LOCAL OBJECTs, rt_msg_client's at
+  0x43D7C8-0x43D7CE); StreamMedia.c's .data is that byte and short. A GNU `.data` static is checked
+  by content only, so the units use SCEA's names and data.txt holds them as `NAME@unit`
+  (`gbInitialized@streammedia`); a `.bss` static must carry its data.txt name (scdiff.bss_local).
+- **SCEA's shapes, measured**: a boolean query as one `&&` after its guards (a guard per test is
+  if-converted to `xor; sltiu` -- StreamMedia's 0x644060 and 0x644390, the matched draft's shape);
+  a `void *` user-data field, its own alias class, whose load schedules above the `int` stores into
+  the callback's record (three callbacks); an argument read back from the field just stored
+  (`pUpnp->nServerPort`: CSE gives the stored register and 2.96 zero-extends it again, `andi`);
+  a 4-byte address and a 2-byte port unpacked with `memcpy` into locals that stay in the frame;
+  a chained `a->x = a->y = a` (no reload between the two stores); a ring walk as `if (p) do {...}
+  while (p);` with the head in a local; a call's error returned from inside the positive test
+  (`if (ok) { r = f(); if (r) return r; } return 0;` keeps the final `move v0,zero`); a test whose
+  `return 41` cross-jumps backwards into an earlier failure block gets GNU as's five short-loop nops.
+- **round 6b's OPEN rt_msg_client_is_valid_connection_id closed**: with is_valid_connection (its
+  callee) defined above it and the connection state an enum (compared unsigned: `sltiu`), the
+  beqz/beqzl choice comes out as the target's.
+- **Open, diagnosed in place**: StreamMedia.c's 0x6437E0 (21 default stores, 17 orders tried),
+  0x644610 and 0x644EA0 (5 words each: a store order, a register pair), 0x644D20 (the 1 kept in v0
+  for a test and three returns; nine shapes), 0x6448A0 and 0x6450B0 (not iterated).
+
+Hand-written in round 10b: `medius/streammedia.c` (33 of 39, new), `medius/rt_upnp.c` (21 of 21,
+new), `medius/md5.c` (3 of 3, new), `medius/peer.c` (21 of 21, new: the voice library's peer rings
+and member lists, 0x629DA0-0x62A3B0), `medius/rt_msg_client.c` (+17 and the OPEN closed: 53 of 53)
+-- 96 functions byte-exact, 76 new to the map's byte-exact rows (11,216 bytes), 20 superseding
+matching drafts; 4 data rows (gbInitialized@streammedia, gnInitCount@streammedia,
+gpszVersion@rt_upnp by SCEA's convention; gapStreamSessions, ours). No row renamed; no tool changed.
 
 ## Open, and next
 

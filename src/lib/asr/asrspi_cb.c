@@ -70,7 +70,7 @@ int asrspi_cbResult(RESULT *r, GSENGINE *e)
         for (i = 0; i < e->res.nwords; i++)
             e->res.ids[i] = r->best->items[i].word->id;
         if (nodefault != 0)
-            threshold = gGSAPI.confidence;
+            threshold = gGSAPI.params[9];
         if (r->rejected != 0 || r->best->score < threshold) {
             if (gGSAPI.notify != 0)
                 gGSAPI.notify(e, 0, &e->res, threshold);

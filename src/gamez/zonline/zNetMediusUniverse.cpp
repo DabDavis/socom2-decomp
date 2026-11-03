@@ -329,7 +329,7 @@ extern NetConnectionInfo data_0044FCA0;   /* the universe server */
 extern "C" {
 void func_0064A750(NetConnectionInfo *info, int type, const char *ip, int port, int flags);   /* (the info built for an address) */
 void func_0064F4E0(NetServerKey *key);   /* (the DNAS key) */
-int func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
+bool func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
 void func_0030E3A0(CZNetwork *net, int);   /* (CZNetwork's) */
 }
 
@@ -405,6 +405,7 @@ class CSaferStr : public std::string {
 class CLobbySaveModule {
 public:
     CLobbySaveModule(const char *name, CSaveManager *manager);
+    ~CLobbySaveModule();
     virtual void Save() = 0;
     virtual void Load(const char *blob) = 0;
     virtual void SetChecksum(const char *sum) = 0;
@@ -504,6 +505,13 @@ public:
 };
 
 typedef CZUniversInformationServer::CAcctDB CAcctDB;
+
+/* the lobby's half of a save torn down: its name destroyed (OVL1 0x2FD000 -- this unit's own
+ * function, not an implicit destructor's tail copy: MW never inlines the string's out-of-class
+ * destructor into an own function, so the name's is called, as ~CAcctDB's inlined copy calls it) */
+CLobbySaveModule::~CLobbySaveModule()
+{
+}
 
 /* the lobby's blob written (CLobbySaveModule's, the save manager's unit: its placeholder, called on
  * the module by reference -- a pointer conversion would test the account database for null) */
