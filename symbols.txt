@@ -4010,7 +4010,7 @@
 0x002B6FC0 0x558 func_002B6FC0  # OVL1
 0x002B7520 0xC func_002B7520  # OVL1
 0x002B7530 0xD8 func_002B7530  # OVL1
-0x002B7610 0x110 func_002B7610  # OVL1
+0x002B7610 0x110 __ct__12C2DMessage_QFv  # OVL1; by hand (the states lane, round 19: C2D's constructor, the queue's vtable 0x4063B0, the two C2DBitmapPoly backgrounds, then SOCOM 1's C2DMessage_Q() field for field)
 0x002B7720 0x74 SetString__16C2DMessageStringFPCcb  # OVL1; s1:align; by hand (the states lane, round 17): SOCOM II's override of C2DString's slot 26, SetString(const char *, bool) -- the target passes its own a2 on to C2DString::SetString untouched (SOCOM 1's took the string only); fts_message.cpp
 0x002B77A0 0x1A8 Tick__16C2DMessageStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B7950 0x98 func_002B7950  # OVL1

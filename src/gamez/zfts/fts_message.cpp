@@ -42,25 +42,48 @@ public:
     CSaferStr m_text;   // 0xa4
 };   // 0xb0 bytes
 
-/* the queue: a C2D whose children are its lines (only what Clear_Messages touches: SOCOM II's
- * fields, the names ours) */
+/* the queue: a C2D whose children are its lines (SOCOM 1's DWARF names the members from the
+ * scale on, 0x2E0 further on in SOCOM II, whose two backgrounds are C2DBitmapPolys; SOCOM 1's
+ * three bools are bits of the byte at 0x4DC. The names at 0x18 and 0x454-0x45C ours) */
 class C2DMessage_Q : public C2D {
 public:
+    C2DMessage_Q();
+    virtual ~C2DMessage_Q();
     void Clear_Messages();
     const char *LastMessage();
     void SetScrolling(bool on) { m_scrolling = on; }
 
     int m_18;   // 0x18
-    unsigned char _1c[0x454 - 0x1c];
+    C2DBitmapPoly m_background1;   // 0x20
+    C2DBitmapPoly m_background2;   // 0x210
+    float m_scale;   // 0x400
+    unsigned int m_maxsize;   // 0x404
+    int m_top;   // 0x408
+    int m_left;   // 0x40c
+    int m_red;   // 0x410
+    int m_blue;   // 0x414
+    int m_green;   // 0x418
+    float m_maxtrans;   // 0x41c
+    float m_transstep;   // 0x420
+    int m_time;   // 0x424
+    int m_lowestbottom;   // 0x428
+    int m_spacing;   // 0x42c
+    unsigned char _430[0x434 - 0x430];
+    float m_maxlength;   // 0x434
+    float m_TtySpeed;   // 0x438
+    int m_cur_top;   // 0x43c
+    float m_moveTime;   // 0x440
+    unsigned char _444[0x454 - 0x444];
     int m_454;   // 0x454
     int m_458;   // 0x458
     unsigned char m_45c;   // 0x45c
     unsigned char _45d[0x4dc - 0x45d];
-    unsigned char m_4dc_0 : 1;   // 0x4dc
-    unsigned char m_4dc_1 : 1;
-    unsigned char m_4dc_2 : 1;
+    unsigned char m_centered : 1;   // 0x4dc
+    unsigned char m_descends : 1;
+    unsigned char m_bEnabled : 1;
     unsigned char m_scrolling : 1;
-    unsigned char m_4dc_4 : 4;
+    unsigned char m_4dc_4 : 1;
+    unsigned char m_4dc_5 : 3;
 };   // 0x4e0 bytes (the mission's queues' stride)
 
 /* the lines' fade: its speed (alpha a second) and the alpha a line fades in to (OVL1 data
@@ -74,6 +97,30 @@ static float s_fadeMax = 100.0f;
  * so its initialiser (0x4003E0) is __construct_array over the six with CPnt4D's empty constructor
  * (0x2110E0) and no destructor */
 static CPnt4D s_msgColors[6];
+
+/* the queue set up: SOCOM 1's constructor, the colours -1 and a fourth flag cleared (OVL1
+ * 0x2B7610) */
+C2DMessage_Q::C2DMessage_Q()
+{
+    m_scale = 1.0f;
+    m_maxsize = 3;
+    m_top = 100;
+    m_left = 20;
+    m_maxtrans = 100.0f;
+    m_transstep = 3.0f;
+    m_time = 0;
+    m_red = m_blue = m_green = -1;
+    m_lowestbottom = m_top + 20;
+    m_spacing = 20;
+    m_centered = false;
+    m_descends = false;
+    m_maxlength = 100000.0f;
+    m_cur_top = 0;
+    m_TtySpeed = 0;
+    m_moveTime = 0;
+    m_bEnabled = true;
+    m_4dc_4 = false;
+}
 
 /* the colours set: greys, yellows, blues, greens, oranges and reds at alpha 100 (OVL1 0x2B7530) */
 extern "C" void func_002B7530()
