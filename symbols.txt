@@ -11900,20 +11900,20 @@
 0x00612518 0xB4 func_00612518  # OVL2 unaligned
 0x006125D0 0x60 func_006125D0  # OVL2
 0x00612630 0x70 func_00612630  # OVL2
-0x006126A0 0x44 func_006126A0  # OVL2
-0x006126E8 0x64 func_006126E8  # OVL2 unaligned
-0x00612750 0x7C func_00612750  # OVL2
-0x006127D0 0xAC func_006127D0  # OVL2
-0x00612880 0x68 func_00612880  # OVL2
-0x006128E8 0x64 func_006128E8  # OVL2 unaligned
-0x00612950 0x4C func_00612950  # OVL2
+0x006126A0 0x44 NetInitializeClients  # OVL2; s1:order (the gcc lane, round 7b): first of SOCOM 1's first DME object (0x4181C0), the same order here; DMEmalloc's table into NetClientPointerList, MyClientIsJoined cleared, the table memset -- SOCOM 1's body at one world's 256 clients
+0x006126E8 0x64 func_006126E8  # OVL2 unaligned; the body of SOCOM 1's NetGetClient (s1:order, the gcc lane round 7b: second of SOCOM 1's first DME object, *ppClient = 0, the range checks, NetClientPointerList[nClient]); the public name is the Dme.c wrapper's, 0x622A20
+0x00612750 0x7C func_00612750  # OVL2; the body of SOCOM 1's NetGetClientStatus (s1:order, round 7b: third of the object; (pStatus, world, client), the range checks returning 8, the status from the world's client record); the public name is the Dme.c wrapper's, 0x622968
+0x006127D0 0xAC NetCreateClient  # OVL2; s1:order (round 7b): fourth; DMEmalloc(28) zeroed field by field and stored in NetClientPointerList, returned -- SOCOM 1's body
+0x00612880 0x68 NetFreeClient  # OVL2; s1:order (round 7b): fifth; DmeFree of the client's NetClientPointerList slot -- SOCOM 1's body
+0x006128E8 0x64 NetFreeClients  # OVL2 unaligned; s1:order (round 7b): sixth; NetFreeClient over a world's clients, then MyClientIsJoined cleared -- SOCOM 1's body
+0x00612950 0x4C NetFreeAllClients  # OVL2; s1:order (round 7b): seventh; NetFreeClients over the four worlds, then MyClientIsJoined cleared -- SOCOM 1's body
 0x006129A0 0x30 NetFreeClientPointers  # OVL2; s1:exact
-0x006129D0 0xDC func_006129D0  # OVL2
-0x00612AB0 0x138 func_00612AB0  # OVL2
-0x00612BE8 0x98 func_00612BE8  # OVL2 unaligned
-0x00612C80 0x100 func_00612C80  # OVL2
-0x00612D80 0xC4 func_00612D80  # OVL2
-0x00612E48 0x310 func_00612E48  # OVL2 unaligned
+0x006129D0 0xDC ReserveNetObjectsAndDataStreamsForClient  # OVL2; s1:order (round 7b): ninth (after NetFreeClientPointers); NetObjectStatus 0 -> 1 over the client's object block, each of its data streams' state set to 1 -- SOCOM 1's body with null tests
+0x00612AB0 0x138 func_00612AB0  # OVL2; the body of SOCOM 1's NetSendMyClientUpdate (s1:order, round 7b: tenth of the object; SOCOM 1's 36-byte client update, field for field); the public name is the Dme.c wrapper's, 0x622620
+0x00612BE8 0x98 MyClientJoins  # OVL2 unaligned; s1:order (round 7b): eleventh; NetGetClient, NetCreateClient when none, the object 0x1000, NetSendMyClientUpdate(world, -1), ReserveNetObjectsAndDataStreamsForClient -- SOCOM 1's sequence
+0x00612C80 0x100 NetClientJoins  # OVL2; s1:order (round 7b): twelfth; NetGetClient, NetCreateClient when none, ReserveNetObjectsAndDataStreamsForClient, the joins callback, NetSendMyClientUpdate(world, client) -- SOCOM 1's sequence
+0x00612D80 0xC4 func_00612D80  # OVL2; the body of SOCOM 1's NetSetMyClientObject (s1:order, round 7b: thirteenth of the object; NetGetClient's body on this client, NetGetObject's body on the index, the owner test, NetSendMyClientUpdate's body); the public name is the Dme.c wrapper's, 0x6233D8
+0x00612E48 0x310 NetClientLeaves  # OVL2 unaligned; s1:order (round 7b): fourteenth; the leaves callback, the object walk up to ActiveNetObjectCount (status 2: creator and owner reassigned, NetFreeRemoteObject, RemoteObjectUpdate(-1, i, -2)), the client's reserved objects and streams released, NetFreeClient -- SOCOM 1's body with the session master's hand-over (0x613158) new
 0x00613158 0x160 func_00613158  # OVL2 unaligned
 0x006132B8 0x498 func_006132B8  # OVL2 unaligned
 0x00613750 0x3C func_00613750  # OVL2
@@ -12110,9 +12110,9 @@
 0x006204B8 0x2C func_006204B8  # OVL2 unaligned
 0x006204E8 0x2C func_006204E8  # OVL2 unaligned
 0x00620518 0x12C NetGetBuildTimeStamp  # OVL2 unaligned; s1:calls (the DME's build stamp: 'Time of build: %.2d.%.2d.%.4s...' and Dme.c's date 'Oct 9 2003' right after Dme.c's $Header; SOCOM 1's NetGetBuildTimeStamp, byte-identical there to MediusGetBuildTimeStamp; the gcc lane, round 3b)
-0x00620648 0x60 func_00620648  # OVL2 unaligned
-0x006206A8 0x164 func_006206A8  # OVL2 unaligned
-0x00620810 0xF8 func_00620810  # OVL2
+0x00620648 0x60 NetSetDefaultInitializeParams  # OVL2 unaligned; s1:calls (round 7b): MediusInitialize calls it where SOCOM 1's does (and the game's init, as zNetInitialize); it calls KM_GetSoftwareID's place (0x64F5F8) as SOCOM 1's
+0x006206A8 0x164 NetInitialize  # OVL2 unaligned; s1:calls (round 7b): MediusInitialize calls it where SOCOM 1's calls NetInitialize; Dme.c's locked wrapper over 0x616820, SOCOM 1's NetInitialize body
+0x00620810 0xF8 NetClose  # OVL2; s1:calls (round 7b): MediusClose calls it where SOCOM 1's calls NetClose; Dme.c's locked wrapper over 0x61C2F0
 0x00620908 0xA4 func_00620908  # OVL2 unaligned
 0x006209B0 0xD8 func_006209B0  # OVL2
 0x00620A88 0xB8 func_00620A88  # OVL2 unaligned
@@ -12133,8 +12133,8 @@
 0x00621610 0xA4 func_00621610  # OVL2
 0x006216B8 0x14 func_006216B8  # OVL2 unaligned
 0x006216D0 0xA4 func_006216D0  # OVL2
-0x00621778 0x98 func_00621778  # OVL2 unaligned
-0x00621810 0xA4 func_00621810  # OVL2
+0x00621778 0x98 NetSetDefaultConnectParams  # OVL2 unaligned; s1:calls (round 7b): MediusConnect calls it where SOCOM 1's calls NetSetDefaultConnectParams
+0x00621810 0xA4 NetConnect  # OVL2; s1:calls (round 7b): MediusConnect calls it where SOCOM 1's calls NetConnect
 0x006218B8 0x98 func_006218B8  # OVL2 unaligned
 0x00621950 0xA4 func_00621950  # OVL2
 0x006219F8 0x98 func_006219F8  # OVL2 unaligned
@@ -12154,20 +12154,20 @@
 0x00622428 0xB8 func_00622428  # OVL2 unaligned
 0x006224E0 0x98 func_006224E0  # OVL2
 0x00622578 0xA4 func_00622578  # OVL2 unaligned
-0x00622620 0xA4 func_00622620  # OVL2
+0x00622620 0xA4 NetSendMyClientUpdate  # OVL2; s1:order (the gcc lane, round 7b): Dme.c's locked wrapper over 0x612AB0, the body SOCOM 1's NetSendMyClientUpdate has
 0x006226C8 0xA4 func_006226C8  # OVL2 unaligned
 0x00622770 0xA4 func_00622770  # OVL2
 0x00622818 0xA4 NetGetObject  # OVL2 unaligned; s1:calls (zNetGetObject's callee, the prebuilt DME code, as SOCOM 1's) -- the states lane
 0x006228C0 0xA4 func_006228C0  # OVL2
-0x00622968 0xB8 func_00622968  # OVL2 unaligned
-0x00622A20 0xB8 func_00622A20  # OVL2
+0x00622968 0xB8 NetGetClientStatus  # OVL2 unaligned; s1:order (the gcc lane, round 7b): Dme.c's locked wrapper over 0x612750, the body SOCOM 1's NetGetClientStatus has (the wrappers carry SOCOM 1's API names, as NetGetObject and NetSendMessage do)
+0x00622A20 0xB8 NetGetClient  # OVL2; s1:calls (the gcc lane, round 7b): zNetGetGameClient calls it where SOCOM 1's calls NetGetClient; Dme.c's locked wrapper over 0x6126E8, the body SOCOM 1's NetGetClient has
 0x00622AD8 0x98 func_00622AD8  # OVL2 unaligned
 0x00622B70 0xB8 func_00622B70  # OVL2
 0x00622C28 0x98 func_00622C28  # OVL2 unaligned
 0x00622CC0 0xA4 func_00622CC0  # OVL2
 0x00622D68 0xA4 func_00622D68  # OVL2 unaligned
-0x00622E10 0x98 func_00622E10  # OVL2
-0x00622EA8 0x98 func_00622EA8  # OVL2 unaligned
+0x00622E10 0x98 NetGetLocalTime  # OVL2; s1:calls (round 7b): zNetUpdate calls it after NetGetObject where SOCOM 1's calls NetGetLocalTime; MediusInitialize(Bare) and the updates call it where SOCOM 1's do
+0x00622EA8 0x98 NetGetTime  # OVL2 unaligned; s1:calls (round 7b): zNetUpdate calls it right after NetGetLocalTime as SOCOM 1's calls NetGetTime
 0x00622F40 0xA4 func_00622F40  # OVL2
 0x00622FE8 0xA4 func_00622FE8  # OVL2 unaligned
 0x00623090 0xA4 func_00623090  # OVL2
@@ -12175,16 +12175,16 @@
 0x006231E0 0xA4 func_006231E0  # OVL2
 0x00623288 0xA4 func_00623288  # OVL2 unaligned
 0x00623330 0xA4 func_00623330  # OVL2
-0x006233D8 0x98 func_006233D8  # OVL2 unaligned
+0x006233D8 0x98 NetSetMyClientObject  # OVL2 unaligned; s1:calls (the gcc lane, round 7b): Dme.c's locked wrapper over 0x612D80, the body SOCOM 1's NetSetMyClientObject has; OVL1's thunk 0x30CDE0 jumps to it (SOCOM 1's ftsNetworkPlayerInit calls NetSetMyClientObject)
 0x00623470 0x98 NetFreeObject  # OVL2; s1:calls (the DME's; UpdateLocalGrenade calls it where SOCOM 1's does) -- the states lane
 0x00623508 0x88 func_00623508  # OVL2 unaligned
 0x00623590 0x98 func_00623590  # OVL2
 0x00623628 0x98 func_00623628  # OVL2 unaligned
-0x006236C0 0x88 func_006236C0  # OVL2
+0x006236C0 0x88 NetUpdate  # OVL2; s1:calls (round 7b): zNetUpdate and MediusUpdate call it where SOCOM 1's call NetUpdate
 0x00623748 0x98 func_00623748  # OVL2 unaligned
 0x006237E0 0x88 func_006237E0  # OVL2
 0x00623868 0x98 func_00623868  # OVL2 unaligned
-0x00623900 0x98 func_00623900  # OVL2
+0x00623900 0x98 NetDisconnect  # OVL2; s1:calls (round 7b): MediusDisconnect calls it where SOCOM 1's calls NetDisconnect
 0x00623998 0xA4 func_00623998  # OVL2 unaligned
 0x00623A40 0xA4 func_00623A40  # OVL2
 0x00623AE8 0xB8 func_00623AE8  # OVL2 unaligned
@@ -12374,7 +12374,7 @@
 0x0062C968 0x158 rt_comm_get_build_timestamp  # OVL2 unaligned; s1:order (second in the object, as SOCOM 1's; formats rt_comm.c's own __DATE__/__TIME__)
 0x0062CAC0 0x5C rt_comm_startup  # OVL2; s1:calls (the platform's startup, then rt_comm_metric_init, under the startup count -- SOCOM 1's body)
 0x0062CB20 0x48 rt_comm_shutdown  # OVL2; s1:callee
-0x0062CB68 0x3C func_0062CB68  # OVL2 unaligned
+0x0062CB68 0x3C rt_comm_set_default_options  # OVL2 unaligned; s1:calls by hand, the gcc lane round 7b: rt_comm.c's object (between rt_comm_shutdown and rt_comm_create), its one caller rt_comm_create calls it where SOCOM 1's calls rt_comm_set_default_options (no options given: after get_new_channel_id and get_channel, before the platform's create); SOCOM 1's body with the grown 12-byte options memset first. The s1:exact name 0x634958 carried was the old body's six instructions, met again in rt_msg_client
 0x0062CBA8 0x114 rt_comm_create  # OVL2 unaligned; s1:calls (new channel id, get_channel, the default options, the platform's create -- SOCOM 1's sequence)
 0x0062CCC0 0x60 rt_comm_destroy  # OVL2; s1:calls
 0x0062CD20 0x10C rt_comm_send  # OVL2; s1:align
@@ -12538,8 +12538,8 @@
 0x00633378 0xA0 rt_msg_client_get_metrics  # OVL2 unaligned; s1:callee
 0x00633418 0xA0 func_00633418  # OVL2 unaligned
 0x006334B8 0xA0 func_006334B8  # OVL2 unaligned
-0x00633558 0x8C rt_msg_client_udp_set_default_options  # OVL2 unaligned; s1:calls
-0x006335E8 0x8C func_006335E8  # OVL2 unaligned
+0x00633558 0x8C rt_msg_client_set_default_connect_options  # OVL2 unaligned; s1:calls; s1:calls by hand, the gcc lane round 7b (was s1:calls rt_msg_client_udp_set_default_options, a row off): its one caller func_00617788 has SOCOM 1's NetConnect_ClientServerTCP's callee sequence (strlen, strlen, memset, strncpy, strncpy, this, NetMapMsgClientError, strcpy, rt_msg_client_connect), where SOCOM 1 calls rt_msg_client_set_default_connect_options; its internal 0x6348E0 sets the connect options' constants
+0x006335E8 0x8C rt_msg_client_udp_set_default_options  # OVL2 unaligned; s1:calls by hand, the gcc lane round 7b: the locked wrapper after set_default_connect_options and before display_comm_state, as in SOCOM 1's object; its one caller func_006195E0 calls it on a stack options block and then rt_msg_client_enable_udp with that block, as SOCOM 1's NetEnableUDP calls rt_msg_client_udp_set_default_options then rt_msg_client_enable_udp
 0x00633678 0x78 rt_msg_client_display_comm_state  # OVL2 unaligned; s1:exact
 0x006336F0 0xA0 func_006336F0  # OVL2
 0x00633790 0x188 rt_msg_client_ishutdown  # OVL2; s1:callee
@@ -12562,8 +12562,8 @@
 0x00634708 0xBC rt_msg_client_iget_metrics  # OVL2 unaligned; s1:callee
 0x006347C8 0x88 func_006347C8  # OVL2 unaligned
 0x00634850 0x8C func_00634850  # OVL2
-0x006348E0 0x74 rt_msg_client_iudp_set_default_options  # OVL2; s1:align
-0x00634958 0x18 rt_comm_set_default_options  # OVL2 unaligned; s1:exact
+0x006348E0 0x74 rt_msg_client_iset_default_connect_options  # OVL2; s1:align; s1:order by hand, the gcc lane round 7b (was s1:align rt_msg_client_iudp_set_default_options, a row off): SOCOM 1's iset_default_connect_options body -- memset, 0x8000 twice, 30, 15000, the trailing zeroed words -- in a block grown from 64 to 76 bytes, called by the connect wrapper 0x633558; the internals run iset_default_connect_options, iudp_set_default_options, idisplay_comm_state in both builds
+0x00634958 0x18 rt_msg_client_iudp_set_default_options  # OVL2 unaligned; s1:exact; s1:order by hand, the gcc lane round 7b (was s1:exact rt_comm_set_default_options: SOCOM 1's six-instruction rt_comm body met again): between iset_default_connect_options and idisplay_comm_state as in SOCOM 1's object, the internal of the udp wrapper 0x6335E8; it clears the one-word UDP options whose word rt_msg_client's enable-UDP internal 0x633960 keeps as its callback
 0x00634970 0x38 rt_msg_client_idisplay_comm_state  # OVL2; s1:exact
 0x006349A8 0x5C func_006349A8  # OVL2 unaligned
 0x00634A08 0xCC func_00634A08  # OVL2 unaligned
@@ -12931,35 +12931,35 @@
 0x00646958 0xA8 func_00646958  # OVL2 unaligned
 0x00646A00 0x74 MediusSetNatServiceAddress  # OVL2; s1:exact
 0x00646A78 0x3C MediusGetNatServiceAddress  # OVL2 unaligned; s1:exact
-0x00646AB8 0xC func_00646AB8  # OVL2 unaligned
-0x00646AC8 0xC func_00646AC8  # OVL2 unaligned
+0x00646AB8 0xC MediusSetProcessingState  # OVL2 unaligned; s1:order (the gcc lane, round 7b): SOCOM 1's static after MediusGetNatServiceAddress in its object (0x3B2198), the same one store of the processing state; MediusResolveAddrCallback and MediusCheckRequestQueue call it as SOCOM 1's
+0x00646AC8 0xC MediusGetProcessingState  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next static (0x3B21A4), the same one load
 0x00646AD8 0xD4 MediusSetClientAddrList  # OVL2 unaligned; s1:exact
 0x00646BB0 0x6C MediusGetClientAddrList  # OVL2; s1:exact
-0x00646C20 0x58 func_00646C20  # OVL2
-0x00646C78 0x1B4 func_00646C78  # OVL2 unaligned
-0x00646E30 0x10 func_00646E30  # OVL2
-0x00646E40 0x1AC func_00646E40  # OVL2
-0x00646FF0 0x114 func_00646FF0  # OVL2
-0x00647108 0x4C func_00647108  # OVL2 unaligned
-0x00647158 0xC func_00647158  # OVL2 unaligned
-0x00647168 0xC func_00647168  # OVL2 unaligned
-0x00647178 0xC func_00647178  # OVL2 unaligned
+0x00646C20 0x58 MediusResolveAddrCallback  # OVL2; s1:order (round 7b): SOCOM 1's static after MediusGetClientAddrList (0x3B22F0): the result's two words tested, MediusSetClientAddrList, the processing state 2 or 1 -- SOCOM 1's body
+0x00646C78 0x1B4 MediusSetQueuedRequest  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next static (0x3B233C): the type stored first, then the queued CreateGameOnSelf or JoinGame request copied in -- SOCOM 1's body at SOCOM II's request types and sizes
+0x00646E30 0x10 MediusGetQueuedRequestType  # OVL2; s1:order (round 7b): SOCOM 1's next static (0x3B24D8), the same one load and store
+0x00646E40 0x1AC MediusGetQueuedRequest  # OVL2; s1:order (round 7b): SOCOM 1's next static (0x3B24E8), the copy out by the queued type
+0x00646FF0 0x114 MediusCheckRequestQueue  # OVL2; s1:order (round 7b): SOCOM 1's next static (0x3B2684): the processing state tested, the queued request fetched, the client's addresses filled in and NetSendMessage with PacketTypeCreateGameOnSelfRequest or PacketTypeJoinGameRequest -- SOCOM 1's body
+0x00647108 0x4C MediusLocalConnectCallback  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next static (0x3B2788): MyConnectionIndex set, the client's connect callback called with it
+0x00647158 0xC MediusSetClientConnectCallback  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next static (0x3B27F4), one store of the callback
+0x00647168 0xC MediusGetClientConnectCallback  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B2800), its load
+0x00647178 0xC MediusClearClientConnectCallback  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B280C), its clear
 0x00647188 0x3C func_00647188  # OVL2 unaligned
 0x006471C8 0xC func_006471C8  # OVL2 unaligned
 0x006471D8 0xC func_006471D8  # OVL2 unaligned
-0x006471E8 0x12C func_006471E8  # OVL2 unaligned
-0x00647318 0xD8 func_00647318  # OVL2 unaligned
+0x006471E8 0x12C MediusInitialize  # OVL2 unaligned; s1:order (round 7b): after the statics as SOCOM 1's (0x3B2818): -18 when initialised, MediusSetProcessingState(0), NetSetDefaultInitializeParams, NetInitialize, the callbacks stored, NetGetLocalTime(&KeepAliveTimestamp), RegisterPackets, GlobalInitFlag = 1 -- SOCOM 1's sequence
+0x00647318 0xD8 MediusInitializeBare  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B2914): -19 when initialised, the same stores without DME, RegisterPackets -- SOCOM 1's sequence
 0x006473F0 0x124 MediusGetBuildTimeStamp  # OVL2; s1:exact; s1:order (between MediusInitializeBare and MediusVersionClient as SOCOM 1's; it formats the Medius library's own build date, 0x667D20 'Sep 18 2003' beside 'Medius Client Library Version 1.50.0013' -- the s1:exact NetGetBuildTimeStamp was SOCOM 1's byte-identical DME twin, which is 0x620518 here; the gcc lane, round 3b)
-0x00647518 0x2C func_00647518  # OVL2 unaligned
+0x00647518 0x2C MediusVersionClient  # OVL2 unaligned; s1:order (round 7b): between MediusGetBuildTimeStamp and MediusVersionServer as SOCOM 1's (0x3B2B00): the client's version string copied out
 0x00647548 0x74 MediusVersionServer  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: the lobby's connect handlers calls it where SOCOM 1's counterpart calls MediusVersionServer; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
-0x006475C0 0x5C func_006475C0  # OVL2
-0x00647620 0x74 func_00647620  # OVL2
-0x00647698 0x48 func_00647698  # OVL2 unaligned
-0x006476E0 0x2D8 func_006476E0  # OVL2
-0x006479B8 0x64 func_006479B8  # OVL2 unaligned
-0x00647A20 0xA0 func_00647A20  # OVL2
+0x006475C0 0x5C MediusGetMySessionKey  # OVL2; s1:order (round 7b): after MediusVersionServer as SOCOM 1's (0x3B2BD4): -11 when CurrentSessionKey is empty, else it is copied out -- SOCOM 1's body
+0x00647620 0x74 MediusClose  # OVL2; s1:order (round 7b): SOCOM 1's next (0x3B2C08): -15 uninitialised, MediusDisconnect when connected, NetClose, GlobalInitFlag cleared -- SOCOM 1's sequence, CurrentSessionKey cleared first
+0x00647698 0x48 MediusCloseBare  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B2C64): -15 uninitialised, GlobalInitFlag cleared
+0x006476E0 0x2D8 MediusConnect  # OVL2; s1:order (round 7b): SOCOM 1's next (0x3B2C8C): NetSetDefaultConnectParams, MediusSetClientConnectCallback twice, NetConnect, MediusClearClientConnectCallback -- SOCOM 1's callee sequence
+0x006479B8 0x64 MediusDisconnect  # OVL2 unaligned; s1:order (round 7b): SOCOM 1's next (0x3B2E94): -15, -16, NetDisconnect(MyConnectionIndex), MyConnectionIndex = -1, -3 on failure -- SOCOM 1's body
+0x00647A20 0xA0 MediusUpdate  # OVL2; s1:order (round 7b): SOCOM 1's next (0x3B2EF8): NetGetLocalTime, MediusCheckRequestQueue, the keep-alive test, NetUpdate with its error kept in LastDMENetError -- SOCOM 1's sequence without the client-state request
 0x00647AC0 0x114 func_00647AC0  # OVL2
-0x00647BD8 0x88 func_00647BD8  # OVL2 unaligned
+0x00647BD8 0x88 MediusUpdateBare  # OVL2 unaligned; s1:order (round 7b): the third update, before MediusUpdateClientState as SOCOM 1's MediusUpdateBare (0x3B2FD0): NetGetLocalTime, MediusCheckRequestQueue, the keep-alive test, no NetUpdate -- SOCOM 1's sequence without the request; 0x647AC0 between them is new
 0x00647C60 0x88 MediusUpdateClientState  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: LobbyActiveStateHandler and the lobby's state changes calls it where SOCOM 1's counterpart calls MediusUpdateClientState; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00647CE8 0x9C MediusSessionBegin  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: SessionBeginStateHandler calls it where SOCOM 1's counterpart calls MediusSessionBegin; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00647D88 0xAC MediusSessionEnd  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: EndSessionStateHandler calls it where SOCOM 1's counterpart calls MediusSessionEnd; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
@@ -13017,7 +13017,7 @@
 0x00649E28 0x9C MediusAccountGetID  # OVL2 unaligned; s1 by call site (InvitePlayerToClan 0x2E7600 with cbInvitePlayerToClanGetID, as SOCOM 1's; the online lane)
 0x00649EC8 0x9C MediusGetLocations  # OVL2 unaligned; s1:order (after MediusAccountGetID as SOCOM 1's; the GetLocationsCallbackFunctionPtr slot 0x656270; the gcc lane, round 3b)
 0x00649F68 0x9C MediusPickLocation  # OVL2 unaligned; s1:order (the PickLocationCallbackFunctionPtr slot 0x656274; the gcc lane, round 3b)
-0x0064A008 0xC func_0064A008  # OVL2 unaligned
+0x0064A008 0xC MediusGetLastNetUpdateError  # OVL2 unaligned; s1:calls (round 7b): zNetUpdate calls it right after the update, as SOCOM 1's calls MediusGetLastNetUpdateError after MediusUpdate; it returns LastDMENetError
 0x0064A018 0x9C MediusLadderPosition  # OVL2 unaligned; s1:slot (SOCOM 1's MediusLadderPosition: 56 bytes with the session key, a 32-byte response, its callback slot 0x656278 between PickLocation's and LadderList's as in SOCOM 1 -- the online lane's round 9 verdict)
 0x0064A0B8 0x9C MediusLadderList  # OVL2 unaligned; s1:order (after SOCOM 1's MediusLadderPosition's place; the MediusLadderListCallbackFunctionPtr slot 0x65627C; the gcc lane, round 3b)
 0x0064A158 0x9C MediusChatToggleFilter  # OVL2 unaligned; s1:order (the MediusChatToggleCallbackFunctionPtr slot 0x656280; the gcc lane, round 3b)
@@ -13331,7 +13331,7 @@
 0x0064DA98 0x2C func_0064DA98  # OVL2 unaligned
 0x0064DAC8 0x8 func_0064DAC8  # OVL2 unaligned
 0x0064DAD0 0x2C func_0064DAD0  # OVL2
-0x0064DB00 0x18D8 func_0064DB00  # OVL2
+0x0064DB00 0x18D8 RegisterPackets  # OVL2; s1:calls (round 7b): MediusInitialize and MediusInitializeBare call it after NetGetLocalTime where SOCOM 1's call RegisterPackets
 0x0064F3D8 0x24 iTerminateString  # OVL2 unaligned; s1:exact
 0x0064F400 0x30 iCreateAndAllocateMessageID  # OVL2; s1:order (SOCOM 1's object at 0x3B1FB0, between iTerminateString and iGetMessageIDValues as there; sprintf's the id into the output buffer and returns 0; MediusCreateMessageID calls it from the same place as SOCOM 1's)
 0x0064F430 0xAC iGetMessageIDValues  # OVL2; s1:calls
@@ -13351,7 +13351,7 @@
 0x0064F5E0 0x8 func_0064F5E0  # OVL2
 0x0064F5E8 0x8 func_0064F5E8  # OVL2 unaligned
 0x0064F5F0 0x8 func_0064F5F0  # OVL2
-0x0064F5F8 0xC func_0064F5F8  # OVL2 unaligned
+0x0064F5F8 0xC KM_GetSoftwareID  # OVL2 unaligned; s1:calls (round 7b): NetSetDefaultInitializeParams calls it where SOCOM 1's calls KM_GetSoftwareID
 0x0064F604 0x118 KM_GetSoftwareKeyPair  # OVL2 unaligned; s1:exact
 0x00668480 0xB4 __sinit_ai_events.cpp  # OVL2 data area; a static initialiser; s1:unit ai_events.cpp (exact)
 0x00668540 0xE4 __sinit_ai_astar.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_astar.cpp builds ai::path_queue -- the list AbortPathPlan removes from, 0x49B160 there -- and three words after it; SOCOM II's builds the same at 0x66A180 (the list AbortPathPlan 0x5107B0 removes from) after three new statics)

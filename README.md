@@ -3836,6 +3836,56 @@ Hand-written in round 6c: `asr/queue.c` (16 of 17, new: SOCOM 1's queue object w
 functions new to the map's byte-exact rows (6,752 bytes); 117 rows named (95 `s1:calls`/
 `s1:order` from call sites and object order, 22 by the gsapi object's callees and order).
 
+**Round 7b: DME's client table, the Medius core, Dme.c's own functions.**
+
+- **The option setters were a row off, and rt_comm_set_default_options is 0x62CB68.** rt_comm_create
+  calls 0x62CB68 where SOCOM 1's calls rt_comm_set_default_options (SOCOM 1's body, the grown 12-byte
+  options cleared first); the `s1:exact` 0x634958 is SOCOM 1's six instructions met again in
+  rt_msg_client -- its UDP setter's internal, `rt_msg_client_iudp_set_default_options` (the wrapper
+  0x6335E8 is called by DME's UDP enabler, then rt_msg_client_enable_udp, as SOCOM 1's NetEnableUDP
+  does), and the names beside it moved too: 0x6348E0 is `iset_default_connect_options` (SOCOM 1's
+  constants in a block grown 64 -> 76), 0x633558 `set_default_connect_options` (DME's
+  NetConnect_ClientServerTCP twin, 0x617788, calls it). No static of the same name: no `NAME@UNIT`.
+- **`clients.c` is SOCOM 1's first DME object** (0x6126A0-0x6132B8, between audio.c and codec.c, no
+  `$Header`: the name keeps the link order), NetInitializeClients .. NetClientLeaves in order plus
+  the session master's hand-over (0x613158). **DME's API names go to Dme.c's locked wrappers**, as
+  NetGetObject and NetSendMessage already did: zNetGetGameClient calls NetGetClient's wrapper
+  (0x622A20) where SOCOM 1's calls NetGetClient, so the four wrapped bodies (0x6126E8, 0x612750,
+  0x612AB0, 0x612D80) keep placeholders and the nine unwrapped take SOCOM 1's names.
+- **A call inside a loop statement is never a sibling call** (2.96's calls.c: stmt_loop_nest_empty):
+  NetFreeClient's DmeFree is a jal only as `do { DmeFree(...); } while (0)` -- a statement macro's
+  expansion -- where SOCOM 1's tail-called it and NetFreeClientPointers still does; void, int,
+  nested, guarded and local-pointer spellings all give `j`. The first explanation for a jal where
+  2.96 could tail-call, after a narrower callee return type.
+- **An enum is its own alias class**: 0x613158 loads the new master's index (`int *`) across the
+  store to the client's state -- only with the state an enum (`dmelocal.h`'s DmeClientState); as an
+  int the store orders the load.
+- **Identical if/else arms leave their test behind**: MediusLocalConnectCallback keeps the status
+  test's `li v1,1; lw v0,4(a0)` after cross-jumping merged two arms that both store the index (no
+  dead-code pass runs after jump2) -- byte-exact only so.
+- **The Medius core is SOCOM 1's object, slimmed**: the queued request is a `switch` with JoinGame's
+  case first (the compare tree tests 18, then 44; the bodies follow source order) and `memcpy` from a
+  `void *` (the tail word moved with `lwl/lwr`: a struct assignment's would be `lw/sw`); the
+  keep-alive keeps its timestamp but no longer sends the client-state request; a new update
+  (0x647AC0) drops the connection on a server flag. MediusGetCallbackStatusString is the enum's
+  switch in declaration order, 40 cases over 1005 values: the balanced tree byte-exact as written
+  (its strings read off the target by running the tree over every value, `emu_switch.py`).
+- **SCEA's shapes, measured**: the success path nested where the target puts an error code in a
+  branch's delay slot and falls into the epilogue (NetGetClient's list test, NetSendMyClientUpdate's
+  state test after a plain guard on the client, NetClose's last steps -- which also gives the
+  target's s0/s1); stores in argument order (Dme.c's registration tables, 1 of 6) and an index taken
+  into a local before the caller's pointer is written (one load of the count for every table).
+
+Hand-written in round 7b: `medius/clients.c` (15 of 15, new), `medius/mediusapi.c` (+26: the core,
+24, MediusGetLastNetUpdateError and MediusGetCallbackStatusString), `medius/dme.c` (+8:
+NetSetDefaultInitializeParams, NetInitialize, NetClose, 0x623DA8, the four registration functions),
+`medius/rt_msg_client.c` (+2, the option setters) -- 51 functions byte-exact, 34 rows new (7,596
+bytes), 17 drafts superseded.
+51 rows named (30 `s1:order` in the Medius and client objects, 16 `s1:calls`/`s1:order` DME API
+wrappers and callees, the 5 option setters, each with its evidence), 12 data rows (MyClientIsJoined,
+ActiveNetObjectCount, KeepAliveInterval/Timestamp, CurrentSessionKey, LastDMENetError, four callback
+slots, geMediusProcessingState, geQueuedRequestType: SOCOM 1's names at the same accesses).
+
 **Round 7c: the SPI object and the resource object, whole.**
 
 - **The asrspi object is SOCOM 1's at 0x33A768, two functions moved**: `_engineFree` follows

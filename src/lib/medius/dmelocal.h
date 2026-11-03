@@ -12,11 +12,23 @@
 
 typedef struct DmeIp { unsigned char b[4]; } DmeIp;
 
+/* a client's state in its world's record: an enum in SCEA's header -- its own alias class, so a
+ * store to it does not order an int load around it (clients.c's func_00613158 loads the new
+ * master's index across the state's store) */
+typedef enum DmeClientState {
+    DME_CLIENT_STATE_0,
+    DME_CLIENT_STATE_1,
+    DME_CLIENT_CONNECTING,              /* 2: connecting, or left */
+    DME_CLIENT_STATE_3,
+    DME_CLIENT_JOINED,                  /* 4 */
+    DME_CLIENT_SESSION_MASTER           /* 5 */
+} DmeClientState;
+
 /* a world's record of one client (0x2C bytes, 256 a world: func_0061C720 hands one out) */
 typedef struct DmeClientInfo {
     char szIp[16];                      /* 0x00 */
     unsigned short nPort;               /* 0x10 */
-    int nState;                         /* 0x14: 2 connecting, 4 and 5 joined */
+    DmeClientState nState;              /* 0x14: 2 connecting, 4 and 5 joined */
     int field_18;
     int field_1C;
     int field_20;
