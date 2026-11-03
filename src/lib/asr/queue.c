@@ -57,6 +57,7 @@ extern void *func_00243298(void *heap, int size);                  /* the heap's
 extern void *func_00243398(void *heap, int count, int size);       /* the heap's calloc */
 extern void heap_Free(void *heap, void *p);
 extern void *memcpy(void *dst, const void *src, unsigned int n);
+extern void *memset(void *p, int c, unsigned int n);
 extern QELEM *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
 extern unsigned char _tosErrorLog(TOSLOG *log, unsigned short code);
 extern int _tosGetProfileU32(void *block, int key, int def);
@@ -94,6 +95,12 @@ static __inline__ QELEM *qAllocElem(QUEUE *q)
     return e;
 }
 
+typedef struct QREQ {
+    QUEUE *q;
+    unsigned short reader;
+} QREQ;
+
+int qCheckInputQueues(QREQ *req, unsigned int n);
 void qQueueReset(QUEUE *q);
 static void qUpdateReadPtrsAndIncNbrOfEnqueues(QUEUE *q, QELEM *e);
 void qFreeUnusedElemements(QUEUE *q);
@@ -188,18 +195,31 @@ QUEUE *qQueueReDimension(QUEUE *q, unsigned short elemsize)
     return q;
 }
 
-/* n elements copied in at the end; each reader at the end now reads the first of them */
+/* n elements copied in at the end; each reader at the end now reads the first of them.
+ * OPEN (the size differs): byte-exact as written without -funroll-loops, but this 2.96 unrolls the
+ * loop by two (preconditioned on n) where the target's is rolled, though the object's other
+ * counted loops are unrolled (qQueueJumpBackOne's, by four). Something in the vendor's body
+ * stops the unroller and leaves the code alone: two empty `asm volatile` statements in it do
+ * (4 words off, the barrier holding memcpy's argument out of its delay slot); a signed or long
+ * counter, a while or do-while loop, the step in the for header do not
+ * (build/scratch/gcc/p/q5.c). */
 int qEnQueue(QUEUE *q, char *data, unsigned int n)
 {
     QELEM *first = 0;
-    QELEM *last = 0;
+    QELEM *last;
     QELEM *e;
+    QELEM *p;
     unsigned int i;
 
     if (q->state == 2 && q->maxelems == 0)
         return 0;
-    for (e = q->first; e != 0; e = e->next)
-        last = e;
+    last = 0;
+    p = q->first;
+    if (p != 0) {
+        while (p->next != 0)
+            p = p->next;
+        last = p;
+    }
     for (i = 0; i < n; i++) {
         e = qAllocElem(q);
         if (first == 0)
@@ -215,6 +235,34 @@ int qEnQueue(QUEUE *q, char *data, unsigned int n)
     if (last != 0)
         last->next = 0;
     qUpdateReadPtrsAndIncNbrOfEnqueues(q, first);
+    return 1;
+}
+
+/* n elements copied out for one reader, only if n are there */
+int qDeQueue(QUEUE *q, int reader, char *buf, unsigned int n)
+{
+    QELEM *e = q->read[reader];
+    QELEM *p;
+    unsigned int i;
+
+    if (e == 0 || e == Q_END(q))
+        return 0;
+    p = e;
+    for (i = 0; i < n; i++) {
+        if (p == 0)
+            return 0;
+        p = p->next;
+    }
+    for (i = 0; i < n; i++) {
+        memcpy(buf, e + 1, q->elemsize);
+        buf += q->elemsize;
+        e = e->next;
+    }
+    if (e != 0)
+        q->read[reader] = e;
+    else
+        q->read[reader] = Q_END(q);
+    qFreeUnusedElemements(q);
     return 1;
 }
 
@@ -238,7 +286,8 @@ void *qEnQueueOne(QUEUE *q)
     return e + 1;
 }
 
-void *qDeQueueOne(QUEUE *q, int reader)
+/* inline: qCheckDeQueueOne has it inlined (as SOCOM 1's has) */
+__inline__ void *qDeQueueOne(QUEUE *q, int reader)
 {
     QELEM *e = q->read[reader];
 
@@ -320,4 +369,25 @@ unsigned int qQueueNbrElements(QUEUE *q)
     for (e = q->first; e != 0; e = e->next)
         n++;
     return n;
+}
+
+/* one element from each of n queues, when every one has one: the scheduler's read of a
+ * block's inputs */
+int qCheckDeQueueOne(QREQ *req, unsigned int n, void **out)
+{
+    unsigned int i;
+    void *p;
+
+    if (!qCheckInputQueues(req, n)) {
+        memset(out, 0, n * sizeof(void *));
+        return 0;
+    }
+    for (i = 0; i < n; i++) {
+        p = 0;
+        if (req->q != 0)
+            p = qDeQueueOne(req->q, req->reader);
+        *out++ = p;
+        req++;
+    }
+    return 1;
 }
