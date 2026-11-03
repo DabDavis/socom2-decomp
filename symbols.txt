@@ -11439,7 +11439,7 @@
 0x005EEDB0 0x1C4 func_005EEDB0  # OVL2
 0x005EEF80 0x248 func_005EEF80  # OVL2
 0x005EF1D0 0x44 GetData__9CSealUnitFPvUi  # OVL2; by hand (the kit lane, round 14): the squad's order data copied out when the size asked is the size stored (0x34); CSealCtrlAi's OnCommand and AllowCommand call it -- the name ours
-0x005EF220 0xC8 func_005EF220  # OVL2
+0x005EF220 0xC8 run_anim__FPCcPv  # OVL2; by hand (the kit lane, round 14): an anim of a name run (ActivateArg(1, 4, arg) or Activate(0)) when SOCOM 1's can_run_anim, inlined here, finds it runnable -- its guarded static is the plain byte 0x650AE0; IssueCommand calls it twice; new in SOCOM II, the name ours
 0x005EF2F0 0x50 GetUnitByTeam__9CSealUnitFUi  # OVL2; s1:calls by hand (the seal lane's lead, verified: SOCOM 1's GetUnitByTeam walks m_list__9CSealUnit for the unit whose number (0x38 there, 0x58 here) is the argument -- the same walk over the same static, 0x44D5B0 here; CSealCtrl::OnMissionStart calls it with 24)
 0x005EF340 0x40 func_005EF340  # OVL2
 0x005EF380 0xEC Create__9CSealUnitFUi  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): CZSealState::UpdateRollandsUnitStuff calls it where SOCOM 1's calls CSealUnit::Create (after GetUnitByTeam, twice); its body is SOCOM 1's (the list searched, new CSealUnit(team) pushed, team 24's valve)

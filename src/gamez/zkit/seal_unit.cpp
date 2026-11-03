@@ -27,6 +27,9 @@ CAiSBreach *GetBreachState(CSealCtrlAi *ai)
     return s && s->m_state == 17 ? (CAiSBreach *)s : 0;
 }
 
+/* what a squad is told of its SEALs (SOCOM 1's UNIT_MESSAGE, a byte; the names ours) */
+enum UNIT_MESSAGE { UNIT_MSG_0 = 0, UNIT_MSG_1 = 1, UNIT_MSG_2 = 2, UNIT_MSG_3 = 3, UNIT_MSG_4 = 4 };
+
 /* a squad command (zseal.h's FT_COMMAND, which this unit does not include: the same byte enum) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
 
@@ -98,6 +101,9 @@ public:
      * under it -- a walk that never runs: its test is against begin() (OVL2 0x5E6C90, new in SOCOM
      * II; the name ours) */
     void ClearAiStates(bool all, bool recurse);
+    /* a SEAL's news: 1 and 2 kept to this squad (0x5ED140), 0, 3 and 4 handed to the top squad's
+     * (0x5ED4F0) -- SOCOM 1's PrivateNotify and DistributeNotify by their order (OVL2 0x5ED7B0) */
+    void Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
     static CSealUnit *GetUnitByTeam(unsigned int team);
     static CSealUnit *Create(unsigned int team);
     /* a SEAL taken out of its squad (SOCOM 1's, static; OVL2 0x5EDF90, not written yet) */
@@ -387,6 +393,35 @@ void PlayRemoteMsg(CEntity *e, int msg, int remote)
     }
 }
 
+/* the anim of a name when it can run: running (state 1), or in state 5 once the flag is down
+ * (SOCOM 1's can_run_anim__FPCc, its guarded static now plain data -- OVL2 0x650AE0, 1; inlined
+ * in its one caller, no copy of its own) */
+static CZAnim *can_run_anim(const char *name)
+{
+    static bool s_flag = true;
+    CZAnim *anim = ZAnim.GetAnim(name, 0);
+
+    if (anim && (anim->m_state == 1 || !s_flag && anim->m_state == 5))
+        return anim;
+    return 0;
+}
+
+/* an anim of a name run, handed the argument when there is one; whether it could (OVL2 0x5EF220,
+ * new in SOCOM II: IssueCommand runs the squads' anims so; the name ours) */
+bool run_anim(const char *name, void *arg)
+{
+    CZAnim *anim = can_run_anim(name);
+
+    if (anim) {
+        if (arg)
+            anim->ActivateArg(1, 4, arg, 0);
+        else
+            anim->Activate(0);
+        return true;
+    }
+    return false;
+}
+
 /* (OVL2 0x5EF1D0) */
 bool CSealUnit::GetData(void *data, unsigned int size)
 {
@@ -440,6 +475,30 @@ extern "C" void func_005EAEB0(CSealUnit *unit)
         func_005EAF20(unit, 79, 0, 1.0f);
     else
         func_005EAF20(unit, 78, 0, 1.0f);
+}
+
+extern "C" {
+/* the top squad above one (OVL2 0x561D20, in seal_ai.cpp's range: recursive, inlined into itself
+ * eight times -- here once), and the news kept or handed out (0x5ED140, 0x5ED4F0; unwritten) */
+CSealUnit *func_00561D20(CSealUnit *unit);
+void func_005ED140(CSealUnit *unit, CZSealBody *seal, UNIT_MESSAGE msg, void *data);
+void func_005ED4F0(CSealUnit *unit, CZSealBody *seal, UNIT_MESSAGE msg, void *data);
+}
+
+/* (OVL2 0x5ED7B0; the compare chain tests 2, 1, 0, 4, 3: the cases in reverse) */
+void CSealUnit::Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data)
+{
+    switch (msg) {
+    case UNIT_MSG_3:
+    case UNIT_MSG_4:
+    case UNIT_MSG_0:
+        func_005ED4F0(m_parent ? func_00561D20(m_parent) : this, seal, msg, data);
+        break;
+    case UNIT_MSG_1:
+    case UNIT_MSG_2:
+        func_005ED140(this, seal, msg, data);
+        break;
+    }
 }
 
 /* (OVL2 0x5ECEF0; SOCOM 1's, the list emptied from the front) */
