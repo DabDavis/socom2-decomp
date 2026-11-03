@@ -95,6 +95,14 @@ void func_005628F0(CSealCtrlAi *ai);
 bool func_005DB8F0(CSealCtrlAi *ai, void *cmd, int x);
 /* a squad command by name, 0 for none (OVL2 0x58E0A0, the SEAL lane's row; a byte) */
 FT_COMMAND func_0058E0A0(const char *name);
+/* CAiMaps::GetRegion(const CAiMapLoc &), Tile(const CAiMap::region *, unsigned int, unsigned int)
+ * and SetRegionType(const CAiMap::region *, CAiMap::region::TYPE) (OVL2 0x52D950, 0x52A6B0,
+ * 0x529C00, the AI core's: zseal.h's CAiMaps stub, which this unit sees, declares none of them,
+ * and ai_maps.h's CAiMaps cannot sit beside it) */
+struct CAiMapRegion;
+const CAiMapRegion *func_0052D950(CAiMaps *maps, const CAiMapLoc &loc);
+void func_0052A6B0(CAiMaps *maps, const CAiMapRegion *r, unsigned int value, unsigned int flags);
+bool func_00529C00(CAiMaps *maps, const CAiMapRegion *r, unsigned char type);
 }
 
 /* the commands' ids (SOCOM 1's ai_cmdid, 0x18 bytes: RegisterCommands stores every command's id
@@ -105,7 +113,8 @@ int ai_cmdid[6];
 /* the command argument a task's SEAL comes in (the name ours): the SEAL at 0xC */
 struct TASK_PARAM {
     _zanim_cmd_hdr hdr;   // 0x0
-    unsigned char _4[0xc - 0x4];
+    unsigned char _4[0x8 - 0x4];
+    CSealCtrlAi *m_ai;   // 0x8: the SEAL's AI controller, when it has one (CTSelect::Create)
     CZSealBody *m_seal;   // 0xc
 };
 
@@ -244,6 +253,7 @@ struct CTSound : TASK_HDR {
 /* ai::SELECT (SOCOM 1's CTSelect) */
 struct CTSelect : TASK_HDR {
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+    static TASK_PARAM *Create(CZSealBody *seal);
 };
 
 /* ai::STOPALL (SOCOM 1's CTStopAll): every AI switched on or off */
@@ -412,6 +422,19 @@ struct CTStance : TASK_HDR {
 
     static void Begin(_zanim_cmd_hdr *hdr);
     static void End(_zanim_cmd_hdr *hdr);
+};
+
+/* ai::PAINT (SOCOM 1's CTPaint): a region of the AI maps given a soil, a tile or a type -- the
+ * region's cell, the flags (bit 2 a soil, bit 3 a tile), the value and the mode (1 soil, 2 tile, 3
+ * a type) its Parse (0x5D57C0) sets; the names ours */
+struct CTPaint : TASK_HDR {
+    CAiMapLoc m_loc;   // 0x8
+    unsigned int m_flags;   // 0xc
+    unsigned short m_value;   // 0x10
+    unsigned char m_mode;   // 0x12
+    unsigned char m_13;   // 0x13
+
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::MOVE (SOCOM 1's CTMove) */
@@ -786,6 +809,27 @@ void CTMove::End(_zanim_cmd_hdr *hdr)
         return;
 }
 
+/* the region painted: a soil or a tile through Tile (modes 1 and 2, when the cell has a region), a
+ * type through SetRegionType (mode 3) -- done at once (OVL2 0x5D5700; SOCOM 1's, the same code) */
+bool CTPaint::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CTPaint *cmd = (CTPaint *)hdr;
+    const CAiMapRegion *r = func_0052D950(&AiMaps, cmd->m_loc);
+
+    switch (cmd->m_mode) {
+    case 1:
+    case 2:
+        if (r)
+            func_0052A6B0(&AiMaps, r, cmd->m_value, cmd->m_flags);
+        break;
+    case 3:
+        func_00529C00(&AiMaps, r, (unsigned char)cmd->m_value);
+        break;
+    }
+    *dT = 0.0f;
+    return true;
+}
+
 /* (OVL2 0x5D4080)
  * OPEN, 4 instructions: the target keeps the unused AI pointer, `b; move v1,v0` / `move v1,zero`, which MW drops here */
 void CTPursue::End(_zanim_cmd_hdr *hdr)
@@ -919,6 +963,22 @@ _zanim_cmd_hdr *CTStopAll::Parse(_zrdr *rdr)
 bool CTSelect::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     return true;
+}
+
+/* a SEAL's task argument made: the block typed as the SEAL arguments are (ai_cmdid[2]), the SEAL
+ * and its AI (SOCOM 1's CTSelect::Create, which PostCreateSeal calls as SOCOM II's does; OVL2
+ * 0x5D29F0, after CTSelect's Parse as there) */
+TASK_PARAM *CTSelect::Create(CZSealBody *seal)
+{
+    TASK_PARAM *p = (TASK_PARAM *)_calloc(sizeof(TASK_PARAM), 1, 0, 0);
+
+    p->hdr.data_size = sizeof(TASK_PARAM);
+    p->hdr.data_type = ai_cmdid[2];
+    p->m_seal = seal;
+    p->m_ai = seal ? SealAi(seal) : 0;
+    if (seal)
+        p->hdr.data_type = ai_cmdid[2];
+    return p;
 }
 
 /* the sound let finish (OVL2 0x5D1210) */

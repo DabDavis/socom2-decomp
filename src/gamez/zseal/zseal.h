@@ -956,6 +956,11 @@ public:
     bool StanceChanged();
     /* the weapon's state without its bit 4 (SOCOM 1's; OVL2 0x5E0010, seal_weapon.cpp) */
     WEAPON_STATE GetWeaponState() const;
+    /* the aim's goal from a point along a direction, and the aim set along a direction -- whether a
+     * goal came of it (made the unit -z when asked, should none) -- SOCOM 1's; OVL2 0x5DF600 and
+     * 0x5DF8B0, seal_weapon.cpp (the kit lane) */
+    bool CalcAimGoal(const CPnt3D *from, const CPnt3D *dir, CPnt3D *goal);
+    bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */

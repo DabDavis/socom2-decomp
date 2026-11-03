@@ -11184,7 +11184,7 @@
 0x005D2630 0x25C Parse__9CTSetModeFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SETMODE's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSetMode's parse for ai::SETMODE
 0x005D2890 0x8 Tick__8CTSelectFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SELECT's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTSelect's tick for ai::SELECT
 0x005D28A0 0x150 Parse__8CTSelectFP5_zrdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::SELECT's parse (the first command so registered); SOCOM 1's RegisterCommands passes CTSelect's parse for ai::SELECT
-0x005D29F0 0xB0 func_005D29F0  # OVL2
+0x005D29F0 0xB0 Create__8CTSelectFP10CZSealBody  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's CTSelect::Create (0x2B7590, 0xAC), right after CTSelect's Parse as this follows 0x5D28A0, and PostCreateSeal calls it after CreateAiEvent in both builds -- a 16-byte block typed ai_cmdid[2], the SEAL at 0xC, its AI at 8
 0x005D2AA0 0x488 End__6CTPlayFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's end (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's end for ai::ANIMATE
 0x005D2F30 0x808 Tick__6CTPlayFP14_zanim_cmd_hdrPf  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's tick (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's tick for ai::ANIMATE
 0x005D3740 0x540 Begin__6CTPlayFP14_zanim_cmd_hdr  # OVL2; by hand (the kit lane, round 8): CSealCtrlAi::RegisterCommands (0x5DE320) passes it to CZAnimMain::AddCmd as ai::ANIMATE's begin (the first command so registered); SOCOM 1's RegisterCommands passes CTPlay's begin for ai::ANIMATE
@@ -11267,8 +11267,8 @@
 0x005DF3E0 0x64 GetAP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
 0x005DF450 0x90 func_005DF450  # OVL2
 0x005DF4E0 0x11C func_005DF4E0  # OVL2
-0x005DF600 0x2AC func_005DF600  # OVL2
-0x005DF8B0 0x74 func_005DF8B0  # OVL2
+0x005DF600 0x2AC CalcAimGoal__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL2; s1:callee by hand (the kit lane, round 13): SetAimDirR (0x5DF8B0) calls it from the same instruction as SOCOM 1's SetAimDirR calls CalcAimGoal (0x2BFBA0, 0x2B8 against 0x2AC here), with this, the aim point (0x1440), the direction and the goal (0x144C), and tests its bool -- between SetAimPointW's place and SetAimDirR's as in SOCOM 1's order
+0x005DF8B0 0x74 SetAimDirR__10CZSealBodyFPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's SetAimDirR (0x2BFE60, 0x70), the same code with the aim's fields 0x3A0 on (0x10A0/0x10AC -> 0x1440/0x144C), after CalcAimGoal as there; byte-exact from seal_weapon.cpp
 0x005DF930 0x198 func_005DF930  # OVL2
 0x005DFAD0 0x94 Virtual64__10CZSealBodyFv  # OVL2; by hand (CZSealBody's vtable slot 0x64; the name ours, as the lane's Virtual5C/60/68) -- the SEAL lane
 0x005DFB70 0x108 func_005DFB70  # OVL2
