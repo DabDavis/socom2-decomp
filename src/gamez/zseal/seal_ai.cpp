@@ -10,6 +10,7 @@
 #include "../../ai/ai.h"
 #include "../zsnd/zsnd.h"
 #include "../zanim/zanim.h"
+#include "../zweapon/zweapon.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -112,6 +113,7 @@ public:
 class CAiSGrenade : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual ~CAiSGrenade();
 
     /* (the names ours: what OnSignal's reset clears) */
@@ -123,6 +125,10 @@ public:
     unsigned char _6d[0x7c - 0x6d];
     CAiMapLoc m_7c;   // 0x7c
     CAiMapLoc m_80;   // 0x80
+    unsigned char _84[0xa0 - 0x84];
+    /* the throw's velocity in the SEAL's frame (0x55C480 turns it by the body's matrix; the name
+     * ours) */
+    CPnt3D m_vel;   // 0xa0
 };
 
 class CAiSDeploy : public CAiState {
@@ -363,7 +369,7 @@ void CSealCtrlAi::Initalize()
 
     if (alive)
         SetValveValue(alive, 1);
-    m_3f4 = 1;
+    m_3f4 = (AI_MODE)1;
 }
 
 /* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
@@ -665,6 +671,149 @@ void CSealCtrlAi::RestoreAiMode()
     m_3f5 = (AI_MODE)1;
 }
 
+/* the AI's turn rate (OVL2 data 0x64FD98, 2.0: read with lwc1, so a variable; the name ours) */
+extern "C" float data_0064FD98;
+
+/* the turn toward a goal direction in the ground plane, at most `max`: none inside the dead zone,
+ * proportional to the cross product (clamped) within 20 degrees, the whole rate by its sign beyond,
+ * the dot product handed back (SOCOM 1's ComputeTurnThrottle, its body with the rate a parameter:
+ * both controllers' copies share its statics, OVL2 data 0x650110, 0x650118, 0x650120 -- 1.0, cos 20
+ * degrees, 1.25, 8 bytes apart as SOCOM 1's guarded ones; SOCOM 1's were 1.0, cos 30 and 1.75 with
+ * the rate 1.0). `max` is homed on the stack: a reference to it is passed on */
+static inline float ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot, float max)
+{
+    static float dead = 1.0f;
+    static float cone = 0.9396899938583374f;
+    static float gain = 1.25f;
+    float turn;
+
+    *dot = dir->x * goal->x + dir->z * goal->z;
+    turn = 0.0f;
+    if (*dot > dead)
+        turn = 0.0f;
+    else if (*dot > cone) {
+        turn = dir->z * goal->x - dir->x * goal->z;
+        turn *= gain;
+        _saturate(&turn, -max, max);
+    } else
+        turn = max * (dir->z * goal->x - dir->x * goal->z >= 0.0f ? 1.0f : -1.0f);
+    return turn;
+}
+
+/* the alertness's band as a level (0x560A60's walk inlined, its 4 an enumerator: `li`, where the
+ * unsigned char's is `daddiu`; the names ours) */
+enum ALERT_BAND { ALERT_BAND_0 = 0, ALERT_BAND_1 = 1, ALERT_BAND_2 = 2, ALERT_BAND_3 = 3, ALERT_BAND_4 = 4 };
+
+static inline ALERT_BAND AlertBand(float x)
+{
+    for (int i = 0; i <= 4; i++)
+        if (InBand(x, i))
+            return (ALERT_BAND)i;
+    return ALERT_BAND_4;
+}
+
+/* the AI's turn: at its own rate, slowed by the speed (between 0.35 and the whole, OVL2 data
+ * 0x650100/0x650108 -- this function's statics) when the alertness is low or the look deploys,
+ * unless a Navy SEAL in mode 6 (OVL2 0x56C340: slot 0x9C; the bands are a switch, its chain ending
+ * on a `b`) */
+float CSealCtrlAi::ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot)
+{
+    static float slowest = 0.35f;
+    static float fastest = 1.0f;
+    float max = data_0064FD98;
+
+    if (!(m_3f4 == 6 && IsNavySeal())) {
+        bool slow = false;
+
+        switch (AlertBand(((CAlertness *)this)->m_alert)) {
+        case ALERT_BAND_0:
+        case ALERT_BAND_1:
+            slow = true;
+        }
+        if (m_look_mode == 9)
+            slow = true;
+        if (slow)
+            max *= slowest * (1.0f - m_speed) + fastest * m_speed;
+    }
+    return ::ComputeTurnThrottle(dir, goal, dot, max);
+}
+
+/* (OVL2 0x56C220: slot 0x9C -- SOCOM 1's non-virtual CSealCtrl::ComputeTurnThrottle, virtual in
+ * SOCOM II, at a rate of 1.5) */
+float CSealCtrl::ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot)
+{
+    return ::ComputeTurnThrottle(dir, goal, dot, 1.5f);
+}
+
+static inline bool InRegion(const CAiMap::region *r, const CEntity *e)
+{
+    return r->Contains(e->m_mapLoc);
+}
+
+/* whether a live entity of a team in the mask stands in a map region: the entity list walked by a
+ * const view, its iterator assigned (OVL2 0x56D530, new in SOCOM II: 0x56D2B0 and CTRegion::Tick
+ * call it; the name unknown).
+ * OPEN, 12 instructions (the size right): the target holds the entity in t2, takes &e->m_mapLoc
+ * into a2 right after reading its map byte and reuses t2 for Contains's `in` (`move t2,zero` in the
+ * map test's delay slot); here the entity is t3 and the address is taken in that slot. Calling
+ * region::Contains straight folds the address into the loads and drops the chain's join pad (0x168);
+ * through this wrapper taking the entity both come back. Tried: the entity declared before the walk
+ * or outside the loop, the wrapper taking the cell by reference or pointer, a reference or pointer
+ * local to the cell, the region by reference, Contains written out with the cell's pointer first,
+ * `in` returned through a local. */
+extern "C" bool func_0056D530(const CAiMap::region *r, unsigned int team)
+{
+    bool found = false;
+
+    if (r && team) {
+        const CEntityList &list = CEntity::m_list;
+        CEntityList::const_iterator i;
+
+        for (i = list.begin(); !found && i != list.end(); ++i) {
+            CEntity *e = *i;
+
+            if (e && e->m_isAlive && (team & e->m_team))
+                found = InRegion(r, e);
+        }
+    }
+    return found;
+}
+
+extern "C" {
+/* CSealCtrl::ClearLook(AI_LOOK) (OVL2 0x600D40, the kit lane's seal_look.cpp) */
+void func_00600D40(CSealCtrl *ctrl, int look);
+}
+
+/* the leg to walk: with a planned path's points, from the cell to the path's last point -- both
+ * centres flat on the ground, the direction and length between them, the leg's words cleared; else
+ * just the cell (the SEAL's own when none is given) and the deploying look dropped (OVL2 0x56C080,
+ * new in SOCOM II: SetAiMode, PathFollowTick and 0x56C010's pop of a point call it; the name
+ * unknown) */
+extern "C" void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *loc)
+{
+    CEntity *e = ai->m_entity;
+
+    ai->m_614 = 0;
+    if (!path->m_points.size() || !path->HasPoints() || path->IsPlanning()) {
+        ai->m_60c = 0;
+        loc = loc->x == CAiMapLoc::invalid.x && loc->y == CAiMapLoc::invalid.y ? &e->m_mapLocValid : loc;
+        ai->m_leg_cell = *loc;
+        func_00600D40(ai, 9);
+    } else {
+        ai->m_leg_cell = *loc;
+        AiMaps.GetCellCenter(*loc, &ai->m_leg_from);
+        AiMaps.GetCellCenter(path->m_points.back().m_loc, &ai->m_leg_to);
+        ai->m_leg_to.y = 0.0f;
+        ai->m_leg_from.y = 0.0f;
+        ai->m_leg_dir = ai->m_leg_to - ai->m_leg_from;
+        ai->m_leg_len = ai->m_leg_dir.Normalize();
+        ai->m_608 = 0;
+        ai->m_60c = 0;
+        ai->m_614 = 0;
+        ai->m_610 = 0;
+    }
+}
+
 /* the controller's SEAL (an inline: the kit's test reads m_entity again through it) */
 static inline CZSealBody *SealOf(CSealCtrlAi *ai)
 {
@@ -885,6 +1034,54 @@ void CSealCtrlAi::SetDesiredStance(SEAL_STANCE stance, float delay, bool force)
         ((CZSealBody *)m_entity)->m_desiredStance = stance;
         m_stance_timer.Set(delay);
     }
+}
+
+extern "C" {
+/* the side a found cell faces from its direction (OVL2 0x55FA90, not written yet) */
+unsigned char func_0055FA90(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir);
+}
+
+/* a cell to look from, and one to take cover in, near the SEAL's last good cell (its map's
+ * FindLookLoc and FindCoverLoc): the side it faces handed back, 2 when none is found (OVL2 0x55F7F0
+ * and 0x55F940, new in SOCOM II: CAiSPursue::Tick calls both; the names unknown).
+ * OPEN, both 27 instructions, registers only (the code and its size right): the target numbers the
+ * result lowest and the map highest -- map s0, radius s1, side s2, out s3, pos s4, found s5 -- where
+ * MW here gives the map s5 and shifts the parameters down one. Tried: the flag declared first, every
+ * local declared first and assigned after, the call made in the test. Its being numbered below the
+ * parameters says the flag is not a plain local: an inline (the two finders' common body, the
+ * finder its only difference?) is the next thing to try */
+extern "C" bool func_0055F940(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc &out, unsigned char *side,
+                              int radius)
+{
+    CAiMapLoc loc(ai->m_entity->m_mapLocValid);
+    CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+    bool found = false;
+    CAiMap::DIR dir = CAiMap::DIR_COUNT;
+
+    *side = 2;
+    if (map) {
+        found = map->FindCoverLoc(loc, pos, out, dir, radius);
+        if (found)
+            *side = func_0055FA90(map, out, dir);
+    }
+    return found;
+}
+
+extern "C" bool func_0055F7F0(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc &out, unsigned char *side,
+                              int radius)
+{
+    CAiMapLoc loc(ai->m_entity->m_mapLocValid);
+    CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+    bool found = false;
+    CAiMap::DIR dir = CAiMap::DIR_COUNT;
+
+    *side = 2;
+    if (map) {
+        found = map->FindLookLoc(loc, pos, out, dir, radius);
+        if (found)
+            *side = func_0055FA90(map, out, dir);
+    }
+    return found;
 }
 
 /* CAiSPursue's slot 0x14 (new in SOCOM II): the pursuit stops unless the AI's object says so,
@@ -1203,12 +1400,8 @@ void CSealCtrlAi::OnStateChange(SEAL_STATE from, SEAL_STATE to)
 }
 
 /* the goal cleared: of the given kind, or whatever is set; the position and direction dropped and
- * the goal's timer stopped (OVL2 0x56DCA0; SOCOM 1's, SetGoalPos inlined).
- * OPEN, 2 instructions (0xB0 against 0xA8): the target puts the inlined `type < m_goal_type` test
- * in the `m_goal_type == type` branch's delay slot as `slt at` and branches on it; here MW
- * computes it into v0 after a nop and leaves a nop before the call's join. The same with the
- * position's clearing written out (`if (type >= m_goal_type) {...}`), `(void)`, or an early
- * return for the outer test -- the out-of-line SetGoalPos, the same test, matches. */
+ * the goal's timer stopped (OVL2 0x56DCA0; SOCOM 1's, SetGoalPos inlined -- its test written
+ * `m_goal_type > type`, which alone puts the inlined copy's `slt at` in this function's delay slot). */
 void CSealCtrl::ClearGoal(GOAL_TYPE type)
 {
     if (type == GOAL_NONE)
@@ -1238,7 +1431,9 @@ bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CAiMapLoc &loc, float tolerance
  * kind with it once no direction is left (OVL2 0x56DAA0; SOCOM 1's) */
 bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance)
 {
-    if (type < m_goal_type)
+    /* the member first: inlined (ClearGoal, SetGoalDir) the test then branches on `slt at` from
+     * the delay slot before it, where `type < m_goal_type` computes it into v0 after a nop */
+    if (m_goal_type > type)
         return false;
     if (pos) {
         m_goal_pos = *pos;
@@ -1253,6 +1448,54 @@ bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance)
             m_goal_type = GOAL_NONE;
     }
     return true;
+}
+
+/* a direction as the goal, unless a goal of a higher kind is set: flattened, and made a unit
+ * vector unless it came flat and asked to stay so; a position of another kind cleared (SetGoalPos
+ * inlined), the facing's dot product with it returned -- none clears the direction, and the kind
+ * once no position is left (OVL2 0x56D920; SOCOM 1's, its sqrtf now sqrt.s).
+ * OPEN, 8 instructions (the size right): the target reads x again for the scaling after the sqrt
+ * (`lwc1 $f0,0x174(a0)` after `mtc1 1.0`), x and z loaded into f1/f2, x*x in the mula, the root in
+ * f2; MW here keeps the x it loaded for the length in a register across the sqrt and the test, as
+ * the matched CPnt3D::Normalize does in the target (so sqrt.s is no barrier). The sum is written
+ * z first, which gets the rest (`x*x + z*z`, SOCOM 1's order, is 18 off: x in f2 kept). Tried: the
+ * components by value into a length inline, the scaling or the whole normalisation through an
+ * inline taking the point by pointer, a scalar copy of the point, `len = 1.0f / len`, the two
+ * scalings each `*= 1.0f / len`. The three-float constructor gives the stores (z loaded first) and
+ * m_matrix's elements read straight give the dot's operand order (through operator() they swap) */
+float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
+{
+    float dot = 1.0f;
+
+    if (type < m_goal_type)
+        return dot;
+    if (dir) {
+        m_goal_dir = CPnt3D(dir->x, 0.0f, dir->z);
+        if (!flat || dir->y != 0.0f) {
+            float len = sqrtf(m_goal_dir.z * m_goal_dir.z + m_goal_dir.x * m_goal_dir.x);
+
+            if (len != 0.0f) {
+                float inv = 1.0f / len;
+
+                m_goal_dir.x *= inv;
+                m_goal_dir.z *= inv;
+            }
+        }
+        m_goal_dir_valid = true;
+        {
+            const CMatrix &m = m_entity->m_node->m_matrix;
+
+            dot = -m.m_matrix[2][0] * m_goal_dir.x + -m.m_matrix[2][2] * m_goal_dir.z;
+        }
+        if (m_goal_pos_valid && m_goal_type != type)
+            SetGoalPos(m_goal_type, 0, 0.0f);
+        m_goal_type = type;
+    } else {
+        m_goal_dir_valid = false;
+        if (!m_goal_pos_valid)
+            m_goal_type = GOAL_NONE;
+    }
+    return dot;
 }
 
 /* the destructor of the network's controller (OVL2 0x56F460: CSealCtrl's called as a base) */
@@ -1299,6 +1542,117 @@ void CAiSAnimate::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
     case SIGNAL_3:
         break;
     }
+}
+
+/* the grenade the state holds: its pickup's projectile, while the pickup is still the one the state
+ * took (the network id at 0x5C) -- else none (the names ours) */
+static inline CZProjectile *GrenadeOf(CAiSGrenade *g)
+{
+    CPickup *p = (CPickup *)g->m_58;
+    CZProjectile *proj = p ? (CZProjectile *)p->m_data : 0;
+
+    if (!proj || !p || g->m_5c != p->GetPickupNetEntityID())
+        return 0;
+    return proj;
+}
+
+/* the animation's timed call that throws the grenade from where it is (its instance's position),
+ * with the state's velocity turned into the world, the thrower's node its owner (OVL2 0x55C740) */
+extern "C" bool func_0055C740(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data)
+{
+    CAiSGrenade *g = (CAiSGrenade *)data;
+    CZProjectile *proj = GrenadeOf(g);
+
+    if (proj) {
+        CPnt3D vel;
+
+        TransformVectors(&SealOf(ai)->m_node->m_matrix, &g->m_vel, &vel, 1);
+        proj->SetPositionVel((CPnt3D *)proj->GetInstance()->m_matrix.m_matrix[3], &vel);
+        proj->m_owner = ai->m_entity->GetNode();
+    }
+    return true;
+}
+
+/* the animation's timed call that throws: the grenade from the right hand with the state's
+ * velocity turned into the world, the thrower's node its owner (OVL2 0x55C480) */
+extern "C" bool func_0055C480(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data)
+{
+    CAiSGrenade *g = (CAiSGrenade *)data;
+    CZProjectile *proj = GrenadeOf(g);
+
+    if (proj) {
+        CZSealBody *seal = SealOf(ai);
+        CZBodyPart *hand = seal->m_rhand;
+        CMatrix m;
+        CPnt3D vel;
+
+        m.SetIdentity();
+        hand->m_node->BuildMTW(m);
+        TransformVectors(&seal->m_node->m_matrix, &g->m_vel, &vel, 1);
+        CPnt3D *pos = (CPnt3D *)m.m_matrix[3];
+
+        proj->SetPositionVel(pos, &vel);
+        proj->m_owner = ai->m_entity->GetNode();
+    }
+    return true;
+}
+
+/* the animation's timed calls that put the grenade in the right hand: moving, and at rest (OVL2
+ * 0x55C5E0 and 0x55C690; 0x55AC20 pushes them with the grenade state as the word) */
+extern "C" bool func_0055C690(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data)
+{
+    CZProjectile *proj = GrenadeOf((CAiSGrenade *)data);
+
+    if (proj) {
+        CZBodyPart *hand = SealOf(ai)->m_rhand;
+        CMatrix m;
+
+        m.SetIdentity();
+        hand->m_node->BuildMTW(m);
+        proj->SetPositionAtRest((CPnt3D *)m.m_matrix[3]);
+    }
+    return true;
+}
+
+extern "C" bool func_0055C5E0(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data)
+{
+    CZProjectile *proj = GrenadeOf((CAiSGrenade *)data);
+
+    if (proj) {
+        CZBodyPart *hand = SealOf(ai)->m_rhand;
+        CMatrix m;
+
+        m.SetIdentity();
+        hand->m_node->BuildMTW(m);
+        proj->SetPosition((CPnt3D *)m.m_matrix[3]);
+    }
+    return true;
+}
+
+extern "C" {
+/* (OVL2 0x57E540, seal_body.cpp's span: a Navy SEAL's call when its grenade is about to go off) */
+void func_0057E540(CZSealBody *seal);
+}
+
+/* CAiSGrenade's slot 0x14 (OVL2 0x55C330, new in SOCOM II): done once its grenade is gone; while
+ * held, the path's first cell kept as the target cell, and a Navy SEAL told when the fuse has under
+ * half a second left */
+int CAiSGrenade::Virtual14(CSealCtrlAi *ai, CAiState *sub)
+{
+    CZSealBody *seal = SealOf(ai);
+    CZProjectile *proj = GrenadeOf(this);
+
+    if (!proj)
+        m_active = false;
+    else {
+        CAiPath *path = (CAiPath *)&ai->m_path;
+
+        if (path->HasPoints())
+            m_80 = path->m_points.begin()->m_loc;
+        if (proj->m_time < 0.5f && ai->IsNavySeal())
+            func_0057E540(seal);
+    }
+    return Result();
 }
 
 /* (OVL2 0x55CCD0, new in SOCOM II's form: SOCOM 1's cleared one byte on signal 0) signal 4 resets
@@ -1661,6 +2015,65 @@ extern "C" bool func_00556280(CCellWalk *w, CCellGather *g)
         g->m_found = 1;
     }
     return !same;
+}
+
+/* an alert's level record (the names ours: 0x558030, 0x5582C0 and 0x558440 keep one each) */
+struct CAlertLevel {
+    float m_time;   // 0x0: when the level was raised, on the game's clock
+    float m_amount;   // 0x4
+    unsigned char m_level;   // 0x8
+    unsigned char _9[0xc - 0x9];
+    int m_c;   // 0xc: cleared on any change
+    unsigned char _10[0x14 - 0x10];
+    AI_MODE m_mode;   // 0x14: the AI's mode at the change, 1 without an AI
+};
+
+extern "C" {
+/* how fast a level decays (OVL2 data 0x6504C0, read as a variable) */
+extern float data_006504C0;
+}
+
+/* a level raised: the same one adds to the amount (2), a higher one takes over (1); level 0 decays
+ * the amount and drops the level at zero (1); any change clears the word at 0xC (OVL2 0x557F60, new
+ * in SOCOM II; the name unknown) */
+/* what a raise did (a byte enum: assigned with li, its test narrowed; the names ours) */
+enum ALERT_CHANGE { ALERT_NONE = 0, ALERT_SET = 1, ALERT_ADDED = 2 };
+
+extern "C" ALERT_CHANGE func_00557F60(CAlertLevel *a, CSealCtrlAi *ai, unsigned char level, float amount)
+{
+    ALERT_CHANGE r = ALERT_NONE;
+
+    if (a->m_level == level) {
+        a->m_amount += amount;
+        a->m_mode = ai ? ai->m_3f4 : (AI_MODE)1;
+        r = ALERT_ADDED;
+    } else if (level == 0) {
+        a->m_amount -= amount * data_006504C0;
+        if (a->m_amount <= 0.0f) {
+            a->m_amount = 0.0f;
+            r = ALERT_SET;
+            a->m_level = 0;
+        }
+    } else if (a->m_level < level) {
+        a->m_level = level;
+        a->m_amount = amount;
+        a->m_time = data_004365C0;
+        a->m_mode = ai ? ai->m_3f4 : (AI_MODE)1;
+        r = ALERT_SET;
+    }
+    if (r != ALERT_NONE)
+        a->m_c = 0;
+    return r;
+}
+
+/* whether a map's cell (its first layer's) lies inside: CAiMap::GetCell inlined one level, its pieces
+ * the calls ai.h names (OVL2 0x5561C0, new in SOCOM II: the grenade state's Tick, 0x565460 and the
+ * AI states call it; the name unknown) */
+extern "C" bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc)
+{
+    CAiCell *cell = map->GetCell(loc, 0);
+
+    return cell ? cell->IsInside() : false;
 }
 
 extern "C" {

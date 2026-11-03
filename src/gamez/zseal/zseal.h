@@ -165,6 +165,8 @@ public:
 class CAiMaps {
 public:
     bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    /* a cell's map (ai_maps.h's, OVL2 0x52E6B0) */
+    class CAiMap *GetMapByIndex(unsigned int i) const;
 };
 
 extern CAiMaps AiMaps;
@@ -409,7 +411,11 @@ public:
     virtual void SetFudgeVelM(const CPnt3D *v) { m_fudge_velM = *v; }
     virtual void SetFudgeVelR(const CPnt3D *v) { m_fudge_velR = *v; }
     virtual void SetFudgeVelW(const CPnt3D *v) { m_fudge_velW = *v; }
-    virtual void Virtual9C();                                               /* +0x9C (new) */
+    /* +0x9C: the turn toward a goal direction -- none when the heading is within the dead zone,
+     * proportional (clamped) inside 20 degrees, the full rate by the cross product's sign beyond --
+     * with the heading's dot product handed back (SOCOM 1's non-virtual ComputeTurnThrottle, the
+     * same body; CreepTick and 0x567900 call the slot with the heading, &m_goal_dir and a float) */
+    virtual float ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot);   /* +0x9C */
     virtual void NotifyTargetDown(CZSealBody *seal);
     virtual bool GetJumpFlag() const { return false; }                     /* +0xA4 */
     virtual void UpdateViewCone();
@@ -420,7 +426,9 @@ public:
 
     /* the goals: a direction, a position (a point or a map cell's centre), cleared (seal_ai.cpp,
      * SOCOM 1's; OVL2 0x56D920, 0x56DAA0, 0x56DBA0, 0x56DCA0) */
-    bool SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool b);
+    /* (SOCOM 1's returns the facing's dot product with the new direction, 1 when none is set: a
+     * float in $f0 in both builds) */
+    float SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat);
     bool SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance);
     bool SetGoalPos(GOAL_TYPE type, const CAiMapLoc &loc, float tolerance);
     void ClearGoal(GOAL_TYPE type);
@@ -446,7 +454,11 @@ public:
     bool CanPerformAction(class CNodeAction *action);
     bool CanPlaceBomb(class CNodeAction *action);
 
-    unsigned char _18[0xa8 - 0x18];
+    unsigned char _18[0x24 - 0x18];
+    /* SOCOM 1's AI_LOOK, a signed byte (AIL_ALL is -1: compared with `lb`); the enum is
+     * seal_look.cpp's (the kit lane's), so a plain signed char here -- 9 is AIL_DEPLOY */
+    signed char m_look_mode;   // 0x24 (SOCOM 1's 0x20)
+    unsigned char _25[0xa8 - 0x25];
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
     unsigned char _b4[0xd8 - 0xb4];
     float m_d8;   // 0xd8: a range 0x570D90 falls back to (the name ours)
@@ -499,7 +511,8 @@ public:
     GOAL_TYPE m_goal_type;   // 0x1b0 (SOCOM 1's 0x1a8)
     float m_goal_tolerance;   // 0x1b4
     CAiTimer m_goal_timer;   // 0x1b8
-    unsigned char _1c4[0x221 - 0x1c4];
+    float m_speed;   // 0x1c4 (SOCOM 1's 0x1bc)
+    unsigned char _1c8[0x221 - 0x1c8];
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
     unsigned char _222[0x244 - 0x222];
     float m_244;   // 0x244: CanPlaceBomb's wait, set to 1.5 when it refuses (the name ours)
@@ -624,7 +637,8 @@ public:
     signed char m_3e0;   // 0x3e0
     unsigned char _3e1[0x3e4 - 0x3e1];
     unsigned char m_3e4[0x10];   // 0x3e4
-    unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
+    /* a mode (7 keeps the AI-map collision off; the name ours): an AI_MODE, copied with lb (0x557F60) */
+    AI_MODE m_3f4;   // 0x3f4
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
     unsigned char _3f6[0x400 - 0x3f6];
     /* a Navy SEAL's anger at the player: Tick and OnDeath raise it by 60 a second, 0x561B90 cools it
@@ -645,7 +659,20 @@ public:
     CAiPathBytes m_path;   // 0x46c: a CAiPath (SOCOM 1's m_path, 0x36c)
     CAiRouteBytes m_route;   // 0x514: a route (its path reset at 0x527310, its state read after
                              // the update at 0x555420)
-    unsigned char _5c0[0x628 - 0x5c0];
+    unsigned char _5c0[0x5e0 - 0x5c0];
+    /* the leg being walked: its two cells' centres flat on the ground, the direction between them
+     * and its length, four words cleared with it, and the cell it starts from (0x56C080 sets them
+     * from a path's last point; the names ours) */
+    CPnt3D m_leg_from;   // 0x5e0
+    CPnt3D m_leg_to;   // 0x5ec
+    CPnt3D m_leg_dir;   // 0x5f8
+    float m_leg_len;   // 0x604
+    unsigned int m_608;   // 0x608
+    unsigned int m_60c;   // 0x60c
+    unsigned int m_610;   // 0x610
+    unsigned int m_614;   // 0x614
+    CAiMapLoc m_leg_cell;   // 0x618
+    unsigned char _61c[0x628 - 0x61c];
     unsigned char m_event[0x28];   // 0x628: a CAiEvent (SOCOM 1's m_event, 0x480)
     unsigned char m_eventQueue[0x10];   // 0x650: a CAiEventQ (SOCOM 1's m_eventQueue, 0x4a8)
     unsigned char m_660;   // 0x660: set at the mission's start in mode 1 (the names ours)
@@ -689,6 +716,9 @@ public:
     virtual ~CSealCtrlAi();
     virtual void SetThrottle(unsigned int axis, float value);
     virtual bool SlideTick(float dT);
+    /* the turn toward a goal: CSealCtrl's at a rate of 2, slowed by the speed when the alertness is
+     * low or the look deploys, unless a Navy SEAL in mode 6 (OVL2 0x56C340) */
+    virtual float ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot);
     /* never on in the AI mode 7 (OVL2 0x557EE0) */
     virtual void SetDoAiMapCollide(bool on);
     virtual void OnSetHealth(float health, float old);
