@@ -428,6 +428,37 @@ void CTurret::SampleDynamics(float dT)
     }
 }
 
+/* a rate moved toward a step, at most the limit either way: down only while the step is below
+ * it, up only while above, zero for no step (inline; the name ours) */
+static inline void SlewRate(float &rate, float step)
+{
+    float limit = 1.2f;
+
+    if (step < 0.0f) {
+        float s = step < -limit ? -limit : step;
+
+        if (s < rate)
+            rate = s;
+    } else if (step > 0.0f) {
+        if (step > limit)
+            step = limit;
+        if (step > rate)
+            rate = step;
+    } else {
+        rate = 0.0f;
+    }
+}
+
+/* the third and fourth throttles' rates slewed toward their steps, 1.2 at most (new in SOCOM II,
+ * not named: Tick calls it, out of line -- pinned) */
+#pragma auto_inline off
+extern "C" void func_003A78E0(CTurret *t, float dT)
+{
+    SlewRate(t->m_3a8, t->m_3b4 - t->m_3b0);
+    SlewRate(t->m_3ac, t->m_3bc - t->m_3b8);
+}
+#pragma auto_inline reset
+
 /* the yaw and pitch toward a direction in the turret's frame (0x3A8910, not written) */
 extern "C" void func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch);
 
