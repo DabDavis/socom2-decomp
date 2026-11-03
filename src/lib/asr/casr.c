@@ -1,13 +1,15 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -fno-optimize-sibling-calls */
-/* casr: the recogniser's engine API (OVL2 0x4D8398-0x4DE490, the head of SOCOM 1's casr object at
- * 0x348248; its tail, casrGetLastError .. cbGenderDisable, is cb.c), ScanSoft's speech recogniser,
- * prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The GCC
- * front") and -fno-optimize-sibling-calls: casrStartUserWordTraining returns its call through a
- * jal (18s with sibling calls), and the object -- 0x4D8398-0x4DF2C8 -- holds no `j`. Names are SOCOM 1's (s1:align/calls/order), the engine context's fields casr.h's, named
- * by their use. Every entry point checks its handle through an inline returning 6 (null) or 11
- * (not a live engine): 2.96 if-converts the magic test into `li 11; movz`, and a caller that
- * returns its own constant drops the 6. Only the functions written so far are here, in image
- * order. */
+/* casr: the recogniser's engine API and the engine's callbacks (OVL2 0x4D8398-0x4DF2C8, SOCOM 1's
+ * casr object at 0x348248 whole: rounds 1 and 2b wrote its tail as cb.c, merged here in round 9c),
+ * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
+ * -funroll-loops (README "The GCC front": casrStoreSegmentation keeps its store above the load of
+ * the next node) and -fno-optimize-sibling-calls: casrStartUserWordTraining returns its call
+ * through a jal (18s with sibling calls), and the object holds no `j`. Names are SOCOM 1's
+ * (s1:exact/align/calls/order), the engine context's fields casr.h's, named by their use. Every
+ * entry point checks its handle through an inline returning 6 (null) or 11 (not a live engine):
+ * 2.96 if-converts the magic test into `li 11; movz`, and a caller that returns its own constant
+ * drops the 6. SOCOM 1's statics casrFreeResult and the NoClearErrorLog pair are inlined into
+ * their callers. The functions not yet written are missing; the rest is in image order. */
 
 #include "casr.h"
 
@@ -20,12 +22,36 @@ extern int userwordStartUserWordTraining(CASR *c, int what, void *a, void *b);
 extern int casrEnableGenders(CASR *c, int genders);
 extern int casrActivateContext(CASR *c, void *ctx, int a);
 extern int func_004D5058(CASR *c, unsigned int *ids, unsigned int n);
-extern void FillContextV2VirtualTable(void *vt);
 extern int casrDoSecondPass(CASR *c);
 extern int tosDestruct(CASR *c);
 extern int CreateExEvCtxInfo(CASR *c);
 extern void FreeCtxInfo(CASR *c);
 extern int GetIsolatedWordDpActiveWords(CASR *c, int **words, int *n);
+extern int qQueueControl(int queue, int what, int id, int arg);
+extern int casrDoSpelling(CASR *c);
+
+typedef struct IMPORT {
+    void *data;
+    void *heap;
+} IMPORT;
+
+/* a context's accessors (contextv2.c's _ContextV2VirtualTable), as far as the engine calls them */
+typedef struct CTXVT CTXVT;
+struct CTXVT {
+    void *data;                                     /* +0 */
+    void *s1[8];
+    int (*GetNbrWord)(CTXVT *vt);                   /* +36, slot 9 */
+    void *s10[11];
+};
+
+extern void FillContextV2VirtualTable(CTXVT *vt);
+
+/* the result the host is handed when nothing was recognised */
+typedef struct NORESULT {
+    int a;
+    int b;
+    int reason;                         /* +8: 2 the timeout, else 0 */
+} NORESULT;
 extern void *memcpy(void *dst, const void *src, unsigned int n);
 extern void *qDeQueueOne(struct QUEUE *q, int reader);
 extern void qFreeUnusedElemements(struct QUEUE *q);
@@ -809,6 +835,44 @@ int casrGetUserWordNbrRecsNeeded(CASR *c, int *n)
     return err;
 }
 
+/* OPEN (and casrGetLastWarning): the target if-converts the magic test into a flag (li 11,
+ * movz 0) and branches on it, after testing the null handle by itself; SOCOM 1's build has this
+ * plain guard. The guard, a ?: macro, an inline checker, a single-exit flag: all compile to
+ * branches (12 words of 16). */
+int casrGetLastError(CASR *c)
+{
+    int err;
+
+    if (c == 0 || c->magic != CASR_MAGIC)
+        return CASR_ERR_HANDLE;
+    err = c->last_error;
+    c->last_error = 0;
+    return err;
+}
+
+int casrGetLastWarning(CASR *c)
+{
+    int err;
+
+    if (c == 0 || c->magic != CASR_MAGIC)
+        return CASR_ERR_HANDLE;
+    err = c->last_warning;
+    c->last_warning = 0;
+    return err;
+}
+
+int casrGetSignalLevel(CASR *c, unsigned short *level)
+{
+    if (c == 0)
+        return CASR_ERR_NULL;
+    if (c->magic != CASR_MAGIC)
+        return CASR_ERR_HANDLE;
+    if (level == 0)
+        return _tosErrorLog(c->event, CASR_ERR_ARG);
+    *level = *c->signal;
+    return 0;
+}
+
 int casrGetSNR(CASR *c, unsigned short *snr)
 {
     int err;
@@ -821,4 +885,285 @@ int casrGetSNR(CASR *c, unsigned short *snr)
     c->last_error = 0;
     _tosControl(c->event, 5, (int)snr, 0);
     return (unsigned char)c->last_error;
+}
+
+int casrGetState(CASR *c, int *state)
+{
+    if (c == 0)
+        return CASR_ERR_NULL;
+    if (c->magic != CASR_MAGIC)
+        return CASR_ERR_HANDLE;
+    if (state == 0)
+        return _tosErrorLog(c->event, CASR_ERR_ARG);
+    *state = c->state;
+    return 0;
+}
+
+/* OPEN: the target sets the result 0 before testing ctx, keeps the type it loads in a1 and
+ * stores data before heap; the guard and single-exit shapes tried miss by 18-25 words. */
+IMPORT *casrImportContext(void *heap, int *ctx)
+{
+    IMPORT *p = 0;
+
+    if (ctx != 0 && *ctx == 6) {
+        p = heap_Alloc(heap, sizeof(IMPORT));
+        if (p != 0) {
+            p->heap = heap;
+            p->data = ctx;
+        }
+    }
+    return p;
+}
+
+IMPORT *casrImportData(void *heap, void *data)
+{
+    IMPORT *p;
+
+    if (data == 0)
+        return 0;
+    p = heap_Alloc(heap, sizeof(IMPORT));
+    if (p == 0)
+        return 0;
+    p->data = data;
+    p->heap = heap;
+    return p;
+}
+
+/* the words a context may recognise: each id checked against the context's word count */
+int casrSetActiveWords(CASR *c, unsigned int *ids, unsigned int n)
+{
+    int err;
+    CTXVT vt;
+    unsigned int nwords;
+    unsigned int i;
+
+    err = casrCheckHandle(c);
+    if (err)
+        return err;
+    if (ids == 0 && n != 0)
+        return _tosErrorLog(c->event, CASR_ERR_ARG);
+    if (c->iso_word)
+        return func_004D5058(c, ids, n);
+    FillContextV2VirtualTable(&vt);
+    vt.data = c->ctx->data;
+    nwords = vt.GetNbrWord(&vt);
+    for (i = 0; i < n; i++)
+        if (ids[i] >= nwords)
+            return _tosErrorLog(c->event, 25);
+    return _tosControl(c->event, 25, n != 0 ? (int)ids : 0, n);
+}
+
+short *casrGetSegmStart(CASR *c, int i, int j)
+{
+    return c->segtab[i * 3 + j];
+}
+
+void casrStoreSegmentation(CASR *c, int i, int j, SEGLABEL *l)
+{
+    short *p = c->segtab[i * 3 + j];
+
+    if (l != 0) {
+        do {
+            *p++ = l->label;
+            l = l->next;
+        } while (l != 0);
+    } else
+        *p = -1;
+}
+
+int casrEnableLabelInQueue(CASR *c, unsigned char enable)
+{
+    if (enable)                         /* the two calls are cross-jumped into one */
+        return qQueueControl(c->queue, 5, c->queue_id, 0) == 0;
+    return qQueueControl(c->queue, 8, c->queue_id, 0) == 0;
+}
+
+/* OPEN: the target tests the result at the join with a branch (bnez; li 1; move 0) where every
+ * shape tried (?:, if/return, != 0, a flag variable) compiles to sltu. */
+int casrDoSecondPass(CASR *c)
+{
+    int ok;
+
+    if (c->use_dp)
+        ok = casrDoSpelling(c);
+    else if (c->iso_word)
+        ok = casrDoIsoWordSecondPass(c);
+    else
+        ok = casrDoNormalSecondPass(c);
+    return ok ? 1 : 0;
+}
+
+int cbStateHandler(CASR *c, unsigned short state)
+{
+    int r;
+
+    if (c->state_cb != 0) {
+        r = c->state_cb(state, c->frames * 110, c->info);
+        if (c->last_state == 0 && r != 0) {
+            c->last_state = r;
+            _tosErrorLog(c->event, 27);
+        }
+    }
+    return 0;
+}
+
+int cbInitArchitectureQueues(CASR *c, unsigned char arch, unsigned char queues)
+{
+    if (arch == 1 && queues == 4)
+        return 0;
+    return 1;
+}
+
+int cbRegisterInputQueue(CASR *c, int queue, unsigned short id)
+{
+    c->queue = queue;
+    c->queue_id = id;
+    return 0;
+}
+
+int func_004DEB58(CASR *c, int cb)
+{
+    int *p;
+
+    if (c->slot[0].cb == 0)
+        p = &c->slot[0].cb;
+    else if (c->slot[1].cb == 0)
+        p = &c->slot[1].cb;
+    else if (c->slot[2].cb == 0)
+        p = &c->slot[2].cb;
+    else if (c->slot[3].cb == 0)
+        p = &c->slot[3].cb;
+    else
+        return 1;
+    *p = cb;
+    return 0;
+}
+
+/* the engine's events, passed on to the host's callbacks (a frame is 11 ms: ms = frames * 110 / 10) */
+int cbTSDetected(CASR *c, int a1, int a2, int frame)
+{
+    int err;
+
+    c->f672 = 1;
+    err = c->ts_cb(frame * 110, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    c->f628 = 0;
+    return 0;
+}
+
+int cbTSAfterStartDetected(CASR *c, int a1, int a2, int frame)
+{
+    int err;
+
+    frame += *c->frame_base;
+    c->f672 = 1;
+    err = c->ts_cb(frame * 110, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    c->f628 = 0;
+    return 0;
+}
+
+int cbStartDetected(CASR *c, int a1, int a2, int start, int end)
+{
+    int err;
+    int n;
+
+    n = end - start;
+    c->f673 = 1;
+    err = c->start_cb(n * 110, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    return 0;
+}
+
+int cbSpellRecognised(CASR *c, int a1, int a2, int arg1)
+{
+    c->sp_arg1 = arg1;
+    return 0;
+}
+
+/* nothing recognised: the result's reason is 2 when the utterance outran the timeout (parameter 5) */
+int cbNothingRecognised(CASR *c)
+{
+    NORESULT r;
+    int err;
+
+    r.a = 0;
+    r.b = 0;
+    if (c->p420 != 0 && c->p420 < c->frames)
+        r.reason = 2;
+    else
+        r.reason = 0;
+    err = c->result_cb(&r, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    return 0;
+}
+
+int cbSpellNothingRecognised(CASR *c)
+{
+    NORESULT r;
+    int err;
+
+    r.a = 0;
+    r.b = 0;
+    if (c->p420 != 0 && c->p420 < c->frames)
+        r.reason = 2;
+    else
+        r.reason = 0;
+    err = c->result_cb(&r, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    return 0;
+}
+
+int cbDoSecondPass(CASR *c, int a1, int a2, int arg1, int arg2)
+{
+    c->second_pass = 1;
+    c->sp_arg2 = arg2;
+    c->sp_arg1 = arg1;
+    return 0;
+}
+
+int cbNewUserWordUtterance(CASR *c)
+{
+    c->f674 = 0;
+    c->frames = 0;
+    c->f906 = 0;
+    c->f672 = 0;
+    c->uw_state = 4;
+    return 0;
+}
+
+/* OPEN: the target tests ==1, ==0, ==2 with no range check, its case 0 storing through the
+ * join (reorg); a switch tests slti 2 first, the if-chains tried miss by 14-19 words. */
+int cbGenderDisable(CASR *c, int a1, int a2, int which, int mode)
+{
+    c->gender_on[which] = 0;
+    switch (mode) {
+    case 0:
+        c->gender = 1;
+        break;
+    case 1:
+        c->gender = 2;
+        break;
+    case 2:
+        c->gender = 4;
+        break;
+    default:
+        return 1;
+    }
+    return 0;
 }
