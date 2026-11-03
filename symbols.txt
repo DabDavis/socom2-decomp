@@ -1062,7 +1062,7 @@
 0x001BB688 0xB0 sceMpegInit  # MAIN unaligned; s1:calls (startPss calls it just before sceMpegCreate where SOCOM 1's calls sceMpegInit; 0xB0 against 0xA8) -- the online lane
 0x001BB738 0x20C sceMpegCreate  # MAIN unaligned; s1:calls
 0x001BB948 0x8 sceMpegDelete  # MAIN unaligned; s1:calls (stopPss's call where SOCOM 1's calls sceMpegDelete; 8 bytes in both) -- the online lane
-0x001BB950 0x3C func_001BB950  # MAIN
+0x001BB950 0x3C sceMpegAddBs  # MAIN; s1:order (the demo's object 0x1593B8: after sceMpegDelete, the same body -- _sendDataToIPU(mp->sys, bs, (size + 19) / 16 * 16) -- a jal and return 1 where the demo tail-calls)
 0x001BB990 0x48 sceMpegGetPicture  # MAIN; s1:exact
 0x001BB9D8 0x44 sceMpegGetPictureRAW8  # MAIN unaligned; s1:exact
 0x001BBA20 0x50 sceMpegGetPictureRAW8xy  # MAIN; s1:exact
@@ -1076,17 +1076,17 @@
 0x001BBB88 0x24 sceMpegAddCallback  # MAIN unaligned; s1:exact
 0x001BBBB0 0x50 _dispatchMpegCallback  # MAIN; s1:exact
 0x001BBC00 0x28 _dispatchMpegCbNodata  # MAIN; s1:callee
-0x001BBC28 0x18 func_001BBC28  # MAIN unaligned
-0x001BBC40 0x14 func_001BBC40  # MAIN
-0x001BBC58 0x10 func_001BBC58  # MAIN unaligned
-0x001BBC68 0xC func_001BBC68  # MAIN unaligned
-0x001BBC78 0xC func_001BBC78  # MAIN unaligned
-0x001BBC88 0xC func_001BBC88  # MAIN unaligned
-0x001BBC98 0xC func_001BBC98  # MAIN unaligned
+0x001BBC28 0x18 sceMpegSetDefaultPtsGap  # MAIN unaligned; s1:order (after _dispatchMpegCbNodata: sys+0x78 = gap, sys+0x70 = 1, as the demo's)
+0x001BBC40 0x14 sceMpegResetDefaultPtsGap  # MAIN; s1:order (the next: sys+0x78 and sys+0x70 cleared, as the demo's)
+0x001BBC58 0x10 sceMpegSetImageBuff  # MAIN unaligned; s1:order (the next: sys+0xD8 = buf, as the demo's)
+0x001BBC68 0xC sceMpegDispWidth  # MAIN unaligned; s1:order (the next: returns sys+0xCC, as the demo's)
+0x001BBC78 0xC sceMpegDispHeight  # MAIN unaligned; s1:order (the next: returns sys+0xD0, as the demo's)
+0x001BBC88 0xC sceMpegDispCenterOffX  # MAIN unaligned; s1:order (the next: returns sys+0xB4, as the demo's)
+0x001BBC98 0xC sceMpegDispCenterOffY  # MAIN unaligned; s1:order (the next: returns sys+0xB4, as the demo's)
 0x001BBCA8 0x10 sceSetBrokenLink  # MAIN unaligned; s1:exact
-0x001BBCB8 0x18 func_001BBCB8  # MAIN unaligned
+0x001BBCB8 0x18 sceSetPtm  # MAIN unaligned; s1:order (after sceSetBrokenLink: sys+0xF8 = 1, sys+0xF0 = ptm, as the demo's)
 0x001BBCD0 0x14 _alalcInit  # MAIN; s1:exact
-0x001BBCE8 0xC func_001BBCE8  # MAIN unaligned
+0x001BBCE8 0xC _alalcSetDynamic  # MAIN unaligned; s1:order (after _alalcInit: mark = cur, as the demo's)
 0x001BBCF8 0xC _alalcFree  # MAIN unaligned; s1:callee
 0x001BBD08 0x6C _alalcAlloc  # MAIN unaligned; s1:exact
 0x001BBD78 0x18 _alalcRest  # MAIN unaligned; s1:exact
@@ -1095,7 +1095,7 @@
 0x001BC018 0x44 _decodeOrSkip  # MAIN unaligned; s1:exact
 0x001BC060 0x15C _decodeOrSkipField  # MAIN; s1:exact
 0x001BC1C0 0x68 _sceMpegFlush  # MAIN; s1:exact
-0x001BC228 0xC func_001BC228  # MAIN unaligned
+0x001BC228 0xC _initSeqAgain  # MAIN unaligned; s1:order (the first of the demo's object 0x159F10: sys+0x848 = 0, _ipuSetMPEG1(1), as the demo's)
 0x001BC238 0x7C _lastFrame  # MAIN unaligned; s1:exact
 0x001BC2B8 0x60 _clearOnce  # MAIN unaligned; s1:exact
 0x001BC318 0xC8 _clearEach  # MAIN unaligned; s1:exact
