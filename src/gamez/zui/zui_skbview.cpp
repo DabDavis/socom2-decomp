@@ -336,21 +336,48 @@ extern "C" void func_00397D30(CSkbLook *look, unsigned char i, _zrdr *rdr, const
 /* the keyboard's default width (0x4A44C4; ours) */
 extern int data_004A44C4;
 
+/* a rectangle from a block's Pos and Size, read in that order (ours) */
+static inline CSkbRect SkbReadRect(_zrdr *rdr)
+{
+    CIntPair pos = ReadIntPair(rdr, "Pos");
+    CIntPair size = ReadIntPair(rdr, "Size");
+
+    return CSkbRect(pos, size);
+}
+
+/* an int or a real the rdr may give, else the default (ours: the look parser's scalars, each read
+ * into a local of the helper's -- the target's frame holds them after the parser's own) */
+static inline int SkbFindInt(_zrdr *rdr, const char *tag, int def)
+{
+    int i = def;
+
+    zrdr_findint(rdr, tag, &i, 1);
+    return i;
+}
+
+static inline float SkbFindReal(_zrdr *rdr, const char *tag, float def)
+{
+    float f = def;
+
+    zrdr_findreal(rdr, tag, &f, 1);
+    return f;
+}
+
 /* the look a keyboard's rdr block gives: its name and backgrounds, the four background piece lists
  * (each piece a Source -- Texture, Pos, Size -- and a Display -- Pos, Size), its place, size, edit
  * strings, cursor and caps, the five toggles' rectangles, the scaling times and the keyboards it
  * switches to (0x3963F0; CreateSoftKeyboard calls it; the name ours).
  * OPEN, 0x810 against 0x7D8 (written round 14 for its template tail: the pieces' resize and the
  * piece's copy match through it): the calls, their order and the code up to the first loop's body
- * are the target's; what differs is the frame and one variable. The target narrows the list index
- * into a variable of its own (`andi s1,s5,0xff` in the walker's constructor's delay slot, `andi`
- * again at the read, the index added before `this` -- SetRect's shape: an inline taking an unsigned
- * char?), and its stack holds, from the top, the address-taken scalars (lh 444 above grow 440, then
- * the ints, then up/down), the two walkers, the function's pairs (start, pos, csize), the string
- * temporary, the loop's four pairs (328-304: below the later-declared pairs, so not named locals
- * here -- an inline's or temporaries), tags (288), the loop's two rectangle temporaries (272, 256)
- * and the five toggle rectangles (240-176: never zeroed, so not default-constructed CSkbRect
- * locals -- ReadSkbRect returning by value?). Tried: an `unsigned char` index local (0x818) */
+ * are the target's; what differs is the frame and one variable. The scalars through the inline
+ * readers (theirs a variable each, numbered after the parser's own lh) and the pieces' pairs
+ * through SkbReadRect give the target's slots for both (444-412, 328-304); still off: the second
+ * walker (the target's 376, just under the first: declared before start?), the five toggle
+ * rectangles (240-176, never zeroed, under the loop's two rectangle temporaries 272/256 -- not
+ * default-constructed CSkbRect locals: ReadSkbRect returning by value?), and the list index, which
+ * the target narrows into a variable of its own (`andi s1,s5,0xff` in the walker's constructor's
+ * delay slot, `andi` again at the read, the index added before `this`: SetRect's shape, an inline
+ * taking an unsigned char?). Tried: an `unsigned char` index local (0x818) */
 void CSoftKeyboard::ParseLook(_zrdr *rdr)
 {
     m_name = zrdr_findstring(rdr, "Name");
@@ -371,23 +398,15 @@ void CSoftKeyboard::ParseLook(_zrdr *rdr)
                 _zrdr *src = zrdr_flat_findtag_startidx(item, "Source", 0);
 
                 piece.m_texture = zrdr_findstring(src, "Texture");
-                CIntPair pos = ReadIntPair(src, "Pos");
-                CIntPair size = ReadIntPair(src, "Size");
-
-                piece.m_source = CSkbRect(pos, size);
+                piece.m_source = SkbReadRect(src);
                 _zrdr *disp = zrdr_flat_findtag_startidx(item, "Display", 0);
-                CIntPair dpos = ReadIntPair(disp, "Pos");
-                CIntPair dsize = ReadIntPair(disp, "Size");
 
-                piece.m_display = CSkbRect(dpos, dsize);
+                piece.m_display = SkbReadRect(disp);
                 it.Next();
             } while (it.More());
         }
     }
-    float grow = 0.0f;
-
-    zrdr_findreal(rdr, "TwoEditsGrowUp", &grow, 1);
-    *(float *)&m_64 = -grow;
+    *(float *)&m_64 = -SkbFindReal(rdr, "TwoEditsGrowUp", 0.0f);
     CIntPair start = ReadIntPair(rdr, "StartGridPos");
 
     m_54 = start.Get1st();
@@ -396,31 +415,16 @@ void CSoftKeyboard::ParseLook(_zrdr *rdr)
 
     m_5c = pos.Get1st();
     m_60 = pos.Get2nd();
-    int h = 0;
-
-    zrdr_findint(rdr, "SkbHeight", &h, 1);
-    m_68 = h;
-    int w = data_004A44C4;
-
-    zrdr_findint(rdr, "SkbWidth", &w, 1);
-    m_6c = w;
-    int sw = 0;
-
-    zrdr_findint(rdr, "UserStringWidth", &sw, 1);
-    m_c0 = sw;
+    m_68 = SkbFindInt(rdr, "SkbHeight", 0);
+    m_6c = SkbFindInt(rdr, "SkbWidth", data_004A44C4);
+    m_c0 = SkbFindInt(rdr, "UserStringWidth", 0);
     func_00397D30(this, 0, rdr, "UserStringProps");
     float lh = 0.0f;
 
     zrdr_findreal(rdr, "UserStringLineHeight", &lh, 1);
     *(float *)&m_c4 = lh;
-    int cy = 0;
-
-    zrdr_findint(rdr, "CursorY", &cy, 1);
-    m_c8 = cy;
-    int cy2 = 0;
-
-    zrdr_findint(rdr, "CursorY2nd", &cy2, 1);
-    m_cc = cy2;
+    m_c8 = SkbFindInt(rdr, "CursorY", 0);
+    m_cc = SkbFindInt(rdr, "CursorY2nd", 0);
     CIntPair csize = ReadIntPair(rdr, "CursorSize");
 
     m_d0 = csize.Get1st();
@@ -439,14 +443,8 @@ void CSoftKeyboard::ParseLook(_zrdr *rdr)
     SetRect(3, r3);
     ReadSkbRect(&r4, SkbFindTag(rdr, "UsbKbdMode"));
     SetRect(4, r4);
-    float up = 0.25f;
-
-    zrdr_findreal(rdr, "ScaleUpSec", &up, 1);
-    *(float *)&m_d8 = up;
-    float down = 0.25f;
-
-    zrdr_findreal(rdr, "ScaleDownSec", &down, 1);
-    *(float *)&m_dc = down;
+    *(float *)&m_d8 = SkbFindReal(rdr, "ScaleUpSec", 0.25f);
+    *(float *)&m_dc = SkbFindReal(rdr, "ScaleDownSec", 0.25f);
     CSkbRdrIter it(rdr, "SwitchTargets");
 
     if (it.More()) {
