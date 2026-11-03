@@ -53,6 +53,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
 | `tools/ccflags.py` | a GCC range's drafts recompiled with a flag added: a flag the vendor used loses none (how strict aliasing was told apart) |
+| `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order and each pseudo's final register -- for register-only misses (GCC round 14c's harness, promoted in 15a) |
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |

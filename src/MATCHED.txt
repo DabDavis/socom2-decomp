@@ -605,6 +605,7 @@
 0x001A5368 serialPutchar
 0x001A53A0 ftoi
 0x001A5430 printfloat
+0x001A5598 _printf
 0x001A5B88 kprintf
 0x001A5BC0 scePrintf
 0x001A5C20 _set_sreg
@@ -881,6 +882,8 @@
 0x001BE450 AdjustTime
 0x001BE4E0 sceScfGetGMTfromRTC
 0x001BE4E8 sceScfGetLocalTimefromRTC
+0x001BE6A0 func_001BE6A0
+0x001BE898 func_001BE898
 0x001BE960 sceUsbKbGetInfo
 0x001BEA08 sceUsbKbRead
 0x001BEAE8 sceUsbKbGetLocation
@@ -896,6 +899,10 @@
 0x001BF570 func_001BF570
 0x001BF5C0 func_001BF5C0
 0x001BF5E0 func_001BF5E0
+0x001BF600 func_001BF600
+0x001BF688 func_001BF688
+0x001BF6B8 func_001BF6B8
+0x001BF728 func_001BF728
 0x001BFAA8 func_001BFAA8
 0x001BFB18 func_001BFB18
 0x001BFC00 sceVu0ApplyMatrix
@@ -1889,6 +1896,7 @@
 0x0024A8B0 func_0024A8B0
 0x0024AAE8 func_0024AAE8
 0x0024B720 func_0024B720
+0x0024C458 func_0024C458
 0x0024C5D0 func_0024C5D0
 0x0024C648 func_0024C648
 0x0024C8C0 func_0024C8C0
@@ -9472,9 +9480,11 @@
 0x00633790 rt_msg_client_ishutdown
 0x00633918 rt_msg_client_udp_shutdown
 0x00633960 func_00633960
+0x00633E78 rt_msg_client_idisconnect
 0x00633FD8 rt_msg_client_idisconnect_all
 0x00634078 func_00634078
 0x00634098 rt_msg_client_iupdate_all
+0x00634170 rt_msg_client_isend_target
 0x00634270 rt_msg_client_isend_client_set
 0x00634278 func_00634278
 0x00634508 func_00634508
@@ -9488,6 +9498,7 @@
 0x00634958 rt_msg_client_iudp_set_default_options
 0x00634970 rt_msg_client_idisplay_comm_state
 0x006349A8 func_006349A8
+0x00634A08 func_00634A08
 0x00635078 func_00635078
 0x00635150 rt_msg_client_iudp_disable_heartbeat
 0x00635708 rt_msg_client_is_valid_connection
@@ -9501,12 +9512,17 @@
 0x00635CF0 func_00635CF0
 0x00635D10 rt_msg_client_send_disconnect
 0x00635D98 func_00635D98
+0x00636040 rt_msg_client_store_msg_in_send_buf
 0x00636208 rt_msg_client_create_send_buf_space
+0x00637050 rt_msg_client_process_app_message
+0x00637150 rt_msg_client_process_disconnect_message
 0x00637230 func_00637230
 0x00637438 func_00637438
 0x00637900 func_00637900
 0x006379B0 rt_msg_client_set_header
 0x00637A40 rt_msg_client_get_header
+0x00637AD0 rt_msg_client_send_buffer
+0x00637BC0 rt_msg_client_recv_circ_buf
 0x00637F68 rt_msg_client_is_valid_outgoing_msg
 0x00638020 rt_msg_client_change_state
 0x00638048 rt_msg_client_is_wait_state
@@ -9514,6 +9530,7 @@
 0x006380C0 func_006380C0
 0x00638178 func_00638178
 0x00638208 rt_msg_client_set_scratch_buf_min_size
+0x00638500 func_00638500
 0x006386F8 func_006386F8
 0x00638740 func_00638740
 0x00638798 func_00638798
@@ -9804,7 +9821,9 @@
 0x00648500 MediusAnonymousLogin
 0x006485B8 MediusCreateGame
 0x00648678 MediusTextFilter
+0x00648720 MediusCreateGameOnSelf
 0x00648840 MediusCreateChannel
+0x006488F8 MediusJoinGame
 0x00648A08 MediusJoinChannel
 0x00648AB0 MediusGetGames
 0x00648B50 MediusGetChannels
@@ -10157,6 +10176,7 @@
 0x0064DAD0 func_0064DAD0
 0x0064F3D8 iTerminateString
 0x0064F400 iCreateAndAllocateMessageID
+0x0064F430 iGetMessageIDValues
 0x0064F580 func_0064F580
 0x0064F588 func_0064F588
 0x0064F590 func_0064F590
