@@ -88,6 +88,34 @@ private:
     T *p_;
 };
 
+/* the guard with its count kept (the MSL headers round 14): a count given as a value, not a
+ * number<>, is stored between the allocator and the pointer and handed to deallocate -- the
+ * deque's push_back holds its new block so, {allocator, 128, block} on the stack (0x2CF970) */
+template <class T, class Allocator>
+class alloc_ptr<T, Allocator, unsigned int> {
+public:
+    alloc_ptr(T *p, Allocator a, unsigned int n) : a_(a), n_(n), p_(p) {}
+    ~alloc_ptr()
+    {
+        if (ptr())
+            a_.deallocate(ptr(), n_);
+    }
+    T *&ptr() { return p_; }
+    T *get() { return ptr(); }
+    T *release()
+    {
+        T *p = ptr();
+
+        ptr() = 0;
+        return p;
+    }
+
+private:
+    Allocator a_;
+    unsigned int n_;
+    T *p_;
+};
+
 }
 
 #endif
