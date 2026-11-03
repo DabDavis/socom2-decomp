@@ -3435,6 +3435,47 @@ of 2), `asr/osspi.c` (4 of 4), `asr/fastallo.c` (2 of 3), `asr/gsapi.c` (+12, 21
 functions new to the map's byte-exact rows (4,016 bytes), the rest superseding matching drafts;
 101 rows named (65 `s1:slot`, 30 `s1:order`, 3 `s1:align`, 3 `s1:calls`).
 
+**Round 6c: the queues, the scheduler's small functions, 117 names.**
+
+- **SOCOM 1's call sites name the callees** (`build/scratch/gcc/callvotes.py`): every map row
+  carrying a demo name has its callee sequence aligned with the demo function's; where ours calls
+  a placeholder and the demo a named function, that is a vote. 75 names whose votes agree with the
+  object order (`_tosControl` 87 sites, `_tosGetProfileU32` 54, `qEnQueueOne` 21, `ConvErr` 21,
+  `tosBaseBlockConstruct` 25 ...), and where asr_align.txt was a row off (CalcAccuracyCtxInfo/
+  CreateMenuMasks, GenderDataCompute/GenderSelection, qFreeUnusedElemements) the demo's order
+  checked by hand; the queue and tos objects' other 20 rows by order, each with its callers
+  checked against the demo's. The HUD lane's five gsapi leads (from CReco against SOCOM 1's reco)
+  hold against SOCOM 1's gsapi object -- `gsapi_Init`, `gsapi_LanguageLoadBuffer`,
+  `gsapi_EngineOpen`, `gsapi_EngineStop` and the error translator, `gsapi_ErrorGetString` -- and
+  17 more of the object's rows and extaudio's three follow by callee sequence and position.
+- **gsapi_ErrorGetString is SOCOM 1's, moved**: the translator at the end of the context object
+  (the extaudio object between it and gsapi's) is SOCOM 1's gsapi_ErrorGetString with a bit-7
+  test. Its jump back to the top is a tail-recursive `return gsapi_ErrorGetString(0x80CC007F)`,
+  which 2.96 turns into the jump -- written last, after the table walk, as the target lays it out.
+- **Inlining, three ways**: SOCOM 1's static `qFreeElem` is a `static __inline__` (no copy left);
+  `qDeQueueOne` is a public `__inline__`, inlined into qCheckDeQueueOne's loop as SOCOM 1's is, its
+  own copy still byte-exact; so is `_tosErrorLog` (inlined into tosBaseBlockConstruct, its log
+  record still built on the stack).
+- **ScanSoft's shapes, each measured**: the element copied out before the walk moves on (`p = e;
+  e = e->next; qFreeElem(q, p)` -- the inline's parameter copy); a counter of its own per loop
+  (sharing one moves the outer loop's registers or its unrolling); `count -= n` reused as the
+  bound; `err |= !ok` (an `if` around `err |= 1` is if-converted to a movz the target lacks); a
+  free list tested before it is read (`if (*list) { e = *list; ...}`); a table indexed twice,
+  not through a local pointer (the address sum's registers swap); the positive test around a body
+  (`if (ok) { ...; return q; } return 0;`); a parameter copied to a local before a default is
+  taken (`size = elemsize` or the profile's).
+- **Open, diagnosed in place**: qEnQueue (byte-exact as written without `-funroll-loops`; 2.96
+  unrolls its loop by two where the target's stays rolled, while the object's other counted
+  loops are unrolled -- something in the vendor's body stops the unroller: two empty `asm
+  volatile` statements do, 4 words off), tosBaseBlockConstruct (16 words: the inlined logger's
+  code computed inside the `error == 0` test in the target).
+
+Hand-written in round 6c: `asr/queue.c` (16 of 17, new: SOCOM 1's queue object whole),
+`asr/tos.c` (+5: the base block's three input-queue commands, `_tosGetProfileU32`,
+`_tosGetProfileFloat`; 7 of 8 written), `asr/context.c` (+1, gsapi_ErrorGetString) -- 22
+functions new to the map's byte-exact rows (6,752 bytes); 117 rows named (95 `s1:calls`/
+`s1:order` from call sites and object order, 22 by the gsapi object's callees and order).
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;

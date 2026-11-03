@@ -1,7 +1,8 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops */
-/* tos: the recogniser's block scheduler (OVL2 0x50B2C0-0x50D560, SOCOM 1's object at 0x3759E8):
- * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
- * -funroll-loops (README "The GCC front"). Names are SOCOM 1's. A block reports through a log
+/* tos: the recogniser's block scheduler (OVL2 0x50AED8-0x50D560, SOCOM 1's object at 0x3759E8,
+ * SetAndControlQSizes .. DisabledProcess): ScanSoft's speech recogniser, prebuilt with ee-gcc
+ * 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The GCC front"). Names are SOCOM
+ * 1's. Only the functions written so far are here, in image order. A block reports through a log
  * record (the scheduler and its block id); the first error or warning is kept and passed to the
  * host's callback. The loggers return the code as an unsigned char, which is why their callers'
  * `return _tosErrorLog(...)` is no sibling call (2.96 declines one when the modes differ). */
