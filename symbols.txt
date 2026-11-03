@@ -10540,7 +10540,7 @@
 0x0058BAB0 0x98 func_0058BAB0  # OVL2
 0x0058BB50 0xA8 GetMaxXMotion__10CZSealBodyFRfRf  # OVL2; s1:calls (GetSpeedFromThrottle and GetThrottleFromSpeed call it from SOCOM 1's places, with two float slots)
 0x0058BC00 0xA8 GetMaxZMotion__10CZSealBodyFRfRf  # OVL2; s1:calls (GetSpeedFromThrottle and GetThrottleFromSpeed call it from SOCOM 1's places, with two float slots)
-0x0058BCB0 0x13C func_0058BCB0  # OVL2
+0x0058BCB0 0x13C SetMaxMotion__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's SetMaxMotion__10CZSealBodyFv, right after GetMaxZMotion in both builds: the anim set's own SetMaxMotion first, then anim 27's speed into the prone forward and back, ProneRStrafe's and ProneLStrafe's -- the same AnimTypes SOCOM 1's loads -- and anim 45's into the ladder, 0 without the anim)
 0x0058BDF0 0x4C0 func_0058BDF0  # OVL2
 0x0058C2B0 0x38 func_0058C2B0  # OVL2
 0x0058C2F0 0x60 func_0058C2F0  # OVL2

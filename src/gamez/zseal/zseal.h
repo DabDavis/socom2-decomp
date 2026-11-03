@@ -69,6 +69,8 @@ class AnimTypes {
 public:
     static short Stand2Prone;   // OVL1 0x3DEC48
     static short ClimbMedium;   // OVL1 0x3DEC90
+    static short ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
+    static short ProneLStrafe;   // OVL1 0x3DECD0
 };
 
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
@@ -1090,6 +1092,9 @@ public:
     /* every bone's node given a box DI of the person material, the upper spine's box capped (SOCOM 1's;
      * OVL2 0x58B960, seal_cfg.cpp) */
     void AddDIPolys();
+    /* the anim set's speeds set, the prone and ladder ones from their anims' scaled times (SOCOM 1's;
+     * OVL2 0x58BCB0, seal_cfg.cpp) */
+    void SetMaxMotion();
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */
     void GetMaxXMotion(float &a, float &b);
     void GetMaxZMotion(float &a, float &b);

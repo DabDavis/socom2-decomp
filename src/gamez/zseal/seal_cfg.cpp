@@ -318,6 +318,62 @@ public:
 };
 
 extern "C" {
+/* the set's own speeds read (SOCOM 1's AnimSet::SetMaxMotion; OVL2 0x5E0450, anim.cpp's) and an anim
+ * set's script for a type (0x5E3D90, anim.cpp's: 0x5E3C20 with no weapon) */
+void func_005E0450(AnimSet *set);
+CZSIScriptCommon *func_005E3D90(AnimSet *set, AnimType type);
+}
+
+/* a script's factor at 0x1C, read by value (SetMaxMotion loads it ahead of the scale's call) */
+static inline float Factor(CZSIScriptCommon *a)
+{
+    return a->m_1c;
+}
+
+/* the anim set's speeds set, then the prone crawl's forward and back, its two strafes and the ladder's
+ * from their scripts' distance units scaled by the factor, 0 for an anim the set lacks (OVL2 0x58BCB0:
+ * SOCOM 1's SetMaxMotion, after GetMaxZMotion in both builds -- SOCOM 1's took the body's anims'
+ * maximum velocities).
+ * OPEN, 4 instructions (the size right): in the two strafe lookups the target loads the AnimTypes
+ * static (a1) before the set (a0, in the call's delay slot), as a right-to-left argument order would;
+ * MW loads the set first here. `a` declared ahead of `set` gives their saved registers and the factor
+ * through the by-value accessor its $f20 (both needed); tried: the static through a const reference or
+ * a short cast, the set in a block-local, an inline member wrapper and a real AnimSet member call (the
+ * same order), the product's operands swapped */
+void CZSealBody::SetMaxMotion()
+{
+    CZSIScriptCommon *a;
+
+    func_005E0450(m_animset);
+    AnimSet *set = m_animset;
+
+    a = func_005E3D90(set, (AnimType)27);
+
+    if (a) {
+        set->m_aparams.m_prone_max_fwd = a->DistanceScale() * Factor(a);
+        set->m_aparams.m_prone_max_back = a->DistanceScale() * Factor(a);
+    } else {
+        set->m_aparams.m_prone_max_fwd = 0.0f;
+        set->m_aparams.m_prone_max_back = 0.0f;
+    }
+    a = func_005E3D90(m_animset, (AnimType)AnimTypes::ProneRStrafe);
+    if (a)
+        set->m_aparams.m_prone_max_rt = a->DistanceScale() * Factor(a);
+    else
+        set->m_aparams.m_prone_max_rt = 0.0f;
+    a = func_005E3D90(m_animset, (AnimType)AnimTypes::ProneLStrafe);
+    if (a)
+        set->m_aparams.m_prone_max_left = a->DistanceScale() * Factor(a);
+    else
+        set->m_aparams.m_prone_max_left = 0.0f;
+    a = func_005E3D90(m_animset, (AnimType)45);
+    if (a)
+        set->m_aparams.m_ladder_updn = a->DistanceScale() * Factor(a);
+    else
+        set->m_aparams.m_ladder_updn = 0.0f;
+}
+
+extern "C" {
 int strcasecmp(const char *a, const char *b);
 /* two tables of 72 names each, a byte value's name (OVL2 0x58ED60 and 0x58EF80, string switches) */
 const char *func_0058ED60(unsigned char v);
