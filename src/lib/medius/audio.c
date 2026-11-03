@@ -24,6 +24,14 @@ typedef struct GRID_HEADER {            /* grid.c's message header */
     unsigned short nSeq;                /* 0x06 */
 } GRID_HEADER;
 
+typedef struct GRID_INFO {              /* grid.c's */
+    unsigned short nSize;               /* 0x00 */
+    unsigned short nId;                 /* 0x02 */
+    unsigned short nMaxMembers;         /* 0x04 */
+    unsigned short nMaxMembers2;        /* 0x06 */
+    char szName[60];                    /* 0x08 */
+} GRID_INFO;                            /* 0x44 */
+
 typedef struct GRID_ENTRY {             /* a group as grid.c reports it */
     unsigned short nId;                 /* 0x00 */
     short nQueued;                      /* 0x02 */
@@ -46,12 +54,23 @@ typedef struct PEER {                   /* a peer's record (the list object at 0
     struct PEER *pPrev;                 /* 0x04 */
     int x08;                            /* 0x08 */
     unsigned int nState;                /* 0x0C */
-    char x10[0x10];                     /* 0x10 */
+    unsigned int tSent;                 /* 0x10: the last keep-alive sent */
+    unsigned int nTries;                /* 0x14: keep-alives unanswered */
+    int x18;                            /* 0x18 */
+    int tHeard;                         /* 0x1C: when last heard */
     PEER_INFO info;                     /* 0x20 */
     char x40[0x808];                    /* 0x40 */
     void *pIn;                          /* 0x848 */
     void *pOut;                         /* 0x84C */
 } PEER;
+
+typedef struct GRID_NODE {              /* a group's member list (the list object at 0x629DA0) */
+    struct GRID_NODE *pNext;            /* 0x00 */
+    struct GRID_NODE *pPrev;            /* 0x04 */
+    PEER *pPeer;                        /* 0x08 */
+} GRID_NODE;
+
+extern GRID_NODE *func_006247E8(GRID *p);
 
 typedef enum AUDIO_CONNECT {           /* the socket's connection, under way or done */
     AUDIO_CONNECT_NONE,
@@ -65,7 +84,9 @@ typedef struct AUDIO {
     int nSeqB;                          /* 0x08: type 0x30's */
     char x0C[0x3C];                     /* 0x0C */
     int (*pfnRead)(struct AUDIO *pAudio, int *pnType, char *pBuf, int nSize); /* 0x48 */
-    char x4C[0x0C];                     /* 0x4C */
+    int x4C;                            /* 0x4C */
+    void *x50;                          /* 0x50 */
+    int x54;                            /* 0x54 */
     int nLastRead;                      /* 0x58 */
     void *pCodec;                       /* 0x5C */
     void *pFrame;                       /* 0x60: the codec's, while talking */
@@ -97,6 +118,9 @@ extern GRID *func_00624788(GRID *p);
 extern GRID *func_00624790(GRID *pList, int nId);
 extern void func_006247C8(GRID *p);
 extern void func_00624B88(GRID *p, GRID_ENTRY *pEntry);
+extern void func_00624B38(GRID *p, GRID_INFO *pInfo);
+extern void func_006247F0(GRID *p, const char *szName);
+extern char *func_00624820(GRID *p);
 extern void func_00624BE0(GRID *p, GRID_HEADER *h, int nType, int nLen);
 extern int func_00626110(GRID *p);
 extern int func_006264C0(GRID *p, void *p1, int n2);
@@ -134,6 +158,12 @@ extern void func_0063E390(void *pSocket, char *szAddr, int *pnPort);
 extern void func_0063E830(void *pSocket);
 extern void func_0063F270(void *pSocket);
 extern void func_0062A8C8(void *pCodec);
+extern void func_0062A138(PEER *p, unsigned int nFlags);
+extern void func_0062A148(PEER *p, unsigned int nFlags);
+extern void func_00624DC0(GRID *p);
+extern void func_0060FC90(AUDIO *pAudio, PEER *p);
+extern void func_0060FD98(AUDIO *pAudio, PEER *p);
+extern void func_0060FEB8(AUDIO *pAudio);
 extern void func_0062B090(void *pCodec, void *pIn);
 extern void func_0062AE10(void *pCodec, void *pFrame);
 extern void func_0063DEA0(void *pSocket);
@@ -141,6 +171,9 @@ extern void func_006456D8(void *pHandle);
 
 void func_00610318(AUDIO *pAudio);
 int func_00610788(AUDIO *pAudio);
+int func_00610938(AUDIO *pAudio);
+int func_00610668(AUDIO *pAudio, int nNow);
+void func_00612630(AUDIO *pAudio, int nTo);
 void func_006115C0(AUDIO *pAudio, int nType, char *pBuf, int nLen);
 int func_00610C20(AUDIO *pAudio, int nFrom, int nPort, char *pBuf, int nLen);
 int func_00610FA0(AUDIO *pAudio, int nTo, GRID_HEADER *h, void *pData, int nLen);
@@ -333,6 +366,123 @@ int func_00610668(AUDIO *pAudio, int nNow)
     if (nTotal == 0 && pAudio->pFrame != 0 && nNow - pAudio->nLastRead > 1500)
         func_006115C0(pAudio, pAudio->x90, buf, 0);
     return nTotal;
+}
+
+/* The session's update: datagrams, keep-alives and the group spoken in, the codec's output,
+ * then each member's flags. */
+int func_00610788(AUDIO *pAudio)
+{
+    int nNow = func_0062C070();
+    unsigned int n;
+    GRID *g;
+    GRID_NODE *node, *pFirst;
+    PEER *p;
+    unsigned int nFlags;
+
+    if (func_006105F0(pAudio) == 0 && func_00610938(pAudio) == 0 && pAudio->nGrid > 0) {
+        g = func_00611388(pAudio, pAudio->nGrid);
+        if (g != 0)
+            func_00624DC0(g);
+    }
+    n = 0;
+    if (pAudio->pfnRead != 0)
+        n = func_00610668(pAudio, nNow);
+    if (n <= 8000 && pAudio->x50 != 0)
+        func_0060FEB8(pAudio);
+    if (pAudio->nGrid != 0) {
+        g = func_00611388(pAudio, pAudio->nGrid);
+        if (g != 0) {
+            node = func_006247E8(g);
+            pFirst = node;
+            while (node != 0) {
+                p = node->pPeer;
+                nFlags = func_0062A130(p);
+                if (nFlags & 0x40000000) {
+                    func_0060FC90(pAudio, p);
+                    func_0062A148(p, 0x40000000);
+                }
+                if (nFlags & 0x3000) {
+                    func_0060FD98(pAudio, p);
+                } else if ((nFlags & 0x4000) && nNow - p->tHeard > 1500) {
+                    func_0062A148(p, 0x4000);
+                    func_0062A138(p, 0x2000);
+                }
+                node = node->pPrev;
+                if (node == pFirst)
+                    node = 0;
+            }
+        }
+    }
+    return 0;
+}
+
+/* Pings each peer (every 1.5 s, or 0.2 s while it is new) and drops one unanswered 30 times
+ * (100 while new); 1 when the list ends under it. Sets flag 2 once every peer is past new. */
+int func_00610938(AUDIO *pAudio)
+{
+    PEER *p = pAudio->pPeers;
+    unsigned int nNow = func_0062C070();
+    int bKnown = 0;
+    int bNew = 0;
+    unsigned int nElapsed;
+
+    while ((p = p->pPrev) != 0 && p != pAudio->pSelf) {
+        if (p->nState == 0)
+            bNew = 1;
+        else
+            bKnown = 1;
+        nElapsed = nNow - p->tSent;
+        if ((p->nState != 0 && nElapsed < 1500) || (p->nState == 0 && nElapsed < 200))
+            continue;
+        if ((p->nState != 0 && p->nTries < 30) || (p->nState == 0 && p->nTries < 100)) {
+            func_00612630(pAudio, p->info.nId);
+            p->tSent = nNow;
+            p->nTries++;
+        } else {
+            if (p->info.nGrid > 0)
+                func_00626788(func_00611388(pAudio, p->info.nGrid), p->info.nId);
+            p = p->pNext;
+            if (p != 0 && p->pPrev != 0)
+                func_00612138(pAudio, p->pPrev->info.nId);
+            else
+                return 1;
+        }
+    }
+    if (!(pAudio->nFlags & 2) && bKnown && !bNew)
+        pAudio->nFlags |= 2;
+    return 0;
+}
+
+/* Creates a named group under a free id and moves this client into it (1: no name, or taken). */
+int func_00610AA8(AUDIO *pAudio, int nMaxMembers, int *pnId, const char *szName)
+{
+    GRID_HEADER h;
+    GRID_INFO info;
+    GRID *p = pAudio->pGrids;
+    PEER *pSelf;
+
+    if (pnId == 0 || szName == 0 || szName[0] == 0)
+        return 1;
+    *pnId = 1;
+    while (func_00611388(pAudio, *pnId) != 0)
+        (*pnId)++;
+    while ((p = func_00624788(p)) != 0 && p != pAudio->pGrids) {
+        if (strcmp(func_00624820(p), szName) == 0)
+            return 1;
+    }
+    if (pAudio->nGrid > 0) {
+        func_00611A40(pAudio, pAudio->nGrid);
+        pAudio->nGrid = 0;
+    }
+    p = func_00611348(pAudio, *pnId, nMaxMembers);
+    func_006247F0(p, szName);
+    pSelf = func_00629EB8(pAudio->pPeers, pAudio->nId);
+    func_00626658(p, pSelf);
+    func_00624B38(p, &info);
+    func_00624BE0(pAudio->pGrids, &h, 6, sizeof(info));
+    pAudio->nGrid = info.nId;
+    func_0062A0A8(pSelf, info.nId);
+    return func_00624830(pAudio->pGrids, pAudio->nId, &h, &info, sizeof(info));
 }
 
 /* Sends a message to one peer: its second address below state 2, its first in 0 and 2. */
@@ -607,13 +757,6 @@ int func_00611BA0(AUDIO *pAudio, int (*pfn)(AUDIO *pAudio, void *pUser, PEER_INF
     return 0;
 }
 
-typedef struct GRID_NODE {              /* a group's member list (the list object at 0x629DA0) */
-    struct GRID_NODE *pNext;            /* 0x00 */
-    struct GRID_NODE *pPrev;            /* 0x04 */
-    PEER *pPeer;                        /* 0x08 */
-} GRID_NODE;
-
-extern GRID_NODE *func_006247E8(GRID *p);
 
 /* The same over a group's members. */
 int func_00611CB0(AUDIO *pAudio, int (*pfn)(AUDIO *pAudio, void *pUser, PEER_INFO *pInfo), void *pUser, int nGrid)
