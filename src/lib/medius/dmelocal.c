@@ -16,8 +16,11 @@
  * (NetIpBinaryToString, func_00614EC8, func_0061A240); a local initialised inside the block that
  * needs it (func_006147E0, the round 4b OPEN); a table indexed in place, not through a pointer
  * local (func_0061C6C8, the round 4b OPEN). OPEN: func_00614758 (6 words: the transport call's
- * failure branch -- guard, nested and `||` forms each lay one of its two returns out the other way),
- * func_00617610 and func_006189C8 (below). func_0061BEB8 returns the second call's result through a
+ * failure branch -- guard, nested and `||` forms each lay one of its two returns out the other way;
+ * round 13b: byte-exact under -fno-cse-follow-jumps alone -- CSE follows the jump past `return 37`
+ * with the call's v0 known zero and drops the final `move v0,zero`, so reorg cannot put the 37 in
+ * the bnez's slot as the target does -- but the flag costs six of the unit's matches, and four more
+ * shapes (the success path nested, a result variable) miss), func_00617610 and func_006189C8 (below). func_0061BEB8 returns the second call's result through a
  * variable: no sibling call then. */
 
 #include "dmelocal.h"
@@ -110,6 +113,187 @@ int func_00614168(unsigned short *pCount)
             (*pCount)++;
     }
     return DME_OK;
+}
+
+/* a client's delay samples (func_0061C510 hands the record out, 0x1A0 bytes made on first use) */
+typedef struct DmeDelayRecord {
+    unsigned int anDelay[100];          /* 0x000 */
+    unsigned int nCount;                /* 0x190 */
+    int field_194[3];
+} DmeDelayRecord;
+
+extern int func_0061C510(unsigned int nClient, void **ppRecord);
+
+/* the median of a client's last hundred delays (0x6142A8: SOCOM 1's NetGetAverageDelayToClient
+ * grown -- the samples bubble-sorted in a copy) */
+int func_006142A8(unsigned int *pnDelay, unsigned int nClient)
+{
+    unsigned int anDelay[100];
+    DmeDelayRecord *pRecord = 0;
+    unsigned int t;
+    int i, j;
+    int result;
+
+    if (nClient >= DME_MAX_CLIENTS)
+        return DME_ERR_ARGUMENT;
+    if (pnDelay == 0)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C510(nClient, (void **)&pRecord);
+    if (result != DME_OK)
+        return result;
+    if (pRecord == 0)
+        return 22;
+    for (i = 0; i < 100; i++)
+        anDelay[i] = pRecord->anDelay[i];
+    for (i = 99; i > 0; i--)
+        for (j = 0; j < i; j++)
+            if (anDelay[j] > anDelay[j + 1]) {
+                t = anDelay[j];
+                anDelay[j] = anDelay[j + 1];
+                anDelay[j + 1] = t;
+            }
+    *pnDelay = anDelay[50];
+    return DME_OK;
+}
+
+/* the delay a twentieth of the way up the samples the record holds (0x614380) */
+int func_00614380(unsigned int *pnDelay, unsigned int nClient)
+{
+    unsigned int anDelay[100];
+    DmeDelayRecord *pRecord = 0;
+    unsigned int t;
+    int i, j, n;
+    int result;
+
+    if (nClient >= DME_MAX_CLIENTS)
+        return DME_ERR_ARGUMENT;
+    if (pnDelay == 0)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C510(nClient, (void **)&pRecord);
+    if (result != DME_OK)
+        return result;
+    if (pRecord == 0)
+        return 22;
+    for (i = 0; i < 100; i++)
+        anDelay[i] = pRecord->anDelay[i];
+    for (i = pRecord->nCount - 1; i > 0; i--)
+        for (j = 0; j < i; j++)
+            if (anDelay[j] > anDelay[j + 1]) {
+                t = anDelay[j];
+                anDelay[j] = anDelay[j + 1];
+                anDelay[j + 1] = t;
+            }
+    n = pRecord->nCount / 20;
+    if (n < 1)
+        n = 1;
+    *pnDelay = anDelay[n];
+    return DME_OK;
+}
+
+extern int DmeToRtMsgConnectionIndex(int nConnection);
+extern int NetMapMsgClientError(int nError, int nDefault);
+extern int rt_msg_client_get_buffer_status(int nConnection, unsigned int *a, unsigned int *b,
+                                           unsigned int *c, unsigned int *d);
+extern int func_00639B08(int nP2P, unsigned int *a, unsigned int *b, unsigned int *c, unsigned int *d);
+
+/* SOCOM 1's NetGetBufferStatus (0x6144A0): the peer layer's buffers for the server's connection
+ * where SOCOM 1 asked rt_msg_client's UDP; the last pointer tested is the second, as SOCOM 1's */
+int func_006144A0(int nConnection, unsigned int *pnA, unsigned int *pnB, unsigned int *pnC,
+                  unsigned int *pnD)
+{
+    unsigned int a, b, c, d;
+    int result;
+
+    if (nConnection == 0xFFFF || nConnection == 0) {
+        if (func_00639B08(data_006511D8, &a, &b, &c, &d) != 0)
+            return 37;
+    } else {
+        result = NetMapMsgClientError(rt_msg_client_get_buffer_status(DmeToRtMsgConnectionIndex(nConnection),
+                                                                      &a, &b, &c, &d), 24);
+        if (result != 0)
+            return result;
+    }
+    if (pnA != 0)
+        *pnA = a;
+    if (pnB != 0)
+        *pnB = b;
+    if (pnC != 0)
+        *pnC = c;
+    if (pnB != 0)
+        *pnD = d;
+    return DME_OK;
+}
+
+extern int func_00639F88(int nP2P);
+extern int func_00633418(int nConnection, int nTime);
+extern int func_006334B8(int nConnection, int nTime);
+
+/* SOCOM 1's NetSetSendAggregationInterval (0x614590): the peer layer's for the server's connection */
+int func_00614590(int nConnection, int nTime, int nServerTime)
+{
+    int result;
+
+    if (nConnection == 0xFFFF || nConnection == 0) {
+        if (func_00639F88(data_006511D8) != 0)
+            return 37;
+    } else {
+        result = NetMapMsgClientError(func_00633418(DmeToRtMsgConnectionIndex(nConnection), nTime), 24);
+        if (result != 0)
+            return result;
+        result = NetMapMsgClientError(func_006334B8(DmeToRtMsgConnectionIndex(nConnection), nServerTime), 24);
+        if (result != 0)
+            return result;
+    }
+    return DME_OK;
+}
+
+typedef struct DmeMsgMetric {
+    unsigned int nCount;
+    float fRate;
+    float fMaxRate;
+} DmeMsgMetric;
+
+typedef struct DmeMsgMetrics {          /* rt_msg_client's */
+    unsigned int tStart[2];
+    DmeMsgMetric sends;                 /* 0x08 */
+    DmeMsgMetric bytesSent;             /* 0x14 */
+    DmeMsgMetric recvs;                 /* 0x20 */
+    DmeMsgMetric bytesReceived;         /* 0x2C */
+} DmeMsgMetrics;
+
+typedef struct NetBandwidthInfo {
+    float fSendRate;
+    float fSendMaxRate;
+    float fBytesSentRate;
+    float fBytesSentMaxRate;
+    float fRecvRate;
+    float fRecvMaxRate;
+    float fBytesReceivedRate;
+    float fBytesReceivedMaxRate;
+} NetBandwidthInfo;
+
+extern int rt_msg_client_get_metrics(int nConnection, DmeMsgMetrics *pMetrics);
+
+/* SOCOM 1's, as it was */
+int NetGetBandwidthInfo(NetBandwidthInfo *pInfo)
+{
+    DmeMsgMetrics metrics;
+    int result;
+
+    if (pInfo == 0)
+        return DME_ERR_ARGUMENT;
+    result = NetMapMsgClientError(rt_msg_client_get_metrics(0, &metrics), 24);
+    if (result != 0)
+        return result;
+    pInfo->fBytesSentRate = metrics.bytesSent.fRate;
+    pInfo->fBytesSentMaxRate = metrics.bytesSent.fMaxRate;
+    pInfo->fSendRate = metrics.sends.fRate;
+    pInfo->fSendMaxRate = metrics.sends.fMaxRate;
+    pInfo->fBytesReceivedRate = metrics.bytesReceived.fRate;
+    pInfo->fBytesReceivedMaxRate = metrics.bytesReceived.fMaxRate;
+    pInfo->fRecvRate = metrics.recvs.fRate;
+    pInfo->fRecvMaxRate = metrics.recvs.fMaxRate;
+    return result;
 }
 
 int func_006146D8(int *pValue, unsigned int nWorld)
