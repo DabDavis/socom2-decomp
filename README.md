@@ -1647,6 +1647,19 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 20** (reco.cpp's Load/Tick/callbacks, __sinit_hud_mpweaponsel.cpp, zui_2d.cpp):
+  - MW knows what an already-generated function of the same unit clobbers: Load keeps `lang` in a0
+    across a call to a pinned lookup defined after it (generated first); the target's second call
+    sets no argument at all;
+  - a jump-table switch needs every case of the enum's range written, empty ones included -- with
+    only the two real cases it compiles to a compare chain; the case blocks lie in source order;
+  - under `-enum min` a `-1` enumerator makes the enum a signed byte: SOCOM 1's 4-byte
+    `ALIGNMENT_HACK = -1` enums need 0xFFFFFFFF or 0x7FFFFFFF;
+  - `g.m_v.push_back(x)` on a global folds to absolute addresses; the target's loads through the
+    vector's own address come from an accessor returning a reference (`g.GetPath().push_back(x)`);
+  - as an `&&`'s last test, unsigned `n > 2` branches on `at`, `n >= 3` materialises into v0;
+  - SOCOM 1's vtable names in the C2D family can be one slot off: check them against ztwod.h's slot
+    order (0x36E6B0 is SetNormal, +0x54; SetCanHandleInput is 0x377380, +0x4C).
 - **Tells from the kit and AI states, round 13** (seal_unit.cpp, SetAimDirR, CTPaint::Tick, seal_aievent.cpp):
   - a bool masked in v0 (`andi v0,v0,0xff`) live to the epilogue is the function's return value:
     SetAimDirR returns its callee's bool, which SOCOM 1's mangled name never showed;
