@@ -10326,7 +10326,7 @@
 0x00574830 0x2A4 SetAiEnabled__11CSealCtrlAiFbb  # OVL2; s1:calls (the kit lane's round 8, vetted by the integrator: CTStopAll::Tick passes it (!bit0, !bit1) as SOCOM 1's CTStopAll::Tick passes SetAiEnabled__11CSealCtrlAiFbb)
 0x00574AE0 0x50 StopAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's StopAiSound__11CSealCtrlAiF8AI_SOUND word for word bar the statics' gp addressing: the indexed instance stopped and cleared; UpdateAiMapLoc calls it -- the SEAL lane, round 8)
 0x00574B30 0x70 PlayAiSound__11CSealCtrlAiF8AI_SOUND  # OVL2; s1:order by hand (SOCOM 1's PlayAiSound__11CSealCtrlAiF8AI_SOUND, after StopAiSound as here, word for word bar the gp addressing: the indexed sound played (PlaySound, slot 0xC, with 0 and 255) unless its instance plays -- the SEAL lane, round 8)
-0x00574BA0 0x24 func_00574BA0  # OVL2
+0x00574BA0 0x24 SetAiAccuracyAngle__11CSealCtrlAiFf  # OVL2; s1:calls by hand (SOCOM 1's SetAiAccuracyAngle__11CSealCtrlAiFf: CCharacterType::Open calls it in both builds; the same body, tanf of the angle into aiAccuracyAngle (0x3DF180, SOCOM 1's gp variable), after PlayAiSound(AI_SOUND) in both builds -- the integrator's lead) -- the SEAL lane, round 12
 0x00574BD0 0x54 func_00574BD0  # OVL2
 0x00574C30 0x2C0 func_00574C30  # OVL2
 0x00574EF0 0x1A8 func_00574EF0  # OVL2

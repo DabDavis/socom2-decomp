@@ -156,6 +156,15 @@ void CSealCtrlAi::OnMissionStart()
     }
 }
 
+extern "C" float tanf(float x);
+
+/* the aim's error cone set, as its tangent (OVL2 0x574BA0; SOCOM 1's, after PlayAiSound in both
+ * builds -- CCharacterType::Open calls it) */
+void CSealCtrlAi::SetAiAccuracyAngle(float angle)
+{
+    aiAccuracyAngle = tanf(angle);
+}
+
 /* a loop started unless it plays already (OVL2 0x574B30; SOCOM 1's) */
 void CSealCtrlAi::PlayAiSound(AI_SOUND sound)
 {

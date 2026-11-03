@@ -1017,10 +1017,9 @@ void CZSealBody::HandlePickupMPBomb(CPickup *pickup)
 }
 
 extern "C" {
-/* the kit's item at an index let go (OVL2 0x5B9BB0, the kit lane's), the ground under a point
- * within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540, seal_body.cpp's) and the item it
- * takes (OVL1 data 0x3DEB48, a short) */
-void func_005B9BB0(CZKit *kit, int index);
+/* (the kit's item at an index let go is CZKit::RemoveItemAndAmmo, zseal.h's; OVL2 0x5B9BB0, the kit
+ * lane's) the ground under a point within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540,
+ * seal_body.cpp's) and the item it takes (OVL1 data 0x3DEB48, a short) */
 zdb::IntersectStruct *func_002A2EB0(const CPnt3D *p, float depth, int chars);
 void func_0057D540(CZSealBody *seal, short item, int x);
 extern short data_003DEB48;
@@ -1041,7 +1040,7 @@ void CZSealBody::DropAllItems()
     int i = m_kit.GetItemIndex((EQUIP_ITEM)154);
 
     if (i != -1)
-        func_005B9BB0(&m_kit, i);
+        m_kit.RemoveItemAndAmmo(i);
     CPnt3D pos;
     float &y = pos.y;
 

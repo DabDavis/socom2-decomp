@@ -96,6 +96,8 @@ public:
     bool ItemHasAmmo(int index) const;
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
     class CZFTSWeapon *GetCurItem() const;
+    /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
+    void RemoveItemAndAmmo(int index);
 
     unsigned int m_0;
 };
@@ -719,6 +721,14 @@ public:
     using CSealCtrl::PlayAiSound;
     static class CSnd *aiSoundHandle[2];
     static class CSndInstance *aiSoundInstance[2];
+    /* the aim's error cone, kept as its tangent (SOCOM 1's aiAccuracyAngle; OVL1 data 0x3DF180, the
+     * kit lane's data row), and its setter (SOCOM 1's; OVL2 0x574BA0 -- CCharacterType::Open calls it
+     * in both builds) */
+    static float aiAccuracyAngle;
+    static void SetAiAccuracyAngle(float angle);
+    /* the aim turned off its line by the target's error (slot +0x74, SOCOM 1's; OVL2 0x5C9250, the
+     * kit lane's seal_kit.cpp defines it) */
+    virtual void PerturbAimVector(CPnt3D *v);
     virtual void Initalize();
     /* a Navy SEAL (SOCOM 1's bit; the accessor ours, as the code tests it materialised) */
     bool IsNavySeal() const { return m_navyseal ? true : false; }
