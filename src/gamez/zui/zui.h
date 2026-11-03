@@ -102,11 +102,33 @@ enum UIVAR_LONGEVITY {
 };
 
 /* a UI variable: a ZRDR value with a name and the mixins watching it (SOCOM 1's DWARF: 0x1C
- * bytes, the watchers a vector at 0xC; SOCOM II's watchers are at 0x18 and its longevity a byte
- * at 0x24, its name at 0x14 and its size 0x30 -- the manager's Find walks 48-byte elements; what
- * it added at 0x8-0x13 (two table pointers its copy constructor stores) is not read here) */
-class CUIVariable : public _zrdr {
+ * bytes, : _zrdr, the watchers a vector at 0xC). SOCOM II's is 0x30 bytes (the manager's Find
+ * walks 48-byte elements) and itself a watcher: UIVarMixin is its second base at 0x8 (its table
+ * 0x4050B0 stored there, m_uivar 0xC cleared, by the copy constructor), and as its first base has
+ * no vtable the class has a vtable pointer of its own at 0x10 -- 0x4062B0, {RTTI 0x3F1D58, 0}, its
+ * slots after the mixin's table 0x4062B8 (the two thunks 0x2B2180/0x2B2170, then ~CUIVariable
+ * 0x2B1530 and UpdateUIVar 0x2B1A10: fts_mission.cpp's copies, the vector's erase destroying an
+ * element through slot 0x18). Its name at 0x14, the watchers at 0x18, the longevity a byte enum at
+ * 0x24 (copied lb/sb), a callback at 0x28 with its argument at 0x2C */
+class CUIVariable : public _zrdr, public UIVarMixin {
 public:
+    /* a free slot: the name and the callback cleared, room for 16 watchers (SOCOM II's;
+     * fts_mission.cpp's resize inlines it, calling _zrdr's and UIVarMixin's constructors) */
+    CUIVariable() : m_name(0), m_longevity(UIVL_DORMANT), m_callback(0), m_callbackData(0)
+    {
+        m_attached_items.reserve(16);
+    }
+    /* a copy: the name made again in the manager's current table and the longevity carried --
+     * not the value, nor the callback (SOCOM II's, 0x386BF0: the vector insert's copies call it) */
+    CUIVariable(const CUIVariable &v);
+    /* (SOCOM 1's: Destroy; SOCOM II's virtual, its copy fts_mission.cpp's 0x2B1530) */
+    virtual ~CUIVariable() { Destroy(); }
+    /* a watched variable changed: the callback told, with its argument (SOCOM II's, 0x2B1A10) */
+    virtual void UpdateUIVar(CUIVariable *var)
+    {
+        if (m_callback)
+            m_callback(var, m_callbackData);
+    }
     void UpdateDependents();
     void DetachAll();
     void Destroy();
@@ -127,13 +149,13 @@ public:
         return *this;
     }
 
-    void *m_8;   // 0x8: SOCOM II's (a table pointer the copy constructor stores; SOCOM 1's m_varname sat here)
-    unsigned char _c[0x14 - 0xc];
+    /* 0x8: UIVarMixin (SOCOM 1's m_varname sat here); 0x10: the vtable pointer */
     char *m_name;   // 0x14: SOCOM II's name, the string table's copy (Destroy clears it; the manager's Find compares it)
     std::vector<UIVarMixin *> m_attached_items;   // 0x18 (SOCOM 1's at 0xC)
-    unsigned char m_longevity;   // 0x24: UIVAR_LONGEVITY
-    unsigned char _25[0x30 - 0x25];
-};
+    UIVAR_LONGEVITY m_longevity;   // 0x24
+    void (*m_callback)(CUIVariable *var, void *arg);   // 0x28: SOCOM II's (the names ours)
+    void *m_callbackData;   // 0x2c
+};   // 0x30 bytes
 
 class CRdrFile;
 namespace zar {

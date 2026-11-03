@@ -7151,7 +7151,7 @@
 0x00386AB0 0x44 func_00386AB0  # OVL1
 0x00386B00 0x80 Destroy__11CUIVariableFv  # OVL1; s1:calls by hand (DetachAll, then DeleteChildren and the fields cleared, as SOCOM 1's Destroy)
 0x00386B80 0x70 func_00386B80  # OVL1
-0x00386BF0 0x15C func_00386BF0  # OVL1
+0x00386BF0 0x15C __ct__11CUIVariableFRC11CUIVariable  # OVL1; the UI lane, round 13: by its body (zui_var.cpp: CUIVariable's copy constructor -- _zrdr() and UIVarMixin() inline, the tables 0x4050B0, 0x4062B0/0x4062B8 stored at 8, 0x10, 8, the watcher vector zeroed and reserved for 16, the name made in theUIVarManager's current table, the longevity copied lb/sb; fts_mission.cpp's vector<CUIVariable> insert 0x2B1BD0 calls it for each copy)
 0x00386D50 0x84 OnTableFull__12CUIVarSTableFPCc  # OVL1; by hand (slot 0x18 of CUIVarSTable's table 0x407D20, CSTable's OnTableFull overridden: CollectGarbage, then the string made in the new current table, guarded against recursion) -- zui_var.cpp
 0x00386DE0 0x8 OnCreateString__7CSTableFPc  # OVL1; ours (slot 0x14 of CSTable's 0x4081D0 and CUIVarSTable's 0x407D20 vtables, empty; CreateString calls it with each string it adds; the inline virtual's copy emitted with zui_var.cpp's CUIVarSTable)
 0x00386DF0 0x8 func_00386DF0  # OVL1

@@ -58,6 +58,16 @@ char *CUIVarSTable::OnTableFull(const char *str)
     return s;
 }
 
+/* a copy of a variable: its name made again in the manager's current table and its longevity
+ * carried; the value, the watchers and the callback are not (SOCOM II's: the vector insert's
+ * copies, fts_mission.cpp's 0x2B1BD0, call it) */
+CUIVariable::CUIVariable(const CUIVariable &v) : m_longevity(UIVL_DORMANT)
+{
+    m_attached_items.reserve(16);
+    m_name = theUIVarManager.m_stab[theUIVarManager.m_currtab].CreateString(v.m_name);
+    m_longevity = v.m_longevity;
+}
+
 /* the variable emptied: its watchers detached, its value freed unless packed, made an integer
  * (SOCOM 1's Destroy; SOCOM II calls DetachAll for its first loop). Reset calls it out of line:
  * pinned */
@@ -71,7 +81,7 @@ void CUIVariable::Destroy()
     type = 1;
     isclone = 0;
     packed = 0;
-    m_longevity = 0;
+    m_longevity = UIVL_DORMANT;
 }
 #pragma auto_inline reset
 
