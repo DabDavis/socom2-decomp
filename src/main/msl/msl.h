@@ -130,6 +130,7 @@ public:
     ~_RefCountedPtr();
     _RefCountedPtr &operator=(const _RefCountedPtr &other);
     T *get() const { return ptr_; }
+    T *operator->() const { return ptr_; }
 private:
     T *ptr_;
     int *refCount_;
@@ -241,6 +242,9 @@ public:
 };
 
 template <int N> class __locale_imp;
+template <bool b> struct __chooser {};
+class locale;
+template <class Facet> const Facet &__use_facet(const locale &loc, __chooser<true>);
 
 class locale {
 public:
@@ -251,11 +255,27 @@ public:
         virtual ~facet() {}
         unsigned int ref_;
     };
+    /* a facet's index in a locale's table, numbered on first use (SOCOM 1's locale::id: one word, the
+     * count a static member) */
+    class id {
+    public:
+        id() {}
+        operator size_t()
+        {
+            if (id_ == 0)
+                id_ = ++id_count_s;
+            return id_;
+        }
+    private:
+        size_t id_;
+        static size_t id_count_s;
+    };
     locale();
     locale &operator=(const locale &rhs) { imp_ = rhs.imp_; return *this; }
     static locale &global() throw();
     static locale &classic() throw();
 private:
+    template <class Facet> friend const Facet &__use_facet(const locale &loc, __chooser<true>);
     typedef _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > > imp_ptr;
     locale(const imp_ptr &imp) : imp_(imp) {}
     imp_ptr imp_;
@@ -269,7 +289,9 @@ class __locale_imp {
 public:
     __locale_imp(const char *name) : name_(name) {}
     ~__locale_imp() throw();
+    void replace(const locale::facet &f, size_t id);
 private:
+    template <class Facet> friend const Facet &__use_facet(const locale &loc, __chooser<true>);
     vector<locale::facet *> facets_;    /* 0x00 */
     string name_;                       /* 0x0C */
 };
@@ -454,6 +476,8 @@ public: \
 template <>
 class codecvt<char, char, int> : public locale::facet, public codecvt_base {
     _MSL_CODECVT_PUBLIC(char, char, int)
+    explicit codecvt(size_t refs = 0) : locale::facet(refs) {}
+    static locale::id id;
 protected:
     virtual result do_out(int &state, const char *from, const char *from_end, const char *&from_next,
                           char *to, char *to_end, char *&to_next) const;
@@ -469,6 +493,8 @@ protected:
 template <>
 class codecvt<wchar_t, char, int> : public locale::facet, public codecvt_base {
     _MSL_CODECVT_PUBLIC(wchar_t, char, int)
+    explicit codecvt(size_t refs = 0) : locale::facet(refs) {}
+    static locale::id id;
 protected:
     virtual result do_out(int &state, const wchar_t *from, const wchar_t *from_end,
                           const wchar_t *&from_next, char *to, char *to_limit, char *&to_next) const;
@@ -498,6 +524,7 @@ class ctype<char> : public locale::facet, public ctype_base {
 public:
     explicit ctype(const mask *tab = 0, bool del = false, size_t refs = 0);
     char widen(char c) const { return do_widen(c); }
+    static locale::id id;
 protected:
     ~ctype();
     virtual char do_toupper(char c) const;
@@ -515,10 +542,39 @@ protected:
     bool __owns_;                           /* 0x14 */
 };
 
+}
+
+/* localeimp's range map (Metrowerks::range_map, SOCOM 1's DWARF: a vector of entries, each a range
+ * x1_..x2_ mapped linearly, y = m_ * x + b_) -- ctype<wchar_t>'s classification and case tables */
+namespace Metrowerks {
+
+template <class T, class U>
+class range_map {
+public:
+    void insert(const T &x1, const T &x2, const U &y1, const U &y2);
+    void insert(const T &x1, const T &x2, const U &y) { insert(x1, x2, y, y); }
+    void insert(const T &x, const U &y) { insert(x, x, y, y); }
+    U operator[](const T &x) const;
+private:
+    struct entry {
+        T x1_;
+        T x2_;
+        U m_;
+        U b_;
+    };
+    std::vector<entry> table_;
+};
+
+}
+
+namespace std {
+
 template <>
 class ctype<wchar_t> : public locale::facet, public ctype_base {
 public:
+    explicit ctype(size_t refs = 0);
     wchar_t widen(char c) const { return do_widen(c); }
+    static locale::id id;
 protected:
     virtual bool do_is(mask m, wchar_t c) const;
     virtual const wchar_t *do_is(const wchar_t *low, const wchar_t *high, mask *vec) const;
@@ -532,11 +588,27 @@ protected:
     virtual const char *do_widen(const char *low, const char *high, wchar_t *to) const;
     virtual char do_narrow(wchar_t c, char dfault) const;
     virtual const wchar_t *do_narrow(const wchar_t *low, const wchar_t *high, char dfault, char *to) const;
+
+    Metrowerks::range_map<wchar_t, mask> __table_;          /* 0x08 */
+    Metrowerks::range_map<wchar_t, wchar_t> __lower_map_;   /* 0x14 */
+    Metrowerks::range_map<wchar_t, wchar_t> __upper_map_;   /* 0x20 */
 };
 
-/* localeimp: the facet a locale holds, made and installed on first use */
-template <bool b> struct __chooser {};
-template <class Facet> const Facet &__use_facet(const locale &loc, __chooser<true>);
+/* localeimp: the facet a locale holds, made and installed on first use (0x189470-0x1897EB, the four
+ * instances iostream.cpp's streams use) */
+template <class Facet>
+const Facet &__use_facet(const locale &loc, __chooser<true>)
+{
+    size_t i = Facet::id;
+    const locale::facet *f;
+    if (i >= loc.imp_->facets_.size() || (f = loc.imp_->facets_[i]) == 0) {
+        Facet *nf = new Facet;
+        loc.imp_->replace(*nf, Facet::id);
+        f = loc.imp_->facets_[i];
+    }
+    return static_cast<const Facet &>(*f);
+}
+
 template <class Facet>
 inline const Facet &use_facet(const locale &loc)
 {

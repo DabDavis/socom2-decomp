@@ -190,7 +190,7 @@
 0x0018A6B0 0xA0 do_in__Q23std14codecvt<w,c,i>CFRiPCcPCcRPCcPwPwRPw  # MAIN; vtable (slot +16 of 0x1D51A0)
 0x0018A750 0x3C do_length__Q23std14codecvt<w,c,i>CFRiPCcPCcUi  # MAIN; s1:align
 0x0018A790 0x8 do_max_length__Q23std14codecvt<w,c,i>CFv  # MAIN; vtable (slot +36 of 0x1D51A0; 4); src/main/msl/iostream.cpp
-0x0018A7A0 0x290 func_0018A7A0  # MAIN
+0x0018A7A0 0x290 __ct__Q23std8ctype<w>FUi  # MAIN; by hand (MAIN runtime lane round 5): ctype<wchar_t>'s constructor ctype(size_t refs) -- __use_facet<ctype<wchar_t>> 0x189550 calls it with (new(44), 0); it stores the facet's and ctype<wchar_t>'s vtables (0x1D4FF0, 0x1D5200) and fills the three range maps through their inserts (0x18B0C0 x15, 0x18B320 x4); SOCOM 1's __ct__Q23std8ctype<w>FUi 0x14A7A0, after do_max_length<wchar_t> as here (src/main/msl/msl.h declares it)
 0x0018AA30 0x10C replace__Q23std15__locale_imp<1>FRCQ33std6locale5facetUi  # MAIN; s1:calls
 0x0018AB40 0x110 __dt__Q23std8ctype<w>Fv  # MAIN; vtable (slot +8 of 0x1D5200)
 0x0018AC50 0x44 do_is__Q23std8ctype<w>CFUcw  # MAIN; s1:align
