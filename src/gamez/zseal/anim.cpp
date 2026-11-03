@@ -4,7 +4,9 @@
  * function). OVL2 0x5E0030-0x5E622F, in SOCOM 1's order: AddBlendable, SetMaxMotion, DefineFPAnims,
  * CAnimsByFP's accessors, BaseAnim, InitializeAnimNames, Load, CAnimAuxData::Get, Inherit, the
  * lookups SOCOM II added, AnimId, Load(_zrdr *), ... CBlendable's, the template tail. So far the
- * small accessors. Defined in reverse of their image order (-inline deferred). */
+ * small accessors and the three name lookups (whose map find and string compares, OVL2's copies
+ * 0x58D090, 0x58D250, 0x58D740, the unit's tail emits). Defined in reverse of their image order
+ * (-inline deferred). */
 
 #include "zseal.h"
 

@@ -2,7 +2,9 @@
  * unnamed-namespace CSavedFireModeInfo). OVL2 0x5B9020-0x5C93FF, in SOCOM 1's order (the screen
  * offsets and the sniper's kick first, the constructor and the item lookups last, then
  * sealSaveFireModes and CAiWepHint's statics). So far the small accessors and lookups, the fire
- * delay and shot count, the launcher-mode tests, FireGrenade. Its initialiser is 0x668DB0 (the
+ * delay and shot count, the launcher-mode tests, FireGrenade, the items' removal and setting
+ * (RemoveItemAndAmmo, SetItemByIndex), the explosive's placing dispatch, the fire-mode helpers and
+ * CSealCtrlAi's two members (PerturbAimVector, the accuracy factor). Its initialiser is 0x668DB0 (the
  * iostream objects, the saved fire modes' array, the placing hit's two pointers zeroed), byte-exact
  * from the statics below, defined in its order. Defined in reverse of their image order (-inline
  * deferred). */
