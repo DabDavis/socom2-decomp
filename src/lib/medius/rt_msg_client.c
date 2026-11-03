@@ -690,6 +690,30 @@ int func_00634078(unsigned short nConnection, unsigned char bFlag)
     return func_00634A08(nConnection, bFlag);
 }
 
+/* SOCOM 1's update-all: the connect step 0x634A08 over every valid connection, then the UDP side's
+ * when it is enabled and the caller asks */
+int rt_msg_client_iupdate_all(unsigned char bFlag)
+{
+    unsigned int i = 0;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    for (; i < gnConnectionArraySize; i++) {
+        if (rt_msg_client_is_valid_connection_id(i) == 1) {
+            result = func_00634A08(i, bFlag);
+            if (result != 0)
+                return result;
+        }
+    }
+    if (gUDPInfo.bEnabled == 1 && bFlag == 1) {
+        result = rt_msg_client_iudp_disable_heartbeat();
+        if (result != 0)
+            return result;
+    }
+    return 0;
+}
+
 /* the UDP send internal (SOCOM 1's isend_udp): an address checked, the datagram sent on the
  * UDP channel */
 int func_00634278(unsigned char *pbSent, char *szAddress, unsigned short nPort)
@@ -947,6 +971,41 @@ int rt_msg_client_send_disconnect(rt_msg_client_comm *pComm)
     if (result != 0)
         return result;
     return rt_msg_client_send_buffer(pComm, abMsg, nLength, 10000);
+}
+
+extern int rt_circ_buf_get_avail_nowrap(void *pBuf, unsigned int *pnAvail);
+extern int rt_circ_buf_normalize_with_buf(void *pBuf, int bForce, void *pScratch);
+int rt_msg_client_recv_circ_buf(void *pChannel);
+
+/* SOCOM 1's: room for nSize bytes at the send buffer's end without wrapping -- received data
+ * taken off first, the buffer normalised through the scratch buffer if still short */
+int rt_msg_client_create_send_buf_space(void *pChannel, unsigned int nSize)
+{
+    unsigned int nAvail = 0;
+    void *pBuf;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (func_00635898(pChannel) != 1)
+        return 2;
+    pBuf = (char *)pChannel + 104;
+    if ((pBuf != 0) != 1)
+        return 2;
+    if (rt_circ_buf_get_avail_nowrap(pBuf, &nAvail) != 0)
+        return 21;
+    if (nAvail < nSize) {
+        result = rt_msg_client_recv_circ_buf(pChannel);
+        if (result != 0)
+            return result;
+        if (rt_circ_buf_normalize_with_buf(pBuf, 1, gpScratchBuffer) != 0)
+            return 21;
+        if (rt_circ_buf_get_avail_nowrap(pBuf, &nAvail) != 0)
+            return 21;
+        if (nAvail < nSize)
+            return 20;
+    }
+    return 0;
 }
 
 extern int rt_msg_set_ubyte(unsigned char *msg, unsigned char value);
