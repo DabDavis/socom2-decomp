@@ -1766,6 +1766,27 @@ wholly another overlay's copy -- a scorer change for the tools' owner (with the 
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 15** (FloodFill and the walker unit's list tail, ResetCells, GetLocationDelta):
+  - under bottom-up inlining a call through an inline one level deeper is expanded later, so its temporaries get
+    the LOWER stack slots: a wrapper fixed GetLocationDelta (its two lookups by cell) and FloodFill (pop_front as an
+    inline over `erase(begin())`);
+  - a cell walk taking its region as a pointer set only inside a branch (`if (!pr) { GetMapRegion(r); pr = &r; }`)
+    keeps the pointer in a register and shares no loads through it -- what ResetCells (open since round 6) needed;
+    Tile and FloodFill inline the same walk, and two functions sharing an inline's constant pool (0x64F9D0) inline
+    the same function;
+  - MW drops the last store into a never-read local array unless something reads it afterwards (a read whose value
+    is unused is enough: FloodFill's direction-order table); a comparison against a member puts the field first in
+    the `beq` only when it is read into a local first (ValidateCells); a local at sp+0 of a 16-byte frame is 12
+    bytes or larger, a PNT2D lands at sp+8 (GetInterpolationCells);
+  - `inside && cell->IsInside() ? 3 : cell->GetShadow()` must be an if/else (the ternary lays the 3 out after the
+    call); making "navyseals" a string local like the other two group names fixes RdrFetch_CharacterType's first
+    call's argument order; CAiMap::name::ValidateName is out of line in SOCOM II (ai.h declares it,
+    ai_maptable.cpp defines it); neighbor__6CAiMap 0x64F910 is SOCOM 1's direction-step table;
+  - open: CAiMap::Tile 0x536230 (0x8BC against 0x8B4: its four cell walks byte for byte, the target storing and
+    reloading the flags at plain stack offsets where this build puts the field's address in a register; nine
+    spellings in its comment). Leads: CreateGraph 0x52EEE0 (its unit then emits the copies 0x52F2F0/0x52F330), the
+    unnamed 0x52A8C0-0x52BDF0 (the demo's ai_maps.cpp: CreateGraph, ValidateLinks, ReadMapSet, GetSporeLocation,
+    the table updates, ExtendPath), 0x52C5C0 (RegisterPathPlan by place: 0x52C5B0 its three-argument wrapper).
 - **Tells from the UI, round 11** (zui_skbview.cpp's toggles, sounds, bitmaps and cursor; CSkbTexLists()):
   - an int-array member is block-copied through the FPRs one array at a time: two `int[2]` give
     load-load-store-store twice, one `int[4]` loads all four first, named ints copy with lw/sw (CSkbRect is two
