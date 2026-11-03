@@ -9273,20 +9273,20 @@
 0x0050D360 0xFC func_0050D360  # OVL2
 0x0050D460 0xF4 func_0050D460  # OVL2
 0x0050D558 0x8 func_0050D558  # OVL2 unaligned
-0x0050D560 0x118 func_0050D560  # OVL2
-0x0050D678 0x4C func_0050D678  # OVL2 unaligned
-0x0050D6C8 0x144 func_0050D6C8  # OVL2 unaligned
-0x0050D810 0x20 func_0050D810  # OVL2
-0x0050D830 0x64 func_0050D830  # OVL2
-0x0050D898 0x24 func_0050D898  # OVL2 unaligned
-0x0050D8C0 0x8 func_0050D8C0  # OVL2
-0x0050D8C8 0x8 func_0050D8C8  # OVL2 unaligned
-0x0050D8D0 0x60 func_0050D8D0  # OVL2
+0x0050D560 0x118 fastallo_AllocateMemoryFromChunk  # OVL2; s1:align (SOCOM 1's fastallo object at 0x377C70: the same 0x118 body, chunks grown through the heap's realloc, a block of up to 64 words cut from the current chunk; SOCOM II defines it first)
+0x0050D678 0x4C fastallo_Init  # OVL2 unaligned; s1:align (SOCOM 1's fastallo object: the same 0x4C body, the 280-byte state cleared and the heap and chunk size kept)
+0x0050D6C8 0x144 fastallo_Terminate  # OVL2 unaligned; s1:align (SOCOM 1's fastallo object: every chunk freed, then the chunk table)
+0x0050D810 0x20 critsec_GetVersion  # OVL2; s1:order (SOCOM 1's critsec object at 0x377F20, its first function: the same version word stored, 0x80140183 for a null pointer)
+0x0050D830 0x64 critsec_ObjOpen  # OVL2; s1:order (SOCOM 1's critsec object, the 2nd: an 8-byte block from the heap holding the heap, 0x80140183/0x80140186 as the demo's)
+0x0050D898 0x24 critsec_ObjClose  # OVL2 unaligned; s1:order (SOCOM 1's critsec object, the 3rd: heap_Free of the block through its own heap, as the demo's)
+0x0050D8C0 0x8 critsec_Enter  # OVL2; s1:order (SOCOM 1's critsec object, the 4th: returns 0)
+0x0050D8C8 0x8 critsec_Leave  # OVL2 unaligned; s1:order (SOCOM 1's critsec object, the 5th: returns 0)
+0x0050D8D0 0x60 safeh_HandleCheck  # OVL2; s1:order (SOCOM 1's safeh object at 0x377FE0, its first function: the check word, then osspi's read and write tests, 0x80170189 as the demo's)
 0x0050D930 0x34 safeh_HandlesEqual  # OVL2; s1:exact-by-hand (SOCOM 1's safeh_HandlesEqual at 0x378040, the same 13 instructions; the gsapi guards compare g_lhNullHandle with it)
-0x0050D968 0x20 func_0050D968  # OVL2 unaligned
-0x0050D988 0x10 func_0050D988  # OVL2 unaligned
-0x0050D998 0x10 func_0050D998  # OVL2 unaligned
-0x0050D9A8 0x10 func_0050D9A8  # OVL2 unaligned
+0x0050D968 0x20 osspi_SpiGetVersion  # OVL2 unaligned; s1:order (SOCOM 1's osspi object at 0x378078, its first function: the version word, 0x80060183 for a null pointer)
+0x0050D988 0x10 osspi_IsGoodReadPtr  # OVL2 unaligned; s1:order (SOCOM 1's osspi object, the 2nd; safeh_HandleCheck calls it first, as the demo's)
+0x0050D998 0x10 osspi_IsGoodWritePtr  # OVL2 unaligned; s1:order (SOCOM 1's osspi object, the 3rd; safeh_HandleCheck calls it second, as the demo's)
+0x0050D9A8 0x10 osspi_IsGoodStringPtr  # OVL2 unaligned; s1:order (SOCOM 1's osspi object, the 4th)
 0x0050D9B8 0xE8 func_0050D9B8  # OVL2 unaligned
 0x0050DAA0 0xE4 func_0050DAA0  # OVL2
 0x0050DB88 0xC0 func_0050DB88  # OVL2 unaligned
