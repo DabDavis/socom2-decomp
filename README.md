@@ -4682,6 +4682,82 @@ build): MAIN `18DB90 1C4CC0` 210 tried, 0 hits (60 build failures, 23 m2c refusa
 tried, 0 hits, OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 145 tried, 0 hits (27, 8): 363
 tried, none byte-exact -- what the generator leaves here is near misses, as round 13a found.
 
+**Round 15a** (2026-11-03, the tools first, then round 14a's leftovers): 11 rows newly byte-exact of
+13 written (3 of them over matched drafts: 8 new to the map's byte-exact rows), no row of the lane's
+lost (`src/lib` sdk/libc/libgcc/libm/ovl1: 936 -> 947 of 1,000 scored). libkernl's `_printf` (0x5EC:
+`sdk/kprintf.c` whole, 8 of 8); libusbkb (`sdk/libusbkb.c` 23 of 24: the init and end, the INTC 3
+handler, the key ring's clear, push and pop, GetLocation's and the LED setters' results over their
+drafts; the per-keyboard state's +0x10 block typed as the ring it is); the codec's Hamming window
+(`ovl1/sase_libsigproc.c`, new: libsigproc.c:103). No rows named: libusbkb's init and end are Sony's
+sceUsbKbInit/sceUsbKbEnd by the API, but print only the library's name. What they showed:
+
+- **A function pointer's return type moves registers after the call**: `_printf`'s hook declared
+  `int (*)(int)` keeps each call's v0 live (a call_value), so every reload of the hook after a call
+  takes v0; the target alternates v0/v1 through its "(null)" run -- the hook is `void (*)(int)`.
+- **A load in a branch's delay slot that the fall-through holds was before the branch in the
+  source**: reorg puts no load from the fall-through (it may trap) in a non-annulled slot, so the
+  target's `beqz; lb a2,2(s2)` means `_printf` reads the second pad digit before testing the first
+  (as written after it: `beqzl` and the target block's insn instead).
+- **`buf + 31 - width` folds to buf - (width - 31)**: the target's `addiu v0,sp,31; subu` is
+  `&buf[31 - width]`; and `(unsigned char)width < 10` (andi 0xff) against an int range for the
+  second digit: two spellings in one function, each read off its own compare.
+- **One failure block per test, merged by cross-jumping**: libusbkb's init keeps -1 in s0 from the
+  CreateSema test to its error block -- each test's own `DeleteSema; sema = -1; return -1` gets the
+  live -1 from CSE (a shared `goto error` block, reached from several jumps, does not), then the
+  identical copies merge into the one after the last test; the copy after the loop, where the -1 is
+  no longer known, materialises its own and stays apart. A range `x <= 0 || x >= 128` in one
+  expression folds to `x - 1 < 127`: the target's two tests are two statements.
+- **A switch's case tree, read off its compares**: the handler's `== 0`, `< 0`, `< 3` is `switch
+  (rep) { case 0: break; case 1: case 2: ... }`; `rep == 1 || rep == 2` folds to one range check.
+- **A loop untouched by loop.c, its first test peeled** (libusbkb's 21-entry lookup 0x1BFA38 and the
+  copy loops of 0x1BF790): the type's * 84 and the table's %lo recomputed each pass, no giv reduced --
+  every for/while/do form here is loop-optimized (`tools/ccdump.py --dump "-dL"`: the mult and the
+  address moved, three givs reduced), a goto loop is not but has no peeled test; neither
+  `-fno-strength-reduce` nor `-O1` gives it. OPEN, the diagnosis in place.
+- **The codec's .lit4 constants are its own**: 0x24C458's two $gp literals read 0.54 and 0.46 -- the
+  Hamming window, over the raised-cosine window 0x24C1F0 -- written as hex floats (round 12a's
+  decimal conversion), byte-exact at once.
+- **Open, diagnosed in place**: libusbkb's lookup (above, 31 words), libquan.c's 2-D squared distance
+  0x24C000 (11 words, right size: both schedulers start with the [1] pair whatever the source order,
+  five spellings alike). Not written: libusbkb's Read result and key-code conversion (0x1BEFF8, 0x574;
+  0x1BF790, 0x1BF8E0), the codec's hand-written `mula.s`/`madda.s` dot product 0x248F60 (an
+  assembler unit's).
+
+automatch over this lane's ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's
+`src/lib` build): MAIN `18DB90 1C4CC0` 203 tried, 0 hits (60 build failures, 22 m2c refusals), `1CCD78
+1CE2A4` 6 tried, 0 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 140 tried,
+0 hits (27, 9): 351 tried, none byte-exact. **Why the 87 build failures** (each row's last draft
+rebuilt, `build/scratch/gcc/am_fails.py`): 50 are named rows (the GCC ranges try them: sceOpen ...
+sceDevctl, the whole file I/O object, __ieee754_*), and the errors are a pointer difference between
+incompatible types (12: m2c's `char *` minus an `M2C_UNK *`, `(p - &_iob) >> 4`), a parse error before
+`f32` (11), an undeclared frame name (10), a subscript of a non-array (9), a non-constant initializer
+(9), other parse errors (~30), too few arguments (6), a redefinition (5); sigs.py's prototypes cap at
+the eight argument registers, so a ninth argument passed on the stack (sceSifCallRpc's, every SDK
+RPC wrapper's) reads "too many arguments" -- the GCC repair unprototypes it, but a draft with any
+unrepaired error is dropped whole. The pointer difference (cast both sides to `s32`: m2c means
+bytes) is the cheapest next repair.
+
+**The tools, round 15a**: (1) **`tools/ccdump.py`, cc1's own dumps** (round 14c's harness, promoted):
+`./tools/ccdump.py UNIT.c [-f FUNCTION]` compiles a GCC unit as sccheck builds it -- its `sc:`
+toolchain and flags, include/ and src/ -- with `-dl -dg -dS -dR -fsched-verbose=4` (or `--dump`)
+into `build/scratch/gcc/dumps/<stem>/`: `.lreg` and `.greg` (local and global allocation; `.greg`'s
+`N regs to allocate:` line is the priority order, refs x log2(refs) / live length), `.sched` (the first
+scheduling pass, each cycle's ready list) and `.sched2`, the compiler's stderr beside them. `-f` writes
+each dump's section for one function apart and prints the allocation order and the final register
+of every pseudo (`;; Register dispositions`, named). `--unit U` compiles a probe under U's directive,
+`--compiler`/`--flags` override it; an MW or assembler unit is refused (MW writes no RTL). The 2.9
+builds' cc1 spells the verbosity `-fsched-verbose-4` and names its dumps `<src>.<pass>` (2.96:
+`<src>.NN.<pass>`): both handled. (2) **`tools/asmunit.py` writes no `.word` for objdump's spellings**:
+objdump 2.45 prints an `ori rt,$0,imm` as the `dli` macro even under no-aliases, and GNU as reads
+`dli $2,0x1` as `addiu` -- the tool now spells it `ori` (round 14b's largeint_asm.s did by hand); and
+`-M reg-names=numeric` (for gpr- and cp0-names) spells the FPU's control register `$31`, where
+`c1_fcsr` -- which the 2003 GNU as refuses -- had left crt0.s's `ctc1 $0,c1_fcsr` a `.word`. Proved
+(`build/scratch/gcc/asmproof.py`): every one of the 18 `.s` units in src/ regenerated from its own
+object's rows (functions, global labels, statics, `.bss` labels) and assembled gives the committed
+unit's `.text` and relocations exactly, under master's asmunit (with 3 `.word`s: largeint's two `dli`,
+crt0's `ctc1`) and under this one (none); between the two runs the regenerated texts differ in those
+three lines only. Neither tool scores: scdiff.py, sccheck.py, scdecomp.py and `include/` are master's.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
