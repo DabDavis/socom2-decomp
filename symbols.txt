@@ -2754,10 +2754,10 @@
 0x002597B0 0x1F4 func_002597B0  # OVL1
 0x002599B0 0x7C func_002599B0  # OVL1
 0x00259A30 0xB8 func_00259A30  # OVL1
-0x00259AF0 0x4C func_00259AF0  # OVL1
+0x00259AF0 0x4C __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1; the MSL headers round 10: include/vector's 4-byte pod operator= (out of class, the char pod's: assign over the other's words unless this one), byte-exact as a probe (build/p10/e/podas.cpp); calls 0x259D20
 0x00259B40 0x4C __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1 ; SOCOM 1 name (its copy of the pointer vectors' implementation, the same 0x4C: zeroed, then init over the other's elements)
 0x00259B90 0x190 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1 ; SOCOM 1 name with MW 3.0's return type (_v); the copy calls it as SOCOM 1's does
-0x00259D20 0x1C0 func_00259D20  # OVL1
+0x00259D20 0x1C0 assign<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 10: include/vector's 4-byte pod assign (the char pod's with init's word loop, "vector::assign length error"), byte-exact as a probe (build/p10/e/podas.cpp)
 0x00259EE0 0x11C FetchLIP__Q23zar4CZARFPQ23zar4CKeyPPv  # OVL1; s1:order by hand (SOCOM 1's FetchLIP 0x1DAF80, first of zar_search.cpp there as here before Fetch(CKey *, ...): dynamic_cast of the file to CBufferIO, its fread(size, void **); CRdrFile and CVisual's readers call it as SOCOM 1's do)
 0x0025A000 0x11C Fetch__Q23zar4CZARFPQ23zar4CKeyPviUi  # OVL1; s1:calls (CRdrFile::Load calls it with SOCOM 1's (key, buf, size, 0)) -- the rdr lane
 0x0025A120 0x1C4 Insert__Q23zar4CZARFPQ23zar4CKeyPCvi  # OVL1; s1:calls (CRdrFile::Insert calls it where SOCOM 1's calls zar::CZAR::Insert) -- the rdr lane
@@ -5070,7 +5070,7 @@
 0x002FE1D0 0x54 Start__16CSMGetServerListFv  # OVL1; ours (CSMGetServerList's slot 0, its vtable 0x406730 by the RTTI at 0x3F5E48: the base's Start inlined, then the Connect state) -- byte-exact, zNetMediusUniverse.cpp
 0x002FE230 0x1AC erase__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecord  # OVL1; ours (the accounts vector's one-element erase: CAcctDB::Delete 0x2FBAE0 passes the iterator's word, the tail assigned down member by member, the count cut, the position returned in v0; include/vector's erase(T *))
 0x002FE3E0 0x6E8 insert__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecordUiRC10AcctRecord  # OVL1; ours (the accounts' insert: CAcctDB::Add 0x2FBCE0 pushes a blank record through it; it calls the record's copy constructor 0x2FEAD0 and placement new 0x2FECA0 out of line)
-0x002FEAD0 0x1C4 func_002FEAD0  # OVL1
+0x002FEAD0 0x1C4 __ct__10AcctRecordFRC10AcctRecord  # OVL1; the MSL headers round 10: AcctRecord's copy constructor, byte-exact as zNetMediusUniverse.cpp emits it; the accounts' insert 0x2FE3E0 calls it at the target's six sites (its only miss was this row's name)
 0x002FECA0 0x8 __nw__FUiPv  # OVL1; by hand, the MSL headers round 4 (include/new's placement new, out of line: the class vectors' construct() cut to one level calls it before the element's copy constructor -- six times in each such insert, LOD's, CDesignDlgObj's, the turret's -- and vector<C2DPoly>::reserve once, byte-exact through it; jr ra; move v0,a1)
 0x002FECB0 0x19C func_002FECB0  # OVL1
 0x002FEE50 0xB0C insert__Q23std68__vector_imp<14UniverseStatus,Q23std27allocator<14UniverseStatus>,0>FP14UniverseStatusUiRC14UniverseStatus  # OVL1; ours (the universe list's insert: cbGetUniverseStatusList 0x2FDAF0 pushes each 0x3D8-byte universe through it)
