@@ -298,7 +298,7 @@ unsigned char func_003A4460();   /* the console's language */
 extern NetConnectionInfo data_0066A840;   /* the account's lobby server (OVL2 bss) */
 extern int data_0066A5E0;   /* the lobby server's connection (OVL2 bss) */
 extern float data_0044F8D0;   /* when the lobby server was asked for */
-int func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
+bool func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
 MediusErrorCode MediusUpdateClientState(MediusUpdateClientStateRequest *req);   /* MediusUpdateClientState */
 MediusErrorCode MediusSetGameListFilter(MediusSetGameListFilterRequest *req,
                               void (*cb)(int, int, int, MediusSetGameListFilterResponse *));   /* MediusSetGameListFilter */

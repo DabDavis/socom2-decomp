@@ -329,7 +329,7 @@ extern NetConnectionInfo data_0044FCA0;   /* the universe server */
 extern "C" {
 void func_0064A750(NetConnectionInfo *info, int type, const char *ip, int port, int flags);   /* (the info built for an address) */
 void func_0064F4E0(NetServerKey *key);   /* (the DNAS key) */
-int func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
+bool func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
 void func_0030E3A0(CZNetwork *net, int);   /* (CZNetwork's) */
 }
 
