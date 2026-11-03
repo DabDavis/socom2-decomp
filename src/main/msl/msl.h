@@ -16,6 +16,56 @@ extern "C" void free(void *);
 extern "C" unsigned int strlen(const char *);
 extern "C" char *strcpy(char *, const char *);
 
+/* newlib's stdio (MAIN's C library), as far as the file buffers reach: the FILE's head, the
+ * reentrancy block's three streams, and the getc/putc macros of its <stdio.h> */
+extern "C" {
+struct __sbuf {
+    unsigned char *_base;
+    int _size;
+};
+struct __sFILE {
+    unsigned char *_p;          /* 0x00 */
+    int _r;                     /* 0x04 */
+    int _w;                     /* 0x08 */
+    short _flags;
+    short _file;
+    struct __sbuf _bf;          /* 0x10 */
+    int _lbfsize;               /* 0x18 */
+};
+typedef struct __sFILE FILE;
+struct _reent {
+    int _errno;
+    FILE *_stdin, *_stdout, *_stderr;
+};
+/* GCC-built newlib keeps it in .data (0x1CC750, -G0): MW must not reach it through $gp, which a
+ * plain 4-byte extern would (the default small-data threshold); the section says so */
+extern struct _reent *_impure_ptr __attribute__((section(".data")));
+int __srget(FILE *);
+int __swbuf(int, FILE *);
+int ungetc(int, FILE *);
+int fflush(FILE *);
+int fseek(FILE *, long, int);
+long ftell(FILE *);
+}
+#define EOF (-1)
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+#define stdin (_impure_ptr->_stdin)
+#define stdout (_impure_ptr->_stdout)
+#define stderr (_impure_ptr->_stderr)
+#define __sgetc(p) (--(p)->_r < 0 ? __srget(p) : (int)(*(p)->_p++))
+#define __sputc(c, p) \
+    (--(p)->_w < 0 ? \
+        (p)->_w >= (p)->_lbfsize ? \
+            (*(p)->_p = (c)), *(p)->_p != '\n' ? \
+                (int)*(p)->_p++ : \
+                __swbuf('\n', p) : \
+            __swbuf((int)(c), p) : \
+        (*(p)->_p = (c), (int)*(p)->_p++))
+#define getc(fp) __sgetc(fp)
+#define putc(x, fp) __sputc(x, fp)
+
 namespace std {
 
 typedef unsigned int size_t;
@@ -35,6 +85,7 @@ struct char_traits<char> {
     static char_type *copy(char_type *s1, const char_type *s2, unsigned int n)
         { memcpy(s1, s2, n); return s1; }
     static int_type eof() { return -1; }
+    static int_type not_eof(const int_type &c) { return eq_int_type(c, eof()) ? 0 : c; }
     static bool eq_int_type(const int_type &c1, const int_type &c2) { return c1 == c2; }
     static char_type to_char_type(const int_type &c) { return (char_type)c; }
     static int_type to_int_type(const char_type &c) { return (unsigned char)c; }
@@ -47,6 +98,7 @@ struct char_traits<wchar_t> {
     static char_type *copy(char_type *s1, const char_type *s2, unsigned int n)
         { memcpy(s1, s2, n * sizeof(char_type)); return s1; }
     static int_type eof() { return -1; }
+    static int_type not_eof(const int_type &c) { return eq_int_type(c, eof()) ? 0 : c; }
     static bool eq_int_type(const int_type &c1, const int_type &c2) { return c1 == c2; }
     static char_type to_char_type(const int_type &c) { return (char_type)c; }
     static int_type to_int_type(const char_type &c) { return (int_type)c; }
@@ -57,6 +109,9 @@ template <class stateT>
 class fpos {
 public:
     fpos(streamoff off) : pos_(off), st_() {}
+    operator streamoff() const { return pos_; }
+    stateT state() const { return st_; }
+    void state(stateT st) { st_ = st; }
 private:
     streamoff pos_;
     stateT st_;
@@ -244,6 +299,12 @@ public:
     typedef void (*event_callback)(event, ios_base &, int index);
 
     virtual ~ios_base();
+    fmtflags setf(fmtflags fmtfl)
+    {
+        fmtflags old = fmtflags_;
+        fmtflags_ = fmtflags(fmtflags_ | fmtfl);
+        return old;
+    }
     locale imbue(const locale &loc);
     locale getloc() const;
 protected:
@@ -277,6 +338,12 @@ private:
     unsigned char exceptions_;  /* 0x3B */
 };
 
+/* <ios>'s bitmask operators: the result is the one-byte enum again (`andi 0xff` after the mask) */
+inline ios_base::openmode operator&(ios_base::openmode x, ios_base::openmode y)
+    { return ios_base::openmode(int(x) & int(y)); }
+inline ios_base::openmode operator|(ios_base::openmode x, ios_base::openmode y)
+    { return ios_base::openmode(int(x) | int(y)); }
+
 /* streambuf */
 template <class charT, class traits>
 class basic_streambuf {
@@ -288,16 +355,40 @@ public:
 
     virtual ~basic_streambuf();
     locale getloc() const;
+    basic_streambuf *pubsetbuf(char_type *s, streamsize n) { return setbuf(s, n); }
     int_type sbumpc()
     {
         if (gnext_ < gend_)
             return traits::to_int_type(*gnext_++);
         return uflow();
     }
+    int_type sputc(char_type c)
+    {
+        if (pnext_ < pend_)
+            return traits::to_int_type(*pnext_++ = c);
+        return overflow(traits::to_int_type(c));
+    }
 protected:
+    basic_streambuf() : gbeg_(0), gnext_(0), gend_(0), pbeg_(0), pnext_(0), pend_(0) {}
+    char_type *eback() const { return gbeg_; }
     char_type *gptr() const { return gnext_; }
     char_type *egptr() const { return gend_; }
     void gbump(int n) { gnext_ += n; }
+    void setg(char_type *gbeg, char_type *gnext, char_type *gend)
+    {
+        gbeg_ = gbeg;
+        gnext_ = gnext;
+        gend_ = gend;
+    }
+    char_type *pbase() const { return pbeg_; }
+    char_type *pptr() const { return pnext_; }
+    char_type *epptr() const { return pend_; }
+    void pbump(int n) { pnext_ += n; }
+    void setp(char_type *pbeg, char_type *pend)
+    {
+        pbeg_ = pnext_ = pbeg;
+        pend_ = pend;
+    }
 
     virtual void imbue(const locale &loc) { loc_ = loc; }
     virtual basic_streambuf *setbuf(char_type *, streamsize) { return this; }
@@ -322,22 +413,6 @@ protected:
     locale loc_;                /* 0x1C */
 };
 
-/* fstream */
-template <class charT, class traits>
-class basic_filebuf : public basic_streambuf<charT, traits> {
-protected:
-    virtual basic_streambuf<charT, traits> *setbuf(charT *, streamsize n);
-    virtual streamsize showmanyc();
-
-    void *file_;                /* 0x24 */
-    int state_;                 /* 0x28 */
-    void *a_codecvt_;           /* 0x2C */
-    charT input_buffer_[16];    /* 0x30 */
-    bool overflow_called_last_;
-    bool always_noconv_;
-    bool buffered_;             /* 0x42 (char), 0x72 (wchar_t) */
-};
-
 /* codecvt */
 class codecvt_base {
 public:
@@ -346,8 +421,32 @@ public:
 
 template <class internT, class externT, class stateT> class codecvt;
 
+/* the conversion facets' public face (MSL's codecvt): each forwards to its virtual */
+#define _MSL_CODECVT_PUBLIC(internT, externT, stateT) \
+public: \
+    typedef internT intern_type; \
+    typedef externT extern_type; \
+    typedef stateT state_type; \
+    result out(state_type &state, const intern_type *from, const intern_type *from_end, \
+               const intern_type *&from_next, extern_type *to, extern_type *to_limit, \
+               extern_type *&to_next) const \
+        { return do_out(state, from, from_end, from_next, to, to_limit, to_next); } \
+    result unshift(state_type &state, extern_type *to, extern_type *to_limit, \
+                   extern_type *&to_next) const \
+        { return do_unshift(state, to, to_limit, to_next); } \
+    result in(state_type &state, const extern_type *from, const extern_type *from_end, \
+              const extern_type *&from_next, intern_type *to, intern_type *to_limit, \
+              intern_type *&to_next) const \
+        { return do_in(state, from, from_end, from_next, to, to_limit, to_next); } \
+    int encoding() const throw() { return do_encoding(); } \
+    bool always_noconv() const throw() { return do_always_noconv(); } \
+    int length(state_type &state, const extern_type *from, const extern_type *end, size_t max) const \
+        { return do_length(state, from, end, max); } \
+    int max_length() const throw() { return do_max_length(); }
+
 template <>
 class codecvt<char, char, int> : public locale::facet, public codecvt_base {
+    _MSL_CODECVT_PUBLIC(char, char, int)
 protected:
     virtual result do_out(int &state, const char *from, const char *from_end, const char *&from_next,
                           char *to, char *to_end, char *&to_next) const;
@@ -362,7 +461,12 @@ protected:
 
 template <>
 class codecvt<wchar_t, char, int> : public locale::facet, public codecvt_base {
+    _MSL_CODECVT_PUBLIC(wchar_t, char, int)
 protected:
+    virtual result do_out(int &state, const wchar_t *from, const wchar_t *from_end,
+                          const wchar_t *&from_next, char *to, char *to_limit, char *&to_next) const;
+    virtual result do_in(int &state, const char *from, const char *from_end, const char *&from_next,
+                         wchar_t *to, wchar_t *to_limit, wchar_t *&to_next) const;
     virtual result do_unshift(int &state, char *to, char *to_end, char *&to_next) const;
     virtual int do_encoding() const;
     virtual bool do_always_noconv() const;
@@ -425,6 +529,47 @@ inline const Facet &use_facet(const locale &loc)
     return __use_facet<Facet>(loc, __chooser<true>());
 }
 
+/* fstream: the C library's FILE under a stream buffer (SOCOM 1's DWARF layout and members) */
+template <class charT, class traits>
+class basic_filebuf : public basic_streambuf<charT, traits> {
+    typedef basic_streambuf<charT, traits> base;
+public:
+    typedef charT char_type;
+    typedef typename traits::int_type int_type;
+    typedef typename base::pos_type pos_type;
+    typedef typename base::off_type off_type;
+
+    explicit basic_filebuf(FILE *file);
+    virtual ~basic_filebuf();
+protected:
+    virtual void imbue(const locale &loc);
+    virtual basic_streambuf<charT, traits> *setbuf(charT *, streamsize n);
+    virtual pos_type seekoff(off_type off, ios_base::seekdir way, ios_base::openmode which);
+    virtual pos_type seekpos(pos_type sp, ios_base::openmode which);
+    virtual int sync();
+    virtual streamsize showmanyc();
+    virtual int_type underflow();
+    virtual int_type uflow();
+    virtual int_type pbackfail(int_type c);
+    virtual int_type overflow(int_type c);
+private:
+    typedef codecvt<charT, char, int> cvt;
+
+    bool unshift();
+    int_type read1(bool peek);
+    int_type read2(int n, bool peek);
+    int_type read3(bool peek);
+    int_type write2(int n, char_type intern_buf);
+
+    FILE *file_;                /* 0x24 */
+    int state_;                 /* 0x28 */
+    const cvt *a_codecvt_;      /* 0x2C */
+    charT input_buffer_[16];    /* 0x30 */
+    bool overflow_called_last_; /* 0x40 (char), 0x70 (wchar_t) */
+    bool always_noconv_;
+    bool buffered_;
+};
+
 /* ios, istream, ostream: the stream classes over a virtual basic_ios */
 template <class charT, class traits> class basic_ostream;
 
@@ -461,24 +606,51 @@ private:
 };
 
 template <class charT, class traits>
-basic_istream<charT, traits>::basic_istream(basic_streambuf<charT, traits> *sb)
-    : gcount_(0)
-{
-    this->init(sb);
-}
-
-template <class charT, class traits>
 class basic_ostream : virtual public basic_ios<charT, traits> {
 public:
     explicit basic_ostream(basic_streambuf<charT, traits> *sb);
+    basic_ostream &flush();
 };
 
-template <class charT, class traits>
-basic_ostream<charT, traits>::basic_ostream(basic_streambuf<charT, traits> *sb)
-{
-    this->init(sb);
-}
+typedef basic_streambuf<char, char_traits<char> > streambuf;
+typedef basic_filebuf<char, char_traits<char> > filebuf;
+typedef basic_istream<char, char_traits<char> > istream;
+typedef basic_ostream<char, char_traits<char> > ostream;
+typedef basic_filebuf<wchar_t, char_traits<wchar_t> > wfilebuf;
+typedef basic_istream<wchar_t, char_traits<wchar_t> > wistream;
+typedef basic_ostream<wchar_t, char_traits<wchar_t> > wostream;
+
+/* iostream: the standard streams, built in place by the first Init object (the game's units each
+ * hold one: include/iostream) */
+extern istream cin;
+extern ostream cout;
+extern ostream clog;
+extern ostream cerr;
+extern wistream wcin;
+extern wostream wcout;
+extern wostream wclog;
+extern wostream wcerr;
+
+class __nInit {
+public:
+    __nInit();
+    ~__nInit();
+private:
+    static int ninit_cnt_s;
+};
+
+class __wInit {
+public:
+    __wInit();
+    ~__wInit();
+private:
+    static int winit_cnt_s;
+};
 
 }
+
+/* <new>'s placement forms */
+inline void *operator new(std::size_t, void *p) { return p; }
+inline void operator delete(void *, void *) {}
 
 #endif
