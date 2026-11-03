@@ -276,10 +276,10 @@ void CVehicle::PreTick(float dT)
     }
 }
 
-/* OPEN, 8 bytes long, 25 differing: all but the matrix's set-up -- the target computes &m (sp+64)
- * early among the corners' loads and fills sceVu0UnitMatrix's delay slot with the last corner's
- * store, then reloads m_root after the call; here the &m move takes the delay slot. Tried: the
- * matrix declared first (0x180), a const factor. */
+/* the region's corners pushed out 5 units and carried into the world through the root's matrix --
+ * CMatrix's default constructor is the unit-matrix call (a SetIdentity after it was a second call,
+ * 8 bytes long: the constructor's &m is computed early among the corners' loads, the last corner's
+ * store fills the call's delay slot) */
 void CVehicle::Tick(float dT)
 {
     unsigned int loc;
@@ -314,7 +314,6 @@ void CVehicle::Tick(float dT)
     m_corners[3].z = m_bounds[3].z + d;
     CMatrix m;
 
-    m.SetIdentity();
     m_root->BuildMTW(m);
     m.Transform(m_corners, 4);
     func_00515880(map, m_corners, &m_region);

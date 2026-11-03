@@ -324,15 +324,20 @@ static inline bool TickTimer(CAiTimer &t, float dT)
     return r;
 }
 
-/* the countdown started over from a random period */
+/* the countdown started over from a random period: the random factor in a local of its own, as
+ * aitimer.h's CAiTimer::Period (and SOCOM 1's Fire) -- the target computes the range's product
+ * into $f0 and pads the store's join with two nops; written inline in the sum it does neither */
 static inline float RandomPeriod(const CAiTimer &t)
 {
     float f;
 
     if (t.m_range == 0.0f)
         f = t.m_min;
-    else
-        f = t.m_min + t.m_range * (4.656613e-10f * rand());
+    else {
+        float r = 4.656612873e-10f * (float)rand();
+
+        f = t.m_min + t.m_range * r;
+    }
     return f;
 }
 
@@ -341,21 +346,20 @@ static inline void ResetTimer(CAiTimer &t)
     t.m_timer = RandomPeriod(t);
 }
 
-/* OPEN, 2 instructions: the network test loads the player's controller into v0 and this one's
- * into v1, then `beq v1,v0` (this one's first); every spelling here gives either the two
- * registers the other way (the call's side first: `ftsGetPlayer()->m_control != m_control`,
- * `!(... == ...)`) or this one's hoisted above the call into a saved register (`m_control !=
- * ftsGetPlayer()->m_control`, through an inline accessor too, or a cast). PrePostTick's test
- * matched only with the player in a local, which loads this one's first: the opposite. Round 6:
- * an inline taking the turret and the player (the compare in its body, the player's controller in
- * a local or not) leaves it the same. */
+/* the network test is the player in a local, assigned in the test (`pl = ftsGetPlayer(), m_control
+ * != pl->m_control`: the player's controller loaded into v0 after the call, this one's into v1,
+ * `beq v1,v0`) -- PrePostTick's player local, the comma keeping the call ahead of this one's load
+ * (`m_control != ftsGetPlayer()->m_control` hoists that load above the call into a saved register,
+ * the call's side first swaps the two registers); the timer's reset is aitimer.h's Period shape */
 void CTurret::Tick(float dT)
 {
+    CZSealBody *pl;
+
     if (!GetFlag(1))
         return;
     if (GetFlag(2))
         func_003A84E0(this);
-    else if (theNetwork.m_9 && ftsGetPlayer()->m_control != m_control)
+    else if (theNetwork.m_9 && (pl = ftsGetPlayer(), m_control != pl->m_control))
         func_003A78E0(this, dT);
     else if (m_control) {
         CEntityCtrl *ctrl = m_control;
