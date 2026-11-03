@@ -6805,30 +6805,30 @@
 0x0036B0A0 0x128 func_0036B0A0  # OVL1
 0x0036B1D0 0x14 AddToRdr__8ListItemFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16): the row ran 0x28 over two functions -- this one, ListItem's vtable slot 0 (0x407248), its look's slot 14 (lw t9,64) tail-called with the argument passed on, five words, then MW's pad and a separate `jr ra` at 0x36B1F0; the slot is SOCOM II's (SOCOM 1's ListItem has no vtable): the string look's copy (0x37BF40) writes the item's text into the CRdrEditor it is given as an int, real or string node -- the name ours
 0x0036B1F0 0x8 AddToRdr__17CListItemTypeImplFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16) from 0x36B1D0's row: an empty function of its own, CListItemTypeImpl's vtable (0x4070F0) slot 14 (0x407130 holds it), the slot ListItem::AddToRdr calls; SOCOM II's (SOCOM 1's 13-slot table has none) -- the name ours, after the string look's override (0x37BF40)
-0x0036B200 0x8 func_0036B200  # OVL1
-0x0036B210 0x78 func_0036B210  # OVL1
-0x0036B290 0x78 func_0036B290  # OVL1
-0x0036B310 0x8 func_0036B310  # OVL1
-0x0036B320 0x8 func_0036B320  # OVL1
-0x0036B330 0xC8 func_0036B330  # OVL1
+0x0036B200 0x8 Tick__17CListItemTypeImplFf  # OVL1; by hand (the HUD lane, round 25): slot 11 of CListItemTypeImpl's table, SOCOM 1's Tick default (empty); zui_2d.cpp
+0x0036B210 0x78 MakeWrappedText__8ListItemFv  # OVL1; by hand (the HUD lane, round 25): ListItem's (m_impl at 0x28 = new wrapped look, 800 bytes; its constructor inlined one level), called by ListItem's constructor 0x37AE10; the name ours; zui_2d.cpp
+0x0036B290 0x78 __dt__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 0 of the string look's table 0x407B40 (RTTI @unnamed@zui_2d_cpp@::CListItemStringTypeImpl), SOCOM 1's class; zui_2d.cpp
+0x0036B310 0x8 SetString__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFP17CRenderableString  # OVL1; by hand (the HUD lane, round 25): the string look's pointer at 4 (out of line in MakeWrappedText, the wrapped look's constructor inlined one level); the name ours; zui_2d.cpp
+0x0036B320 0x8 SetWidth__12CWrappedTextFf  # OVL1; by hand (the HUD lane, round 25): CWrappedText+0xC0 = w (out of line in MakeWrappedText, 300.0f); the name ours; zui_2d.cpp
+0x0036B330 0xC8 __ct__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFv  # OVL1; by hand (the HUD lane, round 25): stores the string look's table 0x407B40 over CListItemTypeImpl's, CRenderableString() inlined at +8; called by the two makers; zui_2d.cpp
 0x0036B400 0x4C __dt__17CListItemTypeImplFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0036B450 0x58 func_0036B450  # OVL1
-0x0036B4B0 0x114 func_0036B4B0  # OVL1
-0x0036B5D0 0x8 func_0036B5D0  # OVL1
-0x0036B5E0 0x110 func_0036B5E0  # OVL1
-0x0036B6F0 0x120 func_0036B6F0  # OVL1
-0x0036B810 0x110 func_0036B810  # OVL1
-0x0036B920 0x68 func_0036B920  # OVL1
-0x0036B990 0x34 func_0036B990  # OVL1
-0x0036B9D0 0x8 func_0036B9D0  # OVL1
-0x0036B9E0 0x34 func_0036B9E0  # OVL1
-0x0036BA20 0x8 func_0036BA20  # OVL1
-0x0036BA30 0x30 IsEnabled__8ListItemFv  # OVL1; ours by hand (the HUD lane: zui_2d.cpp -- slot 1 of ListItem's vtable 0x407240: the look at 0x28 asked through its slot 15, true without one, as SOCOM 1's CListItemTypeImpl::IsEnabled answers true; byte-exact)
-0x0036BA60 0x8 func_0036BA60  # OVL1
-0x0036BA70 0x8 func_0036BA70  # OVL1
+0x0036B450 0x58 MakeTimedText__8ListItemFv  # OVL1; by hand (the HUD lane, round 25): ListItem's (m_impl = new timed look, 212 bytes), called by ListItem's constructor 0x37AE10; the name ours; zui_2d.cpp
+0x0036B4B0 0x114 SetString__8ListItemFPCc  # OVL1; by hand (the HUD lane, round 25): ListItem's (a string look made when the item has none, then its string's slot 28, Format, given the text); called by the array look's constructor 0x37B2F0 and ListItem's constructors; the name ours; zui_2d.cpp
+0x0036B5D0 0x8 SetSequenceTime__17CListItemTypeImplFff  # OVL1; by hand (the HUD lane, round 25): slot 10 of CListItemTypeImpl's table, SOCOM 1's SetSequenceTime default; zui_2d.cpp
+0x0036B5E0 0x110 SetScale__8ListItemFf  # OVL1; by hand (the HUD lane, round 25): called by the array look's SetScale 0x37CA40 and PrepListItem per item with the scale (a string look made first when the item has none); the name ours
+0x0036B6F0 0x120 SetPos__8ListItemFii  # OVL1; by hand (the HUD lane, round 25): called by the array look's DrawPrep 0x37AB90 per column with (x + column x, y + column y); the name ours; zui_2d.cpp declares it
+0x0036B810 0x110 SetFont__8ListItemFP7C2DFont  # OVL1; by hand (the HUD lane, round 25): called by the array look's SetFont 0x37C9B0 and PrepListItem 0x37A920 per item with the font (a string look made first when the item has none: the string look's tables 0x4070F0/0x407B40 stored in it); the name ours
+0x0036B920 0x68 PrepListItem__8ListItemFRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>P7C2DFontfPQ23zdb16CTextureRelocMgr  # OVL1; by hand (the HUD lane, round 25): ListItem's (the look's slot 5 with the same arguments, then SetFont and SetScale out of line); called by CUIListBox's 0x375E20; the name ours (SOCOM 1's look slot); zui_2d.cpp
+0x0036B990 0x34 SetWidth__8ListItemFi  # OVL1; by hand (the HUD lane, round 25): slot 3 of ListItem's table (the look's slot 17 forwarded); the name ours; zui_2d.cpp
+0x0036B9D0 0x8 SetWidth__17CListItemTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 17 of CListItemTypeImpl's table (empty; the wrapped look's sets its width); the name ours; zui_2d.cpp
+0x0036B9E0 0x34 SetHeight__8ListItemFi  # OVL1; by hand (the HUD lane, round 25): slot 2 of ListItem's table 0x407240 (the look's slot 16 forwarded); the name ours; zui_2d.cpp
+0x0036BA20 0x8 SetHeight__17CListItemTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 16 of CListItemTypeImpl's table (empty); the name ours; zui_2d.cpp
+0x0036BA30 0x30 GetNumLines__8ListItemFv  # OVL1; ours by hand (the HUD lane: zui_2d.cpp -- slot 1 of ListItem's vtable 0x407240: the look at 0x28 asked through its slot 15, true without one, as SOCOM 1's CListItemTypeImpl::IsEnabled answers true; byte-exact); by hand (the HUD lane, round 25: was IsEnabled -- slot 15 of the look's tables, which it forwards, is the wrapped look's line count, an int, 1 by default); the name ours; zui_2d.cpp
+0x0036BA60 0x8 GetNumLines__17CListItemTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 15 of CListItemTypeImpl's table 0x4070F0 (return 1); the name ours; zui_2d.cpp
+0x0036BA70 0x8 Finish__17CListItemTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 2 of CListItemTypeImpl's table, SOCOM 1's Finish default (empty); zui_2d.cpp
 0x0036BA80 0x140 func_0036BA80  # OVL1
 0x0036BBC0 0x1FC func_0036BBC0  # OVL1
-0x0036BDC0 0x8 func_0036BDC0  # OVL1
+0x0036BDC0 0x8 IsReady__17CListItemTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 13 of CListItemTypeImpl's table (return true; SOCOM II's, the array look's returns a byte at 0x10); the name ours; zui_2d.cpp
 0x0036BDD0 0xCC func_0036BDD0  # OVL1
 0x0036BEA0 0x14C func_0036BEA0  # OVL1
 0x0036BFF0 0x3BC func_0036BFF0  # OVL1
@@ -6950,47 +6950,47 @@
 0x0037A630 0x8 Update__17CRenderableStringFv  # OVL1; s1:order by hand (the HUD lane, round 22: SOCOM 1's empty Update sits between CRenderableString's Draw and destructor, as 0x37A630 does between 0x37A540 and 0x37A640; it is the slot at +0xA0 of CTeleType's and CRenderableString's tables -- the first after the UIVarMixin part -- which CTeleType::SetString calls last, as SOCOM 1's calls Update)
 0x0037A640 0x12C __dt__17CRenderableStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037A770 0x94 __ct__17CRenderableStringFv  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:calls (SOCOM 1's CClockSpec::CreateDisplayObj calls CRenderableString's constructor at the same place) -- the UI-widgets lane
-0x0037A810 0x110 func_0037A810  # OVL1
-0x0037A920 0x264 func_0037A920  # OVL1
-0x0037AB90 0x260 func_0037AB90  # OVL1
-0x0037ADF0 0xC func_0037ADF0  # OVL1
-0x0037AE00 0x8 func_0037AE00  # OVL1
+0x0037A810 0x110 DrawPrep__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFRC10CUIListBoxiii  # OVL1; by hand (the HUD lane, round 25): slot 1 of the string, timed and wrapped looks' tables, SOCOM 1's DrawPrep slot (the string placed and lit by the box's highlighted row); zui_2d.cpp
+0x0037A920 0x264 PrepListItem__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>P7C2DFontfPQ23zdb16CTextureRelocMgr  # OVL1; by hand (the HUD lane, round 25): slot 5 of the array look's table, SOCOM 1's PrepListItem (a picture column's item gets an image look); zui_2d.cpp
+0x0037AB90 0x260 DrawPrep__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFRC10CUIListBoxiii  # OVL1; by hand (the HUD lane, round 25): slot 1 of the array look's table, SOCOM 1's DrawPrep (each column's item placed, its text look -- a dynamic_cast -- lit); zui_2d.cpp
+0x0037ADF0 0xC SetScale__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFf  # OVL1; by hand (the HUD lane, round 25): slot 8 of the string look's table, SOCOM 1's SetScale (the string's scale); zui_2d.cpp
+0x0037AE00 0x8 IsReady__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 13 of the array look's table (its byte at 0x10, cleared by the constructor when an item is not ready); the name ours; zui_2d.cpp
 0x0037AE10 0x4E0 func_0037AE10  # OVL1
-0x0037B2F0 0x194 func_0037B2F0  # OVL1
+0x0037B2F0 0x194 __ct__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFP5_zrdrRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>  # OVL1; by hand (the HUD lane, round 25): stores the array look's table 0x407B90, SOCOM 1's constructor (reader, columns); called by ListItem's constructor 0x36BDD0... (0x36BDD0 calls it); zui_2d.cpp
 0x0037B490 0x124 TickZAnimCmd__10C2DCounterFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B5C0 0x130 Tick__10C2DCounterFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B6F0 0x150 ParseZAnimCmd__10C2DCounterFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B840 0x138 GetZAnimCmdType__10C2DCounterFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B980 0xC UiSetTtySpeedFactor__Ff  # OVL1; s1:calls by hand (the UI-commands lane's lead, vetted: SOCOM 1's OnSetTtySpeedFactor, zanim_menu.cpp's handler, is SOCOM II's 0x27FF20 -- GetName, strcmp, GetCharP, atof, dptofp alike -- and calls this at the same instruction where SOCOM 1 calls UiSetTtySpeedFactor__Ff; the other callers pair too, 0x367950+0xA8 and SOCOM 1's CGameMenu::LoadFromDesign+0x54; both bodies store the float to one global and return)
 0x0037B990 0xC UiSetCounterSpeedFactor__Ff  # OVL1; s1:calls by hand (SOCOM 1's OnSetCounterSpeedFactor, zanim_menu.cpp's handler, is SOCOM II's 0x27FFB0 and calls this at the same instruction, +0x74, where SOCOM 1 calls UiSetCounterSpeedFactor__Ff; 0x367950+0x98 pairs with SOCOM 1's CGameMenu::LoadFromDesign+0x44; right after UiSetTtySpeedFactor as in SOCOM 1's zui_2d.cpp; the float stored to the global C2DCounter::Tick reads)
-0x0037B9A0 0xC8 func_0037B9A0  # OVL1
-0x0037BA70 0x8 func_0037BA70  # OVL1
-0x0037BA80 0xC func_0037BA80  # OVL1
-0x0037BA90 0x8 func_0037BA90  # OVL1
-0x0037BAA0 0x8 func_0037BAA0  # OVL1
-0x0037BAB0 0x8 func_0037BAB0  # OVL1
-0x0037BAC0 0x18 func_0037BAC0  # OVL1
-0x0037BAE0 0x8 func_0037BAE0  # OVL1
+0x0037B9A0 0xC8 __dt__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 0 of the image look's table 0x407050 (RTTI @unnamed@zui_2d_cpp@::CListItemImageTypeImpl), SOCOM 1's class (~CPlainBmp inlined); zui_2d.cpp
+0x0037BA70 0x8 DrawPrep__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFRC10CUIListBoxiii  # OVL1; by hand (the HUD lane, round 25): slot 1 of the image look's table, SOCOM 1's DrawPrep (empty in both); zui_2d.cpp
+0x0037BA80 0xC GetString__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 3 of the image look's table, SOCOM 1's GetString (""); zui_2d.cpp
+0x0037BA90 0x8 GetTrans__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 4 of the image look's table (its bitmap's); the name ours; zui_2d.cpp
+0x0037BAA0 0x8 PrepListItem__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>P7C2DFontfPQ23zdb16CTextureRelocMgr  # OVL1; by hand (the HUD lane, round 25): slot 5 of the image look's table, SOCOM 1's PrepListItem (empty in both); zui_2d.cpp
+0x0037BAB0 0x8 SetFont__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFP7C2DFont  # OVL1; by hand (the HUD lane, round 25): slot 6 of the image look's table, SOCOM 1's SetFont (empty in both); zui_2d.cpp
+0x0037BAC0 0x18 SetPos__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFii  # OVL1; by hand (the HUD lane, round 25): slot 7 of the image look's table, SOCOM 1's SetPos (SOCOM II's places its bitmap); zui_2d.cpp; by hand (the HUD lane, round 25): two ints (ListItem::SetPos's call sets no third or fourth argument); zui_2d.cpp
+0x0037BAE0 0x8 SetScale__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFf  # OVL1; by hand (the HUD lane, round 25): slot 8 of the image look's table, SOCOM 1's SetScale (empty in both); zui_2d.cpp
 0x0037BAF0 0x28 SetColor__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFiii  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:exact
-0x0037BB20 0x64 func_0037BB20  # OVL1
-0x0037BB90 0x8 func_0037BB90  # OVL1
-0x0037BBA0 0x80 func_0037BBA0  # OVL1
-0x0037BC20 0x8 func_0037BC20  # OVL1
-0x0037BC30 0xC func_0037BC30  # OVL1
-0x0037BC40 0x5C func_0037BC40  # OVL1
-0x0037BCA0 0x3C func_0037BCA0  # OVL1
-0x0037BCE0 0x8 func_0037BCE0  # OVL1
-0x0037BCF0 0x30 func_0037BCF0  # OVL1
-0x0037BD20 0xC func_0037BD20  # OVL1
-0x0037BD30 0x8 func_0037BD30  # OVL1
-0x0037BD40 0x8 func_0037BD40  # OVL1
-0x0037BD50 0x8 func_0037BD50  # OVL1
-0x0037BD60 0x38 func_0037BD60  # OVL1
-0x0037BDA0 0x90 func_0037BDA0  # OVL1
-0x0037BE30 0x18 func_0037BE30  # OVL1
-0x0037BE50 0x14 func_0037BE50  # OVL1
-0x0037BE70 0x14 func_0037BE70  # OVL1
-0x0037BE90 0x8C func_0037BE90  # OVL1
+0x0037BB20 0x64 VisualGratification__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFPQ23zdb16CTextureRelocMgrf  # OVL1; by hand (the HUD lane, round 25): slot 12 of the image look's table, SOCOM 1's VisualGratification (the bitmap through an identity matrix at the depth); zui_2d.cpp
+0x0037BB90 0x8 AddToRdr__Q220@unnamed@zui_2d_cpp@22CListItemImageTypeImplFP10CRdrEditor  # OVL1; by hand (the HUD lane, round 25): slot 14 of the image look's table, the item writer (empty); zui_2d.cpp
+0x0037BBA0 0x80 __dt__Q220@unnamed@zui_2d_cpp@26CListItemTimedTextTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 0 of the timed look's table 0x4070A0 (RTTI @unnamed@zui_2d_cpp@::CListItemTimedTextTypeImpl), SOCOM 1's class; zui_2d.cpp
+0x0037BC20 0x8 Finish__Q220@unnamed@zui_2d_cpp@26CListItemTimedTextTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 2 of the timed look's table, SOCOM 1's Finish (code alike); zui_2d.cpp
+0x0037BC30 0xC SetSequenceTime__Q220@unnamed@zui_2d_cpp@26CListItemTimedTextTypeImplFff  # OVL1; by hand (the HUD lane, round 25): slot 10 of the timed look's table, SOCOM 1's SetSequenceTime (code alike); zui_2d.cpp
+0x0037BC40 0x5C Tick__Q220@unnamed@zui_2d_cpp@26CListItemTimedTextTypeImplFf  # OVL1; by hand (the HUD lane, round 25): slot 11 of the timed look's table, SOCOM 1's Tick (code alike: the count sound as the time passes the start); zui_2d.cpp
+0x0037BCA0 0x3C VisualGratification__Q220@unnamed@zui_2d_cpp@26CListItemTimedTextTypeImplFPQ23zdb16CTextureRelocMgrf  # OVL1; by hand (the HUD lane, round 25): slot 12 of the timed look's table, SOCOM 1's VisualGratification (drawn once its time has come); zui_2d.cpp
+0x0037BCE0 0x8 AddToRdr__Q220@unnamed@zui_2d_cpp@26CListItemTimedTextTypeImplFP10CRdrEditor  # OVL1; by hand (the HUD lane, round 25): slot 14 of the timed look's table, the item writer (empty: the timed look writes nothing); zui_2d.cpp
+0x0037BCF0 0x30 GetString__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 3 of the string look's table, SOCOM 1's GetString; zui_2d.cpp
+0x0037BD20 0xC GetTrans__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 4 of the string look's table, SOCOM II's own (the string's alpha; the image look's returns its bitmap's GetTrans); the name ours; zui_2d.cpp
+0x0037BD30 0x8 PrepListItem__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>P7C2DFontfPQ23zdb16CTextureRelocMgr  # OVL1; by hand (the HUD lane, round 25): slot 5 of the string look's table, SOCOM 1's PrepListItem (empty in both); zui_2d.cpp
+0x0037BD40 0x8 SetFont__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFP7C2DFont  # OVL1; by hand (the HUD lane, round 25): slot 6 of the string look's table, SOCOM 1's SetFont; zui_2d.cpp
+0x0037BD50 0x8 SetPos__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFii  # OVL1; by hand (the HUD lane, round 25): slot 7 of the string look's table, SOCOM 1's SetPos(iiii); zui_2d.cpp; by hand (the HUD lane, round 25): two ints, not SOCOM 1's four -- ListItem::SetPos 0x36B6F0 calls slot 7 with a1/a2 set and a3/t0 not; zui_2d.cpp
+0x0037BD60 0x38 SetColor__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFiii  # OVL1; by hand (the HUD lane, round 25): slot 9 of the string look's table, SOCOM 1's SetColor(iii); zui_2d.cpp
+0x0037BDA0 0x90 __dt__Q220@unnamed@zui_2d_cpp@28CListItemWrappedTextTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 0 of the wrapped look's table 0x407140; zui_2d.cpp
+0x0037BE30 0x18 GetNumLines__Q220@unnamed@zui_2d_cpp@28CListItemWrappedTextTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 15 of the wrapped look's table (the wrapped text's line count, at least 1: SOCOM 1's IsEnabled slot, SOCOM II's); the name ours; zui_2d.cpp
+0x0037BE50 0x14 SetHeight__Q220@unnamed@zui_2d_cpp@28CListItemWrappedTextTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 16 of the wrapped look's table (CRenderableString+0xBC as a float); the name ours; zui_2d.cpp
+0x0037BE70 0x14 SetWidth__Q220@unnamed@zui_2d_cpp@28CListItemWrappedTextTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 17 of the wrapped look's table (the wrapped text's width, CWrappedText+0xC0, the 300 its constructor sets); the name ours; zui_2d.cpp
+0x0037BE90 0x8C VisualGratification__Q220@unnamed@zui_2d_cpp@28CListItemWrappedTextTypeImplFPQ23zdb16CTextureRelocMgrf  # OVL1; by hand (the HUD lane, round 25): slot 12 of the wrapped look's table 0x407140 (RTTI @unnamed@zui_2d_cpp@::CListItemWrappedTextTypeImpl), SOCOM 1's VisualGratification slot, SOCOM II's depth argument; zui_2d.cpp
 0x0037BF20 0x14 Tick__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFf  # OVL1; split by hand (the HUD lane, round 16): the row ran 0xFC over two functions; this one is slot 11 of both string looks' vtables (CListItemStringTypeImpl 0x407B40, CListItemWrappedTextTypeImpl 0x407140: the wrapped one inherits it), the string's Tick tail-called (lw a0,4; slot 12), as SOCOM 1's CListItemStringTypeImpl::Tick (0x394180) ticks its string -- a pointer member here, an embedded one there
 0x0037BF40 0xDC AddToRdr__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16) from 0x37BF20's row: slot 14 of both string looks' vtables (0x407180, 0x407B80) -- the item's text (its string's m_string + m_firstCharPos) added to the CRdrEditor as an int node when strtol takes all of it, a real node when strtod does, else a string node; SOCOM II's, the name ours
 0x0037C020 0x70 __dt__8C2DClockFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7010,25 +7010,25 @@
 0x0037C590 0x70 __dt__14CHandlerButtonFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037C600 0x14 Tick__13C3StateButtonFf  # OVL1; split by the integrator: a 0x14-byte virtual call (slot 0x38 through the object at +0x1C), padded to 0x37C620; s1:vtable (the HUD lane: s1vtables' pairing; the caption's Tick through its vtable, the caption a C2DString at 0x1C as SOCOM 1's _strCaption)
 0x0037C620 0xE8 __dt__9CTeleTypeFv  # OVL1; split from 0x37C600 by the integrator: a destructor (vtable stores at +0xC and +0x98, DetachUIVar) reached only by the this-adjusting thunk 0x37D030's `j` (addiu a0,a0,-152), so the seed never cut it (the UI lane's find); s1:vtable (the HUD lane: slot 0 of CTeleType's table 0x4078A0 -- s1vtables' pairing -- and the thunk 0x37D030's target; its stores CTeleType's two tables, the cursor's CPlainBmp, the text's string at 0xC0, then ~CRenderableString)
-0x0037C710 0x18 func_0037C710  # OVL1
-0x0037C730 0x148 func_0037C730  # OVL1
-0x0037C880 0x84 func_0037C880  # OVL1
-0x0037C910 0x44 func_0037C910  # OVL1
-0x0037C960 0x44 func_0037C960  # OVL1
-0x0037C9B0 0x78 func_0037C9B0  # OVL1
-0x0037CA30 0x8 func_0037CA30  # OVL1
-0x0037CA40 0x78 func_0037CA40  # OVL1
-0x0037CAC0 0xB0 func_0037CAC0  # OVL1
-0x0037CB70 0x8C func_0037CB70  # OVL1
-0x0037CC00 0x90 func_0037CC00  # OVL1
-0x0037CC90 0x9C func_0037CC90  # OVL1
-0x0037CD30 0x90 func_0037CD30  # OVL1
-0x0037CDC0 0xB8 func_0037CDC0  # OVL1
-0x0037CE80 0x80 func_0037CE80  # OVL1
-0x0037CF00 0x80 func_0037CF00  # OVL1
+0x0037C710 0x18 VisualGratification__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFPQ23zdb16CTextureRelocMgrf  # OVL1; by hand (the HUD lane, round 25): slot 12 of the string look's table, SOCOM 1's VisualGratification, SOCOM II's depth argument; zui_2d.cpp
+0x0037C730 0x148 __dt__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 0 of the array look's table 0x407B90 (RTTI @unnamed@zui_2d_cpp@::CListItemArrayTypeImpl), SOCOM 1's class: the items deleted, ~ListItem inlined; zui_2d.cpp
+0x0037C880 0x84 Finish__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 2 of the array look's table, SOCOM 1's Finish; zui_2d.cpp
+0x0037C910 0x44 GetString__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 3 of the array look's table, SOCOM 1's GetString (the first item's); zui_2d.cpp
+0x0037C960 0x44 GetTrans__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 4 of the array look's table (the first item's, 128 without a look); the name ours; zui_2d.cpp
+0x0037C9B0 0x78 SetFont__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFP7C2DFont  # OVL1; by hand (the HUD lane, round 25): slot 6 of the array look's table, SOCOM 1's SetFont; zui_2d.cpp
+0x0037CA30 0x8 SetPos__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFii  # OVL1; by hand (the HUD lane, round 25): slot 7 of the array look's table, SOCOM 1's SetPos (empty in both); zui_2d.cpp; by hand (the HUD lane, round 25): two ints (as the other looks'); zui_2d.cpp
+0x0037CA40 0x78 SetScale__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFf  # OVL1; by hand (the HUD lane, round 25): slot 8 of the array look's table, SOCOM 1's SetScale; zui_2d.cpp
+0x0037CAC0 0xB0 SetColor__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFiii  # OVL1; by hand (the HUD lane, round 25): slot 9 of the array look's table, SOCOM 1's SetColor; zui_2d.cpp
+0x0037CB70 0x8C SetSequenceTime__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFff  # OVL1; by hand (the HUD lane, round 25): slot 10 of the array look's table, SOCOM 1's SetSequenceTime (the time threaded through the items); zui_2d.cpp
+0x0037CC00 0x90 Tick__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFf  # OVL1; by hand (the HUD lane, round 25): slot 11 of the array look's table, SOCOM 1's Tick; zui_2d.cpp
+0x0037CC90 0x9C VisualGratification__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFPQ23zdb16CTextureRelocMgrf  # OVL1; by hand (the HUD lane, round 25): slot 12 of the array look's table, SOCOM 1's VisualGratification; zui_2d.cpp
+0x0037CD30 0x90 AddToRdr__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFP10CRdrEditor  # OVL1; by hand (the HUD lane, round 25): slot 14 of the array look's table (the items written inside a pushed node); the name ours; zui_2d.cpp
+0x0037CDC0 0xB8 GetNumLines__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 15 of the array look's table (the most lines of any column); the name ours; zui_2d.cpp
+0x0037CE80 0x80 SetHeight__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 16 of the array look's table (through the items' own slot 2); the name ours; zui_2d.cpp
+0x0037CF00 0x80 SetWidth__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 17 of the array look's table (through the items' own slot 3); the name ours; zui_2d.cpp
 0x0037CF80 0x70 __dt__10C2DCounterFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037CFF0 0x8 func_0037CFF0  # OVL1
-0x0037D000 0x8 func_0037D000  # OVL1
+0x0037D000 0x8 @152@__dt__17CRenderableStringFv  # OVL1; by hand (the HUD lane, round 25): MW's this-adjusting thunk (`j __dt__17CRenderableStringFv; addiu a0,a0,-152`), emitted with CRenderableString's table now that zui_2d.cpp defines its destructor
 0x0037D010 0x8 func_0037D010  # OVL1
 0x0037D020 0x8 @128@__dt__9CPlainBmpFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CPlainBmpFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D030 0x8 @152@__dt__9CTeleTypeFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CTeleTypeFv` with `addiu a0,a0,-152`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
@@ -8928,14 +8928,14 @@
 0x004E9080 0x2DC ExtendNodeWheel  # OVL2; s1:calls
 0x004E9360 0xD98 func_004E9360  # OVL2
 0x004EA0F8 0x92C func_004EA0F8  # OVL2 unaligned
-0x004EAA28 0x104 func_004EAA28  # OVL2 unaligned; s1~ ExpandGarbageArrays (one of 2)
+0x004EAA28 0x104 ExpandGarbageArrays@isowdp  # OVL2 unaligned; s1~ ExpandGarbageArrays (one of 2); s1:order -- the gcc lane, round 17c: SOCOM 1's iso-word object (0x356970) holds its LOCAL ExpandGarbageArrays (0x104, the same size) between FrameDPacoust and IsoWordTokenDpProcess, as here; the body is SOCOM 1's with the record's fields 4 higher (two 151-word allocations, the arrays copied and grown by 150); the N-best object's own copy keeps the bare name (0x4EFB18)
 0x004EAB30 0x308 func_004EAB30  # OVL2
 0x004EAE38 0x23C GetNBest  # OVL2 unaligned; s1:calls (SOCOM 1's ControlIsoWordTokenDp calls GetNBest where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004EB078 0x328 ControlIsoWordTokenDp  # OVL2 unaligned; s1:align
 0x004EB3A0 0x3C ConstructIsoWordTokenDp  # OVL2; s1:align
 0x004EB3E0 0xC4 InitIsoWordTokenDpProcess  # OVL2; s1:align
-0x004EB4A8 0x118 func_004EB4A8  # OVL2 unaligned
-0x004EB5C0 0x8 func_004EB5C0  # OVL2
+0x004EB4A8 0x118 CalcNrNodes@isowdp  # OVL2 unaligned; s1:order -- the gcc lane, round 17c: SOCOM 1's iso-word object holds its LOCAL CalcNrNodes (0x124) after InitIsoWordTokenDpProcess, as here -- the same recursion over a node's 12-byte children down to a depth, unrolled by four; SOCOM 1 has a second LOCAL CalcNrNodes in another object (0x3456B0), so the name is qualified
+0x004EB5C0 0x8 IdleProcess@isowdp  # OVL2; s1:order -- the gcc lane, round 17c: SOCOM 1's iso-word object ends CalcNrNodes, IdleProcess (8 bytes, jr ra), ScoreCompare, as here; the N-best object's own IdleProcess keeps the bare name (0x4F0CB0)
 0x004EB5C8 0x20 ScoreCompare@isowdp  # OVL2 unaligned; s1:order (SOCOM 1's iso-word token DP object at 0x356970 ends with its LOCAL ScoreCompare, as this object ends at 0x4EB5E8; a qsort comparator of the tokens' int at +4: -1, 0, 1) -- the gcc lane, round 11c
 0x004EB5E8 0x1EC func_004EB5E8  # OVL2 unaligned
 0x004EB7D8 0x3C0 func_004EB7D8  # OVL2 unaligned
@@ -9075,7 +9075,7 @@
 0x00500EB8 0x8 GetpCachedDistances  # OVL2 unaligned; s1:order (SOCOM 1's distsil object, after ConstructDistCalc as this row; the same body, `return d->f108`) -- the gcc lane, round 16c
 0x00500EC0 0x8 GetDistanceOffset  # OVL2; s1:order (SOCOM 1's distsil object, next; the same body, `return d->f96`) -- the gcc lane, round 16c
 0x00500EC8 0x12C CalculateDistance  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: CalculateDistance after GetDistanceOffset, as this row; the same body -- the tables at +52 summed at the frame's codewords, less +96, as a short) -- the gcc lane, round 16c
-0x00500FF8 0x1B4 func_00500FF8  # OVL2 unaligned
+0x00500FF8 0x1B4 CalculateDistance4Bit  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: CalculateDistance4Bit after CalculateDistance, as here; the same body, 0x1B8 there -- the 4-bit tables' nibble sum) -- the gcc lane, round 17c
 0x005011B0 0x8 IdleDistCalcProcess  # OVL2; s1:slot (ConstructDistCalc hands this row to tosBaseBlockConstruct as its process function, where SOCOM 1's ConstructDistCalc hands IdleDistCalcProcess, 0x36C5E8; the object's last function in both) -- the gcc lane, round 16c
 0x005011B8 0x74 ConstructGenderFilter  # OVL2 unaligned; s1:align
 0x00501230 0x124 ProcessGenderFilter  # OVL2; s1:order (SOCOM 1's object 0x36C5F0 holds ProcessGenderFilter, ConstructGenderFilter, ControlGenderFilter, InitGenderFilter; ConstructGenderFilter passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
@@ -9515,9 +9515,9 @@
 0x0051BD40 0x188 ReadCellTableCvt<Q26CAiMap5links,Q26CAiMap4link,9links_v22,8link_v22>__FR7CFileIORQ26CAiMap5links_b  # OVL2; ours, the AI core round 12 (SOCOM 1's ReadCellTableCvt by its shape; read_v19 to read_v22 call it for the links, read_v23 reads them as they lie: the old link is SOCOM 1's 8 bytes, each made a 12-byte link of kind 8)
 0x0051BED0 0x198 func_0051BED0  # OVL2; OVL2's copy of the pod vectors' reserve (OVL1 0x1EEBA0, the same 0x198 bytes but for relocated fields; the AI map's version readers reserve the layers with it); ovl-copy: reserve__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi
 0x0051C070 0x144 resize__Q23std64__vector_imp<Q26CAiMap4line,Q23std25allocator<Q26CAiMap4line>,0>FUi  # OVL2; s1:callee by hand (read_lines calls it on the lines at 0x128 with the count, as the demo's calls this resize)
-0x0051C1C0 0x68 func_0051C1C0  # OVL2
+0x0051C1C0 0x68 __dt__12CAiMapLocVecFv  # OVL2; by hand, the AI core round 18: CAiMapLocVec's out-of-line destructor (the deleter's destructor 0x515200 with 0, then the delete), byte-exact from ai_mapio.cpp's template tail once read_lines/read_routes call the tables' resizes as members
 0x0051C230 0x11C resize__Q23std66__vector_imp<Q26CAiMap5route,Q23std26allocator<Q26CAiMap5route>,0>FUi  # OVL2; s1:callee by hand (read_routes calls it on the routes at 0x140 with the count, as the demo's calls this resize)
-0x0051C350 0x98 func_0051C350  # OVL2
+0x0051C350 0x98 __dt__Q26CAiMap5routeFv  # OVL2; by hand, the AI core round 18: CAiMap::route's destructor, byte-exact from ai_mapio.cpp's template tail; the routes' erase 0x51DBA0 calls it on the elements past the new end
 0x0051C3F0 0xA4 resize__Q23std68__vector_imp<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>,0>FUi  # OVL2; s1:callee by hand (ReadCellTable<readers, reader> calls it with the count where the demo's calls this resize)
 0x0051C4A0 0x6C resize__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FUi  # OVL2; s1:callee by hand (ReadCellTable<CAiMapLocVec, CAiMapLoc> calls it with the count where the demo's calls this resize)
 0x0051C510 0x120 erase__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FP9CAiMapLocP9CAiMapLoc  # OVL2; by hand, the MSL lane (include/vector's class erase over CAiMapLoc, byte-exact from ai_mapio.cpp's template tail: vector<CAiMapLoc>::resize, 0x51C4A0, calls it for a cut)
@@ -9530,19 +9530,19 @@
 0x0051CCD0 0x8 func_0051CCD0  # OVL2
 0x0051CCE0 0x8 func_0051CCE0  # OVL2
 0x0051CCF0 0x4B8 insert__Q23std64__vector_imp<Q26CAiMap4line,Q23std25allocator<Q26CAiMap4line>,0>FPQ26CAiMap4lineUiRCQ26CAiMap4line  # OVL2; by hand, the AI core round 12 (the lines' class insert: resize<line> 0x51C070 calls it on its growing arm with the end, the count and an empty line)
-0x0051D1B0 0x5C func_0051D1B0  # OVL2
+0x0051D1B0 0x5C __ct__Q26CAiMap4lineFRCQ26CAiMap4line  # OVL2; by hand, the AI core round 18: CAiMap::line's implicit copy constructor -- the cells' vector zeroed and filled through init<const CAiMapLoc *> (0x51E620), then the line_data word at 0xC copied; byte-exact from ai_mapio.cpp's tail (the lines' class insert and resize call it)
 0x0051D210 0x8 func_0051D210  # OVL2; OVL2's copy of include/new's placement new (the MSL headers round 4: insert<CVehicleRdrEntry> 0x534630 and the AI map tables' inserts 0x51CCF0/0x51DD50 call it six times each through construct()); ovl-copy: __nw__FUiPv
 0x0051D220 0x1F0 erase__Q23std68__vector_imp<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>,0>FPQ26CAiMap6readerPQ26CAiMap6reader  # OVL2; by hand, the AI core round 12 (the readers' range erase: resize<reader> 0x51C3F0 calls it on its shrinking arm with data + n and data + size)
 0x0051D410 0x78C insert__Q23std68__vector_imp<Q26CAiMap6reader,Q23std27allocator<Q26CAiMap6reader>,0>FPQ26CAiMap6readerUiRCQ26CAiMap6reader  # OVL2; by hand, the AI core round 12 (the readers' class insert: resize<reader> 0x51C3F0 calls it on its growing arm with the end, the count and a reader built by 0x52FD70)
-0x0051DBA0 0x1A8 func_0051DBA0  # OVL2
-0x0051DD50 0x568 func_0051DD50  # OVL2
-0x0051E2C0 0x168 func_0051E2C0  # OVL2
+0x0051DBA0 0x1A8 erase__Q23std66__vector_imp<Q26CAiMap5route,Q23std26allocator<Q26CAiMap5route>,0>FPQ26CAiMap5routePQ26CAiMap5route  # OVL2; by hand, the AI core round 18: the routes' range erase -- resize<route> 0x51C230 calls it on its shrinking arm (and 0x52F8B8), each element's two cell vectors assigned through do_assign<const CAiMapLoc *> 0x51E7A0, the tail destroyed through ~route 0x51C350 (ai_mapio.cpp emits it, 0x198 against 0x1A8)
+0x0051DD50 0x568 insert__Q23std66__vector_imp<Q26CAiMap5route,Q23std26allocator<Q26CAiMap5route>,0>FPQ26CAiMap5routeUiRCQ26CAiMap5route  # OVL2; by hand, the AI core round 18: the routes' class insert -- resize<route> 0x51C230 calls it on its growing arm; it builds elements through the placement new 0x51D210 and the route's copy constructor 0x51E2C0 and assigns through do_assign<const CAiMapLoc *> 0x51E7A0 (ai_mapio.cpp emits it, 0x478 against 0x568: the class inserts' question)
+0x0051E2C0 0x168 __ct__Q26CAiMap5routeFRCQ26CAiMap5route  # OVL2; by hand, the AI core round 18: CAiMap::route's implicit copy constructor -- its two cell vectors (waypoints, path) through init<const CAiMapLoc *> (0x51E620); byte-exact from ai_mapio.cpp's tail (the routes' class insert and resize call it)
 0x0051E430 0x9C resize__Q23std54__vector_imp<8name_v20,Q23std20allocator<8name_v20>,0>FUi  # OVL2; by hand, the AI core round 12 (the old names' resize: ReadCellTableCvt<names> 0x51BBE0 calls it on its local vector with the count)
 0x0051E4D0 0x6C resize__Q23std54__vector_imp<8link_v22,Q23std20allocator<8link_v22>,0>FUi  # OVL2; by hand, the AI core round 12 (the old links' resize: ReadCellTableCvt<links> 0x51BD40 calls it on its local vector with the count)
 0x0051E540 0x68 __dt__Q23std56__vector_deleter<8name_v20,Q23std20allocator<8name_v20>>Fv  # OVL2; by hand, the AI core round 12 (ReadCellTableCvt<names> 0x51BBE0 destroys its local vector of old names with it, a1 0)
 0x0051E5B0 0x68 __dt__Q23std56__vector_deleter<8link_v22,Q23std20allocator<8link_v22>>Fv  # OVL2; by hand, the AI core round 12 (ReadCellTableCvt<links> 0x51BD40 destroys its local vector of old links with it, a1 0)
-0x0051E620 0x17C func_0051E620  # OVL2
-0x0051E7A0 0x368 func_0051E7A0  # OVL2
+0x0051E620 0x17C init<PC9CAiMapLoc>__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FPC9CAiMapLocPC9CAiMapLocQ23std20forward_iterator_tag_v  # OVL2; by hand, the AI core round 18: include/vector's class range init over CAiMapLoc, byte-exact from ai_mapio.cpp's template tail once read_lines/read_routes call the lines' and routes' resize as members (the cells' copy constructors 0x51D1B0/0x51E2C0 call it with x.data and x.data + x.size)
+0x0051E7A0 0x368 do_assign<PC9CAiMapLoc>__Q23std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>FPC9CAiMapLocPC9CAiMapLocQ23std20forward_iterator_tag_v  # OVL2; by hand, the AI core round 18: include/vector's class range assign over CAiMapLoc (MSL's do_assign), byte-exact from ai_mapio.cpp's template tail (the lines' and routes' element assignments reach it through CAiMapLocVec's)
 0x0051EB10 0x378 erase__Q23std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>FPQ26CAiMap4namePQ26CAiMap4name  # OVL2; by hand, the AI core round 12 (the names' range erase: resize<name> 0x51C630 calls it on its shrinking arm with data + n and data + size)
 0x0051EE90 0x90C insert__Q23std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>FPQ26CAiMap4nameUiRCQ26CAiMap4name  # OVL2; by hand, the AI core round 12 (the names' class insert: resize<name> 0x51C630 calls it on its growing arm with the end, the count and a default name)
 0x0051F7A0 0x3D0 erase__Q23std68__vector_imp<Q26CAiMap6action,Q23std27allocator<Q26CAiMap6action>,0>FPQ26CAiMap6actionPQ26CAiMap6action  # OVL2; by hand, the AI core round 12 (the actions' range erase: resize<action> 0x51C6D0 calls it on its shrinking arm with data + n and data + size)
@@ -9561,10 +9561,10 @@
 0x00524160 0x8 clear__Q23std56__vector_deleter<8link_v22,Q23std20allocator<8link_v22>>Fv  # OVL2; by hand, the AI core round 12 (the old links' deleter destructor 0x51E5B0 calls it first, as every deleter destructor calls its clear)
 0x00524170 0x4E8 func_00524170  # OVL2
 0x00524660 0xF4 func_00524660  # OVL2
-0x00524760 0x120 PointInPath__7CAiPathCFRC9CAiMapLocPUi  # OVL2; the AI core round 17: SOCOM 1's PointInPath by its body (the demo's 0x193540, 0xE4: none without points or the snake flag 4, each point within its width of the cell -- |dx| unsigned, |dy| signed, against the width byte -- its index counted from the back); SOCOM II adds the map id's test and walks the class iterator; the leg smoother 0x525C80, ExtendPath 0x52BDF0 (twice), CAiSFollow::Tick 0x5FB1C0 and 0x5FD790 call it
-0x00524880 0xD0 FindPoint__7CAiPathCFRC9CAiMapLocPUi  # OVL2; s1:order by hand (the demo's PointInPath 0x193540, the first of the points' functions before PrintPath in both builds: the points walked for the cell, its index handed back when asked; SOCOM II drops the width test -- ai_path.cpp); the AI core round 17: the point on the cell itself (the name ours, new in SOCOM II): the points walked for x and y equal, the forward index handed back -- no snake flag, no width; CAiSBreach::Tick 0x5F2120 calls it. PointInPath by place before, but SOCOM 1's PointInPath body (the demo's 0x193540: flag 4, the widths, the index from the back) is 0x524760
+0x00524760 0x120 PointInPath__7CAiPathFRC9CAiMapLocPUi  # OVL2; the AI core round 17: SOCOM 1's PointInPath by its body (the demo's 0x193540, 0xE4: none without points or the snake flag 4, each point within its width of the cell -- |dx| unsigned, |dy| signed, against the width byte -- its index counted from the back); SOCOM II adds the map id's test and walks the class iterator; the leg smoother 0x525C80, ExtendPath 0x52BDF0 (twice), CAiSFollow::Tick 0x5FB1C0 and 0x5FD790 call it; the AI core round 18: not const in SOCOM II (SOCOM 1's was) -- its walk re-reads the count and data through this for each pass's end test as FindPoint's does, which only the non-const member over the points' reference count gives (ai.h)
+0x00524880 0xD0 FindPoint__7CAiPathFRC9CAiMapLocPUi  # OVL2; s1:order by hand (the demo's PointInPath 0x193540, the first of the points' functions before PrintPath in both builds: the points walked for the cell, its index handed back when asked; SOCOM II drops the width test -- ai_path.cpp); the AI core round 17: the point on the cell itself (the name ours, new in SOCOM II): the points walked for x and y equal, the forward index handed back -- no snake flag, no width; CAiSBreach::Tick 0x5F2120 calls it. PointInPath by place before, but SOCOM 1's PointInPath body (the demo's 0x193540: flag 4, the widths, the index from the back) is 0x524760; the AI core round 18: not const -- the walk keeps this in a0 and re-reads the points' count and data at this+0x9C/0xA0 for each pass's end test, byte-exact as a non-const member over the points' reference count (ai.h); the const spelling hoisted the end
 0x00524950 0x380 PrintPath__7CAiPathCFPCc  # OVL2; s1:callee by hand (PostProcess calls it when bit 6 of m_flags is set, where SOCOM 1's calls PrintPath__7CAiPathCFv; SOCOM II passes a name -- "dbg_path" -- and builds the text with sprintf/strcat; TickPathPlanner and the AI states call it too)
-0x00524CD0 0x2C func_00524CD0  # OVL2
+0x00524CD0 0x2C SetPathType__7CAiPathFQ27CAiPath9PATH_TYPE  # OVL2; s1:order by hand, the AI core round 18 (the SEALs lane's lead, round 18): SOCOM 1's SetPathType (the demo's 0x1938F0) word for word but the state's offset (0x80 here, 0x78 there) and one join pad -- refused in state 2 (PLANNING), the type stored at 9, whether it took returned; CSealCtrlAi::SetRoute calls it with GetDefaultRouteType's result where SOCOM 1's calls SetPathType
 0x00524D00 0x48 PopPoint__7CAiPathFP9CAiMapLoc  # OVL2; ours (new in SOCOM II, among the points' functions after PrintPath: the last 8-byte point of m_points (0x98) taken off, its cell handed back when asked, a bool; the SEALs call it -- ai_path.cpp)
 0x00524D50 0x4AC func_00524D50  # OVL2
 0x00525200 0x8 func_00525200  # OVL2
@@ -9643,8 +9643,8 @@
 0x0052BDF0 0x518 func_0052BDF0  # OVL2
 0x0052C310 0x8 func_0052C310  # OVL2
 0x0052C320 0x284 GetLocationDelta__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 15 (the demo's GetLocationDelta 0x199610, between SmoothPath and RegisterPathPlan as 0x52C310/0x52C5B0 are here: the same-map Manhattan sum, two TransformTo calls, _max<Ui> of the maps' cell counts; SOCOM II adds map 0 as the common grid)
-0x0052C5B0 0xC func_0052C5B0  # OVL2
-0x0052C5C0 0x608 func_0052C5C0  # OVL2
+0x0052C5B0 0xC RegisterPathPlan__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP7CAiPath  # OVL2; s1:exact by hand, the AI core round 18: SOCOM 1's three-argument RegisterPathPlan (the demo's 0x199860) word for word -- the path moved to t0 and the five-argument RegisterPathPlan 0x52C5C0 tail-called with a count of 1
+0x0052C5C0 0x608 RegisterPathPlan__7CAiMapsFRC9CAiMapLocPC9CAiMapLociP7CAiPath  # OVL2; s1:order by hand, the AI core round 18 (the SEALs lane's lead, round 18): CSealCtrlAi::SetRoute 0x562200 calls it with AiMaps, the start cell, the cells, their count and the path at the point SOCOM 1's SetRoute calls RegisterPathPlan; right after its three-argument wrapper 0x52C5B0, as SOCOM 1's 0x199870 follows 0x199860
 0x0052CBD0 0xAC CanSeeLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A480, after ComputeLineVisibility: the two cells' common map's CanSeeLine, false across maps)
 0x0052CC80 0xAC CanTravelLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A570, after CanSeeLine: the common map's CanTravelLine)
 0x0052CD30 0xDC GetAltitude__7CAiMapsFRC9CAiMapLocRf  # OVL2; s1:order by hand (the demo's 0x19A660, after CanTravelLine in both builds: the cell's map's altitude, its lookup inlined one level -- GetCell 0x511F80 and the cell's altitude 0x516940 called)

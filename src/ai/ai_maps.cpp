@@ -464,6 +464,13 @@ inline CAiMap *map_of(CAiMaps *maps, const CAiMapLoc &loc)
     return maps->GetMapByIndex(loc.m_mapid);
 }
 
+/* the one-goal plan: the goal as a run of one (SOCOM 1's three-argument RegisterPathPlan, the
+ * demo's 0x199860 word for word: the path moved to t0 and the five-argument form tail-called) */
+bool CAiMaps::RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc &goal, CAiPath *path)
+{
+    return RegisterPathPlan(start, &goal, 1, path);
+}
+
 /* how many cells apart two cells are: on one map their x and y distances summed; across maps
  * both carried onto map 0's grid (SOCOM 1's GetLocationDelta carried the first onto the second's)
  * and measured there, the larger cell count when either cannot be, 10000 off the maps (0x52C320,

@@ -94,12 +94,12 @@ public:
 static float s_bludshotscale = 0.74f;
 
 /* a squad by its team (OVL2), and its SEALs by their place (SOCOM 1's GetSealByIndex, a
- * second argument added; no row named yet) */
+ * second argument added: CSealUnit::GetSealByIndex(int, int), 0x5EDBB0, the kit lane's round 19) */
 class CSealUnit {
 public:
     static CSealUnit *GetUnitByTeam(unsigned int team);
+    CZSealBody *GetSealByIndex(int index, int alive);
 };
-extern "C" CZSealBody *func_005EDBB0(CSealUnit *unit, unsigned int index, int alive);
 
 /* the team's names: SOCOM 1's DWARF moved by SOCOM II's sizes, with a health bar and a bitmap for
  * each of four teammates (laid out from the constructor) */
@@ -274,12 +274,12 @@ void CTeamNames::Init()
     CSealUnit *unit;
 
     if ((unit = CSealUnit::GetUnitByTeam(2)) != 0) {
-        SetupTeamNameEntry(0, func_005EDBB0(unit, 0, 0), true);
-        SetupTeamNameEntry(1, func_005EDBB0(unit, 1, 0), true);
+        SetupTeamNameEntry(0, unit->GetSealByIndex(0, 0), true);
+        SetupTeamNameEntry(1, unit->GetSealByIndex(1, 0), true);
     }
     if ((unit = CSealUnit::GetUnitByTeam(3)) != 0) {
-        SetupTeamNameEntry(2, func_005EDBB0(unit, 0, 0), true);
-        SetupTeamNameEntry(3, func_005EDBB0(unit, 1, 0), true);
+        SetupTeamNameEntry(2, unit->GetSealByIndex(0, 0), true);
+        SetupTeamNameEntry(3, unit->GetSealByIndex(1, 0), true);
     }
     float base = 15.0f + data_003E2FF8;
 

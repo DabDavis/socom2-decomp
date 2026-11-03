@@ -9,8 +9,8 @@
  * and s1:slot). The block runs a phoneme loop over the frames of a word being trained (twenty
  * phoneme cells and the garbage phoneme's two), back pointers taken from a free list of chunks
  * as in the DpScoreUw object. MakeUserWordsActiveDist, the object's last function, is
- * ctxutil.c's (byte-exact there). DynProgUserWords (round 16c) is written and OPEN, the
- * diagnosis at it. SendResultUserWords (round 12c) walks the backtrace as `for (; bt->next != 0; bt =
+ * ctxutil.c's (byte-exact there). DynProgUserWords (rounds 16c-17c) is byte-exact, its shapes
+ * at it. SendResultUserWords (round 12c) walks the backtrace as `for (; bt->next != 0; bt =
  * bt->next)` (a `next` variable copies the test's load differently), its score's nonzero arm
  * first; the frame counter and the +112 word are unsigned (both convert by the halving trick). */
 #include "tosblk.h"
@@ -291,20 +291,25 @@ static void SendResultUserWords(DPGENUW *e, void *arg, void *arg2)
     heap_Free(tos->heap, r);
 }
 
-/* a back pointer for phen off the free list (a chunk more when the list runs dry), after prev */
-#define NEWBACKTRACE(e, n, prev, phen)                  \
+/* a back pointer for phen off the free list (a chunk more when the list runs dry), after prev,
+ * into res; the caller's `node` is the macro's working pointer, one variable for every expansion
+ * (the target's s0 in both). res is set inside the do-while: after its LOOP_END note the first
+ * scheduling pass treats an insn as a barrier, so a `res = node` written after the macro stays
+ * below the stores, where the target's copy rises to just after `node->next = prev` */
+#define NEWBACKTRACE(e, res, prev, phen)                \
     do {                                                \
-        (n) = (e)->freelist;                            \
-        if ((n)->next == 0)                             \
-            (e)->freelist = AllocateBacktrace((e), (n)); \
+        node = (e)->freelist;                           \
+        if (node->next == 0)                            \
+            (e)->freelist = AllocateBacktrace((e), node); \
         else                                            \
-            (e)->freelist = (n)->next;                  \
-        (n)->next = (prev);                             \
+            (e)->freelist = node->next;                 \
+        node->next = (prev);                            \
         (prev)->count++;                                \
-        (n)->f4 = (phen);                               \
-        (n)->count = 0;                                 \
-        (n)->f8 = (e)->frame;                           \
+        node->f4 = (phen);                              \
+        node->count = 0;                                \
+        node->f8 = (e)->frame;                          \
         (e)->f232++;                                    \
+        (res) = node;                                   \
     } while (0)
 
 /* a back pointer let go: when nothing points at it any more, it and the nodes before it that only
@@ -354,43 +359,40 @@ static __inline__ GENCELL *WorstWordCell(GENCELL *cells)
 /* one frame of the phoneme loop: every cell's score less the best's, a cell entered from the
  * garbage phoneme or from the best word cell when that is cheaper than staying, the garbage
  * phoneme's second cell entered from the words; then each of the word's phonemes tried in the worst
- * word cell.
- * OPEN (round 16c; 0x60C against 0x61C, every block the target's in its order but two): (1) the
- * target keeps the new node (s0, both copies) apart from gnode (s4) and wnode (t3) -- with the
- * helper an inline returning its node, GCSE's copy propagation replaces gnode by the inline's node
- * everywhere (tools/ccdump.py -dG: "COPY-PROP: Replacing reg 91 ... with reg 170"), one long-lived
- * pseudo, and the frame pointer then takes the s-register the target gives the node; as this
- * macro on a shared node the copies survive and the frame goes to a caller-saved register round the
- * rare AllocateBacktrace (the target's t4 and `sq t4`), but wnode merges into the node instead
- * (the eq arm's `wnode = gnode` propagated). -fno-gcse gives the target's three registers -- and
- * loses three of the object's matched functions, so the source keeps them apart otherwise. (2) The
- * target loads the garbage penalty (+52) twice, `lh` for the first cell and `lhu` + sign extension
- * for the second (a halfword value live across the first cell's if/else: combine keeps the load it
- * folds), where a short local is promoted and loaded once. */
+ * word cell. Byte-exact (round 17c; open since round 16c at 0x60C) by four shapes, each read off
+ * cc1's dumps (tools/ccdump.py --dump "-dG -dS"): (1) the garbage penalty is the field read in
+ * both cells, `e->f52` -- GCSE's PRE then holds it as a halfword pseudo across the first cell's
+ * if/else and combine folds only the first use into `lh`, the target's `lh` and later `lhu` + sign
+ * extension (a short local is promoted and loaded once: 0x60C); (2) the eq arm sets node as it
+ * shares the garbage node (`wnode = node = gnode`): with node set in that block GCSE's copy
+ * propagation cannot turn `wnode = gnode` into `wnode = node` ("COPY-PROP: Replacing reg 91 in
+ * insn 434 with reg 94", then wnode replaced by node after the join: wnode merged into the node,
+ * the frame pointer's register order shifted); (3) the macro sets its result inside its
+ * do-while (above); (4) the clamp loop has a pointer of its own (`p`, the target's a0: sharing `c`
+ * with the later cells gives one pseudo, a3) and the words loop steps `w` itself (`w++`, `*w`: an
+ * index makes the giv a copy of w, `lw v0; move t1,v0`). */
 static int DynProgUserWords(DPGENUW *e, short *frame)
 {
-    GENCELL *cells, *best, *from, *c, *worst;
+    GENCELL *p, *cells, *best, *from, *c, *worst;
     BTNODE *gnode, *wnode, *old, *node, *prev;
     unsigned short *w;
     unsigned short phen, bphen;
-    short gpen;
     int min, enter, wordexit, gscore, s;
     unsigned short i;
     unsigned int j;
 
-    c = e->cells;
+    p = e->cells;
     for (i = 1; i < NWORDCELLS + 2; i++) {
-        if (c->score > 31622)
-            c->score = 31622;
-        c++;
+        if (p->score > 31622)
+            p->score = 31622;
+        p++;
     }
     cells = e->cells;
     best = BestWordCell(cells);
     min = best->score;
     wordexit = min + e->f54;
     c = &cells[NWORDCELLS];
-    gpen = e->f52;
-    enter = c->score + gpen;
+    enter = c->score + e->f52;
     if (c->score < min)
         min = c->score;
     bphen = best->phen;
@@ -406,22 +408,20 @@ static int DynProgUserWords(DPGENUW *e, short *frame)
     c++;
     if (c->score < min)
         min = c->score;
-    if (c->score + gpen < enter) {
+    if (c->score + e->f52 < enter) {
         phen = c->phen;
-        enter = c->score + gpen;
+        enter = c->score + e->f52;
         from = c;
     }
     prev = from->bt;
-    NEWBACKTRACE(e, node, prev, phen);
-    gnode = node;
+    NEWBACKTRACE(e, gnode, prev, phen);
     gnode->count++;
     if (bphen != phen) {
         prev = best->bt;
-        NEWBACKTRACE(e, node, prev, bphen);
-        wnode = node;
+        NEWBACKTRACE(e, wnode, prev, bphen);
         wnode->count++;
     } else {
-        wnode = gnode;
+        wnode = node = gnode;
         wnode->count++;
     }
 
@@ -454,10 +454,10 @@ static int DynProgUserWords(DPGENUW *e, short *frame)
 
     worst = WorstWordCell(e->cells);
     w = e->words;
-    for (j = 0; j < e->nwords; j++) {
-        s = enter + frame[w[j]] - min;
+    for (j = 0; j < e->nwords; j++, w++) {
+        s = enter + frame[*w] - min;
         if (s < worst->score) {
-            worst->phen = w[j];
+            worst->phen = *w;
             worst->score = s;
             old = worst->bt;
             worst->bt = gnode;

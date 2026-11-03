@@ -17,13 +17,14 @@
  * OPEN, resize<reader> (0x51C3F0), right size, 6 instructions: registers only -- the target keeps the
  * size in s1 and the end in s2 around the reader's out-of-line constructor (0x52FD70), this build the
  * other way round; the shape is include/vector's, which serves every other instance.
- * Still called through placeholders: the actions' (0x51C6D0: the action's constructor reads its id
- * from a global), the routes' and the lines' (0x51C230, 0x51C070: the target inlines the element's
- * two- and one-CAiMapLocVec constructor whole, six levels with include/vector's chain -- one more
- * level-6 candidate; the line's temporary's bits are line_data()'s, ai.h) */
-extern "C" void func_0051C230(CAiMap::routes *v, unsigned int n);
-extern "C" void func_0051C070(CAiMap::lines *v, unsigned int n);
-extern "C" void func_0051C6D0(CAiMap::actions *v, unsigned int n);
+ * OPEN, the routes' and the lines' (0x51C230, 0x51C070; called as members since round 18, which
+ * emits them, their insert and erase here -- every one of those copies misses, so the count is
+ * unchanged): the target inlines the element's two- and one-CAiMapLocVec constructor whole, six
+ * levels with include/vector's chain -- one more level-6 candidate (this build calls CAiMapLocVec()
+ * and CAiMapLoc() out of line, 0xAC and 0x13C against 0x144 and 0x11C); the line's temporary's bits
+ * are line_data()'s, ai.h. The lines' erase 0x51CB40 (0x128 vs 0x188) and insert 0x51CCF0 (0x440 vs
+ * 0x4B8) call the element's copy and __copy out of line where the target inlines them: the class
+ * inserts' question (the MSL lane's) */
 
 inline void table_resize(CAiMapLocVec &t, unsigned int n) { t.resize(n); }
 inline void table_resize(CAiMap::readers &t, unsigned int n) { t.resize(n); }
@@ -484,7 +485,7 @@ bool CAiMap::read_lines(CFileIO &f)
     unsigned int count = 0;
 
     if (f.fread(&count, 4) == 4 && count) {
-        func_0051C070(&m_lineTable, count);
+        m_lineTable.resize(count);
         for (lines::iterator i = m_lineTable.begin(); i != m_lineTable.end(); ++i) {
             ReadCellTable<CAiMapLocVec, CAiMapLoc>(f, *i);
             if (m_version >= 10)
@@ -501,7 +502,7 @@ bool CAiMap::read_routes(CFileIO &f)
     unsigned int count = 0;
 
     if (f.fread(&count, 4) == 4 && count) {
-        func_0051C230(&m_routeTable, count);
+        m_routeTable.resize(count);
         for (routes::iterator i = m_routeTable.begin(); i != m_routeTable.end(); ++i) {
             f.fread((*i).m_region, 8);
             f.fread(&(*i).m_flags, 4);

@@ -16,7 +16,6 @@
 #include "../gamez/zsys/zsys.h"
 
 /* what the queue's functions call that is not written yet, ai_path.cpp's (OVL2 0x524950-0x5281AF) */
-extern "C" void func_00524950(CAiPath *path, const char *name);   /* the path drawn ("dbg_path") */
 extern "C" void func_00527900(CAiPath *path);   /* a planning path back to the queue's state */
 extern "C" void func_00527FC0(CAiPath *path, CAiPath::PATH_STATE state, int leg);
 
@@ -68,8 +67,8 @@ static unsigned int s_maxClosed;
  * search sets it from the path) */
 static float s_typeBias = 1.0f;
 /* the directions a node is left by: all eight in order, or the few a door allows (filled per node) */
-static char s_allDirs[8] = {0, 1, 2, 3, 4, 5, 6, 7};
-static char s_doorDirs[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+static CAiMap::DIR s_allDirs[8] = {CAiMap::N, CAiMap::NE, CAiMap::E, CAiMap::SE, CAiMap::S, CAiMap::SW, CAiMap::W, CAiMap::NW};
+static CAiMap::DIR s_doorDirs[8] = {CAiMap::N, CAiMap::NE, CAiMap::E, CAiMap::SE, CAiMap::S, CAiMap::SW, CAiMap::W, CAiMap::NW};
 
 /* the path a caller is building leg by leg (SOCOM 1's ai::_plan_path), and the priority from which
  * a queued path stops the one planning (ai.h) */
@@ -180,9 +179,9 @@ bool CAiStar::step(CAiPath *path, const CAiMapLoc &from, CAiMap::DIR dir, CAiMap
 }
 
 /* a limit passed: none set (0), or below the count (the name ours: materialised, then tested) */
-inline bool over_limit(unsigned int limit, unsigned int n)
+inline bool over_limit(unsigned int limit, const unsigned int &n)
 {
-    return limit && limit < n;
+    return limit ? limit < n : false;
 }
 
 /* the trace back's step: GetNeighbor's, the cell's traversability asked and its answer dropped --
@@ -207,11 +206,19 @@ inline bool next_cell(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMap
  * closes it and stops at the goal or a limit, else opens or improves its neighbours -- all eight
  * directions, or the ones a door on the cell allows; done, the path's points are traced back from
  * the goal by the directions the cells keep.
- * OPEN, 0xF30 against 0xF48 (the calls, their order and the frame's slots right): the target keeps
- * the nodes' cost fields' ADDRESSES in saved registers (s0/s1 = &cur.m_g/&cur.m_h in the first
- * block, s8 = &cur.m_g and s1/s0 = &n.m_g/&n.m_h through the loop, `lh 0(s8)`), where these plain
- * field accesses fold into sp offsets -- as if the costs were reached through references (accessors
- * returning short &?); SOCOM 1's find_path does the same. The rest follows from the registers */
+ * OPEN, right size since the AI core's round 18 (0xF30 before), 159 aligned rows off: the limit
+ * tests through over_limit taking the count by reference (the limit loaded and tested first, the
+ * count in the delay slot), the door's own direction stored first, the "has a direction" test an
+ * inline accessor (the next statement reloads the field), the direction tables CAiMap::DIR arrays
+ * (byte enums: copied with lb, read for arithmetic with lbu) and the push's failure laid out last
+ * (`if (Push) {...} else {...; break;}`) each moved it closer. Left: (1) the first block keeps
+ * &cur.m_h in s1 as it keeps &cur.m_g in s0 -- MW gives a local field's address a register at
+ * three uses in a block (measured: a third read of m_h moves it there, and m_g falls back to sp
+ * offsets at two), the target has three of each where this source has two of m_h (a dead store,
+ * `(void)cur.m_h`, references and accessors did not supply the third); (2) IsDoor's `||`
+ * materialised into a bool (daddiu/move) before the branch; (3) the loop's push_heap temporaries
+ * and the trace back's cells sit 8 bytes higher in the target's frame (one 8-byte temporary more);
+ * (4) registers following from these. SOCOM 1's find_path keeps the same cost addresses */
 void CAiStar::find_path(CAiPath *path)
 {
     node cur;
@@ -264,34 +271,34 @@ void CAiStar::find_path(CAiPath *path)
         if (status != CAiPath::ASTAR_SUCCESS)
             break;
 
-        const char *dirs = s_allDirs;
+        const CAiMap::DIR *dirs = s_allDirs;
         int ndirs = 8;
 
         if (cell->HasAction()) {
             CAiMap::action *a = m_map->GetCellAction(cur.m_loc);
 
             if (a->GetType() == 6) {
+                s_doorDirs[0] = (CAiMap::DIR)a->m_direction;
                 ndirs = 1;
                 dirs = s_doorDirs;
-                s_doorDirs[0] = a->m_direction;
-            } else if (a->m_direction != 8) {
+            } else if (a->HasDirection()) {
                 ndirs = 2;
-                s_doorDirs[0] = a->m_direction;
-                s_doorDirs[1] = (s_doorDirs[0] + 4) % 8;
+                s_doorDirs[0] = (CAiMap::DIR)a->m_direction;
+                s_doorDirs[1] = (CAiMap::DIR)((s_doorDirs[0] + 4) % 8);
                 if (!a->IsDoor()) {
-                    s_doorDirs[2] = (s_doorDirs[0] + 9) % 8;
-                    s_doorDirs[3] = (s_doorDirs[0] + 7) % 8;
-                    s_doorDirs[4] = (s_doorDirs[1] + 9) % 8;
-                    s_doorDirs[5] = (s_doorDirs[1] + 7) % 8;
-                    s_doorDirs[6] = (s_doorDirs[0] + 10) % 8;
-                    s_doorDirs[7] = (s_doorDirs[0] + 6) % 8;
+                    s_doorDirs[2] = (CAiMap::DIR)((s_doorDirs[0] + 9) % 8);
+                    s_doorDirs[3] = (CAiMap::DIR)((s_doorDirs[0] + 7) % 8);
+                    s_doorDirs[4] = (CAiMap::DIR)((s_doorDirs[1] + 9) % 8);
+                    s_doorDirs[5] = (CAiMap::DIR)((s_doorDirs[1] + 7) % 8);
+                    s_doorDirs[6] = (CAiMap::DIR)((s_doorDirs[0] + 10) % 8);
+                    s_doorDirs[7] = (CAiMap::DIR)((s_doorDirs[0] + 6) % 8);
                     ndirs = 8;
                 }
                 dirs = s_doorDirs;
             }
         }
         for (int i = 0; i < ndirs; i++) {
-            CAiMap::DIR d = (CAiMap::DIR)dirs[i];
+            CAiMap::DIR d = dirs[i];
             CAiMapLoc to;
             CAiCell *ncell = 0;
 
@@ -318,12 +325,13 @@ void CAiStar::find_path(CAiPath *path)
                 ncell->m_astar_dir = (d + 4) % 8;
                 ncell->m_astar_f = n.f();
                 ncell->m_astar_g = n.m_g;
-                if (!s_open.Push(n)) {
+                if (s_open.Push(n)) {
+                    std::push_heap(s_open.begin(), s_open.end(), s_order);
+                    m_stats->nodes_added++;
+                } else {
                     status = CAiPath::ASTAR_FAILURE_UNKNOWN;
                     break;
                 }
-                std::push_heap(s_open.begin(), s_open.end(), s_order);
-                m_stats->nodes_added++;
             } else if (ncell->m_astar_f != -1 && n.m_g < ncell->m_astar_g) {
                 std::vector<node>::iterator it = find_open(to);
 
@@ -553,7 +561,7 @@ bool ai::TickPathPlanner(float, void *)
         case CAiPath::UNKNOWN:
         case CAiPath::COMPLETE:
         case CAiPath::FAILED:
-            func_00524950(path, "dbg_path");
+            path->PrintPath("dbg_path");
             path_queue.pop_front();
             break;
         }

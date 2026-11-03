@@ -1888,6 +1888,39 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 25** (zui_2d.cpp's list-box items: ListItem, CListItemTypeImpl and the five looks):
+  - zui_2d.cpp holds SOCOM 1's ListItem and CListItemTypeImpl and the five item looks (string, timed, wrapped, image, array)
+    in the unit's anonymous namespace: 31 rows, and about 40 drafted ones from source (CRenderableString's constructor
+    and destructor, the thunk 0x37D000); ListItem's vptr is at 0x2C, after its data members (`lw t9,44(item)`);
+    CListItemTypeImpl's table 0x4070F0 is 0x50 bytes (resized at integration);
+  - A FLAG SET THROUGH AN INLINE SETTER CAN PUSH A CONSTRUCTOR OVER inline_max_size: with the string look's flag set
+    through SetColored(false) the timed look's constructor exceeds 256 units (252 without -- found by bisecting the
+    pragma), MakeTimedText inlines it one level, and ListItem's three setters become too big for `-inline auto`;
+  - a same-unit destructor holding an inline chain too tall to inline whole is refused by `-inline auto`
+    (~CRenderableString deleting a full C2DFont through c2dfont.h) and makes a member-holding implicit destructor tall
+    too; a class whose first non-inline virtual is declared but not defined emits neither its vtable nor its inline
+    virtuals' copies; a forwarder's call shows the callee's argument count (ListItem::SetPos sets a1 and a2 only: the
+    looks' SetPos take two ints, not SOCOM 1's four); `delete m_impl;` gives one null test, `if (m_impl) delete
+    m_impl;` two;
+  - open: the array look's constructor 0x37B2F0 (10, all in the prologue: the target builds and stores the two vtable
+    addresses one after the other through v0); round 24's opens unchanged.
+- **Tells from the AI core, round 18** (PointInPath and FindPoint, the A* initialiser, ai_mapio.cpp's template tail):
+  - a class-vector walk re-reads both the size and the data each pass only when end() reads the count through a
+    REFERENCE accessor (`count()` on CAiPath::points) -- a plain `size_` lets MW keep size*8 out of the loop; where the
+    element size needs a multiply (GetRouteIndex, GetRegionContaining) the target hoists it anyway (a lead for the MSL
+    lane's end()); walking a member through `const_cast` in a const function lets MW hoist the loop's end, only a
+    non-const member re-reads it through `this` (PointInPath/FindPoint are non-const, against SOCOM 1's const name);
+  - a local struct field's address gets a saved register at three uses in a block, at two the accesses fold into sp
+    offsets (find_path, now the right size at 0xF48, wants a third use of cur.m_h); an inline helper taking its count by
+    reference loads it where it is used (a delay slot); an array of byte enums is read with lb when copied and lbu in
+    arithmetic; a constructor written to zero a static's members shows as stores in its initialiser
+    (__sinit_ai_astar.cpp: CAiPathQueue's three counters), the implicit one stores nothing; ai::quadratic stores the
+    square root back into `d`;
+  - respelling the two resizes as member calls made ai_mapio.cpp emit init/do_assign<const CAiMapLoc *> and line's and
+    route's copy constructors byte-exact (the line/route resizes, inserts and erases it also emits still miss: OPEN);
+    0x524CD0 SetPathType and 0x52C5C0 RegisterPathPlan with its wrapper 0x52C5B0 verified word for word against SOCOM 1;
+  - open: find_path (159 aligned rows: the third cur.m_h use, IsDoor's materialised bool, an 8-byte frame temporary),
+    CAiEventQ::Create (9), spores::GetRange (9), the MakeNoise family, plan_legcomplete, GetBaseName, AbortPathPlan.
 - **Tells from the SEALs, round 18** (THE Is() FALSE ARM, SetRoute, seven seal_ai.cpp/seal_body.cpp rows):
   - THE KIT'S OPEN `Is()` SHAPE: the target builds the state test whole in one register with an explicit `move v0,zero`
     false arm -- `StackNotEmpty() ? (m_stateStack.GetState()->m_state == s ? true : false) : false` (the first operand an
@@ -6372,6 +6405,62 @@ GetpCachedDistances, GetDistanceOffset, CalculateDistance (`s1:order`, each body
 (`s1:calls`), ProcessMel, IdleDistCalcProcess, ControlDistSilProcess (`s1:slot`: their constructors'
 process and control functions). casr.h's LANGVT gains five slots (GetNbrState, GetNbrErgodicPhenomes,
 GetNbrGastone, GetpGastone, GetpProbMatrix). No tool changed.
+
+**Round 17c: DynProgUserWords, the iso-word DP object, six objects' small functions by SOCOM 1's bodies.**
+
+- **A field read twice is a halfword pseudo across a branch; a short local is one load.**
+  DynProgUserWords' garbage penalty (+52) is `e->f52` in both cells: GCSE's PRE then keeps it as a
+  HImode pseudo across the first cell's if/else, combine folds only the first use into `lh` (keeping
+  the load for the second), and the second use sign-extends after the join -- the target's `lh`, then
+  `lhu` + `sll/sra` (round 16c's 0x60C to the right size). A `short gpen` local is promoted and loaded
+  once. `build/scratch/gcc/p_hi.c` shows it in four lines.
+- **GCSE's copy propagation merges a copy's destination into its source; a set in the using block
+  stops it.** The eq arm's `wnode = gnode` (gnode a copy of the shared `node`) is rewritten `wnode =
+  node`, and once both arms copy node, wnode's uses after the join become node too ("COPY-PROP:
+  Replacing reg 92 ... with reg 94", `tools/ccdump.py --dump -dG`): wnode is gone and the allocation
+  order shifts. cprop replaces only when the source register is not set in the using block before the
+  use, so the eq arm written `wnode = node = gnode` keeps wnode apart -- the target's `move t3,s4`
+  there. -fno-gcse, round 16c's lead, loses the f52 shape above: the vendor's GCSE was on.
+- **An insn after a do-while(0)'s LOOP_END note is a scheduling barrier** (haifa's sched_analyze
+  makes it depend on everything before): a macro's result copied after the macro stays below its
+  stores, where the target's copy rises to just after `node->next = prev`; set inside the do-while
+  (`(res) = node`), it schedules as the target's. A macro without the do-while does the same.
+- **Shapes, measured**: a loop pointer of its own where a shared one makes one pseudo for two
+  ranges (DynProgUserWords' clamp loop, the target's a0); a pointer stepped by the loop (`w++`, `*w`)
+  where an index makes the giv a copy (`lw v0; move t1,v0`); a pointer difference taken into a
+  variable right after the end pointer (CalcAccuracyCtxInfo: combine folds `(p + n) - p` to the
+  target's `(n << 2) >> 2`, where the subtraction written after the `*end` load stays `subu`); a
+  result returned once to a final move (t1, not v0 at each exit); a fill bound `size - 1` (the
+  unroller's `move t2,s1` copy of the bound); `*p->wr++ = x` (the field's address taken once, the
+  target's `addiu a1,a0,136`); a `for (; k < n; )` where a `while` gets its exit test copied to the
+  top (FindBestRecognised, 8 bytes); the sum loop's own entry test the only one (an `if (n)` around
+  it adds a second `beqz`).
+- **The iso-word token DP object is SOCOM 1's with one word inserted after +64** (fields from SOCOM
+  1's +68 on are 4 higher): the node wheel at +72 is a ring of tree-node pointers (base, head, tail,
+  end, size); a tree node is 12 bytes (children, the fast-allocator node, the word, the child count),
+  given back by size into the scheduler's fastallo lists at `tos + 104 + 4n`. A difference of two
+  halfword addresses into one array is the target's `sll 1; sra 1` (GCC divides the scaled difference
+  back); CalcNrNodes reads the child count before the depth test and steps the child pointer in the
+  `for` (`c++` inside the call gives each unrolled copy a pointer of its own).
+- **Open, diagnosed in place**: the language file's offset sums (`_langGetpErgodicPhenomes` 6,
+  `_langGetpErgodicPenalty` 15-18: thirteen more spellings -- a pointer local of each type, the counts
+  summed into an int first, the base added last -- leave fold's and combine's reassociation as it was);
+  InitNewUtterance (right size, 14 words: the word table's next entry loaded first in the target, as
+  SOCOM 1's, the other way here in every spelling of the base, the word and the count; the closing
+  stores' order -- 120 orders by `tools/ccperm.py`, the nearest 13).
+
+Hand-written in round 17c: `asr/dpgenuw.c` (DynProgUserWords closed: 9 of 10), `asr/ctxinfo.c` (new:
+SOCOM 1's context-information object 0x33E418 -- CalcAccuracyCtxInfo, CreateMenuMasks; 2 of 2),
+`asr/distsil.c` (+1, CalculateDistance4Bit: 7 of 7), `asr/pitchcomb.c` (new: SOCOM 1's pitch
+combiner object 0x36CE48 -- NormE_Processing, 1 of 1), `asr/shs.c` (new: SOCOM 1's SHS/VUV object
+0x36E330 -- ControlSHS_VUV, 1 of 1), `asr/nbestdp.c` (+1, FindBestRecognised: 3 of 3), `asr/isowdp.c`
+(+6: FreeIsoWordTokenDp, ExpandGarbageArrays@isowdp, InitIsoWordTokenDpProcess, CalcNrNodes@isowdp,
+ConstructIsoWordTokenDp and IdleProcess@isowdp over their drafts; InitNewUtterance OPEN; 7 of 8);
+`asr/pitchdp.c` calls powf by name -- 11 rows new to the map's byte-exact rows, 2 matched drafts
+superseded; `src/lib/asr` 470 of 514 (457 of 501 before). 4 rows named (`s1:order`, SOCOM 1's
+LOCALs at the same positions, each body checked: CalculateDistance4Bit, ExpandGarbageArrays@isowdp,
+CalcNrNodes@isowdp, IdleProcess@isowdp -- the N-best object's copies keep the bare names). No tool
+changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
