@@ -30,6 +30,7 @@ public:
     virtual void On();
     void OnPauseTest();
     void UnInit();
+    void HideTimer();
 
     /* SOCOM 1's DWARF names at SOCOM II's offsets (read off the constructor 0x218DE0 and the
      * destructor 0x219090); SOCOM II's own members named by offset */
@@ -225,4 +226,14 @@ void BitmapReticule::UnInit()
     m_lase_update.ClearAndWipe();
     m_detonation_update.ClearAndWipe();
     m_enemy_name.ClearAndWipe();
+}
+
+/* the timer's four bitmaps faded out (SOCOM II's, the unit's first in the image: CHUD::ReInit_Init
+ * calls it; the name ours) */
+void BitmapReticule::HideTimer()
+{
+    m_timer_IMAGE.SetTrans(0.0f);
+    m_timer_BKGRD.SetTrans(0.0f);
+    m_socom2_43a0.SetTrans(0.0f);
+    m_socom2_4420.SetTrans(0.0f);
 }

@@ -285,6 +285,7 @@ public:
     virtual ~BitmapReticule();
     void UnInit();
     void OnPauseTest();
+    void HideTimer();
     unsigned char _18[0x47b0 - 0x18];
 } __attribute__((aligned(16)));
 
@@ -716,7 +717,6 @@ extern "C" void func_003C6980();
 extern "C" void func_0022D190();
 extern "C" void func_00242B20(CSpectatorInfo *info);
 extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, int c, float time);
-extern "C" void func_00213610(BitmapReticule *reticule);
 extern "C" void func_002371A0(CTCM *tcm);
 
 
@@ -774,7 +774,7 @@ void CHUD::ReInit_Init()
         m_newmap->ReInit();
     }
     func_0022D190();
-    func_00213610(&m_bitmapReticule);
+    m_bitmapReticule.HideTimer();
     m_ammodisplay.Reset();
     CameraZoom::Reset();
     func_002371A0(&theTCM);

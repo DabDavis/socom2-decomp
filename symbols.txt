@@ -1910,7 +1910,7 @@
 0x002133E0 0x1B0 reserve__Q23std62__vector_imp<11nav_package,Q23std24allocator<11nav_package>,0>FUi  # OVL1; by hand (MapCompass's constructor reserves 48)
 0x00213590 0x8 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the deleter's clear, whole: vector<nav_package>::clear's copy calls it out of line)
 0x002135A0 0x68 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the vector's destructor's last level)
-0x00213610 0x70 func_00213610  # OVL1
+0x00213610 0x70 HideTimer__14BitmapReticuleFv  # OVL1; ours by hand (the HUD lane, round 24: hud_bitmapreticule.cpp's first in the image, so defined last -- the timer's four bitmaps (0x4290, 0x4310, 0x43A0, 0x4420) faded out through their tables' SetTrans; CHUD::ReInit_Init calls it; new in SOCOM II)
 0x00213680 0x1BC func_00213680  # OVL1
 0x00213840 0x220 func_00213840  # OVL1
 0x00213A60 0x3C0 func_00213A60  # OVL1
