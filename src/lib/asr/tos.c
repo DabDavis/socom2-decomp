@@ -232,7 +232,8 @@ static unsigned char DestructArchitecture(TOS *t)
  * OPEN (1 word): the branch over ConstructBlock is `bnez` in the target and `bnezl` here (its slot,
  * the epilogue's `move v0,s2`, annulled: reorg takes v0 as live past the call) -- the queue
  * branch after it fills alike in both; the block test spelled through the inline lookup, a goto
- * past the call, an assignment in the test, constructors returning void or a value: the same. */
+ * past the call, an assignment in the test, constructors returning void or a value: the same;
+ * so is every optimisation switch of 2.96-ee-001003-1 (round 12c): a later SCE 2.96's reorg. */
 int tosCallControlFunc(TOS *t, unsigned char *msg, int arg, int n)
 {
     unsigned char ret = 0;

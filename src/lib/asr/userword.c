@@ -10,7 +10,8 @@
  * sltu: as one `&&` the final `return 0` is a join and keeps its branch): the flag test is `bnezl`
  * here and `bnez` in the target -- reorg takes the return's `move v0,zero` into the slot and
  * annuls it, though the fall-through is a call that sets v0. tosCallControlFunc (tos.c) and
- * UpdateExevStatus (casr.c) miss by the same word. */
+ * UpdateExevStatus (casr.c) miss by the same word; round 12c toggled every optimisation switch of
+ * 2.96-ee-001003-1 on all three and none moves it -- a later SCE 2.96's reorg (README). */
 
 #include "casr.h"
 

@@ -1378,7 +1378,10 @@
 0x00658700 0x3 ActiveBlocks_UTTFORMAT_LABELS  # OVL2; s1:data-seq (size SOCOM 1's; via casrActivateContext +1)
 0x00658708 0x2 ActiveBlocks_UTTFORMAT_LABELS_ISO  # OVL2; s1:data-seq (size SOCOM 1's; via casrActivateContext +1)
 0x00659118 0x5 LabelBlockIDs  # OVL2; s1:data-seq (size SOCOM 1's; via ScoreTranscriptions)
+0x00659230 0x54 g_SpeechMeanInit11kHz  # OVL2; s1:data (SOCOM 1's LOCAL 0x45EA88, 84 bytes, in the acne object's .rodata after the same 200.0f and 50 words: 21 floats, SOCOM 1's to the ulp -- 11 an ulp low, 2.96's parser on the same decimals; InitAcne stores its address as the speech mean's seed, as SOCOM 1's does) -- the gcc lane, round 12c
+0x00659288 0x54 g_NoiseFloors11kHz  # OVL2; s1:data (SOCOM 1's LOCAL 0x45EAE0, 84 bytes, right after g_SpeechMeanInit11kHz in both: 21 floats, SOCOM 1's to the ulp (the first an ulp low); InitAcne stores its address as the noise floors) -- the gcc lane, round 12c
 0x00659300 0x584 fLogOnePlusExp_lut  # OVL2; s1:data-seq (size SOCOM 1's; via HLnOnePlusExpHFloat)
+0x0065A3E0 0x18 Smoother1600Info11kHz  # OVL2; s1:data (SOCOM 1's GLOBAL 0x45FC60, 24 bytes, after Smoother1600Info8kHz (0x65A3C8 here, 0x45FC48 there): three {table, 21, 10} entries, their tables 0x6D0, 0x388 and 0x40 below it in both builds; InitAcne hands it to smtConstruct, as SOCOM 1's does) -- the gcc lane, round 12c
 0x0065A5F8 0x54 _ContextV2VirtualTable  # OVL2; s1:data-seq (size SOCOM 1's; via FillContextV2VirtualTable)
 0x0065A698 0x13C _LangVirtualTable  # OVL2; s1:data-seq (size SOCOM 1's; via FillLanguageVirtualTable)
 0x0065A838 0x8 g_lhNullHandle  # OVL2; s1:data-seq (size SOCOM 1's; via gsapi_EngineSetImmediateContext +4)

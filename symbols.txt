@@ -8959,15 +8959,15 @@
 0x004F0CB0 0x8 IdleProcess  # OVL2; s1:ref (taken by address where SOCOM 1 takes IdleProcess's)
 0x004F0CB8 0x404 Actual_DP  # OVL2 unaligned; s1:calls (SOCOM 1's FlushPitchDP, ProcessPitchDP call Actual_DP where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004F10C0 0x438 BackTracking  # OVL2; s1:calls (SOCOM 1's FlushPitchDP, ProcessPitchDP call BackTracking where ours call this row, 2 call sites; the same position in SOCOM 1's object)
-0x004F14F8 0x39C func_004F14F8  # OVL2 unaligned
+0x004F14F8 0x39C PostDP  # OVL2 unaligned; s1:order (SOCOM 1's pitch DP object at 0x35E0E8: Actual_DP, BackTracking, PostDP, FlushPitchDP, ... the same position, after BackTracking; called only by ProcessPitchDP, as SOCOM 1's PostDP is) -- the gcc lane, round 12c
 0x004F1898 0x1B0 FlushPitchDP  # OVL2 unaligned; s1:calls
 0x004F1A48 0x338 ProcessPitchDP  # OVL2 unaligned; s1:calls
-0x004F1D80 0x1DC func_004F1D80  # OVL2
-0x004F1F60 0x594 func_004F1F60  # OVL2
-0x004F24F8 0x3C4 func_004F24F8  # OVL2 unaligned
+0x004F1D80 0x1DC ControlPitchDP  # OVL2; s1:order (SOCOM 1's pitch DP object at 0x35E0E8, after ProcessPitchDP as there; ConstructPitchDP passes this row in tosBaseBlockConstruct's control slot as SOCOM 1's passes ControlPitchDP) -- the gcc lane, round 12c
+0x004F1F60 0x594 InitJumpFactors  # OVL2; s1:order (SOCOM 1's pitch DP object at 0x35E0E8, after ControlPitchDP as there; called only by InitPitchDP, as SOCOM 1's InitJumpFactors is) -- the gcc lane, round 12c
+0x004F24F8 0x3C4 InitPitchDP  # OVL2 unaligned; s1:order (SOCOM 1's pitch DP object at 0x35E0E8, after InitJumpFactors and before ConstructPitchDP as there; ConstructPitchDP passes this row in tosBaseBlockConstruct's init slot as SOCOM 1's passes InitPitchDP) -- the gcc lane, round 12c
 0x004F28C0 0x3C ConstructPitchDP  # OVL2; s1:align
 0x004F2900 0x22C CreateWindow  # OVL2; s1:align
-0x004F2B30 0x1F4 func_004F2B30  # OVL2
+0x004F2B30 0x1F4 InitPitchWindow  # OVL2; s1:order (SOCOM 1's pitch window object at 0x35F828: CreateWindow, InitPitchWindow, ConstructPitchWindow, ProcessPitchWindow, ControlPitchWindow, the same order; ConstructPitchWindow passes this row in tosBaseBlockConstruct's init slot as SOCOM 1's passes InitPitchWindow; it calls CreateWindow as there) -- the gcc lane, round 12c
 0x004F2D28 0x3C ConstructPitchWindow  # OVL2 unaligned; s1:align
 0x004F2D68 0x138 ProcessPitchWindow  # OVL2 unaligned; s1:align
 0x004F2EA0 0xEC ControlPitchWindow  # OVL2; s1:align
@@ -8985,9 +8985,9 @@
 0x004F3EA8 0x2A8 ControlAcne  # OVL2 unaligned; s1:align
 0x004F4150 0x250 InitAcne  # OVL2; s1:calls
 0x004F43A0 0x3C ConstructAcne  # OVL2; s1:order (SOCOM 1's acne object at 0x360460 ends with ConstructAcne; this constructor hands ProcessAcne, InitAcne and ControlAcne to tosBaseBlockConstruct with the block's 0x98 bytes) -- the gcc lane, round 11c
-0x004F43E0 0x30C func_004F43E0  # OVL2
-0x004F46F0 0x3C func_004F46F0  # OVL2
-0x004F4730 0x1CC func_004F4730  # OVL2
+0x004F43E0 0x30C InitDCTLift  # OVL2; s1:order (SOCOM 1's DCT lift object at 0x3613E0: InitDCTLift, ConstructDCTLift, ProcessDCTLift, ControlDCTLift; ConstructDCTLift passes this row in tosBaseBlockConstruct's init slot) -- the gcc lane, round 12c
+0x004F46F0 0x3C ConstructDCTLift  # OVL2; s1:order (SOCOM 1's DCT lift object at 0x3613E0, the second, its one GLOBAL; tosBaseBlockConstruct with 1 input, 1 output and the 0x3C block, its slots this object's InitDCTLift, ProcessDCTLift and ControlDCTLift) -- the gcc lane, round 12c
+0x004F4730 0x1CC ProcessDCTLift  # OVL2; s1:order (SOCOM 1's DCT lift object at 0x3613E0, the third; ConstructDCTLift passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 12c
 0x004F4900 0x4C ControlDCTLift  # OVL2; s1:align
 0x004F4950 0x58C ControlGender  # OVL2; s1:calls
 0x004F4EE0 0x548 GenderDataCompute  # OVL2; s1:calls (SOCOM 1's ProcessGender and others call GenderDataCompute where ours call this row, 3 call sites; after ControlGender, as there)

@@ -543,7 +543,8 @@ int casrGetParam(CASR *c, int id, unsigned int *value)
  * of v0 at the fall-through. SOCOM 1's copy tests a copy (`move v1,v0; bnez v1`). Tried: the return
  * as unsigned char/int/long/short, _tosControl as int/unsigned char/signed char/unsigned short, every
  * error exit a `return 1` or one `goto error`, the else-if and nested forms (build/scratch/gcc/p/
- * s_ues*.py, 30 spellings: 1 to 44s). */
+ * s_ues*.py, 30 spellings: 1 to 44s); no switch of 2.96-ee-001003-1 moves it either (round 12c's
+ * build/scratch/gcc-r12c/bnez_sweep.sh): a later SCE 2.96's reorg. */
 static unsigned char UpdateExevStatus(CASR *c)
 {
     if (c->exev != 0 && c->lng->CheckBitField(c->lng, 64)) {
@@ -1255,6 +1256,30 @@ int cbGenderDisable(CASR *c, int a1, int a2, int which, int mode)
         return 1;
     }
     return 0;
+}
+
+/* the end-of-backtrace bit (2) of each listed state in a state dictionary, set or cleared; the
+ * dictionary's entries are shorts from 4 before the pointer passed. The entry is a pointer of its
+ * own (indexing gives the address sum's operands the other way round, 62 words); 2.96 leaves the
+ * setting loop rolled where SOCOM 1's compiler unrolled both. */
+void Set_EndBackTraceMask_In_StateDict(unsigned char set, unsigned short *dict, int *first,
+                                       int *last)
+{
+    unsigned short *e;
+    int *p;
+
+    dict -= 4;
+    if (set) {
+        for (p = first; p <= last; p++) {
+            e = dict + *p;
+            *e |= 2;
+        }
+    } else {
+        for (p = first; p <= last; p++) {
+            e = dict + *p;
+            *e &= ~2;
+        }
+    }
 }
 
 /* a copy of a context's info record (its size at +4), on the given heap */
