@@ -7,7 +7,8 @@
  * IdleProcess, all but the constructor and FindBestRecognised LOCAL there), ScanSoft's speech
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. Only the functions written so far are here, in image
- * order: ExtendBacktraceStack. The backtrace stack is a list of three-word records from the
+ * order: ExtendBacktraceStack, ScoreCompare (NAME@nbestdp in the map: the iso-word object has its
+ * own). The backtrace stack is a list of three-word records from the
  * scheduler's small-block allocator (fastallo.c), a recycled one first. */
 
 /* the scheduler's small-block allocator, as fastallo.c keeps it */
@@ -62,4 +63,19 @@ static void ExtendBacktraceStack(NBESTDP *d, BTSTACK *top)
         e->prev = 0;
     }
     e->next = 0;
+}
+
+/* the qsort comparator of the backtraces (pointers to them): ascending scores */
+typedef struct BTSCORE {
+    void *f0;
+    short score;                        /* +4 */
+} BTSCORE;
+
+static int ScoreCompare(BTSCORE **a, BTSCORE **b)
+{
+    if ((*a)->score > (*b)->score)
+        return 1;
+    if ((*a)->score < (*b)->score)
+        return -1;
+    return 0;
 }

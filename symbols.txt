@@ -8955,7 +8955,7 @@
 0x004EFF68 0xC54 func_004EFF68  # OVL2 unaligned
 0x004F0BC0 0x3C ConstructNBestDynProg  # OVL2; s1:align
 0x004F0C00 0x7C ExtendBacktraceStack  # OVL2; s1:align
-0x004F0C80 0x30 func_004F0C80  # OVL2
+0x004F0C80 0x30 ScoreCompare@nbestdp  # OVL2; s1:order (SOCOM 1's N-best DP object at 0x358DF0: ExtendBacktraceStack, ScoreCompare, IdleProcess -- the LOCAL comparator between them, as here; it orders backtraces by the short at +4 of each, ascending) -- the gcc lane, round 11c
 0x004F0CB0 0x8 IdleProcess  # OVL2; s1:ref (taken by address where SOCOM 1 takes IdleProcess's)
 0x004F0CB8 0x404 Actual_DP  # OVL2 unaligned; s1:calls (SOCOM 1's FlushPitchDP, ProcessPitchDP call Actual_DP where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004F10C0 0x438 BackTracking  # OVL2; s1:calls (SOCOM 1's FlushPitchDP, ProcessPitchDP call BackTracking where ours call this row, 2 call sites; the same position in SOCOM 1's object)
