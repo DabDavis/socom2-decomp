@@ -46,6 +46,7 @@ public:
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
+void _free(void *p, const char *file, int line);
 
 /* a ZRDR value as the UI variable's base: only the member the variable's setter calls (zrdr.h's
  * _zrdr; empty here, laid at offset 0) */
@@ -130,6 +131,16 @@ public:
  * texture */
 class CPlainBmp : public C2DBitmap, public UIVarMixin {
 public:
+    /* grey, opaque, see-through, deaf to the pad, still (zui_2d.h's; out of line 0x20CD50) */
+    CPlainBmp()
+    {
+        SetColor(128.0f, 128.0f, 128.0f);
+        SetTrans(128.0f);
+        SetIsTrans(true);
+        SetCanHandleInput(false);
+        m_pulsing = false;
+        m_period = 1.0f;
+    }
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual void SetMapOffset(int x, int y);
@@ -1183,6 +1194,8 @@ int CUIMapCtrl::GetZAnimCmdType(const char *name)
 /* an .rdr built in memory (zrdr.h's CRdrEditor: only the three node adders the list items call) */
 class CRdrEditor {
 public:
+    bool push(const char *name);
+    bool pop();
     bool addintnode(int i);
     bool addrealnode(float f);
     bool addstringnode(const char *s);
@@ -1198,9 +1211,12 @@ class CUIListBox;
 class ColumnData {
 public:
     unsigned char m_type;   // 0x0
-    int m_4;   // 0x4
+    int m_x;   // 0x4: the column's offset
     int m_width;   // 0x8
     int m_height;   // 0xc
+    int m_y;   // 0x10
+    unsigned char m_justify;   // 0x14: the string's 0x6A
+    float m_scale;   // 0x18: the string look's scale when not 0
 };
 
 /* a list box's item's look (SOCOM 1's CListItemTypeImpl, zui_2d.cpp's). SOCOM II's table (0x4070F0)
@@ -1233,20 +1249,81 @@ public:
     virtual void SetWidth(int w) {}
 };
 
-/* a list box's item (SOCOM 1's ListItem: its look at 0x28; SOCOM II's vtable 0x407240 has four
- * slots, each forwarding to the look -- slot 0, 0x36B1D0, the item writer: the `jr ra` after it,
- * which no form of it gave, is CListItemTypeImpl's empty writer, a function of its own at
- * 0x36B1F0 (its vtable's slot 14), the map's row split; slots 2 and 3 are m2c's drafts) */
+/* a list box's item (SOCOM 1's ListItem, 0x30 bytes in SOCOM II: its two actions, its text, its
+ * look at 0x28 -- then the vtable pointer, at 0x2C, where its first virtual is declared: the array
+ * look calls the four through `lw t9,44(item)`). The table, 0x407240, has four slots, each
+ * forwarding to the look: the item writer (0x36B1D0: the `jr ra` after it, which no form of it gave,
+ * is CListItemTypeImpl's empty writer, a function of its own at 0x36B1F0, the map's row split), the
+ * line count, the height and the width. The destructor is not virtual and inline (the array look's
+ * inlines it) */
 class ListItem {
 public:
-    virtual void AddToRdr(CRdrEditor *ed);
-    virtual int GetNumLines();
+    ListItem(const char *s);
+    ~ListItem()
+    {
+        if (m_text)
+            _free(m_text, 0, 0);
+        m_text = 0;
+        delete m_impl;
+    }
 
     void MakeTimedText();
     void MakeWrappedText();
+    void SetString(const char *s);
+    void SetFont(C2DFont *font);
+    void SetScale(float scale);
+    void SetPos(int x, int y);
 
-    unsigned char _4[0x28 - 0x4];
+    /* the look's, when it has one (inlined into the array look's walks) */
+    void Finish()
+    {
+        if (m_impl)
+            m_impl->Finish();
+    }
+    const char *GetString()
+    {
+        if (m_impl)
+            return m_impl->GetString();
+        return "";
+    }
+    float GetTrans()
+    {
+        if (m_impl)
+            return m_impl->GetTrans();
+        return 128.0f;
+    }
+    void SetColor(int r, int g, int b)
+    {
+        if (m_impl)
+            m_impl->SetColor(r, g, b);
+    }
+    float SetSequenceTime(float start, float length)
+    {
+        if (m_impl)
+            return m_impl->SetSequenceTime(start, length);
+        return start;
+    }
+    void Tick(float dT)
+    {
+        if (m_impl)
+            m_impl->Tick(dT);
+    }
+    void VisualGratification(zdb::CTextureRelocMgr *mgr, float depth)
+    {
+        if (m_impl)
+            m_impl->VisualGratification(mgr, depth);
+    }
+
+    ActionItem m_action;   // 0x0
+    ActionItem m_action2;   // 0x10
+    char *m_text;   // 0x20
+    bool m_24;   // 0x24
     CListItemTypeImpl *m_impl;   // 0x28
+
+    virtual void AddToRdr(CRdrEditor *ed);
+    virtual int GetNumLines();
+    virtual void SetHeight(int h);
+    virtual void SetWidth(int w);
 };
 
 /* the lines the item takes: its look's say, or one without one (SOCOM II's slot 15 where SOCOM 1's
@@ -1257,6 +1334,19 @@ int ListItem::GetNumLines()
     if (m_impl)
         return m_impl->GetNumLines();
     return 1;
+}
+
+/* the look's height and width (slots 2 and 3, forwarded; the names ours) */
+void ListItem::SetHeight(int h)
+{
+    if (m_impl)
+        m_impl->SetHeight(h);
+}
+
+void ListItem::SetWidth(int w)
+{
+    if (m_impl)
+        m_impl->SetWidth(w);
 }
 
 /* the item written into an .rdr: nothing, for a look without text (SOCOM II's; the name ours) */
@@ -1284,9 +1374,14 @@ public:
     float GetPulseMax(int idx) const { return m_highlighted == idx ? m_pulseMax : 0.0f; }
     float GetPulseMin(int idx) const { return m_highlighted == idx ? m_pulseMin : 0.0f; }
 
-    unsigned char _0[0xe0];
+    unsigned char _0[0xd4];
+    std::vector<ColumnData *> m_columns;   // 0xd4
     int m_highlightAlpha;   // 0xe0
-    unsigned char _e4[0x174 - 0xe4];
+    unsigned char _e4[0x130 - 0xe4];
+    CPnt3D m_color;   // 0x130: the rows' colour
+    unsigned char _13c[0x154 - 0x13c];
+    CPnt3D m_highlightColor;   // 0x154
+    unsigned char _160[0x174 - 0x160];
     float m_pulseMin;   // 0x174
     float m_pulseMax;   // 0x178
     float m_pulseTime;   // 0x17c
@@ -1406,6 +1501,18 @@ public:
  * bitmap of the column's size, its texture named by the item's text */
 class CListItemImageTypeImpl : public CListItemTypeImpl {
 public:
+    CListItemImageTypeImpl(int w, int h, zdb::CTexHandle *tex)
+    {
+        m_width = w;
+        m_height = h;
+        m_tex = tex;
+        Reload();
+    }
+
+    /* the bitmap loaded at the look's size from its texture (the array look's PrepListItem calls it
+     * again on the new look) */
+    void Reload() { m_bmp.Load(0.0f, 0.0f, m_width, m_height, m_tex); }
+
     virtual void DrawPrep(const CUIListBox &box, int x, int y, int idx) {}
     virtual const char *GetString() { return ""; }
     virtual float GetTrans() { return m_bmp.GetTrans(); }
@@ -1434,6 +1541,94 @@ public:
     int m_width;   // 0xb0
     int m_height;   // 0xb4
     zdb::CTexHandle *m_tex;   // 0xb8
+};
+
+/* a list item of several columns (SOCOM 1's CListItemArrayTypeImpl, table 0x407B90; 0x14 bytes): an
+ * item per column out of the reader's array of strings, each slot walking them -- through the
+ * items' own looks where the item would only forward, through the items where they do more */
+class CListItemArrayTypeImpl : public CListItemTypeImpl {
+public:
+    CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols);
+    virtual ~CListItemArrayTypeImpl()
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            delete m_items[i];
+    }
+
+    virtual void DrawPrep(const CUIListBox &box, int x, int y, int idx);
+    virtual void Finish()
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            m_items[i]->Finish();
+    }
+    virtual const char *GetString() { return m_items[0]->GetString(); }
+    virtual float GetTrans() { return m_items[0]->GetTrans(); }
+    virtual void PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font, float scale,
+                              zdb::CTextureRelocMgr *mgr);
+    virtual void SetFont(C2DFont *font)
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            m_items[i]->SetFont(font);
+    }
+    virtual void SetPos(int x, int y, int w, int h) {}
+    virtual void SetScale(float scale)
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            m_items[i]->SetScale(scale);
+    }
+    virtual void SetColor(int r, int g, int b)
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            m_items[i]->SetColor(r, g, b);
+    }
+    virtual float SetSequenceTime(float start, float length)
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            start = m_items[i]->SetSequenceTime(start, length);
+        return start;
+    }
+    virtual void Tick(float dT)
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            m_items[i]->Tick(dT);
+    }
+    virtual void VisualGratification(zdb::CTextureRelocMgr *mgr, float depth)
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            m_items[i]->VisualGratification(mgr, depth);
+    }
+    virtual bool IsReady() { return m_ready; }
+    virtual void AddToRdr(CRdrEditor *ed)
+    {
+        ed->push(0);
+        for (int i = 0; i < m_items.size(); i++)
+            m_items[i]->AddToRdr(ed);
+        ed->pop();
+    }
+    /* the most lines any column takes */
+    virtual int GetNumLines()
+    {
+        int n = 1;
+
+        for (int i = 0; i < m_items.size(); i++) {
+            if (n < m_items[i]->GetNumLines())
+                n = m_items[i]->GetNumLines();
+        }
+        return n;
+    }
+    virtual void SetHeight(int h)
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            m_items[i]->SetHeight(h);
+    }
+    virtual void SetWidth(int w)
+    {
+        for (int i = 0; i < m_items.size(); i++)
+            m_items[i]->SetWidth(w);
+    }
+
+    std::vector<ListItem *> m_items;   // 0x4
+    bool m_ready;   // 0x10: every column's item ready
 };
 }
 
@@ -1522,6 +1717,111 @@ void CListItemStringTypeImpl::DrawPrep(const CUIListBox &box, int x, int y, int 
         SetPulse(m_str, box.GetPulseTime(idx), box.GetPulseMax(idx), box.GetPulseMin(idx));
     } else
         m_str->m_Type = STRING_NORMAL;
+}
+
+/* a reader node as the array look reads it (zrdr.h's _zrdr: its type -- 3 a string, 4 an array --,
+ * an array's count at 2 and its 8-byte elements, or a string's text, through the word at 4) */
+struct ZRdrNode {
+    unsigned char type;   // 0x0
+    unsigned short count;   // 0x2
+    union {
+        ZRdrNode *array;   // 0x4
+        const char *str;
+    };
+};
+
+static inline unsigned int RdrCount(const ZRdrNode *r) { return r->type == 4 ? r->count : 0; }
+static inline const char *RdrString(const ZRdrNode *r) { return r->type == 3 ? r->str : 0; }
+static inline ZRdrNode *RdrElem(const ZRdrNode *r, unsigned int i)
+{
+    return i < RdrCount(r) ? &r->array[i] : 0;
+}
+
+/* an item per string of the reader's array, as many as there are columns (SOCOM 1's; ready while
+ * every item is) */
+CListItemArrayTypeImpl::CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols)
+{
+    const ZRdrNode *r = (const ZRdrNode *)rdr;
+    int n = RdrCount(r) < cols.size() ? RdrCount(r) : cols.size();
+
+    m_ready = true;
+    for (int i = 0; i < n; i++) {
+        ZRdrNode *e = RdrElem(r, i);
+
+        if (e && e->type == 3) {
+            ListItem *item = new ListItem(RdrString(e));
+
+            if (!item->m_24)
+                m_ready = false;
+            item->SetString(RdrString(e));
+            m_items.push_back(item);
+        }
+    }
+}
+
+/* each column's item set up: a picture column's look made a bitmap of the column's size, its
+ * texture named by the item's text; the others given the font and scale (SOCOM 1's) */
+void CListItemArrayTypeImpl::PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font,
+                                          float scale, zdb::CTextureRelocMgr *mgr)
+{
+    for (int i = 0; i < m_items.size(); i++) {
+        ListItem *item = m_items[i];
+        ColumnData *col = cols[i];
+
+        if (item) {
+            if (col->m_type == 0) {
+                int w, h;
+                zdb::CTexHandle *tex;
+
+                h = col->m_height;
+                w = col->m_width;
+                tex = PrepTexture(item->GetString(), mgr);
+
+                delete item->m_impl;
+
+                CListItemImageTypeImpl *img = new CListItemImageTypeImpl(w, h, tex);
+
+                img->Reload();
+                item->m_impl = img;
+            } else {
+                item->SetFont(font);
+                item->SetScale(scale);
+            }
+        }
+    }
+}
+
+/* each column's item placed and its text lit as the box's rows are (SOCOM 1's; the text looks only,
+ * picked out with a dynamic_cast) */
+void CListItemArrayTypeImpl::DrawPrep(const CUIListBox &box, int x, int y, int idx)
+{
+    for (int i = 0; i < m_items.size(); i++) {
+        ListItem *item = m_items[i];
+
+        item->SetPos(x + box.m_columns[i]->m_x, y + box.m_columns[i]->m_y);
+
+        const CPnt3D *color = box.m_highlighted == idx ? &box.m_highlightColor : &box.m_color;
+        CListItemStringTypeImpl *str = dynamic_cast<CListItemStringTypeImpl *>(item->m_impl);
+
+        if (str) {
+            bool ready = IsReady();
+
+            if (!str->m_colored) {
+                str->m_str->SetColor(color->x, color->y, color->z);
+                str->m_str->Update();
+            }
+            if (box.GetPulseTime(idx) != 0.0f && ready) {
+                str->m_str->m_Type = STRING_PULSE;
+                SetPulse(str->m_str, box.GetPulseTime(idx), box.GetPulseMax(idx), box.GetPulseMin(idx));
+            } else {
+                str->m_str->SetTrans(box.GetAlpha(idx));
+                str->m_str->m_Type = STRING_NORMAL;
+            }
+            str->m_str->m_socom2_6a = box.m_columns[i]->m_justify;
+            if (box.m_columns[i]->m_scale != 0.0f)
+                str->SetScale(box.m_columns[i]->m_scale);
+        }
+    }
 }
 
 /* the item's look a timed text (SOCOM II's: out of line in ListItem's constructor, the look's
