@@ -70,7 +70,9 @@ public:
 };   // 0x1a0
 
 extern CZLANLobby data_0044FE10;   /* the LAN lobby */
-extern BriefingRoom data_0044FFC0;   /* its room */
+/* its room: the unit's one dynamically initialised static, built empty and its destructor
+ * registered by the unit's initialiser 0x4024F0 */
+BriefingRoom data_0044FFC0(0);
 extern CValve *data_00450058;   /* the ComeFromLan valve, looked for once */
 
 /* the room unit's statics the game list's filters live in */

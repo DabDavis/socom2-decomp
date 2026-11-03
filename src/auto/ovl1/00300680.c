@@ -8,13 +8,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK CheckMediusError__F15MediusErrorCode(s32);  /* extern */
-s32 func_006479B8(u8);                              /* extern */
+s32 MediusDisconnect(u8);                           /* extern */
 extern u8 data_0044FDA0;
 extern s32 myConnectionIndex;
 
 void func_00300680(void) {
     if (data_0044FDA0 == 1) {
-        CheckMediusError__F15MediusErrorCode(func_006479B8(data_0044FDA0));
+        CheckMediusError__F15MediusErrorCode(MediusDisconnect(data_0044FDA0));
     }
     data_0044FDA0 = 0;
     myConnectionIndex = -1;

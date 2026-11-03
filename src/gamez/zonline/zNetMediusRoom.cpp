@@ -75,7 +75,9 @@ inline char *RoomVarText(_zrdr *z)
 }
 
 extern "C" {
-extern BriefingRoomDB data_0044F568;   /* the room list */
+/* the room list (0x44F568): the unit's one static, built and its destructor 0x2E5F60 registered by
+ * the unit's initialiser 0x401E70 */
+BriefingRoomDB data_0044F568;
 MediusErrorCode func_0064B098(MediusChannelListRequest *req,
                               void (*cb)(int, int, int, MediusChannelListResponse *));   /* MediusChannelList */
 extern int LobbyWorldID;   /* the room we are in, -1 none (SOCOM 1's) */

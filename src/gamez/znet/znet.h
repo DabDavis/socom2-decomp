@@ -50,6 +50,17 @@ public:
         unsigned char m_data[4];   // 0x14
     };   // 0x18
 
+    /* built by zNetDme.cpp's initialiser 0x402800, inlined there (SOCOM 1's set its two team
+     * indices, a stream count of 2 and the character strings too; SOCOM II's starts with 100
+     * objects, no streams and its game-info exchange cleared) */
+    CZNetwork()
+        : m_bSessionMaster(0), m_bNetwork(0), m_bConnected(0), m_bJoined(0), m_network_init(0),
+          m_monitor_ok(0), m_WorldID(10), m_ClientIndex(256), m_NetObjectCount(100),
+          m_DataStreamCount(0), m_bMediusEnabled(0), m_bNetCnfRequired(1), m_10a(1),
+          m_infoRequestType(0), m_infoType(0)
+    {
+    }
+
     int zNetLookupHost(const char *host, char *ip, int len);
     int zNetGetMyGameClientIndex();
     /* the clients in the game (0x30D510; the LAN lobby counts its players with it) */

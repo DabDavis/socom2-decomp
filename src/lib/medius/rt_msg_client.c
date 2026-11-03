@@ -17,6 +17,7 @@ extern char gMsgClientMutex[];
 
 extern int rt_mutex_lock(void *mutex, int wait);
 extern int rt_mutex_unlock(void *mutex, int wait);
+extern void *memset(void *p, int c, unsigned int n);
 
 extern int rt_msg_client_udp_shutdown(void);
 extern int func_00633960(int);
@@ -38,8 +39,34 @@ extern int func_00634660(unsigned short, unsigned char);
 extern int rt_msg_client_iget_metrics(int, int);
 extern int func_006347C8(unsigned short, int);
 extern int func_00634850(unsigned short, int);
-extern int rt_msg_client_iudp_set_default_options(int);
-extern int rt_comm_set_default_options(int);
+/* a connection's options (rt_msg_client_connect's): SOCOM 1's 64-byte block grown to 76, its
+ * fields from 0x18 on eight bytes further in, the server's port (0x18) and a first word new */
+typedef struct rt_msg_client_connect_options {
+    int field_00;
+    char pad04[0x14];
+    unsigned short nPort;               /* 0x18: 10075 by default */
+    char pad1A[6];
+    int field_20;                       /* 0x20: 15000 (SOCOM 1's 0x18) */
+    int field_24;                       /* 0x24: 30 (SOCOM 1's 0x1C) */
+    int field_28;                       /* 0x28: 0x8000 (SOCOM 1's 0x20) */
+    int field_2C;                       /* 0x2C: 0x8000 (SOCOM 1's 0x24) */
+    int field_30;                       /* 0x30 (SOCOM 1's 0x28) */
+    unsigned short field_34;            /* 0x34 (SOCOM 1's 0x2C) */
+    char pad36[6];
+    int field_3C;                       /* 0x3C (SOCOM 1's 0x34) */
+    int field_40;                       /* 0x40 */
+    int field_44;                       /* 0x44 */
+    int field_48;
+} rt_msg_client_connect_options;       /* 0x4C */
+
+/* rt_msg_client_enable_udp's options: one word, the callback the enable-UDP internal (0x633960)
+ * keeps (SOCOM 1's were a 28-byte block of ports and timeouts over rt_rel_udp) */
+typedef struct rt_msg_client_udp_options {
+    void *pfnCallback;
+} rt_msg_client_udp_options;
+
+int rt_msg_client_iset_default_connect_options(rt_msg_client_connect_options *pOptions);
+int rt_msg_client_iudp_set_default_options(rt_msg_client_udp_options *pOptions);
 extern int rt_msg_client_idisplay_comm_state(void);
 extern int func_006349A8(unsigned short, int **);
 
@@ -355,7 +382,11 @@ int func_006334B8(unsigned short arg0, int arg1)
     return result;
 }
 
-int rt_msg_client_udp_set_default_options(int arg0)
+/* The option setters (round 7b: the map had the names a row off, SOCOM 1's s1:exact
+ * rt_comm_set_default_options on the UDP setter's internal): DME's connect (SOCOM 1's
+ * NetConnect_ClientServerTCP, 0x617788) calls the connect one, its UDP enabler (0x6195E0) the UDP
+ * one and then rt_msg_client_enable_udp with the same block, as SOCOM 1's NetEnableUDP does. */
+int rt_msg_client_set_default_connect_options(rt_msg_client_connect_options *pOptions)
 {
     int result = 1;
 
@@ -363,13 +394,13 @@ int rt_msg_client_udp_set_default_options(int arg0)
         return RT_MSG_CLIENT_LOCK_FAILED;
     if (rt_mutex_lock(gMsgClientMutex, 0) != 0)
         return RT_MSG_CLIENT_LOCK_FAILED;
-    result = rt_msg_client_iudp_set_default_options(arg0);
+    result = rt_msg_client_iset_default_connect_options(pOptions);
     if (rt_mutex_unlock(gMsgClientMutex, 0) != 0)
         return RT_MSG_CLIENT_LOCK_FAILED;
     return result;
 }
 
-int func_006335E8(int arg0)
+int rt_msg_client_udp_set_default_options(rt_msg_client_udp_options *pOptions)
 {
     int result = 1;
 
@@ -377,7 +408,7 @@ int func_006335E8(int arg0)
         return RT_MSG_CLIENT_LOCK_FAILED;
     if (rt_mutex_lock(gMsgClientMutex, 0) != 0)
         return RT_MSG_CLIENT_LOCK_FAILED;
-    result = rt_comm_set_default_options(arg0);
+    result = rt_msg_client_iudp_set_default_options(pOptions);
     if (rt_mutex_unlock(gMsgClientMutex, 0) != 0)
         return RT_MSG_CLIENT_LOCK_FAILED;
     return result;
@@ -412,7 +443,8 @@ int func_006336F0(unsigned short arg0, int arg1)
 }
 
 /* ---- the internal functions (rt_msg_client_i* and the helpers), below the wrappers ----
- * Nine written (round 6b), eight byte-exact. The internals return a narrower type than the API's
+ * Nine written (round 6b), eight byte-exact; the two option setters (round 7b), both. The
+ * internals return a narrower type than the API's
  * int (map_comm_error, is_valid_connection, the connect step 0x634A08): an int function returning
  * their result makes a jal, not a sibling call, as the target does. OPEN:
  * rt_msg_client_is_valid_connection_id (1 word: the size test is a beqz to the epilogue in the
@@ -477,6 +509,36 @@ int rt_msg_client_iget_connection_ip(unsigned short nConnection, char *szIP)
     if (pConnection->nState != 8)
         return 23;
     strcpy(szIP, pConnection->szIP);
+    return 0;
+}
+
+/* SOCOM 1's iset_default_connect_options, its block grown (above) */
+int rt_msg_client_iset_default_connect_options(rt_msg_client_connect_options *pOptions)
+{
+    if (pOptions == 0)
+        return 2;
+    memset(pOptions, 0, sizeof(*pOptions));
+    pOptions->field_00 = 0;
+    pOptions->nPort = 10075;
+    pOptions->field_20 = 15000;
+    pOptions->field_24 = 30;
+    pOptions->field_30 = 0;
+    pOptions->field_34 = 0;
+    pOptions->field_3C = 0;
+    pOptions->field_40 = 0;
+    pOptions->field_44 = 0;
+    pOptions->field_2C = 0x8000;    /* ccperm: the two sizes last, in this order (3 of 5040) */
+    pOptions->field_28 = 0x8000;
+    return 0;
+}
+
+/* SOCOM 1's rt_comm_set_default_options' six instructions, which the map's s1:exact pass paired
+ * with that name (round 7b: rt_comm's own is 0x62CB68) */
+int rt_msg_client_iudp_set_default_options(rt_msg_client_udp_options *pOptions)
+{
+    if (pOptions == 0)
+        return 2;
+    pOptions->pfnCallback = 0;
     return 0;
 }
 

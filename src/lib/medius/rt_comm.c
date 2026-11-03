@@ -6,7 +6,10 @@
  * address the channel's id; the platform layer (rt_comm_platform -> rt_comm_platform2, SCEA's
  * libnetb socket) does the work, and every transfer is counted for the metrics. SOCOM II's TCP
  * channels learn they are connected (the flag at 0x16) before the first send or receive.
- * Names are SOCOM 1's (most s1:exact: the demo's copy is these bytes; the rest by position). */
+ * Names are SOCOM 1's (most s1:exact: the demo's copy is these bytes; the rest by position).
+ * rt_comm_set_default_options (round 7b) is SOCOM 1's body with the grown options cleared first:
+ * rt_comm_create calls it where SOCOM 1's does; the six-instruction s1:exact copy the map gave
+ * the name was rt_msg_client's UDP option setter (rt_msg_client.c). */
 
 typedef int RT_RESULT;
 
@@ -98,7 +101,7 @@ int rt_comm_get_valid_channel(int nChannelId, rt_comm_channel **ppChannel);
 int rt_comm_is_valid_channel(rt_comm_channel *pChannel);
 int rt_comm_get_new_channel_id(int *pnChannelId);
 int rt_comm_release_channel_id(int nChannelId);
-int func_0062CB68(rt_comm_options *pOptions);
+int rt_comm_set_default_options(rt_comm_options *pOptions);
 int func_0062D538(int nChannelId, unsigned char *pbConnected);
 int rt_comm_metric_init(void);
 int rt_comm_metric_add_data(unsigned int nSent, unsigned int nReceived, unsigned int nOverhead);
@@ -167,7 +170,7 @@ int rt_comm_shutdown(void)
     return RT_COMM_OK;
 }
 
-int func_0062CB68(rt_comm_options *pOptions)
+int rt_comm_set_default_options(rt_comm_options *pOptions)
 {
     if (pOptions == 0)
         return RT_COMM_ERR_INVALID_PARAM;
@@ -196,7 +199,7 @@ int rt_comm_create(int *pnChannelId, char *szAddress, unsigned short nPort, rt_c
     if (pOptions != 0) {
         pChannel->options = *pOptions;
     } else {
-        result = func_0062CB68(&pChannel->options);
+        result = rt_comm_set_default_options(&pChannel->options);
         if (result != RT_COMM_OK) {
             rt_comm_release_channel_id(nChannelId);
             return result;
