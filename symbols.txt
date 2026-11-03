@@ -12744,7 +12744,7 @@
 0x0063D4E0 0x58 rt_time_platform_get_time_stamp  # OVL2; s1:exact
 0x0063D538 0x10C rt_time_sleep_usecs_platform  # OVL2 unaligned; s1:calls
 0x0063D648 0x12C func_0063D648  # OVL2 unaligned
-0x0063D778 0x170 func_0063D778  # OVL2 unaligned
+0x0063D778 0x170 rt_time_platform_get_time_string  # OVL2 unaligned; s1:calls (the gcc lane, round 8b): rt_time_get_time_string tail-calls it at the instruction SOCOM 1's tail-calls rt_time_platform_get_time_string; its body is SOCOM 1's with the RTC reading moved to 0x63D648 and milliseconds kept
 0x0063D8E8 0x1DC func_0063D8E8  # OVL2 unaligned
 0x0063DAC8 0x14 func_0063DAC8  # OVL2 unaligned
 0x0063DAE0 0x14 func_0063DAE0  # OVL2
@@ -12995,10 +12995,10 @@
 0x00649238 0x9C MediusRemoveFromBuddyList  # OVL2 unaligned; s1:order (the RemoveFromBuddyListCallbackFunctionPtr slot 0x656234; the gcc lane, round 3b)
 0x006492D8 0x9C MediusBuddyGetPermission  # OVL2 unaligned; s1:order (the BuddyGetPermissionCallbackFunctionPtr slot 0x65623C; the gcc lane, round 3b)
 0x00649378 0x88 MediusBuddyAddConfirmation  # OVL2 unaligned; s1:order (after MediusBuddyGetPermission as SOCOM 1's, no callback; the gcc lane, round 3b)
-0x00649400 0x9C MediusGetPolicy  # OVL2; s1:order (the GetPolicyCallbackFunctionPtr slot 0x656240; the gcc lane, round 3b)
-0x006494A0 0x9C func_006494A0  # OVL2
-0x00649540 0x9C func_00649540  # OVL2
-0x006495E0 0x9C func_006495E0  # OVL2
+0x00649400 0x9C MediusGetIgnoreList  # OVL2; s1:order (the GetPolicyCallbackFunctionPtr slot 0x656240; the gcc lane, round 3b); call (the gcc lane, round 8b, settling the online lane's round-10 question): not SOCOM 1's MediusGetPolicy -- its request is the bare MessageID and SessionKey (38 bytes, MediusGetBuddyList's shape; SOCOM 1's GetPolicy sends 44) and its slot's response handler (0x64C478) consumes 72 bytes, SOCOM 1's MediusUniqueCallbackGetBuddyListResponseHandler's size (GetPolicy's is 288); the game's 'GetIgnoreList' command (CZOnlineLobby::GetIgnoreList, 0x300F00) calls it; the name follows the library's Medius<request>
+0x006494A0 0x9C MediusAddToIgnoreList  # OVL2; call (the gcc lane, round 8b): new in SOCOM II, MediusAddToBuddyList's shape (44 bytes: an account; a 28-byte status back, 0x64C4B0); the game's cbFindIgnoreListPlayerID calls it with cbAddToIgnoreList, which reports the status as 'AddToIgnoreList'
+0x00649540 0x9C MediusRemoveFromIgnoreList  # OVL2; call (the gcc lane, round 8b): new in SOCOM II, MediusRemoveFromBuddyList's shape (44 bytes; a 28-byte status back, 0x64C4E8); the game's RemoveFromIgnore calls it with cbRemoveFromIgnoreList, which reports the status as 'RemoveFromIgnoreList'
+0x006495E0 0x9C MediusGetPolicy  # OVL2; s1:calls (the gcc lane, round 8b, settling the online lane's round-10 question): SOCOM 1's MediusGetPolicy moved three rows on -- the same 44-byte request (MessageID and SessionKey terminated, one word after), and its slot's response handler (0x64C520) consumes 288 bytes as SOCOM 1's MediusUniqueCallbackGetPolicyResponseHandler does; the game's GetUsagePolicy calls it with cbGetPolicy
 0x00649680 0x7C MediusSendPlayerReport  # OVL2; s1:order (before MediusSendWorldReport and MediusSendEndGameReport as SOCOM 1's, no callback; the gcc lane, round 3b)
 0x00649700 0x88 MediusSendWorldReport  # OVL2; s1:order (between the player and end-game reports as SOCOM 1's; the gcc lane, round 3b)
 0x00649788 0x94 MediusSendEndGameReport  # OVL2 unaligned; s1 by call site (SendEndGameReport 0x2F80C0, as SOCOM 1's; the online lane)
