@@ -96,8 +96,13 @@ public:
     bool ItemHasAmmo(int index) const;
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
     class CZFTSWeapon *GetCurItem() const;
+    /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
+    void RemoveItemAndAmmo(int index);
 
-    unsigned int m_0;
+    /* kit.h's flags (the kit lane's names): only bit 12 here */
+    unsigned int m_bits0 : 12;   // 0x0
+    unsigned int m_requested_item : 1;   // bit 12: an item asked for (IsChangingWeapons tests it)
+    unsigned int m_bits13 : 19;
 };
 
 class CSealCtrlAi;
@@ -580,7 +585,9 @@ public:
     unsigned int m_bits18 : 14;
     unsigned char _268[0x26c - 0x268];
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
-    unsigned char _26d[0x270 - 0x26d];
+    unsigned char _26d[0x26e - 0x26d];
+    unsigned char m_26e;   // 0x26e: a mode byte (2 refuses SetSprayTimer; the name ours)
+    unsigned char _26f[0x270 - 0x26f];
     int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
     void *m_274;   // 0x274: that cell
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
@@ -621,7 +628,8 @@ public:
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
-    unsigned char _6fc[0x750 - 0x6fc];
+    unsigned char _6fc[0x74c - 0x6fc];
+    float m_spraytimer;   // 0x74c: SetSprayTimer's time (the name ours)
     CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
     unsigned char _75c[0x76c - 0x75c];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
@@ -719,6 +727,16 @@ public:
     using CSealCtrl::PlayAiSound;
     static class CSnd *aiSoundHandle[2];
     static class CSndInstance *aiSoundInstance[2];
+    /* the aim's error cone, kept as its tangent (SOCOM 1's aiAccuracyAngle; OVL1 data 0x3DF180, the
+     * kit lane's data row), and its setter (SOCOM 1's; OVL2 0x574BA0 -- CCharacterType::Open calls it
+     * in both builds) */
+    static float aiAccuracyAngle;
+    static void SetAiAccuracyAngle(float angle);
+    /* a spray of fire timed, when the item in hand fires fully automatic (SOCOM 1's; OVL2 0x565AE0) */
+    void SetSprayTimer(float t);
+    /* the aim turned off its line by the target's error (slot +0x74, SOCOM 1's; OVL2 0x5C9250, the
+     * kit lane's seal_kit.cpp defines it) */
+    virtual void PerturbAimVector(CPnt3D *v);
     virtual void Initalize();
     /* a Navy SEAL (SOCOM 1's bit; the accessor ours, as the code tests it materialised) */
     bool IsNavySeal() const { return m_navyseal ? true : false; }
@@ -802,6 +820,41 @@ public:
     short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore, a short there too)
     unsigned short m_count2[3];   // 0x3e
     float m_hit_percent;   // 0x44 (SOCOM 1's 0x28)
+};
+
+/* a head's turn toward a direction, eased over a time (SOCOM 1's DWARF: CLook : CSequence, 0x80
+ * bytes; SOCOM II's drops a quaternion: m_goal_dir and everything after it 0x10 earlier). SOCOM II's
+ * SEAL holds its three looks (SOCOM 1's held pointers): seal_env.cpp's */
+class CLook : public CSequence {
+public:
+    CLook();
+    void SetDir(const CPnt3D *dir, float rate);
+    void LookTick(float dT);
+    /* the look turned toward a direction from the SEAL (SOCOM 1's; OVL2 0x5ADC70, not written yet) */
+    bool SetLookDir(CZSealBody *seal, const CPnt3D *dir, float rate);
+
+    CPnt3D m_curr_dir;   // 0x10
+    float m_rate;   // 0x1c
+    CQuat m_quat0;   // 0x20
+    CQuat m_quat1;   // 0x30
+    CPnt3D m_goal_dir;   // 0x40 (SOCOM 1's 0x50)
+    float m_deltaT;   // 0x4c
+    CPnt3D m_cross;   // 0x50
+    float m_fracT;   // 0x5c
+    unsigned char m_done;   // 0x60
+    bool IsDone() const { return m_done; }
+    unsigned char _61[0x70 - 0x61];   // (SOCOM II's CLook is 0x70: CBlink's m_org at 0x70)
+};
+
+/* the eyelids: a look down and back up (SOCOM 1's DWARF: CBlink : CLook) */
+class CBlink : public CLook {
+public:
+    CBlink();
+    void Blink(int org);
+    void BlinkTick(float dT);
+
+    int m_org;   // 0x70 (SOCOM 1's 0x80)
+    float m_nextT;   // 0x74
 };
 
 /* the SEAL (SOCOM 1's DWARF: CZSealBody : CEntity, CBody, 0x1140 bytes; SOCOM II's CBody base at
@@ -956,6 +1009,8 @@ public:
     bool StanceChanged();
     /* the weapon's state without its bit 4 (SOCOM 1's; OVL2 0x5E0010, seal_weapon.cpp) */
     WEAPON_STATE GetWeaponState() const;
+    /* the weapon's state set (SOCOM 1's; OVL2 0x5DFE30, the kit lane's seal_weapon.cpp range) */
+    void SetWeaponState(WEAPON_STATE state);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
@@ -983,6 +1038,50 @@ public:
     /* the ground under a point found, the SEAL's own node off for it (SOCOM 1's; OVL2 0x5B4F30,
      * seal_env.cpp), and the hits handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40) */
     void SealGetAltitude(CPnt3D *pos, float f);
+    /* the looks (SOCOM 1's, seal_env.cpp's in its order): the lids and the eyes turned to their looks'
+     * directions, the head's direction, the head and the three parts above it turned by the look
+     * anims (OVL2 0x5AD400, 0x5AD4D0, 0x5AD5A0, 0x5AD5B0); a look's goal off the current direction
+     * within limits (OVL2 0x5AE040, not written yet); the eyes' look and the head's set, each saying
+     * whether it was (OVL2 0x5AE4B0, 0x5AE640); the look anims built (static in SOCOM II: `this`
+     * unread; OVL2 0x5AE6A0); whether the head may turn (OVL2 0x587B40, seal_body.cpp's) */
+    void ApplyBlinkAnim();
+    void ApplyEyeLookAnim();
+    const CPnt3D *GetLookDir() const;
+    void ApplyLookAnim(float yaw, float pitch);
+    void CalcGoalDir(const CPnt3D *cur, const CPnt3D *dir, CPnt3D *goal, float up, float down, float left,
+                     float right);
+    bool SetEyeLookDir(float pitch, float yaw, const CPnt3D *dir, float rate);
+    bool SetLookDir(const CPnt3D *dir, float rate);
+    static void InitLookAnims();
+    bool CanHeadLook();
+    /* whether the SEAL may pitch, be interrupted, turn (SOCOM 1's, around CanHeadLook in both builds;
+     * OVL2 0x587A30 and 0x587C20 not written yet, 0x587E00), and how fast it moves (SOCOM 1's; OVL2
+     * 0x58A820) -- seal_body.cpp's */
+    bool CanPitch();
+    bool CanInterrupt();
+    bool CanTurn();
+    int GetSpeedState();
+    /* the head turned forward by a pitch, and the look's direction in the world (SOCOM 1's
+     * RotateHead, its second float gone, and GetLookDirW; OVL2 0x5AF470, 0x5AF500) */
+    void RotateHead(float pitch);
+    CPnt3D *GetLookDirW(CPnt3D *out) const;
+    /* the head's place and its look's direction in the world, each when asked (SOCOM 1's; OVL2
+     * 0x5A3070) */
+    void GetHeadParams(CPnt3D *pos, CPnt3D *dir);
+    /* the aim along the item in hand, and the death a CQB attack gives its victim (SOCOM 1's; OVL2
+     * 0x5A8790, 0x5A9420) */
+    void AimWeapon();
+    AnimType FindDeathAnimTypeCQB(CZSealBody *victim);
+    /* whether the top blend is a throw's, whether the SEAL's hands are free for its item (SOCOM 1's
+     * CanFire, two flags added; OVL2 0x5A7D10, 0x5A7DE0 -- not written yet) and whether it may change
+     * what it holds (SOCOM 1's; OVL2 0x5A8CB0) */
+    bool IsThrowing(bool started);
+    bool CanFire(bool a, bool b);
+    /* whether a weapon change, or a reload, is under way (SOCOM 1's; OVL2 0x5A7980, and 0x5A7AB0 not
+     * written yet) */
+    bool IsChangingWeapons(bool kit);
+    bool IsReloading();
+    bool CanChangeItem();
     /* the SEAL's own AI event made where it stands (SOCOM 1's; OVL2 0x550E50, seal.cpp) */
     void CreateAiEvent();
     /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */
@@ -1025,17 +1124,23 @@ public:
     unsigned char _31c[0x350 - 0x31c];
     CZBodyPart *m_rifle;   // 0x350 (SOCOM 1's 0x2d4)
     CZBodyPart *m_pistol;   // 0x354 (SOCOM 1's 0x2d8)
-    unsigned char _358[0x374 - 0x358];
+    /* the eyes and their lids (SOCOM 1's 0x2e0-0x2ec: SOCOM II drops m_grenade before them, so
+     * 0x78 on; the looks' Apply* turn them) */
+    CZBodyPart *m_reyeball;   // 0x358
+    CZBodyPart *m_leyeball;   // 0x35c
+    CZBodyPart *m_reyelid;   // 0x360
+    CZBodyPart *m_leyelid;   // 0x364
+    unsigned char _368[0x374 - 0x368];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
-    unsigned char _376[0x390 - 0x376];
-    /* the rifle and the pistol worn as gear: the part SetPartAsGear makes of each and the gear (SOCOM
-     * 1's m_rifle_as_gear and m_pistol_as_gear were the gear alone; the part names ours) */
-    CZBodyPart *m_rifle_as_gear_part;   // 0x390
-    class CCharacterGear *m_rifle_as_gear;   // 0x394
-    CZBodyPart *m_pistol_as_gear_part;   // 0x398
-    class CCharacterGear *m_pistol_as_gear;   // 0x39c
-    unsigned char _3a0[0x3b0 - 0x3a0];
+    unsigned char _376[0x388 - 0x376];
+    /* the items worn as gear, by SOCOM 1's SEAL_ITEM (1 the rifle, 2 the pistol; AimWeapon aims along
+     * 1, 2 and 4): the part SetPartAsGear makes of each and the gear (SOCOM 1's m_rifle_as_gear and
+     * m_pistol_as_gear were the gear alone; the names ours) */
+    struct CItemGear {
+        CZBodyPart *m_part;   // 0x0
+        class CCharacterGear *m_gear;   // 0x4
+    } m_item_gear[5];   // 0x388 (the rifle's 0x390, the pistol's 0x398)
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
     unsigned char _3b4[0x3dc - 0x3b4];
     zdb::CNode *m_3dc;   // 0x3dc: a node 0x5AA620 takes the SEAL of (the name ours)
@@ -1076,7 +1181,10 @@ public:
     unsigned char _ee4[0xf74 - 0xee4];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
-    unsigned char _f78[0xf7a - 0xf78];
+    unsigned char _f78[0xf79 - 0xf78];
+    /* the item in hand (SOCOM 1's m_item, a SEAL_ITEM byte at 0xe58: 1 the rifle, 2 the pistol, 3 a
+     * throwable; zweapon.h's SEAL_ITEM is a word-sized stand-in, so a byte here) */
+    unsigned char m_item;   // 0xf79
     /* the SEAL's life as the network reports it: 2 and 3 down, 1 up again (0x544210 sets it;
      * the names ours) */
     unsigned char m_netlife;   // 0xf7a
@@ -1153,10 +1261,17 @@ public:
      * and re-masked for an int argument, as a 16-bit field is; the name ours) */
     unsigned int m_ladder : 16;   // 0x1062
     unsigned char _1064[0x1070 - 0x1064];
-    CQuat m_1070;   // 0x1070: a turn about x the app camera's transitions set (0x5AF470; the name ours)
+    CQuat m_fwdlook;   // 0x1070 (SOCOM 1's 0xf60: RotateHead sets it, the app camera's transitions call that)
     unsigned char _1080[0x10d0 - 0x1080];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
-    unsigned char _10d4[0x1314 - 0x10d4];
+    unsigned char _10d4[0x1190 - 0x10d4];
+    /* the head's look, the eyes' and the lids' blink (SOCOM 1's m_look, m_eyelook, m_blink were
+     * pointers at 0xf90-0xf98; SOCOM II's are held: GetLookDir returns this + 0x11A0, SetLookDir
+     * hands this + 0x1190 on, the eyes and lids align to 0x1210 and 0x1280) */
+    CLook m_look;   // 0x1190
+    CLook m_eyelook;   // 0x1200
+    CBlink m_blink;   // 0x1270
+    unsigned char _12e8[0x1314 - 0x12e8];
     /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
      * (the names ours) */
     CPnt3D m_1314;   // 0x1314
@@ -1173,7 +1288,9 @@ public:
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
     unsigned char _1338[0x1350 - 0x1338];
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
-    unsigned char _135c[0x14e0 - 0x135c];   // (0x14E0 bytes: Create news 5344)
+    unsigned char _135c[0x1440 - 0x135c];
+    CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
+    unsigned char _144c[0x14e0 - 0x144c];   // (0x14E0 bytes: Create news 5344)
 };
 
 inline void *CSealCtrlAi::GetSelect()
