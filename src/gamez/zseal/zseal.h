@@ -585,7 +585,9 @@ public:
     unsigned int m_bits18 : 14;
     unsigned char _268[0x26c - 0x268];
     unsigned char m_26c;   // 0x26c: a mode byte (4: any target taken; the name ours)
-    unsigned char _26d[0x270 - 0x26d];
+    unsigned char _26d[0x26e - 0x26d];
+    unsigned char m_26e;   // 0x26e: a mode byte (2 refuses SetSprayTimer; the name ours)
+    unsigned char _26f[0x270 - 0x26f];
     int m_270;   // 0x270: a count 0x56D450 sets with the cell it finds (the names ours)
     void *m_274;   // 0x274: that cell
     SEAL_STANCE m_stance;   // 0x278 (SOCOM 1's 0x285)
@@ -626,7 +628,8 @@ public:
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
-    unsigned char _6fc[0x750 - 0x6fc];
+    unsigned char _6fc[0x74c - 0x6fc];
+    float m_spraytimer;   // 0x74c: SetSprayTimer's time (the name ours)
     CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
     unsigned char _75c[0x76c - 0x75c];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
@@ -729,6 +732,8 @@ public:
      * in both builds) */
     static float aiAccuracyAngle;
     static void SetAiAccuracyAngle(float angle);
+    /* a spray of fire timed, when the item in hand fires fully automatic (SOCOM 1's; OVL2 0x565AE0) */
+    void SetSprayTimer(float t);
     /* the aim turned off its line by the target's error (slot +0x74, SOCOM 1's; OVL2 0x5C9250, the
      * kit lane's seal_kit.cpp defines it) */
     virtual void PerturbAimVector(CPnt3D *v);
@@ -1004,6 +1009,8 @@ public:
     bool StanceChanged();
     /* the weapon's state without its bit 4 (SOCOM 1's; OVL2 0x5E0010, seal_weapon.cpp) */
     WEAPON_STATE GetWeaponState() const;
+    /* the weapon's state set (SOCOM 1's; OVL2 0x5DFE30, the kit lane's seal_weapon.cpp range) */
+    void SetWeaponState(WEAPON_STATE state);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */

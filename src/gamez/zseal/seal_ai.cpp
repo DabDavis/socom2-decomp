@@ -156,7 +156,27 @@ void CSealCtrlAi::OnMissionStart()
     }
 }
 
-extern "C" float tanf(float x);
+extern "C" {
+float tanf(float x);
+/* the SEAL's aim set relative to it (SOCOM 1's SetAimDirR, which SOCOM 1's SetSprayTimer calls at the
+ * same place; OVL2 0x5DF8B0, the kit lane's range) */
+void func_005DF8B0(CZSealBody *seal, const CPnt3D *dir, bool b);
+}
+
+/* a spray of fire timed: refused in mode 2, with nothing in hand, or when the item cannot fire fully
+ * automatic; the weapon raised, the aim straight ahead (OVL2 0x565AE0; SOCOM 1's SetSprayTimer, its
+ * mode and null tests new) */
+void CSealCtrlAi::SetSprayTimer(float t)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    CZFTSWeapon *item = seal->m_kit.GetCurItem();
+
+    if (m_26e == 2 || !item || item->m_maxfiremode < 3)
+        return;
+    seal->SetWeaponState((WEAPON_STATE)1);
+    func_005DF8B0(seal, &CPnt3D::unit_nz, false);
+    m_spraytimer = t;
+}
 
 /* the aim's error cone set, as its tangent (OVL2 0x574BA0; SOCOM 1's, after PlayAiSound in both
  * builds -- CCharacterType::Open calls it) */
