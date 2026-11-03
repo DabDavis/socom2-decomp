@@ -83,8 +83,8 @@ extern int rt_memory_allocate(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
 extern unsigned int randomMT(void);
 extern void RCInitialize(RCState *pState, RCKey *pKey);
-extern void func_0062BC10(RSAKey *pPub, RSAKey *pPriv, void *pIn, void *pOut, int nLength);
-extern void func_0062BBE0(RSAKey *pKey, void *pIn, void *pOut, int nLength);
+extern unsigned int RSADecrypt(RSAKey *pPub, RSAKey *pPriv, void *pIn, void *pOut, unsigned int nLength);
+extern void RSAEncrypt(RSAKey *pKey, void *pIn, void *pOut, unsigned int nLength);
 
 void InitializePRNG(void);
 void func_0062EEC0(void *pData, int nLength, void *pDigest, int nDigestLength);
@@ -505,7 +505,7 @@ int KM_DigiSign(int nKMID, int nClientID, RSAKey *pPub, RSAKey *pPriv, void *pSi
     if (IsNullRCKey(pKC->pSymmetricKey))
         return -1;
     func_0062EEC0(pKC->pSymmetricKey, 4, pSignature, 64);
-    func_0062BC10(pPub, pPriv, pSignature, pSignature, 64);
+    RSADecrypt(pPub, pPriv, pSignature, pSignature, 64);
     return 0;
 }
 
@@ -528,7 +528,7 @@ int KM_DigiVerify(int nKMID, int nClientID, RSAKey *pKey, void *pSignature)
     if (IsNullRCKey(pKC->pSymmetricKey))
         return -1;
     func_0062EEC0(pKC->pSymmetricKey, 4, digest, 64);
-    func_0062BBE0(pKey, pSignature, decrypted, 64);
+    RSAEncrypt(pKey, pSignature, decrypted, 64);
     for (i = 0; i < 16; i++)
         if (digest[i] != decrypted[i])
             return -1;
@@ -656,14 +656,14 @@ unsigned int KM_Encrypt(int nKMID, int nClientID, void *pData, int nLength)
                && (pKM->nLocalClientID == 0xFFFF || IsNullRCKey(pKC->pSymmetricKey))) {
         nHeader = (nHash & 0x1FFFFFFF) | 0xE0000000;
         if (nLength != 0)
-            func_0062BBE0(pKC->pPublicKey, pData, pData, nLength);
+            RSAEncrypt(pKC->pPublicKey, pData, pData, nLength);
     } else if (nClientID != 0xFFFF && !IsNullRSAKey(pKM->pLocalPublicKey) && pKM->nLocalClientID != 0xFFFF
                && (pKM->nID == -1 || (pKM->nID & 0x80000000) == 0)) {
         KM_GetSoftwareKeyPair(&pub, &priv);
         if (!IsNullRSAKey(&pub)) {
             nHeader = (nHash & 0x1FFFFFFF) | 0x80000000;
             if (nLength != 0)
-                func_0062BBE0(&pub, pData, pData, nLength);
+                RSAEncrypt(&pub, pData, pData, nLength);
         }
     }
     return nHeader;
@@ -703,14 +703,14 @@ unsigned int func_00630938(KeyMaster *pKM, KeyChain *pKC, void *pData, int nLeng
                && (pKM->nLocalClientID == 0xFFFF || IsNullRCKey(pKC->pSymmetricKey))) {
         nHeader = (nHash & 0x1FFFFFFF) | 0xE0000000;
         if (nLength != 0)
-            func_0062BBE0(pKC->pPublicKey, pData, pData, nLength);
+            RSAEncrypt(pKC->pPublicKey, pData, pData, nLength);
     } else if (pKC->nID != 0xFFFF && !IsNullRSAKey(pKM->pLocalPublicKey) && pKM->nLocalClientID != 0xFFFF
                && (pKM->nID == -1 || (pKM->nID & 0x80000000) == 0)) {
         KM_GetSoftwareKeyPair(&pub, &priv);
         if (!IsNullRSAKey(&pub)) {
             nHeader = (nHash & 0x1FFFFFFF) | 0x80000000;
             if (nLength != 0)
-                func_0062BBE0(&pub, pData, pData, nLength);
+                RSAEncrypt(&pub, pData, pData, nLength);
         }
     }
     return nHeader;
@@ -745,11 +745,11 @@ int KM_Decrypt(int nKMID, int nClientID, unsigned int nHeader, void *pData, int 
         return -1;
     switch (nHeader & 0xE0000000) {
     case 0xE0000000:
-        func_0062BC10(pKM->pLocalPublicKey, pKM->pLocalPrivateKey, pData, pData, nLength);
+        RSADecrypt(pKM->pLocalPublicKey, pKM->pLocalPrivateKey, pData, pData, nLength);
         break;
     case 0x80000000:
         KM_GetSoftwareKeyPair(&pub, &priv);
-        func_0062BC10(&pub, &priv, pData, pData, nLength);
+        RSADecrypt(&pub, &priv, pData, pData, nLength);
         break;
     case 0x60000000:
         pKC = GetKeyChain(pKM, nClientID);
@@ -814,11 +814,11 @@ int func_00630DF0(KeyMaster *pKM, KeyChain *pKC, unsigned int nHeader, void *pDa
         return -1;
     switch (nHeader & 0xE0000000) {
     case 0xE0000000:
-        func_0062BC10(pKM->pLocalPublicKey, pKM->pLocalPrivateKey, pData, pData, nLength);
+        RSADecrypt(pKM->pLocalPublicKey, pKM->pLocalPrivateKey, pData, pData, nLength);
         break;
     case 0x80000000:
         KM_GetSoftwareKeyPair(&pub, &priv);
-        func_0062BC10(&pub, &priv, pData, pData, nLength);
+        RSADecrypt(&pub, &priv, pData, pData, nLength);
         break;
     case 0x60000000:
         if (pKC == 0) {
