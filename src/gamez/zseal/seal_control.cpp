@@ -61,9 +61,8 @@ extern unsigned int data_00437DD0;
 /* the time the mission has left (OVL1 0x2A6AD0, on theMission) */
 int func_002A6AD0(void *mission);
 extern unsigned char data_004364E0[];
-/* (OVL2 0x5A7DE0: whether the stance leaves room, two flags) and the kit's wait before the next
- * use (OVL2 0x5C0AD0, the kit lane's) */
-bool func_005A7DE0(CZSealBody *seal, bool a, bool b);
+/* (OVL2 0x5A7DE0 is CZSealBody::CanFire, zseal.h's) the kit's wait before the next use (OVL2
+ * 0x5C0AD0, the kit lane's) */
 float func_005C0AD0(CZKit *kit);
 }
 
@@ -88,7 +87,7 @@ bool CSealCtrl::CanPlaceBomb(CNodeAction *action)
     if (theNetwork.m_9 && (float)func_002A6AD0(data_004364E0) <= 0.0f)
         time = false;
     if (m_244 <= 0.0f && seal && time && seal->m_kit.HasItem((EQUIP_ITEM)154) &&
-        seal->m_kit.ItemHasAmmo((EQUIP_ITEM)154) && func_005A7DE0(seal, true, false) &&
+        seal->m_kit.ItemHasAmmo((EQUIP_ITEM)154) && seal->CanFire(true, false) &&
         func_005C0AD0(&seal->m_kit) <= 0.0f && site)
         return true;
     if (m_244 <= 0.0f)
