@@ -49,7 +49,8 @@ typedef struct WARP {
 typedef struct GENDER {
     TOSBLOCK b;
     int selected;                       /* +40: 1 when a gender is chosen (or fixed) */
-    unsigned int mask;                  /* +44: the genders allowed (command 8) */
+    int mask;                           /* +44: the genders allowed (command 8), the top bit
+                                         * for an automatic choice */
     unsigned short frames;              /* +48: the fixed gender + 1, or the frames seen */
     unsigned char fixed;                /* +50: the mask allows one gender only */
     char pad51;
@@ -83,7 +84,11 @@ typedef struct GENDER {
     LANG *lng;                          /* +144 */
 } GENDER;                               /* 0x94 */
 
+/* the EE's largest float (no infinity): 0x7FFFFFFF through 2.96's parser */
+#define FLT_MAX 6.80564694e+38f
+
 extern int qQueueControl(void *q, unsigned char cmd, unsigned short reader, void *arg);
+extern unsigned char _tosControl(void *log, unsigned char cmd, int arg, int n);
 
 extern void ProcessGender(GENDER *g, unsigned char **in, int n);
 static __inline__ void ResetGender(GENDER *g);
@@ -225,6 +230,50 @@ static int ControlGender(GENDER *g, unsigned char cmd, void *arg, int *pos)
         break;
     }
     return ret;
+}
+
+/* the enabled model with the lowest score (1-based); with the choice automatic (the mask's top
+ * bit) and the evidence enough, the other models are disabled and the choice fixed. The table is
+ * SOCOM 1's function-local ControlID_Disable.27 (the same three bytes). `best` is incremented in
+ * place on both paths (the target's `addiu s2,s2,1` in three branch slots: `best + 1` is another
+ * register, 21-40 words); the fixed path's three stores in one of two orders of six (ccperm). */
+static unsigned short GenderSelection(GENDER *g)
+{
+    static const unsigned char ControlID_Disable[] = { 13, 14, 15 };
+    unsigned int i, best = 0;
+    float min = FLT_MAX;
+
+    for (i = 0; i < g->nmodels; i++)
+        if (g->enabled[i + 1] && g->scores[i] < min) {
+            min = g->scores[i];
+            best = i;
+        }
+    if (g->f140 < g->f76 && g->f76 > 300.0f && g->mask < 0) {
+        for (i = 0; i < g->nmodels; i++)
+            if (i != best)
+                _tosControl(g, ControlID_Disable[i], i, best);
+        best++;
+        switch (best) {
+        case 1:
+            g->mask = 1;
+            break;
+        case 2:
+            g->mask = 2;
+            break;
+        case 3:
+            g->mask = 4;
+            break;
+        default:
+            return 0;
+        }
+        g->fixed = 1;
+        g->f84 = 0;
+        g->selected = 1;
+        return best;
+    }
+    best++;
+    g->f84 = 0;
+    return best;
 }
 
 static __inline__ void ResetGender(GENDER *g)
