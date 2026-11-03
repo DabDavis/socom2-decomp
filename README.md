@@ -1675,6 +1675,29 @@ builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.p
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 14** (CEntity's slots 0x5C/0x64, seal_ai.cpp's small rows, seal_cfg.cpp's lookups):
+  - A RECURSIVE INLINE'S OUT-OF-LINE COPY INLINES ITSELF EXACTLY AS MANY TIMES AS THE INLINE DEPTH (7, 8
+    and 9 give that many copies): CSealUnit::GetTop's copy (0x561D20) shows eight, so seal_ai.cpp carries
+    `#pragma inline_depth(8)` (the state at the unit's end acts); every function the unit matched at 5
+    holds at 8, as does every unit including zseal.h, where 8 also matches veh_vehicle.cpp's copy of
+    zdb::CNode::GetBBox (0x262550, the other self-recursive inline, open at 5) -- evidence that the
+    original's level is 8 with deeper MSL headers ("Open, and next");
+  - `return s ? InlineBool(s) : false;` puts the `andi 0xff` on the true arm (0x559000); a byte-enum field
+    read into a local keeps an inlined `&&` as branches, compared straight MW if-converts it;
+  - a float constant read from data for a compare is a variable too (190.0f at 0x64FE08 in 0x561B90);
+  - a member factor passed as an inline's argument is loaded ahead of the inline's test (0x572240);
+  - a callee inlined only one level calls every one of its own callees out of line, trivial accessors
+    included (AnimSet's name accessor from 0x58C4B0 and 0x5784A0): 0x5788C0/0x578920 inline AnimSet::Find
+    one level with nine iterator and name pieces out of line, where our include/vector's Find is 4 high
+    and inlines whole -- an MSL depth question;
+  - CEntity's slot 0x5C is `bool (CZSealBody *, CTurret *)` (0x5A88C0 calls it with the SEAL and the entity
+    when it is a turret) and 0x64 SOCOM 1's GetFirepointNode(const char *), virtual in SOCOM II;
+    zbody.h's siNumBodyObjects is `unsigned int` (si_script.cpp's definition with it); zseal.h's members
+    split out of padding: CZSealBody's m_carry 0xEAC (SOCOM 1's 0xDA8), CSealUnit's m_parent 0x60 (0x3C);
+  - open: 0x572240 (0xBC against 0xC4: the target reads the range at 0x6F4 again for the product, seven
+    shapes in its OPEN note); 0x58CE70, the string constructor's OVL2 copy, misses only its call to
+    0x540D00 until that row carries `ovl-copy: func_001EE780` (the AI core's round 14 marks it);
+    0x5781C0-0x579D9F is unclaimed, probably seal_body.cpp's head.
 - **Tells from the world, rdr and sound, round 2** (ztex_manager.cpp written whole on SOCOM 1's classes,
   SetupSpecialTextures):
   - MW's scheduler reorders independent float stores to globals: TexBufParams' four defaults written
