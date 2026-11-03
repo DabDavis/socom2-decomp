@@ -3432,7 +3432,7 @@ named (rt_circ_buf's 14 by SOCOM 1's order, FindFreePingSlot).
 
 Hand-written in round 5b: `medius/dmemessage.c` (11 of 14, new), `medius/dmelocal.c` (+27, 42 of
 47, three of round 4b's four OPENs among them), the two callback slots in mediusapi.c and
-mediusclan.c -- 35 functions new to the map's byte-exact rows; 21 rows named (s1:order: SOCOM 1's
+mediusclan.c -- 38 functions new to the map's byte-exact rows (no draft superseded); 16 rows named (s1:order: SOCOM 1's
 DmeMessage.c and Dme.c objects by position and callees), 2 data rows.
 
 **Round 5c: the recogniser, object by object.**
