@@ -25,7 +25,8 @@ typedef long streamoff;
 template <class T> class allocator {};
 template <class charT> struct char_traits;
 
-template <class T> inline const T &min(const T &a, const T &b) { return b < a ? b : a; }
+/* <algorithm>'s min, defined after codecvt<char>'s do_length (iostream.cpp) */
+template <class T> inline const T &min(const T &a, const T &b);
 
 template <>
 struct char_traits<char> {
@@ -246,6 +247,7 @@ public:
     locale imbue(const locale &loc);
     locale getloc() const;
 protected:
+    ios_base() {}
     void init(void *sb);
 private:
     struct callback_pair { event_callback first; int second; };
@@ -285,7 +287,7 @@ public:
     typedef streamoff off_type;
 
     virtual ~basic_streambuf();
-    locale getloc() const { return loc_; }
+    locale getloc() const;
     int_type sbumpc()
     {
         if (gnext_ < gend_)
@@ -354,6 +356,7 @@ protected:
     virtual result do_unshift(int &state, char *to, char *to_end, char *&to_next) const;
     virtual int do_encoding() const;
     virtual bool do_always_noconv() const;
+    virtual int do_length(int &state, const char *from, const char *from_end, size_t max) const;
     virtual int do_max_length() const;
 };
 
@@ -363,6 +366,7 @@ protected:
     virtual result do_unshift(int &state, char *to, char *to_end, char *&to_next) const;
     virtual int do_encoding() const;
     virtual bool do_always_noconv() const;
+    virtual int do_length(int &state, const char *from, const char *from_end, size_t max) const;
     virtual int do_max_length() const;
 };
 
@@ -375,6 +379,8 @@ template <class charT> class ctype;
 
 template <>
 class ctype<char> : public locale::facet, public ctype_base {
+public:
+    char widen(char c) const { return do_widen(c); }
 protected:
     virtual char do_toupper(char c) const;
     virtual const char *do_toupper(char *low, const char *high) const;
@@ -393,6 +399,8 @@ protected:
 
 template <>
 class ctype<wchar_t> : public locale::facet, public ctype_base {
+public:
+    wchar_t widen(char c) const { return do_widen(c); }
 protected:
     virtual bool do_is(mask m, wchar_t c) const;
     virtual const wchar_t *do_is(const wchar_t *low, const wchar_t *high, mask *vec) const;
@@ -407,6 +415,69 @@ protected:
     virtual char do_narrow(wchar_t c, char dfault) const;
     virtual const wchar_t *do_narrow(const wchar_t *low, const wchar_t *high, char dfault, char *to) const;
 };
+
+/* localeimp: the facet a locale holds, made and installed on first use */
+template <bool b> struct __chooser {};
+template <class Facet> const Facet &__use_facet(const locale &loc, __chooser<true>);
+template <class Facet>
+inline const Facet &use_facet(const locale &loc)
+{
+    return __use_facet<Facet>(loc, __chooser<true>());
+}
+
+/* ios, istream, ostream: the stream classes over a virtual basic_ios */
+template <class charT, class traits> class basic_ostream;
+
+template <class charT, class traits>
+class basic_ios : public ios_base {
+public:
+    typedef charT char_type;
+    char_type widen(char c) const { return use_facet<ctype<char_type> >(getloc()).widen(c); }
+    basic_ostream<charT, traits> *tie(basic_ostream<charT, traits> *tiestr)
+    {
+        basic_ostream<charT, traits> *old = tiestr_;
+        tiestr_ = tiestr;
+        return old;
+    }
+protected:
+    basic_ios() {}
+    void init(basic_streambuf<charT, traits> *sb)
+    {
+        ios_base::init(sb);
+        tiestr_ = 0;
+        fill_ = widen(' ');
+    }
+private:
+    basic_ostream<charT, traits> *tiestr_;  /* 0x40 */
+    char_type fill_;                        /* 0x44 */
+};
+
+template <class charT, class traits>
+class basic_istream : virtual public basic_ios<charT, traits> {
+public:
+    explicit basic_istream(basic_streambuf<charT, traits> *sb);
+private:
+    streamsize gcount_;                     /* 0x08 */
+};
+
+template <class charT, class traits>
+basic_istream<charT, traits>::basic_istream(basic_streambuf<charT, traits> *sb)
+    : gcount_(0)
+{
+    this->init(sb);
+}
+
+template <class charT, class traits>
+class basic_ostream : virtual public basic_ios<charT, traits> {
+public:
+    explicit basic_ostream(basic_streambuf<charT, traits> *sb);
+};
+
+template <class charT, class traits>
+basic_ostream<charT, traits>::basic_ostream(basic_streambuf<charT, traits> *sb)
+{
+    this->init(sb);
+}
 
 }
 
