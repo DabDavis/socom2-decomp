@@ -1766,6 +1766,27 @@ wholly another overlay's copy -- a scorer change for the tools' owner (with the 
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 11** (zui_skbview.cpp's toggles, sounds, bitmaps and cursor; CSkbTexLists()):
+  - an int-array member is block-copied through the FPRs one array at a time: two `int[2]` give
+    load-load-store-store twice, one `int[4]` loads all four first, named ints copy with lw/sw (CSkbRect is two
+    int pairs);
+  - `if (!HasNode(a) || !HasNode(b)) return;` through a bool inline makes the body reload the pointer, a plain
+    member test keeps it in a0; `bool on = !Shown(); if (p) p->Set(on);` puts the sltu/xori/andi ahead of the null
+    test; a byte-enum ternary taken into a local is chosen before the call's other ternary, left in the argument
+    list after it;
+  - `T *arr = obj->m_arr; &arr[i]` adds the index first, `&obj->m_arr[i]` the object first; a string member's
+    size() read through a reference keeps the string's own address in a register; locals initialised from
+    c_str() ahead of a call keep those addresses in saved registers; in a while loop `n++` written before the
+    call lands in the call's delay slot;
+  - the keyboard's pad is CPad (byte 0xD L1's state); its lists at 0x184 hold `vector<zdb::CTexHandle *>`;
+    CSkbKeyProps is {x, y, w, h, CButtonSpec * 0x10, C2DButton * 0x14, CNode * 0x18}; 0x3E04D0 is a pooled
+    `&C2DButton::SetActive` (slot 0x50); zui_spec.h repeats zinput.h's PAD_BUTTON/KEY_STATE enums, so zui_skb.h
+    carries a CPad view behind `#ifndef ZINPUT_H` (one shared header for the enums would end it);
+  - open: SkbForgetDisplay 0x396F30 (6 short: the target enters the inner loop at its bottom test through two
+    jumps, every form tried a do-while), SkbTextFits 0x396D40 (13: saved registers numbered differently, its
+    `return true` a bool assignment -- an inline?), SkbTypeOrBack 0x399C20 (12 with `while (HasChar(p)) { n++;
+    p += CharLen(p); }`, measured not applied); CSkbFonts() 0x38E550 waits on C2DFont's real constructor
+    (0x38E590: 0x64 bytes, a glyph map at 0, built through 0x1FEAC0 -- the 2D lane's).
 - **Tells from the online lobby, round 11** (the Medius names respelled, the lobby's Tick, the chat callbacks, the
   friend lists, zNetConnect):
   - MSL's deque blocks hold AT LEAST 8 elements: include/deque's buf_size is `sizeof(T) * 8 <= 512 ? 512 /
