@@ -279,8 +279,14 @@ public:
 class CTexPalList : public std::vector<CTexPalette *> {
 public:
     /* whether the palette is listed (ztex_manager.cpp's, ours, inline: the target materialises the
-     * test, then branches) */
-    bool Exists(CTexPalette *pal) { return std::find(begin(), end(), pal) != end(); }
+     * test, then branches; the found iterator a local, so each temporary is stored with its copy --
+     * the README's four Exists) */
+    bool Exists(CTexPalette *pal)
+    {
+        iterator it = std::find(begin(), end(), pal);
+
+        return it != end();
+    }
 };   // 0xc bytes
 
 /* a texture buffer's dynamic textures (SOCOM 1's DWARF: CDynTexList, two vectors) */

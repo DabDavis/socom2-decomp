@@ -74,6 +74,9 @@ struct sceGsMiptbp1 {
     ((unsigned long)(sbp) | ((unsigned long)(sbw) << 16) | ((unsigned long)(spsm) << 24) |             \
      ((unsigned long)(dbp) << 32) | ((unsigned long)(dbw) << 48) | ((unsigned long)(dpsm) << 56))
 #define SCE_GS_SET_TRXREG(rrw, rrh) ((unsigned long)(rrw) | ((unsigned long)(rrh) << 32))
+#define SCE_GIF_SET_TAG(nloop, eop, pre, prim, flg, nreg)                                              \
+    ((unsigned long)(nloop) | ((unsigned long)(eop) << 15) | ((unsigned long)(pre) << 46) |           \
+     ((unsigned long)(prim) << 47) | ((unsigned long)(flg) << 58) | ((unsigned long)(nreg) << 60))
 #define SCE_GS_BITBLTBUF 0x50
 #define SCE_GS_TRXPOS 0x51
 #define SCE_GS_TRXREG 0x52
@@ -136,12 +139,7 @@ void CDynTexList::Add(CTexHandle *tex, bool b)
         Add(tex->m_texture->m_palette, b);
 }
 
-/* a palette listed, unless b and it is already there.
- * OPEN, 4 instructions (9 before the unit moved onto znode.h's classes): the inlined find's begin() and end() take each other's registers (the
- * target loads the size into a3 and builds end() there, the data pointer in t0, and stores end's
- * temporary first); the test through an inline bool (Exists) gives the target's materialised `!=`
- * and the value's early load -- written in the if it is 14 off; `iterator i = find(...); return i
- * != end();` 10, an end() local or `end() != find(...)` change the size */
+/* a palette listed, unless b and it is already there (the test is CTexPalList::Exists) */
 void CDynTexList::Add(CTexPalette *pal, bool b)
 {
     if (b && m_pal_list.Exists(pal))
@@ -329,58 +327,58 @@ void CGSTexBuffer::RelocateAll()
 /* an image's load into GS memory as a DMA chain: the GIF registers (BITBLTBUF, TRXPOS, TRXREG,
  * TRXDIR) in a packet of their own, then the pixels referenced in place, in two pieces past
  * 0x7FFF quadwords; the chain's end given back (SOCOM 1's refLoadImage, a global function).
- * OPEN, 0x158 against 0x168: the target steps the pointer after every two quadwords (`addiu
- * a0,a0,32`, the stores at 0-24 from it), where MW folds the steps into the store offsets (as SOCOM
- * 1's build did). Stores through p itself or through a union pointer (SOCOM 1's _word128) fold
- * alike; the dbw/qwc registers differ besides (v0/at against t4/v0) */
+ * Stepped a quadword at a time (MW then folds every other step into the offsets, as the target's
+ * `addiu a0,a0,32` after each pair; `p += 2` after four words folds them all), the image tags
+ * through libgraph's SCE_GIF_SET_TAG (its constant built once and shared by both tags), the size
+ * test as `> 0x7fff` (`>=` tests into v0, not at) and the second piece's address a pointer sum
+ * (the offset built in at) */
 u_long128 *refLoadImage(u_long128 *p, unsigned int dbp, unsigned int psm, void *data, unsigned int size,
                         unsigned int w, unsigned int h)
 {
     unsigned int dbw = w > 64 ? w >> 6 : 1;
     unsigned int qwc = size >> 4;
     unsigned int rest = 0;
-    unsigned long *q;
 
-    if (qwc >= 0x8000) {
+    if (qwc > 0x7fff) {
         rest = qwc - 0x7fff;
         qwc = 0x7fff;
     }
-    q = (unsigned long *)p;
-    q[0] = 0x10000006;
-    q[1] = 0;
-    q[2] = 4 | ((unsigned long)0x10000000 << 32);
-    q[3] = 0xe;
-    p += 2;
-    q = (unsigned long *)p;
-    q[0] = SCE_GS_SET_BITBLTBUF(0, 0, psm, dbp, dbw, psm);
-    q[1] = SCE_GS_BITBLTBUF;
-    q[2] = 0;
-    q[3] = SCE_GS_TRXPOS;
-    p += 2;
-    q = (unsigned long *)p;
-    q[0] = SCE_GS_SET_TRXREG(w, h);
-    q[1] = SCE_GS_TRXREG;
-    q[2] = 0;
-    q[3] = SCE_GS_TRXDIR;
-    p += 2;
-    q = (unsigned long *)p;
-    q[0] = qwc | 0x8000 | ((unsigned long)0x08000000 << 32);
-    q[1] = 0;
-    ((unsigned int *)p)[4] = qwc | 0x30000000;
-    ((unsigned int *)p)[5] = (unsigned int)data;
-    q[3] = 0;
-    p += 2;
+    ((unsigned long *)p)[0] = 0x10000006;
+    ((unsigned long *)p)[1] = 0;
+    p++;
+    ((unsigned long *)p)[0] = 4 | ((unsigned long)0x10000000 << 32);
+    ((unsigned long *)p)[1] = 0xe;
+    p++;
+    ((unsigned long *)p)[0] = SCE_GS_SET_BITBLTBUF(0, 0, psm, dbp, dbw, psm);
+    ((unsigned long *)p)[1] = SCE_GS_BITBLTBUF;
+    p++;
+    ((unsigned long *)p)[0] = 0;
+    ((unsigned long *)p)[1] = SCE_GS_TRXPOS;
+    p++;
+    ((unsigned long *)p)[0] = SCE_GS_SET_TRXREG(w, h);
+    ((unsigned long *)p)[1] = SCE_GS_TRXREG;
+    p++;
+    ((unsigned long *)p)[0] = 0;
+    ((unsigned long *)p)[1] = SCE_GS_TRXDIR;
+    p++;
+    ((unsigned long *)p)[0] = SCE_GIF_SET_TAG(qwc, 1, 0, 0, 2, 0);
+    ((unsigned long *)p)[1] = 0;
+    p++;
+    ((unsigned int *)p)[0] = qwc | 0x30000000;
+    ((unsigned int *)p)[1] = (unsigned int)data;
+    ((unsigned long *)p)[1] = 0;
+    p++;
     if (rest) {
-        q = (unsigned long *)p;
-        q[0] = 0x10000001;
-        q[1] = 0;
-        q[2] = rest | 0x8000 | ((unsigned long)0x08000000 << 32);
-        q[3] = 0;
-        p += 2;
-        ((unsigned int *)p)[0] = rest | 0x30000000;
-        ((unsigned int *)p)[1] = (unsigned int)data + 0x80000;
+        ((unsigned long *)p)[0] = 0x10000001;
         ((unsigned long *)p)[1] = 0;
-        p += 1;
+        p++;
+        ((unsigned long *)p)[0] = SCE_GIF_SET_TAG(rest, 1, 0, 0, 2, 0);
+        ((unsigned long *)p)[1] = 0;
+        p++;
+        ((unsigned int *)p)[0] = rest | 0x30000000;
+        ((unsigned int *)p)[1] = (unsigned int)((char *)data + 0x80000);
+        ((unsigned long *)p)[1] = 0;
+        p++;
     }
     return p;
 }
@@ -391,15 +389,15 @@ namespace zdb {
  * would overflow the buffer -- and its pixels loaded where it has any, then the chain's end and a
  * TEXFLUSH (SOCOM 1's MakeChain, palettes first; SOCOM 1's took a count it did not use, SOCOM II's
  * takes none: Load sets no a2).
- * OPEN, 0x224 against 0x228, two places: the first store (m_nextAddress = m_startAddress) goes
- * through a0 in the target (SOCOM 1's too) where this reads this's saved copy, and the end tag's
- * last quadword is stored after an `addiu a0,a0,32` where MW folds the step into the offsets --
- * refLoadImage's open in small */
+ * The first store goes through a0 only with the chain's cursor declared after it (declared first,
+ * this is read from its saved copy), and the end tags step a quadword at a time (`p += 2` after
+ * four words folds the step into the offsets) */
 u_long128 *CGSTexBuffer::MakeChain(u_long128 *chain)
 {
+    m_nextAddress = m_startAddress;
+
     u_long128 *p = chain;
 
-    m_nextAddress = m_startAddress;
     for (CTexPalList::iterator i = m_dyntex_list.m_pal_list.begin(); i != m_dyntex_list.m_pal_list.end(); ++i) {
         CTexPalette *pal = *i;
 
@@ -429,9 +427,10 @@ u_long128 *CGSTexBuffer::MakeChain(u_long128 *chain)
     }
     ((unsigned long *)p)[0] = 0x70000002;
     ((unsigned long *)p)[1] = 0;
-    ((unsigned long *)p)[2] = 0x8001 | ((unsigned long)0x10000000 << 32);
-    ((unsigned long *)p)[3] = 0xe;
-    p += 2;
+    p++;
+    ((unsigned long *)p)[0] = 0x8001 | ((unsigned long)0x10000000 << 32);
+    ((unsigned long *)p)[1] = 0xe;
+    p++;
     ((unsigned long *)p)[0] = 0;
     ((unsigned long *)p)[1] = SCE_GS_TEXFLUSH;
     FlushCache(0);
