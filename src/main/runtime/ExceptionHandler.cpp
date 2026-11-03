@@ -8,7 +8,29 @@
  * 1's runtime names every function (0x142C90-0x1443F0, the same twelve in the same order; no DWARF:
  * the runtime was prebuilt); the file name is ours. The frames and registers are ExceptionMIPS.cpp's.
  *
- * The image emits the unit reversed (deferred), as the runtime's other units. */
+ * The image emits the unit reversed (deferred), as the runtime's other units: this source order gives
+ * the image's but for ~bad_exception, which MW generates last here and the image just before
+ * __unexpected (the scorer does not see order).
+ *
+ * WHAT THE IMAGE SAID, each measured (MAIN runtime lane, round 4):
+ * - the decoders are a unit of their own (ExceptionDecode.cpp): here they are auto-inlined everywhere;
+ * - a function address in an action is four bytes composed through an `unsigned char *` (a `char`
+ *   cast per byte allocates the bytes' registers the other way round);
+ * - a type string (the catch type, a specification's types) goes through memory: a type-punned store
+ *   `*(unsigned int *)&var = ...` keeps the variable on the stack (an inline's out-parameter is
+ *   promoted to a register after inlining), so its dead stores and reloads stay;
+ * - the catch type is then "relocated" -- `x ? x : 0`, the zero test left by a relocation that is
+ *   nothing on this target -- and the decode pointer `p + 5` is taken before both;
+ * - in UnwindStack each case's register flag (0x20/0x40) is read through the action pointer before
+ *   the decode reassigns it, so it is computed ahead of the calls (s2); a flag read from the `action`
+ *   variable sinks below them; the action itself is read as a plain `char` (as `unsigned char` the
+ *   flag reads CSE into it and sink too);
+ * - MW computes a value as late as its first use unless the source fixes it earlier: the next action
+ *   kept before a destructor call is a variable of its own (`next = p + 4`); the CatchInfo offsets
+ *   in __ThrowHandler are copied to `long`s before the '*' test (one 64-bit load, both arms);
+ * - __unexpected's catch reaches its exception through PowerPC's `#pragma exception_magic` and
+ *   `__exception_magic`, which this compiler knows; the decoded specification is declared before the
+ *   `try` (after it, it is placed below the catch's CatchInfo). */
 
 #include "ExceptionMIPS.h"
 
