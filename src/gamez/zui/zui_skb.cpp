@@ -13,6 +13,7 @@
  * addresses them. */
 
 #include <map>
+#include <string.h>
 #include <algorithm>
 #include "zui_2d.h"
 #include "../zsys/zsys.h"
@@ -159,11 +160,9 @@ void CreateSoftKeyboard(_zrdr *rdr)
 
 }
 
-/* (the next units' and this one's not yet written, by address: the node lists' layout from a grid
- * size, a keyboard's elements shown or hidden) */
+/* (the next units' and this one's not yet written, by address: a keyboard's elements shown or
+ * hidden) */
 extern "C" {
-void func_00395140(int w, int h, CSkbTexLists *lists, CSoftKeyboard *skb);
-void func_0038B580(CSoftKeyboard *skb, int which);
 void func_00394420();
 void func_00398B50();
 void func_00399C10(CSoftKeyboard *skb);
@@ -179,6 +178,93 @@ int func_00395110();
 int func_003996B0();
 void func_00399D20(CGameMenu *menu);
 void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu);
+}
+
+/* (the next unit's node lists' layout from a grid size, 0x395140; this unit's elements shown or
+ * hidden, 0x38B580) */
+extern "C" {
+void func_00395140(int w, int h, CSkbTexLists *lists, CSoftKeyboard *skb);
+void func_0038B580(CSoftKeyboard *skb, int which);
+}
+
+/* (this unit's out-of-line copies of SOCOM 1's CIntPair members and the look's start position,
+ * after their first caller 0x38B440 -- SOCOM 1's zui_skb.cpp called its CIntPair's members out of
+ * line too, while zui_skbview.cpp inlines them: the start position's address (0x38B570), the pair's
+ * copy (0x38B550) and its halves (0x38B540, 0x38B530); and the cursor put at a grid position,
+ * 0x38B8A0) */
+struct SKBINTPAIR {
+    int m_1st;
+    int m_2nd;
+};
+extern "C" {
+SKBINTPAIR *func_0038B570(CSoftKeyboard *skb);
+SKBINTPAIR *func_0038B550(SKBINTPAIR *dst, const SKBINTPAIR *src);
+int func_0038B540(const SKBINTPAIR *p);
+int func_0038B530(const SKBINTPAIR *p);
+void func_0038B8A0(CSoftKeyboard *skb, int x, int y);
+}
+
+/* (the units after this one, by address: the keyboard's captions and text shown with its fonts and
+ * the text (0x398EA0), its key caps (0x395540); zui.cpp's menu fade, 0x36A210) */
+extern "C" {
+void func_00398EA0(CSoftKeyboard *skb, CSkbFonts *fonts, const char *text);
+void func_00395540(CSoftKeyboard *skb, C2DFont *font);
+void func_0036A210(float t);
+}
+
+/* the keyboard shown with a text, unless one is showing: its cursor at its start position, its
+ * node lists laid out, its text, captions and caps made, its node on, the active one, its first
+ * element set shown, the menu faded to half, its IgnoreUnchangedString taken (SOCOM 1's ShowSkb,
+ * SOCOM II's with the text; 0x38B440, the first caller of the CIntPair copies before it) */
+void CSoftKeyboard::ShowSkb(const char *text)
+{
+    if (!g_pActiveSkb) {
+        SKBINTPAIR pos;
+
+        func_0038B550(&pos, func_0038B570(this));
+        int x = func_0038B540(&pos) - 1;
+        func_0038B8A0(this, x, func_0038B530(&pos) - 1);
+        func_00395140(m_17c, m_180, &m_texLists, this);
+        func_00398EA0(this, &m_fonts, text);
+        func_00395540(this, &m_fonts.m_fonts[1]);
+        m_node->SetActive(true);
+        g_pActiveSkb = this;
+        func_0038B580(this, 0);
+        func_0036A210(0.5f);
+        g_bIgnoreUnchanged = m_ignoreUnchangedString;
+    }
+}
+
+/* a keyboard by its name, or none (ours) */
+static inline CSoftKeyboard *FindSkb(const char *name)
+{
+    for (int i = 0; i < g_arrSkbs.size(); i++)
+        if (!strcasecmp(g_arrSkbs[i]->m_name.c_str(), name))
+            return g_arrSkbs[i];
+    return 0;
+}
+
+/* the keyboard named by the look's i'th string switched to, its cursor at its start position
+ * (0x38BE80; the name ours: the key handler 0x38D200 calls it with a key's code). The null name's
+ * arm first: the target lays `to = 0` ahead of the search */
+void CSoftKeyboard::SwitchToNamed(int i)
+{
+    const char *name = i < m_strings.size() ? m_strings[i].c_str() : 0;
+    CSoftKeyboard *to;
+
+    if (!name)
+        to = 0;
+    else
+        to = FindSkb(name);
+
+    if (to) {
+        SKBINTPAIR pos;
+
+        SwitchTo(to);
+        func_0038B550(&pos, func_0038B570(to));
+        int x = func_0038B540(&pos) - 1;
+        func_0038B8A0(to, x, func_0038B530(&pos) - 1);
+    }
 }
 
 /* the cursor's axis (ours: a byte enum, passed as `li 1; movz`) */

@@ -308,6 +308,8 @@ public:
     void ParseLook(_zrdr *rdr);
     void ParseKeyProps(_zrdr *rdr);
     void SwitchTo(CSoftKeyboard *to);
+    void SwitchToNamed(int i);
+    void ShowSkb(const char *text);
     void ShutdownBegin(CGameMenu *menu);
     void OnEnterKey(CGameMenu *menu);
 
