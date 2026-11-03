@@ -736,7 +736,7 @@
 0x00406F60 0x20 __vt__23CDblBufTextureRelocator  # vtable of CDblBufTextureRelocator: found by its RTTI's name
 0x00406F80 0x1C __vt__9CGameMenu  # vtable of CGameMenu: found by its RTTI's name
 0x00406FA0 0x90 __vt__11CSecureText  # vtable of CSecureText: found by its RTTI's name
-0x004070F0 0xC __vt__17CListItemTypeImpl  # vtable of CListItemTypeImpl: found by its RTTI's name
+0x004070F0 0x50 __vt__17CListItemTypeImpl  # vtable of CListItemTypeImpl: found by its RTTI's name; the integrator 2026-11-04, by the HUD lane round 25: the table is 0x50 bytes (the RTTI word, the offset, 18 slots -- slot 14 at 0x407130, 15 GetNumLines, 16-17 SetHeight/SetWidth), the next row 0x407190
 0x00407190 0x90 __vt__8C2DClock  # vtable of C2DClock: found by its RTTI's name
 0x00407240 0x18 __vt__8ListItem  # vtable of ListItem: found by its RTTI's name
 0x00407260 0x70 __vt__10CUIMapCtrl  # vtable of CUIMapCtrl: found by its RTTI's name

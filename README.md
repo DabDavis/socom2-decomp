@@ -1888,6 +1888,39 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 25** (zui_2d.cpp's list-box items: ListItem, CListItemTypeImpl and the five looks):
+  - zui_2d.cpp holds SOCOM 1's ListItem and CListItemTypeImpl and the five item looks (string, timed, wrapped, image, array)
+    in the unit's anonymous namespace: 31 rows, and about 40 drafted ones from source (CRenderableString's constructor
+    and destructor, the thunk 0x37D000); ListItem's vptr is at 0x2C, after its data members (`lw t9,44(item)`);
+    CListItemTypeImpl's table 0x4070F0 is 0x50 bytes (resized at integration);
+  - A FLAG SET THROUGH AN INLINE SETTER CAN PUSH A CONSTRUCTOR OVER inline_max_size: with the string look's flag set
+    through SetColored(false) the timed look's constructor exceeds 256 units (252 without -- found by bisecting the
+    pragma), MakeTimedText inlines it one level, and ListItem's three setters become too big for `-inline auto`;
+  - a same-unit destructor holding an inline chain too tall to inline whole is refused by `-inline auto`
+    (~CRenderableString deleting a full C2DFont through c2dfont.h) and makes a member-holding implicit destructor tall
+    too; a class whose first non-inline virtual is declared but not defined emits neither its vtable nor its inline
+    virtuals' copies; a forwarder's call shows the callee's argument count (ListItem::SetPos sets a1 and a2 only: the
+    looks' SetPos take two ints, not SOCOM 1's four); `delete m_impl;` gives one null test, `if (m_impl) delete
+    m_impl;` two;
+  - open: the array look's constructor 0x37B2F0 (10, all in the prologue: the target builds and stores the two vtable
+    addresses one after the other through v0); round 24's opens unchanged.
+- **Tells from the AI core, round 18** (PointInPath and FindPoint, the A* initialiser, ai_mapio.cpp's template tail):
+  - a class-vector walk re-reads both the size and the data each pass only when end() reads the count through a
+    REFERENCE accessor (`count()` on CAiPath::points) -- a plain `size_` lets MW keep size*8 out of the loop; where the
+    element size needs a multiply (GetRouteIndex, GetRegionContaining) the target hoists it anyway (a lead for the MSL
+    lane's end()); walking a member through `const_cast` in a const function lets MW hoist the loop's end, only a
+    non-const member re-reads it through `this` (PointInPath/FindPoint are non-const, against SOCOM 1's const name);
+  - a local struct field's address gets a saved register at three uses in a block, at two the accesses fold into sp
+    offsets (find_path, now the right size at 0xF48, wants a third use of cur.m_h); an inline helper taking its count by
+    reference loads it where it is used (a delay slot); an array of byte enums is read with lb when copied and lbu in
+    arithmetic; a constructor written to zero a static's members shows as stores in its initialiser
+    (__sinit_ai_astar.cpp: CAiPathQueue's three counters), the implicit one stores nothing; ai::quadratic stores the
+    square root back into `d`;
+  - respelling the two resizes as member calls made ai_mapio.cpp emit init/do_assign<const CAiMapLoc *> and line's and
+    route's copy constructors byte-exact (the line/route resizes, inserts and erases it also emits still miss: OPEN);
+    0x524CD0 SetPathType and 0x52C5C0 RegisterPathPlan with its wrapper 0x52C5B0 verified word for word against SOCOM 1;
+  - open: find_path (159 aligned rows: the third cur.m_h use, IsDoor's materialised bool, an 8-byte frame temporary),
+    CAiEventQ::Create (9), spores::GetRange (9), the MakeNoise family, plan_legcomplete, GetBaseName, AbortPathPlan.
 - **Tells from the SEALs, round 18** (THE Is() FALSE ARM, SetRoute, seven seal_ai.cpp/seal_body.cpp rows):
   - THE KIT'S OPEN `Is()` SHAPE: the target builds the state test whole in one register with an explicit `move v0,zero`
     false arm -- `StackNotEmpty() ? (m_stateStack.GetState()->m_state == s ? true : false) : false` (the first operand an
