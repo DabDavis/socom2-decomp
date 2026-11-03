@@ -655,7 +655,7 @@ typedef struct rt_msg_client_comm {
     rt_msg_client_time tLastSend;       /* 0x20: recv_circ_buf's (the last piece that moved) */
     rt_msg_client_time tLastRecv;       /* 0x28: 0x637D50's (the last piece that came in) */
     int bTimeout;                       /* 0x30: the connection times out 30 s after its last input */
-    char pad34[8];
+    rt_msg_client_time t34;             /* 0x34: started with the other two when the stream connects */
     short n3C;                          /* 0x3C: one less for each type-5 message (0x6364C0) */
     char pad3E[2];
     int nValue;                         /* 0x40: 0x6347C8's setting */
@@ -1186,7 +1186,7 @@ unsigned char rt_msg_client_update_single(unsigned short nConnection, unsigned c
     return result;
 }
 
-extern unsigned char func_00634C48(rt_msg_client_connection *pConnection);
+unsigned char func_00634C48(rt_msg_client_connection *pConnection);
 extern int rt_time_elapsed(rt_msg_client_time *pStart, unsigned int *pnMsecs);
 extern unsigned char func_00634DD8(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm);
 unsigned char func_00635078(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, unsigned char bProcess);
@@ -1237,6 +1237,70 @@ unsigned char rt_msg_client_update_connection(rt_msg_client_connection *pConnect
                 return 24;
             if (nElapsed > 30000)
                 return 25;
+        }
+    }
+    return 0;
+}
+
+extern int func_0062D538(int nChannelId, unsigned char *pbConnected);
+extern int rt_time_start(rt_msg_client_time *pStart);
+extern unsigned char func_00638740(unsigned short nConnection, unsigned char *pbState);
+extern unsigned char func_006358C0(rt_msg_client_comm *pComm, unsigned short nPort);
+unsigned char func_00635940(unsigned int nKind, rt_msg_client_comm *pComm, unsigned short nPort, void *pData,
+                            unsigned short nDataLength);
+
+/* the connect step (round 16b; SOCOM II's): while connecting (state 2) the stream's connect is polled;
+ * once it is up every channel's three timers start, and the connection either offers its key (when
+ * 0x638740 says it has one: 0x6358C0, state 3) or sends its connect message (0x635940, state 4) */
+unsigned char func_00634C48(rt_msg_client_connection *pConnection)
+{
+    unsigned char bConnected = 0;
+    unsigned char bKey = 0;
+    rt_msg_client_comm *pComm;
+    unsigned char bValid;
+    unsigned int i;
+    unsigned char result;
+
+    if (data_00655614 != 1)
+        return 5;
+    bValid = rt_msg_client_is_valid_connection(pConnection);
+    if (bValid != 1)
+        return 2;
+    if (pConnection->nState != 2)
+        return 2;
+    result = rt_msg_client_map_comm_error(func_0062D538(pConnection->pComm->nChannelId, &bConnected));
+    if (result != 0)
+        return result;
+    if (bConnected == bValid) {
+        for (i = 0; i < 2; i++) {
+            pComm = pConnection->apChannels[i];
+            if (pComm != 0) {
+                if (rt_time_start(&pComm->tLastSend) != 0)
+                    return 24;
+                if (rt_time_start(&pComm->tLastRecv) != 0)
+                    return 24;
+                if (rt_time_start(&pComm->t34) != 0)
+                    return 24;
+            }
+        }
+        result = func_00638740(pConnection->nId, &bKey);
+        if (result != 0)
+            return result;
+        if (bKey == 1) {
+            result = func_006358C0(pConnection->pComm, pConnection->nPort);
+            if (result != 0)
+                return result;
+            result = rt_msg_client_change_state(pConnection, 3);
+            if (result != 0)
+                return result;
+        } else {
+            result = func_00635940(pConnection->nConnectKind, pConnection->pComm, pConnection->nPort,
+                                   pConnection->pConnectData, pConnection->nConnectDataLength);
+            if (result != 0)
+                return result;
+            result = rt_msg_client_change_state(pConnection, 4);
+            if (result != 0)
+                return result;
         }
     }
     return 0;
