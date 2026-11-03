@@ -48,6 +48,9 @@ extern int func_0060FFF8(void *pAudio);                 /* the next sequence num
 extern void *func_006113F8(void *pAudio, unsigned int nId); /* the peer record for an id */
 extern int func_00611E60(void *pAudio, int *pnId);      /* this client's id */
 extern int func_00611E70(void *pAudio);                 /* the group spoken in */
+extern void *func_0060FFB0(void *pAudio);               /* the codec */
+extern int func_0062AAF8(void *pCodec);
+extern int func_0062AB08(void *pCodec);
 extern struct GRID *func_00611E78(void *pAudio);        /* the groups */
 extern int func_00610FA0(void *pAudio, int nTo, void *h, void *pData, int nLen); /* to one peer */
 
@@ -100,7 +103,7 @@ typedef struct GRID_ENTRY {             /* a group as a list reports it */
 } GRID_ENTRY;                           /* 0x40 */
 
 int func_00624830(GRID *p, int nSrc, GRID_HEADER *h, void *pData, int nLen);
-int func_00626140(GRID *p);
+void func_00626140(GRID *p);
 void func_00626A38(GRID *p);
 
 static int nSeed = 0;
@@ -306,7 +309,35 @@ int func_00626110(GRID *p)
     return p->x68 != 0 ? 0 : -1;
 }
 
-/* 0x626140, 0x626240: not written */
+/* Whether the codec can take the group's voices (0x68): a member connected, and fewer decoders
+ * in use than it has, or no more queued than one over.
+ * OPEN (9 words): the queue's count is read before nMax + 1 only with the call on the left (the
+ * other order puts nMax + 1 in a saved register before the call); what is left is the second
+ * test's branch sense and its stores' order (`beqz` to the 1 in the target, `bnezl` to the 0). */
+void func_00626140(GRID *p)
+{
+    int nId = 0xFFFF;
+    int i;
+    void *pCodec;
+    int nMax;
+
+    func_00611E60(p->pAudio, &nId);
+    for (i = 0; i < p->nMembers; i++) {
+        if (p->pMembers[i].nState == 2)
+            break;
+    }
+    if (i < p->nMembers) {
+        pCodec = func_0060FFB0(p->pAudio);
+        nMax = func_0062AAF8(pCodec);
+        if (func_0062AB08(pCodec) < nMax || func_0062A2E8(&p->list) <= nMax + 1) {
+            p->x68 = 1;
+            return;
+        }
+    }
+    p->x68 = 0;
+}
+
+/* 0x626240: not written */
 
 GRID_MEMBER *func_00626350(GRID *p, unsigned int nId)
 {

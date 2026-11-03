@@ -4229,6 +4229,52 @@ matching drafts (IsEven, lintSetBit, lintClearBit); 17 rows named or corrected (
 get_time_string `s1:calls`, KM_Initialize, the four RC and seven LargeInt functions `s1:order`,
 MediusGetPolicy moved, the three ignore-list requests by call), 4 data rows.
 
+**Round 9b: the voice library (rt_audio), audio.c and grid.c by hand.** SOCOM 1 has no voice
+library (nor codec, grid or md5 objects), so its names are placeholders and the records' fields
+ours; the units say what each function does.
+
+- **Where the two objects start.** audio.c begins at 0x60FB50, not 0x60FF00: the eight rows
+  before 0x60FF00 address audio.c's one `.data` word (0x651160, just before clients.c's) and call
+  audio.c's own functions. grid.c begins at Dme.c's end, 0x6244B0, not at its first data
+  reference (0x6250D0): every rt_audio source carries its `$Header` (audio.c, codec.c, grid.c,
+  rt_audio.c, each with its headers'), none sits between Dme.c's and grid.c's, the one `.data`
+  word between Dme.c's statics and LargeInt.c's is grid.c's random seed (0x6244B0, the C library's
+  LCG), and these functions and grid.c's call each other both ways.
+- **The records** (`audio.c`, `grid.c`): the session (0xD8: message counters, the codec's
+  context and six handles, the groups' ring, the peers' ring, flags, this client's id and group,
+  the socket, the connect callback); a peer (a ring node with its state, keep-alive time and
+  tries, a 32-byte self-description at 0x20 -- two addresses and ports, group, id, flags --
+  and its decoders at 0x840-0x85C); a group (0x84: id, a 64-byte name, a queue in the list object
+  at 0x629DA0, a member table of 0x14-byte members that doubles when the group has no maximum).
+- **A row that carried the next function's alignment nop**: 0x60FFF8 was 0x18 where its code is
+  0x14 -- the only one of the Medius range's 702 odd-length functions cut so (resized, the map's
+  fix; no scorer change).
+- **Types decide where an address is computed**: audio.c calls the clock (0x62C070) undeclared --
+  implicitly `int` -- and a timer stored from it of another type makes 2.96 convert and hoist the
+  timer's `lui/addiu` into a saved register before the call; the same type gives the target's
+  `lui; sw %lo` after it (a static or an extern alike).
+- **Shapes, each measured**: one combined `||` guard where separate guards hoist the -1 above the
+  prologue's saves (the connect); `for (;;)` with a `break` where a do-while rotates an `n > 0`
+  test to the loop's top (the codec read loop); a result variable apart from a call's length,
+  zeroed at the top, which keeps two callback calls from cross-jumping (the decode); `n == f()`
+  for the target's `xor` operand order; an elapsed time taken into a local before the state test
+  that uses it twice; the connect state an enum (its own alias class, so its store schedules
+  past the callback pointer's load); a group create that returns its group (void keeps the
+  result in v1 and stores it branch-likely); an index zeroed at its declaration lands in the
+  prologue, assigned after the guards where the target zeroes it there; a member's peer taken
+  into a local (one load for the copy and the call).
+- **Open, diagnosed in place**: 0x611180 (13: the peer and its state swap s0/s1, every spelling
+  tried), 0x612518 (14: the socket's event switch -- the table from 0 and sibling calls right,
+  the error code's copy to a1 hoisted to the entry), 0x60FC90 (52s: the frame length in v0, the
+  target's v1), 0x626140 (9: the capacity test's second branch sense).
+
+Hand-written in round 9b: `medius/audio.c` (57 of 60, new: 0x60FB50-0x6126A0 but 0x6110D8, which
+stands as a matched draft, 0x6115C0 and 0x610C20), `medius/grid.c` (28 of 29, new: 0x6244B0-0x624C60
+and 0x626110-0x626B10 but 0x626240, 0x626658, 0x6264C0; 0x624830, 0x624DC0 and grid.c's three
+large functions 0x6250D0-0x625690 not written) -- 85 functions byte-exact, 51 new to the map's
+byte-exact rows (9,600 bytes), 34 superseding matching drafts; 2 data rows (nSeed, nTimerStart,
+ours); one row resized (0x60FFF8). No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
