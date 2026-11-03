@@ -5,18 +5,20 @@
  * with ee-gcc 2.96 at -O2 -G0 (README "The GCC front"). Only the functions written so far are here,
  * in image order. Names are SOCOM 1's where the map has them (s1:exact, s1:calls, s1:order);
  * placeholders elsewhere. DME's error codes are the values returned: 23 a bad argument, 8 an index
- * out of range, 37 the transport refused, 38 not initialised. The client records are reached by
- * offset until their layout is written down.
+ * out of range, 37 the transport refused, 38 not initialised. The world, client, object and stream
+ * records are dmelocal.h's (and below), typed: func_0061F410 in DmeMessage.c matches only so.
  *
- * The vendor nests the success path -- `if (ok) { ...; return 0; } return ERR;` -- where the target
- * branches away to the error with its code in the delay slot (NetIpBinaryToString, func_00614EC8);
- * a guard clause where the error branch is the fall-through. OPEN: func_00614758 (6 words: the
- * transport call's failure branch -- guard and nested forms each lay one of its two returns out
- * the other way), func_006147E0 (6: the world index loaded into v0 and copied to a0 in the target,
- * into v1 here), func_0061C6C8 (4: the slot's address and the range test computed into each
- * other's registers), func_0061C8E8 (11s: 2.96 turns the last test into movn, which the target
- * does not -- guard, nested and single-exit forms tried). func_0061BEB8 returns the second call's
- * result through a variable: no sibling call then. */
+ * SCEA's shapes, each measured: a getter's result and its pointer tested together, `if (result != 0
+ * || p == 0) return result;` (func_006152B0, func_0061C8E8 -- the round 4b OPEN -- NetGetValidClientCount);
+ * separate guards where the null pointer has its own code (NetGetClientIpAddress's 15,
+ * func_0061C720's 10, and its two range tests); the success path nested -- `if (ok) { ...; return
+ * 0; } return ERR;` -- where the target branches away to the error with its code in the delay slot
+ * (NetIpBinaryToString, func_00614EC8, func_0061A240); a local initialised inside the block that
+ * needs it (func_006147E0, the round 4b OPEN); a table indexed in place, not through a pointer
+ * local (func_0061C6C8, the round 4b OPEN). OPEN: func_00614758 (6 words: the transport call's
+ * failure branch -- guard, nested and `||` forms each lay one of its two returns out the other way),
+ * func_00617610 and func_006189C8 (below). func_0061BEB8 returns the second call's result through a
+ * variable: no sibling call then. */
 
 #include "dmelocal.h"
 
@@ -149,8 +151,10 @@ int func_00614758(int nReserved, int *pValue)
 
 int func_006147E0(void)
 {
-    DmeWorld *pWorld = 0;
+    DmeWorld *pWorld;
+
     if ((unsigned int)data_00651178 < DME_MAX_WORLDS) {
+        pWorld = 0;
         if (func_0061C600(data_00651178, &pWorld) == 0 && pWorld != 0)
             return pWorld->field_43C;
     }
@@ -696,13 +700,11 @@ int func_0061C638(unsigned int nWorld, DmeWorld **ppWorld)
 
 int func_0061C6C8(unsigned int nWorld)
 {
-    void **ppMemory = &data_0066CAF8[nWorld];
-
     if (nWorld >= DME_MAX_WORLDS)
         return DME_ERR_ARGUMENT;
-    if (*ppMemory != 0)
-        func_00614888(ppMemory);
-    *ppMemory = 0;
+    if (data_0066CAF8[nWorld] != 0)
+        func_00614888(&data_0066CAF8[nWorld]);
+    data_0066CAF8[nWorld] = 0;
     return DME_OK;
 }
 
@@ -779,9 +781,7 @@ char *func_0061C8E8(unsigned int nWorld)
 
     if (nWorld >= DME_MAX_WORLDS)
         return 0;
-    if (func_0061C600(nWorld, &pWorld) != 0)
-        return 0;
-    if (pWorld == 0)
+    if (func_0061C600(nWorld, &pWorld) != 0 || pWorld == 0)
         return 0;
     return pWorld->szName;
 }
