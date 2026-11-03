@@ -303,7 +303,6 @@ MediusErrorCode MediusUpdateClientState(MediusUpdateClientStateRequest *req);   
 MediusErrorCode MediusSetGameListFilter(MediusSetGameListFilterRequest *req,
                               void (*cb)(int, int, int, MediusSetGameListFilterResponse *));   /* MediusSetGameListFilter */
 void func_002EFE10(int, int, int, MediusSetGameListFilterResponse *);   /* its callback */
-void func_002F5020();   /* the chat shown again */
 void func_002F3FF0(struct ChatSlot *slots);   /* a free slot looked for (below) */
 void func_002F7690();   /* (the lobby unit's) */
 void func_002F4FC0(int ready);   /* our readiness told the server */
@@ -348,6 +347,7 @@ void func_002FA870(CZOnlineLobby *lobby);   /* the player's info asked for (the 
 void func_002FAA80(CZOnlineLobby *lobby);   /* and refreshed */
 }
 
+void UpdateChatDisplay();   /* the room's chat shown (below) */
 
 /* the lobby's state changed: pushed onto its queue (SOCOM 1 pushed inline; OVL1 0x2EFE20) */
 extern "C" void func_002E1610(void *fifo, const LOBBY_STATE *state);   /* the queue's push_back */
@@ -657,7 +657,7 @@ void cbLobbyServerConnect(int index)
         SetSessionKey(ver.SessionKey);
         CheckMediusError(MediusVersionServer(&ver, func_002EFE00));
         if (theLobby.uiv_MediusChatRecvVar)
-            func_002F5020();
+            UpdateChatDisplay();
     } else {
         theLobby.ChangeState(CONNECT_ERROR);
     }
@@ -1317,6 +1317,54 @@ void cbFindChatPlayerID(int, int, int, MediusFindPlayerResponse *resp)
     } else {
         data_0044FA50.pop();
         LobbyEvent("MP_PLAYER_NOT_FOUND", 0);
+    }
+}
+
+/* the room's chat shown: each line in its colour -- white, grey, a public line's red, a clan line's
+ * yellow -- with its sender when it has one, one line of text each (SOCOM 1's cbFilterChat built
+ * the list itself; OVL1 0x2F5020: the lobby server's connect callback and the menu state's line
+ * insert 0x1F5020 call it; the name ours, as SOCOM 1's UpdateGameListDisplay). The counter is
+ * declared first (it takes s2, the room s1) and the line's sender and text are read through the
+ * iterator's `*` (through `->` the name's address fills the test's delay slot) */
+void UpdateChatDisplay()
+{
+    if (theLobby.uiv_MediusChatRecvVar) {
+        int n;
+        CRdrEditor ed;
+
+        ed.push(0);
+        BriefingRoom *room = ((BriefingRoomDB *)data_0044F568)->FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+
+        if (room) {
+            n = 1;
+
+            for (std::vector<MediusChatFwdMessage>::iterator i = room->m_chat.begin(); i != room->m_chat.end();
+                 ++i, ++n) {
+                const char *colour = "#C\xff\xff\xff";
+                char text[256];
+
+                switch (i->MessageType) {
+                case 0:
+                    colour = "#C\x80\x80\x80";
+                    break;
+                case 1:
+                    colour = "#C\x80\x40\x40";
+                    break;
+                case 2:
+                    colour = "#C\x80\x80\x40";
+                    break;
+                }
+                if (i->OriginatorAccountName[0])
+                    sprintf(text, "%s %s: %s", colour, (*i).OriginatorAccountName, (*i).Message);
+                else
+                    sprintf(text, "%s%s", colour, i->Message);
+                ed.addstringnode(text);
+                if (n < room->m_chat.size())
+                    ed.addstringnode("\n");
+            }
+        }
+        ed.pop();
+        theLobby.uiv_MediusChatRecvVar->Set(&ed);
     }
 }
 
