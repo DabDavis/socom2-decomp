@@ -10,8 +10,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 void func_001931C8(s32 arg0);
 M2C_UNK func_00194488(s32 arg0, s32 arg1);
-extern M2C_UNK func_00192DA8;
+extern M2C_UNK fflush;
 
 void func_001931C8(s32 arg0) {
-    func_00194488(arg0, (s32) &func_00192DA8);
+    func_00194488(arg0, (s32) &fflush);
 }

@@ -8,11 +8,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00192DA8();                                /* extern */
+s32 fflush();                                       /* extern */
 
 s32 func_00197E10(char *arg0) {
     if ((M2C_FIELD(arg0, u16 *, 0xC) & 9) == 9) {
-        return func_00192DA8();
+        return fflush();
     }
     return 0;
 }

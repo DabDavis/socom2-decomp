@@ -1647,6 +1647,30 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 13** (seal_unit.cpp, SetAimDirR, CTPaint::Tick, seal_aievent.cpp):
+  - a bool masked in v0 (`andi v0,v0,0xff`) live to the epilogue is the function's return value:
+    SetAimDirR returns its callee's bool, which SOCOM 1's mangled name never showed;
+  - passing a member's address as `(T *)((char *)this + K)` stops MW keeping it in a saved register
+    for later stores to that member (the existing tell, confirmed for stores);
+  - a single-element list walk `if (!found) { walk; if (!found && flag) walk; }` gives the target's
+    jump straight to the return after the first loop; two separate ifs do not (IsMemberOfUnit);
+  - a pointer-list member constructed in an out-of-line constructor calls OVL2's deleter-constructor
+    copy (0x50FFA0) out of line; a `list<FT_COMMAND>` member makes the unit emit its own copy;
+  - units: seal_kit.cpp starts at ~0x5B82D0 (SOCOM II's CZKit additions at the source's end);
+    seal_aievent.cpp runs 0x5F8D40-0x5FADEF in SOCOM 1's order.
+- **Tells from the SEALs, round 12** (seal_env.cpp's look, blink and aim functions):
+  - a CQuat copied into a pointed-to member through an inline taking it by const reference gives the
+    target's registers; the plain assignment swaps them (ApplyBlinkAnim, ApplyEyeLookAnim);
+  - a local that looks unneeded can be one SOCOM 1 passed twice: SetEyeLookDir's `cur` needs its own
+    saved register; a float test's arm order follows the source (`if (x >= 0.0f) A else B` puts A on
+    the fall-through);
+  - when every true test of an `||` chain must reach one `return true` block, fold the last flag test
+    into the same condition -- a second `if` makes its own block (IsThrowing);
+  - `int top = m_count - 1; m_frames[top]` keeps the subtraction as an index; inline, the -1 folds
+    into the offset (AnimPop);
+  - SOCOM II holds SOCOM 1's heap looks inside the SEAL: SOCOM 1's "pointer member + 0x10" becomes
+    `this + K`; 0x575CF0 (a list range-erase instance) looks like seal_ai.cpp's template tail, not
+    seal_anim.cpp's first row.
 - **Tells from the UI, round 9** (zui_skb.h, zui_skbview.cpp, zui_skbkeys.cpp):
   - an RTTI class-name string shows the namespace: SOCOM II's "CBmpWithNode" (0x3FAEA8) lacks SOCOM 1's
     `@unnamed@zui_skb_cpp@::` prefix -- the keyboard's classes come from a shared header (zui_skb.h);
@@ -3015,7 +3039,7 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 | range | library | toolchain, flags | evidence |
 |---|---|---|---|
 | MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111-01-dtls13010` `-O2 -G0` (991111 compiles their C the same) | libvu0's inline asm: 32 of 32 only under the dtls13010 build, whose GNU as fills the delay slots 991111's leaves empty and encodes vsqrt as 2.96's does not (below); `memclr` is byte-exact only under 2.9-ee-991111 and its -01, a and dtls rebuilds: 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
-| MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s) |
+| MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s); libgcc2's `__muldi3` 2.96 only (2.95.3 19 words, 2.9 29). Not quite this 2.96: the runtime's compiler never fills a delay slot with a double's register move (round 4a) |
 | OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
 | OVL1 0x2430F0-0x243840 | the recogniser's heap (`heap_*`, ScanSoft's) | `ee-gcc2.96` `-O2 -G0` **`-funroll-loops`** (the unit carries the recogniser's `-fno-strict-aliasing` too, untold) | SearchFor's loop unrolled by four: byte-exact only with the flag (without: 50s) -- round 3a |
 | OVL1 0x243840-0x248350 | lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
@@ -3176,17 +3200,75 @@ eight reentrant syscall wrappers (`closer.c` ... `writer.c`) and `strtod.c` (str
   the exit test in the target -- a giv's preheader -- and before it here), strtof (its delay slots are
   empty in the target; -fno-delayed-branch, -O1 and -fno-schedule-insns2 do not reproduce it).
 
+**Round 4a** (2026-11-03, by hand): 53 rows newly byte-exact (14,512 bytes), 65 functions written
+byte-exact of 72 (twelve supersede matched drafts) -- libdma whole (`sdk/libdma.c`, 19 of 19: 11 new, three drafts superseded);
+libgcc, a new group (`src/lib/libgcc/`: libgcc2.c's DImode objects, `libgcc2.h` and a unit per
+`L_` object, 5 of 8; fp-bit, `fp-bit.h` and a unit per object, 18 of 18); newlib's strtol.c and
+strtoul.c, the printf family (printf, fprintf, fiprintf, sprintf, vsprintf, sscanf with its static
+eofread), stdio.c's four cookie functions, vfprintf.c's and vfiprintf.c's statics and wrappers
+(their `_r` bodies not written); libscf's time helpers (7 of 11). 18 rows named, each by body, call
+or the demo's position (vfprintf, _vfprintf_r, vfiprintf, _vfiprintf_r, __svfscanf, __sinit,
+__sfvwrite, fflush, __sread/__swrite/__sseek/__sclose, strtoul, `__sprint@`/`__sbprintf@` for both
+printf objects, sceScfGetGMTfromRTC). No tool changed. What they showed:
+
+- **The runtime's compiler never puts a double's register move in a delay slot.** libgcc's
+  __fixdfdi, __fixunsdfdi and __floatdidf have every instruction right but the call slots whose only
+  candidate is a DFmode GPR move (`move s0,a0; jal dpcmp; nop`), while an int move fills the same kind
+  of slot (__floatdidf's second litodp). The compiler that built the runtime gave a soft-float DFmode
+  move a length of two instructions (mips.md's movdf_internal2), which reorg never puts in a slot;
+  toolchains/ee-gcc2.96 gives it one. No flag changes it (-msingle-float, -mhard-float, -mfp32, -mips3,
+  -mlong64, -mabi=o64; -fno-delayed-branch hands the slots to GNU as, which fills them too). It is
+  strtof's and fabs's open cause as well (rounds 2a, 3a): three objects, one diagnosis. And
+  __fixunsdfdi converts its unsigned DImode by the older expand_float (__floatdidf, then +2^64 when
+  negative; this 2.96 halves first): the runtime's GCC is a 2.96 whose integer code is the
+  toolchains' exactly (every DImode division and multiply byte-exact) but not this build.
+- **libgcc2.c compiles as GCC shipped it**, with longlong.h's MIPS `umul_ppmm` (multu; mflo/mfhi)
+  and its C `udiv_qrnnd`/`count_leading_zeros` -- so `UDIV_NEEDS_NORMALIZATION` and a static
+  `__clz_tab` in every division object (the demo's symbols keep four LOCAL copies) -- and the
+  USItype `__ll_B` (`1L` makes the remainder's shift 64-bit: 309 words). __muldi3 is 2.96's only
+  (2.95.3-136 19 words, every 2.9 29).
+- **fp-bit is not the stock text**: no rounding (the guard bits are shifted off), denormals flushed
+  both ways, no NaN or infinity in single precision (the EE's FPU has neither: only a fraction
+  overflowing the all-ones exponent saturates), a double's all-ones exponent unpacked with
+  normal_exp EXPBIAS and an infinity's fraction IMPLICIT_1; the multiply is the older text, its
+  redundant `& 0xffffffff` kept. Written from the binary in fp-bit's shape, all 18 byte-exact.
+- **Sony's CHCR is set field by field**: libdma's transfers assign tD_CHCR's bitfields (MOD, DIR,
+  STR) -- the compiler merges them into one load and store with signed masks (`li -13`) -- where an
+  explicit `& ~0x100` on a u_int is a zero-extended constant (`lui; ori 0xfeff`); a u_int compared
+  with 0xffffffff is `lui; ori` too, an int with -1 `li`. A volatile store never fills a call's delay
+  slot (sceDmaReset's D_STAT acknowledge does, so its second store is through a plain pointer), and
+  sceDmaReset's six stores schedule as the target's in one order of 720 (`tools/ccperm.py`).
+- **dtls13010 tells itself apart by a broken sibling call**: libcdvd's cdvd_exit and libscf's addhour
+  and sceScfGetLocalTimefromRTC end `jal f; nop; jr ra; nop` after the epilogue (a call that returns to
+  itself, harmless only because nothing reaches it); 991111, its -01 and a rebuilds and 990721 miss
+  cdvd_exit by 36-37 words (the wrong size), dtls13010 by 5. libscf's adddate and subdate, though,
+  are byte-exact as written under 2.9-990721 and every 2.95.x and not under dtls13010 (the target
+  reloads t->year after the day/month stores), while those miss GetRomName -- one of the two sources
+  is not yet the vendor's.
+- **newlib's stdio compiles as newlib wrote it**, its FILE on the stack for the string forms (`_flags
+  __SWR|__SSTR`, `_w`/`_bf._size` INT_MAX), CHECK_INIT before every `_r` tail call; the repo's MW
+  `include/stdarg.h` gives GCC's EABI `va_list` too (a pointer into the GPR save area).
+- **Open, diagnosed in place**: __fixdfdi, __fixunsdfdi, __floatdidf (above); libscf's frombcd (the
+  target's two-operand `mult; mflo` against the R5900's three-operand form), adddate, subdate
+  (above), AdjustTime (branch order and a `j` sibling call where the target falls through and ends
+  in the jal form).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
 FUNCTION` tries every order of a marked block). libkernl's thread, tty/printf and SIF objects
-(sifcmd, sifrpc, the libmrpc copy), libgraph, libipu/libmpeg, libmc, libcdvd, the rest of libscf,
-newlib's stdio wrappers and libgcc's fp-bit are open, and in OVL1 lgAud's big calls (Init, Open,
-Read/Write, the mixer, the async reads), libnetb and the codec. automatch over OVL1's three library
-ranges (round 3a, `--max-size 0x400`) found nothing new: 298 tried, 0 hits. Still open: the
-strict-aliasing setting of the SDK, newlib, lgAud/libnetb and the codec (no function yet tells), the
-991111 rebuilds -01 and a (no probe separates them from 991111), and the generated tier's GCC near
-misses, not yet classified as amsurvey classified MW's.
+(sifcmd, sifrpc, the libmrpc copy), fileio, libgraph, libipu/libmpeg, libmc, libpad (its version
+is not the demo's: its rows are unnamed), libcdvd (its first object is dtls13010's: the sibling call
+above; it reads its semaphores and callback number through volatile and plain globals the target
+schedules apart), newlib's stdio bodies (_vfprintf_r, __svfscanf, findfp.c, fflush, __sfvwrite,
+mallocr) and libm's fdlibm functions (the double moves above will hold some open) are open; the
+network library at 0x1C0948-0x1C4CC0 (inet_aton at -O2 beside RPC stubs built at -O0: frame pointer,
+spilled arguments) is not yet identified; in OVL1 lgAud's big calls (Init, Open, Read/Write, the
+mixer, the async reads), libnetb and the codec. automatch over OVL1's three library ranges (round
+3a, `--max-size 0x400`) found nothing new: 298 tried, 0 hits. Still open: the strict-aliasing setting
+of the SDK, newlib, lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds -01 and
+a (no probe separates them from 991111), and the generated tier's GCC near misses, not yet
+classified as amsurvey classified MW's.
 
 ### The recogniser and Medius by hand (round 2b)
 
@@ -3316,6 +3398,42 @@ Hand-written in round 4b: `medius/rt_mutex.c` (5 of 5) and `rt_mutex_platform.c`
 MediusGetBuildTimeStamp, NetGetBuildTimeStamp, rt_msg_client_get_build_timestamp in their units
 -- 50 functions, 40 new to the map's byte-exact rows (ten supersede matching drafts); 15 rows
 named (rt_circ_buf's 14 by SOCOM 1's order, FindFreePingSlot).
+
+**Round 5c: the recogniser, object by object.**
+
+- **The two data tables name every accessor** (`s1:slot`): FillContextV2VirtualTable and
+  FillLanguageVirtualTable each copy a LOCAL table of SOCOM 1's (`_ContextV2VirtualTable`, 21
+  words; `_LangVirtualTable`, 79 words) whole into the caller's (a struct assignment: 2.96's
+  ldl/ldr block move); SOCOM II's tables are the demo's slot for slot -- the same length, the
+  same null slots -- so each static takes the demo's name from its slot, not from its size or
+  position: 0x508AD0 is `_langGetpErgodicStates` (it had the align pass's
+  `_langGetpErgodicPhenomes`), 0x508B90 is `_langGetpCodeBook` (the align pass saw no pair), and
+  the language file's section walkers are in another order than the demo's. The tables are
+  statics of their units; scdiff resolves the `.data` reference by data.txt's name.
+- **SOCOM 1's CheckEngineHandle is an inline function in SOCOM II** (the open engine accessors
+  of round 3b): `static __inline__`, the array base read into a local first and the result
+  set to 0 before the tests, `ok = e->engine != 0` when the engine is a live slot (null, below
+  the base, not 108-aligned, past the last) -- byte-exact in five gsapi calls. An early-return
+  inline keeps a 0 per failing test; a one-expression one loads the base after the null test.
+- **ScanSoft's shapes, each measured**: one guard per test, even with the same code twice
+  (safeh_HandleCheck: the `||` builds one shared code); `if (x < n) return 0; return 1;` for a
+  boolean the target computes with `sltiu` (`!(x < n)` and `== 0` give `xori`); an engine-array
+  loop takes the element's address into a local before testing it (indexing gives the operands
+  of the address sum the other way round); a pointer kept as a local before an offset is added
+  (`m = Dims + 8; return m + n` -- added at once, 2.96 reassociates).
+- **Open, diagnosed in place**: the language file's offset chains (`_langGetpErgodicStates` 4
+  words, Phenomes 6, Penalty 18, `_cdbGetpProbMatrix` 14: the same instructions, the sums in
+  another order -- 45 spellings in `build/scratch/gcc/spec_*.py`), `_cdbGetCodeBookSize` (the
+  target reloads the second codebook's size inside the smoothing test) and the six codebook
+  walkers waiting on it, `_contextGetpSyntax` (a copied register), fastallo's allocation (p in a
+  saved register to a single return), gsapi_NotifySetEnergyInterval and EngineSetUserData (the
+  inlined check zeroes twice there).
+
+Hand-written in round 5c: `asr/contextv2.c` (20 of 21, new), `asr/language.c` (64 of 76, new;
+`_ConvPhenomesToStates` moved there from ctxutil.c), `asr/critsec.c` (5 of 5), `asr/safeh.c` (2
+of 2), `asr/osspi.c` (4 of 4), `asr/fastallo.c` (2 of 3), `asr/gsapi.c` (+12, 21 of 23) -- 22
+functions new to the map's byte-exact rows (4,016 bytes), the rest superseding matching drafts;
+101 rows named (65 `s1:slot`, 30 `s1:order`, 3 `s1:align`, 3 `s1:calls`).
 
 ## Open, and next
 

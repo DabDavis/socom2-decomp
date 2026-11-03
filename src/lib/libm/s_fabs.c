@@ -8,7 +8,10 @@
  * return and leaves the delay slot empty (`move v0,a0; jr ra; nop`), where this compiles the copy
  * into the slot (`jr ra; move v0,a0`); every 2.9x/2.95.x compiler misses by 10 words, 3.2 by 13,
  * and the union, signed-word, temporary and pointer spellings, -O1/-O3/-Os and -fno-builtin do not
- * leave the slot empty either. */
+ * leave the slot empty either. Diagnosed (round 4a, libgcc): the move is of a double, and the
+ * compiler that built the runtime gave a DFmode register move a length of two instructions, which
+ * reorg never puts in a delay slot (libgcc's __fixdfdi/__floatdidf: every such slot empty, an int
+ * move filling the same kind of slot); toolchains/ee-gcc2.96 gives it one. */
 double fabs(double x)
 {
 	__uint32_t high;
