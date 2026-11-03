@@ -4625,6 +4625,52 @@ byte-exact rows (7,500 bytes), 6 superseding matching drafts; `src/lib/asr` 362 
 before). 10 rows named, 6 data rows. No tool changed (ccperm's `-I` gap was worked round with an
 absolute include; master's round 10a fixed it).
 
+**Round 10b: the objects after the RT library, the voice library's lists, rt_msg_client whole.**
+
+- **What 0x63DC90-0x645710 holds, by the `.rodata` each row reads**: rt_udp.c from 0x63DC90 (its
+  version at 0x656040, its jump tables at 0x665840/0x665880), **rt_upnp.c from 0x642330** (its
+  first function returns `gpszVersion`, "rt_upnp version: 1.01.0007", the string just before its
+  `$Header`; '%u.%u.%u.%u' after it), a three-function table object at 0x642968, SHA1.c to 0x643168
+  (0x643140 reads its `.rodata`), **StreamMedia.c 0x643168-0x6451E8** (DME's media streams: its two
+  switch tables follow its `$Header`; it alone reads 0x6560C8/0x6560CA and the session table at
+  0x676480), then a fragment-buffer object at 0x6451F0 (64 slots of 512 bytes) before the Medius
+  client. They are not Medius API objects: every call they make goes to rt_comm, rt_time, DmeLocal.c
+  or the voice library's API (rt_audio.c's forwarders, 0x62BDF0-0x62C060).
+- **md5.c is RFC 1321 with a byte count** (0x629B38: MD5Init's four constants): SCEA counts input
+  in bytes and makes the bits only in MD5Final, and the transform and Encode are md5_platform.c's,
+  called at 0x6641D0/0x664F80 where no map row is (a placeholder resolves by its address). The
+  update's index must be zeroed right after the first copy -- it then lives across the transforms
+  in s4 and the last copy is shared; zeroed after the loop, 2.96 keeps it in a3 and splits the copy.
+  The names are placeholders: RFC 1321's are a prediction, not this library's evidence.
+- **SCEA's statics carry SOCOM 1's names**: every SOCOM 1 RT object keeps a `char *gpszVersion`, a
+  byte `gbInitialized` and a short `gnInitCount` (its symtab's LOCAL OBJECTs, rt_msg_client's at
+  0x43D7C8-0x43D7CE); StreamMedia.c's .data is that byte and short. A GNU `.data` static is checked
+  by content only, so the units use SCEA's names and data.txt holds them as `NAME@unit`
+  (`gbInitialized@streammedia`); a `.bss` static must carry its data.txt name (scdiff.bss_local).
+- **SCEA's shapes, measured**: a boolean query as one `&&` after its guards (a guard per test is
+  if-converted to `xor; sltiu` -- StreamMedia's 0x644060 and 0x644390, the matched draft's shape);
+  a `void *` user-data field, its own alias class, whose load schedules above the `int` stores into
+  the callback's record (three callbacks); an argument read back from the field just stored
+  (`pUpnp->nServerPort`: CSE gives the stored register and 2.96 zero-extends it again, `andi`);
+  a 4-byte address and a 2-byte port unpacked with `memcpy` into locals that stay in the frame;
+  a chained `a->x = a->y = a` (no reload between the two stores); a ring walk as `if (p) do {...}
+  while (p);` with the head in a local; a call's error returned from inside the positive test
+  (`if (ok) { r = f(); if (r) return r; } return 0;` keeps the final `move v0,zero`); a test whose
+  `return 41` cross-jumps backwards into an earlier failure block gets GNU as's five short-loop nops.
+- **round 6b's OPEN rt_msg_client_is_valid_connection_id closed**: with is_valid_connection (its
+  callee) defined above it and the connection state an enum (compared unsigned: `sltiu`), the
+  beqz/beqzl choice comes out as the target's.
+- **Open, diagnosed in place**: StreamMedia.c's 0x6437E0 (21 default stores, 17 orders tried),
+  0x644610 and 0x644EA0 (5 words each: a store order, a register pair), 0x644D20 (the 1 kept in v0
+  for a test and three returns; nine shapes), 0x6448A0 and 0x6450B0 (not iterated).
+
+Hand-written in round 10b: `medius/streammedia.c` (33 of 39, new), `medius/rt_upnp.c` (21 of 21,
+new), `medius/md5.c` (3 of 3, new), `medius/peer.c` (21 of 21, new: the voice library's peer rings
+and member lists, 0x629DA0-0x62A3B0), `medius/rt_msg_client.c` (+17 and the OPEN closed: 53 of 53)
+-- 96 functions byte-exact, 76 new to the map's byte-exact rows (11,216 bytes), 20 superseding
+matching drafts; 4 data rows (gbInitialized@streammedia, gnInitCount@streammedia,
+gpszVersion@rt_upnp by SCEA's convention; gapStreamSessions, ours). No row renamed; no tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
