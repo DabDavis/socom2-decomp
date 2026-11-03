@@ -1,7 +1,6 @@
 /* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
-/* libscf (MAIN 0x1BDE40-0x1BE178): Sony's SDK system-configuration getters, the demo's object
- * 0x3AA6F8 (C), in its order; the rest of the object (sceScfGetLocalTimefromRTC and its helpers)
- * is not written yet. On a T10K development kit (ROMVER's fifth byte 'T') the values come from the
+/* libscf (MAIN 0x1BDE40-0x1BE530): Sony's SDK system-configuration getters and RTC time helpers,
+ * the demo's object 0x3AA6F8 (C), whole, in its order (18 of 21 byte-exact). On a T10K development kit (ROMVER's fifth byte 'T') the values come from the
  * block sceScfSetT10kConfig stored; otherwise from the OSD configuration (GetOsdConfigParam, and
  * GetOsdConfigParam2's second byte for the date/time formats, version 1 and up). Names are SOCOM
  * 1's (s1:exact; gConfig and gRomName are the demo's locals at the same references). */
@@ -67,23 +66,25 @@ static int IsT10K(void)
 	return gRomName[4] == 'T';
 }
 
-/* OPEN, with sceScfGetTimeZone, GetDateNotation, GetSummerTime and GetTimeNotation (2, 8, 4, 5, 5
- * words): on the T10K path the target builds gConfig's address in v0 (`lui v0; lbu v0,N(v0)`),
- * where this builds it in v1 as sceScfGetAspect and GetSpdif (byte-exact) do in both -- the five
- * have more code on the other path; GetTimeZone selects 540 with movz (`p.version ? tz : 540`
- * computed both ways), which no if/else spelling tried gives; the date/time formats load
- * GetOsdConfigParam2's byte into v1 and shift it into v0. */
+/* The getters keep one exit: the value goes to `ret` on every path (round 12a) -- a `return` per
+ * path builds the T10K path's gConfig address in v1 and GetOsdConfigParam2's field straight into v0,
+ * and selects GetTimeZone's 540 with a branch where the target has movz. */
 int sceScfGetLanguage(void)
 {
 	sceOsdConfigParam p;
+	int ret;
 
 	GetOsdConfigParam(&p);
 	if (IsT10K())
-		return gConfig.Language;
-	GetOsdConfigParam(&p);
-	if (p.version == 0)
-		return p.japLanguage;
-	return p.language;
+		ret = gConfig.Language;
+	else {
+		GetOsdConfigParam(&p);
+		if (p.version == 0)
+			ret = p.japLanguage;
+		else
+			ret = p.language;
+	}
+	return ret;
 }
 
 void sceScfSetT10kConfig(sceScfT10kConfig *config)
@@ -114,55 +115,78 @@ int sceScfGetSpdif(void)
 int sceScfGetTimeZone(void)
 {
 	sceOsdConfigParam p;
+	int ret;
 
 	if (IsT10K())
-		return gConfig.TimeZone;
-	GetOsdConfigParam(&p);
-	if (p.version == 0)
-		return 540;
-	return p.timezoneOffset;
+		ret = gConfig.TimeZone;
+	else {
+		GetOsdConfigParam(&p);
+		if (p.version == 0)
+			ret = 540;
+		else
+			ret = p.timezoneOffset;
+	}
+	return ret;
 }
 
 int sceScfGetDateNotation(void)
 {
 	sceOsdConfigParam p;
 	sceOsdConfigParam2 p2;
+	int ret;
 
 	if (IsT10K())
-		return gConfig.DateNotation;
-	GetOsdConfigParam(&p);
-	if (p.version == 0)
-		return 0;
-	GetOsdConfigParam2(&p2, 1, 1);
-	return p2.dateNotation;
+		ret = gConfig.DateNotation;
+	else {
+		GetOsdConfigParam(&p);
+		if (p.version == 0)
+			ret = 0;
+		else {
+			GetOsdConfigParam2(&p2, 1, 1);
+			ret = p2.dateNotation;
+		}
+	}
+	return ret;
 }
 
 int sceScfGetSummerTime(void)
 {
 	sceOsdConfigParam p;
 	sceOsdConfigParam2 p2;
+	int ret;
 
 	if (IsT10K())
-		return gConfig.SummerTime;
-	GetOsdConfigParam(&p);
-	if (p.version == 0)
-		return 0;
-	GetOsdConfigParam2(&p2, 1, 1);
-	return p2.summerTime;
+		ret = gConfig.SummerTime;
+	else {
+		GetOsdConfigParam(&p);
+		if (p.version == 0)
+			ret = 0;
+		else {
+			GetOsdConfigParam2(&p2, 1, 1);
+			ret = p2.summerTime;
+		}
+	}
+	return ret;
 }
 
 int sceScfGetTimeNotation(void)
 {
 	sceOsdConfigParam p;
 	sceOsdConfigParam2 p2;
+	int ret;
 
 	if (IsT10K())
-		return gConfig.TimeNotation;
-	GetOsdConfigParam(&p);
-	if (p.version == 0)
-		return 0;
-	GetOsdConfigParam2(&p2, 1, 1);
-	return p2.timeNotation;
+		ret = gConfig.TimeNotation;
+	else {
+		GetOsdConfigParam(&p);
+		if (p.version == 0)
+			ret = 0;
+		else {
+			GetOsdConfigParam2(&p2, 1, 1);
+			ret = p2.timeNotation;
+		}
+	}
+	return ret;
 }
 
 /* The RTC's time, as libcdvd's sceCdReadClock gives it: BCD, Japan standard time. The object's
@@ -171,13 +195,17 @@ int sceScfGetTimeNotation(void)
  * addhour's and GetLocalTimefromRTC's last calls are dtls13010's sibling call after the epilogue
  * (`jal f; nop; jr ra; nop`, as libcdvd's cdvd_exit: every other 2.9 build misses that by 30+ words).
  *
- * OPEN, four: frombcd (5 words: the target multiplies with MIPS's two-operand `mult; mflo`, this the
- * R5900's three-operand `mult` -- (x >> 4) * 6 in five spellings); adddate and subdate (41, 37: the
- * target reloads t->year after the day/month stores, dtls13010 keeps it in a register -- both are
- * byte-exact as written under 2.9-990721 and every 2.95.x, which miss GetRomName (28 words) and
- * sceScfSetT10kConfig instead, so the object's source differs from this somewhere one compiler
- * forgives); AdjustTime (27: the target falls through to the min >= 0 loop and ends in the jal
- * form, this branches over it and ends in a `j`). */
+ * AdjustTime (round 12a) tests `m >= 0` first -- the else branch's loop is laid out last, entered by
+ * the bltzl -- adds 60 before each subhour, and sums into its own variable: `min += t->minute` (or
+ * `min = t->minute + min`, which expand_binop swaps to the target's operand) gives `addu s0,s0,v0`.
+ *
+ * OPEN, three: frombcd (5 words: the target multiplies with MIPS's two-operand `mult; mflo` -- the
+ * product allocated to LO, mulsi3's second alternative -- this the R5900's three-operand `mult`; (x >> 4)
+ * * 6 in eleven spellings, 64-bit ones included); adddate and subdate (41, 37: the target reloads
+ * t->year after the day/month stores, dtls13010 keeps it in a register -- both are byte-exact under
+ * dtls13010 with -fno-gcse (and, as written, under 2.9-990721 and every 2.95.x), but GetRomName needs
+ * GCSE: it keeps gRomName's %hi in s1 and builds the address twice from it, 28 words off without; so
+ * this gcse removes a reload the target's kept -- its source differs from this somewhere). */
 typedef struct {
 	u_char stat;
 	u_char second;
@@ -278,20 +306,22 @@ static void subhour(sceCdCLOCK *t)
 
 static void AdjustTime(sceCdCLOCK *t, int min)
 {
+	int m;
+
 	convertfrombcd(t);
-	min += t->minute;
-	if (min < 0) {
-		while (min < 0) {
-			subhour(t);
-			min += 60;
+	m = t->minute + min;
+	if (m >= 0) {
+		while (m > 60) {
+			addhour(t);
+			m -= 60;
 		}
 	} else {
-		while (min > 60) {
-			addhour(t);
-			min -= 60;
+		while (m < 0) {
+			m += 60;
+			subhour(t);
 		}
 	}
-	t->minute = min;
+	t->minute = m;
 	converttobcd(t);
 }
 
