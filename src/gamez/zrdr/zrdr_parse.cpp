@@ -290,7 +290,12 @@ int CRdrFile::ReadToken(CRdrIO *io, _zrdr **out)
  * spelling tried here falls through into it (`if (!depth) {} else`, if/else with `array = this`
  * or `array = array`, ternaries -- the forms that leave `array` uninitialised at its declaration
  * lose the coalescing of `array` with `this` in s0 and move every register); the loop label's
- * alignment nop follows from it */
+ * alignment nop follows from it. Part (1) no longer differs (17 instructions, all the depth test's).
+ * Round 5 of the world lane, every one 17 or 47: `if (!depth) ; else`, a do/while(0) with a break,
+ * a goto over the call, a switch, a while with a break, an unsigned count, the count read back
+ * from array->length; and the shape a block emptied only after allocation would give (an
+ * explicit `array = this` arm, either way round, with `array` initialised or not; an inline helper
+ * returning `this` early, or its ternary) -- each loses the this/array coalescing (47) */
 _zrdr *CRdrFile::ReadArray(CRdrIO *io, int depth)
 {
     _zrdr *rdr = 0;
