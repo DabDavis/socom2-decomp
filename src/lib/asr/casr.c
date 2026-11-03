@@ -29,6 +29,7 @@ extern void FreeCtxInfo(CASR *c);
 extern int GetIsolatedWordDpActiveWords(CASR *c, int **words, int *n);
 extern int qQueueControl(int queue, int what, int id, int arg);
 extern int casrDoSpelling(CASR *c);
+extern float expf(float x);
 
 typedef struct IMPORT {
     void *data;
@@ -1039,6 +1040,25 @@ int func_004DEB58(CASR *c, int cb)
     return 0;
 }
 
+/* a sentence's confidence, 0..10000, from its score against the garbage model's per frame: a
+ * logistic either side of a straight line between -26 and 78. SOCOM 1's calls exp (double) where
+ * this build calls expf. 2.96's parser lands an ulp below even an exact decimal for the two slope
+ * constants (76.9f comes out 0x4299CCCC, the target's), so they are spelled just above the
+ * target's floats (0x3DAEFD7F, 0x3CDFE537); x holds the result too (a second variable: 17 words) */
+int CalcSentenceConfidence(unsigned int frames, unsigned int score, unsigned int garbage)
+{
+    float x;
+
+    x = ((float)score - (float)garbage) / (float)frames;
+    if (x < -26.0f)
+        x = 10000.0f / (expf(x * 0.085444445f + 0.0273309787f) + 1.0f);
+    else if (x <= 78.0f)
+        x = (91.0f - x) * 76.9f;
+    else
+        x = 10000.0f / (expf(x * 0.085444445f + -4.467109f) + 1.0f);
+    return (int)x;
+}
+
 /* the engine's events, passed on to the host's callbacks (a frame is 11 ms: ms = frames * 110 / 10) */
 int cbTSDetected(CASR *c, int a1, int a2, int frame)
 {
@@ -1081,6 +1101,21 @@ int cbStartDetected(CASR *c, int a1, int a2, int start, int end)
         c->last_state = err;
         _tosErrorLog(c->event, 27);
     }
+    return 0;
+}
+
+int cbTOSRecognised(CASR *c, int a1, int a2, int frame)
+{
+    RESULT *r;
+    int err;
+
+    casrCreateResult(c, &r, frame, 1);
+    err = c->result_cb(r, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    casrFreeResult(c, r);
     return 0;
 }
 
