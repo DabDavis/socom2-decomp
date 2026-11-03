@@ -1647,6 +1647,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 15** (seal_ik.cpp, ~CSealUnit, the aim parameters):
+  - single-bit `unsigned int` bitfields written one at a time compile to lbu/sb: splitting the 3-bit
+    field was enough for TurnSetup 0x5B8270 (round 14's unsigned-char guess was not needed);
+  - an unsigned byte-enum member passed straight to a parameter of the same enum loads with `lb`; cast
+    to its own type, `(E)m`, it loads with `lbu`;
+  - member lists that are classes over std::list (SOCOM 1's slist/ulist/clist) give four this-tests per
+    member in an implicit destructor, as ~CAiSAnimate;
+  - `if (p) {...} else {...; return false;} return f();` puts the shared call's block last
+    (SetAimPointW); returning early inside the if puts it right after the if body;
+  - a recursive function's out-of-line iterator copies sit BEFORE it in the image (0x5ED880-0x5ED9A0
+    precede GetSealCount, as 0x2D22E0 precedes CGTree::Destroy); GetSealCount (0x1A8 vs 0x1F8) waits
+    on include/list's depth: the pointer-list wrapper's begin()/end() as `iterator(base::begin())`
+    and a two-level size() (0x5E8A80 a const reference to size_, SOCOM 1's compressed_pair first());
+  - seal_ik.cpp is 0x5B8270-0x5B82CF, SOCOM 1's seal_ik.cpp position between seal_ex.cpp and
+    seal_kit.cpp; 0x5EBDC0 is CAiState's implicit operator= (the stack's 0xC-0x1B copied as one block
+    through the FPU: a nested struct), its list assignment an MSL chain include/list does not model
+    (0x5EF7F0, 0x5EF470, 0x5EF9B0, 0x5EF8D0, 0x5EF950, 0x510110 -- seal_unit.cpp's header has it).
 - **Tells from the world, rdr and sound, round 1** (ztex_main.cpp, zrdr_file.cpp, CSndVocalQueue::Add):
   - bitfields set in a constructor's initialiser list compile to one word read-mask-write each, with
     `(0 & mask) << shift` left unfolded; assigned in the body they fold to byte stores (CRdrFile());
