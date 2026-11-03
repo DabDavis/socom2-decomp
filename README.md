@@ -3650,7 +3650,7 @@ Hand-written in round 6b: `medius/rt_comm.c` (33 of 33, new), `medius/rt_comm_pl
 new), `medius/rt_crypt.c` (22 of 24, new), `medius/rt_mt.c` (6 of 6, new), `medius/rt_time_platform.c`
 (6 of 6, new), `medius/rt_mutex.c` (+2), `medius/rt_msg_client.c` (+8 of 9 internals) -- 94
 functions byte-exact, 77 new to the map's byte-exact rows (17 supersede matching drafts); 27 rows
-named (`s1:order` 15, `s1:calls` 12), one name withdrawn (0x62CEF8, `s1~`).
+named (`s1:order` 18, `s1:calls` 9), one name withdrawn (0x62CEF8, `s1~`); 12,976 bytes.
 
 **Round 6c: the queues, the scheduler's small functions, 117 names.**
 
