@@ -325,8 +325,8 @@
 0x00191478 0x18 atof  # MAIN unaligned; s1:calls (newlib's; called where SOCOM 1's calls atof) -- the UI-commands lane
 0x00191490 0x28 atoi  # MAIN; s1:exact
 0x001914B8 0x1C atol  # MAIN unaligned; s1:calls (VALVE_CMD_DATA::ParseValveName calls it where SOCOM 1's calls atol) -- the sound lane
-0x001914D8 0x20 func_001914D8  # MAIN unaligned
-0x001914F8 0xCC func_001914F8  # MAIN unaligned
+0x001914D8 0x20 bcopy  # MAIN unaligned; s1:order (newlib bcopy.c, after atol as bcopy.o sorts: memmove with the operands swapped)
+0x001914F8 0xCC bsearch  # MAIN unaligned; s1:order (newlib bsearch.c, between bcopy and calloc: the halving search through the comparison callback)
 0x001915C8 0x64 calloc  # MAIN unaligned
 0x00191630 0xB4 _calloc_r  # MAIN; s1:order (newlib: the demo's callocr object between calloc and closer; _malloc_r then memset)
 0x001916E8 0x58 _close_r  # MAIN unaligned; by body (newlib's reent/closer.c: errno zeroed, close(fd), errno copied into ptr->_errno on -1; the demo's _close_r is 0x58 too)
