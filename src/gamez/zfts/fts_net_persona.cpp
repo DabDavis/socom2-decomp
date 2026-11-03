@@ -84,13 +84,16 @@ public:
 
     unsigned char _0[0x48];
     CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
-    unsigned char _4c[0xac - 0x4c];
+    unsigned char _4c[0x60 - 0x4c];
+    CValve *m_pTeamFullValve;   // 0x60: set while either side has more than eight (SOCOM II's; the name ours)
+    unsigned char _64[0xac - 0x64];
     int m_persona_object;   // 0xac: this client's persona object (the name ours)
     unsigned char _b0[0xd8 - 0xb0];
     bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
     unsigned char _d9[0xe4 - 0xd9];
     int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
-    unsigned char _e8[0x114 - 0xe8];
+    unsigned char _e8[0x113 - 0xe8];
+    MP_MAJOR_GAME_STATE m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
     MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
     MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
 };
@@ -194,6 +197,7 @@ extern unsigned char data_004412D8;   /* the sides swapped */
 extern int data_00441448;             /* (the two teams' counts, func_002C4500's) */
 extern int data_00441450;
 extern int data_00441458;
+extern int data_00441460;             /* (the personas on neither side, unflagged) */
 extern int data_00441468;
 extern unsigned int data_00441470;    /* (the local player's team) */
 
@@ -227,6 +231,7 @@ unsigned int func_002C32C0();               /* (the SEALs' team mask) */
  * SOCOM 1's bool, is never read, and the team switch below leaves a3 as it is) */
 void NetSendE3Index__FiUii(int who, unsigned int index, int flag);
 void func_002C4440();
+bool func_002A47B0(CMission *mission, const char *dialog);   /* (fts_mission.cpp's: a dialog over the mission) */
 int func_002C4810();
 int func_002C4A20();
 int strcmp(const char *a, const char *b);
@@ -396,6 +401,52 @@ extern "C" void func_002C4290(int client)
         data_00441450--;
         data_00441448++;
     }
+}
+
+/* whether a team is the SEALs' (func_002C3300 inline: the value read ahead of the swap flag) */
+inline bool IsSealTeam(unsigned int team)
+{
+    unsigned int t = team;
+
+    return t == (data_004412D8 ? TEAM_TERRORISTS : TEAM_SEALS);
+}
+
+/* a team word's flag 0x10000 (ours: PersonaData::IsFlagged on the word, which the three tests then
+ * read once -- through the member each reloads it -- and compared `!= false`, so materialised) */
+inline bool IsFlaggedTeam(unsigned int team)
+{
+    return (team & 0x10000) != 0;
+}
+
+/* the sides counted -- the terrorists, the SEALs, the flagged personas and the rest -- the
+ * team-full valve set while either side has more than eight, and a game the host is left alone in
+ * with only flagged players abandoned (SOCOM II's; OVL1 0x2C4500) */
+extern "C" void func_002C4500()
+{
+    data_00441448 = data_00441450 = data_00441458 = data_00441460 = 0;
+    for (int i = 0; i < 24; i++) {
+        PersonaData *p = CZPersonaState::GetPersona(i);
+
+        if (p) {
+            if (IsTerroristTeam(p->m_team))
+                data_00441448++;
+            else if (IsSealTeam(p->m_team))
+                data_00441450++;
+            else if (IsFlaggedTeam(p->m_team) != false)
+                data_00441458++;
+            else
+                data_00441460++;
+        }
+    }
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (data_00441448 > 8 || data_00441450 > 8)
+        SetValveValue(game->m_pTeamFullValve, 1);
+    else
+        SetValveValue(game->m_pTeamFullValve, 0);
+    if (data_00441448 + data_00441450 == 0 && game->m_mp_major_game_state >= 2 &&
+        game->m_mp_major_game_state < 6 && theNetwork.m_bSessionMaster && data_00441458)
+        func_002A47B0(&theMission, "dlgNetAbandoned.rdr");
 }
 
 /* the sides counted, the slots held ahead of their personas added (OVL1 0x2C4440) */
