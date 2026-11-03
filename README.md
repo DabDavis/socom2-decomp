@@ -1818,6 +1818,27 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 4** (zrdr's real element, zrdr_parse.cpp's symbol table):
+  - zrdr's element is SOCOM 1's `zrdr_sym` (0x1C bytes: a `#undef` flag byte and two plain std::strings -- a class
+    element's string member destroyed with one this-test is std::string, a CSaferStr gives two); the table at
+    0x488630 (g_symbols, ours) derives from the vector and adds a "file start" count at +0xC;
+  - a too-tall inline wrapper inlined one level calls even a vector's size()/begin()/end() out of line: zrdr_read
+    inlines Pop one level and the preprocessor (SOCOM 1's _preproc_filter) Define/Undefine, which brings the template
+    tail out at the target's sizes; a recursive function's out-of-line copies sit just before it, in reverse of
+    their first use;
+  - MW devirtualises a call on a local object only when the object's own class declares the function (CRdrIO's
+    inherited GetSize/Close go through the vtable, CFileIO's own Open/fwrite/Close are direct); a constant assigned to
+    an `unsigned short` local is `daddiu`, to an int `li`; no total-size inlining cut up to an 18 KB function (a probe
+    with 576 inline calls inlined them all);
+  - MEASURED, NOT APPLIED: making basic_string's operator=(const basic_string &) an inline over assign(str) (SOCOM 1's
+    MSL keeps both as 0xC-byte wrappers; 0x32FD70 is the image's only `j 0x22E4D0` stub), with 0x22E4D0 renamed
+    assign(const basic_string &) and 0x32FD70 __as__, brings 0x32FD70, 0x332560, 0x332A60, 0x332AD0, 0x333120 -- but
+    costs the AI core's do_assign<CCharacterType::LOD> 0x53F730 (the LOD's string member assignment one level deeper):
+    the patch and renames wait in build/scratch/wld-r4/ for that function's refit;
+  - open: zrdr_read (3: two temporaries' slots swapped), the preprocessor 0x32FE70 (the target's size, not
+    reconciled), ReadArray (17), the class erase 0x3323F0 (MSL's end register), ~__vector_imp 0x333330 (0x108 vs 0x58:
+    the deleter's destructor inlined) and so __sinit_zrdr_parse.cpp 0x402DB0, the save-module unit 0x33E7F0-0x33F04F
+    (its manager is not zsave.h's CSaveManager: Write uses 0x1C-0x28 as a table of 40-byte entries).
 - **Tells from the SEALs, round 16** (seal_body.cpp's stance family, TurnControl, ClearToBase, DropBody):
   - SOCOM 1's seal_body.cpp lines up one to one with 0x581110-0x58A5E0, BlendedClimb to StanceChanged: the stance
     family named by its order (BlendedClimb, Hang_0, SetStanceIdle, Prone_0, Prone, Crouch_0, Crouch, Stand_0 --
@@ -3768,7 +3789,7 @@ constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' 
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0, 0x2F6230
-and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line) -- 0x29FF60 and
+and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the keyboard grid's clear 0x38FEF0 and the hangul pieces' clear 0x3929C0 (their elements' destructors one inline level deeper in the original; drafts with `sc: as=` lines) -- TEN rows in all -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
 
