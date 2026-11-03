@@ -275,15 +275,15 @@ extern "C" {
 extern ChatAccountInfo AccountInfo;
 extern unsigned int data_0044F9E0;   /* when the active lobby next refreshes the player's info */
 
-MediusErrorCode func_00647CE8(MediusSessionBeginRequest *req,
+MediusErrorCode MediusSessionBegin(MediusSessionBeginRequest *req,
                               void (*cb)(int, int, int, MediusSessionBeginResponse *));   /* MediusSessionBegin */
-MediusErrorCode func_00647548(MediusSessionRequest *req,
+MediusErrorCode MediusVersionServer(MediusSessionRequest *req,
                               void (*cb)(int, int, int, MediusVersionServerResponse *));   /* MediusVersionServer */
-MediusErrorCode func_00647D88(MediusSessionRequest *req,
+MediusErrorCode MediusSessionEnd(MediusSessionRequest *req,
                               void (*cb)(int, int, int, MediusSessionEndResponse *));   /* MediusSessionEnd */
-MediusErrorCode func_00648140(MediusAccountRegistrationRequest *req,
+MediusErrorCode MediusAccountRegistration(MediusAccountRegistrationRequest *req,
                               void (*cb)(int, int, int, MediusAccountRegistrationResponse *));   /* MediusAccountRegistration */
-MediusErrorCode func_00647F48(MediusAccountLoginRequest *req,
+MediusErrorCode MediusAccountLogin(MediusAccountLoginRequest *req,
                               void (*cb)(int, int, int, MediusAccountLoginResponse *));   /* MediusAccountLogin */
 
 void func_002EE910(int, int, int, MediusSessionBeginResponse *);   /* cbSessionBegin */
@@ -299,8 +299,8 @@ extern NetConnectionInfo data_0066A840;   /* the account's lobby server (OVL2 bs
 extern int data_0066A5E0;   /* the lobby server's connection (OVL2 bss) */
 extern float data_0044F8D0;   /* when the lobby server was asked for */
 int func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
-MediusErrorCode func_00647C60(MediusUpdateClientStateRequest *req);   /* MediusUpdateClientState */
-MediusErrorCode func_00649960(MediusSetGameListFilterRequest *req,
+MediusErrorCode MediusUpdateClientState(MediusUpdateClientStateRequest *req);   /* MediusUpdateClientState */
+MediusErrorCode MediusSetGameListFilter(MediusSetGameListFilterRequest *req,
                               void (*cb)(int, int, int, MediusSetGameListFilterResponse *));   /* MediusSetGameListFilter */
 void func_002EFE10(int, int, int, MediusSetGameListFilterResponse *);   /* its callback */
 void func_002F5020();   /* the chat shown again */
@@ -316,17 +316,17 @@ extern unsigned char data_0066A5F8;   /* the details to go at once */
 extern unsigned char data_0044F890[64];   /* the server's key kept */
 extern unsigned char data_0066A8E0;   /* logged in */
 
-MediusErrorCode func_00648840(MediusCreateChannelRequest *req,
+MediusErrorCode MediusCreateChannel(MediusCreateChannelRequest *req,
                               void (*cb)(int, int, int, MediusCreateChannelResponse *));   /* MediusCreateChannel */
-MediusErrorCode func_00648A08(MediusJoinChannelRequest *req,
+MediusErrorCode MediusJoinChannel(MediusJoinChannelRequest *req,
                               void (*cb)(int, int, int, MediusJoinChannelResponse *));   /* MediusJoinChannel */
-MediusErrorCode func_006488F8(MediusJoinGameRequest *req,
+MediusErrorCode MediusJoinGame(MediusJoinGameRequest *req,
                               void (*cb)(int, int, int, MediusJoinGameResponse *));   /* MediusJoinGame */
-MediusErrorCode func_00648FB8(MediusFindWorldByNameRequest *req,
+MediusErrorCode MediusFindWorldByName(MediusFindWorldByNameRequest *req,
                               void (*cb)(int, int, int, MediusFindWorldByNameResponse *));   /* MediusFindWorldByName */
 void func_002ED9C0(int, int, int, MediusFindWorldByNameResponse *);   /* cbFindRoomByName */
 void func_002EE210(int, int, int, MediusFindWorldByNameResponse *);   /* cbFindGameByName */
-MediusErrorCode func_006485B8(MediusCreateGameRequest *req,
+MediusErrorCode MediusCreateGame(MediusCreateGameRequest *req,
                               void (*cb)(int, int, int, MediusCreateGameResponse *));   /* MediusCreateGame */
 void func_002E9840(CValve *valve);   /* the clan game's team set from the valve (the clan unit's) */
 int func_002E99F0();   /* the clan game's field (the clan unit's) */
@@ -404,7 +404,7 @@ void cbCreateGame(int, int, int, MediusCreateGameResponse *resp)
         if (ZString(var))
             memcpy(req.Name, ZString(var), sizeof(req.Name));
         req.WorldType = 0;
-        CheckMediusError(func_00648FB8(&req, func_002EE210));
+        CheckMediusError(MediusFindWorldByName(&req, func_002EE210));
     } else {
         if (resp->StatusCode == (MediusCallbackStatus)-975)
             LobbyEvent("MP_GAME_NAME_EXISTS", 0);
@@ -473,7 +473,7 @@ void CreateNewGameStateHandler(LOBBY_STATE_FLAG flag)
         req.GenericField2 = 65000;
         req.GenericField3 = func_002E99F0();
         req.GameHostType = 0;
-        CheckMediusError(func_006485B8(&req, cbCreateGame));
+        CheckMediusError(MediusCreateGame(&req, cbCreateGame));
         break;
     }
     case TICK:
@@ -523,7 +523,7 @@ void JoinGameStateHandler(LOBBY_STATE_FLAG flag)
                                                0, UIVL_PERMANENT);
         if (ZString(var))
             memcpy(req.GamePassword, ZString(var), sizeof(req.GamePassword));
-        CheckMediusError(func_006488F8(&req, cbJoinGame));
+        CheckMediusError(MediusJoinGame(&req, cbJoinGame));
         g_bJoiningRandomGame = 0;
         break;
     }
@@ -555,7 +555,7 @@ void JoinRoomStateHandler(LOBBY_STATE_FLAG flag)
         memcpy(req.LobbyChannelPassword, "", sizeof(req.LobbyChannelPassword));
         func_002F4080(&req, 45);
         data_0044F9E8 = data_004A44A0;
-        CheckMediusError(func_00648A08(&req, cbJoinRoom));
+        CheckMediusError(MediusJoinChannel(&req, cbJoinRoom));
         break;
     }
     case TICK:
@@ -587,7 +587,7 @@ void cbCreateRoom(int, int, int, MediusCreateChannelResponse *resp)
         if (ZString(var))
             memcpy(req.Name, ZString(var), sizeof(req.Name));
         req.WorldType = 1;
-        CheckMediusError(func_00648FB8(&req, func_002ED9C0));
+        CheckMediusError(MediusFindWorldByName(&req, func_002ED9C0));
     } else {
         theLobby.ChangeState(LOBBY_ACTIVE);
         LobbyEvent("MP_MEDIUS_JOIN_ROOM_FAILURE", "Cannot join this room. Please try another.");
@@ -612,7 +612,7 @@ void CreateRoomStateHandler(LOBBY_STATE_FLAG flag)
             req.MaxPlayers = room->m_maxPlayers;
             CopyFrom(req.LobbyName, room->m_name, sizeof(req.LobbyName));
             CopyFrom(req.LobbyPassword, room->m_password, sizeof(req.LobbyPassword));
-            CheckMediusError(func_00648840(&req, cbCreateRoom));
+            CheckMediusError(MediusCreateChannel(&req, cbCreateRoom));
         }
         break;
     }
@@ -642,7 +642,7 @@ void cbLobbyServerConnect(int index)
         data_0066A5E0 = index;
         SetSessionKey(upd.SessionKey);
         upd.UserAction = 1;
-        CheckMediusError(func_00647C60(&upd));
+        CheckMediusError(MediusUpdateClientState(&upd));
         if (!g_bJoiningRandomGame) {
             theLobby.ChangeState(LOBBY_ACTIVE);
             LobbyEvent("MP_JOIN_ROOM", 0);
@@ -653,10 +653,10 @@ void cbLobbyServerConnect(int index)
         memset(&filt, 0, sizeof(filt));
         SetSessionKey(filt.SessionKey);
         filt.FilterField = 10;
-        CheckMediusError(func_00649960(&filt, func_002EFE10));
+        CheckMediusError(MediusSetGameListFilter(&filt, func_002EFE10));
         memset(&ver, 0, sizeof(ver));
         SetSessionKey(ver.SessionKey);
-        CheckMediusError(func_00647548(&ver, func_002EFE00));
+        CheckMediusError(MediusVersionServer(&ver, func_002EFE00));
         if (theLobby.uiv_MediusChatRecvVar)
             func_002F5020();
     } else {
@@ -711,7 +711,7 @@ void LobbyReadyToConnectStateHandler(LOBBY_STATE_FLAG flag)
         func_002DF6A0(&theLobby);
         SetSessionKey(upd.SessionKey);
         upd.UserAction = 2;
-        CheckMediusError(func_00647C60(&upd));
+        CheckMediusError(MediusUpdateClientState(&upd));
         func_002F4FC0(1);
         data_0044F9D0 = 0;
         CValve::Create("mp_persistent", VALVE_TYPE_1)->SetValue(1);
@@ -817,7 +817,7 @@ void AccountLoginStateHandler(LOBBY_STATE_FLAG flag)
         SetSessionKey(login.SessionKey);
         CopyFrom(login.AccountName, AccountInfo.AccountName, sizeof(login.AccountName));
         CopyFrom(login.Password, AccountInfo.Password, sizeof(login.Password));
-        CheckMediusError(func_00647F48(&login, cbAccountLogin));
+        CheckMediusError(MediusAccountLogin(&login, cbAccountLogin));
         break;
     }
     case TICK:
@@ -854,7 +854,7 @@ void cbAccountRegistration(int, int, int, MediusAccountRegistrationResponse *res
         SetSessionKey(req.SessionKey);
         CopyFrom(req.AccountName, AccountInfo.AccountName, sizeof(req.AccountName));
         CopyFrom(req.Password, AccountInfo.Password, sizeof(req.Password));
-        CheckMediusError(func_00647F48(&req, cbAccountLoginAfterRegister));
+        CheckMediusError(MediusAccountLogin(&req, cbAccountLoginAfterRegister));
     } else {
         theLobby.ChangeState(REGISTRATION_FAILURE);
     }
@@ -871,7 +871,7 @@ void cbFilterAcctName(int, int, int, MediusTextFilterResponse *resp)
         CopyFrom(req.AccountName, AccountInfo.AccountName, sizeof(req.AccountName));
         CopyFrom(req.Password, AccountInfo.Password, sizeof(req.Password));
         req.AccountType = 1;
-        CheckMediusError(func_00648140(&req, cbAccountRegistration));
+        CheckMediusError(MediusAccountRegistration(&req, cbAccountRegistration));
     } else {
         LobbyEvent("MP_FILTER_FAILURE", 0);
         theLobby.ChangeState(REGISTRATION_FAILURE);
@@ -917,10 +917,10 @@ void SessionBeginStateHandler(LOBBY_STATE_FLAG flag)
 
             memcpy(begin.MessageID, "SessionBegin", MEDIUS_MESSAGEID_MAXLEN);
             begin.ConnectionClass = 1;
-            CheckMediusError(func_00647CE8(&begin, func_002EE910));
+            CheckMediusError(MediusSessionBegin(&begin, func_002EE910));
             memset(&req, 0, sizeof(req));
             SetSessionKey(req.SessionKey);
-            CheckMediusError(func_00647548(&req, func_002EFE00));
+            CheckMediusError(MediusVersionServer(&req, func_002EFE00));
         }
         break;
     case TICK:
@@ -945,7 +945,7 @@ void EndSessionStateHandler(LOBBY_STATE_FLAG flag)
 
             memset(&req, 0, sizeof(req));
             SetSessionKey(req.SessionKey);
-            CheckMediusError(func_00647D88(&req, func_002EE7B0));
+            CheckMediusError(MediusSessionEnd(&req, func_002EE7B0));
         } else {
             theLobby.ChangeState(ROOT_LOBBY_STATE);
         }
@@ -1092,11 +1092,11 @@ CChatQueue data_0044FA50;   /* the private lines waiting for their player */
 
 extern "C" {
 void func_002F5290(void *queue, const MediusChatMessage *msg);   /* a line queued */
-MediusErrorCode func_00648F10(MediusFindPlayerRequest *req,
+MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer */
 void func_002F4A20(int, int, int, MediusFindPlayerResponse *);   /* the private line's player found */
 void func_002F4BA0(const char *text, void *data);   /* the public line filtered: sent */
-MediusErrorCode func_00648D30(MediusPlayerInfoRequest *req,
+MediusErrorCode MediusGetPlayerInfo(MediusPlayerInfoRequest *req,
                               void (*cb)(int, int, int, MediusPlayerInfoResponse *));   /* MediusGetPlayerInfo */
 void func_002F0020(int, int, int, MediusPlayerInfoResponse *);   /* the player's info shown */
 void func_00300670();   /* the Medius library closed */
@@ -1137,7 +1137,7 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
         find.SearchType = 1;
         if (to)
             memcpy(find.Name, to, sizeof(find.Name));
-        CheckMediusError(func_00648F10(&find, func_002F4A20));
+        CheckMediusError(MediusFindPlayer(&find, func_002F4A20));
     } else {
         msg.TargetID = -1;
         msg.MessageType = 0;
@@ -1176,7 +1176,7 @@ extern "C" void func_002EFE50(CZOnlineLobby *lobby, const char *id, int what)
         memcpy(req.MessageID, "BRIEFING", MEDIUS_MESSAGEID_MAXLEN);
         break;
     }
-    func_00648D30(&req, func_002F0020);
+    MediusGetPlayerInfo(&req, func_002F0020);
 }
 
 /* the online session left: the Medius and DME connections closed, the lobby with them (SOCOM 1's;

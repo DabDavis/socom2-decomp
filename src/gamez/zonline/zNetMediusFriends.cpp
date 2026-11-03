@@ -187,7 +187,7 @@ extern AccountInfoType AccountInfo;
 extern IgnoreVector data_0044FDE0;   /* the ignored */
 extern FriendInvitationVector data_0044FE00;   /* the friend invitations */
 void func_00300BE0(int, int, int, MediusStatusResponse *);   /* the confirmation's callback */
-MediusErrorCode func_00648F10(MediusFindPlayerRequest *req,
+MediusErrorCode MediusFindPlayer(MediusFindPlayerRequest *req,
                               void (*cb)(int, int, int, MediusFindPlayerResponse *));   /* MediusFindPlayer? */
 MediusErrorCode func_006492D8(MediusAddToBuddyListConfirmationRequest *req,
                               void (*cb)(int, int, int, MediusStatusResponse *));
@@ -215,11 +215,11 @@ void func_00300C10(int, int, int, MediusBuddyResponse *);
 
 /* the Medius buddy calls (unnamed) */
 MediusErrorCode func_0064AE58(MediusIDRequest *req, MediusBuddyCallback cb);
-MediusErrorCode func_00649238(MediusAccountRequest *req, MediusBuddyCallback cb);
+MediusErrorCode MediusRemoveFromBuddyList(MediusAccountRequest *req, MediusBuddyCallback cb);
 MediusErrorCode func_0064B368(MediusIDRequest *req, MediusBuddyCallback cb);
 MediusErrorCode func_00649400(MediusGetIgnoreListRequest *req, MediusBuddyCallback cb);
-MediusErrorCode func_00649198(MediusAccountRequest *req, MediusBuddyCallback cb);
-MediusErrorCode func_00649378(MediusBuddyConfirmationResponse *req);
+MediusErrorCode MediusAddToBuddyList(MediusAccountRequest *req, MediusBuddyCallback cb);
+MediusErrorCode MediusBuddyAddConfirmation(MediusBuddyConfirmationResponse *req);
 }
 
 /* The friends' list members, defined first: in the image they follow the buddy code (0x3020A0,
@@ -350,7 +350,7 @@ void CZOnlineLobby::AddFriend(const char *name)
                     SetSessionKey(req.SessionKey);
                     strncpy(req.Name, name, sizeof(req.Name));
                     req.SearchType = 1;
-                    CheckMediusError(func_00648F10(&req, cbFindBuddyListPlayerID));
+                    CheckMediusError(MediusFindPlayer(&req, cbFindBuddyListPlayerID));
                     return;
                 }
                 LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
@@ -384,7 +384,7 @@ void CZOnlineLobby::RemoveFriend(int id)
     memset(&req, 0, sizeof(req));
     SetSessionKey(req.SessionKey);
     req.AccountID = id;
-    func_00649238(&req, func_00301710);
+    MediusRemoveFromBuddyList(&req, func_00301710);
     CheckMediusError(MediusSuccess);
 }
 
@@ -482,7 +482,7 @@ void CZOnlineLobby::AddFriendDirectly(int id)
     memset(&req, 0, sizeof(req));
     SetSessionKey(req.SessionKey);
     req.AccountID = id;
-    CheckMediusError(func_00649198(&req, func_00300C10));
+    CheckMediusError(MediusAddToBuddyList(&req, func_00300C10));
 }
 
 /* a friend's request refused, and its invitation dropped (OVL1 0x300AF0) */
@@ -495,7 +495,7 @@ void CZOnlineLobby::RejectFriend(int id)
     req.StatusCode = -985;
     req.TargetAccountID = id;
     req.AddType = 0;
-    CheckMediusError(func_00649378(&req));
+    CheckMediusError(MediusBuddyAddConfirmation(&req));
     data_0044FE00.Remove(id);
 }
 
@@ -509,7 +509,7 @@ void CZOnlineLobby::ConfirmFriend(int id)
     req.StatusCode = 2;
     req.TargetAccountID = id;
     req.AddType = 0;
-    CheckMediusError(func_00649378(&req));
+    CheckMediusError(MediusBuddyAddConfirmation(&req));
     data_0044FE00.Remove(id);
 }
 

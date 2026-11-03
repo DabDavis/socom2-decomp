@@ -61,8 +61,8 @@ int func_001BBAB8(sceMpeg *mp);   /* sceMpegIsEnd */
 void func_001BBAD8(sceMpeg *mp);   /* sceMpegReset */
 void func_001BB948(sceMpeg *mp);   /* sceMpegDelete */
 
-int func_00198320(void *p);   /* (MAIN: the decoder's error test) */
-void func_00198378(void *p, int v);   /* (MAIN: the error raised) */
+int setjmp(void *p);   /* (MAIN: the decoder's error test) */
+void longjmp(void *p, int v);   /* (MAIN: the error raised) */
 int sceDmaSync(void *d, int mode, int timeout);
 extern void *data_0049E2B8;   /* zSys's DMA channel (+8) */
 extern unsigned char data_00455E50[];   /* the decoder's error state (SOCOM II's) */
@@ -154,7 +154,7 @@ sceMpeg *startPss(sceMpeg *mp, PssReadFunc read, playPssRsrcs *rsrcs, unsigned i
 int tickPss(sceMpeg *mp, playPssRsrcs *rsrcs, unsigned int fbp)
 {
     OKtoFillBuff = 0;
-    if (!func_00198320(data_00455E50)) {
+    if (!setjmp(data_00455E50)) {
         while (sceMpegGetPicture(mp, rsrcs->rgb32, _Max_Height / 16 * 40) < 0)
             ;
     } else {
@@ -343,7 +343,7 @@ int backgroundCallback(sceMpeg *mp, sceMpegCbData *cbdata, void *data)
 /* the decoder's error raised (SOCOM II's; OVL1 0x30A940) */
 int errorCallback(sceMpeg *mp, sceMpegCbData *cbdata, void *data)
 {
-    func_00198378(data_00455E50, 1);
+    longjmp(data_00455E50, 1);
     return 1;
 }
 
