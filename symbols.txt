@@ -2355,16 +2355,16 @@
 0x00243640 0xC8 heap_Open  # OVL1; s1:calls
 0x00243708 0x58 func_00243708  # OVL1 unaligned
 0x00243760 0xDC SearchFor  # OVL1; s1:order (the demo heap object 0x378348: its last function, SearchFor -- the same search of a counted list, unrolled by four here (-funroll-loops))
-0x00243840 0x3A4 func_00243840  # OVL1
+0x00243840 0x3A4 lgAudInit  # OVL1; by its messages ('lgAudInit: rpc binding error', 'lgAudInit version 1.08.002: max streaming data size: %d'); the demo's lgAud object 0x3B5980 opens with lgAudInit as this one does
 0x00243BE8 0x7C lgAudEnumHint  # OVL1 unaligned; s1:exact
 0x00243C68 0x1D8 lgAudEnumerate  # OVL1 unaligned; s1:callee
 0x00243E40 0x16C lgAudOpen  # OVL1; s1:callee
 0x00243FB0 0xD4 lgAudClose  # OVL1; s1:callee
 0x00244088 0x178 lgAudRead  # OVL1 unaligned; s1:calls
-0x00244200 0x178 func_00244200  # OVL1
-0x00244378 0x178 func_00244378  # OVL1 unaligned
-0x002444F0 0x128 func_002444F0  # OVL1
-0x00244618 0x120 func_00244618  # OVL1 unaligned
+0x00244200 0x178 lgAudWrite  # OVL1; by its messages ('lgAudWrite: invalid parameter (src)', 'lgAudWrite: rpc call failed'); RPC 9; after lgAudRead as in the demo's lgAud object
+0x00244378 0x178 lgAudWriteVag  # OVL1 unaligned; by its messages ('lgAudWriteVag: invalid parameter (src)', 'lgAudWriteVag: rpc call failed'); RPC 21, lgAudWrite's body (the demo has no WriteVag)
+0x002444F0 0x128 lgAudGetMixer  # OVL1; by its messages ('lgAudGetMixer: invalid parameter (mr)', 'lgAudGetMixer: rpc call failed'); RPC 11; the demo's lgAudGetMixer 0x3B6358 has the same body
+0x00244618 0x120 lgAudSetMixer  # OVL1 unaligned; by its message ('lgAudSetMixer: invalid parameter (mr)'; its rpc failure prints GetMixer's); RPC 12; after lgAudGetMixer as in the demo's lgAud object
 0x00244738 0xE8 lgAudGetRemainingPlaybackBytes  # OVL1 unaligned; s1:order (the demo's lgAud object 0x3B5980: after lgAudSetMixer as there; RPC 0x13 and the message 'lgAudGetRemainingPlaybackBytes: rpc call failed')
 0x00244820 0xE8 lgAudGetAvailableRecordingBytes  # OVL1; s1:order (the demo's lgAud object: after GetRemainingPlaybackBytes; RPC 0x12 and its own message)
 0x00244908 0xD4 lgAudStartRecording  # OVL1 unaligned; s1:callee
@@ -2379,8 +2379,8 @@
 0x00245080 0x80 fnReadEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudASync, before lgAudARead; copies the reply's data out, the read's end callback)
 0x00245100 0x13C lgAudARead  # OVL1; s1:callee
 0x00245240 0x58 fnWriteEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudARead, before lgAudAWrite)
-0x00245298 0x164 func_00245298  # OVL1 unaligned
-0x00245400 0x164 func_00245400  # OVL1
+0x00245298 0x164 lgAudAWrite  # OVL1 unaligned; by its messages ('lgAudAWrite: invalid parameter (src)', 'lgAudAWrite: rpc call failed'); RPC 9 async through fnWriteEndFunc; after fnWriteEndFunc as in the demo's lgAud object
+0x00245400 0x164 lgAudAWriteVag  # OVL1; by its messages ('lgAudAWriteVag: invalid parameter (src)', 'lgAudAWriteVag: rpc call failed'); RPC 21 async, lgAudAWrite's body
 0x00245568 0x58 fnCheckDeviceChangeEndFunc  # OVL1 unaligned; s1:order (the demo's lgAud object: the static before lgAudAEnumHint; stores the device-change hint)
 0x002455C0 0xCC lgAudAEnumHint  # OVL1; s1:callee
 0x00245690 0xB8 libnetb_is_data_waiting  # OVL1; s1:callee
