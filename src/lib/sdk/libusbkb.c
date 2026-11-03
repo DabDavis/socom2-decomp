@@ -10,9 +10,13 @@
  * without RPC keep a 56-byte state per keyboard. Written: the init and end (0x1BE6A0, 0x1BE898:
  * the library's sceUsbKbInit(int *max_connect) and sceUsbKbEnd() by Sony's API, but they print
  * only "libusbkb : ..." and "libusbkb.a : ...", so their rows keep placeholders), the RPC calls,
- * the sync and its dispatcher, GetInfo's result, the state setters; not written: the read
- * result's key-code conversion (0x1BEFF8 and its helpers 0x1BF600-0x1BFA38: 0x1BF600 is the
- * INTC 3 handler the init installs) and the other result handlers. The library's data has no names
+ * the sync and its dispatcher, the five result handlers but Read's, the state setters, the
+ * INTC 3 handler the init installs (0x1BF600: each keyboard's repeat timer counted per vblank),
+ * the key ring's clear, push and pop (0x1BF688-0x1BF728: four codes at the state's +0x22, through
+ * a pointer to its +0x10 block) and the 21-entry lookup 0x1BFA38 (OPEN, below); not written:
+ * Read's result, the key-code conversion (0x1BEFF8, 0x574) and its two converters 0x1BF790
+ * (each raw code copied, or converted through 0x1BF8E0 by the keyboard's arrangement) and
+ * 0x1BF8E0 (it prints "Arrangement error!"). The library's data has no names
  * (data_<VA>: the state at 0x1E41C0 -- keyboards, the per-keyboard array, the pending command --
  * the client 0x1E4260, the buffers 0x1E42C0 and 0x1E4300, the semaphore 0x1CE5D8).
  *
@@ -52,20 +56,23 @@ typedef struct {
 } sceSifClientData;
 
 typedef struct {
+	int rep;			/* 0x00 (0x10): the key-repeat state: 1 or 2 while one repeats */
+	int tick;			/* 0x04 (0x14): vblanks, counted by the INTC 3 handler */
+	int sta;			/* 0x08 (0x18): the repeat's start, SetRepeat's */
+	int interval;			/* 0x0C (0x1C): and its interval */
+	u_short f20;			/* 0x10 (0x20) */
+	u_short buf[4];			/* 0x12 (0x22): the key-code ring */
+	int wp;				/* 0x1C (0x2C): its write position */
+	int rp;				/* 0x20 (0x30): its read position */
+	int n;				/* 0x24 (0x34): the codes in it */
+} UsbKbRing;
+
+typedef struct {
 	int ledmode;			/* 0x00: SetLEDMode's */
-	int f04;			/* 0x04 */
-	int f08;			/* 0x08 */
-	int f0c;			/* 0x0C */
-	int f10;			/* 0x10 */
-	int f14;			/* 0x14 */
-	int f18;			/* 0x18 */
-	int f1c;			/* 0x1C */
-	u_short f20;			/* 0x20 */
-	u_short pad22;
-	int f24[2];			/* 0x24 */
-	int f2c;			/* 0x2C */
-	int f30;			/* 0x30 */
-	int f34;			/* 0x34 */
+	int codetype;			/* 0x04: SetCodeType's (< 2) */
+	int arrange;			/* 0x08: SetArrangement's (< 3) */
+	int rmode;			/* 0x0C: SetReadMode's (< 2) */
+	UsbKbRing r;			/* 0x10: reached through its own pointer (addiu 16) */
 } UsbKbDev;
 
 typedef struct {
@@ -121,7 +128,7 @@ extern int DisableIntc(int);
 extern int DIntr(void);
 extern int EIntr(void);
 extern int func_001BEE88(int mode, int *result);
-extern int func_001BF600(int);
+static int func_001BF600(int);
 extern UsbKbDev data_001E4390[];
 
 static void func_001BEF28(void *);
@@ -183,17 +190,17 @@ int func_001BE6A0(int *max)
 	}
 	for (i = 0; i < info.max_connect; i++) {
 		data_001E41C0.dev[i].ledmode = 1;
-		data_001E41C0.dev[i].f04 = 1;
-		data_001E41C0.dev[i].f08 = 1;
-		data_001E41C0.dev[i].f0c = 0;
-		data_001E41C0.dev[i].f10 = 0;
-		data_001E41C0.dev[i].f14 = 0;
-		data_001E41C0.dev[i].f18 = 0;
-		data_001E41C0.dev[i].f1c = 0;
-		data_001E41C0.dev[i].f20 = 0;
-		data_001E41C0.dev[i].f2c = 0;
-		data_001E41C0.dev[i].f30 = 0;
-		data_001E41C0.dev[i].f34 = 0;
+		data_001E41C0.dev[i].codetype = 1;
+		data_001E41C0.dev[i].arrange = 1;
+		data_001E41C0.dev[i].rmode = 0;
+		data_001E41C0.dev[i].r.rep = 0;
+		data_001E41C0.dev[i].r.tick = 0;
+		data_001E41C0.dev[i].r.sta = 0;
+		data_001E41C0.dev[i].r.interval = 0;
+		data_001E41C0.dev[i].r.f20 = 0;
+		data_001E41C0.dev[i].r.wp = 0;
+		data_001E41C0.dev[i].r.rp = 0;
+		data_001E41C0.dev[i].r.n = 0;
 	}
 	data_001E41C0.f10 = 0;
 	if ((data_001E41C0.intc = AddIntcHandler(3, func_001BF600, -1)) < 0) {
@@ -344,9 +351,9 @@ int func_001BEDA0(int no, int sta, int interval)
 		return -11;
 	if (interval < 0)
 		return -12;
-	data_001E41C0.dev[no].f1c = interval;
-	data_001E41C0.dev[no].f18 = sta;
-	data_001E41C0.dev[no].f14 = 0;
+	data_001E41C0.dev[no].r.interval = interval;
+	data_001E41C0.dev[no].r.sta = sta;
+	data_001E41C0.dev[no].r.tick = 0;
 	return 0;
 }
 
@@ -356,7 +363,7 @@ int func_001BEDE8(int no, u_int type)
 		return -11;
 	if (type >= 2)
 		return -12;
-	data_001E41C0.dev[no].f04 = type;
+	data_001E41C0.dev[no].codetype = type;
 	return 0;
 }
 
@@ -366,7 +373,7 @@ int func_001BEE38(int no, u_int arrange)
 		return -11;
 	if (arrange >= 3)
 		return -12;
-	data_001E41C0.dev[no].f08 = arrange;
+	data_001E41C0.dev[no].arrange = arrange;
 	return 0;
 }
 
@@ -422,20 +429,135 @@ int func_001BEFA0(void)
 	return 0;
 }
 
+int func_001BF570(void)
+{
+	u_char *src, *dst;
+	int i;
+
+	src = data_001E4300;
+	dst = data_001E41C0.result;
+	if (src[6] != 0)
+		return -1;
+	for (i = 6; i >= 0; i--)
+		*dst++ = *src++;
+	return 0;
+}
+
+int func_001BF5C0(void)
+{
+	return data_001E4300[1] == data_001E42C0[1] ? 0 : -1;
+}
+
+int func_001BF5E0(void)
+{
+	return data_001E4300[1] == data_001E42C0[1] ? 0 : -1;
+}
+
+/* the repeat state tested as a switch with an explicit `case 0:` -- its case tree is the target's
+ * == 0, < 0, < 3; `rep == 1 || rep == 2` folds to one range check. Interrupts back on with the
+ * handler's `sync.l; ei` (Sony's ExitHandler) */
+static int func_001BF600(int ca)
+{
+	UsbKbRing *r;
+	int i;
+
+	for (i = 0; i < data_001E41C0.max; i++) {
+		r = &data_001E41C0.dev[i].r;
+		if (r->sta > 0 && r->interval > 0) {
+			switch (r->rep) {
+			case 0:
+				break;
+			case 1:
+			case 2:
+				r->tick++;
+				break;
+			}
+		}
+	}
+	asm volatile ("sync.l; ei");
+	return 0;
+}
+
+int func_001BF688(int no)
+{
+	UsbKbRing *r;
+
+	r = &data_001E41C0.dev[no].r;
+	r->n = 0;
+	r->wp = 0;
+	r->rp = 0;
+	r->tick = 0;
+	return 0;
+}
+
+int func_001BF6B8(int no, u_short code)
+{
+	UsbKbRing *r;
+
+	r = &data_001E41C0.dev[no].r;
+	if (r->n >= 4)
+		return -1;
+	r->buf[r->wp++] = code;
+	if (r->wp >= 4)
+		r->wp = 0;
+	r->n++;
+	return 0;
+}
+
+int func_001BF728(int no, u_short *code)
+{
+	UsbKbRing *r;
+
+	r = &data_001E41C0.dev[no].r;
+	if (r->n <= 0)
+		return -1;
+	*code = r->buf[r->rp++];
+	if (r->rp >= 4)
+		r->rp = 0;
+	r->n--;
+	return 0;
+}
+
+typedef struct {
+	u_char key;
+	u_short code;
+} UsbKbCnv;
+
+extern UsbKbCnv data_001D4280[2][21];
+
+/* OPEN (31 words, 0x84 against 0x70): the key's entry in one of two 21-entry tables, its code |
+ * 0x4000, else the key itself. The target's loop is untouched by loop.c -- the type's * 84 and the
+ * table's %lo recomputed every pass, i * 4 not strength-reduced -- yet its first comparison is
+ * peeled, as jump.c's exit-test duplication peels a while loop's; here every for/while/do form is
+ * loop-optimized (ccdump's .loop: the mult and the address moved, the givs reduced: 26-55 words),
+ * a goto loop is not but has no peeled test (29), and -fno-strength-reduce (29-33) or -O1 (the
+ * unit's other functions lost) do not give it either. 0x1BF790's copy loops show the same. */
+int func_001BFA38(int type, u_char key)
+{
+	u_int i;
+
+	i = 0;
+	while (data_001D4280[type & 1][i].key != key) {
+		if (++i >= 21)
+			return key;
+	}
+	return data_001D4280[type & 1][i].code | 0x4000;
+}
+
 int func_001BFAA8(int no, u_int rmode)
 {
 	if (no >= data_001E41C0.max)
 		return -11;
 	if (rmode >= 2)
 		return -12;
-	if (rmode != data_001E41C0.dev[no].f0c) {
-		data_001E41C0.dev[no].f14 = 0;
-		data_001E41C0.dev[no].f2c = 0;
-		data_001E41C0.dev[no].f30 = 0;
+	if (rmode != data_001E41C0.dev[no].rmode) {
+		data_001E41C0.dev[no].r.tick = 0;
+		data_001E41C0.dev[no].r.wp = 0;
+		data_001E41C0.dev[no].r.rp = 0;
 		data_001E41C0.f10 = 0;
-		data_001E41C0.dev[no].f20 = 0;
+		data_001E41C0.dev[no].r.f20 = 0;
 	}
-	data_001E41C0.dev[no].f0c = rmode;
+	data_001E41C0.dev[no].rmode = rmode;
 	return 0;
 }
 
@@ -456,11 +578,12 @@ int func_001BFB18(u_int no)
 		return -2;
 	}
 	d = &data_001E41C0.dev[no];
-	d->f10 = 0;
-	d->f14 = 0;
-	d->f20 = 0;
-	d->f2c = 0;
-	d->f30 = 0;
-	d->f34 = 0;
+	d->r.rep = 0;
+	d->r.tick = 0;
+	d->r.f20 = 0;
+	d->r.wp = 0;
+	d->r.rp = 0;
+	d->r.n = 0;
 	return 0;
 }
+
