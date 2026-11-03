@@ -37,12 +37,13 @@ public:
     unsigned int _0;
     unsigned int m_size;   // 0x4
     CCharacterWeap *m_data;   // 0x8
+
+    void AddWeapon(EQUIP_ITEM item);
 };
 
-/* SOCOM 1's CCharacterWeap::SetupCharacterWeapon and CCharacterWeapList::AddWeapon (OVL2; the rows
- * unnamed: called as C) */
+/* SOCOM 1's CCharacterWeap::SetupCharacterWeapon (OVL2; the row unnamed: called as C; AddWeapon is the
+ * list's member above, 0x53B3A0) */
 extern "C" void func_0053EEE0(CCharacterWeap *weap, EQUIP_ITEM item);
-extern "C" void func_0053B3A0(CCharacterWeapList *list, EQUIP_ITEM item);
 
 /* a character's type as the selector reads it: its weapons (SOCOM 1's at 0x250) */
 class CCharacterType {
@@ -332,7 +333,7 @@ void CInGameWeaponSel::UpdateCharacter()
         func_0053EEE0(&weaps[ii], m_selected_item_index[ii]);
     }
     for (; ii < 5; ii++) {
-        func_0053B3A0(&weaps, m_selected_item_index[ii]);
+        weaps.AddWeapon(m_selected_item_index[ii]);
         if (m_selected_item_index[ii] != EQUIP_NONE)
             func_0053EEE0(&weaps[ii], m_selected_item_index[ii]);
     }

@@ -81,15 +81,18 @@ void CEntity::CountAwareness()
 }
 
 /* the targets on an entity dropped (new in SOCOM II, UpdateTargetList's: std::remove inlined,
- * its remove_copy and the erase called; the name is ours). The erase (0x2A19C0) matches.
- * OPEN, 4 bytes short: MW inlines std::remove one level here -- find's iterator ==, * and the
- * entity compare, and the iterator's copy constructor, called out of line -- where the target
- * inlines find whole with its iterators in memory. remove_copy's copy (0x2A1210) is 8 bytes long:
- * the target stores the m_ent its compare loaded, MW reloads it (the compare taking the entity by
- * reference or by value alike) */
+ * its remove_copy and the erase called; the name is ours). The erase (0x2A19C0) matches. The end
+ * built once into a local and handed to remove and to erase, the new end a local -- CWorld::
+ * DeleteLightMap's slots exactly (the MSL headers round 8: include/algorithm's remove joins its two
+ * results through one copy, the class erase copies its iterators into its parameters).
+ * remove_copy's copy (0x2A1210) is 8 bytes long: the target stores the m_ent its compare loaded, MW
+ * reloads it (the compare taking the entity by reference or by value alike) */
 void CTargetList::RemoveTarget(CEntity *e)
 {
-    erase(std::remove(begin(), end(), e), end());
+    iterator l = end();
+    iterator i = std::remove(begin(), l, e);
+
+    erase(i, l);
 }
 
 /* a target added for an entity and seen at once (new in SOCOM II, UpdateTargetList's; the name
