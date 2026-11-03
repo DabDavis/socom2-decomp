@@ -3876,10 +3876,11 @@ functions new to the map's byte-exact rows (6,752 bytes); 117 rows named (95 `s1
   target's s0/s1); stores in argument order (Dme.c's registration tables, 1 of 6) and an index taken
   into a local before the caller's pointer is written (one load of the count for every table).
 
-Hand-written in round 7b: `medius/clients.c` (15 of 15, new), `medius/mediusapi.c` (+25: the core,
-24, and MediusGetCallbackStatusString), `medius/dme.c` (+8: NetSetDefaultInitializeParams,
-NetInitialize, NetClose, 0x623DA8, the four registration functions), `medius/rt_msg_client.c` (+2,
-the option setters) -- 50 functions byte-exact, 34 rows new (7,596 bytes), 16 drafts superseded.
+Hand-written in round 7b: `medius/clients.c` (15 of 15, new), `medius/mediusapi.c` (+26: the core,
+24, MediusGetLastNetUpdateError and MediusGetCallbackStatusString), `medius/dme.c` (+8:
+NetSetDefaultInitializeParams, NetInitialize, NetClose, 0x623DA8, the four registration functions),
+`medius/rt_msg_client.c` (+2, the option setters) -- 51 functions byte-exact, 34 rows new (7,596
+bytes), 17 drafts superseded.
 51 rows named (30 `s1:order` in the Medius and client objects, 16 `s1:calls`/`s1:order` DME API
 wrappers and callees, the 5 option setters, each with its evidence), 12 data rows (MyClientIsJoined,
 ActiveNetObjectCount, KeepAliveInterval/Timestamp, CurrentSessionKey, LastDMENetError, four callback
