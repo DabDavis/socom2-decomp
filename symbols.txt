@@ -11424,7 +11424,7 @@
 0x005ED950 0x2C func_005ED950  # OVL2
 0x005ED980 0x1C func_005ED980  # OVL2; s1~ one of three std::list<T *>::generic_iterator constructors (T = CAiMap, CAiState, CEntity) with identical code
 0x005ED9A0 0xC func_005ED9A0  # OVL2
-0x005ED9B0 0x1F8 func_005ED9B0  # OVL2
+0x005ED9B0 0x1F8 GetSealCount__9CSealUnitFi  # OVL2; by hand (the kit lane, round 15): the squad's SEALs counted, with the squads' under it to a depth (m_seals' size, then each of m_sub_units' with depth - 1) -- recursive, inlined into itself twice, the third copy a call with depth - 3; GetSealByIndex (0x5EDBB0, CTeamNames::Init's) subtracts it per squad; new in SOCOM II, the name ours
 0x005EDBB0 0x108 func_005EDBB0  # OVL2
 0x005EDCC0 0xF8 IsMemberOfUnit__9CSealUnitFP10CZSealBodyb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's IsMemberOfUnit(CZSealBody *, bool) (0x2D6040) -- the SEALs (0x64), the escortees (0x70), then with the flag each sub-squad (0x7C) asked again, recursing as there; before its by-number overload as there
 0x005EDDC0 0x10 func_005EDDC0  # OVL2
