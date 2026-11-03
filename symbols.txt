@@ -9110,7 +9110,7 @@
 0x00504AC0 0x19C SlidingHisto_Init  # OVL2; s1:align
 0x00504C60 0x104 SlidingHisto_LowerQuantile  # OVL2; s1:calls (SOCOM 1's TriggerLR_FindSpeech and others call SlidingHisto_LowerQuantile where ours call this row, 3 call sites; the same position in SOCOM 1's object)
 0x00504D68 0x7C SlidingHisto_Clear  # OVL2 unaligned; s1:align
-0x00504DE8 0x60 func_00504DE8  # OVL2 unaligned
+0x00504DE8 0x60 SlidingHisto_Free  # OVL2 unaligned; s1:align (SOCOM 1's SlidingHisto_Free in its object 0x36FB28: frees the bins and the history ring through the owner's heap, the same body; SOCOM II defines it after SlidingHisto_Clear) -- the gcc lane, round 8c
 0x00504E48 0x10 func_00504E48  # OVL2 unaligned
 0x00504E58 0x114 func_00504E58  # OVL2 unaligned
 0x00504F70 0x3C func_00504F70  # OVL2
