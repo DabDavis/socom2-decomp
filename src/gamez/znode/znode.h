@@ -297,6 +297,15 @@ public:
     void Add(CTexPalette *pal, bool b);
     /* another list's textures and palettes listed (SOCOM 1's third overload, 0x357A00) */
     void Add(CDynTexList *list);
+    /* both lists emptied (SOCOM II's, inline: CGSTexBuffer::ClearDynTex inlines it; the name ours) */
+    void Clear()
+    {
+        m_tex_list.clear();
+        m_pal_list.clear();
+    }
+    /* both lists' storage given up (SOCOM II's, inline -- node_world.h defines it, after zsys.h's
+     * FreeVector: zrndr_pipe.cpp's copy 0x33BAA0; the name ours) */
+    void Free();
 
     CTexList m_tex_list;   // 0x0
     CTexPalList m_pal_list;   // 0xc
