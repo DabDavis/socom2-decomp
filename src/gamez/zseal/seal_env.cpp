@@ -285,6 +285,37 @@ void CZSealBody::CheckForRegionTrigger(unsigned int regions)
 }
 
 extern "C" {
+/* (OVL2 0x58A4D0, seal_cfg.cpp's, not written yet: called with 0 before an anim is pushed over the
+ * blends; 0x588BC0 pushes an anim on the body -- an anim type, the state, a flag and a kind; 0x58A920
+ * sets bits of a blend's flags; 0x588AB0 tells the network of the push) */
+void func_0058A4D0(CZSealBody *seal, int a);
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+unsigned short func_0058A920(unsigned short flags, unsigned short bits, bool on);
+void func_00588AB0(CZSealBody *seal, int time, unsigned int anim);
+void *func_00555170(void *stack);
+}
+
+/* an anim pushed on a living SEAL, kind 13 with the blend's bits 2 and 1 set -- refused when its top
+ * blend or itself is dead, or while it holds the entity at 0xEB8 -- and the push told to the network
+ * as event 15 (OVL2 0x5A2390, new in SOCOM II: 0x5880E0 calls it; the name unknown) */
+extern "C" CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type)
+{
+    if (!seal->m_isAlive || ((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->m_state == stateDead ||
+        seal->m_state == stateDead)
+        return 0;
+    if (seal->m_eb8)
+        return 0;
+    func_0058A4D0(seal, 0);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, type, seal->m_state, 0, 13);
+
+    b->m_flags &= ~4;
+    b->m_flags |= 4;
+    b->m_flags = func_0058A920(b->m_flags, 2, true);
+    func_00588AB0(seal, 15, type);
+    return b;
+}
+
+extern "C" {
 /* the SEALs' pool of ray intersections, its count and a third word (OVL1 bss; new in SOCOM II) */
 extern zdb::DiIntersect **data_0044D588;
 extern int data_0044D590;

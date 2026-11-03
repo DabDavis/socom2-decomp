@@ -325,115 +325,115 @@
 0x00191478 0x18 atof  # MAIN unaligned; s1:calls (newlib's; called where SOCOM 1's calls atof) -- the UI-commands lane
 0x00191490 0x28 atoi  # MAIN; s1:exact
 0x001914B8 0x1C atol  # MAIN unaligned; s1:calls (VALVE_CMD_DATA::ParseValveName calls it where SOCOM 1's calls atol) -- the sound lane
-0x001914D8 0x20 func_001914D8  # MAIN unaligned
-0x001914F8 0xCC func_001914F8  # MAIN unaligned
+0x001914D8 0x20 bcopy  # MAIN unaligned; s1:order (newlib bcopy.c, after atol as bcopy.o sorts: memmove with the operands swapped)
+0x001914F8 0xCC bsearch  # MAIN unaligned; s1:order (newlib bsearch.c, between bcopy and calloc: the halving search through the comparison callback)
 0x001915C8 0x64 calloc  # MAIN unaligned
-0x00191630 0xB4 func_00191630  # MAIN
+0x00191630 0xB4 _calloc_r  # MAIN; s1:order (newlib: the demo's callocr object between calloc and closer; _malloc_r then memset)
 0x001916E8 0x58 _close_r  # MAIN unaligned; by body (newlib's reent/closer.c: errno zeroed, close(fd), errno copied into ptr->_errno on -1; the demo's _close_r is 0x58 too)
 0x00191740 0x22C func_00191740  # MAIN
 0x00191970 0x1264 func_00191970  # MAIN
-0x00192BD8 0x8 func_00192BD8  # MAIN unaligned
-0x00192BE0 0x8 func_00192BE0  # MAIN
+0x00192BD8 0x8 __env_lock  # MAIN unaligned; s1:order (newlib envlock.c, between dtoa's and errno's objects: the empty hook _findenv_r calls before its walk)
+0x00192BE0 0x8 __env_unlock  # MAIN; s1:order (newlib envlock.c: the empty hook _findenv_r calls after its walk)
 0x00192BE8 0xC __errno  # MAIN unaligned; s1:callee
-0x00192BF8 0xAC func_00192BF8  # MAIN unaligned
-0x00192CA8 0x100 func_00192CA8  # MAIN unaligned
+0x00192BF8 0xAC exit  # MAIN unaligned; s1:order (newlib: the demo's exit object between errno and fclose; the atexit tables, then __cleanup, then _exit)
+0x00192CA8 0x100 fclose  # MAIN unaligned; s1:order (newlib: between exit and fflush as in the demo; CHECK_INIT, fflush, _close, _free_r)
 0x00192DA8 0x114 fflush  # MAIN unaligned; by call (newlib __sbprintf calls fflush(&fake))
-0x00192EC0 0x138 func_00192EC0  # MAIN
-0x00192FF8 0x5C func_00192FF8  # MAIN unaligned
-0x00193058 0x78 func_00193058  # MAIN unaligned
-0x001930D0 0xF8 func_001930D0  # MAIN
-0x001931C8 0x1C func_001931C8  # MAIN unaligned
-0x001931E8 0x1C func_001931E8  # MAIN unaligned
+0x00192EC0 0x138 fgets  # MAIN; s1:order (newlib: between fflush and findfp; __srefill, memchr, memcpy)
+0x00192FF8 0x5C std  # MAIN unaligned; s1:order (newlib findfp.c's static std, the demo's 0x3E0760: the four cookie functions stored)
+0x00193058 0x78 __sfmoreglue  # MAIN unaligned; s1:order (newlib findfp.c, the demo's second function there: _malloc_r of glue and FILEs, memset)
+0x001930D0 0xF8 __sfp  # MAIN; s1:order (newlib findfp.c, the demo's third: __sinit, then __sfmoreglue(d, 4))
+0x001931C8 0x1C _cleanup_r  # MAIN unaligned; s1:order (newlib findfp.c: _fwalk(ptr, fflush))
+0x001931E8 0x1C _cleanup  # MAIN unaligned; s1:order (newlib findfp.c: _cleanup_r(_REENT))
 0x00193208 0x8C __sinit  # MAIN unaligned; by body (newlib's stdio/findfp.c: __cleanup = _cleanup_r, __sdidinit = 1, the three std FILEs; vfprintf's CHECK_INIT calls it)
 0x00193298 0x54 fiprintf  # MAIN unaligned; s1:callee
-0x001932F0 0xB8 func_001932F0  # MAIN
-0x001933A8 0xDC func_001933A8  # MAIN unaligned
-0x00193488 0x24 func_00193488  # MAIN unaligned
+0x001932F0 0xB8 __sflags  # MAIN; s1:order (newlib flags.c, after fiprintf's object as in the demo: the mode string's switch, no calls)
+0x001933A8 0xDC _fopen_r  # MAIN unaligned; s1:order (newlib fopen.c: __sflags, __sfp, _open_r, fseek for append)
+0x00193488 0x24 fopen  # MAIN unaligned; s1:order (newlib fopen.c: _fopen_r(_REENT, file, mode))
 0x001934B0 0x54 fprintf  # MAIN; by body (varargs with two fixed arguments, into vfprintf at 0x19C0D0; MSL's vector errors print through it to stderr)
-0x00193508 0x11C func_00193508  # MAIN unaligned
-0x00193628 0x2F4 func_00193628  # MAIN unaligned
-0x00193920 0x16C func_00193920  # MAIN
-0x00193A90 0x4AC func_00193A90  # MAIN
+0x00193508 0x11C fread  # MAIN unaligned; s1:order (newlib fread.c, the demo's 0x3E0A28, the same size: memcpy, __srefill)
+0x00193628 0x2F4 _free_r  # MAIN unaligned; s1:order (newlib mallocr.c, the demo's _free_r object: __malloc_lock, _malloc_trim_r, __malloc_unlock)
+0x00193920 0x16C _malloc_trim_r  # MAIN; s1:order (newlib mallocr.c, after _free_r as in the demo: _sbrk_r under the malloc lock)
+0x00193A90 0x4AC fseek  # MAIN; s1:order (newlib fseek.c, after _malloc_trim_r as in the demo: __smakebuf, _fstat_r, __sseek)
 0x00193F40 0x5C _fstat_r  # MAIN; by body (newlib's reent/fstatr.c: the same around fstat(fd, buf); the demo's _fstat_r is 0x5C too)
-0x00193FA0 0x104 func_00193FA0  # MAIN
+0x00193FA0 0x104 ftell  # MAIN; s1:order (newlib ftell.c, after _fstat_r as in the demo)
 0x001940A8 0x3E0 __sfvwrite  # MAIN unaligned; by call (newlib __sprint calls __sfvwrite)
-0x00194488 0x94 func_00194488  # MAIN unaligned
-0x00194520 0x84 func_00194520  # MAIN
+0x00194488 0x94 _fwalk  # MAIN unaligned; s1:order (newlib fwalk.c, between ftell's and fwrite's objects; walks the glue)
+0x00194520 0x84 fwrite  # MAIN; s1:order (newlib fwrite.c: one iovec to __sfvwrite)
 0x001945A8 0x24 func_001945A8  # MAIN unaligned
 0x001945D0 0x28 func_001945D0  # MAIN
-0x001945F8 0x148 func_001945F8  # MAIN unaligned
-0x00194740 0x1C func_00194740  # MAIN
-0x00194760 0x8C func_00194760  # MAIN
-0x001947F0 0xC func_001947F0  # MAIN
-0x00194800 0x24 func_00194800  # MAIN
-0x00194828 0x1C func_00194828  # MAIN unaligned
+0x001945F8 0x148 _findenv_r  # MAIN unaligned; s1:order (newlib getenv_r.c, after fwrite's object: __env_lock, the name up to '=', strncmp over environ)
+0x00194740 0x1C _getenv_r  # MAIN; s1:order (newlib getenv_r.c: _findenv_r with a local offset)
+0x00194760 0x8C _setlocale_r  # MAIN; s1:order (newlib locale.c, the demo's 0x3E1A70, 0x84 there: strcmp with "C" and "")
+0x001947F0 0xC _localeconv_r  # MAIN; s1:order (newlib locale.c, the demo's second: the static lconv)
+0x00194800 0x24 setlocale  # MAIN; s1:order (newlib locale.c: _setlocale_r(_REENT, ...))
+0x00194828 0x1C localeconv  # MAIN unaligned; s1:order (newlib locale.c: _localeconv_r(_REENT))
 0x00194848 0x60 _lseek_r  # MAIN unaligned; by body (newlib's reent/lseekr.c: the same around lseek(fd, pos, whence); the demo's _lseek_r is 0x60 too)
-0x001948A8 0x154 func_001948A8  # MAIN unaligned
+0x001948A8 0x154 __smakebuf  # MAIN unaligned; s1:order (newlib makebuf.c, after _lseek_r as in the demo: _fstat_r, _malloc_r, isatty, __sseek)
 0x00194A00 0x64 func_00194A00  # MAIN
 0x00194A68 0x1C8 func_00194A68  # MAIN unaligned
 0x00194C30 0x54 malloc  # MAIN; s1:callee
 0x00194C88 0x48 free  # MAIN unaligned; zcfree's only callee (Sony libc: 8-aligned, GCC-built)
-0x00194CD0 0x258 func_00194CD0  # MAIN
-0x00194F28 0x728 func_00194F28  # MAIN unaligned
-0x00195650 0x34 func_00195650  # MAIN
+0x00194CD0 0x258 malloc_extend_top  # MAIN; s1:order (newlib mallocr.c's static, the demo's 0x3E1F48: _sbrk_r, _free_r)
+0x00194F28 0x728 _malloc_r  # MAIN unaligned; s1:order (newlib mallocr.c, the demo's 0x3E21A0: under __malloc_lock, malloc_extend_top)
+0x00195650 0x34 _mbtowc_r  # MAIN; s1:order (newlib mbtowc_r.c, the demo's 0x3E2918 after malloc's objects: one byte, no calls)
 0x00195688 0xE0 memchr  # MAIN unaligned; s1:exact
 0x00195768 0x94 memcmp  # MAIN unaligned; s1:exact
 0x00195800 0xB0 memcpy  # MAIN
 0x001958B0 0x104 memmove  # MAIN; s1:asm (the demo's memmove object, same size, identical but for the short-loop slot as memcpy/memset/strcpy/strncpy are, between memcpy and memset as there)
 0x001959B8 0xC0 memset  # MAIN unaligned; s1:callee
-0x00195A78 0x7C func_00195A78  # MAIN unaligned
-0x00195AF8 0x4C func_00195AF8  # MAIN unaligned
-0x00195B48 0xA4 func_00195B48  # MAIN unaligned
+0x00195A78 0x7C __malloc_lock  # MAIN unaligned; by body (newlib's malloc lock for the EE: the owning thread's id, WaitSema)
+0x00195AF8 0x4C __malloc_unlock  # MAIN unaligned; by body (the matching unlock: SignalSema when the count drops to zero)
+0x00195B48 0xA4 _Balloc  # MAIN unaligned; s1:order (newlib mprec.c, the demo's first function there: _calloc_r of the freelist, then of the Bigint)
 0x00195BF0 0x2C _Bfree  # MAIN; s1:exact
 0x00195C20 0x108 _multadd  # MAIN; s1:calls
-0x00195D28 0x130 func_00195D28  # MAIN unaligned
-0x00195E58 0x80 func_00195E58  # MAIN unaligned
-0x00195ED8 0xBC func_00195ED8  # MAIN unaligned
-0x00195F98 0x38 func_00195F98  # MAIN unaligned
-0x00195FD0 0x20C func_00195FD0  # MAIN
+0x00195D28 0x130 _s2b  # MAIN unaligned; s1:order (newlib mprec.c, the demo's fourth there: _Balloc, then _multadd per digit)
+0x00195E58 0x80 _hi0bits  # MAIN unaligned; s1:order (newlib mprec.c, the demo's fifth: leading zero bits by halving masks, no calls)
+0x00195ED8 0xBC _lo0bits  # MAIN unaligned; s1:order (newlib mprec.c, the demo's sixth: trailing zero bits)
+0x00195F98 0x38 _i2b  # MAIN unaligned; s1:order (newlib mprec.c, the demo's seventh: _Balloc(ptr, 1), one word)
+0x00195FD0 0x20C _multiply  # MAIN; s1:order (newlib mprec.c's mult, the demo's eighth: _Balloc, the 16-bit-half product loops)
 0x001961E0 0xFC _pow5mult  # MAIN; s1:calls
-0x001962E0 0x158 func_001962E0  # MAIN
-0x00196438 0x68 func_00196438  # MAIN unaligned
-0x001964A0 0x190 func_001964A0  # MAIN
-0x00196630 0xD0 func_00196630  # MAIN
-0x00196700 0x198 func_00196700  # MAIN
-0x00196898 0x184 func_00196898  # MAIN unaligned
-0x00196A20 0xCC func_00196A20  # MAIN
-0x00196AF0 0x70 func_00196AF0  # MAIN
+0x001962E0 0x158 _lshift  # MAIN; s1:order (newlib mprec.c, the demo's tenth after _pow5mult: _Balloc, _Bfree)
+0x00196438 0x68 __mcmp  # MAIN unaligned; s1:order (newlib mprec.c's cmp, the demo's eleventh: no calls)
+0x001964A0 0x190 __mdiff  # MAIN; s1:order (newlib mprec.c's diff, the demo's twelfth: __mcmp, _Balloc)
+0x00196630 0xD0 _ulp  # MAIN; s1:order (newlib mprec.c, the demo's thirteenth: the double's exponent word, no calls)
+0x00196700 0x198 _b2d  # MAIN; s1:order (newlib mprec.c, the demo's fourteenth: _hi0bits)
+0x00196898 0x184 _d2b  # MAIN unaligned; s1:order (newlib mprec.c, the demo's fifteenth: _Balloc, _lo0bits, _hi0bits)
+0x00196A20 0xCC _ratio  # MAIN; s1:order (newlib mprec.c, the demo's sixteenth: _b2d twice, dpdiv)
+0x00196AF0 0x70 _mprec_log10  # MAIN; s1:order (newlib mprec.c, the demo's last: tens[dig] under 24, else times ten)
 0x00196B60 0x60 _open_r  # MAIN; by body (newlib's reent/openr.c: the same around open(file, flags, mode))
-0x00196BC0 0x5C func_00196BC0  # MAIN
+0x00196BC0 0x5C _printf_r  # MAIN; s1:order (newlib printf.c, the demo's 0x3E3D78 before printf: _vfprintf_r of stdout)
 0x00196C20 0x70 printf  # MAIN; s1:callee
-0x00196C90 0x84 func_00196C90  # MAIN
+0x00196C90 0x84 _puts_r  # MAIN; s1:order (newlib puts.c, the demo's 0x3E3E08 before puts: strlen, __sfvwrite)
 0x00196D18 0x20 puts  # MAIN unaligned; by hand (newlib's: _puts_r on _impure_ptr; the FIFO kick passes it "D9 Busy"/"D8 Busy") -- the sound lane
 0x00196D38 0x9EC qsort  # MAIN unaligned; s1:calls (DiIntersect::SortNearToFar calls it with (idx, n, 4, _cmpdi) where SOCOM 1's calls qsort; newlib's, 0x9EC bytes against SOCOM 1's 0xA24) -- the zdb-world lane
 0x00197728 0x18 srand  # MAIN unaligned; s1:order (the demo's rand object 0x3E48E0: srand, before rand; stores the seed, zero-extended, in the reentrancy block's _rand_next that rand reads)
 0x00197740 0x64 rand  # MAIN; s1:callee by hand (zAnimRandomWeightTick calls it where SOCOM 1 calls rand; newlib's 64-bit LCG)
 0x001977A8 0x60 _read_r  # MAIN unaligned; by body (newlib's reent/readr.c: the same around read(fd, buf, cnt); the demo's _read_r is 0x60 too)
 0x00197808 0x64 realloc  # MAIN unaligned; s1:calls (_realloc calls it where SOCOM 1's calls realloc) -- the sound lane
-0x00197870 0x5A0 func_00197870  # MAIN
-0x00197E10 0x34 func_00197E10  # MAIN
-0x00197E48 0x17C func_00197E48  # MAIN unaligned
-0x00197FC8 0x48 func_00197FC8  # MAIN unaligned
+0x00197870 0x5A0 _realloc_r  # MAIN; s1:order (newlib mallocr.c, the demo's _realloc_r object after realloc: _malloc_r, memcpy, _free_r)
+0x00197E10 0x34 lflush  # MAIN; s1:order (newlib refill.c's static, the demo's 0x3E4F20)
+0x00197E48 0x17C __srefill  # MAIN unaligned; s1:order (newlib refill.c, after lflush: CHECK_INIT, fflush, __smakebuf, _fwalk(lflush))
+0x00197FC8 0x48 __srget  # MAIN unaligned; s1:order (newlib rget.c: __srefill then the next byte)
 0x00198010 0x44 copysign  # MAIN; s1:exact
 0x00198058 0x48 isinf  # MAIN unaligned; s1:exact
 0x001980A0 0x3C isnan  # MAIN; s1:exact
 0x001980E0 0x1E4 scalbn  # MAIN; s1:exact
 0x001982C8 0x58 _sbrk_r  # MAIN unaligned; by body (newlib's reent/sbrkr.c: the same around sbrk(incr), failing on (void *)-1; the demo's _sbrk_r is 0x5C)
-0x00198320 0x58 func_00198320  # MAIN
-0x00198378 0x64 func_00198378  # MAIN unaligned
+0x00198320 0x58 setjmp  # MAIN; by body (newlib machine/mips/setjmp.S: every callee-saved register and $f24-$f31 stored through a0, returns 0)
+0x00198378 0x64 longjmp  # MAIN unaligned; by body (newlib machine/mips/setjmp.S: the registers setjmp saved, reloaded through a0; returns a1, or 1 for 0)
 0x001983E0 0x3C copysignf  # MAIN; s1:exact
 0x00198420 0xC8 scalbnf  # MAIN; s1:exact
-0x001984E8 0x70 func_001984E8  # MAIN unaligned
-0x00198558 0x80 func_00198558  # MAIN unaligned
+0x001984E8 0x70 _init_signal_r  # MAIN unaligned; s1:order (newlib signal.c, the demo's 0x3E5198, the same 0x70: _malloc_r of 32 handlers)
+0x00198558 0x80 _signal_r  # MAIN unaligned; s1:order (newlib signal.c, the demo's second: the 32-entry check, _init_signal_r)
 0x001985D8 0xD8 _raise_r  # MAIN unaligned; s1:callee by hand (raise's one callee, as the demo's raise calls _raise_r)
-0x001986B0 0x98 func_001986B0  # MAIN
+0x001986B0 0x98 __sigtramp_r  # MAIN; s1:order (newlib signal.c, the demo's fourth, after _raise_r)
 0x00198748 0x20 raise  # MAIN unaligned; s1:callee by hand (abort's first call, raise(6), where the demo's abort calls raise; _raise_r(_impure_ptr, sig) as the demo's raise)
-0x00198768 0x24 func_00198768  # MAIN unaligned
-0x00198790 0x1C func_00198790  # MAIN
-0x001987B0 0x20 func_001987B0  # MAIN
+0x00198768 0x24 signal  # MAIN unaligned; s1:order (newlib signal.c: _signal_r(_REENT, sig, func), after raise as in the demo)
+0x00198790 0x1C _init_signal  # MAIN; s1:order (newlib signal.c: _init_signal_r(_REENT))
+0x001987B0 0x20 __sigtramp  # MAIN; s1:order (newlib signal.c: __sigtramp_r(_REENT, sig))
 0x001987D0 0x5C _kill_r  # MAIN; by body (newlib's reent/signalr.c: the same around kill(pid, sig); the demo's _kill_r is 0x5C too)
-0x00198830 0x14 func_00198830  # MAIN
-0x00198848 0x88 func_00198848  # MAIN unaligned
+0x00198830 0x14 _getpid_r  # MAIN; s1:order (newlib signalr.c, after _kill_r as in the demo: getpid)
+0x00198848 0x88 _sprintf_r  # MAIN unaligned; s1:order (newlib sprintf.c, the demo's 0x3E5568 before sprintf: a string FILE, _data the reentrancy argument)
 0x001988D0 0x90 sprintf  # MAIN; s1:callee
 0x00198960 0x8 eofread  # MAIN; s1:ref (taken by address where SOCOM 1 takes eofread's)
 0x00198968 0xA8 sscanf  # MAIN unaligned; s1:callee
@@ -446,7 +446,7 @@
 0x00198D88 0x190 strchr  # MAIN unaligned; s1:exact
 0x00198F18 0x144 strcmp  # MAIN unaligned; s1:exact
 0x00199060 0x114 strcpy  # MAIN; s1:callee
-0x00199178 0x7C func_00199178  # MAIN unaligned
+0x00199178 0x7C strcspn  # MAIN unaligned; s1:order (newlib strcspn.c, between strcpy and strdup: the span, no calls)
 0x001991F8 0x20 strdup  # MAIN; s1:exact by hand (newlib's: the reentrancy block handed to _strdup_r, tail-jumped -- SOCOM 1's jal); the seed's 0x8C row split
 0x00199218 0x6C _strdup_r  # MAIN; s1:order (SOCOM 1's _strdup_r follows strdup, 0x68 there); split off strdup's row, which tail-jumps into it -- the integrator
 0x00199288 0x138 strlen  # MAIN unaligned; s1:exact
@@ -467,8 +467,8 @@
 0x0019AF80 0x2C strtoul  # MAIN; by body (newlib's stdlib/strtoul.c wrapper: _strtoul_r(_impure_ptr, s, ptr, base), byte-exact from src/lib/libc/strtoul.c; inet_aton's strtoul call)
 0x0019AFB0 0x20 func_0019AFB0  # MAIN
 0x0019AFD0 0x20 toupper  # MAIN; s1:exact by hand (MSL's: the ctype table's upper bit tested, 32 subtracted -- SOCOM 1's toupper, movn for movz)
-0x0019AFF0 0xE8 func_0019AFF0  # MAIN
-0x0019B0D8 0x188 func_0019B0D8  # MAIN unaligned
+0x0019AFF0 0xE8 __submore  # MAIN; s1:order (newlib ungetc.c's static, the demo's 0x3E7BD0: _malloc_r, _realloc_r, memcpy)
+0x0019B0D8 0x188 ungetc  # MAIN unaligned; s1:order (newlib ungetc.c, after __submore as in the demo)
 0x0019B260 0x48 __sprint@vfiprintf  # MAIN; by body (newlib vfiprintf.c static __sprint, vfprintf.c built INTEGER_ONLY)
 0x0019B2A8 0xB4 __sbprintf@vfiprintf  # MAIN unaligned; by body (newlib vfiprintf.c static __sbprintf: vfiprintf, then fflush)
 0x0019B360 0x74 vfiprintf  # MAIN; by body (newlib's stdio/vfiprintf: CHECK_INIT, then the tail call to _vfiprintf_r; fiprintf calls it -- byte-exact in src/lib/libc/fiprintf.c)
@@ -482,10 +482,10 @@
 0x0019DA58 0xC8C __svfscanf  # MAIN unaligned; by call (newlib's sscanf calls __svfscanf; src/lib/libc/sscanf.c byte-exact)
 0x0019E6E8 0x100 func_0019E6E8  # MAIN unaligned
 0x0019E7E8 0x54 vsprintf  # MAIN unaligned; s1:calls (SOCOM 1's identical CConsole::Debug calls vsprintf at the same instruction; 0x54 bytes in both) -- the entity lane
-0x0019E840 0x54 func_0019E840  # MAIN
-0x0019E898 0x110 func_0019E898  # MAIN unaligned
+0x0019E840 0x54 _vsprintf_r  # MAIN; by body (newlib vsprintf.c's reentrant form after vsprintf: a string FILE, _data the first argument)
+0x0019E898 0x110 __swbuf  # MAIN unaligned; s1:order (newlib wbuf.c, after vsprintf as in the demo: CHECK_INIT, __swsetup, fflush)
 0x0019E9A8 0x60 _write_r  # MAIN unaligned; by body (newlib's reent/writer.c: the same around write(fd, buf, cnt); the demo's _write_r is 0x60 too)
-0x0019EA08 0x10C func_0019EA08  # MAIN unaligned
+0x0019EA08 0x10C __swsetup  # MAIN unaligned; s1:order (newlib wsetup.c, after _write_r as in the demo: __sinit, _free_r, __smakebuf)
 0x0019EB18 0x74 __muldi3  # MAIN unaligned; s1:exact
 0x0019EB90 0x694 __divdi3  # MAIN; s1:exact
 0x0019F228 0x690 __moddi3  # MAIN unaligned; s1:exact
@@ -2754,10 +2754,10 @@
 0x002597B0 0x1F4 func_002597B0  # OVL1
 0x002599B0 0x7C func_002599B0  # OVL1
 0x00259A30 0xB8 func_00259A30  # OVL1
-0x00259AF0 0x4C func_00259AF0  # OVL1
+0x00259AF0 0x4C __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1; the MSL headers round 10: include/vector's 4-byte pod operator= (out of class, the char pod's: assign over the other's words unless this one), byte-exact as a probe (build/p10/e/podas.cpp); calls 0x259D20
 0x00259B40 0x4C __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1 ; SOCOM 1 name (its copy of the pointer vectors' implementation, the same 0x4C: zeroed, then init over the other's elements)
 0x00259B90 0x190 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1 ; SOCOM 1 name with MW 3.0's return type (_v); the copy calls it as SOCOM 1's does
-0x00259D20 0x1C0 func_00259D20  # OVL1
+0x00259D20 0x1C0 assign<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 10: include/vector's 4-byte pod assign (the char pod's with init's word loop, "vector::assign length error"), byte-exact as a probe (build/p10/e/podas.cpp)
 0x00259EE0 0x11C FetchLIP__Q23zar4CZARFPQ23zar4CKeyPPv  # OVL1; s1:order by hand (SOCOM 1's FetchLIP 0x1DAF80, first of zar_search.cpp there as here before Fetch(CKey *, ...): dynamic_cast of the file to CBufferIO, its fread(size, void **); CRdrFile and CVisual's readers call it as SOCOM 1's do)
 0x0025A000 0x11C Fetch__Q23zar4CZARFPQ23zar4CKeyPviUi  # OVL1; s1:calls (CRdrFile::Load calls it with SOCOM 1's (key, buf, size, 0)) -- the rdr lane
 0x0025A120 0x1C4 Insert__Q23zar4CZARFPQ23zar4CKeyPCvi  # OVL1; s1:calls (CRdrFile::Insert calls it where SOCOM 1's calls zar::CZAR::Insert) -- the rdr lane
@@ -5070,7 +5070,7 @@
 0x002FE1D0 0x54 Start__16CSMGetServerListFv  # OVL1; ours (CSMGetServerList's slot 0, its vtable 0x406730 by the RTTI at 0x3F5E48: the base's Start inlined, then the Connect state) -- byte-exact, zNetMediusUniverse.cpp
 0x002FE230 0x1AC erase__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecord  # OVL1; ours (the accounts vector's one-element erase: CAcctDB::Delete 0x2FBAE0 passes the iterator's word, the tail assigned down member by member, the count cut, the position returned in v0; include/vector's erase(T *))
 0x002FE3E0 0x6E8 insert__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecordUiRC10AcctRecord  # OVL1; ours (the accounts' insert: CAcctDB::Add 0x2FBCE0 pushes a blank record through it; it calls the record's copy constructor 0x2FEAD0 and placement new 0x2FECA0 out of line)
-0x002FEAD0 0x1C4 func_002FEAD0  # OVL1
+0x002FEAD0 0x1C4 __ct__10AcctRecordFRC10AcctRecord  # OVL1; the MSL headers round 10: AcctRecord's copy constructor, byte-exact as zNetMediusUniverse.cpp emits it; the accounts' insert 0x2FE3E0 calls it at the target's six sites (its only miss was this row's name)
 0x002FECA0 0x8 __nw__FUiPv  # OVL1; by hand, the MSL headers round 4 (include/new's placement new, out of line: the class vectors' construct() cut to one level calls it before the element's copy constructor -- six times in each such insert, LOD's, CDesignDlgObj's, the turret's -- and vector<C2DPoly>::reserve once, byte-exact through it; jr ra; move v0,a1)
 0x002FECB0 0x19C func_002FECB0  # OVL1
 0x002FEE50 0xB0C insert__Q23std68__vector_imp<14UniverseStatus,Q23std27allocator<14UniverseStatus>,0>FP14UniverseStatusUiRC14UniverseStatus  # OVL1; ours (the universe list's insert: cbGetUniverseStatusList 0x2FDAF0 pushes each 0x3D8-byte universe through it)
@@ -10149,7 +10149,7 @@
 0x0055C740 0x130 func_0055C740  # OVL2
 0x0055C870 0x42C func_0055C870  # OVL2
 0x0055CCA0 0x30 func_0055CCA0  # OVL2
-0x0055CCD0 0xF0 func_0055CCD0  # OVL2
+0x0055CCD0 0xF0 OnSignal__11CAiSGrenadeFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable by hand (the SEALs, round 13): slot 0x8 of __vt__11CAiSGrenade (0x669358), OnSignal's slot in every state table (CAiSPursue's 0x55A8D0, CAiSAnimate's 0x55ABC0); SOCOM 1's CAiSGrenade::OnSignal (0x25D0C0) clears a byte on signal 0 as this one clears 0x60 -- SOCOM II adds the reset and signal 1's inlined ChangeStanceDelayed
 0x0055CDC0 0x35C func_0055CDC0  # OVL2
 0x0055D120 0x1288 Tick__10CAiSDeployFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x0055E3B0 0x2AC func_0055E3B0  # OVL2
@@ -10362,10 +10362,10 @@
 0x00575C50 0x2C _max<f>__2aiFRCfRCf_RCf  # OVL2; s1:order (seal_ai.cpp's template tail after CSealCtrlAi's inline copies, as SOCOM 1's _max<f>__2aiFRCfRCf at 0x26C8A0; MW 3.0 mangles the return type); the larger by reference; CDynGrenade::ComputeTimeToImpact calls it where SOCOM 1's does
 0x00575C80 0x2C _min<f>__2aiFRCfRCf_RCf  # OVL2; s1:order (after _max<f>; SOCOM 1's _min<f>__2aiFRCfRCf is another unit's, 0x1FAC10); the smaller by reference
 0x00575CB0 0x38 _close_enough<i>__FRCiRCiRCi_b  # OVL2; s1:order (the tail's last, as SOCOM 1's _close_enough<i>__FRCiRCiRCi at 0x26C8D0; MW 3.0 mangles the return type): |a - b| within eps on ints
-0x00575CF0 0xBC func_00575CF0  # OVL2
+0x00575CF0 0xBC erase__Q23std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>FQ33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>Q33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>  # OVL2; ours (the SEALs, round 13): the range erase of CAiSAnimate's list at 0x64 -- ~CAiSAnimate (0x5759A0) calls it for that member alone, and the list's insert (0x575E30) builds 0x14-byte nodes, 12-byte timed calls; seal_ai.cpp's template tail, not seal_anim.cpp's
 0x00575DB0 0x74 func_00575DB0  # OVL2
 0x00575E30 0x110 func_00575E30  # OVL2
-0x00575F40 0xBC func_00575F40  # OVL2
+0x00575F40 0xBC erase__Q23std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>FQ33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>Q33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>  # OVL2; ours (the SEALs, round 13): the range erase of CAiSAnimate's list at 0x70 -- ~CAiSAnimate (0x5759A0) calls it for that member alone, and the list's insert (0x576000) builds 0x18-byte nodes, 16-byte span calls; seal_ai.cpp's template tail
 0x00576000 0x118 func_00576000  # OVL2
 0x00576120 0x84 func_00576120  # OVL2
 0x005761B0 0x128 func_005761B0  # OVL2
@@ -11337,9 +11337,9 @@
 0x005E6A50 0x4C GetJumpFlag__11CRemoteCtrlCFv  # OVL2; by hand: CRemoteCtrl's vtable slot +0xA4 (zseal.h's GetJumpFlag, moved into CSealCtrl in SOCOM II): the network state's first byte, through GetAiNetState (slot +0x6C) and a memcpy, when the entity has its +0xC
 0x005E6AA0 0x10 func_005E6AA0  # OVL2
 0x005E6AB0 0x1D4 func_005E6AB0  # OVL2
-0x005E6C90 0xD0 func_005E6C90  # OVL2
-0x005E6D60 0x64 func_005E6D60  # OVL2
-0x005E6DD0 0x70 func_005E6DD0  # OVL2
+0x005E6C90 0xD0 ClearAiStates__9CSealUnitFbb  # OVL2; by hand (the kit lane, round 14): the squad's SEALs' AI controllers told ClearAiState (0x5F5F20) through GetSealCtrlAi (slot 0x38), then the sub-squads walked -- against begin(), so never; new in SOCOM II, the name ours
+0x005E6D60 0x64 GetDataPtr__9CSealUnitFv  # OVL2; by hand (the kit lane, round 14): the squad's 4-byte order data (size 0x34, bytes 0x38) as a pointer, GetData (0x5EF1D0) inlined; the HUD's command menu (0x230050) and CSealCtrlAi::OnCommand read it -- the name ours
+0x005E6DD0 0x70 SetDataPtr__9CSealUnitFPv  # OVL2; by hand (the kit lane, round 14): the squad's order data set to a pointer (the inline setter: memcpy and the size, or memset 32 and 0) -- the name ours
 0x005E6E40 0x1E8 func_005E6E40  # OVL2
 0x005E7030 0x1F8 func_005E7030  # OVL2
 0x005E7230 0x15C func_005E7230  # OVL2
@@ -11350,7 +11350,7 @@
 0x005E76D0 0x160 func_005E76D0  # OVL2
 0x005E7830 0x130 func_005E7830  # OVL2
 0x005E7960 0x5BC func_005E7960  # OVL2
-0x005E7F20 0x84 func_005E7F20  # OVL2
+0x005E7F20 0x84 PlayRemoteMsg__FP7CEntityii  # OVL2; by hand (the kit lane, round 14): SOCOM 1's PlayRemoteMsg(CEntity *, int) with a third word -- the same callers (MessagePacketHandler 0x2BAC40 four times passing 1, OnDeath three, CZKit::Fire two, CSealCtrlAi::OnCommand); message 43 is sent on (SendMessageMessage) unless it is 1, then 0x5E7960 plays it
 0x005E7FB0 0xC SetPlayAutoMessages__Fb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's SetPlayAutoMessages (0x2CF720), the same sb to bgAutoMessagesOn (0x650B08 here), before GetPlayAutoMessages as there; UILoadConfig and UIToggleAutoMessages call it
 0x005E7FC0 0xC GetPlayAutoMessages__Fv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's GetPlayAutoMessages (0x2CF730), the same lbu of bgAutoMessagesOn (0x650B08 here), before TickAll as there; UIToggleAutoMessages calls it and then the setter
 0x005E7FD0 0x84 TickAll__9CSealUnitFfPv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's TickAll (0x2CF740) -- the same test of m_created_units_test (OVL1 0x44D5C0), the same walk of m_list ticking each squad with no parent (0x60 here, 0x3C there); CCoreState::Init registers it as the scheduler's UnitTick
@@ -11379,7 +11379,7 @@
 0x005EA7C0 0x14 func_005EA7C0  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x005EA7E0 0x88 __ct__9CAiMapLocFRC9CAiMapLoc  # OVL2; s1:exact
 0x005EA870 0x8 func_005EA870  # OVL2
-0x005EA880 0x34 func_005EA880  # OVL2
+0x005EA880 0x34 IsAi__10CZSealBodyFv  # OVL2; by hand (the kit lane, round 14): the SEAL's controller tested and its IsAi (CSealCtrl slot 0x30) called, the shape of zseal.h's IsPlayer/IsRemote; an inline's copy among IssueCommand's (IssueCommand calls it on 0x5EEDB0's SEAL) -- the name ours
 0x005EA8C0 0x1B0 func_005EA8C0  # OVL2
 0x005EAA70 0x128 func_005EAA70  # OVL2
 0x005EABA0 0x1C4 func_005EABA0  # OVL2
@@ -11400,7 +11400,7 @@
 0x005EC6A0 0x348 func_005EC6A0  # OVL2
 0x005EC9F0 0x2D4 func_005EC9F0  # OVL2
 0x005ECCD0 0x214 func_005ECCD0  # OVL2
-0x005ECEF0 0x9C func_005ECEF0  # OVL2
+0x005ECEF0 0x9C UnInit__9CSealUnitFv  # OVL2; s1:order by hand (the kit lane, round 14): SOCOM 1's UnInit -- every squad erased from m_list (0x44D5B0) and deleted (~CSealUnit 0x5EE4D0 with the delete flag), then m_created_units_test (0x44D5C0) cleared; ReOpen_Unload1 calls it
 0x005ECF90 0x1AC func_005ECF90  # OVL2
 0x005ED140 0x3A8 func_005ED140  # OVL2
 0x005ED4F0 0x1F0 func_005ED4F0  # OVL2
@@ -11433,18 +11433,18 @@
 0x005EDF90 0x1D0 SealLeaveUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5): EscorteeJoinUnit and SealJoinUnit (0x5EE160, 0x5EE250) call it first with the seal alone, as SOCOM 1's call SealLeaveUnit (static)
 0x005EE160 0xE8 EscorteeJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls EscorteeJoinUnit (twice, after ftsGetPlayer's GetUnitByTeam and after Create)
 0x005EE250 0x278 SealJoinUnit__9CSealUnitFP10CZSealBody  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): UpdateRollandsUnitStuff calls it where SOCOM 1's calls SealJoinUnit (twice, after Create and after GetUnitByTeam); recursive as SOCOM 1's
-0x005EE4D0 0x220 func_005EE4D0  # OVL2
+0x005EE4D0 0x220 __dt__9CSealUnitFv  # OVL2; by hand (the kit lane, round 14): CSealUnit's destructor -- it stores CSealUnit's table (0x669650) at +4, deletes the compass anchor and empties the lists; CSealUnit::UnInit (0x5ECEF0) calls it with the delete flag for every squad, between SealJoinUnit and the constructor as defined after it
 0x005EE6F0 0xF4 __ct__9CSealUnitFUi  # OVL2; s1:calls by hand (the kit lane, round 5): CSealUnit::Create (0x5EF380) calls it on a new 200-byte block with the team, where SOCOM 1's Create calls __ct__9CSealUnitFUi (164 bytes there)
 0x005EE7F0 0x5BC AllowCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPv  # OVL2; s1:vtable by hand (CSealUnit's vtable slot +0xC, the demo's AllowCommand in the same slot of its two-slot table; 0x5BC bytes against 0x6C8)
 0x005EEDB0 0x1C4 func_005EEDB0  # OVL2
 0x005EEF80 0x248 func_005EEF80  # OVL2
-0x005EF1D0 0x44 func_005EF1D0  # OVL2
-0x005EF220 0xC8 func_005EF220  # OVL2
+0x005EF1D0 0x44 GetData__9CSealUnitFPvUi  # OVL2; by hand (the kit lane, round 14): the squad's order data copied out when the size asked is the size stored (0x34); CSealCtrlAi's OnCommand and AllowCommand call it -- the name ours
+0x005EF220 0xC8 run_anim__FPCcPv  # OVL2; by hand (the kit lane, round 14): an anim of a name run (ActivateArg(1, 4, arg) or Activate(0)) when SOCOM 1's can_run_anim, inlined here, finds it runnable -- its guarded static is the plain byte 0x650AE0; IssueCommand calls it twice; new in SOCOM II, the name ours
 0x005EF2F0 0x50 GetUnitByTeam__9CSealUnitFUi  # OVL2; s1:calls by hand (the seal lane's lead, verified: SOCOM 1's GetUnitByTeam walks m_list__9CSealUnit for the unit whose number (0x38 there, 0x58 here) is the argument -- the same walk over the same static, 0x44D5B0 here; CSealCtrl::OnMissionStart calls it with 24)
 0x005EF340 0x40 func_005EF340  # OVL2
 0x005EF380 0xEC Create__9CSealUnitFUi  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): CZSealState::UpdateRollandsUnitStuff calls it where SOCOM 1's calls CSealUnit::Create (after GetUnitByTeam, twice); its body is SOCOM 1's (the list searched, new CSealUnit(team) pushed, team 24's valve)
 0x005EF470 0x198 func_005EF470  # OVL2
-0x005EF610 0xBC func_005EF610  # OVL2
+0x005EF610 0xBC erase__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>FQ33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>Q33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 14): the squad orders' range erase -- seal_unit.cpp emits the instance (the clear its code instantiates) byte-exact here, where SOCOM 1's seal_unit.cpp tail has the same instance after Create; IssueCommand and 0x5EE4D0 call it; the words are those of 12 other pod-list range erases
 0x005EF6D0 0x100 func_005EF6D0  # OVL2
 0x005EF7D0 0x18 __ct__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>Fv  # OVL2; s1:callee by hand (the kit lane, round 13): CSealUnit's constructor (0x5EE6F0) calls it on the orders list (0x94) where SOCOM 1's calls __ct__Q23std60__list_deleter<10FT_COMMAND,...>Fv (0x2D79E0) on its clist (0x70) -- the deleter's three-word zeroing constructor, seal_unit.cpp's out-of-line copy in its template tail
 0x005EF7F0 0xE0 func_005EF7F0  # OVL2
@@ -11576,7 +11576,7 @@
 0x005F8D40 0x884 func_005F8D40  # OVL2
 0x005F95D0 0x1504 func_005F95D0  # OVL2
 0x005FAAE0 0x218 func_005FAAE0  # OVL2
-0x005FAD00 0x4C func_005FAD00  # OVL2
+0x005FAD00 0x4C SetAiEvent__11CSealCtrlAiFQ28CAiEvent5EVENTfPC6CPnt3D  # OVL2; s1:order by hand (the kit lane, round 14): SOCOM 1's SetAiEvent (0x2DEFF0), the same words with the event 0x1A8 further on (0x628), between EventTick and CAiDodge::Destroy as in SOCOM 1's seal_aievent.cpp
 0x005FAD50 0x98 Destroy__8CAiDodgeFv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's CAiDodge::Destroy (0x2DF040), after SetAiEvent as there (0x5FAD00 is SOCOM 1's SetAiEvent, the same words with the event 0x1A8 on) -- the same size test, front, erase and delete over m_list (0x44D648)
 0x005FADF0 0x78 __dt__10CAiSFollowFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FAE70 0x348 func_005FAE70  # OVL2

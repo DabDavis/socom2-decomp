@@ -27,6 +27,43 @@ extern "C" bool func_0058A470(CZSealBody *seal, AnimType type)
     return false;
 }
 
+extern "C" {
+/* (OVL2 0x5E3C20, anim.cpp's, not written yet: an anim id's script for a weapon, or none) */
+CZSIScriptCommon *func_005E3C20(AnimSet *set, short id, short weapon);
+void *func_00555170(void *v);
+}
+
+/* the weapon in hand set and every blend's anim looked up again for it -- the weapon's own, else
+ * weapon 0's -- the parts' poses saved, and both interpolations set to the top anim's blend-in time
+ * (OVL2 0x57D710, new in SOCOM II: seal_cfg.cpp's 0x58C5D0 calls it; the name unknown).
+ * OPEN, 0xE4 against 0xF8: the body is the target's (the BlendAt walk keeps its per-pass sll/addu);
+ * left, the loop's entry -- the target jumps to a test block of its own placed after the return
+ * (`bltz i` to the exit, `b` to the bottom `bgez`), where MW tests at the top -- and the SEAL and the
+ * stack trading s1/s2. Tried: the stack declared before the store, a while loop with the counter
+ * declared first, `if (i >= 0) do ... while (--i >= 0)`, the stack through a reference, a goto
+ * into the bottom test (all 0xE4). */
+extern "C" bool func_0057D710(CZSealBody *seal, short weapon)
+{
+    seal->m_weapon_id = weapon;
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    for (int i = stack->m_top; i >= 0; i--) {
+        ACTIVE_ANIM *rep = BlendAt(stack, i)->Representative();
+        short id = rep->m_id;
+        CZSIScriptCommon *anim = func_005E3C20(seal->m_animset, id, seal->m_weapon_id);
+
+        if (!anim)
+            anim = func_005E3C20(seal->m_animset, id, 0);
+        if (anim)
+            rep->m_anim = anim;
+    }
+    seal->SaveParts();
+    float t = ((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->Representative()->m_anim->m_20;
+
+    seal->m_interp2 = seal->m_interp1 = t;
+    return true;
+}
+
 /* the state of the topmost blend in state 0, 1 or 2, else 0 (OVL2 0x57DBB0; new in SOCOM II, its
  * name unknown) */
 extern "C" unsigned char func_0057DBB0(CZSealBody *seal)
@@ -655,6 +692,38 @@ extern "C" void func_00579EF0(CZSealBody *seal)
                 func_005765F0(seal);
             seal->m_10d0 = 0.4f;
         }
+    }
+}
+
+extern "C" {
+/* (OVL2 0x579A30, not written yet: what 0x579DA0 hands on to) */
+void func_00579A30(CZSealBody *seal, int a);
+}
+
+/* for a SEAL: the blends popped down to two, twelve at most -- when that worked the top blend's
+ * control cleared and the SEAL asked to go prone, as 0x57F310 does -- its movement velocity zeroed,
+ * then 0x579A30 (OVL2 0x579DA0, new in SOCOM II: 0x5880E0 calls it; the name unknown). The stack's
+ * address is shared by both Top calls here (both spelled alike). */
+extern "C" void func_00579DA0(CZSealBody *seal, int a)
+{
+    if (seal) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        int n = 12;
+        CBodyAnimBlendStack *stack = &seal->m_blends;
+
+        while (BlendCount(stack) > 2 && n > 0) {
+            b = func_00589AA0(seal);
+            n--;
+        }
+        if (n <= 0)
+            b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        else {
+            if (b)
+                b->m_ctrl = 0;
+            seal->m_desiredStance = STANCE_PRONE;
+        }
+        seal->m_velM = CPnt3D::zero;
+        func_00579A30(seal, a);
     }
 }
 

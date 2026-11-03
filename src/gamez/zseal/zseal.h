@@ -15,6 +15,8 @@
 #include "../zcamera/zcamera.h"
 #include "aitimer.h"
 #include "../../ai/ai_states.h"
+/* (the kit lane, round 14: CSealCtrlAi::SetAiEvent takes CAiEvent::EVENT) */
+#include "../../ai/ai.h"
 #include "../zchar/zchar.h"
 
 class CZSealBody;
@@ -108,6 +110,13 @@ public:
 class CSealCtrlAi;
 
 /* CAiState, its stack and AI_STATE are ai/ai_states.h's (the AI-states lane's header) */
+
+/* an AI sound's priority, passed by value: the level in the low byte (new in SOCOM II; the names
+ * ours) */
+struct AI_SOUND_PRIORITY {
+    unsigned int m_level : 8;
+    unsigned int m_rest : 24;
+};
 
 /* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
@@ -574,7 +583,10 @@ public:
      * bit 2 the one 0x56D890 sets, which a covered state keeps (0x5F6350); a breach clears 13 on
      * entry, then sets 16 from its own bit 13, clears 17 and sets 13 as it ends (0x5F3620) */
     unsigned int m_aibit2 : 1;
-    unsigned int m_bits3 : 5;
+    unsigned int m_bits3 : 4;
+    /* bit 7: set and cleared by 0x561E20 (CAiSNoAmmo's Tick sets it), never with bit 1 (the name
+     * ours) */
+    unsigned int m_aibit7 : 1;
     unsigned int m_aibit8 : 1;   // bits 8 and 9: either refuses a state push without flag 4
     unsigned int m_aibit9 : 1;   // (0x5F5CD0)
     unsigned int m_bits10 : 3;
@@ -596,10 +608,16 @@ public:
     float m_280;   // 0x280: the delay before the asked stance is taken (cleared by SetStance)
     unsigned char _284[0x364 - 0x284];
     CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
-    unsigned char _370[0x3f4 - 0x370];
+    unsigned char _370[0x3e0 - 0x370];
+    /* what 0x561E20 stores as it sets bit 7: a byte and 16 bytes zeroed (the names ours) */
+    signed char m_3e0;   // 0x3e0
+    unsigned char _3e1[0x3e4 - 0x3e1];
+    unsigned char m_3e4[0x10];   // 0x3e4
     unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
-    unsigned char _3f6[0x41c - 0x3f6];
+    unsigned char _3f6[0x40c - 0x3f6];
+    float m_40c;   // 0x40c: a time on the game's clock 0x572190 measures from (the name ours)
+    unsigned char _410[0x41c - 0x410];
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
      * seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
     CAiStateStack m_stateStack;   // 0x41c (SOCOM 1's 0x324; 0x20 bytes in SOCOM II)
@@ -631,7 +649,13 @@ public:
     unsigned char _6fc[0x74c - 0x6fc];
     float m_spraytimer;   // 0x74c: SetSprayTimer's time (the name ours)
     CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
-    unsigned char _75c[0x76c - 0x75c];
+    /* the sound the AI last made (0x571010: the sound, when it may be made again, and its
+     * priority with the alertness band it was made at in the low byte; the names ours) */
+    short m_sound;   // 0x75c
+    unsigned char _75e[0x760 - 0x75e];
+    float m_sound_time;   // 0x760
+    AI_SOUND_PRIORITY m_sound_priority;   // 0x764
+    unsigned char _768[0x76c - 0x768];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
     unsigned char _76d[0x7c0 - 0x76d];
 };
@@ -650,6 +674,9 @@ public:
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
+    /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
+     * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
+    CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
 
     /* the AI's mode set (SOCOM 1's; OVL2 0x56CBF0) and its states dropped (SOCOM 1's
      * ClearAiState, the AI-states lane's 0x5F5F20) */
@@ -1053,7 +1080,8 @@ public:
     void ApplyEyeLookAnim();
     const CPnt3D *GetLookDir() const;
     void ApplyLookAnim(float yaw, float pitch);
-    void CalcGoalDir(const CPnt3D *cur, const CPnt3D *dir, CPnt3D *goal, float up, float down, float left,
+    /* (whether a goal came of it: CalcAimGoal, 0x5DF600, keeps the bool -- the kit lane, round 14) */
+    bool CalcGoalDir(const CPnt3D *cur, const CPnt3D *dir, CPnt3D *goal, float up, float down, float left,
                      float right);
     bool SetEyeLookDir(float pitch, float yaw, const CPnt3D *dir, float rate);
     bool SetLookDir(const CPnt3D *dir, float rate);
@@ -1108,10 +1136,16 @@ public:
     unsigned char m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
                                                // flag at 0xde8 bit 0; the name ours)
     unsigned char m_21c_bit2 : 1;   // bit 2: a crouch 0x58A720 reports as a stand (the name ours)
-    unsigned char _21c_bits : 5;
+    unsigned char m_fading : 1;   // bit 3: the node's opacity heads for m_fade_target (0x552780)
+    unsigned char _21c_bits : 4;
     unsigned char _21d[0x22c - 0x21d];
     int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
-    unsigned char _230[0x240 - 0x230];
+    /* a fade of the node's opacity: where to, how fast (its sign toward the target) and the priority
+     * of whoever asked (0x552780 refuses a lower one; the names ours) */
+    float m_fade_target;   // 0x230
+    float m_fade_rate;   // 0x234
+    unsigned char m_fade_priority;   // 0x238
+    unsigned char _239[0x240 - 0x239];
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
     unsigned char _244[0x2e0 - 0x244];
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
