@@ -3274,6 +3274,49 @@ CheckEngineHandle inlined comes within 11 words; the target zeroes the result be
 Next in the same vein: rt_msg_client's internal functions, DME's internals behind each wrapper
 (SOCOM 1's same-named bodies), and gsapi's remaining wrappers (handle test, a context loop).
 
+**Round 4b: the RT objects, DME's internals, the globals named.**
+
+- **Medius's globals carry SOCOM 1's names in `data.txt`**: `GlobalInitFlag` (0x656188, 2 bytes)
+  and `MyConnectionIndex` (0x65618C), referenced at the instructions SOCOM 1's MediusSessionBegin
+  references its own (133 and 132 references), and 69 request callback slots (`s1:slot`: SOCOM
+  1's slot of the same position, its request storing it as SOCOM 1's does, each with its count):
+  44 of the API object's (.data, 0x6561C0-) and 25 of the clan object's (.bss, 0x686A5C-). The
+  two slots whose function names are disputed (0x656278, 0x686AC0) stay placeholders. The units
+  dropped their `#define`s.
+- **The link order is the .data `$Header:` order, but not alphabetical**: DmeLocal.c,
+  DmeMessage.c, *then* Dme.c. Each object's functions address its own .data, so a function's
+  object reads off the `$Header` span its references land in (`build/scratch/gcc/dataobj.py`):
+  audio.c 0x60FF00-0x612630; an object without a `$Header` -- SOCOM 1's first DME object,
+  NetInitializeClients .. NetClientLeaves, 15 rows, 0x6126A0-0x6132B8; codec.c to 0x613FD0;
+  DmeLocal.c (SOCOM 1's Dme.c bodies) from 0x613FD0 past 0x61CCA8; DmeMessage.c around 0x61F518;
+  Dme.c from 0x6204B8 (NetGetBuildTimeStamp, then the locked wrappers); grid.c from 0x6250D0;
+  md5_platform.c at 0x62B168.
+- **SCEA's shapes, each measured**: one guard clause per test, each returning its constant (an
+  `||` of them makes 2.96 build a shared return block the target lacks: rt_mutex); a test whose
+  else-block the target carries in a branch-likely's delay slot was written the other way round
+  (`if (used != 0) {...} else *p = 0;`, `if (ok) { ...; return 0; } return ERR;`); a count bumped
+  in each branch, which 2.96 cross-jumps into one store; a call's result returned through a
+  variable after a join is no sibling call (func_0061BEB8).
+- **Per-object flags again**: rt_memory.c is built without sibling calls (rt_memory_align_alloc
+  returns rt_memory_get_aligned_address's result through a jal: 14 words off with them), as is
+  the recogniser's user-word object (DoLabelStop/DoLabelStart: 10 and 6 off); rt_mutex,
+  rt_circ_buf (normalize ends in `j`) and DmeLocal.c (DmeFree is `j rt_memory_free`) keep them.
+- **The build stamps** (MediusGetBuildTimeStamp, NetGetBuildTimeStamp, rt_msg_client's): each
+  object's own `__DATE__`/`__TIME__`, spelled out (a rebuild's would be today's); the month table
+  is a 38-byte literal -- its last byte is copied from .rodata, so the vendor's ends in an explicit
+  `\0`; the date and time are local pointers, set after DME's and the client's argument test.
+- **Open, diagnosed in place**: rt_circ_buf's nine (after `result = getter(cb, &n); if (result)
+  return result;` the target tests n in v0, 2.96 here in v1 -- every shape tried; free's and use's
+  start update is byte-exact only under `-fno-sched-interblock`, which no other unit takes), four
+  of DmeLocal.c's and cbDoUserWordTraining (2.96 folds `if (f()) return 1; return 0;` into `sltu`).
+
+Hand-written in round 4b: `medius/rt_mutex.c` (5 of 5) and `rt_mutex_platform.c` (6 of 6),
+`medius/rt_memory.c` (8 of 8), `medius/rt_circ_buf.c` (7 of 16), `medius/dmelocal.c` (15 of 19),
+`asr/userword.c` (4 of 5), and MediusGetErrorCodeString, MediusSetClientAddrList,
+MediusGetBuildTimeStamp, NetGetBuildTimeStamp, rt_msg_client_get_build_timestamp in their units
+-- 50 functions, 40 new to the map's byte-exact rows (ten supersede matching drafts); 15 rows
+named (rt_circ_buf's 14 by SOCOM 1's order, FindFreePingSlot).
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
