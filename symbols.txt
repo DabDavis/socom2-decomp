@@ -10471,7 +10471,7 @@
 0x00583030 0x318 func_00583030  # OVL2
 0x00583350 0x1A4 func_00583350  # OVL2
 0x00583500 0x45C func_00583500  # OVL2
-0x00583960 0x18C func_00583960  # OVL2
+0x00583960 0x18C TurnControl__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 TurnControl__10CZSealBodyFff, after ProneControl: the top blend weight made 1, the turn doubled and negated, capped 0.6/0.3/0.35/0.6 by state as in SOCOM 1; SOCOM II takes one float, every caller sets f12 alone; the SEALs round 16)
 0x00583AF0 0x374 func_00583AF0  # OVL2
 0x00583E70 0x3C8 func_00583E70  # OVL2
 0x00584240 0x144 func_00584240  # OVL2

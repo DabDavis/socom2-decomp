@@ -1144,6 +1144,50 @@ void CZSealBody::BodySetState(int state)
     func_0028DFB0(*this, state);
 }
 
+extern "C" float fabsf(float x);
+
+/* the top blend turned: its weight made 1 and its playback set from the turn, doubled and negated,
+ * its size scaled and capped by the state (0.6 standing, 0.3 crouched, 0.35 prone, 0.6 in states 9
+ * and 10), its sign kept (OVL2 0x583960: SOCOM 1's TurnControl, the same caps; SOCOM II sets the
+ * representative's playback where SOCOM 1 called its slot 0x14) */
+CZBodyAnimBlend *CZSealBody::TurnControl(float turn)
+{
+    bool neg;
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    b->SetRepresentativeWt(1.0f);
+    float r = 2.0f * -turn;
+
+    neg = r < 0.0f;
+    float a = fabsf(r);
+
+    switch (m_state) {
+    case 0:
+        a *= 0.6f;
+        if (a > 0.6f)
+            a = 0.6f;
+        break;
+    case 1:
+        a *= 0.3f;
+        if (a > 0.3f)
+            a = 0.3f;
+        break;
+    case 2:
+        a *= 0.35f;
+        if (a > 0.35f)
+            a = 0.35f;
+        break;
+    case 9:
+    case 10:
+        a *= 0.6f;
+        if (a > 0.6f)
+            a = 0.6f;
+        break;
+    }
+    b->Representative()->SetPlayback(neg ? -a : a);
+    return b;
+}
+
 /* the stance's change taken, once (OVL2 0x582500; SOCOM 1's, the false return its own block) */
 bool CZSealBody::StanceChanged()
 {
