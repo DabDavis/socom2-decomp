@@ -6614,6 +6614,7 @@
 0x004DF200 cbTrain
 0x004DF258 cbNewUserWordUtterance
 0x004DF278 cbDTMFDetected
+0x004DF2C8 Set_EndBackTraceMask_In_StateDict
 0x004DF420 CopyContextInfo
 0x004E11D0 TrainFree
 0x004E3CC8 userwordStartUserWordTraining
@@ -6627,6 +6628,7 @@
 0x004E4550 InitDelayBlock
 0x004E4628 AllocateBacktrace@dpgenuw
 0x004E4A40 InitDpGenUw
+0x004E4B60 SendResultUserWords
 0x004E53E0 DpGenUwProcess
 0x004E5538 func_004E5538
 0x004E5668 ControlDpGenUw
@@ -6661,8 +6663,14 @@
 0x004F0C00 ExtendBacktraceStack
 0x004F0C80 ScoreCompare@nbestdp
 0x004F0CB0 IdleProcess
+0x004F14F8 PostDP
+0x004F1898 FlushPitchDP
 0x004F28C0 ConstructPitchDP
+0x004F2900 CreateWindow
+0x004F2B30 InitPitchWindow
 0x004F2D28 ConstructPitchWindow
+0x004F2D68 ProcessPitchWindow
+0x004F2EA0 ControlPitchWindow
 0x004F2F90 InitStacker
 0x004F3108 ConstructStacker
 0x004F3148 ProcessStacker
@@ -6675,8 +6683,13 @@
 0x004F3690 NormalizeAndEnQ
 0x004F4150 InitAcne
 0x004F43A0 ConstructAcne
-0x004F46F0 func_004F46F0
+0x004F43E0 InitDCTLift
+0x004F46F0 ConstructDCTLift
+0x004F4730 ProcessDCTLift
 0x004F4900 ControlDCTLift
+0x004F4950 ControlGender
+0x004F5428 GenderSelection
+0x004F5708 InitGender
 0x004F5E70 ConstructGender
 0x004F5EB0 ResetGender
 0x004F6918 ConstructMel
