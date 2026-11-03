@@ -1647,6 +1647,20 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 19** (mp_rating.cpp, reco.cpp):
+  - a list walk `i = begin(); iterator e = end(); for (; i != e; ++i)` (iterator assigned, end
+    initialised) keeps `this + 4` in `this`'s register (mp_rating.cpp's walks);
+  - push_back taking the pointer's address made MW number the parameters last; passing it by value
+    through an inline wrapper put them first again (AddPlayer);
+  - a bool local returned from an `int` function adds `andi 0xff`, from a `bool` function it is a
+    plain `move`; a bool local just assigned true (`daddiu`) is reused as the value of a one-bit
+    field set true in the same block (CReco::Init); `found == false` as a loop test keeps `andi;
+    bnez`, `!found` drops it;
+  - indexing a two-slot member array (`m_teams[i]`) gives the target's registers, a named walking
+    pointer moves them;
+  - units: mp_rating.cpp (SOCOM II's Elo ratings, CRatingTeam/CRatingMatch) runs 0x239770-0x23A2DF,
+    reco.cpp (the voice recogniser's wrapper, the 0x40-byte theReco 0x414680) 0x23A2E0-0x23B98F with
+    its initialiser 0x3FF7B0 -- the cut by what the code touches (the recogniser's fields at 0x2C/0x30).
 - **Tells from the game states, round 17** (SetMovie and its cue sort, fts_message.cpp):
   - a function calling trivial accessors -- even leaves -- out of line holds a big EXPLICIT-inline helper
     MW inlines one level: the helper's callees become calls, their copies following the caller in
