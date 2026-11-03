@@ -1257,6 +1257,30 @@ int cbGenderDisable(CASR *c, int a1, int a2, int which, int mode)
     return 0;
 }
 
+/* the end-of-backtrace bit (2) of each listed state in a state dictionary, set or cleared; the
+ * dictionary's entries are shorts from 4 before the pointer passed. The entry is a pointer of its
+ * own (indexing gives the address sum's operands the other way round, 62 words); 2.96 leaves the
+ * setting loop rolled where SOCOM 1's compiler unrolled both. */
+void Set_EndBackTraceMask_In_StateDict(unsigned char set, unsigned short *dict, int *first,
+                                       int *last)
+{
+    unsigned short *e;
+    int *p;
+
+    dict -= 4;
+    if (set) {
+        for (p = first; p <= last; p++) {
+            e = dict + *p;
+            *e |= 2;
+        }
+    } else {
+        for (p = first; p <= last; p++) {
+            e = dict + *p;
+            *e &= ~2;
+        }
+    }
+}
+
 /* a copy of a context's info record (its size at +4), on the given heap */
 typedef struct CTXINFO {
     int kind;
