@@ -10,7 +10,10 @@
 class AIMAPS_PARAMS {
 public:
     unsigned int m_map_count;   // 0x0
-    unsigned int m_reserved[8];   // 0x4
+    /* SOCOM 1's m_reserved[0]: bit 1 set while ReadMapSet reads the maps in (SOCOM II's; the name
+     * ours) */
+    unsigned int m_flags;   // 0x4
+    unsigned int m_reserved[7];   // 0x8
 };
 
 /* a mission's AI maps, by index (SOCOM 1's DWARF: CAiMaps : list, AIMAPS_PARAMS, 0xE0 bytes; the
@@ -80,6 +83,9 @@ public:
     float GetDistance(const CAiMapLoc &a, const CAiMapLoc &b);
     /* how many spores an id has (new in SOCOM II, the name ours) */
     int GetSporeCount(unsigned int id);
+    /* the n-th spore of an id: its cell's centre and the way it faces, false when the id has none
+     * or the cell no centre (SOCOM 1's; 0x52B5C0) */
+    bool GetSporeLocation(unsigned int id, unsigned int n, CPnt3D *pos, CPnt3D *dir);
     /* the region of a type whose centre is nearest the cell, one holding the cell passed over
      * unless asked for (SOCOM 1's; CAiSFlee::Tick calls it) */
     CAiMap::region *GetClosestRegion(const CAiMapLoc &loc, CAiMap::region::TYPE type, bool inside);
@@ -98,11 +104,24 @@ public:
      * and OnDeath, which pass the entity's id, unread) */
     void SetOccupied(const CAiMapLoc &from, const CAiMapLoc &to, unsigned int id);
 
+    /* the map set read from a file: the header, the maps, the set's graph and spores, the tables
+     * built after (SOCOM 1's; 0x52B0D0) */
+    bool ReadMapSet(const char *name, const char *path);
+    /* the tables built from the maps (SOCOM 1's, called by ReadMapSet in the demo's order:
+     * 0x52BB70, 0x52B820, 0x52AE20, then the set's graph 0x52A8C0) */
+    void UpdateActionTables();
+    void UpdateNameTables();
+    void ValidateLinks();
+    void CreateGraph(bool force);
+
     CAiMap::spores m_spores;   // 0x30
     CAiMap::names m_names[6];   // 0x3c
     CAiMapLocVec m_regions[7];   // 0x84
     CGraph *m_graph;   // 0xd8
     unsigned char m_cookie;   // 0xdc
+    /* the maps file's path as ReadMapSet opened it (new in SOCOM II: strncpy'd 512 bytes; the name
+     * ours) -- AiMaps is 0x2E0 bytes, SOCOM 1's 0xE0 */
+    char m_path[512];   // 0xdd
 };
 
 extern CAiMaps AiMaps;

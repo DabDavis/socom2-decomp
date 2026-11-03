@@ -9630,16 +9630,16 @@
 0x0052A6B0 0xB8 Tile__7CAiMapsFPCQ26CAiMap6regionUiUi  # OVL2; s1:order by hand (SOCOM 1's CAiMaps::Tile 0x197F70 step for step: the region null-tested, GetMapByIndex(region mapid), the map's Tile then ResetPathPlan, its bool kept; SOCOM II inlines the lookup whole and passes layer 0)
 0x0052A770 0xAC GetCellNameString__7CAiMapsCFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x198060: GetCellName inlined, the name's string or "")
 0x0052A820 0x94 GetCellName__7CAiMapsCFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x1980C0, after GetCellNameString: the cell's map's GetCellName)
-0x0052A8C0 0x400 func_0052A8C0  # OVL2
+0x0052A8C0 0x400 CreateGraph__7CAiMapsFb  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's last call, with false, as the demo's calls CreateGraph__7CAiMapsFb; CGraph::Create, nodes and edges, PathPlanImmediate between links)
 0x0052ACC0 0x158 func_0052ACC0  # OVL2
-0x0052AE20 0x2AC func_0052AE20  # OVL2
-0x0052B0D0 0x204 func_0052B0D0  # OVL2
-0x0052B2E0 0x178 func_0052B2E0  # OVL2
-0x0052B460 0x158 func_0052B460  # OVL2
-0x0052B5C0 0x21C func_0052B5C0  # OVL2
+0x0052AE20 0x2AC ValidateLinks__7CAiMapsFv  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's third table call, as the demo's calls ValidateLinks__7CAiMapsFv; GetCellLink and SetCellLink over the maps)
+0x0052B0D0 0x204 ReadMapSet__7CAiMapsFPCcPCc  # OVL2; s1:order by hand, the AI core round 16 (the demo's ReadMapSet 0x198680, after CreateGraph and ValidateLinks in both builds: CMission::Open calls it as the demo's does; a CFileIO and a 2 KB path, the header read through the AIMAPS_PARAMS base, new CAiMap(size()) and Read per map, CGraph::Create with the set's two fixups, ReadCellTable<spores>, then the same four calls in the same order; SOCOM II adds the path copy at 0xDD, Close() first, the id before the push and flag bit 1)
+0x0052B2E0 0x178 _fixupMapsEdge__FP6CGraphP6CGEdgebRUiPv  # OVL2; ours, the AI core round 16 (ai_maps.cpp's edge fixup: ReadMapSet 0x52B0D0 hands it to CGraph::Create as the edge fixup (a2 = 0x52B2E0), it writes a link at the edge's 0x14; SOCOM 1's _fixupNode was this unit's, the demo's 0x198870 -- the same inlined GetMapByIndex walk and GetCellLink -- while SOCOM II's per-map pair in ai_mapio.cpp holds SOCOM 1's names; byte-exact)
+0x0052B460 0x158 _fixupMapsNode__FP6CGraphP6CGNodebRUiPv  # OVL2; ours, the AI core round 16 (ai_maps.cpp's node fixup: ReadMapSet 0x52B0D0 hands it to CGraph::Create as the node fixup (a1 = 0x52B460), it writes a link at the node's 8 -- the demo's ai_maps.cpp _fixupNode 0x198870 likewise looks the packed cell's link up on the cell's map; byte-exact)
+0x0052B5C0 0x21C GetSporeLocation__7CAiMapsFUiUiP6CPnt3DP6CPnt3D  # OVL2; s1:order by hand, the AI core round 16 (the demo's GetSporeLocation 0x198A00, after ReadMapSet and the fixups in both builds: GetRange of the id, the n-th spore wrapped round the run, the cell's centre, the same eight direction vectors (0.707f) in a jump table, negated -- called from OVL1 0x2B7EE0/0x2B8100 as the demo's from ftsNetworkPlayerInit/findAlign)
 0x0052B7E0 0x34 GetSporeCount__7CAiMapsFUi  # OVL2; ours (new in SOCOM II, after GetSporeLocation: a zeroed range filled by spores::GetRange, its count returned)
-0x0052B820 0x350 func_0052B820  # OVL2
-0x0052BB70 0x274 func_0052BB70  # OVL2
+0x0052B820 0x350 UpdateNameTables__7CAiMapsFv  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's second table call, as the demo's calls UpdateNameTables__7CAiMapsFv; it clears, refills and Sorts the name tables)
+0x0052BB70 0x274 UpdateActionTables__7CAiMapsFv  # OVL2; s1:callee by hand, the AI core round 16 (ReadMapSet 0x52B0D0's first call after ReadCellTable<spores>, as the demo's ReadMapSet calls UpdateActionTables__7CAiMapsFv there; it reads action::invalid)
 0x0052BDF0 0x518 func_0052BDF0  # OVL2
 0x0052C310 0x8 func_0052C310  # OVL2
 0x0052C320 0x284 GetLocationDelta__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 15 (the demo's GetLocationDelta 0x199610, between SmoothPath and RegisterPathPlan as 0x52C310/0x52C5B0 are here: the same-map Manhattan sum, two TransformTo calls, _max<Ui> of the maps' cell counts; SOCOM II adds map 0 as the common grid)
