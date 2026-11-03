@@ -1276,6 +1276,7 @@
 0x0065AA38 0x8 __RTTI__18CRestrainedPlanner  # RTTI of CRestrainedPlanner: found by its RTTI's name
 0x0065AA60 0x8 __RTTI__15CStealthPlanner  # RTTI of CStealthPlanner: found by its RTTI's name
 0x0065AA88 0x8 __RTTI__13CBasicPlanner  # RTTI of CBasicPlanner: found by its RTTI's name
+0x0065AB30 0x4 invalid__Q26CAiMap6action  # OVL2 data; SOCOM 1's (invalid__Q26CAiMap6action, 4 bytes at the demo's 0x449170, read with lhu by its resize<action> 0x18B300 as SOCOM II's resize<action> 0x51C6D0 reads this): 0xFFFF in the image, the default action's id -- the AI core round 12 (2 references in 2 functions: 0x51C6D0, 0x52BB70)
 0x0065AB38 0x4 s_cos45  # OVL2 data; ours (ai_map.cpp's static, zero in the image: __sinit_ai_map.cpp stores 0.5f * sqrtf(2.0f) into it, GetDirCos returns it and its negation; 3 references in 2 functions)
 0x0065AD00 0x4 s_aimap_version  # OVL2 data; ours (23: the AI map file version CAiMap(int) starts each map at, as SOCOM 1's constructor read its own word; 1 reference in 1 function)
 0x0065AED0 0x4 invalid__9CAiMapLoc  # OVL2 data; SOCOM 1's invalid__9CAiMapLoc (0x449450, 4 bytes, zero): CAiMapLoc's constructor copies it field by field -- CEntity's constructor reads it six times for m_mapLoc and m_mapLocValid where SOCOM 1's reads 0x449450 (the entity lane); 117 references (OVL2's AI code)

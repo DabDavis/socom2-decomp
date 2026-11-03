@@ -1,47 +1,37 @@
-/* ai_mapio.cpp (OVL2 0x51A490-~0x51CB3F, the name SOCOM 1's -- ai.h): CAiMap's file readers. SOCOM 1
+/* ai_mapio.cpp (OVL2 0x51A490-~0x524170, the name SOCOM 1's -- ai.h): CAiMap's file readers. SOCOM 1
  * read a map in one Read (0x189390) and its tables through read_readers, read_routes, read_lines
  * and the ReadCellTable templates; SOCOM II splits Read (0x51AFE0) by file version (0x51A490,
  * 0x51A6D0, 0x51A910, 0x51AB50, 0x51AD90 for 23 down to 19), each calling the same table readers.
- * Each read goes through CFileIO's fread slot (0x24). Still unwritten: the layer reader (0x51B150)
- * and the two converting readers. */
+ * Each read goes through CFileIO's fread slot (0x24). The template tail (0x51B6C0-0x52416F) is the
+ * table readers and every table's resize, insert and erase. Still unwritten: the layer reader
+ * (0x51B150). */
 
 #include "ai.h"
 #include "../gamez/zrdr/zrdr.h"
 #include "../gamez/zutil/zutil.h"
 
-/* the tables' resizes: MSL's vector::resize, which include/vector does not model yet -- each
- * instance called by its placeholder (SOCOM 1: resize__Q23std...__vector_imp<...,0>FUi, one per
- * element type, emitted in this unit's template tail) */
-extern "C" void func_0051C4A0(CAiMapLocVec *v, unsigned int n);
-extern "C" void func_0051C3F0(CAiMap::readers *v, unsigned int n);
+/* the tables' resizes: MSL's vector::resize (include/vector), one instance per element type in
+ * this unit's template tail, each building its default element: byte-exact with the element's
+ * constructor in ai.h (names, links, regions, spores, the scanlines -- ai_map.cpp's copy, 0x519700 --
+ * and CAiMapLoc's).
+ * OPEN, resize<reader> (0x51C3F0), right size, 6 instructions: registers only -- the target keeps the
+ * size in s1 and the end in s2 around the reader's out-of-line constructor (0x52FD70), this build the
+ * other way round; the shape is include/vector's, which serves every other instance.
+ * Still called through placeholders: the actions' (0x51C6D0: the action's constructor reads its id
+ * from a global), the routes' and the lines' (0x51C230, 0x51C070: the target inlines the element's
+ * two- and one-CAiMapLocVec constructor whole, six levels with include/vector's chain -- one more
+ * level-6 candidate; the line's temporary's bits are line_data()'s, ai.h) */
 extern "C" void func_0051C230(CAiMap::routes *v, unsigned int n);
 extern "C" void func_0051C070(CAiMap::lines *v, unsigned int n);
-
 extern "C" void func_0051C6D0(CAiMap::actions *v, unsigned int n);
-extern "C" void func_0051C8F0(CAiMap::regions *v, unsigned int n);
-extern "C" void func_0051CA40(CAiMap::spores *v, unsigned int n);
 
 inline void table_resize(CAiMapLocVec &t, unsigned int n) { t.resize(n); }
-inline void table_resize(CAiMap::readers &t, unsigned int n) { func_0051C3F0(&t, n); }
-inline void table_resize(CAiMap::actions &t, unsigned int n) { func_0051C6D0(&t, n); }
-inline void table_resize(CAiMap::regions &t, unsigned int n) { func_0051C8F0(&t, n); }
-inline void table_resize(CAiMap::spores &t, unsigned int n) { func_0051CA40(&t, n); }
-
-extern "C" void func_0051C630(CAiMap::names *v, unsigned int n);
-extern "C" void func_0051C840(CAiMap::links *v, unsigned int n);
-
-inline void table_resize(CAiMap::names &t, unsigned int n) { func_0051C630(&t, n); }
-inline void table_resize(CAiMap::links &t, unsigned int n) { func_0051C840(&t, n); }
-
-/* what the version readers call that is not written yet: the scanlines' reader and the two
- * converting table readers */
-/* the scanlines' resize (MSL's vector::resize, ai_map.cpp's template tail: SOCOM 1's
- * resize__Q23std72__vector_imp<Q26CAiMap8scanline,...,0>FUi) */
-extern "C" void func_00519700(CAiMap::scanlines *v, unsigned int n);
-extern "C" bool func_0051BBE0(CFileIO &f, CAiMap::names &t);
-extern "C" bool func_0051BD40(CFileIO &f, CAiMap::links &t);
-/* a further layer of cells read (0x51B150, called from the version-20 readers on) */
-extern "C" bool func_0051B150(CAiMap *map, CFileIO &f, int n, CAiMapLayer **layer);
+inline void table_resize(CAiMap::readers &t, unsigned int n) { t.resize(n); }
+inline void table_resize(CAiMap::actions &t, unsigned int n) { t.resize(n); }
+inline void table_resize(CAiMap::regions &t, unsigned int n) { t.resize(n); }
+inline void table_resize(CAiMap::spores &t, unsigned int n) { t.resize(n); }
+inline void table_resize(CAiMap::names &t, unsigned int n) { t.resize(n); }
+inline void table_resize(CAiMap::links &t, unsigned int n) { t.resize(n); }
 
 /* the graph's pieces as the fixups see them (graph_tree.cpp's CGEdge and CGNode: what each stands
  * for, a route at an edge's 0x14 and a region at a node's 8) */
@@ -56,6 +46,86 @@ public:
     unsigned char _0[0x8];
     CAiMap::region *m_region;   // 0x8
 };
+
+/* a name as maps before version 21 hold it (the names ours, after SOCOM 1's action_v15 and
+ * region_v4): the cell, a float, fifteen characters and a byte -- 0x18 bytes. Built empty for
+ * resize<name_v20>'s temporary (0x51E430: the name's first byte, the word, the last byte) */
+class name_v20 {
+public:
+    name_v20()
+    {
+        m_name[0] = 0;
+        m_4 = 0.0f;
+        m_23 = 0;
+    }
+
+    CAiMapLoc m_loc;   // 0x0
+    float m_4;   // 0x4: copied through the FPU (the old names' erase, 0x522A50)
+    char m_name[15];   // 0x8
+    unsigned char m_23;   // 0x17
+};
+class names_v20 : public std::vector<name_v20> {
+};
+
+/* a link as maps before version 23 hold it: SOCOM 1's two cells and no bits (8 bytes) */
+class link_v22 {
+public:
+    CAiMapLoc m_loc;   // 0x0
+    CAiMapLoc m_link;   // 0x4
+};
+class links_v22 : public std::vector<link_v22> {
+};
+
+/* each old element made into the table's: a name keeps its cell, its name (cut to fifteen
+ * characters) and its last byte; a link its two cells, of kind 8 with its bits cleared -- the
+ * fields assigned in the body, so the four-bit kind is a byte read-mask-write */
+inline void table_convert(CAiMap::name &d, const name_v20 &s)
+{
+    d.m_loc = s.m_loc;
+    d.SetName(s.m_name);
+    d.m_15 = s.m_23;
+}
+inline void table_convert(CAiMap::link &d, const link_v22 &s)
+{
+    d.m_loc = s.m_loc;
+    d.m_link = s.m_link;
+    d.m_kind = 8;
+    d.m_unk8 = 0;
+}
+
+/* a table read in an older format: its count, the old elements read whole into a vector of
+ * their own, then the table sized and each element converted (SOCOM 1's ReadCellTableCvt, by its
+ * shape: SOCOM 1's actions_v15 and regions_v4 readers; SOCOM II's converts the names for versions
+ * 19 and 20, 0x51BBE0, and the links for 19 to 22, 0x51BD40) */
+template <class C, class T, class Cv, class Tv>
+bool ReadCellTableCvt(CFileIO &f, C &table)
+{
+    bool ok = false;
+    int count = 0;
+
+    if (f.fread(&count, 4) == 4) {
+        if (count > 0) {
+            Cv old;
+
+            old.resize(count);
+            int bytes = count * sizeof(Tv);
+
+            ok = bytes == f.fread(old.data_, bytes);
+            if (ok) {
+                table_resize(table, count);
+                for (int i = 0; i < count; i++) {
+                    T &d = table[i];
+                    Tv &o = old[i];
+
+                    table_convert(d, o);
+                }
+            }
+        } else {
+            ok = true;
+        }
+    }
+    return ok;
+}
 
 /* a table read whole: its count, then its elements as they lie in the file (SOCOM 1's template:
  * true for an empty table, else whether every byte came) */
@@ -105,9 +175,9 @@ bool CAiMap::read_v19(CFileIO &f)
             f.fread(cells, bytes);
     }
     read_scanlines(f);
-    func_0051BBE0(f, m_namesTable);
+    ReadCellTableCvt<names, name, names_v20, name_v20>(f, m_namesTable);
     ReadCellTable<actions, action>(f, m_actionTable);
-    func_0051BD40(f, m_linksTable);
+    ReadCellTableCvt<links, link, links_v22, link_v22>(f, m_linksTable);
     ReadCellTable<regions, region>(f, m_regionTable);
     ReadCellTable<spores, spore>(f, m_sporeTable);
     read_lines(f);
@@ -133,7 +203,7 @@ bool CAiMap::read_v19(CFileIO &f)
         for (unsigned int i = 1; i < m_layercount; i++) {                    \
             CAiMapLayer *layer = 0;                                          \
                                                                              \
-            if (func_0051B150(this, f, 1, &layer))                           \
+            if (read_layer(f, true, &layer))                                 \
                 m_layers.push_back(layer);                                   \
         }                                                                    \
         m_layercount = m_layers.size();                                      \
@@ -161,9 +231,9 @@ bool CAiMap::read_v20(CFileIO &f)
             f.fread(cells, bytes);
     }
     read_scanlines(f);
-    func_0051BBE0(f, m_namesTable);
+    ReadCellTableCvt<names, name, names_v20, name_v20>(f, m_namesTable);
     ReadCellTable<actions, action>(f, m_actionTable);
-    func_0051BD40(f, m_linksTable);
+    ReadCellTableCvt<links, link, links_v22, link_v22>(f, m_linksTable);
     ReadCellTable<regions, region>(f, m_regionTable);
     ReadCellTable<spores, spore>(f, m_sporeTable);
     read_lines(f);
@@ -198,7 +268,7 @@ bool CAiMap::read_v21(CFileIO &f)
     read_scanlines(f);
     ReadCellTable<names, name>(f, m_namesTable);
     ReadCellTable<actions, action>(f, m_actionTable);
-    func_0051BD40(f, m_linksTable);
+    ReadCellTableCvt<links, link, links_v22, link_v22>(f, m_linksTable);
     ReadCellTable<regions, region>(f, m_regionTable);
     ReadCellTable<spores, spore>(f, m_sporeTable);
     read_lines(f);
@@ -233,7 +303,7 @@ bool CAiMap::read_v22(CFileIO &f)
     read_scanlines(f);
     ReadCellTable<names, name>(f, m_namesTable);
     ReadCellTable<actions, action>(f, m_actionTable);
-    func_0051BD40(f, m_linksTable);
+    ReadCellTableCvt<links, link, links_v22, link_v22>(f, m_linksTable);
     ReadCellTable<regions, region>(f, m_regionTable);
     ReadCellTable<spores, spore>(f, m_sporeTable);
     read_lines(f);
@@ -361,6 +431,34 @@ void _fixupNode(CGraph *, CGNode *node, bool fix, unsigned int &n, void *data)
  * inlined: pinned */
 #pragma auto_inline off
 
+/* a further layer read (new in SOCOM II, the name ours): its header -- into a new layer when none
+ * is given -- and, unless a map from version 22 on marks the layer empty (flag 2), its cells. The
+ * result is never set: every caller's push_back is dead, and m_layercount ends at the layers'
+ * size. Pinned with the table readers (the version readers call it); the bytes declared ahead of
+ * the count, which takes the higher saved register */
+bool CAiMap::read_layer(CFileIO &f, bool header, CAiMapLayer **layer)
+{
+    bool ok = false;
+    unsigned int bytes;
+    unsigned int count = m_cellcount;
+    bool skip = false;
+
+    bytes = count * sizeof(CAiCell);
+
+    if (header) {
+        if (!*layer)
+            *layer = new CAiMapLayer(0);
+        f.fread(*layer, 40);
+        skip = m_version >= 22 && ((*layer)->m_flags & 2);
+    }
+    if (!skip) {
+        (*layer)->AllocCells(count);
+        f.fread((*layer)->m_cells, bytes);
+    }
+    return ok;
+}
+
+
 /* the rows' runs read whole, then each run's first cell numbered on from the last (SOCOM 1's
  * pointed each run into the cells and zeroed its extra data instead). The target keeps &data_ in
  * s1 from before the read (SOCOM 1's code too) and loads begin through it, its first end() sharing
@@ -368,7 +466,7 @@ void _fixupNode(CGraph *, CGNode *node, bool fix, unsigned int &n, void *data)
  * and end() read through the deleter's data() reference, as the read does */
 bool CAiMap::read_scanlines(CFileIO &f)
 {
-    func_00519700(&m_scanlines, m_ny);
+    m_scanlines.resize(m_ny);
     f.fread(m_scanlines.data(), m_ny * sizeof(scanline));
     int index = 0;
 
