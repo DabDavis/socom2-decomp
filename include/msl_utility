@@ -48,6 +48,26 @@ struct has_trivial_dtor {
 }
 
 namespace Metrowerks {
+namespace details {
+
+/* a pair whose first is an empty class it derives from (SOCOM 1's DWARF: compressed_pair_imp<T1, T2,
+ * 1> under msl_utility, 4 or 8 bytes, its second_ at 0; the out-of-line second()s keep MSL's names,
+ * second__Q310Metrowerks7details48compressed_pair_imp<Q23std14allocator<PCv>,Ui,1>CFv in SOCOM 1's
+ * symbols as in SOCOM II's seal_unit.cpp tail, 0x5E8C80). include/list reads its count and its
+ * sentinel through it (the MSL headers round 15) */
+template <class T1, class T2, int N>
+class compressed_pair_imp;
+
+template <class T1, class T2>
+class compressed_pair_imp<T1, T2, 1> : public T1 {
+public:
+    T2 &second() { return second_; }
+    const T2 &second() const { return second_; }
+
+    T2 second_;
+};
+
+}
 
 /* a pointer an allocator made, given back to it unless released: MSL's guard for a node while its
  * value is built (SOCOM 1's DWARF: alloc_ptr<node, allocator<node> &>, 8 bytes, a compressed pair

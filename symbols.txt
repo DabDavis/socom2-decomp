@@ -3862,7 +3862,7 @@
 0x002ACC10 0x680 func_002ACC10  # OVL1
 0x002AD290 0x6A4 Init__8CMissionFv  # OVL1; s1:align
 0x002AD940 0x27C __dt__8CMissionFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002ADBC0 0x350 func_002ADBC0  # OVL1
+0x002ADBC0 0x350 __ct__8CMissionFv  # OVL1; by hand (the states lane, round 22): __sinit_fts_mission.cpp 0x400160 calls it on theMission (0x4364E0) and registers ~CMission 0x2AD940 for it, where SOCOM 1's __sinit_fts_mission.cpp calls __ct__8CMissionFv; it builds the CSaveModule base (theMemCard.m_configSave) and stores CMission's vtable 0x406290 as ~CMission does
 0x002ADF10 0x140 func_002ADF10  # OVL1
 0x002AE050 0x2F0 func_002AE050  # OVL1
 0x002AE340 0x5C func_002AE340  # OVL1
@@ -3899,7 +3899,7 @@
 0x002AF890 0x28 ftsGetNumVisibleMaps__FUi  # OVL1; s1:align
 0x002AF8C0 0x14C CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP5_zrdr  # OVL1; s1:align
 0x002AFA10 0x18C CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP11CVehicleRdrP5_zrdr  # OVL1; s1:align
-0x002AFBA0 0xC func_002AFBA0  # OVL1
+0x002AFBA0 0xC GetLobbySaveManager__Fv  # OVL1; by hand (the states lane, round 22): returns &theLobbySaveManager (0x4364A0, the CLobbySaveManager __sinit_fts_mission.cpp builds) -- CMenuState::UnInit closes it through this (CLobbySaveManager::Close 0x33ED10), the online lane's CAcctDB registers with it; SOCOM II's, the name ours
 0x002AFBB0 0x8 func_002AFBB0  # OVL1
 0x002AFBC0 0x78 at__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi  # OVL1; by hand (the states lane, round 16; the element's name ours): include/vector's at() for the camera path's 0x98-byte points ("vector::at index out of range"), out of line in fts_mission.cpp's tail for GetPoint (0x2AB260)
 0x002AFC40 0x18 _max<Uc>__2aiFRCUcRCUc_RCUc  # OVL1; by its body (ai::_max over unsigned char: lbu, lbu, slt, movn -- MW 3.0's mangling with the return type), the template tail before _min<f>'s OVL1 copy; no OVL2 copy named -- the states lane
@@ -3920,14 +3920,14 @@
 0x002B17A0 0x14 __ct__Q23std54vector<P10UIVarMixin,Q23std24allocator<P10UIVarMixin>>Fv  # OVL1; by hand (the states lane, round 21): a pointer vector's default constructor out of line (three words zeroed, as the other 0x14-byte copies); resize<CUIVariable> 0x2B1390 calls it for its temporary's watchers m_attached_items at +0x18 (zui.h's std::vector<UIVarMixin *>)
 0x002B17C0 0x18 __ct__10UIVarMixinFv  # OVL1; by hand (the states lane, round 21): zui_uivar.h's inline UIVarMixin() out of line -- UIVarMixin's vtable 0x4050B0 stored and m_uivar zeroed; resize<CUIVariable> 0x2B1390 calls it for its temporary's UIVarMixin base at +8 before storing CUIVariable's own tables
 0x002B17E0 0xB4 __ct__5_zrdrFv  # OVL1; by hand (the states lane, round 21): the out-of-line copy of zrdr.h's _zrdr() -- the first word read, masked and written back field by field (type, isclone, packed, nofree, unused, length cleared); resize<CUIVariable> 0x2B1390 calls it for its temporary CUIVariable's _zrdr base
-0x002B18A0 0x68 func_002B18A0  # OVL1
+0x002B18A0 0x68 __dt__Q23std64__vector_deleter<11CUIVariable,Q23std24allocator<11CUIVariable>>Fv  # OVL1; by hand (the states lane, round 22): the UI variables' deleter destructor (clear 0x2B20E0, then the block deleted) -- fts_mission.cpp emits it byte-exact; ~CUIVarManager 0x385CE0 calls it after its two inline this-tests (~vector, ~__vector_imp)
 0x002B1910 0x60 __dt__17CValveSaveManagerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002B1970 0x60 func_002B1970  # OVL1
+0x002B1970 0x60 __dt__12CUIVarSTableFv  # OVL1; by hand (the states lane, round 22): the destructor __sinit_fts_mission.cpp hands __construct_array for theUIVarManager's two tables (32 bytes each, at +0x2C) and ~CUIVarManager 0x385CE0 hands __destroy_arr, as SOCOM 1's initialiser hands __dt__12CUIVarSTableFv (0x1FBE20 there); fts_mission.cpp emits it (CUIVarSTable's implicit destructor)
 0x002B19D0 0x3C __ct__12CUIVarSTableFv  # OVL1; s1:align
 0x002B1A10 0x2C UpdateUIVar__11CUIVariableFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the UI lane round 13: vtable 0x4062B0's UpdateUIVar slot (inline virtual; zui_var.cpp emits it)
 0x002B1A40 0x190 erase__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FP11CUIVariableP11CUIVariable  # OVL1; s1:align
 0x002B1BD0 0x510 insert__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FP11CUIVariableUiRC11CUIVariable  # OVL1; by hand (the states lane, round 21): resize<CUIVariable> 0x2B1390 calls it with (end, n - size, the temporary) where SOCOM 1's resize calls this name; CUIVariable's copy constructor 0x386BF0 six times, the watchers' pod assignment 0x259AF0 twice, new, the element destructor through the vtable and delete, as SOCOM 1's insert of it (0x1FC0A0)
-0x002B20E0 0x84 func_002B20E0  # OVL1
+0x002B20E0 0x84 clear__Q23std64__vector_deleter<11CUIVariable,Q23std24allocator<11CUIVariable>>Fv  # OVL1; by hand (the states lane, round 22): include/vector's deleter clear for the UI variables (each element destroyed through its vtable slot 0x18, the size zeroed) -- fts_mission.cpp emits it byte-exact (theUIVarManager's tail); ~__vector_deleter<CUIVariable> 0x2B18A0 and ~CUIVarManager 0x385CE0 call it
 0x002B2170 0x8 @8@UpdateUIVar__11CUIVariableFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the UI lane round 13: the UIVarMixin-base thunk of UpdateUIVar (zui_var.cpp emits it)
 0x002B2180 0x8 @8@__dt__11CUIVariableFv  # OVL1; the integrator 2026-11-04, by the UI lane round 13: the UIVarMixin-base thunk of ~CUIVariable (vtable 0x4062B0's second part; zui_var.cpp emits it)
 0x002B2190 0x38 Clear__9CSpawnersFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:exact
@@ -4180,7 +4180,7 @@
 0x002C3CF0 0x2CC CheckStateSwitch__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane: the deletion callback's second call, after UpdatePersonaLists, as SOCOM 1's calls CheckStateSwitch; just before ToggleReady, as in SOCOM 1's order)
 0x002C3FC0 0x54 ToggleReady__14CZPersonaStateFv  # OVL1; s1:exact shape by hand (the states lane: SOCOM 1's ToggleReady, 0x54 both, instruction for instruction: theMission's net game, its minor state 2 -> 1 else 2, then UpdateLocalPersona)
 0x002C4020 0x98 func_002C4020  # OVL1
-0x002C40C0 0x1D0 func_002C40C0  # OVL1
+0x002C40C0 0x1D0 AllReadyToLoad__14CZPersonaStateFv  # OVL1; s1:calls by hand (the states lane, round 22): CheckStateSwitch calls it where SOCOM 1's calls AllReadyToLoad, the same body (the launch clock, the personas' ready walk, the ready count's valve at +0x48) with SOCOM II's flagged-persona skip and MP_EIGHTY_READY warning
 0x002C4290 0x1A4 func_002C4290  # OVL1
 0x002C4440 0xB4 func_002C4440  # OVL1
 0x002C4500 0x230 func_002C4500  # OVL1
@@ -8527,7 +8527,7 @@
 0x00400030 0x8C __sinit_ent_target.cpp  # OVL1 data area; a static initialiser; s1~ ent_target.cpp (shape 0.60, a hint); s1:unit by hand (the entity lane: ent_target.cpp's own initialiser, emitted by the hand unit; s1units' guess)
 0x004000C0 0x34 __sinit_compass.cpp  # OVL1 data area; a static initialiser; the compass unit's initialiser (the entity lane): theCompass's three words zeroed, ~CCompass registered with __register_global_object; the file name is ours
 0x00400100 0x5C func_00400100  # OVL1 data area; a static initialiser; s1~ fts_main.cpp (shape 0.47, a hint)
-0x00400160 0x1D0 func_00400160  # OVL1 data area; a static initialiser
+0x00400160 0x1D0 __sinit_fts_mission.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 22): fts_mission.cpp's initialiser, byte-exact from the unit's statics in order -- <iostream>'s two, theMemCard, theLobbySaveManager, theMission, theUIVarManager (inline: CSaveModule("CUIVarManager", theMemCard.m_gameSave), its two vtables, the tables' __construct_array, m_currtab, resize(256)), theValveSaveManager, the extra string tables' count -- SOCOM 1's __sinit_fts_mission.cpp builds the same but the lobby's and the bank list
 0x00400330 0x68 __sinit_fts_player.cpp  # OVL1 data area; a static initialiser; a static initialiser: fts_player.cpp's (the states lane's round 16: the unit emits it byte-exact but for its reference to ~CSpawners 0x2B4030, still open)
 0x004003A0 0x3C func_004003A0  # OVL1 data area; a static initialiser; s1~ fts_missioncam.cpp (shape 0.45, a hint)
 0x004003E0 0x20 __sinit_fts_message.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 18): fts_message.cpp's initialiser -- __construct_array over its six message colours (0x440C70, s_msgColors) with CPnt4D's empty constructor 0x2110E0 and no destructor, a tail call; the unit's one dynamically initialised static
@@ -10195,10 +10195,10 @@
 0x005621B0 0x8 func_005621B0  # OVL2
 0x005621C0 0x2C GetValve__11CSealCtrlAiCF10SEAL_VALVE  # OVL2; s1:order (SOCOM 1's GetValve__11CSealCtrlAiCF10SEAL_VALVE word for word but the bound, 3, and the array, 0x750: the valve of a kind or 0) -- the SEAL lane, round 4
 0x005621F0 0x8 func_005621F0  # OVL2
-0x00562200 0x1A8 func_00562200  # OVL2
+0x00562200 0x1A8 SetRoute__11CSealCtrlAiFPC9CAiMapLoci  # OVL2; s1:order by hand (the SEAL lane, round 18: SOCOM 1's SetRoute__11CSealCtrlAiFPC9CAiMapLoci, after GetValve and SetRouteType's slots and before SetRoute(const CAiMapLoc &) in both builds: the entity's cell copied, CAiMaps::RegisterPathPlan's five arguments as SOCOM 1's, SetAiMode(3), GetDefaultRouteBias's tests inline, GetDefaultRouteType into SetPathType, the search limit and m_pathTolerance zeroed)
 0x005623B0 0x3DC func_005623B0  # OVL2
 0x00562790 0x48 func_00562790  # OVL2
-0x005627E0 0x108 func_005627E0  # OVL2
+0x005627E0 0x108 GetDefaultRouteType__11CSealCtrlAiFv  # OVL2; s1:order by hand (the SEAL lane, round 18: SOCOM 1's GetDefaultRouteType__11CSealCtrlAiFv sits between GetDefaultRouteBias and ClearRoute in both builds; the same tests -- bit 1 at 0x264 (SOCOM 1's 0x280), the AI state's kind 8 giving 2 -- with SOCOM II's restrained case added; the two SetRoute variants call it)
 0x005628F0 0x68 func_005628F0  # OVL2
 0x00562960 0x50 func_00562960  # OVL2
 0x005629B0 0x58 func_005629B0  # OVL2
@@ -11355,19 +11355,19 @@
 0x005E7FC0 0xC GetPlayAutoMessages__Fv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's GetPlayAutoMessages (0x2CF730), the same lbu of bgAutoMessagesOn (0x650B08 here), before TickAll as there; UIToggleAutoMessages calls it and then the setter
 0x005E7FD0 0x84 TickAll__9CSealUnitFfPv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's TickAll (0x2CF740) -- the same test of m_created_units_test (OVL1 0x44D5C0), the same walk of m_list ticking each squad with no parent (0x60 here, 0x3C there); CCoreState::Init registers it as the scheduler's UnitTick
 0x005E8060 0x7F0 Tick__9CSealUnitFf  # OVL2; s1:callee by hand (the kit lane, round 13): TickAll (0x5E7FD0) calls it on each top squad where SOCOM 1's TickAll calls Tick__9CSealUnitFfPv (0xBB8 there, 0x7F0 here), and it recurses as that one does; SOCOM II passes no data (a1 never set), hence Ff
-0x005E8850 0x1E8 func_005E8850  # OVL2
-0x005E8A40 0xC func_005E8A40  # OVL2
-0x005E8A50 0xC func_005E8A50  # OVL2
-0x005E8A60 0x10 func_005E8A60  # OVL2
-0x005E8A70 0xC func_005E8A70  # OVL2
-0x005E8A80 0x8 func_005E8A80  # OVL2
-0x005E8A90 0x1B0 func_005E8A90  # OVL2
-0x005E8C40 0xC func_005E8C40  # OVL2
-0x005E8C50 0xC func_005E8C50  # OVL2
-0x005E8C60 0xC func_005E8C60  # OVL2
-0x005E8C70 0x8 func_005E8C70  # OVL2
-0x005E8C80 0x8 func_005E8C80  # OVL2
-0x005E8C90 0x8 func_005E8C90  # OVL2
+0x005E8850 0x1E8 GetTail__9CSealUnitFv  # OVL2; s1:order by hand (the MSL headers round 15): SOCOM 1's GetTail (0x2D03B0, non-const), before GetLeader in both builds -- the last sub-squad asked first, then the squad's own SEALs', escortees' and dead's back(); recursive, inlined into itself twice, its back() through the base's
+0x005E8A40 0xC back__Q23std52list<P10CZSealBody,Q23std24allocator<P10CZSealBody>>Fv  # OVL2; by hand (the MSL headers round 15): GetTail's innermost copy calls it for m_seals/m_escortees/m_dead_guys (list<CZSealBody *>, the base's back() inlined)
+0x005E8A50 0xC back__Q23std48list<P9CSealUnit,Q23std22allocator<P9CSealUnit>>Fv  # OVL2; by hand (the MSL headers round 15): GetTail's innermost copy calls it for m_sub_units (list<CSealUnit *>)
+0x005E8A60 0x10 empty__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>CFv  # OVL2; by hand (the MSL headers round 15): sz() == 0, GetTail's and GetLeader's innermost copies call it
+0x005E8A70 0xC back__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv  # OVL2; by hand (the MSL headers round 15): the base's back() (tail().prev_'s value), GetTail's first self-copy calls it
+0x005E8A80 0x8 sz__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>CFv  # OVL2; by hand (the MSL headers round 15): SOCOM 1's sz() const (the count by reference through the count pair's second()); empty() and size() inlined one level call it (GetTail, GetLeader, GetSealCount)
+0x005E8A90 0x1B0 GetLeader__9CSealUnitCFv  # OVL2; s1:order by hand (the MSL headers round 15): SOCOM 1's const GetLeader (0x2D04F0), between GetTail and CommandNotifyFromChild in both builds -- the first SEAL, else the first sub-squad's leader; recursive, inlined into itself four times (SOCOM 1's three), calling the same pieces as SOCOM 1's
+0x005E8C40 0xC front__Q23std48list<P9CSealUnit,Q23std22allocator<P9CSealUnit>>CFv  # OVL2; by hand (the MSL headers round 15): GetLeader's innermost copy calls it for m_sub_units (list<CSealUnit *>'s const front(), the base's inlined)
+0x005E8C50 0xC front__Q23std52list<P10CZSealBody,Q23std24allocator<P10CZSealBody>>CFv  # OVL2; by hand (the MSL headers round 15): GetLeader's innermost copy calls it for m_seals
+0x005E8C60 0xC front__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>CFv  # OVL2; by hand (the MSL headers round 15): the base's const front() (tail().next_'s value), as SOCOM 1's GetLeader calls it
+0x005E8C70 0x8 tail__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>CFv  # OVL2; by hand (the MSL headers round 15): SOCOM 1's tail() const, this + 4 (the end pair's second() inlined), as SOCOM 1's GetLeader calls it
+0x005E8C80 0x8 second__Q310Metrowerks7details48compressed_pair_imp<Q23std14allocator<PCv>,Ui,1>CFv  # OVL2; by hand (the MSL headers round 15): SOCOM 1's name (0x1811B0 in the demo), the count pair's const second(); GetLeader's second self-copy calls it
+0x005E8C90 0x8 second__Q310Metrowerks7details158compressed_pair_imp<Q23std66allocator<Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>4node>,Q33std42__list_deleter<PCv,Q23std14allocator<PCv>>9node_base,1>CFv  # OVL2; by hand (the MSL headers round 15): SOCOM 1's name (0x2CE8C0 in the demo), the end pair's const second(); GetLeader's first and second self-copies call it
 0x005E8CA0 0x168 CommandNotifyFromChild__9CSealUnitFP9CSealUnitP10CZSealBody10FT_COMMANDPv  # OVL2; s1:order by hand (the kit lane, round 19): SOCOM 1's CommandNotifyFromChild (0x2D0620, 0x1B8), between GetLeader and IssueCommand in both builds -- on a follow (4) the squad's AI SEALs and sub-squads walked, the flags at 0xA0/0xA1 set; SOCOM II reads the follow state (9) off the stack's kind bits (+0x42C) where SOCOM 1 called FindAiState
 0x005E8E10 0x1640 IssueCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPvb  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EA450 0x68 __dt__8CAiStateFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)

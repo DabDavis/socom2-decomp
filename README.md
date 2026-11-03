@@ -1775,6 +1775,37 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 15** (the instances other lanes waited on; probes build/p15/, untracked):
+  - AN ITERATOR ASSIGNED FROM begin() STAYS IN ITS STACK SLOT, re-read and re-stored at each step with the base iterator
+    copied in through $f0 (the wrapper's implicit assignment); initialised from begin() it lives in a register. That is
+    the "iterator in memory" of the world's 0x346270 (zsnd_csnd.cpp: `iterator e = end(); iterator i; for (i = begin();
+    i != e; ++i)`, end in a local first or the sentinel's address takes another register) and of the kit's 0x5E7830
+    (seal_unit.cpp: four empty walks, one slist iterator re-assigned for three lists, a ulist one declared after) --
+    source forms, no header change; SerializeValves' one instruction is the by-reference `*`, not this;
+  - MW's SELF-INLINED COPIES CUT THEIR CALLEES ONE LEVEL SHORTER PER COPY, the deepest copy the raw body (probe
+    build/p15/rec1.cpp: a recursive function over a 1-6 high chain at level 5 -- six copies, the chain whole in the
+    first, then 3, 2, 0 levels), and a call written as the self-call's argument expands a level deeper than the copy's
+    other calls (GetLeader's `m_sub_units.front()->GetLeader()`; GetTail takes its sub-squad into a local first, so its
+    back() is cut like the rest). So a recursive walk reads its accessors' heights off directly: CSealUnit::GetLeader
+    0x5E8A90 (five copies) cuts front() at the end pair's second(), then tail(), the base's front(), the wrapper's, and
+    empty() at the count pair's second(), then sz(), then empty() -- SOCOM 1's MSL list exactly (its const GetLeader
+    calls the same pieces under the same names, one copy fewer). include/list now has them BESIDE the fields (sz(),
+    empty(), tail() by reference over Metrowerks::details::compressed_pair_imp<A, T, 1>::second() in include/msl_utility,
+    the ends through tail()), GetLeader const and GetTail written in seal_unit.cpp, 11 piece rows named (0x5E8A40-0x5E8A80,
+    0x5E8C40-0x5E8C90); the const walks' begin()/end() through the new tail() lose SetOccupied, GetTeamMembers,
+    SetMvpUiVars, SetStatLbUiVar and CMPExitState::UnInit, so they keep a one-level sentinel (tail_ptr, ours);
+  - GetSealCount 0x5ED9B0: with size() over sz() and the wrapper's begin()/end() through the base's every call is the
+    target's, copy by copy; its outer copy's begin()/end() temporaries (built in stack slots, copied in through $f0)
+    are not reproduced (0x1B0 against 0x1F8; the assigned walk 0x1F4 keeps the iterator in memory throughout) -- not
+    applied;
+  - the soft keyboard pieces' erase/insert (0x3980D0, 0x3982F0) are a HEIGHT cut: inline_max_size(2000) changes
+    nothing, the unit at level 8 makes the insert byte-exact and the erase the target's size (a register permutation),
+    63 -> 64 in zui_skbview.cpp; copy's tree there is eight high (copy, __copy, the piece's, CSaferStr's and the
+    string's operator=, assign, size(), is_long()), each level evidenced elsewhere -- at level 5 not met (include/vector's
+    erase note);
+  - the deque's make_iterator with the four fields in a base class that has a member-wise user copy constructor,
+    `return t += n` and the buffer's begin() in class: objects in memory, copied field by field through address
+    registers, 0x12C against 0x130/0x138 -- ~147 lines off in slots (include/deque's comment), not applied.
 - **Tells from completing the MSL headers, round 14** (the deques' instances; probes build/p14/, untracked):
   - the circular buffer's end() takes its index (`cap ? (start + size) % cap : 0`) into a local before it loads
     data_ -- written inside the iterator constructor's first argument MW loads data_ first: ~__deque_buf byte-exact
@@ -1857,6 +1888,48 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 18** (THE Is() FALSE ARM, SetRoute, seven seal_ai.cpp/seal_body.cpp rows):
+  - THE KIT'S OPEN `Is()` SHAPE: the target builds the state test whole in one register with an explicit `move v0,zero`
+    false arm -- `StackNotEmpty() ? (m_stateStack.GetState()->m_state == s ? true : false) : false` (the first operand an
+    inline bool; the inner `? true : false` keeps the false arm; with `&&`, a plain ternary or if/else MW sees v0 already
+    0 on that path and drops the arm) -- CSealCtrlAi::AiStateIs(AI_STATE) const in zseal.h, calling the const GetState
+    0x5F8330; 0x572190 matched with it, and the lane's scan (build/scratch/seal-r18/farm.py) finds 22 open functions
+    with the pattern, the kit's Pop(ai, AI_STATE) 0x5F7990, PopTo 0x5F7B10 and 0x5F43B0 among them;
+  - MW 3.0 aligns branch targets to 8 bytes with nops, so "label pads" in OPEN notes move whenever an instruction is
+    missing upstream; an inline returning the same constant from several arms is held in $f20 across a later call,
+    returned once straight it folds into the caller's store; a bool result declared at the top takes a saved register,
+    declared just before its first test it stays in v0; a pointer local declared after the others is numbered last
+    though computed first; inline tests taking the state stack by const reference recompute its address for each call,
+    handed the controller MW keeps it in a saved register; `bool empty = !f(); if (empty)` gives sltu/xori/andi before
+    the branch where `!f()` or `== false` inside the `if` branches on v0; a switch assigning one bool, returned once,
+    gives one andi at the join;
+  - SetRoute(loc *, int) 0x562200 and GetDefaultRouteType 0x5627E0 by SOCOM 1's order (SetRoute(loc *, int),
+    SetRoute(loc &), GetDefaultRouteBias -- no copy in SOCOM II: an inline --, GetDefaultRouteType, ClearRoute);
+    identified, not renamed: 0x5623B0 SetRoute(const CAiMapLoc &) and 0x562030 AnimSignal (0x180 against SOCOM 1's
+    0x404: check the signature); for the AI core (passed on): 0x52C5C0 RegisterPathPlan, 0x524CD0 SetPathType;
+  - open: SetMaxMotion 0x58BCB0 (4: the member-call GetScript respelled, but the strafe lookups' load order is the
+    scheduler's -- BlendedClimb's identical call loads the type first; nine spellings), 0x5623B0 (0x3DC), 0x562030,
+    0x567690 (a guarded function-local `Rfloat(10, 15)` static at 0x66B208/0x66B210), 0x56A130 (MAP_LINEWALK_STRUCT).
+- **Tells from the game states, round 22** (__sinit_fts_mission.cpp, the CUIVariable tail, the persona lists):
+  - WITH TWO `_zrdr` STAND-INS A UNIT CAN INCLUDE BOTH zui.h AND zanim.h if zanim.h's copy is skipped after zui.h's
+    (`#ifndef ZUI_H`): fts_mission.cpp includes zui.h first and reaches CUIVariable -- __sinit_fts_mission.cpp
+    (theLobbySaveManager 0x4364A0, theValveSaveManager 0x43FF00, CUIVarManager's vtable 0x407CF0) and erase<CUIVariable>
+    byte-exact, the deleter's clear and destructor, ~CUIVarSTable and the thunks from source; zui.h's CSaveModule stand-in
+    is 0x18 bytes (SOCOM 1's DWARF and zsave.h agree) and CUIVarManager declares its virtuals before its members (its
+    vptr at 0x24, where the initialiser and destructor store it) -- no member moved;
+  - a const inline accessor called through a non-const pointer reloads the field it just tested, a non-const one
+    reuses it; a test materialising `sltu v0` rather than comparing into `at` comes from an inline bool (a plain load MW
+    hoists ahead of the call needs a local inside that inline); a bool-returning call keeps the caller's `andi 0xff`
+    only written `== false`; an inline on a value read once keeps the target's temporaries where a named local shifts
+    them; `a = b = c = d = 0` stores the last-named global first;
+  - open: resize<CUIVariable> 0x2B1390 (0x240 vs 0x19C: an inline_max_size cut -- under `#pragma inline_max_size(180)`
+    the body matches but for one callee, and a pointer __vector_imp `reserve` forwarder makes it byte-exact calling
+    0x2B1600 whose own copy is then a `j` where 0x2B1600 holds the pod reserve's body: neither adopted, the note in
+    fts_mission.cpp), insert<CUIVariable> 0x2B1BD0 (the class insert's end register), func_002AF410 (0x100 vs 0x140).
+  - the integrator's fix on the way: tools/automatch.py's rename in place inserted the `as=` line above a C++ draft's
+    `/* sc: c++ */` marker, pushing it past the third line -- refused since GCC round 16a's directive check (0x2B20E0's
+    draft failed to build); the rename now joins the marker line (`/* sc: c++; as=OLD NEW */`), and a fresh C++ hit is
+    emitted the same way.
 - **Tells from the online lobby, round 12** (the lobby's save on zsav_lobby.h, Open, the voice, lobby and chat rows, the
   placeholders):
   - zNetMediusUniverse.cpp includes the world lane's zsav_lobby.h: CAcctDB's overrides take what the manager passes --

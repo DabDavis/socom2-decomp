@@ -36,6 +36,23 @@ extern "C" int toupper(int c);
 
 _zrdr *zrdr_read(const char *name, const char *file, int line);
 
+/* whether a voice other than `except` plays a sound with bit 4 of its flag byte set (OVL1 0x346270,
+ * the unit's last row: ReleaseSoundInstance stops the streaming when none does; the name not known).
+ * The iterator ASSIGNED from begin() and the end taken into a local first: MW keeps an assigned
+ * wrapper iterator in its stack slot (re-read and re-stored at each step, the base iterator copied
+ * in through $f0) -- initialised from begin() it lives in a register (0x68); with end() in the test
+ * the address of the sentinel takes another register (the MSL headers round 15) */
+extern "C" bool func_00346270(CSndInstance *except)
+{
+    std::list<CSndInstance *>::iterator e = CSndInstance::m_list.end();
+    std::list<CSndInstance *>::iterator i;
+
+    for (i = CSndInstance::m_list.begin(); i != e; ++i)
+        if (except != *i && (*i)->m_parent->m_socom2_bit4)
+            return true;
+    return false;
+}
+
 _zrdr *GetSoundRdrFile()
 {
     return data_0048DF18;
