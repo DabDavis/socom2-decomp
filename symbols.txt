@@ -8887,24 +8887,24 @@
 0x004E4418 0x3C ConstructDelayBlock  # OVL2 unaligned; s1:align
 0x004E4458 0xF4 ControlDelayBlock  # OVL2 unaligned; s1:align
 0x004E4550 0xD8 InitDelayBlock  # OVL2; s1:align
-0x004E4628 0x1D0 func_004E4628  # OVL2 unaligned
-0x004E47F8 0x248 InitViterbi  # OVL2 unaligned; s1:align
+0x004E4628 0x1D0 AllocateBacktrace@dpgenuw  # OVL2 unaligned; s1:order (SOCOM 1's DpGenUw object at 0x352770: first, the same body; called by DynProgUserWords and func_004E5538 as there by DynProgUserWords and ControlDpGenUw) -- the gcc lane, round 9c
+0x004E47F8 0x248 InitViterbi@dpgenuw  # OVL2 unaligned; s1:align; s1:order (SOCOM 1's DpGenUw object at 0x352770: second; a static the DpScoreUw object defines too) -- the gcc lane, round 9c
 0x004E4A40 0x120 InitDpGenUw  # OVL2; s1:align
-0x004E4B60 0x260 func_004E4B60  # OVL2
+0x004E4B60 0x260 SendResultUserWords  # OVL2; s1:order (SOCOM 1's DpGenUw object at 0x352770: fourth, after InitDpGenUw); s1:slot (ConstructDpGenUw stores it at +148, the send-result hook ControlDpGenUw's command 4 calls, as the demo's does) -- the gcc lane, round 9c
 0x004E4DC0 0x61C DynProgUserWords  # OVL2; s1:calls (SOCOM 1's DpGenUwProcess calls DynProgUserWords where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E53E0 0x158 DpGenUwProcess  # OVL2; s1:align
 0x004E5538 0x12C func_004E5538  # OVL2 unaligned
-0x004E5668 0x27C ControlDpScoreUw  # OVL2 unaligned; s1:calls
+0x004E5668 0x27C ControlDpGenUw  # OVL2 unaligned; s1:order (SOCOM 1's DpGenUw object at 0x352770: after DpGenUwProcess, before ConstructDpGenUw, the same switch -- the call-site vote's ControlDpScoreUw is the next object's, 0x4E67B0); s1:slot (ConstructDpGenUw passes it as the control) -- the gcc lane, round 9c
 0x004E58E8 0x5C ConstructDpGenUw  # OVL2 unaligned; s1:align
-0x004E5948 0x8 func_004E5948  # OVL2 unaligned
+0x004E5948 0x8 IdleDpGenUwProcess  # OVL2 unaligned; s1:order (SOCOM 1's DpGenUw object at 0x352770: after ConstructDpGenUw, the same empty body); s1:slot (ConstructDpGenUw passes it as the process) -- the gcc lane, round 9c
 0x004E5950 0x10 MakeUserWordsActiveDist  # OVL2; s1:exact
-0x004E5960 0x1D4 func_004E5960  # OVL2
-0x004E5B38 0x234 func_004E5B38  # OVL2 unaligned
+0x004E5960 0x1D4 AllocateBacktrace@dpscoreuw  # OVL2; s1:order (SOCOM 1's DpScoreUw object at 0x3539F0: first, the same body; called by SendResultScoreUserWords, DynProgScoreUserWords and InitScoreUserWords as there) -- the gcc lane, round 9c
+0x004E5B38 0x234 InitViterbi@dpscoreuw  # OVL2 unaligned; s1:order (SOCOM 1's DpScoreUw object at 0x3539F0: second, the same body; called by ControlDpScoreUw's command 1 as there) -- the gcc lane, round 9c
 0x004E5D70 0x28C SendResultScoreUserWords  # OVL2; s1:align
 0x004E6000 0x4DC DynProgScoreUserWords  # OVL2; s1:calls (SOCOM 1's DpScoreUwProcess calls DynProgScoreUserWords where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E64E0 0x12C DpScoreUwProcess  # OVL2; s1:align
-0x004E6610 0x1A0 func_004E6610  # OVL2
-0x004E67B0 0x22C func_004E67B0  # OVL2
+0x004E6610 0x1A0 InitScoreUserWords  # OVL2; s1:order (SOCOM 1's DpScoreUw object at 0x3539F0: sixth, after DpScoreUwProcess, the same body; called by ControlDpScoreUw's command 4 as there) -- the gcc lane, round 9c
+0x004E67B0 0x22C ControlDpScoreUw  # OVL2; s1:order (SOCOM 1's DpScoreUw object at 0x3539F0: seventh, before ConstructDpScoreUw, the same switch; s1:slot, ConstructDpScoreUw passes it as the control) -- the gcc lane, round 9c
 0x004E69E0 0x5C ConstructDpScoreUw  # OVL2; s1:align
 0x004E6A40 0x8 IdleDpScoreUwProcess  # OVL2; s1:ref (taken by address where SOCOM 1 takes IdleDpScoreUwProcess's)
 0x004E6A48 0xA8 InitDpScoreUw  # OVL2 unaligned; s1:align
