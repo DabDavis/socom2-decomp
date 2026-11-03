@@ -20,6 +20,8 @@
 
 class CEntity;
 class CEntityCtrl;
+class CTurret;
+class CZSealBody;
 
 /* a cell of an AI map (SOCOM 1's DWARF). A new one is left as it is: SOCOM II's default
  * constructor is empty (0x516120, `jr ra; move v0,a0`, which CAiState::Create calls for its
@@ -221,11 +223,17 @@ public:
     virtual void OnRecycleEntity(CEntity *e);
     virtual void OnDeath();                                     /* +0x58 */
     /* +0x5C-0x6C, new in SOCOM II: four that say no and one that moves the entity's compass anchor
-     * to it (the names are ours). CTurret's overrides give the signatures: +0x60 and +0x68 fill a
-     * point and answer true (0x3A71A0, 0x3A71D0), +0x64 hands back a node (0x3A71C0) */
-    virtual int Virtual5C();
+     * to it (the names are ours but +0x64's). CTurret's overrides give the signatures: +0x60 and
+     * +0x68 fill a point and answer true (0x3A71A0, 0x3A71D0), +0x64 hands back a node (0x3A71C0).
+     * +0x5C is asked by a SEAL of the entity its controller holds at 0x16C, with that entity again
+     * when it is a turret (OVL2 0x5A88C0: `e->Virtual5C(this, e && e->m_type == 3 ? e : 0)`, the
+     * bool tested); CTurret's (0x3A90C0) reads both entities' positions and returns a bool local.
+     * +0x64 is SOCOM 1's CZSealBody::GetFirepointNode(const char *), virtual here: both SEAL
+     * callers (UpdateAimParams, CZKit::ShowProjectile) pass a name in a1, and CZSealBody's override
+     * (0x5DFAD0) hands it to FindChild */
+    virtual bool Virtual5C(CZSealBody *seal, CTurret *turret);
     virtual bool Virtual60(CPnt3D *out);
-    virtual zdb::CNode *Virtual64();
+    virtual zdb::CNode *GetFirepointNode(const char *name);
     virtual bool Virtual68(CPnt3D *out);
     virtual void UpdateCompassAnchor();
 

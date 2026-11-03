@@ -23,6 +23,79 @@ struct AnimSetByFP {
     CAnimsByFP *m_byfp;   // 0x5c
 };
 
+/* a name-to-id map (MSL's map<string, int>: a tree node's links, then the pair; OVL1 bss 0x44AF60, its
+ * header node at +4). OVL2 calls its find and its operator[]'s insert out of line (0x58D090, 0x58CEF0
+ * -- the string-keyed tree is not modelled in include/tree), as it does the string's constructor and
+ * destructor (0x58CE70, 0x53FAD0: ovl-copy rows) */
+struct CNameIdNode {
+    unsigned char _0[0xc];
+    std::string m_key;   // 0xc
+    int m_id;   // 0x18
+};
+
+struct CNameIdPair {
+    std::string first;   // 0x0
+    int second;   // 0xc
+};
+
+extern "C" {
+extern unsigned char data_0044AF60[];
+/* whether the map is filled (OVL1 bss 0x44AF70), and the next id handed out (OVL1 data 0x3DE930) */
+extern bool data_0044AF70;
+extern int data_003DE930;
+/* the map filled (OVL2 0x58CC30, not written yet) */
+void func_0058CC30();
+void func_0058D090(CNameIdNode **it, void *map, const std::string &key);
+CNameIdPair *func_0058CEF0(void *map, const std::string &key);
+}
+
+extern "C" {
+/* the next body part id handed out (OVL1 data 0x3DE928) */
+extern unsigned int data_003DE928;
+}
+
+/* a body part's id by its name: the map filled once, the name found -- or given the next id while
+ * the parts' object slots last, the last four kept back, else -1 (OVL2 0x58CB30, new in SOCOM II:
+ * BodyAddAnim, NewBodyPart, ReadMotionRdr and CCharacterType::Open ask it; the names ours) */
+/* (zbody.h declares it, as an int) */
+extern "C" int func_0058CB30(const char *name)
+{
+    CNameIdNode *it;
+
+    if (!data_0044AF70)
+        func_0058CC30();
+    func_0058D090(&it, data_0044AF60, std::string(name));
+    if (it != (CNameIdNode *)(data_0044AF60 + 4))
+        return it->m_id;
+
+    unsigned int id = data_003DE928;
+
+    if (id >= siNumBodyObjects - 4)
+        return -1;
+    func_0058CEF0(data_0044AF60, std::string(name))->second = id;
+    data_003DE928++;
+    return id;
+}
+
+/* a name's id: the map filled once, the name found -- or given the next id (OVL2 0x58CA60, new in
+ * SOCOM II; the names ours) */
+extern "C" int func_0058CA60(const char *name)
+{
+    CNameIdNode *it;
+
+    if (!data_0044AF70)
+        func_0058CC30();
+    func_0058D090(&it, data_0044AF60, std::string(name));
+    if (it != (CNameIdNode *)(data_0044AF60 + 4))
+        return it->m_id;
+
+    int id = data_003DE930;
+
+    func_0058CEF0(data_0044AF60, std::string(name))->second = id;
+    data_003DE930++;
+    return id;
+}
+
 /* an anim type for a kind of hold: 1 as it is, 2 the pistol's own (the type itself when the set has
  * none), any other kind as it is (OVL2 0x58C9E0, new in SOCOM II; the names ours) */
 extern "C" AnimType func_0058C9E0(CZSealBody *seal, AnimType type, unsigned char kind)

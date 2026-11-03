@@ -100,6 +100,9 @@ public:
     class CZFTSWeapon *GetCurItem() const;
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
+    /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
+    bool IsUsingScope();
+    bool IsUsingBinocs();
 
     /* kit.h's flags (the kit lane's names): only bit 12 here */
     unsigned int m_bits0 : 12;   // 0x0
@@ -179,8 +182,13 @@ public:
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0xC (SOCOM 1's) */
+    /* the top squad above this one (recursive: its out-of-line copy, OVL2 0x561D20 after 0x561B90
+     * its first caller, inlines itself eight times; a caller inlines it once -- the name ours) */
+    CSealUnit *GetTop() { return m_parent ? m_parent->GetTop() : this; }
 
-    unsigned char _8[0x9c - 0x8];
+    unsigned char _8[0x60 - 0x8];
+    CSealUnit *m_parent;   // 0x60 (SOCOM 1's 0x3c): the squad this one is a part of
+    unsigned char _64[0x9c - 0x64];
     /* the squad's current order: its kind a byte at 8 (a kill by the local player under order 19
      * counts twice: 0x545290; the names ours) */
     struct CSealUnitOrder {
@@ -460,7 +468,10 @@ public:
     int m_HudDoPickup;   // 0x148 (SOCOM 1's 0x144)
     int m_curpickup_ID;   // 0x14c
     int m_curpickup_secondary_ID;   // 0x150
-    unsigned char _154[0x170 - 0x154];
+    unsigned char _154[0x16c - 0x154];
+    /* the entity the SEAL may work (new in SOCOM II, SOCOM 1 has no member between m_corpsebody and
+     * the bits: 0x5A88C0 asks its slot 0x5C for action 19; the name ours) */
+    CEntity *m_16c;   // 0x16c
     unsigned int m_goal_pos_valid : 1;   // 0x170 (SOCOM 1's 0x168, the same bits)
     unsigned int m_goal_dir_valid : 1;
     unsigned int m_action : 1;
@@ -615,7 +626,11 @@ public:
     unsigned char m_3e4[0x10];   // 0x3e4
     unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
-    unsigned char _3f6[0x40c - 0x3f6];
+    unsigned char _3f6[0x400 - 0x3f6];
+    /* a Navy SEAL's anger at the player: Tick and OnDeath raise it by 60 a second, 0x561B90 cools it
+     * and turns the squad on the player past 190 (new in SOCOM II; the name ours) */
+    float m_400;   // 0x400
+    unsigned char _404[0x40c - 0x404];
     float m_40c;   // 0x40c: a time on the game's clock 0x572190 measures from (the name ours)
     unsigned char _410[0x41c - 0x410];
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
@@ -646,7 +661,14 @@ public:
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
-    unsigned char _6fc[0x74c - 0x6fc];
+    unsigned char _6fc[0x718 - 0x6fc];
+    /* what 0x572240 gathers from an alert: the amounts summed, a point the alert fills, and its word
+     * at 4 (the names ours) */
+    float m_718;   // 0x718
+    unsigned char _71c[0x724 - 0x71c];
+    CPnt3D m_724;   // 0x724
+    int m_730;   // 0x730
+    unsigned char _734[0x74c - 0x734];
     float m_spraytimer;   // 0x74c: SetSprayTimer's time (the name ours)
     CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
     /* the sound the AI last made (0x571010: the sound, when it may be made again, and its
@@ -969,8 +991,11 @@ public:
     virtual void TeleportTo(const CPnt3D *pos, const CQuat *quat);          /* +0x3C */
     virtual void TeleportTo(const CMatrix *m);
     virtual void OnDeath();                                                 /* +0x58 */
-    virtual int Virtual5C();
+    virtual bool Virtual5C(CZSealBody *seal, CTurret *turret);
     virtual bool Virtual60(CPnt3D *out);
+    /* the fire point of a name (OVL2 0x5DFAD0, seal_weapon.cpp's range: SOCOM 1's
+     * GetFirepointNode, virtual in SOCOM II -- CEntity's slot +0x64) */
+    virtual zdb::CNode *GetFirepointNode(const char *name);
     virtual bool Virtual68(CPnt3D *out);
     /* the root part and the state set (CBody's virtuals, overridden), with one of the SEAL's own
      * between them: MW lists them after the CBody table, from +0x88, and calls them through the
@@ -1034,6 +1059,9 @@ public:
     void SetBit10(bool on) { m_bit10 = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* the state of the topmost blend not in state 3, else 0 (SOCOM 1's PeekBaseState; OVL2
+     * 0x57DC20, seal_body.cpp's -- CalcAimGoal asks it in state 3) */
+    unsigned char PeekBaseState();
     /* a turn's set-up (SOCOM 1's TurnSetup(int), seal_ik.cpp's; OVL2 0x5B8270: SOCOM II only clears
      * the bits at 0x1060 6 and 7 when both feet exist, the int unread) */
     void TurnSetup(int anim);
@@ -1211,7 +1239,10 @@ public:
     CSealStats m_stats;   // 0x58c
     CAccuracy m_accuracy;   // 0x5d4 (SOCOM 1's 0x514: PerturbAimVector reads it)
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
-    unsigned char _5e4[0xeb0 - 0x5e4];
+    unsigned char _5e4[0xeac - 0x5e4];
+    /* the body carried (SOCOM 1's m_carry, 0xda8 -- right before m_adrenaline in both builds;
+     * 0x5A88C0 refuses while one is) */
+    CZSealBody *m_carry;   // 0xeac
     struct CAdrenaline *m_adrenaline;   // 0xeb0 (SOCOM 1's 0xdac: Adrenaline returns it)
     unsigned char _eb4[0xeb8 - 0xeb4];
     /* the entity the SEAL works -- a turret when its type is 3 (0x543200-0x5433C0); 0x5A8850 tests

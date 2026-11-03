@@ -7,16 +7,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-#pragma mpwc_relax on
 void AddToBatch__Q23zdb15CBatchRelocatorCFPQ23zdb10CTexHandle(char * arg0, char * arg1);
-M2C_UNK Add__Q23zdb11CDynTexListFPQ23zdb10CTexHandleb();
-M2C_UNK func_00355A20(s32 arg0);
-extern s32 *data_0049E888;
+M2C_UNK Add__Q23zdb11CDynTexListFPQ23zdb10CTexHandleb(char * arg0, char * arg1, u8 arg2);
+M2C_UNK DropChain__Q23zdb12CGSTexBufferFv(char * arg0);
+extern char **data_0049E888;
 
 void AddToBatch__Q23zdb15CBatchRelocatorCFPQ23zdb10CTexHandle(char *arg0, char *arg1) {
-    s32 temp_s0;
+    char *temp_s0;
 
     temp_s0 = *data_0049E888;
     Add__Q23zdb11CDynTexListFPQ23zdb10CTexHandleb(temp_s0 + 0x28, arg1, 1U);
-    func_00355A20(temp_s0);
+    DropChain__Q23zdb12CGSTexBufferFv(temp_s0);
 }
