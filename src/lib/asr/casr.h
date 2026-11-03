@@ -107,7 +107,12 @@ typedef struct CASR {
     unsigned short uw_recs_done;        /* +932 */
     char pad934[50];
     SEGINFO seginfo[3];                 /* +984 */
-    char pad1020[48];
+    struct TRAINREC *trainrecs;         /* +1020: the training's records (train.c) */
+    char pad1024[24];
+    void *train1048;                    /* +1048: freed by TrainFree */
+    char pad1052[8];
+    void *train1060;                    /* +1060: freed by TrainFree */
+    int pad1064;
     short **segtab;                     /* +1068 */
     int pad1072;
     int last_state;                     /* +1076 */
