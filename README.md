@@ -1647,6 +1647,43 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 20** (reco.cpp's Load/Tick/callbacks, __sinit_hud_mpweaponsel.cpp, zui_2d.cpp):
+  - MW knows what an already-generated function of the same unit clobbers: Load keeps `lang` in a0
+    across a call to a pinned lookup defined after it (generated first); the target's second call
+    sets no argument at all;
+  - a jump-table switch needs every case of the enum's range written, empty ones included -- with
+    only the two real cases it compiles to a compare chain; the case blocks lie in source order;
+  - under `-enum min` a `-1` enumerator makes the enum a signed byte: SOCOM 1's 4-byte
+    `ALIGNMENT_HACK = -1` enums need 0xFFFFFFFF or 0x7FFFFFFF;
+  - `g.m_v.push_back(x)` on a global folds to absolute addresses; the target's loads through the
+    vector's own address come from an accessor returning a reference (`g.GetPath().push_back(x)`);
+  - as an `&&`'s last test, unsigned `n > 2` branches on `at`, `n >= 3` materialises into v0;
+  - SOCOM 1's vtable names in the C2D family can be one slot off: check them against ztwod.h's slot
+    order (0x36E6B0 is SetNormal, +0x54; SetCanHandleInput is 0x377380, +0x4C).
+- **Tells from the kit and AI states, round 13** (seal_unit.cpp, SetAimDirR, CTPaint::Tick, seal_aievent.cpp):
+  - a bool masked in v0 (`andi v0,v0,0xff`) live to the epilogue is the function's return value:
+    SetAimDirR returns its callee's bool, which SOCOM 1's mangled name never showed;
+  - passing a member's address as `(T *)((char *)this + K)` stops MW keeping it in a saved register
+    for later stores to that member (the existing tell, confirmed for stores);
+  - a single-element list walk `if (!found) { walk; if (!found && flag) walk; }` gives the target's
+    jump straight to the return after the first loop; two separate ifs do not (IsMemberOfUnit);
+  - a pointer-list member constructed in an out-of-line constructor calls OVL2's deleter-constructor
+    copy (0x50FFA0) out of line; a `list<FT_COMMAND>` member makes the unit emit its own copy;
+  - units: seal_kit.cpp starts at ~0x5B82D0 (SOCOM II's CZKit additions at the source's end);
+    seal_aievent.cpp runs 0x5F8D40-0x5FADEF in SOCOM 1's order.
+- **Tells from the SEALs, round 12** (seal_env.cpp's look, blink and aim functions):
+  - a CQuat copied into a pointed-to member through an inline taking it by const reference gives the
+    target's registers; the plain assignment swaps them (ApplyBlinkAnim, ApplyEyeLookAnim);
+  - a local that looks unneeded can be one SOCOM 1 passed twice: SetEyeLookDir's `cur` needs its own
+    saved register; a float test's arm order follows the source (`if (x >= 0.0f) A else B` puts A on
+    the fall-through);
+  - when every true test of an `||` chain must reach one `return true` block, fold the last flag test
+    into the same condition -- a second `if` makes its own block (IsThrowing);
+  - `int top = m_count - 1; m_frames[top]` keeps the subtraction as an index; inline, the -1 folds
+    into the offset (AnimPop);
+  - SOCOM II holds SOCOM 1's heap looks inside the SEAL: SOCOM 1's "pointer member + 0x10" becomes
+    `this + K`; 0x575CF0 (a list range-erase instance) looks like seal_ai.cpp's template tail, not
+    seal_anim.cpp's first row.
 - **Tells from the UI, round 9** (zui_skb.h, zui_skbview.cpp, zui_skbkeys.cpp):
   - an RTTI class-name string shows the namespace: SOCOM II's "CBmpWithNode" (0x3FAEA8) lacks SOCOM 1's
     `@unnamed@zui_skb_cpp@::` prefix -- the keyboard's classes come from a shared header (zui_skb.h);
@@ -2043,6 +2080,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 9** (the 1-byte pod vector<char>, basic_string::assign(const char *, n)):
+  - MW reuses a pointer difference only when both are the same expression: the target recomputes
+    `last - first` after an allocation, so its two lengths come from different expressions;
+  - a move helper taking its length into a local (`unsigned int n = last - first`) lets MW fold
+    `(old + k) - old` to `k`; inline-helper parameters of type `const T *` given `T *` arguments block
+    reuse of the caller's `e - position`, plain `T *` parameters allow it;
+  - `k = position - data_` declared before `T *old = data_` gives the target's numbering; testing
+    capacity through capacity() while the growth reads capacity_ keeps the target's second load;
+  - in a unit's tail a class vector's move helpers inline the string's copy and assignment only if the
+    unit's own code generated them first;
+  - include/vector's char pod (moves through memcpy/memmove/memset) gives the keyboard unit A's seven
+    instances byte-exact as probes (0x3923E0, 0x392A30, 0x392600, 0x393D30, 0x393D80, 0x393F00,
+    0x393FB0) and assign(const char *, n) 0x39B620 through the template replace 0x1EE780 -- they count
+    once the UI writes their callers; unit B's 0x2C-byte element (CSaferStr plus two rects) and the
+    element-vector chain 0x393DD0/0x393E40/0x394090 are recorded open.
 - **Tells from completing the MSL headers, round 8** (the erase/remove family, include/algorithm's
   remove and remove_if, the class insert's end register):
   - THE erase(remove(...), end()) FAMILY IS THE CALLERS' FORM, not a header's: MW builds an argument
@@ -3399,8 +3451,10 @@ Next in the same vein: rt_msg_client's internal functions, DME's internals behin
   references its own (133 and 132 references), and 69 request callback slots (`s1:slot`: SOCOM
   1's slot of the same position, its request storing it as SOCOM 1's does, each with its count):
   44 of the API object's (.data, 0x6561C0-) and 25 of the clan object's (.bss, 0x686A5C-). The
-  two slots whose function names are disputed (0x656278, 0x686AC0) stay placeholders. The units
-  dropped their `#define`s.
+  two slots whose function names were disputed took SOCOM 1's names once the integrator settled
+  them (round 5b: 0x656278 MediusLadderPositionCallbackFunctionPtr, 0x686AC0
+  GetClanMemberListCallbackFunctionPtr -- SOCOM 1's 0x43BA08 and 0x5B1AA0, between the same
+  neighbours). The units dropped their `#define`s.
 - **The link order is the .data `$Header:` order, but not alphabetical**: DmeLocal.c,
   DmeMessage.c, *then* Dme.c. Each object's functions address its own .data, so a function's
   object reads off the `$Header` span its references land in (`build/scratch/gcc/dataobj.py`):
@@ -3434,6 +3488,76 @@ Hand-written in round 4b: `medius/rt_mutex.c` (5 of 5) and `rt_mutex_platform.c`
 MediusGetBuildTimeStamp, NetGetBuildTimeStamp, rt_msg_client_get_build_timestamp in their units
 -- 50 functions, 40 new to the map's byte-exact rows (ten supersede matching drafts); 15 rows
 named (rt_circ_buf's 14 by SOCOM 1's order, FindFreePingSlot).
+
+**Round 5b: DmeMessage.c and the rest of DmeLocal.c, typed.**
+
+- **DmeMessage.c is SOCOM 1's third DME object, grown** (0x61DAA8-0x6204B8): RegisterDMEmessages
+  (0x61FBC8) takes the handlers' addresses in its order, and SOCOM 1's object pairs with them by
+  callees and returned sizes -- GetFreeNetObjectBlock and FindFreeDataStreamBlock first (SOCOM 1's
+  bodies, the first now with a count guard), then ClientConnects, ServerVersion, ClientLeaves,
+  ClientUpdate, RequestServers, ServerResponse, RequestOwnership. A handler takes (connection,
+  unused, source client, message) and returns the size it consumed, -1 without a message.
+  Pairing a handler's callees also names DmeLocal.c's internals (RemoteClientConnects is
+  0x614B18, NetGetObject's body 0x614EC8, DmeFree 0x614888).
+- **The records are typed now** (`medius/dmelocal.h`, after SCEA's DmeLocal.h): a world (0x450:
+  256 client-record pointers, then this client's index at 0x400, the session master, its name,
+  the server's version ...), a client record (0x2C), an object (class, status, owner, creator).
+  func_0061F410 matches only with the world as a struct; dmelocal.c's matches hold typed.
+- **SCEA's guards, measured**: a getter's result and its pointer are tested together --
+  `if (result != 0 || p == 0) return result;` (closed round 4b's func_0061C8E8: 2.96 makes movn of
+  every other shape); separate guards where the null pointer has its own code; a handler ends in
+  one `return SIZE;` after nested tests, which frees v0 for temporaries (RequestOwnership); a local
+  initialised inside the block that needs it (closed func_006147E0); a table indexed in place, not
+  through a pointer local (closed func_0061C6C8).
+- **Where 2.96 puts a local in the frame tells its scope**: an array or struct gets its slot where
+  it is declared, a scalar when its address is first taken, slots rising in that order -- so a
+  reply struct declared in the block that sends it sits above the outer block's flag
+  (RequestServers), and a two-byte message is an array (func_0061A240).
+- **Open, diagnosed in place**: ClientConnects (2 words: the port global reloaded in a bnezl's
+  slot), ClientUpdate (19: the 36 it returns kept live in v0), 0x61F7B0 (3: two loads' order),
+  func_00614758 (round 4b's), 0x617610 (7: store order, past ccperm's reach), 0x6189C8 (1: beq
+  against beql), 0x61D108, 0x61D320.
+
+Hand-written in round 5b: `medius/dmemessage.c` (11 of 14, new), `medius/dmelocal.c` (+27, 42 of
+47, three of round 4b's four OPENs among them), the two callback slots in mediusapi.c and
+mediusclan.c -- 38 functions new to the map's byte-exact rows (no draft superseded); 16 rows named (s1:order: SOCOM 1's
+DmeMessage.c and Dme.c objects by position and callees), 2 data rows.
+
+**Round 5c: the recogniser, object by object.**
+
+- **The two data tables name every accessor** (`s1:slot`): FillContextV2VirtualTable and
+  FillLanguageVirtualTable each copy a LOCAL table of SOCOM 1's (`_ContextV2VirtualTable`, 21
+  words; `_LangVirtualTable`, 79 words) whole into the caller's (a struct assignment: 2.96's
+  ldl/ldr block move); SOCOM II's tables are the demo's slot for slot -- the same length, the
+  same null slots -- so each static takes the demo's name from its slot, not from its size or
+  position: 0x508AD0 is `_langGetpErgodicStates` (it had the align pass's
+  `_langGetpErgodicPhenomes`), 0x508B90 is `_langGetpCodeBook` (the align pass saw no pair), and
+  the language file's section walkers are in another order than the demo's. The tables are
+  statics of their units; scdiff resolves the `.data` reference by data.txt's name.
+- **SOCOM 1's CheckEngineHandle is an inline function in SOCOM II** (the open engine accessors
+  of round 3b): `static __inline__`, the array base read into a local first and the result
+  set to 0 before the tests, `ok = e->engine != 0` when the engine is a live slot (null, below
+  the base, not 108-aligned, past the last) -- byte-exact in five gsapi calls. An early-return
+  inline keeps a 0 per failing test; a one-expression one loads the base after the null test.
+- **ScanSoft's shapes, each measured**: one guard per test, even with the same code twice
+  (safeh_HandleCheck: the `||` builds one shared code); `if (x < n) return 0; return 1;` for a
+  boolean the target computes with `sltiu` (`!(x < n)` and `== 0` give `xori`); an engine-array
+  loop takes the element's address into a local before testing it (indexing gives the operands
+  of the address sum the other way round); a pointer kept as a local before an offset is added
+  (`m = Dims + 8; return m + n` -- added at once, 2.96 reassociates).
+- **Open, diagnosed in place**: the language file's offset chains (`_langGetpErgodicStates` 4
+  words, Phenomes 6, Penalty 18, `_cdbGetpProbMatrix` 14: the same instructions, the sums in
+  another order -- 45 spellings in `build/scratch/gcc/spec_*.py`), `_cdbGetCodeBookSize` (the
+  target reloads the second codebook's size inside the smoothing test) and the six codebook
+  walkers waiting on it, `_contextGetpSyntax` (a copied register), fastallo's allocation (p in a
+  saved register to a single return), gsapi_NotifySetEnergyInterval and EngineSetUserData (the
+  inlined check zeroes twice there).
+
+Hand-written in round 5c: `asr/contextv2.c` (20 of 21, new), `asr/language.c` (64 of 76, new;
+`_ConvPhenomesToStates` moved there from ctxutil.c), `asr/critsec.c` (5 of 5), `asr/safeh.c` (2
+of 2), `asr/osspi.c` (4 of 4), `asr/fastallo.c` (2 of 3), `asr/gsapi.c` (+12, 21 of 23) -- 22
+functions new to the map's byte-exact rows (4,016 bytes), the rest superseding matching drafts;
+101 rows named (65 `s1:slot`, 30 `s1:order`, 3 `s1:align`, 3 `s1:calls`).
 
 ## Open, and next
 

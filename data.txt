@@ -174,10 +174,36 @@
 0x003DC860 0x4 @LOCAL@sort<Q33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iterator,PFP10CZSealBodyP10CZSealBody_b>__3stdFQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorPFP10CZSealBodyP10CZSealBody_b_v@shuffle  # OVL1 data; ours (the MSL headers round 6): std::sort's static shuffle (-4 in data, stepped -4..4 twice a pass) for the instance at 0x226060
 0x003DC868 0x4 s_bitmap1Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the ok-to-talk bitmap's size, 32.0 -- 4 references in 4 functions (CMPTeammateNames::Tick, both Inits, the unit's initialiser 0x3FE940)
 0x003DC870 0x4 s_bitmap2Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the off arrow's size, 32.0 -- 5 references in 4 functions (CMPTeammateNames::Tick x2, both Inits, the initialiser)
+0x003DCCB0 0x4 s_volumeUp  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the recording volume's step up (5) -- 1 reference in 1 function (PrintResult, under s_confLow)
+0x003DCCB8 0x4 s_volumeDown  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the recording volume's step down (-5) -- 1 reference in 1 function (PrintResult, over s_confHigh)
+0x003DCCC0 0x4 s_confHigh  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the confidence over which the volume steps down (7500) -- 1 reference in 1 function (PrintResult)
+0x003DCCC8 0x4 s_confLow  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the confidence under which the volume steps up (5000) -- 1 reference in 1 function (PrintResult)
+0x003DCCD0 0x4 s_quietMax  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the frames a listening radio menu waits without an energy level before the engine is restarted (30) -- 1 reference in 1 function (CReco::Tick)
 0x003DCCD8 0x4 s_delay  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the push-to-talk delay (1.0) -- 1 reference in 1 function (CReco::Suspend)
+0x003DCCE0 0x4 s_codeUK  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "eng" -- 1 reference in 1 function (GetLangCode)
+0x003DCCE8 0x4 s_codeFrance  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "frf" -- 1 reference in 1 function (GetLangCode)
+0x003DCCF0 0x4 s_codeGermany  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "ged" -- 1 reference in 1 function (GetLangCode)
+0x003DCCF8 0x4 s_codeSpain  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "spe" -- 1 reference in 1 function (GetLangCode)
+0x003DCD00 0x4 s_codeItaly  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "iti" -- 1 reference in 1 function (GetLangCode)
+0x003DCD08 0x4 s_codeJapan  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "jpj" -- 1 reference in 1 function (GetLangCode)
+0x003DCD10 0x4 s_codeKorea  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "kok" -- 1 reference in 1 function (GetLangCode)
+0x003DCD18 0x4 s_codeStates  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "enu", the default -- 1 reference in 1 function (GetLangCode)
+0x003DCD20 0x4 s_fileUK  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "2004b.lng" -- 1 reference in 1 function (GetLangFile)
+0x003DCD28 0x4 s_fileFrance  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "2004b.lng" -- 1 reference in 1 function (GetLangFile)
+0x003DCD30 0x4 s_fileGermany  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "3004b.lng" -- 1 reference in 1 function (GetLangFile)
+0x003DCD38 0x4 s_fileSpain  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "3004b.lng" -- 1 reference in 1 function (GetLangFile)
+0x003DCD40 0x4 s_fileItaly  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "3004b.lng" -- 1 reference in 1 function (GetLangFile)
+0x003DCD48 0x4 s_fileJapan  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "2004b.lng" -- 1 reference in 1 function (GetLangFile)
+0x003DCD50 0x4 s_fileKorea  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "2004b.lng" -- 1 reference in 1 function (GetLangFile)
+0x003DCD58 0x4 s_fileStates  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, "3004b.lng", the default -- 1 reference in 1 function (GetLangFile)
+0x003DCD60 0x4 s_root  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the radio menu's root column (0), pushed by reference -- 1 reference in 1 function (cbrecoResult)
 0x003DCD68 0x4 s_volume  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the recording volume (50) -- 3 references in 1 function (CReco::AdjustVolume: read twice, written)
 0x003DCD70 0x4 s_volume_max  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the recording volume's ceiling (100) -- 1 reference in 1 function (CReco::AdjustVolume)
 0x003DCD78 0x4 s_volume_min  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the recording volume's floor (20) -- 1 reference in 1 function (CReco::AdjustVolume)
+0x003DCDA0 0x4 s_gap  # OVL1 data; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, 10.0, the gap between the list and the category page -- read by the unit's initialiser 0x3FF7F0 only (s_catx)
+0x003DCDA8 0x4 s_rowheight  # OVL1 data; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, 14.0 -- 1 reference in code (0x23D860) and the initialiser's (s_6f8)
+0x003DCDB0 0x4 s_slotheight  # OVL1 data; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, 64.0 -- 1 reference in code (0x23D860) and the initialiser's (s_720, s_748)
+0x003DCDB8 0x4 s_db8  # OVL1 data; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, 225.0 -- 2 references in 2 functions (0x23CD20, 0x23D860)
 0x003DCFB4 0x0 devRpcData  # OVL1; s1:data-seq (size SOCOM 1's; via lgAudClose +4)
 0x003DCFB8 0x4 devicechanged  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +3)
 0x003DCFBC 0x4 threadsafeSema  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +4)
@@ -334,6 +360,7 @@
 0x003E68B0 0x8 __RTTI__12CWhosTalking  # RTTI of CWhosTalking: found by its RTTI's name
 0x003E6910 0x8 __RTTI__18CRadioIcon_Dynamic  # RTTI of CRadioIcon_Dynamic: found by its RTTI's name
 0x003E6970 0x8 __RTTI__17CRadioIcon_Static  # RTTI of CRadioIcon_Static: found by its RTTI's name
+0x003E6A10 0x10 s_resultTypes  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the result kinds' names (final, premature, timeout, rejected) -- 1 reference in 1 function (PrintResult)
 0x003E6BF0 0x8 __RTTI__11CWeaponSlot  # RTTI of CWeaponSlot: found by its RTTI's name
 0x003E6C28 0x8 __RTTI__12SelectedSlot  # RTTI of SelectedSlot: found by its RTTI's name
 0x003E6D98 0x8 __RTTI__12CategorySlot  # RTTI of CategorySlot: found by its RTTI's name
@@ -760,7 +787,30 @@
 0x00414648 0x4 s_box_w  # OVL1 bss; ours (the HUD lane, round 17): hud_mpinfobox.cpp's file static, the box's width (s_namewidth), computed by the unit's initialiser 0x3FF680 -- read by none in code
 0x00414650 0x4 s_box_x2  # OVL1 bss; ours (the HUD lane, round 17): hud_mpinfobox.cpp's file static, the box's right (s_box_x1 + s_box_w), computed by the unit's initialiser 0x3FF680 -- read by Init, ReInit
 0x00414658 0x4 s_box_y2  # OVL1 bss; ours (the HUD lane, round 17): hud_mpinfobox.cpp's file static, the box's bottom (s_box_y1 + 20), computed by the unit's initialiser 0x3FF680 -- read by Init, ReInit
+0x00414660 0x4 s_quiet  # OVL1 bss; ours (the HUD lane, round 20): reco.cpp's file static, frames since the last energy level -- 7 references in 2 functions (CReco::Tick 6, cbrecoNotify 1)
 0x00414680 0x40 theReco  # OVL1 bss; ours (the HUD lane, round 19): reco.cpp's global, the voice recogniser (CReco, 0x40 bytes), built by __sinit_reco.cpp 0x3FF7B0 -- 25 references (main, CCoreState::Tick, CHUD::Init/Tick/~CHUD, the mission cams, the radio menu, the recogniser's own functions)
+0x004146C0 0xC s_color1  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static CPnt3D (80, 80, 80), built by the unit's initialiser 0x3FF7F0 -- 2 references in 2 functions (0x23D860, 0x23E030)
+0x004146D0 0xC s_color2  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static CPnt3D (128, 128, 128), built by the initialiser -- 2 references in 2 functions (0x23D860, 0x23E030)
+0x004146E0 0x4 s_catx  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_listx + s_width + s_gap, computed by the initialiser -- 2 references in 2 functions (0x23CD20, 0x23D860)
+0x004146E8 0x4 s_caty  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_listy, computed by the initialiser -- 2 references in 2 functions (0x23CD20, 0x23D860)
+0x004146F0 0x4 s_6f0  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_catx, computed by the initialiser -- 1 reference in 1 function (0x23D860)
+0x004146F8 0x4 s_6f8  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, 14 + s_caty + s_rowheight, computed by the initialiser -- 1 reference in 1 function (0x23D860)
+0x00414700 0x4 s_700  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_width, computed by the initialiser -- 5 references in 2 functions (0x23CD20 2, 0x23D860 3)
+0x00414708 0x4 s_708  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_catx, computed by the initialiser -- 2 references in 2 functions (0x23CD20, 0x23D860)
+0x00414710 0xC s_color3  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static CPnt3D (128, 128, 64), built by the initialiser -- 1 reference in 1 function (0x23D860)
+0x00414720 0x4 s_720  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_slotheight, computed by the initialiser -- 1 reference in 1 function (0x23D860)
+0x00414728 0x4 s_728  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_width, computed by the initialiser -- 1 reference in 1 function (0x23D860)
+0x00414730 0xC s_color4  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static CPnt3D (11, 45, 64), built by the initialiser -- 1 reference in 1 function (0x23E030)
+0x00414740 0x4 s_740  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_catx, computed by the initialiser -- 1 reference in 1 function (0x23D860)
+0x00414748 0x4 s_748  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_6f8 + s_slotheight - 6, computed by the initialiser -- 1 reference in 1 function (0x23D860)
+0x00414750 0x4 s_750  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_width, computed by the initialiser -- 1 reference in 1 function (0x23E030)
+0x00414758 0xC s_color5  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static CPnt3D (11, 45, 64), built by the initialiser -- read by none in code
+0x00414768 0x4 s_768  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, s_listx, computed by the initialiser -- 1 reference in 1 function (0x23E030)
+0x00414770 0x4 s_backx  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, the backdrop's left (s_listx), computed by the initialiser -- 3 references in 2 functions (0x23E030 2, CMPWeaponSel::Init)
+0x00414778 0x4 s_778  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static, 5 + s_listx, computed by the initialiser -- read by none in code
+0x00414780 0xC s_color6  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static CPnt3D (128, 128, 64), built by the initialiser -- 1 reference in 1 function (0x23E030)
+0x00414790 0xC s_color7  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static CPnt3D (80, 120, 120), built by the initialiser -- 4 references in 1 function (0x240600)
+0x004147A0 0xC s_color8  # OVL1 bss; ours (the HUD lane, round 20): hud_mpweaponsel.cpp's file static CPnt3D (160, 250, 250), built by the initialiser -- 3 references in 1 function (0x240600)
 0x004148B0 0xC s_hbHealthColor  # OVL1 bss; hud_healthbar.cpp's static (0, 128, 64), name ours: the health left -- the initialiser 0x3FF9C0 builds it, CHealthBar's constructor sets its first bitmap to it, the Tick fades the flash back to it; 9 references in 3 functions -- the HUD lane
 0x004148C0 0xC s_hbFlashColor  # OVL1 bss; hud_healthbar.cpp's static (128, 128, 128), name ours: the flash a rise starts from (CHealthBar::Tick); 5 references in 2 functions (the Tick, the initialiser) -- the HUD lane
 0x004148D0 0xC s_hbRestColor  # OVL1 bss; hud_healthbar.cpp's static (128, 64, 64), name ours: the rest of the bar while its owner lives (the constructor, Update); 5 references in 3 functions -- the HUD lane
@@ -851,7 +901,9 @@
 0x0044D4E0 0x8 aiSoundInstance__11CSealCtrlAi  # OVL1 bss; SOCOM 1's aiSoundInstance__11CSealCtrlAi (0x474F70, two CSndInstance *): StopAiSound (0x574AE0) stops and clears the one indexed, PlayAiSound (0x574B30) fills it -- 2 references (the SEAL lane, round 8)
 0x0044D568 0xC m_blooddriptexhandles__10CZSealBody  # OVL1 bss; SOCOM 1's m_blooddriptexhandles__10CZSealBody (0x5086B0, a vector<CZDecalDef>: capacity, size, data): HandleBloodDrip (0x5A33B0) reads its size (+4) and data (+8) where SOCOM 1's reads 0x5086B4/0x5086B8 -- 2 references (the SEAL lane, round 5)
 0x0044D5B0 0xC m_list__9CSealUnit  # OVL1 bss; SOCOM 1's m_list__9CSealUnit (0x5097B0, a list<CSealUnit *> built by __sinit_seal_unit.cpp); every squad, walked by GetUnitByTeam (0x5EF2F0) -- 59 references in 15 functions (IssueCommand 12, 0x5EC9F0 14, the initialiser at 0x400870 3) -- the kit lane
+0x0044D5C0 0x1 m_created_units_test__9CSealUnit  # OVL1 bss; s1:data by hand (the kit lane, round 13): SOCOM 1's CSealUnit::m_created_units_test (0x4761EC there) -- TickAll (0x5E7FD0) tests it as SOCOM 1's TickAll does; 6 references in 4 functions (0x5EC6A0 2, 0x5ECCD0 2, TickAll 1, 0x5ECEF0 1)
 0x0044D620 0x4 m_dT__8CAiState  # OVL1 bss; the frame's time as CAiStateStack's tick (0x5F8030) stores it for the states, read in place of each Tick's dT -- 32 references in 26 functions, all the AI states' (the name ours; the kit lane, round 3)
+0x0044D648 0xC m_list__8CAiDodge  # OVL1 bss; s1:data by hand (the kit lane, round 13): SOCOM 1's CAiDodge::m_list (0x509950 there, 12 bytes) -- CAiDodge::Destroy (0x5FAD50) tests its size and erases its front as SOCOM 1's does; 7 references in 2 functions (Destroy 5, the initialiser 0x400870 2)
 0x0044D668 0xC m_list__8CAiGroup  # OVL1 bss; by hand (the kit lane, round 10): every scripted AI group, a pointer list (its size word, the sentinel at 0x44D66C, the first node at 0x44D670) -- CAiGroup::Find (0x60E460) walks it; 15 references (0x60E280, 0x60E4E0, 0x60E590, 0x60E610, OVL1's initialiser 0x400870); the name ours
 0x0044D688 0x1 OurGameName  # OVL1 bss; s1 by hand (SOCOM 1's CCoreState::Tick ticks CameraZoom only while OurGameName, gp-28920, a byte, is 1; SOCOM II's tests 0x44D688 == 1 at the same place)
 0x0044D6B8 0xC m_pool  # OVL1 bss; SOCOM 1's (m_pool, a global CPool -- a vector of CGameStateChangeCmd: capacity, size, data -- that game_state.cpp's initialiser 0x401BD0 builds, as SOCOM 1's does); read and written by CreatePool, Acquire and DestroyPool (9 word references) and built by 0x401BD0
@@ -1135,6 +1187,7 @@
 0x0064F8C0 0x4 s_eventRangeEntity  # OVL2 data; ours (ai_events.cpp's static, 80.0: GetEventRange for AIE_ENTITY; 1 reference in 1 function)
 0x0064F8D8 0x4 timerlimit  # OVL2 data; SOCOM 1's (timerlimit, gp-relative there): ai_astar.cpp's T0 budget for one planner tick, 33; PathPlanImmediate saves it, sets -1 and restores it, TickPathPlanner compares the elapsed count with it; 4 references in 2 functions
 0x0064F9A0 0x4 @LOCAL@sort<Q33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iterator,PFRCQ26CAiMap4nameRCQ26CAiMap4name_b>__3stdFQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorQ33std64__vector_imp<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>,0>8iteratorPFRCQ26CAiMap4nameRCQ26CAiMap4name_b_v@shuffle  # OVL2 data; ours (the MSL headers round 6): std::sort's static shuffle (-4 in data, stepped -4..4 twice a pass) for the instance at 0x5312d0
+0x00650B08 0x1 bgAutoMessagesOn  # OVL2 data; s1:data by hand (the kit lane, round 13): SOCOM 1's bgAutoMessagesOn (0x475330 there), initialised true -- Set/GetPlayAutoMessages (0x5E7FB0/0x5E7FC0) store and load it as SOCOM 1's do; 2 references in 2 functions
 0x00655600 0x4 gpKeyMaster  # OVL2; s1:data-seq (size SOCOM 1's; via GetKeyMaster)
 0x00655604 0x1 bHasInitialized.0  # OVL2; s1:data-seq (size SOCOM 1's; via InitializePRNG)
 0x00655608 0x4 gpfMallocCallback  # OVL2; s1:data-exact (size SOCOM 1's; via rt_memory_allocate +1)
@@ -1186,6 +1239,7 @@
 0x0065626C 0x4 BanPlayerCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43B9FC: MediusBanPlayer stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusBanPlayer, func_0064CC68) -- the gcc lane, round 4b
 0x00656270 0x4 GetLocationsCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43BA00: MediusGetLocations stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusGetLocations, func_0064CD10) -- the gcc lane, round 4b
 0x00656274 0x4 PickLocationCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43BA04: MediusPickLocation stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusPickLocation, func_0064CD48) -- the gcc lane, round 4b
+0x00656278 0x4 MediusLadderPositionCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43BA08, between PickLocation's 0x43BA04 and MediusLadderList's 0x43BA0C as this slot is between theirs: MediusLadderPosition 0x64A018 stores its callback here, the integrator's settled pairing at 0e56b8e): 2 references in 2 functions
 0x0065627C 0x4 MediusLadderListCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43BA0C: MediusLadderList stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusLadderList, func_0064CDF0) -- the gcc lane, round 4b
 0x00656280 0x4 MediusChatToggleCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43BA10: MediusChatToggleFilter stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusChatToggleFilter, func_0064CE28) -- the gcc lane, round 4b
 0x00656288 0x4 MediusTextFilterCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43BA14: MediusTextFilter stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusTextFilter, func_0064CE98) -- the gcc lane, round 4b
@@ -1367,3 +1421,4 @@
 0x00686AB4 0x4 GetAllClanMessagesCallbackFunctionPtr  # OVL2 bss; s1:slot (SOCOM 1's at 0x5B1A94: MediusGetAllClanMessages stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusGetAllClanMessages, func_0064CB18) -- the gcc lane, round 4b
 0x00686AB8 0x4 GetClanTeamChallengeHistoryCallbackFunctionPtr  # OVL2 bss; s1:slot (SOCOM 1's at 0x5B1A98: MediusGetClanTeamChallengeHistory stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusGetClanTeamChallengeHistory, func_0064CB50) -- the gcc lane, round 4b
 0x00686ABC 0x4 UpdateClanStatsCallbackFunctionPtr  # OVL2 bss; s1:slot (SOCOM 1's at 0x5B1A9C: MediusUpdateClanStats stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusUpdateClanStats, func_0064CB88) -- the gcc lane, round 4b
+0x00686AC0 0x4 GetClanMemberListCallbackFunctionPtr  # OVL2 bss; s1:slot (SOCOM 1's at 0x5B1AA0, after UpdateClanStats's 0x5B1A9C as this slot is after its: MediusGetClanMemberList 0x646708 stores its callback here, the integrator's settled pairing at 0e56b8e): 2 references in 2 functions

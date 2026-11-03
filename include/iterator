@@ -10,6 +10,19 @@ struct forward_iterator_tag : public input_iterator_tag {};
 struct bidirectional_iterator_tag : public forward_iterator_tag {};
 struct random_access_iterator_tag : public bidirectional_iterator_tag {};
 
+/* a pointer range's length, MSL's way: through the random-access helper and its tag */
+template <class T>
+inline int __distance(const T *first, const T *last, random_access_iterator_tag)
+{
+    return last - first;
+}
+
+template <class T>
+inline int distance(const T *first, const T *last)
+{
+    return __distance(first, last, random_access_iterator_tag());
+}
+
 }
 
 #endif

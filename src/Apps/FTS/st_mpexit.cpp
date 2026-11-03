@@ -50,10 +50,14 @@ public:
     unsigned short m_deaths;   // 0x12
     unsigned short m_14;   // 0x14
     unsigned short m_16;   // 0x16
-    unsigned char _18[0x32 - 0x18];
+    unsigned char _18[0x1c - 0x18];
+    unsigned short m_1c;   // 0x1c: summed over the SEALs by the round result (unproven)
+    unsigned char _1e[0x32 - 0x1e];
     unsigned short m_32;   // 0x32
     unsigned short m_34;   // 0x34
-    unsigned char _36[0x3c - 0x36];
+    unsigned char _36[0x38 - 0x36];
+    unsigned short m_38;   // 0x38: summed over the SEALs by the round result (unproven)
+    unsigned short m_3a;   // 0x3a: the round result's score
     short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore)
     unsigned char _3e[0x44 - 0x3e];
     float m_hit_percent;   // 0x44
@@ -69,7 +73,13 @@ public:
 
     unsigned char _0[0x14];
     const char *m_name;   // 0x14
-    unsigned char _18[0x544 - 0x18];
+    unsigned char _18[0xc8 - 0x18];
+    unsigned int m_team;   // 0xc8 (CEntity's; 0x20000 a third side the round result counts)
+    unsigned char _cc[0xe0 - 0xcc];
+    unsigned int _e0 : 12;   // 0xe0: CEntity's flags
+    unsigned int m_isAlive : 1;
+    unsigned int _e0_13 : 19;
+    unsigned char _e4[0x544 - 0xe4];
     CSealStats m_game_stats;   // 0x544
     CSealStats m_round_stats;   // 0x58c
     unsigned char _5d4[0xfc8 - 0x5d4];
@@ -349,6 +359,84 @@ void SetMvpUiVars(const char *szNameVar, const char *szUiVar)
         edStats.pop();
         theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY)->Set(&edStats);
     }
+}
+
+/* a SEAL's round: whether it won, by the game's type (1-5) -- the living SEALs, terrorists and
+ * third side counted, two of the SEALs' round counters summed -- and its round score (the name
+ * ours; Init's call).
+ * OPEN, 19 instructions, three temporaries renamed: after the two side calls the target holds the
+ * side bool in t0, the game's type in a3 and the alive bool in a1 (the network state's pointer's
+ * register, after the type's load); here a3, a1 (the pointer's, coalesced) and a2 (the
+ * bitfield's). Every saved register, the frame and the code are the target's. Tried: the alive
+ * bool, the stats reference and the side bools declared in each order, uninitialised and assigned
+ * later, as unsigned char, through an inline IsAlive(); the type in an int or byte local; the
+ * score's add spelled out */
+void GetRoundResult(CZSealBody *pSeal, int *pWins, int *pScore)
+{
+    int iSeals = 0;
+    int iTerrs = 0;
+    int iOthers = 0;
+
+    *pWins = 0;
+    int iSum1c = 0;
+    *pScore = 0;
+    int iSum38 = 0;
+    for (CEntityItr it; it.More(); it.Advance()) {
+        if (it.IsLiveSeal()) {
+            CZSealBody *seal = &it.GetSeal();
+
+            if (seal) {
+                if (seal->m_isAlive) {
+                    if (func_002C31D0(seal))
+                        iSeals++;
+                    else if (func_002C30B0(seal))
+                        iTerrs++;
+                    else if (seal->m_team & 0x20000)
+                        iOthers++;
+                }
+                if (func_002C31D0(seal)) {
+                    iSum1c += seal->GetRoundStats().m_1c;
+                    iSum38 += seal->GetRoundStats().m_38;
+                }
+            }
+        }
+    }
+
+    bool bSeal = func_002C31D0(pSeal);
+    bool bTerr = func_002C30B0(pSeal);
+    CSealStats &stats = pSeal->GetRoundStats();
+    bool bAlive = pSeal->m_isAlive;
+
+    switch (data_00437CE8->m_type) {
+    case 1:
+        if (bTerr && ((bAlive && iSeals == 0) || iSum38 == 0))
+            (*pWins)++;
+        break;
+    case 2:
+        break;
+    case 3:
+        if (bSeal) {
+            if (bAlive && (iOthers > 0 || iSum1c > 0))
+                (*pWins)++;
+        } else if (bTerr && bAlive && iOthers == 0)
+            (*pWins)++;
+        break;
+    case 4:
+        if (bSeal) {
+            if (bAlive && iSum1c >= 2)
+                (*pWins)++;
+        } else if (bTerr && bAlive && iSeals == 0)
+            (*pWins)++;
+        break;
+    case 5:
+        if (bSeal) {
+            if (bAlive && iTerrs == 0)
+                (*pWins)++;
+        } else if (bTerr && bAlive && iSeals == 0)
+            (*pWins)++;
+        break;
+    }
+    *pScore += stats.m_3a;
 }
 
 void SetStatLbUiVar(bool bSeals, const char *szUiVar, CSealStats &(CZSealBody::*pAccessor)(),

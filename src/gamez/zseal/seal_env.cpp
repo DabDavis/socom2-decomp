@@ -15,39 +15,8 @@ public:
     static void RequestNewBombState(int id, EnumBombState state, const CPnt3D *pos);
 };
 
-/* CSequence, the timed sequence a look is, is zbody.h's (through zseal.h) */
-
-/* a head's turn toward a direction, eased over a time (SOCOM 1's DWARF: CLook : CSequence, 0x80
- * bytes; SOCOM II's drops a quaternion: m_goal_dir and everything after it 0x10 earlier) */
-class CLook : public CSequence {
-public:
-    CLook();
-    void SetDir(const CPnt3D *dir, float rate);
-    void LookTick(float dT);
-
-    CPnt3D m_curr_dir;   // 0x10
-    float m_rate;   // 0x1c
-    CQuat m_quat0;   // 0x20
-    CQuat m_quat1;   // 0x30
-    CPnt3D m_goal_dir;   // 0x40 (SOCOM 1's 0x50)
-    float m_deltaT;   // 0x4c
-    CPnt3D m_cross;   // 0x50
-    float m_fracT;   // 0x5c
-    unsigned char m_done;   // 0x60
-    bool IsDone() const { return m_done; }
-    unsigned char _61[0x70 - 0x61];   // (SOCOM II's CLook is 0x70: CBlink's m_org at 0x70)
-};
-
-/* the eyelids: a look down and back up (SOCOM 1's DWARF: CBlink : CLook) */
-class CBlink : public CLook {
-public:
-    CBlink();
-    void Blink(int org);
-    void BlinkTick(float dT);
-
-    int m_org;   // 0x70 (SOCOM 1's 0x80)
-    float m_nextT;   // 0x74
-};
+/* CSequence, the timed sequence a look is, is zbody.h's; the looks themselves, CLook and CBlink, are
+ * zseal.h's (SOCOM II's SEAL holds its three) */
 
 extern "C" {
 /* SOCOM 1's quadW (OVL1 0x2874F0, unowned): the look's easing curve */
@@ -401,7 +370,7 @@ extern "C" void func_005A73C0(void *data, void *arg)
         seal->SetBodyPart(data_003DF148, 0);
         rifle->SetActive(false);
     }
-    seal->SetPartAsGear(seal->m_rifle_as_gear_part, seal->m_rifle_as_gear);
+    seal->SetPartAsGear(seal->m_item_gear[1].m_part, seal->m_item_gear[1].m_gear);
 }
 
 /* the rifle taken into the right hand (OVL2 0x5A7480, new in SOCOM II: 0x5807D0 calls it) */
@@ -444,7 +413,7 @@ void ParentPistolToRThighAsGearCallback(void *data, void *arg)
         seal->SetBodyPart(data_003DF150, 0);
         pistol->SetActive(false);
     }
-    seal->SetPartAsGear(seal->m_pistol_as_gear_part, seal->m_pistol_as_gear);
+    seal->SetPartAsGear(seal->m_item_gear[2].m_part, seal->m_item_gear[2].m_gear);
 }
 
 /* the pistol taken into the right hand (OVL2 0x5A7690, new in SOCOM II: 0x5807D0 calls it) */
@@ -477,6 +446,59 @@ void ParentPistolToRHandCallback(void *data, void *arg)
 extern "C" {
 /* the blend on top of the body's stack (seal.cpp's tail copy, OVL2 0x555170) */
 void *func_00555170(void *stack);
+/* the throws' anims (OVL1 data, an anim type's id each, the first short; SOCOM 1's small-data
+ * statics) -- the second is tested twice in both builds -- and the two a throw's start adds (the
+ * anims a jump cannot start from, below) */
+extern short data_003DEBC8;
+extern short data_003DEBB8;
+extern short data_003DEBA8;
+extern short data_003DEBE8;
+extern short data_003DEBF0;
+extern short data_003DEBD8;
+extern short data_003DEBE0;
+extern short data_003DEB20;
+extern short data_003DEB30;
+/* the weapon changes' anims (OVL1 data, an anim type's id each: four blends, three overlays) */
+extern short data_003DF0E0;
+extern short data_003DF0E8;
+extern short data_003DF108;
+extern short data_003DF110;
+extern short data_003DEC68;
+extern short data_003DF0F0;
+extern short data_003DF0F8;
+}
+
+/* whether the top blend is a throw's, the start's two too unless told not (OVL2 0x5A7D10; SOCOM 1's
+ * IsThrowing, before CanFire in both builds, the same tests) */
+bool CZSealBody::IsThrowing(bool started)
+{
+    short type = ((CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0))->m_animType;
+
+    if (type == data_003DEBC8 || type == data_003DEBB8 || type == data_003DEBA8 || type == data_003DEBE8 ||
+        type == data_003DEBF0 || type == data_003DEBD8 || type == data_003DEBE0 || type == data_003DEBB8 ||
+        (!started && (type == data_003DEB20 || type == data_003DEB30)))
+        return true;
+    return false;
+}
+
+/* whether a weapon change is under way: the kit's asked item when told to count it, a change's blend
+ * on top, or its overlay running (OVL2 0x5A7980; SOCOM 1's IsChangingWeapons, first of the stretch
+ * IsChangingWeapons, IsReloading, IsThrowing, CanFire in both builds -- SOCOM II's takes the flag and
+ * the kit test, its top blend fetched and left unread) */
+bool CZSealBody::IsChangingWeapons(bool kit)
+{
+    if (kit && m_kit.m_requested_item)
+        return true;
+    func_00555170((char *)this + 0x1c0);
+    if (IsCurrentBlend((AnimType)53) || IsCurrentBlend((AnimType)54) || IsCurrentBlend((AnimType)55) ||
+        IsCurrentBlend((AnimType)data_003DF0E0) || IsCurrentBlend((AnimType)data_003DF0E8) ||
+        IsCurrentBlend((AnimType)data_003DF108) || IsCurrentBlend((AnimType)data_003DF110))
+        return true;
+    ACTIVE_ANIM *a = m_overlay.m_anim;
+
+    if (a && a->m_anim && (a->m_id == data_003DEC68 || a->m_id == data_003DF0F0 || a->m_id == data_003DF0F8))
+        return true;
+    return false;
 }
 
 /* whether the first-person camera stays off: never without a blend; hanging, or (each when asked)
@@ -513,17 +535,38 @@ extern "C" void func_005AA620(CZSealBody *seal, bool on)
     }
 }
 
-/* the turn at 0x1070 set to an angle about x, or none (OVL2 0x5AF470, new in SOCOM II: the app
- * camera's first- and third-person transitions call it; the names ours) */
-extern "C" void func_005AF470(CZSealBody *seal, float angle)
+/* the head's place and its look's direction in the world, each when asked (OVL2 0x5A3070; SOCOM 1's
+ * GetHeadParams, after CheckForRegionTrigger in both builds -- SOCOM 1's filled both always) */
+void CZSealBody::GetHeadParams(CPnt3D *pos, CPnt3D *dir)
 {
-    if (angle != 0.0f) {
+    if (pos) {
+        PartInSpace(m_head, 0, pos, 0);
+        m_node->m_matrix.Transform(pos, 1);
+    }
+    if (dir)
+        TransformVectors(&m_node->m_matrix, &m_look.m_curr_dir, dir, 1);
+}
+
+/* the head's look's direction in the world: through the node's rotation (OVL2 0x5AF500; SOCOM 1's,
+ * the look held) */
+CPnt3D *CZSealBody::GetLookDirW(CPnt3D *out) const
+{
+    TransformVectors(&m_node->m_matrix, &m_look.m_curr_dir, out, 1);
+    return out;
+}
+
+/* the head turned forward by a pitch, or not at all (OVL2 0x5AF470; SOCOM 1's RotateHead, after
+ * GetLookQuat in both builds: the app camera's first- and third-person transitions and the SEAL's
+ * constructor call it, setting only $f12 -- SOCOM 1's second float, unread there too, is gone) */
+void CZSealBody::RotateHead(float pitch)
+{
+    if (pitch != 0.0f) {
         CQuat q;
 
-        q.MakeXRot(angle);
-        seal->m_1070 = q;
+        q.MakeXRot(pitch);
+        m_fwdlook = q;
     } else
-        seal->m_1070 = CQuat::identity;
+        m_fwdlook = CQuat::identity;
 }
 
 /* whether the SEAL's timed action is due: set at all, and offline at once, online once the network's
@@ -542,6 +585,81 @@ extern "C" bool func_005A8850(CZSealBody *seal)
             due = true;
     }
     return due;
+}
+
+extern "C" {
+/* the CQB deaths, from in front and from behind (OVL1 data, anim types; SOCOM 1's small-data pair) */
+extern AnimType data_003DEE30;
+extern AnimType data_003DEE38;
+}
+
+/* the death a CQB attack gives its victim: from behind or in front, by the attacker's offset against
+ * the victim's facing, flattened (OVL2 0x5A9420; SOCOM 1's FindDeathAnimTypeCQB, after CanUseRestraint
+ * in both builds, the same arithmetic).
+ * OPEN, 0xDC against 0xD8: the target loads both nodes before the facing's three stores (the last in
+ * the call's delay slot) and holds only &fwd.y in a register; MW here loads this node after the stores
+ * and keeps &fwd.z in a register too. Tried: the nodes in locals first, the offset computed first, the
+ * facing assigned after it, y through a pointer, Negate(fwd.y). */
+AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
+{
+    CPnt3D fwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
+    CPnt3D d = *(const CPnt3D *)m_node->m_matrix.m_matrix[3] - *(const CPnt3D *)victim->m_node->m_matrix.m_matrix[3];
+
+    fwd.x = -fwd.x;
+    fwd.y = -fwd.y;
+    fwd.z = -fwd.z;
+    fwd.y = 0.0f;
+    d.y = 0.0f;
+    if (Dot(d, fwd) < 0.0f)
+        return data_003DEE38;
+    return data_003DEE30;
+}
+
+extern "C" {
+/* (OVL2 0x5B4340, not written yet: a test of the SEAL's state against a kind -- CanTraverse and
+ * PreTick ask it too; the name unknown) */
+bool func_005B4340(CZSealBody *seal, int kind);
+}
+
+/* whether the SEAL may change what it holds: alive, its hands free (CanFire), the state test passed,
+ * not in the air, working no turret, its trigger not held (OVL2 0x5A8CB0; SOCOM 1's, which tested the
+ * first two and the air) */
+bool CZSealBody::CanChangeItem()
+{
+    if (!m_isAlive)
+        return false;
+    if (!CanFire(true, true))
+        return false;
+    if (!func_005B4340(this, 4))
+        return false;
+    if (m_airborne || m_state == stateInAir)
+        return false;
+    if (m_eb8)
+        return false;
+    if (m_control && ((CSealCtrl *)m_control)->m_trigger == TRIGGER_DOWN)
+        return false;
+    return true;
+}
+
+/* the aim along the item in hand: its gear part's x axis, or straight ahead without one (OVL2
+ * 0x5A8790; SOCOM 1's AimWeapon, before CanUseBodyCarry in both builds -- SOCOM 1's took the rifle
+ * and the pistol themselves, SOCOM II's the item's part out of the table, item 4 too) */
+void CZSealBody::AimWeapon()
+{
+    switch (m_item) {
+    case 1:
+    case 2:
+    case 4: {
+        CPnt3D pos;
+        CQuat q;
+
+        PartInSpace(m_item_gear[m_item].m_part, 0, &pos, &q);
+        q.Apply(&CPnt3D::unit_x, &m_aim_dir, 1);
+        break;
+    }
+    default:
+        m_aim_dir = CPnt3D::unit_nz;
+    }
 }
 
 /* (CZWeapon::RemoveWeaponEventCallback is zweapon.h's, through zchar.h) */
@@ -718,6 +836,86 @@ void CZSealBody::SetHudHitFlag()
     m_hudwashit = true;
 }
 
+extern "C" {
+/* the look anims: four sources (OVL2 data), what each is built into and the turn tables ApplyLookAnim
+ * reads (OVL1 bss) -- the head's, then up the spine -- and their builder (OVL2 0x5AE980, not written
+ * yet; the names unknown) */
+extern unsigned char data_00650820[];
+extern unsigned char data_006507B0[];
+extern unsigned char data_00650740[];
+extern unsigned char data_006506D0[];
+extern unsigned char data_0044C7A0[];
+extern unsigned char data_0044C860[];
+extern unsigned char data_0044C920[];
+extern unsigned char data_0044C9E0[];
+extern CPnt3D data_0044CAA0[];
+extern CPnt3D data_0044CB30[];
+extern CPnt3D data_0044CBC0[];
+extern CPnt3D data_0044CC50[];
+void func_005AE980(void *src, void *anim, CPnt3D *table);
+/* the eyes' limits: up, down and sideways (OVL1 data; SOCOM 1's were constants, 8, -14 and 17
+ * degrees) */
+extern float data_0044C2D0;
+extern float data_0044C2D4;
+extern float data_0044C2D8;
+}
+
+/* a look anim's turn for a yaw and a pitch (SOCOM 1's GetLookQuat__FP6CPnt3DffP5CQuat; OVL2 0x5AE730,
+ * not written yet) */
+void GetLookQuat(CPnt3D *table, float yaw, float pitch, CQuat *q);
+
+/* the look anims built, the head's and up the spine (OVL2 0x5AE6A0; SOCOM 1's) */
+void CZSealBody::InitLookAnims()
+{
+    func_005AE980(data_00650820, data_0044C7A0, data_0044CAA0);
+    func_005AE980(data_006507B0, data_0044C860, data_0044CB30);
+    func_005AE980(data_00650740, data_0044C920, data_0044CBC0);
+    func_005AE980(data_006506D0, data_0044C9E0, data_0044CC50);
+}
+
+/* the head turned toward a direction when it may turn (OVL2 0x5AE640; SOCOM 1's, the look held) */
+bool CZSealBody::SetLookDir(const CPnt3D *dir, float rate)
+{
+    if (CanHeadLook())
+        return m_look.SetLookDir(this, dir, rate);
+    return false;
+}
+
+/* the eyes turned by a pitch and a yaw, when an eye is drawn: the pitch's limit up or down, the yaw's
+ * sideways, the goal kept within the limits off the current direction (OVL2 0x5AE4B0; SOCOM 1's, the
+ * constants made globals and the yaw's two equal arms one; `dir` unread in both builds) */
+bool CZSealBody::SetEyeLookDir(float pitch, float yaw, const CPnt3D *dir, float rate)
+{
+    if (m_reyeball && m_leyeball &&
+        ((m_reyeball->m_node && m_reyeball->m_node->Rendered(2)) ||
+         (m_leyeball->m_node && m_leyeball->m_node->Rendered(2)))) {
+        float up = data_0044C2D0;
+        float down = data_0044C2D4;
+        float side = data_0044C2D8;
+        /* (SOCOM 1 passed it twice, to SetDir as the start too) */
+        const CPnt3D *cur = &m_eyelook.m_curr_dir;
+        CPnt3D look;
+        CPnt3D goal;
+        CQuat q;
+        CQuat qx;
+        CQuat qy;
+
+        if (pitch >= 0.0f)
+            qx.MakeXRot(up * pitch);
+        else
+            qx.MakeXRot(down * pitch);
+        float left = -side;
+
+        qy.MakeYRot(left * yaw);
+        qx.Mul(&qy, &q);
+        q.Apply(&CPnt3D::unit_nz, &look, 1);
+        CalcGoalDir(cur, &look, &goal, up, down, left, side);
+        m_eyelook.SetDir(&goal, 1.5f * rate);
+        return true;
+    }
+    return false;
+}
+
 /* the look made: the sequence cleared, looking straight ahead (down -z), done (OVL2 0x5AE450; SOCOM
  * 1's, CZSealBody's constructor calls it for its two looks) */
 CLook::CLook()
@@ -806,6 +1004,71 @@ void CBlink::Blink(int org)
     }
 }
 
+/* the head and the three parts above it each turned by its look anim's quaternion for the yaw and
+ * the pitch (OVL2 0x5AD5B0; SOCOM 1's, the tables OVL1's) */
+void CZSealBody::ApplyLookAnim(float yaw, float pitch)
+{
+    CZBodyPart *part = m_head;
+    CQuat q;
+    CQuat r;
+
+    GetLookQuat(data_0044CAA0, yaw, pitch, &q);
+    part->m_rot.Mul(&q, &r);
+    part->m_rot = r;
+    part = part->m_parent;
+    GetLookQuat(data_0044CB30, yaw, pitch, &q);
+    part->m_rot.Mul(&q, &r);
+    part->m_rot = r;
+    part = part->m_parent;
+    GetLookQuat(data_0044CBC0, yaw, pitch, &q);
+    part->m_rot.Mul(&q, &r);
+    part->m_rot = r;
+    part = part->m_parent;
+    GetLookQuat(data_0044CC50, yaw, pitch, &q);
+    part->m_rot.Mul(&q, &r);
+    part->m_rot = r;
+}
+
+/* the head's look's direction (OVL2 0x5AD5A0; SOCOM 1's, the look held) */
+const CPnt3D *CZSealBody::GetLookDir() const
+{
+    return &m_look.m_curr_dir;
+}
+
+/* a part's rotation set (an inline taking the quaternion by reference) */
+static inline void SetPartRot(CZBodyPart *part, const CQuat &q)
+{
+    part->m_rot = q;
+}
+
+/* the eyeballs turned to the eyes' look (OVL2 0x5AD4D0; SOCOM 1's, the look held) */
+void CZSealBody::ApplyEyeLookAnim()
+{
+    if (m_reyeball && m_leyeball) {
+        CQuat q;
+
+        q.Align(CPnt3D::unit_nz, m_eyelook.m_curr_dir);
+        SetPartRot(m_reyeball, q);
+        SetPartRot(m_leyeball, q);
+        m_reyeball->m_node->SetRotation(&m_reyeball->m_rot);
+        m_leyeball->m_node->SetRotation(&m_leyeball->m_rot);
+    }
+}
+
+/* the eyelids turned to the blink (OVL2 0x5AD400; SOCOM 1's, the blink held) */
+void CZSealBody::ApplyBlinkAnim()
+{
+    if (m_reyelid && m_leyelid) {
+        CQuat q;
+
+        q.Align(CPnt3D::unit_nz, m_blink.m_curr_dir);
+        SetPartRot(m_reyelid, q);
+        SetPartRot(m_leyelid, q);
+        m_reyelid->m_node->SetRotation(&m_reyelid->m_rot);
+        m_leyelid->m_node->SetRotation(&m_leyelid->m_rot);
+    }
+}
+
 /* a defusal asked of the bomb, from nowhere in particular (OVL2 0x59DA80; SOCOM 1's) */
 void CZSealBody::AttemptBombDefuse()
 {
@@ -833,10 +1096,9 @@ void CZSealBody::HandlePickupMPBomb(CPickup *pickup)
 }
 
 extern "C" {
-/* the kit's item at an index let go (OVL2 0x5B9BB0, the kit lane's), the ground under a point
- * within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540, seal_body.cpp's) and the item it
- * takes (OVL1 data 0x3DEB48, a short) */
-void func_005B9BB0(CZKit *kit, int index);
+/* (the kit's item at an index let go is CZKit::RemoveItemAndAmmo, zseal.h's; OVL2 0x5B9BB0, the kit
+ * lane's) the ground under a point within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540,
+ * seal_body.cpp's) and the item it takes (OVL1 data 0x3DEB48, a short) */
 zdb::IntersectStruct *func_002A2EB0(const CPnt3D *p, float depth, int chars);
 void func_0057D540(CZSealBody *seal, short item, int x);
 extern short data_003DEB48;
@@ -857,7 +1119,7 @@ void CZSealBody::DropAllItems()
     int i = m_kit.GetItemIndex((EQUIP_ITEM)154);
 
     if (i != -1)
-        func_005B9BB0(&m_kit, i);
+        m_kit.RemoveItemAndAmmo(i);
     CPnt3D pos;
     float &y = pos.y;
 
@@ -926,9 +1188,8 @@ extern short data_003DEBD8;
 extern short data_003DEBE0;
 extern short data_003DEBE8;
 extern short data_003DEBF0;
-/* (OVL2 0x5A7DE0: whether the stance leaves room to jump, two flags; the name ours) */
-bool func_005A7DE0(CZSealBody *seal, bool a, bool b);
-/* the body's current blend (seal.cpp's tail, OVL2 0x555170) */
+/* (OVL2 0x5A7DE0 is CZSealBody::CanFire, zseal.h's) the body's current blend (seal.cpp's tail, OVL2
+ * 0x555170) */
 void *func_00555170(void *stack);
 }
 
@@ -951,7 +1212,7 @@ extern "C" bool func_0059D830(CZSealBody *seal)
         return false;
     if (IsNoJumpAnim(((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->m_animType))
         return false;
-    if (!func_005A7DE0(seal, true, true))
+    if (!seal->CanFire(true, true))
         return false;
     if (seal->m_airborne || seal->m_state == stateInAir)
         return false;
