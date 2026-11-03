@@ -604,7 +604,7 @@ public:
 extern CReco theReco;
 extern unsigned char data_003DC3E0;
 extern "C" void func_002370D0(CHudNetState *state);
-extern "C" void func_0022F3B0();
+void tcmResetVoteAll();   // hud_tcmcmds.cpp's: VOTE ALL's choice cleared
 extern "C" void func_002CA050(C2DMessage_Q *q);
 extern "C" void func_00363E60(float f);
 extern "C" void func_00363E50(float f);
@@ -623,7 +623,7 @@ CHUD::~CHUD()
 {
     m_actionbitmap.UnInit();
     func_002370D0(&data_00413120);
-    func_0022F3B0();
+    tcmResetVoteAll();
     if (!theNetwork.m_bNetwork)
         theReco.UnInit();
     if (m_newmap) {

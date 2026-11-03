@@ -140,8 +140,10 @@ extern CRadioMenu data_00413120;
 extern "C" {
 bool func_00234F40(CRadioMenu *menu, const char *word);   /* a heard word handled */
 void func_00235300(CRadioMenu *menu, int arg);   /* the menu closed */
-void func_0022F330();   /* (the radio menu's: called when a heard command was handled) */
 }
+
+/* the radio command menu's (hud_tcmcmds.cpp): the team's order cleared once a heard command was handled */
+void tcmRecoCancel();
 
 /* the recogniser */
 class CReco {
@@ -551,7 +553,7 @@ void cbrecoResult(void *hEngine, unsigned int action, _GSAPI_RESULT *pResult, un
     }
     if (closed) {
         if ((!more || n < 3) && heard)
-            func_0022F330();
+            tcmRecoCancel();
         func_00235300(&data_00413120, 0);
         theReco.Suspend(true);
     } else if (data_00413120.m_state == 1) {
@@ -560,7 +562,7 @@ void cbrecoResult(void *hEngine, unsigned int action, _GSAPI_RESULT *pResult, un
         if (more && n > 2) {
             func_00235300(&data_00413120, 0);
         } else if (heard) {
-            func_0022F330();
+            tcmRecoCancel();
             func_00235300(&data_00413120, 0);
         } else {
             data_00413120.m_path.clear();

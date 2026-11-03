@@ -2128,43 +2128,43 @@
 0x0022EBF0 0x98 Init__12CRebootStateFv  # OVL1; by hand (the states lane, round 19: slot 0x10 of CRebootState's vtable 0x405B10, CGameState's Init's -- the system shut down and the game's ELF rerun with dlgAfterReboot.rdr; st_reboot.cpp)
 0x0022EC90 0x74 __ct__12CRebootStateFv  # OVL1; s1:vtable by hand (the states lane: CGameState's base inlined, then CRebootState's vtable 0x405B10, RTTI-named)
 0x0022ED10 0x94 RebootAfterError__Fv  # OVL1; by hand (the states lane, round 19: st_reboot.cpp's -- CRebootState::Init's reboot with dlgAfterErrorReboot.rdr, called by zVid_Assert (both overlays' copies) and 0x365A00; the name ours)
-0x0022EDB0 0x38 func_0022EDB0  # OVL1
-0x0022EDF0 0x30 func_0022EDF0  # OVL1
-0x0022EE20 0x40 func_0022EE20  # OVL1
-0x0022EE60 0x48 func_0022EE60  # OVL1
-0x0022EEB0 0x60 func_0022EEB0  # OVL1
-0x0022EF10 0xEC func_0022EF10  # OVL1
-0x0022F000 0xE4 func_0022F000  # OVL1
-0x0022F0F0 0x114 func_0022F0F0  # OVL1
-0x0022F210 0x118 func_0022F210  # OVL1
-0x0022F330 0x68 func_0022F330  # OVL1
-0x0022F3A0 0xC func_0022F3A0  # OVL1
-0x0022F3B0 0xC func_0022F3B0  # OVL1
-0x0022F3C0 0x80 func_0022F3C0  # OVL1
-0x0022F440 0x74 func_0022F440  # OVL1
-0x0022F4C0 0x64 func_0022F4C0  # OVL1
-0x0022F530 0x7C func_0022F530  # OVL1
-0x0022F5B0 0x130 func_0022F5B0  # OVL1
-0x0022F6E0 0x12C func_0022F6E0  # OVL1
-0x0022F810 0x6C func_0022F810  # OVL1
-0x0022F880 0x68 func_0022F880  # OVL1
-0x0022F8F0 0x58 func_0022F8F0  # OVL1
-0x0022F950 0x6C func_0022F950  # OVL1
-0x0022F9C0 0xC8 func_0022F9C0  # OVL1
-0x0022FA90 0x168 func_0022FA90  # OVL1
-0x0022FC00 0x104 func_0022FC00  # OVL1
-0x0022FD10 0x50 func_0022FD10  # OVL1
-0x0022FD60 0x8 func_0022FD60  # OVL1
-0x0022FD70 0x114 func_0022FD70  # OVL1
-0x0022FE90 0x9C func_0022FE90  # OVL1
-0x0022FF30 0x120 func_0022FF30  # OVL1
-0x00230050 0x174 func_00230050  # OVL1
-0x002301D0 0x10 func_002301D0  # OVL1
-0x002301E0 0xE4 func_002301E0  # OVL1
+0x0022EDB0 0x38 tcmCueScaryMusic__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the radio command menu's CUE SCARY MUSIC command, MUS_SCARY to the jukebox; the cache builder 0x2344E0 registers it with that name)
+0x0022EDF0 0x30 tcmReportStatus__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the REPORT STATUS command, registered by 0x2344E0 with that name)
+0x0022EE20 0x40 tcmWhassup__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the WHASSUP command, unit 1's gesture 77; registered by 0x2344E0 with that name)
+0x0022EE60 0x48 tcmSayAgain__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the SAY AGAIN command, registered by 0x2344E0 with that name)
+0x0022EEB0 0x60 tcmNiceOne__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the NICE ONE command, the mission's COMPLIMENT cue; registered by 0x2344E0 with that name)
+0x0022EF10 0xEC tcmUpdateNodeAction__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the NODEACTION items' test, registered by 0x2344E0 beside tcmNodeAction)
+0x0022F000 0xE4 tcmNodeAction__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the NODEACTION items' command: the node's CNodeAction run, as CanPerformAction allows)
+0x0022F0F0 0x114 tcmVoteAll__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- VOTE ALL ON:OFF's command, registered by 0x2344E0 with that name)
+0x0022F210 0x118 tcmUpdateVoteAll__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- VOTE ALL ON:OFF's test: VOTE ALL RETAIN/REMOVE)
+0x0022F330 0x68 tcmRecoCancel__Fv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- reco.cpp's cbrecoResult calls it twice: the team's order cleared)
+0x0022F3A0 0xC tcmSetRecoMode__Fb  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the tree's 0x234F40 sets s_tcmRecoMode through it)
+0x0022F3B0 0xC tcmResetVoteAll__Fv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- ~CHUD calls it: s_tcmVoteAll cleared)
+0x0022F3C0 0x80 tcmVote__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- VOTE RETAIN:REMOVE's command: SendVoteMessage)
+0x0022F440 0x74 tcmUpdateVote__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- VOTE RETAIN:REMOVE's test: VOTE RETAIN/VOTE REMOVE)
+0x0022F4C0 0x64 tcmMute__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- MUTE ON:OFF's command)
+0x0022F530 0x7C tcmUpdateMute__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- MUTE ON:OFF's test: MUTE ON/MUTE OFF)
+0x0022F5B0 0x130 tcmSelectPlayer__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the PLAYER n items' command: s_tcmTarget picked walking CEntity::m_list)
+0x0022F6E0 0x12C tcmUpdatePlayer__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the PLAYER n items' test: labelled with the player's name)
+0x0022F810 0x6C tcmUpdateRadio__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the test of NODEACTION ROOT, TAUNTS, TEAMMATES and the radio items)
+0x0022F880 0x68 tcmRadioOnOff__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- RADIO ONOFF's command)
+0x0022F8F0 0x58 tcmUpdateRadioOnOff__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- RADIO ONOFF's test: RADIO OFF/RADIO ON)
+0x0022F950 0x6C tcmSetChannel__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the TEAM/OFFENSE/DEFENSE channel items' command)
+0x0022F9C0 0xC8 tcmCharacterTaunt__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- CHARACTER TAUNT's command: a random message 59-65)
+0x0022FA90 0x168 tcmUpdateMessage__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the orders', taunts' and messages' test: the custom text as the caption)
+0x0022FC00 0x104 tcmSendMessage__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the orders', taunts' and messages' command: SendMessageMessage, PlayRemoteMsg)
+0x0022FD10 0x50 tcmIntimidate__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- INTIMIDATE's command, registered by 0x2344E0 with that name)
+0x0022FD60 0x8 tcmUpdateIntimidate__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- INTIMIDATE's test: always shown)
+0x0022FD70 0x114 tcmTeamCommand__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the team orders' command (0x2344E0's 1..41))
+0x0022FE90 0x9C tcmUpdateTeamCommand__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the team orders' test)
+0x0022FF30 0x120 tcmTeamMember__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the team members' command (0x2344E0's 0..23): s_tcmMember)
+0x00230050 0x174 tcmUpdateTeamMember__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the team members' test)
+0x002301D0 0x10 tcmSelectTeam__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the teams' command (0x2344E0's six): s_tcmTeam)
+0x002301E0 0xE4 tcmUpdateTeam__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the teams' test: team 18's leader names the item, CHA SOLDIER as SOLDIER)
 0x002302D0 0x104 func_002302D0  # OVL1
 0x002303E0 0x160 func_002303E0  # OVL1
-0x00230540 0xC func_00230540  # OVL1
-0x00230550 0xC func_00230550  # OVL1
+0x00230540 0xC tcmClearCurNode__Fv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- s_tcmCurNode cleared; the tree calls it after each test, out of line)
+0x00230550 0xC tcmSetCurNode__FP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- s_tcmCurNode set; the tree calls it before each test, out of line: the unit boundary)
 0x00230560 0xB8 func_00230560  # OVL1
 0x00230620 0xB8 func_00230620  # OVL1
 0x002306E0 0x18C func_002306E0  # OVL1
