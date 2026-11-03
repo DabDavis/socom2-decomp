@@ -7,6 +7,8 @@
 #define MEDIUS_INVALID_PARAM    (-99)
 
 extern int sprintf(char *s, const char *fmt, ...);
+extern char *strncpy(char *dst, const char *src, unsigned int n);
+extern int atoi(const char *s);
 
 int iTerminateString(char *s, int len)
 {
@@ -22,5 +24,26 @@ int iTerminateString(char *s, int len)
 int iCreateAndAllocateMessageID(char *key, int counter, int type, char *out)
 {
     sprintf(out, "%s.%d", key, counter);
+    return 0;
+}
+
+/* SOCOM 1's iGetMessageIDValues (s1:calls, its size): the key before the '.' copied out, the number
+ * after it split into a counter (bits 7-15) and a type (bits 0-6) */
+int iGetMessageIDValues(char *id, char *key, int *pnCounter, int *pnType)
+{
+    char *p = id;
+    int n = 0;
+    unsigned int v;
+
+    while (*p != '.') {
+        p++;
+        n++;
+    }
+    if (*p == '.')
+        p++;
+    strncpy(key, id, n - 1);
+    v = atoi(p);
+    *pnCounter = (v >> 7) & 0x1FF;
+    *pnType = v & 0x7F;
     return 0;
 }
