@@ -282,15 +282,14 @@ bool CAiPath::PopPoint(CAiMapLoc *loc)
  * steps, a cast `this`, `!(it == end())` and the iterator declared outside were tried; perhaps
  * the original iterator stays in memory (a user-declared copy constructor?) long enough that its
  * stores block the hoist */
-bool CAiPath::FindPoint(const CAiMapLoc &loc, unsigned int *index) const
+bool CAiPath::FindPoint(const CAiMapLoc &loc, unsigned int *index)
 {
-    if (m_points.size() == 0)
+    if (m_points.count() == 0)
         return false;
-    points &p = const_cast<points &>(m_points);
     bool found = false;
     unsigned int i = 0;
 
-    for (points::iterator it = p.begin(); it != p.end(); ++it, ++i) {
+    for (points::iterator it = m_points.begin(); it != m_points.end(); ++it, ++i) {
         if ((*it).m_loc == loc) {
             if (index)
                 *index = i;
@@ -306,14 +305,13 @@ bool CAiPath::FindPoint(const CAiMapLoc &loc, unsigned int *index) const
  * 4, the widths, the index from the back -- SOCOM II adds the map's test; 0x524760, which the leg
  * smoother, ExtendPath and CAiSFollow::Tick call).
  * OPEN: FindPoint's question (above) -- the target re-reads size_ and data_ for each pass's end */
-bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index) const
+bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index)
 {
-    if (m_points.size() == 0 || !(m_flags & 4))
+    if (m_points.count() == 0 || !(m_flags & 4))
         return false;
-    points &p = const_cast<points &>(m_points);
     unsigned int n = 0;
 
-    for (points::iterator it = p.begin(); it != p.end(); ++it, ++n) {
+    for (points::iterator it = m_points.begin(); it != m_points.end(); ++it, ++n) {
         if ((*it).m_loc.m_mapid == loc.m_mapid) {
             unsigned int px = (*it).m_loc.x;
             unsigned int lx = loc.x;
@@ -324,7 +322,7 @@ bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index) const
 
             if (!((*it).m_width < dx + dy)) {
                 if (index)
-                    *index = m_points.size() - n - 1;
+                    *index = m_points.count() - n - 1;
                 return true;
             }
         }

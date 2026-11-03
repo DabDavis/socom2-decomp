@@ -1264,8 +1264,24 @@ public:
         unsigned int m_flags : 8;
         unsigned int m_unused : 16;
     };
-    /* (SOCOM 1's DWARF; ~CAiPath's three this-tests on it say SOCOM II's is the same subclass) */
+    /* (SOCOM 1's DWARF; ~CAiPath's three this-tests on it say SOCOM II's is the same subclass).
+     * The end through the count read by reference, as the data pointer is through data() (the AI
+     * core's round 18): FindPoint's and PointInPath's walks then re-read both for each pass's end
+     * test, and the emptiness test written through the same count() shares its load with the first
+     * end (0x524880 byte-exact so). With the class vector's own end() MW kept size*8 out of the
+     * loop; with size() through count() too, RemoveInvalidPoints' size() and end() share a load the
+     * target makes twice (0x527CE0). GetRouteIndex's and GetRegionContaining's walks hoist size*36
+     * and size*28, a multiply, where these keep a shift in the loop: perhaps the original MSL's end()
+     * reads its count so everywhere */
     class points : public std::vector<point> {
+    public:
+        unsigned int &count() { return this->size_; }
+        iterator end()
+        {
+            point *const p = this->data() + count();
+
+            return iterator(p);
+        }
     };
     /* a point on a cell: x and y agree, the map aside (SOCOM 1's std::find<point *, CAiMapLoc>
      * compares them; materialised as CAiMapLoc's ==) */
@@ -1320,10 +1336,10 @@ public:
     bool PopPoint(CAiMapLoc *loc);
     /* whether a point lies on the cell, its index handed back when asked (SOCOM 1's tested the
      * points' widths around the cell) */
-    bool PointInPath(const CAiMapLoc &loc, unsigned int *index) const;
+    bool PointInPath(const CAiMapLoc &loc, unsigned int *index);
     /* the point on the cell itself, its index handed back when asked (new in SOCOM II, the name ours:
      * 0x524880) */
-    bool FindPoint(const CAiMapLoc &loc, unsigned int *index) const;
+    bool FindPoint(const CAiMapLoc &loc, unsigned int *index);
     void plan_setup();
     bool plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal);
     bool plan_legcomplete(PATH_STATE state);
