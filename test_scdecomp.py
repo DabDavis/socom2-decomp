@@ -144,6 +144,39 @@ def test_toolchain_is_settled_on_zlib():
     ck(res.match, "inflate_fast at -O4,p matches")
 
 
+def test_directive_takes_effect_or_refuses():
+    """A unit's `sc: compiler=` without `flags=` builds under that toolchain at the default flags
+    (the kit lane's question, GCC round 16a): adler32 under 3.0b22-020926 must miss as above, built
+    as sccheck builds a unit. And a directive the tools cannot read is a build failure, not the
+    defaults in silence: one past the third line, an unknown key, a toolchain that is not there."""
+    img, st = E.image(), E.symbols()
+    tree = BUILD / f"directive.{os.getpid()}"
+    shutil.rmtree(tree, ignore_errors=True)
+    shutil.copytree(ZLIB, tree, ignore=shutil.ignore_patterns("*.c", "*.md"))
+    base = (ZLIB / "adler32.c").read_text()
+    unit = tree / "adler32.c"
+
+    def built(text):
+        unit.write_text(text)
+        _, obj, err = C.build_one(unit, tree / "obj", root=tree)
+        return obj, err
+    try:
+        obj, err = built(base)
+        ck(obj is not None and D.compare(obj, "adler32", st.get("adler32"), img, st).match,
+           f"no directive: the settled build matches ({err})")
+        obj, err = built("/* sc: compiler=mwcps2-3.0b22-020926 */\n" + base)
+        ck(obj is not None, f"compiler= alone builds: {err}")
+        ck(not D.compare(obj, "adler32", st.get("adler32"), img, st).match,
+           "compiler=mwcps2-3.0b22-020926 alone takes effect (adler32 misses)")
+        for text, why in (("/*\n*\n*/\n/* sc: compiler=mwcps2-3.0b22-020926 */\n" + base, "past the third line"),
+                          ("/* sc: compilr=mwcps2-3.0b22-020926 */\n" + base, "unknown `sc:` key"),
+                          ("/* sc: compiler=mwcps2-NOPE */\n" + base, "no such toolchain")):
+            obj, err = built(text)
+            ck(obj is None and why in err, f"a directive {why} is refused: {err!r}")
+    finally:
+        shutil.rmtree(tree, ignore_errors=True)
+
+
 def test_relocation_check_catches_a_wrong_callee():
     """Masking alone accepts a call to the wrong function; the resolver must not."""
     img, st = E.image(), E.symbols()

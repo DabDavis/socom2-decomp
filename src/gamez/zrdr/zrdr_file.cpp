@@ -26,7 +26,7 @@ extern "C" void func_0025A120(zar::CZAR *zar, zar::CKey *key, const void *buf, i
 extern "C" void func_0032CCB0(_zrdr *rdr, _zrdr *root, char *strings);
 extern "C" void func_0032CB90(_zrdr *rdr, _zrdr *root, char *strings);
 /* zrdr_freearray (0x335AA0) */
-extern "C" void func_00335AA0(_zrdr *rdr);
+void zrdr_freearray(_zrdr *rdr);
 
 /* SOCOM 1's; it returns 0 (other units declare it void, which their calls do not see) */
 int zrdr_free(CRdrFile *file)
@@ -49,7 +49,7 @@ CRdrFile::CRdrFile()
 CRdrFile::~CRdrFile()
 {
     if (!m_buffer)
-        func_00335AA0(this);
+        zrdr_freearray(this);
     else {
         if (!(m_flags & 4))
             _free(m_buffer, 0, 0);

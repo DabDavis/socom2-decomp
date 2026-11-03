@@ -912,8 +912,8 @@
 0x001AF518 0x1E0 __ieee754_atan2f  # MAIN unaligned; s1:exact
 0x001AF6F8 0x254 __ieee754_expf  # MAIN unaligned; s1:exact
 0x001AF950 0x2E0 __ieee754_logf  # MAIN; s1:exact
-0x001AFC30 0xE4 func_001AFC30  # MAIN
-0x001AFD18 0x7E0 func_001AFD18  # MAIN unaligned
+0x001AFC30 0xE4 __ieee754_log10f  # MAIN; by body (the GCC lane r16a): newlib's ef_log10.c -- __ieee754_logf of the mantissa scaled by log10_2lo/ivln10/log10_2hi (0x355427DB, 0x3EDE5BD9, 0x3E9A2080), between ef_log.c and ef_pow.c in the objects' alphabetical order; w_log10f (0x1B3928) tail-calls it
+0x001AFD18 0x7E0 __ieee754_powf  # MAIN unaligned; by body (the GCC lane r16a): newlib's ef_pow.c -- calls fabsf and scalbnf, 0x7E0 bytes, after ef_log10.c and before ef_rem_pio2.c in the objects' alphabetical order; w_powf (0x1B3940) tail-calls it
 0x001B04F8 0x3B0 __ieee754_rem_pio2f  # MAIN unaligned; s1:exact
 0x001B08A8 0xCC __ieee754_sqrtf  # MAIN unaligned; s1:exact
 0x001B0978 0x2D4 __kernel_cos  # MAIN unaligned; s1:exact
@@ -943,8 +943,8 @@
 0x001B38E0 0x14 atan2f  # MAIN; s1:exact
 0x001B38F8 0x14 expf  # MAIN unaligned; s1:exact
 0x001B3910 0x14 logf  # MAIN; s1:exact
-0x001B3928 0x14 func_001B3928  # MAIN unaligned
-0x001B3940 0x14 func_001B3940  # MAIN
+0x001B3928 0x14 log10f  # MAIN unaligned; by body (the GCC lane r16a): newlib's w_log10f.c under _IEEE_LIBM, a tail call into __ieee754_log10f (0x1AFC30), between w_logf and w_powf in the wrappers' alphabetical order
+0x001B3940 0x14 powf  # MAIN; by body (the GCC lane r16a): newlib's w_powf.c under _IEEE_LIBM, a tail call into __ieee754_powf (0x1AFD18), between w_log10f and w_sqrtf in the wrappers' alphabetical order
 0x001B3958 0x14 sqrtf  # MAIN unaligned; s1:exact
 0x001B3970 0x1CC sceMcInit  # MAIN; s1:order (the demo's libmc object 0x171070 opens with sceMcInit: two semaphores, the 0x80000400 bind, RPC 0xFE, the mcserv/mcman version checks; src/lib/sdk/libmc.c)
 0x001B3B40 0x4C sceMcEnd  # MAIN; s1:order (the demo's second, after sceMcInit: deletes the library's semaphores; src/lib/sdk/libmc.c)
@@ -1688,15 +1688,15 @@
 0x001FE330 0x8 Tick__3C2DFf  # OVL1; s1:vtable by hand (C2D's slot 12, inline and empty)
 0x001FE340 0x420 insert__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiUiRCUi  # OVL1; s1:calls (SOCOM 1's push_back of it is insert(data_ + size_, 1, x); CZAnimExVector::Add and zar::CKeyRing::push inline that push_back)
 0x001FE760 0x27C destroy__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FPQ33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4node  # OVL1; by hand (the HUD lane, round 22: the glyph map's recursive destroy, self-inlined once -- each node's pair destroyed at node + 0x10 through the allocator (0x1FEAB0, 0x1FEA70), the node freed through the node allocator (0x1FEA60, 0x1FEA50); ~C2DFont (0x369EB0, byte-exact as a probe), the font's clear 0x35C800, ReleaseHUD and the UI classes' destructors that delete a font call it; C2DGlyph's name ours, src/gamez/ztwod/c2dfont.h)
-0x001FE9E0 0x70 func_001FE9E0  # OVL1
-0x001FEA50 0x8 func_001FEA50  # OVL1
-0x001FEA60 0x8 func_001FEA60  # OVL1
-0x001FEA70 0x3C func_001FEA70  # OVL1
-0x001FEAB0 0x8 func_001FEAB0  # OVL1
+0x001FE9E0 0x70 __dt__Q23std19pair<CUs,8C2DGlyph>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph map's pair destructor -- the glyph tree's destroy 0x1FE760 calls it, as hud_main.cpp emits it from c2dfont.h's C2DFont; ~C2DGlyph's piece vector torn down inline)
+0x001FEA50 0x8 deallocate__Q23std211allocator<Q33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4node>FPQ33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4nodeUi  # OVL1; by hand (the HUD lane, round 24: the glyph tree's node deallocate, the innermost call of its destroy 0x1FE760, as hud_main.cpp emits it)
+0x001FEA60 0x8 node_alloc__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph tree's node allocator accessor, called by its destroy 0x1FE760, as hud_main.cpp emits it)
+0x001FEA70 0x3C destroy__Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>FPQ23std19pair<CUs,8C2DGlyph>  # OVL1; by hand (the HUD lane, round 24: the glyph pair's allocator destroy, called by the glyph tree's destroy 0x1FE760 on node + 0x10, as hud_main.cpp emits it)
+0x001FEAB0 0x8 alloc__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph tree's value allocator accessor, called by its destroy 0x1FE760, as hud_main.cpp emits it)
 0x001FEAC0 0x20 __ct__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FRCQ33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compareRCQ23std38allocator<Q23std19pair<CUs,8C2DGlyph>>  # OVL1; by hand (the HUD lane, round 22: the font's glyph map's tree constructor, include/tree's out-of-class __tree(comp, a) -- C2DFont's constructor 0x38E590 and the font unload 0x35A650 call it with a comparator and an allocator temporary, map() 0x1FB3F0 likewise; the map is std::map<unsigned short, C2DGlyph> (src/gamez/ztwod/c2dfont.h: the value 16-aligned at node + 0x10, the key a halfword -- 0x35C630's find, 0x35D240's 0x50-byte nodes); C2DFont() and ~C2DFont byte-exact as a probe, build/scratch/hud/font/probe.cpp; C2DGlyph's name ours)
 0x001FEAE0 0x100 insert__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>RCPCv  # OVL1; s1:name (SOCOM 1's single insert of the pointer lists; push_back is insert(end(), x) -- the network receive and ActivateExV push arguments through it)
-0x001FEBE0 0x68 func_001FEBE0  # OVL1
-0x001FEC50 0x8 func_001FEC50  # OVL1
+0x001FEBE0 0x68 __dt__Q23std68__vector_deleter<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph's piece vector's deleter destructor, clear 0x1FEC50 then the delete -- the pair destructor 0x1FE9E0 calls it, as hud_main.cpp emits it)
+0x001FEC50 0x8 clear__Q23std68__vector_deleter<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph's piece vector cleared -- size zeroed, the pieces trivially destroyed; the deleter's destructor 0x1FEBE0 calls it)
 0x001FEC60 0xC RemoveLetterbox__10CLetterBoxFv  # OVL1; s1:exact by hand (hud_letterbox.cpp)
 0x001FEC70 0x48 AddLetterbox__10CLetterBoxFv  # OVL1; s1:exact
 0x001FECC0 0x1D0 Tick__10CLetterBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1910,7 +1910,7 @@
 0x002133E0 0x1B0 reserve__Q23std62__vector_imp<11nav_package,Q23std24allocator<11nav_package>,0>FUi  # OVL1; by hand (MapCompass's constructor reserves 48)
 0x00213590 0x8 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the deleter's clear, whole: vector<nav_package>::clear's copy calls it out of line)
 0x002135A0 0x68 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the vector's destructor's last level)
-0x00213610 0x70 func_00213610  # OVL1
+0x00213610 0x70 HideTimer__14BitmapReticuleFv  # OVL1; ours by hand (the HUD lane, round 24: hud_bitmapreticule.cpp's first in the image, so defined last -- the timer's four bitmaps (0x4290, 0x4310, 0x43A0, 0x4420) faded out through their tables' SetTrans; CHUD::ReInit_Init calls it; new in SOCOM II)
 0x00213680 0x1BC func_00213680  # OVL1
 0x00213840 0x220 func_00213840  # OVL1
 0x00213A60 0x3C0 func_00213A60  # OVL1
@@ -2197,12 +2197,12 @@
 0x00232460 0x10 func_00232460  # OVL1
 0x00232470 0x10 func_00232470  # OVL1
 0x00232480 0x10 func_00232480  # OVL1
-0x00232490 0x1D0 func_00232490  # OVL1
-0x00232660 0x22C func_00232660  # OVL1
+0x00232490 0x1D0 __dt__8CTCMNodeFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- CTCMNode's destructor, round 23's lead; hud_tcm.cpp emits its implicit copy with CTCM's constructor)
+0x00232660 0x22C __ct__8CTCMNodeFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- CTCMNode's constructor, called out of line by CTCM's 0x237390 at its start, as round 23's notes had it)
 0x00232890 0xBC func_00232890  # OVL1
 0x00232950 0x14 func_00232950  # OVL1
 0x00232970 0x58 func_00232970  # OVL1
-0x002329D0 0x18 func_002329D0  # OVL1
+0x002329D0 0x18 __ct__10CTCMSoundsFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- the menu's sounds' constructor, called out of line by CTCM's constructor 0x237390 on CTCM+0xDB8, as round 23's notes had it)
 0x002329F0 0x1CC func_002329F0  # OVL1
 0x00232BC0 0x1918 func_00232BC0  # OVL1
 0x002344E0 0xA54 func_002344E0  # OVL1
@@ -2230,7 +2230,7 @@
 0x002371A0 0x170 func_002371A0  # OVL1
 0x00237310 0x38 ClearItems__4CTCMFv  # OVL1; tu: node_world.cpp~ (1.0 beta); ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item list bitmap's list at +0xDE0 cleared; CHUD calls it)
 0x00237350 0x3C Init__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the caches built (0x2344E0), the path and the root's children reserved)
-0x00237390 0x1E8 func_00237390  # OVL1
+0x00237390 0x1E8 __ct__4CTCMFv  # OVL1; by hand (the HUD lane, round 24: hud_tcm.cpp -- the menu object's constructor: the root node's (0x232660) out of line, the mode 4, the path, the six polys, the sounds' constructor 0x2329D0; the initialiser 0x3FF4A0 builds theTCM with it)
 0x00237580 0x1E0 func_00237580  # OVL1
 0x00237760 0x3D8 Update__12CAmmoDisplayFv  # OVL1; by hand (the HUD lane: the ammo counts from the HUD owner's kit, the unit's first function in the image; the name ours)
 0x00237B40 0x1C0 SetMags__12CAmmoDisplayFiPQ23zdb10CTexHandle  # OVL1; by hand (the ammo unit's: a switch on a byte, 1-3 lighting the four magazine bitmaps at CAmmoDisplay+0x3C0, past that a texture argument in the first; On passes the cached count 0x3DCBD8 and texture 0x4145E0; the name ours); an int count, narrowed to a byte inside (andi 0xff) where On passes the cached word whole
@@ -6058,15 +6058,15 @@
 0x0033E510 0x178 func_0033E510  # OVL1
 0x0033E690 0xF4 func_0033E690  # OVL1
 0x0033E790 0x58 splice__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>RQ23std42__list_deleter<PCv,Q23std14allocator<PCv>>  # OVL1; the MSL headers round 13: the pointer lists' splice(position, x), include/list's (SOCOM 1's 0x1DAF10 shape); vis_texfx.cpp's tail emits it byte-exact (its insert(position, n, x) calls it), 0x33E690 calls this copy
-0x0033E7F0 0x58 func_0033E7F0  # OVL1
-0x0033E850 0x1B4 func_0033E850  # OVL1
-0x0033EA10 0x154 func_0033EA10  # OVL1
-0x0033EB70 0x1A0 func_0033EB70  # OVL1
-0x0033ED10 0x5C func_0033ED10  # OVL1
-0x0033ED70 0xB0 func_0033ED70  # OVL1
-0x0033EE20 0x80 func_0033EE20  # OVL1
-0x0033EEA0 0x100 func_0033EEA0  # OVL1
-0x0033EFA0 0xA8 __ct__16CLobbySaveModuleFPCcP12CSaveManager  # OVL1; ours (the online lane's lead, vetted by the integrator: stores CLobbySaveModule's vtable 0x406740, zeroes the name string and assigns it through assign(const char *) when given, keeps the CSaveManager; the initialiser 0x4022D0 calls it on theAcctDB + 0x24)
+0x0033E7F0 0x58 Pending__17CLobbySaveManagerFv  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the lobby save manager's transfer test -- the file there and Medius's transfer map 0x450070 empty drops the blob and answers false, else whether there is a file; UICharacterProfile negates it)
+0x0033E850 0x1B4 Load__17CLobbySaveManagerFPCci  # OVL1; ours (the world lane r5, zsav_lobby.cpp: once fsyncAsync(0) is idle, the fetched blob's header version checked against a2, each 40-byte entry handed to the list's modules of its name -- vtable 0xC with the data and size, 0x10 with the file's GetChecksum -- the blob freed and the file closed; UICharacterProfile calls it with (name, 0))
+0x0033EA10 0x154 Fetch__17CLobbySaveManagerFPCcii  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the file opened (mode 1) when not open, else read whole with freadAsync into a fresh blob unless theAcctDB's GetChecksum equals the file's, when the UI hears MP_MEDIUS_FILE_DOES_NOT_EXIST; UICharacterProfile passes (name, 0, 0))
+0x0033EB70 0x1A0 Save__17CLobbySaveManagerFPCcii  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the blob built -- the header {a2, 0}, one 40-byte entry per listed module, each module's slot 8 called with a3 -- the file opened (mode 10), the checksum 0x64BB80 taken over the blob and handed to every module (slot 0x10), the blob sent with fwriteAsync)
+0x0033ED10 0x5C Close__17CLobbySaveManagerFv  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the file closed through its vtable when there is one, the blob freed; CMenuState::UnInit calls it)
+0x0033ED70 0xB0 __dt__17CLobbySaveManagerFv  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the file deleted, the string at 0xC and the module list torn down; the memory card unit's initialiser 0x400160 registers it for 0x4364A0)
+0x0033EE20 0x80 __ct__17CLobbySaveManagerFv  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the module list built, the blob's pointers cleared, a CLobbyFileIO made (0x9C bytes, CIO's and CLobbyFileIO's vtables stored); the initialiser 0x400160 builds 0x4364A0 with it)
+0x0033EEA0 0x100 Write__16CLobbySaveModuleFPCci  # OVL1; ours (the world lane r5, zsav_lobby.cpp; the online lane's Write: the module's name and blob appended to its manager's (the entry table at the manager's 0x24, the header's count at 0x20's 4, the blob realloced at 0x1C, its used size at 0x28))
+0x0033EFA0 0xA8 __ct__16CLobbySaveModuleFPCcP17CLobbySaveManager  # OVL1; ours (the online lane's lead, vetted by the integrator: stores CLobbySaveModule's vtable 0x406740, zeroes the name string and assigns it through assign(const char *) when given, keeps the CSaveManager; the initialiser 0x4022D0 calls it on theAcctDB + 0x24); ours (the world lane r5, zsav_lobby.cpp: the manager is the lobby's CLobbySaveManager -- a list of modules, a CLobbyFileIO at 0x18 -- not zsave.h's CSaveManager, so the parameter is respelled)
 0x0033F050 0x3C func_0033F050  # OVL1
 0x0033F090 0x48 snd_DoExternCall_CB  # OVL1; s1:exact
 0x0033F0E0 0x48 snd_DoExternCall_A  # OVL1; s1:exact
@@ -6870,7 +6870,7 @@
 0x00370990 0x284 HandlePad__12CPopUpDialogFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370C20 0x88 func_00370C20  # OVL1
 0x00370CB0 0x58 func_00370CB0  # OVL1
-0x00370D10 0x9C func_00370D10  # OVL1
+0x00370D10 0x9C ShowChoice__11CRadioStripFv  # OVL1; ours by hand (the HUD lane, round 24: zui_2d.cpp -- the radio strip's buttons shown after a new choice, the chosen one through slot 18 (SetActive), the others slot 19 (SetNormal); CRadioStrip::TickZAnimCmd calls it out of line)
 0x00370DB0 0x1B0 func_00370DB0  # OVL1
 0x00370F60 0x15C func_00370F60  # OVL1
 0x003710C0 0xC func_003710C0  # OVL1
@@ -6913,7 +6913,7 @@
 0x00376530 0x68 func_00376530  # OVL1
 0x003765A0 0xEC HandlePad__14CHandlerButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376690 0x8 func_00376690  # OVL1
-0x003766A0 0x120 func_003766A0  # OVL1
+0x003766A0 0x120 SetActive__9C2DButtonFv  # OVL1; by hand (the HUD lane, round 24: zui_2d.cpp -- slot 18 of every button's table, C2D's SetActive: the state at 0xFC shown and the button's type-1 event-2 actions run)
 0x003767C0 0xA8 GetZAnimCmdType__9C2DButtonFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376870 0x150 TickZAnimCmd__9C2DButtonFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 22: slot +0x64 of C2DButton's table 0x407790; CRadioStrip::TickZAnimCmd 0x3710D0 falls through to it)
 0x003769C0 0x180 ParseZAnimCmd__9C2DButtonFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -9891,7 +9891,7 @@
 0x00541240 0x4C func_00541240  # OVL2; OVL2's copy of func_001EF400 (st_core.cpp's, OVL1 0x1EF400: the same 0x4C bytes bar the call, to 0x540D00 here), the AI core round 14; ovl-copy: func_001EF400
 0x00541290 0x258 func_00541290  # OVL2; OVL2's copy of reserve__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi (0x1e7c90, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: reserve__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi
 0x005414F0 0x14 func_005414F0  # OVL2
-0x00541510 0x13C func_00541510  # OVL2; the same words as GetBBox__Q23zdb5CNodeCFv (0x262550) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x00541510 0x13C func_00541510  # OVL2; the same words as GetBBox__Q23zdb5CNodeCFv (0x262550) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); the SEALs round 17: all seven OVL2 callers call it from a one-level-inlined GetBBox (seal_cfg.cpp's AddDIPolys 0x58B960 matches with the mark), so it is that inline's OVL2 copy; ovl-copy: GetBBox__Q23zdb5CNodeCFv
 0x00541650 0x60 SetVisibleByUnit__7CPickupFUi  # OVL2; s1:order (SOCOM 1's SetVisibleByUnit__7CPickupFUi word for word: units 2, 4 and 8 set bits 1, 2 and 3, any other ORed in -- the word at 0x1C, SOCOM 1's 0x18) (the SEAL lane, round 3)
 0x005416B0 0x10 GetVisibleByUnit__7CPickupFUi  # OVL2; s1:order (SOCOM 1's GetVisibleByUnit__7CPickupFUi: the unit's bits against m_visible_by_units, now at 0x1C) (the SEAL lane, round 3)
 0x005416C0 0x14 GetPickupNetEntityID__7CPickupFv  # OVL2; s1:order (SOCOM 1's GetPickupNetEntityID__7CPickupFv returned m_id; SOCOM II's puts the owner word at 0x10 over it -- FindPickup compares an id with the same expression, inlined) (the SEAL lane, round 3)
@@ -10060,7 +10060,7 @@
 0x00553E20 0x3C OnMissionEnd__10CZSealBodyFv  # OVL2; slot 0x50 of __vt__10CZSealBody: m_control's OnMissionEnd (slot 0x60) after a call with m_id, as SOCOM 1's (which called DestroyNetPickups(m_id) under a test); split off the 0x553E00 row
 0x00553E60 0x3C OnMissionStart__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00553EA0 0x119C __ct__10CZSealBodyFPQ23zdb5CNodeP14CCharacterType  # OVL2; s1:calls (Create and ReCreate call it after new(5344) where SOCOM 1's call __ct__10CZSealBodyFPQ23zdb5CNodeP14CCharacterType, with the node and the type; it builds the CBody at 0x170) -- the SEAL lane, round 4
-0x00555040 0x70 func_00555040  # OVL2
+0x00555040 0x70 __dt__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>Fv  # OVL2; ours (the SEAL lane, round 17: the destructor ~CObjAnims calls on FreeVector's temporary -- seal.cpp's copy, the first in OVL2's link order; the words any pointer vector's destructor has)
 0x005550B0 0x10 func_005550B0  # OVL2; tu: orders.cpp~ (1.0 beta)
 0x005550C0 0x8 func_005550C0  # OVL2
 0x005550D0 0x68 SealInitCharacterDynamics__Fv  # OVL2; s1:exact
@@ -10403,7 +10403,7 @@
 0x00578D20 0x264 func_00578D20  # OVL2
 0x00578F90 0x27C StabBuddy__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls (ExecuteAction_KnifeAttack calls it where SOCOM 1's does)
 0x00579210 0x8 func_00579210  # OVL2
-0x00579220 0x2AC func_00579220  # OVL2
+0x00579220 0x2AC DetachBody__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's DetachBody__10CZSealBodyFv, after StabBuddy and the 8-byte RestoreCameraPosition in both builds; BindAnimSet calls it on the SEAL and on the carried body where SOCOM 1's BindAnimSet calls DetachBody, as DropBody does)
 0x005794D0 0x244 func_005794D0  # OVL2
 0x00579720 0x30C func_00579720  # OVL2
 0x00579A30 0x370 func_00579A30  # OVL2
@@ -10521,30 +10521,30 @@
 0x0058A820 0x98 GetSpeedState__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's GetSpeedState__10CZSealBodyFv, after GetStance in both builds: the same thresholds -- 0.5 and 20 units a second, squared in SOCOM II, which skips sqrtf -- giving 1, 2 or 3) -- the SEAL lane, round 12
 0x0058A8C0 0x58 func_0058A8C0  # OVL2
 0x0058A920 0x28 func_0058A920  # OVL2
-0x0058A950 0x48 func_0058A950  # OVL2; the same words as Clear__21RTList<11ACTIVE_ANIM>Fv (0x28f320) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x0058A9A0 0x44 func_0058A9A0  # OVL2
-0x0058A9F0 0xB0 func_0058A9F0  # OVL2; the same words as __ct__21RTList<11ACTIVE_ANIM>FUi (0x290290) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x0058AAA0 0x14 func_0058AAA0  # OVL2
-0x0058AAC0 0x68 func_0058AAC0  # OVL2
-0x0058AB30 0x114 func_0058AB30  # OVL2
-0x0058AC50 0x40 func_0058AC50  # OVL2
-0x0058AC90 0x8 func_0058AC90  # OVL2
-0x0058ACA0 0x14 func_0058ACA0  # OVL2
+0x0058A950 0x48 func_0058A950  # OVL2; the same words as Clear__21RTList<11ACTIVE_ANIM>Fv (0x28f320) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: Clear__21RTList<11ACTIVE_ANIM>Fv (the SEAL lane, round 17: BlendedClimb clears newanims with it, as SOCOM 1's calls Clear__21RTList<11ACTIVE_ANIM>Fv -- seal_body.cpp's tail emits the instance; the round-16 stand-in retired)
+0x0058A9A0 0x44 func_0058A9A0  # OVL2; ovl-copy: __dt__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv (the SEAL lane, round 17: the element destructor the constructor's copy 0x58A9F0 and ~CActiveAnimList's 0x58AAC0 hand to the array calls; seal_body.cpp's tail)
+0x0058A9F0 0xB0 func_0058A9F0  # OVL2; the same words as __ct__21RTList<11ACTIVE_ANIM>FUi (0x290290) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: __ct__21RTList<11ACTIVE_ANIM>FUi (the SEAL lane, round 17: __sinit_seal_body.cpp builds newanims through it, as SOCOM 1's; seal_body.cpp's tail)
+0x0058AAA0 0x14 func_0058AAA0  # OVL2; ovl-copy: __ct__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv (the SEAL lane, round 17: the element constructor 0x58A9F0 hands to __construct_new_array; seal_body.cpp's tail)
+0x0058AAC0 0x68 func_0058AAC0  # OVL2; ovl-copy: __dt__15CActiveAnimListFv (the SEAL lane, round 17: the destructor __sinit_seal_body.cpp registers for newanims, as SOCOM 1's registers __dt__15CActiveAnimListFv; OVL2's copy inlines ~RTList -- one this-test more -- where OVL1's 0x28FC70 calls it)
+0x0058AB30 0x114 __dt__9CObjAnimsFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's __dt__9CObjAnimsFv, the first of seal_cfg.cpp in both builds: each part deleted, then FreeVector's temporary, clear, swap and destructor; ~CZSealBody calls it on the member at 0x37C, SOCOM 1's m_obj_anims at 0x30C)
+0x0058AC50 0x40 swap__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>FRQ23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>  # OVL2; ours (the SEAL lane, round 17: FreeVector's swap in ~CObjAnims, out of line; seal_cfg.cpp's tail)
+0x0058AC90 0x8 clear__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>Fv  # OVL2; ours (the SEAL lane, round 17: FreeVector's clear in ~CObjAnims, out of line; seal_cfg.cpp's tail)
+0x0058ACA0 0x14 __ct__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>Fv  # OVL2; ours (the SEAL lane, round 17: FreeVector's temporary in ~CObjAnims 0x58AB30, called out of line -- the instance seal_cfg.cpp's tail emits after it; CObjAnims holds a vector<CObjAnim *>, the element's name ours)
 0x0058ACC0 0x380 func_0058ACC0  # OVL2
 0x0058B040 0xA4 SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear  # OVL2; s1:calls by hand (SOCOM 1's SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear: the part placed at the gear's offset (0x1C) and turned by QFromRot of its rotation (0x28), Orient when it has a node, then the body's entry for its id cleared -- SOCOM II adds the null tests and calls CBody::SetBodyPart(id, 0); seal_cfg.cpp, SOCOM 1's unit's first)
-0x0058B0F0 0xAC func_0058B0F0  # OVL2
+0x0058B0F0 0xAC SetupGear__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's SetupGear__10CZSealBodyFv, right after SetPartAsGear in both builds: FindGear of "rifle" and "pistol" stored as SOCOM 1's, SOCOM II adding "launcher" and its part to CObjAnims' list; PostCreateSeal calls it as SOCOM 1's does)
 0x0058B1A0 0x484 func_0058B1A0  # OVL2
-0x0058B630 0x160 func_0058B630  # OVL2
-0x0058B790 0x1CC func_0058B790  # OVL2
-0x0058B960 0x148 func_0058B960  # OVL2
+0x0058B630 0x160 AddItem__10CZSealBodyFPCc  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's AddItem__10CZSealBodyFPCc, after SetupGear's neighbour SetupEyes in both builds: NewBodyPart(0, 0), AttachAuxPart, the name's id, an 8-byte item of the part and no gear pushed on CObjAnims' list -- as SOCOM 1's, the id 0x58CA60's inlined)
+0x0058B790 0x1CC AddItem__10CZSealBodyFP14CCharacterGear  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's AddItem__10CZSealBodyFP14CCharacterGear, right after the other: CreateInstance of the gear's name, AttachAuxNode with the gear's offset and rotation, SetName, the part and the gear pushed)
+0x0058B960 0x148 AddDIPolys__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's AddDIPolys__10CZSealBodyFv, after the two AddItems in both builds: ResolveMaterialIndex of "PERSON" -- SOCOM II's 0x2DE9E0 --, each body part's node given SetDIBBox and SetMaterial; SOCOM II skips the last four object slots by id and caps m_spinehi's box)
 0x0058BAB0 0x98 func_0058BAB0  # OVL2
 0x0058BB50 0xA8 GetMaxXMotion__10CZSealBodyFRfRf  # OVL2; s1:calls (GetSpeedFromThrottle and GetThrottleFromSpeed call it from SOCOM 1's places, with two float slots)
 0x0058BC00 0xA8 GetMaxZMotion__10CZSealBodyFRfRf  # OVL2; s1:calls (GetSpeedFromThrottle and GetThrottleFromSpeed call it from SOCOM 1's places, with two float slots)
-0x0058BCB0 0x13C func_0058BCB0  # OVL2
+0x0058BCB0 0x13C SetMaxMotion__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's SetMaxMotion__10CZSealBodyFv, right after GetMaxZMotion in both builds: the anim set's own SetMaxMotion first, then anim 27's speed into the prone forward and back, ProneRStrafe's and ProneLStrafe's -- the same AnimTypes SOCOM 1's loads -- and anim 45's into the ladder, 0 without the anim)
 0x0058BDF0 0x4C0 func_0058BDF0  # OVL2
 0x0058C2B0 0x38 func_0058C2B0  # OVL2
 0x0058C2F0 0x60 func_0058C2F0  # OVL2
-0x0058C350 0x14C func_0058C350  # OVL2
+0x0058C350 0x14C BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's BindAnimSet__10CZSealBodyFP7AnimSet, after RefPoint in both builds -- SOCOM II adds the type, the state and a force flag: the carry tests, the two ClearToBase calls and DetachBody in SOCOM 1's order, then ClearBlendOverlay, ClearStack and the set swapped in)
 0x0058C4A0 0x10 func_0058C4A0  # OVL2
 0x0058C4B0 0x11C func_0058C4B0  # OVL2
 0x0058C5D0 0x28 func_0058C5D0  # OVL2
@@ -12566,8 +12566,8 @@
 0x00634958 0x18 rt_msg_client_iudp_set_default_options  # OVL2 unaligned; s1:exact; s1:order by hand, the gcc lane round 7b (was s1:exact rt_comm_set_default_options: SOCOM 1's six-instruction rt_comm body met again): between iset_default_connect_options and idisplay_comm_state as in SOCOM 1's object, the internal of the udp wrapper 0x6335E8; it clears the one-word UDP options whose word rt_msg_client's enable-UDP internal 0x633960 keeps as its callback
 0x00634970 0x38 rt_msg_client_idisplay_comm_state  # OVL2; s1:exact
 0x006349A8 0x5C func_006349A8  # OVL2 unaligned
-0x00634A08 0xCC func_00634A08  # OVL2 unaligned
-0x00634AD8 0x170 func_00634AD8  # OVL2 unaligned
+0x00634A08 0xCC rt_msg_client_update_single  # OVL2 unaligned; s1:calls (the gcc lane, round 16b): SOCOM 1's update_single's callees in order (get_valid_connection, update_connection, is_wait_state, change_state; the connection-gone check added), the only callee of 0x634078 as update_single is of SOCOM 1's iupdate
+0x00634AD8 0x170 rt_msg_client_update_connection  # OVL2 unaligned; s1:calls (the gcc lane, round 16b): update_single calls it where SOCOM 1's calls update_connection; the body rewritten (the connect step, each channel's send then receive side, a 30 s receive timeout)
 0x00634C48 0x190 func_00634C48  # OVL2 unaligned
 0x00634DD8 0x29C func_00634DD8  # OVL2 unaligned
 0x00635078 0xD4 func_00635078  # OVL2 unaligned
@@ -12590,7 +12590,7 @@
 0x00636040 0x1C8 rt_msg_client_store_msg_in_send_buf  # OVL2; s1:align
 0x00636208 0xE8 rt_msg_client_create_send_buf_space  # OVL2 unaligned; s1:align
 0x006362F0 0x1CC rt_msg_client_process_recv_buf  # OVL2; s1:align
-0x006364C0 0x390 func_006364C0  # OVL2
+0x006364C0 0x390 rt_msg_client_process_message  # OVL2; s1:order+calls (the gcc lane, round 16b): between process_recv_buf and process_connect_result as SOCOM 1's (0x40F9B0), process_recv_buf calls it where SOCOM 1's does, the same head (the cipher word, the target word left clear) and its switch grown from 2-20 to 2-30
 0x00636850 0x2E0 rt_msg_client_process_connect_result  # OVL2; s1:align
 0x00636B30 0x228 func_00636B30  # OVL2
 0x00636D58 0x10C func_00636D58  # OVL2 unaligned
@@ -12605,8 +12605,8 @@
 0x006379B0 0x90 rt_msg_client_set_header  # OVL2; s1:exact
 0x00637A40 0x90 rt_msg_client_get_header  # OVL2; s1:exact
 0x00637AD0 0xEC rt_msg_client_send_buffer  # OVL2; s1:align
-0x00637BC0 0x18C rt_msg_client_recv_circ_buf  # OVL2; s1:align
-0x00637D50 0x218 func_00637D50  # OVL2
+0x00637BC0 0x18C rt_msg_client_send_circ_buf  # OVL2; s1:align; s1:calls+body (the gcc lane, round 16b; was rt_msg_client_recv_circ_buf, s1:align): SOCOM 1's send_circ_buf's callees in order (the used span sent, freed, re-measured; rt_comm_send's place taken by 0x6385F0), and create_send_buf_space calls it at the point SOCOM 1's calls send_circ_buf
+0x00637D50 0x218 rt_msg_client_recv_circ_buf  # OVL2; s1:calls+body (the gcc lane, round 16b): SOCOM 1's recv_circ_buf's callees exactly (normalize, avail, start, rt_comm_receive, time, use, avail), grown by the datagram channel's rt_comm_receive_from
 0x00637F68 0xB8 rt_msg_client_is_valid_outgoing_msg  # OVL2 unaligned; s1:align
 0x00638020 0x24 rt_msg_client_change_state  # OVL2; s1:align
 0x00638048 0x68 rt_msg_client_is_wait_state  # OVL2 unaligned; s1:align
@@ -12614,7 +12614,7 @@
 0x006380C0 0xB4 func_006380C0  # OVL2
 0x00638178 0x8C func_00638178  # OVL2 unaligned
 0x00638208 0x8C rt_msg_client_set_scratch_buf_min_size  # OVL2 unaligned; s1:exact
-0x00638298 0x268 func_00638298  # OVL2 unaligned
+0x00638298 0x268 rt_msg_client_tcp_aggregate_msg  # OVL2 unaligned; s1:order+calls (the gcc lane, round 16b): SOCOM 1's object ends with it after set_scratch_buf_min_size as this one does, and store_msg_in_send_buf calls it twice as SOCOM 1's does; its body reworked (the channel only, the key word from 0x6386F8)
 0x00638500 0xF0 func_00638500  # OVL2
 0x006385F0 0x108 func_006385F0  # OVL2
 0x006386F8 0x44 func_006386F8  # OVL2 unaligned
@@ -13360,7 +13360,7 @@
 0x00668710 0xB4 func_00668710  # OVL2 data area; a static initialiser
 0x006687D0 0x8 func_006687D0  # OVL2 data area; a static initialiser
 0x006687E0 0x158 func_006687E0  # OVL2 data area; a static initialiser
-0x00668940 0x29C func_00668940  # OVL2 data area; a static initialiser
+0x00668940 0x29C __sinit_seal_body.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (the SEAL lane, round 17: SOCOM 1's __sinit_seal_body.cpp builds newanims through the RTList constructor, registers ~CActiveAnimList and stores the ten throw offsets' same values; SOCOM II adds three offsets first and drops the CSTable)
 0x00668BE0 0x30 func_00668BE0  # OVL2 data area; a static initialiser; s1~ node_util.cpp (names 0.53); the same words as __sinit_node_util.cpp (0x402960) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00668C10 0x194 func_00668C10  # OVL2 data area; a static initialiser; s1~ seal_control.cpp (shape 0.20, a hint)
 0x00668DB0 0x94 __sinit_seal_kit.cpp  # OVL2 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.49, a hint); a static initialiser: seal_kit.cpp's (the kit lane's round 11: the same construct-array call as SOCOM 1's initialiser -- the iostream init objects, the 30 saved fire modes at 0x66B580 through their constructor 0x5C9230, then two zeroed words)

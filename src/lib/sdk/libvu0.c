@@ -1,8 +1,13 @@
 /* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
 /* libvu0 (MAIN 0x1BFC00-0x1C0944): Sony's SDK VU0 macro-mode library, the demo's object 0x152218
- * (a C object: gcc2_compiled.), its functions inline asm in C as Sony shipped libvu0.c. The leaf
- * functions here; sceVu0RotMatrix, sceVu0CopyVectorXYZ and sceVu0LightColorMatrix stand as drafts,
- * CameraMatrix, NormalLightMatrix, ViewScreenMatrix and DropShadowMatrix (C around calls) are open.
+ * (a C object: gcc2_compiled.), its functions inline asm in C as Sony shipped libvu0.c -- the object
+ * whole, 42 of 42: the leaf functions (round 2a), and round 16a's RotMatrixZ/X/Y (asm that calls
+ * _sceVu0ecossin itself, ra kept in a2), RotMatrix (991111's void-context sibling call into
+ * RotMatrixX), the C around calls -- CameraMatrix, NormalLightMatrix, LightColorMatrix,
+ * ViewScreenMatrix (farz, the tenth argument, the ninth float, read from the caller's stack) --
+ * CopyVectorXYZ and DropShadowMatrix (the light point read into three locals first: through lp after
+ * the stores to m, which may alias it, every read is reloaded -- 0x1EC against 0x190; the elements
+ * stored column by column, as the target's schedule has them: row by row, 72 words off).
  *
  * The toolchain is the one build whose GNU as both fills the return's delay slot with the asm's last
  * instruction where the target has it (sceVu0CopyVector's `jr ra; sq`, sceVu0MulMatrix's loop
@@ -361,6 +366,147 @@ void _sceVu0ecossin(float t)
 	":  : "f" (t): "$7", "$8");
 }
 
+void sceVu0RotMatrixZ(sceVu0FMATRIX m0, sceVu0FMATRIX m1, float rz)
+{
+	asm __volatile__("
+	mtc1 $0,$f0
+	c.lt.s %2,$f0
+	li.s $f0,1.57079637050628662109e0
+	bc1f _RotMatrixZ_01
+	add.s %2,$f0,%2
+	li $7,1
+	j _RotMatrixZ_02
+_RotMatrixZ_01:
+	sub.s %2,$f0,%2
+	move $7,$0
+_RotMatrixZ_02:
+	mfc1 $8,%2
+	qmtc2 $8,vf6
+	move $6,$31
+	jal _sceVu0ecossin
+	move $31,$6
+	vmove.xyzw vf6xyzw,vf5xyzw
+	vmove.xyzw vf7xyzw,vf5xyzw
+	vmove.xyzw vf9xyzw,vf0xyzw
+	vsub.xyz vf9xyz,vf9xyz,vf9xyz
+	vmr32.xyzw vf8xyzw,vf9xyzw
+	vsub.zw vf4zw,vf4zw,vf4zw
+	vaddx.y vf6y,vf5y,vf4x
+	vaddy.x vf6x,vf5x,vf4y
+	vsubx.x vf7x,vf5x,vf4x
+	vaddy.y vf7y,vf5y,vf4y
+	li $7,4
+_RotMatrixZ_loop:
+	lqc2 vf4,0(%1)
+	vmulax.xyzw ACCxyzw,vf6xyzw,vf4x
+	vmadday.xyzw ACCxyzw,vf7xyzw,vf4y
+	vmaddaz.xyzw ACCxyzw,vf8xyzw,vf4z
+	vmaddw.xyzw vf5xyzw,vf9xyzw,vf4w
+	sqc2 vf5,0(%0)
+	addi $7,$7,-1
+	addi %1,%1,16
+	addi %0,%0,16
+	bne $0,$7,_RotMatrixZ_loop
+	": : "r" (m0), "r" (m1), "f" (rz) : "$6", "$7", "$8", "$f0");
+}
+
+void sceVu0RotMatrixX(sceVu0FMATRIX m0, sceVu0FMATRIX m1, float rx)
+{
+	asm __volatile__("
+	mtc1 $0,$f0
+	c.lt.s %2,$f0
+	li.s $f0,1.57079637050628662109e0
+	bc1f _RotMatrixX_01
+	add.s %2,$f0,%2
+	li $7,1
+	j _RotMatrixX_02
+_RotMatrixX_01:
+	sub.s %2,$f0,%2
+	move $7,$0
+_RotMatrixX_02:
+	mfc1 $8,%2
+	qmtc2 $8,vf6
+	move $6,$31
+	jal _sceVu0ecossin
+	move $31,$6
+	vmove.xyzw vf6xyzw,vf5xyzw
+	vmove.xyzw vf7xyzw,vf5xyzw
+	vmove.xyzw vf8xyzw,vf5xyzw
+	vmove.xyzw vf9xyzw,vf5xyzw
+	vaddw.x vf6x,vf5x,vf0w
+	vaddw.w vf9w,vf5w,vf0w
+	vsub.zw vf4zw,vf4zw,vf4zw
+	vaddx.z vf7z,vf5z,vf4x
+	vaddy.y vf7y,vf5y,vf4y
+	vsubx.y vf8y,vf5y,vf4x
+	vaddy.z vf8z,vf5z,vf4y
+	li $7,4
+_RotMatrixX_loop:
+	lqc2 vf4,0(%1)
+	vmulax.xyzw ACCxyzw,vf6xyzw,vf4x
+	vmadday.xyzw ACCxyzw,vf7xyzw,vf4y
+	vmaddaz.xyzw ACCxyzw,vf8xyzw,vf4z
+	vmaddw.xyzw vf5xyzw,vf9xyzw,vf4w
+	sqc2 vf5,0(%0)
+	addi $7,$7,-1
+	addi %1,%1,16
+	addi %0,%0,16
+	bne $0,$7,_RotMatrixX_loop
+	": : "r" (m0), "r" (m1), "f" (rx) : "$6", "$7", "$8", "$f0");
+}
+
+void sceVu0RotMatrixY(sceVu0FMATRIX m0, sceVu0FMATRIX m1, float ry)
+{
+	asm __volatile__("
+	mtc1 $0,$f0
+	c.lt.s %2,$f0
+	li.s $f0,1.57079637050628662109e0
+	bc1f _RotMatrixY_01
+	add.s %2,$f0,%2
+	li $7,1
+	j _RotMatrixY_02
+_RotMatrixY_01:
+	sub.s %2,$f0,%2
+	move $7,$0
+_RotMatrixY_02:
+	mfc1 $8,%2
+	qmtc2 $8,vf6
+	move $6,$31
+	jal _sceVu0ecossin
+	move $31,$6
+	vmove.xyzw vf6xyzw,vf5xyzw
+	vmove.xyzw vf7xyzw,vf5xyzw
+	vmove.xyzw vf8xyzw,vf5xyzw
+	vmove.xyzw vf9xyzw,vf5xyzw
+	vaddw.y vf7y,vf5y,vf0w
+	vaddw.w vf9w,vf5w,vf0w
+	vsub.zw vf4zw,vf4zw,vf4zw
+	vsubx.z vf6z,vf5z,vf4x
+	vaddy.x vf6x,vf5x,vf4y
+	vaddx.x vf8x,vf5x,vf4x
+	vaddy.z vf8z,vf5z,vf4y
+	li $7,4
+_RotMatrixY_loop:
+	lqc2 vf4,0(%1)
+	vmulax.xyzw ACCxyzw,vf6xyzw,vf4x
+	vmadday.xyzw ACCxyzw,vf7xyzw,vf4y
+	vmaddaz.xyzw ACCxyzw,vf8xyzw,vf4z
+	vmaddw.xyzw vf5xyzw,vf9xyzw,vf4w
+	sqc2 vf5,0(%0)
+	addi $7,$7,-1
+	addi %1,%1,16
+	addi %0,%0,16
+	bne $0,$7,_RotMatrixY_loop
+	": : "r" (m0), "r" (m1), "f" (ry) : "$6", "$7", "$8", "$f0");
+}
+
+void sceVu0RotMatrix(sceVu0FMATRIX m0, sceVu0FMATRIX m1, sceVu0FVECTOR rot)
+{
+	sceVu0RotMatrixZ(m0, m1, rot[2]);
+	sceVu0RotMatrixY(m0, m0, rot[1]);
+	sceVu0RotMatrixX(m0, m0, rot[0]);
+}
+
 void sceVu0ClampVector(sceVu0FVECTOR v0, sceVu0FVECTOR v1, float min, float max)
 {
 	asm __volatile__("
@@ -373,6 +519,121 @@ void sceVu0ClampVector(sceVu0FVECTOR v0, sceVu0FVECTOR v1, float min, float max)
 	vminix.xyzw vf6xyzw,vf6xyzw,vf5x
 	sqc2 vf6,0(%0)
 	":  : "r" (v0), "r" (v1), "f" (min), "f" (max): "$8", "$9");
+}
+
+void sceVu0CameraMatrix(sceVu0FMATRIX m, sceVu0FVECTOR p, sceVu0FVECTOR zd, sceVu0FVECTOR yd)
+{
+	sceVu0FMATRIX m0;
+	sceVu0FVECTOR xd;
+
+	sceVu0UnitMatrix(m0);
+	sceVu0OuterProduct(xd, yd, zd);
+	sceVu0Normalize(m0[0], xd);
+	sceVu0Normalize(m0[2], zd);
+	sceVu0OuterProduct(m0[1], m0[2], m0[0]);
+	sceVu0TransMatrix(m0, m0, p);
+	sceVu0InversMatrix(m, m0);
+}
+
+void sceVu0NormalLightMatrix(sceVu0FMATRIX m, sceVu0FVECTOR l0, sceVu0FVECTOR l1, sceVu0FVECTOR l2)
+{
+	float mul;
+	sceVu0FVECTOR t;
+
+	mul = -1.0;
+	sceVu0ScaleVector(t, l0, mul);
+	sceVu0Normalize(m[0], t);
+	sceVu0ScaleVector(t, l1, mul);
+	sceVu0Normalize(m[1], t);
+	sceVu0ScaleVector(t, l2, mul);
+	sceVu0Normalize(m[2], t);
+
+	m[3][0] = m[3][1] = m[3][2] = 0.0f;
+	m[3][3] = 1.0f;
+
+	sceVu0TransposeMatrix(m, m);
+}
+
+void sceVu0LightColorMatrix(sceVu0FMATRIX m, sceVu0FVECTOR c0, sceVu0FVECTOR c1, sceVu0FVECTOR c2, sceVu0FVECTOR a)
+{
+	sceVu0CopyVector(m[0], c0);
+	sceVu0CopyVector(m[1], c1);
+	sceVu0CopyVector(m[2], c2);
+	sceVu0CopyVector(m[3], a);
+}
+
+void sceVu0ViewScreenMatrix(sceVu0FMATRIX m, float scrz, float ax, float ay, float cx, float cy,
+	float zmin, float zmax, float nearz, float farz)
+{
+	float az, cz;
+	sceVu0FMATRIX mt;
+
+	cz = (-zmax * nearz + zmin * farz) / (-nearz + farz);
+	az = farz * nearz * (-zmin + zmax) / (-nearz + farz);
+
+	sceVu0UnitMatrix(m);
+	m[0][0] = scrz;
+	m[1][1] = scrz;
+	m[2][2] = 0.0f;
+	m[3][3] = 0.0f;
+	m[3][2] = 1.0f;
+	m[2][3] = 1.0f;
+
+	sceVu0UnitMatrix(mt);
+	mt[0][0] = ax;
+	mt[1][1] = ay;
+	mt[2][2] = az;
+	mt[3][0] = cx;
+	mt[3][1] = cy;
+	mt[3][2] = cz;
+
+	sceVu0MulMatrix(m, mt, m);
+}
+
+void sceVu0DropShadowMatrix(sceVu0FMATRIX m, sceVu0FVECTOR lp, float a, float b, float c, int mode)
+{
+	if (mode) {
+		float x = lp[0], y = lp[1], z = lp[2];
+		float e = 1.0f - (a * x + b * y + c * z);
+
+		m[0][0] = a * x + e;
+		m[1][0] = b * x;
+		m[2][0] = c * x;
+		m[3][0] = -x;
+		m[0][1] = a * y;
+		m[1][1] = b * y + e;
+		m[2][1] = c * y;
+		m[3][1] = -y;
+		m[0][2] = a * z;
+		m[1][2] = b * z;
+		m[2][2] = c * z + e;
+		m[3][2] = -z;
+		m[0][3] = a;
+		m[1][3] = b;
+		m[2][3] = c;
+		m[3][3] = e - 1.0f;
+	} else {
+		float x = lp[0], y = lp[1], z = lp[2];
+		float d = a * x + b * y + c * z;
+		float e = -1.0f / d;
+
+		m[0][0] = e * (a * x - d);
+		m[1][0] = e * (b * x);
+		m[2][0] = e * (c * x);
+		m[3][0] = e * -x;
+		m[0][1] = e * (a * y);
+		m[1][1] = e * (b * y - d);
+		m[2][1] = e * (c * y);
+		m[3][1] = e * -y;
+		m[0][2] = e * (a * z);
+		m[1][2] = e * (b * z);
+		m[2][2] = e * (c * z - d);
+		m[3][2] = e * -z;
+		m[0][3] = 0.0f;
+		m[1][3] = 0.0f;
+		m[2][3] = 0.0f;
+		m[3][3] = e * -d;
+	}
 }
 
 void sceVu0RotTransPersN(sceVu0IVECTOR *v0, sceVu0FMATRIX m0, sceVu0FVECTOR *v1, int n, int mode)
@@ -424,6 +685,13 @@ void sceVu0RotTransPers(sceVu0IVECTOR v0, sceVu0FMATRIX m0, sceVu0FVECTOR v1, in
 	_sceVu0RotTransPers_0:
 	sqc2 vf10,0(%0)
 	":  : "r" (v0), "r" (m0), "r" (v1), "r" (mode));
+}
+
+void sceVu0CopyVectorXYZ(sceVu0FVECTOR v0, sceVu0FVECTOR v1)
+{
+	v0[0] = v1[0];
+	v0[1] = v1[1];
+	v0[2] = v1[2];
 }
 
 void sceVu0InterVectorXYZ(sceVu0FVECTOR v0, sceVu0FVECTOR v1, sceVu0FVECTOR v2, float r)

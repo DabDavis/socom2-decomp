@@ -637,6 +637,8 @@ public:
     virtual bool StartEngine();
     virtual void StopEngine();
     virtual void Tick(float dT);
+    /* the state stack's pop and switch (SOCOM 1's CGame::Pop and Switch, zgame.h's return types; the
+     * states' units and st_mpexit.cpp call them as members) */
     CGameState *Pop(unsigned int arg);   /* 0x2CF2F0 */
     CGameState *Switch(CGameState *state, unsigned int arg);   /* 0x2CF410 */
 
@@ -673,13 +675,6 @@ public:
     CShutdownState m_shutdownState;   // 0x298 (the names ours)
     CRebootState m_rebootState;   // 0x2a0
 };
-
-/* the game's state stack under its placeholders, for st_mpexit.cpp (the HUD lane's: CGame's Pop and
- * Switch above are the same rows) */
-extern "C" {
-void func_002CF2F0(COurGame *game, unsigned int arg);                      /* CGame::Pop */
-void func_002CF410(COurGame *game, void *state, unsigned int arg);         /* CGame::Switch */
-}
 
 /* the mission: only what the states touch */
 class CZNetGame;

@@ -107,6 +107,36 @@ def tu_options(src: Path) -> dict[str, str]:
     return opts
 
 
+# What a directive may say (`c++` is automatch's bare marker, read by its --emit). A directive the
+# tools cannot read used to be ignored without a word, the unit built under the defaults: one past
+# the third line, a key no tool reads (`compilr=`), a toolchain toolchains/ does not hold (that one
+# raised a traceback, sccheck's whole run with it). The kit lane's round 18 could not tell whether a
+# `compiler=` line without `flags=` took effect (it does, in sccheck, scdiff and try.py alike: their
+# README's GCC-front round 16a); now a directive either takes effect or the unit does not build.
+DIRECTIVE_KEYS = ("compiler", "flags", "as", "overlay")
+_DIRECTIVE_LINE = re.compile(r"^\s*(?:/\*|//|#)\s*sc:")
+
+
+def directive_problem(src: Path) -> str:
+    """Why `src`'s directives would not do what they say ("" when they would)."""
+    lines = src.read_text(errors="replace").splitlines()
+    for i, line in enumerate(lines[3:], 4):
+        if _DIRECTIVE_LINE.match(line):
+            return f"{src.name}:{i}: an `sc:` directive past the third line is never read: {line.strip()[:80]}"
+    for line in lines[:3]:
+        m = _DIRECTIVE.search(line)
+        if not m:
+            continue
+        for part in m.group(1).split(";"):
+            k = part.split("=", 1)[0].strip()
+            if "=" in part and k not in DIRECTIVE_KEYS:
+                return f"{src.name}: unknown `sc:` key {k!r} (one of {', '.join(DIRECTIVE_KEYS)})"
+    cc = tu_options(src).get("compiler")
+    if cc is not None and not (D.TOOLCHAINS / cc).is_dir():
+        return f"{src.name}: sc: compiler={cc}: no such toolchain in {D.TOOLCHAINS}"
+    return ""
+
+
 def rename_symbol(obj: Path, old: str, new: str) -> None:
     """A generated draft defines its row's placeholder when the map's name is no C identifier
     (a template instance); the object then carries the map's name, as the original's did."""
@@ -119,6 +149,9 @@ def build_one(src: Path, build: Path = BUILD, root: Path = SRC) -> tuple[Path, P
     is the tree it lies in: src/, or tools/try.py's scratch copy of it."""
     obj = object_path(src, build, root)
     opts = tu_options(src)
+    bad = directive_problem(src)
+    if bad:
+        return src, None, bad
     if opts.get("overlay", "MAIN") not in OVERLAY_HOME:
         return src, None, f"unknown overlay={opts['overlay']} (one of {', '.join(OVERLAY_HOME)})"
     try:

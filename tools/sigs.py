@@ -25,6 +25,7 @@ quadword, a member pointer) makes the whole prototype unknown, and m2c guesses a
 
 from __future__ import annotations
 
+import os
 import re
 import struct
 import sys
@@ -141,6 +142,34 @@ class Live:
         self.img, self.st = img, st
         self.memo: dict[int, tuple[frozenset, frozenset]] = {}
         self.busy: set[int] = set()
+
+    def stack_params(self, addr: int) -> list[str]:
+        """The parameters the function reads past the argument registers, slot by slot (`s32`, or
+        `f32` for a slot it loads into an FPR): the EABI passes them in the caller's outgoing area, 8
+        bytes a slot from its sp -- read here at the frame's size and up (sceSifCallRpc's ninth, its
+        end_param: `lw v0,192(sp)` under a 192-byte frame; sceVu0ViewScreenMatrix's farz, the ninth
+        float, `lwc1`). The reads before the first `jr ra`, against the first `addiu sp,sp,-F` (GCC
+        round 16a: the eight-register cap read every SDK RPC wrapper's call as too many arguments)."""
+        sym = self.st.at_addr(addr)
+        if sym is None or not self.img.is_code(addr):
+            return []
+        n = min(sym.size, 0x2000) // 4
+        ws = struct.unpack(f"<{n}I", self.img.read(sym.addr, n * 4))
+        frame, slots = 0, {}
+        for w in ws:
+            op, rs, rt, imm = w >> 26, (w >> 21) & 31, (w >> 16) & 31, w & 0xFFFF
+            if op in (0x08, 0x09) and rs == 29 and rt == 29:     # addiu sp,sp,-F (the first only)
+                if imm & 0x8000 and frame == 0:
+                    frame = 0x10000 - imm
+                continue
+            if w == 0x03E00008:                                  # jr ra
+                break
+            if rs == 29 and op in (0x20, 0x21, 0x23, 0x24, 0x25, 0x27, 0x37, 0x31, 0x35, 0x1A, 0x1B):
+                off = imm - 0x10000 if imm & 0x8000 else imm
+                if off >= frame:
+                    k = (off - frame) // 8
+                    slots[k] = "f32" if op == 0x31 else slots.get(k, "s32")
+        return [slots.get(k, "s32") for k in range(max(slots) + 1)] if slots else []
 
     def args(self, addr: int) -> tuple[frozenset, frozenset]:
         if addr in self.memo:
@@ -385,7 +414,12 @@ def prototype(addr: int, name: str, live: Live, c_names: bool = False) -> list[s
         return None
     ni = max((ARG_GPRS.index(r) + 1 for r in g), default=0)
     nf = max((ARG_FPRS.index(r) + 1 for r in f), default=0)
-    return ["s32"] * ni + ["f32"] * nf
+    stack = live.stack_params(addr) if os.environ.get("SC_AM_STACK_PARAMS", "1") != "0" else []
+    if "s32" in stack:
+        ni = len(ARG_GPRS)               # an int past the registers: every register one is a parameter
+    if "f32" in stack:
+        nf = len(ARG_FPRS)
+    return ["s32"] * ni + ["f32"] * nf + stack     # the overflow last, in its slots' order
 
 
 def main(argv=None) -> int:

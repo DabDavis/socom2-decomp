@@ -12,9 +12,6 @@ extern "C" int rand(void);
 extern "C" {
 extern bool data_00650698;   /* the rumble switch (SOCOM 1's file static) */
 extern float data_006505E8;  /* (the weapon's raise time a closed menu restarts) */
-/* ai::quadratic (SOCOM 1's quadratic__2aiFfffRfRf, an earlier unit's): the roots of a x^2 + b x
- * + c, false when there are none */
-bool func_0050DE20(float a, float b, float c, float &r0, float &r1);
 /* a team's squad (SOCOM 1's CSealUnit::GetUnitByTeam, by its use; OVL2 0x5EF2F0) */
 CSealUnit *func_005EF2F0(unsigned int team);
 extern CNetGameState *data_00437CE8;
@@ -286,7 +283,7 @@ float CDynGrenade::ComputeTimeToImpact(float scale, float b, float c)
 {
     float t0, t1;
 
-    return scale * (func_0050DE20(-49.0f, b, c, t0, t1) ? ai::_max(t0, t1) : 0.0f);
+    return scale * (ai::quadratic(-49.0f, b, c, t0, t1) ? ai::_max(t0, t1) : 0.0f);
 }
 
 /* (OVL2 0x598220) */

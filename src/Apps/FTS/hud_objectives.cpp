@@ -28,9 +28,11 @@ public:
 };
 }
 
-/* the sound system's tick (its static PostTick, SOCOM 1's CSnd::PostTick(float, void *); no row
- * named yet) */
-extern "C" void func_00341A60(float dT, void *data);
+/* the sound system's tick (its static PostTick, SOCOM 1's CSnd::PostTick(float, void *)) */
+class CSnd {
+public:
+    static void PostTick(float dT, void *data);
+};
 
 /* how fast the selected name pulses (data 0x3DC460: a variable, read with lwc1) */
 static float s_pulserate = 1000.0f;
@@ -51,8 +53,6 @@ extern C2DBitmap data_00409930;
 extern C2DBitmap data_00409A70;
 /* the map frame's alpha (data 0x3DC440: a variable, read with lwc1) */
 static float s_frametrans = 128.0f;
-/* a string placed by its position and centring (no row named yet) */
-extern "C" void func_00362B70(C2DString *s);
 /* the strings RefreshStatics sets up (OVL1 bss 0x4096B0-0x409E8F, statics of this unit's, no rows
  * yet: called directly, as globals are) */
 extern C2DString data_004096B0;
@@ -71,12 +71,12 @@ class CMission {
 public:
     unsigned char _0[0x1854];
     std::list<CMissionObjectiveCam *> m_objectives;   // 0x1854
+
+    /* the mission's objectives ticked (SOCOM 1's CMission::TickObjectives(float)) */
+    void TickObjectives(float dT);
 };
 
 extern CMission theMission;
-
-/* the mission's objectives ticked (SOCOM 1's CMission::TickObjectives(float); no row named yet) */
-extern "C" void func_002A9F30(CMission *mission, float dT);
 
 /* MSL's vector<bool> as the list's code shows it: the implicit destructor deletes its words (one
  * level), and an element read calls test_bit, out of line in the unit's tail (0x207F60, as SOCOM
@@ -161,7 +161,7 @@ public:
     void UpdateSelection()
     {
         m_cur_selected_objective = GetCurrentObjective();
-        func_002A9F30(&theMission, 1000.0f);
+        theMission.TickObjectives(1000.0f);
     }
     void SelectPreviousObjective();
     void SelectNextObjective();
@@ -232,7 +232,7 @@ void CZObjectiveList::Tick(float dT)
 
     if (theHUD->m_missioncams.IsPlaying())
         return;
-    func_00341A60(0.0f, 0);
+    CSnd::PostTick(0.0f, 0);
     int newindex;
 
     if (ResolveIndex(m_selected_objective, &newindex)) {
@@ -460,7 +460,7 @@ void CZObjectiveList::RefreshStatics()
     data_004096B0.Load(1.5f, "TACTICAL MAP", theHUD->m_myfont, 430.0f, 48.0f, true);
     push_back(&data_004096B0);
     data_004096B0.m_isCentered = 1;
-    func_00362B70(&data_004096B0);
+    data_004096B0.UpdatePos();
     data_00409760.Load(10.0f, 84.0f, 224.0f, 365.0f, tex);
     data_00409760.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
     data_00409760.SetTrans(72.0f);
@@ -478,7 +478,7 @@ void CZObjectiveList::RefreshStatics()
     data_004099C0.Load(1.5f, "OBJECTIVES", theHUD->m_myfont, 117.0f, 48.0f, true);
     push_back(&data_004099C0);
     data_004099C0.m_isCentered = 1;
-    func_00362B70(&data_004099C0);
+    data_004099C0.UpdatePos();
     data_00409A70.Load(10.0f, 370.0f, 630.0f, 434.0f, tex);
     push_back(&data_00409A70);
     data_00409A70.SetUV(0.3f, 0.3f, 0.4f, 0.4f);

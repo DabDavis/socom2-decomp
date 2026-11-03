@@ -1842,6 +1842,65 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 17** (seal_body.cpp's initialiser, seal_cfg.cpp's gear, CanPitch):
+  - __sinit_seal_body.cpp 0x668940 needs the unit's statics defined in BUILD ORDER: three offsets new in SOCOM II,
+    newanims (a CActiveAnimList of 8 -- SOCOM 1 had 12), then SOCOM 1's ten throw offsets; the tail's RTList<ACTIVE_ANIM>
+    pieces are OVL2 copies (`ovl-copy:` marks), and OVL2's ~CActiveAnimList 0x58AAC0 inlines ~RTList where OVL1's copy
+    calls it -- an implicit derived destructor in a unit's tail inlines the out-of-class base destructor (one more
+    this-test) where another unit's copy calls it;
+  - seal_body.cpp ends with ~CActiveAnimList at 0x58AAC0 and seal_cfg.cpp begins with ~CObjAnims at 0x58AB30, as in
+    SOCOM 1; CZSealBody's CObjAnims at 0x37C is SOCOM 1's m_obj_anims (a vector<CObjAnim *>, the element's name ours);
+    AnimTypes is a class of static shorts 8 bytes apart in SOCOM 1's order, one inserted between ClimbMedium and
+    ProneRStrafe;
+  - `new T(a, b)` inside an inline member evaluates the constructor's arguments before operator new and keeps them in
+    saved registers -- written in place, MW loads them after the allocation's null test (SetupGear); a bounds-tested
+    pick matches as if/else assignments, the ternary lays its blocks out differently (AddItem); a reference local
+    declared before a call's result local is computed ahead of the call and takes the higher saved register;
+  - a float member multiplied by a call's result stays in $f20 across the call only when read through a by-value
+    inline accessor written on the right of the product (SetMaxMotion); 0x541510 is GetBBox's OVL2 copy (all seven OVL2
+    callers reach it from a one-level-inlined GetBBox: marked at integration, which made AddDIPolys 0x58B960
+    byte-exact);
+  - open: SetMaxMotion 0x58BCB0 (4: in the two strafe lookups the target loads the AnimTypes value before the anim set;
+    six spellings), CanInterrupt 0x587C20 (0x1CC vs 0x1DC: the `move v0,zero` in another delay slot, the loop's arms
+    assigning a bool differently, two saved registers swapped).
+- **Tells from the HUD, round 24** (hud_main.cpp on the real C2DFont, zui_2d.cpp's controls, CTCM's constructor, the
+  placeholders respelled):
+  - on c2dfont.h's real C2DFont (a std::map<unsigned short, C2DGlyph>) hud_main.cpp emits the glyph tree's destroy
+    0x1FE760 byte-exact and seven template rows 0x1FE9E0-0x1FEC50 under their names, and ReleaseHUD and ~CHUD still
+    match at level 5 -- a tree tail matches as soon as its callee rows carry the emitted names;
+  - inside an inline member, `const T *item = this;` keeps the object's address in a saved register across a call (the
+    first read folded into the caller's offset); through `this`, an inline's reference or pointer parameter or a
+    reference local MW folds every access (CCheckBox::HandlePad); `x *= k; f(x);` keeps the product in the argument
+    register, `f(x * k)` computes it into a new one (C2DVisual::Render);
+  - overriding an inline virtual (C2DButton::Tick) can stop a unit emitting the base's inline copy (C3StateButton::Tick
+    0x37C600) when only derived tables used it; defining the base's destructor -- its key function -- brings the
+    base's table and the copy back (~C3StateButton 0x377A30);
+  - all 45 named placeholders in the HUD's 16 files respelled (build/scratch/integ/placeholders.py lists none there);
+    hud_main.cpp's CHudNetState stand-in is theTCM through hud_tcm.h and its m_messages4 the chat line, a CMsgEditor;
+    CTCM() 0x237390 (the mode 4 through CTCMMode's inline constructor, six polys, a 0.3 file static in the 8-byte
+    float pool 0x3DCB00-0x3DCB3C) names the tree unit's CTCMNode() 0x232660, ~CTCMNode 0x232490 (a written destructor:
+    the implicit copy came out 0x148 against 0x1D0) and CTCMSounds() 0x2329D0;
+  - open: CHandlerButton::HandlePad 0x3765A0 (11: the target keeps `this` and then the end node in s3, the walk's node
+    in s2 -- six spellings in its comment); round 23's four tcm opens and st_mpexit's three unchanged.
+- **Tells from the world, rdr and sound, round 5** (zrdr_read, the headset and instance pool, a new zsav_lobby.cpp):
+  - a temporary bound to a const reference takes its stack slot ahead of temporaries created before it: Pop binding
+    end() and erase's result to const references gives zrdr_read the target's slots;
+  - "REGISTERS ONLY" CAN BE A CONSTANT OR A PROTOTYPE: Headset::SoundSysCallback's refused start stores the case
+    chain's last-loaded constant (state 1, not 2); ReleaseSoundInstance's callee 0x346270 takes the instance in a0, and
+    the placeholder declared without it shifted every register in the caller;
+  - `unsigned n = v.size(); for (; i < n;)` swaps the bound and cursor registers against `i < v.size()`; a list walk
+    written `i != end()` rebuilds the end each pass, `iterator e = end();` in a block before the walk holds it in a
+    saved register as the target does; keeping a member's address in a saved register needs a named pointer local;
+  - zsav_lobby.cpp (0x33E7F0-0x33F04F, names ours) is the lobby's save: CLobbySaveManager (a pointer list of modules,
+    a CLobbyFileIO, a blob of 40-byte entries) and CLobbySaveModule -- SOCOM 1's null-safe CSaferStr::operator=(const
+    char *) reproduces the module constructor's slots, a CSaferStr member gives one this-test before ~basic_string in
+    an implicit destructor; `bool r = p != 0; if (p && c) { ...; r = false; } return r;` is 0x10 shorter than returning
+    inside the test; 0x34D180-0x34E06F is an unwritten subtitle-table unit (SetLanguage calls 0x34D190, the initialiser
+    0x402FF0 builds 0x34D500: two vectors of 12-byte records looked up by hash);
+  - open: CLobbySaveManager::Load 0x33E850 (0x1A4 vs 0x1B4: the walk's end lifted out of both loops into a block after
+    the return -- SortNearToFar's unreproduced shape -- and the element read off the node each time), ReadArray (17:
+    the depth test, every spelling 17 or 47), 0x346270 (its loop keeps the iterator in a stack slot, 0x90 against the
+    plain loop's 0x68 -- the MSL lane's iterator-in-memory question, which also holds SerializeValves).
 - **Tells from the AI core, round 17** (the string patch, include/algorithm's heap, the A* search):
   - the world lane's basic_string patch is in -- operator=(const basic_string &) an inline over a new assign(const
     basic_string &) (0x22E4D0 assign; 0x32FD70, the image's only `j 0x22E4D0` stub, __as__) -- and its "regression" of
@@ -4759,6 +4818,82 @@ unit's `.text` and relocations exactly, under master's asmunit (with 3 `.word`s:
 crt0's `ctc1`) and under this one (none); between the two runs the regenerated texts differ in those
 three lines only. Neither tool scores: scdiff.py, sccheck.py, scdecomp.py and `include/` are master's.
 
+**The tools, round 16a**: (1) **a directive takes effect or the unit does not build.** The kit lane's
+question -- does `sc: compiler=` without `flags=` take effect? -- it does, in sccheck, scdiff and
+tools/try.py alike: each hands the named toolchain to `compile_cmd` with the default flags
+(`build/scratch/gcc/dirtest.py` logs the toolchain every path builds with: zlib's inflate_codes builds
+other bytes under 3.0b22-020926 in all three and misses on size, while FaceXZ is byte-identical under
+3.0b52, b50, b38 and b22-020926 -- the function, not the tool). What was silent is refused now
+(`sccheck.directive_problem`: a build failure in sccheck and try.py, an error exit in scdiff): an
+`sc:` line past the third line (never read), a key no tool reads (`compilr=` built under the
+defaults), a toolchain toolchains/ does not hold (that raised a traceback that ended sccheck's run).
+All 2,753 units in src/ pass it; the canary's `test_directive_takes_effect_or_refuses` pairs adler32
+under 3.0b22-020926 named alone (misses) with the three refusals, and fails with the check switched
+off. (2) **automatch's GCC repairs**: a GCC prelude (`GCC_PRELUDE`; MW's drafts keep `PRELUDE`) defines
+what m2c writes for GNU C and nothing defined -- `M2C_BITWISE` as fdlibm's own union (20 rows' parse
+errors), the TImode `s128`/`u128`, `M2C_SYNC` as `sync.l`; GCC's "invalid operands to binary -" is
+m2c's byte difference of incompatible pointers, cast `(s32) (a) - (s32) (p)` (`_byte_differences`);
+`_pointerish` reads a cast to an integer as no pointer, so `*((s32) p | 0x20000000)` (every uncached
+SIF read) is repaired as an `s32` load; and `tools/sigs.py` reads stack parameters (`stack_params`: a
+callee's loads at its frame size and up, 8 bytes a slot, `f32` for an lwc1 -- sceSifCallRpc 9,
+huft_build 10, _initRefImages 14, sceVu0ViewScreenMatrix's tenth a float), so a nine-argument call
+is no longer "too many arguments" against an eight-register prototype (m2c reads the stack word given
+the ninth). `SC_AM_GCC_PRELUDE`, `SC_AM_GCC_PTRDIFF`, `SC_AM_STACK_PARAMS=0` switch each off. Over
+the lane's four ranges (`--max-size 0x400 --no-prune`, 2 jobs, the lane's `src/lib` build as
+`--obj-dir`): **349 tried, 0 hits before and after; build failures 87 -> 38** (MAIN 60 -> 15, OVL1
+27 -> 23), misses 226 -> 275, m2c refusals 36. The 38 left: an int dereferenced in a float context
+or an `M2C_UNK` sum (20), an int subscripted (9), m2c's undeclared `saved_reg_*`/`sp` (8), a call
+disagreeing with another of the draft's (9; a row can hold several kinds). **Proved**: master's (0e731c93) sccheck.py, scdiff.py and
+scdecomp.py and these over one frozen snapshot of the tree, every unit (`--files .`, 2 jobs): the
+10,746 output lines are identical (`build/scratch/gcc/proof.sh`). automatch and sigs score nothing.
+
+**Round 16a** (2026-11-03, the tools above first, then the densest stretches): 46 rows newly
+byte-exact (19,004 bytes), 13 matched drafts superseded -- 59 functions byte-exact of 60 written --
+and 4 rows named. libvu0 whole (`sdk/libvu0.c` 42 of 42: RotMatrixZ/X/Y, CameraMatrix,
+NormalLightMatrix, ViewScreenMatrix, DropShadowMatrix new; RotMatrix, LightColorMatrix,
+CopyVectorXYZ over their drafts); newlib's float libm whole (`libm/`: floorf, ceilf, cosf, sinf,
+tanf, atanf, `__kernel_cosf/sinf/tanf/rem_pio2f`, `__ieee754_sqrtf/expf/logf/log10f/atan2f/asinf/
+acosf/powf/rem_pio2f`, scalbnf -- 20 new, log10f and powf over their drafts; tan OPEN); libkernl's
+file I/O client (`sdk/fileio.c`, new: 26 of the object's 40 written, all byte-exact -- the iob and
+semaphore helpers, the power-off handler, `_fs_version`, the path calls `_sceCallCode` (and its five
+wrappers), sceMkdir, sceGetstat, sceSync, sceRename, sceSymlink, then sceAddDrv, sceClose, sceDopen,
+sceDclose, sceDread); the codec's dot product
+(`ovl1/sase_vdot.s`, an assembler unit by asmunit). Named by body and the objects' alphabetical
+order: `__ieee754_log10f` (0x1AFC30: `__ieee754_logf` scaled by log10_2lo/ivln10/log10_2hi),
+`__ieee754_powf` (0x1AFD18), their wrappers log10f (0x1B3928) and powf (0x1B3940). What they showed:
+
+- **newlib's float libm compiles as newlib wrote it, under the R5900's float model**: ieeefp.h
+  defines `_FLT_LARGEST_EXPONENT_IS_NORMAL` (no infinity: floorf returns a large x as it is, no
+  `x+x`) and `_FLT_NO_DENORMALS` (a zero is an exponent of 0: `0x7fffff < ix`) -- fp-bit's model
+  (round 4a); `libm/fdlibm.h` carries newlib's `FLT_UWORD_*` under them. Fifteen of the twenty were
+  byte-exact as first written; where the first text was not this newlib's, the target said which
+  line: `zero` is in the const block (logf, log10f: `-two25/zero` folded to a constant), atanf keeps
+  fdlibm's `|x| < 0.4375` block around the tiny test, expf sets k in each path (fdlibm's `else k =
+  0;`, not the declaration's initialiser: a move at the entry).
+- **newlib is built with -fno-builtin**: GCC's builtin fabsf is an `abs.s`; the target calls fabsf
+  (`__kernel_tanf` 0x14 bytes short without the flag; s_fabs.c already carried it).
+- **The double routines stay the runtime compiler's**: tan (s_tan.c, OPEN) misses on round 4a's DFmode
+  delay slots (`jal dpsub; nop` where this 2.96 fills the slot with the double's `move a1,t0`); exp,
+  pow, rem_pio2, sqrt, the three double kernels, cos, sin and floor wait on the same difference.
+- **libvu0's matrices**: DropShadowMatrix reads the light point into three locals first (through `lp`
+  every read reloads after the stores to `m`, which may alias it: 0x1EC against 0x190) and assigns
+  the elements column by column, as the target's schedule stores them (row by row: 72 words off);
+  ViewScreenMatrix's tenth argument, the ninth float, is read from the caller's stack.
+- **The file I/O client's shapes**: a request pointer initialised at its declaration holds
+  `&_send_data` in a saved register from the entry while the RPC call names `&_send_data` itself
+  (rebuilt from the %hi in another saved register: one more saved register, 0x1A4 against 0x198);
+  get_iob forms `&_iob[fd]` before its SignalSema; sceDopen signals in each path; the descriptor
+  calls return `if (result < 0) return result; return 0;` (`li -1; slt; movn` -- the conditional
+  expression folds to a `<= 0` test); sceGetstat's request names its path `unsigned char` (the copy
+  loop tests the loaded byte, no `sll 24`); sceDread's failed RPC waits on its semaphore where every
+  other call deletes it (the vendor's, kept).
+- **The codec's dot product 0x248F60** is mula.s/madda.s/madd.s, which GCC never emits from C: assembly,
+  or a C function whose body is all asm (libvu0's shape) -- the same bytes.
+- **Open, diagnosed in place**: tan (above). Not written: fileio's `_sceFs_Rcv_Intr`, sceFsInit,
+  sceOpen, sceLseek/sceLseek64 (a no-wait path through `_fs_fsq_semid` and a 32-slot table at
+  0x1CCCC8), sceRead, sceWrite, sceIoctl, sceIoctl2, sceFormat, sceChstat, sceMount, sceDevctl,
+  sceReadlink; libusbkb's Read result and key-code conversion; the OVL1 codec's stretches.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -6007,6 +6142,46 @@ MediusCreateGameOnSelf, MediusJoinGame; 109 of 109), `medius/mediusutil.c` (+1, 
 SOCOM 1's body with its value unsigned: 3 of 3), `medius/serverkey.c` (new, 0 of 1) -- 12 rows new to
 the map's byte-exact rows (`src/lib/medius` 850 -> 862 of 920), none superseding a draft; 1 row named.
 No tool changed.
+
+**Round 16b: rt_msg_client's receive and update paths, from SOCOM 1's bodies.**
+
+- **EVERY rt_msg_client internal returns `unsigned char`, its result local too**: update_connection
+  (0x634AD8) returns the channel update's result with no `andi`, which returns recv_circ_buf's and
+  process_recv_buf's, which return process_message's, which returns each handler's (`move s3,v0`
+  unmasked) -- an `int` callee or local anywhere on the path masks it. All 61 internals retyped at once:
+  nothing matched before moves (the API's int wrappers keep their jals, the modes still differing).
+- **Block locals get their stack slots after the function's own**: recv_circ_buf's datagram address
+  and port sit above its zeroed counters in the target's frame -- declared in the datagram arm, not at
+  the top (122 function-level declaration orders tried, none gives the frame).
+- **2.96 rotates a loop at its first exit to the end label**: process_recv_buf's message loop enters
+  by a jump to its tail (get the start, read the header, test the size) only when that size test is a
+  `break` (stmt.c's expand_end_loop moves the code up to the last such jump within 30 insns to the
+  end); a `return 0` there leaves the loop unrotated.
+- **Shapes, measured**: each state change with its own result test, cross-jumped into one call
+  (process_connect_result: one shared test after an if/else of two calls keeps both jals); a validity
+  call compared in place (a variable kept for later made CSE reuse the init flag's register as the
+  constant -- SOCOM 1's code, not this one's); `&p->f == 0` through a variable (direct, GCC folds it to
+  `p == -off`); a signed `short` counter for `lhu; addiu -1` (unsigned narrows the decrement to
+  `+0xFFFF`); a whole-word `int` type field (a byte variable narrows the load to `lbu`); the clamp
+  `n = 4096; if (m <= 4096) n = m;` for movn (a ternary gives movz); a test positive where its compare
+  takes v0 and a guard where the hoisted return value holds it (round 14b's rule, both ways); the
+  dispatcher's channel check 0x635898 written above its callers (round 13c's rule: its first `bne`).
+- **Names**: 0x637BC0 (round 15b's `rt_msg_client_recv_circ_buf`, s1:align) is SOCOM 1's
+  `rt_msg_client_send_circ_buf` -- its callees in order, and create_send_buf_space calls it as SOCOM 1's
+  does -- and 0x637D50 is `rt_msg_client_recv_circ_buf` (SOCOM 1's callees exactly, grown by the
+  datagram channel); `rt_msg_client_process_message` (0x6364C0), `rt_msg_client_tcp_aggregate_msg`
+  (0x638298), `rt_msg_client_update_single` (0x634A08) and `rt_msg_client_update_connection` (0x634AD8)
+  by position and call sites (`s1:order`/`s1:calls`, each body checked against SOCOM 1's).
+- **Open, diagnosed in place**: process_client_connect_notify (4 words short: the target copies pMsg
+  into a1 before its null test and keeps the block moves' address there, eight spellings fold it into
+  the offsets), 0x637318 (1 long, registers: the port's address pseudo is born before pMsg's last use
+  here), and round 15b's three.
+
+Hand-written in round 16b: `medius/rt_msg_client.c` (12 written, +10 byte-exact: free_connection_index,
+process_recv_buf, process_message, process_connect_result, the type-26 handler 0x636D58, tcp_aggregate_msg,
+recv_circ_buf, update_connection, the connect step 0x634C48, and the channel check 0x635898 over its
+draft; 87 of 92) -- 9 rows new to the map's byte-exact rows (4,668 bytes; `src/lib/medius` 862 -> 872 of
+932), one superseding a matched draft; 6 rows named or corrected. No tool changed.
 
 ## Open, and next
 

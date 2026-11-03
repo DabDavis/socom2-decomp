@@ -4,6 +4,9 @@
  * order (-inline deferred). */
 
 #include "zsnd.h"
+
+/* the finder (zrdr_main.cpp; zanim.h still spells it func_0032F0D0) */
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 
@@ -39,14 +42,14 @@ void CSndJukebox::LoadPlaylists(const char *name)
     _zrdr *rdr = zrdr_read(name, 0, 0);
 
     if (rdr) {
-        _zrdr *jukebox = func_0032F0D0(rdr, "JUKEBOX");
+        _zrdr *jukebox = zrdr_findtag(rdr, "JUKEBOX");
 
         if (jukebox) {
-            _zrdr *fight = func_0032F0D0(jukebox, "FIGHT_MUSIC");
-            _zrdr *medium = func_0032F0D0(jukebox, "MED_FIGHT_MUSIC");
-            _zrdr *heavy = func_0032F0D0(jukebox, "HEAVY_FIGHT_MUSIC");
+            _zrdr *fight = zrdr_findtag(jukebox, "FIGHT_MUSIC");
+            _zrdr *medium = zrdr_findtag(jukebox, "MED_FIGHT_MUSIC");
+            _zrdr *heavy = zrdr_findtag(jukebox, "HEAVY_FIGHT_MUSIC");
 
-            LoadMusicLists(func_0032F0D0(jukebox, "STEALTH_MUSIC"), 0);
+            LoadMusicLists(zrdr_findtag(jukebox, "STEALTH_MUSIC"), 0);
             LoadMusicLists(fight, 1);
             LoadMusicLists(medium, 2);
             LoadMusicLists(heavy, 3);
