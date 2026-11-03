@@ -311,6 +311,13 @@ public:
     /* every weapon of the item dropped, true if there was one (SOCOM 1's RemoveWeapon, char_type.cpp's
      * last function in both builds: 0x53B300) */
     bool RemoveWeapon(EQUIP_ITEM item);
+    /* a set-up weapon of the item put at an index, the ones from there on moved up one, the last
+     * pushed (new in SOCOM II, the name ours: 0x53B160) */
+    void InsertWeapon(int index, EQUIP_ITEM item);
+    /* after every weapon taking several slots, an EQUIP_END for each slot past the first (new in
+     * SOCOM II, the name ours: 0x53B070 -- CreateCustomCharTypes calls it on a custom type's
+     * weapons) */
+    void PadWeaponSlots();
 };
 
 /* a multiplayer message a type can say (SOCOM 1's MultiplayerMsg; only the sound laid out) */

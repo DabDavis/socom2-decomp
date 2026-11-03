@@ -518,6 +518,46 @@ bool CCharacterWeapList::RemoveWeapon(EQUIP_ITEM item)
     return i != e;
 }
 
+/* a weapon's slots in a loadout, 1 for an unknown item (OVL1's 0x3D3750: the weapon list's
+ * GetWeapon, then the weapon's count) */
+extern "C" int func_003D3750(EQUIP_ITEM item);
+
+/* the item's weapon set up and put at the index, each weapon from there on moved up by one through
+ * a held copy, the last pushed at the end (new in SOCOM II, the name ours; SetupCharacterWeapon
+ * inlined -- the constructor's item store dead) */
+void CCharacterWeapList::InsertWeapon(int index, EQUIP_ITEM item)
+{
+    CCharacterWeap w;
+
+    w.SetupCharacterWeapon(item);
+    CCharacterWeap tmp;
+
+    for (; index < size(); index++) {
+        tmp = (*this)[index];
+        (*this)[index] = w;
+        w = tmp;
+    }
+    push_back(w);
+}
+
+/* a weapon taking more than one slot (its class not 145) followed by an EQUIP_END for each slot
+ * past its first (new in SOCOM II, the name ours) */
+void CCharacterWeapList::PadWeaponSlots()
+{
+    for (int i = 0; i < size(); i++) {
+        EQUIP_ITEM item = (*this)[i].m_wepId;
+
+        if (CZWeapon::GetIDType(item) != 145) {
+            int slots = func_003D3750(item);
+
+            if (slots > 1) {
+                for (int j = 0; j < slots - 1; j++)
+                    InsertWeapon(i + j + 1, EQUIP_END);
+            }
+        }
+    }
+}
+
 /* SOCOM 1's (its demo's 0x24B060, with Open's stretch there; SOCOM II's sits by GetWeaponByIndex):
  * an empty weapon pushed through the class insert (0x53FD60), the item left to the caller */
 void CCharacterWeapList::AddWeapon(EQUIP_ITEM)

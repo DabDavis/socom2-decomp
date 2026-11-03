@@ -9823,8 +9823,8 @@
 0x0053B040 0x8 func_0053B040  # OVL2
 0x0053B050 0x8 func_0053B050  # OVL2
 0x0053B060 0x8 func_0053B060  # OVL2
-0x0053B070 0xE4 func_0053B070  # OVL2
-0x0053B160 0x194 func_0053B160  # OVL2
+0x0053B070 0xE4 PadWeaponSlots__18CCharacterWeapListFv  # OVL2; ours, the AI core round 12 (new in SOCOM II: CreateCustomCharTypes calls it on a custom type's weapons at +0x2E8; for each weapon whose GetIDType is not 145, OVL1's 0x3D3750 slot count, and InsertWeapon(i + j + 1, EQUIP_END) for each slot past the first)
+0x0053B160 0x194 InsertWeapon__18CCharacterWeapListFi10EQUIP_ITEM  # OVL2; ours, the AI core round 12 (new in SOCOM II: a CCharacterWeap built and set up for the item -- SetupCharacterWeapon inlined, so char_type.cpp's -- then from the index on each weapon swapped through a held copy, the last pushed through the class insert 0x53FD60; 0x53B070 calls it with EQUIP_END)
 0x0053B300 0x9C RemoveWeapon__18CCharacterWeapListF10EQUIP_ITEM  # OVL2; s1:order by hand, the AI core round 12 (SOCOM 1's RemoveWeapon 0x247720, char_type.cpp's first function in the demo and its last here, right before AddWeapon and GetWeaponByIndex: the end taken, remove_if with compare_item(item) by value, erase(i, e), i != e returned -- byte-exact from source)
 0x0053B3A0 0x4C AddWeapon__18CCharacterWeapListF10EQUIP_ITEM  # OVL2; s1:order by hand, the AI core round 11 (SOCOM 1's AddWeapon 0x24B060: an empty CCharacterWeap -- 255, 255, 0, 0 -- inserted at the end, the item unread; the HUD lane's lead (hud_ingame_weaponsel.cpp calls it with SetupCharacterWeapon 0x53EEE0 after); byte-exact from source)
 0x0053B3F0 0x30 GetWeaponByIndex__14CCharacterTypeCFUi  # OVL2; s1:order by hand (char_type.cpp's first function as in the demo's 0x2477A0, the same 0x30 shape: the index tested against m_weapons' size, the weapon id read signed, EQUIP_NONE 255 otherwise; m_weapons at 0x2E8, SOCOM 1's 0x250 + 0x98)
