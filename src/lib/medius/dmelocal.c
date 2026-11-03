@@ -95,7 +95,7 @@ extern void (*data_0067A6E8[16])(int nClient, int nIndex);
 
 /* a data stream's slot (0x44 bytes, 2048 of them, made on first use by func_00614F58) */
 typedef struct DmeStreamSlot {
-    char field_00[16];
+    char field_00[16];                  /* 0x00: the state (2 open), a flag at 0x04 */
     void *pBuffer;                      /* 0x10 */
     char field_14[24];
     char circ[24];                      /* 0x2C: its rt_circ_buf */
@@ -1327,6 +1327,72 @@ int func_00618458(void *pAddress)
     data_0066CF08 = *(DmeAddress *)pAddress;
     return DME_OK;
 }
+extern int func_006187A0(int *pParams, DmeConnectStatus *pStatus);
+extern int func_0061CB18(unsigned char *pbValue);
+
+/* the join's checks (0x6186B0), as func_00617690's for the connection: then func_006187A0 */
+int func_006186B0(int *pParams, DmeConnectStatus *pStatus)
+{
+    unsigned char bValue = 0;
+
+    if (pStatus == 0)
+        return DME_ERR_ARGUMENT;
+    pStatus->nResult = 30;
+    pStatus->field_00 = 1;
+    if (pParams == 0) {
+        pStatus->nResult = DME_ERR_ARGUMENT;
+        return DME_ERR_ARGUMENT;
+    }
+    if (data_00651180 != 1) {
+        pStatus->nResult = 17;
+        return 17;
+    }
+    if (pParams[0] != 1) {
+        pStatus->nResult = 38;
+        return 38;
+    }
+    if (data_006511D4 != 1) {
+        pStatus->nResult = 26;
+        return 26;
+    }
+    pStatus->nResult = func_0061CB18(&bValue);
+    if (pStatus->nResult == 0 && bValue == 1)
+        func_006187A0(pParams, pStatus);
+    return pStatus->nResult;
+}
+/* a peer the address resolution waits on (0x66CF78: 256 of 36 bytes) */
+typedef struct DmePendingPeer {
+    unsigned char nState;               /* 0x00: 2 waiting, 3 answered */
+    char szIp[17];                      /* 0x01 */
+    unsigned short nPort;               /* 0x12 */
+    unsigned int tStart[2];             /* 0x14 */
+    unsigned int nElapsed;              /* 0x1C */
+    int field_20;
+} DmePendingPeer;                       /* 0x24 */
+
+extern DmePendingPeer data_0066CF78[DME_MAX_CLIENTS];
+extern int rt_time_elapsed(unsigned int *pStart, unsigned int *pnMsecs);
+
+/* the pending peer answered (0x61CBB8): its time to answer kept */
+void func_0061CBB8(char *szIp, unsigned short nPort)
+{
+    unsigned int i;
+
+    if (szIp == 0)
+        return;
+    if (szIp[0] == 0)
+        return;
+    for (i = 0; i < DME_MAX_CLIENTS; i++) {
+        if (strncmp(szIp, data_0066CF78[i].szIp, 16) == 0 && data_0066CF78[i].nState == 2
+            && nPort == data_0066CF78[i].nPort) {
+            rt_time_elapsed(data_0066CF78[i].tStart, &data_0066CF78[i].nElapsed);
+            data_0066CF78[i].nState = 3;
+            return;
+        }
+    }
+}
+
+
 
 int func_00618AD0(int *pParams, int *pStatus)
 {
@@ -1440,6 +1506,37 @@ int func_0061A240(unsigned int nIndex)
         return DME_OK;
     }
     return DME_ERR_RANGE;
+}
+
+extern int rt_circ_buf_get_avail(void *pCircBuf, unsigned int *pnAvail);
+
+/* a data stream's free space (0x61B650): 9 when the stream is not open. Its slot keeps its
+ * `char` array: typed as bytes, the unit's alias analysis drops func_0061C7A8's reload */
+int func_0061B650(unsigned int *pnAvail, unsigned int nStream)
+{
+    DmeStreamSlot *pSlot = 0;
+    unsigned int nAvail = 0;
+    int result;
+
+    if (pnAvail == 0)
+        return DME_ERR_ARGUMENT;
+    *pnAvail = 0;
+    if (nStream >= DME_MAX_STREAMS)
+        return DME_ERR_ARGUMENT;
+    result = func_00614F58(nStream, (void **)&pSlot);
+    if (result != DME_OK || pSlot == 0)
+        return result;
+    if ((unsigned char)pSlot->field_00[0] != 2)
+        return 9;
+    if ((unsigned char)pSlot->field_00[4] != 0)
+        return 9;
+    if (pSlot->circ == 0)
+        return 9;
+    if (rt_circ_buf_get_avail(pSlot->circ, &nAvail) == 0) {
+        *pnAvail = nAvail;
+        return DME_OK;
+    }
+    return 9;
 }
 
 int func_0061BEB8(void)
