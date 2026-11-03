@@ -6210,6 +6210,47 @@ GetpCachedDistances, GetDistanceOffset, CalculateDistance (`s1:order`, each body
 process and control functions). casr.h's LANGVT gains five slots (GetNbrState, GetNbrErgodicPhenomes,
 GetNbrGastone, GetpGastone, GetpProbMatrix). No tool changed.
 
+**Round 17c: DynProgUserWords, four objects' small functions by SOCOM 1's bodies.**
+
+- **A field read twice is a halfword pseudo across a branch; a short local is one load.**
+  DynProgUserWords' garbage penalty (+52) is `e->f52` in both cells: GCSE's PRE then keeps it as a
+  HImode pseudo across the first cell's if/else, combine folds only the first use into `lh` (keeping
+  the load for the second), and the second use sign-extends after the join -- the target's `lh`, then
+  `lhu` + `sll/sra` (round 16c's 0x60C to the right size). A `short gpen` local is promoted and loaded
+  once. `build/scratch/gcc/p_hi.c` shows it in four lines.
+- **GCSE's copy propagation merges a copy's destination into its source; a set in the using block
+  stops it.** The eq arm's `wnode = gnode` (gnode a copy of the shared `node`) is rewritten `wnode =
+  node`, and once both arms copy node, wnode's uses after the join become node too ("COPY-PROP:
+  Replacing reg 92 ... with reg 94", `tools/ccdump.py --dump -dG`): wnode is gone and the allocation
+  order shifts. cprop replaces only when the source register is not set in the using block before the
+  use, so the eq arm written `wnode = node = gnode` keeps wnode apart -- the target's `move t3,s4`
+  there. -fno-gcse, round 16c's lead, loses the f52 shape above: the vendor's GCSE was on.
+- **An insn after a do-while(0)'s LOOP_END note is a scheduling barrier** (haifa's sched_analyze
+  makes it depend on everything before): a macro's result copied after the macro stays below its
+  stores, where the target's copy rises to just after `node->next = prev`; set inside the do-while
+  (`(res) = node`), it schedules as the target's. A macro without the do-while does the same.
+- **Shapes, measured**: a loop pointer of its own where a shared one makes one pseudo for two
+  ranges (DynProgUserWords' clamp loop, the target's a0); a pointer stepped by the loop (`w++`, `*w`)
+  where an index makes the giv a copy (`lw v0; move t1,v0`); a pointer difference taken into a
+  variable right after the end pointer (CalcAccuracyCtxInfo: combine folds `(p + n) - p` to the
+  target's `(n << 2) >> 2`, where the subtraction written after the `*end` load stays `subu`); a
+  result returned once to a final move (t1, not v0 at each exit); a fill bound `size - 1` (the
+  unroller's `move t2,s1` copy of the bound); `*p->wr++ = x` (the field's address taken once, the
+  target's `addiu a1,a0,136`); a `for (; k < n; )` where a `while` gets its exit test copied to the
+  top (FindBestRecognised, 8 bytes); the sum loop's own entry test the only one (an `if (n)` around
+  it adds a second `beqz`).
+- **Open, diagnosed in place**: the language file's offset sums (`_langGetpErgodicPhenomes` 6,
+  `_langGetpErgodicPenalty` 15-18: thirteen more spellings -- a pointer local of each type, the counts
+  summed into an int first, the base added last -- leave fold's and combine's reassociation as it was).
+
+Hand-written in round 17c: `asr/dpgenuw.c` (DynProgUserWords closed: 9 of 10), `asr/ctxinfo.c` (new:
+SOCOM 1's context-information object 0x33E418 -- CalcAccuracyCtxInfo, CreateMenuMasks; 2 of 2),
+`asr/distsil.c` (+1, CalculateDistance4Bit: 7 of 7), `asr/pitchcomb.c` (new: SOCOM 1's pitch
+combiner object 0x36CE48 -- NormE_Processing, 1 of 1), `asr/shs.c` (new: SOCOM 1's SHS/VUV object
+0x36E330 -- ControlSHS_VUV, 1 of 1), `asr/nbestdp.c` (+1, FindBestRecognised: 3 of 3); `asr/pitchdp.c`
+calls powf by name. 7 rows new to the map's byte-exact rows; 1 row named (CalculateDistance4Bit,
+`s1:order`). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
