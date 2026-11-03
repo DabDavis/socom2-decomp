@@ -643,11 +643,22 @@ typedef struct rt_msg_client_comm {
     int nChannelId;                     /* 0x1C: the connection's rt_comm channel */
     char pad20[0x20];
     int nValue;                         /* 0x40: 0x6347C8's setting */
-    char pad44[4];
+    unsigned char bTargetSet;           /* 0x44: a flagged message stored (SOCOM 1's 0x84) */
+    char pad45;
+    unsigned short nLastTarget;         /* 0x46: its target, 0xFFFE when they differed */
     unsigned int nSendBufSize;          /* 0x48 */
     unsigned int nRecvBufSize;          /* 0x4C */
     rt_circ_buf recvBuf;                /* 0x50 */
     rt_circ_buf sendBuf;                /* 0x68: create_send_buf_space's */
+    /* 0x80: the application messages gathered for one send (store_msg_in_send_buf): same type
+     * (2 or 3), same target, at most 512 bytes */
+    struct rt_msg_client_pending {
+        int nType;                      /* 0x80 */
+        unsigned short nTarget;         /* 0x84 */
+        unsigned short nLength;         /* 0x86 */
+        unsigned short nCount;          /* 0x88 */
+        unsigned char abData[512];      /* 0x8A */
+    } pending;
 } rt_msg_client_comm;
 
 /* a connection's state: an enum in SCEA's header, so compared unsigned (is_valid_connection's
@@ -829,7 +840,7 @@ int rt_msg_client_iupdate_all(unsigned char bFlag)
 }
 
 extern int rt_msg_client_store_msg_in_send_buf(rt_msg_client_comm *pComm, int nType, unsigned short nTarget,
-                                               unsigned char *pMsg, int nLength, int nFlags);
+                                               unsigned char *pMsg, unsigned short nLength, unsigned char bFlag);
 
 /* SOCOM 1's isend_target, grown: a message of at most 512 bytes for one client (type 3), every client
  * (0xFFFE, type 2) or the server (0xFFFF, type 11) stored in the connection's send ring -- on its
@@ -982,7 +993,7 @@ int rt_msg_client_iget_connection_ip(unsigned short nConnection, char *szIP)
 extern int rt_msg_set_ubyte(unsigned char *msg, unsigned char value);
 extern int rt_msg_set_u2byte(unsigned char *msg, unsigned short value);
 extern int rt_msg_client_store_msg_in_send_buf(rt_msg_client_comm *pComm, int nType, unsigned short nTarget,
-                                               unsigned char *pMsg, int nLength, int nFlags);
+                                               unsigned char *pMsg, unsigned short nLength, unsigned char bFlag);
 
 /* SOCOM 1's ireceive_broadcasts: message 13 asks the server for broadcasts, or stops them */
 int func_00634660(unsigned short nConnection, unsigned char bEnable)
@@ -1384,6 +1395,69 @@ int func_00635D98(rt_msg_client_comm *pComm, unsigned short nTarget)
         result = rt_msg_client_store_msg_in_send_buf(pComm, nType, 0xFFFF, pMsg, nLength, 0);
         if (result != 0)
             return result;
+    }
+    return 0;
+}
+
+extern int func_00638298(rt_msg_client_comm *pComm);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+int rt_msg_client_is_valid_outgoing_msg(int nType);
+
+/* SOCOM 1's store_msg_in_send_buf, grown: an application message (type 2 or 3) joins the pending
+ * ones when it has their type and target and still fits in 512 bytes, else the pending ones are sent
+ * first (0x638298); any other type is sent at once. A flagged message records its target (SOCOM 1's
+ * isend_target did): the first one's, kept while they agree, 0xFFFE once they differ (the server's
+ * 0xFFFF never counts against it). */
+int rt_msg_client_store_msg_in_send_buf(rt_msg_client_comm *pComm, int nType, unsigned short nTarget,
+                                        unsigned char *pMsg, unsigned short nLength, unsigned char bFlag)
+{
+    struct rt_msg_client_pending *pPending;
+    int bAppend;
+    int result;
+
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (data_00655614 != 1)
+        return 5;
+    if (pMsg == 0 && nLength != 0)
+        return 2;
+    if (rt_msg_client_is_valid_outgoing_msg(nType) != 1)
+        return 2;
+    if (nLength > 512)
+        return 2;
+    pPending = &pComm->pending;
+    if (pPending == 0)
+        return 9;
+    if (pPending->nCount != 0) {
+        bAppend = 0;
+        if ((nType == 2 || nType == 3) && pPending->nType == nType && pPending->nTarget == nTarget) {
+            bAppend = 1;
+            if (pPending->nLength + nLength > 512)
+                bAppend = 0;
+        }
+    } else
+        bAppend = 1;
+    if (bAppend == 0) {
+        result = func_00638298(pComm);
+        if (result != 0)
+            return result;
+    }
+    pPending->nType = nType;
+    pPending->nTarget = nTarget;
+    memcpy(pPending->abData + pPending->nLength, pMsg, nLength);
+    pPending->nLength += nLength;
+    pPending->nCount++;
+    if (nType != 2 && nType != 3)
+        func_00638298(pComm);
+    if (bFlag == 1) {
+        if (pComm->bTargetSet == 1) {
+            if (pComm->nLastTarget == 0xFFFF)
+                pComm->nLastTarget = nTarget;
+            else if (pComm->nLastTarget != nTarget && nTarget != 0xFFFF)
+                pComm->nLastTarget = 0xFFFE;
+        } else
+            pComm->nLastTarget = nTarget;
+        pComm->bTargetSet = 1;
     }
     return 0;
 }
