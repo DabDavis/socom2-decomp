@@ -89,6 +89,8 @@ static int s_maxBytes0;
 static int s_maxChars0;
 static int s_maxBytes1;
 static int s_maxChars1;
+/* the font a cap naming none is drawn in (0x4A1120: 0x3958D0 sets it; the name ours) */
+static C2DFont *s_defaultFont;
 /* bitmap 4's timer (0x3E04C8: -1 until SkbToggleBmp4 clears it; the name ours) */
 static float s_bmp4Timer = -1.0f;
 
@@ -100,6 +102,20 @@ int UTF8CharLen(const char *&s);
 static inline void SetCaption(const char *text)
 {
     s_caption.SetString(text, true);
+}
+
+/* the display's sounds found by the names the look gave (0x397BC0, from 0x3958D0; the name ours) */
+void SkbFindSounds()
+{
+    /* three names taken first: the target holds them in saved registers across the first call */
+    const char *n3 = s_str3.c_str(), *n4 = s_str4.c_str(), *n5 = s_str5.c_str();
+
+    s_sound3 = CSnd::GetSoundByName(s_str2.c_str());
+    s_sound2 = CSnd::GetSoundByName(n3);
+    s_sound5 = CSnd::GetSoundByName(n4);
+    s_sound1 = CSnd::GetSoundByName(n5);
+    s_sound0 = CSnd::GetSoundByName(s_str6.c_str());
+    s_sound4 = CSnd::GetSoundByName(s_str1.c_str());
 }
 
 /* the text: the edited buffer, or the one the keyboard opened with (0x3998A0 and 0x399D20 ask) */
@@ -228,6 +244,27 @@ bool SkbShifted(CPad *pad)
 bool SkbShifted2(CPad *pad)
 {
     return SkbShifted(pad) != SkbShown(s_bmp0);
+}
+
+/* a string given cap i's look -- the default font when the cap names none, its colour and scale --
+ * and its node put at the cap's place raised by dy, hidden (0x395440: 0x398EA0's three; ours) */
+void SkbApplyCapLook(C2DString *str, zdb::CNode *node, CSoftKeyboard *skb, unsigned char i, C2DFont *font,
+                     float dy)
+{
+    /* the array into a local first: the index is added before the keyboard (`&skb->m_caps[i]`
+     * adds the keyboard first) */
+    CSkbCapLook *caps = skb->m_caps;
+    CSkbCapLook *cap = &caps[i];
+    /* the name through a reference: its address kept apart for the size test */
+    const CSaferStr &name = cap->m_texture;
+
+    if (!name.size())
+        font = s_defaultFont;
+    str->SetFont(font);
+    str->SetColor((float)cap->m_r, (float)cap->m_g, (float)cap->m_b);
+    str->m_scale = cap->m_scale;
+    node->SetPosition((float)cap->m_0, dy + (float)cap->m_4, 0.0f);
+    node->SetActive(false);
 }
 
 /* a rectangle read from an rdr block's Pos and Size pairs (the look parser 0x3963F0 calls it) */

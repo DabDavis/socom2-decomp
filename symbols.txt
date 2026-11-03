@@ -7429,7 +7429,7 @@
 0x00395140 0x1B0 func_00395140  # OVL1
 0x003952F0 0xC func_003952F0  # OVL1
 0x00395300 0x140 ReadIntPair__FP5_zrdrPCc  # OVL1; SOCOM 1's name by its body (zui_skbview.cpp: SOCOM 1's zui_skb.cpp ReadIntPair -- the tag's array items 0 and 1 as ints through GetRdrArrayInt's shape, a CIntPair returned; the look parser 0x3963F0 calls it seven times, zui_skb.cpp's 0x38DCB0 twice)
-0x00395440 0xF8 func_00395440  # OVL1
+0x00395440 0xF8 SkbApplyCapLook__FP9C2DStringPQ23zdb5CNodeP13CSoftKeyboardUcP7C2DFontf  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a C2DString given cap i's look -- the font at 0x4A1120 when the cap's name at 8 is empty, its colour and scale -- its node placed at the cap's x, y + dy and hidden; 0x398EA0 calls it three times)
 0x00395540 0x390 func_00395540  # OVL1
 0x003958D0 0x47C func_003958D0  # OVL1
 0x00395D50 0x90 SkbLoadBitmap__FP12CBmpWithNodePQ23zdb5CNodeiiPCcPQ23zdb16CTextureRelocMgr  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a bitmap loaded with PrepTexture's handle at w x h, then 0x36AB20 gives it a node under the parent)
@@ -7459,7 +7459,7 @@
 0x003978C0 0xC func_003978C0  # OVL1
 0x003978D0 0x74 func_003978D0  # OVL1
 0x00397950 0x268 func_00397950  # OVL1
-0x00397BC0 0x164 func_00397BC0  # OVL1
+0x00397BC0 0x164 SkbFindSounds__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the six CSnd statics from CSnd::GetSoundByName of strings 2, 3, 4, 5, 6 and 1; 0x3958D0 calls it)
 0x00397D30 0x2AC func_00397D30  # OVL1
 0x00397FE0 0xE4 func_00397FE0  # OVL1
 0x003980D0 0x220 func_003980D0  # OVL1
