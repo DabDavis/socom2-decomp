@@ -448,15 +448,32 @@ bool SkbOpen()
     return true;
 }
 
-/* the cursor's axis (ours: a byte enum, passed as `li 1; movz`) */
-enum SKBAXIS { SKB_AXIS_ROW, SKB_AXIS_COLUMN };
-
 extern "C" {
-/* the cursor moved along an axis by a step until it lands on another key (0x38C130), and its two
- * steps (0x38C4B0, 0x38C4C0) */
-void func_0038C130(CSoftKeyboard *skb, SKBAXIS axis, int (*step)(int));
+/* the cursor's two steps (0x38C4B0, 0x38C4C0: SOCOM 1's Local Decr and Incr) */
 int func_0038C4B0(int i);
 int func_0038C4C0(int i);
+}
+
+/* the cursor's bitmap put on a key (the display unit's) */
+void SkbPlaceCursor(CSkbKeyProps *props);
+
+/* the cursor moved along an axis by a step until it lands on another key that is set: the old key
+ * let go, the cursor put on the new one, the move's sound (0x38C130; the name ours: SOCOM 1's
+ * SyncHighlightToGridPos and CSkbGrid::MoveToNextPos, the latter inlined here) */
+void SkbMoveAlong(CSoftKeyboard *skb, SKBAXIS axis, int (*step)(int))
+{
+    void (C2DButton::*normal)() = &C2DButton::SetNormal;
+
+    skb->SetCurKeyState(normal);
+    const CSkbKey &start = skb->GetCurKey();
+    const CSkbKey *key;
+
+    do {
+        skb->m_grid.MoveToNextPos(&g_iSkbGridPosX, &g_iSkbGridPosY, axis, step);
+        key = &skb->GetCurKey();
+    } while (!(*key != start) || !key->IsSet());
+    SkbPlaceCursor(skb->GetCurKeyProps());
+    SkbPlaySound(2);
 }
 
 /* the keyboard's display forgotten: no node and no grid size, its texture lists freed, its six
@@ -492,7 +509,7 @@ void SkbMoveCursor(CSoftKeyboard *skb, unsigned char dir)
     /* the axis into a local first: in the call's list it would be chosen after the step */
     SKBAXIS axis = SkbIsVertical(dir) ? SKB_AXIS_ROW : SKB_AXIS_COLUMN;
 
-    func_0038C130(skb, axis, dir == 2 || dir == 4 ? func_0038C4C0 : func_0038C4B0);
+    SkbMoveAlong(skb, axis, dir == 2 || dir == 4 ? func_0038C4C0 : func_0038C4B0);
 }
 
 /* a count of none (ours: an inline bool returning the negation, materialised before each branch) */
@@ -531,8 +548,7 @@ void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
 {
     void (C2DButton::*normal)() = &C2DButton::SetNormal;
 
-    if (GetCurKeyProps())
-        GetCurKeyProps()->SetButtonState(normal);
+    SetCurKeyState(normal);
     func_0038B580(this, 0);
     func_00394420();
     func_00398B50();
@@ -548,8 +564,7 @@ void CSoftKeyboard::SwitchTo(CSoftKeyboard *to)
     func_00395140(to->m_17c, to->m_180, &to->m_texLists, to);
     void (C2DButton::*normal)() = &C2DButton::SetNormal;
 
-    if (GetCurKeyProps())
-        GetCurKeyProps()->SetButtonState(normal);
+    SetCurKeyState(normal);
     m_node->SetActive(false);
     to->m_node->SetActive(true);
     g_pActiveSkb = to;
@@ -572,9 +587,15 @@ void CSkbKeyProps::SetButtonState(void (C2DButton::*state)())
  * as the target's because IsValidPos tests IsValidRow `!= false` (zui_skb.h), and FindKeyProps'
  * end() is taken into a local (as an argument of the iterator's `!=` it was a level too deep here,
  * calling the tree's tail() out of line) */
-CSkbKeyProps *CSoftKeyboard::GetCurKeyProps()
+inline CSkbKeyProps *CSoftKeyboard::GetCurKeyProps()
 {
     return FindKeyProps(GetCurKey());
+}
+
+inline void CSoftKeyboard::SetCurKeyState(void (C2DButton::*state)())
+{
+    if (GetCurKeyProps())
+        GetCurKeyProps()->SetButtonState(state);
 }
 
 /* a key's properties, or none (SOCOM 1's): the found branch first -- `i == end() ? 0 : ...` and
