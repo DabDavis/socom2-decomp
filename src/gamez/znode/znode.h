@@ -433,6 +433,8 @@ public:
     static std::vector<void *> m_projectedMapList;
     static _word128 *GetTextureSelectBlock_ver2(unsigned int n, _word128 **cursor, _word128 *ref,
                                            _word128 *tag);
+    /* the same block allocated (SOCOM 1's; CTexture::SetupSpecialTextures calls it, vis_main.cpp) */
+    static void GetTextureSelectBlock(unsigned int n, _word128 **cursor, _word128 *ref, _word128 *tag);
 
     /* the wep lane's, from the constructor (0x3C4390): two vectors before the blend words, and the
      * dynamic textures and two words after them -- CSubMesh's own members start at 0x68 */

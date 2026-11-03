@@ -7860,7 +7860,7 @@
 0x003B3950 0x160 ApplyDecalRender__Q23zdb7CVisualFP7CMatrixPQ23zdb5CNodefP6CPnt3DP6CPnt3DPQ23zdb10CTexHandleP7CMatrix  # OVL1; s1:calls
 0x003B3AB0 0x714 func_003B3AB0  # OVL1
 0x003B41D0 0x3A4 func_003B41D0  # OVL1
-0x003B4580 0xCC4 func_003B4580  # OVL1
+0x003B4580 0xCC4 VuUpdate__Q23zdb7CVisualFv  # OVL1; s1:calls by hand (the wep lane: SOCOM 1's VuUpdate__Q23zdb7CVisualFf -- its only callers are CVisual::Render and CPipe::CAlpha::Render, as here; Kick, zSysSprGetPacket and Copy as its callees; SOCOM II's takes no argument: neither caller sets $f12 (SOCOM 1's Render passed 1.0f) and it reads only a0. Its map setups moved under 0x3B5F20/0x3B5B90, which call the light (0x3B54E0, m_lightMapList), shadow (0x3B5730, m_shadowMapList) and projected (0x3B58B0, m_projectedMapList) setups with the packet by address)
 0x003B5250 0x8 func_003B5250  # OVL1
 0x003B5260 0x10 func_003B5260  # OVL1
 0x003B5270 0x24 func_003B5270  # OVL1
@@ -8073,11 +8073,11 @@
 0x003C3570 0x140 Read__Q23zdb7CVisualFRQ23zar4CZAR  # OVL1; s1:callee
 0x003C36B0 0x10 UpdateCentroid__Q23zdb7CVisualFv  # OVL1; tu: vis_main.cpp~ (1.0 beta); s1:exact
 0x003C36C0 0x8 ComputeBBox__Q23zdb7CVisualFP5CBBox  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003C36D0 0x1EC func_003C36D0  # OVL1
-0x003C38C0 0x370 func_003C38C0  # OVL1
+0x003C36D0 0x1EC CopyBuffer__Q23zdb7CVisualFPP8CVisBaseUi  # OVL1; s1:order by hand (the wep lane: SOCOM 1's CopyBuffer, after ComputeBBox in both units -- new and _malloc its callees (CVisBase's constructor inlined here), Particle::CreateVisuals' call (SOCOM II's 0x322DF0) its caller, the same `move s7,a1` prologue)
+0x003C38C0 0x370 SetBuffer__Q23zdb7CVisualFP8_word128UiP8CVisBase  # OVL1; s1:order by hand (the wep lane: SOCOM 1's SetBuffer, after CopyBuffer in both units -- GetTexHandle, both CDynTexList::Add, _malloc and the pod insert its callees (ResolveTextureName(Ui) inlined here), Particle::CreateVisuals (0x322DF0) and hookupVisuals (0x3B2FF0) its callers, as SOCOM 1's; a0-a3 used)
 0x003C3C30 0xA4 ResolveTextureName__Q23zdb7CVisualFP8_word128P8_word128  # OVL1; s1:calls by hand (the wep lane: CMesh::SetMeshTextureSelects calls it at the instruction SOCOM 1's calls ResolveTextureName(_word128 *, _word128 *); SOCOM 1's body -- GetTexHandle by the name at +4, the default name failing it, CDynTexList::Add of the handle and its palette at +0x48, the select copied from the texture's +0x40 with type 5 -- with one delay slot filled differently)
 0x003C3CE0 0xA8 GetTextureSelectBlock_ver2__Q23zdb7CVisualFUiPP8_word128P8_word128P8_word128  # OVL1; tu: vis_main.cpp~ (1.0 beta); s1:exact
-0x003C3D90 0xFC func_003C3D90  # OVL1
+0x003C3D90 0xFC GetTextureSelectBlock__Q23zdb7CVisualFUiPP8_word128P8_word128P8_word128  # OVL1; s1:order by hand (the wep lane: SOCOM 1's static GetTextureSelectBlock, after its _ver2 in both units -- _calloc its one callee, CTexture::SetupSpecialTextures its caller, the same four-argument prologue move s4..s1,a0..a3; 0xFC against 0x100)
 0x003C3E90 0x290 __dt__Q23zdb7CVisualFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C4120 0x14 Release__Q23zdb7CVisualFv  # OVL1; s1:exact
 0x003C4140 0x44 Flush__Q23zdb7CVisualFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Flush -- a temporary vector constructed, the static list cleared and swapped with it, the temporary destroyed -- on a vector<CLightMap *> here; between Release and Create as SOCOM 1's sits between GetTextureSelectBlock and the destructor)
