@@ -25,7 +25,10 @@ typedef struct ExceptionInfo {
     char *action_pointer;    /* 8: the action list of the range holding the address */
     char *table_start;       /* 12: the exception table (__FindExceptionTable) */
     char *table_end;         /* 16 */
-    float unused;            /* 20: copied, never read (a word MW's struct copy moves through $f0) */
+    struct {
+        void *unused;
+    } reserved;              /* 20: copied, never read -- a one-word struct: MW copies it through $f0
+                              * by its address (`addiu v0,sp,N; swc1 $f0,0(v0)`), a float field by sp */
 } ExceptionInfo;
 
 /* the registers, and the frame they were found in (__SetupFrameInfo decodes the frame from the
