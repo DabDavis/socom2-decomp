@@ -684,7 +684,8 @@ struct MediusGameListResponse {
 };   // 0x190
 typedef MediusGameListResponse LANGameInfo;
 
-extern "C" void func_002F7D90(void *dst, void *rules);   /* a game's mission sequence read from its rules (the lobby unit's) */
+struct GameRules;
+extern "C" GameRules *func_002F7D90(GameRules *dst, const GameRules *src);   /* a game's rules read, an older version brought up to date (the lobby unit's) */
 
 /* a game in a room (SOCOM 1's RoomGame: a table, but not a virtual destructor -- its delete calls
  * operator delete straight). SOCOM II's keeps the game's 0x190-byte info first and its table after
@@ -700,7 +701,7 @@ public:
     {
         if (info) {
             m_info = *info;
-            func_002F7D90(m_19a, info->m_rules);
+            func_002F7D90((GameRules *)m_19a, (GameRules *)info->m_rules);
             if (!m_info.m_mission)
                 SetMission(m_missionSeq[0]);
         } else

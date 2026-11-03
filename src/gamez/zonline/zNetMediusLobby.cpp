@@ -430,6 +430,138 @@ void CZOnlineLobby::SetConnectionInfo(NetConnectionInfo *info)
     *info = data_0066A8F0;
 }
 
+/* a game's rules as its info carries them (at 0x8c; a RoomGame keeps them at 0x19a): a version
+ * letter, then the round count and time, the side byte, the spectators, the equipment limit, the
+ * sort order and the rank restrictions, then the mission sequence -- 'D', 40 bytes. Each older
+ * version lacks the last of those bytes before the sequence ('C' 39, 'B' 38, 'A' 37), and the
+ * first, unlettered one held five bytes, its third dropped (the names ours) */
+struct GameRules {
+    char m_version;   // 0x0: 'D'
+    unsigned char m_rounds;   // 0x1
+    unsigned char m_minutes;   // 0x2
+    unsigned char m_side;   // 0x3
+    unsigned char m_spectators;   // 0x4
+    unsigned char m_eqlimit;   // 0x5
+    unsigned char m_sort;   // 0x6
+    unsigned char m_rank;   // 0x7
+    unsigned char m_missions[32];   // 0x8
+};   // 0x28
+struct GameRulesC {
+    char m_version;   // 0x0: 'C'
+    unsigned char m_fields[6];   // 0x1
+    unsigned char m_missions[32];   // 0x7
+};   // 0x27
+struct GameRulesB {
+    char m_version;   // 0x0: 'B'
+    unsigned char m_fields[5];   // 0x1
+    unsigned char m_missions[32];   // 0x6
+};   // 0x26
+struct GameRulesA {
+    char m_version;   // 0x0: 'A'
+    unsigned char m_fields[4];   // 0x1
+    unsigned char m_missions[32];   // 0x5
+};   // 0x25
+
+/* a record copied from where the source is (the destination a local, its test is not folded:
+ * CopyField's) */
+inline void CopyIn(void *dst, const void *src, unsigned int n)
+{
+    if (src)
+        memcpy(dst, src, n);
+}
+
+extern "C" {
+extern int data_00441458;   /* (the persona state's: the side) */
+
+/* a game's rules read into the current version, an older one brought up a version at a time
+ * (OVL1 0x2F7D90: RoomGame::UpdateInfo hands it the game's info) -- the current one's copy
+ * returning at the end, after the chain; the version read once (the target keeps it and the 'A'
+ * for the unlettered form's bytes) */
+GameRules *func_002F7D90(GameRules *dst, const GameRules *src)
+{
+    char version = src->m_version;
+
+    if (version == 'D') {
+        CopyField(dst, src, sizeof(GameRules));
+    } else if (version == 'A') {
+        GameRulesA a;
+        GameRulesB b;
+
+        CopyIn(&a, src, sizeof(a));
+        b.m_version = 'B';
+        b.m_fields[0] = a.m_fields[0];
+        b.m_fields[1] = a.m_fields[1];
+        b.m_fields[2] = a.m_fields[2];
+        b.m_fields[3] = a.m_fields[3];
+        b.m_fields[4] = 0;
+        memcpy(b.m_missions, a.m_missions, sizeof(b.m_missions));
+        return func_002F7D90(dst, (GameRules *)&b);
+    } else if (version == 'B') {
+        GameRulesB b;
+        GameRulesC c;
+
+        CopyIn(&b, src, sizeof(b));
+        c.m_version = 'C';
+        c.m_fields[0] = b.m_fields[0];
+        c.m_fields[1] = b.m_fields[1];
+        c.m_fields[2] = b.m_fields[2];
+        c.m_fields[3] = b.m_fields[3];
+        c.m_fields[4] = b.m_fields[4];
+        c.m_fields[5] = 0;
+        memcpy(c.m_missions, b.m_missions, sizeof(c.m_missions));
+        return func_002F7D90(dst, (GameRules *)&c);
+    } else if (version == 'C') {
+        GameRulesC c;
+        GameRules d;
+
+        CopyIn(&c, src, sizeof(c));
+        d.m_version = 'D';
+        d.m_rounds = c.m_fields[0];
+        d.m_minutes = c.m_fields[1];
+        d.m_side = c.m_fields[2];
+        d.m_spectators = c.m_fields[3];
+        d.m_eqlimit = c.m_fields[4];
+        d.m_sort = c.m_fields[5];
+        d.m_rank = 0;
+        memcpy(d.m_missions, c.m_missions, sizeof(d.m_missions));
+        return func_002F7D90(dst, &d);
+    } else {
+        const char *old = (const char *)src;
+        GameRulesA a;
+        /* its bytes read before any is stored (the target loads all three, then stores the
+         * five; read in the stores, MW keeps each load beside its store) */
+        char f1 = old[1];
+        char f3 = old[3];
+        char f4 = old[4];
+
+        a.m_version = 'A';
+        a.m_fields[0] = version;
+        a.m_fields[1] = f1;
+        a.m_fields[2] = f3;
+        a.m_fields[3] = f4;
+        CopyIn(a.m_missions, old + 5, sizeof(a.m_missions));
+        return func_002F7D90(dst, (GameRules *)&a);
+    }
+    return dst;
+}
+
+/* the rules of the game we host, from the valves the menus set and the lobby's mission sequence
+ * (OVL1 0x2F7C40: the game's details sent to the lobby and the LAN lobby's game info) */
+void func_002F7C40(GameRules *r)
+{
+    r->m_version = 'D';
+    r->m_rounds = CValve::Create("mp_max_rounds", VALVE_TYPE_1)->m_value;
+    r->m_minutes = CValve::Create("mp_max_round_time", VALVE_TYPE_1)->m_value / 60u;   /* (an unsigned divide) */
+    r->m_side = data_00441458;
+    r->m_spectators = CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->m_value;
+    r->m_eqlimit = CValve::Create("EQlimit", VALVE_TYPE_1)->m_value;
+    r->m_sort = CValve::Create("mp_game_sort_order", VALVE_TYPE_1)->m_value;
+    r->m_rank = CValve::Create("mp_rank_restrictions", VALVE_TYPE_1)->m_value;
+    for (int i = 0; i < 32; i++)
+        r->m_missions[i] = theLobby.m_MissionSequence[i];
+}
+}
+
 /* a page of the usage policy: added to the lines kept so far in 'TempUsagePolicy', all of them
  * handed to 'UsagePolicy' with the last page (SOCOM II's, the name ours: GetUsagePolicy's callback,
  * its status 'GetPolicyRequest'; OVL1 0x2F7AC0) */
