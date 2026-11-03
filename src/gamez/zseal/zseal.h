@@ -907,6 +907,9 @@ public:
  * zchar.h's CCharacterType::m_gear_list) */
 class CCharacterGear {
 public:
+    /* the gear's model instanced under a name (SOCOM 1's; OVL2 0x53C940, char_type.cpp's) */
+    zdb::CNode *CreateInstance(const char *name) const;
+
     int m_ref_count;   // 0x0
     int m_partid;   // 0x4
     unsigned int m_gearid;   // 0x8
@@ -1080,6 +1083,13 @@ public:
     /* the rifle, pistol and launcher found among the made gears, the launcher's part added (SOCOM 1's;
      * OVL2 0x58B0F0, seal_cfg.cpp) */
     void SetupGear();
+    /* a part added to the anims' parts: a bare one by name (OVL2 0x58B630), or a gear's model attached to
+     * the part it names (0x58B790; SOCOM 1's two AddItems, after SetupEyes in both builds) */
+    bool AddItem(const char *name);
+    bool AddItem(class CCharacterGear *gear);
+    /* every bone's node given a box DI of the person material, the upper spine's box capped (SOCOM 1's;
+     * OVL2 0x58B960, seal_cfg.cpp) */
+    void AddDIPolys();
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */
     void GetMaxXMotion(float &a, float &b);
     void GetMaxZMotion(float &a, float &b);
@@ -1326,9 +1336,11 @@ public:
     CZBodyPart *m_lhand;   // 0x2f8 (SOCOM 1's 0x27c)
     CZBodyPart *m_spinelo;   // 0x2fc (SOCOM 1's 0x280: the rifle's place on the back)
     CZBodyPart *m_rhand;   // 0x300 (SOCOM 1's 0x284)
-    unsigned char _304[0x308 - 0x304];
+    CZBodyPart *m_hips;   // 0x304 (SOCOM 1's 0x288)
     CZBodyPart *m_head;   // 0x308 (SOCOM 1's 0x28c, m_root + 0x20 in both: 0x57F150's ray starts above it)
-    unsigned char _30c[0x318 - 0x30c];
+    CZBodyPart *m_neck;   // 0x30c (SOCOM 1's 0x290)
+    CZBodyPart *m_spinehi;   // 0x310 (SOCOM 1's 0x294: AddDIPolys caps its box)
+    CZBodyPart *m_lthigh;   // 0x314 (SOCOM 1's 0x298)
     CZBodyPart *m_rthigh;   // 0x318 (SOCOM 1's 0x29c: the pistol's holster)
     unsigned char _31c[0x350 - 0x31c];
     CZBodyPart *m_rifle;   // 0x350 (SOCOM 1's 0x2d4)

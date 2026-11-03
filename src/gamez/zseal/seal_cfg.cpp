@@ -197,6 +197,79 @@ struct ANIMSET_PARAMS {
 
 /* a piece of gear a character wears, CCharacterGear, is zseal.h's */
 
+/* (OVL1 0x2DE9E0: a material's index by name, -1 unknown; node_util.cpp's DI setters) */
+extern "C" int func_002DE9E0(const char *name);
+void SetDIBBox(zdb::CNode *node, const CBBox *bbox, bool b);
+void SetMaterial(zdb::CNode *node, int material);
+
+/* every bone's node (the parts past the last four object slots left out) given a box DI of the
+ * PERSON material, and the upper spine's box capped at 3.01 across (OVL2 0x58B960: SOCOM 1's
+ * AddDIPolys, after the AddItems in both builds -- SOCOM 1 skipped the rifle, pistol, grenade and
+ * weapon parts by pointer, SOCOM II by id; the cap is new) */
+void CZSealBody::AddDIPolys()
+{
+    std::vector<CZBodyPart *> &parts = m_body_parts;
+    int mat = func_002DE9E0("PERSON");
+
+    for (std::vector<CZBodyPart *>::iterator i = parts.begin(); i != parts.end(); ++i) {
+        CZBodyPart *p = *i;
+
+        if (p && p->m_id < siNumBodyObjects - 4) {
+            zdb::CNode *n = p->m_node;
+
+            SetDIBBox(n, &n->m_bbox, false);
+            SetMaterial(n, mat);
+        }
+    }
+    if (m_spinehi) {
+        CBBox *box = (CBBox *)m_spinehi->m_node->GetBBox();
+
+        if (box->m_max.x > 3.01f)
+            box->m_max.x = 3.01f;
+    }
+}
+
+/* a gear's model attached to the part the gear names, given an id by its name, named and kept out
+ * of the animation (OVL2 0x58B790: SOCOM 1's AddItem(CCharacterGear *), the name's id SOCOM II's own
+ * 0x58CA60 inlined where SOCOM 1 called BodyId, the part looked up with its bounds tested) */
+bool CZSealBody::AddItem(CCharacterGear *gear)
+{
+    zdb::CNode *node = gear->CreateInstance(gear->m_name);
+
+    if (!node)
+        return false;
+    int id = gear->m_partid;
+    CZBodyPart *parent;
+
+    if (id < m_body_parts.size() && id >= 0)
+        parent = m_body_parts[id];
+    else
+        parent = 0;
+
+    if (!parent)
+        return false;
+    CZBodyPart *part = AttachAuxNode(node, parent, &gear->m_offset, &gear->m_rotation);
+
+    part->m_id = func_0058CA60(gear->m_name);
+    part->m_node->SetName(gear->m_name);
+    part->SetActive(false);
+    m_obj_anims.Add(part, gear);
+    return true;
+}
+
+/* a bare part added: made, attached to none, given an id by its name and kept out of the animation
+ * (OVL2 0x58B630: SOCOM 1's AddItem(const char *), the id as the gear's) */
+bool CZSealBody::AddItem(const char *name)
+{
+    CZBodyPart *part = NewBodyPart(0, 0);
+
+    AttachAuxPart(part, 0);
+    part->m_id = func_0058CA60(name);
+    part->SetActive(false);
+    m_obj_anims.Add(part, 0);
+    return true;
+}
+
 /* the rifle, pistol and launcher found among the made gears, and the launcher's part added to the
  * anims' parts (OVL2 0x58B0F0: SOCOM 1's SetupGear, by its place after SetPartAsGear -- SOCOM 1's found
  * the rifle and the pistol alone) */

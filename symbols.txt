@@ -10534,9 +10534,9 @@
 0x0058B040 0xA4 SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear  # OVL2; s1:calls by hand (SOCOM 1's SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear: the part placed at the gear's offset (0x1C) and turned by QFromRot of its rotation (0x28), Orient when it has a node, then the body's entry for its id cleared -- SOCOM II adds the null tests and calls CBody::SetBodyPart(id, 0); seal_cfg.cpp, SOCOM 1's unit's first)
 0x0058B0F0 0xAC SetupGear__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's SetupGear__10CZSealBodyFv, right after SetPartAsGear in both builds: FindGear of "rifle" and "pistol" stored as SOCOM 1's, SOCOM II adding "launcher" and its part to CObjAnims' list; PostCreateSeal calls it as SOCOM 1's does)
 0x0058B1A0 0x484 func_0058B1A0  # OVL2
-0x0058B630 0x160 func_0058B630  # OVL2
-0x0058B790 0x1CC func_0058B790  # OVL2
-0x0058B960 0x148 func_0058B960  # OVL2
+0x0058B630 0x160 AddItem__10CZSealBodyFPCc  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's AddItem__10CZSealBodyFPCc, after SetupGear's neighbour SetupEyes in both builds: NewBodyPart(0, 0), AttachAuxPart, the name's id, an 8-byte item of the part and no gear pushed on CObjAnims' list -- as SOCOM 1's, the id 0x58CA60's inlined)
+0x0058B790 0x1CC AddItem__10CZSealBodyFP14CCharacterGear  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's AddItem__10CZSealBodyFP14CCharacterGear, right after the other: CreateInstance of the gear's name, AttachAuxNode with the gear's offset and rotation, SetName, the part and the gear pushed)
+0x0058B960 0x148 AddDIPolys__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's AddDIPolys__10CZSealBodyFv, after the two AddItems in both builds: ResolveMaterialIndex of "PERSON" -- SOCOM II's 0x2DE9E0 --, each body part's node given SetDIBBox and SetMaterial; SOCOM II skips the last four object slots by id and caps m_spinehi's box)
 0x0058BAB0 0x98 func_0058BAB0  # OVL2
 0x0058BB50 0xA8 GetMaxXMotion__10CZSealBodyFRfRf  # OVL2; s1:calls (GetSpeedFromThrottle and GetThrottleFromSpeed call it from SOCOM 1's places, with two float slots)
 0x0058BC00 0xA8 GetMaxZMotion__10CZSealBodyFRfRf  # OVL2; s1:calls (GetSpeedFromThrottle and GetThrottleFromSpeed call it from SOCOM 1's places, with two float slots)
