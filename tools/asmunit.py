@@ -13,7 +13,9 @@ newlib object without one was assembled (README "The GCC front"). Code GCC compi
 included, is written as C.
 
 Each map row named becomes a function at its own offset in the unit (gaps zero-filled), each
-instruction in its canonical form (objdump -M no-aliases, numeric registers) under `.set
+instruction in its canonical form (objdump -M no-aliases,reg-names=numeric: numeric GPRs and
+coprocessor registers -- `ctc1 $0,$31`, where gpr-names alone left the FPU's `c1_fcsr`, which GNU
+as refuses -- and `ori`, not objdump's `dli`, for an ori from $0: `canonical`) under `.set
 noreorder`, `noat` and `nomacro`, so the assembler adds, fills and moves nothing; a branch goes to
 a local label, a j/jal to the map's name, and each lui whose %lo uses address the image becomes
 %hi/%lo of the symbol there (a data.txt name, a function's, else `data_<VA>`) -- so the object
@@ -74,6 +76,18 @@ def writes(w: int) -> set[int]:
     return set()
 
 
+def canonical(w: int, text: str) -> str:
+    """The instruction as GNU as must read it back. objdump 2.45 prints `ori rt,$0,imm` as the
+    `dli rt,imm` macro even under no-aliases (its opcode table does not mark that alias), and GNU
+    as, reading `dli`, takes the first form that fits -- `addiu` for any immediate below 0x8000, the
+    wrong encoding (round 14b wrote largeint_asm.s's two `ori $2,$0,0x1` by hand: the tool had left
+    them as .word). The other aliases objdump keeps under no-aliases (`negu`, `dnegu`, one-operand
+    `jalr`) are opcode-table entries every as encodes back to the same word."""
+    if w >> 26 == 0x0D and (w >> 21) & 31 == 0:
+        return f"ori ${(w >> 16) & 31},$0,0x{w & 0xFFFF:x}"
+    return text
+
+
 def disasm_canonical(b: bytes, vma: int) -> list[tuple[int, int, str]]:
     tmp = HERE / "build" / "tmp"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -81,7 +95,7 @@ def disasm_canonical(b: bytes, vma: int) -> list[tuple[int, int, str]]:
     p.write_bytes(b)
     try:
         out = subprocess.run([E.tool("objdump"), "-D", "-z", "-b", "binary", "-m", "mips:5900", "-EL",
-                              "-M", "no-aliases,gpr-names=numeric,cp0-names=numeric",
+                              "-M", "no-aliases,reg-names=numeric",
                               f"--adjust-vma=0x{vma:x}", str(p)], capture_output=True, text=True, check=True).stdout
     finally:
         p.unlink(missing_ok=True)
@@ -89,7 +103,8 @@ def disasm_canonical(b: bytes, vma: int) -> list[tuple[int, int, str]]:
     for line in out.splitlines():
         m = E._INSN.match(line)
         if m:
-            rows.append((int(m.group(1), 16), int(m.group(2), 16), m.group(3).replace("\t", " ").strip()))
+            w = int(m.group(2), 16)
+            rows.append((int(m.group(1), 16), w, canonical(w, m.group(3).replace("\t", " ").strip())))
     return rows
 
 

@@ -4585,6 +4585,27 @@ build): MAIN `18DB90 1C4CC0` 210 tried, 0 hits (60 build failures, 23 m2c refusa
 tried, 0 hits, OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 145 tried, 0 hits (27, 8): 363
 tried, none byte-exact -- what the generator leaves here is near misses, as round 13a found.
 
+**The tools, round 15a**: (1) **`tools/ccdump.py`, cc1's own dumps** (round 14c's harness, promoted):
+`./tools/ccdump.py UNIT.c [-f FUNCTION]` compiles a GCC unit as sccheck builds it -- its `sc:`
+toolchain and flags, include/ and src/ -- with `-dl -dg -dS -dR -fsched-verbose=4` (or `--dump`)
+into `build/scratch/gcc/dumps/<stem>/`: `.lreg` and `.greg` (local and global allocation; `.greg`'s
+`N regs to allocate:` line is the priority order, refs x log2(refs) / live length), `.sched` (the first
+scheduling pass, each cycle's ready list) and `.sched2`, the compiler's stderr beside them. `-f` writes
+each dump's section for one function apart and prints the allocation order and the final register
+of every pseudo (`;; Register dispositions`, named). `--unit U` compiles a probe under U's directive,
+`--compiler`/`--flags` override it; an MW or assembler unit is refused (MW writes no RTL). The 2.9
+builds' cc1 spells the verbosity `-fsched-verbose-4` and names its dumps `<src>.<pass>` (2.96:
+`<src>.NN.<pass>`): both handled. (2) **`tools/asmunit.py` writes no `.word` for objdump's spellings**:
+objdump 2.45 prints an `ori rt,$0,imm` as the `dli` macro even under no-aliases, and GNU as reads
+`dli $2,0x1` as `addiu` -- the tool now spells it `ori` (round 14b's largeint_asm.s did by hand); and
+`-M reg-names=numeric` (for gpr- and cp0-names) spells the FPU's control register `$31`, where
+`c1_fcsr` -- which the 2003 GNU as refuses -- had left crt0.s's `ctc1 $0,c1_fcsr` a `.word`. Proved
+(`build/scratch/gcc/asmproof.py`): every one of the 18 `.s` units in src/ regenerated from its own
+object's rows (functions, global labels, statics, `.bss` labels) and assembled gives the committed
+unit's `.text` and relocations exactly, under master's asmunit (with 3 `.word`s: largeint's two `dli`,
+crt0's `ctc1`) and under this one (none); between the two runs the regenerated texts differ in those
+three lines only. Neither tool scores: scdiff.py, sccheck.py, scdecomp.py and `include/` are master's.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
