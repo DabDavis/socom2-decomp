@@ -157,6 +157,25 @@ template class basic_ostream<char, char_traits<char> >;
 template class basic_istream<wchar_t, char_traits<wchar_t> >;
 template class basic_ostream<wchar_t, char_traits<wchar_t> >;
 
+/* RefCountedPtrArray.h's assignment (0x188B50): defined here, after the streams' imbues, which
+ * call it (locale's inline operator= forwarding to it) */
+template <class T, class Destructor>
+_RefCountedPtr<T, Destructor> &_RefCountedPtr<T, Destructor>::operator=(const _RefCountedPtr &other)
+{
+    if (ptr_ != other.ptr_) {
+        if (refCount_ != 0 && --*refCount_ == 0) {
+            Destructor::release(ptr_);
+            delete refCount_;
+        }
+        ptr_ = other.ptr_;
+        refCount_ = other.refCount_;
+        if (refCount_ != 0)
+            ++*refCount_;
+    }
+    return *this;
+}
+
+
 /* codecvt<wchar_t, char, int> */
 codecvt_base::result codecvt<wchar_t, char, int>::do_unshift(int &, char *to, char *, char *&to_next) const
 {
