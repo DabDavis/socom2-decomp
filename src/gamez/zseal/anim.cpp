@@ -153,6 +153,9 @@ public:
      * lookups call the second; new in SOCOM II, the names ours) */
     CZSIScriptCommon *GetScript(AnimType type, int kind);
     CZSIScriptCommon *GetScript(AnimType type);
+    /* the script of a type's variant by kind and index, or 0 (OVL2 0x5E3B20: seal_body.cpp's
+     * 0x57DCC0 and 0x5880E0 call it; new in SOCOM II, the name ours) */
+    CZSIScriptCommon *GetVariantScript(AnimType type, int kind, int index);
     int AnimId(AnimType type) const;
     /* a rifle anim type's variant set, both types' anims there: the group's (CAnimsByFP's) and the
      * variant's base type (OVL2 0x5E1CF0, 0x5E1BF0, 0x5E1AF0; DefineFPAnims calls them -- new in
@@ -484,6 +487,30 @@ int AnimSet::AnimId(AnimType type) const
 
 /* an anim picked from a type's variant group, or -1 (OVL2 0x5E3E10, new in SOCOM II; the name
  * ours) */
+/* (OVL2 0x5E3B20: the compare chain tests 2, then 1) */
+CZSIScriptCommon *AnimSet::GetVariantScript(AnimType type, int kind, int index)
+{
+    if (type >= 0 && type < m_types.size()) {
+        CAnimTypeRec *rec = m_types[type];
+
+        if (rec && rec->m_8) {
+            int v = rec->GetVariant(kind, index);
+
+            if (v >= 0) {
+                switch (rec->GetGroup(v)->m_state) {
+                case 1:
+                    return zBoneArchive()->m_byRdr[v];
+                case 2:
+                    return zBoneMapArchive()->m_byRdr[v];
+                default:
+                    return 0;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 /* (OVL2 0x5E3D90) */
 CZSIScriptCommon *AnimSet::GetScript(AnimType type)
 {
