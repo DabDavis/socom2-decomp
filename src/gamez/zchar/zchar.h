@@ -255,29 +255,34 @@ const char *GetCharacterSoundTypeString(CHARACTER_SOUND s);
 
 class CCharTypeVec;
 
-/* a part's health and armour (SOCOM 1's DWARF, 0x48 bytes) */
+/* a part's health and armour (SOCOM 1's DWARF, 0x48 bytes, the six parts' health and maximum
+ * interleaved, then the armour; SOCOM II's are three arrays of six, by HEALTH_PARAMS::Parse
+ * 0x53DDB0: the "health" block's head, body, larm, rarm, rleg and lleg at 0x0, 0xC, 0x8, 0x4, 0x10
+ * and 0x14, the "armor" block's the same 0x18 on, and the health copied whole to 0x30 as the
+ * maxima -- CCharacterType's constructor copies each array four and two) */
 class HEALTH_PARAMS {
 public:
+    /* the parts' default health, no armour, the maxima the health (CCharacterType's constructor
+     * builds it in place: the stores, then memset and memcpy) */
+    HEALTH_PARAMS()
+    {
+        m_health[HEAD] = 40.0f;
+        m_health[BODY] = 80.0f;
+        m_health[LARM] = 50.0f;
+        m_health[RARM] = 50.0f;
+        m_health[LLEG] = 75.0f;
+        m_health[RLEG] = 75.0f;
+        memset(m_armor, 0, sizeof(m_armor));
+        memcpy(m_healthMax, m_health, sizeof(m_health));
+    }
     void Parse(_zrdr *rdr);
 
-    float m_head_health;   // 0x0
-    float m_head_healthMax;   // 0x4
-    float m_body_health;   // 0x8
-    float m_body_healthMax;   // 0xc
-    float m_larm_health;   // 0x10
-    float m_larm_healthMax;   // 0x14
-    float m_rarm_health;   // 0x18
-    float m_rarm_healthMax;   // 0x1c
-    float m_lleg_health;   // 0x20
-    float m_lleg_healthMax;   // 0x24
-    float m_rleg_health;   // 0x28
-    float m_rleg_healthMax;   // 0x2c
-    float m_armor_head;   // 0x30
-    float m_armor_body;   // 0x34
-    float m_armor_rarm;   // 0x38
-    float m_armor_larm;   // 0x3c
-    float m_armor_rleg;   // 0x40
-    float m_armor_lleg;   // 0x44
+    /* the parts, by their slots (the names ours, after Parse's tags) */
+    enum { HEAD = 0, RARM = 1, LARM = 2, BODY = 3, RLEG = 4, LLEG = 5 };
+
+    float m_health[6];   // 0x0
+    float m_armor[6];   // 0x18
+    float m_healthMax[6];   // 0x30
 };
 
 class CSnd;
@@ -310,6 +315,9 @@ public:
 /* a type's weapons (SOCOM 1's DWARF: a vector and nothing more) */
 class CCharacterWeapList : public std::vector<CCharacterWeap> {
 public:
+    /* room for eight (CCharacterType's constructor: the class reserve 0x540270 called right after
+     * the vector's words are zeroed, ahead of the members that follow) */
+    CCharacterWeapList() { reserve(8); }
     /* an empty weapon pushed (SOCOM 1's AddWeapon; the item unread -- the callers set it up after,
      * through SetupCharacterWeapon 0x53EEE0) */
     void AddWeapon(EQUIP_ITEM item);
@@ -375,6 +383,12 @@ namespace zdb { class CNode; }
  * reads them through the getters, out of line (0x53B010-0x53B06F, defined last in char_type.cpp) */
 class CVoiceFont {
 public:
+    /* no shift, the robot and whisper figures -1 (CCharacterType's constructor) */
+    CVoiceFont()
+        : m_pitchOffset(0.0f), m_spectralFactor(0.0f), m_spectralLedge(0.0f), m_roboOffset(-1.0f),
+          m_roboSquash(-1.0f), m_whisperFactor(-1.0f)
+    {
+    }
     float GetPitchOffset() const;
     float GetSpectralFactor() const;
     float GetSpectralLedge() const;
@@ -461,6 +475,10 @@ public:
     /* a sound played for the entity of that id, whether it went to the positional player (SOCOM
      * 1's, void there; OVL2 0x53B710 -- CSealCtrl's sound calls it) */
     bool PlayAt(CHARACTER_SOUND s, unsigned int id, const CPnt3D *pos);
+    /* the voice font set from a copy (the name ours: the constructor copies its base's so -- the
+     * parameter built on the stack four floats and two, then assigned member by member; a plain
+     * assignment or a returned copy is scalarised) */
+    void SetVoiceFont(CVoiceFont vf) { m_voiceFont = vf; }
 
     char *m_name;   // 0x0
     mutable int m_ref_count;   // 0x4: mutable -- Acquire, const in both builds, counts

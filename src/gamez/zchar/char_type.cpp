@@ -731,6 +731,68 @@ void CCharacterType::InitMultiplayerMessages(_zrdr *rdr)
     }
 }
 
+/* a type's place in the list, -1 for none (the name ours: the constructor's parent index) */
+static inline int GetTypeIndex(const CCharacterType *t)
+{
+    int i = 0;
+    CCharTypeVec::iterator it = CCharacterType::m_char_list.begin();
+    CCharTypeVec::iterator e = CCharacterType::m_char_list.end();
+
+    for (; it != e; ++it, i++)
+        if (t == *it)
+            return i;
+    return -1;
+}
+
+/* a type of that name, everything cleared (the weapons with room for eight) and the sounds and their
+ * names zeroed; made from a base, the base's place in the list kept as the parent and everything
+ * copied from it -- the strings duplicated, the anim sets and gear shared, the multiplayer messages
+ * copied one by one without their sounds (SOCOM 1's, the voice font and messages new) */
+CCharacterType::CCharacterType(const char *name, const CCharacterType *base)
+    : m_name(0), m_ref_count(0), m_model_file(0), m_model_name(0), m_parentID((unsigned int)-1),
+      m_texture_asset(0), m_model(0), m_strength(4), m_recovery_factor(1), m_controller_id(0),
+      m_istemporary(0)
+{
+    m_anim_sets.clear();
+    memset(m_sounds, 0, sizeof(m_sounds));
+    memset(m_arrSoundNames, 0, sizeof(m_arrSoundNames));
+    m_name = _strdup(name, 0, 0);
+    if (base) {
+        m_parentID = GetTypeIndex(base);
+        if (base->m_anim_sets.size()) {
+            for (CAnimSetVec::const_iterator a = (char *const *)base->m_anim_sets.data_;
+                 a != (char *const *)base->m_anim_sets.data_ + base->m_anim_sets.size_; ++a)
+                m_anim_sets.push_back(*a);
+        } else if (m_anim_sets.size()) {
+            m_anim_sets.clear();
+        }
+        m_model_file = base->m_model_file ? _strdup(base->m_model_file, 0, 0) : 0;
+        m_model_name = base->m_model_name ? _strdup(base->m_model_name, 0, 0) : 0;
+        m_texture_asset = base->m_texture_asset ? _strdup(base->m_texture_asset, 0, 0) : 0;
+        m_gear = base->m_gear;
+        m_weapons = base->m_weapons;
+        m_aiParams = base->m_aiParams;
+        m_strength = base->m_strength;
+        m_recovery_factor = base->m_recovery_factor;
+        m_healthParams = base->m_healthParams;
+        SetVoiceFont(base->m_voiceFont);
+        memcpy(m_sounds, base->m_sounds, sizeof(m_sounds));
+        memcpy(m_arrSoundNames, base->m_arrSoundNames, sizeof(m_arrSoundNames));
+        m_mpMessages.reserve(base->m_mpMessages.size());
+        for (int j = 0; j < (int)base->m_mpMessages.size(); j++) {
+            MultiplayerMsg *msg = new MultiplayerMsg;
+            const MultiplayerMsg *src = ((CMultiplayerMsgVec &)base->m_mpMessages)[j];
+
+            msg->idx = src->idx;
+            msg->message = src->message;
+            msg->sound = src->sound;
+            msg->tcmtag = src->tcmtag;
+            m_mpMessages.push_back(msg);
+        }
+        m_LODs = base->m_LODs;
+    }
+}
+
 /* a type let go (SOCOM 1's): each string freed and cleared -- the name, the texture asset, the
  * model's name and file -- the animation sets emptied, the multiplayer messages deleted; then the
  * vectors' own teardown */
