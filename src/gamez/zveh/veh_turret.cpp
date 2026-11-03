@@ -27,7 +27,9 @@ void func_003A78E0(CTurret *turret, float dT);
 void func_003A82C0(CTurret *turret);
 void func_003A84E0(CTurret *turret);
 void func_003A88C0(CTurret *turret, float dT);
-void func_003A8D20(CTurret *turret);
+/* the weapon's fire animation, its zoomed one or not (SOCOM 1's GetFireAnim__8CZWeaponFb: 0x84 or
+ * 0x88; zwep_weapon.cpp's draft) */
+CZAnim *func_003D22B0(CZWeapon *weapon, bool zoomed);
 /* the turrets made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4020;
 extern int data_003E0800;
@@ -373,7 +375,7 @@ void CTurret::Tick(float dT)
     func_003A7350(this, dT);
     if (GetFlag(4)) {
         if (TickTimer(m_fireTimer, dT))
-            func_003A8D20(this);
+            Fire();
     } else
         ResetTimer(m_fireTimer);
 }
@@ -437,6 +439,79 @@ void CTurret::SampleDynamics(float dT)
     }
 }
 
+/* the AI's target (ai_target.cpp's class, OVL2): its sighting clock and the aim's spread */
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+    void ModifyAimDir(CPnt3D *dir, float error, float limit);
+};
+
+/* an animation (zanim.h's CZAnim: only its activation with arguments) */
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+};
+
+/* the entity a controller drives, none without one (inline; the name ours) */
+static inline CEntity *ControlledEntity(CEntityCtrl *ctrl)
+{
+    return ctrl ? ctrl->m_entity : 0;
+}
+
+/* the SEAL's zoom (SOCOM 1's ZOOMSTATE m_zoomstate, a signed byte enum: 0x160 there, 0x200 here --
+ * zseal.h's CZSealBody does not place it) */
+static inline signed char ZoomState(CEntity *e)
+{
+    return *((signed char *)e + 0x200);
+}
+
+/* a round fired: a projectile numbered for the tracers, the weapon's fire animation (the zoomed one
+ * while the gunner looks through the scope) started at the fire point with the turret's velocity,
+ * the AI's aim spread, the weapon's virtual Fire from the fire point, the fire timer reset (SOCOM 1's
+ * Fire; Tick's call when the fire timer runs out). The gunner's test is a controller local tested
+ * twice (the target's `beqz v0; beqz v0` on one load: through IsControlled() it is reloaded, through
+ * a `c ? c->m_entity : 0` inline the null is materialised) and the flag is set to an int 1 (`andi
+ * a1,t0,0xff` off the 1 the tracer index stored; `true` is a daddiu of its own).
+ * OPEN, 2 instructions: the weapon's call loads the shooter id (t3) ahead of the node (a1), here the
+ * node first -- the same set-up otherwise. Tried: the id or the node in a local (before the call, at
+ * the top, before the anim), the call through an inline wrapper in SOCOM 1's static parameter order
+ * and in the member's, accessors for the id and the node, the weapon in a local, `false` for the last
+ * word -- none moves the two loads */
+void CTurret::Fire()
+{
+    if (!m_weapon || m_weapon->m_ID == EQUIP_NONE)
+        return;
+
+    CZAmmo *ammo = m_ammoType ? m_ammoType : m_weapon->GetDefaultAmmo();
+    CZProjectile *p = CZWeapon::m_pProjectilelist->GetNextFreeProjectile();
+
+    if (!p)
+        return;
+    p->m_flyout_idx = 1;
+    p->m_tracer_count = ++m_shots;
+    p->SetUseFlyout(false);
+    p->SetIsPlayer(false);
+
+    bool zoomed = false;
+    CEntityCtrl *c = m_control;
+
+    if (c && c && c->m_entity && ZoomState(c->m_entity) > 0)
+        zoomed = 1;
+
+    CZAnim *anim = func_003D22B0(m_weapon, zoomed);
+    const CPnt3D *pos = &m_380;
+
+    if (anim)
+        anim->ActivateArg(3, 3, m_288, 5, &CPnt3D::zero, 6, &m_velW, 0);
+
+    CPnt3D dir = m_38c;
+
+    if (GetFlag(2))
+        ((CAiTarget *)m_target)->ModifyAimDir(&dir, m_aimError, 0.267949f);
+    m_weapon->Fire(m_node, ammo, pos, &dir, &CPnt3D::zero, p, m_id, 0);
+    ResetTimer(m_fireTimer);
+}
+
 /* a rate moved toward a step, at most the limit either way: down only while the step is below
  * it, up only while above, zero for no step (inline; the name ours) */
 static inline void SlewRate(float &rate, float step)
@@ -496,13 +571,7 @@ extern "C" void func_003A8BD0(CTurret *t, const CPnt3D *target, float *yaw, floa
  * slot of its own (sp+72) copied into erase's parameters; here end() is built twice (and with `e`
  * a named local the temporaries' copies fold away: 0x11C/0x100). Tried: the end in a local, the
  * result in a local, begin() in a local, this->end(), a copy of the pointer */
-/* the AI's target (ai_target.cpp's: its sighting clock only) and its validity test (OVL2 0x60A850,
- * the kit lane's) */
-class CAiTarget {
-public:
-    float GetTimeSinceLastSighting() const;
-};
-
+/* the AI's target's validity test (OVL2 0x60A850, the kit lane's) */
 extern "C" bool func_0060A850(void *target);
 
 /* the turret's target in sight: a valid target held (bit 9), or seen within the last three seconds

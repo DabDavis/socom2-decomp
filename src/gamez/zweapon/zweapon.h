@@ -39,7 +39,9 @@ enum FIREMODE {
 class CZAnim;
 namespace zdb {
 class CTexture;
+class CNode;
 }
+class CZAmmo;
 class CZWeaponList;
 class CZProjectile;
 class CZProjectileList;
@@ -153,8 +155,12 @@ class CZWeapon {
 public:
     CZWeapon();
     virtual ~CZWeapon();
-    /* +0x0C, new in SOCOM II (0x3D2D70; not named) */
-    virtual int Slot0C();
+    /* +0x0C, new in SOCOM II (0x3D2D70): a round fired -- SOCOM 1's static Fire(node, weapon, ammo,
+     * pos, dir, vel, model, projectile, shooter, f, f) made a virtual of the weapon, the model and the
+     * two floats gone and a ninth word (on the stack) after the shooter; the turret's Fire calls it
+     * so. The return and the last word's meaning are not known (0x3D2D70 is not written) */
+    virtual int Fire(zdb::CNode *node, CZAmmo *ammo, const CPnt3D *pos, const CPnt3D *dir,
+                     const CPnt3D *vel, CZProjectile *projectile, unsigned int shooter, int x);
     /* the item's class (SOCOM 1's two: the static one from the id's range, 0x3D1A60, and the
      * member one handing it the id, 0x3D1E10) */
     static EQUIP_ITEM GetIDType(EQUIP_ITEM id);
