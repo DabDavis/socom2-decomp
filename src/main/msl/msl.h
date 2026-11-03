@@ -85,7 +85,7 @@ struct char_traits<char> {
     static char_type *copy(char_type *s1, const char_type *s2, unsigned int n)
         { memcpy(s1, s2, n); return s1; }
     static int_type eof() { return -1; }
-    static int_type not_eof(const int_type &c) { return c != eof() ? c : 0; }
+    static int_type not_eof(const int_type &c) { return eq_int_type(c, eof()) ? 0 : c; }
     static bool eq_int_type(const int_type &c1, const int_type &c2) { return c1 == c2; }
     static char_type to_char_type(const int_type &c) { return (char_type)c; }
     static int_type to_int_type(const char_type &c) { return (unsigned char)c; }
@@ -98,7 +98,7 @@ struct char_traits<wchar_t> {
     static char_type *copy(char_type *s1, const char_type *s2, unsigned int n)
         { memcpy(s1, s2, n * sizeof(char_type)); return s1; }
     static int_type eof() { return -1; }
-    static int_type not_eof(const int_type &c) { return c != eof() ? c : 0; }
+    static int_type not_eof(const int_type &c) { return eq_int_type(c, eof()) ? 0 : c; }
     static bool eq_int_type(const int_type &c1, const int_type &c2) { return c1 == c2; }
     static char_type to_char_type(const int_type &c) { return (char_type)c; }
     static int_type to_int_type(const char_type &c) { return (int_type)c; }
@@ -337,6 +337,12 @@ private:
     unsigned char iostate_;     /* 0x3A */
     unsigned char exceptions_;  /* 0x3B */
 };
+
+/* <ios>'s bitmask operators: the result is the one-byte enum again (`andi 0xff` after the mask) */
+inline ios_base::openmode operator&(ios_base::openmode x, ios_base::openmode y)
+    { return ios_base::openmode(int(x) & int(y)); }
+inline ios_base::openmode operator|(ios_base::openmode x, ios_base::openmode y)
+    { return ios_base::openmode(int(x) | int(y)); }
 
 /* streambuf */
 template <class charT, class traits>

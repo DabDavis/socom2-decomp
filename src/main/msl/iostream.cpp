@@ -107,6 +107,9 @@ basic_filebuf<charT, traits>::seekoff(off_type off, ios_base::seekdir way, ios_b
     return pos_type(off_type(-1));
 }
 
+/* seekpos<wchar_t> matches; OPEN, seekpos<char> (0x186B20, 0x340 against 0x1C8): it inlines
+ * unshift<char> here, which the explicit instantiation generates ahead of it (after overflow), where
+ * the wide one's seekpos comes first and calls it, as the target's both do */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::pos_type
 basic_filebuf<charT, traits>::seekpos(pos_type sp, ios_base::openmode which)
@@ -169,14 +172,16 @@ basic_filebuf<charT, traits>::underflow()
     }
     if (traits::eq_int_type(ci, traits::eof()))
         return traits::eof();
+    char_type c = traits::to_char_type(ci);
     if (this->gptr() != 0) {
-        char_type c = traits::to_char_type(ci);
         size_t es = (size_t)(this->egptr() - this->eback());
         if (es == sizeof(input_buffer_) / sizeof(char_type)) {
-            *(int *)input_buffer_ = *(int *)(input_buffer_ + es - sizeof(int) / sizeof(char_type));
+            *(int *)input_buffer_ = *(int *)(input_buffer_ + sizeof(input_buffer_) / sizeof(char_type)
+                                             - sizeof(int) / sizeof(char_type));
             es = sizeof(int) / sizeof(char_type);
         }
-        this->setg(input_buffer_, input_buffer_ + es, input_buffer_ + es + 1);
+        ++es;
+        this->setg(input_buffer_, input_buffer_ + es - 1, input_buffer_ + es);
         *this->gptr() = c;
     }
     return ci;
@@ -230,7 +235,7 @@ basic_filebuf<charT, traits>::pbackfail(int_type c)
         if (traits::eq_int_type(result, traits::eof()))
             return traits::eof();
     } else {
-        if (!(this->eback() < this->gptr()))
+        if (this->gptr() <= this->eback())
             return traits::eof();
         this->gbump(-1);
         if (!traits::eq_int_type(c, traits::eof()))
@@ -263,6 +268,24 @@ basic_filebuf<charT, traits>::read1(bool peek)
 template <class charT, class traits>
 bool basic_filebuf<charT, traits>::unshift()
 {
+    codecvt_base::result r = codecvt_base::partial;
+    char to[4];
+    while (r == codecvt_base::partial) {
+        char *to_next = to;
+        r = a_codecvt_->unshift(state_, to, to + sizeof(to), to_next);
+        switch (r) {
+        case codecvt_base::error:
+            return false;
+        case codecvt_base::noconv:
+            break;
+        case codecvt_base::ok:
+        case codecvt_base::partial:
+            for (char *t = to; t < to_next;)
+                if (putc(*t++, file_) == EOF)
+                    return false;
+            break;
+        }
+    }
     return true;
 }
 
@@ -285,19 +308,19 @@ typename basic_filebuf<charT, traits>::int_type
 basic_filebuf<charT, traits>::write2(int n, char_type intern_buf)
 {
     char extern_buf[12];
-    const char_type *intern_end;
     char *extern_end;
+    const char_type *intern_end;
     switch (a_codecvt_->out(state_, &intern_buf, &intern_buf + 1, intern_end,
                             extern_buf, extern_buf + sizeof(extern_buf), extern_end)) {
-    case codecvt_base::ok:
-        n = extern_end - extern_buf;
-        break;
-    case codecvt_base::partial:
     case codecvt_base::error:
+    case codecvt_base::partial:
         return traits::eof();
     case codecvt_base::noconv:
-        n = 1;
+        n = sizeof(char_type);
         memcpy(extern_buf, &intern_buf, (unsigned int)n);
+        break;
+    case codecvt_base::ok:
+        n = extern_end - extern_buf;
         break;
     }
     for (int i = 0; i < n; ++i) {
@@ -446,8 +469,20 @@ __wInit::~__wInit()
 
 template class _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > >;
 
-/* defined after the locale pointer's instance, so that their temporary locale's destructor inlines it
- * (the filebufs' destructors, instantiated above, call it) */
+/* The filebufs' FILE constructors and imbue, defined after the locale pointer's instance so that
+ * their temporary locale's destructor inlines it, as the target's do. imbue<char>/<wchar_t> match.
+ * OPEN, the constructors (0x1878D0, 0x188A10: 0x160 against 0x134) and ~basic_filebuf (0x184F20,
+ * 0x185460: 0xA8 against 0x78): the generation order. The target's constructors inline
+ * ~_RefCountedPtr but CALL its copy constructor (0x1848C0); its destructors call ~_RefCountedPtr
+ * (0x184A00). MW decides inlining when a template member is instantiated, and every arrangement tried
+ * gives one side: the filebuf class instantiated before _RefCountedPtr's (round 2's order) makes the
+ * destructors right and the constructors and imbue call ~_RefCountedPtr; __nInit's constructor ahead
+ * of the instantiations (the image's order: it is the unit's first function) instantiates the
+ * constructor and destructor at once, after ios_base::getloc has instantiated the copy constructor,
+ * which then inlines everywhere. Measured in build/scratch/rt/t2.cpp: a member instantiated by a
+ * mid-unit reference calls a template already called out of line; one instantiated at the unit's
+ * end (the vtables' pass) inlines it -- the target's constructors, emitted in that pass's reverse
+ * order (0x1878D0 after showmanyc), look like the second kind, its destructors like the first. */
 template <class charT, class traits>
 basic_filebuf<charT, traits>::basic_filebuf(FILE *file)
     : file_(file), state_(0), overflow_called_last_(false), buffered_(true)
