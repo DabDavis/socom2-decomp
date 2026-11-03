@@ -14,6 +14,7 @@
  * the template replace, 0x39B620, the MSL lane's request). */
 
 #include "zui_skb.h"
+#include "zui_hangul.h"
 #include "../znode/znode.h"
 
 /* the SDK libc's character table (newlib's _ctype_, MAIN 0x1D08D0): bit 8 is white space */
@@ -65,13 +66,14 @@ struct SKBUSBKEY {
 /* a character typed into the keyboard's text (0x399040: the text's insertion 0x399EC0, then the
  * composition's 0x391350; the second word passed on) */
 extern "C" void func_00399040(unsigned short c, int arg);
-/* a letter cased (0x39A8D0, its third argument 0 here) and a jamo typed into the composition
- * (0x399200: the argument first) */
+/* a letter cased (0x39A8D0, its third argument 0 here) */
 extern "C" unsigned short func_0039A8D0(int c, bool upper, int x);
-extern "C" void func_00399200(int arg, signed char jamo);
-/* the jamo a key types, the composition dropped, its last jamo taken back (zui_hangul.cpp's) */
+/* the keyboard's text given the composed pieces (0x398AE0: the argument first; whether it took
+ * them) */
+extern "C" int func_00398AE0(int arg, CSkbPieces *pieces, bool fewer);
+void SkbHangulTypeJamo(int arg, signed char jamo);
+/* the jamo a key types, its last jamo taken back (zui_hangul.cpp's) */
 signed char KeyToJamo(char c);
-void SkbHangulClear();
 unsigned short SkbHangulBack();
 extern "C" int toupper(int c);
 
@@ -242,7 +244,7 @@ void SkbUsbLetter(const SKBUSBKEY *key, int arg, bool korean)
     char c = key->m_usage + ('a' - 4);
 
     if (korean)
-        func_00399200(arg, KeyToJamo(key->m_shift ? toupper(c) : c));
+        SkbHangulTypeJamo(arg, KeyToJamo(key->m_shift ? toupper(c) : c));
     else
         func_00399040(func_0039A8D0(c, (key->m_shift != 0) ^ (key->m_capsLock != 0), 0), arg);
 }
@@ -405,6 +407,20 @@ void SkbCloseText0(CSoftKeyboard *skb)
     func_00394920(skb);
 }
 
+/* a jamo typed into the composition: the pieces composed with it handed to the keyboard's text
+ * (0x398AE0), the composition dropped when the text does not take them (0x399200; the name ours:
+ * SkbTypeJamo and SkbUsbLetter call it out of line, so pinned) */
+#pragma auto_inline off
+void SkbHangulTypeJamo(int arg, signed char jamo)
+{
+    CSkbPieces pieces;
+    std::pair<bool, bool> r = SkbHangulType(&pieces, jamo);
+
+    if (r.first && !func_00398AE0(arg, &pieces, r.second))
+        SkbHangulClear();
+}
+#pragma auto_inline reset
+
 /* the edit mode switched (0x394840 says whether string 0 is current now): its node shown or hidden,
  * the text laid out again when either is string 0, string 0 emptied (0x399150; the name ours) */
 void SkbSwitchText(CSoftKeyboard *skb)
@@ -440,5 +456,5 @@ void SkbTypeJamo(int arg, signed char jamo, CPad *pad)
             }
         }
     }
-    func_00399200(arg, jamo);
+    SkbHangulTypeJamo(arg, jamo);
 }

@@ -7389,9 +7389,9 @@
 0x00392760 0xC __ct__11CInit<Us,0>Fv  # OVL1; the UI lane round 10: zui_skb.h's CInit<unsigned short, 0> (SOCOM 1's CInit), the piece's code zeroed; zui_hangul.cpp's tail, the piece vector's resize builds its temporary with it
 0x00392770 0xA8 resize__Q23std62__vector_imp<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' resize(n) (insert 0x3931A0, erase 0x393030)
 0x00392820 0xC0 resize__Q23std50__vector_imp<6SKBSEQ,Q23std18allocator<6SKBSEQ>,0>FUi  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, a production's sequence vector resize(n) (insert 0x393790, erase 0x3935F0)
-0x003928E0 0x68 func_003928E0  # OVL1
+0x003928E0 0x68 __dt__Q23std56__vector_deleter<8SKBPIECE,Q23std20allocator<8SKBPIECE>>Fv  # OVL1; by hand (the UI lane, round 12: the pieces' deleter destructor -- clear 0x3929C0, the block freed, delete on a positive flag; SkbHangulTypeJamo 0x399200 destroys its CSkbPieces local through it with 0; zui_hangul.cpp's copy byte-exact)
 0x00392950 0x68 __dt__Q23std52__vector_deleter<6SKBSEQ,Q23std18allocator<6SKBSEQ>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the sequences' deleter destructor (clear 0x393C60, the block freed)
-0x003929C0 0x6C func_003929C0  # OVL1
+0x003929C0 0x6C clear__Q23std56__vector_deleter<8SKBPIECE,Q23std20allocator<8SKBPIECE>>Fv  # OVL1; by hand (the UI lane, round 12: the pieces' deleter clear -- 16-byte SKBPIECEs destroyed from the end through ~SKBPIECE 0x390760 with -1, the count zeroed; ~__vector_deleter 0x3928E0 calls it; zui_hangul.cpp's copy 0x74 against 0x6C, the element's destructor a level deeper in the original; its draft carries sc: as=)
 0x00392A30 0x80 erase__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcPc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range erase (the tail memcpy'd down), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's tail, resize calls it
 0x00392AB0 0x128 erase__Q23std54__vector_imp<8SKBPIECE,Q23std20allocator<8SKBPIECE>,0>FP8SKBPIECEP8SKBPIECE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the piece vector's range erase
 0x00392BE0 0x450 insert__Q23std54__vector_imp<8SKBPIECE,Q23std20allocator<8SKBPIECE>,0>FP8SKBPIECEUiRC8SKBPIECE  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the piece vector's insert (the jamo strings copied through vector<char>'s copy 0x393D80 and assignment 0x393D30)
@@ -7479,7 +7479,7 @@
 0x00399070 0x88 SkbTypeJamo__FiScP4CPad  # OVL1; the UI lane round 9: ours, by its body (a jamo replaced by its doubled form from the seven pairs at 0x3FB840 when 0x396E60 says so, then typed through 0x399200) -- byte-exact in zui_skbkeys.cpp; the UI lane round 11: the third parameter is the pad (0x38D200's, CPad's L1 state read by SkbShifted)
 0x00399100 0x48 func_00399100  # OVL1
 0x00399150 0xA4 SkbSwitchText__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (0x394840's mode switch decides whether string 0 is current; its node shown or hidden, 0x39A400 when either was string 0, string 0 emptied) -- byte-exact in zui_skbkeys.cpp
-0x00399200 0x74 func_00399200  # OVL1
+0x00399200 0x74 SkbHangulTypeJamo__FiSc  # OVL1; by hand (the UI lane, round 12, ours: a jamo typed into a CSkbPieces of its own through SkbHangulType 0x390A30, the pieces handed to 0x398AE0 when they composed, SkbHangulClear when it refuses them, the pieces destroyed through ~__vector_deleter<SKBPIECE> 0x3928E0 with 0; SkbTypeJamo and SkbUsbLetter call it -- zui_skbkeys.cpp)
 0x00399280 0x94 SkbCloseText0__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (string 0 no longer current, its node hidden, its text emptied; laid out again through 0x39A400 if it was current, then 0x394920) -- byte-exact in zui_skbkeys.cpp
 0x00399320 0x204 func_00399320  # OVL1
 0x00399530 0x17C func_00399530  # OVL1
