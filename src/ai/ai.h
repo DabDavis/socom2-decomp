@@ -1441,6 +1441,9 @@ extern "C" void func_00510D00();
 namespace ai {
 class CAiPathQueue : public std::list<CAiPath *> {
 public:
+    /* the counters zeroed after the list's constructor (ai_astar.cpp's initialiser 0x668540 stores
+     * the three words after calling it: the AI core's round 18) */
+    CAiPathQueue() : m_maxSize(0), m_completed(0), m_ticks(0) {}
     /* whether the path is queued (the name ours: AbortPathPlan's third arm, which calls begin(),
      * end(), std::find and != out of line -- an inline too tall to inline whole) */
     bool Contains(CAiPath *path) { return std::find(begin(), end(), path) != end(); }
