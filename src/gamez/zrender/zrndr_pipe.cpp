@@ -10,46 +10,9 @@
 #include <eetypes.h>
 #include <vector>
 #include <list>
+#include "../znode/node_world.h"
 #include "../zsys/zsys_public.h"
 #include "../zsys/zsys.h"
-
-namespace zdb {
-/* a texture buffer the GS loads (SOCOM 1's DWARF, 0x40 bytes): its DMA chain at 0x18, the word
- * after it tested before the chain is sent */
-class CGSTexBuffer {
-public:
-    /* the buffer loaded (ztex_manager.cpp's Load: hooked up and sent at once when now) */
-    u_long128 *Load(bool now);
-
-    unsigned char _0[0x18];   // 0x0
-    void *m_chainp;   // 0x18
-    unsigned int m_1c;   // 0x1c (SOCOM 1 tested its packet vector's size, at 0x20)
-};
-
-/* the dynamic textures a visual or a pass uses (znode.h's class; SOCOM II's Add of another
- * list, 0x357A00, which znode.h does not declare) */
-class CDynTexList {
-public:
-    void Add(CDynTexList *list);
-
-    std::vector<void *> m_tex_list;   // 0x0
-    std::vector<void *> m_pal_list;   // 0xc
-};   // 0x18 bytes
-
-/* znode.h's classes, as much as the pipe reads (that header brings its own CDynTexList) */
-class CVisual {
-public:
-    unsigned char _0[0x48];   // 0x0
-    CDynTexList m_dynTexList;   // 0x48
-};
-class CVisualVector : public std::vector<CVisual *> {
-};
-class CNode {
-public:
-    unsigned char _0[0x84];   // 0x0
-    CVisualVector m_visual;   // 0x84
-};
-}
 
 /* the system's packet ring (zsys_main.cpp): a packet in scratchpad, and the packet kicked */
 u_long128 *zSysSprGetPacket(u_long128 **p);
@@ -71,29 +34,6 @@ struct tag_TexLoadCmds {
 
     void SetFlush(bool on) { m_bits.m_flush = on; }
 };   // 0xc bytes
-
-namespace zdb {
-/* a texture (SOCOM 1's DWARF: TEXTURE_PARAMS's width and height first, its pixels at 0x18, the
- * DMA reference that sends it at 0x30) */
-class CTexture {
-public:
-    unsigned short m_width;   // 0x0
-    unsigned short m_height;   // 0x2
-    unsigned char _4[0x18 - 0x4];   // 0x4
-    unsigned char *m_buffer;   // 0x18
-    unsigned char _1c[0x30 - 0x1c];   // 0x1c
-    u_long128 m_dmaRef;   // 0x30
-};
-/* a texture by name (SOCOM 1's DWARF, 0x14 bytes) */
-class CTexHandle {
-public:
-    char *m_name;   // 0x0
-    int m_count;   // 0x4
-    unsigned int m_gsAddr;   // 0x8
-    CTexture *m_texture;   // 0xc
-    unsigned char m_libref;   // 0x10
-};
-}
 
 extern "C" void FlushCache(int op);
 extern "C" int rand();
@@ -182,12 +122,10 @@ void CFlareSystem::Release(int handle)
 extern CPipe thePipe;   // 0x4887C0
 /* the thread a flushed FIFO wakes (SOCOM II's; not named) */
 extern int data_003E1418;
-/* zdb::CGSTexBuffer's, not named yet (SOCOM 1's handler calls UpdateTextureSelects here) */
-extern "C" void func_00355DE0(zdb::CGSTexBuffer *buf);
-
 /* SOCOM 1's: VIF1's interrupt -- the next texture command taken: a flush wakes its thread, a load
- * sends the buffer's chain through DMA channel 2 once the GIF channel is idle, a signal updates its
- * buffer; VIF1 restarted */
+ * sends the buffer's chain through DMA channel 2 once the GIF channel is idle and the buffer has
+ * packet storage (SOCOM II tests its capacity, SOCOM 1 its size), a signal updates its buffer's
+ * selects; VIF1 restarted */
 int InterruptFromVIF1(int cause)
 {
     if (cause == 5) {
@@ -201,7 +139,7 @@ int InterruptFromVIF1(int cause)
         else {
             if (c->m_load) {
                 sceDmaSync(zSys.DmaToGif, 0, 0);
-                if (c->m_load->m_1c) {
+                if (c->m_load->m_pktbuf.capacity()) {
                     *(volatile unsigned int *)0x1000A020 = 0;
                     *(volatile unsigned int *)0x1000A030 = (unsigned int)c->m_load->m_chainp & 0x0FFFFFFF;
                     *(volatile unsigned int *)0x1000A000 = 325;
@@ -209,7 +147,7 @@ int InterruptFromVIF1(int cause)
                 }
             }
             if (c->m_signal)
-                func_00355DE0(c->m_signal);
+                c->m_signal->UpdateTextureSelects();
             *(volatile unsigned int *)0x10003C10 = 8;
             asm volatile { sync }
         }
@@ -275,7 +213,7 @@ void CPipe::RandomizeOverlay()
     if (m_overlay) {
         zdb::CTexture *t = m_overlay->m_texture;
         unsigned int n = t->m_width * t->m_height;
-        unsigned char *pixels = t->m_buffer;
+        unsigned char *pixels = (unsigned char *)t->m_buffer;
 
         for (unsigned int i = 0; i < n; i++) {
             float r = 4.656613e-10f * rand();
