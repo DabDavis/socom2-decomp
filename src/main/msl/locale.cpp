@@ -21,6 +21,21 @@ locale &locale::classic() throw()
     return classic_locale;
 }
 
+ctype<char>::ctype(const mask *tab, bool del, size_t refs)
+    : locale::facet(refs), __table_(tab), __lower_map_(__lower_map), __upper_map_(__upper_map), __owns_(del)
+{
+    if (__table_ == 0) {
+        __table_ = __ctype_map;
+        __owns_ = false;
+    }
+}
+
+ctype<char>::~ctype()
+{
+    if (__owns_)
+        delete [] __table_;
+}
+
 char ctype<char>::do_toupper(char c) const
 {
     return (char)__upper_map_[(unsigned char)c];

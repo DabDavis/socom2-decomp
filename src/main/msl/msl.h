@@ -247,6 +247,7 @@ public:
     class facet {
         friend class __locale_imp<1>;
     protected:
+        explicit facet(size_t refs = 0) : ref_(refs) {}
         virtual ~facet() {}
         unsigned int ref_;
     };
@@ -487,11 +488,18 @@ struct ctype_base {
 
 template <class charT> class ctype;
 
+/* the classic tables (locale.cpp's; SOCOM 1's std::__ctype_map, __lower_map, __upper_map) */
+extern const ctype_base::mask __ctype_map[256];
+extern const unsigned char __lower_map[256];
+extern const unsigned char __upper_map[256];
+
 template <>
 class ctype<char> : public locale::facet, public ctype_base {
 public:
+    explicit ctype(const mask *tab = 0, bool del = false, size_t refs = 0);
     char widen(char c) const { return do_widen(c); }
 protected:
+    ~ctype();
     virtual char do_toupper(char c) const;
     virtual const char *do_toupper(char *low, const char *high) const;
     virtual char do_tolower(char c) const;
