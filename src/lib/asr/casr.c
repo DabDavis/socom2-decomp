@@ -56,12 +56,123 @@ typedef struct SESSIONDATA {
     LNGHDR lng;                         /* +24 */
 } SESSIONDATA;
 
+/* a recognition result: its items (a word sequence each), each with its words */
+typedef struct RESWORD {
+    int pad[3];
+    void *p;                            /* +12: heap */
+} RESWORD;
+
+typedef struct RESITEM {
+    int n;                              /* +0: words */
+    int pad[4];
+    RESWORD *words;                     /* +20: heap */
+} RESITEM;
+
+typedef struct RESULT {
+    int n;                              /* +0: items */
+    RESITEM *items;                     /* +4: heap */
+} RESULT;
+
+extern void casrCreateResult(CASR *c, RESULT **r, int frame, int how);
+extern int cbIsoWordRecognised(CASR *c, unsigned char a1, unsigned char a2, int arg1, int arg2);
+int casrGetParam(CASR *c, int id, unsigned int *value);
+int casrSetParam(CASR *c, int id, unsigned int value);
+extern int CreateSecondPassContext(CASR *c);
+extern int CreateSecondPassContext_ForChinese(CASR *c);
+extern int CreateSecondPassTreeContext(CASR *c);
+extern int CreateSecondPassTreeContext_ForChinese(CASR *c);
+extern void FreeSecondPassContext(CASR *c);
+extern int DoLabelStart(CASR *c);
+extern int DoLabelStop(CASR *c, const unsigned char *blocks);
+extern int SendLabelsToEngine(CASR *c, const unsigned char *blocks, int a);
+
+/* SOCOM 1's casrGetParamNoClearErrorLog and casrSetParamNoClearErrorLog, inlined here: the
+ * parameter calls of a second pass keep the caller's error (their own copies are cb.c's rows) */
+extern __inline__ int casrGetParamNoClearErrorLog(CASR *c, int id, unsigned int *value)
+{
+    int err = c->last_error;
+    int r = casrGetParam(c, id, value);
+
+    c->last_error = err;
+    return r;
+}
+
+extern __inline__ int casrSetParamNoClearErrorLog(CASR *c, int id, unsigned int value)
+{
+    int err = c->last_error;
+    int r = casrSetParam(c, id, value);
+
+    c->last_error = err;
+    return r;
+}
 static int casrGetSessionData(CASR *c, void **data, int *size);
 static int casrReadLabelInQueue(CASR *c, int n);
 
 /* the casr object's .rodata: the blocks a labelled utterance activates */
 static const unsigned char ActiveBlocks_UTTFORMAT_LABELS[3] = { 0x1F, 0x20, 0 };
 static const unsigned char ActiveBlocks_UTTFORMAT_LABELS_ISO[2] = { 0x23, 0 };
+
+/* SOCOM 1's static casrFreeResult, inlined into every caller here (no copy is left) */
+static __inline__ void casrFreeResult(CASR *c, RESULT *r)
+{
+    int i, j;
+    RESITEM *it;
+    RESWORD *w;
+
+    it = r->items;
+    for (i = 0; i < r->n; i++) {
+        w = it->words;
+        for (j = 0; j < it->n; j++) {
+            heap_Free(c->heap, w->p);
+            w++;
+        }
+        heap_Free(c->heap, it->words);
+        it++;
+    }
+    if (i != 0)
+        heap_Free(c->heap, r->items);
+    heap_Free(c->heap, r);
+}
+
+/* the end of an utterance: a second pass when parameter 15 asks for one, else the result now.
+ * OPEN (9 words): the result variable takes v1 here, v0 in the target (and the demo), so the iso
+ * branch's `b` slot gets a move where the target's computes the `== 1`, and the second pass's three
+ * stores reorder; tried: the variables in other orders, err an unsigned char, err reused for the
+ * callback's result, the return as ==, ?:, if/return, unsigned char (build/scratch/gcc/p/s_dsp*.py). */
+int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg1, int arg2)
+{
+    unsigned int enabled;
+    RESULT *r;
+    int err;
+    int ret;
+
+    if (casrGetParam(c, 15, &enabled) != 0)
+        return 1;
+    if (enabled) {
+        if (_tosControl(c->event, 2, 0, 0) != 0)
+            return 1;
+        c->sp_arg1 = arg1;
+        c->second_pass = 1;
+        c->sp_arg2 = arg2;
+        err = 0;
+    } else {
+        if (_tosControl(c->event, 7, 0, 0) != 0)
+            return 1;
+        if (c->iso_word)
+            err = cbIsoWordRecognised(c, a1, a2, arg1, arg2);
+        else {
+            casrCreateResult(c, &r, arg1, 1);
+            ret = c->result_cb(r, c->info);
+            if (c->last_state == 0 && ret != 0) {
+                c->last_state = ret;
+                _tosErrorLog(c->event, 27);
+            }
+            casrFreeResult(c, r);
+            err = 0;
+        }
+    }
+    return err == 1;
+}
 
 /* OPEN (38 words, the right size): the target stores the first gender and the format through s+8
  * and the other two genders off s, and loads the language's pointer into a0; every spelling here
@@ -424,6 +535,74 @@ static unsigned char UpdateExevStatus(CASR *c)
     return 0;
 error:
     return 1;
+}
+
+/* the second pass over the labelled utterance: its own context (the Chinese one when the language
+ * says so), the labels sent again with the timeout (parameter 1) off, then the context back */
+static int casrDoNormalSecondPass(CASR *c)
+{
+    unsigned int timeout;
+
+    if (c->lng->CheckBitField(c->lng, 8)) {
+        if (CreateSecondPassContext_ForChinese(c) != 0)
+            return 1;
+    } else {
+        if (CreateSecondPassContext(c) != 0)
+            return 1;
+    }
+    if (_tosControl(c->event, 36, (int)c->sp_ctx, 0) != 0
+        || _tosControl(c->event, 84, (int)&c->p488, 0) != 0
+        || _tosControl(c->event, 17, 0, 0) != 0
+        || casrGetParamNoClearErrorLog(c, 1, &timeout) != 0
+        || casrSetParamNoClearErrorLog(c, 1, 0) != 0
+        || DoLabelStart(c) != 0
+        || SendLabelsToEngine(c, ActiveBlocks_UTTFORMAT_LABELS, 0) != 0
+        || DoLabelStop(c, ActiveBlocks_UTTFORMAT_LABELS) != 0
+        || _tosControl(c->event, 21, 0, 0) != 0
+        || casrSetParamNoClearErrorLog(c, 1, timeout) != 0
+        || _tosControl(c->event, 36, (int)c->run_ctx, 0) != 0
+        || _tosControl(c->event, 84, (int)&c->p488, 0) != 0) {
+        FreeSecondPassContext(c);
+        return 1;
+    }
+    FreeSecondPassContext(c);
+    c->second_pass = 0;
+    return 0;
+}
+
+/* the same over an isolated word: the tree context, and the iso-word context back after */
+static int casrDoIsoWordSecondPass(CASR *c)
+{
+    unsigned int timeout;
+
+    if (c->lng->CheckBitField(c->lng, 8)) {
+        if (CreateSecondPassTreeContext_ForChinese(c) != 0)
+            return 1;
+    } else {
+        if (CreateSecondPassTreeContext(c) != 0)
+            return 1;
+    }
+    if (_tosControl(c->event, 87, 0, 0) != 0
+        || _tosControl(c->event, 36, (int)c->sp_ctx, 0) != 0
+        || _tosControl(c->event, 84, (int)&c->p488, 0) != 0
+        || _tosControl(c->event, 17, 0, 0) != 0
+        || casrGetParamNoClearErrorLog(c, 1, &timeout) != 0
+        || casrSetParamNoClearErrorLog(c, 1, 0) != 0
+        || DoLabelStart(c) != 0
+        || SendLabelsToEngine(c, ActiveBlocks_UTTFORMAT_LABELS, 0) != 0
+        || DoLabelStop(c, ActiveBlocks_UTTFORMAT_LABELS) != 0
+        || _tosControl(c->event, 21, 0, 0) != 0
+        || casrSetParamNoClearErrorLog(c, 1, timeout) != 0
+        || _tosControl(c->event, 41, 0, 0) != 0
+        || _tosControl(c->event, 90, 0, 0) != 0
+        || _tosControl(c->event, 36, (int)c->iso_ctx, 0) != 0
+        || _tosControl(c->event, 84, (int)&c->p488, 0) != 0) {
+        FreeSecondPassContext(c);
+        return 1;
+    }
+    FreeSecondPassContext(c);
+    c->second_pass = 0;
+    return 0;
 }
 
 static int casrInitSampleFormat(CASR *c, unsigned int fmt)

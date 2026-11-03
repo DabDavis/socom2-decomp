@@ -14,6 +14,19 @@ typedef struct IMPORT {
 } IMPORT;
 
 extern int qQueueControl(int queue, int what, int id, int arg);
+extern unsigned char _tosControl(void *event, int id, int a, int b);
+extern int func_004D5058(CASR *c, unsigned int *ids, unsigned int n);
+
+/* a context's accessors (contextv2.c's _ContextV2VirtualTable), as far as the engine calls them */
+typedef struct CTXVT CTXVT;
+struct CTXVT {
+    void *data;                                     /* +0 */
+    void *s1[8];
+    int (*GetNbrWord)(CTXVT *vt);                   /* +36, slot 9 */
+    void *s10[11];
+};
+
+extern void FillContextV2VirtualTable(CTXVT *vt);
 
 /* the result the host is handed when nothing was recognised */
 typedef struct NORESULT {
@@ -105,6 +118,30 @@ IMPORT *casrImportData(void *heap, void *data)
     p->data = data;
     p->heap = heap;
     return p;
+}
+
+/* the words a context may recognise: each id checked against the context's word count */
+int casrSetActiveWords(CASR *c, unsigned int *ids, unsigned int n)
+{
+    int err;
+    CTXVT vt;
+    unsigned int nwords;
+    unsigned int i;
+
+    err = casrCheckHandle(c);
+    if (err)
+        return err;
+    if (ids == 0 && n != 0)
+        return _tosErrorLog(c->event, CASR_ERR_ARG);
+    if (c->iso_word)
+        return func_004D5058(c, ids, n);
+    FillContextV2VirtualTable(&vt);
+    vt.data = c->ctx->data;
+    nwords = vt.GetNbrWord(&vt);
+    for (i = 0; i < n; i++)
+        if (ids[i] >= nwords)
+            return _tosErrorLog(c->event, 25);
+    return _tosControl(c->event, 25, n != 0 ? (int)ids : 0, n);
 }
 
 short *casrGetSegmStart(CASR *c, int i, int j)

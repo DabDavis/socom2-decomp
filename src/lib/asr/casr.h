@@ -72,7 +72,12 @@ typedef struct CASR {
     struct IMPORT *ctx;                 /* +572: the activated context */
     unsigned char use_dp;               /* +576 */
     unsigned char iso_word;             /* +577 */
-    char pad578[30];
+    char pad578[2];
+    void *run_ctx;                      /* +580: the context the engine runs (_tosControl 36) */
+    char pad584[12];
+    void *sp_ctx;                       /* +596: the second pass's (CreateSecondPassContext) */
+    int pad600;
+    void *iso_ctx;                      /* +604: the iso-word context, run again after a second pass */
     int f608;                           /* +608 */
     struct LANGVT *lng;                 /* +612 */
     char pad616[4];
