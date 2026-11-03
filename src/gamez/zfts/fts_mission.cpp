@@ -1104,6 +1104,9 @@ class CZSealBody {
 public:
     unsigned char _0[0xc0];
     CSealCtrl *m_control;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char m_e1_0 : 4;   // 0xe1
+    unsigned char m_e1_4 : 1;   // 0xe1, bit 4: TRIGGER_POPUP's test (the name ours)
 };
 
 CZSealBody *ftsGetPlayer();
@@ -1283,4 +1286,41 @@ extern "C" _zanim_cmd_hdr *func_002AE510(_zrdr *rdr)
     cmd->data_size = sizeof(_zanim_cmd_hdr);
     cmd->timeless = 1;
     return cmd;
+}
+
+/* TRIGGER_POPUP (SOCOM II's, before the defuse timer's tick; the names ours): the popup the command
+ * names, its one string kept among the current anim's names (OVL1 0x2AE3A0 the parser, the same code
+ * as TRIGGER_MISSION_CAM's; 0x2AE340 the tick, a popup shown for the player when its flag at 0xE1 is
+ * set) */
+struct _trigger_popup_cmd {
+    _zanim_cmd_hdr hdr;
+    unsigned char name;   // 0x4
+};
+
+void hudTriggerPopup(const char *name);
+
+extern "C" _zanim_cmd_hdr *func_002AE3A0(_zrdr *rdr)
+{
+    _trigger_popup_cmd *cmd = 0;
+
+    if (!rdr)
+        return 0;
+    if (rdr->type == 4 && rdr->Count() && rdr->Item(0)->type == 3) {
+        CZAnim *anim = ZAnim.m_CurAnim;
+
+        cmd = (_trigger_popup_cmd *)_calloc(1, sizeof(_trigger_popup_cmd), 0, 0);
+        cmd->hdr.data_size = sizeof(_trigger_popup_cmd);
+        cmd->hdr.timeless = 1;
+        cmd->name = anim->AddName(rdr->Item(0)->String());
+    }
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+extern "C" bool func_002AE340(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player && player->m_e1_4)
+        hudTriggerPopup(ZAnim.m_CurAnim->GetName(((_trigger_popup_cmd *)hdr)->name));
+    return true;
 }
