@@ -672,6 +672,36 @@ bool CZSealBody::CanChangeItem()
     return true;
 }
 
+/* an entity that is a turret (kind 3), or none (the inline cast 0x5A88C0 shows: zentity.h's CTurret
+ * is only declared here) */
+static inline CTurret *AsTurret(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+}
+
+/* whether the SEAL may work the entity its controller holds (action 19): carrying no body, no scope
+ * or binoculars up, the state test of kind 10 passed, and the entity agreeing -- CEntity's slot 0x5C,
+ * handed the SEAL and the entity again when it is a turret (OVL2 0x5A88C0, new in SOCOM II:
+ * CSealCtrl::PerformProximityActions asks it; the name unknown) */
+extern "C" bool func_005A88C0(CZSealBody *seal)
+{
+    if (seal->m_carry)
+        return false;
+
+    bool r = false;
+    bool scoped = false;
+
+    if (seal->m_kit.IsUsingScope() || seal->m_kit.IsUsingBinocs())
+        scoped = true;
+    if (func_005B4340(seal, 10) && !scoped) {
+        CEntity *e = seal->m_control ? ((CSealCtrl *)seal->m_control)->m_16c : 0;
+
+        if (e && e->Virtual5C(seal, AsTurret(e)))
+            r = true;
+    }
+    return r;
+}
+
 /* the aim along the item in hand: its gear part's x axis, or straight ahead without one (OVL2
  * 0x5A8790; SOCOM 1's AimWeapon, before CanUseBodyCarry in both builds -- SOCOM 1's took the rifle
  * and the pistol themselves, SOCOM II's the item's part out of the table, item 4 too) */

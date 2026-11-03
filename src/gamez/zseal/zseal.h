@@ -100,6 +100,9 @@ public:
     class CZFTSWeapon *GetCurItem() const;
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
+    /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
+    bool IsUsingScope();
+    bool IsUsingBinocs();
 
     /* kit.h's flags (the kit lane's names): only bit 12 here */
     unsigned int m_bits0 : 12;   // 0x0
@@ -460,7 +463,10 @@ public:
     int m_HudDoPickup;   // 0x148 (SOCOM 1's 0x144)
     int m_curpickup_ID;   // 0x14c
     int m_curpickup_secondary_ID;   // 0x150
-    unsigned char _154[0x170 - 0x154];
+    unsigned char _154[0x16c - 0x154];
+    /* the entity the SEAL may work (new in SOCOM II, SOCOM 1 has no member between m_corpsebody and
+     * the bits: 0x5A88C0 asks its slot 0x5C for action 19; the name ours) */
+    CEntity *m_16c;   // 0x16c
     unsigned int m_goal_pos_valid : 1;   // 0x170 (SOCOM 1's 0x168, the same bits)
     unsigned int m_goal_dir_valid : 1;
     unsigned int m_action : 1;
@@ -1217,7 +1223,10 @@ public:
     CSealStats m_stats;   // 0x58c
     CAccuracy m_accuracy;   // 0x5d4 (SOCOM 1's 0x514: PerturbAimVector reads it)
     CZKit m_kit;   // 0x5e0 (SOCOM 1's 0x520)
-    unsigned char _5e4[0xeb0 - 0x5e4];
+    unsigned char _5e4[0xeac - 0x5e4];
+    /* the body carried (SOCOM 1's m_carry, 0xda8 -- right before m_adrenaline in both builds;
+     * 0x5A88C0 refuses while one is) */
+    CZSealBody *m_carry;   // 0xeac
     struct CAdrenaline *m_adrenaline;   // 0xeb0 (SOCOM 1's 0xdac: Adrenaline returns it)
     unsigned char _eb4[0xeb8 - 0xeb4];
     /* the entity the SEAL works -- a turret when its type is 3 (0x543200-0x5433C0); 0x5A8850 tests

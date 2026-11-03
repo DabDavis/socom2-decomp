@@ -56,12 +56,9 @@ struct CSealAnimFrames {
     CSealAnimRec *m_pool;   // 0x60
 };
 
-extern "C" {
-/* the number of records a frame holds: si_script.cpp's siNumBodyObjects (OVL1 data 0x3DE1E8; SOCOM
- * 1's 32 were a constant), read here as unsigned -- zbody.h's `int` makes the blender's constructor
- * three instructions longer (0x134 against 0x128) */
-extern unsigned int data_003DE1E8;
-}
+/* the number of records a frame holds is zbody.h's siNumBodyObjects (OVL1 data 0x3DE1E8; SOCOM 1's 32
+ * were a constant) -- unsigned: as an `int` the blender's constructor comes out three instructions
+ * longer (0x134 against 0x128) */
 
 /* the SEAL's animation blender (SOCOM 1's CSealAnim: a stack of frames of part records -- SOCOM II's
  * frames point at their records; only what the written members touch) and the one the unit uses (OVL1
@@ -72,9 +69,9 @@ public:
      * there) */
     CSealAnim() : m_count(0), m_seal(0)
     {
-        m_frames = new CSealAnimFrames(data_003DE1E8);
+        m_frames = new CSealAnimFrames(siNumBodyObjects);
         CSealAnimRec *r = m_frames->m_pool;
-        for (unsigned int i = 0; i < data_003DE1E8 * 8; i++, r++)
+        for (unsigned int i = 0; i < siNumBodyObjects * 8; i++, r++)
             r->m_id = -1;
     }
     /* emptied, the frames' block freed (SOCOM 1's ~CSealAnim, out of line there) */
@@ -139,7 +136,7 @@ int CSealAnim::AnimPop()
     int top = m_count - 1;
     CSealAnimRec *rec = m_frames->m_frames[top].m_recs;
 
-    for (unsigned int i = 0; i < data_003DE1E8; i++, rec++) {
+    for (unsigned int i = 0; i < siNumBodyObjects; i++, rec++) {
         if (rec->m_id > -1) {
             CZBodyPart *part = parts[rec->m_id];
 
