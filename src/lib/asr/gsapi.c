@@ -26,11 +26,150 @@ extern int ContextSetGcdData(void *ctx, void *data);
 extern int ContextSetWrdData(void *ctx, void *data);
 extern int gsapi_ContextEnableWords(void *ctx, WORDSEL w);
 extern int gsapi_ContextDisableWords(void *ctx, WORDSEL w);
-extern int gsapi_EngineEnableWords(void *eng, WORDSEL w);
-extern int gsapi_EngineDisableWords(void *eng, WORDSEL w);
 extern void *memset(void *p, int c, unsigned int n);
 
 #define GSAPI_ERR_NULL_CTX  0x80CC0089
+#define GSAPI_ERR_NOT_LOADED 0x80CC000E
+#define GSAPI_ERR_NO_CONTEXT 0x80CC000D
+#define GSAPI_ERR_NULL_ARG   0x80CC0083
+
+extern int ContextAPIDeActivate(GSENGINE *e);
+extern int ContextActivate(GSENGINE *e, void *ctx);
+
+extern int asrspi_ActivateWords(int engine, int words, int n);
+extern int asrspi_DeActivateWords(int engine, int words, int n);
+extern int CreateWordIdList(GSENGINE *e, void *ctx);
+extern int ContextDeActivate(GSENGINE *e);
+extern int ContextUnLoad(void *ctx);
+extern void heap_Free(void *heap, void *p);
+
+/* SOCOM 1's CheckEngineHandle, inlined into every engine call in SOCOM II (its out-of-line copy is
+ * gone): an engine is a live slot of gGSAPI's array. The base is read first and the result starts
+ * at 0 -- the order that schedules as the target's (an early-return or one-expression form keeps
+ * a 0 per failing test, or loads the base after the null test). */
+static __inline__ int CheckEngineHandle(GSENGINE *e)
+{
+    GSENGINE *base = gGSAPI.engines;
+    int ok = 0;
+
+    if (e != 0 && e >= base && ((char *)e - (char *)base) % sizeof(GSENGINE) == 0
+        && e <= base + gGSAPI.nengines)
+        ok = e->f0 != 0;
+    return ok;
+}
+
+/* a context made the engine's active one: the engine's own loaded data is unloaded first */
+int gsapi_ContextActivate(GSENGINE *e, void *ctx)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    if (ctx == 0)
+        return GSAPI_ERR_NULL_CTX;
+    gGSAPI.status = ContextAPIDeActivate(e);
+    if (gGSAPI.status < 0)
+        return gGSAPI.status;
+    if (e->f8 != 0) {
+        gGSAPI.status = ContextUnLoad(&e->f8);
+        if (gGSAPI.status < 0)
+            return gGSAPI.status;
+        memset(&e->f8, 0, 40);
+    }
+    return gGSAPI.status = ContextActivate(e, ctx);
+}
+
+int gsapi_ContextDeActivate(GSENGINE *e)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    gGSAPI.status = ContextDeActivate(e);
+    if (gGSAPI.status < 0)
+        return gGSAPI.status;
+    if (e->f8 != 0) {
+        gGSAPI.status = ContextUnLoad(&e->f8);
+        if (gGSAPI.status < 0)
+            return gGSAPI.status;
+        memset(&e->f8, 0, 40);
+    }
+    return gGSAPI.status;
+}
+
+/* a context's words, in every engine the context is loaded into; the last such engine's word
+ * list is rebuilt */
+int gsapi_ContextDisableWords(void *ctx, WORDSEL w)
+{
+    GSENGINE *e = 0;
+    GSENGINE *p;
+    int i;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (ctx == 0)
+        return GSAPI_ERR_NULL_CTX;
+    for (i = 0; i < gGSAPI.nengines; i++) {
+        p = &gGSAPI.engines[i];
+        if (p->loaded == ctx) {
+            e = p;
+            gGSAPI.status = asrspi_DeActivateWords(e->f0, w.count, w.first);
+            if (gGSAPI.status < 0)
+                return gGSAPI.status;
+        }
+    }
+    if (e == 0)
+        return GSAPI_ERR_NOT_LOADED;
+    return gGSAPI.status = CreateWordIdList(e, ctx);
+}
+
+int gsapi_ContextEnableWords(void *ctx, WORDSEL w)
+{
+    GSENGINE *e = 0;
+    GSENGINE *p;
+    int i;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (ctx == 0)
+        return GSAPI_ERR_NULL_CTX;
+    for (i = 0; i < gGSAPI.nengines; i++) {
+        p = &gGSAPI.engines[i];
+        if (p->loaded == ctx) {
+            e = p;
+            gGSAPI.status = asrspi_ActivateWords(e->f0, w.count, w.first);
+            if (gGSAPI.status < 0)
+                return gGSAPI.status;
+        }
+    }
+    if (e == 0)
+        return GSAPI_ERR_NOT_LOADED;
+    return gGSAPI.status = CreateWordIdList(e, ctx);
+}
+
+/* a context is taken out of every engine it is loaded into, unloaded and freed */
+int gsapi_ContextUnLoad(void *ctx)
+{
+    GSENGINE *e;
+    int i;
+
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (ctx == 0)
+        return GSAPI_ERR_NULL_CTX;
+    for (i = 0; i < gGSAPI.nengines; i++) {
+        e = &gGSAPI.engines[i];
+        if (e->loaded == ctx) {
+            gGSAPI.status = ContextDeActivate(e);
+            if (gGSAPI.status < 0)
+                return gGSAPI.status;
+        }
+    }
+    gGSAPI.status = ContextUnLoad(ctx);
+    heap_Free(gGSAPI.heap, ctx);
+    gGSAPI.ncontexts--;
+    return gGSAPI.status;
+}
 
 /* a context's grammar and word data handed on (2.96 makes the call a sibling call) */
 int gsapi_ContextSetGcdData(void *ctx, void *data)
@@ -69,7 +208,29 @@ int gsapi_ContextDisableAllWords(void *ctx)
     return gsapi_ContextDisableWords(ctx, all);
 }
 
-int gsapi_EngineEnableAllWords(void *eng)
+int gsapi_EngineEnableWords(GSENGINE *e, WORDSEL w)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    if (e->f8 == 0)
+        return GSAPI_ERR_NO_CONTEXT;
+    return gGSAPI.status = asrspi_ActivateWords(e->f0, w.count, w.first);
+}
+
+int gsapi_EngineDisableWords(GSENGINE *e, WORDSEL w)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    if (e->f8 == 0)
+        return GSAPI_ERR_NO_CONTEXT;
+    return gGSAPI.status = asrspi_DeActivateWords(e->f0, w.count, w.first);
+}
+
+int gsapi_EngineEnableAllWords(GSENGINE *eng)
 {
     WORDSEL all;
 
@@ -78,7 +239,7 @@ int gsapi_EngineEnableAllWords(void *eng)
     return gsapi_EngineEnableWords(eng, all);
 }
 
-int gsapi_EngineDisableAllWords(void *eng)
+int gsapi_EngineDisableAllWords(GSENGINE *eng)
 {
     WORDSEL all;
 
@@ -95,11 +256,43 @@ int gsapi_NotifySetCallback(GSCALLBACK cb)
     return 0;
 }
 
-/* the 0 returned is the handle test's own (2.96 keeps it in v0). The engine accessors between
- * (NotifySetEnergyInterval, EngineSet/GetUserData, 0x4C8490-0x4C8758) are OPEN: SOCOM 1's
- * CheckEngineHandle inlined (an engine in gGSAPI's array, 108 bytes apart, live) comes within 11
- * words -- the target zeroes the result before the tests and swaps the divisor's register; six
- * shapes of the test (a result variable, one condition, early returns, a local base) do not. */
+/* OPEN, and gsapi_EngineSetUserData (35 words, one short): the same inlined check matches in
+ * five other calls, but here the target zeroes the result a second time after the base test
+ * and holds 108 in v0 and the difference in v1 (the round-3b diagnosis); the guard, an if
+ * around the store and a result variable (build/scratch/gcc/spec_ei.py) do not give it. */
+int gsapi_NotifySetEnergyInterval(GSENGINE *e, int interval)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    e->energy_interval = interval;
+    return 0;
+}
+
+int gsapi_EngineSetUserData(GSENGINE *e, int data)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    e->user = data;
+    return 0;
+}
+
+int gsapi_EngineGetUserData(GSENGINE *e, int *data)
+{
+    if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
+        return GSAPI_ERR_NOT_OPEN;
+    if (!CheckEngineHandle(e))
+        return GSAPI_ERR_NULL_CTX;
+    if (data == 0)
+        return GSAPI_ERR_NULL_ARG;
+    *data = e->user;
+    return 0;
+}
+
+/* the 0 returned is the handle test's own (2.96 keeps it in v0) */
 int gsapi_GetHeapHandle(void **heap)
 {
     if (safeh_HandlesEqual(gGSAPI.handle, g_lhNullHandle))
