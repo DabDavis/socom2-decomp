@@ -4119,6 +4119,49 @@ InitUndersampler, ProcessStacker, ProcessMedian, ProcessStationarity, GetLabel,
 IdleVq1500Process, ControlVq1500Process `s1:order`; FreeVq1500 `s1:calls`; SlidingHisto_Free by
 body).
 
+**Round 8b: RT's leftovers, the crypto objects, three Medius names settled.**
+
+- **The online lane's three questions, against SOCOM 1's symtab** (the demo names every
+  `PacketType*` global and every `MediusUniqueCallback*ResponseHandler`, each handler returning the
+  size of its response): 0x6492D8 keeps `MediusBuddyGetPermission` -- SOCOM 1's function of that name
+  sends `PacketTypeAddToBuddyListConfirmationRequest` and its slot's handler is
+  `...AddToBuddyListConfirmationResponseHandler` (64 bytes, as here; the request grew 44 -> 48);
+  0x649060 keeps `MediusSendChatMessage` -- SOCOM 1's shape exactly and the library's only 112-byte
+  request (a direct message is a chat message with its type and target); 0x649400 was not
+  MediusGetPolicy -- 38 bytes (no policy word) and a 72-byte response (the GetBuddyList response's
+  size) -- it is the game's GetIgnoreList's request, `MediusGetIgnoreList`, with
+  `MediusAddToIgnoreList`/`MediusRemoveFromIgnoreList` (0x6494A0/0x649540, by their callers' status
+  strings), and **MediusGetPolicy is 0x6495E0** (44 bytes, a 288-byte response as SOCOM 1's). Two
+  callback slots moved with it (data.txt 0x656240, 0x65624C). A request's size and its handler's
+  size pair a new request with SOCOM 1's more surely than the slot order did.
+- **SOCOM II's RT keeps SOCOM 1's objects under new layouts**: the RC cipher's counters are words
+  ahead of the table (SOCOM 1's were bytes after it), LargeInt's tests walk up from word 0 and
+  IsGreater and its siblings are gone, KM_Initialize has a third key pair, rt_time_calc_diff gives a
+  zero span where SOCOM 1 failed, and rt_time_platform_get_time_string's RTC read is its own
+  function with milliseconds kept (gCurTimeDate, gbTimeDateSet: SOCOM 1's names).
+- **The title's glue object is built without scheduling**: KM_GetSoftwareID and
+  KM_GetSoftwareKeyPair (SOCOM 1's object 0x420FC0, the keys its function-local statics
+  `pubKey.0`/`priKey.1`) are byte-exact at `-O1 -G0` (or -O2 with both scheduling passes off) and
+  miss at -O2 by 2 and 67 words on every ee-gcc toolchain -- a per-object flag again, the first -O1.
+- **Shapes, each measured**: a conditional expression where the target if-converts (`nTimeout =
+  b == 1 ? 0 : 10000` -- the `if` form keeps the constant 1 across the call in a saved register and
+  branches on it: rt_comm_platform2_create); `while (!bFound)` around a search whose found block
+  jumps back to the flag test (the interface search); a date copied out field by field in date
+  order, year first (0x63D8E8: a struct assignment is ldl/ldr, the target lw/sw); RC4's j summed on
+  `S[i]` and the swap through its own byte temporary (the target's `andi` on the swapped byte);
+  counters cleared i, j, n (ccperm, one of six); a salt indexed off its own stack slot; LargeInt's
+  IsEqual through plain word pointers (index-first address sums), lintGetBit's mask first.
+- **Open, diagnosed in place**: RCEncrypt (15 words) and RCDecrypt (36), registers only;
+  LargeInt's two carry functions 0x626D28 (17) and 0x626D78 (28s), the loop's block layout.
+
+Hand-written in round 8b: `medius/rt_time_platform.c` (+3, 9 of 9), `medius/rt_time.c` (+1, 7 of 7),
+`medius/rt_crypt.c` (+1, KM_Initialize: 23 of 25), `medius/rt_comm_platform2.c` (+2, 19 of 20),
+`medius/rc.c` (2 of 4, new), `medius/largeint.c` (8 of 10, new), `medius/kmsoftware.c` (2 of 2, new)
+-- 19 functions byte-exact, 16 new to the map's byte-exact rows (4,364 bytes), 3 superseding
+matching drafts (IsEven, lintSetBit, lintClearBit); 17 rows named or corrected (rt_time_platform_
+get_time_string `s1:calls`, KM_Initialize, the four RC and seven LargeInt functions `s1:order`,
+MediusGetPolicy moved, the three ignore-list requests by call), 4 data rows.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
