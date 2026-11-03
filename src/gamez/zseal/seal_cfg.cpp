@@ -197,6 +197,17 @@ struct ANIMSET_PARAMS {
 
 /* a piece of gear a character wears, CCharacterGear, is zseal.h's */
 
+/* the rifle, pistol and launcher found among the made gears, and the launcher's part added to the
+ * anims' parts (OVL2 0x58B0F0: SOCOM 1's SetupGear, by its place after SetPartAsGear -- SOCOM 1's found
+ * the rifle and the pistol alone) */
+void CZSealBody::SetupGear()
+{
+    m_item_gear[1].m_gear = FindGear("rifle");
+    m_item_gear[2].m_gear = FindGear("pistol");
+    m_item_gear[4].m_gear = FindGear("launcher");
+    m_obj_anims.Add(m_item_gear[4].m_part, m_item_gear[4].m_gear);
+}
+
 /* a body part made a gear's: placed and turned as the gear says, oriented on its node, and taken
  * off the body's table of parts (OVL2 0x58B040; SOCOM 1's with the null tests, and CBody::SetBodyPart
  * where SOCOM 1's cleared the table's entry by hand) */
@@ -437,4 +448,15 @@ void CZSealBody::GetMaxXMotion(float &a, float &b)
         b = 0.0f;
         break;
     }
+}
+
+/* the parts deleted and the list's storage given up (OVL2 0x58AB30: SOCOM 1's ~CObjAnims, seal_cfg.cpp's
+ * first row in both builds; the SEAL's destructor calls it. FreeVector's pieces follow it, called out of
+ * line: the empty vector 0x58ACA0, clear 0x58AC90, swap 0x58AC50, and the pod vector's destructor --
+ * seal.cpp's copy, 0x555040) */
+CObjAnims::~CObjAnims()
+{
+    for (std::vector<CObjAnim *>::iterator i = m_obj_anims.begin(); i != m_obj_anims.end(); ++i)
+        delete *i;
+    FreeVector(m_obj_anims);
 }

@@ -10060,7 +10060,7 @@
 0x00553E20 0x3C OnMissionEnd__10CZSealBodyFv  # OVL2; slot 0x50 of __vt__10CZSealBody: m_control's OnMissionEnd (slot 0x60) after a call with m_id, as SOCOM 1's (which called DestroyNetPickups(m_id) under a test); split off the 0x553E00 row
 0x00553E60 0x3C OnMissionStart__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00553EA0 0x119C __ct__10CZSealBodyFPQ23zdb5CNodeP14CCharacterType  # OVL2; s1:calls (Create and ReCreate call it after new(5344) where SOCOM 1's call __ct__10CZSealBodyFPQ23zdb5CNodeP14CCharacterType, with the node and the type; it builds the CBody at 0x170) -- the SEAL lane, round 4
-0x00555040 0x70 func_00555040  # OVL2
+0x00555040 0x70 __dt__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>Fv  # OVL2; ours (the SEAL lane, round 17: the destructor ~CObjAnims calls on FreeVector's temporary -- seal.cpp's copy, the first in OVL2's link order; the words any pointer vector's destructor has)
 0x005550B0 0x10 func_005550B0  # OVL2; tu: orders.cpp~ (1.0 beta)
 0x005550C0 0x8 func_005550C0  # OVL2
 0x005550D0 0x68 SealInitCharacterDynamics__Fv  # OVL2; s1:exact
@@ -10526,13 +10526,13 @@
 0x0058A9F0 0xB0 func_0058A9F0  # OVL2; the same words as __ct__21RTList<11ACTIVE_ANIM>FUi (0x290290) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: __ct__21RTList<11ACTIVE_ANIM>FUi (the SEAL lane, round 17: __sinit_seal_body.cpp builds newanims through it, as SOCOM 1's; seal_body.cpp's tail)
 0x0058AAA0 0x14 func_0058AAA0  # OVL2; ovl-copy: __ct__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv (the SEAL lane, round 17: the element constructor 0x58A9F0 hands to __construct_new_array; seal_body.cpp's tail)
 0x0058AAC0 0x68 func_0058AAC0  # OVL2; ovl-copy: __dt__15CActiveAnimListFv (the SEAL lane, round 17: the destructor __sinit_seal_body.cpp registers for newanims, as SOCOM 1's registers __dt__15CActiveAnimListFv; OVL2's copy inlines ~RTList -- one this-test more -- where OVL1's 0x28FC70 calls it)
-0x0058AB30 0x114 func_0058AB30  # OVL2
-0x0058AC50 0x40 func_0058AC50  # OVL2
-0x0058AC90 0x8 func_0058AC90  # OVL2
-0x0058ACA0 0x14 func_0058ACA0  # OVL2
+0x0058AB30 0x114 __dt__9CObjAnimsFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's __dt__9CObjAnimsFv, the first of seal_cfg.cpp in both builds: each part deleted, then FreeVector's temporary, clear, swap and destructor; ~CZSealBody calls it on the member at 0x37C, SOCOM 1's m_obj_anims at 0x30C)
+0x0058AC50 0x40 swap__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>FRQ23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>  # OVL2; ours (the SEAL lane, round 17: FreeVector's swap in ~CObjAnims, out of line; seal_cfg.cpp's tail)
+0x0058AC90 0x8 clear__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>Fv  # OVL2; ours (the SEAL lane, round 17: FreeVector's clear in ~CObjAnims, out of line; seal_cfg.cpp's tail)
+0x0058ACA0 0x14 __ct__Q23std48vector<P8CObjAnim,Q23std21allocator<P8CObjAnim>>Fv  # OVL2; ours (the SEAL lane, round 17: FreeVector's temporary in ~CObjAnims 0x58AB30, called out of line -- the instance seal_cfg.cpp's tail emits after it; CObjAnims holds a vector<CObjAnim *>, the element's name ours)
 0x0058ACC0 0x380 func_0058ACC0  # OVL2
 0x0058B040 0xA4 SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear  # OVL2; s1:calls by hand (SOCOM 1's SetPartAsGear__10CZSealBodyFP10CZBodyPartP14CCharacterGear: the part placed at the gear's offset (0x1C) and turned by QFromRot of its rotation (0x28), Orient when it has a node, then the body's entry for its id cleared -- SOCOM II adds the null tests and calls CBody::SetBodyPart(id, 0); seal_cfg.cpp, SOCOM 1's unit's first)
-0x0058B0F0 0xAC func_0058B0F0  # OVL2
+0x0058B0F0 0xAC SetupGear__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's SetupGear__10CZSealBodyFv, right after SetPartAsGear in both builds: FindGear of "rifle" and "pistol" stored as SOCOM 1's, SOCOM II adding "launcher" and its part to CObjAnims' list; PostCreateSeal calls it as SOCOM 1's does)
 0x0058B1A0 0x484 func_0058B1A0  # OVL2
 0x0058B630 0x160 func_0058B630  # OVL2
 0x0058B790 0x1CC func_0058B790  # OVL2

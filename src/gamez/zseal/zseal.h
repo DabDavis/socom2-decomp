@@ -918,6 +918,32 @@ public:
     CPnt3D m_rotation;   // 0x28
 };
 
+/* a body part made of a gear: the five items worn (CZSealBody's m_item_gear) and the extra parts on
+ * CObjAnims' list (SOCOM 1's AddItem news one of 8 bytes, the part and the gear). SOCOM II's
+ * constructor and destructor zero both words (OVL2 0x5550B0 and 0x553D60, seal.cpp's copies: the
+ * SEAL's constructor and destructor build and tear down the five through __construct_array and
+ * __destroy_arr; ~CObjAnims' delete inlines the destructor) -- the name ours */
+class CObjAnim {
+public:
+    CObjAnim() { m_part = 0; m_gear = 0; }
+    CObjAnim(CZBodyPart *part, class CCharacterGear *gear) { m_part = part; m_gear = gear; }
+    ~CObjAnim() { m_part = 0; m_gear = 0; }
+
+    CZBodyPart *m_part;   // 0x0
+    class CCharacterGear *m_gear;   // 0x4
+};
+
+/* the parts the SEAL adds (SOCOM 1's DWARF: CObjAnims, one vector; its GetObjAnim and destructor head
+ * seal_cfg.cpp in both builds -- SOCOM II's destructor 0x58AB30, the SEAL's destructor calls it) */
+class CObjAnims {
+public:
+    ~CObjAnims();
+    /* a part and its gear added (an inline: SetupGear reads both before the allocation) */
+    void Add(CZBodyPart *part, class CCharacterGear *gear) { m_obj_anims.push_back(new CObjAnim(part, gear)); }
+
+    std::vector<CObjAnim *> m_obj_anims;   // 0x0
+};
+
 /* the SEAL's adrenaline: its level, 0 to 1 (only what the heartbeat reads; the names ours) */
 struct CAdrenaline {
     float m_level;   // 0x0
@@ -1051,6 +1077,9 @@ public:
     void SetPartAsGear(CZBodyPart *part, class CCharacterGear *gear);
     /* a gear by name, or none (SOCOM 1's; OVL2 0x59A730, seal_create.cpp: `this` unread) */
     CCharacterGear *FindGear(const char *name);
+    /* the rifle, pistol and launcher found among the made gears, the launcher's part added (SOCOM 1's;
+     * OVL2 0x58B0F0, seal_cfg.cpp) */
+    void SetupGear();
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */
     void GetMaxXMotion(float &a, float &b);
     void GetMaxZMotion(float &a, float &b);
@@ -1313,14 +1342,12 @@ public:
     unsigned char _368[0x374 - 0x368];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
-    unsigned char _376[0x388 - 0x376];
-    /* the items worn as gear, by SOCOM 1's SEAL_ITEM (1 the rifle, 2 the pistol; AimWeapon aims along
-     * 1, 2 and 4): the part SetPartAsGear makes of each and the gear (SOCOM 1's m_rifle_as_gear and
-     * m_pistol_as_gear were the gear alone; the names ours) */
-    struct CItemGear {
-        CZBodyPart *m_part;   // 0x0
-        class CCharacterGear *m_gear;   // 0x4
-    } m_item_gear[5];   // 0x388 (the rifle's 0x390, the pistol's 0x398)
+    unsigned char _376[0x37c - 0x376];
+    CObjAnims m_obj_anims;   // 0x37c (SOCOM 1's 0x30c)
+    /* the items worn as gear, by SOCOM 1's SEAL_ITEM (1 the rifle, 2 the pistol, 4 the launcher;
+     * AimWeapon aims along 1, 2 and 4): the part SetPartAsGear makes of each and the gear (SOCOM 1's
+     * m_rifle_as_gear and m_pistol_as_gear were the gear alone; the names ours) */
+    CObjAnim m_item_gear[5];   // 0x388 (the rifle's 0x390, the pistol's 0x398)
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
     unsigned char _3b4[0x3dc - 0x3b4];
     zdb::CNode *m_3dc;   // 0x3dc: a node 0x5AA620 takes the SEAL of (the name ours)
