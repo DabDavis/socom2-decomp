@@ -290,6 +290,11 @@
 0x003DE5F8 0x4 LADDER_MASK  # OVL1; s1:data-seq (size SOCOM 1's; via GetLadderByIndex__11CLadderListFi)
 0x003DE6D0 0x4 s_fadeRate  # OVL1 data; ours (the states lane, round 18): fts_message.cpp's file static, a message line's fade speed, alpha a second (280.0, read with lwc1: a variable) -- 2 references in 1 function (C2DMessageString::Tick, fading in and out)
 0x003DE6D8 0x4 s_fadeMax  # OVL1 data; ours (the states lane, round 18): fts_message.cpp's file static, the alpha a message line fades in to (100.0) -- 1 reference in 1 function (C2DMessageString::Tick)
+0x003DEC48 0x2 Stand2Prone__9AnimTypes  # OVL1 data; SOCOM 1's name (the SEAL lane, round 17: SOCOM 1's AnimTypes::Stand2Prone, 0x4751C4, nine statics before ClimbMedium as here -- SOCOM II's 8 bytes apart, SOCOM 1's 4; Stand_0 reads it where SOCOM 1's does); 3 references in 3 functions: Stand_0 and anim.cpp's 0x5E0690 and 0x5E1DF0 (the store)
+0x003DEC50 0x2 PistolStand2Prone__9AnimTypes  # OVL1 data; SOCOM 1's name (the SEAL lane, round 17: CanInterrupt compares the representative anim with it where SOCOM 1's CanInterrupt loads AnimTypes::PistolStand2Prone, 0x4751C8 -- the static after Stand2Prone in both); 1 reference in CanInterrupt besides anim.cpp's
+0x003DEC90 0x2 ClimbMedium__9AnimTypes  # OVL1 data; SOCOM 1's name (the SEAL lane, round 17: SOCOM 1's AnimTypes::ClimbMedium, 0x4751E8; BlendedClimb pushes it as SOCOM 1's does); 17 references in 10 functions: BlendedClimb, 0x580B70, 0x588BC0, 0x589AA0, 0x5A78D0, 0x5AF930, 0x5B1A10, 0x5B2620, CanTraverse and anim.cpp's 0x5E0690/0x5E1DF0
+0x003DECC0 0x2 ProneRStrafe__9AnimTypes  # OVL1 data; SOCOM 1's name (the SEAL lane, round 17: SetMaxMotion reads it where SOCOM 1's reads AnimTypes::ProneRStrafe, 0x4751FC -- six 8-byte statics after ClimbMedium where SOCOM 1's five 4-byte ones: SOCOM II adds one); 1 reference in OVL2 SetMaxMotion besides anim.cpp's
+0x003DECD0 0x2 ProneLStrafe__9AnimTypes  # OVL1 data; SOCOM 1's name (the SEAL lane, round 17: SetMaxMotion reads it where SOCOM 1's reads AnimTypes::ProneLStrafe, 0x475204, two after ProneRStrafe in both); 1 reference in SetMaxMotion besides anim.cpp's
 0x003DF170 0x2 nextPickupId__7CPickup  # OVL1 data; SOCOM 1's nextPickupId__7CPickup (0x474EF8, a halfword 4 bytes before bit_count; here 8 before, MW 3.0's layout): Create (0x542B90) takes it and adds one (lhu/sh), 1 at the start -- 2 references in 1 function (the SEAL lane, round 8)
 0x003DF178 0x4 bit_count__7CPickup  # OVL1 data; SOCOM 1's bit_count__7CPickup (0x474EFC, the word Open__7CPickupFUi stores its argument to, gp-relative there): Open (0x542FC0) stores its argument here, 0x542930 and 0x542B90 (Create, NetworkCreate by SOCOM 1's order) read it -- 3 references in 3 functions (the SEAL lane, round 3)
 0x003DF180 0x4 aiAccuracyAngle__11CSealCtrlAi  # OVL1 data; SOCOM 1's aiAccuracyAngle__11CSealCtrlAi (gp-31896 there, 0x474F58) by hand (the kit lane, round 12): 0.2617994 (15 degrees), the angle CSealCtrlAi::PerturbAimVector (0x5C9250) passes ModifyAimDir as SOCOM 1's does -- 2 references (0x5C9250, 0x574BA0: SOCOM 1's SetAiAccuracyAngle sets it, likely)
@@ -1454,6 +1459,19 @@
 0x0065CF50 0x8 __RTTI__11CAiSAnimate  # RTTI of CAiSAnimate: found by its RTTI's name
 0x0065CF78 0x8 __RTTI__11CAiSGrenade  # RTTI of CAiSGrenade: found by its RTTI's name
 0x0065CFA0 0x8 __RTTI__10CAiSDeploy  # RTTI of CAiSDeploy: found by its RTTI's name
+0x0065D008 0xc pickup_offset  # OVL2 data; ours (the SEAL lane, round 17: a CPnt3D seal_body.cpp's initialiser builds first, read by 0x579A30 alone -- SOCOM 1's CrouchToPickupBuddy by the unit's order); 4 references: 0x579A30 and the initialiser's three stores (src/gamez/zseal/seal_body.cpp)
+0x0065D018 0xc stab_offset  # OVL2 data; ours (the SEAL lane, round 17: the second, read by StabBuddy alone); 4 references: StabBuddy and the initialiser's three stores
+0x0065D028 0xc restrain_offset  # OVL2 data; ours (the SEAL lane, round 17: the third, read by RestrainBuddy alone); 4 references: RestrainBuddy and the initialiser's three stores
+0x0065D038 0xc stand_throw  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17: SOCOM 1's __sinit_seal_body.cpp stores the same three values into stand_throw, 0x452468, first of its ten throw offsets in this order); 4 references: 0x57FA70 and the initialiser
+0x0065D048 0xc crouch_throw  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, second); 4 references: 0x57FA70 and the initialiser
+0x0065D058 0xc prone_throw  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, third); 4 references: 0x57FA70 and the initialiser
+0x0065D068 0xc stand_toss  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, fourth); 4 references: 0x57FA70 and the initialiser
+0x0065D078 0xc crouch_toss  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, fifth); 4 references: 0x57FA70 and the initialiser
+0x0065D088 0xc prone_toss  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, sixth); 4 references: 0x57FA70 and the initialiser
+0x0065D098 0xc stand_peek_rtoss  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, seventh); 4 references: 0x57FA70 and the initialiser
+0x0065D0A8 0xc stand_peek_ltoss  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, eighth); 4 references: 0x57FA70 and the initialiser
+0x0065D0B8 0xc running_rifle_throw  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, ninth); 4 references: 0x57FA70 and the initialiser
+0x0065D0C8 0xc running_pistol_throw  # OVL2 data; SOCOM 1's name (the SEAL lane, round 17, the same values, last); 4 references: 0x57FA70 and the initialiser
 0x00662748 0x8 __RTTI__11CRemoteCtrl  # RTTI of CRemoteCtrl: found by its RTTI's name
 0x00662770 0x8 __RTTI__9CSealUnit  # RTTI of CSealUnit: found by its RTTI's name
 0x006628B0 0x8 __RTTI__10CAiSAction  # RTTI of CAiSAction: found by its RTTI's name
@@ -1559,6 +1577,7 @@
 0x0066A538 0x4 LobbyWorldID  # OVL2 bss; s1 by hand (SOCOM 1's LobbyWorldID: RejoinRoom 0x2E3730 goes back to the room only when it is not negative, as SOCOM 1's does; JoinRoom stores it); size SOCOM 1's; 12 references in 9 functions
 0x0066A5E8 0x1 g_bJoiningRandomGame  # OVL2 bss; s1:data-seq (SOCOM 1's g_bJoiningRandomGame, a static of its zNetMedius.cpp: UnInit, ReleaseUIResources and Init clear it as SOCOM 1's do); in OVL2's bss in SOCOM II, so another unit's global, the unnamed-namespace mangling dropped
 0x0066A5F0 0x4 MediusWorldID  # OVL2 bss; s1 by hand (SOCOM 1's MediusWorldID: BanSelfFromGame and SendEndGameReport send it as the game's world, as SOCOM 1's send theirs); size SOCOM 1's; 14 references in 12 functions
+0x0066B2F0 0x14 newanims  # OVL2 bss; SOCOM 1's name (the SEAL lane, round 17: SOCOM 1's newanims, a CActiveAnimList -- an RTList<ACTIVE_ANIM>, 0x14 bytes -- built by __sinit_seal_body.cpp with 8 links where SOCOM 1's held 12); 29 references in 4 functions: BlendedClimb, 0x582D10, 0x583030 and the initialiser (src/gamez/zseal/seal_body.cpp)
 0x0066B540 0xC projDirDown  # OVL2 bss; s1:data-seq (size SOCOM 1's; via HandleBloodDrip__10CZSealBodyFf)
 0x0066B580 0xF0 g_arrSavedFireModeInfo__22@unnamed@seal_kit_cpp@  # OVL2 bss; SOCOM 1's (its symbol table: seal_kit.cpp's anonymous namespace, 30 CSavedFireModeInfo of 8 bytes) by hand (the kit lane, round 12): __sinit_seal_kit.cpp constructs it (__construct_array, 30 x 8, the constructor 0x5C9230) -- 3 references (the initialiser, sealSaveFireModes, 0x5C0250)
 0x0066B670 0x4 g_iNumSavedFireModes__22@unnamed@seal_kit_cpp@  # OVL2 bss; SOCOM 1's (seal_kit.cpp's anonymous namespace) by hand (the kit lane, round 12): the saved table's count, right after it -- 5 references (sealSaveFireModes 3, 0x5C0250 2)

@@ -197,6 +197,90 @@ struct ANIMSET_PARAMS {
 
 /* a piece of gear a character wears, CCharacterGear, is zseal.h's */
 
+/* (OVL1 0x2DE9E0: a material's index by name, -1 unknown; node_util.cpp's DI setters) */
+extern "C" int func_002DE9E0(const char *name);
+void SetDIBBox(zdb::CNode *node, const CBBox *bbox, bool b);
+void SetMaterial(zdb::CNode *node, int material);
+
+/* every bone's node (the parts past the last four object slots left out) given a box DI of the
+ * PERSON material, and the upper spine's box capped at 3.01 across (OVL2 0x58B960: SOCOM 1's
+ * AddDIPolys, after the AddItems in both builds -- SOCOM 1 skipped the rifle, pistol, grenade and
+ * weapon parts by pointer, SOCOM II by id; the cap is new) */
+void CZSealBody::AddDIPolys()
+{
+    std::vector<CZBodyPart *> &parts = m_body_parts;
+    int mat = func_002DE9E0("PERSON");
+
+    for (std::vector<CZBodyPart *>::iterator i = parts.begin(); i != parts.end(); ++i) {
+        CZBodyPart *p = *i;
+
+        if (p && p->m_id < siNumBodyObjects - 4) {
+            zdb::CNode *n = p->m_node;
+
+            SetDIBBox(n, &n->m_bbox, false);
+            SetMaterial(n, mat);
+        }
+    }
+    if (m_spinehi) {
+        CBBox *box = (CBBox *)m_spinehi->m_node->GetBBox();
+
+        if (box->m_max.x > 3.01f)
+            box->m_max.x = 3.01f;
+    }
+}
+
+/* a gear's model attached to the part the gear names, given an id by its name, named and kept out
+ * of the animation (OVL2 0x58B790: SOCOM 1's AddItem(CCharacterGear *), the name's id SOCOM II's own
+ * 0x58CA60 inlined where SOCOM 1 called BodyId, the part looked up with its bounds tested) */
+bool CZSealBody::AddItem(CCharacterGear *gear)
+{
+    zdb::CNode *node = gear->CreateInstance(gear->m_name);
+
+    if (!node)
+        return false;
+    int id = gear->m_partid;
+    CZBodyPart *parent;
+
+    if (id < m_body_parts.size() && id >= 0)
+        parent = m_body_parts[id];
+    else
+        parent = 0;
+
+    if (!parent)
+        return false;
+    CZBodyPart *part = AttachAuxNode(node, parent, &gear->m_offset, &gear->m_rotation);
+
+    part->m_id = func_0058CA60(gear->m_name);
+    part->m_node->SetName(gear->m_name);
+    part->SetActive(false);
+    m_obj_anims.Add(part, gear);
+    return true;
+}
+
+/* a bare part added: made, attached to none, given an id by its name and kept out of the animation
+ * (OVL2 0x58B630: SOCOM 1's AddItem(const char *), the id as the gear's) */
+bool CZSealBody::AddItem(const char *name)
+{
+    CZBodyPart *part = NewBodyPart(0, 0);
+
+    AttachAuxPart(part, 0);
+    part->m_id = func_0058CA60(name);
+    part->SetActive(false);
+    m_obj_anims.Add(part, 0);
+    return true;
+}
+
+/* the rifle, pistol and launcher found among the made gears, and the launcher's part added to the
+ * anims' parts (OVL2 0x58B0F0: SOCOM 1's SetupGear, by its place after SetPartAsGear -- SOCOM 1's found
+ * the rifle and the pistol alone) */
+void CZSealBody::SetupGear()
+{
+    m_item_gear[1].m_gear = FindGear("rifle");
+    m_item_gear[2].m_gear = FindGear("pistol");
+    m_item_gear[4].m_gear = FindGear("launcher");
+    m_obj_anims.Add(m_item_gear[4].m_part, m_item_gear[4].m_gear);
+}
+
 /* a body part made a gear's: placed and turned as the gear says, oriented on its node, and taken
  * off the body's table of parts (OVL2 0x58B040; SOCOM 1's with the null tests, and CBody::SetBodyPart
  * where SOCOM 1's cleared the table's entry by hand) */
@@ -232,6 +316,107 @@ public:
     unsigned char _34[0x5c - 0x34];
     CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's at 0x60)
 };
+
+extern "C" {
+/* the set's own speeds read (SOCOM 1's AnimSet::SetMaxMotion; OVL2 0x5E0450, anim.cpp's) and an anim
+ * set's script for a type (0x5E3D90, anim.cpp's: 0x5E3C20 with no weapon) */
+void func_005E0450(AnimSet *set);
+CZSIScriptCommon *func_005E3D90(AnimSet *set, AnimType type);
+}
+
+extern "C" {
+/* (seal_body.cpp's: a blend pushed for an anim type in a state, OVL2 0x588BC0; and the body's top
+ * blend, 0x555170 -- RTStack<CZBodyAnimBlend>::Top's OVL2 copy) */
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+void *func_00555170(void *v);
+}
+
+/* a new anim set bound, unless none or the bound one without the force flag: a carried body let go
+ * (both bodies cleared to their base in the carry states 10 and 9), the blend overlay and the stack
+ * cleared, the set swapped in with the old one kept, the weapon id zeroed and the speeds set, the
+ * type's blend pushed in the state at full weight and the parts saved (OVL2 0x58C350: SOCOM 1's
+ * BindAnimSet(AnimSet *), the order of the carry tests and the calls the same) */
+void CZSealBody::BindAnimSet(AnimSet *set, AnimType type, SEAL_STATE state, bool force)
+{
+    if (!set)
+        return;
+    if (set == m_animset && !force)
+        return;
+    if (m_carry) {
+        if (m_root->m_parent) {
+            if (m_state == 10) {
+                m_carry->ClearToBase(false);
+                ClearToBase(false);
+            }
+            DetachBody();
+        } else {
+            if (m_state == 9) {
+                m_carry->ClearToBase(false);
+                ClearToBase(false);
+            }
+            m_carry->DetachBody();
+        }
+    }
+    ClearBlendOverlay();
+    ClearStack(0, true);
+    m_default_animset = m_animset;
+    m_animset = set;
+    m_weapon_id = 0;
+    SetMaxMotion();
+    func_00588BC0(this, type, state, 0, 0);
+    ((CZBodyAnimBlend *)func_00555170(&m_blends))->SetRepresentativeWt(1.0f);
+    m_desiredState = state;
+    SaveParts();
+}
+
+/* a script's factor at 0x1C, read by value (SetMaxMotion loads it ahead of the scale's call) */
+static inline float Factor(CZSIScriptCommon *a)
+{
+    return a->m_1c;
+}
+
+/* the anim set's speeds set, then the prone crawl's forward and back, its two strafes and the ladder's
+ * from their scripts' distance units scaled by the factor, 0 for an anim the set lacks (OVL2 0x58BCB0:
+ * SOCOM 1's SetMaxMotion, after GetMaxZMotion in both builds -- SOCOM 1's took the body's anims'
+ * maximum velocities).
+ * OPEN, 4 instructions (the size right): in the two strafe lookups the target loads the AnimTypes
+ * static (a1) before the set (a0, in the call's delay slot), as a right-to-left argument order would;
+ * MW loads the set first here. `a` declared ahead of `set` gives their saved registers and the factor
+ * through the by-value accessor its $f20 (both needed); tried: the static through a const reference or
+ * a short cast, the set in a block-local, an inline member wrapper and a real AnimSet member call (the
+ * same order), the product's operands swapped */
+void CZSealBody::SetMaxMotion()
+{
+    CZSIScriptCommon *a;
+
+    func_005E0450(m_animset);
+    AnimSet *set = m_animset;
+
+    a = func_005E3D90(set, (AnimType)27);
+
+    if (a) {
+        set->m_aparams.m_prone_max_fwd = a->DistanceScale() * Factor(a);
+        set->m_aparams.m_prone_max_back = a->DistanceScale() * Factor(a);
+    } else {
+        set->m_aparams.m_prone_max_fwd = 0.0f;
+        set->m_aparams.m_prone_max_back = 0.0f;
+    }
+    a = func_005E3D90(m_animset, (AnimType)AnimTypes::ProneRStrafe);
+    if (a)
+        set->m_aparams.m_prone_max_rt = a->DistanceScale() * Factor(a);
+    else
+        set->m_aparams.m_prone_max_rt = 0.0f;
+    a = func_005E3D90(m_animset, (AnimType)AnimTypes::ProneLStrafe);
+    if (a)
+        set->m_aparams.m_prone_max_left = a->DistanceScale() * Factor(a);
+    else
+        set->m_aparams.m_prone_max_left = 0.0f;
+    a = func_005E3D90(m_animset, (AnimType)45);
+    if (a)
+        set->m_aparams.m_ladder_updn = a->DistanceScale() * Factor(a);
+    else
+        set->m_aparams.m_ladder_updn = 0.0f;
+}
 
 extern "C" {
 int strcasecmp(const char *a, const char *b);
@@ -437,4 +622,15 @@ void CZSealBody::GetMaxXMotion(float &a, float &b)
         b = 0.0f;
         break;
     }
+}
+
+/* the parts deleted and the list's storage given up (OVL2 0x58AB30: SOCOM 1's ~CObjAnims, seal_cfg.cpp's
+ * first row in both builds; the SEAL's destructor calls it. FreeVector's pieces follow it, called out of
+ * line: the empty vector 0x58ACA0, clear 0x58AC90, swap 0x58AC50, and the pod vector's destructor --
+ * seal.cpp's copy, 0x555040) */
+CObjAnims::~CObjAnims()
+{
+    for (std::vector<CObjAnim *>::iterator i = m_obj_anims.begin(); i != m_obj_anims.end(); ++i)
+        delete *i;
+    FreeVector(m_obj_anims);
 }
