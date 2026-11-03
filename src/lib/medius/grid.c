@@ -41,11 +41,15 @@ typedef struct GRID_PEER {              /* audio.c's peer record, as far as grid
 
 extern int func_0062A2E8(RT_LIST *pList);   /* the count */
 extern void func_0062A360(RT_LIST *pList);  /* frees every entry */
+extern void func_0062A2F0(RT_LIST *pList, unsigned int nId); /* removes one */
 
 /* audio.c's */
 extern int func_0060FFF8(void *pAudio);                 /* the next sequence number */
 extern void *func_006113F8(void *pAudio, unsigned int nId); /* the peer record for an id */
 extern int func_00611E60(void *pAudio, int *pnId);      /* this client's id */
+extern int func_00611E70(void *pAudio);                 /* the group spoken in */
+extern struct GRID *func_00611E78(void *pAudio);        /* the groups */
+extern int func_00610FA0(void *pAudio, int nTo, void *h, void *pData, int nLen); /* to one peer */
 
 typedef struct GRID_MEMBER {
     unsigned int nId;                   /* 0x00: the client's id, 0xFFFF when free */
@@ -97,6 +101,7 @@ typedef struct GRID_ENTRY {             /* a group as a list reports it */
 
 int func_00624830(GRID *p, int nSrc, GRID_HEADER *h, void *pData, int nLen);
 int func_00626140(GRID *p);
+void func_00626A38(GRID *p);
 
 static int nSeed = 0;
 
@@ -352,14 +357,67 @@ void func_006265F0(GRID *p)
         func_00624510(&p->pMembers[i]);
 }
 
-/* 0x626658, 0x626788: not written */
+/* 0x626658: not written */
+
+/* A client leaves the group (and, in a growing group spoken in here, the others are told). */
+void func_00626788(GRID *p, unsigned int nId)
+{
+    GRID_MEMBER *m;
+
+    if (p == 0)
+        return;
+    if (func_00611E70(p->pAudio) == p->nId) {
+        m = func_00626350(p, nId);
+        if (m != 0) {
+            func_00624510(m);
+            if (p->nMaxMembers != 0) {
+                func_00626A38(p);
+                func_00626398(p);
+                func_00626948(p, nId);
+            }
+        }
+    }
+    func_0062A2F0(&p->list, nId);
+}
 
 int func_00626830(GRID *p)
 {
     return func_0062A2E8(&p->list);
 }
 
-/* 0x626848: not written */
+/* A growing group's members taken from its queue (every peer but this client). */
+void func_00626848(GRID *p)
+{
+    int nId = 0xFFFF;
+    int i = 0;
+    void *pAudio;
+    RT_LIST_NODE *n, *pFirst;
+    GRID_MEMBER *m;
+    int nPeer;
+
+    if (p == 0 || p->nMaxMembers != 0)
+        return;
+    pAudio = p->pAudio;
+    func_00611E60(pAudio, &nId);
+    n = p->list.pHead;
+    m = p->pMembers;
+    pFirst = n;
+    while (n != 0) {
+        nPeer = ((GRID_PEER *)n->pData)->nId;
+        if (nPeer != nId) {
+            if (i >= p->nMembers) {
+                func_00624C60(p);
+                m = &p->pMembers[i];
+            }
+            i++;
+            func_00624530(pAudio, m, 2, nPeer);
+            m++;
+        }
+        n = n->pPrev;
+        if (n == pFirst)
+            n = 0;
+    }
+}
 
 /* A client's id cleared from every queued item. */
 void func_00626948(GRID *p, unsigned int nId)
@@ -403,5 +461,24 @@ void func_006269A8(GRID *p, unsigned int nId, int nPeer)
                 nSlot = i;
             }
         }
+    }
+}
+
+/* The group's size (type 18) to every member connected. */
+void func_00626A38(GRID *p)
+{
+    GRID_HEADER h;
+    short data[2];
+    int i;
+
+    if (p == 0 || p->nMaxMembers == 0)
+        return;
+    i = 0;
+    data[0] = p->nId;
+    data[1] = -1;
+    func_00624BE0(func_00611E78(p->pAudio), &h, 18, sizeof(data));
+    for (; i < p->nMembers; i++) {
+        if (p->pMembers[i].pPeer != 0 && p->pMembers[i].nState == 2)
+            func_00610FA0(p->pAudio, ((GRID_PEER *)p->pMembers[i].pPeer)->nId, &h, data, sizeof(data));
     }
 }
