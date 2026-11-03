@@ -146,11 +146,28 @@ public:
 };
 }
 
+namespace zdb {
+/* a GS texture buffer (node_world.h has the whole class): only what the states call */
+class CGSTexBuffer {
+public:
+    void *Load(bool now);   /* (node_world.h's returns the chain, a u_long128 *: no caller reads it) */
+    void WipePktBuf();
+    void ReservePktBuf(unsigned int n);
+};
+}
+
+/* the sound system (zsnd.h has the whole class): its post-tick, a scheduler task the states also
+ * call straight */
+class CSnd {
+public:
+    static bool PostTick(float dT, void *data);
+};
+
 /* the mission's texture buffers: a vector of them (zdb::CTexManager::m_texmanager's) */
 struct TexBufferVector {
     unsigned int capacity_;
     unsigned int size_;
-    void **data_;
+    zdb::CGSTexBuffer **data_;
 };
 
 /* the render pipe (SOCOM 1's CPipe: the camera at 0x628, the UI node it draws at 0x630, a flag at
@@ -176,10 +193,17 @@ public:
 };
 
 namespace zdb {
-/* the texture manager: the buffers' vector, and each render phase's buffer index (SOCOM 1's) */
+/* the texture manager: the buffers' vector, and each render phase's buffer index (SOCOM 1's;
+ * node_world.h has the whole class) */
 class CTexManager {
 public:
-    static TexBufferVector m_texmanager;
+    static bool DestroyBuffers(CTexManager &tm, bool all);
+    void doSetupBuffers();
+    int doAddBuffer(const char *name, float start, float end);
+
+    TexBufferVector m_buffer;   // 0x0 (a std::vector<CGSTexBuffer *>)
+
+    static CTexManager m_texmanager;
     static int TexPhase[55];
 };
 

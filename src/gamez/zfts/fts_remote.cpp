@@ -12,6 +12,8 @@
 
 #include "../zmath/zmath.h"
 
+struct ClientConnectArgs;
+
 /* the network (SOCOM 1's CZNetwork, at SOCOM II's offsets: only what this unit touches) */
 class CZNetwork {
 public:
@@ -35,6 +37,7 @@ public:
     int zNetGetMyGameClientIndex();
     int zNetGetTime();
     int zNetJoin(void (*joins)(int, int), void (*leaves)(int, int));
+    int zNetConnect(void (*connects)(ClientConnectArgs *), void (*disconnects)(ClientConnectArgs *));
     struct NetObject *zNetGetObject(int index);
 
     /* an action the network put off to its next update (only what zRemoteDelayedAction reads:
@@ -319,8 +322,6 @@ struct ClientConnectArgs {
     int m_10;   // 0x10: the client's word (DMEJoinGameServer hands each waiting one on)
 };
 
-int func_0030D380(CZNetwork *net, void (*connects)(ClientConnectArgs *),
-                  void (*disconnects)(ClientConnectArgs *));
 void func_002C3330(int arg);
 void func_002BC620(ClientConnectArgs *args);   /* zRemoteClientConnectsCallback */
 void func_002BC530(ClientConnectArgs *args);   /* zRemoteClientDisconnectsCallback */
@@ -1591,7 +1592,7 @@ extern "C" bool func_002B85C0()
     theNetwork.m_bSessionMaster = false;
     for (int i = 0; i < 24; i++)
         data_00440EC0[i] = 0;
-    if (func_0030D380(&theNetwork, func_002BC620, func_002BC530))
+    if (theNetwork.zNetConnect(func_002BC620, func_002BC530))
         return false;
     func_002C3330(0);
     return true;

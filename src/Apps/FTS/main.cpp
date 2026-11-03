@@ -13,7 +13,6 @@ unsigned int strlen(const char *s);
 
 /* unnamed yet (SOCOM 1's names in the comments, where it had them) */
 void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
-void func_003566C0(TexBufferVector *texmanager, const char *name, float a, float b);   /* zdb::CTexManager::doAddBuffer */
 void func_0038A7A0();                            /* InitSystemTuners */
 void func_002ACC10(CMission *mission, const char *database);   /* CMission::PreOpen */
 zdb::CAssetLib *func_00320D70(const char *name); /* zdb::CAssetMgr::GetLoadedLibRef */
@@ -67,7 +66,7 @@ bool COurGame::StartEngine()
 
     if (CGame::StartEngine()) {
         func_003AFF30(false, true);
-        func_003566C0(&zdb::CTexManager::m_texmanager, "default", 0.0f, 1.0f);
+        zdb::CTexManager::m_texmanager.doAddBuffer("default", 0.0f, 1.0f);
         theMission.Init();
         func_0038A7A0();
         CValve::Create("R_NAME_SIZE", 31, (VALVE_TYPE)1);

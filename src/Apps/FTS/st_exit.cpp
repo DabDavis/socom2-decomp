@@ -12,7 +12,6 @@ void func_00385C30(void *vars);                  /* CUIVarManager::Reset */
 void func_0032C2B0(const char *name, const char *path);   /* CRdrArchive::RemoveArchive */
 void *func_00274930();                           /* GetMenuStack */
 void func_0027EDF0(void *stack, bool all);       /* CMenuStack::FlushHistory */
-void func_00341A60(void *data, float dT);        /* CSnd::PostTick (row PostTick__4CSndFfPv) */
 void func_002D9E40(float dT);                    /* CInput::Tick */
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
@@ -178,7 +177,7 @@ CExitState::CExitState() : CGameState("ExitState")
 /* a frame of the stats screen: sound, input, the menu ticked and drawn, the frame swapped */
 bool CExitState::Tick(float dT)
 {
-    func_00341A60(0, dT);
+    CSnd::PostTick(dT, 0);
     func_002D9E40(dT);
     func_003654C0(m_menu, dT);
     m_menu->Draw2dOnly();

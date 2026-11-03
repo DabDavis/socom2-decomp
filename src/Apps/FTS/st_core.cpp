@@ -10,14 +10,12 @@
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
-void func_00356BE0(void *texbuffer, bool now);   /* zdb::CGSTexBuffer::Load */
 void func_001F1820(float goal);                  /* CameraZoom::SetGoal */
 void func_001F1870(void *seal);                  /* CameraZoom::AttachSeal */
 void func_002A7D40(void *mission);               /* CMission::OnMissionStart */
 void func_001FB420(CHUD *hud);                   /* CHUD::ReInit_Init */
-void func_00356130(void *texmanager);            /* zdb::CTexManager::doSetupBuffers */
 int func_001EA720();                             /* testLoad */
-void func_00192BF8(int code);                    /* exit */
+void exit(int code);
 void func_00223290(void *state);                 /* CMPExitState::LoadLibs */
 void func_002A6950(void *mission);
 void func_003B17D0(int rate);                    /* CVideo::MaxFrameRate */
@@ -64,7 +62,6 @@ public:
 extern "C" {
 void func_00309A10();
 void func_003B7150(int arg);
-void func_00356B30(void *texbuffer);
 int func_00288930();
 void func_003B1990(int addr, int buffer, int size);   /* CVideo::ReadGsMemory */
 void func_003B0B90(int a, int b, int w, int h);
@@ -79,7 +76,6 @@ extern "C" {
 CHUD *func_001FCD80(CHUD *hud);                  /* CHUD::CHUD */
 void func_001FA360(CHUD *hud, zdb::CWorld *world);   /* CHUD::Init */
 void func_0032C4F0();                            /* CRdrArchive::CloseAll */
-void func_00356B90(void *texbuffer, int size);
 void func_0031CED0(zdb::CWorld *world);
 void func_0033B420(CPipe *pipe, zdb::CTexHandle *tex);
 
@@ -96,7 +92,6 @@ bool func_003D1F50(float dT, void *data);        /* CZWeapon::PostTick */
 bool func_00510570(float dT, void *data);        /* ai::TickPathPlanner */
 bool func_0060B8F0(float dT, void *data);
 bool func_005CCA30(float dT, void *data);        /* CSealCtrlAi::PostTick */
-bool func_00341A60(float dT, void *data);        /* CSnd::PostTick */
 bool func_00299C10(float dT, void *data);
 
 }
@@ -133,7 +128,6 @@ public:
 
 extern CSched_Manager zTaskScheduler;
 
-extern "C" void func_00356080(TexBufferVector *texmanager, bool all);   /* zdb::CTexManager::DestroyBuffers */
 
 /* what the core state's tick reaches for */
 namespace zdb {
@@ -490,7 +484,7 @@ void CCinematicState::UnInit()
             m_items[i] = 0;
         }
     }
-    func_00356B30(zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[54]]);
+    zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[54]]->WipePktBuf();
     FreeCues();
     if (m_2a) {
         zSysFifoEnd();
@@ -559,8 +553,8 @@ void CCoreState::OnPush(int userdata)
  * reopened and restarted, the camera's zoom reset onto the player, the HUD set up again */
 void CCoreState::OnPop(int userdata)
 {
-    func_00356BE0(zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[36]], true);
-    func_00356BE0(zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[40]], true);
+    zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[36]]->Load(true);
+    zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[40]]->Load(true);
     zVid_Sync0();
     theMission.m_108 = 10.0f;
     if (userdata == 1) {
@@ -637,7 +631,7 @@ bool CCoreState::Init()
     zTaskScheduler.AddTask("ai_route_planner", func_00510570, 10.5f, 0);
     zTaskScheduler.AddTask("target_post_tick", func_0060B8F0, 10.6f, 0);
     zTaskScheduler.AddTask("ai_posttick", func_005CCA30, 10.7f, 0);
-    zTaskScheduler.AddTask("sound_post_tick", func_00341A60, 11.0f, 0);
+    zTaskScheduler.AddTask("sound_post_tick", CSnd::PostTick, 11.0f, 0);
     zTaskScheduler.AddTask("appCamera_tick", func_00299C10, 12.0f, 0);
     appCamera->m_camera->GetLandmarkFarPlane(m_world);
     std::vector<zdb::CNode *> &nodes = m_world->m_nodes;
@@ -645,11 +639,11 @@ bool CCoreState::Init()
 
     if (nodes.capacity() < n)
         nodes.reserve(n);
-    func_00356B90(zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[33]], 2048);
-    func_00356B90(zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[34]], 2048);
+    zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[33]]->ReservePktBuf(2048);
+    zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[34]]->ReservePktBuf(2048);
     func_0031CED0(m_world);
-    func_00356BE0(zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[36]], true);
-    func_00356BE0(zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[40]], true);
+    zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[36]]->Load(true);
+    zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[40]]->Load(true);
     func_002A7D40(&theMission);
     theMission.m_e8 = -1.0f;
     func_0033B420(&thePipe, zdb::CWorld::GetTexHandle("noise50.tif"));
@@ -740,15 +734,15 @@ bool CCoreState::Tick(float dT)
             m_hud->Tick(dT);
         func_003B7150(1);
         thePipe.m_assetHUD2 =
-            zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[39 + data_00408C08]];
+            zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[39 + data_00408C08]];
         func_0033BF30(&thePipe, thePipe.m_assetHUD2);
         func_0033BE70(&thePipe, thePipe.m_assetHUD1);
         m_hud->DrawPhase(zdb::RENDER_PHASE_12, cam);
-        thePipe.m_assetHUDX = zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[42]];
+        thePipe.m_assetHUDX = zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[42]];
         func_0033BF30(&thePipe, thePipe.m_assetHUDX);
         func_0033BE70(&thePipe, thePipe.m_assetHUD2);
         m_hud->DrawPhase(zdb::RENDER_PHASE_13, cam);
-        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[0]]);
+        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
         func_0033BE70(&thePipe, thePipe.m_assetHUDX);
         m_hud->DrawPhase(zdb::RENDER_PHASE_14, cam);
         m_hud->m_compass.Draw(cam);
@@ -759,7 +753,7 @@ bool CCoreState::Tick(float dT)
         func_0022D590()->Draw(cam);
         func_003B7150(0);
     } else {
-        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[0]]);
+        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
     }
     if (!theNetwork.m_9 && theGame.m_6c)
         func_003AFD50(1, 0, 0, 0, 0);
@@ -792,9 +786,9 @@ static void LoadThreadEntry(void *arg)
     theGame.m_coreState.skyColor[0] = 190;
     theGame.m_coreState.skyColor[1] = 220;
     theGame.m_coreState.skyColor[2] = 250;
-    func_00356130(&zdb::CTexManager::m_texmanager);
+    zdb::CTexManager::m_texmanager.doSetupBuffers();
     if (!func_001EA720())
-        func_00192BF8(0);
+        exit(0);
     if (theNetwork.m_9)
         func_00223290(&theGame.m_MPexitState);
     theGame.m_coreState.m_loading = false;
@@ -849,9 +843,9 @@ void CCoreState::Load(bool async)
     skyColor[0] = 190;
     skyColor[1] = 220;
     skyColor[2] = 250;
-    func_00356130(&zdb::CTexManager::m_texmanager);
+    zdb::CTexManager::m_texmanager.doSetupBuffers();
     if (!func_001EA720())
-        func_00192BF8(0);
+        exit(0);
     if (theNetwork.m_9)
         func_00223290(&theGame.m_MPexitState);
     m_loading = false;
@@ -898,11 +892,11 @@ void CCoreState::auxUnload()
     if (proj)
         proj->UnInit();
     if (!func_001EA6E0())
-        func_00192BF8(0);
+        exit(0);
     if (marks)
         marks->UnInit();
     m_world = 0;
-    func_00356080(&zdb::CTexManager::m_texmanager, false);
+    zdb::CTexManager::DestroyBuffers(zdb::CTexManager::m_texmanager, false);
     func_001F1840(0);
     func_001FCB70(&m_hud);
     ftsSetPlayer(0);
