@@ -730,6 +730,9 @@ public:
     static CNode *CreateInstance(const char *name, const CPnt3D *pos, const CQuat *rot);
     static CNode *Delete(CNode *node);
     static CNode *Create(const char *name);
+    /* a node read from the archive's open key and added to the parent (SOCOM 1's static
+     * Read(CSaveLoad &, CNode *), 0x311520: CWorld::Read calls it where SOCOM 1's does) */
+    static CNode *Read(CSaveLoad &io, CNode *parent);
     void CopyParams(CNode *to) const;
     void SetModel(CModel *model);
     void RemoveFromParent();
@@ -1132,6 +1135,9 @@ public:
         if (m_parent == node)
             m_parent = 0;
     }
+    /* a model read from the archive's open key for a library (SOCOM 1's static, 0x3119A0:
+     * CSaveLoad::LoadModels_PS2 calls it where SOCOM 1's LoadAssetLib_PS2 does) */
+    static CModel *Create(CSaveLoad &io, CAssetLib *lib);
 };
 
 }
@@ -1267,6 +1273,8 @@ public:
     /* a ray's hits gathered, and a point's altitude hits (grid_di.cpp's, SOCOM 1's) */
     bool GetIntersect(DiIntersect *di);
     bool GetAltitude(DiIntersect *di);
+    /* a batch of intersect sets run (grid_di.cpp's, 0x2D3CF0, SOCOM 1's: CWorld's calls it) */
+    int GetIntersectBatch(DiIntersect **di, int n);
 
     /* the atoms a grid makes (SOCOM 1's static; Read takes the parameters' count from it) */
     static int N_ATOMS;

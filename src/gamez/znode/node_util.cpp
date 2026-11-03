@@ -7,9 +7,6 @@
 
 #include "node_world.h"
 
-/* CDIBBox's constructor (SOCOM 1's __ct__Q23zdb7CDIBBoxFv; not named yet) */
-extern "C" zdb::CDIBBox *func_002DDB30(zdb::CDIBBox *di);
-
 /* the default dot product a node must face within to be the closest one: 65 degrees */
 float DEFAULT_CLOSESTNODE_DOT = cosf(1.134464f);
 
@@ -17,10 +14,8 @@ float DEFAULT_CLOSESTNODE_DOT = cosf(1.134464f);
  * and its bounds updated from it; the box and flag passed are not read (SOCOM 1's) */
 void SetDIBBox(zdb::CNode *node, const CBBox *bbox, bool b)
 {
-    zdb::CDIBBox *di = (zdb::CDIBBox *)operator new(0x18);
+    zdb::CDIBBox *di = new zdb::CDIBBox;
 
-    if (di)
-        di = func_002DDB30(di);
     di->m_flags.m_ditype = 3;
     di->m_bbox = node->GetBBox();
     node->AddDI(di);

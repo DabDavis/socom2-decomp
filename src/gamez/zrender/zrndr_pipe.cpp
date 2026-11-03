@@ -6,8 +6,8 @@
  * Written so far: the lens flares' system's Clear and Release (0x336340, 0x3364D0: the unit opens
  * with that system's code, SOCOM II's), the opacity stack's push, the alpha pass's constructor and
  * destructor, the alpha pass's textures, the noise overlay (its kick, its texture, its pixels),
- * Flush with the three texture-buffer inlines' copies after it, the flush FIFO packet, the two
- * FIFO signals, VIF1's interrupt, the destructor and the constructor -- whose resize of the
+ * Flush with the three texture-buffer inlines' copies after it, the flush FIFO packet, the FIFO
+ * signal and load (FIFO_Load ours: SOCOM 1's two-argument FIFO_Signal less its argument), VIF1's interrupt, the destructor and the constructor -- whose resize of the
  * delayed nodes brings the template tail (0x33C2A0-0x33CCCF: resize, the deleters' clears and
  * destructors, erase, insert; ~CFlareSystem 0x33CCD0 last). 0x33CD50-0x33D22F is another unit,
  * zrndr_postfx.cpp (CPipeEffect's: the template tail closes this one, and its initialiser 0x402F80
@@ -133,7 +133,7 @@ public:
     ~CPipe();
     void Flush();
     void FIFO_Signal(zdb::CGSTexBuffer *buf);
-    void FIFO_Signal(zdb::CGSTexBuffer *buf, unsigned int *data);
+    void FIFO_Load(zdb::CGSTexBuffer *buf);
     void PushOpacity(float opacity);
     void AddAlphaTextures(zdb::CNode *node);
     void KickOverlay();
@@ -280,8 +280,13 @@ int InterruptFromVIF1(int cause)
 }
 
 /* a buffer uploaded, then a command queued and a FIFO packet kicked that interrupts when the
- * GS reaches it (its marker word 0x44444444); the second argument is SOCOM 1's, unused */
-void CPipe::FIFO_Signal(zdb::CGSTexBuffer *buf, unsigned int *data)
+ * GS reaches it (its marker word 0x44444444). SOCOM 1's FIFO_Signal(CGSTexBuffer *, unsigned int *)
+ * (0x2460A0: the same Load, the command's buffer to load set, the one to signal cleared) less its
+ * wait-time pointer: no SOCOM II caller sets a2 (CCoreState::Tick's four calls, CMenuState::Tick's
+ * one) and the body never reads it, so its signature is FIFO_Signal(CGSTexBuffer *)'s -- which
+ * 0x33BE70 keeps, SOCOM 1's one-argument body (the signal-only 0x55555555 packet). So this one was
+ * renamed; the name is ours */
+void CPipe::FIFO_Load(zdb::CGSTexBuffer *buf)
 {
     if (!buf)
         return;

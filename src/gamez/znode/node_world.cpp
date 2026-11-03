@@ -23,28 +23,8 @@ extern "C" void sceVu0NormalLightMatrix(sceVu0FMATRIX m, sceVu0FVECTOR l0, sceVu
 extern "C" void sceVu0LightColorMatrix(sceVu0FMATRIX m, sceVu0FVECTOR c0, sceVu0FVECTOR c1,
                                        sceVu0FVECTOR c2, sceVu0FVECTOR a);
 
-/* the grid's queries and the intersect set's setter not named yet (SOCOM 1's names, each
- * called where SOCOM 1's CWorld calls that one): CGrid::GetIntersectBatch, GetIntersect,
- * GetAltitude, InitDescendantsVisuals and InitDescendantsDI; DiIntersect's new mask setter */
-extern "C" int func_002D3CF0(zdb::CGrid *grid, zdb::DiIntersect **di, int n);
-extern "C" void func_002D4780(zdb::CGrid *grid, zdb::DiIntersect *di);
-extern "C" void func_002D49C0(zdb::CGrid *grid, zdb::DiIntersect *di);
-extern "C" void func_002D2DF0(zdb::CGrid *grid);
-extern "C" void func_002D2F10(zdb::CGrid *grid);
-extern "C" void func_002DC660(zdb::DiIntersect *di, unsigned int mask);
-/* DiIntersect::GetNearestIntersect and GetHighestAltitude (SOCOM 1's, called where SOCOM 1's
- * GetIntersect and GetAltitude call them; not named yet) */
-extern "C" zdb::IntersectStruct *func_002D4CC0(zdb::DiIntersect *di);
-extern "C" zdb::IntersectStruct *func_002D4C20(zdb::DiIntersect *di, const CPnt3D *p, float alt);
 /* SOCOM II's call on both decal pools after the recycle (not named yet) */
 extern "C" void func_003BF050(zdb::CDecalPool *pool);
-/* CTextureAssetCharacters' adder by library (this unit's, not yet written) and the asset list's
- * library finders by name and by phase (CAssetList's, not named yet) */
-extern "C" void func_0031D260(zdb::CWorld *world, zdb::CAssetLib *lib, zdb::CNode *node);
-extern "C" zdb::CAssetLib *func_00321130(zdb::CAssetList *list, const char *name);
-extern "C" zdb::CAssetLib *func_003210E0(zdb::CAssetList *list, zdb::_RenderPhase phase);
-/* the texture list's handle lookup (not named yet) */
-extern "C" int func_00354790(zdb::CTexList *list, zdb::CTexture *tex);
 
 namespace zdb {
 
@@ -527,8 +507,8 @@ IntersectStruct *CWorld::GetIntersect(const CPnt3D *p0, const CPnt3D *p1, bool c
 
     m_diInt->m_Tail = *p0;
     m_diInt->m_Tip = *p1;
-    func_002D4780(&m_grid, m_diInt);
-    hit = m_diInt->m_Cnt ? func_002D4CC0(m_diInt) : 0;
+    m_grid.GetIntersect(m_diInt);
+    hit = m_diInt->m_Cnt ? m_diInt->GetNearestIntersect() : 0;
     m_diInt->SetIntersectCharacters(was);
     return hit;
 }
@@ -538,9 +518,9 @@ IntersectStruct *CWorld::GetIntersect(const CPnt3D *p0, const CPnt3D *p1)
 {
     m_diInt->m_Tail = *p0;
     m_diInt->m_Tip = *p1;
-    func_002D4780(&m_grid, m_diInt);
+    m_grid.GetIntersect(m_diInt);
     if (m_diInt->m_Cnt)
-        return func_002D4CC0(m_diInt);
+        return m_diInt->GetNearestIntersect();
     return 0;
 }
 
@@ -549,7 +529,7 @@ DiIntersect *CWorld::GetIntersects(const CPnt3D *p0, const CPnt3D *p1)
 {
     m_diInt->m_Tail = *p0;
     m_diInt->m_Tip = *p1;
-    func_002D4780(&m_grid, m_diInt);
+    m_grid.GetIntersect(m_diInt);
     return m_diInt;
 }
 
@@ -560,7 +540,7 @@ DiIntersect *CWorld::GetIntersects(const CPnt3D *p0, const CPnt3D *p1, bool char
 
     m_diInt->m_Tail = *p0;
     m_diInt->m_Tip = *p1;
-    func_002D4780(&m_grid, m_diInt);
+    m_grid.GetIntersect(m_diInt);
     m_diInt->SetIntersectCharacters(was);
     return m_diInt;
 }
@@ -572,8 +552,8 @@ IntersectStruct *CWorld::GetAltitude(const CPnt3D *p, float alt, bool characters
     IntersectStruct *hit;
 
     m_diInt->m_Tail = CPnt3D(p->x, 0.0f, p->z);
-    func_002D49C0(&m_grid, m_diInt);
-    hit = m_diInt->m_Cnt ? func_002D4C20(m_diInt, p, alt) : 0;
+    m_grid.GetAltitude(m_diInt);
+    hit = m_diInt->m_Cnt ? m_diInt->GetHighestAltitude(p, alt) : 0;
     m_diInt->SetIntersectCharacters(was);
     return hit;
 }
@@ -582,9 +562,9 @@ IntersectStruct *CWorld::GetAltitude(const CPnt3D *p, float alt, bool characters
 IntersectStruct *CWorld::GetAltitude(const CPnt3D *p, float alt)
 {
     m_diInt->m_Tail = CPnt3D(p->x, 0.0f, p->z);
-    func_002D49C0(&m_grid, m_diInt);
+    m_grid.GetAltitude(m_diInt);
     if (m_diInt->m_Cnt)
-        return func_002D4C20(m_diInt, p, alt);
+        return m_diInt->GetHighestAltitude(p, alt);
     return 0;
 }
 
@@ -598,7 +578,7 @@ DiIntersect *CWorld::GetAltitudes(const CPnt3D *p)
     m_diInt->m_IntersectCharacters = false;
     m_diInt->m_Node = 0;
     m_diInt->m_Tail = CPnt3D(p->x, 0.0f, p->z);
-    func_002D49C0(&m_grid, m_diInt);
+    m_grid.GetAltitude(m_diInt);
     m_diInt->SetIntersectCharacters(was);
     return m_diInt;
 }
@@ -606,18 +586,18 @@ DiIntersect *CWorld::GetAltitudes(const CPnt3D *p)
 /* a batch of intersect sets run through the world's grid (SOCOM 1's) */
 int CWorld::GetIntersectBatch(DiIntersect **di, int n)
 {
-    return func_002D3CF0(&m_world->m_grid, di, n);
+    return m_world->m_grid.GetIntersectBatch(di, n);
 }
 
 
 void CWorld::InitDescendantsDI()
 {
-    func_002D2F10(&m_grid);
+    m_grid.InitDescendantsDI();
 }
 
 void CWorld::InitDescendantsVisuals()
 {
-    func_002D2DF0(&m_grid);
+    m_grid.InitDescendantsVisuals();
 }
 
 /* the delayed intersect sets run, then forgotten (SOCOM 1's scheduler task) */
@@ -643,7 +623,7 @@ int CWorld::RegIntersectDelayed(DiIntersect *di, const CPnt3D *tail, const CPnt3
     di->m_Type = 2;
     di->m_Tail = *tail;
     di->m_Tip = *tip;
-    func_002DC660(di, mask);
+    di->SetMask(mask);
     return i;
 }
 
@@ -680,7 +660,7 @@ int CWorld::RegProximityDelayed(DiIntersect *di, const CPnt3D *p, float radius, 
     m_diIntDelay[i] = di;
     di->m_Type = 4;
     di->m_Tail = *p;
-    func_002DC660(di, mask);
+    di->SetMask(mask);
     di->m_Tip.x = radius;
     di->m_Tip.y = 0.0f;
     di->m_Tip.z = 0.0f;
@@ -753,7 +733,7 @@ void CWorld::AddTextureAssetCharacterAll(CTexHandle *tex)
 /* a decal texture listed, unless it is already (SOCOM 1's) */
 void CWorld::AddTextureAssetDecals(CTexHandle *tex)
 {
-    if (!func_00354790(&m_TextureDecals, tex->m_texture))
+    if (!m_TextureDecals.GetHandle(tex->m_texture))
         m_TextureDecals.push_back(tex);
 }
 

@@ -6,7 +6,7 @@
 
 #include "zsnd.h"
 
-/* the finder (zrdr_main.cpp; zanim.h still spells it func_0032F0D0) */
+/* the finder (zrdr_main.cpp; zanim.h still calls it by its placeholder) */
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 #include "../zanim/zanim.h"
 

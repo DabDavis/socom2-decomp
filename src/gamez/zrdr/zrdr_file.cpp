@@ -17,11 +17,6 @@ void _free(void *p, const char *file, int line);
 /* the packed format's version (1), what a buffer's first halfword must hold */
 extern unsigned short data_003DFF58;
 
-/* zar::CZAR's fetches and insert, not named yet: a key's data into a buffer it allocates, into a
- * buffer given, and a buffer written as a key's data */
-extern "C" bool func_00259EE0(zar::CZAR *zar, zar::CKey *key, void **buf);
-extern "C" bool func_0025A000(zar::CZAR *zar, zar::CKey *key, void *buf, int size, unsigned int a);
-extern "C" void func_0025A120(zar::CZAR *zar, zar::CKey *key, const void *buf, int size);
 /* the resolvers (not written yet): the tree's offsets into pointers (A) and back (B) */
 extern "C" void func_0032CCB0(_zrdr *rdr, _zrdr *root, char *strings);
 extern "C" void func_0032CB90(_zrdr *rdr, _zrdr *root, char *strings);
@@ -37,9 +32,8 @@ int zrdr_free(CRdrFile *file)
 
 /* SOCOM 1's: the value cleared (_zrdr's initialiser list: six word read-mask-writes), the string
  * table built for 1024 strings */
-CRdrFile::CRdrFile()
+CRdrFile::CRdrFile() : m_strings(0, 1024)
 {
-    func_0039FBD0(&m_strings, 0, 1024);
     m_buffer = 0;
     m_size = 0;
     m_flags = 0;
@@ -57,7 +51,6 @@ CRdrFile::~CRdrFile()
         m_size = 0;
     }
     m_flags = 0;
-    func_0039FB30(&m_strings, -1);
 }
 
 /* a packed buffer's header (ours): the format's version, whether its offsets are resolved, its
@@ -130,10 +123,10 @@ CRdrFile *CRdrFile::Load(zar::CZAR *zar, zar::CKey *key, int flags)
             void *buf = 0;
             bool ok;
             if (flags & 4)
-                ok = func_00259EE0(zar, key, &buf);
+                ok = zar->FetchLIP(key, &buf);
             else {
                 buf = _calloc(size, 1, 0, 0);
-                ok = func_0025A000(zar, key, buf, size, 0);
+                ok = zar->Fetch(key, buf, size, 0);
             }
             if (ok)
                 file = Create(buf, size, flags);
@@ -147,7 +140,7 @@ zar::CKey *CRdrFile::Insert(zar::CZAR *zar, zar::CKey *key)
 {
     Pack();
     Resolve(true);
-    func_0025A120(zar, key, m_buffer, m_size);
+    zar->Insert(key, m_buffer, m_size);
     Resolve(false);
     return key;
 }
