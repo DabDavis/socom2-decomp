@@ -10455,16 +10455,16 @@
 0x005807D0 0x2B0 func_005807D0  # OVL2
 0x00580A80 0xE8 func_00580A80  # OVL2
 0x00580B70 0x59C func_00580B70  # OVL2
-0x00581110 0x1A8 func_00581110  # OVL2
-0x005812C0 0x168 func_005812C0  # OVL2
-0x00581430 0x104 func_00581430  # OVL2
-0x00581540 0x118 func_00581540  # OVL2
-0x00581660 0x16C func_00581660  # OVL2
-0x005817D0 0x1BC func_005817D0  # OVL2
-0x00581990 0x280 func_00581990  # OVL2
-0x00581C10 0x1AC func_00581C10  # OVL2
-0x00581DC0 0x104 func_00581DC0  # OVL2
-0x00581ED0 0x628 func_00581ED0  # OVL2
+0x00581110 0x1A8 BlendedClimb__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 seal_body.cpp order, BlendedClimb to Stand one to one from 0x581110 to 0x581DC0: the same height weights 12/26.5/14.5, newanims cleared, the ClimbMedium blend; the SEALs round 16)
+0x005812C0 0x168 Hang_0__10CZSealBodyFii  # OVL2; s1:order by hand (SOCOM 1 Hang_0, after BlendedClimb: the same two switches, itself and Stand_0 called for stances 1 and 2; the SEALs round 16)
+0x00581430 0x104 SetStanceIdle__10CZSealBodyF8AnimType  # OVL2; s1:order by hand (SOCOM 1 SetStanceIdle: the same state-7 tests, the pops and the anim kept at 0x1334, SOCOM 1 0xFA4, before the push in state 7; the SEALs round 16)
+0x00581540 0x118 Prone_0__10CZSealBodyFi  # OVL2; s1:order by hand (SOCOM 1 Prone_0, after SetStanceIdle: the same switch over stances 1, 0, 4 and the 0x14CC store, SOCOM 1 0x112C m_last_foot; the SEALs round 16)
+0x00581660 0x16C Prone__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 Prone, after Prone_0: the state-2 tests, the pops and Prone_0 asked from the old stance; in deep water a crouch, as Crouch calls; the SEALs round 16)
+0x005817D0 0x1BC Crouch_0__10CZSealBodyFif  # OVL2; s1:order by hand (SOCOM 1 Crouch_0__10CZSealBodyFif, after Prone: the same switch over stances 2, 0, 4, itself called for a hang; the SEALs round 16)
+0x00581990 0x280 Crouch__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 Crouch, after Crouch_0: CanCrouch and Stand(1) inlined in both builds, Crouch_0 asked from the old stance; the SEALs round 16)
+0x00581C10 0x1AC Stand_0__10CZSealBodyFiif  # OVL2; s1:callee by hand (Hang_0 calls it where SOCOM 1 Hang_0 calls Stand_0__10CZSealBodyFii, with a float -1 added; the SEALs round 16)
+0x00581DC0 0x104 Stand__10CZSealBodyFi  # OVL2; s1:order by hand (SOCOM 1 Stand__10CZSealBodyFi, after Stand_0: the state-0 tests, ClearStack inlined and Stand_0 asked at the old top time; the SEALs round 16)
+0x00581ED0 0x628 SetStance__10CZSealBodyF10SEAL_STATE  # OVL2; s1:order by hand (SOCOM 1 SetStance__10CZSealBodyF10SEAL_STATE, after Stand and before StanceChanged in both builds: BodySetState first, then a switch on the state at 0x174 over 4, 2, 1, 0, Crouch and Prone called; the SEALs round 16)
 0x00582500 0x38 StanceChanged__10CZSealBodyFv  # OVL2; s1:exact (SOCOM 1's: the stance-changed bit tested and cleared; PoseBitmap::Tick calls it)
 0x00582540 0x7CC func_00582540  # OVL2
 0x00582D10 0x314 func_00582D10  # OVL2
@@ -10514,7 +10514,7 @@
 0x00589AA0 0x9C4 func_00589AA0  # OVL2
 0x0058A470 0x58 func_0058A470  # OVL2
 0x0058A4D0 0x10C func_0058A4D0  # OVL2
-0x0058A5E0 0xC8 func_0058A5E0  # OVL2
+0x0058A5E0 0xC8 ClearStack__10CZSealBodyFUib  # OVL2; s1:order by hand (SOCOM 1 ClearStack__10CZSealBodyFUib, after PopBlend and before BodySetState in both builds: the blends popped down to a count, the top blend control cleared and stance 2 asked when the bool says; SOCOM II adds a limit of twelve; the SEALs round 16)
 0x0058A6B0 0x60 BodySetState__10CZSealBodyFi  # OVL2; s1:exact by hand (SOCOM 1's BodySetState__10CZSealBodyFi: the controller's OnStateChange (slot 0x64) when the state changes, then CBody's; SOCOM II's tests m_control first, and is virtual: CZSealBody's slot 0x90, through the thunk 0x555290 in its CBody table) -- the SEAL lane, round 4
 0x0058A710 0x8 func_0058A710  # OVL2; slot 0x64 of __vt__9CSealCtrl, which CSealCtrlSquirm and CRemoteCtrl inherit (the vtables pass withheld it: CRemoteCtrl's misnamed OnMissionStart override at 0x5E6270 pulled the alignment); s1~ OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE after all: CSealCtrlCopy's OVL1 table holds an OVL1 copy at slot 0x64 (0x2B3BE0), so the base's OnStateChange is inline and this is OVL2's copy (one of 2 copies of an inline)
 0x0058A720 0x100 GetStance__10CZSealBodyCFb  # OVL2; s1:calls by hand (the integrator's lead from the kit lane's round 11: the kick code hands its result to TargetMods where SOCOM 1's CZKit::Fire calls GetStance; SOCOM 1's GetStance__10CZSealBodyCFb (0x27D2A0) is the same body -- with the flag, the top blend's flags 0x40 and 0x20 and the anims 17/19/25 decide stand/crouch/prone, else CBody's state byte read lbu (a SEAL_STATE) -- SOCOM II adding the crouch-as-stand bit 2 of 0x21C)

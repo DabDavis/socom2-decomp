@@ -1112,6 +1112,21 @@ public:
     bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
+    /* the stances' blends (SOCOM 1's seal_body.cpp, in its order: BlendedClimb 0x581110 to Stand
+     * 0x581DC0 -- Stand_0 gained a float in SOCOM II) */
+    CZBodyAnimBlend *BlendedClimb(float h);
+    CZBodyAnimBlend *Hang_0(int stance, int n);
+    CZBodyAnimBlend *SetStanceIdle(AnimType type);
+    CZBodyAnimBlend *Prone_0(int stance);
+    CZBodyAnimBlend *Prone();
+    CZBodyAnimBlend *Crouch_0(int stance, float t);
+    CZBodyAnimBlend *Crouch();
+    CZBodyAnimBlend *Stand_0(int stance, int n, float t);
+    CZBodyAnimBlend *Stand(int n);
+    /* the blends popped down to a count, twelve at most; when that worked and asked, the top blend's
+     * control cleared and the SEAL asked to go prone (SOCOM 1's ClearStack, after PopBlend: OVL2
+     * 0x58A5E0 -- SOCOM II adds the limit; the stances inline it) */
+    void ClearStack(unsigned int count, bool clear);
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
     void HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
     /* the HUD's flags: the hit set, and each taken once (seal_env.cpp, SOCOM 1's) */
@@ -1301,7 +1316,8 @@ public:
      * the names ours) */
     unsigned char m_netlife;   // 0xf7a
     unsigned char _f7b[0xf88 - 0xf7b];
-    float m_f88;   // 0xf88: a speed (0x5857E0 refuses a SEAL in water above 8.5; the name ours)
+    float m_waterdepth;   // 0xf88 (SOCOM 1's 0xe70, by its use: in water a SEAL crouches only up to 8.5
+                          // deep, 0x5857E0, and goes prone only up to 2, Prone)
     unsigned char _f8c[0xfb0 - 0xf8c];
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
     unsigned char _fb1[0xfb4 - 0xfb1];
@@ -1400,13 +1416,15 @@ public:
         int m_ladder;   // 0x4
         unsigned char m_state;   // 0x8
     } m_climb;   // 0x1328
-    unsigned char _1334[0x1336 - 0x1334];
+    AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
     unsigned char _1338[0x1350 - 0x1338];
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     unsigned char _135c[0x1440 - 0x135c];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
-    unsigned char _144c[0x14e0 - 0x144c];   // (0x14E0 bytes: Create news 5344)
+    unsigned char _144c[0x14cc - 0x144c];
+    short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
+    unsigned char _14ce[0x14e0 - 0x14ce];   // (0x14E0 bytes: Create news 5344)
 };
 
 inline void *CSealCtrlAi::GetSelect()
