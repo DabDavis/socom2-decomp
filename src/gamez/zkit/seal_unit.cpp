@@ -4,11 +4,19 @@
  * EscorteeJoinUnit, the constructor (with the orders list's deleter copy), TickAll, the auto-message
  * pair, GetMyPointOutTurnDir and both IsMemberOfUnit; round 14: the order data's GetData and
  * pointer pair, ClearAiStates, UnInit, Notify, PlayRemoteMsg, run_anim (SOCOM 1's can_run_anim
- * inlined), CZSealBody::IsAi's copy, 0x5EAEB0, 0x5EB8A0 and the orders' range erase (0x5EF610).
- * Open: 0x5ED8F0/0x5ED950/0x5ED980 are iterator copies only 0x5ED9B0 emits; 0x5EBDC0 is an
- * implicit operator= whose list assignment calls 0x5EF7F0 and 0x5EF470 (with 0x5EF8D0, OVL2's
- * list init copy, and 0x5EF950, a splice). Defined in reverse of their image order (-inline
- * deferred) where it matters. */
+ * inlined), CZSealBody::IsAi's copy, 0x5EAEB0, 0x5EB8A0 and the orders' range erase (0x5EF610);
+ * round 15: the destructor (the lists as SOCOM 1's slist/ulist/clist classes) and GetSealCount
+ * (0x5ED9B0, open on the MSL's depths: 0x5ED8F0/0x5ED950/0x5ED980 are its iterator copies).
+ * Open: 0x5EBDC0 is CAiState's implicit operator= (0x5EBB50 assigns a breach state to the one it
+ * pushed: the vptr skipped, m_time, the stack -- the list's assignment, then its words at 0xC-0x1B
+ * copied as one aggregate through the FPU, lwc1/swc1, m_result with lw/sw -- then CAiState's
+ * members, m_loc an aggregate too). The list assignment is MSL's: x.end(), then
+ * min(size(), x.size()) through references, the element at that index found from the nearer end
+ * (0x5EF7F0, an advance either way), and the assign of [first, mid, last) (0x5EF470: past mid a
+ * temporary list built on this one's allocator (0x5EF9B0) and init'ed (0x5EF8D0), the overlap
+ * copied, the temporary spliced on (0x5EF950) and destroyed (0x510110); else the overlap copied
+ * and the rest erased inline). include/list has none of it. Defined in reverse of their image
+ * order (-inline deferred) where it matters. */
 
 #include <list>
 #include <string.h>
