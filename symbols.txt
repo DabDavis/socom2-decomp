@@ -10521,11 +10521,11 @@
 0x0058A820 0x98 GetSpeedState__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's GetSpeedState__10CZSealBodyFv, after GetStance in both builds: the same thresholds -- 0.5 and 20 units a second, squared in SOCOM II, which skips sqrtf -- giving 1, 2 or 3) -- the SEAL lane, round 12
 0x0058A8C0 0x58 func_0058A8C0  # OVL2
 0x0058A920 0x28 func_0058A920  # OVL2
-0x0058A950 0x48 func_0058A950  # OVL2; the same words as Clear__21RTList<11ACTIVE_ANIM>Fv (0x28f320) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x0058A9A0 0x44 func_0058A9A0  # OVL2
-0x0058A9F0 0xB0 func_0058A9F0  # OVL2; the same words as __ct__21RTList<11ACTIVE_ANIM>FUi (0x290290) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x0058AAA0 0x14 func_0058AAA0  # OVL2
-0x0058AAC0 0x68 func_0058AAC0  # OVL2
+0x0058A950 0x48 func_0058A950  # OVL2; the same words as Clear__21RTList<11ACTIVE_ANIM>Fv (0x28f320) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: Clear__21RTList<11ACTIVE_ANIM>Fv (the SEAL lane, round 17: BlendedClimb clears newanims with it, as SOCOM 1's calls Clear__21RTList<11ACTIVE_ANIM>Fv -- seal_body.cpp's tail emits the instance; the round-16 stand-in retired)
+0x0058A9A0 0x44 func_0058A9A0  # OVL2; ovl-copy: __dt__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv (the SEAL lane, round 17: the element destructor the constructor's copy 0x58A9F0 and ~CActiveAnimList's 0x58AAC0 hand to the array calls; seal_body.cpp's tail)
+0x0058A9F0 0xB0 func_0058A9F0  # OVL2; the same words as __ct__21RTList<11ACTIVE_ANIM>FUi (0x290290) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: __ct__21RTList<11ACTIVE_ANIM>FUi (the SEAL lane, round 17: __sinit_seal_body.cpp builds newanims through it, as SOCOM 1's; seal_body.cpp's tail)
+0x0058AAA0 0x14 func_0058AAA0  # OVL2; ovl-copy: __ct__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv (the SEAL lane, round 17: the element constructor 0x58A9F0 hands to __construct_new_array; seal_body.cpp's tail)
+0x0058AAC0 0x68 func_0058AAC0  # OVL2; ovl-copy: __dt__15CActiveAnimListFv (the SEAL lane, round 17: the destructor __sinit_seal_body.cpp registers for newanims, as SOCOM 1's registers __dt__15CActiveAnimListFv; OVL2's copy inlines ~RTList -- one this-test more -- where OVL1's 0x28FC70 calls it)
 0x0058AB30 0x114 func_0058AB30  # OVL2
 0x0058AC50 0x40 func_0058AC50  # OVL2
 0x0058AC90 0x8 func_0058AC90  # OVL2
@@ -13360,7 +13360,7 @@
 0x00668710 0xB4 func_00668710  # OVL2 data area; a static initialiser
 0x006687D0 0x8 func_006687D0  # OVL2 data area; a static initialiser
 0x006687E0 0x158 func_006687E0  # OVL2 data area; a static initialiser
-0x00668940 0x29C func_00668940  # OVL2 data area; a static initialiser
+0x00668940 0x29C __sinit_seal_body.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (the SEAL lane, round 17: SOCOM 1's __sinit_seal_body.cpp builds newanims through the RTList constructor, registers ~CActiveAnimList and stores the ten throw offsets' same values; SOCOM II adds three offsets first and drops the CSTable)
 0x00668BE0 0x30 func_00668BE0  # OVL2 data area; a static initialiser; s1~ node_util.cpp (names 0.53); the same words as __sinit_node_util.cpp (0x402960) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x00668C10 0x194 func_00668C10  # OVL2 data area; a static initialiser; s1~ seal_control.cpp (shape 0.20, a hint)
 0x00668DB0 0x94 __sinit_seal_kit.cpp  # OVL2 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.49, a hint); a static initialiser: seal_kit.cpp's (the kit lane's round 11: the same construct-array call as SOCOM 1's initialiser -- the iostream init objects, the 30 saved fire modes at 0x66B580 through their constructor 0x5C9230, then two zeroed words)

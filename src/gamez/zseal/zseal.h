@@ -63,6 +63,14 @@ enum CDIType { CDI_TYPE_0 = 0, CDI_TYPE_LAST = 255 };
  * narrows it as a short; only its bounds here) */
 enum AnimType { animTypeUndefined = -1, animTypeRef = 0, animTypeLast = 142 };
 
+/* SOCOM 1's anim types read as variables: static shorts the anim set fills in (anim.cpp's 0x5E1DF0
+ * stores them; OVL1 data, 8 bytes apart in SOCOM 1's order -- SOCOM 1's 4). Only the ones read here */
+class AnimTypes {
+public:
+    static short Stand2Prone;   // OVL1 0x3DEC48
+    static short ClimbMedium;   // OVL1 0x3DEC90
+};
+
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
 enum SEAL_DEATH_TYPE {
     DEATH_NONE = 0, DEATH_KNIFE_KILL = 1, DEATH_CQB = 2, DEATH_HEADSHOT = 3, DEATH_GRENADE = 4,
