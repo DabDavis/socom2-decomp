@@ -1647,6 +1647,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 21** (st_mpexit.cpp written whole, reco.cpp's gsapi calls by name):
+  - a switch's compare chain runs its labels in reverse source order and lays the blocks out in
+    source order: Tick's target order 1, 3, 5, 6, 4 is `case 4: break; case 6; case 5: case 3; case 1;`
+    with the shared code after the switch;
+  - a value loaded before the field it is added to came from an inline accessor (UpdateCareerRecord,
+    30 instructions to a match); one load of a global pointer serving several int stores is an
+    inline member on that object (written out, the global is reloaded after every store);
+  - a reference local declared before a call keeps the member's address in a saved register, declared
+    after it the offset folds into each access; a list walk keeping its begin and end temporaries in
+    the frame is a const_iterator assigned from a const view's begin();
+  - `bool b = false; int i;` and the reverse order in one block give different saved registers
+    (ComputeNewRating, 15 to 4); a bitfield cleared with an unfolded `andi v1,zero,1` comes from an
+    inline function's bool parameter; unused parameters show only at the call site;
+  - a record's size can be read from two stack frames: CareerRecord is 0xE8 bytes (fts_net_persona.cpp's
+    LobbyPlayerInfo likely 0xE8, not 0xF0); 0x22EA50-0x22EDA0 (CShutdownState's and CRebootState's
+    constructors, tables 0x405AE0/0x405B10) is a game-states unit inside the HUD range.
 - **Tells from the kit and AI states, round 14** (seal_unit.cpp, SetAiEvent, CalcAimGoal):
   - a bare float test `len ? a / len : 1.0f` gives `c.eq.s len,0`; `len != 0.0f` swaps the operands;
   - a helper with a function-local static inlined into its only caller wants `static inline`: `static`
