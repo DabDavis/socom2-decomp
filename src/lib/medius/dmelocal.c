@@ -49,7 +49,7 @@ extern void *memset(void *p, int c, unsigned int n);
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 
 extern int func_00639A90(int nConnection, int *pValue);
-extern int func_00614F58(int nIndex, void **ppObject);
+extern int func_00614F58(unsigned int nStream, void **ppStream);
 extern int NetFreeRemoteObject(int nIndex);
 extern int func_006437E0(void *p);
 extern int func_00618B38();
@@ -81,6 +81,17 @@ extern int func_0061C720(unsigned int nWorld, unsigned int nClient, DmeClientInf
 extern int func_00614EC8(void **ppObject, unsigned int nIndex);
 extern int func_00615DE0(int nClass, int nConnection, int nTarget, int nMsgType, int nLen, void *pMsg);
 extern void (*data_0067A6E8[16])(int nClient, int nIndex);
+
+/* a data stream's slot (0x44 bytes, 2048 of them, made on first use by func_00614F58) */
+typedef struct DmeStreamSlot {
+    char field_00[16];
+    void *pBuffer;                      /* 0x10 */
+    char field_14[24];
+    char circ[24];                      /* 0x2C: its rt_circ_buf */
+} DmeStreamSlot;
+
+extern DmeStreamSlot *data_006511D0;
+
 extern void (*data_0067A728[16])(int nClient, int nIndex, int nField);
 extern void (*data_0067A768[16])(int nClient, int nIndex);
 extern int data_00651180;               /* NetInitialize has run */
@@ -354,6 +365,38 @@ void *DMEmalloc(unsigned int nSize)
     return pMemory;
 }
 
+extern unsigned int strlen(const char *s);
+extern char *strstr(const char *s, const char *t);
+extern int atoi(const char *s);
+
+/* SOCOM 1's NetIpStringToBinary grown (0x6148E0): the string copied with its length bounded, an
+ * empty one refused, a missing dot refused */
+int func_006148E0(unsigned char *pBinary, char *szIp)
+{
+    char buf[16];
+    char *p = buf;
+    char *q;
+    int i;
+
+    if (szIp != 0 && pBinary != 0) {
+        strncpy(buf, szIp, 16);
+        i = 0;
+        if (strlen(buf) == 0)
+            return DME_ERR_ARGUMENT;
+        for (; i < 3; i++) {
+            q = strstr(p, ".");
+            if (q == 0)
+                return 10;
+            *q = 0;
+            pBinary[i] = atoi(p);
+            p = q + 1;
+        }
+        pBinary[3] = atoi(p);
+        return DME_OK;
+    }
+    return 10;
+}
+
 int NetIpBinaryToString(char *szIp, unsigned char *pBinary)
 {
     if (szIp != 0 && pBinary != 0) {
@@ -429,6 +472,28 @@ int func_00614F10(void **ppObject, int nIndex)
         *ppObject = pObject;
     return result;
 }
+/* SOCOM 1's NetGetDataStream grown (0x614F58): the slot table made on first use, each slot's first
+ * byte cleared */
+int func_00614F58(unsigned int nStream, void **ppStream)
+{
+    unsigned int i;
+
+    if (ppStream == 0)
+        return DME_ERR_ARGUMENT;
+    *ppStream = 0;
+    if (nStream >= DME_MAX_STREAMS)
+        return DME_ERR_RANGE;
+    if (data_006511D0 == 0) {
+        data_006511D0 = DMEmalloc(DME_MAX_STREAMS * sizeof(DmeStreamSlot));
+        if (data_006511D0 == 0)
+            return 22;
+        for (i = 0; i < DME_MAX_STREAMS; i++)
+            data_006511D0[i].field_00[0] = 0;
+    }
+    *ppStream = &data_006511D0[nStream];
+    return DME_OK;
+}
+
 
 int func_00615090(int *pValue, unsigned int nWorld)
 {
@@ -529,6 +594,114 @@ int func_006152B0(char *szVersion, unsigned int nWorld)
     strncpy(szVersion, pWorld->szServerVersion, 16);
     return DME_OK;
 }
+
+/* the clients a message goes to, as a bit per client (SOCOM 1's NetSetClientTargetActive sets them) */
+typedef struct DmeTargetMask {
+    unsigned char abTarget[33];         /* 0x00 */
+    int nClients;                       /* 0x24 */
+    int field_28;                       /* 0x28: -1 */
+} DmeTargetMask;
+
+extern int func_006126E8(void **ppClient, unsigned int nWorld, unsigned int nClient);
+extern int func_00615330(DmeTargetMask *pMask, int nClient);
+
+/* SOCOM 1's FilterTargetClientBitmask grown (0x615390): the world's clients but this one, each the
+ * filter accepts */
+void func_00615390(DmeTargetMask *pMask, unsigned int nWorld, int (*pfnFilter)(int nClient, int nMyClient))
+{
+    DmeWorld *pWorld = 0;
+    void *pClient;
+    int i, j;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return;
+    if (pfnFilter == 0)
+        return;
+    if (pMask == 0)
+        return;
+    pMask->nClients = DME_MAX_CLIENTS;
+    pMask->field_28 = -1;
+    if (func_0061C600(nWorld, &pWorld) != 0)
+        return;
+    if (pWorld == 0)
+        return;
+    pMask->nClients = pWorld->field_444;
+    for (j = 0; j <= 32; j++)
+        pMask->abTarget[j] = 0;
+    for (i = 0; i < pWorld->field_444; i++) {
+        pClient = 0;
+        func_006126E8(&pClient, nWorld, i);
+        if (pClient != 0 && i != pWorld->nMyClient && pfnFilter(i, pWorld->nMyClient))
+            func_00615330(pMask, i);
+    }
+}
+
+extern int rt_msg_client_send_target(int nConnection, unsigned short nTarget, char nType, void *pMsg,
+                                     unsigned short nLength);
+
+/* SOCOM 1's, as it was: DME's client index to rt_msg_client's target (-1 all, 0xFFFF the server).
+ * OPEN (8 words, the right size; SOCOM 1's copy is the target's byte for byte): the target keeps
+ * 0xFFFF in t1 for the test and the value (`andi s0,a2,0xffff; movz s0,t1,v0`) and tests -1 with
+ * `li v1,-1; xor` -- 2.96 here if-converts the 0xFFFF test the other way (`movn`) and folds the
+ * `xor -1` into `nor`; nine shapes (if/else, the chain, a ternary, a switch, unsigned, long and
+ * cast constants) give 8 words or worse. */
+int SendPacket(char nType, int nConnection, int nTarget, int nLength, void *pMsg)
+{
+    unsigned short nRtTarget = nTarget;
+    int result;
+
+    if (nTarget == 0xFFFF)
+        nRtTarget = 0xFFFF;
+    if (nTarget == -1)
+        nRtTarget = 0xFFFE;
+    result = rt_msg_client_send_target(DmeToRtMsgConnectionIndex(nConnection), nRtTarget, nType, pMsg, nLength);
+    if (result != 0) {
+        printf("SendPacket error sending message, msg error code = %d\n", result);
+        return 13;
+    }
+    return result;
+}
+extern unsigned char data_006511D4;     /* the transport is up */
+extern int func_00616C98(void);
+extern int func_0063A838(int nP2P, char *szIp, unsigned short nPort, void *pData, unsigned short nLength);
+extern unsigned char data_0066BCF8[512];
+extern unsigned short data_0067A6E0;    /* the port */
+extern void *memcpy(void *d, const void *s, unsigned int n);
+
+/* SOCOM 1's NetSendMessageByUDPToIP grown (0x615558): the transport brought up first, every argument
+ * checked, the datagram sent through the peer layer */
+int func_00615558(char nUnused, unsigned char *pIp, unsigned int nType, unsigned int nSubType, int nLength,
+                  void *pData)
+{
+    char szIp[16];
+    int result;
+
+    if (data_006511D4 == 0) {
+        result = func_00616C98();
+        if (result != 0)
+            return result;
+    }
+    if (nType >= 6)
+        return DME_ERR_ARGUMENT;
+    if (nSubType >= 256)
+        return DME_ERR_ARGUMENT;
+    if (nLength <= 0)
+        return DME_ERR_ARGUMENT;
+    if (nLength >= 511)
+        return 31;
+    if (pData == 0)
+        return DME_ERR_ARGUMENT;
+    if (pIp == 0)
+        return DME_ERR_ARGUMENT;
+    data_0066BCF8[0] = nType;
+    data_0066BCF8[1] = nSubType;
+    memcpy(&data_0066BCF8[2], pData, nLength);
+    NetIpBinaryToString(szIp, pIp);
+    if (func_0063A838(data_006511D8, szIp, data_0067A6E0, data_0066BCF8, nLength + 2) != 0)
+        return 37;
+    return DME_OK;
+}
+
 
 void RemoteObjectCreation(unsigned int nClient, unsigned int nIndex)
 {
@@ -1049,15 +1222,6 @@ int func_0061D108(unsigned int nWorld, int nClient, int *pbConnected)
     return result;
 }
 
-/* a data stream's slot (0x44 bytes, 2048 of them, made on first use by func_00614F58) */
-typedef struct DmeStreamSlot {
-    char field_00[16];
-    void *pBuffer;                      /* 0x10 */
-    char field_14[24];
-    char circ[24];                      /* 0x2C: its rt_circ_buf */
-} DmeStreamSlot;
-
-extern DmeStreamSlot *data_006511D0;
 extern int rt_circ_buf_destroy(void *pCircBuf);
 
 /* OPEN (35s): the target tests each slot's circular buffer by its address (`&slot->circ != 0`, an
