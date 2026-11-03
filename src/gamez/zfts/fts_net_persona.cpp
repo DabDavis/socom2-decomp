@@ -69,7 +69,11 @@ public:
 extern CMission theMission;
 
 /* the online lobby */
-class CZOnlineLobby;
+/* the online lobby (zonline's: only a rank's level, the persona's byte at 0x42) */
+class CZOnlineLobby {
+public:
+    unsigned char GetRankLevel(int rank);   /* 0x2EAEE0 */
+};
 
 extern CZOnlineLobby theLobby;
 
@@ -190,7 +194,6 @@ void func_002C4440();
 int func_002C4810();
 int func_002C4A20();
 int strcmp(const char *a, const char *b);
-unsigned char func_002EAEE0(CZOnlineLobby *lobby, int a);   /* (the lobby's: the persona's byte at 0x42) */
 }
 
 /* the lobby's account of this player (0xE8 bytes, filled by 0x2F98F0 -- its last copy ends at
@@ -299,7 +302,7 @@ void CZPersonaState::UpdateLocalPersona()
     CheckStateSwitch();
     data->m_40 = game->m_my_major_game_state;
     data->m_41 = game->m_my_minor_game_state;
-    data->m_42 = func_002EAEE0(&theLobby, -1);
+    data->m_42 = theLobby.GetRankLevel(-1);
     if (!strcmp(data->m_name, "oop9"))
         data->m_42 = 4;
     data->m_team = data_00441470;

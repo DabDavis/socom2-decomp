@@ -16,11 +16,12 @@ public:
     static void SetGroupVol(int group, float vol);
 };
 
-/* the screen's brightness (SOCOM 1's CVideo::Brightness; 0x3AFBE0, not named yet) */
-extern "C" void func_003AFBE0(float brightness);
-
-/* CIOPManager::UnRegisterRebootCallback (SOCOM 1's; zinput.h declares only the registration) */
-extern "C" void func_0039C590(CIOPManager *iop, int id);
+/* the screen's brightness (SOCOM 1's CVideo::Brightness, static; zvid_init.cpp's 0x3AFBE0: only it
+ * here) */
+class CVideo {
+public:
+    static void Brightness(float b);
+};
 
 bool UIStoreOptions(class C2DAnimCmdHdr *hdr, float *dT);
 
@@ -174,7 +175,7 @@ void UninitSystemTuners()
     if (s_dialogTuner)
         delete s_dialogTuner;
     s_dialogTuner = 0;
-    func_0039C590(&theIOPManager, s_rebootCallbackId);
+    theIOPManager.UnRegisterRebootCallback(s_rebootCallbackId);
 }
 
 void CSoundTuner::UpdateUIVar(CUIVariable *var)
@@ -196,7 +197,7 @@ void CMusicTuner::UpdateUIVar(CUIVariable *var)
 
 void CBrightnessTuner::UpdateUIVar(CUIVariable *var)
 {
-    func_003AFBE0(var->Real());
+    CVideo::Brightness(var->Real());
 }
 
 void CStickSensitivityTuner::UpdateUIVar(CUIVariable *var)

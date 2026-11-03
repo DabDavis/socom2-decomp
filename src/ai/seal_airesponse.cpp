@@ -10,6 +10,36 @@
 #include "../gamez/zkit/zkit.h"
 #include "../gamez/zsnd/zsnd.h"
 
+/* the nearest weapon pickup to a point within a range, of a weapon or of any (255), or 0 (OVL2
+ * 0x6084B0: the pickup state's helper 0x5F51A0 asks it; new in SOCOM II, the name ours). The walk
+ * tests the call's own result (`while ((p = ...) != 0)`: the copy in the delay slot); a `for` with
+ * the call in its step tests the copy. The cursor declared before the result takes the higher
+ * saved register */
+CPickup *FindNearestPickup(const CPnt3D *pos, unsigned char weapon, float range)
+{
+    CPickup::iterator it = CPickup::GetFirst();
+    float best = range * range;
+    CPickup *p;
+    CPickup *found = 0;
+
+    while ((p = CPickup::GetNext(it, CPickup::PU_WEAPON)) != 0) {
+        CZWeapon *w = p->GetWeapon();
+
+        if (weapon == 255 || weapon == w->m_ID) {
+            CPnt3D d;
+
+            pos->Sub(p->GetPosW(), &d);
+            float d2 = d.x * d.x + d.y * d.y + d.z * d.z;
+
+            if (d2 < best) {
+                best = d2;
+                found = p;
+            }
+        }
+    }
+    return found;
+}
+
 /* a chance taken: a random float in [0, 1) against the odds (an inline, seal_control.cpp's shape:
  * the odds by value, read through a reference -- the target stores them and reads them back) */
 inline bool Chance(float odds)

@@ -12,15 +12,18 @@
  * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
  * OPEN, not written yet: the tick 0x3949C0, the display's builders 0x394520, 0x394DA0, 0x394F60,
- * 0x395140, 0x395540, 0x3958D0, the look parser 0x3963F0, 0x397070, 0x397640, 0x397950 and the
- * template tail 0x397FE0-0x398910 -- the background pieces' vector (zui_skb.h's CSkbBgPiece, the
- * parser's resize of m_sources[i] its only request): resize 0x397FE0, erase 0x3980D0, insert
- * 0x3982F0 and the piece's copy 0x398910. Round 13 probed them with a stand-in resize caller:
- * resize is byte-exact (once erase's row is named), erase 0x1C0 against 0x220 (the string's
- * operator= called, where the target inlines it -- an out-of-class member this unit's own code must
- * instantiate first) and insert 0x670 against 0x618 (the piece's copy inlined, where the target's
- * construct calls placement new and 0x398910, which inlines the string's copy constructor): the
- * tail waits on the parser and whatever else here assigns and copies CSaferStrs. */
+ * 0x395140, 0x395540, 0x3958D0, 0x397070, 0x397640, 0x397950, the cap look reader 0x397D30.
+ * Round 14 wrote the look parser 0x3963F0 (OPEN, below) with its out-of-line helpers (0x396C70,
+ * 0x396C80: pinned) and the walker's constructor (zui_hangul.cpp's 0x3909F0): the template tail
+ * 0x397FE0-0x398910 is the background pieces' vector (zui_skb.h's CSkbBgPiece, the parser's resize
+ * of m_sources[i] its only request) -- resize 0x397FE0 and the piece's copy 0x398910 byte-exact
+ * (the copy moves the rectangles word by word: CSkbRect has a user-declared copy constructor beside
+ * its implicit, FPR block-copying assignment). Open in it: erase 0x3980D0 (0x150 against 0x220) and
+ * insert 0x3982F0 (0x4A0 against 0x618) call std::copy's helpers out of line where the target
+ * inlines the whole element assignment, the string's copy assignment included (its is_long tests,
+ * then replace 0x22E690), with each rectangle a four-word block -- the element's assignment chain
+ * is two levels too tall for include/vector, include/algorithm and include/string (the MSL headers'
+ * round 9 note at include/vector's erase). */
 
 #include <string>
 #include "zui.h"
@@ -29,6 +32,7 @@
 #include "../zsnd/zsnd.h"
 
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+_zrdr *zrdr_flat_findtag_startidx(const _zrdr *rdr, const char *tag, int start);
 
 /* an rdr array's item as an int, 0 for none (SOCOM 1's GetRdrArrayInt, zui_skb.cpp's there; inline
  * here) */
@@ -298,6 +302,22 @@ void SkbApplyCapLook(C2DString *str, zdb::CNode *node, CSoftKeyboard *skb, unsig
     node->SetActive(false);
 }
 
+/* a rectangle from a place and a size (0x396C80; the look parser calls it out of line: pinned) */
+#pragma auto_inline off
+CSkbRect::CSkbRect(const CIntPair &pos, const CIntPair &size)
+{
+    m_pos[0] = pos.Get1st();
+    m_pos[1] = pos.Get2nd();
+    m_size[0] = size.Get1st();
+    m_size[1] = size.Get2nd();
+}
+
+/* the block a tag names (0x396C70; ours: the look parser's rectangles, out of line) */
+_zrdr *SkbFindTag(_zrdr *rdr, const char *tag)
+{
+    return zrdr_flat_findtag_startidx(rdr, tag, 0);
+}
+
 /* a rectangle read from an rdr block's Pos and Size pairs (the look parser 0x3963F0 calls it) */
 void ReadSkbRect(CSkbRect *r, _zrdr *rdr)
 {
@@ -308,6 +328,131 @@ void ReadSkbRect(CSkbRect *r, _zrdr *rdr)
 void CSkbLook::SetRect(unsigned char i, const CSkbRect &r)
 {
     m_rects[i] = r;
+}
+#pragma auto_inline reset
+
+/* a cap's look read from the block a tag names (0x397D30, not written yet) */
+extern "C" void func_00397D30(CSkbLook *look, unsigned char i, _zrdr *rdr, const char *tag);
+/* the keyboard's default width (0x4A44C4; ours) */
+extern int data_004A44C4;
+
+/* a rectangle from a block's Pos and Size, read in that order (ours) */
+static inline CSkbRect SkbReadRect(_zrdr *rdr)
+{
+    CIntPair pos = ReadIntPair(rdr, "Pos");
+    CIntPair size = ReadIntPair(rdr, "Size");
+
+    return CSkbRect(pos, size);
+}
+
+/* an int or a real the rdr may give, else the default (ours: the look parser's scalars, each read
+ * into a local of the helper's -- the target's frame holds them after the parser's own) */
+static inline int SkbFindInt(_zrdr *rdr, const char *tag, int def)
+{
+    int i = def;
+
+    zrdr_findint(rdr, tag, &i, 1);
+    return i;
+}
+
+static inline float SkbFindReal(_zrdr *rdr, const char *tag, float def)
+{
+    float f = def;
+
+    zrdr_findreal(rdr, tag, &f, 1);
+    return f;
+}
+
+/* the look a keyboard's rdr block gives: its name and backgrounds, the four background piece lists
+ * (each piece a Source -- Texture, Pos, Size -- and a Display -- Pos, Size), its place, size, edit
+ * strings, cursor and caps, the five toggles' rectangles, the scaling times and the keyboards it
+ * switches to (0x3963F0; CreateSoftKeyboard calls it; the name ours).
+ * OPEN, 0x810 against 0x7D8 (written round 14 for its template tail: the pieces' resize and the
+ * piece's copy match through it): the calls, their order and the code up to the first loop's body
+ * are the target's; what differs is the frame and one variable. The scalars through the inline
+ * readers (theirs a variable each, numbered after the parser's own lh) and the pieces' pairs
+ * through SkbReadRect give the target's slots for both (444-412, 328-304); still off: the second
+ * walker (the target's 376, just under the first: declared before start?), the five toggle
+ * rectangles (240-176, never zeroed, under the loop's two rectangle temporaries 272/256 -- not
+ * default-constructed CSkbRect locals: ReadSkbRect returning by value?), and the list index, which
+ * the target narrows into a variable of its own (`andi s1,s5,0xff` in the walker's constructor's
+ * delay slot, `andi` again at the read, the index added before `this`: SetRect's shape, an inline
+ * taking an unsigned char?). Tried: an `unsigned char` index local (0x818) */
+void CSoftKeyboard::ParseLook(_zrdr *rdr)
+{
+    m_name = zrdr_findstring(rdr, "Name");
+    m_background = zrdr_findstring(rdr, "Background");
+    m_shiftBackground = zrdr_findstring(rdr, "ShiftBackground");
+    const char *tags[4] = {"BackgroundPieces", "ShiftBgPieces", "TwoEditsBgPieces", "TwoEditsShiftBgPieces"};
+
+    for (unsigned int i = 0; i < 4; i++) {
+        CSkbRdrIter it(rdr, tags[i]);
+
+        if (it.More()) {
+            CSkbBgPieces &pieces = m_sources[(unsigned char)i];
+
+            do {
+                pieces.resize(pieces.size() + 1);
+                CSkbBgPiece &piece = pieces.back();
+                _zrdr *item = it.Item();
+                _zrdr *src = zrdr_flat_findtag_startidx(item, "Source", 0);
+
+                piece.m_texture = zrdr_findstring(src, "Texture");
+                piece.m_source = SkbReadRect(src);
+                _zrdr *disp = zrdr_flat_findtag_startidx(item, "Display", 0);
+
+                piece.m_display = SkbReadRect(disp);
+                it.Next();
+            } while (it.More());
+        }
+    }
+    *(float *)&m_64 = -SkbFindReal(rdr, "TwoEditsGrowUp", 0.0f);
+    CIntPair start = ReadIntPair(rdr, "StartGridPos");
+
+    m_54 = start.Get1st();
+    m_58 = start.Get2nd();
+    CIntPair pos = ReadIntPair(rdr, "SkbPos");
+
+    m_5c = pos.Get1st();
+    m_60 = pos.Get2nd();
+    m_68 = SkbFindInt(rdr, "SkbHeight", 0);
+    m_6c = SkbFindInt(rdr, "SkbWidth", data_004A44C4);
+    m_c0 = SkbFindInt(rdr, "UserStringWidth", 0);
+    func_00397D30(this, 0, rdr, "UserStringProps");
+    float lh = 0.0f;
+
+    zrdr_findreal(rdr, "UserStringLineHeight", &lh, 1);
+    *(float *)&m_c4 = lh;
+    m_c8 = SkbFindInt(rdr, "CursorY", 0);
+    m_cc = SkbFindInt(rdr, "CursorY2nd", 0);
+    CIntPair csize = ReadIntPair(rdr, "CursorSize");
+
+    m_d0 = csize.Get1st();
+    m_d4 = csize.Get2nd();
+    func_00397D30(this, 1, rdr, "PurposeStringProps");
+    func_00397D30(this, 2, rdr, "MsgPlayerStringProps");
+    CSkbRect r0, r1, r2, r3, r4;
+
+    ReadSkbRect(&r0, SkbFindTag(rdr, "CapsLockOn"));
+    SetRect(0, r0);
+    ReadSkbRect(&r1, SkbFindTag(rdr, "ShiftOn"));
+    SetRect(1, r1);
+    ReadSkbRect(&r2, SkbFindTag(rdr, "LegendOn"));
+    SetRect(2, r2);
+    ReadSkbRect(&r3, SkbFindTag(rdr, "UsbKbdOn"));
+    SetRect(3, r3);
+    ReadSkbRect(&r4, SkbFindTag(rdr, "UsbKbdMode"));
+    SetRect(4, r4);
+    *(float *)&m_d8 = SkbFindReal(rdr, "ScaleUpSec", 0.25f);
+    *(float *)&m_dc = SkbFindReal(rdr, "ScaleDownSec", 0.25f);
+    CSkbRdrIter it(rdr, "SwitchTargets");
+
+    if (it.More()) {
+        do {
+            m_strings.push_back(CSaferStr(it.Item()->String()));
+            it.Next();
+        } while (it.More());
+    }
 }
 
 /* a sound played once, if it was found (ours) */

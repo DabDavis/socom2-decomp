@@ -22,11 +22,11 @@
 
 /* (the units after this one, by address: an rdr array's count, 0 for anything else or none; the
  * keyboards' shared bitmaps prepared with a callback; three more of their invalidations) */
+unsigned int SkbRdrCount(_zrdr *rdr);
+void SkbForgetDisplay();
 extern "C" {
-int func_003910B0(_zrdr *rdr);
 void func_00398FC0();
 void func_003958D0(zdb::CNode *node, zdb::CTextureRelocMgr *mgr, C2DFont *font, void (*callback)());
-void func_00396F30();
 void func_003997F0();
 void func_0039AD10();
 }
@@ -85,7 +85,7 @@ void InvalidateSkbsDisplay()
     g_pActiveSkb = 0;
     for (int i = 0; i < g_arrSkbs.size(); i++)
         g_arrSkbs[i]->InvalidateDisplay();
-    func_00396F30();
+    SkbForgetDisplay();
     func_003997F0();
     func_0039AD10();
 }
@@ -114,7 +114,7 @@ void ZuiInit()
     CRdrFileHolder file("UiParams.rdr", "data/common");
     _zrdr *skbs = zrdr_findtag(file, "SoftKeyboards");
 
-    for (int i = 0; i < func_003910B0(skbs); i++)
+    for (int i = 0; i < (int)SkbRdrCount(skbs); i++)
         CreateSoftKeyboard(skbs->Item(i));
 }
 
@@ -155,7 +155,7 @@ void CreateSoftKeyboard(_zrdr *rdr)
     skb->ParseLook(rdr);
     skb->ParseKeyProps(rdr);
     _zrdr *grid = zrdr_findtag(rdr, "Grid");
-    for (int y = 0; y < func_003910B0(grid); y++) {
+    for (int y = 0; y < (int)SkbRdrCount(grid); y++) {
         _zrdr *row = grid->Item(y);
         for (int x = 0; x < row->Count(); x++) {
             const _zrdr *item = row->Item(x);
@@ -175,19 +175,19 @@ extern "C" {
 void func_00394420();
 void func_00398B50();
 void func_00399C10(CSoftKeyboard *skb);
-void func_00395DE0(int on);
 /* CGameMenu::RunEventAnim (zui.cpp's 0x367810: the menu, an event, a flag) */
 void func_00367810(CGameMenu *menu, int event, int flag);
 }
+void SkbPlaySound(unsigned char which);
 
 extern "C" {
 int func_003999D0();
-int func_003998A0();
 int func_00395110();
 int func_003996B0();
-void func_00399D20(CGameMenu *menu);
 void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu);
 }
+bool SkbTextUnchanged();
+void SkbTakeText(CGameMenu *menu);
 
 /* (the next unit's node lists' layout from a grid size, 0x395140; this unit's elements shown or
  * hidden, 0x38B580) */
@@ -313,6 +313,104 @@ static inline void SetValveValue(CValve *valve, bool value)
 extern "C" const char *func_00397640();
 extern zdb::CNode *g_skbDisplayNode;
 
+/* the pads (zinput.h's CInput, which this unit cannot include beside zui_spec.h: its pads only) and
+ * whether a USB keyboard is plugged in (the world lane's KeyboardAttached) */
+#ifndef ZINPUT_H
+class CInput {
+public:
+    static CPad *m_pads[2];
+};
+#endif
+bool KeyboardAttached();
+
+extern "C" {
+/* the display unit's: the display ticked, its count of key events (0x3949C0); the next event's key
+ * (0x3978C0); whether the display is busy (0x396EC0); the keyboard's scaling stepped, 1 grown, 2
+ * shrunk away (0x394DA0); the scaled-in hook (0x398BB0). This unit's key handler (0x38DFE0) */
+int func_003949C0(CSoftKeyboard *skb);
+int func_003978C0();
+int func_00396EC0();
+unsigned char func_00394DA0(CSoftKeyboard *skb, float dT);
+void func_00398BB0();
+
+}
+
+extern "C" {
+/* the cursor moved in a direction (0x38DFC0: through 0x38CB80, SkbMoveCursor's jump); the cursor's
+ * key pressed (0x38D200); the two edit keys (0x399530, 0x399320) */
+void func_0038DFC0(unsigned char dir, CPad *pad);
+void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
+void func_00399530(CSoftKeyboard *skb);
+void func_00399320(CSoftKeyboard *skb);
+}
+
+/* a key event of the showing keyboard: the four cursor moves (events 1-4 move up, down, left and
+ * right: 3, 1, 2, 4 -- ours), the cursor's key (5), the two edit keys (6, 7) (0x38DFE0; the name
+ * ours) */
+void SkbHandleKey(int key, CPad *pad, CGameMenu *menu)
+{
+    switch ((unsigned char)key) {
+    case 1:
+        func_0038DFC0(3, pad);
+        break;
+    case 2:
+        func_0038DFC0(1, pad);
+        break;
+    case 3:
+        func_0038DFC0(2, pad);
+        break;
+    case 4:
+        func_0038DFC0(4, pad);
+        break;
+    case 5:
+        func_0038D200(g_pActiveSkb->GetCurKey(), g_pActiveSkb, pad, menu);
+        break;
+    case 6:
+        func_00399530(g_pActiveSkb);
+        break;
+    case 7:
+        func_00399320(g_pActiveSkb);
+        break;
+    }
+}
+
+/* the showing keyboard ticked: the display's key events handled (when the menu takes input), the
+ * USB toggles' bitmaps shown while a keyboard is plugged in, its scaling stepped -- grown, its first
+ * element set shown; shrunk away, its node and the display's hidden, none showing (0x38D8F0; the
+ * name ours: CGameMenu's tick 0x3654C0 calls it) */
+void SkbTick(CGameMenu *menu, bool input, float dT)
+{
+    if (g_pActiveSkb) {
+        int n = func_003949C0(g_pActiveSkb);
+
+        if (input) {
+            for (int i = 0; i < n; i++)
+                SkbHandleKey(func_003978C0(), CInput::m_pads[0], menu);
+        }
+        CSoftKeyboard *skb = g_pActiveSkb;
+
+        if (!func_00396EC0() && skb->m_480.m_node) {
+            bool on = KeyboardAttached();
+
+            if (skb->m_480.m_node)
+                skb->m_480.m_node->SetActive(on);
+            if (skb->m_530.m_node)
+                skb->m_530.m_node->SetActive(on);
+        }
+        /* an if chain: a switch tests 2 first */
+        unsigned char scaled = func_00394DA0(skb, dT);
+
+        if (scaled == 1) {
+            func_0038B580(skb, 1);
+            func_00398BB0();
+        } else if (scaled == 2) {
+            skb->m_node->SetActive(false);
+            g_skbDisplayNode->SetActive(false);
+            g_pActiveSkb = 0;
+        }
+    }
+}
+
 namespace {
 
 /* the text the keyboard opens with (0x49EC70, the unit's first static: only SkbOpen reads it, an
@@ -346,19 +444,36 @@ bool SkbOpen()
         g_skbDisplayNode->SetActive(true);
     }
     SetValveValue(CValve::Create("skb_done", (VALVE_TYPE)1), skb ? false : true);
-    func_00395DE0(0);
+    SkbPlaySound(0);
     return true;
 }
 
-/* the cursor's axis (ours: a byte enum, passed as `li 1; movz`) */
-enum SKBAXIS { SKB_AXIS_ROW, SKB_AXIS_COLUMN };
-
 extern "C" {
-/* the cursor moved along an axis by a step until it lands on another key (0x38C130), and its two
- * steps (0x38C4B0, 0x38C4C0) */
-void func_0038C130(CSoftKeyboard *skb, SKBAXIS axis, int (*step)(int));
+/* the cursor's two steps (0x38C4B0, 0x38C4C0: SOCOM 1's Local Decr and Incr) */
 int func_0038C4B0(int i);
 int func_0038C4C0(int i);
+}
+
+/* the cursor's bitmap put on a key (the display unit's) */
+void SkbPlaceCursor(CSkbKeyProps *props);
+
+/* the cursor moved along an axis by a step until it lands on another key that is set: the old key
+ * let go, the cursor put on the new one, the move's sound (0x38C130; the name ours: SOCOM 1's
+ * SyncHighlightToGridPos and CSkbGrid::MoveToNextPos, the latter inlined here) */
+void SkbMoveAlong(CSoftKeyboard *skb, SKBAXIS axis, int (*step)(int))
+{
+    void (C2DButton::*normal)() = &C2DButton::SetNormal;
+
+    skb->SetCurKeyState(normal);
+    const CSkbKey &start = skb->GetCurKey();
+    const CSkbKey *key;
+
+    do {
+        skb->m_grid.MoveToNextPos(&g_iSkbGridPosX, &g_iSkbGridPosY, axis, step);
+        key = &skb->GetCurKey();
+    } while (!(*key != start) || !key->IsSet());
+    SkbPlaceCursor(skb->GetCurKeyProps());
+    SkbPlaySound(2);
 }
 
 /* the keyboard's display forgotten: no node and no grid size, its texture lists freed, its six
@@ -394,7 +509,7 @@ void SkbMoveCursor(CSoftKeyboard *skb, unsigned char dir)
     /* the axis into a local first: in the call's list it would be chosen after the step */
     SKBAXIS axis = SkbIsVertical(dir) ? SKB_AXIS_ROW : SKB_AXIS_COLUMN;
 
-    func_0038C130(skb, axis, dir == 2 || dir == 4 ? func_0038C4C0 : func_0038C4B0);
+    SkbMoveAlong(skb, axis, dir == 2 || dir == 4 ? func_0038C4C0 : func_0038C4B0);
 }
 
 /* a count of none (ours: an inline bool returning the negation, materialised before each branch) */
@@ -411,7 +526,7 @@ void CSoftKeyboard::OnEnterKey(CGameMenu *menu)
     if (!func_003999D0()) {
         bool unchanged = false;
 
-        if (g_bIgnoreUnchanged && func_003998A0())
+        if (g_bIgnoreUnchanged && SkbTextUnchanged())
             unchanged = true;
         bool empty = false;
 
@@ -421,9 +536,9 @@ void CSoftKeyboard::OnEnterKey(CGameMenu *menu)
             func_0038C000(this, menu);
             return;
         }
-        func_00399D20(menu);
+        SkbTakeText(menu);
         ShutdownBegin(menu);
-        func_00395DE0(4);
+        SkbPlaySound(4);
     }
 }
 
@@ -433,14 +548,13 @@ void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
 {
     void (C2DButton::*normal)() = &C2DButton::SetNormal;
 
-    if (GetCurKeyProps())
-        GetCurKeyProps()->SetButtonState(normal);
+    SetCurKeyState(normal);
     func_0038B580(this, 0);
     func_00394420();
     func_00398B50();
     func_00399C10(this);
     func_00367810(menu, 16, 0);
-    func_00395DE0(1);
+    SkbPlaySound(1);
 }
 
 /* the cursor's key let go, this keyboard's node hidden and the other's shown, the other made the
@@ -450,8 +564,7 @@ void CSoftKeyboard::SwitchTo(CSoftKeyboard *to)
     func_00395140(to->m_17c, to->m_180, &to->m_texLists, to);
     void (C2DButton::*normal)() = &C2DButton::SetNormal;
 
-    if (GetCurKeyProps())
-        GetCurKeyProps()->SetButtonState(normal);
+    SetCurKeyState(normal);
     m_node->SetActive(false);
     to->m_node->SetActive(true);
     g_pActiveSkb = to;
@@ -470,19 +583,19 @@ void CSkbKeyProps::SetButtonState(void (C2DButton::*state)())
 #pragma auto_inline reset
 
 /* the props of the key under the cursor, or none (SOCOM II's: FindKeyProps of GetCurKey, both
- * inlined; the name ours).
- * OPEN, 2 instructions short: the target materialises the row test (slt, xori, the size's sltu,
- * then andi 0xff) before branching on it, as SOCOM 1's GetSkbKey does; here it branches straight.
- * No change from a bool local, `!= false`, `== true`, a ternary, an int, signed or unsigned char
- * return, an early return, or splitting the column tests into an inline of their own (which
- * makes the tree a level too tall: end() then calls out of line). A lead (round 13, untested): the
- * cursor setter 0x38B8A0 and 0x38C130 call GetCurKey (0x38CB90, whose copy materialises the same
- * test) and FindKeyProps out of line where this copy inlines both -- the shape of GetCurKeyProps
- * declared inline and too tall, inlined one level into its callers, its own out-of-line copy
- * inlining everything */
-CSkbKeyProps *CSoftKeyboard::GetCurKeyProps()
+ * inlined; the name ours). Round 14: the row test is materialised (slt, xori, the size's sltu, andi)
+ * as the target's because IsValidPos tests IsValidRow `!= false` (zui_skb.h), and FindKeyProps'
+ * end() is taken into a local (as an argument of the iterator's `!=` it was a level too deep here,
+ * calling the tree's tail() out of line) */
+inline CSkbKeyProps *CSoftKeyboard::GetCurKeyProps()
 {
     return FindKeyProps(GetCurKey());
+}
+
+inline void CSoftKeyboard::SetCurKeyState(void (C2DButton::*state)())
+{
+    if (GetCurKeyProps())
+        GetCurKeyProps()->SetButtonState(state);
 }
 
 /* a key's properties, or none (SOCOM 1's): the found branch first -- `i == end() ? 0 : ...` and
@@ -490,8 +603,11 @@ CSkbKeyProps *CSoftKeyboard::GetCurKeyProps()
 CSkbKeyProps *CSoftKeyboard::FindKeyProps(const CSkbKey &key)
 {
     CSkbKeyMap::iterator i = m_keyProps.find(key);
+    /* the end taken into a local: tested in the `!=` call's argument list it is checked a level
+     * deeper, and inlined here into GetCurKeyProps it calls the tree's tail() out of line */
+    CSkbKeyMap::iterator e = m_keyProps.end();
 
-    if (i != m_keyProps.end())
+    if (i != e)
         return (*i).second;
     return 0;
 }
