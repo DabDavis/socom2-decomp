@@ -1159,9 +1159,52 @@ void CZOnlineLobby::GetLeaderMessages()
     SetSessionKey(req.SessionKey);
     req.Start = 1;
     req.PageSize = 999;
-    CheckMediusError(func_00646520(&req, cbGetLeaderMessages));
+    CheckMediusError(MediusGetAllClanMessages(&req, cbGetLeaderMessages));
 }
 #pragma auto_inline reset
+
+/* a leader's message rewritten (the SDK's request: its id and the text) */
+struct MediusModifyClanMessageRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    int ClanMessageID;   // 0x28
+    char Message[200];   // 0x2c
+};   // 0xf4
+
+struct MediusModifyClanMessageResponse { MEDIUS_RESPONSE_HEAD };
+
+void cbModifyClanMessage(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusModifyClanMessageResponse *);
+extern "C" MediusErrorCode MediusModifyClanMessage(MediusModifyClanMessageRequest *req,
+    void (*cb)(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusModifyClanMessageResponse *));
+
+/* a leader's message written: a new one (id -1) sent as a clan message (SendClanMessage, inlined),
+ * a kept one's text replaced -- the API's result not looked at, a success handed to the check, as
+ * DeleteClanMessage's; an empty text or an unknown id told (SOCOM II's; OVL1 0x2E60C0: the UI
+ * command 'ModifyClanMessage' 0x27A0E0 calls it on theLobby) */
+void CZOnlineLobby::ModifyClanMessage(int id, const char *text)
+{
+    if (text && text[0]) {
+        if (id == -1) {
+            SendClanMessage(text);
+        } else {
+            ClanMessageItem *m = ClanMessageVec.Find(id);
+
+            if (m) {
+                MediusModifyClanMessageRequest req;
+
+                memset(&req, 0, sizeof(req));
+                SetSessionKey(req.SessionKey);
+                req.ClanMessageID = id;
+                if (text)
+                    memcpy(req.Message, text, sizeof(req.Message));
+                MediusModifyClanMessage(&req, cbModifyClanMessage);
+                CheckMediusError(MediusSuccess);
+            } else
+                LobbyEvent("CLAN_MESSAGE_ID_ERR", 0);
+        }
+    } else
+        LobbyEvent("CLAN_MESSAGE_EMPTY", 0);
+}
 
 /* a message deleted (SOCOM II's; OVL1 0x2E6010): the API's result not looked at, a success
  * handed to the check instead */
@@ -1173,7 +1216,7 @@ void CZOnlineLobby::DeleteClanMessage(int id)
         memset(&req, 0, sizeof(req));
         SetSessionKey(req.SessionKey);
         req.ClanMessageID = id;
-        func_006460B0(&req, cbDeleteClanMessage);
+        MediusDeleteClanMessage(&req, cbDeleteClanMessage);
         CheckMediusError(MediusSuccess);
     }
 }

@@ -258,8 +258,8 @@ typedef void (*MediusTransferClanLeadershipCallback)(MediusErrorCode, MediusErro
 extern "C" {
 MediusErrorCode MediusTransferClanLeadership(MediusTransferClanLeadershipRequest *req,
                                              MediusTransferClanLeadershipCallback cb);
-void func_006460B0(MediusDeleteClanMessageRequest *req, MediusDeleteClanMessageCallback cb);   /* MediusDeleteClanMessage? */
-MediusErrorCode func_00646520(MediusGetAllClanMessagesRequest *req, MediusGetAllClanMessagesCallback cb);
+MediusErrorCode MediusDeleteClanMessage(MediusDeleteClanMessageRequest *req, MediusDeleteClanMessageCallback cb);
+MediusErrorCode MediusGetAllClanMessages(MediusGetAllClanMessagesRequest *req, MediusGetAllClanMessagesCallback cb);
 MediusErrorCode MediusGetMyClanMessages(MediusGetMyClanMessagesRequest *req,
                                         MediusGetMyClanMessagesCallback cb);
 MediusErrorCode MediusSendClanMessage(MediusSendClanMessageRequest *req,
@@ -921,6 +921,7 @@ public:
     bool SendClanMessage(const char *text);
     void GetClanMessages();
     void GetLeaderMessages();
+    void ModifyClanMessage(int id, const char *text);
     void DeleteClanMessage(int id);
 
     void *DMEInit();
