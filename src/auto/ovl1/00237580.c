@@ -4,12 +4,13 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __destroy_arr(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK __dt__3C2DFv(char *, M2C_UNK);              /* extern */
-M2C_UNK func_00232490(char *, M2C_UNK);             /* extern */
+M2C_UNK __dt__8CTCMNodeFv(char *, M2C_UNK);         /* extern */
 extern M2C_UNK __dt__7C2DPolyFv;
 extern M2C_UNK __vt__13C2DBitmapPoly;
 
@@ -19,43 +20,43 @@ char *func_00237580(char *arg0, s64 arg1) {
 
     if (arg0 != NULL) {
         if ((arg0 + 0x11C0) != 0) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x11CC) = &__vt__13C2DBitmapPoly;
+            SC_MEMBER(arg0, M2C_UNK **, 0x11CC) = &__vt__13C2DBitmapPoly;
             __destroy_arr(arg0 + 0x1200, &__dt__7C2DPolyFv, 0xD0, 2);
             __dt__3C2DFv(arg0 + 0x11C0, 0);
         }
         if ((arg0 + 0xFD0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0xFDC) = &__vt__13C2DBitmapPoly;
+            SC_MEMBER(arg0, M2C_UNK **, 0xFDC) = &__vt__13C2DBitmapPoly;
             __destroy_arr(arg0 + 0x1010, &__dt__7C2DPolyFv, 0xD0, 2);
             __dt__3C2DFv(arg0 + 0xFD0, 0);
         }
         if ((arg0 + 0xDE0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0xDEC) = &__vt__13C2DBitmapPoly;
+            SC_MEMBER(arg0, M2C_UNK **, 0xDEC) = &__vt__13C2DBitmapPoly;
             __destroy_arr(arg0 + 0xE20, &__dt__7C2DPolyFv, 0xD0, 2);
             __dt__3C2DFv(arg0 + 0xDE0, 0);
         }
         if ((arg0 + 0xBB0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0xBBC) = &__vt__13C2DBitmapPoly;
+            SC_MEMBER(arg0, M2C_UNK **, 0xBBC) = &__vt__13C2DBitmapPoly;
             __destroy_arr(arg0 + 0xBF0, &__dt__7C2DPolyFv, 0xD0, 2);
             __dt__3C2DFv(arg0 + 0xBB0, 0);
         }
         if ((arg0 + 0x9C0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x9CC) = &__vt__13C2DBitmapPoly;
+            SC_MEMBER(arg0, M2C_UNK **, 0x9CC) = &__vt__13C2DBitmapPoly;
             __destroy_arr(arg0 + 0xA00, &__dt__7C2DPolyFv, 0xD0, 2);
             __dt__3C2DFv(arg0 + 0x9C0, 0);
         }
         if ((arg0 + 0x7D0) != NULL) {
-            M2C_FIELD(arg0, M2C_UNK **, 0x7DC) = &__vt__13C2DBitmapPoly;
+            SC_MEMBER(arg0, M2C_UNK **, 0x7DC) = &__vt__13C2DBitmapPoly;
             __destroy_arr(arg0 + 0x810, &__dt__7C2DPolyFv, 0xD0, 2);
             __dt__3C2DFv(arg0 + 0x7D0, 0);
         }
         temp_v0 = arg0 + 0x754;
         if ((temp_v0 != NULL) && (temp_v0 != NULL) && (temp_v0 != NULL)) {
-            temp_a0 = M2C_FIELD(arg0, char **, 0x75C);
+            temp_a0 = SC_MEMBER(arg0, char **, 0x75C);
             if (temp_a0 != NULL) {
                 __dl__FPv(temp_a0);
             }
         }
-        func_00232490(arg0, 0);
+        __dt__8CTCMNodeFv(arg0, 0);
         if (((s64) (arg1 << 0x30) >> 0x30) > 0) {
             __dl__FPv(arg0);
         }

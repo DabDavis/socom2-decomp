@@ -1842,6 +1842,25 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 24** (hud_main.cpp on the real C2DFont, zui_2d.cpp's controls, CTCM's constructor, the
+  placeholders respelled):
+  - on c2dfont.h's real C2DFont (a std::map<unsigned short, C2DGlyph>) hud_main.cpp emits the glyph tree's destroy
+    0x1FE760 byte-exact and seven template rows 0x1FE9E0-0x1FEC50 under their names, and ReleaseHUD and ~CHUD still
+    match at level 5 -- a tree tail matches as soon as its callee rows carry the emitted names;
+  - inside an inline member, `const T *item = this;` keeps the object's address in a saved register across a call (the
+    first read folded into the caller's offset); through `this`, an inline's reference or pointer parameter or a
+    reference local MW folds every access (CCheckBox::HandlePad); `x *= k; f(x);` keeps the product in the argument
+    register, `f(x * k)` computes it into a new one (C2DVisual::Render);
+  - overriding an inline virtual (C2DButton::Tick) can stop a unit emitting the base's inline copy (C3StateButton::Tick
+    0x37C600) when only derived tables used it; defining the base's destructor -- its key function -- brings the
+    base's table and the copy back (~C3StateButton 0x377A30);
+  - all 45 named placeholders in the HUD's 16 files respelled (build/scratch/integ/placeholders.py lists none there);
+    hud_main.cpp's CHudNetState stand-in is theTCM through hud_tcm.h and its m_messages4 the chat line, a CMsgEditor;
+    CTCM() 0x237390 (the mode 4 through CTCMMode's inline constructor, six polys, a 0.3 file static in the 8-byte
+    float pool 0x3DCB00-0x3DCB3C) names the tree unit's CTCMNode() 0x232660, ~CTCMNode 0x232490 (a written destructor:
+    the implicit copy came out 0x148 against 0x1D0) and CTCMSounds() 0x2329D0;
+  - open: CHandlerButton::HandlePad 0x3765A0 (11: the target keeps `this` and then the end node in s3, the walk's node
+    in s2 -- six spellings in its comment); round 23's four tcm opens and st_mpexit's three unchanged.
 - **Tells from the world, rdr and sound, round 5** (zrdr_read, the headset and instance pool, a new zsav_lobby.cpp):
   - a temporary bound to a const reference takes its stack slot ahead of temporaries created before it: Pop binding
     end() and erase's result to const references gives zrdr_read the target's slots;
