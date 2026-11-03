@@ -7358,7 +7358,7 @@
 0x00391350 0xF8 SkbHangulClear__Fv  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: s_compose resized to none, its strings destroyed through 0x3912A0; zui_skbkeys.cpp's text functions and SkbClearText call it)
 0x00391450 0x48 KeyToJamo__Fc  # OVL1; ours (zui_hangul.cpp: a letter key's jamo, a-z through the table at 0x3FB000, else the shifted table at 0x3FB020 indexed from 'A'; 0x39ADA0 calls it)
 0x003914A0 0x1C4 SkbHangulRestart__FP10CSkbPieces  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composition's single jamo string -- s_compose resized to one, the string emptied through resize(0, 0) -- refilled with the last piece's jamo through LastJamo 0x390860; 0x390A30 calls it)
-0x00391670 0x358 func_00391670  # OVL1
+0x00391670 0x358 SkbHangulCompose__FP10CSkbPiecesPQ23std30vector<c,Q23std12allocator<c>>  # OVL1; the UI lane, round 13: ours, by its callers (zui_hangul.cpp: the jamo composed into pieces by the rules -- SkbHangulType 0x390A30 and SkbHangulBack 0x3910E0 call it with the pieces and a vector<char> of jamo and test its bool; it calls the rule matcher 0x3919D0); not written yet
 0x003919D0 0x360 func_003919D0  # OVL1
 0x00391D30 0xC func_00391D30  # OVL1
 0x00391D40 0x38 func_00391D40  # OVL1
