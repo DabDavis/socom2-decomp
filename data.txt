@@ -341,6 +341,7 @@
 0x003E14F8 0x4 personMaterialId__4zwep  # OVL1; s1:data-seq (size SOCOM 1's; via Close__8CZWeaponFv +1)
 0x003E1550 0x1 m_timer_bIncrTimer__8CZWeapon  # OVL1 data (initialised 1); SOCOM 1's static (m_timer_bIncrTimer__8CZWeapon, 1 byte, in its .sdata: RegisterTimer stores its bool there as here) -- the wep lane; 3 references in 3 functions (RegisterTimer, RetrieveTimerRegistration, ClearTimer)
 0x003E1558 0x1 m_timer2_bIncrTimer__8CZWeapon  # OVL1 data (initialised 1); by hand (the wep lane: the second timer's increment flag, RegisterTimer2 stores its bool there, RetrieveTimer2Registration reads it -- new in SOCOM II, the name ours); 2 references in 2 functions
+0x003E1560 0x1 version__Q28CZWeapon9AI_PARAMS  # OVL1 data (initialised 1); SOCOM 1's static (version__Q28CZWeapon9AI_PARAMS, 1 byte in its .sdata: its CZWeapon constructor copies it into m_ai_params.m_version as SOCOM II's does) -- the wep lane, round 14; 1 reference in 1 function (CZWeapon())
 0x003E1568 0x1 m_tracer_anims__14CFlyoutMachine  # OVL1 data (initialised 1); by hand (the wep lane: HookupReset looks the two tracer animations up only while it is set, AcquireFlyout tests it too -- new in SOCOM II, the name ours); 2 references in 2 functions
 0x003E16A0 0x8 __RTTI__8CZWeapon  # RTTI of CZWeapon: found by its RTTI's name
 0x003E16B8 0x8 __RTTI__11CZFTSWeapon  # RTTI of CZFTSWeapon: found by its RTTI's name
