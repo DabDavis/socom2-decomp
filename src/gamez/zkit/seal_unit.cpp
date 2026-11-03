@@ -275,6 +275,27 @@ void CSealUnit::EscorteeJoinUnit(CZSealBody *seal)
     func_005E7830(this);
 }
 
+/* (OVL2 0x5E7830) the squad's four lists walked and nothing done -- the bodies compiled out: the
+ * SEALs, the dead, the escortees, the squads under it. One slist iterator ASSIGNED from each begin()
+ * in turn and a ulist one declared after it: an assigned wrapper iterator stays in its stack slot,
+ * the base iterator copied in through $f0 (the MSL headers round 15; a fresh iterator per walk, or
+ * all four declared at the top, gives other slots) */
+extern "C" void func_005E7830(CSealUnit *unit)
+{
+    CSealUnit::slist::iterator i;
+
+    for (i = unit->m_seals.begin(); i != unit->m_seals.end(); ++i) {
+    }
+    for (i = unit->m_dead_guys.begin(); i != unit->m_dead_guys.end(); ++i) {
+    }
+    for (i = unit->m_escortees.begin(); i != unit->m_escortees.end(); ++i) {
+    }
+    CSealUnit::ulist::iterator u;
+
+    for (u = unit->m_sub_units.begin(); u != unit->m_sub_units.end(); ++u) {
+    }
+}
+
 /* the squad of a number, made and listed when there is none; team 24's gets the radio channel's
  * valve (OVL2 0x5EF380; SOCOM 1's, the word after the valve zeroed with it) */
 CSealUnit *CSealUnit::Create(unsigned int team)
