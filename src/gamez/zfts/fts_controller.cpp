@@ -1,12 +1,16 @@
 /* fts_controller.cpp -- the controller configurations: CCtrlrConfigs (SOCOM 1's fts_controller.cpp:
  * the pad layouts read from controller.rdr, the current one's button for each game function).
- * OVL1 from 0x2C5C90, after fts_net_persona.cpp. Only some of it so far: the edited layout's
- * buttons, the pressures, the jump/action test, and SOCOM II's stick readers (the strafe 0x2C6110,
- * a function's button held 0x2C61E0, a stick's axis 0x2C6520, the pitch 0x2C65B0 and its caller,
- * the look 0x2C6290 open). Defined in reverse of their image order (-inline deferred). */
+ * OVL1 from 0x2C5C90, after fts_net_persona.cpp. Only some of it so far: the loader (Init,
+ * 0x2C5E70, with the copies its inlined layout constructor calls, 0x2C5FF0-0x2C60BF), the edited
+ * layout's buttons, the pressures, the jump/action test, and SOCOM II's stick readers (the strafe
+ * 0x2C6110, a function's button held 0x2C61E0, a stick's axis 0x2C6520, the pitch 0x2C65B0 and its
+ * caller, the look 0x2C6290 open). Not yet: the per-layout parser 0x2C67F0 and its button-name
+ * reader 0x2C6670. Defined in reverse of their image order (-inline deferred). */
 
 #include <string>
 #include <vector>
+
+#include "../zrdr/zrdr.h"
 
 /* a game function's button (SOCOM 1's PadBtnFunc::_) */
 namespace PadBtnFunc {
@@ -77,32 +81,106 @@ public:
     static CPad *m_pads[2];
 };
 
+/* a string that is never null (SOCOM 1's zutil.h inline over MSL's basic_string: the text
+ * assigned, or the string emptied), made from a C string -- the layout's name (OVL1 0x2C6060, the
+ * constructor's copy: the three words cleared, then the assignment inlined).
+ * THE DEPTH IS FITTED, as fts_state.h's string is: the layout's constructor must be six high at
+ * -inline level=5 for Init and the parser to inline it one level (calling this and the settings'
+ * constructors), where include/string's default constructor is two high and this, written
+ * plainly, three. fts_state.h measured the original's string four high (CMenuState() cut,
+ * CCinematicState() not); the two forwarding levels below (Empty, Erase -- ours) stand in for
+ * those two levels, compile to nothing, and leave the copy byte-exact (one level fewer and the
+ * constructor inlines whole: 0x194 against 0x174) */
+class CSaferStr : public std::string {
+public:
+    CSaferStr() {}
+    CSaferStr(const char *sz) { *this = sz; }
+    void operator=(const char *sz)
+    {
+        if (sz)
+            assign(sz);
+        else
+            Empty();
+    }
+    void Empty() { Erase(); }
+    void Erase() { erase(); }
+};
+
+/* a layout's settings, each a byte in a class of its own, cleared by its own constructor (SOCOM
+ * 1's layout zeroed six bytes in place; SOCOM II's constructor calls three distinct one-byte
+ * constructors -- 0x2C6050 three times, 0x2C6040 twice, 0x2C6030 once -- and the buttons' fill
+ * 0x2C5FF0: four classes. Their names are ours): a stick (none, left or right) */
+class CCfgStick {
+public:
+    CCfgStick() : m_stick(STICK_NONE) {}
+
+    STICK m_stick;
+};
+
+/* a stick mask (bit 0 the left stick, bit 1 the right) */
+class CCfgSticks {
+public:
+    CCfgSticks() : m_mask(0) {}
+
+    unsigned char m_mask;
+};
+
+/* a flag */
+class CCfgFlag {
+public:
+    CCfgFlag() : m_on(0) {}
+
+    unsigned char m_on;
+};
+
+/* a game function's button, none at first */
+class CCfgButton {
+public:
+    CCfgButton() : m_btn(PAD_BUTTON_NONE) {}
+
+    PAD_BUTTON m_btn;
+};
+
+/* each game function's button (SOCOM 1's twelve, SOCOM II's thirteen): the implicit constructor's
+ * copy 0x2C5FF0 is MW's array construction, a pointer loop to the 13th byte that is never
+ * unrolled, the element's constructor inlined */
+class CCfgButtons {
+public:
+    CCfgButton m_btn[13];
+};
+
 /* a layout: each game function's button (SOCOM 1's at 10), and SOCOM II's stick settings ahead of
  * them -- the look's stick (0xC), the strafe's (0xD), the pitch's two stick masks (0xF while
  * function 1's button is held, 0x10 otherwise) and whether that button holds the look (0x11) */
 class CCtrlrConfig {
 public:
-    PAD_BUTTON GetButton(int func) const { return m_btns[func]; }
+    /* named, everything else at its default (the loader's dummy and the parser's `new`: too tall to
+     * inline whole -- the name's constructor is -- so both callers call its members' constructors,
+     * whose copies follow the loader, the first of them, in reverse of their first use) */
+    CCtrlrConfig(const char *name) : m_name(name) {}
+
+    PAD_BUTTON GetButton(int func) const { return m_btns.m_btn[func].m_btn; }
     /* a function's button's state on the pad, up for no button */
     KEY_STATE GetButtonState(int func, const CPad *pad) const
     {
-        return m_btns[func] != PAD_BUTTON_NONE ? pad->m_state[m_btns[func]] : KEY_UP;
+        return m_btns.m_btn[func].m_btn != PAD_BUTTON_NONE ? pad->m_state[m_btns.m_btn[func].m_btn] : KEY_UP;
     }
     bool IsDown(int func, const CPad *pad) const { return GetButtonState(func, pad) == KEY_DOWN; }
-    bool HoldsLook() const { return m_11; }
+    bool HoldsLook() const { return m_11.m_on; }
 
-    std::string m_name;   // 0x0: SelectConfig's key
-    STICK m_lookStick;   // 0xc
-    STICK m_strafeStick;   // 0xd
-    unsigned char m_e;   // 0xe: a stick (1 left, 2 right) SelectConfig flags at the pad (x)
-    unsigned char m_pitchSticksHeld;   // 0xf: the pitch's sticks while function 1's button is down
-    unsigned char m_pitchSticks;   // 0x10: bit 0 the left stick's y, bit 1 the right's
-    unsigned char m_11;   // 0x11
-    PAD_BUTTON m_btns[16];   // 0x12
-};
+    CSaferStr m_name;   // 0x0: SelectConfig's key
+    CCfgStick m_lookStick;   // 0xc
+    CCfgStick m_strafeStick;   // 0xd
+    CCfgStick m_e;   // 0xe: a stick (1 left, 2 right) SelectConfig flags at the pad (x)
+    CCfgSticks m_pitchSticksHeld;   // 0xf: the pitch's sticks while function 1's button is down
+    CCfgSticks m_pitchSticks;   // 0x10: bit 0 the left stick's y, bit 1 the right's
+    CCfgFlag m_11;   // 0x11
+    CCfgButtons m_btns;   // 0x12
+};   // 0x20 bytes (the loader's and the parser's `new`)
 
 class CCtrlrConfigs {
 public:
+    static void Init();
     static bool IsJumpAndActionShared();
     static void SelectConfig(const char *name);
 
@@ -121,6 +199,10 @@ extern "C" {
 extern CCtrlrConfig *data_004415B0;   /* (a second layout: the one being edited) */
 }
 
+/* one layout read from its rdr item and added to the layouts (SOCOM II's, out of the loader's
+ * loop; OVL1 0x2C67F0, not written yet) */
+extern "C" void func_002C67F0(_zrdr *config);
+
 #pragma auto_inline off
 /* the pitch from the sticks a layout gives it -- the held set while function 1's button is down
  * -- summed and clamped to -1..1 (OVL1 0x2C65B0: 0x2C6280's tail call, out of line, pinned) */
@@ -129,9 +211,9 @@ extern "C" float func_002C65B0(const CCtrlrConfig *config, const CPad *pad)
     const unsigned char *sticks;
 
     if (config->GetButtonState(1, pad) == KEY_DOWN)
-        sticks = &config->m_pitchSticksHeld;
+        sticks = &config->m_pitchSticksHeld.m_mask;
     else
-        sticks = &config->m_pitchSticks;
+        sticks = &config->m_pitchSticks.m_mask;
     unsigned char mask = *sticks;
     float pos = 0.0f;
 
@@ -190,7 +272,7 @@ extern "C" float func_002C6290(const CPad *pad)
     if (look) {
         float pos = 0.0f;
 
-        switch (config->m_lookStick) {
+        switch (config->m_lookStick.m_stick) {
         case STICK_LEFT:
             pos = pad->m_raw[0][1];
             break;
@@ -210,8 +292,8 @@ extern "C" float func_002C6110(const CPad *pad)
 {
     const CCtrlrConfig *config = g_pCurrentConfig;
 
-    if (func_002C6220(&config->m_strafeStick) != STICK_NONE)
-        return func_002C6520(pad, func_002C6220(&config->m_strafeStick), 0, false);
+    if (func_002C6220(&config->m_strafeStick.m_stick) != STICK_NONE)
+        return func_002C6520(pad, func_002C6220(&config->m_strafeStick.m_stick), 0, false);
     float pos;
 
     if (func_002C61E0(config, 7, pad))
@@ -223,9 +305,29 @@ extern "C" float func_002C6110(const CPad *pad)
     return pos;
 }
 
+/* the layouts read from controller.rdr, the default made the current one -- SOCOM 1's Init, its
+ * parse moved out to 0x2C67F0. Without a default SOCOM 1 made a dummy the current layout; SOCOM
+ * II's makes the dummy, keeps nothing of it and copies the (null) current layout to the edited one
+ * (OVL1 0x2C5E70: CMission::Init's call) */
+void CCtrlrConfigs::Init()
+{
+    _zrdr *rdr = zrdr_read("controller.rdr", "data/common", 0);
+    _zrdr *configs = zrdr_findtag(rdr, "ControllerConfigs");
+
+    for (int i = 0; i < (configs ? (int)configs->Count() : 0); i++)
+        func_002C67F0(configs->Item(i));
+    zrdr_free((CRdrFile *)rdr);
+    SelectConfig("Default");
+    if (!g_pCurrentConfig) {
+        new CCtrlrConfig("NoDefaultDummy");
+        data_004415B0 = g_pCurrentConfig;
+    }
+}
+
 /* the layout of a name made the current one (and the edited one), the first pad's stick flags set
  * from it: x by the stick at 0xE, y by the pitch's sticks at 0x10 (OVL1 0x2C5D60; SOCOM 1's walk,
- * which stopped at the current one) */
+ * which stopped at the current one). Pinned: the loader calls it out of line */
+#pragma auto_inline off
 void CCtrlrConfigs::SelectConfig(const char *name)
 {
     for (int i = 0; i < m_configs.size(); i++) {
@@ -234,15 +336,16 @@ void CCtrlrConfigs::SelectConfig(const char *name)
             CCtrlrConfig *config = g_pCurrentConfig;
             CPad *pad = CInput::m_pads[0];
 
-            pad->m_leftFlagX = config->m_e == 1;
-            pad->m_leftFlagY = config->m_pitchSticks == 1;
-            pad->m_rightFlagX = config->m_e == 2;
-            pad->m_rightFlagY = config->m_pitchSticks == 2;
+            pad->m_leftFlagX = config->m_e.m_stick == 1;
+            pad->m_leftFlagY = config->m_pitchSticks.m_mask == 1;
+            pad->m_rightFlagX = config->m_e.m_stick == 2;
+            pad->m_rightFlagY = config->m_pitchSticks.m_mask == 2;
             data_004415B0 = g_pCurrentConfig;
             return;
         }
     }
 }
+#pragma auto_inline reset
 
 /* the edited layout's button for a function, set (OVL1 0x2C6460) */
 extern "C" bool func_002C6460(unsigned char func, PAD_BUTTON btn)
@@ -251,7 +354,7 @@ extern "C" bool func_002C6460(unsigned char func, PAD_BUTTON btn)
 
     if (data_004415B0) {
         done = true;
-        data_004415B0->m_btns[func] = btn;
+        data_004415B0->m_btns.m_btn[func].m_btn = btn;
     }
     return done;
 }
@@ -262,7 +365,7 @@ extern "C" PAD_BUTTON func_002C6430(unsigned char func)
     PAD_BUTTON btn = PAD_BUTTON_0;
 
     if (data_004415B0)
-        btn = data_004415B0->m_btns[func];
+        btn = data_004415B0->m_btns.m_btn[func].m_btn;
     return btn;
 }
 
@@ -276,17 +379,21 @@ extern "C" PAD_BUTTON func_002C6430(unsigned char func)
  * 0x2C60C0 (CCtrlrConfigs' inlined GetButtonState, as in SOCOM 1's GetStrafeStickPos, whose
  * out-of-line GetButtonState folds to lbu), and 0x2C60C0 keeps an inline's constant KEY_DOWN as
  * `li a2,2; andi v1,a2,0xff` where every probe here folds it into xori: the target's inlining
- * kept its parameters' conversions, ours does not */
+ * kept its parameters' conversions, ours does not. Round 20 (the buttons now a one-byte class,
+ * CCfgButton): a BY-VALUE copy of the element -- an accessor returning it, a parameter taking it,
+ * a named local -- does load it with lb, but keeps the copy in a stack slot (`sb`, then `lbu` back)
+ * where the target narrows the register (build/scratch/states/p2.cpp); an inline taking an int or
+ * an unsigned char and narrowing it inside folds to lbu like the rest */
 extern "C" float func_002C63F0(unsigned char func, const CPad *pad)
 {
-    return pad->GetPressure(g_pCurrentConfig->m_btns[func]);
+    return pad->GetPressure(g_pCurrentConfig->m_btns.m_btn[func].m_btn);
 }
 
 /* whether jump and action are on one button (OVL1 0x2C63D0; SOCOM 1's, the same code: jump's
  * button through the accessor, expanded ahead, so it is loaded first and compared second) */
 bool CCtrlrConfigs::IsJumpAndActionShared()
 {
-    return g_pCurrentConfig->m_btns[PadBtnFunc::BTN_ACTION] ==
+    return g_pCurrentConfig->m_btns.m_btn[PadBtnFunc::BTN_ACTION].m_btn ==
            g_pCurrentConfig->GetButton(PadBtnFunc::BTN_JUMP);
 }
 

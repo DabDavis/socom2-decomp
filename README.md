@@ -1818,6 +1818,40 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 16** (seal_body.cpp's stance family, TurnControl, ClearToBase, DropBody):
+  - SOCOM 1's seal_body.cpp lines up one to one with 0x581110-0x58A5E0, BlendedClimb to StanceChanged: the stance
+    family named by its order (BlendedClimb, Hang_0, SetStanceIdle, Prone_0, Prone, Crouch_0, Crouch, Stand_0 --
+    SOCOM II adds a float --, Stand, ClearStack, SetStance), TurnControl taking one float (SOCOM 1's two);
+  - a constant stored through a call's result (`f()->m = 8`) is loaded before the call into a saved register,
+    through a block-local taken from the call after it (0x589900, DropBody);
+  - ClearStack written out is 16 statements and will not auto-inline; with its loop body one comma statement it is
+    15 (a STAND-IN spelling) and Stand inlines it and Crouch inlines Stand, as SOCOM 1's Crouch does; Prone_0 is
+    short enough to auto-inline but the target calls it (pinned `auto_inline off`); a blend count compared signed
+    (`slti`, ClearToBase) and one compared unsigned (`sltiu`, ClearStack) are two different inlines;
+  - in TurnControl, `bool neg;` declared ahead of the first local gives the target's saved registers, and passing
+    `neg ? -a : a` keeps `a` in $f0 until the call where `if (neg) a = -a;` keeps it in $f20;
+  - leads: 0x668940 looks like `__sinit_seal_body.cpp` (it builds `newanims` 0x66B2F0 through 0x58A9F0, the RTList
+    constructor's OVL2 copy, and registers 0x58AAC0 as its destructor); 0x58A950 pinned as a stand-in for
+    RTList<ACTIVE_ANIM>::Clear's OVL2 copy; open: Crouch 0x581990 (5: inside the inlined Stand(1) the stance and
+    ClearStack's stack pointer take each other's saved registers), 0x57DCC0 (6: the AnimSet calls' argument order).
+- **Tells from the game states, round 20** (CCtrlrConfigs::Init, CGraph::CreateNode(void)):
+  - MW's own construction of a member array of class elements is a never-unrolled pointer `!=` loop with no entry
+    guard, where a written loop over the same 13 bytes unrolls 6x; a constructor inlined one level emits one
+    out-of-line copy per DISTINCT member class, after its first caller, in reverse order of first use -- identical
+    one-byte copies mean distinct classes (CCtrlrConfig's layout members are four, CCfgStick/CCfgSticks/CCfgFlag/
+    CCfgButtons, the names ours);
+  - binding a literal to an inline helper's `const T &` parameter pools the constant (an `lb` from data), never `li`;
+    include/string's default constructor is two levels short of the original's at level 5 (as fts_state.h measured:
+    the loader's layout constructor is cut through two forwarding inlines, fts_controller.cpp);
+  - an inline helper whose box constructor exceeds inline_max_size is inlined one level and its other callees' copies
+    come out at the target's sizes (CMission's world bboxes 0x2A9260: the cluster's structure reproduces, but the
+    target's box-constructor copy 0x2A96B0 calls CPnt3D(fff) and operator= out of line where MW inlines them);
+  - 0x2D0930 is `CreateNode__6CGraphFv` (no caller sets a1; graph_tree.h and the definition follow; the AI maps still
+    call it as func_002D0930, resolved by address); 0x2B3F20 is ~__list_imp<CSpawners::spawn_map> (fts_player.cpp
+    emits it inlining the deleter's destructor where the target calls 0x2B3F80: the ~CSpawners chain);
+  - open: CGraph::Read 0x2D0C90 (5, registers: the edge loop's counter s3 and first node s5, ours swapped; eleven
+    declaration shapes), the byte-enum family (a one-byte class element's by-value copy loads `lb` but MW keeps it in
+    a stack slot -- store, then `lbu` back -- where the target has `lb; andi 0xff` in a register).
 - **Tells from the UI, round 12** (C2DFont through c2dfont.h, CSkbFonts(), the vector<CSkbKey> instances):
   - MW's implicit operator= copies a union as its first member: a class that copy-constructs with lb/lhu but assigns
     with lbu/lh has UNION members -- CSkbKey's, which unlocked its vector's erase, resize, init and do_assign;
@@ -5523,6 +5557,55 @@ func_0061D650, func_0061D7A8, func_0061D898, func_0061D948, func_0061D9F8. No ro
 keep placeholders: DME's API names belong to Dme.c's locked wrappers, round 7b, and 0x6209B0/0x620A88
 -- NetGetBufferStatus's and NetSetSendAggregationInterval's wrappers by their bodies -- are left for a
 call-site check); no tool changed.
+
+**Round 14c: GenderDataCompute, two of the pitch DP's six, the Chinese second pass's helpers.** Three
+of the four were "registers only" or "store order" and each fell to one structural fact about 2.96,
+read off cc1's own dumps (`-dl -dg` for allocation, `-dS -fsched-verbose=4` for the first scheduling
+pass: `build/scratch/gcc/dump.py UNIT.c FLAGS...` writes them under build/scratch/gcc/dumps/).
+
+- **A pointer shared by two loops is one pseudo; a pointer local to one unrolled loop is one per
+  copy.** global.c allocates in priority order, refs x log2(refs) / live length, and the unroller
+  renames a register whose whole life lies inside the loop it copies. GenderDataCompute's frame walker
+  served both search stages, so it was one pseudo with 204 references against the codeword walker's
+  152 and took a2 first (the target's codeword walker has a2): with a frame walker of its own in the
+  second stage (the codeword walker still shared), each unrolled copy gets a fresh short-lived frame
+  pseudo and the allocation comes out as the target's -- byte-exact. New pointers for both walkers in
+  the second stage (round 12c's try) leave the swap. The `.greg` dump's "regs to allocate" line gives
+  the order directly.
+- **The first scheduling pass puts a store that frees a register first.** Before register allocation
+  haifa-sched ranks equal-priority insns by INSN_REG_WEIGHT -- births less REG_DEAD notes -- then
+  source order, so a store that is the last use of its value goes ahead of the rest. ControlPitchDP's
+  ten reset stores, written in the target's output order, came out with unflushed, block and len
+  first (each its value's last use); the target's order needs `fresh` after `unflushed` (fresh then
+  frees the 1), `len` before `last` before `block`, and the stores that free nothing in output order --
+  one such source matched at once (10 words to byte-exact). Predict with the rule, then measure.
+- **An `unsigned short` loop counter is masked at every step and blocks strength reduction.**
+  BackTracking's backtrace decrements its column without `andi 0xffff` and walks `&track[t]` and the
+  cell offset as pointers stepped by 4 and 12: the index is register-wide, assigned through
+  `(unsigned short)(ncols - 1)` (the target's `andi` at each assignment) -- 68 words to byte-exact,
+  the registers following with the loop.
+- **Tone_Of_Final, inlined and kept**: the Chinese second pass's tone test (SOCOM 1's name and position,
+  both objects; uncalled as a function in both builds) is inlined into the item-node walk with an
+  `unsigned char` result (`andi 0xff` at the join, as SOCOM 1's) while its copy stays: a GNU `extern
+  __inline__` body above the real one (2.96 outputs the redefinition at the object's end; scoring is
+  per function). SOCOM II's body returns 1 and 0 explicitly where SOCOM 1's returned the compare.
+- **Open, diagnosed in place**: InitPitchDP (its queue size an int -- `mult` frames first, no `andi`,
+  238 words against 241 -- and the extra saved register is bpo: sched1 hoists the pseudo-only
+  `(float)bpo` across calls into the first free issue slot before the fmax call, where the target
+  converts after the fmin call), ProcessPitchDP (the same pass: the `p->col` load floats across the
+  soft-float compare's const libcalls), Actual_DP (jf[j] is loaded once per bin in the target, a local
+  gives that, 264 words against 257; the k loop's &f[k] and &rows[k] are not strength-reduced here),
+  InitJumpFactors (the unrolled copies keep three FP temps where this reuses a dying input's
+  register), Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree and its `_TreeCtx` copy (19
+  words: the first child's *8 shares the recursion loop's pseudo).
+
+Hand-written in round 14c: `asr/gender.c` (+1, GenderDataCompute; 7 of 7), `asr/pitchdp.c` (+2,
+ControlPitchDP and BackTracking; 5 of 9), `asr/ctxutil.c` (+1, CreateActiveWordsCtxTree: 3 of 3),
+`asr/chinese.c` (new: Tone_Of_Final, Calculate_NbrOfStatesInDict_ForChinese and the item-node walk, 2
+of 3) and `asr/chinese_tree.c` (new: their `_TreeCtx` copies, 2 of 3) -- 8 functions byte-exact, all
+new to the map's byte-exact rows (3,588 bytes); `src/lib/asr` 425 of 467 (417 of 460 before). 2 rows
+named (Tone_Of_Final, Tone_Of_Final_TreeCtx: `s1:order`, SOCOM 1's objects 0x3404E8 and 0x345CD0). No
+tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

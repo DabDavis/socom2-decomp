@@ -5,7 +5,7 @@
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. The block takes four inputs (a frame's level and three
  * frames of features) and gives one output; its data (0x94 bytes with the scheduler's record) is
- * named by use. GenderDataCompute is OPEN. The object is built with -ffast-math
+ * named by use. The object is built with -ffast-math
  * (GenderDataCompute's sqrt.s and folded first step; the other six compile the same either way).
  * SetLanguage is ours: command 1's body, a `static __inline__` returning the scheduler's
  * `unsigned char` error -- the target zero-extends the result once at the join of its two
@@ -248,17 +248,19 @@ static int ControlGender(GENDER *g, unsigned char cmd, void *arg, int *pos)
  * and averaged into the model's score over at most f132 frames. The object is built with
  * -ffast-math: sqrtf is a bare sqrt.s (no errno test) and each first-stage distance loop's first
  * step stores t * t over the 0 it starts from (362 words off without the flag).
- * OPEN (93 words, the right size): every instruction is the target's but the frame walker and the
- * codeword walker take each other's register (a3 and a2 in the target) in both stages. Measured:
- * the count through its field (`g->f80++`, then `1.0f / g->f80` -- a local keeps it in v1), a
- * block-local `t` (65 words: a function-level one takes another FPR for t * t), the index table
- * read as `*idx` with `idx++` at the iteration's end (idx[k] and `*idx++` move the count-down
- * loop's registers); not the pointers' declaration order or scope, the setup statements' 24
- * orders, a while or for loop in either stage, or new pointers for the second stage. */
+ * The second stage walks the frame with a pointer of its own (q) and the codeword with the first
+ * stage's c: the frame walker is then live inside one stage's codeword loop only, so the unroller
+ * gives each unrolled copy its own pseudo, and global allocation takes the codeword walker first
+ * (a2, the frame walker a3 -- the target's). With one frame walker for both stages it outranks c
+ * (204 references to 152) and the two swap registers in both stages (93 words); with new pointers
+ * for both walkers in the second stage, too. Measured besides: the count through its field
+ * (`g->f80++`, then `1.0f / g->f80` -- a local keeps it in v1), a block-local `t` (65 words: a
+ * function-level one takes another FPR for t * t), the index table read as `*idx` with `idx++`
+ * at the iteration's end (idx[k] and `*idx++` move the count-down loop's registers). */
 static void GenderDataCompute(GENDER *g, float *frame, float level)
 {
     unsigned int i;
-    float *x, *end, *p, *c;
+    float *x, *end, *p, *c, *q;
     int *idx;
     float best, d, rate;
     int k, label;
@@ -294,14 +296,14 @@ static void GenderDataCompute(GENDER *g, float *frame, float level)
                 for (k = 0; k < g->nbr_in_sec; k++) {
                     c = g->second + *idx;
                     d = 0;
-                    p = x;
-                    while (p < end) {
-                        float t = *p++ - *c++;
+                    q = x;
+                    while (q < end) {
+                        float t = *q++ - *c++;
                         d += t * t;
                         if (best < d)
                             break;
                     }
-                    if (p == end)
+                    if (q == end)
                         best = d;
                     idx++;
                 }
