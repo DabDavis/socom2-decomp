@@ -1842,6 +1842,27 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 17** (seal_body.cpp's initialiser, seal_cfg.cpp's gear, CanPitch):
+  - __sinit_seal_body.cpp 0x668940 needs the unit's statics defined in BUILD ORDER: three offsets new in SOCOM II,
+    newanims (a CActiveAnimList of 8 -- SOCOM 1 had 12), then SOCOM 1's ten throw offsets; the tail's RTList<ACTIVE_ANIM>
+    pieces are OVL2 copies (`ovl-copy:` marks), and OVL2's ~CActiveAnimList 0x58AAC0 inlines ~RTList where OVL1's copy
+    calls it -- an implicit derived destructor in a unit's tail inlines the out-of-class base destructor (one more
+    this-test) where another unit's copy calls it;
+  - seal_body.cpp ends with ~CActiveAnimList at 0x58AAC0 and seal_cfg.cpp begins with ~CObjAnims at 0x58AB30, as in
+    SOCOM 1; CZSealBody's CObjAnims at 0x37C is SOCOM 1's m_obj_anims (a vector<CObjAnim *>, the element's name ours);
+    AnimTypes is a class of static shorts 8 bytes apart in SOCOM 1's order, one inserted between ClimbMedium and
+    ProneRStrafe;
+  - `new T(a, b)` inside an inline member evaluates the constructor's arguments before operator new and keeps them in
+    saved registers -- written in place, MW loads them after the allocation's null test (SetupGear); a bounds-tested
+    pick matches as if/else assignments, the ternary lays its blocks out differently (AddItem); a reference local
+    declared before a call's result local is computed ahead of the call and takes the higher saved register;
+  - a float member multiplied by a call's result stays in $f20 across the call only when read through a by-value
+    inline accessor written on the right of the product (SetMaxMotion); 0x541510 is GetBBox's OVL2 copy (all seven OVL2
+    callers reach it from a one-level-inlined GetBBox: marked at integration, which made AddDIPolys 0x58B960
+    byte-exact);
+  - open: SetMaxMotion 0x58BCB0 (4: in the two strafe lookups the target loads the AnimTypes value before the anim set;
+    six spellings), CanInterrupt 0x587C20 (0x1CC vs 0x1DC: the `move v0,zero` in another delay slot, the loop's arms
+    assigning a bool differently, two saved registers swapped).
 - **Tells from the HUD, round 24** (hud_main.cpp on the real C2DFont, zui_2d.cpp's controls, CTCM's constructor, the
   placeholders respelled):
   - on c2dfont.h's real C2DFont (a std::map<unsigned short, C2DGlyph>) hud_main.cpp emits the glyph tree's destroy
