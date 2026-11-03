@@ -1048,6 +1048,9 @@ public:
     /* the aim and fire points found once, by name, and their positions taken (SOCOM 1's; OVL2
      * 0x5DF450, seal_weapon.cpp -- the kit lane) */
     void UpdateAimParams();
+    /* the aim at a point, with its surface normal, or none (SOCOM 1's; OVL2 0x5DF4E0, seal_weapon.cpp
+     * -- the kit lane) */
+    bool SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep);
     bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;

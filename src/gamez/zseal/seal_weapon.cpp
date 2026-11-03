@@ -13,6 +13,10 @@ struct CSealAimView {
     unsigned char _0[0x1440];
     CPnt3D m_aim_from;   // 0x1440
     CPnt3D m_aim_goal;   // 0x144c
+    /* SOCOM 1's m_aim_point, m_reticle_pt and m_aim_norm (0x10b8-0x10e3 there) */
+    CPnt3D m_aim_point;   // 0x1458
+    CPnt3D m_reticle_pt;   // 0x1464
+    CPnt3D m_aim_norm;   // 0x1470
 };
 
 /* the aim goal's flag (bit 3 of the byte at 0x105F, read and written a byte at a time: zseal.h's
@@ -119,6 +123,38 @@ bool CZSealBody::SetAimDirR(const CPnt3D *dir, bool reset)
     if (!ok && reset)
         ((CSealAimView *)this)->m_aim_goal = CPnt3D::unit_nz;
     return ok;
+}
+
+extern "C" {
+/* the aim's direction brought up to date (SOCOM 1's UpdateAimDir__10CZSealBodyFb; OVL2 0x5DEEC0,
+ * unwritten) */
+bool func_005DEEC0(CZSealBody *seal, bool keep);
+}
+
+/* the aim at a point: the point kept, and the reticle's too unless asked to keep it, the normal
+ * when there is one; with none the aim falls back on the unit -z from the aim's origin (OVL2
+ * 0x5DF4E0; SOCOM 1's SetAimPointW, the fields 0x3A0 on) */
+bool CZSealBody::SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep)
+{
+    CSealAimView *v = (CSealAimView *)this;
+
+    if (aimpt) {
+        v->m_aim_point = *aimpt;
+        m_aim_point_valid = true;
+        if (!keep)
+            v->m_reticle_pt = *aimpt;
+        if (aimnorm) {
+            v->m_aim_norm = *aimnorm;
+            m_have_aim_norm = true;
+        } else
+            m_have_aim_norm = false;
+    } else {
+        m_have_aim_norm = false;
+        m_aim_point_valid = false;
+        CalcAimGoal(&v->m_aim_from, &CPnt3D::unit_nz, &v->m_aim_goal);
+        return false;
+    }
+    return func_005DEEC0(this, keep);
 }
 
 /* the body's table as far as its slot 0x64: SOCOM 1's GetFirepointNode(const char *), virtual in
