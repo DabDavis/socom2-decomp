@@ -24,7 +24,10 @@ struct StoredClanInfoType {
     unsigned char _20[4];
     char ClanName[32];   // 0x24
     int LeaderAccountID;   // 0x44
-};
+    char LeaderAccountName[32];   // 0x48
+    char Stats[256];   // 0x68: the icon (three digits), the ranking stat (twelve), the description
+    unsigned char _168[0x170 - 0x168];
+};   // 0x170: a MediusGetMyClansResponse kept
 
 void UpdateInvitations();   /* the received invitations shown (SOCOM 1's) */
 void cbTransferClanLeadership(MediusErrorCode, MediusErrorCode, MediusErrorCode,
@@ -86,7 +89,18 @@ void cbInvitePlayerToClanInvitation(MediusErrorCode, MediusErrorCode, MediusErro
 
 struct MediusRevokeClanInvitationResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusUpdateClanStatsResponse { MEDIUS_RESPONSE_HEAD };
-struct MediusGetMyClansResponse;
+/* our clan (the SDK's response, kept whole in StoredClanInfo's layout) */
+struct MediusGetMyClansResponse {
+    MEDIUS_RESPONSE_HEAD
+    int ClanID;   // 0x1c
+    int ApplicationID;   // 0x20
+    char ClanName[32];   // 0x24
+    int LeaderAccountID;   // 0x44
+    char LeaderAccountName[32];   // 0x48
+    char Stats[256];   // 0x68
+    int Status;   // 0x168
+    char EndOfList;   // 0x16c
+};
 
 void cbRevokePlayerInvitation(MediusErrorCode, MediusErrorCode, MediusErrorCode,
                               MediusRevokeClanInvitationResponse *);
@@ -246,6 +260,69 @@ void CZOnlineLobby::QuitClan()
         CheckMediusError(MediusRemovePlayerFromClan(&req,
             cbQuitClan));
     }
+}
+
+extern "C" void func_002FAA80(CZOnlineLobby *lobby);   /* the player's info refreshed (the lobby unit's) */
+
+/* our clan: kept -- its id, leader (the menu told when we became it), name and stats -- its name and
+ * description shown, its roster and messages asked for; none, and the clan forgotten, its roster
+ * emptied (the menu told it was disbanded when we were in one). Our name shown with the clan's tag,
+ * and the request answered (SOCOM 1's; OVL1 0x2E8BD0: GetClan's callback) */
+void cbGetMyClans(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusGetMyClansResponse *resp)
+{
+    char icon[32];
+    char text[256];
+    char *tag;
+
+    if (CheckMediusCallbackStatus("GetMyClans", resp->StatusCode)) {
+        if (StoredClanInfo.LeaderAccountID != -1 && StoredClanInfo.LeaderAccountID != AccountInfo.AccountID &&
+            resp->LeaderAccountID == AccountInfo.AccountID)
+            LobbyEvent("MP_MEDIUS_BECAME_LEADER", 0);
+        PlayerClanID = resp->ClanID;
+        StoredClanInfo.ClanID = PlayerClanID;
+        StoredClanInfo.LeaderAccountID = resp->LeaderAccountID;
+        strncpy(StoredClanInfo.ClanName, resp->ClanName, sizeof(StoredClanInfo.ClanName));
+        CopyField(StoredClanInfo.Stats, resp->Stats, sizeof(StoredClanInfo.Stats));
+        func_003862A0(theLobby.uiv_ClanNameVar, StoredClanInfo.ClanName);
+        func_003862A0(theLobby.uiv_ClanDescription, &StoredClanInfo.Stats[15]);
+        if (StoredClanInfo.Stats)
+            memcpy(icon, StoredClanInfo.Stats, 3);
+        icon[3] = 0;
+        sprintf(icon, "clan_icon_%.2d.tif", atoi(icon));
+        theLobby.GetClanRoster();
+        func_003862A0(theLobby.uiv_ClanMessages, "Retrieving messages from server...");
+        MediusGetMyClanMessagesRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        req.ClanID = StoredClanInfo.ClanID;
+        req.Start = 1;
+        req.PageSize = 999;
+        CheckMediusError(MediusGetMyClanMessages(&req, cbGetMyClanMessages));
+        tag = VarText(theLobby.uiv_ClanDescription);
+    } else {
+        PlayerClanID = -1;
+        StoredClanInfo.ClanID = -1;
+        StoredClanInfo.LeaderAccountID = -1;
+        memset(StoredClanInfo.ClanName, 0, sizeof(StoredClanInfo.ClanName));
+        func_003862A0(theLobby.uiv_ClanNameVar, "");
+        func_003862A0(theLobby.uiv_ClanDescription, "");
+        if (data_0044F790) {
+            LobbyEvent("MP_CLAN_DISBANDED", 0);
+            func_002FAA80(&theLobby);
+        }
+        ClanMemberVec.DeleteAll();
+        UpdateClanRoster();
+        tag = 0;
+    }
+    CUIVariable *var = theUIVarManager.Add("PLAYER_NAME_AND_TAG", 0, UIVL_PERMANENT);
+
+    if (tag && tag[0])
+        sprintf(text, "#C\x80@ [%s] #C\x80\x80\x80%s", tag, AccountInfo.AccountName);
+    else
+        sprintf(text, "%s", AccountInfo.AccountName);
+    func_003862A0(var, text);
+    data_0044F788 = 2;
 }
 
 /* our clan asked for, once (SOCOM 1's; OVL1 0x2E8A90): false while the answer is awaited, true
@@ -1010,7 +1087,9 @@ void UpdateClanRoster()
     SetVarInt(theUIVarManager.Add("ClanRating", 0, UIVL_TEMPORARY), data_0044F770);
 }
 
-/* the member list asked for again, the old one shown emptied (SOCOM 1's; OVL1 0x2E69F0) */
+/* the member list asked for again, the old one shown emptied (SOCOM 1's; OVL1 0x2E69F0). Called,
+ * not inlined, by cbGetMyClans: pinned */
+#pragma auto_inline off
 bool CZOnlineLobby::GetClanRoster()
 {
     if (!m_isopen)
@@ -1029,6 +1108,7 @@ bool CZOnlineLobby::GetClanRoster()
         cbGetClanMemberList));
     return true;
 }
+#pragma auto_inline reset
 
 /* the clan gone: its name, description, messages and members cleared, our membership with them;
  * or the failure told with its reason (SOCOM 1's; OVL1 0x2E68E0) */
