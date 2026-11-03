@@ -1,5 +1,5 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
-/* rt_msg_client: the RT library's message client (OVL2 0x632620-0x638880, SOCOM 1's object at
+/* rt_msg_client: the RT library's message client (OVL2 0x6325B8-0x638880, SOCOM 1's object at
  * 0x40C000; rt_msg/src/rt_msg_client/rt_msg_client.c 1.209, "rt_msg_client version: 1.08.0204"),
  * SCEA's Medius/DME network stack, prebuilt with ee-gcc 2.96 at -O2 -G0 (README "The GCC front").
  * Its public functions are locked wrappers over the internal ones (rt_msg_client_i*): the client
@@ -69,6 +69,32 @@ int rt_msg_client_iset_default_connect_options(rt_msg_client_connect_options *pO
 int rt_msg_client_iudp_set_default_options(rt_msg_client_udp_options *pOptions);
 extern int rt_msg_client_idisplay_comm_state(void);
 extern int func_006349A8(unsigned short, int **);
+
+/* The object starts at 0x6325B8, not at the build stamp: 0x6325B8 keeps its state in this
+ * object's .data (0x655630, after gbMutexInitialized and the 0x87654321 word; rt_memory.c's
+ * callbacks end at 0x65560C) and is rt_udp.c's first function again (0x63DC90) with key-manager
+ * id 0 for rt_udp's -1; 0x632610 returns the version pointer at the head of that .data -- SOCOM
+ * 1's object opens with rt_msg_client_get_version_string_ptr, the same three words. */
+extern int func_0062F818(int nKMID, void *pKey);
+
+static char *gpszVersion = "rt_msg_client version: 1.08.0204";
+static int gnKeyState = 0;              /* 0x655630: 1 the client's key pair is set, 2 it is not */
+
+int func_006325B8(void)
+{
+    if (gnKeyState == 0) {
+        if (func_0062F818(0, 0) == 0)
+            gnKeyState = 1;
+        else
+            gnKeyState = 2;
+    }
+    return gnKeyState;
+}
+
+char *rt_msg_client_get_version_string_ptr(void)
+{
+    return gpszVersion;
+}
 
 /* The client's build stamp, rt_msg_client.c's own __DATE__ and __TIME__ (Oct 3 2003, 15:51:32 --
  * spelled out, since a rebuild's would be today's), formatted as Medius's and DME's are and copied

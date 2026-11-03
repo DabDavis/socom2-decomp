@@ -12514,7 +12514,7 @@
 0x00632558 0x18 rt_memory_register_callbacks  # OVL2 unaligned; s1:callee
 0x00632570 0x48 rt_memory_get_aligned_address  # OVL2; s1:exact
 0x006325B8 0x54 func_006325B8  # OVL2 unaligned
-0x00632610 0xC func_00632610  # OVL2
+0x00632610 0xC rt_msg_client_get_version_string_ptr  # OVL2; s1:order (the gcc lane, round 12b): SOCOM 1's rt_msg_client object opens with rt_msg_client_get_version_string_ptr (0x40C000, 0xC), the same three words -- it returns the object's .data head 0x655610, the pointer to "rt_msg_client version: 1.08.0204"
 0x00632620 0x158 rt_msg_client_get_build_timestamp  # OVL2; s1:align
 0x00632778 0xB8 rt_msg_client_startup  # OVL2 unaligned; s1:calls
 0x00632830 0xB0 rt_msg_client_shutdown  # OVL2; s1:exact
