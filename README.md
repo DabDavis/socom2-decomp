@@ -5323,6 +5323,9 @@ definition.**
   register); the accepted callbacks store the count, the flag, then the state (ccperm: one order
   fits both). 2.96 splits each such address into the context plus 4 or 12 and 976 -- the target's
   -- from plain field accesses.
+- **InitUserWordTraining's setup** (command 15) is the language's user-word phonemes -- their count
+  (a local of its own, stored after the second accessor's call), _LangVirtualTable's slot 46
+  (_langGetpPhenUserWordTraining) and slot 15 (_langGetUWSilencePhenome), also kept at +1016.
 - **ConstructBlock's registration helpers are inlines** returning the scheduler's `unsigned char`
   (an `andi` at each join): an output queue takes the block's element size when it has none, an
   input queue's reader is numbered down from the queue's count of readers; the scheduler's own
@@ -5334,12 +5337,12 @@ definition.**
   offset chains, the casr object's large functions).
 
 Hand-written in round 13c: `asr/gender.c` (+1, ProcessGender; 6 of 7), `asr/casr.c` (+4: casrOpen,
-cbGenderDisable closed, cbTrain and cbDTMFDetected over their drafts; 49 of 57), `asr/userword.c` (+7:
-cbUtteranceNotAccepted, cbUtteranceAccepted, cbLastUtteranceAccepted, cbUserWordResultAvailable,
-ExitUserWordTraining, cbDoUserWordTraining closed; SendPartOfLabelsToEngine OPEN; 10 of 11),
-`asr/tos.c` (+1: tosCallControlFunc closed; ConstructBlock OPEN; 15 of 17) -- 12 functions
-byte-exact, 10 rows new to the map's byte-exact rows (3,488 bytes), two superseding matched drafts
-(cbTrain, cbDTMFDetected); `src/lib/asr` 416 of 459 (405 of 449 before). 4 rows named (`s1:order`,
+cbGenderDisable closed, cbTrain and cbDTMFDetected over their drafts; 49 of 57), `asr/userword.c` (+8:
+InitUserWordTraining, cbUtteranceNotAccepted, cbUtteranceAccepted, cbLastUtteranceAccepted,
+cbUserWordResultAvailable, ExitUserWordTraining, cbDoUserWordTraining closed; SendPartOfLabelsToEngine
+OPEN; 11 of 12), `asr/tos.c` (+1: tosCallControlFunc closed; ConstructBlock OPEN; 15 of 17) -- 13
+functions byte-exact, 11 rows new to the map's byte-exact rows (3,780 bytes), two superseding
+matched drafts (cbTrain, cbDTMFDetected); `src/lib/asr` 417 of 460 (405 of 449 before). 4 rows named (`s1:order`,
 each body checked: cbUtteranceNotAccepted, cbUtteranceAccepted, cbLastUtteranceAccepted,
 cbScoreUserWordResultAvailable), 5 data rows (`s1:data`). No tool changed.
 

@@ -135,7 +135,8 @@ typedef struct CASR {
     unsigned char rejected;             /* +940: the last utterance was too short */
     char pad941[39];
     UTTREC utt[3];                      /* +980 */
-    int pad1016;
+    short uw_silence;                   /* +1016: the language's user-word silence phoneme */
+    short pad1018;
     struct TRAINREC *trainrecs;         /* +1020: the training's records (train.c) */
     char pad1024[24];
     void *train1048;                    /* +1048: freed by TrainFree */
@@ -160,9 +161,13 @@ struct LANGVT {
     void *data;                                     /* +0 */
     void *s1[3];
     int (*GetNbrCodeBook)(LANGVT *l);                 /* +16, slot 4 */
-    void *s5[20];
+    void *s5[10];
+    short (*GetUWSilencePhenome)(LANGVT *l);          /* +60, slot 15 */
+    void *s16[9];
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
-    void *s26[26];
+    void *s26[20];
+    void *(*GetpPhenUserWordTraining)(LANGVT *l);     /* +184, slot 46 */
+    void *s47[5];
     int (*CheckBitField)(LANGVT *l, int mask);        /* +208, slot 52 */
     void *s53[26];
 };

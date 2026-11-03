@@ -42,6 +42,42 @@ typedef struct QUEUE {
 extern int qEnQueue(void *q, void *p, int n);
 extern int tosRun(CASR *c, const unsigned char *blocks);
 
+/* what command 15 hands the scheduler to start a training: the language's user-word phonemes */
+typedef struct UWSETUP {
+    int n;                              /* +0 */
+    void *phen;                         /* +4 */
+    short silence;                      /* +8 */
+} UWSETUP;
+
+/* a training started: the scheduler told (14, then 96 and 88 with the language), the counters and
+ * the utterances' segmentations reset, the language's user-word phonemes sent (15) with their
+ * size, the count kept in a local of its own and stored after the second accessor's call (SOCOM
+ * 1's is LOCAL: its caller, userwordStartUserWordTraining, stands as a draft, so this one is
+ * public here to be output) */
+int InitUserWordTraining(CASR *c)
+{
+    LANGVT *l = c->lng;
+    UWSETUP s;
+    unsigned int i;
+    int n;
+
+    if (_tosControl(c->event, 14, 0, 0) != 0)
+        return 1;
+    if (_tosControl(c->event, 96, (int)l, 0) != 0)
+        return 1;
+    if (_tosControl(c->event, 88, (int)l, 0) != 0)
+        return 1;
+    c->training = 1;
+    c->uw_recs_done = 0;
+    for (i = 0; i < c->uw_recs_needed; i++)
+        c->utt[i].seg = 0;
+    n = l->GetNbrPhenUserWordTraining(l);
+    s.phen = l->GetpPhenUserWordTraining(l);
+    s.n = n;
+    s.silence = c->uw_silence = l->GetUWSilencePhenome(l);
+    return _tosControl(c->event, 15, (int)&s, n * 2 + 14) != 0;
+}
+
 /* the training over: the utterances' segmentations freed, the scheduler told (35, 21, 16) */
 int ExitUserWordTraining(CASR *c)
 {
