@@ -12566,8 +12566,8 @@
 0x00634958 0x18 rt_msg_client_iudp_set_default_options  # OVL2 unaligned; s1:exact; s1:order by hand, the gcc lane round 7b (was s1:exact rt_comm_set_default_options: SOCOM 1's six-instruction rt_comm body met again): between iset_default_connect_options and idisplay_comm_state as in SOCOM 1's object, the internal of the udp wrapper 0x6335E8; it clears the one-word UDP options whose word rt_msg_client's enable-UDP internal 0x633960 keeps as its callback
 0x00634970 0x38 rt_msg_client_idisplay_comm_state  # OVL2; s1:exact
 0x006349A8 0x5C func_006349A8  # OVL2 unaligned
-0x00634A08 0xCC func_00634A08  # OVL2 unaligned
-0x00634AD8 0x170 func_00634AD8  # OVL2 unaligned
+0x00634A08 0xCC rt_msg_client_update_single  # OVL2 unaligned; s1:calls (the gcc lane, round 16b): SOCOM 1's update_single's callees in order (get_valid_connection, update_connection, is_wait_state, change_state; the connection-gone check added), the only callee of 0x634078 as update_single is of SOCOM 1's iupdate
+0x00634AD8 0x170 rt_msg_client_update_connection  # OVL2 unaligned; s1:calls (the gcc lane, round 16b): update_single calls it where SOCOM 1's calls update_connection; the body rewritten (the connect step, each channel's send then receive side, a 30 s receive timeout)
 0x00634C48 0x190 func_00634C48  # OVL2 unaligned
 0x00634DD8 0x29C func_00634DD8  # OVL2 unaligned
 0x00635078 0xD4 func_00635078  # OVL2 unaligned
