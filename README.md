@@ -1729,6 +1729,43 @@ wholly another overlay's copy -- a scorer change for the tools' owner (with the 
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 12** (THE INLINE LEVEL, measured header by header and not
+  adopted: is SOCOM II built at `-inline level=8` with MSL deeper than include/*? -- build/scratch/msl-r12/
+  table.txt and its logs, probes build/p12/, untracked):
+  - MW's level stops at 8: the integrator's whole-tree logs at 8 and 9 are byte-identical; a chain probe at 8
+    inlines an 8-high callee whole and a 9-high one one level;
+  - SOCOM 1's DWARF and SOCOM II's image agree on the vector's capacity pair: SOCOM 1's ~vector<T *> copies
+    call compressed_pair_imp<allocator<Ui>,Ui,1>::second() then first() out of line (0x1735A0, 0x173590 --
+    the pod's destructor `if (data_) alloc().deallocate(data_, cap())`, <vector> 230-233), SOCOM II's
+    func_002B55E0 (a list of actions deleted) calls its OVL1 copies 0x2B5750/0x2B5740 the same way, and
+    zui_hangul.cpp's deleter clear 0x393C60 calls the char pod's 0x392750/0x392740 five this-tests deep: a
+    destructor chain cut at its LEAVES, which the one-level model does not produce (open);
+  - modelled (compressed_pair_imp<A, Ui, 1> deriving from the allocator: the class constructor 6 high and
+    its swap 6, the pod's constructor 6 and destructor 6, 95 units), level 8 gives 6761 over every
+    hand-written unit (master's headers: 6746 at 8, 6800 at 5), +15 and nothing lost: ~CCell, ~CHUD,
+    ~CVisual, ~CGSTexBuffer, doAddBuffer, SaveNodeStates with its four constructors, st_core.cpp's FreeCues
+    path, ai_path.cpp's TrimVector -- and every level-5 witness holds at 8 (CreateAnchor,
+    __sinit_compass.cpp, CVisual(), ~CGame, ~C2D, CCharacterType(), the chat deque). ~CVisual's cut is a
+    SIZE cut there: CDynTexList's two member chains come to 259 units, while ClearGroups' group destructor,
+    the same height (8) with one chain (157 units), inlines whole -- no height separates the two, only size;
+  - NOT CLOSED: a class FreeVector is then 7 high and 250 units and inlines whole at 8, where the target
+    calls its four pieces (FreeTables, DestroyPool, ~MapCompass, Close, WipePktBuf: 25 rows), as the
+    pointer TrimVector (GarbageCollect). They need the class swap 8 high and the pod's 8 (or FreeVector past
+    256 units): two and three forwarding levels no DWARF or image shows. With them (a measurement, branch
+    commit 69f18387): 6788 at 8 (+27, nothing lost), 6739 at 7, 6672 at 6, 6624 at 5 -- still under 6800;
+  - the list's sentinel through SOCOM 1's tail() (<list> 174) over the end pair's second() (853) -- the
+    image's 0x2D2530 and 0x207560 -- in begin()/end()/~__list_deleter alone loses 32 at 8 (the walks'
+    shared &end_.next_: ~CValve, DeleteCallbacks, GenerateLightList, ~CCell, ClearEffectors, ~CSealUnit, the
+    remove_if copies) and brings back none of the target's list cuts (~CEntityList, ~CAssetList,
+    ~CAiEventList, valve_list.cpp's iterator pieces, SelectNext/PreviousObjective through GetObjective's
+    walk): SOCOM 1's whole list shape (size_ and end_ both compressed pairs) is a round of its own;
+  - unexplained at 8 by any header tried (26 rows against level 5): the string constructor's chain (main.cpp's
+    CGameState(const char *), SetDefaultMenu, CSaferStr(), COurGame() -- SOCOM 1's DWARF has the older
+    string), placement new and the element copies (C2DPoly's copy and vector<C2DPoly>::reserve, CInit<Us,0>(),
+    CJamoStr()), zui_skb.cpp's ShutdownBegin/SwitchTo, ~CWaterRippleManager, ~CTextureFXManager, ~CZNetwork,
+    RTArray<CDecal>'s destructor and the list family above;
+  - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
+    so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
 - **Tells from the online lobby, round 11** (the Medius names respelled, the lobby's Tick, the chat callbacks, the
   friend lists, zNetConnect):
   - MSL's deque blocks hold AT LEAST 8 elements: include/deque's buf_size is `sizeof(T) * 8 <= 512 ? 512 /
@@ -4721,6 +4758,45 @@ and member lists, 0x629DA0-0x62A3B0), `medius/rt_msg_client.c` (+17 and the OPEN
 matching drafts; 4 data rows (gbInitialized@streammedia, gnInitCount@streammedia,
 gpszVersion@rt_upnp by SCEA's convention; gapStreamSessions, ours). No row renamed; no tool changed.
 
+**Round 11b: rt_udp.c, rt_p2p.c and the RT objects between them.**
+
+- **What 0x6311E8-0x63CF20 holds**: after rt_crypt.c's ciphers an interrupt-handler object
+  (0x6311E8, drafts) and **rt_list.c** (ours, 0x6313D8-0x6322C8: a message list in a ring buffer --
+  an 8-byte head per message, an empty message always ending the chain -- the lists rt_udp keeps per
+  endpoint and per connection); after rt_mutex_platform **rt_p2p.c** (0x6395B8-0x63C700, its
+  `$Header`; a peer table over one rt_udp endpoint of 256 connections and the key manager, id -1)
+  and **rt_table.c** (ours, 0x63C700: a rows-by-columns word table, .data 0x656000-0x656010); then
+  rt_time. **rt_udp.c** is SCEA's reliable UDP ("rt_udp version: 01.02.0048", a .data array): an
+  endpoint of 0x54 bytes on its own channel or one of eight shared ones (`gapUdp`, by the slot at
+  0x48), 0x90-byte connections with a TCP-like RTT estimator (srtt, rttvar, an RTO of at most 500
+  ms), 12-byte headers (flags, slot, length, id, sequence) and a 4-byte trailer. SOCOM 1's
+  rt_rel_udp keeps none of these bodies: every name is a placeholder.
+- **A statement macro again stops sibling calls**: rt_p2p's three relay handlers are jals only as
+  `do { f(...); } while (0)` (2.96 tail-calls a void function's last call to an int function
+  otherwise) -- round 7b's NetFreeClient finding, met a second time.
+- **A narrow return type, a third time**: rt_list's end-marker writer returns `unsigned char`, so
+  the clear returns its result through a jal; and KM_Cleanup (rt_crypt.c, 0x630508) is void, as its
+  sibling KM_Destroy: declared int, rt_p2p's destroy takes v1 for the record it reloads after it.
+- **Shapes, each measured**: a two-way choice as `if (n == 0) {...; return 0;} if (n == 1) {...;
+  return 0;} return 1;` (an if/else lets the two bodies' tails cross-jump; a switch moves every
+  block); a result kept in a saved register to one `return result` across a call (0x641230); a value
+  read once into a local before three class tests (KM_Cleanup's id: the struct field reloads in
+  every test otherwise); a row index for a fixed table (`aSlots[i]`, i < 32), which 2.96 turns into
+  the target's count-down loop, where a walking pointer moves the registers; the RTO as `n = srtt +
+  MAX(rttvar, 1); if (n > 500) n = 500;`; header stores by `tools/ccperm.py` (five functions).
+- **An unrotated search loop**: rt_p2p's peer searches test the bound at the top, recompute
+  `i * 40` and hoist only the count -- `for (i = 0; ; i++) { if (i >= n) break; ... }` gives that
+  loop where a plain `for` is rotated and strength-reduced (the guards before it still differ).
+- **Open, diagnosed in place**: rt_udp's create (the allocation laid out after the option copy) and
+  raw send, rt_p2p's searches and create, rt_list's init, rt_table's five accessors (the result
+  constant held in v0 from the entry), four functions 2-3 words off on argument scheduling.
+
+Hand-written in round 11b: `medius/rt_udp.c` (36 of 44, new), `medius/rt_p2p.c` (22 of 29, new),
+`medius/rt_list.c` (15 of 16, new), `medius/rt_table.c` (1 of 6, new), `medius/rt_crypt.c` (+1,
+KM_Cleanup: 24 of 26) -- 75 functions byte-exact, 58 new to the map's byte-exact rows (7,860
+bytes), 17 superseding matching drafts; 4 data rows (gapUdp, gnTableCols, gnTableRows, gnTableBufSize, ours).
+No row renamed; no tool changed.
+
 **Round 11c: the scheduler, the subsampler, round 10c's half-written blocks.**
 
 - **A public `__inline__` is output at its object's end, in declaration order.** The subsampler's
@@ -4821,7 +4897,13 @@ What is open across lanes, and what comes next:
   now inline one level more (24), and a handful of the game's small constructors (CGameState(const
   char *), CSaferStr(), C2DPoly's copy, CJamoStr()) -- so level 8 with the original's deeper MSL
   stays the likely answer, and moving to it is a header refit (the MSL lane), not a flag flip. The
-  lists: build/scratch/lvl/summary_2026-11-03.txt.
+  lists: build/scratch/lvl/summary_2026-11-03.txt. THE REFIT, TRIED (the MSL headers' round 12, "Tells
+  from completing the MSL headers, round 12"): SOCOM 1's compressed pair under both vector capacities,
+  DWARF- and image-backed, recovers 15 of level 8's losses at no cost there (6761 against level 5's
+  6800 over every hand-written unit) and leaves 39 open; the FreeVector/TrimVector cuts (27 rows) need
+  swap levels nothing shows, the list's (about 10) SOCOM 1's whole list shape, and the strings,
+  element copies and four destructors (about 15) evidence not found. The flag stays at 5, the headers
+  at their level-5 shapes, seal_ai.cpp's pragma with them.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
   structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
