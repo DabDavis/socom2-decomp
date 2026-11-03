@@ -7,14 +7,14 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00622A20(s32 *, s32, s32);                 /* extern */
+s32 NetGetClient(s32 *, s32, s32);                  /* extern */
 extern s32 data_0045A1B4;
 
 s32 zNetGetGameClient__9CZNetworkFi(s32 arg0, s32 arg1) {
     s32 sp1C;
 
     sp1C = 0;
-    if (func_00622A20(&sp1C, data_0045A1B4, arg1) != 0) {
+    if (NetGetClient(&sp1C, data_0045A1B4, arg1) != 0) {
         return 0;
     }
     return sp1C;
