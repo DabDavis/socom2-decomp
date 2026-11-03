@@ -12976,7 +12976,7 @@
 0x00648500 0xB4 MediusAnonymousLogin  # OVL2; s1:order (the AnonymousLoginCallbackFunctionPtr slot 0x6561EC; the gcc lane, round 3b)
 0x006485B8 0xC0 MediusCreateGame  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: CreateNewGameStateHandler calls it where SOCOM 1's counterpart calls MediusCreateGame; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00648678 0xA8 MediusTextFilter  # OVL2 unaligned; s1 by call site (Censor 0x2F4DF0 and CreateClan 0x2E7A10, as SOCOM 1's both; the online lane)
-0x00648720 0x11C func_00648720  # OVL2
+0x00648720 0x11C MediusCreateGameOnSelf  # OVL2; s1:order+calls (the gcc lane, round 15b): SOCOM 1's MediusCreateGameOnSelf (0x3B3A40, 0x120) before MediusCreateChannel and MediusJoinGame as here; it queues MediusSetQueuedRequest's CreateGameOnSelf case (type 18) and sends PacketType 0x686BA8, the queue's create packet
 0x00648840 0xB4 MediusCreateChannel  # OVL2; s1:calls (the online lane, round 5, vetted by the integrator: CreateRoomStateHandler calls it where SOCOM 1's counterpart calls MediusCreateChannel; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x006488F8 0x10C MediusJoinGame  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: JoinGameStateHandler calls it where SOCOM 1's counterpart calls MediusJoinGame; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
 0x00648A08 0xA8 MediusJoinChannel  # OVL2 unaligned; s1:calls (the online lane, round 5, vetted by the integrator: JoinRoomStateHandler calls it where SOCOM 1's counterpart calls MediusJoinChannel; Medius's GCC-built client library, the size within a few words of SOCOM 1's)
