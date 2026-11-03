@@ -1818,6 +1818,24 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 20** (CCtrlrConfigs::Init, CGraph::CreateNode(void)):
+  - MW's own construction of a member array of class elements is a never-unrolled pointer `!=` loop with no entry
+    guard, where a written loop over the same 13 bytes unrolls 6x; a constructor inlined one level emits one
+    out-of-line copy per DISTINCT member class, after its first caller, in reverse order of first use -- identical
+    one-byte copies mean distinct classes (CCtrlrConfig's layout members are four, CCfgStick/CCfgSticks/CCfgFlag/
+    CCfgButtons, the names ours);
+  - binding a literal to an inline helper's `const T &` parameter pools the constant (an `lb` from data), never `li`;
+    include/string's default constructor is two levels short of the original's at level 5 (as fts_state.h measured:
+    the loader's layout constructor is cut through two forwarding inlines, fts_controller.cpp);
+  - an inline helper whose box constructor exceeds inline_max_size is inlined one level and its other callees' copies
+    come out at the target's sizes (CMission's world bboxes 0x2A9260: the cluster's structure reproduces, but the
+    target's box-constructor copy 0x2A96B0 calls CPnt3D(fff) and operator= out of line where MW inlines them);
+  - 0x2D0930 is `CreateNode__6CGraphFv` (no caller sets a1; graph_tree.h and the definition follow; the AI maps still
+    call it as func_002D0930, resolved by address); 0x2B3F20 is ~__list_imp<CSpawners::spawn_map> (fts_player.cpp
+    emits it inlining the deleter's destructor where the target calls 0x2B3F80: the ~CSpawners chain);
+  - open: CGraph::Read 0x2D0C90 (5, registers: the edge loop's counter s3 and first node s5, ours swapped; eleven
+    declaration shapes), the byte-enum family (a one-byte class element's by-value copy loads `lb` but MW keeps it in
+    a stack slot -- store, then `lbu` back -- where the target has `lb; andi 0xff` in a register).
 - **Tells from the UI, round 12** (C2DFont through c2dfont.h, CSkbFonts(), the vector<CSkbKey> instances):
   - MW's implicit operator= copies a union as its first member: a class that copy-constructs with lb/lhu but assigns
     with lbu/lh has UNION members -- CSkbKey's, which unlocked its vector's erase, resize, init and do_assign;
