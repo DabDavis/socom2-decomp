@@ -9069,14 +9069,14 @@
 0x004FF5A8 0x518 InitDistSilProcess  # OVL2 unaligned; s1:align
 0x004FFAC0 0x224 func_004FFAC0  # OVL2
 0x004FFCE8 0x22C func_004FFCE8  # OVL2 unaligned
-0x004FFF18 0x7CC func_004FFF18  # OVL2 unaligned
+0x004FFF18 0x7CC ControlDistSilProcess  # OVL2 unaligned; s1:slot (ConstructDistCalc's control function, as SOCOM 1's ConstructDistCalc hands ControlDistSilProcess, 0x36B368) -- the gcc lane, round 16c
 0x005006E8 0x710 func_005006E8  # OVL2 unaligned
-0x00500DF8 0xC0 func_00500DF8  # OVL2 unaligned
-0x00500EB8 0x8 func_00500EB8  # OVL2 unaligned
-0x00500EC0 0x8 func_00500EC0  # OVL2
+0x00500DF8 0xC0 ConstructDistCalc  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: ConstructDistCalc after InitCalculateDistances, as this row; the same body -- profile 35 for no queues, profile 34 for a third input, 316 bytes, the same three slots) -- the gcc lane, round 16c
+0x00500EB8 0x8 GetpCachedDistances  # OVL2 unaligned; s1:order (SOCOM 1's distsil object, after ConstructDistCalc as this row; the same body, `return d->f108`) -- the gcc lane, round 16c
+0x00500EC0 0x8 GetDistanceOffset  # OVL2; s1:order (SOCOM 1's distsil object, next; the same body, `return d->f96`) -- the gcc lane, round 16c
 0x00500EC8 0x12C func_00500EC8  # OVL2 unaligned
 0x00500FF8 0x1B4 func_00500FF8  # OVL2 unaligned
-0x005011B0 0x8 func_005011B0  # OVL2
+0x005011B0 0x8 IdleDistCalcProcess  # OVL2; s1:slot (ConstructDistCalc hands this row to tosBaseBlockConstruct as its process function, where SOCOM 1's ConstructDistCalc hands IdleDistCalcProcess, 0x36C5E8; the object's last function in both) -- the gcc lane, round 16c
 0x005011B8 0x74 ConstructGenderFilter  # OVL2 unaligned; s1:align
 0x00501230 0x124 ProcessGenderFilter  # OVL2; s1:order (SOCOM 1's object 0x36C5F0 holds ProcessGenderFilter, ConstructGenderFilter, ControlGenderFilter, InitGenderFilter; ConstructGenderFilter passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00501358 0x30 ControlGenderFilter  # OVL2 unaligned; s1:align
