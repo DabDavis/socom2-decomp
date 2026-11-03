@@ -8997,10 +8997,10 @@
 0x004F5E70 0x3C ConstructGender  # OVL2; s1:align
 0x004F5EB0 0x6C ResetGender  # OVL2; s1:exact
 0x004F5F20 0xDC HLnOnePlusExpHFloat  # OVL2; s1:align
-0x004F6000 0x10C func_004F6000  # OVL2
+0x004F6000 0x10C LogAdd  # OVL2; s1:calls (SOCOM 1's NormalizeAndEnQ calls LogAdd where ours, 0x4F3690, calls this row; the object SOCOM 1's 0x3629D0 with HLnOnePlusExpHFloat, here after it and calling it where SOCOM 1's inlined it) -- the gcc lane, round 16c; src/lib/asr/logadd.c
 0x004F6110 0x808 MelInitBands  # OVL2; s1:align
 0x004F6918 0x3C ConstructMel  # OVL2 unaligned; s1:align
-0x004F6958 0x1AC func_004F6958  # OVL2 unaligned
+0x004F6958 0x1AC ProcessMel  # OVL2 unaligned; s1:slot (ConstructMel hands this row to tosBaseBlockConstruct as its process function, where SOCOM 1's ConstructMel hands ProcessMel, 0x3635D0) -- the gcc lane, round 16c
 0x004F6B08 0x170 ControlMel  # OVL2 unaligned; s1:calls
 0x004F6C78 0x64 InitMel  # OVL2 unaligned; s1:align
 0x004F6CE0 0x32C QrDeleteCol  # OVL2; s1:calls (SOCOM 1's Smoothing calls QrDeleteCol where ours call this row, 1 call site; the same position in SOCOM 1's object)
@@ -9010,7 +9010,7 @@
 0x004F70A0 0x24 mtxAssociateAll  # OVL2; s1:exact
 0x004F70C8 0x80 mtxDeleteCol  # OVL2 unaligned; s1:align
 0x004F7148 0x1B8 mtxCompress  # OVL2 unaligned; s1:align
-0x004F7300 0x124 func_004F7300  # OVL2
+0x004F7300 0x124 mtxMac  # OVL2; s1:order (SOCOM 1's mtx object 0x363888 holds mtxMac between mtxCompress and mtxInit, as this row sits; the same body, m->data += f * x over rows * cols, returning 0) -- the gcc lane, round 16c
 0x004F7428 0x98 mtxInit  # OVL2 unaligned; s1:calls
 0x004F74C0 0xBC mtxInitCopy  # OVL2; s1:align
 0x004F7580 0xF4 mtxMax  # OVL2; s1:align
@@ -9069,14 +9069,14 @@
 0x004FF5A8 0x518 InitDistSilProcess  # OVL2 unaligned; s1:align
 0x004FFAC0 0x224 func_004FFAC0  # OVL2
 0x004FFCE8 0x22C func_004FFCE8  # OVL2 unaligned
-0x004FFF18 0x7CC func_004FFF18  # OVL2 unaligned
+0x004FFF18 0x7CC ControlDistSilProcess  # OVL2 unaligned; s1:slot (ConstructDistCalc's control function, as SOCOM 1's ConstructDistCalc hands ControlDistSilProcess, 0x36B368) -- the gcc lane, round 16c
 0x005006E8 0x710 func_005006E8  # OVL2 unaligned
-0x00500DF8 0xC0 func_00500DF8  # OVL2 unaligned
-0x00500EB8 0x8 func_00500EB8  # OVL2 unaligned
-0x00500EC0 0x8 func_00500EC0  # OVL2
-0x00500EC8 0x12C func_00500EC8  # OVL2 unaligned
+0x00500DF8 0xC0 ConstructDistCalc  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: ConstructDistCalc after InitCalculateDistances, as this row; the same body -- profile 35 for no queues, profile 34 for a third input, 316 bytes, the same three slots) -- the gcc lane, round 16c
+0x00500EB8 0x8 GetpCachedDistances  # OVL2 unaligned; s1:order (SOCOM 1's distsil object, after ConstructDistCalc as this row; the same body, `return d->f108`) -- the gcc lane, round 16c
+0x00500EC0 0x8 GetDistanceOffset  # OVL2; s1:order (SOCOM 1's distsil object, next; the same body, `return d->f96`) -- the gcc lane, round 16c
+0x00500EC8 0x12C CalculateDistance  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: CalculateDistance after GetDistanceOffset, as this row; the same body -- the tables at +52 summed at the frame's codewords, less +96, as a short) -- the gcc lane, round 16c
 0x00500FF8 0x1B4 func_00500FF8  # OVL2 unaligned
-0x005011B0 0x8 func_005011B0  # OVL2
+0x005011B0 0x8 IdleDistCalcProcess  # OVL2; s1:slot (ConstructDistCalc hands this row to tosBaseBlockConstruct as its process function, where SOCOM 1's ConstructDistCalc hands IdleDistCalcProcess, 0x36C5E8; the object's last function in both) -- the gcc lane, round 16c
 0x005011B8 0x74 ConstructGenderFilter  # OVL2 unaligned; s1:align
 0x00501230 0x124 ProcessGenderFilter  # OVL2; s1:order (SOCOM 1's object 0x36C5F0 holds ProcessGenderFilter, ConstructGenderFilter, ControlGenderFilter, InitGenderFilter; ConstructGenderFilter passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00501358 0x30 ControlGenderFilter  # OVL2 unaligned; s1:align
