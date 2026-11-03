@@ -2266,21 +2266,21 @@
 0x0023A170 0xD0 AddTeam__12CRatingMatchFiibf  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- news a 0x24-byte team into the first free of two slots)
 0x0023A240 0x78 __dt__12CRatingMatchFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- deletes both teams)
 0x0023A2C0 0x18 __ct__12CRatingMatchFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- the two team slots and two flags zeroed; CMPExitState's 0x2253C0 builds one on its stack)
-0x0023A2E0 0x8 func_0023A2E0  # OVL1
-0x0023A2F0 0x74 func_0023A2F0  # OVL1
-0x0023A370 0x8 func_0023A370  # OVL1
-0x0023A380 0x2B4 func_0023A380  # OVL1
-0x0023A640 0xE4 func_0023A640  # OVL1
+0x0023A2E0 0x8 GetConfidence__5CRecoFv  # OVL1; ours (the HUD lane, round 20: reco.cpp -- returns the 0-1 confidence at 0x30, which SetConfidence scales the last result's 0-5000 into; the radio menu 0x236430 reads it)
+0x0023A2F0 0x74 SetConfidence__5CRecoFi  # OVL1; ours (the HUD lane, round 20: reco.cpp -- an int confidence clamped to 0-5000 against float bounds and kept /5000 at 0x30; PrintResult inlines it on the result's u16Conf)
+0x0023A370 0x8 GetLevel__5CRecoFv  # OVL1; ours (the HUD lane, round 20: reco.cpp -- returns the 0-1 energy level at 0x2C that cbrecoNotify's ENERGYLEVEL case keeps; the radio menu 0x236430 reads it)
+0x0023A380 0x2B4 PrintResult__FPvP13_GSAPI_RESULTi  # OVL1; ours (the HUD lane, round 20: reco.cpp's static -- a _GSAPI_RESULT (SOCOM 1's DWARF layout) printed: its word ids sprintf'd "(%d%c", the texts strcat'd through 0x4C82F0, "Result: Action %d '%s' (Conf.%d)", the confidence kept, the volume stepped +5 under 5000 and -5 over 7500 through AdjustVolume, the type named from final/premature/timeout/rejected)
+0x0023A640 0xE4 cbrecoNotify__FPv18_GSAPI_NOTIFY_TYPEUiUi  # OVL1; s1:ref by hand (the HUD lane, round 20: reco.cpp -- the function both builds pass to gsapi_NotifySetCallback, SOCOM 1's recoSetupLanguage and SOCOM II's CReco::Init; SOCOM 1's signature, its notify enum int-sized here (the switch takes a1 unnarrowed): ASRRESULT prints the result, ENERGYLEVEL keeps (wParam + 6000) / 7000 clamped 0-1 at 0x2C and zeroes the quiet count)
 0x0023A730 0x12C AdjustVolume__5CRecoFi  # OVL1; ours (the HUD lane, round 19: reco.cpp, SOCOM II's voice recogniser -- the recording volume stepped by a0 and clamped to the .data levels 100/20, then lgAudEnumerate/lgAudOpen for the first device that opens and lgAudSetRecordingVolume; 0x23A380 calls it with +5/-5)
-0x0023A860 0x3CC func_0023A860  # OVL1
-0x0023AC30 0xA8 func_0023AC30  # OVL1
-0x0023ACE0 0xA8 func_0023ACE0  # OVL1
-0x0023AD90 0x378 func_0023AD90  # OVL1
+0x0023A860 0x3CC cbrecoResult__FPvUiP13_GSAPI_RESULTUi  # OVL1; s1:ref by hand (the HUD lane, round 20: reco.cpp -- the function both builds hand to gsapi_Init (SOCOM 1's recoInit2, SOCOM II's 0x4C7328 from CReco::Init); SOCOM 1's signature: the result printed with a1 as its action, the words after the first handed to the radio menu (0x234F40 on 0x413120) until one is refused, then the menu closed and the engine stopped, or restarted at the root column)
+0x0023AC30 0xA8 GetLangFile__F8LANGUAGE  # OVL1; ours (the HUD lane, round 20: reco.cpp's static -- the language's recogniser file, 2004b.lng or 3004b.lng by GetLanguage's index, the eight .data statics 0x3DCD20-0x3DCD58; pinned: Load calls it)
+0x0023ACE0 0xA8 GetLangCode__F8LANGUAGE  # OVL1; ours (the HUD lane, round 20: reco.cpp's static -- the language's directory under run/reco/ (eng frf ged spe iti jpj kok, enu by default), the eight .data statics 0x3DCCE0-0x3DCD18; pinned: Load calls it)
+0x0023AD90 0x378 Tick__5CRecoFf  # OVL1; ours (the HUD lane, round 20: reco.cpp -- single player only (theNetwork+1): the stop's delay at 0x3C run down, else one request of 0x38's served (stop, the context theReco takes from the radio menu's path depth, start), then the quiet count against 30 and gsapi_ExecServer; CCoreState::Tick's call)
 0x0023B110 0x7C Resume__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the push-to-talk flags at 0x38: bit 3 set, bits 2 and 4 cleared, the timer at 0x3C zeroed, then bits 4 and 2 set; the radio menu's calls)
 0x0023B190 0x70 Suspend__5CRecoFb  # OVL1; ours (the HUD lane, round 19: reco.cpp -- bit 3 set, bits 2 and 4 cleared, the timer at 0x3C 0 or the .data delay 1.0 by the flag; CHUD::Tick, PlayCamera and the radio menu call it)
 0x0023B200 0x100 UnInit__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the engine stopped if initialised and running, its context deactivated, closed and zeroed, the library's two shutdowns, the initialised bit cleared; ~CHUD's call)
 0x0023B300 0x23C Init__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the speech library opened with the result callback 0x23A860, the language loaded, the engine opened into 0, the notify callback 0x23A640, the first context (0x34 = 0) made the engine's immediate one and started, three engine parameters, ExecServer, the initialised bit and Suspend(true) inlined; true when it all worked; CHUD::Init's call)
-0x0023B540 0x310 func_0023B540  # OVL1
+0x0023B540 0x310 Load__5CRecoFv  # OVL1; ours (the HUD lane, round 20: reco.cpp -- the language file run/reco//<code>/<code><file> read whole into 4 once, then each of three contexts' .ctx at 8+4i and its .wr8 (else .wrd) word list at 0x20+4i through stack CFileIOs; true when the language was read; main's call)
 0x0023B850 0x44 __dt__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the recogniser's empty destructor, which its initialiser 0x3FF7B0 registers)
 0x0023B8A0 0xF0 __ct__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the 0x40-byte recogniser's constructor: the handles and files zeroed three contexts at a time, 0xDEADBEEF at 0x34, the five flags and the 27-bit rest at 0x38; the initialiser 0x3FF7B0 builds the global 0x414680 with it)
 0x0023B990 0x14 SetTrans__12SelectedSlotFf  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); by hand (the HUD lane: slot 11 of SelectedSlot's vtable 0x405D00 -- its name's SetTrans)
