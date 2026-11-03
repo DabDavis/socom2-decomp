@@ -131,6 +131,71 @@ QUEUE *qQueueInit(QUEUE *q)
     return 0;
 }
 
+/* a new element for the readers at the end; past the bound, the oldest elements no reader still
+ * needs are freed (the first one some reader points at stops it). Each loop has its own counter. */
+static void qUpdateReadPtrsAndIncNbrOfEnqueues(QUEUE *q, QELEM *e)
+{
+    QELEM *p;
+    QELEM *t;
+    unsigned int count;
+    unsigned int i;
+    unsigned int j;
+    unsigned int k;
+
+    if (q->maxelems != 0) {
+        count = 0;
+        for (p = q->first; p != 0; p = p->next)
+            count++;
+        if (q->maxelems < count) {
+            count -= q->maxelems;
+            p = q->first;
+            for (i = 0; i < count; i++) {
+                t = p;
+                for (j = 0; j < q->nreaders; j++)
+                    if (q->read[j] == t)
+                        break;
+                if (j < q->nreaders)
+                    break;
+                p = p->next;
+                qFreeElem(q, t);
+            }
+            q->first = p;
+        }
+    }
+    for (k = 0; k < q->nreaders; k++)
+        if (q->read[k] == Q_END(q))
+            q->read[k] = e;
+    q->tos->nenqueues++;
+}
+
+/* the elements no reader points at any more freed from the front -- none while the queue is
+ * bounded and a reader is disabled */
+void qFreeUnusedElemements(QUEUE *q)
+{
+    QELEM *e = q->first;
+    QELEM *p;
+    unsigned int i;
+    unsigned int j;
+
+    if (e == 0)
+        return;
+    if (q->maxelems != 0)
+        for (j = 0; j < q->nreaders; j++)
+            if (q->read[j] != Q_STOPPED(q) && q->read[j] == 0)
+                return;
+    while (e != 0) {
+        for (i = 0; i < q->nreaders; i++)
+            if (q->read[i] == e)
+                break;
+        if (i != q->nreaders)
+            break;
+        p = e;
+        e = e->next;
+        qFreeElem(q, p);
+    }
+    q->first = e;
+}
+
 QUEUE *qQueueConstruct(TOS *tos, unsigned char id, unsigned char nreaders)
 {
     QUEUE *q = func_00243398(tos->heap, 1, sizeof(QUEUE) - sizeof(QELEM *) + nreaders * sizeof(QELEM *));
