@@ -106,7 +106,22 @@ OutputIterator remove_copy_if(InputIterator first, InputIterator last, OutputIte
  * (no copies: 0xCC), copies of first and last made in either order before the call, find_if as a
  * for/break, a body return, a local walker; the base iterator copied trivially (its conversion to
  * const_iterator a template: +9, PurgeEntities far off) and the wrapper's copy left implicit
- * (no change). Every form keeps the swap or adds to it */
+ * (no change). Every form keeps the swap or adds to it.
+ * WHERE THE ORDER COMES FROM (the MSL headers round 11, build/p11/tmpdump.py, MW's unique-name counter
+ * hooked): the two copies are made by an IRO pass between the loop optimiser and CSE (at 0x52C0B6 in
+ * mwccps2 3.0b52 -- the class scalariser by its products), one temp per iterator object in the order the
+ * objects first appear in the IR; the inliner initialises find_if's by-value parameters in a comma
+ * built right to left, so last's object appears first. In the callback list's 0x3C6560 last's copy is
+ * @900 and first's @902 (lower numbers are coloured later: first takes a3, last t0) -- the target has
+ * first t0, last a3, i.e. first's object first. Where the unit calls the iterator's operators out of
+ * line (valve_list.cpp 0x352500, ai_events.cpp 0x50F670: 4 off) the slots agree and only the order of
+ * the two copies differs, first then last in the target: the order in which MW BUILDS argument
+ * temporaries (left to right), where ours are EVALUATED (right to left). So the list instances' copies
+ * are built temporaries and the vector instances' evaluated values, from one remove_if -- one header
+ * would have to dispatch on the iterator. Tried (build/p11/r1.var, r2.var): explicit temporaries
+ * `ForwardIterator(first)` (no change for the lists, the vectors lose their size), local copies in
+ * remove_if, a walker local in find_if, an empty user destructor on the list iterators (every list
+ * instance changes size) */
 template <class ForwardIterator, class Predicate>
 ForwardIterator remove_if(ForwardIterator first, ForwardIterator last, Predicate pred)
 {

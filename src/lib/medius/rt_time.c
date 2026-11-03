@@ -56,6 +56,40 @@ RT_RESULT rt_time_initialize(void)
     return r;
 }
 
+/* end - start; SOCOM 1's returned RT_ALREADY for an end before the start, SOCOM II's gives a zero
+ * difference (round 8b) */
+RT_RESULT rt_time_calc_diff(RT_TIME *start, RT_TIME *end, RT_TIME *diff)
+{
+    if (start == 0)
+        return RT_INVALID_PARAM;
+    if (end == 0)
+        return RT_INVALID_PARAM;
+    if (diff == 0)
+        return RT_INVALID_PARAM;
+    if (start->secs == end->secs) {
+        if (start->usecs > end->usecs) {
+            diff->secs = 0;
+            diff->usecs = 0;
+            return RT_OK;
+        }
+        diff->secs = 0;
+        diff->usecs = end->usecs - start->usecs;
+    } else if (start->secs < end->secs) {
+        if (end->usecs < start->usecs) {
+            diff->secs = end->secs - start->secs - 1;
+            diff->usecs = 1000000 - (start->usecs - end->usecs);
+        } else {
+            diff->secs = end->secs - start->secs;
+            diff->usecs = end->usecs - start->usecs;
+        }
+    } else {
+        diff->secs = 0;
+        diff->usecs = 0;
+        return RT_OK;
+    }
+    return RT_OK;
+}
+
 RT_RESULT rt_time_timestamp_to_msecs(RT_TIME *t, unsigned int *msecs)
 {
     if (t == 0)

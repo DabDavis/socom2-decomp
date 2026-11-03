@@ -145,6 +145,34 @@ compile against wine's ~2 s, and the 2003 builds — which wait forever on a Fle
 prompt under wine — just run. `SC_WINE=1` falls back to wine. `-gccinc` makes `-I` paths
 serve `<...>` includes; `-nostdinc` keeps the host's headers out.
 
+### MAIN's Metrowerks runtime: three groups, three flag sets
+
+MAIN 0x180000-0x18DB90 is MW-built code outside the game's overlays (the MAIN runtime lane, round
+1, 2026-11-03: none of it matched before, 81 rows after). A unit names its own build and flags in
+its directive (`/* sc: compiler=mwcps2-3.0b52-030722; flags=... */`), as the GCC units do:
+
+| group | units (src/main/) | build | flags | evidence |
+|---|---|---|---|---|
+| the game's own MAIN units | the pool unit 0x1801E0-0x18194F (alloc.cpp?), MAIN's copies of zsys_memory.cpp (0x181950-0x181C1F) and zvid.cpp (0x181C20) | 3.0b52 | the game's | `__nwa__FUi` is a tail call (`j`), which needs exceptions off; `_delete_vec` exact on every 3.0 build |
+| MW's C++ runtime | runtime/: gcc_wrapper.c 0x181C50, mwoverlay.c 0x181C90-0x181E2F, NMWException.cpp 0x181E30-0x18280F, global_destructor_chain.c 0x182810, __init_cpp_rts.c 0x182840, ptmf.c 0x1828A0; the exception-handling unit 0x182930-0x1845FF | 3.0b38, b50 or b52 | the game's plus `-Cpp_exceptions on`, deferred | `__destroy_arr`/`__destroy_new_array` match only on 3.0b22-020926 and 3.0b38+; `__initialize_cpp_rts`'s short-loop nops rule out 3.0b22-020926; with exceptions off `terminate`/`unexpected` become tail calls (9 words off); `,p` required; without `-sdatathreshold 0` `__register_global_object` is 8 words off; the image holds the PowerPC runtime's source order reversed |
+| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -sdatathreshold 0 -inline auto -enum min -Cpp_exceptions on -wchar_t on`, NOT deferred | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
+
+So SOCOM II's prebuilt MSL is **not CodeWarrior 2.4's build**, though SOCOM 1's DWARF names that
+install; and none of the 81 rows separates 3.0b38 from 3.0b50 or 3.0b52. The `.comment`'s
+2.4.1.01 comes from none of these groups -- MW's assembler writes DWARF but no `.comment`, and
+crt0.s (`_start`, `_exit`, `_root` 0x1801D0) is one MW-assembled object (SOCOM 1's DWARF has its
+unit), which scdiff has no MW assembler path for (GNU as through tools/asmunit.py should give the
+same bytes). Rules measured on the way: with `-wchar_t on` a `wchar_t` is a 4-byte built-in from
+3.0b22-020926 on yet loaded and stored 16-bit (`sh`/`lhu` with a 4-byte step); six-instruction loops
+tell builds apart (3.0b38+ leave the delay slot empty and pad two nops, 3.0b22-020926 fills it); in
+the non-deferred library an inline callee is inlined only if generated before its caller (`template
+class fpos<int>;` goes first); each overlay links its own copy of non-template units as well as
+templates (one source order reproduces MAIN's and OVL1's zsys_memory.cpp); the PowerPC runtime's
+bodies compile byte-exact on MIPS once adapted to the ABI (the destructor flag `short`, 64-bit
+`long`); MW inline `asm` functions reproduce an assembly runtime function byte-exact; a local copy of
+a pointer parameter is numbered right after the parameters. The sweep (ccsweep extended to the MW
+builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.py.
+
 ## What the source has to reproduce
 
 - **Function order inside a TU is REVERSE definition order** (`-inline deferred`): the image's
@@ -1647,6 +1675,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 15** (seal_ik.cpp, ~CSealUnit, the aim parameters):
+  - single-bit `unsigned int` bitfields written one at a time compile to lbu/sb: splitting the 3-bit
+    field was enough for TurnSetup 0x5B8270 (round 14's unsigned-char guess was not needed);
+  - an unsigned byte-enum member passed straight to a parameter of the same enum loads with `lb`; cast
+    to its own type, `(E)m`, it loads with `lbu`;
+  - member lists that are classes over std::list (SOCOM 1's slist/ulist/clist) give four this-tests per
+    member in an implicit destructor, as ~CAiSAnimate;
+  - `if (p) {...} else {...; return false;} return f();` puts the shared call's block last
+    (SetAimPointW); returning early inside the if puts it right after the if body;
+  - a recursive function's out-of-line iterator copies sit BEFORE it in the image (0x5ED880-0x5ED9A0
+    precede GetSealCount, as 0x2D22E0 precedes CGTree::Destroy); GetSealCount (0x1A8 vs 0x1F8) waits
+    on include/list's depth: the pointer-list wrapper's begin()/end() as `iterator(base::begin())`
+    and a two-level size() (0x5E8A80 a const reference to size_, SOCOM 1's compressed_pair first());
+  - seal_ik.cpp is 0x5B8270-0x5B82CF, SOCOM 1's seal_ik.cpp position between seal_ex.cpp and
+    seal_kit.cpp; 0x5EBDC0 is CAiState's implicit operator= (the stack's 0xC-0x1B copied as one block
+    through the FPU: a nested struct), its list assignment an MSL chain include/list does not model
+    (0x5EF7F0, 0x5EF470, 0x5EF9B0, 0x5EF8D0, 0x5EF950, 0x510110 -- seal_unit.cpp's header has it).
 - **Tells from the world, rdr and sound, round 1** (ztex_main.cpp, zrdr_file.cpp, CSndVocalQueue::Add):
   - bitfields set in a constructor's initialiser list compile to one word read-mask-write each, with
     `(0 & mask) << shift` left unfolded; assigned in the body they fold to byte stores (CRdrFile());
@@ -2235,6 +2280,45 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 11** (MW's colouring replayed offline, where MW's
+  temporaries come from; no header change gained a match without losing one -- the measurements are in
+  include/vector's insert, include/algorithm's remove_if, include/deque's deque() and include/list):
+  - MW'S COLOURING REPLAYS EXACTLY OFFLINE: build/p11/igreplay.py (untracked, with the round 10 tools
+    it builds on) reruns simplify/colour from an igdump record -- K = 25, simplify's ascending sweeps,
+    the spill pick MW's own (`spillCost / degree` as a float, the first least in a descending-index list,
+    mweppc's SpillCode.c: reads add the block's loop weight, twice for a register not rematerialisable;
+    igdump now reads each node's cost +0xC and each block's weight +0x24) -- and reproduces every
+    colouring of the probes and of st_core.cpp (61); igmap.py reads the TARGET's register for each
+    virtual register by aligning the pcode with the final code (the cue insert: 71 vregs, no conflict),
+    so a candidate graph is scored against the target before any source is written (igexp.py);
+  - the class insert's end: the target's colouring needs e numbered after the loop optimiser's else-loop
+    cursor and before the CSE pass's n*8 -- a window no declared local reaches, while m, i and both j's
+    must stay declared locals; the turret's insert needs e before m, CMeshLOD's after it. So the end is a
+    declared local that small elements (copy_backward inlined) replace by a later temporary; the source
+    that does it is not found (include/vector's insert comment lists eleven shapes);
+  - WHERE MW'S TEMPORARIES COME FROM: tmpdump.py breaks on CParser_GetUniqueID (0x42F590 in 3.0b52, the
+    `@N` counter at 0x5841AA) and records each creator's return addresses: the inliner, then the loop
+    optimiser (one cycle of temps per loop: an induction temp replaces a cursor whose initial value is a
+    copy -- @2517, the else loop's i), a hoisting pass, the class scalariser (iterator objects, in IR order
+    of first appearance), CSE (size_, n*8, (m-n)*8 here), then one late pass; a temp's vreg number is its
+    creation order, which is the colouring order of every node that is not deferred;
+  - MW'S DWARF DROPS A LOCAL IRO ABSORBED: `int b = inline_f(a);` leaves no `b` in the DWARF (folded into
+    the inline's return temp) while a merely dead local (the insert's xp) stays listed, 3.0b22 and 3.0b52
+    alike -- so SOCOM 1's insert list (i, j, newcap, newsize, tmp, j, i, k, j, xp, t1) lacking an end and
+    an m says those were absorbed, not that the source had none; it also lists locals in plain
+    declaration order with nested scopes flattened, and never an inlined function's;
+  - copies merge into the earlier variable: a copy `@N = v` whose source dies merges into whichever has
+    the lower VarRecord index (e keeps copy_backward's parameter temp; that temp keeps a CSE temp when no
+    e exists); PCode copy propagation cannot remove a copy whose destination is read-modify-written;
+  - the list remove_if instances' swapped copies are the order MW BUILDS argument temporaries (left to
+    right) against the order it EVALUATES plain arguments (right to left): out of line (valve_list.cpp
+    0x352500, ai_events.cpp 0x50F670) the stack slots agree and only the copies' order differs;
+  - a class element's deque() calls only the buffer's constructor while its copy constructor calls
+    allocator<const void *>() at +0x18 (lobby 0x2E0D90/0x2E07B0, chat 0x2F6230, the state machine
+    0x3A6410/0x3A5E50); `public Allocator` as __deque_imp's second base gains the default constructors
+    and loses both copy constructors;
+  - not reached: SOCOM 1's list shape for CGTree::Destroy (request 3), CRegistrant's element copy,
+    CMaterial_band's tail order, the IgnoreItem insert/erase and the three reserves.
 - **Tells from completing the MSL headers, round 10** (MW's register allocator read out, the 4-byte pod's
   operator= and assign):
   - READING MW'S REGISTER ALLOCATOR: gdb runs the compiler under wibo (break on wibo's
@@ -2970,7 +3054,7 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   explicit instantiation makes one an ordinary auto-inline function) -- but measure such changes
   on the real units, which the probes did not predict. SOCOM 1's DWARF names two MSL installs:
   `C:\apps\cw301` (the game's headers) and CodeWarrior 2.4's (the prebuilt MSL library: locale,
-  iostreams).
+  iostreams) -- but SOCOM II's prebuilt library is a 3.0b38+ build ("MAIN's Metrowerks runtime").
 - **Tool notes**: scdiff accepts the image's one non-zero pad word (0xFFFFFFFF at 0x1E70F4,
   after main); when a renamed row's re-draft misses, `automatch --stale` now keeps the old draft
   and renames the function it defines (an `sc: as=` line for a template name) instead of
@@ -4102,6 +4186,49 @@ InitUndersampler, ProcessStacker, ProcessMedian, ProcessStationarity, GetLabel,
 IdleVq1500Process, ControlVq1500Process `s1:order`; FreeVq1500 `s1:calls`; SlidingHisto_Free by
 body).
 
+**Round 8b: RT's leftovers, the crypto objects, three Medius names settled.**
+
+- **The online lane's three questions, against SOCOM 1's symtab** (the demo names every
+  `PacketType*` global and every `MediusUniqueCallback*ResponseHandler`, each handler returning the
+  size of its response): 0x6492D8 keeps `MediusBuddyGetPermission` -- SOCOM 1's function of that name
+  sends `PacketTypeAddToBuddyListConfirmationRequest` and its slot's handler is
+  `...AddToBuddyListConfirmationResponseHandler` (64 bytes, as here; the request grew 44 -> 48);
+  0x649060 keeps `MediusSendChatMessage` -- SOCOM 1's shape exactly and the library's only 112-byte
+  request (a direct message is a chat message with its type and target); 0x649400 was not
+  MediusGetPolicy -- 38 bytes (no policy word) and a 72-byte response (the GetBuddyList response's
+  size) -- it is the game's GetIgnoreList's request, `MediusGetIgnoreList`, with
+  `MediusAddToIgnoreList`/`MediusRemoveFromIgnoreList` (0x6494A0/0x649540, by their callers' status
+  strings), and **MediusGetPolicy is 0x6495E0** (44 bytes, a 288-byte response as SOCOM 1's). Two
+  callback slots moved with it (data.txt 0x656240, 0x65624C). A request's size and its handler's
+  size pair a new request with SOCOM 1's more surely than the slot order did.
+- **SOCOM II's RT keeps SOCOM 1's objects under new layouts**: the RC cipher's counters are words
+  ahead of the table (SOCOM 1's were bytes after it), LargeInt's tests walk up from word 0 and
+  IsGreater and its siblings are gone, KM_Initialize has a third key pair, rt_time_calc_diff gives a
+  zero span where SOCOM 1 failed, and rt_time_platform_get_time_string's RTC read is its own
+  function with milliseconds kept (gCurTimeDate, gbTimeDateSet: SOCOM 1's names).
+- **The title's glue object is built without scheduling**: KM_GetSoftwareID and
+  KM_GetSoftwareKeyPair (SOCOM 1's object 0x420FC0, the keys its function-local statics
+  `pubKey.0`/`priKey.1`) are byte-exact at `-O1 -G0` (or -O2 with both scheduling passes off) and
+  miss at -O2 by 2 and 67 words on every ee-gcc toolchain -- a per-object flag again, the first -O1.
+- **Shapes, each measured**: a conditional expression where the target if-converts (`nTimeout =
+  b == 1 ? 0 : 10000` -- the `if` form keeps the constant 1 across the call in a saved register and
+  branches on it: rt_comm_platform2_create); `while (!bFound)` around a search whose found block
+  jumps back to the flag test (the interface search); a date copied out field by field in date
+  order, year first (0x63D8E8: a struct assignment is ldl/ldr, the target lw/sw); RC4's j summed on
+  `S[i]` and the swap through its own byte temporary (the target's `andi` on the swapped byte);
+  counters cleared i, j, n (ccperm, one of six); a salt indexed off its own stack slot; LargeInt's
+  IsEqual through plain word pointers (index-first address sums), lintGetBit's mask first.
+- **Open, diagnosed in place**: RCEncrypt (15 words) and RCDecrypt (36), registers only;
+  LargeInt's two carry functions 0x626D28 (17) and 0x626D78 (28s), the loop's block layout.
+
+Hand-written in round 8b: `medius/rt_time_platform.c` (+3, 9 of 9), `medius/rt_time.c` (+1, 7 of 7),
+`medius/rt_crypt.c` (+1, KM_Initialize: 23 of 25), `medius/rt_comm_platform2.c` (+2, 19 of 20),
+`medius/rc.c` (2 of 4, new), `medius/largeint.c` (8 of 10, new), `medius/kmsoftware.c` (2 of 2, new)
+-- 19 functions byte-exact, 16 new to the map's byte-exact rows (4,364 bytes), 3 superseding
+matching drafts (IsEven, lintSetBit, lintClearBit); 17 rows named or corrected (rt_time_platform_
+get_time_string `s1:calls`, KM_Initialize, the four RC and seven LargeInt functions `s1:order`,
+MediusGetPolicy moved, the three ignore-list requests by call), 4 data rows.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
@@ -4163,9 +4290,11 @@ What is open across lanes, and what comes next:
   (con_ps2.cpp, ai_util.cpp) may want a file-wide `#pragma auto_inline off` instead of their pins.
 - **`tools/scperm.py`** (EQOA's tree-sitter mutations driven by MW) has not yet closed a
   function: its finds so far trade correctness for score.
-- Tell 3.0b50 from 3.0b52; port eqrefcheck's data-reference audit to absolute addresses. The
-  MSL runtime in MAIN (`_delete_vec` and friends) is MW-built library code -- a second calibration
-  set once its source is pinned down.
+- Tell 3.0b50 from 3.0b52 (MAIN's runtime does not: "MAIN's Metrowerks runtime"); port
+  eqrefcheck's data-reference audit to absolute addresses. MAIN's runtime is calibrated (2026-11-03):
+  next, the pool unit's big functions (`_strdup`/`_free`/`__nw__`/`__dl__`, func_001805A0), the
+  exception-handling unit, the MSL filebuf bodies, crt0.s, the four `__sinit` rows at
+  0x1D4B00-0x1D4C2F (the runtime units', outside its range).
 
 ## Credits and licence scope
 

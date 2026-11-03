@@ -229,6 +229,13 @@ public:
     int GetAmmoTotal(int index);
     int unwrap(int index, FIREMODE mode) const;
     EQUIP_IDTYPE GetCurItemIDType();
+    /* the current item's class as the body keeps its fire points (a byte: CZSealBody's 0x5DFAD0
+     * indexes its eight-byte slots at 0x388 with it, masked -- OVL2 0x5B8760; the names ours) */
+    enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
+                      FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
+    FIRE_CLASS GetCurItemFireClass();
+    /* the fire point's "projectile" child shown, for items 186 and 146 (OVL2 0x5B85A0; the name ours) */
+    void ShowProjectile();
     bool HasSniperRifle();
     bool HasItemWithAmmo(EQUIP_ITEM item);
     EQUIP_ITEM GetSecondaryEnum() const;

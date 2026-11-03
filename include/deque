@@ -638,6 +638,17 @@ public:
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
 };
 
+/* OPEN (the MSL headers round 11): a class element's default constructor -- the lobby's 0x2E0D90
+ * (CZOnlineLobby() calls it), the chat's 0x2F6230 (__sinit_zNetMediusChat.cpp), the state machine's
+ * 0x3A6410 -- calls only the block buffer's (0x28 bytes), where its copy constructor (0x2E07B0,
+ * 0x3A5E50, byte-exact) calls allocator<const void *>() 0x2CEE30 at +0x18 after the buffer's: one base,
+ * constructed out of line in one path and not at all in the other. `public Allocator` for __deque_imp's
+ * second base gives the default constructors (0x2E0D90 byte-exact, 0x2F6230 and 0x3A6410 down to their
+ * callee's row) and loses both copy constructors; deque() in class lets CZOnlineLobby() inline it and
+ * loses them too (build/p11/d1.var, d2.var). The buffer's own default constructor calls a per-element
+ * 0x18-byte copy of __cdeque_buf<PCv>()'s zeroing (0x2E0DF0, 0x2F6290, 0x3A6470, 0x334150: one level of
+ * the buffer chain out of line per element type, round 7's open middle level) where ours calls the
+ * shared 0x2CEE70 */
 template <class T, class Allocator>
 deque<T, Allocator>::deque()
 {
