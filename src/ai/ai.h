@@ -299,9 +299,9 @@ public:
     ~CAiMapLayerVec();
 };
 int zrdr_free(CRdrFile *file);
-/* MAIN's strncasecmp (0x1993C0, a placeholder still: SOCOM 1's CAiMap::GetLocation calls
- * strncasecmp where SOCOM II's calls it) */
-extern "C" int func_001993C0(const char *a, const char *b, unsigned int n);
+/* MAIN's strncasecmp (0x1993C0, newlib's: SOCOM 1's CAiMap::GetLocation calls strncasecmp where
+ * SOCOM II's calls it) */
+extern "C" int strncasecmp(const char *a, const char *b, unsigned int n);
 
 class CGNode;
 /* two ints (SOCOM 1's IPNT2D: units that use one define it themselves) */
@@ -837,7 +837,7 @@ public:
     {
         if (s) {
             for (names::iterator i = m_namesTable.begin(); i != m_namesTable.end(); ++i)
-                if (!func_001993C0((*i).m_name, s, 15))
+                if (!strncasecmp((*i).m_name, s, 15))
                     return &*i;
         }
         return 0;

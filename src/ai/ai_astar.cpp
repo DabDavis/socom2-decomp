@@ -16,7 +16,6 @@
 #include "../gamez/zsys/zsys.h"
 
 /* what the queue's functions call that is not written yet, ai_path.cpp's (OVL2 0x524950-0x5281AF) */
-extern "C" void func_00524950(CAiPath *path, const char *name);   /* the path drawn ("dbg_path") */
 extern "C" void func_00527900(CAiPath *path);   /* a planning path back to the queue's state */
 extern "C" void func_00527FC0(CAiPath *path, CAiPath::PATH_STATE state, int leg);
 
@@ -553,7 +552,7 @@ bool ai::TickPathPlanner(float, void *)
         case CAiPath::UNKNOWN:
         case CAiPath::COMPLETE:
         case CAiPath::FAILED:
-            func_00524950(path, "dbg_path");
+            path->PrintPath("dbg_path");
             path_queue.pop_front();
             break;
         }
