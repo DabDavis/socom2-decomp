@@ -36,6 +36,7 @@ extern void heap_Free(void *heap, void *p);
 extern void *heap_Alloc(void *heap, unsigned int size);
 extern void *heap_Calloc(void *heap, unsigned int n, unsigned int size);
 extern float logf(float x);
+extern void *memset(void *p, int c, unsigned int n);
 
 extern const short log_p_average_[511];
 static const short *const global_log_p_average = &log_p_average_[255];
@@ -313,7 +314,80 @@ __inline__ void CalcEntropyMerged4bit(unsigned int *out, unsigned char *p, int l
     }
 }
 
-extern void TrainSelectPhenom(CASR *c, int pron);
+/* each state's phoneme chosen for the utterance's segmentation: for every language state, its
+ * entropy over every codebook (the state's column of each probability matrix) and its entropy merged
+ * with each training state's counts; a training state takes the language state (from the first
+ * non-ergodic one) whose merged entropy, less half its own, is the least -- the user-word silence
+ * left as it is. The four entropy inlines above it are its loops (round 16c). Eleven of its values
+ * live on the stack, and reload gives the spilled pseudos their slots in pseudo order -- the
+ * declarations' order: r before seg and k before i put them at the target's +24, +28, +32, +36;
+ * seg declared before n makes reload fetch the n * 2 it has just spilled from its slot again
+ * (`lw a1,40(sp)`: seg's address reloads c into v1 between, where the other order passes n * 2
+ * on in v1); the segmentation walks back as the for's own step after j's (`j++, s--`: its
+ * decrement last in every unrolled copy, the copies' address registers following). */
+void TrainSelectPhenom(CASR *c, int pron)
+{
+    LANGVT *l = c->lng;
+    unsigned int ncdb = l->GetNbrCodeBook(l);
+    unsigned short *gastone = l->GetpGastone(l);
+    unsigned int nstate = l->GetNbrState(l);
+    unsigned short sil = c->uw_silence;
+    int fourbit = l->CheckBitField(l, 1);
+    int base = l->GetNbrErgodicPhenomes(l);
+    TRAINREC *r;
+    unsigned short *seg = c->utt[pron].seg;
+    unsigned short n = c->nstates;
+    unsigned int *ent, *best;
+    unsigned int k, i, j;
+
+    ent = heap_Calloc(c->heap, n * 2, 4);
+    if (ent == 0)
+        return;
+    best = ent + n;
+    memset(best, 255, n * 4);
+    for (i = 0; i < nstate; i++) {
+        unsigned int sum = 0;
+        unsigned short *s;
+
+        r = c->trainrecs;
+
+        for (k = 0; k < ncdb; k++) {
+            void *cb = l->GetpCodeBook(l, k);
+            unsigned char *prob = l->GetpProbMatrix(cb);
+            unsigned int dim = l->GetNbrGastone(cb);
+            unsigned int ncw = l->GetSecondCdbSize(cb);
+
+            if (fourbit) {
+                unsigned char *p = prob + (*gastone >> 1);
+                unsigned short low = *gastone & 1;
+
+                sum += CalcEntropy4bit(p, low, ncw, dim);
+                CalcEntropyMerged4bit(ent, p, low, dim, r->counts, n, ncw);
+            } else {
+                unsigned char *p = prob + *gastone;
+
+                sum += CalcEntropy(p, ncw, dim);
+                CalcEntropyMerged(ent, p, dim, r->counts, n, ncw);
+            }
+            r = r->next;
+            gastone++;
+        }
+        sum >>= 1;
+        s = &seg[n - 1];
+        for (j = 0; j < n; j++, s--) {
+            if (*s != sil) {
+                unsigned int d = ent[j] - sum;
+
+                if (d < best[j]) {
+                    best[j] = d;
+                    *s = i + base;
+                }
+            }
+            ent[j] = 0;
+        }
+    }
+    heap_Free(c->heap, ent);
+}
 
 /* the training's models from every utterance's labels: counted, smoothed if asked, turned into
  * probabilities, the phonemes selected; then the records freed */

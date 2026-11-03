@@ -71,6 +71,15 @@ enum SEAL_PEEK {
     PEEK_NONE = 2
 };
 
+/* a SEAL's kit (zkit's CZKit: only what the zoom calls, over its 0xA80 bytes) */
+class CZKit {
+public:
+    void SetCurReticule(bool on);   /* 0x5BE570 */
+    bool NVG_Enabled() const;   /* 0x5C80F0 */
+
+    unsigned char _0[0x1060 - 0x5e0];
+};
+
 /* a SEAL: its matrix (the second virtual), its controller (CEntity's at 0xC0), its body's state
  * and wanted peek (SOCOM 1's CBody::m_state at 0x11D, SOCOM II's a halfword at 0x174; its
  * m_desiredPeek at 0x305, SOCOM II's 0x375) and the zoomed flag (SOCOM 1's at 0xF5C) */
@@ -86,7 +95,7 @@ public:
     unsigned char _176[0x375 - 0x176];
     SEAL_PEEK m_desiredPeek;   // 0x375
     unsigned char _376[0x5e0 - 0x376];
-    unsigned char m_kit[0x1060 - 0x5e0];   // 0x5e0: its CZKit (SOCOM 1: 0x520)
+    CZKit m_kit;   // 0x5e0 (SOCOM 1: 0x520)
     unsigned char _b0 : 5;   // 0x1060
     unsigned char m_zooming : 1;
     unsigned char _b6 : 2;
