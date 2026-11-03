@@ -46,10 +46,12 @@ void Source::RenderBBox()
         (*i)->GetBBox(&box);
 }
 
-/* SOCOM 1's: every source deleted, the list emptied */
+/* SOCOM 1's: every source deleted, the list emptied. The end declared first: byte-exact under
+ * include/list's iterator as it stands and under SOCOM 1's (node *node_), where `it, e` swaps the
+ * two saved registers (the world lane r6) */
 void Source::List::Uninit()
 {
-    PtrListBase::iterator it = ListBegin(*this), e = ListEnd(*this);
+    PtrListBase::iterator e = ListEnd(*this), it = ListBegin(*this);
 
     for (; it != e; ++it)
         delete (Source *)*it;

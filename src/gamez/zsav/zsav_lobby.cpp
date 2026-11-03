@@ -138,21 +138,25 @@ bool CLobbySaveManager::Fetch(const char *name, int a, int b)
 
 /* the fetched blob handed out: each entry to the modules of its name, with the file's checksum,
  * when the header's version is the one asked for; the blob dropped and the file closed.
- * OPEN, 0x1A4 of 0x1B4, both causes include/list's (measured, the world lane r6,
- * build/scratch/wld/v_load*.py): (1) the target hoists the walk's end (this + 4) out of both
- * loops into a preheader placed after the function's return -- the outer loop entered by a `b` to
- * it, its `0 < count` guard there, then a `b` to the bottom test. include/list's end(), built from
- * `&this->end_`, is never hoisted; built from SOCOM 1's tail() --
- * `iterator(__list_deleter<...>::iterator(tail()))` -- it is, and the whole loop shape becomes the
- * target's (0x1C8: the rest is (2)'s extra saved register); (2) the element is read three times,
- * each a load folded from the node (8(node)), where MW keeps node + 8 in a saved register across
- * the calls: the CAST in the iterator's `((node *)node_)->data_` does it -- `*i`, `*i.i_`, the node
- * read directly, through an inline by value and even a volatile read all keep it, a walk through an
- * uncast node pointer folds all three loads and if-converts the name's c_str() ternary as the
- * target does. SOCOM 1's DWARF has exactly that: list's node_base links are `node *prev_, *next_`
- * and generic_iterator holds `node *node_` (include/list holds node_base * and casts) -- an MSL
- * headers item. The name is read through CLobbySaveModule::GetName(), which folds the string's
- * offset into the module's as the target's c_str() does */
+ * OPEN, 0x1C8 of 0x1B4 here -- BYTE-EXACT once include/list's iterator holds SOCOM 1's `node *`
+ * (measured, the world lane r6, build/scratch/wld/v_load*.py, list_iter.patch). Two causes, both
+ * include/list's: (1) the target hoists the walk's end (this + 4) out of both loops into a
+ * preheader placed after the function's return -- the outer loop entered by a `b` to it, its
+ * `0 < count` guard there, then a `b` to the bottom test. The wrapper's end(), built from
+ * `&this->end_`, is never hoisted (0x1A4); built from a reference accessor -- end_node() or
+ * tail(), as below -- it is, and the whole loop shape becomes the target's; (2) the element is
+ * read three times, each a load folded from the node (8(node)), where MW keeps node + 8 in a saved
+ * register across the calls: the CAST in the iterator's `((node *)node_)->data_` does it -- `*i`,
+ * `*i.i_`, the node read directly, through an inline by value and even a volatile read all keep
+ * it; a walk through an uncast node pointer folds all three loads and if-converts the name's
+ * c_str() ternary as the target does. SOCOM 1's DWARF has exactly that: list's node_base links are
+ * `node *prev_, *next_` and generic_iterator holds `node *node_` (include/list holds node_base *
+ * and casts). With the iterator so (node_ a node *, `*` reading node_->data_) every hand-written
+ * unit scores as before plus this and SerializeValves (valve_main.cpp), Uninit's end declared
+ * first -- a non-additive include/list change, the MSL lane's to adopt. The wrapper's end() itself
+ * through end_node() trades this for CGraph::BuildTree (graph_tree.cpp), so the end is built here.
+ * The name is read through CLobbySaveModule::GetName(), which folds the string's offset into the
+ * module's as the target's c_str() does */
 bool CLobbySaveManager::Load(const char *name, int version)
 {
     int result;
@@ -166,7 +170,9 @@ bool CLobbySaveManager::Load(const char *name, int version)
             for (int k = 0; k < m_header->m_count; k++) {
                 Entry *e = &m_entries[k];
 
-                for (iterator i = begin(); i != end(); ++i) {
+                for (iterator i = begin();
+                     i != iterator(std::__list_deleter<const void *, std::allocator<const void *> >::iterator(&end_node()));
+                     ++i) {
                     if (!strcmp((*i)->GetName(), e->m_name)) {
                         (*i)->Load(m_buffer + e->m_offset, e->m_size);
                         (*i)->SetChecksum(m_file->GetChecksum());
