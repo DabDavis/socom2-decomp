@@ -49,11 +49,12 @@ extern unsigned char data_003DC360;              /* lens effects on (1) */
 }
 
 
-/* the kit and the HUD, unnamed yet (SOCOM 1's names) */
-extern "C" void func_005BE570(void *kit, int reticule);   /* CZKit::SetCurReticule */
-extern "C" bool func_005C80F0(void *kit);                 /* CZKit::NVG_Enabled */
-extern "C" void func_001F7560(CHUD *hud);                 /* CHUD::ZoomOut */
-extern "C" void func_001F7360(CHUD *hud);                 /* CHUD::ZoomIn */
+/* the HUD's zoom (hud_main.cpp's: only what the zoom calls) */
+class CHUD {
+public:
+    void ZoomIn();   /* 0x1F7360 */
+    void ZoomOut();   /* 0x1F7560 */
+};
 
 extern unsigned char gopt[0x1b];
 
@@ -150,7 +151,7 @@ void CameraZoom::HandleZoomIn(float newzoom, float current)
         SetGoal(newzoom);
         data_00408C48 = 3.0f * newzoom;
         if (gopt[0])
-            func_001F7360(data_00408C60);
+            data_00408C60->ZoomIn();
         if (!data_00408C50 && data_003DC338 == 1.0f) {
             data_00408C50 = 1;
             data_003DC348 = appCamera->SetCtrlView(cam_view_first);
@@ -158,8 +159,8 @@ void CameraZoom::HandleZoomIn(float newzoom, float current)
     } else if (newzoom == 1.01f) {
         SetGoal(newzoom);
         data_00408C48 = 3.0f * newzoom;
-        if (gopt[0] && func_005C80F0(data_00408C58->m_kit))
-            func_001F7360(data_00408C60);
+        if (gopt[0] && data_00408C58->m_kit.NVG_Enabled())
+            data_00408C60->ZoomIn();
         if (!data_00408C50 && data_003DC338 == 1.0f) {
             data_00408C50 = 1;
             data_003DC348 = appCamera->SetCtrlView(cam_view_first);
@@ -208,22 +209,22 @@ void SeeFarther(bool bEnable, float SeeFartherFactor)
 void CameraZoom::OnGoal()
 {
     if (data_00408C50) {
-        func_005BE570(data_00408C58->m_kit, 0);
+        data_00408C58->m_kit.SetCurReticule(false);
         if (data_003DC340 == 1.0f) {
             if (gopt[0])
-                func_001F7560(data_00408C60);
+                data_00408C60->ZoomOut();
             appCamera->m_ctrl_view = cam_view_third;
             data_00408C50 = 0;
         } else if (data_003DC340 == 1.01f || data_003DC340 == 1.01f) {
-            if (gopt[0] && func_005C80F0(data_00408C58->m_kit)) {
-                func_001F7560(data_00408C60);
-                func_001F7360(data_00408C60);
+            if (gopt[0] && data_00408C58->m_kit.NVG_Enabled()) {
+                data_00408C60->ZoomOut();
+                data_00408C60->ZoomIn();
                 return;
             }
-            func_001F7560(data_00408C60);
+            data_00408C60->ZoomOut();
         } else {
-            if (gopt[0] && !func_005C80F0(data_00408C58->m_kit))
-                func_001F7360(data_00408C60);
+            if (gopt[0] && !data_00408C58->m_kit.NVG_Enabled())
+                data_00408C60->ZoomIn();
         }
     }
 }
@@ -478,7 +479,7 @@ void CameraZoom::HoldLensFx(unsigned char hold)
 {
     data_00408CF0 |= hold;
     if (data_00408CF0) {
-        func_005C1800(data_00408C58->m_kit, 0, 0);
+        func_005C1800(&data_00408C58->m_kit, 0, 0);
         data_00408CD0 = 0;
         if (data_00408CC8) {
             func_002707C0(data_00408CC8, false);

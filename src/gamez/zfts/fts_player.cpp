@@ -92,22 +92,48 @@ public:
 
 /* the spawners: the vehicles waiting to come back, one every two seconds (SOCOM 1's CSpawners and
  * its global, 32 bytes at 0x440C10) */
-class CVehicleRdrEntry;
+/* a vehicle's definition (zchar's CVehicleRdrEntry: only what the mission's filter reads -- its name
+ * at 0, the teams it serves at 0x11C, a flag in bit 1 of the byte at 0x15C; the names ours) */
+class CVehicleRdrEntry {
+public:
+    bool IsSingleOnly() { return m_15c_1 ? true : false; }
+
+    char m_name[0x11c];   // 0x0
+    unsigned int m_teams;   // 0x11c
+    unsigned char _120[0x15c - 0x120];
+    unsigned char m_15c_0 : 1;   // 0x15c
+    unsigned char m_15c_1 : 1;
+};
 
 class CSpawners {
 public:
+    /* a vehicle waiting: its recycler and its entry. Its constructor is user-declared: the list's
+     * insert (0x2B3DD0, LoadVehicles' push_back) copies the two words with lw/sw through a0, as an
+     * element with a constructor is copied (without one, MW moves them through the FPRs). Its empty
+     * destructor is the level the target's destructor chain shows below the range erase: with it the
+     * deleter's destructor is five high in tail code, so ~list's copy (0x2B3F20) inlines ~__list_imp
+     * one level and calls ~__list_deleter (0x2B3F80), which inlines the erase whole -- without it
+     * ~list's copy inlines all three levels (a STAND-IN for the original MSL's deeper node allocator
+     * maybe: one more level there gives the same chain, build/scratch/states/spawn1.cpp) */
     struct spawn_map {
+        spawn_map(unsigned int i, CVehicleRdrEntry *e) : index(i), entry(e) {}
+        ~spawn_map() {}
+
         unsigned int index;   // 0x0: the recycler's
         CVehicleRdrEntry *entry;   // 0x4
     };
+    /* the waiting vehicles: a class over the list (the names ours). ~CSpawners' member destructor at
+     * +0xC tests the list and calls ~list<spawn_map> (0x2B3F20) with 0, as a base -- and 0x2B3F20 is
+     * itself two this-tests and a call to ~__list_deleter, a level inlined between: so the member is
+     * one class above std::list (SOCOM 1's ~CSpawners agrees: three this-tests above its call to
+     * ~__list_deleter, where its id list, a plain std::list, shows three above the deleter's body) */
+    class spawn_list : public std::list<spawn_map> {
+    };
 
     /* the lists built out of line, no vehicle counted (the unit's initialiser 0x400330); the
-     * destructor inline, its copy in the template tail (0x2B4030) where the initialiser registers it.
-     * OPEN, 0x10C of 0xA0 bytes (the states lane, round 16; 0x2B4030 stays its draft's): the target
-     * calls the vehicle list's destructor (0x2B3F20, 0x60), which inlines ~__list_imp and calls
-     * ~__list_deleter (0x2B3F80, byte-exact here); this copy inlines all of it -- the spawn list's
-     * range erase (instantiated by Clear) a level too short in tail code. The initialiser's code is
-     * byte-exact once 0x2B4030 carries this destructor's name */
+     * destructor inline, its copy in the template tail (0x2B4030) where the initialiser registers it:
+     * Clear called (pinned below), the spawn list's chain through 0x2B3F20, the id list's three
+     * levels inlined and its range erase called (0x2B40D0) */
     CSpawners() : m_count(0) {}
     ~CSpawners() { Clear(); }
 
@@ -115,7 +141,7 @@ public:
     void Tick(float dT);
 
     std::list<unsigned int> m_ids;   // 0x0
-    std::list<spawn_map> m_spawns;   // 0xc
+    spawn_list m_spawns;   // 0xc
     int m_count;   // 0x18
     float m_timer;   // 0x1c
 };
@@ -140,7 +166,9 @@ public:
     void CloseVehicleRdr();
     void OpenVehicleRdr();
 
-    unsigned char _0[0x1814];
+    unsigned char _0[0x140];
+    unsigned int m_vehicleFilter;   // 0x140: SOCOM II's (the name ours): which vehicles a mission takes
+    unsigned char _144[0x1814 - 0x144];
     CVehicleRdr *m_vehicle_rdr;   // 0x1814 (SOCOM 1's at 0x590)
     unsigned char _1818[0x1868 - 0x1818];
     CValve *m_team_valves[32];   // 0x1868 (SOCOM 1's at 0x5d4)
@@ -156,6 +184,9 @@ void func_005EC9F0(CZSealBody *seal, int arg);   /* CSealUnit::InitalizeSealUnit
                                                     argument) */
 void func_0026ADA0(CZAnimMain *zanim, zdb::CNode *node);
 }
+
+/* an rdr array's tag looked up (zrdr.h's) */
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);   /* 0x32F0D0 */
 
 /* the squirm switch (SOCOM 1's file static) */
 static bool doSquirm;
@@ -271,7 +302,7 @@ _zanim_cmd_hdr *CftsPlayer::CmdParseControls(_zrdr *rdr)
     cmd = (_player_controls_cmd *)_calloc(1, sizeof(_player_controls_cmd), 0, 0);
     cmd->hdr.data_size = sizeof(_player_controls_cmd);
     cmd->hdr.timeless = 1;
-    if (func_0032F0D0(rdr, "ON"))
+    if (zrdr_findtag(rdr, "ON"))
         cmd->on = 1;
     else
         cmd->off = 1;
@@ -310,7 +341,7 @@ _zanim_cmd_hdr *CftsPlayer::CmdParseIsPlayerNode(_zrdr *rdr)
     cmd->hdr.data_size = sizeof(_is_player_node_cmd);
     cmd->hdr.timeless = 1;
     cmd->node = anim->LoadNodeNames(rdr, 0, 0, anim->node_search_scope);
-    if (func_0032F0D0(rdr, "SEARCH_CHILDREN"))
+    if (zrdr_findtag(rdr, "SEARCH_CHILDREN"))
         cmd->search_children = 1;
     return (_zanim_cmd_hdr *)cmd;
 }
@@ -384,6 +415,50 @@ void CMission::CloseVehicleRdr()
         m_vehicle_rdr->Close();
 }
 
+/* whether the mission takes a vehicle (SOCOM II's; LoadVehicle and LoadVehicles ask it, OVL1 0x2B2D20):
+ * one flagged single-player-only never online nor after the first; the first's teams kept, the
+ * others' tested against them by the mission's filter bits; then a vehicle named in the debug
+ * filter (OVL2 bss 0x66B010) only. The names ours */
+extern "C" {
+extern unsigned int data_00440C40;   /* the first vehicle's teams */
+extern char data_0066B010[];   /* (a vehicle's name: the only one taken, when set) */
+extern unsigned char data_0045A0C1;   /* theNetwork's online byte */
+}
+
+extern "C" bool func_002B2D20(CMission *mission, CVehicleRdrEntry *entry, bool first)
+{
+    bool ok;
+
+    if (entry->IsSingleOnly() && (!first || data_0045A0C1))
+        return false;
+    unsigned int teams = entry->m_teams;
+
+    ok = false;
+    if (first) {
+        data_00440C40 = teams;
+        ok = true;
+    } else {
+        unsigned int filter = mission->m_vehicleFilter;
+
+        if (!(filter & 1)) {
+            ok = true;
+            if (filter & 2)
+                ok = (teams & data_00440C40) == 0;
+            if (ok && (filter & 4))
+                ok = (teams & data_00440C40) != 0;
+            if (ok && (filter & 0x28))
+                ok = (teams & 8) == 0;
+            if (ok && (filter & 0x18))
+                ok = (teams & 4) == 0;
+        }
+    }
+    const char *only = data_0066B010;
+
+    if (!first && *only)
+        ok = strcasecmp(only, entry->m_name) == 0;
+    return ok;
+}
+
 /* an entity given back: a SEAL's anims stopped, or, with vehicles waiting, the spawners' timer
  * restarted and one more owed (OVL1 0x2B2310; SOCOM 1's had only the second). The count is read
  * into a local before the timer's store: only so does the constant take v0 and the store go ahead
@@ -448,8 +523,11 @@ void CSpawners::Tick(float dT)
     }
 }
 
-/* every spawn forgotten (OVL1 0x2B2190) */
+/* every spawn forgotten (OVL1 0x2B2190). Pinned: ~CSpawners' copy calls it (SOCOM 1's inlines it),
+ * where these headers' shallower chain would let it inline */
+#pragma auto_inline off
 void CSpawners::Clear()
 {
     m_spawns.clear();
 }
+#pragma auto_inline reset

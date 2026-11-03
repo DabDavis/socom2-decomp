@@ -7,18 +7,9 @@
 extern "C" {
 void func_0030E300(void *net);
 void func_003654A0(void *reloc);                 /* (SOCOM 1 cleared g_relocDblBuf's two words) */
-void func_0038D4E0();                            /* UnloadTheWorld */
 void func_001E8FE0();
-void *func_00274930();                           /* GetMenuStack */
-void func_0027EDF0(void *stack, bool all);       /* CMenuStack::FlushHistory */
-void func_0039C590(void *iop, int handle);       /* CIOPManager::UnRegisterRebootCallback */
-void func_00350CC0(int arg);
 void *func_002AFBA0();
 void func_0033ED10(void *arg);
-void *func_00361BC0();
-void func_003A3740(void *snd, const char *bank);
-void func_00366A00(CMenuStateMenu *menu, int arg);   /* CGameMenu::RestartBackgroundMPEG */
-void func_00366B10(CMenuStateMenu *menu);            /* CGameMenu::HaltBackgroundMPEG */
 
 }
 
@@ -29,8 +20,6 @@ struct CQueuedMessage {
 };
 
 extern "C" {
-void func_00366940(CMenuStateMenu *menu);        /* CGameMenu::TickMPEG */
-void func_002D9E40(float dT);                    /* CInput::Tick */
 void func_00341250(float dT);
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_002A4290(CQueuedMessage *msg);
@@ -42,7 +31,28 @@ void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 
 }
 
-extern char theIOPManager[];
+/* the localised string tables, the menu history, the IOP's reboot callbacks, the UI and the GS
+ * FIFO's sync (their units'; only what is called) */
+class CStringTables {
+public:
+    void Unload(const char *name);   /* 0x3A3740 */
+};
+CStringTables *GetStringTables();   /* 0x361BC0 */
+
+class CMenuStack {
+public:
+    void FlushHistory(bool all);   /* 0x27EDF0 */
+};
+CMenuStack *GetMenuStack();   /* 0x274930 */
+
+class CIOPManager {
+public:
+    void UnRegisterRebootCallback(int handle);   /* 0x39C590 */
+};
+extern CIOPManager theIOPManager;
+
+void ZuiUnInit();   /* 0x38D4E0 */
+void zSysFifoSetSync(bool on);   /* 0x350CC0 */
 
 namespace {
 /* the menus' double-buffered texture relocation (SOCOM 1's CDblBufTextureRelocator, 0x1C bytes:
@@ -111,8 +121,8 @@ bool CMenuState::Tick(float dT)
 {
     CQueuedMessage msg;
 
-    func_00366940(m_menu);
-    func_002D9E40(dT);
+    m_menu->TickMPEG();
+    CInput::Tick(dT);
     CSnd::PostTick(dT, 0);
     func_00341250(dT);
     func_003654C0(m_menu, dT);
@@ -151,7 +161,7 @@ bool CMenuState::Tick(float dT)
 /* back on top: the background film restarted, the menu's pop event run */
 void CMenuState::OnPop(int userdata)
 {
-    func_00366A00(m_menu, 0);
+    m_menu->RestartBackgroundMPEG(0);
     RunEventAnim("ON_STATE_POP", 0);
     m_skip_swap = 2;
 }
@@ -159,7 +169,7 @@ void CMenuState::OnPop(int userdata)
 /* covered: the background film halted */
 void CMenuState::OnPush(int userdata)
 {
-    func_00366B10(m_menu);
+    m_menu->HaltBackgroundMPEG();
 }
 
 /* torn down: offline, the network's let go of; the texture buffers, the menu, the soft keyboard's
@@ -178,18 +188,18 @@ void CMenuState::UnInit()
     m_menu = 0;
     zdb::CAssetMgr::ReleaseLibRef(g_pSkbLib);
     g_pSkbLib = 0;
-    func_0038D4E0();
+    ZuiUnInit();
     func_001E8FE0();
-    func_0027EDF0(func_00274930(), true);
+    GetMenuStack()->FlushHistory(true);
     zUISchedulerClear();
     SelectionSound = 0;
-    func_0039C590(theIOPManager, m_iopregh);
+    theIOPManager.UnRegisterRebootCallback(m_iopregh);
     thePipe.m_714 = 0;
-    func_00350CC0(0);
+    zSysFifoSetSync(false);
     if (animfile) {
         ZAnim.CloseZAR(animfile);
         animfile = 0;
     }
     func_0033ED10(func_002AFBA0());
-    func_003A3740(func_00361BC0(), "UIMn");
+    GetStringTables()->Unload("UIMn");
 }

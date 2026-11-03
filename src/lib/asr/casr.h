@@ -164,19 +164,28 @@ struct LANGVT {
     void *data;                                     /* +0 */
     void *s1[3];
     int (*GetNbrCodeBook)(LANGVT *l);                 /* +16, slot 4 */
-    void *s5[10];
+    unsigned int (*GetNbrState)(LANGVT *l);           /* +20, slot 5 */
+    void *s6[5];
+    int (*GetNbrErgodicPhenomes)(LANGVT *l);          /* +44, slot 11 */
+    void *s12[3];
     short (*GetUWSilencePhenome)(LANGVT *l);          /* +60, slot 15 */
     void *s16[9];
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
     void *s26[5];
     unsigned int (*GetSecondCdbSize)(void *cb);       /* +124, slot 31 */
-    void *s32[9];
+    void *s32;
+    unsigned int (*GetNbrGastone)(void *cb);          /* +132, slot 33 */
+    void *s34;
+    unsigned short *(*GetpGastone)(LANGVT *l);        /* +140, slot 35 */
+    void *s36[5];
     void *(*GetpCodeBook)(LANGVT *l, int n);          /* +164, slot 41 */
     void *s42[4];
     void *(*GetpPhenUserWordTraining)(LANGVT *l);     /* +184, slot 46 */
     void *s47[5];
     int (*CheckBitField)(LANGVT *l, int mask);        /* +208, slot 52 */
-    void *s53[26];
+    void *s53[8];
+    unsigned char *(*GetpProbMatrix)(void *cb);       /* +244, slot 61 */
+    void *s62[17];
 };
 
 typedef struct SAMPLEFMT {

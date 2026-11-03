@@ -5,27 +5,50 @@
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
-void *func_00361BC0();                           /* (the sound system; SOCOM 1 called CSnd::Close here) */
-void func_003A3740(void *snd, const char *bank);
-void func_00321D30();                            /* zdb::EmptyAssetRecycleBin */
-void func_00385C30(void *vars);                  /* CUIVarManager::Reset */
-void func_0032C2B0(const char *name, const char *path);   /* CRdrArchive::RemoveArchive */
-void *func_00274930();                           /* GetMenuStack */
-void func_0027EDF0(void *stack, bool all);       /* CMenuStack::FlushHistory */
-void func_002D9E40(float dT);                    /* CInput::Tick */
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
-void func_001EEB40(CStateString *s, const char *text);   /* std::string::assign */
-void func_0032C1E0(const char *name, const char *path);   /* CRdrArchive::AddArchive */
-void func_0032C570();                            /* CRdrArchive::OpenAll */
-void *func_003A4460();
-void func_003A3900(void *snd, const char *bank, void *arg);
 void func_00368570(CGameMenu *menu, void *reloc, CZAnimZAR *zar);   /* CGameMenu::Init */
-void func_003AFD50(int r, int g, int b, int a, int z);   /* CVideo::Clear */
 
 }
 
-extern char theUIVarManager[];
+/* the localised string tables (util_loc.cpp's; only what is called: SOCOM 1 called CSnd::Close
+ * where SOCOM II unloads the UI's table); the language a word here, as st_mpexit.cpp has it */
+enum LANGUAGE {
+    LANGUAGE_ALIGNMENT_HACK = 0x7FFFFFFF
+};
+LANGUAGE GetLanguage();   /* 0x3A4460 */
+
+class CStringTables {
+public:
+    void Load(const char *name, LANGUAGE language);   /* 0x3A3900 */
+    void Unload(const char *name);   /* 0x3A3740 */
+};
+CStringTables *GetStringTables();   /* 0x361BC0 */
+
+/* the reader archives (zrdr.h's CRdrArchive: only its statics), the asset recycler, the UI's
+ * variables and the menu history (their units'; only what is called) */
+class CRdrArchive {
+public:
+    static CRdrArchive *AddArchive(const char *name, const char *path);   /* 0x32C1E0 */
+    static bool RemoveArchive(const char *name, const char *path);   /* 0x32C2B0 */
+    static void OpenAll();   /* 0x32C570 */
+};
+
+namespace zdb {
+void EmptyAssetRecycleBin();   /* 0x321D30 */
+}
+
+class CUIVarManager {
+public:
+    void Reset();   /* 0x385C30 */
+};
+extern CUIVarManager theUIVarManager;
+
+class CMenuStack {
+public:
+    void FlushHistory(bool all);   /* 0x27EDF0 */
+};
+CMenuStack *GetMenuStack();   /* 0x274930 */
 
 namespace {
 /* the stats screen's anims */
@@ -146,22 +169,24 @@ bool CExitState::Init()
     func_001F21B0(&counts);
     theMission.ReOpen_Unload2();
     if (theMission.m_1ac->m_4 == 2) {
-        func_002CF2F0(&theGame, 1);
+        theGame.Pop(1);
         return true;
     }
     if (theGame.m_menuState.m_skip) {
-        func_002CF2F0(&theGame, 0);
-        func_002CF410(&theGame, &theGame.m_loadState, 0);
+        theGame.Pop(0);
+        theGame.Switch(&theGame.m_loadState, 0);
         return true;
     }
-    func_0032C1E0("readerx.zar", "run/ui");
-    func_0032C570();
+    CRdrArchive::AddArchive("readerx.zar", "run/ui");
+    CRdrArchive::OpenAll();
     if (!m_menu)
         m_menu = new CExitMenu;
     animfile = ZAnim.OpenZAR("run/extzanim.zar");
-    func_003A3900(func_00361BC0(), "UIX", func_003A4460());
+    CStringTables *tables = GetStringTables();
+
+    tables->Load("UIX", GetLanguage());
     func_00368570(m_menu, 0, animfile);
-    func_003AFD50(0, 0, 0, 0, 0);
+    CVideo::Clear(false, 0, 0, 0, 0);
     zVid.m_91 = 1;
     zVid_Sync0();
     return true;
@@ -170,7 +195,7 @@ bool CExitState::Init()
 /* the splash screen's asset library named; no menu yet */
 CExitState::CExitState() : CGameState("ExitState")
 {
-    func_001EEB40(&m_libname, "common/assetlib/splash");
+    m_libname.assign("common/assetlib/splash");
     m_menu = 0;
 }
 
@@ -178,7 +203,7 @@ CExitState::CExitState() : CGameState("ExitState")
 bool CExitState::Tick(float dT)
 {
     CSnd::PostTick(dT, 0);
-    func_002D9E40(dT);
+    CInput::Tick(dT);
     func_003654C0(m_menu, dT);
     m_menu->Draw2dOnly();
     zSysFifoEnd();
@@ -193,7 +218,7 @@ void CExitState::UnInit()
     zSysFifoEnd();
     sceGsSyncPath(0, 0);
     zVid.m_91 = 0;
-    func_003A3740(func_00361BC0(), "UIX");
+    GetStringTables()->Unload("UIX");
     if (animfile) {
         ZAnim.CloseZAR(animfile);
         animfile = 0;
@@ -201,8 +226,8 @@ void CExitState::UnInit()
     if (m_menu)
         delete m_menu;
     m_menu = 0;
-    func_00321D30();
-    func_00385C30(theUIVarManager);
-    func_0032C2B0("readerx.zar", "run/ui");
-    func_0027EDF0(func_00274930(), true);
+    zdb::EmptyAssetRecycleBin();
+    theUIVarManager.Reset();
+    CRdrArchive::RemoveArchive("readerx.zar", "run/ui");
+    GetMenuStack()->FlushHistory(true);
 }

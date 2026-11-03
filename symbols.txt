@@ -3867,10 +3867,10 @@
 0x002AE050 0x2F0 func_002AE050  # OVL1
 0x002AE340 0x5C func_002AE340  # OVL1
 0x002AE3A0 0x148 func_002AE3A0  # OVL1
-0x002AE4F0 0x20 HUDStartDefuseTimerTick__FP14_zanim_cmd_hdrPf  # OVL1; tu: fts_mission.cpp~ (1.0 beta); s1:align
-0x002AE510 0x6C func_002AE510  # OVL1
-0x002AE580 0x2C func_002AE580  # OVL1; tu: fts_mission.cpp~ (1.0 beta)
-0x002AE5B0 0x1A4 func_002AE5B0  # OVL1
+0x002AE4F0 0x20 HUDClearTimerTick__FP14_zanim_cmd_hdrPf  # OVL1; tu: fts_mission.cpp~ (1.0 beta); s1:align; corrected (the states lane, round 21; the name ours): it calls CZWeapon::ClearTimer(0) and returns true -- the tick of the bare command 0x2AE510 parses -- where SOCOM 1's HUDStartDefuseTimerTick, the name the alignment gave it, calls hudStartDefuseTimer; that one is 0x2AE580
+0x002AE510 0x6C HUDClearTimerParse__FP5_zrdr  # OVL1; ours (the states lane, round 21): the bare timeless command whose tick 0x2AE4F0 clears the weapons' timer; fts_mission.cpp
+0x002AE580 0x2C HUDStartDefuseTimerTick__FP14_zanim_cmd_hdrPf  # OVL1; tu: fts_mission.cpp~ (1.0 beta); s1 by hand (the states lane, round 21): SOCOM 1's HUDStartDefuseTimerTick hands the command's time to hudStartDefuseTimer, as this hands its flag and time to SOCOM II's hudStartDefuseTimer(bool, float), returning true
+0x002AE5B0 0x1A4 HUDStartDefuseTimerParse__FP5_zrdr  # OVL1; s1 by hand (the states lane, round 21): SOCOM 1's HUDStartDefuseTimerParse, a 12-byte command (the time, a number, and SOCOM II's COUNT_UP flag) the tick 0x2AE580 reads; fts_mission.cpp, byte-exact
 0x002AE760 0x64 HUDTriggerMissionCamTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x002AE7D0 0x50 HUDTriggerMissionCamBegin__FP14_zanim_cmd_hdr  # OVL1; s1:calls
 0x002AE820 0x148 HUDTriggerMissionCamParse__FP5_zrdr  # OVL1; s1:align
@@ -3914,19 +3914,19 @@
 0x002B12A0 0x68 func_002B12A0  # OVL1
 0x002B1310 0x8 func_002B1310  # OVL1
 0x002B1320 0x68 func_002B1320  # OVL1
-0x002B1390 0x19C func_002B1390  # OVL1
+0x002B1390 0x19C resize__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FUi  # OVL1; by hand (the states lane, round 21, the UI lane's round 13 lead verified): __sinit_fts_mission.cpp (0x400160) calls it once, on theUIVarManager with 256, where SOCOM 1's __sinit_fts_mission.cpp calls this name with 256; the body grows through insert(end, n - size, tmp) 0x2B1BD0 with a temporary CUIVariable (its bases built by 0x2B17E0 and 0x2B17C0, the vtables 0x4062B0/0x4062B8 stored, the watchers by 0x2B17A0 and reserve(16) 0x2B1600) torn down through Destroy 0x386B00, ~UIVarMixin's DetachUIVar and ~_zrdr, and shrinks through erase<CUIVariable> 0x2B1A40 -- SOCOM 1's resize's shape
 0x002B1530 0xC8 __dt__11CUIVariableFv  # OVL1; the integrator 2026-11-04, by the UI lane round 13: CUIVariable's vtable 0x4062B0 slot (its inline virtual destructor's copy; zui_var.cpp emits it under this name)
 0x002B1600 0x198 func_002B1600  # OVL1
-0x002B17A0 0x14 func_002B17A0  # OVL1
-0x002B17C0 0x18 func_002B17C0  # OVL1
-0x002B17E0 0xB4 func_002B17E0  # OVL1
+0x002B17A0 0x14 __ct__Q23std54vector<P10UIVarMixin,Q23std24allocator<P10UIVarMixin>>Fv  # OVL1; by hand (the states lane, round 21): a pointer vector's default constructor out of line (three words zeroed, as the other 0x14-byte copies); resize<CUIVariable> 0x2B1390 calls it for its temporary's watchers m_attached_items at +0x18 (zui.h's std::vector<UIVarMixin *>)
+0x002B17C0 0x18 __ct__10UIVarMixinFv  # OVL1; by hand (the states lane, round 21): zui_uivar.h's inline UIVarMixin() out of line -- UIVarMixin's vtable 0x4050B0 stored and m_uivar zeroed; resize<CUIVariable> 0x2B1390 calls it for its temporary's UIVarMixin base at +8 before storing CUIVariable's own tables
+0x002B17E0 0xB4 __ct__5_zrdrFv  # OVL1; by hand (the states lane, round 21): the out-of-line copy of zrdr.h's _zrdr() -- the first word read, masked and written back field by field (type, isclone, packed, nofree, unused, length cleared); resize<CUIVariable> 0x2B1390 calls it for its temporary CUIVariable's _zrdr base
 0x002B18A0 0x68 func_002B18A0  # OVL1
 0x002B1910 0x60 __dt__17CValveSaveManagerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B1970 0x60 func_002B1970  # OVL1
 0x002B19D0 0x3C __ct__12CUIVarSTableFv  # OVL1; s1:align
 0x002B1A10 0x2C UpdateUIVar__11CUIVariableFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the UI lane round 13: vtable 0x4062B0's UpdateUIVar slot (inline virtual; zui_var.cpp emits it)
 0x002B1A40 0x190 erase__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FP11CUIVariableP11CUIVariable  # OVL1; s1:align
-0x002B1BD0 0x510 func_002B1BD0  # OVL1
+0x002B1BD0 0x510 insert__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FP11CUIVariableUiRC11CUIVariable  # OVL1; by hand (the states lane, round 21): resize<CUIVariable> 0x2B1390 calls it with (end, n - size, the temporary) where SOCOM 1's resize calls this name; CUIVariable's copy constructor 0x386BF0 six times, the watchers' pod assignment 0x259AF0 twice, new, the element destructor through the vtable and delete, as SOCOM 1's insert of it (0x1FC0A0)
 0x002B20E0 0x84 func_002B20E0  # OVL1
 0x002B2170 0x8 @8@UpdateUIVar__11CUIVariableFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the UI lane round 13: the UIVarMixin-base thunk of UpdateUIVar (zui_var.cpp emits it)
 0x002B2180 0x8 @8@__dt__11CUIVariableFv  # OVL1; the integrator 2026-11-04, by the UI lane round 13: the UIVarMixin-base thunk of ~CUIVariable (vtable 0x4062B0's second part; zui_var.cpp emits it)
@@ -3967,9 +3967,9 @@
 0x002B3DD0 0x108 func_002B3DD0  # OVL1
 0x002B3EE0 0x18 __ct__Q23std40__list_deleter<Ui,Q23std13allocator<Ui>>Fv  # OVL1; by hand (the states lane, round 16): the spawners' id list built (include/list's out-of-class constructor), called by fts_player.cpp's initialiser (0x400330) for spawners.m_ids; byte-exact from fts_player.cpp, which now defines spawners and ftsPlayer
 0x002B3F00 0x18 __ct__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; by hand (the states lane, round 16): the spawners' vehicle list built, called by fts_player.cpp's initialiser (0x400330) for spawners.m_spawns; byte-exact from fts_player.cpp
-0x002B3F20 0x60 func_002B3F20  # OVL1
+0x002B3F20 0x60 __dt__Q23std70list<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; by hand (the states lane, round 21): this-tested, calls ~__list_deleter<spawn_map> (0x2B3F80) with 0 as its base, then deletes on a positive flag; ~CSpawners (0x2B4030) calls it with 0 for its list at +0xC after inlining ~list one level; corrected (the states lane, round 21): two this-tests and a call to ~__list_deleter<spawn_map> (0x2B3F80) with 0 -- ~__list_imp inlined one level between, so this is ~list; ~CSpawners reaches it through its spawn list's own class (a this-test, then the call with 0 as a base)
 0x002B3F80 0xB0 __dt__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; s1:align
-0x002B4030 0xA0 func_002B4030  # OVL1
+0x002B4030 0xA0 __dt__9CSpawnersFv  # OVL1; by hand (the states lane, round 21): calls CSpawners::Clear (0x2B2190), then ~__list_imp<spawn_map> for +0xC and the id list's chain (three this-tests, erase 0x2B40D0) for +0; registered by __sinit_fts_player.cpp (0x400330) for spawners
 0x002B40D0 0xBC erase__Q23std40__list_deleter<Ui,Q23std13allocator<Ui>>FQ33std40__list_deleter<Ui,Q23std13allocator<Ui>>19generic_iterator<0>Q33std40__list_deleter<Ui,Q23std13allocator<Ui>>19generic_iterator<0>  # OVL1; s1:align
 0x002B4190 0x2C func_002B4190  # OVL1; tu: node_world.cpp~ (1.0 beta)
 0x002B41C0 0x64 func_002B41C0  # OVL1
@@ -8505,8 +8505,8 @@
 0x003FE860 0xD4 __sinit_st_mpexit.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): st_mpexit.cpp's initialiser (between hud_playermapitem.cpp's and hud_teammatenames.cpp's, as the code): <iostream>'s two init objects, then c_arrStatFuncs' three PTMFs copied in -- SOCOM 1's __sinit_st_mpexit.cpp alike (six PTMFs and a CSTable there)
 0x003FE940 0x34 __sinit_hud_teammatenames.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_teammatenames.cpp's static initialiser (between hud_playermapitem.cpp's 0x3FE7F0 and hud_scorepopup.cpp's 0x3FE980) -- it halves the unit's two bitmap sizes (0x3DC868, 0x3DC870, 32 each) into 0x40DBD0 and 0x40DBD8, which CMPTeammateNames::Tick reads
 0x003FE980 0x9D0 func_003FE980  # OVL1 data area; a static initialiser
-0x003FF350 0x64 func_003FF350  # OVL1 data area; a static initialiser
-0x003FF3C0 0x64 func_003FF3C0  # OVL1 data area; a static initialiser
+0x003FF350 0x64 __sinit_st_shutdown.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 21, after the HUD lane's round 23): st_shutdown.cpp's initialiser -- <iostream>'s two init objects (0x412E98, 0x412EB0, their chain nodes 0x412E88, 0x412EA0) built and registered, just below the unit's s_hostElf 0x412EC0; the link's order (0x3FF350, 0x3FF3C0, hud_tcmcmds.cpp's 0x3FF430) is st_shutdown.cpp, st_reboot.cpp, hud_tcmcmds.cpp
+0x003FF3C0 0x64 __sinit_st_reboot.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 21, after the HUD lane's round 23): st_reboot.cpp's initialiser -- <iostream>'s two init objects (0x412FD0, 0x412FE8, their chain nodes 0x412FC0, 0x412FD8) built and registered, just below hud_tcmcmds.cpp's statics 0x412FF0
 0x003FF430 0x70 __sinit_hud_tcmcmds.cpp  # OVL1 data area; a static initialiser; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp's static initialiser -- its layout statics s_tcmLeft/s_tcmSpan (off the data statics 0x3DC9F0, 0x3DCA80) and s_tcmCursorColor, then g_tcmColumns built through __construct_array)
 0x003FF4A0 0x168 func_003FF4A0  # OVL1 data area; a static initialiser
 0x003FF610 0x64 __sinit_hud_ammo.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_ammo.cpp's initialiser (between the radio menu's 0x3FF4A0 and hud_mpinfobox.cpp's 0x3FF680, as the code): its four bss floats computed off s_polyy and s_ammox (s_texty, s_magx, s_magy, s_bitmapy)
@@ -8997,10 +8997,10 @@
 0x004F5E70 0x3C ConstructGender  # OVL2; s1:align
 0x004F5EB0 0x6C ResetGender  # OVL2; s1:exact
 0x004F5F20 0xDC HLnOnePlusExpHFloat  # OVL2; s1:align
-0x004F6000 0x10C func_004F6000  # OVL2
+0x004F6000 0x10C LogAdd  # OVL2; s1:calls (SOCOM 1's NormalizeAndEnQ calls LogAdd where ours, 0x4F3690, calls this row; the object SOCOM 1's 0x3629D0 with HLnOnePlusExpHFloat, here after it and calling it where SOCOM 1's inlined it) -- the gcc lane, round 16c; src/lib/asr/logadd.c
 0x004F6110 0x808 MelInitBands  # OVL2; s1:align
 0x004F6918 0x3C ConstructMel  # OVL2 unaligned; s1:align
-0x004F6958 0x1AC func_004F6958  # OVL2 unaligned
+0x004F6958 0x1AC ProcessMel  # OVL2 unaligned; s1:slot (ConstructMel hands this row to tosBaseBlockConstruct as its process function, where SOCOM 1's ConstructMel hands ProcessMel, 0x3635D0) -- the gcc lane, round 16c
 0x004F6B08 0x170 ControlMel  # OVL2 unaligned; s1:calls
 0x004F6C78 0x64 InitMel  # OVL2 unaligned; s1:align
 0x004F6CE0 0x32C QrDeleteCol  # OVL2; s1:calls (SOCOM 1's Smoothing calls QrDeleteCol where ours call this row, 1 call site; the same position in SOCOM 1's object)
@@ -9010,7 +9010,7 @@
 0x004F70A0 0x24 mtxAssociateAll  # OVL2; s1:exact
 0x004F70C8 0x80 mtxDeleteCol  # OVL2 unaligned; s1:align
 0x004F7148 0x1B8 mtxCompress  # OVL2 unaligned; s1:align
-0x004F7300 0x124 func_004F7300  # OVL2
+0x004F7300 0x124 mtxMac  # OVL2; s1:order (SOCOM 1's mtx object 0x363888 holds mtxMac between mtxCompress and mtxInit, as this row sits; the same body, m->data += f * x over rows * cols, returning 0) -- the gcc lane, round 16c
 0x004F7428 0x98 mtxInit  # OVL2 unaligned; s1:calls
 0x004F74C0 0xBC mtxInitCopy  # OVL2; s1:align
 0x004F7580 0xF4 mtxMax  # OVL2; s1:align
@@ -9069,14 +9069,14 @@
 0x004FF5A8 0x518 InitDistSilProcess  # OVL2 unaligned; s1:align
 0x004FFAC0 0x224 func_004FFAC0  # OVL2
 0x004FFCE8 0x22C func_004FFCE8  # OVL2 unaligned
-0x004FFF18 0x7CC func_004FFF18  # OVL2 unaligned
+0x004FFF18 0x7CC ControlDistSilProcess  # OVL2 unaligned; s1:slot (ConstructDistCalc's control function, as SOCOM 1's ConstructDistCalc hands ControlDistSilProcess, 0x36B368) -- the gcc lane, round 16c
 0x005006E8 0x710 func_005006E8  # OVL2 unaligned
-0x00500DF8 0xC0 func_00500DF8  # OVL2 unaligned
-0x00500EB8 0x8 func_00500EB8  # OVL2 unaligned
-0x00500EC0 0x8 func_00500EC0  # OVL2
-0x00500EC8 0x12C func_00500EC8  # OVL2 unaligned
+0x00500DF8 0xC0 ConstructDistCalc  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: ConstructDistCalc after InitCalculateDistances, as this row; the same body -- profile 35 for no queues, profile 34 for a third input, 316 bytes, the same three slots) -- the gcc lane, round 16c
+0x00500EB8 0x8 GetpCachedDistances  # OVL2 unaligned; s1:order (SOCOM 1's distsil object, after ConstructDistCalc as this row; the same body, `return d->f108`) -- the gcc lane, round 16c
+0x00500EC0 0x8 GetDistanceOffset  # OVL2; s1:order (SOCOM 1's distsil object, next; the same body, `return d->f96`) -- the gcc lane, round 16c
+0x00500EC8 0x12C CalculateDistance  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: CalculateDistance after GetDistanceOffset, as this row; the same body -- the tables at +52 summed at the frame's codewords, less +96, as a short) -- the gcc lane, round 16c
 0x00500FF8 0x1B4 func_00500FF8  # OVL2 unaligned
-0x005011B0 0x8 func_005011B0  # OVL2
+0x005011B0 0x8 IdleDistCalcProcess  # OVL2; s1:slot (ConstructDistCalc hands this row to tosBaseBlockConstruct as its process function, where SOCOM 1's ConstructDistCalc hands IdleDistCalcProcess, 0x36C5E8; the object's last function in both) -- the gcc lane, round 16c
 0x005011B8 0x74 ConstructGenderFilter  # OVL2 unaligned; s1:align
 0x00501230 0x124 ProcessGenderFilter  # OVL2; s1:order (SOCOM 1's object 0x36C5F0 holds ProcessGenderFilter, ConstructGenderFilter, ControlGenderFilter, InitGenderFilter; ConstructGenderFilter passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00501358 0x30 ControlGenderFilter  # OVL2 unaligned; s1:align
