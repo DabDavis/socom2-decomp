@@ -1796,6 +1796,25 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 14** (zvid_SetVideoMode, CMesh's destructor and Clone, the turret, CVehicleDef::Parse):
+  - MW's scheduler reorders independent constant stores within a switch arm: SetVideoMode's 480p arm matched only
+    with the aspect stores written ahead of the `= 18` store, though the image stores the 18 first;
+  - a union copies as its FIRST member: a bit-field struct goes through an FPR (`lwc1`/`swc1`), an `unsigned int`
+    `lw`/`sw`, an `unsigned char` `lbu`; MW 3.0b52 refuses member lookup into an anonymous struct nested in an
+    anonymous union ("undefined identifier") -- znode.h's tag_VISUAL_HEAD names its struct (`m_8s`);
+  - a constant passed into an inline's float parameter folds `-limit` into a literal, a local initialised inside
+    the inline keeps the `neg.s`; a `strlen` whose result is unused stays in the code (CVehicleDef::Parse's string
+    fields -- likely an assert compiled out); `if ((p = f()) != 0)` branches on v0 with the copy in the delay slot;
+  - zvid.h's `_zvid_public` padding is named fields (renderBuf2, psm, iMinZ/iMaxZ, textureBase/EndAddr, videoMode,
+    hblnkRate, pcrtcDo, pcrtcOffset, modeOffset, flag90/91, ztest_on/off at 0x94/0x98) and zVid's data row is 0xB0
+    (dmaFrameRestore at 0xA0, lodLevel at +0xB0); CMesh's 0x68/0x70 are m_original/m_owner;
+  - open: zVid_Init 0x3B1200 (11, same size: two zero byte stores at 0x7C/0x7D sink to the 0x90 flag stores and the
+    fade alpha's 255 lands in v0 -- a 23x23 placement sweep, bool/char/bitfield/volatile fields and chained
+    assignments moved nothing), CMesh::AddDecal 0x3B8550 (0x11C vs 0x124: both arms of the pool choice padded with a
+    nop in the target; the name and parameter types ours); not reached: 0x3B8680 (a 0x5A0 VU0 decal builder),
+    GetDamage, HandleDelayedDetonate, InitializeWeapons (about ten CZWeapon accessors to name first), the turret's
+    Fire 0x3A8D20 and stretch, CTurretDef::Parse (0x8D0), the VU chain's rest, SetBuffer, the vid stack's deque
+    copy chain (0x3B83D0 its iterator ++).
 - **Tells from the HUD, round 22** (zui_2d.cpp's renderable strings and ZAnim commands; C2DFont's real layout):
   - with a secondary base MW lays the vtable out as: the primary base's slots, the secondary base's part, the
     class's own new virtuals, then the primary slot of an override of a secondary-base virtual -- calls through
