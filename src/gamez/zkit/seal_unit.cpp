@@ -117,6 +117,10 @@ public:
     /* a SEAL's news: 1 and 2 kept to this squad (0x5ED140), 0, 3 and 4 handed to the top squad's
      * (0x5ED4F0) -- SOCOM 1's PrivateNotify and DistributeNotify by their order (OVL2 0x5ED7B0) */
     void Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
+    /* the top squad above this one (zseal.h's inline, the SEALs' round 14 name: its out-of-line copy
+     * OVL2 0x561D20, in seal_ai.cpp's range, inlines itself eight times; Notify writes its first
+     * level out and calls the copy, so this unit declares it out of line) */
+    CSealUnit *GetTop();
     static CSealUnit *GetUnitByTeam(unsigned int team);
     static CSealUnit *Create(unsigned int team);
     /* a SEAL taken out of its squad (SOCOM 1's, static; OVL2 0x5EDF90, not written yet) */
@@ -538,9 +542,7 @@ extern "C" void func_005EAEB0(CSealUnit *unit)
 }
 
 extern "C" {
-/* the top squad above one (OVL2 0x561D20, in seal_ai.cpp's range: recursive, inlined into itself
- * eight times -- here once), and the news kept or handed out (0x5ED140, 0x5ED4F0; unwritten) */
-CSealUnit *func_00561D20(CSealUnit *unit);
+/* the news kept or handed out (0x5ED140, 0x5ED4F0; unwritten) */
 void func_005ED140(CSealUnit *unit, CZSealBody *seal, UNIT_MESSAGE msg, void *data);
 void func_005ED4F0(CSealUnit *unit, CZSealBody *seal, UNIT_MESSAGE msg, void *data);
 }
@@ -552,7 +554,7 @@ void CSealUnit::Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data)
     case UNIT_MSG_3:
     case UNIT_MSG_4:
     case UNIT_MSG_0:
-        func_005ED4F0(m_parent ? func_00561D20(m_parent) : this, seal, msg, data);
+        func_005ED4F0(m_parent ? m_parent->GetTop() : this, seal, msg, data);
         break;
     case UNIT_MSG_1:
     case UNIT_MSG_2:

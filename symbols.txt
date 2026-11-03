@@ -11765,16 +11765,16 @@
 0x0060BF30 0xC func_0060BF30  # OVL2
 0x0060BF40 0x224 __ct__14SEAL_AI_PARAMSFv  # OVL2; by hand (the kit lane, round 6): SEAL_AI_PARAMS's constructor -- CSealCtrlAi's constructor (0x5740A4) calls it on this + 0x250, the second base CSealCtrlAi's RTTI lists there, before its table store; it builds the state stack at +0x1CC (0x5F8520), two CAiPaths, the CAiEvent, the event queue, the CAiTarget (0x60A940) and the trigger
 0x0060C170 0x18 func_0060C170  # OVL2
-0x0060C190 0x78 func_0060C190  # OVL2
-0x0060C210 0xC func_0060C210  # OVL2
+0x0060C190 0x78 __dt__Q28CAiGroup10act_cameraFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::act_camera's vtable (0x669EC0) -- its table, then action's destructor inlined
+0x0060C210 0xC Stop__Q28CAiGroup6actionFv  # OVL2; by hand (the kit lane, round 16): slot +0x10 of CAiGroup::action's vtable (0x669EE0, act_camera's and act_zanim's too) -- the state at 0xC set to 2 (done); ai_group.cpp emits it with the table; the name ours
 0x0060C220 0x1A4 func_0060C220  # OVL2
-0x0060C3D0 0x10 func_0060C3D0  # OVL2
+0x0060C3D0 0x10 Tick__Q28CAiGroup6actionFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::action's vtable (0x669EE0) -- done at once (the state at 0xC set to 2 and returned); the signature the overrides' (the member's AI in a1, the step's clock in $f12); the name ours
 0x0060C3E0 0x6E4 func_0060C3E0  # OVL2
 0x0060CAD0 0xF4 func_0060CAD0  # OVL2
 0x0060CBD0 0x164 func_0060CBD0  # OVL2
-0x0060CD40 0x78 func_0060CD40  # OVL2
-0x0060CDC0 0x8 func_0060CDC0  # OVL2
-0x0060CDD0 0x6C func_0060CDD0  # OVL2
+0x0060CD40 0x78 SetMemberLoc__8CAiGroupFUiRC9CAiMapLoc  # OVL2; by hand (the kit lane, round 16): CTGroup::Begin's per-member cell -- below the member count, the vector<CAiMapLoc> at 0x44 resized to it when short (0x51C4A0), the cell stored; the name ours
+0x0060CDC0 0x8 EndStep__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the step being built (0x40) cleared -- CTGroup::Begin calls it after each step's actions; the name ours
+0x0060CDD0 0x6C AddStep__8CAiGroupFUi  # OVL2; by hand (the kit lane, round 16): a new step pushed on the list at 0x28 (its insert 0x60EBF0, the temporary's destructor 0x60DA50) and made current (0x40, the last node's value); CTGroup::Begin passes the step's action count, unread; the name ours
 0x0060CE40 0x1E0 func_0060CE40  # OVL2
 0x0060D020 0x25C func_0060D020  # OVL2
 0x0060D280 0x84 func_0060D280  # OVL2
@@ -11786,21 +11786,21 @@
 0x0060D570 0x14 func_0060D570  # OVL2
 0x0060D590 0x54 func_0060D590  # OVL2
 0x0060D5F0 0xC func_0060D5F0  # OVL2
-0x0060D600 0xC8 func_0060D600  # OVL2
-0x0060D6D0 0x68 func_0060D6D0  # OVL2
-0x0060D740 0xF8 func_0060D740  # OVL2
-0x0060D840 0xAC func_0060D840  # OVL2
-0x0060D8F0 0xB0 func_0060D8F0  # OVL2
-0x0060D9A0 0xB0 func_0060D9A0  # OVL2
-0x0060DA50 0x104 func_0060DA50  # OVL2
+0x0060D600 0xC8 AddSound__8CAiGroupFPCcf  # OVL2; by hand (the kit lane, round 16): the group's sound (an act_sound of member -1) added to the current step, flag 1 set in the group's word -- 2; CTGroup::Begin's action kind 0x400; the name ours
+0x0060D6D0 0x68 __dt__Q28CAiGroup6actionFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::action's vtable (0x669EE0) -- its table stored, Stop called through it, deleted on a positive flag
+0x0060D740 0xF8 AddCamera__8CAiGroupFRCQ28CAiGroup8campointRCQ28CAiGroup8campointf  # OVL2; by hand (the kit lane, round 16): an act_camera (two 16-byte points) added to the current step, flag 1 set; CTGroup::Begin's action kind 0x300; the names ours
+0x0060D840 0xAC AddZAnim__8CAiGroupFiPCcf  # OVL2; by hand (the kit lane, round 16): ZAnim.GetAnim(name, 0) taken first, an act_zanim added to the current step; CTGroup::Begin's action kind 0x500; the name ours
+0x0060D8F0 0xB0 AddAnim__8CAiGroupFisff  # OVL2; by hand (the kit lane, round 16): an act_anim (a member's anim type, a length, a time) added to the current step; CTGroup::Begin's action kind 0x100; the name ours
+0x0060D9A0 0xB0 AddSound__8CAiGroupFiPCcf  # OVL2; by hand (the kit lane, round 16): a member's sound (an act_sound) added to the current step; CTGroup::Begin's action kind 0x200; the name ours
+0x0060DA50 0x104 __dt__Q28CAiGroup4stepFv  # OVL2; by hand (the kit lane, round 16): a group step's destructor -- a pointer list of actions, each deleted through its virtual destructor, then cleared and the base list's chain (three this-tests); AddStep (0x60CDD0) calls it with -1 on its temporary, the list's erases (0x60EA90, 0x60EB60) per element; the class name ours
 0x0060DB60 0x18C func_0060DB60  # OVL2
 0x0060DCF0 0x138 func_0060DCF0  # OVL2
 0x0060DE30 0x110 func_0060DE30  # OVL2
-0x0060DF40 0x74 func_0060DF40  # OVL2
-0x0060DFC0 0x40 func_0060DFC0  # OVL2
-0x0060E000 0x11C func_0060E000  # OVL2
-0x0060E120 0x48 func_0060E120  # OVL2
-0x0060E170 0x104 func_0060E170  # OVL2
+0x0060DF40 0x74 Tick__Q28CAiGroup9act_zanimFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::act_zanim's vtable (0x669F00) -- the ZAnim at 0x10 activated once the step's clock reaches the action's time, done the tick after; the name ours
+0x0060DFC0 0x40 Stop__Q28CAiGroup8act_animFv  # OVL2; by hand (the kit lane, round 16): slot +0x10 of CAiGroup::act_anim's vtable (0x669F20) -- the playing member's anim of the type at 0x18 stopped (0x571100), then done; the name ours
+0x0060E000 0x11C Tick__Q28CAiGroup8act_animFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::act_anim's vtable (0x669F20) -- the member's anim of a type played (0x571150, mode 7 with a length, else 11), done when it ends (0x5712F0) or stopped after its length; the name ours
+0x0060E120 0x48 Stop__Q28CAiGroup9act_soundFv  # OVL2; by hand (the kit lane, round 16): slot +0x10 of CAiGroup::act_sound's vtable (0x669F40) -- the playing instance stopped and released, then done; the name ours
+0x0060E170 0x104 Tick__Q28CAiGroup9act_soundFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::act_sound's vtable (0x669F40) -- the sound played (PlaySound3D at the member's entity, or flat for the group's), done when it ends; the name ours
 0x0060E280 0x148 func_0060E280  # OVL2
 0x0060E3D0 0x8 func_0060E3D0  # OVL2
 0x0060E3E0 0x30 func_0060E3E0  # OVL2
@@ -11813,14 +11813,14 @@
 0x0060E6E0 0xC func_0060E6E0  # OVL2
 0x0060E6F0 0xB0 func_0060E6F0  # OVL2
 0x0060E7A0 0x8 func_0060E7A0  # OVL2
-0x0060E7B0 0x78 func_0060E7B0  # OVL2
-0x0060E830 0x78 func_0060E830  # OVL2
-0x0060E8B0 0x78 func_0060E8B0  # OVL2
+0x0060E7B0 0x78 __dt__Q28CAiGroup9act_zanimFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::act_zanim's vtable (0x669F00)
+0x0060E830 0x78 __dt__Q28CAiGroup8act_animFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::act_anim's vtable (0x669F20)
+0x0060E8B0 0x78 __dt__Q28CAiGroup9act_soundFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::act_sound's vtable (0x669F40)
 0x0060E930 0x6C func_0060E930  # OVL2
 0x0060E9A0 0xE4 func_0060E9A0  # OVL2
 0x0060EA90 0xCC func_0060EA90  # OVL2
 0x0060EB60 0x8C func_0060EB60  # OVL2
-0x0060EBF0 0x128 func_0060EBF0  # OVL2
+0x0060EBF0 0x128 insert__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>FQ33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>RCQ28CAiGroup4step  # OVL2; by hand (the kit lane, round 16): the group step list's insert (AddStep 0x60CDD0 pushes a step through it) -- ai_group.cpp emits it byte-exact but for its call to the pointer deleter's allocator constructor, whose OVL2 copy 0x5EF9B0 carries no ovl-copy note
 0x0060ED20 0x18 func_0060ED20  # OVL2
 0x0060ED40 0xB8 func_0060ED40  # OVL2
 0x0060EE00 0x78 __dt__14CAiSUseVehicleFv  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x4C (the destructor's shape: its table, CAiState's, ~CAiStateStack(this + 8, -1); CAiSUseVehicle is new in SOCOM II)
