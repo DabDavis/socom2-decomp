@@ -917,6 +917,38 @@ void func_0061D4D8(int nClient, unsigned short nPort, int nError)
     func_00617060(0, DME_MAX_CLIENTS, 0, 0, 1);
 }
 
+extern void (*data_00651198)(int *pInfo);
+extern int data_0065119C;
+
+/* the connection to the server lost (0x61D530): the world's link closed, the host told why.
+ * OPEN (9 words, the right size): the report's three stores before the reason's test -- the target
+ * loads pWorld into v1 ahead of them and keeps 1 in a1, 11 in a2; every order of the five
+ * statements (tools/ccperm.py, an int array and a five-int struct alike) comes within 5 words at
+ * best (the world's field stored first), a ternary for the reason is if-converted (the wrong size). */
+void func_0061D530(int nReason)
+{
+    int info[5];
+    DmeWorld *pWorld = 0;
+
+    if (func_0061C600(0, &pWorld) != 0)
+        return;
+    if (pWorld == 0)
+        return;
+    func_0061C150(0);
+    if (data_00651198 != 0) {
+        memset(info, 0, sizeof(info));
+        info[2] = 1;
+        info[0] = 0;
+        info[1] = pWorld->field_438;
+        if (nReason == 11)
+            info[3] = 14;
+        else
+            info[3] = 37;
+        info[4] = data_0065119C;
+        data_00651198(info);
+    }
+}
+
 extern void (*data_006511A8)(int *pInfo);
 extern int data_006511AC;
 
@@ -930,5 +962,132 @@ void func_0061D5E8(int nValue)
         info[1] = nValue;
         info[2] = data_006511AC;
         data_006511A8(info);
+    }
+}
+
+/* this client's address as the peer layer resolved it (0x6766A0: 48 bytes, copied whole into the
+ * report the host's callback gets) */
+typedef struct DmeLocalAddress {
+    int field_00;
+    char szIp[16];                      /* 0x04 */
+    int nPort;                          /* 0x14 */
+    int field_18[6];
+} DmeLocalAddress;                      /* 0x30 */
+
+typedef struct DmeAddressReport {
+    int field_00;                       /* 1 */
+    int nResult;                        /* 0x04: 0, or 37 when the resolution failed */
+    DmeLocalAddress address;            /* 0x08 */
+} DmeAddressReport;                     /* 0x38 */
+
+extern DmeLocalAddress data_006766A0;
+extern DmeAddressReport data_0066CF20;
+extern void (*data_0066CF58)(DmeAddressReport *pReport);
+
+/* the address resolution's callback (0x61D650): the address kept, and this client's own record */
+void func_0061D650(char *szIp, unsigned short nPort, int nError)
+{
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+
+    if (nError == 0) {
+        data_006766A0.nPort = nPort;
+        strncpy(data_006766A0.szIp, szIp, 16);
+        if (func_0061C600(0, &pWorld) == 0 && pWorld != 0
+            && func_0061C720(0, pWorld->nMyClient, &pClient) == 0 && pClient != 0) {
+            strncpy(pClient->szIp, szIp, 16);
+            pClient->nPort = nPort;
+        }
+    }
+    data_0066CF20.field_00 = 1;
+    data_0066CF20.nResult = nError == 0 ? 0 : 37;
+    data_0066CF20.address = data_006766A0;
+    data_0066CF58(&data_0066CF20);
+}
+
+extern int func_006398C0(int nP2P, int nConnection, int *pnWhich);
+extern int func_00639940(int nP2P, int nConnection, int nWhich, char *szIp, unsigned short *pnPort);
+extern int func_00614B18(int nWorld, int nClient, char *szIp, unsigned short nPort);
+extern int func_006164E0(int nWorld, int nClient);
+extern void func_00616478(int nWorld, int nClient, unsigned short nConnection, int nValue,
+                          unsigned short nPort);
+extern char data_006766D0[16];
+extern unsigned short data_0067B7A8;
+
+/* the peer layer's connection event (0x61D7A8): 0 a peer connected, 1 and 2 it left */
+void func_0061D7A8(int nConnection, unsigned int nEvent)
+{
+    int nWhich;
+    DmeWorld *pWorld;
+
+    switch (nEvent) {
+    case 0:
+        nWhich = -1;
+        pWorld = 0;
+        if (func_006398C0(data_006511D8, nConnection, &nWhich) != 0)
+            return;
+        if (func_00639940(data_006511D8, nConnection, nWhich, data_006766D0, &data_0067B7A8) != 0)
+            return;
+        if (func_0061C600(0, &pWorld) == 0 && pWorld != 0)
+            pWorld->field_440++;
+        func_00614B18(0, nConnection, data_006766D0, data_0067B7A8);
+        break;
+    case 1:
+    case 2:
+        func_006164E0(0, nConnection);
+        break;
+    }
+}
+
+/* (0x61D898) */
+void func_0061D898(int nConnection, int nValue, unsigned short nPort)
+{
+    int nWhich = -1;
+
+    if (func_006398C0(data_006511D8, nConnection, &nWhich) == 0
+        && func_00639940(data_006511D8, nConnection, nWhich, data_006766D0, &data_0067B7A8) == 0)
+        func_00616478(func_006147E0(), 0, nConnection, nValue, nPort);
+}
+
+/* (0x61D948) */
+void func_0061D948(char *szIp, unsigned short nPort, int nValue, unsigned short nPort2)
+{
+    strncpy(data_006766D0, szIp, 16);
+    data_0067B7A8 = nPort;
+    func_00616478(func_006147E0(), 0xFFFF, 256, nValue, nPort2);
+}
+
+/* a message for the host (0x61D9F8), its fields in a record its callback gets */
+typedef struct DmeHostMessage {
+    int nClient;                        /* 0x00 */
+    unsigned char nType;                /* 0x04 */
+    int field_08;
+    int field_0C;
+    unsigned char field_10;
+    unsigned short field_12;
+    int field_14;
+    int field_18;                       /* the host's user data */
+} DmeHostMessage;
+
+extern void (*data_006511B8)(DmeHostMessage *pMessage);
+extern int data_006511BC;
+extern int RtMsgToDmeConnectionIndex(unsigned short nConnection);
+
+void func_0061D9F8(unsigned short nConnection, unsigned char nType, int a2, int a3, unsigned char a4,
+                   unsigned short a5, int a6)
+{
+    DmeHostMessage msg;
+    void (*pfn)(DmeHostMessage *) = data_006511B8;
+
+    if (pfn != 0) {
+        msg.nClient = RtMsgToDmeConnectionIndex(nConnection);
+        msg.field_08 = a2;
+        msg.nType = nType;
+        msg.field_0C = a3;
+        msg.field_10 = a4;
+        msg.field_12 = a5;
+        msg.field_14 = a6;
+        msg.field_18 = data_006511BC;
+        pfn(&msg);
     }
 }
