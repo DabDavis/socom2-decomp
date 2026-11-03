@@ -8744,7 +8744,7 @@
 0x004CFB60 0x4A8 FillOut_Syntax_Statedict_And_Wordprops_ForChinese  # OVL2; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls FillOut_Syntax_Statedict_And_Wordprops_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0008 0xF8 FreeSecondPassContext_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese and others call FreeSecondPassContext_ForChinese where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004D0100 0x880 CreateSecondPassContext_ForChinese  # OVL2; s1:calls
-0x004D0980 0x24 func_004D0980  # OVL2
+0x004D0980 0x24 Tone_Of_Final  # OVL2; s1:order (SOCOM 1's object 0x3404E8: after CreateSecondPassContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese, as here; the same zero test and compare of two unsigned shorts; uncalled in both) -- the gcc lane, round 14c
 0x004D09A8 0x100 Calculate_NbrOfStatesInDict_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfStatesInDict_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0AA8 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0BD8 0xF48 CreateSecondPassContext  # OVL2 unaligned; s1:calls
@@ -8775,7 +8775,7 @@
 0x004D6FC0 0x4A0 func_004D6FC0  # OVL2
 0x004D7460 0xDC func_004D7460  # OVL2
 0x004D7540 0xC00 CreateSecondPassTreeContext_ForChinese  # OVL2; s1:calls (SOCOM 1's casrDoIsoWordSecondPass calls CreateSecondPassTreeContext_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
-0x004D8140 0x24 func_004D8140  # OVL2
+0x004D8140 0x24 Tone_Of_Final_TreeCtx  # OVL2; s1:order (SOCOM 1's object 0x345CD0: after CreateSecondPassTreeContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese_TreeCtx, as here; Tone_Of_Final's body; uncalled in both) -- the gcc lane, round 14c
 0x004D8168 0x100 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8268 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8398 0xEE0 casrCreateResult  # OVL2 unaligned; s1:calls (SOCOM 1's cbTOSRecognised and cbDoSecondPassIfEnabled call casrCreateResult where ours call this row, with the same arguments -- the result's address, the frame, 1); s1:order, the head of SOCOM 1's casr object (0x348248), its static CalcWordConfidence before it not a row here -- the gcc lane, round 9c

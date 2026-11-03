@@ -65,7 +65,13 @@ static int InitPitchDP(PITCHDP *p);
 /* OPEN (0x430 against 0x404): the loop nest is the target's -- the previous column's
  * maximum over p->cells/p->ncols reloaded per column, the threshold max - max / thresh, the bins
  * within maxjump, the inner loop unrolled by four -- but the target keeps one more value live
- * across the loops (s0-s6 saved, a 64-byte frame; here s0-s5, 48): not yet found which. */
+ * across the loops (s0-s6 saved, a 64-byte frame; here s0-s5, 48). Round 14c: the target loads
+ * jf[j] ONCE per bin (`lw v1,0(t8)`, t8 walking jf) and walks &jf[j][k] and &rows[k] as pointers
+ * stepped by 4 (the unrolled copies at 0, 4, 8, 12), where this source reloads jf[j] after every
+ * store (no strict aliasing) and indexes by k. `float *f = jf[j];` after hi is set gives the one
+ * load (0x420, 264 words against 257) but still indexes f[k] and rows[k]: k as int, unsigned
+ * short, j and t as int, and the max loop's `c += stride` (the target's step is the stride
+ * local, not p->ncols reloaded) do not bring the strength reduction. */
 static void Actual_DP(PITCHDP *p, unsigned int nbins, unsigned int ncols)
 {
     unsigned short stride = p->ncols;
@@ -356,7 +362,9 @@ static int ControlPitchDP(PITCHDP *p, unsigned char cmd)
 /* OPEN (81 words, the right size): the FP registers only. The target's unrolled blocks hold the
  * two frequencies and d in three registers (f2, f1 -> f0), so width is f3 and the constants f6, f5,
  * f4; here d reuses a frequency's register and everything sits one lower. `d = df; d /= width`
- * (87 -> 81) is the nearest of seven spellings tried (one expression, d = 1 - d*d, d *= d, ...). */
+ * (87 -> 81) is the nearest of seven spellings tried (one expression, d = 1 - d*d, d *= d, ...).
+ * Only the unrolled copies differ: the preconditioning copies reuse the register in the target
+ * too. A d per loop (block-scoped, or a second function-level variable for one loop) is 82. */
 static void InitJumpFactors(PITCHDP *p)
 {
     float width = p->f60 * p->f64;
@@ -392,7 +400,14 @@ static void InitJumpFactors(PITCHDP *p)
 /* OPEN (0x3C0 against 0x3C4): the target keeps one more value in a saved register
  * (s0-s4: the queue size bpo * frames survives the fmax and fmin profile calls in s0) and lays the
  * reset stores out as ControlPitchDP's command 201 (another order); the allocations, the test and
- * the bins' loop are the target's shape. */
+ * the bins' loop are the target's shape. Round 14c: the queue size is an int in the target (no
+ * `andi 0xffff`, and `mult s0,s0,s1`, frames first: `unsigned int n` gives both, 238 words against
+ * 241); the extra saved register is bpo, which the target converts to float only after the fmin
+ * call. Here the first scheduling pass hoists `(float)bpo` -- a pseudo-only insn, which moves
+ * across calls -- into a free issue slot before the fmax call (the trace: ready from the entry,
+ * ranked last, issued at the first cycle with a slot over), so bpo's register dies there and fmax
+ * reuses it. Not found what keeps the target's conversion below the fmin call. The reset stores
+ * follow ControlPitchDP's rule (a store that frees its value's register first, then source order). */
 static int InitPitchDP(PITCHDP *p)
 {
     TOS *tos = p->b.tos;
