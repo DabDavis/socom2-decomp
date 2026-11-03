@@ -1818,6 +1818,22 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 17** (ai_group.cpp's leftovers, eight CT* task parsers):
+  - an inline that copies a name into a block wants the destination as a local (`char *d = m_str;`) -- written in
+    place MW folds the address into each branch, the target computes it once before the null test; a member
+    TASK_ENT's `this` stays in a saved register across AddName only when an inline Create sets it up;
+  - byte-enum locals stored into word fields sign-extend at the store (dsll32/dsra32 0x18: CTStance's parse, its
+    two fields words -- +8 the peek, +0xC the stance);
+  - A STACK POINT'S FIELD ADDRESSES: MW keeps the addresses of a stack CPnt3D's y and z in registers where the target
+    reads them straight off the stack (`optimization_level 3` and `opt_common_subs off` change nothing) -- it holds
+    four functions in three lanes: ai_group.cpp's LookAt 0x60DCF0 and FaceXZ 0x60CAD0, camera.cpp's LookAt 0x29BC90
+    (the same code as 0x60DCF0), seal_env.cpp's FindDeathAnimTypeCQB; whoever cracks it closes all four;
+  - MW strength-reduces a secondary counter's index into a register of its own in a loop driven by an iterator, the
+    target shifts the counter inside the loop (CAiGroup::Tick 0x60C3E0: right size, 285 instructions of register
+    shifts; `#pragma opt_strength_reduction off` drops the register but loses the hoisted &p.y/&p.z the target keeps);
+  - open too: AddMember 0x60D020 (4: the Is() materialisation that keeps CAiStateStack::Pop(ai, AI_STATE) open),
+    act_camera::Tick 0x60DB60 (the target loads a point's three floats before storing any into the matrix's
+    translation row). The MSL lane's round 13 list erase made both step-list erases match from ai_group.cpp.
 - **Tells from the SEALs, round 15** (ComputeTurnThrottle, ClearGoal, the grenade state, the alert update):
   - CSealCtrl's vtable slot 0x9C is SOCOM 1's non-virtual ComputeTurnThrottle made virtual: CSealCtrl's 0x56C220 and
     CSealCtrlAi's 0x56C340 inline one shared body and share its function-local statics (0x650110-0x650120);
