@@ -191,7 +191,15 @@ struct MediusPlayerInfoRequest {
     int AccountID;   // 0x28
 };   // 0x2c
 
-struct MediusPlayerInfoResponse { MEDIUS_RESPONSE_HEAD };
+/* the player's info (the SDK's MediusPlayerInfoResponse: the account's stats as text at 0x48) */
+struct MediusPlayerInfoResponse {
+    MEDIUS_RESPONSE_HEAD
+    char AccountName[32];   // 0x1c
+    int ApplicationID;   // 0x3c
+    int PlayerStatus;   // 0x40
+    int ConnectionClass;   // 0x44
+    char Stats[256];   // 0x48
+};
 struct MediusUpdateAccountStatsResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusUpdateLadderStatsResponse { MEDIUS_RESPONSE_HEAD };
 
@@ -231,8 +239,34 @@ void CZOnlineLobby::PasswordSecurity()
         *theUIVarManager.Add("PLAYERPASSWORD", 0, UIVL_TEMPORARY) = "";
 }
 
+/* a variable's text when it holds one (as the clan unit's) */
+inline char *ZString(_zrdr *z)
+{
+    return z->type == 3 ? z->string : 0;
+}
+
+/* a variable given an integer, the watchers told when it changes (ours: zui.h's float setter's
+ * shape, for an int) */
+inline void SetInteger(CUIVariable *var, int n)
+{
+    if (var->type != 1 || var->integer != n) {
+        var->DeleteChildren();
+        var->type = 1;
+        var->integer = n;
+        var->UpdateDependents();
+    }
+}
+
+extern "C" {
+void func_002F3EE0(GamePlayerStats *stats);   /* (the chat unit's: the stats put in order) */
+extern char data_0066A7B0[];   /* our home town, in our stats (0x60) */
+extern char data_0066A7EF[];   /* our description, in them (0x9F) */
+}
+
 /* our stats sent to the server: built into a text, kept, unpacked, and our ladder figure sent too
- * (SOCOM II's; OVL1 0x2FAA80: the active lobby's handler sends them every five minutes) */
+ * (SOCOM II's; OVL1 0x2FAA80: the active lobby's handler sends them every five minutes; our info's
+ * callback 0x2FA8F0 calls it out of line, pinned) */
+#pragma auto_inline off
 extern "C" void func_002FAA80(CZOnlineLobby *lobby)
 {
     if (lobby->m_isopen) {
@@ -253,6 +287,32 @@ extern "C" void func_002FAA80(CZOnlineLobby *lobby)
         ladder.Stat = data_0066A754;
         CheckMediusError(func_0064B248(&ladder, func_002FAB60));
     }
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* our own info come in: our stats unpacked, the home town taken from the menu's variable, our
+ * ladder figure and description handed to theirs, and our stats sent back unless the server's
+ * are an 'E' record (SOCOM II's; OVL1 0x2FA8F0: func_002FA870's callback) */
+void func_002FA8F0(int, int, int, MediusPlayerInfoResponse *resp)
+{
+    if (CheckMediusCallbackStatus("MediusGetPlayerStats", resp->StatusCode)) {
+        func_002F9AC0(&data_0066A750, resp->Stats);
+        func_002F3EE0(&data_0066A750);
+        CUIVariable *town = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVL_TEMPORARY);
+
+        if (town->type == 3 && ZString(town))
+            strncpy(data_0066A7B0, ZString(town), 63);
+        else
+            strncpy(data_0066A7B0, "", 63);
+        CUIVariable *rating = theUIVarManager.Add("LadderRating", 0, UIVL_TEMPORARY);
+
+        SetInteger(rating, data_0066A754);
+        *theUIVarManager.Add("PlayerDescription", 0, UIVL_TEMPORARY) = data_0066A7EF;
+        if (resp->Stats[0] != 'E')
+            func_002FAA80(&theLobby);
+    }
+}
 }
 
 /* our own info asked for (SOCOM 1's active lobby asked for the stats so; OVL1 0x2FA870) */
@@ -703,12 +763,6 @@ void CZOnlineLobby::GetUsagePolicy()
         req.Policy = 0;
         CheckMediusError(MediusGetPolicy(&req, cbGetPolicy));
     }
-}
-
-/* a variable's text when it holds one (as the clan unit's) */
-inline char *ZString(_zrdr *z)
-{
-    return z->type == 3 ? z->string : 0;
 }
 
 /* an announcement: shown first, a blank line after it, then as many of the lines shown before as
