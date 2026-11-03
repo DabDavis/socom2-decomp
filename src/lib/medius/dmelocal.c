@@ -15,12 +15,15 @@
  * 0; } return ERR;` -- where the target branches away to the error with its code in the delay slot
  * (NetIpBinaryToString, func_00614EC8, func_0061A240); a local initialised inside the block that
  * needs it (func_006147E0, the round 4b OPEN); a table indexed in place, not through a pointer
- * local (func_0061C6C8, the round 4b OPEN). OPEN: func_00614758 (6 words: the transport call's
- * failure branch -- guard, nested and `||` forms each lay one of its two returns out the other way;
- * round 13b: byte-exact under -fno-cse-follow-jumps alone -- CSE follows the jump past `return 37`
- * with the call's v0 known zero and drops the final `move v0,zero`, so reorg cannot put the 37 in
- * the bnez's slot as the target does -- but the flag costs six of the unit's matches, and four more
- * shapes (the success path nested, a result variable) miss), func_00617610 and func_006189C8 (below). func_0061BEB8 returns the second call's result through a
+ * local (func_0061C6C8, the round 4b OPEN). func_00614758 (open since round 4b: CSE followed the
+ * jump past `return 37` with the call's v0 known zero and dropped the final `move v0,zero`) matched
+ * in round 14b as SCEA wrote it -- the tests positive, their errors in elses (`if (nValue != -2)
+ * *pValue = nValue; else return 1;` inside `if (f(...) == 0) {...} else return 37;`). The same body
+ * with the call's test a guard is byte-exact too but moves func_0061C510 (its element address's
+ * high part then kept in s3 across DMEmalloc), and func_00615B48's loop nested one level deeper
+ * moves func_0061C7A8 the same way: a later function's allocation follows an earlier one's
+ * spelling, so each spelling here is the one that keeps both. OPEN: func_00617610 and
+ * func_006189C8 (below). func_0061BEB8 returns the second call's result through a
  * variable: no sibling call then. */
 
 #include "dmelocal.h"
@@ -347,11 +350,13 @@ int func_00614758(int nReserved, int *pValue)
     if (pValue == 0)
         return DME_ERR_ARGUMENT;
     *pValue = 256;
-    if (func_00639A90(data_006511D8, &nValue) != 0)
+    if (func_00639A90(data_006511D8, &nValue) == 0) {
+        if (nValue != -2)
+            *pValue = nValue;
+        else
+            return 1;
+    } else
         return 37;
-    if (nValue == -2)
-        return 1;
-    *pValue = nValue;
     return DME_OK;
 }
 
@@ -794,11 +799,9 @@ extern int func_006158F8(char nMsgClass, unsigned int nWorld, int nTarget, unsig
 
 /* SOCOM 1's NetSendTargetClientBitmask grown (0x615B48): the message to each client the mask holds
  * (but this one), 13 if any send failed.
- * OPEN (8 bytes long, 65s): `return result` after the world's test -- 2.96's CSE follows the jump past
- * `return 15` knowing v0 is still the world call's result and drops the target's `move v0,s2`, so the
- * 15 cannot go in the beq's slot; byte-exact but one word under -fno-cse-follow-jumps (as func_00614758
- * is whole), which reallocates func_00614168 (s0/s1) and five more: the target's CSE follows jumps but
- * keeps a copy into the return register -- a toolchain difference, as the bnez/bnezl word. */
+ * Round 14b: the loop sits inside `if (pMask->nLast >= 0)` -- a guard returning `result` there let
+ * 2.96's CSE follow the jump knowing v0 still held the world call's result (round 13b's "known-zero
+ * v0", held a toolchain difference, is the source's shape: func_00614758 too). */
 int func_00615B48(char nMsgClass, unsigned int nWorld, unsigned int nType, unsigned int nSubType, int nLength,
                   void *pData, DmeTargetMask *pMask)
 {
@@ -822,15 +825,15 @@ int func_00615B48(char nMsgClass, unsigned int nWorld, unsigned int nType, unsig
         return result;
     if (pWorld->field_44C == 4)
         return 15;
-    if (pMask->nLast < 0)
-        return result;
-    for (i = pMask->nFirst; i <= pMask->nLast; i++) {
-        if (i == pWorld->nMyClient)
-            continue;
-        func_006126E8(&pClient, nWorld, i);
-        if (pClient != 0 && ((pMask->abTarget[i >> 3] >> (i & 7)) & 1)) {
-            if (func_006158F8(nMsgClass, nWorld, i, nType, nSubType, nLength, pData) != 0)
-                result = 13;
+    if (pMask->nLast >= 0) {
+        for (i = pMask->nFirst; i <= pMask->nLast; i++) {
+            if (i == pWorld->nMyClient)
+                continue;
+            func_006126E8(&pClient, nWorld, i);
+            if (pClient != 0 && ((pMask->abTarget[i >> 3] >> (i & 7)) & 1)) {
+                if (func_006158F8(nMsgClass, nWorld, i, nType, nSubType, nLength, pData) != 0)
+                    result = 13;
+            }
         }
     }
     return result;

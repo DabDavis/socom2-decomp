@@ -160,6 +160,8 @@ public:
     _zrdr *ReadArray(CRdrIO *io, int depth);
     int ReadToken(CRdrIO *io, _zrdr **out);
     _zrdr *MakeUnion(const char *token, bool quoted);
+    /* SOCOM 1's (a member reading its file stack's top there): the file given (zrdr_parse.cpp) */
+    static bool ValidateFormat(CRdrIO *io);
 
     /* the packed buffer read through a const accessor (ours): MW then reloads it after the
      * caller's own test of m_buffer, as the target does (Create, Resolve) */

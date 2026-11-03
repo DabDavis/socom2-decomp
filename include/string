@@ -544,6 +544,14 @@ bool operator==(const basic_string<charT, traits, Allocator> &lhs, const basic_s
     return lhs.size() == rhs.size() && lhs.compare(rhs) == 0;
 }
 
+/* not equal, inline over operator== (the world lane's round 4: zrdr_parse.cpp's symbol searches
+ * materialise `!(a == b)` -- sltu, xori -- before they branch, as an inline bool's result) */
+template <class charT, class traits, class Allocator>
+inline bool operator!=(const basic_string<charT, traits, Allocator> &lhs, const basic_string<charT, traits, Allocator> &rhs)
+{
+    return !(lhs == rhs);
+}
+
 template <class charT, class traits, class Allocator>
 inline bool operator<(const basic_string<charT, traits, Allocator> &lhs,
                       const basic_string<charT, traits, Allocator> &rhs)

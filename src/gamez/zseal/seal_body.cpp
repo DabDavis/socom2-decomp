@@ -393,6 +393,95 @@ extern "C" bool func_005804E0(CZSealBody *seal)
     return true;
 }
 
+extern "C" {
+/* two more anim types read as variables (OVL1 data, -1 in the image) and what the carried body is
+ * told first (OVL2 0x579220, not written yet) */
+extern short data_003DEE08;
+extern short data_003DEE48;
+void func_00579220(CZSealBody *seal);
+}
+
+/* the body carried let go, when the SEAL is in state 9 or one of two carry anims: its blends popped
+ * down to one, the drop anim of 0x3DEED8 or 0x3DEED0 pushed in state 8 at half its time, its kept
+ * velocity its own plus 7 of its node's first row, bit 9 set and 10 cleared; the hold cleared (OVL2
+ * 0x57EE00: SOCOM 1's DropBody, before OKToStand in both builds) */
+void CZSealBody::DropBody()
+{
+    if (m_state == 9 || IsCurrentBlend((AnimType)data_003DEE08) || IsCurrentBlend((AnimType)data_003DEE48)) {
+        CZSealBody *c = m_carry;
+
+        if (c) {
+            AnimType type;
+
+            if (IsCurrentBlend((AnimType)data_003DEE08))
+                type = (AnimType)data_003DEED8;
+            else
+                type = (AnimType)data_003DEED0;
+            func_00579220(c);
+            c->ClearStack(1, true);
+            CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(c, type, 8, 0, 0);
+
+            b->m_tfrac = 0.5f;
+            c->m_1350 = c->m_velW;
+            CPnt3D v(*(const CPnt3D *)&c->m_node->m_matrix);
+
+            v.Scale(7.0f, &v);
+            c->m_1350.Add(&v, &c->m_1350);
+            c->SetBit9(true);
+            c->SetBit10(false);
+        }
+        m_carry = 0;
+    }
+}
+
+extern "C" {
+/* three more anim types read as variables (OVL1 data, -1 in the image) */
+extern short data_003DEEF0;
+extern short data_003DEEE8;
+extern short data_003DEAD8;
+}
+
+/* whether the top blend is in one of the two anims 0x5804E0 starts a move from (an inline: its `||`
+ * is materialised before the test) */
+static inline bool InMoveAnim(CZSealBody *seal)
+{
+    bool r = seal->IsCurrentBlend((AnimType)data_003DEED0) || seal->IsCurrentBlend((AnimType)data_003DEED8);
+
+    return r;
+}
+
+/* whether the SEAL may go on: always with no blend; never online with bit 13 of 0x1060 set; never
+ * stunned in one of four anims (a dead SEAL's top blend then put in state 8); not in a dead top blend
+ * outside state 10 unless in a move's anims; not alive in the anim of 0x3DEAD8 (OVL2 0x589900, new in
+ * SOCOM II; the name unknown -- 0x57E130, 0x57F7D0 and 0x57DDF0 ask it) */
+extern "C" bool func_00589900(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+
+    if (!top)
+        return true;
+    if (theNetwork.m_9 && seal->m_1060_bit13)
+        return false;
+    if (seal->m_am_stunned) {
+        if (seal->IsCurrentBlend((AnimType)data_003DEED0) || seal->IsCurrentBlend((AnimType)data_003DEED8) ||
+            seal->IsCurrentBlend((AnimType)data_003DEEF0) || seal->IsCurrentBlend((AnimType)data_003DEEE8)) {
+            if (!seal->m_isAlive) {
+                CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+                b->m_state = 8;
+            }
+            return false;
+        }
+    }
+    if (seal->m_state != 10 && top->m_state == 8) {
+        if (!InMoveAnim(seal))
+            return false;
+    }
+    if (seal->m_isAlive && seal->IsCurrentBlend((AnimType)data_003DEAD8))
+        return false;
+    return true;
+}
+
 /* the top blend, in anim 46, made to play backwards from state 5 with its flag 0x20 set, and the push
  * told to the network for a SEAL this console plays (OVL2 0x57F5B0, new in SOCOM II) */
 extern "C" CZBodyAnimBlend *func_0057F5B0(CZSealBody *seal)
@@ -442,6 +531,340 @@ extern "C" bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float 
     seal->m_1314 = t;
     seal->m_1320 = a;
     seal->m_1324 = b;
+    return true;
+}
+
+/* whether the SEAL can take a stance now (OVL2 0x5857E0, below: Crouch inlines it) */
+extern "C" bool func_005857E0(CZSealBody *seal);
+
+/* a crouch: when the SEAL cannot crouch, a stand asked instead (the stance change marked); unless
+ * the body or its top blend crouches already, the blends popped down to one and Crouch_0 asked from
+ * the stance the body was in, at the old top's time (OVL2 0x581990: SOCOM 1's Crouch, CanCrouch and
+ * Stand(1) inlined in both builds).
+ * OPEN, 5 instructions (the size right): in the inlined Stand(1) the target gives Stand's stance s1
+ * (b's register) and ClearStack's stack pointer s0, ours the other way round; Stand's and Crouch's
+ * declaration orders (stance and t declared first, uninitialised, or the crouch path first) change
+ * nothing or lose more */
+CZBodyAnimBlend *CZSealBody::Crouch()
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (!func_005857E0(this)) {
+        m_desiredState = stateStand;
+        m_stancechanged = true;
+        return Stand(1);
+    }
+    int stance = m_state;
+
+    if (stance == 1 || b->m_state == 1)
+        return b;
+    float t = b->m_tfrac;
+
+    ClearStack(1, true);
+    return Crouch_0(stance, t);
+}
+
+/* a crouch's blends: from prone the get-up anims, from a stand the drop -- at a run (faster than
+ * 20) or a walk (faster than 10) its own anim at the stand's time with the body put in state 1 and
+ * its interpolation zeroed, else the plain one -- and from a hang the stand first (OVL2 0x5817D0:
+ * SOCOM 1's Crouch_0, the same switch; SOCOM II asks the speed squared) */
+CZBodyAnimBlend *CZSealBody::Crouch_0(int stance, float t)
+{
+    CZBodyAnimBlend *b = 0;
+
+    switch (stance) {
+    case 2:
+        func_00588BC0(this, (AnimType)18, 1, 0, 0);
+        b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)19, 1, 1, 0);
+        break;
+    case 0: {
+        func_00588BC0(this, (AnimType)18, 1, 0, 0);
+        float d = m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z;
+
+        if (d > 400.0f) {
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)2, 1, 0, 0);
+            b->m_tfrac = t;
+            BodySetState(1);
+            m_interp1 = 0.0f;
+            m_interp2 = 0.0f;
+        } else if (d > 100.0f) {
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)20, 1, 0, 0);
+            b->m_tfrac = t;
+            BodySetState(1);
+            m_interp1 = 0.0f;
+            m_interp2 = 0.0f;
+        } else
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)17, 1, 0, 0);
+        break;
+    }
+    case 4:
+        Crouch_0(0, -1.0f);
+        Stand_0(4, -1, -1.0f);
+        break;
+    }
+    return b;
+}
+
+/* whether a SEAL in water is shallow enough to go prone: 2 deep at most (an inline: Prone's test,
+ * materialised as 0x5857E0's is in Crouch) */
+static inline bool CanProneInWater(CZSealBody *seal)
+{
+    if (seal->m_inwater && !(seal->m_waterdepth <= 2.0f))
+        return false;
+    return true;
+}
+
+/* a prone: in water too deep, a crouch asked instead (the stance change marked); unless the body or
+ * its top blend is prone already, the blends popped down to one and Prone_0 asked from the stance the
+ * body was in (OVL2 0x581660: SOCOM 1's Prone, its aim and crouch tests gone) */
+CZBodyAnimBlend *CZSealBody::Prone()
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (!CanProneInWater(this)) {
+        m_desiredState = stateCrouch;
+        m_stancechanged = true;
+        return Crouch();
+    }
+    int stance = m_state;
+
+    if (stance == 2 || b->m_state == 2)
+        return b;
+    ClearStack(1, true);
+    return Prone_0(stance);
+}
+
+/* a stand: unless the body or its top blend stands already, the blends popped down to one as 0x57F310
+ * does and Stand_0 asked from the stance the body was in, at the old top's time (OVL2 0x581DC0: SOCOM
+ * 1's Stand, the same tests; Crouch inlines it) */
+CZBodyAnimBlend *CZSealBody::Stand(int n)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    int stance = m_state;
+
+    if (stance == 0 || b->m_state == 0)
+        return b;
+    float t = b->m_tfrac;
+
+    ClearStack(1, true);
+    return Stand_0(stance, n, t);
+}
+
+extern "C" {
+/* the stand from prone's anim type read as a variable (SOCOM 1's AnimTypes::Stand2Prone, OVL1 data) */
+extern short data_003DEC48;
+}
+
+/* a stand: from a crouch the get-up anim (run on when moving faster than 10), from prone SOCOM 1's
+ * Stand2Prone with the representative's bit 1 cleared, from a hang one way or the other, from idle
+ * the stand itself (OVL2 0x581C10: SOCOM 1's Stand_0, the same switch; SOCOM II passes the crouch's
+ * time in and asks the speed squared) */
+CZBodyAnimBlend *CZSealBody::Stand_0(int stance, int n, float t)
+{
+    CZBodyAnimBlend *b = 0;
+
+    switch (stance) {
+    case 1:
+        if (m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z > 100.0f) {
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)2, 0, 0, 0);
+            b->m_tfrac = t;
+            BodySetState(0);
+        } else
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)17, 0, 1, 0);
+        m_21c_bit2 = false;
+        break;
+    case 2:
+        b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)data_003DEC48, 0, 1, 0);
+        b->Representative()->SetBit1(false);
+        break;
+    case 4:
+        if (n > 0)
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)35, 0, 0, 0);
+        else
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)36, 0, 0, 0);
+        break;
+    case 7:
+        b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)1, 0, 0, 0);
+        break;
+    }
+    return b;
+}
+
+/* a prone: the drop anims pushed from a crouch or a stand, and from a hang stood up first through
+ * Stand_0; the last foot set to 2 (OVL2 0x581540: SOCOM 1's Prone_0, the same switch; SOCOM II drops
+ * the representative's flag clear) */
+#pragma auto_inline off
+CZBodyAnimBlend *CZSealBody::Prone_0(int stance)
+{
+    CZBodyAnimBlend *b = 0;
+
+    switch (stance) {
+    case 1:
+        func_00588BC0(this, (AnimType)26, 2, 0, 0);
+        b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)19, 2, 0, 0);
+        break;
+    case 0:
+        func_00588BC0(this, (AnimType)26, 2, 0, 0);
+        b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)25, 2, 0, 0);
+        break;
+    case 4:
+        func_00588BC0(this, (AnimType)26, 2, 0, 0);
+        func_00588BC0(this, (AnimType)25, 2, 0, 0);
+        m_last_foot = 2;
+        Stand_0(4, -1, -1.0f);
+        break;
+    }
+    m_last_foot = 2;
+    return b;
+}
+#pragma auto_inline reset
+
+/* unless the body or its top blend is in state 7 (idle): the blends popped down to one, twelve at
+ * most, as 0x57F310 does, and the idle anim given kept and pushed in state 7 (OVL2 0x581430: SOCOM 1's
+ * SetStanceIdle, the same tests and pops; SOCOM II drops the representative's flag clear after) */
+CZBodyAnimBlend *CZSealBody::SetStanceIdle(AnimType type)
+{
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    if (m_state == 7 || b->m_state == 7)
+        return b;
+    b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    int n = 12;
+    CBodyAnimBlendStack *stack = &m_blends;
+
+    while (BlendCount(stack) > 1 && n > 0) {
+        b = func_00589AA0(this);
+        n--;
+    }
+    if (n <= 0)
+        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    else {
+        if (b)
+            b->m_ctrl = 0;
+        m_desiredStance = STANCE_PRONE;
+    }
+    idlehack = type;
+    return (CZBodyAnimBlend *)func_00588BC0(this, type, 7, 0, 0);
+}
+
+/* a hang: the hang anims pushed from a stand, a crouch or prone first stood up through Stand_0 (OVL2
+ * 0x5812C0: SOCOM 1's Hang_0, the same switches; SOCOM II drops the representative's flag clear) */
+CZBodyAnimBlend *CZSealBody::Hang_0(int stance, int n)
+{
+    func_00555170(&m_blends);
+    CZBodyAnimBlend *b = 0;
+
+    if (n > 0) {
+        switch (stance) {
+        case 0:
+            func_00588BC0(this, (AnimType)34, 4, 0, 0);
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)33, 4, 0, 0);
+            break;
+        case 1:
+        case 2:
+            Hang_0(0, n);
+            Stand_0(stance, 0, -1.0f);
+            break;
+        }
+    } else {
+        switch (stance) {
+        case 0:
+            func_00588BC0(this, (AnimType)34, 4, 0, 0);
+            b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)37, 4, 0, 0);
+            break;
+        case 1:
+        case 2:
+            Hang_0(0, n);
+            Stand_0(stance, 0, -1.0f);
+            break;
+        }
+    }
+    return b;
+}
+
+extern "C" {
+/* the blend list the climbs fill (SOCOM 1's newanims, an RTList<ACTIVE_ANIM> of eight: OVL2 bss
+ * 0x66B2F0, built by the unit's initialiser 0x668940), the climb's anim type read as a variable (SOCOM
+ * 1's AnimTypes::ClimbMedium, OVL1 data) and an anim set's script for a type (OVL2 0x5E3D90, anim.cpp's:
+ * 0x5E3C20 with no weapon) */
+extern CActiveAnimList data_0066B2F0;
+extern short data_003DEC90;
+CZSIScriptCommon *func_005E3D90(AnimSet *set, AnimType type);
+}
+struct CTripleTable;
+extern "C" void func_0058A950(CTripleTable *t);
+
+/* a climb blended by its height: the medium climb's blend pushed, its list filled with anim 42 at a
+ * weight falling from 1 at 12 to 0 at 26.5 and the medium climb at the rest (OVL2 0x581110: SOCOM 1's
+ * BlendedClimb, the same weights; anim 42 where SOCOM 1 had 44) */
+CZBodyAnimBlend *CZSealBody::BlendedClimb(float h)
+{
+    func_0058A950((CTripleTable *)&data_0066B2F0);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)data_003DEC90, 0, 0, 0);
+    float w;
+
+    if (h <= 12.0f)
+        w = 1.0f;
+    else if (h >= 26.5f)
+        w = 0.0f;
+    else
+        w = 1.0f - (h - 12.0f) / 14.5f;
+    if (w > 0.0f) {
+        ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(func_005E3D90(m_animset, (AnimType)42), -1);
+
+        a->m_id = 42;
+        PushAnim(&data_0066B2F0, a, w);
+    }
+    if (w < 1.0f) {
+        ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(func_005E3D90(m_animset, (AnimType)data_003DEC90), -1);
+
+        a->m_id = data_003DEC90;
+        PushAnim(&data_0066B2F0, a, 1.0f - w);
+    }
+    b->SetBlendAnims(this, &data_0066B2F0);
+    return b;
+}
+
+extern "C" {
+/* (OVL2 0x5AC1F0 and 0x5A0950, seal_env.cpp's, not written yet: a fall's damage taken, and an anim
+ * type chosen by a kind and a variant) */
+void func_005AC1F0(CZSealBody *seal, float damage);
+AnimType func_005A0950(CZSealBody *seal, int kind, int variant);
+}
+
+/* a landing: the jump flag cleared; unless the SEAL is invincible or remote, the fall's damage taken
+ * and, when that killed it, the blends popped down to two, as 0x57F310 does, and the death anim pushed
+ * in state 8; whether the SEAL lives (OVL2 0x580360, new in SOCOM II) */
+static inline bool Invincible(CZSealBody *seal)
+{
+    return seal->m_invincible ? true : false;
+}
+
+extern "C" bool func_00580360(CZSealBody *seal, float t)
+{
+    seal->m_jumped = false;
+    if (Invincible(seal) || seal->IsRemote())
+        return true;
+    func_005AC1F0(seal, 1.2f * t);
+    if (!seal->m_isAlive) {
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+        int n = 12;
+        CBodyAnimBlendStack *stack = &seal->m_blends;
+
+        while (BlendCount(stack) > 2 && n > 0) {
+            b = func_00589AA0(seal);
+            n--;
+        }
+        if (n <= 0)
+            func_00555170((char *)seal + 0x1c0);
+        else {
+            if (b)
+                b->m_ctrl = 0;
+            seal->m_desiredStance = STANCE_PRONE;
+        }
+        func_00588BC0(seal, func_005A0950(seal, 3, 2), 8, 0, 0);
+        return false;
+    }
     return true;
 }
 
@@ -576,22 +999,20 @@ extern "C" CZBodyAnimBlend *func_0057F880(CZSealBody *seal)
 /* the blends popped down to a count, twelve at most; when that worked and when asked, the top
  * blend's control cleared and the SEAL asked to go prone (OVL2 0x58A5E0, new in SOCOM II: 0x57F310
  * with the count and the flag its arguments) */
-extern "C" void func_0058A5E0(CZSealBody *seal, unsigned int count, bool prone)
+void CZSealBody::ClearStack(unsigned int count, bool prone)
 {
-    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
     int n = 12;
-    CBodyAnimBlendStack *stack = &seal->m_blends;
+    CBodyAnimBlendStack *stack = &m_blends;
 
-    while (BlendCount(stack) > count && n > 0) {
-        b = func_00589AA0(seal);
-        n--;
-    }
+    while (BlendCount(stack) > count && n > 0)
+        b = func_00589AA0(this), n--;
     if (n <= 0)
-        b = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        b = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
     else if (prone) {
         if (b)
             b->m_ctrl = 0;
-        seal->m_desiredStance = STANCE_PRONE;
+        m_desiredStance = STANCE_PRONE;
     }
 }
 
@@ -634,9 +1055,38 @@ extern "C" bool func_00588080(CZSealBody *seal)
 }
 
 extern "C" {
-/* (OVL2 0x58A4D0 and seal.cpp's 0x555170: what the SEAL holds, on a ladder or off it) */
-void *func_0058A4D0(CZSealBody *seal, int a);
+/* (seal.cpp's 0x555170: the blend stack's top) */
 void *func_00555170(void *v);
+}
+
+/* the blends' count, compared signed (SOCOM 1's ClearToBase tests it with `slti` too) */
+static inline int SignedBlendCount(CBodyAnimBlendStack *stack)
+{
+    return stack->m_top + 1;
+}
+
+/* the blends popped down to the base stance's, twelve at most -- stopping at a stand (1), a crouch
+ * (18) or a prone (26) on top -- and one more when asked and there is one; the top blend's control
+ * cleared and stance 2 asked; the new top returned (OVL2 0x58A4D0: SOCOM 1's ClearToBase, the same
+ * three base anims and the extra pop; CSealCtrl::PreTick reaches it through 0x57DC80 from a peek) */
+CZBodyAnimBlend *CZSealBody::ClearToBase(bool pop)
+{
+    int n = 12;
+    CBodyAnimBlendStack *stack = &m_blends;
+
+    while (SignedBlendCount(stack) > 1 && n > 0) {
+        if (IsCurrentBlend((AnimType)1) || IsCurrentBlend((AnimType)18) || IsCurrentBlend((AnimType)26))
+            break;
+        func_00589AA0(this);
+        n--;
+    }
+    if (n <= 0)
+        return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+    if (pop && SignedBlendCount(stack) > 1)
+        func_00589AA0(this);
+    ((CZBodyAnimBlend *)func_00555170(&m_blends))->m_ctrl = 0;
+    m_desiredStance = STANCE_PRONE;
+    return (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
 }
 
 /* bits of a halfword set or cleared (OVL2 0x58A920; seal_body.cpp's and seal_env.cpp's callers --
@@ -747,7 +1197,7 @@ extern "C" bool func_005857E0(CZSealBody *seal)
         return false;
     if (func_005E3E80(SetOf(seal), 84) < 0)
         return false;
-    if (seal->m_inwater && !(seal->m_f88 <= 8.5f))
+    if (seal->m_inwater && !(seal->m_waterdepth <= 8.5f))
         return false;
     return true;
 }
@@ -772,8 +1222,11 @@ struct CTripleTable {
     } *m_items;   // 0x10
 };
 
-/* the table cleared: its state zeroed, every entry zeroed (OVL2 0x58A950, new in SOCOM II; three of
- * the body's functions call it) */
+/* the table cleared: its state zeroed, every entry zeroed (OVL2 0x58A950: the words of
+ * RTList<ACTIVE_ANIM>::Clear, OVL2's copy -- BlendedClimb clears newanims with it where SOCOM 1's calls
+ * Clear__21RTList<11ACTIVE_ANIM>Fv; a stand-in, so pinned: an out-of-class template member is never
+ * inlined into the unit's own functions) */
+#pragma auto_inline off
 extern "C" void func_0058A950(CTripleTable *t)
 {
     t->m_4 = 0;
@@ -787,12 +1240,72 @@ extern "C" void func_0058A950(CTripleTable *t)
         e->m_8 = 0;
     }
 }
+#pragma auto_inline reset
+
+/* whether the SEAL can act on another: not on a SEAL of its own team, of the 0x20000 team bit, that
+ * is no SEAL, a ghost, or whose node is inactive -- and only alive, played by this console and as
+ * 0x589900 allows (OVL2 0x57DDF0, new in SOCOM II; the name unknown) */
+extern "C" bool func_0057DDF0(CZSealBody *seal, CZSealBody *other)
+{
+    bool ok = true;
+
+    if (other) {
+        unsigned int team = other->m_team;
+
+        if ((team & seal->m_team) || (team & 0x20000) || other->m_type != CEntity::ENT_TYPE_SEAL ||
+            other->m_deathType == DEATH_GHOST || (other->GetNode() && !other->GetNode()->m_active))
+            ok = false;
+    }
+    if (!seal->m_isAlive)
+        ok = false;
+    else if (seal->IsRemote())
+        ok = false;
+    else if (!func_00589900(seal))
+        ok = false;
+    return ok;
+}
+
+extern "C" {
+/* an anim type read as a variable (OVL1 data, -1 in the image) and AnimSet's variant pick and the
+ * script of a variant (OVL2 0x5E3DA0, GetVariantIndex__7AnimSetF8AnimTypeii, and 0x5E3B20: anim.cpp's,
+ * the kit lane's -- AnimSet is declared there alone) */
+extern short data_003DF130;
+int func_005E3DA0(AnimSet *set, AnimType type, int kind, int anim);
+CZSIScriptCommon *func_005E3B20(AnimSet *set, AnimType type, int kind, int variant);
+}
+
+/* the anim of 0x3DF130 pushed over the base stance, kind 13, at a variant of the held weapon's --
+ * the one given, or below zero the one the top script's id picks -- and the variant told to the
+ * network for a SEAL this console plays (OVL2 0x57DCC0, new in SOCOM II; the name unknown).
+ * OPEN, 6 instructions (the size right): in both AnimSet calls the target loads the kind (a2) and the
+ * set (a0) before the type's global (a1), ours the type first -- the same as member calls on a
+ * declared AnimSet, with the global volatile, const or typed AnimType, the arguments cast to int, or
+ * the set assigned in the call; rep declared ahead of b fixed their saved registers */
+extern "C" CZBodyAnimBlend *func_0057DCC0(CZSealBody *seal, int variant)
+{
+    ACTIVE_ANIM *rep;
+
+    seal->ClearToBase(false);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DF130, seal->m_state, 0, 13);
+
+    if (!b)
+        return 0;
+    rep = b->Representative();
+
+    if (variant < 0)
+        variant = func_005E3DA0(seal->m_animset, (AnimType)data_003DF130, seal->m_weapon_id,
+                                rep->m_anim->m_id);
+    rep->m_anim = func_005E3B20(seal->m_animset, (AnimType)data_003DF130, seal->m_weapon_id, variant);
+    if (theNetwork.m_9 && !seal->IsRemote())
+        func_002BBAF0(seal->m_id, 34, variant, false, 12);
+    return b;
+}
 
 /* (OVL2 0x57DC80; CSealCtrl::PreTick calls it twice) */
 extern "C" void *func_0057DC80(CZSealBody *seal)
 {
     if (seal->m_state == 3)
-        return func_0058A4D0(seal, 0);
+        return seal->ClearToBase(false);
     return func_00555170((char *)seal + 0x1c0);
 }
 
@@ -806,6 +1319,50 @@ void CZSealBody::BodySetState(int state)
     if (m_control && state != m_state)
         ((CSealCtrl *)m_control)->OnStateChange((SEAL_STATE)m_state, (SEAL_STATE)state);
     func_0028DFB0(*this, state);
+}
+
+extern "C" float fabsf(float x);
+
+/* the top blend turned: its weight made 1 and its playback set from the turn, doubled and negated,
+ * its size scaled and capped by the state (0.6 standing, 0.3 crouched, 0.35 prone, 0.6 in states 9
+ * and 10), its sign kept (OVL2 0x583960: SOCOM 1's TurnControl, the same caps; SOCOM II sets the
+ * representative's playback where SOCOM 1 called its slot 0x14) */
+CZBodyAnimBlend *CZSealBody::TurnControl(float turn)
+{
+    bool neg;
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    b->SetRepresentativeWt(1.0f);
+    float r = 2.0f * -turn;
+
+    neg = r < 0.0f;
+    float a = fabsf(r);
+
+    switch (m_state) {
+    case 0:
+        a *= 0.6f;
+        if (a > 0.6f)
+            a = 0.6f;
+        break;
+    case 1:
+        a *= 0.3f;
+        if (a > 0.3f)
+            a = 0.3f;
+        break;
+    case 2:
+        a *= 0.35f;
+        if (a > 0.35f)
+            a = 0.35f;
+        break;
+    case 9:
+    case 10:
+        a *= 0.6f;
+        if (a > 0.6f)
+            a = 0.6f;
+        break;
+    }
+    b->Representative()->SetPlayback(neg ? -a : a);
+    return b;
 }
 
 /* the stance's change taken, once (OVL2 0x582500; SOCOM 1's, the false return its own block) */

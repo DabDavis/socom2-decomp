@@ -742,7 +742,7 @@
 0x001A5C40 0xC _change_addr  # MAIN; s1:ref (taken by address where SOCOM 1 takes _change_addr's)
 0x001A5C50 0x18 sceSifGetSreg  # MAIN; s1:callee
 0x001A5C68 0x1C sceSifSetSreg  # MAIN unaligned; s1:exact
-0x001A5C88 0xC func_001A5C88  # MAIN unaligned
+0x001A5C88 0xC sceSifGetDataTable  # MAIN unaligned; s1:order (the GCC lane r14a: the demo's sifcmd object holds sceSifGetDataTable, 0xC, between sceSifSetSreg and sceSifInitCmd, as here; it returns _data_table@sifcmd's address; src/lib/sdk/sifcmd.c)
 0x001A5C98 0x280 sceSifInitCmd  # MAIN unaligned; s1:exact
 0x001A5F18 0x34 sceSifExitCmd  # MAIN unaligned; s1:exact
 0x001A5F50 0x18 sceSifSetCmdBuffer  # MAIN; s1:exact
@@ -1165,11 +1165,11 @@
 0x001BE5B0 0xEC func_001BE5B0  # MAIN
 0x001BE6A0 0x1F8 func_001BE6A0  # MAIN
 0x001BE898 0xC8 func_001BE898  # MAIN unaligned
-0x001BE960 0xA8 func_001BE960  # MAIN
-0x001BEA08 0xDC func_001BEA08  # MAIN unaligned
-0x001BEAE8 0xDC func_001BEAE8  # MAIN unaligned
-0x001BEBC8 0xD8 func_001BEBC8  # MAIN unaligned
-0x001BECA0 0xFC func_001BECA0  # MAIN
+0x001BE960 0xA8 sceUsbKbGetInfo  # MAIN; its own message (the GCC lane r14a: "sceUsbKbGetInfo: sceSifCallRpc -> %d" when its RPC, command 1, fails; libusbkb is not in SOCOM 1; src/lib/sdk/libusbkb.c)
+0x001BEA08 0xDC sceUsbKbRead  # MAIN unaligned; its own message (the GCC lane r14a: "sceUsbKbRead: sceSifCallRpc -> %d" when its RPC, command 2, fails; src/lib/sdk/libusbkb.c)
+0x001BEAE8 0xDC sceUsbKbGetLocation  # MAIN unaligned; its own message (the GCC lane r14a: "sceUsbKbGetLocation: sceSifCallRpc -> %d" when its RPC, command 3, fails; src/lib/sdk/libusbkb.c)
+0x001BEBC8 0xD8 sceUsbKbSetLEDStatus  # MAIN unaligned; its own message (the GCC lane r14a: "sceUsbKbSetLEDStatus: sceSifCallRpc -> %d" when its RPC, command 4, fails; src/lib/sdk/libusbkb.c)
+0x001BECA0 0xFC sceUsbKbSetLEDMode  # MAIN; its own message (the GCC lane r14a: "sceUsbKbSetLEDMode: sceSifCallRpc -> %d" when its RPC, command 5, fails; src/lib/sdk/libusbkb.c)
 0x001BEDA0 0x44 func_001BEDA0  # MAIN
 0x001BEDE8 0x4C func_001BEDE8  # MAIN unaligned
 0x001BEE38 0x4C func_001BEE38  # MAIN unaligned
@@ -4201,12 +4201,12 @@
 0x002C5C90 0x80 func_002C5C90  # OVL1
 0x002C5D10 0x44 func_002C5D10  # OVL1
 0x002C5D60 0x110 SelectConfig__13CCtrlrConfigsFPCc  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls it from the same place; the name strcasecmp'd against each config's string as SOCOM 1's (a0, a const char *), the match stored as the current config -- SOCOM II's then updates the pad's settings)
-0x002C5E70 0x174 func_002C5E70  # OVL1
-0x002C5FF0 0x34 func_002C5FF0  # OVL1
-0x002C6030 0xC func_002C6030  # OVL1
-0x002C6040 0xC func_002C6040  # OVL1
-0x002C6050 0xC func_002C6050  # OVL1
-0x002C6060 0x5C func_002C6060  # OVL1
+0x002C5E70 0x174 Init__13CCtrlrConfigsFv  # OVL1; s1:calls by hand (the states lane, round 20: SOCOM 1's CCtrlrConfigs::Init -- controller.rdr from data/common, its ControllerConfigs, SelectConfig("Default"), a "NoDefaultDummy" layout without one; SOCOM II's parse moved out to 0x2C67F0, the dummy kept nowhere; CMission::Init calls it; byte-exact in fts_controller.cpp)
+0x002C5FF0 0x34 __ct__11CCfgButtonsFv  # OVL1; ours (the states lane, round 20: the layout's thirteen buttons' implicit constructor -- MW's array construction, a never-unrolled pointer loop storing PAD_BUTTON_NONE (16) through the element's inlined constructor; called for 0x12)
+0x002C6030 0xC __ct__8CCfgFlagFv  # OVL1; ours (the states lane, round 20: a layout's flag's constructor, a byte cleared -- called for 0x11 by the layout's constructor inlined one level)
+0x002C6040 0xC __ct__10CCfgSticksFv  # OVL1; ours (the states lane, round 20: a layout's stick mask's constructor, a byte cleared -- called for 0xF and 0x10 by the layout's constructor inlined one level)
+0x002C6050 0xC __ct__9CCfgStickFv  # OVL1; ours (the states lane, round 20: a layout's stick setting's constructor, a byte cleared -- the layout's constructor, inlined one level in Init and the parser, calls it for 0xC, 0xD and 0xE; a class of its own, three distinct one-byte constructor copies follow Init)
+0x002C6060 0x5C __ct__9CSaferStrFPCc  # OVL1; ours (the states lane, round 20: CSaferStr from a C string -- the three words cleared, then the text assigned or the string emptied -- the layout's name; the copy fts_controller.cpp emits after Init, its first caller; the parser 0x2C67F0 calls it too)
 0x002C60C0 0x4C func_002C60C0  # OVL1
 0x002C6110 0xC4 func_002C6110  # OVL1
 0x002C61E0 0x38 func_002C61E0  # OVL1
@@ -4411,7 +4411,7 @@
 0x002D0620 0x54 GetNodeByIndex__6CGraphFUi  # OVL1; s1:order by hand (the states lane: between GetNodeByNodeEx and CreateEdge as SOCOM 1's GetNodeByIndex; steps index nodes into the node list at 4, none past its end; Read calls it with each edge's two indices)
 0x002D0680 0xF8 CreateEdge__6CGraphFP6CGNodeP6CGNode  # OVL1; s1:align
 0x002D0780 0x1A8 DeleteNode__6CGraphFP6CGNode  # OVL1; s1:order by hand (the states lane: between CreateEdge and CreateNode as SOCOM 1's DeleteNode: each of the node's edges taken out of the other end's list and the graph's and deleted through CGEdge::Delete, then the node removed and deleted)
-0x002D0930 0x5C CreateNode__6CGraphFPCc  # OVL1; s1:align
+0x002D0930 0x5C CreateNode__6CGraphFv  # OVL1; s1:align; by hand (the states lane, round 20, on the AI core's lead: SOCOM II's CreateNode takes no name -- it never reads a1 and every caller, CGraph::Read 0x2D0C90 and the AI maps' graph builders, leaves a1 unset; new CGNode, push_back, the node returned; byte-exact in graph_main.cpp)
 0x002D0990 0x1E0 __dt__6CGraphFv  # OVL1; s1:order by hand (the states lane: after CreateNode as SOCOM 1's ~CGraph: the name freed, every node's and edge's object deleted through its virtual destructor, both lists cleared; Destroy tail-calls it with 1)
 0x002D0B70 0x80 __ct__6CGraphFPCc  # OVL1; s1:order by hand (the states lane: after ~CGraph as SOCOM 1's CGraph(const char *); the name cleared, both lists built, the name copied; inlined whole by Create(name); byte-exact in graph_tree.cpp)
 0x002D0BF0 0x8 Destroy__6CGraphFP6CGraph  # OVL1; s1:order by hand (the states lane: between the constructor and Create as SOCOM 1's Destroy; ~CGraph tail-called with 1, a delete; byte-exact in graph_tree.cpp)
@@ -5838,57 +5838,57 @@
 0x0032F600 0x20 GetSize__9CBufferIOCFv  # OVL1; the UI-widgets/file lane's lead, checked: slot 0x14 (GetSize) of CBufferIO's vtable 0x408130 and CRdrIO's 0x406A50, where CFileIO's holds GetSize__7CFileIOCFv; the buffer's size (m_x14 ? m_x1C : m_x8); an inline virtual's copy, emitted with zrdr_parse.cpp's CRdrIO
 0x0032F620 0x8 GetMode__7CFileIOCFv  # OVL1; the UI-widgets/file lane's lead, checked: slot 0x18 (GetMode) of both CFileIO's (0x408180) and CBufferIO's tables, returning the word at 0xC; an inline virtual's copy, emitted with zrdr_parse.cpp's CRdrIO
 0x0032F630 0x4D8 zrdr_read__FPCcPCci  # OVL1; s1:callee
-0x0032FB10 0x68 func_0032FB10  # OVL1
-0x0032FB80 0x10 func_0032FB80  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x0032FB90 0x3C func_0032FB90  # OVL1
-0x0032FBD0 0x20 func_0032FBD0  # OVL1
-0x0032FBF0 0x14 func_0032FBF0  # OVL1
-0x0032FC10 0xC func_0032FC10  # OVL1
-0x0032FC20 0x8 func_0032FC20  # OVL1
-0x0032FC30 0x8 func_0032FC30  # OVL1
+0x0032FB10 0x68 Dump__11zrdr_symtabFv  # OVL1; ours, the world lane round 4 (zrdr_parse.cpp: an empty walk over the symbol table at 0x488630, its body compiled out -- zrdr_read's inlined Pop calls it last; byte-exact)
+0x0032FB80 0x10 __as__Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorFRCQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); the world lane round 4 (vector<zrdr_sym>'s iterator assignment, out of line: zrdr_read's inlined Pop calls it for last = end() and first = remove_if(...))
+0x0032FB90 0x3C erase__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>FQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iterator  # OVL1; the world lane round 4 (vector<zrdr_sym>'s erase(first, last) wrapper, out of line: the MSL lane's round 13 found it code-exact over a stand-in; zrdr_read's inlined Pop calls it twice)
+0x0032FBD0 0x20 end__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>Fv  # OVL1; the world lane round 4 (vector<zrdr_sym>'s end(): data + size * 0x1C, out of line from zrdr_read's inlined Pop)
+0x0032FBF0 0x14 __pp__Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorFi  # OVL1; the world lane round 4 (vector<zrdr_sym>'s iterator postfix ++, out of line from zrdr_read's inlined Pop)
+0x0032FC10 0xC begin__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>Fv  # OVL1; the world lane round 4 (vector<zrdr_sym>'s begin(), out of line from zrdr_read's inlined Pop)
+0x0032FC20 0x8 size__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>CFv  # OVL1; the world lane round 4 (vector<zrdr_sym>'s size(), out of line from zrdr_read's inlined Pop)
+0x0032FC30 0x8 __ct__Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorFv  # OVL1; the world lane round 4 (vector<zrdr_sym>'s iterator default constructor, out of line from zrdr_read's inlined Pop: its two iterators)
 0x0032FC40 0x8 func_0032FC40  # OVL1
-0x0032FC50 0x68 func_0032FC50  # OVL1
-0x0032FCC0 0x24 func_0032FCC0  # OVL1
-0x0032FCF0 0x78 func_0032FCF0  # OVL1
-0x0032FD70 0x8 func_0032FD70  # OVL1
-0x0032FD80 0xEC func_0032FD80  # OVL1
-0x0032FE70 0x1588 func_0032FE70  # OVL1
-0x00331400 0x174 func_00331400  # OVL1
-0x00331580 0x110 func_00331580  # OVL1
+0x0032FC50 0x68 __dt__8zrdr_symFv  # OVL1; SOCOM 1's (its __dt__8zrdr_symFv, two char pointers freed there; SOCOM II's destroys the two strings, 0x1E7EF0 each, then deletes): the world lane round 4 -- the preprocessor's Define/Undefine, inlined one level, destroy their temporary symbol through it
+0x0032FCC0 0x24 push_back__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>FRC8zrdr_sym  # OVL1; the world lane round 4 (vector<zrdr_sym>::push_back out of line: insert(data + size, 1, x), a tail jump to 0x3325E0; the preprocessor's Define/Undefine call it)
+0x0032FCF0 0x78 __ct__8zrdr_symFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>RCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>i  # OVL1; the world lane round 4 (zrdr_sym(name, value, defined): the strings zeroed and assigned (0x22E4D0 each), then the flag = !defined; Define passes 1, Undefine 0)
+0x0032FD70 0x8 func_0032FD70  # OVL1; the world lane round 4: basic_string's inline operator=(const basic_string &) out of line, `j 0x22E4D0` -- the preprocessor's Define (inlined one level) requests it, the symbol copies 0x332560/0x332A60/0x332AD0/0x333120 call it; its name waits on 0x22E4D0 being renamed assign(const basic_string &) (the integrator's request: build/scratch/wld/string_assign.patch); the draft stands
+0x0032FD80 0xEC Find__11zrdr_symtabFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>bb  # OVL1; ours, the world lane round 4 (the symbol table's search: from the end down to the file's first symbol (local) or the table's, a #undef'd one only when any; the preprocessor's #define/#undef call it with (name, true, true))
+0x0032FE70 0x1588 _preproc_filter__FP6CRdrIO  # OVL1; SOCOM 1's name (_preproc_filter__FPcb, a buffer there): the world lane round 4 -- the preprocessor, zrdr_read's and its own (#include) caller: #include/#define/#undef/#ifdef/#else/#endif and the symbols' substitution, the text then made the CRdrIO's buffer
+0x00331400 0x174 ValidateFormat__8CRdrFileFP6CRdrIO  # OVL1; SOCOM 1's (ValidateFormat__8CRdrFileFv, its file stack's top there; SOCOM II's takes the CRdrIO, a static member): the world lane round 4 -- the parentheses balanced outside quotes and ';' comments, the file rewound before and after; the preprocessor calls it first
+0x00331580 0x110 _get_pptoken__FPCc  # OVL1; SOCOM 1's (_get_pptoken__FPc, strcmp there): the world lane round 4 -- a directive line's code by strncmp (#ifdef 4, #else 8, #endif 16, #define 1, #include 32, #undef 2), the preprocessor's switch
 0x00331690 0x80 Open__6CRdrIOFPvUi  # OVL1; slot 0x44 of CRdrIO's vtable (0x406A50, CBufferIO's Open(void *, unsigned int) there): the name and directory strings at 0x3C/0x30 erased, then CBufferIO::Open(buf, size) -- the rdr lane
 0x00331710 0x144 Open__6CRdrIOFPCcUi  # OVL1; slot 0x08 of CRdrIO's vtable (0x406A50): the name kept at 0x3C, its directory split off at the last of "\\/" into 0x30 with backslashes made slashes, then CBufferIO::Open(name, mode); zrdr_read inlines it -- the rdr lane
-0x00331860 0xD8 func_00331860  # OVL1
+0x00331860 0xD8 __dt__6CRdrIOFv  # OVL1; the world lane round 4 (CRdrIO's destructor: slot 0x4C of its vtable 0x406A50, the preprocessed text freed, the name and directory destroyed, then ~CBufferIO's and ~CFileIO's Close through the table; byte-exact)
 0x00331940 0x1D8 ReadArray__8CRdrFileFP6CRdrIOi  # OVL1; s1:order by hand (SOCOM 1's ReadArray: tokens gathered into a pointer list until ')', '(' recursing (itself), the values copied into an array from the allocator 0x335BC0 and freed; SOCOM II passes the CRdrIO and the depth, the top level filling the file itself -- zrdr_read calls it with (file, &io, 0)) -- the rdr lane
 0x00331B20 0x1FC ReadToken__8CRdrFileFP6CRdrIOPP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's ReadToken: ';' comments skipped to the line's end, a token ended by '(' ')' or white space and made a value by MakeUnion (0x331D20), a quoted string read whole, the 800-byte limit; SOCOM II reads through the CRdrIO passed in (fread, slot 0x24) where SOCOM 1 read its file stack's top) -- the rdr lane
 0x00331D20 0x100 MakeUnion__8CRdrFileFPCcb  # OVL1; s1:order by hand (SOCOM 1's MakeUnion, the same 0x100: a token made an integer (strtol over all of it), else a real (strtod), else a string through the file's CSTable::CreateString at this+8; the value from the allocator 0x335BC0 where SOCOM 1's called _calloc) -- the rdr lane
-0x00331E20 0xC func_00331E20  # OVL1
+0x00331E20 0xC IsUndefined__11zrdr_symtabFRC8zrdr_sym  # OVL1; ours, the world lane round 4 (remove_if's test, by address in zrdr_read: the symbol's #undef flag at 0; the unit's first-defined function; byte-exact)
 0x00331E30 0x94 at__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00331ED0 0x54 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00331F30 0x54 find_last_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00331F90 0x54 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00331FF0 0x54 find_last_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00332050 0x8C __eq<c,Q23std14char_traits<c>,Q23std12allocator<c>>__3stdFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>RCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_b  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
-0x003320E0 0xE4 func_003320E0  # OVL1
+0x003320E0 0xE4 remove_if<Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iterator,PFRC8zrdr_sym_b>__3stdFQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorPFRC8zrdr_sym_b_Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iterator  # OVL1; the world lane round 4 (std::remove_if over vector<zrdr_sym> with IsUndefined: zrdr_read's inlined Pop drops the #undef'd symbols; the MSL lane's round 13 found it code-exact over a stand-in)
 0x003321D0 0x38 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Ui  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00332210 0x38 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Ui  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00332250 0xD0 func_00332250  # OVL1
 0x00332320 0xD0 func_00332320  # OVL1
-0x003323F0 0x168 func_003323F0  # OVL1
-0x00332560 0x74 func_00332560  # OVL1
-0x003325E0 0x478 func_003325E0  # OVL1
-0x00332A60 0x70 func_00332A60  # OVL1
-0x00332AD0 0x7C func_00332AD0  # OVL1
-0x00332B50 0x1A0 func_00332B50  # OVL1
+0x003323F0 0x168 erase__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>FP8zrdr_symP8zrdr_sym  # OVL1; the world lane round 4 (vector<zrdr_sym>'s class erase(T *, T *): the tail copied down through 0x332560, the strings of the elements past the new end destroyed; the MSL lane's round 13 lead)
+0x00332560 0x74 __copy<P8zrdr_sym,P8zrdr_sym>__3stdFP8zrdr_symP8zrdr_symP8zrdr_sym_P8zrdr_sym  # OVL1; the world lane round 4 (std::copy's helper over zrdr_sym: the flag byte copied, the two strings assigned through CSaferStr's 0x32FD70; the class erase 0x3323F0 calls it)
+0x003325E0 0x478 insert__Q23std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>FP8zrdr_symUiRC8zrdr_sym  # OVL1; the world lane round 4 (vector<zrdr_sym>'s class insert(T *, n, const T &): push_back 0x32FCC0's tail jump, the copy constructor 0x332B50, __fill_n 0x332A60 and __copy_backward 0x332AD0 called)
+0x00332A60 0x70 __fill_n<P8zrdr_sym,Ui,8zrdr_sym>__3stdFP8zrdr_symUiRC8zrdr_sym_v  # OVL1; the world lane round 4 (std::fill_n's helper over zrdr_sym: the flag copied, the strings assigned through 0x32FD70; the class insert calls it)
+0x00332AD0 0x7C __copy_backward<P8zrdr_sym,P8zrdr_sym>__3stdFP8zrdr_symP8zrdr_symP8zrdr_sym_P8zrdr_sym  # OVL1; the world lane round 4 (std::copy_backward's helper over zrdr_sym; the class insert calls it)
+0x00332B50 0x1A0 __ct__8zrdr_symFRC8zrdr_sym  # OVL1; the world lane round 4 (zrdr_sym's written copy constructor: the strings zeroed and assigned, basic_string's assignment inlined, then the flag; the class insert's construct calls it six times)
 0x00332CF0 0xFC func_00332CF0  # OVL1
 0x00332DF0 0xB8 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00332EB0 0xD0 find_last_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00332F80 0xC8 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00333050 0xC8 find_last_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
-0x00333120 0xC4 func_00333120  # OVL1
-0x003331F0 0x68 func_003331F0  # OVL1
-0x00333260 0xC4 func_00333260  # OVL1
-0x00333330 0x58 func_00333330  # OVL1
-0x00333390 0x60 func_00333390  # OVL1
+0x00333120 0xC4 remove_copy_if<Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iterator,Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iterator,PFRC8zrdr_sym_b>__3stdFQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorQ33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iteratorPFRC8zrdr_sym_b_Q33std54__vector_imp<8zrdr_sym,Q23std20allocator<8zrdr_sym>,0>8iterator  # OVL1; the world lane round 4 (std::remove_copy_if over vector<zrdr_sym>, the predicate in t0: remove_if 0x3320E0 calls it; the MSL lane's round 13 found it code-exact over a stand-in)
+0x003331F0 0x68 __dt__Q23std56__vector_deleter<8zrdr_sym,Q23std20allocator<8zrdr_sym>>Fv  # OVL1; the world lane round 4 (vector<zrdr_sym>'s deleter destructor: its clear 0x333260 called, the storage freed)
+0x00333260 0xC4 clear__Q23std56__vector_deleter<8zrdr_sym,Q23std20allocator<8zrdr_sym>>Fv  # OVL1; the world lane round 4 (vector<zrdr_sym>'s deleter clear: each symbol's two strings destroyed from the end down, the count zeroed)
+0x00333330 0x58 func_00333330  # OVL1; the world lane round 4 (one this-test, then the deleter's destructor 0x3331F0: the __vector_imp level of the symbol table's destructor chain); back to the placeholder (the world lane round 4): it is __dt__Q23std54__vector_imp<8zrdr_sym,...,0>Fv, but zrdr_parse.cpp's copy inlines the deleter's destructor (0x108 against 0x58: the tail generates that destructor first) -- the draft stands
+0x00333390 0x60 func_00333390  # OVL1; ours, the world lane round 4 (the symbol table's destructor, which __sinit_zrdr_parse.cpp registers for 0x488630: two this-tests, the table's and its vector's, then 0x333330); back to the placeholder (the world lane round 4): it is the symbol table's destructor __dt__11zrdr_symtabFv (zrdr_parse.cpp's copy is byte-exact once 0x333330 carries its name) -- the draft stands
 0x003333F0 0x48 addSTRING__10CRdrEditorFPCcPCc  # OVL1; s1:order by hand (SOCOM 1's addSTRING, first of CRdrEditor's members in both demos' order: push(tag) 0x3339B0, addstringnode 0x333610, pop 0x333770, true) -- the rdr lane
 0x00333440 0x48 addbool__10CRdrEditorFPCcb  # OVL1; the rdr lane: SOCOM II's, between addSTRING and addPNT3D: push(tag), addintnode (0x333700) of the bool re-extended (andi 0xff), pop -- the name ours
 0x00333490 0x60 addPNT3D__10CRdrEditorFPCcRC5PNT3D  # OVL1; s1:order by hand (SOCOM 1's addPNT3D: push, three reals added (0x333690) from the point's x, y, z, pop) -- the rdr lane
@@ -8744,7 +8744,7 @@
 0x004CFB60 0x4A8 FillOut_Syntax_Statedict_And_Wordprops_ForChinese  # OVL2; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls FillOut_Syntax_Statedict_And_Wordprops_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0008 0xF8 FreeSecondPassContext_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese and others call FreeSecondPassContext_ForChinese where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004D0100 0x880 CreateSecondPassContext_ForChinese  # OVL2; s1:calls
-0x004D0980 0x24 func_004D0980  # OVL2
+0x004D0980 0x24 Tone_Of_Final  # OVL2; s1:order (SOCOM 1's object 0x3404E8: after CreateSecondPassContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese, as here; the same zero test and compare of two unsigned shorts; uncalled in both) -- the gcc lane, round 14c
 0x004D09A8 0x100 Calculate_NbrOfStatesInDict_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfStatesInDict_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0AA8 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0BD8 0xF48 CreateSecondPassContext  # OVL2 unaligned; s1:calls
@@ -8775,7 +8775,7 @@
 0x004D6FC0 0x4A0 func_004D6FC0  # OVL2
 0x004D7460 0xDC func_004D7460  # OVL2
 0x004D7540 0xC00 CreateSecondPassTreeContext_ForChinese  # OVL2; s1:calls (SOCOM 1's casrDoIsoWordSecondPass calls CreateSecondPassTreeContext_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
-0x004D8140 0x24 func_004D8140  # OVL2
+0x004D8140 0x24 Tone_Of_Final_TreeCtx  # OVL2; s1:order (SOCOM 1's object 0x345CD0: after CreateSecondPassTreeContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese_TreeCtx, as here; Tone_Of_Final's body; uncalled in both) -- the gcc lane, round 14c
 0x004D8168 0x100 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8268 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8398 0xEE0 casrCreateResult  # OVL2 unaligned; s1:calls (SOCOM 1's cbTOSRecognised and cbDoSecondPassIfEnabled call casrCreateResult where ours call this row, with the same arguments -- the result's address, the frame, 1); s1:order, the head of SOCOM 1's casr object (0x348248), its static CalcWordConfidence before it not a row here -- the gcc lane, round 9c
@@ -10434,7 +10434,7 @@
 0x0057E540 0x228 func_0057E540  # OVL2
 0x0057E770 0x5A0 func_0057E770  # OVL2
 0x0057ED10 0xE4 func_0057ED10  # OVL2
-0x0057EE00 0x1E0 func_0057EE00  # OVL2
+0x0057EE00 0x1E0 DropBody__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 DropBody__10CZSealBodyFv, right before OKToStand in both builds: the carried body at 0xEAC, SOCOM 1 m_carry 0xDA8, let go with a drop anim and cleared; the SEALs round 16)
 0x0057EFE0 0x168 OKToStand__FP10CZSealBody  # OVL2; s1:calls
 0x0057F150 0x150 func_0057F150  # OVL2
 0x0057F2A0 0x70 func_0057F2A0  # OVL2
@@ -10455,23 +10455,23 @@
 0x005807D0 0x2B0 func_005807D0  # OVL2
 0x00580A80 0xE8 func_00580A80  # OVL2
 0x00580B70 0x59C func_00580B70  # OVL2
-0x00581110 0x1A8 func_00581110  # OVL2
-0x005812C0 0x168 func_005812C0  # OVL2
-0x00581430 0x104 func_00581430  # OVL2
-0x00581540 0x118 func_00581540  # OVL2
-0x00581660 0x16C func_00581660  # OVL2
-0x005817D0 0x1BC func_005817D0  # OVL2
-0x00581990 0x280 func_00581990  # OVL2
-0x00581C10 0x1AC func_00581C10  # OVL2
-0x00581DC0 0x104 func_00581DC0  # OVL2
-0x00581ED0 0x628 func_00581ED0  # OVL2
+0x00581110 0x1A8 BlendedClimb__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 seal_body.cpp order, BlendedClimb to Stand one to one from 0x581110 to 0x581DC0: the same height weights 12/26.5/14.5, newanims cleared, the ClimbMedium blend; the SEALs round 16)
+0x005812C0 0x168 Hang_0__10CZSealBodyFii  # OVL2; s1:order by hand (SOCOM 1 Hang_0, after BlendedClimb: the same two switches, itself and Stand_0 called for stances 1 and 2; the SEALs round 16)
+0x00581430 0x104 SetStanceIdle__10CZSealBodyF8AnimType  # OVL2; s1:order by hand (SOCOM 1 SetStanceIdle: the same state-7 tests, the pops and the anim kept at 0x1334, SOCOM 1 0xFA4, before the push in state 7; the SEALs round 16)
+0x00581540 0x118 Prone_0__10CZSealBodyFi  # OVL2; s1:order by hand (SOCOM 1 Prone_0, after SetStanceIdle: the same switch over stances 1, 0, 4 and the 0x14CC store, SOCOM 1 0x112C m_last_foot; the SEALs round 16)
+0x00581660 0x16C Prone__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 Prone, after Prone_0: the state-2 tests, the pops and Prone_0 asked from the old stance; in deep water a crouch, as Crouch calls; the SEALs round 16)
+0x005817D0 0x1BC Crouch_0__10CZSealBodyFif  # OVL2; s1:order by hand (SOCOM 1 Crouch_0__10CZSealBodyFif, after Prone: the same switch over stances 2, 0, 4, itself called for a hang; the SEALs round 16)
+0x00581990 0x280 Crouch__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 Crouch, after Crouch_0: CanCrouch and Stand(1) inlined in both builds, Crouch_0 asked from the old stance; the SEALs round 16)
+0x00581C10 0x1AC Stand_0__10CZSealBodyFiif  # OVL2; s1:callee by hand (Hang_0 calls it where SOCOM 1 Hang_0 calls Stand_0__10CZSealBodyFii, with a float -1 added; the SEALs round 16)
+0x00581DC0 0x104 Stand__10CZSealBodyFi  # OVL2; s1:order by hand (SOCOM 1 Stand__10CZSealBodyFi, after Stand_0: the state-0 tests, ClearStack inlined and Stand_0 asked at the old top time; the SEALs round 16)
+0x00581ED0 0x628 SetStance__10CZSealBodyF10SEAL_STATE  # OVL2; s1:order by hand (SOCOM 1 SetStance__10CZSealBodyF10SEAL_STATE, after Stand and before StanceChanged in both builds: BodySetState first, then a switch on the state at 0x174 over 4, 2, 1, 0, Crouch and Prone called; the SEALs round 16)
 0x00582500 0x38 StanceChanged__10CZSealBodyFv  # OVL2; s1:exact (SOCOM 1's: the stance-changed bit tested and cleared; PoseBitmap::Tick calls it)
 0x00582540 0x7CC func_00582540  # OVL2
 0x00582D10 0x314 func_00582D10  # OVL2
 0x00583030 0x318 func_00583030  # OVL2
 0x00583350 0x1A4 func_00583350  # OVL2
 0x00583500 0x45C func_00583500  # OVL2
-0x00583960 0x18C func_00583960  # OVL2
+0x00583960 0x18C TurnControl__10CZSealBodyFf  # OVL2; s1:order by hand (SOCOM 1 TurnControl__10CZSealBodyFff, after ProneControl: the top blend weight made 1, the turn doubled and negated, capped 0.6/0.3/0.35/0.6 by state as in SOCOM 1; SOCOM II takes one float, every caller sets f12 alone; the SEALs round 16)
 0x00583AF0 0x374 func_00583AF0  # OVL2
 0x00583E70 0x3C8 func_00583E70  # OVL2
 0x00584240 0x144 func_00584240  # OVL2
@@ -10513,8 +10513,8 @@
 0x00589900 0x19C func_00589900  # OVL2
 0x00589AA0 0x9C4 func_00589AA0  # OVL2
 0x0058A470 0x58 func_0058A470  # OVL2
-0x0058A4D0 0x10C func_0058A4D0  # OVL2
-0x0058A5E0 0xC8 func_0058A5E0  # OVL2
+0x0058A4D0 0x10C ClearToBase__10CZSealBodyFb  # OVL2; s1:calls by hand (SOCOM 1 ClearToBase__10CZSealBodyFb: the same pops stopping at the base anims 1, 18 and 26 with signed counts, the extra pop when the bool says, the top blend control cleared and stance 2 asked, the top returned; SOCOM II adds a limit of twelve; the SEALs round 16)
+0x0058A5E0 0xC8 ClearStack__10CZSealBodyFUib  # OVL2; s1:order by hand (SOCOM 1 ClearStack__10CZSealBodyFUib, after PopBlend and before BodySetState in both builds: the blends popped down to a count, the top blend control cleared and stance 2 asked when the bool says; SOCOM II adds a limit of twelve; the SEALs round 16)
 0x0058A6B0 0x60 BodySetState__10CZSealBodyFi  # OVL2; s1:exact by hand (SOCOM 1's BodySetState__10CZSealBodyFi: the controller's OnStateChange (slot 0x64) when the state changes, then CBody's; SOCOM II's tests m_control first, and is virtual: CZSealBody's slot 0x90, through the thunk 0x555290 in its CBody table) -- the SEAL lane, round 4
 0x0058A710 0x8 func_0058A710  # OVL2; slot 0x64 of __vt__9CSealCtrl, which CSealCtrlSquirm and CRemoteCtrl inherit (the vtables pass withheld it: CRemoteCtrl's misnamed OnMissionStart override at 0x5E6270 pulled the alignment); s1~ OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE after all: CSealCtrlCopy's OVL1 table holds an OVL1 copy at slot 0x64 (0x2B3BE0), so the base's OnStateChange is inline and this is OVL2's copy (one of 2 copies of an inline)
 0x0058A720 0x100 GetStance__10CZSealBodyCFb  # OVL2; s1:calls by hand (the integrator's lead from the kit lane's round 11: the kick code hands its result to TargetMods where SOCOM 1's CZKit::Fire calls GetStance; SOCOM 1's GetStance__10CZSealBodyCFb (0x27D2A0) is the same body -- with the flag, the top blend's flags 0x40 and 0x20 and the anims 17/19/25 decide stand/crouch/prone, else CBody's state byte read lbu (a SEAL_STATE) -- SOCOM II adding the crouch-as-stand bit 2 of 0x21C)
@@ -12264,16 +12264,16 @@
 0x006281B8 0x1D8 func_006281B8  # OVL2 unaligned
 0x00628390 0x64 func_00628390  # OVL2
 0x006283F8 0x74C func_006283F8  # OVL2 unaligned
-0x00628B48 0x80 func_00628B48  # OVL2 unaligned
-0x00628BC8 0x74 func_00628BC8  # OVL2 unaligned
-0x00628C3C 0x74 func_00628C3C  # OVL2 unaligned
-0x00628CB0 0x80 func_00628CB0  # OVL2
-0x00628D30 0x80 func_00628D30  # OVL2
-0x00628DB0 0x138 func_00628DB0  # OVL2
-0x00628EE8 0x14C func_00628EE8  # OVL2 unaligned
-0x00629034 0x84 func_00629034  # OVL2 unaligned
+0x00628B48 0x80 lintGetBits  # OVL2 unaligned; s1:body+assert (the gcc lane, round 14b): LargeInt.c's prime search asserts `nBits == lintGetBits(pPrime)` on this call's result (0x628214, the string at 0x6640D8); hand-written EE assembly (plzcw on the top nonzero word), the first of the asm run 0x628B48-0x629A44
+0x00628BC8 0x74 IsGreater  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's IsGreater in EE assembly -- the words compared from the top, 1 at the first a > b, 0 at a < b or all equal; first of SOCOM 1's four comparisons in their order
+0x00628C3C 0x74 IsSMaller  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's IsSMaller (its spelling) in EE assembly -- 1 at the first a < b from the top, else 0; second of the four
+0x00628CB0 0x80 IsNotGreater  # OVL2; s1:body (the gcc lane, round 14b): SOCOM 1's IsNotGreater in EE assembly -- 1 at a < b or all equal, 0 at a > b; third of the four
+0x00628D30 0x80 IsNotSmaller  # OVL2; s1:body (the gcc lane, round 14b): SOCOM 1's IsNotSmaller in EE assembly -- 1 at a > b or all equal, 0 at a < b; fourth of the four
+0x00628DB0 0x138 ShiftRight  # OVL2; s1:body (the gcc lane, round 14b): SOCOM 1's ShiftRight(p, n) in EE assembly -- each word from the one n/32 up, combined with the next (dsrlv/dsllv), the top words cleared; before ShiftLeft as there
+0x00628EE8 0x14C ShiftLeft  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's ShiftLeft(p, n) in EE assembly -- from the top down, each word combined with the one below, the bottom words cleared; after ShiftRight as there
+0x00629034 0x84 lintAddIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintAddIP(a, b) in EE assembly -- a += b in place over all 32 words, the carry in a doubleword's upper half (daddu; dsrl32); rt_crypt.c's RSA re-check calls it
 0x006290B8 0x9C func_006290B8  # OVL2 unaligned
-0x00629154 0x84 func_00629154  # OVL2 unaligned
+0x00629154 0x84 lintSubIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintSubIP(a, b) in EE assembly -- a -= b in place over all 32 words, the borrow by dsra32; after the bit-limited add as lintSubIP follows lintAddIP there
 0x006291D8 0x9C func_006291D8  # OVL2 unaligned
 0x00629274 0x42C func_00629274  # OVL2 unaligned
 0x006296A0 0x1C8 func_006296A0  # OVL2

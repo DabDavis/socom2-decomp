@@ -17,7 +17,16 @@
  * own in the target, a fall-through `b`, as rt_udp's length tests -- an empty asm statement there
  * gives 1 word, the shape rt_udp.c's RT_UDP_BARRIER stands in for), rt_msg_client_iudp_disable_
  * heartbeat (9: SOCOM II's UDP poll under SOCOM 1's name, whose body it is not; the flag's reload
- * takes v1 where the target's takes v0). */
+ * takes v1 where the target's takes v0).
+ * Round 14b: the UDP poll closed -- its loop `break`s to the one `return 0` (a `return 0` inside the
+ * loop let CSE keep the map call's known-zero v0 live, so the flag took v1). Written: the connect
+ * message's builder 0x635940 (its kind unsigned; the buffer pointer's initialiser first), the
+ * symmetric-key and callback handlers 0x637230 and 0x637438 (a handler takes the connection, the
+ * message type, the message and its length -- an unsigned int, narrowed only at the callback's
+ * `unsigned short`: the target's `li 0xfffc; addu; andi`), the memory-write handler 0x637900 and
+ * SOCOM 1's is_valid_outgoing_msg (an `||` chain in the target's test order, five types added).
+ * 0x637230 is byte-exact only below 0x635940, which its fall-through calls (round 13c's rule: with
+ * the callee compiled first the branch keeps `move v0,zero` in a plain slot). */
 
 #define RT_MSG_CLIENT_LOCK_FAILED   26
 
@@ -609,7 +618,10 @@ unsigned char rt_msg_client_ishutdown(void)
  * (0x633790-0x638500's large rows). */
 
 typedef struct rt_msg_client_comm {
-    char pad0[0x1C];
+    char pad0[5];
+    unsigned char bKind;                /* 0x05: 1 a connection's own channel (0x635078's test) */
+    unsigned short nId;                 /* 0x06: its connection's id (rt_msg_client_link's view) */
+    char pad08[0x14];
     int nChannelId;                     /* 0x1C: the connection's rt_comm channel */
 } rt_msg_client_comm;
 
@@ -622,12 +634,22 @@ typedef enum rt_msg_client_state {
 
 typedef struct rt_msg_client_connection {
     unsigned short nId;                 /* 0x00 */
-    char pad02[6];
+    char pad02[2];
+    unsigned int nConnectKind;          /* 0x04: the connect message's kind (0x635940: 0 or 1) */
     rt_msg_client_state nState;         /* 0x08 */
-    char pad0C[0x50];
+    char pad0C[0x16];
+    unsigned short nPort;               /* 0x22: the connect message's port */
+    char pad24[0x18];
+    void *pConnectData;                 /* 0x3C: the data the connect message carries */
+    unsigned short nConnectDataLength;  /* 0x40 */
+    char pad42[0x1A];
     char szIP[0x1C];                    /* 0x5C: the server's address, dotted */
     struct rt_msg_client_channel *apChannels[2]; /* 0x78 */
     rt_msg_client_comm *pComm;          /* 0x80 */
+    char pad84[0x10];
+    /* 0x94: the application's message callback (round 14b: 0x637438) */
+    void (*pfnCallback)(unsigned short nId, unsigned char b0, unsigned char b1, unsigned char b2,
+                        unsigned char b3, unsigned short nLength, unsigned char *pData);
 } rt_msg_client_connection;
 
 extern unsigned char data_00655614;     /* the client is started */
@@ -931,6 +953,36 @@ int func_006349A8(unsigned short nConnection, int **pphPlatform)
 
 extern int func_0062D178(int nChannelId, unsigned char *pbReceived, char *szAddress, unsigned short *pnPort);
 
+extern int func_00637D50(rt_msg_client_comm *pComm);
+extern int rt_msg_client_process_recv_buf(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm);
+
+/* one connection's channel updated (0x635078): the connection and its channel valid and its own, the
+ * channel's pending input taken (0x637D50), then processed when the caller asks */
+int func_00635078(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, unsigned char bProcess)
+{
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (pComm->bKind != 1)
+        return 2;
+    if (pConnection->nId != pComm->nId)
+        return 2;
+    result = func_00637D50(pComm);
+    if (result != 0)
+        return result;
+    if (bProcess == 1) {
+        result = rt_msg_client_process_recv_buf(pConnection, pComm);
+        if (result != 0)
+            return result;
+    }
+    return 0;
+}
+
 /* SOCOM II's UDP poll (SOCOM 1's function of this name is another body): every datagram waiting
  * on the UDP channel is handed to the enable call's callback with its sender's address and port */
 int rt_msg_client_iudp_disable_heartbeat(void)
@@ -949,7 +1001,7 @@ int rt_msg_client_iudp_disable_heartbeat(void)
         if (result != 0)
             return result;
         if (bReceived != 1)
-            return 0;
+            break;
         if (gUDPInfo.pfnCallback != 0)
             ((void (*)(char *, unsigned short))gUDPInfo.pfnCallback)(szAddress, nPort);
     } while (bReceived == 1);
@@ -1022,6 +1074,41 @@ int rt_msg_client_get_valid_connection(unsigned short nConnection, rt_msg_client
     return 0;
 }
 
+int func_00635CD0(unsigned short nDataLength, unsigned short *pnSize);
+extern int func_00635A70(void *pMsg, unsigned short nSize, unsigned int nKind, unsigned short nId, unsigned short nPort,
+                         void *pData, unsigned short nDataLength);
+extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
+
+/* a connect message (round 14b): its size for the data it carries (0x635CD0), built by 0x635A70 in
+ * a buffer of its own and queued on the channel -- type 21, or 0 for the first kind */
+int func_00635940(unsigned int nKind, rt_msg_client_comm *pComm, unsigned short nPort, void *pData,
+                  unsigned short nDataLength)
+{
+    void *pMsg = 0;
+    unsigned short nSize = 0;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (pData == 0 && nDataLength != 0)
+        return 2;
+    if (nKind >= 2)
+        return 2;
+    result = func_00635CD0(nDataLength, &nSize);
+    if (result != 0)
+        return result;
+    if (rt_memory_allocate_init_zero(&pMsg, nSize) != 0)
+        return 8;
+    result = func_00635A70(pMsg, nSize, nKind, pComm->nId, nPort, pData, nDataLength);
+    if (result == 0)
+        result = rt_msg_client_store_msg_in_send_buf(pComm, nKind != 0 ? 21 : 0, 0xFFFF, pMsg, nSize, 1);
+    if (pMsg != 0)
+        rt_memory_free(&pMsg);
+    return result;
+}
+
 int func_00635CD0(unsigned short nConnection, unsigned short *pnId)
 {
     if (pnId == 0)
@@ -1058,6 +1145,38 @@ int rt_msg_client_send_disconnect(rt_msg_client_comm *pComm)
     if (result != 0)
         return result;
     return rt_msg_client_send_buffer(pComm, abMsg, nLength, 10000);
+}
+
+/* a target set on the channel (0x635D98): none for 0xFFFF, message 15 for 0xFFFE (every client),
+ * else message 16 with the target's id */
+int func_00635D98(rt_msg_client_comm *pComm, unsigned short nTarget)
+{
+    unsigned char abMsg[2];
+    unsigned char *pMsg;
+    int nLength = 0;
+    int nType;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (nTarget != 0xFFFF) {
+        if (nTarget == 0xFFFE) {
+            nType = 15;
+            pMsg = 0;
+        } else {
+            nType = 16;
+            if (rt_msg_set_u2byte(abMsg, nTarget) != 0)
+                return 7;
+            pMsg = abMsg;
+            nLength = 2;
+        }
+        result = rt_msg_client_store_msg_in_send_buf(pComm, nType, 0xFFFF, pMsg, nLength, 0);
+        if (result != 0)
+            return result;
+    }
+    return 0;
 }
 
 extern int rt_circ_buf_get_avail_nowrap(void *pBuf, unsigned int *pnAvail);
@@ -1100,6 +1219,90 @@ extern int rt_msg_get_ubyte(const unsigned char *msg, unsigned char *value);
 extern int rt_msg_set_u2byte(unsigned char *msg, unsigned short value);
 extern int rt_msg_get_u2byte(const unsigned char *msg, unsigned short *value);
 
+extern int rt_msg_get_u4byte(const unsigned char *msg, unsigned int *value);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+
+extern int KM_AddSymmetricKey(int nKMID, int nClientID, void *pKey);
+extern int rt_msg_client_change_state(rt_msg_client_connection *pConnection, unsigned int nState);
+
+/* the server's symmetric key (message 27 carries a key id first): kept in the key master under the
+ * connection's id, then the connection's next step when it waits for the key */
+int func_00637230(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, int nLength)
+{
+    unsigned short nKeyID = 0xFFFF;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (pConnection == 0)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    if (nType == 27) {
+        rt_msg_get_u2byte(pMsg, &nKeyID);
+        pMsg += 2;
+        nLength -= 2;
+    }
+    if (nLength != 64)
+        return 2;
+    KM_AddSymmetricKey(pConnection->nId, nKeyID, pMsg);
+    if (pConnection->nState == 3) {
+        result = func_00635940(pConnection->nConnectKind, pConnection->pComm, pConnection->nPort,
+                               pConnection->pConnectData, pConnection->nConnectDataLength);
+        if (result != 0)
+            return result;
+        result = rt_msg_client_change_state(pConnection, 4);
+        if (result != 0)
+            return result;
+    }
+    return 0;
+}
+
+/* a message for the connection's callback: four bytes, then the rest with its length */
+int func_00637438(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength)
+{
+    unsigned char b0, b1, b2, b3;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    if (pConnection->pfnCallback != 0) {
+        rt_msg_get_ubyte(pMsg, &b0);
+        rt_msg_get_ubyte(pMsg + 1, &b1);
+        rt_msg_get_ubyte(pMsg + 2, &b2);
+        rt_msg_get_ubyte(pMsg + 3, &b3);
+        pConnection->pfnCallback(pConnection->nId, b0, b1, b2, b3, nLength - 4, pMsg + 4);
+    }
+    return 0;
+}
+
+/* a message that writes memory (0x637900, new in SOCOM II): its first word an address, its second
+ * a length, the rest copied there when the length is the message's own, on a valid connection */
+int func_00637900(rt_msg_client_connection *pConnection, int nUnused1, int nUnused2, unsigned char *pMsg,
+                  unsigned int nLength)
+{
+    unsigned int nAddress;
+    unsigned int nBytes;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    if (nLength < 9)
+        return 0;
+    rt_msg_get_u4byte(pMsg, &nAddress);
+    rt_msg_get_u4byte(pMsg + 4, &nBytes);
+    if (nBytes != nLength - 8)
+        return 0;
+    memcpy((void *)nAddress, pMsg + 8, nBytes);
+    return 0;
+}
+
 int rt_msg_client_set_header(unsigned char *pMsg, rt_msg_client_header *pHeader, unsigned short *pnLength)
 {
     if (pMsg == 0)
@@ -1133,6 +1336,17 @@ int rt_msg_client_get_header(unsigned char *pMsg, rt_msg_client_header *pHeader,
     if (rt_msg_get_u2byte(pMsg + 1, &pHeader->nLength) != 0)
         return 7;
     *pnLength += 2;
+    return 0;
+}
+
+/* SOCOM 1's is_valid_outgoing_msg, the message types an application may send: SOCOM 1's ten in its
+ * order, 21-23, 27 and 29 added */
+int rt_msg_client_is_valid_outgoing_msg(int nType)
+{
+    if (nType == 2 || nType == 11 || nType == 5 || nType == 14 || nType == 15 || nType == 16 ||
+        nType == 0 || nType == 21 || nType == 22 || nType == 23 || nType == 13 || nType == 18 ||
+        nType == 27 || nType == 3 || nType == 29)
+        return 1;
     return 0;
 }
 

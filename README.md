@@ -1818,6 +1818,40 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 16** (seal_body.cpp's stance family, TurnControl, ClearToBase, DropBody):
+  - SOCOM 1's seal_body.cpp lines up one to one with 0x581110-0x58A5E0, BlendedClimb to StanceChanged: the stance
+    family named by its order (BlendedClimb, Hang_0, SetStanceIdle, Prone_0, Prone, Crouch_0, Crouch, Stand_0 --
+    SOCOM II adds a float --, Stand, ClearStack, SetStance), TurnControl taking one float (SOCOM 1's two);
+  - a constant stored through a call's result (`f()->m = 8`) is loaded before the call into a saved register,
+    through a block-local taken from the call after it (0x589900, DropBody);
+  - ClearStack written out is 16 statements and will not auto-inline; with its loop body one comma statement it is
+    15 (a STAND-IN spelling) and Stand inlines it and Crouch inlines Stand, as SOCOM 1's Crouch does; Prone_0 is
+    short enough to auto-inline but the target calls it (pinned `auto_inline off`); a blend count compared signed
+    (`slti`, ClearToBase) and one compared unsigned (`sltiu`, ClearStack) are two different inlines;
+  - in TurnControl, `bool neg;` declared ahead of the first local gives the target's saved registers, and passing
+    `neg ? -a : a` keeps `a` in $f0 until the call where `if (neg) a = -a;` keeps it in $f20;
+  - leads: 0x668940 looks like `__sinit_seal_body.cpp` (it builds `newanims` 0x66B2F0 through 0x58A9F0, the RTList
+    constructor's OVL2 copy, and registers 0x58AAC0 as its destructor); 0x58A950 pinned as a stand-in for
+    RTList<ACTIVE_ANIM>::Clear's OVL2 copy; open: Crouch 0x581990 (5: inside the inlined Stand(1) the stance and
+    ClearStack's stack pointer take each other's saved registers), 0x57DCC0 (6: the AnimSet calls' argument order).
+- **Tells from the game states, round 20** (CCtrlrConfigs::Init, CGraph::CreateNode(void)):
+  - MW's own construction of a member array of class elements is a never-unrolled pointer `!=` loop with no entry
+    guard, where a written loop over the same 13 bytes unrolls 6x; a constructor inlined one level emits one
+    out-of-line copy per DISTINCT member class, after its first caller, in reverse order of first use -- identical
+    one-byte copies mean distinct classes (CCtrlrConfig's layout members are four, CCfgStick/CCfgSticks/CCfgFlag/
+    CCfgButtons, the names ours);
+  - binding a literal to an inline helper's `const T &` parameter pools the constant (an `lb` from data), never `li`;
+    include/string's default constructor is two levels short of the original's at level 5 (as fts_state.h measured:
+    the loader's layout constructor is cut through two forwarding inlines, fts_controller.cpp);
+  - an inline helper whose box constructor exceeds inline_max_size is inlined one level and its other callees' copies
+    come out at the target's sizes (CMission's world bboxes 0x2A9260: the cluster's structure reproduces, but the
+    target's box-constructor copy 0x2A96B0 calls CPnt3D(fff) and operator= out of line where MW inlines them);
+  - 0x2D0930 is `CreateNode__6CGraphFv` (no caller sets a1; graph_tree.h and the definition follow; the AI maps still
+    call it as func_002D0930, resolved by address); 0x2B3F20 is ~__list_imp<CSpawners::spawn_map> (fts_player.cpp
+    emits it inlining the deleter's destructor where the target calls 0x2B3F80: the ~CSpawners chain);
+  - open: CGraph::Read 0x2D0C90 (5, registers: the edge loop's counter s3 and first node s5, ours swapped; eleven
+    declaration shapes), the byte-enum family (a one-byte class element's by-value copy loads `lb` but MW keeps it in
+    a stack slot -- store, then `lbu` back -- where the target has `lb; andi 0xff` in a register).
 - **Tells from the UI, round 12** (C2DFont through c2dfont.h, CSkbFonts(), the vector<CSkbKey> instances):
   - MW's implicit operator= copies a union as its first member: a class that copy-constructs with lb/lhu but assigns
     with lbu/lh has UNION members -- CSkbKey's, which unlocked its vector's erase, resize, init and do_assign;
@@ -4463,6 +4497,53 @@ hits, OVL1 `1E7F58 1E8FD4` 12 tried, 0 hits, `243000 256FD0` 145 tried, 0 hits (
 refusals): 396 tried, none byte-exact, and the hand-written rows (CB_DelayTh, sceCdSync,
 sceCdGetDiskType ...) were not retried. What is left to the generator in these ranges is near misses.
 
+**Round 14a** (2026-11-03, by hand, MAIN's SDK objects first): 50 functions byte-exact of 53 written --
+25 rows newly byte-exact, 25 matched drafts superseded -- and 6 rows and 3 data rows named. libkernl's
+SIF command object (`sdk/sifcmd.c`, the demo's 0x15D620 whole: 14 of 16), its newlib glue (`sdk/glue.c`,
+the demo's 0x15B9A0 whole: 16 of 16 -- VSync, VSync2, sbrk new), kprintf.c's ftoi and printfloat; Sony's
+libusbkb (`sdk/libusbkb.c`, new: the USB keyboard's RPC layer, 14 of 14 -- not in SOCOM 1); the codec's
+FFT interface (`ovl1/sase_fftif.c`, 4 of 5). Named: sceSifGetDataTable (s1:order), sceUsbKbGetInfo,
+Read, GetLocation, SetLEDStatus, SetLEDMode (each prints its own name); data `_pckt_buffer`,
+`sif0_handleid`, `_data_table@sifcmd` (the demo's labels). What they showed:
+
+- **991111's void-context sibling call needs every path to end in its own return**: sceSifInitCmd's
+  `if (init) { EIntr(); return; }` left the two sceSifSendCmd calls that fall into the shared epilogue
+  as jal; a `return;` after each (or the early exit as an else) makes all three `j`, as the target's
+  (`build/scratch/gcc/p_sib2.c`: six arguments do not stop it).
+- **An inline asm can leave `noreorder` on for GCC's own return**: sceSifWriteBackDCache's asm ends in
+  its own `jr ra; nop` and `.set noreorder`, so GCC's `j $31` is assembled with no delay slot -- the next
+  object's first word fills it, as round 3a read off the image.
+- **Volatile, where an interrupt or the IOP writes**: the SIF receive buffer's header (psize's `lbu;
+  andi 0xff`), VSync2's flag and count (SetVSyncFlag's handler writes them: the count's load stays out
+  of a delay slot); sbrk masks interrupts with dintr.c's goto loop (the mask reloaded each turn).
+- **Register pairs from reuse**: ftoi reuses its parameter for the mantissa (the target's `move
+  a1,a0`) and builds it in two statements (`x = (x << 12) >> 12; x |= 1UL << 52;`, one of 16 shapes);
+  printfloat's ftoi call is a statement of its own (the format's address is formed after it).
+- **Shapes, measured**: _sceSifSendCmd's descriptor before the header (`tools/ccperm.py`, which `R`
+  results had hidden), libusbkb's clears in field order (one of 720), its poll case testing for
+  completion and returning 1 last (an early `return 1`: 31s).
+- **Open, diagnosed in place**: sceSifInitCmd (152s: five saved registers in the target, the loop
+  counters and the status bit in s0), _sceSifCmdIntrHdlr (23, right size: the copy's count tested
+  `blez` there, `beqz` here -- this compile knows it is not negative), the codec's mode setter
+  func_00251A98 (7). Not written: kprintf.c's _printf (the formatter, 0x5EC), libusbkb's init, end and
+  key-code conversion.
+
+**The tools, round 14a**: (1) **qualified data labels**: a GNU unit's static data label `NAME`
+scores as data row `NAME@UNIT` when data.txt has one (`scdiff.qualify_statics`, as round 3a's
+functions) -- libkernl's sifcmd, sifrpc and libmrpc objects each label a `_data_table` (and
+`_packet_buffer`) of their own, so sifcmd's state is `_data_table@sifcmd`. Proved over every
+hand-written unit (`--files '^(?!auto/)'`, 10,331 lines) under master's (34051ac6) scdiff, sccheck and
+scdecomp and these: identical but sifcmd.c's six functions that reference `_data_table@sifcmd`, WRONG
+REFERENCE under master's (the bare label resolved to sifrpc's row) and match under these; no other
+verdict changed. (2) `tools/ccsweep.py --stem UNIT` scores a variants file or probe as the unit it
+copies (its statics qualified so), and `tools/ccperm.py` passes `--stem` through and now reports an
+order whose bytes are right but a reference not (`R`) -- before, an order matching but for an
+unqualified static was neither a match nor a near miss, which hid _sceSifSendCmd's. automatch over
+this lane's ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's `src/lib`
+build): MAIN `18DB90 1C4CC0` 210 tried, 0 hits (60 build failures, 23 m2c refusals), `1CCD78 1CE2A4` 6
+tried, 0 hits, OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 145 tried, 0 hits (27, 8): 363
+tried, none byte-exact -- what the generator leaves here is near misses, as round 13a found.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -5488,7 +5569,7 @@ rt_p2p by address -- six rows at once.
   37; } else { ...; } return DME_OK;` -- a join, so the zero is materialised (`move v0,zero`) where guard
   clauses let 2.96 if-convert or reuse a known zero. The same for a body inside a positive test
   (`if (!bStarted) {...} return DME_OK;`, the startup) and for a callback's `!=` test around its send.
-- **The known-zero v0 is cse-follow-jumps'**: func_00614758 (round 4b's OPEN) is byte-exact under
+- **The known-zero v0 is cse-follow-jumps'** (REFUTED by round 14b below: a join before the final `return 0` -- positive nesting, a `break` out of the loop, the body inside a positive test -- keeps the target's `move v0,zero`; a source shape, not the toolchain): func_00614758 (round 4b's OPEN) is byte-exact under
   `-fno-cse-follow-jumps` alone, and func_00615B48 comes from 65s to 1 word -- 2.96's CSE follows the
   jump past `return 37` with v0 still the call's result and deletes the target's copy into the return
   register, so reorg cannot put the constant in the branch's slot. Not the vendor's flag: it reallocates
@@ -5523,6 +5604,108 @@ func_0061D650, func_0061D7A8, func_0061D898, func_0061D948, func_0061D9F8. No ro
 keep placeholders: DME's API names belong to Dme.c's locked wrappers, round 7b, and 0x6209B0/0x620A88
 -- NetGetBufferStatus's and NetSetSendAggregationInterval's wrappers by their bodies -- are left for a
 call-site check); no tool changed.
+
+**Round 14c: GenderDataCompute, two of the pitch DP's six, the Chinese second pass's helpers.** Three
+of the four were "registers only" or "store order" and each fell to one structural fact about 2.96,
+read off cc1's own dumps (`-dl -dg` for allocation, `-dS -fsched-verbose=4` for the first scheduling
+pass: `build/scratch/gcc/dump.py UNIT.c FLAGS...` writes them under build/scratch/gcc/dumps/).
+
+- **A pointer shared by two loops is one pseudo; a pointer local to one unrolled loop is one per
+  copy.** global.c allocates in priority order, refs x log2(refs) / live length, and the unroller
+  renames a register whose whole life lies inside the loop it copies. GenderDataCompute's frame walker
+  served both search stages, so it was one pseudo with 204 references against the codeword walker's
+  152 and took a2 first (the target's codeword walker has a2): with a frame walker of its own in the
+  second stage (the codeword walker still shared), each unrolled copy gets a fresh short-lived frame
+  pseudo and the allocation comes out as the target's -- byte-exact. New pointers for both walkers in
+  the second stage (round 12c's try) leave the swap. The `.greg` dump's "regs to allocate" line gives
+  the order directly.
+- **The first scheduling pass puts a store that frees a register first.** Before register allocation
+  haifa-sched ranks equal-priority insns by INSN_REG_WEIGHT -- births less REG_DEAD notes -- then
+  source order, so a store that is the last use of its value goes ahead of the rest. ControlPitchDP's
+  ten reset stores, written in the target's output order, came out with unflushed, block and len
+  first (each its value's last use); the target's order needs `fresh` after `unflushed` (fresh then
+  frees the 1), `len` before `last` before `block`, and the stores that free nothing in output order --
+  one such source matched at once (10 words to byte-exact). Predict with the rule, then measure.
+- **An `unsigned short` loop counter is masked at every step and blocks strength reduction.**
+  BackTracking's backtrace decrements its column without `andi 0xffff` and walks `&track[t]` and the
+  cell offset as pointers stepped by 4 and 12: the index is register-wide, assigned through
+  `(unsigned short)(ncols - 1)` (the target's `andi` at each assignment) -- 68 words to byte-exact,
+  the registers following with the loop.
+- **Tone_Of_Final, inlined and kept**: the Chinese second pass's tone test (SOCOM 1's name and position,
+  both objects; uncalled as a function in both builds) is inlined into the item-node walk with an
+  `unsigned char` result (`andi 0xff` at the join, as SOCOM 1's) while its copy stays: a GNU `extern
+  __inline__` body above the real one (2.96 outputs the redefinition at the object's end; scoring is
+  per function). SOCOM II's body returns 1 and 0 explicitly where SOCOM 1's returned the compare.
+- **Open, diagnosed in place**: InitPitchDP (its queue size an int -- `mult` frames first, no `andi`,
+  238 words against 241 -- and the extra saved register is bpo: sched1 hoists the pseudo-only
+  `(float)bpo` across calls into the first free issue slot before the fmax call, where the target
+  converts after the fmin call), ProcessPitchDP (the same pass: the `p->col` load floats across the
+  soft-float compare's const libcalls), Actual_DP (jf[j] is loaded once per bin in the target, a local
+  gives that, 264 words against 257; the k loop's &f[k] and &rows[k] are not strength-reduced here),
+  InitJumpFactors (the unrolled copies keep three FP temps where this reuses a dying input's
+  register), Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree and its `_TreeCtx` copy (19
+  words: the first child's *8 shares the recursion loop's pseudo).
+
+Hand-written in round 14c: `asr/gender.c` (+1, GenderDataCompute; 7 of 7), `asr/pitchdp.c` (+2,
+ControlPitchDP and BackTracking; 5 of 9), `asr/ctxutil.c` (+1, CreateActiveWordsCtxTree: 3 of 3),
+`asr/chinese.c` (new: Tone_Of_Final, Calculate_NbrOfStatesInDict_ForChinese and the item-node walk, 2
+of 3) and `asr/chinese_tree.c` (new: their `_TreeCtx` copies, 2 of 3) -- 8 functions byte-exact, all
+new to the map's byte-exact rows (3,588 bytes); `src/lib/asr` 425 of 467 (417 of 460 before). 2 rows
+named (Tone_Of_Final, Tone_Of_Final_TreeCtx: `s1:order`, SOCOM 1's objects 0x3404E8 and 0x345CD0). No
+tool changed.
+
+**Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
+
+- **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
+  md5.c): every row saves the argument and temporary registers it uses with `sq`, branches to the very
+  next instruction, pads with stray nops, swaps a0/a1 with two moves that leave both equal, counts
+  leading zeros with `plzcw` and carries through doublewords (`daddu; dsrl32`). `tools/asmunit.py`
+  transcribed the run into `medius/largeint_asm.s` under 2.96's GNU as: 14 of 14 byte-exact, 3,836
+  bytes (two `ori $2,$0,1` the tool left as `.word` for objdump's `dli`). SOCOM 1 compiled all of them
+  from C; whether SCEA kept a `.s` or top-level asm in LargeInt.c, the bytes are one. Named: lintGetBits
+  by the prime search's assert on its result ("nBits == lintGetBits(pPrime)"), IsGreater, IsSMaller,
+  IsNotGreater, IsNotSmaller, ShiftRight, ShiftLeft, lintAddIP, lintSubIP by SOCOM 1's C bodies of those
+  names (`s1:body`, the comparisons in SOCOM 1's order). `build/scratch/gcc/sqscan.py` finds such rows
+  (`sq`/`lq`, MMI, branch-to-next) in a GCC range: no other run in Medius/DME/RT.
+- **A count or room test is POSITIVE, its error in an else** -- `if (nUsed >= nBytes) {...} else return
+  1;`, `if (cb->nStart != 0) {...} return 0;`. Written as a guard (`if (n < x) return 1;`) the return is
+  a one-insn THEN block that 2.96's first if-conversion pass (ifcvt's find_if_case_1, after combine and
+  before register allocation; this 2.96 has no `-fno-if-conversion`) hoists above its branch as `li
+  v0,1`, so v0 is live across the tested count's load and the count takes v1 -- round 4b's one
+  diagnosis for rt_circ_buf's nine, "every shape tried". The vendor wrote both forms (rt_list's own
+  0x631FD8 keeps the guard and the target's v1); the register says which. rt_circ_buf 7 -> 15 of 16.
+- **The known-zero v0 is a shape too** (round 13b held it a toolchain difference): a `return 0` reached
+  straight from `if (f()) return ...;` lets CSE follow the jump with v0 known zero and drop the final
+  `move v0,zero`; SCEA's join before it -- the last test positive with its error in an else
+  (func_00614758, open since round 4b), the loop inside `if (pMask->nLast >= 0)` (func_00615B48), a
+  loop that `break`s to the one `return 0` (the UDP poll), a body inside `if (nTarget != 0xFFFF)`
+  (0x635D98) -- keeps the copy, and the target's.
+- **A constant held from the entry is guard clauses**: rt_table's accessors load `li v0,3` once and keep
+  it through every test -- each `return 3` hoisted by the same pass, the later copies deleted by the
+  post-reload CSE; round 11b's result variables read it backwards (2 of the five closed).
+- **An earlier function's spelling moves a later one's registers**: func_00614758 written with its call's
+  test a guard is byte-exact too but sends func_0061C510's element-address high part into s3 across
+  DMEmalloc; a deeper nesting of 0x615B48's loop does the same to func_0061C7A8 (an unrelated function
+  inserted between moves neither). Each kept spelling holds both -- run the whole unit after any change.
+- **Narrowing at the call**: an `unsigned int` length passed to an `unsigned short` callback parameter as
+  `nLength - 4` is the target's `li 0xfffc; addu; andi` (the narrowed unsigned subtraction); an `unsigned
+  short` parameter adds an entry `andi`, an `int` gives `addiu -4`. Round 13c's callee-definition rule
+  met again: 0x637230's `bne` (not `bnel`) needed 0x635940, its fall-through's callee, compiled above
+  it. A switch-like equality chain in an order no switch would sort is an `||` chain in source order
+  (is_valid_outgoing_msg: SOCOM 1's ten types, 21-23, 27 and 29 added).
+- **Open, diagnosed in place**: rt_circ_buf_is_wrapped (16: the stored 1 is `sltu a2,zero,a0` -- cb != 0
+  -- hoisted into the first guard's slot), rt_table's 0x63CBD0 (1: memset's row address base-first,
+  six spellings) and 0x63C8A0 (32: nRow kept in a1 there, moved here), rt_list's init; rt_udp's
+  0x63F168/0x6419E8 stay round 11b's argument-scheduling pair.
+
+Hand-written in round 14b: `medius/largeint_asm.s` (14 of 14, new), `medius/rt_circ_buf.c` (+8: free,
+use, store, copy, normalize_with_buf, get_avail_nowrap, get_start_used_ptr, get_start_avail_ptr; 15 of
+16), `medius/rt_list.c` (+6: 0x631508, 0x631670, 0x631748, 0x631BC0, 0x631D18, 0x6321B8; 21 of 22),
+`medius/rt_msg_client.c` (+8: the UDP poll closed, 0x635078, 0x635940, 0x635D98, 0x637230, 0x637438,
+0x637900, is_valid_outgoing_msg; 68 of 69), `medius/dmelocal.c` (+2: func_00614758, func_00615B48 closed;
+73 of 84), `medius/rt_table.c` (+2: 0x63CB48, 0x63CC60; 3 of 6) -- 40 rows new to the map's byte-exact
+rows (`src/lib/medius` 810 -> 850 of 905), none superseding a draft; 9 rows named (above). No tool
+changed.
 
 ## Open, and next
 
