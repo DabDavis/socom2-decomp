@@ -969,8 +969,11 @@ public:
     virtual void TeleportTo(const CPnt3D *pos, const CQuat *quat);          /* +0x3C */
     virtual void TeleportTo(const CMatrix *m);
     virtual void OnDeath();                                                 /* +0x58 */
-    virtual int Virtual5C();
+    virtual bool Virtual5C(CZSealBody *seal, CTurret *turret);
     virtual bool Virtual60(CPnt3D *out);
+    /* the fire point of a name (OVL2 0x5DFAD0, seal_weapon.cpp's range: SOCOM 1's
+     * GetFirepointNode, virtual in SOCOM II -- CEntity's slot +0x64) */
+    virtual zdb::CNode *GetFirepointNode(const char *name);
     virtual bool Virtual68(CPnt3D *out);
     /* the root part and the state set (CBody's virtuals, overridden), with one of the SEAL's own
      * between them: MW lists them after the CBody table, from +0x88, and calls them through the
@@ -1034,6 +1037,9 @@ public:
     void SetBit10(bool on) { m_bit10 = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* the state of the topmost blend not in state 3, else 0 (SOCOM 1's PeekBaseState; OVL2
+     * 0x57DC20, seal_body.cpp's -- CalcAimGoal asks it in state 3) */
+    unsigned char PeekBaseState();
     /* a turn's set-up (SOCOM 1's TurnSetup(int), seal_ik.cpp's; OVL2 0x5B8270: SOCOM II only clears
      * the bits at 0x1060 6 and 7 when both feet exist, the int unread) */
     void TurnSetup(int anim);

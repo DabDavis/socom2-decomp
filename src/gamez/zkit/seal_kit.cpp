@@ -11,6 +11,7 @@
 
 #include "kit.h"
 #include "../zcamera/zcamera.h"
+#include "../zentity/zentity.h"
 #include "../znode/node_world.h"
 
 #include <iostream>
@@ -1337,37 +1338,10 @@ CZKit::FIRE_CLASS CZKit::GetCurItemFireClass()
     return c;
 }
 
-/* the body's table as far as its slot 0x64 (CZSealBody's fire point of a name, OVL2 0x5DFAD0: SOCOM
- * 1's GetFirepointNode -- zseal.h is not included here, the 23 slots before it unnamed) */
-struct CKitBodyTable {
-    virtual void Slot08();
-    virtual void Slot0C();
-    virtual void Slot10();
-    virtual void Slot14();
-    virtual void Slot18();
-    virtual void Slot1C();
-    virtual void Slot20();
-    virtual void Slot24();
-    virtual void Slot28();
-    virtual void Slot2C();
-    virtual void Slot30();
-    virtual void Slot34();
-    virtual void Slot38();
-    virtual void Slot3C();
-    virtual void Slot40();
-    virtual void Slot44();
-    virtual void Slot48();
-    virtual void Slot4C();
-    virtual void Slot50();
-    virtual void Slot54();
-    virtual void Slot58();
-    virtual void Slot5C();
-    virtual void Slot60();
-    virtual zdb::CNode *GetFirepointNode(const char *name);   /* +0x64 */
-};
-
 /* for the two items that show their round (186 and 146), the fire point's "projectile" child made
- * active (OVL2 0x5B85A0, new in SOCOM II among the kit's additions; 0x5A78C0 jumps to it).
+ * active (OVL2 0x5B85A0, new in SOCOM II among the kit's additions; 0x5A78C0 jumps to it). The fire
+ * point through CEntity's slot +0x64 (zentity.h's GetFirepointNode; CZSealBody's override is
+ * 0x5DFAD0, SOCOM 1's GetFirepointNode -- the body is CZSealBody, its CEntity at 0).
  * OPEN, 2 instructions, scheduling only: the target materialises the name (lui/addiu) before it
  * moves the fire point into a0 for FindChild; here the move sits between the two halves. Tried:
  * the fire point in a local, the name in a local (0x98), the name as an external array, the call
@@ -1377,7 +1351,7 @@ void CZKit::ShowProjectile()
     EQUIP_ITEM id = m_item[m_selected_item]->m_ID;
 
     if (id == 186 || id == 146) {
-        zdb::CNode *n = ((CKitBodyTable *)m_body)->GetFirepointNode(0)->FindChild("projectile", true);
+        zdb::CNode *n = ((CEntity *)m_body)->GetFirepointNode(0)->FindChild("projectile", true);
 
         if (n)
             n->SetActive(true);
