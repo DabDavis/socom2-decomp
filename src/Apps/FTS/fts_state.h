@@ -526,6 +526,11 @@ public:
     virtual bool Tick(float dT);
     virtual void UnInit();
 
+    /* the film to play next (SOCOM 1's took the name only): SOCOM II's keeps a flag at 0x28 and,
+     * asked for subtitles, reads them and the film's file from the subtitles' rdr (OVL1 0x1EDA60;
+     * the menu's PlayMPEG commands call it) */
+    void SetMovie(const char *name, unsigned char flag, unsigned char subtitles);
+
     unsigned char m_movierunning;   // 0x8
     char *m_moviename;   // 0xc
     int m_savedFrameRate;   // 0x10

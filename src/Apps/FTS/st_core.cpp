@@ -3,6 +3,9 @@
  * their image order (-inline deferred). */
 
 #include "fts_state.h"
+#include "../../gamez/zrdr/zrdr.h"
+
+#include <algorithm>
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
@@ -61,7 +64,6 @@ extern "C" {
 void func_00309A10();
 void func_003B7150(int arg);
 void func_00356B30(void *texbuffer);
-void func_001ED000(void *v);
 int func_00288930();
 void func_003B1990(int addr, int buffer, int size);   /* CVideo::ReadGsMemory */
 void func_003B0B90(int a, int b, int w, int h);
@@ -70,7 +72,6 @@ void func_00592CA0(void *control);
 void func_003466F0();
 CZSealBody *func_002B3580();                     /* ftsGetPlayer */
 
-extern char data_00408BD0[];
 }
 
 extern "C" {
@@ -300,12 +301,17 @@ void *func_001EEB40(void *str, const char *s)
 }
 #pragma auto_inline reset
 
-/* zsys.h's FreeVector, but a plain function template here (not inline: MW auto-inlines no
- * template, so UnInit calls the instance, which follows it -- OVL1 0x1ECF60 -- with the vector's
- * constructor and swap inlined whole, its clear (0x1EF310) and its temporary's deleter destructor
- * (0x1EF320, with 0) called, as a class vector's out-of-class members are) */
+/* zsys.h's FreeVector (inline, taller than the budget): UnInit reaches it through FreeCues, an
+ * inline helper MW inlines one level, so it is called and its out-of-line copy follows UnInit with
+ * clear()'s (OVL1 0x1ECF60, 0x1ED000: reverse of their first use) -- the vector's constructor and
+ * swap inlined whole, its clear (0x1EF310) and its temporary's deleter destructor (0x1EF320, with
+ * 0) called, as a class vector's out-of-class members are in a unit's own code. Generated with
+ * the unit's own code, it asks for the deleter's clear and destructor in the tail's first round,
+ * ahead of the cue vector's insert and reserve, which then inline both in their temporary's
+ * teardown (0x1EF190 byte-exact; as a plain template instance FreeVector is generated in the tail,
+ * and reserve and insert called the destructor) */
 template <class V>
-void FreeVector(V &v)
+inline void FreeVector(V &v)
 {
     V tmp;
 
@@ -314,16 +320,51 @@ void FreeVector(V &v)
 }
 
 /* a film's cue (8 bytes: the vector's reserve copies a float and a word; built by 0x1EDEC0, the
- * float first -- the names ours) */
+ * float first): the time it is shown AT and the text it PRINTs (the subtitles rdr's tags; the
+ * names ours) */
 struct CMovieCue {
-    CMovieCue(float time, int item) : m_time(time), m_item(item) {}
+    CMovieCue(float time, char *text) : m_time(time), m_text(text) {}
 
     float m_time;
-    int m_item;
+    char *m_text;
 };
 
-/* the film's cues (a class vector of them) */
+/* the film's cues (a class vector of them). OPEN, 49 instructions: its insert (OVL1 0x1EED40, the
+ * tail's, from push_back's copy) is include/vector's insert to the register -- the in-place
+ * branch's end pointer in v1 where the target has a2 (include/vector's open item, the 8-byte
+ * element inserts); its temporary's teardown is the target's since FreeVector became own code */
 typedef std::vector<CMovieCue> CMovieCueVector;
+
+/* the cues in time order (std::sort's comparator, the name ours): SetMovie's is a default-
+ * initialised local -- no store, no constructor call, its byte loaded as it is (0x1EE000's
+ * instance and its two helpers, byte-exact) */
+struct CueLess {
+    bool operator()(CMovieCue a, CMovieCue b) const { return a.m_time < b.m_time; }
+};
+
+/* the subtitles: the film's cues, then how they are drawn -- a scale, a position, the
+ * justification (0 left, 1 centre, 2 right), a colour, the spacing and the width (st_core.cpp's
+ * BSS, no initialiser: placeholders hold them to their addresses) -- and the subtitles' rdr and
+ * the default width they are read from */
+extern "C" {
+extern CMovieCueVector data_00408BD0;
+extern float data_00408BDC;
+extern PNT2D data_00408BE0;
+extern int data_00408BE8;
+extern PNT3D data_00408BEC;
+extern int data_00408BF8;
+extern int data_00408BFC;
+extern _zrdr *data_00437D08;
+extern int data_004A44C4;
+}
+
+/* the cues let go of (the name ours): an inline helper MW inlines one level (FreeVector makes it
+ * taller than the budget), so UnInit calls clear() and FreeVector out of line, as the image does */
+static inline void FreeCues()
+{
+    data_00408BD0.clear();
+    FreeVector(data_00408BD0);
+}
 
 /* the load thread's stack (SOCOM 1's static array of it; SOCOM II's allocated once) */
 static void *load_thread_stack;
@@ -334,6 +375,93 @@ CCinematicState::~CCinematicState()
     if (m_moviename)
         _free(m_moviename, 0, 0);
     m_moviename = 0;
+}
+
+/* the subtitles read for a film: the defaults, then the rdr's settings and the film's own over
+ * them (the second justification test is not an else-if, as the target tests it), its file and
+ * its cues in time order (the name ours). An inline helper too big for MW's inline_max_size, so
+ * SetMovie inlines it ONE level: its body comes in and every accessor it calls stays a call --
+ * _zrdr's Count and Item, the cue's constructor, the vector's reserve forwarder, push_back, begin
+ * and end -- their out-of-line copies following SetMovie in reverse of their first use (OVL1
+ * 0x1EDE70-0x1EDF3C; Count and Item are the overlay's linked copies, which the zrdr units' walkers
+ * call too). The sort's iterators are named locals built in place, the comparator declared after
+ * them (its slot below theirs) */
+static inline const char *ReadSubtitles(const char *name)
+{
+    char *file = 0;
+
+    data_00408BE8 = 0;
+    _zrdr *rdr = data_00437D08;
+    data_00408BDC = 1.0f;
+    data_00408BE0.x = 20.0f;
+    data_00408BE0.y = 300.0f;
+    data_00408BEC.x = data_00408BEC.y = data_00408BEC.z = 255.0f;
+    data_00408BF8 = 20;
+    data_00408BFC = data_004A44C4;
+    if (rdr) {
+        zrdr_findreal(rdr, "SCALE", &data_00408BDC, 1);
+        zrdr_findPNT2D(rdr, "POS", &data_00408BE0);
+        zrdr_findPNT3D(rdr, "COLOR", &data_00408BEC);
+        zrdr_findint(rdr, "SPACING", &data_00408BF8, 1);
+        zrdr_findint(rdr, "WIDTH", &data_00408BFC, 1);
+        if (zrdr_findtag(rdr, "LEFT_JUSTIFIED"))
+            data_00408BE8 = 0;
+        else if (zrdr_findtag(rdr, "CENTER_JUSTIFIED"))
+            data_00408BE8 = 1;
+        else if (zrdr_findtag(rdr, "RIGHT_JUSTIFIED"))
+            data_00408BE8 = 2;
+        _zrdr *movie = zrdr_findtag(rdr, name);
+        if (movie) {
+            file = zrdr_findstring(movie, "FILENAME");
+            zrdr_findreal(movie, "SCALE", &data_00408BDC, 1);
+            zrdr_findPNT2D(movie, "POS", &data_00408BE0);
+            zrdr_findPNT3D(movie, "COLOR", &data_00408BEC);
+            zrdr_findint(movie, "SPACING", &data_00408BF8, 1);
+            zrdr_findint(movie, "WIDTH", &data_00408BFC, 1);
+            if (zrdr_findtag(movie, "LEFT_JUSTIFIED"))
+                data_00408BE8 = 0;
+            if (zrdr_findtag(movie, "CENTER_JUSTIFIED"))
+                data_00408BE8 = 1;
+            else if (zrdr_findtag(movie, "RIGHT_JUSTIFIED"))
+                data_00408BE8 = 2;
+            _zrdr *subs = zrdr_findtag(movie, "SUBTITLES");
+            if (subs) {
+                int n = subs->Count();
+
+                data_00408BD0.reserve(n);
+                for (int i = 0; i < n; i++) {
+                    float at = -1.0f;
+                    _zrdr *cue = subs->Item(i);
+
+                    zrdr_findreal(cue, "AT", &at, 1);
+                    data_00408BD0.push_back(CMovieCue(at, zrdr_findstring(cue, "PRINT")));
+                }
+                CMovieCueVector::iterator first = data_00408BD0.begin();
+                CMovieCueVector::iterator last = data_00408BD0.end();
+                CueLess less;
+
+                std::sort(first, last, less);
+            }
+        }
+    }
+    return file;
+}
+
+/* the film to play next (OVL1 0x1EDA60): with subtitles, the film's file comes from the subtitles'
+ * rdr, "INVALID" when it names none (the null test of the helper's result as written: `name = f;
+ * if (!name)` puts the copy in the branch's delay slot, a ternary branches twice) */
+void CCinematicState::SetMovie(const char *name, unsigned char flag, unsigned char subtitles)
+{
+    if (m_moviename)
+        _free(m_moviename, 0, 0);
+    m_moviename = 0;
+    if (subtitles) {
+        name = ReadSubtitles(name);
+        if (!name)
+            name = "INVALID";
+    }
+    m_moviename = _strdup(name, 0, 0);
+    m_28 = flag;
 }
 
 /* the film let go of: the film player, its items, its texture buffer and list, and -- if it was
@@ -350,8 +478,7 @@ void CCinematicState::UnInit()
         }
     }
     func_00356B30(zdb::CTexManager::m_texmanager.data_[zdb::CTexManager::TexPhase[54]]);
-    func_001ED000(data_00408BD0);
-    FreeVector(*(CMovieCueVector *)data_00408BD0);
+    FreeCues();
     if (m_2a) {
         zSysFifoEnd();
         zSysFifoDisable();

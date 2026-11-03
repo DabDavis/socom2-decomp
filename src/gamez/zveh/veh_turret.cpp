@@ -403,10 +403,38 @@ void CTurret::ComputeNextPosition(float dT)
  * slot of its own (sp+72) copied into erase's parameters; here end() is built twice (and with `e`
  * a named local the temporaries' copies fold away: 0x11C/0x100). Tried: the end in a local, the
  * result in a local, begin() in a local, this->end(), a copy of the pointer */
+/* the AI's target (ai_target.cpp's: its sighting clock only) and its validity test (OVL2 0x60A850,
+ * the kit lane's) */
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+};
+
+extern "C" bool func_0060A850(void *target);
+
+/* the turret's target in sight: a valid target held (bit 9), or seen within the last three seconds
+ * (new in SOCOM II, not named: CTTurret::Tick asks it; the SEALs' hostile anchor makes the same
+ * test, the held arm last) */
+extern "C" bool func_003A7FA0(CTurret *t)
+{
+    bool lost = true;
+
+    if (func_0060A850(t->m_target)) {
+        if (!(t->m_targetFlags & 0x200))
+            lost = ((CAiTarget *)t->m_target)->GetTimeSinceLastSighting() > 3.0f;
+        else
+            lost = false;
+    }
+    return !lost;
+}
+
 #pragma auto_inline off
 void CTurretList::Remove(CTurret *turret)
 {
-    erase(std::remove(begin(), end(), turret), end());
+    iterator e = end();
+    iterator i = std::remove(begin(), e, turret);
+
+    erase(i, e);
 }
 #pragma auto_inline reset
 

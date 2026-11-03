@@ -17,6 +17,110 @@ const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 void zrdr_free(CRdrFile *file);
 extern "C" int strcasecmp(const char *, const char *);
 
+/* zseal.h's CCharacterGear, as far as FindGear reads it (its name at 0xC; zseal.h is not included
+ * here) */
+class CCharacterGear {
+public:
+    int m_ref_count;   // 0x0
+    int m_partid;   // 0x4
+    unsigned int m_gearid;   // 0x8
+    char *m_name;   // 0xc
+    char *m_model_file;   // 0x10
+    char *m_model_name;   // 0x14
+    void *m_model;   // 0x18
+};
+
+/* every gear let go: its model and its count zeroed; the first one still held makes a walk of the
+ * types whose body was compiled out (a debug report, likely) -- new in SOCOM II, the name ours (OVL1's
+ * 0x2AB3F0 calls it before CleanupTemporary; 0x53F0B0).
+ * OPEN (0xD0 against 0xF0): the inner walk's layout -- the target enters the empty walk of the types
+ * through a block placed after the outer loop (`b` forward with the flag's zero in the slot, the end
+ * computed and tested there, then `b` back into the loop), README's "the inner loop entered through
+ * a block placed after the function's end" (SortNearToFar, CGrid::Create); it also keeps the gear
+ * list's address in a0 and reads its size and data each pass. A reference local to the list was
+ * tried */
+void CCharacterType::ResetGears()
+{
+    bool first = true;
+    std::vector<CCharacterGear *> &gears = m_gear_list;
+
+    for (std::vector<CCharacterGear *>::iterator i = gears.begin(); i != gears.end(); ++i) {
+        CCharacterGear *gear = *i;
+
+        if (gear->m_ref_count && first) {
+            first = false;
+            for (CCharTypeVec::iterator t = m_char_list.begin(); t != m_char_list.end(); ++t)
+                ;
+        }
+        gear->m_model = 0;
+        gear->m_ref_count = 0;
+    }
+}
+
+/* SOCOM 1's FindGear (its demo's 0x24B0C0, after AddWeapon), over SOCOM II's vector of pointers:
+ * the name tested first, the end re-read every pass (CZKit::SetItemByIndex calls it on
+ * CCharacterType::m_gear_list) */
+CCharacterGear *CCharacterGearList::FindGear(const char *name)
+{
+    if (!name)
+        return 0;
+    for (iterator i = begin(); i != end(); ++i)
+        if (!strcmp(name, (*i)->m_name))
+            return *i;
+    return 0;
+}
+
+/* the record OVL1's 0x437CE8 points at, a character type's name at +300 (unnamed) */
+extern char *data_00437CE8;
+
+/* SOCOM 1's KorusGetPackedWeapons (its demo's 0x24AEA0, after UnPack as here) found its type by a
+ * fixed name; SOCOM II's by the one at +300 of OVL1's 0x437CE8, through GetByNameMod (inlined) */
+void CCharacterType::KorusGetPackedWeapons(CCharacterWeapPacked *packed)
+{
+    CCharacterType *type = GetByNameMod(data_00437CE8 + 300);
+
+    if (type)
+        PackWeapons(packed, type);
+}
+
+/* the weapons packed, eight at most (SOCOM 1's KorusGetPackedWeapons' loop; pinned: the target
+ * calls it out of line) */
+#pragma auto_inline off
+void CCharacterType::PackWeapons(CCharacterWeapPacked *packed, CCharacterType *type)
+{
+    int n = 0;
+
+    for (CCharacterWeapList::iterator i = type->m_weapons.begin(); n < 8 && i != type->m_weapons.end();
+         ++i, n++) {
+        packed[n].m_packed = CZWeapon::PackItemAndAmmoEnums((*i).m_wepId, (*i).m_ammoId);
+        packed[n].m_ammoCount = (*i).m_ammoCount;
+        packed[n].m_magCount = (*i).m_magCount;
+    }
+}
+#pragma auto_inline reset
+
+/* SOCOM 1's UnPack (its demo's 0x24ADA0, after Open as here): the weapons cleared, then each of the
+ * eight packed ones unpacked until the first without an item, and pushed */
+void CCharacterType::UnPack(const CCharacterWeapPacked *packed, CCharacterType *type)
+{
+    type->m_weapons.clear();
+    for (int i = 0; i < 8; i++, packed++) {
+        EQUIP_ITEM item;
+        EQUIP_AMMO ammo;
+
+        CZWeapon::UnpackItemAndAmmoEnums(packed->m_packed, &item, &ammo);
+        if (!item)
+            return;
+        CCharacterWeap w;
+
+        w.m_ammoId = ammo;
+        w.m_wepId = item;
+        w.m_ammoCount = packed->m_ammoCount;
+        w.m_magCount = packed->m_magCount;
+        type->m_weapons.push_back(w);
+    }
+}
+
 /* the type of that name, or none (SOCOM 1's; SOCOM II tests the name first and walks on until
  * it has one) */
 CCharacterType *CCharacterType::GetByNameMod(const char *name)
@@ -67,15 +171,17 @@ bool DeleteTemporaryCharType(CCharacterType *t)
     return deleted;
 }
 
-/* every temporary type deleted and dropped from the list (SOCOM 1's).
- * OPEN (0x84 against 0x80; unchanged at -inline level=5): CWorld::DeleteLightMap's and DeleteChild's include/vector question --
- * the target builds end() once (44(sp)), passes it to remove_if and copies it for erase's last
- * after the call (to 28(sp)), where this builds it twice and copies before; an end iterator in a
- * local passed to both is 0x70 (no copy for erase at all), an explicit copy of it 0x88 */
+/* every temporary type deleted and dropped from the list (SOCOM 1's). The end taken once into a local
+ * and passed to both: MW makes an argument list's temporaries left to right and evaluates them right
+ * to left, so `erase(remove_if(...), end())` puts erase's end below remove_if's temporaries and copies
+ * it before the call -- the target's stack slots are this form's (README "Tells from completing the
+ * MSL headers, round 8") */
 void CCharacterType::CleanupTemporary()
 {
-    m_char_list.erase(std::remove_if(m_char_list.begin(), m_char_list.end(), DeleteTemporaryCharType),
-                      m_char_list.end());
+    CCharTypeVec::iterator e = m_char_list.end();
+    CCharTypeVec::iterator i = std::remove_if(m_char_list.begin(), e, DeleteTemporaryCharType);
+
+    m_char_list.erase(i, e);
 }
 
 /* every used type's sounds looked up by name, the death and damage ones set to dialogue, and a
@@ -371,6 +477,13 @@ char *CCharacterType::GetBaseName()
 EQUIP_ITEM CCharacterType::GetWeaponByIndex(unsigned int i) const
 {
     return i < m_weapons.size() ? ((CCharacterWeapList &)m_weapons)[i].m_wepId : EQUIP_NONE;
+}
+
+/* SOCOM 1's (its demo's 0x24B060, with Open's stretch there; SOCOM II's sits by GetWeaponByIndex):
+ * an empty weapon pushed through the class insert (0x53FD60), the item left to the caller */
+void CCharacterWeapList::AddWeapon(EQUIP_ITEM)
+{
+    push_back(CCharacterWeap());
 }
 
 /* the character a group of chartype.rdr gives the name, or none (SOCOM 1's): the group's items

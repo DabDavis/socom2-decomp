@@ -6,6 +6,12 @@
 
 extern int sprintf(char *s, const char *fmt, ...);
 extern int rt_memory_align_free(void **p);
+extern int func_002464A8(int, int, int, int);
+
+struct binet_ctl {
+    int a, b;
+    int arg;
+};
 
 typedef struct LIBNETB {
     char pad0[16];
@@ -18,6 +24,13 @@ typedef struct sceBInetAddress {
     int family;
     unsigned char addr[4];              /* +4, least significant first */
 } sceBInetAddress;
+
+int sceBInetControl(int s, int cmd, struct binet_ctl *p, int len)
+{
+    if (p == 0)
+        return -512;
+    return func_002464A8(s, cmd, p->arg, len);
+}
 
 int sceBInetAddress2IP(char *ip, sceBInetAddress *a)
 {

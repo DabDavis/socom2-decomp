@@ -63,27 +63,21 @@ CAiPath::~CAiPath()
 }
 
 /* the points on no cell dropped through MSL's remove and the range erase, the count dropped handed
- * back (new in SOCOM II, the name ours; SmoothPath calls it, never inlined).
- * OPEN (0x188 against 0x18C), left out of the build: two include/vector questions. The target
- * builds end() once (sp+92) for remove and again copies it for erase's last after the call (the
- * CleanupTemporary/DeleteLayers shape -- an end local passed to both is 0x170, a remove result in
- * a local 0x15C), and inlines find whole where this build calls the iterator's operator* out of
- * line (one level too tall). Compiled, it also costs resize<point> (0x528430): its erase, now
- * instantiated by the unit's own code and declared before resize in include/vector, is generated
- * first and inlined into resize, where the target's resize calls it -- the original MSL declares
- * resize ahead of erase, or this function reached erase another way. Its remove_copy (0x528530)
- * matches once point == CAiMapLoc reads the cell first (ai.h) */
-#if 0
+ * back (new in SOCOM II, the name ours; SmoothPath calls it, never inlined). The end taken once into a
+ * local and passed to both (the MSL headers' round 8: the callers' form gives the target's slots);
+ * resize<point> (0x528430) stays byte-exact beside it now that include/vector declares resize ahead
+ * of erase. Its remove_copy (0x528530) matches once point == CAiMapLoc reads the cell first (ai.h) */
 #pragma auto_inline off
 int CAiPath::RemoveInvalidPoints()
 {
     unsigned int n = m_points.size();
+    points::iterator e = m_points.end();
+    points::iterator i = std::remove(m_points.begin(), e, CAiMapLoc::invalid);
 
-    m_points.erase(std::remove(m_points.begin(), m_points.end(), CAiMapLoc::invalid), m_points.end());
+    m_points.erase(i, e);
     return n - m_points.size();
 }
 #pragma auto_inline reset
-#endif
 
 /* the legs' two ends, for one leg or the one being planned (SOCOM 1's; true either way) */
 bool CAiPath::GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const
