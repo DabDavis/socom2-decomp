@@ -12,6 +12,7 @@ Run: ./test_scdecomp.py   (also works under pytest)
 
 from __future__ import annotations
 
+import os
 import shutil
 import struct
 import sys
@@ -222,6 +223,31 @@ def test_gnu_table_is_compared_whole():
     lit = next(a for a in lits if img.word(a) == 0x3FB38000)
     r = D.compare(obj, sym.name, sym, _image_with_word(img, lit, 0x3FB48000), st)
     ck(not r.match and any(f.status == "CONTENT-MISMATCH" for f in r.relocs), "a float literal's high bytes count")
+
+
+def test_gnu_code_label_resolves_by_the_map():
+    """An asm's data label inside a GNU object's code (`.text`+N: GNU as relocates the local label
+    against its section) resolves through the data map when it names the label: libmpeg's
+    _copyAddRefImage loads _maxval, the clamp constant _copyRefImage's asm carries. By distance the
+    reference went unchecked while the unit's layout before it is short; by the label it is checked
+    -- and the label mapped elsewhere must fail."""
+    img, st = E.image(), E.symbols()
+    unit = HERE / "src" / "lib" / "sdk" / "mpeg_dec.c"
+    opts = C.tu_options(unit)
+    obj = build(unit, "mpeg_dec", opts["compiler"], opts["flags"].split())
+    sym = st.get("_copyAddRefImage")
+    r = D.compare(obj, sym.name, sym, img, st)
+    ck(r.match and any(f.symbol == "_maxval" and f.status == "ok" for f in r.relocs),
+       f"_maxval resolves by its data row: {r.verdict}")
+    moved = HERE / "build" / "tmp" / f"data_moved.{os.getpid()}.txt"
+    moved.parent.mkdir(parents=True, exist_ok=True)
+    moved.write_text(E.DATA.read_text().replace("0x001B6E90 0x0 _maxval", "0x001B6EA0 0x0 _maxval"))
+    try:
+        r = D.compare(obj, sym.name, sym, img, E.SymbolTable(E.SYMBOLS, moved))
+    finally:
+        moved.unlink()
+    ck(not r.match and any(f.symbol == "_maxval" and f.status == "MISMATCH" for f in r.relocs),
+       "the label mapped elsewhere fails")
 
 
 def test_padding_after_a_function_must_be_zero():
