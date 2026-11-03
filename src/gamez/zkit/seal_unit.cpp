@@ -1,7 +1,9 @@
 /* seal_unit.cpp -- the squads, CSealUnit (SOCOM 1's unit, __sinit_seal_unit.cpp). OVL2
  * 0x5E6AA0-0x5EF9CF. So far its tail's out-of-line copies (the breach state's destructor, and with
- * its table the inline virtuals and CAiState's destructor), GetUnitByTeam, Create and
- * EscorteeJoinUnit. Defined in reverse of their image order (-inline deferred). */
+ * its table the inline virtuals and CAiState's destructor), GetUnitByTeam, Create,
+ * EscorteeJoinUnit, the constructor (with the orders list's deleter copy), TickAll, the auto-message
+ * pair, GetMyPointOutTurnDir and both IsMemberOfUnit. Defined in reverse of their image order
+ * (-inline deferred). */
 
 #include <list>
 
