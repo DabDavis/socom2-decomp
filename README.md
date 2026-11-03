@@ -6047,6 +6047,70 @@ map's byte-exact rows (9,020 bytes), 3 matched drafts superseded; `src/lib/asr` 
 before). 14 rows named (10 training, SpectralSubtraction `s1:calls`, InitSpecSub, ProcessSpecSub and
 CombinerInit by their constructors' slots), 3 data rows (`s1:data`). No tool changed.
 
+**Round 16c: TrainSelectPhenom, the mtx object's three, two new block objects, the distance block's
+constructor.**
+
+- **Spilled pseudos take their stack slots in declaration order** (reload's alter_reg walks the
+  pseudos by number): TrainSelectPhenom (0xCB0, eleven values on the stack) came out at the right size
+  first time with five slots swapped; `TRAINREC *r` declared before `seg` and `k` before `i` gave the
+  target's +24 .. +36, and `seg` declared before `n` made reload fetch the `n * 2` it had just spilled
+  (`lw a1,40(sp)`: seg's address reloads c into v1 in between -- the other order inherits it from v1).
+  The segmentation walks back as the for's own step, `j++, s--`: its decrement last in every unrolled
+  copy and the copies' address registers following. Two words from byte-exact once the slots fit.
+- **The for's step orders the unrolled copies' increments**: mtxMax's `i++, p++` puts the counter's
+  increment before the pointer's in each preconditioning copy (`p++` in the body puts it after); a
+  loop bound read through the matrix is copied by the unroller (`move a3,v1`) where a local is not.
+  mtxCompress indexes the data through a local (`d[i]`): the strength-reduced pointer starts as a
+  copy of it (the target's `lw s0; move s1,s0`); `*p` stepped by the for keeps one register.
+- **A pointer local stops fold merging the scaled terms**: `_langGetpErgodicStates` (open since round
+  5c) is `p = (unsigned short *)d + s * c; return p + w * 4 + 112;` -- one expression folds the warp
+  term into the halfword index (`(s * c + w * 4) * 2`) or puts it first. The phenomes' getter keeps
+  its six words with every such spelling (the target adds the index to `w * 8 + d`, MULT first, as
+  expand_expr's EXPAND_SUM does for an address -- an array index folds the terms together again), and
+  the penalties' its eleven (an int offset gives the target's `+ 228` before `+ d`, but 2.96 pairs
+  the counts as `(w * 4 + s * c) + (nsep + nep) + (nes + nses)`).
+- **A float in an integer argument goes straight into $f12 only from memory**: ControlMel's command 1
+  passes its fourth argument's bits as a float; `*(float *)&arg2` in the call, a union or a float
+  local all leave 2.96's ADDRESSOF a `subreg:SF` of the parameter's pseudo, reloaded into $f0 and
+  moved (7 words); a `float *` local to it keeps the parameter in its stack slot and the target's
+  `lwc1 $f12,0(sp)` follows.
+- **A two-armed constant choice is if-converted unless each arm sets two things**: ConstructDistCalc's
+  input count (3 with profile 34's cache, else 2) is a movz from `?:`, `if/else` or a default; with
+  both counts set in each case, the output's first (`nout = 1; nin = 3;` / `nout = 1; nin = 2;`), the
+  target's branch, its `li a3,1` before it and the 3 in its slot -- the other arm orders measured
+  (four, and a dozen shapes before them) give a movz or swap the 1 and the 3. The four field stores are SOCOM 1's order (the
+  last scheduled first). CalculateDistance is a do-while: the target's one entry test is the
+  unroller's own (a `while` adds a `sltu` of its own before it).
+- **SOCOM 1's objects, re-read**: its 0x3629D0 object (LogAdd, then HLnOnePlusExpHFloat inlined in
+  it) is SOCOM II's 0x4F5F20 with the lookup a plain function first and LogAdd calling it (0x4F6000:
+  SOCOM 1's NormalizeAndEnQ calls LogAdd where ours calls this row) -- both byte-exact as SOCOM 1's
+  bodies read. The mtx object starts with QrDeleteCol in both builds; SOCOM II moved mtxDestruct and
+  imtxDestruct after their constructors.
+- **Open, diagnosed in place**: DynProgUserWords (written from SOCOM 1's body, 0x60C against 0x61C,
+  every block the target's): the target keeps the new back pointer (s0, both copies) apart from
+  gnode (s4) and wnode (t3); with the node helper an inline, GCSE's copy propagation replaces gnode by
+  the inline's node everywhere (`ccdump.py --dump -dG`: "COPY-PROP: Replacing reg 91 ... with reg
+  170"), one long-lived pseudo that then takes the s-register the frame pointer should lose
+  (the target's frame pointer is t4, saved round the rare AllocateBacktrace with `sq t4`); as a macro
+  on a shared node the copies survive and the frame pointer goes to a caller-saved register, but wnode
+  merges into the node; `-fno-gcse` gives the target's three registers and loses three of the
+  object's matched functions. The garbage penalty (+52) is loaded twice in the target (`lh`, then
+  `lhu` and a sign extension: a halfword value live across the first cell's if/else). Not attempted:
+  DynProgScoreUserWords (0x4DC: four argument registers saved round its AllocateBacktrace call with
+  `sq`, the same helpers).
+
+Hand-written in round 16c: `asr/train.c` (+1, TrainSelectPhenom: 11 of 11), `asr/language.c` (+1,
+`_langGetpErgodicStates`: 65 of 76), `asr/mtx.c` (+3: mtxCompress, mtxMac, mtxMax; 9 of 9),
+`asr/logadd.c` (new: HLnOnePlusExpHFloat, LogAdd; 2 of 2), `asr/mel.c` (new: ControlMel, 1 of 1),
+`asr/distsil.c` (+5: ConstructDistCalc, CalculateDistance, GetpCachedDistances, GetDistanceOffset,
+IdleDistCalcProcess -- the last three over their drafts; 6 of 6) and `asr/dpgenuw.c` (DynProgUserWords
+OPEN; 8 of 10) -- 10 rows new to the map's byte-exact rows (5,616 bytes), 3 matched drafts superseded;
+`src/lib/asr` 457 of 501 (444 of 488 before). 9 rows named: mtxMac, ConstructDistCalc,
+GetpCachedDistances, GetDistanceOffset, CalculateDistance (`s1:order`, each body SOCOM 1's), LogAdd
+(`s1:calls`), ProcessMel, IdleDistCalcProcess, ControlDistSilProcess (`s1:slot`: their constructors'
+process and control functions). casr.h's LANGVT gains five slots (GetNbrState, GetNbrErgodicPhenomes,
+GetNbrGastone, GetpGastone, GetpProbMatrix). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
