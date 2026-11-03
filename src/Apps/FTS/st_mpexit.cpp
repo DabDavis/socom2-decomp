@@ -41,6 +41,15 @@ public:
     int GetDeaths() const { return m_deaths; }
     /* the hit percentage made a whole number, rounded (SOCOM 1's GetHitPct) */
     int GetHitPct() const { return (int)(0.5f + 100.0f * m_hit_percent); }
+    /* the counters the career record sums (ours, by offset: their meanings unproven -- read
+     * through accessors, each value is loaded ahead of the record's field it is added to) */
+    int Get0() const { return m_0; }
+    int Get14() const { return m_14; }
+    int Get18() const { return m_18; }
+    int Get1c() const { return m_1c; }
+    int Get34() const { return m_34; }
+    int Get36() const { return m_36; }
+    int Get38() const { return m_38; }
 
     /* the other counters the player's list shows (the names ours, their meaning unproven) */
     unsigned short m_0;   // 0x0
@@ -50,12 +59,13 @@ public:
     unsigned short m_deaths;   // 0x12
     unsigned short m_14;   // 0x14
     unsigned short m_16;   // 0x16
-    unsigned char _18[0x1c - 0x18];
+    unsigned short m_18;   // 0x18: added to the career record in objective games (unproven)
+    unsigned char _1a[0x1c - 0x1a];
     unsigned short m_1c;   // 0x1c: summed over the SEALs by the round result (unproven)
     unsigned char _1e[0x32 - 0x1e];
     unsigned short m_32;   // 0x32
     unsigned short m_34;   // 0x34
-    unsigned char _36[0x38 - 0x36];
+    unsigned short m_36;   // 0x36
     unsigned short m_38;   // 0x38: summed over the SEALs by the round result (unproven)
     unsigned short m_3a;   // 0x3a: the round result's score
     short m_score;   // 0x3c: the MVP score (SOCOM 1's m_sMvpScore)
@@ -180,9 +190,11 @@ public:
     CNetClock m_clock;   // 0xe0
     unsigned char _f4[0x111 - 0xf4];
     unsigned char m_type;   // 0x111: the game's type (1-5)
-    unsigned char _112[0x120 - 0x112];
+    unsigned char _112[0x11c - 0x112];
+    int m_11c;   // 0x11c: the rating match's rounds (unproven)
     int m_seals_won;   // 0x120
     int m_terrs_won;   // 0x124
+    int m_128;   // 0x128: zero when the SEALs' team rates first (unproven)
 };
 
 extern CNetGameState *data_00437CE8;
@@ -193,6 +205,64 @@ extern "C" {
 bool func_002C31A0();
 bool func_002C3080();
 }
+
+/* whether a SEAL is out of the game's counting (the SEAL lane's, unnamed; st_exit.cpp's view),
+ * whether the player has a rating to blend with (-1 none), and a SEAL's rating (fts_net_persona.cpp
+ * defines it) */
+extern "C" {
+bool func_002C2FD0(CZSealBody *seal);
+int func_002C2DC0(CZSealBody *seal);
+int func_002C3500(CZSealBody *seal);
+}
+
+/* the player's career record: the lobby's account of the player (0xF0 bytes, read by 0x2F98F0 and
+ * written back by 0x2F96F0 -- fts_net_persona.cpp's LobbyPlayerInfo; every name ours, the
+ * counters' meanings unproven) */
+struct CareerRecord {
+    unsigned int m_0 : 8;   // 0x0
+    unsigned int m_hit_pct : 7;   // 0x1: the hit percentage, averaged over the games
+    unsigned int m_0_15 : 17;
+    unsigned int m_rating;   // 0x4
+    unsigned char _8[0x10 - 0x8];
+    unsigned int m_time;   // 0x10: the seconds played
+    int m_14;   // 0x14
+    int m_18;   // 0x18
+    int m_kills;   // 0x1c
+    unsigned int m_games : 22;   // 0x20
+    unsigned int m_20_22 : 10;   // 0x22 (the halfword's bits 6-15)
+    unsigned short m_24;   // 0x24
+    unsigned short m_26;   // 0x26
+    unsigned short m_28;   // 0x28
+    unsigned short m_deaths;   // 0x2a
+    unsigned short m_2c;   // 0x2c
+    unsigned short m_2e;   // 0x2e
+    unsigned short m_30;   // 0x30
+    unsigned short m_32;   // 0x32
+    unsigned char _34[0xe8 - 0x34];
+};   // 0xe8
+
+extern "C" {
+void func_002F98F0(CareerRecord *rec);
+void func_002F96F0(CareerRecord *rec, int arg);
+}
+
+/* the network game's ratings (mp_rating.cpp's CRatingMatch: only what is called here) */
+class CRatingMatch {
+public:
+    CRatingMatch();
+    ~CRatingMatch();
+
+    void AddTeam(int id, int count, bool first, float rating);
+    int AddPlayer(int team, int player, int score, float rating);
+    float Compute();
+    bool GetNewRating(int player, float *rating);
+
+    void *m_teams[2];   // 0x0
+    bool m_solo;   // 0x8
+    bool m_done;   // 0x9
+    int m_rounds;   // 0xc
+    int m_k;   // 0x10
+};
 
 /* the final screen once the game is over, else the round's */
 const char *CMPExitMenu::GetReaderFileName()
@@ -358,6 +428,126 @@ void SetMvpUiVars(const char *szNameVar, const char *szUiVar)
         edStats.pop();
         edStats.pop();
         theUIVarManager.Add(szUiVar, 0, UIVL_TEMPORARY)->Set(&edStats);
+    }
+}
+
+/* how far a rating moves towards the game's result (ours: through an inline the multiply keeps
+ * the target's operand order, 4 instructions to 3 -- see ComputeNewRating's OPEN) */
+inline float GetRatingWeight()
+{
+    return 0.5f;
+}
+
+/* the player's new rating from the game just played (the name ours; UnInit's call): an Elo match
+ * of the two sides' living, counted SEALs -- their game scores, floored at zero, and their ratings
+ * -- the result taken halfway from the career record's rating when the player has one.
+ * OPEN, 3 instructions, one FPR pair: the target materialises the 0.5 in $f1 and the difference's
+ * conversion in $f0 (`mul.s $f0,$f1,$f0` = 0.5 * diff); here the two swap. Every GPR, the frame
+ * (the record 0xE8 bytes, overlapping the walk's iterator) and the code are the target's -- the
+ * side test needed `bool bSide = false; int iTeam;` in that order in the inner block (iTeam
+ * first, or at function scope, rotates s0-s5; 15 to 49 instructions). Tried for the pair: 0.5f
+ * written first or last, `/ 2.0f` (div.s), a float local for the weight, for the difference, or
+ * both in either order, `(float)(int)`, `(int)fOld` from a float local, an inline Blend(from, to,
+ * t) (4), its difference a float local (3), the constant from an inline (3, adopted) */
+int ComputeNewRating()
+{
+    int iRating = 0;
+
+    if (!func_002C2FD0(ftsGetPlayer())) {
+        CRatingMatch *pMatch = new CRatingMatch;
+        CNetGameState *pGame = data_00437CE8;
+
+        if (pMatch && pGame) {
+            bool bFirst = pGame->m_128 == 0;
+            pMatch->m_rounds = pGame->m_11c;
+            pMatch->m_solo = false;
+            pMatch->AddTeam(0, pGame->m_seals_won, bFirst, 1118.0f);
+            pMatch->AddTeam(8, pGame->m_terrs_won, !bFirst, 982.0f);
+
+            int iSeals = 0;
+            int iTerrs = 0;
+
+            for (CEntityItr it; it.More(); it.Advance()) {
+                if (it.IsLiveSeal()) {
+                    CZSealBody *pSeal = &it.GetSeal();
+
+                    if (!pSeal->m_fd2) {
+                        bool bSide = false;
+                        int iTeam;
+
+                        if (func_002C31D0(pSeal)) {
+                            iTeam = 0;
+                            bSide = true;
+                            iSeals++;
+                        } else if (func_002C30B0(pSeal)) {
+                            iTeam = 8;
+                            bSide = true;
+                            iTerrs++;
+                        }
+                        if (bSide) {
+                            int iScore = pSeal->GetGameStats().m_score;
+
+                            if (iScore < 0)
+                                iScore = 0;
+                            pMatch->AddPlayer(iTeam, (int)pSeal, iScore, (float)func_002C3500(pSeal));
+                        }
+                    }
+                }
+            }
+            if (iSeals > 0 && iTerrs > 0) {
+                float fRating;
+
+                pMatch->Compute();
+                if (ftsGetPlayer() && pMatch->GetNewRating((int)ftsGetPlayer(), &fRating)) {
+                    iRating = (int)(0.5f + fRating);
+                    if (func_002C2DC0(ftsGetPlayer()) != -1) {
+                        CareerRecord rec;
+
+                        func_002F98F0(&rec);
+                        int iOld = (int)(float)rec.m_rating;
+                        iRating = iOld + (int)(GetRatingWeight() * (iRating - iOld));
+                    }
+                }
+            }
+            delete pMatch;
+        }
+    }
+    return iRating;
+}
+
+/* the player's game added to its career record (the name ours; Init's call, with two counts of
+ * the round's -- unproven): the counters summed, the hit percentage averaged over the games, the
+ * game's time, one game more */
+void UpdateCareerRecord(int a, int b)
+{
+    CZSealBody *pPlayer = ftsGetPlayer();
+
+    if (pPlayer && !func_002C2FD0(pPlayer) && (func_002C31D0(pPlayer) || func_002C30B0(pPlayer))) {
+        CareerRecord rec;
+        CSealStats &stats = pPlayer->GetGameStats();
+
+        func_002F98F0(&rec);
+        rec.m_kills += stats.GetKills();
+        rec.m_deaths += stats.GetDeaths();
+        rec.m_2c += stats.Get14();
+        rec.m_2e += stats.Get38();
+        rec.m_30 += stats.Get36();
+        if (data_00437CE8->m_type == 3) {
+            if (func_002C31D0(pPlayer))
+                rec.m_26 += stats.Get1c();
+            else if (func_002C30B0(pPlayer))
+                rec.m_28 += stats.Get18();
+        } else
+            rec.m_24 += stats.Get1c();
+        rec.m_32 += stats.Get0();
+        rec.m_20_22 = stats.Get34();
+        rec.m_hit_pct = (int)(0.5f + (float)(rec.m_hit_pct * rec.m_games + stats.GetHitPct())
+                                         / (float)(rec.m_games + 1));
+        rec.m_time += data_00437CE8->m_clock.GetTimeInGameSec();
+        rec.m_14 += a;
+        rec.m_18 += b;
+        rec.m_games++;
+        func_002F96F0(&rec, 1);
     }
 }
 
