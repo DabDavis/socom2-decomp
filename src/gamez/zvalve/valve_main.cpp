@@ -8,7 +8,7 @@
 #include "valve.h"
 #include "../zsav/zsave.h"
 
-extern "C" long func_001914B8(const char *s);   /* newlib's atol (MAIN) */
+/* atol: newlib (MAIN), through <stdlib.h> */
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
 
@@ -90,7 +90,7 @@ CValve *VALVE_CMD_DATA::ParseValveName(const char *name, int &index)
     if (name && !strncmp(name, "INPUT_VALVE", 11)) {
         index = 0;
         if ((int)strlen(name) > 11)
-            index = func_001914B8(name + 11);
+            index = atol(name + 11);
         return 0;
     }
     return CValve::Create(name, (VALVE_TYPE)2);

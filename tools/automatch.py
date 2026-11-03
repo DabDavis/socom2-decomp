@@ -43,6 +43,15 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 """
+# A GCC draft's prelude adds what m2c writes for GNU C and the prelude never defined (GCC round
+# 16a: 20 of the lane's 87 build failures): M2C_BITWISE, a register's bits as another type -- the
+# union newlib's fdlibm spells GET_FLOAT_WORD/SET_FLOAT_WORD with, which GCC turns into the
+# `mfc1`/`mtc1` the code holds -- the 128-bit types (TImode, Sony's u_long128) and the R5900's
+# `sync`. MW's drafts keep PRELUDE as it was.
+GCC_PRELUDE = PRELUDE + """#define M2C_BITWISE(type, expr) ({ union { __typeof__(expr) _f; type _t; } _u; _u._f = (expr); _u._t; })
+#define M2C_SYNC() __asm__ __volatile__ ("sync.l")
+typedef int s128 __attribute__((mode(TI))); typedef unsigned int u128 __attribute__((mode(TI)));
+"""
 
 
 TRIPLES = ("mipsee-gcc-c", "mipsee-mwcc-c")   # the second converts about 1 % more of the misses
@@ -160,7 +169,7 @@ def attempt_gcc(addr: int, tmp: Path, sym, real: str, ccs: list[tuple[str, str]]
         if _on("GCC_REPAIR"):
             body = gcc_repair(tmp, body, ccs[0]) or body
         for variant in gcc_variants(body, sym.name, below):
-            src = PRELUDE + variant
+            src = (GCC_PRELUDE if _on("GCC_PRELUDE") else PRELUDE) + variant
             for cc in ccs:
                 hit = try_one(tmp, src, sym, real, addr, img, st, cc=cc)
                 if hit == "hit":
@@ -204,10 +213,11 @@ def gcc_build_errors(tmp: Path, src: str, cc: tuple[str, str]) -> dict[int, str]
 
 def gcc_repair(tmp: Path, body: str, cc: tuple[str, str], rounds: int = 3) -> str | None:
     """The draft made to build with GCC, or None (the body unchanged when it already builds)."""
-    base = PRELUDE.count("\n")
+    prelude = GCC_PRELUDE if _on("GCC_PRELUDE") else PRELUDE
+    base = prelude.count("\n")
     text = body
     for _ in range(rounds):
-        errs = gcc_build_errors(tmp, PRELUDE + text, cc)
+        errs = gcc_build_errors(tmp, prelude + text, cc)
         if errs is None:
             return text
         lines = text.split("\n")
@@ -218,12 +228,115 @@ def gcc_repair(tmp: Path, body: str, cc: tuple[str, str], rounds: int = 3) -> st
                 continue
             if "invalid type argument of `unary *'" in msg:
                 lines[n - 1] = _deref_ints(lines[n - 1], decl)
+            if "invalid operands to binary -" in msg and _on("GCC_PTRDIFF"):
+                lines[n - 1] = _byte_differences(lines[n - 1], decl)
             unproto |= set(re.findall(r"too (?:many|few) arguments to function `([A-Za-z_]\w*)'", msg))
         new = _unprototype("\n".join(lines), unproto)
         if new == text:
             return None
         text = new
     return None
+
+
+_CAST = re.compile(r"^\((?:const\s+)?(?:unsigned\s+|signed\s+)?(?:struct\s+)?[A-Za-z_]\w*(?:\s*\*)*\)$")
+
+
+def _operand_left(line: str, i: int) -> int:
+    """The start of the operand ending just before line[i] (a binary operator's left side: a
+    primary with its postfix calls and subscripts, its prefix casts, `&` and `*`)."""
+    j = i
+    while j > 0 and line[j - 1] == " ":
+        j -= 1
+    end = j
+    while j > 0 and line[j - 1] in ")]":                 # a group, a call's or a subscript's
+        depth, k = 0, j - 1
+        while k >= 0:
+            if line[k] in ")]":
+                depth += 1
+            elif line[k] in "([":
+                depth -= 1
+                if depth == 0:
+                    break
+            k -= 1
+        if k < 0:
+            return end
+        j = k
+    while j > 0 and (line[j - 1].isalnum() or line[j - 1] in "_."):
+        j -= 1
+    while True:                                          # prefix casts, & and *
+        k = j
+        while k > 0 and line[k - 1] == " ":
+            k -= 1
+        if k > 0 and line[k - 1] in "&*" and (k < 2 or not (line[k - 2].isalnum() or line[k - 2] in "_)]")):
+            j = k - 1
+            continue
+        if k > 0 and line[k - 1] == ")":
+            depth, m = 0, k - 1
+            while m >= 0:
+                depth += line[m] == ")"
+                depth -= line[m] == "("
+                if depth == 0:
+                    break
+                m -= 1
+            if m >= 0 and _CAST.match(line[m:k]):
+                j = m
+                continue
+        return j
+
+
+def _operand_right(line: str, i: int) -> int:
+    """The end of the operand starting at line[i] (a binary operator's right side)."""
+    j = i
+    while j < len(line) and line[j] == " ":
+        j += 1
+    while True:                                          # prefix casts and unary operators
+        if line[j:j + 1] in ("&", "*", "!", "~") or (line[j:j + 1] == "-" and line[j + 1:j + 2] != "-"):
+            j += 1
+            continue
+        if line[j:j + 1] == "(":
+            end = _group(line, j)
+            if end > 0 and _CAST.match(line[j:end]):
+                j = end
+                while j < len(line) and line[j] == " ":
+                    j += 1
+                continue
+        break
+    if line[j:j + 1] == "(":
+        j = _group(line, j)
+        if j < 0:
+            return -1
+    else:
+        m = re.match(r"[A-Za-z_]\w*|0x[0-9A-Fa-f]+|\d+(?:\.\d*)?f?", line[j:])
+        if not m:
+            return -1
+        j += m.end()
+    while line[j:j + 1] in ("(", "["):                   # a call's arguments, a subscript
+        j = _group(line, j)
+        if j < 0:
+            return -1
+    return j
+
+
+def _byte_differences(line: str, decl: dict[str, str]) -> str:
+    """`a - p` where p is a pointer that a is not compatible with (GCC: "invalid operands to binary
+    -"): m2c's `char *` minus an `M2C_UNK *` (`(p - &_iob) >> 4`), meaning the registers' byte
+    difference, as `(s32) (a) - (s32) (p)` (round 15a's cheapest repair: 12 of the lane's rows)."""
+    for _ in range(8):
+        cands = [m.start() for m in re.finditer(r"(?<=[\w)\]]) - (?![-=])", line)]
+        done = False
+        for k in reversed(cands):
+            lo, hi = _operand_left(line, k), _operand_right(line, k + 2)
+            if hi < 0 or lo >= k:
+                continue
+            left, right = line[lo:k].strip(), line[k + 2:hi].strip()
+            if left.startswith("(s32) (") or _pointerish(right, decl) is not True:
+                continue
+            line = line[:lo] + f"((s32) ({left}) - (s32) ({right}))" + line[hi:]
+            done = True
+            break
+        if not done:
+            break
+    return line
 
 
 def stack_below_saves(img, addr: int, size: int) -> int:
@@ -1117,6 +1230,8 @@ def _pointerish(term: str, decl: dict[str, str]) -> bool | None:
     m = re.match(r"^\(([^()]*\*)\)", t)
     if m:
         return True                                   # a cast to a pointer
+    if re.match(r"^\((?:unsigned\s+|signed\s+)?(?:[su](?:8|16|32|64)|int|short|char|long|M2C_UNK(?:32)?)\)", t):
+        return False                                  # a cast to an integer: `*((s32) p | 0x20000000)`
     if t.startswith("M2C_FIELD("):
         a = _args(t, len("M2C_FIELD"))
         return None if a is None or len(a[0]) != 3 else a[0][1].count("*") > 1

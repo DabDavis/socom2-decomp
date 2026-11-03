@@ -19,8 +19,6 @@ public:
  * zseal.h's (SOCOM II's SEAL holds its three) */
 
 extern "C" {
-/* SOCOM 1's quadW (OVL1 0x2874F0, unowned): the look's easing curve */
-float func_002874F0(float t);
 /* the blink's speed and its angle down (OVL1 data; SOCOM 1's were constants, 1.5 and -0.5925) */
 extern float data_0044C2DC;
 extern float data_0044C2E0;
@@ -35,13 +33,13 @@ public:
     zdb::CTexHandle *m_texture;   // 0x8
 };
 
-extern "C" {
-/* GetVisualNode (SOCOM 1's GetVisualNode__FPQ23zdb5CNode, called where SOCOM 1's HandleBloodDrip
- * calls it; OVL1 0x3D0FD0, unowned) */
-zdb::CNode *func_003D0FD0(zdb::CNode *node);
-int rand(void);
-}
+extern "C" int rand(void);
 zdb::CNode *GetDecalNode(zdb::CNode *node);
+/* (SOCOM 1's GetVisualNode__FPQ23zdb5CNode, called where SOCOM 1's HandleBloodDrip calls it; OVL1
+ * 0x3D0FD0, unowned) */
+zdb::CNode *GetVisualNode(zdb::CNode *node);
+/* (zrdr.h's: a block's tag) */
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 /* the decals' projection, straight down (OVL2 bss, data.txt's) */
 extern CPnt3D projDirDown;
 
@@ -87,7 +85,7 @@ void CZSealBody::HandleBloodDrip(float dT)
 
     if (def) {
         zdb::IntersectStruct *alt = &m_last_altitude;
-        zdb::CNode *node = func_003D0FD0(alt->m_node);
+        zdb::CNode *node = GetVisualNode(alt->m_node);
 
         if (node) {
             CPnt3D dir;
@@ -180,22 +178,22 @@ void AnimSet::ReadTeammateDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_L
 {
     _zrdr *block;
 
-    if ((block = func_0032F0D0(rdr, name)) == 0)
+    if ((block = zrdr_findtag(rdr, name)) == 0)
         return;
     int i;
     int n;
-    _zrdr *stand = func_0032F0D0(block, "STAND");
+    _zrdr *stand = zrdr_findtag(block, "STAND");
 
     n = stand->Count();
     for (i = 0; i < n; i++)
         func_005A3FF0(ItemAt(stand, i), stateStand, loc);
-    _zrdr *crouch = func_0032F0D0(block, "CROUCH");
+    _zrdr *crouch = zrdr_findtag(block, "CROUCH");
     int j;
     int nc = crouch->Count();
 
     for (j = 0; j < nc; j++)
         func_005A3FF0(ItemAt(crouch, j), stateCrouch, loc);
-    _zrdr *prone = func_0032F0D0(block, "PRONE");
+    _zrdr *prone = zrdr_findtag(block, "PRONE");
     int k;
     int np = prone->Count();
 
@@ -208,22 +206,22 @@ void AnimSet::ReadDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION 
 {
     _zrdr *block;
 
-    if ((block = func_0032F0D0(rdr, name)) == 0)
+    if ((block = zrdr_findtag(rdr, name)) == 0)
         return;
     int i;
     int n;
-    _zrdr *stand = func_0032F0D0(block, "STAND");
+    _zrdr *stand = zrdr_findtag(block, "STAND");
 
     n = stand->Count();
     for (i = 0; i < n; i++)
         func_005A3E90(ItemAt(stand, i), stateStand, loc);
-    _zrdr *crouch = func_0032F0D0(block, "CROUCH");
+    _zrdr *crouch = zrdr_findtag(block, "CROUCH");
     int j;
     int nc = crouch->Count();
 
     for (j = 0; j < nc; j++)
         func_005A3E90(ItemAt(crouch, j), stateCrouch, loc);
-    _zrdr *prone = func_0032F0D0(block, "PRONE");
+    _zrdr *prone = zrdr_findtag(block, "PRONE");
     int k;
     int np = prone->Count();
 
@@ -236,22 +234,22 @@ void AnimSet::ReadFlinchAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION
 {
     _zrdr *block;
 
-    if ((block = func_0032F0D0(rdr, name)) == 0)
+    if ((block = zrdr_findtag(rdr, name)) == 0)
         return;
     int i;
     int n;
-    _zrdr *stand = func_0032F0D0(block, "STAND");
+    _zrdr *stand = zrdr_findtag(block, "STAND");
 
     n = stand->Count();
     for (i = 0; i < n; i++)
         func_005A3D30(ItemAt(stand, i), stateStand, loc);
-    _zrdr *crouch = func_0032F0D0(block, "CROUCH");
+    _zrdr *crouch = zrdr_findtag(block, "CROUCH");
     int j;
     int nc = crouch->Count();
 
     for (j = 0; j < nc; j++)
         func_005A3D30(ItemAt(crouch, j), stateCrouch, loc);
-    _zrdr *prone = func_0032F0D0(block, "PRONE");
+    _zrdr *prone = zrdr_findtag(block, "PRONE");
     int np = prone->Count();
 
     for (int k = 0; k < np; k++)
@@ -1033,7 +1031,7 @@ void CLook::LookTick(float dT)
             m_done = true;
         }
         CPnt3D v;
-        m_cross.Scale(func_002874F0(m_fracT), &v);
+        m_cross.Scale(quadW(m_fracT), &v);
         CQuat q;
         q.Exp(&v);
         CQuat r;

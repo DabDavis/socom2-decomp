@@ -61,8 +61,8 @@ public:
 /* ztwod's screen scale, x then y (no name yet) */
 extern float data_0049E9F0[2];
 
-/* the seal the camera follows (no name yet) */
-extern "C" CZSealBody *func_002B3580();
+/* the local player's seal (fts_player.cpp's ftsGetPlayer) */
+CZSealBody *ftsGetPlayer();
 
 /* the frame's anchors, nearest first (SOCOM 1's global; the unit's initialiser builds it) */
 std::vector<nav_package> navpoint_vec;
@@ -194,7 +194,7 @@ void MapCompass::On()
     CZSealBody *owner = CHUD::GetHUDOwner();
 
     if (owner) {
-        bool local = owner == func_002B3580();
+        bool local = owner == ftsGetPlayer();
         bool dead = owner->IsDead();
 
         if (!owner->m_socom2_e1_4 || dead || !local) {

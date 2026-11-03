@@ -7,7 +7,7 @@
 
 extern "C" void func_00341010();        /* zsnd_csnd.cpp (not named yet) */
 extern "C" void func_00341060();        /* zsnd_csnd.cpp: the group-volume fade restarted */
-extern "C" bool func_00346270();        /* zsnd_csnd.cpp (not named yet) */
+extern "C" bool func_00346270(CSndInstance *except);        /* zsnd_csnd.cpp (not named yet) */
 
 std::list<CSndInstance *> CSndInstance::m_list;
 CSndInstanceVec CSndInstance::m_pool;
@@ -46,22 +46,24 @@ CSndInstance *CSndInstance::AcquireSoundInstance(unsigned int handle, CSnd *pare
     return inst;
 }
 
-/* OPEN, 21 instructions: registers only -- the target reloads the homed instance into a0 and
- * keeps it there, MW here takes t0 (which shifts the loop's registers up one). Tried: the
- * pending case as an inline (TerminateASAP, which removed the reload between the two bit
- * stores), an inline bool test, an iterator loop, a local copy for push_back */
+/* a voice given back to the pool, unless it is there already; a streamed one that leaves no other
+ * stream playing stops the streaming (0x346270 is given the voice to skip: the target keeps the
+ * homed instance in a0 for that call -- declared without it, every register shifted). The pool's
+ * size is taken into a local first: walked against size() the counter's registers swap */
 void CSndInstance::ReleaseSoundInstance(CSndInstance *instance)
 {
     if (instance->m_handle == -1) {
         instance->TerminateASAP();
         return;
     }
-    for (unsigned int i = 0; i < m_pool.size(); i++)
+    unsigned int n = m_pool.size();
+
+    for (unsigned int i = 0; i < n; i++)
         if (m_pool[i] == instance)
             return;
     if (instance->m_parent->m_isStreamed) {
         CSnd::m_numStreams--;
-        if (!func_00346270())
+        if (!func_00346270(instance))
             func_00341010();
     }
     CSnd::m_numActive--;

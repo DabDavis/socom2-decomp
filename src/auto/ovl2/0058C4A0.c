@@ -7,8 +7,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0058C350(s32, s32, M2C_UNK, M2C_UNK, s32); /* extern */
+M2C_UNK BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb(s32, s32, M2C_UNK, M2C_UNK, s32); /* extern */
 
 void func_0058C4A0(s32 arg0, s32 arg1, s32 arg2) {
-    func_0058C350(arg0, arg1, 1, 0, arg2);
+    BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb(arg0, arg1, 1, 0, arg2);
 }

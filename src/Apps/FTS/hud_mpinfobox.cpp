@@ -87,8 +87,6 @@ extern CHUD *theHUD;
 extern "C" const char *func_002C3AC0(int player);
 /* a player's name, or 0 (the player list's; no name yet) */
 extern "C" const char *func_002C3A70(int player);
-/* a string's width measured into m_charheight (its slot 0x3C; ztwod's, no name yet) */
-extern "C" void func_00362B70(C2DString *s);
 
 /* the box's places, in their data order (variables: read with lwc1), then the bss ones the unit's
  * initialiser (0x3FF680) computes from them, in this order: the static icon and the icons' size,
@@ -353,7 +351,7 @@ void CWhosTalking::Tick(float dT)
     m_text1.SetString(speaker ? speaker : " ", true);
     if (speaker) {
         m_text1.SetPos((int)s_text1_x, (int)s_text1_y);
-        func_00362B70(&m_text1);
+        m_text1.UpdatePos();
         m_text1.On();
     } else {
         m_text1.Off();
@@ -363,10 +361,10 @@ void CWhosTalking::Tick(float dT)
     if (channel > -1 && channel < 100) {
         sprintf(number, "%d", channel);
         m_text2.SetString(number, true);
-        func_00362B70(&m_text2);
+        m_text2.UpdatePos();
     } else {
         m_text2.SetString("?", true);
-        func_00362B70(&m_text2);
+        m_text2.UpdatePos();
     }
     m_text2.On();
     m_bitmap2.On();
@@ -399,7 +397,7 @@ void CMPInfoBox::Init(C2DFont *font)
     m_text.m_color[3] = CHUD::m_hud_textcolor.w;
     m_text.SetString("  ", true);
     m_text.SetPos((int)s_name_x, (int)s_name_y);
-    func_00362B70(&m_text);
+    m_text.UpdatePos();
     theHUD->Add2D(&m_text, -1, true);
     m_whostalking.Init(font);
     theHUD->Add2D(&m_whostalking, 2, true);
@@ -424,7 +422,7 @@ void CMPInfoBox::ReInit()
     m_text.m_color[3] = CHUD::m_hud_textcolor.w;
     m_text.SetString("  ", true);
     m_text.SetPos((int)s_name_x, (int)s_name_y);
-    func_00362B70(&m_text);
+    m_text.UpdatePos();
     m_whostalking.ReInit();
 }
 
@@ -461,7 +459,7 @@ void CMPInfoBox::Tick(float dT)
     else
         strcpy(text, name);
     m_text.SetString(text, true);
-    func_00362B70(&m_text);
+    m_text.UpdatePos();
     if (m_text.m_charheight > s_namewidth - 4.0f) {
         char cut[64];
 
@@ -469,7 +467,7 @@ void CMPInfoBox::Tick(float dT)
         cut[9] = '-';
         cut[10] = 0;
         m_text.SetString(cut, true);
-        func_00362B70(&m_text);
+        m_text.UpdatePos();
     }
     m_whostalking.Tick(dT);
 }

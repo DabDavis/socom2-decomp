@@ -11,7 +11,7 @@
 #include "../zvid/zvid.h"
 
 extern "C" {
-void *func_00197808(void *p, unsigned int size);        /* newlib's realloc (MAIN) */
+void *realloc(void *p, unsigned int size);        /* newlib (MAIN) */
 void *func_00194A00(unsigned int align, unsigned int size); /* newlib's memalign (MAIN) */
 }
 
@@ -63,7 +63,7 @@ void *_realloc(void *old, unsigned int size, const char *file, int line)
     void *p;
 
     DIntr();
-    p = func_00197808(old, size);
+    p = realloc(old, size);
     EIntr();
     zsys_Assert(size ? p != 0 : true);
     return p;

@@ -5,6 +5,28 @@
 
 #include "zseal.h"
 
+/* THE UNIT'S STATICS, in the order its initialiser builds them (__sinit_seal_body.cpp, OVL2 0x668940):
+ * three offsets new in SOCOM II (OVL2 data 0x65D008, 0x65D018, 0x65D028: the crouched pickup's,
+ * StabBuddy's and RestrainBuddy's, each read by that function alone -- the names ours), the climbs'
+ * anim list (SOCOM 1's newanims, a CActiveAnimList of eight where SOCOM 1's held twelve: OVL2 bss
+ * 0x66B2F0, its destructor registered with the record at 0x66B2E0), then SOCOM 1's ten throw offsets
+ * (0x65D038-0x65D0D3, the same values, read by the throw's anim choice 0x57FA70). SOCOM 1's CSTable
+ * and its float copied through $gp are gone. */
+CPnt3D pickup_offset(5.27f, -4.22f, -3.26f);
+CPnt3D stab_offset(-2.11f, 0.64f, -8.9f);
+CPnt3D restrain_offset(4.49f, 0.0f, -4.0f);
+CActiveAnimList newanims(8);
+CPnt3D stand_throw(3.343816f, 19.34775f, 3.913763f);
+CPnt3D crouch_throw(2.450365f, 6.39872f, 6.219564f);
+CPnt3D prone_throw(4.523735f, 1.312385f, -3.574992f);
+CPnt3D stand_toss(4.673006f, 8.821998f, -8.002712f);
+CPnt3D crouch_toss(2.630568f, 6.323799f, 6.1622f);
+CPnt3D prone_toss(1.398064f, 5.113956f, -8.086079f);
+CPnt3D stand_peek_rtoss(7.547573f, 9.781673f, -2.544316f);
+CPnt3D stand_peek_ltoss(-0.24231f, 8.864734f, 5.106942f);
+CPnt3D running_rifle_throw(3.070334f, 11.392076f, -2.970803f);
+CPnt3D running_pistol_throw(3.056369f, 11.494563f, -3.000149f);
+
 /* whether an anim type is anywhere on the blend stack, the top first (OVL2 0x58A470; new in
  * SOCOM II, its name unknown -- seal_env.cpp's 0x5A7AB0 asks it).
  * OPEN, 5 instructions: the accessor's index unsigned against the int counter stops MW
@@ -189,6 +211,80 @@ bool CZSealBody::CanHeadLook()
             r = true;
         else
             r = false;
+    }
+    return r;
+}
+
+/* whether the SEAL may pitch its aim: never dead (8), in states 9 and 10, peeking (5) or in state 4
+ * -- the SEAL's state or the top blend's -- else as the last overlay of the top blend's first anim says
+ * (OVL2 0x587A30; SOCOM 1's CanPitch, the same tests, before CanHeadLook in both builds) */
+bool CZSealBody::CanPitch()
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+
+    if (m_state == 8 || top->m_state == 8)
+        return false;
+    if (m_state == 9 || m_state == 10)
+        return false;
+    if (m_state == 5 || top->m_state == 5)
+        return false;
+    if (m_state == 4 || top->m_state == 4)
+        return false;
+    bool r = false;
+
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
+        if (a->m_anim->m_4a_3)
+            r = true;
+        else
+            r = false;
+    }
+    return r;
+}
+
+/* whether the SEAL's anim may be cut short: not when the top blend is done, its representative anim
+ * holds, the SEAL carries a body in anim 17, or -- for the AI -- in anims 100, 99, 25, 19, 17 and the
+ * pistol's stand to prone; else as the last overlay of the top blend's first anim says, the blend's time
+ * against the anim's cut-in point (from the end when the blend's flag 0x20 is set) (OVL2 0x587C20;
+ * SOCOM 1's CanInterrupt, between CanHeadLook and CanTurn in both builds -- SOCOM 1's AI anims 103 and
+ * 102).
+ * OPEN, 0x1CC against 0x1DC: the switch gives the target's descending compare chain and its closing `b`,
+ * the result-variable IsAi its `andi` at the join; left: the carry and pistol tests' `move v0,zero` sits
+ * in the target's conditional branch's delay slot (ours in the `b`'s), the loop's two arms assign a bool
+ * (`daddiu`, the `andi` to r at the join) and the target numbers back in s0 and r in s2 (ours the other
+ * way). Tried: the cut-in test through an inline bool helper (if/return or a ternary) and as nested
+ * if/else assignments */
+bool CZSealBody::CanInterrupt()
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+
+    if (top->IsDone(m_2e0))
+        return false;
+    short id = top->Representative()->m_id;
+
+    if (!top->Representative()->m_bit1)
+        return false;
+    if (id == 17 && m_carry)
+        return false;
+    if (IsAi()) {
+        switch (id) {
+        case 17:
+        case 19:
+        case 25:
+        case 99:
+        case 100:
+            return false;
+        }
+        if (id == AnimTypes::PistolStand2Prone)
+            return false;
+    }
+    bool back = func_005551A0(top->m_flags, 32);
+    float t = top->m_tfrac;
+    bool r = false;
+
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
+        float x = a->m_anim->m_30;
+
+        r = back ? t < 1.0f - x : t > x;
     }
     return r;
 }
@@ -394,11 +490,9 @@ extern "C" bool func_005804E0(CZSealBody *seal)
 }
 
 extern "C" {
-/* two more anim types read as variables (OVL1 data, -1 in the image) and what the carried body is
- * told first (OVL2 0x579220, not written yet) */
+/* two more anim types read as variables (OVL1 data, -1 in the image) */
 extern short data_003DEE08;
 extern short data_003DEE48;
-void func_00579220(CZSealBody *seal);
 }
 
 /* the body carried let go, when the SEAL is in state 9 or one of two carry anims: its blends popped
@@ -417,7 +511,7 @@ void CZSealBody::DropBody()
                 type = (AnimType)data_003DEED8;
             else
                 type = (AnimType)data_003DEED0;
-            func_00579220(c);
+            c->DetachBody();
             c->ClearStack(1, true);
             CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(c, type, 8, 0, 0);
 
@@ -650,10 +744,6 @@ CZBodyAnimBlend *CZSealBody::Stand(int n)
     return Stand_0(stance, n, t);
 }
 
-extern "C" {
-/* the stand from prone's anim type read as a variable (SOCOM 1's AnimTypes::Stand2Prone, OVL1 data) */
-extern short data_003DEC48;
-}
 
 /* a stand: from a crouch the get-up anim (run on when moving faster than 10), from prone SOCOM 1's
  * Stand2Prone with the representative's bit 1 cleared, from a hang one way or the other, from idle
@@ -674,7 +764,7 @@ CZBodyAnimBlend *CZSealBody::Stand_0(int stance, int n, float t)
         m_21c_bit2 = false;
         break;
     case 2:
-        b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)data_003DEC48, 0, 1, 0);
+        b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::Stand2Prone, 0, 1, 0);
         b->Representative()->SetBit1(false);
         break;
     case 4:
@@ -783,24 +873,17 @@ CZBodyAnimBlend *CZSealBody::Hang_0(int stance, int n)
 }
 
 extern "C" {
-/* the blend list the climbs fill (SOCOM 1's newanims, an RTList<ACTIVE_ANIM> of eight: OVL2 bss
- * 0x66B2F0, built by the unit's initialiser 0x668940), the climb's anim type read as a variable (SOCOM
- * 1's AnimTypes::ClimbMedium, OVL1 data) and an anim set's script for a type (OVL2 0x5E3D90, anim.cpp's:
- * 0x5E3C20 with no weapon) */
-extern CActiveAnimList data_0066B2F0;
-extern short data_003DEC90;
+/* an anim set's script for a type (OVL2 0x5E3D90, anim.cpp's: 0x5E3C20 with no weapon) */
 CZSIScriptCommon *func_005E3D90(AnimSet *set, AnimType type);
 }
-struct CTripleTable;
-extern "C" void func_0058A950(CTripleTable *t);
 
 /* a climb blended by its height: the medium climb's blend pushed, its list filled with anim 42 at a
  * weight falling from 1 at 12 to 0 at 26.5 and the medium climb at the rest (OVL2 0x581110: SOCOM 1's
  * BlendedClimb, the same weights; anim 42 where SOCOM 1 had 44) */
 CZBodyAnimBlend *CZSealBody::BlendedClimb(float h)
 {
-    func_0058A950((CTripleTable *)&data_0066B2F0);
-    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)data_003DEC90, 0, 0, 0);
+    newanims.Clear();
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)AnimTypes::ClimbMedium, 0, 0, 0);
     float w;
 
     if (h <= 12.0f)
@@ -813,15 +896,15 @@ CZBodyAnimBlend *CZSealBody::BlendedClimb(float h)
         ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(func_005E3D90(m_animset, (AnimType)42), -1);
 
         a->m_id = 42;
-        PushAnim(&data_0066B2F0, a, w);
+        PushAnim(&newanims, a, w);
     }
     if (w < 1.0f) {
-        ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(func_005E3D90(m_animset, (AnimType)data_003DEC90), -1);
+        ACTIVE_ANIM *a = m_active_anim_pool.GetActiveAnim(func_005E3D90(m_animset, (AnimType)AnimTypes::ClimbMedium), -1);
 
-        a->m_id = data_003DEC90;
-        PushAnim(&data_0066B2F0, a, 1.0f - w);
+        a->m_id = AnimTypes::ClimbMedium;
+        PushAnim(&newanims, a, 1.0f - w);
     }
-    b->SetBlendAnims(this, &data_0066B2F0);
+    b->SetBlendAnims(this, &newanims);
     return b;
 }
 
@@ -1210,37 +1293,6 @@ extern "C" bool func_0057DFE0(CZSealBody *seal)
         return false;
     return true;
 }
-
-/* a table of three-word entries with three words of state (the names ours) */
-struct CTripleTable {
-    unsigned int m_count;   // 0x0
-    int m_4;   // 0x4
-    int m_8;   // 0x8
-    int m_c;   // 0xc
-    struct Entry {
-        int m_0, m_4, m_8;
-    } *m_items;   // 0x10
-};
-
-/* the table cleared: its state zeroed, every entry zeroed (OVL2 0x58A950: the words of
- * RTList<ACTIVE_ANIM>::Clear, OVL2's copy -- BlendedClimb clears newanims with it where SOCOM 1's calls
- * Clear__21RTList<11ACTIVE_ANIM>Fv; a stand-in, so pinned: an out-of-class template member is never
- * inlined into the unit's own functions) */
-#pragma auto_inline off
-extern "C" void func_0058A950(CTripleTable *t)
-{
-    t->m_4 = 0;
-    t->m_8 = 0;
-    t->m_c = 0;
-    CTripleTable::Entry *e = t->m_items;
-
-    for (unsigned int i = 0; i < t->m_count; i++, e++) {
-        e->m_0 = 0;
-        e->m_4 = 0;
-        e->m_8 = 0;
-    }
-}
-#pragma auto_inline reset
 
 /* whether the SEAL can act on another: not on a SEAL of its own team, of the 0x20000 team bit, that
  * is no SEAL, a ghost, or whose node is inactive -- and only alive, played by this console and as
