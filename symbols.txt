@@ -11295,8 +11295,8 @@
 0x005E3940 0x180 func_005E3940  # OVL2
 0x005E3AC0 0x60 TypeBit1__7AnimSetF8AnimType  # OVL2; by hand (the kit lane, round 10): AnimSet's per-type record (the vector at 0x44, as BaseAnim reads it) tested for its byte-5 bit 1; new in SOCOM II, the name ours
 0x005E3B20 0xFC func_005E3B20  # OVL2
-0x005E3C20 0x16C func_005E3C20  # OVL2
-0x005E3D90 0x8 func_005E3D90  # OVL2
+0x005E3C20 0x16C GetScript__7AnimSetF8AnimTypei  # OVL2; by hand (the kit lane, round 19; the name ours): AnimSet's motion script for a type -- a variant of a kind (PickVariant, GetGroup's state: 1 zBoneArchive, 2 zBoneMapArchive, m_byRdr[index]) when the record has groups, else the record's own anim by its state; 0 without one
+0x005E3D90 0x8 GetScript__7AnimSetF8AnimType  # OVL2; by hand (the kit lane, round 19; the name ours): an AnimSet member, the 3-argument GetScript (0x5E3C20) tail-called with kind 0 -- the SEAL's Tick, BlendedClimb and seal_cfg.cpp's strafe lookups call it with m_animset in a0 (the SEALs' round 17 question: a member call, so its argument is evaluated before the set is loaded)
 0x005E3DA0 0x64 GetVariantIndex__7AnimSetF8AnimTypeii  # OVL2; by hand (the kit lane, round 10): AnimSet's per-type record (as BaseAnim reads it) asked 0x5E5790 with the two arguments, -1 without one; the name ours
 0x005E3E10 0x64 PickVariant__7AnimSetF8AnimTypei  # OVL2; by hand (the kit lane, round 10): AnimSet's per-type record (as BaseAnim reads it) asked 0x5E5970 for a kind, -1 without one; the name ours
 0x005E3E80 0x60 AnimId__7AnimSetCF8AnimType  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's AnimId (the id vector's short, -1 out of range) read from SOCOM II's per-type record at 0x44; right before the record pool's element destructor and constructor and the big loader, as SOCOM 1's AnimId sits before Load(_zrdr *)
