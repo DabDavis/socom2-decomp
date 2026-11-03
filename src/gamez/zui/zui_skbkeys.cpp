@@ -9,12 +9,28 @@
  * OPEN, not written yet: the rest of the unit. */
 
 #include "zui_skb.h"
+#include "../znode/znode.h"
 
-/* the text's three strings on screen (0x4A1370, 0x4A1450, 0x4A1520: the initialiser 0x404110 builds
- * them; the names ours) */
+/* the text being typed: which of the two edited strings is current (0x4A1330: string 0 when set),
+ * the node shown while it is (0x4A1358), and the three strings on screen (0x4A1370, 0x4A1450,
+ * 0x4A1520: the initialiser 0x404110 builds them). The names ours */
+static bool s_textSel;
+static zdb::CNode *s_textNode;
 static CRenderableString s_textString0;
 static CRenderableString s_textString1;
 static CRenderableString s_textString2;
+
+/* the string being edited (ours: an inline, the address computed at each use) */
+static inline C2DString *EditString()
+{
+    return s_textSel ? &s_textString0 : &s_textString1;
+}
+
+/* a string's text from its first shown character (ours) */
+static inline const char *ShownText(const C2DString *s)
+{
+    return s->m_string + s->m_firstCharPos;
+}
 
 /* a USB key as the loop hands it on: its HID usage and whether shift is held (the names ours) */
 struct SKBUSBKEY {
@@ -71,4 +87,87 @@ void SkbUsbPunct(const SKBUSBKEY *key, int arg)
 void SkbUsbDigit(const SKBUSBKEY *key, int arg)
 {
     func_00399040((key->m_shift ? s_shiftDigitChars : s_digitChars)[key->m_usage - 30], arg);
+}
+
+/* (the keyboard units' functions not yet written, by address: the text set and laid out, the
+ * cursor drawn, the composition flushed, the keyboard's state; the edit mode switched, the text's
+ * fields placed; a jamo typed; whether shift composes) */
+extern "C" {
+void func_0039A5B0(const char *text, CSoftKeyboard *skb);
+void func_0039A1D0(int a, CSoftKeyboard *skb, int b);
+void func_00391350();
+void func_00395DE0(int state);
+void func_0039A400(CSoftKeyboard *skb);
+bool func_00394840(CSoftKeyboard *skb);
+void func_00394920(CSoftKeyboard *skb);
+int func_00396E60(CSoftKeyboard *skb);
+}
+
+/* the text cleared: whether there was any, the composition flushed and the keyboard put in state 3
+ * (0x399B30; the name ours) */
+bool SkbClearText(CSoftKeyboard *skb)
+{
+    bool had = false;
+
+    if (ShownText(EditString()) && *ShownText(EditString()))
+        had = true;
+    func_0039A5B0("", skb);
+    func_0039A1D0(0, skb, 0);
+    func_00391350();
+    func_00395DE0(3);
+    return had;
+}
+
+/* string 0's edit closed: its node hidden, its text emptied, the text laid out again if it was the
+ * current one (0x399280; the name ours) */
+void SkbCloseText0(CSoftKeyboard *skb)
+{
+    bool was = s_textSel;
+
+    s_textSel = false;
+    s_textNode->SetActive(false);
+    C2DString *s = &s_textString0;
+    s->SetString(0, true);
+    s_textString0.UpdatePos();
+    if (was)
+        func_0039A400(skb);
+    func_00394920(skb);
+}
+
+/* the edit mode switched (0x394840 says whether string 0 is current now): its node shown or hidden,
+ * the text laid out again when either is string 0, string 0 emptied (0x399150; the name ours) */
+void SkbSwitchText(CSoftKeyboard *skb)
+{
+    bool was = s_textSel;
+
+    s_textSel = func_00394840(skb);
+    s_textNode->SetActive(s_textSel);
+    if (s_textSel || was)
+        func_0039A400(skb);
+    C2DString *s = &s_textString0;
+    s->SetString(0, true);
+    s_textString0.UpdatePos();
+}
+
+/* the compound jamo a shifted key composes (0x3FB840: a jamo and its doubled form, seven pairs) */
+struct SKBJAMOPAIR {
+    unsigned char m_from;
+    signed char m_to;
+};
+static const SKBJAMOPAIR s_shiftJamo[7] = {
+    {0x19, 0x17}, {0x01, 0x1C}, {0x04, 0x1D}, {0x10, 0x15}, {0x0B, 0x14}, {0x12, 0x16}, {0x03, 0x13}
+};
+
+/* a jamo typed: composed with shift when 0x396E60 says so (0x399070; the name ours) */
+void SkbTypeJamo(int arg, signed char jamo, CSoftKeyboard *view)
+{
+    if (func_00396E60(view)) {
+        for (unsigned int i = 0; i < 7; i++) {
+            if ((unsigned char)jamo == s_shiftJamo[i].m_from) {
+                jamo = s_shiftJamo[i].m_to;
+                break;
+            }
+        }
+    }
+    func_00399200(arg, jamo);
 }

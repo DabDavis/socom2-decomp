@@ -7478,18 +7478,18 @@
 0x00398EA0 0x118 func_00398EA0  # OVL1
 0x00398FC0 0x7C func_00398FC0  # OVL1
 0x00399040 0x24 func_00399040  # OVL1
-0x00399070 0x88 func_00399070  # OVL1
+0x00399070 0x88 SkbTypeJamo__FiScP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (a jamo replaced by its doubled form from the seven pairs at 0x3FB840 when 0x396E60 says so, then typed through 0x399200) -- byte-exact in zui_skbkeys.cpp
 0x00399100 0x48 func_00399100  # OVL1
-0x00399150 0xA4 func_00399150  # OVL1
+0x00399150 0xA4 SkbSwitchText__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (0x394840's mode switch decides whether string 0 is current; its node shown or hidden, 0x39A400 when either was string 0, string 0 emptied) -- byte-exact in zui_skbkeys.cpp
 0x00399200 0x74 func_00399200  # OVL1
-0x00399280 0x94 func_00399280  # OVL1
+0x00399280 0x94 SkbCloseText0__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (string 0 no longer current, its node hidden, its text emptied; laid out again through 0x39A400 if it was current, then 0x394920) -- byte-exact in zui_skbkeys.cpp
 0x00399320 0x204 func_00399320  # OVL1
 0x00399530 0x17C func_00399530  # OVL1
 0x003996B0 0x138 func_003996B0  # OVL1
 0x003997F0 0xA4 func_003997F0  # OVL1
 0x003998A0 0x12C func_003998A0  # OVL1
 0x003999D0 0x158 func_003999D0  # OVL1
-0x00399B30 0xC8 func_00399B30  # OVL1
+0x00399B30 0xC8 SkbClearText__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (whether the edited string showed text, then 0x39A5B0 with an empty string, 0x39A1D0, the composition flushed, state 3) -- byte-exact in zui_skbkeys.cpp
 0x00399C00 0xC func_00399C00  # OVL1
 0x00399C10 0x8 func_00399C10  # OVL1
 0x00399C20 0x100 func_00399C20  # OVL1
