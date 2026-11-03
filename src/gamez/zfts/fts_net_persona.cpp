@@ -49,6 +49,29 @@ inline void SetValveValue(CValve *valve, int value)
         valve->MakeCallbacks(state);
 }
 
+/* a ZRDR value and the editor that builds one (zrdr.h's, zonline.h's layout), and a UI variable
+ * (zui.h's: only its set) */
+struct _zrdr {
+    unsigned int m_0;   // 0x0
+    void *m_4;   // 0x4
+};
+
+class CRdrEditor : public _zrdr {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addstringnode(const char *s);
+
+    unsigned char _8[0x4c - 0x8];
+};
+
+class CUIVariable {
+public:
+    void Set(_zrdr *value);
+};
+
 class CZNetwork {
 public:
     unsigned int zNetGetTime();
@@ -86,7 +109,12 @@ public:
     CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
     unsigned char _4c[0x60 - 0x4c];
     CValve *m_pTeamFullValve;   // 0x60: set while either side has more than eight (SOCOM II's; the name ours)
-    unsigned char _64[0xac - 0x64];
+    unsigned char _64[0x84 - 0x64];
+    CUIVariable *m_uiv_SealList;   // 0x84 (SOCOM 1's four at 0x50-0x5c)
+    CUIVariable *m_uiv_TerrList;   // 0x88
+    CUIVariable *m_uiv_NoneList;   // 0x8c
+    CUIVariable *m_uiv_ChatList;   // 0x90
+    unsigned char _94[0xac - 0x94];
     int m_persona_object;   // 0xac: this client's persona object (the name ours)
     unsigned char _b0[0xd8 - 0xb0];
     bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
@@ -416,6 +444,56 @@ inline bool IsSealTeam(unsigned int team)
 inline bool IsFlaggedTeam(unsigned int team)
 {
     return (team & 0x10000) != 0;
+}
+
+extern "C" unsigned int strlen(const char *s);
+
+/* the online game's three player lists from the host's packed names -- the SEALs', the terrorists'
+ * and the rest's, each name null-terminated after the last -- and an empty chat list, into their
+ * UI variables (SOCOM II's; the packet handler 0x2B9B20 hands it the counts and the names; OVL1
+ * 0x2C4DF0) */
+extern "C" void func_002C4DF0(int nseals, int nterrs, int nnone, const char *names)
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game) {
+        CRdrEditor seals;
+        CRdrEditor terrs;
+        CRdrEditor none;
+        CRdrEditor chat;
+        int i;
+
+        seals.push(0);
+        terrs.push(0);
+        none.push(0);
+        chat.push(0);
+        for (i = 0; i < nseals; i++) {
+            seals.push(0);
+            seals.addstringnode(names);
+            seals.pop();
+            names += strlen(names) + 1;
+        }
+        for (i = 0; i < nterrs; i++) {
+            terrs.push(0);
+            terrs.addstringnode(names);
+            terrs.pop();
+            names += strlen(names) + 1;
+        }
+        for (i = 0; i < nnone; i++) {
+            none.push(0);
+            none.addstringnode(names);
+            none.pop();
+            names += strlen(names) + 1;
+        }
+        seals.pop();
+        terrs.pop();
+        none.pop();
+        chat.pop();
+        game->m_uiv_SealList->Set(&seals);
+        game->m_uiv_TerrList->Set(&terrs);
+        game->m_uiv_NoneList->Set(&none);
+        game->m_uiv_ChatList->Set(&chat);
+    }
 }
 
 /* the sides counted -- the terrorists, the SEALs, the flagged personas and the rest -- the
