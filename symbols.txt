@@ -8848,8 +8848,8 @@
 0x004DF258 0x20 cbNewUserWordUtterance  # OVL2 unaligned; s1:exact
 0x004DF278 0x10 cbDTMFDetected  # OVL2 unaligned; s1:exact
 0x004DF288 0x40 cbGenderDisable  # OVL2 unaligned; s1:align
-0x004DF2C8 0x154 func_004DF2C8  # OVL2 unaligned
-0x004DF420 0x4C func_004DF420  # OVL2
+0x004DF2C8 0x154 Set_EndBackTraceMask_In_StateDict  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248 ends Set_EndBackTraceMask_In_StateDict, CopyContextInfo; ours cbGenderDisable, this row, CopyContextInfo) and its immediates (the 0xFF and 0xF/5/9/13 tests, six 0xFFFD masks); smaller than SOCOM 1's 0x23C -- the gcc lane, round 9c
+0x004DF420 0x4C CopyContextInfo  # OVL2; s1:order (the last of SOCOM 1's casr object) and the same body -- 0x4C, heap_Alloc of the record's size and memcpy -- the gcc lane, round 9c
 0x004DF470 0x424 func_004DF470  # OVL2
 0x004DF898 0x488 func_004DF898  # OVL2 unaligned
 0x004DFD20 0x330 func_004DFD20  # OVL2

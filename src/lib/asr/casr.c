@@ -1,5 +1,5 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-strict-aliasing -funroll-loops -fno-optimize-sibling-calls */
-/* casr: the recogniser's engine API and the engine's callbacks (OVL2 0x4D8398-0x4DF2C8, SOCOM 1's
+/* casr: the recogniser's engine API and the engine's callbacks (OVL2 0x4D8398-0x4DF46C, SOCOM 1's
  * casr object at 0x348248 whole: rounds 1 and 2b wrote its tail as cb.c, merged here in round 9c),
  * ScanSoft's speech recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing
  * -funroll-loops (README "The GCC front": casrStoreSegmentation keeps its store above the load of
@@ -1255,4 +1255,20 @@ int cbGenderDisable(CASR *c, int a1, int a2, int which, int mode)
         return 1;
     }
     return 0;
+}
+
+/* a copy of a context's info record (its size at +4), on the given heap */
+typedef struct CTXINFO {
+    int kind;
+    int size;                           /* +4: the record's bytes */
+} CTXINFO;
+
+void *CopyContextInfo(void *heap, CTXINFO *info)
+{
+    void *p;
+
+    p = heap_Alloc(heap, info->size);
+    if (p != 0)
+        memcpy(p, info, info->size);
+    return p;
 }
