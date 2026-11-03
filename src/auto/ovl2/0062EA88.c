@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0062DBD8();                            /* extern */
+M2C_UNK rt_comm_platform2_create();                 /* extern */
 
 void rt_comm_platform_create(void) {
-    func_0062DBD8();
+    rt_comm_platform2_create();
 }

@@ -8,12 +8,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00639038(s32 arg0);
+M2C_UNK setNewSeed(s32 arg0);
 extern u8 data_00655604;
 
 void InitializePRNG(void) {
     if (data_00655604 == 0) {
         data_00655604 = 1;
-        func_00639038(0x035D2325);
+        setNewSeed(0x035D2325);
     }
 }

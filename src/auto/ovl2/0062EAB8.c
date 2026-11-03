@@ -9,7 +9,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 void rt_comm_platform_send(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
-M2C_UNK func_0062DFA0(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
+M2C_UNK rt_comm_platform2_send(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
 void rt_comm_platform_send(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
-    func_0062DFA0(arg0, arg1, arg2 & 0xFFFF, arg3);
+    rt_comm_platform2_send(arg0, arg1, arg2 & 0xFFFF, arg3);
 }
