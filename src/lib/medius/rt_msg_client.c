@@ -949,7 +949,7 @@ int rt_msg_client_iudp_disable_heartbeat(void)
         if (result != 0)
             return result;
         if (bReceived != 1)
-            return 0;
+            break;
         if (gUDPInfo.pfnCallback != 0)
             ((void (*)(char *, unsigned short))gUDPInfo.pfnCallback)(szAddress, nPort);
     } while (bReceived == 1);
