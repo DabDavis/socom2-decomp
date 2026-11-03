@@ -346,16 +346,16 @@
 0x001931E8 0x1C _cleanup  # MAIN unaligned; s1:order (newlib findfp.c: _cleanup_r(_REENT))
 0x00193208 0x8C __sinit  # MAIN unaligned; by body (newlib's stdio/findfp.c: __cleanup = _cleanup_r, __sdidinit = 1, the three std FILEs; vfprintf's CHECK_INIT calls it)
 0x00193298 0x54 fiprintf  # MAIN unaligned; s1:callee
-0x001932F0 0xB8 func_001932F0  # MAIN
-0x001933A8 0xDC func_001933A8  # MAIN unaligned
-0x00193488 0x24 func_00193488  # MAIN unaligned
+0x001932F0 0xB8 __sflags  # MAIN; s1:order (newlib flags.c, after fiprintf's object as in the demo: the mode string's switch, no calls)
+0x001933A8 0xDC _fopen_r  # MAIN unaligned; s1:order (newlib fopen.c: __sflags, __sfp, _open_r, fseek for append)
+0x00193488 0x24 fopen  # MAIN unaligned; s1:order (newlib fopen.c: _fopen_r(_REENT, file, mode))
 0x001934B0 0x54 fprintf  # MAIN; by body (varargs with two fixed arguments, into vfprintf at 0x19C0D0; MSL's vector errors print through it to stderr)
-0x00193508 0x11C func_00193508  # MAIN unaligned
+0x00193508 0x11C fread  # MAIN unaligned; s1:order (newlib fread.c, the demo's 0x3E0A28, the same size: memcpy, __srefill)
 0x00193628 0x2F4 _free_r  # MAIN unaligned; s1:order (newlib mallocr.c, the demo's _free_r object: __malloc_lock, _malloc_trim_r, __malloc_unlock)
 0x00193920 0x16C _malloc_trim_r  # MAIN; s1:order (newlib mallocr.c, after _free_r as in the demo: _sbrk_r under the malloc lock)
-0x00193A90 0x4AC func_00193A90  # MAIN
+0x00193A90 0x4AC fseek  # MAIN; s1:order (newlib fseek.c, after _malloc_trim_r as in the demo: __smakebuf, _fstat_r, __sseek)
 0x00193F40 0x5C _fstat_r  # MAIN; by body (newlib's reent/fstatr.c: the same around fstat(fd, buf); the demo's _fstat_r is 0x5C too)
-0x00193FA0 0x104 func_00193FA0  # MAIN
+0x00193FA0 0x104 ftell  # MAIN; s1:order (newlib ftell.c, after _fstat_r as in the demo)
 0x001940A8 0x3E0 __sfvwrite  # MAIN unaligned; by call (newlib __sprint calls __sfvwrite)
 0x00194488 0x94 _fwalk  # MAIN unaligned; s1:order (newlib fwalk.c, between ftell's and fwrite's objects; walks the glue)
 0x00194520 0x84 fwrite  # MAIN; s1:order (newlib fwrite.c: one iovec to __sfvwrite)
@@ -401,9 +401,9 @@
 0x00196A20 0xCC func_00196A20  # MAIN
 0x00196AF0 0x70 func_00196AF0  # MAIN
 0x00196B60 0x60 _open_r  # MAIN; by body (newlib's reent/openr.c: the same around open(file, flags, mode))
-0x00196BC0 0x5C func_00196BC0  # MAIN
+0x00196BC0 0x5C _printf_r  # MAIN; s1:order (newlib printf.c, the demo's 0x3E3D78 before printf: _vfprintf_r of stdout)
 0x00196C20 0x70 printf  # MAIN; s1:callee
-0x00196C90 0x84 func_00196C90  # MAIN
+0x00196C90 0x84 _puts_r  # MAIN; s1:order (newlib puts.c, the demo's 0x3E3E08 before puts: strlen, __sfvwrite)
 0x00196D18 0x20 puts  # MAIN unaligned; by hand (newlib's: _puts_r on _impure_ptr; the FIFO kick passes it "D9 Busy"/"D8 Busy") -- the sound lane
 0x00196D38 0x9EC qsort  # MAIN unaligned; s1:calls (DiIntersect::SortNearToFar calls it with (idx, n, 4, _cmpdi) where SOCOM 1's calls qsort; newlib's, 0x9EC bytes against SOCOM 1's 0xA24) -- the zdb-world lane
 0x00197728 0x18 srand  # MAIN unaligned; s1:order (the demo's rand object 0x3E48E0: srand, before rand; stores the seed, zero-extended, in the reentrancy block's _rand_next that rand reads)
@@ -433,7 +433,7 @@
 0x001987B0 0x20 func_001987B0  # MAIN
 0x001987D0 0x5C _kill_r  # MAIN; by body (newlib's reent/signalr.c: the same around kill(pid, sig); the demo's _kill_r is 0x5C too)
 0x00198830 0x14 func_00198830  # MAIN
-0x00198848 0x88 func_00198848  # MAIN unaligned
+0x00198848 0x88 _sprintf_r  # MAIN unaligned; s1:order (newlib sprintf.c, the demo's 0x3E5568 before sprintf: a string FILE, _data the reentrancy argument)
 0x001988D0 0x90 sprintf  # MAIN; s1:callee
 0x00198960 0x8 eofread  # MAIN; s1:ref (taken by address where SOCOM 1 takes eofread's)
 0x00198968 0xA8 sscanf  # MAIN unaligned; s1:callee
@@ -467,8 +467,8 @@
 0x0019AF80 0x2C strtoul  # MAIN; by body (newlib's stdlib/strtoul.c wrapper: _strtoul_r(_impure_ptr, s, ptr, base), byte-exact from src/lib/libc/strtoul.c; inet_aton's strtoul call)
 0x0019AFB0 0x20 func_0019AFB0  # MAIN
 0x0019AFD0 0x20 toupper  # MAIN; s1:exact by hand (MSL's: the ctype table's upper bit tested, 32 subtracted -- SOCOM 1's toupper, movn for movz)
-0x0019AFF0 0xE8 func_0019AFF0  # MAIN
-0x0019B0D8 0x188 func_0019B0D8  # MAIN unaligned
+0x0019AFF0 0xE8 __submore  # MAIN; s1:order (newlib ungetc.c's static, the demo's 0x3E7BD0: _malloc_r, _realloc_r, memcpy)
+0x0019B0D8 0x188 ungetc  # MAIN unaligned; s1:order (newlib ungetc.c, after __submore as in the demo)
 0x0019B260 0x48 __sprint@vfiprintf  # MAIN; by body (newlib vfiprintf.c static __sprint, vfprintf.c built INTEGER_ONLY)
 0x0019B2A8 0xB4 __sbprintf@vfiprintf  # MAIN unaligned; by body (newlib vfiprintf.c static __sbprintf: vfiprintf, then fflush)
 0x0019B360 0x74 vfiprintf  # MAIN; by body (newlib's stdio/vfiprintf: CHECK_INIT, then the tail call to _vfiprintf_r; fiprintf calls it -- byte-exact in src/lib/libc/fiprintf.c)
@@ -482,7 +482,7 @@
 0x0019DA58 0xC8C __svfscanf  # MAIN unaligned; by call (newlib's sscanf calls __svfscanf; src/lib/libc/sscanf.c byte-exact)
 0x0019E6E8 0x100 func_0019E6E8  # MAIN unaligned
 0x0019E7E8 0x54 vsprintf  # MAIN unaligned; s1:calls (SOCOM 1's identical CConsole::Debug calls vsprintf at the same instruction; 0x54 bytes in both) -- the entity lane
-0x0019E840 0x54 func_0019E840  # MAIN
+0x0019E840 0x54 _vsprintf_r  # MAIN; by body (newlib vsprintf.c's reentrant form after vsprintf: a string FILE, _data the first argument)
 0x0019E898 0x110 __swbuf  # MAIN unaligned; s1:order (newlib wbuf.c, after vsprintf as in the demo: CHECK_INIT, __swsetup, fflush)
 0x0019E9A8 0x60 _write_r  # MAIN unaligned; by body (newlib's reent/writer.c: the same around write(fd, buf, cnt); the demo's _write_r is 0x60 too)
 0x0019EA08 0x10C __swsetup  # MAIN unaligned; s1:order (newlib wsetup.c, after _write_r as in the demo: __sinit, _free_r, __smakebuf)

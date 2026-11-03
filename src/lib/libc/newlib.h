@@ -150,6 +150,32 @@ extern void *memset(void *, int, size_t);
 extern void *memcpy(void *, const void *, size_t);
 extern void *memchr(const void *, int, size_t);
 
+/* newlib's sys/stat.h for the EE (long is 64-bit: st_size and the times are doublewords) */
+struct stat {
+	short st_dev;                           /* 0x00 */
+	unsigned short st_ino;                  /* 0x02 */
+	unsigned int st_mode;                   /* 0x04 */
+	short st_nlink;
+	unsigned short st_uid;
+	unsigned short st_gid;
+	short st_rdev;
+	long st_size;                           /* 0x10 */
+	long st_atime;
+	long st_spare1;
+	long st_mtime;
+	long st_spare2;
+	long st_ctime;
+	long st_spare3;
+	long st_blksize;
+	long st_blocks;
+	long st_spare4[2];
+};
+#define	S_IFMT	0170000
+#define	S_IFCHR	0020000
+#define	S_IFREG	0100000
+
+extern int _fstat_r(struct _reent *, int, struct stat *);
+
 extern struct _reent *_impure_ptr;
 #define _REENT _impure_ptr
 
