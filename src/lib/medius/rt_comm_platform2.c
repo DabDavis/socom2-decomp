@@ -49,6 +49,17 @@ extern int func_00246BD0(void *cd, void *buf);
 extern int func_00246B10(void *cd);
 extern int func_00247008(void *cd, void *buf, void *pIfList, int n, void *addr, int flags);
 extern int func_002465E8(void *cd, void *buf, int id, int code, void *p, int len);
+extern int sceInetGetInterfaceList(void *cd, void *buf, int *ids, int n);
+extern int data_00672180[32];           /* the interfaces' ids */
+
+typedef struct RT_TIME {
+    unsigned int secs;
+    unsigned int usecs;
+} RT_TIME;
+
+extern int rt_time_start(RT_TIME *start);
+extern int rt_time_elapsed(RT_TIME *start, unsigned int *msecs);
+extern int rt_time_delay(unsigned int msecs);
 
 int func_0062E7E0(void);
 int func_0062E940(char *szIP);
@@ -380,6 +391,46 @@ int func_0062E760(int s, unsigned char *pbConnected)
         return 1;
     if (bConnected != 0)
         *pbConnected = 1;
+    return 0;
+}
+
+/* the interface search (round 8b): the inet layer's interfaces listed, each one's flags read until
+ * one is up and running (both low bits) -- its id kept -- for at most 95 seconds, 2 ms apart */
+int func_0062E7E0(void)
+{
+    RT_TIME start;
+    int flags;
+    unsigned int elapsed = 0;
+    int nInterfaces;
+    int i;
+    int bFound = 0;
+
+    nInterfaces = sceInetGetInterfaceList(gSifMClientData, gNetBuf, data_00672180, 32);
+    if (nInterfaces <= 0)
+        return 1;
+    if (rt_time_start(&start) != 0)
+        return 1;
+    while (!bFound) {
+        for (i = 0; i < nInterfaces; i++) {
+            int id = data_00672180[i];
+
+            if (func_002465E8(gSifMClientData, gNetBuf, id, 8, &flags, 4) != 0)
+                return 1;
+            if ((flags & 3) == 3) {
+                bFound = 1;
+                data_006555FC = id;
+                break;
+            }
+        }
+        if (!bFound) {
+            if (rt_time_elapsed(&start, &elapsed) != 0)
+                return 1;
+            if (elapsed > 95000)
+                return 1;
+            if (rt_time_delay(2) != 0)
+                return 1;
+        }
+    }
     return 0;
 }
 
