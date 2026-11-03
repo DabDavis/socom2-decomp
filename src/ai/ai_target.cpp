@@ -1,8 +1,11 @@
 /* ai_target.cpp -- the AI's target, CAiTarget, and SOCOM 1's ai::CheckLineOfFire: the stretch after
  * seal_airesponse.cpp, OVL2 0x609DF0-0x60BF3F (CAiTarget's constructor at 0x60A940; SEAL_AI_PARAMS's
  * at 0x60BF40 follows, seal_aiparams.cpp). SOCOM 1 had the same functions in the same place, right
- * after the response states' destructors; the unit's name is ours. So far one getter. Defined in
- * reverse of their image order (-inline deferred). */
+ * after the response states' destructors; the unit's name is ours. So far the validity test, a
+ * target's worth (0x60B7F0) and one getter. Defined in reverse of their image order (-inline
+ * deferred). */
+
+#include "../gamez/zentity/zentity.h"
 
 /* the mission's clock, which the target's times are taken on (theMission's float at 0xE0, OVL1
  * 0x4365C0: SOCOM 1's at 0x60 of its theMission, as its GetTimeSinceLastSighting reads it) --
@@ -94,6 +97,47 @@ extern "C" bool func_0060A850(const CAiTarget *t)
             if (ai)
                 r = !(ai->m_aibit9 || ai->m_aibit8);
         }
+    }
+    return r;
+}
+
+/* what a target is worth to an entity, 0 out of range: an enemy 0.1, 0.3 more for flag 0x400 and 0.3
+ * more when the vector to it lies along the target's own facing (its node's third row), halved when
+ * the vector drops more than 20 below; a friend -1 -- all scaled down by the squared distance, to
+ * nothing at 1000 (OVL2 0x60B7F0, new in SOCOM II: CSealCtrlAi's 0x5C9B30 calls it; the name unknown).
+ * The constants are function statics (8-byte-spaced data, read as variables: -1 is loaded, not
+ * built); the entity taken before the range test (the target loads it in the branch's delay slot),
+ * the vector through a pointer, and the squared distance read twice in place -- a local for it
+ * swaps its float register with the vector's y */
+extern "C" float func_0060B7F0(const CEntity *self, const CTarget *t)
+{
+    static float maxDistSq = 1000000.0f;
+    static float distScale = 0.000001f;
+    static float enemy = 0.1f;
+    static float flagged = 0.3f;
+    static float facing = 0.3f;
+    static float ally = -1.0f;
+    static float below = -20.0f;
+    static float belowScale = 0.5f;
+    float r = 0.0f;
+    CEntity *e = t->m_ent;
+
+    if (t->m_distSq < maxDistSq) {
+        if (e->IsEnemy(self)) {
+            const CPnt3D *v = &t->m_vec;
+
+            r = enemy;
+            if (t->m_flags & 0x400)
+                r += flagged;
+            const float *fwd = e->m_node->m_matrix.m_matrix[2];
+
+            if (v->x * fwd[0] + v->y * fwd[1] + v->z * fwd[2] > 0.0f)
+                r += facing;
+            if (v->y < below)
+                r *= belowScale;
+        } else
+            r = ally;
+        r *= 1.0f - distScale * t->m_distSq;
     }
     return r;
 }

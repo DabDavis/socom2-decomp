@@ -49,6 +49,13 @@ enum SEAL_STATE {
     stateCarried = 10, stateDone = 11
 };
 
+/* a hand signal (SOCOM 1's SEAL_HANDSIGNAL, a byte -- no DWARF; the names ours, after the anim names
+ * the kit lane's seal_handsig.cpp looks up) */
+enum SEAL_HANDSIGNAL {
+    HANDSIGNAL_NULL = 0, HANDSIGNAL_FOLLOW = 1, HANDSIGNAL_HOLDPOSITION = 2, HANDSIGNAL_FIREATWILL = 3,
+    HANDSIGNAL_DEPLOY = 4, HANDSIGNAL_POINT = 5, HANDSIGNAL_COUNT = 6, HANDSIGNAL_LAST = 255
+};
+
 /* a kind of collision polygon (SOCOM 1's CDIType; no DWARF, only the size matters here) */
 enum CDIType { CDI_TYPE_0 = 0, CDI_TYPE_LAST = 255 };
 
@@ -363,6 +370,15 @@ public:
     static float ComputeMaxVel(float dist, float height, float *vel);
 };
 
+/* where a look comes from (SOCOM 1's DWARF: AI_LOOK, a signed byte -- AIL_ALL is -1, compared
+ * with `lb`; SOCOM II's SetDefaultLookParams takes twelve kinds; the names past AIL_DEPLOY ours).
+ * The kit lane's seal_look.cpp defines the look setters below */
+enum AI_LOOK {
+    AIL_ALL = -1, AIL_NORMAL = 0, AIL_TURNING = 1, AIL_CURIOUS = 2, AIL_EVENT = 3, AIL_CORPSE = 4,
+    AIL_TASK = 5, AIL_FRANTIC = 6, AIL_TARGET = 7, AIL_BUDDY = 8, AIL_DEPLOY = 9, AIL_10 = 10,
+    AIL_11 = 11
+};
+
 /* a SEAL's controller: a pad, the AI or the network (SOCOM 1's DWARF: CSealCtrl, 0x240 bytes;
  * SOCOM II's is 0x250 -- ftsCreateSeal news 592). The virtual functions are SOCOM II's table,
  * __vt__9CSealCtrl at 0x6694B0: SOCOM 1's without PerformCollisionActions, with three setters of
@@ -453,6 +469,24 @@ public:
      * 0x594350, 0x594480) */
     bool CanPerformAction(class CNodeAction *action);
     bool CanPlaceBomb(class CNodeAction *action);
+    /* the look and the scan (SOCOM 1's, OVL2 0x600D40-0x60187F: the kit lane's seal_look.cpp,
+     * which reads the members through a view of its own). A setter answers whether the look was
+     * taken -- a kind at least the current one's; SOCOM II's SetDefaultLookParams takes whether
+     * the look's point changed kind, and SetLookPosW gained a cell's and an entity's overloads */
+    void ClearLook(AI_LOOK look);
+    bool SetLookDirR(AI_LOOK look, const CPnt3D *dir, bool exact);
+    bool SetLookDirW(AI_LOOK look, CAiMap::DIR dir);
+    bool SetLookDirW(AI_LOOK look, const CPnt3D *dir, bool exact);
+    bool SetLookPosW(AI_LOOK look, const CAiMapLoc &loc);
+    bool SetLookPosW(AI_LOOK look, CEntity *e);
+    bool SetLookPosW(AI_LOOK look, const CPnt3D *pos);
+    void SetDefaultLookParams(AI_LOOK look, bool changed);
+    void SetScanRate(float rate);
+    void SetScanAngle(float angle);
+    void ModifyLookFlags(unsigned int set, unsigned int clear);
+    void SetLookFlags(unsigned int flags);
+    void SetLookTimer(float t);
+    void SetLookRate(float rate);
 
     unsigned char _18[0x24 - 0x18];
     /* SOCOM 1's AI_LOOK, a signed byte (AIL_ALL is -1: compared with `lb`); the enum is
@@ -1112,6 +1146,11 @@ public:
     bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
+    /* the hand signals: each one's anims looked up by name (static: no member read, its caller
+     * passes none), and one played -- the anim, or -1 (SOCOM 1's; OVL2 0x600440, 0x600290: the kit
+     * lane's seal_handsig.cpp) */
+    static void InitHandSignals();
+    AnimType DoHandSignal(SEAL_HANDSIGNAL sig);
     /* the stances' blends (SOCOM 1's seal_body.cpp, in its order: BlendedClimb 0x581110 to Stand
      * 0x581DC0 -- Stand_0 gained a float in SOCOM II) */
     CZBodyAnimBlend *BlendedClimb(float h);
