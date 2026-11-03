@@ -8683,7 +8683,7 @@
 0x004C8A80 0x14 TranslateGsapiParamId2AsrSpiParamId  # OVL2; s1:callee (ContextActivateParams calls it from the same three sites as SOCOM 1's)
 0x004C8A98 0xD0 StartListening  # OVL2 unaligned; s1:calls (SOCOM 1's StartListening: SidIsRecording, ExtAudioStart, SidStart, state 2; gsapi_EngineStart calls it where SOCOM 1's calls StartListening)
 0x004C8B68 0xD0 StopListening  # OVL2 unaligned; s1:calls (SOCOM 1's StopListening: SidIsRecording, ExtAudioStop, SidStop, state 3; after StartListening as there)
-0x004C8C38 0x7C func_004C8C38  # OVL2 unaligned
+0x004C8C38 0x7C CheckEngineHandle  # OVL2 unaligned; s1:order (SOCOM 1's CheckEngineHandle, 0x33A550, the gsapi object's function after StopListening: the same body -- an engine is a live 108-byte slot of gGSAPI.engines -- and nothing calls it; SOCOM II's callers inline it, and 2.96 outputs the redefined extern inline last in gsapi.c) -- the gcc lane, round 10c
 0x004C8CB8 0x58 func_004C8CB8  # OVL2 unaligned
 0x004C8D10 0x158 func_004C8D10  # OVL2
 0x004C8E68 0xA4 WrdCreateWordList  # OVL2 unaligned; s1:calls (SOCOM 1's ContextSetWrdData calls WrdCreateWordList where ours call this row, 1 call site; the same position in SOCOM 1's object)
@@ -8918,8 +8918,8 @@
 0x004E71F8 0x8BC func_004E71F8  # OVL2 unaligned
 0x004E7AB8 0x1C0 func_004E7AB8  # OVL2 unaligned
 0x004E7C78 0x410 func_004E7C78  # OVL2 unaligned
-0x004E8088 0x684 func_004E8088  # OVL2 unaligned
-0x004E8710 0x2AC func_004E8710  # OVL2
+0x004E8088 0x684 ProcessFFTMod  # OVL2 unaligned; s1:order (the process slot ConstructFFTMod hands tosBaseBlockConstruct, as SOCOM 1's ConstructFFTMod hands its LOCAL ProcessFFTMod; the FFT object's row before InitFFTMod, as in SOCOM 1's object at 0x355A38) -- the gcc lane, round 10c
+0x004E8710 0x2AC InitFFTMod  # OVL2; s1:order (ConstructFFTMod's init slot, as SOCOM 1's LOCAL InitFFTMod; the row before the constructor, as there) -- the gcc lane, round 10c
 0x004E89C0 0x8C ConstructFFTMod  # OVL2; s1:align
 0x004E8A50 0x94 ControlFFTMod  # OVL2; s1:align
 0x004E8AE8 0x28C InitIsoWordTokenDpContext  # OVL2 unaligned; s1:calls (SOCOM 1's ControlIsoWordTokenDp calls InitIsoWordTokenDpContext where ours call this row, 1 call site; the same position in SOCOM 1's object)
@@ -9051,11 +9051,11 @@
 0x004FC168 0x98 Vq1500Process  # OVL2 unaligned; s1:align
 0x004FC200 0x40 FreeVq1500  # OVL2; s1:calls (SOCOM 1's ControlVq1500Process calls LoadCodeBooks and FreeVq1500 where ours call LoadCodeBooks and this row; the same body, the codebooks freed then tosBaseBlockDestruct; SOCOM II defines it last in the object) -- the gcc lane, round 8c
 0x004FC240 0x3E0 WindowFlush  # OVL2; s1:align
-0x004FC620 0x50C func_004FC620  # OVL2
-0x004FCB30 0x274 func_004FCB30  # OVL2
+0x004FC620 0x50C ProcessWindow  # OVL2; s1:order (ConstructWindow's process slot, as SOCOM 1's ConstructWindow hands its LOCAL ProcessWindow; the window object's first row here -- SOCOM 1's WindowFlush, called only by ProcessWindow, has no row: inlined) -- the gcc lane, round 10c
+0x004FCB30 0x274 InitWindow  # OVL2; s1:order (ConstructWindow's init slot, as SOCOM 1's LOCAL InitWindow; the row before the constructor, as there) -- the gcc lane, round 10c
 0x004FCDA8 0x3C ConstructWindow  # OVL2 unaligned; s1:align
 0x004FCDE8 0xBC ControlWindow  # OVL2 unaligned; s1:align
-0x004FCEA8 0x3FC func_004FCEA8  # OVL2 unaligned
+0x004FCEA8 0x3FC CombinerProcess  # OVL2 unaligned; s1:order (ConstructCombiner's process slot, as SOCOM 1's LOCAL CombinerProcess, the first function of SOCOM 1's combiner object at 0x368FC0) -- the gcc lane, round 10c
 0x004FD2A8 0x3C ConstructCombiner  # OVL2 unaligned; s1:align
 0x004FD2E8 0xFC func_004FD2E8  # OVL2 unaligned
 0x004FD3E8 0xFC CombinerControl  # OVL2 unaligned; s1:calls
@@ -9121,7 +9121,7 @@
 0x00505480 0x2AC func_00505480  # OVL2
 0x00505730 0x174 func_00505730  # OVL2
 0x005058A8 0x348 Subsampler_Init  # OVL2 unaligned; s1:calls
-0x00505BF0 0xD8 func_00505BF0  # OVL2
+0x00505BF0 0xD8 Subsampler_Reset  # OVL2; s1:calls (SOCOM 1's Voicing_Reset tail-calls Subsampler_Reset at the same point -- its body is SOCOM II's Voicing_Reset's with the voicing fields 4 bytes lower; the subsampler object's row between Subsampler_Init and Subsampler_Free) -- the gcc lane, round 10c
 0x00505CC8 0xC4 Subsampler_Free  # OVL2 unaligned; s1:align
 0x00505D90 0x630 TriggerLR_FindSpeech  # OVL2; s1:align
 0x005063C0 0x18C ProcessTriggerLR  # OVL2; s1:align
@@ -9129,9 +9129,9 @@
 0x00506978 0x3E0 InitTriggerLR  # OVL2 unaligned; s1:align
 0x00506D58 0x3C ConstructTriggerLR  # OVL2 unaligned; s1:align
 0x00506D98 0xA48 Voicing_GetMaxVoicing  # OVL2 unaligned; s1:align
-0x005077E0 0x360 func_005077E0  # OVL2
-0x00507B40 0x318 func_00507B40  # OVL2
-0x00507E58 0x2E4 func_00507E58  # OVL2 unaligned
+0x005077E0 0x360 InitVoicing  # OVL2; s1:calls (the voicing object's; its one caller is InitTriggerLR, as SOCOM 1's InitVoicing's is, and it calls Subsampler_Reset) -- the gcc lane, round 10c
+0x00507B40 0x318 Voicing_MaintainNoiseEner  # OVL2; s1:calls (the voicing object's; its one caller is TriggerLR_FindSpeech, as SOCOM 1's Voicing_MaintainNoiseEner's is) -- the gcc lane, round 10c
+0x00507E58 0x2E4 Voicing_AddSignal  # OVL2 unaligned; s1:calls (the voicing object's; its one caller is ProcessTriggerLR, as SOCOM 1's Voicing_AddSignal's is) -- the gcc lane, round 10c
 0x00508140 0xA4 Voicing_Reset  # OVL2; s1:align
 0x005081E8 0x6C Voicing_Free  # OVL2 unaligned; s1:align
 0x00508258 0xD8 FillContextV2VirtualTable  # OVL2 unaligned; s1:align
