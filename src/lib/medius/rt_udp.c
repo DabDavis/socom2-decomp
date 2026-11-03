@@ -16,11 +16,12 @@
  * cross-jumps the two bodies, a switch moves every block); an index zeroed at its declaration (the
  * prologue's `move s1,zero`); a result kept in a saved register to one `return result` after a
  * time stamp call (0x641230); the RTO as `n = srtt + MAX(rttvar, 1); if (n > 500) n = 500;`; the
- * header stores in the orders tools/ccperm.py found (0x63F948, 0x641A70, 0x63F3A8).
+ * header stores in the orders tools/ccperm.py found (0x63F948, 0x641A70, 0x63F3A8); a final `return 0`
+ * that is a join of every arm (0x63E230: an else arm stores the flag rather than falling past it).
  * OPEN: 0x63DD18 (the create: the target lays the allocation out after the option copy, jumping
  * back to it, and keeps the new record in one register through the copy -- 95 words with a local
  * copy, 111 without), 0x63EBA0 (the raw send: the length test's `return 1` is a fall-through `b`,
- * 33s), 0x63E230 (8: the shared path keeps its 1 in v0 and the delay slots differ), 0x63E4A0 (11:
+ * 33s), 0x63E4A0 (11:
  * the index lives in v1 and the -2 in v0), 0x63E5E8 (10, the connect), 0x63F168 and 0x6419E8 (2
  * each: the call's arguments scheduled the other way -- the -1 key-manager id in the delay slot),
  * 0x641E30 (3: a bnez/bnezl choice and a register after the shared channel's port query),
@@ -432,13 +433,15 @@ int func_0063E230(RT_UDP *pUdp, RT_UDP_TARGET *pServer)
                 return 15;
         }
         pUdp->pUpnp = gpUpnp;
+        /* each arm ends in the one `return 0` (a join, so its `move v0,zero` stays): a `return 0`
+         * straight after the call's test reuses the known-zero v0 (round 14b's rule; 8 words) */
         if (gbResolving == 0) {
             if (func_006425F0(gpUpnp, pServer->szAddress, pServer->nPort, func_00642200, pUdp) != 0)
                 return 15;
             pUdp->bResolving = 1;
             gbResolving = 1;
-            return 0;
-        }
+        } else
+            pUdp->bResolving = 1;
     } else {
         if (pUdp->pUpnp == 0) {
             if (func_00642340(&pUdp->pUpnp, pUdp->nChannel, pUdp->nPort) != 0)
@@ -448,8 +451,8 @@ int func_0063E230(RT_UDP *pUdp, RT_UDP_TARGET *pServer)
         }
         if (func_006425F0(pUdp->pUpnp, pServer->szAddress, pServer->nPort, func_00642200, pUdp) != 0)
             return 15;
+        pUdp->bResolving = 1;
     }
-    pUdp->bResolving = 1;
     return 0;
 }
 

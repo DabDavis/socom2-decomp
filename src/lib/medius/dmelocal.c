@@ -140,6 +140,32 @@ int func_00614168(unsigned short *pCount)
     return DME_OK;
 }
 
+/* DME's connection indices against rt_msg_client's (SOCOM 1's two, s1:exact): DME counts the
+ * server connections from 1, rt_msg_client from 0. Defined here, above every caller -- a call
+ * compiled after its callee keeps a branch's slot unannulled (func_006189C8's beq; round 13c). */
+int DmeToRtMsgConnectionIndex(int nConnection)
+{
+    if (nConnection < 5)
+        return (nConnection - 1) & 0xFFFF;
+    return nConnection & 0xFFFF;
+}
+
+int RtMsgToDmeConnectionIndex(unsigned short nConnection)
+{
+    return nConnection < 5 ? nConnection + 1 : nConnection;
+}
+
+extern int data_006511C4;
+extern int data_006511C8;
+
+/* the two words NetConnect's peer path passes on (func_006180B8's params 0x0C/0x10) */
+int func_00614290(int nA, int nB)
+{
+    data_006511C4 = nA;
+    data_006511C8 = nB;
+    return DME_OK;
+}
+
 /* a client's delay samples (func_0061C510 hands the record out, 0x1A0 bytes made on first use) */
 typedef struct DmeDelayRecord {
     unsigned int anDelay[100];          /* 0x000 */
@@ -1474,9 +1500,9 @@ extern int rt_msg_client_receive_broadcasts(int nConnection, unsigned char bEnab
 extern int NetMapMsgClientError(int nError, int nDefault);
 extern int func_0063A760(int nConnection, unsigned char bEnable, int nIndex);
 
-/* OPEN (1 word): the target branches with beq on 0xFFFF where 2.96 here takes beql (the lui of
- * data_006511D8 in the slot either way) -- the RT path first (`!= 0 && != 0xFFFF`), an if/else,
- * else-if and a result variable tried; the broadcast flag is an int narrowed at each call. */
+/* the broadcast receive switch: the server's connection through the peer layer, the others through
+ * rt_msg_client. The `beq` on 0xFFFF (round 13b's one-word open) keeps its slot because the
+ * fall-through's DmeToRtMsgConnectionIndex is defined above (round 13c's rule, round 17b). */
 int func_006189C8(unsigned int nConnection, int bEnable)
 {
     int result;
