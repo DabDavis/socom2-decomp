@@ -1273,6 +1273,8 @@ public:
     void SetFont(C2DFont *font);
     void SetScale(float scale);
     void SetPos(int x, int y);
+    void PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font, float scale,
+                      zdb::CTextureRelocMgr *mgr);
 
     /* the look's, when it has one (inlined into the array look's walks) */
     void Finish()
@@ -1854,6 +1856,26 @@ void ListItem::SetPos(int x, int y)
     if (!m_impl)
         m_impl = new CListItemStringTypeImpl;
     m_impl->SetPos(x, y);
+}
+
+/* the item's text: a text look made when it has none, the text formatted into its string (SOCOM
+ * II's: the look taken as a text look; the name ours) */
+void ListItem::SetString(const char *s)
+{
+    if (!m_impl)
+        m_impl = new CListItemStringTypeImpl;
+    ((CListItemStringTypeImpl *)m_impl)->m_str->Format(s);
+}
+
+/* the look set up for the columns, then the font and scale given (SOCOM 1's PrepListItem through
+ * the item; the name ours) */
+void ListItem::PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font, float scale,
+                            zdb::CTextureRelocMgr *mgr)
+{
+    if (m_impl)
+        m_impl->PrepListItem(cols, font, scale, mgr);
+    SetFont(font);
+    SetScale(scale);
 }
 
 /* the item's look a timed text (SOCOM II's: out of line in ListItem's constructor, the look's

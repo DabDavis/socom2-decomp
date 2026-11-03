@@ -6813,12 +6813,12 @@
 0x0036B330 0xC8 __ct__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFv  # OVL1; by hand (the HUD lane, round 25): stores the string look's table 0x407B40 over CListItemTypeImpl's, CRenderableString() inlined at +8; called by the two makers; zui_2d.cpp
 0x0036B400 0x4C __dt__17CListItemTypeImplFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036B450 0x58 MakeTimedText__8ListItemFv  # OVL1; by hand (the HUD lane, round 25): ListItem's (m_impl = new timed look, 212 bytes), called by ListItem's constructor 0x37AE10; the name ours; zui_2d.cpp
-0x0036B4B0 0x114 func_0036B4B0  # OVL1
+0x0036B4B0 0x114 SetString__8ListItemFPCc  # OVL1; by hand (the HUD lane, round 25): ListItem's (a string look made when the item has none, then its string's slot 28, Format, given the text); called by the array look's constructor 0x37B2F0 and ListItem's constructors; the name ours; zui_2d.cpp
 0x0036B5D0 0x8 SetSequenceTime__17CListItemTypeImplFff  # OVL1; by hand (the HUD lane, round 25): slot 10 of CListItemTypeImpl's table, SOCOM 1's SetSequenceTime default; zui_2d.cpp
 0x0036B5E0 0x110 SetScale__8ListItemFf  # OVL1; by hand (the HUD lane, round 25): called by the array look's SetScale 0x37CA40 and PrepListItem per item with the scale (a string look made first when the item has none); the name ours
 0x0036B6F0 0x120 SetPos__8ListItemFii  # OVL1; by hand (the HUD lane, round 25): called by the array look's DrawPrep 0x37AB90 per column with (x + column x, y + column y); the name ours; zui_2d.cpp declares it
 0x0036B810 0x110 SetFont__8ListItemFP7C2DFont  # OVL1; by hand (the HUD lane, round 25): called by the array look's SetFont 0x37C9B0 and PrepListItem 0x37A920 per item with the font (a string look made first when the item has none: the string look's tables 0x4070F0/0x407B40 stored in it); the name ours
-0x0036B920 0x68 func_0036B920  # OVL1
+0x0036B920 0x68 PrepListItem__8ListItemFRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>P7C2DFontfPQ23zdb16CTextureRelocMgr  # OVL1; by hand (the HUD lane, round 25): ListItem's (the look's slot 5 with the same arguments, then SetFont and SetScale out of line); called by CUIListBox's 0x375E20; the name ours (SOCOM 1's look slot); zui_2d.cpp
 0x0036B990 0x34 SetWidth__8ListItemFi  # OVL1; by hand (the HUD lane, round 25): slot 3 of ListItem's table (the look's slot 17 forwarded); the name ours; zui_2d.cpp
 0x0036B9D0 0x8 SetWidth__17CListItemTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 17 of CListItemTypeImpl's table (empty; the wrapped look's sets its width); the name ours; zui_2d.cpp
 0x0036B9E0 0x34 SetHeight__8ListItemFi  # OVL1; by hand (the HUD lane, round 25): slot 2 of ListItem's table 0x407240 (the look's slot 16 forwarded); the name ours; zui_2d.cpp
