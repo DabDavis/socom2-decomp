@@ -7098,7 +7098,7 @@
 0x00383620 0xB0 __dt__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836D0 0xC GetType__12CCounterSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003836E0 0x11C init<PC10ActionItem>__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FPC10ActionItemPC10ActionItemQ23std20forward_iterator_tag_v  # OVL1; s1:exact-shape (SOCOM 1's init<PC10ActionItem> at 0x39AE40, two saved registers swapped: each element built by ActionItem's inline copy, then its assignment 0x369FA0) -- zui_spec.cpp's template tail
-0x00383800 0xAC func_00383800  # OVL1
+0x00383800 0xAC resize__Q23std56__vector_imp<9CSaferStr,Q23std21allocator<9CSaferStr>,0>FUi  # OVL1; the UI lane round 10: vector<CSaferStr>::resize(n) (a zeroed string temporary inserted through 0x22E000 -- the CSaferStr insert, the look parser's and LoadFromDesign's push_backs -- its long text freed, else erase 0x383BC0); SkbWrapTokens 0x39B350 calls it as lines.resize(size() + 1), and 0x381550 twice
 0x003838B0 0xA4 resize__Q23std60__vector_imp<10ActionItem,Q23std23allocator<10ActionItem>,0>FUi  # OVL1; s1:order (SOCOM 1's resize__...<10ActionItem>FUi in zui_spec.cpp's tail: insert 0x383F20 with a default ActionItem destroyed after, else the erase 0x383E00; the map control's and the button's ANIMATIONS grow through it) -- zui_spec.cpp's template tail
 0x00383960 0x138 resize__Q23std66__vector_imp<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>,0>FUi  # OVL1; s1:order (SOCOM 1's resize__...<13CDesignDlgObj>FUi: insert 0x384620 with a default design object destroyed after, else the erase 0x384410; the map control's ELEMENTS and the dialogs' objects grow through it) -- zui_spec.cpp's template tail
 0x00383AA0 0x11C func_00383AA0  # OVL1
@@ -7507,14 +7507,14 @@
 0x0039AD50 0x30 SkbUsbPunct__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's punctuation, HID usages 49-56 through the tables at 0x3FBA20 and, shifted, 0x3FB9F0, typed through 0x399040; 0x38C630 calls it)
 0x0039AD80 0x1C SkbUsbDash__FPC9SKBUSBKEYi  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's dash key -- '_' shifted (the key's word at 4), else '-' -- typed through 0x399040 with the second argument passed on; zui_skb.cpp's USB loop 0x38C630 calls it)
 0x0039ADA0 0xB0 SkbUsbLetter__FPC9SKBUSBKEYib  # OVL1; ours (zui_skbkeys.cpp: the USB keyboard's letters, HID usages 4-29 as 'a' + usage - 4: in Korean input (the third argument) the jamo of the letter, toupper'd when shifted, typed through 0x399200; else the letter cased by shift against caps lock (the word at 0x14) through 0x39A8D0 and typed through 0x399040; 0x38C630 calls it)
-0x0039AE50 0x378 func_0039AE50  # OVL1
+0x0039AE50 0x378 SkbWrapText__FRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>PCcP7C2DFontbff  # OVL1; the UI lane round 10: ours, by its body (zui_skbkeys.cpp: the text cut into 12-byte pieces -- after each run of white space through newlib's _ctype_ when the flag is set, else words, spaces and line breaks -- and wrapped into the line vector by 0x39B350; true for no text; 0x39A5B0 and 0x22B4A0 call it)
 0x0039B1D0 0x17C func_0039B1D0  # OVL1
-0x0039B350 0x260 func_0039B350  # OVL1
-0x0039B5B0 0x6C func_0039B5B0  # OVL1
+0x0039B350 0x260 SkbWrapTokens__FRQ23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>RQ23std46vector<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>>P7C2DFontff  # OVL1; the UI lane round 10: ours, by its body (zui_skbkeys.cpp: each line as many pieces as a C2DString measures within the width, a break piece ending one; the line resized in (0x383800) and assigned through assign(s, n) 0x39B620; false when one word alone is too wide)
+0x0039B5B0 0x6C __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCcUi  # OVL1; the UI lane round 10: include/string's basic_string(const char *, n) (the words zeroed, reserve(n), the template replace over s..s+n), zui_skbkeys.cpp's tail: SkbWrapTokens builds each word's string with it
 0x0039B620 0x50 assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCcUi  # OVL1; the MSL headers round 9: include/string's assign(const char *, n), out of class, replace(0, size(), s, s + n) through the template replace 0x1EE780 with its category byte; byte-exact as a probe (build/p9/sa.cpp); zui_skbkeys.cpp's tail, 0x39B350 calls it
-0x0039B670 0x4CC func_0039B670  # OVL1
-0x0039BB40 0x68 func_0039BB40  # OVL1
-0x0039BBB0 0x8 func_0039BBB0  # OVL1
+0x0039B670 0x4CC insert__Q23std54__vector_imp<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>,0>FP8SKBTOKENUiRC8SKBTOKEN  # OVL1; the UI lane round 10: the class vector's insert for the wrap's 12-byte pieces (the type byte copied lb/sb), zui_skbkeys.cpp's tail: SkbWrapText's push_backs
+0x0039BB40 0x68 __dt__Q23std56__vector_deleter<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>>Fv  # OVL1; the UI lane round 10: the pieces' deleter destructor (clear 0x39BBB0 called, the block freed), zui_skbkeys.cpp's tail: SkbWrapText's local vector destroyed with 0
+0x0039BBB0 0x8 clear__Q23std56__vector_deleter<8SKBTOKEN,Q23std20allocator<8SKBTOKEN>>Fv  # OVL1; the UI lane round 10: the pieces' deleter clear (a trivial element: the size zeroed), zui_skbkeys.cpp's tail
 0x0039BBC0 0xD0 fwrite__9CBufferIOFPCvi  # OVL1; s1:vtable by hand (CBufferIO's slot 0x2C, the slot CIO::fwrite(const char *) calls with (&len, 4); falls back on CFileIO's slot 0x2C; SOCOM 1's slot 0x2C is fwrite__9CBufferIOFPCvi)
 0x0039BC90 0xA0 fwrite__9CBufferIOFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039BD30 0x2C fflush__9CBufferIOFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
