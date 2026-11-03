@@ -92,7 +92,18 @@ public:
 
 /* the spawners: the vehicles waiting to come back, one every two seconds (SOCOM 1's CSpawners and
  * its global, 32 bytes at 0x440C10) */
-class CVehicleRdrEntry;
+/* a vehicle's definition (zchar's CVehicleRdrEntry: only what the mission's filter reads -- its name
+ * at 0, the teams it serves at 0x11C, a flag in bit 1 of the byte at 0x15C; the names ours) */
+class CVehicleRdrEntry {
+public:
+    bool IsSingleOnly() { return m_15c_1 ? true : false; }
+
+    char m_name[0x11c];   // 0x0
+    unsigned int m_teams;   // 0x11c
+    unsigned char _120[0x15c - 0x120];
+    unsigned char m_15c_0 : 1;   // 0x15c
+    unsigned char m_15c_1 : 1;
+};
 
 class CSpawners {
 public:
@@ -155,7 +166,9 @@ public:
     void CloseVehicleRdr();
     void OpenVehicleRdr();
 
-    unsigned char _0[0x1814];
+    unsigned char _0[0x140];
+    unsigned int m_vehicleFilter;   // 0x140: SOCOM II's (the name ours): which vehicles a mission takes
+    unsigned char _144[0x1814 - 0x144];
     CVehicleRdr *m_vehicle_rdr;   // 0x1814 (SOCOM 1's at 0x590)
     unsigned char _1818[0x1868 - 0x1818];
     CValve *m_team_valves[32];   // 0x1868 (SOCOM 1's at 0x5d4)
@@ -400,6 +413,50 @@ void CMission::CloseVehicleRdr()
     CCharacterType::CleanupTemporary();
     if (m_vehicle_rdr)
         m_vehicle_rdr->Close();
+}
+
+/* whether the mission takes a vehicle (SOCOM II's; LoadVehicle and LoadVehicles ask it, OVL1 0x2B2D20):
+ * one flagged single-player-only never online nor after the first; the first's teams kept, the
+ * others' tested against them by the mission's filter bits; then a vehicle named in the debug
+ * filter (OVL2 bss 0x66B010) only. The names ours */
+extern "C" {
+extern unsigned int data_00440C40;   /* the first vehicle's teams */
+extern char data_0066B010[];   /* (a vehicle's name: the only one taken, when set) */
+extern unsigned char data_0045A0C1;   /* theNetwork's online byte */
+}
+
+extern "C" bool func_002B2D20(CMission *mission, CVehicleRdrEntry *entry, bool first)
+{
+    bool ok;
+
+    if (entry->IsSingleOnly() && (!first || data_0045A0C1))
+        return false;
+    unsigned int teams = entry->m_teams;
+
+    ok = false;
+    if (first) {
+        data_00440C40 = teams;
+        ok = true;
+    } else {
+        unsigned int filter = mission->m_vehicleFilter;
+
+        if (!(filter & 1)) {
+            ok = true;
+            if (filter & 2)
+                ok = (teams & data_00440C40) == 0;
+            if (ok && (filter & 4))
+                ok = (teams & data_00440C40) != 0;
+            if (ok && (filter & 0x28))
+                ok = (teams & 8) == 0;
+            if (ok && (filter & 0x18))
+                ok = (teams & 4) == 0;
+        }
+    }
+    const char *only = data_0066B010;
+
+    if (!first && *only)
+        ok = strcasecmp(only, entry->m_name) == 0;
+    return ok;
 }
 
 /* an entity given back: a SEAL's anims stopped, or, with vehicles waiting, the spawners' timer
