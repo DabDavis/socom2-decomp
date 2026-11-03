@@ -6,6 +6,7 @@
  * (-inline deferred). */
 
 #include <list>
+#include <string.h>
 
 #include "../../ai/ai_states.h"
 #include "../zanim/zanim.h"
@@ -36,14 +37,33 @@ public:
     virtual void Virtual24();
     virtual void Virtual28();
     virtual void Virtual2C();
-    virtual void Virtual30();
+    virtual bool IsAi() const;   /* +0x30 */
     virtual void Virtual34();
-    virtual class CUnitSealAi *GetSealCtrlAi();
+    virtual class CSealCtrlAi *GetSealCtrlAi();
 };
 
-/* the AI controller's bits at 0x264 (SEAL_AI_PARAMS's, zseal.h's m_debug and m_navyseal) */
-class CUnitSealAi {
+/* the SEAL as far as this unit reads it (zseal.h's CZSealBody, which this unit does not include:
+ * CEntity first, at 0) */
+class CZSealBody : public CEntity {
 public:
+    /* whether the AI drives it: the controller tested, IsAi called (the shape of zseal.h's IsPlayer
+     * and IsRemote; the name ours) -- an inline whose out-of-line copy follows IssueCommand (OVL2
+     * 0x5EA880), defined here until IssueCommand is written */
+    bool IsAi();
+
+    unsigned char _170[0x1060 - sizeof(CEntity)];
+    unsigned int m_do_drop_weapons : 1;   // 0x1060 (zseal.h's bits)
+    unsigned int m_fix_skel_y : 1;
+    unsigned int m_inside : 1;   // bit 2
+};
+
+/* the AI controller as far as this unit reads it (zseal.h's CSealCtrlAi, which this unit does not
+ * include): its states dropped (SOCOM 1's ClearAiState, OVL2 0x5F5F20) and its bits at 0x264
+ * (SEAL_AI_PARAMS's m_debug and m_navyseal) */
+class CSealCtrlAi {
+public:
+    bool ClearAiState(bool all);
+
     unsigned char _0[0x264];
     unsigned int m_debug : 1;   // 0x264
     unsigned int m_navyseal : 1;   // bit 1
@@ -68,8 +88,16 @@ public:
  * -- this unit does not include it). Only what a written function touches */
 class CSealUnit {
 public:
-    /* a squad of a number (SOCOM 1's; OVL2 0x5EE6F0: 200 bytes) */
+    /* a squad of a number (SOCOM 1's; OVL2 0x5EE6F0: 200 bytes) and its end (OVL2 0x5EE4D0: the
+     * compass anchor deleted, the lists emptied -- not virtual, UnInit calls it directly) */
     CSealUnit(unsigned int team);
+    ~CSealUnit();
+    /* every squad deleted, the made flag cleared (SOCOM 1's; OVL2 0x5ECEF0) */
+    static void UnInit();
+    /* the squad's SEALs' AI states dropped, `all` handed on to each, and with `recurse` the squads
+     * under it -- a walk that never runs: its test is against begin() (OVL2 0x5E6C90, new in SOCOM
+     * II; the name ours) */
+    void ClearAiStates(bool all, bool recurse);
     static CSealUnit *GetUnitByTeam(unsigned int team);
     static CSealUnit *Create(unsigned int team);
     /* a SEAL taken out of its squad (SOCOM 1's, static; OVL2 0x5EDF90, not written yet) */
@@ -106,7 +134,32 @@ public:
     unsigned char m_unit_in_point;   // 0x9 (SOCOM 1's 0x8)
     UnitPointData m_follower_point_data;   // 0xc
     UnitPointData m_leader_point_data;   // 0x20
-    unsigned char _34[0x58 - 0x34];
+    /* the squad's order data: up to 32 bytes and how many (new in SOCOM II, the 0x24 bytes before
+     * the number; the names ours) -- copied in, or cleared when there are none; copied out only at
+     * the size they were stored with (OVL2 0x5EF1D0: the AI's command handlers ask it; inline in
+     * the pointer's getter and setter) */
+    bool SetData(const void *data, unsigned int size)
+    {
+        bool ok = false;
+
+        if (data) {
+            memcpy(m_data, data, size);
+            ok = true;
+            m_data_size = size;
+        } else {
+            memset(m_data, 0, sizeof m_data);
+            m_data_size = 0;
+        }
+        return ok;
+    }
+    bool GetData(void *data, unsigned int size);
+    /* the order's data as a pointer, or 0; and set so (OVL2 0x5E6D60, 0x5E6DD0: the HUD's command
+     * menu and the AI's handlers read the target SEAL so; the names ours) */
+    void *GetDataPtr();
+    bool SetDataPtr(void *p);
+
+    unsigned int m_data_size;   // 0x34
+    unsigned char m_data[0x20];   // 0x38
     unsigned int m_unit_num;   // 0x58 (SOCOM 1's 0x38)
     unsigned int m_5c;   // 0x5c: the squad's bit, 1 << (number & 31) (new in SOCOM II; the name ours)
     CSealUnit *m_parent;   // 0x60 (SOCOM 1's 0x3c): the squad this one is a part of
@@ -297,4 +350,145 @@ CSealUnit::CSealUnit(unsigned int team) : m_8(1), m_unit_num(team)
     m_point_ticks = 0;
     m_compassanchor = 0;
     m_5c = 1 << (team & 0x1f);
+}
+
+/* (OVL2 0x5EA880) */
+bool CZSealBody::IsAi()
+{
+    return m_control ? ((CUnitSealCtrl *)m_control)->IsAi() : false;
+}
+
+/* a menu message sent to the other consoles (fts_remote.cpp's, OVL1 0x2BAD40: who, to whom -- -1
+ * everyone -- and the message) */
+enum R_SEND_TO { R_SEND_TO_3 = -3, R_SEND_TO_2, R_SEND_TO_ALL };
+void SendMessageMessage(int who, R_SEND_TO to, int msg);
+
+extern "C" {
+/* a squad message played (OVL2 0x5E7960, unwritten: SOCOM 1's PlayRemoteMsg's body) */
+void func_005E7960(CEntity *e, int msg);
+}
+
+/* a squad message played for a SEAL (SOCOM 1's PlayRemoteMsg(CEntity *, int): the same callers --
+ * the message packets' handler four times, OnDeath three, CZKit::Fire twice, CSealCtrlAi::OnCommand
+ * -- SOCOM II adding the third word, 1 when the network delivered it; else message 43 is sent on to
+ * everyone first (OVL2 0x5E7F20). A switch: its case block sits first behind the beq */
+void PlayRemoteMsg(CEntity *e, int msg, int remote)
+{
+    if (!e)
+        return;
+    switch (msg) {
+    case 43:
+        if (remote != 1)
+            SendMessageMessage(e->m_id, R_SEND_TO_ALL, msg);
+        func_005E7960(e, msg);
+        break;
+    default:
+        func_005E7960(e, msg);
+    }
+}
+
+/* (OVL2 0x5EF1D0) */
+bool CSealUnit::GetData(void *data, unsigned int size)
+{
+    bool ok = false;
+
+    if (data && size && m_data_size == size) {
+        memcpy(data, m_data, size);
+        ok = true;
+    }
+    return ok;
+}
+
+extern "C" {
+/* the squad's leader (OVL2 0x5E8A90, unwritten: SOCOM 1's GetLeader by position), its awareness
+ * (0x5E76D0: SOCOM 1's GetAwareCounter by position), a squad sound by number with a chance (0x5EAF20)
+ * and the squad's formation set (0x5EB6D0) */
+CZSealBody *func_005E8A90(CSealUnit *unit);
+int func_005E76D0(CSealUnit *unit);
+void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
+}
+
+/* the squad's formation (the byte at 8: 1 when made; the names ours) */
+enum UNIT_FORMATION { FORMATION_0 = 0, FORMATION_1 = 1, FORMATION_2 = 2, FORMATION_LAST = 255 };
+
+extern "C" {
+void func_005EB6D0(CSealUnit *unit, UNIT_FORMATION f, int b);
+}
+
+/* the formation set to the leader's: 2 inside, else 1, when it differs (OVL2 0x5EB8A0; the
+ * formation byte and the name ours) */
+extern "C" void func_005EB8A0(CSealUnit *unit)
+{
+    CZSealBody *leader = func_005E8A90(unit);
+
+    if (leader) {
+        UNIT_FORMATION f;
+
+        if (leader->m_inside ? true : false)
+            f = FORMATION_2;
+        else
+            f = FORMATION_1;
+        if (f != unit->m_8)
+            func_005EB6D0(unit, f, 0);
+    }
+}
+
+/* sound 79 when the squad is aware, else 78 (OVL2 0x5EAEB0) */
+extern "C" void func_005EAEB0(CSealUnit *unit)
+{
+    if (func_005E76D0(unit))
+        func_005EAF20(unit, 79, 0, 1.0f);
+    else
+        func_005EAF20(unit, 78, 0, 1.0f);
+}
+
+/* (OVL2 0x5ECEF0; SOCOM 1's, the list emptied from the front) */
+void CSealUnit::UnInit()
+{
+    std::list<CSealUnit *>::iterator i = m_list.begin();
+    std::list<CSealUnit *>::iterator e = m_list.end();
+
+    while (i != e) {
+        CSealUnit *unit = *i;
+
+        i = m_list.erase(i);
+        delete unit;
+    }
+    m_created_units_test = false;
+}
+
+/* (OVL2 0x5E6C90; pinned: at fifteen statements -inline auto takes it, and the target's recursion
+ * is a call, not the self-inlined copies MW makes of it) */
+#pragma auto_inline off
+void CSealUnit::ClearAiStates(bool all, bool recurse)
+{
+    std::list<CZSealBody *>::iterator e = m_seals.end();
+
+    for (std::list<CZSealBody *>::iterator i = m_seals.begin(); i != e; ++i) {
+        CSealCtrlAi *ai = ((CUnitSealCtrl *)(*i)->m_control)->GetSealCtrlAi();
+
+        if (ai)
+            ai->ClearAiState(all);
+    }
+    if (recurse)
+        for (std::list<CSealUnit *>::iterator u = m_sub_units.begin(); u != m_sub_units.begin(); ++u)
+            (*u)->ClearAiStates(all, recurse);
+}
+#pragma auto_inline reset
+
+/* (OVL2 0x5E6DD0) */
+bool CSealUnit::SetDataPtr(void *p)
+{
+    return SetData(&p, 4);
+}
+
+/* (OVL2 0x5E6D60) */
+void *CSealUnit::GetDataPtr()
+{
+    void *p = 0;
+    void *r = 0;
+
+    if (GetData(&p, 4))
+        r = p;
+    return r;
 }
