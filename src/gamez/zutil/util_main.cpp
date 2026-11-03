@@ -5,11 +5,12 @@
  * itself is zsys_init.cpp's (its static initialiser is that unit's).
  *
  * OPEN, not written yet: 0x39C500 (named COutput's destructor by s1:align, but it is the package's:
- * Close inlined, then the deleting flag -- its draft matches) and 0x39C580,
- * UnRegisterRebootCallback (0x39C590: std::remove_if over class iterators, then the erase at
- * 0x3503F0) and the template tail (remove_if 0x39C710, insert 0x39C7F0, 0x39CCB0, 0x39CD40). */
+ * Close inlined, then the deleting flag -- its draft matches) and 0x39C580, and the template tail's
+ * insert 0x39C7F0 and 0x39CD40. Round 12 wrote UnRegisterRebootCallback with SOCOM 1's delid: its
+ * remove_if 0x39C710 and remove_copy_if 0x39CCB0 byte-exact. */
 
 #include <vector>
+#include <algorithm>
 #include <string.h>
 #include "zutil.h"
 
@@ -30,7 +31,17 @@ public:
         bool m_delete;               // 0xc
     };   // 0x10 bytes
 
+    /* the registrants to drop: those with an id (SOCOM 1's CIOPManager::delid, remove_if's
+     * predicate there and here; the member's name ours) */
+    struct delid {
+        delid(int id) : m_id(id) {}
+        bool operator()(const CRegistrant &r) const { return m_id == r.m_id; }
+
+        int m_id;
+    };
+
     int RegisterRebootCallback(RebootCallback cb, void *data);
+    void UnRegisterRebootCallback(int id);
 
     std::vector<CRegistrant> m_registrants;   // 0x0
 };
@@ -48,6 +59,19 @@ int CIOPManager::RegisterRebootCallback(RebootCallback cb, void *data)
     r.m_delete = false;
     m_registrants.push_back(r);
     return r.m_id;
+}
+
+/* the registration with an id dropped (SOCOM 1's: remove_if with delid, then the erase -- SOCOM
+ * II's over the vector's class iterators, the end taken first).
+ * OPEN, code-exact: its erase is the CRegistrant vector's __vector_imp::erase(T *, T *), the copy an
+ * earlier unit links at 0x3503F0 (this unit's own copy is byte-exact against it) -- a row outside
+ * the UI lane, still a placeholder; it matches once 0x3503F0 carries the name */
+void CIOPManager::UnRegisterRebootCallback(int id)
+{
+    std::vector<CRegistrant>::iterator e = m_registrants.end();
+    std::vector<CRegistrant>::iterator i = std::remove_if(m_registrants.begin(), e, delid(id));
+
+    m_registrants.erase(i, e);
 }
 
 /* a string made upper case in place (ours) */

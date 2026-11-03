@@ -7541,9 +7541,9 @@
 0x0039C680 0x6C zUtilStrUpr__FPc  # OVL1; ours (strlen, then toupper over each character in place; between the reboot registration and zUtilInit's empty stubs)
 0x0039C6F0 0x8 func_0039C6F0  # OVL1
 0x0039C700 0x8 func_0039C700  # OVL1
-0x0039C710 0xE0 func_0039C710  # OVL1
+0x0039C710 0xE0 remove_if<Q33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iterator,Q211CIOPManager5delid>__3stdFQ33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iteratorQ33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iteratorQ211CIOPManager5delid_Q33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iterator  # OVL1; by hand (the UI lane, round 12: UnRegisterRebootCallback 0x39C590's remove_if with SOCOM 1's predicate CIOPManager::delid; util_main.cpp's tail byte-exact)
 0x0039C7F0 0x4BC insert__Q23std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>FPQ211CIOPManager11CRegistrantUiRCQ211CIOPManager11CRegistrant  # OVL1; s1:align
-0x0039CCB0 0x8C func_0039CCB0  # OVL1
+0x0039CCB0 0x8C remove_copy_if<Q33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iterator,Q33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iterator,Q211CIOPManager5delid>__3stdFQ33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iteratorQ33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iteratorQ33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iteratorQ211CIOPManager5delid_Q33std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>8iterator  # OVL1; by hand (the UI lane, round 12: remove_if 0x39C710's copy of the kept registrants, SOCOM 1's remove_copy_if<CRegistrant *, delid> over SOCOM II's class iterators; util_main.cpp's tail byte-exact)
 0x0039CD40 0x78 func_0039CD40  # OVL1
 0x0039CDC0 0x8 GetSize__7CFileIOCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0039CDD0 0x94 fwrite__7CFileIOFPCc  # OVL1; s1:align
