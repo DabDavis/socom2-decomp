@@ -6,6 +6,42 @@
 
 extern "C" float data_00650C38;   /* the follow's close range (a variable: read with lwc1) */
 
+/* a cell's size in the world (OVL2 data 0x64FC60, 10.0: read as a variable) */
+extern "C" float data_0064FC60;
+
+/* a formation's slot as an offset in cells (OVL2 0x5EB910, seal_unit.cpp's range: the formation, the
+ * slot, the offset written) */
+extern "C" void func_005EB910(signed char formation, int slot, int *cells);
+
+/* (field by field: the three-float constructor interleaves the two terms' products, the target
+ * computes one after the other) */
+inline void CAiSFollow::UpdateOffsetLength()
+{
+    CPnt3D v;
+
+    v.x = m_5c[1] * data_0064FC60;
+    v.y = 0.0f;
+    v.z = -m_5c[0] * data_0064FC60;
+    m_64 = v.Length();
+}
+
+/* (OVL2 0x5FD0E0; CTState::Tick calls it) */
+void CAiSFollow::SetOffset(const int *cells)
+{
+    m_5c[0] = cells[0];
+    m_5c[1] = cells[1];
+    UpdateOffsetLength();
+}
+
+/* (OVL2 0x5FD050; CSealCtrlAi::OnCommand and the squad's formation, 0x5EB6D0, call it) */
+void CAiSFollow::SetFormation(signed char formation, int slot)
+{
+    m_70 = slot;
+    m_74 = formation;
+    func_005EB910(m_74, m_70, m_5c);
+    UpdateOffsetLength();
+}
+
 /* (OVL2 0x5FDD00) */
 bool CAiSFollow::Virtual3C()
 {

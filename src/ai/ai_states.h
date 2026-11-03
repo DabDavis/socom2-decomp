@@ -549,11 +549,21 @@ public:
     virtual bool Virtual3C();
     virtual ~CAiSFollow();
 
+    /* the offset from the leader set: as cells, and from a formation's slot (OVL2 0x5FD0E0, 0x5FD050;
+     * seal_aifollow.cpp's, the names ours) */
+    void SetOffset(const int *cells);
+    void SetFormation(signed char formation, int slot);
+    /* the offset's length in the world (inline: both setters end on it; the name ours) */
+    void UpdateOffsetLength();
+
     unsigned char _58[0x5c - 0x58];
-    unsigned int m_5c[2];   // 0x5c: two words (0x5F6F20 zeroes them)
-    unsigned char _64[0x6c - 0x64];
+    int m_5c[2];   // 0x5c: the offset from the leader, in cells (0x5F6F20 zeroes them)
+    float m_64;   // 0x64: its length in the world, 10 to a cell
+    unsigned char _68[0x6c - 0x68];
     unsigned int m_6c;   // 0x6c: flags (0x5F6F10 builds them with 0)
-    unsigned char _70[0x88 - 0x70];
+    int m_70;   // 0x70: the formation's slot
+    signed char m_74;   // 0x74: the formation
+    unsigned char _75[0x88 - 0x75];
     float m_88[3];   // 0x88: CPnt3Ds from here to 0x114, CAiMapLocs at 0xc0, 0xc8 and 0x104
     unsigned char _94[0x98 - 0x94];
     float m_98[3];   // 0x98

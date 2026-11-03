@@ -11591,8 +11591,8 @@
 0x005FCF00 0x8 func_005FCF00  # OVL2
 0x005FCF10 0xFC func_005FCF10  # OVL2
 0x005FD010 0x40 func_005FD010  # OVL2
-0x005FD050 0x84 func_005FD050  # OVL2
-0x005FD0E0 0x64 func_005FD0E0  # OVL2
+0x005FD050 0x84 SetFormation__10CAiSFollowFSci  # OVL2; by hand (the kit lane, round 18; the name ours): the follow's formation (+0x74, a byte) and slot (+0x70) set, the offset in cells read from them (0x5EB910) and its length kept as SetOffset's -- CSealCtrlAi::OnCommand and 0x5EB6D0 call it. seal_aifollow.cpp
+0x005FD0E0 0x64 SetOffset__10CAiSFollowFPCi  # OVL2; by hand (the kit lane, round 18; the name ours): the follow's offset from its leader set as two cell counts (+0x5C) and its world length kept (+0x64, 10 to a cell) -- CTState::Tick passes it a cell pair; where SOCOM 1's CSealCtrlAi::SetFollowOffset took a point. seal_aifollow.cpp
 0x005FD150 0x288 func_005FD150  # OVL2
 0x005FD3E0 0x7C func_005FD3E0  # OVL2
 0x005FD460 0x1C0 func_005FD460  # OVL2
