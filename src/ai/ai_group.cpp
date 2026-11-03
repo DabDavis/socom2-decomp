@@ -18,10 +18,36 @@
 #include "../gamez/zentity/zentity.h"
 #include "../gamez/zanim/zanim.h"
 #include "../gamez/zsnd/zsnd.h"
+#include "ai_states.h"
+
+class CAiGroup;
 
 /* the AI controller as far as this unit reads it (zseal.h's CSealCtrlAi, which this unit does not
- * include): its entity, through CEntityCtrl */
+ * include): its entity (CEntityCtrl's), the bits at 0x264, its state stack, its group's id and the
+ * three throttle points a group's member starts from -- and its group members, which this unit
+ * defines (SetGroup, InGroup, GetGroup: OVL2 0x60E6F0, 0x60E6E0, 0x60E7A0; the names ours) */
 class CSealCtrlAi : public CEntityCtrl {
+public:
+    bool PopToAiState(AI_STATE state, bool inclusive);
+    void StopThrottles(bool keep);
+    void SetGroup(CAiGroup *g);
+    bool InGroup();
+    CAiGroup *GetGroup();
+
+    unsigned char _18[0x264 - 0x18];
+    unsigned int m_aibits : 19;   // 0x264 (zseal.h's SEAL_AI_PARAMS bits)
+    unsigned int m_aibit19 : 1;   // bit 19 (the byte at 0x266, bit 3): set while not in a group's camera
+    unsigned int m_aibit20 : 1;
+    unsigned int m_aibit21 : 1;   // bit 21 (0x266 bit 5)
+    unsigned int m_aibits22 : 10;
+    unsigned char _268[0x324 - 0x268];
+    unsigned char m_324[0x41c - 0x324];   // 0x324: an object 0x558590 resets
+    CAiStateStack m_stateStack;   // 0x41c
+    int m_group;   // 0x43c: the group's id, or 0
+    unsigned char _440[0x780 - 0x440];
+    CPnt3D m_780;   // 0x780
+    CPnt3D m_78c;   // 0x78c
+    CPnt3D m_798;   // 0x798
 };
 
 extern "C" {
@@ -30,7 +56,18 @@ extern "C" {
 void func_00571150(CSealCtrlAi *ai, short anim, int mode);
 bool func_005712F0(CSealCtrlAi *ai, short anim);
 void func_00571100(CSealCtrlAi *ai, short anim);
+/* the stack's bits brought up to date (OVL2 0x5F7470, seal_aistate.cpp's, unwritten), the object at
+ * the AI's 0x324 reset (0x558590), an AI function (0x5604C0) and CSealCtrl::ClearLook (0x600D40,
+ * s1:order) -- the SEAL lane's */
+void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
+void func_00558590(void *p);
+void func_005604C0(CSealCtrlAi *ai);
+void func_00600D40(CSealCtrlAi *ai, signed char look);
 }
+
+/* the look a group clears and sets (OVL2 data 0x651130, 4: a byte the target loads with lb; the name
+ * ours) */
+extern signed char data_00651130;
 
 /* a group (the names ours) */
 class CAiGroup {
@@ -121,6 +158,14 @@ public:
 
         step() : m_state(NEW) {}
         ~step();
+        /* every action stopped (inline: the steps' stop walk's functor inlines it) */
+        void Stop()
+        {
+            iterator e = end();
+
+            for (iterator i = begin(); i != e; ++i)
+                (*i)->Stop();
+        }
 
         STATE m_state;   // 0xc
     };
@@ -152,6 +197,18 @@ public:
     class memberlist : public std::vector<CSealCtrlAi *> {
     };
     class steplist : public std::list<step> {
+    public:
+        /* every step stopped: std::for_each with a step stopper (OVL2 0x60D4B0, inlining for_each one
+         * level -- its iterator pieces and the functor called out of line, 0x60D540-0x60D5F0) */
+        void Stop();
+    };
+    /* the stop walk's functor (a word; its operator() OVL2 0x60D590, the step's Stop inlined; the
+     * name ours) */
+    struct stopper {
+        stopper() : m_0(0) {}
+        void operator()(step &s) { s.Stop(); }
+
+        int m_0;
     };
     class loclist : public std::vector<CAiMapLoc> {
     };
@@ -292,6 +349,76 @@ CAiGroup::CAiGroup()
 /* (OVL2 0x60D310: the members' destructors) */
 CAiGroup::~CAiGroup()
 {
+}
+
+/* (OVL2 0x60E7A0) */
+CAiGroup *CSealCtrlAi::GetGroup()
+{
+    return CAiGroup::Find(m_group);
+}
+
+/* (OVL2 0x60E6F0: in a group, the throttles stopped and the three points zeroed; out of one, the
+ * stack's bits updated) */
+void CSealCtrlAi::SetGroup(CAiGroup *g)
+{
+    if (g) {
+        m_group = g->m_id;
+        StopThrottles(false);
+        func_00558590(m_324);
+        m_780 = m_78c = m_798 = CPnt3D::zero;
+    } else {
+        func_005F7470(&m_stateStack, this, 1);
+        m_group = 0;
+    }
+}
+
+/* (OVL2 0x60E6E0) */
+bool CSealCtrlAi::InGroup()
+{
+    return m_group != 0;
+}
+
+/* (OVL2 0x60CE40: the AI held, out of the group (SetGroup(0) inlined), its look cleared and back in
+ * the target list, its bits 19 and 21 set; then taken out of the members -- std::remove, the new end
+ * a named local, the erase its own statement).
+ * OPEN, 6 instructions, registers only: the entity (loaded first) comes out in s2 and SetGroup's
+ * inlined `this` (the AI reloaded from its frame slot, its address being std::remove's value) in
+ * s1; the target has them the other way round -- the entity coloured before the inline's variable,
+ * as a later-numbered or deferred node would be. Tried: the let-go steps as a static inline taking
+ * (ai, entity) (the AI then kept in a register: worse). The remove/erase half is byte-exact */
+void CAiGroup::RemoveMember(CSealCtrlAi *ai)
+{
+    CEntity *e = ai->m_entity;
+
+    ai->PopToAiState(AI_STATE_HOLD, true);
+    ai->SetGroup(0);
+    func_005604C0(ai);
+    func_00600D40(ai, data_00651130);
+    e->SetIncludeInTargetList(true);
+    func_005F7470(&ai->m_stateStack, ai, 1);
+    ai->m_aibit19 = true;
+    ai->m_aibit21 = true;
+    memberlist::iterator end = m_members.end();
+    memberlist::iterator i = std::remove(m_members.begin(), end, ai);
+
+    m_members.erase(i, end);
+}
+
+/* (OVL2 0x60D4B0) */
+void CAiGroup::steplist::Stop()
+{
+    std::for_each(begin(), end(), stopper());
+}
+
+/* (OVL2 0x60D280) */
+void CAiGroup::Abort()
+{
+    m_steps.Stop();
+    m_steps.clear();
+    if (m_anim)
+        m_anim->Activate(0);
+    while (m_members.size() != 0)
+        RemoveMember(m_members[0]);
 }
 
 /* (OVL2 0x60DA50: every action deleted, the list emptied) */
@@ -459,6 +586,7 @@ void CAiGroup::SetMemberLoc(unsigned int i, const CAiMapLoc &loc)
  * in a1 and compares `bne v1,a0` (the field first); here they rotate (a3, a1, a2; `bne a0,v1`).
  * Tried: the result declared after the iterator, the group in a local of its own (11), the test
  * `id == ...`, the assignment inside the test (8 bytes short) */
+#pragma auto_inline off
 CAiGroup *CAiGroup::Find(int id)
 {
     CAiGroup *found = 0;
@@ -471,3 +599,4 @@ CAiGroup *CAiGroup::Find(int id)
         }
     return found;
 }
+#pragma auto_inline reset
