@@ -9,7 +9,18 @@
  * (0x404570, its call to 0x3B7DB0) sits between zvid_init.cpp's (0x404500) and the decal pools' in
  * the ctors table, as this unit sits between zvid_init.cpp and vis_mesh.cpp. Only some of its
  * functions so far; the rest stay placeholders. Defined in reverse of their image order (-inline
- * deferred). */
+ * deferred).
+ *
+ * Round 13 (the VU chain): SOCOM 1's VuObjectSetup/VuBatchProgram/VuShadowMap/VuLightMap/
+ * VuDetailMap are rearranged in SOCOM II into passes that each write a command quadword (the VU
+ * program's tag, the context count 0x4B4AF0, a word) and take the packet's cursor by address,
+ * failing when the scratchpad's room (m_sprEndOfMP) runs out; VuMapPasses (0x3B5B90) runs them
+ * and 0x3B5F20 (open, not written) is VuBatchProgram's command list around it. The statics keep
+ * their data_ placeholders, each commented with SOCOM 1's name where its use pairs it. Still
+ * open here: VuUpdate (0xCC4: its tail calls even 8-byte helpers out of line, the out-of-line
+ * copies at 0x3B5250-0x3B52C0 following it, so its inline budget runs out -- likely
+ * inline_max_total_size), 0x3B5F20, 0x3B41D0 (the decal program), 0x3B6870/0x3B6B20 (the local
+ * lights' setup), 0x3B7170/0x3B76B0/0x3B78D0 (the lens colours), the deque copy chain. */
 
 #include <stack>
 #include "znode.h"
@@ -380,35 +391,6 @@ extern "C" void func_00307700(sceVu0FVECTOR zd, sceVu0FVECTOR p, sceVu0FMATRIX o
  * at the world's material of the visual's) */
 extern "C" CMaterial_band *data_004B4AA0;
 
-/* the specular map's setup: a frame looking along the material's direction, into model space; the
- * band's intensity and falloff; the camera's position in model space; the colour and opacity (SOCOM
- * II's: 0x3B5B90 calls it with the band's colour and opacity -- the name ours) */
-void CVisual::VuSpecularSetup(_word128 *q, CPnt4D *dir, CPnt3D *rgb, float opacity)
-{
-    CPnt4D up = CPnt4D::unit_w;
-    CMatrix look;
-    CMatrix m;
-
-    func_00307700((float *)dir, (float *)&up, look.m_matrix);
-    sceVu0MulMatrix(m.m_matrix, look.m_matrix, data_004B4E60->m_matrix);
-    sceVu0CopyMatrix(*(sceVu0FMATRIX *)&q[6], m.m_matrix);
-    q[10].f32[0] = data_004B4AA0->m_intensity;
-    q[10].f32[1] = data_004B4AA0->m_falloff;
-    q[10].f32[3] = data_004B4AA0->m_invFalloff;
-
-    CPnt3D cam = *(CPnt3D *)((CNode *)(void *)m_camera)->m_matrix.m_matrix[3];
-    CPnt4D p(cam.x, cam.y, cam.z, 1.0f);
-
-    sceVu0ApplyMatrix((float *)&p, data_004B4E70.m_matrix, (float *)&p);
-    q[6].f32[3] = p.x;
-    q[7].f32[3] = p.y;
-    q[8].f32[3] = p.z;
-    q[9].f32[0] = rgb->x;
-    q[9].f32[1] = rgb->y;
-    q[9].f32[2] = rgb->z;
-    q[9].f32[3] = opacity;
-}
-
 /* the passes' switches: the packets' flavour, the specular map's (SOCOM 1's m_specMapGlobal), the
  * counts of projected, shadow and light maps (SOCOM 1's m_shadowMapCnt, m_lightMapCnt; the
  * projected maps' SOCOM II's) and the specular texture when the band has none (SOCOM 1's
@@ -531,6 +513,117 @@ bool CVisual::VuDetailMap(_word128 **cursor, unsigned int tag, tag_DETAIL_PARAMS
     return true;
 }
 
+/* a point scaled by the static's xyz and offset by its w, in VU0 (the zdb world's 0x339DE0 calls
+ * it; new in SOCOM II, not named) */
+extern "C" asm void func_003B5A10(_word128 *in, _word128 *out)
+{
+    la v1, data_004B4D30
+    lqc2 vf7, 0(a0)
+    lqc2 vf4, 0(v1)
+    vmul.xyz vf7, vf7, vf4
+    vaddw.xyz vf7, vf7, vf4
+    jr ra
+    sqc2 vf7, 0(a1)
+}
+
+/* a point through a matrix's rotation first when the flag (0x4B4A68) is up, then scaled and offset
+ * as 0x3B5A10 does (new in SOCOM II, not named). The address's `la` sits in the branch's delay
+ * slot, so its lui lands there as the target's does */
+extern "C" unsigned char data_004B4A68;
+
+extern "C" asm void func_003B59A0(_word128 *in, _word128 *m, _word128 *out)
+{
+    .set noreorder
+    lbu v1, data_004B4A68
+    beqz v1, plain
+    la v1, data_004B4D30
+    lqc2 vf7, 0(a0)
+    lqc2 vf4, 0(a1)
+    lqc2 vf5, 0(v1)
+    vmulax.xyz ACC, vf4, vf7x
+    vmadday.xyz ACC, vf4, vf7y
+    vmaddaz.xyz ACC, vf4, vf7z
+    vmaddz.xyz vf7, vf4, vf4z
+    vmul.xyz vf7, vf7, vf5
+    vaddw.xyz vf7, vf7, vf5w
+    b done
+    sqc2 vf7, 0(a2)
+plain:
+    la v1, data_004B4D30
+    lqc2 vf7, 0(a0)
+    lqc2 vf4, 0(v1)
+    vmul.xyz vf7, vf7, vf4
+    vaddw.xyz vf7, vf7, vf4w
+    sqc2 vf7, 0(a2)
+    nop
+done:
+    jr ra
+    nop
+}
+
+/* the projected map's pass: the first map's texture select, its position in model space, its
+ * projection into model space and the colour (SOCOM II's; the name ours). Pinned: fifteen statements
+ * by MW's count, -inline auto would take it into VuMapPasses, which calls it */
+#pragma auto_inline off
+bool CVisual::VuProjectedMap(_word128 **cursor, unsigned int tag)
+{
+    _word128 *p = *cursor;
+
+    if (!(p + 13 < data_004B4AE8))
+        return false;
+
+    _word128 *q = p + 1;
+
+    VuCommand(p, tag, data_004B4AF0, 1);
+
+    CProjectedMap *map = (CProjectedMap *)m_projectedMapList[0];
+
+    map->m_tex->CopyTextureSelect(q);
+    data_004B4E70.Transform((CPnt4D *)map->m_node->m_matrix.m_matrix[3], (CPnt4D *)&q[10], 1);
+    sceVu0MulMatrix(*(sceVu0FMATRIX *)&q[6], map->m_projection.m_matrix, data_004B4E60->m_matrix);
+    q[11].f32[0] = data_004B4EE0[0];
+    q[11].f32[1] = data_004B4EE0[1];
+    q[11].f32[2] = data_004B4EE0[2];
+    q[11].f32[3] = data_004B4EE0[3];
+    *cursor = q + 12;
+    return true;
+}
+#pragma auto_inline reset
+
+/* the shadow maps' pass: per map a command, its texture select, its position and direction in
+ * model space, its projection into model space, its range, falloff, colour and opacity (SOCOM 1's
+ * VuShadowMap, made a pass per map) */
+bool CVisual::VuShadowMap(_word128 **cursor, unsigned int tag)
+{
+    _word128 *q = *cursor;
+
+    for (std::vector<CLightMap *>::iterator it = m_shadowMapList.begin(); it != m_shadowMapList.end(); ++it) {
+        if (!VuRoom(q, 15))
+            return false;
+
+        _word128 *p = *cursor;
+
+        q = p + 1;
+        VuCommand(p, tag, data_004B4AF0, 1);
+
+        CLightMap *map = *it;
+
+        map->m_pTex->CopyTextureSelect(q);
+        data_004B4E70.Transform((CPnt4D *)map->m_matrix.m_matrix[3], (CPnt4D *)&q[10], 1);
+        data_004B4E70.Transform(&map->m_dir, (CPnt4D *)&q[11], 1);
+        sceVu0MulMatrix(*(sceVu0FMATRIX *)&q[6], map->m_worldToUV.m_matrix, data_004B4E60->m_matrix);
+        q[12].f32[2] = map->m_maxRange;
+        q[12].f32[3] = map->m_invDeltaRange;
+        q[13].f32[0] = map->m_diffuse.x;
+        q[13].f32[1] = map->m_diffuse.y;
+        q[13].f32[2] = map->m_diffuse.z;
+        q[13].f32[3] = map->m_opacity;
+        q += 14;
+        *cursor = q;
+    }
+    return true;
+}
+
 /* the colour tables (0x3B7590/0x3B7620 read them by value) and the flag that tints the light maps
  * through them (SOCOM II's, not named) */
 extern "C" CPnt4D data_004B4C70[];
@@ -603,115 +696,33 @@ bool CVisual::VuLightMap(_word128 **cursor, unsigned int tag)
     return true;
 }
 
-/* the shadow maps' pass: per map a command, its texture select, its position and direction in
- * model space, its projection into model space, its range, falloff, colour and opacity (SOCOM 1's
- * VuShadowMap, made a pass per map) */
-bool CVisual::VuShadowMap(_word128 **cursor, unsigned int tag)
+/* the specular map's setup: a frame looking along the material's direction, into model space; the
+ * band's intensity and falloff; the camera's position in model space; the colour and opacity (SOCOM
+ * II's: 0x3B5B90 calls it with the band's colour and opacity -- the name ours) */
+void CVisual::VuSpecularSetup(_word128 *q, CPnt4D *dir, CPnt3D *rgb, float opacity)
 {
-    _word128 *q = *cursor;
+    CPnt4D up = CPnt4D::unit_w;
+    CMatrix look;
+    CMatrix m;
 
-    for (std::vector<CLightMap *>::iterator it = m_shadowMapList.begin(); it != m_shadowMapList.end(); ++it) {
-        if (!VuRoom(q, 15))
-            return false;
+    func_00307700((float *)dir, (float *)&up, look.m_matrix);
+    sceVu0MulMatrix(m.m_matrix, look.m_matrix, data_004B4E60->m_matrix);
+    sceVu0CopyMatrix(*(sceVu0FMATRIX *)&q[6], m.m_matrix);
+    q[10].f32[0] = data_004B4AA0->m_intensity;
+    q[10].f32[1] = data_004B4AA0->m_falloff;
+    q[10].f32[3] = data_004B4AA0->m_invFalloff;
 
-        _word128 *p = *cursor;
+    CPnt3D cam = *(CPnt3D *)((CNode *)(void *)m_camera)->m_matrix.m_matrix[3];
+    CPnt4D p(cam.x, cam.y, cam.z, 1.0f);
 
-        q = p + 1;
-        VuCommand(p, tag, data_004B4AF0, 1);
-
-        CLightMap *map = *it;
-
-        map->m_pTex->CopyTextureSelect(q);
-        data_004B4E70.Transform((CPnt4D *)map->m_matrix.m_matrix[3], (CPnt4D *)&q[10], 1);
-        data_004B4E70.Transform(&map->m_dir, (CPnt4D *)&q[11], 1);
-        sceVu0MulMatrix(*(sceVu0FMATRIX *)&q[6], map->m_worldToUV.m_matrix, data_004B4E60->m_matrix);
-        q[12].f32[2] = map->m_maxRange;
-        q[12].f32[3] = map->m_invDeltaRange;
-        q[13].f32[0] = map->m_diffuse.x;
-        q[13].f32[1] = map->m_diffuse.y;
-        q[13].f32[2] = map->m_diffuse.z;
-        q[13].f32[3] = map->m_opacity;
-        q += 14;
-        *cursor = q;
-    }
-    return true;
-}
-
-/* the projected map's pass: the first map's texture select, its position in model space, its
- * projection into model space and the colour (SOCOM II's; the name ours). Pinned: fifteen statements
- * by MW's count, -inline auto would take it into VuMapPasses, which calls it */
-#pragma auto_inline off
-bool CVisual::VuProjectedMap(_word128 **cursor, unsigned int tag)
-{
-    _word128 *p = *cursor;
-
-    if (!(p + 13 < data_004B4AE8))
-        return false;
-
-    _word128 *q = p + 1;
-
-    VuCommand(p, tag, data_004B4AF0, 1);
-
-    CProjectedMap *map = (CProjectedMap *)m_projectedMapList[0];
-
-    map->m_tex->CopyTextureSelect(q);
-    data_004B4E70.Transform((CPnt4D *)map->m_node->m_matrix.m_matrix[3], (CPnt4D *)&q[10], 1);
-    sceVu0MulMatrix(*(sceVu0FMATRIX *)&q[6], map->m_projection.m_matrix, data_004B4E60->m_matrix);
-    q[11].f32[0] = data_004B4EE0[0];
-    q[11].f32[1] = data_004B4EE0[1];
-    q[11].f32[2] = data_004B4EE0[2];
-    q[11].f32[3] = data_004B4EE0[3];
-    *cursor = q + 12;
-    return true;
-}
-#pragma auto_inline reset
-
-/* a point scaled by the static's xyz and offset by its w, in VU0 (the zdb world's 0x339DE0 calls
- * it; new in SOCOM II, not named) */
-extern "C" asm void func_003B5A10(_word128 *in, _word128 *out)
-{
-    la v1, data_004B4D30
-    lqc2 vf7, 0(a0)
-    lqc2 vf4, 0(v1)
-    vmul.xyz vf7, vf7, vf4
-    vaddw.xyz vf7, vf7, vf4
-    jr ra
-    sqc2 vf7, 0(a1)
-}
-
-/* a point through a matrix's rotation first when the flag (0x4B4A68) is up, then scaled and offset
- * as 0x3B5A10 does (new in SOCOM II, not named). The address's `la` sits in the branch's delay
- * slot, so its lui lands there as the target's does */
-extern "C" unsigned char data_004B4A68;
-
-extern "C" asm void func_003B59A0(_word128 *in, _word128 *m, _word128 *out)
-{
-    .set noreorder
-    lbu v1, data_004B4A68
-    beqz v1, plain
-    la v1, data_004B4D30
-    lqc2 vf7, 0(a0)
-    lqc2 vf4, 0(a1)
-    lqc2 vf5, 0(v1)
-    vmulax.xyz ACC, vf4, vf7x
-    vmadday.xyz ACC, vf4, vf7y
-    vmaddaz.xyz ACC, vf4, vf7z
-    vmaddz.xyz vf7, vf4, vf4z
-    vmul.xyz vf7, vf7, vf5
-    vaddw.xyz vf7, vf7, vf5w
-    b done
-    sqc2 vf7, 0(a2)
-plain:
-    la v1, data_004B4D30
-    lqc2 vf7, 0(a0)
-    lqc2 vf4, 0(v1)
-    vmul.xyz vf7, vf7, vf4
-    vaddw.xyz vf7, vf7, vf4w
-    sqc2 vf7, 0(a2)
-    nop
-done:
-    jr ra
-    nop
+    sceVu0ApplyMatrix((float *)&p, data_004B4E70.m_matrix, (float *)&p);
+    q[6].f32[3] = p.x;
+    q[7].f32[3] = p.y;
+    q[8].f32[3] = p.z;
+    q[9].f32[0] = rgb->x;
+    q[9].f32[1] = rgb->y;
+    q[9].f32[2] = rgb->z;
+    q[9].f32[3] = opacity;
 }
 
 /* the quadwords left in the scratchpad's packet past a cursor (0x3B4580's; not named) */
