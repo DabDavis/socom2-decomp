@@ -1252,13 +1252,16 @@ def main(argv=None) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     tally = {}
     hits = {}
+    verdicts = []
     with ProcessPoolExecutor(a.jobs) as ex:
         for addr, kind, src in ex.map(attempt, sorted(cands)):
             tally[kind] = tally.get(kind, 0) + 1
+            verdicts.append(f"0x{addr:08X} {kind}\n")
             if src:
                 (OUT / f"{addr:08X}.c").write_text(src)
                 hits[addr] = src
     total = sum(tally.values())
+    (OUT / "verdicts.txt").write_text("".join(verdicts))      # each row's verdict, for the next look
     print(f"{total} tried: " + ", ".join(f"{k} {v}" for k, v in sorted(tally.items())))
     print(f"hit rate {100 * tally.get('hit', 0) / max(total, 1):.1f} %  (hits in {OUT})")
     if a.emit:

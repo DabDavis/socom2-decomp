@@ -2,8 +2,9 @@
 /* Nellymoser's encoder API (OVL1 0x24F518-0x24FAC0): the handle the host holds -- a 64-bit magic
  * 0xface, the codec's kind (10) and the encoder's memory block -- checked by every entry point
  * (6100 a bad handle, 6110 the wrong kind; the frame's own checks 6125-6170), then the work done in
- * EncSC.c (sase_encsc.c) and the coder. The handle's constructor, func_0024F990, stands as a
- * draft. Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96,
+ * EncSC.c (sase_encsc.c) and the coder (12 of 13). The handle's constructor, func_0024F990, stands
+ * as a draft. The release call returns a value the destructor discards: declared int, the free
+ * callback's pointer is loaded into v1 after it, as the target's is. Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96,
  * -O2 -G8: the instance count and the host's free callback are $gp small data). */
 
 typedef struct {
@@ -156,7 +157,11 @@ int func_0024F838(SaseHandle *h)
 	return 0;
 }
 
-/* Encode one frame: the frame's arguments checked first, then the handle. */
+/* Encode one frame: the frame's arguments checked first, then the handle.
+ * OPEN (2 words short): the target keeps the coded buffer's address (sp+192) in s0, the handle in
+ * s1 and the frame in s2 -- the buffer's address born while the handle is still live -- where this
+ * build reuses the handle's register for it after the handle's last load (a pointer to the buffer
+ * declared first: 50 words). */
 int func_0024F888(SaseHandle *h, SaseEncFrame *f)
 {
 	char work[192];
