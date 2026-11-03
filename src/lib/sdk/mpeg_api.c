@@ -34,8 +34,8 @@ extern int _decPicture(MpegDec *d);
 extern void _outputFrame(MpegDec *d, int frameNo, int n);
 extern void _lastFrame(MpegDec *d);
 extern void _sendDataToIPU(MpegDec *d, u_char *data, int size);
-extern int func_001BCD30(sceMpeg *mp, sceMpegCbData *cbdata, void *anyData);	/* the default */
-extern int func_001BCD58(sceMpeg *mp, sceMpegCbData *cbdata, void *anyData);	/* DMA callbacks */
+extern int _defStopDMA(sceMpeg *mp, sceMpegCbData *cbdata, void *anyData);
+extern int _defRestartDMA(sceMpeg *mp, sceMpegCbData *cbdata, void *anyData);
 
 int sceMpegReset(sceMpeg *mp);
 int sceMpegClearRefBuff(sceMpeg *mp);
@@ -105,13 +105,13 @@ int sceMpegCreate(sceMpeg *mp, u_char *work, int size)
 	d->cb[sceMpegCbTimeStamp].func = 0;
 	d->cb[sceMpegCbStr].func = 0;
 	d->ptm = -1;
-	d->cb[sceMpegCbStopDMA].func = func_001BCD30;
-	d->cb[sceMpegCbRestartDMA].func = func_001BCD58;
+	d->cb[sceMpegCbStopDMA].func = _defStopDMA;
+	d->cb[sceMpegCbRestartDMA].func = _defRestartDMA;
 	d->work = (void *)_alalcAlloc(d, &d->alloc, 0x600, 8);
 	d->_048 = 0;
-	d->_0fc = 0;
-	d->_100 = 0;
-	d->_104 = 0;
+	d->frameBuf[0] = 0;
+	d->frameBuf[1] = 0;
+	d->frameBuf[2] = 0;
 	d->ptsGapSet = 0;
 	d->ptsGap = 0;
 	d->_080 = -1;
@@ -409,7 +409,7 @@ static int _getpic(sceMpeg *mp)
 		if (ret != -1) {
 			do {
 				type = _nextHeader(d);
-			} while (type && d->picture_structure != d->firstStructure && d->mpeg1);
+			} while (type && d->picture_structure != d->firstStructure && d->mpeg2);
 		}
 		switch (type) {
 		case 0:

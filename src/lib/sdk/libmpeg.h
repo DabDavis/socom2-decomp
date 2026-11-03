@@ -13,13 +13,18 @@ typedef unsigned long u_long;
 typedef int u_long128 __attribute__((mode(TI)));
 
 #define IPU_CMD		((volatile u_long *)0x10002000)
+#define IPU_CMD_W	((volatile u_int *)0x10002000)	/* a command is written as a word */
 #define IPU_CTRL	((volatile u_int *)0x10002010)
 #define IPU_BP		((volatile u_int *)0x10002020)
 #define IPU_TOP		((volatile u_long *)0x10002030)
 #define D3_CHCR		((volatile u_int *)0x1000B000)
 #define D3_QWC		((volatile u_int *)0x1000B020)
 #define D4_CHCR		((volatile u_int *)0x1000B400)
+#define D4_MADR		((volatile u_int *)0x1000B410)
 #define D4_QWC		((volatile u_int *)0x1000B420)
+#define D4_TADR		((volatile u_int *)0x1000B430)
+#define D9_CHCR		((volatile u_int *)0x1000D400)
+#define D9_QWC		((volatile u_int *)0x1000D420)
 #define D_ENABLER	((volatile u_int *)0x1000F520)
 #define D_ENABLEW	((volatile u_int *)0x1000F590)
 
@@ -88,9 +93,27 @@ typedef struct {
 	u_int mark;		/* 0xC: what _alalcFree returns to */
 } MpegAlloc;
 
+/* libipu's DMA state, saved and restored around the decoder's own transfers */
+typedef struct {
+	u_int d4madr;
+	u_int d4tadr;
+	u_int d4qwc;
+	u_int d4chcr;
+	u_int d3madr;
+	u_int d3qwc;
+	u_int d3chcr;
+	u_int ipubp;
+	u_int ipuctrl;
+} sceIpuDmaEnv;
+
 /* a reference picture's record (0x68 bytes, nine of them from 0x1E8) */
 typedef struct {
-	char pad0[0x28];
+	u_int buf;		/* 0x00: uncached */
+	int width;		/* 0x04 */
+	int height;		/* 0x08 */
+	int mbw;		/* 0x0C */
+	int mbh;		/* 0x10 */
+	char pad14[0x28 - 0x14];
 	int valid;		/* 0x28 */
 	char pad2c[0x68 - 0x2C];
 } MpegRef;
@@ -102,7 +125,7 @@ typedef struct {
 	MpegCb cb[7];		/* 0x00C: by sceMpegCbType */
 	void *work;		/* 0x044: 0x600 bytes from the allocator */
 	int _048;		/* 0x048 */
-	char pad04c[0x70 - 0x4C];
+	sceIpuDmaEnv dmaEnv;	/* 0x04C */
 	int ptsGapSet;		/* 0x070 */
 	long ptsGap;		/* 0x078 */
 	int _080;		/* 0x080 */
@@ -133,14 +156,22 @@ typedef struct {
 	char pad0ec[0xF0 - 0xEC];
 	long ptm;		/* 0x0F0 */
 	int ptmSet;		/* 0x0F8 */
-	int _0fc;		/* 0x0FC */
-	int _100;		/* 0x100 */
-	int _104;		/* 0x104 */
+	u_int frameBuf[3];	/* 0x0FC: the three pictures' memory */
 	MpegAlloc alloc;	/* 0x108 */
 	int frameNo;		/* 0x118 */
 	int ipuEnd;		/* 0x11C */
 	int secondField;	/* 0x120 */
-	char pad124[0x150 - 0x124];
+	int horizontal_size;	/* 0x124 */
+	int vertical_size;	/* 0x128 */
+	int mb_width;		/* 0x12C */
+	int mb_height;		/* 0x130 */
+	int bit_rate;		/* 0x134 */
+	int vbv_buffer_size;	/* 0x138 */
+	int progressive_sequence;	/* 0x13C */
+	int chroma_format;	/* 0x140 */
+	int matrix_coefficients;	/* 0x144 */
+	int display_horizontal_size;	/* 0x148 */
+	int display_vertical_size;	/* 0x14C */
 	int picture_coding_type;	/* 0x150 */
 	int full_pel_forward_vector;	/* 0x154 */
 	int forward_f_code;		/* 0x158 */
@@ -153,10 +184,19 @@ typedef struct {
 	int concealment_motion_vectors;	/* 0x180 */
 	int repeat_first_field;		/* 0x184 */
 	int progressive_frame;		/* 0x188 */
-	char pad18c[0x1B8 - 0x18C];
+	char pad18c[0x1B0 - 0x18C];
+	int _1b0;			/* 0x1B0 */
+	int _1b4;			/* 0x1B4 */
 	MpegRef *ref[3][4];		/* 0x1B8 */
 	MpegRef refs[9];		/* 0x1E8 */
-	char pad590[0x818 - 0x590];
+	u_int _590;		/* 0x590 */
+	u_int _594;		/* 0x594 */
+	char pad598[0x6D0 - 0x598];
+	u_int _6d0;		/* 0x6D0 */
+	u_int _6d4;		/* 0x6D4 */
+	char pad6d8[0x810 - 0x6D8];
+	int _810;		/* 0x810 */
+	int _814;		/* 0x814 */
 	int dirty;		/* 0x818: the last IPU command leaves the bit buffer stale */
 	u_int _81c;		/* 0x81C */
 	int _820;		/* 0x820 */
@@ -164,16 +204,32 @@ typedef struct {
 	long dts;		/* 0x830 */
 	u_int bits;		/* 0x838: the IPU's top 32 bits */
 	int nbits;		/* 0x83C: of them, valid */
-	u_int _840;		/* 0x840 */
-	u_int _844;		/* 0x844 */
-	int mpeg1;		/* 0x848 */
+	u_int load_intra_quantiser_matrix;	/* 0x840 */
+	u_int load_non_intra_quantiser_matrix;	/* 0x844 */
+	int mpeg2;		/* 0x848: a sequence_extension was seen */
 	int _84c;		/* 0x84C */
 	int _850;		/* 0x850 */
 	int _854;		/* 0x854 */
 	sceMpeg *mp;		/* 0x858 */
-	char pad85c[0x10A0 - 0x85C];
+	char pad85c[0x880 - 0x85C];
+	char tags[0x10A0 - 0x880];	/* 0x880: _sendDataToIPU's DMA tags, from the first 16-byte boundary */
 	int _10a0;		/* 0x10A0 */
 	char pad10a4[0x10C0 - 0x10A4];
 } MpegDec;
+
+/* the layout, checked where the code says it */
+#define MPEG_AT(T, f, off) typedef char _at_##T##_##f[(int)&((T *)0)->f == (off) ? 1 : -1]
+MPEG_AT(sceMpeg, sys, 0x40);
+MPEG_AT(MpegDec, work, 0x44);
+MPEG_AT(MpegDec, ptsGapSet, 0x70);
+MPEG_AT(MpegDec, alloc, 0x108);
+MPEG_AT(MpegDec, picture_coding_type, 0x150);
+MPEG_AT(MpegDec, picture_structure, 0x174);
+MPEG_AT(MpegDec, ref, 0x1B8);
+MPEG_AT(MpegDec, _590, 0x590);
+MPEG_AT(MpegDec, dirty, 0x818);
+MPEG_AT(MpegDec, mp, 0x858);
+MPEG_AT(MpegDec, _10a0, 0x10A0);
+typedef char _at_MpegDec_size[sizeof(MpegDec) == 0x10C0 ? 1 : -1];
 
 #endif
