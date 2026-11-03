@@ -5716,6 +5716,49 @@ new to the map's byte-exact rows (3,588 bytes); `src/lib/asr` 425 of 467 (417 of
 named (Tone_Of_Final, Tone_Of_Final_TreeCtx: `s1:order`, SOCOM 1's objects 0x3404E8 and 0x345CD0). No
 tool changed.
 
+**Round 15c: the training object whole but one, and four block objects' small functions.**
+
+- **The training object is SOCOM 1's, in its order** -- round 11c's "four SOCOM II additions before
+  TrainSmoothCounts (0x4E0D00)" was a row off: DoUserWordTraining calls 0x4DFD20 then 0x4E0D00 where
+  SOCOM 1's calls TrainInit then TrainModels, and 0x4E0D00 calls 0x4DF470, 0x4DF898, 0x4E0050 where
+  SOCOM 1's TrainModels calls TrainSmoothCounts, TrainProbsFromCounts, TrainSelectPhenom (`s1:calls`,
+  ten rows named with TrainCountsFromAcq and the four entropy functions by order and body; their
+  tables log_p_average_, global_log_p_average, p_Log_p are SOCOM 1's LOCALs byte for byte, data.txt).
+- **Public inlines come out at the object's end, in definition order -- which is how a function
+  "moves"**: the image has TrainCountsFromAcq, TrainFree, CalcEntropy ... CalcEntropyMerged4bit after
+  TrainModels, where SOCOM 1 had TrainFree after TrainInit. All six are `__inline__` above their
+  callers (TrainModels inlines TrainCountsFromAcq and TrainFree -- SOCOM 1's tail-called TrainFree;
+  TrainSelectPhenom inlines the entropy four, which is why they have no caller in either build) and
+  2.96 defers their own copies; SOCOM II only made TrainFree an inline. TrainModels' smoothing test is
+  `beqz` once TrainSmoothCounts is defined above it (round 13c's rule).
+- **A fourth object built with `-ffast-math`**: the training's preconditioned first copy stores the
+  product over the 0 it has just stored (`*acc = 0; *acc += x` folded; TrainSmoothCounts 202 words
+  without), as window.c, dctlift.c and gender.c. SOCOM 1's copy of the object was not unrolled.
+- **Shapes, measured**: a value stored and summed through its own local, summed first (`t = ...; sum
+  += t; *prob = t;` -- the sum's register takes the first copy's quotient, 34 words otherwise); a
+  pointer bumped inside the expression (`logf(*prob++ / sum)`: the unroller's split pointer, 8 words
+  shorter otherwise); a chain's link set after the head is cleared and moved past each record last;
+  a size summed into the count's own variable (`n += s->nring * n;`, the sessions' last memcpy); the
+  stride declared first (TrainCountsFromAcq: the loads' registers); case bodies in the target's order
+  (ControlSpecSub 2, 1, 3, 4, 255; CombinerControl 2, 1, 255); `unsigned short` session indices (`lhu`,
+  the VAD pair) and an unsigned state (`sltiu`, the combiner); an `int` count where the target does
+  not mask the parameter (ResizeQueues); a per-loop pointer in the spectral reset (round 14c's rule:
+  21 words to 3). An `unsigned char` result with ONE `andi` at the return is an int assigned at each
+  exit and returned once (SendLabelsToEngine; `return` per exit masks each path).
+- **Open, diagnosed in place**: ControlSpecSub (3 words: which of the two +84 loads keeps a1),
+  SendLabelsToEngine (26: the buffer's copy into p), and TrainSelectPhenom (0xCB0, not written: the
+  entropy inlines it takes are in place above it).
+
+Hand-written in round 15c: `asr/train.c` (+9: TrainSmoothCounts, TrainProbsFromCounts, TrainInit,
+TrainModels, TrainCountsFromAcq, CalcEntropy, CalcEntropy4bit, CalcEntropyMerged, CalcEntropyMerged4bit;
+10 of 10 written, TrainSelectPhenom not), `asr/specsub.c` (new: the session pair, ConstructSpecSub and
+ProcessSpecSub over their drafts; 4 of 5), `asr/vad.c` (+2, VadGetSession and VadPutSession: 3 of 3),
+`asr/distsil.c` (new: ResizeQueues), `asr/combiner.c` (new: CombinerInit and CombinerControl,
+ConstructCombiner over its draft) and `asr/userword.c` (SendLabelsToEngine OPEN) -- 16 rows new to the
+map's byte-exact rows (9,020 bytes), 3 matched drafts superseded; `src/lib/asr` 444 of 488 (425 of 467
+before). 14 rows named (10 training, SpectralSubtraction `s1:calls`, InitSpecSub, ProcessSpecSub and
+CombinerInit by their constructors' slots), 3 data rows (`s1:data`). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
