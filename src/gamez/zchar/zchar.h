@@ -5,6 +5,7 @@
 #ifndef ZCHAR_H
 #define ZCHAR_H
 
+#include <list>
 #include <string>
 #include <vector>
 
@@ -356,6 +357,27 @@ public:
  * code reads them */
 namespace zdb { class CNode; }
 
+/* a character's voice mask: six figures CCharacterType::Parse reads off the type's "VoiceFont"
+ * block, each tag named after its setter ("SetPitchOffset" ... "SetWhisperFactor") -- new in
+ * SOCOM II, the names after those tags. The armory's character change (UIChangeCharacterType)
+ * reads them through the getters, out of line (0x53B010-0x53B06F, defined last in char_type.cpp) */
+class CVoiceFont {
+public:
+    float GetPitchOffset() const;
+    float GetSpectralFactor() const;
+    float GetSpectralLedge() const;
+    float GetRoboOffset() const;
+    float GetRoboSquash() const;
+    float GetWhisperFactor() const;
+
+    float m_pitchOffset;   // 0x0
+    float m_spectralFactor;   // 0x4
+    float m_spectralLedge;   // 0x8
+    float m_roboOffset;   // 0xc
+    float m_roboSquash;   // 0x10
+    float m_whisperFactor;   // 0x14
+};
+
 class CCharacterType {
 public:
     /* a level of detail: a model file and name and the distance it starts at (SOCOM 1's global
@@ -383,6 +405,11 @@ public:
     /* the type's multiplayer messages deleted and their storage given up (new in SOCOM II, the
      * name ours: 0x53B930) */
     void DeleteMultiplayerMessages();
+    /* the multiplayer messages read off the sound list (SOCOM 1's; OVL2 0x53BBD0) */
+    void InitMultiplayerMessages(_zrdr *rdr);
+    /* the sound list's kind/file pairs into the sound names, then its multiplayer messages (new in
+     * SOCOM II as a function, the name ours: SOCOM 1's Parse did it in place; OVL2 0x53BEF0) */
+    void ParseSounds(_zrdr *list);
     static CCharacterType *RdrFetch_CharacterType(const char *name);
     /* a type's weapons replaced by the eight a packed loadout holds, up to its first empty one
      * (SOCOM 1's UnPack, 0x53EC60: CZSealBody's remote respawn and creation call it) */
@@ -397,15 +424,27 @@ public:
     static void ResetGears();
     static const char *match_name_to_chartype(CRdrFile *rdr, const char *group, const char *name);
     EQUIP_ITEM GetWeaponByIndex(unsigned int i) const;
+    /* the first holder loads the model and each gear's (from the model cache, else the world, then
+     * cached); the type counted and handed back, none without a model (SOCOM 1's; OVL2 0x53CCA0) */
+    CCharacterType *Acquire() const;
     char *GetBaseName();
     /* the character's model instanced under a name (SOCOM 1's; OVL2 0x53C9B0) -- the SEAL lane */
     zdb::CNode *CreateInstance(const char *name);
+    /* the count dropped; at none every gear let go and the model and sounds forgotten, the count
+     * returned (SOCOM 1's; OVL2 0x53CA40) */
+    int Release();
+    /* each level of detail's model (cached, else the world's, then cached) added to the node's
+     * mesh as a level, when both hold one mesh (SOCOM 1's; OVL2 0x53CB20) */
+    void CreateLODs(zdb::CNode *node);
     /* a sound by kind, none out of range (new in SOCOM II, the name ours: CSealCtrlAi::OnStunDamage
      * calls it) */
     CSnd *GetSound(CHARACTER_SOUND s) const;
+    /* a sound played for the entity of that id, whether it went to the positional player (SOCOM
+     * 1's, void there; OVL2 0x53B710 -- CSealCtrl's sound calls it) */
+    bool PlayAt(CHARACTER_SOUND s, unsigned int id, const CPnt3D *pos);
 
     char *m_name;   // 0x0
-    int m_ref_count;   // 0x4
+    mutable int m_ref_count;   // 0x4: mutable -- Acquire, const in both builds, counts
     char *m_model_file;   // 0x8
     char *m_model_name;   // 0xc
     unsigned int m_parentID;   // 0x10
@@ -414,7 +453,7 @@ public:
     LODVec m_LODs;   // 0x2bc
     CAnimSetVec m_anim_sets;   // 0x2c8
     char *m_texture_asset;   // 0x2d4
-    CModel *m_model;   // 0x2d8
+    mutable CModel *m_model;   // 0x2d8: mutable -- Acquire loads it
     CCharacterGearList m_gear;   // 0x2dc
     CCharacterWeapList m_weapons;   // 0x2e8
     int m_strength;   // 0x2f4
@@ -423,8 +462,7 @@ public:
     unsigned char m_istemporary;   // 0x300
     AI_PARAMS m_aiParams;   // 0x304
     HEALTH_PARAMS m_healthParams;   // 0x340
-    unsigned char MultiplayerMessages[0xc];   // 0x388: CMultiplayerMsgVec
-    unsigned char m_unk394[0xc];   // 0x394: new in SOCOM II, not laid out yet
+    CVoiceFont m_voiceFont;   // 0x388
     /* the multiplayer messages (SOCOM II's, 0x3A0: ClearMultiplayerMessageSounds 0x53BB00 walks
      * them and zeroes each one's sound) */
     CMultiplayerMsgVec m_mpMessages;   // 0x3a0
@@ -435,6 +473,12 @@ public:
      * vector of pointers, OVL1 bss 0x44CD68, the same 0x20 on: CZSealBody::FindGear walks its data
      * and size) -- added by the SEAL lane */
     static std::vector<class CCharacterGear *> m_gear_list;
+    /* the anim sets' names, each kept once (SOCOM 1's m_anim_set_names, a pointer list 0x40 after
+     * m_char_list; SOCOM II's is OVL1 bss at 0x44CD88, the same 0x40 on) */
+    static std::list<char *> m_anim_set_names;
+    /* the list's copy of an anim set's name, a copy added the first time (new in SOCOM II, the name
+     * ours: SOCOM 1's Parse did it in place; OVL2 0x53C110) */
+    static char *AddAnimSetName(const char *name);
 };
 
 /* the types (SOCOM 1's DWARF: a vector of pointers and nothing more) */

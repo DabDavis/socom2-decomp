@@ -44,6 +44,10 @@ extern CLanRoom data_0044FE10;
 
 void zRemoteDelayedAction(CZNetwork::TypeRTimeFixStruct *fix);
 
+/* the network (0x45A0C0): the unit's one dynamically initialised static -- its initialiser 0x402800
+ * builds it and registers the implicit destructor 0x30E410, the unit's last function */
+CZNetwork theNetwork;
+
 /* the DME's join: the game connection's session joined by name, with the object and stream
  * counts, the client events to zNetClientCallback (SOCOM II's parameter block; the names ours) */
 struct NetClientEventInfo {

@@ -9,6 +9,7 @@
 #include "../zsys/zsys.h"
 #include "../zsnd/zsnd.h"
 #include "../zanim/zanim.h"
+#include "../zentity/zentity.h"
 
 /* the reader file of that name, out of the loaded archives (SOCOM 1's CRdrArchive::FindRdr took the
  * name alone; SOCOM II passes a second argument, zero here) */
@@ -412,6 +413,110 @@ const char *GetCharacterSoundTypeString(CHARACTER_SOUND s)
     return "CHRSND_NONE";
 }
 
+/* the gears' models, shared by name (SOCOM 1's CCharacterModelCache::m_ModelCache, a static of
+ * char_type.cpp there at the demo's 0x506420, 0x60 after m_char_list; SOCOM II's is OVL1 bss at
+ * 0x44CDA8, the same 0x60 after its m_char_list) */
+class CCharacterModelCache {
+public:
+    static zdb::CModelVector m_ModelCache;
+};
+
+/* each level of detail's model, from the model cache or else the world (then cached); when it and
+ * the node each hold one visual, both meshes, the node's mesh takes the model's as a level at its
+ * distance (SOCOM 1's, whose LODs were 12 bytes). The distance in a local loads it ahead of the size
+ * tests, and the model's visuals through a reference keep their address in a0 (its data read at +8
+ * after the node's size test), as the target does: written out, both fold away */
+void CCharacterType::CreateLODs(zdb::CNode *node)
+{
+    for (LODVec::iterator i = m_LODs.begin(); i != m_LODs.end(); ++i) {
+        zdb::CModel *model = CCharacterModelCache::m_ModelCache.GetModel(i->m_file.c_str());
+
+        if (!model) {
+            model = (zdb::CModel *)zdb::CWorld::GetModel(i->m_file.c_str());
+            if (model) {
+                /* a copy pushed, so the model stays in its register */
+                zdb::CModel *kept = model;
+
+                CCharacterModelCache::m_ModelCache.push_back(kept);
+            }
+        }
+        if (model) {
+            float dist = i->m_dist;
+            zdb::CVisualVector &visuals = model->m_visual;
+
+            if (visuals.size() == 1 && node->m_visual.size() == 1) {
+                zdb::CVisual *lod = visuals[0];
+                zdb::CVisual *mesh = node->m_visual[0];
+
+                if (lod && lod->m_type == 1 && mesh && mesh->m_type == 1)
+                    ((zdb::CMesh *)mesh)->AddLOD((zdb::CMesh *)lod, dist);
+            }
+        }
+    }
+}
+
+/* the first holder loads the type's model, and each gear without one its own -- from the model
+ * cache, else the world, then put in the cache with its mode tree set; every gear with a model
+ * counted. None without a model; otherwise its mode tree set and the type counted and handed back
+ * (SOCOM 1's, whose gear list was a list) */
+CCharacterType *CCharacterType::Acquire() const
+{
+    if (m_ref_count == 0) {
+        m_model = (CModel *)zdb::CWorld::GetModel(m_model_name);
+        for (CCharacterGearList::iterator i = ((CCharacterGearList &)m_gear).begin();
+             i != ((CCharacterGearList &)m_gear).end(); ++i) {
+            CCharacterGear *g = *i;
+
+            if (!g->m_model) {
+                g->m_model = CCharacterModelCache::m_ModelCache.GetModel(g->m_model_name);
+                if (!g->m_model) {
+                    g->m_model = zdb::CWorld::GetModel(g->m_model_name);
+                    if (g->m_model) {
+                        ((zdb::CNode *)g->m_model)->SetModeTree(2);
+                        /* a copy pushed: the target reloads the model after the call into a
+                         * stack slot and passes its address */
+                        zdb::CModel *model = (zdb::CModel *)g->m_model;
+
+                        CCharacterModelCache::m_ModelCache.push_back(model);
+                    }
+                }
+            }
+            if (g->m_model)
+                g->m_ref_count++;
+        }
+    }
+    if (m_model) {
+        ((zdb::CNode *)m_model)->SetModeTree(2);
+        m_ref_count++;
+        return (CCharacterType *)this;
+    }
+    return 0;
+}
+
+/* the count dropped; at none -- clamped there, new in SOCOM II -- each gear's count dropped and at
+ * none zeroed with its model, then the type's model and sounds forgotten (SOCOM 1's, whose gear
+ * list was a list and whose model stores were null-tested) */
+int CCharacterType::Release()
+{
+    m_ref_count--;
+    if (m_ref_count <= 0) {
+        if (m_ref_count < 0)
+            m_ref_count = 0;
+        for (CCharacterGearList::iterator i = m_gear.begin(); i != m_gear.end(); ++i) {
+            CCharacterGear *g = *i;
+
+            g->m_ref_count--;
+            if (g->m_ref_count <= 0) {
+                g->m_ref_count = 0;
+                g->m_model = 0;
+            }
+        }
+        m_model = 0;
+        memset(m_sounds, 0, sizeof(m_sounds));
+    }
+    return m_ref_count;
+}
+
 /* the type's model instanced and named; none without a model (SOCOM 1's). The model's byte at
  * 0xC0 is set first (new in SOCOM II: zdb's CModel is not laid out here) */
 zdb::CNode *CCharacterType::CreateInstance(const char *name)
@@ -480,6 +585,135 @@ CSnd *CCharacterType::GetSound(CHARACTER_SOUND s) const
     if (!(s > CHRSND_NONE) || s >= CHRSND_MAX)
         return 0;
     return m_sounds[s];
+}
+
+/* the sound kind a name gives, none for no name or no match (SOCOM 1's GetCharacterSoundType,
+ * out of line there at 0x248110; SOCOM II inlines it into ParseSounds and keeps no copy) */
+static CHARACTER_SOUND GetCharacterSoundType(const char *name)
+{
+    if (name) {
+        for (int i = 0; i < CHRSND_MAX; i++) {
+            CHARACTER_SOUND s = (CHARACTER_SOUND)i;
+
+            if (!strcasecmp(name, GetCharacterSoundTypeString(s)))
+                return s;
+        }
+    }
+    return CHRSND_NONE;
+}
+
+/* the sound names' bytes, counted as they are parsed (OVL2 bss 0x66A4B8; nothing reads it here --
+ * a debug total, likely) */
+static int s_soundNameBytes;
+
+/* the sound list's pairs: a kind's name, then a list whose first item is the file -- kept as the
+ * kind's sound name (a plain pointer in SOCOM II, SOCOM 1 assigned a string); any other name is
+ * compared with "multiplayer" and left (that block is read after the loop); then the multiplayer
+ * messages (SOCOM 1's Parse did all of it in place) */
+void CCharacterType::ParseSounds(_zrdr *list)
+{
+    int n = list ? list->Count() : 0;
+
+    for (int i = 0; i < n; i += 2) {
+        /* the indices passed unsigned: with the int counter MW steps a pointer for the first and
+         * takes i + 1 before the second's count */
+        _zrdr *tag = list->Item((unsigned int)i);
+        _zrdr *value = list->Item((unsigned int)(i + 1));
+        const char *name = tag ? tag->String() : 0;
+        CHARACTER_SOUND s = GetCharacterSoundType(name);
+
+        if (s != CHRSND_NONE) {
+            char *file = value->Item(0)->String();
+
+            int len;
+
+            m_arrSoundNames[s] = file;
+            /* an if/else: the ternary leaves its two joins unpadded */
+            if (file)
+                len = strlen(file);
+            else
+                len = 0;
+            s_soundNameBytes += len;
+        } else if (!strcmp(name, "multiplayer")) {
+        }
+    }
+    if (list)
+        InitMultiplayerMessages(list);
+}
+
+/* the list's copy of an anim set's name, else a copy pushed (SOCOM 1's Parse inlined this walk,
+ * SOCOM II's calls it -- the push's insert out of line keeps -inline auto off it). The iterator
+ * assigned, so it lives in memory; the end in a register */
+char *CCharacterType::AddAnimSetName(const char *name)
+{
+    if (m_anim_set_names.size()) {
+        std::list<char *>::iterator i;
+
+        i = m_anim_set_names.begin();
+        for (std::list<char *>::iterator e = m_anim_set_names.end(); i != e; ++i) {
+            char *s = *i;
+
+            if (!strcmp(name, s))
+                return s;
+        }
+    }
+    char *s = _strdup(name, 0, 0);
+
+    m_anim_set_names.push_back(s);
+    return s;
+}
+
+/* a SEAL's wait before its next pain sound (CZSealBody's float at 0x424, the name ours; zseal.h is
+ * not included here) */
+struct CSealPainWait {
+    unsigned char _0[0x424];
+    float m_painWait;   // 0x424
+};
+
+/* the positional player (OVL1 0x3428F0: the sound, the entity's id, the position, then 3.0 and
+ * 1.0 here -- zanim_cmd_tick.cpp declares it after its own call) */
+extern "C" void func_003428F0(CSnd *sound, unsigned int id, const CPnt3D *pos, float a, float b);
+
+/* a character sound for the entity of that id (SOCOM 1's, void there, played every sound the
+ * damage and death sounds' way). The damage and death sounds play only once the SEAL's pain wait
+ * has run out, which they set to three seconds: at the position if one is given, else as the
+ * entity's own; any other sound goes to the positional player, and only that counts as played */
+bool CCharacterType::PlayAt(CHARACTER_SOUND s, unsigned int id, const CPnt3D *pos)
+{
+    bool played = false;
+    CSnd *snd = GetSound(s);
+
+    if (snd) {
+        if (s == CHRSND_DAMAGE || s == CHRSND_DEATH || s == CHRSND_DEATH_QUIET) {
+            CEntity *e = CEntity::m_list.GetEntityById(id);
+            CSealPainWait *seal = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CSealPainWait *)e : 0;
+            bool ok = false;
+
+            if (seal && 0.0f == seal->m_painWait)
+                ok = true;
+            if (pos && ok) {
+                if (seal)
+                    seal->m_painWait = 3.0f;
+                CSndInstance *inst = snd->PlaySound3D(pos, false, 1.0f, 0, 0, id);
+
+                if (inst)
+                    inst->TerminateOnFinish();
+            } else if (ok) {
+                if (seal)
+                    seal->m_painWait = 3.0f;
+                CSndInstance *inst = snd->PlaySound(true, 0, id);
+
+                if (inst)
+                    inst->TerminateOnFinish();
+            }
+        } else {
+            /* set before the call: after it, the flag misses the jal's delay slot and the
+             * arguments are scheduled apart */
+            played = true;
+            func_003428F0(snd, id, pos, 3.0f, 1.0f);
+        }
+    }
+    return played;
 }
 
 /* the list's nth type: the iterator walked n steps (MSL's advance; the name ours) */
@@ -632,4 +866,38 @@ CCharacterType *CCharacterType::RdrFetch_CharacterType(const char *name)
 
     zrdr_free(rdr);
     return t;
+}
+
+/* the voice font's figures (new in SOCOM II, the names after chartype.rdr's VoiceFont tags): the
+ * file's last definitions, so the first of its functions in the image (0x53B010-0x53B06F, right
+ * before PadWeaponSlots) -- they could as well close ai_perception.cpp, the unit before: the bytes
+ * are the same either way */
+float CVoiceFont::GetPitchOffset() const
+{
+    return m_pitchOffset;
+}
+
+float CVoiceFont::GetSpectralFactor() const
+{
+    return m_spectralFactor;
+}
+
+float CVoiceFont::GetSpectralLedge() const
+{
+    return m_spectralLedge;
+}
+
+float CVoiceFont::GetRoboOffset() const
+{
+    return m_roboOffset;
+}
+
+float CVoiceFont::GetRoboSquash() const
+{
+    return m_roboSquash;
+}
+
+float CVoiceFont::GetWhisperFactor() const
+{
+    return m_whisperFactor;
 }

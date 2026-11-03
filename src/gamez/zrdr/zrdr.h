@@ -47,17 +47,10 @@ struct _zrdr {
         _zrdr *array;
     };   // 0x4
 
-    /* SOCOM 1's (0x3C there); SOCOM II's clears its new flag too, each field read, masked and
-     * written back as MW stores a constant into a bitfield */
-    _zrdr()
-    {
-        type = 0;
-        isclone = false;
-        packed = false;
-        nofree = false;
-        unused = 0;
-        length = 0;
-    }
+    /* SOCOM 1's (0x3C there); SOCOM II's clears its new flag too. The fields are set in the
+     * initialiser list: each is then read, masked with `(0 & mask) << shift` and written back as a
+     * word, as the target's CRdrFile() does (assigned in the body, MW folds them to byte stores) */
+    _zrdr() : type(0), isclone(false), packed(false), nofree(false), unused(0), length(0) {}
     ~_zrdr();
     void DeleteChildren();
     void Clone(_zrdr *src, CSTable *strings);
@@ -168,8 +161,18 @@ public:
     int ReadToken(CRdrIO *io, _zrdr **out);
     _zrdr *MakeUnion(const char *token, bool quoted);
 
-    /* a packed buffer's tree: its root's offset at 8, its strings from 12 (ours) */
-    _zrdr *Root() { return m_buffer ? (_zrdr *)(m_buffer + *(int *)(m_buffer + 8)) : 0; }
+    /* the packed buffer read through a const accessor (ours): MW then reloads it after the
+     * caller's own test of m_buffer, as the target does (Create, Resolve) */
+    unsigned char *Buffer() const { return m_buffer; }
+    /* a packed buffer's tree: its root's offset at 8, its strings from 12 (ours); the result
+     * zeroed first and set under the test (the zero in the test's delay slot) */
+    _zrdr *Root()
+    {
+        _zrdr *r = 0;
+        if (m_buffer)
+            r = (_zrdr *)(Buffer() + *(int *)(Buffer() + 8));
+        return r;
+    }
 
     CSTable m_strings;   // 0x08
     unsigned char *m_buffer;   // 0x28

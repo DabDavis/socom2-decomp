@@ -148,6 +148,13 @@ extern int RemovePlayerFromClanID;   /* the member being put out */
 
 void UpdateClanRoster();   /* the roster's UI variable rebuilt */
 
+/* the unit's four lists, in the order its static initialiser (0x401EB0) builds them and registers
+ * their destructors (0x2EA540, 0x2EA4C0, 0x2EA440, 0x2EA3C0: the unit's last functions, in reverse) */
+InvitationVector InvitationVec;
+ClanInvitationVector ClanInvitationVec;
+ClanMemberVector ClanMemberVec;
+ClanMessageVector ClanMessageVec;
+
 /* A clan game's team: the clan's id in the low 28 bits, the side (1-4) as 0xA-0xD in the top four
  * (0x2E99F0 builds it back). The helpers sit after the lists' members in the image, 0x2E9820-0x2E9B3F;
  * the names ours. */

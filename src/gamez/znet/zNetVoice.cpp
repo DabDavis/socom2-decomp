@@ -166,14 +166,14 @@ struct VoicePlayer {
 };
 
 extern "C" {
-int func_00244AB8(int handle);   /* (lgAud: the playback started) */
-int func_00244200(int handle, int mode, const void *buf, int *len);   /* (lgAud: written) */
+int lgAudStartPlayback(int handle);   /* (lgAud: the playback started) */
+int lgAudWrite(int handle, int mode, const void *buf, int *len);   /* (lgAud: written) */
 }
 
 /* the playback started once (the name ours) */
 inline void StartPlayback(VoicePlayer *p)
 {
-    if (p->m_handle != -1 && !p->m_playing && !func_00244AB8(p->m_handle))
+    if (p->m_handle != -1 && !p->m_playing && !lgAudStartPlayback(p->m_handle))
         p->m_playing = 1;
 }
 
@@ -194,7 +194,7 @@ int func_0030F6E0(VoicePlayer *p, const unsigned char *buf, int len)
             n = len;
             if (len > 1024)
                 n = 1024;
-            func_00244200(p->m_handle, 1, buf, &n);
+            lgAudWrite(p->m_handle, 1, buf, &n);
             if (n <= 0)
                 break;
             len -= n;

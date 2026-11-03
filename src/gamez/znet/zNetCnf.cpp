@@ -13,8 +13,8 @@
 
 extern "C" {
 /* Sony's libinet RPC (prebuilt, OVL1) and ezcnf/ezctl (OVL1's start) */
-int func_00246558(void *cd, void *buf, int *ids, int n);   /* sceInetGetInterfaceList */
-int func_002465E8(void *cd, void *buf, int id, int code, void *ptr, int len);   /* sceInetInterfaceControl */
+int sceInetGetInterfaceList(void *cd, void *buf, int *ids, int n);   /* sceInetGetInterfaceList */
+int sceInetInterfaceControl(void *cd, void *buf, int id, int code, void *ptr, int len);   /* sceInetInterfaceControl */
 void func_00246A38(void *cd, int a, int b, int c);   /* the RPC client bound */
 void func_00246B10(void *cd);   /* and unbound */
 void func_001E8530(void);   /* (ezcnf: started) */
@@ -262,7 +262,7 @@ extern "C" int func_0030BE80()
     int link;
 
     if (data_00457B00.m_id > 0 &&
-        !func_002465E8(data_00456780, data_00455F80, data_00457B00.m_id, 0x200, &link, 4) &&
+        !sceInetInterfaceControl(data_00456780, data_00455F80, data_00457B00.m_id, 0x200, &link, 4) &&
         data_00458090 != link) {
         theNetwork.zNetGetTime();
         data_00458098 = theNetwork.zNetGetTime();
@@ -290,7 +290,7 @@ extern "C" int func_0030BD40(NetIfInfo *info, int max)
     int ids[256];
     int n;
 
-    n = func_00246558(data_00456780, data_00455F80, ids, 256);
+    n = sceInetGetInterfaceList(data_00456780, data_00455F80, ids, 256);
     if (n < 0)
         return 0;
     if (max < n)
@@ -302,9 +302,9 @@ extern "C" int func_0030BD40(NetIfInfo *info, int max)
         for (i = 0, id = ids; i < n; i++, info++, id++) {
             memset(info, 0, sizeof(*info));
             info->m_id = *id;
-            func_002465E8(data_00456780, data_00455F80, info->m_id, 8, &info->m_flags, 4);
-            func_002465E8(data_00456780, data_00455F80, info->m_id, 2, info->m_vendor, 256);
-            func_002465E8(data_00456780, data_00455F80, info->m_id, 3, info->m_product, 256);
+            sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 8, &info->m_flags, 4);
+            sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 2, info->m_vendor, 256);
+            sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 3, info->m_product, 256);
         }
     }
     return n;
