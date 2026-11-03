@@ -12452,7 +12452,7 @@
 0x0062EEB0 0xC func_0062EEB0  # OVL2
 0x0062EEC0 0x6C func_0062EEC0  # OVL2
 0x0062EF30 0xA0 func_0062EF30  # OVL2
-0x0062EFD0 0x2A8 func_0062EFD0  # OVL2
+0x0062EFD0 0x2A8 KM_Initialize  # OVL2; s1:order (the gcc lane, round 8b): the function before KM_Create as SOCOM 1's KM_Initialize is, its body SOCOM 1's (a key pair copied into the server's slot for id 0x80000000, else the client's; null clears it) with a third slot for id -1 tested first
 0x0062F278 0x138 KM_Create  # OVL2 unaligned; s1:align
 0x0062F3B0 0x2C KM_SetLocalClientID  # OVL2; s1:exact
 0x0062F3E0 0x158 KM_SetPublicKey  # OVL2; s1:calls

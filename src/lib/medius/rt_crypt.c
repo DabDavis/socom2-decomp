@@ -7,8 +7,8 @@
  * and that key's two cipher states. Keys are 64 bytes; a cipher state is 0x10C. Names are SOCOM 1's
  * (s1:exact/calls/align: the same object, in the same order, SOCOM II's additions between).
  *
- * Byte-exact: 22 of 24 (the four 0x200-byte cipher functions at 0x630690.. and KM_Initialize's
- * 0x62EFD0 are not written yet). The vendor's shapes, each measured: a leaf's loop wrapped in its
+ * Byte-exact: 23 of 25 (KM_Initialize, round 8b; the four 0x200-byte cipher functions at
+ * 0x630690.. are not written yet). The vendor's shapes, each measured: a leaf's loop wrapped in its
  * positive test (IsNullRSAKey/IsNullRCKey: guard clauses give a second `jr ra`); the null tests of a
  * signature's inputs one `||` (KM_DigiSign/Verify); a positive test around the copy-out with the
  * clearing after it (KM_GetGameSessionKey); one key-master variable reused for both ends
@@ -193,6 +193,28 @@ void RemoveKeyChain(KeyMaster *pKM, KeyChain *pKC)
             pKC->prev->next = pKC->next;
         else
             pKM->pHead = pKC->next;
+    }
+}
+
+/* the software key pairs (round 8b): SOCOM 1's KM_Initialize kept the server's (id 0x80000000) and
+ * the client's; SOCOM II tests a third, id -1's, first. A null pair clears the slot. */
+void KM_Initialize(int nKMID, RSAKeyPair *pKeyPair)
+{
+    if (nKMID == -1) {
+        if (pKeyPair != 0)
+            data_00676340 = *pKeyPair;
+        else
+            memset(&data_00676340, 0, sizeof(RSAKeyPair));
+    } else if (nKMID == (int)0x80000000) {
+        if (pKeyPair != 0)
+            data_00676240 = *pKeyPair;
+        else
+            memset(&data_00676240, 0, sizeof(RSAKeyPair));
+    } else {
+        if (pKeyPair != 0)
+            data_006762C0 = *pKeyPair;
+        else
+            memset(&data_006762C0, 0, sizeof(RSAKeyPair));
     }
 }
 
