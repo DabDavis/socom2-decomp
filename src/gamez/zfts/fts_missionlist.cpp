@@ -351,26 +351,23 @@ void CMultiMissionList::Clear()
     m_18.clear();
 }
 
-/* the missions flagged at 0x1c taken out and deleted (OVL1 0x2C90B0).
- * OPEN, 46 instructions (the frame and the three saved registers right): the target keeps the
- * iterator both in its stack slot (the element read through it, erase's copy made from it) and in
- * s0 (begin loaded there first; the step, `addiu s0,s0,4`, and erase's result written back from
- * it), where here the slot is reloaded each time. Tried: erase's result straight into i (0xDC, two
- * saved registers), an assigned iterator, a for loop with the declaration */
+/* the missions flagged at 0x1c taken out and deleted (OVL1 0x2C90B0). The next element in a
+ * register (s0: erase's result, or the step), the walking iterator in memory (read for the element
+ * and for erase's by-value copy) and assigned from it at the join; the chained initialisation
+ * `i = next = begin()` is what lets the entry test compare the register (`iterator i = next`, a
+ * while loop, a separate begin() or a declared-ahead `i` all reload the iterator's slot there) */
 void CMultiMissionList::Purge()
 {
-    iterator i = begin();
+    iterator next;
 
-    while (i != end()) {
+    for (iterator i = next = begin(); i != end(); i = next) {
         CMultiMission *m = *i;
 
         if (m->m_1c) {
-            iterator next = erase(i);
-
+            next = erase(i);
             delete m;
-            i = next;
         } else
-            ++i;
+            ++next;
     }
 }
 

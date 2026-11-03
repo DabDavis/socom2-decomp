@@ -51,7 +51,11 @@ public:
     KEY_STATE m_state[16];   // 0x1
     unsigned char _11[0x14 - 0x11];
     float m_pressure[16];   // 0x14
-    unsigned char _54[0x210 - 0x54];
+    unsigned char _54[0xd8 - 0x54];
+    int m_port;   // 0xd8: the libpad2 port (zinput.h's)
+    unsigned char _dc[0xe4 - 0xdc];
+    unsigned char m_e4[256];   // 0xe4: the pad's read buffer (zinput.h's)
+    unsigned char _1e4[0x210 - 0x1e4];
     float m_raw[2][2];   // 0x210
     float m_dilated[2][2];   // 0x220
 };
@@ -240,6 +244,24 @@ bool CCtrlrConfigs::IsJumpAndActionShared()
 {
     return g_pCurrentConfig->m_btns[PadBtnFunc::BTN_ACTION] ==
            g_pCurrentConfig->GetButton(PadBtnFunc::BTN_JUMP);
+}
+
+extern "C" int func_001BDA78(int port, unsigned char *data, int n);   /* (libpad2: the pad read) */
+
+/* function 2's button's pressure as the pad reports it, for the two buttons it is asked of (10 and
+ * 9: the pad's bytes 29 and 26), none for any other (OVL1 0x2C6350: CSealCtrl::PreTick's).
+ * OPEN, 1 instruction (0x7C against 0x80): the byte-enum family's lb/andi pair -- the target loads
+ * the button with lb and narrows it with andi 0xff before the first compare, this folds both into
+ * one lbu (the tests' order and the two calls are the target's) */
+extern "C" float func_002C6350(CPad *pad)
+{
+    PAD_BUTTON btn = g_pCurrentConfig->GetButton(2);
+
+    if (btn == 10)
+        return func_001BDA78(pad->m_port, pad->m_e4, 29);
+    if (btn == 9)
+        return func_001BDA78(pad->m_port, pad->m_e4, 26);
+    return 0.0f;
 }
 
 /* the pitch from the current layout's sticks (OVL1 0x2C6280) */
