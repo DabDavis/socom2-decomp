@@ -1729,6 +1729,31 @@ wholly another overlay's copy -- a scorer change for the tools' owner (with the 
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the online lobby, round 11** (the Medius names respelled, the lobby's Tick, the chat callbacks, the
+  friend lists, zNetConnect):
+  - MSL's deque blocks hold AT LEAST 8 elements: include/deque's buf_size is `sizeof(T) * 8 <= 512 ? 512 /
+    sizeof(T) : 8` -- the chat's 112-byte lines go 8 to a block (pop_front 0x2F51E0 keeps 16, the private-line
+    callbacks' inlined front() divide the start by 8, where 512 / 112 would give 4); MediusChatMessage is the only
+    element in the tree past 64 bytes, so the minimum moves nothing else;
+  - MW's CSE treats a field read through a const view and through a non-const one as different expressions
+    (Tick needed zrdr.h's const `Real()` for the float setter to reload the type byte);
+  - a user-declared non-inline destructor counts as the unit's own function and never inlines an out-of-class
+    template member; an implicit destructor's tail copy does (~CLobbySaveModule, ~basic_string) --
+    ~CLobbySaveModule is defined in zNetMediusUniverse.cpp, inside that unit's span, by image order;
+  - stack slots follow declaration order across scopes: per-case buffers declared at function scope ahead of a
+    shared buffer take the top slots; a per-case base and counter, counter declared last, give base s1 and
+    counter s0 in every case;
+  - `if ((err = f()) != 0)` branches on v0 with the copy in the delay slot, `err = f(); if (err)` on the copy; a
+    compare materialised in v0 before a ternary's branch is a bool local (`bool fits = n < 1000; fits ? a : b`);
+    an initialisation the target places after a loop's guard means an explicit guard around a do-while;
+  - on a class iterator `(*i).f` and `i->f` schedule a call's arguments differently; one `&&` chain with both
+    event calls in else-arms lets the inline event's null test branch straight to the epilogue, nested ifs
+    with `return` leave a jump block (AddFriend); a ternary passed to a `char`/`unsigned char` parameter adds
+    an extension, to an `int` parameter it matches (cbFilterChat, the server-message callback);
+  - open: func_0030BD40 (2: the counter's zero ahead of the loop guard), the lobby's Open 0x2E0030 (0x410,
+    unwritten: CZOnlineLobby::Open(host, port), called from UILobbyConnect), the deque instances whose callers
+    are all written now (their sizes against include/deque in the MSL queue), the IgnoreItem class insert
+    0x3022F0 (0x78C against 0x554); func_00300740 is declared bool in both callers' units, as defined.
 - **Tells from the weapons, round 13** (vis_vu.cpp's VU chain, GetChainData, the vid stack):
   - SOCOM II's vid stack is `std::stack<void *>`: its out-of-line empty() (`xor v0,v0,zero; sltiu`) and top()
     (the deque's back() over 128-element blocks inlined) match 0x321F40/0x321EF0, renamed by the integrator;
@@ -1958,7 +1983,9 @@ wholly another overlay's copy -- a scorer change for the tools' owner (with the 
     constructor; returning a member unconverted wants it declared `bool` (`unsigned char` adds an
     sltu); `p[i + k]` through a per-case local pointer stays base-plus-index, while `bytes = p + k`
     is strength-reduced into a walking pointer;
-  - 0x2F62B0 is the chat unit's tail, so zNetMediusLobby.cpp starts at 0x2F6340.
+  - 0x2F62B0 is the chat unit's tail, so zNetMediusLobby.cpp starts at 0x2F6340 (corrected by round 11: the chat
+    deque's instances run to 0x2F6CF7 -- 0x2F6340, 0x2F6600, 0x2F6A70, 0x2F6BC0 are called only from them --, so
+    zNetMediusLobby.cpp starts at 0x2F6D00).
 - **Tells from the HUD, round 21** (st_mpexit.cpp written whole, reco.cpp's gsapi calls by name):
   - a switch's compare chain runs its labels in reverse source order and lays the blocks out in
     source order: Tick's target order 1, 3, 5, 6, 4 is `case 4: break; case 6; case 5: case 3; case 1;`
