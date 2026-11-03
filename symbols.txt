@@ -9075,7 +9075,7 @@
 0x00500EB8 0x8 GetpCachedDistances  # OVL2 unaligned; s1:order (SOCOM 1's distsil object, after ConstructDistCalc as this row; the same body, `return d->f108`) -- the gcc lane, round 16c
 0x00500EC0 0x8 GetDistanceOffset  # OVL2; s1:order (SOCOM 1's distsil object, next; the same body, `return d->f96`) -- the gcc lane, round 16c
 0x00500EC8 0x12C CalculateDistance  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: CalculateDistance after GetDistanceOffset, as this row; the same body -- the tables at +52 summed at the frame's codewords, less +96, as a short) -- the gcc lane, round 16c
-0x00500FF8 0x1B4 func_00500FF8  # OVL2 unaligned
+0x00500FF8 0x1B4 CalculateDistance4Bit  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: CalculateDistance4Bit after CalculateDistance, as here; the same body, 0x1B8 there -- the 4-bit tables' nibble sum) -- the gcc lane, round 17c
 0x005011B0 0x8 IdleDistCalcProcess  # OVL2; s1:slot (ConstructDistCalc hands this row to tosBaseBlockConstruct as its process function, where SOCOM 1's ConstructDistCalc hands IdleDistCalcProcess, 0x36C5E8; the object's last function in both) -- the gcc lane, round 16c
 0x005011B8 0x74 ConstructGenderFilter  # OVL2 unaligned; s1:align
 0x00501230 0x124 ProcessGenderFilter  # OVL2; s1:order (SOCOM 1's object 0x36C5F0 holds ProcessGenderFilter, ConstructGenderFilter, ControlGenderFilter, InitGenderFilter; ConstructGenderFilter passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c

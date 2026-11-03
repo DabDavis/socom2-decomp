@@ -129,7 +129,22 @@ static short CalculateDistance(DISTSIL *d, int n)
     return sum - d->f96;
 }
 
-/* (CalculateDistance4Bit, 0x500FF8, is not written) */
+/* frame n's distance from 4-bit tables (two codewords a byte, the even one in the high nibble):
+ * each nibble, kept in the high four bits, summed, less the offset */
+static short CalculateDistance4Bit(DISTSIL *d, int n)
+{
+    unsigned char **t = d->tables;
+    unsigned char **end = t + d->ntables;
+    unsigned short *idx = d->index + n * d->ntables;
+    int sum = 0;
+    unsigned short c;
+
+    do {
+        c = *idx++;
+        sum += ((*t++)[c >> 1] << ((c & 1) << 2)) & 0xF0;
+    } while (t < end);
+    return sum - d->f96;
+}
 
 static void IdleDistCalcProcess(DISTSIL *d, void **in)
 {
