@@ -5287,6 +5287,62 @@ new, 0x643140 over its draft) -- 26 functions byte-exact, 21 rows new to the map
 (5,464 bytes), 5 superseding matching drafts; 3 rows named (rt_msg_client_get_version_string_ptr,
 KM_Encrypt, KM_Decrypt: `s1:order`). No tool changed.
 
+**Round 13c: ProcessGender, casrOpen, the user-word callbacks; the bnez/bnezl word is the callee's
+definition.**
+
+- **THE bnez/bnezl WORD IS NOT A TOOLCHAIN QUESTION** (rounds 11c and 12c held it open as one): a
+  conditional branch whose fall-through calls a function the object has ALREADY COMPILED keeps the
+  branch target's `move v0,...` in a plain slot (`bnez`, the target's); with the callee only
+  declared, reorg annuls it (`bnezl`). cbDoUserWordTraining (open since round 4b) matched with no
+  change to itself once ExitUserWordTraining was written above it, and tosCallControlFunc once
+  ConstructBlock was (a stand-in body above it gives byte-exact too). So a one-word `bnezl` against
+  a target `bnez` before a call means: write the callee earlier in the same unit. UpdateExevStatus
+  stays open: its fall-through holds no call (the callees defined in the unit do not move it).
+- **A switch on an unsigned value tests by equality** (round 7c's rule, met twice more):
+  ProcessGender's state and cbGenderDisable's mode (open since round 1: "tests 1, 0, 2 with no
+  range check") give the target's 1, 0, 2 chain unsigned and a `slti 2` range test as ints.
+  ProcessGender's state is an enum (filling, chosen, draining).
+- **An inline's local initialiser is evaluated before its first test** -- ProcessGender's frame-in
+  helper reads the write position as a declaration initialiser (the target's load in the input
+  test's slot) in two of its three inlined copies; the chosen state tests the input at the call
+  as well, so the inline's own test folds away and the load follows it. SOCOM 1's ProcessGender has
+  the same three placements, so it is the source's shape. The level is read into a local before
+  the fixed-gender test (the first `in[0]` load then serves it when the copy loop is skipped), the
+  ring's new position is a conditional expression (a copy in a0, where an `if` updates p in place).
+- **casrOpen's six tables**: tosInit takes SOCOM 1's architecture GLOBALs -- IniFile, InitialProcs,
+  QueueWriters, QueueReaders, ControlTable (data.txt `s1:data`: the architecture object is SOCOM
+  1's laid out alike, 0x1FA7A0 higher, ControlTable's STD_ table of 21 state lists included) -- and
+  a local TOSCB initialised with the four scheduler callbacks (cbStateHandler,
+  cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue: the anonymous .rodata
+  block the ldl/ldr copy reads, checked by content). The host's eight callbacks are copied whole
+  (a struct: casr.h's CASRCBTABLE), the log head and the callback info pair are one-element arrays
+  of their records (every `c->event`, `c->info` use stays a pointer).
+- **The training utterances are records**: three at +980 of {frames, the segmentation's length, the
+  segmentation} (round 9c's seginfo was their second word); the user-word callbacks index them
+  through a local index (cbUserWordResultAvailable: a record pointer or a reloaded index move every
+  register); the accepted callbacks store the count, the flag, then the state (ccperm: one order
+  fits both). 2.96 splits each such address into the context plus 4 or 12 and 976 -- the target's
+  -- from plain field accesses.
+- **ConstructBlock's registration helpers are inlines** returning the scheduler's `unsigned char`
+  (an `andi` at each join): an output queue takes the block's element size when it has none, an
+  input queue's reader is numbered down from the queue's count of readers; the scheduler's own
+  record goes through the host's callbacks at the block's control/process slots.
+- **Open, diagnosed in place**: SendPartOfLabelsToEngine (36s: SOCOM 1's order; the target's rotated
+  loop keeps its error blocks in place and reloads the queue pointer in the preheader -- seven loop
+  and guard shapes tried), ConstructBlock (149: the output count's narrowing, two saved registers),
+  and the earlier opens (GenderDataCompute, pitchdp.c's six, UpdateExevStatus, the language file's
+  offset chains, the casr object's large functions).
+
+Hand-written in round 13c: `asr/gender.c` (+1, ProcessGender; 6 of 7), `asr/casr.c` (+4: casrOpen,
+cbGenderDisable closed, cbTrain and cbDTMFDetected over their drafts; 49 of 57), `asr/userword.c` (+7:
+cbUtteranceNotAccepted, cbUtteranceAccepted, cbLastUtteranceAccepted, cbUserWordResultAvailable,
+ExitUserWordTraining, cbDoUserWordTraining closed; SendPartOfLabelsToEngine OPEN; 10 of 11),
+`asr/tos.c` (+1: tosCallControlFunc closed; ConstructBlock OPEN; 15 of 17) -- 12 functions
+byte-exact, 10 rows new to the map's byte-exact rows (3,488 bytes), two superseding matched drafts
+(cbTrain, cbDTMFDetected); `src/lib/asr` 416 of 459 (405 of 449 before). 4 rows named (`s1:order`,
+each body checked: cbUtteranceNotAccepted, cbUtteranceAccepted, cbLastUtteranceAccepted,
+cbScoreUserWordResultAvailable), 5 data rows (`s1:data`). No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
