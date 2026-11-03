@@ -259,7 +259,7 @@ def gcc_variants(body: str, name: str, below: int = 0):
         seen.add(sl)
         yield sl
         body = sl
-    for f in (guard_returns, return_call, unk_char_ptrs, byte_steps, unk_sums):
+    for f in (guard_returns, return_call, unk_char_ptrs, byte_steps, unk_sums, void_callees):
         if not _on(f.__name__.upper()):
             continue
         v = f(body, name)
@@ -295,6 +295,23 @@ def return_call(body: str, name: str) -> str | None:
     lines[k] = "    return " + lines[k][4:]
     out = body[:m.start()] + "s32 " + m.group(1) + "\n".join(lines) + body[end:]
     return re.sub(rf"^void ({re.escape(name)}\([^)]*\);)", r"s32 \1", out, flags=re.M)   # its prototype
+
+
+def void_callees(body: str, name: str) -> str | None:
+    """A callee whose every call discards its value declared void: m2c types an unknown callee
+    M2C_UNK (an int), and a call that sets v0 keeps the result register out of the allocation
+    after it -- the draft's `lui v1` where the target's is `lui v0` (sceSifExitRpc and _sceFsWaitS,
+    byte-exact under 2.9 only with their callees void)."""
+    out = body
+    for m in re.finditer(r"^((?:M2C_UNK|[su](?:8|16|32)|char \*|void \*) )([A-Za-z_]\w*)(\([^;{]*\);)", body, re.M):
+        f = m.group(2)
+        if f == name:
+            continue
+        rest = body[:m.start()] + body[m.end():]
+        uses = re.findall(rf"^(.*?)\b{re.escape(f)}\(", rest, re.M)
+        if uses and all(re.fullmatch(r"\s+", u) for u in uses):
+            out = out.replace(m.group(0), "void " + f + m.group(3), 1)
+    return out if out != body else None
 
 
 def unk_char_ptrs(body: str, name: str) -> str:

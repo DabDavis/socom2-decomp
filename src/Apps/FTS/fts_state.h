@@ -661,6 +661,8 @@ public:
     unsigned short m_4;   // 0x4: 2 when the mission ends the game
 };
 
+struct _zrdr;
+
 class CMission {
 public:
     /* the net-error callback: theMission's _RecoverFromNetError (SOCOM 1's pair, 0x2A45F0) */
@@ -691,7 +693,10 @@ public:
     unsigned char m_netQueue[0x10];   // 0x11b0: the network's messages for the player
     unsigned char _11c0[0x1808 - 0x11c0];
     CZNetGame *m_netGame;   // 0x1808: the online game (SOCOM 1's at 0x584)
-    unsigned char _180c[0x183c - 0x180c];
+    unsigned char _180c[0x1828 - 0x180c];
+    _zrdr *m_subtitles;   // 0x1828 (0x437D08): the films' subtitles rdr, which SetMovie reads (the
+                          // fonts' reader sits before it, FetchMissionFontsRdr's +0x1824)
+    unsigned char _182c[0x183c - 0x182c];
     CStateString m_libname;   // 0x183c: the load screen's asset library's name
     unsigned char _1848[0x1854 - 0x1848];
     unsigned char m_objectives[0xc];   // 0x1854: a list of the mission's objectives

@@ -22,14 +22,19 @@ void UnInit__13CZOnlineLobbyFv(void *lobby);
 
 void func_001EABD0(int argc, char **argv);       /* (the command line taken up) */
 void func_0034F960();                            /* (zSysInit's place) */
-void func_0023B540(void *arg);
 void func_001EAC80();                            /* (the command line let go of) */
 void func_0039C700(int arg);
 void *func_003857C0(void *vars, const char *name, int a, int b);   /* a UI variable made */
 void func_003862A0(void *var, const char *text); /* and its text set */
-
-extern char data_00414680[];
 }
+
+/* the voice recogniser (reco.cpp's CReco; only what main calls): its files loaded */
+class CReco {
+public:
+    bool Load();
+};
+
+extern CReco theReco;
 
 const char *GetDatabase();
 extern char theUIVarManager[];
@@ -86,14 +91,14 @@ void COurGame::StopEngine()
 }
 
 /* the overlay's entry (the boot loader's main runs it): the command line, the thread's priority,
- * the systems, the engine and play started, the build's version string set for the UI, then the
+ * the systems, the recogniser's files, the engine and play started, the build's version string set for the UI, then the
  * game ticked forever (SOCOM 1's main; the version is "SOCOM 2 r0001 " __TIME__ " " __DATE__) */
 int main(int argc, char **argv)
 {
     func_001EABD0(argc, argv);
     ChangeThreadPriority(GetThreadId(), 5);
     func_0034F960();
-    func_0023B540(data_00414680);
+    theReco.Load();
     func_001EAC80();
     func_0039C700(0);
     theGame.StartEngine();
