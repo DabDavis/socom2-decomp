@@ -367,9 +367,40 @@ inline bool operator!=(const CAiMapLoc &a, const CAiMapLoc &b)
     return a.x != b.x || a.y != b.y;
 }
 
+/* the straight distance between two cells, in cells (new in SOCOM II, the name ours: out of line
+ * at 0x52F330 where the walk's length is inlined one level -- SOCOM 1's called sqrtf) */
+inline float GetCellDistance(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = a.x - b.x;
+    int dy = a.y - b.y;
+
+    return sqrtf(dx * dx + dy * dy);
+}
+
 /* a run of cells (SOCOM 1's DWARF: a vector of CAiMapLoc and nothing more) */
 class CAiMapLocVec : public std::vector<CAiMapLoc> {
 public:
+    /* the run's length: the straight distances between its cells summed (SOCOM 1's ComputeLength,
+     * out of line there, 0x19DEA0; CAiMap::CreateGraph inlines it one level -- empty, begin, the
+     * cells' constructor, *, the cells' assignment, postfix ++, end, != and the distance called) */
+    float ComputeLength() const
+    {
+        float len = 0.0f;
+
+        if (!empty()) {
+            const_iterator i = begin();
+            CAiMapLoc prev;
+            CAiMapLoc cur;
+
+            prev = *i;
+            for (i++; i != end(); i++) {
+                cur = *i;
+                len += GetCellDistance(prev, cur);
+                prev = cur;
+            }
+        }
+        return len;
+    }
     /* every copy of a cell taken out (the name ours: CAiMaps::SetRegionType inlines it one level) */
     void Remove(const CAiMapLoc &loc)
     {
@@ -816,6 +847,10 @@ public:
      * has none there (SOCOM 1's TransformTo, by its place: 0x517050, between the repel parameters
      * and ResetCells as the demo's 0x185B50; CAiMaps::GetLocationDelta's two calls) */
     bool TransformTo(const CAiMapLoc &loc, CAiMap *map, CAiMapLoc &out);
+    /* how a cell pushes a point away: the direction and its length, the cell that pushes (SOCOM 1's
+     * GetCellRepelParams, by its place and its wrapper's call: 0x5169B0; the cell new) */
+    bool GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
+                            CAiMapLoc &cell);
     /* the file's cell count, by value (the name ours: GetLocationDelta hands two to _max through
      * temporaries) */
     unsigned int GetCellCount() const { return m_cellcount; }
@@ -915,6 +950,13 @@ public:
     static bool _validate_cell(const MAP_FOREACH_STRUCT &s, void *data);
     /* bit 1 of the flags: the map changed since it was read (the names ours) */
     bool IsModified() const { return (m_flags & 2) != 0; }
+    /* flags cleared, then set, a word read-modify-write each (the name ours, after CAiPath's:
+     * CreateGraph's bit 0 set with a clear of 0 leaves the zero extension, dsll32/dsrl32) */
+    void SetFlags(unsigned int set, unsigned int clear)
+    {
+        m_flags &= ~clear;
+        m_flags |= set;
+    }
     bool SetModified(bool modified);
     /* a link set on a cell or taken off it, the cell marked and the map changed (new in SOCOM II,
      * the name ours: 0x5307A0) */

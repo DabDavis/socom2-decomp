@@ -38,6 +38,10 @@ public:
     /* the cell's map (new in SOCOM II, the name ours) */
     CAiMap *GetMap(const CAiMapLoc &loc) const;
     CAiCell *GetCell(const CAiMapLoc &loc);
+    /* the cell's map's repel parameters, false off the maps (SOCOM 1's; ai_map.cpp's 0x516F10, which
+     * asks AiMaps, not `this`, as SOCOM 1's does) */
+    bool GetCellRepelParams(const CAiMapLoc &loc, const CPnt3D *pos, float range, CPnt3D &dir, float &len,
+                            CAiMapLoc &cell);
     unsigned int GetBoundary(const CAiMapLoc &loc);
     bool GetAltitude(const CAiMapLoc &loc, float &alt);
     /* the shadow at a point over a cell, blended over the cell and its three neighbours toward
