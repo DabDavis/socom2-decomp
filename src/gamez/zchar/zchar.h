@@ -356,6 +356,27 @@ public:
  * code reads them */
 namespace zdb { class CNode; }
 
+/* a character's voice mask: six figures CCharacterType::Parse reads off the type's "VoiceFont"
+ * block, each tag named after its setter ("SetPitchOffset" ... "SetWhisperFactor") -- new in
+ * SOCOM II, the names after those tags. The armory's character change (UIChangeCharacterType)
+ * reads them through the getters, out of line (0x53B010-0x53B06F, defined last in char_type.cpp) */
+class CVoiceFont {
+public:
+    float GetPitchOffset() const;
+    float GetSpectralFactor() const;
+    float GetSpectralLedge() const;
+    float GetRoboOffset() const;
+    float GetRoboSquash() const;
+    float GetWhisperFactor() const;
+
+    float m_pitchOffset;   // 0x0
+    float m_spectralFactor;   // 0x4
+    float m_spectralLedge;   // 0x8
+    float m_roboOffset;   // 0xc
+    float m_roboSquash;   // 0x10
+    float m_whisperFactor;   // 0x14
+};
+
 class CCharacterType {
 public:
     /* a level of detail: a model file and name and the distance it starts at (SOCOM 1's global
@@ -423,8 +444,7 @@ public:
     unsigned char m_istemporary;   // 0x300
     AI_PARAMS m_aiParams;   // 0x304
     HEALTH_PARAMS m_healthParams;   // 0x340
-    unsigned char MultiplayerMessages[0xc];   // 0x388: CMultiplayerMsgVec
-    unsigned char m_unk394[0xc];   // 0x394: new in SOCOM II, not laid out yet
+    CVoiceFont m_voiceFont;   // 0x388
     /* the multiplayer messages (SOCOM II's, 0x3A0: ClearMultiplayerMessageSounds 0x53BB00 walks
      * them and zeroes each one's sound) */
     CMultiplayerMsgVec m_mpMessages;   // 0x3a0

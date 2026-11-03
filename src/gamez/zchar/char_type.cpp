@@ -633,3 +633,37 @@ CCharacterType *CCharacterType::RdrFetch_CharacterType(const char *name)
     zrdr_free(rdr);
     return t;
 }
+
+/* the voice font's figures (new in SOCOM II, the names after chartype.rdr's VoiceFont tags): the
+ * file's last definitions, so the first of its functions in the image (0x53B010-0x53B06F, right
+ * before PadWeaponSlots) -- they could as well close ai_perception.cpp, the unit before: the bytes
+ * are the same either way */
+float CVoiceFont::GetPitchOffset() const
+{
+    return m_pitchOffset;
+}
+
+float CVoiceFont::GetSpectralFactor() const
+{
+    return m_spectralFactor;
+}
+
+float CVoiceFont::GetSpectralLedge() const
+{
+    return m_spectralLedge;
+}
+
+float CVoiceFont::GetRoboOffset() const
+{
+    return m_roboOffset;
+}
+
+float CVoiceFont::GetRoboSquash() const
+{
+    return m_roboSquash;
+}
+
+float CVoiceFont::GetWhisperFactor() const
+{
+    return m_whisperFactor;
+}

@@ -9812,17 +9812,17 @@
 0x0053A9C0 0x8C __ct__11CAiMapLayerFPCc  # OVL2; ours (new in SOCOM II: a map layer's constructor -- its name copied in (16 bytes, the last kept zero) or emptied, its words cleared, flag 1 set; CAiMap(int) builds its first layer with it, a name of 0)
 0x0053AA50 0x6C func_0053AA50  # OVL2
 0x0053AAC0 0x120 func_0053AAC0  # OVL2; OVL2's copy of the pod vector's erase (OVL1 0x28B150, the same 0x120 bytes; CCharacterType::CleanupTemporary's erase calls it, as SOCOM 1's calls erase__Q23std38__vector_pod<Ui,...>FPUiPUi); ovl-copy: erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi
-0x0053ABE0 0x238 func_0053ABE0  # OVL2
-0x0053AE20 0xC8 func_0053AE20  # OVL2
-0x0053AEF0 0x3C func_0053AEF0  # OVL2
-0x0053AF30 0x24 func_0053AF30  # OVL2
-0x0053AF60 0xAC func_0053AF60  # OVL2
-0x0053B010 0x8 func_0053B010  # OVL2
-0x0053B020 0x8 func_0053B020  # OVL2
-0x0053B030 0x8 func_0053B030  # OVL2
-0x0053B040 0x8 func_0053B040  # OVL2
-0x0053B050 0x8 func_0053B050  # OVL2
-0x0053B060 0x8 func_0053B060  # OVL2
+0x0053ABE0 0x238 Compute__13CAiPerceptionFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the target scan 0x60AA20 builds the object on its stack, sets the range and five factors, then calls it for the score -- each valid factor's response per range band (the 6x4 curve table 0x64FA80) weighted by the band's row of 0x64FBA0, the sum scaled by the row's seventh; ai_perception.cpp)
+0x0053AE20 0xC8 SetRange__13CAiPerceptionFf  # OVL2; ours, the AI core round 13 (new in SOCOM II: the target scan's call with the range -- the band from 100.0, 0.7, 0.3 at 0x64FC10, the fraction left of the maximum range (0x64FA70, its inverse 0x64FA78) as factor 0, its valid bit set; ai_perception.cpp)
+0x0053AEF0 0x3C __ct__13CAiPerceptionFUiUi  # OVL2; ours, the AI core round 13 (new in SOCOM II: the target scan's object built from the viewer's and the target's entity ids (CEntity::m_id, +4), band 2, no factor valid, the weights normalised; ai_perception.cpp)
+0x0053AF30 0x24 SetMaxRange__13CAiPerceptionFf  # OVL2; ours, the AI core round 13 (new in SOCOM II: the turret (OVL1 0x3A82C0) and the sensors (0x5C9B30) set the maximum range and its inverse, 0x64FA70/0x64FA78; ai_perception.cpp)
+0x0053AF60 0xAC NormalizeWeights__13CAiPerceptionFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the constructor's call -- each band's six weights at 0x64FBA0 scaled to sum to one; ai_perception.cpp)
+0x0053B010 0x8 GetWhisperFactor__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: CCharacterType's voice font at +0x388, read by UIChangeCharacterType 0x2795E0 as the sixth figure; Parse fills +0x39C from chartype.rdr's VoiceFont tag "SetWhisperFactor"; char_type.cpp's last definition)
+0x0053B020 0x8 GetRoboSquash__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's +0x10, Parse's "SetRoboSquash"; UIChangeCharacterType's fifth figure)
+0x0053B030 0x8 GetRoboOffset__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's +0xC, Parse's "SetRoboOffset"; UIChangeCharacterType's fourth figure)
+0x0053B040 0x8 GetSpectralLedge__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's +8, Parse's "SetSpectralLedge"; UIChangeCharacterType's third figure)
+0x0053B050 0x8 GetSpectralFactor__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's +4, Parse's "SetSpectralFactor"; UIChangeCharacterType's second figure)
+0x0053B060 0x8 GetPitchOffset__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's first word, Parse's "SetPitchOffset"; UIChangeCharacterType's first figure)
 0x0053B070 0xE4 PadWeaponSlots__18CCharacterWeapListFv  # OVL2; ours, the AI core round 12 (new in SOCOM II: CreateCustomCharTypes calls it on a custom type's weapons at +0x2E8; for each weapon whose GetIDType is not 145, OVL1's 0x3D3750 slot count, and InsertWeapon(i + j + 1, EQUIP_END) for each slot past the first)
 0x0053B160 0x194 InsertWeapon__18CCharacterWeapListFi10EQUIP_ITEM  # OVL2; ours, the AI core round 12 (new in SOCOM II: a CCharacterWeap built and set up for the item -- SetupCharacterWeapon inlined, so char_type.cpp's -- then from the index on each weapon swapped through a held copy, the last pushed through the class insert 0x53FD60; 0x53B070 calls it with EQUIP_END)
 0x0053B300 0x9C RemoveWeapon__18CCharacterWeapListF10EQUIP_ITEM  # OVL2; s1:order by hand, the AI core round 12 (SOCOM 1's RemoveWeapon 0x247720, char_type.cpp's first function in the demo and its last here, right before AddWeapon and GetWeaponByIndex: the end taken, remove_if with compare_item(item) by value, erase(i, e), i != e returned -- byte-exact from source)
