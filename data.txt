@@ -1425,6 +1425,7 @@
 0x0066A198 0x8 s_dummy_cell  # OVL2 bss; SOCOM 1's dummy cell (dummy_cell__6CAiMapFv returned its gp address): __sinit_ai_map.cpp builds it through CAiCell(); 1 reference in 1 function so far
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
 0x0066A4B8 0x4 s_soundNameBytes  # OVL2 bss; ours, the AI core round 13 (char_type.cpp's static: ParseSounds 0x53BEF0 adds each kept sound name's length to it; nothing reads it -- a debug total, likely); 2 references in 1 function
+0x0066A4C0 0x4 s_angleUnitsDeg  # OVL2 bss; ours, the AI core round 14 (char_type.cpp's static: CCharacterType::Open 0x53E220 sets it to 1 when chartype.rdr's "AngleUnits" is "DEG", else 0, and scales the AI accuracy angle and each gear's rotation by pi/180 while it is 1); 5 references in 1 function
 0x0066A4D0 0x11 SessionKey  # OVL2 bss; s1 by hand (SOCOM 1's SessionKey: every Medius request copies these 17 bytes to its +0x15, as SOCOM 1's do); size SOCOM 1's; 91 references in 78 functions
 0x0066A4F0 0x44 AccountInfo  # OVL2 bss; s1 by hand (SOCOM 1's AccountInfo: QuitClan sends its first word as the player's account, IsLeaderOfClan compares it, the account name at +4); size SOCOM 1's; 46 references in 29 functions
 0x0066A538 0x4 LobbyWorldID  # OVL2 bss; s1 by hand (SOCOM 1's LobbyWorldID: RejoinRoom 0x2E3730 goes back to the room only when it is not negative, as SOCOM 1's does; JoinRoom stores it); size SOCOM 1's; 12 references in 9 functions

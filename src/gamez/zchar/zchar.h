@@ -443,6 +443,10 @@ public:
      * strength, health, voice font, levels of detail, AI parameters and sounds (SOCOM 1's; OVL2
      * 0x53CE00, Open's) */
     bool Parse(_zrdr *rdr);
+    /* chartype.rdr read: the body items' and gear nodes' names registered, the angle units, the AI
+     * accuracy, every gear, then each character -- a name, an optional ": base", a record -- made,
+     * parsed and listed (SOCOM 1's; OVL2 0x53E220, CMission::Init's) */
+    static bool Open(const char *file);
     static CCharacterType *RdrFetch_CharacterType(const char *name);
     /* a type's weapons replaced by the eight a packed loadout holds, up to its first empty one
      * (SOCOM 1's UnPack, 0x53EC60: CZSealBody's remote respawn and creation call it) */

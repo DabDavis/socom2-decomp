@@ -17,6 +17,8 @@
  * name alone; SOCOM II passes a second argument, zero here) */
 extern "C" CRdrFile *func_0032C040(const char *name, const char *archive);
 const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 void zrdr_free(CRdrFile *file);
 extern "C" int strcasecmp(const char *, const char *);
 
@@ -24,6 +26,12 @@ extern "C" int strcasecmp(const char *, const char *);
  * here) */
 class CCharacterGear {
 public:
+    /* nothing yet (Open's `new`: the seven words zeroed, the offset and rotation left) */
+    CCharacterGear()
+        : m_ref_count(0), m_partid(0), m_gearid(0), m_name(0), m_model_file(0), m_model_name(0), m_model(0)
+    {
+    }
+
     int m_ref_count;   // 0x0
     int m_partid;   // 0x4
     unsigned int m_gearid;   // 0x8
@@ -31,6 +39,8 @@ public:
     char *m_model_file;   // 0x10
     char *m_model_name;   // 0x14
     void *m_model;   // 0x18
+    CPnt3D m_offset;   // 0x1c
+    CPnt3D m_rotation;   // 0x28
 };
 
 /* every gear let go: its model and its count zeroed; the first one still held makes a walk of the
@@ -173,6 +183,201 @@ CCharacterType *CCharacterType::Create(const char *name, const CCharacterType *b
         t = 0;
     }
     return t;
+}
+
+CRdrFile *zrdr_read(const char *name, const char *path, int flags);
+bool zrdr_toREAL(const _zrdr *rdr, float *out, int n);
+
+/* a body part's and a gear node's id by name (OVL2 0x58CB30 -- SOCOM 1's BodyId -- and 0x58CA60, the
+ * SEAL lane's rows) */
+extern "C" int func_0058CB30(const char *name);
+extern "C" void func_0058CA60(const char *name);
+
+/* the AI's aiming spread (zseal.h's class; only the setter here) */
+class CSealCtrlAi {
+public:
+    static void SetAiAccuracyAngle(float angle);
+};
+
+/* chartype.rdr, kept once read (OVL1 bss 0x44CD30: only Open stores it) */
+extern CRdrFile *data_0044CD30;
+
+/* the file's angles in degrees ("AngleUnits" "DEG"): 1, else 0 (OVL2 bss 0x66A4C0) */
+static int s_angleUnitsDeg;
+
+/* a copy of the name without its extension, none for none (SOCOM 1's helper at char_type.cpp's line
+ * 93, which its debug _strdup names) */
+static inline char *DupBaseName(const char *s)
+{
+    char *r;
+
+    if (!s) {
+        r = 0;
+    } else {
+        r = _strdup(s, 0, 0);
+        char *dot = strchr(r, '.');
+
+        if (dot)
+            *dot = 0;
+    }
+    return r;
+}
+
+/* whether the item is that string (the name ours: an inline bool ternary -- the target materialises
+ * the compare (xor with zero, sltiu) and masks the joined result before it branches; an if/else or
+ * an && in the helper branch on the type or keep the result in another register) */
+static inline bool IsToken(const _zrdr *item, const char *token)
+{
+    return item->type == 3 ? strcmp(token, item->string) == 0 : false;
+}
+
+/* the type file read and kept: the body items' names registered as body parts (but "gear_nodes"),
+ * then the gear nodes' as nodes; the angle units; the AI's accuracy angle; each gear -- name, model
+ * and a three-item "ofs" (its node, offset and rotation) -- made and listed, the walk stopped at the
+ * first malformed one; then the characters, a little machine over the list: a name, an optional ":"
+ * and the base type's name, then the record, each type made from its base, parsed and listed or
+ * deleted. The type list's room grown by 32 (SOCOM 1's, the gear's rotation and the base new) */
+bool CCharacterType::Open(const char *file)
+{
+    m_anim_set_names.clear();
+    CRdrFile *rdr = zrdr_read(file, 0, 0);
+
+    if (rdr) {
+        data_0044CD30 = rdr;
+        _zrdr *items = func_0032F0D0((_zrdr *)rdr, "body_items");
+
+        if (items && items->type == 4) {
+            for (unsigned int i = 0; i < items->Count(); i++)
+                if (items->Item(i)->type == 3 && strcasecmp(items->Item(i)->String(), "gear_nodes"))
+                    func_0058CB30(items->Item(i)->String());
+
+            _zrdr *nodes = func_0032F0D0((_zrdr *)rdr, "gear_nodes");
+
+            if (nodes && nodes->type == 4) {
+                for (unsigned int i = 0; i < nodes->Count(); i++)
+                    if (nodes->Item(i)->type == 3)
+                        func_0058CA60(nodes->Item(i)->String());
+            }
+        }
+
+        const char *units = zrdr_findstring((_zrdr *)rdr, "AngleUnits");
+
+        if (units && !strcmp(units, "DEG"))
+            s_angleUnitsDeg = 1;
+        else
+            s_angleUnitsDeg = 0;
+
+        _zrdr *ai = func_0032F0D0((_zrdr *)rdr, "ai_settings");
+        float angle;
+
+        if (ai && zrdr_findreal(ai, "accuracy_angle", &angle, 1)) {
+            if (s_angleUnitsDeg == 1)
+                angle *= 0.017453292f;
+            CSealCtrlAi::SetAiAccuracyAngle(angle);
+        }
+
+        _zrdr *gear = func_0032F0D0((_zrdr *)rdr, "gear");
+
+        if (gear && gear->type == 4) {
+            for (int i = 0; i < gear->Count(); i++) {
+                bool bad = false;
+                _zrdr *g = gear->Item(i);
+                const char *name = zrdr_findstring(g, "name");
+                const char *model = zrdr_findstring(g, "model");
+                _zrdr *ofs = func_0032F0D0(g, "ofs");
+
+                if (model && ofs && ofs->Count() == 3) {
+                    const char *node = ofs->Item(0)->String();
+                    float pos[3];
+                    float rot[3];
+
+                    if (node && zrdr_toREAL(ofs->Item(1), pos, 3) && zrdr_toREAL(ofs->Item(2), rot, 3)) {
+                        CCharacterGear *cg = new CCharacterGear;
+
+                        cg->m_model_file = _strdup(model, 0, 0);
+                        cg->m_model_name = DupBaseName(model);
+                        cg->m_name = name ? _strdup(name, 0, 0) : DupBaseName(model);
+                        cg->m_offset = *(CPnt3D *)pos;
+                        if (s_angleUnitsDeg == 1)
+                            rot[0] *= 0.017453292f;
+                        if (s_angleUnitsDeg == 1)
+                            rot[1] *= 0.017453292f;
+                        if (s_angleUnitsDeg == 1)
+                            rot[2] *= 0.017453292f;
+                        cg->m_rotation = *(CPnt3D *)rot;
+                        cg->m_partid = func_0058CB30(node);
+                        func_0058CA60(name);
+                        m_gear_list.push_back(cg);
+                    } else {
+                        bad = true;
+                    }
+                } else {
+                    bad = true;
+                }
+                if (bad)
+                    break;
+            }
+        }
+
+        _zrdr *chars = func_0032F0D0((_zrdr *)rdr, "characters");
+
+        if (chars && chars->type == 4) {
+            unsigned int i = 0;
+            CCharacterType *base = 0;
+            int state = 0;
+            const char *name = 0;
+
+            do {
+                _zrdr *item = chars->Item(i);
+
+                if (!item)
+                    break;
+                switch (state) {
+                case 0:
+                    name = item->String();
+                    state = name ? 1 : -state;
+                    i++;
+                    if (strstr(name, "m83"))
+                        printf("");
+                    break;
+                case 1:
+                    if (IsToken(item, ":")) {
+                        i++;
+                        state = 2;
+                    } else {
+                        state = 3;
+                    }
+                    break;
+                case 2: {
+                    const char *b = item ? item->String() : 0;
+
+                    base = GetByNameMod(b);
+                    state = base ? 3 : -state;
+                    i++;
+                    break;
+                }
+                case 3:
+                    if (item->type == 4) {
+                        CCharacterType *t = new CCharacterType(name, base);
+
+                        if (t->Parse(item))
+                            m_char_list.push_back(t);
+                        else
+                            delete t;
+                        state = 0;
+                        i++;
+                        name = 0;
+                    } else {
+                        state = -state;
+                    }
+                    base = 0;
+                    break;
+                }
+            } while (state >= 0);
+        }
+    }
+    m_char_list.reserve(m_char_list.size() + 32);
+    return true;
 }
 
 /* a temporary type deleted, true if it was (SOCOM 1's; CleanupTemporary's remove_if predicate).
@@ -495,9 +700,6 @@ CCharacterType *CCharacterType::Acquire() const
     return 0;
 }
 
-bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
-bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
-
 /* the type's record (SOCOM 1's, whose LOD names went through a string's find and replace): the
  * model and texture names, the controller, the anim sets (each name the list's copy), the default
  * gear (found by name in the gear list) and weapons (each with its ammunition and counts), the
@@ -597,18 +799,7 @@ bool CCharacterType::Parse(_zrdr *rdr)
     }
     if (model) {
         m_model_file = _strdup(model, 0, 0);
-        char *name;
-
-        if (!model) {
-            name = 0;
-        } else {
-            name = _strdup(model, 0, 0);
-            char *dot = strchr(name, '.');
-
-            if (dot)
-                *dot = 0;
-        }
-        m_model_name = name;
+        m_model_name = DupBaseName(model);
     }
     if (texture) {
         if (m_texture_asset)
