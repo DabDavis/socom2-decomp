@@ -22,18 +22,54 @@
 
 typedef struct CRITSEC CRITSEC;
 
-typedef struct USWPARAMS {              /* a user word's training parameters (24 bytes) */
-    int f0[4];
-    int f16;                            /* +16 */
-    int f20;                            /* +20 */
-} USWPARAMS;
+/* the host's signal callbacks (SOCOM 1's AsrSpiSignalCallBacks: asrspi_cbAbnorm,
+ * asrspi_cbSpeechDetected, asrspi_cbTsDetected, asrspi_cbAgc, asrspi_cbEnergyLevel,
+ * asrspi_cbSNRLevel), copied into the engine */
+typedef struct SIGNALCB {
+    int (*abnorm)(int what, int value, int user);       /* +0 */
+    int (*speech_detected)(int frame, int user);        /* +4 */
+    int (*ts_detected)(int frame, int user);            /* +8 */
+    int (*agc)(int gain, int user);                     /* +12 */
+    int (*energy_level)(int level, int user);           /* +16 */
+    int (*snr_level)(int level, int user);              /* +20 */
+} SIGNALCB;
+
+/* the host's recognition callbacks (SOCOM 1's AsrSpiRecogCallBacks: asrspi_cbResult and the
+ * signal callbacks); a user word's training passes its trained callback in the first slot */
+typedef struct RECOGCB {
+    void *result;                       /* +0 */
+    SIGNALCB *signal;                   /* +4 */
+} RECOGCB;
 
 typedef int (*USWTRAINED)(void *rec, void *rec_info, int user);
 
-typedef struct USWCB {                  /* asrspi_UswStartRecording's callbacks */
-    USWTRAINED trained;                 /* +0: the word is trained: its recording */
-    USWPARAMS *params;                  /* +4 */
-} USWCB;
+typedef struct CASRRESULT {             /* what the casr engine reports a result with */
+    int f0;
+    int f4;
+    unsigned int status;                /* +8: an enum (unsigned: the switch tests 0 by equality) */
+} CASRRESULT;
+
+typedef struct RESULT {                 /* the result the host's callback receives */
+    int kind;                           /* +0 */
+    int f4;                             /* +4 */
+    int f8;                             /* +8 */
+} RESULT;
+
+typedef struct CONTEXTV2 {              /* a context's accessors (contextv2.c) */
+    int *data;
+    int (*CheckDataType)(struct CONTEXTV2 *c);
+    int (*GetSize)(struct CONTEXTV2 *c);
+    char *(*GetLanguageVersionInfo)(struct CONTEXTV2 *c);
+    void *fn[17];
+} CONTEXTV2;
+
+typedef struct LANG {                   /* a language's accessors (language.c) */
+    int *data;
+    int (*CheckDataType)(struct LANG *l);
+    int (*GetSize)(struct LANG *l);
+    char *(*GetVersionInfo)(struct LANG *l);
+    void *fn[75];
+} LANG;
 
 typedef struct ASRSPI {
     int magic;                          /* +0: ASRSPI_MAGIC */
@@ -43,7 +79,7 @@ typedef struct ASRSPI {
     void *data;                         /* +16: the active language (casrImportData) */
     int user;                           /* +20: the host's data, passed to its callbacks */
     int pad24;
-    int utt_accepted;                   /* +28: the training's events (ASRSPICBTRAIN) */
+    int got_result;                     /* +28: a result or an accepted utterance arrived */
     int trained;                        /* +32 */
     int utt_done;                       /* +36 */
     void *rec;                          /* +40: the user word's recording */
@@ -52,18 +88,15 @@ typedef struct ASRSPI {
     int state;                          /* +52 */
     int busy;                           /* +56 */
     int mode;                           /* +60 */
-    int pad64[3];
-    USWPARAMS params;                   /* +76 */
-    int (*agc)(int gain, int user);     /* +100 */
+    RESULT result;                      /* +64 */
+    SIGNALCB signal;                    /* +76 */
+    int (*result_cb)(RESULT *r, int user);      /* +100 */
     USWTRAINED trained_cb;              /* +104 */
     unsigned short gain;                /* +108 */
     int aborting;                       /* +112 */
     int pad116;
     int open_mode;                      /* +120 */
-    struct {                            /* +124: the active context's accessors */
-        int *data;
-        void *fn[20];                   /* FillContextV2VirtualTable */
-    } ctxv2;
+    CONTEXTV2 ctxv2;                    /* +124: the active context's accessors */
     void *heap;                         /* +208 */
     CRITSEC *cs;                        /* +212 */
 } ASRSPI;                               /* 0xD8 */
@@ -72,6 +105,17 @@ typedef struct CASRCB {                 /* what the casr engine hands its callba
     void *f0;
     ASRSPI *engine;                     /* +4: casrOpen's user data */
 } CASRCB;
+
+typedef struct CASRCALLBACKS {          /* the callbacks casrOpen takes */
+    int (*ts)(int frame, CASRCB *cb);
+    int (*startdet)(int frame, CASRCB *cb);
+    int (*result)(CASRRESULT *res, CASRCB *cb);
+    void *f12;
+    int (*train)(int event, CASRCB *cb);
+    int (*abnorm)(int event, int value, CASRCB *cb);
+    int (*agc)(int gain, CASRCB *cb);
+    int (*askgain)(CASRCB *cb);
+} CASRCALLBACKS;
 
 extern int critsec_Enter(CRITSEC *cs);
 extern int critsec_Leave(CRITSEC *cs);
@@ -89,13 +133,18 @@ extern int casrStartUserWordTraining(CASR *c, void **rec, void **rec_info);
 extern void heap_Free(void *heap, void *p);
 extern void *memset(void *p, int c, unsigned int n);
 extern void *heap_Calloc(void *heap, int count, int size);
-extern void *casrOpen(void *heap, const void *callbacks, ASRSPI *e);
+extern void *casrOpen(void *heap, const CASRCALLBACKS *callbacks, ASRSPI *e);
 extern int casrClose(CASR *c);
 extern int casrCloseData(void *data);
 extern void *casrImportData(void *heap, int *data);
 extern int casrActivateData(CASR *c, void *data);
 extern int casrActivateContext(CASR *c, void *ctx, int a2);
-extern void FillContextV2VirtualTable(void **vt);
+extern int casrGetSPIVersion(void);
+extern int casrGainSet(CASR *c, unsigned short gain);
+extern void FillContextV2VirtualTable(CONTEXTV2 *vt);
+extern void FillLanguageVirtualTable(LANG *vt);
+extern void *heap_Alloc(void *heap, int size);
+extern void *memcpy(void *d, const void *s, unsigned int n);
 
 typedef struct SAFEH {                  /* a safe handle, passed by value */
     int id;
@@ -109,16 +158,16 @@ typedef struct RSRC {                   /* the resources InitRsrcFunction hands 
 
 extern int InitRsrcFunction(SAFEH h, RSRC **rsrc);
 
-int ASRSPICBTS(int event, CASRCB *cb);
-int ASRSPICBSTARTDET(int event, CASRCB *cb);
-int ASRSPICBRESULT(int event, CASRCB *cb);
+int ASRSPICBTS(int frame, CASRCB *cb);
+int ASRSPICBSTARTDET(int frame, CASRCB *cb);
+int ASRSPICBRESULT(CASRRESULT *res, CASRCB *cb);
 int ASRSPICBTRAIN(int event, CASRCB *cb);
-int ASRSPICBABNORM(int event, CASRCB *cb);
-int ASRSPICBAGC(int event, CASRCB *cb);
-int ASRSPICBASKCURRENTGAIN(int event, CASRCB *cb);
+int ASRSPICBABNORM(int event, int value, CASRCB *cb);
+int ASRSPICBAGC(int gain, CASRCB *cb);
+int ASRSPICBASKCURRENTGAIN(CASRCB *cb);
 
-static const long UswVersionCode = 0x16000001;
-static const long g_ApiVersion = 0;
+static const int UswVersionCode = 0x16000001;
+static const int g_ApiVersion = 0;
 const int _sizeof_asrspi_engine = sizeof(ASRSPI);
 
 /* the error a call answers when the engine's state does not allow it */
@@ -245,7 +294,7 @@ int ASRSPICBTRAIN(int event, CASRCB *cb)
         if (e->aborting)
             err = casrAcknowledge(e->casr, 3);
         else
-            e->utt_accepted = 1;
+            e->got_result = 1;
         break;
     case 2:
         err = casrAcknowledge(e->casr, 1);
@@ -269,18 +318,18 @@ int ASRSPICBTRAIN(int event, CASRCB *cb)
 }
 
 /* the callbacks casrOpen registers for every engine */
-static int (*const g_APIRecogCallBacks[8])(int event, CASRCB *cb) = {
+static const CASRCALLBACKS g_APIRecogCallBacks = {
     ASRSPICBTS, ASRSPICBSTARTDET, ASRSPICBRESULT, 0,
     ASRSPICBTRAIN, ASRSPICBABNORM, ASRSPICBAGC, ASRSPICBASKCURRENTGAIN,
 };
 
-int asrspi_UswStartRecording(ASRSPI *e, int mode, USWCB *cb, int user, int setparams)
+int asrspi_UswStartRecording(ASRSPI *e, int mode, RECOGCB *cb, int user, int setparams)
 {
     int err;
 
     if (cb == 0)
         return ASRSPI_E_NULLPTR;
-    if (mode == 0 && cb->params && (cb->params->f16 || cb->params->f20))
+    if (mode == 0 && cb->signal && (cb->signal->energy_level || cb->signal->snr_level))
         return 0x80040016;
     ENGINE_CHECK(e);
     ENGINE_ENTER(e);
@@ -289,18 +338,18 @@ int asrspi_UswStartRecording(ASRSPI *e, int mode, USWCB *cb, int user, int setpa
         ENGINE_LEAVE(e);
         return err;
     }
-    e->utt_accepted = 0;
+    e->got_result = 0;
     e->trained = 0;
     if (e->state == 6 && e->rec)
         heap_Free(e->heap, e->rec);
     e->mode = mode;
     e->rec = 0;
     e->rec_info = 0;
-    if (cb->params)
-        e->params = *cb->params;
+    if (cb->signal)
+        e->signal = *cb->signal;
     else
-        memset(&e->params, 0, sizeof e->params);
-    e->trained_cb = cb->trained;
+        memset(&e->signal, 0, sizeof e->signal);
+    e->trained_cb = cb->result;
     e->user = user;
     if (setparams && (casrSetParam(e->casr, 6, 300) || casrSetParam(e->casr, 4, 300)
                       || casrSetParam(e->casr, 8, 50) || casrSetParam(e->casr, 7, 50))
@@ -322,7 +371,7 @@ int asrspi_UswContinue(ASRSPI *e, int accept, int *trained)
         return ASRSPI_E_NULLPTR;
     ENGINE_CHECK(e);
     ENGINE_ENTER(e);
-    e->utt_accepted = 0;
+    e->got_result = 0;
     err = StateError1(e, 5);
     if (err) {
         ENGINE_LEAVE(e);
@@ -470,7 +519,7 @@ int asrspi_OpenEngine(SAFEH rsrc, int mode, ASRSPI **out)
         heap_Free(e->heap, e);
         return 0x80040004;
     }
-    c = casrOpen(r->heap, g_APIRecogCallBacks, e);
+    c = casrOpen(r->heap, &g_APIRecogCallBacks, e);
     if (c == 0) {
         heap_Free(e->heap, e);
         return 0x80040086;
@@ -480,7 +529,7 @@ int asrspi_OpenEngine(SAFEH rsrc, int mode, ASRSPI **out)
     e->open_mode = mode;
     e->state = 0;
     e->verdict = 0;
-    FillContextV2VirtualTable((void **)&e->ctxv2);
+    FillContextV2VirtualTable(&e->ctxv2);
     e->gain = 0xBFFF;
     *out = e;
     return 0;
@@ -615,11 +664,188 @@ int asrspi_ActivateCtx(ASRSPI *e, int *ctxdata, int a2)
     return 0;
 }
 
+int asrspi_GetLngGenders(int *lng, int *genders)
+{
+    return 0x80040081;
+}
+
+int asrspi_GetLngVersion(int *lng, char *version)
+{
+    LANG l;
+    int err = 0;
+
+    if (lng == 0 || version == 0)
+        err = ASRSPI_E_NULLPTR;
+    else {
+        FillLanguageVirtualTable(&l);
+        l.data = lng;
+        if (!l.CheckDataType(&l))
+            err = 0x80040008;
+        else
+            memcpy(version, l.GetVersionInfo(&l), 128);
+    }
+    return err;
+}
+
+int asrspi_GetCtxVersion(int *ctx, char *version)
+{
+    CONTEXTV2 c;
+    int err = 0;
+
+    if (ctx == 0 || version == 0)
+        err = ASRSPI_E_NULLPTR;
+    else {
+        FillContextV2VirtualTable(&c);
+        c.data = ctx;
+        if (!c.CheckDataType(&c))
+            err = 0x80040009;
+        else
+            memcpy(version, c.GetLanguageVersionInfo(&c), 128);
+    }
+    return err;
+}
+
+int asrspi_GetVersion(int *version)
+{
+    if (version == 0)
+        return ASRSPI_E_NULLPTR;
+    *version = casrGetSPIVersion();
+    return 0;
+}
+
+int asrspi_GetUswVersion(int *version)
+{
+    *version = UswVersionCode;
+    return 0;
+}
+
 int asrspi_GetState(ASRSPI *e, int *state)
 {
     ENGINE_CHECK(e);
     if (state == 0)
         return ASRSPI_E_NULLPTR;
     *state = e->state;
+    return 0;
+}
+
+int asrspi_UswGetRecordingInfo(ASRSPI *e, int *verdict)
+{
+    int err;
+
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError2(e, 4, 6);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    *verdict = e->verdict;
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+void *_engineMalloc(ASRSPI *e, int size)
+{
+    return heap_Alloc(e->heap, size);
+}
+
+void *_engineCalloc(ASRSPI *e, int count, int size)
+{
+    return heap_Calloc(e->heap, count, size);
+}
+
+void _engineFree(ASRSPI *e, void *p)
+{
+    if (p)
+        heap_Free(e->heap, p);
+}
+
+/* the casr engine's abnormal conditions, as the host's (the same numbers) */
+static __inline__ void ConvAbnorm(int event, int *what)
+{
+    switch (event) {
+    case 0: *what = 0; break;
+    case 1: *what = 1; break;
+    case 2: *what = 2; break;
+    case 3: *what = 3; break;
+    case 4: *what = 4; break;
+    case 5: *what = 5; break;
+    }
+}
+
+int ASRSPICBABNORM(int event, int value, CASRCB *cb)
+{
+    ASRSPI *e = cb->engine;
+    int what;
+
+    ConvAbnorm(event, &what);
+    if (e->signal.abnorm)
+        return e->signal.abnorm(what, value, e->user);
+    return 0;
+}
+
+int ASRSPICBAGC(int gain, CASRCB *cb)
+{
+    ASRSPI *e = cb->engine;
+
+    if (e->signal.agc)
+        return e->signal.agc((unsigned short)gain, e->user);
+    return 0;
+}
+
+int ASRSPICBASKCURRENTGAIN(CASRCB *cb)
+{
+    ASRSPI *e = cb->engine;
+
+    return casrGainSet(e->casr, e->gain);
+}
+
+int ASRSPICBTS(int frame, CASRCB *cb)
+{
+    ASRSPI *e = cb->engine;
+    int ret = 0;
+
+    if (e->signal.ts_detected)
+        ret = e->signal.ts_detected(frame, e->user);
+    return ret;
+}
+
+int ASRSPICBSTARTDET(int frame, CASRCB *cb)
+{
+    ASRSPI *e = cb->engine;
+    int ret = 0;
+
+    if (e->signal.speech_detected)
+        ret = e->signal.speech_detected(frame, e->user);
+    return ret;
+}
+
+/* the casr engine's result status, as the host's result kind */
+static __inline__ int ConvResultKind(unsigned int status, int *kind)
+{
+    switch (status) {
+    case 1: *kind = 1; break;
+    case 0: *kind = 0; break;
+    case 2: *kind = 2; break;
+    case 4: *kind = 3; break;
+    default: return 0x8004002E;
+    }
+    return 0;
+}
+
+int ASRSPICBRESULT(CASRRESULT *res, CASRCB *cb)
+{
+    ASRSPI *e = cb->engine;
+    int kind, err;
+
+    e->got_result = 1;
+    err = ConvResultKind(res->status, &kind);
+    if (err)
+        return err;
+    e->result.kind = kind;
+    e->result.f4 = res->f0;
+    e->result.f8 = res->f4;
+    if (e->result_cb)
+        return e->result_cb(&e->result, e->user);
     return 0;
 }

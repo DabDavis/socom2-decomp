@@ -8715,16 +8715,16 @@
 0x004CC368 0xF8 asrspi_DisableAGC  # OVL2 unaligned; s1:align
 0x004CC460 0x1C0 asrspi_ExportSessionData  # OVL2; s1:calls
 0x004CC620 0x1F0 asrspi_ActivateSessionData  # OVL2; s1:align
-0x004CC810 0xC func_004CC810  # OVL2
-0x004CC820 0x138 func_004CC820  # OVL2
-0x004CC958 0x138 func_004CC958  # OVL2 unaligned
+0x004CC810 0xC asrspi_GetLngGenders  # OVL2; s1:order (SOCOM 1's asrspi_GetLngGenders, 0xC, the same position in the asrspi object between ActivateSessionData and GetLngVersion; the same body, `return 0x80040081`) -- the gcc lane, round 7c
+0x004CC820 0x138 asrspi_GetLngVersion  # OVL2; s1:order (SOCOM 1's asrspi_GetLngVersion, 0x130, after GetLngGenders in the asrspi object: the same body -- FillLanguageVirtualTable on the stack, the language's CheckDataType, then its 128-byte version info copied out; 0x80040008 for a wrong type) -- the gcc lane, round 7c
+0x004CC958 0x138 asrspi_GetCtxVersion  # OVL2 unaligned; s1:order (SOCOM 1's asrspi_GetCtxVersion, 0x130, after GetLngVersion: the same body over FillContextV2VirtualTable; 0x80040009 for a wrong type) -- the gcc lane, round 7c
 0x004CCA90 0x3C asrspi_GetVersion  # OVL2; s1:align
 0x004CCAD0 0x14 asrspi_GetUswVersion  # OVL2; s1:exact
 0x004CCAE8 0x44 asrspi_GetState  # OVL2 unaligned; s1:calls (SOCOM 1's asrspi_GetState, the same position in the asrspi object: 0x8xxx0083 for a null pointer, the 11111 magic test; gsapi_EngineStop calls it where SOCOM 1's calls asrspi_GetState)
 0x004CCB30 0x120 asrspi_UswGetRecordingInfo  # OVL2; s1:align
-0x004CCC50 0x18 func_004CCC50  # OVL2
-0x004CCC68 0x18 func_004CCC68  # OVL2 unaligned
-0x004CCC80 0x2C func_004CCC80  # OVL2
+0x004CCC50 0x18 _engineMalloc  # OVL2; s1:order (SOCOM 1's _engineMalloc, 0x1C, after asrspi_UswGetRecordingInfo in the asrspi object: heap_Alloc on the engine's heap at +208, as here) -- the gcc lane, round 7c
+0x004CCC68 0x18 _engineCalloc  # OVL2 unaligned; s1:order (SOCOM 1's _engineCalloc, 0x1C, after _engineMalloc: heap_Calloc on the engine's heap) -- the gcc lane, round 7c
+0x004CCC80 0x2C _engineFree  # OVL2; s1:order (SOCOM 1's _engineFree, 0x18: heap_Free on the engine's heap when the block is not null, as here; SOCOM 1's object holds it first, SOCOM II's after _engineCalloc, its two siblings) -- the gcc lane, round 7c
 0x004CCCB0 0x8C ASRSPICBABNORM  # OVL2; s1:align
 0x004CCD40 0x38 ASRSPICBAGC  # OVL2; s1:align
 0x004CCD78 0x20 ASRSPICBASKCURRENTGAIN  # OVL2 unaligned; s1:align
