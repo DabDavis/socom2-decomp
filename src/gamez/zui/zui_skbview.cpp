@@ -13,7 +13,14 @@
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
  * OPEN, not written yet: the tick 0x3949C0, the display's builders 0x394520, 0x394DA0, 0x394F60,
  * 0x395140, 0x395540, 0x3958D0, the look parser 0x3963F0, 0x397070, 0x397640, 0x397950 and the
- * template tail 0x397FE0-0x398910. */
+ * template tail 0x397FE0-0x398910 -- the background pieces' vector (zui_skb.h's CSkbBgPiece, the
+ * parser's resize of m_sources[i] its only request): resize 0x397FE0, erase 0x3980D0, insert
+ * 0x3982F0 and the piece's copy 0x398910. Round 13 probed them with a stand-in resize caller:
+ * resize is byte-exact (once erase's row is named), erase 0x1C0 against 0x220 (the string's
+ * operator= called, where the target inlines it -- an out-of-class member this unit's own code must
+ * instantiate first) and insert 0x670 against 0x618 (the piece's copy inlined, where the target's
+ * construct calls placement new and 0x398910, which inlines the string's copy constructor): the
+ * tail waits on the parser and whatever else here assigns and copies CSaferStrs. */
 
 #include <string>
 #include "zui.h"

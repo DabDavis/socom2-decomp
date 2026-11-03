@@ -31,10 +31,14 @@
  * constructor); everything they call out of line keeps its placeholder.
  * OPEN, written: SkbParseKoreanRules (0x4DC against 0x464), SkbParseComplete (0x318 against 0x2A4):
  * the rdr walks' loop counters (the target keeps the productions' in a stack slot) and the inlined
- * Item()s' shapes; SkbHangulType (0x180/0x174), SkbHangulRestart (0x1DC/0x1C4), SkbHangulBack
- * (0x18C/0x190), SkbHangulClear (0xF0/0xF8): the fixed array's Resize inlined one level in the
- * target (Count/Item/SetCount and the string's constructor and destructor called), here whole or
- * otherwise; Append (0x110/0x100), PrevCode (0x30/0x2C). */
+ * Item()s' shapes; SkbHangulBack (0x19C/0x190: from the start to the resize byte-exact, but the
+ * local pieces' size_ and data_ addresses, stored by the constructor and read by end(), are kept in
+ * s0/s1 across the composer's call where the target addresses the stack slots directly -- LastCode(),
+ * the const end(), all the same); Append (1 instruction, below), PrevCode (0x30/0x2C).
+ * Round 13: the fixed array's Resize tests `n < Count()` (slt/beqz; `Count() > n` branches on blez
+ * for a constant n) -- SkbHangulClear and SkbHangulRestart byte-exact, the latter with LastJamo
+ * pinned (its one caller calls it); SkbHangulType copies each jamo through `(char)` (a push_back
+ * argument the target stores to a stack byte) off a reference to the string. */
 
 #include <string.h>
 #include "zui.h"
@@ -140,6 +144,9 @@ public:
     void SetCount(int n);
     inline void Resize(int n);
     T &operator[](int i) { return ((T *)m_items)[i]; }
+    /* none built (ours: SkbHangulBack materialises the test, sltu/xori, as only an inline bool
+     * returning the negation gives) */
+    bool Empty() const { return !(bool)m_count; }
 
     int m_count;   // 0x0
     char m_items[N * sizeof(T)];   // 0x4
@@ -166,7 +173,7 @@ void CSkbFixedVec<T, N>::SetCount(int n)
 template <class T, int N>
 inline void CSkbFixedVec<T, N>::Resize(int n)
 {
-    if (Count() > n) {
+    if (n < Count()) {
         for (int i = n; i < Count(); i++)
             Item(i)->~T();
     } else {
@@ -261,7 +268,7 @@ void SkbHangulClear()
  * composes to (0x3910E0; the name ours: SkbTypeOrBack's) */
 unsigned short SkbHangulBack()
 {
-    if (!(bool)s_compose.m_count)
+    if (s_compose.Empty())
         return 0;
     CJamoStr &jamo = s_compose[0];
 
@@ -337,8 +344,10 @@ std::pair<bool, bool> SkbHangulType(CSkbPieces *pieces, char c)
     std::vector<char> jamo;
 
     if (s_compose.m_count > 0) {
-        for (int i = 0; i < (int)s_compose[0].size(); i++)
-            jamo.push_back(s_compose[0][i]);
+        CJamoStr &s = s_compose[0];
+
+        for (int i = 0; i < (int)s.size(); i++)
+            jamo.push_back((char)s[i]);
     }
     jamo.push_back(c);
     if (!SkbHangulCompose(pieces, &jamo))
@@ -370,21 +379,33 @@ SKBSEQ *SKBRULE::Seq(int i)
 }
 
 /* a sequence's jamo appended to the last piece, its value (or its second) added to the code
- * (0x3908A0) */
+ * (0x3908A0). Each jamo pushed as a copy (`(char)`: the target stores it to a stack byte of its own
+ * after the piece's address is made, through a reference local), the code updated through one
+ * reference to the last piece, its value narrowed (lhu).
+ * OPEN, 1 instruction: the add's operands -- the target's `addu v1,v1,a1` puts the code (v1) first,
+ * this build the value (a1) whichever side either is written on, through a local, with casts or
+ * the conversion called by name (CInit's operator T(), an inline, is expanded ahead of the sum) */
 void CSkbPieces::Append(SKBSEQ &seq, bool second)
 {
-    for (int i = 0; i < (int)seq.m_jamo.size(); i++)
-        SkbPrev(end())->m_jamo.push_back(seq.m_jamo[i]);
-    const int &val = second ? seq.m_val2 : seq.m_val;
+    for (int i = 0; i < (int)seq.m_jamo.size(); i++) {
+        SKBPIECE &p = *SkbPrev(end());
 
-    SkbPrev(end())->m_code = SkbPrev(end())->m_code + val;
+        p.m_jamo.push_back((char)seq.m_jamo[i]);
+    }
+    const int &val = second ? seq.m_val2 : seq.m_val;
+    SKBPIECE &last = *SkbPrev(end());
+
+    last.m_code = last.m_code + (unsigned short)val;
 }
 
-/* the last piece's jamo i (0x390860) */
+/* the last piece's jamo i (0x390860; SkbHangulRestart, its one caller, calls it out of line:
+ * pinned) */
+#pragma auto_inline off
 char CSkbPieces::LastJamo(int i)
 {
     return SkbPrev(end())->m_jamo[i];
 }
+#pragma auto_inline reset
 
 /* the last piece's code (0x390820) */
 unsigned short CSkbPieces::LastCode()

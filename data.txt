@@ -658,6 +658,7 @@
 0x00406230 0x24 __vt__11CEntityCtrl  # OVL1; s1:data-seq (size SOCOM 1's; via __ct__11CEntityCtrlFi +1)
 0x00406260 0x24 __vt__8CDIDummy  # OVL1; s1:data-seq (size SOCOM 1's; via __dt__8CDIDummyFv)
 0x00406290 0x1C __vt__8CMission  # vtable of CMission: found by its RTTI's name
+0x004062B0 0x20 __vt__11CUIVariable  # OVL1; the UI lane, round 13: CUIVariable's own table (vptr at 0x10), {RTTI 0x3F1D58 ("CUIVariable"), 0}, then UIVarMixin's table at +8 {RTTI, -8, the thunks 0x2B2180 and 0x2B2170}, then the primary slots ~CUIVariable 0x2B1530 (+0x18, the vector erase's destroy) and UpdateUIVar 0x2B1A10; 8 references in 3 functions (0x2B1390 4, 0x2B1530 2, the copy constructor 0x386BF0 2)
 0x004062D0 0xA4 __vt__13CSealCtrlCopy  # OVL1; s1:data-seq (size SOCOM 1's; via __dt__13CSealCtrlCopyFv +1)
 0x00406390 0x14 __vt__11CNodeAction  # vtable of CNodeAction: found by its RTTI's name
 0x004063B0 0x70 __vt__12C2DMessage_Q  # vtable of C2DMessage_Q: found by its RTTI's name
