@@ -80,9 +80,9 @@ public:
 /* a ripple (0x88 bytes) */
 class CWaterRipple {
 public:
-    CWaterRipple(CWaterRippleGroup *group, const CPnt3D *pos, const float *time, float speed,
+    CWaterRipple(CWaterRippleGroup *group, const CPnt3D *pos, float speed, const float *time,
                  float amp, float freq);
-    CWaterRipple(CNode *node, const CPnt3D *pos, const float *time, float speed, float amp,
+    CWaterRipple(CNode *node, const CPnt3D *pos, float speed, const float *time, float amp,
                  float freq);
     ~CWaterRipple()
     {
@@ -345,14 +345,13 @@ void CWaterRippleManager::Ripple(CNode *node)
             CVisData d;
 
             for (CVisData *v = d.SelectVertexStrips(*it, 0, 0); v; v = v->NextVertex()) {
+                CPnt3D n;
                 CPnt3D p;
                 CPnt3D off;
                 bool level;
 
                 GetVertexPos(v, &p);
-                if (GetOffset(&p, &off, &level)) {
-                    CPnt3D n;
-
+                if (GetOffset(&p, &off, &level) != false) {
                     GetVertexNormal(v, &n);
                     n.x = off.x;
                     n.z = off.z;
@@ -441,14 +440,17 @@ CWaterRipple *CWaterRippleManager::Create(CNode *node, const CPnt3D *pos, const 
     for (i = m_ripples.begin(); i != m_ripples.end() && create; ++i) {
         CWaterRipple *r = *i;
 
-        if (r->GetNode(0) == node && r->IsAt(pos))
-            create = false;
+        if (r->GetNode(0) == node && pos) {
+            if (fabsf(r->GetPos().x - pos->x) < 1.0f && fabsf(r->GetPos().y - pos->y) < 1.0f &&
+                fabsf(r->GetPos().z - pos->z) < 1.0f)
+                create = false;
+        }
     }
 
     CWaterRipple *r = 0;
 
     if (create)
-        r = new CWaterRipple(node, pos, time, speed, amp, freq);
+        r = new CWaterRipple(node, pos, speed, time, amp, freq);
     return r;
 }
 
@@ -457,20 +459,35 @@ CWaterRipple *CWaterRippleManager::Create(const char *name, const CPnt3D *pos, c
                                           float speed, float amp, float freq)
 {
     bool create = true;
-    CWaterRippleGroup *group = FindGroup(name);
+    CWaterRippleGroup *group = 0;
+
+    if (m_groups.size()) {
+        group_iterator g;
+
+        for (g = m_groups.begin(); !group && g != m_groups.end(); ++g) {
+            CWaterRippleGroup *gr = *g;
+
+            if (!strcmp(gr->m_name, name))
+                group = gr;
+        }
+    }
+
     iterator i;
 
     for (i = m_ripples.begin(); i != m_ripples.end() && create; ++i) {
         CWaterRipple *r = *i;
 
-        if (r->m_group == group && r->IsAt(pos))
-            create = false;
+        if (r->m_group == group && pos) {
+            if (fabsf(r->GetPos().x - pos->x) < 1.0f && fabsf(r->GetPos().y - pos->y) < 1.0f &&
+                fabsf(r->GetPos().z - pos->z) < 1.0f)
+                create = false;
+        }
     }
 
     CWaterRipple *r = 0;
 
     if (create && group)
-        r = new CWaterRipple(group, pos, time, speed, amp, freq);
+        r = new CWaterRipple(group, pos, speed, time, amp, freq);
     return r;
 }
 
@@ -497,7 +514,10 @@ CWaterRipple *CWaterRippleManager::Create(const CPnt3D *pos, const float *time, 
                 CPnt3D d = p - *pos;
                 float dist = d.Normalize();
 
-                if (!nearest || dist < best) {
+                if (!nearest) {
+                    best = dist;
+                    nearest = g;
+                } else if (dist < best) {
                     best = dist;
                     nearest = g;
                 }
@@ -509,7 +529,7 @@ CWaterRipple *CWaterRippleManager::Create(const CPnt3D *pos, const float *time, 
     CWaterRipple *r = 0;
 
     if (nearest)
-        r = new CWaterRipple(nearest, pos, time, speed, amp, freq);
+        r = new CWaterRipple(nearest, pos, speed, time, amp, freq);
     return r;
 }
 
@@ -546,7 +566,7 @@ void CWaterRippleGroup::Add(CNode *node)
 }
 
 /* on one node, listed with the manager */
-CWaterRipple::CWaterRipple(CNode *node, const CPnt3D *pos, const float *time, float speed,
+CWaterRipple::CWaterRipple(CNode *node, const CPnt3D *pos, float speed, const float *time,
                            float amp, float freq)
 {
     Init();
@@ -571,8 +591,8 @@ CWaterRipple::CWaterRipple(CNode *node, const CPnt3D *pos, const float *time, fl
 }
 
 /* on a group */
-CWaterRipple::CWaterRipple(CWaterRippleGroup *group, const CPnt3D *pos, const float *time,
-                           float speed, float amp, float freq)
+CWaterRipple::CWaterRipple(CWaterRippleGroup *group, const CPnt3D *pos, float speed,
+                           const float *time, float amp, float freq)
 {
     Init();
     m_group = group;
