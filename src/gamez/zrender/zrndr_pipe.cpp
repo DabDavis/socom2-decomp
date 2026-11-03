@@ -24,6 +24,7 @@
 #include <eetypes.h>
 #include <vector>
 #include <list>
+#include <iostream>
 #include "../zsys/zsys_public.h"
 #include "../zsys/zsys.h"
 #include "../znode/node_world.h"
@@ -191,14 +192,23 @@ struct CFlare {
 };
 class CFlareSystem {
 public:
+    /* the byte first cleared, then the vector built (the unit's initialiser; ours) */
+    CFlareSystem() : m_0(0) {}
     void Clear();
     void Release(int handle);
 
-    unsigned int _0;   // 0x0
+    unsigned char m_0;   // 0x0
     std::vector<CFlare *> m_flares;   // 0x4
 };
 
-extern CPipe thePipe;   // 0x4887C0
+/* the unit's statics, in the order its initialiser (0x402E60) builds and registers them after
+ * <iostream>'s two: the cell list, the pipe, a stack that pushes nothing (grid_di.cpp's kind, its
+ * destructor's linked copy 0x2D4FE0), the flare system (its implicit destructor the tail's last,
+ * 0x33CCD0). The names are ours but thePipe's */
+std::vector<zdb::CCell *> data_00488790;
+CPipe thePipe;   // 0x4887C0
+static CStack s_stack(false);   // 0x488EF8
+CFlareSystem data_00488F10;
 /* the thread a flushed FIFO wakes (SOCOM II's; not named) */
 extern int data_003E1418;
 
