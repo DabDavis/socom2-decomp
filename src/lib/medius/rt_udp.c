@@ -21,6 +21,17 @@ extern int rt_comm_send_to(int nChannelId, char *szAddress, unsigned short nPort
                            unsigned short nLength, unsigned short *pnSent);
 extern unsigned int randomMT(void);
 
+typedef struct RT_TIME {
+    unsigned int secs;
+    unsigned int usecs;
+} RT_TIME;
+
+extern int rt_time_get_time_stamp(RT_TIME *t);
+extern int rt_time_elapsed(RT_TIME *start, unsigned int *msecs);
+extern int memcmp(const void *a, const void *b, unsigned int n);
+extern int rt_comm_receive_from(int nChannelId, char *szAddress, unsigned short *pnPort, void *pData,
+                                unsigned short nLength, unsigned short *pnReceived);
+
 typedef struct RT_UDP_BUF {             /* the message ring (0x6313D8's object) */
     unsigned int nStart;                /* 0x00 */
     unsigned int nEnd;                  /* 0x04 */
@@ -44,8 +55,18 @@ typedef struct RT_UDP_CONN {
     char x1A[2];
     RT_UDP_BUF send;                    /* 0x1C */
     RT_UDP_BUF recv;                    /* 0x34 */
-    char x4C[0x40];
-    int x8C;                            /* 0x8C */
+    RT_TIME tLastRecv;                  /* 0x4C */
+    RT_TIME tLastSend;                  /* 0x54 */
+    RT_TIME tSent;                      /* 0x5C: when the awaited datagram went */
+    int nAwaitSeq;                      /* 0x64: the reliable sequence awaiting its ack */
+    unsigned int nRttVar;               /* 0x68 */
+    unsigned int nSrtt;                 /* 0x6C */
+    unsigned int nRto;                  /* 0x70: srtt + rttvar, at most 500 ms */
+    int nId;                            /* 0x74: the session's id, in every header */
+    int nSeqUnrel;                      /* 0x78 */
+    int nSeqRel;                        /* 0x7C */
+    char x80[0xC];
+    int nKMID;                          /* 0x8C: the peer's key-manager id */
 } RT_UDP_CONN;                          /* 0x90 */
 
 typedef struct RT_UDP_OPTIONS {
@@ -67,7 +88,7 @@ typedef struct RT_UDP {
     void *pUpnp;                        /* 0x08: the public-address resolver (rt_upnp.c's) */
     RT_UDP_BUF buf;                     /* 0x0C */
     char *pSendBuf;                     /* 0x24 */
-    int x28;
+    char *pRecvBuf;                     /* 0x28 */
     unsigned int nConns;                /* 0x2C */
     int x30;                            /* 0x30: 4096 by default */
     int nBufSize;                       /* 0x34: 4096 by default */
@@ -87,11 +108,26 @@ typedef struct RT_UDP_ADDR {            /* a message's sender, as the ring keeps
     unsigned short nPort;
 } RT_UDP_ADDR;
 
+typedef struct RT_UDP_TARGET {          /* a peer to connect to, a server to resolve through */
+    char szAddress[16];                 /* 0x00 */
+    unsigned short nPort;               /* 0x10 */
+    int nKMID;                          /* 0x14: its key-manager id */
+} RT_UDP_TARGET;
+
+typedef struct RSAKey {
+    unsigned int n[16];
+} RSAKey;                               /* 0x40 */
+
+extern int strcmp(const char *a, const char *b);
+extern int rt_time_start(RT_TIME *t);
+extern int func_0062FCD8(int nKMID, int nID, RSAKey *pKey);
+
 typedef struct RT_UDP_HEADER {          /* a datagram's header (12 bytes) */
-    unsigned char nType;                /* 0x00 */
+    unsigned char nType;                /* 0x00: flags -- 2 sequenced, 4 reliable, 8 a keep-alive, 0x10 close, 0x20 an ack */
     unsigned char nShared;              /* 0x01 */
     unsigned short nLength;             /* 0x02 */
-    char x04[8];
+    int nId;                            /* 0x04 */
+    int nSeq;                           /* 0x08 */
 } RT_UDP_HEADER;
 
 extern int func_0062F818(int nKMID, void *pKey);
@@ -103,11 +139,23 @@ extern int func_006425F0(void *pUpnp, char *szServer, unsigned short nPort, void
 extern int func_00642560(void *pUpnp);
 extern int func_006425C8(void *pUpnp);
 extern void func_00642200();
-extern int func_0063F948(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, void *pHeader);
-extern int func_0063FA28(RT_UDP_CONN *pConn, void *pHeader, void *pData, int nLength);
 
 int func_0063DEA0(RT_UDP *pUdp);
+int func_0063F948(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, RT_UDP_HEADER *pHeader);
+int func_0063FA28(RT_UDP_CONN *pConn, RT_UDP_HEADER *pHeader, void *pData, unsigned short nLength);
+int func_006419E8(RT_UDP *pUdp, RT_UDP_CONN *pConn);
+int func_006404D8(RT_UDP *pUdp, char *szAddress, unsigned short nPort, unsigned short nLength);
+int func_0063E5E8(RT_UDP *pUdp, RT_UDP_TARGET *pTarget, unsigned int *pnConn);
+int func_00640B70(RT_UDP *pUdp, RT_UDP_CONN *pConn, RSAKey *pKey);
+extern int func_006314C0(RT_UDP_BUF *pBuf);
+extern unsigned int func_00631E70(void *pMsg);
 int func_0063E438(RT_UDP *pUdp, char *szAddress, unsigned short *pnPort);
+int func_0063E390(RT_UDP *pUdp, char *szAddress, unsigned short *pnPort);
+int func_0063F8A0(RT_UDP *pUdp, unsigned int *pnConn);
+unsigned int func_0063DCE8(void);
+int func_0063DC90(void);
+int func_0063FE48(void *pMsg, RT_UDP_HEADER *pHeader);
+int func_0063FEA8(void *pMsg, RT_UDP_HEADER *pHeader);
 
 static void *gpUpnp = 0;                /* 0x656038: the shared channels' resolver */
 static unsigned char gbResolving = 0;   /* 0x65603C */
@@ -328,11 +376,11 @@ int func_0063E0F0(RT_UDP *pUdp, unsigned int nConn, int nWhich, unsigned int *pn
     return 1;
 }
 
-int func_0063E230(RT_UDP *pUdp, char *szServer)
+int func_0063E230(RT_UDP *pUdp, RT_UDP_TARGET *pServer)
 {
     if (pUdp == 0)
         return 2;
-    if (szServer == 0)
+    if (pServer == 0)
         return 1;
     if (pUdp->bResolving != 0)
         return 15;
@@ -345,7 +393,7 @@ int func_0063E230(RT_UDP *pUdp, char *szServer)
         }
         pUdp->pUpnp = gpUpnp;
         if (gbResolving == 0) {
-            if (func_006425F0(gpUpnp, szServer, *(unsigned short *)(szServer + 16), func_00642200, pUdp) != 0)
+            if (func_006425F0(gpUpnp, pServer->szAddress, pServer->nPort, func_00642200, pUdp) != 0)
                 return 15;
             pUdp->bResolving = 1;
             gbResolving = 1;
@@ -358,7 +406,7 @@ int func_0063E230(RT_UDP *pUdp, char *szServer)
             if (func_006426B0(pUdp->pUpnp, pUdp->x40) != 0)
                 return 15;
         }
-        if (func_006425F0(pUdp->pUpnp, szServer, *(unsigned short *)(szServer + 16), func_00642200, pUdp) != 0)
+        if (func_006425F0(pUdp->pUpnp, pServer->szAddress, pServer->nPort, func_00642200, pUdp) != 0)
             return 15;
     }
     pUdp->bResolving = 1;
@@ -427,10 +475,78 @@ int func_0063E5C0(RT_UDP *pUdp)
     return 0;
 }
 
+int func_0063E5E8(RT_UDP *pUdp, RT_UDP_TARGET *pTarget, unsigned int *pnConn)
+{
+    char szLocal[16];
+    unsigned short nLocalPort;
+    unsigned int nConn = -1;
+    RT_UDP_CONN *pConn;
+    int result;
+
+    if (pnConn == 0)
+        return 1;
+    *pnConn = -1;
+    if (pTarget == 0)
+        return 1;
+    if (pUdp == 0)
+        return 2;
+    szLocal[0] = 0;
+    nLocalPort = 0;
+    func_0063E390(pUdp, szLocal, &nLocalPort);
+    if (pTarget->nPort == nLocalPort && strcmp(pTarget->szAddress, szLocal) == 0)
+        return 21;
+    szLocal[0] = 0;
+    nLocalPort = 0;
+    func_0063E438(pUdp, szLocal, &nLocalPort);
+    if (pTarget->nPort == nLocalPort && strcmp(pTarget->szAddress, szLocal) == 0)
+        return 21;
+    {
+        RSAKey key;
+        RT_UDP_HEADER header;
+
+        result = func_0063F8A0(pUdp, &nConn);
+        if (result != 0)
+            return result;
+        *pnConn = nConn;
+        pConn = &pUdp->pConns[nConn];
+        if (func_006313D8(&pConn->send, pUdp->x30) != 0) {
+            pUdp->pConns[nConn].nState = 6;
+            return 7;
+        }
+        if (func_006313D8(&pConn->recv, pUdp->nBufSize) != 0)
+            goto fail;
+        pConn->nState = 9;
+        pConn->nId = func_0063DCE8();
+        pConn->nSeqUnrel = func_0063DCE8();
+        pConn->nSeqRel = func_0063DCE8();
+        pConn->nPort = pTarget->nPort;
+        strncpy(pConn->szAddress, pTarget->szAddress, 16);
+        rt_time_start(&pConn->tLastRecv);
+        rt_time_start(&pConn->tLastSend);
+        pConn->nRto = 1000;
+        pConn->nSrtt = 0;
+        pConn->nKMID = pTarget->nKMID;
+        if (func_0063DC90() == 1) {
+            func_0062FCD8(-1, pConn->nKMID, &key);
+            result = func_00640B70(pUdp, pConn, &key);
+        } else {
+            if (func_0063F948(pUdp, pConn, 4, &header) != 0)
+                goto fail;
+            header.nType |= 0x40;
+            result = func_0063FA28(pConn, &header, 0, 0);
+        }
+        if (result == 0)
+            return 0;
+    fail:
+        pConn->nState = 6;
+        return 7;
+    }
+}
+
 int func_0063E830(RT_UDP *pUdp, unsigned int nConn)
 {
     RT_UDP_CONN *pConn;
-    unsigned char header[12];
+    RT_UDP_HEADER header;
     int result;
 
     if (pUdp == 0)
@@ -440,11 +556,11 @@ int func_0063E830(RT_UDP *pUdp, unsigned int nConn)
     pConn = &pUdp->pConns[nConn];
     if (pConn->nState == 12 || pConn->nState == 3) {
         pConn->nState = 5;
-        result = func_0063F948(pUdp, pConn, 4, header);
+        result = func_0063F948(pUdp, pConn, 4, &header);
         if (result != 0)
             return result;
-        header[0] |= 0x10;
-        result = func_0063FA28(pConn, header, 0, 0);
+        header.nType |= 0x10;
+        result = func_0063FA28(pConn, &header, 0, 0);
         if (result != 0)
             return result;
     } else
@@ -458,7 +574,7 @@ int func_0063E8E8(RT_UDP *pUdp, unsigned int nConn, int n)
         return 2;
     if (nConn >= pUdp->nConns)
         return 3;
-    pUdp->pConns[nConn].x8C = n;
+    pUdp->pConns[nConn].nKMID = n;
     return 0;
 }
 
@@ -493,5 +609,326 @@ int func_0063F148(RT_UDP *pUdp, unsigned char b)
     if (pUdp == 0)
         return 1;
     pUdp->x44 = b;
+    return 0;
+}
+
+int func_0063F270(RT_UDP *pUdp, unsigned int nConn)
+{
+    RT_UDP_CONN *pConn;
+
+    if (pUdp == 0)
+        return 1;
+    if (nConn >= pUdp->nConns)
+        return 1;
+    pConn = &pUdp->pConns[nConn];
+    if (pConn->nState != 7)
+        return 4;
+    pConn->nState = 4;
+    func_006419E8(pUdp, pConn);
+    return 0;
+}
+
+int func_0063F2D8(RT_UDP *pUdp, RT_UDP_TARGET *pTarget, unsigned int *pnConn)
+{
+    void *pMsg = 0;
+    RT_UDP_HEADER header;
+    RT_UDP_CONN *pConn;
+    int result;
+
+    if (pnConn == 0)
+        return 1;
+    *pnConn = -1;
+    if (pUdp == 0)
+        return 2;
+    if (pTarget == 0)
+        return 1;
+    result = func_0063E5E8(pUdp, pTarget, pnConn);
+    if (result != 0)
+        return result;
+    pConn = &pUdp->pConns[*pnConn];
+    pConn->nId = 0;
+    if (func_00631B10(&pConn->send, &pMsg) != 0) {
+        pConn->nState = 6;
+        return 10;
+    }
+    if (func_0063FE48(pMsg, &header) != 0) {
+        pConn->nState = 6;
+        return 11;
+    }
+    header.nId = 0;
+    if (func_0063FEA8(pMsg, &header) != 0) {
+        pConn->nState = 6;
+        return 11;
+    }
+    return 0;
+}
+
+int func_0063F8A0(RT_UDP *pUdp, unsigned int *pnConn)
+{
+    unsigned int i = 0;
+
+    if (pnConn == 0)
+        return 1;
+    *pnConn = -1;
+    for (; i < pUdp->nConns; i++) {
+        if (pUdp->pConns[i].nState == 0) {
+            memset(&pUdp->pConns[i], 0, sizeof(RT_UDP_CONN));
+            *pnConn = i;
+            return 0;
+        }
+    }
+    return 8;
+}
+
+int func_0063F948(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, RT_UDP_HEADER *pHeader)
+{
+    if (pHeader == 0)
+        return 1;
+    if (pConn == 0)
+        return 1;
+    memset(pHeader, 0, sizeof(RT_UDP_HEADER));
+    pHeader->nShared = pUdp->nShared;
+    pHeader->nId = pConn->nId;
+    pHeader->nType = nType;
+    if ((nType & 6) == 6 || (nType & 4)) {
+        pHeader->nSeq = pConn->nSeqRel;
+        pConn->nSeqRel++;
+        if (pConn->nSeqRel == 0)
+            pConn->nSeqRel++;
+    } else if (nType & 2) {
+        pHeader->nSeq = pConn->nSeqUnrel;
+        pConn->nSeqUnrel++;
+        if (pConn->nSeqUnrel == 0)
+            pConn->nSeqUnrel++;
+    }
+    return 0;
+}
+
+int func_0063FD68(void *pMsg, RT_UDP_HEADER *pHeader)
+{
+    if (pMsg == 0)
+        return 1;
+    if (pHeader == 0)
+        return 1;
+    if (func_00631E70(pMsg) != 0) {
+        memcpy(pHeader, func_00631E58(pMsg), sizeof(RT_UDP_HEADER));
+        return 0;
+    }
+    return 10;
+}
+
+int func_0063FDE8(void *pMsg, RT_UDP_HEADER *pHeader)
+{
+    if (pMsg == 0)
+        return 1;
+    if (pHeader == 0)
+        return 1;
+    memcpy(func_00631E58(pMsg), pHeader, sizeof(RT_UDP_HEADER));
+    return 0;
+}
+
+int func_0063FE48(void *pMsg, RT_UDP_HEADER *pHeader)
+{
+    if (pMsg == 0)
+        return 1;
+    if (pHeader == 0)
+        return 1;
+    memcpy(pHeader, (char *)func_00631E58(pMsg) + 12, sizeof(RT_UDP_HEADER));
+    return 0;
+}
+
+int func_0063FEA8(void *pMsg, RT_UDP_HEADER *pHeader)
+{
+    if (pMsg == 0)
+        return 1;
+    if (pHeader == 0)
+        return 1;
+    memcpy((char *)func_00631E58(pMsg) + 12, pHeader, sizeof(RT_UDP_HEADER));
+    return 0;
+}
+
+int func_0063FF08(void *pMsg, unsigned int *pnTrailer)
+{
+    if (pMsg == 0)
+        return 1;
+    if (pnTrailer == 0)
+        return 1;
+    if (func_00631E70(pMsg) > 24)
+        memcpy(pnTrailer, (char *)func_00631E58(pMsg) + func_00631E70(pMsg) - 4, 4);
+    else
+        *pnTrailer = 0;
+    return 0;
+}
+
+int func_0063FF98(void *pMsg, unsigned int nTrailer)
+{
+    if (pMsg == 0)
+        return 1;
+    if (func_00631E70(pMsg) > 24)
+        memcpy((char *)func_00631E58(pMsg) + func_00631E70(pMsg) - 4, &nTrailer, 4);
+    return 0;
+}
+
+int func_00640010(void *pMsg, char **ppData, unsigned int *pnLength)
+{
+    if (ppData == 0)
+        return 1;
+    *ppData = 0;
+    if (pnLength == 0)
+        return 1;
+    *pnLength = 0;
+    if (pMsg == 0)
+        return 1;
+    if (func_00631E70(pMsg) > 24) {
+        *ppData = (char *)func_00631E58(pMsg) + 24;
+        *pnLength = func_00631E70(pMsg) - 28;
+    } else {
+        *ppData = 0;
+        *pnLength = 0;
+    }
+    return 0;
+}
+
+int func_00640408(RT_UDP *pUdp)
+{
+    char szAddress[16];
+    unsigned short nPort;
+    unsigned short nReceived = 0;
+    int result;
+
+    do {
+        nReceived = 0;
+        if (pUdp->nShared < 8)
+            result = rt_comm_receive_from(pUdp->nChannel, szAddress, &nPort, pUdp->pRecvBuf, 1450, &nReceived);
+        else
+            result = rt_comm_receive_from(pUdp->nChannel, szAddress, &nPort, pUdp->pRecvBuf,
+                                          pUdp->nMaxPacket + 12, &nReceived);
+        if (result == 0) {
+            if (nReceived == 0)
+                break;
+            if (nReceived >= 12)
+                func_006404D8(pUdp, szAddress, nPort, nReceived);
+        }
+    } while (nReceived != 0);
+    return 0;
+}
+
+int func_006411C8(RT_UDP *pUdp, RT_UDP_HEADER *pHeader, unsigned int nConn)
+{
+    RT_UDP_CONN *pConn;
+
+    if (nConn == (unsigned int)-1)
+        return 7;
+    pConn = &pUdp->pConns[nConn];
+    if (pConn->nState != 4) {
+        pConn->nState = 1;
+        func_006314C0(&pConn->send);
+        func_006314C0(&pConn->recv);
+    }
+    return 0;
+}
+
+int func_00641230(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, unsigned int nConn)
+{
+    int result = 0;
+    RT_UDP_HEADER header;
+    RT_UDP_CONN *pConn;
+
+    if (nConn == (unsigned int)-1)
+        return 7;
+    pConn = &pUdp->pConns[nConn];
+    memset(&header, 0, sizeof header);
+    header.nId = pConn->nId;
+    header.nShared = pUdp->nShared;
+    if (memcmp(&header, pRecv, sizeof header) == 0 && pConn->nState == 12)
+        rt_time_get_time_stamp(&pConn->tLastRecv);
+    else if (pConn->nState == 12)
+        result = 4;
+    else
+        result = 5;
+    return result;
+}
+
+int func_006419E8(RT_UDP *pUdp, RT_UDP_CONN *pConn)
+{
+    unsigned short nSent = 0;
+    RT_UDP_HEADER header;
+
+    if (pUdp == 0)
+        return 2;
+    if (pConn == 0)
+        return 1;
+    memset(&header, 0, sizeof header);
+    header.nShared = pUdp->nShared;
+    header.nType = 8;
+    header.nId = pConn->nId;
+    rt_comm_send_to(pUdp->nChannel, pConn->szAddress, pConn->nPort, &header, sizeof header, &nSent);
+    return 0;
+}
+
+int func_00641A70(RT_UDP *pUdp, char *szAddress, unsigned short nPort, int nId)
+{
+    unsigned short nSent = 0;
+    RT_UDP_HEADER header;
+
+    if (pUdp == 0)
+        return 2;
+    memset(&header, 0, sizeof header);
+    header.nShared = pUdp->nShared;
+    header.nType = 8;
+    header.nId = nId;
+    rt_comm_send_to(pUdp->nChannel, szAddress, nPort, &header, sizeof header, &nSent);
+    return 0;
+}
+
+void func_00641B08(RT_UDP *pUdp, RT_UDP_CONN *pConn, RT_UDP_HEADER *pRecv)
+{
+    RT_UDP_HEADER header;
+    unsigned char ack[5];
+
+    memset(&header, 0, sizeof header);
+    header.nType = 0x20;
+    header.nShared = pUdp->nShared;
+    header.nId = pConn->nId;
+    header.nLength = 5;
+    ack[0] = pRecv->nType;
+    memcpy(&ack[1], &pRecv->nSeq, 4);
+    func_0063FA28(pConn, &header, ack, 5);
+}
+
+extern int abs(int);
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+int func_00641D50(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, int nSeq)
+{
+    unsigned int nElapsed;
+    unsigned int nSrtt;
+    unsigned int nRttVar;
+    unsigned int nRto;
+
+    if (pUdp == 0)
+        return 1;
+    if (pConn == 0)
+        return 1;
+    if ((nType & 6) == 6 || (nType & 4)) {
+        if (pConn->nAwaitSeq != 0 && nSeq == pConn->nAwaitSeq) {
+            rt_time_elapsed(&pConn->tSent, &nElapsed);
+            nSrtt = pConn->nSrtt;
+            nRttVar = pConn->nRttVar;
+            if (nSrtt == 0) {
+                nSrtt = nElapsed;
+                nRttVar = nElapsed >> 1;
+            } else {
+                nRttVar = (nRttVar * 3 + abs(nSrtt - nElapsed)) >> 2;
+                nSrtt = (nSrtt * 7 + nElapsed) >> 3;
+            }
+            pConn->nSrtt = nSrtt;
+            pConn->nRttVar = nRttVar;
+            pConn->nAwaitSeq = 0;
+            nRto = nSrtt + MAX(nRttVar, 1);
+            if (nRto > 500)
+                nRto = 500;
+            pConn->nRto = nRto;
+        }
+    }
     return 0;
 }
