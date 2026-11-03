@@ -254,6 +254,9 @@ public:
     void SampleDynamics(float dT);
     /* a round fired (SOCOM 1's Fire: through the weapon's virtual Fire in SOCOM II) */
     void Fire();
+    /* the yaw and pitch joints turned at their rates over a step, the aim and the scope's frame
+     * taken from the pitch joint (SOCOM 1's Rotate, its two joints split out; the name ours) */
+    void Rotate(float dT);
     /* SOCOM 1's statics: the definitions read, the world's landmarks scanned for nodes they name */
     static int Init(const char *name, const char *path);
     static void LoadTurrets();
