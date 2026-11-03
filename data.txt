@@ -31,12 +31,14 @@
 0x001CBA40 0x420 _sceCd_scmdrdata  # MAIN; s1:data-exact (size SOCOM 1's; via sceCdDiskReady +2)
 0x001CC3C0 0x28 _sceCd_cd_scmd  # MAIN; s1:data-exact (size SOCOM 1's; via _sceCd_scmd_prechk +5)
 0x001CC428 0x28 dch  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaGetChan +1)
+0x001CC458 0x4 p_environ  # MAIN; newlib getenv_r.c's static (char ***p_environ = &environ), read by _findenv_r
 0x001CC750 0x4 _impure_ptr  # MAIN; s1:data-exact (size SOCOM 1's; via __assert +8)
 0x001CCBD0 0x10 gp.6  # MAIN; s1:data-seq (size SOCOM 1's; via sceGsGetGParam)
 0x001CCBE0 0x20 init_vif_regs.3  # MAIN; s1:data-exact (size SOCOM 1's; via sceGsResetPath)
 0x001CCC00 0x10 init_mp3.3  # MAIN; s1:data-exact (size SOCOM 1's; via sceGsExecStoreImage)
 0x001CCC20 0x50 iqval  # MAIN; s1:data-exact (size SOCOM 1's; via sceIpuInit)
 0x001CCC70 0x20 vqval  # MAIN; s1:data-exact (size SOCOM 1's; via sceIpuInit)
+0x001CCC90 0x10 __ps2_klibinfo__  # MAIN; SOCOM 1's symbol (the demo's GLOBAL OBJECT at the head of the same .data run, before ttyinit): "PsIIlibkernl2710", libkernl's stamp; _lf_version compares the loader's version with its last four bytes
 0x001CCCA0 0x4 ttyinit  # MAIN; s1:data-exact (size SOCOM 1's; via read +2)
 0x001CCCA4 0x4 heap_ptr.30  # MAIN; s1:data-exact (size SOCOM 1's; via sbrk)
 0x001CCCA8 0x4 topId  # MAIN; s1:data-exact (size SOCOM 1's; via InitThread +3)
@@ -84,6 +86,9 @@
 0x001D0880 0xA stdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)
 0x001D0890 0xA mfdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)
 0x001D08D0 0x101 _ctype_  # MAIN; the SDK libc's (newlib's) character table, read as (_ctype_ + 1)[c] & 8 for white space (newlib's _S): 7 %hi/%lo references in the overlays -- ReadToken (0x331BD0), the preprocessor 0x32FE70, 0x281D40 (3), 0x3996B0, 0x39AE50 -- the rdr lane
+0x001D0A98 0xC8 __mprec_tens  # MAIN; newlib mprec.c's tens[] (mprec.h: #define tens __mprec_tens): 1e0..1e24, read by _mprec_log10
+0x001D0B60 0x28 __mprec_bigtens  # MAIN; newlib mprec.c's bigtens[]: 1e16, 1e32, 1e64, 1e128, 1e256, after tens
+0x001D0B88 0x28 __mprec_tinytens  # MAIN; newlib mprec.c's tinytens[]: 1e-16 .. 1e-256, after bigtens
 0x001D1930 0x18 __thenan_df  # MAIN; s1:data-exact (size SOCOM 1's; via _fpadd_parts +2)
 0x001D2DE0 0x10 atanhi  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
 0x001D2DF0 0x10 atanlo  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
@@ -1273,6 +1278,10 @@
 0x006562E8 0x4 geQueuedRequestType  # OVL2 data; s1:data by hand (round 7b): SOCOM 1's static geQueuedRequestType (0x43BA28): MediusSetQueuedRequest stores its type there first, MediusGetQueuedRequestType returns it
 0x00656348 0x40 pubKey.0  # OVL2; s1:data-exact (size SOCOM 1's; via KM_GetSoftwareKeyPair)
 0x00656388 0x40 priKey.1  # OVL2; s1:data-exact (size SOCOM 1's; via KM_GetSoftwareKeyPair)
+0x00656900 0x4 UswVersionCode  # OVL2; s1:data (SOCOM 1's LOCAL 0x45C150 in the asrspi object's .rodata, 4 bytes, the same value 0x16000001 -- asrspi_GetUswVersion's literal; the object's four statics in SOCOM 1's order and sizes) -- the gcc lane, round 7c
+0x00656904 0x4 g_ApiVersion  # OVL2; s1:data (SOCOM 1's LOCAL 0x45C154, 4 bytes, 0 in both) -- the gcc lane, round 7c
+0x00656908 0x4 _sizeof_asrspi_engine  # OVL2; s1:data (SOCOM 1's GLOBAL 0x45C158, 4 bytes: 0xD8 in both, the engine block asrspi_OpenEngine allocates) -- the gcc lane, round 7c
+0x00656910 0x18 g_StateError  # OVL2; s1:data (SOCOM 1's LOCAL 0x45C160, 24 bytes, the same six codes 0x8004000B-0x80040010: the error each engine state answers a call it does not allow with, indexed by the state in every asrspi entry point and ConvErr) -- the gcc lane, round 7c
 0x006569E8 0x20 g_APIRecogCallBacks  # OVL2; s1:data-seq (size SOCOM 1's; via asrspi_OpenEngine)
 0x00656B18 0x34 aNodesFr  # OVL2; s1:data-seq (size SOCOM 1's; via CalcNrNodes10)
 0x00658700 0x3 ActiveBlocks_UTTFORMAT_LABELS  # OVL2; s1:data-seq (size SOCOM 1's; via casrActivateContext +1)
@@ -1282,6 +1291,7 @@
 0x0065A5F8 0x54 _ContextV2VirtualTable  # OVL2; s1:data-seq (size SOCOM 1's; via FillContextV2VirtualTable)
 0x0065A698 0x13C _LangVirtualTable  # OVL2; s1:data-seq (size SOCOM 1's; via FillLanguageVirtualTable)
 0x0065A838 0x8 g_lhNullHandle  # OVL2; s1:data-seq (size SOCOM 1's; via gsapi_EngineSetImmediateContext +4)
+0x0065A840 0x14 g_NullResource  # OVL2; s1:data (SOCOM 1's GLOBAL 0x4600D0, 20 bytes, right after g_lhNullHandle in the rsrc object's .rodata: the static resource the null handle stands for, magic 7777 (0x1E61) and four zero words in both; InitRsrcFunction and rsrc_Close hand it out) -- the gcc lane, round 7c
 0x0065A858 0x4 infinite__8CAiTimer  # OVL2; s1:data-seq (size SOCOM 1's; via ClearGoal__9CSealCtrlF9GOAL_TYPE)
 0x0065A860 0x4 NoExpire__8CAiEvent  # OVL2 data; SOCOM 1's (NoExpire__8CAiEvent, -99.0): Release and Create compare an event's duration with it, read from data; Tick folds it (2 references in 2 functions)
 0x0065A9F0 0x8 __RTTI__10CAiPlanner  # RTTI of CAiPlanner: found by its RTTI's name

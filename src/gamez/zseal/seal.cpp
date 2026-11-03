@@ -43,12 +43,16 @@ struct CIndexedArray {
     int m_index;   // 0x8
 };
 
+/* (RTStack<CZBodyAnimBlend>::Top's copy by its words: an out-of-class template member, never inlined
+ * into the unit's own functions -- 0x54F6E0 calls it -- so pinned) */
+#pragma auto_inline off
 extern "C" void *func_00555170(CIndexedArray *a)
 {
     if (a->m_index < 0)
         return 0;
     return a->m_data[a->m_index];
 }
+#pragma auto_inline reset
 
 /* the SEAL's stats, CSealStats, are zseal.h's (CZSealBody::m_stats) */
 
@@ -784,6 +788,26 @@ int CZSealBody::Virtual5C()
     return 0;
 }
 
+/* a fade of the SEAL's opacity asked for, unless a higher priority's runs: the target and rate kept,
+ * the rate turned toward the target, the fade started when the node is not there already (OVL2
+ * 0x552780, new in SOCOM II: CSealCtrl::OnDeath and ReCreate ask it; the name unknown) */
+extern "C" void func_00552780(CZSealBody *seal, unsigned char priority, float target, float rate)
+{
+    if (priority >= seal->m_fade_priority) {
+        seal->m_fade_priority = priority;
+        seal->m_fade_target = target;
+        seal->m_fade_rate = rate;
+        float cur = seal->GetNode()->m_Opacity;
+
+        if (cur != seal->m_fade_target) {
+            if ((cur < seal->m_fade_target && seal->m_fade_rate < 0.0f) ||
+                (cur > seal->m_fade_target && seal->m_fade_rate > 0.0f))
+                seal->m_fade_rate *= -1.0f;
+            seal->m_fading = true;
+        }
+    }
+}
+
 /* the SEAL's own AI event: an entity event that never expires, heard only close by, where the SEAL
  * stands, the SEAL its owner (OVL2 0x550E50; SOCOM 1's, which asked GetPosW for the place) */
 void CZSealBody::CreateAiEvent()
@@ -795,6 +819,49 @@ void CZSealBody::CreateAiEvent()
     m_aiEvent->m_pos = m_posW;
     m_aiEvent->m_owner = m_id;
     CAiEvent::Create(m_aiEvent);
+}
+
+extern "C" {
+/* three anim types the code reads as variables (OVL1 data, -1 in the image) */
+extern short data_003DEF40;
+extern short data_003DEF50;
+extern short data_003DEF60;
+}
+
+/* whether the SEAL is on a ladder: its state says so, or -- each when asked -- the top blend's state,
+ * the anim type 46 on top, or one of the three variable anim types (OVL2 0x54F6E0, new in SOCOM II:
+ * CAppCamera::GetThirdPersonCamPos, both controllers' PreTick and SetAiMode ask it; the name unknown) */
+extern "C" bool func_0054F6E0(CZSealBody *seal, bool blend, bool mount, bool anims)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends);
+
+    return seal->m_state == stateClimbLadder || (blend && top && top->m_state == stateClimbLadder) ||
+           (mount && seal->IsCurrentBlend((AnimType)46)) ||
+           (anims && (seal->IsCurrentBlend((AnimType)data_003DEF50) ||
+                      seal->IsCurrentBlend((AnimType)data_003DEF60) ||
+                      seal->IsCurrentBlend((AnimType)data_003DEF40)));
+}
+
+/* whether a hit stops the SEAL: a node's, not of kind 1; on a slope too steep to stand on, unless its
+ * edge drops less than 4 under a SEAL that is not prone; on a flatter one, only kind 0 -- the kind is
+ * the polygon's three bits at 28, 4 with no polygon (OVL2 0x54F330, new in SOCOM II: 0x54EDF0 asks
+ * it of the ground hit; the name unknown) */
+extern "C" bool func_0054F330(CZSealBody *seal, zdb::IntersectStruct *hit)
+{
+    if (!hit->m_node)
+        return false;
+    CDIType type = hit->m_poly ? (CDIType)hit->m_poly->m_flags.m_bits28 : (CDIType)4;
+
+    if (type == 1)
+        return false;
+    if (hit->m_norm.y < theCharacterDynamics.m_maxSlopeCos) {
+        CPnt3D b, a;
+
+        if (hit->GetIntersectedEdgePoints(&a, &b) && seal->m_state != stateProne && a.y - b.y < 4.0f)
+            return false;
+        return true;
+    }
+    return type == 0;
 }
 
 /* the heartbeat kept at the adrenaline's pace: three loops by level (none as 1), the one playing

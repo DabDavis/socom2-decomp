@@ -1647,6 +1647,48 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the HUD, round 21** (st_mpexit.cpp written whole, reco.cpp's gsapi calls by name):
+  - a switch's compare chain runs its labels in reverse source order and lays the blocks out in
+    source order: Tick's target order 1, 3, 5, 6, 4 is `case 4: break; case 6; case 5: case 3; case 1;`
+    with the shared code after the switch;
+  - a value loaded before the field it is added to came from an inline accessor (UpdateCareerRecord,
+    30 instructions to a match); one load of a global pointer serving several int stores is an
+    inline member on that object (written out, the global is reloaded after every store);
+  - a reference local declared before a call keeps the member's address in a saved register, declared
+    after it the offset folds into each access; a list walk keeping its begin and end temporaries in
+    the frame is a const_iterator assigned from a const view's begin();
+  - `bool b = false; int i;` and the reverse order in one block give different saved registers
+    (ComputeNewRating, 15 to 4); a bitfield cleared with an unfolded `andi v1,zero,1` comes from an
+    inline function's bool parameter; unused parameters show only at the call site;
+  - a record's size can be read from two stack frames: CareerRecord is 0xE8 bytes (fts_net_persona.cpp's
+    LobbyPlayerInfo likely 0xE8, not 0xF0); 0x22EA50-0x22EDA0 (CShutdownState's and CRebootState's
+    constructors, tables 0x405AE0/0x405B10) is a game-states unit inside the HUD range.
+- **Tells from the kit and AI states, round 14** (seal_unit.cpp, SetAiEvent, CalcAimGoal):
+  - a bare float test `len ? a / len : 1.0f` gives `c.eq.s len,0`; `len != 0.0f` swaps the operands;
+  - a helper with a function-local static inlined into its only caller wants `static inline`: `static`
+    alone still emits a copy, `inline` alone makes the static external (compared by name, not content);
+  - `r = 0; if (inlineBool(...)) r = v;` keeps the result in a saved register across the call, the
+    ternary does not; `s = (E)m; if (m == 3) s = f();` puts the narrowing in the compare's delay slot;
+  - grouped cases listed 3, 4, 0 then 1, 2 give the compare chain 2, 1, 0, 4, 3; a recursive
+    auto-inline candidate (15 statements or fewer) inlines itself unless pinned;
+  - 0x5E6C90's second walk tests against begin() -- an original bug (`beq s3,s3`), kept;
+  - zseal.h includes ai/ai.h (CSealCtrlAi::SetAiEvent returns the event kind) and CalcGoalDir returns
+    bool (CalcAimGoal keeps its result).
+- **Tells from the SEALs, round 13** (small rows: CAiSAnimate's list instances, CAiSGrenade::OnSignal, the blender):
+  - MW 3.0b52 refuses an explicit instantiation of a class template's member function ("illegal
+    explicit template specialization"); `template class X<T>;` compiles but emits every member, so
+    list instances need their real callers;
+  - a class deriving from std::list<T> adds one this-test level to an inlined member destructor (four
+    tests, not three: ~CAiSAnimate); a stand-in for an out-of-class template member's copy must be
+    pinned with `#pragma auto_inline off`, or the unit's own callers inline it;
+  - `unsigned int` bitfields read or written one at a time come out as `lbu`/`sb` (CEntity's
+    m_isAlive, the 0x264 bits) -- CPickup's lw/sw is not universal;
+  - `bool b = !on && bit;` computes `!on` (sltu/xori) before branching; `if (!on && bit) b = true;`
+    branches on the register (0x561E20); a global loop bound's load is never hoisted out of a loop
+    storing through a pointer, even `const` (so AnimPop's count in a3 is something else);
+  - seal_ai.cpp's template tail runs to 0x576117 (CAiSAnimate's list instances); seal_anim.cpp starts
+    at 0x576120 (CGame::StopEngine calls it where SOCOM 1 called ~CSealAnim); OVL1's
+    siNumBodyObjects (0x3DE1E8) behaves as `unsigned int` in SOCOM II.
 - **Tells from the AI core, round 12** (ai_mapio.cpp's tail, vehicle_rdr.cpp's entry, char_type.cpp's weapon list):
   - a class vector's resize matches through include/vector once the element's default constructor is
     right: body assignments give byte stores in statement order, bitfields in a mem-initializer list
@@ -2140,6 +2182,42 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 10** (MW's register allocator read out, the 4-byte pod's
+  operator= and assign):
+  - READING MW'S REGISTER ALLOCATOR: gdb runs the compiler under wibo (break on wibo's
+    `thunk_kernel32_CreateFileA`, then software breakpoints in the PE). In mwccps2 3.0b52 the coloring
+    driver calls buildinterferencegraph 0x4BC7B0, simplifygraph 0x4C4480 and colorgraph 0x4C47F0 (exit
+    0x4C4962); the graph is an array of 30-byte nodes at `[0x5B63C4]` (next +0, the variable's Object +4,
+    index +0x10, colour +0x12, flags +0x14, degree +0x16, an edge list +0x1A whose records hold both
+    ends at +0xC/+0xE and each end's next at +4/+8), the class byte at 0x5B7F5D (0 = GPR),
+    used_virtual_registers at 0x5B6880, the blocks at `[0x5B639C]` (first instruction +0x14; opcode
+    +0x28, operand count +0x2A, 22-byte operands from +0x3C, register at +4) -- the release build's
+    `#pragma debug_listing` writes nothing (its listing function is a bare `ret`). The MSL lane's
+    build/p10/igdump.py (gdb Python) dumps every coloring: each virtual register's name (an Object's
+    HashNameNode, the string at +0xA), degree, neighbours, push order, colour and the pre-rewrite code;
+    igshow.py, igcode.py and igvar.py (a header variant's effect on one variable's degree) read it;
+  - the allocator is the decompiled PowerPC backend's (doldecomp/mweppc Coloring.c): virtual registers
+    are numbered arguments, then named locals in declaration order, then front-end temporaries
+    (`@N`: the inliner's and optimizer's -- an IR live-range split shows as one), then code-generation
+    temporaries; simplify pushes in ascending order every node of degree below K and colour pops the
+    stack, each node the lowest free volatile register (v0 first where it is free, then v1, a0 ...),
+    a nonvolatile (s0 up) only when none is; K = 25 (32 less zero, at, k0, k1, gp, sp, ra -- fp is
+    allocatable), so a node with 25 or more neighbours is deferred and coloured BEFORE the rest. That is
+    MW 3.0's "first-declared local gets the highest saved register" and every one-off register tell;
+  - the class insert's in-place end (include/vector's insert comment): e is a named local deferred at
+    degree >= 25, so it takes v1 ahead of the loop temporaries; the ELEMENT moves its degree by the GPR
+    temporaries its copy and assignment need at the four sites e spans (float members go through the
+    FPRs and add none). Here e has 30 neighbours for CMovieCue; the target's float-first 8-byte entries
+    need 24 or fewer and TypeRemoteGuy 25 or more, so the original template gives e 6-9 fewer
+    neighbours with identical instructions -- the shape that does is still open;
+  - include/vector's 4-byte pod has the char pod's out-of-class operator= (0x259AF0) and an assign with
+    init's word loop and MSL's "vector::assign length error" (0x259D20; the char pod's 0x393FB0 says
+    "vector length error"): both byte-exact as a probe, rows named -- what an implicit assignment of a
+    class holding pointer vectors calls (vector<LOD>'s insert 0x35E100, the UI variables' erase, the soft
+    keyboard's element vectors, zar_main.cpp's 0x259250, itself an unnamed class insert of a 24-byte
+    element holding two pointer vectors); the UI lane's zui_hangul.cpp emits both byte-exact;
+  - a code-exact instance can wait on its callee's row alone: AcctRecord's insert 0x2FE3E0 matched once
+    its copy constructor's row (0x2FEAD0) carried the name zNetMediusUniverse.cpp emits.
 - **Tells from completing the MSL headers, round 9** (the 1-byte pod vector<char>, basic_string::assign(const char *, n)):
   - MW reuses a pointer difference only when both are the same expression: the target recomputes
     `last - first` after an allocation, so its two lengths come from different expressions;
@@ -3397,6 +3475,55 @@ master's, so every MW and GCC unit scores as before, row for row (`./sccheck.py 
 '^(?!auto/)'`: scdiff.py, sccheck.py, scdecomp.py and `include/` are byte-identical to dc0c477's, so no
 unit can score differently; every `src/lib` unit: 820 byte-exact of 862, each miss OPEN in place).
 
+**Round 6a** (2026-11-03, MAIN first): 124 functions byte-exact of 132 written -- 102 rows newly
+byte-exact (19,776 bytes), 22 matched drafts superseded -- and 71 rows named (69 `s1:order`: the
+demo's newlib objects sit in the same alphabetical link order, each checked by its calls; 2 by body).
+`sdk/inet_bsd.c` (33 of 33) and `sdk/inet_addr.c` (5 of 8): the socket library at 0x1C0948; newlib
+(`libc/`, 71 of 74): findfp.c, exit, fclose, fflush, fgets, fwalk, fwrite, refill.c, rget, wbuf,
+wsetup, fread, fseek, ftell, makebuf, ungetc, flags, fopen, puts, the `_r` forms of printf/sprintf/
+vsprintf, mprec.c (14 of 17), signal.c, `_getpid_r`, getenv_r, envlock, locale, mbtowc_r, strcspn,
+qsort, fvwrite, bsearch, bcopy, `_calloc_r` and `setjmp.s` (an assembler unit: newlib's
+machine/mips/setjmp.S, sq of every saved GPR); libkernl's `sdk/iopheap.c` (10 of 11) and
+`sdk/loadfile.c` (5 of 6 written). data.txt gains `__mprec_tens`/`bigtens`/`tinytens`, `p_environ`
+and `__ps2_klibinfo__`. What they showed:
+
+- **The socket layer over libinet was built at -O0** with the SDK's own toolchain: 33 BSD-name
+  wrappers (socket, bind, connect, the receive calls with a 600000 receive timeout first ...) with
+  -O0's frame pointer and spilled arguments, byte-exact only under the dtls13010 build (991111, -01,
+  a, 990721 12 words off, 2.95.x 14, 2.96 11, 3.2 11) -- its GNU as fills the calls' delay slots. A
+  struct in_addr passed or returned by value goes through a local copy of the library's own address
+  type (-O0 keeps the store and load). The address routines are FreeBSD's inet_aton (strtoul per
+  part) and 4.4BSD's class functions at -O2 under dtls13010, **with 32-bit types**: this compiler's
+  `long` is 64 bits and the BSD text's `u_long` would be doublewords. Its isxdigit tests an
+  uninitialised variable (the target hoists `(u_char)(t5 - '0') < 10` of a register nothing sets).
+- **newlib compiles as written, and is newlib 1.9's text** -- each difference from the text first
+  tried was read off the target and is a later 1.9 line, not a compiler effect: lflush's
+  parenthesised test, `CHECK_INIT(fp)` in __swsetup, `mode[1] &&` before the '+' in __sflags,
+  ftell's and fseek's flushes, getenv_r's static `p_environ` (NULL returned without unlocking),
+  `_sprintf_r`/`_vsprintf_r` calling vfprintf. The whole `struct _reent` is now in `libc/newlib.h`
+  (`_atexit` 0x148, `_sig_func` 0x1D4, `__sglue` 0x1D8, `__sf[3]` 0x1E4), with struct stat (st_mode
+  at 4). mprec's `__ULong` is a word (Balloc's size is 20 + 4 * 2^k); `_ulp`, `_ratio`, `_d2b` are
+  the runtime compiler's DFmode delay slots again (round 4a).
+- **The SDK's statics have the demo's names**: its symbol table keeps every object's LOCAL labels
+  (`cd`, `rdata`, `sdata`, `_lih_data`, `_bind_check`, `_lfwildcard`, `_senddata`, `_lfversion`), and
+  the loader compares the server's version with `__ps2_klibinfo__`+12 ("PsIIlibkernl2710", another
+  object's global). The IOP heap's queries return unsigned (failure is lui/ori 0xffffffff).
+- **A goto loop keeps an invariant in the loop**: GCC 2.9's loop optimiser hoists only from
+  while/do/for, so DIntr's mask reload (open since round 2a) appears with `again: ... if (sr &
+  0x10000) goto again;` -- 14 words to 7, the rest a register pair and the duplicated `res = 0`
+  return (not adopted: still open).
+
+**The tools, round 6a**: `scdiff.gnu_static_size` -- a GNU object relocates its statics against the
+section, so `local_object_ok` sized a `.data` scalar by its heuristics, and an int of -1 followed by
+a pointer read as a 5-byte string (loadfile's `_bind_check`, then `_lfwildcard`: a false WRONG
+REFERENCE); plain data now takes its LOCAL OBJECT symbol's size, an object holding a relocation keeps
+the old extent. Proved: every MW hand-written unit (`--files '^(?!auto/|lib/)'`, 5,015 rows) gives
+byte-identical output under master's scdiff and this one; every GCC unit (src/lib and the 713 GCC
+drafts after merging master d75bccc: 1,279 rows) the same rows but sceSifLoadFileReset, WRONG ->
+match. Found on the way, left for its lane: the recogniser's FillLanguageVirtualTable is checked
+against one byte of its table (the first slot is null, so the heuristic reads a string); checked to
+the symbol's size, one slot names another address. automatch was not run this round.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -3757,6 +3884,58 @@ the option setters) -- 50 functions byte-exact, 34 rows new (7,596 bytes), 16 dr
 wrappers and callees, the 5 option setters, each with its evidence), 12 data rows (MyClientIsJoined,
 ActiveNetObjectCount, KeepAliveInterval/Timestamp, CurrentSessionKey, LastDMENetError, four callback
 slots, geMediusProcessingState, geQueuedRequestType: SOCOM 1's names at the same accesses).
+
+**Round 7c: the SPI object and the resource object, whole.**
+
+- **The asrspi object is SOCOM 1's at 0x33A768, two functions moved**: `_engineFree` follows
+  `_engineCalloc` (SOCOM 1's object starts with it) and `asrspi_GainSet` (0x4CBC68) follows
+  `asrspi_Stop`. Every entry point checks the handle (null 0x80040083, magic 11111 0x80040001),
+  takes the engine's busy flag under its critical section (0x80040003 when held), checks the
+  states the call is allowed in through `g_StateError`, calls casr and turns its error through
+  `ConvErr`. Two exits leave the flag set, as the target does (SetParamList's 0x80040013,
+  Start's 0x80040017).
+- **The state check is an inline per count of states, not a macro**: the target loads every
+  allowed state into its own register before the first test (`li v0,1; li a0,2; li a1,5; li a2,4;
+  beq ...`) -- integrate.c copies an inline's constant arguments into pseudos at the call -- and
+  a macro's `s == 1 || s == 2` folds into a range test (`addiu; sltiu`). The test is
+  `if (s != a && s != b) return g_StateError[s]; return 0;` (the `==` form lays the zero first).
+- **A static the code reads must be defined above its first use**: `lw rt,g_StateError(rs)` is a
+  GNU as macro; for a symbol not yet defined in the file as puts it in a variant frag (it might
+  be small data) and will not swap it into the branch's delay slot -- the target's
+  `b; lw` came out `lw; b; nop` with the table defined at the end.
+- **The converters are inlines with out parameters**: ConvResultKind, ConvSampleFormat and
+  TranslateParamId `return` their error from a switch's default and store the value through a
+  pointer; ConvAbnorm's and TranslateParamId's variables stay in memory (`move a2,sp; sw v0,0(a2)`),
+  ConvResultKind's and ConvSampleFormat's go back to registers. A switch on an unsigned value (an
+  enum) tests 0 by equality, which gives the target's 1, 0, 2, 4 chain where an `int` takes `slti`.
+- **No sibling call from a function with a stack slot**: 2.96's sibcall pass gives up when
+  `frame_offset` is nonzero, so ConvErr, intAcquisition, asrspi_Stop, the session-data and word
+  functions `jal ConvErr` where the frameless entry points `j ConvErr` -- and two such calls
+  cross-jump into one (intAcquisition).
+- **Shapes, each measured**: intAcquisition's chunk loop is a `goto` loop (`for`/`while` rotate
+  the exit test or invert the last-chunk test, 20 words; returning 0 from its top takes v1 for the
+  flag); ActivateCtx's state result has its own variable (the ConvErr result takes another
+  register); the rsrc lookup keeps `err = 0` to a single `return err` (its s0) with the other
+  exits returning directly; Start's four stores in one order of 24 (`tools/ccperm.py`).
+- **The tables**: data.txt names the asrspi object's .rodata from SOCOM 1's symtab
+  (`UswVersionCode`, `g_ApiVersion`, `_sizeof_asrspi_engine`, `g_StateError`, the same values) and
+  the rsrc object's (`g_NullResource` beside `g_lhNullHandle`). `g_APIRecogCallBacks` (eight
+  callbacks) is referenced through `.rodata` and so checked by content, each callback at the same
+  distance from asrspi_OpenEngine as in the target: OpenEngine reads R until every function
+  between is the right size. The integrator's table check of FillLanguageVirtualTable and
+  FillContextV2VirtualTable: every slot names the map's function at the target's word (79 of 79,
+  21 of 21), resolved through the object's own function at each offset; by distance
+  _LangVirtualTable shifts 73 slots only because four OPEN functions of language.c are the wrong
+  size.
+- **Open, diagnosed in place**: asrspi_ActivateWords (0x600 against 0x5A0: m2c's shape, its
+  exits share more code in the target), and with it asrspi_OpenEngine's table reference.
+
+Hand-written in round 7c: `asr/asrspi.c` (41 of 43, new: SOCOM 1's asrspi object whole),
+`asr/rsrc.c` (3 of 3, new: rsrc_Open, rsrc_Close, InitRsrcFunction, SOCOM 1's FreeRsrc inlined)
+-- 44 functions byte-exact, 36 new to the map's byte-exact rows (14,768 bytes), eight superseding
+matching drafts (ASRSPICBAGC, ASRSPICBASKCURRENTGAIN, asrspi_GetLngGenders, asrspi_GetVersion,
+asrspi_GetUswVersion, _engineMalloc, _engineCalloc, _engineFree); 9 rows named (asrspi_GainSet
+`s1:calls`, the other eight `s1:order`), 5 data rows (`s1:data`).
 
 ## Open, and next
 

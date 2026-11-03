@@ -235,6 +235,11 @@ public:
         if (data_)
             deallocate(data_);
     }
+    /* the assignment, out of class as the char pod's (OVL1 0x259AF0: assign over the other's words
+     * unless it is this one) -- what an implicit assignment of a class holding pointer vectors calls
+     * (vector<LOD>'s insert 0x35E100, the UI variables' erase 0x2B1A40, the soft keyboard's element
+     * vectors 0x3931A0/0x393030, zar_main.cpp's 24-byte element insert 0x259250) */
+    __vector_pod &operator=(const __vector_pod &x);
     static void deallocate(T *p) { operator delete(p); }
     void clear() { size_ = 0; }
     /* the storage traded with another's through the free swap below, as SOCOM 1's deleter swaps
@@ -273,6 +278,10 @@ public:
     T &at(unsigned int n);
     template <class InputIterator>
     void init(InputIterator first, InputIterator last, forward_iterator_tag);
+    /* a range copied over the contents (OVL1 0x259D20, operator='s): the char pod's assign with init's
+     * word loop */
+    template <class InputIterator>
+    void assign(InputIterator first, InputIterator last, forward_iterator_tag);
     /* n copies of value (SOCOM 1's init__...FUiRCUi, the same 0xE8 bytes as SOCOM II's 0x3C45B0) */
     void init(unsigned int n, const T &value);
     /* grown by copies of c through insert, or cut through erase (out of class: CVisual::Init calls
@@ -840,6 +849,44 @@ void __vector_pod<T, Allocator>::init(InputIterator first, InputIterator last, f
     }
 }
 
+/* the assignment (0x259AF0): assign over the other's words unless it is this one -- the empty tag a
+ * byte read off the stack, as the char pod's (0x393D30) */
+template <class T, class Allocator>
+__vector_pod<T, Allocator> &__vector_pod<T, Allocator>::operator=(const __vector_pod &x)
+{
+    if (this != &x)
+        assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+    return *this;
+}
+
+/* a range copied over the contents (0x259D20): a fresh block when it does not fit (the count
+ * cleared, the old block freed and forgotten), then the words copied by a local walker (MW unrolls
+ * it 8x, as init's) and the count set */
+template <class T, class Allocator>
+template <class InputIterator>
+void __vector_pod<T, Allocator>::assign(InputIterator first, InputIterator last, forward_iterator_tag)
+{
+    unsigned int n = last - first;
+
+    if (n > capacity_) {
+        if (n > max_size())
+            __msl_error("vector::assign length error\n");
+        size_ = 0;
+        if (data_) {
+            deallocate(data_);
+            data_ = 0;
+            capacity_ = 0;
+        }
+        data() = allocate(n);
+        capacity_ = n;
+    }
+    T *d = data_;
+
+    for (InputIterator p = first; p < last; ++p, ++d)
+        *d = *p;
+    size_ = n;
+}
+
 /* n copies of value: the length checked, the block allocated and stored through data()'s
  * reference, size and capacity set, value re-read for every element (0x3C45B0; written under
  * that placeholder in vis_main.cpp until now) */
@@ -1013,7 +1060,31 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  * CRegistrant's 99 lines are mostly its copy: the target copies member by member (three words and a
  * byte), this a block through the FPRs -- its element wants an empty user constructor (the weapons
  * lane's round 10 tell). SOCOM 1's DWARF names the insert's locals in declaration order (MW lists
- * them so, 2.4-era builds too): i, j, newcap, newsize, tmp, j, i, k, j, xp, t1 -- no end local */
+ * them so, 2.4-era builds too): i, j, newcap, newsize, tmp, j, i, k, j, xp, t1 -- no end local.
+ * WHAT DECIDES IT, measured (the MSL headers round 10, MW's own interference graph read out of the
+ * running compiler: build/p10/igdump.py, README "Reading MW's register allocator"): MW colours a
+ * Chaitin graph, simplifying in ascending virtual-register order (arguments, then named locals in
+ * declaration order, then front-end temporaries "@N", then code-generation temporaries) and colouring
+ * in the reverse order, each node the lowest free volatile register -- but a node whose degree is 25
+ * or more (K = 32 less zero, at, k0, k1, gp, sp, ra) is deferred to a later pass and so coloured
+ * FIRST. e is a named local live through the whole in-place branch: deferred, it takes v1 before the
+ * loop temporaries (shared with data_'s load); in order, it comes after them and takes what they leave
+ * (a2). So the ELEMENT decides by the general-register temporaries its copy and assignment add to e's
+ * neighbours (one per word moved through a GPR at each of the four sites e spans: the three construct
+ * loops and copy_backward -- float members go through the FPRs and add nothing), against the template's
+ * own neighbours of e. Here e has 30 neighbours for CMovieCue {float, char *} (zero, v0, this,
+ * position, n, x, m, i, both j, the else loop's split cursor @386, n*8, (m-n)*8, copy_backward's last,
+ * the diff and its rounding, each loop's word copy, each ++size_'s load and add, loop 2/3's compare,
+ * m-n, e-(m-n)*8, copy_backward's word): every class insert here defers e (26 to 218). The target's
+ * float-first 8-byte entries must have 24 or fewer and its {int, int} TypeRemoteGuy (four more) 25 or
+ * more -- so the original's template gives e 6 to 9 FEWER neighbours with the same instructions. No
+ * spelling of ++size_ (size_++, += 1) or of construct() (cast, ::new, a by-reference pointer, a local)
+ * changes the graph; cutting the xp test and copy_backward flips {float, float}, cutting loop 2 as well
+ * flips all four 8-byte probes (build/p10/v3.var) -- the mechanism reproduces, the source shape that
+ * removes the neighbours is still open. Where several nodes are deferred (CVehicleDef: e has 121
+ * neighbours here, deferred in both builds) their own push order decides, so it is not one offset
+ * everywhere -- the next step is to read the target's colours onto this graph's nodes and replay MW's
+ * simplify/colour on candidate graphs (igdump.py gives every node, edge, push and colour) */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
