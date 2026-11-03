@@ -7,7 +7,7 @@
  * next element, the queue itself when it has read everything, &first when the reader is stopped
  * and 0 when it is disabled. An element of up to seven words comes from the scheduler's fast
  * allocator and goes back on its free list; SOCOM 1's static qFreeElem, which does that, is
- * inlined everywhere here (its out-of-line copy is gone). */
+ * inlined everywhere here (its out-of-line copy is gone). 16 of the 17 byte-exact; qEnQueue OPEN. */
 
 typedef struct QELEM {
     struct QELEM *next;
@@ -62,7 +62,6 @@ extern QELEM *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
 extern unsigned char _tosErrorLog(TOSLOG *log, unsigned short code);
 extern int _tosGetProfileU32(void *block, int key, int def);
 
-
 /* SOCOM 1's qFreeElem: an element of up to seven words back on the fast allocator's free list
  * of its size, a bigger one to the heap */
 static __inline__ void qFreeElem(QUEUE *q, QELEM *e)
@@ -106,6 +105,90 @@ static void qUpdateReadPtrsAndIncNbrOfEnqueues(QUEUE *q, QELEM *e);
 void qFreeUnusedElemements(QUEUE *q);
 int qQueueJumpBack(QUEUE *q, unsigned short n);
 int qQueueJumpBackOne(QUEUE *q, unsigned short reader, unsigned short n);
+extern int DestructQueue(QUEUE *q);
+
+/* the scheduler's commands to a queue: 1 and 11 start every reader at the end, 2 and 3 also
+ * move them back (by the bound, by arg), 4 disables the running readers, 5 and 10 start reader
+ * arg, 7 also moves it back n, 6 disables it and 8 stops it (the queue stops with its last
+ * reader), 9 stops every reader, 0xFF destroys the queue; 0xF8 does nothing */
+int qQueueControl(QUEUE *q, unsigned char cmd, int arg, int n)
+{
+    int result = 1;
+    unsigned int i;
+
+    switch (cmd) {
+    case 1:
+    case 11:
+        q->state = 1;
+        for (i = 0; i < q->nreaders; i++)
+            q->read[i] = Q_END(q);
+        break;
+    case 2:
+        q->state = 1;
+        for (i = 0; i < q->nreaders; i++)
+            q->read[i] = Q_END(q);
+        result = qQueueJumpBack(q, q->maxelems);
+        break;
+    case 3:
+        q->state = 1;
+        for (i = 0; i < q->nreaders; i++)
+            q->read[i] = Q_END(q);
+        if (q->maxelems != 0)
+            result = qQueueJumpBack(q, arg);
+        break;
+    case 7:
+        q->state = 1;
+        if (q->read[arg] == 0 || q->read[arg] == Q_STOPPED(q)) {
+            q->read[arg] = Q_END(q);
+            if (q->maxelems != 0)
+                result = qQueueJumpBackOne(q, arg, n);
+        }
+        break;
+    case 5:
+    case 10:
+        q->state = 1;
+        if (q->read[arg] == 0 || q->read[arg] == Q_STOPPED(q))
+            q->read[arg] = Q_END(q);
+        break;
+    case 4:
+        q->state = 2;
+        for (i = 0; i < q->nreaders; i++)
+            if (q->read[i] != 0 && q->read[i] != Q_STOPPED(q))
+                q->read[i] = 0;
+        break;
+    case 9:
+        q->state = 2;
+        for (i = 0; i < q->nreaders; i++)
+            q->read[i] = Q_STOPPED(q);
+        break;
+    case 6:
+        q->read[arg] = 0;
+        for (i = 0; i < q->nreaders; i++)
+            if (q->read[i] != 0 && q->read[i] != Q_STOPPED(q))
+                break;
+        if (i == q->nreaders)
+            q->state = 2;
+        break;
+    case 8:
+        q->read[arg] = Q_STOPPED(q);
+        for (i = 0; i < q->nreaders; i++)
+            if (q->read[i] != 0 && q->read[i] != Q_STOPPED(q))
+                break;
+        if (i == q->nreaders)
+            q->state = 2;
+        break;
+    case 0xF8:
+        break;
+    case 0xFF:
+        if (DestructQueue(q))
+            result = 0;
+        break;
+    default:
+        result = 0;
+        break;
+    }
+    return result;
+}
 
 /* the queue's own settings out of the scheduler's profile: the element size (2), whether the
  * readers start running (3) and the bound (4) */
@@ -194,6 +277,28 @@ void qFreeUnusedElemements(QUEUE *q)
         qFreeElem(q, p);
     }
     q->first = e;
+}
+
+/* whether every running reader of a block's inputs has an element waiting: they must agree --
+ * one at the end and another not is no (the scan stops there) -- and one must be running */
+int qCheckInputQueues(QREQ *req, unsigned int n)
+{
+    QREQ *end = req + n;
+    QREQ *r;
+    int empty = 1;
+
+    for (r = req; r < end; r++)
+        if (r->q != 0 && r->q->read[r->reader] != 0 && r->q->read[r->reader] != Q_STOPPED(r->q)) {
+            empty = r->q->read[r->reader] == Q_END(r->q);
+            break;
+        }
+    for (r++; r < end; r++)
+        if (r->q != 0 && r->q->read[r->reader] != 0 && r->q->read[r->reader] != Q_STOPPED(r->q)
+            && empty != (r->q->read[r->reader] == Q_END(r->q)))
+            break;
+    if (r != end)
+        return 0;
+    return empty ^ 1;
 }
 
 QUEUE *qQueueConstruct(TOS *tos, unsigned char id, unsigned char nreaders)
