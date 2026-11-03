@@ -458,6 +458,25 @@ extern "C" bool func_00559000(CSealCtrlAi *ai)
     return s ? IsKind2Flag80(s) : false;
 }
 
+/* the SEAL teleported to a cell's centre, facing a direction -- or as it faces for none (8): whether the
+ * cell has a centre (OVL2 0x562A10, new in SOCOM II: 0x5DB8F0 calls it twice; the name unknown) */
+extern "C" bool func_00562A10(CSealCtrlAi *ai, const CAiMapLoc &loc, CAiMap::DIR dir)
+{
+    bool r = false;
+    CEntity *e = ai->m_entity;
+    CPnt3D center;
+
+    if (AiMaps.GetCellCenter(loc, &center)) {
+        CQuat q = e->m_quat;
+
+        if (dir != CAiMap::DIR_COUNT)
+            CAiMap::GetDirQuat(dir, q, true);
+        e->TeleportTo(&center, &q);
+        r = true;
+    }
+    return r;
+}
+
 /* the state at 0x4EC: 4 with the word at 0x508 set (an inline: the test materialised, the word
  * as MW's `!(x == 0)`) */
 static inline bool IsState4Held(CSealCtrlAi *ai)
@@ -945,6 +964,40 @@ extern "C" bool func_005604D0(CSealCtrlAi *ai, int a)
     return r;
 }
 
+/* a sound played for an item, surely and with no AI event: the one given, or for none (-1) the item's
+ * own -- 41 to 47 for items 128, 127, 151, 152, 121, 122 and 123, else 40 (OVL2 0x560280, new in SOCOM
+ * II: CAiSDeploy::Tick calls it; the name unknown -- the cases written so, their tests run reversed) */
+extern "C" void func_00560280(CSealCtrl *ctrl, unsigned char item, CHARACTER_SOUND sound)
+{
+    if (sound == -1) {
+        sound = (CHARACTER_SOUND)40;
+        switch (item) {
+        case 128:
+            sound = (CHARACTER_SOUND)41;
+            break;
+        case 127:
+            sound = (CHARACTER_SOUND)42;
+            break;
+        case 151:
+            sound = (CHARACTER_SOUND)43;
+            break;
+        case 152:
+            sound = (CHARACTER_SOUND)44;
+            break;
+        case 121:
+            sound = (CHARACTER_SOUND)45;
+            break;
+        case 122:
+            sound = (CHARACTER_SOUND)46;
+            break;
+        case 123:
+            sound = (CHARACTER_SOUND)47;
+            break;
+        }
+    }
+    ctrl->PlayAiSound(sound, 1.0f, -1);
+}
+
 extern "C" int rand(void);
 
 /* a random value in a range (SOCOM 1's Rfloat: the minimum and the span; its inline operator's
@@ -1043,6 +1096,69 @@ extern "C" {
 extern float data_004365C0;   /* (OVL1 data: the delay a new stance waits, read as a variable) */
 /* (OVL2 data: how long after its time at 0x40C the controller stays busy) */
 extern float data_00650000;
+}
+
+/* what 0x572240 is handed: a table whose slot 0x30 fills a point by an amount, and a word at 4 (the AI
+ * states' 0x5F8D40 and 0x5F95D0 pass it; a stand-in, the names ours) */
+class CAiAlert {
+public:
+    virtual void V08();
+    virtual void V0C();
+    virtual void V10();
+    virtual void V14();
+    virtual void V18();
+    virtual void V1C();
+    virtual void V20();
+    virtual void V24();
+    virtual void V28();
+    virtual void V2C();
+    virtual void Fill(CPnt3D *p, float amount);   /* +0x30 */
+
+    int m_4;   // 0x4
+};
+
+extern "C" {
+/* the amount for none given, the range's factor, and the range that stands (OVL2 data 0x64FDD8,
+ * 0x64FDF0, 0x64FE48, read as variables) */
+extern float data_0064FDD8;
+extern float data_0064FDF0;
+extern float data_0064FE48;
+/* (OVL2 0x60E7A0 and 0x60D280, unowned: OnDeath and OnStunDamage make the same pair of calls) */
+void *func_0060E7A0(CSealCtrlAi *ai);
+void func_0060D280(void *p);
+}
+
+/* the range narrowed by a factor unless it stands (an inline: the factor, its argument, is loaded
+ * ahead of the test, and the range read again for the product) */
+static inline void ScaleRange(CSealCtrlAi *ai, float k)
+{
+    if (data_0064FE48 != ai->m_6f4)
+        ai->m_6f4 *= k;
+}
+
+/* an alert taken in: its amount (a default for none) summed, its point filled, its word kept, the range
+ * narrowed unless it stands, then the pair OnDeath makes (OVL2 0x572240, new in SOCOM II; the name
+ * unknown).
+ * OPEN, 0xBC against 0xC4: through the inline the factor loads ahead of the test and the compare is the
+ * target's (constant first), but the target reads the range again for the product (`lwc1; mul.s
+ * $f0,$f0,$f2`) and pads the block, where MW here reuses the compare's load. Tried: the product as
+ * `= m * k`, `= k * m`, through a pointer, a local copy, the test through an accessor or a cast
+ * address, the test negated, the factor and the test written out in the function. */
+extern "C" void func_00572240(CSealCtrlAi *ai, CAiAlert *alert, float amount)
+{
+    if (alert) {
+        if (amount == 0.0f)
+            amount = data_0064FDD8;
+        ai->m_718 += amount;
+        alert->Fill(&ai->m_724, amount);
+        ai->m_730 = alert->m_4;
+        ScaleRange(ai, data_0064FDF0);
+
+        void *p = func_0060E7A0(ai);
+
+        if (p)
+            func_0060D280(p);
+    }
 }
 
 /* whether a stack's current state is of a kind, through the const GetState (0x5F8330) */

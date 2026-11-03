@@ -661,7 +661,14 @@ public:
     /* a range and its goal, set together unless the range stands at 42 (0x570D90; the names ours) */
     float m_6f4;   // 0x6f4
     float m_6f8;   // 0x6f8
-    unsigned char _6fc[0x74c - 0x6fc];
+    unsigned char _6fc[0x718 - 0x6fc];
+    /* what 0x572240 gathers from an alert: the amounts summed, a point the alert fills, and its word
+     * at 4 (the names ours) */
+    float m_718;   // 0x718
+    unsigned char _71c[0x724 - 0x71c];
+    CPnt3D m_724;   // 0x724
+    int m_730;   // 0x730
+    unsigned char _734[0x74c - 0x734];
     float m_spraytimer;   // 0x74c: SetSprayTimer's time (the name ours)
     CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
     /* the sound the AI last made (0x571010: the sound, when it may be made again, and its
