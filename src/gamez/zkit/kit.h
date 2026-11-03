@@ -267,6 +267,12 @@ public:
      * item's place plus one, the selection reset when it fell off (OVL2 0x5B9BB0; SOCOM 1's
      * RemoveItemAndAmmo(int), which SOCOM II's closing up and WepWaitOn join) */
     void RemoveItemAndAmmo(int index);
+    /* an item's ammunition let go (OVL2 0x5B9F00; SOCOM 1's) and whether an item has room for more
+     * rounds (OVL2 0x5BA5B0; SOCOM 1's, the count unread) */
+    void RemoveAmmo(int index);
+    bool CanAddAmmo(int index, int count);
+    /* rounds added to an item's magazines, the rest returned (OVL2 0x5BA3D0; SOCOM 1's) */
+    int AddAmmo(int index, int rounds);
 
     /* an index wrapped into [0, n), or -1 (SOCOM 1's unwrap__5CZKitFii, out of line there; SOCOM
      * II inlines it everywhere) */
