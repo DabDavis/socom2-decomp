@@ -627,6 +627,10 @@ public:
     virtual bool StartEngine();
     virtual void StopEngine();
     virtual void Tick(float dT);
+    /* the state stack's pop and switch (SOCOM 1's CGame::Pop and Switch, 0x2CF2F0 and 0x2CF410: the
+     * HUD lane's st_mpexit.cpp calls them as members, additively; the placeholders below stay) */
+    void Pop(unsigned int arg);
+    void Switch(CGameState *state, unsigned int arg);
 
     unsigned char m_Active;   // 0x4
     CGameState *m_InitialState;   // 0x8

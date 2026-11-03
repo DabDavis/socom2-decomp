@@ -12,20 +12,35 @@
 #include "../../gamez/zinput/zinput.h"
 #include "hud_weaponsel.h"
 
-/* the seal's controller as the selector reads it: the pad it reads (SOCOM 1's at 0xE8) */
+/* the controller's menu states (hud_missioncams.h's MENU_STATE, SOCOM 1's DWARF) */
+enum MENU_STATE {
+    stateNone = 0,
+    stateWeaponSel = 1,
+    stateOrders = 2,
+    statePauseTestMenu = 3,
+    stateFullScreenMapMenu = 4,
+    stateFullScreenMapAnim = 5,
+    stateLast = 6,
+};
+
+/* the seal's controller as the selector reads it: the pad it reads (SOCOM 1's at 0xE8) and SOCOM 1's
+ * SetMenuState with a flag added (OVL2) */
 class CSealCtrl {
 public:
+    void SetMenuState(MENU_STATE state, bool flag);
+
     unsigned char _0[0x114];
     unsigned int m_padindex;   // 0x114
 };
 
-/* SOCOM 1's CSealCtrl::SetMenuState with a flag added (OVL2; the row unnamed: called as C) */
-extern "C" void func_00597740(CSealCtrl *ctrl, int state, int flag);
 
 /* a character's weapon and its list (SOCOM 1's CCharacterWeap, 12 bytes, and CCharacterWeapList, a
  * vector of them: its size at 4, its elements at 8) */
 class CCharacterWeap {
 public:
+    /* SOCOM 1's SetupCharacterWeapon (OVL2; AddWeapon is the list's member below, 0x53B3A0) */
+    void SetupCharacterWeapon(EQUIP_ITEM item);
+
     unsigned char _0[0xc];
 };
 
@@ -40,10 +55,6 @@ public:
 
     void AddWeapon(EQUIP_ITEM item);
 };
-
-/* SOCOM 1's CCharacterWeap::SetupCharacterWeapon (OVL2; the row unnamed: called as C; AddWeapon is the
- * list's member above, 0x53B3A0) */
-extern "C" void func_0053EEE0(CCharacterWeap *weap, EQUIP_ITEM item);
 
 /* a character's type as the selector reads it: its weapons (SOCOM 1's at 0x250) */
 class CCharacterType {
@@ -265,7 +276,7 @@ void CInGameWeaponSel::AfterClose()
     CZSealBody *seal = CHUD::GetHUDOwner();
 
     if (seal) {
-        func_00597740(seal->m_ctrl, 0, 0);
+        seal->m_ctrl->SetMenuState(stateNone, false);
 
         CPad *pad = GetPad(seal->m_ctrl->m_padindex);
 
@@ -330,11 +341,11 @@ void CInGameWeaponSel::UpdateCharacter()
     for (ii = 0; ii < 5; ii++) {
         if (ii >= weaps.size())
             break;
-        func_0053EEE0(&weaps[ii], m_selected_item_index[ii]);
+        weaps[ii].SetupCharacterWeapon(m_selected_item_index[ii]);
     }
     for (; ii < 5; ii++) {
         weaps.AddWeapon(m_selected_item_index[ii]);
         if (m_selected_item_index[ii] != EQUIP_NONE)
-            func_0053EEE0(&weaps[ii], m_selected_item_index[ii]);
+            weaps[ii].SetupCharacterWeapon(m_selected_item_index[ii]);
     }
 }

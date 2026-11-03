@@ -34,6 +34,12 @@ public:
     void SetCurItemByIndex(int index);   // OVL2 0x5C4B10
     const char *GetItemName(int index);
     class CZFTSWeapon *GetItemByIndex(int index) const;
+    /* the hot-swap flag (the byte at kit+4: OVL2 0x5BC2B0, 0x5BC2A0, SOCOM II's), SOCOM 1's
+     * CanChangeItem (0x5C4FD0) and unwrap(int, int) (0x5C5030: an index wrapped on a count) */
+    bool GetHotSwap();
+    void SetHotSwap(bool on);
+    int CanChangeItem();
+    int unwrap(int index, int count);
 };
 
 /* a kit item as the selector reads it: its type byte (11: no ammunition texts) */
@@ -43,19 +49,6 @@ public:
     unsigned char m_type;   // 0x7c
 };
 
-/* the kit's hot-swap flag (the byte at kit+4): read and set (OVL2 0x5BC2B0, 0x5BC2A0, SOCOM II's,
- * the rows unnamed: called as C) */
-extern "C" bool func_005BC2B0(CZKit *kit);
-extern "C" void func_005BC2A0(CZKit *kit, bool on);
-
-/* SOCOM 1's CZSealBody::CanChangeItem and CZKit::CanChangeItem (OVL2 0x5A8CB0, 0x5C4FD0: the rows
- * unnamed, called as C) */
-extern "C" int func_005A8CB0(class CZSealBody *seal);
-extern "C" int func_005C4FD0(CZKit *kit);
-
-/* SOCOM 1's CZKit::unwrap(int, int): an index wrapped on a count (OVL2 0x5C5030, the row unnamed:
- * called as C) */
-extern "C" int func_005C5030(CZKit *kit, int index, int count);
 
 /* the hot-swap label's clock (bss: OnOpen zeroes it, HandleOpenState runs it; no row yet) */
 extern float data_0040C100;
@@ -65,8 +58,22 @@ extern "C" void func_001FE120(char *buf, int size, int id, int n);
 
 
 /* the seal's controller as the selector reads it: the pad it reads (SOCOM 1's at 0xE8) */
+/* the controller's menu states (hud_missioncams.h's MENU_STATE, SOCOM 1's DWARF) */
+enum MENU_STATE {
+    stateNone = 0,
+    stateWeaponSel = 1,
+    stateOrders = 2,
+    statePauseTestMenu = 3,
+    stateFullScreenMapMenu = 4,
+    stateFullScreenMapAnim = 5,
+    stateLast = 6,
+};
+
 class CSealCtrl {
 public:
+    /* SOCOM 1's SetMenuState with a flag added (OVL2) */
+    void SetMenuState(MENU_STATE state, bool flag);
+
     unsigned char _0[0x114];
     unsigned int m_padindex;   // 0x114
     unsigned char _118[0x11c - 0x118];
@@ -83,8 +90,6 @@ public:
 /* a localised string by its id (the string table's; 0x361B40, no row named yet) */
 const char *GetString(int id);
 
-/* SOCOM 1's CSealCtrl::SetMenuState with a flag added (OVL2; the row unnamed: called as C) */
-extern "C" void func_00597740(CSealCtrl *ctrl, int state, int flag);
 
 /* the seal as the selector reads it: its controller and kit */
 class CZSealBody {
@@ -103,6 +108,9 @@ public:
     int m_socom2_eb8;   // 0xeb8: set, the weapons are kept (SOCOM II's)
 
     CZKit *GetKit() { return &m_kit; }
+    /* SOCOM 1's CanChangeItem (OVL2 0x5A8CB0) and IsChangingWeapons with a flag added (0x5A7980) */
+    int CanChangeItem();
+    bool IsChangingWeapons(bool flag);
 };
 
 /* the selector's sounds: the second slot plays one (zsnd.h's PlaySound(inst, flags)) */
@@ -188,10 +196,9 @@ float s_fRowY = s_fBgBottom - 124.0f;
 float s_fBgTop = s_fBgBottom - 186.0f;
 }
 
-/* SOCOM 1's CCtrlrConfigs::GetButtonState(PadBtnFunc, const CPad &) (0x2C64E0, no row named) and
- * CZSealBody::IsChangingWeapons with a flag added (OVL2 0x5A7980): called as C */
+/* SOCOM 1's CCtrlrConfigs::GetButtonState(PadBtnFunc, const CPad &) (0x2C64E0, no row named):
+ * called as C */
 extern "C" unsigned char func_002C64E0(int func, CPad *pad);
-extern "C" bool func_005A7980(CZSealBody *seal, int flag);
 
 
 /* the members built (the bright texts' inline constructors at 80 alpha), the state cleared, the
@@ -435,9 +442,9 @@ void CWeaponSel::OnOpen()
         AfterClose();
         return;
     }
-    if (seal && func_005A8CB0(seal)) {
-        func_00597740(seal->m_ctrl, 1, 0);
-        if (!func_005C4FD0(&seal->m_kit)) {
+    if (seal && seal->CanChangeItem()) {
+        seal->m_ctrl->SetMenuState(stateWeaponSel, false);
+        if (!seal->m_kit.CanChangeItem()) {
             CSnd::PlayErrorSound();
             AfterClose();
             return;
@@ -563,7 +570,7 @@ void CWeaponSel::HandleOpenState(CPad *pad, float dT)
         CZKit *kit = &seal->m_kit;
 
         if (seal) {
-            int item = func_005C5030(kit, m_current_item, kit->GetNumItems());
+            int item = kit->unwrap(m_current_item, kit->GetNumItems());
             CSealCtrl *ctrl = seal->m_ctrl;
 
             if ((int)ctrl->m_hotswap2 == item) {
@@ -578,7 +585,7 @@ void CWeaponSel::HandleOpenState(CPad *pad, float dT)
         CZKit *kit = &seal->m_kit;
 
         if (seal) {
-            int item = func_005C5030(kit, m_current_item, kit->GetNumItems());
+            int item = kit->unwrap(m_current_item, kit->GetNumItems());
             CSealCtrl *ctrl = seal->m_ctrl;
 
             if ((int)ctrl->m_hotswap1 == item) {
@@ -600,7 +607,7 @@ void CWeaponSel::HandleOpenState(CPad *pad, float dT)
         if ((func_002C64E0(0, pad) == 1) == false && (func_002C64E0(4, pad) == 1) == false)
             select = false;
 
-        select = select && func_005A8CB0(seal);
+        select = select && seal->CanChangeItem();
         if (select) {
             CZSealBody *seal = CHUD::GetHUDOwner();
 
@@ -839,7 +846,7 @@ void CWeaponSel::AfterClose()
     CZSealBody *seal = CHUD::GetHUDOwner();
 
     if (seal) {
-        func_00597740(seal->m_ctrl, 0, 0);
+        seal->m_ctrl->SetMenuState(stateNone, false);
 
         CPad *pad = GetPad(seal->m_ctrl->m_padindex);
 
@@ -975,7 +982,7 @@ void CWeaponSel::CheckHotSwap()
         m_weaponicon[1].Off();
         m_hotswapL1text.Off();
         m_hotswapL2text.Off();
-    } else if (!m_selectionback2.IsOn() && seal && func_005BC2B0(&seal->m_kit)) {
+    } else if (!m_selectionback2.IsOn() && seal && seal->m_kit.GetHotSwap()) {
         int item = seal->m_kit.GetSelectedItemNum();
 
         m_weapontex[1] = seal->m_kit.GetIcon(item);
@@ -1008,7 +1015,7 @@ void CWeaponSel::CheckHotSwap()
             }
         }
     }
-    func_005BC2A0(&seal->m_kit, false);
+    seal->m_kit.SetHotSwap(false);
 }
 
 /* the hot-swap highlight faded out and off, the middle icon off when asked or closed, the hot-swap
@@ -1086,7 +1093,7 @@ void CWeaponSel::HudTick(CPad *pad, float dT)
         CZSealBody *seal = CHUD::GetHUDOwner();
 
         /* the button's state compared as a bool (`!= false`: the target materialises the test) */
-        if (seal && (func_002C64E0(4, pad) == 1) != false && !func_005A7980(seal, 1) && seal->m_socom2_e1_4)
+        if (seal && (func_002C64E0(4, pad) == 1) != false && !seal->IsChangingWeapons(true) && seal->m_socom2_e1_4)
             OnOpen();
         break;
     }

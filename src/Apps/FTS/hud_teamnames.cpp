@@ -90,9 +90,6 @@ public:
     static PNT4D m_hud_textcolor;
 };
 
-/* a string placed by its position and centring (no row named yet) */
-extern "C" void func_00362B70(C2DString *s);
-
 /* the BLUDSHOT name's scale (data 0x3DC720: a variable, read with lwc1) */
 static float s_bludshotscale = 0.74f;
 
@@ -228,7 +225,7 @@ void CTeamNames::SetupTeamNameEntry(int index, CZSealBody *seal, bool add)
         bludshot = true;
     if (bludshot)
         strName.m_scale = s_bludshotscale;
-    func_00362B70(&strName);
+    strName.UpdatePos();
     strName.SetPos((int)(510.0f - strName.m_charheight), (int)(RowY(index) - (bludshot ? 2 : 1)));
     SetTextColor(&strName);
     if (add) {

@@ -1842,6 +1842,65 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 17** (seal_body.cpp's initialiser, seal_cfg.cpp's gear, CanPitch):
+  - __sinit_seal_body.cpp 0x668940 needs the unit's statics defined in BUILD ORDER: three offsets new in SOCOM II,
+    newanims (a CActiveAnimList of 8 -- SOCOM 1 had 12), then SOCOM 1's ten throw offsets; the tail's RTList<ACTIVE_ANIM>
+    pieces are OVL2 copies (`ovl-copy:` marks), and OVL2's ~CActiveAnimList 0x58AAC0 inlines ~RTList where OVL1's copy
+    calls it -- an implicit derived destructor in a unit's tail inlines the out-of-class base destructor (one more
+    this-test) where another unit's copy calls it;
+  - seal_body.cpp ends with ~CActiveAnimList at 0x58AAC0 and seal_cfg.cpp begins with ~CObjAnims at 0x58AB30, as in
+    SOCOM 1; CZSealBody's CObjAnims at 0x37C is SOCOM 1's m_obj_anims (a vector<CObjAnim *>, the element's name ours);
+    AnimTypes is a class of static shorts 8 bytes apart in SOCOM 1's order, one inserted between ClimbMedium and
+    ProneRStrafe;
+  - `new T(a, b)` inside an inline member evaluates the constructor's arguments before operator new and keeps them in
+    saved registers -- written in place, MW loads them after the allocation's null test (SetupGear); a bounds-tested
+    pick matches as if/else assignments, the ternary lays its blocks out differently (AddItem); a reference local
+    declared before a call's result local is computed ahead of the call and takes the higher saved register;
+  - a float member multiplied by a call's result stays in $f20 across the call only when read through a by-value
+    inline accessor written on the right of the product (SetMaxMotion); 0x541510 is GetBBox's OVL2 copy (all seven OVL2
+    callers reach it from a one-level-inlined GetBBox: marked at integration, which made AddDIPolys 0x58B960
+    byte-exact);
+  - open: SetMaxMotion 0x58BCB0 (4: in the two strafe lookups the target loads the AnimTypes value before the anim set;
+    six spellings), CanInterrupt 0x587C20 (0x1CC vs 0x1DC: the `move v0,zero` in another delay slot, the loop's arms
+    assigning a bool differently, two saved registers swapped).
+- **Tells from the HUD, round 24** (hud_main.cpp on the real C2DFont, zui_2d.cpp's controls, CTCM's constructor, the
+  placeholders respelled):
+  - on c2dfont.h's real C2DFont (a std::map<unsigned short, C2DGlyph>) hud_main.cpp emits the glyph tree's destroy
+    0x1FE760 byte-exact and seven template rows 0x1FE9E0-0x1FEC50 under their names, and ReleaseHUD and ~CHUD still
+    match at level 5 -- a tree tail matches as soon as its callee rows carry the emitted names;
+  - inside an inline member, `const T *item = this;` keeps the object's address in a saved register across a call (the
+    first read folded into the caller's offset); through `this`, an inline's reference or pointer parameter or a
+    reference local MW folds every access (CCheckBox::HandlePad); `x *= k; f(x);` keeps the product in the argument
+    register, `f(x * k)` computes it into a new one (C2DVisual::Render);
+  - overriding an inline virtual (C2DButton::Tick) can stop a unit emitting the base's inline copy (C3StateButton::Tick
+    0x37C600) when only derived tables used it; defining the base's destructor -- its key function -- brings the
+    base's table and the copy back (~C3StateButton 0x377A30);
+  - all 45 named placeholders in the HUD's 16 files respelled (build/scratch/integ/placeholders.py lists none there);
+    hud_main.cpp's CHudNetState stand-in is theTCM through hud_tcm.h and its m_messages4 the chat line, a CMsgEditor;
+    CTCM() 0x237390 (the mode 4 through CTCMMode's inline constructor, six polys, a 0.3 file static in the 8-byte
+    float pool 0x3DCB00-0x3DCB3C) names the tree unit's CTCMNode() 0x232660, ~CTCMNode 0x232490 (a written destructor:
+    the implicit copy came out 0x148 against 0x1D0) and CTCMSounds() 0x2329D0;
+  - open: CHandlerButton::HandlePad 0x3765A0 (11: the target keeps `this` and then the end node in s3, the walk's node
+    in s2 -- six spellings in its comment); round 23's four tcm opens and st_mpexit's three unchanged.
+- **Tells from the world, rdr and sound, round 5** (zrdr_read, the headset and instance pool, a new zsav_lobby.cpp):
+  - a temporary bound to a const reference takes its stack slot ahead of temporaries created before it: Pop binding
+    end() and erase's result to const references gives zrdr_read the target's slots;
+  - "REGISTERS ONLY" CAN BE A CONSTANT OR A PROTOTYPE: Headset::SoundSysCallback's refused start stores the case
+    chain's last-loaded constant (state 1, not 2); ReleaseSoundInstance's callee 0x346270 takes the instance in a0, and
+    the placeholder declared without it shifted every register in the caller;
+  - `unsigned n = v.size(); for (; i < n;)` swaps the bound and cursor registers against `i < v.size()`; a list walk
+    written `i != end()` rebuilds the end each pass, `iterator e = end();` in a block before the walk holds it in a
+    saved register as the target does; keeping a member's address in a saved register needs a named pointer local;
+  - zsav_lobby.cpp (0x33E7F0-0x33F04F, names ours) is the lobby's save: CLobbySaveManager (a pointer list of modules,
+    a CLobbyFileIO, a blob of 40-byte entries) and CLobbySaveModule -- SOCOM 1's null-safe CSaferStr::operator=(const
+    char *) reproduces the module constructor's slots, a CSaferStr member gives one this-test before ~basic_string in
+    an implicit destructor; `bool r = p != 0; if (p && c) { ...; r = false; } return r;` is 0x10 shorter than returning
+    inside the test; 0x34D180-0x34E06F is an unwritten subtitle-table unit (SetLanguage calls 0x34D190, the initialiser
+    0x402FF0 builds 0x34D500: two vectors of 12-byte records looked up by hash);
+  - open: CLobbySaveManager::Load 0x33E850 (0x1A4 vs 0x1B4: the walk's end lifted out of both loops into a block after
+    the return -- SortNearToFar's unreproduced shape -- and the element read off the node each time), ReadArray (17:
+    the depth test, every spelling 17 or 47), 0x346270 (its loop keeps the iterator in a stack slot, 0x90 against the
+    plain loop's 0x68 -- the MSL lane's iterator-in-memory question, which also holds SerializeValves).
 - **Tells from the AI core, round 17** (the string patch, include/algorithm's heap, the A* search):
   - the world lane's basic_string patch is in -- operator=(const basic_string &) an inline over a new assign(const
     basic_string &) (0x22E4D0 assign; 0x32FD70, the image's only `j 0x22E4D0` stub, __as__) -- and its "regression" of

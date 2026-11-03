@@ -67,9 +67,9 @@ PNT2D CAiLinePtItr::GetPt() const
 
 struct _zrdr;
 
-/* the reader's finders (zrdr; the int and PNT3D ones' rows not named yet: called as C) */
-extern "C" int func_0032E970(const _zrdr *rdr, const char *name, int *value, int n);   /* zrdr_findint */
-extern "C" int func_0032DE80(const _zrdr *rdr, const char *name, PNT3D *value);        /* zrdr_findPNT3D */
+/* the reader's finders (zrdr) */
+int zrdr_findint(const _zrdr *rdr, const char *name, int *value, int n);
+int zrdr_findPNT3D(const _zrdr *rdr, const char *name, PNT3D *value);
 int zrdr_findreal(const _zrdr *rdr, const char *name, float *value, int n);
 
 /* a line or polygon type's look (SOCOM 1's DWARF); built white, half opaque, one wide -- the
@@ -103,7 +103,7 @@ std::map<int, LINE_DATA> g_mapPolyProps;
  * an inline) */
 static inline void ReadLineData(_zrdr *pRdr, LINE_DATA &data)
 {
-    func_0032DE80(pRdr, "Color", &data.color);
+    zrdr_findPNT3D(pRdr, "Color", &data.color);
 
     float opacity = 1.0f;
 
@@ -121,7 +121,7 @@ void hudAddLineType(_zrdr *pRdr)
 {
     int type = 0;
 
-    func_0032E970(pRdr, "Type", &type, 1);
+    zrdr_findint(pRdr, "Type", &type, 1);
     ReadLineData(pRdr, g_mapLineProps[type]);
 }
 
@@ -130,6 +130,6 @@ void hudAddPolyType(_zrdr *pRdr)
 {
     int type = 0;
 
-    func_0032E970(pRdr, "Type", &type, 1);
+    zrdr_findint(pRdr, "Type", &type, 1);
     ReadLineData(pRdr, g_mapPolyProps[type]);
 }

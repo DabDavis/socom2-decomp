@@ -63,6 +63,17 @@ enum CDIType { CDI_TYPE_0 = 0, CDI_TYPE_LAST = 255 };
  * narrows it as a short; only its bounds here) */
 enum AnimType { animTypeUndefined = -1, animTypeRef = 0, animTypeLast = 142 };
 
+/* SOCOM 1's anim types read as variables: static shorts the anim set fills in (anim.cpp's 0x5E1DF0
+ * stores them; OVL1 data, 8 bytes apart in SOCOM 1's order -- SOCOM 1's 4). Only the ones read here */
+class AnimTypes {
+public:
+    static short Stand2Prone;   // OVL1 0x3DEC48
+    static short PistolStand2Prone;   // OVL1 0x3DEC50
+    static short ClimbMedium;   // OVL1 0x3DEC90
+    static short ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
+    static short ProneLStrafe;   // OVL1 0x3DECD0
+};
+
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
 enum SEAL_DEATH_TYPE {
     DEATH_NONE = 0, DEATH_KNIFE_KILL = 1, DEATH_CQB = 2, DEATH_HEADSHOT = 3, DEATH_GRENADE = 4,
@@ -899,6 +910,9 @@ public:
  * zchar.h's CCharacterType::m_gear_list) */
 class CCharacterGear {
 public:
+    /* the gear's model instanced under a name (SOCOM 1's; OVL2 0x53C940, char_type.cpp's) */
+    zdb::CNode *CreateInstance(const char *name) const;
+
     int m_ref_count;   // 0x0
     int m_partid;   // 0x4
     unsigned int m_gearid;   // 0x8
@@ -908,6 +922,32 @@ public:
     void *m_model;   // 0x18
     CPnt3D m_offset;   // 0x1c
     CPnt3D m_rotation;   // 0x28
+};
+
+/* a body part made of a gear: the five items worn (CZSealBody's m_item_gear) and the extra parts on
+ * CObjAnims' list (SOCOM 1's AddItem news one of 8 bytes, the part and the gear). SOCOM II's
+ * constructor and destructor zero both words (OVL2 0x5550B0 and 0x553D60, seal.cpp's copies: the
+ * SEAL's constructor and destructor build and tear down the five through __construct_array and
+ * __destroy_arr; ~CObjAnims' delete inlines the destructor) -- the name ours */
+class CObjAnim {
+public:
+    CObjAnim() { m_part = 0; m_gear = 0; }
+    CObjAnim(CZBodyPart *part, class CCharacterGear *gear) { m_part = part; m_gear = gear; }
+    ~CObjAnim() { m_part = 0; m_gear = 0; }
+
+    CZBodyPart *m_part;   // 0x0
+    class CCharacterGear *m_gear;   // 0x4
+};
+
+/* the parts the SEAL adds (SOCOM 1's DWARF: CObjAnims, one vector; its GetObjAnim and destructor head
+ * seal_cfg.cpp in both builds -- SOCOM II's destructor 0x58AB30, the SEAL's destructor calls it) */
+class CObjAnims {
+public:
+    ~CObjAnims();
+    /* a part and its gear added (an inline: SetupGear reads both before the allocation) */
+    void Add(CZBodyPart *part, class CCharacterGear *gear) { m_obj_anims.push_back(new CObjAnim(part, gear)); }
+
+    std::vector<CObjAnim *> m_obj_anims;   // 0x0
 };
 
 /* the SEAL's adrenaline: its level, 0 to 1 (only what the heartbeat reads; the names ours) */
@@ -1043,6 +1083,25 @@ public:
     void SetPartAsGear(CZBodyPart *part, class CCharacterGear *gear);
     /* a gear by name, or none (SOCOM 1's; OVL2 0x59A730, seal_create.cpp: `this` unread) */
     CCharacterGear *FindGear(const char *name);
+    /* the rifle, pistol and launcher found among the made gears, the launcher's part added (SOCOM 1's;
+     * OVL2 0x58B0F0, seal_cfg.cpp) */
+    void SetupGear();
+    /* a part added to the anims' parts: a bare one by name (OVL2 0x58B630), or a gear's model attached to
+     * the part it names (0x58B790; SOCOM 1's two AddItems, after SetupEyes in both builds) */
+    bool AddItem(const char *name);
+    bool AddItem(class CCharacterGear *gear);
+    /* every bone's node given a box DI of the person material, the upper spine's box capped (SOCOM 1's;
+     * OVL2 0x58B960, seal_cfg.cpp) */
+    void AddDIPolys();
+    /* the anim set's speeds set, the prone and ladder ones from their anims' scaled times (SOCOM 1's;
+     * OVL2 0x58BCB0, seal_cfg.cpp) */
+    void SetMaxMotion();
+    /* a new anim set bound: a carried body let go, the blends cleared, the set swapped in (the old one
+     * kept), the speeds and the weapon reset and the type's blend pushed in the state (SOCOM 1's took the
+     * set alone; OVL2 0x58C350, seal_cfg.cpp) */
+    void BindAnimSet(class AnimSet *set, AnimType type, SEAL_STATE state, bool force);
+    /* the carried body let go of (SOCOM 1's; OVL2 0x579220, seal_body.cpp) */
+    void DetachBody();
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */
     void GetMaxXMotion(float &a, float &b);
     void GetMaxZMotion(float &a, float &b);
@@ -1072,6 +1131,15 @@ public:
     bool IsPlayer() { return m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false; }
     /* whether another console drives it (the same shape, IsRemote at +0x34) */
     bool IsRemote() { return m_control ? ((CSealCtrl *)m_control)->IsRemote() : false; }
+    /* whether the AI drives it (the same inline shape: CanInterrupt) */
+    bool IsAi()
+    {
+        bool r = false;
+
+        if (m_control)
+            r = ((CSealCtrl *)m_control)->IsAi();
+        return r;
+    }
     /* the ladder's polygons checked, and the check taken only when it should be (SOCOM 1's took three
      * float references; OVL2 0x5B0EB0, 0x5B10B0) */
     bool CheckDILadder();
@@ -1289,9 +1357,11 @@ public:
     CZBodyPart *m_lhand;   // 0x2f8 (SOCOM 1's 0x27c)
     CZBodyPart *m_spinelo;   // 0x2fc (SOCOM 1's 0x280: the rifle's place on the back)
     CZBodyPart *m_rhand;   // 0x300 (SOCOM 1's 0x284)
-    unsigned char _304[0x308 - 0x304];
+    CZBodyPart *m_hips;   // 0x304 (SOCOM 1's 0x288)
     CZBodyPart *m_head;   // 0x308 (SOCOM 1's 0x28c, m_root + 0x20 in both: 0x57F150's ray starts above it)
-    unsigned char _30c[0x318 - 0x30c];
+    CZBodyPart *m_neck;   // 0x30c (SOCOM 1's 0x290)
+    CZBodyPart *m_spinehi;   // 0x310 (SOCOM 1's 0x294: AddDIPolys caps its box)
+    CZBodyPart *m_lthigh;   // 0x314 (SOCOM 1's 0x298)
     CZBodyPart *m_rthigh;   // 0x318 (SOCOM 1's 0x29c: the pistol's holster)
     unsigned char _31c[0x350 - 0x31c];
     CZBodyPart *m_rifle;   // 0x350 (SOCOM 1's 0x2d4)
@@ -1305,14 +1375,12 @@ public:
     unsigned char _368[0x374 - 0x368];
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
-    unsigned char _376[0x388 - 0x376];
-    /* the items worn as gear, by SOCOM 1's SEAL_ITEM (1 the rifle, 2 the pistol; AimWeapon aims along
-     * 1, 2 and 4): the part SetPartAsGear makes of each and the gear (SOCOM 1's m_rifle_as_gear and
-     * m_pistol_as_gear were the gear alone; the names ours) */
-    struct CItemGear {
-        CZBodyPart *m_part;   // 0x0
-        class CCharacterGear *m_gear;   // 0x4
-    } m_item_gear[5];   // 0x388 (the rifle's 0x390, the pistol's 0x398)
+    unsigned char _376[0x37c - 0x376];
+    CObjAnims m_obj_anims;   // 0x37c (SOCOM 1's 0x30c)
+    /* the items worn as gear, by SOCOM 1's SEAL_ITEM (1 the rifle, 2 the pistol, 4 the launcher;
+     * AimWeapon aims along 1, 2 and 4): the part SetPartAsGear makes of each and the gear (SOCOM 1's
+     * m_rifle_as_gear and m_pistol_as_gear were the gear alone; the names ours) */
+    CObjAnim m_item_gear[5];   // 0x388 (the rifle's 0x390, the pistol's 0x398)
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
     unsigned char _3b4[0x3dc - 0x3b4];
     zdb::CNode *m_3dc;   // 0x3dc: a node 0x5AA620 takes the SEAL of (the name ours)
@@ -1324,7 +1392,8 @@ public:
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
     unsigned char _438[0x528 - 0x438];
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
-    unsigned char _52c[0x534 - 0x52c];
+    class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
+    unsigned char _530[0x534 - 0x530];
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
     unsigned char _536[0x58c - 0x536];
     /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its

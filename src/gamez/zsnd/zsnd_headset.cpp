@@ -155,8 +155,9 @@ void Headset::StaticSoundSysCallback(unsigned int handle, unsigned long user_dat
         ((Headset *)user_data)->SoundSysCallback(handle);
 }
 
-/* OPEN, 4 instructions: the case chain's constants 3 and 2 sit in a0 and v1 in the target (each
- * reused by a case's store), in v1 and a0 here. Case 1 has a block of its own (a return) */
+/* the stream's start or stop acknowledged. A refused start (case 0, a handle) falls back to state
+ * 1, as a refused stop does: the target stores the chain's last constant, 1, there (an `m_state =
+ * 2` reads as the case constants trading registers). Case 1 has a block of its own (a return) */
 void Headset::SoundSysCallback(unsigned int handle)
 {
     switch (m_state) {
@@ -166,7 +167,7 @@ void Headset::SoundSysCallback(unsigned int handle)
             theHeadsetState = 2;
             m_state = 4;
         } else
-            m_state = 2;
+            m_state = 1;
         break;
     case 1:
         return;
