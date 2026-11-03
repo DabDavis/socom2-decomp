@@ -161,6 +161,11 @@ public:
     /* the index'th SEAL of the squad, counted on through the squads under it to a depth, or 0
      * (SOCOM 1's GetSealByIndex(unsigned int), the depth new; OVL2 0x5EDBB0) */
     CZSealBody *GetSealByIndex(int index, int depth);
+    /* the squad's last SEAL: the last squad under it asked first, then its own SEALs', escortees'
+     * and dead's last; and its leader, the first SEAL, else the first squad's (SOCOM 1's GetTail and
+     * const GetLeader, before CommandNotifyFromChild in both builds: OVL2 0x5E8850, 0x5E8A90) */
+    CZSealBody *GetTail();
+    CZSealBody *GetLeader() const;
 
     class CCompassAnchor *m_compassanchor;   // 0x0
     /* the table at 4: IssueCommand, AllowCommand (0x669650) */
@@ -525,6 +530,39 @@ void CSealUnit::CommandNotifyFromChild(CSealUnit *child, CZSealBody *seal, FT_CO
     }
 }
 
+/* (OVL2 0x5E8A90: recursive, inlined into itself four times -- SOCOM 1's three -- each copy cutting
+ * front() and empty() a level shorter: include/list's accessors, the pieces 0x5E8C40-0x5E8C90 in its
+ * tail, empty() and sz() shared with GetTail's 0x5E8A60/0x5E8A80) */
+CZSealBody *CSealUnit::GetLeader() const
+{
+    if (!m_seals.empty())
+        return m_seals.front();
+    if (!m_sub_units.empty())
+        return m_sub_units.front()->GetLeader();
+    return 0;
+}
+
+/* (OVL2 0x5E8850: recursive, inlined into itself twice; its pieces 0x5E8A40-0x5E8A80 follow it). The
+ * squad under it taken into a local first: called with back() as its argument, MW expands that
+ * back() a level deeper than the copy's other calls (the target's d1 calls the base's back()) */
+CZSealBody *CSealUnit::GetTail()
+{
+    CZSealBody *t = 0;
+
+    if (!m_sub_units.empty()) {
+        CSealUnit *unit = m_sub_units.back();
+
+        t = unit->GetTail();
+    }
+    if (!t && !m_seals.empty())
+        t = m_seals.back();
+    if (!t && !m_escortees.empty())
+        t = m_escortees.back();
+    if (!t && !m_dead_guys.empty())
+        t = m_dead_guys.back();
+    return t;
+}
+
 /* (OVL2 0x5EAA70) */
 bool CSealUnit::GetAiModes(signed char *a, signed char *b)
 {
@@ -641,10 +679,8 @@ bool CSealUnit::GetData(void *data, unsigned int size)
 }
 
 extern "C" {
-/* the squad's leader (OVL2 0x5E8A90, unwritten: SOCOM 1's GetLeader by position), its awareness
- * (0x5E76D0: SOCOM 1's GetAwareCounter by position), a squad sound by number with a chance (0x5EAF20)
- * and the squad's formation set (0x5EB6D0) */
-CZSealBody *func_005E8A90(CSealUnit *unit);
+/* the squad's awareness (0x5E76D0: SOCOM 1's GetAwareCounter by position), a squad sound by number
+ * with a chance (0x5EAF20) and the squad's formation set (0x5EB6D0) */
 int func_005E76D0(CSealUnit *unit);
 void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
 }
@@ -660,7 +696,7 @@ void func_005EB6D0(CSealUnit *unit, UNIT_FORMATION f, int b);
  * formation byte and the name ours) */
 extern "C" void func_005EB8A0(CSealUnit *unit)
 {
-    CZSealBody *leader = func_005E8A90(unit);
+    CZSealBody *leader = unit->GetLeader();
 
     if (leader) {
         UNIT_FORMATION f;

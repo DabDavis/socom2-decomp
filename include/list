@@ -135,6 +135,34 @@ public:
     void push_back(const T &x) { insert(end(), x); }
 
     unsigned int size() const { return size_; }
+    /* SOCOM 1's accessors (the MSL headers round 15): its DWARF makes size_ and end_ compressed pairs
+     * over the allocators (compressed_pair_imp<A, unsigned int, 1>, compressed_pair_imp<allocator<node>,
+     * node_base, 1>: msl_utility), read here through those types -- the storage stays a count and a node,
+     * so nothing that reads the fields moves. The count by reference (sz(): SOCOM 1's
+     * sz__Q23std42__list_deleter<PCv,...>CFv), empty() over it; the sentinel by reference through the
+     * end pair's second() (tail(): SOCOM 1's tail__...CFv, this + 4); front() and back() read the first
+     * and last node through tail(). Three and three levels high, as SOCOM II's self-inlined walks cut
+     * them copy by copy: CSealUnit::GetLeader 0x5E8A90 (five copies: front() whole, then calling the end
+     * pair's second() 0x5E8C90, tail() 0x5E8C70, the base's front() 0x5E8C60, the wrapper's 0x5E8C50;
+     * empty() whole twice, then calling the count pair's second() 0x5E8C80, sz() 0x5E8A80, empty()
+     * 0x5E8A60) and GetTail 0x5E8850 (back() through the base's 0x5E8A70) -- SOCOM 1's GetLeader and
+     * GetTail call the same pieces under these names */
+    typedef Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> size_pair;
+    typedef Metrowerks::details::compressed_pair_imp<allocator<node>, node_base, 1> end_pair;
+    unsigned int &sz() { return ((size_pair *)&size_)->second(); }
+    const unsigned int &sz() const { return ((const size_pair *)&size_)->second(); }
+    bool empty() const { return sz() == 0; }
+    node_base &tail() { return ((end_pair *)&end_)->second(); }
+    const node_base &tail() const { return ((const end_pair *)&end_)->second(); }
+    /* the sentinel's address as one leaf (the const walks' begin() and end(), fitted to it at
+     * level 5 before tail() went through the end pair: SetOccupied, GetTeamMembers, SetMvpUiVars,
+     * SetStatLbUiVar and CMPExitState::UnInit are lost with tail() there -- a stand-in, the name
+     * ours; always inlined) */
+    const node_base *tail_ptr() const { return &end_; }
+    T &front() { return ((node *)tail().next_)->data_; }
+    const T &front() const { return ((const node *)tail().next_)->data_; }
+    T &back() { return ((node *)tail().prev_)->data_; }
+    const T &back() const { return ((const node *)tail().prev_)->data_; }
     /* the node allocator: MSL keeps it as the empty base of the end node's pair (SOCOM 1's DWARF:
      * end_ is a compressed_pair whose compressed_pair_imp derives from the allocator), reached
      * through the pair's first() -- the names are ours. Only the out-of-line members free nodes
@@ -162,9 +190,6 @@ public:
     /* the sentinel by reference (CZHudMissionCams::Init keeps the end node in a register outside
      * its loop only so; the name is ours) */
     node_base &end_node() { return end_; }
-    /* the sentinel's address (SOCOM 1's tail(), this + 4: 0x173510 in the demo) */
-    node_base *tail() { return &end_; }
-    const node_base *tail() const { return &end_; }
     /* the other list's nodes moved in before position, whole (SOCOM 1's splice(iterator,
      * __list_deleter &), 0x1DAF10 in the demo; SOCOM II's for the pointer lists is 0x33E790, the
      * same 0x58 bytes). Out of class, as the rest */
@@ -480,7 +505,11 @@ public:
     /* the last element, and taking it off (CNode::DeleteDeferredVisuals empties its list so; on
      * the pointer list only, where the node is always complete -- ai_events.cpp instantiates a
      * deleter over an incomplete type) */
-    T *&back() { return (T *&)((typename base::node *)this->end_.prev_)->data_; }
+    T *&back() { return (T *&)base::back(); }
+    /* the const ends through the base's (SOCOM 1's const GetLeader calls them so: the MSL headers
+     * round 15) */
+    T *const &front() const { return (T *const &)base::front(); }
+    T *const &back() const { return (T *const &)base::back(); }
     /* the first (CEntity::PreTickAll hands the recycler the first entity queued) */
     T *&front() { return (T *&)((typename base::node *)this->end_.next_)->data_; }
     void pop_back() { this->erase(typename base::iterator(this->end_.prev_)); }
@@ -585,11 +614,11 @@ public:
      * innermost constructor is a call where a walk assigns it -- CEntity::TickAll) */
     const_iterator begin() const
     {
-        const typename base::node_base *t = this->tail();
+        const typename base::node_base *t = this->tail_ptr();
 
         return const_iterator(typename base::const_iterator(t->next_));
     }
-    const_iterator end() const { return const_iterator(typename base::const_iterator(this->tail())); }
+    const_iterator end() const { return const_iterator(typename base::const_iterator(this->tail_ptr())); }
     /* the value linked in before position through the base's insert, the base's iterator it gives
      * back wrapped (SOCOM II's 0x510B90 for list<CAiPath *>: position converted to a base iterator
      * on the stack, the reference passed on as it is). After the wrapper's iterator: declared
