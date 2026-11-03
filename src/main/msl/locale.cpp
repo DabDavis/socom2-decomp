@@ -1,4 +1,4 @@
-/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on */
+/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on -str readonly */
 /* locale.cpp -- the prebuilt MSL C++ library's locale unit (MAIN 0x18CF20-0x18DB8F): SOCOM 1's
  * DWARF names it (CodeWarrior 2.4's MSL_Common\Src\locale.cpp: locale::global and classic, then
  * ctype<char>, lines 221-291 for its conversions). What is written so far: ctype<char>'s case and
@@ -8,6 +8,18 @@
 #include "msl.h"
 
 namespace std {
+
+locale &locale::global() throw()
+{
+    static locale global_locale(classic());
+    return global_locale;
+}
+
+locale &locale::classic() throw()
+{
+    static locale classic_locale(imp_ptr(new __locale_imp<1>("C")));
+    return classic_locale;
+}
 
 char ctype<char>::do_toupper(char c) const
 {
