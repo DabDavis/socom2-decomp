@@ -1011,6 +1011,11 @@ public:
     WEAPON_STATE GetWeaponState() const;
     /* the weapon's state set (SOCOM 1's; OVL2 0x5DFE30, the kit lane's seal_weapon.cpp range) */
     void SetWeaponState(WEAPON_STATE state);
+    /* the aim's goal from a point along a direction, and the aim set along a direction -- whether a
+     * goal came of it (made the unit -z when asked, should none) -- SOCOM 1's; OVL2 0x5DF600 and
+     * 0x5DF8B0, seal_weapon.cpp (the kit lane) */
+    bool CalcAimGoal(const CPnt3D *from, const CPnt3D *dir, CPnt3D *goal);
+    bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */

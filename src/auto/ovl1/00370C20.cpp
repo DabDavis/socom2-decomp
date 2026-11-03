@@ -30,19 +30,18 @@ struct VC_C {
     virtual s32 v_48(void);
 };
 extern "C" {
-M2C_UNK func_0036E730(char *, f32);                 /* extern */
-M2C_UNK func_0036E790(char *, char *, u8, f32, f32, f32); /* extern */
-M2C_UNK func_0036E830(char *, f32);                 /* extern */
-M2C_UNK func_0036E840(char *, s32);                 /* extern */
-
+M2C_UNK SetCaptionStyle__13C3StateButtonFRC6CPnt3Dbfff(char * arg0, char * arg1, u8 arg2, f32 arg3, f32 arg4, f32 arg5);
+M2C_UNK SetPulse__9CPlainBmpFf(char * arg0, f32 arg1);
+M2C_UNK func_0036E830(s32 arg0, f32 arg1);
+M2C_UNK func_0036E840(s32 arg0, s32 arg1);
 void func_00370C20(char *arg0) {
     if (((VC_C *)(arg0))->v_48() != 0) {
         SC_MEMBER(arg0, s32 *, 0x24C) = 0x3E4CCCCD;
         SC_MEMBER(arg0, char **, 0x198) = (char *) (arg0 + 0xC8);
-        func_0036E840(arg0, SC_MEMBER(arg0, s32 *, 0xD4));
-        func_0036E830(arg0, SC_MEMBER(arg0, f32 *, 0xF8));
-        func_0036E790(arg0, arg0 + 0xEC, SC_MEMBER(arg0, u8 *, 0xE0), SC_MEMBER(arg0, f32 *, 0xE8), SC_MEMBER(arg0, f32 *, 0xD8), SC_MEMBER(arg0, f32 *, 0xDC));
-        func_0036E730(arg0 + 0x1A0, SC_MEMBER(arg0, f32 *, 0xE4));
+        func_0036E840((s32) arg0, SC_MEMBER(arg0, s32 *, 0xD4));
+        func_0036E830((s32) arg0, SC_MEMBER(arg0, f32 *, 0xF8));
+        SetCaptionStyle__13C3StateButtonFRC6CPnt3Dbfff(arg0, arg0 + 0xEC, SC_MEMBER(arg0, u8 *, 0xE0), SC_MEMBER(arg0, f32 *, 0xE8), SC_MEMBER(arg0, f32 *, 0xD8), SC_MEMBER(arg0, f32 *, 0xDC));
+        SetPulse__9CPlainBmpFf(arg0 + 0x1A0, SC_MEMBER(arg0, f32 *, 0xE4));
     }
 }
 }

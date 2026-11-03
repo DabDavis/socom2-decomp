@@ -51,10 +51,12 @@ void func_00592D40(CKitCtrl *ctrl);
  * the weapons' shared record of a running delay: its address, value and a byte, marked set (OVL1
  * 0x3D00D0, unclaimed) */
 float func_003D2C20(CZFTSWeapon *w);
-/* the body able to fire (SOCOM 1's CZSealBody::CanFire, called from the same place in
- * HandlePlacingExlosive; SOCOM II's takes two more: OVL2 0x5A7DE0, the SEAL lane's row), the
- * placing allowed and the explosive placed (OVL2 0x5BD530, 0x5BE9A0: this unit's, unwritten) */
-bool func_005A7DE0(CZSealBody *body, int a, int b);
+/* the body able to fire: CZSealBody::CanFire(bool, bool) (OVL2 0x5A7DE0, the SEAL lane's, named
+ * CanFire__10CZSealBodyFbb; SOCOM 1's took no flags), called from the same place in
+ * HandlePlacingExlosive as SOCOM 1's -- spelled by its address because CZSealBody is incomplete
+ * here (kit.h's stand-ins keep zseal.h out of this unit) -- and the placing allowed and the
+ * explosive placed (OVL2 0x5BD530, 0x5BE9A0: this unit's, unwritten) */
+bool func_005A7DE0(CZSealBody *body, bool a, bool b);
 bool func_005BD530(CZKit *kit);
 void func_005BE9A0(CZKit *kit, int index, float a, float b);
 /* a launcher's grenades of class 145's launcher (OVL1 0x3C5C20, unclaimed: GetFiringItem's test) */
@@ -713,7 +715,7 @@ void CZKit::HandlePlacingExlosive(EQUIP_ITEM item, float a, float b)
         }
         return;
     }
-    if (func_005A7DE0(m_body, 0, 0) && m_81c <= 0.0f && func_005BD530(this)) {
+    if (func_005A7DE0(m_body, false, false) && m_81c <= 0.0f && func_005BD530(this)) {
         func_005BE9A0(this, m_selected_item, a, b);
         return;
     }

@@ -13,8 +13,6 @@ void func_00545EE0(CEntity *seal, int x);
 void func_00600D40(CSealCtrlAi *ai, int x);
 /* a CSealCtrlAi function (OVL2 0x56D090, the SEAL lane's range) */
 void func_0056D090(CSealCtrlAi *ai);
-/* the SEAL aimed along a direction (OVL2 0x5DF8B0, unclaimed: a byte answer) */
-bool func_005DF8B0(CEntity *seal, const CPnt3D *dir, int x);
 /* the SEAL put into a vehicle entity (OVL2 0x546210, the SEAL lane's range: a byte answer) and a
  * look of a kind at a point (OVL2 0x600DD0, this lane's range, unwritten) */
 bool func_00546210(CEntity *seal, CEntity *vehicle);
@@ -60,14 +58,14 @@ struct CSealFlagsView {
 };
 
 /* the SEAL's aim through a direction, the aim point given up and the look set to it, kind 2 (OVL2
- * 0x60F9F0; unit_nz when none is given; the SEAL's 0x5DF8B0 answers, the name ours) */
+ * 0x60F9F0; unit_nz when none is given; the SEAL's SetAimDirR answers, the name ours) */
 extern "C" bool func_0060F9F0(CSealCtrlAi *ai, const CPnt3D *dir)
 {
     CEntity *seal = ai->m_entity;
 
     if (!dir)
         dir = &CPnt3D::unit_nz;
-    bool r = func_005DF8B0(seal, dir, 0);
+    bool r = ((CZSealBody *)seal)->SetAimDirR(dir, false);
 
     ((CSealFlagsView *)seal)->m_aim_point_valid = false;
     ((CAiCtrlLook *)ai)->m_lookKind = 2;

@@ -3,6 +3,7 @@
  * CategorySlot, SelectedSlot, SlotList) put it after the mission cams, OVL1 ...-0x241BDF, the
  * constructor last as in SOCOM 1's selector units. Written: Off (0x23E700), On (0x23E800) and
  * UnInit (0x240D50), which inlines Off. The layout is hud_weaponsel.h's.
+ * The initialiser (0x3FF7F0) is the file statics below, defined in address order (round 20).
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "../../gamez/ztwod/ztwod.h"
@@ -98,9 +99,38 @@ static float s_listheight = 110.0f;
 static float s_width = 170.0f;
 static float s_listx = -10.0f;
 static float s_listy = 140.0f;
+static float s_gap = 10.0f;
+static float s_rowheight = 14.0f;
+static float s_slotheight = 64.0f;
+static float s_db8 = 225.0f;
 static float s_titley = 105.0f;
 static float s_titleheight = 35.0f;
-extern float data_00414770;
+
+/* the pages' colours and places, computed by the unit's initialiser (0x3FF7F0) in this order --
+ * bss 0x4146C0-0x4147AB; the names ours, their users (0x23CD20, 0x23D860, 0x23E030, 0x240600)
+ * unwritten but the backdrop's left */
+static CPnt3D s_color1(80.0f, 80.0f, 80.0f);
+static CPnt3D s_color2(128.0f, 128.0f, 128.0f);
+static float s_catx = s_listx + s_width + s_gap;
+static float s_caty = s_listy;
+static float s_6f0 = s_catx;
+static float s_6f8 = 14.0f + s_caty + s_rowheight;
+static float s_700 = s_width;
+static float s_708 = s_catx;
+static CPnt3D s_color3(128.0f, 128.0f, 64.0f);
+static float s_720 = s_slotheight;
+static float s_728 = s_width;
+static CPnt3D s_color4(11.0f, 45.0f, 64.0f);
+static float s_740 = s_catx;
+static float s_748 = s_6f8 + s_slotheight - 6.0f;
+static float s_750 = s_width;
+static CPnt3D s_color5(11.0f, 45.0f, 64.0f);
+static float s_768 = s_listx;
+static float s_backx = s_listx;
+static float s_778 = 5.0f + s_listx;
+static CPnt3D s_color6(128.0f, 128.0f, 64.0f);
+static CPnt3D s_color7(80.0f, 120.0f, 120.0f);
+static CPnt3D s_color8(160.0f, 250.0f, 250.0f);
 
 /* the 203's, the grenade launcher's and the F2000's grenades let through or not (the server's
  * valves: nine rounds each when they are) */
@@ -148,7 +178,7 @@ void CMPWeaponSel::Init()
 
     zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle("newweapnbkrnd.tif");
 
-    m_bitmap1.Load(data_00414770, s_titley, data_00414770 + s_width, s_titley + s_titleheight, tex);
+    m_bitmap1.Load(s_backx, s_titley, s_backx + s_width, s_titley + s_titleheight, tex);
     m_bitmap1.SetUV(0.0f, 1.0f, 1.0f, 0.0f);
     m_bitmap2.Load(s_listx, s_listy, s_listx + s_width, s_listy + s_listheight, tex);
     m_bitmap2.SetUV(0.0f, 1.0f, 1.0f, 0.0f);
