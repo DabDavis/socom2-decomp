@@ -184,7 +184,11 @@ typedef struct {
 	int concealment_motion_vectors;	/* 0x180 */
 	int repeat_first_field;		/* 0x184 */
 	int progressive_frame;		/* 0x188 */
-	char pad18c[0x1B0 - 0x18C];
+	int frame_centre_horizontal_offset[3];	/* 0x18C */
+	int frame_centre_vertical_offset[3];	/* 0x198 */
+	int closed_gop;			/* 0x1A4 */
+	int broken_link;		/* 0x1A8 */
+	int _1ac;			/* 0x1AC */
 	int _1b0;			/* 0x1B0 */
 	int _1b4;			/* 0x1B4 */
 	MpegRef *ref[3][4];		/* 0x1B8 */
