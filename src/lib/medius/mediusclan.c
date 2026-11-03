@@ -281,7 +281,7 @@ extern MediusCallback GetClanTeamChallengeHistoryCallbackFunctionPtr;
 extern int data_00686D6C;
 extern MediusCallback UpdateClanStatsCallbackFunctionPtr;
 extern int data_00686D74;
-extern MediusCallback data_00686AC0;
+extern MediusCallback GetClanMemberListCallbackFunctionPtr;
 extern int data_00686D9C;
 extern MediusCallback data_00686AC4;
 extern int data_00686E00;
@@ -685,7 +685,7 @@ MediusErrorCode MediusGetClanMemberList(MediusClanMembersRequest *request, Mediu
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686AC0 = callback;
+    GetClanMemberListCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D9C,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;

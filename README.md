@@ -3376,8 +3376,10 @@ Next in the same vein: rt_msg_client's internal functions, DME's internals behin
   references its own (133 and 132 references), and 69 request callback slots (`s1:slot`: SOCOM
   1's slot of the same position, its request storing it as SOCOM 1's does, each with its count):
   44 of the API object's (.data, 0x6561C0-) and 25 of the clan object's (.bss, 0x686A5C-). The
-  two slots whose function names are disputed (0x656278, 0x686AC0) stay placeholders. The units
-  dropped their `#define`s.
+  two slots whose function names were disputed took SOCOM 1's names once the integrator settled
+  them (round 5b: 0x656278 MediusLadderPositionCallbackFunctionPtr, 0x686AC0
+  GetClanMemberListCallbackFunctionPtr -- SOCOM 1's 0x43BA08 and 0x5B1AA0, between the same
+  neighbours). The units dropped their `#define`s.
 - **The link order is the .data `$Header:` order, but not alphabetical**: DmeLocal.c,
   DmeMessage.c, *then* Dme.c. Each object's functions address its own .data, so a function's
   object reads off the `$Header` span its references land in (`build/scratch/gcc/dataobj.py`):
@@ -3411,6 +3413,40 @@ Hand-written in round 4b: `medius/rt_mutex.c` (5 of 5) and `rt_mutex_platform.c`
 MediusGetBuildTimeStamp, NetGetBuildTimeStamp, rt_msg_client_get_build_timestamp in their units
 -- 50 functions, 40 new to the map's byte-exact rows (ten supersede matching drafts); 15 rows
 named (rt_circ_buf's 14 by SOCOM 1's order, FindFreePingSlot).
+
+**Round 5b: DmeMessage.c and the rest of DmeLocal.c, typed.**
+
+- **DmeMessage.c is SOCOM 1's third DME object, grown** (0x61DAA8-0x6204B8): RegisterDMEmessages
+  (0x61FBC8) takes the handlers' addresses in its order, and SOCOM 1's object pairs with them by
+  callees and returned sizes -- GetFreeNetObjectBlock and FindFreeDataStreamBlock first (SOCOM 1's
+  bodies, the first now with a count guard), then ClientConnects, ServerVersion, ClientLeaves,
+  ClientUpdate, RequestServers, ServerResponse, RequestOwnership. A handler takes (connection,
+  unused, source client, message) and returns the size it consumed, -1 without a message.
+  Pairing a handler's callees also names DmeLocal.c's internals (RemoteClientConnects is
+  0x614B18, NetGetObject's body 0x614EC8, DmeFree 0x614888).
+- **The records are typed now** (`medius/dmelocal.h`, after SCEA's DmeLocal.h): a world (0x450:
+  256 client-record pointers, then this client's index at 0x400, the session master, its name,
+  the server's version ...), a client record (0x2C), an object (class, status, owner, creator).
+  func_0061F410 matches only with the world as a struct; dmelocal.c's matches hold typed.
+- **SCEA's guards, measured**: a getter's result and its pointer are tested together --
+  `if (result != 0 || p == 0) return result;` (closed round 4b's func_0061C8E8: 2.96 makes movn of
+  every other shape); separate guards where the null pointer has its own code; a handler ends in
+  one `return SIZE;` after nested tests, which frees v0 for temporaries (RequestOwnership); a local
+  initialised inside the block that needs it (closed func_006147E0); a table indexed in place, not
+  through a pointer local (closed func_0061C6C8).
+- **Where 2.96 puts a local in the frame tells its scope**: an array or struct gets its slot where
+  it is declared, a scalar when its address is first taken, slots rising in that order -- so a
+  reply struct declared in the block that sends it sits above the outer block's flag
+  (RequestServers), and a two-byte message is an array (func_0061A240).
+- **Open, diagnosed in place**: ClientConnects (2 words: the port global reloaded in a bnezl's
+  slot), ClientUpdate (19: the 36 it returns kept live in v0), 0x61F7B0 (3: two loads' order),
+  func_00614758 (round 4b's), 0x617610 (7: store order, past ccperm's reach), 0x6189C8 (1: beq
+  against beql), 0x61D108, 0x61D320.
+
+Hand-written in round 5b: `medius/dmemessage.c` (11 of 14, new), `medius/dmelocal.c` (+27, 42 of
+47, three of round 4b's four OPENs among them), the two callback slots in mediusapi.c and
+mediusclan.c -- 38 functions new to the map's byte-exact rows (no draft superseded); 16 rows named (s1:order: SOCOM 1's
+DmeMessage.c and Dme.c objects by position and callees), 2 data rows.
 
 **Round 5c: the recogniser, object by object.**
 
