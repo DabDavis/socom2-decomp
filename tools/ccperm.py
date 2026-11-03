@@ -2,7 +2,7 @@
 """Try every order of the statements between `/*P{*/` and `/*}P*/` lines in a probe and report
 the orders that match (README "The GCC front"): ccperm.py PROBE.c FUNCTION [TOOLCHAIN [FLAGS]]. (GCC's scheduler moves
 independent stores; which source order gives the target's is easier measured than predicted.)"""
-import itertools, re, subprocess, sys
+import itertools, os, re, subprocess, sys
 from pathlib import Path
 D = Path(__file__).resolve().parents[1]
 src = Path(sys.argv[1]).read_text()
@@ -14,19 +14,35 @@ stmts = [l for l in m.group(1).splitlines(True) if l.strip()]
 out = []
 for i, perm in enumerate(itertools.permutations(stmts)):
     out.append(f"//== p{i}\n" + src[:m.start()] + "".join(perm) + src[m.end():])
-vf = D / "build" / "ccsweep" / "perm_variants.c"
+# one file per process: two lanes (or two probes) can run at once
+vf = D / "build" / "ccsweep" / f"perm_variants_{os.getpid()}.c"
 vf.parent.mkdir(parents=True, exist_ok=True)
 vf.write_text("\n".join(out))
-r = subprocess.run([sys.executable, str(D / "tools" / "ccsweep.py"), str(vf), "--variants", "-t", tc,
-                    "-F", fl, "-f", f"^{fn}$"], capture_output=True, text=True, cwd=D)
-perms = list(itertools.permutations(stmts))
-hits = 0
-for line in r.stdout.splitlines():
-    mm = re.match(r"^p(\d+) .*\s=\s*$", line)
-    if mm:
-        hits += 1
-        print(f"MATCH order {mm.group(1)}:\n" + "".join(perms[int(mm.group(1))]))
-        if hits >= 3:
-            break
-print(f"{len(perms)} orders tried, {hits} shown matching" if hits else
-      f"{len(perms)} orders tried, none matches\n" + "\n".join(r.stdout.splitlines()[:3]) + r.stderr[-400:])
+try:
+    r = subprocess.run([sys.executable, str(D / "tools" / "ccsweep.py"), str(vf), "--variants", "-t", tc,
+                        "-F", fl, "-f", f"^{fn}$"], capture_output=True, text=True, cwd=D)
+    perms = list(itertools.permutations(stmts))
+    hits = 0
+    for line in r.stdout.splitlines():
+        mm = re.match(r"^p(\d+) .*\s=\s*$", line)
+        if mm:
+            hits += 1
+            print(f"MATCH order {mm.group(1)}:\n" + "".join(perms[int(mm.group(1))]))
+            if hits >= 3:
+                break
+    if hits:
+        print(f"{len(perms)} orders tried, {hits} shown matching")
+    else:
+        # none matches: the nearest orders (words differing; `Ns` a size miss ranks last)
+        near = []
+        for line in r.stdout.splitlines():
+            mm = re.match(r"^p(\d+) .*\s(\d+)(s?)\s*$", line)
+            if mm:
+                near.append((int(mm.group(2)) + 1000 * bool(mm.group(3)), int(mm.group(1))))
+        print(f"{len(perms)} orders tried, none matches" + (f"; nearest {near and min(near)[0]} words:" if near else ""))
+        for score, i in sorted(near)[:2]:
+            print(f"order {i} ({score}):\n" + "".join(perms[i]))
+        if not near:
+            print("\n".join(r.stdout.splitlines()[:3]) + r.stderr[-400:])
+finally:
+    vf.unlink(missing_ok=True)

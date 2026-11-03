@@ -6,6 +6,7 @@
 #include "../../gamez/zrdr/zrdr.h"
 
 #include <algorithm>
+#include <iostream>
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
@@ -83,7 +84,6 @@ void func_0031CED0(zdb::CWorld *world);
 void func_0033B420(CPipe *pipe, zdb::CTexHandle *tex);
 
 /* the tick tasks (SOCOM 1's in the comments, where it had them) */
-bool func_005E7FD0(float dT, void *data);        /* CSealUnit::TickAll */
 bool func_005CCCD0(float dT, void *data);        /* CSealCtrlAi::PreTick */
 bool func_003D1F90(float dT, void *data);        /* CZWeapon::PreTick */
 bool func_0050ECD0(float dT, void *data);        /* CAiEvent::Tick */
@@ -100,6 +100,12 @@ bool func_00341A60(float dT, void *data);        /* CSnd::PostTick */
 bool func_00299C10(float dT, void *data);
 
 }
+
+/* the squads (seal_unit.cpp's; only their tick task) */
+class CSealUnit {
+public:
+    static bool TickAll(float dT, void *data);
+};
 
 extern CHUD *theHUD;
 
@@ -196,12 +202,16 @@ public:
     virtual bool SetActive(bool on);
 };
 
-/* SOCOM II's voice recognition (unnamed: 0x414680; main sets it up, the tick ticks it, and bit 1
- * at 0x38 is SOCOM 1's recoIsRecognizing) */
-struct CVoice {
+/* SOCOM II's voice recogniser (reco.cpp's CReco, theReco: main loads its files, the tick ticks
+ * it; only what the tick reads -- bit 1 at 0x38, the engine running, is SOCOM 1's
+ * recoIsRecognizing; reco.cpp's word of bits read here as its first byte) */
+class CReco {
+public:
+    void Tick(float dT);
+
     unsigned char _0[0x38];
-    unsigned char _b0 : 1;
-    unsigned char m_recognizing : 1;   // 0x38
+    unsigned char m_init : 1;   // 0x38
+    unsigned char m_running : 1;
     unsigned char _b2 : 6;
 };
 
@@ -212,12 +222,12 @@ public:
 
 extern unsigned char OurGameName;
 
+extern CReco theReco;
+
 extern "C" {
-extern CVoice data_00414680;                      /* the voice (0x414680) */
 extern int data_00408C08;                        /* SOCOM 1's oddeven, a static of Tick's */
 extern char data_00488F10[];
 extern char data_004B5170[];
-void func_0023AD90(CVoice *voice, float dT);
 bool func_001FA300(CHUD *hud);                   /* CHUD::PauseGame */
 void func_0034E070(CSched_Manager *sched, float dT);   /* CSched_Manager::Tick */
 void func_00336230(void *arg);
@@ -342,28 +352,31 @@ struct CueLess {
     bool operator()(CMovieCue a, CMovieCue b) const { return a.m_time < b.m_time; }
 };
 
-/* the subtitles: the film's cues, then how they are drawn -- a scale, a position, the
- * justification (0 left, 1 centre, 2 right), a colour, the spacing and the width (st_core.cpp's
- * BSS, no initialiser: placeholders hold them to their addresses) -- and the subtitles' rdr and
- * the default width they are read from */
-extern "C" {
-extern CMovieCueVector data_00408BD0;
-extern float data_00408BDC;
-extern PNT2D data_00408BE0;
-extern int data_00408BE8;
-extern PNT3D data_00408BEC;
-extern int data_00408BF8;
-extern int data_00408BFC;
-extern _zrdr *data_00437D08;
-extern int data_004A44C4;
-}
+/* the subtitles (st_core.cpp's BSS, 0x408BD0-0x408BFF; the names ours): the film's cues -- the
+ * unit's one dynamically initialised static after <iostream>'s two, so its initialiser
+ * (0x3FD7B0) builds those, then zeroes the vector and registers its destructor -- then how they
+ * are drawn: a scale, a position, the justification (0 left, 1 centre, 2 right), a colour, the
+ * spacing and the width.
+ * OPEN, 0x60 against 0x80: the registered destructor (0x1EF8C0, matched by its draft under an sc: as= line) is
+ * the tail's last function in the target, generated after the deleter's clear and destructor, so it
+ * inlines them whole (four this-tests); this unit's copy is generated earlier, with FreeVector's
+ * temporary (whose teardown inlines it one level and calls the deleter's destructor, so its out-of-
+ * line copy is emitted then, the deleter's call in it) -- no ~vector or ~__vector_imp copy follows
+ * FreeVector in the target, so the original's FreeVector requested none */
+static CMovieCueVector s_cues;
+static float s_subScale;
+static PNT2D s_subPos;
+static int s_subJustify;
+static PNT3D s_subColor;
+static int s_subSpacing;
+static int s_subWidth;
 
 /* the cues let go of (the name ours): an inline helper MW inlines one level (FreeVector makes it
  * taller than the budget), so UnInit calls clear() and FreeVector out of line, as the image does */
 static inline void FreeCues()
 {
-    data_00408BD0.clear();
-    FreeVector(data_00408BD0);
+    s_cues.clear();
+    FreeVector(s_cues);
 }
 
 /* the load thread's stack (SOCOM 1's static array of it; SOCOM II's allocated once) */
@@ -390,54 +403,54 @@ static inline const char *ReadSubtitles(const char *name)
 {
     char *file = 0;
 
-    data_00408BE8 = 0;
-    _zrdr *rdr = data_00437D08;
-    data_00408BDC = 1.0f;
-    data_00408BE0.x = 20.0f;
-    data_00408BE0.y = 300.0f;
-    data_00408BEC.x = data_00408BEC.y = data_00408BEC.z = 255.0f;
-    data_00408BF8 = 20;
-    data_00408BFC = data_004A44C4;
+    s_subJustify = 0;
+    _zrdr *rdr = theMission.m_subtitles;
+    s_subScale = 1.0f;
+    s_subPos.x = 20.0f;
+    s_subPos.y = 300.0f;
+    s_subColor.x = s_subColor.y = s_subColor.z = 255.0f;
+    s_subSpacing = 20;
+    s_subWidth = zVid.m_44;
     if (rdr) {
-        zrdr_findreal(rdr, "SCALE", &data_00408BDC, 1);
-        zrdr_findPNT2D(rdr, "POS", &data_00408BE0);
-        zrdr_findPNT3D(rdr, "COLOR", &data_00408BEC);
-        zrdr_findint(rdr, "SPACING", &data_00408BF8, 1);
-        zrdr_findint(rdr, "WIDTH", &data_00408BFC, 1);
+        zrdr_findreal(rdr, "SCALE", &s_subScale, 1);
+        zrdr_findPNT2D(rdr, "POS", &s_subPos);
+        zrdr_findPNT3D(rdr, "COLOR", &s_subColor);
+        zrdr_findint(rdr, "SPACING", &s_subSpacing, 1);
+        zrdr_findint(rdr, "WIDTH", &s_subWidth, 1);
         if (zrdr_findtag(rdr, "LEFT_JUSTIFIED"))
-            data_00408BE8 = 0;
+            s_subJustify = 0;
         else if (zrdr_findtag(rdr, "CENTER_JUSTIFIED"))
-            data_00408BE8 = 1;
+            s_subJustify = 1;
         else if (zrdr_findtag(rdr, "RIGHT_JUSTIFIED"))
-            data_00408BE8 = 2;
+            s_subJustify = 2;
         _zrdr *movie = zrdr_findtag(rdr, name);
         if (movie) {
             file = zrdr_findstring(movie, "FILENAME");
-            zrdr_findreal(movie, "SCALE", &data_00408BDC, 1);
-            zrdr_findPNT2D(movie, "POS", &data_00408BE0);
-            zrdr_findPNT3D(movie, "COLOR", &data_00408BEC);
-            zrdr_findint(movie, "SPACING", &data_00408BF8, 1);
-            zrdr_findint(movie, "WIDTH", &data_00408BFC, 1);
+            zrdr_findreal(movie, "SCALE", &s_subScale, 1);
+            zrdr_findPNT2D(movie, "POS", &s_subPos);
+            zrdr_findPNT3D(movie, "COLOR", &s_subColor);
+            zrdr_findint(movie, "SPACING", &s_subSpacing, 1);
+            zrdr_findint(movie, "WIDTH", &s_subWidth, 1);
             if (zrdr_findtag(movie, "LEFT_JUSTIFIED"))
-                data_00408BE8 = 0;
+                s_subJustify = 0;
             if (zrdr_findtag(movie, "CENTER_JUSTIFIED"))
-                data_00408BE8 = 1;
+                s_subJustify = 1;
             else if (zrdr_findtag(movie, "RIGHT_JUSTIFIED"))
-                data_00408BE8 = 2;
+                s_subJustify = 2;
             _zrdr *subs = zrdr_findtag(movie, "SUBTITLES");
             if (subs) {
                 int n = subs->Count();
 
-                data_00408BD0.reserve(n);
+                s_cues.reserve(n);
                 for (int i = 0; i < n; i++) {
                     float at = -1.0f;
                     _zrdr *cue = subs->Item(i);
 
                     zrdr_findreal(cue, "AT", &at, 1);
-                    data_00408BD0.push_back(CMovieCue(at, zrdr_findstring(cue, "PRINT")));
+                    s_cues.push_back(CMovieCue(at, zrdr_findstring(cue, "PRINT")));
                 }
-                CMovieCueVector::iterator first = data_00408BD0.begin();
-                CMovieCueVector::iterator last = data_00408BD0.end();
+                CMovieCueVector::iterator first = s_cues.begin();
+                CMovieCueVector::iterator last = s_cues.end();
                 CueLess less;
 
                 std::sort(first, last, less);
@@ -610,7 +623,7 @@ bool CCoreState::Init()
     func_001F1870(func_002B3580());
     func_0032C4F0();
     func_0032C2B0("readerm.zar", GetDatabase());
-    zTaskScheduler.AddTask("UnitTick", func_005E7FD0, 0.8f, 0);
+    zTaskScheduler.AddTask("UnitTick", CSealUnit::TickAll, 0.8f, 0);
     zTaskScheduler.AddTask("ai_pre_tick", func_005CCCD0, 0.9f, 0);
     zTaskScheduler.AddTask("entity_pre_tick", CEntity::PreTickAll, 1.0f, 0);
     zTaskScheduler.AddTask("weapon_pre_tick", func_003D1F90, 3.0f, 0);
@@ -680,9 +693,9 @@ bool CCoreState::Tick(float dT)
     }
     func_002D9E40(dT);
     if (running) {
-        func_0023AD90(&data_00414680, dT);
+        theReco.Tick(dT);
         m_hud->PreDITick(dT);
-        if (!data_00414680.m_recognizing && !func_001FA300(m_hud))
+        if (!theReco.m_running && !func_001FA300(m_hud))
             func_0034E070(&zTaskScheduler, dT);
         if (OurGameName == 1)
             CameraZoom::Tick(dT);
@@ -739,7 +752,7 @@ bool CCoreState::Tick(float dT)
         func_0033BE70(&thePipe, thePipe.m_assetHUDX);
         m_hud->DrawPhase(zdb::RENDER_PHASE_14, cam);
         m_hud->m_compass.Draw(cam);
-        if (!data_00414680.m_recognizing && !func_001FA300(m_hud))
+        if (!theReco.m_running && !func_001FA300(m_hud))
             m_hud->m_flashfx.Tick(dT);
         m_hud->m_flashfx.Draw(cam);
         m_hud->m_18900.Draw(cam);

@@ -107,6 +107,7 @@ public:
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual void SetMapOffset(int x, int y);
+    void SetPulse(float period);
 
     bool m_pulsing;   // 0x88
     float m_period;   // 0x8c
@@ -152,6 +153,7 @@ public:
     virtual void SetBackgroundAlpha(float a);
     virtual void Slot27();
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    void SetCaptionStyle(const CPnt3D &color, bool pulse, float time, float min, float max);
 
     char *_szCaption;   // 0x18
     C2DString _strCaption;   // 0x1c
@@ -160,6 +162,20 @@ public:
     bool _bCaptionCentered;   // 0xbc
 };   // 0xc0 bytes
 
+/* a button's look in one state (0x34 bytes; its destructor 0x36E650, a string at 0 destroyed, is
+ * the button's -- a plain stand-in here, the fields by what SetNormal hands on; the names ours) */
+struct ButtonState {
+    unsigned char _0[0xc];   // 0x0: a string
+    zdb::CTexHandle *m_tex;   // 0xc: the background's texture
+    float m_fadeMin;   // 0x10
+    float m_fadeMax;   // 0x14
+    bool m_pulse;   // 0x18: the caption pulses
+    float m_period;   // 0x1c: the background's pulse
+    float m_fadeTime;   // 0x20
+    CPnt3D m_color;   // 0x24: the caption's
+    float m_scale;   // 0x30: the caption's
+};   // 0x34 bytes
+
 /* a button (SOCOM 1's DWARF: : C3StateButton; SOCOM II's 0x440 bytes with a UIVarMixin at 0xC0,
  * its background a plain bitmap at 0x1A0) */
 class C2DButton : public C3StateButton, public UIVarMixin {
@@ -167,13 +183,24 @@ public:
     virtual ~C2DButton();
     /* slot 26: the background's alpha, a fraction of 128 (0x37C2C0) */
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
+    virtual void SetCanHandleInput(bool val);
+    virtual void SetNormal();
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual int GetZAnimCmdType(const char *name);
     virtual void UpdateUIVar(CUIVariable *var);
 
-    unsigned char _c8[0x1a0 - 0xc8];
+    /* the four states (ButtonState, 0x34 bytes each: its destructor 0x36E650; the names ours) and
+     * the one shown */
+    ButtonState m_active;   // 0xc8
+    ButtonState m_pressed;   // 0xfc
+    ButtonState m_normal;   // 0x130
+    ButtonState m_disabled;   // 0x164
+    ButtonState *m_state;   // 0x198
+    unsigned char _19c[0x1a0 - 0x19c];
     CPlainBmp m_background;   // 0x1a0
-    unsigned char _240[0x440 - 0x240];
+    unsigned char _240[0x24c - 0x240];
+    int m_24c;   // 0x24c: zeroed when the normal state is shown
+    unsigned char _250[0x440 - 0x250];
 } __attribute__((aligned(16)));   // 0x440 bytes
 
 /* a button's action (zui_spec.h's ActionItem, 0x10 bytes: its destructor zui_cleanup.cpp's,
@@ -277,7 +304,17 @@ class CPopUpDialog : public C2D {
 public:
     /* declared, not defined: stand-ins whose implicit destructors would supersede the drafts */
     virtual ~CPopUpDialog();
+    virtual void Tick(float dT);
     virtual int GetZAnimCmdType(const char *name);
+
+    /* the parts its Tick ticks (SOCOM II's two members, through their tables; SOCOM 1 ticked the
+     * pointer alone) -- C2D stand-ins, their real classes unknown */
+    unsigned char _18[0x32c - 0x18];
+    C2D *m_32c;   // 0x32c
+    unsigned char _330[0x340 - 0x330];
+    C2D m_340;   // 0x340
+    unsigned char _358[0x790 - 0x358];
+    C2D m_790;   // 0x790
 };
 
 
@@ -388,6 +425,81 @@ void CPlainBmp::SetMapOffset(int x, int y)
 {
     SetPos(x, y, x + m_iWidth, y + m_iHeight);
 }
+
+/* slot 12: the dialog's two parts ticked through their tables, then the part it points to
+ * (SOCOM 1's Tick ticked only that one) */
+void CPopUpDialog::Tick(float dT)
+{
+    m_340.Tick(dT);
+    m_790.Tick(dT);
+    if (m_32c)
+        m_32c->Tick(dT);
+}
+
+/* a state applied: the background, the caption's style and the pulse (0x3773F0, unwritten) */
+extern "C" void func_003773F0(C2DButton *button, ButtonState *state);
+/* the background loaded with a texture, the caption's scale (inlines' out-of-line copies after
+ * SetNormal, matched as drafts) */
+extern "C" void func_0036E840(C2DButton *button, zdb::CTexHandle *tex);
+extern "C" void func_0036E830(C2DButton *button, float scale);
+
+/* slot 21 (C2DButton's table +0x54, as in every button's): the normal state shown, when the
+ * button takes input -- the background's texture, the caption's scale and style, the pulse (SOCOM
+ * 1's SetNormal; the s1:vtable pass had put SetCanHandleInput's name here, a slot early) */
+void C2DButton::SetNormal()
+{
+    if (CanHandleInput()) {
+        m_24c = 0;
+        m_state = &m_normal;
+        func_0036E840(this, m_normal.m_tex);
+        func_0036E830(this, m_normal.m_scale);
+        SetCaptionStyle(m_normal.m_color, m_normal.m_pulse, m_normal.m_fadeTime, m_normal.m_fadeMin,
+                        m_normal.m_fadeMax);
+        m_background.SetPulse(m_normal.m_period);
+    }
+}
+
+/* slot 19 (C2DButton's table +0x4C, as in every button's): input on or off -- on, the normal
+ * state shown unless the button is pressed or active; off, the disabled state (SOCOM 1's
+ * SetCanHandleInput, which loaded the disabled bitmap itself) */
+void C2DButton::SetCanHandleInput(bool val)
+{
+    C2D::SetCanHandleInput(val);
+    if (val) {
+        if (m_state != &m_pressed && m_state != &m_active)
+            SetNormal();
+    } else
+        func_003773F0(this, &m_disabled);
+}
+
+/* the caption's colour, its alpha 100, and its pulse: whether, how fast, between what (the name ours;
+ * SOCOM 1's SetCanHandleInput set the same fields inline). It and SetPulse are inlines' out-of-line
+ * copies in the target, after their first caller SetNormal (0x36E6B0), which calls the four in
+ * reverse of their order there: pinned, so SetNormal calls them as the target does */
+#pragma auto_inline off
+void C3StateButton::SetCaptionStyle(const CPnt3D &color, bool pulse, float time, float min, float max)
+{
+    _strCaption.SetColor(color.x, color.y, color.z);
+    _strCaption.SetTrans(100.0f);
+    _strCaption.m_Type = pulse ? STRING_PULSE : STRING_NORMAL;
+    _strCaption.m_fadeTime = time;
+    _strCaption.m_fadeMax = max;
+    _strCaption.m_fadeMin = min;
+}
+
+/* pulsing with a period, or (0) steady and opaque (SOCOM 1's SetPulse, out of line at 0x38A810
+ * there) */
+void CPlainBmp::SetPulse(float period)
+{
+    if (period == 0.0f) {
+        SetTrans(128.0f);
+        m_pulsing = false;
+    } else {
+        m_pulsing = true;
+        m_period = period;
+    }
+}
+#pragma auto_inline reset
 
 /* SETVALUE's value as a command (SOCOM 1's; SOCOM II's record is 16 bytes and keeps the value as a
  * halfword), anything else the button's */

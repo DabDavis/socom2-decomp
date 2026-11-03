@@ -9,6 +9,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK func_00624418(M2C_UNK *, M2C_UNK, M2C_UNK *); /* extern */
+extern M2C_UNK ClientConnectsPacketHandler;
+extern M2C_UNK ClientLeavesPacketHandler;
+extern M2C_UNK ClientUpdatePacketHandler;
+extern M2C_UNK RequestOwnershipPacketHandler;
+extern M2C_UNK RequestServersPacketHandler;
+extern M2C_UNK ServerResponsePacketHandler;
+extern M2C_UNK ServerVersionPacketHandler;
 extern M2C_UNK data_00686A08;
 extern M2C_UNK data_00686A0C;
 extern M2C_UNK data_00686A10;
@@ -30,17 +37,10 @@ extern M2C_UNK data_00686A4C;
 extern M2C_UNK data_00686A50;
 extern M2C_UNK data_00686A54;
 extern M2C_UNK data_00686A58;
-extern M2C_UNK func_0061DC90;
-extern M2C_UNK func_0061DDA8;
-extern M2C_UNK func_0061DE18;
-extern M2C_UNK func_0061DE60;
-extern M2C_UNK func_0061DFB0;
-extern M2C_UNK func_0061E0C0;
 extern M2C_UNK func_0061E128;
 extern M2C_UNK func_0061E300;
 extern M2C_UNK func_0061E510;
 extern M2C_UNK func_0061E6A8;
-extern M2C_UNK func_0061E6D0;
 extern M2C_UNK func_0061E7F0;
 extern M2C_UNK func_0061E858;
 extern M2C_UNK func_0061E8B8;
@@ -54,7 +54,7 @@ extern M2C_UNK func_0061F8A0;
 
 void func_0061FBC8(void) {
     s32 sp[4];
-    func_00624418(&data_00686A18, 0, &func_0061DDA8);
+    func_00624418(&data_00686A18, 0, &ServerVersionPacketHandler);
     func_00624418(&data_00686A0C, 0, &func_0061E300);
     func_00624418(&data_00686A1C, 0, &func_0061E510);
     func_00624418(&data_00686A20, 0, &func_0061ED48);
@@ -65,16 +65,16 @@ void func_0061FBC8(void) {
     func_00624418(sp, 0, NULL);
     func_00624418(&data_00686A2C, 0, &func_0061E128);
     func_00624418(&data_00686A30, 0, &func_0061E6A8);
-    func_00624418(&data_00686A34, 0, &func_0061E6D0);
+    func_00624418(&data_00686A34, 0, &RequestOwnershipPacketHandler);
     func_00624418(&data_00686A10, 0, &func_0061E7F0);
     func_00624418(&data_00686A38, 0, &func_0061E858);
     func_00624418(&data_00686A3C, 0, &func_0061EFB0);
-    func_00624418(&data_00686A40, 0, &func_0061DE60);
-    func_00624418(&data_00686A44, 0, &func_0061DC90);
+    func_00624418(&data_00686A40, 0, &ClientUpdatePacketHandler);
+    func_00624418(&data_00686A44, 0, &ClientConnectsPacketHandler);
     func_00624418(sp, 0, NULL);
-    func_00624418(&data_00686A48, 0, &func_0061DE18);
-    func_00624418(&data_00686A4C, 0, &func_0061DFB0);
-    func_00624418(&data_00686A08, 0, &func_0061E0C0);
+    func_00624418(&data_00686A48, 0, &ClientLeavesPacketHandler);
+    func_00624418(&data_00686A4C, 0, &RequestServersPacketHandler);
+    func_00624418(&data_00686A08, 0, &ServerResponsePacketHandler);
     func_00624418(&data_00686A14, 0, &func_0061F410);
     func_00624418(&data_00686A50, 0, &func_0061F518);
     func_00624418(&data_00686A54, 0, &func_0061F7B0);

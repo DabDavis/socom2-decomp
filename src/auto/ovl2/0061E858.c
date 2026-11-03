@@ -9,8 +9,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #define sp0 (*(s32 *)((char *)sp + 0x0))
+M2C_UNK RemoteObjectUpdate(s32, u16, M2C_UNK);      /* extern */
 M2C_UNK func_00614EC8(char *, u16);                 /* extern */
-M2C_UNK func_00615EB0(s32, u16, M2C_UNK);           /* extern */
 
 s32 func_0061E858(s32 arg0, s32 arg1, s32 arg2, u16 *arg3) {
     s32 sp[4];
@@ -22,7 +22,7 @@ s32 func_0061E858(s32 arg0, s32 arg1, s32 arg2, u16 *arg3) {
         var_v0 = 2;
         if (sp0 != NULL) {
             M2C_FIELD(sp0, s32 *, 4) = -1;
-            func_00615EB0(M2C_FIELD(sp0, s32 *, 4), *arg3, -2);
+            RemoteObjectUpdate(M2C_FIELD(sp0, s32 *, 4), *arg3, -2);
             return 2;
         }
     }
