@@ -2,9 +2,9 @@
 # Seeded by tools/seed_symbols.py; from here on it is kept BY HAND: rename a
 # func_<VA> to the mangled name its source defines. SIZE excludes MW's zero padding.
 
-0x00180008 0x1C0 func_00180008  # MAIN unaligned
+0x00180008 0x1C0 _start  # MAIN unaligned; by hand (MAIN runtime lane round 2): the ELF's entry point (SCUS_972.75's e_entry 0x180008), Sony's crt0.s start-up (the registers zeroed with padduw, .bss cleared, the main thread set up, main called) -- SOCOM 1's crt0.s unit (C:\usr\local\sce_2.5.1\EE\lib\crt0.s, 0x140008-0x1401E0); src/main/crt0.s
 0x001801C8 0x8 _exit  # MAIN unaligned; by body (crt0's _exit: Exit(0) whatever the status; newlib's abort calls _exit(1) through it, as the demo's abort calls its crt0 stub 0x1401D0, unnamed there)
-0x001801D0 0x10 func_001801D0  # MAIN; s1~ ExitThread (one of 2)
+0x001801D0 0x10 _root  # MAIN; s1~ ExitThread (one of 2); by hand (MAIN runtime lane round 2): crt0.s's thread root, ExitThread (syscall 35) -- the last function of SOCOM 1's crt0.s unit (0x1401D0, its own name stripped); src/main/crt0.s
 0x001801E0 0x9C _strdup__FPCcPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _strdup where SOCOM II's call this)
 0x00180280 0x314 _free__FPvPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _free where SOCOM II's call this; file and line passed as 0 here)
 0x001805A0 0x500 func_001805A0  # MAIN
