@@ -12590,7 +12590,7 @@
 0x00636040 0x1C8 rt_msg_client_store_msg_in_send_buf  # OVL2; s1:align
 0x00636208 0xE8 rt_msg_client_create_send_buf_space  # OVL2 unaligned; s1:align
 0x006362F0 0x1CC rt_msg_client_process_recv_buf  # OVL2; s1:align
-0x006364C0 0x390 func_006364C0  # OVL2
+0x006364C0 0x390 rt_msg_client_process_message  # OVL2; s1:order+calls (the gcc lane, round 16b): between process_recv_buf and process_connect_result as SOCOM 1's (0x40F9B0), process_recv_buf calls it where SOCOM 1's does, the same head (the cipher word, the target word left clear) and its switch grown from 2-20 to 2-30
 0x00636850 0x2E0 rt_msg_client_process_connect_result  # OVL2; s1:align
 0x00636B30 0x228 func_00636B30  # OVL2
 0x00636D58 0x10C func_00636D58  # OVL2 unaligned

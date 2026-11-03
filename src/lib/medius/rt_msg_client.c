@@ -647,7 +647,9 @@ typedef struct rt_msg_client_comm {
     char pad1A[2];
     int nChannelId;                     /* 0x1C: the connection's rt_comm channel */
     rt_msg_client_time tLastSend;       /* 0x20: recv_circ_buf's (the last piece that moved) */
-    char pad28[0x18];
+    char pad28[0x14];
+    short n3C;                          /* 0x3C: one less for each type-5 message (0x6364C0) */
+    char pad3E[2];
     int nValue;                         /* 0x40: 0x6347C8's setting */
     unsigned char bTargetSet;           /* 0x44: a flagged message stored (SOCOM 1's 0x84) */
     char pad45;
@@ -1331,6 +1333,20 @@ unsigned char rt_msg_client_get_valid_connection(unsigned short nConnection, rt_
     return 0;
 }
 
+/* a channel is usable: it and both its rings are there (SOCOM II's; round 16b over its draft).
+ * Written here, above every caller after it, round 13c's rule: the dispatcher's first test before
+ * its call keeps the return value in a plain slot (`bne`) only with this callee compiled first */
+int func_00635898(void *pChannel)
+{
+    rt_msg_client_comm *pComm = (rt_msg_client_comm *)pChannel;
+
+    if (pComm == 0)
+        return 0;
+    if (&pComm->recvBuf == 0)
+        return 0;
+    return &pComm->sendBuf != 0;
+}
+
 int func_00635CD0(unsigned short nDataLength, unsigned short *pnSize);
 extern int func_00635A70(void *pMsg, unsigned short nSize, unsigned int nKind, unsigned short nId, unsigned short nPort,
                          void *pData, unsigned short nDataLength);
@@ -1538,8 +1554,8 @@ extern int rt_circ_buf_get_used_nowrap(rt_circ_buf *cb, unsigned int *pnUsed);
 extern int rt_circ_buf_is_wrapped(rt_circ_buf *cb, unsigned char *pbWrapped);
 extern int rt_circ_buf_get_start_used_ptr(rt_circ_buf *cb, unsigned char **ppStart);
 extern int rt_circ_buf_free(rt_circ_buf *cb, unsigned int nBytes);
-extern int func_006364C0(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, int nType,
-                         unsigned char *pMsg, unsigned short nLength);
+int rt_msg_client_process_message(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, int nType,
+                  unsigned char *pMsg, unsigned int nLength);
 unsigned char rt_msg_client_get_header(unsigned char *pMsg, rt_msg_client_header *pHeader, unsigned short *pnLength);
 
 /* SOCOM 1's process_recv_buf, grown (round 16b): the connection and its channel valid and its own
@@ -1589,7 +1605,7 @@ int rt_msg_client_process_recv_buf(rt_msg_client_connection *pConnection, rt_msg
             if (nUsed < nSize)
                 break;
             pMsg += nHeaderLength;
-            result = func_006364C0(pConnection, pComm, header.nType, pMsg, header.nLength);
+            result = rt_msg_client_process_message(pConnection, pComm, header.nType, pMsg, header.nLength);
             if (result != 0)
                 return result;
             if (rt_circ_buf_free(pBuf, nSize) != 0)
@@ -1621,6 +1637,141 @@ extern int func_00638178(int *pnReason, unsigned char nReason);
 extern int KM_SetLocalClientID(int nKMID, unsigned short nClientID);
 extern int func_00638798(unsigned int nType, unsigned char a1, unsigned char a2, int a3, unsigned char *pbOut);
 extern int func_006380C0(int *pnType, unsigned char nType);
+
+extern int rt_msg_get_u2byte(const unsigned char *msg, unsigned short *value);
+extern int rt_msg_get_u4byte(const unsigned char *msg, unsigned int *value);
+extern int KM_Decrypt(int nKMID, int nClientID, unsigned int nHeader, void *pData, int nLength);
+extern int KM_SetGameSessionKey(int nKMID, int nGameSessionID, void *pKey);
+extern int func_00636D58(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength);
+int rt_msg_client_process_connect_result(rt_msg_client_connection *pConnection, int nType,
+                                         unsigned char *pMsg, unsigned int nLength);
+extern int func_00637318(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength);
+extern int func_00636B30(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength);
+int rt_msg_client_process_client_connect_notify(rt_msg_client_connection *pConnection, int nType,
+                                                unsigned char *pMsg, unsigned int nLength);
+int rt_msg_client_process_app_message(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg,
+                                      unsigned int nLength);
+int rt_msg_client_process_disconnect_message(rt_msg_client_connection *pConnection, int nType,
+                                             unsigned char *pMsg, unsigned int nLength);
+int func_00637230(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, int nLength);
+int func_00637438(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength);
+extern int func_00637510(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, int nType,
+                         unsigned char *pMsg, unsigned int nLength);
+int func_00637900(rt_msg_client_connection *pConnection, int nUnused1, int nUnused2, unsigned char *pMsg,
+                  unsigned int nLength);
+
+/* SOCOM 1's process_message, grown (round 16b): one message off the receive ring -- the connection
+ * and its channel valid and its own (0x635078's tests), an enciphered one (type bit 7) deciphered in
+ * place under the cipher word before it (the target word of types 3 and 27 stays in the clear), then
+ * dispatched by type to its handler (SOCOM 1 had 2-20, SOCOM II 2-30); an unknown type is 3. A
+ * connect rejected for its version (16) moves the connection to state 11 and calls back with 3. */
+int rt_msg_client_process_message(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, int nType,
+                  unsigned char *pMsg, unsigned int nLength)
+{
+    unsigned short nTarget;
+    unsigned int nHeader = 0;
+    int result = 1;
+    int bEncrypted;
+    unsigned short nId;
+
+    bEncrypted = (nType >> 7) & 1;
+    nType &= 0x7F;
+    if (rt_msg_client_is_valid_connection(pConnection) != result)
+        return 2;
+    if (func_00635898(pComm) != result)
+        return 2;
+    if (pComm->bKind != result)
+        return 2;
+    if (pConnection->nId != pComm->nId)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    if (bEncrypted && nLength != 0) {
+        rt_msg_get_u4byte(pMsg, &nHeader);
+        pMsg += 4;
+        if (func_006325B8() != 1)
+            return 27;
+        if (nHeader == 0)
+            return 28;
+        if (nType == 3 || nType == 27) {
+            nTarget = 0;
+            rt_msg_get_u2byte(pMsg, &nTarget);
+            nTarget = 0xFFFF;
+            KM_Decrypt(pConnection->nId, nTarget, nHeader, pMsg + 2, nLength - 2);
+        } else
+            KM_Decrypt(pConnection->nId, 0xFFFF, nHeader, pMsg, nLength);
+    }
+    switch (nType) {
+    case 26:
+        result = func_00636D58(pConnection, nType, pMsg, nLength);
+        break;
+    case 6:
+    case 7:
+        result = rt_msg_client_process_connect_result(pConnection, nType, pMsg, nLength);
+        if (result == 16) {
+            result = rt_msg_client_change_state(pConnection, 11);
+            if (result != 0)
+                return result;
+            if (pConnection->pfnConnect != 0) {
+                nId = pConnection->nId;
+                pConnection->pfnConnect(nId, 0, 0, 0, 3);
+                if (rt_msg_client_is_valid_connection_id(nId) == 0)
+                    return 11;
+            }
+            result = 0;
+        }
+        break;
+    case 24:
+        result = func_00637318(pConnection, nType, pMsg, nLength);
+        break;
+    case 25:
+        if (pConnection->nState == 6)
+            result = func_00636B30(pConnection, nType, pMsg, nLength);
+        else
+            result = 0;
+        break;
+    case 8:
+    case 9:
+        result = rt_msg_client_process_client_connect_notify(pConnection, nType, pMsg, nLength);
+        break;
+    case 2:
+    case 3:
+    case 10:
+        if (pConnection->nState == RT_MSG_CLIENT_STATE_CONNECTED)
+            result = rt_msg_client_process_app_message(pConnection, nType, pMsg, nLength);
+        else
+            result = 0;
+        break;
+    case 5:
+        pComm->n3C--;
+        result = 0;
+        break;
+    case 17:
+        result = rt_msg_client_process_disconnect_message(pConnection, nType, pMsg, nLength);
+        break;
+    case 19:
+    case 27:
+        result = func_00637230(pConnection, nType, pMsg, nLength);
+        break;
+    case 20:
+        KM_SetGameSessionKey(pConnection->nId, pConnection->nId, pMsg);
+        result = 0;
+        break;
+    case 28:
+        result = func_00637438(pConnection, nType, pMsg, nLength);
+        break;
+    case 29:
+        result = func_00637510(pConnection, pComm, nType, pMsg, nLength);
+        break;
+    case 30:
+        result = func_00637900(pConnection, (int)pComm, nType, pMsg, nLength);
+        break;
+    default:
+        result = 3;
+        break;
+    }
+    return result;
+}
 
 /* SOCOM 1's process_connect_result, grown (round 16b): the server's answer to the connect message --
  * three version bytes judged against the connection's kind (0x638798: SOCOM 1 tested them here),
