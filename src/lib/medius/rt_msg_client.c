@@ -684,7 +684,9 @@ typedef struct rt_msg_client_connection {
     char pad24[0x18];
     void *pConnectData;                 /* 0x3C: the data the connect message carries */
     unsigned short nConnectDataLength;  /* 0x40 */
-    char pad42[0x1A];
+    char pad42[0x16];
+    unsigned short nClientId;           /* 0x58: this client's id, the server's accept gives it */
+    unsigned short nServerPort;         /* 0x5A: the port the accept names */
     char szIP[0x1C];                    /* 0x5C: the server's address, dotted */
     rt_msg_client_comm *apChannels[2];  /* 0x78: the connection's channels */
     rt_msg_client_comm *pComm;          /* 0x80: the one it sends on */
@@ -1613,6 +1615,121 @@ extern int KM_AddSymmetricKey(int nKMID, int nClientID, void *pKey);
 extern int rt_msg_client_change_state(rt_msg_client_connection *pConnection, unsigned int nState);
 
 extern int func_00638178(int *pnReason, unsigned char nReason);
+
+extern int KM_SetLocalClientID(int nKMID, unsigned short nClientID);
+extern int func_00638798(unsigned int nType, unsigned char a1, unsigned char a2, int a3, unsigned char *pbOut);
+extern int func_006380C0(int *pnType, unsigned char nType);
+
+/* SOCOM 1's process_connect_result, grown (round 16b): the server's answer to the connect message --
+ * three version bytes judged against the connection's kind (0x638798: SOCOM 1 tested them here),
+ * then for an accept (type 7) this client's id, for a reject (type 6) the reason, both the port and
+ * the server's 16-byte address; an accept keeps the id and port and moves a stream connection to
+ * state 7 and a datagram one to 5 (SOCOM 1 called back here), a reject goes to state 11 and calls
+ * back, the connection perhaps gone after it. Shapes, measured: the validity call compared in place
+ * and the accept flag with a literal 1 (a variable kept for both made CSE reuse the init flag's
+ * register as the constant, SOCOM 1's code but not this one's); each state change with its own
+ * result test (cross-jumping merges the two calls into the target's one jal); the pointer stepped
+ * before the offset; nReason declared before bAccepted (their zeroing order) */
+int rt_msg_client_process_connect_result(rt_msg_client_connection *pConnection, int nType,
+                                         unsigned char *pMsg, unsigned int nLength)
+{
+    unsigned char nVersion0;
+    unsigned char nVersion1;
+    unsigned char nVersion2;
+    int nReason = 0;
+    unsigned char bAccepted = 0;
+    unsigned short nClientId;
+    unsigned char nRejectReason;
+    unsigned short nPort;
+    unsigned short nOffset;
+    unsigned short nId;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    nOffset = 0;
+    if (nOffset >= nLength)
+        return 1;
+    if (rt_msg_get_ubyte(pMsg, &nVersion0) != 0)
+        return 7;
+    pMsg++;
+    nOffset++;
+    if (nOffset >= nLength)
+        return 1;
+    if (rt_msg_get_ubyte(pMsg, &nVersion1) != 0)
+        return 7;
+    pMsg++;
+    nOffset++;
+    if (nOffset >= nLength)
+        return 1;
+    if (rt_msg_get_ubyte(pMsg, &nVersion2) != 0)
+        return 7;
+    pMsg++;
+    nOffset++;
+    result = func_00638798(pConnection->nConnectKind, nVersion0, nVersion1, nVersion2, &bAccepted);
+    if (result != 0)
+        return result;
+    if (bAccepted != 1)
+        return 16;
+    if (nType == 7) {
+        if (nOffset + 1 >= nLength)
+            return 1;
+        if (rt_msg_get_u2byte(pMsg, &nClientId) != 0)
+            return 7;
+        pMsg += 2;
+        nOffset += 2;
+    } else if (nType == 6) {
+        if (nOffset >= nLength)
+            return 1;
+        if (rt_msg_get_ubyte(pMsg, &nRejectReason) != 0)
+            return 7;
+        result = func_006380C0(&nReason, nRejectReason);
+        if (result != 0)
+            return result;
+        pMsg++;
+        nOffset++;
+    } else
+        return 1;
+    if (nOffset + 1 >= nLength)
+        return 1;
+    if (rt_msg_get_u2byte(pMsg, &nPort) != 0)
+        return 7;
+    pMsg += 2;
+    nOffset += 2;
+    if (nLength < nOffset + 16)
+        return 1;
+    memcpy(pConnection->szIP, pMsg, 16);
+    if (nType == 7) {
+        pConnection->nClientId = nClientId;
+        pConnection->nServerPort = nPort;
+        KM_SetLocalClientID(pConnection->nId, nClientId);
+        if (pConnection->nConnectKind == 0) {
+            result = rt_msg_client_change_state(pConnection, 7);
+            if (result != 0)
+                return result;
+        } else if (pConnection->nConnectKind == 1) {
+            result = rt_msg_client_change_state(pConnection, 5);
+            if (result != 0)
+                return result;
+        } else
+            return 3;
+    } else {
+        result = rt_msg_client_change_state(pConnection, 11);
+        if (result != 0)
+            return result;
+        if (pConnection->pfnConnect != 0) {
+            nId = pConnection->nId;
+            pConnection->pfnConnect(nId, 0, 0, nPort, nReason);
+            if (rt_msg_client_is_valid_connection_id(nId) == 0)
+                return 11;
+        }
+    }
+    return 0;
+}
 
 /* SOCOM 1's process_app_message: an application message for the connection's callback -- types 2 and
  * 3 carry their source client first (two bytes), type 10 is the server's (0xFFFF) */
