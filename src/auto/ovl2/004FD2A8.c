@@ -10,9 +10,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK tosBaseBlockConstruct(s32 arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6, s32 arg7);
 extern M2C_UNK CombinerControl;
-extern M2C_UNK func_004FCEA8;
+extern M2C_UNK CombinerProcess;
 extern M2C_UNK func_004FD2E8;
 
 void ConstructCombiner(s32 arg0, s32 arg1) {
-    tosBaseBlockConstruct(arg0, arg1 & 0xFF, 1, 1, (s32) &func_004FCEA8, (s32) &func_004FD2E8, (s32) &CombinerControl, 0x5C);
+    tosBaseBlockConstruct(arg0, arg1 & 0xFF, 1, 1, (s32) &CombinerProcess, (s32) &func_004FD2E8, (s32) &CombinerControl, 0x5C);
 }
