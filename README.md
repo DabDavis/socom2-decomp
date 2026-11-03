@@ -1818,6 +1818,25 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 16** (the ai_maps.cpp block, CAiMap::CreateGraph and its walk):
+  - a pointer passed to push_back by reference lives in memory: copying it into a second local first (`CAiMap *m =
+    map; push_back(m);`) keeps the original in a saved register (ReadMapSet);
+  - one assigned iterator reused for a second walk splits into a later live range whose stack slot falls below the
+    begin() temporaries -- a second named iterator does not (UpdateActionTables); `iterator last = end();` taken
+    before a walk gives begin a0 and end a1, `i != end()` swaps them; a walk's end held in a function-level local
+    spills the counter and `this` as the target does;
+  - early `return 0`s through a result local (`found = 0` ... `found = best`) let MW zero v0 once at entry
+    (FindLinkEdge); an inline bool taking map ids by value loads them once before its `||` chain, by reference it
+    reloads them; a list reached through a reference local gets its end() as two adds, read straight off the owner
+    MW folds the offset;
+  - the out-of-line copies of a walk inlined one level reveal its CONSTNESS: copies distinct from an earlier unit's
+    non-const ones are the const overloads (CreateGraph's ComputeLength walk; include/vector gains the class vector's
+    const begin()/end() and its const_iterator's postfix ++, additively);
+  - data: AiMaps is 0x2E0 (ReadMapSet copies 512 bytes to +0xDD); 0x2D0930 CGraph::CreateNode never reads a1 and both
+    AI callers leave it unset -- `CreateNode__6CGraphFv`, the states lane's row and unit to change together;
+  - open: UpdateNameTables 0x52B820 (0x324 vs 0x350: the target keeps both loops' entry tests in out-of-line blocks,
+    MW folds them); find_path waits on heap templates include/algorithm lacks (0x5132B0, 0x513460, 0x515270 are
+    SOCOM 1's push_heap, pop_heap and __insert_heap_down over the A* node; 0x5121C0/0x5123A0 its helpers).
 - **Tells from the kit and AI states, round 17** (ai_group.cpp's leftovers, eight CT* task parsers):
   - an inline that copies a name into a block wants the destination as a local (`char *d = m_str;`) -- written in
     place MW folds the address into each branch, the target computes it once before the null test; a member
