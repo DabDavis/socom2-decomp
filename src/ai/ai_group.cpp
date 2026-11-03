@@ -125,6 +125,37 @@ public:
         STATE m_state;   // 0xc
     };
 
+    /* a new group (OVL2 0x60D400: its id the next of m_nextId, its ring 10 around no centre) and
+     * its end (0x60D310: not virtual -- delete calls it with 1) */
+    CAiGroup();
+    ~CAiGroup();
+    /* a group for `n` members made and listed, its flag 1 the default (OVL2 0x60E610) */
+    static CAiGroup *Create(int n);
+    /* every step stopped and dropped, the group's ZAnim restarted, every member let go (OVL2
+     * 0x60D280; the name ours) */
+    void Abort();
+    /* the group's frame: false while it runs (OVL2 0x60C3E0) */
+    bool Tick();
+    /* a member let go (OVL2 0x60CE40) */
+    void RemoveMember(CSealCtrlAi *ai);
+    /* every group ticked, the finished ones dropped (OVL2 0x60E590), and every group dropped (OVL2
+     * 0x60E4E0); the ids begun again (OVL2 0x60E580) -- the names ours */
+    static void TickAll(float dT);
+    static void DeleteAll();
+    static void ResetIds();
+    /* the flag `f` set or cleared (inlined: `on ? f : 0` set, `on ? 0 : f` cleared; the name ours) */
+    void SetFlag(unsigned int f, unsigned int on) { SetFlags(on ? f : 0, on ? 0 : f); }
+
+    /* the members, the steps and the members' cells: each a class over its container (as SOCOM 1's
+     * CAiMapLocVec over vector<CAiMapLoc>: ~CAiGroup tests each member's `this` once more than the
+     * container's own chain does -- the names ours) */
+    class memberlist : public std::vector<CSealCtrlAi *> {
+    };
+    class steplist : public std::list<step> {
+    };
+    class loclist : public std::vector<CAiMapLoc> {
+    };
+
     /* the cell a member is sent to set (OVL2 0x60CD40; the name ours) */
     void SetMemberLoc(unsigned int i, const CAiMapLoc &loc);
     /* a step begun, the actions after it added to it, and ended (OVL2 0x60CDD0, 0x60CDC0; the
@@ -149,22 +180,119 @@ public:
     /* the last step, by the list's sentinel (the name ours) */
     step &LastStep() { return ((std::list<step>::node *)m_steps.end_node().prev_)->data_; }
 
-    unsigned int m_flags;   // 0x0
+    unsigned int m_flags;   // 0x0: 1 cameras run, 2 a group sound, 4 and 8 the command's
     int m_id;   // 0x4
-    unsigned char _8[0x1c - 0x8];
-    std::vector<CSealCtrlAi *> m_members;   // 0x1c
-    std::list<step> m_steps;   // 0x28
-    unsigned char _34[0x40 - 0x34];
+    CAiMapLoc m_goal;   // 0x8: the cell the group gathers at
+    CPnt3D m_center;   // 0xc: its centre (zero when new)
+    float m_radius;   // 0x18: the ring the members stand on around it (10 when new)
+    memberlist m_members;   // 0x1c
+    steplist m_steps;   // 0x28
+    unsigned char m_state;   // 0x34: 0 new (the names ours)
+    unsigned char _35[0x38 - 0x35];
+    float m_time;   // 0x38: the current step's clock
+    unsigned char _3c[0x40 - 0x3c];
     step *m_cur;   // 0x40: the step being built
-    std::vector<CAiMapLoc> m_locs;   // 0x44: where each member is sent
-    unsigned char _50[0x5c - 0x50];
+    loclist m_locs;   // 0x44: where each member is sent
+    unsigned int m_50;   // 0x50
+    CZAnim *m_anim;   // 0x54: restarted when the group is aborted
+    unsigned int m_58;   // 0x58
 
     /* the group of an id, or 0 (OVL2 0x60E460: CTGroup::Tick calls it, 0x60E7A0 jumps to it) */
     static CAiGroup *Find(int id);
 
     /* every group (OVL1 bss 0x44D668: a pointer list, its size word, the sentinel at 0x44D66C) */
     static std::list<CAiGroup *> m_list;
+    /* the next group's id (OVL1 data 0x3DF1E8, 1 to begin with), the group being ticked (OVL1 bss
+     * 0x44D678) and the frame's time (0x44D680) -- the names ours */
+    static int m_nextId;
+    static CAiGroup *m_ticking;
+    static float m_dT;
 };
+
+/* the default for a new group's flag 1 (OVL2 bss 0x66BCE8, a byte; unnamed) */
+extern unsigned char data_0066BCE8;
+
+/* the list's helpers, out of line: each holds a call that cannot be inlined whole -- a group
+ * deleted (OVL2 0x60E3D0), aborted and deleted (0x60E3E0), and ticked and dropped when done, the
+ * predicate TickAll's remove_if takes (0x60E410); the names ours */
+static void DeleteGroup(CAiGroup *g)
+{
+    delete g;
+}
+
+static void KillGroup(CAiGroup *g)
+{
+    g->Abort();
+    delete g;
+}
+
+static bool TickGroup(CAiGroup *g)
+{
+    bool done = g->Tick();
+
+    if (done)
+        KillGroup(g);
+    return done;
+}
+
+/* (OVL2 0x60E610) */
+CAiGroup *CAiGroup::Create(int n)
+{
+    CAiGroup *g = new CAiGroup;
+
+    m_list.push_back(g);
+    if (n > 0)
+        g->m_members.reserve(n);
+    g->SetFlag(1, data_0066BCE8);
+    return g;
+}
+
+/* (OVL2 0x60E590: the new end a named local and the erase its own statement, so the end is built
+ * once and copied into erase's parameter after remove_if's call).
+ * Its remove_if<list<CAiGroup *>::iterator, bool (*)(CAiGroup *)> (0x60E9A0, the unit's tail) is
+ * OPEN, 6 instructions, registers only: find_if's two iterator copies come out s4/s5 where the
+ * target has s5/s4 -- the open family of the list remove_if instances (include/algorithm's
+ * remove_if; README "Tells from completing the MSL headers, round 8"). Its remove_copy_if
+ * (0x60ED40) is byte-exact */
+void CAiGroup::TickAll(float dT)
+{
+    m_dT = dT;
+    std::list<CAiGroup *>::iterator e = m_list.end();
+    std::list<CAiGroup *>::iterator i = std::remove_if(m_list.begin(), e, TickGroup);
+
+    m_list.erase(i, e);
+}
+
+/* (OVL2 0x60E580) */
+void CAiGroup::ResetIds()
+{
+    m_nextId = 1;
+}
+
+/* (OVL2 0x60E4E0) */
+void CAiGroup::DeleteAll()
+{
+    std::list<CAiGroup *>::iterator e = m_list.end();
+
+    for (std::list<CAiGroup *>::iterator i = m_list.begin(); i != e; ++i)
+        DeleteGroup(*i);
+    m_list.clear();
+}
+
+/* (OVL2 0x60D400) */
+CAiGroup::CAiGroup()
+    : m_flags(0), m_cur(0), m_50(0), m_anim(0), m_58(0)
+{
+    m_id = m_nextId++;
+    m_center = CPnt3D::zero;
+    m_radius = 10.0f;
+    m_state = 0;
+}
+
+/* (OVL2 0x60D310: the members' destructors) */
+CAiGroup::~CAiGroup()
+{
+}
 
 /* (OVL2 0x60DA50: every action deleted, the list emptied) */
 CAiGroup::step::~step()

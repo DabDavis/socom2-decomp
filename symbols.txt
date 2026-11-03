@@ -11769,7 +11769,7 @@
 0x0060C210 0xC Stop__Q28CAiGroup6actionFv  # OVL2; by hand (the kit lane, round 16): slot +0x10 of CAiGroup::action's vtable (0x669EE0, act_camera's and act_zanim's too) -- the state at 0xC set to 2 (done); ai_group.cpp emits it with the table; the name ours
 0x0060C220 0x1A4 func_0060C220  # OVL2
 0x0060C3D0 0x10 Tick__Q28CAiGroup6actionFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::action's vtable (0x669EE0) -- done at once (the state at 0xC set to 2 and returned); the signature the overrides' (the member's AI in a1, the step's clock in $f12); the name ours
-0x0060C3E0 0x6E4 func_0060C3E0  # OVL2
+0x0060C3E0 0x6E4 Tick__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): a group's frame (TickGroup 0x60E410 calls it, its bool the done flag): the members sent to their cells by the group's state, the current step ticked (0x60C220) -- the name ours
 0x0060CAD0 0xF4 func_0060CAD0  # OVL2
 0x0060CBD0 0x164 func_0060CBD0  # OVL2
 0x0060CD40 0x78 SetMemberLoc__8CAiGroupFUiRC9CAiMapLoc  # OVL2; by hand (the kit lane, round 16): CTGroup::Begin's per-member cell -- below the member count, the vector<CAiMapLoc> at 0x44 resized to it when short (0x51C4A0), the cell stored; the name ours
@@ -11777,9 +11777,9 @@
 0x0060CDD0 0x6C AddStep__8CAiGroupFUi  # OVL2; by hand (the kit lane, round 16): a new step pushed on the list at 0x28 (its insert 0x60EBF0, the temporary's destructor 0x60DA50) and made current (0x40, the last node's value); CTGroup::Begin passes the step's action count, unread; the name ours
 0x0060CE40 0x1E0 func_0060CE40  # OVL2
 0x0060D020 0x25C func_0060D020  # OVL2
-0x0060D280 0x84 func_0060D280  # OVL2
-0x0060D310 0xE8 func_0060D310  # OVL2
-0x0060D400 0xA8 func_0060D400  # OVL2
+0x0060D280 0x84 Abort__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the steps stopped (0x60D4B0) and cleared (0x60EA90), the group's ZAnim at 0x54 activated, every member let go (RemoveMember 0x60CE40 on the first while any is left) -- the SEAL AI's death, stun, weapon events and KillGroup call it; the name ours
+0x0060D310 0xE8 __dt__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): CAiGroup's destructor (not virtual: delete calls it with 1) -- the members' destructors, each a class over its container (one this-test more than the container's chain): the cell vector's deleter (0x515200), the step list's erase (0x60EA90), the member vector's data deleted
+0x0060D400 0xA8 __ct__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): CAiGroup's constructor -- the flags, the member vector, the step list (its deleter's constructor called, 0x60ED20), the current step, the cell vector and three words zeroed, the id the next of 0x3DF1E8, the centre CPnt3D::zero, the ring 10; Create (0x60E610) news 0x5C bytes for it
 0x0060D4B0 0x88 func_0060D4B0  # OVL2
 0x0060D540 0x10 func_0060D540  # OVL2; tu: char_type.cpp~ (1.0 beta)
 0x0060D550 0x14 func_0060D550  # OVL2
@@ -11802,14 +11802,14 @@
 0x0060E120 0x48 Stop__Q28CAiGroup9act_soundFv  # OVL2; by hand (the kit lane, round 16): slot +0x10 of CAiGroup::act_sound's vtable (0x669F40) -- the playing instance stopped and released, then done; the name ours
 0x0060E170 0x104 Tick__Q28CAiGroup9act_soundFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::act_sound's vtable (0x669F40) -- the sound played (PlaySound3D at the member's entity, or flat for the group's), done when it ends; the name ours
 0x0060E280 0x148 func_0060E280  # OVL2
-0x0060E3D0 0x8 func_0060E3D0  # OVL2
-0x0060E3E0 0x30 func_0060E3E0  # OVL2
-0x0060E410 0x48 func_0060E410  # OVL2
+0x0060E3D0 0x8 DeleteGroup__FP8CAiGroup  # OVL2; by hand (the kit lane, round 16): `delete g` (a tail jump to ~CAiGroup with 1) -- DeleteAll's walk calls it; a static of ai_group.cpp, the name ours
+0x0060E3E0 0x30 KillGroup__FP8CAiGroup  # OVL2; by hand (the kit lane, round 16): the group aborted (0x60D280), then deleted -- 0x60E410 calls it; a static of ai_group.cpp, the name ours
+0x0060E410 0x48 TickGroup__FP8CAiGroup  # OVL2; by hand (the kit lane, round 16): the group ticked (0x60C3E0), killed when done (0x60E3E0), the bool returned -- TickAll's remove_if predicate (its address taken there); a static of ai_group.cpp, the name ours
 0x0060E460 0x78 Find__8CAiGroupFi  # OVL2; by hand (the kit lane, round 10): the scripted AI group of an id (the word at +4), walking the group list at 0x44D668 with an assigned iterator; CTGroup::Tick calls it, 0x60E7A0 jumps to it -- the name ours
-0x0060E4E0 0x94 func_0060E4E0  # OVL2
-0x0060E580 0x10 func_0060E580  # OVL2
-0x0060E590 0x78 func_0060E590  # OVL2
-0x0060E610 0xC8 func_0060E610  # OVL2
+0x0060E4E0 0x94 DeleteAll__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): every listed group deleted (0x60E3D0), the list cleared -- 0x574BD0 calls it; the name ours
+0x0060E580 0x10 ResetIds__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the next group id (0x3DF1E8) set back to 1 -- 0x574C30 calls it; the name ours
+0x0060E590 0x78 TickAll__8CAiGroupFf  # OVL2; by hand (the kit lane, round 16): the frame's time stored (0x44D680), the group list's remove_if with 0x60E410 (each group ticked, the finished ones aborted and deleted), the new end erased -- 0x5CCCD0 calls it; the name ours
+0x0060E610 0xC8 Create__8CAiGroupFi  # OVL2; by hand (the kit lane, round 16): a group newed and pushed on the group list (0x44D668), its member vector reserved for n (0x51BED0), flag 1 set from the byte at 0x66BCE8 -- CTGroup::Begin passes its member count; the name ours
 0x0060E6E0 0xC func_0060E6E0  # OVL2
 0x0060E6F0 0xB0 func_0060E6F0  # OVL2
 0x0060E7A0 0x8 func_0060E7A0  # OVL2
@@ -11817,12 +11817,12 @@
 0x0060E830 0x78 __dt__Q28CAiGroup8act_animFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::act_anim's vtable (0x669F20)
 0x0060E8B0 0x78 __dt__Q28CAiGroup9act_soundFv  # OVL2; by hand (the kit lane, round 16): slot +8 of CAiGroup::act_sound's vtable (0x669F40)
 0x0060E930 0x6C func_0060E930  # OVL2
-0x0060E9A0 0xE4 func_0060E9A0  # OVL2
-0x0060EA90 0xCC func_0060EA90  # OVL2
+0x0060E9A0 0xE4 remove_if<Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>,PFP8CAiGroup_b>__3stdFQ33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>PFP8CAiGroup_b_Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 16): std::remove_if over the group list with TickGroup (0x60E410), TickAll's (0x60E590) -- ai_group.cpp emits it
+0x0060EA90 0xCC erase__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>FQ33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>Q33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 16): the group step list's range erase -- each step destroyed (~step with -1, 0x60DA50) before its node is freed, as include/list's erase does not yet; ~CAiGroup and Abort call it
 0x0060EB60 0x8C func_0060EB60  # OVL2
 0x0060EBF0 0x128 insert__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>FQ33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>RCQ28CAiGroup4step  # OVL2; by hand (the kit lane, round 16): the group step list's insert (AddStep 0x60CDD0 pushes a step through it) -- ai_group.cpp emits it byte-exact but for its call to the pointer deleter's allocator constructor, whose OVL2 copy 0x5EF9B0 carries no ovl-copy note
-0x0060ED20 0x18 func_0060ED20  # OVL2
-0x0060ED40 0xB8 func_0060ED40  # OVL2
+0x0060ED20 0x18 __ct__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>Fv  # OVL2; by hand (the kit lane, round 16): the group step list's deleter constructor (out of class, so CAiGroup's constructor calls it); ai_group.cpp emits it
+0x0060ED40 0xB8 remove_copy_if<Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>,Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>,PFP8CAiGroup_b>__3stdFQ33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>PFP8CAiGroup_b_Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 16): std::remove_copy_if over the group list with TickGroup, the group remove_if's (0x60E9A0) tail -- ai_group.cpp emits it byte-exact
 0x0060EE00 0x78 __dt__14CAiSUseVehicleFv  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x4C (the destructor's shape: its table, CAiState's, ~CAiStateStack(this + 8, -1); CAiSUseVehicle is new in SOCOM II)
 0x0060EE80 0x5EC Tick__14CAiSUseVehicleFP11CSealCtrlAi  # OVL2; by hand: CAiSUseVehicle's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x0060F470 0x14C Board__14CAiSUseVehicleFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 7): CAiSUseVehicle's (this at a0: m_5c the vehicle's id, the timer at 0x60-0x68), called from its Tick; the SEAL put into the entity (0x546210), the look at the turret's position, mode 2, the period drawn -- the name ours
