@@ -7,6 +7,8 @@
 
 #include <string.h>
 #include "znet.h"
+#include "../zui/zui.h"
+#include "../zmath/zmath.h"
 
 /* a valve (SOCOM 1's CValve: its inline setter, as every unit has it) */
 enum VALVE_STATE {
@@ -17,6 +19,7 @@ enum VALVE_STATE {
 
 class CValve {
 public:
+    static CValve *GetByName(const char *name);
     void MakeCallbacks(VALVE_STATE state);
 
     /* the bool overload: the value promoted at each use (the talk flag's) */
@@ -177,7 +180,93 @@ inline void StartPlayback(VoicePlayer *p)
         p->m_playing = 1;
 }
 
+/* the Logitech USB audio library's open parameters -- the mode, then the recording and the
+ * playback formats, 14 bytes: the stack slot of the headset's open (0x30FEF0) matched only
+ * without reco.cpp's two bytes of padding -- and the device list's entry */
+struct lgAudFormat {
+    unsigned char channels;   // 0x0
+    unsigned char bits;   // 0x1
+    unsigned short rate;   // 0x2
+    unsigned short bufferms;   // 0x4
+};
+struct lgAudOpenParam {
+    unsigned char mode;   // 0x0
+    unsigned char _1;
+    lgAudFormat rec;   // 0x2
+    lgAudFormat play;   // 0x8
+};   // 0xe
+struct lgAudDeviceDesc {
+    unsigned char _0[0x150];
+};
+
+/* the headset as a device: its state, its handle and volumes, the streams' switches, and each
+ * stream's format (recording [0], playback [1]; only what is read here) */
+struct VoiceDevice {
+    unsigned char m_state;   // 0x0: 1, opened
+    unsigned char _1[0x38 - 1];
+    int m_handle;   // 0x38: -1, none
+    int m_recvol;   // 0x3c
+    int m_playvol;   // 0x40
+    unsigned char _44[0x48 - 0x44];
+    unsigned char m_48;   // 0x48
+    unsigned char m_playing;   // 0x49
+    unsigned char m_recording;   // 0x4a
+    unsigned char _4b[0x10bc - 0x4b];
+    int m_channels[2];   // 0x10bc
+    int m_bits[2];   // 0x10c4
+    int m_rate[2];   // 0x10cc
+    int m_ms[2];   // 0x10d4
+};
+
 extern "C" {
+int lgAudEnumerate(int index, lgAudDeviceDesc *desc);
+int lgAudOpen(int index, lgAudOpenParam *param, int *handle);
+int lgAudSetPlaybackVolume(int handle, int channel, unsigned char volume);
+int lgAudSetRecordingVolume(int handle, int channel, unsigned char volume);
+extern lgAudDeviceDesc data_0045B720;   /* the first device's description */
+}
+
+extern "C" {
+
+/* the headset opened: the first device enumerated and opened in both directions with the
+ * object's formats, the playback volume taken from the 'headset_controller' setting (0 to 1, as
+ * a percentage held within 0-100), both volumes set (OVL1 0x30FEF0) */
+int func_0030FEF0(VoiceDevice *d)
+{
+    d->m_recording = 0;
+    d->m_48 = 0;
+    d->m_playing = 0;
+    d->m_state = 1;
+    d->m_handle = -1;
+    if (!lgAudEnumerate(0, &data_0045B720)) {
+        lgAudOpenParam param;
+
+        param.mode = 3;
+        param.play.channels = d->m_channels[1];
+        param.play.bits = d->m_bits[1];
+        param.play.rate = d->m_rate[1];
+        param.play.bufferms = d->m_ms[1];
+        param.rec.channels = d->m_channels[0];
+        param.rec.bits = d->m_bits[0];
+        param.rec.rate = d->m_rate[0];
+        param.rec.bufferms = d->m_ms[0];
+        if (!lgAudOpen(0, &param, &d->m_handle)) {
+            CUIVariable *var = theUIVarManager.Find("headset_controller");
+
+            if (var && var->type == 2) {
+                float v = 100.0f * var->Real();
+
+                _saturate(&v, 0.0f, 100.0f);
+                d->m_playvol = (int)v;
+            }
+            lgAudSetPlaybackVolume(d->m_handle, 0, d->m_playvol);
+            lgAudSetRecordingVolume(d->m_handle, 0, d->m_recvol);
+            return 1;
+        }
+        return 0;
+    }
+    return 0;
+}
 
 /* samples written to the headset 1 KB at a time, the bytes taken returned (OVL1 0x30F6E0) */
 int func_0030F6E0(VoicePlayer *p, const unsigned char *buf, int len)
@@ -406,7 +495,9 @@ short func_003103D0(VoiceEcho *e)
     return b;
 }
 
-/* the canceller set up, the gain last (OVL1 0x310480) */
+/* the canceller set up, the gain last (OVL1 0x310480: the voice object's set-up, its one caller,
+ * calls it out of line, pinned) */
+#pragma auto_inline off
 void func_00310480(VoiceEcho *e, int gain)
 {
     if (e && e->m_handle) {
@@ -415,6 +506,191 @@ void func_00310480(VoiceEcho *e, int gain)
         func_00252B50(e->m_handle, 0);
         func_00252AB0(e->m_handle, gain);
     }
+}
+#pragma auto_inline reset
+
+}
+
+/* the speech codec's pair: the encoder's and the decoder's handles, each with its frame -- the
+ * samples, their count, the packed bytes and their room (56 bytes: VoiceEcho, VoiceEncoder and
+ * VoiceDecoder are its views) */
+struct CodecFrame {
+    short *m_samples;   // 0x0
+    unsigned short m_count;   // 0x4
+    unsigned char *m_bytes;   // 0x8
+    unsigned short m_size;   // 0xc
+    unsigned short m_e;   // 0xe
+    unsigned char m_10;   // 0x10
+    unsigned short m_length;   // 0x12
+    unsigned char m_carry;   // 0x14
+};   // 0x18
+struct VoiceCodec {
+    void *m_enc;   // 0x0
+    void *m_dec;   // 0x4
+    CodecFrame m_encframe;   // 0x8
+    CodecFrame m_decframe;   // 0x20
+};   // 0x38
+
+/* what the codec says of its frames (only what is read here) */
+struct CodecInfo {
+    unsigned char _0[0x3c];
+    unsigned short m_samples;   // 0x3c: a frame's samples
+    unsigned char _3e[0x60 - 0x3e];
+    unsigned long m_bits;   // 0x60: a packed frame's bits
+    unsigned char _68[0x70 - 0x68];
+};
+
+extern "C" {
+void func_00256F48(void *(*alloc)(unsigned int n, unsigned int size));   /* (the codec's allocator set) */
+void func_00256F68(void (*release)(void *p));   /* (and its release) */
+void func_00255A68(CodecInfo *info);   /* (the codec described) */
+void func_00255BD0(void **dec);   /* (the decoder made) */
+void func_0024F990(void **enc);   /* (the encoder made) */
+void func_00310630(void *h, void *settings);   /* (the canceller's settings) */
+void func_00310410(VoiceEcho *e, int on);   /* (the canceller on or off) */
+void *calloc(unsigned int n, unsigned int size);
+void free(void *p);
+void *malloc(unsigned int n);
+
+/* the codec's allocator and release: the C library's (OVL1 0x310970, 0x310960) */
+void *func_00310970(unsigned int n, unsigned int size)
+{
+    return calloc(n, size);
+}
+
+void func_00310960(void *p)
+{
+    free(p);
+}
+
+/* the codec pair made: the library given its allocator, the pair cleared, each frame's buffers
+ * sized from the codec's description -- the packed bytes rounded up, two over (OVL1 0x310830) */
+VoiceCodec *func_00310830()
+{
+    func_00256F48(func_00310970);
+    func_00256F68(func_00310960);
+    VoiceCodec *c = (VoiceCodec *)malloc(sizeof(VoiceCodec));
+
+    if (c) {
+        CodecInfo info;
+
+        memset(c, 0, sizeof(VoiceCodec));
+        c->m_enc = 0;
+        c->m_dec = 0;
+        func_00255A68(&info);
+        int bytes = info.m_bits >> 3;
+
+        if (info.m_bits & 7)
+            bytes++;
+        c->m_encframe.m_samples = (short *)malloc(info.m_samples * 2);
+        c->m_encframe.m_count = info.m_samples;
+        c->m_encframe.m_bytes = (unsigned char *)malloc(bytes + 2);
+        c->m_encframe.m_size = bytes + 2;
+        c->m_encframe.m_e = 0;
+        c->m_encframe.m_10 = 0;
+        c->m_encframe.m_length = 0;
+        c->m_encframe.m_carry = 0;
+        c->m_decframe.m_samples = (short *)malloc(info.m_samples * 2);
+        c->m_decframe.m_count = info.m_samples;
+        c->m_decframe.m_bytes = (unsigned char *)malloc(bytes + 2);
+        c->m_decframe.m_size = bytes + 2;
+        c->m_decframe.m_e = 0;
+        c->m_decframe.m_10 = 0;
+        c->m_decframe.m_length = 0;
+        c->m_decframe.m_carry = 0;
+        func_00255BD0(&c->m_dec);
+        func_0024F990(&c->m_enc);
+    }
+    return c;
+}
+}
+
+/* the voice object itself (0x45B718's: the radio's slots, the headset's switches and volumes,
+ * the codec, the mute table; only what its set-up writes) */
+struct VoiceChat {
+    unsigned char m_state;   // 0x0
+    unsigned char _1[0x30 - 1];
+    int m_port;   // 0x30
+    int m_port2;   // 0x34: the port + 5000
+    unsigned char _38[0x3c - 0x38];
+    int m_recvol;   // 0x3c
+    int m_playvol;   // 0x40
+    int m_44;   // 0x44
+    unsigned char _48[0x4b - 0x48];
+    unsigned char m_4b;   // 0x4b
+    unsigned char m_open;   // 0x4c: the set-up done
+    unsigned char _4d;
+    unsigned char m_bypass;   // 0x4e
+    unsigned char m_noagc;   // 0x4f
+    unsigned char m_nonoise;   // 0x50
+    unsigned char _51[0x5c - 0x51];
+    int m_5c;   // 0x5c
+    unsigned char _60[0x70 - 0x60];
+    VoiceSlot m_slots[12];   // 0x70
+    unsigned char _d0[0x1074 - 0xd0];
+    CValve *m_valve;   // 0x1074: 'can_talk'
+    int m_usecodec;   // 0x1078
+    VoiceCodec *m_codec;   // 0x107c
+    unsigned char _1080[4];
+    float m_settings[6];   // 0x1084: the canceller's
+    int m_109c;   // 0x109c
+    int m_gain;   // 0x10a0
+    unsigned char m_mute[24];   // 0x10a4: a client's voice not played
+
+    /* a client muted or not, when it is one (ours) */
+    void SetMute(int i, bool on)
+    {
+        if (i >= 0 && i < 24)
+            m_mute[i] = on;
+    }
+    /* the canceller's gain set (ours) */
+    void SetGain(int gain)
+    {
+        m_gain = gain;
+        func_00310480((VoiceEcho *)m_codec, gain);
+    }
+};
+
+extern "C" {
+
+/* the voice object set up for a game on a port: the twelve slots free, the volumes and switches
+ * at their defaults, nobody muted, the talk valve off, the codec made with the canceller's
+ * settings cleared when it is wanted, then the headset opened (OVL1 0x310080: DMEJoinGameServer
+ * calls it on 0x45B718) */
+void func_00310080(VoiceChat *v, int port)
+{
+    for (int i = 0; i < 12; i++) {
+        v->m_slots[i].m_client = 256;
+        v->m_slots[i].m_4 = 0;
+    }
+    v->m_109c = -1;
+    v->m_44 = 2;
+    v->m_4b = 1;
+    v->m_recvol = 50;
+    v->m_playvol = 60;
+    v->m_port = port;
+    v->m_port2 = port + 5000;
+    v->m_5c = 0;
+    v->m_nonoise = 0;
+    v->m_noagc = 0;
+    v->m_usecodec = 1;
+    for (int j = 0; j < 24; j++)
+        v->SetMute(j, false);
+    v->m_valve = CValve::GetByName("can_talk");
+    if (v->m_valve)
+        v->m_valve->SetValue(false);
+    if (v->m_usecodec == 1) {
+        v->m_codec = 0;
+        v->m_codec = func_00310830();
+        for (int k = 0; k < 6; k++)
+            v->m_settings[k] = 0;
+        func_00310630(v->m_codec, v->m_settings);
+        func_00310410((VoiceEcho *)v->m_codec, 0);
+        v->SetGain(v->m_gain);
+        v->m_bypass = 1;
+    }
+    func_0030FEF0((VoiceDevice *)v);
+    v->m_open = 1;
 }
 
 /* whether the current slot holds another client (OVL1 0x30E790) */
