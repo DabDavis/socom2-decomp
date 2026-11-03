@@ -59,6 +59,7 @@ bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 bool zrdr_tobool(const _zrdr *rdr, bool *out);
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
+bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
 bool zrdr_finduint(const _zrdr *rdr, const char *tag, unsigned int *out, int n);
 /* a tag's values as a team mask (SOCOM 1's ftmask_create; OVL2 0x5B8190, seal_ex.cpp's) */
 unsigned int ftmask_create(_zrdr *rdr);
@@ -306,6 +307,43 @@ struct CTRange : TASK_HDR {
         CTRange *cmd = NewTask<CTRange>();
 
         cmd->m_range2 = range * range;
+        cmd->m_ent.m_name = 0;
+        cmd->m_ent.m_id = CEntity::invalidId;
+        cmd->m_ent.m_type = 0;
+        cmd->m_ent.SetName(name);
+        return cmd;
+    }
+};
+
+/* the anim set a task names when it names none (OVL2 data 0x650AA8, 0xFFFF: CTSetAnimSet's and
+ * CTCreate's handlers read it as a word; the name ours) */
+extern int data_00650AA8;
+
+/* ai::SETANIMSET (SOCOM 1's CTSetAnimSet, the name now a name of the running anim's): the SEAL's
+ * anim set changed -- to the bored one (flag 2), or a named one; flag 4 the default's, and an
+ * entity it applies to (the names ours but the tags') */
+struct CTSetAnimSet : TASK_HDR {
+    unsigned int m_flags;   // 0x8
+    short m_set;   // 0xc: the tag "name", as a name of the running anim's
+    unsigned char _e[0x10 - 0xe];
+    TASK_ENT m_ent;   // 0x10: the tag "entity"
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+};
+
+/* ai::TURRET (SOCOM II's): a turret entity tested for a target (flag 1) or being active (2), or set
+ * active (4, the value at 0xc) -- the names ours but the tags' */
+struct CTTurret : TASK_HDR {
+    unsigned int m_flags;   // 0x8
+    int m_active;   // 0xc: the tag "set_active"'s value
+    TASK_ENT m_ent;   // 0x10: the tag "name"
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    /* a block made for a name (inline, as CTRange's: the entity's `this` kept across AddName) */
+    static CTTurret *Create(const char *name)
+    {
+        CTTurret *cmd = NewTask<CTTurret>();
+
         cmd->m_ent.m_name = 0;
         cmd->m_ent.m_id = CEntity::invalidId;
         cmd->m_ent.m_type = 0;
@@ -655,6 +693,58 @@ _zanim_cmd_hdr *CTStance::Parse(_zrdr *rdr)
             pk = STANCE_STAND;
     }
     return &Create(st, pk, delay)->hdr;
+}
+
+/* (OVL2 0x5D2310) */
+_zanim_cmd_hdr *CTSetAnimSet::Parse(_zrdr *rdr)
+{
+    CTSetAnimSet *cmd = 0;
+    const char *name = zrdr_findstring(rdr, "name");
+
+    if (name) {
+        cmd = NewTask<CTSetAnimSet>();
+        cmd->m_flags = 0;
+        if (strstr(name, "bored"))
+            cmd->m_flags |= 2;
+        else {
+            cmd->m_set = data_00650AA8;
+            if (name && ZAnim.m_CurAnim)
+                cmd->m_set = ZAnim.m_CurAnim->AddName(name);
+        }
+        if (zrdr_findtag(rdr, "default"))
+            cmd->m_flags |= 4;
+        const char *ent = zrdr_findstring(rdr, "entity");
+
+        cmd->m_ent.m_name = 0;
+        cmd->m_ent.m_id = CEntity::invalidId;
+        cmd->m_ent.m_type = 0;
+        cmd->m_ent.SetName(ent);
+    }
+    return &cmd->hdr;
+}
+
+/* (OVL2 0x5CE8E0) */
+_zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
+{
+    CTTurret *cmd = 0;
+    const char *name = zrdr_findstring(rdr, "name");
+
+    if (name) {
+        bool active = false;
+
+        cmd = Create(name);
+        cmd->m_flags = 0;
+        cmd->m_active = 0;
+        if (zrdr_findtag(rdr, "has_target"))
+            cmd->m_flags |= 1;
+        else if (zrdr_findtag(rdr, "is_active"))
+            cmd->m_flags |= 2;
+        else if (zrdr_findbool(rdr, "set_active", &active)) {
+            cmd->m_flags |= 4;
+            cmd->m_active = active;
+        }
+    }
+    return &cmd->hdr;
 }
 
 /* (OVL2 0x5DD610) */
