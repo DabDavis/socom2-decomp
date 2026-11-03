@@ -6143,6 +6143,46 @@ SOCOM 1's body with its value unsigned: 3 of 3), `medius/serverkey.c` (new, 0 of
 the map's byte-exact rows (`src/lib/medius` 850 -> 862 of 920), none superseding a draft; 1 row named.
 No tool changed.
 
+**Round 16b: rt_msg_client's receive and update paths, from SOCOM 1's bodies.**
+
+- **EVERY rt_msg_client internal returns `unsigned char`, its result local too**: update_connection
+  (0x634AD8) returns the channel update's result with no `andi`, which returns recv_circ_buf's and
+  process_recv_buf's, which return process_message's, which returns each handler's (`move s3,v0`
+  unmasked) -- an `int` callee or local anywhere on the path masks it. All 61 internals retyped at once:
+  nothing matched before moves (the API's int wrappers keep their jals, the modes still differing).
+- **Block locals get their stack slots after the function's own**: recv_circ_buf's datagram address
+  and port sit above its zeroed counters in the target's frame -- declared in the datagram arm, not at
+  the top (122 function-level declaration orders tried, none gives the frame).
+- **2.96 rotates a loop at its first exit to the end label**: process_recv_buf's message loop enters
+  by a jump to its tail (get the start, read the header, test the size) only when that size test is a
+  `break` (stmt.c's expand_end_loop moves the code up to the last such jump within 30 insns to the
+  end); a `return 0` there leaves the loop unrotated.
+- **Shapes, measured**: each state change with its own result test, cross-jumped into one call
+  (process_connect_result: one shared test after an if/else of two calls keeps both jals); a validity
+  call compared in place (a variable kept for later made CSE reuse the init flag's register as the
+  constant -- SOCOM 1's code, not this one's); `&p->f == 0` through a variable (direct, GCC folds it to
+  `p == -off`); a signed `short` counter for `lhu; addiu -1` (unsigned narrows the decrement to
+  `+0xFFFF`); a whole-word `int` type field (a byte variable narrows the load to `lbu`); the clamp
+  `n = 4096; if (m <= 4096) n = m;` for movn (a ternary gives movz); a test positive where its compare
+  takes v0 and a guard where the hoisted return value holds it (round 14b's rule, both ways); the
+  dispatcher's channel check 0x635898 written above its callers (round 13c's rule: its first `bne`).
+- **Names**: 0x637BC0 (round 15b's `rt_msg_client_recv_circ_buf`, s1:align) is SOCOM 1's
+  `rt_msg_client_send_circ_buf` -- its callees in order, and create_send_buf_space calls it as SOCOM 1's
+  does -- and 0x637D50 is `rt_msg_client_recv_circ_buf` (SOCOM 1's callees exactly, grown by the
+  datagram channel); `rt_msg_client_process_message` (0x6364C0), `rt_msg_client_tcp_aggregate_msg`
+  (0x638298), `rt_msg_client_update_single` (0x634A08) and `rt_msg_client_update_connection` (0x634AD8)
+  by position and call sites (`s1:order`/`s1:calls`, each body checked against SOCOM 1's).
+- **Open, diagnosed in place**: process_client_connect_notify (4 words short: the target copies pMsg
+  into a1 before its null test and keeps the block moves' address there, eight spellings fold it into
+  the offsets), 0x637318 (1 long, registers: the port's address pseudo is born before pMsg's last use
+  here), and round 15b's three.
+
+Hand-written in round 16b: `medius/rt_msg_client.c` (12 written, +10 byte-exact: free_connection_index,
+process_recv_buf, process_message, process_connect_result, the type-26 handler 0x636D58, tcp_aggregate_msg,
+recv_circ_buf, update_connection, the connect step 0x634C48, and the channel check 0x635898 over its
+draft; 87 of 92) -- 9 rows new to the map's byte-exact rows (4,668 bytes; `src/lib/medius` 862 -> 872 of
+932), one superseding a matched draft; 6 rows named or corrected. No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;

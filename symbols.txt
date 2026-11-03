@@ -12566,8 +12566,8 @@
 0x00634958 0x18 rt_msg_client_iudp_set_default_options  # OVL2 unaligned; s1:exact; s1:order by hand, the gcc lane round 7b (was s1:exact rt_comm_set_default_options: SOCOM 1's six-instruction rt_comm body met again): between iset_default_connect_options and idisplay_comm_state as in SOCOM 1's object, the internal of the udp wrapper 0x6335E8; it clears the one-word UDP options whose word rt_msg_client's enable-UDP internal 0x633960 keeps as its callback
 0x00634970 0x38 rt_msg_client_idisplay_comm_state  # OVL2; s1:exact
 0x006349A8 0x5C func_006349A8  # OVL2 unaligned
-0x00634A08 0xCC func_00634A08  # OVL2 unaligned
-0x00634AD8 0x170 func_00634AD8  # OVL2 unaligned
+0x00634A08 0xCC rt_msg_client_update_single  # OVL2 unaligned; s1:calls (the gcc lane, round 16b): SOCOM 1's update_single's callees in order (get_valid_connection, update_connection, is_wait_state, change_state; the connection-gone check added), the only callee of 0x634078 as update_single is of SOCOM 1's iupdate
+0x00634AD8 0x170 rt_msg_client_update_connection  # OVL2 unaligned; s1:calls (the gcc lane, round 16b): update_single calls it where SOCOM 1's calls update_connection; the body rewritten (the connect step, each channel's send then receive side, a 30 s receive timeout)
 0x00634C48 0x190 func_00634C48  # OVL2 unaligned
 0x00634DD8 0x29C func_00634DD8  # OVL2 unaligned
 0x00635078 0xD4 func_00635078  # OVL2 unaligned
@@ -12590,7 +12590,7 @@
 0x00636040 0x1C8 rt_msg_client_store_msg_in_send_buf  # OVL2; s1:align
 0x00636208 0xE8 rt_msg_client_create_send_buf_space  # OVL2 unaligned; s1:align
 0x006362F0 0x1CC rt_msg_client_process_recv_buf  # OVL2; s1:align
-0x006364C0 0x390 func_006364C0  # OVL2
+0x006364C0 0x390 rt_msg_client_process_message  # OVL2; s1:order+calls (the gcc lane, round 16b): between process_recv_buf and process_connect_result as SOCOM 1's (0x40F9B0), process_recv_buf calls it where SOCOM 1's does, the same head (the cipher word, the target word left clear) and its switch grown from 2-20 to 2-30
 0x00636850 0x2E0 rt_msg_client_process_connect_result  # OVL2; s1:align
 0x00636B30 0x228 func_00636B30  # OVL2
 0x00636D58 0x10C func_00636D58  # OVL2 unaligned
@@ -12605,8 +12605,8 @@
 0x006379B0 0x90 rt_msg_client_set_header  # OVL2; s1:exact
 0x00637A40 0x90 rt_msg_client_get_header  # OVL2; s1:exact
 0x00637AD0 0xEC rt_msg_client_send_buffer  # OVL2; s1:align
-0x00637BC0 0x18C rt_msg_client_recv_circ_buf  # OVL2; s1:align
-0x00637D50 0x218 func_00637D50  # OVL2
+0x00637BC0 0x18C rt_msg_client_send_circ_buf  # OVL2; s1:align; s1:calls+body (the gcc lane, round 16b; was rt_msg_client_recv_circ_buf, s1:align): SOCOM 1's send_circ_buf's callees in order (the used span sent, freed, re-measured; rt_comm_send's place taken by 0x6385F0), and create_send_buf_space calls it at the point SOCOM 1's calls send_circ_buf
+0x00637D50 0x218 rt_msg_client_recv_circ_buf  # OVL2; s1:calls+body (the gcc lane, round 16b): SOCOM 1's recv_circ_buf's callees exactly (normalize, avail, start, rt_comm_receive, time, use, avail), grown by the datagram channel's rt_comm_receive_from
 0x00637F68 0xB8 rt_msg_client_is_valid_outgoing_msg  # OVL2 unaligned; s1:align
 0x00638020 0x24 rt_msg_client_change_state  # OVL2; s1:align
 0x00638048 0x68 rt_msg_client_is_wait_state  # OVL2 unaligned; s1:align
@@ -12614,7 +12614,7 @@
 0x006380C0 0xB4 func_006380C0  # OVL2
 0x00638178 0x8C func_00638178  # OVL2 unaligned
 0x00638208 0x8C rt_msg_client_set_scratch_buf_min_size  # OVL2 unaligned; s1:exact
-0x00638298 0x268 func_00638298  # OVL2 unaligned
+0x00638298 0x268 rt_msg_client_tcp_aggregate_msg  # OVL2 unaligned; s1:order+calls (the gcc lane, round 16b): SOCOM 1's object ends with it after set_scratch_buf_min_size as this one does, and store_msg_in_send_buf calls it twice as SOCOM 1's does; its body reworked (the channel only, the key word from 0x6386F8)
 0x00638500 0xF0 func_00638500  # OVL2
 0x006385F0 0x108 func_006385F0  # OVL2
 0x006386F8 0x44 func_006386F8  # OVL2 unaligned
