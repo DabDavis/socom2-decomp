@@ -113,6 +113,9 @@ public:
     void UpdateNameTables();
     void ValidateLinks();
     void CreateGraph(bool force);
+    /* the set graph's edge whose link joins two cells' maps nearest the walk between them (new in
+     * SOCOM II, the name ours: 0x52ACC0) */
+    CGEdge *FindLinkEdge(const CAiMapLoc &from, const CAiMapLoc &to);
 
     CAiMap::spores m_spores;   // 0x30
     CAiMap::names m_names[6];   // 0x3c

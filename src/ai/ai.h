@@ -313,13 +313,22 @@ class CGraph;
 void _fixupEdge(CGraph *graph, CGEdge *edge, bool fix, unsigned int &n, void *data);
 void _fixupNode(CGraph *graph, CGNode *node, bool fix, unsigned int &n, void *data);
 
-/* the AI maps' graph (graph_tree.cpp's CGraph; only what the maps call) */
+/* the AI maps' graph (graph_tree.cpp's CGraph; only what the maps call, laid out as graph_tree.h
+ * has it: the name, then the node and edge lists, 0x1C bytes) */
 class CGraph {
 public:
     /* a graph read from a map file, each node and edge handed to a fixup with the caller's data */
     static CGraph *Create(CFileIO &f, void (*node)(CGraph *, CGNode *, bool, unsigned int &, void *),
                           void (*edge)(CGraph *, CGEdge *, bool, unsigned int &, void *), void *data);
+    static CGraph *Create(const char *name);
     static void Destroy(CGraph *graph);
+    CGNode *CreateNode(const char *name);
+    CGEdge *CreateEdge(CGNode *a, CGNode *b);
+    CGNode *GetNodeByNodeEx(const void *ex);
+
+    char *m_name;   // 0x0
+    std::list<CGNode *> m_nodes;   // 0x4
+    std::list<CGEdge *> m_edges;   // 0x10
 };
 
 class CAiMap;
