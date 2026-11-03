@@ -12614,7 +12614,7 @@
 0x006380C0 0xB4 func_006380C0  # OVL2
 0x00638178 0x8C func_00638178  # OVL2 unaligned
 0x00638208 0x8C rt_msg_client_set_scratch_buf_min_size  # OVL2 unaligned; s1:exact
-0x00638298 0x268 func_00638298  # OVL2 unaligned
+0x00638298 0x268 rt_msg_client_tcp_aggregate_msg  # OVL2 unaligned; s1:order+calls (the gcc lane, round 16b): SOCOM 1's object ends with it after set_scratch_buf_min_size as this one does, and store_msg_in_send_buf calls it twice as SOCOM 1's does; its body reworked (the channel only, the key word from 0x6386F8)
 0x00638500 0xF0 func_00638500  # OVL2
 0x006385F0 0x108 func_006385F0  # OVL2
 0x006386F8 0x44 func_006386F8  # OVL2 unaligned

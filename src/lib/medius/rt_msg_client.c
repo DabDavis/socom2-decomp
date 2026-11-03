@@ -1436,7 +1436,7 @@ int func_00635D98(rt_msg_client_comm *pComm, unsigned short nTarget)
     return 0;
 }
 
-extern int func_00638298(rt_msg_client_comm *pComm);
+extern int rt_msg_client_tcp_aggregate_msg(rt_msg_client_comm *pComm);
 extern void *memcpy(void *dst, const void *src, unsigned int n);
 int rt_msg_client_is_valid_outgoing_msg(int nType);
 
@@ -1475,7 +1475,7 @@ int rt_msg_client_store_msg_in_send_buf(rt_msg_client_comm *pComm, int nType, un
     } else
         bAppend = 1;
     if (bAppend == 0) {
-        result = func_00638298(pComm);
+        result = rt_msg_client_tcp_aggregate_msg(pComm);
         if (result != 0)
             return result;
     }
@@ -1485,7 +1485,7 @@ int rt_msg_client_store_msg_in_send_buf(rt_msg_client_comm *pComm, int nType, un
     pPending->nLength += nLength;
     pPending->nCount++;
     if (nType != 2 && nType != 3)
-        func_00638298(pComm);
+        rt_msg_client_tcp_aggregate_msg(pComm);
     if (bFlag == 1) {
         if (pComm->bTargetSet == 1) {
             if (pComm->nLastTarget == 0xFFFF)
@@ -2172,6 +2172,109 @@ int rt_msg_client_set_scratch_buf_min_size(unsigned int nSize)
     return 0;
 }
 
+extern int rt_circ_buf_get_start_avail_ptr(rt_circ_buf *cb, unsigned char **ppStart);
+extern int rt_circ_buf_use(rt_circ_buf *cb, unsigned int nBytes);
+extern int rt_msg_set_u4byte(unsigned char *msg, unsigned int value);
+extern int func_006386F8(unsigned short nConnection, int *pnState);
+extern int KM_Encrypt(unsigned short nConnection, unsigned short nTarget, void *pData, int nLength);
+
+/* SOCOM 1's tcp_aggregate_msg, reworked (round 16b; s1:order, SOCOM 1's object ends with it after
+ * set_scratch_buf_min_size as this one does): the channel's gathered messages (store_msg_in_send_buf's
+ * pending block) written into its send ring as one message -- the header, the target for types 3 and
+ * 27, the data enciphered under the connection's key when it has one (the key's class 7 pads it to 64
+ * bytes), the cipher's word after the header -- then the block emptied. SOCOM 1 took the connection,
+ * the ring, the block and the send time; the time is no longer taken here. */
+int rt_msg_client_tcp_aggregate_msg(rt_msg_client_comm *pComm)
+{
+    rt_msg_client_header header;
+    unsigned short nHeaderLength;
+    int nKey = 0;
+    unsigned char *pStart = 0;
+    rt_circ_buf *pBuf;
+    struct rt_msg_client_pending *pPending;
+    rt_msg_client_time *pTime;
+    int nType;
+    unsigned int nLength;
+    unsigned short nPadded;
+    unsigned char bEncrypt;
+    unsigned int nBody;
+    unsigned char *p;
+    int result;
+
+    if (func_00635898(pComm) != 1)
+        return 2;
+    pBuf = &pComm->sendBuf;
+    if (pBuf == 0)
+        return 9;
+    pPending = &pComm->pending;
+    if (pPending == 0)
+        return 9;
+    pTime = &pComm->tLastSend;
+    nType = pPending->nType & 0x7F;
+    nLength = pPending->nLength;
+    if (pTime == 0)
+        return 9;
+    if (pPending->nCount == 0)
+        return 0;
+    if (nLength + 72 >= 585)
+        return 2;
+    if (rt_msg_client_create_send_buf_space(pComm, nLength + 72) != 0)
+        return 8;
+    result = func_006386F8(pComm->nId, &nKey);
+    if (result != 0)
+        return result;
+    bEncrypt = nKey != 0;
+    if (bEncrypt == 1) {
+        if (func_006325B8() != bEncrypt)
+            return 28;
+    }
+    if (rt_circ_buf_get_start_avail_ptr(pBuf, &pStart) != 0)
+        return 21;
+    p = pStart;
+    nBody = 0;
+    if (bEncrypt && nLength != 0)
+        p += 7;
+    else
+        p += 3;
+    if (nType == 3 || nType == 27) {
+        if (rt_msg_set_u2byte(p, pPending->nTarget) != 0)
+            return 7;
+        p += 2;
+        nBody = 2;
+    }
+    if (nLength != 0) {
+        memcpy(p, pPending->abData, nLength);
+        if (bEncrypt == 1) {
+            if ((nKey & 0xE0000000) == 0xE0000000) {
+                nPadded = (nLength + 63) & ~63;
+                if (nLength < nPadded) {
+                    memset(p + nLength, 0, nPadded - nLength);
+                    nLength = nPadded;
+                }
+            }
+            nKey = KM_Encrypt(pComm->nId, 0xFFFF, p, nLength);
+        }
+        p += nLength;
+        nBody += nLength;
+    }
+    header.nType = nType;
+    if (bEncrypt)
+        header.nType = nType | 0x80;
+    header.nLength = nBody;
+    result = rt_msg_client_set_header(pStart, &header, &nHeaderLength);
+    if (result != 0)
+        return result;
+    if (bEncrypt == 1 && nLength != 0)
+        rt_msg_set_u4byte(pStart + 3, nKey);
+    if (rt_circ_buf_use(pBuf, p - pStart) != 0)
+        return 21;
+    if ((unsigned int)(p - pStart) >= 585)
+        return 2;
+    pPending->nLength = 0;
+    pPending->nCount = 0;
+    return 0;
+}
+
 /* how many bytes of whole messages (each its header, its body and, when the type's 0x80 bit says
  * so, a four-byte trailer) fit in nMax -- the buffer whole when it fits */
 unsigned char func_00638500(unsigned char *pMsg, unsigned int nLength, unsigned int nMax, unsigned int *pnCount)
@@ -2256,7 +2359,7 @@ done:
 }
 
 /* the platform's queries: a connection's crypt state and the link's capabilities */
-extern int KM_Encrypt(unsigned short nConnection, unsigned short nTarget, int a2, int a3);
+extern int KM_Encrypt(unsigned short nConnection, unsigned short nTarget, void *pData, int nLength);
 
 int func_006386F8(unsigned short nConnection, int *pnState)
 {
