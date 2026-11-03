@@ -186,6 +186,7 @@ inline _MSLstring::_MSLstring(const char *value)
 template <class charT, class traits = char_traits<charT>, class Allocator = allocator<charT> >
 class basic_string {
 public:
+    basic_string(const charT *s);
     ~basic_string();
     const charT *c_str() const { return !(w_[0] & 1) ? (const charT *)w_ + 1 : (const charT *)w_[2]; }
 private:
@@ -206,6 +207,7 @@ typedef basic_string<char> string;
 template <class T>
 class __vector_pod {
 public:
+    __vector_pod() : capacity_(0), size_(0), data_(0) {}
     ~__vector_pod()
     {
         if (data_)
@@ -245,14 +247,18 @@ public:
     class facet {
         friend class __locale_imp<1>;
     protected:
+        explicit facet(size_t refs = 0) : ref_(refs) {}
         virtual ~facet() {}
         unsigned int ref_;
     };
     locale();
     locale &operator=(const locale &rhs) { imp_ = rhs.imp_; return *this; }
-    static locale &global();
+    static locale &global() throw();
+    static locale &classic() throw();
 private:
-    _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > > imp_;
+    typedef _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > > imp_ptr;
+    locale(const imp_ptr &imp) : imp_(imp) {}
+    imp_ptr imp_;
 };
 
 inline locale::locale() : imp_(global().imp_) {}
@@ -261,6 +267,7 @@ inline locale::locale() : imp_(global().imp_) {}
 template <int N>
 class __locale_imp {
 public:
+    __locale_imp(const char *name) : name_(name) {}
     ~__locale_imp() throw();
 private:
     vector<locale::facet *> facets_;    /* 0x00 */
@@ -481,11 +488,18 @@ struct ctype_base {
 
 template <class charT> class ctype;
 
+/* the classic tables (locale.cpp's; SOCOM 1's std::__ctype_map, __lower_map, __upper_map) */
+extern const ctype_base::mask __ctype_map[256];
+extern const unsigned char __lower_map[256];
+extern const unsigned char __upper_map[256];
+
 template <>
 class ctype<char> : public locale::facet, public ctype_base {
 public:
+    explicit ctype(const mask *tab = 0, bool del = false, size_t refs = 0);
     char widen(char c) const { return do_widen(c); }
 protected:
+    ~ctype();
     virtual char do_toupper(char c) const;
     virtual const char *do_toupper(char *low, const char *high) const;
     virtual char do_tolower(char c) const;
