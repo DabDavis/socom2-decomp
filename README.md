@@ -1729,6 +1729,29 @@ wholly another overlay's copy -- a scorer change for the tools' owner (with the 
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the weapons, round 13** (vis_vu.cpp's VU chain, GetChainData, the vid stack):
+  - SOCOM II's vid stack is `std::stack<void *>`: its out-of-line empty() (`xor v0,v0,zero; sltiu`) and top()
+    (the deque's back() over 128-element blocks inlined) match 0x321F40/0x321EF0, renamed by the integrator;
+    znode.h forward-declares CVidStack and vis_vu.cpp/vis_main.cpp define it -- <stack> cannot go in znode.h
+    because zrdr.h defines a std::stack of its own and the two clash; GetVid is six inline levels high, so
+    its callers inline it one level;
+  - MW refuses `break` as an asm mnemonic: the intrinsic is `__I_break(0)`, and the game's trap is
+    `__I_break(0); __I_nop();` -- inlined one level it pads `break; nop; nop`, inlined whole `break; nop`;
+  - a command helper that returns `p + 1` lets a caller step a cursor whose address is taken without
+    reloading it after the helper's stores;
+  - `!(p + n >= end)` through an inline bool gives `sltu; xori; xori; bnez`, written inline as
+    `!(p + n < end)` it branches on the sltu; an int flag is `li` stored unmasked, a bool flag `daddiu` plus
+    `andi 0xff`; a bool result set at the top of its if block (`r = true;` before the work, else `r = false`)
+    puts the daddiu ahead of the loop; a 1-bit field read is `dsll32`/`dsrl32` where a mask is `andi`;
+  - a 15-statement function in the same unit is auto-inlined into its caller (VuProjectedMap needed `#pragma
+    auto_inline off`); the detail struct is SOCOM 1's zdb::tag_DETAIL_PARAMS (CVisual keeps its DETAIL typedef);
+  - VuUpdate's tail calls even 8-byte helpers out of line (0x3B5250-0x3B52C0 sit right after it): its inline
+    budget runs out partway -- a THIRD limit, probably `inline_max_total_size`, not measured yet;
+  - open: VuLightMap 0x3B54E0 (5: the loop test's end() colours the size and the iterator word the other way
+    round), CopyBuffer 0x3C36D0 (8 bytes long: the switch's second test `beq 8; b out` where the target
+    branches straight into kind 8's code, the block copy's two loads ahead of the length); not written:
+    VuUpdate, 0x3B5F20 (VuBatchProgram's command list), 0x3B41D0, 0x3B6870, 0x3B6B20, 0x3B7170, 0x3B76B0,
+    0x3B78D0, SetBuffer, the vid stack's deque copy chain.
 - **Tells from the world, rdr and sound, round 3** (zrndr_pipe.cpp on the real texture classes, zrndr_postfx.cpp):
   - a function template DECLARED ahead of its definition (`template <class V> inline void FreeVector(V &);`)
     is no longer inlined one level, even at calls written after the definition (ztex_manager.cpp's four
