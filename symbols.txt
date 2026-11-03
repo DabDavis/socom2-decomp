@@ -3,7 +3,7 @@
 # func_<VA> to the mangled name its source defines. SIZE excludes MW's zero padding.
 
 0x00180008 0x1C0 func_00180008  # MAIN unaligned
-0x001801C8 0x8 func_001801C8  # MAIN unaligned
+0x001801C8 0x8 _exit  # MAIN unaligned; by body (crt0's _exit: Exit(0) whatever the status; newlib's abort calls _exit(1) through it, as the demo's abort calls its crt0 stub 0x1401D0, unnamed there)
 0x001801D0 0x10 func_001801D0  # MAIN; s1~ ExitThread (one of 2)
 0x001801E0 0x9C _strdup__FPCcPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _strdup where SOCOM II's call this)
 0x00180280 0x314 _free__FPvPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _free where SOCOM II's call this; file and line passed as 0 here)
@@ -329,7 +329,7 @@
 0x001914F8 0xCC func_001914F8  # MAIN unaligned
 0x001915C8 0x64 calloc  # MAIN unaligned
 0x00191630 0xB4 func_00191630  # MAIN
-0x001916E8 0x58 func_001916E8  # MAIN unaligned
+0x001916E8 0x58 _close_r  # MAIN unaligned; by body (newlib's reent/closer.c: errno zeroed, close(fd), errno copied into ptr->_errno on -1; the demo's _close_r is 0x58 too)
 0x00191740 0x22C func_00191740  # MAIN
 0x00191970 0x1264 func_00191970  # MAIN
 0x00192BD8 0x8 func_00192BD8  # MAIN unaligned
@@ -354,7 +354,7 @@
 0x00193628 0x2F4 func_00193628  # MAIN unaligned
 0x00193920 0x16C func_00193920  # MAIN
 0x00193A90 0x4AC func_00193A90  # MAIN
-0x00193F40 0x5C func_00193F40  # MAIN
+0x00193F40 0x5C _fstat_r  # MAIN; by body (newlib's reent/fstatr.c: the same around fstat(fd, buf); the demo's _fstat_r is 0x5C too)
 0x00193FA0 0x104 func_00193FA0  # MAIN
 0x001940A8 0x3E0 func_001940A8  # MAIN unaligned
 0x00194488 0x94 func_00194488  # MAIN unaligned
@@ -367,7 +367,7 @@
 0x001947F0 0xC func_001947F0  # MAIN
 0x00194800 0x24 func_00194800  # MAIN
 0x00194828 0x1C func_00194828  # MAIN unaligned
-0x00194848 0x60 func_00194848  # MAIN unaligned
+0x00194848 0x60 _lseek_r  # MAIN unaligned; by body (newlib's reent/lseekr.c: the same around lseek(fd, pos, whence); the demo's _lseek_r is 0x60 too)
 0x001948A8 0x154 func_001948A8  # MAIN unaligned
 0x00194A00 0x64 func_00194A00  # MAIN
 0x00194A68 0x1C8 func_00194A68  # MAIN unaligned
@@ -400,15 +400,15 @@
 0x00196898 0x184 func_00196898  # MAIN unaligned
 0x00196A20 0xCC func_00196A20  # MAIN
 0x00196AF0 0x70 func_00196AF0  # MAIN
-0x00196B60 0x60 func_00196B60  # MAIN
+0x00196B60 0x60 _open_r  # MAIN; by body (newlib's reent/openr.c: the same around open(file, flags, mode))
 0x00196BC0 0x5C func_00196BC0  # MAIN
 0x00196C20 0x70 printf  # MAIN; s1:callee
 0x00196C90 0x84 func_00196C90  # MAIN
 0x00196D18 0x20 puts  # MAIN unaligned; by hand (newlib's: _puts_r on _impure_ptr; the FIFO kick passes it "D9 Busy"/"D8 Busy") -- the sound lane
 0x00196D38 0x9EC qsort  # MAIN unaligned; s1:calls (DiIntersect::SortNearToFar calls it with (idx, n, 4, _cmpdi) where SOCOM 1's calls qsort; newlib's, 0x9EC bytes against SOCOM 1's 0xA24) -- the zdb-world lane
-0x00197728 0x18 func_00197728  # MAIN unaligned
+0x00197728 0x18 srand  # MAIN unaligned; s1:order (the demo's rand object 0x3E48E0: srand, before rand; stores the seed, zero-extended, in the reentrancy block's _rand_next that rand reads)
 0x00197740 0x64 rand  # MAIN; s1:callee by hand (zAnimRandomWeightTick calls it where SOCOM 1 calls rand; newlib's 64-bit LCG)
-0x001977A8 0x60 func_001977A8  # MAIN unaligned
+0x001977A8 0x60 _read_r  # MAIN unaligned; by body (newlib's reent/readr.c: the same around read(fd, buf, cnt); the demo's _read_r is 0x60 too)
 0x00197808 0x64 realloc  # MAIN unaligned; s1:calls (_realloc calls it where SOCOM 1's calls realloc) -- the sound lane
 0x00197870 0x5A0 func_00197870  # MAIN
 0x00197E10 0x34 func_00197E10  # MAIN
@@ -418,20 +418,20 @@
 0x00198058 0x48 isinf  # MAIN unaligned; s1:exact
 0x001980A0 0x3C isnan  # MAIN; s1:exact
 0x001980E0 0x1E4 scalbn  # MAIN; s1:exact
-0x001982C8 0x58 func_001982C8  # MAIN unaligned
+0x001982C8 0x58 _sbrk_r  # MAIN unaligned; by body (newlib's reent/sbrkr.c: the same around sbrk(incr), failing on (void *)-1; the demo's _sbrk_r is 0x5C)
 0x00198320 0x58 func_00198320  # MAIN
 0x00198378 0x64 func_00198378  # MAIN unaligned
 0x001983E0 0x3C copysignf  # MAIN; s1:exact
 0x00198420 0xC8 scalbnf  # MAIN; s1:exact
 0x001984E8 0x70 func_001984E8  # MAIN unaligned
 0x00198558 0x80 func_00198558  # MAIN unaligned
-0x001985D8 0xD8 func_001985D8  # MAIN unaligned
+0x001985D8 0xD8 _raise_r  # MAIN unaligned; s1:callee by hand (raise's one callee, as the demo's raise calls _raise_r)
 0x001986B0 0x98 func_001986B0  # MAIN
-0x00198748 0x20 func_00198748  # MAIN unaligned
+0x00198748 0x20 raise  # MAIN unaligned; s1:callee by hand (abort's first call, raise(6), where the demo's abort calls raise; _raise_r(_impure_ptr, sig) as the demo's raise)
 0x00198768 0x24 func_00198768  # MAIN unaligned
 0x00198790 0x1C func_00198790  # MAIN
 0x001987B0 0x20 func_001987B0  # MAIN
-0x001987D0 0x5C func_001987D0  # MAIN
+0x001987D0 0x5C _kill_r  # MAIN; by body (newlib's reent/signalr.c: the same around kill(pid, sig); the demo's _kill_r is 0x5C too)
 0x00198830 0x14 func_00198830  # MAIN
 0x00198848 0x88 func_00198848  # MAIN unaligned
 0x001988D0 0x90 sprintf  # MAIN; s1:callee
@@ -458,7 +458,7 @@
 0x00199A10 0x84 strstr  # MAIN; s1:callee
 0x00199A98 0xF14 _strtod_r  # MAIN unaligned; s1:calls (strtod, 0x19A9B0, tail-calls it with the reentrancy pointer first, as SOCOM 1's strtod calls _strtod_r) -- the integrator
 0x0019A9B0 0x24 strtod  # MAIN; s1:calls (CRdrFile::MakeUnion calls it where SOCOM 1's calls strtod; the same body -- _strtod_r(_impure_ptr, s, end) -- tail-jumped where SOCOM 1's newlib used jal) -- the rdr lane
-0x0019A9D8 0x28 func_0019A9D8  # MAIN unaligned
+0x0019A9D8 0x28 strtof  # MAIN unaligned; by body (newlib's stdlib/strtod.c: strtof after strtod in the same object, (float)strtod(s, se) through dptofp)
 0x0019AA00 0x20 strtok  # MAIN; s1:calls (PS2FileName calls it where SOCOM 1's calls strtok; SOCOM 1's body: the reentrancy block + 92 handed to strtok_r) -- the UI-widgets lane; the seed's 0xE8 row split: its tail jump lands on the next instruction, strtok_r
 0x0019AA20 0xC8 strtok_r  # MAIN; s1:exact by hand (SOCOM 1's strtok_r word for word at its start: the delimiter scan, lb/beql); split off strtok's row, which tail-jumps into it -- the integrator
 0x0019AAE8 0x238 _strtol_r  # MAIN unaligned; s1:calls
@@ -484,7 +484,7 @@
 0x0019E7E8 0x54 vsprintf  # MAIN unaligned; s1:calls (SOCOM 1's identical CConsole::Debug calls vsprintf at the same instruction; 0x54 bytes in both) -- the entity lane
 0x0019E840 0x54 func_0019E840  # MAIN
 0x0019E898 0x110 func_0019E898  # MAIN unaligned
-0x0019E9A8 0x60 func_0019E9A8  # MAIN unaligned
+0x0019E9A8 0x60 _write_r  # MAIN unaligned; by body (newlib's reent/writer.c: the same around write(fd, buf, cnt); the demo's _write_r is 0x60 too)
 0x0019EA08 0x10C func_0019EA08  # MAIN unaligned
 0x0019EB18 0x74 __muldi3  # MAIN unaligned; s1:exact
 0x0019EB90 0x694 __divdi3  # MAIN; s1:exact
@@ -683,13 +683,13 @@
 0x001A40E8 0x7C write  # MAIN unaligned; s1:exact
 0x001A4168 0x74 read  # MAIN unaligned; s1:exact
 0x001A41E0 0x28 open  # MAIN; s1:gap
-0x001A4208 0x8 func_001A4208  # MAIN unaligned
-0x001A4210 0x8 func_001A4210  # MAIN
-0x001A4218 0x8 func_001A4218  # MAIN unaligned
+0x001A4208 0x8 close  # MAIN unaligned; s1:order (libkernl's glue object, the demo's 0x15B9A0, in the demo's order: close after open, before ioctl; _close_r calls it)
+0x001A4210 0x8 ioctl  # MAIN; s1:order (libkernl's glue object in the demo's order: ioctl after close, before lseek)
+0x001A4218 0x8 lseek  # MAIN unaligned; s1:order (libkernl's glue object in the demo's order: lseek after ioctl, before sbrk; _lseek_r calls it)
 0x001A4220 0xAC sbrk  # MAIN; s1:exact
-0x001A42D0 0x8 func_001A42D0  # MAIN
+0x001A42D0 0x8 isatty  # MAIN; s1:order (libkernl's glue object in the demo's order: isatty after sbrk, before fstat)
 0x001A42D8 0x14 fstat  # MAIN unaligned; s1:exact
-0x001A42F0 0x8 func_001A42F0  # MAIN
+0x001A42F0 0x8 getpid  # MAIN; s1:order (libkernl's glue object in the demo's order: getpid after fstat, before kill)
 0x001A42F8 0x28 kill  # MAIN unaligned; s1:exact
 0x001A4320 0x28 stat  # MAIN; s1:gap
 0x001A4348 0x28 unlink  # MAIN unaligned; s1:gap
@@ -753,10 +753,8 @@
 0x001A6110 0x3C sceSifSendCmd  # MAIN; s1:exact
 0x001A6150 0x3C isceSifSendCmd  # MAIN; s1:exact
 0x001A6190 0x128 _sceSifCmdIntrHdlr  # MAIN; s1:exact
-0x001A62B8 0xAC sceSifWriteBackDCache  # MAIN unaligned; s1:gap
-0x001A6364 0x4 func_001A6364  # MAIN unaligned
-0x001A6368 0x4 func_001A6368  # MAIN unaligned; s1~ sceSifInitRpc (one of 2)
-0x001A636C 0x198 sceSifInitRpc  # MAIN unaligned; s1:gap
+0x001A62B8 0xB0 sceSifWriteBackDCache  # MAIN unaligned; s1:gap; 0xB0 as the demo's (the GCC lane: its asm ends in its own `jr ra; nop`, then GCC's `jr ra` whose delay slot is the next object's first word -- the seed cut that last `jr ra` off as func_001A6364, merged back)
+0x001A6368 0x19C sceSifInitRpc  # MAIN unaligned; s1:gap; starts at 0x1A6368, 0x19C as the demo's (the GCC lane: its prologue's first word, the delay slot of sceSifWriteBackDCache's last `jr ra`, was cut off as func_001A6368 -- merged back)
 0x001A6508 0x24 sceSifExitRpc  # MAIN unaligned; s1:exact
 0x001A6530 0xA8 _sceRpcGetPacket  # MAIN; s1:gap
 0x001A65D8 0x1C func_001A65D8  # MAIN unaligned; s1~ _sceRpcFreePacket (one of 2)
@@ -854,21 +852,21 @@
 0x001ABEC8 0x110 sceSifRebootIop  # MAIN unaligned; s1:exact
 0x001ABFD8 0x60 SetTLBHandler  # MAIN unaligned; s1:exact
 0x001AC038 0x84 SetDebugHandler  # MAIN unaligned; s1:exact
-0x001AC0C0 0x10 func_001AC0C0  # MAIN; s1~ Copy (one of 5)
-0x001AC0D0 0x38 func_001AC0D0  # MAIN; s1~ kCopy (one of 5)
-0x001AC108 0x10 func_001AC108  # MAIN unaligned; s1~ GetEntryAddress (one of 3)
-0x001AC118 0x10 func_001AC118  # MAIN unaligned; s1~ setup (one of 5)
+0x001AC0C0 0x10 Copy@tlbfunc  # MAIN; s1~ Copy (one of 5); s1:order (the demo's TLB object 0x1638D0: its static Copy, the third function, syscall 0x5A here and there; `NAME@UNIT` is a static several objects define, README "The GCC front")
+0x001AC0D0 0x38 kCopy@tlbfunc  # MAIN; s1~ kCopy (one of 5); s1:order (the demo's TLB object 0x1638D0: its static kCopy, the fourth function, a word copy here and there)
+0x001AC108 0x10 GetEntryAddress@tlbfunc  # MAIN unaligned; s1~ GetEntryAddress (one of 3); s1:order (the demo's TLB object 0x1638D0: its static GetEntryAddress, the fifth function, syscall 0x5B)
+0x001AC118 0x10 setup@tlbfunc  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's TLB object 0x1638D0: its static setup, the sixth function, syscall 0x74)
 0x001AC128 0xC4 InitTLBFunctions  # MAIN unaligned; s1:exact
 0x001AC1F0 0x10 PutTLBEntry  # MAIN; s1:exact
-0x001AC200 0x10 func_001AC200  # MAIN
+0x001AC200 0x10 iPutTLBEntry  # MAIN; s1:order (the demo's TLB object 0x1638D0: iPutTLBEntry between PutTLBEntry and _SetTLBEntry, syscall -0x55 here and there)
 0x001AC210 0x10 _SetTLBEntry  # MAIN; s1:callee
 0x001AC220 0x30 SetTLBEntry  # MAIN; s1:exact
 0x001AC250 0x10 iSetTLBEntry  # MAIN; s1:exact
-0x001AC260 0x10 func_001AC260  # MAIN
+0x001AC260 0x10 GetTLBEntry  # MAIN; s1:order (the demo's TLB object 0x1638D0: GetTLBEntry between iSetTLBEntry and iGetTLBEntry, syscall 0x57)
 0x001AC270 0x10 iGetTLBEntry  # MAIN; s1:exact
 0x001AC280 0x10 ProbeTLBEntry  # MAIN; s1:exact
-0x001AC290 0x10 func_001AC290  # MAIN
-0x001AC2A0 0x10 func_001AC2A0  # MAIN
+0x001AC290 0x10 iProbeTLBEntry  # MAIN; s1:order (the demo's TLB object 0x1638D0: iProbeTLBEntry between ProbeTLBEntry and ExpandScratchPad, syscall -0x58)
+0x001AC2A0 0x10 ExpandScratchPad  # MAIN; s1:order (the demo's TLB object 0x1638D0: ExpandScratchPad before InitTLB, syscall 0x59)
 0x001AC2B0 0x40 InitTLB  # MAIN; s1:exact
 0x001AC2F0 0x1F4 InitTLB32MB  # MAIN; s1:exact
 0x001AC500 0x11C _kTLBException  # MAIN; s1:ref (taken by address where SOCOM 1 takes _kTLBException's); split: the row held the demo's whole assembler object 0x163E00-0x164160, its three functions at the same offsets (+0, +0x140, +0x240), the gaps zero
@@ -877,33 +875,33 @@
 0x001AC860 0x48 DIntr  # MAIN; s1:exact
 0x001AC8A8 0x18 EIntr  # MAIN unaligned; s1:exact
 0x001AC8C0 0x48 supplement_crt0  # MAIN; s1:exact
-0x001AC908 0x10 func_001AC908  # MAIN unaligned; s1~ Copy (one of 5)
-0x001AC918 0x38 func_001AC918  # MAIN unaligned; s1~ kCopy (one of 3)
+0x001AC908 0x10 Copy@initsys  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's initsys object 0x1641C0: its static Copy, after supplement_crt0, syscall 0x5A)
+0x001AC918 0x38 kCopy@initsys  # MAIN unaligned; s1~ kCopy (one of 3); s1:order (the demo's initsys object 0x1641C0: its static kCopy, a word copy, after Copy)
 0x001AC950 0x40 kFindAddress  # MAIN; s1:exact
 0x001AC990 0x10 FindAddress  # MAIN; s1:exact
 0x001AC9A0 0x34 GetSystemCallEntry  # MAIN; s1:exact
 0x001AC9D8 0xFC InitSystemCallTableAddress  # MAIN unaligned; s1:exact
-0x001ACAD8 0x10 func_001ACAD8  # MAIN unaligned; s1~ setup (one of 5)
+0x001ACAD8 0x10 setup@initsys  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's initsys object 0x1641C0: its static setup, before _InitSys, syscall 0x74)
 0x001ACAE8 0x3C _InitSys  # MAIN unaligned; s1:exact
-0x001ACB28 0x10 func_001ACB28  # MAIN unaligned; s1~ setup (one of 5)
-0x001ACB38 0x10 func_001ACB38  # MAIN unaligned; s1~ Copy (one of 5)
-0x001ACB48 0x38 func_001ACB48  # MAIN unaligned; s1~ kCopy (one of 3)
-0x001ACB80 0x10 func_001ACB80  # MAIN; s1~ GetEntryAddress (one of 3)
+0x001ACB28 0x10 setup@libosd  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's InitExecPS2 object 0x164428: its static setup, the first function, syscall 0x74)
+0x001ACB38 0x10 Copy@libosd  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's InitExecPS2 object 0x164428: its static Copy, the second, syscall 0x5A)
+0x001ACB48 0x38 kCopy@libosd  # MAIN unaligned; s1~ kCopy (one of 3); s1:order (the demo's InitExecPS2 object 0x164428: its static kCopy, the third, a word copy)
+0x001ACB80 0x10 GetEntryAddress@libosd  # MAIN; s1~ GetEntryAddress (one of 3); s1:order (the demo's InitExecPS2 object 0x164428: its static GetEntryAddress, the fourth, syscall 0x5B)
 0x001ACB90 0x68 PatchIsNeeded  # MAIN; s1:exact
 0x001ACBF8 0xAC InitExecPS2  # MAIN unaligned; s1:exact
-0x001ACCA8 0x10 func_001ACCA8  # MAIN unaligned; s1~ Copy (one of 5)
-0x001ACCB8 0x30 kCopy  # MAIN unaligned; s1:exact
-0x001ACCE8 0x10 func_001ACCE8  # MAIN unaligned; s1~ setup (one of 5)
+0x001ACCA8 0x10 Copy@exit  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static Copy, the first function, syscall 0x5A)
+0x001ACCB8 0x30 kCopy@exit  # MAIN unaligned; s1:exact; s1:order (the demo's ExecPS2 object 0x1645A8: its static kCopy, the byte copy; qualified as the other four objects' are)
+0x001ACCE8 0x10 setup@exit  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static setup, the third, syscall 0x74)
 0x001ACCF8 0x118 SetArg  # MAIN unaligned; s1:exact
 0x001ACE10 0x8 TerminateLibrary  # MAIN; s1:callee
 0x001ACE18 0x70 ExecPS2  # MAIN unaligned; s1:exact
 0x001ACE88 0x48 LoadExecPS2  # MAIN unaligned; s1:exact
 0x001ACED0 0x28 Exit  # MAIN; s1:exact
 0x001ACEF8 0x4C ExecOSD  # MAIN unaligned; s1:exact
-0x001ACF48 0x10 func_001ACF48  # MAIN unaligned; s1~ setup (one of 5)
-0x001ACF58 0x10 func_001ACF58  # MAIN unaligned; s1~ Copy (one of 5)
-0x001ACF68 0x38 func_001ACF68  # MAIN unaligned; s1~ kCopy (one of 5)
-0x001ACFA0 0x10 func_001ACFA0  # MAIN; s1~ GetEntryAddress (one of 3)
+0x001ACF48 0x10 setup@alarm  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's InitAlarm object 0x164848: its static setup, the first function, syscall 0x74)
+0x001ACF58 0x10 Copy@alarm  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's InitAlarm object 0x164848: its static Copy, the second, syscall 0x5A)
+0x001ACF68 0x38 kCopy@alarm  # MAIN unaligned; s1~ kCopy (one of 5); s1:order (the demo's InitAlarm object 0x164848: its static kCopy, the third, a word copy)
+0x001ACFA0 0x10 GetEntryAddress@alarm  # MAIN; s1~ GetEntryAddress (one of 3); s1:order (the demo's InitAlarm object 0x164848: its static GetEntryAddress, the fourth, syscall 0x5B)
 0x001ACFB0 0xD4 InitAlarm  # MAIN; s1:exact
 0x001AD088 0x49C __ieee754_exp  # MAIN unaligned; s1:exact
 0x001AD528 0xF4C __ieee754_pow  # MAIN unaligned; s1:exact
@@ -1498,25 +1496,25 @@
 0x001ECC40 0xA8 DisplayMessage__10CCoreStateFPCcPCciiiUcUcc  # OVL1; by hand (the states lane, round 15): slot 0x2C of CCoreState's vtable (0x404F60), CGameState::DisplayMessage's override; byte-exact from st_core.cpp
 0x001ECCF0 0x264 UnInit__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's UnInit slot)
 0x001ECF60 0x94 FreeVector<Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>>__FRQ23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>_v  # OVL1; by hand (the states lane, round 15): zsys.h's FreeVector as a plain function template over the film's cue vector (8-byte elements, a float and a word: 0x1EF190's copy loop), its instance following its one caller CCinematicState::UnInit; CMovieCue is our name
-0x001ED000 0x8 func_001ED000  # OVL1
+0x001ED000 0x8 clear__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 17): the cue vector's clear() (`j` to the deleter's clear 0x1EF310), its out-of-line copy following UnInit with FreeVector's (0x1ECF60), reverse of their first use: both called from an inline helper inlined one level (FreeVector is zsys.h's inline, taller than the budget)
 0x001ED010 0x54C Tick__15CCinematicStateFf  # OVL1; s1:vtable (CCinematicState's Tick slot)
 0x001ED560 0x4F4 Init__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's Init slot)
-0x001EDA60 0x408 func_001EDA60  # OVL1; s1~ SetMovie__15CCinematicStateFPCc (the UI-commands lane's lead: SOCOM 1's paired handler calls SetMovie from the same place, but SOCOM II's takes three arguments after this -- (name, 0, 0) at that call -- so SOCOM 1's signature does not carry; the states lane)
-0x001EDE70 0x18 func_001EDE70  # OVL1
-0x001EDE90 0xC func_001EDE90  # OVL1
-0x001EDEA0 0x1C func_001EDEA0  # OVL1
-0x001EDEC0 0x10 func_001EDEC0  # OVL1
-0x001EDED0 0x3C func_001EDED0  # OVL1
-0x001EDF10 0x8 func_001EDF10  # OVL1
-0x001EDF20 0x1C func_001EDF20  # OVL1
+0x001EDA60 0x408 SetMovie__15CCinematicStateFPCcUcUc  # OVL1; s1~ SetMovie__15CCinematicStateFPCc (the UI-commands lane's lead: SOCOM 1's paired handler calls SetMovie from the same place, but SOCOM II's takes three arguments after this -- (name, 0, 0) at that call -- so SOCOM 1's signature does not carry; the states lane); by hand (the states lane, round 17): SOCOM 1's SetMovie (st_core.cpp, before ~CCinematicState as here), its two callers the menu's PlayMPEG commands (0x27AAEC, 0x27ABB0) as SOCOM 1's; SOCOM II's takes a flag (stored at 0x28) and a subtitles flag (lbu-loaded by both callers) -- with it set the subtitles' rdr is read through an inline helper inlined one level, so every accessor below is called out of line
+0x001EDE70 0x18 end__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>Fv  # OVL1; by hand (the states lane, round 17): the cue vector's end(), its out-of-line copy following SetMovie, its only caller (copies in reverse of their first use there)
+0x001EDE90 0xC begin__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>Fv  # OVL1; by hand (the states lane, round 17): the cue vector's begin(), its out-of-line copy following SetMovie
+0x001EDEA0 0x1C push_back__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>FRC9CMovieCue  # OVL1; by hand (the states lane, round 17): the cue vector's push_back (insert(end, 1, x) out of line, 0x1EED40), its copy following SetMovie
+0x001EDEC0 0x10 __ct__9CMovieCueFfPc  # OVL1; by hand (the states lane, round 17): a film's cue built from its AT time and its PRINT text (SetMovie's loop; the names ours)
+0x001EDED0 0x3C Item__5_zrdrCFUi  # OVL1; by hand (the states lane, round 17): zrdr.h's _zrdr::Item(i), its out-of-line copy from st_core.cpp (SetMovie's first call to it) -- the overlay's linked copy, called by the zrdr units' recursive walkers (0x32CCB0, 0x32D1B0, 0x334EA0-0x335E20, 0x385EA0)
+0x001EDF10 0x8 reserve__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>FUi  # OVL1; by hand (the states lane, round 17): the class vector's reserve forwarder (`j` to __vector_imp's, 0x1EF190, as vector::clear()'s copy 0x1ED000 jumps to the deleter's clear), its copy following SetMovie
+0x001EDF20 0x1C Count__5_zrdrCFv  # OVL1; by hand (the states lane, round 17): zrdr.h's _zrdr::Count(), its out-of-line copy from st_core.cpp (SetMovie's first call) -- the overlay's linked copy, called by the zrdr units' recursive walkers as Item's
 0x001EDF40 0xC0 __dt__15CCinematicStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EE000 0x77C sort<Q33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator,7CueLess>__3stdFQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator7CueLess_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; sort of st_core.cpp's film cues (0x1EDA60 calls it with an empty comparator by value comparing m_time, its name ours: struct CueLess { bool operator()(CMovieCue a, CMovieCue b) const }); the probe build/p6/cue.cpp; byte-exact as written, its shuffle static's relocations aside)
 0x001EE780 0x3BC func_001EE780  # OVL1
 0x001EEB40 0x30 assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; ours (the MSL headers round 5: include/string's assign(const char *), out of class, replace(0, size(), s) as a tail call; st_core.cpp's tail emits it, byte-exact -- the states lane's stand-in under the placeholder retired)
 0x001EEB70 0x30 append__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; ours (the MSL headers round 5: include/string's append(const char *), out of class, replace(size(), 0, s) as a tail call; st_core.cpp's tail emits it, byte-exact)
 0x001EEBA0 0x198 reserve__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi  # OVL1; s1:calls (fprintf/abort twice, new, delete -- SOCOM 1's reserve of it; CZAnimExVector::Add grows by it before its inlined push_back)
-0x001EED40 0x444 func_001EED40  # OVL1
-0x001EF190 0x180 func_001EF190  # OVL1
+0x001EED40 0x444 insert__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>FP9CMovieCueUiRC9CMovieCue  # OVL1; by hand (the states lane, round 17): the cue vector's insert(position, n, x), push_back's (0x1EDEA0 calls it with the end and 1), in st_core.cpp's template tail
+0x001EF190 0x180 reserve__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>FUi  # OVL1; by hand (the states lane, round 17): the cue vector's reserve, out of class (the forwarder 0x1EDF10 jumps to it), in st_core.cpp's template tail
 0x001EF310 0x8 clear__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 15): the cue vector's deleter clear (out of class, size zeroed), called by FreeVector<cues> (0x1ECF60) and the vector's clear() copy 0x1ED000; st_core.cpp's tail emits it byte-exact
 0x001EF320 0x68 __dt__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 15): the cue vector's deleter destructor (clear, the storage freed), FreeVector<cues>'s temporary's, called with 0; st_core.cpp's tail emits it byte-exact
 0x001EF390 0x68 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCc  # OVL1; ours (the MSL headers round 5: include/string's replace(pos, n1, const char *), out of class: s..s+strlen(s) and the iterator category handed to the template replace 0x1EE780; st_core.cpp's tail emits it, byte-exact)
@@ -2353,10 +2351,10 @@
 0x00243398 0x118 func_00243398  # OVL1 unaligned
 0x002434B0 0xEC heap_Free  # OVL1; s1:callee
 0x002435A0 0x78 func_002435A0  # OVL1
-0x00243618 0x24 func_00243618  # OVL1 unaligned
+0x00243618 0x24 heap_GetVersion  # OVL1 unaligned; s1:order (the demo heap object 0x378348: heap_GetVersion before heap_Open, 0x20 bytes there; stores the version 0x01000001, 0x800B0183 for a null pointer, as the demo's)
 0x00243640 0xC8 heap_Open  # OVL1; s1:calls
 0x00243708 0x58 func_00243708  # OVL1 unaligned
-0x00243760 0xDC func_00243760  # OVL1
+0x00243760 0xDC SearchFor  # OVL1; s1:order (the demo heap object 0x378348: its last function, SearchFor -- the same search of a counted list, unrolled by four here (-funroll-loops))
 0x00243840 0x3A4 func_00243840  # OVL1
 0x00243BE8 0x7C lgAudEnumHint  # OVL1 unaligned; s1:exact
 0x00243C68 0x1D8 lgAudEnumerate  # OVL1 unaligned; s1:callee
@@ -2367,23 +2365,23 @@
 0x00244378 0x178 func_00244378  # OVL1 unaligned
 0x002444F0 0x128 func_002444F0  # OVL1
 0x00244618 0x120 func_00244618  # OVL1 unaligned
-0x00244738 0xE8 func_00244738  # OVL1 unaligned
-0x00244820 0xE8 func_00244820  # OVL1
+0x00244738 0xE8 lgAudGetRemainingPlaybackBytes  # OVL1 unaligned; s1:order (the demo's lgAud object 0x3B5980: after lgAudSetMixer as there; RPC 0x13 and the message 'lgAudGetRemainingPlaybackBytes: rpc call failed')
+0x00244820 0xE8 lgAudGetAvailableRecordingBytes  # OVL1; s1:order (the demo's lgAud object: after GetRemainingPlaybackBytes; RPC 0x12 and its own message)
 0x00244908 0xD4 lgAudStartRecording  # OVL1 unaligned; s1:callee
 0x002449E0 0xD4 lgAudStopRecording  # OVL1; s1:callee
-0x00244AB8 0xD4 func_00244AB8  # OVL1 unaligned
-0x00244B90 0xD4 func_00244B90  # OVL1
-0x00244C68 0xD4 func_00244C68  # OVL1 unaligned
-0x00244D40 0xFC func_00244D40  # OVL1
+0x00244AB8 0xD4 lgAudStartPlayback  # OVL1 unaligned; s1:order (the demo's lgAud object: after lgAudStopRecording; RPC 6 and the message 'lgAudStartPlayback: rpc call failed')
+0x00244B90 0xD4 lgAudStopPlayback  # OVL1; s1:order (the demo's lgAud object: after lgAudStartPlayback; RPC 7 and its own message)
+0x00244C68 0xD4 lgAudResumePlayback  # OVL1 unaligned; s1:order (the demo's lgAud object: after lgAudStopPlayback; RPC 0x11 and its own message)
+0x00244D40 0xFC lgAudSetPlaybackVolume  # OVL1; s1:order (the demo's lgAud object: after lgAudResumePlayback, before lgAudSetRecordingVolume (RPC 0xE); RPC 0xD, the two volume bytes as SetRecordingVolume's)
 0x00244E40 0xFC lgAudSetRecordingVolume  # OVL1; s1:callee
-0x00244F40 0xF0 func_00244F40  # OVL1
+0x00244F40 0xF0 lgAudPrepareForReboot  # OVL1; by hand (its messages 'lgAudPrepareForReboot: rpc call failed' and '...: error: an async call is in progress'; new in liblgaud 1.08, not in the demo)
 0x00245030 0x50 lgAudASync  # OVL1; s1:exact
-0x00245080 0x80 func_00245080  # OVL1
+0x00245080 0x80 fnReadEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudASync, before lgAudARead; copies the reply's data out, the read's end callback)
 0x00245100 0x13C lgAudARead  # OVL1; s1:callee
-0x00245240 0x58 func_00245240  # OVL1
+0x00245240 0x58 fnWriteEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudARead, before lgAudAWrite)
 0x00245298 0x164 func_00245298  # OVL1 unaligned
 0x00245400 0x164 func_00245400  # OVL1
-0x00245568 0x58 func_00245568  # OVL1 unaligned
+0x00245568 0x58 fnCheckDeviceChangeEndFunc  # OVL1 unaligned; s1:order (the demo's lgAud object: the static before lgAudAEnumHint; stores the device-change hint)
 0x002455C0 0xCC lgAudAEnumHint  # OVL1; s1:callee
 0x00245690 0xB8 libnetb_is_data_waiting  # OVL1; s1:callee
 0x00245748 0x40 libnetb_udp_init_buffer  # OVL1 unaligned; s1:exact
@@ -4006,14 +4004,14 @@
 0x002B6430 0xF4 func_002B6430  # OVL1
 0x002B6530 0x7CC func_002B6530  # OVL1
 0x002B6D00 0x60 SetBkgColor__12C2DMessage_QFfff  # OVL1; s1:align
-0x002B6D60 0x78 func_002B6D60  # OVL1
+0x002B6D60 0x78 LastMessage__12C2DMessage_QFv  # OVL1; s1:order by hand (the states lane, round 17): SOCOM 1's LastMessage (0x200890) sits between SetBkgColor and Clear_Messages as this does, and does the same -- the list's last line's text, "" with none; fts_message.cpp (open)
 0x002B6DE0 0xF4 Clear_Messages__12C2DMessage_QFv  # OVL1; s1:calls by hand (the HUD lane: CHUD::ReleaseHUD's three calls on its message queues, as SOCOM 1's)
 0x002B6EE0 0xE0 __dt__12C2DMessage_QFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B6FC0 0x558 func_002B6FC0  # OVL1
 0x002B7520 0xC func_002B7520  # OVL1
 0x002B7530 0xD8 func_002B7530  # OVL1
 0x002B7610 0x110 func_002B7610  # OVL1
-0x002B7720 0x74 SetString__16C2DMessageStringFPCc  # OVL1; s1:align
+0x002B7720 0x74 SetString__16C2DMessageStringFPCcb  # OVL1; s1:align; by hand (the states lane, round 17): SOCOM II's override of C2DString's slot 26, SetString(const char *, bool) -- the target passes its own a2 on to C2DString::SetString untouched (SOCOM 1's took the string only); fts_message.cpp
 0x002B77A0 0x1A8 Tick__16C2DMessageStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B7950 0x98 func_002B7950  # OVL1
 0x002B79F0 0x28 ftsNetworkGameUninit__Fv  # OVL1; s1:align

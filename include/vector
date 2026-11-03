@@ -395,11 +395,20 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     void reserve(unsigned int n);
     void insert(T *position, unsigned int n, const T &x);
     void push_back(const T &x) { insert(this->data() + this->size_, 1, x); }
+    /* grown by default-built elements or cut (out of class). Declared AHEAD of erase, as the
+     * original MSL must: a unit's template tail generates a class's out-of-class members in
+     * declaration order, so a resize declared after the erase its unit's own code instantiated
+     * inlines it, where the image's resize<CAiPath::point> (0x528430) calls it beside the unit's
+     * RemoveInvalidPoints (0x527CE0, byte-exact so; the MSL headers round 8) */
+    void resize(unsigned int n);
     /* the range erased: out of line over raw pointers (SOCOM 1's erase__...FP7CTargetP7CTarget,
-     * SOCOM II's 0x2A19C0), the iterators' copies handed to it by an inline wrapper (CTargetList::
-     * RemoveTarget) */
+     * SOCOM II's 0x2A19C0), the iterators' copies handed to it by an inline wrapper that reads them
+     * through pointer references, as the pointer vector's does: their addresses taken, MW copies a
+     * named iterator into the parameter rather than passing its word straight through
+     * (CTargetList::RemoveTarget 0x2A0310 byte-exact so, the MSL headers round 8; `first.m_p` read
+     * straight left it 0x28 short) */
     T *erase(T *first, T *last);
-    iterator erase(iterator first, iterator last) { return iterator(erase(first.m_p, last.m_p)); }
+    iterator erase(iterator first, iterator last) { return iterator(erase((T *&)first, (T *&)last)); }
     /* one element erased, the tail moved down by assignment: out of line over a raw pointer, the
      * iterator's copy handed to it by an inline wrapper, as the range's (the online lane's
      * CAcctDB::Delete: the iterator copied bitwise into the wrapper's parameter, its word passed
@@ -407,8 +416,6 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
      * 0x532000 and its wrapper 0x530AA0, CAiMap::SetCellLink's) */
     T *erase(T *position);
     iterator erase(iterator position) { return iterator(erase(position.m_p)); }
-    /* grown by default-built elements or cut (out of class; declared after insert and erase) */
-    void resize(unsigned int n);
 
     __vector_imp() {}
     /* a copy: the deleter's words zeroed (the capacity's, the size's, the data's, in that order),
@@ -454,13 +461,18 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     /* the range erased, the iterators read through pointer references: their addresses taken, MW
      * copies each into its parameter where a plain read lets it pass a local straight through
      * (DeleteLayers 0x53A730 copies both its named iterators, byte-exact so: the MSL headers round
-     * 6). The erase(remove(...), end()) family (RemoveEmptyGames, CleanupTemporary, DeleteLightMap,
-     * CTurretList::Remove, CWorld::DeleteChild) stays open: the target builds end() once and copies
-     * it into erase's parameter only after remove's call. Taken by const reference and forwarded to
-     * this by-value level, the copies move after the call and end() is built once (RemoveEmptyGames
-     * 4 instructions off: the end's temporary in the lower slot, the target's in the highest) but
-     * CGrid::Destroy (0x2D58B0) is lost; three levels, explicit copies, a void level change nothing
-     * more (build/p6/v_erase*.py, er/gen.py) */
+     * 6). The erase(remove(...), end()) family is the CALLERS' form, not this header's (the MSL
+     * headers round 8): MW builds an argument list's temporaries left to right but evaluates it
+     * right to left, so in the one-line idiom erase's end() always takes a slot below remove's
+     * temporaries and is copied into its parameter before the call -- no form of erase changes
+     * that (const-reference forwarding moves the copies after the call but leaves the slot low,
+     * 4 instructions off, and loses CGrid::Destroy 0x2D58B0, whose erase(begin(), end()) copies
+     * each argument as it is built). The target's slots read `iterator e = end(); iterator i =
+     * std::remove(begin(), e, x); erase(i, e);` (DeleteLightMap, CTurretList::Remove, RemoveTarget,
+     * CNodeVector::Remove, CleanupTemporary) or, with a separate end() for remove_if's last,
+     * `iterator i = std::remove_if(begin(), end(), p);` (RemoveEmptyGames, RemoveUncheckedGames):
+     * the end declared first takes the highest slot, the new end the next, and both of erase's
+     * copies follow the call */
     iterator erase(iterator first, iterator last)
     {
         return __iter(__base::erase((unsigned int *&)first, (unsigned int *&)last));
@@ -758,7 +770,18 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  * eight matches keep theirs. No change from: i, m or e declared first, `T *i, *e`, the end through
  * end(), data() or &data_[size_], m cast, a size_ local, xp declared late, i declared per branch or
  * initialised at the top, a separate cursor for the second loop; i and j both declared at the top
- * lose all eight matches */
+ * lose all eight matches.
+ * The MSL headers round 8 surveyed all 29 class inserts in the image (build/p8/esurvey2.py): the end
+ * shares data_'s register or takes a fresh one PER ELEMENT, not per size or copy kind -- 16-byte
+ * CSndSequenceEntry (ours too) and CRegistrant share it, 8-byte TypeRemoteGuy shares it while the
+ * 8-byte float and CTexHandle * sequence entries and CAiPath::point take a fresh one, 12-byte CPnt3D
+ * and CMeshLOD a fresh one where 136-byte CVehicleDef shares; this build gets it right for the eleven
+ * that match and the other way round for CVehicleDef, CMeshLOD (0x3B9BD0: the size's register at the
+ * capacity test already differs, a2 against a1), the float and CTexHandle * entries and CAiMapLoc.
+ * CRegistrant's 99 lines are mostly its copy: the target copies member by member (three words and a
+ * byte), this a block through the FPRs -- its element wants an empty user constructor (the weapons
+ * lane's round 10 tell). SOCOM 1's DWARF names the insert's locals in declaration order (MW lists
+ * them so, 2.4-era builds too): i, j, newcap, newsize, tmp, j, i, k, j, xp, t1 -- no end local */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
@@ -884,6 +907,9 @@ template <class T, class Allocator = allocator<T> >
 class vector : public __vector_imp<T, Allocator, false> {
 public:
     void clear() { __vector_imp<T, Allocator, false>::clear(); }
+    /* the states lane's round 17: a forwarder, as clear() is -- st_core.cpp's SetMovie calls its
+     * out-of-line copy (0x1EDF10, `j` to the cue vector's reserve 0x1EF190) */
+    void reserve(unsigned int n) { __vector_imp<T, Allocator, false>::reserve(n); }
 };
 
 __MSL_VECTOR_SCALAR(float)

@@ -98,12 +98,15 @@ bool CWorld::Initalize()
 }
 
 /* a light map taken off the list (SOCOM 1's: std::remove inlined, its remove_copy out of line).
- * OPEN, 1 instruction (0x13C of 0x138): the target computes end() once, at 76(sp), and copies it
- * for remove's last and again for erase's; written this way end() is made twice, and a local end
- * iterator passed to both makes the walk shorter still (0x124) */
+ * The end built once into a local (76(sp)) and handed to remove and to erase, the new end a local
+ * (72): include/algorithm's remove joins its two results through one copy (the MSL headers
+ * round 8) */
 void CWorld::DeleteLightMap(CLightMap *light)
 {
-    m_lightMaps.erase(std::remove(m_lightMaps.begin(), m_lightMaps.end(), light), m_lightMaps.end());
+    CLightMapVector::iterator e = m_lightMaps.end();
+    CLightMapVector::iterator i = std::remove(m_lightMaps.begin(), e, light);
+
+    m_lightMaps.erase(i, e);
 }
 
 /* a model of the loaded libraries' (SOCOM 1's) */
@@ -233,18 +236,19 @@ namespace zdb {
 
 /* a child taken off: its shadows deleted, out of the grid unless a cell, off the list and its
  * parent forgotten, its holders counted down (SOCOM 1's; the light maps' half is gone). A child
- * of another node gives back its count.
- * OPEN, 2 instructions (0x11C of 0x114): DeleteLightMap's -- the target builds end() once (76(sp)),
- * passes it to remove_if and copies it for erase's last after the call, where this stores it twice
- * and copies before; the remove_if instance (0x320800) misses on its predicate, which the inlined
- * find_if copies where the target reads it in place (include/algorithm's) */
+ * of another node gives back its count. The shadows' end built once into a local and handed to
+ * remove_if and to erase, as DeleteLightMap's; the remove_if instance (0x320800) reads its
+ * predicate in place (the MSL headers round 8: both byte-exact) */
 int CWorld::DeleteChild(CNode *child)
 {
     if (!child)
         return 0;
-    if (child->m_socom2_a1_bits.bit5 == 1)
-        m_shadows.erase(std::remove_if(m_shadows.begin(), m_shadows.end(), delshadow(child)),
-                        m_shadows.end());
+    if (child->m_socom2_a1_bits.bit5 == 1) {
+        CRenderMapVector::iterator e = m_shadows.end();
+        CRenderMapVector::iterator i = std::remove_if(m_shadows.begin(), e, delshadow(child));
+
+        m_shadows.erase(i, e);
+    }
     if (child->m_parent != this)
         return child->m_count;
     if (!dynamic_cast<CCell *>(child))
