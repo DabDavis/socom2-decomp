@@ -232,6 +232,117 @@ bool CVisual::GetChainData()
     return DetailChain(this);
 }
 
+/* the object header's statics: its second quadword (0x4B4D30, 0x3B5A10's scale and offset), the
+ * clip word (SOCOM 1's m_fovClipWord), the light scales (SOCOM 1's m_GlobalLightScale and
+ * m_AmbientLightScale), the fog switch and the landmark flag (SOCOM 1's m_fogEnable,
+ * m_landmarkFlag), the default fog plane and vector (SOCOM 1's NoAltFogBottomV/NoAltFogVectorV)
+ * and the packet's cursor quadword (0x3B6820's) */
+extern "C" _word128 data_004B4D30;
+extern "C" unsigned int data_004B4E58;
+extern "C" float m_GlobalLightScale__Q23zdb7CVisual;
+extern "C" float data_003E1480;
+extern "C" unsigned char data_003E1468;
+extern "C" unsigned char data_004B4A58;
+extern "C" CPnt4D data_003FC200[2];
+extern "C" _word128 *data_004B4AD8;
+
+/* the camera's alternate-fog switch (CCamera's, the top bit of its byte 335: zcamera.h's _word128
+ * clashes with zsys_public.h's here, so the camera is read through this; the name ours) */
+struct CAMERA_FOG {
+    unsigned char _0[335];
+    unsigned char _b0 : 7;
+    unsigned char m_altFog : 1;
+};
+
+/* the packet's head flag set (ours): bit 3 of the head's word 3 */
+struct VU_HEAD_FLAGS {
+    unsigned char _0[12];
+    unsigned char m_b0 : 3;
+    unsigned char m_kick : 1;
+    unsigned char m_b4 : 4;
+};
+
+/* the object header: the clip word, the light scales, the fog plane and vector in model space with
+ * their range (the landmarks' own, at full range), the model-to-world matrix's place left after it;
+ * the packet's head word cleared and flagged (SOCOM 1's VuObjectSetup's first part: the matrices
+ * are 0x3B5F20's now) */
+_word128 *CVisual::VuObjectSetup(_word128 *p)
+{
+    p[1] = data_004B4D30;
+    if (m_1c == -2)
+        p->u32[0] = 63;
+    else
+        p->u32[0] = data_004B4E58 >> 8;
+    if (m_flags & 0x40)
+        p->f32[1] = m_GlobalLightScale__Q23zdb7CVisual;
+    else
+        p->f32[1] = 0;
+    if (m_flags & 0x20)
+        p->f32[2] = data_003E1480;
+    else
+        p->f32[2] = 0;
+    if (data_003E1468) {
+        CPnt4D *fog;
+
+        if (data_004B4A58)
+            fog = (CPnt4D *)((char *)m_camera + 1280);
+        else if (((CAMERA_FOG *)m_camera)->m_altFog && m_bits.m_b19)
+            fog = (CPnt4D *)((char *)m_camera + 1248);
+        else
+            fog = data_003FC200;
+        data_004B4E70.Transform(fog, (CPnt4D *)&p[2], 2);
+        if (data_004B4A58) {
+            p[2].f32[3] = 255.0f;
+            p[3].f32[3] = 0;
+        } else {
+            p[2].f32[3] = *(float *)((char *)m_camera + 304);
+            p[3].f32[3] = *(float *)((char *)m_camera + 308);
+        }
+    }
+    data_004B4AD8->u32[3] = 0;
+    ((VU_HEAD_FLAGS *)data_004B4AD8)->m_kick = 1;
+    return p + 4;
+}
+
+/* the saved texture selects' references (SOCOM 1's m_savedTS, 32 quadwords) and the packet's head
+ * (0x3B6820 keeps the packet's start there) */
+extern "C" _word128 data_004B4610[32];
+extern "C" _word128 *data_004B4AE0;   // (declared again below with the cursor)
+
+/* the packet closed: a flush when no select was saved, the head quadword's DMA tag and unpack set
+ * from the packet's length, then the saved selects' references copied in after it with a flush (SOCOM
+ * 1's VuExecuteState0, its head the static now) */
+_word128 *CVisual::VuExecuteState0(_word128 *p)
+{
+    _word128 *start = p;
+
+    if (data_003E1440 == data_004B4610) {
+        p->u32[0] = 0x15000000;
+        p->u32[1] = 0;
+        p->u32[2] = 0;
+        p->u32[3] = 0;
+        p++;
+    }
+
+    int head = start - CSPR::m_sprPacket - 1;
+    int len = p - CSPR::m_sprPacket - 1;
+
+    data_004B4AE0->u32[0] = len | 0x10000000;
+    data_004B4AE0->u32[1] = 0;
+    data_004B4AE0->u32[2] = 0x01000101;
+    data_004B4AE0->u32[3] = (head << 16) | 0x6C008000;
+    if (data_004B4610 < data_003E1440) {
+        p = CSPR::Copy(p, data_004B4610, data_003E1440 - data_004B4610);
+        data_003E1440 = data_004B4610;
+        p->u32[0] = 0x10000000;
+        p->u32[1] = 0;
+        p->u32[2] = 0x15000000;
+        p->u32[3] = 0;
+        p++;
+    }
+    return p;
+}
+
 /* the VU packet's statics (new in SOCOM II, not named): the cursor and the packet's start in the
  * scratchpad, and the scale and offset 0x3B5A10 applies (0x4B4AD8, 0x4B4AE0, 0x4B4D30) */
 extern "C" _word128 *data_004B4AD8;

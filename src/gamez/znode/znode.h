@@ -479,6 +479,11 @@ public:
     /* the specular map's frame, band and camera written into its command's data (ours) */
     void VuSpecularSetup(_word128 *q, CPnt4D *dir, CPnt3D *rgb, float opacity);
     bool VuSpecularMap(_word128 **cursor, unsigned int tag);
+    /* the object header written, the cursor after it given back (SOCOM 1's VuObjectSetup's first
+     * part) */
+    _word128 *VuObjectSetup(_word128 *p);
+    /* the packet closed: its head tagged, the saved selects copied in (SOCOM 1's, one argument) */
+    static _word128 *VuExecuteState0(_word128 *p);
     /* a packet's map passes, between an opening and a closing command (ours) */
     _word128 *VuMapPasses(_word128 *p, tag_DETAIL_PARAMS *detail);
     /* a texture select saved for the VU code: a DMA reference to it at _savedTS and, unless the
