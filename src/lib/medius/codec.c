@@ -7,7 +7,12 @@
  * encode and decode entry points (the stub codecs' 8-byte functions at 0x64F580 for types 34-36,
  * this object's dummy for 33 and 63), the stream kind it was made for, the codec's context, and two
  * buffers -- 480 coded bytes at 0x40 and 2048 PCM bytes at 0x220 -- with their fill counts. In image
- * order; the frame calls 0x613808 and 0x613B80 are not written. */
+ * order, the object whole (round 18b: the create and both frame calls). The record's pointer lives
+ * in its own stack slot (its address goes to the allocator), so every store reloads it; the field at
+ * 0x38 is the session's counters, handed to audio.c's encoder and decoder tallies. Shapes: the
+ * dummy codec's pass-through loop starts with its full-output case (store the input, `break`) --
+ * 2.96 rolls the code up to the last exit within its first 30 insns to the loop's end, the target's
+ * layout -- and each block's updates in the orders tools/ccperm.py found. */
 
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
@@ -315,6 +320,118 @@ int func_00613808(CODEC *p, char *pIn, int nIn, char *pOut, int nOutSize)
             p->x30 -= i;
             if (p->x30 > 0)
                 memmove(p->abPcm, &p->abPcm[i], p->x30);
+        }
+    }
+    return nTotal;
+}
+
+extern void func_0060FBC0(void *pAudio, int n, int nTime);      /* audio.c: the decoder's counts */
+
+/* the decode call: coded frames in, PCM out; the coded buffer drained first, then the input */
+int func_00613B80(CODEC *p, char *pIn, int nIn, char *pOut, int nOutSize)
+{
+    int nTotal = 0;
+    int nFrame = p->nFrameBytes;
+    int nCoded = p->nCodedBytes;
+    int n;
+
+    if (nFrame == 0) {
+        while (nIn > 0 || nOutSize > 0) {
+            if (nOutSize <= 0) {
+                n = 2048 - p->x30;
+                if (nIn < n)
+                    n = nIn;
+                if (n <= 0)
+                    break;
+                memcpy(&p->abPcm[p->x30], pIn, n);
+                p->x30 += n;
+                break;
+            }
+            if (p->x30 > 0) {
+                n = p->x30;
+                if (nOutSize < n)
+                    n = nOutSize;
+                memcpy(pOut, p->abPcm, n);
+                pOut += n;
+                p->x30 -= n;
+                nOutSize -= n;
+                nTotal += n;
+                if (p->x30 > 0)
+                    memmove(p->abPcm, &p->abPcm[n], p->x30);
+            } else {
+                if (nIn <= 0)
+                    break;
+                n = nOutSize < nIn ? nOutSize : nIn;
+                memcpy(pOut, pIn, n);
+                pOut += n;
+                pIn += n;
+                nOutSize -= n;
+                nIn -= n;
+                nTotal += n;
+            }
+        }
+        return nTotal;
+    }
+    if (nOutSize > 0 && p->x30 > 0) {
+        n = p->x30;
+        if (nOutSize < n)
+            n = nOutSize;
+        memcpy(pOut, p->abPcm, n);
+        pOut += n;
+        p->x30 -= n;
+        nOutSize -= n;
+        nTotal += n;
+        if (p->x30 > 0)
+            memmove(p->abPcm, &p->abPcm[n], p->x30);
+    }
+    while (p->x34 >= nCoded) {
+        if (nOutSize >= nFrame) {
+            func_0060FB50();
+            p->pfnDecode(p->pContext, p->abCoded, pOut);
+            pOut += nFrame;
+            nOutSize -= nFrame;
+            func_0060FBC0(p->pAudio, nFrame, func_0060FB78());
+            nTotal += nFrame;
+            p->x34 -= nCoded;
+            if (p->x34 > 0)
+                memmove(p->abCoded, &p->abCoded[nCoded], p->x34);
+        } else if (p->x30 + nFrame <= 2048) {
+            func_0060FB50();
+            p->pfnDecode(p->pContext, p->abCoded, &p->abPcm[p->x30]);
+            func_0060FBC0(p->pAudio, nFrame, func_0060FB78());
+            p->x30 += nFrame;
+            p->x34 -= nCoded;
+            if (p->x34 > 0)
+                memmove(p->abCoded, &p->abCoded[nCoded], p->x34);
+        } else
+            break;
+    }
+    while (nIn > 0) {
+        if (nOutSize >= nFrame) {
+            func_0060FB50();
+            p->pfnDecode(p->pContext, pIn, pOut);
+            pOut += nFrame;
+            nOutSize -= nFrame;
+            func_0060FBC0(p->pAudio, nFrame, func_0060FB78());
+            pIn += nCoded;
+            nIn -= nCoded;
+            nTotal += nFrame;
+        } else if (p->x30 + nFrame <= 2048) {
+            func_0060FB50();
+            p->pfnDecode(p->pContext, pIn, &p->abPcm[p->x30]);
+            pIn += nCoded;
+            nIn -= nCoded;
+            func_0060FBC0(p->pAudio, nFrame, func_0060FB78());
+            p->x30 += nFrame;
+        } else {
+            if (p->x34 + nCoded > 480)
+                break;
+            if (nIn < nCoded)
+                break;
+            memcpy(&p->abCoded[p->x34], pIn, nCoded);
+            pIn += nCoded;
+            nIn -= nCoded;
+            p->x34 += nCoded;
         }
     }
     return nTotal;
