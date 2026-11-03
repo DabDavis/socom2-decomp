@@ -7,8 +7,9 @@
  * and that key's two cipher states. Keys are 64 bytes; a cipher state is 0x10C. Names are SOCOM 1's
  * (s1:exact/calls/align: the same object, in the same order, SOCOM II's additions between).
  *
- * Byte-exact: 23 of 25 (KM_Initialize, round 8b; the four 0x200-byte cipher functions at
- * 0x630690.. are not written yet). The vendor's shapes, each measured: a leaf's loop wrapped in its
+ * Byte-exact: 28 of 31 (KM_Initialize, round 8b; the ciphers, round 12b: KM_Encrypt and KM_Decrypt
+ * -- SOCOM 1's last two, grown by a software key pair -- each with a twin over a key master and key
+ * chain already found, 0x630938 and 0x630DF0, and the RSA re-check 0x631008). The vendor's shapes, each measured: a leaf's loop wrapped in its
  * positive test (IsNullRSAKey/IsNullRCKey: guard clauses give a second `jr ra`); the null tests of a
  * signature's inputs one `||` (KM_DigiSign/Verify); a positive test around the copy-out with the
  * clearing after it (KM_GetGameSessionKey); one key-master variable reused for both ends
@@ -17,7 +18,15 @@
  * OPEN: KM_Create (8 words: the target puts `move a0,s0` in the `nKMID < 0` test's bgez slot,
  * shared by both calls; 2.96 here makes it a bgezl carrying the lui), func_0062F818 (8 bytes short:
  * the target sets the result to 0 inside each of the three branches, a copy 2.96 here sinks into
- * IsNullRSAKey's delay slot -- result first, last, or set in each branch all give the same). */
+ * IsNullRSAKey's delay slot -- result first, last, or set in each branch all give the same; 62s on
+ * master's tools), 0x630DF0 (21 words: KM_Decrypt's body, byte-exact there, with the key master a
+ * parameter -- the key master and the data pointer take each other's s1/s2; setting the hash after
+ * the null test gives the registers and moves its store, 9). The ciphers' shapes, measured: one
+ * `return nHeader` with the branches nested (the header lives in s5 from the entry); KM_Decrypt's
+ * cases in the order 0xE0000000, 0x80000000, 0x60000000, 0x20000000, 0, then 0x40000000 with the
+ * default; its hash check inside `if (nLength != 0 && nResult == 0)` (two guard clauses hoist the
+ * result's copy); the software path's id test `nID == -1 || (nID & 0x80000000) == 0` (`>= 0` folds
+ * into one slti). */
 
 typedef struct RSAKey {
     unsigned int n[16];
@@ -586,4 +595,285 @@ void KM_CreateRandomRCKey(RCKey *pKey)
     InitializePRNG();
     for (i = 0; i < 16; i++)
         ((unsigned int *)pKey)[i] = randomMT();
+}
+
+extern void RCSaltyInitialize(RCState *pState, RCKey *pKey, unsigned int nSalt);
+extern void RCEncrypt(RCState *pState, void *pData, int nLength);
+extern void RCDecrypt(RCState *pState, void *pData, int nLength);
+extern void KM_GetSoftwareKeyPair(RSAKey *pPub, RSAKey *pPriv);
+void func_00631008(void *pData, RSAKey *pKey);
+extern void func_00629034(RSAKey *pData, RSAKey *pKey);
+extern void *memcpy(void *d, const void *s, unsigned int n);
+
+/* SOCOM 1's KM_Encrypt grown: the hash's top three bits say which key enciphered the data -- 3 the
+ * client's RC key, 1 the game session's, 7 the client's RSA public key, and new in SOCOM II 4 the
+ * title's software key pair (kmsoftware.c) */
+/* SOCOM 1's KM_Encrypt grown: the hash's top three bits say which key enciphered the data -- 3 the
+ * client's RC key, 1 the game session's, 7 the client's RSA public key, and new in SOCOM II 4 the
+ * title's software key pair (kmsoftware.c) */
+/* SOCOM 1's KM_Encrypt grown: the hash's top three bits say which key enciphered the data -- 3 the
+ * client's RC key, 1 the game session's, 7 the client's RSA public key, and new in SOCOM II 4 the
+ * title's software key pair (kmsoftware.c) */
+unsigned int KM_Encrypt(int nKMID, int nClientID, void *pData, int nLength)
+{
+    RSAKey pub;
+    RSAKey priv;
+    unsigned int nHash;
+    KeyMaster *pKM;
+    KeyChain *pKC = 0;
+    unsigned int nHeader = 0;
+
+    pKM = GetKeyMaster(nKMID);
+    nHash = 0;
+    if (nLength != 0 && pData != 0) {
+        func_0062EEC0(pData, nLength, &nHash, 4);
+        nHash &= 0x1FFFFFFF;
+    } else
+        nLength = 0;
+    if (pKM == 0)
+        return 0;
+    if (nClientID == 0xFFFE)
+        nClientID = 0xFFFF;
+    if (nClientID != 0xFFFF || pKM->nLocalClientID != nClientID)
+        pKC = GetKeyChain(pKM, nClientID);
+    if (pKC == 0 && nClientID != 0xFFFF)
+        ;
+    else if (pKC != 0 && !IsNullRCKey(pKC->pSymmetricKey)) {
+        nHeader = (nHash & 0x1FFFFFFF) | 0x60000000;
+        if (nLength != 0) {
+            RCSaltyInitialize(pKC->pEncrypt, pKC->pSymmetricKey, nHeader);
+            RCEncrypt(pKC->pEncrypt, pData, nLength);
+        }
+    } else if (!IsNullRCKey(pKM->pGameSessionKey)
+               && (nClientID == 0xFFFF || pKM->nLocalClientID != 0xFFFF || pKC == 0
+                   || IsNullRSAKey(pKC->pPublicKey))) {
+        nHeader = (nHash & 0x1FFFFFFF) | 0x20000000;
+        if (nLength != 0) {
+            RCSaltyInitialize(pKM->pSessionEncrypt, pKM->pGameSessionKey, nHeader);
+            RCEncrypt(pKM->pSessionEncrypt, pData, nLength);
+        }
+    } else if (pKC != 0 && !IsNullRSAKey(pKC->pPublicKey)
+               && (pKM->nLocalClientID == 0xFFFF || IsNullRCKey(pKC->pSymmetricKey))) {
+        nHeader = (nHash & 0x1FFFFFFF) | 0xE0000000;
+        if (nLength != 0)
+            func_0062BBE0(pKC->pPublicKey, pData, pData, nLength);
+    } else if (nClientID != 0xFFFF && !IsNullRSAKey(pKM->pLocalPublicKey) && pKM->nLocalClientID != 0xFFFF
+               && (pKM->nID == -1 || (pKM->nID & 0x80000000) == 0)) {
+        KM_GetSoftwareKeyPair(&pub, &priv);
+        if (!IsNullRSAKey(&pub)) {
+            nHeader = (nHash & 0x1FFFFFFF) | 0x80000000;
+            if (nLength != 0)
+                func_0062BBE0(&pub, pData, pData, nLength);
+        }
+    }
+    return nHeader;
+}
+
+/* KM_Encrypt's body over a key master and key chain already found (new in SOCOM II); the software
+ * key's test reads the chain's id even when there is no chain, as the target does */
+unsigned int func_00630938(KeyMaster *pKM, KeyChain *pKC, void *pData, int nLength)
+{
+    RSAKey pub;
+    RSAKey priv;
+    unsigned int nHash;
+    unsigned int nHeader = 0;
+
+    nHash = 0;
+    if (nLength != 0 && pData != 0) {
+        func_0062EEC0(pData, nLength, &nHash, 4);
+        nHash &= 0x1FFFFFFF;
+    } else
+        nLength = 0;
+    if (pKM == 0)
+        return 0;
+    if (pKC != 0 && !IsNullRCKey(pKC->pSymmetricKey)) {
+        nHeader = (nHash & 0x1FFFFFFF) | 0x60000000;
+        if (nLength != 0) {
+            RCSaltyInitialize(pKC->pEncrypt, pKC->pSymmetricKey, nHeader);
+            RCEncrypt(pKC->pEncrypt, pData, nLength);
+        }
+    } else if (!IsNullRCKey(pKM->pGameSessionKey)
+               && (pKM->nLocalClientID != 0xFFFF || pKC == 0 || IsNullRSAKey(pKC->pPublicKey))) {
+        nHeader = (nHash & 0x1FFFFFFF) | 0x20000000;
+        if (nLength != 0) {
+            RCSaltyInitialize(pKM->pSessionEncrypt, pKM->pGameSessionKey, nHeader);
+            RCEncrypt(pKM->pSessionEncrypt, pData, nLength);
+        }
+    } else if (pKC != 0 && !IsNullRSAKey(pKC->pPublicKey)
+               && (pKM->nLocalClientID == 0xFFFF || IsNullRCKey(pKC->pSymmetricKey))) {
+        nHeader = (nHash & 0x1FFFFFFF) | 0xE0000000;
+        if (nLength != 0)
+            func_0062BBE0(pKC->pPublicKey, pData, pData, nLength);
+    } else if (pKC->nID != 0xFFFF && !IsNullRSAKey(pKM->pLocalPublicKey) && pKM->nLocalClientID != 0xFFFF
+               && (pKM->nID == -1 || (pKM->nID & 0x80000000) == 0)) {
+        KM_GetSoftwareKeyPair(&pub, &priv);
+        if (!IsNullRSAKey(&pub)) {
+            nHeader = (nHash & 0x1FFFFFFF) | 0x80000000;
+            if (nLength != 0)
+                func_0062BBE0(&pub, pData, pData, nLength);
+        }
+    }
+    return nHeader;
+}
+
+/* SOCOM 1's KM_Decrypt grown: the header's top three bits pick the key, the data's hash checks the
+ * result (-2 when it differs; an RSA block is first passed through func_00631008 and hashed again);
+ * -1 no key master or no such key */
+/* SOCOM 1's KM_Decrypt grown: the header's top three bits pick the key, the data's hash checks the
+ * result (-2 when it differs; an RSA block is first passed through func_00631008 and hashed again);
+ * -1 no key master or no such key */
+/* SOCOM 1's KM_Decrypt grown: the header's top three bits pick the key, the data's hash checks the
+ * result (-2 when it differs; an RSA block is first passed through func_00631008 and hashed again);
+ * -1 no key master or no such key */
+/* SOCOM 1's KM_Decrypt grown: the header's top three bits pick the key, the data's hash checks the
+ * result (-2 when it differs; an RSA block is first passed through func_00631008 and hashed again);
+ * -1 no key master or no such key */
+int KM_Decrypt(int nKMID, int nClientID, unsigned int nHeader, void *pData, int nLength)
+{
+    RSAKey pub;
+    RSAKey priv;
+    RSAKey pub2;
+    RSAKey priv2;
+    unsigned int nHash;
+    KeyMaster *pKM;
+    KeyChain *pKC;
+    int nResult = 0;
+
+    pKM = GetKeyMaster(nKMID);
+    nHash = 0;
+    if (pKM == 0)
+        return -1;
+    switch (nHeader & 0xE0000000) {
+    case 0xE0000000:
+        func_0062BC10(pKM->pLocalPublicKey, pKM->pLocalPrivateKey, pData, pData, nLength);
+        break;
+    case 0x80000000:
+        KM_GetSoftwareKeyPair(&pub, &priv);
+        func_0062BC10(&pub, &priv, pData, pData, nLength);
+        break;
+    case 0x60000000:
+        pKC = GetKeyChain(pKM, nClientID);
+        if (pKC == 0) {
+            nResult = -1;
+            break;
+        }
+        if (IsNullRCKey(pKC->pSymmetricKey)) {
+            nResult = -1;
+            break;
+        }
+        RCSaltyInitialize(pKC->pDecrypt, pKC->pSymmetricKey, nHeader);
+        RCDecrypt(pKC->pDecrypt, pData, nLength);
+        break;
+    case 0x20000000:
+        if (IsNullRCKey(pKM->pGameSessionKey)) {
+            nResult = -1;
+            break;
+        }
+        RCSaltyInitialize(pKM->pSessionDecrypt, pKM->pGameSessionKey, nHeader);
+        RCDecrypt(pKM->pSessionDecrypt, pData, nLength);
+        break;
+    case 0x00000000:
+        break;
+    case 0x40000000:
+    default:
+        nResult = -1;
+        break;
+    }
+    if (nLength != 0 && nResult == 0) {
+        func_0062EEC0(pData, nLength, &nHash, 4);
+        nHash = (nHash & 0x1FFFFFFF) | (nHeader & 0xE0000000);
+        if (nHeader != nHash
+            && ((nHeader & 0xE0000000) == 0xE0000000 || (nHeader & 0xE0000000) == 0x80000000)) {
+            if ((nHeader & 0xE0000000) == 0x80000000) {
+                KM_GetSoftwareKeyPair(&pub2, &priv2);
+                func_00631008(pData, &pub2);
+            } else
+                func_00631008(pData, pKM->pLocalPublicKey);
+            func_0062EEC0(pData, nLength, &nHash, 4);
+            nHash = (nHash & 0x1FFFFFFF) | (nHeader & 0xE0000000);
+        }
+        if (nHeader != nHash)
+            nResult = -2;
+    }
+    return nResult;
+}
+
+/* KM_Decrypt's body over a key master and key chain already found (new in SOCOM II; its second key
+ * pair is declared and never used -- the frame keeps its 128 bytes) */
+int func_00630DF0(KeyMaster *pKM, KeyChain *pKC, unsigned int nHeader, void *pData, int nLength)
+{
+    RSAKey pub;
+    RSAKey priv;
+    RSAKey pub2;
+    RSAKey priv2;
+    unsigned int nHash;
+    int nResult = 0;
+
+    nHash = 0;
+    if (pKM == 0)
+        return -1;
+    switch (nHeader & 0xE0000000) {
+    case 0xE0000000:
+        func_0062BC10(pKM->pLocalPublicKey, pKM->pLocalPrivateKey, pData, pData, nLength);
+        break;
+    case 0x80000000:
+        KM_GetSoftwareKeyPair(&pub, &priv);
+        func_0062BC10(&pub, &priv, pData, pData, nLength);
+        break;
+    case 0x60000000:
+        if (pKC == 0) {
+            nResult = -1;
+            break;
+        }
+        if (IsNullRCKey(pKC->pSymmetricKey)) {
+            nResult = -1;
+            break;
+        }
+        RCSaltyInitialize(pKC->pDecrypt, pKC->pSymmetricKey, nHeader);
+        RCDecrypt(pKC->pDecrypt, pData, nLength);
+        break;
+    case 0x20000000:
+        if (IsNullRCKey(pKM->pGameSessionKey)) {
+            nResult = -1;
+            break;
+        }
+        RCSaltyInitialize(pKM->pSessionDecrypt, pKM->pGameSessionKey, nHeader);
+        RCDecrypt(pKM->pSessionDecrypt, pData, nLength);
+        break;
+    case 0x00000000:
+        break;
+    case 0x40000000:
+    default:
+        nResult = -1;
+        break;
+    }
+    if (nLength != 0 && nResult == 0) {
+        func_0062EEC0(pData, nLength, &nHash, 4);
+        nHash = (nHash & 0x1FFFFFFF) | (nHeader & 0xE0000000);
+        if (nHeader != nHash && (nHeader & 0xE0000000) == 0xE0000000) {
+            func_00631008(pData, pKM->pLocalPublicKey);
+            func_0062EEC0(pData, nLength, &nHash, 4);
+            nHash = (nHash & 0x1FFFFFFF) | (nHeader & 0xE0000000);
+        }
+        if (nHeader != nHash)
+            nResult = -2;
+    }
+    return nResult;
+}
+
+/* an RSA block passed through the public key once more (LargeInt's 0x629034 over a copy of the 64
+ * bytes and of the key, the result copied back) */
+void func_00631008(void *pData, RSAKey *pKey)
+{
+    RSAKey data;
+    RSAKey zero;
+    RSAKey key;
+    RSAKey zero2;
+
+    memset(&zero, 0, sizeof zero);
+    memcpy(&data, pData, sizeof data);
+    memset(&zero2, 0, sizeof zero2);
+    memcpy(&key, pKey, sizeof key);
+    func_00629034(&data, &key);
+    memcpy(pData, &data, sizeof data);
 }

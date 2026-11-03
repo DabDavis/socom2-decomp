@@ -1,5 +1,5 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
-/* rt_msg_client: the RT library's message client (OVL2 0x632620-0x638880, SOCOM 1's object at
+/* rt_msg_client: the RT library's message client (OVL2 0x6325B8-0x638880, SOCOM 1's object at
  * 0x40C000; rt_msg/src/rt_msg_client/rt_msg_client.c 1.209, "rt_msg_client version: 1.08.0204"),
  * SCEA's Medius/DME network stack, prebuilt with ee-gcc 2.96 at -O2 -G0 (README "The GCC front").
  * Its public functions are locked wrappers over the internal ones (rt_msg_client_i*): the client
@@ -8,7 +8,16 @@
  * variable's first value -- the target keeps that 1 in the register the result later takes
  * (s0); a literal gives a temporary (ccsweep: 1 of 7 shapes, SOCOM 1's copies the same).
  * Names are SOCOM 1's (s1:exact); argument types are the entry's narrowing. Only the functions
- * written so far are here, in image order. */
+ * written so far are here, in image order.
+ * Round 12b: the object starts at 0x6325B8 (below); the startup, shutdown, ishutdown, iupdate_all
+ * and create_send_buf_space written from SOCOM 1's bodies, byte-exact (a positive test around the
+ * shutdown's mutex teardown and the space's refill; the table cleared before its count, by store
+ * order). OPEN: rt_msg_client_iget_metrics (37s: its copy -- thirteen field assignments, floats
+ * through FPRs, tStart a struct member -- is exact; the call's `return result` is a block of its
+ * own in the target, a fall-through `b`, as rt_udp's length tests -- an empty asm statement there
+ * gives 1 word, the shape rt_udp.c's RT_UDP_BARRIER stands in for), rt_msg_client_iudp_disable_
+ * heartbeat (9: SOCOM II's UDP poll under SOCOM 1's name, whose body it is not; the flag's reload
+ * takes v1 where the target's takes v0). */
 
 #define RT_MSG_CLIENT_LOCK_FAILED   26
 
@@ -36,7 +45,8 @@ extern int func_00634550(int);
 extern int rt_msg_client_iget_host_by_name(char *, char *);
 extern int rt_msg_client_iget_connection_ip(unsigned short, char *);
 extern int func_00634660(unsigned short, unsigned char);
-extern int rt_msg_client_iget_metrics(int, int);
+struct rt_msg_client_metrics;
+extern int rt_msg_client_iget_metrics(int, struct rt_msg_client_metrics *);
 extern int func_006347C8(unsigned short, int);
 extern int func_00634850(unsigned short, int);
 /* a connection's options (rt_msg_client_connect's): SOCOM 1's 64-byte block grown to 76, its
@@ -70,6 +80,32 @@ int rt_msg_client_iudp_set_default_options(rt_msg_client_udp_options *pOptions);
 extern int rt_msg_client_idisplay_comm_state(void);
 extern int func_006349A8(unsigned short, int **);
 
+/* The object starts at 0x6325B8, not at the build stamp: 0x6325B8 keeps its state in this
+ * object's .data (0x655630, after gbMutexInitialized and the 0x87654321 word; rt_memory.c's
+ * callbacks end at 0x65560C) and is rt_udp.c's first function again (0x63DC90) with key-manager
+ * id 0 for rt_udp's -1; 0x632610 returns the version pointer at the head of that .data -- SOCOM
+ * 1's object opens with rt_msg_client_get_version_string_ptr, the same three words. */
+extern int func_0062F818(int nKMID, void *pKey);
+
+static char *gpszVersion = "rt_msg_client version: 1.08.0204";
+static int gnKeyState = 0;              /* 0x655630: 1 the client's key pair is set, 2 it is not */
+
+int func_006325B8(void)
+{
+    if (gnKeyState == 0) {
+        if (func_0062F818(0, 0) == 0)
+            gnKeyState = 1;
+        else
+            gnKeyState = 2;
+    }
+    return gnKeyState;
+}
+
+char *rt_msg_client_get_version_string_ptr(void)
+{
+    return gpszVersion;
+}
+
 /* The client's build stamp, rt_msg_client.c's own __DATE__ and __TIME__ (Oct 3 2003, 15:51:32 --
  * spelled out, since a rebuild's would be today's), formatted as Medius's and DME's are and copied
  * out up to the length the caller gives. */
@@ -100,6 +136,67 @@ int rt_msg_client_get_build_timestamp(char *szTimeStamp, short nLength)
             szTime + 3, szTime + 6);
     strncpy(szTimeStamp, szBuf, nLength);
     return 0;
+}
+
+extern int rt_mutex_create(void *mutex);
+extern int rt_mutex_destroy(void *mutex);
+extern int rt_comm_startup(void);
+extern void KM_Initialize(int nKMID, void *pKeyPair);
+extern unsigned char rt_msg_client_map_comm_error(int nCommError);
+extern unsigned char rt_msg_client_ishutdown(void);
+extern unsigned char data_00655614;     /* the client is started (SCEA's gbInitialized) */
+extern short data_00655616;             /* its startup count (SCEA's gnInitCount) */
+extern unsigned short gnConnectionArraySize;
+extern struct rt_msg_client_connection **gapConnections;
+/* the UDP side: one rt_comm channel of the third kind, its callback (SOCOM 1's gUDPInfo, smaller) */
+typedef struct rt_msg_client_udp_info {
+    unsigned char bEnabled;             /* 0x00 */
+    int nChannel;                       /* 0x04 */
+    void *pfnCallback;                  /* 0x08 */
+} rt_msg_client_udp_info;
+
+extern rt_msg_client_udp_info gUDPInfo;
+
+/* SOCOM 1's startup: the first call creates the client's mutex, starts rt_comm, clears the
+ * connection table and the UDP side and sets the key master's pair; every call counts */
+int rt_msg_client_startup(void *pKeyPair)
+{
+    int result;
+
+    if (data_00655616 == 0) {
+        if (rt_mutex_create(gMsgClientMutex) != 0)
+            return RT_MSG_CLIENT_LOCK_FAILED;
+        gbMutexInitialized = 1;
+        result = rt_msg_client_map_comm_error(rt_comm_startup());
+        if (result != 0)
+            return result;
+        gapConnections = 0;
+        gnConnectionArraySize = 0;
+        memset(&gUDPInfo, 0, 12);
+        KM_Initialize(0, pKeyPair);
+        data_00655614 = 1;
+    }
+    data_00655616++;
+    return 0;
+}
+
+int rt_msg_client_shutdown(void)
+{
+    int result = 1;
+
+    if (gbMutexInitialized != result)
+        return RT_MSG_CLIENT_LOCK_FAILED;
+    if (rt_mutex_lock(gMsgClientMutex, 0) != 0)
+        return RT_MSG_CLIENT_LOCK_FAILED;
+    result = rt_msg_client_ishutdown();
+    if (rt_mutex_unlock(gMsgClientMutex, 0) != 0)
+        return RT_MSG_CLIENT_LOCK_FAILED;
+    if (result == 0 && data_00655616 == 0) {
+        if (rt_mutex_destroy(gMsgClientMutex) != 0)
+            return RT_MSG_CLIENT_LOCK_FAILED;
+        gbMutexInitialized = 0;
+    }
+    return result;
 }
 
 int func_006328E0(void)
@@ -442,6 +539,64 @@ int func_006336F0(unsigned short arg0, int arg1)
     return result;
 }
 
+extern int rt_comm_shutdown(void);
+extern void KM_Cleanup(int nKMID);
+extern int rt_memory_free(void **ppMemory);
+extern void *gpScratchBuffer;
+extern unsigned int gScratchBufferSize;
+int rt_msg_client_is_valid_connection_id(unsigned short nConnection);
+unsigned char rt_msg_client_free_connection_index(unsigned short nConnection);
+
+/* SOCOM 1's internal shutdown: the last count disconnects or frees every connection, shuts the UDP
+ * side and rt_comm down, frees the table and the scratch buffer and cleans the key masters up */
+extern int rt_comm_shutdown(void);
+extern void KM_Cleanup(int nKMID);
+extern int rt_memory_free(void **ppMemory);
+extern void *gpScratchBuffer;
+extern unsigned int gScratchBufferSize;
+int rt_msg_client_is_valid_connection_id(unsigned short nConnection);
+unsigned char rt_msg_client_free_connection_index(unsigned short nConnection);
+
+/* SOCOM 1's internal shutdown: the last count disconnects or frees every connection, shuts the UDP
+ * side and rt_comm down, frees the table and the scratch buffer and cleans the key masters up */
+unsigned char rt_msg_client_ishutdown(void)
+{
+    unsigned short i = 0;
+    unsigned char result;
+
+    if (data_00655616 <= 0)
+        return 5;
+    if (data_00655614 != 1)
+        return 5;
+    if (data_00655616 == 1) {
+        for (i = 0; i < gnConnectionArraySize; i++) {
+            if (gapConnections[i] != 0) {
+                if (rt_msg_client_is_valid_connection_id(i) == 1)
+                    rt_msg_client_idisconnect(i);
+                else
+                    rt_msg_client_free_connection_index(i);
+            }
+        }
+        if (gUDPInfo.bEnabled == 1)
+            rt_msg_client_udp_shutdown();
+        result = rt_msg_client_map_comm_error(rt_comm_shutdown());
+        if (result != 0)
+            return result;
+        if (gapConnections != 0)
+            rt_memory_free((void **)&gapConnections);
+        gapConnections = 0;
+        gnConnectionArraySize = 0;
+        if (gpScratchBuffer != 0) {
+            rt_memory_free(&gpScratchBuffer);
+            gScratchBufferSize = 0;
+        }
+        KM_Cleanup(0);
+        data_00655614 = 0;
+    }
+    data_00655616--;
+    return 0;
+}
+
 /* ---- the internal functions (rt_msg_client_i* and the helpers), below the wrappers ----
  * Nine written (round 6b), the two option setters (round 7b), seventeen more (round 10b: SOCOM 1's
  * idisconnect_all, set/get_header, set_scratch_buf_min_size, is_valid_connection, send_disconnect,
@@ -490,14 +645,6 @@ extern unsigned char rt_msg_client_is_valid_connection(rt_msg_client_connection 
 int rt_msg_client_get_connection(unsigned short nConnection, rt_msg_client_connection **ppConnection);
 int rt_msg_client_get_valid_connection(unsigned short nConnection, rt_msg_client_connection **ppConnection);
 
-/* the UDP side: one rt_comm channel of the third kind, its callback (SOCOM 1's gUDPInfo, smaller) */
-typedef struct rt_msg_client_udp_info {
-    unsigned char bEnabled;             /* 0x00 */
-    int nChannel;                       /* 0x04 */
-    void *pfnCallback;                  /* 0x08 */
-} rt_msg_client_udp_info;
-
-extern rt_msg_client_udp_info gUDPInfo;
 extern void *memset(void *p, int c, unsigned int n);
 extern int rt_comm_create(int *pnChannelId, char *szAddress, unsigned short nPort, void *pOptions);
 extern int func_0062CEF8(int nChannelId, unsigned char *pbSent, void *pData, unsigned short nPort);
@@ -551,6 +698,30 @@ int rt_msg_client_idisconnect_all(void)
 int func_00634078(unsigned short nConnection, unsigned char bFlag)
 {
     return func_00634A08(nConnection, bFlag);
+}
+
+/* SOCOM 1's update-all: the connect step 0x634A08 over every valid connection, then the UDP side's
+ * when it is enabled and the caller asks */
+int rt_msg_client_iupdate_all(unsigned char bFlag)
+{
+    unsigned int i = 0;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    for (; i < gnConnectionArraySize; i++) {
+        if (rt_msg_client_is_valid_connection_id(i) == 1) {
+            result = func_00634A08(i, bFlag);
+            if (result != 0)
+                return result;
+        }
+    }
+    if (gUDPInfo.bEnabled == 1 && bFlag == 1) {
+        result = rt_msg_client_iudp_disable_heartbeat();
+        if (result != 0)
+            return result;
+    }
+    return 0;
 }
 
 /* the UDP send internal (SOCOM 1's isend_udp): an address checked, the datagram sent on the
@@ -622,6 +793,56 @@ int func_00634660(unsigned short nConnection, unsigned char bEnable)
     if (rt_msg_set_ubyte(abMsg + 1, bEnable == 1) != 0)
         return 7;
     return rt_msg_client_store_msg_in_send_buf(pConnection->pComm, 13, 0xFFFF, abMsg, 2, 0);
+}
+
+typedef struct rt_msg_client_time {
+    unsigned int secs;
+    unsigned int usecs;
+} rt_msg_client_time;
+
+typedef struct rt_msg_client_metric {
+    unsigned int nCount;
+    float fRate;
+    float fMaxRate;
+} rt_msg_client_metric;
+
+typedef struct rt_msg_client_metrics {  /* rt_comm's rt_comm_metric_data */
+    rt_msg_client_time tStart;          /* 0x00 */
+    rt_msg_client_metric sends;         /* 0x08 */
+    rt_msg_client_metric bytesSent;     /* 0x14 */
+    rt_msg_client_metric recvs;         /* 0x20 */
+    rt_msg_client_metric bytesReceived; /* 0x2C */
+} rt_msg_client_metrics;                /* 0x38 */
+
+extern int rt_comm_get_metrics(rt_msg_client_metrics *pMetrics);
+
+/* SOCOM 1's: rt_comm's metrics copied out field by field (only connection 0 has them) */
+int rt_msg_client_iget_metrics(int nConnection, rt_msg_client_metrics *pMetrics)
+{
+    rt_msg_client_metrics metrics;
+    unsigned char result;
+
+    if (pMetrics == 0)
+        return 2;
+    if (nConnection != 0)
+        return 3;
+    result = rt_msg_client_map_comm_error(rt_comm_get_metrics(&metrics));
+    if (result != 0)
+        return result;
+    pMetrics->tStart = metrics.tStart;
+    pMetrics->sends.nCount = metrics.sends.nCount;
+    pMetrics->sends.fRate = metrics.sends.fRate;
+    pMetrics->sends.fMaxRate = metrics.sends.fMaxRate;
+    pMetrics->bytesSent.nCount = metrics.bytesSent.nCount;
+    pMetrics->bytesSent.fRate = metrics.bytesSent.fRate;
+    pMetrics->bytesSent.fMaxRate = metrics.bytesSent.fMaxRate;
+    pMetrics->recvs.nCount = metrics.recvs.nCount;
+    pMetrics->recvs.fRate = metrics.recvs.fRate;
+    pMetrics->recvs.fMaxRate = metrics.recvs.fMaxRate;
+    pMetrics->bytesReceived.nCount = metrics.bytesReceived.nCount;
+    pMetrics->bytesReceived.fRate = metrics.bytesReceived.fRate;
+    pMetrics->bytesReceived.fMaxRate = metrics.bytesReceived.fMaxRate;
+    return 0;
 }
 
 typedef struct rt_msg_client_channel {
@@ -706,6 +927,33 @@ int func_006349A8(unsigned short nConnection, int **pphPlatform)
     if (result != 0)
         return result;
     return rt_msg_client_map_comm_error(func_0062D478(pConnection->pComm->nChannelId, pphPlatform));
+}
+
+extern int func_0062D178(int nChannelId, unsigned char *pbReceived, char *szAddress, unsigned short *pnPort);
+
+/* SOCOM II's UDP poll (SOCOM 1's function of this name is another body): every datagram waiting
+ * on the UDP channel is handed to the enable call's callback with its sender's address and port */
+int rt_msg_client_iudp_disable_heartbeat(void)
+{
+    char szAddress[16];
+    unsigned short nPort = 0;
+    unsigned char bReceived = 0;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (gUDPInfo.bEnabled != 1)
+        return 5;
+    do {
+        result = rt_msg_client_map_comm_error(func_0062D178(gUDPInfo.nChannel, &bReceived, szAddress, &nPort));
+        if (result != 0)
+            return result;
+        if (bReceived != 1)
+            return 0;
+        if (gUDPInfo.pfnCallback != 0)
+            ((void (*)(char *, unsigned short))gUDPInfo.pfnCallback)(szAddress, nPort);
+    } while (bReceived == 1);
+    return 0;
 }
 
 typedef struct rt_msg_client_link {    /* an rt_comm channel's view: its connection's id */
@@ -810,6 +1058,41 @@ int rt_msg_client_send_disconnect(rt_msg_client_comm *pComm)
     if (result != 0)
         return result;
     return rt_msg_client_send_buffer(pComm, abMsg, nLength, 10000);
+}
+
+extern int rt_circ_buf_get_avail_nowrap(void *pBuf, unsigned int *pnAvail);
+extern int rt_circ_buf_normalize_with_buf(void *pBuf, int bForce, void *pScratch);
+int rt_msg_client_recv_circ_buf(void *pChannel);
+
+/* SOCOM 1's: room for nSize bytes at the send buffer's end without wrapping -- received data
+ * taken off first, the buffer normalised through the scratch buffer if still short */
+int rt_msg_client_create_send_buf_space(void *pChannel, unsigned int nSize)
+{
+    unsigned int nAvail = 0;
+    void *pBuf;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (func_00635898(pChannel) != 1)
+        return 2;
+    pBuf = (char *)pChannel + 104;
+    if ((pBuf != 0) != 1)
+        return 2;
+    if (rt_circ_buf_get_avail_nowrap(pBuf, &nAvail) != 0)
+        return 21;
+    if (nAvail < nSize) {
+        result = rt_msg_client_recv_circ_buf(pChannel);
+        if (result != 0)
+            return result;
+        if (rt_circ_buf_normalize_with_buf(pBuf, 1, gpScratchBuffer) != 0)
+            return 21;
+        if (rt_circ_buf_get_avail_nowrap(pBuf, &nAvail) != 0)
+            return 21;
+        if (nAvail < nSize)
+            return 20;
+    }
+    return 0;
 }
 
 extern int rt_msg_set_ubyte(unsigned char *msg, unsigned char value);
@@ -941,13 +1224,13 @@ int rt_msg_client_set_scratch_buf_min_size(unsigned int nSize)
 }
 
 /* the platform's queries: a connection's crypt state and the link's capabilities */
-extern int func_00630690(unsigned short nConnection, unsigned short nTarget, int a2, int a3);
+extern int KM_Encrypt(unsigned short nConnection, unsigned short nTarget, int a2, int a3);
 
 int func_006386F8(unsigned short nConnection, int *pnState)
 {
     if (pnState == 0)
         return 2;
-    *pnState = func_00630690(nConnection, 0xFFFF, 0, 0);
+    *pnState = KM_Encrypt(nConnection, 0xFFFF, 0, 0);
     return 0;
 }
 

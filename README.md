@@ -5100,6 +5100,67 @@ ControlDCTLift, ConstructPitchWindow, ConstructPitchDP). 8 rows named (`s1:order
 constructor's slot or its one caller: InitDCTLift, ConstructDCTLift, ProcessDCTLift, PostDP,
 ControlPitchDP, InitJumpFactors, InitPitchDP, InitPitchWindow), 3 data rows. No tool changed.
 
+**Round 12b: rt_msg_client's head and SOCOM 1's bodies, the ciphers, five small objects.**
+
+- **rt_msg_client.c starts at 0x6325B8, not 0x632620** (the brief's boundary, checked): 0x6325B8 keeps
+  its state in the object's own .data (0x655630, after gbMutexInitialized and the 0x87654321 word;
+  rt_memory.c's callbacks end at 0x65560C) and is rt_udp.c's first function again (0x63DC90) with
+  key-manager id 0 for rt_udp's -1; 0x632610 returns the .data head 0x655610, the pointer to
+  "rt_msg_client version: 1.08.0204" -- SOCOM 1's object opens with rt_msg_client_get_version_string_ptr,
+  the same three words (`s1:order`).
+- **SOCOM 1's same-named bodies are the quickest wins**: the startup, shutdown and ishutdown are SOCOM
+  1's sizes exactly and matched as read; iupdate_all and create_send_buf_space grew a little. Shapes,
+  measured: a positive test around the shutdown's mutex teardown and the space's refill (`if (result
+  == 0 && count == 0) {...} return result;` -- guard clauses there invert the branch); the table's
+  pointer cleared before its count (store order); a `for` alone where an outer `if (n != 0)` adds a
+  second entry test; an `int` result for an `unsigned char` callee (no `andi` after it).
+- **The ciphers are SOCOM 1's KM_Encrypt and KM_Decrypt grown** (`s1:order`, the object's last two)
+  by a fourth key: the title's software key pair (kmsoftware.c, tag 0x80000000), each with a twin over
+  a key master and key chain already found (0x630938, 0x630DF0 -- the encrypt twin reads the chain's
+  id through a null chain in its last test, as the target does) and an RSA re-check (0x631008: LargeInt's
+  0x629034 over copies). KM_Encrypt keeps its header in s5 from the entry to one `return nHeader` (the
+  branches nested; early returns lose the register); KM_Decrypt's cases are laid out 0xE0000000,
+  0x80000000, 0x60000000, 0x20000000, 0, then 0x40000000 with the default (bodies in source order), its
+  hash check inside `if (nLength != 0 && nResult == 0)`; the id test is `nID == -1 || (nID &
+  0x80000000) == 0` (`>= 0` folds the pair into one slti).
+- **Five objects without a $Header, named by the link order** (ours): `rt_intr.c` (0x6311E8, between
+  rt_crypt.c and rt_list.c: an INTC handler added and removed for causes 0-10, the kernel's counts
+  summed -- round 11b's three matched drafts as a unit), `rt_thread.c` (0x63CD18, between rt_table.c and
+  rt_time.c: three ReferThreadStatus queries; a struct copied out inside the positive test, the
+  guard-clause spelling schedules the return value first), `rt_window.c` (0x642968: round 10b's
+  three-function table object is five functions -- a 0x4010-byte table of 64 slots of 256 bytes, and
+  its byte count, a leaf whose walk must `break` to one `return`: returning from inside the loop gives
+  a second `jr ra`), `rt_frag.c` (0x6451F0, the 64-slot fragment buffer before the Medius client: its
+  create and destroy are rt_window.c's over another layout) and `sha1.c` (SHA1.c's init: the initial
+  context by memcpy, GCC's inline block move with its run-time alignment test, and the byte-order
+  probe tail-called).
+- **An error block the compiler keeps apart**: in rt_udp's send 0x63E928, its raw send 0x63EBA0 and
+  rt_msg_client_iget_metrics, a `return` after a test is a block of its own in the target -- the test
+  branches over a fall-through `b` to the epilogue -- where 2.96 merges it into a branch to the
+  epilogue (round 11b's "raw send" diagnosis). An empty `__asm__ volatile ("" ::: "memory")` in the
+  block reproduces it: iget_metrics comes to 1 word, the raw send to 10 (from 33s), and 0x63E928 is
+  byte-exact with a second one after its walk's next-message call (the target reloads the pointer it
+  just stored before the loop's test). No flag does either (-fno-gcse, -fno-cse-follow-jumps,
+  -fno-rerun-cse-after-loop, -fno-expensive-optimizations, -fno-force-mem, -fno-thread-jumps), nor a
+  volatile pointer (127s), `if (0) f();`, `(void)0`, a label or an empty loop in the block. rt_udp.c
+  carries it as `RT_UDP_BARRIER()`, a stand-in marked as one: SCEA's construct there is not known.
+- **Open, diagnosed in place**: rt_udp's 0x63ECC8 (93s: the receive -- the flag test reads the
+  header's first word, `lw; andi 6`, which `(*(unsigned int *)&header & 6) == 6` gives; the loop's
+  message pointer lives in a0 where the target's is v0), rt_crypt's 0x630DF0 (21: the key master and
+  data pointer swap s1/s2; setting the hash after the null test gives the registers and moves its
+  store, 9), rt_msg_client_iget_metrics (37s, above), the UDP poll under SOCOM 1's
+  rt_msg_client_iudp_disable_heartbeat (9: SOCOM II's body, not the name's; the flag's reload takes v1
+  for v0), rt_frag's store 0x645290 (13: the 29-bit sequence in a0 where the target reuses a3).
+
+Hand-written in round 12b: `medius/rt_msg_client.c` (+7: func_006325B8, rt_msg_client_get_version_string_ptr
+over its draft, startup, shutdown, ishutdown, iupdate_all, create_send_buf_space; 60 of 62),
+`medius/rt_crypt.c` (+4: KM_Encrypt, 0x630938, KM_Decrypt, 0x631008; 28 of 31), `medius/rt_udp.c` (+1,
+0x63E928; 37 of 46), `medius/rt_intr.c` (3 of 3, new, over its drafts), `medius/rt_thread.c` (3 of 3,
+new), `medius/rt_window.c` (4 of 4, new), `medius/rt_frag.c` (2 of 3, new), `medius/sha1.c` (2 of 2,
+new, 0x643140 over its draft) -- 26 functions byte-exact, 21 rows new to the map's byte-exact rows
+(5,464 bytes), 5 superseding matching drafts; 3 rows named (rt_msg_client_get_version_string_ptr,
+KM_Encrypt, KM_Decrypt: `s1:order`). No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
