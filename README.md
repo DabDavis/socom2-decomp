@@ -4793,8 +4793,8 @@ gpszVersion@rt_upnp by SCEA's convention; gapStreamSessions, ours). No row renam
 
 Hand-written in round 11b: `medius/rt_udp.c` (36 of 44, new), `medius/rt_p2p.c` (22 of 29, new),
 `medius/rt_list.c` (15 of 16, new), `medius/rt_table.c` (1 of 6, new), `medius/rt_crypt.c` (+1,
-KM_Cleanup: 24 of 26) -- 75 functions byte-exact, 58 new to the map's byte-exact rows, 17
-superseding matching drafts; 4 data rows (gapUdp, gnTableCols, gnTableRows, gnTableBufSize, ours).
+KM_Cleanup: 24 of 26) -- 75 functions byte-exact, 58 new to the map's byte-exact rows (7,860
+bytes), 17 superseding matching drafts; 4 data rows (gapUdp, gnTableCols, gnTableRows, gnTableBufSize, ours).
 No row renamed; no tool changed.
 
 ## Open, and next
