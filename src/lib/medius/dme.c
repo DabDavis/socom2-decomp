@@ -34,15 +34,15 @@ extern int func_00623F00(int, int, int, int);
 extern int func_00623F08(void);
 extern int func_00623F30(int, int, int, int, int, int);
 extern int func_00624180(int, int, int);
-extern int func_00624460(int, int, int, int);
-extern int func_00624418(int, int, int);
-extern int func_00624440(int, int);
+int func_00624460(unsigned int nClass, int nArg1, int nArg2, int nArg3);
+extern unsigned char func_00624418(int, int, int);
+int func_00624440(int arg0, int arg1);
 extern int func_00615558(char, int, int, int, int, int);
 extern int func_006158F8(char, int, int, int, int, int, void *);
 extern int func_00615CD0(char, int, int, int, int, int, int);
 extern int func_00615D88(char, int, int, int, int, int);
-extern int func_00624338(int, int, int, int);
-extern int func_006243C0(int, int);
+int func_00624338(unsigned int *pnClass, int nArg1, int nArg2, int nArg3);
+int func_006243C0(unsigned int *pnType, int nArg1);
 extern int func_00616C10(int, int);
 extern int func_00617610(int);
 extern int func_00617690(int, int);
@@ -130,6 +130,123 @@ int NetGetBuildTimeStamp(char *szTimeStamp)
     sprintf(szTimeStamp, "Time of build: %.2d.%.2d.%.4s.%.2s.%.2s.%.2s", nMonth, atoi(szDate + 4),
             szDate + 7, szTime, szTime + 3, szTime + 6);
     return 0;
+}
+
+/* ---- round 7b: the defaults, the initialise and the close, as Dme.c has them before the locked
+ * wrappers. NetInitialize counts its callers (0x651200): the first makes DME's mutex and runs
+ * DmeLocal.c's body (0x616820, SOCOM 1's NetInitialize) under it, the others only count; NetClose
+ * undoes the count and, at the last, runs the close body (0x61C2F0) and destroys the mutex. ---- */
+
+/* what NetInitialize is given (SOCOM 1's NetSetDefaultInitializeParams filled 5 words of it) */
+typedef struct NetInitializeParams {
+    int nVersion;                       /* 0x00: 1, else NetInitialize answers 38 */
+    int nSoftwareID;                    /* 0x04 */
+    int Field08;
+    int Field0C;                        /* 0x0C: 3658 by default */
+    int Field10;
+    void *pfnConnectCallback;           /* 0x14 */
+    int Field18;
+} NetInitializeParams;                  /* 0x1C */
+
+typedef struct NetInitializeResult {
+    int Field00;
+    int nError;                         /* 0x04 */
+} NetInitializeResult;
+
+extern unsigned int data_00651200;      /* NetInitialize's callers, counted */
+extern void *memset(void *p, int c, unsigned int n);
+extern int KM_GetSoftwareID(void);
+extern int rt_mutex_create(void *mutex);
+extern int rt_mutex_destroy(void *mutex);
+extern int func_00616820(NetInitializeParams *pParams, NetInitializeResult *pResult);
+extern int func_0061C2F0(void);
+
+int NetSetDefaultInitializeParams(NetInitializeParams *pParams)
+{
+    int nSoftwareID;
+
+    if (pParams == 0)
+        return 23;
+    memset(pParams, 0, sizeof(*pParams));
+    nSoftwareID = KM_GetSoftwareID();
+    pParams->nVersion = 1;
+    pParams->Field0C = 3658;
+    pParams->Field18 = 0;
+    pParams->Field08 = 0;
+    pParams->pfnConnectCallback = 0;
+    pParams->nSoftwareID = nSoftwareID;
+    return 0;
+}
+
+int NetInitialize(NetInitializeParams *pParams, NetInitializeResult *pResult)
+{
+    int result;
+
+    if (pResult == 0)
+        return 23;
+    pResult->nError = 18;
+    pResult->Field00 = 1;
+    if (pParams == 0) {
+        pResult->nError = 23;
+        return 23;
+    }
+    if (pParams->nVersion != 1) {
+        pResult->nError = 38;
+        return 23;
+    }
+    if (data_00651200 != 0) {
+        data_00651200++;
+        pResult->nError = 0;
+        return 0;
+    }
+    if (DmeThreadSafe == 1 || rt_mutex_create(DmeMutex) != 0) {
+        pResult->nError = DME_LOCK_FAILED;
+        return DME_LOCK_FAILED;
+    }
+    DmeThreadSafe = 1;
+    if (rt_mutex_lock(DmeMutex, 0) != 0)
+        return DME_LOCK_FAILED;
+    result = func_00616820(pParams, pResult);
+    if (rt_mutex_unlock(DmeMutex, 0) != 0)
+        return DME_LOCK_FAILED;
+    if (result != 0) {
+        rt_mutex_destroy(DmeMutex);
+        DmeThreadSafe = 0;
+        DmeInitialized = 0;
+        return result;
+    }
+    data_00651200 = 1;
+    DmeInitialized = 1;
+    return 0;
+}
+
+int NetClose(void)
+{
+    int result;
+
+    if (DmeInitialized != 1)
+        return DME_NOT_INITIALIZED;
+    if (data_00651200 == 0)
+        return DME_NOT_INITIALIZED;
+    if (DmeThreadSafe != 1)
+        return DME_LOCK_FAILED;
+    if (data_00651200 > 1) {
+        data_00651200--;
+        return 0;
+    }
+    if (rt_mutex_lock(DmeMutex, 0) != 0)
+        return DME_LOCK_FAILED;
+    result = func_0061C2F0();
+    if (rt_mutex_unlock(DmeMutex, 0) != 0)
+        return DME_LOCK_FAILED;
+    if (result == 0) {
+        if (rt_mutex_destroy(DmeMutex) != 0)
+            return DME_LOCK_FAILED;
+        DmeThreadSafe = 0;
+        DmeInitialized = 0;
+        data_00651200 = 0;
+    }
+    return result;
 }
 
 int func_00620908(int arg0, int arg1)
@@ -1365,6 +1482,28 @@ int func_00623D00(int arg0, int arg1)
     return result;
 }
 
+/* not a wrapper: DME's thread-safety record, filled under the lock (0x10 bytes, its first word the
+ * thread-safe flag) */
+int func_00623DA8(int *pInfo)
+{
+    int result;
+
+    if (DmeInitialized != 1)
+        return DME_NOT_INITIALIZED;
+    if (DmeThreadSafe != 1)
+        return DME_LOCK_FAILED;
+    if (pInfo == 0)
+        return 23;
+    result = rt_mutex_lock(DmeMutex, 0);
+    if (result != 0)
+        return DME_LOCK_FAILED;
+    memset(pInfo, 0, 16);
+    pInfo[0] = 1;
+    if (rt_mutex_unlock(DmeMutex, 0) != 0)
+        return DME_LOCK_FAILED;
+    return result;
+}
+
 int func_00623E60(int arg0)
 {
     int result;
@@ -1379,5 +1518,72 @@ int func_00623E60(int arg0)
     if (rt_mutex_unlock(DmeMutex, 0) != 0)
         return DME_LOCK_FAILED;
     return result;
+}
+
+/* ---- round 7b: Dme.c's own registration tables, after the wrappers (NetInitialize must have run:
+ * 17): a handler per message class (16 of them, three words each) and the stream types ---- */
+
+extern int data_00651180;               /* NetInitialize has run */
+extern unsigned int data_0067C5A4;      /* the stream types registered */
+extern unsigned int data_0067C5A8;      /* the message classes registered */
+extern int data_0067E848[];
+extern int data_0067E948[16];
+extern int data_00686988[16];
+extern int data_006869C8[16];
+extern int data_0067A6E8[16];
+extern int data_0067A728[16];
+extern int data_0067A768[16];
+
+int func_00624338(unsigned int *pnClass, int nArg1, int nArg2, int nArg3)
+{
+    unsigned int n;
+
+    if (data_00651180 == 0)
+        return DME_NOT_INITIALIZED;
+    if (data_0067C5A8 >= 16)
+        return 22;
+    if (pnClass == 0)
+        return 23;
+    *pnClass = -1;
+    n = data_0067C5A8;
+    *pnClass = n;
+    data_00686988[n] = nArg1;
+    data_006869C8[n] = nArg2;
+    data_0067E948[n] = nArg3;
+    data_0067C5A8++;
+    return 0;
+}
+
+int func_006243C0(unsigned int *pnType, int nArg1)
+{
+    unsigned int n;
+
+    if (data_00651180 == 0)
+        return DME_NOT_INITIALIZED;
+    if (pnType == 0)
+        return 23;
+    n = data_0067C5A4;
+    *pnType = n;
+    data_0067E848[n] = nArg1;
+    data_0067C5A4++;
+    return 0;
+}
+
+/* 0x624418 returns a narrower type than this int: its result returned is a jal, no sibling call */
+int func_00624440(int arg0, int arg1)
+{
+    return func_00624418(arg0, 2, arg1);
+}
+
+int func_00624460(unsigned int nClass, int nArg1, int nArg2, int nArg3)
+{
+    if (data_00651180 == 0)
+        return DME_NOT_INITIALIZED;
+    if (nClass >= 16)
+        return 23;
+    data_0067A6E8[nClass] = nArg1;      /* ccperm: the argument order (1 of 6) */
+    data_0067A728[nClass] = nArg2;
+    data_0067A768[nClass] = nArg3;
+    return 0;
 }
 
