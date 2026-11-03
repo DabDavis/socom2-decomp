@@ -78,7 +78,7 @@ typedef struct ASRSPI {
     void *ctx;                          /* +12: the active context (casrImportContext) */
     void *data;                         /* +16: the active language (casrImportData) */
     int user;                           /* +20: the host's data, passed to its callbacks */
-    int pad24;
+    int start_user;                     /* +24: asrspi_Start's */
     int got_result;                     /* +28: a result or an accepted utterance arrived */
     int trained;                        /* +32 */
     int utt_done;                       /* +36 */
@@ -145,6 +145,8 @@ extern int casrGetState(CASR *c, int *state);
 extern int casrAcquisition(CASR *c, int fmt, char *samples, unsigned int count);
 extern int casrGetSignalLevel(CASR *c, short *level);
 extern int casrGetSNR(CASR *c, short *snr);
+extern int casrStart(CASR *c);
+extern int casrExportData(CASR *c, int what, void **data, unsigned int *size);
 extern void FillContextV2VirtualTable(CONTEXTV2 *vt);
 extern void FillLanguageVirtualTable(LANG *vt);
 extern void *heap_Alloc(void *heap, int size);
@@ -668,6 +670,42 @@ int asrspi_ActivateCtx(ASRSPI *e, int *ctxdata, int a2)
     return 0;
 }
 
+int asrspi_Start(ASRSPI *e, int interval, RECOGCB *cb, int user)
+{
+    int err;
+
+    if (cb == 0)
+        return ASRSPI_E_NULLPTR;
+    if (interval == 0 && cb->signal && (cb->signal->energy_level || cb->signal->snr_level))
+        return 0x80040016;
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError1(e, 2);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    if (interval && cb->signal && e->open_mode != 0 && e->open_mode != 1
+        && (cb->signal->energy_level || cb->signal->snr_level))
+        return 0x80040017;
+    e->level_interval = interval;
+    e->got_result = 0;
+    e->user = user;
+    e->start_user = user;
+    if (cb->signal)
+        e->signal = *cb->signal;
+    else
+        memset(&e->signal, 0, sizeof e->signal);
+    e->result_cb = cb->result;
+    if (casrStart(e->casr) != 0) {
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    e->state = 3;
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
 int asrspi_Stop(ASRSPI *e)
 {
     int err, state;
@@ -832,6 +870,75 @@ int asrspi_DisableAGC(ASRSPI *e)
     ENGINE_CHECK(e);
     ENGINE_ENTER(e);
     if (casrSetParam(e->casr, 11, 0) != 0) {
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+int asrspi_ExportSessionData(ASRSPI *e, int what, void *buf, unsigned int *size)
+{
+    void *data;
+    unsigned int len;
+
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    if (size == 0) {
+        ENGINE_LEAVE(e);
+        return ASRSPI_E_NULLPTR;
+    }
+    if (buf == 0)
+        *size = 0;
+    if (casrExportData(e->casr, 4, &data, &len) != 0) {
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    if (*size) {
+        if (*size < len) {
+            heap_Free(e->heap, data);
+            ENGINE_LEAVE(e);
+            return 0x80040085;
+        }
+        memcpy(buf, data, len);
+    }
+    *size = len;
+    ENGINE_LEAVE(e);
+    heap_Free(e->heap, data);
+    return 0;
+}
+
+int asrspi_ActivateSessionData(ASRSPI *e, int *sess)
+{
+    struct {
+        int type;
+        int size;
+        char pad[136];
+    } def;
+    int *p;
+    void *data;
+    int err;
+
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError3(e, 1, 6, 2);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    if (sess == 0) {
+        def.size = 8;
+        def.type = 4;
+        p = &def.type;
+    } else {
+        p = sess;
+        if (*p != 4) {
+            ENGINE_LEAVE(e);
+            return 0x8004000A;
+        }
+    }
+    data = casrImportData(e->heap, p);
+    if (data == 0 || casrActivateData(e->casr, data) != 0 || casrCloseData(data) != 0) {
         ENGINE_LEAVE(e);
         return ConvErr(e, casrGetLastError(e->casr));
     }
