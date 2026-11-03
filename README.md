@@ -4463,6 +4463,53 @@ hits, OVL1 `1E7F58 1E8FD4` 12 tried, 0 hits, `243000 256FD0` 145 tried, 0 hits (
 refusals): 396 tried, none byte-exact, and the hand-written rows (CB_DelayTh, sceCdSync,
 sceCdGetDiskType ...) were not retried. What is left to the generator in these ranges is near misses.
 
+**Round 14a** (2026-11-03, by hand, MAIN's SDK objects first): 50 functions byte-exact of 53 written --
+25 rows newly byte-exact, 25 matched drafts superseded -- and 6 rows and 3 data rows named. libkernl's
+SIF command object (`sdk/sifcmd.c`, the demo's 0x15D620 whole: 14 of 16), its newlib glue (`sdk/glue.c`,
+the demo's 0x15B9A0 whole: 16 of 16 -- VSync, VSync2, sbrk new), kprintf.c's ftoi and printfloat; Sony's
+libusbkb (`sdk/libusbkb.c`, new: the USB keyboard's RPC layer, 14 of 14 -- not in SOCOM 1); the codec's
+FFT interface (`ovl1/sase_fftif.c`, 4 of 5). Named: sceSifGetDataTable (s1:order), sceUsbKbGetInfo,
+Read, GetLocation, SetLEDStatus, SetLEDMode (each prints its own name); data `_pckt_buffer`,
+`sif0_handleid`, `_data_table@sifcmd` (the demo's labels). What they showed:
+
+- **991111's void-context sibling call needs every path to end in its own return**: sceSifInitCmd's
+  `if (init) { EIntr(); return; }` left the two sceSifSendCmd calls that fall into the shared epilogue
+  as jal; a `return;` after each (or the early exit as an else) makes all three `j`, as the target's
+  (`build/scratch/gcc/p_sib2.c`: six arguments do not stop it).
+- **An inline asm can leave `noreorder` on for GCC's own return**: sceSifWriteBackDCache's asm ends in
+  its own `jr ra; nop` and `.set noreorder`, so GCC's `j $31` is assembled with no delay slot -- the next
+  object's first word fills it, as round 3a read off the image.
+- **Volatile, where an interrupt or the IOP writes**: the SIF receive buffer's header (psize's `lbu;
+  andi 0xff`), VSync2's flag and count (SetVSyncFlag's handler writes them: the count's load stays out
+  of a delay slot); sbrk masks interrupts with dintr.c's goto loop (the mask reloaded each turn).
+- **Register pairs from reuse**: ftoi reuses its parameter for the mantissa (the target's `move
+  a1,a0`) and builds it in two statements (`x = (x << 12) >> 12; x |= 1UL << 52;`, one of 16 shapes);
+  printfloat's ftoi call is a statement of its own (the format's address is formed after it).
+- **Shapes, measured**: _sceSifSendCmd's descriptor before the header (`tools/ccperm.py`, which `R`
+  results had hidden), libusbkb's clears in field order (one of 720), its poll case testing for
+  completion and returning 1 last (an early `return 1`: 31s).
+- **Open, diagnosed in place**: sceSifInitCmd (152s: five saved registers in the target, the loop
+  counters and the status bit in s0), _sceSifCmdIntrHdlr (23, right size: the copy's count tested
+  `blez` there, `beqz` here -- this compile knows it is not negative), the codec's mode setter
+  func_00251A98 (7). Not written: kprintf.c's _printf (the formatter, 0x5EC), libusbkb's init, end and
+  key-code conversion.
+
+**The tools, round 14a**: (1) **qualified data labels**: a GNU unit's static data label `NAME`
+scores as data row `NAME@UNIT` when data.txt has one (`scdiff.qualify_statics`, as round 3a's
+functions) -- libkernl's sifcmd, sifrpc and libmrpc objects each label a `_data_table` (and
+`_packet_buffer`) of their own, so sifcmd's state is `_data_table@sifcmd`. Proved over every
+hand-written unit (`--files '^(?!auto/)'`, 10,331 lines) under master's (34051ac6) scdiff, sccheck and
+scdecomp and these: identical but sifcmd.c's six functions that reference `_data_table@sifcmd`, WRONG
+REFERENCE under master's (the bare label resolved to sifrpc's row) and match under these; no other
+verdict changed. (2) `tools/ccsweep.py --stem UNIT` scores a variants file or probe as the unit it
+copies (its statics qualified so), and `tools/ccperm.py` passes `--stem` through and now reports an
+order whose bytes are right but a reference not (`R`) -- before, an order matching but for an
+unqualified static was neither a match nor a near miss, which hid _sceSifSendCmd's. automatch over
+this lane's ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's `src/lib`
+build): MAIN `18DB90 1C4CC0` 210 tried, 0 hits (60 build failures, 23 m2c refusals), `1CCD78 1CE2A4` 6
+tried, 0 hits, OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 145 tried, 0 hits (27, 8): 363
+tried, none byte-exact -- what the generator leaves here is near misses, as round 13a found.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
