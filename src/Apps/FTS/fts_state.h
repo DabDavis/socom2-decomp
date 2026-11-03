@@ -91,6 +91,7 @@ public:
     int CloseZAR(CZAnimZAR *zar);
     CZAnimZAR *OpenZAR(const char *name);
     CZAnimSet *GetAnimSet(const char *name);
+    void FreeNetworkPacketBuffer();
 };
 
 extern CZAnimMain ZAnim;
@@ -134,6 +135,7 @@ public:
 class CWorld {
 public:
     static CTexHandle *GetTexHandle(const char *name);
+    void RemoveDecals();   /* 0x31C880 (st_mpexit.cpp's call) */
 
     unsigned char _0[0x68];
     std::vector<CNode *> m_nodes;   // 0x68
@@ -433,12 +435,15 @@ public:
  * CGameMenu; SOCOM II's at 0x920) */
 class CMPExitMenu : public CGameMenu {
 public:
-    CMPExitMenu() {}
+    /* not the game over yet (CMPExitState::Init's `new`, its one constructor, clears the flag after
+     * the vtable's store) */
+    CMPExitMenu() : m_gameover(false) {}
     virtual const char *GetReaderFileName();
     /* CGameMenu's SOCOM II slot, nothing here (its copy 0x226050 follows GetReaderFileName) */
     virtual int Slot14() { return 0; }
 
     unsigned char m_gameover;   // 0x920
+    unsigned char _921[0x930 - 0x921];   // (CMPExitState::Init news 0x930 bytes)
 };
 
 /* the end of an online game: its stats screen (SOCOM 1's DWARF; SOCOM II's strings are 0xC bytes,
