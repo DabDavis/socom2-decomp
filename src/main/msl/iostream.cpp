@@ -69,6 +69,31 @@ basic_streambuf<charT, traits>::xsgetn(char_type *s, streamsize n)
 }
 
 template <class charT, class traits>
+streamsize
+basic_streambuf<charT, traits>::xsputn(const char_type *s, streamsize n)
+{
+    streamsize i = min(n, streamsize(epptr() - pptr()));
+    if (i > 0) {
+        traits::copy(pptr(), s, (unsigned int)i);
+        s += i;
+        pbump((int)i);
+        n -= i;
+    }
+    while (n > 0) {
+        if (traits::eq_int_type(sputc(*s++), traits::eof()))
+            break;
+        ++i;
+        --n;
+    }
+    return i;
+}
+
+template <class charT, class traits>
+basic_filebuf<charT, traits>::~basic_filebuf()
+{
+}
+
+template <class charT, class traits>
 basic_streambuf<charT, traits> *basic_filebuf<charT, traits>::setbuf(charT *, streamsize n)
 {
     buffered_ = n != 0;
@@ -76,9 +101,210 @@ basic_streambuf<charT, traits> *basic_filebuf<charT, traits>::setbuf(charT *, st
 }
 
 template <class charT, class traits>
+typename basic_filebuf<charT, traits>::pos_type
+basic_filebuf<charT, traits>::seekoff(off_type off, ios_base::seekdir way, ios_base::openmode which)
+{
+    return pos_type(off_type(-1));
+}
+
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::pos_type
+basic_filebuf<charT, traits>::seekpos(pos_type sp, ios_base::openmode which)
+{
+    if (file_ == 0 || (which & (ios_base::in | ios_base::out)) == 0)
+        return pos_type(off_type(-1));
+    int width = a_codecvt_->encoding();
+    if (this->pptr() > this->pbase() && traits::eq_int_type(overflow(traits::eof()), traits::eof()))
+        return pos_type(off_type(-1));
+    if ((which & ios_base::out) && overflow_called_last_ && width < 0) {
+        if (!unshift())
+            return pos_type(off_type(-1));
+    }
+    if (fseek(file_, sp, SEEK_SET) != 0)
+        return pos_type(off_type(-1));
+    this->setg(0, 0, 0);
+    this->setp(0, 0);
+    overflow_called_last_ = false;
+    return sp;
+}
+
+template <class charT, class traits>
+int basic_filebuf<charT, traits>::sync()
+{
+    return -(file_ == 0
+             || (this->pptr() > this->pbase() && traits::eq_int_type(overflow(traits::eof()), traits::eof()))
+             || fflush(file_) != 0);
+}
+
+template <class charT, class traits>
 streamsize basic_filebuf<charT, traits>::showmanyc()
 {
     return this->gend_ - this->gnext_;
+}
+
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::underflow()
+{
+    if (file_ == 0)
+        return traits::eof();
+    if (buffered_ && this->gptr() == 0) {
+        if (this->pptr() > this->pbase() && traits::eq_int_type(overflow(traits::eof()), traits::eof()))
+            return traits::eof();
+        this->setp(0, 0);
+        this->setg(input_buffer_, input_buffer_, input_buffer_);
+    }
+    overflow_called_last_ = false;
+    if (this->gptr() < this->egptr())
+        return traits::to_int_type(*this->gptr());
+    int_type ci;
+    if (always_noconv_)
+        ci = read1(this->gptr() == 0);
+    else {
+        int width = a_codecvt_->encoding();
+        if (width > 0)
+            ci = read2(width, this->gptr() == 0);
+        else
+            ci = read3(this->gptr() == 0);
+    }
+    if (traits::eq_int_type(ci, traits::eof()))
+        return traits::eof();
+    if (this->gptr() != 0) {
+        char_type c = traits::to_char_type(ci);
+        size_t es = (size_t)(this->egptr() - this->eback());
+        if (es == sizeof(input_buffer_) / sizeof(char_type)) {
+            *(int *)input_buffer_ = *(int *)(input_buffer_ + es - sizeof(int) / sizeof(char_type));
+            es = sizeof(int) / sizeof(char_type);
+        }
+        this->setg(input_buffer_, input_buffer_ + es, input_buffer_ + es + 1);
+        *this->gptr() = c;
+    }
+    return ci;
+}
+
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::uflow()
+{
+    if (buffered_ && this->gptr() == 0) {
+        if (this->pptr() > this->pbase() && traits::eq_int_type(overflow(traits::eof()), traits::eof()))
+            return traits::eof();
+        this->setp(0, 0);
+        this->setg(input_buffer_, input_buffer_, input_buffer_);
+    }
+    if (this->gptr() != 0) {
+        if (traits::eq_int_type(underflow(), traits::eof()))
+            return traits::eof();
+        int_type c = traits::to_int_type(*this->gptr());
+        this->gbump(1);
+        return c;
+    }
+    overflow_called_last_ = false;
+    if (file_ == 0)
+        return traits::eof();
+    int_type ci;
+    if (always_noconv_)
+        ci = read1(false);
+    else {
+        int width = a_codecvt_->encoding();
+        if (width > 0)
+            ci = read2(width, false);
+        else
+            ci = read3(false);
+    }
+    if (traits::eq_int_type(ci, traits::eof()))
+        return traits::eof();
+    return ci;
+}
+
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::pbackfail(int_type c)
+{
+    if (file_ == 0)
+        return traits::eof();
+    if (!buffered_ && always_noconv_) {
+        if (traits::eq_int_type(c, traits::eof()))
+            return traits::eof();
+        int result = ungetc(c, file_);
+        if (traits::eq_int_type(result, traits::eof()))
+            return traits::eof();
+    } else {
+        if (!(this->eback() < this->gptr()))
+            return traits::eof();
+        this->gbump(-1);
+        if (!traits::eq_int_type(c, traits::eof()))
+            *this->gptr() = traits::to_char_type(c);
+    }
+    return traits::not_eof(c);
+}
+
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::overflow(int_type c)
+{
+    return traits::eof();
+}
+
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::read1(bool peek)
+{
+    int_type c = getc(file_);
+    if (c == EOF)
+        return traits::eof();
+    if (peek) {
+        if (ungetc(c, file_) == EOF)
+            return traits::eof();
+    }
+    return c;
+}
+
+template <class charT, class traits>
+bool basic_filebuf<charT, traits>::unshift()
+{
+    return true;
+}
+
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::read2(int n, bool peek)
+{
+    return traits::eof();
+}
+
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::read3(bool peek)
+{
+    return traits::eof();
+}
+
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::write2(int n, char_type intern_buf)
+{
+    char extern_buf[12];
+    const char_type *intern_end;
+    char *extern_end;
+    switch (a_codecvt_->out(state_, &intern_buf, &intern_buf + 1, intern_end,
+                            extern_buf, extern_buf + sizeof(extern_buf), extern_end)) {
+    case codecvt_base::ok:
+        n = extern_end - extern_buf;
+        break;
+    case codecvt_base::partial:
+    case codecvt_base::error:
+        return traits::eof();
+    case codecvt_base::noconv:
+        n = 1;
+        memcpy(extern_buf, &intern_buf, (unsigned int)n);
+        break;
+    }
+    for (int i = 0; i < n; ++i) {
+        if (putc(extern_buf[i], file_) == EOF)
+            return traits::eof();
+    }
+    return traits::to_int_type(intern_buf);
 }
 
 
@@ -149,9 +375,111 @@ inline const T &min(const T &a, const T &b)
 template class fpos<int>;        /* generated first: seekoff/seekpos inline its constructor */
 template class basic_streambuf<char, char_traits<char> >;
 template class basic_streambuf<wchar_t, char_traits<wchar_t> >;
+/* The standard streams' Init classes (SOCOM 1's DWARF: iostream.cpp lines 107-145 for __nInit): the
+ * first Init object builds the streams in place over three static filebufs on the C library's
+ * stdin/stdout/stderr, unbuffered; the last one flushes and destroys them. */
+int __nInit::ninit_cnt_s;
+
+__nInit::__nInit()
+{
+    static filebuf fin(stdin);
+    static filebuf fout(stdout);
+    static filebuf ferr(stderr);
+    if (ninit_cnt_s++ == 0) {
+        new (&cin) istream(&fin);
+        new (&cout) ostream(&fout);
+        new (&cerr) ostream(&ferr);
+        new (&clog) ostream(&ferr);
+        cin.tie(&cout);
+        cerr.setf(ios_base::unitbuf);
+        fin.pubsetbuf(0, 0);
+        fout.pubsetbuf(0, 0);
+        ferr.pubsetbuf(0, 0);
+    }
+}
+
+__nInit::~__nInit()
+{
+    if (--ninit_cnt_s == 0) {
+        cout.flush();
+        cerr.flush();
+        clog.flush();
+        cin.~istream();
+        cout.~ostream();
+        cerr.~ostream();
+        clog.~ostream();
+    }
+}
+
+int __wInit::winit_cnt_s;
+
+__wInit::__wInit()
+{
+    static wfilebuf wfin(stdin);
+    static wfilebuf wfout(stdout);
+    static wfilebuf wferr(stderr);
+    if (winit_cnt_s++ == 0) {
+        new (&wcin) wistream(&wfin);
+        new (&wcout) wostream(&wfout);
+        new (&wcerr) wostream(&wferr);
+        new (&wclog) wostream(&wferr);
+        wcin.tie(&wcout);
+        wcerr.setf(ios_base::unitbuf);
+        wfin.pubsetbuf(0, 0);
+        wfout.pubsetbuf(0, 0);
+        wferr.pubsetbuf(0, 0);
+    }
+}
+
+__wInit::~__wInit()
+{
+    if (--winit_cnt_s == 0) {
+        wcout.flush();
+        wcerr.flush();
+        wclog.flush();
+        wcin.~wistream();
+        wcout.~wostream();
+        wcerr.~wostream();
+        wclog.~wostream();
+    }
+}
+
+template class _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > >;
+
+/* defined after the locale pointer's instance, so that their temporary locale's destructor inlines it
+ * (the filebufs' destructors, instantiated above, call it) */
+template <class charT, class traits>
+basic_filebuf<charT, traits>::basic_filebuf(FILE *file)
+    : file_(file), state_(0), overflow_called_last_(false), buffered_(true)
+{
+    a_codecvt_ = &use_facet<cvt>(this->getloc());
+    always_noconv_ = a_codecvt_->always_noconv();
+}
+
+template <class charT, class traits>
+void basic_filebuf<charT, traits>::imbue(const locale &loc)
+{
+    base::imbue(loc);
+    a_codecvt_ = &use_facet<cvt>(this->getloc());
+    always_noconv_ = a_codecvt_->always_noconv();
+}
+
+/* the stream classes' constructors (basic_ios::init inlined) */
+template <class charT, class traits>
+basic_istream<charT, traits>::basic_istream(basic_streambuf<charT, traits> *sb)
+    : gcount_(0)
+{
+    this->init(sb);
+}
+
+template <class charT, class traits>
+basic_ostream<charT, traits>::basic_ostream(basic_streambuf<charT, traits> *sb)
+{
+    this->init(sb);
+}
+
 template class basic_filebuf<char, char_traits<char> >;
 template class basic_filebuf<wchar_t, char_traits<wchar_t> >;
-template class _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > >;
 template class basic_istream<char, char_traits<char> >;
 template class basic_ostream<char, char_traits<char> >;
 template class basic_istream<wchar_t, char_traits<wchar_t> >;
@@ -177,6 +505,41 @@ _RefCountedPtr<T, Destructor> &_RefCountedPtr<T, Destructor>::operator=(const _R
 
 
 /* codecvt<wchar_t, char, int> */
+/* the wide conversion is no conversion at all: each wchar_t's four bytes as they lie in memory.
+ * OPEN, 2 x 40 instructions (0x98 against 0xA0 each): the byte loop is MW's to unroll here (four
+ * lb/sb pairs) and the target keeps it a loop (counter in a1, the source pointer stepped in the
+ * delay slot); and the closing `?:` is a select here, branches in the target. Tried: int/size_t
+ * counters, while/do forms, a variable bound, `*p++`; -O3,p and `-opt nounroll` change nothing;
+ * only `#pragma opt_unroll_loops off` keeps the loop (then 2 instructions off in the scheduling)
+ * -- SOCOM 1's copies (0x14A630, 0x14A6C0) have the loop too. */
+codecvt_base::result
+codecvt<wchar_t, char, int>::do_out(int &, const wchar_t *from, const wchar_t *from_end, const wchar_t *&from_next,
+                                   char *to, char *to_limit, char *&to_next) const
+{
+    from_next = from;
+    to_next = to;
+    for (; from_next < from_end && to_next < to_limit - (sizeof(wchar_t) - 1); ++from_next, to_next += sizeof(wchar_t)) {
+        const char *p = (const char *)from_next;
+        for (size_t i = 0; i < sizeof(wchar_t); ++i)
+            to_next[i] = p[i];
+    }
+    return from_next < from_end ? partial : ok;
+}
+
+codecvt_base::result
+codecvt<wchar_t, char, int>::do_in(int &, const char *from, const char *from_end, const char *&from_next,
+                                  wchar_t *to, wchar_t *to_limit, wchar_t *&to_next) const
+{
+    from_next = from;
+    to_next = to;
+    for (; from_next < from_end - (sizeof(wchar_t) - 1) && to_next < to_limit; from_next += sizeof(wchar_t), ++to_next) {
+        char *p = (char *)to_next;
+        for (size_t i = 0; i < sizeof(wchar_t); ++i)
+            p[i] = from_next[i];
+    }
+    return from_next < from_end ? partial : ok;
+}
+
 codecvt_base::result codecvt<wchar_t, char, int>::do_unshift(int &, char *to, char *, char *&to_next) const
 {
     to_next = to;
