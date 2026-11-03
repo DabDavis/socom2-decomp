@@ -1326,7 +1326,7 @@
 0x001C4A20 0x1FC func_001C4A20  # MAIN
 0x001C4C20 0x74 func_001C4C20  # MAIN
 0x001C4C98 0x1C func_001C4C98  # MAIN unaligned
-0x001C4CC0 0xCF8 func_001C4CC0  # MAIN; the boot ELF's main (the integrator, the MAIN runtime lane r2's lead vetted: crt0.s's _start loads argc from _args, calls it with argv = &_args[1] in the delay slot and hands its result straight to Exit -- Exit(main(argc, argv))); not renamed: the map's names are unique and OVL1's main.cpp holds `main` (0x1E7040), so a MAIN unit defining main needs the scorer to tell the two links apart
+0x001C4CC0 0xCF8 func_001C4CC0  # MAIN; the boot ELF's main (the integrator, the MAIN runtime lane r2's lead vetted: crt0.s's _start loads argc from _args, calls it with argv = &_args[1] in the delay slot and hands its result straight to Exit -- Exit(main(argc, argv))); not renamed: the map's names are unique and OVL1's main.cpp holds `main` (0x1E7040), so a MAIN unit defining main needs the scorer to tell the two links apart; ovl-copy: main (the integrator: so a MAIN unit defining main -- sc: overlay=MAIN -- scores here, not at OVL1's main.cpp 0x1E7040)
 0x001C59C0 0x164 func_001C59C0  # MAIN
 0x001C5B30 0x26C func_001C5B30  # MAIN
 0x001C5DA0 0x114 func_001C5DA0  # MAIN
