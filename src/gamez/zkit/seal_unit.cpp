@@ -399,7 +399,17 @@ bool CSealUnit::GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir)
  * -- the third size() itself, 0x510B80). Tried in a scratch include/list (reverted): both changes
  * move the size and begin() calls to the target's copies, but then the third copy inlines the
  * wrapper's != one level more than the target (0x1B0); the real depths are the MSL lane's work
- * (README "Open, and next", level 6) */
+ * (README "Open, and next", level 6).
+ * Measured again (the MSL headers round 15, build/p15/incB, untracked): with include/list's sz() under
+ * size() and the wrapper's begin()/end() through the base's, every call this function makes is the
+ * target's, copy by copy (sz 0x5E8A80, the base's begin 0x5ED9A0 and the wrapper's constructor 0x5ED980,
+ * end 0x5ED8F0, the base's != 0x5ED880 in the first self-copy; size 0x510B80, begin 0x5ED950, the
+ * wrapper's != 0x5ED8D0, * 0x5ED940, i++ 0x5ED920 in the second) -- the "third copy" is the raw one, so
+ * nothing there inlines. What is left (0x1B0 against 0x1F8) is the outer copy: the target builds
+ * begin()'s and end()'s base iterators in stack slots and copies each into the wrapper's through $f0
+ * (the by-value parameter kept in memory), then loads the iterator into s0; MW scalarises all of it
+ * here. Not it: the iterator assigned from begin() (0x1F4, but in memory through the whole walk), direct
+ * initialisation, a while loop, the base iterator's field in a base class (no change) */
 int CSealUnit::GetSealCount(int depth)
 {
     int n = m_seals.size();

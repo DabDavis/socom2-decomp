@@ -24,7 +24,17 @@
  * from a node 0x2D2520 and from the sentinel 0x2D2510, and reads clear()'s sentinel through
  * compressed_pair_imp::second() 0x207560: the end node inside SOCOM 1's compressed pair, a level deeper
  * than this header everywhere -- the restructuring "Open, and next" warns breaks the level-5 fits of
- * every list user, left for a round of its own. */
+ * every list user, left for a round of its own.
+ * ROUND 15 (the MSL headers): SOCOM 1's accessors are in BESIDE the fields -- sz(), empty(), tail() by
+ * reference over Metrowerks::details::compressed_pair_imp<A, T, 1>::second(), front()/back() through
+ * tail() -- for the members nothing used before (empty, the const ends) and the wrapper's non-const
+ * back(): CSealUnit::GetLeader/GetTail match with every piece under SOCOM 1's names (seal_unit.cpp),
+ * nothing lost. The storage, begin()/end(), size() and the iterators keep their level-5 shapes: the
+ * const walks' begin()/end() through the new tail() lose five matches (they read tail_ptr(), the old
+ * one-level form), and GetSealCount's calls all come right with size() over sz() and the wrapper's
+ * begin()/end() through the base's, its outer copy's in-memory temporaries not (seal_unit.cpp's note).
+ * The tail() 0x2D2530 and second() 0x207560 that CGTree::Destroy's inner copy calls are this header's
+ * tail() and the end pair's second() (non-const) by their code -- graph_tree.cpp could name them. */
 
 #ifndef _MSL_LIST
 #define _MSL_LIST
