@@ -22,6 +22,15 @@ inline void CopyField(void *dst, const void *src, unsigned int n)
         memcpy(dst, src, n);
 }
 
+/* a field copied in, only the destination's address tested (Open's account defaults from
+ * literals, the room player's clan tag from a local: CopyField's test of either source is not
+ * folded; the name ours) */
+inline void CopyTo(char *dst, const char *src, unsigned int n)
+{
+    if (dst)
+        memcpy(dst, src, n);
+}
+
 /* --- the Medius SDK's types (Sony's prebuilt library in OVL2; only what the lobby passes) ---- */
 
 /* an API call's result: 0 on success (int-sized: its values run past a byte) */

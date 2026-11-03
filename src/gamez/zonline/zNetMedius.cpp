@@ -238,14 +238,6 @@ void func_0064F4E0(NetServerKey *key);   /* (the DNAS key) */
 bool func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
 }
 
-/* a field copied into a global's, only the destination's address tested (as SOCOM 1's Open copies
- * the account's default name and password; CopyField's test of the literal is not folded) */
-inline void CopyTo(char *dst, const char *src, unsigned int n)
-{
-    if (dst)
-        memcpy(dst, src, n);
-}
-
 /* the lobby server connected: the session begun (OVL1 0x2E0440, the callback Open hands over) */
 extern "C" void func_002E0440(int index)
 {

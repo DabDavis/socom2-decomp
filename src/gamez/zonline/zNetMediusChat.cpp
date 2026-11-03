@@ -1035,7 +1035,15 @@ struct MediusPlayerInfoRequest {
     int AccountID;   // 0x28
 };   // 0x2c
 
-struct MediusPlayerInfoResponse { MEDIUS_RESPONSE_HEAD };
+/* the player's info (the SDK's MediusPlayerInfoResponse: the account's stats as text at 0x48) */
+struct MediusPlayerInfoResponse {
+    MEDIUS_RESPONSE_HEAD
+    char AccountName[32];   // 0x1c
+    int ApplicationID;   // 0x3c
+    int PlayerStatus;   // 0x40
+    int ConnectionClass;   // 0x44
+    char Stats[256];   // 0x48
+};
 
 /* a chat line (SOCOM 1's MediusChatMessage: 1 private, the target looked up first) */
 struct MediusChatMessage {
@@ -1142,6 +1150,43 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
         Censor(msg.Message, cbFilterChat, &msg);
     }
     return true;
+}
+
+extern "C" void func_002F1670();   /* the room's players shown (below) */
+
+/* a room player's info come in (the 'PlayerListInfo' requests 0x2F0EA0 makes, the account in the
+ * message id): the player found in the room we are in, its clan's tag shown in its record's
+ * first bytes when it has a clan and the players shown again -- else the record marked (SOCOM
+ * II's; OVL1 0x2F10B0) */
+extern "C" void func_002F10B0(int, int, int, MediusPlayerInfoResponse *resp)
+{
+    if (CheckMediusCallbackStatus("PlayerListInfo", resp->StatusCode)) {
+        BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+        GamePlayerStats stats;
+
+        func_002F9AC0(&stats, resp->Stats);
+        if (room) {
+            int id = atoi(resp->MessageID);
+
+            for (std::vector<RoomPlayer>::iterator i = room->m_players.begin();
+                 i != room->m_players.end(); ++i) {
+                if (id == (*i).AccountID) {
+                    if (stats.m_clan[0]) {
+                        char tag[32];
+
+                        sprintf(tag, "[%s]", stats.m_clan);
+                        CopyTo((*i).MessageID, tag, MEDIUS_MESSAGEID_MAXLEN);
+                        func_002F1670();
+                    } else {
+                        (*i).MessageID[0] = 1;
+                    }
+                    /* a return, not a break: the nested ifs keep their join, a `b` to the
+                     * epilogue (AddFriend's tell); a break is threaded through */
+                    return;
+                }
+            }
+        }
+    }
 }
 
 /* a player's info asked for, the menu's fields blanked meanwhile; the request's message id names
