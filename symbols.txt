@@ -2161,8 +2161,8 @@
 0x00230050 0x174 tcmUpdateTeamMember__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the team members' test)
 0x002301D0 0x10 tcmSelectTeam__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the teams' command (0x2344E0's six): s_tcmTeam)
 0x002301E0 0xE4 tcmUpdateTeam__FP10CZSealBodyi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the teams' test: team 18's leader names the item, CHA SOLDIER as SOLDIER)
-0x002302D0 0x104 func_002302D0  # OVL1
-0x002303E0 0x160 func_002303E0  # OVL1
+0x002302D0 0x104 tcmCloseNode__FP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- a node closed: its parent's column back (the path popped, the columns' slide directions swapped), the recogniser resumed; the tree's 0x235D40 calls it)
+0x002303E0 0x160 tcmOpenNode__FP10CZSealBodyP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- a node opened: its last child selected on the path, a column slid in, the children shown; the tree calls it with no player when an item's command returns 1)
 0x00230540 0xC tcmClearCurNode__Fv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- s_tcmCurNode cleared; the tree calls it after each test, out of line)
 0x00230550 0xC tcmSetCurNode__FP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- s_tcmCurNode set; the tree calls it before each test, out of line: the unit boundary)
 0x00230560 0xB8 Find__9CTCMCacheFPCc  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the radio command menu cache's item by name, strcasecmp on each; inlined into Add, called by the menu object 0x237000)

@@ -12,6 +12,7 @@
 #include <list>
 
 #include "hud_tcm.h"
+#include "../../gamez/zmath/zmath.h"
 
 /* the world's entities (zentity.h's: only the list and the type byte) */
 class CEntity {
@@ -105,6 +106,14 @@ public:
     unsigned char _8[0xc4 - 0x8];
     int m_channel;   // 0xc4: the radio channel
 };
+
+/* the voice recogniser (reco.cpp's theReco) */
+class CReco {
+public:
+    void Resume();
+};
+
+extern CReco theReco;
 
 /* the network game (fts_net_game's): whether it is one */
 class CZNetwork {
@@ -282,6 +291,59 @@ CTCMEntry *CTCMCache::Find(const char *name)
         }
     }
     return found;
+}
+
+/* the menu's columns (constructed by the initialiser 0x3FF430) */
+CTCMColumn g_tcmColumns[8];
+
+/* a node opened: its children shown in a new column, which slides in as the last slides out (an
+ * item's command that returns 1 opens its node so: the tree's 0x234F40 calls it with no player) */
+int tcmOpenNode(CZSealBody *player, CTCMNode *node)
+{
+    int r = 1;
+
+    if (node && node->m_children.size()) {
+        theTCM.GetPath().push_back(node->m_children.size() - 1);
+        int i = theTCM.GetDepth() - 1;
+
+        g_tcmColumns[i].m_4 = 0;
+        g_tcmColumns[i].m_dir = 1.0f;
+        if (i - 1 >= 0)
+            g_tcmColumns[i - 1].m_dir = -1.0f;
+        func_002356D0(&theTCM);
+        node->m_text2.Off();
+        unsigned int n = node->m_children.size();
+
+        for (unsigned int j = 0; j < n; j++)
+            node->m_children[j]->m_root.On();
+        func_00232890(&theTCM.m_sounds, 1);
+        r = 0;
+    }
+    if (!theNetwork.m_bNetwork)
+        theReco.Resume();
+    return r;
+}
+
+/* a node closed: back to its parent's column */
+void tcmCloseNode(CTCMNode *node)
+{
+    CTCMNode *parent = node->m_parent;
+
+    func_00231BA0(parent);
+    parent->m_root.On();
+    /* a temporary bound to a reference: the colour stays in the frame (y and z then kept in
+     * saved registers, x reloaded for each call), where a named CPnt4D is scalarised */
+    const CPnt4D &color = CPnt4D(128.0f, 128.0f, 128.0f, 100.0f);
+
+    node->m_back.SetColor(color.x, color.y, color.z);
+    node->m_bar.SetColor(color.x, color.y, color.z);
+    theTCM.m_path.pop_back();
+    int i = theTCM.GetDepth() - 1;
+
+    g_tcmColumns[i + 1].m_dir = -1.0f;
+    g_tcmColumns[i].m_dir = 1.0f;
+    if (!theNetwork.m_bNetwork)
+        theReco.Resume();
 }
 
 void tcmSetCurNode(CTCMNode *node)

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "../zutil/util_stable.h"
+#include "zui_uivar.h"
 
 class CSTable;
 
@@ -100,8 +101,6 @@ enum UIVAR_LONGEVITY {
     UIVL_PERSISTENT = 3
 };
 
-class UIVarMixin;
-
 /* a UI variable: a ZRDR value with a name and the mixins watching it (SOCOM 1's DWARF: 0x1C
  * bytes, the watchers a vector at 0xC; SOCOM II's watchers are at 0x18 and its longevity a byte
  * at 0x24, its name at 0x14 and its size 0x30 -- the manager's Find walks 48-byte elements; what
@@ -135,19 +134,6 @@ public:
     unsigned char m_longevity;   // 0x24: UIVAR_LONGEVITY
     unsigned char _25[0x30 - 0x25];
 };
-
-/* what watches a variable: told by UpdateUIVar when it changes (SOCOM 1's DWARF: the vtable
- * pointer at 0, the variable at 4) */
-class UIVarMixin {
-public:
-    UIVarMixin() { m_uivar = 0; }
-    virtual ~UIVarMixin() { DetachUIVar(0); }
-    virtual void UpdateUIVar(CUIVariable *var) = 0;
-    bool DetachUIVar(CUIVariable *var);
-    void AttachUIVar(CUIVariable *var);
-
-    CUIVariable *m_uivar;   // 0x4
-};   // 0x8 bytes
 
 class CRdrFile;
 namespace zar {
