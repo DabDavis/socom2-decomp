@@ -18,7 +18,11 @@ typedef struct QUEUE {
 
 typedef struct DISTSIL {
     TOSBLOCK b;
-    char pad40[56];
+    char pad40[8];
+    unsigned short ntables;             /* +48: the codebooks' byte tables in use */
+    short pad50;
+    unsigned char *tables[10];          /* +52 */
+    unsigned short *index;              /* +92: ntables codewords per frame */
     int f96;                            /* +96: the distances' offset (GetDistanceOffset) */
     QOUT *dist;                         /* +100: the distances' output */
     int pad104;
@@ -111,7 +115,21 @@ static int GetDistanceOffset(DISTSIL *d)
     return d->f96;
 }
 
-/* (CalculateDistance and CalculateDistance4Bit, 0x500EC8-0x5011B0, are not written) */
+/* frame n's distance: each table's byte at the frame's codeword, summed, less the offset */
+static short CalculateDistance(DISTSIL *d, int n)
+{
+    unsigned char **t = d->tables;
+    unsigned char **end = t + d->ntables;
+    unsigned short *idx = d->index + n * d->ntables;
+    int sum = 0;
+
+    do
+        sum += (*t++)[*idx++];
+    while (t < end);
+    return sum - d->f96;
+}
+
+/* (CalculateDistance4Bit, 0x500FF8, is not written) */
 
 static void IdleDistCalcProcess(DISTSIL *d, void **in)
 {

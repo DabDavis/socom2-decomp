@@ -9074,7 +9074,7 @@
 0x00500DF8 0xC0 ConstructDistCalc  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: ConstructDistCalc after InitCalculateDistances, as this row; the same body -- profile 35 for no queues, profile 34 for a third input, 316 bytes, the same three slots) -- the gcc lane, round 16c
 0x00500EB8 0x8 GetpCachedDistances  # OVL2 unaligned; s1:order (SOCOM 1's distsil object, after ConstructDistCalc as this row; the same body, `return d->f108`) -- the gcc lane, round 16c
 0x00500EC0 0x8 GetDistanceOffset  # OVL2; s1:order (SOCOM 1's distsil object, next; the same body, `return d->f96`) -- the gcc lane, round 16c
-0x00500EC8 0x12C func_00500EC8  # OVL2 unaligned
+0x00500EC8 0x12C CalculateDistance  # OVL2 unaligned; s1:order (SOCOM 1's distsil object 0x369590: CalculateDistance after GetDistanceOffset, as this row; the same body -- the tables at +52 summed at the frame's codewords, less +96, as a short) -- the gcc lane, round 16c
 0x00500FF8 0x1B4 func_00500FF8  # OVL2 unaligned
 0x005011B0 0x8 IdleDistCalcProcess  # OVL2; s1:slot (ConstructDistCalc hands this row to tosBaseBlockConstruct as its process function, where SOCOM 1's ConstructDistCalc hands IdleDistCalcProcess, 0x36C5E8; the object's last function in both) -- the gcc lane, round 16c
 0x005011B8 0x74 ConstructGenderFilter  # OVL2 unaligned; s1:align
