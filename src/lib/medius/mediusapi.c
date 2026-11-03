@@ -9,10 +9,10 @@
  * (*CallbackFunctionPtr, data 0x43B958-0x43BA20) are SOCOM II's in the same order with SOCOM II's
  * new requests inserted (three after GetPolicy, one after ChatToggleFilter, the rest after
  * GetTotalChannels), and so are its functions: each name is SOCOM 1's by position and by slot
- * (symbols.txt says which), or the online lane's by call site. One of the online lane's names sits
- * on a request new in SOCOM II where SOCOM 1's function is another row: MediusLadderPosition
- * (0x64B1B8; SOCOM 1's, by position and slot, is 0x64A018) -- the map keeps it, the game's source
- * calls it by that name (mediusclan.c has the same case). Requests SOCOM 1 does not have keep
+ * (symbols.txt says which), or the online lane's by call site. MediusLadderPosition is SOCOM 1's
+ * by position and slot, 0x64A018; the request new in SOCOM II that the game's ladder code calls,
+ * 0x64B1B8, is MediusLadderPositionFast, a predicted name (the online lane's round 9 verdict;
+ * mediusclan.c had the same case). Requests SOCOM 1 does not have keep
  * placeholders; their request types
  * are named after them, laid out as far as the code shows (strings terminated, sizeof sent). Only
  * the functions written so far are here, in image order. */
@@ -596,9 +596,8 @@ extern MediusCallback GetLocationsCallbackFunctionPtr;
 extern int data_00686D8C;
 extern MediusCallback PickLocationCallbackFunctionPtr;
 extern int data_00686D94;
-/* SOCOM 1's MediusLadderPositionCallbackFunctionPtr by the slots' order; no data row yet: which
- * function is MediusLadderPosition (0x64A018 by this slot, 0x64B1B8 by the game's call) is the
- * integrator's to settle */
+/* SOCOM 1's MediusLadderPositionCallbackFunctionPtr by the slots' order (MediusLadderPosition is
+ * 0x64A018, settled); no data row yet */
 extern MediusCallback data_00656278;
 #define MediusLadderPositionCallbackFunctionPtr data_00656278
 extern int data_00686DA4;
@@ -1494,7 +1493,7 @@ MediusErrorCode MediusPickLocation(MediusPickLocationRequest *request, MediusCal
     return MediusErrorNone;
 }
 
-MediusErrorCode func_0064A018(MediusLadderPositionRequest *request, MediusCallback callback)
+MediusErrorCode MediusLadderPosition(MediusLadderPositionRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     iTerminateString(request->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
@@ -1818,7 +1817,7 @@ MediusErrorCode func_0064B128(MediusRequest_0064B128 *request, MediusCallback ca
     return MediusErrorNone;
 }
 
-MediusErrorCode MediusLadderPosition(MediusLadderPositionExRequest *request, MediusCallback callback)
+MediusErrorCode MediusLadderPositionFast(MediusLadderPositionExRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     if (GlobalInitFlag != 1)

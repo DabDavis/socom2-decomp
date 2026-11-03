@@ -1107,7 +1107,7 @@ bool CZOnlineLobby::GetClanRoster()
     req.PageSize = 1;
     req.ClanID = PlayerClanID;
     req.Start = 0;
-    CheckMediusError(MediusGetClanMemberList(&req,
+    CheckMediusError(MediusGetClanMemberList_ExtraInfo(&req,
         cbGetClanMemberList));
     return true;
 }

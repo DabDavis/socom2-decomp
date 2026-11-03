@@ -12924,10 +12924,10 @@
 0x00646520 0x9C MediusGetAllClanMessages  # OVL2; s1:order (23rd of the clan object; the 23rd slot, SOCOM 1's GetAllClanMessagesCallbackFunctionPtr; CZOnlineLobby::GetLeaderMessages calls it; the gcc lane, round 3b)
 0x006465C0 0x9C MediusGetClanTeamChallengeHistory  # OVL2; s1:order (24th of the clan object; the 24th slot, SOCOM 1's GetClanTeamChallengeHistoryCallbackFunctionPtr; the gcc lane, round 3b)
 0x00646660 0xA8 MediusUpdateClanStats  # OVL2; s1 by call site (UpdateClanStats 0x2E7D70 with cbUpdateClanStats, as SOCOM 1's; the online lane)
-0x00646708 0x9C func_00646708  # OVL2 unaligned
+0x00646708 0x9C MediusGetClanMemberList  # OVL2 unaligned; s1:slot (SOCOM 1's MediusGetClanMemberList: the same 44-byte request with the message id and session key cleared, a 68-byte response through the size handler 0x64CD78 and dispatcher 0x64CD80; its callback slot where SOCOM 1's sits -- the online lane's round 9 verdict)
 0x006467A8 0x90 func_006467A8  # OVL2 unaligned
 0x00646838 0x90 func_00646838  # OVL2 unaligned
-0x006468C8 0x90 MediusGetClanMemberList  # OVL2 unaligned; s1 by call site (GetClanRoster 0x2E69F0 with cbGetClanMemberList, as SOCOM 1's; the online lane)
+0x006468C8 0x90 MediusGetClanMemberList_ExtraInfo  # OVL2 unaligned; s1 by call site (GetClanRoster 0x2E69F0 with cbGetClanMemberList, as SOCOM 1's; the online lane); ours, PREDICTED (the request's name in public Medius server reimplementations; this image spells no such string, though the _ExtraInfo family is here: MediusGameList_ExtraInfoResponse 0x3F3D50): new in SOCOM II, 36 bytes, no session key (clan id, 0, 1), its dispatcher 0x64D168 answering 476 bytes -- the extra-info roster zonline.h reads; GetClanRoster 0x2E69F0 calls it. SOCOM 1's MediusGetClanMemberList is 0x646708 (the online lane's round 9 verdict, the GCC lane's slot reading)
 0x00646958 0xA8 func_00646958  # OVL2 unaligned
 0x00646A00 0x74 MediusSetNatServiceAddress  # OVL2; s1:exact
 0x00646A78 0x3C MediusGetNatServiceAddress  # OVL2 unaligned; s1:exact
@@ -13018,7 +13018,7 @@
 0x00649EC8 0x9C MediusGetLocations  # OVL2 unaligned; s1:order (after MediusAccountGetID as SOCOM 1's; the GetLocationsCallbackFunctionPtr slot 0x656270; the gcc lane, round 3b)
 0x00649F68 0x9C MediusPickLocation  # OVL2 unaligned; s1:order (the PickLocationCallbackFunctionPtr slot 0x656274; the gcc lane, round 3b)
 0x0064A008 0xC func_0064A008  # OVL2 unaligned
-0x0064A018 0x9C func_0064A018  # OVL2 unaligned
+0x0064A018 0x9C MediusLadderPosition  # OVL2 unaligned; s1:slot (SOCOM 1's MediusLadderPosition: 56 bytes with the session key, a 32-byte response, its callback slot 0x656278 between PickLocation's and LadderList's as in SOCOM 1 -- the online lane's round 9 verdict)
 0x0064A0B8 0x9C MediusLadderList  # OVL2 unaligned; s1:order (after SOCOM 1's MediusLadderPosition's place; the MediusLadderListCallbackFunctionPtr slot 0x65627C; the gcc lane, round 3b)
 0x0064A158 0x9C MediusChatToggleFilter  # OVL2 unaligned; s1:order (the MediusChatToggleCallbackFunctionPtr slot 0x656280; the gcc lane, round 3b)
 0x0064A1F8 0x9C func_0064A1F8  # OVL2 unaligned
@@ -13039,7 +13039,7 @@
 0x0064B008 0x90 func_0064B008  # OVL2 unaligned
 0x0064B098 0x90 func_0064B098  # OVL2 unaligned
 0x0064B128 0x90 func_0064B128  # OVL2 unaligned
-0x0064B1B8 0x90 MediusLadderPosition  # OVL2 unaligned; s1 by call site (GetLadderRanking 0x2EAFB0 and GetLadderInfo 0x2EB2C0 call it with cbGetLadderRanking and cbGetLadderPosition, the callbacks SOCOM 1 hands MediusLadderPosition; the online lane)
+0x0064B1B8 0x90 MediusLadderPositionFast  # OVL2 unaligned; s1 by call site (GetLadderRanking 0x2EAFB0 and GetLadderInfo 0x2EB2C0 call it with cbGetLadderRanking and cbGetLadderPosition, the callbacks SOCOM 1 hands MediusLadderPosition; the online lane); ours, PREDICTED (the request's name in public Medius server reimplementations; not spelled in this image): new in SOCOM II, 36 bytes, no session key (account, stat index, sort order), a new callback slot 0x6562D4, a 36-byte response adding TotalRankings; GetLadderRanking and GetLadderInfo call it. SOCOM 1's MediusLadderPosition is 0x64A018 (the online lane's round 9 verdict)
 0x0064B248 0x90 func_0064B248  # OVL2 unaligned
 0x0064B2D8 0x90 func_0064B2D8  # OVL2 unaligned
 0x0064B368 0x90 func_0064B368  # OVL2 unaligned

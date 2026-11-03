@@ -7873,10 +7873,10 @@
 0x00646520 MediusGetAllClanMessages
 0x006465C0 MediusGetClanTeamChallengeHistory
 0x00646660 MediusUpdateClanStats
-0x00646708 func_00646708
+0x00646708 MediusGetClanMemberList
 0x006467A8 func_006467A8
 0x00646838 func_00646838
-0x006468C8 MediusGetClanMemberList
+0x006468C8 MediusGetClanMemberList_ExtraInfo
 0x00646958 func_00646958
 0x00646A00 MediusSetNatServiceAddress
 0x00646A78 MediusGetNatServiceAddress
@@ -7953,7 +7953,7 @@
 0x00649EC8 MediusGetLocations
 0x00649F68 MediusPickLocation
 0x0064A008 func_0064A008
-0x0064A018 func_0064A018
+0x0064A018 MediusLadderPosition
 0x0064A0B8 MediusLadderList
 0x0064A158 MediusChatToggleFilter
 0x0064A1F8 func_0064A1F8
@@ -7972,7 +7972,7 @@
 0x0064B008 func_0064B008
 0x0064B098 func_0064B098
 0x0064B128 func_0064B128
-0x0064B1B8 MediusLadderPosition
+0x0064B1B8 MediusLadderPositionFast
 0x0064B248 func_0064B248
 0x0064B2D8 func_0064B2D8
 0x0064B368 func_0064B368

@@ -8,9 +8,10 @@
  * request, in the same order from CreateClan's): the names are SOCOM 1's (s1:order), the five the
  * online lane named by call site among them. Four are SOCOM II's own, after UpdateClanStats:
  * - 0x646708 keeps SOCOM 1's GetClanMemberList slot (the 26th) and its request (the session key
- *   and a clan id), so it is SOCOM 1's MediusGetClanMemberList; the name sits on 0x6468C8, which
- *   the lobby's GetClanRoster calls -- a request with paging and no session key, new here (its
- *   slot is the 29th); the online lane's source calls it by that name, so the map keeps it;
+ *   and a clan id): it is SOCOM 1's MediusGetClanMemberList. 0x6468C8, which the lobby's
+ *   GetClanRoster calls, is a request with paging and no session key, new here (its slot is the
+ *   29th; a 476-byte extra-info answer): MediusGetClanMemberList_ExtraInfo, a predicted name (the
+ *   online lane's round 9 verdict moved the names; the integrator applied it);
  * - 0x6467A8 and 0x646838: the clan ladder's list and a clan's position (the online lane's
  *   GetClanLadderList/GetClanLadderLeaders and GetClanRanking call them);
  * - 0x646958: an invitation by account name, answered through InvitePlayerToClan's slot. */
@@ -676,7 +677,7 @@ MediusErrorCode MediusUpdateClanStats(MediusUpdateClanStatsRequest *request, Med
     return MediusErrorNone;
 }
 
-MediusErrorCode func_00646708(MediusClanMembersRequest *request, MediusCallback callback)
+MediusErrorCode MediusGetClanMemberList(MediusClanMembersRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     iTerminateString(request->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
@@ -719,7 +720,7 @@ MediusErrorCode func_00646838(MediusClanLadderPositionRequest *request, MediusCa
     return MediusErrorNone;
 }
 
-MediusErrorCode MediusGetClanMemberList(MediusGetClanMemberListRequest *request, MediusCallback callback)
+MediusErrorCode MediusGetClanMemberList_ExtraInfo(MediusGetClanMemberListRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     if (GlobalInitFlag != 1)

@@ -294,7 +294,7 @@ MediusErrorCode MediusGetClanInvitationsSent(MediusGetClanInvitationsSentRequest
                                              MediusGetClanInvitationsSentCallback cb);
 MediusErrorCode MediusRespondToClanInvitation(MediusRespondToClanInvitationRequest *req,
                                               MediusRespondToClanInvitationCallback cb);
-MediusErrorCode MediusGetClanMemberList(MediusGetClanMemberListRequest *req,
+MediusErrorCode MediusGetClanMemberList_ExtraInfo(MediusGetClanMemberListRequest *req,
                                         MediusGetClanMemberListCallback cb);
 }
 
