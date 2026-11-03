@@ -6,10 +6,14 @@ Try source variants of one function: each substitution is compiled on its own an
         --sub 'return !(d < -eps) && d <= eps;' 'return d >= -eps && d <= eps;' \\
         --sub ...
     ./tools/try.py src/gamez/zmath/zmath_pnt3d.cpp Interp__6CPnt3DCFPC6CPnt3DfP6CPnt3D -d   # as it is, with the diff
+    ./tools/try.py src/lib/sdk/libscf.c frombcd -n --sub 'a;\\n\\tb;' 'b;\\n\\ta;'          # `\\n`: a newline
 
 FILE is the file the substitutions apply to (a header or the unit); the unit compiled is
 --unit, or FILE itself. Every variant is built in a scratch copy of src/ (build/try/, or
-$SC_TRY_WORK -- one per concurrent user), so the tree is never touched. Prints one line per variant: MATCH, or the differ's verdict.
+$SC_TRY_WORK -- one per concurrent user), so the tree is never touched, and built as sccheck
+builds it: under the unit's own directive (a GCC unit's `sc: compiler=...; flags=...`, an
+assembler unit, `as=`, its statics qualified `NAME@UNIT`, `overlay=`) -- a variant may change the
+directive too. Prints one line per variant: MATCH, or the differ's verdict.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
 import scdecomp as E
 import scdiff as D
+import sccheck
 
 import os
 
@@ -38,16 +43,20 @@ def score(file: Path, unit: Path, symbol: str, text: str | None, show: bool = Fa
     shutil.copytree(SRC, WORK, ignore=shutil.ignore_patterns("auto", "*.o"))
     if text is not None:
         (WORK / rel_file).write_text(text)
-    obj = WORK / rel_unit.with_suffix(".o")
-    try:
-        D.compile_obj(WORK / rel_unit, obj, includes=[INCLUDE, WORK])
-    except RuntimeError as e:
-        return "BUILD-FAIL " + str(e).strip().splitlines()[-1][:100]
+    _, obj, err = sccheck.build_one(WORK / rel_unit, WORK / "__obj__", root=WORK)
+    if obj is None:
+        return "BUILD-FAIL " + (err.strip().splitlines() or ["?"])[-1][:100]
     img, st = E.image(), E.symbols()
     try:
-        r = D.compare(obj, symbol, st.get(symbol), img, st)
+        sym = st.get(symbol)
     except KeyError as e:
         return f"NO SYMBOL {e}"
+    overlay = sccheck.tu_options(WORK / rel_unit).get("overlay")
+    if overlay:
+        sym = sccheck.overlay_symbol(st, symbol, overlay)
+        if sym is None:
+            return f"NO SYMBOL in {overlay}: {symbol}"
+    r = D.compare(obj, symbol, sym, img, st)
     if show and not r.match:
         print(D.report(r))
     return "MATCH" if r.match else r.verdict
@@ -59,6 +68,7 @@ def main(argv=None) -> int:
     ap.add_argument("symbol")
     ap.add_argument("--unit", type=Path)
     ap.add_argument("--sub", nargs=2, action="append", default=[], metavar=("OLD", "NEW"))
+    ap.add_argument("-n", "--newlines", action="store_true", help="`\\n` in OLD and NEW is a newline, `\\t` a tab")
     ap.add_argument("-d", "--diff", action="store_true", help="print the diff of a variant that fails")
     a = ap.parse_args(argv)
     unit = a.unit or a.file
@@ -67,10 +77,14 @@ def main(argv=None) -> int:
         print(score(a.file, unit, a.symbol, None, a.diff))
         return 0
     for old, new in a.sub:
+        if a.newlines:
+            old, new = (s.replace("\\n", "\n").replace("\\t", "\t") for s in (old, new))
         if old not in base:
             print(f"(not in {a.file.name}: {old[:60]!r})")
             continue
-        print(f"{score(a.file, unit, a.symbol, base.replace(old, new, 1), a.diff):<60} | {new[:90]}")
+        print(f"{score(a.file, unit, a.symbol, base.replace(old, new, 1), a.diff):<60} | {new[:90]!r}"
+              if a.newlines else
+              f"{score(a.file, unit, a.symbol, base.replace(old, new, 1), a.diff):<60} | {new[:90]}")
     return 0
 
 
