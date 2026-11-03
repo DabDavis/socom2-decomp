@@ -8991,6 +8991,10 @@
 0x006305C8 func_006305C8
 0x00630600 func_00630600
 0x00630638 KM_CreateRandomRCKey
+0x00630690 KM_Encrypt
+0x00630938 func_00630938
+0x00630B90 KM_Decrypt
+0x00631008 func_00631008
 0x006311E8 func_006311E8
 0x00631388 func_00631388
 0x00631390 func_00631390
@@ -9017,8 +9021,11 @@
 0x00632508 rt_memory_align_free
 0x00632558 rt_memory_register_callbacks
 0x00632570 rt_memory_get_aligned_address
-0x00632610 func_00632610
+0x006325B8 func_006325B8
+0x00632610 rt_msg_client_get_version_string_ptr
 0x00632620 rt_msg_client_get_build_timestamp
+0x00632778 rt_msg_client_startup
+0x00632830 rt_msg_client_shutdown
 0x006328E0 func_006328E0
 0x00632958 rt_msg_client_enable_udp
 0x006329E8 rt_msg_client_connect
@@ -9043,10 +9050,12 @@
 0x006335E8 rt_msg_client_udp_set_default_options
 0x00633678 rt_msg_client_display_comm_state
 0x006336F0 func_006336F0
+0x00633790 rt_msg_client_ishutdown
 0x00633918 rt_msg_client_udp_shutdown
 0x00633960 func_00633960
 0x00633FD8 rt_msg_client_idisconnect_all
 0x00634078 func_00634078
+0x00634098 rt_msg_client_iupdate_all
 0x00634270 rt_msg_client_isend_client_set
 0x00634278 func_00634278
 0x00634508 func_00634508
@@ -9069,6 +9078,7 @@
 0x00635CD0 func_00635CD0
 0x00635CF0 func_00635CF0
 0x00635D10 rt_msg_client_send_disconnect
+0x00636208 rt_msg_client_create_send_buf_space
 0x006379B0 rt_msg_client_set_header
 0x00637A40 rt_msg_client_get_header
 0x00638020 rt_msg_client_change_state
@@ -9145,6 +9155,9 @@
 0x0063C138 func_0063C138
 0x0063C328 func_0063C328
 0x0063C810 func_0063C810
+0x0063CD18 func_0063CD18
+0x0063CDA0 func_0063CDA0
+0x0063CE38 func_0063CE38
 0x0063CF20 rt_time_get_local
 0x0063CF38 rt_time_get_msecs
 0x0063CF80 rt_time_get_secs
@@ -9191,6 +9204,7 @@
 0x0063E5C0 func_0063E5C0
 0x0063E830 func_0063E830
 0x0063E8E8 func_0063E8E8
+0x0063E928 func_0063E928
 0x0063F148 func_0063F148
 0x0063F270 func_0063F270
 0x0063F2D8 func_0063F2D8
@@ -9234,6 +9248,11 @@
 0x006426B8 func_006426B8
 0x006426E8 func_006426E8
 0x00642768 func_00642768
+0x00642968 func_00642968
+0x006429E8 func_006429E8
+0x00642A10 func_00642A10
+0x00642BF8 func_00642BF8
+0x00642DA8 func_00642DA8
 0x00643140 func_00643140
 0x00643168 func_00643168
 0x00643220 func_00643220
@@ -9268,6 +9287,8 @@
 0x00644F68 func_00644F68
 0x00645018 func_00645018
 0x006451E0 func_006451E0
+0x006451F0 func_006451F0
+0x00645268 func_00645268
 0x006456C0 func_006456C0
 0x006456C8 func_006456C8
 0x006456D0 func_006456D0
