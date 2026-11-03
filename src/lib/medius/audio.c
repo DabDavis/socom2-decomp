@@ -117,6 +117,16 @@ extern void func_0063F4C8(void *pSocket);
 extern void func_0063E4A0(void *pSocket, int nHandle, char *szAddr, unsigned short *pnPort);
 extern int func_0063ECC8(void *pSocket, int nHandle, char *pBuf, int nSize, int *pnRead);
 extern int strcmp(const char *a, const char *b);
+extern unsigned int strlen(const char *s);
+extern char *strncpy(char *d, const char *s, unsigned int n);
+extern void mcDelayThread(int n);
+
+typedef struct AUDIO_ADDR {             /* the socket's address argument */
+    char szHost[16];                    /* 0x00 */
+    unsigned short nPort;               /* 0x10 */
+} AUDIO_ADDR;                           /* 0x12 */
+
+extern int func_0063E230(void *pSocket, AUDIO_ADDR *pAddr);
 extern int data_00676694;               /* bytes received */
 extern PEER *func_00629F78(AUDIO *pAudio, PEER_INFO *pInfo);
 extern unsigned int func_0062A130(PEER *p);
@@ -130,6 +140,8 @@ extern void func_0063DEA0(void *pSocket);
 extern void func_006456D8(void *pHandle);
 
 void func_00610318(AUDIO *pAudio);
+int func_00610788(AUDIO *pAudio);
+void func_006115C0(AUDIO *pAudio, int nType, char *pBuf, int nLen);
 int func_00610C20(AUDIO *pAudio, int nFrom, int nPort, char *pBuf, int nLen);
 int func_00610FA0(AUDIO *pAudio, int nTo, GRID_HEADER *h, void *pData, int nLen);
 int func_00611250(AUDIO *pAudio, char *pBuf, int nSize, int *pnFrom, int *pnPort);
@@ -242,6 +254,29 @@ void func_00610318(AUDIO *pAudio)
     }
 }
 
+/* Connects the socket to the host; without a callback, waits for the connection. */
+int func_00610488(AUDIO *pAudio, const char *szHost, int nPort, void (*pfn)(AUDIO *pAudio, int nAddr, int nPort))
+{
+    AUDIO_ADDR addr;
+
+    if (pAudio == 0 || szHost == 0 || strlen(szHost) == 0 || nPort == 0)
+        return -1;
+    strncpy(pAudio->szHost, szHost, sizeof(pAudio->szHost));
+    pAudio->nPort = nPort;
+    pAudio->pfnConnect = pfn;
+    pAudio->nConnect = AUDIO_CONNECT_PENDING;
+    memset(&addr, 0, sizeof(addr));
+    strncpy(addr.szHost, szHost, sizeof(addr.szHost));
+    addr.nPort = nPort;
+    if (func_0063E230(pAudio->pSocket, &addr) != 0)
+        return -1;
+    while (pAudio->nConnect == AUDIO_CONNECT_PENDING && pAudio->pfnConnect == 0) {
+        mcDelayThread(20);
+        func_00610788(pAudio);
+    }
+    return 0;
+}
+
 void func_00610598(AUDIO *pAudio)
 {
     if (pAudio->nGrid > 0)
@@ -271,6 +306,61 @@ int func_006105F0(AUDIO *pAudio)
             result = -1;
             break;
         }
+    }
+    return result;
+}
+
+/* Reads what the codec has (to the voice, a message at a time), then ends a silence over 1.5 s. */
+int func_00610668(AUDIO *pAudio, int nNow)
+{
+    char buf[2048];
+    int nType = 0;
+    int nTotal = 0;
+    int n;
+
+    for (;;) {
+        n = pAudio->pfnRead(pAudio, &nType, buf, sizeof(buf));
+        nTotal += n;
+        if (n > 0) {
+            func_006115C0(pAudio, nType, buf, n);
+            pAudio->nLastRead = nNow;
+        } else if (nTotal == 0 && pAudio->pFrame != 0) {
+            func_006115C0(pAudio, nType, buf, -1);
+        }
+        if (!((n >= 2048 || (n > 0 && nType == 63)) && n > 0))
+            break;
+    }
+    if (nTotal == 0 && pAudio->pFrame != 0 && nNow - pAudio->nLastRead > 1500)
+        func_006115C0(pAudio, pAudio->x90, buf, 0);
+    return nTotal;
+}
+
+/* Sends a message to one peer: its second address below state 2, its first in 0 and 2. */
+int func_00610FA0(AUDIO *pAudio, int nTo, GRID_HEADER *h, void *pData, int nLen)
+{
+    char buf[1280];
+    PEER *p = func_00629EB8(pAudio->pPeers, nTo);
+    int result = 0;
+    int n;
+
+    if (nLen + sizeof(GRID_HEADER) > sizeof(buf))
+        return -1;
+    if (p == 0)
+        return -1;
+    n = sizeof(GRID_HEADER);
+    memcpy(buf, h, sizeof(GRID_HEADER));
+    memcpy(buf + n, pData, nLen);
+    n += nLen;
+    if (p->info.nAddr2 != 0 && p->nState < 2) {
+        if (p->info.nPort2 == 0)
+            return -1;
+        result = n == func_006110D8(pAudio, buf, n, p->info.nAddr2, p->info.nPort2) ? 0 : -1;
+    }
+    if (p->info.nAddr != 0 && (p->nState == 2 || p->nState == 0)) {
+        if (p->info.nPort == 0)
+            return -1;
+        if (n != func_006110D8(pAudio, buf, n, p->info.nAddr, p->info.nPort))
+            result = -1;
     }
     return result;
 }
