@@ -69,6 +69,7 @@
 0x001CE2F0 0x28 eenull  # MAIN; s1:data-exact (size SOCOM 1's; via InitAlarm)
 0x001CE368 0x4 mcRunCmdNo  # MAIN; s1:data-exact (size SOCOM 1's; via _lmcGetClientPtr +2)
 0x001CE36C 0x4 semaidRegFunc  # MAIN; s1:data-exact (size SOCOM 1's; via _lmcGetClientPtr)
+0x001CE370 0x4 semaidDelay  # MAIN; by body (libmc's second semaphore, -1 in data: sceMcInit creates it at count 0, mcDelayThread waits on it under mcHearAlarm's alarm; a later libmc than the demo's, which has none)
 0x001CE378 0x20 _rix  # MAIN; s1:data-exact (size SOCOM 1's; via _getRef0)
 0x001CE398 0x20 _ri0  # MAIN; s1:data-exact (size SOCOM 1's; via _getRef0)
 0x001CE3B8 0x28 _isDirty  # MAIN; s1:data-exact (size SOCOM 1's; via _flushBuf +4)
@@ -153,7 +154,10 @@
 0x001DEE68 0x0 typeAddr  # MAIN bss; s1:data-exact (size SOCOM 1's; via mceGetInfoApdx)
 0x001DEE6C 0x0 freeAddr  # MAIN bss; s1:data-exact (size SOCOM 1's; via mceGetInfoApdx)
 0x001DEE70 0x0 formAddr  # MAIN bss; s1:data-exact (size SOCOM 1's; via mceGetInfoApdx)
+0x001DEE80 0x40 buffFileInfo  # MAIN bss; s1:asm (the demo's libmc object's local label at the same offset, mcClientID+0x40: sceMcSetFileInfo's and sceMcRename's sceMcTblGetDir)
 0x001DEEC0 0x0 sifParamOrd  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceMcUdCheckNewCard)
+0x001DEEF0 0x414 sifParamFname  # MAIN bss; s1:asm (the demo's libmc label at mcClientID+0xB0: the name block, port/slot/flags/maxent/table and a 1024-byte path)
+0x001DF340 0xC0 sifParamNext  # MAIN bss; s1:asm (the demo's libmc label at mcClientID+0x500: sceMcRead's and sceMcGetInfo's end-function buffer)
 0x001DF400 0x0 currentDir  # MAIN bss; s1:data-exact (size SOCOM 1's; via mceStorePwd)
 0x001E0400 0x0 retval  # MAIN bss; s1:data-exact (size SOCOM 1's; via _lmcGetClientPtr +2)
 0x001E0440 0x200 _sprtagdata.24  # MAIN bss; s1:data-exact (size SOCOM 1's; via dmaRefImage)
@@ -902,6 +906,8 @@
 0x0044CCF0 0x1C MultiplayerMsgStrings  # OVL1 bss; s1:data-seq (size SOCOM 1's; via InitMultiplayerMessages__14CCharacterTypeFP5_zrdr)
 0x0044CD48 0xC m_char_list__14CCharacterType  # OVL1 bss; s1 by hand (SOCOM 1's CCharacterType::m_char_list, a CCharTypeVec at the demo's 0x5063C0: GetByNameMod walks its data (+8) and size (+4) as the demo's does, CleanupTemporary removes the temporaries from it with DeleteTemporaryCharType; 27 references in 10 functions, OVL1's initialiser 0x400870 among them)
 0x0044CD68 0xC m_gear_list__14CCharacterType  # OVL1 bss; SOCOM 1's m_gear_list__14CCharacterType (0x5063E0, a list there, 0x20 after m_char_list as here): SOCOM II's is a pointer vector (capacity, size, data) -- CZSealBody::FindGear (0x59A730) walks its data (+8) and size (+4) by name as SOCOM 1's FindGear walked the list; 29 references in 6 functions, OVL1's initialiser 0x400870 and CCharacterType's Parse and Open among them (the SEAL lane, round 7)
+0x0044CD88 0xC m_anim_set_names__14CCharacterType  # OVL1 bss; s1 by hand, the AI core round 13 (SOCOM 1's CCharacterType::m_anim_set_names, a pointer list at the demo's 0x506400, 0x40 after m_char_list as here: SOCOM 1's Parse walks it by strcmp and inserts a _strdup at its end, as SOCOM II's AddAnimSetName 0x53C110 does); 8 references in 2 functions
+0x0044CDA8 0xC m_ModelCache__20CCharacterModelCache  # OVL1 bss; s1 by hand, the AI core round 13 (SOCOM 1's CCharacterModelCache::m_ModelCache, a zdb::CModelVector at the demo's 0x506420, 0x60 after m_char_list as here: SOCOM II's Acquire 0x53CCA0 looks a gear's model up in it and pushes the world's onto it, as SOCOM 1's Acquire does); 16 references in 6 functions
 0x0044CE00 0xC m_heartbeat_sound__10CZSealBody  # OVL1 bss; s1:data-exact (size SOCOM 1's; via OpenHeartbeatSounds__10CZSealBodyFv)
 0x0044CE10 0x4 m_heartbeat_sndisnt__10CZSealBody  # OVL1 bss; SOCOM 1's m_heartbeat_sndisnt__10CZSealBody (0x475CC4, sic): the heartbeat's playing CSndInstance, TickHeartbeat (0x5437D0) swaps it, StopAllHeartbeatSounds (0x543A80) and CloseHeartbeatSounds (0x543AD0) stop and release it -- about 59 references in 6 functions, CZSealBody::Tick's among them (the SEAL lane, round 7)
 0x0044CE18 0x4 m_heartbeat_curindex__10CZSealBody  # OVL1 bss; SOCOM 1's m_heartbeat_curindex__10CZSealBody (0x475CC8, after m_heartbeat_sndisnt as here): the loop TickHeartbeat (0x5437D0) keeps playing, -1 once StopAllHeartbeatSounds and CloseHeartbeatSounds stop it -- about 26 references in 6 functions (the SEAL lane, round 7)
@@ -1408,6 +1414,7 @@
 0x0066A180 0x18 path_queue__2ai  # OVL2 bss; SOCOM 1's (path_queue__2ai, 24 bytes at 0x49B160: the planner queue, a list of CAiPath * and three words): __sinit_ai_astar.cpp builds it and registers ~CAiPathQueue, AbortPathPlan removes a path from it as SOCOM 1's does; 19 references in 7 functions
 0x0066A198 0x8 s_dummy_cell  # OVL2 bss; SOCOM 1's dummy cell (dummy_cell__6CAiMapFv returned its gp address): __sinit_ai_map.cpp builds it through CAiCell(); 1 reference in 1 function so far
 0x0066A1B0 0xE0 AiMaps  # OVL2 bss; s1:data-seq (size SOCOM 1's; via CreateCompassNavPoints__8CMissionFv +1)
+0x0066A4B8 0x4 s_soundNameBytes  # OVL2 bss; ours, the AI core round 13 (char_type.cpp's static: ParseSounds 0x53BEF0 adds each kept sound name's length to it; nothing reads it -- a debug total, likely); 2 references in 1 function
 0x0066A4D0 0x11 SessionKey  # OVL2 bss; s1 by hand (SOCOM 1's SessionKey: every Medius request copies these 17 bytes to its +0x15, as SOCOM 1's do); size SOCOM 1's; 91 references in 78 functions
 0x0066A4F0 0x44 AccountInfo  # OVL2 bss; s1 by hand (SOCOM 1's AccountInfo: QuitClan sends its first word as the player's account, IsLeaderOfClan compares it, the account name at +4); size SOCOM 1's; 46 references in 29 functions
 0x0066A538 0x4 LobbyWorldID  # OVL2 bss; s1 by hand (SOCOM 1's LobbyWorldID: RejoinRoom 0x2E3730 goes back to the room only when it is not negative, as SOCOM 1's does; JoinRoom stores it); size SOCOM 1's; 12 references in 9 functions

@@ -1647,6 +1647,38 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 13** (ai_perception.cpp, char_type.cpp's sounds, LODs and references):
+  - the no-op `lw; dsll32 0; dsrl32 0; sw` before a bit set is CAiPath::SetFlags' `x &= ~clear; x |= set`
+    called with a clear of 0 (the scan 0x60AA20 does it six times);
+  - a lerp `lo*(1-x) + hi*x` read straight off a table element swaps the madd operands; reading lo and
+    hi through a `const T &` element reference keeps the target's order (the scale through the same
+    reference moves its load);
+  - `Item((unsigned int)i)` on Item(int) stops pointer stepping; `Item((unsigned int)(i + 1))` computes
+    i+1 after the count, `Item(i + 1)` before it;
+  - `n += p ? strlen(p) : 0` leaves both joins unpadded, the if/else form pads them as the target
+    does; `played = true;` written before a call fills the jal's delay slot and orders the float
+    constants f12 first, f13 last; a float field taken into a local hoists its load above nested
+    tests;
+  - ai_perception.cpp runs 0x53ABE0-0x53B00B (its .data 0x64FA70-0x64FC3C between the walker unit's
+    and char_type.cpp's); the voice-font getters 0x53B010-0x53B06F close either it or char_type.cpp
+    (identical bytes); 0x53C940 is SOCOM 1's CCharacterGear::CreateInstance (same body, same place).
+- **Tells from the online lobby, round 10** (nine units' static initialisers, the lobby's state queue):
+  - defining a unit's globals in order gave seven of the lobby units' `__sinit_` byte-exact at once
+    (zNetMedius, Room, Clan, Ladder, Lobby, Friends, LANLobby; Chat and Dme followed);
+  - a global whose registered destructor is not its vtable's destructor is a member of an outer
+    object: two this-tests, the member's destructor inlined one level (theAcctDB inside
+    CZUniversInformationServer -- level-6 evidence, "Open, and next");
+  - an initialiser calling a queue's tiny members out of line means the global's constructor was cut
+    to one level by its size; `#pragma inline_max_size` acts through its state at the unit's END
+    (the chat unit sets 100 for the whole unit) and dead code adds no size;
+  - a derived list whose destructor body is `clear();` stores the size in the first this-test's
+    delay slot; the deleter's clear inlines into a list's destructor only once the unit's own code
+    calls `list.clear()` (which calls the deleter's clear out of line);
+  - a vector's resize calling memset for its blank element means the element has a memset
+    constructor; returning a member unconverted wants it declared `bool` (`unsigned char` adds an
+    sltu); `p[i + k]` through a per-case local pointer stays base-plus-index, while `bytes = p + k`
+    is strength-reduced into a walking pointer;
+  - 0x2F62B0 is the chat unit's tail, so zNetMediusLobby.cpp starts at 0x2F6340.
 - **Tells from the HUD, round 21** (st_mpexit.cpp written whole, reco.cpp's gsapi calls by name):
   - a switch's compare chain runs its labels in reverse source order and lays the blocks out in
     source order: Tick's target order 1, 3, 5, 6, 4 is `case 4: break; case 6; case 5: case 3; case 1;`
@@ -3524,6 +3556,65 @@ match. Found on the way, left for its lane: the recogniser's FillLanguageVirtual
 against one byte of its table (the first slot is null, so the heuristic reads a string); checked to
 the symbol's size, one slot names another address. automatch was not run this round.
 
+**The tools, round 7a: a referenced object is compared whole.** `scdiff.local_extent` finds the
+TU-local object a reference lands in -- MW's own symbol, a GNU object's sized LOCAL label
+containing the offset (a table too, and a reference into its middle), a label without a size by its
+data.txt row -- and `local_object_ok` compares all of it, at the target address the reference's
+offset implies. A word relocated inside it resolves through the CANDIDATE's own function at that
+offset, by that function's map address (`table_word_ok`; the same distance from the referencing
+function only when the map does not name it): language.c's four OPEN functions compile to other
+sizes, so by distance 73 of _LangVirtualTable's 79 slots would move, by name all are right (the 7c
+lane checked them by hand: FillLanguageVirtualTable was no false positive). A pointer into the
+object's own data (a string table) is checked by what it points at, one level deep; a static the
+data map names by its address AND its content (MW's were by address only; a GNU one, relocated
+against its section, by content only); an unnamed GNU literal at least over the width its load
+reads (a float whose first byte is zero is not a one-byte string). Proved over every unit (`--files
+.`, 3,094: hand-written MW and GCC, every draft): the 10,965 output lines are identical under
+master's scdiff and this one -- no verdict changed in either direction -- while 982 references in
+224 functions are compared over more bytes: 891 data-map-named MW statics now by content (88 in
+.data/.rodata, the .bss ones where the image holds that memory), 60 MW references at an offset into
+an object, 11 GNU tables (FillLanguageVirtualTable 1 -> 316 bytes, FillContextV2VirtualTable 1 ->
+84, InitAlarm and InitTLBFunctions 2 -> 64, InitSystemCallTableAddress 2 -> 16) and 20 GNU literals
+(the codec's `.lit4` floats 1 -> 4). `test_scdecomp.py`'s `test_gnu_table_is_compared_whole` pairs
+both with a corrupted image (a slot +8; the codec's 1.40234375f, 0x3FB38000, as 0x3FB48000): each
+was a MATCH under master's scdiff, each fails now. Still by address only: a GLOBAL a unit defines
+(its content is data, scored nowhere). Re-proved after merging master 7ba1b5ba (7b's and 7c's units
+in): 11,110 lines, one verdict changed -- **asrspi_OpenEngine, WRONG REFERENCE -> MATCH**: its
+`g_APIRecogCallBacks` (eight callbacks, slot 3 null) was read as its first three relocated words
+and checked by distance, and asrspi_ActivateWords, open and 311 words off in size, sits between the
+function and the callbacks; by name all eight slots are right (checked apart, slot by slot). A
+false WRONG on master's tools, not a hole in these.
+
+**Round 7a** (2026-11-03, by hand; the tools above first): 32 rows newly byte-exact (8,870 -> 8,902 on
+master's tools, 8,903 on these), 13 matched drafts superseded, 12 rows and 4 data rows named. libkernl's `sdk/loadfile.c` whole (18 of 18: `_lf_bind`, open since round
+6a, and the six module/ELF/IOP-memory calls), libmc whole but one (`sdk/libmc.c`, 27 of 28: 21 new;
+12 rows named by the demo's order, each checked by its RPC number -- sceMcInit, sceMcEnd,
+mcHearAlarm, `mcDelayThread@libmc` (OVL2's copy at 0x62C180 holds the bare name), sceMcChdir,
+sceMcFormat, sceMcDelete, sceMcFlush, sceMcSetFileInfo, sceMcRename, sceMcUnformat,
+sceMcGetEntSpace; data.txt gains the demo's labels buffFileInfo, sifParamFname, sifParamNext and the
+newer release's semaidDelay), and five libgraph objects (`sdk/gs_*.c`, `sdk/libgraph.h`: 5 of 6 --
+sceGsPutDispEnv, sceGszbufaddr, sceGsSyncV, sceGsSetDefAlphaEnv, sceGsGetGParam over its draft).
+What they showed:
+
+- **A constant-size memcpy is GCC's block move**: loadfile's 252-byte argument copy (the run-time
+  alignment test, an `ld`/`sd` loop and an `ldl`/`ldr` one) and libmc's 64-byte file-info copy
+  (`ldl`/`sdl` both sides: a `char *` source makes both unaligned) are `memcpy` calls with a constant
+  size, never a struct assignment (aligned `ld`/`sd`).
+- **A result read before a store that may alias it**: loadfile's module calls return `_senddata.id`
+  read into a local before `*result` is stored (`int *` may alias the static).
+- **Block layout follows the source's nesting**: `_lf_bind`'s bind loop sits inside
+  `if (_bind_check < 0)`, its success path returning from inside the loop -- the delay loop is laid
+  out last and the first test jumps to the final `return 0`; libmc's null-argument cases come last
+  as `if (argp != 0) {...} else`.
+- **libmc is a later release than the demo's** (functions 4-16 bytes apart, a second semaphore for
+  the delay alarm): its rows had no exact names; the demo's order and the RPC numbers (ps2sdk's libmc
+  reconstructs the same protocol and command layouts) name them.
+- **Sony's sceGsGParam is 16-aligned**: only then does GCC fold sceGszbufaddr's `InterMode == 1 &&
+  FFMode == 0` into one 64-bit load and a 0x0000FFFF0000FFFF mask; libgraph's demo objects hold one
+  function each.
+- **Open, diagnosed in place**: sceMcWrite (the head split's `buff - 16` is reassociated here, kept in
+  the target), sceGsResetGraph (4 words, a v0/v1 swap).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -3966,7 +4057,10 @@ What is open across lanes, and what comes next:
   self-inlining starts at 6) -- 27 functions to refit (build/scratch/lvl/w1_l6.txt). The
   original's MSL is deeper than these headers everywhere SOCOM 1's DWARF shows it (compressed
   pairs in the pod, the list's size and end node, alloc() accessors), so a level of 6 or more with
-  the real depths is likely; 5 is what these headers fit.
+  the real depths is likely; 5 is what these headers fit. A third witness (the online lane, round
+  10): `__sinit_zNetMediusUniverse.cpp` 0x4022D0 matches at `-inline level=6` and not at 5 once
+  theAcctDB is modelled as the member at offset 0 of an outer CZUniversInformationServer (the
+  destructor it registers, 0x300570, is not CAcctDB's vtable's) -- open at 5 (0xC4 vs 0x144).
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
   structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the

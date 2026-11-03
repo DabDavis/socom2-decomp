@@ -86,6 +86,14 @@ struct AccountInfoType {
     char AccountName[32];   // 0x4
 };
 
+/* the unit's four ladder lists, in the order its static initialiser (0x401FA0) builds them and
+ * registers their destructors (LadderList's 0x2ED3E0, ClanLadderList's 0x2ED360: the unit's last
+ * functions) */
+LadderList LadderLeaders;
+LadderList LadderRanking;
+ClanLadderList ClanLadderLeaders;
+ClanLadderList ClanLadderRanking;
+
 void cbGetLadderRanking(int, int, int, MediusLadderPositionResponse *);
 void cbGetLadderPosition(int, int, int, MediusLadderPositionResponse *);
 void cbGetClanLadderList(MediusErrorCode, MediusErrorCode, MediusErrorCode,
