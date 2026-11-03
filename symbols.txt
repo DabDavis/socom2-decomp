@@ -10955,7 +10955,7 @@
 0x005B99B0 0x1C SetWeaponInfoChanged__5CZKitFv  # OVL2; s1:exact
 0x005B99D0 0x24 PendingPickupHandled__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's PendingPickupHandled, after SetWeaponInfoChanged as there: a flag bit cleared (bit 14, SOCOM 1's 13) and the pickup wait zeroed, 0x8B8 here, SOCOM 1's 0x878)
 0x005B9A00 0x1A8 func_005B9A00  # OVL2
-0x005B9BB0 0x258 func_005B9BB0  # OVL2
+0x005B9BB0 0x258 RemoveItemAndAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 12): SOCOM 1's RemoveItemAndAmmo__5CZKitFi (0x2A5830 there) opens alike -- the index wrapped on m_num_items, the item's slot, magazines and ammunition cleared, the count made the last item's place plus one, the selection reset -- with SOCOM II's closing up (0x5B9A00) and WepWaitOn added; RemoveItem (0x5B9E10) calls it; seal_kit.cpp byte-exact
 0x005B9E10 0xEC RemoveItem__5CZKitF10EQUIP_ITEM  # OVL2; by hand (the kit lane, round 11): HandlePlaceMPBomb (0x5BC200) drops the MP bomb, item 154, through it where SOCOM 1's HandlePlaceMPBomb dropped it inline; FindItemWithAmmo inlined, then 0x5B9BB0 (by its place and its opening wrap SOCOM 1's RemoveItemAndAmmo(int)) on the index -- new in SOCOM II, the name ours
 0x005B9F00 0x134 func_005B9F00  # OVL2
 0x005BA040 0x390 func_005BA040  # OVL2
@@ -11016,7 +11016,7 @@
 0x005BFAC0 0x378 func_005BFAC0  # OVL2
 0x005BFE40 0x18 func_005BFE40  # OVL2
 0x005BFE60 0x1C0 func_005BFE60  # OVL2
-0x005C0020 0x108 func_005C0020  # OVL2
+0x005C0020 0x108 HandlePlacingExlosive__5CZKitF10EQUIP_ITEMff  # OVL2; s1:calls by hand (the kit lane, round 12): CSealCtrl::OnActionButton calls it with an explosive's kind (151, 152, 154) and two floats where SOCOM 1's OnActionButton calls HandlePlacingExlosive__5CZKitF10EQUIP_ITEMff (sic; 0x2A94F0 there), and it opens as SOCOM 1's does -- the selection kept, SetCurItemEnum(item), IsDirectFire's undo, CanFire, the wait -- the placing itself moved out (0x5BD530, 0x5BE9A0); seal_kit.cpp byte-exact
 0x005C0130 0x11C func_005C0130  # OVL2
 0x005C0250 0x6E4 func_005C0250  # OVL2
 0x005C0940 0xA8 GetShotCount__5CZKitFv  # OVL2; by hand (the kit lane, round 11): the rounds a trigger pull fires -- 1 without ammunition, 0 on safety, 3 in burst, 10000 in auto -- SOCOM 1's WillFireWeapon's inline switch moved out (new in SOCOM II, the name ours); called beside GetFireDelay by 0x5C0AE0 and 0x5C0FD0
@@ -11032,7 +11032,7 @@
 0x005C2670 0x414 func_005C2670  # OVL2
 0x005C2A90 0x568 func_005C2A90  # OVL2
 0x005C3000 0x2B0 func_005C3000  # OVL2
-0x005C32B0 0xB0 func_005C32B0  # OVL2
+0x005C32B0 0xB0 SetFireDelay__5CZKitFfb  # OVL2; by hand (the kit lane, round 12): a kit member (this the kit: m_fire_delay at 0x820) -- -1 takes the item in hand's own wait (its float at 0x60 when the bool is set, else at 0x5C), then hands the weapons' shared record the delay (0x3D00D0) and keeps the bool in bit 17; CSealCtrl::PreTick and 0x5C5340 call it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C3360 0x3E0 func_005C3360  # OVL2
 0x005C3740 0x34 GetItemByIndex__5CZKitCFi  # OVL2; by hand: an item by index -- the index through 0x5C6600 (with 255), then the item array at 0xE4 (SOCOM 1's m_item at 0xD0, 0x14 on); GetCurItem (const) tail-calls it with the selected item, so it is const here
 0x005C3780 0x8 GetCurItem__5CZKitCFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; its result's type byte is compared with 11)
@@ -11044,12 +11044,12 @@
 0x005C3CE0 0x8 func_005C3CE0  # OVL2
 0x005C3CF0 0x1E4 GetMaxAmmoCount__5CZKitFi  # OVL2; s1:calls (the HUD lane's round 15, vetted by the integrator: PlaceWeaponText calls it where SOCOM 1's calls GetMaxAmmoCount__5CZKitFi)
 0x005C3EE0 0x59C func_005C3EE0  # OVL2
-0x005C4480 0x134 func_005C4480  # OVL2
+0x005C4480 0x134 NextFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member -- the selected item's mode (m_firemode, 0x6FC), and when it is 4 or more (a launcher ammunition's item kind) that kind's first item with ammunition (kit.h's FindItemWithAmmo inlined) and the kind, handed to 0x5C3EE0 with the selected item's firing item (GetFiringItem); 0x5C4600 calls it with the selected index, which it does not read; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C45C0 0x40 func_005C45C0  # OVL2
 0x005C4600 0x288 func_005C4600  # OVL2
 0x005C4890 0x8 func_005C4890  # OVL2
 0x005C48A0 0x8 func_005C48A0  # OVL2
-0x005C48B0 0xA8 func_005C48B0  # OVL2
+0x005C48B0 0xA8 SetHandFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member storing the mode in m_firemode[bit 18 ? 1 : 0] and at 0x7EC, then -- the body alive (0xE1 bit 4) -- that slot's item kind at 0x7F0; CZSealBody::ReCreate calls it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C4960 0x8 func_005C4960  # OVL2
 0x005C4970 0x40 GetNumMags__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's GetNumMags: counts the item's ten magazines (0x1D4 + 40*index, SOCOM 1's 0x1C0) holding rounds)
 0x005C49B0 0x154 GetCurNumMags__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetCurNumMags, after GetNumMags as there: the selected item -- or, in its grenade launcher's mode (0x5BD7E0), the first item of its fire mode's kind with ammunition -- and GetNumMags inlined; 0 for none)
@@ -11061,10 +11061,10 @@
 0x005C6510 0x18 func_005C6510  # OVL2
 0x005C6530 0xC8 GetAmmoItemIndex__5CZKitF8FIREMODE  # OVL2; by hand (the kit lane, round 11): kit.h's FindItemWithAmmo on the fire mode as an item kind (a launcher's mode is its ammunition's item) -- CAmmoDisplay::Update asks it for the firemode graphic; new in SOCOM II, the name ours
 0x005C6600 0x1C4 unwrap__5CZKitCFi8FIREMODE  # OVL2; by hand: SOCOM 1's unwrap(int, int) inlined on m_num_items, then the item's fire mode (255: its own, m_firemode at 0x6FC) and, for a grenade launcher (0x3C5D80) in a mode of 4 and up, the first item of that kind with ammunition (the name ours, after the unwrap it inlines; GetItemByIndex passes 255)
-0x005C67D0 0x144 func_005C67D0  # OVL2
+0x005C67D0 0x144 GetFiringItem__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member -- unwrap(index, 255)'s item, or, when it is a launcher's grenades (IsGrenadeLauncherAmmo), the first class-145 item (OVL1 0x3C5C20's test) or the first primary weapon: GetClass145Index's and GetPrimaryIndex's walks inlined; WeaponIsLauncherMode, WeaponIsGrenadeLauncherMode, GetReticuleByIndex and four more call it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C6920 0x48 GetAmmoByIndex__5CZKitFi  # OVL2; by hand: new in SOCOM II -- m_ammo (0x15C, SOCOM 1's 0x148) at unwrap(index, 255), after a GetCurItem whose result is dropped; CAiSNoAmmo::Tick calls it after GetItemByIndex where SOCOM 1's called GetWeapon (the name ours)
 0x005C6970 0x8 GetCurAmmo__5CZKitFv  # OVL2; by hand: GetAmmoByIndex(m_selected_item), tail-called (the name ours)
-0x005C6980 0xC0 func_005C6980  # OVL2
+0x005C6980 0xC0 AttachItemNode__5CZKitFUcPCc  # OVL2; by hand (the kit lane, round 12): a kit member -- the body's attachment record of a kind (8-byte entries at body+0x388), the item in hand's node (the item pointers' vector at 0x834, one place on), the body's part of a name (CBody::FindPart on body+0x170: 0x5C50B0 passes "aimnodes") -- the node hidden (CNode slot 0x38, SetActive(false)), made the part's child (slot 0x18, AddChild) and kept at the record's +0xC; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C6A40 0x358 func_005C6A40  # OVL2
 0x005C6DA0 0x368 func_005C6DA0  # OVL2
 0x005C7110 0x90 GetClass145Index__5CZKitFv  # OVL2; by hand (the kit lane, round 11): GetPrimaryIndex's loop with 0x3D1CB0 (an item kind of class 145) -- new in SOCOM II, the name ours
@@ -11092,12 +11092,12 @@
 0x005C8930 0x4C GetSecondaryEnum__5CZKitCFv  # OVL2; by hand: GetCurItemEnum's code on item 1 (new in SOCOM II, before it; the name ours)
 0x005C8980 0x4C GetPrimaryEnum__5CZKitCFv  # OVL2; by hand: GetCurItemEnum's code on item 0 (new in SOCOM II, before it; the name ours)
 0x005C89D0 0x4C GetCurItemEnum__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's GetCurItemEnum, after HasItem and the index lookups as there: the selected item through unwrap(sel, 255), its m_equip (lb 0x7C), 255 without one)
-0x005C8A20 0x778 func_005C8A20  # OVL2
+0x005C8A20 0x778 SetCurItemEnum__5CZKitF10EQUIP_ITEM  # OVL2; s1:calls by hand (the kit lane, round 12): HandlePlacingExlosive (0x5C0020) calls it first with its item kind, as SOCOM 1's calls SetCurItemEnum__5CZKitF10EQUIP_ITEM (0x2AF610 there), and it sits after GetCurItemEnum as SOCOM 1's (0x778 here, 0x374 there)
 0x005C91A0 0xC func_005C91A0  # OVL2
 0x005C91B0 0x7C sealSaveFireModes__Fv  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's sealSaveFireModes -- the local player's kit's item count into g_iNumSavedFireModes (0x66B670), each item's id and fire mode into g_arrSavedFireModeInfo (0x66B580) -- right before CSavedFireModeInfo's constructor as there; CMPExitState::Init calls it
 0x005C9230 0x14 __ct__Q222@unnamed@seal_kit_cpp@18CSavedFireModeInfoFv  # OVL2; s1:exact
-0x005C9250 0x18 func_005C9250  # OVL2
-0x005C9270 0xCC func_005C9270  # OVL2
+0x005C9250 0x18 PerturbAimVector__11CSealCtrlAiFP6CPnt3D  # OVL2; by hand (the kit lane, round 12): slot +0x74 of CSealCtrlAi's table (0x669464 holds it; CSealCtrl's PerturbAimVector at 0x592260 is the same slot of its own), SOCOM 1's position (after CSavedFireModeInfo(), before CAiWepHint's statics) and its tail: m_target.ModifyAimDir(v, accuracy, aiAccuracyAngle) as SOCOM 1's ends; seal_kit.cpp byte-exact
+0x005C9270 0xCC GetAccuracyFactor__11CSealCtrlAiFv  # OVL2; by hand (the kit lane, round 12): the stance/pace factor SOCOM 1's PerturbAimVector computed inline (GetStance(false): crouched 1.25, prone 1.5; ai::is_moving(velW, 625) 0.7), times the controller's floats at 0xD4 and 0x70C -- 0x55F0A0 calls it; the name ours; seal_kit.cpp byte-exact
 0x005C9340 0x74 GetWeaponAccuracy__10CAiWepHintFP8CZWeaponfb  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponAccuracy -- AI_PARAMS::GetAccuracy of the weapon (0 without one), now doubled when the bool is set and _saturate'd to [0, 1] -- before GetWeaponEffectiveRange as there
 0x005C93C0 0x38 GetWeaponEffectiveRange__10CAiWepHintFP8CZWeapon  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponEffectiveRange -- the same 0.5 * (max + min) of the weapon's AI_PARAMS (SOCOM II's at 0x70), 0 without a weapon -- the kit unit's last as there, after GetWeaponAccuracy
 0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11260,7 +11260,7 @@
 0x005DEB10 0x198 func_005DEB10  # OVL2
 0x005DECB0 0xB8 test<i>__2aiFRCiQ22ai7TEST_OPRCi_b  # OVL2; by hand (the kit lane, round 11): a value tested against another by a byte operator (1 !=, 2 ==, 3 >, 4 <, 5 >=, 6 <=, else true: a 7-entry jump table) -- SOCOM 1's MW 2.4 inlined the same switch into CTParam::Tick; SOCOM II's 0x5D4770 calls this int instance (the template's names ours)
 0x005DED70 0x100 test<f>__2aiFRCfQ22ai7TEST_OPRCf_b  # OVL2; by hand (the kit lane, round 11): the float instance of ai::test (0x5DECB0's int one), called from the same 0x5D4770
-0x005DEE70 0x18 func_005DEE70  # OVL2; the same words as _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x005DEE70 0x18 func_005DEE70  # OVL2; the same words as _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); proven by its caller (the kit lane, round 12): ai::PARAM's tick (0x5D4770) passes it a byte it computed and the controller's byte at 0x5D0 and reads the result with lbu -- seal_tasks.cpp's explicit instance byte-exact; ovl-copy: _max<Uc>__2aiFRCUcRCUc_RCUc
 0x005DEE90 0x2C func_005DEE90  # OVL2
 0x005DEEC0 0x4A8 func_005DEEC0  # OVL2
 0x005DF370 0x64 GetFP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
@@ -11303,9 +11303,9 @@
 0x005E3EE0 0x9C __dt__12CAnimTypeRecFv  # OVL2; by hand (the kit lane, round 10): the destructor the 600-record pool's new[] (0x5E5B10, 0x5E5BF0) passes to __construct_new_array; the record cleared as the constructor clears it, deleted when asked -- class name ours
 0x005E3F80 0x68 __ct__12CAnimTypeRecFv  # OVL2; by hand (the kit lane, round 10): the constructor the 600-record pool's new[] passes to __construct_new_array: both shorts -1, the bits and the count zeroed, the pointer at 8 zeroed -- class name ours
 0x005E3FF0 0xF28 func_005E3FF0  # OVL2
-0x005E4F20 0x6C func_005E4F20  # OVL2
-0x005E4F90 0x6C func_005E4F90  # OVL2
-0x005E5000 0x6C func_005E5000  # OVL2
+0x005E4F20 0x6C FindAnimKind__FPCc  # OVL2; by hand (the kit lane, round 12): FindAnimType's shape over the other int map 0x44C460, the int returned whole (lw); 0x574C30 keeps five of them ("ready", "suspicious", "conversation"...: the variant kinds CAnimTypeRec's groups are keyed by, likely); new in SOCOM II, the name ours; anim.cpp byte-exact
+0x005E4F90 0x6C LookupAnimType__FPCc  # OVL2; by hand (the kit lane, round 12): FindAnimType's words exactly, the same map 0x44C420 -- only InitializeAnimNames (0x5E1DF0) calls it, once per anim type global (SOCOM 1's InitializeAnimNames inlined FindAnimType's find instead); the name ours; anim.cpp byte-exact
+0x005E5000 0x6C FindAnimType__FPCc  # OVL2; s1:calls by hand (the kit lane, round 12): CTPlay::Parse calls it where SOCOM 1's calls FindAnimType (0x2CD240 there), the same body (the name map's find, -1 when absent or for a null name, the type read with lh); its map 0x44C420 (SOCOM 1's newNamesMap); anim.cpp byte-exact
 0x005E5070 0x70 CloseAll__7AnimSetFv  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's CloseAll walks AnimSet::list (0x509710 there, 0x44D430 here) calling Close; CGame::StopEngine calls this as SOCOM 1's calls CloseAll -- SOCOM II's walk is left empty
 0x005E50E0 0x264 func_005E50E0  # OVL2
 0x005E5350 0x1B0 func_005E5350  # OVL2
@@ -11738,7 +11738,7 @@
 0x00609D60 0x78 __dt__10CAiSShotAtFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609DE0 0x8 CanPursue__10CAiSShotAtCFP11CSealCtrlAi  # OVL2; by hand: CAiSShotAt's vtable slot +0x2C (CanPursue, as SOCOM 1's)
 0x00609DF0 0x20C CheckLineOfFire__2aiFPC7CEntityPC7CTargetf  # OVL2; s1:calls
-0x0060A000 0x2C8 func_0060A000  # OVL2
+0x0060A000 0x2C8 ModifyAimDir__9CAiTargetFP6CPnt3Dff  # OVL2; s1:calls by hand (the kit lane, round 12): CSealCtrlAi::PerturbAimVector (0x5C9250) tail-calls it on its target (+0x67C) with (v, accuracy, aiAccuracyAngle) where SOCOM 1's PerturbAimVector calls ModifyAimDir__9CAiTargetFP6CPnt3Dff (0x2E9900 there) with the same three; first of CAiTarget's stretch after CheckLineOfFire, as SOCOM 1's; OVL1's 0x3A8D20 calls it too (SOCOM 1's CTurret::Fire does)
 0x0060A2D0 0x18 func_0060A2D0  # OVL2
 0x0060A2F0 0x16C func_0060A2F0  # OVL2
 0x0060A460 0x12C func_0060A460  # OVL2
