@@ -293,6 +293,16 @@ CTCMEntry *CTCMCache::Find(const char *name)
     return found;
 }
 
+/* the layout's statics (OVL1 data 0x3DC9F0 on: 8-byte-spaced file statics, the target loads them
+ * with lwc1) -- the two the initialiser reads */
+static float s_tcmColumnX = 20.0f;   // 0x3DC9F0
+static float s_tcmLeftX = -256.0f;   // 0x3DCA80
+/* computed by the unit's initialiser (0x3FF430), in this order: the first column's left, the
+ * columns' span, the cursor's colour (the layout reads its three components, the slide its alpha) */
+static float s_tcmLeft = s_tcmColumnX;   // 0x413020
+static float s_tcmSpan = s_tcmColumnX - s_tcmLeftX;   // 0x413028
+static CPnt4D s_tcmCursorColor(160.0f, 250.0f, 250.0f, 100.0f);   // 0x413030
+
 /* the menu's columns (constructed by the initialiser 0x3FF430) */
 CTCMColumn g_tcmColumns[8];
 
@@ -386,6 +396,12 @@ int tcmSelectTeam(CZSealBody *player, int team)
     return 1;
 }
 
+/* OPEN, 4 instructions short (0x170 vs 0x174): the code is the target's but its registers --
+ * the target keeps the player in s4, r in s2 and the narrowed member in s1, and passes that
+ * member to CanOrder with no re-extension, where any unsigned char or byte enum local gets an
+ * andi (or a sign extension for a signed char parameter) at the call; an int parameter there
+ * is what tcmUpdateTeamCommand's lb needs. Tried: unsigned char, signed char, char and a byte
+ * enum for the local and CanOrder's member parameter, the else block first or last. */
 int tcmUpdateTeamMember(CZSealBody *player, int member)
 {
     int r = 1;
@@ -630,6 +646,9 @@ int tcmUpdateRadio(CZSealBody *player, int arg)
     return r;
 }
 
+/* OPEN, 7 instructions (registers only): the target keeps the constant 2 in a3 and the
+ * entity's sides in a2, here swapped -- the walk is otherwise the target's (const iterators
+ * initialised from the const view, the entity test written out, not AsSeal's ternary). */
 int tcmUpdatePlayer(CZSealBody *player, int index)
 {
     int r = 1;
@@ -656,6 +675,9 @@ int tcmUpdatePlayer(CZSealBody *player, int index)
     return r;
 }
 
+/* OPEN, 19 instructions (registers only): the target numbers the index parameter last (s0; the
+ * end s1, the iterator s2, the entity s3, the count s4), here the index is s4 and the rest one
+ * lower -- as if the walk were an inline helper whose parameters come after the caller's locals. */
 int tcmSelectPlayer(CZSealBody *player, int index)
 {
     int n = 0;
@@ -714,6 +736,9 @@ int tcmUpdateVote(CZSealBody *player, int arg)
     return r;
 }
 
+/* OPEN, 5 instructions (registers only): with both ids read through GetId (expanded ahead of
+ * the call, the target's order) the target's remove is s0 and its id s1, here swapped. Tried:
+ * the second id alone through GetId (4 bytes short), an unsigned char or an int local. */
 int tcmVote(CZSealBody *player, int arg)
 {
     if (s_tcmTarget) {

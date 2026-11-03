@@ -8,9 +8,10 @@
  *  - 0x231A30-0x23624F: the menu tree (CTCMNode's own code: its constructor 0x232660 and
  *    destructor 0x232490), the cache builders, the menu's input -- it calls hud_tcmcmds.cpp's two
  *    eight-byte node setters (0x230550/0x230540) out of line;
- *  - 0x236250-0x23775F (initialiser 0x3FF4A0: the menu theTCM 0x413120 and the caches
- *    "mpCache" 0x414550 and "spCache" 0x4144F0): the menu object -- the tree calls its
- *    eight-byte byte setter 0x236250 out of line. */
+ *  - hud_tcm.cpp (0x236250-0x23775F, initialiser 0x3FF4A0: the menu theTCM 0x413120 and the
+ *    caches "mpCache" 0x4144F0 -- the network game's items -- and "spCache" 0x414550, the
+ *    teammates' orders): the menu object -- the tree calls its eight-byte mode setter 0x236250
+ *    out of line. */
 #ifndef HUD_TCM_H
 #define HUD_TCM_H
 

@@ -2174,7 +2174,7 @@
 0x00231310 0x22C func_00231310  # OVL1
 0x00231540 0x150 func_00231540  # OVL1
 0x00231690 0x380 func_00231690  # OVL1
-0x00231A10 0x14 func_00231A10  # OVL1
+0x00231A10 0x14 __ct__10CTCMColumnFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- CTCMColumn's inline constructor (1.0f, 0), the unit's tail: __construct_array takes it for g_tcmColumns)
 0x00231A30 0x16C func_00231A30  # OVL1
 0x00231BA0 0x228 func_00231BA0  # OVL1
 0x00231DD0 0x8 func_00231DD0  # OVL1
@@ -8507,7 +8507,7 @@
 0x003FE980 0x9D0 func_003FE980  # OVL1 data area; a static initialiser
 0x003FF350 0x64 func_003FF350  # OVL1 data area; a static initialiser
 0x003FF3C0 0x64 func_003FF3C0  # OVL1 data area; a static initialiser
-0x003FF430 0x70 func_003FF430  # OVL1 data area; a static initialiser
+0x003FF430 0x70 __sinit_hud_tcmcmds.cpp  # OVL1 data area; a static initialiser; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp's static initialiser -- its layout statics s_tcmLeft/s_tcmSpan (off the data statics 0x3DC9F0, 0x3DCA80) and s_tcmCursorColor, then g_tcmColumns built through __construct_array)
 0x003FF4A0 0x168 func_003FF4A0  # OVL1 data area; a static initialiser
 0x003FF610 0x64 __sinit_hud_ammo.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_ammo.cpp's initialiser (between the radio menu's 0x3FF4A0 and hud_mpinfobox.cpp's 0x3FF680, as the code): its four bss floats computed off s_polyy and s_ammox (s_texty, s_magx, s_magy, s_bitmapy)
 0x003FF680 0x124 __sinit_hud_mpinfobox.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_mpinfobox.cpp's initialiser (between hud_ammo.cpp's and 0x3FF7B0, as the code): thirteen bss floats of the box's places computed off its data variables, in their order
