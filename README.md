@@ -225,7 +225,37 @@ overlays). A try harness that honours a unit's own compiler and flags line is
 build/scratch/rt-r3/var.py (tools/try.py takes scdiff's defaults, so the library units fail under
 it). MAIN's zvid.cpp copy (0x181C20, marked `ovl-copy: zVid_Assert__FbUiPci`) still scores against
 OVL1's row: sccheck takes a unit's home from its functions' named rows, all OVL1's for a unit that is
-wholly another overlay's copy -- a scorer change for the tools' owner (with the boot ELF's `main`).
+wholly another overlay's copy -- fixed by GCC round 11a's `/* sc: overlay=MAIN */`, which zvid.cpp now carries.
+
+Round 4 (183 of 244: 22 more) wrote MW's EXCEPTION HANDLING whole -- three units, not one:
+ExceptionDecode.cpp (0x182930-0x182A87, the two number decoders: in either other unit auto-inlining
+expands them everywhere, UnwindStack growing from 0x844 to 0x1650), ExceptionHandler.cpp
+(0x182A90-0x18411B, the table walk) and ExceptionMIPS.cpp (0x184120-0x1845F7, frames and registers --
+FindExceptionRecord calls the two-store __FindExceptionTable out of line, so they are apart) -- all 18
+at 3.0b52 with the game's flags plus `-Cpp_exceptions on`, deferred (the walk compiles 12 of 12 under
+3.0b22-020926, b38, b50 and b52 alike and at most 2 under any 3.0.1 build: the builds stay unseparated);
+and locale.cpp's locale::global, locale::classic, ctype<char>'s constructor and ~ctype<char> (round 1's
+open). The library gains `-str readonly` (classic's "C" literal is addressed absolutely, not through
+$gp; nothing else moves). Measured: MW emits an `asm` function at once, in source order, and defers C
+functions to the unit's end in reverse; registers saved into a struct MW copies come out as a 21-pass
+quadword copy only as one nested struct (a one-word nested struct goes through $f0 via an address
+register); a type-punned store (`*(unsigned int *)&var = ...`) keeps a variable on the stack with its
+dead stores and reloads, where an inline's out-parameter is promoted to a register; MW computes a value
+as late as its first use, so a value the image computes early needs a variable of its own (a flag read
+through a pointer before the pointer is reassigned is computed ahead of the calls, from a register
+variable it sinks below them); `x ? x : 0` reproduces a do-nothing relocation test on a catch block's
+type string; PowerPC's `#pragma exception_magic`/`__exception_magic` work here; a local declared after a
+`try` sits below the catch's compiler-made CatchInfo -- declare it before; function-local statics
+under `throw()` match directly (their guards and objects unchecked by scdiff); destructors referenced
+only from exception tables never reach the image (the link dropped the tables): `no-target` rows for
+them are expected. `__TransferControl` and `__throw` were 0x70/0x80 in the map -- the seed counted
+padding -- and are 0x64/0x7C (SOCOM 1 agrees); 0x184340 is `__PopStackFrame`. Open: locale.cpp's own
+string pieces (the constructor 0x18D2C0, marked ovl-copy of 0x2396F0; reserve 0x18D8C0, which throws
+length_error; the range replace 0x18D3E0; assign(first, last) 0x18DB40; ~out_of_range 0x18D830) --
+MSL's string internals and the logic_error family with exceptions on are modelled nowhere yet;
+locale.cpp's `__sinit` 0x1D4C20 fills `__ctype_map` entries 9-127, the ones holding several mask bits:
+the mask is likely a two-byte enum whose `operator|` is a function, which renames the wide ctype rows
+(SOCOM 1's one-byte names); ~bad_exception is generated last where the image has it before __unexpected.
 
 ## What the source has to reproduce
 
