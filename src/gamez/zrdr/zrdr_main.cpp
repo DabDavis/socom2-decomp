@@ -39,9 +39,9 @@ public:
 /* CSTable::CreateString, not written yet: the string table's copy of a string */
 extern "C" char *func_0039F1C0(CSTable *table, const char *s);
 /* the array allocator (zrdr's, 0x334170): `count` zeroed values for `rdr` */
-extern "C" void func_00334170(_zrdr *rdr, int count);
+void zrdr_newarray(_zrdr *rdr, int count);
 /* zrdr_freearray (0x335AA0): an array's values freed, recursively */
-extern "C" void func_00335AA0(_zrdr *rdr);
+void zrdr_freearray(_zrdr *rdr);
 
 /* SOCOM 1's: an .rdr's file name, under a directory when one is given */
 const char *zrdr_findfile(const char *name, const char *path)
@@ -79,7 +79,7 @@ void _zrdr::Clone(_zrdr *src, CSTable *strings)
         break;
     case ZRDR_ARRAY: {
         int n = src->Count();
-        func_00334170(this, n);
+        zrdr_newarray(this, n);
         for (int i = 0; i < n; i++) {
             Item(i)->Clone(src->Item(i), strings);
             Item(i)->packed = false;
@@ -95,7 +95,7 @@ void _zrdr::Clone(_zrdr *src, CSTable *strings)
 void _zrdr::DeleteChildren()
 {
     if (isclone && type == ZRDR_ARRAY)
-        func_00335AA0(this);
+        zrdr_freearray(this);
 }
 
 _zrdr::~_zrdr()

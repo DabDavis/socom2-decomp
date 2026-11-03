@@ -20,7 +20,7 @@ extern "C" const char _ctype_[];
 #define rdr_isspace(c) ((_ctype_ + 1)[c] & 8)
 
 /* newlib's strtod (MAIN 0x19A9B0, SOCOM 1's strtod by name) */
-extern "C" double func_0019A9B0(const char *s, char **end);
+extern "C" double strtod(const char *s, char **end);   /* newlib (MAIN) */
 /* the values allocator (zrdr_pack.cpp's unit, 0x335BC0): `n` zeroed values, the first typed */
 extern "C" _zrdr *func_00335BC0(unsigned char type, int n);
 
@@ -223,7 +223,7 @@ _zrdr *CRdrFile::MakeUnion(const char *token, bool quoted)
             u->integer = i;
             return u;
         }
-        float f = func_0019A9B0(token, &end);
+        float f = strtod(token, &end);
 
         if (len == end - token) {
             u->type = ZRDR_REAL;
