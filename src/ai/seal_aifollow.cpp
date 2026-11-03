@@ -2,7 +2,7 @@
  * OVL2 0x5FADF0-0x5FE1EF: the destructor first, as SOCOM 1's. So far only the destructor and the
  * new slot +0x3C. Defined in reverse of their image order (-inline deferred). */
 
-#include "ai_states.h"
+#include "../gamez/zseal/zseal.h"
 
 extern "C" float data_00650C38;   /* the follow's close range (a variable: read with lwc1) */
 
@@ -40,6 +40,75 @@ void CAiSFollow::SetFormation(signed char formation, int slot)
     m_74 = formation;
     func_005EB910(m_74, m_70, m_5c);
     UpdateOffsetLength();
+}
+
+extern "C" {
+/* the AI's check of an entity at a distance (OVL2 0x5FD150, this unit's, not written: the AI, the
+ * entity, a flag, the distance; a bool) */
+bool func_005FD150(CSealCtrlAi *ai, CEntity *e, bool b, float dist);
+}
+
+/* the AI's current state if it is a follow, else 0 (inline; the name ours) */
+static inline const CAiSFollow *FollowState(const CSealCtrlAi *ai)
+{
+    const CAiState *s = ai->GetAiState();
+
+    return s && s->m_state == AI_STATE_FOLLOW ? (const CAiSFollow *)s : 0;
+}
+
+/* the AI's mode, the follow's own when following (mode 6): 4, 3 or 2 by its two flags at 0x7C and
+ * 0x7D (inline in 0x5FD620; the name ours) */
+static inline AI_MODE FollowMode(const CSealCtrlAi *ai)
+{
+    AI_MODE m = ai->m_3f4;
+
+    if (m == 6) {
+        const CAiSFollow *f = FollowState(ai);
+
+        if (f) {
+            if (f->m_7c)
+                m = (AI_MODE)4;
+            else if (f->m_7d)
+                m = (AI_MODE)3;
+            else
+                m = (AI_MODE)2;
+        }
+    }
+    return m;
+}
+
+extern "C" {
+/* the AI's follow step by mode (OVL2 0x5FD460, this unit's, not written: the AI, two values passed
+ * through, the mode) */
+void func_005FD460(CSealCtrlAi *ai, void *a, int b, AI_MODE mode);
+}
+
+/* (OVL2 0x5FD6F0; 0x556370 calls it -- the name unknown) */
+extern "C" AI_MODE func_005FD6F0(const CSealCtrlAi *ai)
+{
+    return FollowMode(ai);
+}
+
+/* the follow step in the AI's mode (OVL2 0x5FD620; 0x556370 calls it -- the name unknown) */
+extern "C" void func_005FD620(CSealCtrlAi *ai, void *a, int b)
+{
+    func_005FD460(ai, a, b, FollowMode(ai));
+}
+
+/* the AI's check of an entity (0x5FD150) at the entity's distance from the SEAL; true when there is
+ * none (OVL2 0x5FD3E0: CSealCtrlAi::PreTick hands it the player; the name unknown) -- the SEAL taken
+ * into a local first: the target loads it ahead of the entity's null test */
+extern "C" bool func_005FD3E0(CSealCtrlAi *ai, CEntity *e)
+{
+    bool r = true;
+    CEntity *me = ((CEntityCtrl *)ai)->m_entity;
+
+    if (e) {
+        CPnt3D d = me->m_posW - e->m_posW;
+
+        r = func_005FD150(ai, e, true, d.Normalize());
+    }
+    return r;
 }
 
 /* (OVL2 0x5FDD00) */

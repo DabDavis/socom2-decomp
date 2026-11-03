@@ -563,7 +563,10 @@ public:
     unsigned int m_6c;   // 0x6c: flags (0x5F6F10 builds them with 0)
     int m_70;   // 0x70: the formation's slot
     signed char m_74;   // 0x74: the formation
-    unsigned char _75[0x88 - 0x75];
+    unsigned char _75[0x7c - 0x75];
+    unsigned char m_7c;   // 0x7c: a flag (the follow's mode 4 when set: 0x5FD6F0)
+    unsigned char m_7d;   // 0x7d: a flag (mode 3)
+    unsigned char _7e[0x88 - 0x7e];
     float m_88[3];   // 0x88: CPnt3Ds from here to 0x114, CAiMapLocs at 0xc0, 0xc8 and 0x104
     unsigned char _94[0x98 - 0x94];
     float m_98[3];   // 0x98
