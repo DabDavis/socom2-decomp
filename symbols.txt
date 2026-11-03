@@ -8918,8 +8918,8 @@
 0x004E71F8 0x8BC func_004E71F8  # OVL2 unaligned
 0x004E7AB8 0x1C0 func_004E7AB8  # OVL2 unaligned
 0x004E7C78 0x410 func_004E7C78  # OVL2 unaligned
-0x004E8088 0x684 func_004E8088  # OVL2 unaligned
-0x004E8710 0x2AC func_004E8710  # OVL2
+0x004E8088 0x684 ProcessFFTMod  # OVL2 unaligned; s1:order (the process slot ConstructFFTMod hands tosBaseBlockConstruct, as SOCOM 1's ConstructFFTMod hands its LOCAL ProcessFFTMod; the FFT object's row before InitFFTMod, as in SOCOM 1's object at 0x355A38) -- the gcc lane, round 10c
+0x004E8710 0x2AC InitFFTMod  # OVL2; s1:order (ConstructFFTMod's init slot, as SOCOM 1's LOCAL InitFFTMod; the row before the constructor, as there) -- the gcc lane, round 10c
 0x004E89C0 0x8C ConstructFFTMod  # OVL2; s1:align
 0x004E8A50 0x94 ControlFFTMod  # OVL2; s1:align
 0x004E8AE8 0x28C InitIsoWordTokenDpContext  # OVL2 unaligned; s1:calls (SOCOM 1's ControlIsoWordTokenDp calls InitIsoWordTokenDpContext where ours call this row, 1 call site; the same position in SOCOM 1's object)
