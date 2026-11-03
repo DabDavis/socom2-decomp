@@ -394,6 +394,47 @@ extern "C" bool func_005804E0(CZSealBody *seal)
 }
 
 extern "C" {
+/* two more anim types read as variables (OVL1 data, -1 in the image) and what the carried body is
+ * told first (OVL2 0x579220, not written yet) */
+extern short data_003DEE08;
+extern short data_003DEE48;
+void func_00579220(CZSealBody *seal);
+}
+
+/* the body carried let go, when the SEAL is in state 9 or one of two carry anims: its blends popped
+ * down to one, the drop anim of 0x3DEED8 or 0x3DEED0 pushed in state 8 at half its time, its kept
+ * velocity its own plus 7 of its node's first row, bit 9 set and 10 cleared; the hold cleared (OVL2
+ * 0x57EE00: SOCOM 1's DropBody, before OKToStand in both builds) */
+void CZSealBody::DropBody()
+{
+    if (m_state == 9 || IsCurrentBlend((AnimType)data_003DEE08) || IsCurrentBlend((AnimType)data_003DEE48)) {
+        CZSealBody *c = m_carry;
+
+        if (c) {
+            AnimType type;
+
+            if (IsCurrentBlend((AnimType)data_003DEE08))
+                type = (AnimType)data_003DEED8;
+            else
+                type = (AnimType)data_003DEED0;
+            func_00579220(c);
+            c->ClearStack(1, true);
+            CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(c, type, 8, 0, 0);
+
+            b->m_tfrac = 0.5f;
+            c->m_1350 = c->m_velW;
+            CPnt3D v(*(const CPnt3D *)&c->m_node->m_matrix);
+
+            v.Scale(7.0f, &v);
+            c->m_1350.Add(&v, &c->m_1350);
+            c->SetBit9(true);
+            c->SetBit10(false);
+        }
+        m_carry = 0;
+    }
+}
+
+extern "C" {
 /* three more anim types read as variables (OVL1 data, -1 in the image) */
 extern short data_003DEEF0;
 extern short data_003DEEE8;

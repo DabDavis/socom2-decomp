@@ -1134,6 +1134,8 @@ public:
     /* the top blend turned at a rate from the turn, capped per state (SOCOM 1's TurnControl after
      * ProneControl: OVL2 0x583960 -- SOCOM II's takes the turn alone) */
     CZBodyAnimBlend *TurnControl(float turn);
+    /* the body carried let go (SOCOM 1's DropBody, before OKToStand in both builds: OVL2 0x57EE00) */
+    void DropBody();
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
     void HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
     /* the HUD's flags: the hit set, and each taken once (seal_env.cpp, SOCOM 1's) */

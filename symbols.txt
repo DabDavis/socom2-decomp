@@ -10434,7 +10434,7 @@
 0x0057E540 0x228 func_0057E540  # OVL2
 0x0057E770 0x5A0 func_0057E770  # OVL2
 0x0057ED10 0xE4 func_0057ED10  # OVL2
-0x0057EE00 0x1E0 func_0057EE00  # OVL2
+0x0057EE00 0x1E0 DropBody__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1 DropBody__10CZSealBodyFv, right before OKToStand in both builds: the carried body at 0xEAC, SOCOM 1 m_carry 0xDA8, let go with a drop anim and cleared; the SEALs round 16)
 0x0057EFE0 0x168 OKToStand__FP10CZSealBody  # OVL2; s1:calls
 0x0057F150 0x150 func_0057F150  # OVL2
 0x0057F2A0 0x70 func_0057F2A0  # OVL2
