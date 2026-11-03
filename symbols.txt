@@ -11950,9 +11950,9 @@
 0x006148E0 0xC0 func_006148E0  # OVL2
 0x006149A0 0x48 NetIpBinaryToString  # OVL2; s1:exact
 0x006149E8 0x60 func_006149E8  # OVL2 unaligned
-0x00614A48 0xCC func_00614A48  # OVL2 unaligned
+0x00614A48 0xCC NetGetClientIpAddress  # OVL2 unaligned; s1:order (Dme.c's order, after NetGetMyIpAddress 0x6149E8: copies the client record's IP string, SOCOM 1's NetGetClientIpAddress's job)
 0x00614B18 0x2F0 func_00614B18  # OVL2 unaligned
-0x00614E08 0x90 func_00614E08  # OVL2 unaligned
+0x00614E08 0x90 RemoteClientDisconnects  # OVL2 unaligned; s1:order (after RemoteClientConnects 0x614B18, SOCOM 1's next; clears the client's record)
 0x00614E98 0x2C func_00614E98  # OVL2 unaligned
 0x00614EC8 0x44 func_00614EC8  # OVL2 unaligned
 0x00614F10 0x44 func_00614F10  # OVL2
@@ -11961,7 +11961,7 @@
 0x00615068 0x24 func_00615068  # OVL2 unaligned
 0x00615090 0x64 func_00615090  # OVL2
 0x006150F8 0x68 func_006150F8  # OVL2 unaligned
-0x00615160 0xA0 func_00615160  # OVL2
+0x00615160 0xA0 NetGetValidClientCount  # OVL2; s1:order (counts the world's connected client records; SOCOM 1's NetGetValidClientCount, after NetGetSessionMasterClientIndex 0x615090)
 0x00615200 0xB0 func_00615200  # OVL2
 0x006152B0 0x7C func_006152B0  # OVL2
 0x00615330 0x5C func_00615330  # OVL2
@@ -11975,11 +11975,11 @@
 0x00615CD0 0xB4 func_00615CD0  # OVL2
 0x00615D88 0x54 func_00615D88  # OVL2 unaligned
 0x00615DE0 0x54 func_00615DE0  # OVL2
-0x00615E38 0x78 func_00615E38  # OVL2 unaligned
-0x00615EB0 0x9C func_00615EB0  # OVL2
-0x00615F50 0x78 func_00615F50  # OVL2
+0x00615E38 0x78 RemoteObjectCreation  # OVL2 unaligned; s1:order (calls the object class's creation callback, SOCOM 1's body; RemoteObjectUpdate and RemoteObjectDelete follow it, then NetFreeRemoteObject 0x615FC8 as in SOCOM 1)
+0x00615EB0 0x9C RemoteObjectUpdate  # OVL2; s1:order (the class's update callback with the field index, 0-63 or -1/-2, SOCOM 1's body)
+0x00615F50 0x78 RemoteObjectDelete  # OVL2; s1:order (the class's deletion callback, SOCOM 1's body)
 0x00615FC8 0x184 NetFreeRemoteObject  # OVL2 unaligned; s1:callee
-0x00616150 0x7C func_00616150  # OVL2
+0x00616150 0x7C NetFreeLocalObject  # OVL2; s1:order (NetFreeRemoteObject then the deletion message, SOCOM 1's NetFreeLocalObject after NetFreeRemoteObject)
 0x006161D0 0xC0 func_006161D0  # OVL2
 0x00616290 0x10C func_00616290  # OVL2
 0x006163A0 0xD8 func_006163A0  # OVL2

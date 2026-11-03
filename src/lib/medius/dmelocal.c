@@ -62,6 +62,74 @@ extern DmePingSlot data_0067B7B8[DME_MAX_PING_SLOTS];
 extern DmeAddress data_0066CF60;        /* sized: its first word is its size, 24 */
 extern void *data_0066CAF8[DME_MAX_WORLDS];
 
+/* a networked object's record (NetGetObject hands one out) */
+typedef struct DmeObject {
+    unsigned char nClass;               /* 0x00: the registered object type */
+    unsigned char field_01;
+    unsigned char nStatus;              /* 0x02: 3 and 4 are live */
+    unsigned char field_03;
+    int nOwner;                         /* 0x04: -1 when unowned */
+    int nCreator;                       /* 0x08: the client that made it */
+} DmeObject;
+
+extern int func_0061C720(int nWorld, int nClient, DmeClientInfo **ppClient);
+extern int func_00614EC8(void **ppObject, unsigned int nIndex);
+extern int func_00615DE0(int nClass, int nConnection, int nTarget, int nMsgType, int nLen, void *pMsg);
+extern void (*data_0067A6E8[16])(int nClient, int nIndex);
+extern void (*data_0067A728[16])(int nClient, int nIndex, int nField);
+extern void (*data_0067A768[16])(int nClient, int nIndex);
+extern int data_00651180;               /* NetInitialize has run */
+extern int data_00686A30;               /* the object-deletion message's type */
+
+int func_00614168(unsigned short *pCount)
+{
+    unsigned int i = 0;
+    DmeWorld *pWorld = 0;
+    DmeObject *pObject = 0;
+    int result;
+
+    if (pCount == 0)
+        return DME_ERR_ARGUMENT;
+    *pCount = 0;
+    if (data_00651178 == DME_MAX_WORLDS)
+        return DME_OK;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    result = func_0061C600(data_00651178, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    if (pWorld->nMyClient >= DME_MAX_CLIENTS)
+        return DME_ERR_RANGE;
+    for (i = 0; i < DME_MAX_OBJECTS; i++) {
+        result = func_00614EC8((void **)&pObject, i);
+        if (result != DME_OK)
+            return result;
+        if (pObject != 0 && (unsigned char)(pObject->nStatus - 3) < 2 && pWorld->nMyClient == pObject->nCreator)
+            (*pCount)++;
+    }
+    return DME_OK;
+}
+
+int func_006146D8(int *pValue, unsigned int nWorld)
+{
+    DmeWorld *pWorld = 0;
+    int result;
+
+    if (pValue == 0)
+        return DME_ERR_ARGUMENT;
+    *pValue = DME_MAX_CLIENTS;
+    if (data_00651180 == 0)
+        return 17;
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld != 0)
+        *pValue = pWorld->nMyClient;
+    return result;
+}
+
 int func_00614758(int nReserved, int *pValue)
 {
     int nValue = -2;
@@ -105,6 +173,49 @@ int NetIpBinaryToString(char *szIp, unsigned char *pBinary)
         return 0;
     }
     return 10;
+}
+
+int NetGetClientIpAddress(char *szIp, unsigned int nWorld, unsigned int nClient)
+{
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    int result;
+
+    if (szIp == 0)
+        return DME_ERR_ARGUMENT;
+    memset(szIp, 0, 16);
+    if (nClient >= DME_MAX_CLIENTS)
+        return DME_ERR_ARGUMENT;
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld == 0)
+        return 15;
+    result = func_0061C720(nWorld, nClient, &pClient);
+    if (result != DME_OK)
+        return result;
+    if (pClient == 0)
+        return DME_ERR_RANGE;
+    if (pClient->bConnected == 0)
+        return DME_ERR_RANGE;
+    strncpy(szIp, pClient->szIp, 16);
+    return DME_OK;
+}
+
+void RemoteClientDisconnects(unsigned int nWorld, unsigned int nClient)
+{
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+
+    if (nWorld >= DME_MAX_WORLDS || nClient >= DME_MAX_CLIENTS)
+        return;
+    if (func_0061C600(nWorld, &pWorld) != 0 || pWorld == 0)
+        return;
+    if (func_0061C720(nWorld, nClient, &pClient) != 0 || pClient == 0)
+        return;
+    memset(pClient, 0, sizeof(DmeClientInfo));
 }
 
 int func_00614EC8(void **ppObject, unsigned int nIndex)
@@ -165,6 +276,150 @@ int func_006150F8(int *pValue, unsigned int nWorld)
     if (pWorld != 0)
         *pValue = pWorld->field_438;
     return result;
+}
+
+int NetGetValidClientCount(int *pCount, unsigned int nWorld)
+{
+    DmeWorld *pWorld = 0;
+    unsigned int i = 0;
+    int result;
+
+    if (pCount == 0)
+        return DME_ERR_ARGUMENT;
+    *pCount = 0;
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    for (i = 0; i < DME_MAX_CLIENTS; i++)
+        if (pWorld->apClients[i] != 0 && pWorld->apClients[i]->bConnected == 1)
+            (*pCount)++;
+    return DME_OK;
+}
+
+extern int func_00615160(int *pCount, unsigned int nWorld);
+
+int func_00615200(int *pStatus, unsigned int nWorld)
+{
+    DmeWorld *pWorld = 0;
+    int result;
+
+    if (pStatus == 0)
+        return DME_ERR_ARGUMENT;
+    memset(pStatus, 0, 12);
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld == 0)
+        return 15;
+    result = func_006150F8(pStatus, nWorld);
+    if (result != DME_OK)
+        return result;
+    result = func_00615160(pStatus + 1, nWorld);
+    if (result != DME_OK)
+        return result;
+    pStatus[2] = pStatus[1] + pWorld->field_440;
+    return result;
+}
+
+int func_006152B0(char *szVersion, unsigned int nWorld)
+{
+    DmeWorld *pWorld = 0;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (szVersion == 0)
+        return DME_ERR_ARGUMENT;
+    memset(szVersion, 0, 16);
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    strncpy(szVersion, pWorld->szServerVersion, 16);
+    return DME_OK;
+}
+
+void RemoteObjectCreation(unsigned int nClient, unsigned int nIndex)
+{
+    DmeObject *pObject;
+
+    if (nClient >= DME_MAX_CLIENTS || nIndex >= DME_MAX_OBJECTS)
+        return;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return;
+    if (data_0067A6E8[pObject->nClass] != 0)
+        data_0067A6E8[pObject->nClass](nClient, nIndex);
+}
+
+void RemoteObjectUpdate(int nClient, unsigned int nIndex, unsigned int nField)
+{
+    DmeObject *pObject;
+
+    if (nIndex >= DME_MAX_OBJECTS)
+        return;
+    if (nField >= 64 && nField != -2 && nField != -1)
+        return;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return;
+    if (data_0067A728[pObject->nClass] != 0)
+        data_0067A728[pObject->nClass](nClient, nIndex, nField);
+}
+
+void RemoteObjectDelete(unsigned int nClient, unsigned int nIndex)
+{
+    DmeObject *pObject;
+
+    if (nClient >= DME_MAX_CLIENTS || nIndex >= DME_MAX_OBJECTS)
+        return;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return;
+    if (data_0067A768[pObject->nClass] != 0)
+        data_0067A768[pObject->nClass](nClient, nIndex);
+}
+
+int NetFreeLocalObject(unsigned int nIndex)
+{
+    unsigned short msg;
+
+    if (nIndex >= DME_MAX_OBJECTS)
+        return DME_ERR_ARGUMENT;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    NetFreeRemoteObject(nIndex);
+    msg = nIndex;
+    func_00615DE0(80, data_00651178, -1, data_00686A30, 2, &msg);
+    return DME_OK;
+}
+
+int func_006161D0(unsigned int nIndex)
+{
+    DmeObject *pObject;
+    DmeWorld *pWorld;
+    int result;
+
+    pWorld = 0;
+    pObject = 0;
+    if (nIndex >= DME_MAX_OBJECTS)
+        return DME_ERR_ARGUMENT;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return DME_ERR_RANGE;
+    result = func_0061C600(data_00651178, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    if (pObject->nCreator == pWorld->nMyClient)
+        NetFreeLocalObject(nIndex);
+    else
+        NetFreeRemoteObject(nIndex);
+    return DME_OK;
 }
 
 int NetFreeAllObjects(void)
