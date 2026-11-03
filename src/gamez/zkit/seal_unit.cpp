@@ -400,8 +400,9 @@ void PlayRemoteMsg(CEntity *e, int msg, int remote)
 
 /* the anim of a name when it can run: running (state 1), or in state 5 once the flag is down
  * (SOCOM 1's can_run_anim__FPCc, its guarded static now plain data -- OVL2 0x650AE0, 1; inlined
- * in its one caller, no copy of its own) */
-static CZAnim *can_run_anim(const char *name)
+ * in its one caller, no copy of its own: `static inline` -- static alone still emits a copy, inline
+ * alone gives the static outside linkage, compared by name instead of content) */
+static inline CZAnim *can_run_anim(const char *name)
 {
     static bool s_flag = true;
     CZAnim *anim = ZAnim.GetAnim(name, 0);
