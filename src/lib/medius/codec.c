@@ -24,7 +24,7 @@ typedef struct CODEC {
     int (*pfnDecode)(void *pContext, void *pIn, void *pOut);   /* 0x2C */
     int x30;                            /* 0x30: PCM bytes buffered, cleared by a reset */
     int x34;                            /* 0x34: coded bytes buffered, cleared by a reset */
-    int nStreamKind;                    /* 0x38 */
+    void *pAudio;                       /* 0x38: the session's counters (audio.c) */
     void *pContext;                     /* 0x3C */
     unsigned char abCoded[480];         /* 0x40 */
     unsigned char abPcm[2048];          /* 0x220 */
@@ -56,7 +56,7 @@ int func_00613FB8(void *pContext);
 int func_00613FC0(void *pContext, void *pIn, void *pOut);
 int func_00613FC8(void *pContext, void *pIn, void *pOut);
 
-CODEC *func_006132B8(int nStreamKind, int nType, int nKind)
+CODEC *func_006132B8(void *pAudio, int nType, int nKind)
 {
     CODEC *pCodec = 0;
 
@@ -65,7 +65,7 @@ CODEC *func_006132B8(int nStreamKind, int nType, int nKind)
         return 0;
     pCodec->nType = nType;
     pCodec->nKind = nKind;
-    pCodec->nStreamKind = nStreamKind;
+    pCodec->pAudio = pAudio;
     if (pCodec->nKind == 1) {
         switch (pCodec->nType) {
         case 34:
@@ -227,6 +227,97 @@ int func_006137F8(CODEC *p)
 int func_00613800(CODEC *p)
 {
     return p->nFrameBytes;
+}
+
+extern void *memcpy(void *d, const void *s, unsigned int n);
+extern void *memmove(void *d, const void *s, unsigned int n);
+extern void func_0060FB50(void);                        /* audio.c: the codec clock's start */
+extern int func_0060FB78(void);                         /* audio.c: the time since */
+extern void func_0060FBA0(void *pAudio, int n, int nTime);      /* audio.c: the encoder's counts */
+
+/* the encode call: PCM in, whole coded frames out, both buffered in the record */
+int func_00613808(CODEC *p, char *pIn, int nIn, char *pOut, int nOutSize)
+{
+    int nTotal = 0;
+    int n;
+    int i;
+
+    if (p->nFrameBytes == 0) {
+        while (nIn > 0 || nOutSize > 0) {
+            if (nOutSize <= 0) {
+                n = 2048 - p->x30;
+                if (nIn < n)
+                    n = nIn;
+                if (n <= 0)
+                    break;
+                memcpy(&p->abPcm[p->x30], pIn, n);
+                p->x30 += n;
+                break;
+            }
+            if (p->x30 > 0) {
+                n = p->x30;
+                if (nOutSize < n)
+                    n = nOutSize;
+                memcpy(pOut, p->abPcm, n);
+                pOut += n;
+                p->x30 -= n;
+                nOutSize -= n;
+                nTotal += n;
+                if (p->x30 > 0)
+                    memmove(p->abPcm, &p->abPcm[n], p->x30);
+            } else {
+                if (nIn <= 0)
+                    break;
+                n = nOutSize < nIn ? nOutSize : nIn;
+                memcpy(pOut, pIn, n);
+                pOut += n;
+                pIn += n;
+                nOutSize -= n;
+                nIn -= n;
+                nTotal += n;
+            }
+        }
+        return nTotal;
+    }
+    if (nOutSize > 480)
+        nOutSize = 480;
+    while (nIn > 0 || nOutSize >= p->nCodedBytes) {
+        if (nIn > 0 && p->x30 < 2048) {
+            n = 2048 - p->x30;
+            if (nIn < n)
+                n = nIn;
+            memcpy(&p->abPcm[p->x30], pIn, n);
+            pIn += n;
+            nIn -= n;
+            p->x30 += n;
+        } else if (nOutSize >= p->nCodedBytes && nOutSize < p->x34 + p->nCodedBytes) {
+            n = p->x34;
+            while (nOutSize < n)
+                n -= p->nCodedBytes;
+            memcpy(pOut, p->abCoded, n);
+            pOut += n;
+            nOutSize -= n;
+            p->x34 -= n;
+            nTotal += n;
+            if (p->x34 > 0)
+                memmove(p->abCoded, &p->abCoded[n], p->x34);
+        } else {
+            i = 0;
+            while (p->x30 - i >= p->nFrameBytes && p->x34 + p->nCodedBytes <= 480) {
+                func_0060FB50();
+                p->pfnEncode(p->pContext, &p->abPcm[i], &p->abCoded[p->x34]);
+                func_0060FBA0(p->pAudio, p->nFrameBytes, func_0060FB78());
+                p->x34 += p->nCodedBytes;
+                i += p->nFrameBytes;
+            }
+            if (i <= 0)
+                break;
+            p->x30 -= i;
+            if (p->x30 > 0)
+                memmove(p->abPcm, &p->abPcm[i], p->x30);
+        }
+    }
+    return nTotal;
 }
 
 /* the dummy codec (types 33 and 63): its create counts the calls and returns the count as its
