@@ -1759,6 +1759,28 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 13** (the instances other lanes waited on):
+  - include/list's range and single erases DESTROY each element (its destructor called with -1) before freeing the
+    node -- pointer lists unaffected; the list erase re-reads the iterator's node after the element's destructor
+    call (ai_group.cpp's step-list erase 0x60EA90 matches; the single erase 0x60EB60 matches as a probe and counts
+    once CAiGroup::Tick 0x60C3E0, its only caller, is written);
+  - include/string gains find_first_of/find_last_of/find_first_not_of/find_last_not_of in all their forms, at()
+    and operator== (12 zrdr_parse.cpp rows named, CRdrIO::Open now calling them as members): the character set
+    is walked by its own pointer beside the counter (indexing `s[i]` does not give the target's code), and the
+    not-found exit of the *_not_of searches is a `goto` out of the inner loop; the list splice 0x33E790 was
+    vis_texfx.cpp's copy already;
+  - MW 3.0b52 compiles the SFINAE `is_class` test (`int U::*`: enums, scalars, pointers and member pointers 0,
+    structs 1) -- include/msl_utility has it (and std::min, moved from include/string), and include/deque destroys
+    class elements through it, scalar ones not: the chat deque's clear 0x2F5A30 matches;
+  - with `destroy(begin(), end())` through inline wrappers end's make_iterator runs first (the target's order),
+    written `destroy(make_iterator(0), make_iterator(size_))` begin's does, in the same stack slots; the chat
+    iterator's subtraction helper stays a call in the destroy even as an in-class member;
+  - open (measurements in include/deque's comment): every make_iterator (best 0xB8/0x100 against the target's
+    0x130/0x138 -- the target keeps the block iterator in memory), the chat's range destroy 0x2F5B10 (0x20C vs
+    0x1F8: a helper generated too late), the chat teardown 0x2F62B0 (it needs a destroying class between
+    __deque_imp and __deque_buf, moving the iterator into __deque_buf and renaming nine rows), the lobby deque's
+    pieces; 0x32FB90, 0x3323F0, 0x332560, 0x3320E0, 0x333120 are code-exact over a stand-in element and wait for
+    the world lane's real 28-byte record (a byte and two string-like members).
 - **Tells from completing the MSL headers, round 12** (THE INLINE LEVEL, measured header by header and not
   adopted: is SOCOM II built at `-inline level=8` with MSL deeper than include/*? -- build/scratch/msl-r12/
   table.txt and its logs, probes build/p12/, untracked):
@@ -4333,6 +4355,59 @@ exception `try_one` swallows. So the drafts mostly build and miss: the near miss
 classify next (`tools/amsurvey.py near`). automatch over the four ranges (`--max-size 0x400 --emit
 --no-prune`, 2 jobs): 445 tried, **2 hits** (both decoder rows the -G0 split opened), 99 build
 failures, 42 m2c refusals.
+
+**Round 13a** (2026-11-03, by hand, the network clients and libcdvd first): 53 functions byte-exact of
+55 written -- 52 rows newly byte-exact, PowerOffCB over its draft -- and 15 rows named. OVL1: libnet
+whole (`ovl1/libnet.c` 44 of 44: the Recv/Send family, Control, the interface, routing and name-server
+calls, sceLibnetInitialize/Terminate), libnetb (`ovl1/libnetb.c` 20 of 22: RecvFrom, SendTo,
+GetAvailBytesToRead, the newer 2-byte receive and send with their wrappers, the connection-state check,
+both prepare_async calls), libezcnf (`ovl1/ezcnf.c` 6 of 6: the bind and three RPC calls) and libezctl
+(`ovl1/ezctl.c`, new, 6 written). MAIN: libcdvd's first object (`sdk/libcdvd.c` 17 of 18 with
+`sdk/libcdvd.h`: the delay thread, the N-command callback, its thread and the read interrupt, the
+semaphores, the power-off trio, both pre-checks, sync) and four of its one-function objects
+(`sdk/cd_disktype.c`, `cd_geterror.c`, `cd_poweroff.c`, `cd_clock.c`) and `cd_mmode.c`. Named: by their
+own messages sceLibnetInitialize, ezNetCnfGetCount, ezNetCnfGetCombinationList,
+ezNetCnfGetNetcnfifData (and ezNetCtlSetProperties/SetCombination/GetStatus with s1:order); s1:order
+libnetb_prepare_async_receive/send (RPC 100/101), initEzNetCtl, exitEzNetCtl, ezNetCtlSetAutoMode,
+UpInterface, DownInterface (the demo's libezctl object 0x425EA0 row for row: sizes and RPC numbers 2-6
+agree, the demo reaching its flag by $gp); sceLibnetTerminate by the demo's libnet_term's body. What
+they showed:
+
+- **libcdvd's shared words are volatile, one by one**: the callback number and its copy, the
+  semaphore ids, the busy flag and the callback thread's cleared word are never reordered nor put in a
+  delay slot (a volatile load also stays out of a call's slot: `lw a0,id; jal iSignalSema; nop`), the
+  thread id is plain (sceCdInitEeCB reads it once for both uses). The pre-checks compare `id !=
+  PollSema(id)` (read twice).
+- **The caller's $gp is one asm statement**: sceCdCallback stores `$gp` with `sw $28, %0`; the
+  callbacks swap it with `move %0,$28; lw $28,%1` in ONE statement -- two statements let the saved
+  word's `lui` follow the move (_sceCd_Poff_Intr), the target computes it first.
+- **A local initialised at its declaration is the target's early address**: sceCdMmode's send buffer
+  and every libezcnf/libezctl call hold the buffer's address in s0 from the entry (the store still goes
+  through `%lo(sym)(s1)`: GCC folds the known sum back). And sceCdMmode reads its RPC number and sizes
+  from three separate initialised words (34, 4, 4; one `lui` each, so not a struct) where the demo's
+  used immediates.
+- **2.96's `while (i--)` steps by 4 in one function and by 1 in another**: libnet's init and term
+  delays (`i = 0x10000; while (i--);`) compile to a count-down by 4 here and in the demo, lgAud's by 1;
+  as written, both match -- the spelling is not to be read off the step.
+- **SCEA's wrappers return their success value first**: libnetb's RecvFrom/SendTo and the 2-byte pair
+  lay the error path (`err ? err : -501`) after the success path only with `if (f(...) == 0) return
+  len;` first; their out-locals' frame slots follow the declarations (measured: `len, port, flags`).
+- **Open, diagnosed in place**: sceBInetSend (8 words, registers: both DMA descriptors take their two
+  loaded words in the other registers in every store order; an `__inline__` helper gives each transfer
+  its own descriptor, frame 80), func_0018E9E8 (a newer libcdvd accessor: the target's switch is an
+  equality chain with the bodies after it, this build makes a jump table for eight cases in a range of
+  20).
+
+**The tools, round 13a**: `tools/automatch.py --obj-dir DIR` (repeatable) reads a lane's private
+`sccheck.py --build-dir` objects with build/obj's, so `hand_defined()` sees what the lane's own source
+defines -- round 5a's 40 hits on rows hand-written source already matched (the drafts then deleted by
+hand) do not recur. automatch does not score: scdiff.py, sccheck.py, scdecomp.py and `include/` are
+byte-identical to master's (046cfe21), so no unit can score differently. automatch over this lane's
+ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's `src/lib` build): MAIN
+`18DB90 1C4CC0` 233 tried, 0 hits (62 build failures, 26 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0
+hits, OVL1 `1E7F58 1E8FD4` 12 tried, 0 hits, `243000 256FD0` 145 tried, 0 hits (27 build failures, 9
+refusals): 396 tried, none byte-exact, and the hand-written rows (CB_DelayTh, sceCdSync,
+sceCdGetDiskType ...) were not retried. What is left to the generator in these ranges is near misses.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

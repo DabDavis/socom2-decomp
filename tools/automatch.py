@@ -1225,7 +1225,10 @@ def main(argv=None) -> int:
     ap.add_argument("--addrs", type=Path, help="only these addresses (one hex VA per line)")
     ap.add_argument("--stale", action="store_true",
                     help="redo the drafts a rename left behind (implies --redo --emit, any size)")
+    ap.add_argument("--obj-dir", type=Path, action="append", default=[],
+                    help="also read hand-written objects here (a lane's sccheck --build-dir), with build/obj")
     a = ap.parse_args(argv)
+    OBJ_DIRS[:] = [d.resolve() for d in a.obj_dir]
     img, st = E.image(), E.symbols()
     if a.stale:
         a.redo, a.emit, a.max_size = True, True, 0x100000
@@ -1312,16 +1315,25 @@ def stale(st: E.SymbolTable) -> set[int]:
     return out
 
 
+# objects a lane built with `sccheck.py --build-dir DIR` (--obj-dir): read with build/obj's, so a
+# lane's private build tells hand_defined what its own source defines (round 5a's 40 false hits)
+OBJ_DIRS: list[Path] = []
+
+
+def _hand_objects():
+    for obj_root in [HERE / "build" / "obj", *OBJ_DIRS]:
+        for o in obj_root.rglob("*.o"):
+            if "auto" not in o.relative_to(obj_root).parts:
+                yield o
+
+
 def hand_defined() -> set[str]:
     """Function names hand-written source defines (anything under src/ but src/auto): its own
     definitions, and the inline copies it emits byte-exact. A copy that misses supersedes no
     draft -- the linker keeps a strong definition over every unit's copy, as sccheck scores it
     (zsnd_csndsequence.cpp's ~__vector_deleter against the draft of 0x34A5A0)."""
     names, copies, own = set(), {}, {}
-    obj_root = HERE / "build" / "obj"
-    for o in obj_root.rglob("*.o"):
-        if "auto" in o.relative_to(obj_root).parts:
-            continue
+    for o in _hand_objects():
         try:
             elf = E.Elf.read(o)
             for f in elf.functions():
