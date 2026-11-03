@@ -1554,22 +1554,45 @@ extern "C" bool func_0059D6C0(CZSealBody *seal, CLadderData *ladder)
     return theMission.m_ladders->GetLadderByIndex(seal->m_ladder) == ladder;
 }
 
-/* a hit's stun, by the item that hit (SOCOM 1's HandleStunFromHit by its place before
- * HandleStunDamage and its tests of items 122, 123, 125 and 127; OVL2 0x5A5250, not written yet:
- * SOCOM II's takes two more arguments) */
-extern "C" void func_005A5250(CZSealBody *seal, int item, const CPnt3D *from, int x);
+/* a hit's stun, by the item that hit: 123 two of kind 0, 125 (tear gas) three of kind 1, 122 (smoke)
+ * and 127 two of kind 3, anything else five of kind 4, scaled when a scale is given -- HandleStunDamage
+ * inlined in each (SOCOM 1's HandleStunFromHit by its place before HandleStunDamage and its tests of
+ * the items, in its order; OVL2 0x5A5250: SOCOM II's takes the scale, SOCOM 1's listed the kind-4
+ * items) */
+extern "C" void func_005A5250(CZSealBody *seal, EQUIP_ITEM item, const CPnt3D *from, const float *scale)
+{
+    switch (item) {
+    case 123:
+        seal->HandleStunDamage((STUN_TYPE)0, 2.0f, from);
+        break;
+    case 125:
+        seal->HandleStunDamage((STUN_TYPE)1, 3.0f, from);
+        break;
+    case 122:
+    case 127:
+        seal->HandleStunDamage((STUN_TYPE)3, 2.0f, from);
+        break;
+    default: {
+        float amount = 5.0f;
+
+        if (scale)
+            amount *= *scale;
+        seal->HandleStunDamage((STUN_TYPE)4, amount, from);
+    }
+    }
+}
 
 /* in tear gas (item 125): its stun taken and the flag set (OVL2 0x5A0B60; 0x5B5050 calls it) */
 extern "C" void func_005A0B60(CZSealBody *seal)
 {
-    func_005A5250(seal, 125, 0, 0);
+    func_005A5250(seal, (EQUIP_ITEM)125, 0, 0);
     seal->SetInGas(true);
 }
 
 /* in smoke (item 122): the same with the smoke flag (OVL2 0x5A0BB0; 0x5B5050 calls it) */
 extern "C" void func_005A0BB0(CZSealBody *seal)
 {
-    func_005A5250(seal, 122, 0, 0);
+    func_005A5250(seal, (EQUIP_ITEM)122, 0, 0);
     seal->SetInSmoke(true);
 }
 
