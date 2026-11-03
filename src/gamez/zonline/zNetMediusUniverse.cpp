@@ -405,6 +405,7 @@ class CSaferStr : public std::string {
 class CLobbySaveModule {
 public:
     CLobbySaveModule(const char *name, CSaveManager *manager);
+    ~CLobbySaveModule();
     virtual void Save() = 0;
     virtual void Load(const char *blob) = 0;
     virtual void SetChecksum(const char *sum) = 0;
@@ -504,6 +505,13 @@ public:
 };
 
 typedef CZUniversInformationServer::CAcctDB CAcctDB;
+
+/* the lobby's half of a save torn down: its name destroyed (OVL1 0x2FD000 -- this unit's own
+ * function, not an implicit destructor's tail copy: MW never inlines the string's out-of-class
+ * destructor into an own function, so the name's is called, as ~CAcctDB's inlined copy calls it) */
+CLobbySaveModule::~CLobbySaveModule()
+{
+}
 
 /* the lobby's blob written (CLobbySaveModule's, the save manager's unit: its placeholder, called on
  * the module by reference -- a pointer conversion would test the account database for null) */
