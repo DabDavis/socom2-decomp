@@ -3446,6 +3446,30 @@ match. Found on the way, left for its lane: the recogniser's FillLanguageVirtual
 against one byte of its table (the first slot is null, so the heuristic reads a string); checked to
 the symbol's size, one slot names another address. automatch was not run this round.
 
+**The tools, round 7a: a referenced object is compared whole.** `scdiff.local_extent` finds the
+TU-local object a reference lands in -- MW's own symbol, a GNU object's sized LOCAL label
+containing the offset (a table too, and a reference into its middle), a label without a size by its
+data.txt row -- and `local_object_ok` compares all of it, at the target address the reference's
+offset implies. A word relocated inside it resolves through the CANDIDATE's own function at that
+offset, by that function's map address (`table_word_ok`; the same distance from the referencing
+function only when the map does not name it): language.c's four OPEN functions compile to other
+sizes, so by distance 73 of _LangVirtualTable's 79 slots would move, by name all are right (the 7c
+lane checked them by hand: FillLanguageVirtualTable was no false positive). A pointer into the
+object's own data (a string table) is checked by what it points at, one level deep; a static the
+data map names by its address AND its content (MW's were by address only; a GNU one, relocated
+against its section, by content only); an unnamed GNU literal at least over the width its load
+reads (a float whose first byte is zero is not a one-byte string). Proved over every unit (`--files
+.`, 3,094: hand-written MW and GCC, every draft): the 10,965 output lines are identical under
+master's scdiff and this one -- no verdict changed in either direction -- while 982 references in
+224 functions are compared over more bytes: 891 data-map-named MW statics now by content (88 in
+.data/.rodata, the .bss ones where the image holds that memory), 60 MW references at an offset into
+an object, 11 GNU tables (FillLanguageVirtualTable 1 -> 316 bytes, FillContextV2VirtualTable 1 ->
+84, InitAlarm and InitTLBFunctions 2 -> 64, InitSystemCallTableAddress 2 -> 16) and 20 GNU literals
+(the codec's `.lit4` floats 1 -> 4). `test_scdecomp.py`'s `test_gnu_table_is_compared_whole` pairs
+both with a corrupted image (a slot +8; the codec's 1.40234375f, 0x3FB38000, as 0x3FB48000): each
+was a MATCH under master's scdiff, each fails now. Still by address only: a GLOBAL a unit defines
+(its content is data, scored nowhere).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
