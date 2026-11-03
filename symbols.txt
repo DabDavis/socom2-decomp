@@ -8850,17 +8850,17 @@
 0x004DF288 0x40 cbGenderDisable  # OVL2 unaligned; s1:align
 0x004DF2C8 0x154 Set_EndBackTraceMask_In_StateDict  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248 ends Set_EndBackTraceMask_In_StateDict, CopyContextInfo; ours cbGenderDisable, this row, CopyContextInfo) and its immediates (the 0xFF and 0xF/5/9/13 tests, six 0xFFFD masks); smaller than SOCOM 1's 0x23C -- the gcc lane, round 9c
 0x004DF420 0x4C CopyContextInfo  # OVL2; s1:order (the last of SOCOM 1's casr object) and the same body -- 0x4C, heap_Alloc of the record's size and memcpy -- the gcc lane, round 9c
-0x004DF470 0x424 func_004DF470  # OVL2
-0x004DF898 0x488 func_004DF898  # OVL2 unaligned
-0x004DFD20 0x330 func_004DFD20  # OVL2
-0x004E0050 0xCB0 func_004E0050  # OVL2
-0x004E0D00 0x2D4 func_004E0D00  # OVL2
-0x004E0FD8 0x1F8 func_004E0FD8  # OVL2 unaligned
+0x004DF470 0x424 TrainSmoothCounts  # OVL2; s1:calls (SOCOM 1's TrainModels calls TrainSmoothCounts first, ours 0x4E0D00 calls this row first; fptodp/dpadd/dptoul as SOCOM 1's, its loop unrolled) -- the gcc lane, round 15c
+0x004DF898 0x488 TrainProbsFromCounts  # OVL2 unaligned; s1:calls (SOCOM 1's TrainModels calls TrainProbsFromCounts second, ours 0x4E0D00 this row; the body's log -> logf, dpmul, dpdiv, dpadd, dptoul as SOCOM 1's) -- the gcc lane, round 15c
+0x004DFD20 0x330 TrainInit  # OVL2; s1:calls (SOCOM 1's DoUserWordTraining calls TrainInit then TrainModels, ours this row at 0x4E3BE0 then 0x4E0D00; heap_Alloc/heap_Calloc and log as SOCOM 1's) -- the gcc lane, round 15c
+0x004E0050 0xCB0 TrainSelectPhenom  # OVL2; s1:calls (SOCOM 1's TrainModels calls TrainSelectPhenom third, ours 0x4E0D00 this row; heap_Calloc, memset and the closing `j heap_Free` as SOCOM 1's) -- the gcc lane, round 15c
+0x004E0D00 0x2D4 TrainModels  # OVL2; s1:calls (SOCOM 1's DoUserWordTraining calls TrainModels second, ours this row at 0x4E3BF4; it calls the three above in SOCOM 1's order, TrainFree inlined where SOCOM 1's tail-calls it) -- the gcc lane, round 15c
+0x004E0FD8 0x1F8 TrainCountsFromAcq  # OVL2 unaligned; s1:order (SOCOM 1's object: after TrainModels, uncalled in both; the same fields +1068/+412/+1020/+1024/+632 and +50 counts, its state loop unrolled by two) -- the gcc lane, round 15c
 0x004E11D0 0x84 TrainFree  # OVL2; s1:align
-0x004E1258 0x10C func_004E1258  # OVL2 unaligned
-0x004E1368 0x178 func_004E1368  # OVL2 unaligned
-0x004E14E0 0x228 func_004E14E0  # OVL2
-0x004E1708 0x420 func_004E1708  # OVL2 unaligned
+0x004E1258 0x10C CalcEntropy  # OVL2 unaligned; s1:order (SOCOM 1's object, after TrainFree here: the sum of p_Log_p over strided bytes, unrolled by four; uncalled in both) -- the gcc lane, round 15c
+0x004E1368 0x178 CalcEntropy4bit  # OVL2 unaligned; s1:order (SOCOM 1's object, next: the low or high nibble through p_Log_p, (dim + 1) >> 1 stride) -- the gcc lane, round 15c
+0x004E14E0 0x228 CalcEntropyMerged  # OVL2; s1:order (SOCOM 1's object, next: p_Log_p over global_log_p_average, 0x658AF6 as SOCOM 1's 0x45E346) -- the gcc lane, round 15c
+0x004E1708 0x420 CalcEntropyMerged4bit  # OVL2 unaligned; s1:order (SOCOM 1's object, its last: the merged sum over 4-bit labels) -- the gcc lane, round 15c
 0x004E1B28 0x1DC userwordAcknowledge  # OVL2 unaligned; s1:align
 0x004E1D08 0x124 InitUserWordTraining  # OVL2 unaligned; s1:calls (SOCOM 1's userwordStartUserWordTraining calls InitUserWordTraining where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E1E30 0xD4 ExitUserWordTraining  # OVL2; s1:align
@@ -9026,11 +9026,11 @@
 0x004F80A8 0x84 smtDestruct  # OVL2 unaligned; s1:calls (SOCOM 1's FreeResourcesAcne tail-calls smtDestruct(smoother, tos) at the point where ours -- FreeResourcesAcne inlined into ControlAcne -- calls this row; the smoothing object's, after smtConstruct) -- the gcc lane, round 11c (found by its helper)
 0x004F8130 0x244 SpecSubPutSession  # OVL2; s1:calls (SOCOM 1's ControlSpecSub calls SpecSubPutSession where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F8378 0xF0 SpecSubGetSession  # OVL2 unaligned; s1:align
-0x004F8468 0x1208 func_004F8468  # OVL2 unaligned
+0x004F8468 0x1208 SpectralSubtraction  # OVL2 unaligned; s1:calls (SOCOM 1's ProcessSpecSub calls SpectralSubtraction, ours 0x4F9CE8 calls this row at the same point, its five arguments alike; third in SOCOM 1's object as here) -- the gcc lane, round 15c
 0x004F9670 0x224 ControlSpecSub  # OVL2; s1:align
-0x004F9898 0x40C func_004F9898  # OVL2 unaligned
+0x004F9898 0x40C InitSpecSub  # OVL2 unaligned; s1:order (ConstructSpecSub's init slot, as SOCOM 1's LOCAL InitSpecSub, 0x40C in both builds; after ControlSpecSub in both objects) -- the gcc lane, round 15c
 0x004F9CA8 0x3C ConstructSpecSub  # OVL2 unaligned; s1:align
-0x004F9CE8 0xD4 func_004F9CE8  # OVL2 unaligned
+0x004F9CE8 0xD4 ProcessSpecSub  # OVL2 unaligned; s1:order (ConstructSpecSub's process slot, as SOCOM 1's LOCAL ProcessSpecSub; the object's last in both) -- the gcc lane, round 15c
 0x004F9DC0 0x2D8 ChangeMike  # OVL2; s1:calls
 0x004FA098 0x164 TestChangeMike  # OVL2 unaligned; s1:align
 0x004FA200 0x240 CheckForAbnormalConditions  # OVL2; s1:calls
@@ -9057,7 +9057,7 @@
 0x004FCDE8 0xBC ControlWindow  # OVL2 unaligned; s1:align
 0x004FCEA8 0x3FC CombinerProcess  # OVL2 unaligned; s1:order (ConstructCombiner's process slot, as SOCOM 1's LOCAL CombinerProcess, the first function of SOCOM 1's combiner object at 0x368FC0) -- the gcc lane, round 10c
 0x004FD2A8 0x3C ConstructCombiner  # OVL2 unaligned; s1:align
-0x004FD2E8 0xFC func_004FD2E8  # OVL2 unaligned
+0x004FD2E8 0xFC CombinerInit  # OVL2 unaligned; s1:order (ConstructCombiner's init slot, as SOCOM 1's LOCAL CombinerInit, between ConstructCombiner and CombinerControl in both objects) -- the gcc lane, round 15c
 0x004FD3E8 0xFC CombinerControl  # OVL2 unaligned; s1:calls
 0x004FD4E8 0xDC ResizeQueues  # OVL2 unaligned; s1:align
 0x004FD5C8 0x22C func_004FD5C8  # OVL2 unaligned
