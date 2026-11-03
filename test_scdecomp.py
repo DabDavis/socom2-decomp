@@ -225,6 +225,24 @@ def test_gnu_table_is_compared_whole():
     ck(not r.match and any(f.status == "CONTENT-MISMATCH" for f in r.relocs), "a float literal's high bytes count")
 
 
+def test_gnu_literal_is_its_own_entry():
+    """A GNU .lit4 reference is compared over its own entry: the object's pool holds its constants
+    in first-use order, the image's in the link's (round 12a). QP0SC3's dequantiser loads
+    0.0117479693 (0x3C407A8E at 0x1D544C) and 5.0751734 (0x1D5444); the word after the first is
+    another function's constant -- changing it must not matter, changing the entry itself must fail."""
+    img, st = E.image(), E.symbols()
+    unit = HERE / "src" / "lib" / "ovl1" / "sase_misc.c"
+    opts = C.tu_options(unit)
+    obj = build(unit, "sase_misc", opts["compiler"], opts["flags"].split())
+    sym = st.get("func_00250C68")
+    r = D.compare(obj, sym.name, sym, img, st)
+    ck(r.match, f"the dequantiser's literals each match their entry: {r.verdict}")
+    r = D.compare(obj, sym.name, sym, _image_with_word(img, 0x1D5450, img.word(0x1D5450) ^ 0x100), st)
+    ck(r.match, "the next entry, another function's constant, is not this reference's")
+    r = D.compare(obj, sym.name, sym, _image_with_word(img, 0x1D544C, 0x3C407A8F), st)
+    ck(not r.match and any(f.status == "CONTENT-MISMATCH" for f in r.relocs), "the entry itself counts")
+
+
 def test_gnu_code_label_resolves_by_the_map():
     """An asm's data label inside a GNU object's code (`.text`+N: GNU as relocates the local label
     against its section) resolves through the data map when it names the label: libmpeg's
