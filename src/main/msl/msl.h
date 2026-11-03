@@ -220,12 +220,46 @@ public:
     }
     size_t size() const { return size_; }
     T &operator[](size_t i) { return data_[i]; }
+    T *begin() { return data_; }
+    T *end() { return data_ + size_; }
     void resize(size_t sz, const T &c);
+    void insert(T *position, size_t n, const T &x);
+    T *erase(T *first, T *last);
 protected:
     size_t capacity_;
     size_t size_;
     T *data_;
 };
+
+/* <algorithm>'s copy, forward over random-access iterators */
+template <class InputIterator, class OutputIterator>
+inline OutputIterator copy(InputIterator first, InputIterator last, OutputIterator result)
+{
+    for (; first < last; ++first, ++result)
+        *result = *first;
+    return result;
+}
+
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::resize(size_t sz, const T &c)
+{
+    if (sz > size())
+        insert(end(), sz - size(), c);
+    else if (sz < size())
+        erase(begin() + sz, end());
+}
+
+template <class T, class Allocator>
+T *__vector_pod<T, Allocator>::erase(T *first, T *last)
+{
+    if (first == last)
+        return first;
+    T *e = data_ + size_;
+    if (e - last != 0)
+        copy(last, e, first);
+    size_ -= last - first;
+    return first;
+}
 
 template <class T, class Allocator>
 class __vector_deleter {
@@ -250,7 +284,6 @@ class __vector_imp<T, Allocator, true> : public __vector_pod<unsigned int, alloc
 public:
     ~__vector_imp() {}
     T &operator[](size_t i) { return (T &)base::operator[](i); }
-    void resize(size_t sz, const T &c) { base::resize(sz, (const unsigned int &)c); }
 };
 
 template <class T, class Allocator>
@@ -380,10 +413,33 @@ public:
     ~__locale_imp() throw();
     void replace(const locale::facet &f, size_t id);
 private:
+    typedef locale::facet facet;
     template <class Facet> friend const Facet &__use_facet(const locale &loc, __chooser<true>);
     vector<locale::facet *> facets_;    /* 0x00 */
     string name_;                       /* 0x0C */
 };
+
+/* a facet installed at its id, the table grown to hold it; the facet's count taken first and given
+ * back if the growth throws */
+template <int N>
+void __locale_imp<N>::replace(const locale::facet &f, size_t id)
+{
+    facet &nf = const_cast<facet &>(f);
+    ++nf.ref_;
+    if (id >= facets_.size()) {
+        try {
+            facets_.resize(id + 1, 0);
+        } catch (...) {
+            delete (--nf.ref_ == 0 ? &nf : 0);
+            throw;
+        }
+    }
+    facet *&p = facets_[id];
+    facet *old = p;
+    if (old != 0)
+        delete (--old->ref_ == 0 ? old : 0);
+    p = &nf;
+}
 
 template <int N>
 __locale_imp<N>::~__locale_imp() throw()
