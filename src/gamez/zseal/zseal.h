@@ -116,6 +116,16 @@ public:
     bool ItemHasAmmo(int index) const;
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
     class CZFTSWeapon *GetCurItem() const;
+    /* whether the item in hand has rounds left (kit.h's; OVL2 0x5BDB00) */
+    bool CurItemHasAmmo();
+    /* the items held, an item set at an index, its magazines and rounds, its ammunition set -- with a
+     * count of rounds (kit.h's; OVL2 0x5BE030, 0x5BDFB0, 0x5C4970, 0x5C3C10, 0x5BDE20, 0x5BDEC0) */
+    int GetNumItems() const;
+    bool SetItem(unsigned int index, EQUIP_ITEM item);
+    int GetNumMags(int index);
+    int GetAmmoTotal(int index);
+    bool SetItemAmmo(unsigned int index, void *ammo);
+    bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
@@ -605,10 +615,14 @@ void *func_005281B0(void *path, int flags);
  * declare SOCOM II's ~CAiPath) and the fields the controller reads: the plan's state, the search's
  * status, the smoothed points' end (an empty vector's is 0) */
 struct CAiPathBytes {
-    unsigned char _0[0x80];
+    unsigned char _0[0xc];
+    float m_type_bias;   // 0xc (SOCOM 1's: the planner's bias, set with the type)
+    unsigned char _10[0x80 - 0x10];
     unsigned char m_state;   // 0x80: CAiPath::PATH_STATE (1-3 planning, 4 complete)
     signed char m_status;   // 0x81: CAiPath::ASTAR_STATUS
-    unsigned char _82[0x9c - 0x82];
+    unsigned char _82[0x8c - 0x82];
+    unsigned int m_search_limit;   // 0x8c (SOCOM 1's 0x84)
+    unsigned char _90[0x9c - 0x90];
     void *m_9c;   // 0x9c: the points vector's second word
     unsigned char _a0[0xa8 - 0xa0];
 };
@@ -679,7 +693,9 @@ public:
     float m_280;   // 0x280: the delay before the asked stance is taken (cleared by SetStance)
     unsigned char _284[0x364 - 0x284];
     CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
-    unsigned char _370[0x3e0 - 0x370];
+    unsigned char _370[0x3d0 - 0x370];
+    unsigned int m_3d0;   // 0x3d0: zeroed with each burst of the spray (0x5659E0; the name ours)
+    unsigned char _3d4[0x3e0 - 0x3d4];
     /* what 0x561E20 stores as it sets bit 7: a byte and 16 bytes zeroed (the names ours) */
     signed char m_3e0;   // 0x3e0
     unsigned char _3e1[0x3e4 - 0x3e1];
@@ -711,7 +727,7 @@ public:
      * counts the master's followers -- the kit lane, round 19, the names ours) */
     class CZSealBody *m_follow_master;   // 0x5d4
     unsigned int m_follow_master_id;   // 0x5d8
-    unsigned char _5dc[0x5e0 - 0x5dc];
+    float m_pathTolerance;   // 0x5dc (SOCOM 1's 0x47c: a new route zeroes it)
     /* the leg being walked: its two cells' centres flat on the ground, the direction between them
      * and its length, four words cleared with it, and the cell it starts from (0x56C080 sets them
      * from a path's last point; the names ours) */
@@ -881,6 +897,21 @@ public:
     virtual void Initalize();
     /* a Navy SEAL (SOCOM 1's bit; the accessor ours, as the code tests it materialised) */
     bool IsNavySeal() const { return m_navyseal ? true : false; }
+    /* the planner a new route takes (SOCOM 1's; OVL2 0x5627E0, seal_ai.cpp's) and its bias (SOCOM 1's,
+     * inline in SOCOM II: seal_ai.cpp's, no copy) */
+    CAiPath::PATH_TYPE GetDefaultRouteType();
+    inline float GetDefaultRouteBias();
+    /* a route planned from the SEAL's cell through a list of cells (SOCOM 1's; OVL2 0x562200) */
+    bool SetRoute(const CAiMapLoc *locs, int count);
+    /* whether the current state is of a kind (SOCOM 1's AiStateIs, const: the stack's const GetState,
+     * 0x5F8330). Built whole in a register with an explicit false arm, as the target does: the first
+     * operand a materialised inline bool, the second a `? true : false` of its own -- `&&`, a plain
+     * ternary or an if/else let MW reuse the first operand's zero and drop the false arm */
+    bool StackNotEmpty() const { return !(m_stateStack.size() == 0); }
+    bool AiStateIs(AI_STATE state) const
+    {
+        return StackNotEmpty() ? (m_stateStack.GetState()->m_state == state ? true : false) : false;
+    }
     /* the body's task argument (an inline: expanded ahead of the call it is passed with) */
     inline void *GetSelect();
     /* the state on top of SEAL_AI_PARAMS's stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the
