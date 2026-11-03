@@ -1,10 +1,14 @@
 /* ztex_main.cpp -- zdb's textures: a library's handle list, the texture itself, its handle and
- * its palette, the batch relocator (OVL1 0x354510-0x355A6F). The unit name is SOCOM 1's (the press
- * beta's asserts put CTexture::Release_HTEX in a ztex_main.cpp); its functions in SOCOM 1's order
- * (CTexList's Free, Append and two GetHandles, CTexture's, CTexHandle's SetTexture/Destroy/Create,
- * CTexPalette's, CBatchRelocator's). Where the unit ends is not settled: the texture manager,
- * ztex_manager.cpp, follows (its tail is src/gamez/ztwod/ztex_manager.cpp, the HUD lane's).
- * Defined in reverse of their image order (-inline deferred). */
+ * its palette, the batch relocator (OVL1 0x354510-, after valve_main.cpp). The unit name is SOCOM
+ * 1's (the press beta's asserts put CTexture::Release_HTEX in a ztex_main.cpp); its functions in
+ * SOCOM 1's order (CTexList's Free, Append and two GetHandles, CTexture's, po2, CTexHandle's
+ * SetTexture/Destroy/Create, CTexPalette's, CBatchRelocator's). Where the unit ends is not settled
+ * (after CBatchRelocator's StartBatchReloc, 0x355A50, or after the select updates 0x355A70/0x355C70):
+ * the texture manager, ztex_manager.cpp, follows (its tail is src/gamez/ztwod/ztex_manager.cpp, the
+ * HUD lane's, with a CTexture of its own). Not written yet: SetupSpecialTextures (0x355150) and the
+ * drafts' rows (CopyTextureSelect, the select wrapper 0x354A90, Release_HTEX, Init, LoadGS,
+ * CTexHandle::Destroy, CTexPalette's Read and destructor, CBatchRelocator's). Defined in reverse of
+ * their image order (-inline deferred). */
 
 #include <algorithm>
 #include <string.h>
