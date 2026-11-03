@@ -5,6 +5,7 @@
 #include <eetypes.h>
 
 #include "../zsys/zsys_public.h"
+#include "../zutil/zutil.h"
 #include "../zvid/zvid.h"
 
 /* libgraph's image transfer (Sony's: two GIF tags around the BITBLTBUF/TRXPOS/TRXREG/TRXDIR
@@ -58,6 +59,7 @@ public:
     static void Fade(float t, unsigned char r, unsigned char g, unsigned char b);
     static void Clear(bool all, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
     static int MaxFrameRate(int rate);
+    static void RestoreImage(char *name);
 
     static int m_defaultFrameRate;
     static int m_maxFrameRate;
@@ -91,9 +93,12 @@ enum VALVE_STATE {
     VALVE_OFF
 };
 
+enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
+
 class CValve {
 public:
     void MakeCallbacks(VALVE_STATE state);
+    static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
 
     char *m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4
@@ -187,7 +192,9 @@ extern "C" void func_003B1DD0(void *arg);
 extern unsigned char data_004A45D0[];
 extern int data_003E1418;
 
-/* the video thread started at priority 4 on its 64 KB stack (new in SOCOM II, not named) */
+/* the video thread started at priority 4 on its 64 KB stack (new in SOCOM II, not named; pinned:
+ * zVid_Init calls it out of line) */
+#pragma auto_inline off
 extern "C" void func_003B2450()
 {
     ThreadParam param;
@@ -199,6 +206,46 @@ extern "C" void func_003B2450()
     param.gpReg = _gp;
     data_003E1418 = CreateThread(&param);
     StartThread(data_003E1418, 0);
+}
+#pragma auto_inline reset
+
+/* a saved screen image read back into the render buffer, a band of 64 rows at a time (SOCOM 1's
+ * RestoreImage read the file whole and sent it in four fixed blocks) */
+void CVideo::RestoreImage(char *name)
+{
+    CFileIO file;
+
+    if (file.Open(name, 1)) {
+        int addr;
+        unsigned int block;
+        u_long128 *buf;
+        unsigned int step;
+        int size;
+
+        size = file.GetSize();
+        block = zVid.renderWidth << 8;
+        step = block >> 8;
+        buf = (u_long128 *)_memalign(128, block, 0, 0);
+        addr = zVid.renderBuf << 5;
+
+        if (size > 0) {
+            do {
+                sceGsLoadImage li;
+                unsigned int n = file.fread(buf, block);
+
+                sceGsSetDefLoadImage(&li, addr, zVid.renderWidth >> 6, zVid.psm, 0, 0,
+                                     zVid.renderWidth, n / 2560);
+                FlushCache(0);
+                sceDmaSync(zSys.DmaToGif, 0, 0);
+                sceGsExecLoadImage(&li, buf);
+                sceDmaSync(zSys.DmaToGif, 0, 0);
+                size -= block;
+                addr += step;
+            } while (size > 0);
+        }
+        file.Close();
+        _free(buf, 0, 0);
+    }
 }
 
 /* GS memory read back in 256x256 blocks, the FIFO paused (SOCOM 1's took the blocks' size and
@@ -299,6 +346,135 @@ void CVideo::Fade(float t, unsigned char r, unsigned char g, unsigned char b)
     zvid_fade[1] = g;
     zvid_fade[2] = b;
     zvid_fade[3] = (unsigned int)(255.0f * t);
+}
+
+/* the video private state's GS modes (SOCOM 1's zvid + 0x248/0x24c/0x250, the same offsets from
+ * SOCOM II's 0x4A4180), the display's height, its double buffer and its one-pixel store image */
+extern int data_004A43C8;   /* interlace */
+extern int data_004A43CC;   /* field/frame */
+extern int data_004A43D0;   /* the video mode */
+extern int data_004A43D4;   /* the display's height */
+struct sceGsDBuff;
+extern sceGsDBuff data_004A4180;
+extern sceGsStoreImage data_004A43E0;
+extern IPNT2D data_003E1370;   /* the store image's size: one pixel */
+
+extern "C" {
+int sceGsResetGraph(short mode, short inter, short omode, short ffmode);
+int sceGsSetDefDBuff(sceGsDBuff *dp, short psm, short w, short h, short ztest, short zpsm,
+                     short clear);
+}
+
+/* the GS's PMODE and EXTWRITE registers */
+#define GS_PMODE ((volatile unsigned long *)0x12000000)
+#define GS_EXTWRITE ((volatile unsigned long *)0x120000D0)
+
+/* the display mode set: NTSC, PAL or 480p, the GS reset on request, the double buffer and the
+ * one-pixel store image set up (SOCOM 1's, with SOCOM II's aspect and the 480p offsets) */
+void zvid_SetVideoMode(_zvid_mode mode, bool reset)
+{
+    zVid.syncMode = mode;
+    switch (mode) {
+    case ZVID_MODE_NTSC:
+        data_004A43D0 = 2;
+        data_004A43C8 = 1;
+        data_004A43D4 = 448;
+        zVid.pcrtcOffset[1] = 1;
+        zVid.hblnkRate = 15734.25f;
+        zVid.pcrtcOffset[0] = 4;
+        data_004A43CC = 0;
+        zVid.framePsm = 0;
+        zVid.aspect[0] = 1.0f;
+        zVid.aspect[1] = 1.0f;
+        zVid.modeOffset[0] = 0;
+        zVid.modeOffset[1] = 0;
+        break;
+    case ZVID_MODE_PAL:
+        data_004A43C8 = 1;
+        zVid.pcrtcOffset[1] = 1;
+        data_004A43D0 = 3;
+        data_004A43D4 = 512;
+        data_004A43CC = 0;
+        zVid.hblnkRate = 15549.999f;
+        zVid.pcrtcOffset[0] = 4;
+        zVid.aspect[0] = 1.0f;
+        zVid.framePsm = 0;
+        zVid.aspect[1] = 1.1428572f;
+        zVid.modeOffset[0] = 0;
+        zVid.modeOffset[1] = 0;
+        break;
+    case ZVID_MODE_DTV480P:
+        zVid.pcrtcOffset[0] = 2;
+        data_004A43C8 = 0;
+        data_004A43D0 = 80;
+        data_004A43CC = 1;
+        data_004A43D4 = 448;
+        zVid.pcrtcOffset[1] = 1;
+        zVid.hblnkRate = 31468.5f;
+        zVid.framePsm = 0;
+        zVid.aspect[0] = 1.0f;
+        zVid.aspect[1] = 1.0f;
+        zVid.modeOffset[1] = 18;
+        zVid.modeOffset[0] = 0;
+        break;
+    }
+    if (reset) {
+        sceGsSyncV(0);
+        *GS_PMODE = 0;
+        asm volatile { sync }
+        sceGsResetGraph(0, data_004A43C8, data_004A43D0, data_004A43CC);
+        *GS_PMODE = 0;
+        asm volatile { sync }
+    }
+    sceGsSetDefDBuff(&data_004A4180, zVid.psm, zVid.renderWidth, zVid.renderHeight, 2, 58, 1);
+    zSysTimerInit();
+    sceGsSetDefStoreImage(&data_004A43E0, zVid.renderBuf << 5, zVid.renderWidth >> 6, 0, 0, 0,
+                          data_003E1370.x, data_003E1370.y);
+    FlushCache(0);
+}
+
+/* the video system set up: the display 640x448 in the GS's 1728,1824 window, its buffers, the z
+ * range, the fade cleared, the LOD valve made, the video thread started and the mode set (SOCOM 1's,
+ * with SOCOM II's window, second buffer and thread). OPEN, 11 instructions, the same size: the two
+ * zero byte stores (0x7C, 0x7D) sink with the fade alpha's 255 (in v0) to the 0x90 flags, where the
+ * target keeps them in source order with 255 hoisted into v1 at the top, as SOCOM 1's does -- every
+ * position of the two stores (a 23x23 sweep), bool/char/bitfield/volatile fields, chained and 0.0f
+ * forms leave it at 11; the 255's register looks like the cause (an alpha set some other way?) */
+void zVid_Init(_zvid_mode mode)
+{
+    zVid.runTime = 0;
+    zVid.swapMode = 0;
+    zVid.renderWidth = 640;
+    zVid.renderHeight = 448;
+    zVid.screenLeft = 1728;
+    zVid.screenRight = 2368;
+    zVid.screenTop = 1824;
+    zVid.screenBottom = 2272;
+    zVid.renderBuf = 140;
+    zVid.renderBuf2 = 280;
+    zVid.ztest_on = &zon_writeon_dmaref;
+    zVid.ztest_off = &zon_writeoff_dmaref;
+    zVid.pcrtcDo = 0;
+    zVid.iMinZ = 10;
+    zVid.iMaxZ = 0xFFFF;
+    zVid.textureBaseAddr = 11200;
+    zVid.textureEndAddr = 16384;
+    zVid.flag90 = 0;
+    zVid.flag91 = 1;
+    zVid.finalBlend = 0;
+    zVid.displayBuf = 0;
+    zVid.psm = 0;
+    *(unsigned long *)zvid_fade = 0;
+    zvid_fade[3] = 255;
+    zVid.minZ = zVid.iMinZ;
+    zVid.maxZ = zVid.iMaxZ;
+    if (!lodLevel)
+        lodLevel = CValve::Create("lodLevel", 1, VALVE_PERM);
+    func_003B2450();
+    zvid_SetVideoMode(mode, false);
+    zVid.videoMode = mode;
+    *GS_EXTWRITE = 0;
+    zVid.frameNumber = 0;
 }
 
 /* one GS register set through the GIF's A+D path: a DMA tag and two VIF codes, the GIF tag, the

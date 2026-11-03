@@ -7838,13 +7838,13 @@
 0x003B11F0 0x8 func_003B11F0  # OVL1
 0x003B1200 0x1A4 zVid_Init__F10_zvid_mode  # OVL1; s1:align
 0x003B13B0 0xE4 zvid_KickPacket__FPUlibb  # OVL1; s1:calls by hand (the wep lane: SOCOM 1's zvid_KickPacket -- sceDmaSendN on the GIF channel and sceGsSyncPath, or a FIFO packet referencing the GS packet -- with a fourth flag that copies the packet into the scratchpad behind its tag; CVideo::Clear calls it (vramcode, 10, true, false))
-0x003B14A0 0x2B4 func_003B14A0  # OVL1
+0x003B14A0 0x2B4 zvid_SetVideoMode__F10_zvid_modeb  # OVL1; s1:order by hand (the wep lane, round 14: SOCOM 1's zvid_SetVideoMode -- zVid_Init calls it with (mode, false) after the thread start as SOCOM 1's after sceGsResetPath, and the swap 0x3AFF30 with the mode as SOCOM 1's zVid_Swap; the same three-way switch storing the private zvid + 0x248/0x24C/0x250 modes, the H-blank rate and the PCRTC offset, then sceGsResetGraph on request, sceGsSetDefDBuff, the store image)
 0x003B1760 0x6C Fade__6CVideoFfUcUcUc  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Fade -- r, g, b stored and 255*t converted to the fourth byte -- with the float-to-unsigned conversion inline where SOCOM 1's called fptoui; right before MaxFrameRate as in SOCOM 1)
 0x003B17D0 0x24 MaxFrameRate__6CVideoFi  # OVL1; s1:order by hand (the wep lane: SOCOM 1's MaxFrameRate word for word -- 60 means -1, the old m_maxFrameRate returned; CCoreState's frame-rate calls, already noted so in st_core.cpp)
 0x003B1800 0xC8 func_003B1800  # OVL1
 0x003B18D0 0xC0 WriteGsMemory__6CVideoFUiP1Ui  # OVL1; s1:exact
 0x003B1990 0xD8 ReadGsMemory__6CVideoFUiP1Ui  # OVL1; s1:calls by hand (the wep lane: CCoreState calls it where SOCOM 1's calls ReadGsMemory, as st_core.cpp notes; WriteGsMemory's store-image twin -- sceGsSetDefStoreImage/sceGsExecStoreImage per 256x256 block, the FIFO paused around them)
-0x003B1A70 0x180 func_003B1A70  # OVL1
+0x003B1A70 0x180 RestoreImage__6CVideoFPc  # OVL1; s1:order by hand (the wep lane, round 14: SOCOM 1's CVideo::RestoreImage(char *), after ReadGsMemory in both units -- a CFileIO opened on the name, read into a _memalign'd buffer and sent to the render buffer by sceGsSetDefLoadImage/sceGsExecLoadImage; SOCOM II loops over 64-row bands where SOCOM 1 sent four fixed blocks)
 0x003B1BF0 0x1D8 func_003B1BF0  # OVL1
 0x003B1DD0 0x674 func_003B1DD0  # OVL1
 0x003B2450 0x68 func_003B2450  # OVL1
