@@ -340,8 +340,10 @@ def qualify_statics(obj: Path, stem: str, st: E.SymbolTable) -> list[tuple[str, 
     static of the same name -- libkernl's syscall wrappers `Copy`, `kCopy`, `setup` and
     `GetEntryAddress` sit in five objects. The map holds such a row as `NAME@UNIT` (UNIT the source
     file's stem: `Copy@tlbfunc`), and a GNU object's LOCAL function `NAME` is renamed so before it
-    is scored, when the map has that row; a static the map names bare scores bare. Metrowerks
-    objects are left alone. Returns the renames made."""
+    is scored, when the map has that row; a static the map names bare scores bare. Its static DATA
+    labels likewise, by the data map (`_data_table@sifcmd`: libkernl's sifcmd, sifrpc and libmrpc
+    objects each label a `_data_table` and a `_packet_buffer` of their own). Metrowerks objects are
+    left alone. Returns the renames made."""
     elf = E.Elf.read(obj)
     if not is_gnu(elf):
         return []
@@ -350,6 +352,11 @@ def qualify_statics(obj: Path, stem: str, st: E.SymbolTable) -> list[tuple[str, 
         q = f"{f.name}@{stem}"
         if f.bind == 0 and f.name and q in st._by_name and (f.name, q) not in pairs:
             pairs.append((f.name, q))
+    for s in elf.symbols:
+        q = f"{s.name}@{stem}"
+        if (s.bind == 0 and s.name and s.type not in ("FUNC", "SECTION", "FILE")
+                and q in st.data_by_name and (s.name, q) not in pairs):
+            pairs.append((s.name, q))
     if pairs:
         subprocess.run([E.tool("objcopy")] + [f"--redefine-sym={a}={b}" for a, b in pairs] + [str(obj)],
                        check=True, capture_output=True)

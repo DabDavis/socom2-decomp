@@ -742,7 +742,7 @@
 0x001A5C40 0xC _change_addr  # MAIN; s1:ref (taken by address where SOCOM 1 takes _change_addr's)
 0x001A5C50 0x18 sceSifGetSreg  # MAIN; s1:callee
 0x001A5C68 0x1C sceSifSetSreg  # MAIN unaligned; s1:exact
-0x001A5C88 0xC func_001A5C88  # MAIN unaligned
+0x001A5C88 0xC sceSifGetDataTable  # MAIN unaligned; s1:order (the GCC lane r14a: the demo's sifcmd object holds sceSifGetDataTable, 0xC, between sceSifSetSreg and sceSifInitCmd, as here; it returns _data_table@sifcmd's address; src/lib/sdk/sifcmd.c)
 0x001A5C98 0x280 sceSifInitCmd  # MAIN unaligned; s1:exact
 0x001A5F18 0x34 sceSifExitCmd  # MAIN unaligned; s1:exact
 0x001A5F50 0x18 sceSifSetCmdBuffer  # MAIN; s1:exact
