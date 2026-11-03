@@ -277,6 +277,10 @@ public:
 
 /* a library's palettes (SOCOM 1's DWARF: CTexPalList : vector) */
 class CTexPalList : public std::vector<CTexPalette *> {
+public:
+    /* whether the palette is listed (ztex_manager.cpp's, ours, inline: the target materialises the
+     * test, then branches) */
+    bool Exists(CTexPalette *pal) { return std::find(begin(), end(), pal) != end(); }
 };   // 0xc bytes
 
 /* a texture buffer's dynamic textures (SOCOM 1's DWARF: CDynTexList, two vectors) */
@@ -803,6 +807,18 @@ public:
     CTexture(const char *name);
     /* ztex_main.cpp's (SOCOM 1's): the TEX0 and MIPTBP registers found in the GIF select */
     void SetGifPtrs();
+    /* ztex_manager.cpp's: the MIPTBP registers' levels at one GS address moved to another (SOCOM
+     * 1's); the TEX0 register's texture and palette moved, then its mip levels', the next free
+     * address given back (SOCOM II's, the name ours); whether a palette of a list is this
+     * texture's, hooked up when found, and whether a texture is one of its mip levels (ours) */
+    void MIPUpdateTextureSelects(unsigned int oldAddr, unsigned int newAddr);
+    unsigned int UpdateTextureSelect(unsigned int oldAddr, unsigned int newAddr);
+    bool FindPalette(CTexPalList *list);
+    bool HasMipLevel(CTexture *tex);
+
+    /* the GS memory textures may use, from and to (SOCOM 1's statics) */
+    static unsigned int m_baseAddress;
+    static unsigned int m_endAddress;
     /* TEXTURE_PARAMS' flag setters (ours, inline: a constant through them is masked at run time,
      * as the constructor's byte read-modify-writes are) */
     void SetTransparent(bool b) { m_transparent = b; }

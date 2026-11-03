@@ -90,10 +90,10 @@ bool CWorld::Initalize()
     m_world->m_gLightColUpdate = 1;
     m_world->m_gLightDirUpdate = 1;
     m_shadowTexH = CTexHandle::Create(m_shadowTex[0]);
-    CGSTexBuffer *buf = CTexManager::m_texmanager[CTexManager::TexPhase[45]];
+    CGSTexBuffer *buf = CTexManager::m_texmanager.m_buffer[CTexManager::TexPhase[SHADOW][0]];
 
-    buf->m_dyntex.Add(m_shadowTexH, true);
-    buf->m_18 = 0;
+    buf->m_dyntex_list.Add(m_shadowTexH, true);
+    buf->m_chainp = 0;
     return true;
 }
 
@@ -815,7 +815,7 @@ void CWorld::ReleaseTextureAssetCharacters()
 
     for (it = m_TextureAssetCharacters.begin(); it != e; ++it)
         if ((*it)->m_buffer)
-            func_00356BE0((*it)->m_buffer, false);
+            (*it)->m_buffer->Load(false);
 }
 
 /* every character set's nodes let go of and the set deleted, the list emptied (SOCOM 1's).
@@ -889,13 +889,12 @@ CTextureAssetCharacters::CTextureAssetCharacters(CAssetLib *lib, CNode *node, CD
         m_nodes.Exists(node);
         m_nodes.push_back(node);
         sprintf(name, "%s", dyntex ? node->m_name : lib->RootName());
-        m_buffer = CTexManager::m_texmanager[func_003566C0(&CTexManager::m_texmanager, name,
-                                                           CTexManager::TexBufParams[0],
-                                                           CTexManager::TexBufParams[1])];
+        m_buffer = CTexManager::m_texmanager.m_buffer[CTexManager::m_texmanager.doAddBuffer(
+            name, CTexManager::TexBufParams[0], CTexManager::TexBufParams[1])];
         if (dyntex)
-            func_00357820(m_buffer, dyntex);
+            m_buffer->SetDynTexList(dyntex);
         else
-            func_003569F0(m_buffer, lib, true);
+            m_buffer->Add(lib, true);
     }
 }
 
