@@ -9,9 +9,9 @@
  * Flush with the three texture-buffer inlines' copies after it, the flush FIFO packet, the two
  * FIFO signals, VIF1's interrupt, the destructor and the constructor -- whose resize of the
  * delayed nodes brings the template tail (0x33C2A0-0x33CCCF: resize, the deleters' clears and
- * destructors, erase, insert; ~CFlareSystem 0x33CCD0 last). 0x33CD50-0x33D22F is another unit
- * (CPipeEffect's: the template tail closes this one, and its initialiser 0x402F80 follows this
- * unit's).
+ * destructors, erase, insert; ~CFlareSystem 0x33CCD0 last). 0x33CD50-0x33D22F is another unit,
+ * zrndr_postfx.cpp (CPipeEffect's: the template tail closes this one, and its initialiser 0x402F80
+ * follows this unit's).
  * OPEN: the delayed nodes' insert 0x33C5C0 (109 instructions, registers only: the in-place end
  * pointer in s6 against the target's s0, so every register after it shifts -- include/vector's
  * class insert end register, open for the MSL lane: its comment lists the shapes tried);
