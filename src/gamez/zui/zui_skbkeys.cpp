@@ -275,7 +275,6 @@ void func_00395DE0(int state);
 void func_0039A400(CSoftKeyboard *skb);
 bool func_00394840(CSoftKeyboard *skb);
 void func_00394920(CSoftKeyboard *skb);
-int func_00396E60(CSoftKeyboard *skb);
 }
 
 extern "C" {
@@ -430,10 +429,10 @@ static const SKBJAMOPAIR s_shiftJamo[7] = {
     {0x19, 0x17}, {0x01, 0x1C}, {0x04, 0x1D}, {0x10, 0x15}, {0x0B, 0x14}, {0x12, 0x16}, {0x03, 0x13}
 };
 
-/* a jamo typed: composed with shift when 0x396E60 says so (0x399070; the name ours) */
-void SkbTypeJamo(int arg, signed char jamo, CSoftKeyboard *view)
+/* a jamo typed: composed with shift when SkbShifted says so (0x399070; the name ours) */
+void SkbTypeJamo(int arg, signed char jamo, CPad *pad)
 {
-    if (func_00396E60(view)) {
+    if (SkbShifted(pad)) {
         for (unsigned int i = 0; i < 7; i++) {
             if ((unsigned char)jamo == s_shiftJamo[i].m_from) {
                 jamo = s_shiftJamo[i].m_to;

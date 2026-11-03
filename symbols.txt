@@ -757,12 +757,12 @@
 0x001A6368 0x19C sceSifInitRpc  # MAIN unaligned; s1:gap; starts at 0x1A6368, 0x19C as the demo's (the GCC lane: its prologue's first word, the delay slot of sceSifWriteBackDCache's last `jr ra`, was cut off as func_001A6368 -- merged back)
 0x001A6508 0x24 sceSifExitRpc  # MAIN unaligned; s1:exact
 0x001A6530 0xA8 _sceRpcGetPacket  # MAIN; s1:gap
-0x001A65D8 0x1C func_001A65D8  # MAIN unaligned; s1~ _sceRpcFreePacket (one of 2)
+0x001A65D8 0x1C _sceRpcFreePacket  # MAIN unaligned; s1~ _sceRpcFreePacket (one of 2); s1:order (the GCC lane r11a: the demo's sifrpc object 0x15DD68 holds _sceRpcGetPacket, _sceRpcFreePacket, _sceRpcGetFPacket in this order; the packet's rpc_id cleared and rec_id's bit 0; src/lib/sdk/sifrpc.c -- libmrpc's copy is 0x1BCF00)
 0x001A65F8 0x30 _sceRpcGetFPacket  # MAIN unaligned; s1:exact
 0x001A6628 0x40 _sceRpcGetFPacket2  # MAIN unaligned; s1:exact
-0x001A6668 0xB4 func_001A6668  # MAIN unaligned; s1~ _request_end (one of 2)
+0x001A6668 0xB4 _request_end  # MAIN unaligned; s1~ _request_end (one of 2); s1:order (the GCC lane r11a: the demo's sifrpc object, after _sceRpcGetFPacket2; sceSifInitRpc registers it for cmd 0x80000008 as the demo's registers _request_end; src/lib/sdk/sifrpc.c -- libmrpc's copy is 0x1BCF20)
 0x001A6720 0x60 func_001A6720  # MAIN
-0x001A6780 0xD0 func_001A6780  # MAIN
+0x001A6780 0xD0 _request_rdata  # MAIN; s1:ref (the GCC lane r11a: sceSifInitRpc registers it for cmd 0x8000000C where the demo's registers _request_rdata; a later release's, 0xD0 against the demo's 0x60: a client packet answered by its slot, a refused send retried through func_001A6720's alarm; src/lib/sdk/sifrpc.c)
 0x001A6850 0x158 sceSifGetOtherData  # MAIN; s1:exact
 0x001A69A8 0x4C _search_svdata  # MAIN unaligned; s1:exact
 0x001A69F8 0xB0 _request_bind  # MAIN unaligned; s1:exact
@@ -1326,7 +1326,7 @@
 0x001C4A20 0x1FC func_001C4A20  # MAIN
 0x001C4C20 0x74 func_001C4C20  # MAIN
 0x001C4C98 0x1C func_001C4C98  # MAIN unaligned
-0x001C4CC0 0xCF8 func_001C4CC0  # MAIN; the boot ELF's main (the integrator, the MAIN runtime lane r2's lead vetted: crt0.s's _start loads argc from _args, calls it with argv = &_args[1] in the delay slot and hands its result straight to Exit -- Exit(main(argc, argv))); not renamed: the map's names are unique and OVL1's main.cpp holds `main` (0x1E7040), so a MAIN unit defining main needs the scorer to tell the two links apart
+0x001C4CC0 0xCF8 func_001C4CC0  # MAIN; the boot ELF's main (the integrator, the MAIN runtime lane r2's lead vetted: crt0.s's _start loads argc from _args, calls it with argv = &_args[1] in the delay slot and hands its result straight to Exit -- Exit(main(argc, argv))); not renamed: the map's names are unique and OVL1's main.cpp holds `main` (0x1E7040), so a MAIN unit defining main needs the scorer to tell the two links apart; ovl-copy: main (the integrator: so a MAIN unit defining main -- sc: overlay=MAIN -- scores here, not at OVL1's main.cpp 0x1E7040)
 0x001C59C0 0x164 func_001C59C0  # MAIN
 0x001C5B30 0x26C func_001C5B30  # MAIN
 0x001C5DA0 0x114 func_001C5DA0  # MAIN
@@ -2757,7 +2757,7 @@
 0x00259AF0 0x4C __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1; the MSL headers round 10: include/vector's 4-byte pod operator= (out of class, the char pod's: assign over the other's words unless this one), byte-exact as a probe (build/p10/e/podas.cpp); calls 0x259D20
 0x00259B40 0x4C __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1 ; SOCOM 1 name (its copy of the pointer vectors' implementation, the same 0x4C: zeroed, then init over the other's elements)
 0x00259B90 0x190 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1 ; SOCOM 1 name with MW 3.0's return type (_v); the copy calls it as SOCOM 1's does
-0x00259D20 0x1C0 assign<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 10: include/vector's 4-byte pod assign (the char pod's with init's word loop, "vector::assign length error"), byte-exact as a probe (build/p10/e/podas.cpp)
+0x00259D20 0x1C0 do_assign<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 10: include/vector's 4-byte pod assign (the char pod's with init's word loop, "vector::assign length error"), byte-exact as a probe (build/p10/e/podas.cpp); the MSL headers round 12: renamed do_assign, as SOCOM 1's symtab calls every range assign (do_assign<PCUi> 0x1FC880, do_assign<PC14CCharacterWeap> 0x1D7700, do_assign<PC3LOD> 0x24B2E0); measured, no codegen change
 0x00259EE0 0x11C FetchLIP__Q23zar4CZARFPQ23zar4CKeyPPv  # OVL1; s1:order by hand (SOCOM 1's FetchLIP 0x1DAF80, first of zar_search.cpp there as here before Fetch(CKey *, ...): dynamic_cast of the file to CBufferIO, its fread(size, void **); CRdrFile and CVisual's readers call it as SOCOM 1's do)
 0x0025A000 0x11C Fetch__Q23zar4CZARFPQ23zar4CKeyPviUi  # OVL1; s1:calls (CRdrFile::Load calls it with SOCOM 1's (key, buf, size, 0)) -- the rdr lane
 0x0025A120 0x1C4 Insert__Q23zar4CZARFPQ23zar4CKeyPCvi  # OVL1; s1:calls (CRdrFile::Insert calls it where SOCOM 1's calls zar::CZAR::Insert) -- the rdr lane
@@ -7266,7 +7266,7 @@
 0x0038C000 0x3C func_0038C000  # OVL1
 0x0038C040 0xEC OnEnterKey__13CSoftKeyboardFP9CGameMenu  # OVL1; ours, by its body (unless 0x3999D0: an unchanged string while IgnoreUnchangedString holds, or an empty one, goes to 0x38C000; else 0x399D20, ShutdownBegin and 0x395DE0(4)) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038C130 0x320 func_0038C130  # OVL1
-0x0038C450 0x58 func_0038C450  # OVL1
+0x0038C450 0x58 SkbMoveCursor__FP13CSoftKeyboardUc  # OVL1; the UI lane round 11: ours, by its body (zui_skb.cpp: 0x38C130 with the axis, column for directions 1 and 2 as a byte enum, and the step 0x38C4C0 (+1) for 2 and 4, else 0x38C4B0 (-1); 0x38CB80 jumps here)
 0x0038C4B0 0x8 func_0038C4B0  # OVL1
 0x0038C4C0 0x8 func_0038C4C0  # OVL1
 0x0038C4D0 0x158 InvalidateDisplay__13CSoftKeyboardFv  # OVL1; s1:calls by hand (SOCOM 1's CSoftKeyboard::InvalidateDisplay: InvalidateSkbsDisplay calls it per keyboard, the constructor at its end) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
@@ -7299,7 +7299,7 @@
 0x0038E550 0x40 func_0038E550  # OVL1
 0x0038E590 0x88 func_0038E590  # OVL1
 0x0038E620 0xD0 __ct__12CBmpWithNodeFv  # OVL1; by hand (CPlainBmp's inline constructor, then CBmpWithNode's tables and the node zeroed: CreateSoftKeyboard calls it six times, 0x1C0 on) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
-0x0038E6F0 0x40 func_0038E6F0  # OVL1
+0x0038E6F0 0x40 __ct__12CSkbTexListsFv  # OVL1; the UI lane round 11: zui_skb.cpp's CSkbTexLists() (__construct_array over vector<zdb::CTexHandle *>'s constructor and destructor copies 0x1FB3D0/0x1FB300, four of 12 bytes) -- the keyboard's 0x184 lists are texture handles; byte-exact
 0x0038E730 0xC __ct__10CInit<b,0>Fv  # OVL1; s1:order by hand (SOCOM 1's CInit<b,0> template, its constructor a zero byte: CreateSoftKeyboard calls it for 0x174 and 0x175) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038E740 0x30 __ct__Q23std111map<7CSkbKey,P12CSkbKeyProps,Q23std14less<7CSkbKey>,Q23std50allocator<Q23std31pair<C7CSkbKey,P12CSkbKeyProps>>>Fv  # OVL1; the MSL headers round 7: include/memory's inline allocator() -- the soft keyboard's std::map<CSkbKey, CSkbKeyProps *> no-argument constructor, the tree built with a bare stack slot for the allocator temporary; byte-exact from zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038E770 0x14 __ct__8CSkbGridFv  # OVL1; by hand (CSkbGrid's implicit constructor out of line, the grid's vector zeroed: CreateSoftKeyboard calls it for this + 0x158, the keyboard's constructor inlined one level) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
@@ -7405,21 +7405,21 @@
 0x00393DD0 0x68 __dt__Q23std64__vector_deleter<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' deleter destructor (clear 0x393E40, the block freed)
 0x00393E40 0xC0 clear__Q23std64__vector_deleter<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, the completions' deleter clear
 0x00393F00 0xA8 init<PCc>__Q23std36__vector_pod<c,Q23std12allocator<c>>FPCcPCcQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range init (memcpy), byte-exact as a probe (build/p9/vc1.cpp); the copy calls it
-0x00393FB0 0xD8 assign<PCc>__Q23std36__vector_pod<c,Q23std12allocator<c>>FPCcPCcQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range assign (memcpy), byte-exact as a probe (build/p9/vc1.cpp); the assignment calls it
+0x00393FB0 0xD8 do_assign<PCc>__Q23std36__vector_pod<c,Q23std12allocator<c>>FPCcPCcQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range assign (memcpy), byte-exact as a probe (build/p9/vc1.cpp); the assignment calls it; the MSL headers round 12: renamed do_assign, as SOCOM 1's symtab calls every range assign (do_assign<PCUi> 0x1FC880, do_assign<PC14CCharacterWeap> 0x1D7700, do_assign<PC3LOD> 0x24B2E0); measured, no codegen change
 0x00394090 0x60 __dt__Q23std54vector<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, ~vector<SKBCOMPLETE> (two this-tests, the deleter's destructor 0x393DD0 called)
 0x003940F0 0x78 __dt__18CSkbVec<P7SKBRULE>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_rules' destructor (four this-tests; the initialiser registers it)
 0x00394170 0x60 __dt__15CSkbCompleteVecFv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_complete's destructor (the initialiser registers it; ~vector 0x394090 called); the UI lane round 10: zui_hangul.cpp, s_complete's destructor (the initialiser registers it; two this-tests, ~vector<SKBCOMPLETE> 0x394090 called)
 0x003941D0 0x34 func_003941D0  # OVL1
-0x00394210 0x80 func_00394210  # OVL1
+0x00394210 0x80 SetSpec__12CSkbKeyPropsFP5_zrdr  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the key props' button spec at 0x10 deleted through its virtual destructor, then a new CButtonSpec(rdr) of 0x118 bytes, or none)
 0x00394290 0x88 func_00394290  # OVL1
 0x00394320 0x44 func_00394320  # OVL1
 0x00394370 0x68 func_00394370  # OVL1
 0x003943E0 0x40 SkbLoadUiParams__Fv  # OVL1; ours (zui_hangul.cpp: UiParams.rdr from data/common held for the call to the display unit's 0x397070 and freed, ZuiInit's holder; CMission::Init calls it)
 0x00394420 0xFC func_00394420  # OVL1
 0x00394520 0x2A4 func_00394520  # OVL1
-0x003947D0 0x64 func_003947D0  # OVL1
+0x003947D0 0x64 SkbToggleShiftLock__Fb  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 5's node toggled when the flag is set, else hidden when it exists)
 0x00394840 0xA8 SkbToggleCaption1__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (the caption's mode byte 0x4A0A60 toggled between 1 and 0, its node 0x4A1118 placed at the second cap's position raised by the look's float at 0x64 when on, its text 0x4A0930 or 0x4A08F0; returns whether on: SkbSwitchText's test)
-0x003948F0 0x28 func_003948F0  # OVL1; size 0x28 (a tail call through t9; the seed ran on into the padding)
+0x003948F0 0x28 SkbToggleLock2__Fv  # OVL1; size 0x28 (a tail call through t9; the seed ran on into the padding); the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 0's node SetActive(!active), a tail call through the table)
 0x00394920 0x94 SkbToggleCaption2__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (the caption's mode toggled between 2 and 0, its text 0x4A09B0 or 0x4A08F0, its node placed at the second cap's position)
 0x003949C0 0x3D4 func_003949C0  # OVL1
 0x00394DA0 0x1B4 func_00394DA0  # OVL1
@@ -7429,29 +7429,29 @@
 0x00395140 0x1B0 func_00395140  # OVL1
 0x003952F0 0xC func_003952F0  # OVL1
 0x00395300 0x140 ReadIntPair__FP5_zrdrPCc  # OVL1; SOCOM 1's name by its body (zui_skbview.cpp: SOCOM 1's zui_skb.cpp ReadIntPair -- the tag's array items 0 and 1 as ints through GetRdrArrayInt's shape, a CIntPair returned; the look parser 0x3963F0 calls it seven times, zui_skb.cpp's 0x38DCB0 twice)
-0x00395440 0xF8 func_00395440  # OVL1
+0x00395440 0xF8 SkbApplyCapLook__FP9C2DStringPQ23zdb5CNodeP13CSoftKeyboardUcP7C2DFontf  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a C2DString given cap i's look -- the font at 0x4A1120 when the cap's name at 8 is empty, its colour and scale -- its node placed at the cap's x, y + dy and hidden; 0x398EA0 calls it three times)
 0x00395540 0x390 func_00395540  # OVL1
 0x003958D0 0x47C func_003958D0  # OVL1
-0x00395D50 0x90 func_00395D50  # OVL1
-0x00395DE0 0x154 func_00395DE0  # OVL1
+0x00395D50 0x90 SkbLoadBitmap__FP12CBmpWithNodePQ23zdb5CNodeiiPCcPQ23zdb16CTextureRelocMgr  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a bitmap loaded with PrepTexture's handle at w x h, then 0x36AB20 gives it a node under the parent)
+0x00395DE0 0x154 SkbPlaySound__FUc  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: one of six CSnd pointers played once, PlaySound(true, 0, 255) through slot 0x1C, by a byte's switch)
 0x00395F40 0x2D4 func_00395F40  # OVL1
-0x00396220 0xDC func_00396220  # OVL1
-0x00396300 0xE4 func_00396300  # OVL1
+0x00396220 0xDC SkbTogglePair__FP12CBmpWithNodeP12CBmpWithNodePFb_v  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: two bitmaps' nodes toggled when both exist, a callback told whether the second is on, sound 3)
+0x00396300 0xE4 SkbToggleBmp4__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 4's node toggled, bitmap 3's shown when it comes on, the float 0x3E04C8 cleared, sound 3)
 0x003963F0 0x7D8 func_003963F0  # OVL1
-0x00396BD0 0x30 func_00396BD0  # OVL1
+0x00396BD0 0x30 SetRect__8CSkbLookFUcRC8CSkbRect  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the look's rectangle i (0x70 + 16 i) assigned, a block copy; the look parser 0x3963F0 calls it five times)
 0x00396C00 0x70 ReadSkbRect__FP8CSkbRectP5_zrdr  # OVL1; ours (zui_skbview.cpp: a look rectangle from its block's Pos and Size pairs through ReadIntPair; the look parser 0x3963F0 calls it)
 0x00396C70 0x8 func_00396C70  # OVL1
 0x00396C80 0x28 func_00396C80  # OVL1
-0x00396CB0 0x88 func_00396CB0  # OVL1
-0x00396D40 0x118 func_00396D40  # OVL1
-0x00396E60 0x54 func_00396E60  # OVL1
+0x00396CB0 0x88 SkbShifted2__FP4CPad  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: SkbShifted inlined, then against bitmap 0's node active; 0x38D200 asks)
+0x00396D40 0x118 SkbTextFits__FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>b  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a std::string within the look's byte and UTF-8 character limits for string 0 or 1, 0x4A10C8-0x4A10E0; 0x399EC0 asks)
+0x00396E60 0x54 SkbShifted__FP4CPad  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: CPad's L1 state, 0xD, held or falling, against bitmap 5's node active -- the shift lock; SkbTypeJamo 0x399070 asks)
 0x00396EC0 0x10 func_00396EC0  # OVL1
 0x00396ED0 0x14 func_00396ED0  # OVL1
 0x00396EF0 0x14 func_00396EF0  # OVL1
 0x00396F10 0x14 func_00396F10  # OVL1
-0x00396F30 0x134 func_00396F30  # OVL1
+0x00396F30 0x134 SkbForgetDisplay__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the bitmaps' nodes, the 40 key-row bitmaps' through slot 0x30, the six sounds, the display's root node 0x49ED50 and the caption's node zeroed, the caption's text set to none; InvalidateSkbsDisplay calls it)
 0x00397070 0x520 func_00397070  # OVL1
-0x00397590 0xA8 func_00397590  # OVL1
+0x00397590 0xA8 SkbPlaceCursor__FP12CSkbKeyProps  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 2 reloaded at the key's size with its own texture, its node put at the key's place, the key's button SetActive through a member pointer {0, 0x50, 0xC})
 0x00397640 0x1FC func_00397640  # OVL1
 0x00397840 0xC func_00397840  # OVL1
 0x00397850 0x3C SkbGetText__Fb  # OVL1; ours (zui_skbview.cpp: the edited text's buffer 0x4A0A30, or the c_str() of the string the keyboard opened with, 0x4A1300; 0x3998A0 and 0x399D20 call it)
@@ -7459,7 +7459,7 @@
 0x003978C0 0xC func_003978C0  # OVL1
 0x003978D0 0x74 func_003978D0  # OVL1
 0x00397950 0x268 func_00397950  # OVL1
-0x00397BC0 0x164 func_00397BC0  # OVL1
+0x00397BC0 0x164 SkbFindSounds__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the six CSnd statics from CSnd::GetSoundByName of strings 2, 3, 4, 5, 6 and 1; 0x3958D0 calls it)
 0x00397D30 0x2AC func_00397D30  # OVL1
 0x00397FE0 0xE4 func_00397FE0  # OVL1
 0x003980D0 0x220 func_003980D0  # OVL1
@@ -7476,7 +7476,7 @@
 0x00398EA0 0x118 func_00398EA0  # OVL1
 0x00398FC0 0x7C func_00398FC0  # OVL1
 0x00399040 0x24 func_00399040  # OVL1
-0x00399070 0x88 SkbTypeJamo__FiScP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (a jamo replaced by its doubled form from the seven pairs at 0x3FB840 when 0x396E60 says so, then typed through 0x399200) -- byte-exact in zui_skbkeys.cpp
+0x00399070 0x88 SkbTypeJamo__FiScP4CPad  # OVL1; the UI lane round 9: ours, by its body (a jamo replaced by its doubled form from the seven pairs at 0x3FB840 when 0x396E60 says so, then typed through 0x399200) -- byte-exact in zui_skbkeys.cpp; the UI lane round 11: the third parameter is the pad (0x38D200's, CPad's L1 state read by SkbShifted)
 0x00399100 0x48 func_00399100  # OVL1
 0x00399150 0xA4 SkbSwitchText__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (0x394840's mode switch decides whether string 0 is current; its node shown or hidden, 0x39A400 when either was string 0, string 0 emptied) -- byte-exact in zui_skbkeys.cpp
 0x00399200 0x74 func_00399200  # OVL1
@@ -8936,7 +8936,7 @@
 0x004EB3E0 0xC4 InitIsoWordTokenDpProcess  # OVL2; s1:align
 0x004EB4A8 0x118 func_004EB4A8  # OVL2 unaligned
 0x004EB5C0 0x8 func_004EB5C0  # OVL2
-0x004EB5C8 0x20 func_004EB5C8  # OVL2 unaligned
+0x004EB5C8 0x20 ScoreCompare@isowdp  # OVL2 unaligned; s1:order (SOCOM 1's iso-word token DP object at 0x356970 ends with its LOCAL ScoreCompare, as this object ends at 0x4EB5E8; a qsort comparator of the tokens' int at +4: -1, 0, 1) -- the gcc lane, round 11c
 0x004EB5E8 0x1EC func_004EB5E8  # OVL2 unaligned
 0x004EB7D8 0x3C0 func_004EB7D8  # OVL2 unaligned
 0x004EBB98 0x114 InitNBestDynProgProcess  # OVL2 unaligned; s1:align
@@ -8955,7 +8955,7 @@
 0x004EFF68 0xC54 func_004EFF68  # OVL2 unaligned
 0x004F0BC0 0x3C ConstructNBestDynProg  # OVL2; s1:align
 0x004F0C00 0x7C ExtendBacktraceStack  # OVL2; s1:align
-0x004F0C80 0x30 func_004F0C80  # OVL2
+0x004F0C80 0x30 ScoreCompare@nbestdp  # OVL2; s1:order (SOCOM 1's N-best DP object at 0x358DF0: ExtendBacktraceStack, ScoreCompare, IdleProcess -- the LOCAL comparator between them, as here; it orders backtraces by the short at +4 of each, ascending) -- the gcc lane, round 11c
 0x004F0CB0 0x8 IdleProcess  # OVL2; s1:ref (taken by address where SOCOM 1 takes IdleProcess's)
 0x004F0CB8 0x404 Actual_DP  # OVL2 unaligned; s1:calls (SOCOM 1's FlushPitchDP, ProcessPitchDP call Actual_DP where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004F10C0 0x438 BackTracking  # OVL2; s1:calls (SOCOM 1's FlushPitchDP, ProcessPitchDP call BackTracking where ours call this row, 2 call sites; the same position in SOCOM 1's object)
@@ -8984,7 +8984,7 @@
 0x004F3828 0x680 ProcessAcne  # OVL2 unaligned; s1:align
 0x004F3EA8 0x2A8 ControlAcne  # OVL2 unaligned; s1:align
 0x004F4150 0x250 InitAcne  # OVL2; s1:calls
-0x004F43A0 0x3C func_004F43A0  # OVL2
+0x004F43A0 0x3C ConstructAcne  # OVL2; s1:order (SOCOM 1's acne object at 0x360460 ends with ConstructAcne; this constructor hands ProcessAcne, InitAcne and ControlAcne to tosBaseBlockConstruct with the block's 0x98 bytes) -- the gcc lane, round 11c
 0x004F43E0 0x30C func_004F43E0  # OVL2
 0x004F46F0 0x3C func_004F46F0  # OVL2
 0x004F4730 0x1CC func_004F4730  # OVL2
@@ -9023,7 +9023,7 @@
 0x004F78A8 0x19C QrPreMult  # OVL2 unaligned; s1:calls (SOCOM 1's Smoothing calls QrPreMult where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F7A48 0x200 smtConstruct  # OVL2 unaligned; s1:calls
 0x004F7C48 0x45C Smoothing  # OVL2 unaligned; s1:calls
-0x004F80A8 0x84 func_004F80A8  # OVL2 unaligned
+0x004F80A8 0x84 smtDestruct  # OVL2 unaligned; s1:calls (SOCOM 1's FreeResourcesAcne tail-calls smtDestruct(smoother, tos) at the point where ours -- FreeResourcesAcne inlined into ControlAcne -- calls this row; the smoothing object's, after smtConstruct) -- the gcc lane, round 11c (found by its helper)
 0x004F8130 0x244 SpecSubPutSession  # OVL2; s1:calls (SOCOM 1's ControlSpecSub calls SpecSubPutSession where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F8378 0xF0 SpecSubGetSession  # OVL2 unaligned; s1:align
 0x004F8468 0x1208 func_004F8468  # OVL2 unaligned
@@ -9118,8 +9118,8 @@
 0x00505288 0x13C InitStationarity  # OVL2 unaligned; s1:align
 0x005053C8 0x3C ConstructStationarity  # OVL2 unaligned; s1:align
 0x00505408 0x78 ControlStationarity  # OVL2 unaligned; s1:align
-0x00505480 0x2AC func_00505480  # OVL2
-0x00505730 0x174 func_00505730  # OVL2
+0x00505480 0x2AC Subsampler_Process  # OVL2; s1:order (SOCOM 1's subsampler object at 0x370368 starts with Subsampler_Process; the same body: every second sample filtered through the ring of partial products, the others delayed) -- the gcc lane, round 11c
+0x00505730 0x174 Subsampler_CheckImpulseResponse  # OVL2; s1:order (SOCOM 1's subsampler object's second, a LOCAL there; Subsampler_Init calls it with the 23-tap table as SOCOM 1's does, and it logs error 300) -- the gcc lane, round 11c
 0x005058A8 0x348 Subsampler_Init  # OVL2 unaligned; s1:calls
 0x00505BF0 0xD8 Subsampler_Reset  # OVL2; s1:calls (SOCOM 1's Voicing_Reset tail-calls Subsampler_Reset at the same point -- its body is SOCOM II's Voicing_Reset's with the voicing fields 4 bytes lower; the subsampler object's row between Subsampler_Init and Subsampler_Free) -- the gcc lane, round 10c
 0x00505CC8 0xC4 Subsampler_Free  # OVL2 unaligned; s1:align
@@ -9248,7 +9248,7 @@
 0x0050AC20 0xCC qQueueJumpBackOne  # OVL2; s1:order (SOCOM 1's queue object, after qQueueJumpBack as there; called by qQueueControl, as the demo's)
 0x0050ACF0 0x34 qQueueNbrElements  # OVL2; s1:calls (SOCOM 1's ProcessAcne and others call qQueueNbrElements where ours call this row, 4 call sites; the same position in SOCOM 1's object)
 0x0050AD28 0x1B0 qCheckDeQueueOne  # OVL2 unaligned; s1:order (SOCOM 1's queue object, its last as there; called twice by tosRun, as the demo's)
-0x0050AED8 0x3E8 func_0050AED8  # OVL2 unaligned
+0x0050AED8 0x3E8 SetAndControlQSizes  # OVL2 unaligned; s1:calls (SOCOM 1's tosInit calls SetAndControlQSizes between the blocks' inits and the queues' qQueueInit, where ours calls this row; the tos object's first function, as SOCOM 1's at 0x3759E8) -- the gcc lane, round 11c
 0x0050B2C0 0x2FC ConstructBlock  # OVL2; s1:order (SOCOM 1's tos object at 0x3759E8, after SetAndControlQSizes as there; opcode similarity 0.86)
 0x0050B5C0 0x368 ConstructQueue  # OVL2; s1:order (SOCOM 1's tos object, after ConstructBlock as there; calls qQueueInit as the demo's; similarity 0.81)
 0x0050B928 0x220 DestructQueue  # OVL2 unaligned; s1:order (SOCOM 1's tos object, after ConstructQueue as there; similarity 0.80)
@@ -9436,7 +9436,7 @@
 0x005169B0 0x558 func_005169B0  # OVL2
 0x00516F10 0xA4 func_00516F10  # OVL2
 0x00516FC0 0x88 Alloc__7CAiCellFUi  # OVL2; ours (new in SOCOM II: n cells from _calloc, each through CAiCell::Reset; the layers' allocation 0x53A8F0 calls it)
-0x00517050 0x388 func_00517050  # OVL2
+0x00517050 0x388 TransformTo__6CAiMapFRC9CAiMapLocP6CAiMapR9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 15 (the demo's TransformTo 0x185B50, after GetCellRepelParams and before GetMapRegion/ResetCells as here; GetLocationDelta 0x52C320 calls it twice with (loc, map, &out) as the demo's calls it)
 0x005173E0 0x84 GetMapRegion__6CAiMapCFRQ26CAiMap6region  # OVL2; s1:order by hand (the demo's 0x185FF0, the same 0x84 bytes: a CAiMapLoc(0, 0, 0) temporary copied into the region's cell, then m_nx and m_ny as its width and height; 0x517470 and ValidateCells call it)
 0x00517470 0x254 ResetCells__6CAiMapFv  # OVL2; s1:order by hand (the demo's 0x186080, after GetMapRegion in both builds: every cell of the map visited row by row through the scanlines and handed to _reset_cell 0x5180B0 -- SOCOM II's walk, inlined one level, its pieces called out of line after it; CAiMaps' 0x52E720 calls it)
 0x005176D0 0x8 GetDx__Q26CAiMap6regionCFv  # OVL2; ours (the region's width, lhu at 4: out of line after ResetCells where the walk is inlined one level)
@@ -9609,7 +9609,7 @@
 0x00528C30 0x4C func_00528C30  # OVL2; OVL2's copy of the 4-byte pod's operator= (OVL1 0x259AF0, the same 0x4C bytes bar the call, to 0x529030 here), the AI core round 14 -- CCharacterType's constructor copies the base's gear with it, as ai_path.cpp's 0x527FD0 does a pointer vector; ovl-copy: __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>
 0x00528C80 0x160 erase__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FPQ27CAiPath5pointPQ27CAiPath5point  # OVL2; by hand (the points' resize 0x528430 calls it with data + n and the end, as MSL's resize erases the tail; 8-byte steps)
 0x00528DE0 0x248 reserve__Q23std68__vector_imp<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>,0>FUi  # OVL2; s1:callee by hand (SetSnakeLength calls it on m_points with the length, as the demo's calls reserve<point> 0x196BC0; 8-byte elements, MSL's length error)
-0x00529030 0x1C0 func_00529030  # OVL2; OVL2's copy of the 4-byte pod's assign (OVL1 0x259D20, the same 0x1C0 bytes bar the link's addresses), the AI core round 14 -- 0x528C30 calls it; ovl-copy: assign<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v
+0x00529030 0x1C0 func_00529030  # OVL2; OVL2's copy of the 4-byte pod's assign (OVL1 0x259D20, the same 0x1C0 bytes bar the link's addresses), the AI core round 14 -- 0x528C30 calls it; ovl-copy: do_assign<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v
 0x005291F0 0xDC GetDistanceSq__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II, ai_maps.cpp's first function: two cells' centres by GetCellCenter, their difference's squared length; 0 for the same cell, 1e12 without a centre)
 0x005292D0 0x2C GetDistance__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; ours (new in SOCOM II: sqrtf of GetDistanceSq, called by CAiSPlan::Tick)
 0x00529300 0x724 FindTraversable__7CAiMapsFRC9CAiMapLocR9CAiMapLoc  # OVL2; ours (new in SOCOM II: GetTraversableLocation's second call, (cell, out) -> bool; it reads cells through GetCell and CAiCell::IsTraversable -- the name a role, not yet read in full)
@@ -9642,17 +9642,17 @@
 0x0052BB70 0x274 func_0052BB70  # OVL2
 0x0052BDF0 0x518 func_0052BDF0  # OVL2
 0x0052C310 0x8 func_0052C310  # OVL2
-0x0052C320 0x284 func_0052C320  # OVL2
+0x0052C320 0x284 GetLocationDelta__7CAiMapsFRC9CAiMapLocRC9CAiMapLoc  # OVL2; s1:order by hand, the AI core round 15 (the demo's GetLocationDelta 0x199610, between SmoothPath and RegisterPathPlan as 0x52C310/0x52C5B0 are here: the same-map Manhattan sum, two TransformTo calls, _max<Ui> of the maps' cell counts; SOCOM II adds map 0 as the common grid)
 0x0052C5B0 0xC func_0052C5B0  # OVL2
 0x0052C5C0 0x608 func_0052C5C0  # OVL2
 0x0052CBD0 0xAC CanSeeLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A480, after ComputeLineVisibility: the two cells' common map's CanSeeLine, false across maps)
 0x0052CC80 0xAC CanTravelLine__7CAiMapsFRC9CAiMapLocRC9CAiMapLocP9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19A570, after CanSeeLine: the common map's CanTravelLine)
 0x0052CD30 0xDC GetAltitude__7CAiMapsFRC9CAiMapLocRf  # OVL2; s1:order by hand (the demo's 0x19A660, after CanTravelLine in both builds: the cell's map's altitude, its lookup inlined one level -- GetCell 0x511F80 and the cell's altitude 0x516940 called)
-0x0052CE10 0x3E8 func_0052CE10  # OVL2
+0x0052CE10 0x3E8 GetInterpolatedShadow__7CAiMapsFRC9CAiMapLocPC6CPnt3Db  # OVL2; s1:order by hand, the AI core round 15 (the demo's GetInterpolatedShadow 0x19B290, after GetAltitude and before GetInterpolationCells/GetCellCenter as here; called (AiMaps, &loc, &pos, 0) for the explosions' and projectiles' light, 1.0 off the maps)
 0x0052D200 0x6C __ct__9CAiMapLocFUiUiUi  # OVL2; s1:exact
-0x0052D270 0x10 func_0052D270  # OVL2
-0x0052D280 0x10 func_0052D280  # OVL2
-0x0052D290 0x1F0 func_0052D290  # OVL2
+0x0052D270 0x10 GetShadow__7CAiCellCFv  # OVL2; by hand, the AI core round 15 (CAiCell's shadow bits 22-23 read out: GetInterpolatedShadow's out-of-line copy, after the three-argument CAiMapLoc as its first use orders them)
+0x0052D280 0x10 IsInside__7CAiCellCFv  # OVL2; by hand, the AI core round 15 (CAiCell's bit 24 as a bool: GetInterpolatedShadow's indoor test, out of line after GetShadow)
+0x0052D290 0x1F0 GetInterpolationCells__6CAiMapCFRC9CAiMapLocPC6CPnt3DP6IPNT2DP5PNT2D  # OVL2; s1:order by hand, the AI core round 15 (the demo's 0x19BA90, between GetInterpolatedShadow and GetCellCenter as here; GetInterpolatedShadow calls it (map, loc, pos, &d, &t) as the demo's)
 0x0052D480 0x21C GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D  # OVL2; s1:calls (CMission::LoadVehicle and GetStartMatrix call it on AiMaps after GetLocation, as SOCOM 1's call GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D)
 0x0052D6A0 0x12C GetCell__7CAiMapsFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's 0x19BFC0, after GetCellCenter in both builds: the cell's map's first-layer cell, GetCell inlined one level)
 0x0052D7D0 0x3C GetBoundary__7CAiMapsFRC9CAiMapLoc  # OVL2; s1:order by hand (the demo's GetBoundary__7CAiMapsFRC9CAiMapLoc follows GetCell as here; SOCOM II's reads the cell's two boundary bits, 0 off the maps)
@@ -9794,10 +9794,10 @@
 0x005396C0 0x3E0 GetLocationWidth__6CAiMapFRC9CAiMapLoci  # OVL2; s1:order by hand (the demo's GetLocationWidth 0x1A8630 after _TravelLineCallback in both builds: rings of cells around one tested out to a limit, the map's bounds and each ring's rows and sides through a CAiMap::IsTraversable-shaped inline inlined one level -- GetCell and 0x511F40 out of line; returns the width)
 0x00539AA0 0xD0 _lerp__FPC6CPnt3DPC6CPnt3DP6CPnt3Df  # OVL2; ours (CAiMaps::WalkLine's step: a*(1-t) + b*t through CPnt3D's const * and +, Scale and Add out of line; byte-exact in ai_mapwalk.cpp)
 0x00539B70 0x50 func_00539B70  # OVL2; OVL2's copy of _saturate<f> (OVL1 0x267A60, the same 0x50 bytes; CRemoteCtrl::PostMortemPreTick calls it -- the kit lane); ovl-copy: _saturate<f>__FPfRCfRCf_b
-0x00539BC0 0xBC func_00539BC0  # OVL2
-0x00539C80 0x74 func_00539C80  # OVL2
-0x00539D00 0x170 func_00539D00  # OVL2; one function 0x539D00-0x539E6F (merged: the seed cut it at 0x539D50, a jal target of the DNAS clients in MAIN 0x1C5E08 and OVL1 0x2CB56C; one frame of 128, the allocation-failure path after the cut on the first piece's at and saved registers, one epilogue at 0x539E54)
-0x00539E70 0x18 func_00539E70  # OVL2
+0x00539BC0 0xBC erase__Q23std56__list_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>FQ33std56__list_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>19generic_iterator<0>Q33std56__list_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>19generic_iterator<0>  # OVL2; s1:order by hand, the AI core round 15 (the range erase FloodFill's list destructor ends in, as the demo's 0x1A8E20; byte-exact from include/list)
+0x00539C80 0x74 erase__Q23std56__list_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>FQ33std56__list_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>19generic_iterator<0>  # OVL2; s1:order by hand, the AI core round 15 (FloodFill's pop of the front, as the demo's 0x1A8ED0; byte-exact from include/list)
+0x00539D00 0x170 insert__Q23std56__list_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>FQ33std56__list_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>19generic_iterator<0>RC9CAiMapLoc  # OVL2; one function 0x539D00-0x539E6F (merged: the seed cut it at 0x539D50, a jal target of the DNAS clients in MAIN 0x1C5E08 and OVL1 0x2CB56C; one frame of 128, the allocation-failure path after the cut on the first piece's at and saved registers, one epilogue at 0x539E54); s1:order by hand, the AI core round 15 (FloodFill's push_back calls it with the end and the cell, as the demo's 0x1A8F50; byte-exact from include/list)
+0x00539E70 0x18 __ct__Q23std56__list_deleter<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv  # OVL2; s1:order by hand, the AI core round 15 (the walker unit's list<CAiMapLoc> constructor: FloodFill's first call, as the demo's 0x1A9140; byte-exact from include/list)
 0x00539E90 0x20 func_00539E90  # OVL2
 0x00539EB0 0x2B0 FindLookLoc__6CAiMapFRC9CAiMapLocPC6CPnt3DR9CAiMapLocRQ26CAiMap3DIRi  # OVL2; s1:order by hand (the demo's FindLookLoc 0x1A9590, first of the look and cover searches in both builds: the start's centre (GetCellCenter inlined one level), the XZ direction to the point, FloodFill with _find_look 0x53A410)
 0x0053A160 0x2B0 FindCoverLoc__6CAiMapFRC9CAiMapLocPC6CPnt3DR9CAiMapLocRQ26CAiMap3DIRi  # OVL2; s1:order by hand (the demo's FindCoverLoc 0x1A9970, between FindLookLoc and _find_look in both builds, FindLookLoc's size in both: the same body, FloodFill handed _find_cover)
@@ -9869,8 +9869,8 @@
 0x0053F0B0 0xF0 ResetGears__14CCharacterTypeFv  # OVL2; ours, the AI core round 11 (new in SOCOM II, after FindGear: every made gear's model (+0x18) and count (+0) zeroed, with an empty walk of m_char_list the first time a held one is met -- a compiled-out report; OVL1's 0x2AB3F0 calls it before CleanupTemporary; written, open)
 0x0053F1A0 0xEC remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator  # OVL2; s1:callee by hand (CCharacterType::CleanupTemporary calls it with the list's begin, end and DeleteTemporaryCharType, as SOCOM 1's calls remove_if<PP14CCharacterType,PFP14CCharacterType_b>; SOCOM II's vector iterators are classes, by value, the result through a hidden pointer)
 0x0053F290 0xE0 remove_if<Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator,12compare_item>__3stdFQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iteratorQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator12compare_item_Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator  # OVL2; s1:callee by hand, the AI core round 12 (RemoveWeapon 0x53B300 calls it as SOCOM 1's calls remove_if<P14CCharacterWeap,12compare_item>: the item's byte compared with each weapon's, over SOCOM II's class iterators)
-0x0053F370 0x3C0 assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v  # OVL2; by hand, the AI core round 14 (the weapons' range assign, SOCOM 1's do_assign<PC14CCharacterWeap> 0x1D7700: CCharacterType's constructor calls it on m_weapons with the base's range and an empty tag, "vector::assign length error"; named as include/vector's pod assign is)
-0x0053F730 0x368 assign<PCQ214CCharacterType3LOD>__Q23std80__vector_imp<Q214CCharacterType3LOD,Q23std33allocator<Q214CCharacterType3LOD>,0>FPCQ214CCharacterType3LODPCQ214CCharacterType3LODQ23std20forward_iterator_tag_v  # OVL2; by hand, the AI core round 14 (the LODs' range assign, SOCOM 1's do_assign<PC3LOD> 0x24B2E0: CCharacterType's constructor calls it on m_LODs with the base's range, the strings assigned through 0x5410C0 and built through 0x541150)
+0x0053F370 0x3C0 do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v  # OVL2; by hand, the AI core round 14 (the weapons' range assign, SOCOM 1's do_assign<PC14CCharacterWeap> 0x1D7700: CCharacterType's constructor calls it on m_weapons with the base's range and an empty tag, "vector::assign length error"; named as include/vector's pod assign is); the MSL headers round 12: renamed do_assign, as SOCOM 1's symtab calls every range assign (do_assign<PCUi> 0x1FC880, do_assign<PC14CCharacterWeap> 0x1D7700, do_assign<PC3LOD> 0x24B2E0); measured, no codegen change
+0x0053F730 0x368 do_assign<PCQ214CCharacterType3LOD>__Q23std80__vector_imp<Q214CCharacterType3LOD,Q23std33allocator<Q214CCharacterType3LOD>,0>FPCQ214CCharacterType3LODPCQ214CCharacterType3LODQ23std20forward_iterator_tag_v  # OVL2; by hand, the AI core round 14 (the LODs' range assign, SOCOM 1's do_assign<PC3LOD> 0x24B2E0: CCharacterType's constructor calls it on m_LODs with the base's range, the strings assigned through 0x5410C0 and built through 0x541150); the MSL headers round 12: renamed do_assign, as SOCOM 1's symtab calls every range assign (do_assign<PCUi> 0x1FC880, do_assign<PC14CCharacterWeap> 0x1D7700, do_assign<PC3LOD> 0x24B2E0); measured, no codegen change
 0x0053FAA0 0x30 func_0053FAA0  # OVL2; OVL2's copy of assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc (0x1eeb40, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc
 0x0053FAD0 0x68 func_0053FAD0  # OVL2; OVL2's copy of __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv (0x1e7ef0, the same words bar the link's addresses -- tools/ovlcopies.py); ovl-copy: __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv
 0x0053FB40 0x220 erase__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FP14CCharacterWeapP14CCharacterWeap  # OVL2; s1:callee by hand, the AI core round 12 (RemoveWeapon 0x53B300 calls it with the new end and the end, as SOCOM 1's calls erase__...FP14CCharacterWeapP14CCharacterWeap)

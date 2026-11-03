@@ -556,6 +556,29 @@ void KM_Destroy(int nKMID)
     }
 }
 
+/* SOCOM 1's KM_Cleanup destroyed every key manager; SOCOM II's destroys a class of them: -1 the
+ * local one, 0x80000000 those with the top bit set, 0 those without it, starting over from the
+ * head after each destroy (the ring's walk ends back at gpKeyMaster) */
+void KM_Cleanup(int nKMID)
+{
+    KeyMaster *pKM = gpKeyMaster;
+    int nID;
+
+    while (pKM != 0) {
+        nID = pKM->nID;
+        if ((nKMID == -1 && nID == nKMID)
+            || (nKMID == (int)0x80000000 && nID == (nID & 0x7FFFFFFF) + nKMID)
+            || (nKMID == 0 && nID == (nID & 0x7FFFFFFF))) {
+            KM_Destroy(nID);
+            pKM = gpKeyMaster;
+        } else {
+            pKM = pKM->next;
+            if (pKM == gpKeyMaster)
+                pKM = 0;
+        }
+    }
+}
+
 void KM_CreateRandomRCKey(RCKey *pKey)
 {
     unsigned char i;

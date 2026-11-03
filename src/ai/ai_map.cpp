@@ -43,6 +43,9 @@ const T &_min(const T &a, const T &b)
 static CAiCell s_dummy_cell;
 /* no action's id (SOCOM 1's static member; OVL2 0x65AB30, just ahead of the cosine) */
 const unsigned int CAiMap::action::invalid = 0xffff;
+/* each direction's step in cells, N to NW (SOCOM 1's CAiMap::neighbor: OVL2 0x64F910, after the
+ * cell walk's constant pool 0x64F900 that ResetCells and ValidateCells share) */
+const int CAiMap::neighbor[8][2] = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
 static float s_cos45 = 0.5f * sqrtf(2.0f);
 
 /* a vector's three components set from values taken first (the name ours: the diagonals' static
@@ -419,20 +422,64 @@ bool CAiMap::_validate_cell(const MAP_FOREACH_STRUCT &s, void *data)
     return true;
 }
 
+/* whether a step may end on the cell: CAiMap::IsTraversable's body (ai_maps.cpp's), an inline of
+ * this unit's too big to inline whole -- ValidateCells inlines it one level, GetCell and the cell's
+ * test (ai_astar.cpp's copy, 0x511F40) called out of line (ai_mapwalk.cpp has the same) */
+inline bool _traversable(const CAiMap *map, const CAiMapLoc &loc)
+{
+    CAiCell *cell = map->GetCell(loc, 0);
+
+    return cell ? cell->IsTraversable() : false;
+}
+
+/* every name ended and given the map's id, its cell marked named; every action's and link's cell
+ * looked up (the result unused: whatever read it is not in this build); the links whose cell no
+ * step may end on counted; the regions given the map's id; then every cell validated (SOCOM 1's;
+ * the walks over the tables through their class iterators, each test materialised; each map id
+ * read into a local before the compare, which puts the field first in the beq) */
+int CAiMap::ValidateCells()
+{
+    int bad = 0;
+
+    for (names::iterator n = m_namesTable.begin(); n != m_namesTable.end(); ++n) {
+        (*n).ValidateName();
+        unsigned int id = (*n).m_loc.m_mapid;
+
+        if (id != m_mapid)
+            (*n).m_loc.m_mapid = m_mapid;
+        if (IsMapCell((*n).m_loc)) {
+            CAiCell *cell = GetCell((*n).m_loc, 0);
+
+            if (cell && !cell->HasName())
+                cell->SetName(true);
+        }
+    }
+    for (actions::iterator a = m_actionTable.begin(); a != m_actionTable.end(); ++a)
+        GetCell((*a).m_loc, 0);
+    for (links::iterator l = m_linksTable.begin(); l != m_linksTable.end(); ++l) {
+        GetCell((*l).m_loc, 0);
+        if (!_traversable(this, (*l).m_loc))
+            bad++;
+    }
+    for (regions::iterator r = m_regionTable.begin(); r != m_regionTable.end(); ++r) {
+        unsigned int id = (*r).m_loc.m_mapid;
+
+        if (id != m_mapid)
+            (*r).m_loc.m_mapid = m_mapid;
+    }
+    ForEachCell(0, _validate_cell, 0, 0);
+    return bad;
+}
+
 /* every cell of the first layer reset through _reset_cell (SOCOM 1's ResetCells, a loop of its own
  * there): the walk inlined one level, its pieces called out of line in reverse of their first use
- * after it (0x5176D0-0x51784F, all byte-exact from here); false whatever the walk did.
- * OPEN, right size, 44 instructions: the region's reads. The target keeps &r in s5 and reads the
- * row through it twice (`lhu v0,2(s5)` for y0, again for y1 ahead of GetDy's call, held in s0
- * across it); here MW resolves the pointer to sp+176, shares the two loads and calls GetDy first.
- * Tried: r read directly (the same), through the walk struct's m_region (the loads and the call's
- * order right, the pointer reloaded from the struct after each call), the walk taking the region
- * by reference with region() and GetMapRegion in ResetCells (resolved to sp+176 again), y1 built
- * in a register local (the loads shared). The target's reads behave as through a pointer MW cannot
- * resolve, kept in a register: what spelling gives that is open */
+ * after it (0x5176D0-0x51784F, all byte-exact from here); false whatever the walk did. The walk
+ * is the region walk FloodFill and Tile inline, given no region: its pointer, assigned in the
+ * walk's branch, is what keeps &r in s5 and the row read through it twice (a walk always over its
+ * own region let MW resolve the pointer to sp+176 and share the loads -- 44 instructions off) */
 bool CAiMap::ResetCells()
 {
-    ForEachCell(_reset_cell, 0, 0);
+    ForEachCell(0, _reset_cell, 0, 0);
     return false;
 }
 

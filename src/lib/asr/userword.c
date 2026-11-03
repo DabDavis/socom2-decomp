@@ -5,9 +5,12 @@
  * sibling calls: DoLabelStop returns casrEnableLabelInQueue's int through a jal, byte-exact only
  * under -fno-optimize-sibling-calls (10 words off without; DoLabelStart likewise). Only the
  * functions written so far are here, in image order; names are SOCOM 1's (s1:align), the context
- * casr.h's, its user-word fields by offset. OPEN: cbDoUserWordTraining (10 words: 2.96 folds the
- * last `if (Exit...) return 1; return 0;` into sltu where the target keeps the branch, and lays the
- * first test out inverted -- guard and nested forms tried). */
+ * casr.h's, its user-word fields by offset. OPEN: cbDoUserWordTraining (1 word; 10 before round
+ * 11c, when the flag test and the last call were separate guards and 2.96 folded the last into
+ * sltu: as one `&&` the final `return 0` is a join and keeps its branch): the flag test is `bnezl`
+ * here and `bnez` in the target -- reorg takes the return's `move v0,zero` into the slot and
+ * annuls it, though the fall-through is a call that sets v0. tosCallControlFunc (tos.c) and
+ * UpdateExevStatus (casr.c) miss by the same word. */
 
 #include "casr.h"
 
@@ -53,9 +56,7 @@ int cbDoUserWordTraining(CASR *c)
 {
     if (DoUserWordTraining(c) != 0)
         return 1;
-    if (*((unsigned char *)c + 940) != 0)
-        return 0;
-    if (ExitUserWordTraining(c) != 0)
+    if (*((unsigned char *)c + 940) == 0 && ExitUserWordTraining(c) != 0)
         return 1;
     return 0;
 }

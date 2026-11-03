@@ -9,6 +9,16 @@
 #include "ai_maps.h"
 #include "../gamez/zsys/zsys.h"
 
+/* ai.h's _max defined (as ai_map.cpp does: MW auto-inlines no template function -- the unsigned
+ * instance opens this unit's template tail, 0x52EB40) */
+namespace ai {
+template <class T>
+const T &_max(const T &a, const T &b)
+{
+    return a >= b ? a : b;
+}
+}
+
 /* the run of an id's spores, counted (new in SOCOM II) */
 int CAiMaps::GetSporeCount(unsigned int id)
 {
@@ -86,6 +96,46 @@ CAiMap *CAiMaps::GetMapByIndex(unsigned int i) const
     return *it;
 }
 
+/* two cells' x and y distances summed (CAiPlanner::dist's shape: the right operand of each
+ * compare loaded first) */
+inline unsigned int loc_delta(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = a.y > b.y ? a.y - b.y : b.y - a.y;
+
+    return dx + dy;
+}
+
+/* a cell's map (the name ours: an inline a level above GetMapByIndex -- GetLocationDelta's two
+ * lookups by cell take their iterator temporaries after the direct GetMapByIndex(0)'s, which
+ * bottom-up inlining expands first, so map 0's get the higher stack slots as the target's do) */
+inline CAiMap *map_of(CAiMaps *maps, const CAiMapLoc &loc)
+{
+    return maps->GetMapByIndex(loc.m_mapid);
+}
+
+/* how many cells apart two cells are: on one map their x and y distances summed; across maps
+ * both carried onto map 0's grid (SOCOM 1's GetLocationDelta carried the first onto the second's)
+ * and measured there, the larger cell count when either cannot be, 10000 off the maps (0x52C320,
+ * by its place: between SmoothPath's and RegisterPathPlan's slots as the demo's 0x199610) */
+unsigned int CAiMaps::GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    if (a.m_mapid == b.m_mapid)
+        return loc_delta(a, b);
+    CAiMap *ma = map_of(this, a);
+    CAiMap *mb = map_of(this, b);
+    CAiMap *m0 = GetMapByIndex(0);
+
+    if (!ma || !mb || !m0)
+        return 10000;
+    CAiMapLoc la;
+    CAiMapLoc lb;
+
+    if (ma->TransformTo(a, m0, la) && mb->TransformTo(b, m0, lb))
+        return loc_delta(la, lb);
+    return ai::_max(ma->GetCellCount(), mb->GetCellCount());
+}
+
 /* whether the line between two cells of one map is clear to the feet, to the eye (SOCOM 1's;
  * false across maps) */
 bool CAiMaps::CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out)
@@ -110,6 +160,132 @@ bool CAiMaps::CanSeeLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *
         r = map ? map->CanSeeLine(from, to, out) : false;
     }
     return r;
+}
+
+/* two ints (SOCOM 1's IPNT2D) */
+struct IPNT2D {
+    int x, y;
+};
+
+/* the point's place in the cell, 0 to 1 each way (its corner taken off, the map's inverse cell
+ * sizes applied), in x and y of a three-float point; none off the map (the name ours: the frame's
+ * point handed back. A PNT2D local sits at sp+8 of the 16-byte frame, the target's at sp+0: the
+ * local is 12 bytes or more) */
+inline PNT3D *cell_fraction(const CAiMap *map, const CAiMapLoc &loc, const CPnt3D *pos, PNT3D &f)
+{
+    if (map->IsCell(loc)) {
+        float z = map->m_bbox.m_min.z + loc.y * map->m_dy;
+
+        f.x = map->m_idx * (pos->x - (map->m_bbox.m_min.x + loc.x * map->m_dx));
+        f.y = map->m_idy * (pos->z - z);
+        return &f;
+    }
+    return 0;
+}
+
+/* one axis of the blend: the neighbour toward the point's half of the cell, and the cell's own
+ * share (the name ours: read through the reference twice, as the target reads f.y through its
+ * address) */
+inline void split_axis(const float &f, int &d, float &t)
+{
+    if (f > 0.5f) {
+        d = 1;
+        t = 1.5f - f;
+    } else {
+        d = -1;
+        t = 0.5f + f;
+    }
+}
+
+/* the cell's neighbours toward the point, one step each way, and the cell's share of the blend
+ * each way; false off the map (SOCOM 1's, the same body) */
+bool CAiMap::GetInterpolationCells(const CAiMapLoc &loc, const CPnt3D *pos, IPNT2D *d, PNT2D *t) const
+{
+    PNT3D f;
+
+    if (cell_fraction(this, loc, pos, f)) {
+        split_axis(f.x, d->x, t->x);
+        split_axis(f.y, d->y, t->y);
+        return true;
+    }
+    return false;
+}
+
+/* the map's blend (SOCOM 1's CAiMaps::GetInterpolatedShadow body): the cell's three neighbours
+ * toward the point found and each tap's shadow (3 for a cell indoors when asked, else its shadow
+ * bits) weighed by the point's place between the centres, the sum renormalised when taps fell off
+ * the map. Too big for MW to inline whole, so the maps' function inlines it one level: CPnt3D(),
+ * GetCell, IsMapCell, IsInside, GetShadow and the three-argument CAiMapLoc are called out of line
+ * (0x516900, 0x511F80, 0x512140, 0x52D280, 0x52D270, 0x52D200 -- the last three this unit's
+ * copies, after the maps' function). Each tap's shadow an if/else: the ternary lays the 3 out
+ * after the call */
+inline float CAiMap::GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *pos, bool inside)
+{
+    CPnt3D p;
+    PNT2D t;
+    IPNT2D d;
+
+    if (GetInterpolationCells(loc, pos, &d, &t)) {
+        float w = 0.0f;
+        float s = w;
+        int v;
+        CAiCell *cell = GetCell(loc, 0);
+        if (inside && cell->IsInside())
+            v = 3;
+        else
+            v = cell->GetShadow();
+        float k = t.x * t.y;
+
+        w += k;
+        s += v * k;
+        CAiMapLoc l(loc.x + d.x, loc.y, loc.m_mapid);
+
+        if (IsMapCell(l)) {
+            cell = GetCell(l, 0);
+            if (inside && cell->IsInside())
+                v = 3;
+            else
+                v = cell->GetShadow();
+            k = (1.0f - t.x) * t.y;
+            w += k;
+            s += v * k;
+        }
+        l.x = loc.x;
+        l.y = loc.y + d.y;
+        if (IsMapCell(l)) {
+            cell = GetCell(l, 0);
+            if (inside && cell->IsInside())
+                v = 3;
+            else
+                v = cell->GetShadow();
+            k = t.x * (1.0f - t.y);
+            w += k;
+            s += v * k;
+        }
+        l.x = loc.x + d.x;
+        if (IsMapCell(l)) {
+            cell = GetCell(l, 0);
+            if (inside && cell->IsInside())
+                v = 3;
+            else
+                v = cell->GetShadow();
+            k = (1.0f - t.x) * (1.0f - t.y);
+            w += k;
+            s += v * k;
+        }
+        if (w < 0.98f)
+            s /= w;
+        return s * 0.33333334f;
+    }
+    return 0.0f;
+}
+
+/* the shadow at a point over a cell, its map's blend; 1 off the maps (SOCOM 1's) */
+float CAiMaps::GetInterpolatedShadow(const CAiMapLoc &loc, const CPnt3D *pos, bool inside)
+{
+    CAiMap *map = GetMapByIndex(loc.m_mapid);
+
+    return map ? map->GetInterpolatedShadow(loc, pos, inside) : 1.0f;
 }
 
 /* the cell's altitude, false off the maps (SOCOM 1's; the map's lookup inlined one level) */

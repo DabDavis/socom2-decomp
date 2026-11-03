@@ -1,3 +1,4 @@
+/* sc: overlay=MAIN */
 /* zvid.cpp, MAIN's copy (MAIN 0x181C20): MAIN links its own copy of the video unit
  * (src/gamez/zvid/zvid.cpp, OVL1 0x3B2C80-) as it does zsys_memory.cpp, and only zVid_Assert --
  * the allocators' check -- survives MAIN's dead-stripping. It sits right after zsys_memory.cpp's
