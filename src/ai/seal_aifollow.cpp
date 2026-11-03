@@ -50,6 +50,42 @@ void CZSealBody::InvalidateFollowParams()
     m_follow_params_are_current = 0;
 }
 
+extern "C" {
+/* the follow's hide update (OVL2 0x5FDAD0, unwritten) */
+void func_005FDAD0(CAiSFollow *f, CSealCtrlAi *ai);
+}
+
+/* two cells' x and y distances summed (CAiPlanner::dist's shape, unscaled; the name ours) */
+static inline int FollowCellDist(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = a.y > b.y ? a.y - b.y : b.y - a.y;
+
+    return dx + dy;
+}
+
+/* (OVL2 0x5FC7D0: the SEAL's offset from the follow's point computed and never read) */
+bool CAiSFollow::HideCheck(CSealCtrlAi *ai, bool b, bool hide, char *out)
+{
+    bool r = hide;
+    CPnt3D d;
+
+    ((const CPnt3D *)m_88)->Sub(&ai->m_entity->m_posW, &d);
+    if (m_79 && !hide)
+        m_79 = 0;
+    if (!m_79 && hide)
+        m_79 = 1;
+    if (hide && !b) {
+        if (FollowCellDist(*(const CAiMapLoc *)&m_c0, *(const CAiMapLoc *)&m_c8) > m_c4) {
+            *out = 0;
+            r = false;
+        }
+    }
+    if (r)
+        func_005FDAD0(this, ai);
+    return r;
+}
+
 /* (OVL2 0x5FCD30) */
 CZSealBody *CSealCtrlAi::GetFollowMaster(bool recurse)
 {
