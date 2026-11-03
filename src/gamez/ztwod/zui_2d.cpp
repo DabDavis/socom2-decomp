@@ -1427,6 +1427,13 @@ void CCheckBox::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
     }
 }
 
+/* the button's destructor (implicit: the caption, then C2D's). Defined here, it brings the class's
+ * table, and with it Tick's inline copy (0x37C600): once C2DButton overrides Tick, no other table
+ * this unit emits takes it */
+C3StateButton::~C3StateButton()
+{
+}
+
 /* the button drawn: its background (slot 28), then its caption, placed by the matrix at its
  * offset (SOCOM 1's C3StateButton::Draw, slot 2) */
 void C3StateButton::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
