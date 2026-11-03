@@ -6,6 +6,8 @@
 0x00100000 0x0 mfifoBase  # MAIN; SOCOM 1's local symbol at 0x100000 (the MFIFO ring's base: zSysFifoInit and zSysFifoEnable store it in D_RBOR, D8_MADR and the drain's TADR, as SOCOM 1's relocations name mfifoBase); 4 references in 2 functions -- the sound/system lane
 0x001AC600 0x0 _xlaunch  # MAIN; s1:asm (a global label inside _kTLBException, +0x100: the demo's OBJECT symbol at the same offset of the same assembler object; _kTLBException puts it in EPC and erets into it)
 0x001B6E90 0x0 _maxval  # MAIN; s1:data-exact (size SOCOM 1's; via _copyAddRefImage +1)
+0x001CA400 0x4 thandler__3std  # MAIN data; NMWException.cp's terminate handler (static, = dthandler 0x1827F0); 2 references: std::terminate, duhandler (src/main/runtime/NMWException.cpp)
+0x001CA408 0x4 uhandler__3std  # MAIN data; NMWException.cp's unexpected handler (static, = duhandler 0x1827C0); 1 reference: std::unexpected (src/main/runtime/NMWException.cpp)
 0x001CA850 0x4 SCE_CD_debug  # MAIN; s1:data-exact (size SOCOM 1's; via _Cdvd_cbLoop +9)
 0x001CA858 0x4 scmd_sema_keep_cmd  # MAIN; s1:data-exact (size SOCOM 1's; via _sceCd_scmd_prechk)
 0x001CA85C 0x4 ncmd_sema_keep_cmd  # MAIN; s1:data-exact (size SOCOM 1's; via _sceCd_ncmd_prechk +1)
@@ -94,12 +96,18 @@
 0x001D2DE0 0x10 atanhi  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
 0x001D2DF0 0x10 atanlo  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
 0x001D2E00 0x2C aT  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
+0x001D4F90 0x10 __static_init  # MAIN; the linker's static initialiser table (four __sinit_ entries, 0x1D4B00..0x1D4C20), SOCOM 1's symbol for mwInit's first argument; 1 reference: func_00181E00 (src/main/runtime/mwoverlay.c)
+0x001D4FA0 0x10 __vt__Q23std8bad_cast  # MAIN; std::bad_cast's vtable [RTTI 0x1CF920, 0, __dt__Q23std8bad_castFv, what__Q23std8bad_castCFv]; 2 references: ~bad_cast, __dynamic_cast's throw (src/main/runtime/NMWException.cpp)
+0x001D4FA0 0x0 __static_init_end  # MAIN; the table's end (SOCOM 1's linker symbol, mwInit's second argument; shares its address with __vt__Q23std8bad_cast); 1 reference: func_00181E00 (src/main/runtime/mwoverlay.c)
 0x001D4FB0 0x10 __vt__Q23std9exception  # MAIN; s1:data-seq (size SOCOM 1's; via __dt__Q23std12out_of_rangeFv +2)
 0x001D4FC0 0x10 __vt__Q23std13bad_exception  # MAIN; s1:data-seq (size SOCOM 1's; via __dt__Q23std13bad_exceptionFv +1)
 0x001D4FD0 0xC __vt__Q23std8ios_base  # MAIN; s1:data-seq (size SOCOM 1's; via __dt__Q23std8ios_baseFv)
 0x001D4FF0 0xC __vt__Q33std6locale5facet  # MAIN; s1:data-seq (size SOCOM 1's; via __ct__Q23std8ctype<c>FPCUcbUi +2)
+0x001D5050 0x3C __vt__Q23std41basic_streambuf<w,Q23std14char_traits<w>>  # MAIN; basic_streambuf<wchar_t>'s vtable (RTTI 'std::basic_streambuf<wchar_t, std::char_traits<wchar_t>>', 13 slots); 1 reference: its destructor 0x185760 (src/main/msl/iostream.cpp)
+0x001D5120 0x3C __vt__Q23std41basic_streambuf<c,Q23std14char_traits<c>>  # MAIN; basic_streambuf<char>'s vtable (RTTI 'std::basic_streambuf<char, std::char_traits<char>>', 13 slots); 1 reference: its destructor 0x185830 (src/main/msl/iostream.cpp)
 0x001D5260 0x2C __vt__Q23std8ctype<c>  # MAIN; s1:data-seq (size SOCOM 1's; via __ct__Q23std8ctype<c>FPCUcbUi +1)
 0x001D52A0 0x0 __exception_table_end__  # MAIN; s1:data-seq (size SOCOM 1's; via __FindExceptionTable__FP13ExceptionInfoPc)
+0x001D52A0 0x0 __exception_table_start__  # MAIN; SOCOM 1's linker symbol, mwInit's third argument (an empty table: the same address as __exception_table_end__); 1 reference: func_00181E00 (src/main/runtime/mwoverlay.c)
 0x001D5600 0x4 ninit_cnt_s__Q23std7__nInit  # MAIN bss; s1:data-seq (size SOCOM 1's; via __dt__Q23std7__nInitFv)
 0x001D5604 0x4 winit_cnt_s__Q23std7__wInit  # MAIN bss; s1:data-seq (size SOCOM 1's; via __dt__Q23std7__wInitFv)
 0x001D5624 0x4 id__Q23std8ctype<w>  # MAIN bss; s1:data-seq (size SOCOM 1's; via __use_facet<Q23std8ctype<w>>__3stdFRCQ23std6localeQ23std12__chooser<1>)
@@ -1225,6 +1233,7 @@
 0x00655624 0x4 gScratchBufferSize  # OVL2; s1:data-exact (size SOCOM 1's; via rt_msg_client_ishutdown +1)
 0x00655628 0x1 gbMutexInitialized  # OVL2; s1:data-exact (size SOCOM 1's; via rt_msg_client_disconnect +12)
 0x00656018 0x1 gbBaseTimeInitialized  # OVL2; s1:data-exact (size SOCOM 1's; via rt_time_get_base_diff +1)
+0x00656021 0x1 gbTimeDateSet  # OVL2; s1:data (round 8b): SOCOM 1's gbTimeDateSet, the byte after the base stamp's flag as there; set by rt_time_platform_get_time_string once gCurTimeDate is read
 0x00656188 0x2 GlobalInitFlag  # OVL2 data; SOCOM 1's (0x43B930, 2 bytes): 1 once MediusInitialize has run; every Medius request tests it with `lh` at the instruction SOCOM 1's tests its own (MediusSessionBegin: 0x43B930 there, 0x656188 here; the clan and file objects read it as a word): 133 references in 132 functions (MediusCreateClan, MediusDisbandClan, MediusGetClanByName, MediusGetClanByID ...) -- the gcc lane, round 4b
 0x0065618C 0x4 MyConnectionIndex  # OVL2 data; SOCOM 1's (0x43B934): the DME connection to the lobby server, negative before MediusConnect; every request tests it and passes it to NetSendMessage where SOCOM 1's does (MediusSessionBegin: 0x43B934 there): 132 references in 128 functions (MediusCreateClan, MediusDisbandClan, MediusGetClanByName, MediusGetClanByID ...) -- the gcc lane, round 4b
 0x00656190 0x4 KeepAliveInterval  # OVL2 data; s1:data by hand (the gcc lane, round 7b): SOCOM 1's KeepAliveInterval (0x43B938, after MyConnectionIndex as here): MediusInitialize stores its parameters' last word there and MediusInitializeBare its fifth, as SOCOM 1's do; MediusUpdate compares the time since KeepAliveTimestamp with it
@@ -1262,7 +1271,8 @@
 0x00656234 0x4 RemoveFromBuddyListCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43B9D0: MediusRemoveFromBuddyList stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusRemoveFromBuddyList, func_0064C3B8) -- the gcc lane, round 4b
 0x00656238 0x4 AddToBuddyListFwdConfirmationRequestCallbackFunctionPtr  # OVL2 data; s1:slot (round 7b): SOCOM 1's at 0x43B9D4, between RemoveFromBuddyList's and BuddyGetPermission's slots as this one: MediusInitialize stores its parameters' third word there, MediusInitializeBare its second
 0x0065623C 0x4 BuddyGetPermissionCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43B9D8: MediusBuddyGetPermission stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusBuddyGetPermission, func_0064C3F8) -- the gcc lane, round 4b
-0x00656240 0x4 GetPolicyCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43B9DC: MediusGetPolicy stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusGetPolicy, func_0064C478) -- the gcc lane, round 4b
+0x00656240 0x4 GetIgnoreListCallbackFunctionPtr  # OVL2 data; MediusGetIgnoreList's slot (the gcc lane, round 8b: round 4b's GetPolicyCallbackFunctionPtr moved to 0x65624C -- this slot's handler func_0064C478 consumes 72 bytes, SOCOM 1's GetBuddyList response's size, not GetPolicy's 288)
+0x0065624C 0x4 GetPolicyCallbackFunctionPtr  # OVL2 data; s1:slot (the gcc lane, round 8b): SOCOM 1's at 0x43B9DC -- MediusGetPolicy (0x6495E0) stores its callback here and the slot's handler func_0064C520 consumes 288 bytes as SOCOM 1's MediusUniqueCallbackGetPolicyResponseHandler does
 0x00656250 0x4 GetAnnouncementsCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43B9E0: MediusGetAnnouncements stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 3 references in 3 functions (MediusGetAnnouncements, MediusGetAllAnnouncements, func_0064C568) -- the gcc lane, round 4b
 0x00656254 0x4 SetGameListFilterCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43B9E4: MediusSetGameListFilter stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusSetGameListFilter, func_0064C5A0) -- the gcc lane, round 4b
 0x00656258 0x4 ClearGameListFilterCallbackFunctionPtr  # OVL2 data; s1:slot (SOCOM 1's at 0x43B9E8: MediusClearGameListFilter stores its callback here as SOCOM 1's stores it there, the object's slots in SOCOM 1's order with SOCOM II's new requests between): 2 references in 2 functions (MediusClearGameListFilter, func_0064C5D8) -- the gcc lane, round 4b
@@ -1437,6 +1447,7 @@
 0x006763F0 0x0 gMsgClientMutex  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_msg_client_disconnect +12)
 0x00676418 0x0 szTime.0  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_time_get_time_string_ptr)
 0x00676430 0x0 gBaseTimeStamp  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_time_platform_get_time_stamp +2)
+0x00676440 0x20 gCurTimeDate  # OVL2 bss; s1:data (round 8b): SOCOM 1's gCurTimeDate (the RTC's date and time, read by 0x63D648), after gBaseTimeStamp as there, grown by the milliseconds
 0x00676490 0x0 gstNatServiceAddress  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetNatServiceAddress +1)
 0x006764A8 0x0 gstClientAddressList  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetClientAddrList +1)
 0x0067A7A8 0x1000 NetObjectStatus  # OVL2 bss; s1:data-exact (size SOCOM 1's; via NetFreeAllObjects)

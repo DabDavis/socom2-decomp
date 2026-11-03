@@ -285,28 +285,32 @@ typedef struct MediusBuddyAddConfirmationRequest {
     char Data45[11];
 } MediusBuddyAddConfirmationRequest;
 
+/* SOCOM II's ignore list (round 8b: three requests new since SOCOM 1, between its GetPolicy's
+ * neighbours): the list asked for as the buddy list is (38 bytes, a GetBuddyList response's 72
+ * back), an account added or removed as a buddy is (44 bytes, a 28-byte status back) */
+typedef struct MediusGetIgnoreListRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
+} MediusGetIgnoreListRequest;
+
+typedef struct MediusAddToIgnoreListRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
+    int IgnoreAccountID;
+} MediusAddToIgnoreListRequest;
+
+typedef struct MediusRemoveFromIgnoreListRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
+    int IgnoreAccountID;
+} MediusRemoveFromIgnoreListRequest;
+
+/* SOCOM 1's MediusGetPolicy's request (44 bytes: the policy asked for); its response is 288 */
 typedef struct MediusGetPolicyRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];
     char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
+    int Policy;
 } MediusGetPolicyRequest;
-
-typedef struct MediusRequest_006494A0 {
-    char MessageID[MEDIUS_MESSAGEID_MAXLEN];
-    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
-    char Data38[6];
-} MediusRequest_006494A0;
-
-typedef struct MediusRequest_00649540 {
-    char MessageID[MEDIUS_MESSAGEID_MAXLEN];
-    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
-    char Data38[6];
-} MediusRequest_00649540;
-
-typedef struct MediusRequest_006495E0 {
-    char MessageID[MEDIUS_MESSAGEID_MAXLEN];
-    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
-    char Data38[6];
-} MediusRequest_006495E0;
 
 typedef struct MediusPlayerReport {
     char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
@@ -564,13 +568,13 @@ extern int data_00686C48;
 extern MediusCallback BuddyGetPermissionCallbackFunctionPtr;
 extern int data_00686C50;
 extern int data_00686C40;
-extern MediusCallback GetPolicyCallbackFunctionPtr;
+extern MediusCallback GetIgnoreListCallbackFunctionPtr;
 extern int data_00686C5C;
 extern MediusCallback data_00656244;
 extern int data_00686C64;
 extern MediusCallback data_00656248;
 extern int data_00686C6C;
-extern MediusCallback data_0065624C;
+extern MediusCallback GetPolicyCallbackFunctionPtr;
 extern int data_00686C74;
 extern int data_00686B28;
 extern int data_00686B24;
@@ -1632,7 +1636,7 @@ MediusErrorCode MediusBuddyAddConfirmation(MediusBuddyAddConfirmationRequest *re
     return MediusErrorNone;
 }
 
-MediusErrorCode MediusGetPolicy(MediusGetPolicyRequest *request, MediusCallback callback)
+MediusErrorCode MediusGetIgnoreList(MediusGetIgnoreListRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     iTerminateString(request->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
@@ -1640,14 +1644,14 @@ MediusErrorCode MediusGetPolicy(MediusGetPolicyRequest *request, MediusCallback 
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    GetPolicyCallbackFunctionPtr = callback;
+    GetIgnoreListCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686C5C,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
     return MediusErrorNone;
 }
 
-MediusErrorCode func_006494A0(MediusRequest_006494A0 *request, MediusCallback callback)
+MediusErrorCode MediusAddToIgnoreList(MediusAddToIgnoreListRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     iTerminateString(request->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
@@ -1662,7 +1666,7 @@ MediusErrorCode func_006494A0(MediusRequest_006494A0 *request, MediusCallback ca
     return MediusErrorNone;
 }
 
-MediusErrorCode func_00649540(MediusRequest_00649540 *request, MediusCallback callback)
+MediusErrorCode MediusRemoveFromIgnoreList(MediusRemoveFromIgnoreListRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     iTerminateString(request->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
@@ -1677,7 +1681,7 @@ MediusErrorCode func_00649540(MediusRequest_00649540 *request, MediusCallback ca
     return MediusErrorNone;
 }
 
-MediusErrorCode func_006495E0(MediusRequest_006495E0 *request, MediusCallback callback)
+MediusErrorCode MediusGetPolicy(MediusGetPolicyRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     iTerminateString(request->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
@@ -1685,7 +1689,7 @@ MediusErrorCode func_006495E0(MediusRequest_006495E0 *request, MediusCallback ca
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_0065624C = callback;
+    GetPolicyCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686C74,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;

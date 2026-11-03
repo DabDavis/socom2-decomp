@@ -1083,8 +1083,36 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  * flips all four 8-byte probes (build/p10/v3.var) -- the mechanism reproduces, the source shape that
  * removes the neighbours is still open. Where several nodes are deferred (CVehicleDef: e has 121
  * neighbours here, deferred in both builds) their own push order decides, so it is not one offset
- * everywhere -- the next step is to read the target's colours onto this graph's nodes and replay MW's
- * simplify/colour on candidate graphs (igdump.py gives every node, edge, push and colour) */
+ * everywhere.
+ * THE TARGET'S GRAPH, replayed (the MSL headers round 11, build/p11/, untracked: igreplay.py replays
+ * MW's simplify/colour from an igdump record -- K = 25, the spill pick MW's own spillCost/degree, the
+ * costs read out of the compiler -- and reproduces all 16 colourings of the 8-byte probe and all 61 of
+ * st_core.cpp exactly; igmap.py reads the target's register for every vreg by aligning the pcode with
+ * the final code, 71 of the cue insert's vregs, no conflicts). Cutting e's neighbours where e is
+ * numbered never gives the target's colouring (0 of 360 random cuts of 4 to 9): the target needs e
+ * coloured AFTER the code-generation temporaries but BEFORE m, i, both j's, @2450 and @2517 -- e
+ * NUMBERED after the loop optimiser's else-loop cursor (@2517) and before the CSE pass's n*8 (@2592),
+ * where six lower-numbered neighbours are pushed first and its sweep degree is 24 (TypeRemoteGuy's four
+ * extra words keep it deferred at 28, as its target shares v1). Every position in that window gives
+ * all 71 registers; none outside it does, even with one or two neighbours cut; m, i and the j's must
+ * keep their declared-local numbers (before the first inliner temporary). Two more replays bound it:
+ * the turret's insert (byte-exact) reproduces only with e numbered before m, CMeshLOD's only after it.
+ * So in the original the end is a declared local (DWARF: SOCOM 1's list omits it and m because MW drops
+ * a local IRO absorbs into another variable -- `int b = inline_f(a)` vanishes, a merely dead local such
+ * as xp stays listed; build/p11/dw/) which, when copy_backward is inlined (small elements), is replaced
+ * by a temporary created in the loop optimiser's copy_backward cycle (tmpdump.py hooks MW's unique-name
+ * counter, CParser_GetUniqueID 0x42F590: the inliner makes 2420-2495, the loop optimiser 2496-2559 in
+ * one cycle per loop -- @2517 is the else loop's cursor, the induction temp that replaced i -- a
+ * hoisting pass 2560-2586, CSE 2587-2630; copy_backward's cycle-4 temps all vanish here). Not found:
+ * the source that does it. In this build a copy `@N = v` with v dying merges into the variable with the
+ * lower VarRecord index (e over copy_backward's @2452; copy_backward's @2453 over a CSE temp when no e
+ * exists); no IRO pass renames (only SplitOffRange); PCode copy propagation cannot remove a copy whose
+ * destination is read-modify-written; the backend coalesces only temp pairs, keeping the lower number.
+ * Tried (build/p11/v1-v3.var, a1.var): a function-scope e set in both branches, e per sub-branch, m from
+ * its own data_+size_ (CMeshLOD 0x3B9BD0 and CCharacterWeap 0x53FD60 byte-exact, AcctRecord 0x2FE3E0 and
+ * the turret 0x3ABD90 lost: not adopted), e through end().m_p, an iterator local (scalarised into an
+ * inliner temp, @2456), the old size and data held in locals with the end re-formed (copy_backward's
+ * parameter temp absorbs it, 7 instructions moved elsewhere), copy_backward's decrements as statements */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {

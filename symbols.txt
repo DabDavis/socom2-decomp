@@ -24,15 +24,15 @@
 0x00181780 0xBC func_00181780  # MAIN
 0x00181840 0x48 func_00181840  # MAIN
 0x00181890 0xB4 func_00181890  # MAIN
-0x00181950 0x7C func_00181950  # MAIN
-0x001819D0 0x70 func_001819D0  # MAIN; the same words as _calloc__FUiUiPCci (0x34eae0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x00181A40 0x60 func_00181A40  # MAIN
-0x00181AA0 0x60 func_00181AA0  # MAIN
+0x00181950 0x7C func_00181950  # MAIN; zsys_memory.cpp's _strdup, MAIN's copy (SOCOM 1's order; the name is taken by the pool's _strdup, 0x1801E0, which the game calls): src/main/zsys_memory.cpp
+0x001819D0 0x70 func_001819D0  # MAIN; the same words as _calloc__FUiUiPCci (0x34eae0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: _calloc__FUiUiPCci (MAIN's copy of zsys_memory.cpp: src/main/zsys_memory.cpp)
+0x00181A40 0x60 func_00181A40  # MAIN; ovl-copy: _malloc__FUiPCci (MAIN's copy of zsys_memory.cpp: src/main/zsys_memory.cpp)
+0x00181AA0 0x60 _new_vec__FUiPCci  # MAIN; s1:order (MAIN's copy of zsys_memory.cpp keeps SOCOM 1's zsys_memory order: _strdup, _calloc, [_realloc, _memalign stripped], _malloc, _new_vec, _delete_vec, _new, _delete, _free; operator new[] calls it); src/main/zsys_memory.cpp
 0x00181B00 0x40 _delete_vec__FPvPCci  # MAIN; s1:exact
-0x00181B40 0x60 func_00181B40  # MAIN
-0x00181BA0 0x34 func_00181BA0  # MAIN
-0x00181BE0 0x34 func_00181BE0  # MAIN
-0x00181C20 0x24 func_00181C20  # MAIN; the same words as zVid_Assert__FbUiPci (0x3b2c80) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x00181B40 0x60 _new__FUiPCci  # MAIN; s1:order (the same order; operator new calls it); src/main/zsys_memory.cpp
+0x00181BA0 0x34 _delete__FPvPCci  # MAIN; s1:order (the same order; operator delete calls it); src/main/zsys_memory.cpp
+0x00181BE0 0x34 func_00181BE0  # MAIN; zsys_memory.cpp's _free, MAIN's copy (SOCOM 1's order; the name is taken by the pool's _free, 0x180280, which the game calls): src/main/zsys_memory.cpp
+0x00181C20 0x24 func_00181C20  # MAIN; the same words as zVid_Assert__FbUiPci (0x3b2c80) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: zVid_Assert__FbUiPci (MAIN links its own copy of zvid.cpp, dead-stripped to zVid_Assert: src/main/zvid.cpp)
 0x00181C50 0x20 _dpfgt  # MAIN; s1:exact
 0x00181C70 0x20 _dpflt  # MAIN; s1:exact
 0x00181C90 0xF0 func_00181C90  # MAIN
@@ -43,18 +43,18 @@
 0x00181F40 0x12C __construct_array  # MAIN; s1:callee by hand (called where SOCOM 1's __sinit_zmath_matrix.cpp calls __construct_array; MW's runtime)
 0x00182070 0x154 __construct_new_array  # MAIN; s1:prologue (SOCOM 1's MSL runtime __construct_new_array, 0x1423F0: the same 192-byte frame and save order; every new T[n] calls it with (block, constructor, destructor, size, count); beside __destroy_new_array 0x181E30) -- the body lane
 0x001821D0 0x23C __dynamic_cast  # MAIN; s1:calls
-0x00182410 0x4C func_00182410  # MAIN
-0x00182460 0x5C func_00182460  # MAIN
-0x001824C0 0xC func_001824C0  # MAIN
-0x001824D0 0xC func_001824D0  # MAIN
+0x00182410 0x4C __dt__Q23std9exceptionFv  # MAIN; MW's runtime (std::exception's destructor: writes __vt__Q23std9exception, 0x1D4FB0, whose dtor slot holds it; SOCOM 1's runtime order: __dynamic_cast, the two dtors, the two what()s); src/main/runtime/NMWException.cpp
+0x00182460 0x5C __dt__Q23std8bad_castFv  # MAIN; MW's runtime (std::bad_cast's destructor: writes bad_cast's vtable 0x1D4FA0 then exception's; the dtor slot of 0x1D4FA0, the destructor __dynamic_cast's throw passes); src/main/runtime/NMWException.cpp
+0x001824C0 0xC what__Q23std8bad_castCFv  # MAIN; MW's runtime (the what() slot of bad_cast's vtable 0x1D4FA0; returns "bad_cast"); src/main/runtime/NMWException.cpp
+0x001824D0 0xC what__Q23std9exceptionCFv  # MAIN; MW's runtime (the what() slot of exception's vtable 0x1D4FB0; returns "exception"); src/main/runtime/NMWException.cpp
 0x001824E0 0x278 __throw_catch_compare  # MAIN; s1:align
-0x00182760 0x24 func_00182760  # MAIN
-0x00182790 0x24 func_00182790  # MAIN
-0x001827C0 0x24 func_001827C0  # MAIN
-0x001827F0 0x1C func_001827F0  # MAIN
+0x00182760 0x24 unexpected__3stdFv  # MAIN; s1:order (SOCOM 1's runtime: __throw_catch_compare, unexpected, terminate, duhandler, dthandler; calls the handler at 0x1CA408) and NMWException.cp's body; src/main/runtime/NMWException.cpp
+0x00182790 0x24 terminate__3stdFv  # MAIN; s1:order (the same; calls the handler at 0x1CA400); src/main/runtime/NMWException.cpp
+0x001827C0 0x24 duhandler__3stdFv  # MAIN; s1:order (the same; static: terminate() inlined); src/main/runtime/NMWException.cpp
+0x001827F0 0x1C dthandler__3stdFv  # MAIN; s1:order (the same; static: abort()); src/main/runtime/NMWException.cpp
 0x00182810 0x24 __register_global_object  # MAIN; s1:exact
 0x00182840 0x54 __initialize_cpp_rts  # MAIN; s1:align
-0x001828A0 0x40 __ptmf_scall  # MAIN; s1:callee
+0x001828A0 0x34 __ptmf_scall  # MAIN; s1:callee; size 0x34, not 0x40: the seed counted three words of zero padding (SOCOM 1's symbol is 0x34; asm: src/main/runtime/ptmf.c)
 0x001828E0 0x4C __ptmf_cmpr  # MAIN; MW's C++ runtime (the HUD lane's round 17, vetted by the integrator: a pointer-to-member == compiles to !__ptmf_cmpr(&a, &b); the body compares the two PTMFs' three words and returns nonzero when they differ -- st_mpexit.cpp's SetFinalTeamTotalsUiVar calls it)
 0x00182930 0xA8 __DecodeUnsignedNumber__FPcPUi  # MAIN; s1:align
 0x001829E0 0xA8 __DecodeSignedNumber__FPcPi  # MAIN; s1:align
@@ -67,7 +67,7 @@
 0x001833B0 0x844 UnwindStack__FP12ThrowContextP13ExceptionInfoPc  # MAIN; s1:align
 0x00183C00 0x344 NextAction__FP14ActionIterator  # MAIN; s1:align
 0x00183F50 0x1C0 FindExceptionRecord__FPcP13ExceptionInfo  # MAIN; s1:align
-0x00184110 0xC func_00184110  # MAIN
+0x00184110 0xC what__Q23std13bad_exceptionCFv  # MAIN; vtable (slot +12 of bad_exception's vtable 0x1D4FC0)
 0x00184120 0x70 __TransferControl__FP12ThrowContextP13ExceptionInfoPc  # MAIN; s1:align
 0x00184190 0x80 __throw  # MAIN; s1:align
 0x00184210 0x50 __SkipUnwindInfo__FPc  # MAIN; s1:align
@@ -77,10 +77,10 @@
 0x00184600 0x58 __dt__Q23std6localeFv  # MAIN; s1:ref (taken by address where SOCOM 1 takes __dt__Q23std6localeFv's)
 0x00184660 0x78 __dt__Q33std8ios_base7failureFv  # MAIN; s1:calls
 0x001846E0 0xD4 __dt__Q23std8ios_baseFv  # MAIN; s1:calls
-0x001847C0 0x8 func_001847C0  # MAIN
-0x001847D0 0x8 func_001847D0  # MAIN
+0x001847C0 0x8 setbuf__Q23std41basic_streambuf<w,Q23std14char_traits<w>>FPwl  # MAIN; vtable (slot +16 of 0x1D5050; SOCOM 1's 0x144A80 in ios.cpp's span); src/main/msl/iostream.cpp
+0x001847D0 0x8 setbuf__Q23std41basic_streambuf<c,Q23std14char_traits<c>>FPcl  # MAIN; vtable (slot +16 of 0x1D5120; SOCOM 1 links it in ios.cpp's span too, 0x144A90); src/main/msl/iostream.cpp
 0x001847E0 0xD0 init__Q23std8ios_baseFPv  # MAIN; s1:exact
-0x001848B0 0x8 func_001848B0  # MAIN
+0x001848B0 0x8 what__Q33std8ios_base7failureCFv  # MAIN; vtable (slot +12 of ios_base::failure's vtable 0x1D4FE0)
 0x001848C0 0x30 __ct__Q23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>FRCQ23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>  # MAIN; s1:callee
 0x001848F0 0x78 __dt__Q23std34_RefCountedPtr<c,Q23std9_Array<c>>Fv  # MAIN; s1:align
 0x00184970 0x8C __ct__Q23std34_RefCountedPtr<c,Q23std9_Array<c>>FPc  # MAIN; s1:calls
@@ -91,55 +91,55 @@
 0x00184C80 0x29C __ct__Q23std7__nInitFv  # MAIN; s1:calls
 0x00184F20 0x78 __dt__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:align
 0x00184FA0 0xE0 __dt__Q23std7__nInitFv  # MAIN; s1:calls
-0x00185080 0x98 func_00185080  # MAIN
-0x00185120 0x98 func_00185120  # MAIN
+0x00185080 0x98 __dt__Q23std39basic_ostream<c,Q23std14char_traits<c>>Fv  # MAIN; vtable (slot +8 of basic_ostream<char>'s 0x1D5100)
+0x00185120 0x98 __dt__Q23std39basic_istream<c,Q23std14char_traits<c>>Fv  # MAIN; vtable (slot +8 of basic_istream<char>'s 0x1D50D0)
 0x001851C0 0x29C __ct__Q23std7__wInitFv  # MAIN; s1:calls
 0x00185460 0x78 __dt__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
 0x001854E0 0xE0 __dt__Q23std7__wInitFv  # MAIN; s1:calls
-0x001855C0 0x98 func_001855C0  # MAIN
-0x00185660 0x98 func_00185660  # MAIN
-0x00185700 0x60 func_00185700  # MAIN
-0x00185760 0x68 func_00185760  # MAIN
-0x001857D0 0x60 func_001857D0  # MAIN
-0x00185830 0x68 func_00185830  # MAIN
-0x001858A0 0x10 func_001858A0  # MAIN
+0x001855C0 0x98 __dt__Q23std39basic_ostream<w,Q23std14char_traits<w>>Fv  # MAIN; vtable (slot +8 of basic_ostream<wchar_t>'s 0x1D5030)
+0x00185660 0x98 __dt__Q23std39basic_istream<w,Q23std14char_traits<w>>Fv  # MAIN; vtable (slot +8 of basic_istream<wchar_t>'s 0x1D5000)
+0x00185700 0x60 __dt__Q23std35basic_ios<w,Q23std14char_traits<w>>Fv  # MAIN; vtable (slot +8 of basic_ios<wchar_t>'s 0x1D5018)
+0x00185760 0x68 __dt__Q23std41basic_streambuf<w,Q23std14char_traits<w>>Fv  # MAIN; vtable (slot +8 of basic_streambuf<wchar_t>'s vtable 0x1D5050); src/main/msl/iostream.cpp
+0x001857D0 0x60 __dt__Q23std35basic_ios<c,Q23std14char_traits<c>>Fv  # MAIN; vtable (slot +8 of basic_ios<char>'s 0x1D50E8)
+0x00185830 0x68 __dt__Q23std41basic_streambuf<c,Q23std14char_traits<c>>Fv  # MAIN; vtable (slot +8 of basic_streambuf<char>'s vtable 0x1D5120, RTTI 'std::basic_streambuf<char, std::char_traits<char>>'); src/main/msl/iostream.cpp
+0x001858A0 0x10 setbuf__Q23std39basic_filebuf<w,Q23std14char_traits<w>>FPwl  # MAIN; vtable (slot +16 of basic_filebuf<wchar_t>'s vtable 0x1D5090; buffered_ at 0x72); src/main/msl/iostream.cpp
 0x001858B0 0x10 setbuf__Q23std39basic_filebuf<c,Q23std14char_traits<c>>FPcl  # MAIN; s1:exact
-0x001858C0 0x8 func_001858C0  # MAIN
-0x001858D0 0x8 func_001858D0  # MAIN
-0x001858E0 0x8 func_001858E0  # MAIN
-0x001858F0 0x8 func_001858F0  # MAIN
-0x00185900 0x8 func_00185900  # MAIN
+0x001858C0 0x8 sync__Q23std41basic_streambuf<w,Q23std14char_traits<w>>Fv  # MAIN; vtable (slot +28 of 0x1D5050); src/main/msl/iostream.cpp
+0x001858D0 0x8 showmanyc__Q23std41basic_streambuf<w,Q23std14char_traits<w>>Fv  # MAIN; vtable (slot +32 of 0x1D5050); src/main/msl/iostream.cpp
+0x001858E0 0x8 sync__Q23std41basic_streambuf<c,Q23std14char_traits<c>>Fv  # MAIN; vtable (slot +28 of 0x1D5120; returns 0); src/main/msl/iostream.cpp
+0x001858F0 0x8 showmanyc__Q23std41basic_streambuf<c,Q23std14char_traits<c>>Fv  # MAIN; vtable (slot +32 of 0x1D5120; returns 0); src/main/msl/iostream.cpp
+0x00185900 0x8 underflow__Q23std41basic_streambuf<c,Q23std14char_traits<c>>Fv  # MAIN; vtable (slot +40 of 0x1D5120; eof); src/main/msl/iostream.cpp
 0x00185910 0x50 uflow__Q23std41basic_streambuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:gap
-0x00185960 0x8 func_00185960  # MAIN
-0x00185970 0x8 func_00185970  # MAIN
+0x00185960 0x8 pbackfail__Q23std41basic_streambuf<c,Q23std14char_traits<c>>Fi  # MAIN; vtable (slot +48 of 0x1D5120; eof); src/main/msl/iostream.cpp
+0x00185970 0x8 overflow__Q23std41basic_streambuf<c,Q23std14char_traits<c>>Fi  # MAIN; vtable (slot +56 of 0x1D5120; eof); src/main/msl/iostream.cpp
 0x00185980 0x12C xsputn__Q23std41basic_streambuf<c,Q23std14char_traits<c>>FPCcl  # MAIN; s1:gap
 0x00185AB0 0x11C xsgetn__Q23std41basic_streambuf<c,Q23std14char_traits<c>>FPcl  # MAIN; s1:gap
-0x00185BD0 0x10 func_00185BD0  # MAIN
-0x00185BE0 0x10 func_00185BE0  # MAIN
-0x00185BF0 0x1C func_00185BF0  # MAIN
-0x00185C10 0x8 func_00185C10  # MAIN
+0x00185BD0 0x10 seekpos__Q23std41basic_streambuf<c,Q23std14char_traits<c>>FQ23std7fpos<i>Q33std8ios_base8openmode  # MAIN; vtable (slot +24 of 0x1D5120); src/main/msl/iostream.cpp
+0x00185BE0 0x10 seekoff__Q23std41basic_streambuf<c,Q23std14char_traits<c>>FlQ33std8ios_base7seekdirQ33std8ios_base8openmode  # MAIN; vtable (slot +20 of 0x1D5120; returns pos_type(-1)); src/main/msl/iostream.cpp
+0x00185BF0 0x1C imbue__Q23std41basic_streambuf<c,Q23std14char_traits<c>>FRCQ23std6locale  # MAIN; vtable (slot +12 of 0x1D5120; assigns loc_ at +0x1C); src/main/msl/iostream.cpp
+0x00185C10 0x8 overflow__Q23std41basic_streambuf<w,Q23std14char_traits<w>>Fi  # MAIN; vtable (slot +56 of 0x1D5050); src/main/msl/iostream.cpp
 0x00185C20 0x21C xsputn__Q23std41basic_streambuf<w,Q23std14char_traits<w>>FPCwl  # MAIN; s1:gap
-0x00185E40 0x8 func_00185E40  # MAIN
+0x00185E40 0x8 pbackfail__Q23std41basic_streambuf<w,Q23std14char_traits<w>>Fi  # MAIN; vtable (slot +48 of 0x1D5050); src/main/msl/iostream.cpp
 0x00185E50 0x50 uflow__Q23std41basic_streambuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:gap
-0x00185EA0 0x8 func_00185EA0  # MAIN
+0x00185EA0 0x8 underflow__Q23std41basic_streambuf<w,Q23std14char_traits<w>>Fv  # MAIN; vtable (slot +40 of 0x1D5050); src/main/msl/iostream.cpp
 0x00185EB0 0x214 xsgetn__Q23std41basic_streambuf<w,Q23std14char_traits<w>>FPwl  # MAIN; s1:gap
-0x001860D0 0x10 func_001860D0  # MAIN
-0x001860E0 0x10 func_001860E0  # MAIN
-0x001860F0 0x1C func_001860F0  # MAIN
+0x001860D0 0x10 seekpos__Q23std41basic_streambuf<w,Q23std14char_traits<w>>FQ23std7fpos<i>Q33std8ios_base8openmode  # MAIN; vtable (slot +24 of 0x1D5050); src/main/msl/iostream.cpp
+0x001860E0 0x10 seekoff__Q23std41basic_streambuf<w,Q23std14char_traits<w>>FlQ33std8ios_base7seekdirQ33std8ios_base8openmode  # MAIN; vtable (slot +20 of 0x1D5050); src/main/msl/iostream.cpp
+0x001860F0 0x1C imbue__Q23std41basic_streambuf<w,Q23std14char_traits<w>>FRCQ23std6locale  # MAIN; vtable (slot +12 of 0x1D5050); src/main/msl/iostream.cpp
 0x00186110 0x128 __ct__Q23std39basic_istream<c,Q23std14char_traits<c>>FPQ23std41basic_streambuf<c,Q23std14char_traits<c>>  # MAIN; s1:gap
 0x00186240 0x1C getloc__Q23std8ios_baseCFv  # MAIN; s1:exact
 0x00186260 0x120 __ct__Q23std39basic_istream<w,Q23std14char_traits<w>>FPQ23std41basic_streambuf<w,Q23std14char_traits<w>>  # MAIN; s1:gap
-0x00186380 0xC func_00186380  # MAIN
+0x00186380 0xC do_widen__Q23std8ctype<w>CFc  # MAIN; vtable (slot +44 of ctype<wchar_t>'s vtable 0x1D5200); src/main/msl/iostream.cpp
 0x00186390 0x1C0 flush__Q23std39basic_ostream<c,Q23std14char_traits<c>>Fv  # MAIN; s1:gap
 0x00186550 0x120 __ct__Q23std39basic_ostream<c,Q23std14char_traits<c>>FPQ23std41basic_streambuf<c,Q23std14char_traits<c>>  # MAIN; s1:gap
 0x00186670 0x1C0 flush__Q23std39basic_ostream<w,Q23std14char_traits<w>>Fv  # MAIN; s1:gap
 0x00186830 0x120 __ct__Q23std39basic_ostream<w,Q23std14char_traits<w>>FPQ23std41basic_streambuf<w,Q23std14char_traits<w>>  # MAIN; s1:gap
 0x00186950 0xE0 imbue__Q23std39basic_filebuf<c,Q23std14char_traits<c>>FRCQ23std6locale  # MAIN; s1:gap
-0x00186A30 0x8 func_00186A30  # MAIN
-0x00186A40 0x1C func_00186A40  # MAIN
+0x00186A30 0x8 do_always_noconv__Q23std14codecvt<c,c,i>CFv  # MAIN; vtable (slot +28 of 0x1D51D0; true; SOCOM 1's 0x146CE0 after imbue<char> as here); src/main/msl/iostream.cpp
+0x00186A40 0x1C getloc__Q23std41basic_streambuf<c,Q23std14char_traits<c>>CFv  # MAIN; s1:order (SOCOM 1's 0x146CF0 between do_always_noconv<char> and sync<char>, as here; copies loc_ at +0x1C); src/main/msl/iostream.cpp
 0x00186A60 0xB4 sync__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:gap
 0x00186B20 0x1C8 seekpos__Q23std39basic_filebuf<c,Q23std14char_traits<c>>FQ23std7fpos<i>Q33std8ios_base8openmode  # MAIN; s1:gap
-0x00186CF0 0x8 func_00186CF0  # MAIN
+0x00186CF0 0x8 do_encoding__Q23std14codecvt<c,c,i>CFv  # MAIN; vtable (slot +24 of 0x1D51D0; 1; SOCOM 1's 0x146F70 after seekpos<char> as here); src/main/msl/iostream.cpp
 0x00186D00 0x268 seekoff__Q23std39basic_filebuf<c,Q23std14char_traits<c>>FlQ33std8ios_base7seekdirQ33std8ios_base8openmode  # MAIN; s1:gap
 0x00186F70 0x474 overflow__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fi  # MAIN; s1:gap
 0x001873F0 0xE0 pbackfail__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fi  # MAIN; s1:gap
@@ -148,11 +148,11 @@
 0x001878B0 0x18 showmanyc__Q23std39basic_filebuf<c,Q23std14char_traits<c>>Fv  # MAIN; s1:exact
 0x001878D0 0x134 func_001878D0  # MAIN
 0x00187A10 0xE0 imbue__Q23std39basic_filebuf<w,Q23std14char_traits<w>>FRCQ23std6locale  # MAIN; s1:calls
-0x00187AF0 0x8 func_00187AF0  # MAIN
-0x00187B00 0x1C func_00187B00  # MAIN
+0x00187AF0 0x8 do_always_noconv__Q23std14codecvt<w,c,i>CFv  # MAIN; vtable (slot +28 of 0x1D51A0; false); src/main/msl/iostream.cpp
+0x00187B00 0x1C getloc__Q23std41basic_streambuf<w,Q23std14char_traits<w>>CFv  # MAIN; s1:order (SOCOM 1's 0x147C80 between do_always_noconv<wchar_t> and sync<wchar_t>, as here); src/main/msl/iostream.cpp
 0x00187B20 0xB4 sync__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
 0x00187BE0 0x1C8 seekpos__Q23std39basic_filebuf<w,Q23std14char_traits<w>>FQ23std7fpos<i>Q33std8ios_base8openmode  # MAIN; s1:align
-0x00187DB0 0x8 func_00187DB0  # MAIN
+0x00187DB0 0x8 do_encoding__Q23std14codecvt<w,c,i>CFv  # MAIN; vtable (slot +24 of 0x1D51A0; 4: the 4-byte wchar_t); src/main/msl/iostream.cpp
 0x00187DC0 0x278 seekoff__Q23std39basic_filebuf<w,Q23std14char_traits<w>>FlQ33std8ios_base7seekdirQ33std8ios_base8openmode  # MAIN; s1:calls
 0x00188040 0x4C4 overflow__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fi  # MAIN; s1:calls
 0x00188510 0xE0 pbackfail__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fi  # MAIN; s1:align
@@ -171,38 +171,38 @@
 0x00189550 0xD8 __use_facet<Q23std8ctype<w>>__3stdFRCQ23std6localeQ23std12__chooser<1>  # MAIN; s1:calls
 0x00189630 0xDC func_00189630  # MAIN
 0x00189710 0xDC func_00189710  # MAIN
-0x001897F0 0x10 func_001897F0  # MAIN
-0x00189800 0x10 func_00189800  # MAIN
-0x00189810 0xC func_00189810  # MAIN
+0x001897F0 0x10 do_out__Q23std14codecvt<c,c,i>CFRiPCcPCcRPCcPcPcRPc  # MAIN; vtable (slot +12 of codecvt<char,char,int>'s vtable 0x1D51D0; noconv); src/main/msl/iostream.cpp
+0x00189800 0x10 do_in__Q23std14codecvt<c,c,i>CFRiPCcPCcRPCcPcPcRPc  # MAIN; vtable (slot +16 of 0x1D51D0; noconv); src/main/msl/iostream.cpp
+0x00189810 0xC do_unshift__Q23std14codecvt<c,c,i>CFRiPcPcRPc  # MAIN; vtable (slot +20 of 0x1D51D0); src/main/msl/iostream.cpp
 0x00189820 0x1C4 write2__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fiw  # MAIN; s1:align
 0x001899F0 0x1E0 func_001899F0  # MAIN
 0x00189BD0 0x190 func_00189BD0  # MAIN
 0x00189D60 0x1B4 unshift__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
-0x00189F20 0xC func_00189F20  # MAIN
+0x00189F20 0xC do_unshift__Q23std14codecvt<w,c,i>CFRiPcPcRPc  # MAIN; vtable (slot +20 of codecvt<wchar_t,char,int>'s vtable 0x1D51A0); src/main/msl/iostream.cpp
 0x00189F30 0x2D4 func_00189F30  # MAIN
 0x0018A210 0x2D4 func_0018A210  # MAIN
-0x0018A4F0 0x8 func_0018A4F0  # MAIN
+0x0018A4F0 0x8 do_max_length__Q23std14codecvt<c,c,i>CFv  # MAIN; vtable (slot +36 of 0x1D51D0; 1); src/main/msl/iostream.cpp
 0x0018A500 0x30 do_length__Q23std14codecvt<c,c,i>CFRiPCcPCcUi  # MAIN; s1:align
 0x0018A530 0x18 func_0018A530  # MAIN
-0x0018A550 0x5C func_0018A550  # MAIN
-0x0018A5B0 0x5C func_0018A5B0  # MAIN
+0x0018A550 0x5C __dt__Q23std14codecvt<c,c,i>Fv  # MAIN; vtable (slot +8 of 0x1D51D0); src/main/msl/iostream.cpp
+0x0018A5B0 0x5C __dt__Q23std14codecvt<w,c,i>Fv  # MAIN; vtable (slot +8 of 0x1D51A0); src/main/msl/iostream.cpp
 0x0018A610 0xA0 do_out__Q23std14codecvt<w,c,i>CFRiPCwPCwRPCwPcPcRPc  # MAIN; s1:align
-0x0018A6B0 0xA0 func_0018A6B0  # MAIN
+0x0018A6B0 0xA0 do_in__Q23std14codecvt<w,c,i>CFRiPCcPCcRPCcPwPwRPw  # MAIN; vtable (slot +16 of 0x1D51A0)
 0x0018A750 0x3C do_length__Q23std14codecvt<w,c,i>CFRiPCcPCcUi  # MAIN; s1:align
-0x0018A790 0x8 func_0018A790  # MAIN
+0x0018A790 0x8 do_max_length__Q23std14codecvt<w,c,i>CFv  # MAIN; vtable (slot +36 of 0x1D51A0; 4); src/main/msl/iostream.cpp
 0x0018A7A0 0x290 func_0018A7A0  # MAIN
 0x0018AA30 0x10C replace__Q23std15__locale_imp<1>FRCQ33std6locale5facetUi  # MAIN; s1:calls
-0x0018AB40 0x110 func_0018AB40  # MAIN
+0x0018AB40 0x110 __dt__Q23std8ctype<w>Fv  # MAIN; vtable (slot +8 of 0x1D5200)
 0x0018AC50 0x44 do_is__Q23std8ctype<w>CFUcw  # MAIN; s1:align
 0x0018ACA0 0x70 do_is__Q23std8ctype<w>CFPCwPCwPUc  # MAIN; s1:align
 0x0018AD10 0x80 do_scan_is__Q23std8ctype<w>CFUcPCwPCw  # MAIN; s1:align
 0x0018AD90 0x80 do_scan_not__Q23std8ctype<w>CFUcPCwPCw  # MAIN; s1:align
-0x0018AE10 0x24 func_0018AE10  # MAIN
-0x0018AE40 0x64 func_0018AE40  # MAIN
-0x0018AEB0 0x24 func_0018AEB0  # MAIN
-0x0018AEE0 0x64 func_0018AEE0  # MAIN
+0x0018AE10 0x24 do_toupper__Q23std8ctype<w>CFw  # MAIN; vtable (slot +28 of 0x1D5200; the upper range_map at +0x20)
+0x0018AE40 0x64 do_toupper__Q23std8ctype<w>CFPwPCw  # MAIN; vtable (slot +32 of 0x1D5200)
+0x0018AEB0 0x24 do_tolower__Q23std8ctype<w>CFw  # MAIN; vtable (slot +36 of 0x1D5200; the lower range_map at +0x14)
+0x0018AEE0 0x64 do_tolower__Q23std8ctype<w>CFPwPCw  # MAIN; vtable (slot +40 of 0x1D5200)
 0x0018AF50 0x38 do_widen__Q23std8ctype<w>CFPCcPCcPw  # MAIN; s1:align
-0x0018AF90 0x28 func_0018AF90  # MAIN
+0x0018AF90 0x28 do_narrow__Q23std8ctype<w>CFwc  # MAIN; vtable (slot +52 of 0x1D5200); src/main/msl/iostream.cpp
 0x0018AFC0 0x8C do_narrow__Q23std8ctype<w>CFPCwPCwcPc  # MAIN; s1:align
 0x0018B050 0x6C resize__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUiRCUi  # MAIN; s1:align
 0x0018B0C0 0x260 func_0018B0C0  # MAIN
@@ -211,13 +211,13 @@
 0x0018B620 0xD0 func_0018B620  # MAIN
 0x0018B6F0 0x120 func_0018B6F0  # MAIN
 0x0018B810 0x488 func_0018B810  # MAIN
-0x0018BCA0 0xA8 func_0018BCA0  # MAIN
-0x0018BD50 0xB8 func_0018BD50  # MAIN
+0x0018BCA0 0xA8 __dt__Q23std11logic_errorFv  # MAIN; vtable (slot +8 of logic_error's 0x1D5250)
+0x0018BD50 0xB8 __dt__Q23std12length_errorFv  # MAIN; vtable (slot +8 of length_error's 0x1D5240)
 0x0018BE10 0x6F8 func_0018BE10  # MAIN
 0x0018C510 0x658 func_0018C510  # MAIN
 0x0018CB70 0xEC func_0018CB70  # MAIN
 0x0018CC60 0xDC func_0018CC60  # MAIN
-0x0018CD40 0x8 func_0018CD40  # MAIN
+0x0018CD40 0x8 what__Q23std11logic_errorCFv  # MAIN; vtable (slot +12 of logic_error's 0x1D5250, inherited by length_error 0x1D5240 and out_of_range 0x1D5290)
 0x0018CD50 0xB8 func_0018CD50  # MAIN
 0x0018CE10 0xD0 func_0018CE10  # MAIN
 0x0018CEE0 0x10 func_0018CEE0  # MAIN
@@ -232,9 +232,9 @@
 0x0018D1A0 0x40 do_toupper__Q23std8ctype<c>CFPcPCc  # MAIN; s1:gap
 0x0018D1E0 0x14 do_tolower__Q23std8ctype<c>CFc  # MAIN; s1:exact
 0x0018D200 0x40 do_tolower__Q23std8ctype<c>CFPcPCc  # MAIN; s1:gap
-0x0018D240 0x8 func_0018D240  # MAIN
+0x0018D240 0x8 do_widen__Q23std8ctype<c>CFc  # MAIN; vtable (slot +28 of ctype<char>'s vtable 0x1D5260); src/main/msl/locale.cpp
 0x0018D250 0x30 do_widen__Q23std8ctype<c>CFPCcPCcPc  # MAIN; s1:exact
-0x0018D280 0x8 func_0018D280  # MAIN
+0x0018D280 0x8 do_narrow__Q23std8ctype<c>CFcc  # MAIN; vtable (slot +36 of 0x1D5260); src/main/msl/locale.cpp
 0x0018D290 0x30 do_narrow__Q23std8ctype<c>CFPCcPCccPc  # MAIN; s1:exact
 0x0018D2C0 0x78 func_0018D2C0  # MAIN
 0x0018D340 0x94 __ct__Q23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>FPQ23std15__locale_imp<1>  # MAIN; s1:calls
@@ -8973,12 +8973,12 @@
 0x004F2EA0 0xEC ControlPitchWindow  # OVL2; s1:align
 0x004F2F90 0x174 InitStacker  # OVL2; s1:align
 0x004F3108 0x3C ConstructStacker  # OVL2 unaligned; s1:align
-0x004F3148 0xFC func_004F3148  # OVL2 unaligned
+0x004F3148 0xFC ProcessStacker  # OVL2 unaligned; s1:order (SOCOM 1's object 0x35FEC8 holds InitStacker, ConstructStacker, ProcessStacker, ControlStacker in this order; ConstructStacker passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x004F3248 0xE4 ControlStacker  # OVL2 unaligned; s1:align
 0x004F3330 0x3C ConstructUndersampler  # OVL2; s1:align
-0x004F3370 0x124 func_004F3370  # OVL2
+0x004F3370 0x124 ProcessUndersampler  # OVL2; s1:order (SOCOM 1's object 0x360258 holds ConstructUndersampler, ProcessUndersampler, ControlUndersampler, InitUndersampler in this order; ConstructUndersampler passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x004F3498 0x30 ControlUndersampler  # OVL2 unaligned; s1:align
-0x004F34C8 0xD8 func_004F34C8  # OVL2 unaligned
+0x004F34C8 0xD8 InitUndersampler  # OVL2 unaligned; s1:order (SOCOM 1's object 0x360258, the same position; ConstructUndersampler passes this row in tosBaseBlockConstruct's init slot) -- the gcc lane, round 8c
 0x004F35A0 0xF0 Reset  # OVL2; s1:calls
 0x004F3690 0x194 NormalizeAndEnQ  # OVL2; s1:calls (SOCOM 1's ProcessAcne and others call NormalizeAndEnQ where ours call this row, 6 call sites; the same position in SOCOM 1's object)
 0x004F3828 0x680 ProcessAcne  # OVL2 unaligned; s1:align
@@ -9042,14 +9042,14 @@
 0x004FB520 0x478 InitVad  # OVL2; s1:calls
 0x004FB998 0x9C ConstructVad  # OVL2 unaligned; s1:align
 0x004FBA38 0x160 LoadCodeBooks  # OVL2 unaligned; s1:align
-0x004FBB98 0x46C func_004FBB98  # OVL2 unaligned
+0x004FBB98 0x46C GetLabel  # OVL2 unaligned; s1:order (SOCOM 1's object 0x367F48: LoadCodeBooks, GetLabel, ... in this order; Vq1500Process calls it once per codebook with the codebook and the frame, as SOCOM 1's calls GetLabel; the same two searches, nearest first codeword then nearest listed second codeword) -- the gcc lane, round 8c
 0x004FC008 0x3C ConstructVq  # OVL2 unaligned; s1:align
 0x004FC048 0x58 InitVq1500Process  # OVL2 unaligned; s1:align
 0x004FC0A0 0x38 FreeCodeBooks  # OVL2; s1:align
-0x004FC0D8 0x8 func_004FC0D8  # OVL2 unaligned
-0x004FC0E0 0x84 func_004FC0E0  # OVL2
+0x004FC0D8 0x8 IdleVq1500Process  # OVL2 unaligned; s1:order (SOCOM 1's object 0x367F48, after FreeCodeBooks as here; an empty process function, ConstructVq's process slot and ControlVq1500Process's fallback as SOCOM 1's) -- the gcc lane, round 8c
+0x004FC0E0 0x84 ControlVq1500Process  # OVL2; s1:order (SOCOM 1's object 0x367F48, after IdleVq1500Process as here; ConstructVq passes it in the control slot; command 1 loads the codebooks, 255 frees the block, as SOCOM 1's) -- the gcc lane, round 8c
 0x004FC168 0x98 Vq1500Process  # OVL2 unaligned; s1:align
-0x004FC200 0x40 func_004FC200  # OVL2
+0x004FC200 0x40 FreeVq1500  # OVL2; s1:calls (SOCOM 1's ControlVq1500Process calls LoadCodeBooks and FreeVq1500 where ours call LoadCodeBooks and this row; the same body, the codebooks freed then tosBaseBlockDestruct; SOCOM II defines it last in the object) -- the gcc lane, round 8c
 0x004FC240 0x3E0 WindowFlush  # OVL2; s1:align
 0x004FC620 0x50C func_004FC620  # OVL2
 0x004FCB30 0x274 func_004FCB30  # OVL2
@@ -9078,14 +9078,14 @@
 0x00500FF8 0x1B4 func_00500FF8  # OVL2 unaligned
 0x005011B0 0x8 func_005011B0  # OVL2
 0x005011B8 0x74 ConstructGenderFilter  # OVL2 unaligned; s1:align
-0x00501230 0x124 func_00501230  # OVL2
+0x00501230 0x124 ProcessGenderFilter  # OVL2; s1:order (SOCOM 1's object 0x36C5F0 holds ProcessGenderFilter, ConstructGenderFilter, ControlGenderFilter, InitGenderFilter; ConstructGenderFilter passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00501358 0x30 ControlGenderFilter  # OVL2 unaligned; s1:align
 0x00501388 0x8C InitGenderFilter  # OVL2 unaligned; s1:align
 0x00501418 0x3C ConstructLookAhead  # OVL2 unaligned; s1:align
 0x00501458 0x10C ProcessLookAhead  # OVL2 unaligned; s1:align
 0x00501568 0x64 ControlLookAhead  # OVL2 unaligned; s1:align
 0x005015D0 0xC0 InitLookAhead  # OVL2; s1:align
-0x00501690 0x284 func_00501690  # OVL2
+0x00501690 0x284 ProcessMedian  # OVL2; s1:order (SOCOM 1's object 0x36CAB8 holds ProcessMedian, ConstructMedian, ControlMedian, Median_Reset, InitMedian in this order; ConstructMedian passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00501918 0x3C ConstructMedian  # OVL2 unaligned; s1:align
 0x00501958 0x54 ControlMedian  # OVL2 unaligned; s1:align
 0x005019B0 0x18 Median_Reset  # OVL2; s1:exact
@@ -9110,11 +9110,11 @@
 0x00504AC0 0x19C SlidingHisto_Init  # OVL2; s1:align
 0x00504C60 0x104 SlidingHisto_LowerQuantile  # OVL2; s1:calls (SOCOM 1's TriggerLR_FindSpeech and others call SlidingHisto_LowerQuantile where ours call this row, 3 call sites; the same position in SOCOM 1's object)
 0x00504D68 0x7C SlidingHisto_Clear  # OVL2 unaligned; s1:align
-0x00504DE8 0x60 func_00504DE8  # OVL2 unaligned
+0x00504DE8 0x60 SlidingHisto_Free  # OVL2 unaligned; s1:align (SOCOM 1's SlidingHisto_Free in its object 0x36FB28: frees the bins and the history ring through the owner's heap, the same body; SOCOM II defines it after SlidingHisto_Clear) -- the gcc lane, round 8c
 0x00504E48 0x10 func_00504E48  # OVL2 unaligned
 0x00504E58 0x114 func_00504E58  # OVL2 unaligned
 0x00504F70 0x3C func_00504F70  # OVL2
-0x00504FB0 0x2D8 func_00504FB0  # OVL2
+0x00504FB0 0x2D8 ProcessStationarity  # OVL2; s1:order (SOCOM 1's object 0x36FF88 holds ProcessStationarity, InitStationarity, ConstructStationarity, ControlStationarity in this order; ConstructStationarity passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00505288 0x13C InitStationarity  # OVL2 unaligned; s1:align
 0x005053C8 0x3C ConstructStationarity  # OVL2 unaligned; s1:align
 0x00505408 0x78 ControlStationarity  # OVL2 unaligned; s1:align
@@ -10927,12 +10927,12 @@
 0x005B7BA0 0x5EC UpdateAiMapLoc__10CZSealBodyFv  # OVL2; slot 0x48 of __vt__10CZSealBody (CEntity's UpdateAiMapLoc slot; SOCOM II's takes no argument, as UpdateAiMapLoc__7CEntityFv)
 0x005B8190 0xC8 ftmask_create__FP5_zrdr  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's ftmask_create__FP5_zrdr sits right before CSealEx::OnWeaponHit as this does before 0x5B8260 -- the same array walk, a bit per number (SOCOM II's arrays count in length, items from 0)
 0x005B8260 0x10 OnWeaponHit__7CSealExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:exact
-0x005B8270 0x60 func_005B8270  # OVL2
+0x005B8270 0x60 TurnSetup__10CZSealBodyFi  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's TurnSetup__10CZSealBodyFi in the same place -- after CSealEx::OnWeaponHit, before the kit (seal_ik.cpp) -- called likewise from two stance functions (0x584C60, 0x586050, as SOCOM 1's InStateCrouch and StandTurning) that pass a second word; SOCOM II's body only clears the bits at 0x1060 7 and 6 when both feet (0x2F0, 0x2F4) exist
 0x005B82D0 0x8 func_005B82D0  # OVL2
 0x005B82E0 0x2B8 func_005B82E0  # OVL2
-0x005B85A0 0x8C func_005B85A0  # OVL2
+0x005B85A0 0x8C ShowProjectile__5CZKitFv  # OVL2; by hand (the kit lane, round 15): for the current item 186 or 146 (its m_ID, lbu), the body's fire point (CZSealBody slot 0x64, OVL2 0x5DFAD0: SOCOM 1's GetFirepointNode) asked for its child "projectile" (CNode slot 0x24, FindChild(name, true)) and that made active (slot 0x38, SetActive(true)); 0x5A78C0 jumps to it; new in SOCOM II, the name ours
 0x005B8630 0x124 func_005B8630  # OVL2
-0x005B8760 0xB8 func_005B8760  # OVL2
+0x005B8760 0xB8 GetCurItemFireClass__5CZKitFv  # OVL2; by hand (the kit lane, round 15): the current item's class by its GetIDType (OVL1 0x3D1A60) through three of CZWeapon's class tests (0x3D1DB0 rifles 1, 0x3D1DA0 the pistol 2, 0x3D1D90 class 145 4) then 121/151 3, else 0 -- a byte CZSealBody's 0x5DFAD0 (SOCOM 1's GetFirepointNode) indexes its fire-point slots at 0x388 with; CHUD::Tick and five SEAL functions call it; new in SOCOM II, the name ours
 0x005B8820 0xA0 func_005B8820  # OVL2
 0x005B88C0 0x5C func_005B88C0  # OVL2
 0x005B8920 0x5F4 func_005B8920  # OVL2
@@ -11265,8 +11265,8 @@
 0x005DEEC0 0x4A8 func_005DEEC0  # OVL2
 0x005DF370 0x64 GetFP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
 0x005DF3E0 0x64 GetAP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
-0x005DF450 0x90 func_005DF450  # OVL2
-0x005DF4E0 0x11C func_005DF4E0  # OVL2
+0x005DF450 0x90 UpdateAimParams__10CZSealBodyFv  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's UpdateAimParams in the same place (after GetFP/GetAP, before SetAimPointW): the same fields 0x3A0 on (m_curr_aimpt 0x110C -> 0x14AC, m_curr_firept 0x111C -> 0x14BC, their positions 0x1100/0x1110 -> 0x14A0/0x14B0), the same names "aimpoint"/"firepoint" looked up (SOCOM II through CZSealBody's slot 0x64, 0x5DFAD0, SOCOM 1's GetFirepointNode) and both handed to GetNodePos (0x5DF930); PrePostTick and the constructor call it
+0x005DF4E0 0x11C SetAimPointW__10CZSealBodyFPC6CPnt3DPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's SetAimPointW in the same place (after UpdateAimParams, before CalcAimGoal), the same code with the fields 0x3A0 on (the point 0x10B8 -> 0x1458, the reticle's 0x10C4 -> 0x1464, the normal 0x10D0 -> 0x1470; the bits at 0xF58/0xF5B -> 0x105C/0x105F), UpdateAimDir (0x5DEEC0) called last, CalcAimGoal toward CPnt3D::unit_nz without a point
 0x005DF600 0x2AC CalcAimGoal__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL2; s1:callee by hand (the kit lane, round 13): SetAimDirR (0x5DF8B0) calls it from the same instruction as SOCOM 1's SetAimDirR calls CalcAimGoal (0x2BFBA0, 0x2B8 against 0x2AC here), with this, the aim point (0x1440), the direction and the goal (0x144C), and tests its bool -- between SetAimPointW's place and SetAimDirR's as in SOCOM 1's order
 0x005DF8B0 0x74 SetAimDirR__10CZSealBodyFPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's SetAimDirR (0x2BFE60, 0x70), the same code with the aim's fields 0x3A0 on (0x10A0/0x10AC -> 0x1440/0x144C), after CalcAimGoal as there; byte-exact from seal_weapon.cpp
 0x005DF930 0x198 func_005DF930  # OVL2
@@ -11424,7 +11424,7 @@
 0x005ED950 0x2C func_005ED950  # OVL2
 0x005ED980 0x1C func_005ED980  # OVL2; s1~ one of three std::list<T *>::generic_iterator constructors (T = CAiMap, CAiState, CEntity) with identical code
 0x005ED9A0 0xC func_005ED9A0  # OVL2
-0x005ED9B0 0x1F8 func_005ED9B0  # OVL2
+0x005ED9B0 0x1F8 GetSealCount__9CSealUnitFi  # OVL2; by hand (the kit lane, round 15): the squad's SEALs counted, with the squads' under it to a depth (m_seals' size, then each of m_sub_units' with depth - 1) -- recursive, inlined into itself twice, the third copy a call with depth - 3; GetSealByIndex (0x5EDBB0, CTeamNames::Init's) subtracts it per squad; new in SOCOM II, the name ours
 0x005EDBB0 0x108 func_005EDBB0  # OVL2
 0x005EDCC0 0xF8 IsMemberOfUnit__9CSealUnitFP10CZSealBodyb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's IsMemberOfUnit(CZSealBody *, bool) (0x2D6040) -- the SEALs (0x64), the escortees (0x70), then with the flag each sub-squad (0x7C) asked again, recursing as there; before its by-number overload as there
 0x005EDDC0 0x10 func_005EDDC0  # OVL2
@@ -12241,14 +12241,14 @@
 0x00626948 0x60 func_00626948  # OVL2 unaligned
 0x006269A8 0x8C func_006269A8  # OVL2 unaligned
 0x00626A38 0xD4 func_00626A38  # OVL2 unaligned
-0x00626B10 0xBC func_00626B10  # OVL2
+0x00626B10 0xBC lintSetSmallValue  # OVL2; s1:order (the gcc lane, round 8b): first of LargeInt.c's object as SOCOM 1's (0x406C28), its body (the number cleared -- a copy of a zero constant now -- and word 0 set), IsEven after it as there
 0x00626BD0 0x10 IsEven  # OVL2; s1:exact
-0x00626BE0 0x38 func_00626BE0  # OVL2
-0x00626C18 0x50 func_00626C18  # OVL2 unaligned
-0x00626C68 0x44 func_00626C68  # OVL2 unaligned
-0x00626CB0 0x24 func_00626CB0  # OVL2
-0x00626CD8 0x24 func_00626CD8  # OVL2 unaligned
-0x00626D00 0x28 func_00626D00  # OVL2
+0x00626BE0 0x38 IsZero  # OVL2; s1:order (the gcc lane, round 8b): after IsEven as SOCOM 1's, its body (1 when every word is 0; the walk upward now)
+0x00626C18 0x50 IsOne  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after IsZero as SOCOM 1's, its body (word 0 is 1, the rest 0)
+0x00626C68 0x44 IsEqual  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after IsOne as SOCOM 1's, its body (two numbers word by word)
+0x00626CB0 0x24 lintGetBit  # OVL2; s1:order (the gcc lane, round 8b): SOCOM 1's lintGetBit's instructions (0x24, the bit tested, reordered), first of the three bit functions as there
+0x00626CD8 0x24 lintSetBit  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after lintGetBit as SOCOM 1's, its body (0x24, the bit or'ed in)
+0x00626D00 0x28 lintClearBit  # OVL2; s1:order (the gcc lane, round 8b): after lintSetBit as SOCOM 1's, its body (0x28, the bit and'ed out)
 0x00626D28 0x50 func_00626D28  # OVL2 unaligned
 0x00626D78 0x74 func_00626D78  # OVL2 unaligned
 0x00626DF0 0x180 func_00626DF0  # OVL2
@@ -12305,10 +12305,10 @@
 0x0062A2F0 0x70 func_0062A2F0  # OVL2
 0x0062A360 0x4C func_0062A360  # OVL2
 0x0062A3B0 0x1F4 func_0062A3B0  # OVL2
-0x0062A5A8 0x8C func_0062A5A8  # OVL2 unaligned
-0x0062A638 0xE8 func_0062A638  # OVL2 unaligned
-0x0062A720 0xA4 func_0062A720  # OVL2
-0x0062A7C8 0xA8 func_0062A7C8  # OVL2 unaligned
+0x0062A5A8 0x8C RCInitialize  # OVL2 unaligned; s1:order (the gcc lane, round 8b): first of SOCOM 1's RC object's four (0x409150), its body (~i filled, keyed by 3s over a 64-byte key) with the counters moved; rt_crypt calls it on a key's states
+0x0062A638 0xE8 RCSaltyInitialize  # OVL2 unaligned; s1:order (the gcc lane, round 8b): second of the four, SOCOM 1's body (the salt's four bytes by 5s, then the key by 3s), 0xE8 as SOCOM 1's
+0x0062A720 0xA4 RCEncrypt  # OVL2; s1:order (the gcc lane, round 8b): third of the four, SOCOM 1's body (i by 5s, the plain byte fed back into j)
+0x0062A7C8 0xA8 RCDecrypt  # OVL2 unaligned; s1:order (the gcc lane, round 8b): fourth of the four, SOCOM 1's body (the deciphered byte fed back)
 0x0062A870 0x58 func_0062A870  # OVL2
 0x0062A8C8 0x22C func_0062A8C8  # OVL2 unaligned
 0x0062AAF8 0x8 func_0062AAF8  # OVL2 unaligned
@@ -12452,7 +12452,7 @@
 0x0062EEB0 0xC func_0062EEB0  # OVL2
 0x0062EEC0 0x6C func_0062EEC0  # OVL2
 0x0062EF30 0xA0 func_0062EF30  # OVL2
-0x0062EFD0 0x2A8 func_0062EFD0  # OVL2
+0x0062EFD0 0x2A8 KM_Initialize  # OVL2; s1:order (the gcc lane, round 8b): the function before KM_Create as SOCOM 1's KM_Initialize is, its body SOCOM 1's (a key pair copied into the server's slot for id 0x80000000, else the client's; null clears it) with a third slot for id -1 tested first
 0x0062F278 0x138 KM_Create  # OVL2 unaligned; s1:align
 0x0062F3B0 0x2C KM_SetLocalClientID  # OVL2; s1:exact
 0x0062F3E0 0x158 KM_SetPublicKey  # OVL2; s1:calls
@@ -12744,7 +12744,7 @@
 0x0063D4E0 0x58 rt_time_platform_get_time_stamp  # OVL2; s1:exact
 0x0063D538 0x10C rt_time_sleep_usecs_platform  # OVL2 unaligned; s1:calls
 0x0063D648 0x12C func_0063D648  # OVL2 unaligned
-0x0063D778 0x170 func_0063D778  # OVL2 unaligned
+0x0063D778 0x170 rt_time_platform_get_time_string  # OVL2 unaligned; s1:calls (the gcc lane, round 8b): rt_time_get_time_string tail-calls it at the instruction SOCOM 1's tail-calls rt_time_platform_get_time_string; its body is SOCOM 1's with the RTC reading moved to 0x63D648 and milliseconds kept
 0x0063D8E8 0x1DC func_0063D8E8  # OVL2 unaligned
 0x0063DAC8 0x14 func_0063DAC8  # OVL2 unaligned
 0x0063DAE0 0x14 func_0063DAE0  # OVL2
@@ -12995,10 +12995,10 @@
 0x00649238 0x9C MediusRemoveFromBuddyList  # OVL2 unaligned; s1:order (the RemoveFromBuddyListCallbackFunctionPtr slot 0x656234; the gcc lane, round 3b)
 0x006492D8 0x9C MediusBuddyGetPermission  # OVL2 unaligned; s1:order (the BuddyGetPermissionCallbackFunctionPtr slot 0x65623C; the gcc lane, round 3b)
 0x00649378 0x88 MediusBuddyAddConfirmation  # OVL2 unaligned; s1:order (after MediusBuddyGetPermission as SOCOM 1's, no callback; the gcc lane, round 3b)
-0x00649400 0x9C MediusGetPolicy  # OVL2; s1:order (the GetPolicyCallbackFunctionPtr slot 0x656240; the gcc lane, round 3b)
-0x006494A0 0x9C func_006494A0  # OVL2
-0x00649540 0x9C func_00649540  # OVL2
-0x006495E0 0x9C func_006495E0  # OVL2
+0x00649400 0x9C MediusGetIgnoreList  # OVL2; s1:order (the GetPolicyCallbackFunctionPtr slot 0x656240; the gcc lane, round 3b); call (the gcc lane, round 8b, settling the online lane's round-10 question): not SOCOM 1's MediusGetPolicy -- its request is the bare MessageID and SessionKey (38 bytes, MediusGetBuddyList's shape; SOCOM 1's GetPolicy sends 44) and its slot's response handler (0x64C478) consumes 72 bytes, SOCOM 1's MediusUniqueCallbackGetBuddyListResponseHandler's size (GetPolicy's is 288); the game's 'GetIgnoreList' command (CZOnlineLobby::GetIgnoreList, 0x300F00) calls it; the name follows the library's Medius<request>
+0x006494A0 0x9C MediusAddToIgnoreList  # OVL2; call (the gcc lane, round 8b): new in SOCOM II, MediusAddToBuddyList's shape (44 bytes: an account; a 28-byte status back, 0x64C4B0); the game's cbFindIgnoreListPlayerID calls it with cbAddToIgnoreList, which reports the status as 'AddToIgnoreList'
+0x00649540 0x9C MediusRemoveFromIgnoreList  # OVL2; call (the gcc lane, round 8b): new in SOCOM II, MediusRemoveFromBuddyList's shape (44 bytes; a 28-byte status back, 0x64C4E8); the game's RemoveFromIgnore calls it with cbRemoveFromIgnoreList, which reports the status as 'RemoveFromIgnoreList'
+0x006495E0 0x9C MediusGetPolicy  # OVL2; s1:calls (the gcc lane, round 8b, settling the online lane's round-10 question): SOCOM 1's MediusGetPolicy moved three rows on -- the same 44-byte request (MessageID and SessionKey terminated, one word after), and its slot's response handler (0x64C520) consumes 288 bytes as SOCOM 1's MediusUniqueCallbackGetPolicyResponseHandler does; the game's GetUsagePolicy calls it with cbGetPolicy
 0x00649680 0x7C MediusSendPlayerReport  # OVL2; s1:order (before MediusSendWorldReport and MediusSendEndGameReport as SOCOM 1's, no callback; the gcc lane, round 3b)
 0x00649700 0x88 MediusSendWorldReport  # OVL2; s1:order (between the player and end-game reports as SOCOM 1's; the gcc lane, round 3b)
 0x00649788 0x94 MediusSendEndGameReport  # OVL2 unaligned; s1 by call site (SendEndGameReport 0x2F80C0, as SOCOM 1's; the online lane)

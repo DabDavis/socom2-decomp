@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0063D778();                            /* extern */
+M2C_UNK rt_time_platform_get_time_string();         /* extern */
 
 void rt_time_get_time_string(void) {
-    func_0063D778();
+    rt_time_platform_get_time_string();
 }
