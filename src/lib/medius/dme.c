@@ -437,7 +437,7 @@ int func_006216D0(int arg0, int arg1)
     return result;
 }
 
-int func_00621778(int arg0)
+int NetSetDefaultConnectParams(int arg0)
 {
     int result;
 
@@ -453,7 +453,7 @@ int func_00621778(int arg0)
     return result;
 }
 
-int func_00621810(int arg0, int arg1)
+int NetConnect(int arg0, int arg1)
 {
     int result;
 
@@ -965,7 +965,7 @@ int func_00622D68(int arg0, int arg1)
     return result;
 }
 
-int func_00622E10(int arg0)
+int NetGetLocalTime(int arg0)
 {
     int result;
 
@@ -981,7 +981,7 @@ int func_00622E10(int arg0)
     return result;
 }
 
-int func_00622EA8(int arg0)
+int NetGetTime(int arg0)
 {
     int result;
 
@@ -1189,7 +1189,7 @@ int func_00623628(int arg0)
     return result;
 }
 
-int func_006236C0(void)
+int NetUpdate(void)
 {
     int result;
 
@@ -1253,7 +1253,7 @@ int func_00623868(int arg0)
     return result;
 }
 
-int func_00623900(int arg0)
+int NetDisconnect(int arg0)
 {
     int result;
 
