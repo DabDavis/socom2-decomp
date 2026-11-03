@@ -7938,55 +7938,55 @@
 0x003BA280 0x68 __dt__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:align
 0x003BA2F0 0x8 clear__Q23std80__vector_deleter<Q33zdb5CMesh8CMeshLOD,Q23std32allocator<Q33zdb5CMesh8CMeshLOD>>Fv  # OVL1; s1:order (SOCOM 1's clear of the CMeshLOD vector's deleter, 0x310410, closes vis_mesh.cpp's tail as here; SOCOM II's is the 8-byte size store -- the trivially destroyed elements' loop deleted -- that the deleter's destructor 0x3BA280 and reserve 0x3BA0D0 call; byte-exact from vis_mesh.cpp, the wep lane)
 0x003BA300 0xE4 ColConvTo3D__FUi  # OVL1; s1:align
-0x003BA3F0 0xE4 func_003BA3F0  # OVL1
-0x003BA4E0 0xB4 func_003BA4E0  # OVL1
-0x003BA5A0 0x1C func_003BA5A0  # OVL1
-0x003BA5C0 0xD4 func_003BA5C0  # OVL1
-0x003BA6A0 0xF4 func_003BA6A0  # OVL1
-0x003BA7A0 0x174 func_003BA7A0  # OVL1
-0x003BA920 0x74 func_003BA920  # OVL1
+0x003BA3F0 0xE4 FindStrip__Q23zdb8CVisDataFUi  # OVL1; by hand (the wep lane, vis_data.cpp: a CVisData method -- it clears the cursor through Clear 0x3BB000 at the block's end and steps 0x2C/0x30 as SOCOM 1's SearchVertex does; walks the strip at 0x18 for the id in a1; SearchStrip 0x3BA4E0 tail-calls it; the name ours)
+0x003BA4E0 0xB4 SearchStrip__Q23zdb8CVisDataFUi  # OVL1; by hand (the wep lane, vis_data.cpp: a CVisData method stepping the select cursor 0x2C to a type-10 select, its counts and vertices taken, then FindStrip 0x3BA3F0 with the id passed through; called from 0x3BE5F0; the name ours)
+0x003BA5A0 0x1C Resume__Q23zdb8CVisDataFPQ23zdb8CVisData  # OVL1; by hand (the wep lane, vis_data.cpp: one CVisData's cursor set from another's strip mark 0x54 and block end 0x30, `this` returned; the name ours)
+0x003BA5C0 0xD4 NextIndex__Q23zdb8CVisDataFPb  # OVL1; by hand (the wep lane, vis_data.cpp: NextVertex(Ui)'s twin over the strip vertex 0x18, a bool out set when it runs on to SearchIndexedStrip 0x3BA7A0; the name ours)
+0x003BA6A0 0xF4 SearchIndices__Q23zdb8CVisDataFv  # OVL1; by hand (the wep lane, vis_data.cpp: SearchVertex's twin for the index-list select, type 11; SearchIndexedStrip 0x3BA7A0 tail-calls it; the name ours)
+0x003BA7A0 0x174 SearchIndexedStrip__Q23zdb8CVisDataFv  # OVL1; by hand (the wep lane, vis_data.cpp: the strip select of the id at 0x50 found, then SearchIndices 0x3BA6A0; SelectIndexedStrip 0x3BAA70 and NextIndex 0x3BA5C0 call it; the name ours)
+0x003BA920 0x74 NextVertex__Q23zdb8CVisDataFv  # OVL1; by hand (the wep lane, vis_data.cpp: NextVertex(Ui) 0x3BA9A0 for one vertex of a mesh's own -- the vertex and colour pointers stepped, SearchVertex(true) past the range; the name ours, the overload's)
 0x003BA9A0 0xCC NextVertex__Q23zdb8CVisDataFUi  # OVL1; s1:align
-0x003BAA70 0x78 func_003BAA70  # OVL1
-0x003BAAF0 0xA0 func_003BAAF0  # OVL1
-0x003BAB90 0x20C func_003BAB90  # OVL1
-0x003BADA0 0x98 func_003BADA0  # OVL1
-0x003BAE40 0x98 func_003BAE40  # OVL1
-0x003BAEE0 0x8C func_003BAEE0  # OVL1
-0x003BAF70 0x8C func_003BAF70  # OVL1
+0x003BAA70 0x78 SelectIndexedStrip__Q23zdb8CVisDataFPQ23zdb5CMeshUi  # OVL1; by hand (the wep lane, vis_data.cpp: Clear, the block from the mesh's first level 0x3B9480, the id at 0x50, then SearchIndexedStrip 0x3BA7A0; SOCOM 1's SelectVertex shape; the name ours)
+0x003BAAF0 0xA0 ReplaceTextureData__Q23zdb8CVisDataFP8_word128  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CVisData::ReplaceTextureData 0x310700 -- the same select walk copying the quadword into type 5 and 6 selects, the count of a select before a type 8 decremented; over SOCOM II's cursor at 0x2C)
+0x003BAB90 0x20C SearchVertex__Q23zdb8CVisDataFb  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CVisData::SearchVertex 0x3107B0 -- the same switch over select types 1, 5, 3, 10, 2, 4 -- with a flag choosing the range count; NextVertex and the SelectVertex family call it)
+0x003BADA0 0x98 SelectVertexTail__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's SelectVertex shape -- Clear, the view's block from the visual's 0x30 vector, the index at 0x44, SearchVertex -- over the head's halfwords 6 and 7; the name ours)
+0x003BAE40 0x98 SelectVertexHead__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's SelectVertex shape, the block's end short by the head's halfword 7; the name ours)
+0x003BAEE0 0x8C SelectVertexStrips__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SelectVertex 0x3BAF70 with SearchVertex(true); the name ours)
+0x003BAF70 0x8C SelectVertex__Q23zdb8CVisDataFPQ23zdb7CVisualUiUi  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CVisData::SelectVertex 0x3109A0 -- Clear, the view's select block from the visual's vector at 0x30, its end and first select, the index, SearchVertex -- the same 0x8C bytes)
 0x003BB000 0x44 Clear__Q23zdb8CVisDataFv  # OVL1; s1:align
 0x003BB050 0xC0 Read__Q23zdb24CScrollingTexture_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB110 0x68 __dt__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:align
 0x003BB180 0x1C __ct__Q23zdb24CScrollingTexture_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_ScrollingTexture_Object at 0x5cc through it)
-0x003BB1A0 0x90 func_003BB1A0  # OVL1; s1:align; by hand (the entity lane: not list<FILTER_PLANE*>'s destructor -- it tests this on s1 once, then four times on s1+36 before the erase: the implicit destructor of a class holding a list-derived member at +36)
+0x003BB1A0 0x90 __dt__Q23zdb14CPreLight_bandFv  # OVL1; s1:align; by hand (the entity lane: not list<FILTER_PLANE*>'s destructor -- it tests this on s1 once, then four times on s1+36 before the erase: the implicit destructor of a class holding a list-derived member at +36); by hand (the wep lane, vis_data.cpp: the implicit destructor of SOCOM 1's CPreLight_band (DWARF: 0x30 bytes, CFilterPlaneObj, a list, at 0x24) -- clear<CPreLight_band> 0x3BD920 calls it on every 0x30-byte element; the entity lane's reading)
 0x003BB230 0x68 __dt__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls
 0x003BB2A0 0x1C __ct__Q23zdb16CPreLight_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_PreLight_Object at 0x5bc through it)
-0x003BB2C0 0x1B0 func_003BB2C0  # OVL1
+0x003BB2C0 0x1B0 Read__Q23zdb16CMaterial_ObjectFPQ23zdb9CSaveLoad  # OVL1; by hand (the wep lane, vis_data.cpp: SOCOM 1's CMaterial_Object::Read 0x310D50 by its key "Material_Palette", now a key per 0x3C-byte band; CSaveLoad::Load calls it)
 0x003BB470 0x68 __dt__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:align, checked by hand (right before CMaterial_Object's constructor, as each *_Object's destructor precedes its constructor here and in SOCOM 1; calls a band vector deleter's destructor, 0x3BCDF0)
 0x003BB4E0 0x1C __ct__Q23zdb16CMaterial_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_Material_Object at 0x59c through it)
-0x003BB500 0x114 func_003BB500  # OVL1
+0x003BB500 0x114 __as__Q23zdb14CMaterial_bandFRCQ23zdb14CMaterial_band  # OVL1; by hand (the wep lane, vis_data.cpp: CMaterial_band's assignment -- erase<CMaterial_band> 0x3BD6C0 moves the tail down through it and the insert 0x3BC680 constructs and assigns through it; the owned texture name duplicated)
 0x003BB620 0x68 __dt__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:align, checked by hand (right before CSubSurf_Object's constructor, the same pattern)
 0x003BB690 0x1C __ct__Q23zdb15CSubSurf_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_SubSurf_Object at 0x5ac through it)
 0x003BB6B0 0x98 Read__Q23zdb11CLOD_ObjectFPQ23zdb9CSaveLoad  # OVL1; s1:calls
 0x003BB750 0x68 __dt__Q23zdb11CLOD_ObjectFv  # OVL1; s1:align
 0x003BB7C0 0x1C __ct__Q23zdb11CLOD_ObjectFv  # OVL1; s1:calls by hand (CWorld's constructor builds m_LOD_Object at 0x58c through it; the five *_Object constructors keep SOCOM 1's relative order)
 0x003BB7E0 0x75C insert__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FPQ23zdb22CScrollingTexture_bandUiRCQ23zdb22CScrollingTexture_band  # OVL1; s1:align
-0x003BBF40 0x9C func_003BBF40  # OVL1
-0x003BBFE0 0x5CC func_003BBFE0  # OVL1
+0x003BBF40 0x9C resize__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FUi  # OVL1; by hand (the wep lane, vis_data.cpp: CScrollingTexture_Object::Read 0x3BB050 calls it with the key's size / 0x208 where SOCOM 1's calls this resize; it calls the band insert 0x3BB7E0 and erase 0x3BCED0)
+0x003BBFE0 0x5CC insert__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FPQ23zdb9CLOD_bandUiRCQ23zdb9CLOD_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CLOD_band> 0x3BC5B0 grows through it with (end, n - size, &band))
 0x003BC5B0 0xC4 resize__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FUi  # OVL1; s1:align
-0x003BC680 0x460 func_003BC680  # OVL1
-0x003BCAE0 0x1BC func_003BCAE0  # OVL1
-0x003BCCA0 0x68 func_003BCCA0  # OVL1
-0x003BCD10 0x68 func_003BCD10  # OVL1
-0x003BCD80 0x68 func_003BCD80  # OVL1
-0x003BCDF0 0x68 func_003BCDF0  # OVL1
+0x003BC680 0x460 insert__Q23std80__vector_imp<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>,0>FPQ23zdb14CMaterial_bandUiRCQ23zdb14CMaterial_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CMaterial_band> 0x3BCAE0 grows through it; 0x3C-byte elements)
+0x003BCAE0 0x1BC resize__Q23std80__vector_imp<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>,0>FUi  # OVL1; by hand (the wep lane, vis_data.cpp: CMaterial_Object::Read 0x3BB2C0 calls it with the key's count; it calls the insert 0x3BC680 and erase 0x3BD6C0, its temporary a default band)
+0x003BCCA0 0x68 __dt__Q23std98__vector_deleter<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CScrollingTexture_Object 0x3BB110 calls it as SOCOM 1's calls this destructor; it calls clear 0x3BD840)
+0x003BCD10 0x68 __dt__Q23std70__vector_deleter<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CLOD_Object 0x3BB750 calls it; it calls clear 0x3BD850)
+0x003BCD80 0x68 __dt__Q23std80__vector_deleter<Q23zdb13CSubSurf_band,Q23std32allocator<Q23zdb13CSubSurf_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CSubSurf_Object 0x3BB620 calls it; it calls clear 0x3BD860)
+0x003BCDF0 0x68 __dt__Q23std82__vector_deleter<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: ~CMaterial_Object 0x3BB470 calls it; it calls clear 0x3BD870)
 0x003BCE60 0x68 __dt__Q23std82__vector_deleter<Q23zdb14CPreLight_band,Q23std33allocator<Q23zdb14CPreLight_band>>Fv  # OVL1; s1:calls
-0x003BCED0 0x4E0 func_003BCED0  # OVL1
-0x003BD3B0 0x310 func_003BD3B0  # OVL1
-0x003BD6C0 0x180 func_003BD6C0  # OVL1
-0x003BD840 0x8 func_003BD840  # OVL1
-0x003BD850 0x8 func_003BD850  # OVL1
-0x003BD860 0x8 func_003BD860  # OVL1
-0x003BD870 0xA4 func_003BD870  # OVL1
+0x003BCED0 0x4E0 erase__Q23std96__vector_imp<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>,0>FPQ23zdb22CScrollingTexture_bandPQ23zdb22CScrollingTexture_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CScrollingTexture_band> 0x3BBF40 cuts through it with (data + n, data + size))
+0x003BD3B0 0x310 erase__Q23std68__vector_imp<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>,0>FPQ23zdb9CLOD_bandPQ23zdb9CLOD_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CLOD_band> 0x3BC5B0 cuts through it)
+0x003BD6C0 0x180 erase__Q23std80__vector_imp<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>,0>FPQ23zdb14CMaterial_bandPQ23zdb14CMaterial_band  # OVL1; by hand (the wep lane, vis_data.cpp: resize<CMaterial_band> 0x3BCAE0 cuts through it; the tail moved down by the band's assignment 0x3BB500)
+0x003BD840 0x8 clear__Q23std98__vector_deleter<Q23zdb22CScrollingTexture_band,Q23std41allocator<Q23zdb22CScrollingTexture_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCCA0 calls it; the 8-byte size store of a trivially destroyed element, as SOCOM 1's clear 0x312C10 without its empty loop)
+0x003BD850 0x8 clear__Q23std70__vector_deleter<Q23zdb9CLOD_band,Q23std27allocator<Q23zdb9CLOD_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCD10 calls it)
+0x003BD860 0x8 clear__Q23std80__vector_deleter<Q23zdb13CSubSurf_band,Q23std32allocator<Q23zdb13CSubSurf_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCD80 calls it)
+0x003BD870 0xA4 clear__Q23std82__vector_deleter<Q23zdb14CMaterial_band,Q23std33allocator<Q23zdb14CMaterial_band>>Fv  # OVL1; by hand (the wep lane, vis_data.cpp: the deleter's destructor 0x3BCDF0 calls it; each 0x3C-byte band's owned name freed)
 0x003BD920 0x7C clear__Q23std82__vector_deleter<Q23zdb14CPreLight_band,Q23std33allocator<Q23zdb14CPreLight_band>>Fv  # OVL1; s1:align
 0x003BD9A0 0x38 Uninit__Q23zdb14CMeshDecalPoolFv  # OVL1; s1:exact
 0x003BD9E0 0xC08 func_003BD9E0  # OVL1
