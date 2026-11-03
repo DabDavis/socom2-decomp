@@ -7,11 +7,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-char *func_005AD5A0(s32);                           /* extern */
+char *GetLookDir__10CZSealBodyCFv(s32);             /* extern */
 
 f32 func_00600CF0(char *arg0) {
     char *temp_v0;
 
-    temp_v0 = func_005AD5A0(SC_MEMBER(arg0, s32 *, 4));
+    temp_v0 = GetLookDir__10CZSealBodyCFv(SC_MEMBER(arg0, s32 *, 4));
     return (SC_MEMBER(arg0, f32 *, 0x34) * SC_MEMBER(temp_v0, f32 *, 0)) + (SC_MEMBER(arg0, f32 *, 0x38) * SC_MEMBER(temp_v0, f32 *, 4)) + (SC_MEMBER(arg0, f32 *, 0x3C) * SC_MEMBER(temp_v0, f32 *, 8));
 }

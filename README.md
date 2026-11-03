@@ -1647,6 +1647,19 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 12** (seal_env.cpp's look, blink and aim functions):
+  - a CQuat copied into a pointed-to member through an inline taking it by const reference gives the
+    target's registers; the plain assignment swaps them (ApplyBlinkAnim, ApplyEyeLookAnim);
+  - a local that looks unneeded can be one SOCOM 1 passed twice: SetEyeLookDir's `cur` needs its own
+    saved register; a float test's arm order follows the source (`if (x >= 0.0f) A else B` puts A on
+    the fall-through);
+  - when every true test of an `||` chain must reach one `return true` block, fold the last flag test
+    into the same condition -- a second `if` makes its own block (IsThrowing);
+  - `int top = m_count - 1; m_frames[top]` keeps the subtraction as an index; inline, the -1 folds
+    into the offset (AnimPop);
+  - SOCOM II holds SOCOM 1's heap looks inside the SEAL: SOCOM 1's "pointer member + 0x10" becomes
+    `this + K`; 0x575CF0 (a list range-erase instance) looks like seal_ai.cpp's template tail, not
+    seal_anim.cpp's first row.
 - **Tells from the UI, round 9** (zui_skb.h, zui_skbview.cpp, zui_skbkeys.cpp):
   - an RTTI class-name string shows the namespace: SOCOM II's "CBmpWithNode" (0x3FAEA8) lacks SOCOM 1's
     `@unnamed@zui_skb_cpp@::` prefix -- the keyboard's classes come from a shared header (zui_skb.h);
