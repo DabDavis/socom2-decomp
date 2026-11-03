@@ -182,8 +182,13 @@ public:
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
     virtual bool AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data);   /* +0xC (SOCOM 1's) */
+    /* the top squad above this one (recursive: its out-of-line copy, OVL2 0x561D20 after 0x561B90
+     * its first caller, inlines itself eight times; a caller inlines it once -- the name ours) */
+    CSealUnit *GetTop() { return m_parent ? m_parent->GetTop() : this; }
 
-    unsigned char _8[0x9c - 0x8];
+    unsigned char _8[0x60 - 0x8];
+    CSealUnit *m_parent;   // 0x60 (SOCOM 1's 0x3c): the squad this one is a part of
+    unsigned char _64[0x9c - 0x64];
     /* the squad's current order: its kind a byte at 8 (a kill by the local player under order 19
      * counts twice: 0x545290; the names ours) */
     struct CSealUnitOrder {
@@ -621,7 +626,11 @@ public:
     unsigned char m_3e4[0x10];   // 0x3e4
     unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
-    unsigned char _3f6[0x40c - 0x3f6];
+    unsigned char _3f6[0x400 - 0x3f6];
+    /* a Navy SEAL's anger at the player: Tick and OnDeath raise it by 60 a second, 0x561B90 cools it
+     * and turns the squad on the player past 190 (new in SOCOM II; the name ours) */
+    float m_400;   // 0x400
+    unsigned char _404[0x40c - 0x404];
     float m_40c;   // 0x40c: a time on the game's clock 0x572190 measures from (the name ours)
     unsigned char _410[0x41c - 0x410];
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's

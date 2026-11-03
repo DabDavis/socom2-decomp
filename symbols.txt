@@ -10188,7 +10188,7 @@
 0x005612F0 0x254 func_005612F0  # OVL2
 0x00561550 0x63C func_00561550  # OVL2
 0x00561B90 0x18C func_00561B90  # OVL2
-0x00561D20 0xF4 func_00561D20  # OVL2
+0x00561D20 0xF4 GetTop__9CSealUnitFv  # OVL2; by hand (the SEAL lane, round 14): CSealUnit's top squad, m_parent (0x60, SOCOM 1's 0x3C) ? m_parent->GetTop() : this -- an inline's out-of-line copy (recursive: inlined into itself eight times), right after 0x561B90 its first caller; the name ours
 0x00561E20 0xD4 func_00561E20  # OVL2
 0x00561F00 0x12C ActivateEx__11CSealCtrlAiF9SEAL_TASKbe  # OVL2; s1:calls (CSealCtrlAi::OnMissionStart calls it twice with (task, flag, 1, the body's TASK_SELECT, 3, the node, 0), as SOCOM 1's calls ActivateEx__11CSealCtrlAiF9SEAL_TASKbe; variadic: it stores a3-t3 to its frame) -- the SEAL lane, round 4
 0x00562030 0x180 func_00562030  # OVL2

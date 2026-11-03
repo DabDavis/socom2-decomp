@@ -13,6 +13,15 @@
 #include <stdio.h>
 #include <string.h>
 
+/* The unit inlines to depth 8, not the flags' 5 (a pragma acts through its state at the unit's end):
+ * CSealUnit::GetTop's out-of-line copy (0x561D20, after 0x561B90) inlines itself eight times, and a
+ * recursive inline's self-copies are the depth -- 7 gives seven, 9 nine, and no shape of the getter
+ * gives eight at 5. Every function of the unit matched at 5 holds at 8; so does every unit including
+ * zseal.h, where depth 8 also matches veh_vehicle.cpp's copy of zdb::CNode::GetBBox (0x262550, the
+ * other self-recursive inline, open at 5) -- the original's level may be 8 throughout, with MSL's
+ * real depths. */
+#pragma inline_depth(8)
+
 /* the states this unit defines (SOCOM 1's; only what their destructors need -- none of them has
  * a member with a destructor of its own, so each destructor is the base's, inlined) */
 class CAiSRescued : public CAiState {
@@ -737,14 +746,59 @@ bool CSealCtrlAi::ChangeStanceDelayed(SEAL_STANCE from, SEAL_STANCE to, float de
     return true;
 }
 
-/* the mission (theMission, OVL1 bss 0x4364E0) -- only its clock (remote_control.cpp's reading) */
+/* the mission (theMission, OVL1 bss 0x4364E0) -- only its clock (remote_control.cpp's reading), and
+ * the team valves refreshed and the fade to the mission's end (SOCOM 1's; OVL1 0x2B23A0, 0x2A97C0) */
 class CMission {
 public:
+    void RefreshTeamValves();
+    void FadeToEndMission(float time, int how);
+
     unsigned char _0[0xe0];
     float m_time;   // 0xe0
 };
 
 extern CMission theMission;
+
+extern "C" {
+/* what the anger cools by each tick (OVL2 bss 0x66B0F8, read as a variable: CreepTick reads it too),
+ * and the anger past which the squad turns (OVL2 data 0x64FE08, 190.0f, read as a variable) */
+extern float data_0066B0F8;
+extern float data_0064FE08;
+/* a squad's sound (OVL2 0x5EAF20, the kit lane's seal_unit.cpp) */
+void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
+}
+
+/* the player turned on: offline, by a Navy SEAL of the player's team angered past 190 (or told to: both
+ * callers say not) -- the player's top squad given commands 5 and 3, the player put out of every team,
+ * the team valves refreshed, the squad told (message 4), its sound 82, and the mission faded out over
+ * ten seconds; short of that the anger cools while it is not below zero (OVL2 0x561B90, new in SOCOM
+ * II: CSealCtrlAi::Tick and OnDeath call it after raising 0x400; the name unknown) */
+extern "C" void func_00561B90(CSealCtrlAi *ai, bool now)
+{
+    CZSealBody *player;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    player = ftsGetPlayer();
+    if (theNetwork.m_9)
+        return;
+    if (!ai->IsNavySeal())
+        return;
+    if (!(player->m_team & seal->m_team))
+        return;
+    if (now || ai->m_400 > data_0064FE08) {
+        CSealUnit *unit = ((CSealCtrl *)player->m_control)->m_unit->GetTop();
+
+        unit->IssueCommand(player, (FT_COMMAND)5, 0, true);
+        unit->IssueCommand(player, (FT_COMMAND)3, 0, true);
+        player->SetTeamMask(0);
+        player->JoinTeam(0);
+        theMission.RefreshTeamValves();
+        unit->Notify(seal, (UNIT_MESSAGE)4, player);
+        func_005EAF20(unit, 82, 1, 1.0f);
+        theMission.FadeToEndMission(10.0f, 0);
+    } else if (ai->m_400 >= 0.0f)
+        ai->m_400 -= data_0066B0F8;
+}
 
 extern "C" {
 /* whether the SEAL can take a stance where it stands (OVL2 0x562C80, not written yet: an int the
