@@ -69,8 +69,10 @@ extern "C" void func_00399040(unsigned short c, int arg);
  * (0x399200: the argument first) */
 extern "C" unsigned short func_0039A8D0(int c, bool upper, int x);
 extern "C" void func_00399200(int arg, signed char jamo);
-/* the jamo a key types (zui_hangul.cpp's) */
+/* the jamo a key types, the composition dropped, its last jamo taken back (zui_hangul.cpp's) */
 signed char KeyToJamo(char c);
+void SkbHangulClear();
+unsigned short SkbHangulBack();
 extern "C" int toupper(int c);
 
 /* the digit row's characters, HID usages 30-39 (1 .. 0), and shifted */
@@ -269,7 +271,6 @@ void SkbUsbDigit(const SKBUSBKEY *key, int arg)
 extern "C" {
 void func_0039A5B0(const char *text, CSoftKeyboard *skb);
 void func_0039A1D0(int a, CSoftKeyboard *skb, int b);
-void func_00391350();
 void func_00395DE0(int state);
 void func_0039A400(CSoftKeyboard *skb);
 bool func_00394840(CSoftKeyboard *skb);
@@ -305,7 +306,6 @@ void SkbTakeText(CGameMenu *menu)
 }
 
 extern "C" {
-unsigned short func_003910E0();
 void func_00398C00(unsigned short c, CSoftKeyboard *skb);
 void func_00398C40(CSoftKeyboard *skb);
 void func_003952F0();
@@ -339,7 +339,7 @@ static inline bool HasChar(const char *p)
  * (0x10 short) */
 void SkbTypeOrBack(CSoftKeyboard *skb)
 {
-    unsigned short c = func_003910E0();
+    unsigned short c = SkbHangulBack();
 
     if (c) {
         func_00398C00(c, skb);
@@ -371,7 +371,7 @@ bool SkbClearText(CSoftKeyboard *skb)
         had = true;
     func_0039A5B0("", skb);
     func_0039A1D0(0, skb, 0);
-    func_00391350();
+    SkbHangulClear();
     func_00395DE0(3);
     return had;
 }
