@@ -10142,7 +10142,7 @@
 0x0055A920 0x298 Tick__11CAiSAnimateFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x0055ABC0 0x58 OnSignal__11CAiSAnimateFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0055AC20 0x1710 func_0055AC20  # OVL2
-0x0055C330 0x148 func_0055C330  # OVL2
+0x0055C330 0x148 Virtual14__11CAiSGrenadeFP11CSealCtrlAiP8CAiState  # OVL2; slot 0x14 of __vt__11CAiSGrenade (0x669364; the slot's signature ai_states.h's): done once the grenade is gone, the path's first cell kept, a Navy SEAL told under half a second of fuse (the SEAL lane, round 15)
 0x0055C480 0x154 func_0055C480  # OVL2
 0x0055C5E0 0xAC func_0055C5E0  # OVL2
 0x0055C690 0xAC func_0055C690  # OVL2

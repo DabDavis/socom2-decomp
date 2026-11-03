@@ -10,6 +10,7 @@
 #include "../../ai/ai.h"
 #include "../zsnd/zsnd.h"
 #include "../zanim/zanim.h"
+#include "../zweapon/zweapon.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -112,6 +113,7 @@ public:
 class CAiSGrenade : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
+    virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual ~CAiSGrenade();
 
     /* (the names ours: what OnSignal's reset clears) */
@@ -123,6 +125,10 @@ public:
     unsigned char _6d[0x7c - 0x6d];
     CAiMapLoc m_7c;   // 0x7c
     CAiMapLoc m_80;   // 0x80
+    unsigned char _84[0xa0 - 0x84];
+    /* the throw's velocity in the SEAL's frame (0x55C480 turns it by the body's matrix; the name
+     * ours) */
+    CPnt3D m_vel;   // 0xa0
 };
 
 class CAiSDeploy : public CAiState {
@@ -1488,6 +1494,117 @@ void CAiSAnimate::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
     case SIGNAL_3:
         break;
     }
+}
+
+/* the grenade the state holds: its pickup's projectile, while the pickup is still the one the state
+ * took (the network id at 0x5C) -- else none (the names ours) */
+static inline CZProjectile *GrenadeOf(CAiSGrenade *g)
+{
+    CPickup *p = (CPickup *)g->m_58;
+    CZProjectile *proj = p ? (CZProjectile *)p->m_data : 0;
+
+    if (!proj || !p || g->m_5c != p->GetPickupNetEntityID())
+        return 0;
+    return proj;
+}
+
+/* the animation's timed call that throws the grenade from where it is (its instance's position),
+ * with the state's velocity turned into the world, the thrower's node its owner (OVL2 0x55C740) */
+extern "C" bool func_0055C740(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data)
+{
+    CAiSGrenade *g = (CAiSGrenade *)data;
+    CZProjectile *proj = GrenadeOf(g);
+
+    if (proj) {
+        CPnt3D vel;
+
+        TransformVectors(&SealOf(ai)->m_node->m_matrix, &g->m_vel, &vel, 1);
+        proj->SetPositionVel((CPnt3D *)proj->GetInstance()->m_matrix.m_matrix[3], &vel);
+        proj->m_owner = ai->m_entity->GetNode();
+    }
+    return true;
+}
+
+/* the animation's timed call that throws: the grenade from the right hand with the state's
+ * velocity turned into the world, the thrower's node its owner (OVL2 0x55C480) */
+extern "C" bool func_0055C480(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data)
+{
+    CAiSGrenade *g = (CAiSGrenade *)data;
+    CZProjectile *proj = GrenadeOf(g);
+
+    if (proj) {
+        CZSealBody *seal = SealOf(ai);
+        CZBodyPart *hand = seal->m_rhand;
+        CMatrix m;
+        CPnt3D vel;
+
+        m.SetIdentity();
+        hand->m_node->BuildMTW(m);
+        TransformVectors(&seal->m_node->m_matrix, &g->m_vel, &vel, 1);
+        CPnt3D *pos = (CPnt3D *)m.m_matrix[3];
+
+        proj->SetPositionVel(pos, &vel);
+        proj->m_owner = ai->m_entity->GetNode();
+    }
+    return true;
+}
+
+/* the animation's timed calls that put the grenade in the right hand: moving, and at rest (OVL2
+ * 0x55C5E0 and 0x55C690; 0x55AC20 pushes them with the grenade state as the word) */
+extern "C" bool func_0055C690(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data)
+{
+    CZProjectile *proj = GrenadeOf((CAiSGrenade *)data);
+
+    if (proj) {
+        CZBodyPart *hand = SealOf(ai)->m_rhand;
+        CMatrix m;
+
+        m.SetIdentity();
+        hand->m_node->BuildMTW(m);
+        proj->SetPositionAtRest((CPnt3D *)m.m_matrix[3]);
+    }
+    return true;
+}
+
+extern "C" bool func_0055C5E0(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data)
+{
+    CZProjectile *proj = GrenadeOf((CAiSGrenade *)data);
+
+    if (proj) {
+        CZBodyPart *hand = SealOf(ai)->m_rhand;
+        CMatrix m;
+
+        m.SetIdentity();
+        hand->m_node->BuildMTW(m);
+        proj->SetPosition((CPnt3D *)m.m_matrix[3]);
+    }
+    return true;
+}
+
+extern "C" {
+/* (OVL2 0x57E540, seal_body.cpp's span: a Navy SEAL's call when its grenade is about to go off) */
+void func_0057E540(CZSealBody *seal);
+}
+
+/* CAiSGrenade's slot 0x14 (OVL2 0x55C330, new in SOCOM II): done once its grenade is gone; while
+ * held, the path's first cell kept as the target cell, and a Navy SEAL told when the fuse has under
+ * half a second left */
+int CAiSGrenade::Virtual14(CSealCtrlAi *ai, CAiState *sub)
+{
+    CZSealBody *seal = SealOf(ai);
+    CZProjectile *proj = GrenadeOf(this);
+
+    if (!proj)
+        m_active = false;
+    else {
+        CAiPath *path = (CAiPath *)&ai->m_path;
+
+        if (path->HasPoints())
+            m_80 = path->m_points.begin()->m_loc;
+        if (proj->m_time < 0.5f && ai->IsNavySeal())
+            func_0057E540(seal);
+    }
+    return Result();
 }
 
 /* (OVL2 0x55CCD0, new in SOCOM II's form: SOCOM 1's cleared one byte on signal 0) signal 4 resets
