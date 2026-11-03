@@ -12320,7 +12320,7 @@
 0x0062AF40 0x14C func_0062AF40  # OVL2
 0x0062B090 0xD8 func_0062B090  # OVL2
 0x0062B168 0x3DC func_0062B168  # OVL2 unaligned
-0x0062B548 0x3D4 func_0062B548  # OVL2 unaligned
+0x0062B548 0x3D4 RSAGenerateKeyPair  # OVL2 unaligned; s1:order (SOCOM 1's RSA object opens with it before RSAEncryptBlock, as here; the body draws two primes, n = p*q, the inverse of 17 mod phi, and asserts in /public/work/dev/rt_crypt/src/RSA.c)
 0x0062B920 0x28 RSAEncryptBlock  # OVL2; s1:order (the gcc lane, round 17b): second of SOCOM 1's RSA object's five (0x409864) -- RSADecryptBlock with the public exponent 17, here a static 64-byte block (0x655530) where SOCOM 1's built it on the stack; its callee is the next row
 0x0062B948 0x298 RSADecryptBlock  # OVL2 unaligned; s1:order (the gcc lane, round 17b): third of the five, SOCOM 1's size (0x298) and body (the exponent, modulus and input copied into the low halves of three LINTs, the high halves cleared, EMOD 0x6283F8, the result's low half copied out)
 0x0062BBE0 0x2C RSAEncrypt  # OVL2; s1:order (the gcc lane, round 17b): fourth of the five (0x409B60) -- RSADecrypt with a static exponent 17 (0x655570)
