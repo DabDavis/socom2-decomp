@@ -136,9 +136,18 @@ extern int func_006420E8(RT_UDP *pUdp);
 extern int func_00642340(void **ppUpnp, int nChannel, unsigned short nPort);
 extern int func_006426B0(void *pUpnp, int nTimeout);
 extern int func_006425F0(void *pUpnp, char *szServer, unsigned short nPort, void *pfnCallback, void *pUser);
-extern int func_00642560(void *pUpnp);
+extern int func_00642560(void *pUpnp, char *szAddress, unsigned short *pnPort);
 extern int func_006425C8(void *pUpnp);
-extern void func_00642200();
+void func_00642200(void *pUpnp, int nError, int a2, char *szAddress, unsigned short nPort, RT_UDP *pUdp);
+extern int func_006423E0(void *pUpnp);
+extern int rt_comm_startup(void);
+extern int rt_comm_create(int *pnChannelId, char *szAddress, unsigned short nPort, void *pOptions);
+extern int rt_comm_destroy(int nChannelId);
+extern int func_0062D4D8(int nChannelId, unsigned short *pnPort);
+int func_006400A8(RT_UDP *pUdp, RT_UDP_CONN *pConn);
+int func_00640408(RT_UDP *pUdp);
+int func_00641BA0(RT_UDP *pUdp, RT_UDP_CONN *pConn, RT_UDP_HEADER *pRecv, unsigned char *pbDup);
+int func_00641B08(RT_UDP *pUdp, RT_UDP_CONN *pConn, RT_UDP_HEADER *pRecv);
 
 int func_0063DEA0(RT_UDP *pUdp);
 int func_0063F948(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, RT_UDP_HEADER *pHeader);
@@ -157,10 +166,15 @@ int func_0063DC90(void);
 int func_0063FE48(void *pMsg, RT_UDP_HEADER *pHeader);
 int func_0063FEA8(void *pMsg, RT_UDP_HEADER *pHeader);
 
+static int gnSharedChannel = 0;         /* 0x656028: the eight shared endpoints' rt_comm channel */
+static unsigned short gnSharedPort = 0; /* 0x65602C */
+static char *gpSharedSendBuf = 0;       /* 0x656030 */
+static char *gpSharedRecvBuf = 0;       /* 0x656034 */
 static void *gpUpnp = 0;                /* 0x656038: the shared channels' resolver */
 static unsigned char gbResolving = 0;   /* 0x65603C */
 static char gszVersion[] = "rt_udp version: 01.02.0048";
 static int gnKeyState = 0;              /* 0x65605C */
+RT_UDP *gapUdp[8];                      /* 0x676460: the endpoints on the shared channel, by slot */
 
 int func_0063DC90(void)
 {
@@ -422,7 +436,7 @@ int func_0063E390(RT_UDP *pUdp, char *szAddress, unsigned short *pnPort)
     if (pnPort == 0)
         return 1;
     if (pUdp->pUpnp != 0) {
-        if (func_00642560(pUdp->pUpnp) == 0)
+        if (func_00642560(pUdp->pUpnp, szAddress, pnPort) == 0)
             return 0;
         return func_0063E438(pUdp, szAddress, pnPort);
     }
@@ -612,6 +626,40 @@ int func_0063F148(RT_UDP *pUdp, unsigned char b)
     return 0;
 }
 
+int func_0063F168(RT_UDP *pUdp, unsigned int nConn)
+{
+    RSAKey key;
+    RT_UDP_HEADER header;
+    RT_UDP_CONN *pConn;
+
+    if (pUdp == 0)
+        return 1;
+    if (nConn >= pUdp->nConns)
+        return 1;
+    pConn = &pUdp->pConns[nConn];
+    if (pConn->nState != 7)
+        return 4;
+    pConn->nState = 8;
+    if (func_0063DC90() == 1) {
+        func_0062FCD8(-1, pConn->nKMID, &key);
+        if (func_00640B70(pUdp, pConn, &key) != 0) {
+            pConn->nState = 6;
+            return 7;
+        }
+    } else {
+        if (func_0063F948(pUdp, pConn, 4, &header) != 0) {
+            pConn->nState = 6;
+            return 7;
+        }
+        header.nType |= 0x40;
+        if (func_0063FA28(pConn, &header, 0, 0) != 0) {
+            pConn->nState = 6;
+            return 7;
+        }
+    }
+    return 0;
+}
+
 int func_0063F270(RT_UDP *pUdp, unsigned int nConn)
 {
     RT_UDP_CONN *pConn;
@@ -661,6 +709,36 @@ int func_0063F2D8(RT_UDP *pUdp, RT_UDP_TARGET *pTarget, unsigned int *pnConn)
         return 11;
     }
     return 0;
+}
+
+int func_0063F3A8(RT_UDP *pUdp)
+{
+    unsigned int i = 0;
+    unsigned short nSent = 0;
+    unsigned int nElapsed;
+    RT_UDP_HEADER header;
+    RT_UDP_CONN *pConn;
+    int result;
+
+    if (pUdp == 0)
+        return 2;
+    for (; i < pUdp->nConns; i++) {
+        pConn = &pUdp->pConns[i];
+        result = func_006400A8(pUdp, pConn);
+        if (result != 0)
+            return result;
+        if (pConn->nState == 12) {
+            rt_time_elapsed(&pConn->tLastSend, &nElapsed);
+            if (nElapsed > 5000) {
+                memset(&header, 0, sizeof header);
+                header.nId = pConn->nId;
+                header.nShared = pUdp->nShared;
+                rt_comm_send_to(pUdp->nChannel, pConn->szAddress, pConn->nPort, &header, sizeof header, &nSent);
+                rt_time_get_time_stamp(&pConn->tLastSend);
+            }
+        }
+    }
+    return func_00640408(pUdp);
 }
 
 int func_0063F8A0(RT_UDP *pUdp, unsigned int *pnConn)
@@ -813,6 +891,28 @@ int func_00640408(RT_UDP *pUdp)
     return 0;
 }
 
+int func_006410E0(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, unsigned int nConn)
+{
+    unsigned char bDup = 0;
+    RT_UDP_CONN *pConn;
+
+    if (nConn == (unsigned int)-1)
+        return 7;
+    pConn = &pUdp->pConns[nConn];
+    func_00641BA0(pUdp, pConn, pRecv, &bDup);
+    if (bDup == 0) {
+        if (pConn->nState == 12) {
+            pConn->nState = 3;
+            return func_00641B08(pUdp, pConn, pRecv);
+        }
+        if (pConn->nState == 4 || pConn->nState == 5)
+            return func_00641B08(pUdp, pConn, pRecv);
+        pConn->nState = 1;
+        return func_006419E8(pUdp, pConn);
+    }
+    return func_00641B08(pUdp, pConn, pRecv);
+}
+
 int func_006411C8(RT_UDP *pUdp, RT_UDP_HEADER *pHeader, unsigned int nConn)
 {
     RT_UDP_CONN *pConn;
@@ -881,7 +981,7 @@ int func_00641A70(RT_UDP *pUdp, char *szAddress, unsigned short nPort, int nId)
     return 0;
 }
 
-void func_00641B08(RT_UDP *pUdp, RT_UDP_CONN *pConn, RT_UDP_HEADER *pRecv)
+int func_00641B08(RT_UDP *pUdp, RT_UDP_CONN *pConn, RT_UDP_HEADER *pRecv)
 {
     RT_UDP_HEADER header;
     unsigned char ack[5];
@@ -893,7 +993,7 @@ void func_00641B08(RT_UDP *pUdp, RT_UDP_CONN *pConn, RT_UDP_HEADER *pRecv)
     header.nLength = 5;
     ack[0] = pRecv->nType;
     memcpy(&ack[1], &pRecv->nSeq, 4);
-    func_0063FA28(pConn, &header, ack, 5);
+    return func_0063FA28(pConn, &header, ack, 5);
 }
 
 extern int abs(int);
@@ -931,4 +1031,128 @@ int func_00641D50(RT_UDP *pUdp, RT_UDP_CONN *pConn, unsigned char nType, int nSe
         }
     }
     return 0;
+}
+
+int func_00641E30(RT_UDP *pUdp)
+{
+    int options[3];
+    int result;
+
+    if (pUdp->nShared < 8) {
+        if (pUdp->nMaxPacket > 1438)
+            return 1;
+        if (gnSharedChannel == 0) {
+            gnSharedPort = pUdp->nPort;
+            if (rt_memory_allocate_init_zero((void **)&gpSharedSendBuf, 1450) != 0)
+                return 9;
+            if (rt_memory_allocate_init_zero((void **)&gpSharedRecvBuf, 1450) != 0)
+                return 9;
+            memset(gapUdp, 0, sizeof gapUdp);
+            memset(options, 0, sizeof options);
+            options[1] = 1450;
+            options[0] = 1;
+            result = rt_comm_create(&gnSharedChannel, 0, gnSharedPort, options);
+            if (result == 5) {
+                if (rt_comm_startup() != 0)
+                    return 16;
+                if (rt_comm_create(&gnSharedChannel, 0, gnSharedPort, options) != 0)
+                    return 16;
+            } else if (result != 0)
+                return 16;
+            if (func_0062D4D8(gnSharedChannel, &gnSharedPort) != 0)
+                return 16;
+            pUdp->nPort = gnSharedPort;
+        }
+        if (gapUdp[pUdp->nShared] != 0)
+            return 17;
+        if (pUdp->nPort != gnSharedPort)
+            return 16;
+        gapUdp[pUdp->nShared] = pUdp;
+        pUdp->nChannel = gnSharedChannel;
+        pUdp->pSendBuf = gpSharedSendBuf;
+        pUdp->pRecvBuf = gpSharedRecvBuf;
+    } else {
+        if (pUdp->nMaxPacket > 1438)
+            return 1;
+        if (rt_memory_allocate_init_zero((void **)&pUdp->pSendBuf, pUdp->nMaxPacket + 12) != 0)
+            return 9;
+        if (rt_memory_allocate_init_zero((void **)&pUdp->pRecvBuf, pUdp->nMaxPacket + 12) != 0)
+            return 9;
+        memset(options, 0, sizeof options);
+        options[1] = pUdp->nMaxPacket + 12;
+        options[0] = 1;
+        result = rt_comm_create(&pUdp->nChannel, 0, pUdp->nPort, options);
+        if (result == 5) {
+            if (rt_comm_startup() != 0)
+                return 16;
+            if (rt_comm_create(&pUdp->nChannel, 0, pUdp->nPort, options) != 0)
+                return 16;
+        } else if (result != 0)
+            return 16;
+        if (func_0062D4D8(pUdp->nChannel, &pUdp->nPort) != 0)
+            return 16;
+    }
+    return 0;
+}
+
+int func_006420E8(RT_UDP *pUdp)
+{
+    int bLast = 1;
+    unsigned int i;
+
+    if (pUdp->nShared < 8) {
+        gapUdp[pUdp->nShared] = 0;
+        for (i = 0; i < 8; i++)
+            if (gapUdp[i] != 0)
+                bLast = 0;
+        if (bLast) {
+            rt_comm_destroy(gnSharedChannel);
+            gnSharedChannel = 0;
+            gnSharedPort = 0;
+            rt_memory_free((void **)&gpSharedSendBuf);
+            gpSharedSendBuf = 0;
+            rt_memory_free((void **)&gpSharedRecvBuf);
+            gpSharedRecvBuf = 0;
+            if (gpUpnp != 0) {
+                func_006423E0(gpUpnp);
+                gpUpnp = 0;
+                gbResolving = 0;
+            }
+        }
+    } else {
+        rt_comm_destroy(pUdp->nChannel);
+        rt_memory_free((void **)&pUdp->pSendBuf);
+        rt_memory_free((void **)&pUdp->pRecvBuf);
+        if (pUdp->pUpnp != 0) {
+            func_006423E0(pUdp->pUpnp);
+            pUdp->pUpnp = 0;
+        }
+    }
+    return 0;
+}
+
+void func_00642200(void *pUpnp, int nError, int a2, char *szAddress, unsigned short nPort, RT_UDP *pUdp)
+{
+    unsigned int i;
+
+    if (pUdp == 0)
+        return;
+    if (pUdp->nShared < 8) {
+        gbResolving = 0;
+        for (i = 0; i < 8; i++) {
+            if (gapUdp[i] != 0 && gapUdp[i]->bResolving != 0) {
+                gapUdp[i]->bResolving = 0;
+                if (nError == 0)
+                    gapUdp[i]->pfnCallback(pUdp, -2, 5, 0, gapUdp[i]->pUser);
+                else
+                    gapUdp[i]->pfnCallback(pUdp, -2, 5, 15, gapUdp[i]->pUser);
+            }
+        }
+        return;
+    }
+    pUdp->bResolving = 0;
+    if (nError == 0)
+        pUdp->pfnCallback(pUdp, -2, 5, 0, pUdp->pUser);
+    else
+        pUdp->pfnCallback(pUdp, -2, 5, 15, pUdp->pUser);
 }
