@@ -17,6 +17,11 @@
  * GetWeaponId hands back `li v0,255`, as SOCOM 1's did). Only the bounds are named here */
 enum EQUIP_ITEM {
     EQUIP_PISTOL = 0,
+    /* SOCOM 1's DWARF: CLAYMORE = -103 (153 as a byte), as SOCOM II's damage cone has it
+     * (CZProjectile::GetDamage); 159 is new in SOCOM II (a 45-degree cone, online only -- the
+     * name ours) */
+    CLAYMORE = 153,
+    EQUIP_ITEM_159 = 159,
     /* the two goggles' ids of their own (GetWeaponId; SOCOM 1's 182 and 184; the names ours) */
     EQUIP_BINOCULARS = 190,
     EQUIP_NVG = 191,
@@ -219,6 +224,9 @@ public:
 
     /* the range (SOCOM 1's, the float at 0x3C: 0x3D27F0) */
     float GetMaxRange();
+    /* the range full damage reaches (SOCOM 1's GetEffectiveRange, the float at 0x40: 0x3D27E0,
+     * right before GetMaxRange as in SOCOM 1; CZProjectile::GetDamage calls it) */
+    float GetEffectiveRange();
     /* the magazine's size and the magazines carried (SOCOM 1's GetAmmoCapacity and GetNumMags,
      * in its order: 0x3D2810 and 0x3D2800; CZKit's magazine code calls them) */
     int GetNumMags();
@@ -460,7 +468,9 @@ public:
     virtual void Recoil();
     float GetZoomRange(unsigned int i);
     CTargetMods *TargetMods(int i);
-    float ResolveFTSDamage(float damage);
+    /* the damage scaled for FTS (x14; static: CZProjectile::GetDamage calls it with no `this` in
+     * a0, and the body never reads one) */
+    static float ResolveFTSDamage(float damage);
     bool IsGrenadeLauncherWeapon();
     /* SOCOM 1's (0x3C5D20: CZKit calls it where SOCOM 1's calls IsGrenadeLauncherAmmo) */
     bool IsGrenadeLauncherAmmo();
