@@ -8043,33 +8043,33 @@
 0x003C0B90 0x84 insert__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>UiRCPCv  # OVL1; by hand (the wep lane, vis_texfx.cpp's tail: SOCOM 1's 0x232340 -- a list built from the allocator, init(n, x), spliced in at position, destroyed)
 0x003C0C20 0x70 init__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUiRCPCv  # OVL1; by hand (the wep lane, vis_texfx.cpp's tail: SOCOM 1's 0x2324C0 -- n push_backs, end() and insert called)
 0x003C0C90 0x60 __dt__Q23zdb17CTextureFXManagerFv  # OVL1; by hand (the wep lane, vis_texfx.cpp: the manager's implicit destructor -- the initialiser 0x404AB0 registers it for 0x4B50D0; its list's ~list inlined one level, ~__list_imp called)
-0x003C0CF0 0x274 func_003C0CF0  # OVL1
-0x003C0F70 0x1C8 func_003C0F70  # OVL1
-0x003C1140 0x4B8 func_003C1140  # OVL1
-0x003C1600 0x220 func_003C1600  # OVL1
-0x003C1820 0x1AC func_003C1820  # OVL1
-0x003C19D0 0x68 func_003C19D0  # OVL1
-0x003C1A40 0x19C func_003C1A40  # OVL1
-0x003C1BE0 0x98 func_003C1BE0  # OVL1
-0x003C1C80 0x194 func_003C1C80  # OVL1
-0x003C1E20 0x13C func_003C1E20  # OVL1
-0x003C1F60 0x13C func_003C1F60  # OVL1
-0x003C20A0 0x78 func_003C20A0  # OVL1
-0x003C2120 0x130 func_003C2120  # OVL1
-0x003C2250 0x1BC func_003C2250  # OVL1
-0x003C2410 0x2D0 func_003C2410  # OVL1
-0x003C26E0 0x268 func_003C26E0  # OVL1
-0x003C2950 0xB8 func_003C2950  # OVL1
-0x003C2A10 0xF8 func_003C2A10  # OVL1
-0x003C2B10 0x16C func_003C2B10  # OVL1
-0x003C2C80 0x2C func_003C2C80  # OVL1
-0x003C2CB0 0x330 func_003C2CB0  # OVL1
-0x003C2FE0 0x134 func_003C2FE0  # OVL1
-0x003C3120 0x124 func_003C3120  # OVL1
-0x003C3250 0x134 func_003C3250  # OVL1
-0x003C3390 0x84 func_003C3390  # OVL1
-0x003C3420 0x90 func_003C3420  # OVL1
-0x003C34B0 0xC0 func_003C34B0  # OVL1
+0x003C0CF0 0x274 Flatten__Q23zdb12CWaterRippleFPQ23zdb5CNode  # OVL1; by hand (the wep lane, vis_ripple.cpp: a surface's strip vertices put back to the rest height (0x70) where the ripple lifts (0x40 bit 5) and every normal set up -- ClearRipples' one callee per surface; the name ours)
+0x003C0F70 0x1C8 GetOffset__Q23zdb12CWaterRippleFPC6CPnt3DP6CPnt3D  # OVL1; by hand (the wep lane, vis_ripple.cpp: a ripple's offset at a point of the surface's frame -- the distance from 0x18 (along 0x44 in XZ if bit 2), cos(dist * 0x80 + phase 0x54) faded to the radius 0x58, scaled by the amplitude 0x64; the manager's GetOffset sums it; the name ours)
+0x003C1140 0x4B8 Affects__Q23zdb12CWaterRippleFPQ23zdb5CNodePC7CMatrix  # OVL1; by hand (the wep lane, vis_ripple.cpp: whether the ripple's node, or one of its group's, is the surface and (bit 0) its radius square in the surface's frame overlaps the surface's bounds in XZ, placing it there (Transform of the followed position); Gather's test; the name ours)
+0x003C1600 0x220 Tick__Q23zdb12CWaterRippleFf  # OVL1; by hand (the wep lane, vis_ripple.cpp: the time (0x84), amplitude, height, radius and phase moved on by dt, true when a timed ripple's time is up -- Update deletes it then; the name ours)
+0x003C1820 0x1AC MarkNodes__Q23zdb12CWaterRippleFv  # OVL1; by hand (the wep lane, vis_ripple.cpp: bit 7 set if any of the ripple's surfaces was drawn in the last two frames (CNode::Rendered(2)), then each surface added once to the manager's list at 0x4B5188; Update's first call per ripple; the name ours)
+0x003C19D0 0x68 SetRadius__Q23zdb12CWaterRippleFPCff  # OVL1; by hand (the wep lane, vis_ripple.cpp: bit 0 and the radius 0x5C, grown from 0 over *time when one is given (bit 1, rate 0x60) -- the ZAnim RIPPLE tick's flag 0x10 call; the name ours)
+0x003C1A40 0x19C SetLevel__Q23zdb12CWaterRippleFf  # OVL1; by hand (the wep lane, vis_ripple.cpp: bit 5, the lift 0x74/0x78 and the rest height 0x70 read from the first surface's first strip vertex; a timed ripple rises over 0.25 s -- the ZAnim RIPPLE tick's flag 0x40 call; the name ours)
+0x003C1BE0 0x98 SetName__Q23zdb12CWaterRippleFPCc  # OVL1; by hand (the wep lane, vis_ripple.cpp: the name at 0x3C _strdup'd unless strcmp finds it the same -- the ZAnim RIPPLE tick names a new ripple so; the name ours)
+0x003C1C80 0x194 Init__Q23zdb12CWaterRippleFv  # OVL1; by hand (the wep lane, vis_ripple.cpp: every member zeroed, the points from CPnt3D::zero, the eight bits cleared one by one -- both constructors' first call; the name ours)
+0x003C1E20 0x13C __ct__Q23zdb12CWaterRippleFPQ23zdb17CWaterRippleGroupPC6CPnt3DPCffff  # OVL1; by hand (the wep lane, vis_ripple.cpp: a ripple on a group (0x0): Init, the position, speed, amplitude, frequency, a time > 0 making it timed and swelling over 0.25 s, then pushed onto the manager's list 0x4B5170 -- new'd (0x88) by two Creates; the name ours)
+0x003C1F60 0x13C __ct__Q23zdb12CWaterRippleFPQ23zdb5CNodePC6CPnt3DPCffff  # OVL1; by hand (the wep lane, vis_ripple.cpp: 0x3C1E20's twin on one node (0x4) -- new'd by Create(node); the name ours)
+0x003C20A0 0x78 Add__Q23zdb17CWaterRippleGroupFPQ23zdb5CNode  # OVL1; by hand (the wep lane, vis_ripple.cpp: a node added to the group's CNodeVector (0x4) unless Exists, reserve(size+1) when full -- the ZAnim RIPPLE_NODE_GROUP tick's per-node call; the name ours)
+0x003C2120 0x130 GetGroup__Q23zdb19CWaterRippleManagerFPCc  # OVL1; by hand (the wep lane, vis_ripple.cpp: the group of a name (strcmp over the list at 0xC), else a new 0x10-byte one _strdup'ing it pushed -- the ZAnim RIPPLE_NODE_GROUP tick's first call; the name ours)
+0x003C2250 0x1BC Create__Q23zdb19CWaterRippleManagerFPC6CPnt3DPCffff  # OVL1; by hand (the wep lane, vis_ripple.cpp: a ripple on the group whose surface's origin is nearest the point (Normalize of the difference) -- the ZAnim RIPPLE tick's fallback; the name ours)
+0x003C2410 0x2D0 Create__Q23zdb19CWaterRippleManagerFPCcPC6CPnt3DPCffff  # OVL1; by hand (the wep lane, vis_ripple.cpp: a ripple on the group of a name unless one on it starts within a unit of the point -- the ZAnim RIPPLE tick's flag 1 call; the name ours)
+0x003C26E0 0x268 Create__Q23zdb19CWaterRippleManagerFPQ23zdb5CNodePC6CPnt3DPCffff  # OVL1; by hand (the wep lane, vis_ripple.cpp: a ripple on a node unless one there starts within a unit of the point -- the ZAnim RIPPLE tick's node call; the name ours)
+0x003C2950 0xB8 Find__Q23zdb19CWaterRippleManagerFPCc  # OVL1; by hand (the wep lane, vis_ripple.cpp: the ripple whose name (0x3C) strcmp's equal -- the ZAnim RIPPLE tick's first call; the name ours)
+0x003C2A10 0xF8 ClearGroups__Q23zdb19CWaterRippleManagerFv  # OVL1; by hand (the wep lane, vis_ripple.cpp: every group erased and deleted, its name _free'd and its node vector destroyed; the name ours)
+0x003C2B10 0x16C ClearRipples__Q23zdb19CWaterRippleManagerFv  # OVL1; by hand (the wep lane, vis_ripple.cpp: the active list cleared, the frame's node vector freed (FreeVector's four calls), every ripple's surfaces flattened, the ripple erased and deleted; the name ours)
+0x003C2C80 0x2C Clear__Q23zdb19CWaterRippleManagerFv  # OVL1; by hand (the wep lane, vis_ripple.cpp: ClearRipples then ClearGroups -- CMission::ReOpen_Unload1 and 0x2AB3F0 call it on 0x4B5170; the name ours)
+0x003C2CB0 0x330 Ripple__Q23zdb19CWaterRippleManagerFPQ23zdb5CNode  # OVL1; by hand (the wep lane, vis_ripple.cpp: a surface's strip vertices moved -- Gather, then per vertex the summed offset tilts the normal and lifts the height; Tick's per-surface call; the name ours)
+0x003C2FE0 0x134 GetOffset__Q23zdb19CWaterRippleManagerFPC6CPnt3DP6CPnt3DPb  # OVL1; by hand (the wep lane, vis_ripple.cpp: the active ripples' offsets at a vertex summed, the last lifting ripple's rest height added; the name ours)
+0x003C3120 0x124 Gather__Q23zdb19CWaterRippleManagerFPQ23zdb5CNode  # OVL1; by hand (the wep lane, vis_ripple.cpp: the active list (0x24) refilled with the live ripples that reach a surface, through the inverse of its BuildMTW; the name ours)
+0x003C3250 0x134 Update__Q23zdb19CWaterRippleManagerFf  # OVL1; by hand (the wep lane, vis_ripple.cpp: the frame's surfaces relisted, each ripple marked and ticked, the dead erased and deleted; whether none is left; the name ours)
+0x003C3390 0x84 Tick__Q23zdb19CWaterRippleManagerFf  # OVL1; by hand (the wep lane, vis_ripple.cpp: Update, then Ripple on every listed surface -- CCoreState::Tick calls it on 0x4B5170 with dT; the name ours)
+0x003C3420 0x90 __ct__Q23zdb19CWaterRippleManagerFv  # OVL1; by hand (the wep lane, vis_ripple.cpp: three lists and a node vector built, the ripples, groups and nodes cleared -- the initialiser 0x404B30 builds 0x4B5170 with it; the name ours)
+0x003C34B0 0xC0 __dt__Q23zdb19CWaterRippleManagerFv  # OVL1; by hand (the wep lane, vis_ripple.cpp: the manager's implicit destructor, its members in reverse -- the initialiser 0x404B30 registers it for 0x4B5170; the name ours)
 0x003C3570 0x140 Read__Q23zdb7CVisualFRQ23zar4CZAR  # OVL1; s1:callee
 0x003C36B0 0x10 UpdateCentroid__Q23zdb7CVisualFv  # OVL1; tu: vis_main.cpp~ (1.0 beta); s1:exact
 0x003C36C0 0x8 ComputeBBox__Q23zdb7CVisualFP5CBBox  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -8603,7 +8603,7 @@
 0x004049E0 0x28 func_004049E0  # OVL1 data area; a static initialiser
 0x00404A10 0x94 func_00404A10  # OVL1 data area; a static initialiser
 0x00404AB0 0x80 __sinit_vis_texfx.cpp  # OVL1 data area; a static initialiser; s1:unit by hand (the wep lane: SOCOM 1's __sinit_vis_texfx.cpp builds the effects' list and clears zdb::vdata, registering both; SOCOM II's builds the manager 0x4B50D0 in the list's place, then vdata 0x4B5100)
-0x00404B30 0x3C func_00404B30  # OVL1 data area; a static initialiser; s1~ zwep_explosive.cpp (shape 0.45, a hint)
+0x00404B30 0x3C __sinit_vis_ripple.cpp  # OVL1 data area; a static initialiser; s1~ zwep_explosive.cpp (shape 0.45, a hint); by hand (the wep lane: vis_ripple.cpp's static initialiser -- builds the ripple manager 0x4B5170 with 0x3C3420 and registers its destructor 0x3C34B0; the unit's name ours)
 0x00404B70 0x3C func_00404B70  # OVL1 data area; a static initialiser; s1~ zwep_global.cpp (shape 0.60, a hint)
 0x00404BB0 0x54 func_00404BB0  # OVL1 data area; a static initialiser
 0x00404C10 0xC0 func_00404C10  # OVL1 data area; a static initialiser; s1~ zwep_weapon.cpp (shape 0.47, a hint)
