@@ -21,7 +21,7 @@
  * as one chained store, `p->pPrev = p->pNext = p` (two statements reload p between them); the
  * codec's reset returns an int (declared void, the constant after it takes v0, not v1); the free
  * pool's trim decrements in its test after the unlink, `if (--n <= 0)` (PRE then feeds the body
- * from both loop edges: the target's copy at the bottom test). Not written: the destroy 0x62A8C8. */
+ * from both loop edges: the target's copy at the bottom test). The object is whole. */
 
 extern int rt_memory_allocate_init_zero(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
@@ -66,6 +66,60 @@ VSTREAM *func_0062A870(int nKind, int nMax)
         p->nMax = nMax;
     }
     return p;
+}
+
+/* the stream freed: the encoder, every node of the four rings with its buffer or decoder */
+void func_0062A8C8(VSTREAM *s)
+{
+    VNODE *p;
+    VNODE *q;
+
+    if (s->pEncoder != 0) {
+        func_00613750(s->pEncoder);
+        s->pEncoder = 0;
+        s->bEncoding = 0;
+    }
+    while ((p = s->pBufFree) != 0) {
+        p->pNext->pPrev = p->pPrev;
+        p->pPrev->pNext = p->pNext;
+        s->nBufFree--;
+        s->pBufFree = s->pBufFree->pNext;
+        if (s->pBufFree == p)
+            s->pBufFree = 0;
+        func_006429E8(p->pData);
+        rt_memory_free((void **)&p);
+    }
+    while ((p = s->pBufUsed) != 0) {
+        p->pNext->pPrev = p->pPrev;
+        p->pPrev->pNext = p->pNext;
+        s->nBufUsed--;
+        s->pBufUsed = s->pBufUsed->pNext;
+        if (s->pBufUsed == p)
+            s->pBufUsed = 0;
+        func_006429E8(p->pData);
+        rt_memory_free((void **)&p);
+    }
+    while ((q = s->pDecFree) != 0) {
+        q->pNext->pPrev = q->pPrev;
+        q->pPrev->pNext = q->pNext;
+        s->nDecFree--;
+        s->pDecFree = s->pDecFree->pNext;
+        if (s->pDecFree == q)
+            s->pDecFree = 0;
+        func_00613750(q->pData);
+        rt_memory_free((void **)&q);
+    }
+    while ((q = s->pDecUsed) != 0) {
+        q->pNext->pPrev = q->pPrev;
+        q->pPrev->pNext = q->pNext;
+        s->nDecUsed--;
+        s->pDecUsed = s->pDecUsed->pNext;
+        if (s->pDecUsed == q)
+            s->pDecUsed = 0;
+        func_00613750(q->pData);
+        rt_memory_free((void **)&q);
+    }
+    rt_memory_free((void **)&s);
 }
 
 int func_0062AAF8(VSTREAM *s)
