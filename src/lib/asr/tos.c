@@ -14,7 +14,8 @@ struct TOS {
     char pad0[32];
     TOSLOGCB error_cb;                  /* +32 */
     TOSLOGCB warning_cb;                /* +36 */
-    char pad40[12];
+    struct PROFILE *profiles;           /* +40: one per block id */
+    char pad44[8];
     int error;                          /* +52: the first error, block << 16 | code */
     int warning;                        /* +56 */
 };
@@ -99,4 +100,66 @@ unsigned char tosBaseBlockStartInputQueues(TOSBLOCK *b, int n)
         if (b->inputs[i].q != 0)
             err |= !qQueueControl(b->inputs[i].q, cmd, b->inputs[i].reader, n);
     return err;
+}
+
+/* a block's profile: two lists of {key, value} ended by key 0, one of floats and one of
+ * integers; a key is looked up in the list of its own type first, then in the other one,
+ * converted */
+typedef struct PROFENT {
+    unsigned short key;
+    union {
+        float f;
+        unsigned int u;
+    } v;
+} PROFENT;
+
+typedef struct PROFILE {
+    PROFENT *floats;                    /* +0 */
+    PROFENT *ints;                      /* +4 */
+} PROFILE;
+
+unsigned int _tosGetProfileU32(TOSBLOCK *b, unsigned short key, unsigned int def)
+{
+    PROFENT *e = b->tos->profiles[b->id].ints;
+    PROFENT *f = b->tos->profiles[b->id].floats;
+    int found = 0;
+
+    if (e != 0) {
+        while (e->key != key && e->key != 0)
+            e++;
+        if (e->key != 0) {
+            def = e->v.u;
+            found = 1;
+        }
+    }
+    if (!found && f != 0) {
+        while (f->key != key && f->key != 0)
+            f++;
+        if (f->key != 0)
+            def = f->v.f;
+    }
+    return def;
+}
+
+float _tosGetProfileFloat(TOSBLOCK *b, unsigned short key, float def)
+{
+    PROFENT *f = b->tos->profiles[b->id].floats;
+    PROFENT *e = b->tos->profiles[b->id].ints;
+    int found = 0;
+
+    if (f != 0) {
+        while (f->key != key && f->key != 0)
+            f++;
+        if (f->key != 0) {
+            def = f->v.f;
+            found = 1;
+        }
+    }
+    if (!found && e != 0) {
+        while (e->key != key && e->key != 0)
+            e++;
+        if (e->key != 0)
+            return e->v.u;
+    }
+    return def;
 }
