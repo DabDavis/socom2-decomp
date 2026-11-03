@@ -72,7 +72,7 @@ typedef struct DmeObject {
     int nCreator;                       /* 0x08: the client that made it */
 } DmeObject;
 
-extern int func_0061C720(int nWorld, int nClient, DmeClientInfo **ppClient);
+extern int func_0061C720(unsigned int nWorld, unsigned int nClient, DmeClientInfo **ppClient);
 extern int func_00614EC8(void **ppObject, unsigned int nIndex);
 extern int func_00615DE0(int nClass, int nConnection, int nTarget, int nMsgType, int nLen, void *pMsg);
 extern void (*data_0067A6E8[16])(int nClient, int nIndex);
@@ -660,6 +660,40 @@ int func_0061C0F0(int *pAddress)
     return DME_OK;
 }
 
+extern void *data_0066CB08[DME_MAX_CLIENTS];   /* each client's delay record, made on first use */
+
+int func_0061C510(unsigned int nClient, void **ppRecord)
+{
+    if (ppRecord == 0)
+        return DME_ERR_ARGUMENT;
+    *ppRecord = 0;
+    if (nClient >= DME_MAX_CLIENTS)
+        return DME_ERR_ARGUMENT;
+    if (data_0066CB08[nClient] == 0) {
+        data_0066CB08[nClient] = DMEmalloc(0x1A0);
+        if (data_0066CB08[nClient] == 0)
+            return 22;
+    }
+    *ppRecord = data_0066CB08[nClient];
+    return DME_OK;
+}
+
+int func_0061C638(unsigned int nWorld, DmeWorld **ppWorld)
+{
+    if (ppWorld == 0)
+        return DME_ERR_ARGUMENT;
+    *ppWorld = 0;
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (data_0066CAF8[nWorld] == 0) {
+        data_0066CAF8[nWorld] = DMEmalloc(sizeof(DmeWorld));
+        if (data_0066CAF8[nWorld] == 0)
+            return 22;
+    }
+    *ppWorld = data_0066CAF8[nWorld];
+    return DME_OK;
+}
+
 int func_0061C6C8(unsigned int nWorld)
 {
     void **ppMemory = &data_0066CAF8[nWorld];
@@ -669,6 +703,73 @@ int func_0061C6C8(unsigned int nWorld)
     if (*ppMemory != 0)
         func_00614888(ppMemory);
     *ppMemory = 0;
+    return DME_OK;
+}
+
+int func_0061C720(unsigned int nWorld, unsigned int nClient, DmeClientInfo **ppClient)
+{
+    DmeWorld *pWorld = 0;
+    int result;
+
+    if (ppClient == 0)
+        return DME_ERR_ARGUMENT;
+    *ppClient = 0;
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (nClient >= DME_MAX_CLIENTS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld == 0)
+        return 10;
+    *ppClient = pWorld->apClients[nClient];
+    return result;
+}
+
+int func_0061C7A8(unsigned int nWorld, unsigned int nClient, DmeClientInfo **ppClient)
+{
+    DmeWorld *pWorld = 0;
+    int result;
+
+    if (ppClient == 0)
+        return DME_ERR_ARGUMENT;
+    *ppClient = 0;
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (nClient >= DME_MAX_CLIENTS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld == 0)
+        return 10;
+    if (pWorld->apClients[nClient] == 0) {
+        pWorld->apClients[nClient] = DMEmalloc(sizeof(DmeClientInfo));
+        if (pWorld->apClients[nClient] == 0)
+            return 22;
+    }
+    *ppClient = pWorld->apClients[nClient];
+    return DME_OK;
+}
+
+int func_0061C868(unsigned int nWorld, unsigned int nClient)
+{
+    DmeWorld *pWorld = 0;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (nClient >= DME_MAX_CLIENTS)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld != 0) {
+        if (pWorld->apClients[nClient] != 0)
+            func_00614888((void **)&pWorld->apClients[nClient]);
+        pWorld->apClients[nClient] = 0;
+    }
     return DME_OK;
 }
 
