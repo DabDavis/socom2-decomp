@@ -15,6 +15,99 @@ struct CSealAimView {
     CPnt3D m_aim_goal;   // 0x144c
 };
 
+/* the aim goal's flag (bit 3 of the byte at 0x105F, read and written a byte at a time: zseal.h's
+ * bits there are unsigned int -- the view and the name ours), set through an inline taking a bool
+ * (`(b & 1) << 3` even for false) */
+struct CSealAimBits {
+    unsigned char _0[0x105f];
+    unsigned char _bits0 : 3;
+    unsigned char m_aim_goal_valid : 1;   // 0x105f bit 3
+};
+
+inline void SetAimGoalValid(CZSealBody *seal, bool b)
+{
+    ((CSealAimBits *)seal)->m_aim_goal_valid = b;
+}
+
+/* the SEAL's state at 0x174 (CBody's short) and, in state 3, the base blend's (OVL2 0x57DC20,
+ * seal_body.cpp's: SOCOM 1's PeekBaseState) */
+extern "C" unsigned char func_0057DC20(CZSealBody *seal);
+
+/* a goal for the aim along a direction: the direction itself when it lies inside the stance's
+ * limits (their cosines: pitch up or down by the direction's y, and yaw), else what CalcGoalDir
+ * makes of it within the limits themselves; standing, crouched and state 6 share the upright
+ * limits, prone (2) has its own, any other state has none (OVL2 0x5DF600; SOCOM 1's CalcAimGoal,
+ * the limits theCharacterDynamics' as there, the length's sqrt inline) */
+bool CZSealBody::CalcAimGoal(const CPnt3D *from, const CPnt3D *dir, CPnt3D *goal)
+{
+    SEAL_STATE state = (SEAL_STATE)m_state;
+    float maxPitch, minPitch, maxYaw;
+
+    if (m_state == 3)
+        state = (SEAL_STATE)func_0057DC20(this);
+
+    switch (state) {
+    case 0:
+    case 1:
+    case 6:
+        maxPitch = theCharacterDynamics.m_cosMaxAimPitch;
+        minPitch = theCharacterDynamics.m_cosMinAimPitch;
+        maxYaw = theCharacterDynamics.m_cosMaxAimYaw;
+        break;
+    case 2:
+        maxPitch = theCharacterDynamics.m_cosProneMaxAimPitch;
+        minPitch = theCharacterDynamics.m_cosProneMinAimPitch;
+        maxYaw = theCharacterDynamics.m_cosProneMaxAimYaw;
+        break;
+    default:
+        SetAimGoalValid(this, false);
+        return false;
+    }
+
+    bool ok = true;
+    float len = sqrtf(dir->x * dir->x + dir->z * dir->z);
+    /* (tested bare: `len != 0.0f` compares 0 against len, the target len against 0) */
+    float yaw = len ? -dir->z / len : 1.0f;
+
+    if (dir->y >= 0.0f) {
+        if (len < maxPitch)
+            ok = false;
+    } else if (len < minPitch)
+        ok = false;
+    if (yaw < maxYaw)
+        ok = false;
+    if (ok) {
+        *goal = *dir;
+        SetAimGoalValid(this, true);
+        return true;
+    }
+
+    float up, down, side;
+
+    switch (state) {
+    case 0:
+    case 1:
+    case 6:
+        up = theCharacterDynamics.m_maxAimPitch;
+        down = theCharacterDynamics.m_minAimPitch;
+        side = theCharacterDynamics.m_maxAimYaw;
+        break;
+    case 2:
+        up = theCharacterDynamics.m_proneMaxAimPitch;
+        down = theCharacterDynamics.m_proneMinAimPitch;
+        side = theCharacterDynamics.m_proneMaxAimYaw;
+        break;
+    default:
+        SetAimGoalValid(this, false);
+        return false;
+    }
+
+    bool r = CalcGoalDir(from, dir, goal, up, down, -side, side);
+
+    SetAimGoalValid(this, r);
+    return r;
+}
+
 /* the aim set along a direction from its point, and whether a goal came of it: when none did and
  * `reset` is asked, the goal is the unit -z (OVL2 0x5DF8B0; SOCOM 1's SetAimDirR, the same code with
  * the fields 0x3A0 on -- the bool it returns stays in v0, masked in place). The arguments are

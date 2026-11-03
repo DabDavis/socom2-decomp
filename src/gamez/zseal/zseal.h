@@ -1058,7 +1058,8 @@ public:
     void ApplyEyeLookAnim();
     const CPnt3D *GetLookDir() const;
     void ApplyLookAnim(float yaw, float pitch);
-    void CalcGoalDir(const CPnt3D *cur, const CPnt3D *dir, CPnt3D *goal, float up, float down, float left,
+    /* (whether a goal came of it: CalcAimGoal, 0x5DF600, keeps the bool -- the kit lane, round 14) */
+    bool CalcGoalDir(const CPnt3D *cur, const CPnt3D *dir, CPnt3D *goal, float up, float down, float left,
                      float right);
     bool SetEyeLookDir(float pitch, float yaw, const CPnt3D *dir, float rate);
     bool SetLookDir(const CPnt3D *dir, float rate);
