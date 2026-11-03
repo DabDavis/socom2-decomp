@@ -104,6 +104,34 @@ extern int func_00643530(int, int);
 extern int func_006435B8(int, int);
 extern int func_00643650(int);
 
+/* DME's build stamp, Dme.c's own __DATE__ and __TIME__ (Oct 9 2003, 18:10:08 -- spelled out, since a
+ * rebuild's would be today's); SOCOM 1's function, byte for byte, with its own date. */
+#define DME_BUILD_DATE  "Oct  9 2003"
+#define DME_BUILD_TIME  "18:10:08"
+
+extern int sprintf(char *buf, const char *fmt, ...);
+extern char *strstr(const char *s, const char *find);
+extern int atoi(const char *s);
+
+int NetGetBuildTimeStamp(char *szTimeStamp)
+{
+    char szMonths[] = "JanFebMarAprMayJunJulAugSepOctNovDec\0";
+    char szMonth[8];
+    char *szDate;
+    char *szTime;
+    int nMonth;
+
+    if (szTimeStamp == 0)
+        return 23;
+    szDate = DME_BUILD_DATE;
+    szTime = DME_BUILD_TIME;
+    sprintf(szMonth, "%.3s", szDate);
+    nMonth = (strstr(szMonths, szMonth) - szMonths) / 3 + 1;
+    sprintf(szTimeStamp, "Time of build: %.2d.%.2d.%.4s.%.2s.%.2s.%.2s", nMonth, atoi(szDate + 4),
+            szDate + 7, szTime, szTime + 3, szTime + 6);
+    return 0;
+}
+
 int func_00620908(int arg0, int arg1)
 {
     int result;

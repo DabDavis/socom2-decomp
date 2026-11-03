@@ -36,7 +36,8 @@ typedef enum MediusErrorCode {
     MediusErrorDisconnecting = -3,
     MediusErrorConnecting = -2,
     MediusErrorInitializing = -1,
-    MediusErrorNone = 0
+    MediusErrorNone = 0,
+    MediusErrorWorldCreatedSizeReduced = 3   /* named MediusWorldCreatedSizeReduced */
 } MediusErrorCode;
 
 /* a response's handler: the request's own callback type in the vendor's headers; one here */

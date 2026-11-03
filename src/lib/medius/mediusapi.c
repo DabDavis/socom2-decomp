@@ -651,9 +651,38 @@ void MediusGetNatServiceAddress(NetAddress *addr)
     *addr = gstNatServiceAddress;
 }
 
+void MediusSetClientAddrList(NetAddressList list)
+{
+    gstClientAddressList = list;
+}
+
 void MediusGetClientAddrList(NetAddressList *list)
 {
     *list = gstClientAddressList;
+}
+
+/* The library's build stamp: its object's own __DATE__ and __TIME__ (mediusapi.c built Sep 18 2003,
+ * 18:02:53 -- spelled out, since a rebuild's would be today's), as "DD.MM.YYYY.hh.mm.ss". */
+#define MEDIUS_BUILD_DATE   "Sep 18 2003"
+#define MEDIUS_BUILD_TIME   "18:02:53"
+
+extern int sprintf(char *buf, const char *fmt, ...);
+extern char *strstr(const char *s, const char *find);
+extern int atoi(const char *s);
+
+int MediusGetBuildTimeStamp(char *szTimeStamp)
+{
+    char szMonths[] = "JanFebMarAprMayJunJulAugSepOctNovDec\0";
+    char szMonth[8];
+    char *szDate = MEDIUS_BUILD_DATE;
+    char *szTime = MEDIUS_BUILD_TIME;
+    int nMonth;
+
+    sprintf(szMonth, "%.3s", szDate);
+    nMonth = (strstr(szMonths, szMonth) - szMonths) / 3 + 1;
+    sprintf(szTimeStamp, "%.2d.%.2d.%.4s.%.2s.%.2s.%.2s", nMonth, atoi(szDate + 4), szDate + 7, szTime,
+            szTime + 3, szTime + 6);
+    return 0;
 }
 
 MediusErrorCode MediusVersionServer(MediusVersionServerRequest *request, MediusCallback callback)
@@ -1523,6 +1552,58 @@ MediusErrorCode func_0064A1F8(MediusRequest_0064A1F8 *request, MediusCallback ca
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
     return MediusErrorNone;
+}
+
+/* (MediusGetCallbackStatusString, 0x64A298, is not written yet: a ~70-case decision tree.) The
+ * error codes' names, in the vendor's enum order -- MediusWorldCreatedSizeReduced (3, a status code
+ * the server also sends as an error) sits after MediusErrorItemAlreadyExists there, and its case
+ * block does here: GCC lays the cases out in source order. */
+char *MediusGetErrorCodeString(MediusErrorCode code)
+{
+    switch (code) {
+    case MediusErrorNone:
+        return "MediusErrorNone";
+    case MediusErrorInitializing:
+        return "MediusErrorInitializing";
+    case MediusErrorConnecting:
+        return "MediusErrorConnecting";
+    case MediusErrorDisconnecting:
+        return "MediusErrorDisconnecting";
+    case MediusErrorClosing:
+        return "MediusErrorClosing";
+    case MediusErrorSendingMessage:
+        return "MediusErrorSendingMessage";
+    case MediusErrorFileNotFound:
+        return "MediusErrorFileNotFound";
+    case MediusErrorDeviceNotFound:
+        return "MediusErrorDeviceNotFound";
+    case MediusErrorDirectoryNotFound:
+        return "MediusErrorDirectoryNotFound";
+    case MediusErrorGeneral:
+        return "MediusErrorGeneral";
+    case MediusErrorSessionInactive:
+        return "MediusErrorSessionInactive";
+    case MediusErrorItemNotFound:
+        return "MediusErrorItemNotFound";
+    case MediusErrorItemAlreadyExists:
+        return "MediusErrorItemAlreadyExists";
+    case MediusErrorWorldCreatedSizeReduced:
+        return "MediusWorldCreatedSizeReduced";
+    case MediusErrorNoResult:
+        return "MediusErrorNoResult";
+    case MediusErrorNotInitialized:
+        return "MediusErrorNotInitialized";
+    case MediusErrorNotConnected:
+        return "MediusErrorNotConnected";
+    case MediusErrorAlreadyConnected:
+        return "MediusErrorAlreadyConnected";
+    case MediusErrorCallMediusCloseBeforeReinitializing:
+        return "MediusErrorCallMediusCloseBeforeReinitializing";
+    case MediusErrorCallMediusCloseBareBeforeReinitializing:
+        return "MediusErrorCallMediusCloseBareBeforeReinitializing";
+    default:
+        return "UNKNOWN MEDIUSERRORCODE";
+    }
 }
 
 MediusErrorCode MediusGetTotalGames(MediusGetTotalGamesRequest *request, MediusCallback callback)

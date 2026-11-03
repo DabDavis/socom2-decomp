@@ -43,6 +43,38 @@ extern int rt_comm_set_default_options(int);
 extern int rt_msg_client_idisplay_comm_state(void);
 extern int func_006349A8(unsigned short, int);
 
+/* The client's build stamp, rt_msg_client.c's own __DATE__ and __TIME__ (Oct 3 2003, 15:51:32 --
+ * spelled out, since a rebuild's would be today's), formatted as Medius's and DME's are and copied
+ * out up to the length the caller gives. */
+#define RT_MSG_CLIENT_BUILD_DATE    "Oct  3 2003"
+#define RT_MSG_CLIENT_BUILD_TIME    "15:51:32"
+
+extern int sprintf(char *buf, const char *fmt, ...);
+extern char *strstr(const char *s, const char *find);
+extern char *strncpy(char *dst, const char *src, unsigned int n);
+extern int atoi(const char *s);
+
+int rt_msg_client_get_build_timestamp(char *szTimeStamp, short nLength)
+{
+    char szMonths[] = "JanFebMarAprMayJunJulAugSepOctNovDec\0";
+    char szMonth[8];
+    char szBuf[32];
+    char *szDate;
+    char *szTime;
+    int nMonth;
+
+    if (szTimeStamp == 0)
+        return 2;
+    szDate = RT_MSG_CLIENT_BUILD_DATE;
+    szTime = RT_MSG_CLIENT_BUILD_TIME;
+    sprintf(szMonth, "%.3s", szDate);
+    nMonth = (strstr(szMonths, szMonth) - szMonths) / 3 + 1;
+    sprintf(szBuf, "%.2d.%.2d.%.4s.%.2s.%.2s.%.2s", nMonth, atoi(szDate + 4), szDate + 7, szTime,
+            szTime + 3, szTime + 6);
+    strncpy(szTimeStamp, szBuf, nLength);
+    return 0;
+}
+
 int func_006328E0(void)
 {
     int result = 1;
