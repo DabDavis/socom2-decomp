@@ -173,7 +173,14 @@ int func_0063D8E8(RT_TIME_DATE *out)
             return 1;
         t = gCurTimeDate;
     }
-    *out = t;
+    out->year = t.year;
+    out->month = t.month;
+    out->day = t.day;
+    out->hours = t.hours;
+    out->mins = t.mins;
+    out->secs = t.secs;
+    out->msecs = t.msecs;
+    out->stamp = t.stamp;
     return 0;
 }
 
