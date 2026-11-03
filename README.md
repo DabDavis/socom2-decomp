@@ -1796,6 +1796,23 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 15** (ComputeTurnThrottle, ClearGoal, the grenade state, the alert update):
+  - CSealCtrl's vtable slot 0x9C is SOCOM 1's non-virtual ComputeTurnThrottle made virtual: CSealCtrl's 0x56C220 and
+    CSealCtrlAi's 0x56C340 inline one shared body and share its function-local statics (0x650110-0x650120);
+  - an inlined early-out written `m_goal_type > type` puts `slt at` in the caller's delay slot, `type < m_goal_type`
+    computes it into v0 after a nop (out of line both compile alike); `p = c ? q : p;` gives a `beq` to the
+    assignment plus a `b` over it, `if (c) p = q;` one `bne`; `case 0: case 1:` sharing a body ends the compare
+    chain with a `b` where `||` does not;
+  - a constant returned or assigned as an enum is `li`, as an unsigned char `daddiu`, and a byte-enum result tested
+    `!= 0` keeps its `andi`; in an inline `if (!a || !b || x != f()) return 0; return p;` gives the zero arm's `b
+    join; move s,zero`; matrix elements read straight (`m.m_matrix[2][0]`) and through `operator()` give opposite
+    madd operand orders; a call argument taken into a local first moves the `this` copy after it; a float
+    compare's arm order follows the source (`x >= 0.0f ? 1.0f : -1.0f` is the target's `bc1t`);
+  - 3.0b50 and 3.0b38 compile SetGoalDir and SetAiBit2 exactly as 3.0b52 (no build separation there);
+  - open: SetGoalDir 0x56D920 (8: the target reloads x after the sqrt, ours keeps it -- the matched
+    CPnt3D::Normalize keeps it too, so the sqrt is no barrier) and SetAiBit2 (the same kind), 0x56D530 (12: the
+    entity in t3 vs t2), 0x55F7F0/0x55F940 (27 each: the result flag numbered below the parameters -- not a plain
+    local?); not reached: 0x557190, 0x55AC20, 0x5784A0, the unclaimed 0x5781C0-0x579D9F, the data candidates.
 - **Tells from the game states, round 19** (st_shutdown.cpp and st_reboot.cpp, DisplayMessage, Purge, C2DMessage_Q()):
   - MW pools identical literals within a unit, so a duplicated literal in adjacent code marks a unit boundary:
     0x22EA50-0x22EBCF (st_shutdown.cpp) and 0x22EBD0-0x22EDAF (st_reboot.cpp) each carry their own copy of the
