@@ -2,11 +2,13 @@
  * 0x2ED460 registers (SOCOM 1's Open registered the same ones, by state) and their Medius
  * callbacks, the player-info pages, the chat queues, the censor, the messages' byte-order
  * converters (SOCOM 1's zNetMedius.cpp's code; the unit and its name are ours: OVL1 from about
- * 0x2ED460, after the ladder unit, to 0x2F628F, its static initialiser 0x4020E0 building the two
- * queues 0x44FA20 and 0x44FA50, whose destructor 0x2F5E50 and deque instances close it). Still
- * unwritten: the game's world report 0x2EF590 and details 0x2EF7F0, the player-info callback
- * 0x2F0020 and the player lists 0x2F0EA0-0x2F3B90 (class-vector walks and their sort), the chat's
- * private-line callbacks 0x2F4A20/0x2F4BA0 (cdeque front() inline) and the deque instances.
+ * 0x2ED460, after the ladder unit, to 0x2F6CFF, its static initialiser 0x4020E0 building the two
+ * queues 0x44FA20 and 0x44FA50, whose destructor 0x2F5E50 and deque instances close it -- the
+ * instances run on past 0x2F62B0 to 0x2F6CF7: 0x2F6340, 0x2F6600, 0x2F6A70 and 0x2F6BC0 are
+ * called only from this unit's deque copy constructor 0x2F5F80, its 0x2F6090 and ~__deque_buf
+ * 0x2F62B0, so they are its copies, and the lobby unit starts at 0x2F6D00). Still unwritten: the
+ * game's world report 0x2EF590 and details 0x2EF7F0, the player-info callback 0x2F0020 and the
+ * player lists 0x2F0EA0-0x2F3B90 (class-vector walks and their sort) and the deque instances.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>

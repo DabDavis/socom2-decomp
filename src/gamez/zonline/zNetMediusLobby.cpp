@@ -1,8 +1,10 @@
 /* zNetMediusLobby.cpp -- the lobby's account and game-wide requests: login and logout, the end
  * of game report, the announcements, the mission sequence, banning oneself from a game (SOCOM 1's
- * zNetMedius.cpp; the unit and its name are ours: OVL1 from about 0x2F6290, after the chat
- * unit's queues, to about 0x2FB080 -- its own copy of "Retrieving messages from server..."
- * (0x3F57C0, the clan unit's is 0x3F4460) says it is not the clan unit). Only some of it so far.
+ * zNetMedius.cpp; the unit and its name are ours: OVL1 from 0x2F6D00 (the spectator test), after
+ * the chat unit's deque instances -- 0x2F6340-0x2F6CF7 are those too, called only from the chat
+ * deque's copy constructor and buffer destructor (the online lane, round 11) -- to 0x2FAFBF, before
+ * the universe unit; its own copy of "Retrieving messages from server..." (0x3F57C0, the clan
+ * unit's is 0x3F4460) says it is not the clan unit). Only some of it so far.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
