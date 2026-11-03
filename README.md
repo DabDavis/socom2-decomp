@@ -1647,6 +1647,23 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the online lobby, round 10** (nine units' static initialisers, the lobby's state queue):
+  - defining a unit's globals in order gave seven of the lobby units' `__sinit_` byte-exact at once
+    (zNetMedius, Room, Clan, Ladder, Lobby, Friends, LANLobby; Chat and Dme followed);
+  - a global whose registered destructor is not its vtable's destructor is a member of an outer
+    object: two this-tests, the member's destructor inlined one level (theAcctDB inside
+    CZUniversInformationServer -- level-6 evidence, "Open, and next");
+  - an initialiser calling a queue's tiny members out of line means the global's constructor was cut
+    to one level by its size; `#pragma inline_max_size` acts through its state at the unit's END
+    (the chat unit sets 100 for the whole unit) and dead code adds no size;
+  - a derived list whose destructor body is `clear();` stores the size in the first this-test's
+    delay slot; the deleter's clear inlines into a list's destructor only once the unit's own code
+    calls `list.clear()` (which calls the deleter's clear out of line);
+  - a vector's resize calling memset for its blank element means the element has a memset
+    constructor; returning a member unconverted wants it declared `bool` (`unsigned char` adds an
+    sltu); `p[i + k]` through a per-case local pointer stays base-plus-index, while `bytes = p + k`
+    is strength-reduced into a walking pointer;
+  - 0x2F62B0 is the chat unit's tail, so zNetMediusLobby.cpp starts at 0x2F6340.
 - **Tells from the HUD, round 21** (st_mpexit.cpp written whole, reco.cpp's gsapi calls by name):
   - a switch's compare chain runs its labels in reverse source order and lays the blocks out in
     source order: Tick's target order 1, 3, 5, 6, 4 is `case 4: break; case 6; case 5: case 3; case 1;`
@@ -4025,7 +4042,10 @@ What is open across lanes, and what comes next:
   self-inlining starts at 6) -- 27 functions to refit (build/scratch/lvl/w1_l6.txt). The
   original's MSL is deeper than these headers everywhere SOCOM 1's DWARF shows it (compressed
   pairs in the pod, the list's size and end node, alloc() accessors), so a level of 6 or more with
-  the real depths is likely; 5 is what these headers fit.
+  the real depths is likely; 5 is what these headers fit. A third witness (the online lane, round
+  10): `__sinit_zNetMediusUniverse.cpp` 0x4022D0 matches at `-inline level=6` and not at 5 once
+  theAcctDB is modelled as the member at offset 0 of an outer CZUniversInformationServer (the
+  destructor it registers, 0x300570, is not CAcctDB's vtable's) -- open at 5 (0xC4 vs 0x144).
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
   structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
