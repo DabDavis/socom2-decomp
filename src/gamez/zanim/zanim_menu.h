@@ -254,6 +254,8 @@ public:
             func_003863D0(this);
         }
     }
+    /* a string set (zui.h's, 0x3862A0: the lobby callbacks' and the patch downloader's setter) */
+    CUIVariable &operator=(const char *str);
 
     char *m_varname;   // 0x8
     unsigned char m_attached_items[0xc];   // 0xc: SOCOM 1's vector
@@ -263,6 +265,9 @@ public:
 /* the UI variables (SOCOM 1's DWARF: CUIVarManager : vector, CSaveModule, 0x8064 bytes) */
 class CUIVarManager {
 public:
+    /* a variable made, or found by its name (zui.h's, 0x3857C0) */
+    CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+
     unsigned char _0[0x8064];
 };
 extern CUIVarManager theUIVarManager;
@@ -567,6 +572,10 @@ public:
 
     void Idle(unsigned char event);     /* 0x3A5CB0: nothing */
     void Finish(unsigned char event);   /* 0x3A5C70: done once entered or ticked */
+    /* (util_ssm.cpp's: whether it is done -- no thread and the flag, 0x3A5C10; its tick -- a
+     * threaded machine's thread given the processor, else a step, 0x3A5C30) */
+    bool IsDone();
+    void Tick();
 
     unsigned int m_thread;   // 0x4
     SSMState m_state;   // 0x8

@@ -625,9 +625,9 @@ def try_draft(tmp: Path, out: str, sym, real: str, addr: int, img, st) -> tuple[
             for bsrc in [x for x in (bsrc, bret) if x is not None]:
                 hit = try_one(tmp, bsrc, sym, real, addr, img, st, suffix=".cpp")
                 if hit == "hit":
-                    bsrc = "/* sc: c++ */\n" + bsrc
-                    if real != sym.name:
-                        bsrc = f"/* sc: as={sym.name} {real} */\n" + bsrc
+                    # one directive line: emit's HEADER takes two and sccheck reads three
+                    bsrc = (f"/* sc: c++; as={sym.name} {real} */\n" if real != sym.name
+                            else "/* sc: c++ */\n") + bsrc
                     return "hit", bsrc
                 worst = hit if worst == "build" else worst
         # as C++: its member calls made as member calls, its virtual calls as virtual calls
@@ -635,9 +635,9 @@ def try_draft(tmp: Path, out: str, sym, real: str, addr: int, img, st) -> tuple[
         if cpp is not None:
             hit = try_one(tmp, cpp, sym, real, addr, img, st, suffix=".cpp")
             if hit == "hit":
-                cpp = "/* sc: c++ */\n" + cpp          # (emit's marker; sccheck reads `as=` in the first 3 lines)
-                if real != sym.name:
-                    cpp = f"/* sc: as={sym.name} {real} */\n" + cpp
+                # emit's marker and the rename on one line (HEADER takes two; sccheck reads three)
+                cpp = (f"/* sc: c++; as={sym.name} {real} */\n" if real != sym.name
+                       else "/* sc: c++ */\n") + cpp
                 return "hit", cpp
             worst = hit if worst == "build" else worst
     return worst, None
@@ -1501,7 +1501,7 @@ def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable, prune: bool = Tr
         d = AUTO / seg
         d.mkdir(parents=True, exist_ok=True)
         name = st.at_addr(addr).name
-        ext = ".cpp" if "/* sc: c++ */" in src[:200] else ".c"
+        ext = ".cpp" if re.search(r"/\* sc: c\+\+[ ;]", src[:300]) else ".c"
         for old in d.glob(f"{addr:08X}.c*"):
             old.unlink()
         (d / f"{addr:08X}{ext}").write_text(HEADER.format(name=name) + src)
@@ -1526,7 +1526,11 @@ def emit(hits: dict[int, str], img: E.Image, st: E.SymbolTable, prune: bool = Tr
             elif re.search(r"/\* sc: compiler=[^\n]*\*/", txt) and "as=" not in txt:
                 # a GCC draft's rename joins its directive line (sccheck reads three lines)
                 txt = re.sub(r"(/\* sc: compiler=[^\n]*?) \*/", rf"\1; as={own} {s.name} */", txt, count=1)
-            elif "/* sc: as=" not in txt:
+            elif re.search(r"^/\* sc: c\+\+ \*/$", txt, re.M) and not re.search(r"/\* sc: [^\n]*\bas=", txt):
+                # a C++ draft's marker is its third line: the rename joins it (a line inserted above
+                # it pushed the marker past the third line, which sccheck refuses -- 0x2B20E0, 2026-11-04)
+                txt = re.sub(r"^/\* sc: c\+\+ \*/$", f"/* sc: c++; as={own} {s.name} */", txt, count=1, flags=re.M)
+            elif not re.search(r"/\* sc: [^\n]*\bas=", txt):
                 txt = txt.replace("*/\n", f"*/\n/* sc: as={own} {s.name} */\n", 1)
             else:
                 f.unlink()

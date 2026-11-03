@@ -21,8 +21,60 @@ struct BlatherData {
     char m_taunt[5][46];   // 0xe6
 };
 
+/* a valve (zanim.h's CValve: its value, a 16-bit field, and the callbacks told of a change) */
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+class CValve {
+public:
+    void MakeCallbacks(VALVE_STATE state);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;   // 0x4
+};
+
+/* CValve::SetValue, inlined in both builds (as fts_mission.cpp spells it) */
+inline void SetValveValue(CValve *valve, int value)
+{
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != value)
+        state = value == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = value;
+    if (state != VALVE_SAME)
+        valve->MakeCallbacks(state);
+}
+
+/* a ZRDR value and the editor that builds one (zrdr.h's, zonline.h's layout), and a UI variable
+ * (zui.h's: only its set) */
+struct _zrdr {
+    unsigned int m_0;   // 0x0
+    void *m_4;   // 0x4
+};
+
+class CRdrEditor : public _zrdr {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    bool push(const char *tag);
+    bool pop();
+    bool addstringnode(const char *s);
+
+    unsigned char _8[0x4c - 0x8];
+};
+
+class CUIVariable {
+public:
+    void Set(_zrdr *value);
+};
+
 class CZNetwork {
 public:
+    unsigned int zNetGetTime();
     void zNetRegisterRemoteObjectCallback(int index, void (*creation)(int, int),
                                           void (*update)(int, int, int),
                                           void (*postupdate)(int, int, int),
@@ -53,9 +105,23 @@ public:
 
     MP_MINOR_GAME_STATE MyMinorGameState(MP_MINOR_GAME_STATE state);
 
-    unsigned char _0[0xac];
+    unsigned char _0[0x48];
+    CValve *m_pPlayerReadyCountValve;   // 0x48 (SOCOM 1's at 0x44)
+    unsigned char _4c[0x60 - 0x4c];
+    CValve *m_pTeamFullValve;   // 0x60: set while either side has more than eight (SOCOM II's; the name ours)
+    unsigned char _64[0x84 - 0x64];
+    CUIVariable *m_uiv_SealList;   // 0x84 (SOCOM 1's four at 0x50-0x5c)
+    CUIVariable *m_uiv_TerrList;   // 0x88
+    CUIVariable *m_uiv_NoneList;   // 0x8c
+    CUIVariable *m_uiv_ChatList;   // 0x90
+    unsigned char _94[0xac - 0x94];
     int m_persona_object;   // 0xac: this client's persona object (the name ours)
-    unsigned char _b0[0x114 - 0xb0];
+    unsigned char _b0[0xd8 - 0xb0];
+    bool m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9f)
+    unsigned char _d9[0xe4 - 0xd9];
+    int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
+    unsigned char _e8[0x113 - 0xe8];
+    MP_MAJOR_GAME_STATE m_mp_major_game_state;   // 0x113 (SOCOM 1's at 0xdb)
     MP_MAJOR_GAME_STATE m_my_major_game_state;   // 0x114 (SOCOM 1's at 0xdc)
     MP_MINOR_GAME_STATE m_my_minor_game_state;   // 0x115 (SOCOM 1's at 0xdd)
 };
@@ -120,6 +186,7 @@ struct PersonaEntry {
 class CZPersonaState {
 public:
     static void ClearPersonaList();
+    static bool AllReadyToLoad();
     static void CheckStateSwitch();
     static void ToggleReady();
     static void UpdatePersonaLists();
@@ -158,6 +225,7 @@ extern unsigned char data_004412D8;   /* the sides swapped */
 extern int data_00441448;             /* (the two teams' counts, func_002C4500's) */
 extern int data_00441450;
 extern int data_00441458;
+extern int data_00441460;             /* (the personas on neither side, unflagged) */
 extern int data_00441468;
 extern unsigned int data_00441470;    /* (the local player's team) */
 
@@ -191,6 +259,7 @@ unsigned int func_002C32C0();               /* (the SEALs' team mask) */
  * SOCOM 1's bool, is never read, and the team switch below leaves a3 as it is) */
 void NetSendE3Index__FiUii(int who, unsigned int index, int flag);
 void func_002C4440();
+bool func_002A47B0(CMission *mission, const char *dialog);   /* (fts_mission.cpp's: a dialog over the mission) */
 int func_002C4810();
 int func_002C4A20();
 int strcmp(const char *a, const char *b);
@@ -362,6 +431,102 @@ extern "C" void func_002C4290(int client)
     }
 }
 
+/* whether a team is the SEALs' (func_002C3300 inline: the value read ahead of the swap flag) */
+inline bool IsSealTeam(unsigned int team)
+{
+    unsigned int t = team;
+
+    return t == (data_004412D8 ? TEAM_TERRORISTS : TEAM_SEALS);
+}
+
+/* a team word's flag 0x10000 (ours: PersonaData::IsFlagged on the word, which the three tests then
+ * read once -- through the member each reloads it -- and compared `!= false`, so materialised) */
+inline bool IsFlaggedTeam(unsigned int team)
+{
+    return (team & 0x10000) != 0;
+}
+
+extern "C" unsigned int strlen(const char *s);
+
+/* the online game's three player lists from the host's packed names -- the SEALs', the terrorists'
+ * and the rest's, each name null-terminated after the last -- and an empty chat list, into their
+ * UI variables (SOCOM II's; the packet handler 0x2B9B20 hands it the counts and the names; OVL1
+ * 0x2C4DF0) */
+extern "C" void func_002C4DF0(int nseals, int nterrs, int nnone, const char *names)
+{
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game) {
+        CRdrEditor seals;
+        CRdrEditor terrs;
+        CRdrEditor none;
+        CRdrEditor chat;
+        int i;
+
+        seals.push(0);
+        terrs.push(0);
+        none.push(0);
+        chat.push(0);
+        for (i = 0; i < nseals; i++) {
+            seals.push(0);
+            seals.addstringnode(names);
+            seals.pop();
+            names += strlen(names) + 1;
+        }
+        for (i = 0; i < nterrs; i++) {
+            terrs.push(0);
+            terrs.addstringnode(names);
+            terrs.pop();
+            names += strlen(names) + 1;
+        }
+        for (i = 0; i < nnone; i++) {
+            none.push(0);
+            none.addstringnode(names);
+            none.pop();
+            names += strlen(names) + 1;
+        }
+        seals.pop();
+        terrs.pop();
+        none.pop();
+        chat.pop();
+        game->m_uiv_SealList->Set(&seals);
+        game->m_uiv_TerrList->Set(&terrs);
+        game->m_uiv_NoneList->Set(&none);
+        game->m_uiv_ChatList->Set(&chat);
+    }
+}
+
+/* the sides counted -- the terrorists, the SEALs, the flagged personas and the rest -- the
+ * team-full valve set while either side has more than eight, and a game the host is left alone in
+ * with only flagged players abandoned (SOCOM II's; OVL1 0x2C4500) */
+extern "C" void func_002C4500()
+{
+    data_00441448 = data_00441450 = data_00441458 = data_00441460 = 0;
+    for (int i = 0; i < 24; i++) {
+        PersonaData *p = CZPersonaState::GetPersona(i);
+
+        if (p) {
+            if (IsTerroristTeam(p->m_team))
+                data_00441448++;
+            else if (IsSealTeam(p->m_team))
+                data_00441450++;
+            else if (IsFlaggedTeam(p->m_team) != false)
+                data_00441458++;
+            else
+                data_00441460++;
+        }
+    }
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (data_00441448 > 8 || data_00441450 > 8)
+        SetValveValue(game->m_pTeamFullValve, 1);
+    else
+        SetValveValue(game->m_pTeamFullValve, 0);
+    if (data_00441448 + data_00441450 == 0 && game->m_mp_major_game_state >= 2 &&
+        game->m_mp_major_game_state < 6 && theNetwork.m_bSessionMaster && data_00441458)
+        func_002A47B0(&theMission, "dlgNetAbandoned.rdr");
+}
+
 /* the sides counted, the slots held ahead of their personas added (OVL1 0x2C4440) */
 extern "C" void func_002C4440()
 {
@@ -454,6 +619,59 @@ extern "C" int func_002C4810()
         if (!data_004414A0[i])
             return i;
     return -1;
+}
+
+/* the menu's event handler (the lobby's: an event's name and its argument) and whether the eighty
+ * per cent warning was given (a byte of the lobby's; OVL1 0x2E99E0) */
+extern "C" bool (*data_0044F3C8)(const char *event, const char *arg);
+extern "C" bool func_002E99E0();
+
+/* a persona flagged 0x10000, a null one not (ours) */
+inline bool IsPersonaFlagged(PersonaData *p)
+{
+    return p ? p->IsFlagged() : false;
+}
+
+/* whether every persona is ready to load -- at once when the ten-second launch has run out; the
+ * ready count given to its valve, and the menu told when eighty per cent of the teams are ready
+ * (SOCOM 1's AllReadyToLoad, CheckStateSwitch's call: SOCOM II skips the flagged personas and adds
+ * the warning; OVL1 0x2C40C0) */
+/* the ten-second launch still counting down (ours: through an inline, its result materialised --
+ * `sltu v0` where the test written in the `if` compares into at -- and the launch time read ahead of
+ * the clock, as SOCOM 1's AllReadyToLoad has it) */
+inline bool LaunchPending(CZNetGame *game)
+{
+    int t = game->m_launch_time;
+
+    return theNetwork.zNetGetTime() < t;
+}
+
+bool CZPersonaState::AllReadyToLoad()
+{
+    bool ready;
+    int count;
+    CZNetGame *game = theMission.m_pNetGame;
+
+    if (game->m_ten_second_launch && !LaunchPending(game))
+        return true;
+    ready = true;
+    count = 0;
+
+    for (int i = 0; i < 24; i++) {
+        PersonaData *p = GetPersona(i);
+
+        if (p && !IsPersonaFlagged(p)) {
+            if (p->m_41 != CZNetGame::MP_MINOR_READY)
+                ready = false;
+            else
+                count++;
+        }
+    }
+    SetValveValue(game->m_pPlayerReadyCountValve, count);
+    if (!game->m_ten_second_launch && !ready && data_00441448 && data_00441450 &&
+        !(count < 0.8f * (data_00441448 + data_00441450)) && func_002E99E0() == false && data_0044F3C8)
+        data_0044F3C8("MP_EIGHTY_READY", 0);
+    return ready;
 }
 
 /* whether no persona without the flag 0x10000 waits in state 2 at 0x40 with 0x41 not yet 2

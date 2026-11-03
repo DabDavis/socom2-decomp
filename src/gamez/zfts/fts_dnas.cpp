@@ -78,12 +78,9 @@ CValve *func_002846F0(C2DAnimCmdHdr *hdr);
 bool func_003515D0(void *modules, unsigned char set);
 /* a localised string built: the table's text for an id with its arguments substituted */
 void func_00363F60(char *out, int size, int id, const char **args, int nargs);
-/* the CD file read by sector (util_sonyio.cpp's CFileCD, out of line) */
-void func_0039DEA0(void *file);                        /* CFileCD::CFileCD */
-bool func_0039DDC0(void *file, int lsn);               /* CFileCD::Open */
-void func_0039DDB0(void *file);                        /* CFileCD::Close */
-void func_0039DE40(void *file, int flags);             /* CFileCD::~CFileCD */
-int Read__7CFileCDFPci(void *file, char *buf, int size);
+/* the CD file read by sector (util_sonyio.cpp's CFileCD, zsnd.h's stand-in): its close, not yet
+ * named (an 8-byte function) */
+void func_0039DDB0(CFileCD *file);                     /* CFileCD::Close */
 /* CIOPManager::UnRegisterRebootCallback (zinput.h's CIOPManager declares only the register) */
 void UnRegisterRebootCallback__11CIOPManagerFi(CIOPManager *iop, int id);
 
@@ -313,15 +310,14 @@ void CSMDNASAuthenticate::LoadAuthFile(unsigned char event)
 {
     switch (event) {
     case 0: {
-        unsigned char file[0x14];
+        CFileCD file;
         int error = 0;
 
-        func_0039DEA0(file);
         memset(m_auth, 0, 0x10000);
         memset(&data_00441820, 0, 0x14);
-        if (func_0039DDC0(file, 10110)) {
-            Read__7CFileCDFPci(file, (char *)m_auth, 0x10000);
-            func_0039DDB0(file);
+        if (file.OpenSector(10110)) {
+            file.Read((char *)m_auth, 0x10000);
+            func_0039DDB0(&file);
             data_00441820.line_type = 1;
             data_00441820.auth_data.ptr = (char *)m_auth;
             data_00441820.auth_data.size = 0x10000;
@@ -334,7 +330,6 @@ void CSMDNASAuthenticate::LoadAuthFile(unsigned char event)
         } else {
             Fail("Cannot open DNAS Authfile", error);
         }
-        func_0039DE40(file, -1);
         break;
     }
     case 1:
@@ -403,8 +398,8 @@ bool UIDNASAuthenticate(C2DAnimCmdHdr *hdr, float *dT)
         data_0044AF40 = new CSMDNASAuthenticate(valve);
         data_0044AF40->Start();
     } else {
-        func_003A5C30(data_0044AF40);
-        if (func_003A5C10(data_0044AF40)) {
+        data_0044AF40->Tick();
+        if (data_0044AF40->IsDone()) {
             delete data_0044AF40;
             data_0044AF40 = 0;
             done = true;

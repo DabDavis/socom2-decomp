@@ -12,8 +12,8 @@ M2C_UNK __destroy_arr(char *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK func_0050F990(M2C_UNK *, char *, s32 *, char **); /* extern */
 M2C_UNK func_00519960(char *, M2C_UNK);             /* extern */
+extern M2C_UNK __dt__12CAiMapLocVecFv;
 extern M2C_UNK func_00518690;
-extern M2C_UNK func_0051C1C0;
 
 char *func_0052EA10(char *arg0, s64 arg1) {
     M2C_UNK sp3C;
@@ -24,7 +24,7 @@ char *func_0052EA10(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
         Destroy__6CGraphFP6CGraph(SC_MEMBER(arg0, s32 *, 0xD8));
         SC_MEMBER(arg0, s32 *, 0xD8) = 0;
-        __destroy_arr(arg0 + 0x84, &func_0051C1C0, 0xC, 7);
+        __destroy_arr(arg0 + 0x84, &__dt__12CAiMapLocVecFv, 0xC, 7);
         __destroy_arr(arg0 + 0x3C, &func_00518690, 0xC, 6);
         temp_a0 = arg0 + 0x30;
         if ((temp_a0 != NULL) && (temp_a0 != NULL) && (temp_a0 != NULL)) {

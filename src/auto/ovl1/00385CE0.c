@@ -12,16 +12,16 @@ M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK __dt__11CSaveModuleFv(char *, M2C_UNK);     /* extern */
 M2C_UNK func_002B18A0(char *, M2C_UNK);             /* extern */
 M2C_UNK func_002B20E0();                            /* extern */
-extern M2C_UNK data_00407CF0;
+extern M2C_UNK __dt__12CUIVarSTableFv;
+extern M2C_UNK __vt__13CUIVarManager;
 extern M2C_UNK data_00407CF8;
-extern M2C_UNK func_002B1970;
 
 char *__dt__13CUIVarManagerFv(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
-        SC_MEMBER(arg0, M2C_UNK **, 0x24) = &data_00407CF0;
+        SC_MEMBER(arg0, M2C_UNK **, 0x24) = &__vt__13CUIVarManager;
         SC_MEMBER(arg0, M2C_UNK **, 0xC) = &data_00407CF8;
         func_002B20E0();
-        __destroy_arr(arg0 + 0x2C, &func_002B1970, 0x20, 2);
+        __destroy_arr(arg0 + 0x2C, &__dt__12CUIVarSTableFv, 0x20, 2);
         __dt__11CSaveModuleFv(arg0 + 0xC, 0);
         if ((arg0 != NULL) && (arg0 != NULL)) {
             func_002B18A0(arg0, 0);

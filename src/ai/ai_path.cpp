@@ -273,24 +273,33 @@ bool CAiPath::PopPoint(CAiMapLoc *loc)
     return popped;
 }
 
+/* the planner kind set unless a plan is running (SOCOM 1's SetPathType word for word, the state
+ * now at 0x80), whether the path has that kind handed back -- the kind compared parameter first
+ * (`type == m_type`: the xor's operands) */
+bool CAiPath::SetPathType(PATH_TYPE type)
+{
+    if (m_state != PLANNING)
+        m_type = type;
+    return type == m_type;
+}
+
 /* the point on the cell itself, its index handed back when asked (new in SOCOM II, the name ours:
  * 0x524880, which CAiSBreach::Tick calls -- the row carried PointInPath by its place until the AI
- * core's round 17 read SOCOM 1's PointInPath body in 0x524760, below).
- * OPEN (0xC8 against 0xD0): GetRouteIndex's and GetRegionContaining's question (ai_maptable.cpp)
- * -- the target re-reads data_ and size_ for each pass's end test (the first test reusing the
- * emptiness test's size and begin's data), this build hoists the end out of the loop. Postfix
- * steps, a cast `this`, `!(it == end())` and the iterator declared outside were tried; perhaps
- * the original iterator stays in memory (a user-declared copy constructor?) long enough that its
- * stores block the hoist */
-bool CAiPath::FindPoint(const CAiMapLoc &loc, unsigned int *index) const
+ * core's round 17 read SOCOM 1's PointInPath body in 0x524760, below). NOT const: the target
+ * re-reads the points' data and count through `this` for each pass's end test (the first test
+ * reusing the emptiness test's count and begin's data), which only a non-const member walking
+ * m_points itself over the points' end() through count() gives (ai.h; the AI core's round 18,
+ * byte-exact). As a const member through const_cast the end was hoisted (0xC8 against 0xD0);
+ * postfix steps, a cast `this`, `!(it == end())`, the iterator declared outside and the
+ * const_iterator walk did not move it */
+bool CAiPath::FindPoint(const CAiMapLoc &loc, unsigned int *index)
 {
-    if (m_points.size() == 0)
+    if (m_points.count() == 0)
         return false;
-    points &p = const_cast<points &>(m_points);
     bool found = false;
     unsigned int i = 0;
 
-    for (points::iterator it = p.begin(); it != p.end(); ++it, ++i) {
+    for (points::iterator it = m_points.begin(); it != m_points.end(); ++it, ++i) {
         if ((*it).m_loc == loc) {
             if (index)
                 *index = i;
@@ -304,27 +313,31 @@ bool CAiPath::FindPoint(const CAiMapLoc &loc, unsigned int *index) const
 /* whether a snake path passes within a point's width of the cell, the point's index counted from
  * the path's end handed back when asked (SOCOM 1's PointInPath, the demo's 0x193540: the snake flag
  * 4, the widths, the index from the back -- SOCOM II adds the map's test; 0x524760, which the leg
- * smoother, ExtendPath and CAiSFollow::Tick call).
- * OPEN: FindPoint's question (above) -- the target re-reads size_ and data_ for each pass's end */
-bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index) const
+ * smoother, ExtendPath and CAiSFollow::Tick call). Not const in SOCOM II: FindPoint's walk (above).
+ * The point's map id read into a local first (the target compares it ahead of the cell's), the
+ * cell's coordinates before the point's with `p > l ? p - l : l - p` (MW loads the right-hand
+ * operand of a comparison first), and the width test `sum <= width` (branching on the compare;
+ * `!(width < sum)` materialised it) -- the AI core's round 18, byte-exact */
+bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index)
 {
-    if (m_points.size() == 0 || !(m_flags & 4))
+    if (m_points.count() == 0 || !(m_flags & 4))
         return false;
-    points &p = const_cast<points &>(m_points);
     unsigned int n = 0;
 
-    for (points::iterator it = p.begin(); it != p.end(); ++it, ++n) {
-        if ((*it).m_loc.m_mapid == loc.m_mapid) {
-            unsigned int px = (*it).m_loc.x;
-            unsigned int lx = loc.x;
-            int dx = lx < px ? px - lx : lx - px;
-            int py = (*it).m_loc.y;
-            int ly = loc.y;
-            int dy = ly < py ? py - ly : ly - py;
+    for (points::iterator it = m_points.begin(); it != m_points.end(); ++it, ++n) {
+        unsigned int id = (*it).m_loc.m_mapid;
 
-            if (!((*it).m_width < dx + dy)) {
+        if (id == loc.m_mapid) {
+            unsigned int lx = loc.x;
+            unsigned int px = (*it).m_loc.x;
+            int dx = px > lx ? px - lx : lx - px;
+            int ly = loc.y;
+            int py = (*it).m_loc.y;
+            int dy = py > ly ? py - ly : ly - py;
+
+            if (dx + dy <= (*it).m_width) {
                 if (index)
-                    *index = m_points.size() - n - 1;
+                    *index = m_points.count() - n - 1;
                 return true;
             }
         }

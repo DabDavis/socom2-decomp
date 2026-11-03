@@ -13,9 +13,14 @@
 #include "../zanim/zanim.h"
 #include "../zentity/zentity.h"
 
-/* the reader file of that name, out of the loaded archives (SOCOM 1's CRdrArchive::FindRdr took the
- * name alone; SOCOM II passes a second argument, zero here) */
-extern "C" CRdrFile *func_0032C040(const char *name, const char *archive);
+/* the reader file of that name, out of the loaded archives (zrdr_archive.cpp's; SOCOM 1's took the
+ * name alone, SOCOM II passes flags, zero here): zrdr.h's class as far as this unit calls it (zrdr.h
+ * is not included here: its finders' return types differ from the declarations below) */
+class CRdrArchive {
+public:
+    static CRdrFile *FindRdr(const char *path, int flags);
+};
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
@@ -244,14 +249,14 @@ bool CCharacterType::Open(const char *file)
 
     if (rdr) {
         data_0044CD30 = rdr;
-        _zrdr *items = func_0032F0D0((_zrdr *)rdr, "body_items");
+        _zrdr *items = zrdr_findtag((_zrdr *)rdr, "body_items");
 
         if (items && items->type == 4) {
             for (unsigned int i = 0; i < items->Count(); i++)
                 if (items->Item(i)->type == 3 && strcasecmp(items->Item(i)->String(), "gear_nodes"))
                     func_0058CB30(items->Item(i)->String());
 
-            _zrdr *nodes = func_0032F0D0((_zrdr *)rdr, "gear_nodes");
+            _zrdr *nodes = zrdr_findtag((_zrdr *)rdr, "gear_nodes");
 
             if (nodes && nodes->type == 4) {
                 for (unsigned int i = 0; i < nodes->Count(); i++)
@@ -267,7 +272,7 @@ bool CCharacterType::Open(const char *file)
         else
             s_angleUnitsDeg = 0;
 
-        _zrdr *ai = func_0032F0D0((_zrdr *)rdr, "ai_settings");
+        _zrdr *ai = zrdr_findtag((_zrdr *)rdr, "ai_settings");
         float angle;
 
         if (ai && zrdr_findreal(ai, "accuracy_angle", &angle, 1)) {
@@ -276,7 +281,7 @@ bool CCharacterType::Open(const char *file)
             CSealCtrlAi::SetAiAccuracyAngle(angle);
         }
 
-        _zrdr *gear = func_0032F0D0((_zrdr *)rdr, "gear");
+        _zrdr *gear = zrdr_findtag((_zrdr *)rdr, "gear");
 
         if (gear && gear->type == 4) {
             for (int i = 0; i < gear->Count(); i++) {
@@ -284,7 +289,7 @@ bool CCharacterType::Open(const char *file)
                 _zrdr *g = gear->Item(i);
                 const char *name = zrdr_findstring(g, "name");
                 const char *model = zrdr_findstring(g, "model");
-                _zrdr *ofs = func_0032F0D0(g, "ofs");
+                _zrdr *ofs = zrdr_findtag(g, "ofs");
 
                 if (model && ofs && ofs->Count() == 3) {
                     const char *node = ofs->Item(0)->String();
@@ -319,7 +324,7 @@ bool CCharacterType::Open(const char *file)
             }
         }
 
-        _zrdr *chars = func_0032F0D0((_zrdr *)rdr, "characters");
+        _zrdr *chars = zrdr_findtag((_zrdr *)rdr, "characters");
 
         if (chars && chars->type == 4) {
             unsigned int i = 0;
@@ -719,7 +724,7 @@ bool CCharacterType::Parse(_zrdr *rdr)
 
     zrdr_findint(rdr, "controller_id", &m_controller_id, 1);
 
-    _zrdr *sets = func_0032F0D0(rdr, "anim_set");
+    _zrdr *sets = zrdr_findtag(rdr, "anim_set");
 
     if (sets && sets->type == 4) {
         m_anim_sets.clear();
@@ -731,7 +736,7 @@ bool CCharacterType::Parse(_zrdr *rdr)
         }
     }
 
-    _zrdr *gear = func_0032F0D0(rdr, "default_gear");
+    _zrdr *gear = zrdr_findtag(rdr, "default_gear");
 
     if (gear && gear->type == 4) {
         m_gear.clear();
@@ -743,7 +748,7 @@ bool CCharacterType::Parse(_zrdr *rdr)
         }
     }
 
-    _zrdr *weapons = func_0032F0D0(rdr, "default_weapons");
+    _zrdr *weapons = zrdr_findtag(rdr, "default_weapons");
 
     if (weapons && weapons->type == 4) {
         m_weapons.clear();
@@ -766,7 +771,7 @@ bool CCharacterType::Parse(_zrdr *rdr)
     zrdr_findint(rdr, "recovery_factor", &m_recovery_factor, 1);
     m_healthParams.Parse(rdr);
 
-    _zrdr *voice = func_0032F0D0(rdr, "VoiceFont");
+    _zrdr *voice = zrdr_findtag(rdr, "VoiceFont");
 
     if (voice) {
         zrdr_findreal(voice, "SetPitchOffset", &m_voiceFont.m_pitchOffset, 1);
@@ -777,7 +782,7 @@ bool CCharacterType::Parse(_zrdr *rdr)
         zrdr_findreal(voice, "SetWhisperFactor", &m_voiceFont.m_whisperFactor, 1);
     }
 
-    _zrdr *lods = func_0032F0D0(rdr, "lods");
+    _zrdr *lods = zrdr_findtag(rdr, "lods");
 
     if (lods) {
         m_LODs.clear();
@@ -814,8 +819,8 @@ bool CCharacterType::Parse(_zrdr *rdr)
         m_texture_asset = 0;
         m_texture_asset = _strdup(texture, 0, 0);
     }
-    m_aiParams.Parse(func_0032F0D0(rdr, "ai_params"));
-    ParseSounds(func_0032F0D0(rdr, "sounds"));
+    m_aiParams.Parse(zrdr_findtag(rdr, "ai_params"));
+    ParseSounds(zrdr_findtag(rdr, "sounds"));
     return true;
 }
 
@@ -897,7 +902,7 @@ extern CSTable MultiplayerMsgStrings;
  * CSealCtrl::GetCommandId, and its zrdr counts are the array's own) */
 void CCharacterType::InitMultiplayerMessages(_zrdr *rdr)
 {
-    _zrdr *list = func_0032F0D0(rdr, "multiplayer");
+    _zrdr *list = zrdr_findtag(rdr, "multiplayer");
 
     if (list) {
         m_mpMessages.reserve(list->Count());
@@ -1262,7 +1267,7 @@ void CCharacterWeapList::AddWeapon(EQUIP_ITEM)
  * searched by "name", the match's "character" handed back */
 const char *CCharacterType::match_name_to_chartype(CRdrFile *rdr, const char *group, const char *name)
 {
-    _zrdr *list = func_0032F0D0((_zrdr *)rdr, group);
+    _zrdr *list = zrdr_findtag((_zrdr *)rdr, group);
     const char *tagName = "name";
     const char *tagChar = "character";
 
@@ -1287,7 +1292,7 @@ const char *CCharacterType::match_name_to_chartype(CRdrFile *rdr, const char *gr
  * rdr in a0 before the name in a1 (two instructions swapped, rounds 3-14) */
 CCharacterType *CCharacterType::RdrFetch_CharacterType(const char *name)
 {
-    CRdrFile *rdr = func_0032C040("chartype.rdr", 0);
+    CRdrFile *rdr = CRdrArchive::FindRdr("chartype.rdr", 0);
 
     if (!rdr)
         return 0;

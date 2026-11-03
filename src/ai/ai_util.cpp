@@ -185,10 +185,10 @@ void ai::elevate(CPnt3D &p, float y, float scale)
 
 /* the real roots of a*x*x + b*x + c, false if none (SOCOM 1's). The linear case stores its root
  * twice into r2 and never into r1 -- both builds do.
- * OPEN, 4 instructions: the two-root block's registers. The target takes the root in f0 and -b
- * in f2 after it (SOCOM 1's sqrtf call left the same pair); here a named root takes f2 and -b f0,
- * and sqrtf written into both expressions takes f0 but lets MW hoist -b above it into the
- * divide's hazard slot (build/scratch/ai/spec_quad*.py) */
+ * The root taken back into d (the AI core's round 18, byte-exact): the target takes it in f0 and -b
+ * in f2 after it (SOCOM 1's sqrtf call left the same pair); a root in a local of its own took f2
+ * and -b f0, and sqrtf written into both expressions took f0 but let MW hoist -b above it into the
+ * divide's hazard slot */
 bool ai::quadratic(float a, float b, float c, float &r1, float &r2)
 {
     bool ok = true;
@@ -198,10 +198,9 @@ bool ai::quadratic(float a, float b, float c, float &r1, float &r2)
         float inv = 1.0f / (2.0f * a);
 
         if (d > 0.0f) {
-            float s = sqrtf(d);
-
-            r1 = inv * (-b + s);
-            r2 = inv * (-b - s);
+            d = sqrtf(d);
+            r1 = inv * (-b + d);
+            r2 = inv * (-b - d);
         } else if (d < 0.0f) {
             ok = false;
         } else {

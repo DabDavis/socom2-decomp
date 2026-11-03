@@ -299,9 +299,9 @@ public:
     ~CAiMapLayerVec();
 };
 int zrdr_free(CRdrFile *file);
-/* MAIN's strncasecmp (0x1993C0, a placeholder still: SOCOM 1's CAiMap::GetLocation calls
- * strncasecmp where SOCOM II's calls it) */
-extern "C" int func_001993C0(const char *a, const char *b, unsigned int n);
+/* MAIN's strncasecmp (0x1993C0, newlib's: SOCOM 1's CAiMap::GetLocation calls strncasecmp where
+ * SOCOM II's calls it) */
+extern "C" int strncasecmp(const char *a, const char *b, unsigned int n);
 
 class CGNode;
 /* two ints (SOCOM 1's IPNT2D: units that use one define it themselves) */
@@ -731,6 +731,7 @@ public:
         /* the side it opens toward, 8 for none (the name ours: GetCellCenter's, out of line at
          * 0x516910) */
         DIR GetDir() const { return (DIR)m_offset; }
+        bool HasDirection() const { return m_direction != 8; }
         /* a door of either kind, 1 or 4 (the name ours: the A* search materialises the test, the
          * raw kind read once, before it branches) */
         bool IsDoor() const
@@ -837,7 +838,7 @@ public:
     {
         if (s) {
             for (names::iterator i = m_namesTable.begin(); i != m_namesTable.end(); ++i)
-                if (!func_001993C0((*i).m_name, s, 15))
+                if (!strncasecmp((*i).m_name, s, 15))
                     return &*i;
         }
         return 0;
@@ -1264,8 +1265,24 @@ public:
         unsigned int m_flags : 8;
         unsigned int m_unused : 16;
     };
-    /* (SOCOM 1's DWARF; ~CAiPath's three this-tests on it say SOCOM II's is the same subclass) */
+    /* (SOCOM 1's DWARF; ~CAiPath's three this-tests on it say SOCOM II's is the same subclass).
+     * The end through the count read by reference, as the data pointer is through data() (the AI
+     * core's round 18): FindPoint's and PointInPath's walks then re-read both for each pass's end
+     * test, and the emptiness test written through the same count() shares its load with the first
+     * end (0x524880 byte-exact so). With the class vector's own end() MW kept size*8 out of the
+     * loop; with size() through count() too, RemoveInvalidPoints' size() and end() share a load the
+     * target makes twice (0x527CE0). GetRouteIndex's and GetRegionContaining's walks hoist size*36
+     * and size*28, a multiply, where these keep a shift in the loop: perhaps the original MSL's end()
+     * reads its count so everywhere */
     class points : public std::vector<point> {
+    public:
+        unsigned int &count() { return this->size_; }
+        iterator end()
+        {
+            point *const p = this->data() + count();
+
+            return iterator(p);
+        }
     };
     /* a point on a cell: x and y agree, the map aside (SOCOM 1's std::find<point *, CAiMapLoc>
      * compares them; materialised as CAiMapLoc's ==) */
@@ -1318,12 +1335,15 @@ public:
     /* the last point taken off, its cell handed back when asked; false when there is none (new
      * in SOCOM II, the name ours: the SEALs' 0x524D00) */
     bool PopPoint(CAiMapLoc *loc);
+    /* the planner kind set unless a plan is running, whether the path has it now handed back (SOCOM
+     * 1's SetPathType, 0x524CD0: CSealCtrlAi::SetRoute calls it with the default route kind) */
+    bool SetPathType(PATH_TYPE type);
     /* whether a point lies on the cell, its index handed back when asked (SOCOM 1's tested the
      * points' widths around the cell) */
-    bool PointInPath(const CAiMapLoc &loc, unsigned int *index) const;
+    bool PointInPath(const CAiMapLoc &loc, unsigned int *index);
     /* the point on the cell itself, its index handed back when asked (new in SOCOM II, the name ours:
      * 0x524880) */
-    bool FindPoint(const CAiMapLoc &loc, unsigned int *index) const;
+    bool FindPoint(const CAiMapLoc &loc, unsigned int *index);
     void plan_setup();
     bool plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal);
     bool plan_legcomplete(PATH_STATE state);
@@ -1425,6 +1445,9 @@ extern "C" void func_00510D00();
 namespace ai {
 class CAiPathQueue : public std::list<CAiPath *> {
 public:
+    /* the counters zeroed after the list's constructor (ai_astar.cpp's initialiser 0x668540 stores
+     * the three words after calling it: the AI core's round 18) */
+    CAiPathQueue() : m_maxSize(0), m_completed(0), m_ticks(0) {}
     /* whether the path is queued (the name ours: AbortPathPlan's third arm, which calls begin(),
      * end(), std::find and != out of line -- an inline too tall to inline whole) */
     bool Contains(CAiPath *path) { return std::find(begin(), end(), path) != end(); }
