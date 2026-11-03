@@ -9010,7 +9010,7 @@
 0x004F70A0 0x24 mtxAssociateAll  # OVL2; s1:exact
 0x004F70C8 0x80 mtxDeleteCol  # OVL2 unaligned; s1:align
 0x004F7148 0x1B8 mtxCompress  # OVL2 unaligned; s1:align
-0x004F7300 0x124 func_004F7300  # OVL2
+0x004F7300 0x124 mtxMac  # OVL2; s1:order (SOCOM 1's mtx object 0x363888 holds mtxMac between mtxCompress and mtxInit, as this row sits; the same body, m->data += f * x over rows * cols, returning 0) -- the gcc lane, round 16c
 0x004F7428 0x98 mtxInit  # OVL2 unaligned; s1:calls
 0x004F74C0 0xBC mtxInitCopy  # OVL2; s1:align
 0x004F7580 0xF4 mtxMax  # OVL2; s1:align
