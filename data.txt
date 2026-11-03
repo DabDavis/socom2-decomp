@@ -319,6 +319,7 @@
 0x003E0368 0x1 s_bStickCentered  # OVL1 data (initialised 1); zui.cpp's static, ours: whether the menu's stick came back to the centre -- UiGetDirStickMoved and its inlined copies in DidStickMovePrev/Next read it (3 references in 3 functions) -- the UI-widgets lane
 0x003E0380 0x4 g_fCounterSpeedFactor__20@unnamed@zui_2d_cpp@  # OVL1 data; SOCOM 1's static (its symbol table: zui_2d.cpp's unnamed namespace, 1.0); 2 references in 2 functions: UiSetCounterSpeedFactor sets it, C2DCounter::Tick reads it
 0x003E0388 0x4 g_fTtySpeedFactor__20@unnamed@zui_2d_cpp@  # OVL1 data; SOCOM 1's static (its symbol table: zui_2d.cpp's unnamed namespace, 1.0); 2 references in 2 functions: UiSetTtySpeedFactor sets it, CTeleType::Tick reads it
+0x003E03A8 0x1 g_bTtyNoise__20@unnamed@zui_2d_cpp@  # OVL1 data; SOCOM II's static, name ours (zui_2d.cpp's unnamed namespace, 1 in the image: the teletype's typing noise); 4 references in 2 functions: CTeleType::TickZAnimCmd's finish clears and sets it around each Tick(100000), CTeleType::Tick 0x377B80 reads it twice -- the HUD lane, round 22
 0x003E04C8 0x4 s_bmp4Timer  # OVL1 data; zui_skbview.cpp's static (name ours): a float, -1.0 initially, cleared by SkbToggleBmp4; 5 references in 2 functions (0x3949C0 4, SkbToggleBmp4)
 0x003E0780 0x24 s_languageNames  # OVL1 data; util_loc.cpp's static (name ours): the nine languages' directory names, STATES UK FRANCE GERMANY SPAIN ITALY JAPAN KOREA TEST; 4 references in 3 functions (LanguageFromName, Load, Reload)
 0x003E07A8 0x1 s_useZar  # OVL1 data; util_loc.cpp's static (name ours): the tables come from <name>LOC.zar under RUN\LOCALE\<language> (1), else from the LOCRDR path; 4 references in 2 functions (Load, Reload)
@@ -1377,7 +1378,10 @@
 0x00658700 0x3 ActiveBlocks_UTTFORMAT_LABELS  # OVL2; s1:data-seq (size SOCOM 1's; via casrActivateContext +1)
 0x00658708 0x2 ActiveBlocks_UTTFORMAT_LABELS_ISO  # OVL2; s1:data-seq (size SOCOM 1's; via casrActivateContext +1)
 0x00659118 0x5 LabelBlockIDs  # OVL2; s1:data-seq (size SOCOM 1's; via ScoreTranscriptions)
+0x00659230 0x54 g_SpeechMeanInit11kHz  # OVL2; s1:data (SOCOM 1's LOCAL 0x45EA88, 84 bytes, in the acne object's .rodata after the same 200.0f and 50 words: 21 floats, SOCOM 1's to the ulp -- 11 an ulp low, 2.96's parser on the same decimals; InitAcne stores its address as the speech mean's seed, as SOCOM 1's does) -- the gcc lane, round 12c
+0x00659288 0x54 g_NoiseFloors11kHz  # OVL2; s1:data (SOCOM 1's LOCAL 0x45EAE0, 84 bytes, right after g_SpeechMeanInit11kHz in both: 21 floats, SOCOM 1's to the ulp (the first an ulp low); InitAcne stores its address as the noise floors) -- the gcc lane, round 12c
 0x00659300 0x584 fLogOnePlusExp_lut  # OVL2; s1:data-seq (size SOCOM 1's; via HLnOnePlusExpHFloat)
+0x0065A3E0 0x18 Smoother1600Info11kHz  # OVL2; s1:data (SOCOM 1's GLOBAL 0x45FC60, 24 bytes, after Smoother1600Info8kHz (0x65A3C8 here, 0x45FC48 there): three {table, 21, 10} entries, their tables 0x6D0, 0x388 and 0x40 below it in both builds; InitAcne hands it to smtConstruct, as SOCOM 1's does) -- the gcc lane, round 12c
 0x0065A5F8 0x54 _ContextV2VirtualTable  # OVL2; s1:data-seq (size SOCOM 1's; via FillContextV2VirtualTable)
 0x0065A698 0x13C _LangVirtualTable  # OVL2; s1:data-seq (size SOCOM 1's; via FillLanguageVirtualTable)
 0x0065A838 0x8 g_lhNullHandle  # OVL2; s1:data-seq (size SOCOM 1's; via gsapi_EngineSetImmediateContext +4)

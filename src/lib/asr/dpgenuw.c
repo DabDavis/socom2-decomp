@@ -9,8 +9,10 @@
  * and s1:slot). The block runs a phoneme loop over the frames of a word being trained (twenty
  * phoneme cells and the garbage phoneme's two), back pointers taken from a free list of chunks
  * as in the DpScoreUw object. MakeUserWordsActiveDist, the object's last function, is
- * ctxutil.c's (byte-exact there). SendResultUserWords and DynProgUserWords are not written yet:
- * declared here, their rows open. */
+ * ctxutil.c's (byte-exact there). DynProgUserWords is not written yet: declared here, its row
+ * open. SendResultUserWords (round 12c) walks the backtrace as `for (; bt->next != 0; bt =
+ * bt->next)` (a `next` variable copies the test's load differently), its score's nonzero arm
+ * first; the frame counter and the +112 word are unsigned (both convert by the halving trick). */
 #include "tosblk.h"
 
 #define NWORDCELLS      20              /* the phoneme cells, then the garbage phoneme's two */
@@ -87,11 +89,12 @@ typedef struct DPGENUW {
     unsigned short *words;              /* +100 */
     unsigned short garbage;             /* +104 */
     int f108;                           /* +108 */
-    int pad112[2];
+    unsigned int f112;                  /* +112 */
+    int pad116;
     short f120;                         /* +120 */
     short pad122[3];
     unsigned char f128;                 /* +128 */
-    int frame;                          /* +132 */
+    unsigned int frame;                 /* +132 */
     unsigned int maxframes;             /* +136: profile 11, hundreds */
     unsigned short (*makeactive)(struct DPGENUW *e, unsigned short *dist,
                                  unsigned char *active);    /* +140 */
@@ -107,8 +110,7 @@ typedef struct DPGENUW {
 int _tosControl(void *b, unsigned char cmd, void *arg, int arg2);
 void qQueueReset(void *q);
 
-/* not written yet (their rows open) */
-void SendResultUserWords(DPGENUW *e, void *arg, void *arg2);
+/* not written yet (its row open) */
 int DynProgUserWords(DPGENUW *e, short *frame);
 /* ctxutil.c */
 unsigned short MakeUserWordsActiveDist(DPGENUW *e, unsigned short *dist, unsigned char *active);
@@ -116,6 +118,7 @@ unsigned short MakeUserWordsActiveDist(DPGENUW *e, unsigned short *dist, unsigne
 static BTNODE *AllocateBacktrace(DPGENUW *e, BTNODE *prev);
 static void InitViterbi(DPGENUW *e);
 static int InitDpGenUw(DPGENUW *e);
+static void SendResultUserWords(DPGENUW *e, void *arg, void *arg2);
 static void DpGenUwProcess(DPGENUW *e, short **in);
 static __inline__ void FreeBacktrace(TOS *tos, DPGENUW *e);
 static int func_004E5538(DPGENUW *e, GENUWSETUP *s);
@@ -233,6 +236,60 @@ static int InitDpGenUw(DPGENUW *e)
     e->f52 = _tosGetProfileU32(e, 35, 900);
     e->nchunks = 0;
     return 0;
+}
+
+/* the result the scheduler takes (command 12): the score, the frames spoken outside the garbage
+ * phoneme, the words' labels */
+typedef struct UWRESULT {
+    float score;                        /* +0 */
+    int frames;                         /* +4 */
+    int n;                              /* +8 */
+    unsigned short labels[1];           /* +12: n, and one more */
+} UWRESULT;
+
+/* the recognised labels off the garbage phoneme's last cell's backtrace (it runs from the end:
+ * stored from the last slot down) */
+static void SendResultUserWords(DPGENUW *e, void *arg, void *arg2)
+{
+    TOS *tos = e->b.tos;
+    BTNODE *bt;
+    UWRESULT *r;
+    unsigned short n = 0;
+    int frames = 0;
+    int start;
+    int i;
+
+    bt = e->cells[NWORDCELLS + 1].bt;
+    start = bt->f8;
+    for (; bt->next != 0; bt = bt->next) {
+        if ((unsigned short)bt->f4 == e->garbage) {
+            frames += start - bt->f8;
+            start = 0;
+        } else if (start == 0)
+            start = bt->f8;
+        n++;
+    }
+    if (n != 0)
+        n--;
+    r = heap_Alloc(tos->heap, n * 2 + 14);
+    if (r == 0) {
+        _tosErrorLog(e, 1);
+        return;
+    }
+    r->frames = frames;
+    r->n = n;
+    if (e->frame != 0)
+        r->score = (float)(e->f112 + e->f108) / (float)e->frame;
+    else
+        r->score = 0;
+    bt = e->cells[NWORDCELLS + 1].bt;
+    for (i = n - 1; i >= 0; i--) {
+        r->labels[i] = bt->f4;
+        bt = bt->next;
+    }
+    if (_tosControl(e, 12, r, 1) != 0)
+        _tosErrorLog(e, 1);
+    heap_Free(tos->heap, r);
 }
 
 static void DpGenUwProcess(DPGENUW *e, short **in)

@@ -60,7 +60,7 @@ static const float g_NoiseFloors11kHz[21] = {
 
 /* the smoothing object's 11 kHz tables (SOCOM 1's Smoother1600Info11kHz: three {spline table,
  * 21, 10} entries) */
-extern const char data_0065A3E0[];
+extern const char Smoother1600Info11kHz[];
 
 extern void qQueueReset(void *q);
 extern void *qQueueConstruct(TOS *tos, unsigned char id, int n);
@@ -272,7 +272,7 @@ static int InitAcne(ACNE *a)
     a->f132 = 5.0f;
     a->noise = g_NoiseFloors11kHz;
     a->speech = g_SpeechMeanInit11kHz;
-    a->smtinfo = data_0065A3E0;
+    a->smtinfo = Smoother1600Info11kHz;
     a->smoother = smtConstruct(tos, n, a->smtinfo, _tosGetProfileFloat(a, 8, 2.6f), 0.0f);
     return Reset(a) != 0;
 }
