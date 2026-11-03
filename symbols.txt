@@ -4201,12 +4201,12 @@
 0x002C5C90 0x80 func_002C5C90  # OVL1
 0x002C5D10 0x44 func_002C5D10  # OVL1
 0x002C5D60 0x110 SelectConfig__13CCtrlrConfigsFPCc  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls it from the same place; the name strcasecmp'd against each config's string as SOCOM 1's (a0, a const char *), the match stored as the current config -- SOCOM II's then updates the pad's settings)
-0x002C5E70 0x174 func_002C5E70  # OVL1
-0x002C5FF0 0x34 func_002C5FF0  # OVL1
-0x002C6030 0xC func_002C6030  # OVL1
-0x002C6040 0xC func_002C6040  # OVL1
-0x002C6050 0xC func_002C6050  # OVL1
-0x002C6060 0x5C func_002C6060  # OVL1
+0x002C5E70 0x174 Init__13CCtrlrConfigsFv  # OVL1; s1:calls by hand (the states lane, round 20: SOCOM 1's CCtrlrConfigs::Init -- controller.rdr from data/common, its ControllerConfigs, SelectConfig("Default"), a "NoDefaultDummy" layout without one; SOCOM II's parse moved out to 0x2C67F0, the dummy kept nowhere; CMission::Init calls it; byte-exact in fts_controller.cpp)
+0x002C5FF0 0x34 __ct__11CCfgButtonsFv  # OVL1; ours (the states lane, round 20: the layout's thirteen buttons' implicit constructor -- MW's array construction, a never-unrolled pointer loop storing PAD_BUTTON_NONE (16) through the element's inlined constructor; called for 0x12)
+0x002C6030 0xC __ct__8CCfgFlagFv  # OVL1; ours (the states lane, round 20: a layout's flag's constructor, a byte cleared -- called for 0x11 by the layout's constructor inlined one level)
+0x002C6040 0xC __ct__10CCfgSticksFv  # OVL1; ours (the states lane, round 20: a layout's stick mask's constructor, a byte cleared -- called for 0xF and 0x10 by the layout's constructor inlined one level)
+0x002C6050 0xC __ct__9CCfgStickFv  # OVL1; ours (the states lane, round 20: a layout's stick setting's constructor, a byte cleared -- the layout's constructor, inlined one level in Init and the parser, calls it for 0xC, 0xD and 0xE; a class of its own, three distinct one-byte constructor copies follow Init)
+0x002C6060 0x5C __ct__9CSaferStrFPCc  # OVL1; ours (the states lane, round 20: CSaferStr from a C string -- the three words cleared, then the text assigned or the string emptied -- the layout's name; the copy fts_controller.cpp emits after Init, its first caller; the parser 0x2C67F0 calls it too)
 0x002C60C0 0x4C func_002C60C0  # OVL1
 0x002C6110 0xC4 func_002C6110  # OVL1
 0x002C61E0 0x38 func_002C61E0  # OVL1
@@ -4411,7 +4411,7 @@
 0x002D0620 0x54 GetNodeByIndex__6CGraphFUi  # OVL1; s1:order by hand (the states lane: between GetNodeByNodeEx and CreateEdge as SOCOM 1's GetNodeByIndex; steps index nodes into the node list at 4, none past its end; Read calls it with each edge's two indices)
 0x002D0680 0xF8 CreateEdge__6CGraphFP6CGNodeP6CGNode  # OVL1; s1:align
 0x002D0780 0x1A8 DeleteNode__6CGraphFP6CGNode  # OVL1; s1:order by hand (the states lane: between CreateEdge and CreateNode as SOCOM 1's DeleteNode: each of the node's edges taken out of the other end's list and the graph's and deleted through CGEdge::Delete, then the node removed and deleted)
-0x002D0930 0x5C CreateNode__6CGraphFPCc  # OVL1; s1:align
+0x002D0930 0x5C CreateNode__6CGraphFv  # OVL1; s1:align; by hand (the states lane, round 20, on the AI core's lead: SOCOM II's CreateNode takes no name -- it never reads a1 and every caller, CGraph::Read 0x2D0C90 and the AI maps' graph builders, leaves a1 unset; new CGNode, push_back, the node returned; byte-exact in graph_main.cpp)
 0x002D0990 0x1E0 __dt__6CGraphFv  # OVL1; s1:order by hand (the states lane: after CreateNode as SOCOM 1's ~CGraph: the name freed, every node's and edge's object deleted through its virtual destructor, both lists cleared; Destroy tail-calls it with 1)
 0x002D0B70 0x80 __ct__6CGraphFPCc  # OVL1; s1:order by hand (the states lane: after ~CGraph as SOCOM 1's CGraph(const char *); the name cleared, both lists built, the name copied; inlined whole by Create(name); byte-exact in graph_tree.cpp)
 0x002D0BF0 0x8 Destroy__6CGraphFP6CGraph  # OVL1; s1:order by hand (the states lane: between the constructor and Create as SOCOM 1's Destroy; ~CGraph tail-called with 1, a delete; byte-exact in graph_tree.cpp)
@@ -8744,7 +8744,7 @@
 0x004CFB60 0x4A8 FillOut_Syntax_Statedict_And_Wordprops_ForChinese  # OVL2; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls FillOut_Syntax_Statedict_And_Wordprops_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0008 0xF8 FreeSecondPassContext_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese and others call FreeSecondPassContext_ForChinese where ours call this row, 2 call sites; the same position in SOCOM 1's object)
 0x004D0100 0x880 CreateSecondPassContext_ForChinese  # OVL2; s1:calls
-0x004D0980 0x24 func_004D0980  # OVL2
+0x004D0980 0x24 Tone_Of_Final  # OVL2; s1:order (SOCOM 1's object 0x3404E8: after CreateSecondPassContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese, as here; the same zero test and compare of two unsigned shorts; uncalled in both) -- the gcc lane, round 14c
 0x004D09A8 0x100 Calculate_NbrOfStatesInDict_ForChinese  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfStatesInDict_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0AA8 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree  # OVL2 unaligned; s1:calls (SOCOM 1's CreateSecondPassContext_ForChinese calls Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004D0BD8 0xF48 CreateSecondPassContext  # OVL2 unaligned; s1:calls
@@ -8775,7 +8775,7 @@
 0x004D6FC0 0x4A0 func_004D6FC0  # OVL2
 0x004D7460 0xDC func_004D7460  # OVL2
 0x004D7540 0xC00 CreateSecondPassTreeContext_ForChinese  # OVL2; s1:calls (SOCOM 1's casrDoIsoWordSecondPass calls CreateSecondPassTreeContext_ForChinese where ours call this row, 1 call site; the same position in SOCOM 1's object)
-0x004D8140 0x24 func_004D8140  # OVL2
+0x004D8140 0x24 Tone_Of_Final_TreeCtx  # OVL2; s1:order (SOCOM 1's object 0x345CD0: after CreateSecondPassTreeContext_ForChinese, before Calculate_NbrOfStatesInDict_ForChinese_TreeCtx, as here; Tone_Of_Final's body; uncalled in both) -- the gcc lane, round 14c
 0x004D8168 0x100 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8268 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8398 0xEE0 casrCreateResult  # OVL2 unaligned; s1:calls (SOCOM 1's cbTOSRecognised and cbDoSecondPassIfEnabled call casrCreateResult where ours call this row, with the same arguments -- the result's address, the frame, 1); s1:order, the head of SOCOM 1's casr object (0x348248), its static CalcWordConfidence before it not a row here -- the gcc lane, round 9c

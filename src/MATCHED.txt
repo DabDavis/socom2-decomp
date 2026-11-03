@@ -3122,10 +3122,12 @@
 0x002C5800 RemotePersonaUpdateCallback__14CZPersonaStateFiii
 0x002C5A10 zNetRegisterPersona__14CZPersonaStateFv
 0x002C5D60 SelectConfig__13CCtrlrConfigsFPCc
-0x002C5FF0 func_002C5FF0
-0x002C6030 func_002C6030
-0x002C6040 func_002C6040
-0x002C6050 func_002C6050
+0x002C5E70 Init__13CCtrlrConfigsFv
+0x002C5FF0 __ct__11CCfgButtonsFv
+0x002C6030 __ct__8CCfgFlagFv
+0x002C6040 __ct__10CCfgSticksFv
+0x002C6050 __ct__9CCfgStickFv
+0x002C6060 __ct__9CSaferStrFPCc
 0x002C6110 func_002C6110
 0x002C61E0 func_002C61E0
 0x002C6220 func_002C6220
@@ -3306,7 +3308,7 @@
 0x002D05A0 GetNodeByNodeEx__6CGraphFPCv
 0x002D0620 GetNodeByIndex__6CGraphFUi
 0x002D0680 CreateEdge__6CGraphFP6CGNodeP6CGNode
-0x002D0930 CreateNode__6CGraphFPCc
+0x002D0930 CreateNode__6CGraphFv
 0x002D0990 __dt__6CGraphFv
 0x002D0B70 __ct__6CGraphFPCc
 0x002D0BF0 Destroy__6CGraphFP6CGraph

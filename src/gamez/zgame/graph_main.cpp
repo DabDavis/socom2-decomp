@@ -12,6 +12,7 @@
 
 #include <algorithm>
 
+#include "../zutil/zutil.h"
 #include "graph_tree.h"
 
 CGRoute::CGRoute()
@@ -41,10 +42,14 @@ void CGRoute::PostProcess()
 {
 }
 
+/* (OVL1 0x2D1130: pinned -- CreateNode calls it out of line, as SOCOM 1's CreateNode calls its
+ * constructor) */
+#pragma auto_inline off
 CGNode::CGNode()
     : m_4(0), m_nodeEx(0), m_18(0), m_cost(0)
 {
 }
+#pragma auto_inline reset
 
 /* the edges forgotten (OVL1 0x2D1060: the list's implicit destructor after the clear tests `this`
  * four times, CGEdgeList being a class of its own) */
@@ -64,6 +69,67 @@ CGEdge *CGNode::FindEdge(CGNode *other)
         if ((*i)->Joins(this, other))
             return *i;
     return 0;
+}
+
+/* a graph file's block header (SOCOM 1's shape; the names ours) */
+struct GraphHeader {
+    unsigned int version;   // 0x0: the reader's (data 0x3F3500, 1)
+    int size;   // 0x4: the block's size, this header included (a wrong version skips past it)
+    unsigned int nodes;   // 0x8
+    unsigned int edges;   // 0xc
+};
+
+/* an edge as the file holds it: its two nodes' indices, its length and its fixup's word */
+struct GraphEdgeRecord {
+    unsigned int from;   // 0x0
+    unsigned int to;   // 0x4
+    float length;   // 0x8
+    unsigned int data;   // 0xc
+};
+
+extern "C" const unsigned int data_003F3500;   /* (the version the reader takes) */
+
+/* the nodes and edges read from a file block, each handed to its fixup with the file's word for
+ * it; false for another version (its block skipped) or an empty graph (OVL1 0x2D0C90, SOCOM 1's;
+ * CreateNode and GetNodeByIndex are its out-of-line calls, hence their pins).
+ * OPEN, 5 instructions, registers only: in the edge loop the target colours the counter s3 and the
+ * first node (held across the second GetNodeByIndex) s5, this the other way round; the record
+ * cursor s4 and everything else agree. Tried (build/try-st): the two nodes as named locals (11),
+ * the first one named in the loop or declared at the top or before the loop (9-11), the counter
+ * declared once for both loops, before the header, as an int, or copied from a second counter
+ * (all 5), a walking record pointer (0x258) */
+bool CGraph::Read(CFileIO &f, NodeFixup node, EdgeFixup edge, void *data)
+{
+    GraphHeader hdr = {0};
+
+    f.fread(&hdr, sizeof(hdr));
+    if (hdr.version != data_003F3500) {
+        f.fseek(1, hdr.size - 16);
+        return false;
+    }
+    if (!hdr.nodes || !hdr.edges)
+        return false;
+    unsigned int *nodes = new unsigned int[hdr.nodes];
+    GraphEdgeRecord *edges = new GraphEdgeRecord[hdr.edges];
+
+    f.fread(nodes, hdr.nodes * 4);
+    f.fread(edges, hdr.edges * 16);
+    for (unsigned int i = 0; i < hdr.nodes; i++) {
+        CGNode *n = CreateNode();
+
+        if (node)
+            node(this, n, true, nodes[i], data);
+    }
+    for (unsigned int i = 0; i < hdr.edges; i++) {
+        CGEdge *e = CreateEdge(GetNodeByIndex(edges[i].from), GetNodeByIndex(edges[i].to));
+
+        e->m_4 = edges[i].length;
+        if (edge)
+            edge(this, e, true, edges[i].data, data);
+    }
+    delete[] nodes;
+    delete[] edges;
+    return true;
 }
 
 /* a graph made (OVL1 0x2D0C00) */
@@ -108,6 +174,19 @@ CGraph::~CGraph()
     m_nodes.clear();
     m_edges.clear();
 }
+
+/* a node made and added at the end of the graph's list (OVL1 0x2D0930: SOCOM 1's
+ * CreateNode(const char *name) without the name -- SOCOM II's CGNode has none; CGraph::Read and
+ * the AI maps' graph builders call it with a1 unset). Pinned: Read calls it out of line */
+#pragma auto_inline off
+CGNode *CGraph::CreateNode()
+{
+    CGNode *node = new CGNode;
+
+    m_nodes.push_back(node);
+    return node;
+}
+#pragma auto_inline reset
 
 /* a node deleted: each of its edges taken out of the other end's list and the graph's and
  * deleted, then the node itself (OVL1 0x2D0780).
@@ -156,7 +235,8 @@ CGEdge *CGraph::CreateEdge(CGNode *a, CGNode *b)
     return edge;
 }
 
-/* the index'th node, none past the end (OVL1 0x2D0620) */
+/* the index'th node, none past the end (OVL1 0x2D0620; pinned: Read calls it out of line) */
+#pragma auto_inline off
 CGNode *CGraph::GetNodeByIndex(unsigned int index)
 {
     CGNodeList::iterator i = m_nodes.begin();
@@ -165,6 +245,7 @@ CGNode *CGraph::GetNodeByIndex(unsigned int index)
         ++i;
     return i == m_nodes.end() ? 0 : *i;
 }
+#pragma auto_inline reset
 
 /* the node standing for an object (OVL1 0x2D05A0) */
 CGNode *CGraph::GetNodeByNodeEx(const void *ex)
