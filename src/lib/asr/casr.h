@@ -138,7 +138,8 @@ typedef struct CASR {
     short uw_silence;                   /* +1016: the language's user-word silence phoneme */
     short pad1018;
     struct TRAINREC *trainrecs;         /* +1020: the training's records (train.c) */
-    char pad1024[24];
+    unsigned short nstates;             /* +1024: the training's states (train.c) */
+    char pad1026[22];
     void *train1048;                    /* +1048: freed by TrainFree */
     float f1052;                        /* +1052: 0.0001 (casrOpen) */
     int pad1056;
