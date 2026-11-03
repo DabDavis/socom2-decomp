@@ -731,6 +731,7 @@ public:
         /* the side it opens toward, 8 for none (the name ours: GetCellCenter's, out of line at
          * 0x516910) */
         DIR GetDir() const { return (DIR)m_offset; }
+        bool HasDirection() const { return m_direction != 8; }
         /* a door of either kind, 1 or 4 (the name ours: the A* search materialises the test, the
          * raw kind read once, before it branches) */
         bool IsDoor() const
