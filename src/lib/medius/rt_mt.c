@@ -28,9 +28,9 @@ extern MTState data_00655638;           /* SOCOM 1's gMT */
 
 extern char data_00665608[];            /* the 64 characters randomMTSetCharArray draws from */
 
-extern void func_00639058(unsigned long seed);
+extern void setNewSeed_platform(unsigned long seed);
 
-void func_00638CF0(uint32 seed)
+void seedMT(uint32 seed)
 {
     register uint32 x = (seed | 1U) & 0xFFFFFFFFU, *s = gMT.state;
     register int j;
@@ -39,7 +39,7 @@ void func_00638CF0(uint32 seed)
         ;
 }
 
-void func_00638D40(uint32 *pArray, unsigned int nLength)
+void seedMTUsingArray(uint32 *pArray, unsigned int nLength)
 {
     register uint32 x = 0xFFFFFFFFU, *s = gMT.state;
     register int j;
@@ -55,13 +55,13 @@ void func_00638D40(uint32 *pArray, unsigned int nLength)
     }
 }
 
-void func_00638DA8(void)
+void reloadMT(void)
 {
     register uint32 *p0 = gMT.state, *p2 = gMT.state + 2, *pM = gMT.state + M, s0, s1;
     register int j;
 
     if (gMT.index >= N + 1)
-        func_00639038(0x3579ABCDU);
+        setNewSeed(0x3579ABCDU);
 
     gMT.index = 0;
 
@@ -74,12 +74,12 @@ void func_00638DA8(void)
     s1 = gMT.state[0], *p0 = *pM ^ (mixBits(s0, s1) >> 1) ^ (loBit(s1) ? K : 0U);
 }
 
-uint32 func_00638F20(void)
+uint32 randomMT(void)
 {
     uint32 y;
 
     if (++gMT.index >= N)
-        func_00638DA8();
+        reloadMT();
 
     y = gMT.state[gMT.index];
     y ^= (y >> 11);
@@ -88,18 +88,18 @@ uint32 func_00638F20(void)
     return y ^ (y >> 18);
 }
 
-void func_00638FA8(char *pBuf, unsigned int nLength)
+void randomMTSetCharArray(char *pBuf, unsigned int nLength)
 {
     unsigned int i = 0;
 
     if (nLength != 0) {
         for (; i < nLength - 1; i++)
-            pBuf[i] = data_00665608[func_00638F20() & 0x3F];
+            pBuf[i] = data_00665608[randomMT() & 0x3F];
         pBuf[nLength - 1] = 0;
     }
 }
 
-void func_00639038(uint32 seed)
+void setNewSeed(uint32 seed)
 {
-    func_00639058(seed);
+    setNewSeed_platform(seed);
 }

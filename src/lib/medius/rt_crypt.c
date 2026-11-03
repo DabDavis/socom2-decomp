@@ -72,7 +72,7 @@ extern RSAKeyPair data_00676340;        /* the key pair of id -1 */
 extern void *memset(void *p, int c, unsigned int n);
 extern int rt_memory_allocate(void **ppMemory, unsigned long nSize);
 extern int rt_memory_free(void **ppMemory);
-extern unsigned int func_00638F20(void);
+extern unsigned int randomMT(void);
 extern void func_0062A5A8(RCState *pState, RCKey *pKey);
 extern void func_0062BC10(RSAKey *pPub, RSAKey *pPriv, void *pIn, void *pOut, int nLength);
 extern void func_0062BBE0(RSAKey *pKey, void *pIn, void *pOut, int nLength);
@@ -540,5 +540,5 @@ void KM_CreateRandomRCKey(RCKey *pKey)
 
     InitializePRNG();
     for (i = 0; i < 16; i++)
-        ((unsigned int *)pKey)[i] = func_00638F20();
+        ((unsigned int *)pKey)[i] = randomMT();
 }

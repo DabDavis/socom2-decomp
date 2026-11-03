@@ -12642,13 +12642,13 @@
 0x00638BF8 0x60 func_00638BF8  # OVL2 unaligned
 0x00638C58 0x38 func_00638C58  # OVL2 unaligned
 0x00638C90 0x60 func_00638C90  # OVL2
-0x00638CF0 0x4C func_00638CF0  # OVL2
-0x00638D40 0x64 func_00638D40  # OVL2
-0x00638DA8 0x178 func_00638DA8  # OVL2 unaligned
-0x00638F20 0x84 func_00638F20  # OVL2
-0x00638FA8 0x90 func_00638FA8  # OVL2 unaligned
-0x00639038 0x1C func_00639038  # OVL2 unaligned
-0x00639058 0x98 func_00639058  # OVL2 unaligned
+0x00638CF0 0x4C seedMT  # OVL2; s1:order (SOCOM 1's object at 0x410F10, first; Cokus's seeding: x*69069 over 624 words)
+0x00638D40 0x64 seedMTUsingArray  # OVL2; s1:order (second; the same seeding xoring an array in, as SOCOM 1's)
+0x00638DA8 0x178 reloadMT  # OVL2 unaligned; s1:order (third; Cokus's reload: K 0x9908B0DF, M 397, reseeds through setNewSeed past N+1)
+0x00638F20 0x84 randomMT  # OVL2; s1:order (fourth; Cokus's tempering 0x9D2C5680/0xEFC60000)
+0x00638FA8 0x90 randomMTSetCharArray  # OVL2 unaligned; s1:order (fifth; random characters from the 64-character alphabet, NUL-terminated)
+0x00639038 0x1C setNewSeed  # OVL2 unaligned; s1:order (sixth; hands the seed to setNewSeed_platform)
+0x00639058 0x98 setNewSeed_platform  # OVL2 unaligned; s1:order (its own object after MT's as SOCOM 1's at 0x411280; seeds from the time stamp, the time string and the four EE timers)
 0x006390F0 0x48 rt_mutex_create  # OVL2; s1:exact
 0x00639138 0x48 rt_mutex_destroy  # OVL2 unaligned; s1:exact
 0x00639180 0xA8 rt_mutex_lock  # OVL2; s1:exact
