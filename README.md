@@ -2109,6 +2109,42 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 10** (MW's register allocator read out, the 4-byte pod's
+  operator= and assign):
+  - READING MW'S REGISTER ALLOCATOR: gdb runs the compiler under wibo (break on wibo's
+    `thunk_kernel32_CreateFileA`, then software breakpoints in the PE). In mwccps2 3.0b52 the coloring
+    driver calls buildinterferencegraph 0x4BC7B0, simplifygraph 0x4C4480 and colorgraph 0x4C47F0 (exit
+    0x4C4962); the graph is an array of 30-byte nodes at `[0x5B63C4]` (next +0, the variable's Object +4,
+    index +0x10, colour +0x12, flags +0x14, degree +0x16, an edge list +0x1A whose records hold both
+    ends at +0xC/+0xE and each end's next at +4/+8), the class byte at 0x5B7F5D (0 = GPR),
+    used_virtual_registers at 0x5B6880, the blocks at `[0x5B639C]` (first instruction +0x14; opcode
+    +0x28, operand count +0x2A, 22-byte operands from +0x3C, register at +4) -- the release build's
+    `#pragma debug_listing` writes nothing (its listing function is a bare `ret`). The MSL lane's
+    build/p10/igdump.py (gdb Python) dumps every coloring: each virtual register's name (an Object's
+    HashNameNode, the string at +0xA), degree, neighbours, push order, colour and the pre-rewrite code;
+    igshow.py, igcode.py and igvar.py (a header variant's effect on one variable's degree) read it;
+  - the allocator is the decompiled PowerPC backend's (doldecomp/mweppc Coloring.c): virtual registers
+    are numbered arguments, then named locals in declaration order, then front-end temporaries
+    (`@N`: the inliner's and optimizer's -- an IR live-range split shows as one), then code-generation
+    temporaries; simplify pushes in ascending order every node of degree below K and colour pops the
+    stack, each node the lowest free volatile register (v0 first where it is free, then v1, a0 ...),
+    a nonvolatile (s0 up) only when none is; K = 25 (32 less zero, at, k0, k1, gp, sp, ra -- fp is
+    allocatable), so a node with 25 or more neighbours is deferred and coloured BEFORE the rest. That is
+    MW 3.0's "first-declared local gets the highest saved register" and every one-off register tell;
+  - the class insert's in-place end (include/vector's insert comment): e is a named local deferred at
+    degree >= 25, so it takes v1 ahead of the loop temporaries; the ELEMENT moves its degree by the GPR
+    temporaries its copy and assignment need at the four sites e spans (float members go through the
+    FPRs and add none). Here e has 30 neighbours for CMovieCue; the target's float-first 8-byte entries
+    need 24 or fewer and TypeRemoteGuy 25 or more, so the original template gives e 6-9 fewer
+    neighbours with identical instructions -- the shape that does is still open;
+  - include/vector's 4-byte pod has the char pod's out-of-class operator= (0x259AF0) and an assign with
+    init's word loop and MSL's "vector::assign length error" (0x259D20; the char pod's 0x393FB0 says
+    "vector length error"): both byte-exact as a probe, rows named -- what an implicit assignment of a
+    class holding pointer vectors calls (vector<LOD>'s insert 0x35E100, the UI variables' erase, the soft
+    keyboard's element vectors, zar_main.cpp's 0x259250, itself an unnamed class insert of a 24-byte
+    element holding two pointer vectors); no hand-written unit emits them yet;
+  - a code-exact instance can wait on its callee's row alone: AcctRecord's insert 0x2FE3E0 matched once
+    its copy constructor's row (0x2FEAD0) carried the name zNetMediusUniverse.cpp emits.
 - **Tells from completing the MSL headers, round 9** (the 1-byte pod vector<char>, basic_string::assign(const char *, n)):
   - MW reuses a pointer difference only when both are the same expression: the target recomputes
     `last - first` after an allocation, so its two lengths come from different expressions;
