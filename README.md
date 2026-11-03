@@ -4544,6 +4544,59 @@ large functions 0x6250D0-0x625690 not written) -- 85 functions byte-exact, 51 ne
 byte-exact rows (9,600 bytes), 34 superseding matching drafts; 2 data rows (nSeed, nTimerStart,
 ours); one row resized (0x60FFF8). No tool changed.
 
+**Round 10c: the gsapi object whole, and the small block functions.**
+
+- **A redefined `extern __inline__` is output at the end of its file, and inlined in its new form
+  after it.** SOCOM 1's gsapi object ends with a real CheckEngineHandle; SOCOM II's callers inline
+  it, and the map's func_004C8C38 (after StopListening, called by nothing) is SOCOM 1's function --
+  so gsapi.h carries the GNU `extern __inline__` body and gsapi.c the real one, which 2.96 defers
+  to the end of the object as an inline's out-of-line copy (a probe: defined anywhere, it comes out
+  last). Defined in the source just before gsapi_NotifySetEnergyInterval, its own early-return body
+  is what the two functions after it inline -- the result zeroed again after the base test, the
+  round-3b diagnosis of NotifySetEnergyInterval and EngineSetUserData, open since: both byte-exact
+  now, with every earlier caller keeping the extern inline's single-result form. And the two
+  SOCOM II functions after CheckEngineHandle (0x4C8CB8, 0x4C8D10) are therefore another object:
+  `gsapi2.c` (ours), inlining the header's form.
+- **The gsapi object's data are SOCOM 1's globals** (`data.txt`, `s1:data`): AsrSpiSignalCallBacks
+  and AsrSpiRecogCallBacks (the asrspi_cb object's .data: the engine start sets or clears the
+  energy and SNR callbacks), MAXRECOGNIZERS and DEFAULTENERGYINTERVAL (4 and 500, the shorts
+  func_004C8CB8 resets), the .rodata's szGSAPIVersion ("Game Speech API V2.02.01 for Sony
+  PlayStation2", SOCOM 1's "GAME ASDK ... 1.00.02") and TranslateParamTable (18 asrspi ids, 255
+  none: ActivateDefaultParams and the translator read it).
+- **The vendor reads its default parameters through a null pointer**: gsapi_LanguageLoadBuffer
+  copies the engines' defaults from a block it never sets (`lw v1,8(zero)`, values from 12).
+- **ScanSoft's shapes, measured**: a guard on the stored status, then `return status = f()`
+  (RestartEngine; the `>= 0` test with one return reloads); the start's two calls with the error
+  copied in the `< 0` arm (`err = status`) so the join's own test is not threaded; nested tests
+  with one `return err` where a call must not be a sibling call (EngineSetImmediateContext:
+  guard clauses tail-call ContextActivate); a `switch (state) { case 0: break; case 1: ... }`
+  where `== 0` returned early lets CSE drop the target's `move v0,zero` (ProcessAudio); a block's
+  control `break`s to one shared `return 1`, its error path returning its own (the FFT, window
+  controls); stores by `tools/ccperm.py` (the engine open's five, ResetGender's four, the
+  window's three).
+- **Names, each a call site or a slot**: Subsampler_Reset (SOCOM 1's Voicing_Reset tail-calls it
+  at the same point, the body its own with the fields 4 bytes lower), InitVoicing,
+  Voicing_MaintainNoiseEner, Voicing_AddSignal (one caller each, as SOCOM 1's), ProcessFFTMod,
+  InitFFTMod, ProcessWindow, InitWindow, CombinerProcess (their constructors' slots, SOCOM 1's
+  LOCALs in the same objects).
+- **Open, diagnosed in place**: gsapi_EngineStop (2 words longer: GCSE's PRE keeps the stop's
+  e->audio load for the external-audio branch -- byte-exact only under
+  `-fno-expensive-optimizations`, which costs two other functions), gsapi_LanguageLoadBuffer (37,
+  the right size: the copy loop's source pointer starts at 12 where here 12 is the loads'
+  displacement), func_004C8D10 (11: id and gGSAPI's address swap s1/s2). Tried without result:
+  casrGetLastError's movz through the handle inline, six caller shapes (C4, the nested `?:`,
+  comes out the right size).
+
+Hand-written in round 10c: `asr/gsapi.c` (47 of 49: 22 new, the two round-3b opens closed, 3 over
+their drafts -- gsapi_GetNumContextsLoaded, func_004C8890, TranslateGsapiParamId2AsrSpiParamId),
+`asr/gsapi2.c` (1 of 2, new: func_004C8CB8 moved from gsapi.c), `asr/voicing.c` (2 of 2 written,
+new: Voicing_Reset, Voicing_Free over its draft), `asr/gender.c` (2: ResetGender, ConstructGender
+over its draft), `asr/fftmod.c` (2, new), `asr/window.c` (2: ControlWindow, ConstructWindow over its
+draft), `asr/vad.c` (ConstructVad), `asr/mtx.c` (+1, imtxInit) -- 31 rows new to the map's
+byte-exact rows (7,500 bytes), 6 superseding matching drafts; `src/lib/asr` 362 of 396 (325 of 358
+before). 10 rows named, 6 data rows. No tool changed (ccperm's `-I` gap was worked round with an
+absolute include; master's round 10a fixed it).
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
