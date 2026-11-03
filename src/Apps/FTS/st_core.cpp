@@ -48,7 +48,20 @@ public:
 class CEntity {
 public:
     static bool PreTickAll(float dT, void *data);
+    static bool TickAll(float dT, void *data);
+    static bool PrePostTickAll(float dT, void *data);
+    static bool PostTickAll(float dT, void *data);
 };
+
+/* the AI's event tick and route planner (the AI core's tick tasks) */
+class CAiEvent {
+public:
+    static bool Tick(float dT, void *data);
+};
+
+namespace ai {
+bool TickPathPlanner(float dT, void *data);
+}
 
 const char *GetDatabase();
 
@@ -68,7 +81,6 @@ void func_003B0B90(int a, int b, int w, int h);
 void func_003B09E0(int a, int b, int w, int h);
 void func_00592CA0(void *control);
 void func_003466F0();
-CZSealBody *func_002B3580();                     /* ftsGetPlayer */
 
 }
 
@@ -82,17 +94,11 @@ void func_0033B420(CPipe *pipe, zdb::CTexHandle *tex);
 /* the tick tasks (SOCOM 1's in the comments, where it had them) */
 bool func_005CCCD0(float dT, void *data);        /* CSealCtrlAi::PreTick */
 bool func_003D1F90(float dT, void *data);        /* CZWeapon::PreTick */
-bool func_0050ECD0(float dT, void *data);        /* CAiEvent::Tick */
-bool func_0029F430(float dT, void *data);        /* CEntity::TickAll */
 bool func_0054F570(float dT, void *data);
-bool func_0029F350(float dT, void *data);        /* CSealCtrlAi::PrePostTick's place */
 bool func_0060BC40(float dT, void *data);
-bool func_0029F1A0(float dT, void *data);        /* CEntity::PostTickAll */
 bool func_003D1F50(float dT, void *data);        /* CZWeapon::PostTick */
-bool func_00510570(float dT, void *data);        /* ai::TickPathPlanner */
 bool func_0060B8F0(float dT, void *data);
 bool func_005CCA30(float dT, void *data);        /* CSealCtrlAi::PostTick */
-bool func_00299C10(float dT, void *data);
 
 }
 
@@ -115,6 +121,7 @@ void func_0032C2B0(const char *name, const char *path);   /* CRdrArchive::Remove
 }
 
 void ftsSetPlayer(CZSealBody *seal);
+CZSealBody *ftsGetPlayer();
 
 /* zdb's task scheduler: a list of tasks (SOCOM 1's DWARF: 0x20 bytes) */
 class CSched_Manager {
@@ -516,7 +523,7 @@ void CCinematicState::UnInit()
         _free(m_moviename, 0, 0);
     m_moviename = 0;
     func_003B1760(0, 0, 0, 1.0f);
-    CZSealBody *player = func_002B3580();
+    CZSealBody *player = ftsGetPlayer();
     void *control = player ? player->m_control : 0;
 
     if (control)
@@ -561,7 +568,7 @@ void CCoreState::OnPop(int userdata)
         func_001F1820(1.0f);
         theMission.ReOpen_Load();
         func_002A7D40(&theMission);
-        func_001F1870(func_002B3580());
+        func_001F1870(ftsGetPlayer());
         func_001FB420(m_hud);
     }
     zVid_Sync0();
@@ -614,25 +621,25 @@ bool CCoreState::Init()
         func_001FA360(&h, m_world);
         func_001F1840(&h);
     }
-    func_001F1870(func_002B3580());
+    func_001F1870(ftsGetPlayer());
     func_0032C4F0();
     func_0032C2B0("readerm.zar", GetDatabase());
     zTaskScheduler.AddTask("UnitTick", CSealUnit::TickAll, 0.8f, 0);
     zTaskScheduler.AddTask("ai_pre_tick", func_005CCCD0, 0.9f, 0);
     zTaskScheduler.AddTask("entity_pre_tick", CEntity::PreTickAll, 1.0f, 0);
     zTaskScheduler.AddTask("weapon_pre_tick", func_003D1F90, 3.0f, 0);
-    zTaskScheduler.AddTask("CAiEventTick", func_0050ECD0, 4.5f, 0);
-    zTaskScheduler.AddTask("entity_tick", func_0029F430, 4.6f, 0);
+    zTaskScheduler.AddTask("CAiEventTick", CAiEvent::Tick, 4.5f, 0);
+    zTaskScheduler.AddTask("entity_tick", CEntity::TickAll, 4.6f, 0);
     zTaskScheduler.AddTask("body_collide_tick", func_0054F570, 4.65f, 0);
-    zTaskScheduler.AddTask("entity_preposttick", func_0029F350, 4.7f, 0);
+    zTaskScheduler.AddTask("entity_preposttick", CEntity::PrePostTickAll, 4.7f, 0);
     zTaskScheduler.AddTask("target_pretick", func_0060BC40, 4.8f, 0);
-    zTaskScheduler.AddTask("entity_post_tick", func_0029F1A0, 6.0f, 0);
+    zTaskScheduler.AddTask("entity_post_tick", CEntity::PostTickAll, 6.0f, 0);
     zTaskScheduler.AddTask("weapon_post_tick", func_003D1F50, 8.0f, 0);
-    zTaskScheduler.AddTask("ai_route_planner", func_00510570, 10.5f, 0);
+    zTaskScheduler.AddTask("ai_route_planner", ai::TickPathPlanner, 10.5f, 0);
     zTaskScheduler.AddTask("target_post_tick", func_0060B8F0, 10.6f, 0);
     zTaskScheduler.AddTask("ai_posttick", func_005CCA30, 10.7f, 0);
     zTaskScheduler.AddTask("sound_post_tick", CSnd::PostTick, 11.0f, 0);
-    zTaskScheduler.AddTask("appCamera_tick", func_00299C10, 12.0f, 0);
+    zTaskScheduler.AddTask("appCamera_tick", CAppCamera::TickTask, 12.0f, 0);
     appCamera->m_camera->GetLandmarkFarPlane(m_world);
     std::vector<zdb::CNode *> &nodes = m_world->m_nodes;
     unsigned int n = nodes.size() + 300;
@@ -710,7 +717,7 @@ bool CCoreState::Tick(float dT)
     func_003B1160(1);
     hide = appCamera->m_camera_mode == 3;
     pEntNode = func_0029ED20(appCamera->m_bc);
-    CZSealBody *player = func_002B3580();
+    CZSealBody *player = ftsGetPlayer();
     void *control = player ? player->m_control : 0;
 
     if (!hide && control && ((unsigned char *)control)[0x221] == 5)

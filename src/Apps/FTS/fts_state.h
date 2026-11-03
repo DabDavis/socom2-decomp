@@ -692,6 +692,7 @@ class CZSealBody;
 class CAppCamera {
 public:
     void ResetDeathCam();   /* 0x299150 (st_mpexit.cpp's call) */
+    static bool TickTask(float dT, void *data);   /* the scheduler's appCamera_tick */
 
     unsigned char _0[0xb4];
     zdb::CCamera *m_camera;   // 0xb4
