@@ -14,6 +14,7 @@
 #include <string>
 #include "zui.h"
 #include "zui_skb.h"
+#include "../znode/znode.h"
 
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 
@@ -41,8 +42,17 @@ struct CSkbBmpRows {
 
 /* the keyboards' shared display (0x49ED70 on; the names ours) */
 static CSkbBmpRows s_keyRows;
-/* the text typed so far (0x4A0A30; a mode byte follows at 0x4A0A60) */
+/* the caption's three texts: plain, and the two modes' (0x4A08F0, 0x4A0930, 0x4A09B0) */
+static char s_captionText0[0x40];
+static char s_captionText1[0x80];
+static char s_captionText2[0x80];
+/* the name of the UI variable the typed text goes to (0x4A0A30) */
 static char s_editText[0x30];
+/* the caption's mode: 0 plain, 1 or 2 the modes 0x394840 and 0x394920 toggle (0x4A0A60) */
+enum CAPTIONMODE { CAPTION_PLAIN, CAPTION_1, CAPTION_2 };
+static CAPTIONMODE s_captionMode;
+/* the caption's node (0x4A1118) */
+static zdb::CNode *s_captionNode;
 static CBmpWithNode s_bmp0;
 static CBmpWithNode s_bmp1;
 static CBmpWithNode s_bmp2;
@@ -88,3 +98,47 @@ CIntPair ReadIntPair(_zrdr *rdr, const char *tag)
     return CIntPair(a, b);
 }
 #pragma auto_inline reset
+
+/* the caption's node placed at the keyboard's second cap's position, raised by dy (ours: the
+ * 0.0f a caller passes is still added) */
+static inline void PlaceCaption(CSoftKeyboard *skb, float dy)
+{
+    s_captionNode->SetPosition((float)skb->m_caps[1].m_0, dy + (float)skb->m_caps[1].m_4, 0.0f);
+}
+
+/* the caption's text set (a virtual call on the static: MW does not devirtualise it) */
+static inline void SetCaption(const char *text)
+{
+    s_caption.SetString(text, true);
+}
+
+/* the caption's mode 2 toggled: its text, then its place (0x394920; the name ours) */
+void SkbToggleCaption2(CSoftKeyboard *skb)
+{
+    bool on = s_captionMode != CAPTION_2;
+
+    s_captionMode = on ? CAPTION_2 : CAPTION_PLAIN;
+    SetCaption(on ? s_captionText2 : s_captionText0);
+    PlaceCaption(skb, 0.0f);
+}
+
+/* how far mode 1 raises the caption: the look's float at 0x64, or nothing (ours) */
+static inline float CaptionRaise(CSoftKeyboard *skb, bool on)
+{
+    return on ? *(float *)&skb->m_64 : 0.0f;
+}
+
+/* the caption's mode 1 toggled: its place (raised by the look's float at 0x64 when on), then its
+ * text; whether it is on now (0x394840; the name ours) */
+bool SkbToggleCaption1(CSoftKeyboard *skb)
+{
+    bool on = s_captionMode != CAPTION_1;
+
+    s_captionMode = on ? CAPTION_1 : CAPTION_PLAIN;
+    int x = skb->m_caps[1].m_0, y = skb->m_caps[1].m_4;
+    float dy = CaptionRaise(skb, on);
+
+    s_captionNode->SetPosition((float)x, dy + (float)y, 0.0f);
+    SetCaption(on ? s_captionText1 : s_captionText0);
+    return on;
+}
