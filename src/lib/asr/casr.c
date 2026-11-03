@@ -543,7 +543,8 @@ int casrGetParam(CASR *c, int id, unsigned int *value)
  * of v0 at the fall-through. SOCOM 1's copy tests a copy (`move v1,v0; bnez v1`). Tried: the return
  * as unsigned char/int/long/short, _tosControl as int/unsigned char/signed char/unsigned short, every
  * error exit a `return 1` or one `goto error`, the else-if and nested forms (build/scratch/gcc/p/
- * s_ues*.py, 30 spellings: 1 to 44s). */
+ * s_ues*.py, 30 spellings: 1 to 44s); no switch of 2.96-ee-001003-1 moves it either (round 12c's
+ * build/scratch/gcc-r12c/bnez_sweep.sh): a later SCE 2.96's reorg. */
 static unsigned char UpdateExevStatus(CASR *c)
 {
     if (c->exev != 0 && c->lng->CheckBitField(c->lng, 64)) {

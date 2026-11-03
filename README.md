@@ -5006,6 +5006,79 @@ Subsampler_CheckImpulseResponse, ScoreCompare@isowdp, ScoreCompare@nbestdp, Cons
 smtDestruct (`s1:calls`: SOCOM 1's FreeResourcesAcne tail-calls it where ControlAcne's inlined copy
 calls 0x4F80A8). No tool changed.
 
+**Round 12c: gender.c's half, the DCT lift, the pitch window, the bnez/bnezl word settled as a
+toolchain question.**
+
+- **Three block objects are built with `-ffast-math`** -- window.c's (round 11c), and now the DCT
+  lift's and the gender classifier's. ProcessDCTLift's DCT stores `c * p` over the 0 it has just
+  stored in each row's first preconditioned step (`0 + x` folded, which 2.96 does only without IEEE
+  semantics: 78 words longer without); GenderDataCompute inlines `sqrtf` as a bare `sqrt.s` (no
+  errno test and library call) and folds each distance loop's first step (`d = t * t`, 362 words
+  off without). The objects' other functions compile the same either way, and so do the pitch DP
+  and pitch window objects: a unit's directive says it, not the library's.
+- **A static `__inline__` between two callers, as round 11c predicted**: ControlGender (above it)
+  calls ResetGender twice, InitGender (below it) holds its body, and its own copy, deferred, comes
+  out after ConstructGender -- all three byte-exact, ResetGender's match kept.
+- **An inlined function's `unsigned char` return is zero-extended once, at the join**: command 1
+  of ControlGender (the codebook's dimensions, then `_tosErrorLog(g, 102)` or the language kept) is
+  a `static __inline__` returning the scheduler's error; the target's one `andi` at the join of its
+  two returns, which the error arm's `b` copies into its slot, comes only so (an `unsigned char`
+  local assigned in both arms needs none; `(unsigned char)err == 0` on an int also matches, the
+  inline is the vendor's shape). The `andi` on GetCompStart's result is an int accessor stored
+  through `(unsigned char)` into a short.
+- **A variable incremented in place keeps its register**: GenderSelection's 1-based gender is
+  `best++` on both paths -- the target's `addiu s2,s2,1` in three branch-likely slots; `best + 1`
+  takes another register (21-40 words) -- and the fixed path's three stores in one of two orders
+  of six (`tools/ccperm.py`). Its byte table is SOCOM 1's function-local `ControlID_Disable.27`.
+- **Two variables where one value has two uses**: InitDCTLift copies n into a second saved
+  register for the coefficient matrix's allocation (`nrows`; one variable, 35 words); integers
+  reach its double arithmetic through `float` (`(float)i * PI`: the unsigned halving trick's
+  SFmode target, then `fptodp`), and PI is spelled twice -- two pool entries, as SOCOM 1's.
+- **Shapes, each measured**: a block-local `t` for a squared difference (a function-level one takes
+  another FPR for `t * t`, 65 words); a count read through its field (`g->f80++`, then
+  `1.0f / g->f80`: a local keeps it in another register); an index table read as `*idx` with
+  `idx++` at the iteration's end (`idx[k]` and `*idx++` move the count-down loop's registers); a
+  dictionary entry as a pointer local (`e = dict + *p; *e |= 2`: indexing gives the address sum's
+  operands the other way round, 62 words); a list walked as `for (; bt->next != 0; bt =
+  bt->next)` (a `next` variable copies the test's load differently); a score's nonzero arm first.
+  2.96 leaves Set_EndBackTraceMask_In_StateDict's setting loop rolled where SOCOM 1's compiler
+  unrolled both. The pitch window's Hamming doubles are plain `0.54`, `0.46`, `2 * 3.14159...`
+  (2.96 lands each an ulp low, on the target's bits); ProcessPitchDP copies the block header
+  through a second pointer (`TOSBLOCK *b = &p->b`: the target's `move s6,s0`); an early exit that
+  must reach a shared `return ret` is a `goto` (a second `return ret` is constant-propagated to
+  `return 0`: FlushPitchDP); PostDP's index offset parenthesised, `k + (lookahead - overlap)`.
+- **THE bnez/bnezl WORD IS A TOOLCHAIN QUESTION, NOT A FLAG**: every optimisation switch this
+  cc1 (2.96-ee-001003-1, the only 2.96 build in this tree or EQOA's) knows -- thread-jumps,
+  cse-follow-jumps/skip-blocks, gcse(-lm/-sm), rerun-cse-after-loop, rerun-loop-opt,
+  expensive-optimizations, regmove, strength-reduce, peephole(2), caller-saves, force-mem/addr,
+  defer-pop, schedule-insns(2), sched-interblock/spec/spec-load, optimize-register-move,
+  reorder-blocks, branch-count-reg, function-cse, move-all-movables, reduce-all-givs,
+  delayed-branch, align-jumps/labels, optimize-comparisons (`build/scratch/gcc-r12c/bnez_sweep.sh`) --
+  toggled one at a time on tosCallControlFunc, cbDoUserWordTraining and UpdateExevStatus leaves
+  each at its one word or worse. The target's reorg puts the branch target's `move v0,...` in an
+  unannulled slot because the fall-through's call kills v0; this build's resource scan does not
+  see it. With round 4a's runtime compiler (a 2.96 whose integer code is these toolchains' but
+  not this build), the second sign of a later SCE 2.96 release; the three stay OPEN until one is
+  found.
+- **Data** (`s1:data`): g_SpeechMeanInit11kHz (0x659230) and g_NoiseFloors11kHz (0x659288), SOCOM
+  1's LOCALs, 21 floats each, SOCOM 1's to the ulp (12 an ulp low: 2.96's parser on the same
+  decimals) after the same 200.0f and 50; Smoother1600Info11kHz (0x65A3E0), SOCOM 1's GLOBAL,
+  three {table, 21, 10} entries, its tables at the same distances (acne.c spells it by name).
+- **Open, diagnosed in place**: GenderDataCompute (93 words, the right size: the frame and
+  codeword walkers take each other's register in both stages -- declaration order and scope, the
+  setup's 24 orders, while/for and new second-stage pointers tried), and the pitch DP's six
+  (Actual_DP and InitPitchDP: one more value kept live in the target; BackTracking, ProcessPitchDP,
+  InitJumpFactors: registers only; ControlPitchDP: ten independent stores, past ccperm's reach).
+
+Hand-written in round 12c: `asr/gender.c` (+3: ControlGender, InitGender, GenderSelection; 5 of 6
+written, ProcessGender not), `asr/dctlift.c` (4 of 4, new), `asr/pitchwin.c` (5 of 5, new),
+`asr/pitchdp.c` (3 of 9, new), `asr/casr.c` (+1, Set_EndBackTraceMask_In_StateDict; 45 of 54),
+`asr/dpgenuw.c` (+1, SendResultUserWords; 8 of 9) -- 17 functions byte-exact, 13 rows new to the
+map's byte-exact rows (7,868 bytes), four superseding matched drafts (ConstructDCTLift,
+ControlDCTLift, ConstructPitchWindow, ConstructPitchDP). 8 rows named (`s1:order`, each with the
+constructor's slot or its one caller: InitDCTLift, ConstructDCTLift, ProcessDCTLift, PostDP,
+ControlPitchDP, InitJumpFactors, InitPitchDP, InitPitchWindow), 3 data rows. No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
