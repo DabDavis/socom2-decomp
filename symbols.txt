@@ -2396,23 +2396,23 @@
 0x00245CD0 0xA8 func_00245CD0  # OVL1
 0x00245D78 0xE8 sceInetName2Address  # OVL1 unaligned; s1:callee
 0x00245E60 0xA4 sceInetAddress2String  # OVL1; s1:callee
-0x00245F08 0xE4 func_00245F08  # OVL1 unaligned
-0x00245FF0 0x74 func_00245FF0  # OVL1
-0x00246068 0x48 func_00246068  # OVL1 unaligned
-0x002460B0 0x48 func_002460B0  # OVL1
-0x002460F8 0xC8 func_002460F8  # OVL1 unaligned
-0x002461C0 0x110 func_002461C0  # OVL1
-0x002462D0 0xA8 func_002462D0  # OVL1
-0x00246378 0xE4 func_00246378  # OVL1 unaligned
-0x00246460 0x48 func_00246460  # OVL1
-0x002464A8 0xB0 func_002464A8  # OVL1 unaligned
-0x00246558 0x90 func_00246558  # OVL1 unaligned
-0x002465E8 0xB0 func_002465E8  # OVL1 unaligned
-0x00246698 0xA0 func_00246698  # OVL1 unaligned
-0x00246738 0x90 func_00246738  # OVL1 unaligned
-0x002467C8 0x44 func_002467C8  # OVL1 unaligned
-0x00246810 0x94 func_00246810  # OVL1
-0x002468A8 0x40 func_002468A8  # OVL1 unaligned
+0x00245F08 0xE4 sceInetAddress2Name  # OVL1 unaligned; s1:order (the demo's libnet object 0x4223A0: after sceInetAddress2String as here; RPC 18, its name copied back as Address2String's)
+0x00245FF0 0x74 sceInetCreate  # OVL1; s1:order (the demo's libnet object: after sceInetAddress2Name; RPC 1) and s1:callee (sceBInetCreate calls it where the demo's calls sceInetCreate)
+0x00246068 0x48 sceInetOpen  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetCreate; RPC 2)
+0x002460B0 0x48 sceInetClose  # OVL1; s1:order (the demo's libnet object: after sceInetOpen; RPC 3)
+0x002460F8 0xC8 sceInetRecv  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetClose; RPC 4)
+0x002461C0 0x110 sceInetRecvFrom  # OVL1; s1:order (the demo's libnet object: after sceInetRecv; RPC 13)
+0x002462D0 0xA8 sceInetSend  # OVL1; s1:order (the demo's libnet object: after sceInetRecvFrom; RPC 5)
+0x00246378 0xE4 sceInetSendTo  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetSend; RPC 14)
+0x00246460 0x48 sceInetAbort  # OVL1; s1:order (the demo's libnet object: after sceInetSendTo; RPC 15)
+0x002464A8 0xB0 sceInetControl  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetAbort; RPC 19) and s1:callee (sceBInetControl calls it as the demo's calls sceInetControl)
+0x00246558 0x90 sceInetGetInterfaceList  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetControl; RPC 8)
+0x002465E8 0xB0 sceInetInterfaceControl  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetInterfaceList; RPC 9)
+0x00246698 0xA0 sceInetGetRoutingTable  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetInterfaceControl; RPC 10)
+0x00246738 0x90 sceInetGetNameServers  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetRoutingTable; RPC 11)
+0x002467C8 0x44 sceInetChangeThreadPriority  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetNameServers; RPC 12, one word in)
+0x00246810 0x94 sceInetGetLog  # OVL1; s1:order (the demo's libnet object: after sceInetChangeThreadPriority; RPC 17)
+0x002468A8 0x40 sceInetAbortLog  # OVL1 unaligned; s1:order (the demo's libnet object: after sceInetGetLog; RPC 16, nothing sent)
 0x002468E8 0x44 func_002468E8  # OVL1 unaligned
 0x00246930 0x44 func_00246930  # OVL1
 0x00246978 0x44 func_00246978  # OVL1 unaligned
