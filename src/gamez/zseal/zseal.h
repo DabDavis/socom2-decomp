@@ -165,6 +165,8 @@ public:
 class CAiMaps {
 public:
     bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    /* a cell's map (ai_maps.h's, OVL2 0x52E6B0) */
+    class CAiMap *GetMapByIndex(unsigned int i) const;
 };
 
 extern CAiMaps AiMaps;
@@ -635,7 +637,8 @@ public:
     signed char m_3e0;   // 0x3e0
     unsigned char _3e1[0x3e4 - 0x3e1];
     unsigned char m_3e4[0x10];   // 0x3e4
-    unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
+    /* a mode (7 keeps the AI-map collision off; the name ours): an AI_MODE, copied with lb (0x557F60) */
+    AI_MODE m_3f4;   // 0x3f4
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
     unsigned char _3f6[0x400 - 0x3f6];
     /* a Navy SEAL's anger at the player: Tick and OnDeath raise it by 60 a second, 0x561B90 cools it

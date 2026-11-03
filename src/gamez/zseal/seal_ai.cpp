@@ -369,7 +369,7 @@ void CSealCtrlAi::Initalize()
 
     if (alive)
         SetValveValue(alive, 1);
-    m_3f4 = 1;
+    m_3f4 = (AI_MODE)1;
 }
 
 /* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
@@ -1034,6 +1034,54 @@ void CSealCtrlAi::SetDesiredStance(SEAL_STANCE stance, float delay, bool force)
         ((CZSealBody *)m_entity)->m_desiredStance = stance;
         m_stance_timer.Set(delay);
     }
+}
+
+extern "C" {
+/* the side a found cell faces from its direction (OVL2 0x55FA90, not written yet) */
+unsigned char func_0055FA90(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir);
+}
+
+/* a cell to look from, and one to take cover in, near the SEAL's last good cell (its map's
+ * FindLookLoc and FindCoverLoc): the side it faces handed back, 2 when none is found (OVL2 0x55F7F0
+ * and 0x55F940, new in SOCOM II: CAiSPursue::Tick calls both; the names unknown).
+ * OPEN, both 27 instructions, registers only (the code and its size right): the target numbers the
+ * result lowest and the map highest -- map s0, radius s1, side s2, out s3, pos s4, found s5 -- where
+ * MW here gives the map s5 and shifts the parameters down one. Tried: the flag declared first, every
+ * local declared first and assigned after, the call made in the test. Its being numbered below the
+ * parameters says the flag is not a plain local: an inline (the two finders' common body, the
+ * finder its only difference?) is the next thing to try */
+extern "C" bool func_0055F940(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc &out, unsigned char *side,
+                              int radius)
+{
+    CAiMapLoc loc(ai->m_entity->m_mapLocValid);
+    CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+    bool found = false;
+    CAiMap::DIR dir = CAiMap::DIR_COUNT;
+
+    *side = 2;
+    if (map) {
+        found = map->FindCoverLoc(loc, pos, out, dir, radius);
+        if (found)
+            *side = func_0055FA90(map, out, dir);
+    }
+    return found;
+}
+
+extern "C" bool func_0055F7F0(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc &out, unsigned char *side,
+                              int radius)
+{
+    CAiMapLoc loc(ai->m_entity->m_mapLocValid);
+    CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+    bool found = false;
+    CAiMap::DIR dir = CAiMap::DIR_COUNT;
+
+    *side = 2;
+    if (map) {
+        found = map->FindLookLoc(loc, pos, out, dir, radius);
+        if (found)
+            *side = func_0055FA90(map, out, dir);
+    }
+    return found;
 }
 
 /* CAiSPursue's slot 0x14 (new in SOCOM II): the pursuit stops unless the AI's object says so,
@@ -1967,6 +2015,65 @@ extern "C" bool func_00556280(CCellWalk *w, CCellGather *g)
         g->m_found = 1;
     }
     return !same;
+}
+
+/* an alert's level record (the names ours: 0x558030, 0x5582C0 and 0x558440 keep one each) */
+struct CAlertLevel {
+    float m_time;   // 0x0: when the level was raised, on the game's clock
+    float m_amount;   // 0x4
+    unsigned char m_level;   // 0x8
+    unsigned char _9[0xc - 0x9];
+    int m_c;   // 0xc: cleared on any change
+    unsigned char _10[0x14 - 0x10];
+    AI_MODE m_mode;   // 0x14: the AI's mode at the change, 1 without an AI
+};
+
+extern "C" {
+/* how fast a level decays (OVL2 data 0x6504C0, read as a variable) */
+extern float data_006504C0;
+}
+
+/* a level raised: the same one adds to the amount (2), a higher one takes over (1); level 0 decays
+ * the amount and drops the level at zero (1); any change clears the word at 0xC (OVL2 0x557F60, new
+ * in SOCOM II; the name unknown) */
+/* what a raise did (a byte enum: assigned with li, its test narrowed; the names ours) */
+enum ALERT_CHANGE { ALERT_NONE = 0, ALERT_SET = 1, ALERT_ADDED = 2 };
+
+extern "C" ALERT_CHANGE func_00557F60(CAlertLevel *a, CSealCtrlAi *ai, unsigned char level, float amount)
+{
+    ALERT_CHANGE r = ALERT_NONE;
+
+    if (a->m_level == level) {
+        a->m_amount += amount;
+        a->m_mode = ai ? ai->m_3f4 : (AI_MODE)1;
+        r = ALERT_ADDED;
+    } else if (level == 0) {
+        a->m_amount -= amount * data_006504C0;
+        if (a->m_amount <= 0.0f) {
+            a->m_amount = 0.0f;
+            r = ALERT_SET;
+            a->m_level = 0;
+        }
+    } else if (a->m_level < level) {
+        a->m_level = level;
+        a->m_amount = amount;
+        a->m_time = data_004365C0;
+        a->m_mode = ai ? ai->m_3f4 : (AI_MODE)1;
+        r = ALERT_SET;
+    }
+    if (r != ALERT_NONE)
+        a->m_c = 0;
+    return r;
+}
+
+/* whether a map's cell (its first layer's) lies inside: CAiMap::GetCell inlined one level, its pieces
+ * the calls ai.h names (OVL2 0x5561C0, new in SOCOM II: the grenade state's Tick, 0x565460 and the
+ * AI states call it; the name unknown) */
+extern "C" bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc)
+{
+    CAiCell *cell = map->GetCell(loc, 0);
+
+    return cell ? cell->IsInside() : false;
 }
 
 extern "C" {
