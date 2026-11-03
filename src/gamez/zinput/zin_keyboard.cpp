@@ -10,15 +10,16 @@
 
 #include "zinput.h"
 
-/* the keyboard library's calls (MAIN, not named yet: its set-up, read mode, key repeat, teardown,
- * information and synchronisation, by their use here) */
+/* the keyboard library's calls (MAIN: Sony's libusbkb -- GetInfo and Read named by their own
+ * messages; the rest not yet named: its set-up, read mode, key repeat, teardown and
+ * synchronisation, by their use here) */
 extern "C" int func_001BE6A0(int *maxConnect);
 extern "C" int func_001BEDE8(int no, int mode);
 extern "C" int func_001BEDA0(int no, int sta, int interval);
 extern "C" int func_001BE898();
-extern "C" int func_001BE960(void *info);
+extern "C" int sceUsbKbGetInfo(void *info);
 extern "C" int func_001BEE88(int mode, int *result);
-extern "C" int func_001BEA08(int no, void *data);
+extern "C" int sceUsbKbRead(int no, void *data);
 
 /* a key read this frame: its code, and the shift, control and alt keys and the caps lock light
  * (SOCOM 1's KeyInput, not in its DWARF; 32 bytes, as the reader clears it -- the names ours) */
@@ -85,12 +86,12 @@ int GetKeyReadThisFrame(KeyInput *key)
         unsigned char info[136];
 
         memset(info, 0, sizeof info);
-        func_001BE960(info);
+        sceUsbKbGetInfo(info);
         result = 0;
         func_001BEE88(0, &result);
         if (!info[8])
             return 0;
-        func_001BEA08(0, &kbdData);
+        sceUsbKbRead(0, &kbdData);
         done = 0;
         func_001BEE88(0, &done);
         if (done)
@@ -116,7 +117,7 @@ bool KeyboardAttached()
     unsigned char info[136];
 
     memset(info, 0, sizeof info);
-    func_001BE960(info);
+    sceUsbKbGetInfo(info);
     result = 0;
     func_001BEE88(0, &result);
     return info[8] != 0;
