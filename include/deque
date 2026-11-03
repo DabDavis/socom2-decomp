@@ -66,7 +66,32 @@
  * after the same four this-tests -- which needs make_iterator and destroy below it, in __deque_buf).
  * make_iterator: begin() of the buffer in class makes it 0xB8 (all scalarised), its copy kept in memory
  * by `return t += n` in operator+ 0x100; the target keeps begin()'s object in memory too (0x130/0x138) --
- * neither a user copy constructor nor a member operator- does it. */
+ * neither a user copy constructor nor a member operator- does it.
+ *
+ * The MSL headers' round 14 (probes build/p14/, untracked; mi1.py, it1.py): MAKE_ITERATOR, MEASURED, NOT
+ * APPLIED -- the buffer's begin() in class returning its temporary (`return iterator(...)`) and operator+
+ * as `{ iterator t(*this); return t += n; }` give the target's SIZE for every non-const instance (0x130
+ * the lobby's, 0x134 the pointer deques', 0x164 the state machine's) with both objects in memory and t's
+ * data_/last_ addressed through registers as the target's -- but 69-78 instructions off: t takes the
+ * lower stack slot where the target's begin() object does, and the target's += and the copy out of its
+ * result go through one register holding &t (`sw v1,0(a3)`), where MW folds &t into frame offsets; the
+ * const instances stay 8 bytes short and the chat unit (inline_max_size 100) scalarises. Tried with it,
+ * none closer: a friend operator+ by value (the copy becomes an lq/sq block copy), by const reference
+ * (scalarised), `return iterator(*this) += n`, the result bound to a reference, `i = begin(); i += k`, a
+ * user copy constructor (field-wise or by assignment: scalarised again). A base class holding the four
+ * fields (`class iterator : public iterator_base`) keeps every object in memory -- the buffer's own
+ * begin()/end() copies come out 0x6C/0x98 against the target's unnamed 0x2E0CB0/0x2E0C10 (0x70/0xA0),
+ * the const make_iterator at the target's 0x138 -- but its implicit copy is then an FPU block copy (the
+ * target's is word by word through the fields' registers) and the deque's own begin()/end() (0x2E0940,
+ * byte-exact) grow to 0x60; an empty std::iterator base changes nothing. So the cdeque iterator's real
+ * shape keeps its objects in memory AND copies them member-wise -- not found.
+ * The chat's range destroy (0x2F5B10, round 14, build/p14/ds1.py): the target inlines the block
+ * iterators' difference and reads both by-value iterators in place through a1/a2 (a 16-byte frame:
+ * only the count, for min); here the chat unit's inline_max_size(100) keeps that difference a call
+ * (0x20C), without the pragma it inlines but both iterators are copied into the frame at entry (0x270)
+ * -- by value, by member, by const reference and const by-value parameters alike (the last 0x1F8, the
+ * target's size, by coincidence: the copies stay). The class deque's init (0x2E0830, 0x3A5ED0) through
+ * __convert_iterator (with or without its converter member) is 0x118 against 0xB0. */
 
 #ifndef _MSL_DEQUE
 #define _MSL_DEQUE
@@ -194,10 +219,14 @@ public:
         value_type *last_;
     };
     iterator begin() { return iterator(this->data_ + this->start_, this->data_, this->data_ + this->capacity_); }
+    /* the end's index taken first, then the data pointer (the MSL headers round 14: ~__deque_buf's walk
+     * computes the modulo before it loads data_ -- 0x2CEFB0, 0x2E19E0, 0x3A6E60 byte-exact so; the index
+     * written inside the constructor's first argument loads data_ first, 0x140 against 0x138) */
     iterator end()
     {
-        return iterator(this->data_ + (this->capacity_ ? (this->start_ + this->size_) % this->capacity_ : 0),
-                        this->data_, this->data_ + this->capacity_);
+        unsigned int e = this->capacity_ ? (this->start_ + this->size_) % this->capacity_ : 0;
+
+        return iterator(this->data_ + e, this->data_, this->data_ + this->capacity_);
     }
 
     cdeque() {}
@@ -400,10 +429,10 @@ const Allocator &__deque_buf<T, Allocator>::alloc() const
     return buf_;
 }
 
-/* the blocks freed walking the buffer, then the buffer (0x2CEFB0, out of class). OPEN: the
- * teardown's tail now tests `this` five times as the target's (the pair's two levels and the
- * buffer's three), 0x140 bytes against 0x138: the target sets up the walk's end pointer (the
- * buffer's modulo) before its data pointer and the bounds */
+/* the blocks freed walking the buffer, then the buffer (0x2CEFB0, out of class): the teardown's tail
+ * tests `this` five times as the target's (the pair's two levels and the buffer's three); byte-exact
+ * since the MSL headers round 14 (0x2CEFB0, the lobby's 0x2E19E0, the state machine's 0x3A6E60), the
+ * buffer's end() taking its index before its data pointer */
 template <class T, class Allocator>
 __deque_buf<T, Allocator>::~__deque_buf()
 {
@@ -619,7 +648,9 @@ void __deque_imp<T, Allocator>::pop_front()
  * instructions off: the arms come in the other order (the nonzero one falls through) and the
  * zero is built in v1 before the multiply where the target puts it straight into the product's
  * a1; `== 0`, `!`, empty(), an unsigned zero, a for/break test and the multiply written first
- * change nothing */
+ * change nothing. A LEAD from the MSL headers round 14: push_back's same two block counts lay their
+ * zero arm out first only written `size() == 0 ? 0 : (size() - 1) * buf_size` (no hand-written unit
+ * emits pop_back to test it on: 0x3349C0 is a draft's) */
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::pop_back()
 {
@@ -638,45 +669,42 @@ void __deque_imp<T, Allocator>::pop_back()
     }
 }
 
-/* the element appended, a block added at the back first when the last is full (0x2CF970).
- * OPEN, 0x260 against 0x290: the target's inlined growth holds the new block in a guard on the stack
- * -- {this, 128, block} at sp+104, released (cleared) after cdeque::push_back and its destructor's
- * `if (p) operator delete(p)` run on the way out (MSL's alloc_ptr: SOCOM 1 links one for its list
- * nodes) -- and the function-local max_size static is guarded (0x44D6C8, the value at 0x3F3490);
- * the rest of the shape (the length check, the reserve(2)/resize(1) start, both block paths) is
- * the target's */
+/* the element appended, a block added at the back first when the last is full (0x2CF970). The MSL
+ * headers round 14: the growth path holds the new block in MSL's alloc_ptr with its count kept
+ * ({allocator, 128, block} at sp+104: Metrowerks::alloc_ptr<T, Allocator &, size_type>, released
+ * after the buffer's push_back and the count, its destructor's `if (p) deallocate` on the way out),
+ * the block is stored as the buffer's back and the element through the same pointer (`*(back() =
+ * ap.get()) = x`: x and the block loaded before either store), the other path's block comes from
+ * the allocator straight into back() (named locals there swap the block's and back()'s saved
+ * registers), and both block counts are `== 0 ? 0 : ...` (the zero arm falls through, as the
+ * target lays it out). The function-local max static is guarded (0x44D6C8, the value at 0x3F3490 --
+ * data.txt names each instance's). Byte-exact: 0x2CF970, the lobby's 0x2E1610 */
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::push_back(const T &x)
 {
     unsigned int n = this->start_ + this->size_;
 
-    if (n == (this->buf_.second_.size() ? (this->buf_.second_.size() - 1) * buf_size : 0)) {
+    if (n == (this->buf_.second_.size() == 0 ? 0 : (this->buf_.second_.size() - 1) * buf_size)) {
         static const unsigned int max = max_size();
 
         if (this->size_ == max)
             __msl_error("deque::push_back length error");
-        if (this->buf_.second_.size() == (this->buf_.second_.capacity() ? this->buf_.second_.capacity() - 1 : 0)) {
+        if (this->buf_.second_.size() == (this->buf_.second_.capacity() == 0 ? 0 : this->buf_.second_.capacity() - 1)) {
             if (this->buf_.second_.size() == 0) {
                 this->buf_.second_.reserve(2);
                 this->buf_.second_.resize(1);
             }
-            T *b = (T *)operator new(buf_size * sizeof(T));
+            Allocator &a = this->buf_;
+            Metrowerks::alloc_ptr<T, Allocator &, size_type> ap(a.allocate(buf_size), a, buf_size);
 
-            if (!b)
-                __msl_error("Memory allocation failure");
             this->buf_.second_.reserve(this->buf_.second_.size() * 2);
-            this->buf_.second_.back() = b;
-            *b = x;
+            *(this->buf_.second_.back() = ap.get()) = x;
             this->buf_.second_.push_back(0);
             ++this->size_;
+            ap.release();
             return;
         }
-        T *&last = this->buf_.second_.back();
-        T *b = (T *)operator new(buf_size * sizeof(T));
-
-        if (!b)
-            __msl_error("Memory allocation failure");
-        last = b;
+        this->buf_.second_.back() = ((Allocator &)this->buf_).allocate(buf_size);
         this->buf_.second_.push_back(0);
     }
     this->buf_.second_[n / buf_size][n % buf_size] = x;
