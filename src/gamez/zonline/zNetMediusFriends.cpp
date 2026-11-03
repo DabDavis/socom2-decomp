@@ -329,36 +329,26 @@ void cbFindBuddyListPlayerID(int, int, int, MediusFindPlayerResponse *resp)
 }
 
 /* the named player asked to be a friend -- not one already, not invited, not ourselves ('AddFriend'
- * 0x27A050 calls it on theLobby; OVL1 0x3013C0): looked for by name first.
- * OPEN, 3 instructions (0x204 both): the finds match through FriendVector::Last (see zonline.h)
- * and the event is written twice, as the target has it; the first copy's null test branches past
- * a jump block to the epilogue where the target's goes straight there, its call followed by the
- * jump. Tried: the event expanded with the return inside its test, if/else arms throughout. */
+ * 0x27A050 calls it on theLobby; OVL1 0x3013C0): looked for by name first. The finds match
+ * through FriendVector::Last (see zonline.h) and the event is written twice, as the target has it:
+ * the three tests one `&&` chain and both events else-arms -- with the tests nested and the event
+ * followed by a `return`, the first event's null test branched to a jump block instead of straight
+ * to the epilogue (open since round 8, 3 instructions) */
 void CZOnlineLobby::AddFriend(const char *name)
 {
-    if (name) {
-        FriendItem *f = FriendVec.Find(name);
+    if (name && !FriendVec.Find(name) && !data_0044FE00.Find(name)) {
+        if (strcasecmp(name, AccountInfo.AccountName)) {
+            MediusFindPlayerRequest req;
 
-        if (!f) {
-            FriendInvitationItem *inv = data_0044FE00.Find(name);
-
-            if (!inv) {
-                if (strcasecmp(name, AccountInfo.AccountName)) {
-                    MediusFindPlayerRequest req;
-
-                    memset(&req, 0, sizeof(req));
-                    SetSessionKey(req.SessionKey);
-                    strncpy(req.Name, name, sizeof(req.Name));
-                    req.SearchType = 1;
-                    CheckMediusError(MediusFindPlayer(&req, cbFindBuddyListPlayerID));
-                    return;
-                }
-                LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
-                return;
-            }
-        }
-    }
-    LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
+            memset(&req, 0, sizeof(req));
+            SetSessionKey(req.SessionKey);
+            strncpy(req.Name, name, sizeof(req.Name));
+            req.SearchType = 1;
+            CheckMediusError(MediusFindPlayer(&req, cbFindBuddyListPlayerID));
+        } else
+            LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
+    } else
+        LobbyEvent("MP_PLAYER_IS_FRIEND", 0);
 }
 
 /* an invitation received kept (GetFriendInvitations' callback, its status not looked at; OVL1
@@ -396,6 +386,32 @@ void CZOnlineLobby::GetFriendInvitations()
 
         memset(&req, 0, sizeof(req));
         CheckMediusError(func_0064B368(&req, (MediusBuddyCallback)cbGetFriendInvitations));
+    }
+}
+
+/* a friend's whereabouts for the menu: the name, and the game and lobby it is in -- the main menu
+ * when its lobby is Medius's own -- or blanks for no such friend ('GetFriendInfo' 0x279AB0 calls it
+ * on theLobby with atoi of its argument; OVL1 0x301140, the name ours, after the command) */
+void CZOnlineLobby::GetFriendInfo(int id)
+{
+    CUIVariable *name = theUIVarManager.Add("FriendInfoName", 0, UIVL_TEMPORARY);
+    CUIVariable *game = theUIVarManager.Add("FriendInfoGame", 0, UIVL_TEMPORARY);
+    CUIVariable *lobby = theUIVarManager.Add("FriendInfoLobby", 0, UIVL_TEMPORARY);
+    FriendItem *f = FriendVec.Find(id);
+
+    if (f) {
+        *name = f->AccountName;
+        if (!strncmp(f->OnlineState.LobbyName, "Medius", 6)) {
+            *game = "MAIN MENU";
+            *lobby = " ";
+        } else {
+            *game = f->OnlineState.GameName;
+            *lobby = f->OnlineState.LobbyName;
+        }
+    } else {
+        *name = "";
+        *game = "";
+        *lobby = "";
     }
 }
 

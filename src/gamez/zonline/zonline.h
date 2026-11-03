@@ -962,6 +962,7 @@ public:
     void GetFriendsList();
     void RemoveFriend(int id);
     void GetFriendInvitations();
+    void GetFriendInfo(int id);
     void GetIgnoreList();
     void AddFriendDirectly(int id);
     void RejectFriend(int id);
