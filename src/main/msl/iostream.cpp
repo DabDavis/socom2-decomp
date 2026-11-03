@@ -5,7 +5,9 @@
  * streambuf, filebuf, istream/ostream, codecvt, ctype<wchar_t> -- each in its header's lines.
  * What is written so far: the small virtual slots (named by the vtables at 0x1D5050-0x1D5200),
  * uflow, xsgetn<char>, the filebufs' setbuf/showmanyc, the getlocs, codecvt's stubs and
- * ctype<wchar_t>'s widen/narrow.
+ * ctype<wchar_t>'s widen/narrow; round 3: the Init classes (__nInit/__wInit), xsputn, and
+ * basic_filebuf's bodies but overflow and seekoff (placeholders) -- SOCOM 1's DWARF names the
+ * members and their locals (fstream lines 203-863).
  *
  * THE COMPILER (README "MAIN's Metrowerks runtime"): 3.0b38/3.0b50/3.0b52 -- showmanyc<wchar_t>
  * and setbuf<wchar_t> need a 4-byte wchar_t (3.0b22-020926 and later); ctype<wchar_t>::do_widen's
@@ -68,6 +70,8 @@ basic_streambuf<charT, traits>::xsgetn(char_type *s, streamsize n)
     return i;
 }
 
+/* xsputn<char> matches; OPEN, xsputn<wchar_t> (0x185C20: 0x13C against 0x21C): as xsgetn<wchar_t>,
+ * the target's wide copy is a loop, the traits' memcpy here */
 template <class charT, class traits>
 streamsize
 basic_streambuf<charT, traits>::xsputn(const char_type *s, streamsize n)
@@ -100,6 +104,8 @@ basic_streambuf<charT, traits> *basic_filebuf<charT, traits>::setbuf(charT *, st
     return this;
 }
 
+/* NOT WRITTEN (round 3): a placeholder body so the class instantiates -- the target's seekoff is 0x268
+ * (char) / 0x278 (wchar_t): encoding(), the flush-out test, unshift, fseek/ftell by way */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::pos_type
 basic_filebuf<charT, traits>::seekoff(off_type off, ios_base::seekdir way, ios_base::openmode which)
@@ -244,6 +250,8 @@ basic_filebuf<charT, traits>::pbackfail(int_type c)
     return traits::not_eof(c);
 }
 
+/* NOT WRITTEN (round 3): a placeholder body -- the target's overflow is 0x474 (char) / 0x4C4
+ * (wchar_t): the put area, unshift on the switch to output, write2 when converting */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::int_type
 basic_filebuf<charT, traits>::overflow(int_type c)
