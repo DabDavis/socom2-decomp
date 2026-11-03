@@ -24,15 +24,7 @@ void func_002E81A0();   /* the clan team forgotten (the clan unit's) */
 void func_002E3AA0(CZOnlineLobby *lobby, C2D *page);   /* the room list asked for (the rooms' unit's) */
 }
 
-/* the LAN lobby (zNetLANLobby.cpp's CZLANLobby: here only its room, the one we are in, and its test) */
-class CZLANLobby {
-public:
-    bool IsActive();
-
-    BriefingRoom *m_room;   // 0x0
-};
-
-extern CZLANLobby data_0044FE10;   /* the LAN lobby */
+/* the LAN lobby: zonline.h's CZLANLobby (here only its room, the one we are in, and its test) */
 
 void ReleaseFileTransfers();   /* the Medius file API's transfers forgotten (zNetMediusFile.cpp) */
 

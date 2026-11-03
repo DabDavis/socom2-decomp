@@ -845,6 +845,28 @@ public:
     void Release();
 };
 
+class C2D;
+
+/* the LAN lobby (the UI lane's name; zNetLANLobby.cpp's, 0x44FE10): its room, then the game info
+ * it hosts. Declared here for the units that call it by name (zNetMedius.cpp's room test,
+ * zNetDme.cpp's game info and IsActive) */
+class CZLANLobby {
+public:
+    bool GameHasPassword(const char *game);
+    bool CreateGame();
+    void GetGameInfo(LANGameInfo *out);
+    bool RefreshGameList(C2D *page);
+    bool Disconnect();
+    bool Connect();
+    bool IsActive();
+
+    BriefingRoom *m_room;   // 0x0
+    unsigned char _4[0x10 - 0x4];
+    LANGameInfo m_info;   // 0x10
+};   // 0x1a0
+
+extern CZLANLobby data_0044FE10;   /* the LAN lobby */
+
 /* --- the lobby --------------------------------------------------------------------------- */
 
 /* the lobby's states (SOCOM 1's DWARF; a byte) */
@@ -1062,11 +1084,5 @@ struct CMessageGame {
 };
 
 extern CMessageGame theGame;   /* 0x4084C0 */
-
-/* the UI variables' setters (unnamed yet: CUIVariable::operator=(const char *) and
- * CUIVarManager::Add) */
-extern "C" {
-void func_003862A0(CUIVariable *var, const char *text);
-}
 
 #endif

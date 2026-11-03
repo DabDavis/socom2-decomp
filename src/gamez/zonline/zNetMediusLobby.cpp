@@ -89,10 +89,6 @@ public:
     unsigned int m_unused : 6;   // 0x4
 };
 
-extern "C" {
-CUIVariable *func_003857C0(void *mgr, const char *name, void *rdr, int longevity);   /* CUIVarManager::Add */
-}
-
 /* the usage policy asked for (SOCOM II's request, the policy 0) */
 struct MediusGetPolicyRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
@@ -232,7 +228,7 @@ void CZOnlineLobby::PasswordSecurity()
     CValve *valve = CValve::Create("SecurePassword", VALVE_TYPE_1);
 
     if (valve->IsOff())
-        func_003862A0(func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, 1), "");
+        *theUIVarManager.Add("PLAYERPASSWORD", 0, UIVL_TEMPORARY) = "";
 }
 
 /* our stats sent to the server: built into a text, kept, unpacked, and our ladder figure sent too
@@ -466,9 +462,8 @@ void cbGetPolicy(int, int, int, MediusGetPolicyResponse *resp)
 void CZOnlineLobby::GetUsagePolicy()
 {
     if (m_isopen) {
-        func_003862A0(func_003857C0(&theUIVarManager, "UsagePolicy", 0, 1),
-                      "Retrieving Usage Policy.....");
-        func_003862A0(func_003857C0(&theUIVarManager, "TempUsagePolicy", 0, 1), " ");
+        *theUIVarManager.Add("UsagePolicy", 0, UIVL_TEMPORARY) = "Retrieving Usage Policy.....";
+        *theUIVarManager.Add("TempUsagePolicy", 0, UIVL_TEMPORARY) = " ";
         MediusGetPolicyRequest req;
 
         memset(&req, 0, sizeof(req));
@@ -520,14 +515,14 @@ void cbGetAnnouncements(int, int, int, MediusGetAnnouncementsResponse *resp)
         ed.pop();
         theLobby.uiv_MediusMOTD->Set(&ed);
     } else
-        func_003862A0(theLobby.uiv_MediusMOTD, "No server messages.");
+        *theLobby.uiv_MediusMOTD = "No server messages.";
 }
 
 /* the announcements asked for, the menu told meanwhile (SOCOM 1's; OVL1 0x2F7710) */
 void CZOnlineLobby::GetAnnouncements()
 {
     if (m_isopen && m_current_state == LOBBY_ACTIVE) {
-        func_003862A0(theLobby.uiv_MediusMOTD, "Retrieving messages from server...");
+        *theLobby.uiv_MediusMOTD = "Retrieving messages from server...";
         MediusGetAnnouncementsRequest req;
 
         memset(&req, 0, sizeof(req));
