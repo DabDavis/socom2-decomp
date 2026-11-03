@@ -1647,6 +1647,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 12** (anim.cpp's name lookups, seal_kit.cpp's items and fire modes):
+  - a switch's compare chain tests its cases in reverse source order: list them 2, 1, 0 for the
+    target's 0, 1, 2 chain; an empty `case 0: break;` keeps its own test;
+  - `bit ? 1 : 0` folds to `sltu` whatever its type; the target's `li 1; movz` plus a sign extension
+    is a signed byte-enum local assigned in an if/else;
+  - a field read in place several times shares one load in a temporary; taken into a named local it
+    shifts every temporary of an inlined walk (NextFireMode, 21 instructions);
+  - the same accessor with a signed bound (`slt`) is a different inline from its out-of-line copy
+    (`sltu`); written out at the call site the saved registers s1/s2 swap;
+  - a callee of at most 15 statements too big to inline whole keeps its callers out of line: writing
+    the callee (SetItemByIndex, 20 statements) removed RemoveItem's and SetItem's pins;
+  - SOCOM II's zdb::IntersectStruct has a constructor zeroing m_poly and m_node (node_world.h does
+    not declare it); the statics defined in order after <iostream> give __sinit_seal_kit.cpp;
+  - a template copy proven by its caller can be emitted by an explicit instantiation and scored
+    through an ovl-copy note (ai::_max<unsigned char> 0x5DEE70; anim.cpp's string-map find 0x58D090
+    and string compares 0x58D250/0x58D740).
 - **Tells from the HUD, round 19** (mp_rating.cpp, reco.cpp):
   - a list walk `i = begin(); iterator e = end(); for (; i != e; ++i)` (iterator assigned, end
     initialised) keeps `this + 4` in `this`'s register (mp_rating.cpp's walks);

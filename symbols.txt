@@ -8380,7 +8380,7 @@
 0x003D2680 0xC0 IsLegalAmmo__8CZWeaponFP6CZAmmo  # OVL1; s1:align confirmed by hand (the wep lane: walks m_LegalAmmoList (0xC4) comparing CZAmmo::GetName's strings, as SOCOM 1's); zwep_weapon.cpp
 0x003D2740 0x8 func_003D2740  # OVL1
 0x003D2750 0x8 func_003D2750  # OVL1
-0x003D2760 0x8 func_003D2760  # OVL1
+0x003D2760 0x8 GetAssociatedGearName__8CZWeaponFv  # OVL1; s1:calls by hand (the kit lane's round 12, vetted by the integrator: called where SOCOM 1's SetItemByIndex calls CZWeapon::GetAssociatedGearName, with the same arguments)
 0x003D2770 0x34 func_003D2770  # OVL1
 0x003D27B0 0x8 func_003D27B0  # OVL1
 0x003D27C0 0x8 func_003D27C0  # OVL1
