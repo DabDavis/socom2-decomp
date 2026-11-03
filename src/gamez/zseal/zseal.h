@@ -183,6 +183,8 @@ public:
 class CAiMaps {
 public:
     bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
+    bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
     /* a cell's map (ai_maps.h's, OVL2 0x52E6B0) */
     class CAiMap *GetMapByIndex(unsigned int i) const;
 };

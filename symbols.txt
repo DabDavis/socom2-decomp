@@ -7717,7 +7717,7 @@
 0x003A71D0 0x20 Virtual68__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x68, an inline override's copy -- the point at 0x38C copied out, true); veh_turret.cpp
 0x003A71F0 0x138 Remove__11CTurretListFP7CTurret  # OVL1; by hand (the wep lane: the turret list's remove -- std::remove over the pointer vector, its find inlined and remove_copy called (0x3AB9A0), then the pod erase of the tail 0x28B150; ~CTurret calls it with this; the name ours)
 0x003A7330 0x14 func_003A7330  # OVL1
-0x003A7350 0x134 func_003A7350  # OVL1
+0x003A7350 0x134 Rotate__7CTurretFf  # OVL1; by hand (the wep lane, round 15: veh_turret.cpp -- the yaw (0x280) and pitch (0x284) joints turned over dT by 0x3A76D0/0x3A7490 at the rates 0x3A8/0x3AC into a unit matrix and set on the nodes, the angles kept at 0x3B0/0x3B8 (0x3C0 cleared), then the aim 0x38C as the pitch joint's world Z negated, bit 3 set, the scope's frame 0x2C0 while bit 1 is clear; Tick's, the constructor's and 0x3A7330's call -- SOCOM 1's Rotate__7CTurretFv split, the name ours)
 0x003A7490 0x23C func_003A7490  # OVL1
 0x003A76D0 0x208 func_003A76D0  # OVL1
 0x003A78E0 0x158 func_003A78E0  # OVL1
@@ -7733,7 +7733,7 @@
 0x003A88C0 0x4C func_003A88C0  # OVL1
 0x003A8910 0x2BC func_003A8910  # OVL1
 0x003A8BD0 0x14C func_003A8BD0  # OVL1
-0x003A8D20 0x224 func_003A8D20  # OVL1
+0x003A8D20 0x224 Fire__7CTurretFv  # OVL1; by hand (the wep lane, round 15: veh_turret.cpp -- SOCOM 1's Fire__7CTurretFv shape: a projectile from m_pProjectilelist numbered for the tracers (0xB4 = 1, 0xB8 = ++0x2B0), the weapon's fire animation (0x3D22B0, SOCOM 1's GetFireAnim(bool): the zoomed one while the gunner's SEAL zooms, 0x200) activated with the fire node 0x288, the AI's ModifyAimDir on 0x194 (tan 15 deg, SOCOM 1's tan 20), then the weapon's virtual Fire (slot 0xC, SOCOM 1's static Fire made a member) and the fire timer reset; Tick's call when the timer runs out)
 0x003A8F50 0x164 SampleDynamics__7CTurretFf  # OVL1; s1:calls
 0x003A90C0 0x248 func_003A90C0  # OVL1
 0x003A9310 0x8 ComputeNextPosition__7CTurretFf  # OVL1; s1:vtable by hand (the wep lane: CTurret's slot +0x28, empty, as SOCOM 1's ComputeNextPosition__7CTurretFf); veh_turret.cpp
@@ -7785,7 +7785,7 @@
 0x003ACC00 0x10 OnMissionStart__8CVehicleFv  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x4C -- a "Vehicle" compass anchor, type 11); veh_vehicle.cpp
 0x003ACC10 0x5DC func_003ACC10  # OVL1
 0x003AD1F0 0x1C0 func_003AD1F0  # OVL1
-0x003AD3B0 0x118 func_003AD3B0  # OVL1
+0x003AD3B0 0x118 SampleDynamics__8CVehicleFf  # OVL1; by hand (the wep lane, round 15: veh_vehicle.cpp -- the node 0x1D0's frame rebuilt into 0x1E0 (unit matrix, BuildMTW), the cosine between its old and new Z kept in 0x29C, the step from the position 0x1C to the frame's origin in 0x2A0 and the velocity 0x38 as the step over dT; PreTick's last call -- the turret's SampleDynamics twin, the name ours)
 0x003AD4D0 0x8 ComputeNextPosition__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x28, empty); veh_vehicle.cpp
 0x003AD4E0 0x1C UpdatePosW__8CVehicleFv  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x10 -- the position out of the matrix at 0x1E0's translation row); veh_vehicle.cpp
 0x003AD500 0x8 PrePostTick__8CVehicleFf  # OVL1; by hand (the wep lane: CVehicle's vtable slot +0x20, a tail call of CEntity::UpdateCompassAnchor); veh_vehicle.cpp

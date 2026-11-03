@@ -9,6 +9,7 @@
 
 #include "zanim.h"
 #include "../zcamera/zcamera.h"
+#include "../znode/vis_ripple.h"
 
 /* the GS ALPHA register (sceGsAlpha's layout): (A - B) * C + D, C or D the FIX alpha */
 struct GsAlpha {
@@ -1379,51 +1380,8 @@ struct zanim_cmd_nodetest {
     unsigned short node;
 };
 
-extern char data_004B5170[];       /* the ripple manager */
-
-/* the ripple manager's ripple, as far as RIPPLE touches it */
-struct CRipple {
-    unsigned char _0[8];
-    zdb::CNode *node;               /* 0x8 */
-    unsigned char _c[0x34];
-    unsigned char _b0 : 2;          /* 0x40 */
-    unsigned char has_offset : 1;
-    unsigned char timed : 1;
-    unsigned char _b4 : 1;
-    unsigned char b5 : 1;
-    unsigned char b6 : 1;
-    unsigned char _b7 : 1;
-    unsigned char _41[3];
-    PNT3D offset;                   /* 0x44 */
-    unsigned char _50[0x24];
-    float f74;                      /* 0x74 */
-    float _78;
-    float rate;                     /* 0x7C */
-    float _80;
-    float period;                   /* 0x84 */
-
-    void SetOffset(const PNT3D *p)
-    {
-        if (p) {
-            has_offset = true;
-            offset.x = p->x;
-            offset.y = p->y;
-            offset.z = p->z;
-        } else
-            has_offset = false;
-    }
-    void SetPeriod(float p)
-    {
-        timed = true;
-        period = p;
-        if (b5 && !b6)
-            rate = f74 / period;
-    }
-};
-
-/* RIPPLE: start a ripple -- or find the one of that name -- at a point (plus the call
- * argument, flag 0x80) in a node's frame, then set what the flags say; the manager's functions
- * are not named yet */
+/* RIPPLE: start a water ripple -- or find the one of that name -- at a point (plus the call
+ * argument, flag 0x80) in a node's frame, then set what the flags say (vis_ripple.h) */
 struct zanim_cmd_ripple {
     _zanim_cmd_hdr hdr;
     unsigned short flags;
@@ -1441,18 +1399,10 @@ struct zanim_cmd_ripple {
     float f3C;
 };
 
-extern "C" CRipple *func_003C2950(char *owner, const char *name);
-extern "C" CRipple *func_003C2410(char *owner, const char *group, CPnt3D *pos, float *p, float a, float b, float c);
-extern "C" CRipple *func_003C26E0(char *owner, zdb::CNode *node, CPnt3D *pos, float *p, float a, float b, float c);
-extern "C" CRipple *func_003C2250(char *owner, CPnt3D *pos, float *p, float a, float b, float c);
-extern "C" void func_003C1BE0(CRipple *r, const char *name);
-extern "C" void func_003C1A40(CRipple *r, float v);
-extern "C" void func_003C19D0(CRipple *r, float *p, float v);
-
 extern "C" bool func_00263F90(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_ripple *cmd = (zanim_cmd_ripple *)hdr;
-    CRipple *r;
+    zdb::CWaterRipple *r;
     bool found;
     const char *name;
     CNode *at;
@@ -1475,49 +1425,48 @@ extern "C" bool func_00263F90(_zanim_cmd_hdr *hdr, float *dT)
     if (cmd->name > 0) {
         name = anim->GetName(cmd->name);
         if (name)
-            r = func_003C2950(data_004B5170, name);
+            r = zdb::theWaterRippleManager.Find(name);
     }
     if (r)
         found = true;
     if (!r) {
         if (cmd->flags & 1)
-            r = func_003C2410(data_004B5170, anim->GetName(cmd->group), &pos, &cmd->period, cmd->a, cmd->b, cmd->c);
+            r = zdb::theWaterRippleManager.Create(anim->GetName(cmd->group), &pos, &cmd->period, cmd->a, cmd->b, cmd->c);
         else {
             CNode *n = anim->GetNode(cmd->group, false);
 
             if (n)
-                r = func_003C26E0(data_004B5170, n, &pos, &cmd->period, cmd->a, cmd->b, cmd->c);
+                r = zdb::theWaterRippleManager.Create(n, &pos, &cmd->period, cmd->a, cmd->b, cmd->c);
         }
         if (!r)
-            r = func_003C2250(data_004B5170, &pos, &cmd->period, cmd->a, cmd->b, cmd->c);
+            r = zdb::theWaterRippleManager.Create(&pos, &cmd->period, cmd->a, cmd->b, cmd->c);
     }
     if (r) {
         if (name && !found)
-            func_003C1BE0(r, name);
+            r->SetName(name);
         CNode *node = anim->GetNode(cmd->node, false);
 
         if (cmd->flags & 8)
-            r->SetOffset(&cmd->offset);
+            r->SetDir(&cmd->offset);
         if ((cmd->flags & 0x40) && !found)
-            func_003C1A40(r, cmd->f30);
+            r->SetLevel(cmd->f30);
         if (node)
-            r->node = node;
+            r->m_follow = node;
         if (cmd->flags & 0x10) {
             float *p = 0;
 
             if (cmd->flags & 0x20)
                 p = &cmd->f3C;
-            func_003C19D0(r, p, cmd->f38);
+            r->SetRadius(p, cmd->f38);
         }
         if (cmd->flags & 2)
-            r->SetPeriod(cmd->period);
+            r->SetTime(cmd->period);
     }
     return true;
 }
 
-/* RIPPLE_NODE_GROUP: gather world nodes into a ripple group named by one of the anim's names
- * -- each name in the record a node's, or with a `*` a pattern every match of which is taken
- * (the group's and the pattern's functions are not named yet) */
+/* RIPPLE_NODE_GROUP: gather world nodes into a water ripple group named by one of the anim's
+ * names -- each name in the record a node's, or with a `*` a pattern every match of which is taken */
 struct zanim_cmd_ripplegroup {
     _zanim_cmd_hdr hdr;
     unsigned char group;
@@ -1526,14 +1475,11 @@ struct zanim_cmd_ripplegroup {
     int name[1];
 };
 
-extern "C" void *func_003C2120(char *owner, const char *name);
-extern "C" void func_003C20A0(void *group, zdb::CNode *node);
-
 extern "C" bool func_00263E20(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_ripplegroup *cmd = (zanim_cmd_ripplegroup *)hdr;
     CZAnim *anim = ZAnim.m_CurAnim;
-    void *group = func_003C2120(data_004B5170, anim->GetName(cmd->group));
+    zdb::CWaterRippleGroup *group = zdb::theWaterRippleManager.GetGroup(anim->GetName(cmd->group));
 
     for (int i = 0; i < cmd->count; i++) {
         const char *name = anim->GetName(cmd->name[i]);
@@ -1545,14 +1491,14 @@ extern "C" bool func_00263E20(_zanim_cmd_hdr *hdr, float *dT)
                 CNode *node = zdb::CWorld::m_world->FindChild(n, true);
 
                 if (node)
-                    func_003C20A0(group, node);
+                    group->Add(node);
             }
             _free(pattern, 0, 0);
         } else {
             CNode *node = zdb::CWorld::m_world->FindChild(name, true);
 
             if (node)
-                func_003C20A0(group, node);
+                group->Add(node);
         }
     }
     return true;
