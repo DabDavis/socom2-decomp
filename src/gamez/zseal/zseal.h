@@ -1108,10 +1108,16 @@ public:
     unsigned char m_altitude_characters : 1;   // bit 1: SealGetAltitude hits characters too (SOCOM 1's
                                                // flag at 0xde8 bit 0; the name ours)
     unsigned char m_21c_bit2 : 1;   // bit 2: a crouch 0x58A720 reports as a stand (the name ours)
-    unsigned char _21c_bits : 5;
+    unsigned char m_fading : 1;   // bit 3: the node's opacity heads for m_fade_target (0x552780)
+    unsigned char _21c_bits : 4;
     unsigned char _21d[0x22c - 0x21d];
     int m_22c;   // 0x22c: a time on the network's clock 0x5A8850 waits for (the names ours)
-    unsigned char _230[0x240 - 0x230];
+    /* a fade of the node's opacity: where to, how fast (its sign toward the target) and the priority
+     * of whoever asked (0x552780 refuses a lower one; the names ours) */
+    float m_fade_target;   // 0x230
+    float m_fade_rate;   // 0x234
+    unsigned char m_fade_priority;   // 0x238
+    unsigned char _239[0x240 - 0x239];
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
     unsigned char _244[0x2e0 - 0x244];
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
