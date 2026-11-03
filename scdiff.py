@@ -204,6 +204,13 @@ ACCESS_WIDTH = {0x20: 1, 0x24: 1, 0x28: 1, 0x21: 2, 0x25: 2, 0x29: 2, 0x23: 4, 0
                 0x31: 4, 0x39: 4, 0x37: 8, 0x3F: 8, 0x1E: 16, 0x1F: 16, 0x36: 16, 0x3E: 16}
 
 
+def lit_entry(elf: E.Elf, sec_index: int, off: int) -> int | None:
+    """The bytes left in the literal-pool entry holding `off`, when section `sec_index` is GNU as's
+    .lit4 or .lit8 (4- and 8-byte entries, each a constant of its own), else None."""
+    width = {".lit4": 4, ".lit8": 8}.get(elf.sections[sec_index].name)
+    return width - off % width if width else None
+
+
 def access_width(code: bytes, off: int) -> int:
     """How many bytes the instruction at `off` loads or stores (0: it only takes an address)."""
     if off + 4 > len(code):
@@ -548,6 +555,12 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
                     start, size, oname = ext
                     ok = local_object_ok(elf, local_sec, start, (want - (off - start)) & 0xFFFFFFFF,
                                          fsym, taddr, st, img, size)
+                elif (pool := lit_entry(elf, local_sec, off)) is not None:
+                    # GNU as's literal pools (.lit4/.lit8, -G 8 and up) hold one constant per entry,
+                    # merged entry by entry at link time: the reference's own entry, not its
+                    # neighbours (whose order is the object's first uses, not the image's)
+                    oname = None
+                    ok = local_object_ok(elf, local_sec, off, want, fsym, taddr, st, img, pool)
                 else:
                     oname = None
                     ok = local_object_ok(elf, local_sec, off, want, fsym, taddr, st, img,
