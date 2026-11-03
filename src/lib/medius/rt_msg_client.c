@@ -617,6 +617,11 @@ unsigned char rt_msg_client_ishutdown(void)
  * enum. Not written: the connect/disconnect/update/send bodies and the buffer processing
  * (0x633790-0x638500's large rows). */
 
+typedef struct rt_msg_client_time {
+    unsigned int secs;
+    unsigned int usecs;
+} rt_msg_client_time;
+
 /* rt_circ_buf's ring (rt_circ_buf.c) */
 typedef struct rt_circ_buf {
     unsigned int nStart;
@@ -641,7 +646,8 @@ typedef struct rt_msg_client_comm {
     unsigned short nPort;               /* 0x18 */
     char pad1A[2];
     int nChannelId;                     /* 0x1C: the connection's rt_comm channel */
-    char pad20[0x20];
+    rt_msg_client_time tLastSend;       /* 0x20: recv_circ_buf's (the last piece that moved) */
+    char pad28[0x18];
     int nValue;                         /* 0x40: 0x6347C8's setting */
     unsigned char bTargetSet;           /* 0x44: a flagged message stored (SOCOM 1's 0x84) */
     char pad45;
@@ -1013,11 +1019,6 @@ int func_00634660(unsigned short nConnection, unsigned char bEnable)
         return 7;
     return rt_msg_client_store_msg_in_send_buf(pConnection->pComm, 13, 0xFFFF, abMsg, 2, 0);
 }
-
-typedef struct rt_msg_client_time {
-    unsigned int secs;
-    unsigned int usecs;
-} rt_msg_client_time;
 
 typedef struct rt_msg_client_metric {
     unsigned int nCount;
@@ -1464,7 +1465,7 @@ int rt_msg_client_store_msg_in_send_buf(rt_msg_client_comm *pComm, int nType, un
 
 extern int rt_circ_buf_get_avail_nowrap(void *pBuf, unsigned int *pnAvail);
 extern int rt_circ_buf_normalize_with_buf(void *pBuf, int bForce, void *pScratch);
-int rt_msg_client_recv_circ_buf(void *pChannel);
+int rt_msg_client_recv_circ_buf(rt_msg_client_comm *pChannel);
 
 /* SOCOM 1's: room for nSize bytes at the send buffer's end without wrapping -- received data
  * taken off first, the buffer normalised through the scratch buffer if still short */
@@ -1727,6 +1728,64 @@ int rt_msg_client_send_buffer(rt_msg_client_comm *pComm, unsigned char *pMsg, un
         if (nElapsed > nTimeout)
             return 13;
     } while (nLength != 0);
+    return 0;
+}
+
+extern int rt_circ_buf_get_used_nowrap(rt_circ_buf *cb, unsigned int *pnUsed);
+extern int rt_circ_buf_is_wrapped(rt_circ_buf *cb, unsigned char *pbWrapped);
+extern int rt_circ_buf_get_start_used_ptr(rt_circ_buf *cb, unsigned char **ppStart);
+extern int rt_circ_buf_free(rt_circ_buf *cb, unsigned int nBytes);
+
+/* SOCOM 1's recv_circ_buf (s1:align; it drains the SEND ring): the bytes waiting sent in pieces
+ * (0x6385F0) while each piece moves some -- a datagram channel's ring normalised first, so a
+ * piece never wraps -- and the channel's send time taken whenever one did */
+int rt_msg_client_recv_circ_buf(rt_msg_client_comm *pComm)
+{
+    unsigned char bWrapped;
+    unsigned char *pData = 0;
+    unsigned int nUsed = 0;
+    unsigned short nSent = 0;
+    rt_circ_buf *pBuf;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    pBuf = &pComm->sendBuf;
+    if ((pBuf != 0) != 1)
+        return 2;
+    if (rt_circ_buf_get_used_nowrap(pBuf, &nUsed) != 0)
+        return 21;
+    if (nUsed != 0) {
+        if (pComm->nKind == 1) {
+            bWrapped = 1;
+            if (rt_circ_buf_is_wrapped(pBuf, &bWrapped) != 0)
+                return 21;
+            if (bWrapped == 1) {
+                if (rt_circ_buf_normalize_with_buf(pBuf, 1, gpScratchBuffer) != 0)
+                    return 21;
+                if (rt_circ_buf_get_used_nowrap(pBuf, &nUsed) != 0)
+                    return 21;
+            }
+        }
+        do {
+            if (rt_circ_buf_get_start_used_ptr(pBuf, &pData) != 0)
+                return 21;
+            nSent = 0;
+            result = func_006385F0(pComm, pData, nUsed, &nSent);
+            if (result != 0)
+                return result;
+            if (nSent != 0) {
+                if (rt_time_start(&pComm->tLastSend) != 0)
+                    return 24;
+            }
+            if (rt_circ_buf_free(pBuf, nSent) != 0)
+                return 21;
+            if (rt_circ_buf_get_used_nowrap(pBuf, &nUsed) != 0)
+                return 21;
+        } while (nUsed != 0 && nSent != 0);
+    }
     return 0;
 }
 
