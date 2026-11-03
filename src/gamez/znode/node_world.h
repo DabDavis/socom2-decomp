@@ -74,11 +74,26 @@ public:
     ~CTexPalette();
     bool Read(CSaveLoad &io);
 
+    /* the bitfield setters (ours, inline: a constant through them is masked at run time, as the
+     * constructor's byte read-modify-writes are) */
+    void SetDynamic(bool b) { m_dynamic = b; }
+    void SetUnused(unsigned int n) { m_unused = n; }
+
+    /* the next palette's id (SOCOM 1's static) */
+    static unsigned int m_palId;
+
     unsigned int m_gsaddr;   // 0x0 (PALETTE_PARAMS)
-    unsigned int m_params;   // 0x4 (PALETTE_PARAMS' bitfields)
+    unsigned int m_size : 16;   // 0x4 (PALETTE_PARAMS' bitfields)
+    unsigned int m_format : 8;   // 0x4
+    unsigned int m_combo_pal : 1;   // 0x4
+    unsigned int m_dynamic : 1;   // 0x4
+    unsigned int m_unused : 6;   // 0x4
     CAssetLib *m_AssetLib;   // 0x8 (AddPalette sets it)
     char *m_name;   // 0xc
-    unsigned char _10[0x20 - 0x10];
+    unsigned int m_id;   // 0x10
+    void *m_buffer;   // 0x14
+    unsigned int m_slots;   // 0x18
+    void *m_loadimage;   // 0x1c (SOCOM 1's CLoadImage *)
 };   // 0x20 bytes
 
 /* a box-shaped DI: the box it stands for, borrowed (SOCOM 1's CDIBBox; 0x18 bytes, the size

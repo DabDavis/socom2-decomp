@@ -792,6 +792,8 @@ class CTexture {
 public:
     ~CTexture();
     bool Read(CSaveLoad &io);
+    /* a handle let go of it (ztex_main.cpp, SOCOM 1's) */
+    void Release_HTEX();
 
     unsigned short m_width;   // 0x0
     unsigned short m_height;   // 0x2
@@ -800,7 +802,9 @@ public:
     char *m_name;   // 0x14
     void *m_buffer;   // 0x18 (SOCOM 1's DWARF, from here; the wep lane's)
     CTexPalette *m_palette;   // 0x1c
-    unsigned char _20[0x40 - 0x20];
+    unsigned char _20[0x2c - 0x20];
+    unsigned short m_htex_count;   // 0x2c: the handles on it (SOCOM 1's DWARF; ztex_main.cpp's)
+    unsigned char _2e[0x40 - 0x2e];
     /* the VU's DMA reference to its select (SOCOM 1's _word128; ResolveTextureName copies it) */
     u_long128 m_dmaRefVu;   // 0x40
     unsigned char _50[0x54 - 0x50];
@@ -812,7 +816,19 @@ public:
 /* a texture's handle (SOCOM 1's DWARF) */
 class CTexHandle {
 public:
+    /* ztex_main.cpp's (SOCOM 1's): made on a texture, its name copied */
+    CTexHandle(CTexture *tex) : m_name(0), m_count(0), m_texture(0), m_libref(0) { SetTexture(tex); }
     static CTexHandle *Create(CTexture *tex);
+    static void Destroy(CTexHandle *h);
+    void SetTexture(CTexture *tex);
+    /* the name copied (ours, inline: its argument loads before the old name is freed) */
+    void SetName(const char *name)
+    {
+        if (m_name)
+            _free(m_name, 0, 0);
+        m_name = 0;
+        m_name = name ? _strdup(name, 0, 0) : 0;
+    }
 
     char *m_name;   // 0x0
     int m_count;   // 0x4
