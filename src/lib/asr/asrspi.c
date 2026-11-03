@@ -3,8 +3,8 @@
  * at 0x33A768, ConvErr .. ASRSPICBRESULT), ScanSoft's speech recogniser, prebuilt with ee-gcc
  * 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The GCC front"). Names are SOCOM
  * 1's: the object's functions in the demo's order (s1:order/align/calls), its statics from the
- * demo's symtab (g_StateError, g_APIRecogCallBacks). Only the functions written so far are here,
- * in image order.
+ * demo's symtab (g_StateError, g_APIRecogCallBacks). The whole object, in image order; SOCOM II
+ * moved _engineFree after _engineCalloc and asrspi_GainSet after asrspi_Stop.
  *
  * An engine is a 0xD8-byte block on the recogniser's heap around a casr handle. Every entry
  * point checks the handle (null, then the magic), takes the engine's busy flag under its
@@ -514,6 +514,7 @@ int asrspi_UswGetNbrRecsNeeded(ASRSPI *e, int *n)
     return err;
 }
 
+/* R until asrspi_ActivateWords is the right size (above): its code is byte-exact */
 int asrspi_OpenEngine(SAFEH rsrc, int mode, ASRSPI **out)
 {
     RSRC *r;
@@ -765,6 +766,17 @@ int asrspi_GetParamList(ASRSPI *e, PARAM *list, unsigned int n)
     return 0;
 }
 
+/* the index of a word in the active list, -1 when it is not there */
+static __inline__ unsigned int FindWord(int *words, unsigned int count, unsigned int id)
+{
+    unsigned int k;
+
+    for (k = 0; k < count; k++)
+        if (words[k] == id)
+            return k;
+    return (unsigned int)-1;
+}
+
 int asrspi_GetActiveWords(ASRSPI *e, int *ids, unsigned int *count)
 {
     int *words;
@@ -798,15 +810,87 @@ int asrspi_GetActiveWords(ASRSPI *e, int *ids, unsigned int *count)
     return 0;
 }
 
-/* the index of a word in the active list, -1 when it is not there */
-static __inline__ unsigned int FindWord(int *words, unsigned int count, unsigned int id)
+/* OPEN (0x600 against 0x5A0, 24 words long): m2c's shape -- the ids checked against the
+ * context's word count and counted absent (FindWord, unrolled by four as the target's), a new list
+ * of the old words and the absent ids, or every word of the context for n == -1; the target's
+ * structure is the same, its exits share more code (not yet measured). Until it is the right
+ * size, asrspi_OpenEngine reads R: g_APIRecogCallBacks is checked by content, each callback at the
+ * same distance from OpenEngine as in the target, and this function lies between. */
+int asrspi_ActivateWords(ASRSPI *e, unsigned int *ids, unsigned int n)
 {
-    unsigned int k;
+    int *words, *list;
+    unsigned int count, added, nbr, i;
+    int err;
 
-    for (k = 0; k < count; k++)
-        if (words[k] == id)
-            return k;
-    return (unsigned int)-1;
+    added = 0;
+    list = 0;
+    count = 0;
+    words = 0;
+    if (ids == 0 && n != (unsigned int)-1)
+        return ASRSPI_E_NULLPTR;
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError1(e, 2);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    nbr = 0;
+    if (e->ctxv2.data)
+        nbr = e->ctxv2.GetNbrWord(&e->ctxv2);
+    if (n != (unsigned int)-1) {
+        if (casrGetActiveWords(e->casr, &words, &count) != 0) {
+            ENGINE_LEAVE(e);
+            return ConvErr(e, casrGetLastError(e->casr));
+        }
+        added = 0;
+        for (i = 0; i < n; i++) {
+            if (ids[i] >= nbr) {
+                heap_Free(e->heap, words);
+                ENGINE_LEAVE(e);
+                return 0x80040018;
+            }
+            if (FindWord(words, count, ids[i]) == (unsigned int)-1)
+                added++;
+        }
+        list = 0;
+        if (added + count) {
+            list = heap_Alloc(e->heap, (added + count) * 4);
+            if (list == 0) {
+                heap_Free(e->heap, words);
+                ENGINE_LEAVE(e);
+                return 0x8004002F;
+            }
+        }
+        for (i = 0; i < count; i++)
+            list[i] = words[i];
+        added = 0;
+        for (i = 0; i < n; i++)
+            if (FindWord(words, count, ids[i]) == (unsigned int)-1)
+                list[count + added++] = ids[i];
+    } else if (e->ctxv2.data) {
+        added = nbr;
+        list = heap_Alloc(e->heap, (added + count) * 4);
+        if (list == 0) {
+            ENGINE_LEAVE(e);
+            return 0x8004002F;
+        }
+        for (i = 0; i < nbr; i++)
+            list[i] = i;
+    }
+    if (casrSetActiveWords(e->casr, list, count + added) != 0) {
+        heap_Free(e->heap, list);
+        if (words)
+            heap_Free(e->heap, words);
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    if (list)
+        heap_Free(e->heap, list);
+    if (words)
+        heap_Free(e->heap, words);
+    ENGINE_LEAVE(e);
+    return 0;
 }
 
 int asrspi_DeActivateWords(ASRSPI *e, unsigned int *ids, unsigned int n)
