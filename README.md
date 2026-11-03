@@ -199,6 +199,34 @@ inline flag reproduces both of. Not started: the filebuf bodies (26 rows), the e
 unit (18), `__nInit`/`__wInit`, `ctype<wchar_t>`'s range maps, `__locale_imp::replace`, the rest of
 locale.cpp, the logic_error family, the other three `__sinit` rows.
 
+Round 3 (161 of 244 in the range: 27 more, all iostream.cpp -- the filebuf members for char and
+wchar_t: imbue, sync, pbackfail, uflow, underflow, read1-3, write2, unshift, seekpos<wchar_t>;
+`__nInit`/`__wInit`'s constructors and destructors; xsputn<char>; the standard streams' data rows)
+measured: MW decides an inline when a template member is INSTANTIATED, not when it is emitted -- a
+member instantiated mid-unit keeps calling a template already called out of line, one instantiated
+at the unit's end (the vtables' pass) inlines it (build/scratch/rt-r3/t2.cpp) -- which is why the
+FILE constructors and ~basic_filebuf stay open (the target's constructors inline the locale
+pointer's destructor yet call its copy constructor); codecvt<wchar_t>'s do_out/do_in keep their
+4-byte copy a loop only under `#pragma opt_unroll_loops off` (`-O3,p` and `-opt nounroll` change
+nothing; every build fails them alike, so 3.0b38/b50/b52 stay undecided); a one-byte enum's bitmask
+operator returns the enum, so the image masks again (`andi 0xff`); case labels in any order give the
+compare chain in the reverse order; `!(a < b)` on two plain loads materialises a bool, `a <= b` with
+the operand loaded first on the left branches directly; for 4-byte locals the later-declared gets
+the lower address, a 1-byte local packs at the end; `ungetc(buf[--n], f)` recomputes the index each
+pass, `--n;` alone is strength-reduced; MW's explicit instantiation takes single member functions
+but not constructors or destructors, and none once the class is instantiated; msl.h's `_impure_ptr`
+is `__attribute__((section(".data")))` (a plain 4-byte extern is $gp-addressed; the image reaches it
+absolutely, 0x1CC750). THE `__sinit` ROWS, corrected: 0x1D4BF0 is iostream.cpp's (two init guards,
+0x1D5628/0x1D562C, beside the codecvt<wchar_t>/ctype<wchar_t> ids -- SOCOM 1's guard-only shape),
+0x1D4C20 locale.cpp's (a 128-entry table of shorts at 0x1CA420, two guards after ctype<char>'s id),
+and 0x1D4B80, round 2's "iostream.cpp's", is a game MAIN unit's (it addresses its `__nInit` object
+without $gp: every game unit including <iostream> builds one -- 25 more such initialisers in the
+overlays). A try harness that honours a unit's own compiler and flags line is
+build/scratch/rt-r3/var.py (tools/try.py takes scdiff's defaults, so the library units fail under
+it). MAIN's zvid.cpp copy (0x181C20, marked `ovl-copy: zVid_Assert__FbUiPci`) still scores against
+OVL1's row: sccheck takes a unit's home from its functions' named rows, all OVL1's for a unit that is
+wholly another overlay's copy -- a scorer change for the tools' owner (with the boot ELF's `main`).
+
 ## What the source has to reproduce
 
 - **Function order inside a TU is REVERSE definition order** (`-inline deferred`): the image's
