@@ -2188,7 +2188,7 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     "vector length error"): both byte-exact as a probe, rows named -- what an implicit assignment of a
     class holding pointer vectors calls (vector<LOD>'s insert 0x35E100, the UI variables' erase, the soft
     keyboard's element vectors, zar_main.cpp's 0x259250, itself an unnamed class insert of a 24-byte
-    element holding two pointer vectors); no hand-written unit emits them yet;
+    element holding two pointer vectors); the UI lane's zui_hangul.cpp emits both byte-exact;
   - a code-exact instance can wait on its callee's row alone: AcctRecord's insert 0x2FE3E0 matched once
     its copy constructor's row (0x2FEAD0) carried the name zNetMediusUniverse.cpp emits.
 - **Tells from completing the MSL headers, round 9** (the 1-byte pod vector<char>, basic_string::assign(const char *, n)):
