@@ -435,16 +435,17 @@ static inline bool IsKind2Flag80(CAiState *s)
 {
     bool r = false;
 
-    if (s->m_state == (AI_STATE)2 && (s->m_flags & 0x80))
+    AI_STATE st = s->m_state;
+
+    if (st == (AI_STATE)2 && (s->m_flags & 0x80))
         r = true;
     return r;
 }
 
-/* whether the AI's current state is of kind 2 with flag 0x80 (OVL2 0x559000).
- * OPEN, 11 instructions: the stack's test is the target's as an if/else (the zero arm first: a
- * ternary or an if-assign lays the call first), but MW if-converts the inlined flag test (xori,
- * sltiu, sltu) where the target branches and assigns the true with daddiu. Tried: the test written
- * out in the function, a single `&&` chain with a result local. */
+/* whether the AI's current state is of kind 2 with flag 0x80 (OVL2 0x559000). The stack's test is the
+ * target's as an if/else (the zero arm first: a ternary or an if-assign lays the call first); the
+ * inline's kind read into a local keeps the flag test a branch (compared straight, MW if-converts it
+ * with xori/sltiu/sltu), and the return's ternary gives the result's `andi 0xff` */
 extern "C" bool func_00559000(CSealCtrlAi *ai)
 {
     CAiState *s;
@@ -454,9 +455,7 @@ extern "C" bool func_00559000(CSealCtrlAi *ai)
     else
         s = func_005F8330(&ai->m_stateStack);
 
-    if (s)
-        return IsKind2Flag80(s);
-    return false;
+    return s ? IsKind2Flag80(s) : false;
 }
 
 /* the state at 0x4EC: 4 with the word at 0x508 set (an inline: the test materialised, the word
