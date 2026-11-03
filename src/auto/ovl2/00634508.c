@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0062D2F8(s32 arg0);
+s32 rt_comm_get_local_ip(s32 arg0);
 s32 rt_msg_client_map_comm_error(s32 arg0);
 extern u8 data_00655614;
 
@@ -19,7 +19,7 @@ s32 func_00634508(s32 arg0) {
     if (data_00655614 == 1) {
         var_v0 = 2;
         if (arg0 != 0) {
-            var_v0 = rt_msg_client_map_comm_error(func_0062D2F8(arg0));
+            var_v0 = rt_msg_client_map_comm_error(rt_comm_get_local_ip(arg0));
         }
     }
     return var_v0;

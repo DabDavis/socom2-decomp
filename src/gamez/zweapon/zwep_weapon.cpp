@@ -126,6 +126,8 @@ public:
     bool ReadDecalNames(char *file);
     void ReadWeaponDecals(_zrdr *rdr);
     void ReadBloodDecals(_zrdr *rdr);
+    /* a hit's mark: a decal of the hit material's (or blood) applied to the node hit (SOCOM 1's) */
+    void AddNewMark(zdb::IntersectStruct *is, CZProjectile *proj, float size);
 
     std::list<zdb::CNode *> m_marklist;   // 0x0
     zdb::CTexHandle **m_decalTexture;   // 0xc
@@ -186,6 +188,18 @@ void _free(void *p, const char *file, int line);
 char *_strdup(const char *s, const char *file, int line);
 /* the decals rdr (0x437D00) and a material's index by name (0x2DE9E0) -- not named */
 extern "C" _zrdr *data_00437D00;
+namespace zdb {
+/* node_world.h's hit record (a stand-in: that header's decal pools clash with this unit's) */
+struct IntersectStruct {
+    CPnt3D m_pos;   // 0x0
+    CDI *m_poly;   // 0xc
+    CPnt3D m_norm;   // 0x10
+    CNode *m_node;   // 0x1c
+
+    int GetMaterial();
+};
+}
+
 extern "C" int func_002DE9E0(const char *name);
 /* the next material of a name after an index, 0 past the last (0x2DE970) -- not named */
 extern "C" int func_002DE970(const char *name, int index);
@@ -759,6 +773,136 @@ void CZMarkList::ReadBloodDecals(_zrdr *rdr)
         def.m_texture = tex;
         m_bloodDecals.push_back(def);
         CWorld::m_world->AddTextureAssetDecals(tex);
+    }
+}
+
+/* the node a decal hangs on: up the parents to one of type 2, none at the world (SOCOM 1's) */
+CNode *GetDecalNode(CNode *node)
+{
+    if (node) {
+        do {
+            if (node->GetType() == 2)
+                break;
+            node = node->m_parent;
+            if (node == CWorld::m_world)
+                return 0;
+        } while (node);
+    }
+    return node;
+}
+
+/* the node that draws: up the parents to one with visuals, or the world's child (SOCOM 1's) */
+CNode *GetVisualNode(CNode *node)
+{
+    if (node) {
+        do {
+            if (node->m_hasVisuals)
+                break;
+
+            CNode *parent = node->m_parent;
+
+            if (parent == CWorld::m_world)
+                break;
+            node = parent;
+        } while (node);
+    }
+    return node;
+}
+
+/* a material's decal for a hit, by the shooter's weapon's set (a set's permanence turns its decals
+ * over); a hit on a person, echoed, a blood decal near or far by the distance from the last player
+ * hit -- at half size, and only where the person takes it (0x5ACA10). The decal is sized between
+ * its range at random and faces the shot, or the surface for the weapons that throw (SOCOM 1's,
+ * with SOCOM II's blood) */
+extern "C" int func_002DE9E0(const char *name);
+extern "C" int func_005ACA10(CNode *node);
+
+/* one of the decals at random, or the given one when there are none */
+static inline CZDecalDef *RandomDecal(std::vector<CZDecalDef> &v, CZDecalDef *def)
+{
+    int n = v.size();
+
+    if (n == 0)
+        return def;
+    return &v[rand() % n];
+}
+
+/* a size between two at random (rand()'s 31 bits scaled to one; the maximum first, as the target
+ * loads it) */
+static inline float RandRange(float hi, float lo)
+{
+    float r = (1.0f / 2147483648.0f) * (float)rand();
+
+    return lo + r * (hi - lo);
+}
+
+static inline bool DecalFacesShot(CZWeapon *weapon)
+{
+    EQUIP_ITEM t = CZWeapon::GetIDType(weapon->m_ID);
+
+    if (t == 171 || t == 185 || t == 121 || t == 151 || t == 190 || t == 230)
+        return false;
+    return true;
+}
+
+void CZMarkList::AddNewMark(IntersectStruct *is, CZProjectile *proj, float size)
+{
+    CNode *node = is->m_node;
+    CNode *root = GetVisualNode(node);
+
+    if (!root)
+        return;
+    if (proj->m_echo) {
+        size *= 0.5f;
+        if (!func_005ACA10(node))
+            return;
+    } else
+        node = GetDecalNode(node);
+
+    int mat = is->GetMaterial();
+    CZDecalDef *def = 0;
+    float depth = 100.0f;
+    unsigned char permanent = 0;
+
+    if (proj->m_echo && mat != func_002DE9E0("PERSON")) {
+        CPnt3D d = proj->m_lastPlayerHitPos - is->m_pos;
+        float dist = Dot(d, d);
+
+        if (dist < 10000.0f)
+            def = RandomDecal(m_bloodDecals, def);
+        else if (dist < 40000.0f)
+            def = RandomDecal(m_farBloodDecals, def);
+    } else {
+        int m = is->GetMaterial();
+
+        if (m >= m_decal_list_size)
+            return;
+        if (proj->m_weapon && proj->m_weapon->m_decalSet) {
+            CZDecalSet *set = proj->m_weapon->m_decalSet;
+
+            permanent = set->m_permenant;
+            def = &set->m_decals[m];
+        }
+    }
+    if (def) {
+        float s = RandRange(def->m_decalmaxsize, def->m_decalminsize);
+
+        s *= size;
+        CPnt3D normal = CPnt3D::zero;
+
+        is->m_norm.Scale(-1.0f, &normal);
+        if (permanent)
+            depth = -1.0f;
+        if (def->m_texture) {
+            CPnt3D dir = proj->m_vel;
+
+            if (proj->m_weapon && DecalFacesShot(proj->m_weapon))
+                dir.Normalize();
+            else
+                dir = normal;
+            root->ApplyDecal(node, depth, &is->m_pos, &normal, &dir, def->m_texture, s, 0);
+        }
+        return;
     }
 }
 

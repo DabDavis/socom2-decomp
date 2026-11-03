@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_003907F0(s32);                             /* extern */
-s32 func_00390820(s32);                             /* extern */
+s32 LastCode__10CSkbPiecesFv(s32);                  /* extern */
+s32 PrevCode__10CSkbPiecesFv(s32);                  /* extern */
 M2C_UNK func_00398C00(s32, s32);                    /* extern */
 M2C_UNK func_00398C40();                            /* extern */
 M2C_UNK func_00399EC0(s32, s32);                    /* extern */
@@ -16,12 +17,12 @@ void func_00398AE0(s32 arg0, s32 arg1, s32 arg2) {
     s32 temp_a0;
 
     if (arg2 != 0) {
-        temp_a0 = func_003907F0(arg1) & 0xFFFF;
+        temp_a0 = PrevCode__10CSkbPiecesFv(arg1) & 0xFFFF;
         if (temp_a0 != 0) {
             func_00398C00(temp_a0, arg0);
         }
     } else {
         func_00398C40();
     }
-    func_00399EC0(func_00390820(arg1), arg0);
+    func_00399EC0(LastCode__10CSkbPiecesFv(arg1), arg0);
 }

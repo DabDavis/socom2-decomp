@@ -9,7 +9,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK _tosErrorLog(s32 arg0, s32 arg1);
-s32 func_0050D360(s32 arg0, s32 arg1, s32 arg2);
+s32 _tosGetProfileU32(s32 arg0, s32 arg1, s32 arg2);
 s32 heap_Calloc(s32 arg0, s32 arg1, s32 arg2);
 s32 InitMedian(char *arg0) {
     s32 temp_v0;
@@ -26,7 +26,7 @@ s32 InitMedian(char *arg0) {
     M2C_FIELD(arg0, s32 *, 0x40) = 0;
     M2C_FIELD(M2C_FIELD(arg0, char **, 0xC), s16 *, 6) = 0x18;
     M2C_FIELD(M2C_FIELD(arg0, char **, 0x10), s16 *, 4) = 4;
-    temp_v0 = func_0050D360((s32) arg0, 1, 1);
+    temp_v0 = _tosGetProfileU32((s32) arg0, 1, 1);
     M2C_FIELD(arg0, s32 *, 0x28) = temp_v0;
     if (!(temp_v0 & 1)) {
         var_s1 = 1;

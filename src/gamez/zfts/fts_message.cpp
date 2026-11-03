@@ -63,51 +63,51 @@ public:
     unsigned char m_4dc_4 : 4;
 };   // 0x4e0 bytes (the mission's queues' stride)
 
-/* the lines' fade: its speed (alpha a second) and the alpha a line fades in to (OVL1 data) */
-extern "C" {
-extern float data_003DE6D0;
-extern float data_003DE6D8;
-}
+/* the lines' fade: its speed (alpha a second) and the alpha a line fades in to (OVL1 data
+ * 0x3DE6D0, 0x3DE6D8: variables, read with lwc1; the unit's first statics, as C2DMessageString::Tick
+ * is its last function; the names ours) */
+static float s_fadeRate = 280.0f;
+static float s_fadeMax = 100.0f;
 
 /* the messages' six colours, red, green, blue and alpha each (OVL1 BSS 0x440C70; the mission's
- * Init and the queue's set them, the name ours) */
-extern "C" {
-extern float data_00440C70[6][4];
-}
+ * Init and the queue's set them, the name ours): the unit's one dynamically initialised static,
+ * so its initialiser (0x4003E0) is __construct_array over the six with CPnt4D's empty constructor
+ * (0x2110E0) and no destructor */
+static CPnt4D s_msgColors[6];
 
 /* the colours set: greys, yellows, blues, greens, oranges and reds at alpha 100 (OVL1 0x2B7530) */
 extern "C" void func_002B7530()
 {
-    data_00440C70[0][0] = 128.0f;
-    data_00440C70[0][1] = 128.0f;
-    data_00440C70[0][2] = 128.0f;
-    data_00440C70[0][3] = 100.0f;
-    data_00440C70[1][0] = 128.0f;
-    data_00440C70[1][1] = 128.0f;
-    data_00440C70[1][2] = 64.0f;
-    data_00440C70[1][3] = 100.0f;
-    data_00440C70[2][0] = 64.0f;
-    data_00440C70[2][1] = 64.0f;
-    data_00440C70[2][2] = 96.0f;
-    data_00440C70[2][3] = 100.0f;
-    data_00440C70[3][0] = 64.0f;
-    data_00440C70[3][1] = 128.0f;
-    data_00440C70[3][2] = 64.0f;
-    data_00440C70[3][3] = 100.0f;
-    data_00440C70[4][0] = 128.0f;
-    data_00440C70[4][1] = 64.0f;
-    data_00440C70[4][2] = 32.0f;
-    data_00440C70[4][3] = 100.0f;
-    data_00440C70[5][0] = 128.0f;
-    data_00440C70[5][1] = 64.0f;
-    data_00440C70[5][2] = 64.0f;
-    data_00440C70[5][3] = 100.0f;
+    s_msgColors[0].x = 128.0f;
+    s_msgColors[0].y = 128.0f;
+    s_msgColors[0].z = 128.0f;
+    s_msgColors[0].w = 100.0f;
+    s_msgColors[1].x = 128.0f;
+    s_msgColors[1].y = 128.0f;
+    s_msgColors[1].z = 64.0f;
+    s_msgColors[1].w = 100.0f;
+    s_msgColors[2].x = 64.0f;
+    s_msgColors[2].y = 64.0f;
+    s_msgColors[2].z = 96.0f;
+    s_msgColors[2].w = 100.0f;
+    s_msgColors[3].x = 64.0f;
+    s_msgColors[3].y = 128.0f;
+    s_msgColors[3].z = 64.0f;
+    s_msgColors[3].w = 100.0f;
+    s_msgColors[4].x = 128.0f;
+    s_msgColors[4].y = 64.0f;
+    s_msgColors[4].z = 32.0f;
+    s_msgColors[4].w = 100.0f;
+    s_msgColors[5].x = 128.0f;
+    s_msgColors[5].y = 64.0f;
+    s_msgColors[5].z = 64.0f;
+    s_msgColors[5].w = 100.0f;
 }
 
 /* the colours (OVL1 0x2B7520) */
-extern "C" float (*func_002B7520())[4]
+extern "C" CPnt4D *func_002B7520()
 {
-    return data_00440C70;
+    return s_msgColors;
 }
 
 /* the line typed out: as many of the text's characters as the time allows, then faded in while
@@ -127,16 +127,16 @@ void C2DMessageString::Tick(float dT)
 
     if (m_time > m_displayTime) {
         if (a != 0.0f) {
-            a -= dT * data_003DE6D0;
+            a -= dT * s_fadeRate;
             if (a < 0.0f)
                 a = 0.0f;
             SetTrans(a);
         }
     } else {
-        if (a != data_003DE6D8) {
-            a += dT * data_003DE6D0;
-            if (a > data_003DE6D8)
-                a = data_003DE6D8;
+        if (a != s_fadeMax) {
+            a += dT * s_fadeRate;
+            if (a > s_fadeMax)
+                a = s_fadeMax;
             SetTrans(a);
         }
     }

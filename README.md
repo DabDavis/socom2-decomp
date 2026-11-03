@@ -1647,6 +1647,66 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 12** (ai_mapio.cpp's tail, vehicle_rdr.cpp's entry, char_type.cpp's weapon list):
+  - a class vector's resize matches through include/vector once the element's default constructor is
+    right: body assignments give byte stores in statement order, bitfields in a mem-initializer list
+    word read-mask-writes;
+  - a placement new followed by a call in an insert is MSL's construct(), not an assignment: with a
+    user-declared constructor the implicit copy constructor goes out of line -- the vehicle entry's
+    class insert 0x534630 matches that way (a lead for the class inserts' end register);
+  - `(EQUIP_ITEM)*(const char *)&w.m_wepId` lets remove_copy_if share one `lb` between the compare and
+    the element copy; a function too long for -inline auto inlines once its body goes through an
+    inline accessor (`Item(i)->Int()`, ParseTeams);
+  - an `unsigned` loop counter through `operator[](unsigned)` is strength-reduced, an `int` counter
+    keeps the per-pass index; `if (p != 0)` branches directly where a bare `if (p)` in a for/break
+    search is materialised first; a name-table loop indexes from the table's start (`names[i]`, i =
+    1..2);
+  - char_type.cpp starts at 0x53B070 at the latest (InsertWeapon inlines SetupCharacterWeapon);
+    ai_mapio.cpp's tail runs 0x51B6C0-~0x52416F; 0x534D40 is the entry's copy constructor, not `__as__`.
+- **Tells from the UI, round 10** (the keyboard's vector<char> instances and assign(s, n) through their callers):
+  - an end iterator copied to a stack slot, then read with the step folded into the access (`lhu
+    -4`), is an iterator passed by value to an inline (zui_skb.h's SkbPrev): every back()/end()-1
+    form scalarises it;
+  - an element built directly in push_back's temporary, its field addresses hoisted out of the loop,
+    is `push_back(T(a, b))`; a helper returning T by value adds a copy; a pooled true/false constant
+    read with `lbu` into a hidden result is `std::pair<bool, bool>(...)`'s const-reference constructor;
+  - a materialised `!x` (sltu, xori) inside an `&&` needs an inline `return !(bool)x;` -- the cast in
+    the condition is simplified away; a byte-enum is assigned unnarrowed (movz) and narrowed with
+    `andi 0xff` at each read, an unsigned char at the assignment;
+  - `return n >= 2 ? (unsigned short)x : 0;` gives `slti v0`, `bnez` and an `andi 0xffff` at the join;
+    `(T *)(buf + i * sizeof(T))` adds `this` first, `(T *)buf + i` the index first;
+  - include/string has `basic_string(const charT *, size_type)`, the char vector pop_back(); the
+    hangul element vectors' destructor chain is one level deeper in the original than these headers
+    (six this-tests inlined there) -- about 15 hangul rows wait on it (the MSL lane's).
+- **Tells from the game states, round 18** (two initialisers, the controller's stick and button readers):
+  - an array static of a class with an inline empty constructor gives an `__sinit` that tail-calls
+    `__construct_array` with the constructor's out-of-line copy and no destructor (fts_message.cpp);
+  - a static's registered destructor inlines its whole chain only if nothing in the unit's own code
+    requested its out-of-line copy first -- FreeVector's temporary does (st_core.cpp's
+    ~vector<CMovieCue>, 0x1EF8C0, a draft's match);
+  - `bool b = !A() || !B();` over inline bools materialises both negations, `daddiu b,zero,1` in the
+    first branch's delay slot; a switch case assigning a ternary joins the arms before its break;
+  - `return c ? -x : x;` leaves no nop before `jr ra`, `if (c) x = -x; return x;` does; chained early
+    returns ending in `return 0.0f` land the later branch on the zero's padding nop (a result local
+    avoids it);
+  - the 0x437Dxx words are fields of theMission (0x4364E0): 0x437D08 is CMission::m_subtitles
+    (+0x1828); 0x1E91C0-0x1EB06F matches SOCOM 1's database.cpp (testLoad, testUnload), unwritten.
+- **Tells from the weapons, round 11** (vis_data.cpp, CZMarkList::AddNewMark):
+  - a user-declared out-of-line empty destructor keeps a band's member list teardown at its
+    definition point, and -inline auto then refuses it to the vector's clear (~CPreLight_band);
+  - a constant-initialised function-local `static float` is read with `lwc1` from data, a literal
+    is built with `lui`/`ori` (ColConvTo3D); storing a constant in a member and reading it back stops
+    constant folding, an inline parameter is folded;
+  - `a >= b` materialises into a register where `b <= a` uses `at`; `m_index > m_first` loads m_first
+    first; `!found & (q <= m_end)` (bitwise) gives a computed-and-ANDed loop test, `&&` branches;
+  - an inline helper's parameter order sets its argument load order and its FPRs (`RandRange(hi,
+    lo)`); `k * rand()` held in a local fixes the multiply's operand order; `(n << 4) + (unsigned
+    int)p` puts the scaled index first in the `addu`, every pointer form the base;
+  - a `return;` at the end of the last if-block emits the target's `b epilogue; nop`; `CPnt3D v = a -
+    b;` puts operator-'s temporary below the named copy; `m_a = m_b = x` stores m_b first; a copy
+    constructor `{ *this = b; }` makes the vector insert construct through `if (p) p->operator=(x)`;
+  - vis_data.cpp runs 0x3BA300-0x3BD99F (SOCOM 1's 0x310460-0x312DDF; no assert names it);
+    znode.h's *_Object stubs are SOCOM 1's DWARF shape (a std::vector<band> plus m_bandMax).
 - **Tells from the HUD, round 20** (reco.cpp's Load/Tick/callbacks, __sinit_hud_mpweaponsel.cpp, zui_2d.cpp):
   - MW knows what an already-generated function of the same unit clobbers: Load keeps `lang` in a0
     across a call to a pinned lookup defined after it (generated first); the target's second call
@@ -2935,7 +2995,8 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
 matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
-constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- and 0x510080, OVL2's
+constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- 0x1EF8C0, st_core.cpp's
+~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), and 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
@@ -3558,6 +3619,95 @@ Hand-written in round 5c: `asr/contextv2.c` (20 of 21, new), `asr/language.c` (6
 of 2), `asr/osspi.c` (4 of 4), `asr/fastallo.c` (2 of 3), `asr/gsapi.c` (+12, 21 of 23) -- 22
 functions new to the map's byte-exact rows (4,016 bytes), the rest superseding matching drafts;
 101 rows named (65 `s1:slot`, 30 `s1:order`, 3 `s1:align`, 3 `s1:calls`).
+
+**Round 6b: the RT objects, whole.** The RT library's objects in 0x62C000-0x640000 read off SOCOM 1's
+in order; SOCOM II grew most of them (a third channel kind, a connect test, an interrupt mask), so
+each function is written from the binary in the vendor's shape and SOCOM 1's copy is the check
+where it is s1:exact.
+
+- **The unit list, by link order**: `rt_comm.c` (0x62C958, the channel is an allocated 0x18
+  block whose address is its id), `rt_comm_platform2.c` (0x62DA90, sockets over libnetb),
+  rt_comm_platform (0x62EA58, forwarders; drafts), `rt_crypt.c` (0x62EBF8, IsNullRSAKey first),
+  ..., `rt_mt.c` (0x638CF0: Cokus's MT19937 as SCEA kept it -- no `$Header`, the name is the
+  alphabetical link order's, between rt_msg.c and rt_mutex.c), setNewSeed_platform's object
+  (0x639058), `rt_time_platform.c` (0x63D4E0).
+- **Narrow return types stop sibling calls**: SOCOM II's internal functions return a type
+  narrower than the API's `int` (rt_msg_client_map_comm_error, rt_msg_client_is_valid_connection,
+  the platform's interrupt mask 0x639568), so `return f(...)` from an int function is a `jal` with
+  nothing after it (the callee promotes): ccsweep, the void and int declarations give `j`.
+- **A call returned after a guard on its own result is no sibling call** (rt_comm_metric_add_data:
+  `result = f(); if (result != 0) return result; return 0;`), where `return f();` and a result
+  variable both give `j`.
+- **A leaf's loop sits inside its positive test**: `if (p != 0) { for (...) if (...) return 0; }
+  return 1;` (IsNullRSAKey/IsNullRCKey); the guard-clause spelling gives the leaf a second `jr ra`.
+  `i = 64; while (i-- > 0)` is the target's bgtz on the old index (func_0062FDD8); a signature's
+  null inputs are one `||` (KM_DigiSign/Verify); nested `if (n > 1000) {...}` keeps the branch the
+  store-flag fold would remove (rt_comm_metric_update/print).
+- **A clamp passed as an argument**: `f(..., n > 4096 ? 4096 : n, ...)` to a libnetb parameter
+  declared `unsigned short` gives 2.96's `sltiu; xori v0,v0,0; movz` in the argument register; a
+  clamped local (int or short) re-extends.
+- **Float literals are the vendor's short spellings**: `0.015734f` and `0.003390842f` give the
+  target's 0x3C80E496/0x3B5E38E3 through 2.96's parser, where the exact decimals of those bits
+  come out an ulp low (`build/scratch/gcc/fconst.py` compiles spellings and reads the bits).
+- **Aggregate alignment shows in a struct copy**: the RC cipher state (0x10C) is word-aligned --
+  KM_CopyKeys moves its last word with `lw/sw`, a byte array gives `lwl/lwr`.
+- **Names**: 0x62CEF8 was not rt_comm_receive (the align pass's pair; it sends on the third channel
+  kind) -- 0x62CFA0 is, by SOCOM 1's callees; rt_comm's own rows, the platform/platform2
+  forwarders (startup, shutdown, create, send, receive, get_local_ip) by the calls into them, and
+  the MT rows by order and Cokus's constants. 0x62CB68 is rt_comm's set_default_options by
+  SOCOM 1's create (it calls it at the same point), but the map gives that name to 0x634958
+  (`s1:exact`, a six-instruction body in rt_msg_client's object): left a placeholder.
+- **Open, diagnosed in place**: KM_Create (8: a delay-slot choice), func_0062F818 (8 bytes: the
+  result's zero set in each branch), rt_comm_platform2_receive_from (41s: flags and port in the
+  other frame order), rt_msg_client_is_valid_connection_id (1: beqz against beqzl);
+  setNewSeed_platform (the EE timers read with `lw; dsll32; dsra32` -- no spelling tried gives it).
+
+Hand-written in round 6b: `medius/rt_comm.c` (33 of 33, new), `medius/rt_comm_platform2.c` (17 of 18,
+new), `medius/rt_crypt.c` (22 of 24, new), `medius/rt_mt.c` (6 of 6, new), `medius/rt_time_platform.c`
+(6 of 6, new), `medius/rt_mutex.c` (+2), `medius/rt_msg_client.c` (+8 of 9 internals) -- 94
+functions byte-exact, 77 new to the map's byte-exact rows (17 supersede matching drafts); 27 rows
+named (`s1:order` 18, `s1:calls` 9), one name withdrawn (0x62CEF8, `s1~`); 12,976 bytes.
+
+**Round 6c: the queues, the scheduler's small functions, 117 names.**
+
+- **SOCOM 1's call sites name the callees** (`build/scratch/gcc/callvotes.py`): every map row
+  carrying a demo name has its callee sequence aligned with the demo function's; where ours calls
+  a placeholder and the demo a named function, that is a vote. 75 names whose votes agree with the
+  object order (`_tosControl` 87 sites, `_tosGetProfileU32` 54, `qEnQueueOne` 21, `ConvErr` 21,
+  `tosBaseBlockConstruct` 25 ...), and where asr_align.txt was a row off (CalcAccuracyCtxInfo/
+  CreateMenuMasks, GenderDataCompute/GenderSelection, qFreeUnusedElemements) the demo's order
+  checked by hand; the queue and tos objects' other 20 rows by order, each with its callers
+  checked against the demo's. The HUD lane's five gsapi leads (from CReco against SOCOM 1's reco)
+  hold against SOCOM 1's gsapi object -- `gsapi_Init`, `gsapi_LanguageLoadBuffer`,
+  `gsapi_EngineOpen`, `gsapi_EngineStop` and the error translator, `gsapi_ErrorGetString` -- and
+  17 more of the object's rows and extaudio's three follow by callee sequence and position.
+- **gsapi_ErrorGetString is SOCOM 1's, moved**: the translator at the end of the context object
+  (the extaudio object between it and gsapi's) is SOCOM 1's gsapi_ErrorGetString with a bit-7
+  test. Its jump back to the top is a tail-recursive `return gsapi_ErrorGetString(0x80CC007F)`,
+  which 2.96 turns into the jump -- written last, after the table walk, as the target lays it out.
+- **Inlining, three ways**: SOCOM 1's static `qFreeElem` is a `static __inline__` (no copy left);
+  `qDeQueueOne` is a public `__inline__`, inlined into qCheckDeQueueOne's loop as SOCOM 1's is, its
+  own copy still byte-exact; so is `_tosErrorLog` (inlined into tosBaseBlockConstruct, its log
+  record still built on the stack).
+- **ScanSoft's shapes, each measured**: the element copied out before the walk moves on (`p = e;
+  e = e->next; qFreeElem(q, p)` -- the inline's parameter copy); a counter of its own per loop
+  (sharing one moves the outer loop's registers or its unrolling); `count -= n` reused as the
+  bound; `err |= !ok` (an `if` around `err |= 1` is if-converted to a movz the target lacks); a
+  free list tested before it is read (`if (*list) { e = *list; ...}`); a table indexed twice,
+  not through a local pointer (the address sum's registers swap); the positive test around a body
+  (`if (ok) { ...; return q; } return 0;`); a parameter copied to a local before a default is
+  taken (`size = elemsize` or the profile's).
+- **Open, diagnosed in place**: qEnQueue (byte-exact as written without `-funroll-loops`; 2.96
+  unrolls its loop by two where the target's stays rolled, while the object's other counted
+  loops are unrolled -- something in the vendor's body stops the unroller: two empty `asm
+  volatile` statements do, 4 words off), tosBaseBlockConstruct (16 words: the inlined logger's
+  code computed inside the `error == 0` test in the target).
+
+Hand-written in round 6c: `asr/queue.c` (16 of 17, new: SOCOM 1's queue object whole),
+`asr/tos.c` (+5: the base block's three input-queue commands, `_tosGetProfileU32`,
+`_tosGetProfileFloat`; 7 of 8 written), `asr/context.c` (+1, gsapi_ErrorGetString) -- 22
+functions new to the map's byte-exact rows (6,752 bytes); 117 rows named (95 `s1:calls`/
+`s1:order` from call sites and object order, 22 by the gsapi object's callees and order).
 
 ## Open, and next
 

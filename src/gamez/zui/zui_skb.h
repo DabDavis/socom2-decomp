@@ -31,6 +31,16 @@ class CTextureRelocMgr;
 }
 class CGameMenu;
 
+/* the iterator before i, i taken BY VALUE (ours): the keyboard units' last-element reads build the
+ * end iterator, copy it into a slot of its own and fold the step into the access (0x390820's
+ * `lhu -4`, SkbWrapText's and SkbWrapTokens' last pieces) -- the shape of a by-value iterator
+ * parameter; include/vector's class back() (`*(end().m_p - 1)`) computes the address first */
+template <class It>
+inline It SkbPrev(It i)
+{
+    return i - 1;
+}
+
 /* an rdr file (zrdr.h's: : _zrdr) and its reader */
 class CRdrFile : public _zrdr {};
 CRdrFile *zrdr_read(const char *name, const char *dir, int flags);
