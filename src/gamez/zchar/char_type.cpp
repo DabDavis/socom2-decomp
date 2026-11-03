@@ -700,6 +700,13 @@ CCharacterType *CCharacterType::Acquire() const
     return 0;
 }
 
+/* Parse's push_back makes this unit's tail emit the LODs' class insert (0x540410, named this round).
+ * OPEN, 0x590 against 0x500: the target calls the reallocation temporary's destructor, the LOD
+ * deleter's 0x540A50, out of line (with 12 string copy constructions 0x541150 and 4 assignments
+ * 0x5410C0), where this build inlines it (its two frees at +0x50C/+0x530) -- the tail's generation
+ * order (README: an insert generated before the deleter's destructor calls it), as the other class
+ * inserts' open question; the deleter's clear and destructor themselves match only as drafts */
+
 /* the type's record (SOCOM 1's, whose LOD names went through a string's find and replace): the
  * model and texture names, the controller, the anim sets (each name the list's copy), the default
  * gear (found by name in the gear list) and weapons (each with its ammunition and counts), the
