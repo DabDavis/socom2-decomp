@@ -819,3 +819,116 @@ int func_0061C998(unsigned int nWorld, int nValue)
         pWorld->nSessionMaster = nValue;
     return result;
 }
+
+int func_0061CB18(unsigned char *pbValue)
+{
+    int nValue = -2;
+    DmeWorld *pWorld = 0;
+    int result;
+
+    if (pbValue == 0)
+        return DME_ERR_ARGUMENT;
+    *pbValue = 0;
+    result = func_0061C600(0, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    if (func_00639A90(data_006511D8, &nValue) != 0)
+        return 37;
+    if (pWorld->nMyClient != DME_MAX_CLIENTS && nValue == pWorld->nMyClient)
+        *pbValue = 1;
+    return DME_OK;
+}
+
+extern int func_0061D440(int nClient);
+
+/* OPEN (20s): returns 30 when the record is there (the target's `li v0,30` beside the sltu); the
+ * range guard's and the two calls' layout differ -- separate and `||` guards tried. */
+int func_0061D108(unsigned int nWorld, int nClient, int *pbConnected)
+{
+    DmeClientInfo *pClient = 0;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (func_0061D440(nClient) != 1)
+        return DME_ERR_ARGUMENT;
+    if (pbConnected == 0)
+        return DME_ERR_ARGUMENT;
+    *pbConnected = 0xFFFFFF;
+    result = func_0061C720(nWorld, nClient, &pClient);
+    if (result != DME_OK)
+        return result;
+    if (pClient != 0) {
+        *pbConnected = pClient->bConnected != 0;
+        result = 30;
+    }
+    return result;
+}
+
+/* a data stream's slot (0x44 bytes, 2048 of them, made on first use by func_00614F58) */
+typedef struct DmeStreamSlot {
+    char field_00[16];
+    void *pBuffer;                      /* 0x10 */
+    char field_14[24];
+    char circ[24];                      /* 0x2C: its rt_circ_buf */
+} DmeStreamSlot;
+
+extern DmeStreamSlot *data_006511D0;
+extern int rt_circ_buf_destroy(void *pCircBuf);
+
+/* OPEN (35s): the target tests each slot's circular buffer by its address (`&slot->circ != 0`, an
+ * addu and bnez the target keeps) and reloads the table pointer per slot; first shape only. */
+int func_0061D320(void)
+{
+    unsigned int i;
+
+    if (data_006511D0 != 0) {
+        for (i = 0; i < DME_MAX_STREAMS; i++) {
+            if (data_006511D0[i].pBuffer != 0)
+                func_00614888(&data_006511D0[i].pBuffer);
+            if (data_006511D0[i].circ != 0)
+                rt_circ_buf_destroy(data_006511D0[i].circ);
+        }
+    }
+    return DME_OK;
+}
+
+extern int func_0061C150(unsigned int nWorld);
+
+int func_0061D3C8(void)
+{
+    DmeWorld *pWorld = 0;
+    unsigned int i = 0;
+
+    for (i = 0; i < DME_MAX_WORLDS; i++)
+        if (func_0061C600(i, &pWorld) == 0 && pWorld != 0 && pWorld->field_438 == 3)
+            func_0061C150(i);
+    return DME_OK;
+}
+
+extern void func_00617060(int nWorld, int nClient, int bJoined, unsigned short nPort, int bFailed);
+
+void func_0061D4D8(int nClient, unsigned short nPort, int nError)
+{
+    if (nError == 0 && nClient != -2) {
+        func_00617060(0, nClient, 1, nPort, 0);
+        return;
+    }
+    func_00617060(0, DME_MAX_CLIENTS, 0, 0, 1);
+}
+
+extern void (*data_006511A8)(int *pInfo);
+extern int data_006511AC;
+
+void func_0061D5E8(int nValue)
+{
+    int info[3];
+
+    if (data_006511A8 != 0) {
+        memset(info, 0, sizeof(info));
+        info[0] = 0;
+        info[1] = nValue;
+        info[2] = data_006511AC;
+        data_006511A8(info);
+    }
+}
