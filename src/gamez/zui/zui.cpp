@@ -69,12 +69,14 @@ class CGameMenu {
 public:
     /* the background movie (SOCOM 1's TickMPEG/RestartBackgroundMPEG/HaltBackgroundMPEG, SOCOM II's
      * restart taking a name) */
+    bool TickMPEG();
     bool RestartBackgroundMPEG(const char *name);
     bool HaltBackgroundMPEG();
 
     unsigned char _0[0x278];
     bool m_movierunning;          // 0x278 (SOCOM 1's at 0x244)
     bool m_has_mpeg_background;   // 0x279
+    bool m_loopMPEG;              // 0x27a: SOCOM II's (TickMPEG loops the movie when set; the name ours)
     CSaferStr m_MPEGName;         // 0x27c
     unsigned char _288[0x8e0 - 0x288];
     CSaferStr m_ReaderName;     // 0x8e0: the menu's rdr
@@ -101,11 +103,26 @@ enum STICK_DIR {
 class CMPEG {
 public:
     static int Run(const char *name, bool a, bool background, int arg);
+    static void Tick(int n);
     static void End();
+    /* (bools: TickMPEG tests the one and stores the other unconverted, as SOCOM 1's) */
+    static bool Done();
+    static bool Loop();
 };
 void zSysFifoEnd();
 void zSysFifoEnable(unsigned int mode);
 void zSysFifoDisable();
+extern "C" int sceGsSyncPath(int mode, unsigned short timeout);
+
+/* the video state (zvid.h's _zvid_public: only the page TickMPEG hands the movie) */
+struct _zvid_public {
+    unsigned char _0[0x34];
+    unsigned int renderBuf;   // 0x34
+};
+extern _zvid_public zVid;
+
+/* CGameMenu::RunEventAnim (0x367810, not written yet: the menu, an event, a name) */
+extern "C" void func_00367810(CGameMenu *menu, int event, const char *name);
 
 /* a sound (zsnd.h's CSnd: only its lookup by name) */
 class CSnd {
@@ -298,6 +315,32 @@ bool CGameMenu::RestartBackgroundMPEG(const char *name)
         }
     }
     return running;
+}
+
+/* the background movie ticked while it plays; once done, the menu's event 3 run and the movie
+ * looped or ended (SOCOM 1's TickMPEG, which always looped; 0x366940) */
+bool CGameMenu::TickMPEG()
+{
+    if (m_has_mpeg_background && m_movierunning) {
+        if (!CMPEG::Done()) {
+            unsigned int buf = zVid.renderBuf;
+
+            zSysFifoEnd();
+            zSysFifoDisable();
+            CMPEG::Tick(buf);
+            sceGsSyncPath(0, 0);
+            zSysFifoEnable(1);
+        } else {
+            func_00367810(this, 3, 0);
+            if (m_loopMPEG) {
+                m_movierunning = CMPEG::Loop();
+            } else {
+                m_movierunning = false;
+                CMPEG::End();
+            }
+        }
+    }
+    return m_movierunning;
 }
 
 void CDblBufTextureRelocator::Init()
