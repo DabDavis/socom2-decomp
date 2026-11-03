@@ -63,7 +63,10 @@ typedef struct CASR {
     int (*result_cb)(void *result, void *info);                 /* +516: a result, or none */
     int (*state_cb)(int state, int ms, void *info);    /* +520 */
     int (*train_cb)(int state, void *info);             /* +524 */
-    char pad528[20];
+    int (*abnorm_cb)(int code, int ms, void *info);     /* +528: an abnormal condition */
+    int (*gain_cb)(unsigned short gain, void *info);    /* +532: the engine asks for a gain */
+    int (*askgain_cb)(void *info);                      /* +536: ... for the gain in use */
+    char pad540[8];
     unsigned char gender_on[4];         /* +548 */
     unsigned int magic;                 /* +552: CASR_MAGIC */
     char info[8];                       /* +556: handed to every callback */

@@ -8827,14 +8827,14 @@
 0x004DE988 0x4C casrEnableLabelInQueue  # OVL2 unaligned; s1:align
 0x004DE9D8 0x60 casrDoSecondPass  # OVL2 unaligned; s1:align
 0x004DEA38 0x74 cbStateHandler  # OVL2 unaligned; s1:align
-0x004DEAB0 0x34 func_004DEAB0  # OVL2
-0x004DEAE8 0x34 func_004DEAE8  # OVL2 unaligned
+0x004DEAB0 0x34 casrSetParamNoClearErrorLog  # OVL2; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; casrSetParam between a save and a restore of last_error) -- the gcc lane, round 9c
+0x004DEAE8 0x34 casrGetParamNoClearErrorLog  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; casrGetParam so) -- the gcc lane, round 9c
 0x004DEB20 0x28 cbInitArchitectureQueues  # OVL2; s1:align
 0x004DEB48 0x10 cbRegisterInputQueue  # OVL2 unaligned; s1:exact
-0x004DEB58 0x44 func_004DEB58  # OVL2 unaligned
-0x004DEBA0 0x64 func_004DEBA0  # OVL2
-0x004DEC08 0x5C func_004DEC08  # OVL2 unaligned
-0x004DEC68 0x58 func_004DEC68  # OVL2 unaligned
+0x004DEB58 0x44 cbRegisterOutputQueue  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; the first free of the four output slots, as cbRegisterInputQueue's neighbour) -- the gcc lane, round 9c
+0x004DEBA0 0x64 cbGainRequest  # OVL2; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; the gain callback at +532 with an unsigned short) -- the gcc lane, round 9c
+0x004DEC08 0x5C cbAskCurrentGain  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; the callback at +536 with the info alone) -- the gcc lane, round 9c
+0x004DEC68 0x58 cbTOSAbnormalCond  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; the callback at +528, code 70 told as 4) -- the gcc lane, round 9c
 0x004DECC0 0x164 CalcSentenceConfidence  # OVL2; s1:align
 0x004DEE28 0x74 cbTSDetected  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the talk-spurt callback at +508 with frame * 110) -- the gcc lane, round 9c
 0x004DEEA0 0x80 cbTSAfterStartDetected  # OVL2; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the same callback, the frame offset added and 1 passed) -- the gcc lane, round 9c

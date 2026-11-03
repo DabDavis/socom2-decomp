@@ -1008,6 +1008,24 @@ int cbStateHandler(CASR *c, unsigned short state)
     return 0;
 }
 
+int casrSetParamNoClearErrorLog(CASR *c, int id, unsigned int value)
+{
+    int err = c->last_error;
+    int r = casrSetParam(c, id, value);
+
+    c->last_error = err;
+    return r;
+}
+
+int casrGetParamNoClearErrorLog(CASR *c, int id, unsigned int *value)
+{
+    int err = c->last_error;
+    int r = casrGetParam(c, id, value);
+
+    c->last_error = err;
+    return r;
+}
+
 int cbInitArchitectureQueues(CASR *c, unsigned char arch, unsigned char queues)
 {
     if (arch == 1 && queues == 4)
@@ -1022,7 +1040,7 @@ int cbRegisterInputQueue(CASR *c, int queue, unsigned short id)
     return 0;
 }
 
-int func_004DEB58(CASR *c, int cb)
+int cbRegisterOutputQueue(CASR *c, int cb)
 {
     int *p;
 
@@ -1037,6 +1055,42 @@ int func_004DEB58(CASR *c, int cb)
     else
         return 1;
     *p = cb;
+    return 0;
+}
+
+int cbGainRequest(CASR *c, int a1, int a2, int gain)
+{
+    int err;
+
+    if (c->gain_cb != 0) {
+        err = c->gain_cb(gain, c->info);
+        if (c->last_state == 0 && err != 0) {
+            c->last_state = err;
+            _tosErrorLog(c->event, 27);
+        }
+    }
+    return 0;
+}
+
+int cbAskCurrentGain(CASR *c)
+{
+    int err;
+
+    if (c->askgain_cb != 0) {
+        err = c->askgain_cb(c->info);
+        if (c->last_state == 0 && err != 0) {
+            c->last_state = err;
+            _tosErrorLog(c->event, 27);
+        }
+    }
+    return 0;
+}
+
+/* an abnormal condition: 70 is told the host as 4 */
+int cbTOSAbnormalCond(CASR *c, int a1, int a2, int code, int frames)
+{
+    if (c->abnorm_cb != 0)
+        c->last_state = c->abnorm_cb(code == 70 ? 4 : code, frames * 110, c->info);
     return 0;
 }
 
