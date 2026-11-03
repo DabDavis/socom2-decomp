@@ -8,12 +8,12 @@
 
 #include "../gamez/zvid/zvid.h"
 
-/* the machine's reset (OVL1 0x22ED10, not named yet) */
-extern "C" void func_0022ED10();
+/* the machine's reset (OVL1 0x22ED10, st_reboot.cpp's) */
+void RebootAfterError();
 
 /* a failed check stops the machine; SOCOM II's callers pass neither file nor line */
 void zVid_Assert(bool ok, unsigned int color, char *file, int line)
 {
     if (!ok)
-        func_0022ED10();
+        RebootAfterError();
 }
