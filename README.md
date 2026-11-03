@@ -4721,6 +4721,45 @@ and member lists, 0x629DA0-0x62A3B0), `medius/rt_msg_client.c` (+17 and the OPEN
 matching drafts; 4 data rows (gbInitialized@streammedia, gnInitCount@streammedia,
 gpszVersion@rt_upnp by SCEA's convention; gapStreamSessions, ours). No row renamed; no tool changed.
 
+**Round 11b: rt_udp.c, rt_p2p.c and the RT objects between them.**
+
+- **What 0x6311E8-0x63CF20 holds**: after rt_crypt.c's ciphers an interrupt-handler object
+  (0x6311E8, drafts) and **rt_list.c** (ours, 0x6313D8-0x6322C8: a message list in a ring buffer --
+  an 8-byte head per message, an empty message always ending the chain -- the lists rt_udp keeps per
+  endpoint and per connection); after rt_mutex_platform **rt_p2p.c** (0x6395B8-0x63C700, its
+  `$Header`; a peer table over one rt_udp endpoint of 256 connections and the key manager, id -1)
+  and **rt_table.c** (ours, 0x63C700: a rows-by-columns word table, .data 0x656000-0x656010); then
+  rt_time. **rt_udp.c** is SCEA's reliable UDP ("rt_udp version: 01.02.0048", a .data array): an
+  endpoint of 0x54 bytes on its own channel or one of eight shared ones (`gapUdp`, by the slot at
+  0x48), 0x90-byte connections with a TCP-like RTT estimator (srtt, rttvar, an RTO of at most 500
+  ms), 12-byte headers (flags, slot, length, id, sequence) and a 4-byte trailer. SOCOM 1's
+  rt_rel_udp keeps none of these bodies: every name is a placeholder.
+- **A statement macro again stops sibling calls**: rt_p2p's three relay handlers are jals only as
+  `do { f(...); } while (0)` (2.96 tail-calls a void function's last call to an int function
+  otherwise) -- round 7b's NetFreeClient finding, met a second time.
+- **A narrow return type, a third time**: rt_list's end-marker writer returns `unsigned char`, so
+  the clear returns its result through a jal; and KM_Cleanup (rt_crypt.c, 0x630508) is void, as its
+  sibling KM_Destroy: declared int, rt_p2p's destroy takes v1 for the record it reloads after it.
+- **Shapes, each measured**: a two-way choice as `if (n == 0) {...; return 0;} if (n == 1) {...;
+  return 0;} return 1;` (an if/else lets the two bodies' tails cross-jump; a switch moves every
+  block); a result kept in a saved register to one `return result` across a call (0x641230); a value
+  read once into a local before three class tests (KM_Cleanup's id: the struct field reloads in
+  every test otherwise); a row index for a fixed table (`aSlots[i]`, i < 32), which 2.96 turns into
+  the target's count-down loop, where a walking pointer moves the registers; the RTO as `n = srtt +
+  MAX(rttvar, 1); if (n > 500) n = 500;`; header stores by `tools/ccperm.py` (five functions).
+- **An unrotated search loop**: rt_p2p's peer searches test the bound at the top, recompute
+  `i * 40` and hoist only the count -- `for (i = 0; ; i++) { if (i >= n) break; ... }` gives that
+  loop where a plain `for` is rotated and strength-reduced (the guards before it still differ).
+- **Open, diagnosed in place**: rt_udp's create (the allocation laid out after the option copy) and
+  raw send, rt_p2p's searches and create, rt_list's init, rt_table's five accessors (the result
+  constant held in v0 from the entry), four functions 2-3 words off on argument scheduling.
+
+Hand-written in round 11b: `medius/rt_udp.c` (36 of 44, new), `medius/rt_p2p.c` (22 of 29, new),
+`medius/rt_list.c` (15 of 16, new), `medius/rt_table.c` (1 of 6, new), `medius/rt_crypt.c` (+1,
+KM_Cleanup: 24 of 26) -- 75 functions byte-exact, 58 new to the map's byte-exact rows, 17
+superseding matching drafts; 4 data rows (gapUdp, gnTableCols, gnTableRows, gnTableBufSize, ours).
+No row renamed; no tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
