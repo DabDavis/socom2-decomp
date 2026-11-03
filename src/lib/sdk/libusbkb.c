@@ -13,10 +13,10 @@
  * the sync and its dispatcher, the five result handlers but Read's, the state setters, the
  * INTC 3 handler the init installs (0x1BF600: each keyboard's repeat timer counted per vblank),
  * the key ring's clear, push and pop (0x1BF688-0x1BF728: four codes at the state's +0x22, through
- * a pointer to its +0x10 block) and the 21-entry lookup 0x1BFA38 (round 17a, below); not written:
- * Read's result, the key-code conversion (0x1BEFF8, 0x574) and its two converters 0x1BF790
- * (each raw code copied, or converted through 0x1BF8E0 by the keyboard's arrangement) and
- * 0x1BF8E0 (it prints "Arrangement error!"). The library's data has no names
+ * a pointer to its +0x10 block), and in round 17a the 21-entry lookup 0x1BFA38 and its two
+ * callers, the code copier 0x1BF790 (each raw code copied, or converted through 0x1BF8E0 by the
+ * keyboard's arrangement) and the converter 0x1BF8E0 (it prints "Arrangement error!"); not
+ * written: Read's result and key-code conversion (0x1BEFF8, 0x574). The library's data has no names
  * (data_<VA>: the state at 0x1E41C0 -- keyboards, the per-keyboard array, the pending command --
  * the client 0x1E4260, the buffers 0x1E42C0 and 0x1E4300, the semaphore 0x1CE5D8).
  *
@@ -525,6 +525,84 @@ typedef struct {
 
 extern UsbKbCnv data_001D4280[2][21];
 
+/* the three arrangements' code tables, each unshifted then shifted */
+extern u_short data_001D3680[2][256];
+extern u_short data_001D3A80[2][256];
+extern u_short data_001D3E80[2][256];
+
+u_short func_001BFA38(int type, u_char key);
+u_short func_001BF8E0(int arrangement, u_int mkey, u_int led, u_short keycode);
+
+/* Up to len codes, to the first zero, copied as they are (code type 0) or converted by the
+ * keyboard's arrangement (type 1); the count (round 17a). Each loop is a for whose body tests
+ * and breaks first: the rotated exit code's jump lands inside the body, so loop.c leaves it alone
+ * (the target's peeled first test, the index shifted and summed every pass). */
+int func_001BF790(int no, u_char mkey, u_char led, int len, u_short *src, u_short *dst)
+{
+	UsbKbDev *d = &data_001E41C0.dev[no];
+	int i, n = 0;
+
+	switch (d->codetype) {
+	case 0:
+		for (i = 0; i < len; i++) {
+			if (src[i] == 0)
+				break;
+			dst[i] = src[i];
+		}
+		n = i;
+		break;
+	case 1:
+		for (i = 0; i < len; i++) {
+			if (src[i] == 0)
+				break;
+			dst[i] = func_001BF8E0(d->arrange, mkey, led, src[i]);
+		}
+		n = i;
+		break;
+	}
+	return n;
+}
+
+/* A raw key code converted by the keyboard's arrangement (round 17a): its table's entry, the
+ * key-dependent lookup below for 0x4000, the raw code | 0x8000 for 0x8000; then caps lock (LED
+ * bit 1) uppercases a letter and shift (either shift key, modifier bits 0x22) with caps lock
+ * lowercases it again. The arrangement is a switch (the target's case tree: 1, then < 2). */
+u_short func_001BF8E0(int arrangement, u_int mkey, u_int led, u_short keycode)
+{
+	u_short *tbl = 0;
+	int shift = (mkey & 0x22) != 0;
+	u_short code;
+
+	switch (arrangement) {
+	case 0:
+		tbl = data_001D3680[shift];
+		break;
+	case 1:
+		tbl = data_001D3A80[shift];
+		break;
+	case 2:
+		tbl = data_001D3E80[shift];
+		break;
+	default:
+		scePrintf("Arrangement error!\n");
+		break;
+	}
+	if (keycode == 0)
+		return 0;
+	if (keycode >= 256)
+		return keycode;
+	code = tbl[keycode];
+	if (code == 0x4000)
+		code = func_001BFA38((u_char)led, keycode);
+	if (code == 0x8000)
+		code = keycode | 0x8000;
+	if ((u_short)(code - 'a') < 26 && (led & 2))
+		code -= 32;
+	if ((u_short)(code - 'A') < 26 && (led & 2) && shift)
+		code += 32;
+	return code;
+}
+
 /* The key's entry in one of two 21-entry tables, its code | 0x4000, else the key itself (OPEN
  * since round 15a; round 17a). The target's loop is untouched by loop.c -- the type's * 84 and the
  * table's %lo recomputed every pass, i * 4 not strength-reduced -- with its first comparison
@@ -536,7 +614,7 @@ extern UsbKbCnv data_001D4280[2][21];
  * ("multiple entry points"). The found value goes through `ret` (a test after the loop, or a return
  * inside it, is 27-32 words off), the compare names the key first (the target's beq a1,v1).
  * fileio.c's no-wait queue and copy loops are the same shape. */
-int func_001BFA38(int type, u_char key)
+u_short func_001BFA38(int type, u_char key)
 {
 	u_int i;
 	int ret = key;
