@@ -1335,6 +1335,9 @@ public:
     /* the last point taken off, its cell handed back when asked; false when there is none (new
      * in SOCOM II, the name ours: the SEALs' 0x524D00) */
     bool PopPoint(CAiMapLoc *loc);
+    /* the planner kind set unless a plan is running, whether the path has it now handed back (SOCOM
+     * 1's SetPathType, 0x524CD0: CSealCtrlAi::SetRoute calls it with the default route kind) */
+    bool SetPathType(PATH_TYPE type);
     /* whether a point lies on the cell, its index handed back when asked (SOCOM 1's tested the
      * points' widths around the cell) */
     bool PointInPath(const CAiMapLoc &loc, unsigned int *index);

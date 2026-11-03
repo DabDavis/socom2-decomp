@@ -273,6 +273,16 @@ bool CAiPath::PopPoint(CAiMapLoc *loc)
     return popped;
 }
 
+/* the planner kind set unless a plan is running (SOCOM 1's SetPathType word for word, the state
+ * now at 0x80), whether the path has that kind handed back -- the kind compared parameter first
+ * (`type == m_type`: the xor's operands) */
+bool CAiPath::SetPathType(PATH_TYPE type)
+{
+    if (m_state != PLANNING)
+        m_type = type;
+    return type == m_type;
+}
+
 /* the point on the cell itself, its index handed back when asked (new in SOCOM II, the name ours:
  * 0x524880, which CAiSBreach::Tick calls -- the row carried PointInPath by its place until the AI
  * core's round 17 read SOCOM 1's PointInPath body in 0x524760, below). NOT const: the target
