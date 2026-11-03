@@ -27,7 +27,7 @@
 /* the speech library (OVL2, GCC: the recogniser lane's; called by placeholder where unnamed --
  * by SOCOM 1's recoInit2/recoSetupLanguage/recoSetContextByCol, which make the same calls at the
  * same places: 0x4C7328 gsapi_Init, 0x4C7508 gsapi_LanguageLoadBuffer, 0x4C6CD8 gsapi_EngineOpen,
- * 0x4C8128 gsapi_EngineSetMode, 0x4C7168 gsapi_EngineStop, 0x4C6078 gsapi_ErrorGetString) */
+ * 0x4C7168 gsapi_EngineStop, 0x4C6078 gsapi_ErrorGetString) */
 enum _GSAPI_RESULTTYPE {
     GSAPI_RESULTTYPE_FINAL,
     GSAPI_RESULTTYPE_PREMATURE,
@@ -69,7 +69,7 @@ int func_004C7328(void *callback, int arg);   /* the library opened, the result 
 int func_004C7508(void *language, int arg);   /* the language loaded from its file */
 int func_004C6CD8(int arg, int *engine);      /* the engine opened into *engine */
 int gsapi_NotifySetCallback(void *callback);
-int func_004C8128(int engine, int arg);
+int gsapi_EngineSetMode(int engine, int mode);
 int gsapi_EngineSetImmediateContext(int engine, void *context, int handle, void *words);
 int func_004C6FF0(int engine);                /* the engine started */
 int func_004C6E98(int engine, int param, int value);
@@ -337,7 +337,7 @@ bool CReco::Init()
             if (err >= 0) {
                 err = gsapi_NotifySetCallback((void *)cbrecoNotify);
                 if (err >= 0) {
-                    err = func_004C8128(m_engine, 5);
+                    err = gsapi_EngineSetMode(m_engine, 5);
                     if (err < 0)
                         func_004C6078(err);
                 }
