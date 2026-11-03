@@ -5287,6 +5287,54 @@ new, 0x643140 over its draft) -- 26 functions byte-exact, 21 rows new to the map
 (5,464 bytes), 5 superseding matching drafts; 3 rows named (rt_msg_client_get_version_string_ptr,
 KM_Encrypt, KM_Decrypt: `s1:order`). No tool changed.
 
+**Round 13b: DmeLocal.c, the densest object, by SOCOM 1's bodies.** SOCOM 1's Dme.c object (0x418B58,
+115 functions) is SOCOM II's DmeLocal.c in the same order, most bodies grown: a row at SOCOM 1's
+position is read beside the demo's function (NetGetBufferStatus, NetSetSendAggregationInterval,
+NetIpStringToBinary, FilterTargetClientBitmask, SendPacket, the NetSendMessage* family, NetConnect,
+RemoteClientEvent, FindFreeLocalObject, NetAddToDataStream ...), and the rows after SOCOM 1's object
+end (0x61C450 on) are the peer layer's callbacks, which the transport's startup (0x616C98) passes to
+rt_p2p by address -- six rows at once.
+
+- **SOCOM 1's two-path functions share one final `return 0`**: the server's connection goes through
+  the peer layer (0xFFFF or 0) and the others through rt_msg_client, written `if (p2p) { if (f()) return
+  37; } else { ...; } return DME_OK;` -- a join, so the zero is materialised (`move v0,zero`) where guard
+  clauses let 2.96 if-convert or reuse a known zero. The same for a body inside a positive test
+  (`if (!bStarted) {...} return DME_OK;`, the startup) and for a callback's `!=` test around its send.
+- **The known-zero v0 is cse-follow-jumps'**: func_00614758 (round 4b's OPEN) is byte-exact under
+  `-fno-cse-follow-jumps` alone, and func_00615B48 comes from 65s to 1 word -- 2.96's CSE follows the
+  jump past `return 37` with v0 still the call's result and deletes the target's copy into the return
+  register, so reorg cannot put the constant in the branch's slot. Not the vendor's flag: it reallocates
+  func_00614168 (s0/s1) and costs six of the unit. The target's CSE follows jumps but keeps a copy into
+  v0 -- a toolchain difference, with the bnez/bnezl word (round 12c) and the runtime's DFmode slots.
+- **Shapes, each measured**: SOCOM 1's comparison operands as written (`anDelay[j] > anDelay[j + 1]`
+  loads a[j] first; `nPort == entry.nPort`); a clamp as a guard (`if (n < 1) n = 1;` -- the ternary
+  if-converts the other way); a sub-record's address taken once before its tests (NetConnect's kinds);
+  an index sum into its own variable before the status test (FindFreeLocalObject); the ternary port
+  default as an if/else on `== 0`; a clear loop with its own counter (a temporary, not the outer index);
+  a range guard as two (`< 0`, then `>= 256` -- one `||` folds to an unsigned test); the bandwidth copy
+  takes the byte counters first (register order says it); a void callback where the target's early
+  exits leave v0 as the test's register.
+- **A record's types reach other functions**: adding a `char` array to DmeObject (the named object's
+  name, 0x0C) or retyping the stream slot's `char` array as bytes drops func_0061C7A8's reload; the
+  records stay as the code proves them and the name is spelled by its offset.
+- **Open, diagnosed in place**: func_0061D530 and func_00617560 (the link-lost reports: the target loads
+  the world's field and the host word ahead of all five stores; 120 orders, an array and a struct),
+  SendPacket (SOCOM 1's bytes: `li -1; xor` where 2.96 folds `nor`, the 0xFFFF test if-converted the
+  other way; nine shapes), func_00615B48 (the known-zero v0, above), func_00616290 (`p + 12 != 0` folded
+  to `p != -12`), func_0061A118 (two sends cross-jump here), func_0061B538 (the byte message's frame
+  slot), func_0061C9E8 (the ping table's address forms, first shape).
+
+Hand-written in round 13b: `medius/dmelocal.c` (+37 written, 71 of 84): 29 functions byte-exact, all new
+to the map's byte-exact rows (6,588 bytes; `src/lib/medius` 781 -> 810 of 878) -- func_006142A8,
+func_00614380 (the delay medians), func_006144A0, func_00614590, NetGetBandwidthInfo, func_006148E0,
+func_00614F58, func_00615390, func_00615558, func_00615660, func_006157E0, func_006163A0,
+func_00616748, func_00616C10, func_00616C98, func_00616DA0, func_00616ED0, func_00617690,
+func_006186B0, func_0061ABD8, func_0061B650, func_0061CBB8, func_0061CEF0, func_0061CFF0,
+func_0061D650, func_0061D7A8, func_0061D898, func_0061D948, func_0061D9F8. No row renamed (the bodies
+keep placeholders: DME's API names belong to Dme.c's locked wrappers, round 7b, and 0x6209B0/0x620A88
+-- NetGetBufferStatus's and NetSetSendAggregationInterval's wrappers by their bodies -- are left for a
+call-site check); no tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
