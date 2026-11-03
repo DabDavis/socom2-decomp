@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK WrdCreateWordList(s32, s32, s32);           /* extern */
 M2C_UNK WrdDestroyWordList(s32, s32);               /* extern */
-M2C_UNK func_004C8E68(s32, s32, s32);               /* extern */
 s32 heap_Alloc(s32, M2C_UNK);                       /* extern */
 extern s32 gGSAPI;
 
@@ -26,7 +26,7 @@ s32 ContextSetWrdData(char *arg0, s32 arg1) {
         M2C_FIELD(arg0, s32 *, 0x1C) = heap_Alloc(gGSAPI, 8);
 block_4:
         if (M2C_FIELD(arg0, s32 *, 8) != 0) {
-            func_004C8E68(gGSAPI, M2C_FIELD(arg0, s32 *, 0x1C), arg1);
+            WrdCreateWordList(gGSAPI, M2C_FIELD(arg0, s32 *, 0x1C), arg1);
         }
     }
     return 0;
