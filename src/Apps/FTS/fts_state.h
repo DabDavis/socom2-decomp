@@ -583,8 +583,9 @@ public:
     unsigned char _3e[0x64 - 0x3e];
 };
 
-/* SOCOM II's states for turning the console off and rebooting it (vtables 0x405AE0 and 0x405B10:
- * their own Init, Tick and UnInit; their constructors, 0x22EB50 and 0x22EC90, in their own unit) */
+/* SOCOM II's states for leaving for the network GUI and rebooting the game (vtables 0x405AE0 and
+ * 0x405B10: their own Init, Tick and UnInit), each its own unit inside the HUD's range:
+ * st_shutdown.cpp 0x22EA50-0x22EBCF, st_reboot.cpp 0x22EBD0-0x22EDAF */
 class CShutdownState : public CGameState {
 public:
     CShutdownState();

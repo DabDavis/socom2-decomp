@@ -2119,15 +2119,15 @@
 0x0022E9A0 0x1C func_0022E9A0  # OVL1
 0x0022E9C0 0x70 __dt__Q228@unnamed@hud_scorepopup_cpp@9CScoreBmpFv  # OVL1; by hand (the HUD lane: slot 0 of the vtable 0x405A70, whose RTTI names @unnamed@hud_scorepopup_cpp@::CScoreBmp; the unit's initialiser registers it for each box bitmap)
 0x0022EA30 0x1C func_0022EA30  # OVL1
-0x0022EA50 0x8 func_0022EA50  # OVL1
-0x0022EA60 0x8 func_0022EA60  # OVL1
-0x0022EA70 0xE0 func_0022EA70  # OVL1
+0x0022EA50 0x8 UnInit__14CShutdownStateFv  # OVL1; by hand (the states lane, round 19: slot 0x1C of CShutdownState's vtable 0x405AE0, CGameState's UnInit's; st_shutdown.cpp, byte-exact)
+0x0022EA60 0x8 Tick__14CShutdownStateFf  # OVL1; by hand (the states lane, round 19: slot 0x14 of CShutdownState's vtable 0x405AE0, CGameState's Tick's; st_shutdown.cpp, byte-exact)
+0x0022EA70 0xE0 Init__14CShutdownStateFv  # OVL1; by hand (the states lane, round 19: slot 0x10 of CShutdownState's vtable 0x405AE0, CGameState's Init's -- the system shut down and SCUSNGUI.ELF run; st_shutdown.cpp, byte-exact)
 0x0022EB50 0x74 __ct__14CShutdownStateFv  # OVL1; s1:vtable by hand (the states lane: CGameState's base inlined -- its vtable 0x404F30 and name -- then CShutdownState's vtable 0x405AE0, RTTI-named)
-0x0022EBD0 0x8 func_0022EBD0  # OVL1
-0x0022EBE0 0x8 func_0022EBE0  # OVL1
-0x0022EBF0 0x98 func_0022EBF0  # OVL1
+0x0022EBD0 0x8 UnInit__12CRebootStateFv  # OVL1; by hand (the states lane, round 19: slot 0x1C of CRebootState's vtable 0x405B10, CGameState's UnInit's; st_reboot.cpp)
+0x0022EBE0 0x8 Tick__12CRebootStateFf  # OVL1; by hand (the states lane, round 19: slot 0x14 of CRebootState's vtable 0x405B10, CGameState's Tick's; st_reboot.cpp)
+0x0022EBF0 0x98 Init__12CRebootStateFv  # OVL1; by hand (the states lane, round 19: slot 0x10 of CRebootState's vtable 0x405B10, CGameState's Init's -- the system shut down and the game's ELF rerun with dlgAfterReboot.rdr; st_reboot.cpp)
 0x0022EC90 0x74 __ct__12CRebootStateFv  # OVL1; s1:vtable by hand (the states lane: CGameState's base inlined, then CRebootState's vtable 0x405B10, RTTI-named)
-0x0022ED10 0x94 func_0022ED10  # OVL1
+0x0022ED10 0x94 RebootAfterError__Fv  # OVL1; by hand (the states lane, round 19: st_reboot.cpp's -- CRebootState::Init's reboot with dlgAfterErrorReboot.rdr, called by zVid_Assert (both overlays' copies) and 0x365A00; the name ours)
 0x0022EDB0 0x38 func_0022EDB0  # OVL1
 0x0022EDF0 0x30 func_0022EDF0  # OVL1
 0x0022EE20 0x40 func_0022EE20  # OVL1
