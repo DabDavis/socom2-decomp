@@ -65,6 +65,10 @@ public:
     int m_lastaction;   // 0x538: the action last run
     unsigned char _53c[0xfc8 - 0x53c];
     CZNetPersona *m_persona;   // 0xfc8
+
+    /* (ours: the node action's test reads the player's sides through it -- expanded ahead of the
+     * AND, the right operand is loaded first) */
+    unsigned int GetTeamFlags() const { return m_teamflags; }
 };
 
 /* a node's action (zseal.h's) */
@@ -82,6 +86,9 @@ public:
     unsigned char _3f_0 : 2;
     unsigned char m_enabled : 1;   // 0x3f bit 2
     unsigned char _3f_3 : 5;
+
+    /* (ours: the test materialises the bit, sltu, before it branches) */
+    bool IsEnabled() const { return m_enabled; }
 };
 
 /* a squad of SEALs (zseal.h's CSealUnit: its orders) */
@@ -92,8 +99,8 @@ public:
 
     unsigned char _0[0x4];
     /* the vtable pointer after the first word */
-    virtual void Order(CZSealBody *player, int member, int cmd, int flags);   // 0x8 (the names ours)
-    virtual bool CanOrder(CZSealBody *player, int member, int cmd);   // 0xc
+    virtual void Order(CZSealBody *player, int member, unsigned char cmd, int flags);   // 0x8 (the names ours)
+    virtual bool CanOrder(CZSealBody *player, int member, unsigned char cmd);   // 0xc
 
     unsigned char _8[0xc4 - 0x8];
     int m_channel;   // 0xc4: the radio channel
@@ -164,8 +171,8 @@ extern "C" {
 /* the SEAL lane's, no names yet */
 void func_005EAF20(CSealUnit *unit, int msg, int flags, float rate);
 void func_005EAEB0(CSealUnit *unit);
-void func_005EAD70(CSealUnit *unit, int member, int cmd, int flags);
-void func_005EABA0(CSealUnit *unit, int member, int cmd, int flags);
+void func_005EAD70(CSealUnit *unit, int member, unsigned char cmd, int flags);
+void func_005EABA0(CSealUnit *unit, int member, unsigned char cmd, int flags);
 CNodeAction *func_005AA240(CZSealBody *seal, int which);
 CEntity *func_005E8A90(CSealUnit *unit);
 bool func_0058DFA0(unsigned char member);
@@ -207,6 +214,13 @@ struct CTCMRepeat {
     int m_arg;   // 0x4
 };
 
+/* a team member's index (a byte enum: the member test compares it zero-extended) */
+enum TCM_MEMBER {
+    TCM_MEMBER_0 = 0,
+    TCM_MEMBER_1 = 1,
+    TCM_MEMBER_LAST = 0xff
+};
+
 /* the unit's globals (not file statics: a call reloads them, as the target does) */
 CTCMNode *s_tcmCurNode;   // 0x412FF0: the node whose command or test runs
 bool s_tcmVoteAll;   // 0x412FF8
@@ -223,6 +237,52 @@ static inline const std::list<CEntity *> &tcmEntities()
 }
 
 /* -------------------------------------------------------------------------------------------- */
+
+/* an item made and kept, unless the name is too long or already held (its out-of-line Find is
+ * inlined here; the entry lives in memory: push_back takes its address) */
+CTCMEntry *CTCMCache::Add(const char *name, TCMFunc action, int actionArg, TCMFunc update, int updateArg)
+{
+    CTCMEntry *entry = 0;
+
+    if (name && strlen(name) < 0x60) {
+        if (!Find(name)) {
+            entry = new CTCMEntry;
+            strcpy(entry->m_name, name);
+            entry->m_action = action;
+            entry->m_actionArg = actionArg;
+            entry->m_update = update;
+            entry->m_updateArg = updateArg;
+            m_entries.push_back(entry);
+        }
+    }
+    return entry;
+}
+
+CTCMCache::~CTCMCache()
+{
+    while (m_entries.size()) {
+        CTCMEntry *entry = m_entries.back();
+
+        m_entries.pop_back();
+        delete entry;
+    }
+}
+
+/* the item of this name, if one is held */
+CTCMEntry *CTCMCache::Find(const char *name)
+{
+    CTCMEntry *found = 0;
+
+    if (name) {
+        unsigned int n = m_entries.size();
+
+        for (unsigned int i = 0; i < n && !found; i++) {
+            if (m_entries[i] && !strcasecmp(m_entries[i]->m_name, name))
+                found = m_entries[i];
+        }
+    }
+    return found;
+}
 
 void tcmSetCurNode(CTCMNode *node)
 {
@@ -267,34 +327,39 @@ int tcmSelectTeam(CZSealBody *player, int team)
 int tcmUpdateTeamMember(CZSealBody *player, int member)
 {
     int r = 1;
+    TCM_MEMBER m = (TCM_MEMBER)member;
 
     s_tcmMember = member;
-    if (func_0058DFA0(member)) {
-        r = 0;
-    } else {
+    if (!func_0058DFA0(m)) {
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
-        if (unit && player && player->m_socom2_e1_4 && unit->CanOrder(player, (unsigned char)member, 0)) {
-            r = 0;
-            if ((unsigned char)member == 1 && s_tcmCurNode) {
-                void *data = unit->GetDataPtr();
+        if (unit && player && player->m_socom2_e1_4) {
+            bool ok = unit->CanOrder(player, m, 0);
 
-                if (data) {
-                    void *caption = func_002B48E0(data);
-                    void *text2 = func_002B4760(data);
-                    void *name = func_002B4820(data);
+            if (ok) {
+                r = 0;
+                if (m == TCM_MEMBER_1 && s_tcmCurNode) {
+                    void *data = unit->GetDataPtr();
 
-                    if (caption && text2) {
-                        func_00232170(s_tcmCurNode, (const char *)caption, 0);
-                        func_002320E0(s_tcmCurNode, (const char *)text2);
-                    } else {
-                        r = 1;
+                    if (data) {
+                        const char *caption = (const char *)func_002B48E0(data);
+                        const char *text2 = (const char *)func_002B4760(data);
+                        const char *name = (const char *)func_002B4820(data);
+
+                        if (caption && text2) {
+                            func_00232170(s_tcmCurNode, caption, 0);
+                            func_002320E0(s_tcmCurNode, text2);
+                        } else {
+                            r = 1;
+                        }
+                        if (name)
+                            func_00232100(s_tcmCurNode, name);
                     }
-                    if (name)
-                        func_00232100(s_tcmCurNode, (const char *)name);
                 }
             }
         }
+    } else {
+        r = 0;
     }
     return r;
 }
@@ -302,6 +367,7 @@ int tcmUpdateTeamMember(CZSealBody *player, int member)
 int tcmTeamMember(CZSealBody *player, int member)
 {
     int r = 1;
+    unsigned char m = member;
 
     s_tcmMember = member;
     if (s_tcmRecoMode) {
@@ -311,7 +377,7 @@ int tcmTeamMember(CZSealBody *player, int member)
             func_005EAD70(unit, s_tcmMember, 0, 0);
         return 1;
     }
-    if (!func_0058DFA0(member)) {
+    if (!func_0058DFA0(m)) {
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4) {
@@ -326,29 +392,35 @@ int tcmTeamMember(CZSealBody *player, int member)
 int tcmUpdateTeamCommand(CZSealBody *player, int cmd)
 {
     int r = 1;
+    unsigned char c = cmd;
     CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
-    if (unit && player && player->m_socom2_e1_4 && unit->CanOrder(player, s_tcmMember, (unsigned char)cmd))
-        r = 0;
+    if (unit && player && player->m_socom2_e1_4) {
+        bool ok = unit->CanOrder(player, s_tcmMember, c);
+
+        if (ok)
+            r = 0;
+    }
     return r;
 }
 
 int tcmTeamCommand(CZSealBody *player, int cmd)
 {
     int r = 1;
+    unsigned char c = cmd;
 
     if (s_tcmRecoMode) {
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4)
-            func_005EAD70(unit, s_tcmMember, (unsigned char)cmd, 0);
+            func_005EAD70(unit, s_tcmMember, c, 0);
         return 1;
     }
     CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
     if (unit && player && player->m_socom2_e1_4) {
-        func_005EABA0(unit, s_tcmMember, (unsigned char)cmd, 0);
-        unit->Order(player, s_tcmMember, (unsigned char)cmd, 0);
+        func_005EABA0(unit, s_tcmMember, c, 0);
+        unit->Order(player, s_tcmMember, c, 0);
         r = 0;
     }
     return r;
@@ -405,24 +477,34 @@ int tcmUpdateMessage(CZSealBody *player, int msg)
         break;
     case 48:
         break;
-    case 49:
-    case 50:
-    case 51:
-    case 52:
-    case 53: {
-        const char *s = func_002C3C30(ftsGetPlayer(), msg - 49);
-
-        func_00232170(s_tcmCurNode, s && *s ? TranslateString(s) : "<NONE>", 32);
-        break;
-    }
     case 54:
     case 55:
     case 56:
     case 57:
     case 58: {
         const char *s = func_002C3B60(ftsGetPlayer(), msg - 54);
+        const char *caption;
 
-        func_00232170(s_tcmCurNode, s && *s ? TranslateString(s) : "<NONE>", 32);
+        if (s && *s)
+            caption = TranslateString(s);
+        else
+            caption = "<NONE>";
+        func_00232170(s_tcmCurNode, caption, 32);
+        break;
+    }
+    case 49:
+    case 50:
+    case 51:
+    case 52:
+    case 53: {
+        const char *s = func_002C3C30(ftsGetPlayer(), msg - 49);
+        const char *caption;
+
+        if (s && *s)
+            caption = TranslateString(s);
+        else
+            caption = "<NONE>";
+        func_00232170(s_tcmCurNode, caption, 32);
         break;
     }
     }
@@ -663,15 +745,15 @@ int tcmNodeAction(CZSealBody *player, int arg)
 
 int tcmUpdateNodeAction(CZSealBody *player, int arg)
 {
-    CNodeAction *action = s_tcmCurNode->m_action;
     int r = 1;
+    CNodeAction *action = s_tcmCurNode->m_action;
     CNodeAction *avail = func_005AA240(player, 0);
 
-    if (avail && action && (bool)avail->m_enabled && (bool)action->m_enabled) {
+    if (avail && action && avail->IsEnabled() != false && action->IsEnabled() != false) {
         CSealCtrl *ctrl = player ? player->m_ctrl : 0;
 
         if (ctrl && action && ctrl->CanPerformAction(action)) {
-            bool ok = (action->m_teams & player->m_teamflags) != 0;
+            bool ok = (action->m_teams & player->GetTeamFlags()) != 0;
 
             if (ok)
                 ok = func_002B46F0(action) != 0;

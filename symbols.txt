@@ -2165,9 +2165,9 @@
 0x002303E0 0x160 func_002303E0  # OVL1
 0x00230540 0xC tcmClearCurNode__Fv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- s_tcmCurNode cleared; the tree calls it after each test, out of line)
 0x00230550 0xC tcmSetCurNode__FP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- s_tcmCurNode set; the tree calls it before each test, out of line: the unit boundary)
-0x00230560 0xB8 func_00230560  # OVL1
-0x00230620 0xB8 func_00230620  # OVL1
-0x002306E0 0x18C func_002306E0  # OVL1
+0x00230560 0xB8 Find__9CTCMCacheFPCc  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the radio command menu cache's item by name, strcasecmp on each; inlined into Add, called by the menu object 0x237000)
+0x00230620 0xB8 __dt__9CTCMCacheFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- the cache's destructor, registered by the initialiser 0x3FF4A0 for mpCache 0x414550 and spCache 0x4144F0: its items deleted from the back, then the vector's three this-tests)
+0x002306E0 0x18C Add__9CTCMCacheFPCcPFP10CZSealBodyi_iiPFP10CZSealBodyi_ii  # OVL1; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp -- an item (0x70 bytes: a 0x60 name, command, test and their arguments) made and kept unless held; the cache builder 0x2344E0 calls it for every item)
 0x00230870 0x7EC func_00230870  # OVL1
 0x00231060 0xE8 func_00231060  # OVL1
 0x00231150 0x1C0 func_00231150  # OVL1
