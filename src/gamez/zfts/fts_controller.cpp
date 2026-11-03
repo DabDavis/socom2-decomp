@@ -379,7 +379,11 @@ extern "C" PAD_BUTTON func_002C6430(unsigned char func)
  * 0x2C60C0 (CCtrlrConfigs' inlined GetButtonState, as in SOCOM 1's GetStrafeStickPos, whose
  * out-of-line GetButtonState folds to lbu), and 0x2C60C0 keeps an inline's constant KEY_DOWN as
  * `li a2,2; andi v1,a2,0xff` where every probe here folds it into xori: the target's inlining
- * kept its parameters' conversions, ours does not */
+ * kept its parameters' conversions, ours does not. Round 20 (the buttons now a one-byte class,
+ * CCfgButton): a BY-VALUE copy of the element -- an accessor returning it, a parameter taking it,
+ * a named local -- does load it with lb, but keeps the copy in a stack slot (`sb`, then `lbu` back)
+ * where the target narrows the register (build/scratch/states/p2.cpp); an inline taking an int or
+ * an unsigned char and narrowing it inside folds to lbu like the rest */
 extern "C" float func_002C63F0(unsigned char func, const CPad *pad)
 {
     return pad->GetPressure(g_pCurrentConfig->m_btns.m_btn[func].m_btn);
