@@ -203,6 +203,33 @@ basic_string<charT, traits, Allocator>::~basic_string()
 
 typedef basic_string<char> string;
 
+class exception {
+public:
+    exception() {}
+    virtual ~exception() {}
+    virtual const char *what() const;
+};
+
+/* <stdexcept>: the logic errors carry their message in the library's counted string; the vector's and
+ * the string's length and range checks throw them (vtables 0x1D5250, 0x1D5240, 0x1D5290) */
+class logic_error : public exception {
+public:
+    explicit logic_error(const char *what_arg) : what_(what_arg) {}
+    virtual const char *what() const { return what_.c_str(); }
+private:
+    _MSLstring what_;
+};
+
+class length_error : public logic_error {
+public:
+    explicit length_error(const char *what_arg) : logic_error(what_arg) {}
+};
+
+class out_of_range : public logic_error {
+public:
+    explicit out_of_range(const char *what_arg) : logic_error(what_arg) {}
+};
+
 /* <vector>, CodeWarrior 3.0's MSL shape (the game's map names its instances so): a vector of
  * pointers is __vector_imp<T, A, 1> over the pod vector of unsigned int (capacity, size, data -- the
  * facets' table, its destructor three this-tested levels, resize on the pod), a vector of a class
@@ -222,6 +249,7 @@ public:
     T &operator[](size_t i) { return data_[i]; }
     T *begin() { return data_; }
     T *end() { return data_ + size_; }
+    static size_t max_size() { return 0x3FFFFFFF; }
     void resize(size_t sz, const T &c);
     void insert(T *position, size_t n, const T &x);
     T *erase(T *first, T *last);
@@ -247,6 +275,49 @@ void __vector_pod<T, Allocator>::resize(size_t sz, const T &c)
         insert(end(), sz - size(), c);
     else if (sz < size())
         erase(begin() + sz, end());
+}
+
+/* n copies of x at position: in place when the capacity holds them (x itself moved with the tail
+ * when it lies there), else into a buffer grown by doubling from the old capacity (SOCOM 1's
+ * <vector> 486-530: newcap, newsize, olddata, pos, xp, t1) */
+template <class T, class Allocator>
+void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
+{
+    if (n == 0)
+        return;
+    if (n > max_size() || size_ > max_size() - n)
+        throw length_error("vector::insert length error");
+    size_t newsize = size_ + n;
+    if (newsize <= capacity_) {
+        T *e = data_ + size_;
+        size_t t1 = (size_t)(e - position);
+        const T *xp = &x;
+        if (!(xp < e - (t1 - n)) && xp < e)
+            xp += n;
+        if (t1 != 0)
+            for (T *i = e, *j = e + n; position < i;)
+                *--j = *--i;
+        for (size_t k = n; k != 0; --k)
+            *position++ = *xp;
+        size_ += n;
+    } else {
+        T *olddata = data_;
+        size_t pos = (size_t)(position - olddata);
+        size_t newcap = capacity_ ? capacity_ : 1;
+        while (newcap < newsize)
+            newcap = newcap < max_size() / 2 ? newcap * 2 : max_size();
+        data_ = (T *)operator new(newcap * sizeof(T));
+        T *p = data_ + pos;
+        for (size_t k = n; k != 0; --k)
+            *p++ = x;
+        if (olddata) {
+            copy(olddata, olddata + pos, data_);
+            copy(olddata + pos, olddata + size_, data_ + pos + n);
+            operator delete(olddata);
+        }
+        size_ = newsize;
+        capacity_ = newcap;
+    }
 }
 
 template <class T, class Allocator>
@@ -356,12 +427,6 @@ ForwardIterator lower_bound(ForwardIterator first, ForwardIterator last, const T
     return first;
 }
 
-class exception {
-public:
-    exception() {}
-    virtual ~exception() {}
-    virtual const char *what() const;
-};
 
 template <int N> class __locale_imp;
 template <bool b> struct __chooser {};
@@ -457,6 +522,7 @@ public:
     class failure : public exception {
     public:
         explicit failure(const string &msg);
+        explicit failure(const char *msg) : what_(msg) {}
         virtual ~failure() {}
         virtual const char *what() const;
     private:
@@ -481,10 +547,17 @@ public:
     }
     locale imbue(const locale &loc);
     locale getloc() const;
+    fmtflags flags() const { return fmtflags_; }
+    iostate rdstate() const { return iostate(iostate_); }
+    iostate exceptions() const { return iostate(exceptions_); }
+    bool good() const { return iostate_ == 0; }
+    bool fail() const;
+    void clear(iostate state = goodbit);
+    void setstate(iostate state);
 protected:
     ios_base() {}
     void init(void *sb);
-private:
+public:     /* the state words are the stream classes' and their guards' (MSL reaches them directly) */
     struct callback_pair { event_callback first; int second; };
 
     void do_callbacks(event e)
@@ -517,6 +590,32 @@ inline ios_base::openmode operator&(ios_base::openmode x, ios_base::openmode y)
     { return ios_base::openmode(int(x) & int(y)); }
 inline ios_base::openmode operator|(ios_base::openmode x, ios_base::openmode y)
     { return ios_base::openmode(int(x) | int(y)); }
+inline ios_base::iostate operator&(ios_base::iostate x, ios_base::iostate y)
+    { return ios_base::iostate(int(x) & int(y)); }
+inline ios_base::iostate operator|(ios_base::iostate x, ios_base::iostate y)
+    { return ios_base::iostate(int(x) | int(y)); }
+inline ios_base::fmtflags operator&(ios_base::fmtflags x, ios_base::fmtflags y)
+    { return ios_base::fmtflags(int(x) & int(y)); }
+
+inline bool ios_base::fail() const
+{
+    return (rdstate() & (badbit | failbit)) != 0;
+}
+
+/* clear's check: a stream without a buffer is bad; a state the exceptions mask names throws */
+inline void ios_base::clear(iostate state)
+{
+    iostate_ = (unsigned char)state;
+    if (rdbuf_ == 0)
+        iostate_ |= badbit;
+    if (rdstate() & exceptions())
+        throw failure("ios_base failure in clear");
+}
+
+inline void ios_base::setstate(iostate state)
+{
+    clear(rdstate() | state);
+}
 
 /* streambuf */
 template <class charT, class traits>
@@ -530,6 +629,7 @@ public:
     virtual ~basic_streambuf();
     locale getloc() const;
     basic_streambuf *pubsetbuf(char_type *s, streamsize n) { return setbuf(s, n); }
+    int pubsync() { return sync(); }
     int_type sbumpc()
     {
         if (gnext_ < gend_)
@@ -857,6 +957,8 @@ class basic_ios : public ios_base {
 public:
     typedef charT char_type;
     char_type widen(char c) const { return use_facet<ctype<char_type> >(getloc()).widen(c); }
+    basic_ostream<charT, traits> *tie() const { return tiestr_; }
+    basic_streambuf<charT, traits> *rdbuf() const { return (basic_streambuf<charT, traits> *)rdbuf_; }
     basic_ostream<charT, traits> *tie(basic_ostream<charT, traits> *tiestr)
     {
         basic_ostream<charT, traits> *old = tiestr_;
@@ -889,6 +991,21 @@ class basic_ostream : virtual public basic_ios<charT, traits> {
 public:
     explicit basic_ostream(basic_streambuf<charT, traits> *sb);
     basic_ostream &flush();
+    /* the output guard: the tied stream flushed, the state checked; on the way out a unit-buffered
+     * stream is flushed unless the guard's flag says not to (flush sets it) */
+    class sentry {
+    public:
+        explicit sentry(basic_ostream &os);
+        ~sentry()
+        {
+            if (!os_.fail() && (os_.flags() & ios_base::unitbuf) && !uncaught_exception_)
+                os_.flush();
+        }
+        operator bool() const { return ok_; }
+        bool ok_;
+        bool uncaught_exception_;
+        basic_ostream &os_;
+    };
 };
 
 typedef basic_streambuf<char, char_traits<char> > streambuf;

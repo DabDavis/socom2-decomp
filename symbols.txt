@@ -179,8 +179,8 @@
 0x00189BD0 0x190 read2__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fib  # MAIN; by hand (MAIN runtime lane round 3): uflow<wchar_t>/underflow<wchar_t>'s fixed-encoding read, after read3<wchar_t> as SOCOM 1's read2<wchar_t> (0x149BA0); src/main/msl/iostream.cpp
 0x00189D60 0x1B4 unshift__Q23std39basic_filebuf<w,Q23std14char_traits<w>>Fv  # MAIN; s1:align
 0x00189F20 0xC do_unshift__Q23std14codecvt<w,c,i>CFRiPcPcRPc  # MAIN; vtable (slot +20 of codecvt<wchar_t,char,int>'s vtable 0x1D51A0); src/main/msl/iostream.cpp
-0x00189F30 0x2D4 func_00189F30  # MAIN
-0x0018A210 0x2D4 func_0018A210  # MAIN
+0x00189F30 0x2D4 __ct__Q33std39basic_ostream<c,Q23std14char_traits<c>>6sentryFRQ23std39basic_ostream<c,Q23std14char_traits<c>>  # MAIN; by hand (MAIN runtime lane round 5): basic_ostream<char>::sentry's constructor -- flush<char> 0x186390 calls it with (&its guard, this); it flushes the tied stream (flush<char> again), sets ok_ or failbit (setstate's failure throw inlined twice), and catches into badbit; SOCOM 1's __ct__Q33std39basic_ostream<c,...>6sentryFR... 0x149EE0, between do_unshift<wchar_t> and do_max_length<char> as here (src/main/msl/iostream.cpp)
+0x0018A210 0x2D4 __ct__Q33std39basic_ostream<w,Q23std14char_traits<w>>6sentryFRQ23std39basic_ostream<w,Q23std14char_traits<w>>  # MAIN; by hand (MAIN runtime lane round 5): basic_ostream<wchar_t>::sentry's constructor -- flush<wchar_t> 0x186670 calls it; SOCOM 1's 0x14A200, right after the char one as here (src/main/msl/iostream.cpp)
 0x0018A4F0 0x8 do_max_length__Q23std14codecvt<c,c,i>CFv  # MAIN; vtable (slot +36 of 0x1D51D0; 1); src/main/msl/iostream.cpp
 0x0018A500 0x30 do_length__Q23std14codecvt<c,c,i>CFRiPCcPCcUi  # MAIN; s1:align
 0x0018A530 0x18 min<i>__3stdFRCiRCi_RCi  # MAIN; by hand (MAIN runtime lane round 2): std::min<int> (b < a ? b : a by reference), generated after its first user codecvt<char>::do_length 0x18A500, which calls it; src/main/msl/iostream.cpp

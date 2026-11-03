@@ -1,4 +1,4 @@
-/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on -str readonly */
+/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -inline auto,bottomup,level=8 -enum min -Cpp_exceptions on -wchar_t on -str readonly */
 /* ios.cpp -- the prebuilt MSL C++ library's ios_base unit (MAIN 0x184600-0x184C7F): SOCOM 1's DWARF
  * names it (CodeWarrior 2.4's MSL_Common\Src\ios.cpp: ~ios_base at lines 112-120, init at 180-211)
  * and links after it the templates it instantiates (RefCountedPtrArray.h, localeimp). SOCOM II's
