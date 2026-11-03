@@ -4201,12 +4201,12 @@
 0x002C5C90 0x80 func_002C5C90  # OVL1
 0x002C5D10 0x44 func_002C5D10  # OVL1
 0x002C5D60 0x110 SelectConfig__13CCtrlrConfigsFPCc  # OVL1; s1:ref by hand (the UI-commands lane's lead, vetted by the states lane: SOCOM 1's paired UI handler calls it from the same place; the name strcasecmp'd against each config's string as SOCOM 1's (a0, a const char *), the match stored as the current config -- SOCOM II's then updates the pad's settings)
-0x002C5E70 0x174 func_002C5E70  # OVL1
-0x002C5FF0 0x34 func_002C5FF0  # OVL1
-0x002C6030 0xC func_002C6030  # OVL1
-0x002C6040 0xC func_002C6040  # OVL1
-0x002C6050 0xC func_002C6050  # OVL1
-0x002C6060 0x5C func_002C6060  # OVL1
+0x002C5E70 0x174 Init__13CCtrlrConfigsFv  # OVL1; s1:calls by hand (the states lane, round 20: SOCOM 1's CCtrlrConfigs::Init -- controller.rdr from data/common, its ControllerConfigs, SelectConfig("Default"), a "NoDefaultDummy" layout without one; SOCOM II's parse moved out to 0x2C67F0, the dummy kept nowhere; CMission::Init calls it; byte-exact in fts_controller.cpp)
+0x002C5FF0 0x34 __ct__11CCfgButtonsFv  # OVL1; ours (the states lane, round 20: the layout's thirteen buttons' implicit constructor -- MW's array construction, a never-unrolled pointer loop storing PAD_BUTTON_NONE (16) through the element's inlined constructor; called for 0x12)
+0x002C6030 0xC __ct__8CCfgFlagFv  # OVL1; ours (the states lane, round 20: a layout's flag's constructor, a byte cleared -- called for 0x11 by the layout's constructor inlined one level)
+0x002C6040 0xC __ct__10CCfgSticksFv  # OVL1; ours (the states lane, round 20: a layout's stick mask's constructor, a byte cleared -- called for 0xF and 0x10 by the layout's constructor inlined one level)
+0x002C6050 0xC __ct__9CCfgStickFv  # OVL1; ours (the states lane, round 20: a layout's stick setting's constructor, a byte cleared -- the layout's constructor, inlined one level in Init and the parser, calls it for 0xC, 0xD and 0xE; a class of its own, three distinct one-byte constructor copies follow Init)
+0x002C6060 0x5C __ct__9CSaferStrFPCc  # OVL1; ours (the states lane, round 20: CSaferStr from a C string -- the three words cleared, then the text assigned or the string emptied -- the layout's name; the copy fts_controller.cpp emits after Init, its first caller; the parser 0x2C67F0 calls it too)
 0x002C60C0 0x4C func_002C60C0  # OVL1
 0x002C6110 0xC4 func_002C6110  # OVL1
 0x002C61E0 0x38 func_002C61E0  # OVL1
