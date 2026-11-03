@@ -1324,3 +1324,45 @@ extern "C" bool func_002AE340(_zanim_cmd_hdr *hdr, float *dT)
         hudTriggerPopup(ZAnim.m_CurAnim->GetName(((_trigger_popup_cmd *)hdr)->name));
     return true;
 }
+
+/* START_DEFUSE_TIMER (SOCOM 1's, SOCOM II's with a COUNT_UP flag; the tick 0x2AE580 hands both to
+ * hudStartDefuseTimer(bool, float), a draft's): the time, a number (a thousandth by default), and the
+ * flag (OVL1 0x2AE5B0; SOCOM 1's parser refused a bare command, SOCOM II's builds one on its
+ * defaults) */
+struct _start_defuse_timer_cmd {
+    _zanim_cmd_hdr hdr;
+    unsigned char countup : 1;   // 0x4
+    float time;   // 0x8
+};
+
+/* a number, an integer or a real (ours) */
+inline bool IsNumber(_zrdr *z)
+{
+    return z->type == 1 || z->type == 2;
+}
+
+extern "C" _zanim_cmd_hdr *func_002AE5B0(_zrdr *rdr)
+{
+    _start_defuse_timer_cmd *cmd;
+    float time;
+    bool countup;
+
+    if (!rdr)
+        return 0;
+    time = 0.001f;
+    countup = false;
+    if (rdr->type == 4 && rdr->Count()) {
+        if (IsNumber(rdr->Item(0)))
+            time = rdr->Item(0)->Real();
+        else
+            return 0;
+        if (zrdr_findtag(rdr, "COUNT_UP"))
+            countup = true;
+    }
+    cmd = (_start_defuse_timer_cmd *)_calloc(1, sizeof(_start_defuse_timer_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_start_defuse_timer_cmd);
+    cmd->hdr.timeless = 1;
+    cmd->time = time;
+    cmd->countup = countup;
+    return (_zanim_cmd_hdr *)cmd;
+}
