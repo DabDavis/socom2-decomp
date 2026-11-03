@@ -94,6 +94,24 @@ struct _sceFsSync {
 	char name[1024];
 };
 
+struct _sceFsStat {
+	int sema;
+	int *result;
+	int rsize;
+	void *buf;
+	unsigned char name[1024];
+};
+
+struct _sceFsRename {
+	int sema;
+	int *result;
+	int rsize;
+	char oldname[1024];
+	char newname[1024];
+};
+
+extern void sceSifWriteBackDCache(void *, int);
+
 static int _fs_init = 0;
 static int _fs_semid = -1;
 static int _fs_iob_semid = -1;
@@ -502,6 +520,91 @@ int sceDread(int fd, void *buf)
 	p->rsize = 4;
 	if (sceSifCallRpc(&_cd, 11, 0, p, 32, _rcv_data_rpc, 4, 0, 0) < 0) {
 		WaitSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
+int sceGetstat(const char *name, void *buf)
+{
+	struct _sceFsStat *p = (struct _sceFsStat *)&_send_data;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(12);
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->name[i] = name[i]) == 0)
+			break;
+	if (i == 1024) {
+		p->name[1023] = 0;
+		i = 1023;
+	}
+	p->buf = buf;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->result = &result;
+	p->sema = sema;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 12, 0, &_send_data, i + 17, _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
+int sceRename(const char *oldname, const char *newname)
+{
+	struct _sceFsRename *p = (struct _sceFsRename *)&_send_data;
+	int i, sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(17);
+	if (!_fs_init)
+		sceFsInit();
+	for (i = 0; i < 1024; i++)
+		if ((p->oldname[i] = oldname[i]) == 0)
+			break;
+	if (i == 1024)
+		p->oldname[1023] = 0;
+	for (i = 0; i < 1024; i++)
+		if ((p->newname[i] = newname[i]) == 0)
+			break;
+	if (i == 1024)
+		p->newname[1023] = 0;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	sceSifWriteBackDCache(&_send_data, sizeof(struct _sceFsRename));
+	if (sceSifCallRpc(&_cd, 17, 0, &_send_data, sizeof(struct _sceFsRename), _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
 		_sceFsSigSema();
 		return -11;
 	}
