@@ -67,6 +67,7 @@
 
 #include <iterator>
 #include <memory>
+#include <msl_utility>
 #include <string.h>
 
 namespace std {
@@ -78,14 +79,6 @@ template <>
 struct char_traits<char> {
     static int compare(const char *s1, const char *s2, unsigned int n) { return memcmp(s1, s2, n); }
 };
-
-/* the smaller of two (MSL's: the second only when it is less, both by reference -- the string's
- * compare takes the addresses of its counts and temporaries) */
-template <class T>
-inline const T &min(const T &a, const T &b)
-{
-    return b < a ? b : a;
-}
 
 /* the out-of-line members not named in the map yet (`this` first) */
 extern "C" {

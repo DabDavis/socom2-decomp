@@ -4956,8 +4956,8 @@
 0x002F5700 0x238 func_002F5700  # OVL1
 0x002F5940 0xE4 func_002F5940  # OVL1
 0x002F5A30 0xD8 clear__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 11 (the chat deque's clear: its pop_front 0x2F51E0 calls it when one line is left, as the lobby queue's pop_front 0x2E1560 calls its clear 0x2E1B20; it leaves start_ at 4, half of the 8-line block)
-0x002F5B10 0x1F8 func_002F5B10  # OVL1
-0x002F5D10 0x13C func_002F5D10  # OVL1
+0x002F5B10 0x1F8 destroy__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iteratorQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iterator  # OVL1; the MSL headers round 13: the chat deque's range destroy, block by block (clear 0x2F5A30 and the teardown 0x2F62B0 call it with begin and end); include/deque's destroy, open (0x20C against 0x1F8: the block iterators' difference called out of line, the by-value iterators copied in)
+0x002F5D10 0x13C make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, non-const (clear 0x2F5A30 and the teardown 0x2F62B0 call it twice each with (result, this, n)); include/deque's make_iterator, open as every instance's (the block iterator built in memory)
 0x002F5E50 0x70 __dt__10CChatQueueFv  # OVL1; ours, the online lane round 10 (the chat queues' destructor: __sinit_zNetMediusChat.cpp registers it for both)
 0x002F5EC0 0x10 empty__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>CFv  # OVL1; ours, the online lane round 10 (the chat queue's empty(), out of line from the initialiser; byte-exact)
 0x002F5ED0 0x8 pop__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>Fv  # OVL1; ours, the online lane round 10 (the chat queue's pop(), `j pop_front`, out of line from the initialiser; byte-exact)
@@ -4976,7 +4976,7 @@
 0x002F6600 0x444 func_002F6600  # OVL1
 0x002F6A50 0x8 func_002F6A50  # OVL1
 0x002F6A60 0x8 func_002F6A60  # OVL1
-0x002F6A70 0x144 func_002F6A70  # OVL1
+0x002F6A70 0x144 make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>CFUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, const (the copy constructor 0x2F5F80 calls it for x's end and begin); include/deque's make_iterator, open as every instance's
 0x002F6BC0 0x138 func_002F6BC0  # OVL1
 0x002F6D00 0x6C func_002F6D00  # OVL1
 0x002F6D70 0xBC CountGamePlayers__Fv  # OVL1; ours (a lobby state handler 0x2EF3C0 calls it: with 'late_joiner' on and the net game in progress, MediusGetGamePlayers asked once at a time, 0x44FA88 the flag)
