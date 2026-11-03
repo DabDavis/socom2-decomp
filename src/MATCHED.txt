@@ -6714,6 +6714,7 @@
 0x004D52F8 CreateCtxTree
 0x004D5AA8 CompareIDs
 0x004D7460 func_004D7460
+0x004D9EC8 casrOpen
 0x004DA2A0 casrClose
 0x004DA3F8 casrStart
 0x004DA580 casrReadLabelInQueue
@@ -6764,14 +6765,22 @@
 0x004DF200 cbTrain
 0x004DF258 cbNewUserWordUtterance
 0x004DF278 cbDTMFDetected
+0x004DF288 cbGenderDisable
 0x004DF2C8 Set_EndBackTraceMask_In_StateDict
 0x004DF420 CopyContextInfo
 0x004E11D0 TrainFree
+0x004E1D08 InitUserWordTraining
+0x004E1E30 ExitUserWordTraining
 0x004E3CC8 userwordStartUserWordTraining
-0x004E3ED8 func_004E3ED8
+0x004E3E08 cbUserWordResultAvailable
+0x004E3ED8 cbScoreUserWordResultAvailable
 0x004E3F28 DoLabelStop
 0x004E3F78 DoLabelStart
 0x004E3FC8 cbCancelUserWordTraining
+0x004E4008 cbUtteranceNotAccepted
+0x004E4090 cbUtteranceAccepted
+0x004E4170 cbLastUtteranceAccepted
+0x004E4258 cbDoUserWordTraining
 0x004E42A8 ProcessDelayBlock
 0x004E4418 ConstructDelayBlock
 0x004E4458 ControlDelayBlock
@@ -6840,6 +6849,7 @@
 0x004F4950 ControlGender
 0x004F5428 GenderSelection
 0x004F5708 InitGender
+0x004F5940 ProcessGender
 0x004F5E70 ConstructGender
 0x004F5EB0 ResetGender
 0x004F6918 ConstructMel
@@ -7015,6 +7025,7 @@
 0x0050AD28 qCheckDeQueueOne
 0x0050B928 DestructQueue
 0x0050C0E0 DestructArchitecture
+0x0050C200 tosCallControlFunc
 0x0050C720 _tosControl
 0x0050C948 tosBaseBlockControl
 0x0050CB60 tosGetBlockPtr
