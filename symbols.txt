@@ -7411,8 +7411,8 @@
 0x00394170 0x60 __dt__15CSkbCompleteVecFv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_complete's destructor (the initialiser registers it; ~vector 0x394090 called); the UI lane round 10: zui_hangul.cpp, s_complete's destructor (the initialiser registers it; two this-tests, ~vector<SKBCOMPLETE> 0x394090 called)
 0x003941D0 0x34 func_003941D0  # OVL1
 0x00394210 0x80 SetSpec__12CSkbKeyPropsFP5_zrdr  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the key props' button spec at 0x10 deleted through its virtual destructor, then a new CButtonSpec(rdr) of 0x118 bytes, or none)
-0x00394290 0x88 func_00394290  # OVL1
-0x00394320 0x44 func_00394320  # OVL1
+0x00394290 0x88 PrepForDisplay__12CSkbKeyPropsFPQ23zdb16CTextureRelocMgrP7C2DFontPQ23zdb5CNode  # OVL1; by hand (the UI lane, round 12, ours: the key's button made by its spec's CreateDisplayObj(font, mgr), put on a node of its own under the parent through zui.cpp's 0x36AB20, at the key's place -- CSoftKeyboard::PrepForDisplay calls it for every key; zui_skbview.cpp, byte-exact)
+0x00394320 0x44 InvalidateDisplay__12CSkbKeyPropsFv  # OVL1; by hand (the UI lane, round 12, ours: the key's node forgotten and its button deleted through its virtual destructor -- CSoftKeyboard::InvalidateDisplay 0x38C4D0 calls it for every key of its props map; zui_skbview.cpp, byte-exact)
 0x00394370 0x68 func_00394370  # OVL1
 0x003943E0 0x40 SkbLoadUiParams__Fv  # OVL1; ours (zui_hangul.cpp: UiParams.rdr from data/common held for the call to the display unit's 0x397070 and freed, ZuiInit's holder; CMission::Init calls it)
 0x00394420 0xFC func_00394420  # OVL1

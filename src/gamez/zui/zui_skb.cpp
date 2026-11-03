@@ -192,6 +192,26 @@ int func_0038C4B0(int i);
 int func_0038C4C0(int i);
 }
 
+/* the keyboard's display forgotten: no node and no grid size, its texture lists freed, its six
+ * bitmaps' nodes cleared, its fonts unloaded and every key's display forgotten (SOCOM 1's,
+ * rewritten for SOCOM II's members; the constructor calls it) */
+void CSoftKeyboard::InvalidateDisplay()
+{
+    m_node = 0;
+    m_17c = 0;
+    m_180 = 0;
+    m_texLists.Free();
+    m_1c0.Slot10(0);
+    m_270.Slot10(0);
+    m_480.Slot10(0);
+    m_530.Slot10(0);
+    m_320.Slot10(0);
+    m_3d0.Slot10(0);
+    m_fonts.Unload();
+    for (CSkbKeyMap::iterator it = m_keyProps.begin(); it != m_keyProps.end(); ++it)
+        (*it).second->InvalidateDisplay();
+}
+
 /* up or down (directions 1 and 2) move within the column (ours) */
 static inline bool SkbIsVertical(unsigned char dir)
 {

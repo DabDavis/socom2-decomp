@@ -129,6 +129,11 @@ public:
     void SetButtonState(void (C2DButton::*state)());
     /* its button's spec replaced by one read from an rdr block, or none (0x394210; ours) */
     void SetSpec(_zrdr *rdr);
+    /* its button made by the spec and put on a node of its own under the keyboard's, at the key's
+     * place (0x394290; ours) */
+    void PrepForDisplay(zdb::CTextureRelocMgr *mgr, C2DFont *font, zdb::CNode *parent);
+    /* its node forgotten and its button deleted (0x394320; ours) */
+    void InvalidateDisplay();
 
     int m_x;   // 0x0: the key's place and size (SkbPlaceCursor's; the names ours)
     int m_y;   // 0x4
@@ -176,6 +181,13 @@ public:
  * `__construct_array(this, C2DFont(), ~C2DFont(), 0x64, 3)` -- C2DFont's constructor zui_skb.cpp's
  * copy (0x38E590), its destructor zui.cpp's (0x369EB0, the linker keeping the first unit's) */
 struct CSkbFonts {
+    /* the three unloaded (ours: InvalidateDisplay's loop walks the fonts themselves) */
+    void Unload()
+    {
+        for (int i = 0; i < 3; i++)
+            func_0035A650(&m_fonts[i]);
+    }
+
     C2DFont m_fonts[3];
 };
 
@@ -183,6 +195,18 @@ struct CSkbFonts {
  * vector<zdb::CTexHandle *>'s constructor and destructor copies 0x1FB3D0/0x1FB300, so the elements
  * are texture handles, not nodes; the name ours) */
 struct CSkbTexLists {
+    /* the four freed (ours: InvalidateDisplay's loop walks the lists themselves, so a member of
+     * theirs; FreeVector written out -- called, it is a level too deep and stays a call) */
+    void Free()
+    {
+        for (int i = 0; i < 4; i++) {
+            std::vector<zdb::CTexHandle *> tmp;
+
+            m_lists[i].clear();
+            m_lists[i].swap(tmp);
+        }
+    }
+
     std::vector<zdb::CTexHandle *> m_lists[4];
 };
 
