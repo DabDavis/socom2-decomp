@@ -33,17 +33,22 @@ public:
     static CZProjectileList *m_pProjectilelist;
 };
 
+class CEntity;
+
+/* the entities (SOCOM 1's CEntityList, a pointer list): the entity with an id, if any */
+class CEntityList : public std::list<CEntity *> {
+public:
+    CEntity *GetEntityById(unsigned int id) const;
+};
+
 /* a thing in the world: only its type (2, a SEAL) at 0x10 (SOCOM 1's DWARF) */
 class CEntity {
 public:
     unsigned char _0[0x10];
     unsigned char m_type;   // 0x10
 
-    static std::list<CEntity *> m_list;
+    static CEntityList m_list;
 };
-
-/* the entity with an id, if any (SOCOM 1's CEntityList::GetEntityById, on CEntity::m_list) */
-extern "C" CEntity *func_0029E4E0(std::list<CEntity *> *list, unsigned int id);
 
 extern "C" void sceVu0RotMatrixY(sceVu0FMATRIX m0, sceVu0FMATRIX m1, float ry);
 
@@ -120,7 +125,7 @@ void CZNewHudMap::UpdateExplosives()
         CZProjectile *projectile = *i;
 
         if (!FindClaymoreItem(projectile)) {
-            CEntity *e = func_0029E4E0(&CEntity::m_list, projectile->m_shooterID);
+            CEntity *e = CEntity::m_list.GetEntityById(projectile->m_shooterID);
             CZSealBody *owner = e && e->m_type == 2 ? (CZSealBody *)e : 0;
 
             m_itemlist.push_back(new CZClaymoreMapItem(owner, projectile));

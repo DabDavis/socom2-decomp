@@ -5,6 +5,9 @@
 #include <stdlib.h>
 
 #include "zsnd.h"
+
+/* the finder (zrdr_main.cpp; zanim.h still spells it func_0032F0D0) */
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 #include "../zanim/zanim.h"
 
 /* SOCOM 1's: every group of the sounds file's GROUPS record made and added -- SOCOM II names the
@@ -19,11 +22,11 @@ void CSndGroup::LoadSoundGroups(const char *name)
 
     if (!rdr)
         return;
-    _zrdr *groups = func_0032F0D0(rdr, "GROUPS");
+    _zrdr *groups = zrdr_findtag(rdr, "GROUPS");
 
     if (!groups)
         return;
-    _zrdr *list = func_0032F0D0(groups, name);
+    _zrdr *list = zrdr_findtag(groups, name);
 
     if (!list)
         return;

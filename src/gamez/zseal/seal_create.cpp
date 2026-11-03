@@ -238,6 +238,9 @@ extern "C" _zanim_cmd_hdr *func_0059ABC0(_zrdr *rdr)
 
 /* BODY_FALL_ON_MATERIAL_SOUND: the node under the BODY_NODE tag, the command dropped without one
  * (OVL2 0x59AA60) */
+/* (zrdr.h's: a block's tag) */
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+
 extern "C" _zanim_cmd_hdr *func_0059AA60(_zrdr *rdr)
 {
     _body_node_cmd *cmd;
@@ -248,7 +251,7 @@ extern "C" _zanim_cmd_hdr *func_0059AA60(_zrdr *rdr)
     cmd = (_body_node_cmd *)_calloc(1, sizeof(_body_node_cmd), 0, 0);
     cmd->hdr.data_size = sizeof(_body_node_cmd);
     cmd->hdr.timeless = 1;
-    if ((tag = func_0032F0D0(rdr, "BODY_NODE")) != 0)
+    if ((tag = zrdr_findtag(rdr, "BODY_NODE")) != 0)
         cmd->node = func_0026E2D0(ZAnim.m_CurAnim, tag);
     else {
         _free(cmd, 0, 0);

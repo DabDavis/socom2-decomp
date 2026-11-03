@@ -6,6 +6,9 @@
 #include <string.h>
 
 #include "zsnd.h"
+
+/* the finder (zrdr_main.cpp; zanim.h still spells it func_0032F0D0) */
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 #include "../zanim/zanim.h"
 
 /* SOCOM II's headset voice queue, a global (CSndVocalQueue by the functions its calls land in;
@@ -357,7 +360,7 @@ static inline void AddReverb(std::vector<unsigned int> &depths, std::vector<unsi
 #pragma auto_inline off
 void CSnd::LoadIndoorReverbs(_zrdr *rdr)
 {
-    _zrdr *list = func_0032F0D0(rdr, "IndoorReverb");
+    _zrdr *list = zrdr_findtag(rdr, "IndoorReverb");
 
     if (!list)
         return;
@@ -377,7 +380,7 @@ void CSnd::LoadIndoorReverbs(_zrdr *rdr)
 
 void CSnd::LoadOutdoorReverbs(_zrdr *rdr)
 {
-    _zrdr *list = func_0032F0D0(rdr, "OutdoorReverb");
+    _zrdr *list = zrdr_findtag(rdr, "OutdoorReverb");
 
     if (!list)
         return;

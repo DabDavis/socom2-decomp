@@ -7,6 +7,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb(s32, s32, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 s32 func_005788C0(M2C_UNK *, M2C_UNK *);            /* extern */
 M2C_UNK func_005788E0(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK func_00578900(M2C_UNK *, M2C_UNK *, M2C_UNK); /* extern */
@@ -16,9 +17,8 @@ s32 *func_00578950(M2C_UNK *);                      /* extern */
 M2C_UNK func_00578960(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK func_00578970(M2C_UNK *, M2C_UNK *);        /* extern */
 M2C_UNK func_00578980(M2C_UNK *);                   /* extern */
-M2C_UNK func_0058C350(s32, s32, M2C_UNK, M2C_UNK, M2C_UNK); /* extern */
 s32 strcmp(s32, s32);                               /* extern */
-extern M2C_UNK data_0044D430;
+extern M2C_UNK list__7AnimSet;
 
 s32 func_0058C4B0(s32 arg0, s32 arg1) {
     M2C_UNK sp3C;
@@ -28,16 +28,16 @@ s32 func_0058C4B0(s32 arg0, s32 arg1) {
     s32 var_a1;
 
     func_00578980(&sp3C);
-    func_00578970(&sp38, &data_0044D430);
+    func_00578970(&sp38, &list__7AnimSet);
     func_00578960(&sp3C, &sp38);
-    func_005788E0(&sp30, &data_0044D430);
+    func_005788E0(&sp30, &list__7AnimSet);
     if (func_005788C0(&sp3C, &sp30) != 0) {
 loop_1:
         if (strcmp(arg1, func_00578920(func_00578940(*func_00578950(&sp3C)))) == 0) {
             var_a1 = *func_00578950(&sp3C);
         } else {
             func_00578900(&sp34, &sp3C, 0);
-            func_005788E0(&sp30, &data_0044D430);
+            func_005788E0(&sp30, &list__7AnimSet);
             if (func_005788C0(&sp3C, &sp30) == 0) {
                 goto block_6;
             }
@@ -50,6 +50,6 @@ block_6:
     if (var_a1 == 0) {
         return 0;
     }
-    func_0058C350(arg0, var_a1, 1, 0, 0);
+    BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb(arg0, var_a1, 1, 0, 0);
     return 1;
 }

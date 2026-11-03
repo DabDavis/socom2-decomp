@@ -108,7 +108,6 @@ public:
 
 zdb::CTexHandle *PrepTexture(const char *name, zdb::CTextureRelocMgr *mgr);
 
-extern "C" void func_00385D90(class UIVarMixin *mixin, CUIVariable *var);
 
 /* a UI variable's value written out as text into a buffer (zui_var.cpp's, 0x3860F0; no row
  * named yet) */
@@ -117,7 +116,8 @@ extern "C" char *func_003860F0(CUIVariable *var, char *buf, int size);
 /* a UI variable's hook (SOCOM 1's DWARF; the vtable pointer first) */
 class UIVarMixin {
 public:
-    virtual ~UIVarMixin() { func_00385D90(this, 0); }
+    virtual ~UIVarMixin() { DetachUIVar(0); }
+    void DetachUIVar(CUIVariable *var);
     /* the variable changed (an override takes a new primary slot after all the tables, so the
      * secondary tables' offsets stand) */
     virtual void UpdateUIVar(CUIVariable *var);
@@ -151,8 +151,12 @@ public:
      * the destructor in both builds), then UpdateUIVar's primary slot (+0xA4, 0x379260) */
     virtual void Update();
     virtual void UpdateUIVar(CUIVariable *var);
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
 
-    unsigned char _a0[0xc0 - 0xa0];
+    C2DFont *m_alternateFont;   // 0xa0
+    CPnt3D m_offset;   // 0xa4
+    CPnt3D m_Color;   // 0xb0
+    int m_socom2_bc;   // 0xbc
 };   // 0xc0 bytes
 
 /* wrapped text (SOCOM 1's CWrappedText; zui_2d.h's layout, 0x250 bytes), its destructor declared
@@ -236,6 +240,7 @@ public:
     virtual ~C3StateButton();
     /* slot 12: the caption ticks with the button (0x37C600) */
     virtual void Tick(float dT) { _strCaption.Tick(dT); }
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void SetBackgroundAlpha(float a);
     virtual void Slot27();
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
@@ -262,6 +267,35 @@ struct ButtonState {
     float m_scale;   // 0x30: the caption's
 };   // 0x34 bytes
 
+/* a button's action (zui_spec.h's ActionItem, 0x10 bytes: its destructor zui_cleanup.cpp's,
+ * 0x3890C0; the type and the key state byte enums) */
+class ActionItem {
+public:
+    ~ActionItem();
+    void Run() const;
+
+    unsigned char Type;   // 0x0: ACTION_TYPE
+    char *Animation;   // 0x4: the animation it starts
+    char *Argument;   // 0x8: handed to it, if any
+    unsigned char State;   // 0xc: KEY_STATE
+    unsigned char Event;   // 0xd: the pad button or the event (a union in zui_spec.h)
+};
+
+/* the animations (zanim.h's CZAnimMain and CZAnim: only what an action calls; ZAnim OVL1 bss
+ * 0x414BB0) */
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+    void Activate(CZAnim *parent);
+};
+
+class CZAnimMain {
+public:
+    CZAnim *GetAnim(const char *name, const char *set);
+};
+
+extern CZAnimMain ZAnim;
+
 /* a button (SOCOM 1's DWARF: : C3StateButton; SOCOM II's 0x440 bytes with a UIVarMixin at 0xC0,
  * its background a plain bitmap at 0x1A0) */
 class C2DButton : public C3StateButton, public UIVarMixin {
@@ -271,6 +305,8 @@ public:
     virtual void SetBackgroundAlpha(float a) { m_background.SetTrans(128.0f * a); }
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void SetCanHandleInput(bool val);
+    virtual void Tick(float dT);
+    virtual void SetActive();
     virtual void SetNormal();
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
@@ -289,18 +325,11 @@ public:
     float _fWidth;   // 0x240 (SOCOM 1's names, 0x30 later)
     float _fHeight;   // 0x244
     unsigned char _248[0x24c - 0x248];
-    int m_24c;   // 0x24c: zeroed when the normal state is shown
-    unsigned char _250[0x440 - 0x250];
+    float m_pressTime;   // 0x24c: the press's time left, ticked down; zeroed when the normal state is shown
+    ActionItem m_actions[30];   // 0x250: the button's actions (SOCOM 1's _actions)
+    int m_numActions;   // 0x430
+    unsigned char _434[0x440 - 0x434];
 } __attribute__((aligned(16)));   // 0x440 bytes
-
-/* a button's action (zui_spec.h's ActionItem, 0x10 bytes: its destructor zui_cleanup.cpp's,
- * 0x3890C0) */
-class ActionItem {
-public:
-    ~ActionItem();
-
-    unsigned char _0[0x10];
-};
 
 /* a check box: a button with a check mark (SOCOM 1's CCheckBox; SOCOM II's 0x520 bytes: two
  * actions at 0x454 and 0x464, the check a plain bitmap at 0x480) */
@@ -309,9 +338,15 @@ public:
     virtual ~CCheckBox();
     /* the check box ignores its variable (0x37C3E0, empty; reached through the thunk 0x37D0C0) */
     virtual void UpdateUIVar(CUIVariable *var) {}
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    virtual bool HandlePad(const CPad *pad, int port);
 
     bool m_checked;   // 0x440
-    unsigned char _441[0x454 - 0x441];
+    /* the check's place against the button's and its size (the names ours) */
+    int m_checkX;   // 0x444
+    int m_checkY;   // 0x448
+    int m_checkW;   // 0x44c
+    int m_checkH;   // 0x450
     ActionItem m_action0;   // 0x454
     ActionItem m_action1;   // 0x464
     unsigned char _474[0x480 - 0x474];
@@ -361,12 +396,13 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
 
+    /* the strip's two refreshes after a new choice (SOCOM II's: SOCOM 1 walked the buttons inline;
+     * 0x370D10, the name ours, and 0x370DB0, no row named yet) */
+    void ShowChoice();
+
     int m_choice;   // 0x440
 } __attribute__((aligned(16)));   // 0x450 bytes
 
-/* the strip's two refreshes after a new choice (SOCOM II's: SOCOM 1 walked the buttons inline;
- * 0x370D10 and 0x370DB0, no rows named yet) */
-extern "C" void func_00370D10(CRadioStrip *strip);
 extern "C" void func_00370DB0(CRadioStrip *strip);
 
 /* a counting string (SOCOM 1's C2DCounter; zui_2d.h's layout: 0xD8 bytes), its destructor declared
@@ -394,6 +430,7 @@ public:
 class CHandlerButton : public C2DButton {
 public:
     virtual ~CHandlerButton();
+    virtual bool HandlePad(const CPad *pad, int port);
 } __attribute__((aligned(16)));   // 0x440 bytes
 
 /* the pop-up dialog as its command-type lookup sees it (slot 24 of its vtable, 0x36D970; the
@@ -614,13 +651,69 @@ extern "C" void func_003773F0(C2DButton *button, ButtonState *state);
 extern "C" void func_0036E840(C2DButton *button, zdb::CTexHandle *tex);
 extern "C" void func_0036E830(C2DButton *button, float scale);
 
+/* slot 18: the state at 0xFC shown, when the button takes input, and every action of type 1 on
+ * event 2 run (SOCOM 1's C2DButton::SetActive; the activation written out -- through the check box's
+ * ActionItem::Run its copy of the item takes a register more) */
+void C2DButton::SetActive()
+{
+    if (CanHandleInput()) {
+        m_state = &m_pressed;
+        func_0036E840(this, m_pressed.m_tex);
+        func_0036E830(this, m_pressed.m_scale);
+        SetCaptionStyle(m_pressed.m_color, m_pressed.m_pulse, m_pressed.m_fadeTime, m_pressed.m_fadeMin,
+                        m_pressed.m_fadeMax);
+        m_background.SetPulse(m_pressed.m_period);
+        for (int i = 0; i < m_numActions; i++)
+            if (m_actions[i].Type == 1 && m_actions[i].Event == 2) {
+                CZAnim *anim = ZAnim.GetAnim(m_actions[i].Animation, 0);
+
+                if (anim) {
+                    if (m_actions[i].Argument)
+                        anim->ActivateArg(1, 8, m_actions[i].Argument, 0);
+                    else
+                        anim->Activate(0);
+                }
+            }
+    }
+}
+
+/* slot 12: the caption and the background ticked, and a press timed out -- the state at 0xFC shown
+ * when the button takes input, the disabled one when not (SOCOM 1's C2DButton::Tick) */
+void C2DButton::Tick(float dT)
+{
+    _strCaption.Tick(dT);
+    m_background.Tick(dT);
+    if (m_pressTime > 0.0f) {
+        if (m_pressTime > dT)
+            m_pressTime -= dT;
+        else {
+            m_pressTime = 0.0f;
+            if (CanHandleInput()) {
+                m_state = &m_pressed;
+                func_0036E840(this, m_pressed.m_tex);
+                func_0036E830(this, m_pressed.m_scale);
+                SetCaptionStyle(m_pressed.m_color, m_pressed.m_pulse, m_pressed.m_fadeTime,
+                                m_pressed.m_fadeMin, m_pressed.m_fadeMax);
+                m_background.SetPulse(m_pressed.m_period);
+            } else {
+                m_state = &m_disabled;
+                func_0036E840(this, m_disabled.m_tex);
+                func_0036E830(this, m_disabled.m_scale);
+                SetCaptionStyle(m_disabled.m_color, m_disabled.m_pulse, m_disabled.m_fadeTime,
+                                m_disabled.m_fadeMin, m_disabled.m_fadeMax);
+                m_background.SetPulse(m_disabled.m_period);
+            }
+        }
+    }
+}
+
 /* slot 21 (C2DButton's table +0x54, as in every button's): the normal state shown, when the
  * button takes input -- the background's texture, the caption's scale and style, the pulse (SOCOM
  * 1's SetNormal; the s1:vtable pass had put SetCanHandleInput's name here, a slot early) */
 void C2DButton::SetNormal()
 {
     if (CanHandleInput()) {
-        m_24c = 0;
+        m_pressTime = 0;
         m_state = &m_normal;
         func_0036E840(this, m_normal.m_tex);
         func_0036E830(this, m_normal.m_scale);
@@ -719,7 +812,7 @@ bool CRadioStrip::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
 
         if (choice >= 0 && choice <= size() - 1) {
             m_choice = choice;
-            func_00370D10(this);
+            ShowChoice();
             func_00370DB0(this);
         }
         *done = true;
@@ -1053,6 +1146,31 @@ int CPopUpDialog::GetZAnimCmdType(const char *name)
     return C2D::GetZAnimCmdType(name);
 }
 
+/* the map control (SOCOM 1's CUIMapCtrl, a C2D: only its command lookup here; its destructor
+ * declared first so that this unit does not take its table) */
+class CUIMapCtrl : public C2D {
+public:
+    virtual ~CUIMapCtrl();
+    virtual int GetZAnimCmdType(const char *name);
+};
+
+/* the map control's commands: panning and the two zooms, after the UI's own (SOCOM 1's; SOCOM
+ * II's counts four) */
+int CUIMapCtrl::GetZAnimCmdType(const char *name)
+{
+    if (!name)
+        return C2D::GetZAnimCmdType(name) + 4;
+    if (!*name)
+        return 0;
+    if (!strcasecmp("Pan", name))
+        return C2D::GetZAnimCmdType(name) + 1;
+    if (!strcasecmp("ZOOM_IN", name))
+        return C2D::GetZAnimCmdType(name) + 2;
+    if (!strcasecmp("ZOOM_OUT", name))
+        return C2D::GetZAnimCmdType(name) + 3;
+    return C2D::GetZAnimCmdType(name);
+}
+
 /* an .rdr built in memory (zrdr.h's CRdrEditor: only the three node adders the list items call) */
 class CRdrEditor {
 public:
@@ -1169,6 +1287,190 @@ void CListItemStringTypeImpl::Tick(float dT)
  * reached only through the thunk 0x37D030) */
 CTeleType::~CTeleType()
 {
+}
+
+/* the strip's buttons shown, the chosen one active and the others normal (SOCOM II's; called out of
+ * line by the command tick and the pad's handler: pinned; the end declared before the walk's
+ * iterator, or the two trade saved registers) */
+#pragma auto_inline off
+void CRadioStrip::ShowChoice()
+{
+    int n = 0;
+
+    for (iterator e = end(), i = begin(); i != e; ++i, ++n) {
+        C2D *button = *i;
+
+        if (button) {
+            if (n == m_choice)
+                button->SetActive();
+            else
+                button->SetNormal();
+        }
+    }
+}
+#pragma auto_inline reset
+
+/* the render pipe as a 2D visual reads it: the opacity stack (zrndr_pipe.cpp's CPipe, OVL1 bss
+ * 0x4887C0; its 0x720 bytes stood in) */
+class CPipe {
+public:
+    unsigned char _0[0x668];
+    float *m_opacity_stack;   // 0x668
+    int m_opacity_stack_size;   // 0x66c
+    int m_opacity_stack_index;   // 0x670
+    unsigned char _674[0x720 - 0x674];
+};
+
+extern CPipe thePipe;
+
+/* a 2D object drawn by the world's render pipe (SOCOM 1's C2DVisual, a zdb::CVisual made from a
+ * C2D: zanim_menu.h's, the object at 0x68; its destructor declared first so that this unit does
+ * not take its table) */
+class C2DVisual {
+public:
+    virtual ~C2DVisual();
+    virtual void Render(CMatrix *m);
+
+    unsigned char _4[0x68 - 4];
+    C2D *m_2d;   // 0x68
+    zdb::CTextureRelocMgr *m_mgr;   // 0x6c
+};
+
+/* the object drawn through the matrix, faded to the pipe's opacity first when it is not opaque (a
+ * fade within a hundredth of the end drawn opaque: SOCOM 1's C2DVisual::Render; the scale applied
+ * in place, `*=`, keeps the opacity in the argument's register) */
+void C2DVisual::Render(CMatrix *m)
+{
+    float opacity = thePipe.m_opacity_stack[thePipe.m_opacity_stack_index];
+
+    if (opacity < 1.0f) {
+        if (opacity == 0.99f)
+            opacity = 1.0f;
+        opacity *= 128.0f;
+        m_2d->SetTrans(opacity);
+    }
+    m_2d->Draw(*m, m_mgr);
+}
+
+/* the string drawn at its offset through the matrix, placed again (and its own slot told,
+ * +0xA0) when the position has moved (SOCOM 1's CRenderableString::Draw, slot 2) */
+void CRenderableString::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = m_offset;
+
+    m.Transform(&p, 1);
+    if (p.x != (int)(m_posx + m_socom2_7c) || p.y != (int)(m_posy + m_socom2_80)) {
+        SetPos((int)p.x, (int)p.y);
+        Update();
+    }
+    C2DString::Draw(mgr, 0, (int)p.z);
+}
+
+/* the pad as the buttons read it: each button's key state (zinput.h's CPad::m_state from
+ * 0x1; 2 a press, 1 a release) */
+class CPad {
+public:
+    unsigned char m_0;   // 0x0
+    unsigned char m_state[16];   // 0x1
+};
+
+/* an action's animation started, handed its argument if it has one (the check box's two arms:
+ * an inline member whose copy of `this` -- the item, a variable of its own -- stays in a saved
+ * register across the lookup, the first read folded into the box's offset; read through `this`
+ * itself MW folds every read) */
+inline void ActionItem::Run() const
+{
+    const ActionItem *item = this;
+    CZAnim *anim = ZAnim.GetAnim(item->Animation, 0);
+
+    if (anim) {
+        if (item->Argument)
+            anim->ActivateArg(1, 8, item->Argument, 0);
+        else
+            anim->Activate(0);
+    }
+}
+
+/* a release of button 9 (SOCOM 1's button 27) toggles the check, running the action of the state
+ * left -- the second when it was checked, the first when not (SOCOM 1's CCheckBox::HandlePad) */
+bool CCheckBox::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    if (pad->m_state[9] == 1) {
+        if (m_checked) {
+            m_checked = false;
+            m_action1.Run();
+        } else {
+            m_checked = true;
+            m_action0.Run();
+        }
+        return true;
+    }
+    return false;
+}
+
+/* the check box drawn: the button, then, when checked, its check placed by the matrix at its
+ * offset and drawn with no matrix of its own (SOCOM 1's CCheckBox::Draw, slot 2) */
+void CCheckBox::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    C3StateButton::Draw(m, mgr);
+    if (m_checked) {
+        CMatrix mat;
+        CPnt3D p = CPnt3D::zero;
+
+        m.Transform(&p, 1);
+        p.x += m_checkX;
+        p.y += m_checkY;
+        m_check.SetPos((int)p.x, (int)p.y, (int)(p.x + m_checkW), (int)(p.y + m_checkH));
+        m_check.Draw(mat, mgr);
+    }
+}
+
+/* the button's destructor (implicit: the caption, then C2D's). Defined here, it brings the class's
+ * table, and with it Tick's inline copy (0x37C600): once C2DButton overrides Tick, no other table
+ * this unit emits takes it */
+C3StateButton::~C3StateButton()
+{
+}
+
+/* the button drawn: its background (slot 28), then its caption, placed by the matrix at its
+ * offset (SOCOM 1's C3StateButton::Draw, slot 2) */
+void C3StateButton::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    if (IsOn()) {
+        DrawBackground(m, mgr);
+        if (_szCaption) {
+            CPnt3D p = CPnt3D::zero;
+
+            m.Transform(&p, 1);
+            _strCaption.SetPos((int)(p.x + _iTextX), (int)(p.y + _iTextY));
+            _strCaption.Draw(mgr, 0, (int)p.z);
+        }
+    }
+}
+
+/* a press of button 9 (SOCOM 1's button 27) shows the button pressed and hands the pad to its
+ * children, the first to take it ending the walk -- taken either way (SOCOM 1's, slot 15).
+ * OPEN, 11 instructions: two saved registers swapped -- the target keeps this (then the end,
+ * this + 4) in s3 and the walk's node in s2, MW here the other way round; the code is otherwise
+ * the target's, the `!` of the child's answer materialised included. Tried: end declared first,
+ * end in the loop test (13), an assigned iterator (0x110), a while walk (11), the base deleter's
+ * iterator (11), the walk in an inline helper (0xF4) */
+bool CHandlerButton::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    if (size() && pad->m_state[9] == 2) {
+        Slot27();
+        iterator i = begin();
+        iterator e = end();
+        for (; i != e; ++i)
+            if ((*i)->HandlePad(pad, port))
+                return true;
+        return true;
+    }
+    return false;
 }
 
 /* the handler button's destructor (implicit: the button's; reached through the thunk 0x37D050) */

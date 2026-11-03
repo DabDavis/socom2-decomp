@@ -24,10 +24,6 @@
 #include <algorithm>
 #include <iostream>
 
-/* unnamed yet */
-extern "C" {
-void func_001EEB40(CStateString *s, const char *text);   /* std::string::assign */
-}
 
 /* a SEAL's stats (SOCOM 1's CSealStats, 0x54 bytes of ints; SOCOM II's counters are unsigned
  * shorts, 0x48 bytes: the SEAL lane's seal.cpp has the same view). The accessors are SOCOM 1's
@@ -611,8 +607,8 @@ bool CompareGameSeals(CZSealBody *p1, CZSealBody *p2)
  * begin/end through CEntity::m_list (no conversion to const_iterator) or an end local. The side
  * test's `bnez v0,count; b skip` is the `if (bSeals) { if (!A) continue; } else if (!B) continue;`
  * form SetStatLbUiVar matched with (round 18: the goto form inverted it; the ternary joins).
- * __ptmf_cmpr (0x1828E0, func_001828E0 in the map) is the PTMF comparison MW calls by name: the
- * row needs that name for the call to resolve */
+ * __ptmf_cmpr (0x1828E0) is the PTMF comparison MW calls by name: the row needs that name for the
+ * call to resolve */
 void SetFinalTeamTotalsUiVar(bool bSeals, const char *szUiVar)
 {
     static int (CSealStats::*pfnHitPct)() const = &CSealStats::GetHitPct;
@@ -1063,7 +1059,7 @@ void SetFinalStatsUiVars()
 /* the splash screen's asset library named; no menu yet */
 CMPExitState::CMPExitState() : CGameState("MPExitState")
 {
-    func_001EEB40(&m_libname, "common/assetlib/splash");
+    m_libname.assign("common/assetlib/splash");
     m_menu = 0;
     m_28 = 0;
 }
@@ -1221,12 +1217,12 @@ bool CMPExitState::Tick(float dT)
         }
         CTurret::ResetAmmo();
         func_002A7D40(&theMission);
-        func_002CF2F0(&theGame, 0);
+        theGame.Pop(0);
         theUIVarManager.Reset();
         return true;
     case 1:
-        func_002CF2F0(&theGame, 0);
-        func_002CF410(&theGame, &theGame.m_menuState, 0);
+        theGame.Pop(0);
+        theGame.Switch(&theGame.m_menuState, 0);
         return true;
     }
     func_00544D60(ftsGetPlayer(), 0);
