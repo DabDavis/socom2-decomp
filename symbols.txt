@@ -11639,20 +11639,20 @@
 0x00600530 0x18 func_00600530  # OVL2
 0x00600550 0x79C func_00600550  # OVL2
 0x00600CF0 0x50 func_00600CF0  # OVL2
-0x00600D40 0x8C func_00600D40  # OVL2; s1:order by hand (the kit lane, round 4): CSealCtrl::ClearLook(AI_LOOK) -- SOCOM 1's ClearLook__9CSealCtrlF7AI_LOOK (0x2E4310), the same stores 4 bytes on (the look's point to CPnt3D::unit_nz, type 3, mode 0, timer CAiTimer::infinite, flags 0) and the same tail call to SetDefaultLookParams (0x601400), SOCOM II's passing whether the type was not 3; a placeholder because zseal.h's CSealCtrl does not declare it (seal_look.cpp)
-0x00600DD0 0x100 func_00600DD0  # OVL2
-0x00600ED0 0x9C func_00600ED0  # OVL2
-0x00600F70 0x100 func_00600F70  # OVL2
-0x00601070 0x188 func_00601070  # OVL2
-0x00601200 0x128 func_00601200  # OVL2
-0x00601330 0xD0 func_00601330  # OVL2
-0x00601400 0x404 func_00601400  # OVL2; s1:order by hand (the kit lane, round 4): CSealCtrl::SetDefaultLookParams(AI_LOOK, bool) -- SOCOM 1's SetDefaultLookParams__9CSealCtrlF7AI_LOOK (0x2E4660: the look rate's Rfloat, a switch on the kind), called from ClearLook (0x600D40) as SOCOM 1's is
+0x00600D40 0x8C ClearLook__9CSealCtrlF7AI_LOOK  # OVL2; s1:order by hand (the kit lane, round 4): CSealCtrl::ClearLook(AI_LOOK) -- SOCOM 1's ClearLook__9CSealCtrlF7AI_LOOK (0x2E4310), the same stores 4 bytes on (the look's point to CPnt3D::unit_nz, type 3, mode 0, timer CAiTimer::infinite, flags 0) and the same tail call to SetDefaultLookParams (0x601400), SOCOM II's passing whether the type was not 3; a placeholder because zseal.h's CSealCtrl does not declare it (seal_look.cpp); by hand (the kit lane, round 18): written as CSealCtrl's member, seal_look.cpp
+0x00600DD0 0x100 SetLookDirR__9CSealCtrlF7AI_LOOKPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's SetLookDirR, the same code 4 bytes on (the look's kind tested, the direction copied or normalised, kind 3), SetDefaultLookParams now told whether the point's kind changed; CAiSPursue::Tick calls it before SetScanAngle/ModifyLookFlags/SetLookTimer in both builds -- seal_look.cpp
+0x00600ED0 0x9C SetLookDirW__9CSealCtrlF7AI_LOOKQ26CAiMap3DIR  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's SetLookDirW(AI_LOOK, CAiMap::DIR), GetDirVec first, kind 2 -- seal_look.cpp
+0x00600F70 0x100 SetLookDirW__9CSealCtrlF7AI_LOOKPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's SetLookDirW(AI_LOOK, const CPnt3D *, bool), SetLookDirR's code with kind 2 -- seal_look.cpp
+0x00601070 0x188 SetLookPosW__9CSealCtrlF7AI_LOOKRC9CAiMapLoc  # OVL2; by hand (the kit lane, round 18; new in SOCOM II, the overload ours): a cell looked at by its centre (CAiMaps::GetCellCenter on AiMaps), nothing done for the SEAL's own cell, SetLookPosW(pnt) inlined -- CAiSAction::Tick calls it; seal_look.cpp
+0x00601200 0x128 SetLookPosW__9CSealCtrlF7AI_LOOKP7CEntity  # OVL2; by hand (the kit lane, round 18; new in SOCOM II, the overload ours): an entity looked at by its target point (CEntity's slot +0x30), SetLookPosW(pnt) inlined -- CTLookAt::Tick calls it where SOCOM 1's asked the entity and called SetLookPosW; seal_look.cpp
+0x00601330 0xD0 SetLookPosW__9CSealCtrlF7AI_LOOKPC6CPnt3D  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's SetLookPosW, kind 1, SOCOM II's refusing a point within the limit (0x650DA0) of the SEAL in the ground plane -- seal_look.cpp
+0x00601400 0x404 SetDefaultLookParams__9CSealCtrlF7AI_LOOKb  # OVL2; s1:order by hand (the kit lane, round 4): CSealCtrl::SetDefaultLookParams(AI_LOOK, bool) -- SOCOM 1's SetDefaultLookParams__9CSealCtrlF7AI_LOOK (0x2E4660: the look rate's Rfloat, a switch on the kind), called from ClearLook (0x600D40) as SOCOM 1's is; by hand (the kit lane, round 18): SOCOM 1's SetDefaultLookParams(AI_LOOK) with a bool added -- every look setter (ClearLook, SetLookDirR/W, SetLookPosW) calls it last with whether the point's kind changed (xori/sltu); seal_look.cpp declares it
 0x00601810 0x10 SetScanRate__9CSealCtrlFf  # OVL2; s1:exact
-0x00601820 0x8 func_00601820  # OVL2
-0x00601830 0x20 func_00601830  # OVL2
-0x00601850 0x8 func_00601850  # OVL2
-0x00601860 0x8 func_00601860  # OVL2
-0x00601870 0xC func_00601870  # OVL2
+0x00601820 0x8 SetScanAngle__9CSealCtrlFf  # OVL2; s1:order by hand (the kit lane, round 18): between SetScanRate and ModifyLookFlags as SOCOM 1's SetScanAngle(float), CAiSPursue::Tick calling it after SetLookDirR in both builds; SOCOM II's keeps the angle alone at 0x50 (SOCOM 1's Rfloat -angle..angle at 0x4C) -- seal_look.cpp
+0x00601830 0x20 ModifyLookFlags__9CSealCtrlFUiUi  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's ModifyLookFlags, the same code 4 bytes on (m_look_flags 0x4C) -- seal_look.cpp
+0x00601850 0x8 SetLookFlags__9CSealCtrlFUi  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's 8-byte SetLookFlags, writing 4 bytes on as ClearLook's fields do -- seal_look.cpp
+0x00601860 0x8 SetLookTimer__9CSealCtrlFf  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's 8-byte SetLookTimer, 4 bytes on -- seal_look.cpp
+0x00601870 0xC SetLookRate__9CSealCtrlFf  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's SetLookRate (an Rfloat set to a fixed rate), 4 bytes on -- seal_look.cpp
 0x00601880 0x78 __dt__11CAiSHostageFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00601900 0x8 CanAttack__11CAiSHostageCFv  # OVL2; by hand: CAiSHostage's vtable slot +0x24 (CanAttack)
 0x00601910 0x538 Tick__11CAiSHostageFP11CSealCtrlAi  # OVL2; by hand: CAiSHostage's vtable slot +0x10 (Tick); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
