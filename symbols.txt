@@ -6866,7 +6866,7 @@
 0x00370350 0x2BC Draw__11CScrollTextFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370610 0x74 func_00370610  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
 0x00370690 0x28C Draw__12CPopUpDialogFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00370920 0x6C func_00370920  # OVL1
+0x00370920 0x6C Tick__12CPopUpDialogFf  # OVL1; s1:vtable by hand (the HUD lane, round 20: zui_2d.cpp -- slot +0x38 of CPopUpDialog's table 0x4073A0 (Tick, as SOCOM 1's Tick__12CPopUpDialogFf, which ticks the pointer at its 0x18C alone): SOCOM II ticks two parts at 0x340 and 0x790 through their tables, then the pointer at 0x32C)
 0x00370990 0x284 HandlePad__12CPopUpDialogFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370C20 0x88 func_00370C20  # OVL1
 0x00370CB0 0x58 func_00370CB0  # OVL1

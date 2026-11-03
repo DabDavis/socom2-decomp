@@ -304,7 +304,17 @@ class CPopUpDialog : public C2D {
 public:
     /* declared, not defined: stand-ins whose implicit destructors would supersede the drafts */
     virtual ~CPopUpDialog();
+    virtual void Tick(float dT);
     virtual int GetZAnimCmdType(const char *name);
+
+    /* the parts its Tick ticks (SOCOM II's two members, through their tables; SOCOM 1 ticked the
+     * pointer alone) -- C2D stand-ins, their real classes unknown */
+    unsigned char _18[0x32c - 0x18];
+    C2D *m_32c;   // 0x32c
+    unsigned char _330[0x340 - 0x330];
+    C2D m_340;   // 0x340
+    unsigned char _358[0x790 - 0x358];
+    C2D m_790;   // 0x790
 };
 
 
@@ -414,6 +424,16 @@ void CPlainBmp::Tick(float dT)
 void CPlainBmp::SetMapOffset(int x, int y)
 {
     SetPos(x, y, x + m_iWidth, y + m_iHeight);
+}
+
+/* slot 12: the dialog's two parts ticked through their tables, then the part it points to
+ * (SOCOM 1's Tick ticked only that one) */
+void CPopUpDialog::Tick(float dT)
+{
+    m_340.Tick(dT);
+    m_790.Tick(dT);
+    if (m_32c)
+        m_32c->Tick(dT);
 }
 
 /* a state applied: the background, the caption's style and the pulse (0x3773F0, unwritten) */
