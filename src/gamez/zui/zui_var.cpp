@@ -6,10 +6,11 @@
  * zui_var.cpp is ours (the press beta's zui.cpp may be it).
  *
  * OPEN, not written yet: the manager's Serialize (it saves through CRdrEditor and CValve), the
- * variable's assignment from a string, its formatting (0x3860F0), _Refresh (0x385E50-0x3860EF),
- * Attach (the pointer vector's iterator pieces out of line, 0x386910-0x3869EF) and 0x3866F0,
- * 0x386BF0; DetachUIVar, ~CUIVarManager, the revival 0x386B80 and the thunks stand as generated
- * drafts. */
+ * variable's assignment from a string, its formatting (0x3860F0), _Refresh (0x385E50-0x3860EF) and
+ * 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
+ * (0x386910-0x3869EF, 0x386AB0) and the thunks stand as generated drafts. Round 13: CUIVariable's
+ * copy constructor 0x386BF0 byte-exact (zui.h's CUIVariable : _zrdr, UIVarMixin); Attach written,
+ * open (below). */
 
 #include "zui.h"
 
@@ -85,6 +86,21 @@ void CUIVariable::Destroy()
 }
 #pragma auto_inline reset
 
+/* the mixin made a watcher of the variable unless it is one, and told so (SOCOM II's: AttachUIVar
+ * calls it once m_uivar is set).
+ * OPEN, 0xE4 against 0xC0: the target inlines IsAttached ONE level -- its found flag (s0, set with
+ * daddiu) and its by-value parameter's copy (76(sp), find's value) inline, the watcher vector's
+ * begin(), end() twice, std::find and != called out of line (0x3869C0, 0x3869D0, 0x386AB0,
+ * 0x386980: the drafts' rows) -- so its tree is taller than five there (begin() three high here);
+ * here IsAttached inlines whole. The original's begin()/end() a level or two deeper (README "Level
+ * 6, or 8?") would do it; AttachUIVar is pinned (Attach calls it out of line) */
+void CUIVariable::Attach(UIVarMixin *mixin)
+{
+    if (!IsAttached(mixin))
+        m_attached_items.push_back(mixin);
+    mixin->AttachUIVar(this);
+}
+
 /* every watcher detached: a successful detach changes the vector, so the walk restarts (called
  * out of line by Destroy: pinned) */
 #pragma auto_inline off
@@ -149,7 +165,9 @@ void CUIVariable::UpdateDependents()
 }
 
 /* the mixin made a watcher of the variable, its old one detached first (SOCOM 1's AttachUIVar
- * pushed itself; SOCOM II's leaves that to CUIVariable::Attach) */
+ * pushed itself; SOCOM II's leaves that to CUIVariable::Attach, which calls it back out of line:
+ * pinned) */
+#pragma auto_inline off
 void UIVarMixin::AttachUIVar(CUIVariable *var)
 {
     if (m_uivar != var) {
@@ -160,6 +178,7 @@ void UIVarMixin::AttachUIVar(CUIVariable *var)
             m_uivar->Attach(this);
     }
 }
+#pragma auto_inline reset
 
 /* the temporary variables destroyed, the garbage collected (SOCOM 1's) */
 void CUIVarManager::Reset()

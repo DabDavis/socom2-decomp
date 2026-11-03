@@ -10,6 +10,7 @@
 
 #include <string.h>
 #include <vector>
+#include <algorithm>
 
 #include "../zutil/util_stable.h"
 #include "zui_uivar.h"
@@ -134,6 +135,17 @@ public:
     void Destroy();
     CUIVariable &operator=(const char *str);
     void Attach(UIVarMixin *mixin);
+    /* whether the mixin watches the variable (SOCOM 1's IsAttached, out of line there; SOCOM II's
+     * inline -- Attach inlines it one level, calling the watcher vector's begin(), end(), find and
+     * != out of line) */
+    bool IsAttached(UIVarMixin *mixin)
+    {
+        bool found = false;
+
+        if (std::find(m_attached_items.begin(), m_attached_items.end(), mixin) != m_attached_items.end())
+            found = true;
+        return found;
+    }
     /* the value replaced by a copy of value, its strings in the manager's current table, and the
      * watchers told (SOCOM 1's) */
     void Set(_zrdr *value);
