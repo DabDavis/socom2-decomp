@@ -6850,8 +6850,8 @@
 0x0036DA20 0xC2C TickZAnimCmd__12CPopUpDialogFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036E650 0x60 __dt__11ButtonStateFv  # OVL1; ours (the 0x34-byte button state's destructor: a string at 0 destroyed, deleted when asked; every button-spec destructor calls it for its four states; the class name ours) -- the UI lane
 0x0036E6B0 0x80 SetCanHandleInput__9C2DButtonFb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0036E730 0x60 func_0036E730  # OVL1
-0x0036E790 0x9C func_0036E790  # OVL1
+0x0036E730 0x60 SetPulse__9CPlainBmpFf  # OVL1; s1:calls by hand (the HUD lane, round 20: zui_2d.cpp -- SOCOM 1's CPlainBmp::SetPulse (0x38A810), the same code with SOCOM II's SetTrans slot: 0 sets the alpha 128 and stops the pulse, else the pulse's flag at 0x88 and period at 0x8C; C2DButton::SetCanHandleInput calls it on the background at 0x1A0 -- an inline's out-of-line copy after that caller)
+0x0036E790 0x9C SetCaptionStyle__13C3StateButtonFRC6CPnt3Dbfff  # OVL1; ours (the HUD lane, round 20: zui_2d.cpp -- the caption's colour (the inline float SetColor, z/y/x loaded first), SetTrans(100) through its vtable, m_Type pulse or normal and the fade's time/max/min, the fields SOCOM 1's SetCanHandleInput set inline; an inline's out-of-line copy after SetCanHandleInput, its caller with a button state's fields)
 0x0036E830 0x8 func_0036E830  # OVL1
 0x0036E840 0x20 func_0036E840  # OVL1
 0x0036E860 0x1C func_0036E860  # OVL1

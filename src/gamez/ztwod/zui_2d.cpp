@@ -107,6 +107,7 @@ public:
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual void SetMapOffset(int x, int y);
+    void SetPulse(float period);
 
     bool m_pulsing;   // 0x88
     float m_period;   // 0x8c
@@ -152,6 +153,7 @@ public:
     virtual void SetBackgroundAlpha(float a);
     virtual void Slot27();
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    void SetCaptionStyle(const CPnt3D &color, bool pulse, float time, float min, float max);
 
     char *_szCaption;   // 0x18
     C2DString _strCaption;   // 0x1c
@@ -387,6 +389,34 @@ void CPlainBmp::Tick(float dT)
 void CPlainBmp::SetMapOffset(int x, int y)
 {
     SetPos(x, y, x + m_iWidth, y + m_iHeight);
+}
+
+/* the caption's colour, its alpha 100, and its pulse: whether, how fast, between what (the name ours;
+ * SOCOM 1's SetCanHandleInput set the same fields inline; SOCOM II's 0x36E790 is an inline's
+ * out-of-line copy after SetCanHandleInput, defined here out of line until that caller is
+ * written) */
+void C3StateButton::SetCaptionStyle(const CPnt3D &color, bool pulse, float time, float min, float max)
+{
+    _strCaption.SetColor(color.x, color.y, color.z);
+    _strCaption.SetTrans(100.0f);
+    _strCaption.m_Type = pulse ? STRING_PULSE : STRING_NORMAL;
+    _strCaption.m_fadeTime = time;
+    _strCaption.m_fadeMax = max;
+    _strCaption.m_fadeMin = min;
+}
+
+/* pulsing with a period, or (0) steady and opaque (SOCOM 1's SetPulse, out of line at 0x38A810
+ * there; SOCOM II's 0x36E730 is an inline's out-of-line copy, after its first caller
+ * C2DButton::SetCanHandleInput -- defined here out of line until that caller is written) */
+void CPlainBmp::SetPulse(float period)
+{
+    if (period == 0.0f) {
+        SetTrans(128.0f);
+        m_pulsing = false;
+    } else {
+        m_pulsing = true;
+        m_period = period;
+    }
 }
 
 /* SETVALUE's value as a command (SOCOM 1's; SOCOM II's record is 16 bytes and keeps the value as a
