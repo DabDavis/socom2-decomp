@@ -1647,6 +1647,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the world, rdr and sound, round 1** (ztex_main.cpp, zrdr_file.cpp, CSndVocalQueue::Add):
+  - bitfields set in a constructor's initialiser list compile to one word read-mask-write each, with
+    `(0 & mask) << shift` left unfolded; assigned in the body they fold to byte stores (CRdrFile());
+  - a member read through an inline `const` accessor is reloaded after the caller's own test of it;
+    `T *r = 0; if (m) r = ...` puts the zero in the test's delay slot (Create, Resolve);
+  - through a bool setter `true` folds `(1 & 1) << n` to a daddiu constant while `false` stays masked
+    at run time; a 64-bit bitfield narrowed through `(int)` is sign-extended before a halfword store
+    (Read's palette id); an inline called with a constant null keeps its dead arm behind an
+    unconditional branch (~CTexture's SetName(0)); the last arm of an if/else-if chain written as a
+    ternary saves two words (po2);
+  - STAND-INS, the original's spelling unknown: SetGifPtrs, CTexture::Read and CSndVocalQueue::Add
+    match only under a function-scoped `#pragma opt_propagation off` (a constant kept in a register,
+    a forwarded copy kept in memory; every plain form tried was 3-5 instructions off; unit-wide it
+    loses others, and swept over 14 units with open functions only Add gained -- five other optimiser
+    pragmas gained nothing: build/scratch/wld/propsweep.py); Resolve needs a `volatile` store to keep
+    the flags' unchanged write-back;
+  - ztex_main.cpp (the press beta's assert names it) starts at 0x354510, straight after valve_main.cpp,
+    in SOCOM 1's order; its boundary with ztex_manager.cpp falls in 0x355A70-0x355DE0; znode.h's
+    CTexture is 0x6C bytes (m_MIP2, m_reverse_miplist, m_loadimage); the HUD lane's ztwod/ztex_manager.cpp
+    still carries its own CTexture (m_addr = m_gsaddr, m_name = m_AssetLib, m_palid = m_palID, m_size =
+    m_gsWords, m_mips = m_reverse_miplist).
 - **Tells from the AI core, round 13** (ai_perception.cpp, char_type.cpp's sounds, LODs and references):
   - the no-op `lw; dsll32 0; dsrl32 0; sw` before a bit set is CAiPath::SetFlags' `x &= ~clear; x |= set`
     called with a clear of 0 (the scan 0x60AA20 does it six times);
@@ -3106,8 +3127,10 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
 matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
 constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- 0x1EF8C0, st_core.cpp's
-~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), and 0x510080, OVL2's
-__list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
+~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
+__list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
+online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0, 0x2F6230
+and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line) -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
 

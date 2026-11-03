@@ -8,10 +8,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 LoadGS__Q23zdb8CTextureFUiPcPvUiUiUi(char * arg0, u32 arg1, char * arg2, char * arg3, u32 arg4, u32 arg5, u32 arg6);
+s32 Compute64WordMemoryUsage__Q23zdb8CTextureFv(char * arg0);
 M2C_UNK SetName__Q23zdb8CTextureFPCc(char * arg0, char * arg1);
 M2C_UNK SetupSpecialTextures__Q23zdb8CTextureFv(char * arg0);
 M2C_UNK _free__FPvPCci(char * arg0, char * arg1, s32 arg2);
-s32 func_00354AA0(s32 arg0);
 M2C_UNK sceDmaSync(s32, M2C_UNK, M2C_UNK);          /* extern */
 extern s32 data_0049E2B8;
 extern s32 data_0049E858;
@@ -27,7 +27,7 @@ s32 LoadGS__Q23zdb8CTextureFUiPcPvUiUiUi(char *arg0, u32 arg1, char *arg2, char 
     SC_MEMBER(arg0, s16 *, 0) = (s16) arg4;
     SC_MEMBER(arg0, s16 *, 2) = (s16) arg5;
     SC_MEMBER(arg0, s32 *, 8) = (s32) (arg1 & 0x3FFF);
-    temp_s0 = func_00354AA0((s32) arg0);
+    temp_s0 = Compute64WordMemoryUsage__Q23zdb8CTextureFv(arg0);
     if (((arg1 & 0x80000000) | (arg1 < (u32) m_baseAddress__Q23zdb8CTexture)) != 0) {
         SetupSpecialTextures__Q23zdb8CTextureFv(arg0);
     }
