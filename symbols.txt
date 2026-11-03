@@ -11851,7 +11851,7 @@
 0x0060FFC0 0x8 func_0060FFC0  # OVL2
 0x0060FFC8 0x18 func_0060FFC8  # OVL2 unaligned
 0x0060FFE0 0x18 func_0060FFE0  # OVL2
-0x0060FFF8 0x18 func_0060FFF8  # OVL2 unaligned
+0x0060FFF8 0x14 func_0060FFF8  # OVL2 unaligned; size 0x14 (the gcc lane, round 9b): the row carried the next function's alignment nop, the only one of the Medius range's 702 odd-length functions to
 0x00610010 0x304 func_00610010  # OVL2; split at 0x610318 (the gcc lane)
 0x00610318 0x170 func_00610318  # OVL2; split from func_00610010: entered only by a tail call (j from 0x60FFA8, GCC 2.96's sibcall), so the seed merged it; a prologue after its predecessor's jr ra and pad
 0x00610488 0x110 func_00610488  # OVL2 unaligned
