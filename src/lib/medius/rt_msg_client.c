@@ -443,12 +443,15 @@ int func_006336F0(unsigned short arg0, int arg1)
 }
 
 /* ---- the internal functions (rt_msg_client_i* and the helpers), below the wrappers ----
- * Nine written (round 6b), eight byte-exact; the two option setters (round 7b), both. The
- * internals return a narrower type than the API's
- * int (map_comm_error, is_valid_connection, the connect step 0x634A08): an int function returning
- * their result makes a jal, not a sibling call, as the target does. OPEN:
- * rt_msg_client_is_valid_connection_id (1 word: the size test is a beqz to the epilogue in the
- * target, a beqzl here -- the brief's 0x6189C8 kind). */
+ * Nine written (round 6b), the two option setters (round 7b), seventeen more (round 10b: SOCOM 1's
+ * idisconnect_all, set/get_header, set_scratch_buf_min_size, is_valid_connection, send_disconnect,
+ * the UDP enable and send, the broadcast toggle, the platform queries at the end) -- all
+ * byte-exact. The internals return a narrower type than the API's int (map_comm_error,
+ * is_valid_connection, the connect step 0x634A08): an int function returning their result makes
+ * a jal, not a sibling call, as the target does. is_valid_connection_id (round 6b's OPEN, a beqz
+ * where 2.96 gave beqzl) matches once is_valid_connection is defined above it with the state an
+ * enum. Not written: the connect/disconnect/update/send bodies and the buffer processing
+ * (0x633790-0x638500's large rows). */
 
 typedef struct rt_msg_client_comm {
     char pad0[0x1C];
