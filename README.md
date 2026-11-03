@@ -1701,6 +1701,28 @@ locale.cpp, the logic_error family, the other three `__sinit` rows.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the world, rdr and sound, round 3** (zrndr_pipe.cpp on the real texture classes, zrndr_postfx.cpp):
+  - a function template DECLARED ahead of its definition (`template <class V> inline void FreeVector(V &);`)
+    is no longer inlined one level, even at calls written after the definition (ztex_manager.cpp's four
+    FreeVector users all missed): include the defining header instead; and a template the header's inline
+    bodies call must be defined before them, or their copies call it out of line;
+  - in `a = b = x;` the store to `b` comes first (`CAlpha()` needed `m_next = m_visualList = ...`); MW keeps
+    the source order of constant stores to `this` (`CPipeEffect()`'s sixteen matched only in the target's);
+  - a header inline whose tree is taller than the level, used by two units (`CPipe::Flush`,
+    `CGameMenu::Clear`), is inlined one level in both, and its callees' copies sit after the FIRST caller in
+    link order; a unit's statics defined in its initialiser's order (`<iostream>`'s first) make its
+    `__sinit` byte-exact (`__sinit_zrndr_pipe.cpp`, `__sinit_zrndr_postfx.cpp`);
+  - zrndr_pipe.cpp ends at 0x33CD4F (its template tail 0x33C2A0-0x33CCCF, ~CFlareSystem 0x33CCD0 last);
+    0x33CD50-0x33D22F is a unit of its own, SOCOM II's effect at thePipe+0x688 (named zrndr_postfx.cpp and
+    CPipeEffect by us), whose initialiser 0x402F80 follows the pipe's; zsav_module.cpp starts at 0x33D230;
+    the pipe interrupt's test at 0x1C is the packet vector's capacity;
+  - 0x1FB3D0/0x1FB300 are vector<CTexHandle *>'s constructor and destructor, not vector<CAssetLib *>'s (the
+    font code 0x35A650 builds and destroys FreeVector's temporary through them beside the pipe's own clear
+    and swap copies; Add2D, the old names' basis, inlines its CLibList's) and 0x1FDDA0 vector<CTexPalette
+    *>'s destructor -- renamed by the integrator, which made CDynTexList::Free 0x33BAA0 byte-exact;
+  - open: the delayed nodes' class insert 0x33C5C0 (109, registers only: the in-place end pointer in s6
+    where the target has s0 -- include/vector's class-insert end register, the MSL lane's); 0x1EA580, a
+    pointer list's clear() out of line in an unwritten unit's tail, is unnamed (CAlpha::Free calls it).
 - **Tells from the weapons, round 12** (vis_texfx.cpp whole, a new unit vis_ripple.cpp, GetTextureSelectBlock):
   - vis_ripple.cpp (0x3C0CF0-0x3C356F, its initialiser 0x404B30; vis_main.cpp starts at 0x3C3570) is
     SOCOM II's water ripples, with no SOCOM 1 counterpart: a manager global (theWaterRippleManager
