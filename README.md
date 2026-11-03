@@ -1647,6 +1647,59 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 15** (seal_ik.cpp, ~CSealUnit, the aim parameters):
+  - single-bit `unsigned int` bitfields written one at a time compile to lbu/sb: splitting the 3-bit
+    field was enough for TurnSetup 0x5B8270 (round 14's unsigned-char guess was not needed);
+  - an unsigned byte-enum member passed straight to a parameter of the same enum loads with `lb`; cast
+    to its own type, `(E)m`, it loads with `lbu`;
+  - member lists that are classes over std::list (SOCOM 1's slist/ulist/clist) give four this-tests per
+    member in an implicit destructor, as ~CAiSAnimate;
+  - `if (p) {...} else {...; return false;} return f();` puts the shared call's block last
+    (SetAimPointW); returning early inside the if puts it right after the if body;
+  - a recursive function's out-of-line iterator copies sit BEFORE it in the image (0x5ED880-0x5ED9A0
+    precede GetSealCount, as 0x2D22E0 precedes CGTree::Destroy); GetSealCount (0x1A8 vs 0x1F8) waits
+    on include/list's depth: the pointer-list wrapper's begin()/end() as `iterator(base::begin())`
+    and a two-level size() (0x5E8A80 a const reference to size_, SOCOM 1's compressed_pair first());
+  - seal_ik.cpp is 0x5B8270-0x5B82CF, SOCOM 1's seal_ik.cpp position between seal_ex.cpp and
+    seal_kit.cpp; 0x5EBDC0 is CAiState's implicit operator= (the stack's 0xC-0x1B copied as one block
+    through the FPU: a nested struct), its list assignment an MSL chain include/list does not model
+    (0x5EF7F0, 0x5EF470, 0x5EF9B0, 0x5EF8D0, 0x5EF950, 0x510110 -- seal_unit.cpp's header has it).
+- **Tells from the world, rdr and sound, round 1** (ztex_main.cpp, zrdr_file.cpp, CSndVocalQueue::Add):
+  - bitfields set in a constructor's initialiser list compile to one word read-mask-write each, with
+    `(0 & mask) << shift` left unfolded; assigned in the body they fold to byte stores (CRdrFile());
+  - a member read through an inline `const` accessor is reloaded after the caller's own test of it;
+    `T *r = 0; if (m) r = ...` puts the zero in the test's delay slot (Create, Resolve);
+  - through a bool setter `true` folds `(1 & 1) << n` to a daddiu constant while `false` stays masked
+    at run time; a 64-bit bitfield narrowed through `(int)` is sign-extended before a halfword store
+    (Read's palette id); an inline called with a constant null keeps its dead arm behind an
+    unconditional branch (~CTexture's SetName(0)); the last arm of an if/else-if chain written as a
+    ternary saves two words (po2);
+  - STAND-INS, the original's spelling unknown: SetGifPtrs, CTexture::Read and CSndVocalQueue::Add
+    match only under a function-scoped `#pragma opt_propagation off` (a constant kept in a register,
+    a forwarded copy kept in memory; every plain form tried was 3-5 instructions off; unit-wide it
+    loses others, and swept over 14 units with open functions only Add gained -- five other optimiser
+    pragmas gained nothing: build/scratch/wld/propsweep.py); Resolve needs a `volatile` store to keep
+    the flags' unchanged write-back;
+  - ztex_main.cpp (the press beta's assert names it) starts at 0x354510, straight after valve_main.cpp,
+    in SOCOM 1's order; its boundary with ztex_manager.cpp falls in 0x355A70-0x355DE0; znode.h's
+    CTexture is 0x6C bytes (m_MIP2, m_reverse_miplist, m_loadimage); the HUD lane's ztwod/ztex_manager.cpp
+    still carries its own CTexture (m_addr = m_gsaddr, m_name = m_AssetLib, m_palid = m_palID, m_size =
+    m_gsWords, m_mips = m_reverse_miplist).
+- **Tells from the AI core, round 13** (ai_perception.cpp, char_type.cpp's sounds, LODs and references):
+  - the no-op `lw; dsll32 0; dsrl32 0; sw` before a bit set is CAiPath::SetFlags' `x &= ~clear; x |= set`
+    called with a clear of 0 (the scan 0x60AA20 does it six times);
+  - a lerp `lo*(1-x) + hi*x` read straight off a table element swaps the madd operands; reading lo and
+    hi through a `const T &` element reference keeps the target's order (the scale through the same
+    reference moves its load);
+  - `Item((unsigned int)i)` on Item(int) stops pointer stepping; `Item((unsigned int)(i + 1))` computes
+    i+1 after the count, `Item(i + 1)` before it;
+  - `n += p ? strlen(p) : 0` leaves both joins unpadded, the if/else form pads them as the target
+    does; `played = true;` written before a call fills the jal's delay slot and orders the float
+    constants f12 first, f13 last; a float field taken into a local hoists its load above nested
+    tests;
+  - ai_perception.cpp runs 0x53ABE0-0x53B00B (its .data 0x64FA70-0x64FC3C between the walker unit's
+    and char_type.cpp's); the voice-font getters 0x53B010-0x53B06F close either it or char_type.cpp
+    (identical bytes); 0x53C940 is SOCOM 1's CCharacterGear::CreateInstance (same body, same place).
 - **Tells from the online lobby, round 10** (nine units' static initialisers, the lobby's state queue):
   - defining a unit's globals in order gave seven of the lobby units' `__sinit_` byte-exact at once
     (zNetMedius, Room, Clan, Ladder, Lobby, Friends, LANLobby; Chat and Dme followed);
@@ -3130,8 +3183,10 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
 matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
 constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- 0x1EF8C0, st_core.cpp's
-~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), and 0x510080, OVL2's
-__list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere" -- 0x29FF60 and
+~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
+__list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
+online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0, 0x2F6230
+and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line) -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
 
@@ -4052,6 +4107,99 @@ Hand-written in round 7c: `asr/asrspi.c` (41 of 43, new: SOCOM 1's asrspi object
 matching drafts (ASRSPICBAGC, ASRSPICBASKCURRENTGAIN, asrspi_GetLngGenders, asrspi_GetVersion,
 asrspi_GetUswVersion, _engineMalloc, _engineCalloc, _engineFree); 9 rows named (asrspi_GainSet
 `s1:calls`, the other eight `s1:order`), 5 data rows (`s1:data`).
+
+**Round 8c: the engine's processing blocks.** The front end is a chain of blocks the scheduler
+(tos.c) runs, one demo object each, every one the same four functions: a constructor
+(`tosBaseBlockConstruct` with the block's size, a sibling call under a vestigial frame), an init
+(reads the block's profile, sizes its queue elements, allocates), a process (one input frame, or
+a null frame while flushing) and a control (a command: 255 destroys). `asr/tosblk.h` is the
+blocks' view of the scheduler: the record's head (scheduler, id, queue tables, the three
+functions, data from +40).
+
+- **The constructor's slots name the statics.** The demo marks Process/Control/Init LOCAL, so
+  they are `static` with prototypes at the top; the row the constructor passes in
+  `tosBaseBlockConstruct`'s process (or init) slot takes the demo's name of that slot, the
+  object's order agreeing (`s1:order`). The align map was a row off at some object edges
+  (ProcessGenderFilter precedes the constructor in the demo; the subsampler object starts with
+  Subsampler_Process): follow the demo's object list.
+- **A `static __inline__` defined after one caller and before another**: GCC 2.96 inlines only a
+  body it has already seen, so the VQ's FreeCodeBooks is a real call in LoadCodeBooks and inlined
+  into FreeVq1500, its argument (`v->b.tos`) read before the test -- one source, both shapes.
+- **One division for a test and a quotient**: InitUndersampler takes `n / factor` into a local
+  before the input size is stored; the test's `div` then gives the quotient and only its zero
+  trap stays in the success path (a store between reloads the factor -- `-fno-strict-aliasing`
+  -- and divides again). Two `unsigned short` rates divide unsigned (2.96 shortens it), an int
+  signed. A division's zero trap can vanish: the spellings that divided before the test kept no
+  trap after the first (mips.md's div_trap prints nothing when it is anti-dependent on an
+  earlier trap in its block), the target's only one sits in the success path.
+- **ScanSoft's shapes, measured**: a store and its pointer's increment as two statements
+  (`*h->pos = bin; h->pos++;`: one expression keeps `&h->pos` in a register); a pointer of its
+  own per loop (one shared pointer moves every register); `for (sum = *p++; p < group; p++)` for
+  a group sum; a loop bound taken into a local (`end = s->end`) where the unroller would copy the
+  register; an index initialised at its declaration (zeroed in the prologue); the found-node
+  branch first (`if (p != 0)`) and case bodies in source order; store orders by
+  `tools/ccperm.py` (the delay line's reset, the median's reset -- the same five stores in two
+  functions).
+- **Literals**: the EE's largest float is 0x7FFFFFFF (no infinity), `6.80564694e+38f` through
+  2.96's parser (the VQ's FLT_MAX); `0.001` comes out an ulp low (0x3F50624DD2F1A9FB) and `0.1f`
+  0x3DCCCCCC, both the target's.
+- **Open, diagnosed in place**: ProcessStationarity (50 words, the right size: the first block's
+  registers), GetLabel (0x46C, the VQ's two-stage search: both outer loops unrolled by two, each
+  distance loop's first step outside, pointers strength-reduced -- the break after the sum is the
+  target's). Of language.c's twelve only `_cdbGetCodeBookSize` was retried, its sum factored as
+  the target computes it (`(dim + nbr_in_sec_search) * first_size`, three spellings): still 32s.
+
+Hand-written in round 8c: `asr/delayblk.c` (4 of 4), `asr/lookahd.c` (4 of 4), `asr/gendfilt.c`
+(4 of 4), `asr/undersmp.c` (4 of 4), `asr/stacker.c` (4 of 4), `asr/median.c` (5 of 5),
+`asr/station.c` (3 of 4), `asr/vq.c` (8 of 9), `asr/slhisto.c` (8 of 8, with SOCOM II's three
+session functions) -- 44 functions byte-exact, 26 new to the map's byte-exact rows (6,336 bytes),
+18 superseding matching drafts; 11 rows named (ProcessGenderFilter, ProcessUndersampler,
+InitUndersampler, ProcessStacker, ProcessMedian, ProcessStationarity, GetLabel,
+IdleVq1500Process, ControlVq1500Process `s1:order`; FreeVq1500 `s1:calls`; SlidingHisto_Free by
+body).
+
+**Round 8b: RT's leftovers, the crypto objects, three Medius names settled.**
+
+- **The online lane's three questions, against SOCOM 1's symtab** (the demo names every
+  `PacketType*` global and every `MediusUniqueCallback*ResponseHandler`, each handler returning the
+  size of its response): 0x6492D8 keeps `MediusBuddyGetPermission` -- SOCOM 1's function of that name
+  sends `PacketTypeAddToBuddyListConfirmationRequest` and its slot's handler is
+  `...AddToBuddyListConfirmationResponseHandler` (64 bytes, as here; the request grew 44 -> 48);
+  0x649060 keeps `MediusSendChatMessage` -- SOCOM 1's shape exactly and the library's only 112-byte
+  request (a direct message is a chat message with its type and target); 0x649400 was not
+  MediusGetPolicy -- 38 bytes (no policy word) and a 72-byte response (the GetBuddyList response's
+  size) -- it is the game's GetIgnoreList's request, `MediusGetIgnoreList`, with
+  `MediusAddToIgnoreList`/`MediusRemoveFromIgnoreList` (0x6494A0/0x649540, by their callers' status
+  strings), and **MediusGetPolicy is 0x6495E0** (44 bytes, a 288-byte response as SOCOM 1's). Two
+  callback slots moved with it (data.txt 0x656240, 0x65624C). A request's size and its handler's
+  size pair a new request with SOCOM 1's more surely than the slot order did.
+- **SOCOM II's RT keeps SOCOM 1's objects under new layouts**: the RC cipher's counters are words
+  ahead of the table (SOCOM 1's were bytes after it), LargeInt's tests walk up from word 0 and
+  IsGreater and its siblings are gone, KM_Initialize has a third key pair, rt_time_calc_diff gives a
+  zero span where SOCOM 1 failed, and rt_time_platform_get_time_string's RTC read is its own
+  function with milliseconds kept (gCurTimeDate, gbTimeDateSet: SOCOM 1's names).
+- **The title's glue object is built without scheduling**: KM_GetSoftwareID and
+  KM_GetSoftwareKeyPair (SOCOM 1's object 0x420FC0, the keys its function-local statics
+  `pubKey.0`/`priKey.1`) are byte-exact at `-O1 -G0` (or -O2 with both scheduling passes off) and
+  miss at -O2 by 2 and 67 words on every ee-gcc toolchain -- a per-object flag again, the first -O1.
+- **Shapes, each measured**: a conditional expression where the target if-converts (`nTimeout =
+  b == 1 ? 0 : 10000` -- the `if` form keeps the constant 1 across the call in a saved register and
+  branches on it: rt_comm_platform2_create); `while (!bFound)` around a search whose found block
+  jumps back to the flag test (the interface search); a date copied out field by field in date
+  order, year first (0x63D8E8: a struct assignment is ldl/ldr, the target lw/sw); RC4's j summed on
+  `S[i]` and the swap through its own byte temporary (the target's `andi` on the swapped byte);
+  counters cleared i, j, n (ccperm, one of six); a salt indexed off its own stack slot; LargeInt's
+  IsEqual through plain word pointers (index-first address sums), lintGetBit's mask first.
+- **Open, diagnosed in place**: RCEncrypt (15 words) and RCDecrypt (36), registers only;
+  LargeInt's two carry functions 0x626D28 (17) and 0x626D78 (28s), the loop's block layout.
+
+Hand-written in round 8b: `medius/rt_time_platform.c` (+3, 9 of 9), `medius/rt_time.c` (+1, 7 of 7),
+`medius/rt_crypt.c` (+1, KM_Initialize: 23 of 25), `medius/rt_comm_platform2.c` (+2, 19 of 20),
+`medius/rc.c` (2 of 4, new), `medius/largeint.c` (8 of 10, new), `medius/kmsoftware.c` (2 of 2, new)
+-- 19 functions byte-exact, 16 new to the map's byte-exact rows (4,364 bytes), 3 superseding
+matching drafts (IsEven, lintSetBit, lintClearBit); 17 rows named or corrected (rt_time_platform_
+get_time_string `s1:calls`, KM_Initialize, the four RC and seven LargeInt functions `s1:order`,
+MediusGetPolicy moved, the three ignore-list requests by call), 4 data rows.
 
 ## Open, and next
 

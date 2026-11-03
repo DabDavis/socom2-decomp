@@ -6466,12 +6466,12 @@
 0x003545F0 0x80 Append__Q23zdb8CTexListFPQ23zdb8CTextureb  # OVL1; s1:order+calls (after Free as SOCOM 1's; CAssetLib::AddTexture calls it with true as SOCOM 1's does) -- the zdb-world lane
 0x00354670 0x118 GetHandle__Q23zdb8CTexListFPCc  # OVL1; s1:order+calls (after Append as SOCOM 1's; CAssetList::GetTexHandle calls it at SOCOM 1's call site) -- the zdb-world lane
 0x00354790 0xC8 GetHandle__Q23zdb8CTexListFPQ23zdb8CTexture  # OVL1; s1:order+calls (right after GetHandle(const char *) as SOCOM 1's; AddTextureAssetDecals calls it where SOCOM 1's does) -- the zdb-world lane
-0x00354860 0x148 func_00354860  # OVL1
+0x00354860 0x148 SetGifPtrs__Q23zdb8CTextureFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's SetGifPtrs right after the two GetHandles, the same three searches of the GIF select for TEX0 (6), MIPTBP1 (0x34) and MIPTBP2 (0x36) plus the context bit; Read and SetupSpecialTextures call it) -- ztex_main.cpp
 0x003549B0 0x44 CopyTextureSelect__Q23zdb8CTextureFP8_word128  # OVL1; s1:exact
-0x00354A00 0x88 func_00354A00  # OVL1
+0x00354A00 0x88 SetGifReg__3zdbFP8_word128UiUliP8_word128  # OVL1; SOCOM II's, the name ours (the world lane: a GIF select's entry for a register given new data and, unless 127, a new register, searched from a start entry; 0x354A90 wraps it for a texture's own select) -- ztex_main.cpp; zdb's (the function is in the namespace)
 0x00354A90 0xC func_00354A90  # OVL1
-0x00354AA0 0x110 func_00354AA0  # OVL1
-0x00354BB0 0x48 func_00354BB0  # OVL1
+0x00354AA0 0x110 Compute64WordMemoryUsage__Q23zdb8CTextureFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's Compute64WordMemoryUsage between CopyTextureSelect and SetName, the same switch over the texel size; Read and LoadGS call it) -- ztex_main.cpp
+0x00354BB0 0x48 IsAlphaBlended__Q23zdb8CTextureFv  # OVL1; SOCOM II's, the name ours (the world lane: transparent and neither bump-mapped nor 1-bit; the particles' 0x322DF0 asks it) -- ztex_main.cpp
 0x00354C00 0x74 SetName__Q23zdb8CTextureFPCc  # OVL1; s1:align
 0x00354C80 0xE8 __dt__Q23zdb8CTextureFv  # OVL1; s1:align
 0x00354D70 0x14 Release_HTEX__Q23zdb8CTextureFv  # OVL1; tu: ztex_main.cpp~ (1.0 beta); s1:exact
@@ -6480,7 +6480,7 @@
 0x00354F80 0x1D0 Read__Q23zdb8CTextureFRQ23zdb9CSaveLoad  # OVL1; s1:align
 0x00355150 0x250 SetupSpecialTextures__Q23zdb8CTextureFv  # OVL1; s1:align
 0x003553A0 0xF4 LoadGS__Q23zdb8CTextureFUiPcPvUiUiUi  # OVL1; s1:align
-0x003554A0 0xE0 func_003554A0  # OVL1
+0x003554A0 0xE0 po2__FUi  # OVL1; s1:order by hand (the world lane: SOCOM 1's po2 between LoadGS and SetTexture, the same nine size thresholds 3..513; SetupSpecialTextures calls it twice) -- ztex_main.cpp
 0x00355580 0xA0 SetTexture__Q23zdb10CTexHandleFPQ23zdb8CTexture  # OVL1; s1:align
 0x00355620 0x98 Destroy__Q23zdb10CTexHandleFPQ23zdb10CTexHandle  # OVL1; s1:align
 0x003556C0 0xD0 Create__Q23zdb10CTexHandleFPQ23zdb8CTexture  # OVL1; s1:align
@@ -8973,12 +8973,12 @@
 0x004F2EA0 0xEC ControlPitchWindow  # OVL2; s1:align
 0x004F2F90 0x174 InitStacker  # OVL2; s1:align
 0x004F3108 0x3C ConstructStacker  # OVL2 unaligned; s1:align
-0x004F3148 0xFC func_004F3148  # OVL2 unaligned
+0x004F3148 0xFC ProcessStacker  # OVL2 unaligned; s1:order (SOCOM 1's object 0x35FEC8 holds InitStacker, ConstructStacker, ProcessStacker, ControlStacker in this order; ConstructStacker passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x004F3248 0xE4 ControlStacker  # OVL2 unaligned; s1:align
 0x004F3330 0x3C ConstructUndersampler  # OVL2; s1:align
-0x004F3370 0x124 func_004F3370  # OVL2
+0x004F3370 0x124 ProcessUndersampler  # OVL2; s1:order (SOCOM 1's object 0x360258 holds ConstructUndersampler, ProcessUndersampler, ControlUndersampler, InitUndersampler in this order; ConstructUndersampler passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x004F3498 0x30 ControlUndersampler  # OVL2 unaligned; s1:align
-0x004F34C8 0xD8 func_004F34C8  # OVL2 unaligned
+0x004F34C8 0xD8 InitUndersampler  # OVL2 unaligned; s1:order (SOCOM 1's object 0x360258, the same position; ConstructUndersampler passes this row in tosBaseBlockConstruct's init slot) -- the gcc lane, round 8c
 0x004F35A0 0xF0 Reset  # OVL2; s1:calls
 0x004F3690 0x194 NormalizeAndEnQ  # OVL2; s1:calls (SOCOM 1's ProcessAcne and others call NormalizeAndEnQ where ours call this row, 6 call sites; the same position in SOCOM 1's object)
 0x004F3828 0x680 ProcessAcne  # OVL2 unaligned; s1:align
@@ -9042,14 +9042,14 @@
 0x004FB520 0x478 InitVad  # OVL2; s1:calls
 0x004FB998 0x9C ConstructVad  # OVL2 unaligned; s1:align
 0x004FBA38 0x160 LoadCodeBooks  # OVL2 unaligned; s1:align
-0x004FBB98 0x46C func_004FBB98  # OVL2 unaligned
+0x004FBB98 0x46C GetLabel  # OVL2 unaligned; s1:order (SOCOM 1's object 0x367F48: LoadCodeBooks, GetLabel, ... in this order; Vq1500Process calls it once per codebook with the codebook and the frame, as SOCOM 1's calls GetLabel; the same two searches, nearest first codeword then nearest listed second codeword) -- the gcc lane, round 8c
 0x004FC008 0x3C ConstructVq  # OVL2 unaligned; s1:align
 0x004FC048 0x58 InitVq1500Process  # OVL2 unaligned; s1:align
 0x004FC0A0 0x38 FreeCodeBooks  # OVL2; s1:align
-0x004FC0D8 0x8 func_004FC0D8  # OVL2 unaligned
-0x004FC0E0 0x84 func_004FC0E0  # OVL2
+0x004FC0D8 0x8 IdleVq1500Process  # OVL2 unaligned; s1:order (SOCOM 1's object 0x367F48, after FreeCodeBooks as here; an empty process function, ConstructVq's process slot and ControlVq1500Process's fallback as SOCOM 1's) -- the gcc lane, round 8c
+0x004FC0E0 0x84 ControlVq1500Process  # OVL2; s1:order (SOCOM 1's object 0x367F48, after IdleVq1500Process as here; ConstructVq passes it in the control slot; command 1 loads the codebooks, 255 frees the block, as SOCOM 1's) -- the gcc lane, round 8c
 0x004FC168 0x98 Vq1500Process  # OVL2 unaligned; s1:align
-0x004FC200 0x40 func_004FC200  # OVL2
+0x004FC200 0x40 FreeVq1500  # OVL2; s1:calls (SOCOM 1's ControlVq1500Process calls LoadCodeBooks and FreeVq1500 where ours call LoadCodeBooks and this row; the same body, the codebooks freed then tosBaseBlockDestruct; SOCOM II defines it last in the object) -- the gcc lane, round 8c
 0x004FC240 0x3E0 WindowFlush  # OVL2; s1:align
 0x004FC620 0x50C func_004FC620  # OVL2
 0x004FCB30 0x274 func_004FCB30  # OVL2
@@ -9078,14 +9078,14 @@
 0x00500FF8 0x1B4 func_00500FF8  # OVL2 unaligned
 0x005011B0 0x8 func_005011B0  # OVL2
 0x005011B8 0x74 ConstructGenderFilter  # OVL2 unaligned; s1:align
-0x00501230 0x124 func_00501230  # OVL2
+0x00501230 0x124 ProcessGenderFilter  # OVL2; s1:order (SOCOM 1's object 0x36C5F0 holds ProcessGenderFilter, ConstructGenderFilter, ControlGenderFilter, InitGenderFilter; ConstructGenderFilter passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00501358 0x30 ControlGenderFilter  # OVL2 unaligned; s1:align
 0x00501388 0x8C InitGenderFilter  # OVL2 unaligned; s1:align
 0x00501418 0x3C ConstructLookAhead  # OVL2 unaligned; s1:align
 0x00501458 0x10C ProcessLookAhead  # OVL2 unaligned; s1:align
 0x00501568 0x64 ControlLookAhead  # OVL2 unaligned; s1:align
 0x005015D0 0xC0 InitLookAhead  # OVL2; s1:align
-0x00501690 0x284 func_00501690  # OVL2
+0x00501690 0x284 ProcessMedian  # OVL2; s1:order (SOCOM 1's object 0x36CAB8 holds ProcessMedian, ConstructMedian, ControlMedian, Median_Reset, InitMedian in this order; ConstructMedian passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00501918 0x3C ConstructMedian  # OVL2 unaligned; s1:align
 0x00501958 0x54 ControlMedian  # OVL2 unaligned; s1:align
 0x005019B0 0x18 Median_Reset  # OVL2; s1:exact
@@ -9110,11 +9110,11 @@
 0x00504AC0 0x19C SlidingHisto_Init  # OVL2; s1:align
 0x00504C60 0x104 SlidingHisto_LowerQuantile  # OVL2; s1:calls (SOCOM 1's TriggerLR_FindSpeech and others call SlidingHisto_LowerQuantile where ours call this row, 3 call sites; the same position in SOCOM 1's object)
 0x00504D68 0x7C SlidingHisto_Clear  # OVL2 unaligned; s1:align
-0x00504DE8 0x60 func_00504DE8  # OVL2 unaligned
+0x00504DE8 0x60 SlidingHisto_Free  # OVL2 unaligned; s1:align (SOCOM 1's SlidingHisto_Free in its object 0x36FB28: frees the bins and the history ring through the owner's heap, the same body; SOCOM II defines it after SlidingHisto_Clear) -- the gcc lane, round 8c
 0x00504E48 0x10 func_00504E48  # OVL2 unaligned
 0x00504E58 0x114 func_00504E58  # OVL2 unaligned
 0x00504F70 0x3C func_00504F70  # OVL2
-0x00504FB0 0x2D8 func_00504FB0  # OVL2
+0x00504FB0 0x2D8 ProcessStationarity  # OVL2; s1:order (SOCOM 1's object 0x36FF88 holds ProcessStationarity, InitStationarity, ConstructStationarity, ControlStationarity in this order; ConstructStationarity passes this row in tosBaseBlockConstruct's process slot) -- the gcc lane, round 8c
 0x00505288 0x13C InitStationarity  # OVL2 unaligned; s1:align
 0x005053C8 0x3C ConstructStationarity  # OVL2 unaligned; s1:align
 0x00505408 0x78 ControlStationarity  # OVL2 unaligned; s1:align
@@ -9812,17 +9812,17 @@
 0x0053A9C0 0x8C __ct__11CAiMapLayerFPCc  # OVL2; ours (new in SOCOM II: a map layer's constructor -- its name copied in (16 bytes, the last kept zero) or emptied, its words cleared, flag 1 set; CAiMap(int) builds its first layer with it, a name of 0)
 0x0053AA50 0x6C func_0053AA50  # OVL2
 0x0053AAC0 0x120 func_0053AAC0  # OVL2; OVL2's copy of the pod vector's erase (OVL1 0x28B150, the same 0x120 bytes; CCharacterType::CleanupTemporary's erase calls it, as SOCOM 1's calls erase__Q23std38__vector_pod<Ui,...>FPUiPUi); ovl-copy: erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi
-0x0053ABE0 0x238 func_0053ABE0  # OVL2
-0x0053AE20 0xC8 func_0053AE20  # OVL2
-0x0053AEF0 0x3C func_0053AEF0  # OVL2
-0x0053AF30 0x24 func_0053AF30  # OVL2
-0x0053AF60 0xAC func_0053AF60  # OVL2
-0x0053B010 0x8 func_0053B010  # OVL2
-0x0053B020 0x8 func_0053B020  # OVL2
-0x0053B030 0x8 func_0053B030  # OVL2
-0x0053B040 0x8 func_0053B040  # OVL2
-0x0053B050 0x8 func_0053B050  # OVL2
-0x0053B060 0x8 func_0053B060  # OVL2
+0x0053ABE0 0x238 Compute__13CAiPerceptionFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the target scan 0x60AA20 builds the object on its stack, sets the range and five factors, then calls it for the score -- each valid factor's response per range band (the 6x4 curve table 0x64FA80) weighted by the band's row of 0x64FBA0, the sum scaled by the row's seventh; ai_perception.cpp)
+0x0053AE20 0xC8 SetRange__13CAiPerceptionFf  # OVL2; ours, the AI core round 13 (new in SOCOM II: the target scan's call with the range -- the band from 100.0, 0.7, 0.3 at 0x64FC10, the fraction left of the maximum range (0x64FA70, its inverse 0x64FA78) as factor 0, its valid bit set; ai_perception.cpp)
+0x0053AEF0 0x3C __ct__13CAiPerceptionFUiUi  # OVL2; ours, the AI core round 13 (new in SOCOM II: the target scan's object built from the viewer's and the target's entity ids (CEntity::m_id, +4), band 2, no factor valid, the weights normalised; ai_perception.cpp)
+0x0053AF30 0x24 SetMaxRange__13CAiPerceptionFf  # OVL2; ours, the AI core round 13 (new in SOCOM II: the turret (OVL1 0x3A82C0) and the sensors (0x5C9B30) set the maximum range and its inverse, 0x64FA70/0x64FA78; ai_perception.cpp)
+0x0053AF60 0xAC NormalizeWeights__13CAiPerceptionFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the constructor's call -- each band's six weights at 0x64FBA0 scaled to sum to one; ai_perception.cpp)
+0x0053B010 0x8 GetWhisperFactor__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: CCharacterType's voice font at +0x388, read by UIChangeCharacterType 0x2795E0 as the sixth figure; Parse fills +0x39C from chartype.rdr's VoiceFont tag "SetWhisperFactor"; char_type.cpp's last definition)
+0x0053B020 0x8 GetRoboSquash__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's +0x10, Parse's "SetRoboSquash"; UIChangeCharacterType's fifth figure)
+0x0053B030 0x8 GetRoboOffset__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's +0xC, Parse's "SetRoboOffset"; UIChangeCharacterType's fourth figure)
+0x0053B040 0x8 GetSpectralLedge__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's +8, Parse's "SetSpectralLedge"; UIChangeCharacterType's third figure)
+0x0053B050 0x8 GetSpectralFactor__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's +4, Parse's "SetSpectralFactor"; UIChangeCharacterType's second figure)
+0x0053B060 0x8 GetPitchOffset__10CVoiceFontCFv  # OVL2; ours, the AI core round 13 (new in SOCOM II: the voice font's first word, Parse's "SetPitchOffset"; UIChangeCharacterType's first figure)
 0x0053B070 0xE4 PadWeaponSlots__18CCharacterWeapListFv  # OVL2; ours, the AI core round 12 (new in SOCOM II: CreateCustomCharTypes calls it on a custom type's weapons at +0x2E8; for each weapon whose GetIDType is not 145, OVL1's 0x3D3750 slot count, and InsertWeapon(i + j + 1, EQUIP_END) for each slot past the first)
 0x0053B160 0x194 InsertWeapon__18CCharacterWeapListFi10EQUIP_ITEM  # OVL2; ours, the AI core round 12 (new in SOCOM II: a CCharacterWeap built and set up for the item -- SetupCharacterWeapon inlined, so char_type.cpp's -- then from the index on each weapon swapped through a held copy, the last pushed through the class insert 0x53FD60; 0x53B070 calls it with EQUIP_END)
 0x0053B300 0x9C RemoveWeapon__18CCharacterWeapListF10EQUIP_ITEM  # OVL2; s1:order by hand, the AI core round 12 (SOCOM 1's RemoveWeapon 0x247720, char_type.cpp's first function in the demo and its last here, right before AddWeapon and GetWeaponByIndex: the end taken, remove_if with compare_item(item) by value, erase(i, e), i != e returned -- byte-exact from source)
@@ -9831,7 +9831,7 @@
 0x0053B420 0x88 GetBaseName__14CCharacterTypeFv  # OVL2; s1:order by hand (the demo's 0x2477E0, next: m_parentID tested against m_char_list's size, the list walked that many steps, the found type's name -- SOCOM II also refuses the type itself)
 0x0053B4B0 0x140 RdrFetch_CharacterType__14CCharacterTypeFPCc  # OVL2; s1:calls (CreateCustomCharTypes(_zrdr *) calls it, then GetByNameMod and Create, where SOCOM 1's calls RdrFetch_CharacterType; SOCOM II reads chartype.rdr's navyseals/terrorists/escortees through match_name_to_chartype)
 0x0053B5F0 0x11C match_name_to_chartype__14CCharacterTypeFP8CRdrFilePCcPCc  # OVL2; s1:calls
-0x0053B710 0x1D8 func_0053B710  # OVL2
+0x0053B710 0x1D8 PlayAt__14CCharacterTypeF15CHARACTER_SOUNDUiPC6CPnt3D  # OVL2; s1:order by hand, the AI core round 13 (SOCOM 1's PlayAt 0x247A70, right after match_name_to_chartype in both builds: GetSound inlined, the 3D play at the position (slot +0x24) or the one-shot play (+0x1C) with the id, each instance terminated on finish; SOCOM II gates the damage and death sounds (59-61) on the SEAL's float at +0x424, setting it to 3.0, sends the others to OVL1's 0x3428F0 and returns whether it did; CSealCtrl's sound code 0x5978A0 calls it)
 0x0053B8F0 0x40 GetSound__14CCharacterTypeCF15CHARACTER_SOUND  # OVL2; ours (new in SOCOM II: m_sounds[s] at 0x168 for 0 <= s < 85, none otherwise; CSealCtrlAi::OnStunDamage calls it twice)
 0x0053B930 0xE8 DeleteMultiplayerMessages__14CCharacterTypeFv  # OVL2; ours (new in SOCOM II, after GetSound: the messages at 0x3A0 deleted through std::for_each (stack-slot iterators), cleared, then FreeVector on the base vector -- its four pieces out of line after it; byte-exact in char_type.cpp)
 0x0053BA20 0x70 __dt__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>Fv  # OVL2; by hand (FreeVector's temporary destroyed in DeleteMultiplayerMessages with -1: three this-tests, the base vector's)
@@ -9840,13 +9840,13 @@
 0x0053BAE0 0x14 __ct__Q23std62vector<P14MultiplayerMsg,Q23std28allocator<P14MultiplayerMsg>>Fv  # OVL2; by hand (FreeVector's temporary in DeleteMultiplayerMessages: the three words zeroed)
 0x0053BB00 0xC8 ClearMultiplayerMessageSounds__14CCharacterTypeFv  # OVL2; s1:order by hand (the demo's ClearMultiplayerMessageSounds 0x247BB0, before InitMultiplayerMessages in both builds: every type's messages' sounds zeroed -- SOCOM II's messages are the pointer vector at 0x3A0, the sound at +0x10; byte-exact in char_type.cpp)
 0x0053BBD0 0x320 InitMultiplayerMessages__14CCharacterTypeFP5_zrdr  # OVL2; s1:calls
-0x0053BEF0 0x214 func_0053BEF0  # OVL2
-0x0053C110 0xF0 func_0053C110  # OVL2
+0x0053BEF0 0x214 ParseSounds__14CCharacterTypeFP5_zrdr  # OVL2; ours, the AI core round 13 (new in SOCOM II as a function: Parse's call with the sound list -- each pair's kind name through SOCOM 1's GetCharacterSoundType (inlined: strcasecmp against GetCharacterSoundTypeString, 85 kinds), the second item's first string kept in m_arrSoundNames and its length added to the bss total 0x66A4B8, other names compared with "multiplayer"; then InitMultiplayerMessages on the list; SOCOM 1's Parse 0x2489C0 does the same in place)
+0x0053C110 0xF0 AddAnimSetName__14CCharacterTypeFPCc  # OVL2; ours, the AI core round 13 (new in SOCOM II as a function: Parse's call with the anim set's name -- m_anim_set_names (0x44CD88) walked by strcmp, the kept copy returned, else a _strdup pushed and returned; SOCOM 1's Parse 0x2489C0 inlines the same walk over the same list)
 0x0053C200 0x19C AcquireSoundHandles__14CCharacterTypeFv  # OVL2; s1:calls
 0x0053C3A0 0x5A0 GetCharacterSoundTypeString__F15CHARACTER_SOUND  # OVL2; s1:order (SOCOM 1's switch of "CHRSND_*" names over a signed byte enum, CHRSND_NONE = -1; 85 sounds where SOCOM 1 had 66)
-0x0053C940 0x68 func_0053C940  # OVL2
+0x0053C940 0x68 CreateInstance__14CCharacterGearCFPCc  # OVL2; s1:order+body by hand, the integrator (the AI core round 13's lead): SOCOM 1's CreateInstance__14CCharacterGearCFPCc 0x2484F0 sits right before CCharacterType::CreateInstance in both builds and has the same body -- m_model (+24) instanced through zdb::CNode::CreateInstance(model, 0, 0), then SetName(name) when given (0x64 vs 0x68: the null path's register differs); one caller, 0x58B790
 0x0053C9B0 0x90 CreateInstance__14CCharacterTypeFPCc  # OVL2; s1:calls by hand (CZSealBody::PreCreateSeal calls it as SOCOM 1's calls CreateInstance__14CCharacterTypeFPCc; the same body: CNode::CreateInstance(m_model, 0, 0), a flag byte of the model set, SetName)
-0x0053CA40 0xD4 func_0053CA40  # OVL2
+0x0053CA40 0xD4 Release__14CCharacterTypeFv  # OVL2; s1:order by hand, the AI core round 13 (SOCOM 1's Release 0x2485F0, between CreateInstance and CreateLODs in both builds: the count dropped, at none each gear's count dropped and at none zeroed with its model, the model and the 85 sounds cleared, the count returned; SOCOM II clamps the count at zero and drops the model null tests)
 0x0053CB20 0x17C CreateLODs__14CCharacterTypeFPQ23zdb5CNode  # OVL2; s1:calls (called where SOCOM 1's calls CCharacterType::CreateLODs, with the model's node) -- the SEAL lane
 0x0053CCA0 0x160 Acquire__14CCharacterTypeCFv  # OVL2; s1:calls (the SEAL's creation calls it where SOCOM 1's calls CCharacterType::Acquire) -- the SEAL lane
 0x0053CE00 0x7EC Parse__14CCharacterTypeFP5_zrdr  # OVL2; s1:calls (calls HEALTH_PARAMS::Parse and AI_PARAMS::Parse, as SOCOM 1's Parse__14CCharacterTypeFP5_zrdr does)
@@ -10927,12 +10927,12 @@
 0x005B7BA0 0x5EC UpdateAiMapLoc__10CZSealBodyFv  # OVL2; slot 0x48 of __vt__10CZSealBody (CEntity's UpdateAiMapLoc slot; SOCOM II's takes no argument, as UpdateAiMapLoc__7CEntityFv)
 0x005B8190 0xC8 ftmask_create__FP5_zrdr  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's ftmask_create__FP5_zrdr sits right before CSealEx::OnWeaponHit as this does before 0x5B8260 -- the same array walk, a bit per number (SOCOM II's arrays count in length, items from 0)
 0x005B8260 0x10 OnWeaponHit__7CSealExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:exact
-0x005B8270 0x60 func_005B8270  # OVL2
+0x005B8270 0x60 TurnSetup__10CZSealBodyFi  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's TurnSetup__10CZSealBodyFi in the same place -- after CSealEx::OnWeaponHit, before the kit (seal_ik.cpp) -- called likewise from two stance functions (0x584C60, 0x586050, as SOCOM 1's InStateCrouch and StandTurning) that pass a second word; SOCOM II's body only clears the bits at 0x1060 7 and 6 when both feet (0x2F0, 0x2F4) exist
 0x005B82D0 0x8 func_005B82D0  # OVL2
 0x005B82E0 0x2B8 func_005B82E0  # OVL2
-0x005B85A0 0x8C func_005B85A0  # OVL2
+0x005B85A0 0x8C ShowProjectile__5CZKitFv  # OVL2; by hand (the kit lane, round 15): for the current item 186 or 146 (its m_ID, lbu), the body's fire point (CZSealBody slot 0x64, OVL2 0x5DFAD0: SOCOM 1's GetFirepointNode) asked for its child "projectile" (CNode slot 0x24, FindChild(name, true)) and that made active (slot 0x38, SetActive(true)); 0x5A78C0 jumps to it; new in SOCOM II, the name ours
 0x005B8630 0x124 func_005B8630  # OVL2
-0x005B8760 0xB8 func_005B8760  # OVL2
+0x005B8760 0xB8 GetCurItemFireClass__5CZKitFv  # OVL2; by hand (the kit lane, round 15): the current item's class by its GetIDType (OVL1 0x3D1A60) through three of CZWeapon's class tests (0x3D1DB0 rifles 1, 0x3D1DA0 the pistol 2, 0x3D1D90 class 145 4) then 121/151 3, else 0 -- a byte CZSealBody's 0x5DFAD0 (SOCOM 1's GetFirepointNode) indexes its fire-point slots at 0x388 with; CHUD::Tick and five SEAL functions call it; new in SOCOM II, the name ours
 0x005B8820 0xA0 func_005B8820  # OVL2
 0x005B88C0 0x5C func_005B88C0  # OVL2
 0x005B8920 0x5F4 func_005B8920  # OVL2
@@ -11265,8 +11265,8 @@
 0x005DEEC0 0x4A8 func_005DEEC0  # OVL2
 0x005DF370 0x64 GetFP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
 0x005DF3E0 0x64 GetAP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
-0x005DF450 0x90 func_005DF450  # OVL2
-0x005DF4E0 0x11C func_005DF4E0  # OVL2
+0x005DF450 0x90 UpdateAimParams__10CZSealBodyFv  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's UpdateAimParams in the same place (after GetFP/GetAP, before SetAimPointW): the same fields 0x3A0 on (m_curr_aimpt 0x110C -> 0x14AC, m_curr_firept 0x111C -> 0x14BC, their positions 0x1100/0x1110 -> 0x14A0/0x14B0), the same names "aimpoint"/"firepoint" looked up (SOCOM II through CZSealBody's slot 0x64, 0x5DFAD0, SOCOM 1's GetFirepointNode) and both handed to GetNodePos (0x5DF930); PrePostTick and the constructor call it
+0x005DF4E0 0x11C SetAimPointW__10CZSealBodyFPC6CPnt3DPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's SetAimPointW in the same place (after UpdateAimParams, before CalcAimGoal), the same code with the fields 0x3A0 on (the point 0x10B8 -> 0x1458, the reticle's 0x10C4 -> 0x1464, the normal 0x10D0 -> 0x1470; the bits at 0xF58/0xF5B -> 0x105C/0x105F), UpdateAimDir (0x5DEEC0) called last, CalcAimGoal toward CPnt3D::unit_nz without a point
 0x005DF600 0x2AC CalcAimGoal__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL2; s1:callee by hand (the kit lane, round 13): SetAimDirR (0x5DF8B0) calls it from the same instruction as SOCOM 1's SetAimDirR calls CalcAimGoal (0x2BFBA0, 0x2B8 against 0x2AC here), with this, the aim point (0x1440), the direction and the goal (0x144C), and tests its bool -- between SetAimPointW's place and SetAimDirR's as in SOCOM 1's order
 0x005DF8B0 0x74 SetAimDirR__10CZSealBodyFPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's SetAimDirR (0x2BFE60, 0x70), the same code with the aim's fields 0x3A0 on (0x10A0/0x10AC -> 0x1440/0x144C), after CalcAimGoal as there; byte-exact from seal_weapon.cpp
 0x005DF930 0x198 func_005DF930  # OVL2
@@ -11424,7 +11424,7 @@
 0x005ED950 0x2C func_005ED950  # OVL2
 0x005ED980 0x1C func_005ED980  # OVL2; s1~ one of three std::list<T *>::generic_iterator constructors (T = CAiMap, CAiState, CEntity) with identical code
 0x005ED9A0 0xC func_005ED9A0  # OVL2
-0x005ED9B0 0x1F8 func_005ED9B0  # OVL2
+0x005ED9B0 0x1F8 GetSealCount__9CSealUnitFi  # OVL2; by hand (the kit lane, round 15): the squad's SEALs counted, with the squads' under it to a depth (m_seals' size, then each of m_sub_units' with depth - 1) -- recursive, inlined into itself twice, the third copy a call with depth - 3; GetSealByIndex (0x5EDBB0, CTeamNames::Init's) subtracts it per squad; new in SOCOM II, the name ours
 0x005EDBB0 0x108 func_005EDBB0  # OVL2
 0x005EDCC0 0xF8 IsMemberOfUnit__9CSealUnitFP10CZSealBodyb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's IsMemberOfUnit(CZSealBody *, bool) (0x2D6040) -- the SEALs (0x64), the escortees (0x70), then with the flag each sub-squad (0x7C) asked again, recursing as there; before its by-number overload as there
 0x005EDDC0 0x10 func_005EDDC0  # OVL2
@@ -12241,14 +12241,14 @@
 0x00626948 0x60 func_00626948  # OVL2 unaligned
 0x006269A8 0x8C func_006269A8  # OVL2 unaligned
 0x00626A38 0xD4 func_00626A38  # OVL2 unaligned
-0x00626B10 0xBC func_00626B10  # OVL2
+0x00626B10 0xBC lintSetSmallValue  # OVL2; s1:order (the gcc lane, round 8b): first of LargeInt.c's object as SOCOM 1's (0x406C28), its body (the number cleared -- a copy of a zero constant now -- and word 0 set), IsEven after it as there
 0x00626BD0 0x10 IsEven  # OVL2; s1:exact
-0x00626BE0 0x38 func_00626BE0  # OVL2
-0x00626C18 0x50 func_00626C18  # OVL2 unaligned
-0x00626C68 0x44 func_00626C68  # OVL2 unaligned
-0x00626CB0 0x24 func_00626CB0  # OVL2
-0x00626CD8 0x24 func_00626CD8  # OVL2 unaligned
-0x00626D00 0x28 func_00626D00  # OVL2
+0x00626BE0 0x38 IsZero  # OVL2; s1:order (the gcc lane, round 8b): after IsEven as SOCOM 1's, its body (1 when every word is 0; the walk upward now)
+0x00626C18 0x50 IsOne  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after IsZero as SOCOM 1's, its body (word 0 is 1, the rest 0)
+0x00626C68 0x44 IsEqual  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after IsOne as SOCOM 1's, its body (two numbers word by word)
+0x00626CB0 0x24 lintGetBit  # OVL2; s1:order (the gcc lane, round 8b): SOCOM 1's lintGetBit's instructions (0x24, the bit tested, reordered), first of the three bit functions as there
+0x00626CD8 0x24 lintSetBit  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after lintGetBit as SOCOM 1's, its body (0x24, the bit or'ed in)
+0x00626D00 0x28 lintClearBit  # OVL2; s1:order (the gcc lane, round 8b): after lintSetBit as SOCOM 1's, its body (0x28, the bit and'ed out)
 0x00626D28 0x50 func_00626D28  # OVL2 unaligned
 0x00626D78 0x74 func_00626D78  # OVL2 unaligned
 0x00626DF0 0x180 func_00626DF0  # OVL2
@@ -12305,10 +12305,10 @@
 0x0062A2F0 0x70 func_0062A2F0  # OVL2
 0x0062A360 0x4C func_0062A360  # OVL2
 0x0062A3B0 0x1F4 func_0062A3B0  # OVL2
-0x0062A5A8 0x8C func_0062A5A8  # OVL2 unaligned
-0x0062A638 0xE8 func_0062A638  # OVL2 unaligned
-0x0062A720 0xA4 func_0062A720  # OVL2
-0x0062A7C8 0xA8 func_0062A7C8  # OVL2 unaligned
+0x0062A5A8 0x8C RCInitialize  # OVL2 unaligned; s1:order (the gcc lane, round 8b): first of SOCOM 1's RC object's four (0x409150), its body (~i filled, keyed by 3s over a 64-byte key) with the counters moved; rt_crypt calls it on a key's states
+0x0062A638 0xE8 RCSaltyInitialize  # OVL2 unaligned; s1:order (the gcc lane, round 8b): second of the four, SOCOM 1's body (the salt's four bytes by 5s, then the key by 3s), 0xE8 as SOCOM 1's
+0x0062A720 0xA4 RCEncrypt  # OVL2; s1:order (the gcc lane, round 8b): third of the four, SOCOM 1's body (i by 5s, the plain byte fed back into j)
+0x0062A7C8 0xA8 RCDecrypt  # OVL2 unaligned; s1:order (the gcc lane, round 8b): fourth of the four, SOCOM 1's body (the deciphered byte fed back)
 0x0062A870 0x58 func_0062A870  # OVL2
 0x0062A8C8 0x22C func_0062A8C8  # OVL2 unaligned
 0x0062AAF8 0x8 func_0062AAF8  # OVL2 unaligned
@@ -12452,7 +12452,7 @@
 0x0062EEB0 0xC func_0062EEB0  # OVL2
 0x0062EEC0 0x6C func_0062EEC0  # OVL2
 0x0062EF30 0xA0 func_0062EF30  # OVL2
-0x0062EFD0 0x2A8 func_0062EFD0  # OVL2
+0x0062EFD0 0x2A8 KM_Initialize  # OVL2; s1:order (the gcc lane, round 8b): the function before KM_Create as SOCOM 1's KM_Initialize is, its body SOCOM 1's (a key pair copied into the server's slot for id 0x80000000, else the client's; null clears it) with a third slot for id -1 tested first
 0x0062F278 0x138 KM_Create  # OVL2 unaligned; s1:align
 0x0062F3B0 0x2C KM_SetLocalClientID  # OVL2; s1:exact
 0x0062F3E0 0x158 KM_SetPublicKey  # OVL2; s1:calls
@@ -12744,7 +12744,7 @@
 0x0063D4E0 0x58 rt_time_platform_get_time_stamp  # OVL2; s1:exact
 0x0063D538 0x10C rt_time_sleep_usecs_platform  # OVL2 unaligned; s1:calls
 0x0063D648 0x12C func_0063D648  # OVL2 unaligned
-0x0063D778 0x170 func_0063D778  # OVL2 unaligned
+0x0063D778 0x170 rt_time_platform_get_time_string  # OVL2 unaligned; s1:calls (the gcc lane, round 8b): rt_time_get_time_string tail-calls it at the instruction SOCOM 1's tail-calls rt_time_platform_get_time_string; its body is SOCOM 1's with the RTC reading moved to 0x63D648 and milliseconds kept
 0x0063D8E8 0x1DC func_0063D8E8  # OVL2 unaligned
 0x0063DAC8 0x14 func_0063DAC8  # OVL2 unaligned
 0x0063DAE0 0x14 func_0063DAE0  # OVL2
@@ -12995,10 +12995,10 @@
 0x00649238 0x9C MediusRemoveFromBuddyList  # OVL2 unaligned; s1:order (the RemoveFromBuddyListCallbackFunctionPtr slot 0x656234; the gcc lane, round 3b)
 0x006492D8 0x9C MediusBuddyGetPermission  # OVL2 unaligned; s1:order (the BuddyGetPermissionCallbackFunctionPtr slot 0x65623C; the gcc lane, round 3b)
 0x00649378 0x88 MediusBuddyAddConfirmation  # OVL2 unaligned; s1:order (after MediusBuddyGetPermission as SOCOM 1's, no callback; the gcc lane, round 3b)
-0x00649400 0x9C MediusGetPolicy  # OVL2; s1:order (the GetPolicyCallbackFunctionPtr slot 0x656240; the gcc lane, round 3b)
-0x006494A0 0x9C func_006494A0  # OVL2
-0x00649540 0x9C func_00649540  # OVL2
-0x006495E0 0x9C func_006495E0  # OVL2
+0x00649400 0x9C MediusGetIgnoreList  # OVL2; s1:order (the GetPolicyCallbackFunctionPtr slot 0x656240; the gcc lane, round 3b); call (the gcc lane, round 8b, settling the online lane's round-10 question): not SOCOM 1's MediusGetPolicy -- its request is the bare MessageID and SessionKey (38 bytes, MediusGetBuddyList's shape; SOCOM 1's GetPolicy sends 44) and its slot's response handler (0x64C478) consumes 72 bytes, SOCOM 1's MediusUniqueCallbackGetBuddyListResponseHandler's size (GetPolicy's is 288); the game's 'GetIgnoreList' command (CZOnlineLobby::GetIgnoreList, 0x300F00) calls it; the name follows the library's Medius<request>
+0x006494A0 0x9C MediusAddToIgnoreList  # OVL2; call (the gcc lane, round 8b): new in SOCOM II, MediusAddToBuddyList's shape (44 bytes: an account; a 28-byte status back, 0x64C4B0); the game's cbFindIgnoreListPlayerID calls it with cbAddToIgnoreList, which reports the status as 'AddToIgnoreList'
+0x00649540 0x9C MediusRemoveFromIgnoreList  # OVL2; call (the gcc lane, round 8b): new in SOCOM II, MediusRemoveFromBuddyList's shape (44 bytes; a 28-byte status back, 0x64C4E8); the game's RemoveFromIgnore calls it with cbRemoveFromIgnoreList, which reports the status as 'RemoveFromIgnoreList'
+0x006495E0 0x9C MediusGetPolicy  # OVL2; s1:calls (the gcc lane, round 8b, settling the online lane's round-10 question): SOCOM 1's MediusGetPolicy moved three rows on -- the same 44-byte request (MessageID and SessionKey terminated, one word after), and its slot's response handler (0x64C520) consumes 288 bytes as SOCOM 1's MediusUniqueCallbackGetPolicyResponseHandler does; the game's GetUsagePolicy calls it with cbGetPolicy
 0x00649680 0x7C MediusSendPlayerReport  # OVL2; s1:order (before MediusSendWorldReport and MediusSendEndGameReport as SOCOM 1's, no callback; the gcc lane, round 3b)
 0x00649700 0x88 MediusSendWorldReport  # OVL2; s1:order (between the player and end-game reports as SOCOM 1's; the gcc lane, round 3b)
 0x00649788 0x94 MediusSendEndGameReport  # OVL2 unaligned; s1 by call site (SendEndGameReport 0x2F80C0, as SOCOM 1's; the online lane)

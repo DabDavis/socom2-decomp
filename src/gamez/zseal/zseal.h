@@ -1034,6 +1034,9 @@ public:
     void SetBit10(bool on) { m_bit10 = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* a turn's set-up (SOCOM 1's TurnSetup(int), seal_ik.cpp's; OVL2 0x5B8270: SOCOM II only clears
+     * the bits at 0x1060 6 and 7 when both feet exist, the int unread) */
+    void TurnSetup(int anim);
     /* the weapon's state without its bit 4 (SOCOM 1's; OVL2 0x5E0010, seal_weapon.cpp) */
     WEAPON_STATE GetWeaponState() const;
     /* the weapon's state set (SOCOM 1's; OVL2 0x5DFE30, the kit lane's seal_weapon.cpp range) */
@@ -1042,6 +1045,12 @@ public:
      * goal came of it (made the unit -z when asked, should none) -- SOCOM 1's; OVL2 0x5DF600 and
      * 0x5DF8B0, seal_weapon.cpp (the kit lane) */
     bool CalcAimGoal(const CPnt3D *from, const CPnt3D *dir, CPnt3D *goal);
+    /* the aim and fire points found once, by name, and their positions taken (SOCOM 1's; OVL2
+     * 0x5DF450, seal_weapon.cpp -- the kit lane) */
+    void UpdateAimParams();
+    /* the aim at a point, with its surface normal, or none (SOCOM 1's; OVL2 0x5DF4E0, seal_weapon.cpp
+     * -- the kit lane) */
+    bool SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep);
     bool SetAimDirR(const CPnt3D *dir, bool reset);
     /* whether an anim type is the blend on top (SOCOM 1's; OVL2 0x577E40, seal_anim.cpp) */
     bool IsCurrentBlend(AnimType type) const;
@@ -1153,7 +1162,10 @@ public:
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
     /* the body's parts in SOCOM 1's order, 0x7c on (SOCOM 1's ParentPistolToRHandCallback reparents
      * m_pistol, 0x2d8 there, to m_rhand, 0x284; OVL2 0x5A7730 does the same with 0x354 and 0x300) */
-    unsigned char _2ec[0x2fc - 0x2ec];
+    CZBodyPart *m_aimnodes;   // 0x2ec (SOCOM 1's 0x270)
+    CZBodyPart *m_lfoot;   // 0x2f0 (SOCOM 1's 0x274: TurnSetup tests both feet)
+    CZBodyPart *m_rfoot;   // 0x2f4 (SOCOM 1's 0x278)
+    CZBodyPart *m_lhand;   // 0x2f8 (SOCOM 1's 0x27c)
     CZBodyPart *m_spinelo;   // 0x2fc (SOCOM 1's 0x280: the rifle's place on the back)
     CZBodyPart *m_rhand;   // 0x300 (SOCOM 1's 0x284)
     unsigned char _304[0x308 - 0x304];
@@ -1292,7 +1304,11 @@ public:
     unsigned int m_prev_have_aim_norm : 1;
     unsigned int m_am_stunned : 1;
     unsigned int m_iszooming : 1;   // bit 5 (camera.h's reading)
-    unsigned int m_unused_bits : 3;
+    /* bits 6 and 7: cleared together by TurnSetup when both feet exist (OVL2 0x5B8270, the kit
+     * lane's seal_ik.cpp: two single-bit fields written one at a time, lbu/sb -- the names ours) */
+    unsigned int m_bit6 : 1;
+    unsigned int m_bit7 : 1;
+    unsigned int m_unused_bits : 1;
     unsigned int m_bit9 : 1;   // bit 9: a remote SEAL with it set is skipped by 0x57DFE0 (the name ours)
     unsigned int m_bit10 : 1;   // bit 10: cleared with bit 9 set by 0x57DF20/0x57E050 (the name ours)
     unsigned int m_unused_bits2 : 5;

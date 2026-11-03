@@ -3,7 +3,10 @@
  * ~0x5DF370 to ~0x5E0023: GetFP/GetAP, Virtual64, WeaponsTick, SetWeaponState, WepWaitOn/Off,
  * GetWeaponState; SOCOM II's 0x5DF4E0, 0x5DF600 and 0x5DF8B0 are SOCOM 1's SetAimPointW, CalcAimGoal
  * and SetAimDirR). The unit's name is ours. So far CalcAimGoal (round 14), SetAimDirR and
- * GetWeaponState. Defined in reverse of their image order (-inline deferred). */
+ * GetWeaponState; round 15 UpdateAimParams and SetAimPointW. Open: 0x5DFAD0 is SOCOM 1's
+ * GetFirepointNode(const char *), CZSealBody's override of the slot zentity.h spells
+ * `Virtual64()` (no name: the entity lane's header). Defined in reverse of their image order
+ * (-inline deferred). */
 
 #include "zseal.h"
 
@@ -13,6 +16,10 @@ struct CSealAimView {
     unsigned char _0[0x1440];
     CPnt3D m_aim_from;   // 0x1440
     CPnt3D m_aim_goal;   // 0x144c
+    /* SOCOM 1's m_aim_point, m_reticle_pt and m_aim_norm (0x10b8-0x10e3 there) */
+    CPnt3D m_aim_point;   // 0x1458
+    CPnt3D m_reticle_pt;   // 0x1464
+    CPnt3D m_aim_norm;   // 0x1470
 };
 
 /* the aim goal's flag (bit 3 of the byte at 0x105F, read and written a byte at a time: zseal.h's
@@ -119,6 +126,99 @@ bool CZSealBody::SetAimDirR(const CPnt3D *dir, bool reset)
     if (!ok && reset)
         ((CSealAimView *)this)->m_aim_goal = CPnt3D::unit_nz;
     return ok;
+}
+
+extern "C" {
+/* the aim's direction brought up to date (SOCOM 1's UpdateAimDir__10CZSealBodyFb; OVL2 0x5DEEC0,
+ * unwritten) */
+bool func_005DEEC0(CZSealBody *seal, bool keep);
+}
+
+/* the aim at a point: the point kept, and the reticle's too unless asked to keep it, the normal
+ * when there is one; with none the aim falls back on the unit -z from the aim's origin (OVL2
+ * 0x5DF4E0; SOCOM 1's SetAimPointW, the fields 0x3A0 on) */
+bool CZSealBody::SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool keep)
+{
+    CSealAimView *v = (CSealAimView *)this;
+
+    if (aimpt) {
+        v->m_aim_point = *aimpt;
+        m_aim_point_valid = true;
+        if (!keep)
+            v->m_reticle_pt = *aimpt;
+        if (aimnorm) {
+            v->m_aim_norm = *aimnorm;
+            m_have_aim_norm = true;
+        } else
+            m_have_aim_norm = false;
+    } else {
+        m_have_aim_norm = false;
+        m_aim_point_valid = false;
+        CalcAimGoal(&v->m_aim_from, &CPnt3D::unit_nz, &v->m_aim_goal);
+        return false;
+    }
+    return func_005DEEC0(this, keep);
+}
+
+/* the body's table as far as its slot 0x64: SOCOM 1's GetFirepointNode(const char *), virtual in
+ * SOCOM II (OVL2 0x5DFAD0, this unit's -- zentity.h's CEntity spells the slot Virtual64() with no
+ * name; the 23 slots before it unnamed here) */
+struct CSealBodyTable {
+    virtual void Slot08();
+    virtual void Slot0C();
+    virtual void Slot10();
+    virtual void Slot14();
+    virtual void Slot18();
+    virtual void Slot1C();
+    virtual void Slot20();
+    virtual void Slot24();
+    virtual void Slot28();
+    virtual void Slot2C();
+    virtual void Slot30();
+    virtual void Slot34();
+    virtual void Slot38();
+    virtual void Slot3C();
+    virtual void Slot40();
+    virtual void Slot44();
+    virtual void Slot48();
+    virtual void Slot4C();
+    virtual void Slot50();
+    virtual void Slot54();
+    virtual void Slot58();
+    virtual void Slot5C();
+    virtual void Slot60();
+    virtual zdb::CNode *GetFirepointNode(const char *name);   /* +0x64 */
+};
+
+/* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
+ * m_curr_firepos and m_curr_firept, 0x1100-0x111F there, 0x3A0 on here: zseal.h keeps the body's
+ * tail as bytes -- the view ours) */
+struct CSealAimPoints {
+    unsigned char _0[0x14a0];
+    CPnt3D m_curr_aimpos;   // 0x14a0
+    zdb::CNode *m_curr_aimpt;   // 0x14ac
+    CPnt3D m_curr_firepos;   // 0x14b0
+    zdb::CNode *m_curr_firept;   // 0x14bc
+};
+
+extern "C" {
+/* a node's position (SOCOM 1's GetNodePos__10CZSealBodyFPCQ23zdb5CNodeR6CPnt3Db; OVL2 0x5DF930,
+ * this unit's, unwritten) */
+bool func_005DF930(CZSealBody *seal, const zdb::CNode *node, CPnt3D *pos, bool b);
+}
+
+/* the points found once by name through the fire-point lookup, then both positions taken (OVL2
+ * 0x5DF450; SOCOM 1's UpdateAimParams, its lookups inlined there, a virtual call here) */
+void CZSealBody::UpdateAimParams()
+{
+    CSealAimPoints *a = (CSealAimPoints *)this;
+
+    if (!a->m_curr_aimpt)
+        a->m_curr_aimpt = ((CSealBodyTable *)this)->GetFirepointNode("aimpoint");
+    if (!a->m_curr_firept)
+        a->m_curr_firept = ((CSealBodyTable *)this)->GetFirepointNode("firepoint");
+    func_005DF930(this, a->m_curr_aimpt, &a->m_curr_aimpos, false);
+    func_005DF930(this, a->m_curr_firept, &a->m_curr_firepos, false);
 }
 
 /* the weapon's state without its bit 4 (OVL2 0x5E0010; SOCOM 1's, the same 0x14 bytes with the
