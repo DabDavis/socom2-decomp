@@ -5973,8 +5973,8 @@
 0x003371B0 0x1F8 func_003371B0  # OVL1
 0x003373B0 0x10C func_003373B0  # OVL1
 0x003374C0 0x3DC func_003374C0  # OVL1
-0x003378A0 0x100 func_003378A0  # OVL1
-0x003379A0 0x60 func_003379A0  # OVL1
+0x003378A0 0x100 __dt__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's ~CAlpha (inline in SOCOM 1's ~CPipe: the cursor back at the start, the draw list and the texture lists emptied, the buffer freed with SOCOM 1's line 2276); ~CPipe calls it out of line -- zrndr_pipe.cpp
+0x003379A0 0x60 __ct__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's CAlpha() (inline in SOCOM 1's CPipe(): the draw list, the texture lists, _malloc(0x36B00) into the walk's start and cursor); CPipe() calls it out of line -- zrndr_pipe.cpp
 0x00337A00 0x2D0 RenderMeshShadow__5CPipeFPQ23zdb5CNodePQ23zdb5CMeshP7CMatrix  # OVL1; s1:align
 0x00337CD0 0x264 func_00337CD0  # OVL1
 0x00337F40 0x2AC func_00337F40  # OVL1
@@ -5996,27 +5996,27 @@
 0x0033B570 0x40 func_0033B570  # OVL1
 0x0033B5B0 0x40 func_0033B5B0  # OVL1
 0x0033B5F0 0x12C RenderLineWorld__F6CPnt4D6CPnt4D6CPnt4D6CPnt4D  # OVL1; s1:align
-0x0033B720 0x154 func_0033B720  # OVL1
-0x0033B880 0x70 func_0033B880  # OVL1
-0x0033B8F0 0x40 func_0033B8F0  # OVL1
-0x0033B930 0x8 func_0033B930  # OVL1
-0x0033B940 0x14 func_0033B940  # OVL1
-0x0033B960 0x54 func_0033B960  # OVL1
+0x0033B720 0x154 Flush__5CPipeFv  # OVL1; the world lane r3: SOCOM 1's Flush (DeleteDeferredVisuals, the delayed nodes freed, the alpha pass's draw list and textures, the two TexAlpha buffers through TexPhase[11][0..1] each tested, CVisual::Flush, the texture indices zeroed) with SOCOM II's cell list, flares and overlay -- zrndr_pipe.cpp
+0x0033B880 0x70 __dt__Q23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the cell list: the temporary's destructor (the unit's initialiser registers it for the static too) -- zrndr_pipe.cpp
+0x0033B8F0 0x40 swap__Q23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>FRQ23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>  # OVL1; the world lane r3: Flush's FreeVector of the cell list: the swap -- zrndr_pipe.cpp
+0x0033B930 0x8 clear__Q23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the cell list: the clear -- zrndr_pipe.cpp
+0x0033B940 0x14 __ct__Q23std54vector<PQ23zdb5CCell,Q23std24allocator<PQ23zdb5CCell>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the cell list 0x488790 (RenderWorld pushes CGridAtom::GetCell's results onto it): the temporary's constructor -- zrndr_pipe.cpp
+0x0033B960 0x54 FreePktBuf__Q23zdb12CGSTexBufferFv  # OVL1; the world lane r3: ours, an inline's out-of-line copy, byte-identical to WipePktBuf 0x356B30 (the packet vector cleared, FreeVector one level, the chain dropped); CPipe::Flush and CGameMenu::Clear call it -- zrndr_pipe.cpp, node_world.h
 0x0033B9C0 0x60 __dt__Q23std30vector<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: an out-of-line copy of ~vector<u_long128> (~__vector_imp inlined, the deleter's destructor 0x33C360 called), FreeVector's temporary inlined one level (called with -1)
 0x0033BA20 0x40 swap__Q23std40__vector_deleter<1,Q23std12allocator<1>>FRQ23std40__vector_deleter<1,Q23std12allocator<1>>  # OVL1; the world lane r2: an out-of-line copy of vector<u_long128>'s deleter member swap (the this test, the three words traded; ztex_manager.cpp emits the same 0x40 bytes), FreeVector inlined one level calls it
 0x0033BA60 0x8 clear__Q23std30vector<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: an out-of-line copy of vector<u_long128>::clear() (a j to the deleter's 0x33C350), emitted after its first caller in zrndr_pipe.cpp; FreeVector inlined one level calls it
 0x0033BA70 0x14 __ct__Q23std30vector<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: an out-of-line copy of vector<u_long128>'s constructor (three words zeroed), FreeVector's temporary inlined one level
-0x0033BA90 0x10 func_0033BA90  # OVL1; tu: vis_main.cpp~ (1.0 beta)
-0x0033BAA0 0x70 func_0033BAA0  # OVL1
-0x0033BB10 0x40 func_0033BB10  # OVL1
-0x0033BB50 0x8 func_0033BB50  # OVL1
-0x0033BB60 0x14 func_0033BB60  # OVL1
-0x0033BB80 0x40 func_0033BB80  # OVL1
-0x0033BBC0 0x8 func_0033BBC0  # OVL1
-0x0033BBD0 0x60 func_0033BBD0  # OVL1
-0x0033BC30 0x40 func_0033BC30  # OVL1
-0x0033BC70 0x8 func_0033BC70  # OVL1
-0x0033BC80 0x14 func_0033BC80  # OVL1
+0x0033BA90 0x10 ClearDynTex__Q23zdb12CGSTexBufferFv  # OVL1; tu: vis_main.cpp~ (1.0 beta); the world lane r3: ours, an inline's out-of-line copy (the two dynamic lists' sizes zeroed, the chain dropped: SOCOM 1's Flush does the same stores in place); CPipe::Flush and CGameMenu::Clear call it -- zrndr_pipe.cpp, node_world.h
+0x0033BAA0 0x70 Free__Q23zdb11CDynTexListFv  # OVL1; the world lane r3: ours, an inline's out-of-line copy (FreeVector on each list's base vector, inlined one level: SOCOM 1's Flush frees the alpha pass's texture lists so); CPipe::Flush and CGameMenu::Clear call it -- zrndr_pipe.cpp, znode.h/node_world.h
+0x0033BB10 0x40 swap__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>FRQ23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the palette list: the swap -- zrndr_pipe.cpp
+0x0033BB50 0x8 clear__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>Fv  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the palette list: the clear -- zrndr_pipe.cpp
+0x0033BB60 0x14 __ct__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>Fv  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the palette list: the temporary's constructor -- zrndr_pipe.cpp
+0x0033BB80 0x40 swap__Q23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>FRQ23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the texture list: the swap (the font code 0x35A650 links it too) -- zrndr_pipe.cpp
+0x0033BBC0 0x8 clear__Q23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>Fv  # OVL1; the world lane r3: CDynTexList::Free's FreeVector of the texture list: the clear (the font code 0x35A650 links it for its own list at +0x10) -- zrndr_pipe.cpp
+0x0033BBD0 0x60 __dt__Q23std62vector<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the delayed nodes: the temporary's destructor -- zrndr_pipe.cpp
+0x0033BC30 0x40 swap__Q23std72__vector_deleter<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>FRQ23std72__vector_deleter<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>  # OVL1; the world lane r3: Flush's FreeVector of the delayed nodes: the deleter's swap -- zrndr_pipe.cpp
+0x0033BC70 0x8 clear__Q23std62vector<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the delayed nodes: the vector's clear -- zrndr_pipe.cpp
+0x0033BC80 0x14 __ct__Q23std62vector<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: Flush's FreeVector of the delayed nodes, inlined one level: the temporary's constructor -- zrndr_pipe.cpp
 0x0033BCA0 0x2C Uninit__5CPipeFv  # OVL1; s1:calls
 0x0033BCD0 0x50 Init__5CPipeFv  # OVL1; s1:align
 0x0033BD20 0x68 func_0033BD20  # OVL1
@@ -6024,20 +6024,20 @@
 0x0033BE70 0xB4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBuffer  # OVL1; s1:align
 0x0033BF30 0xD4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBufferPUi  # OVL1; s1:calls
 0x0033C010 0x104 InterruptFromVIF1__Fi  # OVL1; the rdr lane: s1:order (SOCOM 1's InterruptFromVIF1, after FIFO_Insert: cause 5, thePipe's texture command at m_texIntIdx taken -- SOCOM II's flush bit wakes the thread at 0x3E1418 --, a load's chain sent through D2 after sceDmaSync of the GIF channel, a signal's buffer updated, VIF1_FBRST 8, sync, ei)
-0x0033C120 0xA0 func_0033C120  # OVL1
-0x0033C1C0 0xD4 func_0033C1C0  # OVL1
-0x0033C2A0 0xAC func_0033C2A0  # OVL1
+0x0033C120 0xA0 __dt__5CPipeFv  # OVL1; the world lane r3: SOCOM 1's ~CPipe (the opacity stack freed, the delayed nodes cleared, the members' destructors after: the effect's 0x33D110 and the alpha pass's 0x3378A0 out of line); the initialiser registers it -- zrndr_pipe.cpp
+0x0033C1C0 0xD4 __ct__5CPipeFv  # OVL1; the world lane r3: SOCOM 1's CPipe() (the two flags in the initialiser list after the alpha pass, the delayed nodes' vector and the effect; the opacity stack of 32, resize(48), the texture indices zeroed) with SOCOM II's colours and overlay; __sinit_zrndr_pipe.cpp builds thePipe through it -- zrndr_pipe.cpp
+0x0033C2A0 0xAC resize__Q23std70__vector_imp<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>,0>FUi  # OVL1; the world lane r3: the delayed nodes' resize (SOCOM 1's resize__Q23std70__vector_imp<15tag_DelayedNode,...,0>FUi: insert(end(), n - size(), T()) with CMatrix's unit temporary, else the erase); CPipe() and SaveDelayedNode call it -- zrndr_pipe.cpp's tail
 0x0033C350 0x8 clear__Q23std40__vector_deleter<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: zrndr_pipe.cpp's template tail -- vector<u_long128>'s deleter clear (the trivial element's: size_ = 0), the copy the linker kept; ztex_manager.cpp's clears and ~CGSTexBuffer call it
 0x0033C360 0x68 __dt__Q23std40__vector_deleter<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: zrndr_pipe.cpp's template tail -- vector<u_long128>'s deleter destructor (one this-test, the block deleted), the copy the linker kept; ~CGSTexBuffer and FreeVector's temporary call it
-0x0033C3D0 0x8 func_0033C3D0  # OVL1
-0x0033C3E0 0x68 func_0033C3E0  # OVL1
-0x0033C450 0x164 func_0033C450  # OVL1
-0x0033C5C0 0x710 func_0033C5C0  # OVL1
+0x0033C3D0 0x8 clear__Q23std72__vector_deleter<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: the delayed nodes' deleter clear (out of class: ~CPipe's clear and the destructors call it) -- zrndr_pipe.cpp's tail
+0x0033C3E0 0x68 __dt__Q23std72__vector_deleter<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>>Fv  # OVL1; the world lane r3: the delayed nodes' deleter destructor (out of class: ~CPipe's member chain stops at it) -- zrndr_pipe.cpp's tail
+0x0033C450 0x164 erase__Q23std70__vector_imp<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>,0>FP15tag_DelayedNodeP15tag_DelayedNode  # OVL1; the world lane r3: the delayed nodes' range erase (the 112-byte elements copied down, the matrix through sceVu0CopyMatrix) -- zrndr_pipe.cpp's tail
+0x0033C5C0 0x710 insert__Q23std70__vector_imp<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>,0>FP15tag_DelayedNodeUiRC15tag_DelayedNode  # OVL1; the world lane r3: the delayed nodes' insert(position, n, x) (the length error, the in-place and reallocating branches) -- zrndr_pipe.cpp's tail
 0x0033CCD0 0x80 func_0033CCD0  # OVL1
 0x0033CD50 0x3A8 func_0033CD50  # OVL1
 0x0033D100 0x10 func_0033D100  # OVL1
-0x0033D110 0x44 func_0033D110  # OVL1
-0x0033D160 0x80 func_0033D160  # OVL1
+0x0033D110 0x44 __dt__11CPipeEffectFv  # OVL1; the world lane r3: ours (the effect's destructor, empty: ~CPipe calls it out of line) -- declared in zrndr_pipe.cpp
+0x0033D160 0x80 __ct__11CPipeEffectFv  # OVL1; the world lane r3: ours, the class and its name (SOCOM II's effect at thePipe+0x688, its unit 0x33CD50-0x33D22F after zrndr_pipe.cpp's tail: CPipe() calls its constructor out of line) -- declared in zrndr_pipe.cpp
 0x0033D1E0 0x4C func_0033D1E0  # OVL1
 0x0033D230 0x8 UnSerialize__11CSaveModuleFPCcPQ23zar4CZARi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0033D240 0x8 UnSerialize__11CSaveModuleFPCcP8CRdrFilei  # OVL1; s1:vtable by hand (slot 0x10 of CSaveModule's table 0x406AA0, before the CZAR UnSerialize at 0x14 that s1vtables named; SOCOM 1's UnSerialize(const char *, CRdrFile *, int), the same empty 8 bytes, next in SOCOM 1's order)
