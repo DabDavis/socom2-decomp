@@ -618,7 +618,8 @@ unsigned char rt_msg_client_ishutdown(void)
  * (0x633790-0x638500's large rows). */
 
 typedef struct rt_msg_client_comm {
-    char pad0[6];
+    char pad0[5];
+    unsigned char bKind;                /* 0x05: 1 a connection's own channel (0x635078's test) */
     unsigned short nId;                 /* 0x06: its connection's id (rt_msg_client_link's view) */
     char pad08[0x14];
     int nChannelId;                     /* 0x1C: the connection's rt_comm channel */
@@ -952,6 +953,36 @@ int func_006349A8(unsigned short nConnection, int **pphPlatform)
 
 extern int func_0062D178(int nChannelId, unsigned char *pbReceived, char *szAddress, unsigned short *pnPort);
 
+extern int func_00637D50(rt_msg_client_comm *pComm);
+extern int rt_msg_client_process_recv_buf(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm);
+
+/* one connection's channel updated (0x635078): the connection and its channel valid and its own, the
+ * channel's pending input taken (0x637D50), then processed when the caller asks */
+int func_00635078(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm, unsigned char bProcess)
+{
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (pComm->bKind != 1)
+        return 2;
+    if (pConnection->nId != pComm->nId)
+        return 2;
+    result = func_00637D50(pComm);
+    if (result != 0)
+        return result;
+    if (bProcess == 1) {
+        result = rt_msg_client_process_recv_buf(pConnection, pComm);
+        if (result != 0)
+            return result;
+    }
+    return 0;
+}
+
 /* SOCOM II's UDP poll (SOCOM 1's function of this name is another body): every datagram waiting
  * on the UDP channel is handed to the enable call's callback with its sender's address and port */
 int rt_msg_client_iudp_disable_heartbeat(void)
@@ -1114,6 +1145,38 @@ int rt_msg_client_send_disconnect(rt_msg_client_comm *pComm)
     if (result != 0)
         return result;
     return rt_msg_client_send_buffer(pComm, abMsg, nLength, 10000);
+}
+
+/* a target set on the channel (0x635D98): none for 0xFFFF, message 15 for 0xFFFE (every client),
+ * else message 16 with the target's id */
+int func_00635D98(rt_msg_client_comm *pComm, unsigned short nTarget)
+{
+    unsigned char abMsg[2];
+    unsigned char *pMsg;
+    int nLength = 0;
+    int nType;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (nTarget != 0xFFFF) {
+        if (nTarget == 0xFFFE) {
+            nType = 15;
+            pMsg = 0;
+        } else {
+            nType = 16;
+            if (rt_msg_set_u2byte(abMsg, nTarget) != 0)
+                return 7;
+            pMsg = abMsg;
+            nLength = 2;
+        }
+        result = rt_msg_client_store_msg_in_send_buf(pComm, nType, 0xFFFF, pMsg, nLength, 0);
+        if (result != 0)
+            return result;
+    }
+    return 0;
 }
 
 extern int rt_circ_buf_get_avail_nowrap(void *pBuf, unsigned int *pnAvail);
