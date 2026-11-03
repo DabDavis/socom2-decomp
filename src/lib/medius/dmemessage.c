@@ -32,11 +32,31 @@ typedef struct DmeClientInfo {
     unsigned char field_2A;
 } DmeClientInfo;
 
+/* a world (4 of them; func_0061C600 hands one out): its clients' records, then this client's index
+ * and the world's state; the layout is the code's, names where a function says what a field is */
+typedef struct DmeWorld {
+    DmeClientInfo *apClients[DME_MAX_CLIENTS];  /* 0x000 */
+    unsigned int nMyClient;             /* 0x400 */
+    int nSessionMaster;                 /* 0x404 */
+    char szName[16];                    /* 0x408 */
+    char szServerVersion[16];           /* 0x418 */
+    void (*pfnClientCallback)(void *pInfo, DmeClientInfo *pClient, struct DmeWorld *pWorld); /* 0x428 */
+    int field_42C;
+    int field_430;
+    int field_434;
+    int field_438;                      /* 0x438 */
+    int field_43C;                      /* 0x43C */
+    int field_440;                      /* 0x440 */
+    int field_444;
+    int field_448;                      /* 0x448 */
+    int field_44C;                      /* 0x44C: 4 when the world is client-server */
+} DmeWorld;
+
 extern int strcmp(const char *a, const char *b);
 extern char *strcpy(char *dst, const char *src);
 extern char *strncpy(char *dst, const char *src, unsigned int n);
 
-extern int func_0061C600(int nWorld, char **ppWorld);
+extern int func_0061C600(int nWorld, DmeWorld **ppWorld);
 extern int func_0061C720(int nWorld, int nClient, char **ppClient);
 extern int func_006126E8(char **ppClient, int nWorld, int nClient);
 extern char *func_006127D0(int nWorld, int nClient);
@@ -130,7 +150,7 @@ typedef struct ClientConnectsMsg {
 int ClientConnectsPacketHandler(int nConnection, int nUnused, int nClient, ClientConnectsMsg *pMsg)
 {
     char szIp[16];
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
     int nWorld = nConnection;
 
     if (pMsg == 0)
@@ -140,7 +160,7 @@ int ClientConnectsPacketHandler(int nConnection, int nUnused, int nClient, Clien
     NetIpBinaryToString(szIp, pMsg->ip);
     if (pMsg->bSameWorld == 0)
         nWorld = 0;
-    if (strcmp(szIp, data_006766A4) != 0 || pMsg->nClient != *(unsigned int *)(pWorld + 1024)) {
+    if (strcmp(szIp, data_006766A4) != 0 || pMsg->nClient != pWorld->nMyClient) {
         if (nConnection == 0xFFFF)
             KM_SetPublicKey(-1, pMsg->nClient, pMsg->key);
         else if (nConnection == 0)
@@ -154,7 +174,7 @@ int ClientConnectsPacketHandler(int nConnection, int nUnused, int nClient, Clien
 
 int ServerVersionPacketHandler(int nConnection, int nUnused, int nClient, char *pMsg)
 {
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
 
     if (pMsg == 0)
         return -1;
@@ -162,7 +182,7 @@ int ServerVersionPacketHandler(int nConnection, int nUnused, int nClient, char *
         return 16;
     if (func_0061C600(nConnection, &pWorld) != 0 || pWorld == 0)
         return -1;
-    strncpy(pWorld + 1048, pMsg, 16);
+    strncpy(pWorld->szServerVersion, pMsg, 16);
     return 16;
 }
 
@@ -193,14 +213,14 @@ typedef struct ClientUpdateMsg {
 int ClientUpdatePacketHandler(int nConnection, int nUnused, int nClient, ClientUpdateMsg *pMsg)
 {
     char *pClient = 0;
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
     char *pLocal = 0;
     unsigned int nIndex;
 
     if (pMsg == 0)
         return -1;
     if (func_0061C600(nConnection, &pWorld) == 0 && pWorld != 0) {
-        if (func_0061C720(nConnection, *(int *)(pWorld + 1024), &pLocal) == 0 && pLocal != 0) {
+        if (func_0061C720(nConnection, pWorld->nMyClient, &pLocal) == 0 && pLocal != 0) {
             if ((unsigned int)(*(int *)(pLocal + 20) - 4) < 2 && (unsigned int)nConnection < DME_MAX_WORLDS) {
                 nIndex = pMsg->nClient;
                 if (nIndex < DME_MAX_CLIENTS) {
@@ -295,7 +315,7 @@ int RequestOwnershipPacketHandler(int nConnection, int nUnused, int nClient, uns
 {
     OwnershipMsg reply;
     char *pObject;
-    char *pWorld;
+    DmeWorld *pWorld;
     unsigned int nIndex;
 
     pWorld = 0;
@@ -312,7 +332,7 @@ int RequestOwnershipPacketHandler(int nConnection, int nUnused, int nClient, uns
         return -1;
     if (func_0061C600(data_00651178, &pWorld) != 0 || pWorld == 0)
         return -1;
-    if (*(int *)(pObject + 8) == *(int *)(pWorld + 1024)) {
+    if (*(int *)(pObject + 8) == pWorld->nMyClient) {
         if (*(int *)(pObject + 4) == -1) {
             *(int *)(pObject + 4) = nClient;
             func_00615EB0(*(int *)(pObject + 4), nIndex, -2);
@@ -324,9 +344,38 @@ int RequestOwnershipPacketHandler(int nConnection, int nUnused, int nClient, uns
     return 2;
 }
 
+extern int func_0061FE18(int nWorld, int nClient, int nValue1, int nValue2);
+
+int func_0061F410(int nConnection, int nUnused, int nClient, unsigned char *pMsg)
+{
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    unsigned int nMyClient;
+
+    if (pMsg == 0)
+        return -1;
+    if ((unsigned int)nConnection >= DME_MAX_WORLDS)
+        return -1;
+    if ((unsigned int)nClient >= DME_MAX_CLIENTS)
+        return -1;
+    if (func_0061C600(nConnection, &pWorld) != 0 || pWorld == 0)
+        return -1;
+    if (func_0061C720(nConnection, pMsg[1], (char **)&pClient) != 0 || pClient == 0)
+        return -1;
+    if (pClient->bConnected != 1)
+        return -1;
+    nMyClient = pWorld->nMyClient;
+    if (nMyClient >= DME_MAX_CLIENTS)
+        return -1;
+    func_00613FD0(nConnection, pMsg[1]);
+    if (pWorld->apClients[nMyClient]->nState == 5)
+        func_0061FE18(nConnection, pMsg[1], pMsg[2], pMsg[3]);
+    return 4;
+}
+
 int func_0061F7B0(int nConnection, int nUnused, int nClient, int *pMsg)
 {
-    char *pWorld = 0;
+    DmeWorld *pWorld = 0;
     DmeClientInfo *pLocal = 0;
     int nValue = 256;
 
@@ -339,7 +388,7 @@ int func_0061F7B0(int nConnection, int nUnused, int nClient, int *pMsg)
     if (data_00651178 >= DME_MAX_WORLDS)
         return 4;
     if (func_0061C600(data_00651178, &pWorld) == 0 && pWorld != 0) {
-        if (func_0061C720(data_00651178, *(int *)(pWorld + 1024), (char **)&pLocal) == 0 && pLocal != 0) {
+        if (func_0061C720(data_00651178, pWorld->nMyClient, (char **)&pLocal) == 0 && pLocal != 0) {
             if (func_00615090(&nValue, data_00651178) == 0 && nValue != 256) {
                 pLocal->nValue = *pMsg;
                 func_00613FD0(data_00651178, -1);
@@ -385,5 +434,40 @@ int func_00620008(unsigned int nWorld, int *pMax)
     (*pMax)++;
     if (*pMax == 0 || *pMax == 0x0FFFFFFF)
         *pMax = 1;
+    return 0;
+}
+
+/* a message being reassembled from its fragments (0x2C bytes, 256 of them) */
+typedef struct DmeFragment {
+    int nState;                         /* 0x00: 2 while fragments arrive */
+    int field_04[7];
+    unsigned int nTime;                 /* 0x20: when the last one came */
+    void *pBuffer;                      /* 0x24 */
+    void *pData;                        /* 0x28 */
+} DmeFragment;
+
+extern DmeFragment data_0066F408[256];
+extern int rt_time_get_local(unsigned int *pTime);
+extern int func_00614888(void **ppMemory);
+
+int func_006203C8(void)
+{
+    unsigned int nNow;
+    unsigned int i;
+
+    rt_time_get_local(&nNow);
+    for (i = 0; i < 256; i++) {
+        if (data_0066F408[i].nState == 2 && nNow - data_0066F408[i].nTime > 30000) {
+            if (data_0066F408[i].pData != 0) {
+                func_00614888(&data_0066F408[i].pData);
+                data_0066F408[i].pData = 0;
+            }
+            if (data_0066F408[i].pBuffer != 0) {
+                func_00614888(&data_0066F408[i].pBuffer);
+                data_0066F408[i].pBuffer = 0;
+            }
+            data_0066F408[i].nState = 0;
+        }
+    }
     return 0;
 }
