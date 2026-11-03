@@ -397,6 +397,37 @@ void CTurret::ComputeNextPosition(float dT)
 {
 }
 
+/* the turret's frame sampled: its matrix from the yaw node's parent and the inverse, the fire
+ * point's position (the origin without its node) and the velocity as the step over the frame
+ * (SOCOM 1's) */
+void CTurret::SampleDynamics(float dT)
+{
+    if (m_yawNode && m_288) {
+        sceVu0UnitMatrix(m_300.m_matrix);
+        m_yawNode->m_parent->BuildMTW(m_300);
+        sceVu0UnitMatrix(m_340.m_matrix);
+        Vu0MatrixInverseWithUniformScale(&m_340, &m_300);
+
+        CMatrix m;
+
+        sceVu0UnitMatrix(m.m_matrix);
+
+        CPnt3D old = m_380;
+
+        if (m_288) {
+            m_288->BuildMTW(m);
+            m_380 = *(CPnt3D *)m.m_matrix[3];
+        } else {
+            m_380 = CPnt3D::zero;
+        }
+
+        CPnt3D d = m_380 - old;
+        CPnt3D v = d * (1.0f / dT);
+
+        m_velW = v;
+    }
+}
+
 /* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.
  * OPEN, 12 bytes short: the same calls and loop, but the target builds one end() temporary first
  * (sp+76) and serves both std::remove's last and erase's last from it, std::remove's result in a
