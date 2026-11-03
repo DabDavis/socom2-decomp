@@ -285,66 +285,68 @@ static exaction_type NextAction(ActionIterator *iter)
 
 static void UnwindStack(ThrowContext *context, ExceptionInfo *info, char *catcher)
 {
-    char *p;
+    char *ap;
     exaction_type action;
 
     for (;;) {
-        if ((p = info->action_pointer) == 0) {
+        if ((ap = info->action_pointer) == 0) {
             FindExceptionRecord(__PopStackFrame(context, info), info);
             if (info->exception_record == 0)
                 std::terminate();
             __SetupFrameInfo(context, info);
-            if ((p = info->action_pointer) == 0)
+            if ((ap = info->action_pointer) == 0)
                 continue;
         }
 
-        action = *p;
+        action = *ap;
         switch (action & EXACTION_MASK) {
         case EXACTION_BRANCH: {
             int target;
-            __DecodeSignedNumber(p + 1, &target);
+            __DecodeSignedNumber(ap + 1, &target);
             info->action_pointer += target;
             break;
         }
         case EXACTION_DESTROYLOCAL: {
             int local;
-            p = __DecodeSignedNumber(p + 1, &local);
+            char *p = __DecodeSignedNumber(ap + 1, &local);
             DTORCALL_COMPLETE(GET_ADDRESS(p), context->FP + local);
             info->action_pointer = p + 4;
             break;
         }
         case EXACTION_DESTROYLOCALCOND: {
+            int inreg = *(unsigned char *)ap & EXACTION_CONDINREG;
             int cond, local;
             void *dtor;
             char c;
-            int inreg = action & EXACTION_CONDINREG;
-            p = __DecodeSignedNumber(p + 1, &cond);
+            char *p, *next;
+            p = __DecodeSignedNumber(ap + 1, &cond);
             p = __DecodeSignedNumber(p, &local);
             dtor = (void *)GET_ADDRESS(p);
-            p += 4;
+            next = p + 4;
             if (inreg)
                 c = (char)context->regs.GPR[cond];
             else
                 c = *(char *)(context->FP + cond);
             if (c)
                 DTORCALL_COMPLETE(dtor, context->FP + local);
-            info->action_pointer = p;
+            info->action_pointer = next;
             break;
         }
         case EXACTION_DESTROYLOCALPOINTER: {
+            int inreg = *(unsigned char *)ap & EXACTION_PTRINREG;
             int pointer;
             void *dtor;
             void *object;
-            int inreg = action & EXACTION_PTRINREG;
-            p = __DecodeSignedNumber(p + 1, &pointer);
+            char *p, *next;
+            p = __DecodeSignedNumber(ap + 1, &pointer);
             dtor = (void *)GET_ADDRESS(p);
-            p += 4;
+            next = p + 4;
             if (inreg)
                 object = (void *)(int)context->regs.GPR[pointer];
             else
                 object = *(void **)(context->FP + pointer);
             DTORCALL_COMPLETE(dtor, object);
-            info->action_pointer = p;
+            info->action_pointer = next;
             break;
         }
         case EXACTION_DESTROYLOCALARRAY: {
@@ -353,64 +355,69 @@ static void UnwindStack(ThrowContext *context, ExceptionInfo *info, char *catche
             void *dtor;
             char *ptr;
             unsigned int n;
-            p = __DecodeSignedNumber(p + 1, &localarray);
+            char *p, *next;
+            p = __DecodeSignedNumber(ap + 1, &localarray);
             p = __DecodeUnsignedNumber(p, &elements);
             p = __DecodeUnsignedNumber(p, &element_size);
             dtor = (void *)GET_ADDRESS(p);
-            p += 4;
+            next = p + 4;
+            ptr = context->FP + localarray;
             n = elements;
-            for (ptr = context->FP + localarray + n * element_size; n > 0; n--) {
+            for (ptr += n * element_size; n > 0; n--) {
                 ptr -= element_size;
                 DTORCALL_COMPLETE(dtor, ptr);
             }
-            info->action_pointer = p;
+            info->action_pointer = next;
             break;
         }
         case EXACTION_DESTROYBASE: {
+            int inreg = *(unsigned char *)ap & EXACTION_PTRINREG;
             int objectptr, offset;
             void *dtor;
             char *object;
-            int inreg = action & EXACTION_PTRINREG;
-            p = __DecodeSignedNumber(p + 1, &objectptr);
+            char *p, *next;
+            p = __DecodeSignedNumber(ap + 1, &objectptr);
             p = __DecodeSignedNumber(p, &offset);
             dtor = (void *)GET_ADDRESS(p);
-            p += 4;
+            next = p + 4;
             if (inreg)
                 object = (char *)(int)context->regs.GPR[objectptr];
             else
                 object = *(char **)(context->FP + objectptr);
             DTORCALL_PARTIAL(dtor, object + offset);
-            info->action_pointer = p;
+            info->action_pointer = next;
             break;
         }
         case EXACTION_DESTROYMEMBER: {
+            int inreg = *(unsigned char *)ap & EXACTION_PTRINREG;
             int objectptr, offset;
             void *dtor;
             char *object;
-            int inreg = action & EXACTION_PTRINREG;
-            p = __DecodeSignedNumber(p + 1, &objectptr);
+            char *p, *next;
+            p = __DecodeSignedNumber(ap + 1, &objectptr);
             p = __DecodeSignedNumber(p, &offset);
             dtor = (void *)GET_ADDRESS(p);
-            p += 4;
+            next = p + 4;
             if (inreg)
                 object = (char *)(int)context->regs.GPR[objectptr];
             else
                 object = *(char **)(context->FP + objectptr);
             DTORCALL_COMPLETE(dtor, object + offset);
-            info->action_pointer = p;
+            info->action_pointer = next;
             break;
         }
         case EXACTION_DESTROYMEMBERCOND: {
+            int inreg = *(unsigned char *)ap & EXACTION_PTRINREG;
             int cond, objectptr, offset;
             void *dtor;
             char c;
             char *object;
-            int inreg = action & EXACTION_PTRINREG;
-            p = __DecodeSignedNumber(p + 1, &cond);
+            char *p, *next;
+            p = __DecodeSignedNumber(ap + 1, &cond);
             p = __DecodeSignedNumber(p, &objectptr);
             p = __DecodeSignedNumber(p, &offset);
             dtor = (void *)GET_ADDRESS(p);
-            p += 4;
+            next = p + 4;
             if (action & EXACTION_CONDINREG)
                 c = (char)context->regs.GPR[cond];
             else
@@ -422,61 +429,63 @@ static void UnwindStack(ThrowContext *context, ExceptionInfo *info, char *catche
                     object = *(char **)(context->FP + objectptr);
                 DTORCALL_COMPLETE(dtor, object + offset);
             }
-            info->action_pointer = p;
+            info->action_pointer = next;
             break;
         }
         case EXACTION_DESTROYMEMBERARRAY: {
+            int inreg = *(unsigned char *)ap & EXACTION_PTRINREG;
             int objectptr, offset;
             unsigned int elements, element_size;
             void *dtor;
             char *ptr;
             unsigned int n;
-            int inreg = action & EXACTION_PTRINREG;
-            p = __DecodeSignedNumber(p + 1, &objectptr);
+            char *p, *next;
+            p = __DecodeSignedNumber(ap + 1, &objectptr);
             p = __DecodeSignedNumber(p, &offset);
             p = __DecodeUnsignedNumber(p, &elements);
             p = __DecodeUnsignedNumber(p, &element_size);
             dtor = (void *)GET_ADDRESS(p);
-            p += 4;
+            next = p + 4;
             if (inreg)
-                ptr = (char *)(int)context->regs.GPR[objectptr];
+                ptr = (char *)(int)context->regs.GPR[objectptr] + offset;
             else
-                ptr = *(char **)(context->FP + objectptr);
-            ptr += offset;
+                ptr = *(char **)(context->FP + objectptr) + offset;
             n = elements;
             for (ptr += n * element_size; n > 0; n--) {
                 ptr -= element_size;
                 DTORCALL_COMPLETE(dtor, ptr);
             }
-            info->action_pointer = p;
+            info->action_pointer = next;
             break;
         }
         case EXACTION_DELETEPOINTER: {
+            int inreg = *(unsigned char *)ap & EXACTION_PTRINREG;
             int objectptr;
             void *deletefunc;
             void *object;
-            int inreg = action & EXACTION_PTRINREG;
-            p = __DecodeSignedNumber(p + 1, &objectptr);
+            char *p, *next;
+            p = __DecodeSignedNumber(ap + 1, &objectptr);
             deletefunc = (void *)GET_ADDRESS(p);
-            p += 4;
+            next = p + 4;
             if (inreg)
                 object = (void *)(int)context->regs.GPR[objectptr];
             else
                 object = *(void **)(context->FP + objectptr);
             ((DeleteFunc)deletefunc)(object);
-            info->action_pointer = p;
+            info->action_pointer = next;
             break;
         }
         case EXACTION_DELETEPOINTERCOND: {
+            int inreg = *(unsigned char *)ap & EXACTION_PTRINREG;
             int cond, objectptr;
             void *deletefunc;
             char c;
             void *object;
-            int inreg = action & EXACTION_PTRINREG;
-            p = __DecodeSignedNumber(p + 1, &cond);
+            char *p, *next;
+            p = __DecodeSignedNumber(ap + 1, &cond);
             p = __DecodeSignedNumber(p, &objectptr);
             deletefunc = (void *)GET_ADDRESS(p);
-            p += 4;
+            next = p + 4;
             if (action & EXACTION_CONDINREG)
                 c = (char)context->regs.GPR[cond];
             else
@@ -488,24 +497,26 @@ static void UnwindStack(ThrowContext *context, ExceptionInfo *info, char *catche
                     object = *(void **)(context->FP + objectptr);
                 ((DeleteFunc)deletefunc)(object);
             }
-            info->action_pointer = p;
+            info->action_pointer = next;
             break;
         }
         case EXACTION_CATCHBLOCK: {
             char *catch_type;
             unsigned int catch_pcoffset;
             int cinfo_ref;
-            if (p == catcher)
+            char *p;
+            if (catcher == ap)
                 return;
-            catch_type = (char *)GET_ADDRESS(p + 1);
-            p = __DecodeUnsignedNumber(p + 5, &catch_pcoffset);
+            *(unsigned int *)&catch_type = GET_ADDRESS(ap + 1);
+            p = __DecodeUnsignedNumber(ap + 5, &catch_pcoffset);
             info->action_pointer = __DecodeSignedNumber(p, &cinfo_ref);
             break;
         }
         case EXACTION_ACTIVECATCHBLOCK: {
             int cinfo_ref;
             CatchInfo *catchinfo;
-            p = __DecodeSignedNumber(p + 1, &cinfo_ref);
+            char *p;
+            p = __DecodeSignedNumber(ap + 1, &cinfo_ref);
             catchinfo = (CatchInfo *)(context->FP + cinfo_ref);
             if (catchinfo->dtor) {
                 if (context->location == catchinfo->location)
@@ -519,9 +530,10 @@ static void UnwindStack(ThrowContext *context, ExceptionInfo *info, char *catche
         case EXACTION_SPECIFICATION: {
             unsigned int specs, pcoffset;
             int cinfo_ref;
-            if (p == catcher)
+            char *p;
+            if (catcher == ap)
                 return;
-            p = __DecodeUnsignedNumber(p + 1, &specs);
+            p = __DecodeUnsignedNumber(ap + 1, &specs);
             p = __DecodeUnsignedNumber(p, &pcoffset);
             p = __DecodeSignedNumber(p, &cinfo_ref);
             info->action_pointer = p + specs * 4;
