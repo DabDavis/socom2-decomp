@@ -328,22 +328,22 @@
 0x001914D8 0x20 func_001914D8  # MAIN unaligned
 0x001914F8 0xCC func_001914F8  # MAIN unaligned
 0x001915C8 0x64 calloc  # MAIN unaligned
-0x00191630 0xB4 func_00191630  # MAIN
+0x00191630 0xB4 _calloc_r  # MAIN; s1:order (newlib: the demo's callocr object between calloc and closer; _malloc_r then memset)
 0x001916E8 0x58 _close_r  # MAIN unaligned; by body (newlib's reent/closer.c: errno zeroed, close(fd), errno copied into ptr->_errno on -1; the demo's _close_r is 0x58 too)
 0x00191740 0x22C func_00191740  # MAIN
 0x00191970 0x1264 func_00191970  # MAIN
 0x00192BD8 0x8 func_00192BD8  # MAIN unaligned
 0x00192BE0 0x8 func_00192BE0  # MAIN
 0x00192BE8 0xC __errno  # MAIN unaligned; s1:callee
-0x00192BF8 0xAC func_00192BF8  # MAIN unaligned
-0x00192CA8 0x100 func_00192CA8  # MAIN unaligned
+0x00192BF8 0xAC exit  # MAIN unaligned; s1:order (newlib: the demo's exit object between errno and fclose; the atexit tables, then __cleanup, then _exit)
+0x00192CA8 0x100 fclose  # MAIN unaligned; s1:order (newlib: between exit and fflush as in the demo; CHECK_INIT, fflush, _close, _free_r)
 0x00192DA8 0x114 fflush  # MAIN unaligned; by call (newlib __sbprintf calls fflush(&fake))
-0x00192EC0 0x138 func_00192EC0  # MAIN
-0x00192FF8 0x5C func_00192FF8  # MAIN unaligned
-0x00193058 0x78 func_00193058  # MAIN unaligned
-0x001930D0 0xF8 func_001930D0  # MAIN
-0x001931C8 0x1C func_001931C8  # MAIN unaligned
-0x001931E8 0x1C func_001931E8  # MAIN unaligned
+0x00192EC0 0x138 fgets  # MAIN; s1:order (newlib: between fflush and findfp; __srefill, memchr, memcpy)
+0x00192FF8 0x5C std  # MAIN unaligned; s1:order (newlib findfp.c's static std, the demo's 0x3E0760: the four cookie functions stored)
+0x00193058 0x78 __sfmoreglue  # MAIN unaligned; s1:order (newlib findfp.c, the demo's second function there: _malloc_r of glue and FILEs, memset)
+0x001930D0 0xF8 __sfp  # MAIN; s1:order (newlib findfp.c, the demo's third: __sinit, then __sfmoreglue(d, 4))
+0x001931C8 0x1C _cleanup_r  # MAIN unaligned; s1:order (newlib findfp.c: _fwalk(ptr, fflush))
+0x001931E8 0x1C _cleanup  # MAIN unaligned; s1:order (newlib findfp.c: _cleanup_r(_REENT))
 0x00193208 0x8C __sinit  # MAIN unaligned; by body (newlib's stdio/findfp.c: __cleanup = _cleanup_r, __sdidinit = 1, the three std FILEs; vfprintf's CHECK_INIT calls it)
 0x00193298 0x54 fiprintf  # MAIN unaligned; s1:callee
 0x001932F0 0xB8 func_001932F0  # MAIN
@@ -351,14 +351,14 @@
 0x00193488 0x24 func_00193488  # MAIN unaligned
 0x001934B0 0x54 fprintf  # MAIN; by body (varargs with two fixed arguments, into vfprintf at 0x19C0D0; MSL's vector errors print through it to stderr)
 0x00193508 0x11C func_00193508  # MAIN unaligned
-0x00193628 0x2F4 func_00193628  # MAIN unaligned
-0x00193920 0x16C func_00193920  # MAIN
+0x00193628 0x2F4 _free_r  # MAIN unaligned; s1:order (newlib mallocr.c, the demo's _free_r object: __malloc_lock, _malloc_trim_r, __malloc_unlock)
+0x00193920 0x16C _malloc_trim_r  # MAIN; s1:order (newlib mallocr.c, after _free_r as in the demo: _sbrk_r under the malloc lock)
 0x00193A90 0x4AC func_00193A90  # MAIN
 0x00193F40 0x5C _fstat_r  # MAIN; by body (newlib's reent/fstatr.c: the same around fstat(fd, buf); the demo's _fstat_r is 0x5C too)
 0x00193FA0 0x104 func_00193FA0  # MAIN
 0x001940A8 0x3E0 __sfvwrite  # MAIN unaligned; by call (newlib __sprint calls __sfvwrite)
-0x00194488 0x94 func_00194488  # MAIN unaligned
-0x00194520 0x84 func_00194520  # MAIN
+0x00194488 0x94 _fwalk  # MAIN unaligned; s1:order (newlib fwalk.c, between ftell's and fwrite's objects; walks the glue)
+0x00194520 0x84 fwrite  # MAIN; s1:order (newlib fwrite.c: one iovec to __sfvwrite)
 0x001945A8 0x24 func_001945A8  # MAIN unaligned
 0x001945D0 0x28 func_001945D0  # MAIN
 0x001945F8 0x148 func_001945F8  # MAIN unaligned
@@ -368,22 +368,22 @@
 0x00194800 0x24 func_00194800  # MAIN
 0x00194828 0x1C func_00194828  # MAIN unaligned
 0x00194848 0x60 _lseek_r  # MAIN unaligned; by body (newlib's reent/lseekr.c: the same around lseek(fd, pos, whence); the demo's _lseek_r is 0x60 too)
-0x001948A8 0x154 func_001948A8  # MAIN unaligned
+0x001948A8 0x154 __smakebuf  # MAIN unaligned; s1:order (newlib makebuf.c, after _lseek_r as in the demo: _fstat_r, _malloc_r, isatty, __sseek)
 0x00194A00 0x64 func_00194A00  # MAIN
 0x00194A68 0x1C8 func_00194A68  # MAIN unaligned
 0x00194C30 0x54 malloc  # MAIN; s1:callee
 0x00194C88 0x48 free  # MAIN unaligned; zcfree's only callee (Sony libc: 8-aligned, GCC-built)
-0x00194CD0 0x258 func_00194CD0  # MAIN
-0x00194F28 0x728 func_00194F28  # MAIN unaligned
+0x00194CD0 0x258 malloc_extend_top  # MAIN; s1:order (newlib mallocr.c's static, the demo's 0x3E1F48: _sbrk_r, _free_r)
+0x00194F28 0x728 _malloc_r  # MAIN unaligned; s1:order (newlib mallocr.c, the demo's 0x3E21A0: under __malloc_lock, malloc_extend_top)
 0x00195650 0x34 func_00195650  # MAIN
 0x00195688 0xE0 memchr  # MAIN unaligned; s1:exact
 0x00195768 0x94 memcmp  # MAIN unaligned; s1:exact
 0x00195800 0xB0 memcpy  # MAIN
 0x001958B0 0x104 memmove  # MAIN; s1:asm (the demo's memmove object, same size, identical but for the short-loop slot as memcpy/memset/strcpy/strncpy are, between memcpy and memset as there)
 0x001959B8 0xC0 memset  # MAIN unaligned; s1:callee
-0x00195A78 0x7C func_00195A78  # MAIN unaligned
-0x00195AF8 0x4C func_00195AF8  # MAIN unaligned
-0x00195B48 0xA4 func_00195B48  # MAIN unaligned
+0x00195A78 0x7C __malloc_lock  # MAIN unaligned; by body (newlib's malloc lock for the EE: the owning thread's id, WaitSema)
+0x00195AF8 0x4C __malloc_unlock  # MAIN unaligned; by body (the matching unlock: SignalSema when the count drops to zero)
+0x00195B48 0xA4 _Balloc  # MAIN unaligned; s1:order (newlib mprec.c, the demo's first function there: _calloc_r of the freelist, then of the Bigint)
 0x00195BF0 0x2C _Bfree  # MAIN; s1:exact
 0x00195C20 0x108 _multadd  # MAIN; s1:calls
 0x00195D28 0x130 func_00195D28  # MAIN unaligned
@@ -410,10 +410,10 @@
 0x00197740 0x64 rand  # MAIN; s1:callee by hand (zAnimRandomWeightTick calls it where SOCOM 1 calls rand; newlib's 64-bit LCG)
 0x001977A8 0x60 _read_r  # MAIN unaligned; by body (newlib's reent/readr.c: the same around read(fd, buf, cnt); the demo's _read_r is 0x60 too)
 0x00197808 0x64 realloc  # MAIN unaligned; s1:calls (_realloc calls it where SOCOM 1's calls realloc) -- the sound lane
-0x00197870 0x5A0 func_00197870  # MAIN
-0x00197E10 0x34 func_00197E10  # MAIN
-0x00197E48 0x17C func_00197E48  # MAIN unaligned
-0x00197FC8 0x48 func_00197FC8  # MAIN unaligned
+0x00197870 0x5A0 _realloc_r  # MAIN; s1:order (newlib mallocr.c, the demo's _realloc_r object after realloc: _malloc_r, memcpy, _free_r)
+0x00197E10 0x34 lflush  # MAIN; s1:order (newlib refill.c's static, the demo's 0x3E4F20)
+0x00197E48 0x17C __srefill  # MAIN unaligned; s1:order (newlib refill.c, after lflush: CHECK_INIT, fflush, __smakebuf, _fwalk(lflush))
+0x00197FC8 0x48 __srget  # MAIN unaligned; s1:order (newlib rget.c: __srefill then the next byte)
 0x00198010 0x44 copysign  # MAIN; s1:exact
 0x00198058 0x48 isinf  # MAIN unaligned; s1:exact
 0x001980A0 0x3C isnan  # MAIN; s1:exact
@@ -483,9 +483,9 @@
 0x0019E6E8 0x100 func_0019E6E8  # MAIN unaligned
 0x0019E7E8 0x54 vsprintf  # MAIN unaligned; s1:calls (SOCOM 1's identical CConsole::Debug calls vsprintf at the same instruction; 0x54 bytes in both) -- the entity lane
 0x0019E840 0x54 func_0019E840  # MAIN
-0x0019E898 0x110 func_0019E898  # MAIN unaligned
+0x0019E898 0x110 __swbuf  # MAIN unaligned; s1:order (newlib wbuf.c, after vsprintf as in the demo: CHECK_INIT, __swsetup, fflush)
 0x0019E9A8 0x60 _write_r  # MAIN unaligned; by body (newlib's reent/writer.c: the same around write(fd, buf, cnt); the demo's _write_r is 0x60 too)
-0x0019EA08 0x10C func_0019EA08  # MAIN unaligned
+0x0019EA08 0x10C __swsetup  # MAIN unaligned; s1:order (newlib wsetup.c, after _write_r as in the demo: __sinit, _free_r, __smakebuf)
 0x0019EB18 0x74 __muldi3  # MAIN unaligned; s1:exact
 0x0019EB90 0x694 __divdi3  # MAIN; s1:exact
 0x0019F228 0x690 __moddi3  # MAIN unaligned; s1:exact

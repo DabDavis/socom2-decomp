@@ -7,18 +7,6 @@
 #define NULL 0
 typedef unsigned int size_t;
 
-struct __sFILE;
-
-struct _reent {
-	int _errno;                             /* 0x00 */
-	struct __sFILE *_stdin, *_stdout, *_stderr;     /* 0x04, 0x08, 0x0C */
-	char _pad10[0x38 - 0x10];
-	int __sdidinit;                         /* 0x38: 1 means stdio has been init'd */
-	void (*__cleanup)(struct _reent *);     /* 0x3C */
-	char _pad40[0xA8 - 0x40];
-	unsigned long long _rand_next;          /* 0xA8: _new._reent._rand_next */
-};
-
 /* newlib's stdio (sys/reent.h's struct __sFILE; _fpos_t and _off_t are long, 64-bit here) */
 typedef long _fpos_t;
 typedef long _off_t;
@@ -49,6 +37,51 @@ typedef struct __sFILE {
 	int _offset;                            /* 0x50: current lseek offset */
 	struct _reent *_data;                   /* 0x54 */
 } FILE;
+
+struct _glue {
+	struct _glue *_next;
+	int _niobs;
+	struct __sFILE *_iobs;
+};
+
+struct _atexit {
+	struct _atexit *_next;                  /* next in list */
+	int _ind;                               /* next index in this table */
+	void (*_fns[32])(void);                 /* the table itself */
+};
+
+struct _Bigint {
+	struct _Bigint *_next;
+	int _k, _maxwds, _sign, _wds;
+	unsigned int _x[1];                     /* __ULong: long is 64-bit here, the digits are words */
+};
+
+/* newlib 1.9's struct _reent (sys/reent.h), the offsets the image reads */
+struct _reent {
+	int _errno;                             /* 0x00 */
+	struct __sFILE *_stdin, *_stdout, *_stderr;     /* 0x04, 0x08, 0x0C */
+	int _inc;                               /* 0x10 */
+	char _emergency[25];                    /* 0x14 */
+	int _current_category;                  /* 0x30 */
+	const char *_current_locale;            /* 0x34 */
+	int __sdidinit;                         /* 0x38: 1 means stdio has been init'd */
+	void (*__cleanup)(struct _reent *);     /* 0x3C */
+	struct _Bigint *_result;                /* 0x40: used by mprec routines */
+	int _result_k;                          /* 0x44 */
+	struct _Bigint *_p5s;                   /* 0x48 */
+	struct _Bigint **_freelist;             /* 0x4C */
+	int _cvtlen;                            /* 0x50: should be size_t */
+	char *_cvtbuf;                          /* 0x54 */
+	char _pad58[0xA8 - 0x58];               /* 0x58: _new._reent's strtok/asctime/localtime state */
+	unsigned long long _rand_next;          /* 0xA8: _new._reent._rand_next */
+	char _padB0[0x148 - 0xB0];              /* the rest of the _new union (_unused's 240 bytes) */
+	struct _atexit *_atexit;                /* 0x148: points to head of LIFO stack */
+	struct _atexit _atexit0;                /* 0x14C: one guaranteed table, required by ANSI */
+	void (**_sig_func)(int);                /* 0x1D4: signal info */
+	struct _glue __sglue;                   /* 0x1D8: root of glue chain */
+	struct __sFILE __sf[3];                 /* 0x1E4: first three file descriptors */
+};
+
 
 #define	__SLBF	0x0001		/* line buffered */
 #define	__SNBF	0x0002		/* unbuffered */
@@ -90,6 +123,32 @@ struct __suio {
 	int uio_iovcnt;
 	int uio_resid;
 };
+
+/* stdio/local.h's */
+#define	cantwrite(fp) \
+  ((((fp)->_flags & __SWR) == 0 || (fp)->_bf._base == NULL) && \
+   __swsetup(fp))
+#define	HASUB(fp) ((fp)->_ub._base != NULL)
+#define	FREEUB(fp) { \
+	if ((fp)->_ub._base != (fp)->_ubuf) \
+		_free_r(fp->_data, (char *)(fp)->_ub._base); \
+	(fp)->_ub._base = NULL; \
+}
+#define	HASLB(fp) ((fp)->_lb._base != NULL)
+#define	FREELB(fp) { _free_r(fp->_data, (char *)(fp)->_lb._base); (fp)->_lb._base = NULL; }
+
+extern void *_malloc_r(struct _reent *, size_t);
+extern void _free_r(struct _reent *, void *);
+extern void *_realloc_r(struct _reent *, void *, size_t);
+extern void __sinit(struct _reent *);
+extern int __srefill(FILE *);
+extern int __swsetup(FILE *);
+extern void __smakebuf(FILE *);
+extern int fflush(FILE *);
+extern int _fwalk(struct _reent *, int (*)(FILE *));
+extern void *memset(void *, int, size_t);
+extern void *memcpy(void *, const void *, size_t);
+extern void *memchr(const void *, int, size_t);
 
 extern struct _reent *_impure_ptr;
 #define _REENT _impure_ptr
