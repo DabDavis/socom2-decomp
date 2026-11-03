@@ -8,8 +8,8 @@
  *
  * The manager is the global at 0x4364A0 (built by the memory card unit's initialiser 0x400160,
  * its destructor 0x33ED70 registered there; func_002AFBA0 returns it); theAcctDB is its one
- * module. zNetMediusUniverse.cpp (the online lane's) still declares CLobbySaveModule itself, over
- * zsave.h's CSaveManager; this header is the layout the save unit (zsav_lobby.cpp) reads. */
+ * module. zNetMediusUniverse.cpp (the online lane's round 12) includes this header: CAcctDB derives
+ * from CLobbySaveModule and its overrides take what the manager passes. */
 #ifndef ZSAV_LOBBY_H
 #define ZSAV_LOBBY_H
 

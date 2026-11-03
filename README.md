@@ -1857,6 +1857,26 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 12** (the lobby's save on zsav_lobby.h, Open, the voice, lobby and chat rows, the
+  placeholders):
+  - zNetMediusUniverse.cpp includes the world lane's zsav_lobby.h: CAcctDB's overrides take what the manager passes --
+    Save(int), Load(const char *, int), SetChecksum(const unsigned char *) (the manager's calls at 0x33EC44, 0x33E928,
+    0x33ECBC) -- which renamed six rows with their thunks; Save calls Write 0x33EEA0 by name;
+  - a postfix step (`i++`) on a vector walk makes MW place the end's preheader after the function's last block and
+    repeat the entry test there; a loop bound written in the condition (`row <= top + rows`) is a loop-optimiser
+    temporary and takes s0, a named bound is numbered early; nested ifs ending in `return` keep the target's join, a
+    `break` out of the walk is threaded straight past it;
+  - reading values into locals before a run of stores lets MW load them all first, written inside the stores each load
+    stays beside its store; an explicit guard around a do-while puts the counter's zero in the guard's delay slot and
+    the cursor after it; a bit-field divided as unsigned needs `/ 60u`; a function whose only caller calls it out of
+    line needs a pin (0x310480, 0x3106A0, 0x2FAA80); CopyField's null test is not folded for a string literal or a local
+    array source (a destination-only CopyTo, now in zonline.h, fits those); Logitech's lgAudOpenParam is 14 bytes
+    (reco.cpp's 16-byte copy shifts the stack slot);
+  - all 41 named placeholders respelled (CZLANLobby moved into zonline.h from three units' copies; cbLANGameInfo is
+    RoomGame::UpdateInfo; DeleteRoom a plain `delete`), no score changed;
+  - open: CAcctDB::Save (4: the argument moves' order), __sinit_zNetMediusUniverse.cpp (level 6), 0x2F13F0 (the
+    RoomPlayer vector's insert/erase, MSL's family), 0x2F96F0/0x2F98F0 (the stats record's member copy, an unaligned
+    word at offset 3).
 - **Tells from the UI, round 14** (the soft keyboard's cursor, tick and key handling, the look parser, the piece tail):
   - CALLERS THAT INLINE A FUNCTION'S BODY BUT CALL ITS CALLEES mean it is declared inline and too tall; callers that call
     it outright reach it through another inline that is itself inlined one level -- GetCurKeyProps is an inline behind an
