@@ -292,14 +292,14 @@ void cbGetMyClans(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusGetMy
         StoredClanInfo.LeaderAccountID = resp->LeaderAccountID;
         strncpy(StoredClanInfo.ClanName, resp->ClanName, sizeof(StoredClanInfo.ClanName));
         CopyField(StoredClanInfo.Stats, resp->Stats, sizeof(StoredClanInfo.Stats));
-        func_003862A0(theLobby.uiv_ClanNameVar, StoredClanInfo.ClanName);
-        func_003862A0(theLobby.uiv_ClanDescription, &StoredClanInfo.Stats[15]);
+        *theLobby.uiv_ClanNameVar = StoredClanInfo.ClanName;
+        *theLobby.uiv_ClanDescription = &StoredClanInfo.Stats[15];
         if (StoredClanInfo.Stats)
             memcpy(icon, StoredClanInfo.Stats, 3);
         icon[3] = 0;
         sprintf(icon, "clan_icon_%.2d.tif", atoi(icon));
         theLobby.GetClanRoster();
-        func_003862A0(theLobby.uiv_ClanMessages, "Retrieving messages from server...");
+        *theLobby.uiv_ClanMessages = "Retrieving messages from server...";
         MediusGetMyClanMessagesRequest req;
 
         memset(&req, 0, sizeof(req));
@@ -314,8 +314,8 @@ void cbGetMyClans(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusGetMy
         StoredClanInfo.ClanID = -1;
         StoredClanInfo.LeaderAccountID = -1;
         memset(StoredClanInfo.ClanName, 0, sizeof(StoredClanInfo.ClanName));
-        func_003862A0(theLobby.uiv_ClanNameVar, "");
-        func_003862A0(theLobby.uiv_ClanDescription, "");
+        *theLobby.uiv_ClanNameVar = "";
+        *theLobby.uiv_ClanDescription = "";
         if (data_0044F790) {
             LobbyEvent("MP_CLAN_DISBANDED", 0);
             func_002FAA80(&theLobby);
@@ -330,7 +330,7 @@ void cbGetMyClans(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusGetMy
         sprintf(text, "#C\x80@ [%s] #C\x80\x80\x80%s", tag, AccountInfo.AccountName);
     else
         sprintf(text, "%s", AccountInfo.AccountName);
-    func_003862A0(var, text);
+    *var = text;
     data_0044F788 = 2;
 }
 
@@ -348,8 +348,8 @@ bool CZOnlineLobby::GetClan()
         data_0044F788 = 0;
         return true;
     }
-    func_003862A0(uiv_ClanNameVar, "");
-    func_003862A0(uiv_ClanDescription, "");
+    *uiv_ClanNameVar = "";
+    *uiv_ClanDescription = "";
     if (data_0044F788 == 0) {
         data_0044F788 = 1;
         data_0044F790 = PlayerClanID != -1 || data_0066A790 != 0;
@@ -493,13 +493,13 @@ void cbGetMyClanMessages(MediusErrorCode, MediusErrorCode, MediusErrorCode,
         ed.pop();
         theLobby.uiv_ClanMessages->Set(&ed);
     } else
-        func_003862A0(theLobby.uiv_ClanMessages, "No clan messages.");
+        *theLobby.uiv_ClanMessages = "No clan messages.";
 }
 
 /* the clan's messages asked for, the menu told meanwhile (SOCOM II's; OVL1 0x2E8460) */
 void CZOnlineLobby::GetClanMessages()
 {
-    func_003862A0(uiv_ClanMessages, "Retrieving messages from server...");
+    *uiv_ClanMessages = "Retrieving messages from server...";
     MediusGetMyClanMessagesRequest req;
 
     memset(&req, 0, sizeof(req));
@@ -680,7 +680,7 @@ void cbUpdateClanStats(MediusErrorCode, MediusErrorCode, MediusErrorCode,
             sprintf(text, "#C\x80@ [%s] #C\x80\x80\x80%s", tag, AccountInfo.AccountName);
         else
             sprintf(text, "%s", AccountInfo.AccountName);
-        func_003862A0(var, text);
+        *var = text;
     }
 }
 
@@ -713,7 +713,7 @@ void cbCreateClan(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusCreat
         StoredClanInfo.ClanID = PlayerClanID;
         LobbyEvent("MP_CREATE_CLAN_SUCCESS", 0);
         strncpy(StoredClanInfo.ClanName, ZString(theLobby.uiv_ClanNameVar), sizeof(StoredClanInfo.ClanName));
-        func_003862A0(theLobby.uiv_ClanDescription, "");
+        *theLobby.uiv_ClanDescription = "";
         char stats[256];
         char *desc = VarText(theUIVarManager.Add("Clan_Description", 0, UIVL_TEMPORARY));
         MediusUpdateClanStatsRequest req;
@@ -728,8 +728,8 @@ void cbCreateClan(MediusErrorCode, MediusErrorCode, MediusErrorCode, MediusCreat
         theLobby.UpdateClanRanking();
     } else {
         LobbyEvent("MP_CREATE_CLAN_FAILURE", 0);
-        func_003862A0(theLobby.uiv_ClanNameVar, "Unaffiliated");
-        func_003862A0(theLobby.uiv_ClanDescription, "");
+        *theLobby.uiv_ClanNameVar = "Unaffiliated";
+        *theLobby.uiv_ClanDescription = "";
     }
 }
 
@@ -810,7 +810,7 @@ bool CZOnlineLobby::InvitePlayerToClan(const char *name)
 void cbFilterClanName(int, int, int, MediusTextFilterResponse *resp)
 {
     if (resp->Result >= 0) {
-        func_003862A0(theLobby.uiv_ClanNameVar, resp->Text);
+        *theLobby.uiv_ClanNameVar = resp->Text;
         MediusCreateClanRequest req;
 
         memset(&req, 0, sizeof(req));
@@ -819,8 +819,8 @@ void cbFilterClanName(int, int, int, MediusTextFilterResponse *resp)
         CheckMediusError(MediusCreateClan(&req, cbCreateClan));
     } else {
         LobbyEvent("MP_FILTER_FAILURE", 0);
-        func_003862A0(theLobby.uiv_ClanNameVar, "Unaffiliated");
-        func_003862A0(theLobby.uiv_ClanDescription, " ");
+        *theLobby.uiv_ClanNameVar = "Unaffiliated";
+        *theLobby.uiv_ClanDescription = " ";
     }
 }
 
@@ -1128,9 +1128,9 @@ void cbDisbandClan(MediusErrorCode, MediusErrorCode, MediusErrorCode,
     char text[1024];
 
     if (CheckMediusCallbackStatus("MediusDisbandClan", resp->StatusCode)) {
-        func_003862A0(theLobby.uiv_ClanNameVar, "");
-        func_003862A0(theLobby.uiv_ClanDescription, " ");
-        func_003862A0(theLobby.uiv_ClanMessages, "No clan messages.");
+        *theLobby.uiv_ClanNameVar = "";
+        *theLobby.uiv_ClanDescription = " ";
+        *theLobby.uiv_ClanMessages = "No clan messages.";
         ClanMemberVec.DeleteAll();
         UpdateClanRoster();
         PlayerClanID = -1;
