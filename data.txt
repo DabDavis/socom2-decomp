@@ -169,6 +169,7 @@
 0x001DA580 0x0 _csdata  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifInitCmd)
 0x001DA5C0 0x0 _sys_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifInitCmd)
 0x001DA6C0 0x0 soft_reg  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifGetSreg +2)
+0x001DBF40 0x40 _data_table  # MAIN bss; s1:label (the GCC lane r11a: the sifrpc object's state, the demo's _data_table at sceSifSetRpcQueue's reference, its .bss after _packet_buffer, _free_buffer and _free_buffer2 0x800 apart and 0x80 before _send_data, as here -- those three unnamed: libmrpc's copy holds _packet_buffer; the demo's sifcmd and libmrpc objects hold a _data_table of their own; src/lib/sdk/sifrpc.c)
 0x001DBFC0 0x0 _send_data  # MAIN bss; s1:data-exact (size SOCOM 1's; via _sceCallCode +19)
 0x001DCC00 0x0 _rcv_data_rpc  # MAIN bss; s1:data-exact (size SOCOM 1's; via _sceCallCode +19)
 0x001DD2F0 0x0 _gp  # MAIN; the linker's $gp value (CCoreState::StartLoadThread gives it to the load thread, where SOCOM 1's passed gp itself): 7 references in 7 functions take 0x1DD2F0
@@ -1493,9 +1494,13 @@
 0x00672240 0x0 gNetBuf  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_comm_platform2_destroy +4)
 0x006763E0 0x0 gUDPInfo  # OVL2 bss; s1:data-seq (size SOCOM 1's; via rt_msg_client_ishutdown +4)
 0x006763F0 0x0 gMsgClientMutex  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_msg_client_disconnect +12)
+0x00676408 0x4 gnTableCols  # OVL2 bss; ours (the gcc lane, round 11b): rt_table.c's column count (at most 256), set by its init 0x63C700 and read by every accessor
+0x0067640C 0x4 gnTableRows  # OVL2 bss; ours (round 11b): rt_table.c's row count (at most 256), set by 0x63C700, the bound every accessor checks the row against
+0x00676410 0x4 gnTableBufSize  # OVL2 bss; ours (round 11b): rt_table.c's buffer size, 0x63C700's first argument, the size of the buffer at .data 0x656004
 0x00676418 0x0 szTime.0  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_time_get_time_string_ptr)
 0x00676430 0x0 gBaseTimeStamp  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_time_platform_get_time_stamp +2)
 0x00676440 0x20 gCurTimeDate  # OVL2 bss; s1:data (round 8b): SOCOM 1's gCurTimeDate (the RTC's date and time, read by 0x63D648), after gBaseTimeStamp as there, grown by the milliseconds
+0x00676460 0x20 gapUdp  # OVL2 bss; ours (the gcc lane, round 11b): rt_udp.c's eight endpoints on the shared channel, by the slot an endpoint names below 8 (0x48 in its record): 0x641E30 registers it (17 when the slot is taken) and clears all eight with the shared channel, 0x6420E8 frees the shared channel when the last one goes, 0x642200 calls back every one still resolving
 0x00676480 0x10 gapStreamSessions  # OVL2 bss; ours (round 10b): StreamMedia.c's four sessions, one per DME world (0x228 bytes each, allocated by 0x644100, freed by 0x644258, cleared by the startup's memset of 16 bytes)
 0x00676490 0x0 gstNatServiceAddress  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetNatServiceAddress +1)
 0x006764A8 0x0 gstClientAddressList  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetClientAddrList +1)
