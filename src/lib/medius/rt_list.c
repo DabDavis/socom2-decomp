@@ -8,7 +8,13 @@
  * A list (0x18 bytes) is a ring buffer of messages, each an 8-byte head -- its length and the next
  * message -- and its bytes, word-aligned; the first message is kept apart (pFirst), and an empty
  * message always ends the chain (func_00631ED0 writes it at the end). Error codes are the values
- * returned: 1 not found, 2 a bad argument or list, 3 no room. */
+ * returned: 1 not found, 2 a bad argument or list, 3 no room.
+ *
+ * The end marker's writer returns a narrow type (`unsigned char`): the clear and init return its
+ * result through a jal, not a sibling call. OPEN: func_006313D8 (the init, 22s: the target returns
+ * the allocation's known-zero result when the buffer is null and keeps nSize in s2). Not written:
+ * the store/remove/copy bodies 0x631508, 0x631670, 0x631748, 0x631848, 0x631BC0, 0x631D18,
+ * 0x6321B8. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern int rt_memory_allocate(void **ppMemory, unsigned long nSize);

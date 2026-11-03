@@ -1490,6 +1490,9 @@
 0x00672240 0x0 gNetBuf  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_comm_platform2_destroy +4)
 0x006763E0 0x0 gUDPInfo  # OVL2 bss; s1:data-seq (size SOCOM 1's; via rt_msg_client_ishutdown +4)
 0x006763F0 0x0 gMsgClientMutex  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_msg_client_disconnect +12)
+0x00676408 0x4 gnTableCols  # OVL2 bss; ours (the gcc lane, round 11b): rt_table.c's column count (at most 256), set by its init 0x63C700 and read by every accessor
+0x0067640C 0x4 gnTableRows  # OVL2 bss; ours (round 11b): rt_table.c's row count (at most 256), set by 0x63C700, the bound every accessor checks the row against
+0x00676410 0x4 gnTableBufSize  # OVL2 bss; ours (round 11b): rt_table.c's buffer size, 0x63C700's first argument, the size of the buffer at .data 0x656004
 0x00676418 0x0 szTime.0  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_time_get_time_string_ptr)
 0x00676430 0x0 gBaseTimeStamp  # OVL2 bss; s1:data-exact (size SOCOM 1's; via rt_time_platform_get_time_stamp +2)
 0x00676440 0x20 gCurTimeDate  # OVL2 bss; s1:data (round 8b): SOCOM 1's gCurTimeDate (the RTC's date and time, read by 0x63D648), after gBaseTimeStamp as there, grown by the milliseconds

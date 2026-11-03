@@ -7,7 +7,17 @@
  * and 32 slots, and a callback for the public address. SOCOM 1 has no such object: the names are
  * placeholders. Error codes are the values returned: 2 a bad argument, 3 out of memory, 4 the UDP
  * endpoint, 5 the public address, 6 no connection to send on, 7 rt_udp failed, 8 an index out of
- * range, 9 no free peer. */
+ * range, 9 no free peer.
+ *
+ * OPEN: the peer searches 0x639A90, 0x63B410, 0x63B480 (and func_0063C328's kin): the target's
+ * loop is neither rotated nor strength-reduced (the exit test at the top, i * 40 recomputed, the
+ * count hoisted) -- `for (i = 0; ; i++) { if (i >= n) break; ... }` gives that loop (27s left: the
+ * second guard's `return 2` is its own `jr ra` in the target, the -2 stored through v0);
+ * 0x6398C0 (14s), 0x639940 (61s), 0x639FB8 (2: `li v0,9` hoisted above the test, stores in every
+ * order tried), 0x63C078 (44s: the two connections' tests). Not written: the create 0x6395B8 (its
+ * record reloaded from the stack after every store, as the target does, but the defaults' order),
+ * 0x639B08, 0x639D70, 0x63A038, 0x63A250, 0x63A618, 0x63AAC0, 0x63ACA0, 0x63B0B8, 0x63B2F0,
+ * 0x63B5D0, 0x63B708, 0x63B9A0, 0x63BED0, 0x63C170, 0x63C3D0, 0x63C4F0. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern char *strncpy(char *dst, const char *src, unsigned int n);

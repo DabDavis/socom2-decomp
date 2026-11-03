@@ -9,7 +9,24 @@
  * each: a state, the peer's address and port, a send and a receive message ring) and a message
  * ring of its own; the rings are the message-buffer object's at 0x6313D8 (0x18 bytes). Error codes
  * are the values returned: 1 a bad argument, 2 no endpoint, 3 a connection index out of range, 9
- * out of memory, 10 a ring failed, 15 the public address, 16 the send. */
+ * out of memory, 10 a ring failed, 15 the public address, 16 the send.
+ *
+ * SCEA's shapes, each measured: one guard per argument, each with its own return; a two-way choice
+ * written `if (n == 0) {...; return 0;} if (n == 1) {...; return 0;} return 1;` (a shared tail
+ * cross-jumps the two bodies, a switch moves every block); an index zeroed at its declaration (the
+ * prologue's `move s1,zero`); a result kept in a saved register to one `return result` after a
+ * time stamp call (0x641230); the RTO as `n = srtt + MAX(rttvar, 1); if (n > 500) n = 500;`; the
+ * header stores in the orders tools/ccperm.py found (0x63F948, 0x641A70, 0x63F3A8).
+ * OPEN: 0x63DD18 (the create: the target lays the allocation out after the option copy, jumping
+ * back to it, and keeps the new record in one register through the copy -- 95 words with a local
+ * copy, 111 without), 0x63EBA0 (the raw send: the length test's `return 1` is a fall-through `b`,
+ * 33s), 0x63E230 (8: the shared path keeps its 1 in v0 and the delay slots differ), 0x63E4A0 (11:
+ * the index lives in v1 and the -2 in v0), 0x63E5E8 (10, the connect), 0x63F168 and 0x6419E8 (2
+ * each: the call's arguments scheduled the other way -- the -1 key-manager id in the delay slot),
+ * 0x641E30 (3: a bnez/bnezl choice and a register after the shared channel's port query); the
+ * datagram handlers 0x63E928, 0x63ECC8, 0x63EF38, 0x63F4C8, 0x63FA28, 0x63FC08, 0x6400A8, 0x6404D8,
+ * 0x640940, 0x640B70, 0x640D38, 0x640EA0, 0x641308, 0x641490, 0x641748, 0x6418A0, 0x641BA0 are not
+ * written. */
 
 extern void *memset(void *p, int c, unsigned int n);
 extern void *memcpy(void *d, const void *s, unsigned int n);
