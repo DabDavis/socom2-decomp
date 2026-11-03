@@ -1,8 +1,9 @@
 /* seal_anim.cpp -- the SEAL animated: its blends pushed and popped, its root and vertical, its
  * adrenaline (SOCOM 1's unit, __sinit_seal_anim.cpp: Post, GetRootPos, SetVertical, the CSealAnim
- * blender, Animate, AdrenalineIncr and Adrenaline last). OVL2 from seal_ai.cpp's template tail
- * (0x575CF0) to 0x5781BF (Adrenaline), before seal_body.cpp. Defined in reverse of their image order
- * (-inline deferred). */
+ * blender, Animate, AdrenalineIncr and Adrenaline last). OVL2 0x576120 (the blender deleted: StopEngine
+ * calls it where SOCOM 1's calls ~CSealAnim -- the rows before it are seal_ai.cpp's template tail, the
+ * animate state's list instances) to 0x5781BF (Adrenaline), before seal_body.cpp. Defined in reverse
+ * of their image order (-inline deferred). */
 
 #include "zseal.h"
 

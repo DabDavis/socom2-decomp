@@ -1,7 +1,10 @@
 /* seal_ai.cpp -- the AI's controller, CSealCtrlAi, and its states (SOCOM 1's unit,
  * __sinit_seal_ai.cpp; SOCOM 1's order: the states' small virtuals and CAiSRescued first, the
- * controller's constructor and the template tail -- ai::_max, ai::_min, _close_enough<i> -- last).
- * OVL2 0x5552C0-0x575CE7. Defined in reverse of their image order (-inline deferred). */
+ * controller's constructor and the template tail -- ai::_max, ai::_min, _close_enough<i> -- last;
+ * SOCOM II's tail ends with the animate state's list instances, 0x575CF0-0x576117: the timed calls'
+ * range erase, single erase and insert, the spans' range erase and insert -- used by seal_ai.cpp's
+ * functions alone, and seal_anim.cpp's first row, 0x576120, is SOCOM 1's ~CSealAnim's job).
+ * OVL2 0x5552C0-0x576117. Defined in reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
 #include "../../ai/ai.h"
@@ -54,17 +57,47 @@ public:
     signed char m_5c;   // 0x5c (the name ours)
 };
 
+class CAiSAnimate;
+
+/* the animate state's timed calls (new in SOCOM II; the names ours): at a time of the anim, a call
+ * told the state, the controller and a word -- Tick erases each once it answers true -- and over a
+ * span of it, the same call every tick inside the span (0x55AC20 pushes 0x55C740, 0x55C690, 0x55C480
+ * and 0x55C5E0 with the state itself as the word) */
+typedef bool (*ANIM_CALL)(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data);
+
+struct ANIM_TIMED_CALL {
+    float m_time;   // 0x0
+    ANIM_CALL m_func;   // 0x4
+    unsigned int m_data;   // 0x8
+};
+
+struct ANIM_SPAN_CALL {
+    float m_start;   // 0x0
+    float m_end;   // 0x4
+    ANIM_CALL m_func;   // 0x8
+    unsigned int m_data;   // 0xc
+};
+
+/* the two lists (classes over std::list: their implicit destructors are four this-tested levels) */
+class CAnimTimedCallList : public std::list<ANIM_TIMED_CALL> {
+};
+
+class CAnimSpanCallList : public std::list<ANIM_SPAN_CALL> {
+};
+
 class CAiSAnimate : public CAiState {
 public:
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
-    /* (0x5759A0, matched as a draft: two lists at 0x64 and 0x70 destroyed, each with its own
-     * erase -- declared so this unit emits no implicit one) */
+    /* (0x5759A0: the two lists destroyed, each through its own range erase -- 0x575CF0 and
+     * 0x575F40, the unit's template tail) */
     virtual ~CAiSAnimate();
 
     unsigned char _58[0x5a - 0x58];
     unsigned char m_5a;   // 0x5a (SOCOM 1's 0x28)
     float m_5c;   // 0x5c (SOCOM 1's 0x30)
     unsigned int m_60;   // 0x60 (SOCOM 1's 0x8)
+    CAnimTimedCallList m_timed;   // 0x64
+    CAnimSpanCallList m_spans;   // 0x70
 };
 
 class CAiSGrenade : public CAiState {
@@ -346,6 +379,12 @@ CAiSDeploy::~CAiSDeploy()
 }
 
 CAiSGrenade::~CAiSGrenade()
+{
+}
+
+/* (OVL2 0x5759A0: its two lists' implicit destructors inlined whole, each erase called out of line --
+ * the unit's template tail's 0x575F40 and 0x575CF0 -- then the base's) */
+CAiSAnimate::~CAiSAnimate()
 {
 }
 

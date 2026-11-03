@@ -10362,10 +10362,10 @@
 0x00575C50 0x2C _max<f>__2aiFRCfRCf_RCf  # OVL2; s1:order (seal_ai.cpp's template tail after CSealCtrlAi's inline copies, as SOCOM 1's _max<f>__2aiFRCfRCf at 0x26C8A0; MW 3.0 mangles the return type); the larger by reference; CDynGrenade::ComputeTimeToImpact calls it where SOCOM 1's does
 0x00575C80 0x2C _min<f>__2aiFRCfRCf_RCf  # OVL2; s1:order (after _max<f>; SOCOM 1's _min<f>__2aiFRCfRCf is another unit's, 0x1FAC10); the smaller by reference
 0x00575CB0 0x38 _close_enough<i>__FRCiRCiRCi_b  # OVL2; s1:order (the tail's last, as SOCOM 1's _close_enough<i>__FRCiRCiRCi at 0x26C8D0; MW 3.0 mangles the return type): |a - b| within eps on ints
-0x00575CF0 0xBC func_00575CF0  # OVL2
+0x00575CF0 0xBC erase__Q23std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>FQ33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>Q33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>  # OVL2; ours (the SEALs, round 13): the range erase of CAiSAnimate's list at 0x64 -- ~CAiSAnimate (0x5759A0) calls it for that member alone, and the list's insert (0x575E30) builds 0x14-byte nodes, 12-byte timed calls; seal_ai.cpp's template tail, not seal_anim.cpp's
 0x00575DB0 0x74 func_00575DB0  # OVL2
 0x00575E30 0x110 func_00575E30  # OVL2
-0x00575F40 0xBC func_00575F40  # OVL2
+0x00575F40 0xBC erase__Q23std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>FQ33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>Q33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>  # OVL2; ours (the SEALs, round 13): the range erase of CAiSAnimate's list at 0x70 -- ~CAiSAnimate (0x5759A0) calls it for that member alone, and the list's insert (0x576000) builds 0x18-byte nodes, 16-byte span calls; seal_ai.cpp's template tail
 0x00576000 0x118 func_00576000  # OVL2
 0x00576120 0x84 func_00576120  # OVL2
 0x005761B0 0x128 func_005761B0  # OVL2
