@@ -99,13 +99,13 @@ SEAL_STATE CZSealBody::GetStance(bool flag) const
 }
 
 /* how fast the SEAL moves, standing, crouched or prone: 1 still, 2 under 20 units a second, 3 faster
- * (1 in any other state; OVL2 0x58A820, new in SOCOM II -- Tick asks it) */
-extern "C" int func_0058A820(CZSealBody *seal)
+ * (1 in any other state; OVL2 0x58A820, SOCOM 1's GetSpeedState after GetStance, the speeds squared
+ * -- Tick asks it) */
+int CZSealBody::GetSpeedState()
 {
-    float v = seal->m_velM.x * seal->m_velM.x + seal->m_velM.y * seal->m_velM.y +
-              seal->m_velM.z * seal->m_velM.z;
+    float v = m_velM.x * m_velM.x + m_velM.y * m_velM.y + m_velM.z * m_velM.z;
 
-    switch (seal->m_state) {
+    switch (m_state) {
     case 0:
     case 1:
     case 2:
@@ -155,11 +155,11 @@ bool CZSealBody::CanHeadLook()
     return r;
 }
 
-/* whether the last overlay of the top blend's first anim turns (OVL2 0x587E00, new in SOCOM II;
- * PreTick asks it -- each pass overwrites the answer) */
-extern "C" bool func_00587E00(CZSealBody *seal)
+/* whether the last overlay of the top blend's first anim turns (OVL2 0x587E00; SOCOM 1's CanTurn,
+ * after CanInterrupt in both builds -- PreTick asks it; each pass overwrites the answer) */
+bool CZSealBody::CanTurn()
 {
-    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
     bool r = false;
 
     for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {

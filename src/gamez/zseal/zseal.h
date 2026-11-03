@@ -1047,6 +1047,13 @@ public:
     bool SetLookDir(const CPnt3D *dir, float rate);
     static void InitLookAnims();
     bool CanHeadLook();
+    /* whether the SEAL may pitch, be interrupted, turn (SOCOM 1's, around CanHeadLook in both builds;
+     * OVL2 0x587A30 and 0x587C20 not written yet, 0x587E00), and how fast it moves (SOCOM 1's; OVL2
+     * 0x58A820) -- seal_body.cpp's */
+    bool CanPitch();
+    bool CanInterrupt();
+    bool CanTurn();
+    int GetSpeedState();
     /* the head turned forward by a pitch, and the look's direction in the world (SOCOM 1's
      * RotateHead, its second float gone, and GetLookDirW; OVL2 0x5AF470, 0x5AF500) */
     void RotateHead(float pitch);

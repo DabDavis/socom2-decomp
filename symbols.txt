@@ -10224,7 +10224,7 @@
 0x005657C0 0x108 func_005657C0  # OVL2
 0x005658D0 0x10C func_005658D0  # OVL2
 0x005659E0 0x100 func_005659E0  # OVL2
-0x00565AE0 0x98 func_00565AE0  # OVL2
+0x00565AE0 0x98 SetSprayTimer__11CSealCtrlAiFf  # OVL2; s1:calls (s1names' proposal, vetted by hand: SOCOM 1's SetSprayTimer__11CSealCtrlAiFf -- GetCurItem, the item's byte below 3 refused, SetWeaponState(1), the aim set straight ahead through 0x5DF8B0 (SOCOM 1's SetAimDirR), the timer stored; SOCOM II adds the mode-2 and null-item refusals) -- the SEAL lane, round 12
 0x00565B80 0x1A4 func_00565B80  # OVL2
 0x00565D30 0x7BC func_00565D30  # OVL2
 0x005664F0 0x48 func_005664F0  # OVL2
@@ -10495,10 +10495,10 @@
 0x00587740 0x20 func_00587740  # OVL2
 0x00587760 0x20 func_00587760  # OVL2
 0x00587780 0x2B0 func_00587780  # OVL2
-0x00587A30 0x108 func_00587A30  # OVL2
+0x00587A30 0x108 CanPitch__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's CanPitch__10CZSealBodyFv, first of CanPitch, CanHeadLook, CanInterrupt, CanTurn in both builds: the top blend, then the same state tests 8, 9, 10, 5, 4) -- the SEAL lane, round 12
 0x00587B40 0xD8 CanHeadLook__10CZSealBodyFv  # OVL2; s1:callee by hand (SetLookDir 0x5AE640 calls it first where SOCOM 1's SetLookDir calls CanHeadLook__10CZSealBodyFv; the same body: no blend true, state 8 / the top blend's 8, 9, 10 false, then the overlays' bit) -- the SEAL lane, round 12
-0x00587C20 0x1DC func_00587C20  # OVL2
-0x00587E00 0x74 func_00587E00  # OVL2
+0x00587C20 0x1DC CanInterrupt__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's CanInterrupt__10CZSealBodyFv, between CanHeadLook and CanTurn in both builds: the top blend's IsDone, its Representative, the 17 test and a virtual call, as SOCOM 1's) -- the SEAL lane, round 12
+0x00587E00 0x74 CanTurn__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's CanTurn__10CZSealBodyFv, after CanInterrupt in both builds: the same walk over the top blend's anims and overlays, the last one's script flag the answer) -- the SEAL lane, round 12
 0x00587E80 0x90 func_00587E80  # OVL2
 0x00587F10 0x40 func_00587F10  # OVL2
 0x00587F50 0x40 func_00587F50  # OVL2
@@ -10518,7 +10518,7 @@
 0x0058A6B0 0x60 BodySetState__10CZSealBodyFi  # OVL2; s1:exact by hand (SOCOM 1's BodySetState__10CZSealBodyFi: the controller's OnStateChange (slot 0x64) when the state changes, then CBody's; SOCOM II's tests m_control first, and is virtual: CZSealBody's slot 0x90, through the thunk 0x555290 in its CBody table) -- the SEAL lane, round 4
 0x0058A710 0x8 func_0058A710  # OVL2; slot 0x64 of __vt__9CSealCtrl, which CSealCtrlSquirm and CRemoteCtrl inherit (the vtables pass withheld it: CRemoteCtrl's misnamed OnMissionStart override at 0x5E6270 pulled the alignment); s1~ OnStateChange__9CSealCtrlF10SEAL_STATE10SEAL_STATE after all: CSealCtrlCopy's OVL1 table holds an OVL1 copy at slot 0x64 (0x2B3BE0), so the base's OnStateChange is inline and this is OVL2's copy (one of 2 copies of an inline)
 0x0058A720 0x100 GetStance__10CZSealBodyCFb  # OVL2; s1:calls by hand (the integrator's lead from the kit lane's round 11: the kick code hands its result to TargetMods where SOCOM 1's CZKit::Fire calls GetStance; SOCOM 1's GetStance__10CZSealBodyCFb (0x27D2A0) is the same body -- with the flag, the top blend's flags 0x40 and 0x20 and the anims 17/19/25 decide stand/crouch/prone, else CBody's state byte read lbu (a SEAL_STATE) -- SOCOM II adding the crouch-as-stand bit 2 of 0x21C)
-0x0058A820 0x98 func_0058A820  # OVL2
+0x0058A820 0x98 GetSpeedState__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's GetSpeedState__10CZSealBodyFv, after GetStance in both builds: the same thresholds -- 0.5 and 20 units a second, squared in SOCOM II, which skips sqrtf -- giving 1, 2 or 3) -- the SEAL lane, round 12
 0x0058A8C0 0x58 func_0058A8C0  # OVL2
 0x0058A920 0x28 func_0058A920  # OVL2
 0x0058A950 0x48 func_0058A950  # OVL2; the same words as Clear__21RTList<11ACTIVE_ANIM>Fv (0x28f320) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
