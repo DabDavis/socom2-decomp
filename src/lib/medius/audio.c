@@ -89,16 +89,16 @@ typedef struct AUDIO {
     int nSeqA;                          /* 0x04: type 0x2F's */
     int nSeqB;                          /* 0x08: type 0x30's */
     char x0C[0x1C];                     /* 0x0C */
-    int nIn;                            /* 0x28 */
-    int nOut;                           /* 0x2C */
-    int nInBytes;                       /* 0x30 */
-    int nOutBytes;                      /* 0x34 */
-    int nEncoded;                       /* 0x38 */
-    int nDecoded;                       /* 0x3C */
-    int tEncode;                        /* 0x40: the time spent encoding */
-    int tDecode;                        /* 0x44 */
+    unsigned int nIn;                            /* 0x28 */
+    unsigned int nOut;                           /* 0x2C */
+    unsigned int nInBytes;                       /* 0x30 */
+    unsigned int nOutBytes;                      /* 0x34 */
+    unsigned int nEncoded;                       /* 0x38 */
+    unsigned int nDecoded;                       /* 0x3C */
+    unsigned int tEncode;                        /* 0x40: the time spent encoding */
+    unsigned int tDecode;                        /* 0x44 */
     int (*pfnRead)(struct AUDIO *pAudio, int *pnType, char *pBuf, int nSize); /* 0x48 */
-    int x4C;                            /* 0x4C */
+    void (*pfnDecoded)(struct AUDIO *pAudio, int nType, int nId, char *pBuf, int nLen); /* 0x4C */
     int (*pfnCapture)(struct AUDIO *pAudio, void *p1, void *p2, void *p3); /* 0x50 */
     void (*pfnPlay)(struct AUDIO *pAudio, int nId, void *pFrame); /* 0x54 */
     int nLastRead;                      /* 0x58 */
@@ -182,6 +182,9 @@ extern void func_006456C8(void *pCodecA, void *pCodecB, void *p1, void *p2, void
 extern void *func_006456F8(void *pCodecA, void *pCodecB);
 extern void func_00645708(void *p1, void *p2, void *p3, void *pFrame);
 extern int func_00645528(void *pStream, char *pBuf, int nSize);
+extern int func_006137E8(void *pDecoder);
+extern void *func_0062ABE0(void *pCodec, int nType);
+extern int func_00613B80(void *pDecoder, char *pIn, int nIn, char *pOut, int nOutSize);
 extern int func_00642C48(void *pIn, int *pnType, char *pBuf, int nSize);
 void *func_0060FFB0(AUDIO *pAudio);
 GRID *func_00611348(AUDIO *pAudio, int nId, int nMaxMembers);
@@ -752,7 +755,45 @@ void func_00611420(AUDIO *pAudio, unsigned int nFlags)
     pAudio->nFlags &= ~nFlags;
 }
 
-/* 0x611438, 0x6115C0: not written */
+/* Decodes a peer's message with its decoder (made again when the type changes) for the host's
+ * callback; an empty message ends a talk the peer has closed (0x1000). */
+int func_00611438(AUDIO *pAudio, PEER *p, int nType, char *pData, int nLen)
+{
+    char buf[2048];
+    int nResult = 0;
+    int n;
+
+    if (p->pOut != 0) {
+        if (nLen != 0) {
+            if (func_006137E8(p->pOut) != nType) {
+                func_0062AE10(func_0060FFB0(pAudio), p->pOut);
+                p->pOut = 0;
+            }
+        } else {
+            nType = func_006137E8(p->pOut);
+        }
+    }
+    if (p->pOut == 0) {
+        p->pOut = func_0062ABE0(func_0060FFB0(pAudio), nType);
+        if (p->pOut == 0)
+            return 0;
+    }
+    n = func_00613B80(p->pOut, pData, nLen, buf, sizeof(buf));
+    if (n != 0) {
+        nResult = n;
+        if (pAudio->pfnDecoded != 0)
+            pAudio->pfnDecoded(pAudio, nType, p->info.nId, buf, nResult);
+    } else if (nLen == 0 && (func_0062A130(p) & 0x1000)) {
+        func_0062AE10(func_0060FFB0(pAudio), p->pOut);
+        p->pOut = 0;
+        func_0062A148(p, 0x1000);
+        if (pAudio->pfnDecoded != 0)
+            pAudio->pfnDecoded(pAudio, nType, p->info.nId, buf, 0);
+    }
+    return nResult;
+}
+
+/* 0x6115C0: not written */
 
 /* Sends a type-0x30 message to the group spoken in; an empty one restarts its count. */
 int func_006117F0(AUDIO *pAudio, void *pData, int nLen)
@@ -1062,7 +1103,26 @@ unsigned int func_00612210(AUDIO *pAudio)
     return pAudio->nFlags;
 }
 
-/* 0x612270: not written */
+/* The statistics: bytes a packet in and out (x1600), milliseconds an encode and a decode. */
+void func_00612270(AUDIO *pAudio, float *pfIn, float *pfOut, float *pfEncode, float *pfDecode)
+{
+    if (pAudio->nIn != 0)
+        *pfIn = (float)pAudio->nInBytes * 1600.0f / (float)pAudio->nIn;
+    else
+        *pfIn = 0;
+    if (pAudio->nOut != 0)
+        *pfOut = (float)pAudio->nOutBytes * 1600.0f / (float)pAudio->nOut;
+    else
+        *pfOut = 0;
+    if (pAudio->nEncoded != 0)
+        *pfEncode = (float)pAudio->tEncode / (float)pAudio->nEncoded;
+    else
+        *pfEncode = 0;
+    if (pAudio->nDecoded != 0)
+        *pfDecode = (float)pAudio->tDecode / (float)pAudio->nDecoded;
+    else
+        *pfDecode = 0;
+}
 
 /* The socket's connection finished: this client's address and port, or none. */
 void func_00612460(AUDIO *pAudio, int nError)
