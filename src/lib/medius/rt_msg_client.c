@@ -1884,6 +1884,40 @@ int rt_msg_client_process_connect_result(rt_msg_client_connection *pConnection, 
     return 0;
 }
 
+/* the server's confirmation (type 26, SOCOM II's; round 16b): the port it gives kept, the connection
+ * connected (state 8), and the connect callback told of the success SOCOM 1's process_connect_result
+ * reported -- this client's id and the port */
+int func_00636D58(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength)
+{
+    unsigned short nPort;
+    unsigned int nOffset = 0;
+    unsigned short nId;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0 || nType != 26)
+        return 2;
+    if (nLength > nOffset + 1) {
+        if (rt_msg_get_u2byte(pMsg, &nPort) != 0)
+            return 7;
+    } else
+        return 1;
+    pConnection->nServerPort = nPort;
+    result = rt_msg_client_change_state(pConnection, RT_MSG_CLIENT_STATE_CONNECTED);
+    if (result != 0)
+        return result;
+    if (pConnection->pfnConnect != 0) {
+        nId = pConnection->nId;
+        pConnection->pfnConnect(nId, 1, pConnection->nClientId, pConnection->nServerPort, 0);
+        if (rt_msg_client_is_valid_connection_id(nId) == 0)
+            return 11;
+    }
+    return 0;
+}
+
 extern int KM_SetPublicKey(int nKMID, int nClientID, void *pKey);
 
 /* a client's connect notice: its address and, with type 8, its RSA public key -- a byte record (the
@@ -2046,6 +2080,57 @@ int func_00637230(rt_msg_client_connection *pConnection, int nType, unsigned cha
         if (result != 0)
             return result;
     }
+    return 0;
+}
+
+extern int func_00635E60(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm);
+
+/* the second channel's address (type 24, SOCOM II's; round 16b): a datagram connection's second
+ * channel takes the server's 16-byte address and its port, is marked its own and opened (0x635E60);
+ * the connection then waits in state 6.
+ * OPEN (40 words, 1 long, registers): the target forms `pMsg + 16` straight into a0 after the port's
+ * length test and gives s1 to the port's address after it (pMsg dead there: no conflict), conn s2 and
+ * nLength s3; here sched1 births the address pseudo first (`&pComm->nPort`, used again by the zero
+ * test), so pMsg -- stepped in place, as here, or summed at the call -- conflicts with it; the
+ * cursor and argument spellings tried are build/scratch/gcc/v_7318.c. The state change's result goes
+ * through a guard (its `return f()` was a sibling call). */
+int func_00637318(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg, unsigned int nLength)
+{
+    rt_msg_client_comm *pComm;
+    unsigned int nOffset = 0;
+    unsigned int nKind;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    nKind = pConnection->nConnectKind;
+    if (nKind != 1)
+        return 1;
+    pComm = pConnection->apChannels[1];
+    if (pComm == 0)
+        return 9;
+    if (nLength < nOffset + 16)
+        return 1;
+    memcpy(pComm->szAddress, pMsg, 16);
+    pMsg += 16;
+    nOffset += 16;
+    if (nOffset + 1 >= nLength)
+        return 1;
+    if (rt_msg_get_u2byte(pMsg, &pComm->nPort) != 0)
+        return 7;
+    if (pComm->nPort == 0)
+        return 1;
+    pComm->bKind = nKind;
+    result = func_00635E60(pConnection, pComm);
+    if (result != 0)
+        return result;
+    result = rt_msg_client_change_state(pConnection, 6);
+    if (result != 0)
+        return result;
     return 0;
 }
 
