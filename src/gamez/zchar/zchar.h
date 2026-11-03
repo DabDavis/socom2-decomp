@@ -5,6 +5,7 @@
 #ifndef ZCHAR_H
 #define ZCHAR_H
 
+#include <list>
 #include <string>
 #include <vector>
 
@@ -433,6 +434,9 @@ public:
     /* a sound by kind, none out of range (new in SOCOM II, the name ours: CSealCtrlAi::OnStunDamage
      * calls it) */
     CSnd *GetSound(CHARACTER_SOUND s) const;
+    /* a sound played for the entity of that id, whether it went to the positional player (SOCOM
+     * 1's, void there; OVL2 0x53B710 -- CSealCtrl's sound calls it) */
+    bool PlayAt(CHARACTER_SOUND s, unsigned int id, const CPnt3D *pos);
 
     char *m_name;   // 0x0
     mutable int m_ref_count;   // 0x4: mutable -- Acquire, const in both builds, counts
@@ -464,6 +468,12 @@ public:
      * vector of pointers, OVL1 bss 0x44CD68, the same 0x20 on: CZSealBody::FindGear walks its data
      * and size) -- added by the SEAL lane */
     static std::vector<class CCharacterGear *> m_gear_list;
+    /* the anim sets' names, each kept once (SOCOM 1's m_anim_set_names, a pointer list 0x40 after
+     * m_char_list; SOCOM II's is OVL1 bss at 0x44CD88, the same 0x40 on) */
+    static std::list<char *> m_anim_set_names;
+    /* the list's copy of an anim set's name, a copy added the first time (new in SOCOM II, the name
+     * ours: SOCOM 1's Parse did it in place; OVL2 0x53C110) */
+    static char *AddAnimSetName(const char *name);
 };
 
 /* the types (SOCOM 1's DWARF: a vector of pointers and nothing more) */

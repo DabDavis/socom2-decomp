@@ -9,6 +9,7 @@
 #include "../zsys/zsys.h"
 #include "../zsnd/zsnd.h"
 #include "../zanim/zanim.h"
+#include "../zentity/zentity.h"
 
 /* the reader file of that name, out of the loaded archives (SOCOM 1's CRdrArchive::FindRdr took the
  * name alone; SOCOM II passes a second argument, zero here) */
@@ -584,6 +585,81 @@ CSnd *CCharacterType::GetSound(CHARACTER_SOUND s) const
     if (!(s > CHRSND_NONE) || s >= CHRSND_MAX)
         return 0;
     return m_sounds[s];
+}
+
+/* the list's copy of an anim set's name, else a copy pushed (SOCOM 1's Parse inlined this walk,
+ * SOCOM II's calls it -- the push's insert out of line keeps -inline auto off it). The iterator
+ * assigned, so it lives in memory; the end in a register */
+char *CCharacterType::AddAnimSetName(const char *name)
+{
+    if (m_anim_set_names.size()) {
+        std::list<char *>::iterator i;
+
+        i = m_anim_set_names.begin();
+        for (std::list<char *>::iterator e = m_anim_set_names.end(); i != e; ++i) {
+            char *s = *i;
+
+            if (!strcmp(name, s))
+                return s;
+        }
+    }
+    char *s = _strdup(name, 0, 0);
+
+    m_anim_set_names.push_back(s);
+    return s;
+}
+
+/* a SEAL's wait before its next pain sound (CZSealBody's float at 0x424, the name ours; zseal.h is
+ * not included here) */
+struct CSealPainWait {
+    unsigned char _0[0x424];
+    float m_painWait;   // 0x424
+};
+
+/* the positional player (OVL1 0x3428F0: the sound, the entity's id, the position, then 3.0 and
+ * 1.0 here -- zanim_cmd_tick.cpp declares it after its own call) */
+extern "C" void func_003428F0(CSnd *sound, unsigned int id, const CPnt3D *pos, float a, float b);
+
+/* a character sound for the entity of that id (SOCOM 1's, void there, played every sound the
+ * damage and death sounds' way). The damage and death sounds play only once the SEAL's pain wait
+ * has run out, which they set to three seconds: at the position if one is given, else as the
+ * entity's own; any other sound goes to the positional player, and only that counts as played */
+bool CCharacterType::PlayAt(CHARACTER_SOUND s, unsigned int id, const CPnt3D *pos)
+{
+    bool played = false;
+    CSnd *snd = GetSound(s);
+
+    if (snd) {
+        if (s == CHRSND_DAMAGE || s == CHRSND_DEATH || s == CHRSND_DEATH_QUIET) {
+            CEntity *e = CEntity::m_list.GetEntityById(id);
+            CSealPainWait *seal = e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CSealPainWait *)e : 0;
+            bool ok = false;
+
+            if (seal && 0.0f == seal->m_painWait)
+                ok = true;
+            if (pos && ok) {
+                if (seal)
+                    seal->m_painWait = 3.0f;
+                CSndInstance *inst = snd->PlaySound3D(pos, false, 1.0f, 0, 0, id);
+
+                if (inst)
+                    inst->TerminateOnFinish();
+            } else if (ok) {
+                if (seal)
+                    seal->m_painWait = 3.0f;
+                CSndInstance *inst = snd->PlaySound(true, 0, id);
+
+                if (inst)
+                    inst->TerminateOnFinish();
+            }
+        } else {
+            /* set before the call: after it, the flag misses the jal's delay slot and the
+             * arguments are scheduled apart */
+            played = true;
+            func_003428F0(snd, id, pos, 3.0f, 1.0f);
+        }
+    }
+    return played;
 }
 
 /* the list's nth type: the iterator walked n steps (MSL's advance; the name ours) */
