@@ -218,6 +218,15 @@ class CVisual {
 public:
     static CCamera *m_camera;
 };
+
+/* the water ripples' manager (vis_ripple.h has the whole class, which the states' stand-ins above
+ * keep out): only the tick CCoreState::Tick calls */
+class CWaterRippleManager {
+public:
+    void Tick(float dT);   /* 0x3C3390 */
+};
+
+extern CWaterRippleManager theWaterRippleManager;   /* 0x4B5170 */
 }
 
 extern CPipe thePipe;
