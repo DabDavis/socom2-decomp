@@ -22,11 +22,11 @@
 
 /* (the units after this one, by address: an rdr array's count, 0 for anything else or none; the
  * keyboards' shared bitmaps prepared with a callback; three more of their invalidations) */
+unsigned int SkbRdrCount(_zrdr *rdr);
+void SkbForgetDisplay();
 extern "C" {
-int func_003910B0(_zrdr *rdr);
 void func_00398FC0();
 void func_003958D0(zdb::CNode *node, zdb::CTextureRelocMgr *mgr, C2DFont *font, void (*callback)());
-void func_00396F30();
 void func_003997F0();
 void func_0039AD10();
 }
@@ -85,7 +85,7 @@ void InvalidateSkbsDisplay()
     g_pActiveSkb = 0;
     for (int i = 0; i < g_arrSkbs.size(); i++)
         g_arrSkbs[i]->InvalidateDisplay();
-    func_00396F30();
+    SkbForgetDisplay();
     func_003997F0();
     func_0039AD10();
 }
@@ -114,7 +114,7 @@ void ZuiInit()
     CRdrFileHolder file("UiParams.rdr", "data/common");
     _zrdr *skbs = zrdr_findtag(file, "SoftKeyboards");
 
-    for (int i = 0; i < func_003910B0(skbs); i++)
+    for (int i = 0; i < (int)SkbRdrCount(skbs); i++)
         CreateSoftKeyboard(skbs->Item(i));
 }
 
@@ -155,7 +155,7 @@ void CreateSoftKeyboard(_zrdr *rdr)
     skb->ParseLook(rdr);
     skb->ParseKeyProps(rdr);
     _zrdr *grid = zrdr_findtag(rdr, "Grid");
-    for (int y = 0; y < func_003910B0(grid); y++) {
+    for (int y = 0; y < (int)SkbRdrCount(grid); y++) {
         _zrdr *row = grid->Item(y);
         for (int x = 0; x < row->Count(); x++) {
             const _zrdr *item = row->Item(x);
@@ -175,19 +175,19 @@ extern "C" {
 void func_00394420();
 void func_00398B50();
 void func_00399C10(CSoftKeyboard *skb);
-void func_00395DE0(int on);
 /* CGameMenu::RunEventAnim (zui.cpp's 0x367810: the menu, an event, a flag) */
 void func_00367810(CGameMenu *menu, int event, int flag);
 }
+void SkbPlaySound(unsigned char which);
 
 extern "C" {
 int func_003999D0();
-int func_003998A0();
 int func_00395110();
 int func_003996B0();
-void func_00399D20(CGameMenu *menu);
 void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu);
 }
+bool SkbTextUnchanged();
+void SkbTakeText(CGameMenu *menu);
 
 /* (the next unit's node lists' layout from a grid size, 0x395140; this unit's elements shown or
  * hidden, 0x38B580) */
@@ -346,7 +346,7 @@ bool SkbOpen()
         g_skbDisplayNode->SetActive(true);
     }
     SetValveValue(CValve::Create("skb_done", (VALVE_TYPE)1), skb ? false : true);
-    func_00395DE0(0);
+    SkbPlaySound(0);
     return true;
 }
 
@@ -411,7 +411,7 @@ void CSoftKeyboard::OnEnterKey(CGameMenu *menu)
     if (!func_003999D0()) {
         bool unchanged = false;
 
-        if (g_bIgnoreUnchanged && func_003998A0())
+        if (g_bIgnoreUnchanged && SkbTextUnchanged())
             unchanged = true;
         bool empty = false;
 
@@ -421,9 +421,9 @@ void CSoftKeyboard::OnEnterKey(CGameMenu *menu)
             func_0038C000(this, menu);
             return;
         }
-        func_00399D20(menu);
+        SkbTakeText(menu);
         ShutdownBegin(menu);
-        func_00395DE0(4);
+        SkbPlaySound(4);
     }
 }
 
@@ -440,7 +440,7 @@ void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
     func_00398B50();
     func_00399C10(this);
     func_00367810(menu, 16, 0);
-    func_00395DE0(1);
+    SkbPlaySound(1);
 }
 
 /* the cursor's key let go, this keyboard's node hidden and the other's shown, the other made the

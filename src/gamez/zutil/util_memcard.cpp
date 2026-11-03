@@ -30,14 +30,13 @@ struct sceMcTblGetDir {
     unsigned int PdaAplNo;
     unsigned char EntryName[32];
 } __attribute__((aligned(64)));
-/* libmc's sceMcInit, sceMcEnd, sceMcChdir, sceMcFormat, sceMcDelete and sceMcFlush (SOCOM 1's
- * names, the same order in MAIN; not named in the map yet) */
-int func_001B3970(void);
-int func_001B3B40(void);
-int func_001B4888(int port, int slot, const char *path, char *pwd);
-int func_001B49C8(int port, int slot);
-int func_001B4A98(int port, int slot, const char *name);
-int func_001B4BB0(int fd);
+/* libmc's (SOCOM 1's names, the same order in MAIN) */
+int sceMcInit(void);
+int sceMcEnd(void);
+int sceMcChdir(int port, int slot, const char *path, char *pwd);
+int sceMcFormat(int port, int slot);
+int sceMcDelete(int port, int slot, const char *name);
+int sceMcFlush(int fd);
 }
 
 /* the system's public state: whether the memory card's modules are loaded (zsys_public.h) */
@@ -91,22 +90,16 @@ public:
 };
 extern COurGame theGame;
 
-/* the save files' manager (zsav_manager.cpp) */
+/* the save files' manager (zsav_manager.cpp; zsave.h has the whole class) */
 class CSaveManager {
 public:
     CSaveManager(CIO *file);
     ~CSaveManager();
+    bool Load(const char *name, int flags);
+    bool Save(const char *name, int flags, int version, char *desc, char *tag);
 
     unsigned char _0[0x24];
 };
-
-/* CSaveManager::Load and Save (zsav_manager.cpp's; not named in the map yet) */
-extern "C" bool func_0033D6D0(CSaveManager *save, const char *name, int flags);
-extern "C" bool func_0033DFF0(CSaveManager *save, const char *name, int flags, int a, const char *desc,
-                              char *b);
-
-/* ~CSaveManager, deleting (0x33E430, not named in the map yet: `delete p` calls it with 1) */
-extern "C" void func_0033E430(CSaveManager *save, int flags);
 
 /* the last asynchronous command and its result, waited for before the next (ours) */
 extern int data_004A37C0;
@@ -137,8 +130,8 @@ CMemCard::CMemCard()
 
 CMemCard::~CMemCard()
 {
-    func_0033E430(m_configSave, 1);
-    func_0033E430(m_gameSave, 1);
+    delete m_configSave;
+    delete m_gameSave;
 }
 
 void CMemCard::Init()
@@ -148,7 +141,7 @@ void CMemCard::Init()
     if (!data_004A37B8) {
         if (!zSys.mcIrxLoaded)
             zSysLoadMcIRX();
-        if (func_001B3970())
+        if (sceMcInit())
             MemCardError();
         data_004A37B8 = 1;
     }
@@ -168,7 +161,7 @@ void CMemCard::Reset()
         data_004A37B8 = 0;
         if (!zSys.mcIrxLoaded)
             zSysLoadMcIRX();
-        if (func_001B3970())
+        if (sceMcInit())
             MemCardError();
         data_004A37B8 = 1;
         sceMcSync(0, &data_004A37C0, &data_004A37C8);
@@ -184,7 +177,7 @@ void CMemCard::Uninit()
 {
     if (data_004A37B8) {
         if (zSys.mcIrxLoaded) {
-            func_001B3B40();
+            sceMcEnd();
             zSysUnloadMcIRX();
         }
         data_004A37B8 = 0;
@@ -196,7 +189,7 @@ void CMemCard::SaveConfig(const char *name, const char *desc)
 {
     sceMcSync(0, &data_004A37C0, &data_004A37C8);
     SelectPortSlot();
-    if (!func_0033DFF0(m_configSave, name, 0xC, 0, desc, 0))
+    if (!m_configSave->Save(name, 0xC, 0, (char *)desc, 0))
         MemCardError();
 }
 
@@ -204,7 +197,7 @@ void CMemCard::LoadConfig(const char *name)
 {
     sceMcSync(0, &data_004A37C0, &data_004A37C8);
     SelectPortSlot();
-    if (!func_0033D6D0(m_configSave, name, 0xC))
+    if (!m_configSave->Load(name, 0xC))
         MemCardError();
 }
 
@@ -299,7 +292,7 @@ void CMemCard::DeleteScratchpad()
 
     if (!m_io.IsOpen()) {
         sceMcSync(0, &data_004A37C0, &data_004A37C8);
-        if (func_001B4A98(m_selPort, m_selSlot, "SCRATCHPAD.DAT") < 0) {
+        if (sceMcDelete(m_selPort, m_selSlot, "SCRATCHPAD.DAT") < 0) {
             MemCardError();
             return;
         }
@@ -313,7 +306,7 @@ void CMemCard::DeletePatchFile()
 
     if (!m_io.IsOpen()) {
         sceMcSync(0, &data_004A37C0, &data_004A37C8);
-        if (func_001B4A98(m_selPort, m_selSlot, "PATCHFILE.DAT") < 0) {
+        if (sceMcDelete(m_selPort, m_selSlot, "PATCHFILE.DAT") < 0) {
             MemCardError();
             return;
         }
@@ -325,7 +318,7 @@ void CMemCard::SaveGame(const char *name, char *desc)
 {
     sceMcSync(0, &data_004A37C0, &data_004A37C8);
     SelectPortSlot();
-    if (!func_0033DFF0(m_gameSave, name, 0xE, 0, "", desc))
+    if (!m_gameSave->Save(name, 0xE, 0, "", desc))
         MemCardError();
 }
 
@@ -333,7 +326,7 @@ void CMemCard::LoadGame(const char *name)
 {
     sceMcSync(0, &data_004A37C0, &data_004A37C8);
     SelectPortSlot();
-    if (!func_0033D6D0(m_gameSave, name, 0xE)) {
+    if (!m_gameSave->Load(name, 0xE)) {
         MemCardError();
         return;
     }
@@ -383,7 +376,7 @@ bool CMemCard::Format()
     int cmd, result;
 
     sceMcSync(0, &data_004A37C0, &data_004A37C8);
-    if (func_001B49C8(m_selPort, m_selSlot) < 0) {
+    if (sceMcFormat(m_selPort, m_selSlot) < 0) {
         MemCardError();
         return false;
     }
@@ -516,7 +509,7 @@ bool CMemCard::chdir(const char *dir)
     int cmd, result;
 
     sceMcSync(0, &data_004A37C0, &data_004A37C8);
-    if (func_001B4888(m_selPort, m_selSlot, dir, 0) < 0) {
+    if (sceMcChdir(m_selPort, m_selSlot, dir, 0) < 0) {
         MemCardError();
         return false;
     }
@@ -542,7 +535,7 @@ bool CMemCardIO::Open(const char *name, unsigned int mode)
     if (mode & 8)
         mcmode |= 0x200;
     if ((mode & 0x10) && (mode & 8)) {
-        func_001B4A98(m_port, m_slot, name);
+        sceMcDelete(m_port, m_slot, name);
         sceMcSync(0, &cmd, &result);
         m_size = 0;
     }
@@ -669,7 +662,7 @@ void CMemCardIO::fflush()
 {
     int cmd, result;
 
-    if (func_001B4BB0(m_fd) < 0) {
+    if (sceMcFlush(m_fd) < 0) {
         MemCardError();
         return;
     }

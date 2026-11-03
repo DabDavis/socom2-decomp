@@ -19,8 +19,8 @@ int sceWrite(int fd, const void *buf, int nbyte);
 int sceLseek(int fd, int offset, int whence);
 int sceClose(int fd);
 char *strstr(const char *s, const char *sub);
-/* MSL's strtok (MAIN, not named in the map yet) */
-char *func_0019AA00(char *s, const char *delim);
+/* MSL's strtok (MAIN) */
+char *strtok(char *s, const char *delim);
 /* the CD reads that wait out the sound streams (989snd.c's) */
 int snd_StreamSafeCdGetError(void);
 int snd_StreamSafeCdSync(int mode);
@@ -98,14 +98,19 @@ struct PAKENTRY {
     int size;     // 0x48
 };
 
-/* the package state (SOCOM II's; the package unit's statics) */
-extern int data_004A15F8;
+/* the package (util_main.cpp's CPackage, ours: its header, then the entry opened; only what this
+ * unit reaches) -- its entry by name, its file seeked and the file itself */
+class CPackage {
+public:
+    PAKENTRY *Find(const char *name);
+    int Seek(int offset, int whence);
+    CFileIO *GetFile();
+
+    void *m_header;   // 0x0
+};
+/* the package state (SOCOM II's; the package unit's statics: the package and its entry opened) */
+extern CPackage data_004A15F8;
 extern PAKENTRY *data_004A15FC;
-/* the package's entry by name, its file seeked and the file itself (the package unit's, not named
- * yet) */
-extern "C" PAKENTRY *func_0039C330(void *pak, const char *name);
-extern "C" int func_0039C3D0(void *pak, int offset, int whence);
-extern "C" CFileIO *func_0039C3E0(void *pak);
 /* the root path, the file suffix (";1" on the CD) and the root's directory */
 extern char data_003E0520[];
 extern char data_004A1750[];
@@ -134,9 +139,9 @@ static inline void MakeFileName(char *out, const char *name)
 
     *out = 0;
     strcpy(path, name);
-    for (tok = func_0019AA00(path, delim); tok;) {
+    for (tok = strtok(path, delim); tok;) {
         strcat(out, tok);
-        tok = func_0019AA00(0, delim);
+        tok = strtok(0, delim);
         if (tok)
             strcat(out, "\\");
     }
@@ -232,14 +237,14 @@ bool CFileIO::Open(const char *name, unsigned int mode)
     m_file = -1;
     m_flags = 0;
     MakeFileName(upath, name);
-    if (data_004A15F8) {
-        PAKENTRY *e = func_0039C330(&data_004A15F8, upath);
+    if (data_004A15F8.m_header) {
+        PAKENTRY *e = data_004A15F8.Find(upath);
 
         if (e) {
             CFileIO *pak;
 
-            func_0039C3D0(&data_004A15F8, e->offset, 0);
-            pak = func_0039C3E0(&data_004A15F8);
+            data_004A15F8.Seek(e->offset, 0);
+            pak = data_004A15F8.GetFile();
             m_file = pak->m_file;
             m_flags = pak->m_flags | 0x100;
             m_filesize = e->size;
@@ -299,7 +304,7 @@ bool CFileIO::Open(const char *name, unsigned int mode)
 
 void CFileIO::Close()
 {
-    if (data_004A15F8 && (m_flags & 0x100)) {
+    if (data_004A15F8.m_header && (m_flags & 0x100)) {
         m_file = -1;
         data_004A15FC = 0;
         return;

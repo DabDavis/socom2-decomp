@@ -67,10 +67,10 @@ inline void SetValveValue(CValve *valve, int value)
         valve->MakeCallbacks(state);
 }
 
-extern "C" {
 /* the font unit's: the manager of the tables (0x49E9D0), and a count of the strings' changes */
-class CStringTables *func_00361BC0();
-void func_00361B00();
+class CStringTables *GetStringTables();
+void IncLanguageVersion();
+extern "C" {
 int sceScfGetLanguage();
 }
 extern char data_0048DC30[];
@@ -217,8 +217,8 @@ void SetLanguage(LANGUAGE lang)
 {
     if (lang != s_language) {
         s_language = lang;
-        func_00361BC0()->Reload(lang);
-        func_00361B00();
+        GetStringTables()->Reload(lang);
+        IncLanguageVersion();
         func_0034D190(data_0048DC30, lang);
     }
     SetValveValue(CValve::Create("LanguageChoice", (VALVE_TYPE)2), lang);
