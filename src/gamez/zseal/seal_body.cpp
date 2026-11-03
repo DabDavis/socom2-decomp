@@ -215,6 +215,80 @@ bool CZSealBody::CanHeadLook()
     return r;
 }
 
+/* whether the SEAL may pitch its aim: never dead (8), in states 9 and 10, peeking (5) or in state 4
+ * -- the SEAL's state or the top blend's -- else as the last overlay of the top blend's first anim says
+ * (OVL2 0x587A30; SOCOM 1's CanPitch, the same tests, before CanHeadLook in both builds) */
+bool CZSealBody::CanPitch()
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+
+    if (m_state == 8 || top->m_state == 8)
+        return false;
+    if (m_state == 9 || m_state == 10)
+        return false;
+    if (m_state == 5 || top->m_state == 5)
+        return false;
+    if (m_state == 4 || top->m_state == 4)
+        return false;
+    bool r = false;
+
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
+        if (a->m_anim->m_4a_3)
+            r = true;
+        else
+            r = false;
+    }
+    return r;
+}
+
+/* whether the SEAL's anim may be cut short: not when the top blend is done, its representative anim
+ * holds, the SEAL carries a body in anim 17, or -- for the AI -- in anims 100, 99, 25, 19, 17 and the
+ * pistol's stand to prone; else as the last overlay of the top blend's first anim says, the blend's time
+ * against the anim's cut-in point (from the end when the blend's flag 0x20 is set) (OVL2 0x587C20;
+ * SOCOM 1's CanInterrupt, between CanHeadLook and CanTurn in both builds -- SOCOM 1's AI anims 103 and
+ * 102).
+ * OPEN, 0x1CC against 0x1DC: the switch gives the target's descending compare chain and its closing `b`,
+ * the result-variable IsAi its `andi` at the join; left: the carry and pistol tests' `move v0,zero` sits
+ * in the target's conditional branch's delay slot (ours in the `b`'s), the loop's two arms assign a bool
+ * (`daddiu`, the `andi` to r at the join) and the target numbers back in s0 and r in s2 (ours the other
+ * way). Tried: the cut-in test through an inline bool helper (if/return or a ternary) and as nested
+ * if/else assignments */
+bool CZSealBody::CanInterrupt()
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)this + 0x1c0);
+
+    if (top->IsDone(m_2e0))
+        return false;
+    short id = top->Representative()->m_id;
+
+    if (!top->Representative()->m_bit1)
+        return false;
+    if (id == 17 && m_carry)
+        return false;
+    if (IsAi()) {
+        switch (id) {
+        case 17:
+        case 19:
+        case 25:
+        case 99:
+        case 100:
+            return false;
+        }
+        if (id == AnimTypes::PistolStand2Prone)
+            return false;
+    }
+    bool back = func_005551A0(top->m_flags, 32);
+    float t = top->m_tfrac;
+    bool r = false;
+
+    for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = a->m_overlay) {
+        float x = a->m_anim->m_30;
+
+        r = back ? t < 1.0f - x : t > x;
+    }
+    return r;
+}
+
 /* whether the last overlay of the top blend's first anim turns (OVL2 0x587E00; SOCOM 1's CanTurn,
  * after CanInterrupt in both builds -- PreTick asks it; each pass overwrites the answer) */
 bool CZSealBody::CanTurn()

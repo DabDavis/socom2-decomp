@@ -68,6 +68,7 @@ enum AnimType { animTypeUndefined = -1, animTypeRef = 0, animTypeLast = 142 };
 class AnimTypes {
 public:
     static short Stand2Prone;   // OVL1 0x3DEC48
+    static short PistolStand2Prone;   // OVL1 0x3DEC50
     static short ClimbMedium;   // OVL1 0x3DEC90
     static short ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
     static short ProneLStrafe;   // OVL1 0x3DECD0
@@ -1130,6 +1131,15 @@ public:
     bool IsPlayer() { return m_control ? ((CSealCtrl *)m_control)->IsPlayer() : false; }
     /* whether another console drives it (the same shape, IsRemote at +0x34) */
     bool IsRemote() { return m_control ? ((CSealCtrl *)m_control)->IsRemote() : false; }
+    /* whether the AI drives it (the same inline shape: CanInterrupt) */
+    bool IsAi()
+    {
+        bool r = false;
+
+        if (m_control)
+            r = ((CSealCtrl *)m_control)->IsAi();
+        return r;
+    }
     /* the ladder's polygons checked, and the check taken only when it should be (SOCOM 1's took three
      * float references; OVL2 0x5B0EB0, 0x5B10B0) */
     bool CheckDILadder();
