@@ -13,7 +13,10 @@
  * a guard clause where the error branch is the fall-through. OPEN: func_00614758 (6 words: the
  * transport call's failure branch -- guard and nested forms each lay one of its two returns out
  * the other way), func_006147E0 (6: the world index loaded into v0 and copied to a0 in the target,
- * into v1 here). */
+ * into v1 here), func_0061C6C8 (4: the slot's address and the range test computed into each
+ * other's registers), func_0061C8E8 (11s: 2.96 turns the last test into movn, which the target
+ * does not -- guard, nested and single-exit forms tried). func_0061BEB8 returns the second call's
+ * result through a variable: no sibling call then. */
 
 #define DME_OK              0
 #define DME_ERR_RANGE       8
@@ -33,6 +36,8 @@ typedef struct DmePingSlot {
     int field_18;
 } DmePingSlot;                          /* 0x1C */
 
+typedef struct DmeAddress { int w[6]; } DmeAddress;    /* 24 bytes, copied whole */
+
 extern int printf(const char *fmt, ...);
 extern int sprintf(char *buf, const char *fmt, ...);
 extern void *memset(void *p, int c, unsigned int n);
@@ -44,14 +49,19 @@ extern int func_00614F58(int nIndex, void **ppObject);
 extern int NetFreeRemoteObject(int nIndex);
 extern int func_006437E0(void *p);
 extern int func_00618B38();
+extern int func_0061BC68(int);
+extern int func_0061CCA8(int);
+extern int func_00614888(void **ppMemory);
+extern char *strncpy(char *dst, const char *src, unsigned int n);
 
 extern int data_00651178;               /* the world this client is in */
 extern int data_006511D8;               /* its connection */
 extern void *data_006766E0[DME_MAX_OBJECTS];
 extern signed char NetObjectStatus[DME_MAX_OBJECTS];
-typedef struct DmeAddress { int w[6]; } DmeAddress;    /* 24 bytes, copied whole */
 extern DmeAddress data_0066CF08;
 extern DmePingSlot data_0067B7B8[DME_MAX_PING_SLOTS];
+extern DmeAddress data_0066CF60;        /* sized: its first word is its size, 24 */
+extern void *data_0066CAF8[DME_MAX_WORLDS];
 
 int func_00614758(int nReserved, int *pValue)
 {
@@ -218,4 +228,82 @@ int FindFreePingSlot(void)
         if (data_0067B7B8[i].bInUse == 0)
             return i;
     return DME_MAX_PING_SLOTS;
+}
+
+int func_0061BEB8(void)
+{
+    int result = func_0061BC68(0);
+
+    if (result == DME_OK)
+        result = func_0061CCA8(0);
+    return result;
+}
+
+int func_0061C0F0(int *pAddress)
+{
+    if (pAddress == 0)
+        return 10;
+    if (pAddress[0] != sizeof(DmeAddress))
+        return 39;
+    *(DmeAddress *)pAddress = data_0066CF60;
+    return DME_OK;
+}
+
+int func_0061C6C8(unsigned int nWorld)
+{
+    void **ppMemory = &data_0066CAF8[nWorld];
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (*ppMemory != 0)
+        func_00614888(ppMemory);
+    *ppMemory = 0;
+    return DME_OK;
+}
+
+char *func_0061C8E8(unsigned int nWorld)
+{
+    char *pWorld = 0;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return 0;
+    if (func_0061C600(nWorld, &pWorld) != 0)
+        return 0;
+    if (pWorld == 0)
+        return 0;
+    return pWorld + 1032;
+}
+
+int func_0061C930(unsigned int nWorld, const char *szName)
+{
+    char *pWorld = 0;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    if (szName == 0)
+        return DME_ERR_ARGUMENT;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld != 0) {
+        strncpy(pWorld + 1032, szName, 16);
+        return DME_OK;
+    }
+    return result;
+}
+
+int func_0061C998(unsigned int nWorld, int nValue)
+{
+    char *pWorld = 0;
+    int result;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    result = func_0061C600(nWorld, &pWorld);
+    if (result != DME_OK)
+        return result;
+    if (pWorld != 0)
+        *(int *)(pWorld + 1028) = nValue;
+    return result;
 }
