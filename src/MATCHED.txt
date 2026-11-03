@@ -8215,9 +8215,14 @@
 0x00624B88 func_00624B88
 0x00626110 func_00626110
 0x00626830 func_00626830
+0x00626B10 lintSetSmallValue
 0x00626BD0 IsEven
-0x00626CD8 func_00626CD8
-0x00626D00 func_00626D00
+0x00626BE0 IsZero
+0x00626C18 IsOne
+0x00626C68 IsEqual
+0x00626CB0 lintGetBit
+0x00626CD8 lintSetBit
+0x00626D00 lintClearBit
 0x00628390 func_00628390
 0x00629A48 func_00629A48
 0x00629AA8 func_00629AA8
@@ -8227,6 +8232,8 @@
 0x0062A148 func_0062A148
 0x0062A2E0 func_0062A2E0
 0x0062A2E8 func_0062A2E8
+0x0062A5A8 RCInitialize
+0x0062A638 RCSaltyInitialize
 0x0062AAF8 func_0062AAF8
 0x0062AB00 func_0062AB00
 0x0062AB08 func_0062AB08
@@ -8300,6 +8307,7 @@
 0x0062D958 rt_comm_metric_print
 0x0062DA90 rt_comm_platform2_startup
 0x0062DB58 rt_comm_platform2_shutdown
+0x0062DBD8 rt_comm_platform2_create
 0x0062DF50 rt_comm_platform2_destroy
 0x0062DFA0 rt_comm_platform2_send
 0x0062E038 rt_comm_platform2_send_to
@@ -8313,6 +8321,7 @@
 0x0062E678 rt_comm_platform2_get_remote_ip
 0x0062E728 rt_comm_platform2_display_state
 0x0062E760 func_0062E760
+0x0062E7E0 func_0062E7E0
 0x0062E940 func_0062E940
 0x0062E9C0 func_0062E9C0
 0x0062EA58 rt_comm_platform_startup
@@ -8344,6 +8353,7 @@
 0x0062EEB0 func_0062EEB0
 0x0062EEC0 func_0062EEC0
 0x0062EF30 func_0062EF30
+0x0062EFD0 KM_Initialize
 0x0062F3B0 KM_SetLocalClientID
 0x0062F3E0 KM_SetPublicKey
 0x0062F538 KM_GetPublicKey
@@ -8482,6 +8492,7 @@
 0x0063D0B0 rt_time_elapsed_usecs
 0x0063D100 rt_time_delay
 0x0063D160 rt_time_initialize
+0x0063D1B0 rt_time_calc_diff
 0x0063D288 rt_time_timestamp_to_secs
 0x0063D2D8 rt_time_timestamp_to_msecs
 0x0063D348 rt_time_timestamp_to_usecs
@@ -8493,6 +8504,9 @@
 0x0063D4C8 func_0063D4C8
 0x0063D4E0 rt_time_platform_get_time_stamp
 0x0063D538 rt_time_sleep_usecs_platform
+0x0063D648 func_0063D648
+0x0063D778 rt_time_platform_get_time_string
+0x0063D8E8 func_0063D8E8
 0x0063DAC8 func_0063DAC8
 0x0063DAE0 func_0063DAE0
 0x0063DAF8 rt_time_platform_timer_getcount
@@ -8623,10 +8637,10 @@
 0x00649238 MediusRemoveFromBuddyList
 0x006492D8 MediusBuddyGetPermission
 0x00649378 MediusBuddyAddConfirmation
-0x00649400 MediusGetPolicy
-0x006494A0 func_006494A0
-0x00649540 func_00649540
-0x006495E0 func_006495E0
+0x00649400 MediusGetIgnoreList
+0x006494A0 MediusAddToIgnoreList
+0x00649540 MediusRemoveFromIgnoreList
+0x006495E0 MediusGetPolicy
 0x00649680 MediusSendPlayerReport
 0x00649700 MediusSendWorldReport
 0x00649788 MediusSendEndGameReport
@@ -8974,6 +8988,8 @@
 0x0064F5E0 func_0064F5E0
 0x0064F5E8 func_0064F5E8
 0x0064F5F0 func_0064F5F0
+0x0064F5F8 KM_GetSoftwareID
+0x0064F604 KM_GetSoftwareKeyPair
 0x00668480 __sinit_ai_events.cpp
 0x00668630 __sinit_ai_map.cpp
 0x00668DB0 __sinit_seal_kit.cpp
