@@ -1012,7 +1012,17 @@ void __vector_imp<T, Allocator, IsPOD>::reserve(unsigned int n)
  * line) where the target inlines them whole -- 0x1C0 against 0x3980D0's 0x220, 0x4A0 against
  * 0x3982F0's 0x618: the element's assignment (CSaferStr's implicit one over basic_string's
  * out-of-class operator=, the rectangles copied through the FPRs) is a level too tall for the
- * wrapper/helper pair, which the turret's cut needs */
+ * wrapper/helper pair, which the turret's cut needs.
+ * MEASURED (the MSL headers round 15, the UI's round 14 request; build/p15/, untracked): it is a HEIGHT
+ * cut, not a size cut -- inline_max_size(2000) changes nothing, and the unit at -inline level=8 makes
+ * the insert 0x3982F0 byte-exact and the erase 0x3980D0 the target's size (22 instructions off: this,
+ * first, last and the end in s3/s2/s1/s0 against the target's s2/s1/s0/s3), nothing else in
+ * zui_skbview.cpp moving (63 -> 64); at 6 and 7 both stay cut. So copy's tree here is eight high --
+ * copy, __copy, CSkbBgPiece's and CSaferStr's implicit operator=, basic_string's operator=, assign,
+ * size(), is_long() -- and at level 5 three of those levels must not exist in the original. Each is
+ * evidenced elsewhere (the turret's helper calls, OVL1's `j assign` operator= copy 0x32FD70, the three
+ * this-tests of the piece's destructor that put CSaferStr between it and the string), so no header
+ * shape found serves this instance at 5: left as it was (README "Level 6, or 8?") */
 template <class T, class Allocator, bool IsPOD>
 T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
 {

@@ -312,16 +312,18 @@ AnimType func_005E19D0(CAnimsByFP *anims, AnimType type);
 /* a SEAL's animations (SOCOM 1's DWARF: AnimSet, its speeds first) -- only those here */
 class AnimSet {
 public:
+    /* a type's motion script with no weapon (anim.cpp's GetScript(type), OVL2 0x5E3D90: the 3-argument
+     * GetScript tail-called with kind 0 -- the kit lane's round 19) */
+    CZSIScriptCommon *GetScript(AnimType type);
+
     ANIMSET_PARAMS m_aparams;   // 0x0
     unsigned char _34[0x5c - 0x34];
     CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's at 0x60)
 };
 
 extern "C" {
-/* the set's own speeds read (SOCOM 1's AnimSet::SetMaxMotion; OVL2 0x5E0450, anim.cpp's) and an anim
- * set's script for a type (0x5E3D90, anim.cpp's: 0x5E3C20 with no weapon) */
+/* the set's own speeds read (SOCOM 1's AnimSet::SetMaxMotion; OVL2 0x5E0450, anim.cpp's) */
 void func_005E0450(AnimSet *set);
-CZSIScriptCommon *func_005E3D90(AnimSet *set, AnimType type);
 }
 
 extern "C" {
@@ -384,7 +386,13 @@ static inline float Factor(CZSIScriptCommon *a)
  * MW loads the set first here. `a` declared ahead of `set` gives their saved registers and the factor
  * through the by-value accessor its $f20 (both needed); tried: the static through a const reference or
  * a short cast, the set in a block-local, an inline member wrapper and a real AnimSet member call (the
- * same order), the product's operands swapped */
+ * same order), the product's operands swapped. Round 18, with 0x5E3D90 named AnimSet::GetScript(type)
+ * (the kit lane's round 19 predicted the member call would load the type first): spelled as the member
+ * call, still 4 -- and so are the type in a block-local (AnimType, short, int), through an inline
+ * (`AsType(short)`, `RStrafe()`), the call wrapped in an inline (`Id(...)`, a store helper taking the
+ * result) or reached through a static inline taking the body. BlendedClimb's identical call (nested in
+ * GetActiveAnim's argument list, after a branch) does load the type first: the order is the scheduler's,
+ * set by the block's context, not by the call's spelling */
 void CZSealBody::SetMaxMotion()
 {
     CZSIScriptCommon *a;
@@ -392,7 +400,7 @@ void CZSealBody::SetMaxMotion()
     func_005E0450(m_animset);
     AnimSet *set = m_animset;
 
-    a = func_005E3D90(set, (AnimType)27);
+    a = set->GetScript((AnimType)27);
 
     if (a) {
         set->m_aparams.m_prone_max_fwd = a->DistanceScale() * Factor(a);
@@ -401,17 +409,17 @@ void CZSealBody::SetMaxMotion()
         set->m_aparams.m_prone_max_fwd = 0.0f;
         set->m_aparams.m_prone_max_back = 0.0f;
     }
-    a = func_005E3D90(m_animset, (AnimType)AnimTypes::ProneRStrafe);
+    a = m_animset->GetScript((AnimType)AnimTypes::ProneRStrafe);
     if (a)
         set->m_aparams.m_prone_max_rt = a->DistanceScale() * Factor(a);
     else
         set->m_aparams.m_prone_max_rt = 0.0f;
-    a = func_005E3D90(m_animset, (AnimType)AnimTypes::ProneLStrafe);
+    a = m_animset->GetScript((AnimType)AnimTypes::ProneLStrafe);
     if (a)
         set->m_aparams.m_prone_max_left = a->DistanceScale() * Factor(a);
     else
         set->m_aparams.m_prone_max_left = 0.0f;
-    a = func_005E3D90(m_animset, (AnimType)45);
+    a = m_animset->GetScript((AnimType)45);
     if (a)
         set->m_aparams.m_ladder_updn = a->DistanceScale() * Factor(a);
     else

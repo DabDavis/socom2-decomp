@@ -85,6 +85,14 @@
  * target's is word by word through the fields' registers) and the deque's own begin()/end() (0x2E0940,
  * byte-exact) grow to 0x60; an empty std::iterator base changes nothing. So the cdeque iterator's real
  * shape keeps its objects in memory AND copies them member-wise -- not found.
+ * The MSL headers' round 15 (build/p15/incD, untracked): the four fields in a base class WITH a
+ * member-wise user copy constructor (the iterator's own copy left implicit), with operator+ as
+ * `{ iterator t(*this); return t += n; }` and the buffer's begin() in class returning its temporary,
+ * keeps every object in memory and copies it field by field through address registers, as the target
+ * does -- 0x12C for both lobby instances against 0x130/0x138, but ~147 lines off in slots and
+ * scheduling (the target addresses six stack objects through t2-t6/a3, here three); without `return t
+ * += n` or without the base 0xF0, without the buffer's begin() in class 0xE4 (no change from the base
+ * alone). Not applied: closer in shape, no instance matched.
  * The chat's range destroy (0x2F5B10, round 14, build/p14/ds1.py): the target inlines the block
  * iterators' difference and reads both by-value iterators in place through a1/a2 (a 16-byte frame:
  * only the count, for min); here the chat unit's inline_max_size(100) keeps that difference a call

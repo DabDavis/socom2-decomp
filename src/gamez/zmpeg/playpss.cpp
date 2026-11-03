@@ -56,10 +56,10 @@ int sceMpegAddCallback(sceMpeg *mp, int type, int (*cb)(sceMpeg *, sceMpegCbData
                        void *anyData);
 int sceMpegDemuxPss(sceMpeg *mp, unsigned char *pss, int size);
 int sceMpegGetPicture(sceMpeg *mp, void *rgb32, int mbcount);
-void func_001BB688(void);   /* sceMpegInit */
-int func_001BBAB8(sceMpeg *mp);   /* sceMpegIsEnd */
-void func_001BBAD8(sceMpeg *mp);   /* sceMpegReset */
-void func_001BB948(sceMpeg *mp);   /* sceMpegDelete */
+void sceMpegInit(void);
+int sceMpegIsEnd(sceMpeg *mp);
+void sceMpegReset(sceMpeg *mp);
+void sceMpegDelete(sceMpeg *mp);
 
 int setjmp(void *p);   /* (MAIN: the decoder's error test) */
 void longjmp(void *p, int v);   /* (MAIN: the error raised) */
@@ -126,7 +126,7 @@ sceMpeg *startPss(sceMpeg *mp, PssReadFunc read, playPssRsrcs *rsrcs, unsigned i
     dbp[1] = height;
     pssDone = 0;
     path3tag = rsrcs->path3tag;
-    func_001BB688();
+    sceMpegInit();
     audioDecReset(&audioDec);
     sceMpegCreate(mp, rsrcs->mpegBuff, rsrcs->mpegBuffSize);
     sceMpegAddStrCallback(mp, 0, 0, videoCallback, 0);
@@ -189,7 +189,7 @@ int tickPss(sceMpeg *mp, playPssRsrcs *rsrcs, unsigned int fbp)
 /* the film over, or stopped (Sony's; OVL1 0x30B180) */
 bool testdonePss(sceMpeg *mp)
 {
-    if (pssDone || func_001BBAB8(mp))
+    if (pssDone || sceMpegIsEnd(mp))
         return true;
     return false;
 }
@@ -201,8 +201,8 @@ void stopPss(sceMpeg *mp)
     audioDecReset(&audioDec);
     isStarted = 0;
     audioStarted = 0;
-    func_001BBAD8(mp);
-    func_001BB948(mp);
+    sceMpegReset(mp);
+    sceMpegDelete(mp);
 }
 
 /* a background film played whole: the display set up, a frame each vertical blank into the frame

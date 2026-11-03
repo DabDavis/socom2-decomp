@@ -21,6 +21,7 @@
 
 #include "../zrdr/zrdr.h"
 #include "../zsav/zsave.h"
+#include "../zsav/zsav_lobby.h"
 #include "../znet/znet.h"
 
 /* ---- what the unit calls in other units ---- */
@@ -118,9 +119,9 @@ extern "C" {
 char *strtok(char *s, const char *delim);   /* (MAIN's) */
 extern int myConnectionIndex;   /* the Medius connection, -1 none */
 extern unsigned int data_0049E2D4;   /* zSys's ticks per second */
-const char *func_00361B40(int id);   /* a localised text */
-void func_003A59D0(void *sm, int stack, int priority);   /* (the machine's thread started) */
 }
+
+const char *GetString(int id);   /* a localised text (util_loc.cpp's) */
 
 /* a state machine whose states are member functions (zanim_menu.h's CSimpleStateMachine, declared
  * again here for the same reason: the layout and the two inline virtuals alike) */
@@ -129,8 +130,6 @@ typedef void (CSimpleStateMachine::*SSMState)(unsigned char event);
 
 extern "C" {
 void func_002852B0(void *queue, SSMState state);    /* the state queue's push */
-void func_003A5C30(CSimpleStateMachine *sm);        /* (the machine's tick) */
-bool func_003A5C10(CSimpleStateMachine *sm);        /* (whether it is done) */
 }
 
 class CSimpleStateMachine {
@@ -152,6 +151,9 @@ public:
 
     void Idle(unsigned char event);
     void Finish(unsigned char event);
+    void StartThread(int stack, int priority);   /* 0x3A59D0: the machine run on a thread of its own */
+    bool IsDone();   /* 0x3A5C10 */
+    void Tick();   /* 0x3A5C30 */
 
     unsigned int m_thread;   // 0x4
     SSMState m_state;   // 0x8
@@ -397,29 +399,15 @@ struct AcctRecord {
     bool m_savepassword;   // 0x1314
 };   // 0x1318
 
-/* the lobby's half of a save (SOCOM II's CLobbySaveModule, its constructor 0x33EFA0 in the save
- * manager's unit: the vtable at 0, its manager, its name; three pure virtuals) */
-class CSaferStr : public std::string {
-};
-
-class CLobbySaveModule {
-public:
-    CLobbySaveModule(const char *name, CSaveManager *manager);
-    ~CLobbySaveModule();
-    virtual void Save() = 0;
-    virtual void Load(const char *blob) = 0;
-    virtual void SetChecksum(const char *sum) = 0;
-
-    void Write(const char *blob, int size);   /* 0x33EEA0 */
-
-    CSaveManager *m_manager;   // 0x4
-    CSaferStr m_name;   // 0x8
-};   // 0x14
+/* the lobby's half of a save is zsav_lobby.h's CLobbySaveModule (its constructor 0x33EFA0 and
+ * Write 0x33EEA0 in the save unit, zsav_lobby.cpp): the vtable at 0, its CLobbySaveManager, its
+ * name; three pure virtuals, each taking what the manager passes -- Save(flags), Load(data, size),
+ * SetChecksum(digest) */
 
 /* the memory card (zutil.h's CMemCard: the game save's manager) */
 extern CMemCard theMemCard;
 
-extern "C" CSaveManager *func_002AFBA0();   /* the lobby's save manager (an accessor of OVL1 0x4364A0) */
+extern "C" CLobbySaveManager *func_002AFBA0();   /* the lobby's save manager (an accessor of OVL1 0x4364A0) */
 
 class CZUniversInformationServer {
 public:
@@ -433,9 +421,9 @@ public:
         }
         void Serialize(int flags);
         void UnSerialize(const char *name, CRdrFile *file, int flags);
-        void Save();
-        void Load(const char *blob);
-        void SetChecksum(const char *sum);
+        void Save(int flags);
+        void Load(const char *blob, int size);
+        void SetChecksum(const unsigned char *sum);
 
         void Add(const char *host, int port, const char *name, const char *password,
                  const char *town, int gender, _zrdr *profiles, bool savepassword);
@@ -513,10 +501,6 @@ CLobbySaveModule::~CLobbySaveModule()
 {
 }
 
-/* the lobby's blob written (CLobbySaveModule's, the save manager's unit: its placeholder, called on
- * the module by reference -- a pointer conversion would test the account database for null) */
-extern "C" void func_0033EEA0(CLobbySaveModule &module, const char *blob, int size);
-
 /* the current account's lobby server and name, as the lobby's UI variables hold them */
 #define CURRENT_ACCOUNT()                                                                          \
     const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVL_PERMANENT)->String();             \
@@ -533,7 +517,7 @@ extern "C" void func_0033EEA0(CLobbySaveModule &module, const char *blob, int si
  * variable last both times). No change from: total unsigned, total assigned after its declaration,
  * no total (the size + 1 then lands in a0 straight), blob and out declared apart, a char * cursor,
  * `r->m_missions + i`, memcpy(out++, ...) */
-void CAcctDB::Save()
+void CAcctDB::Save(int flags)
 {
     CURRENT_ACCOUNT();
     AcctRecord *r = FindAcct(host, port, name);
@@ -555,7 +539,7 @@ void CAcctDB::Save()
                         out++;
                     }
                 }
-                func_0033EEA0(*this, blob, size + 1);
+                Write(blob, size + 1);
                 if (blob)
                     _free(blob, 0, 0);
             }
@@ -564,7 +548,7 @@ void CAcctDB::Save()
 }
 
 /* the current account's profile checksum set */
-void CAcctDB::SetChecksum(const char *sum)
+void CAcctDB::SetChecksum(const unsigned char *sum)
 {
     CURRENT_ACCOUNT();
     AcctRecord *r = FindAcct(host, port, name);
@@ -586,7 +570,7 @@ const char *CAcctDB::GetChecksum()
 }
 
 /* the lobby's blob read back into the current account's missions */
-void CAcctDB::Load(const char *blob)
+void CAcctDB::Load(const char *blob, int size)
 {
     CURRENT_ACCOUNT();
 
@@ -1151,8 +1135,10 @@ public:
  * OPEN, the initialiser (0xC4 against 0x144): the wrapper's implicit constructor inlines whole
  * but calls CAcctDB() out of line -- with CAcctDB()'s tree it is six high, one more than
  * -inline level=5 takes with these headers (inline_max_size is not the cut: 2000 changes nothing);
- * at level=6 the initialiser is byte-exact. A global CAcctDB inlines its constructor at level 5 but
- * registers the wrong destructor, so the wrapper stays (README "Level 6?") */
+ * at level=6 the initialiser is byte-exact (and at every level from 6: round 12 re-measured it with
+ * zsav_lobby.h's CLobbySaveModule, the module constructor called by its row's name). A global
+ * CAcctDB inlines its constructor at level 5 but registers the wrong destructor, so the wrapper
+ * stays; the inline level is settled at 5 (README "Level 6, or 8?"), so this stays open */
 CZUniversInformationServer data_0044FC60;   /* theAcctDB's server */
 UniverseStatusList data_0044FD50;
 UniverseNewsList data_0044FD70;
@@ -1202,7 +1188,7 @@ void CSMGetServerList::Connect(unsigned char event)
         if (ConnectStatus() > 0) {
             SetState((SSMState)&CSMGetServerList::GetInfo);
         } else if (ConnectStatus() < 0) {
-            const char *text = func_00361B40(450);
+            const char *text = GetString(450);
 
             m_valve->SetValue(0);
             if (theLobby.m_event_handler)
@@ -1232,10 +1218,10 @@ bool UIGetServerList(C2DAnimCmdHdr *hdr, float *dT)
 
     if (!data_0044FD98) {
         data_0044FD98 = new CSMGetServerList(valve);
-        func_003A59D0(data_0044FD98, 0x19000, 6);
+        data_0044FD98->StartThread(0x19000, 6);
     } else {
-        func_003A5C30(data_0044FD98);
-        if (func_003A5C10(data_0044FD98)) {
+        data_0044FD98->Tick();
+        if (data_0044FD98->IsDone()) {
             delete data_0044FD98;
             data_0044FD98 = 0;
             done = true;

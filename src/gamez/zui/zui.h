@@ -174,10 +174,14 @@ namespace zar {
 class CZAR;
 }
 
-/* a part of a save (the zsav lane's zsave.h has the whole class; SOCOM 1's DWARF: 0x1C bytes,
- * the vtable at 0) */
+class CSaveManager;
+
+/* a part of a save (the zsav lane's zsave.h has the whole class; SOCOM 1's DWARF: 0x18 bytes,
+ * the vtable at 0 -- zsave.h's layout; the states lane's round 22: 0x1C put CUIVarManager's own
+ * vtable pointer, which its initialiser and destructor store at 0x24, at 0x28) */
 class CSaveModule {
 public:
+    CSaveModule(const char *name, CSaveManager *manager);   /* 0x33D300 */
     virtual ~CSaveModule();
     virtual void Serialize(int flags) = 0;
     virtual void UnSerialize(const char *name, CRdrFile *file, int flags);
@@ -185,8 +189,8 @@ public:
     virtual bool TestFlags(int flags) const;
     bool SaveRdr(const char *name, CRdrFile *file);
 
-    unsigned char _4[0x1C - 0x4];
-};   // 0x1C bytes
+    unsigned char _4[0x18 - 0x4];
+};   // 0x18 bytes
 
 /* a string table of the manager's: when it is full, the variables' strings are collected into
  * the other table and the string made there (SOCOM 1's, no DWARF members of its own) */
@@ -200,15 +204,22 @@ public:
  * tables are 0x20 bytes, so its pack buffers start at 0x6C) */
 class CUIVarManager : public std::vector<CUIVariable>, public CSaveModule {
 public:
-    /* the members ahead of the virtuals: declared after them, MW gives the class a vtable pointer
-     * of its own at 0x28 (its first base has none) and the tables move to 0x30 */
+    /* the virtuals ahead of the members: MW gives the class a vtable pointer of its own (its first
+     * base has none) where the first is declared, 0x24 after the 0x18-byte CSaveModule at 0xC --
+     * 0x407CF0, {RTTI, 0}, then the save module's slots at 0x407CF8 (the initialiser 0x400160 and
+     * ~CUIVarManager 0x385CE0 store both) */
+    ~CUIVarManager();
+    void Serialize(int flags);
+    void UnSerialize(const char *name, CRdrFile *file, int flags);
+
+    /* the variables' slots, the tables and the save module (SOCOM 1's __sinit_fts_mission.cpp
+     * builds theUIVarManager inline: fts_mission.cpp defines it, with the module's manager) */
+    CUIVarManager();
+
     int m_currtab;                       // 0x28: the table strings are made in
     CUIVarSTable m_stab[2];              // 0x2C
     char m_packbuf[2][0x4000];           // 0x6C: the arrays packed, a buffer per table
 
-    ~CUIVarManager();
-    void Serialize(int flags);
-    void UnSerialize(const char *name, CRdrFile *file, int flags);
     CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
     CUIVariable *Find(const char *name);
     CUIVariable *FindDormantVar(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);

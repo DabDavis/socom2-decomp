@@ -53,23 +53,7 @@ public:
     int m_port;   // 0x1d4
 };   // 0x1d8
 
-/* the LAN lobby (the UI lane's name): its room, then the game info it hosts */
-class CZLANLobby {
-public:
-    bool GameHasPassword(const char *game);
-    bool CreateGame();
-    void GetGameInfo(LANGameInfo *out);
-    bool RefreshGameList(C2D *page);
-    bool Disconnect();
-    bool Connect();
-    bool IsActive();
-
-    BriefingRoom *m_room;   // 0x0
-    unsigned char _4[0x10 - 0x4];
-    LANGameInfo m_info;   // 0x10
-};   // 0x1a0
-
-extern CZLANLobby data_0044FE10;   /* the LAN lobby */
+/* the LAN lobby is zonline.h's CZLANLobby (data_0044FE10) */
 /* its room: the unit's one dynamically initialised static, built empty and its destructor
  * registered by the unit's initialiser 0x4024F0 */
 BriefingRoom data_0044FFC0(0);
@@ -94,10 +78,6 @@ extern LANMissionRules *data_00437CE8;
 }
 
 extern "C" {
-/* the room's members, called through their placeholders (the room unit's) */
-
-void func_002E1E10(RoomGame *game, LANGameInfo *info);   /* (a game's info set) */
-void func_002E1E00(RoomGame *game, unsigned char seq);
 /* the chat unit's */
 void func_002F4030(void *msg, int type);   /* a message's byte order converted */
 void func_002F7C40(void *rules);   /* the game's rules filled in */
@@ -165,16 +145,7 @@ void cbLANGameInfo(LANGameInfo *info)
         }
         g->m_unchecked = 0;
         func_002F4030(info, 0x81);
-        RoomGame *game = g;
-
-        if (info) {
-            func_002E1E10(game, info);
-            func_002F7D90(game->m_19a, info->m_rules);
-            if (!game->m_info.m_mission)
-                func_002E1E00(game, game->m_missionSeq[0]);
-        } else {
-            game->m_info.m_ip = -1;
-        }
+        g->UpdateInfo(info);
         UpdateGameListDisplay(room);
     }
 }

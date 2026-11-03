@@ -8,10 +8,15 @@ extern "C" {
 void func_0030E300(void *net);
 void func_003654A0(void *reloc);                 /* (SOCOM 1 cleared g_relocDblBuf's two words) */
 void func_001E8FE0();
-void *func_002AFBA0();
-void func_0033ED10(void *arg);
 
 }
+
+/* the lobby's save manager (zsav_lobby.h has the class; fts_mission.cpp's accessor): only its close */
+class CLobbySaveManager {
+public:
+    void Close();   /* 0x33ED10 */
+};
+CLobbySaveManager *GetLobbySaveManager();   /* 0x2AFBA0 */
 
 /* a message from the network's queue: its type, then its text */
 struct CQueuedMessage {
@@ -200,6 +205,6 @@ void CMenuState::UnInit()
         ZAnim.CloseZAR(animfile);
         animfile = 0;
     }
-    func_0033ED10(func_002AFBA0());
+    GetLobbySaveManager()->Close();
     GetStringTables()->Unload("UIMn");
 }

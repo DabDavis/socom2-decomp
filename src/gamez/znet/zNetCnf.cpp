@@ -15,16 +15,16 @@ extern "C" {
 /* Sony's libinet RPC (prebuilt, OVL1) and ezcnf/ezctl (OVL1's start) */
 int sceInetGetInterfaceList(void *cd, void *buf, int *ids, int n);   /* sceInetGetInterfaceList */
 int sceInetInterfaceControl(void *cd, void *buf, int id, int code, void *ptr, int len);   /* sceInetInterfaceControl */
-void func_00246A38(void *cd, int a, int b, int c);   /* the RPC client bound */
-void func_00246B10(void *cd);   /* and unbound */
+void sceLibnetInitialize(void *cd, int a, int b, int c);   /* the RPC client bound */
+void sceLibnetTerminate(void *cd);   /* and unbound */
 void func_001E8530(void);   /* (ezcnf: started) */
 void func_001E85F8(void);   /* (ezcnf: stopped) */
-void func_001E89E8(void);   /* (ezctl: initialised) */
-void func_001E8AB0(void);   /* (ezctl: closed) */
-int func_001E8B38(void *cnf);   /* (ezctl: opened on the configuration) */
-void func_001E8D20(void *ctl);   /* (ezctl: the state read) */
-void func_001E8E38(int a);   /* (ezctl: up) */
-void func_001E8EB0(int a);   /* (ezctl: down) */
+void initEzNetCtl(void);   /* (ezctl: initialised) */
+void exitEzNetCtl(void);   /* (ezctl: closed) */
+int ezNetCtlSetProperties(void *cnf);   /* (ezctl: opened on the configuration) */
+void ezNetCtlGetStatus(void *ctl);   /* (ezctl: the state read) */
+void ezNetCtlUpInterface(int a);   /* (ezctl: up) */
+void ezNetCtlDownInterface(int a);   /* (ezctl: down) */
 void func_001BCE48(void);
 void func_00363F60(char *out, int size, int id, const char **args, int n);   /* a UI text formatted */
 int sceSifMInitRpc(unsigned int mode);
@@ -98,12 +98,12 @@ extern "C" void func_0030C6A0()
 extern "C" bool func_0030C630(CIOPManager::RebootPhase phase, CIOPManager::RebootMode mode, void *data)
 {
     if (data_00457B00.m_id > 0) {
-        func_001E8D20(&data_00457B00);
+        ezNetCtlGetStatus(&data_00457B00);
         if (data_00457B00.m_state == 3)
-            func_001E8EB0(0);
-        func_001E8AB0();
+            ezNetCtlDownInterface(0);
+        exitEzNetCtl();
     }
-    func_00246B10(data_00456780);
+    sceLibnetTerminate(data_00456780);
     func_001BCE48();
     return false;
 }
@@ -142,7 +142,7 @@ extern "C" int func_0030C430()
     if (zSysLoadIRX("run/irx/libnetb.irx", 8, "-decode", true) < 0)
         return 0;
     sceSifMInitRpc(0);
-    func_00246A38(data_00456780, 0x800, 0x2000, 0x20);
+    sceLibnetInitialize(data_00456780, 0x800, 0x2000, 0x20);
     theIOPManager.RegisterRebootCallback(func_0030C630, 0);
     return 1;
 }
@@ -168,7 +168,7 @@ extern "C" int func_0030C1B0()
     if (zSysLoadIRX("run/irx/libnetb.irx", 8, "-decode", true) < 0)
         return 0;
     sceSifMInitRpc(0);
-    func_00246A38(data_00456780, 0x800, 0x2000, 0x20);
+    sceLibnetInitialize(data_00456780, 0x800, 0x2000, 0x20);
     theIOPManager.RegisterRebootCallback(func_0030C630, 0);
     return 1;
 }
@@ -183,9 +183,9 @@ extern "C" bool func_0030C090()
     if (func_0030C1B0()) {
         if (zSysLoadIRX("run/irx/eznetctl.irx", 0, 0, true) < 0)
             return 0;
-        func_001E89E8();
-        func_001E8EB0(0);
-        data_00457B00.m_id = func_001E8B38(data_004567C0);
+        initEzNetCtl();
+        ezNetCtlDownInterface(0);
+        data_00457B00.m_id = ezNetCtlSetProperties(data_004567C0);
         if (data_00457B00.m_id < 0) {
             const char *args[2] = {0};
             char text[256];
@@ -194,9 +194,9 @@ extern "C" bool func_0030C090()
             args[1] = data_004576C0;
             func_00363F60(text, sizeof(text), 0x429, args, 2);
             LobbyEvent("MP_MEDIUS_ERROR", text);
-            func_001E8AB0();
+            exitEzNetCtl();
         } else {
-            func_001E8E38(0);
+            ezNetCtlUpInterface(0);
             ok = true;
         }
     }
@@ -209,10 +209,10 @@ extern "C" bool func_0030C030()
     bool closed = false;
 
     if (data_00457B00.m_id > 0) {
-        func_001E8D20(&data_00457B00);
+        ezNetCtlGetStatus(&data_00457B00);
         if (data_00457B00.m_state == 3)
-            func_001E8EB0(0);
-        func_001E8AB0();
+            ezNetCtlDownInterface(0);
+        exitEzNetCtl();
         closed = true;
     }
     return closed;
@@ -225,7 +225,7 @@ extern "C" bool func_0030BF20()
     bool changed = false;
 
     if (data_00457B00.m_id > 0) {
-        func_001E8D20(&data_00457B00);
+        ezNetCtlGetStatus(&data_00457B00);
         switch (data_00457B00.m_state) {
         case 0:
         case 1:
@@ -280,11 +280,10 @@ struct NetIfInfo {
     unsigned char _208[0x240 - 0x208];
 };
 
-/* the interfaces listed, at most `max`; their count (OVL1 0x30BD40).
- * OPEN, 2 instructions, scheduling: the target zeroes the counter in the loop guard's delay slot
- * (`beqz at; move s2,zero`) where MW puts it ahead of the branch; the pointer's and the counter's
- * registers and the pointer's sinking need `int i; int *id;` and `for (i = 0, id = ids; ...)`
- * (the other orders swap registers or hoist the pointer). */
+/* the interfaces listed, at most `max`; their count (OVL1 0x30BD40). The loop is an explicit guard
+ * around a do-while: the target zeroes the counter in the guard's delay slot (`beqz at; move
+ * s2,zero`) and sets the cursor after it, where a for loop's initialisation puts both ahead of the
+ * branch (the cursor then in the slot); `int i; int *id;` in that order keeps their registers */
 extern "C" int func_0030BD40(NetIfInfo *info, int max)
 {
     int ids[256];
@@ -299,12 +298,19 @@ extern "C" int func_0030BD40(NetIfInfo *info, int max)
         int i;
         int *id;
 
-        for (i = 0, id = ids; i < n; i++, info++, id++) {
-            memset(info, 0, sizeof(*info));
-            info->m_id = *id;
-            sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 8, &info->m_flags, 4);
-            sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 2, info->m_vendor, 256);
-            sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 3, info->m_product, 256);
+        i = 0;
+        if (i < n) {
+            id = ids;
+            do {
+                memset(info, 0, sizeof(*info));
+                info->m_id = *id;
+                sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 8, &info->m_flags, 4);
+                sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 2, info->m_vendor, 256);
+                sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 3, info->m_product, 256);
+                i++;
+                info++;
+                id++;
+            } while (i < n);
         }
     }
     return n;

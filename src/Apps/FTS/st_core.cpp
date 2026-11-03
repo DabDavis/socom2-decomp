@@ -244,9 +244,7 @@ extern CReco theReco;
 extern "C" {
 extern int data_00408C08;                        /* SOCOM 1's oddeven, a static of Tick's */
 extern char data_00488F10[];
-extern char data_004B5170[];
 void func_00336230(void *arg);
-void func_003C3390(void *arg, float dT);
 void func_003B1160(int arg);
 int func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
 void func_0033CD50(void *arg);
@@ -724,7 +722,7 @@ bool CCoreState::Tick(float dT)
     cam->Update(zdb::ZCAM_TYPE_0);
     m_hud->PostDITick(dT);
     if (running && !m_hud->PauseGame())
-        func_003C3390(data_004B5170, dT);
+        zdb::theWaterRippleManager.Tick(dT);
     func_003B1160(1);
     hide = appCamera->m_camera_mode == 3;
     pEntNode = appCamera->m_bc->GetNode();
