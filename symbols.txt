@@ -12305,10 +12305,10 @@
 0x0062A2F0 0x70 func_0062A2F0  # OVL2
 0x0062A360 0x4C func_0062A360  # OVL2
 0x0062A3B0 0x1F4 func_0062A3B0  # OVL2
-0x0062A5A8 0x8C func_0062A5A8  # OVL2 unaligned
-0x0062A638 0xE8 func_0062A638  # OVL2 unaligned
-0x0062A720 0xA4 func_0062A720  # OVL2
-0x0062A7C8 0xA8 func_0062A7C8  # OVL2 unaligned
+0x0062A5A8 0x8C RCInitialize  # OVL2 unaligned; s1:order (the gcc lane, round 8b): first of SOCOM 1's RC object's four (0x409150), its body (~i filled, keyed by 3s over a 64-byte key) with the counters moved; rt_crypt calls it on a key's states
+0x0062A638 0xE8 RCSaltyInitialize  # OVL2 unaligned; s1:order (the gcc lane, round 8b): second of the four, SOCOM 1's body (the salt's four bytes by 5s, then the key by 3s), 0xE8 as SOCOM 1's
+0x0062A720 0xA4 RCEncrypt  # OVL2; s1:order (the gcc lane, round 8b): third of the four, SOCOM 1's body (i by 5s, the plain byte fed back into j)
+0x0062A7C8 0xA8 RCDecrypt  # OVL2 unaligned; s1:order (the gcc lane, round 8b): fourth of the four, SOCOM 1's body (the deciphered byte fed back)
 0x0062A870 0x58 func_0062A870  # OVL2
 0x0062A8C8 0x22C func_0062A8C8  # OVL2 unaligned
 0x0062AAF8 0x8 func_0062AAF8  # OVL2 unaligned
