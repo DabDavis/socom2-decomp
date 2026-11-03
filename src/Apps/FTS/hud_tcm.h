@@ -103,15 +103,52 @@ public:
 
 /* the menu (theTCM, OVL1 bss 0x413120: the menu object's initialiser 0x3FF4A0 builds it with its
  * constructor 0x237390 and registers its destructor 0x237580) -- its root node, then its own */
+/* the menu's mode (a byte with an out-of-line setter, 0x236250: the menu object's, the commands
+ * and the tree call it): the recogniser's listening states 1 and 6 (reco.cpp's) */
+class CTCMMode {
+public:
+    void Set(int mode);
+
+    unsigned char m_mode;   // 0x0
+};
+
 class CTCM : public CTCMNode {
 public:
-    unsigned char m_state;   // 0x750: the recogniser's listening states 1 and 6 (reco.cpp's)
+    /* the item cache's name, if any (ours: SetCache tests it, then copies it) */
+    static const char *CacheName(CTCMCache *cache) { return cache ? cache->m_name : 0; }
+
+    void Hold(bool reset, float t);
+    CTCMNode *GetColumn(unsigned int depth);
+    void SetCache(CTCMCache *cache);
+    void Reset();
+    void ClearItems();
+    void Init();
+
+    CTCMMode m_mode;   // 0x750
     std::vector<int> m_path;   // 0x754: the open column's selections, one per depth
-    int m_760;   // 0x760
+    CTCMCache *m_cache;   // 0x760: the items' cache
     char m_cacheName[0x6c];   // 0x764: "No Cache Available"
-    unsigned char _7d0[0xdb8 - 0x7d0];
+    C2DBitmapPoly m_7d0;   // 0x7d0
+    C2DBitmapPoly m_9c0;   // 0x9c0
+    C2DBitmapPoly m_bb0;   // 0xbb0
+    int m_da0;   // 0xda0
+    float m_da4;   // 0xda4
+    int m_da8;   // 0xda8
+    int m_dac;   // 0xdac
+    float m_db0;   // 0xdb0
+    float m_hold;   // 0xdb4
     CTCMSounds m_sounds;   // 0xdb8
-    unsigned char _dc8[0x13c0 - 0xdc8];
+    int m_dc8;   // 0xdc8
+    unsigned char m_dcc;   // 0xdcc
+    unsigned char m_dcd;   // 0xdcd
+    unsigned char m_dce;   // 0xdce
+    int m_dd0;   // 0xdd0
+    int m_dd4;   // 0xdd4
+    float m_dd8;   // 0xdd8
+    C2DBitmapPoly m_items;   // 0xde0: the item list's bitmap (ClearItems empties its list)
+    C2DBitmapPoly m_fd0;   // 0xfd0
+    C2DBitmapPoly m_11c0;   // 0x11c0
+    int m_13b0;   // 0x13b0
 
     /* the menu's depth and its path (reco.cpp's: a push through the reference loads the vector's
      * words off its address, the target's tcmOpenNode) */
@@ -143,6 +180,9 @@ void func_00232240(CTCMNode *node, float delay);
 void func_00231BA0(CTCMNode *node);
 void func_002356D0(CTCM *tcm);
 void func_00232890(CTCMSounds *sounds, int which);
+void func_00231FD0(CTCMNode *node);
+void func_00232950(CTCMSounds *sounds);
+void func_002344E0();
 }
 
 #endif

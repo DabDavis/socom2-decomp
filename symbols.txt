@@ -2217,19 +2217,19 @@
 0x002359A0 0x394 func_002359A0  # OVL1
 0x00235D40 0x384 func_00235D40  # OVL1
 0x002360D0 0x180 func_002360D0  # OVL1
-0x00236250 0x8 func_00236250  # OVL1
+0x00236250 0x8 Set__8CTCMModeFi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the radio command menu's mode byte at theTCM+0x750 set; the commands' layout and the tree call it out of line: the unit boundary)
 0x00236260 0x1C8 func_00236260  # OVL1
 0x00236430 0x618 func_00236430  # OVL1
-0x00236A50 0x50 func_00236A50  # OVL1
-0x00236AA0 0x80 func_00236AA0  # OVL1
+0x00236A50 0x50 Hold__4CTCMFbf  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the menu's input hold at +0xDB4: added to unless reset, cleared for t <= 0)
+0x00236AA0 0x80 GetColumn__4CTCMFUi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the node of a depth's column, the path at +0x754 walked down from the root; the layout and the tree call it)
 0x00236B20 0x180 func_00236B20  # OVL1
-0x00236CA0 0x78 func_00236CA0  # OVL1
+0x00236CA0 0x78 SetCache__4CTCMFP9CTCMCache  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item cache at +0x760 and its name at +0x764, "No Cache Available" without one; inlined into Reset)
 0x00236D20 0x2E0 func_00236D20  # OVL1
-0x00237000 0xCC func_00237000  # OVL1
-0x002370D0 0xCC func_002370D0  # OVL1
+0x00237000 0xCC tcmAddItem__FPCciPCcPCcPCci  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- an item's node from theTCM's cache entry of that name (Find), the captions defaulting to the name; the menu builders 0x2329F0/0x232BC0 call it)
+0x002370D0 0xCC Reset__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the tree emptied, the cache cleared, the strings wiped, the lists cleared; CHUD calls it on theTCM)
 0x002371A0 0x170 func_002371A0  # OVL1
-0x00237310 0x38 func_00237310  # OVL1; tu: node_world.cpp~ (1.0 beta)
-0x00237350 0x3C func_00237350  # OVL1
+0x00237310 0x38 ClearItems__4CTCMFv  # OVL1; tu: node_world.cpp~ (1.0 beta); ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item list bitmap's list at +0xDE0 cleared; CHUD calls it)
+0x00237350 0x3C Init__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the caches built (0x2344E0), the path and the root's children reserved)
 0x00237390 0x1E8 func_00237390  # OVL1
 0x00237580 0x1E0 func_00237580  # OVL1
 0x00237760 0x3D8 Update__12CAmmoDisplayFv  # OVL1; by hand (the HUD lane: the ammo counts from the HUD owner's kit, the unit's first function in the image; the name ours)
