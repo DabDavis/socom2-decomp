@@ -12078,19 +12078,19 @@
 0x0061D948 0x70 func_0061D948  # OVL2 unaligned
 0x0061D9B8 0x3C func_0061D9B8  # OVL2 unaligned
 0x0061D9F8 0xAC func_0061D9F8  # OVL2 unaligned
-0x0061DAA8 0xF4 func_0061DAA8  # OVL2 unaligned
-0x0061DBA0 0xEC func_0061DBA0  # OVL2
-0x0061DC90 0x118 func_0061DC90  # OVL2
-0x0061DDA8 0x70 func_0061DDA8  # OVL2 unaligned
-0x0061DE18 0x48 func_0061DE18  # OVL2 unaligned
-0x0061DE60 0x150 func_0061DE60  # OVL2
-0x0061DFB0 0x110 func_0061DFB0  # OVL2
-0x0061E0C0 0x64 func_0061E0C0  # OVL2
+0x0061DAA8 0xF4 GetFreeNetObjectBlock  # OVL2 unaligned; s1:order (DmeMessage.c's second function in SOCOM 1; the same body plus a count guard: SOCOM 1's 0x41EAC0 is these instructions from the third on)
+0x0061DBA0 0xEC FindFreeDataStreamBlock  # OVL2; s1:order (DmeMessage.c's third in SOCOM 1: the same two-loop scan, calling the stream getter 0x614F10 twice where SOCOM 1 calls NetGetDataStream twice)
+0x0061DC90 0x118 ClientConnectsPacketHandler  # OVL2; s1:order (the first handler RegisterDMEmessages 0x61FBC8 takes; SOCOM 1's callees NetIpBinaryToString, strcmp, DmeToRtMsgConnectionIndex, KM_SetPublicKey, RemoteClientConnects in order; returns 72)
+0x0061DDA8 0x70 ServerVersionPacketHandler  # OVL2 unaligned; s1:order (copies the 16-byte message into the world's version string and returns 16, as SOCOM 1's strcpy into ServerVersion[world] does)
+0x0061DE18 0x48 ClientLeavesPacketHandler  # OVL2 unaligned; s1:order (calls NetClientLeaves(world, client) and returns 1, SOCOM 1's two instructions)
+0x0061DE60 0x150 ClientUpdatePacketHandler  # OVL2; s1:order (NetGetClient, NetCreateClient, strcpy, NetClientJoins as SOCOM 1's; returns 36)
+0x0061DFB0 0x110 RequestServersPacketHandler  # OVL2; s1:order (answers a server request with NetSendMessageByUDPToIP 0x615558 after NetIpBinaryToString/NetIpStringToBinary, SOCOM 1's callees; returns 4)
+0x0061E0C0 0x64 ServerResponsePacketHandler  # OVL2; s1:order (SOCOM 1's body: NetIpBinaryToString of the message's address, the callback with it and the first word; returns 8)
 0x0061E128 0x1D4 func_0061E128  # OVL2 unaligned
 0x0061E300 0x20C func_0061E300  # OVL2
 0x0061E510 0x198 func_0061E510  # OVL2
 0x0061E6A8 0x28 func_0061E6A8  # OVL2 unaligned
-0x0061E6D0 0x120 func_0061E6D0  # OVL2
+0x0061E6D0 0x120 RequestOwnershipPacketHandler  # OVL2; s1:order (the handler before Grant/Release's slots: NetGetObject 0x614EC8, RemoteObjectUpdate 0x615EB0 and NetSendDmeMessage 0x615DE0 as SOCOM 1's; takes ownership when unowned)
 0x0061E7F0 0x64 func_0061E7F0  # OVL2
 0x0061E858 0x60 func_0061E858  # OVL2 unaligned
 0x0061E8B8 0x48C func_0061E8B8  # OVL2 unaligned
