@@ -5,8 +5,9 @@
  * (OVL1 0x245690-0x248350, its sceBInet* calls take the SIF client and the net buffer first). The
  * library is up once rt_comm_platform2_startup has found an interface; results are rt_comm's (1 the
  * inet layer refused, 2 a bad parameter, 5 not started, 13 the call would block). Names are SOCOM 1's
- * (s1:exact/calls); the rest keep placeholders. Not yet here: rt_comm_platform2_create (0x62DBD8, 0x378)
- * and the interface search 0x62E7E0.
+ * (s1:exact/calls); the rest keep placeholders. Round 8b added rt_comm_platform2_create (0x62DBD8: its
+ * timeout a conditional expression -- an `if` keeps the constant 1 across the name lookup in a saved
+ * register and branches on it) and the interface search 0x62E7E0.
  *
  * Shapes, each measured: a receive's length clamp is passed as the ternary itself to a libnetb
  * parameter that is an unsigned short (2.96's `xori v0,v0,0` before the movz, the clamp in the
@@ -71,10 +72,31 @@ typedef struct sceInetAddress {
 } sceInetAddress;                       /* 0x10 */
 
 typedef struct sceInetInfo {
-    char pad0[36];
+    char pad0[32];
+    int local_port;                     /* 0x20 */
     sceInetAddress remote;              /* 0x24: the peer's address */
     char pad34[24];
 } sceInetInfo;                          /* 0x4C: sceBInetControl's connection info (command 1) */
+
+/* sceBInetCreate's parameters (libnetb's; the first word a long: stored with sd) */
+typedef struct sceBInetParam {
+    long bufsize;                       /* 0x00: a UDP socket's buffer */
+    int type;                           /* 0x08: 1 connect, 0 datagram, 2 listen, 3 the third kind */
+    int local_port;                     /* 0x0C: -1 any */
+    sceInetAddress remote_addr;         /* 0x10 */
+    int remote_port;                    /* 0x20 */
+    char reserved[36];
+} sceBInetParam;                        /* 0x48 */
+
+/* a channel's options (rt_comm.c's rt_comm_options, as this layer reads them) */
+typedef struct rt_comm_options {
+    int nType;                          /* 0x00: 0 TCP client, 1 UDP, 2 TCP accepting, 3 the third kind */
+    int nBufSize;                       /* 0x04: a UDP socket's buffer */
+    unsigned char bNoBlock;             /* 0x08: a TCP client connects without waiting */
+} rt_comm_options;
+
+extern int sceBInetCreate(void *cd, void *buf, int *ps, sceBInetParam *param);
+extern int func_002472C8(void *cd, void *buf, int s, int ms);
 
 int rt_comm_platform2_startup(void)
 {
@@ -110,6 +132,106 @@ int rt_comm_platform2_shutdown(void)
     func_00246B10(gSifMClientData);
     data_006555C8 = 0;
     data_006555FC = -1;
+    return 0;
+}
+
+/* a socket made and opened for a channel's kind (round 8b; SOCOM 1's with the third kind): a TCP
+ * client connects to the address (blocking unless the options say not), a UDP socket binds the port
+ * given (or any, the port it got told back), the accepting kind listens on the port, the third kind
+ * takes local port 1; the TCP kinds set the socket option 3 */
+int rt_comm_platform2_create(int *phSocket, char *szAddress, unsigned short *pnPort,
+                             rt_comm_options *pOptions, unsigned char *pbConnected)
+{
+    sceBInetParam param;
+    sceInetInfo info;
+    int hSocket = 0;
+    int nTimeout;
+    int nResult;
+    int one;
+
+    if (phSocket == 0)
+        return 2;
+    *phSocket = 0;
+    if (data_006555C8 != 1)
+        return 5;
+    if (pOptions == 0)
+        return 2;
+    if (pbConnected == 0)
+        return 2;
+    *pbConnected = 0;
+    if (pOptions->nType == 0 && szAddress == 0)
+        return 2;
+    if (pOptions->nType != 3 && *pnPort == 0)
+        return 2;
+    memset(&param, 0, sizeof(param));
+    if (pOptions->nType == 0) {
+        if (szAddress == 0)
+            return 2;
+        param.local_port = -1;
+        param.remote_port = *pnPort;
+        param.type = 1;
+        if (sceInetName2Address(gSifMClientData, gNetBuf, 0, &param.remote_addr, szAddress, 0, 0) < 0)
+            return 1;
+        nTimeout = (pOptions->bNoBlock == 1) ? 0 : 10000;
+    } else if (pOptions->nType == 1) {
+        if (szAddress != 0)
+            return 2;
+        if (pOptions->nBufSize <= 0)
+            return 2;
+        if (*pnPort == 0)
+            param.local_port = -1;
+        else
+            param.local_port = *pnPort;
+        param.bufsize = pOptions->nBufSize;
+        nTimeout = 10000;
+        param.remote_port = 0;
+        param.type = 0;
+    } else if (pOptions->nType == 3) {
+        if (szAddress != 0)
+            return 2;
+        param.local_port = 1;
+        param.type = 3;
+        nTimeout = 10000;
+        param.remote_port = 0;
+        if (sceInetName2Address(gSifMClientData, gNetBuf, 0, &param.remote_addr, 0, 0, 0) < 0)
+            return 1;
+    } else if (pOptions->nType == 2) {
+        if (szAddress != 0)
+            return 2;
+        param.local_port = *pnPort;
+        nTimeout = 0;
+        param.type = 2;
+        param.remote_port = 0;
+        if (sceInetName2Address(gSifMClientData, gNetBuf, 0, &param.remote_addr, 0, 0, 0) < 0)
+            return 1;
+    } else {
+        return 3;
+    }
+    if (sceBInetCreate(gSifMClientData, gNetBuf, &hSocket, &param) != 0)
+        return 1;
+    nResult = func_002472C8(gSifMClientData, gNetBuf, hSocket, nTimeout);
+    if (nResult != 0) {
+        if (nResult != -500 || pOptions->nType != 2) {
+            sceBInetClose(gSifMClientData, gNetBuf, hSocket, 500);
+            return 1;
+        }
+    }
+    if (pOptions->nType == 0 || pOptions->nType == 2) {
+        one = 1;
+        if (sceBInetControl(gSifMClientData, gNetBuf, hSocket, 3, &one, sizeof(one)) != 0)
+            return 1;
+    }
+    if (pOptions->nType == 1 && *pnPort == 0) {
+        memset(&info, 0, sizeof(info));
+        if (sceBInetControl(gSifMClientData, gNetBuf, hSocket, 1, &info, sizeof(info)) != 0)
+            return 1;
+        *pnPort = info.local_port;
+    }
+    if (pOptions->nType == 0 && pOptions->bNoBlock == 1)
+        *pbConnected = 0;
+    else
+        *pbConnected = 1;
+    *phSocket = hSocket;
     return 0;
 }
 
