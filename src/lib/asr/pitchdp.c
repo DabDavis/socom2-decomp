@@ -51,7 +51,7 @@ typedef struct PITCHDP {
 } PITCHDP;                              /* 0x68 */
 
 extern float logf(float x);
-extern float func_001B3940(float x, float y);   /* MAIN, beside logf: powf by its use here (2^(i / bpo)) */
+extern float powf(float x, float y);
 
 static void Actual_DP(PITCHDP *p, unsigned int nbins, unsigned int ncols);
 static void BackTracking(PITCHDP *p, unsigned int ncols);
@@ -450,7 +450,7 @@ static int InitPitchDP(PITCHDP *p)
     }
     for (i = 0; i < p->nbins; i++) {
         p->rows[i] = p->cells + p->ncols * i;
-        p->freqs[i] = fmin * func_001B3940(2.0f, i / (float)bpo);
+        p->freqs[i] = fmin * powf(2.0f, i / (float)bpo);
         p->jf[i] = heap_Calloc(tos->heap, p->nbins, 4);
         if (p->jf[i] == 0) {
             _tosErrorLog(p, 2);
