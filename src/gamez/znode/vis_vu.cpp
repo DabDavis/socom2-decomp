@@ -52,6 +52,31 @@ public:
     unsigned short m_temp;   // 0xe: 1 for a temporary decal
 };
 
+/* the end of the scratchpad's room for a packet, the VU context count, the world-to-model matrix
+ * and the model-to-world one (SOCOM 1's m_sprEndOfMP, m_WorldToModel and m_ModelToWorld by their
+ * use; the count is SOCOM II's) */
+extern "C" _word128 *data_004B4AE8;
+extern "C" unsigned int data_004B4AF0;
+extern "C" CMatrix data_004B4E70;
+extern "C" CMatrix *data_004B4E60;
+/* a command quadword for the VU program: its tag, the context count and a word, the quadword after
+ * it given back (ours, inline: VuMapPasses steps its cursor through it, unreloaded; the
+ * callers load the count before the first store, as an inline's arguments are) */
+static inline _word128 *VuCommand(_word128 *p, unsigned int tag, unsigned int count, unsigned int n)
+{
+    p->u32[0] = tag;
+    p->u32[1] = count;
+    p->u32[2] = n;
+    return p + 1;
+}
+
+/* whether the scratchpad's packet has room for n quadwords past the cursor (ours, inline: the
+ * shadow and light passes test it materialised, `!(>=)` twice negated) */
+static inline bool VuRoom(_word128 *p, unsigned int n)
+{
+    return !(p + n >= data_004B4AE8);
+}
+
 /* the local lights (SOCOM 1's statics) */
 CVisual::LOCAL_LIGHT CVisual::localLightBuf[10];
 CLight *CVisual::localLightPtr[10];
@@ -226,13 +251,6 @@ extern "C" _word128 *func_003B6820()
     return data_004B4AD8 + 1;
 }
 
-/* the end of the scratchpad's room for a packet, the VU context count, the world-to-model matrix
- * and the model-to-world one (SOCOM 1's m_sprEndOfMP, m_WorldToModel and m_ModelToWorld by their
- * use; the count is SOCOM II's) */
-extern "C" _word128 *data_004B4AE8;
-extern "C" unsigned int data_004B4AF0;
-extern "C" CMatrix data_004B4E70;
-extern "C" CMatrix *data_004B4E60;
 /* the projected map's colour (SOCOM II's, not named) */
 extern "C" float data_004B4EE0[4];
 
@@ -244,13 +262,119 @@ struct CProjectedMap {
     CTexture *m_tex;   // 0x50
 };
 
-/* a command quadword for the VU program: its tag, the context count and a word (ours, inline: the
- * callers load the count before the first store, as an inline's arguments are) */
-static inline void VuCommand(_word128 *p, unsigned int tag, unsigned int count, unsigned int n)
+/* a frame whose third row is the direction, built about the up vector (zmath_main.cpp's, not named) */
+extern "C" void func_00307700(sceVu0FVECTOR zd, sceVu0FVECTOR p, sceVu0FMATRIX out);
+
+/* the material band in use (SOCOM 1's m_mtl_band by its use: VuUpdate clears it first, then points it
+ * at the world's material of the visual's) */
+extern "C" CMaterial_band *data_004B4AA0;
+
+/* the specular map's setup: a frame looking along the material's direction, into model space; the
+ * band's intensity and falloff; the camera's position in model space; the colour and opacity (SOCOM
+ * II's: 0x3B5B90 calls it with the band's colour and opacity -- the name ours) */
+void CVisual::VuSpecularSetup(_word128 *q, CPnt4D *dir, CPnt3D *rgb, float opacity)
 {
-    p->u32[0] = tag;
-    p->u32[1] = count;
-    p->u32[2] = n;
+    CPnt4D up = CPnt4D::unit_w;
+    CMatrix look;
+    CMatrix m;
+
+    func_00307700((float *)dir, (float *)&up, look.m_matrix);
+    sceVu0MulMatrix(m.m_matrix, look.m_matrix, data_004B4E60->m_matrix);
+    sceVu0CopyMatrix(*(sceVu0FMATRIX *)&q[6], m.m_matrix);
+    q[10].f32[0] = data_004B4AA0->m_intensity;
+    q[10].f32[1] = data_004B4AA0->m_falloff;
+    q[10].f32[3] = data_004B4AA0->m_invFalloff;
+
+    CPnt3D cam = *(CPnt3D *)((CNode *)(void *)m_camera)->m_matrix.m_matrix[3];
+    CPnt4D p(cam.x, cam.y, cam.z, 1.0f);
+
+    sceVu0ApplyMatrix((float *)&p, data_004B4E70.m_matrix, (float *)&p);
+    q[6].f32[3] = p.x;
+    q[7].f32[3] = p.y;
+    q[8].f32[3] = p.z;
+    q[9].f32[0] = rgb->x;
+    q[9].f32[1] = rgb->y;
+    q[9].f32[2] = rgb->z;
+    q[9].f32[3] = opacity;
+}
+
+/* the passes' switches: the packets' flavour, the specular map's (SOCOM 1's m_specMapGlobal), the
+ * counts of projected, shadow and light maps (SOCOM 1's m_shadowMapCnt, m_lightMapCnt; the
+ * projected maps' SOCOM II's) and the specular texture when the band has none (SOCOM 1's
+ * m_specMapTexture) */
+extern "C" unsigned int data_004B4EB0;
+extern "C" unsigned char data_004B4DC0;
+extern "C" unsigned int data_004B4E40;
+extern "C" unsigned int data_004B4E18;
+extern "C" unsigned int data_004B4DF0;
+extern "C" CTexHandle *data_004B4D90;
+
+/* the specular map's pass: a command, the band's texture select (or the default specular texture's)
+ * saved with the default blend, and the setup (ours, inline: 0x3B5B90 inlines both of its calls,
+ * the `true` an assignment) */
+inline bool CVisual::VuSpecularMap(_word128 **cursor, unsigned int tag)
+{
+    _word128 *p = *cursor;
+
+    if (!(p + 12 < data_004B4AE8))
+        return false;
+    VuCommand(p, tag, data_004B4AF0, 1);
+
+    CTexHandle *h = data_004B4AA0->m_tex;
+    _word128 *q = p + 1;
+
+    if (!h)
+        h = data_004B4D90;
+    h->m_texture->CopyTextureSelect(q);
+    SaveTextureSelect(q, h->m_texture, 0x4000000000000000);
+
+    CMaterial_band *band = data_004B4AA0;
+    CPnt4D color;
+
+    color.x = band->m_color.x;
+    color.y = band->m_color.y;
+    color.z = band->m_color.z;
+    color.w = band->m_color.w;
+
+    VuSpecularSetup(q, &color, &band->m_rgb, band->m_opacity);
+    *cursor = q + 11;
+    return true;
+}
+
+/* the map passes of a packet: the detail layer's, then a command opening the passes, the specular,
+ * projected, shadow and light maps' as each is wanted, a command closing them -- the first that
+ * runs out of room ends them; two flavours by the static, their tags two apart (SOCOM II's, from
+ * SOCOM 1's VuBatchProgram's middle: the name ours) */
+_word128 *CVisual::VuMapPasses(_word128 *p, tag_DETAIL_PARAMS *detail)
+{
+    if (data_004B4EB0) {
+        if (detail && !VuDetailMap(&p, 48, detail))
+            goto done;
+        p = VuCommand(p, 114, data_004B4AF0, 1);
+        if (data_004B4DC0 && !VuSpecularMap(&p, 52))
+            goto done;
+        if (data_004B4E40 && !VuProjectedMap(&p, 118))
+            goto done;
+        if (data_004B4E18 && !VuShadowMap(&p, 60))
+            goto done;
+        if (data_004B4DF0)
+            VuLightMap(&p, 56);
+    } else {
+        if (detail && !VuDetailMap(&p, 50, detail))
+            goto done;
+        p = VuCommand(p, 114, data_004B4AF0, 1);
+        if (data_004B4DC0 && !VuSpecularMap(&p, 54))
+            goto done;
+        if (data_004B4E40 && !VuProjectedMap(&p, 120))
+            goto done;
+        if (data_004B4E18 && !VuShadowMap(&p, 62))
+            goto done;
+        if (data_004B4DF0)
+            VuLightMap(&p, 58);
+    }
+done:
+    p = VuCommand(p, 116, data_004B4AF0, 1);
+    return p;
 }
 
 /* the visual's squared distance to the camera and the detail textures' address offset (SOCOM 1's
@@ -368,13 +492,6 @@ bool CVisual::VuLightMap(_word128 **cursor, unsigned int tag)
     return true;
 }
 
-/* whether the scratchpad's packet has room for n quadwords past the cursor (ours, inline: the
- * shadow and light passes test it materialised, `!(>=)` twice negated) */
-static inline bool VuRoom(_word128 *p, unsigned int n)
-{
-    return !(p + n >= data_004B4AE8);
-}
-
 /* the shadow maps' pass: per map a command, its texture select, its position and direction in
  * model space, its projection into model space, its range, falloff, colour and opacity (SOCOM 1's
  * VuShadowMap, made a pass per map) */
@@ -410,7 +527,9 @@ bool CVisual::VuShadowMap(_word128 **cursor, unsigned int tag)
 }
 
 /* the projected map's pass: the first map's texture select, its position in model space, its
- * projection into model space and the colour (SOCOM II's; the name ours) */
+ * projection into model space and the colour (SOCOM II's; the name ours). Pinned: fifteen statements
+ * by MW's count, -inline auto would take it into VuMapPasses, which calls it */
+#pragma auto_inline off
 bool CVisual::VuProjectedMap(_word128 **cursor, unsigned int tag)
 {
     _word128 *p = *cursor;
@@ -434,6 +553,7 @@ bool CVisual::VuProjectedMap(_word128 **cursor, unsigned int tag)
     *cursor = q + 12;
     return true;
 }
+#pragma auto_inline reset
 
 /* a point scaled by the static's xyz and offset by its w, in VU0 (the zdb world's 0x339DE0 calls
  * it; new in SOCOM II, not named) */

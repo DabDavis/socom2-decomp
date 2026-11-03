@@ -476,6 +476,11 @@ public:
     bool VuShadowMap(_word128 **cursor, unsigned int tag);
     bool VuLightMap(_word128 **cursor, unsigned int tag);
     bool VuDetailMap(_word128 **cursor, unsigned int tag, tag_DETAIL_PARAMS *detail);
+    /* the specular map's frame, band and camera written into its command's data (ours) */
+    void VuSpecularSetup(_word128 *q, CPnt4D *dir, CPnt3D *rgb, float opacity);
+    bool VuSpecularMap(_word128 **cursor, unsigned int tag);
+    /* a packet's map passes, between an opening and a closing command (ours) */
+    _word128 *VuMapPasses(_word128 *p, tag_DETAIL_PARAMS *detail);
     /* a texture select saved for the VU code: a DMA reference to it at _savedTS and, unless the
      * blend word is the default or already the select's, the blend register's update (SOCOM 1's
      * static, 0x3B6FA0) */

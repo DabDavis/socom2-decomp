@@ -7868,14 +7868,14 @@
 0x003B52B0 0x10 func_003B52B0  # OVL1
 0x003B52C0 0x78 func_003B52C0  # OVL1
 0x003B5340 0x2C Render__Q23zdb7CVisualFP7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003B5370 0x164 func_003B5370  # OVL1
+0x003B5370 0x164 VuSpecularSetup__Q23zdb7CVisualFP8_word128P6CPnt4DP6CPnt3Df  # OVL1; by hand (the wep lane, round 13: 0x3B5B90's specular pass calls it with the command's data, a copy of m_mtl_band's colour, the band's rgb and opacity: a frame along the direction about CPnt4D::unit_w (0x307700) times m_ModelToWorld, the band's intensity and falloffs, m_camera's position through m_WorldToModel. SOCOM II's; the name ours)
 0x003B54E0 0x244 VuLightMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: SOCOM 1's VuLightMap in role -- 0x3B5B90 calls it last on &cursor with the tag 56/58 when m_lightMapCnt is set; the first map's texture select, SaveTextureSelect with its blend word, then per map of m_lightMapList its position through m_WorldToModel, falloff, range, colour and opacity, as SOCOM 1's; the signature SOCOM II's)
 0x003B5730 0x180 VuShadowMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: SOCOM 1's VuShadowMap in role -- 0x3B5B90 calls it on &cursor with the tag 60/62 when m_shadowMapCnt is set; per map of m_shadowMapList a command, its texture select, position and direction through m_WorldToModel, its world-to-UV matrix times m_ModelToWorld, range, falloff, colour and opacity, as SOCOM 1's wrote once for the first map; the signature SOCOM II's)
 0x003B58B0 0xF0 VuProjectedMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: the projected map's pass -- 0x3B5B90 calls it on &cursor with the tag 118/120 when m_projectedMapList is not empty, between the specular and shadow passes; it walks m_projectedMapList's first map: its texture select, its node's position through m_WorldToModel, its matrix times m_ModelToWorld. SOCOM II's, the name ours, after SOCOM 1's VuShadowMap/VuLightMap)
 0x003B59A0 0x68 func_003B59A0  # OVL1
 0x003B5A10 0x20 func_003B5A10  # OVL1
 0x003B5A30 0x158 VuDetailMap__Q23zdb7CVisualFPP8_word128UiPQ23zdb17tag_DETAIL_PARAMS  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's VuDetailMap -- 0x3B5B90 calls it first on &cursor with the tag 48/50 and its detail-layer argument; per texture while m_rangeSqdToCamera is within the layer's range: CopyTextureSelect, the entry's halfword and float at the same offsets as SOCOM 1's; SOCOM II adds the command quadword and the texture base offset)
-0x003B5B90 0x388 func_003B5B90  # OVL1
+0x003B5B90 0x388 VuMapPasses__Q23zdb7CVisualFP8_word128PQ23zdb17tag_DETAIL_PARAMS  # OVL1; by hand (the wep lane, round 13: one of the two rearranged parts of SOCOM 1's VuBatchProgram -- 0x3B5F20 calls it with the packet and the detail layer; VuDetailMap, an opening command 114, the specular pass inlined (tag 52/54, VuSpecularSetup), VuProjectedMap, VuShadowMap and VuLightMap as their counts say, a closing command 116, the tags two apart by 0x4B4EB0. SOCOM II's; the name ours)
 0x003B5F20 0x61C func_003B5F20  # OVL1
 0x003B6540 0x140 func_003B6540  # OVL1
 0x003B6680 0x198 func_003B6680  # OVL1
