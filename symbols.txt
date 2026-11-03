@@ -419,8 +419,8 @@
 0x001980A0 0x3C isnan  # MAIN; s1:exact
 0x001980E0 0x1E4 scalbn  # MAIN; s1:exact
 0x001982C8 0x58 _sbrk_r  # MAIN unaligned; by body (newlib's reent/sbrkr.c: the same around sbrk(incr), failing on (void *)-1; the demo's _sbrk_r is 0x5C)
-0x00198320 0x58 func_00198320  # MAIN
-0x00198378 0x64 func_00198378  # MAIN unaligned
+0x00198320 0x58 setjmp  # MAIN; by body (newlib machine/mips/setjmp.S: every callee-saved register and $f24-$f31 stored through a0, returns 0)
+0x00198378 0x64 longjmp  # MAIN unaligned; by body (newlib machine/mips/setjmp.S: the registers setjmp saved, reloaded through a0; returns a1, or 1 for 0)
 0x001983E0 0x3C copysignf  # MAIN; s1:exact
 0x00198420 0xC8 scalbnf  # MAIN; s1:exact
 0x001984E8 0x70 _init_signal_r  # MAIN unaligned; s1:order (newlib signal.c, the demo's 0x3E5198, the same 0x70: _malloc_r of 32 handlers)
