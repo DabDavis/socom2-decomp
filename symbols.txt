@@ -912,8 +912,8 @@
 0x001AF518 0x1E0 __ieee754_atan2f  # MAIN unaligned; s1:exact
 0x001AF6F8 0x254 __ieee754_expf  # MAIN unaligned; s1:exact
 0x001AF950 0x2E0 __ieee754_logf  # MAIN; s1:exact
-0x001AFC30 0xE4 func_001AFC30  # MAIN
-0x001AFD18 0x7E0 func_001AFD18  # MAIN unaligned
+0x001AFC30 0xE4 __ieee754_log10f  # MAIN; by body (the GCC lane r16a): newlib's ef_log10.c -- __ieee754_logf of the mantissa scaled by log10_2lo/ivln10/log10_2hi (0x355427DB, 0x3EDE5BD9, 0x3E9A2080), between ef_log.c and ef_pow.c in the objects' alphabetical order; w_log10f (0x1B3928) tail-calls it
+0x001AFD18 0x7E0 __ieee754_powf  # MAIN unaligned; by body (the GCC lane r16a): newlib's ef_pow.c -- calls fabsf and scalbnf, 0x7E0 bytes, after ef_log10.c and before ef_rem_pio2.c in the objects' alphabetical order; w_powf (0x1B3940) tail-calls it
 0x001B04F8 0x3B0 __ieee754_rem_pio2f  # MAIN unaligned; s1:exact
 0x001B08A8 0xCC __ieee754_sqrtf  # MAIN unaligned; s1:exact
 0x001B0978 0x2D4 __kernel_cos  # MAIN unaligned; s1:exact
@@ -943,8 +943,8 @@
 0x001B38E0 0x14 atan2f  # MAIN; s1:exact
 0x001B38F8 0x14 expf  # MAIN unaligned; s1:exact
 0x001B3910 0x14 logf  # MAIN; s1:exact
-0x001B3928 0x14 func_001B3928  # MAIN unaligned
-0x001B3940 0x14 func_001B3940  # MAIN
+0x001B3928 0x14 log10f  # MAIN unaligned; by body (the GCC lane r16a): newlib's w_log10f.c under _IEEE_LIBM, a tail call into __ieee754_log10f (0x1AFC30), between w_logf and w_powf in the wrappers' alphabetical order
+0x001B3940 0x14 powf  # MAIN; by body (the GCC lane r16a): newlib's w_powf.c under _IEEE_LIBM, a tail call into __ieee754_powf (0x1AFD18), between w_log10f and w_sqrtf in the wrappers' alphabetical order
 0x001B3958 0x14 sqrtf  # MAIN unaligned; s1:exact
 0x001B3970 0x1CC sceMcInit  # MAIN; s1:order (the demo's libmc object 0x171070 opens with sceMcInit: two semaphores, the 0x80000400 bind, RPC 0xFE, the mcserv/mcman version checks; src/lib/sdk/libmc.c)
 0x001B3B40 0x4C sceMcEnd  # MAIN; s1:order (the demo's second, after sceMcInit: deletes the library's semaphores; src/lib/sdk/libmc.c)
