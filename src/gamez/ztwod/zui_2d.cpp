@@ -116,6 +116,7 @@ extern "C" char *func_003860F0(CUIVariable *var, char *buf, int size);
 /* a UI variable's hook (SOCOM 1's DWARF; the vtable pointer first) */
 class UIVarMixin {
 public:
+    UIVarMixin() { m_uivar = 0; }
     virtual ~UIVarMixin() { DetachUIVar(0); }
     void DetachUIVar(CUIVariable *var);
     /* the variable changed (an override takes a new primary slot after all the tables, so the
@@ -143,6 +144,7 @@ public:
  * layout; its destructor 0x37A640 out of line) */
 class CRenderableString : public C2DString, public UIVarMixin {
 public:
+    CRenderableString();
     virtual ~CRenderableString();
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
@@ -156,7 +158,7 @@ public:
     C2DFont *m_alternateFont;   // 0xa0
     CPnt3D m_offset;   // 0xa4
     CPnt3D m_Color;   // 0xb0
-    int m_socom2_bc;   // 0xbc
+    float m_height;   // 0xbc: a height (the wrapped list item's look sets it, as a float)
 };   // 0xc0 bytes
 
 /* wrapped text (SOCOM 1's CWrappedText; zui_2d.h's layout, 0x250 bytes), its destructor declared
@@ -168,7 +170,10 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
 
-    int m_c0;   // 0xc0
+    /* the width it wraps to (out of line in the list item's look, 0x36B320) */
+    void SetWidth(float w) { m_width = w; }
+
+    float m_width;   // 0xc0: the width it wraps to (the list item's look sets 300)
     int m_shown;   // 0xc4: the lines the window shows (zui_2d.h's m_line, -1 at first)
     int m_c8;   // 0xc8
     float m_offset;   // 0xcc: the scroll, in the string's spacing
@@ -202,6 +207,10 @@ public:
             erase();
     }
 };
+
+/* the font (SOCOM II's C2DFont: c2dfont.h, after the CSaferStr it holds) -- the renderable string
+ * owns its alternate font */
+#include "c2dfont.h"
 
 /* a teletype: text typed out, its cursor a plain bitmap (SOCOM 1's CTeleType; SOCOM II's 0x1B0
  * bytes: the text a string at 0xC0, the cursor at 0x100 -- zui_2d.h's layout; the counters'
@@ -1182,28 +1191,46 @@ public:
 /* strtod (MSL's; include/stdlib.h has no declaration of it) */
 extern "C" double strtod(const char *s, char **end);
 
-/* a list box's item's look (SOCOM 1's CListItemTypeImpl, zui_2d.cpp's: its own Tick, IsEnabled,
- * Finish and the like, empty virtuals there; only the slots ListItem forwards to placed, the rest
- * stand-ins. SOCOM II's table has 18 slots to SOCOM 1's 13: slot 11 is the Tick, slot 14 the
- * SOCOM II's item writer) */
+class CUIListBox;
+
+/* a list box's column (SOCOM 1's ColumnData: only what the items read -- its kind, 0 an image,
+ * and the image's size) */
+class ColumnData {
+public:
+    unsigned char m_type;   // 0x0
+    int m_4;   // 0x4
+    int m_width;   // 0x8
+    int m_height;   // 0xc
+};
+
+/* a list box's item's look (SOCOM 1's CListItemTypeImpl, zui_2d.cpp's). SOCOM II's table (0x4070F0)
+ * has 18 slots to SOCOM 1's 13, SOCOM 1's in its order with five of SOCOM II's among them: the
+ * look's transparency after GetString (4), a bool after VisualGratification (13), the item writer
+ * (14), the line count where SOCOM 1's IsEnabled was (15: the wrapped text's says how many lines it
+ * wraps to) and two size setters (16, 17: the wrapped text's height and width). The empty and
+ * constant defaults are inline (their copies, 0x36BA70, 0x36B5D0, 0x36B200, 0x36BDC0, 0x36BA60,
+ * 0x36BA20, 0x36B9D0, come with the table); the destructor and the writer are its own functions */
 class CListItemTypeImpl {
 public:
-    virtual void _v0();
-    virtual void _v1();
-    virtual void _v2();
-    virtual void _v3();
-    virtual void _v4();
-    virtual void _v5();
-    virtual void _v6();
-    virtual void _v7();
-    virtual void _v8();
-    virtual void _v9();
-    virtual void _v10();
-    virtual void _v11();
-    virtual void _v12();
-    virtual void _v13();
+    virtual ~CListItemTypeImpl();
+    virtual void DrawPrep(const CUIListBox &box, int x, int y, int idx) = 0;
+    virtual void Finish() {}
+    virtual const char *GetString() = 0;
+    virtual float GetTrans() = 0;
+    virtual void PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font, float scale,
+                              zdb::CTextureRelocMgr *mgr) = 0;
+    virtual void SetFont(C2DFont *font) = 0;
+    virtual void SetPos(int x, int y, int w, int h) = 0;
+    virtual void SetScale(float scale) = 0;
+    virtual void SetColor(int r, int g, int b) = 0;
+    virtual float SetSequenceTime(float start, float length) { return start; }
+    virtual void Tick(float dT) {}
+    virtual void VisualGratification(zdb::CTextureRelocMgr *mgr, float depth) = 0;
+    virtual bool IsReady() { return true; }
     virtual void AddToRdr(CRdrEditor *ed);
-    virtual bool IsEnabled();
+    virtual int GetNumLines() { return 1; }
+    virtual void SetHeight(int h) {}
+    virtual void SetWidth(int w) {}
 };
 
 /* a list box's item (SOCOM 1's ListItem: its look at 0x28; SOCOM II's vtable 0x407240 has four
@@ -1213,23 +1240,31 @@ public:
 class ListItem {
 public:
     virtual void AddToRdr(CRdrEditor *ed);
-    virtual bool IsEnabled();
+    virtual int GetNumLines();
+
+    void MakeTimedText();
+    void MakeWrappedText();
 
     unsigned char _4[0x28 - 0x4];
     CListItemTypeImpl *m_impl;   // 0x28
 };
 
-/* whether the item is enabled: its look's say, or yes without one (SOCOM 1's
- * CListItemTypeImpl::IsEnabled returns true; the name ours by it) */
-bool ListItem::IsEnabled()
+/* the lines the item takes: its look's say, or one without one (SOCOM II's slot 15 where SOCOM 1's
+ * IsEnabled was -- the wrapped text's override returns the lines it wraps to, the default 1; the
+ * name ours by it) */
+int ListItem::GetNumLines()
 {
     if (m_impl)
-        return m_impl->IsEnabled();
-    return true;
+        return m_impl->GetNumLines();
+    return 1;
 }
 
 /* the item written into an .rdr: nothing, for a look without text (SOCOM II's; the name ours) */
 void CListItemTypeImpl::AddToRdr(CRdrEditor *ed)
+{
+}
+
+CListItemTypeImpl::~CListItemTypeImpl()
 {
 }
 
@@ -1239,16 +1274,166 @@ void ListItem::AddToRdr(CRdrEditor *ed)
     m_impl->AddToRdr(ed);
 }
 
+/* the list box as its items read it (SOCOM 1's CUIListBox: the highlighted row, its opacity and
+ * its pulse -- what DrawPrep gives the row it draws; the rest stood in) */
+class CUIListBox {
+public:
+    /* the row's opacity, pulse time and limits: the highlighted row's own, the others' fixed */
+    int GetAlpha(int idx) const { return m_highlighted == idx ? m_highlightAlpha : 80; }
+    float GetPulseTime(int idx) const { return m_highlighted == idx ? m_pulseTime : 0.0f; }
+    float GetPulseMax(int idx) const { return m_highlighted == idx ? m_pulseMax : 0.0f; }
+    float GetPulseMin(int idx) const { return m_highlighted == idx ? m_pulseMin : 0.0f; }
+
+    unsigned char _0[0xe0];
+    int m_highlightAlpha;   // 0xe0
+    unsigned char _e4[0x174 - 0xe4];
+    float m_pulseMin;   // 0x174
+    float m_pulseMax;   // 0x178
+    float m_pulseTime;   // 0x17c
+    unsigned char _180[0x194 - 0x180];
+    int m_highlighted;   // 0x194
+};
+
 namespace {
-/* a list item's text look (SOCOM 1's CListItemStringTypeImpl, the unit's anonymous namespace; its
- * string a pointer at 4 in SOCOM II, an embedded C2DString in SOCOM 1; the wrapped-text look
- * inherits its Tick and writer) */
+/* a list item's text look (SOCOM 1's CListItemStringTypeImpl, the unit's anonymous namespace,
+ * table 0x407B40): SOCOM 1's embedded string, a renderable one in SOCOM II at 8, drawn through a
+ * pointer at 4 (the wrapped text's look points it at its own); 0xCC bytes. The timed and the
+ * wrapped text inherit from it */
 class CListItemStringTypeImpl : public CListItemTypeImpl {
 public:
+    CListItemStringTypeImpl()
+    {
+        m_colored = false;
+        SetString(&m_text);
+    }
+
+    virtual void DrawPrep(const CUIListBox &box, int x, int y, int idx);
+    virtual const char *GetString()
+    {
+        const char *s = m_str->m_Ustring;
+
+        return s && *s ? s : m_str->m_string + m_str->m_firstCharPos;
+    }
+    virtual float GetTrans() { return m_str->m_color[3]; }
+    virtual void PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font, float scale,
+                              zdb::CTextureRelocMgr *mgr)
+    {
+    }
+    virtual void SetFont(C2DFont *font) { m_str->SetFont(font); }
+    virtual void SetPos(int x, int y, int w, int h) { m_str->SetPos(x, y); }
+    virtual void SetScale(float scale) { m_str->m_scale = scale; }
+    virtual void SetColor(int r, int g, int b)
+    {
+        m_colored = true;
+        m_str->SetColor(r, g, b);
+    }
     virtual void Tick(float dT);
+    virtual void VisualGratification(zdb::CTextureRelocMgr *mgr, float depth)
+    {
+        m_str->C2DString::Draw(mgr, 0, (int)depth);
+    }
     virtual void AddToRdr(CRdrEditor *ed);
 
-    C2DString *m_str;   // 0x4
+    /* the string drawn (the wrapped text's look draws its own) */
+    void SetString(CRenderableString *s) { m_str = s; }
+
+    CRenderableString *m_str;   // 0x4
+    CRenderableString m_text;   // 0x8
+    bool m_colored;   // 0xc8: SetColor was called
+};
+
+/* a list item's text shown from a time on (SOCOM 1's CListItemTimedTextTypeImpl, table 0x4070A0;
+ * 0xD4 bytes): drawn once its time has come, a count sound as it does */
+class CListItemTimedTextTypeImpl : public CListItemStringTypeImpl {
+public:
+    CListItemTimedTextTypeImpl()
+    {
+        m_start = 0.0f;
+        m_time = 0.0f;
+    }
+
+    virtual void Finish() { m_start = 0.0f; }
+    virtual float SetSequenceTime(float start, float length)
+    {
+        m_start = start;
+        return start + length;
+    }
+    /* SOCOM 1's: the sound once, as the time passes the start */
+    virtual void Tick(float dT)
+    {
+        bool started = m_time > m_start;
+
+        m_time += dT;
+        if (!started && m_time > m_start)
+            PlayCountSound();
+    }
+    virtual void VisualGratification(zdb::CTextureRelocMgr *mgr, float depth)
+    {
+        if (!(m_time < m_start))
+            m_str->C2DString::Draw(mgr, 0, (int)depth);
+    }
+    virtual void AddToRdr(CRdrEditor *ed) {}
+
+    float m_start;   // 0xcc
+    float m_time;   // 0xd0
+};
+
+/* a list item's text wrapped to a width (SOCOM II's, table 0x407140; 0x320 bytes): the string type
+ * drawing a wrapped text of its own, 300 wide at first */
+class CListItemWrappedTextTypeImpl : public CListItemStringTypeImpl {
+public:
+    CListItemWrappedTextTypeImpl()
+    {
+        m_wrapped.SetWidth(300.0f);
+        SetString(&m_wrapped);
+    }
+
+    virtual void VisualGratification(zdb::CTextureRelocMgr *mgr, float depth);
+    virtual int GetNumLines()
+    {
+        if (m_wrapped.m_numLines <= 0)
+            return 1;
+        return m_wrapped.m_numLines;
+    }
+    virtual void SetHeight(int h) { m_wrapped.m_height = h; }
+    virtual void SetWidth(int w) { m_wrapped.m_width = w; }
+
+    int m_cc;   // 0xcc
+    CWrappedText m_wrapped;   // 0xd0
+};
+
+/* a list item's picture (SOCOM 1's CListItemImageTypeImpl, table 0x407050; 0xC0 bytes): a plain
+ * bitmap of the column's size, its texture named by the item's text */
+class CListItemImageTypeImpl : public CListItemTypeImpl {
+public:
+    virtual void DrawPrep(const CUIListBox &box, int x, int y, int idx) {}
+    virtual const char *GetString() { return ""; }
+    virtual float GetTrans() { return m_bmp.GetTrans(); }
+    virtual void PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font, float scale,
+                              zdb::CTextureRelocMgr *mgr)
+    {
+    }
+    virtual void SetFont(C2DFont *font) {}
+    virtual void SetPos(int x, int y, int w, int h) { m_bmp.SetPos(x, y, x + m_width, y + m_height); }
+    virtual void SetScale(float scale) {}
+    virtual void SetColor(int r, int g, int b) { m_bmp.SetColor(r, g, b); }
+    /* the bitmap at the depth, drawn through an identity matrix */
+    virtual void VisualGratification(zdb::CTextureRelocMgr *mgr, float depth)
+    {
+        CMatrix m;
+
+        m.m_matrix[3][0] = 0.0f;
+        m.m_matrix[3][1] = 0.0f;
+        m.m_matrix[3][2] = depth;
+        m_bmp.Draw(m, mgr);
+    }
+    virtual void AddToRdr(CRdrEditor *ed) {}
+
+    int m_4;   // 0x4
+    CPlainBmp m_bmp;   // 0x10
+    int m_width;   // 0xb0
+    int m_height;   // 0xb4
+    zdb::CTexHandle *m_tex;   // 0xb8
 };
 }
 
@@ -1281,6 +1466,75 @@ void CListItemStringTypeImpl::AddToRdr(CRdrEditor *ed)
 void CListItemStringTypeImpl::Tick(float dT)
 {
     m_str->Tick(dT);
+}
+
+/* a renderable string: no alternate font, twice the size, white, not moved (SOCOM 1's; out of line
+ * for the specs and the keyboard, inlined into the list item's text look) */
+CRenderableString::CRenderableString()
+{
+    m_alternateFont = 0;
+    m_height = 0.0f;
+    m_scale = 2.0f;
+    SetColor(255.0f, 255.0f, 255.0f);
+    m_offset = CPnt3D::zero;
+}
+
+/* the alternate font deleted with the string (called out of line everywhere: the font's own
+ * destructor chain is too tall for -inline auto) */
+CRenderableString::~CRenderableString()
+{
+    if (m_alternateFont)
+        delete m_alternateFont;
+}
+
+/* the wrapped text drawn at the depth, moved by its offset to whole pixels (SOCOM II's) */
+void CListItemWrappedTextTypeImpl::VisualGratification(zdb::CTextureRelocMgr *mgr, float depth)
+{
+    CMatrix m;
+
+    float x = (int)(m_wrapped.m_posx + m_wrapped.m_socom2_7c);
+    float y = (int)(m_wrapped.m_posy + m_wrapped.m_socom2_80);
+
+    m.m_matrix[3][0] = x;
+    m.m_matrix[3][1] = y;
+    m.m_matrix[3][2] = depth;
+    m_wrapped.Draw(m, mgr);
+}
+
+/* a pulse's time and limits set on a string (ours: DrawPrep's stores, its arguments taken last
+ * first) */
+static inline void SetPulse(C2DString *s, float time, float max, float min)
+{
+    s->m_fadeTime = time;
+    s->m_fadeMax = max;
+    s->m_fadeMin = min;
+}
+
+/* the row placed and lit: the highlighted one at the box's opacity and pulsing, if the box pulses,
+ * the others at 80 and still (SOCOM 1's DrawPrep, the pulse SOCOM II's) */
+void CListItemStringTypeImpl::DrawPrep(const CUIListBox &box, int x, int y, int idx)
+{
+    m_str->SetPos(x, y);
+    m_str->Update();
+    m_str->SetTrans(box.GetAlpha(idx));
+    if (box.GetPulseTime(idx) != 0.0f) {
+        m_str->m_Type = STRING_PULSE;
+        SetPulse(m_str, box.GetPulseTime(idx), box.GetPulseMax(idx), box.GetPulseMin(idx));
+    } else
+        m_str->m_Type = STRING_NORMAL;
+}
+
+/* the item's look a timed text (SOCOM II's: out of line in ListItem's constructor, the look's
+ * constructor inlined one level; the name ours) */
+void ListItem::MakeTimedText()
+{
+    m_impl = new CListItemTimedTextTypeImpl;
+}
+
+/* the item's look a wrapped text (likewise; the name ours) */
+void ListItem::MakeWrappedText()
+{
+    m_impl = new CListItemWrappedTextTypeImpl;
 }
 
 /* the teletype's destructor (implicit: the cursor, the text, then the renderable string's;
