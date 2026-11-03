@@ -309,7 +309,6 @@ void func_002F7690();   /* (the lobby unit's) */
 void func_002F4FC0(int ready);   /* our readiness told the server */
 void func_002EF7F0();   /* the game's details sent to the lobby (below) */
 int func_002EF590(CValve *locked);   /* the game's world updated, the delay to the next returned */
-void func_002DF6A0(CZOnlineLobby *lobby);   /* the lobby's UI variables made again (the lobby's unit) */
 extern CValve *data_0044F9D0;   /* the game's lock, while it is up */
 extern unsigned int data_0044F9D8;   /* when the game's details next go to the lobby */
 extern unsigned char data_0066A5F8;   /* the details to go at once */
@@ -708,7 +707,7 @@ void LobbyReadyToConnectStateHandler(LOBBY_STATE_FLAG flag)
     case EXIT: {
         MediusUpdateClientStateRequest upd;
 
-        func_002DF6A0(&theLobby);
+        theLobby.CreateUIResources();
         SetSessionKey(upd.SessionKey);
         upd.UserAction = 2;
         CheckMediusError(MediusUpdateClientState(&upd));

@@ -30,7 +30,6 @@ int func_00622EA8(int *t);   /* NetGetTime */
 int func_0064A008();   /* the Medius library's last update error */
 
 int func_003006D0();   /* the Medius connection updated (the lobby's) */
-void func_002DFE50(CZOnlineLobby *lobby);   /* CZOnlineLobby::Tick */
 void func_0030BF20();   /* (the IOP stretch's per-frame update) */
 }
 
@@ -124,12 +123,12 @@ int CZNetwork::zNetUpdate()
                 err = func_0064A008();
                 theLobby.RecoverFromNetError(err);
             }
-            func_002DFE50(&theLobby);
+            theLobby.Tick();
         } else {
             err = func_006236C0();
             if (err)
                 theLobby.RecoverFromNetError(err);
-            func_002DFE50(&theLobby);
+            theLobby.Tick();
         }
         func_0030BF20();
         if (m_fix_list.size())

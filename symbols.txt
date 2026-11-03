@@ -4650,7 +4650,7 @@
 0x002DF560 0xD4 SyncGameClock__13CZOnlineLobbyFi  # OVL1; s1:calls
 0x002DF640 0xC MediusConnectionIndex__13CZOnlineLobbyFv  # OVL1; s1:calls by hand (the states lane: the network senders take the connection index through it where SOCOM 1's do)
 0x002DF650 0x4C UnInit__13CZOnlineLobbyFv  # OVL1; s1:callee
-0x002DF6A0 0x23C func_002DF6A0  # OVL1
+0x002DF6A0 0x23C CreateUIResources__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 11 (the lobby's UI variables made: SOCOM 1's Open made them in its tail, SOCOM II's Open 0x2E0030 calls this, as do the LAN lobby's Connect, LobbyReadyToConnectStateHandler and UIDisconnectFromGameServer; the name after SOCOM 1's ReleaseUIResources)
 0x002DF8E0 0x170 ReleaseUIResources__13CZOnlineLobbyFv  # OVL1; s1 by hand (called by UnInit, Close and the destructor, as SOCOM 1's UnInit, Close and destructor call ReleaseUIResources; frees the lobby's lists)
 0x002DFA50 0x7C ReleaseVector<36MediusGetBuddyList_ExtraInfoResponse>__FRQ23std106vector<P36MediusGetBuddyList_ExtraInfoResponse,Q23std50allocator<P36MediusGetBuddyList_ExtraInfoResponse>>_v  # OVL1; ours (ReleaseVector on the friends 0x44FDC0, from ReleaseUIResources; byte-exact)
 0x002DFAD0 0x7C ReleaseVector<8RoomGame>__FRQ23std48vector<P8RoomGame,Q23std21allocator<P8RoomGame>>_v  # OVL1; ours (ReleaseVector on a room's games, 0x44FAB0's and *0x44FE10's, from ReleaseUIResources; byte-exact)
@@ -4661,7 +4661,7 @@
 0x002DFD50 0x7C ReleaseVector<10LadderItem>__FRQ23std54vector<P10LadderItem,Q23std24allocator<P10LadderItem>>_v  # OVL1; ours (a vector cleared and swapped with an empty one, the temporary's storage freed -- a non-inline template's instance: ReleaseUIResources on the two player ladders; byte-exact)
 0x002DFDD0 0x38 Close__13CZOnlineLobbyFv  # OVL1; s1:ui (the UI command table's 'UnInitNetwork' handler 0x27E5C0 calls it on theLobby where SOCOM 1's UIUnInitNetwork calls Close)
 0x002DFE10 0x34 RunStateHandler__13CZOnlineLobbyF11LOBBY_STATE16LOBBY_STATE_FLAG  # OVL1; ours (the state's handler, m_state_handler[state] at +0, called with the flag when there is one; the state an int narrowed inside, andi 0xff; the state machine 0x2ED460 calls it on theLobby)
-0x002DFE50 0x1D4 func_002DFE50  # OVL1
+0x002DFE50 0x1D4 Tick__13CZOnlineLobbyFv  # OVL1; s1:order by hand, the online lane round 11 (SOCOM 1's CZOnlineLobby::Tick 0x327C50 instruction for instruction but the game clock now a member read through this and its float setter's equality test; CZNetwork::zNetUpdate calls it on theLobby as SOCOM 1's does)
 0x002E0030 0x410 func_002E0030  # OVL1
 0x002E0440 0x10 func_002E0440  # OVL1
 0x002E0450 0x17C Init__13CZOnlineLobbyFv  # OVL1; s1 by hand (COurGame::StartEngine calls it on theLobby where SOCOM 1's StartEngine calls CZOnlineLobby::Init)

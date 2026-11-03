@@ -902,8 +902,10 @@ public:
     void UnInit();
     void Close();
     void ReleaseUIResources();
+    void CreateUIResources();
     int MediusConnectionIndex();
     void SyncGameClock(int t);
+    void Tick();
 
     bool IsMemberOfClan();
     bool IsLeaderOfClan(const char *name);
