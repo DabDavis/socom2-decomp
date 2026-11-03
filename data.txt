@@ -31,12 +31,14 @@
 0x001CBA40 0x420 _sceCd_scmdrdata  # MAIN; s1:data-exact (size SOCOM 1's; via sceCdDiskReady +2)
 0x001CC3C0 0x28 _sceCd_cd_scmd  # MAIN; s1:data-exact (size SOCOM 1's; via _sceCd_scmd_prechk +5)
 0x001CC428 0x28 dch  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaGetChan +1)
+0x001CC458 0x4 p_environ  # MAIN; newlib getenv_r.c's static (char ***p_environ = &environ), read by _findenv_r
 0x001CC750 0x4 _impure_ptr  # MAIN; s1:data-exact (size SOCOM 1's; via __assert +8)
 0x001CCBD0 0x10 gp.6  # MAIN; s1:data-seq (size SOCOM 1's; via sceGsGetGParam)
 0x001CCBE0 0x20 init_vif_regs.3  # MAIN; s1:data-exact (size SOCOM 1's; via sceGsResetPath)
 0x001CCC00 0x10 init_mp3.3  # MAIN; s1:data-exact (size SOCOM 1's; via sceGsExecStoreImage)
 0x001CCC20 0x50 iqval  # MAIN; s1:data-exact (size SOCOM 1's; via sceIpuInit)
 0x001CCC70 0x20 vqval  # MAIN; s1:data-exact (size SOCOM 1's; via sceIpuInit)
+0x001CCC90 0x10 __ps2_klibinfo__  # MAIN; SOCOM 1's symbol (the demo's GLOBAL OBJECT at the head of the same .data run, before ttyinit): "PsIIlibkernl2710", libkernl's stamp; _lf_version compares the loader's version with its last four bytes
 0x001CCCA0 0x4 ttyinit  # MAIN; s1:data-exact (size SOCOM 1's; via read +2)
 0x001CCCA4 0x4 heap_ptr.30  # MAIN; s1:data-exact (size SOCOM 1's; via sbrk)
 0x001CCCA8 0x4 topId  # MAIN; s1:data-exact (size SOCOM 1's; via InitThread +3)
@@ -84,6 +86,9 @@
 0x001D0880 0xA stdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)
 0x001D0890 0xA mfdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)
 0x001D08D0 0x101 _ctype_  # MAIN; the SDK libc's (newlib's) character table, read as (_ctype_ + 1)[c] & 8 for white space (newlib's _S): 7 %hi/%lo references in the overlays -- ReadToken (0x331BD0), the preprocessor 0x32FE70, 0x281D40 (3), 0x3996B0, 0x39AE50 -- the rdr lane
+0x001D0A98 0xC8 __mprec_tens  # MAIN; newlib mprec.c's tens[] (mprec.h: #define tens __mprec_tens): 1e0..1e24, read by _mprec_log10
+0x001D0B60 0x28 __mprec_bigtens  # MAIN; newlib mprec.c's bigtens[]: 1e16, 1e32, 1e64, 1e128, 1e256, after tens
+0x001D0B88 0x28 __mprec_tinytens  # MAIN; newlib mprec.c's tinytens[]: 1e-16 .. 1e-256, after bigtens
 0x001D1930 0x18 __thenan_df  # MAIN; s1:data-exact (size SOCOM 1's; via _fpadd_parts +2)
 0x001D2DE0 0x10 atanhi  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
 0x001D2DF0 0x10 atanlo  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
@@ -1115,6 +1120,9 @@
 0x0049ECC8 0x4 g_iSkbGridPosY__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the cursor's row; read by GetCurKey and GetCurKeyProps (the grid's row)
 0x0049ECD0 0x4 g_pActiveSkb__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the keyboard showing; cleared by PrepSkbsForDisplay and InvalidateSkbsDisplay, set by 0x38B180 and 0x38B440
 0x0049ECE8 0xC g_arrSkbs__21@unnamed@zui_skb_cpp@  # OVL1 bss; zui_skb.cpp's static, SOCOM 1's name: the keyboards (a pointer vector; __sinit_zui_skb.cpp 0x403730 zeroes it and registers its destructor 0x38D5C0); CreateSoftKeyboard pushes, ZuiUnInit frees, PrepSkbsForDisplay and InvalidateSkbsDisplay walk it
+0x0049ED08 0xC s_complete  # OVL1 bss; zui_hangul.cpp's static (name ours): the complete characters (CompleteCharacter, a vector of 16-byte SKBCOMPLETE; __sinit_zui_hangul.cpp zeroes it and registers ~CSkbCompleteVec 0x394170); 7 references in 4 functions (SkbParseKoreanRules, 0x391670, 0x3919D0, __sinit_zui_hangul.cpp 4)
+0x0049ED28 0xC s_rules  # OVL1 bss; zui_hangul.cpp's static (name ours): the Korean input productions (a vector of SKBRULE *; __sinit_zui_hangul.cpp zeroes it and registers 0x3940F0); 12 references in 5 functions (SkbParseKoreanRules 3, 0x391670, 0x3919D0, SkbParseComplete 3, __sinit_zui_hangul.cpp 4)
+0x0049ED40 0x10 s_compose  # OVL1 bss; zui_hangul.cpp's static (name ours): the jamo being composed (a fixed array of one 12-byte jamo string built in place, its count zeroed by __sinit_zui_hangul.cpp, no destructor registered); 28 references in 5 functions (SkbHangulType 2, SkbHangulBack 9, SkbHangulClear 7, SkbHangulRestart 9, __sinit_zui_hangul.cpp)
 0x0049ED70 0x1B80 s_keyRows  # OVL1 bss; zui_skbview.cpp's static (name ours): the keyboards' four rows of ten CBmpWithNode (CSkbBmpRows; __sinit_zui_skbview.cpp builds it through __construct_array and registers ~CSkbBmpRows 0x3989E0); 7 references in 7 functions (0x394520, 0x395140, 0x395540, 0x3958D0, 0x396F30, 0x397070, 0x397950) besides the initialiser
 0x004A08F0 0x40 s_captionText0  # OVL1 bss; zui_skbview.cpp's static (name ours): the caption's plain text; 3 references in 3 functions (SkbToggleCaption1, SkbToggleCaption2, 0x397640)
 0x004A0930 0x80 s_captionText1  # OVL1 bss; zui_skbview.cpp's static (name ours): the caption's text in mode 1; 2 references in 2 functions (SkbToggleCaption1, 0x397640)
@@ -1273,6 +1281,7 @@
 0x0065AA38 0x8 __RTTI__18CRestrainedPlanner  # RTTI of CRestrainedPlanner: found by its RTTI's name
 0x0065AA60 0x8 __RTTI__15CStealthPlanner  # RTTI of CStealthPlanner: found by its RTTI's name
 0x0065AA88 0x8 __RTTI__13CBasicPlanner  # RTTI of CBasicPlanner: found by its RTTI's name
+0x0065AB30 0x4 invalid__Q26CAiMap6action  # OVL2 data; SOCOM 1's (invalid__Q26CAiMap6action, 4 bytes at the demo's 0x449170, read with lhu by its resize<action> 0x18B300 as SOCOM II's resize<action> 0x51C6D0 reads this): 0xFFFF in the image, the default action's id -- the AI core round 12 (2 references in 2 functions: 0x51C6D0, 0x52BB70)
 0x0065AB38 0x4 s_cos45  # OVL2 data; ours (ai_map.cpp's static, zero in the image: __sinit_ai_map.cpp stores 0.5f * sqrtf(2.0f) into it, GetDirCos returns it and its negation; 3 references in 2 functions)
 0x0065AD00 0x4 s_aimap_version  # OVL2 data; ours (23: the AI map file version CAiMap(int) starts each map at, as SOCOM 1's constructor read its own word; 1 reference in 1 function)
 0x0065AED0 0x4 invalid__9CAiMapLoc  # OVL2 data; SOCOM 1's invalid__9CAiMapLoc (0x449450, 4 bytes, zero): CAiMapLoc's constructor copies it field by field -- CEntity's constructor reads it six times for m_mapLoc and m_mapLocValid where SOCOM 1's reads 0x449450 (the entity lane); 117 references (OVL2's AI code)

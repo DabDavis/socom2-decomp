@@ -8,10 +8,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00638F20();                                /* extern */
+s32 randomMT();                                     /* extern */
 
 void func_0063DCE8(void) {
     do {
 
-    } while (func_00638F20() == 0);
+    } while (randomMT() == 0);
 }

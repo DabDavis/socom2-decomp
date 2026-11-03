@@ -1,8 +1,9 @@
 /* seal_anim.cpp -- the SEAL animated: its blends pushed and popped, its root and vertical, its
  * adrenaline (SOCOM 1's unit, __sinit_seal_anim.cpp: Post, GetRootPos, SetVertical, the CSealAnim
- * blender, Animate, AdrenalineIncr and Adrenaline last). OVL2 from seal_ai.cpp's template tail
- * (0x575CF0) to 0x5781BF (Adrenaline), before seal_body.cpp. Defined in reverse of their image order
- * (-inline deferred). */
+ * blender, Animate, AdrenalineIncr and Adrenaline last). OVL2 0x576120 (the blender deleted: StopEngine
+ * calls it where SOCOM 1's calls ~CSealAnim -- the rows before it are seal_ai.cpp's template tail, the
+ * animate state's list instances) to 0x5781BF (Adrenaline), before seal_body.cpp. Defined in reverse
+ * of their image order (-inline deferred). */
 
 #include "zseal.h"
 
@@ -27,11 +28,64 @@ struct CSealAnimFrame {
     CZSIScriptCommon *m_anim;   // 0x8
 };
 
+/* the blender's eight frames and the one block their records come from, n records a frame (0x64
+ * bytes; new in SOCOM II, where SOCOM 1's frames held 32 records each; the names ours) */
+struct CSealAnimFrames {
+    /* the block allocated and zeroed, the frames zeroed, each frame given its n records */
+    CSealAnimFrames(unsigned int n)
+    {
+        m_pool = (CSealAnimRec *)_malloc(n << 8, 0, 0);
+        memset(m_pool, 0, n << 8);
+        memset(this, 0, sizeof(m_frames));
+        CSealAnimRec *p = m_pool;
+        for (int i = 0; i < 8; i++) {
+            m_frames[i].m_recs = p;
+            p += n;
+        }
+    }
+    /* the block freed and the frames zeroed (the blender's destructor calls it; nothing frees the
+     * frames themselves) */
+    void Free()
+    {
+        _free(m_pool, 0, 0);
+        m_pool = 0;
+        memset(this, 0, sizeof(m_frames));
+    }
+
+    CSealAnimFrame m_frames[8];   // 0x0
+    CSealAnimRec *m_pool;   // 0x60
+};
+
+extern "C" {
+/* the number of records a frame holds: si_script.cpp's siNumBodyObjects (OVL1 data 0x3DE1E8; SOCOM
+ * 1's 32 were a constant), read here as unsigned -- zbody.h's `int` makes the blender's constructor
+ * three instructions longer (0x134 against 0x128) */
+extern unsigned int data_003DE1E8;
+}
+
 /* the SEAL's animation blender (SOCOM 1's CSealAnim: a stack of frames of part records -- SOCOM II's
  * frames point at their records; only what the written members touch) and the one the unit uses (OVL1
  * bss 0x44CDE0, a pointer) */
 class CSealAnim {
 public:
+    /* empty, its frames built and every record marked unused (SOCOM 1's CSealAnim(), out of line
+     * there) */
+    CSealAnim() : m_count(0), m_seal(0)
+    {
+        m_frames = new CSealAnimFrames(data_003DE1E8);
+        CSealAnimRec *r = m_frames->m_pool;
+        for (unsigned int i = 0; i < data_003DE1E8 * 8; i++, r++)
+            r->m_id = -1;
+    }
+    /* emptied, the frames' block freed (SOCOM 1's ~CSealAnim, out of line there) */
+    ~CSealAnim()
+    {
+        m_count = 0;
+        m_seal = 0;
+        if (m_frames)
+            m_frames->Free();
+        m_frames = 0;
+    }
     /* emptied and given a SEAL (an inline: both stores through one load of the global) */
     void Begin(CZSealBody *seal)
     {
@@ -46,13 +100,11 @@ public:
 
     int m_count;   // 0x0
     CZSealBody *m_seal;   // 0x4
-    CSealAnimFrame *m_frames;   // 0x8
+    CSealAnimFrames *m_frames;   // 0x8
 };
 
 extern "C" {
 extern CSealAnim *data_0044CDE0;
-/* the number of records a frame holds (OVL1 data; SOCOM 1's 32 were a constant) */
-extern unsigned int data_003DE1E8;
 }
 
 /* a SEAL posed by one anim alone: the blender emptied and given the SEAL, the anim pushed, the pose
@@ -85,7 +137,7 @@ int CSealAnim::AnimPop()
 {
     std::vector<CZBodyPart *> &parts = m_seal->m_body_parts;
     int top = m_count - 1;
-    CSealAnimRec *rec = m_frames[top].m_recs;
+    CSealAnimRec *rec = m_frames->m_frames[top].m_recs;
 
     for (unsigned int i = 0; i < data_003DE1E8; i++, rec++) {
         if (rec->m_id > -1) {
@@ -115,4 +167,45 @@ bool CZSealBody::IsCurrentBlend(AnimType type) const
     if (type == m_curblend)
         return true;
     return m_curblend == func_005E1A90(m_animset, type);
+}
+
+/* a part's node placed where the part is (CZBodyPart::Orient's body, body.cpp's, written out: SOCOM
+ * II inlines it here, through the null-tested pointer setters) */
+static inline void OrientPart(CZBodyPart *part)
+{
+    CNode *node = part->m_node;
+
+    node->SetPosition(&part->m_pos);
+    node->SetRotation(&part->m_rot);
+}
+
+/* the parts' poses saved unless the body interpolates, then every live part with a node placed on
+ * it (OVL2 0x5762E0, new in SOCOM II: PrePostTick calls it; the name unknown) */
+extern "C" void func_005762E0(CZSealBody *seal)
+{
+    if (seal->m_interp1 <= 0.0f)
+        seal->SaveParts();
+    std::vector<CZBodyPart *> &parts = seal->m_body_parts;
+
+    for (std::vector<CZBodyPart *>::iterator i = parts.begin(); i != parts.end(); ++i) {
+        CZBodyPart *part = *i;
+
+        if (part && part->m_id >= 0 && part->m_node)
+            OrientPart(part);
+    }
+}
+
+/* the SEAL's blender made (OVL2 0x5761B0: CGame::StartEngine calls it where SOCOM 1's builds a
+ * CSealAnim with its constructor out of line; the name unknown) */
+extern "C" void func_005761B0()
+{
+    data_0044CDE0 = new CSealAnim;
+}
+
+/* and done with (OVL2 0x576120, the unit's first: CGame::StopEngine calls it where SOCOM 1's calls
+ * ~CSealAnim; the name unknown) */
+extern "C" void func_00576120()
+{
+    delete data_0044CDE0;
+    data_0044CDE0 = 0;
 }

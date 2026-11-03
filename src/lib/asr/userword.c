@@ -16,7 +16,7 @@ typedef struct UWDATA {
 } UWDATA;                               /* 36 bytes, kept at +944 */
 
 extern int casrEnableLabelInQueue(CASR *c, unsigned char enable);
-extern int func_0050C720(void *event, int id, int a, int b);
+extern int _tosControl(void *event, int id, int a, int b);
 extern int ExitUserWordTraining(CASR *c);
 extern int DoUserWordTraining(CASR *c);
 
@@ -28,7 +28,7 @@ int func_004E3ED8(CASR *c, int a1, int a2, UWDATA *pData)
 
 int DoLabelStop(CASR *c)
 {
-    if (func_0050C720(c->event, 32, 0, 0) != 0)
+    if (_tosControl(c->event, 32, 0, 0) != 0)
         return 1;
     return casrEnableLabelInQueue(c, 1);
 }
@@ -37,7 +37,7 @@ int DoLabelStart(CASR *c)
 {
     if (casrEnableLabelInQueue(c, 0) != 0)
         return 1;
-    return func_0050C720(c->event, 31, 0, 0);
+    return _tosControl(c->event, 31, 0, 0);
 }
 
 int cbCancelUserWordTraining(CASR *c)

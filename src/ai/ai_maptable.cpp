@@ -382,6 +382,11 @@ CAiMap::line *CAiMap::lines::Find(const CAiMapLoc &loc)
     return r;
 }
 
+/* a reader with no script (SOCOM 1's, out of line in both builds: resize<reader> calls it) */
+CAiMap::reader::reader() : m_reader(0), m_flags(0), m_bytes(0)
+{
+}
+
 /* the rectangle's middle cell (SOCOM 1's) */
 CAiMapLoc &CAiMap::region::GetCenter(CAiMapLoc &loc) const
 {

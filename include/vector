@@ -1231,6 +1231,8 @@ public:
     unsigned int size() const { return this->size_; }
     char &operator[](unsigned int n) { return __base::data()[n]; }
     void clear() { this->size_ = 0; }
+    /* the last character dropped (the UI lane's round 10: zui_hangul.cpp's SkbHangulBack) */
+    void pop_back() { this->size_--; }
 };
 
 template <class Allocator>

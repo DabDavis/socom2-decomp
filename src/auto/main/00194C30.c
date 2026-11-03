@@ -8,16 +8,16 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_00194F28(s32, s32);                        /* extern */
-M2C_UNK func_00195A78(s32);                         /* extern */
-M2C_UNK func_00195AF8(s32);                         /* extern */
+M2C_UNK __malloc_lock(s32);                         /* extern */
+M2C_UNK __malloc_unlock(s32);                       /* extern */
+s32 _malloc_r(s32, s32);                            /* extern */
 extern s32 _impure_ptr;
 
 s32 malloc(s32 arg0) {
     s32 temp_s1;
 
-    func_00195A78(_impure_ptr);
-    temp_s1 = func_00194F28(_impure_ptr, arg0);
-    func_00195AF8(_impure_ptr);
+    __malloc_lock(_impure_ptr);
+    temp_s1 = _malloc_r(_impure_ptr, arg0);
+    __malloc_unlock(_impure_ptr);
     return temp_s1;
 }
