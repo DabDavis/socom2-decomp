@@ -96,18 +96,33 @@ class CVehicleRdrEntry;
 
 class CSpawners {
 public:
+    /* a vehicle waiting: its recycler and its entry. Its constructor is user-declared: the list's
+     * insert (0x2B3DD0, LoadVehicles' push_back) copies the two words with lw/sw through a0, as an
+     * element with a constructor is copied (without one, MW moves them through the FPRs). Its empty
+     * destructor is the level the target's destructor chain shows below the range erase: with it the
+     * deleter's destructor is five high in tail code, so ~list's copy (0x2B3F20) inlines ~__list_imp
+     * one level and calls ~__list_deleter (0x2B3F80), which inlines the erase whole -- without it
+     * ~list's copy inlines all three levels (a STAND-IN for the original MSL's deeper node allocator
+     * maybe: one more level there gives the same chain, build/scratch/states/spawn1.cpp) */
     struct spawn_map {
+        spawn_map(unsigned int i, CVehicleRdrEntry *e) : index(i), entry(e) {}
+        ~spawn_map() {}
+
         unsigned int index;   // 0x0: the recycler's
         CVehicleRdrEntry *entry;   // 0x4
     };
+    /* the waiting vehicles: a class over the list (the names ours). ~CSpawners' member destructor at
+     * +0xC tests the list and calls ~list<spawn_map> (0x2B3F20) with 0, as a base -- and 0x2B3F20 is
+     * itself two this-tests and a call to ~__list_deleter, a level inlined between: so the member is
+     * one class above std::list (SOCOM 1's ~CSpawners agrees: three this-tests above its call to
+     * ~__list_deleter, where its id list, a plain std::list, shows three above the deleter's body) */
+    class spawn_list : public std::list<spawn_map> {
+    };
 
     /* the lists built out of line, no vehicle counted (the unit's initialiser 0x400330); the
-     * destructor inline, its copy in the template tail (0x2B4030) where the initialiser registers it.
-     * OPEN, 0x10C of 0xA0 bytes (the states lane, round 16; 0x2B4030 stays its draft's): the target
-     * calls the vehicle list's destructor (0x2B3F20, 0x60), which inlines ~__list_imp and calls
-     * ~__list_deleter (0x2B3F80, byte-exact here); this copy inlines all of it -- the spawn list's
-     * range erase (instantiated by Clear) a level too short in tail code. The initialiser's code is
-     * byte-exact once 0x2B4030 carries this destructor's name */
+     * destructor inline, its copy in the template tail (0x2B4030) where the initialiser registers it:
+     * Clear called (pinned below), the spawn list's chain through 0x2B3F20, the id list's three
+     * levels inlined and its range erase called (0x2B40D0) */
     CSpawners() : m_count(0) {}
     ~CSpawners() { Clear(); }
 
@@ -115,7 +130,7 @@ public:
     void Tick(float dT);
 
     std::list<unsigned int> m_ids;   // 0x0
-    std::list<spawn_map> m_spawns;   // 0xc
+    spawn_list m_spawns;   // 0xc
     int m_count;   // 0x18
     float m_timer;   // 0x1c
 };
@@ -448,8 +463,11 @@ void CSpawners::Tick(float dT)
     }
 }
 
-/* every spawn forgotten (OVL1 0x2B2190) */
+/* every spawn forgotten (OVL1 0x2B2190). Pinned: ~CSpawners' copy calls it (SOCOM 1's inlines it),
+ * where these headers' shallower chain would let it inline */
+#pragma auto_inline off
 void CSpawners::Clear()
 {
     m_spawns.clear();
 }
+#pragma auto_inline reset
