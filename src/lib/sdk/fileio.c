@@ -69,7 +69,11 @@ struct _sceFsCall {
 	int sema;
 	int *result;
 	int rsize;
-	char name[1024];
+	union {
+		char name[1024];
+		int arg[256];
+		void *ptr[256];
+	} u;
 };
 
 static int _fs_init = 0;
@@ -205,6 +209,52 @@ int sceFsReset(void)
 	return 0;
 }
 
+int sceClose(int fd)
+{
+	struct _sceFsCall *p = &_send_data;
+	struct _sceFsIob *io;
+	int sema, ret;
+	struct SemaParam s;
+	int result;
+
+	io = get_iob(fd);
+	_sceFsWaitS(1);
+	if (!_fs_init) {
+		_sceFsSigSema();
+		return -1;
+	}
+	if (io == 0 || io->i_flag == 0) {
+		_sceFsSigSema();
+		return -9;
+	}
+	p->u.arg[0] = io->i_fd;
+	p->u.arg[1] = io - _iob;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 1, 0, p, 20, _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	io->i_flag = 0;
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	if (result < 0)
+		return result;
+	return 0;
+}
+
 static int _sceCallCode(const char *name, int code)
 {
 	struct _sceFsCall *p = &_send_data;
@@ -216,10 +266,10 @@ static int _sceCallCode(const char *name, int code)
 	if (!_fs_init)
 		sceFsInit();
 	for (i = 0; i < 1024; i++)
-		if ((p->name[i] = name[i]) == 0)
+		if ((p->u.name[i] = name[i]) == 0)
 			break;
 	if (i == 1024) {
-		p->name[1023] = 0;
+		p->u.name[1023] = 0;
 		i = 1023;
 	}
 	s.initCount = 0;
@@ -255,6 +305,40 @@ int sceRmdir(const char *name)
 	return _sceCallCode(name, 8);
 }
 
+int sceAddDrv(void *device)
+{
+	struct _sceFsCall *p = &_send_data;
+	int sema, ret;
+	struct SemaParam s;
+	int result;
+
+	_sceFsWaitS(15);
+	if (!_fs_init)
+		sceFsInit();
+	p->u.ptr[0] = device;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 15, 0, p, 16, _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -1;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -1;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
+}
+
 int sceDelDrv(const char *name)
 {
 	return _sceCallCode(name, 16);
@@ -283,6 +367,94 @@ int sceDopen(const char *dirname)
 	ret = io - _iob;
 	SignalSema(_fs_iob_semid);
 	return ret;
+}
+
+int sceDclose(int fd)
+{
+	struct _sceFsCall *p = &_send_data;
+	struct _sceFsIob *io;
+	int sema, ret;
+	struct SemaParam s;
+	int result;
+
+	io = get_iob(fd);
+	_sceFsWaitS(10);
+	if (!_fs_init) {
+		_sceFsSigSema();
+		return -1;
+	}
+	if (io == 0 || io->i_flag == 0) {
+		_sceFsSigSema();
+		return -9;
+	}
+	p->u.arg[0] = io->i_fd;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 10, 0, p, 20, _rcv_data_rpc, 4, 0, 0) < 0) {
+		DeleteSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	io->i_flag = 0;
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	if (result < 0)
+		return result;
+	return 0;
+}
+
+int sceDread(int fd, void *buf)
+{
+	struct _sceFsCall *p = &_send_data;
+	struct _sceFsIob *io;
+	int sema, ret;
+	struct SemaParam s;
+	int result;
+
+	io = get_iob(fd);
+	_sceFsWaitS(11);
+	if (!_fs_init) {
+		_sceFsSigSema();
+		return -1;
+	}
+	if (io == 0 || io->i_flag == 0) {
+		_sceFsSigSema();
+		return -9;
+	}
+	p->u.arg[0] = io->i_fd;
+	p->u.ptr[1] = buf;
+	s.initCount = 0;
+	s.maxCount = 1;
+	s.option = 0;
+	sema = CreateSema(&s);
+	p->sema = sema;
+	p->result = &result;
+	p->rsize = 4;
+	if (sceSifCallRpc(&_cd, 11, 0, p, 32, _rcv_data_rpc, 4, 0, 0) < 0) {
+		WaitSema(sema);
+		_sceFsSigSema();
+		return -11;
+	}
+	ret = *(int *)UNCACHED(_rcv_data_rpc);
+	_sceFsSigSema();
+	if (ret == 0) {
+		DeleteSema(sema);
+		return -11;
+	}
+	WaitSema(sema);
+	DeleteSema(sema);
+	return result;
 }
 
 int sceChdir(const char *name)
