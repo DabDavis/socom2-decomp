@@ -67,6 +67,7 @@
 
 #include <iterator>
 #include <memory>
+#include <msl_utility>
 #include <string.h>
 
 namespace std {
@@ -78,14 +79,6 @@ template <>
 struct char_traits<char> {
     static int compare(const char *s1, const char *s2, unsigned int n) { return memcmp(s1, s2, n); }
 };
-
-/* the smaller of two (MSL's: the second only when it is less, both by reference -- the string's
- * compare takes the addresses of its counts and temporaries) */
-template <class T>
-inline const T &min(const T &a, const T &b)
-{
-    return b < a ? b : a;
-}
 
 /* the out-of-line members not named in the map yet (`this` first) */
 extern "C" {
@@ -126,6 +119,18 @@ public:
     void push_back(charT c);
     int compare(const basic_string &str) const;
     int compare(size_type pos1, size_type n1, const charT *s, size_type n2) const;
+    /* the character searches (out of class, see below) */
+    size_type find_first_of(const basic_string &str, size_type pos = 0) const;
+    size_type find_first_of(const charT *s, size_type pos, size_type n) const;
+    size_type find_first_of(const charT *s, size_type pos = 0) const;
+    size_type find_last_of(const charT *s, size_type pos, size_type n) const;
+    size_type find_last_of(const charT *s, size_type pos = npos) const;
+    size_type find_first_not_of(const basic_string &str, size_type pos = 0) const;
+    size_type find_first_not_of(const charT *s, size_type pos, size_type n) const;
+    size_type find_first_not_of(const charT *s, size_type pos = 0) const;
+    size_type find_last_not_of(const charT *s, size_type pos, size_type n) const;
+    size_type find_last_not_of(const charT *s, size_type pos = npos) const;
+    charT &at(size_type pos);
 
     bool is_long() const { return w_[0] & 1; }
     /* the short form's size cast back to its byte (0x2CA700, the copy closing fts_patch.cpp,
@@ -332,6 +337,211 @@ int basic_string<charT, traits, Allocator>::compare(size_type pos1, size_type n1
         return 0;
     }
     return result;
+}
+
+/* the character searches (the zdb world's: zrdr_parse.cpp's preprocessor and zrdr_read call them, its
+ * tail OVL1 0x331ED0-0x333117). Each takes its text and size in ONE short-first test, as compare does;
+ * a basic_string's text and size likewise, handed on as a tail call. The (s, pos) forms take strlen(s) */
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_first_of(const basic_string &str, size_type pos) const
+{
+    const charT *p;
+    size_type n;
+
+    if (!str.is_long()) {
+        p = str.s_.data_;
+        n = (unsigned char)str.s_.size_;
+    } else {
+        p = (const charT *)str.w_[2];
+        n = str.w_[1];
+    }
+    return find_first_of(p, pos, n);
+}
+
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_first_of(const charT *s, size_type pos, size_type n) const
+{
+    const charT *data;
+    size_type sz;
+
+    if (!is_long()) {
+        data = s_.data_;
+        sz = (unsigned char)s_.size_;
+    } else {
+        data = (const charT *)w_[2];
+        sz = w_[1];
+    }
+    if (pos < sz && n != 0) {
+        const charT *e = data + sz;
+
+        for (const charT *p = data + pos; p < e; ++p) {
+            const charT *q = s;
+
+            for (size_type i = 0; i < n; ++i, ++q)
+                if (*p == *q)
+                    return p - data;
+        }
+    }
+    return npos;
+}
+
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_first_of(const charT *s, size_type pos) const
+{
+    return find_first_of(s, pos, strlen(s));
+}
+
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_last_of(const charT *s, size_type pos, size_type n) const
+{
+    const charT *data;
+    size_type sz;
+
+    if (!is_long()) {
+        data = s_.data_;
+        sz = (unsigned char)s_.size_;
+    } else {
+        data = (const charT *)w_[2];
+        sz = w_[1];
+    }
+    if (sz != 0 && n != 0) {
+        if (sz - 1 < pos)
+            pos = sz - 1;
+        const charT *p = data + pos + 1;
+
+        while (data < p) {
+            --p;
+            const charT *q = s;
+
+            for (size_type i = 0; i < n; ++i, ++q)
+                if (*p == *q)
+                    return p - data;
+        }
+    }
+    return npos;
+}
+
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_last_of(const charT *s, size_type pos) const
+{
+    return find_last_of(s, pos, strlen(s));
+}
+
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_first_not_of(const basic_string &str, size_type pos) const
+{
+    const charT *p;
+    size_type n;
+
+    if (!str.is_long()) {
+        p = str.s_.data_;
+        n = (unsigned char)str.s_.size_;
+    } else {
+        p = (const charT *)str.w_[2];
+        n = str.w_[1];
+    }
+    return find_first_not_of(p, pos, n);
+}
+
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_first_not_of(const charT *s, size_type pos, size_type n) const
+{
+    const charT *data;
+    size_type sz;
+
+    if (!is_long()) {
+        data = s_.data_;
+        sz = (unsigned char)s_.size_;
+    } else {
+        data = (const charT *)w_[2];
+        sz = w_[1];
+    }
+    if (pos < sz) {
+        if (n == 0)
+            return pos;
+        const charT *e = data + sz;
+
+        for (const charT *p = data + pos; p < e; ++p) {
+            const charT *q = s;
+
+            for (size_type i = 0; i < n; ++i, ++q)
+                if (*p == *q)
+                    goto next;
+            return p - data;
+        next:;
+        }
+    }
+    return npos;
+}
+
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_first_not_of(const charT *s, size_type pos) const
+{
+    return find_first_not_of(s, pos, strlen(s));
+}
+
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_last_not_of(const charT *s, size_type pos, size_type n) const
+{
+    const charT *data;
+    size_type sz;
+
+    if (!is_long()) {
+        data = s_.data_;
+        sz = (unsigned char)s_.size_;
+    } else {
+        data = (const charT *)w_[2];
+        sz = w_[1];
+    }
+    if (sz != 0) {
+        if (sz - 1 < pos)
+            pos = sz - 1;
+        const charT *p = data + pos + 1;
+
+        while (data < p) {
+            --p;
+            const charT *q = s;
+
+            for (size_type i = 0; i < n; ++i, ++q)
+                if (*p == *q)
+                    goto next;
+            return p - data;
+        next:;
+        }
+    }
+    return npos;
+}
+
+template <class charT, class traits, class Allocator>
+typename basic_string<charT, traits, Allocator>::size_type
+basic_string<charT, traits, Allocator>::find_last_not_of(const charT *s, size_type pos) const
+{
+    return find_last_not_of(s, pos, strlen(s));
+}
+
+/* a character, its index checked (OVL1 0x331E30: "basic_string::at index out of range") */
+template <class charT, class traits, class Allocator>
+charT &basic_string<charT, traits, Allocator>::at(size_type pos)
+{
+    if (pos >= size())
+        __msl_error("basic_string::at index out of range");
+    return (is_long() ? (charT *)w_[2] : s_.data_)[pos];
+}
+
+/* equal: the sizes first, then compare (OVL1 0x332050, zrdr_parse.cpp's tail: out of line) */
+template <class charT, class traits, class Allocator>
+bool operator==(const basic_string<charT, traits, Allocator> &lhs, const basic_string<charT, traits, Allocator> &rhs)
+{
+    return lhs.size() == rhs.size() && lhs.compare(rhs) == 0;
 }
 
 template <class charT, class traits, class Allocator>

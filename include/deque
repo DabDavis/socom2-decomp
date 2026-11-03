@@ -51,12 +51,28 @@
  * constructors of the rdr editor, the vis unit and the lobby call a level (0x334120: the buffer and
  * start_/size_, no allocator base) that game_main.cpp's 0x2CEE00 inlines; init's parameters are
  * copied twice around two value-initialised empty temporaries (0x333BB0, 0x3A5ED0); begin()/end()
- * of the buffer build their iterator in memory, its fields addressed through registers. */
+ * of the buffer build their iterator in memory, its fields addressed through registers.
+ *
+ * The MSL headers' round 13 (probes build/p13/, untracked): A CLASS ELEMENT IS DESTROYED, a scalar one
+ * is not -- the chat lines' clear (0x2F5A30) calls make_iterator twice (end first) and a range destroy
+ * (0x2F5B10, block by block, min over the count and buf_size's storage at 0x3F56D8) where the lobby's,
+ * the state machine's and the pointer deques' clears have none: Metrowerks::has_trivial_dtor (an
+ * is_class test MW 3.0 compiles) picks it at compile time; 0x2F5A30 byte-exact from the chat unit's
+ * tail, nothing lost. Still open there: the destroy itself (0x20C against 0x1F8: the block iterators'
+ * difference is called out of line -- a friend generated after the deque iterator's, which then calls
+ * it; written inline the call goes but the by-value iterators are still copied in, 0x270), and the
+ * chat's teardown level 0x2F62B0 (destroy, then ~__deque_buf 0x2F6BC0 called with 0: a destroying class
+ * between __deque_imp and __deque_buf for class elements only -- the lobby's chain calls ~__deque_buf
+ * after the same four this-tests -- which needs make_iterator and destroy below it, in __deque_buf).
+ * make_iterator: begin() of the buffer in class makes it 0xB8 (all scalarised), its copy kept in memory
+ * by `return t += n` in operator+ 0x100; the target keeps begin()'s object in memory too (0x130/0x138) --
+ * neither a user copy constructor nor a member operator- does it. */
 
 #ifndef _MSL_DEQUE
 #define _MSL_DEQUE
 
 #include <memory>
+#include <msl_utility>
 #include <new>
 #include <iterator>
 #include <stdio.h>
@@ -409,8 +425,11 @@ public:
      * chat's 112-byte lines go 8 to a block (its pop_front 0x2F51E0 keeps 16, and the private-line
      * callbacks' inlined front() 0x2F4A20/0x2F4BA0 divide the start by 8; 512 / 112 would give 4).
      * The only element in the tree past 64 bytes, so the minimum moves nothing else (the online
-     * lane, round 11) */
-    enum { buf_size = sizeof(T) * 8 <= 512 ? 512 / sizeof(T) : 8 };
+     * lane, round 11). A static constant with storage (the MSL headers round 13): the range destroy
+     * takes its address for min (the chat's 0x2F5B10 reads it at 0x3F56D8, the 8 in the chat unit's
+     * rodata), every other reader folds it */
+    typedef unsigned int size_type;
+    static const size_type buf_size = sizeof(T) * 8 <= 512 ? 512 / sizeof(T) : 8;
 
     /* the iterator: the block buffer's position, the element, the block's end */
     class iterator {
@@ -461,9 +480,47 @@ public:
     static unsigned int max_size() { return ((unsigned int)-1 / sizeof(T *) - 1) * buf_size; }
     const_iterator make_iterator(unsigned int n) const;
     iterator make_iterator(unsigned int n);
+    /* the ends as make_iterator gives them (in class: through these the range destroy's arguments are
+     * built end first, the target's order -- a call one inline level deeper is expanded later; called
+     * straight, begin's make_iterator came first) */
+    iterator begin() { return make_iterator(0); }
+    iterator end() { return make_iterator(this->size_); }
     template <class InputIterator>
     void do_assign(InputIterator first, InputIterator last);
+    /* the elements [first, last) destroyed block by block (out of class; a class element's only:
+     * see clear()) */
+    void destroy(iterator first, iterator last);
 };
+
+template <class T, class Allocator>
+const typename __deque_imp<T, Allocator>::size_type __deque_imp<T, Allocator>::buf_size;
+
+/* the elements of [first, last) destroyed a block at a time (the chat lines' 0x2F5B10): the count
+ * taken first, the first block's run as far as the count or the block's end allows (min over the
+ * signed difference: the count copied), then whole blocks of at most buf_size (min over the count
+ * itself and the constant's storage), each run's length taken off the count. A trivial destructor
+ * leaves only the walk */
+template <class T, class Allocator>
+void __deque_imp<T, Allocator>::destroy(iterator first, iterator last)
+{
+    if (first == last)
+        return;
+    size_type n = last - first;
+    typename iterator::buf_iterator i = first.i_;
+    T *p = first.cur_;
+    T *e = p + min(int(n), int(first.last_ - first.cur_));
+
+    for (;;) {
+        for (T *q = p; q < e; ++q)
+            q->~T();
+        n -= e - p;
+        if (n == 0)
+            break;
+        ++i;
+        p = *i;
+        e = p + min(n, buf_size);
+    }
+}
 
 template <class T, class Allocator>
 typename __deque_imp<T, Allocator>::const_iterator __deque_imp<T, Allocator>::make_iterator(unsigned int n) const
@@ -522,6 +579,8 @@ void __deque_imp<T, Allocator>::do_assign(InputIterator first, InputIterator las
 template <class T, class Allocator>
 void __deque_imp<T, Allocator>::clear()
 {
+    if (!Metrowerks::has_trivial_dtor<T>::value)
+        destroy(begin(), end());
     this->size_ = 0;
     if (this->buf_.second_.size() > 1) {
         while (this->buf_.second_.size() > 2) {

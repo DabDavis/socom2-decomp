@@ -15,6 +15,36 @@ inline void swap(T &a, T &b)
     b = t;
 }
 
+/* the smaller of two (MSL's: the second only when it is less, both by reference -- the string's
+ * compare and the deque's destroy take the addresses of their counts and temporaries) */
+template <class T>
+inline const T &min(const T &a, const T &b)
+{
+    return b < a ? b : a;
+}
+
+}
+
+namespace Metrowerks {
+
+/* whether T is a class (a pointer to a member of it can be formed: MW 3.0 takes the SFINAE test)
+ * and so whether its destructor may do anything: the deque destroys only class elements (the chat
+ * lines' clear 0x2F5A30 calls its range destroy 0x2F5B10; the lobby's states' clear 0x2E1B20, an
+ * enum's, has none) -- MSL's has_trivial_dtor as far as SOCOM II's elements tell it apart */
+template <class T>
+struct is_class {
+    template <class U>
+    static char test(int U::*);
+    template <class U>
+    static long test(...);
+    enum { value = sizeof(test<T>(0)) == 1 };
+};
+
+template <class T>
+struct has_trivial_dtor {
+    enum { value = !is_class<T>::value };
+};
+
 }
 
 namespace Metrowerks {

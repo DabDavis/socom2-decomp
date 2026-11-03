@@ -1759,6 +1759,28 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 13** (the instances other lanes waited on):
+  - include/list's range and single erases DESTROY each element (its destructor called with -1) before freeing the
+    node -- pointer lists unaffected; the list erase re-reads the iterator's node after the element's destructor
+    call (ai_group.cpp's step-list erase 0x60EA90 matches; the single erase 0x60EB60 matches as a probe and counts
+    once CAiGroup::Tick 0x60C3E0, its only caller, is written);
+  - include/string gains find_first_of/find_last_of/find_first_not_of/find_last_not_of in all their forms, at()
+    and operator== (12 zrdr_parse.cpp rows named, CRdrIO::Open now calling them as members): the character set
+    is walked by its own pointer beside the counter (indexing `s[i]` does not give the target's code), and the
+    not-found exit of the *_not_of searches is a `goto` out of the inner loop; the list splice 0x33E790 was
+    vis_texfx.cpp's copy already;
+  - MW 3.0b52 compiles the SFINAE `is_class` test (`int U::*`: enums, scalars, pointers and member pointers 0,
+    structs 1) -- include/msl_utility has it (and std::min, moved from include/string), and include/deque destroys
+    class elements through it, scalar ones not: the chat deque's clear 0x2F5A30 matches;
+  - with `destroy(begin(), end())` through inline wrappers end's make_iterator runs first (the target's order),
+    written `destroy(make_iterator(0), make_iterator(size_))` begin's does, in the same stack slots; the chat
+    iterator's subtraction helper stays a call in the destroy even as an in-class member;
+  - open (measurements in include/deque's comment): every make_iterator (best 0xB8/0x100 against the target's
+    0x130/0x138 -- the target keeps the block iterator in memory), the chat's range destroy 0x2F5B10 (0x20C vs
+    0x1F8: a helper generated too late), the chat teardown 0x2F62B0 (it needs a destroying class between
+    __deque_imp and __deque_buf, moving the iterator into __deque_buf and renaming nine rows), the lobby deque's
+    pieces; 0x32FB90, 0x3323F0, 0x332560, 0x3320E0, 0x333120 are code-exact over a stand-in element and wait for
+    the world lane's real 28-byte record (a byte and two string-like members).
 - **Tells from completing the MSL headers, round 12** (THE INLINE LEVEL, measured header by header and not
   adopted: is SOCOM II built at `-inline level=8` with MSL deeper than include/*? -- build/scratch/msl-r12/
   table.txt and its logs, probes build/p12/, untracked):
