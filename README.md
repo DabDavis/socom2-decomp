@@ -1841,6 +1841,30 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 17** (the string patch, include/algorithm's heap, the A* search):
+  - the world lane's basic_string patch is in -- operator=(const basic_string &) an inline over a new assign(const
+    basic_string &) (0x22E4D0 assign; 0x32FD70, the image's only `j 0x22E4D0` stub, __as__) -- and its "regression" of
+    do_assign<CCharacterType::LOD> 0x53F730 was the call resolving to OVL1's row: OVL2's copy 0x5410C0 marked
+    `ovl-copy:` keeps it matching unchanged. When an inline starts calling an out-of-line function, the other
+    overlays' copies of that function need marks that follow the renamed row. zrdr_parse.cpp gains 0x332560,
+    0x332A60, 0x332AD0 and 0x333120;
+  - include/algorithm gains MSL's heap -- push_heap 0x5132B0, pop_heap 0x513460, __insert_heap_down 0x515270 over the
+    A* node (with std::greater in include/functional, iterator_traits in include/iterator, the vector iterator's
+    value_type/difference_type: additive): MSL writes the length test `len >= 2` (`len > 1` branches on `at` where
+    the image puts the result in v1 first) and updates its indices in place (`--parent; parent /= 2;`, `++child;
+    child *= 2;`); for the node's `>` write `b.f() < a.f()` -- MW evaluates a comparison's right operand first;
+  - ai_astar.cpp is 0x510280-0x51557F (its template tail from 0x5132A0); a dead-stripped CAiStar::Shutdown sits between
+    Init and ~CAiStar (ABSENT.txt) -- its FreeVector copies make the tail generate the deleter's destructor first, so
+    the reserves inline it (reserve<CAiMapLoc> byte-exact that way; the image keeps the copies because another unit
+    references them); an empty comparator passed by value from a static is read with `lb` from the static;
+  - CAiPlanner::reset takes (map, start, goal) (find_path calls slot +8 with the map and both ends; CAiHidePlanner's
+    0x5F8560 keeps the start); 0x524760 is PointInPath by SOCOM 1's body (the demo's 0x193540), and the row that held
+    the name, 0x524880, is FindPoint;
+  - open: find_path 0x510FF0 (0xF30 vs 0xF48: the target keeps the node cost fields' ADDRESSES in saved registers,
+    `lh 0(s8)` -- the costs reached through references, as SOCOM 1's find_path does), PointInPath and FindPoint (the
+    target re-reads size_ and data_ for the loop's end test each pass), the class inserts insert<node> 0x514890 (89),
+    insert<CAiMapLoc> 0x5136B0 (77) and insert<point> 0x513F90 (110) -- the end register --, __sinit_ai_astar.cpp
+    (0xCC vs 0xE4).
 - **Tells from the kit and AI states, round 18** (seal_look.cpp's look setters, seal_handsig.cpp, seal_ailines.cpp,
   CAiSFollow's setters):
   - three units by SOCOM 1's: seal_look.cpp (its seal_aiscan.cpp, 0x600550-0x60187F) holds the look setters as

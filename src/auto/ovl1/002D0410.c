@@ -15,12 +15,12 @@ M2C_UNK Init__3C2DFv();                             /* extern */
 M2C_UNK Init__5CPipeFv();                           /* extern */
 M2C_UNK Init__6CInputFv();                          /* extern */
 M2C_UNK Init__6CValveFv();                          /* extern */
+M2C_UNK Init__7CAiStarFv();                         /* extern */
 M2C_UNK Init__Q23zdb17CTextureFXManagerFi(M2C_UNK *, M2C_UNK); /* extern */
 M2C_UNK Init__Q23zdb6CWorldFv();                    /* extern */
 M2C_UNK Init__Q23zdb8CTextureFv();                  /* extern */
 M2C_UNK Open__3C2DFv();                             /* extern */
 M2C_UNK func_003221F0();                            /* extern */
-M2C_UNK func_005128F0();                            /* extern */
 M2C_UNK func_005761B0();                            /* extern */
 M2C_UNK zMath_Init__Fv();                           /* extern */
 M2C_UNK zRndrInit__Fv();                            /* extern */
@@ -44,6 +44,6 @@ s32 StartEngine__5CGameFv(void) {
     Init__5CPipeFv();
     func_005761B0();
     CreatePool__19CGameStateChangeCmdFUi(0x10);
-    func_005128F0();
+    Init__7CAiStarFv();
     return 1;
 }
