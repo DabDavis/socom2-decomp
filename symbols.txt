@@ -3676,9 +3676,9 @@
 0x0029E470 0x70 GetEntityByIndex__11CEntityListCFUi  # OVL1; s1:order (CEntityList's first, as SOCOM 1's 0x1EE0F0: past the end gives none, else the walk index steps along a const_iterator); ent_main.cpp
 0x0029E4E0 0xB0 GetEntityById__11CEntityListCFUi  # OVL1; s1:order (CEntityList's second, as SOCOM 1's 0x1EE190: none for CEntity::invalidId (0x3EFFB0, SOCOM 1's invalidId__7CEntity), else the entity whose m_id matches); ent_main.cpp
 0x0029E590 0xE0 GetEntity__11CEntityListCFPCc  # OVL1; s1:order (CEntityList's third, as SOCOM 1's 0x1EE290: strcasecmp of the name against each entity's node's name); ent_main.cpp
-0x0029E670 0x8 Virtual5C__7CEntityFv  # OVL1; slot 0x5C of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E670 0x8 Virtual5C__7CEntityFP10CZSealBodyP7CTurret  # OVL1; slot 0x5C of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp; by hand (the SEAL lane, round 14, zentity.h's slot 0x5C re-declared): the slot takes (CZSealBody *, CTurret *) and returns bool -- OVL2 0x5A88C0 calls it with (the SEAL, the entity when it is a turret) and tests the result; CTurret's override 0x3A90C0 reads both and returns a bool local; ent_main.cpp
 0x0029E680 0x8 Virtual60__7CEntityFP6CPnt3D  # OVL1; slot 0x60 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp; the parameter and bool from CTurret's override 0x3A71A0 (fills a CPnt3D, returns true)
-0x0029E690 0x8 Virtual64__7CEntityFv  # OVL1; slot 0x64 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp
+0x0029E690 0x8 GetFirepointNode__7CEntityFPCc  # OVL1; slot 0x64 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp; by hand (the SEAL lane, round 14, zentity.h's slot 0x64 re-declared): SOCOM 1's CZSealBody::GetFirepointNode(const char *), virtual in SOCOM II -- both SEAL callers pass a name in a1, CZSealBody's override 0x5DFAD0 hands it to FindChild; ent_main.cpp
 0x0029E6A0 0x8 Virtual68__7CEntityFP6CPnt3D  # OVL1; slot 0x68 of __vt__7CEntity, new in SOCOM II (returns 0) -- the name is ours; ent_main.cpp; the parameter and bool from CTurret's override 0x3A71D0 (fills a CPnt3D, returns true)
 0x0029E6B0 0x80 UpdateCompassAnchor__7CEntityFv  # OVL1; slot 0x6C of __vt__7CEntity, new in SOCOM II: the entity's compass anchor (0xC4) moved to the entity's position and enabled while it lives, unless locked -- the name is ours; ent_main.cpp
 0x0029E730 0x174 CreateCompassAnchor__7CEntityFiPCc  # OVL1; new in SOCOM II: type 11 makes a "VEHICLE" anchor through CCompass::CreateAnchor (hidden and locked unless the name holds "Turret"), names and types it, keeps it at 0xC4 -- the name is ours; ent_main.cpp
@@ -6002,10 +6002,10 @@
 0x0033B930 0x8 func_0033B930  # OVL1
 0x0033B940 0x14 func_0033B940  # OVL1
 0x0033B960 0x54 func_0033B960  # OVL1
-0x0033B9C0 0x60 func_0033B9C0  # OVL1
-0x0033BA20 0x40 func_0033BA20  # OVL1
-0x0033BA60 0x8 func_0033BA60  # OVL1
-0x0033BA70 0x14 func_0033BA70  # OVL1
+0x0033B9C0 0x60 __dt__Q23std30vector<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: an out-of-line copy of ~vector<u_long128> (~__vector_imp inlined, the deleter's destructor 0x33C360 called), FreeVector's temporary inlined one level (called with -1)
+0x0033BA20 0x40 swap__Q23std40__vector_deleter<1,Q23std12allocator<1>>FRQ23std40__vector_deleter<1,Q23std12allocator<1>>  # OVL1; the world lane r2: an out-of-line copy of vector<u_long128>'s deleter member swap (the this test, the three words traded; ztex_manager.cpp emits the same 0x40 bytes), FreeVector inlined one level calls it
+0x0033BA60 0x8 clear__Q23std30vector<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: an out-of-line copy of vector<u_long128>::clear() (a j to the deleter's 0x33C350), emitted after its first caller in zrndr_pipe.cpp; FreeVector inlined one level calls it
+0x0033BA70 0x14 __ct__Q23std30vector<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: an out-of-line copy of vector<u_long128>'s constructor (three words zeroed), FreeVector's temporary inlined one level
 0x0033BA90 0x10 func_0033BA90  # OVL1; tu: vis_main.cpp~ (1.0 beta)
 0x0033BAA0 0x70 func_0033BAA0  # OVL1
 0x0033BB10 0x40 func_0033BB10  # OVL1
@@ -6027,8 +6027,8 @@
 0x0033C120 0xA0 func_0033C120  # OVL1
 0x0033C1C0 0xD4 func_0033C1C0  # OVL1
 0x0033C2A0 0xAC func_0033C2A0  # OVL1
-0x0033C350 0x8 func_0033C350  # OVL1
-0x0033C360 0x68 func_0033C360  # OVL1
+0x0033C350 0x8 clear__Q23std40__vector_deleter<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: zrndr_pipe.cpp's template tail -- vector<u_long128>'s deleter clear (the trivial element's: size_ = 0), the copy the linker kept; ztex_manager.cpp's clears and ~CGSTexBuffer call it
+0x0033C360 0x68 __dt__Q23std40__vector_deleter<1,Q23std12allocator<1>>Fv  # OVL1; the world lane r2: zrndr_pipe.cpp's template tail -- vector<u_long128>'s deleter destructor (one this-test, the block deleted), the copy the linker kept; ~CGSTexBuffer and FreeVector's temporary call it
 0x0033C3D0 0x8 func_0033C3D0  # OVL1
 0x0033C3E0 0x68 func_0033C3E0  # OVL1
 0x0033C450 0x164 func_0033C450  # OVL1
@@ -6489,43 +6489,43 @@
 0x003558D0 0xA4 __ct__Q23zdb11CTexPaletteFPCc  # OVL1; s1:align
 0x00355980 0x54 ClearAll__Q23zdb15CBatchRelocatorFv  # OVL1; s1:align
 0x003559E0 0x3C AddToBatch__Q23zdb15CBatchRelocatorCFPQ23zdb10CTexHandle  # OVL1; s1:align; s1:vtable (the same slot of the same class's vtable in both builds, code alike); was StartBatchReloc__Q23zdb15CBatchRelocatorCFv
-0x00355A20 0x8 func_00355A20  # OVL1
+0x00355A20 0x8 DropChain__Q23zdb12CGSTexBufferFv  # OVL1; the world lane r2: ztex_manager.cpp -- SOCOM II's, the name ours (the chain dropped, m_chainp = 0, which SOCOM 1 stored in place: AddToBatch, Add(CAssetLib *), Hookup and Add(CTexList *) call it)
 0x00355A30 0x14 EndBatchReloc__Q23zdb15CBatchRelocatorCFv  # OVL1; s1:vtable by hand (slot 1 of CBatchRelocator's six; slots 0 and 3 read against the demo's code; SOCOM II tail-calls what the demo inlined, so sizes differ 14x)
 0x00355A50 0x1C StartBatchReloc__Q23zdb15CBatchRelocatorCFv  # OVL1; s1:vtable by hand (slot 3 of six: zeroes +24 as the demo's does, with the two list clears inlined)
-0x00355A70 0x1F8 func_00355A70  # OVL1
-0x00355C70 0x168 func_00355C70  # OVL1
+0x00355A70 0x1F8 MIPUpdateTextureSelects__Q23zdb8CTextureFUiUi  # OVL1; the world lane r2: s1:order by hand (SOCOM 1's MIPUpdateTextureSelects, first after CBatchRelocator's slots as there: MIPTBP1/2's three levels at the old address moved to the new; SOCOM II copies the register and writes it back cached and uncached) -- ztex_manager.cpp
+0x00355C70 0x168 UpdateTextureSelect__Q23zdb8CTextureFUiUi  # OVL1; the world lane r2: SOCOM II's, the name ours (one texture's TEX0 TBP0/CBP rewritten, its mip levels' MIPUpdateTextureSelects called, the next address given back: UpdateTextureSelects calls it per handle) -- ztex_manager.cpp
 0x00355DE0 0x140 UpdateTextureSelects__Q23zdb12CGSTexBufferFv  # OVL1; s1:calls (the rdr lane's lead, vetted by the integrator: InterruptFromVIF1 calls it right after sceDmaSync with the command's buffer, as SOCOM 1's InterruptFromVIF1 calls UpdateTextureSelects__Q23zdb12CGSTexBufferFv; 0x140 here against SOCOM 1's 0x20C)
 0x00355F20 0xB8 ClearPktBufs__Q23zdb11CTexManagerFRQ23zdb11CTexManagerb  # OVL1; s1:align
-0x00355FE0 0x94 func_00355FE0  # OVL1
-0x00356080 0xAC func_00356080  # OVL1
-0x00356130 0x3B8 func_00356130  # OVL1
-0x003564F0 0x78 func_003564F0  # OVL1
+0x00355FE0 0x94 FreeVector<Q23std30vector<1,Q23std12allocator<1>>>__FRQ23std30vector<1,Q23std12allocator<1>>_v  # OVL1; the world lane r2: ztex_manager.cpp -- zsys.h's FreeVector over the packet vector<u_long128> (the temporary built inline, the deleter's clear and destructor called, the swap inlined), out of line after ClearPktBufs, its first caller
+0x00356080 0xAC DestroyBuffers__Q23zdb11CTexManagerFRQ23zdb11CTexManagerb  # OVL1; the world lane r2: s1:order by hand (SOCOM 1's DestroyBuffers after ClearPktBufs: the buffers deleted from the last while more than all?0:1 remain, then the phases' 19x3 indices zeroed -- SOCOM 1's 17x3 -- returning true; the states pass m_texmanager and false) -- ztex_manager.cpp
+0x00356130 0x3B8 doSetupBuffers__Q23zdb11CTexManagerFv  # OVL1; the world lane r2: ztex_manager.cpp -- SOCOM 1's doSetupBuffers (its name argument gone: the state core calls it on the manager): dyntex.rdr's 'boundaries' PNT2D sets TexBufParams, then doAddBuffer per render phase, the buffer names TexShadow:A ... Subtitles; SOCOM 1's order after DestroyBuffers
+0x003564F0 0x78 WipePktBuf__Q23zdb11CTexManagerFv  # OVL1; the world lane r2: s1:order by hand (SOCOM 1's static WipePktBuf: every non-null buffer of m_texmanager wiped, by count; SOCOM II calls the buffer's wipe 0x356B30 out of line) -- ztex_manager.cpp
 0x00356570 0x144 doDelBuffer__Q23zdb11CTexManagerFPQ23zdb12CGSTexBuffer  # OVL1; s1:calls (the texture characters' release calls it where SOCOM 1's does) -- the zdb-world lane
 0x003566C0 0x280 doAddBuffer__Q23zdb11CTexManagerFPCcff  # OVL1; s1:calls (the CTextureAssetCharacters constructor calls it where SOCOM 1's does) -- the zdb-world lane
-0x00356940 0xA8 func_00356940  # OVL1
+0x00356940 0xA8 __ct__Q23zdb11CTexManagerFv  # OVL1; the world lane r2: SOCOM 1's class (its DWARF: the buffers' vector, four sizes): __sinit_ztex_manager.cpp (0x403580) builds m_texmanager through it -- the sizes from four data words, TexBufParams' four defaults, the vector reserved to 128 -- ztex_manager.cpp
 0x003569F0 0x140 Add__Q23zdb12CGSTexBufferFPQ23zdb9CAssetLibb  # OVL1; s1:calls (the CTextureAssetCharacters constructor calls it where SOCOM 1's does) -- the zdb-world lane
-0x00356B30 0x54 func_00356B30  # OVL1
-0x00356B90 0x4C swap__Q23std40__vector_deleter<1,Q23std12allocator<1>>FRQ23std40__vector_deleter<1,Q23std12allocator<1>>  # OVL1; tu: ztex_manager.cpp~ (1.0 beta); s1:align
-0x00356BE0 0x140 func_00356BE0  # OVL1
-0x00356D20 0x168 func_00356D20  # OVL1
-0x00356E90 0x228 MakeChain__Q23zdb12CGSTexBufferFP1i  # OVL1; s1:align
+0x00356B30 0x54 WipePktBuf__Q23zdb12CGSTexBufferFv  # OVL1; the world lane r2: SOCOM II's, the name ours (the packet vector cleared and freed, the chain dropped: CTexManager::WipePktBuf calls it per buffer, CCinematicState::UnInit for one) -- ztex_manager.cpp
+0x00356B90 0x4C ReservePktBuf__Q23zdb12CGSTexBufferFUi  # OVL1; tu: ztex_manager.cpp~ (1.0 beta); s1:align; the world lane r2: ztex_manager.cpp -- SOCOM II's, the name ours (the packet vector emptied and reserved to n when its capacity is short: the cinematic state readies two buffers with 2048; it is no swap -- the s1:align name was wrong)
+0x00356BE0 0x140 Load__Q23zdb12CGSTexBufferFb  # OVL1; the world lane r2: s1:order by hand (SOCOM 1's Load(bool) after Add(CAssetLib *): nothing to load gives 0, Hookup when now, MakeChain into a packet vector of (textures+palettes)*11+3 or RelocateAll, then UpdateTextureSelects and the GIF DMA) -- ztex_manager.cpp
+0x00356D20 0x168 refLoadImage__FP1UiUiPvUiUiUi  # OVL1; the world lane r2: s1:order by hand (SOCOM 1's refLoadImage__FP8_word128UiUiPvUiUiUi before MakeChain, which calls it per palette and texture: the BITBLTBUF/TRXPOS/TRXREG/TRXDIR packet and the pixels by reference, split past 0x7FFF quadwords; SOCOM II's takes u_long128 *) -- ztex_manager.cpp
+0x00356E90 0x228 MakeChain__Q23zdb12CGSTexBufferFP1  # OVL1; s1:align; the world lane r2: ztex_manager.cpp -- SOCOM 1's MakeChain(u_long128 *, int) without its count: SOCOM II's Load (0x356BE0) sets no a2 for the call and the body reads none (SOCOM 1's Load passed the size in a2)
 0x003570C0 0x108 RelocateAll__Q23zdb12CGSTexBufferFv  # OVL1; s1:order by hand (the HUD lane: ztex_manager.cpp -- SOCOM 1's CGSTexBuffer::RelocateAll at its place after MakeChain: the dynamic palettes, then the textures, placed one after another from m_startAddress, each place rewritten only where it changes)
-0x003571D0 0x29C func_003571D0  # OVL1
+0x003571D0 0x29C Hookup__Q23zdb12CGSTexBufferFPQ23zdb9CAssetLib  # OVL1; the world lane r2: s1:order by hand (SOCOM 1's Hookup after RelocateAll: each handle's GS address, its texture's palette found in three places through FindPalette, the mip parents listed; Load and HookupLib call it) -- ztex_manager.cpp
 0x00357470 0x50 HasMipLevel__Q23zdb8CTextureFPQ23zdb8CTexture  # OVL1; ours by hand (the HUD lane: ztex_manager.cpp -- whether a texture is in this texture's vector of mip levels at 0x5C; zdb::CAssetList::FindMipLevel's test (0x321300); byte-exact)
 0x003574C0 0xD4 FindPalette__Q23zdb8CTextureFPQ23zdb11CTexPalList  # OVL1; ours by hand (the HUD lane: ztex_manager.cpp -- the texture's palette looked for in a palette list by id (0x2a against the palette's 0x10) and name, stored at 0x1c when found; called three times by 0x3571D0; byte-exact)
-0x003575A0 0x18 func_003575A0  # OVL1
+0x003575A0 0x18 Setup__Q23zdb12CGSTexBufferFUiUi  # OVL1; the world lane r2: SOCOM II's overload, the name SOCOM 1's float Setup's (the buffer placed between two GS addresses, its chain dropped, its end returned: CCinematicState::Init) -- ztex_manager.cpp
 0x003575C0 0x190 Setup__Q23zdb12CGSTexBufferFff  # OVL1; s1:order by hand (the HUD lane: ztex_manager.cpp -- SOCOM 1's CGSTexBuffer::Setup(float, float) at its place after Hookup: the buffer placed between two fractions of the texture memory (m_baseAddress to 0x49E850), its next address reset and chain dropped when it moves; SOCOM II returns the end; byte-exact)
 0x00357750 0xC8 Add__Q23zdb12CGSTexBufferFPQ23zdb8CTexListb  # OVL1; s1:order by hand (the HUD lane: ztex_manager.cpp -- SOCOM 1's CGSTexBuffer::Add(CTexList *, bool) at its place before SetDynTexList and CDynTexList's Adds: each handle and then its palette put on the dynamic list at 0x28, the chain dropped after each, SOCOM 1's inline store now the call 0x355A20)
-0x00357820 0x34 func_00357820  # OVL1
+0x00357820 0x34 SetDynTexList__Q23zdb12CGSTexBufferFPQ23zdb11CDynTexList  # OVL1; the world lane r2: s1:order by hand (SOCOM 1's SetDynTexList between Add(CTexList *) and CDynTexList's Adds: both lists cleared, the other added, the chain dropped; CTextureAssetCharacters' constructor calls it) -- ztex_manager.cpp
 0x00357860 0xF0 Add__Q23zdb11CDynTexListFPQ23zdb11CTexPaletteb  # OVL1; s1:callee
 0x00357950 0xA4 Add__Q23zdb11CDynTexListFPQ23zdb10CTexHandleb  # OVL1; s1:callee
 0x00357A00 0xF8 Add__Q23zdb11CDynTexListFPQ23zdb11CDynTexList  # OVL1; s1:order by hand (the HUD lane: ztex_manager.cpp -- SOCOM 1's third CDynTexList::Add, right after the other two as there: every handle and palette of another list added with b true)
 0x00357B00 0xB8 __dt__Q23zdb12CGSTexBufferFv  # OVL1; s1:align
-0x00357BC0 0x4C func_00357BC0  # OVL1
+0x00357BC0 0x4C __ct__Q23zdb12CGSTexBufferFv  # OVL1; the world lane r2: s1:order by hand (SOCOM 1's CGSTexBuffer() after its destructor: the vectors empty, the overflow check on, the rest zero; doAddBuffer news 64 bytes and calls it) -- ztex_manager.cpp
 0x00357C10 0xC TakeDrawPacket__Q23zdb15CBatchRelocatorFP1Ui  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00357C20 0x6C func_00357C20  # OVL1
-0x00357C90 0x178 func_00357C90  # OVL1
-0x00357E10 0x78 func_00357E10  # OVL1
+0x00357C20 0x6C remove_copy<Q33std78__vector_imp<PQ23zdb12CGSTexBuffer,Q23std32allocator<PQ23zdb12CGSTexBuffer>,1>8iterator,Q33std78__vector_imp<PQ23zdb12CGSTexBuffer,Q23std32allocator<PQ23zdb12CGSTexBuffer>,1>8iterator,PQ23zdb12CGSTexBuffer>__3stdFQ33std78__vector_imp<PQ23zdb12CGSTexBuffer,Q23std32allocator<PQ23zdb12CGSTexBuffer>,1>8iteratorQ33std78__vector_imp<PQ23zdb12CGSTexBuffer,Q23std32allocator<PQ23zdb12CGSTexBuffer>,1>8iteratorQ33std78__vector_imp<PQ23zdb12CGSTexBuffer,Q23std32allocator<PQ23zdb12CGSTexBuffer>,1>8iteratorRCPQ23zdb12CGSTexBuffer_Q33std78__vector_imp<PQ23zdb12CGSTexBuffer,Q23std32allocator<PQ23zdb12CGSTexBuffer>,1>8iterator  # OVL1; the world lane r2: ztex_manager.cpp's template tail -- std::remove_copy over the buffers' vector iterators (SOCOM 1's remove_copy<CGSTexBuffer **> at the same place), called by doDelBuffer's inlined std::remove
+0x00357C90 0x178 reserve__Q23std38__vector_imp<1,Q23std12allocator<1>,0>FUi  # OVL1; the world lane r2: ztex_manager.cpp's template tail -- vector<u_long128>'s reserve (16-byte elements copied with lq/sq; SOCOM 1's packet vector mangles its element 1); Load and ReservePktBuf call it
+0x00357E10 0x78 __dt__Q23zdb11CTexManagerFv  # OVL1; the world lane r2: ztex_manager.cpp's tail -- SOCOM 1's ~CTexManager (an inline copy there too, 0x2FD120): the implicit destructor, the buffers' pointer vector's three this-tests; __sinit_ztex_manager.cpp registers it for m_texmanager
 0x00357E90 0x50 SetAA__13C2DBitmapPolyFb  # OVL1; by hand (slot 7 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 7; the inline's copy c2dbitmap_poly.cpp emits with the vtable; the name ours, as C2DBitmap's)
 0x00357EE0 0x50 SetGouraud__13C2DBitmapPolyFb  # OVL1; by hand (slot 9 of C2DBitmapPoly's vtable 0x406C30: both triangles' slot 9; the inline's copy c2dbitmap_poly.cpp emits with the vtable; the name ours, as C2DBitmap's)
 0x00357F30 0x670 func_00357F30  # OVL1
@@ -7713,7 +7713,7 @@
 0x003A6FA0 0x88 clear__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>Fv  # OVL1; (include/deque, util_ssm.cpp's queue: __deque_imp::clear, two blocks kept and the start at 21)
 0x003A7030 0x164 make_iterator__Q23std97__deque_imp<M19CSimpleStateMachineFPCvPvUc_v,Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>>FUi  # OVL1; the MSL headers round 7: include/deque -- the same, non-const: the range init's destination (0x3A6710); OPEN as 0x334AA0
 0x003A71A0 0x20 Virtual60__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x60, an inline override's copy opening the unit -- the point at 0x380 copied out, true; CEntity's slot takes no parameter in zentity.h, the name follows its Virtual60); veh_turret.cpp; (zentity.h's slot +0x60 takes a CPnt3D * and returns bool since the entity lane's round 8)
-0x003A71C0 0x8 Virtual64__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x64, an inline override's copy -- the node at 0x288); veh_turret.cpp
+0x003A71C0 0x8 GetFirepointNode__7CTurretFPCc  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x64, an inline override's copy -- the node at 0x288); veh_turret.cpp; by hand (the SEAL lane, round 14, zentity.h's slot 0x64 re-declared as CEntity::GetFirepointNode(const char *): CTurret's override follows, its code unchanged -- the node at 0x288); veh_turret.cpp
 0x003A71D0 0x20 Virtual68__7CTurretFP6CPnt3D  # OVL1; by hand (the wep lane: CTurret's vtable slot +0x68, an inline override's copy -- the point at 0x38C copied out, true); veh_turret.cpp
 0x003A71F0 0x138 Remove__11CTurretListFP7CTurret  # OVL1; by hand (the wep lane: the turret list's remove -- std::remove over the pointer vector, its find inlined and remove_copy called (0x3AB9A0), then the pod erase of the tail 0x28B150; ~CTurret calls it with this; the name ours)
 0x003A7330 0x14 func_003A7330  # OVL1
@@ -8586,7 +8586,7 @@
 0x00403460 0x64 func_00403460  # OVL1 data area; a static initialiser
 0x004034D0 0x1C func_004034D0  # OVL1 data area; a static initialiser
 0x004034F0 0x90 func_004034F0  # OVL1 data area; a static initialiser
-0x00403580 0x3C func_00403580  # OVL1 data area; a static initialiser; s1~ seal_aievent.cpp (shape 0.45, a hint)
+0x00403580 0x3C __sinit_ztex_manager.cpp  # OVL1 data area; a static initialiser; s1~ seal_aievent.cpp (shape 0.45, a hint); the world lane r2: ztex_manager.cpp's static initialiser (m_texmanager built through CTexManager() 0x356940, ~CTexManager 0x357E10 registered)
 0x004035C0 0x60 func_004035C0  # OVL1 data area; a static initialiser
 0x00403620 0x9C func_00403620  # OVL1 data area; a static initialiser
 0x004036C0 0x64 func_004036C0  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint)
@@ -9928,7 +9928,7 @@
 0x00542FC0 0x18 Open__7CPickupFUi  # OVL2; s1:order (pickup_main.cpp's last, as SOCOM 1's Open__7CPickupFUi: the argument stored to bit_count, m_isOpen set -- the same two stores) (the SEAL lane, round 3)
 0x00542FE0 0x8 func_00542FE0  # OVL2
 0x00542FF0 0x8 func_00542FF0  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); s1~ not PrePostTick__10CZSealBodyFf (s1:vtable paired the wrong slot): slot 0xC of __vt__10CZSealBody is CEntity's inline GetPosNode (zentity.h), `jr ra; lw v0,0x28(a0)` -- OVL2's out-of-line copy of it, as OVL1's 0x295F10 (one of 2 copies of an inline); OVL2's copy of CEntity::GetPosW() const (OVL1's 0x295F10 carries the name, the same 8 bytes) -- the entity lane; ovl-copy: GetPosW__7CEntityCFv
-0x00543000 0x8 Virtual5C__10CZSealBodyFv  # OVL2; slot 0x5C of __vt__10CZSealBody (CEntity's Virtual5C, the name the entity lane's); returns 0
+0x00543000 0x8 Virtual5C__10CZSealBodyFP10CZSealBodyP7CTurret  # OVL2; slot 0x5C of __vt__10CZSealBody (CEntity's Virtual5C, the name the entity lane's); returns 0; by hand (the SEAL lane, round 14): CEntity's slot 0x5C takes (CZSealBody *, CTurret *) and returns bool -- 0x5A88C0 calls it on its controller's entity at 0x16C with (this, that entity when it is a turret), testing the result; CTurret's override 0x3A90C0 reads both entities' positions and returns a bool local; zentity.h
 0x00543010 0x8 Virtual60__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x60 of __vt__10CZSealBody (CEntity's Virtual60); returns 0; CEntity's Virtual60(CPnt3D *) overridden (the entity lane, measured)
 0x00543020 0x8 Virtual68__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x68 of __vt__10CZSealBody (CEntity's Virtual68); returns 0; CEntity's Virtual68(CPnt3D *) overridden (the entity lane, measured)
 0x00543030 0x1AC UpdateHostileAnchor__10CZSealBodyFv  # OVL2; ours (new in SOCOM II; seal.cpp, before the CSealCtrl copies its virtual calls bring): Tick calls it; an AI SEAL of team bit 1 shows its held or recently seen target as the compass's 'HOSTILE ACQUIRED' anchor at 0xECC
@@ -10188,7 +10188,7 @@
 0x005612F0 0x254 func_005612F0  # OVL2
 0x00561550 0x63C func_00561550  # OVL2
 0x00561B90 0x18C func_00561B90  # OVL2
-0x00561D20 0xF4 func_00561D20  # OVL2
+0x00561D20 0xF4 GetTop__9CSealUnitFv  # OVL2; by hand (the SEAL lane, round 14): CSealUnit's top squad, m_parent (0x60, SOCOM 1's 0x3C) ? m_parent->GetTop() : this -- an inline's out-of-line copy (recursive: inlined into itself eight times), right after 0x561B90 its first caller; the name ours
 0x00561E20 0xD4 func_00561E20  # OVL2
 0x00561F00 0x12C ActivateEx__11CSealCtrlAiF9SEAL_TASKbe  # OVL2; s1:calls (CSealCtrlAi::OnMissionStart calls it twice with (task, flag, 1, the body's TASK_SELECT, 3, the node, 0), as SOCOM 1's calls ActivateEx__11CSealCtrlAiF9SEAL_TASKbe; variadic: it stores a3-t3 to its frame) -- the SEAL lane, round 4
 0x00562030 0x180 func_00562030  # OVL2
@@ -10421,7 +10421,7 @@
 0x0057D710 0xF8 func_0057D710  # OVL2
 0x0057D810 0x398 func_0057D810  # OVL2
 0x0057DBB0 0x68 func_0057DBB0  # OVL2
-0x0057DC20 0x58 func_0057DC20  # OVL2
+0x0057DC20 0x58 PeekBaseState__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 14, the kit lane's request): SOCOM 1's PeekBaseState__10CZSealBodyFv -- the state of the topmost blend not in state 3, else 0; CalcAimGoal (0x5DF600) calls it when the SEAL's state is 3, from the same place as SOCOM 1's; seal_body.cpp
 0x0057DC80 0x3C func_0057DC80  # OVL2
 0x0057DCC0 0x124 func_0057DCC0  # OVL2
 0x0057DDF0 0x11C func_0057DDF0  # OVL2
@@ -11270,7 +11270,7 @@
 0x005DF600 0x2AC CalcAimGoal__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL2; s1:callee by hand (the kit lane, round 13): SetAimDirR (0x5DF8B0) calls it from the same instruction as SOCOM 1's SetAimDirR calls CalcAimGoal (0x2BFBA0, 0x2B8 against 0x2AC here), with this, the aim point (0x1440), the direction and the goal (0x144C), and tests its bool -- between SetAimPointW's place and SetAimDirR's as in SOCOM 1's order
 0x005DF8B0 0x74 SetAimDirR__10CZSealBodyFPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's SetAimDirR (0x2BFE60, 0x70), the same code with the aim's fields 0x3A0 on (0x10A0/0x10AC -> 0x1440/0x144C), after CalcAimGoal as there; byte-exact from seal_weapon.cpp
 0x005DF930 0x198 func_005DF930  # OVL2
-0x005DFAD0 0x94 Virtual64__10CZSealBodyFv  # OVL2; by hand (CZSealBody's vtable slot 0x64; the name ours, as the lane's Virtual5C/60/68) -- the SEAL lane
+0x005DFAD0 0x94 GetFirepointNode__10CZSealBodyFPCc  # OVL2; by hand (CZSealBody's vtable slot 0x64; the name ours, as the lane's Virtual5C/60/68) -- the SEAL lane; by hand (the SEAL lane, round 14, the kit lane's request): SOCOM 1's GetFirepointNode__10CZSealBodyFPCc, virtual in SOCOM II (CEntity's slot 0x64): UpdateAimParams (0x5DF450) and CZKit::ShowProjectile (0x5B85A0) pass a name in a1 and it hands a1 to FindChild
 0x005DFB70 0x108 func_005DFB70  # OVL2
 0x005DFC80 0x1AC WeaponsTick__10CZSealBodyFf  # OVL2; s1:calls
 0x005DFE30 0x188 SetWeaponState__10CZSealBodyF12WEAPON_STATE  # OVL2; s1:order (the same ~0x10 state mask, 0x184 -> 0x188)
