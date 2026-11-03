@@ -10,6 +10,14 @@
 
 namespace zdb {
 
+class CMeshDecal;
+
+/* the mesh decals' pools (vis_decal.cpp's class: only the take here) */
+class CMeshDecalPool {
+public:
+    CMeshDecal *Get(bool b);
+};
+
 /* a decal on a mesh: what the mesh's walks touch (vis_decal.cpp's class; SOCOM 1's, no DWARF --
  * the names ours). A decal's life below zero is a permanent one */
 class CMeshDecal {
@@ -28,6 +36,9 @@ public:
         m_30 = 0;
     }
 
+    static CMeshDecalPool m_tempPool;
+    static CMeshDecalPool m_permPool;
+
     float m_life;   // 0x0
     CMeshDecal *m_next;   // 0x4
     unsigned int m_8;   // 0x8
@@ -41,6 +52,14 @@ public:
 }
 
 using namespace zdb;
+
+/* a mesh decal built over a strip of the mesh's vertices, posed by its matrices (SOCOM II's, not
+ * named: vis_data.cpp's span) */
+extern "C" void func_003BD9E0(CMeshDecal *d, void *strip, CTexHandle *tex, CMesh *mesh,
+                              std::vector<CMatrix *> *palette, float life);
+
+/* the decal list's end reached (inline: the walk's materialised test; the name ours) */
+static inline bool DecalEnd(CMeshDecal *d) { return !d; }
 
 /* constructed empty, as a mesh (type 1): one level of detail, used out to 1e12, room for three
  * (SOCOM 1's used FLT_MAX), no matrices and no decals */
@@ -114,6 +133,36 @@ void CMesh::SetLOD(unsigned int view, unsigned int lod)
     if (lod >= m_lods.size())
         lod = m_lods.size() - 1;
     m_lodMesh[view] = m_lods[lod].m_mesh;
+}
+
+/* a decal added over a strip of the mesh, last in its list: taken from the permanent pool for a
+ * life below zero, else from the temporary one, cleared and built (SOCOM II's; the name ours).
+ * OPEN, 0x11C against 0x124: the target pads both arms of the pool choice with a nop before the
+ * next label and fills the second call's delay slot with the li; the decal's clear then interleaves
+ * the life's mov.s earlier -- a ternary, the tests reversed, a bool, a pool pointer, inline helpers
+ * (if/return, a result local, a ternary) and an early return all miss */
+void CMesh::AddDecal(void *strip, CTexHandle *tex, float life)
+{
+    CMeshDecal *d;
+
+    if (life < 0.0f)
+        d = CMeshDecal::m_permPool.Get(false);
+    else
+        d = CMeshDecal::m_tempPool.Get(true);
+    if (d) {
+        CMeshDecal *last = m_decals;
+
+        while (!DecalEnd(last) && last->m_next)
+            last = last->m_next;
+        d->Reset();
+        func_003BD9E0(d, strip, tex, this, &m_palette, life);
+        d->m_next = 0;
+        if (last)
+            last->m_next = d;
+        else
+            m_decals = d;
+        FlushCache(0);
+    }
 }
 
 /* a copy of the mesh for a node: the visual's and the mesh's members assigned, a reference to this

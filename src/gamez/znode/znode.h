@@ -573,6 +573,8 @@ public:
     void DereferenceDecals(unsigned int vid);
     /* a decal unlinked from its list (SOCOM 1's) */
     void RemoveMeshDecal(CMeshDecal *decal);
+    /* a decal added over a strip, last in its list (0x3B8550, SOCOM II's: the name ours) */
+    void AddDecal(void *strip, CTexHandle *tex, float life);
     /* the wep lane's (vis_mesh.cpp, SOCOM 1's names): its table (__vt__Q23zdb5CMesh, 0x408350)
      * overrides these and adds InitMatrices (+0x20) */
     CMesh();   // 0x3B9760
