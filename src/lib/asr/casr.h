@@ -26,6 +26,32 @@ typedef struct SEGINFO {
 #define CASR_ERR_ARG    18
 
 struct LANGVT;
+struct CASR;
+
+/* the engine's log head: the scheduler's TOSLOG (tos.c) -- the engine itself (its scheduler record
+ * is the context's head), block 0 */
+typedef struct CASRLOG {
+    struct CASR *tos;
+    unsigned char block;
+} CASRLOG;
+
+/* the host's callbacks as casrOpen takes them (asrspi.c's g_APIRecogCallBacks), copied whole */
+typedef struct CASRCBTABLE {
+    int (*ts_cb)(int ms, void *info);                   /* +508: a talk spurt */
+    int (*start_cb)(int ms, void *info);                /* +512: speech started */
+    int (*result_cb)(void *result, void *info);         /* +516: a result, or none */
+    int (*state_cb)(int state, int ms, void *info);     /* +520 */
+    int (*train_cb)(int state, void *info);             /* +524 */
+    int (*abnorm_cb)(int code, int ms, void *info);     /* +528: an abnormal condition */
+    int (*gain_cb)(unsigned short gain, void *info);    /* +532: the engine asks for a gain */
+    int (*askgain_cb)(void *info);                      /* +536: ... for the gain in use */
+} CASRCBTABLE;
+
+/* what every callback is handed: a word casrOpen clears, and the host's data */
+typedef struct CASRINFO {
+    void *f0;
+    void *user;
+} CASRINFO;
 
 typedef struct CASR {
     char pad0[50];
@@ -33,7 +59,7 @@ typedef struct CASR {
     int last_error;                     /* +52 */
     int last_warning;                   /* +56 */
     char pad60[304];
-    char event[8];                      /* +364: the engine's event (func_0050CDE8) */
+    CASRLOG event[1];                   /* +364: the engine's log head (_tosControl's) */
     int queue;                          /* +372 */
     unsigned short queue_id;            /* +376 */
     CBSLOT cur;                         /* +380: the sample format's slot in use */
@@ -58,18 +84,12 @@ typedef struct CASR {
     int p492;                           /* +492: id 13 */
     char pad496[8];
     int p504;                           /* +504: id 3 */
-    int (*ts_cb)(int ms, void *info);   /* +508: a talk spurt */
-    int (*start_cb)(int ms, void *info);    /* +512: speech started */
-    int (*result_cb)(void *result, void *info);                 /* +516: a result, or none */
-    int (*state_cb)(int state, int ms, void *info);    /* +520 */
-    int (*train_cb)(int state, void *info);             /* +524 */
-    int (*abnorm_cb)(int code, int ms, void *info);     /* +528: an abnormal condition */
-    int (*gain_cb)(unsigned short gain, void *info);    /* +532: the engine asks for a gain */
-    int (*askgain_cb)(void *info);                      /* +536: ... for the gain in use */
-    char pad540[8];
+    CASRCBTABLE cb;                     /* +508 */
+    int pad540;
+    int (*train)(struct CASR *c, int a1, int a2, int state);   /* +544: cbTrain */
     unsigned char gender_on[4];         /* +548 */
     unsigned int magic;                 /* +552: CASR_MAGIC */
-    char info[8];                       /* +556: handed to every callback */
+    CASRINFO info[1];                   /* +556: handed to every callback */
     void *heap;                         /* +564 */
     void *data;                         /* +568: the activated data */
     struct IMPORT *ctx;                 /* +572: the activated context */
@@ -110,7 +130,8 @@ typedef struct CASR {
     struct TRAINREC *trainrecs;         /* +1020: the training's records (train.c) */
     char pad1024[24];
     void *train1048;                    /* +1048: freed by TrainFree */
-    char pad1052[8];
+    float f1052;                        /* +1052: 0.0001 (casrOpen) */
+    int pad1056;
     void *train1060;                    /* +1060: freed by TrainFree */
     int pad1064;
     short **segtab;                     /* +1068 */
@@ -120,7 +141,8 @@ typedef struct CASR {
     int f1088;                          /* +1088: parameter 16 */
     int pad1092;
     int f1096;                          /* +1096 */
-} CASR;
+    char pad1100[32];
+} CASR;                                 /* 1132 bytes (casrOpen's allocation) */
 
 typedef struct LANGVT LANGVT;
 

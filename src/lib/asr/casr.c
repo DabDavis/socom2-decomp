@@ -189,7 +189,7 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
             err = cbIsoWordRecognised(c, a1, a2, arg1, arg2);
         else {
             casrCreateResult(c, &r, arg1, 1);
-            ret = c->result_cb(r, c->info);
+            ret = c->cb.result_cb(r, c->info);
             if (c->last_state == 0 && ret != 0) {
                 c->last_state = ret;
                 _tosErrorLog(c->event, 27);
@@ -199,6 +199,82 @@ int cbDoSecondPassIfEnabled(CASR *c, unsigned char a1, unsigned char a2, int arg
         }
     }
     return err == 1;
+}
+
+/* the scheduler's callbacks into the engine (tos.c's TOSCB) */
+typedef struct TOSCB {
+    int (*state)(CASR *c, unsigned short state);
+    int (*init_queues)(CASR *c, unsigned char arch, unsigned char queues);
+    int (*input_queue)(CASR *c, int queue, unsigned short id);
+    int (*output_queue)(CASR *c, int cb);
+    void (*error_cb)(CASR *c, int code);
+    void (*warning_cb)(CASR *c, int code);
+} TOSCB;
+
+extern unsigned char tosInit(CASR *t, void *heap, TOSCB *cb, const void *profiles,
+                             const void *procs, const void *writers, const void *readers,
+                             void *cmds, unsigned short arch, unsigned short mode);
+extern void *heap_Calloc(void *heap, int n, int size);
+int cbStateHandler(CASR *c, unsigned short state);
+int cbInitArchitectureQueues(CASR *c, unsigned char arch, unsigned char queues);
+int cbRegisterInputQueue(CASR *c, int queue, unsigned short id);
+int cbRegisterOutputQueue(CASR *c, int cb);
+int cbTrain(CASR *c, int a1, int a2, int state);
+static int InitParamList(CASR *c);
+
+/* the recogniser's architecture (SOCOM 1's GLOBALs, another object's): the blocks' profiles,
+ * the blocks built, the queues each writes and reads, the states' command lists */
+extern const unsigned char IniFile[], InitialProcs[], QueueWriters[], QueueReaders[];
+extern void *ControlTable[];
+
+/* an engine: the scheduler built over the recogniser's architecture (the context is its own
+ * scheduler record and log head), the host's callbacks kept, the default parameters set; null
+ * without callbacks or on any failure (the context freed) */
+CASR *casrOpen(void *heap, const CASRCBTABLE *cbs, void *user)
+{
+    TOSCB cb = { cbStateHandler, cbInitArchitectureQueues, cbRegisterInputQueue,
+                 cbRegisterOutputQueue, 0, 0 };
+    CASR *c;
+
+    if (cbs == 0)
+        return 0;
+    c = heap_Calloc(heap, 1, sizeof(CASR));
+    if (c == 0)
+        return 0;
+    c->heap = heap;
+    c->event->tos = c;
+    c->event->block = 0;
+    c->cb = *cbs;
+    c->info->f0 = 0;
+    if (tosInit(c, heap, &cb, IniFile, InitialProcs, QueueWriters, QueueReaders, ControlTable,
+                0, 0) != 0)
+        goto fail;
+    c->train = cbTrain;
+    c->train_state = 4;
+    c->uw_recs_needed = 3;
+    c->uw_recs_done = 0;
+    c->segtab = heap_Alloc(c->heap, 40);
+    if (c->segtab == 0) {
+        c->last_error = 2;
+        goto fail;
+    }
+    c->segtab[0] = 0;
+    c->f1052 = 0.0001f;
+    if (_tosControl(c->event, 4, (int)&c->signal, 0) != 0)
+        goto fail;
+    if (_tosControl(c->event, 42, (int)&c->frame_base, 0) != 0)
+        goto fail;
+    if (InitParamList(c) != 0)
+        goto fail;
+    c->info->user = user;
+    c->magic = CASR_MAGIC;
+    c->gender_on[0] = 0;
+    c->gender_on[1] = 0;
+    c->gender_on[2] = 0;
+    return c;
+fail:
+    heap_Free(c->heap, c);
+    return 0;
 }
 
 /* OPEN (38 words, the right size): the target stores the first gender and the format through s+8
@@ -392,7 +468,7 @@ int casrStop(CASR *c)
     old = c->train_state;
     if (old != 4) {
         c->train_state = 4;
-        r = c->train_cb(old, c->info);
+        r = c->cb.train_cb(old, c->info);
         if (c->last_state == 0 && r != 0) {
             c->last_state = r;
             _tosErrorLog(c->event, 27);
@@ -747,7 +823,7 @@ int casrAcknowledge(CASR *c)
     old = c->train_state;
     if (old != 4) {
         c->train_state = 4;
-        r = c->train_cb(old, c->info);
+        r = c->cb.train_cb(old, c->info);
         if (c->last_state == 0 && r != 0) {
             c->last_state = r;
             ret = _tosErrorLog(c->event, 27);
@@ -999,8 +1075,8 @@ int cbStateHandler(CASR *c, unsigned short state)
 {
     int r;
 
-    if (c->state_cb != 0) {
-        r = c->state_cb(state, c->frames * 110, c->info);
+    if (c->cb.state_cb != 0) {
+        r = c->cb.state_cb(state, c->frames * 110, c->info);
         if (c->last_state == 0 && r != 0) {
             c->last_state = r;
             _tosErrorLog(c->event, 27);
@@ -1063,8 +1139,8 @@ int cbGainRequest(CASR *c, int a1, int a2, int gain)
 {
     int err;
 
-    if (c->gain_cb != 0) {
-        err = c->gain_cb(gain, c->info);
+    if (c->cb.gain_cb != 0) {
+        err = c->cb.gain_cb(gain, c->info);
         if (c->last_state == 0 && err != 0) {
             c->last_state = err;
             _tosErrorLog(c->event, 27);
@@ -1077,8 +1153,8 @@ int cbAskCurrentGain(CASR *c)
 {
     int err;
 
-    if (c->askgain_cb != 0) {
-        err = c->askgain_cb(c->info);
+    if (c->cb.askgain_cb != 0) {
+        err = c->cb.askgain_cb(c->info);
         if (c->last_state == 0 && err != 0) {
             c->last_state = err;
             _tosErrorLog(c->event, 27);
@@ -1090,8 +1166,8 @@ int cbAskCurrentGain(CASR *c)
 /* an abnormal condition: 70 is told the host as 4 */
 int cbTOSAbnormalCond(CASR *c, int a1, int a2, int code, int frames)
 {
-    if (c->abnorm_cb != 0)
-        c->last_state = c->abnorm_cb(code == 70 ? 4 : code, frames * 110, c->info);
+    if (c->cb.abnorm_cb != 0)
+        c->last_state = c->cb.abnorm_cb(code == 70 ? 4 : code, frames * 110, c->info);
     return 0;
 }
 
@@ -1120,7 +1196,7 @@ int cbTSDetected(CASR *c, int a1, int a2, int frame)
     int err;
 
     c->f672 = 1;
-    err = c->ts_cb(frame * 110, c->info);
+    err = c->cb.ts_cb(frame * 110, c->info);
     if (c->last_state == 0 && err != 0) {
         c->last_state = err;
         _tosErrorLog(c->event, 27);
@@ -1135,7 +1211,7 @@ int cbTSAfterStartDetected(CASR *c, int a1, int a2, int frame)
 
     frame += *c->frame_base;
     c->f672 = 1;
-    err = c->ts_cb(frame * 110, c->info);
+    err = c->cb.ts_cb(frame * 110, c->info);
     if (c->last_state == 0 && err != 0) {
         c->last_state = err;
         _tosErrorLog(c->event, 27);
@@ -1151,7 +1227,7 @@ int cbStartDetected(CASR *c, int a1, int a2, int start, int end)
 
     n = end - start;
     c->f673 = 1;
-    err = c->start_cb(n * 110, c->info);
+    err = c->cb.start_cb(n * 110, c->info);
     if (c->last_state == 0 && err != 0) {
         c->last_state = err;
         _tosErrorLog(c->event, 27);
@@ -1165,7 +1241,7 @@ int cbTOSRecognised(CASR *c, int a1, int a2, int frame)
     int err;
 
     casrCreateResult(c, &r, frame, 1);
-    err = c->result_cb(r, c->info);
+    err = c->cb.result_cb(r, c->info);
     if (c->last_state == 0 && err != 0) {
         c->last_state = err;
         _tosErrorLog(c->event, 27);
@@ -1192,7 +1268,7 @@ int cbNothingRecognised(CASR *c)
         r.reason = 2;
     else
         r.reason = 0;
-    err = c->result_cb(&r, c->info);
+    err = c->cb.result_cb(&r, c->info);
     if (c->last_state == 0 && err != 0) {
         c->last_state = err;
         _tosErrorLog(c->event, 27);
@@ -1211,7 +1287,7 @@ int cbSpellNothingRecognised(CASR *c)
         r.reason = 2;
     else
         r.reason = 0;
-    err = c->result_cb(&r, c->info);
+    err = c->cb.result_cb(&r, c->info);
     if (c->last_state == 0 && err != 0) {
         c->last_state = err;
         _tosErrorLog(c->event, 27);
@@ -1227,6 +1303,20 @@ int cbDoSecondPass(CASR *c, int a1, int a2, int arg1, int arg2)
     return 0;
 }
 
+/* the training's events to the host (the scheduler's hook casrOpen installs at +544): the host's
+ * first refusal kept and logged, as the other callbacks' */
+int cbTrain(CASR *c, int a1, int a2, int state)
+{
+    int err;
+
+    err = c->cb.train_cb(state, c->info);
+    if (c->last_state == 0 && err != 0) {
+        c->last_state = err;
+        _tosErrorLog(c->event, 27);
+    }
+    return 0;
+}
+
 int cbNewUserWordUtterance(CASR *c)
 {
     c->f674 = 0;
@@ -1237,9 +1327,17 @@ int cbNewUserWordUtterance(CASR *c)
     return 0;
 }
 
-/* OPEN: the target tests ==1, ==0, ==2 with no range check, its case 0 storing through the
- * join (reorg); a switch tests slti 2 first, the if-chains tried miss by 14-19 words. */
-int cbGenderDisable(CASR *c, int a1, int a2, int which, int mode)
+/* a touch tone: flagged for the acquisition */
+int cbDTMFDetected(CASR *c)
+{
+    c->f674 = 1;
+    return 0;
+}
+
+/* the gender the engine disabled, and the gender mask that is left: the mode is unsigned (an
+ * enum): the switch then tests 1, 0, 2 by equality, as the target does -- an int takes slti 2
+ * first (round 1's diagnosis, open until round 13c) */
+int cbGenderDisable(CASR *c, int a1, int a2, int which, unsigned int mode)
 {
     c->gender_on[which] = 0;
     switch (mode) {
