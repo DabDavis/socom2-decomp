@@ -86,7 +86,11 @@
 namespace std {
 
 /* the capacity, its own member as SOCOM 1's DWARF has it (a compressed_pair with the allocator):
- * the extra constructor level a vector of a class has and a vector of pointers has not */
+ * the extra constructor level a vector of a class has and a vector of pointers has not.
+ * MEASUREMENT ONLY (the MSL headers round 12, the level-8 test): __fwd1/__fwd2 here and __fwd2 in
+ * the pod's pair are forwarding levels NEITHER SOCOM 1's DWARF NOR the image shows -- what the class
+ * swap (6 -> 8 high) and the pod's (5 -> 8) need for every FreeVector/TrimVector cut to come out at
+ * -inline level=8 (+27 rows there, nothing lost) */
 template <class Allocator>
 class __vector_capacity : public Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> {
     typedef Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> base;
@@ -94,7 +98,9 @@ class __vector_capacity : public Metrowerks::details::compressed_pair_imp<Alloca
 public:
     __vector_capacity() : base(0) {}
     operator unsigned int() const { return this->second_; }
-    void swap(__vector_capacity &x) { base::swap(x); }
+    void swap(__vector_capacity &x) { __fwd1(x); }
+    void __fwd1(__vector_capacity &x) { __fwd2(x); }
+    void __fwd2(__vector_capacity &x) { base::swap(x); }
 };
 
 /* the pair swapped through its member (MSL's free swap of a compressed_pair) */
@@ -109,6 +115,9 @@ template <class Allocator>
 class __vector_pod_capacity : public Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1> {
 public:
     __vector_pod_capacity() {}
+    void swap(__vector_pod_capacity &x) { __fwd2(x); }
+    void __fwd1(__vector_pod_capacity &x) { __fwd2(x); }
+    void __fwd2(__vector_pod_capacity &x) { this->Metrowerks::details::compressed_pair_imp<Allocator, unsigned int, 1>::swap(x); }
     operator unsigned int() const { return this->second_; }
 };
 
@@ -312,7 +321,7 @@ template <class T, class Allocator>
 inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
 {
     if (&x != &y) {
-        std::swap(x.capacity_.second_, y.capacity_.second_);
+        x.capacity_.swap(y.capacity_);
         std::swap(x.data_, y.data_);
         std::swap(x.size_, y.size_);
     }
