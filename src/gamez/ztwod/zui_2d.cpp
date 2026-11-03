@@ -8,6 +8,12 @@
  * C3StateButton::Tick (0x37C600), inline virtuals' copies, and the check box's and the teletype's
  * implicit destructors (0x37C2F0, 0x37C620), each reached only through this unit's this-adjusting
  * thunks (0x37D0D0, 0x37D030: MW names them @192@__dt__9CCheckBoxFv and @152@__dt__9CTeleTypeFv).
+ * Round 22 (the HUD lane): C2DButton::DrawBackground, CScrollText::Tick, CTeleType's SetString and
+ * TickZAnimCmd, CRenderableString::UpdateUIVar (and its thunk 0x37D150, emitted with CTeleType's
+ * table), CWrappedText's parser, lookup and command tick, the radio strip's, the counter's and the
+ * slider's command ticks, the counter's parser and Tick. MW's slots for a class with a secondary
+ * base: the primary base's, then the secondary's part, then the class's own new virtuals and an
+ * overrider's primary slot (CRenderableString: Update +0xA0, UpdateUIVar +0xA4).
  * The classes' layouts are zui_2d.h's (the UI lane's), redeclared here with the virtuals these
  * functions need. Defined in reverse of their image order (-inline deferred). */
 
@@ -368,6 +374,7 @@ extern "C" void func_00370DB0(CRadioStrip *strip);
 class C2DCounter : public CRenderableString {
 public:
     virtual ~C2DCounter();
+    virtual void Tick(float dT);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
@@ -376,7 +383,7 @@ public:
     bool m_counting;   // 0xc4
     float m_end;   // 0xc8
     int m_value;   // 0xcc
-    float m_rate;   // 0xd0: what Start puts at 0xC0 (a float: lwc1/swc1)
+    float m_time;   // 0xd0: the clock, advanced by Tick; Start takes it as the start
     int m_last;   // 0xd4
 };   // 0xd8 bytes
 
@@ -812,6 +819,40 @@ C2DAnimCmdHdr *C2DCounter::ParseZAnimCmd(_zrdr *rdr)
     return cmd;
 }
 
+void PlayCountSound();
+
+/* the clock run on to the count's end at the counter speed; past the start the value shown is
+ * the target in proportion to the time, the whole once the end is reached -- each new one shown
+ * with the count's tick (SOCOM 1's C2DCounter::Tick, its slots moved) */
+void C2DCounter::Tick(float dT)
+{
+    float end = m_counting ? m_start + m_end : m_end;
+
+    if (m_time <= end) {
+        int value;
+
+        m_time += dT * g_fCounterSpeedFactor;
+        if (m_time < m_start)
+            return;
+        if (m_time < end) {
+            float span = m_counting ? m_end : end - m_start;
+
+            value = (int)(m_value * ((m_time - m_start) / span));
+        } else
+            value = m_value;
+        if (m_last != value) {
+            m_last = value;
+
+            char buf[16] = {0};
+
+            sprintf(buf, "%d", value);
+            SetString(buf, true);
+            Update();
+            PlayCountSound();
+        }
+    }
+}
+
 /* Start: the count's start taken from 0xD0; Finish: the count stopped at its value, shown and the
  * string brought up to date, the command done; anything else the renderable string's (SOCOM 1's
  * shape, its slots moved). Each case returns true straight: Start's true is the 1 the compare
@@ -822,7 +863,7 @@ bool C2DCounter::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
 
     switch (cmd->m_type - CRenderableString::GetZAnimCmdType(0)) {
     case 1:
-        m_start = m_rate;
+        m_start = m_time;
         return true;
     case 2: {
         m_counting = false;
