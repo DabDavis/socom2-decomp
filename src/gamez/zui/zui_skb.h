@@ -24,6 +24,8 @@
 #include <map>
 #include <vector>
 #include "zui_2d.h"
+/* the fonts (the HUD lane's c2dfont.h: SOCOM II's 0x64-byte C2DFont), after zui_spec.h's CSaferStr */
+#include "../ztwod/c2dfont.h"
 
 namespace zdb {
 class CNode;
@@ -68,13 +70,6 @@ public:
     CRdrFile *m_file;
 };
 
-/* a font (zui.cpp's C2DFont, 0x64 bytes in SOCOM II: its glyph map's constructor 0x1FEAC0, its
- * destructor 0x369EB0 -- a stand-in of what the keyboard's three need) */
-class C2DFont {
-public:
-    unsigned char _0[0x64];
-};
-
 /* a member zeroed by its own constructor (SOCOM 1's CInit<T, v>: its constructor, copy, assignment
  * from T and conversion back are the demo's symbols) */
 template <class T, int v>
@@ -93,7 +88,15 @@ public:
 
 /* a key: a row byte, then a 16-bit code. SOCOM II's tree compares the byte unsigned, then the
  * halfword at 2 (SOCOM 1's had two bytes), and copies the byte with lb: a signed member compared
- * through unsigned casts, the copy member-wise */
+ * through unsigned casts, the copy member-wise. Its ASSIGNMENT reads the other way, the byte
+ * with lbu and the code with lh (the key vector's erase 0x38F090 and insert 0x38F1F0, the grid's
+ * store in CreateSoftKeyboard: every copy construction lb/lhu, every assignment lbu/lh), which no
+ * plain members give -- MW's implicit operator= is member-wise in the members' own types, and a
+ * cast of a byte or half that is only stored is folded away. Each member a union does it: the
+ * implicit assignment copies a union as its FIRST member (the weapons lane's round 14), the copy
+ * constructor reads the named views. A written operator= through casts gives the same loads, but
+ * reads the source through its own reference (the grid store's addresses differ: the UI lane,
+ * round 12; ours: the views' names) */
 class CSkbKey {
 public:
     CSkbKey() : m_row(0), m_code(0) {}
@@ -106,8 +109,14 @@ public:
         return m_code < k.m_code;
     }
 
-    signed char m_row;   // 0x0
-    unsigned short m_code;   // 0x2
+    union {
+        unsigned char m_urow;
+        signed char m_row;
+    };   // 0x0
+    union {
+        short m_scode;
+        unsigned short m_code;
+    };   // 0x2
 };
 
 class CSoftKeyboard;
@@ -163,7 +172,9 @@ public:
     zdb::CNode *m_node;   // 0xa0
 } __attribute__((aligned(16)));   // 0xb0 bytes
 
-/* the keyboard's three fonts (the constructor's out-of-line copy is 0x38E550) */
+/* the keyboard's three fonts: the implicit constructor's out-of-line copy is 0x38E550,
+ * `__construct_array(this, C2DFont(), ~C2DFont(), 0x64, 3)` -- C2DFont's constructor zui_skb.cpp's
+ * copy (0x38E590), its destructor zui.cpp's (0x369EB0, the linker keeping the first unit's) */
 struct CSkbFonts {
     C2DFont m_fonts[3];
 };

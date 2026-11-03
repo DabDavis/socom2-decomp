@@ -46,6 +46,22 @@ std::vector<CSoftKeyboard *> g_arrSkbs;
 CSkbKey StrToSkbKey(const char *s);
 void CreateSoftKeyboard(_zrdr *rdr);
 
+/* the key an rdr item names: a key name, or a code (ours) */
+inline CSkbKey SkbItemKey(_zrdr *item)
+{
+    return item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
+}
+
+/* the grid grown to hold (x, y) and the key set there (ours) */
+inline void SkbSetGridKey(CSoftKeyboard *skb, int x, int y, const CSkbKey &key)
+{
+    if (skb->m_grid.size() <= y)
+        skb->m_grid.resize(y + 1);
+    if (skb->m_grid[y].size() <= x)
+        skb->m_grid[y].resize(x + 1);
+    skb->m_grid[y][x] = key;
+}
+
 /* a keyboard deleted (as a function object, std::for_each's) */
 struct DeleteSkb {
     DeleteSkb() {}
@@ -106,14 +122,21 @@ namespace {
 /* a keyboard made from its rdr block and added to the keyboards: its look, its key props, its grid
  * of keys (rows of names or codes) and whether an unchanged string counts (SOCOM 1's
  * CreateSoftKeyboard, SOCOM II's split three ways).
- * OPEN, 0x10 bytes long: the target calls the key map's default constructor out of line with no
- * arguments (0x38E740, which builds the tree from two unconstructed stack slots) where include/map
- * has only map(const Compare & = Compare(), const Allocator & = Allocator()), so the call site
- * builds the allocator (its copy called) and passes both; and it calls the fonts' constructor
- * 0x38E550 (C2DFont's, 0x38E590: a glyph map through 0x1FEAC0, a pointer vector, a string), which
- * the stand-in C2DFont has not got. The grid loop's registers follow once both are in (the target
- * keeps the grid in s8). It stays for the member constructors it emits (0x38E620, 0x38E730,
- * 0x38E770, 0x38E890, 0x38E8D0 byte-exact) and the grid's vector instances */
+ * OPEN, the target's size, ~100 instructions shifted: one register short. Round 12 put in C2DFont
+ * (the fonts' constructor 0x38E550 now called as the target does), an int column counter (Item's
+ * unsigned index then recomputes x*8 each pass, as the target, which an unsigned counter
+ * strength-reduces), the grid store through an inline taking the keyboard (the target reloads skb
+ * once a pass into s0), the key bound to a const reference (the ternary's copy then lives at
+ * 184(sp), the target's slot) and a const item (its type byte loaded once for Type(), String() and
+ * Integer(), as the target). What is left: the grid store reads the key's byte off a REMATERIALISED
+ * &key (`addiu v0,sp,184` each pass) and its code through the copy's hoisted &key.m_code (s6),
+ * where this build hoists &key itself into a saved register for both reads and so spills the grid
+ * (s8 in the target) to the stack. Tried: the key by value, through an inline returning it, passed
+ * straight to the store's inline (by reference and by value), a written operator= (casts or the
+ * union views, either order) -- none moves the reads off one base. It stays for the member
+ * constructors it emits (0x38E550, 0x38E620, 0x38E730, 0x38E770, 0x38E890, 0x38E8D0 byte-exact),
+ * CSkbLook() (0x38E790, code-exact: its sources' destructor 0x38D130 is ~vector of a 0x2C-byte
+ * record, not of CSkbKey -- zui_skb.h's m_sources) and the key vectors' instances */
 void CreateSoftKeyboard(_zrdr *rdr)
 {
     CSoftKeyboard *skb = new CSoftKeyboard;
@@ -124,15 +147,11 @@ void CreateSoftKeyboard(_zrdr *rdr)
     _zrdr *grid = zrdr_findtag(rdr, "Grid");
     for (int y = 0; y < func_003910B0(grid); y++) {
         _zrdr *row = grid->Item(y);
-        for (unsigned int x = 0; x < row->Count(); x++) {
-            _zrdr *item = row->Item(x);
-            CSkbKey key = item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
+        for (int x = 0; x < row->Count(); x++) {
+            const _zrdr *item = row->Item(x);
+            const CSkbKey &key = item->Type() == 3 ? StrToSkbKey(item->String()) : CSkbKey(0, item->Integer());
 
-            if (skb->m_grid.size() <= y)
-                skb->m_grid.resize(y + 1);
-            if (skb->m_grid[y].size() <= x)
-                skb->m_grid[y].resize(x + 1);
-            skb->m_grid[y][x] = key;
+            SkbSetGridKey(skb, x, y, key);
         }
     }
     skb->m_ignoreUnchangedString = zrdr_findtag(rdr, "IgnoreUnchangedString") != 0;
