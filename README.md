@@ -1647,6 +1647,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the SEALs, round 13** (small rows: CAiSAnimate's list instances, CAiSGrenade::OnSignal, the blender):
+  - MW 3.0b52 refuses an explicit instantiation of a class template's member function ("illegal
+    explicit template specialization"); `template class X<T>;` compiles but emits every member, so
+    list instances need their real callers;
+  - a class deriving from std::list<T> adds one this-test level to an inlined member destructor (four
+    tests, not three: ~CAiSAnimate); a stand-in for an out-of-class template member's copy must be
+    pinned with `#pragma auto_inline off`, or the unit's own callers inline it;
+  - `unsigned int` bitfields read or written one at a time come out as `lbu`/`sb` (CEntity's
+    m_isAlive, the 0x264 bits) -- CPickup's lw/sw is not universal;
+  - `bool b = !on && bit;` computes `!on` (sltu/xori) before branching; `if (!on && bit) b = true;`
+    branches on the register (0x561E20); a global loop bound's load is never hoisted out of a loop
+    storing through a pointer, even `const` (so AnimPop's count in a3 is something else);
+  - seal_ai.cpp's template tail runs to 0x576117 (CAiSAnimate's list instances); seal_anim.cpp starts
+    at 0x576120 (CGame::StopEngine calls it where SOCOM 1 called ~CSealAnim); OVL1's
+    siNumBodyObjects (0x3DE1E8) behaves as `unsigned int` in SOCOM II.
 - **Tells from the AI core, round 12** (ai_mapio.cpp's tail, vehicle_rdr.cpp's entry, char_type.cpp's weapon list):
   - a class vector's resize matches through include/vector once the element's default constructor is
     right: body assignments give byte stores in statement order, bitfields in a mem-initializer list
