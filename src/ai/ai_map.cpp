@@ -43,6 +43,9 @@ const T &_min(const T &a, const T &b)
 static CAiCell s_dummy_cell;
 /* no action's id (SOCOM 1's static member; OVL2 0x65AB30, just ahead of the cosine) */
 const unsigned int CAiMap::action::invalid = 0xffff;
+/* each direction's step in cells, N to NW (SOCOM 1's CAiMap::neighbor: OVL2 0x64F910, after the
+ * cell walk's constant pool 0x64F900 that ResetCells and ValidateCells share) */
+const int CAiMap::neighbor[8][2] = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
 static float s_cos45 = 0.5f * sqrtf(2.0f);
 
 /* a vector's three components set from values taken first (the name ours: the diagonals' static

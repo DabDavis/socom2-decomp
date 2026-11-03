@@ -15,6 +15,82 @@ struct TILE_DATA {
     bool m_changed;   // 0x8
 };
 
+/* the front taken off (MSL's pop_front, which include/list's class list lacks: a level above the
+ * erase as push_back is above the insert, so FloodFill's push_back takes its temporaries first and
+ * they get the higher stack slots, as the target's do -- erase(begin()) written in place swaps
+ * the two pairs) */
+inline void pop_front(std::list<CAiMapLoc> &l)
+{
+    l.erase(l.begin());
+}
+
+/* the cells around one flooded out breadth first, up to (2 * radius) squared of them: each cell
+ * taken off the queue handed to the callback (mode 1), then each of its eight neighbours not yet
+ * marked (mode 0) -- one the callback takes is marked, its region grown and queued, unless the
+ * callback said it is done (mode 2); the marks cleared over the region after (SOCOM 1's). The
+ * directions' order from the given one is built and never used: each neighbour's read of it (a
+ * dead load) is what keeps the last element's store, which MW drops without it; the walk at the
+ * end is the region ForEachCell Tile inlines too (the two share its constant pool, 0x64F9D0) */
+bool CAiMap::FloodFill(const CAiMapLoc &loc, DIR dir, int radius, bool (*f)(MAP_FLOODFILL_STRUCT &s, void *data),
+                       void *data)
+{
+    MAP_FLOODFILL_STRUCT s;
+
+    s.m_map = this;
+    s.m_first = loc;
+    s.m_loc = loc;
+    s.m_firstDir = dir;
+    std::list<CAiMapLoc> open;
+    int max = radius * 2 * (radius * 2);
+    int count = 0;
+    bool done = false;
+    DIR order[8] = {N, NE, E, SE, S, SW, W, NW};
+
+    if (dir != DIR_COUNT) {
+        order[0] = dir;
+        order[1] = (DIR)((order[0] + 4) % 8);
+        order[2] = (DIR)((order[0] + 9) % 8);
+        order[3] = (DIR)((order[0] + 7) % 8);
+        order[4] = (DIR)((order[1] + 9) % 8);
+        order[5] = (DIR)((order[1] + 7) % 8);
+        order[6] = (DIR)((order[0] + 10) % 8);
+        order[7] = (DIR)((order[0] + 6) % 8);
+    }
+    region r;
+
+    r.m_loc = loc;
+    open.push_back(loc);
+    while (!done && open.size() != 0 && count < max) {
+        s.m_loc = *open.begin();
+        pop_front(open);
+        count++;
+        s.m_cell = GetCell(s.m_loc, 0);
+        s.m_mode = 1;
+        if (!f(s, data)) {
+            done = true;
+        } else {
+            s.m_mode = 0;
+            for (int i = 0; !done && i < 8; i++) {
+                DIR d = order[i];
+
+                if (GetNeighbor(s.m_loc, (DIR)i, s.m_start, s.m_cell) && !s.m_cell->m_rtflag) {
+                    s.m_dir = (DIR)i;
+                    if (f(s, data)) {
+                        s.m_cell->SetRtFlag(1);
+                        r.Union(s.m_start);
+                        if (s.m_mode == 2)
+                            done = true;
+                        else
+                            open.push_back(s.m_start);
+                    }
+                }
+            }
+        }
+    }
+    ForEachCell(&r, _reset_rtflag, 0, 0);
+    return done;
+}
+
 /* a cell's shadow, boundary and occupied bits set from the tile's value, the change noted (SOCOM
  * 1's _tile_boundary; the shadow's and the occupied bit's new in SOCOM II) */
 /* a cell's soil set from the tile's value where it may be: anywhere (flag 1) or over the default

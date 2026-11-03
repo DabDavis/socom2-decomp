@@ -837,6 +837,30 @@ public:
     bool Tile(const region *r, unsigned int value, unsigned int flags, int layer);
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
+    /* each direction's step in cells, x then y, N to NW (SOCOM 1's CAiMap::neighbor, the demo's
+     * 0x4390B0; OVL2 0x64F910 in the walker unit's data) */
+    static const int neighbor[8][2];
+    /* the cell a step in a direction reaches and its first layer's cell, false off the map or
+     * without a cell (SOCOM 1's GetNeighbor, out of line there; an inline in SOCOM II, which
+     * FloodFill inlines one level -- GetMapId and GetCell called out of line) */
+    bool GetNeighbor(const CAiMapLoc &loc, DIR dir, CAiMapLoc &out, CAiCell *&cell) const
+    {
+        int x = loc.x + neighbor[dir][0];
+        int y = loc.y + neighbor[dir][1];
+
+        if (x >= 0 && x < m_nx && y >= 0 && y < m_ny) {
+            out.x = x;
+            out.y = y;
+            out.m_mapid = GetMapId();
+            cell = GetCell(out, 0);
+            return cell != 0;
+        }
+        return false;
+    }
+    /* ForEachCell over a region: the map's own when none is given (the name ours: FloodFill's
+     * walk resetting the cells it marked, inlined one level -- the unused region's constructor
+     * still called) */
+    bool ForEachCell(const region *pr, bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
     /* the cells around one flooded out to a radius from a direction, each handed to a callback
      * until one returns true (SOCOM 1's FloodFill, 0x536C80) */
     bool FloodFill(const CAiMapLoc &loc, DIR dir, int radius, bool (*f)(MAP_FLOODFILL_STRUCT &s, void *data),
@@ -975,9 +999,14 @@ public:
  * fields as the callbacks read them) */
 struct MAP_FLOODFILL_STRUCT {
     CAiMap *m_map;   // 0x0
-    unsigned int m_unk4[2];   // 0x4
+    /* the fill's first cell and its direction (FloodFill sets them; no callback written reads
+     * them -- the names ours) */
+    CAiMapLoc m_first;   // 0x4
+    CAiMap::DIR m_firstDir;   // 0x8
     CAiMapLoc m_loc;   // 0xc: the cell reached
-    CAiMapLoc m_start;   // 0x10: the cell the fill started from
+    /* the neighbour of m_loc being offered, in mode 0 (FloodFill's GetNeighbor writes it; the
+     * name an earlier guess) */
+    CAiMapLoc m_start;   // 0x10
     CAiCell *m_cell;   // 0x14
     /* the direction the fill was sent: a DIR, which MW loads with lb (a one-byte enum, its values
      * unsigned) and hands on unconverted -- a `signed char` cast to DIR is narrowed to an lbu
@@ -1011,6 +1040,46 @@ inline bool CAiMap::ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *dat
     GetMapRegion(r);
     MAP_FOREACH_STRUCT s;
     const region *pr = &r;
+
+    s.m_map = this;
+    s.m_region = pr;
+    s.m_loc.m_mapid = GetMapId();
+    int y0 = pr->m_loc.y;
+    int y1 = pr->m_loc.y + pr->GetDy();
+
+    _saturate(&y0, 0, (int)m_scanlines.size());
+    _saturate(&y1, 0, (int)m_scanlines.size());
+    CAiCell *cells = GetLayerCells(layer);
+
+    if (cells) {
+        for (int y = y0; y < y1; y++) {
+            scanline &sl = m_scanlines[y];
+
+            s.m_loc.y = y;
+            int x0 = ai::_max(sl.m_start, (unsigned short)pr->m_loc.x);
+            int x1 = ai::_min(sl.m_end, (unsigned short)(pr->m_loc.x + pr->GetDx()));
+
+            for (int x = x0; x < x1; x++) {
+                s.m_loc.x = x;
+                s.m_cell = &cells[sl.m_index + (x - sl.m_start)];
+                if (!f(s, data))
+                    return false;
+            }
+        }
+    }
+    return true;
+}
+
+inline bool CAiMap::ForEachCell(const region *pr, bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data,
+                                 int layer)
+{
+    region r;
+
+    if (!pr) {
+        GetMapRegion(r);
+        pr = &r;
+    }
+    MAP_FOREACH_STRUCT s;
 
     s.m_map = this;
     s.m_region = pr;
