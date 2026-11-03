@@ -8,6 +8,14 @@
  *
  * OPEN, not written yet: the rest of the unit. */
 
+#include "zui_skb.h"
+
+/* the text's three strings on screen (0x4A1370, 0x4A1450, 0x4A1520: the initialiser 0x404110 builds
+ * them; the names ours) */
+static CRenderableString s_textString0;
+static CRenderableString s_textString1;
+static CRenderableString s_textString2;
+
 /* a USB key as the loop hands it on: its HID usage and whether shift is held (the names ours) */
 struct SKBUSBKEY {
     unsigned char m_usage;   // 0x0

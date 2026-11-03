@@ -50,14 +50,6 @@ public:
     COptionName(const char *s) { assign(s); }
 };
 
-/* the map's allocator built with no code (MSL's allocator() is inline; include/memory keeps it out
- * of class for the deque's out-of-line 0x2CEE30, so this instance is specialised inline here: the
- * target's map() passes a bare stack slot) */
-template <>
-inline std::allocator<std::pair<const std::string, OPTION_INFO> >::allocator() throw()
-{
-}
-
 /* the options (ours: main news 16 bytes and calls the constructor, 0x3A2BE0) */
 class COptionMap : public std::map<std::string, OPTION_INFO> {
 public:

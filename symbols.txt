@@ -8595,7 +8595,7 @@
 0x00403730 0x34 __sinit_zui_skb.cpp  # OVL1 data area; a static initialiser; by hand (g_arrSkbs zeroed and its destructor 0x38D5C0 registered: SOCOM 1's .p__sinit_zui_skb.cpp does the same) -- zui_skb.cpp's static initialiser
 0x00403770 0x84 func_00403770  # OVL1 data area; a static initialiser
 0x00403800 0x90C __sinit_zui_skbview.cpp  # OVL1 data area; a static initialiser; the UI lane round 9: zui_skbview.cpp's static initialiser (the file name ours): the four rows, eight CBmpWithNode, a CSkbRect, a CRenderableString and nine CSaferStr, in declaration order -- byte-exact from source
-0x00404110 0x8C func_00404110  # OVL1 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.54, a hint)
+0x00404110 0x8C __sinit_zui_skbkeys.cpp  # OVL1 data area; a static initialiser; s1~ zsnd_csndinstance.cpp (shape 0.54, a hint); the UI lane round 9: zui_skbkeys.cpp's static initialiser (the file name ours, the USB keys' unit C): three CRenderableString statics 0x4A1370/0x4A1450/0x4A1520, used by 0x398B50-0x39A790 -- byte-exact from source
 0x004041A0 0x94 func_004041A0  # OVL1 data area; a static initialiser
 0x00404240 0x160 __sinit_veh_turret.cpp  # OVL1 data area; a static initialiser; s1:unit by hand (the wep lane: builds m_turret_def and the turret list, registers their destructors 0x3AC9E0/0x3AC960 and sets turret_debug_mask's seven bits, as SOCOM 1's __sinit_veh_turret.cpp; veh_turret.cpp's initialiser)
 0x004043A0 0xEC __sinit_veh_vehicle.cpp  # OVL1 data area; a static initialiser; by hand (the wep lane: builds m_vehicle_def (0x4A4138, its destructor 0x3AFB20 registered) and sets five bits at 0x4A4148, as the turret unit's initialiser does; veh_vehicle.cpp's -- the file name ours)
