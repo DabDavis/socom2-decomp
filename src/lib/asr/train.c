@@ -28,11 +28,13 @@ typedef struct TRAINREC {
     unsigned short *counts;             /* +0: per codeword and state */
     unsigned int size;                  /* +4: the counts' length (codewords times states) */
     unsigned short *totals;             /* +8: per state */
-    int f12;
+    unsigned int nstates;               /* +12 */
     struct TRAINREC *next;              /* +16 */
 } TRAINREC;
 
 extern void heap_Free(void *heap, void *p);
+extern void *heap_Alloc(void *heap, unsigned int size);
+extern void *heap_Calloc(void *heap, unsigned int n, unsigned int size);
 extern float logf(float x);
 
 extern const short log_p_average_[511];
@@ -118,6 +120,59 @@ void TrainProbsFromCounts(CASR *c, int pron)
             }
         }
     }
+}
+
+/* a record per codebook (its counts and totals, cleared), the probabilities' scale (the largest
+ * -log of a floored probability) and the two per-state buffers sized for the largest codebook;
+ * 1 when an allocation fails */
+int TrainInit(CASR *c)
+{
+    TRAINREC **link;
+    LANGVT *l;
+    unsigned int n, i;
+    float maxent;
+
+    c->trainrecs = 0;
+    link = &c->trainrecs;
+    l = c->lng;
+    c->maxcw = 0;
+    n = l->GetNbrCodeBook(l);
+    for (i = 0; i < n; i++) {
+        unsigned int ncw = l->GetFirstCdbSize(l->GetpCodeBook(l, i));
+        TRAINREC *r;
+
+        if (c->maxcw < ncw)
+            c->maxcw = ncw;
+        r = heap_Alloc(c->heap, 20);
+        if (r == 0)
+            return 1;
+        r->counts = 0;
+        r->totals = 0;
+        *link = r;
+        ncw *= c->nstates;
+        if ((r->counts = heap_Calloc(c->heap, ncw * 2, 1)) == 0)
+            return 1;
+        r->size = ncw;
+        if ((r->totals = heap_Calloc(c->heap, c->nstates * 2, 1)) == 0)
+            return 1;
+        r->nstates = c->nstates;
+        r->next = 0;
+        link = &r->next;
+    }
+    maxent = 0;
+    for (i = 0; i < n; i++) {
+        unsigned int ncw = l->GetFirstCdbSize(l->GetpCodeBook(l, i));
+        float e = -logf(c->f1052 / (ncw * c->f1052 + 1.0f));
+
+        if (maxent < e)
+            maxent = e;
+    }
+    c->f1056 = maxent;
+    c->train1060 = heap_Alloc(c->heap, c->maxcw * 4);
+    c->train1048 = heap_Calloc(c->heap, c->maxcw, 4);
+    if (c->train1060 == 0 || c->train1048 == 0)
+        return 1;
+    return 0;
 }
 
 /* one utterance's labels counted into every record's tables along its segmentation: each state's

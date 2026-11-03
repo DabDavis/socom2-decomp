@@ -145,7 +145,8 @@ typedef struct CASR {
     float f1052;                        /* +1052: 0.0001 (casrOpen): the probabilities' floor */
     float f1056;                        /* +1056: the log probabilities' scale (train.c) */
     float *train1060;                   /* +1060: one state's probabilities; freed by TrainFree */
-    int pad1064;
+    unsigned short maxcw;               /* +1064: the largest codebook (TrainInit) */
+    short pad1066;
     short **segtab;                     /* +1068 */
     int pad1072;
     int last_state;                     /* +1076 */
@@ -167,7 +168,11 @@ struct LANGVT {
     short (*GetUWSilencePhenome)(LANGVT *l);          /* +60, slot 15 */
     void *s16[9];
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
-    void *s26[20];
+    void *s26[5];
+    unsigned int (*GetFirstCdbSize)(void *cb);        /* +124, slot 31 */
+    void *s32[9];
+    void *(*GetpCodeBook)(LANGVT *l, int n);          /* +164, slot 41 */
+    void *s42[4];
     void *(*GetpPhenUserWordTraining)(LANGVT *l);     /* +184, slot 46 */
     void *s47[5];
     int (*CheckBitField)(LANGVT *l, int mask);        /* +208, slot 52 */
