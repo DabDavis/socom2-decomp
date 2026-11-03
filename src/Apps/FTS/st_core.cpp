@@ -21,7 +21,7 @@ void func_002A6950(void *mission);
 void func_003B17D0(int rate);                    /* CVideo::MaxFrameRate */
 void func_003B1760(int a, int b, int c, float d);
 void func_00351CB0();                            /* CValve::Reset */
-void func_002B6530(void *queue, const char *text, int a, int b, int c, float time);   /* C2DMessage_Q::Add_Message */
+void func_002B6530(void *queue, const char *text, MSGTYPE type, int b, int c, float time);   /* C2DMessage_Q::Add_Message (the type a byte enum: CCoreState::DisplayMessage copies it lb) */
 void func_005B61A0();
 
 }
@@ -528,7 +528,7 @@ void CCinematicState::UnInit()
  * the text queued on the mission's first message queue with the message's type (OVL1 0x1ECC40,
  * slot 0x2C) */
 void CCoreState::DisplayMessage(const char *text, const char *who, int a, int b, int c, unsigned char d,
-                                unsigned char e, char type)
+                                unsigned char e, MSGTYPE type)
 {
     CSaferStr s;
 

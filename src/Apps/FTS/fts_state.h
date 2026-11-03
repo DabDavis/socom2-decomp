@@ -239,6 +239,16 @@ public:
     virtual const char *GetReaderFileName();
 };
 
+/* a message's kind (SOCOM II's: a byte enum -- CMenuState::DisplayMessage compares it lbu and
+ * copies it lb, the displays it hands it to switch on it after an andi 0xff -- and the colour the
+ * front end's display gives each: 0 white, 1 yellow, 5 red; 1 with the d argument 2 is the menu's
+ * MP_SYSTEM_MESSAGE event. The names ours) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+
 /* a state of the game's stack: named, and told when it is pushed, popped, set up and torn down.
  * SOCOM II added two virtuals after OnPop (the second takes a dialog's arguments) */
 class CGameState {
@@ -261,7 +271,7 @@ public:
      * ones: the text, no sender, the flag 1, the message's type last). The name and the middle
      * parameters' meaning are ours */
     virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
-                        unsigned char d, unsigned char e, char type) {}
+                        unsigned char d, unsigned char e, MSGTYPE type) {}
 
     void SetName(const char *name)
     {
@@ -288,7 +298,7 @@ public:
     virtual void OnPop(int userdata);
     virtual void SetSkipSwap(int swap) { m_skip_swap = swap; }
     virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
-                                unsigned char d, unsigned char e, char type);
+                                unsigned char d, unsigned char e, MSGTYPE type);
 
     /* whether the mission is done loading (the load state's tests materialise the bool: the
      * name ours) */
@@ -516,6 +526,8 @@ public:
     virtual void UnInit();
     virtual void OnPush(int userdata);
     virtual void OnPop(int userdata);
+    virtual void DisplayMessage(const char *text, const char *who, int a, int b, int c,
+                                unsigned char d, unsigned char e, MSGTYPE type);
 
     bool RunEventAnim(const char *eventname, const char *argument);
 

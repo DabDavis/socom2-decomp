@@ -1394,7 +1394,7 @@
 0x001E7C50 0x8 OnPush__10CGameStateFi  # OVL1; s1:vtable by hand (CGameState's OnPush slot, 0x20: the base's empty inline)
 0x001E7C60 0x8 OnPop__10CGameStateFi  # OVL1; s1:vtable by hand (CGameState's OnPop slot, 0x24: the base's empty inline)
 0x001E7C70 0x8 SetSkipSwap__10CGameStateFi  # OVL1; the name ours (CGameState's new slot 0x28, empty; CCoreState's sets m_skip_swap)
-0x001E7C80 0x8 DisplayMessage__10CGameStateFPCcPCciiiUcUcc  # OVL1; the name ours (CGameState's new slot 0x2C, empty: a message for the player -- CMenuState::Tick passes the network's queued ones, CMenuState and CCoreState override it)
+0x001E7C80 0x8 DisplayMessage__10CGameStateFPCcPCciiiUcUc7MSGTYPE  # OVL1; the name ours (CGameState's new slot 0x2C, empty: a message for the player -- CMenuState::Tick passes the network's queued ones, CMenuState and CCoreState override it); (the states lane, round 19: the last parameter is a byte enum -- CMenuState's override compares it lbu and copies it lb, its displays switch on it after andi 0xff; the enum's name ours)
 0x001E7C90 0x258 reserve__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi  # OVL1; by hand (MSL's basic_string::reserve: "basic_string::reserve length_error", operator new, memcpy, the short form's 11 characters; SOCOM 1's CMenuState constructor reserves 64 in both sound names, as COurGame's constructor does here through it)
 0x001E7EF0 0x68 __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv  # OVL1; by hand (MSL's basic_string destructor: the long form's buffer deleted (bit 0 of the first word), then the object when asked; ~CSaferStr calls it with 0, the states' destructors with -1 for their member strings; the instance closing main.cpp)
 0x001E7F58 0x3C flushbuffer  # OVL1 unaligned; s1:exact
@@ -1493,7 +1493,7 @@
 0x001ECA50 0xB8 __ct__10CCoreStateFv  # OVL1; s1:calls (stores CGameState's then CCoreState's vtable; the two unit matrices)
 0x001ECB10 0xE4 OnPop__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001ECC00 0x38 OnPush__10CCoreStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001ECC40 0xA8 DisplayMessage__10CCoreStateFPCcPCciiiUcUcc  # OVL1; by hand (the states lane, round 15): slot 0x2C of CCoreState's vtable (0x404F60), CGameState::DisplayMessage's override; byte-exact from st_core.cpp
+0x001ECC40 0xA8 DisplayMessage__10CCoreStateFPCcPCciiiUcUc7MSGTYPE  # OVL1; by hand (the states lane, round 15): slot 0x2C of CCoreState's vtable (0x404F60), CGameState::DisplayMessage's override; byte-exact from st_core.cpp; (the states lane, round 19: the last parameter a byte enum, MSGTYPE, as CMenuState's override shows)
 0x001ECCF0 0x264 UnInit__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's UnInit slot)
 0x001ECF60 0x94 FreeVector<Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>>__FRQ23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>_v  # OVL1; by hand (the states lane, round 15): zsys.h's FreeVector as a plain function template over the film's cue vector (8-byte elements, a float and a word: 0x1EF190's copy loop), its instance following its one caller CCinematicState::UnInit; CMovieCue is our name
 0x001ED000 0x8 clear__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 17): the cue vector's clear() (`j` to the deleter's clear 0x1EF310), its out-of-line copy following UnInit with FreeVector's (0x1ECF60), reverse of their first use: both called from an inline helper inlined one level (FreeVector is zsys.h's inline, taller than the budget)
@@ -1570,7 +1570,7 @@
 0x001F4630 0x8 OnPush__10CMenuStateFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F4640 0x220 Tick__10CMenuStateFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F4860 0x4BC Init__10CMenuStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F4D20 0xC4 func_001F4D20  # OVL1
+0x001F4D20 0xC4 DisplayMessage__10CMenuStateFPCcPCciiiUcUc7MSGTYPE  # OVL1; by hand (the states lane, round 19: slot 0x2C of CMenuState's vtable 0x405010, CGameState's DisplayMessage's -- its MP_SYSTEM_MESSAGE event and the two displays); (the states lane, round 19: the last parameter a byte enum, MSGTYPE -- lbu for its test, lb for the copies it passes on)
 0x001F4DF0 0x224 func_001F4DF0  # OVL1
 0x001F5020 0x3AC func_001F5020  # OVL1
 0x001F53D0 0x24C func_001F53D0  # OVL1

@@ -24,7 +24,7 @@ void func_00366B10(CMenuStateMenu *menu);            /* CGameMenu::HaltBackgroun
 
 /* a message from the network's queue: its type, then its text */
 struct CQueuedMessage {
-    char type;
+    MSGTYPE type;
     char text[0xaf];
 };
 
@@ -66,6 +66,16 @@ CZAnimZAR *animfile;
 
 void zUISchedulerClear();
 
+/* the two ways a message reaches the player (0x1F5020 while the game mode byte is 11, 0x1F4DF0
+ * otherwise: unwritten) */
+extern "C" {
+void func_001F4DF0(const char *text, const char *who, int a, int b, int c, unsigned char d,
+                   unsigned char e, MSGTYPE type);
+void func_001F5020(const char *text, const char *who, int a, int b, int c, unsigned char d,
+                   unsigned char e, MSGTYPE type);
+}
+extern unsigned char data_0044F3D0;
+
 const char *CMenuStateMenu::GetReaderFileName()
 {
     return theGame.m_menuState.m_DefaultMenu;
@@ -77,6 +87,26 @@ const char *CMenuStateMenu::GetReaderFileName()
  * waited for while swaps are skipped. (SOCOM 1 cleared the relocator through a virtual; SOCOM II's
  * clear is an inline loop over three words, which is what keeps the second and third words'
  * addresses in s1/s0 for the second clear and, being the last values made, puts this in s2) */
+/* a message for the player (CGameState's slot 0x2C): a system message of the multiplayer kind is
+ * the menu's MP_SYSTEM_MESSAGE event, any other goes to one of two displays by the mode byte (a
+ * switch: the target tests the one case and branches to the default) */
+void CMenuState::DisplayMessage(const char *text, const char *who, int a, int b, int c,
+                                unsigned char d, unsigned char e, MSGTYPE type)
+{
+    if (type == 1 && d == 2) {
+        RunEventAnim("MP_SYSTEM_MESSAGE", text);
+        return;
+    }
+    switch (data_0044F3D0) {
+    case 11:
+        func_001F5020(text, who, a, b, c, d, e, type);
+        break;
+    default:
+        func_001F4DF0(text, who, a, b, c, d, e, type);
+        break;
+    }
+}
+
 bool CMenuState::Tick(float dT)
 {
     CQueuedMessage msg;
