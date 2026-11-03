@@ -2197,12 +2197,12 @@
 0x00232460 0x10 func_00232460  # OVL1
 0x00232470 0x10 func_00232470  # OVL1
 0x00232480 0x10 func_00232480  # OVL1
-0x00232490 0x1D0 func_00232490  # OVL1
-0x00232660 0x22C func_00232660  # OVL1
+0x00232490 0x1D0 __dt__8CTCMNodeFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- CTCMNode's destructor, round 23's lead; hud_tcm.cpp emits its implicit copy with CTCM's constructor)
+0x00232660 0x22C __ct__8CTCMNodeFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- CTCMNode's constructor, called out of line by CTCM's 0x237390 at its start, as round 23's notes had it)
 0x00232890 0xBC func_00232890  # OVL1
 0x00232950 0x14 func_00232950  # OVL1
 0x00232970 0x58 func_00232970  # OVL1
-0x002329D0 0x18 func_002329D0  # OVL1
+0x002329D0 0x18 __ct__10CTCMSoundsFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- the menu's sounds' constructor, called out of line by CTCM's constructor 0x237390 on CTCM+0xDB8, as round 23's notes had it)
 0x002329F0 0x1CC func_002329F0  # OVL1
 0x00232BC0 0x1918 func_00232BC0  # OVL1
 0x002344E0 0xA54 func_002344E0  # OVL1
@@ -2230,7 +2230,7 @@
 0x002371A0 0x170 func_002371A0  # OVL1
 0x00237310 0x38 ClearItems__4CTCMFv  # OVL1; tu: node_world.cpp~ (1.0 beta); ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item list bitmap's list at +0xDE0 cleared; CHUD calls it)
 0x00237350 0x3C Init__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the caches built (0x2344E0), the path and the root's children reserved)
-0x00237390 0x1E8 func_00237390  # OVL1
+0x00237390 0x1E8 __ct__4CTCMFv  # OVL1; by hand (the HUD lane, round 24: hud_tcm.cpp -- the menu object's constructor: the root node's (0x232660) out of line, the mode 4, the path, the six polys, the sounds' constructor 0x2329D0; the initialiser 0x3FF4A0 builds theTCM with it)
 0x00237580 0x1E0 func_00237580  # OVL1
 0x00237760 0x3D8 Update__12CAmmoDisplayFv  # OVL1; by hand (the HUD lane: the ammo counts from the HUD owner's kit, the unit's first function in the image; the name ours)
 0x00237B40 0x1C0 SetMags__12CAmmoDisplayFiPQ23zdb10CTexHandle  # OVL1; by hand (the ammo unit's: a switch on a byte, 1-3 lighting the four magazine bitmaps at CAmmoDisplay+0x3C0, past that a texture argument in the first; On passes the cached count 0x3DCBD8 and texture 0x4145E0; the name ours); an int count, narrowed to a byte inside (andi 0xff) where On passes the cached word whole
