@@ -137,6 +137,16 @@ public:
     void AddAmmo(CZAmmo *ammo);
 };   // 0xc bytes
 
+/* how a weapon weighs on its carrier (SOCOM 1's DWARF: a byte enum) */
+enum ENCUMBRANCE {
+    LIGHTLY_ENCUMBERED = 0,
+    MEDIUM_ENCUMBERED = 1,
+    HEAVY_ENCUMBERED = 2,
+    VERY_HEAVILY_ENCUMBERED = 3,
+    NOT_ENCUMBERED = 4,
+    NUM_ENCUMBTYPES = 5
+};
+
 /* a weapon (SOCOM 1's DWARF: 0xb0 bytes, the vtable pointer at 0). SOCOM II's is 0xf8 bytes (its
  * constructor clears up to 0xf4) and its table has a second slot (0x3D2D70) */
 class CZWeapon {
@@ -223,11 +233,23 @@ public:
         void SetCustom(bool b) { m_custom = b; }
         void SetHardMin(bool b) { m_hard_min = b; }
 
+        /* the current version, the custom and hard-minimum flags clear, 50 to 1000 (SOCOM 1's,
+         * inline in CZWeapon's constructor in both builds) */
+        AI_PARAMS() : m_min_range(50.0f), m_max_range(1000.0f)
+        {
+            m_version = version;
+            SetCustom(false);
+            SetHardMin(false);
+        }
+
         unsigned char m_version;   // 0x0
         unsigned char m_custom : 1;   // 0x1
         unsigned char m_hard_min : 1;
         float m_min_range;   // 0x4
         float m_max_range;   // 0x8
+
+        /* the parameters' version (SOCOM 1's static, a byte in small data; 0x3E1560 here) */
+        static unsigned char version;
     };   // 0xc bytes
 
     /* the three fire sounds by distance, close, medium and far (new in SOCOM II: their names from
@@ -249,27 +271,53 @@ public:
     /* in the legal ammo list, by name (SOCOM 1's) */
     bool IsLegalAmmo(CZAmmo *ammo);
 
+    /* SOCOM 1's members from its DWARF, at SOCOM II's offsets as the constructor clears them (SOCOM
+     * II's own, unnamed, between: the constructor's order of stores aligned with SOCOM 1's) */
     char *m_name;   // 0x4
     char *m_description;   // 0x8
-    unsigned char _c[0x24 - 0xc];
+    char *m_socom2_c;   // 0xc (SOCOM II's)
+    char *m_texname;   // 0x10 (SOCOM 1: 0xc)
+    char *m_icontexname;   // 0x14
+    char *m_associatedgearname;   // 0x18
+    char *m_modelname;   // 0x1c
+    char *m_decalsetname;   // 0x20
     FIREMODE m_maxfiremode;   // 0x24 (SOCOM 1: 0x20)
-    unsigned char _25[0x28 - 0x25];
     int m_ammocap;   // 0x28 (SOCOM 1: 0x24)
     int m_nummags;   // 0x2c (SOCOM 1: 0x28)
-    unsigned char _30[0x64 - 0x30];
+    float m_soundradius;   // 0x30
+    float m_soundradiusSq;   // 0x34
+    ENCUMBRANCE m_encumb;   // 0x38
+    float m_maxrange;   // 0x3c
+    float m_effectiverange;   // 0x40
+    float m_muzzlevel;   // 0x44
+    float m_impactradius;   // 0x48 (-1 in SOCOM II's constructor)
+    float m_socom2_4c;   // 0x4c (SOCOM II's)
+    float m_firewait;   // 0x50
+    float m_reloadtime;   // 0x54
+    unsigned char m_reloadAfterShot;   // 0x58
+    float m_socom2_5c;   // 0x5c (SOCOM II's, not cleared)
+    float m_socom2_60;   // 0x60
     /* added to the ammunition's damage by CZProjectile::GetDamage (SOCOM II's; the name ours) */
     float m_damagebonus;   // 0x64
-    unsigned char _68[0x70 - 0x68];
+    float m_socom2_68;   // 0x68 (SOCOM II's)
+    float m_socom2_6c;   // 0x6c
     AI_PARAMS m_ai_params;   // 0x70 (SOCOM 1: 0x54)
     EQUIP_ITEM m_ID;   // 0x7c (SOCOM 1: 0x60)
-    unsigned char _7d[0x80 - 0x7d];
     CZAnim **m_hitanim;   // 0x80 (SOCOM 1: 0x64; ClearAnims frees it)
     CZAnim *m_fireanim;   // 0x84
     CZAnim *m_zoomedfireanim;   // 0x88
     CZAnim *m_defaultspecialanim;   // 0x8c
     CZAnim *m_socom2_90;   // 0x90 (SOCOM II's: ClearAnims clears it with the others)
     CZAnim **m_specialmaterialanim;   // 0x94 (SOCOM 1: 0x74)
-    unsigned char _98[0xbc - 0x98];
+    CSnd *m_reloadsound;   // 0x98 (SOCOM 1: 0x78)
+    char *m_reloadsoundname;   // 0x9c
+    unsigned int m_socom2_a0;   // 0xa0 (SOCOM II's)
+    unsigned int m_socom2_a4;   // 0xa4
+    char *m_hitanimname;   // 0xa8 (SOCOM 1: 0x80)
+    char *m_fireanimname;   // 0xac
+    char *m_defaultspecialanimname;   // 0xb0
+    char *m_specialmaterialanimname;   // 0xb4
+    zdb::CTexture *m_texture;   // 0xb8 (SOCOM 1: 0x90)
     /* the weapon's icon (the kit lane's: kit.h reads a texture there; the name ours) */
     zdb::CTexture *m_icon;   // 0xbc
     /* its decal set (CZMarkList::AddNewMark takes the material's decal from it and its permanence
@@ -774,8 +822,11 @@ public:
      * DestroyProjectileList passes 1) */
     CZProjectileList(int count);
     ~CZProjectileList();
-    /* the slots and intersection tables made (SOCOM 1's; 0x3CD480) */
-    bool Init();
+    /* the slots and intersection tables made, each slot's projectile given a node (SOCOM 1's;
+     * 0x3CD480 -- no result in either build) */
+    void Init();
+    /* everything made by Init deleted (SOCOM 1's; 0x3CCBC0) */
+    void UnInit();
     /* the next free projectile, given the weapon and the ammunition (SOCOM 1's) */
     CZProjectile *AcquireProjectile(CZWeapon &weapon, CZAmmo &ammo);
     /* a shooter's charges (of one weapon, when given one) and, unless a weapon is given, his

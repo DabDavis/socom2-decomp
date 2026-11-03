@@ -44,6 +44,59 @@ public:
 CVehicleDefVector CVehicle::m_vehicle_def;
 static CVehicleDebugMask vehicle_debug_mask;
 
+unsigned int ParseTeams(_zrdr *rdr);
+
+/* a string field set, cut to its 31 characters, or emptied (inline: the length is taken and not
+ * used -- an assert compiled out?; the name ours) */
+static inline void SetDefString(char *dst, const char *src)
+{
+    if (!src) {
+        dst[0] = 0;
+    } else {
+        (void)strlen(src);
+        strncpy(dst, src, 31);
+        dst[31] = 0;
+    }
+}
+
+/* a definition read: its name, the ACTIVATE and HEALTH_ROOT_NAME nodes, the COLLISION_BBOX node
+ * with its RECURSIVE tag, and the teams it serves (the name SOCOM 1's turret definition's) */
+void CVehicleDef::Parse(const char *name, _zrdr *rdr)
+{
+    SetDefString(m_name, name);
+
+    _zrdr *t = zrdr_findtag(rdr, "ACTIVATE");
+
+    if (t) {
+        _zrdr *item = t->Item(0);
+
+        if (item)
+            SetDefString(m_20, item->String());
+    }
+    t = zrdr_findtag(rdr, "HEALTH_ROOT_NAME");
+    if (t) {
+        _zrdr *item = t->Item(0);
+
+        if (item)
+            SetDefString(m_40, item->String());
+    }
+
+    _zrdr *bbox;
+
+    if ((bbox = zrdr_findtag(rdr, "COLLISION_BBOX")) != 0) {
+        _zrdr *item = bbox->Item(0);
+
+        if (item)
+            SetDefString(m_60, item->String());
+        if (zrdr_findtag(bbox, "RECURSIVE"))
+            m_80 = 1;
+        else
+            m_80 = 0;
+    }
+    if ((t = zrdr_findtag(rdr, "TEAM")) != 0 && t->type == ZRDR_ARRAY)
+        m_84 = ParseTeams(t);
+}
+
 /* the definition whose name starts the node's (called, never inlined) */
 #pragma auto_inline off
 const CVehicleDef *CVehicleDefVector::PrefixMatch(const char *name)

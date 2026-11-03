@@ -219,9 +219,12 @@ public:
  * makes the node transparent), a type at 4 (1 a mesh, 2 a sub-mesh), a reference count at
  * 0x18, and the vtable pointer at 0x20 (GetSubMesh's dynamic_cast). Not in SOCOM 1's DWARF: the
  * names are ours */
+/* CVisual's implicit assignment (0x3B93A0, as SOCOM 1's tag_VIS_PARAMS one 0x30F690) copies the head
+ * as three aggregates and its scalars: the flag word through an FPR (a bit-field struct, so the struct
+ * is each union's first member), the type byte with lbu, the halfword pair as one word -- the unions
+ * keep every older member's own access (the wep lane, round 14) */
 struct tag_VISUAL_HEAD {
     union {
-        unsigned int m_flags;   // 0x0: tested by mask, the whole word loaded (AddVisual)
         struct {
             /* CVisual's constructor clears the word, then sets bits 1, 19, 3-7, 14-16 and clears 9,
              * 17 and 18, in that order (the wep lane; the names ours) */
@@ -245,15 +248,24 @@ struct tag_VISUAL_HEAD {
             unsigned int m_b19 : 1;
             unsigned int _b20 : 12;
         } m_bits;
+        unsigned int m_flags;   // 0x0: tested by mask, the whole word loaded (AddVisual)
     };
-    signed char m_type;   // 0x4
+    union {
+        unsigned char m_utype;   // 0x4: as the assignment copies it
+        signed char m_type;   // 0x4
+    };
     /* the constructor zeroes the three bytes and two halfwords, and the centroid from CPnt3D::zero
      * (UpdateCentroid zeroes it); the vparams fetch reads these 0x18 bytes (the names ours) */
     unsigned char m_5;   // 0x5
     unsigned char m_6;   // 0x6
     unsigned char m_7;   // 0x7
-    unsigned short m_8;   // 0x8
-    unsigned short m_a;   // 0xa
+    union {
+        unsigned int m_8a;   // 0x8: as the assignment copies it
+        struct {
+            unsigned short m_8;   // 0x8
+            unsigned short m_a;   // 0xa
+        } m_8s;
+    };
     CPnt3D m_centroid;   // 0xc
 };   // 0x18 bytes
 
@@ -561,6 +573,8 @@ public:
     void DereferenceDecals(unsigned int vid);
     /* a decal unlinked from its list (SOCOM 1's) */
     void RemoveMeshDecal(CMeshDecal *decal);
+    /* a decal added over a strip, last in its list (0x3B8550, SOCOM II's: the name ours) */
+    void AddDecal(void *strip, CTexHandle *tex, float life);
     /* the wep lane's (vis_mesh.cpp, SOCOM 1's names): its table (__vt__Q23zdb5CMesh, 0x408350)
      * overrides these and adds InitMatrices (+0x20) */
     CMesh();   // 0x3B9760
@@ -596,11 +610,15 @@ public:
         CMesh *m_mesh;   // 0x8
     };
 
-    unsigned int m_68;   // 0x68 (not read yet)
+    /* the mesh a clone was made from, which the clone holds a reference to (Clone stores its
+     * dynamic_cast; ~CMesh releases it and frees the levels' select blocks when it is the last
+     * holder: the name ours) */
+    CMesh *m_original;   // 0x68
     /* its decals, linked through each decal's next pointer (SOCOM 1's at the same offset) */
     CMeshDecal *m_decals;   // 0x6c
-    unsigned int m_70;   // 0x70 (zeroed by the constructor; not read yet)
-    unsigned int m_74;   // 0x74 (likewise)
+    /* the node a clone was made for (Clone's argument, SOCOM II's: the name ours) */
+    CNode *m_owner;   // 0x70
+    unsigned int m_74;   // 0x74 (zeroed by the constructor, and in the original by Clone)
     std::vector<CMeshLOD> m_lods;   // 0x78
     unsigned int m_numMatrices;   // 0x84
     /* its sub-meshes' matrices, by index: InitMatrices pushes one new CMatrix per sub-mesh (the

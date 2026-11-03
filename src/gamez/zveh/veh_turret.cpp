@@ -397,6 +397,90 @@ void CTurret::ComputeNextPosition(float dT)
 {
 }
 
+/* the turret's frame sampled: its matrix from the yaw node's parent and the inverse, the fire
+ * point's position (the origin without its node) and the velocity as the step over the frame
+ * (SOCOM 1's) */
+void CTurret::SampleDynamics(float dT)
+{
+    if (m_yawNode && m_288) {
+        sceVu0UnitMatrix(m_300.m_matrix);
+        m_yawNode->m_parent->BuildMTW(m_300);
+        sceVu0UnitMatrix(m_340.m_matrix);
+        Vu0MatrixInverseWithUniformScale(&m_340, &m_300);
+
+        CMatrix m;
+
+        sceVu0UnitMatrix(m.m_matrix);
+
+        CPnt3D old = m_380;
+
+        if (m_288) {
+            m_288->BuildMTW(m);
+            m_380 = *(CPnt3D *)m.m_matrix[3];
+        } else {
+            m_380 = CPnt3D::zero;
+        }
+
+        CPnt3D d = m_380 - old;
+        CPnt3D v = d * (1.0f / dT);
+
+        m_velW = v;
+    }
+}
+
+/* a rate moved toward a step, at most the limit either way: down only while the step is below
+ * it, up only while above, zero for no step (inline; the name ours) */
+static inline void SlewRate(float &rate, float step)
+{
+    float limit = 1.2f;
+
+    if (step < 0.0f) {
+        float s = step < -limit ? -limit : step;
+
+        if (s < rate)
+            rate = s;
+    } else if (step > 0.0f) {
+        if (step > limit)
+            step = limit;
+        if (step > rate)
+            rate = step;
+    } else {
+        rate = 0.0f;
+    }
+}
+
+/* the third and fourth throttles' rates slewed toward their steps, 1.2 at most (new in SOCOM II,
+ * not named: Tick calls it, out of line -- pinned) */
+#pragma auto_inline off
+extern "C" void func_003A78E0(CTurret *t, float dT)
+{
+    SlewRate(t->m_3a8, t->m_3b4 - t->m_3b0);
+    SlewRate(t->m_3ac, t->m_3bc - t->m_3b8);
+}
+#pragma auto_inline reset
+
+/* the yaw and pitch toward a direction in the turret's frame (0x3A8910, not written) */
+extern "C" void func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch);
+
+/* the yaw and pitch toward a point: the direction to it from the fire point, unit length, into the
+ * turret's frame; straight ahead (-z) without one (new in SOCOM II, not named: the SEALs' vehicle
+ * state asks it for the point it aims at) */
+extern "C" void func_003A8BD0(CTurret *t, const CPnt3D *target, float *yaw, float *pitch)
+{
+    CPnt3D dir;
+
+    if (target) {
+        CPnt3D d = *target - t->m_380;
+
+        t->m_398 = d;
+        t->m_398.Normalize();
+        TransformVectors(&t->m_340, &t->m_398, &dir, 1);
+    } else {
+        dir = CPnt3D::unit_nz;
+    }
+    func_003A8910(t, &dir, yaw, pitch);
+}
+
 /* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.
  * OPEN, 12 bytes short: the same calls and loop, but the target builds one end() temporary first
  * (sp+76) and serves both std::remove's last and erase's last from it, std::remove's result in a

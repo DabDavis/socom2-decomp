@@ -202,6 +202,68 @@ void CZProjectile::SetVelW(const CPnt3D *vel)
     m_intersecthandle = -1;
 }
 
+/* a material's extension (int_material.cpp's, SOCOM 1's class): its resistance to a blast only */
+struct CMaterialEx {
+    unsigned char _0[0x24];
+    float m_blastResist;   // 0x24 (the name ours)
+};
+
+/* whether an explosion reaches past the other intersection's hits: none counts for a flag-9
+ * projectile, nor a hit on the node (or node extension) of the given one; a material that stops
+ * blasts outright ends it, the others shrink the reach until it falls short of the shot's length
+ * (SOCOM II's; the name CheckHit is HandleNextHit's) */
+bool CZProjectile::CheckHit(DiIntersect *di, IntersectStruct *hit)
+{
+    if (m_b9)
+        return true;
+
+    bool measured = false;
+    float len;
+    float r = m_ammo->GetExplosionRadius();
+    float reach = r * m_ammo->GetExplosionRadius();
+
+    if (di->m_Cnt > 0) {
+        for (int i = 0; i < di->m_Cnt; i++) {
+            IntersectStruct *is = &di->m_Intersects[i];
+
+            if (!is)
+                continue;
+            if (hit && hit->m_node) {
+                if (hit->m_node == is->m_node)
+                    continue;
+                if (hit->m_node->m_nodeEx && hit->m_node->m_nodeEx == is->m_node->m_nodeEx)
+                    continue;
+            }
+
+            unsigned int mat = is->GetMaterial();
+
+            if (mat >= CMaterialExArray::m_materialex_list.size())
+                mat = 0;
+
+            CMaterialEx *ex = (CMaterialEx *)CMaterialExArray::m_materialex_list[mat];
+
+            if (!ex)
+                continue;
+
+            float resist = ex->m_blastResist;
+
+            if (resist < 0.0001f)
+                return false;
+            if (!measured) {
+                measured = true;
+
+                CPnt3D d = di->m_Tip - di->m_Tail;
+
+                len = d.x * d.x + d.y * d.y + d.z * d.z;
+            }
+            reach *= resist;
+            if (reach < len)
+                return false;
+        }
+    }
+    return true;
+}
+
 /* the next hit, if it counts, handed to its node's extension -- an instance's to the node it
  * instances -- and the index moved on; none without both intersections */
 bool CZProjectile::HandleNextHit()

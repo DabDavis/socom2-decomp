@@ -10,6 +10,43 @@
 
 using zdb::DiIntersect;
 
+/* the slots made for the count (none for less than one) with their used flags, the 60 direct and 30
+ * indirect fire intersections and their flags cleared; then each slot's projectile given a new
+ * node, deactivated (SOCOM 1's; SOCOM II's intersections 76 bytes) */
+void CZProjectileList::Init()
+{
+    UnInit();
+    if (m_size < 0)
+        m_size = 0;
+    if (m_size > 0) {
+        m_used = new unsigned char[m_size];
+        m_projectiles = new CZProjectile[m_size];
+        int i;
+
+        for (i = 0; i < 60; i++)
+            m_directFireDI[i] = new DiIntersect(40);
+        for (i = 0; i < 30; i++)
+            m_indirectFireDI[i] = new DiIntersect(128);
+        int k;
+
+        for (k = 0; k < 60; k++)
+            m_directFireDIUsed[k] = 0;
+        m_direct_firstfree = 0;
+        for (k = 0; k < 30; k++)
+            m_indirectFireDIUsed[k] = 0;
+        m_indirect_firstfree = 0;
+    }
+    m_firstfree = 0;
+    m_lastused = -1;
+    memset(m_used, 0, m_size);
+    for (int n = 0; n < m_size; n++) {
+        zdb::CNode *node = zdb::CNode::CreateXRef();
+
+        m_projectiles[n].SetInstance(node);
+        node->SetActive(false);
+    }
+}
+
 /* a node forgotten by every charge there is and every projectile in a slot in use up to the last
  * (SOCOM II's: ~CZSealBody calls it; the name ours) */
 void CZProjectileList::ForgetHitNode(zdb::CNode *node)

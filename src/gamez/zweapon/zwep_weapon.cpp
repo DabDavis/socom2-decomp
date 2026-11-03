@@ -204,6 +204,65 @@ extern "C" int func_002DE9E0(const char *name);
 /* the next material of a name after an index, 0 past the last (0x2DE970) -- not named */
 extern "C" int func_002DE970(const char *name, int index);
 
+/* everything cleared, one fire mode, a tenth of a second between shots, no impact radius (SOCOM
+ * 1's, with SOCOM II's members) */
+CZWeapon::CZWeapon()
+{
+    m_name = 0;
+    m_description = 0;
+    m_socom2_c = 0;
+    m_maxfiremode = (FIREMODE)0;
+    m_ammocap = 0;
+    m_soundradius = 0;
+    m_soundradiusSq = 0;
+    m_encumb = LIGHTLY_ENCUMBERED;
+    m_effectiverange = 0;
+    m_maxrange = 0;
+    m_texname = 0;
+    m_icontexname = 0;
+    m_associatedgearname = 0;
+    m_modelname = 0;
+    m_icon = 0;
+    m_ID = (EQUIP_ITEM)0;
+    m_nummags = 0;
+    m_specialmaterialanimname = 0;
+    m_defaultspecialanimname = 0;
+    m_fireanimname = 0;
+    m_hitanimname = 0;
+    m_hitanim = 0;
+    m_specialmaterialanim = 0;
+    m_socom2_90 = 0;
+    m_defaultspecialanim = 0;
+    m_zoomedfireanim = 0;
+    m_fireanim = 0;
+    m_texture = 0;
+    m_firewait = 0.1f;
+    m_decalsetname = 0;
+    m_decalSet = 0;
+    m_muzzlevel = 0;
+    m_impactradius = -1.0f;
+    m_socom2_4c = 0;
+    m_reloadsoundname = 0;
+    m_socom2_a4 = 0;
+    m_socom2_a0 = 0;
+    m_reloadsound = 0;
+    m_reloadtime = 0;
+    m_reloadAfterShot = 0;
+    m_hasFireModes[0] = 1;
+    m_hasFireModes[1] = 0;
+    m_hasFireModes[2] = 0;
+    m_hasFireModes[3] = 0;
+    m_hasFireModes[4] = 0;
+    for (int i = 0; i < 3; i++) {
+        m_firesound[i] = 0;
+        m_firesoundname[i] = 0;
+    }
+    m_damagebonus = 0;
+    m_socom2_68 = 0;
+    m_socom2_d5 = 0;
+    m_socom2_6c = 0;
+}
+
 /* the projectiles in flight made for a count (SOCOM 1's) */
 bool CZWeapon::CreateProjectileList(int count)
 {

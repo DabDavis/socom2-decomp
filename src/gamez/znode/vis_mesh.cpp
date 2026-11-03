@@ -10,6 +10,14 @@
 
 namespace zdb {
 
+class CMeshDecal;
+
+/* the mesh decals' pools (vis_decal.cpp's class: only the take here) */
+class CMeshDecalPool {
+public:
+    CMeshDecal *Get(bool b);
+};
+
 /* a decal on a mesh: what the mesh's walks touch (vis_decal.cpp's class; SOCOM 1's, no DWARF --
  * the names ours). A decal's life below zero is a permanent one */
 class CMeshDecal {
@@ -28,6 +36,9 @@ public:
         m_30 = 0;
     }
 
+    static CMeshDecalPool m_tempPool;
+    static CMeshDecalPool m_permPool;
+
     float m_life;   // 0x0
     CMeshDecal *m_next;   // 0x4
     unsigned int m_8;   // 0x8
@@ -42,13 +53,21 @@ public:
 
 using namespace zdb;
 
+/* a mesh decal built over a strip of the mesh's vertices, posed by its matrices (SOCOM II's, not
+ * named: vis_data.cpp's span) */
+extern "C" void func_003BD9E0(CMeshDecal *d, void *strip, CTexHandle *tex, CMesh *mesh,
+                              std::vector<CMatrix *> *palette, float life);
+
+/* the decal list's end reached (inline: the walk's materialised test; the name ours) */
+static inline bool DecalEnd(CMeshDecal *d) { return !d; }
+
 /* constructed empty, as a mesh (type 1): one level of detail, used out to 1e12, room for three
  * (SOCOM 1's used FLT_MAX), no matrices and no decals */
 CMesh::CMesh()
 {
     m_type = 1;
-    m_68 = 0;
-    m_70 = 0;
+    m_original = 0;
+    m_owner = 0;
     m_1c = 3;
 
     CMeshLOD lod;
@@ -114,6 +133,116 @@ void CMesh::SetLOD(unsigned int view, unsigned int lod)
     if (lod >= m_lods.size())
         lod = m_lods.size() - 1;
     m_lodMesh[view] = m_lods[lod].m_mesh;
+}
+
+/* a decal added over a strip of the mesh, last in its list: taken from the permanent pool for a
+ * life below zero, else from the temporary one, cleared and built (SOCOM II's; the name ours).
+ * OPEN, 0x11C against 0x124: the target pads both arms of the pool choice with a nop before the
+ * next label and fills the second call's delay slot with the li; the decal's clear then interleaves
+ * the life's mov.s earlier -- a ternary, the tests reversed, a bool, a pool pointer, inline helpers
+ * (if/return, a result local, a ternary) and an early return all miss */
+void CMesh::AddDecal(void *strip, CTexHandle *tex, float life)
+{
+    CMeshDecal *d;
+
+    if (life < 0.0f)
+        d = CMeshDecal::m_permPool.Get(false);
+    else
+        d = CMeshDecal::m_tempPool.Get(true);
+    if (d) {
+        CMeshDecal *last = m_decals;
+
+        while (!DecalEnd(last) && last->m_next)
+            last = last->m_next;
+        d->Reset();
+        func_003BD9E0(d, strip, tex, this, &m_palette, life);
+        d->m_next = 0;
+        if (last)
+            last->m_next = d;
+        else
+            m_decals = d;
+        FlushCache(0);
+    }
+}
+
+/* a copy of the mesh for a node: the visual's and the mesh's members assigned, a reference to this
+ * mesh taken, its own matrices, and its first level's selects copied and pointed at this mesh's
+ * buffer (SOCOM 1's took no node) */
+CMesh *CMesh::Clone(CNode *owner)
+{
+    CMesh *mesh = new CMesh;
+
+    *mesh = *this;
+    mesh->m_refs = 0;
+    m_refs++;
+    mesh->m_original = dynamic_cast<CMesh *>((CVisual *)this);
+    mesh->InitMatrices();
+    mesh->m_owner = owner;
+    m_74 = 0;
+
+    _word128 *buffer = (*m_lods.begin()).m_buffer;
+    _word128 *selects = (_word128 *)(*m_lods.begin()).m_mesh;
+    unsigned int size = (selects->u16[0] + 1) << 4;
+    _word128 *copy = (_word128 *)_malloc(size, 0, 0);
+
+    memcpy(copy, selects, size);
+    mesh->SetMeshBuffer(copy, buffer, selects);
+    mesh->m_dynTexList.Add(&m_dynTexList);
+
+    CMeshLOD &lod = mesh->m_lods.back();
+
+    lod.m_mesh = (CMesh *)copy;
+    lod.m_buffer = buffer;
+    mesh->m_lodMesh[0] = (CMesh *)copy;
+    return mesh;
+}
+
+/* its decals let go of, each to the pool its life says; a clone's reference given back, the
+ * original deleted by its last holder, and the levels' select blocks freed; its matrices deleted
+ * (SOCOM 1's gave every decal back as temporary and marked the original 0xDEADBEEF) */
+CMesh::~CMesh()
+{
+    CMeshDecal *d;
+    bool clone = m_original != 0;
+
+    d = m_decals;
+
+    if (d) {
+        do {
+            CMeshDecal *next = d->m_next;
+            float life = d->m_life;
+
+            d->FreeMem();
+            d->Reset();
+            if (life >= 0.0f)
+                CMeshDecal::PutTempDecal(d);
+            else
+                CMeshDecal::PutPermDecal(d);
+            d = next;
+        } while (d);
+    }
+    m_decals = 0;
+    if (clone) {
+        if (m_original->Release() == 0) {
+            delete m_original;
+            m_original = 0;
+        }
+        while (m_lods.size()) {
+            CMeshLOD &lod = m_lods.back();
+
+            if (lod.m_mesh)
+                _free(lod.m_mesh, 0, 0);
+            lod.m_mesh = 0;
+            m_lods.pop_back();
+        }
+    }
+    while (m_palette.size()) {
+        CMatrix *m = m_palette.back();
+
+        m_palette.pop_back();
+        if (m)
+            delete m;
+    }
 }
 
 /* a block of selects pointed at a buffer: its decals dropped, the buffer recorded in the head,
