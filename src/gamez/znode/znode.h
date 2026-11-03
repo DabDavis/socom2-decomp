@@ -1619,6 +1619,9 @@ public:
         unsigned int m_numTris;   // 0xc
     };
 
+    /* built cleared (zdb::vdata: SOCOM 1's __sinit_vis_texfx.cpp and SOCOM II's 0x404AB0 call Clear
+     * on it before registering its destructor) */
+    CVisData() { Clear(); }
     ~CVisData() {}
     void Clear();
     CVisData *SelectVertex(CVisual *vis, unsigned int view, unsigned int index);

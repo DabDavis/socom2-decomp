@@ -8025,24 +8025,24 @@
 0x003BF9B0 0x44 __dt__Q23zdb10CMeshDecalFv  # OVL1; by hand (the wep lane: the empty destructor's deleting copy (0x44 bytes, as CDecal's 0x3BF690) that ~RTArray<CMeshDecal> 0x3BF870 and RTArray<CMeshDecal>() 0x3BFA00 hand the array helpers)
 0x003BFA00 0x134 __ct__27RTArray<Q23zdb10CMeshDecal>FUibb  # OVL1; s1:order (SOCOM 1's RTArray<CMeshDecal>(unsigned int, bool, bool) 0x313AA0, in vis_decal.cpp's tail as here: CMeshDecalPool::Init news a 0x20-byte RTArray and calls it with the count plus the extra, true, true -- the wep lane)
 0x003BFB40 0x20 __ct__Q23zdb10CMeshDecalFv  # OVL1; by hand (the wep lane: zeroes 0, 4, 8, 0x10, 0x34, 0x30 -- the life, link, mesh, vertex block and its two words that FreeMem clears; RTArray<CMeshDecal>'s constructor hands it to __construct_new_array)
-0x003BFB60 0x378 func_003BFB60  # OVL1
-0x003BFEE0 0x23C func_003BFEE0  # OVL1
-0x003C0120 0xD4 func_003C0120  # OVL1
-0x003C0200 0x78 func_003C0200  # OVL1
-0x003C0280 0xBC func_003C0280  # OVL1
-0x003C0340 0x120 func_003C0340  # OVL1
-0x003C0460 0x1B4 func_003C0460  # OVL1
-0x003C0620 0x34 func_003C0620  # OVL1
-0x003C0660 0xDC func_003C0660  # OVL1
-0x003C0740 0x54 func_003C0740  # OVL1
-0x003C07A0 0x90 func_003C07A0  # OVL1
-0x003C0830 0xAC func_003C0830  # OVL1
-0x003C08E0 0xD8 func_003C08E0  # OVL1
-0x003C09C0 0xF4 func_003C09C0  # OVL1
-0x003C0AC0 0xCC func_003C0AC0  # OVL1
-0x003C0B90 0x84 func_003C0B90  # OVL1
-0x003C0C20 0x70 func_003C0C20  # OVL1
-0x003C0C90 0x60 func_003C0C90  # OVL1
+0x003BFB60 0x378 LimitUVs__3zdbFPsPsPs  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's zdb::LimitUVs -- the same six wrap tests over the triangle's shorts, uvlimit no longer gp-relative; ScrollTexture's one callee)
+0x003BFEE0 0x23C ScrollTexture__Q23zdb10CTextureFXFffbb  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's CTextureFX::ScrollTexture(float) given the scroll itself, a carried fraction (0x8, 0xC) and the head/tail selects -- vdata's SelectVertexTail/Head/SelectVertex, three vertices a triangle, LimitUVs)
+0x003C0120 0xD4 Tick__Q23zdb17CTextureFXManagerFf  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's CTextureFX::Tick on the manager object -- VisualEffectsTick calls it on 0x4B50D0; each ticking, moving effect scrolled once a frame by its speed times dt; the class name ours)
+0x003C0200 0x78 Find__Q23zdb17CTextureFXManagerFPQ23zdb7CVisual  # OVL1; by hand (the wep lane, vis_texfx.cpp: the running effect whose visual (0x10) is the argument, SOCOM 1's InTexfxpool returning it; Add's first call; the name ours)
+0x003C0280 0xBC Scroll__Q23zdb17CTextureFXManagerFiffbb  # OVL1; by hand (the wep lane, vis_texfx.cpp: every effect of a group (0x18) scrolled by the arguments -- the SCROLL_MOTION tick 0x260B40 calls it; the name ours)
+0x003C0340 0x120 SetSpeed__Q23zdb17CTextureFXManagerFiff  # OVL1; by hand (the wep lane, vis_texfx.cpp: every effect of a group given a speed, stopped (0x19 bit 0) while it is under 1e-5 -- the SCROLL_MOTION begin 0x260FB0 calls it with Add's group; the name ours)
+0x003C0460 0x1B4 Add__Q23zdb17CTextureFXManagerFbPQ23zdb7CVisualPQ23zdb5CNodeiff  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's CNode::ScrollTexture pool take and InitScrollTexture made the manager's -- the visual's effect found or taken from the pool and listed, a group id given, the speed, visual, node view and type set; CNode::ScrollTexture calls it; the name ours)
+0x003C0620 0x34 Uninit__Q23zdb17CTextureFXManagerFv  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's CTextureFX::Uninit on the manager -- the pool deleted, the group counter zeroed; CGame::StopEngine calls it)
+0x003C0660 0xDC Clear__Q23zdb17CTextureFXManagerFb  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's CTextureFX::Clear(bool) on the manager -- every running effect put back in the pool, the list cleared, the pool cleared with the flag; 0x2AB3F0 calls it)
+0x003C0740 0x54 Init__Q23zdb17CTextureFXManagerFi  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's CTextureFX::Init on the manager -- new RTPool<CTextureFX>(count), the group counter zeroed; CGame::StartEngine calls it with 20)
+0x003C07A0 0x90 __dt__26RTPool<Q23zdb10CTextureFX>Fv  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's RTPool<CTextureFX> destructor 0x3143F0 -- Clear called, then the list's destructors; Uninit's delete)
+0x003C0830 0xAC Clear__26RTPool<Q23zdb10CTextureFX>Fv  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's RTPool<CTextureFX>::Clear 0x314330 -- every item deleted, the list cleared)
+0x003C08E0 0xD8 GetNext__26RTPool<Q23zdb10CTextureFX>Fb  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's RTPool<CTextureFX>::GetNext 0x228E30 -- the first free item removed from the list, or a new one when asked)
+0x003C09C0 0xF4 __ct__26RTPool<Q23zdb10CTextureFX>FUi  # OVL1; by hand (the wep lane, vis_texfx.cpp: SOCOM 1's RTPool<CTextureFX>(unsigned int) 0x314540 -- the list resized, each slot given a new CTextureFX)
+0x003C0AC0 0xCC resize__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUiRCPCv  # OVL1; by hand (the wep lane, vis_texfx.cpp's tail: SOCOM 1's 0x2322C0 -- grown through insert(end(), n - size, x), shrunk by the range erase (inlined) from advance_to(n))
+0x003C0B90 0x84 insert__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>UiRCPCv  # OVL1; by hand (the wep lane, vis_texfx.cpp's tail: SOCOM 1's 0x232340 -- a list built from the allocator, init(n, x), spliced in at position, destroyed)
+0x003C0C20 0x70 init__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUiRCPCv  # OVL1; by hand (the wep lane, vis_texfx.cpp's tail: SOCOM 1's 0x2324C0 -- n push_backs, end() and insert called)
+0x003C0C90 0x60 __dt__Q23zdb17CTextureFXManagerFv  # OVL1; by hand (the wep lane, vis_texfx.cpp: the manager's implicit destructor -- the initialiser 0x404AB0 registers it for 0x4B50D0; its list's ~list inlined one level, ~__list_imp called)
 0x003C0CF0 0x274 func_003C0CF0  # OVL1
 0x003C0F70 0x1C8 func_003C0F70  # OVL1
 0x003C1140 0x4B8 func_003C1140  # OVL1
@@ -8602,7 +8602,7 @@
 0x00404570 0x470 func_00404570  # OVL1 data area; a static initialiser
 0x004049E0 0x28 func_004049E0  # OVL1 data area; a static initialiser
 0x00404A10 0x94 func_00404A10  # OVL1 data area; a static initialiser
-0x00404AB0 0x80 func_00404AB0  # OVL1 data area; a static initialiser
+0x00404AB0 0x80 __sinit_vis_texfx.cpp  # OVL1 data area; a static initialiser; s1:unit by hand (the wep lane: SOCOM 1's __sinit_vis_texfx.cpp builds the effects' list and clears zdb::vdata, registering both; SOCOM II's builds the manager 0x4B50D0 in the list's place, then vdata 0x4B5100)
 0x00404B30 0x3C func_00404B30  # OVL1 data area; a static initialiser; s1~ zwep_explosive.cpp (shape 0.45, a hint)
 0x00404B70 0x3C func_00404B70  # OVL1 data area; a static initialiser; s1~ zwep_global.cpp (shape 0.60, a hint)
 0x00404BB0 0x54 func_00404BB0  # OVL1 data area; a static initialiser
