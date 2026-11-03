@@ -6,6 +6,7 @@
 #define FTS_STATE_H
 
 #include "../../gamez/zmath/zmath.h"
+#include <eetypes.h>
 
 extern "C" {
 void *memset(void *p, int c, unsigned int n);
@@ -116,6 +117,7 @@ public:
 class CAssetMgr {
 public:
     static void ReleaseLibRef(CAssetLib *lib);
+    static CAssetLib *GetLoadedLibRef(const char *name);   /* 0x320D70 */
 
     static CAssetList m_assets;
 };
@@ -136,6 +138,7 @@ class CWorld {
 public:
     static CTexHandle *GetTexHandle(const char *name);
     void RemoveDecals();   /* 0x31C880 (st_mpexit.cpp's call) */
+    void ReleaseTextureAssetCharacters();   /* 0x31CED0 */
 
     unsigned char _0[0x68];
     std::vector<CNode *> m_nodes;   // 0x68
@@ -175,11 +178,15 @@ struct TexBufferVector {
 class CPipe {
 public:
     void RenderUiNode(zdb::CNode *node);
+    void RandomizeOverlay();   /* 0x33B370 */
+    void SetOverlayTexture(zdb::CTexHandle *tex);   /* 0x33B420 */
+    void KickOverlay();   /* 0x33B500 */
+    void FIFO_Signal(zdb::CGSTexBuffer *buf);   /* 0x33BE70 */
 
     unsigned char _0[0x618];
-    void *m_assetHUD1;   // 0x618 (SOCOM 1's CGSTexBuffer pointers, at the same offsets)
-    void *m_assetHUD2;   // 0x61c
-    void *m_assetHUDX;   // 0x620
+    zdb::CGSTexBuffer *m_assetHUD1;   // 0x618 (SOCOM 1's CGSTexBuffer pointers, at the same offsets)
+    zdb::CGSTexBuffer *m_assetHUD2;   // 0x61c
+    zdb::CGSTexBuffer *m_assetHUDX;   // 0x620
     unsigned char _624[0x628 - 0x624];
     zdb::CCamera *m_camera;   // 0x628
     unsigned char _62c[0x630 - 0x62c];
@@ -229,6 +236,10 @@ public:
     virtual void PrepControls(CTextureRelocMgr *reloc);
     void Draw2dOnly();
     void DrawForeplane();
+    /* the background film (SOCOM 1's trio, by order and fields: the UI lane's round 13) */
+    void TickMPEG();   /* 0x366940 */
+    void RestartBackgroundMPEG(const char *name);   /* 0x366A00 */
+    void HaltBackgroundMPEG();   /* 0x366B10 */
 
     unsigned char _914[0x920 - 0x914];
 };
@@ -360,7 +371,7 @@ public:
  * in place after the first byte, bit 0 of the first word set for the long form; its reserve's
  * "basic_string::reserve length_error"). A stand-in until a string model exists: the class and
  * its template arguments are MSL's so the names mangle as the map's, the members only what the
- * states use (assign is func_001EEB40).
+ * states use.
  * The levels are fitted: the default constructor is four high at -inline level=5 (COurGame's
  * constructor inlines CMenuState's one level -- calling CGameState's constructor, CSaferStr's and
  * SetDefaultMenu out of line -- while CCinematicState's, as tall but for the strings, inlines
@@ -375,11 +386,8 @@ public:
 namespace std {
 template <class charT> struct char_traits {};
 
-/* include/string's out-of-line members, under their placeholders (st_core.cpp's template tail
- * holds them) */
+/* include/string's template replace, under its placeholder (st_core.cpp's template tail holds it) */
 extern "C" {
-void *func_001EEB40(void *str, const char *s);   /* assign(const char *) */
-void *func_001EEB70(void *str, const char *s);   /* append(const char *) */
 void *func_001EE780(void *str, unsigned int pos, unsigned int n1, const char *first, const char *last,
                     forward_iterator_tag);   /* replace(pos, n1, first, last, category) */
 }
@@ -392,10 +400,12 @@ public:
 
     void reserve(unsigned int n);
 
-    /* include/string's: assign and append out of line, erase() the template replace over (0, npos)
+    /* include/string's: assign, append and replace(pos, n1, s) out of line (st_core.cpp's template
+     * tail defines them: 0x1EEB40, 0x1EEB70, 0x1EF390), erase() the template replace over (0, npos)
      * with an empty range */
-    basic_string &assign(const charT *s) { return *(basic_string *)func_001EEB40(this, s); }
-    basic_string &append(const charT *s) { return *(basic_string *)func_001EEB70(this, s); }
+    basic_string &assign(const charT *s);
+    basic_string &append(const charT *s);
+    basic_string &replace(unsigned int pos, unsigned int n1, const charT *s);
     basic_string &operator+=(const charT *s) { return append(s); }
     basic_string &erase()
     {
@@ -627,6 +637,8 @@ public:
     virtual bool StartEngine();
     virtual void StopEngine();
     virtual void Tick(float dT);
+    CGameState *Pop(unsigned int arg);   /* 0x2CF2F0 */
+    CGameState *Switch(CGameState *state, unsigned int arg);   /* 0x2CF410 */
 
     unsigned char m_Active;   // 0x4
     CGameState *m_InitialState;   // 0x8
@@ -662,7 +674,8 @@ public:
     CRebootState m_rebootState;   // 0x2a0
 };
 
-/* the game's state stack (SOCOM 1's CGame; unnamed yet) */
+/* the game's state stack under its placeholders, for st_mpexit.cpp (the HUD lane's: CGame's Pop and
+ * Switch above are the same rows) */
 extern "C" {
 void func_002CF2F0(COurGame *game, unsigned int arg);                      /* CGame::Pop */
 void func_002CF410(COurGame *game, void *state, unsigned int arg);         /* CGame::Switch */
@@ -682,6 +695,11 @@ extern CZNetwork theNetwork;
 
 class CVideo {
 public:
+    static void Clear(bool on, unsigned char r, unsigned char g, unsigned char b, unsigned char a);   /* 0x3AFD50 */
+    static void Fade(float f, unsigned char r, unsigned char g, unsigned char b);   /* 0x3B1760 */
+    static void MaxFrameRate(int rate);   /* 0x3B17D0 */
+    static void ReadGsMemory(unsigned int addr, u_long128 *buf, unsigned int size);   /* 0x3B1990 */
+
     static int m_defaultFrameRate;
 };
 

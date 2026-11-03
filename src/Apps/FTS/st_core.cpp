@@ -10,17 +10,10 @@
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
-void func_001F1820(float goal);                  /* CameraZoom::SetGoal */
-void func_001F1870(void *seal);                  /* CameraZoom::AttachSeal */
 void func_002A7D40(void *mission);               /* CMission::OnMissionStart */
-void func_001FB420(CHUD *hud);                   /* CHUD::ReInit_Init */
 int func_001EA720();                             /* testLoad */
 void exit(int code);
-void func_00223290(void *state);                 /* CMPExitState::LoadLibs */
 void func_002A6950(void *mission);
-void func_003B17D0(int rate);                    /* CVideo::MaxFrameRate */
-void func_003B1760(int a, int b, int c, float d);
-void func_00351CB0();                            /* CValve::Reset */
 void func_002B6530(void *queue, const char *text, MSGTYPE type, int b, int c, float time);   /* C2DMessage_Q::Add_Message (the type a byte enum: CCoreState::DisplayMessage copies it lb) */
 void func_005B61A0();
 
@@ -41,12 +34,20 @@ public:
 
 class CZWeapon {
 public:
+    static void DestroyProjectileList();   /* 0x3D3930 */
+    static void DestroyMarkList();   /* 0x3D37E0 */
+
     static CZProjectileList *m_pProjectilelist;
     static CZMarkList *m_pMarklist;
 };
 
+class CTickNode;
+
 class CEntity {
 public:
+    /* (zentity.h's returns its zdb::CNode; the tick's view of it) */
+    CTickNode *GetNode();   /* 0x29ED20 */
+
     static bool PreTickAll(float dT, void *data);
     static bool TickAll(float dT, void *data);
     static bool PrePostTickAll(float dT, void *data);
@@ -66,30 +67,21 @@ bool TickPathPlanner(float dT, void *data);
 const char *GetDatabase();
 
 /* a seal's controller (CEntity's at 0xC0) */
-class CZSealBody {
+class CZSealBody : public CEntity {
 public:
     unsigned char _0[0xc0];
     void *m_control;   // 0xc0
 };
 
 extern "C" {
-void func_00309A10();
 void func_003B7150(int arg);
-int func_00288930();
-void func_003B1990(int addr, int buffer, int size);   /* CVideo::ReadGsMemory */
 void func_003B0B90(int a, int b, int w, int h);
 void func_003B09E0(int a, int b, int w, int h);
 void func_00592CA0(void *control);
-void func_003466F0();
 
 }
 
 extern "C" {
-CHUD *func_001FCD80(CHUD *hud);                  /* CHUD::CHUD */
-void func_001FA360(CHUD *hud, zdb::CWorld *world);   /* CHUD::Init */
-void func_0032C4F0();                            /* CRdrArchive::CloseAll */
-void func_0031CED0(zdb::CWorld *world);
-void func_0033B420(CPipe *pipe, zdb::CTexHandle *tex);
 
 /* the tick tasks (SOCOM 1's in the comments, where it had them) */
 bool func_005CCCD0(float dT, void *data);        /* CSealCtrlAi::PreTick */
@@ -102,6 +94,25 @@ bool func_005CCA30(float dT, void *data);        /* CSealCtrlAi::PostTick */
 
 }
 
+/* the film player, the bone motions' buffer, the sound instances and the valves (their units'; only
+ * what the states call) */
+class CMPEG {
+public:
+    static void Uninit();   /* 0x309A10 */
+};
+
+u_long128 *zBoneMotionRdrBuffer();   /* 0x288930 */
+
+class CSndInstance {
+public:
+    static void ResumeAllSounds();   /* 0x3466F0 */
+};
+
+class CValve {
+public:
+    static void Reset();   /* 0x351CB0 */
+};
+
 /* the squads (seal_unit.cpp's; only their tick task) */
 class CSealUnit {
 public:
@@ -112,11 +123,6 @@ extern CHUD *theHUD;
 
 extern "C" {
 int func_001EA6E0();                             /* testUnload */
-void func_001F1840(CHUD *hud);                   /* CameraZoom::AttachHud */
-void func_001FCB70(CHUD **hud);                  /* CHUD::ReleaseHUD */
-void func_003D3930();                            /* CZWeapon::DestroyProjectileList */
-void func_003D37E0();                            /* CZWeapon::DestroyMarkList */
-void func_0032C2B0(const char *name, const char *path);   /* CRdrArchive::RemoveArchive */
 
 }
 
@@ -126,6 +132,7 @@ CZSealBody *ftsGetPlayer();
 /* zdb's task scheduler: a list of tasks (SOCOM 1's DWARF: 0x20 bytes) */
 class CSched_Manager {
 public:
+    void Tick(float dT);   /* 0x34E070 */
     bool AddTask(const char *name, bool (*task)(float, void *), float priority, void *data);
     bool RemoveTask(const char *name, bool all);
     void ClearFreeList(bool all);
@@ -168,6 +175,11 @@ public:
 /* the HUD as the core state ticks it (SOCOM 1's CHUD: its compass, its items, its flashes) */
 class CHUD {
 public:
+    CHUD();   /* 0x1FCD80 */
+    void Init(zdb::CWorld *world);   /* 0x1FA360 */
+    void ReInit_Init();   /* 0x1FB420 */
+    bool PauseGame();   /* 0x1FA300 */
+    static void ReleaseHUD(CHUD **hud);   /* 0x1FCB70 */
     void PreDITick(float dT);
     void PostDITick(float dT);
     void Tick(float dT);
@@ -179,7 +191,8 @@ public:
     CTickItem m_18900;   // 0x18900
     unsigned char _18910[0x1a2d0 - 0x18910];
     CFlashFXVector m_flashfx;   // 0x1a2d0
-};
+    unsigned char _1a2d1[0x1acd0 - 0x1a2d1];
+};   // 0x1acd0 bytes (the core state's new)
 
 /* the entity's node as the tick hides it: its active bit, SetActive the 13th virtual (CNode's,
  * its vtable pointer at 0x60) */
@@ -219,6 +232,9 @@ public:
 class CameraZoom {
 public:
     static bool Tick(float dT);
+    static void SetGoal(float goal);   /* 0x1F1820 */
+    static void AttachHud(CHUD *hud);   /* 0x1F1840 */
+    static void AttachSeal(CZSealBody *seal);   /* 0x1F1870 */
 };
 
 extern unsigned char OurGameName;
@@ -229,23 +245,15 @@ extern "C" {
 extern int data_00408C08;                        /* SOCOM 1's oddeven, a static of Tick's */
 extern char data_00488F10[];
 extern char data_004B5170[];
-bool func_001FA300(CHUD *hud);                   /* CHUD::PauseGame */
-void func_0034E070(CSched_Manager *sched, float dT);   /* CSched_Manager::Tick */
 void func_00336230(void *arg);
 void func_003C3390(void *arg, float dT);
 void func_003B1160(int arg);
-CTickNode *func_0029ED20(CZSealBody *entity);    /* CEntity::GetNode */
 int func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
 void func_0033CD50(void *arg);
-void func_0033B370(CPipe *pipe);
 void func_0033B5B0(CPipe *pipe);
 void func_0033B570(CPipe *pipe);
-void func_0033B500(CPipe *pipe);
 void func_0033BF30(CPipe *pipe, void *texbuffer);   /* CPipe::FIFO_Signal (SOCOM 1's second argument gone) */
-void func_0033BE70(CPipe *pipe, void *texbuffer);   /* CPipe::FIFO_Signal */
 CTickItem *func_0022D590();
-void func_003AFD50(int r, int g, int b, int a, int z);   /* CVideo::Clear */
-void func_002D9E40(float dT);                    /* CInput::Tick */
 void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
 }
 
@@ -253,11 +261,11 @@ static void LoadThreadEntry(void *arg);
 
 /* MSL 3.0's basic_string members that close the unit in its template tail (OVL1 0x1EEB40,
  * 0x1EEB70, 0x1EF390, 0x1EF400; the template replace taking two iterators and their category,
- * 0x1EE780, between them is still a placeholder): out-of-class template members in the original,
- * written here as stand-ins under their placeholders over a copy of include/string's
- * representation -- fts_state.h keeps its own std::basic_string, so <string> cannot come in.
- * Defined first, so emitted last; pinned, or include/string's inline assign/append would take
- * them in (the same-unit stand-in rule) */
+ * 0x1EE780, between them is still a placeholder): out-of-class template members, over a copy of
+ * include/string's representation -- fts_state.h keeps its own std::basic_string, so <string>
+ * cannot come in. assign, append and replace(pos, n1, s) are fts_state.h's stand-in's members under
+ * the map's names (the states lane, round 21); assign(first, last) stays a stand-in under its
+ * placeholder. Pinned, or one would take another in (the same-unit stand-in rule) */
 namespace {
 /* include/string's twelve bytes: the long form's capacity | 1, size and text, the short form's
  * size in the first byte's upper seven bits */
@@ -277,8 +285,6 @@ struct CTailString {
 };
 }
 
-extern "C" void *func_001EF390(void *str, unsigned int pos, unsigned int n1, const char *s);
-
 #pragma auto_inline off
 extern "C" {
 /* assign(first, last): the whole text replaced by the range (0x1EF400) */
@@ -289,25 +295,32 @@ void *func_001EF400(void *str, const char *first, const char *last)
     return std::func_001EE780(str, 0, ((CTailString *)str)->size(), first, last, category);
 }
 
+}
+
+namespace std {
 /* replace(pos, n1, const char *): the range s..s+strlen(s) handed to the template replace
  * (0x1EF390) */
-void *func_001EF390(void *str, unsigned int pos, unsigned int n1, const char *s)
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::replace(unsigned int pos,
+                                                                                    unsigned int n1, const charT *s)
 {
-    std::forward_iterator_tag category;
+    forward_iterator_tag category;
 
-    return std::func_001EE780(str, pos, n1, s, s + strlen(s), category);
+    return *(basic_string *)func_001EE780(this, pos, n1, s, s + strlen(s), category);
 }
 
 /* append(const char *): replace(size(), 0, s), a tail call (0x1EEB70) */
-void *func_001EEB70(void *str, const char *s)
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::append(const charT *s)
 {
-    return func_001EF390(str, ((CTailString *)str)->size(), 0, s);
+    return replace(((CTailString *)this)->size(), 0, s);
 }
 
 /* assign(const char *): replace(0, size(), s), a tail call (0x1EEB40) */
-void *func_001EEB40(void *str, const char *s)
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::assign(const charT *s)
 {
-    return func_001EF390(str, 0, ((CTailString *)str)->size(), s);
+    return replace(0, ((CTailString *)this)->size(), s);
 }
 }
 #pragma auto_inline reset
@@ -483,7 +496,7 @@ void CCinematicState::SetMovie(const char *name, unsigned char flag, unsigned ch
  * the film's name, the fade, the player's controller told */
 void CCinematicState::UnInit()
 {
-    func_00309A10();
+    CMPEG::Uninit();
     func_003B7150(0);
     for (int i = 0; i < 3; i++) {
         if (m_items[i]) {
@@ -496,8 +509,8 @@ void CCinematicState::UnInit()
     if (m_2a) {
         zSysFifoEnd();
         zSysFifoDisable();
-        func_003B1990(0x2400, func_00288930(), 0x1c0000);
-        func_003B17D0(m_savedFrameRate);
+        CVideo::ReadGsMemory(0x2400, zBoneMotionRdrBuffer(), 0x1c0000);
+        CVideo::MaxFrameRate(m_savedFrameRate);
         if (m_29) {
             if (zVid.m_75 == 2) {
                 func_003B0B90(0, 0, zVid.m_44, zVid.m_48);
@@ -522,13 +535,13 @@ void CCinematicState::UnInit()
     if (m_moviename)
         _free(m_moviename, 0, 0);
     m_moviename = 0;
-    func_003B1760(0, 0, 0, 1.0f);
+    CVideo::Fade(1.0f, 0, 0, 0);
     CZSealBody *player = ftsGetPlayer();
     void *control = player ? player->m_control : 0;
 
     if (control)
         func_00592CA0(control);
-    func_003466F0();
+    CSndInstance::ResumeAllSounds();
 }
 
 /* a message for the player: the sender's name and the text built into a string (and not used),
@@ -565,11 +578,11 @@ void CCoreState::OnPop(int userdata)
     zVid_Sync0();
     theMission.m_108 = 10.0f;
     if (userdata == 1) {
-        func_001F1820(1.0f);
+        CameraZoom::SetGoal(1.0f);
         theMission.ReOpen_Load();
         func_002A7D40(&theMission);
-        func_001F1870(ftsGetPlayer());
-        func_001FB420(m_hud);
+        CameraZoom::AttachSeal(ftsGetPlayer());
+        m_hud->ReInit_Init();
     }
     zVid_Sync0();
     m_skip_swap = 2;
@@ -610,20 +623,18 @@ bool CCoreState::Init()
 {
     m_world = zdb::CWorld::m_world;
     zdb::CVisual::m_camera = thePipe.m_camera = m_world->m_camera;
-    CHUD *hud = (CHUD *)operator new(0x1acd0);
+    CHUD *hud = new CHUD;
 
-    if (hud)
-        hud = func_001FCD80(hud);
     theHUD = m_hud = hud;
     if (gopt[0]) {
         CHUD &h = *m_hud;
 
-        func_001FA360(&h, m_world);
-        func_001F1840(&h);
+        h.Init(m_world);
+        CameraZoom::AttachHud(&h);
     }
-    func_001F1870(ftsGetPlayer());
-    func_0032C4F0();
-    func_0032C2B0("readerm.zar", GetDatabase());
+    CameraZoom::AttachSeal(ftsGetPlayer());
+    CRdrArchive::CloseAll();
+    CRdrArchive::RemoveArchive("readerm.zar", GetDatabase());
     zTaskScheduler.AddTask("UnitTick", CSealUnit::TickAll, 0.8f, 0);
     zTaskScheduler.AddTask("ai_pre_tick", func_005CCCD0, 0.9f, 0);
     zTaskScheduler.AddTask("entity_pre_tick", CEntity::PreTickAll, 1.0f, 0);
@@ -648,16 +659,16 @@ bool CCoreState::Init()
         nodes.reserve(n);
     zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[33]]->ReservePktBuf(2048);
     zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[34]]->ReservePktBuf(2048);
-    func_0031CED0(m_world);
+    m_world->ReleaseTextureAssetCharacters();
     zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[36]]->Load(true);
     zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[40]]->Load(true);
     func_002A7D40(&theMission);
     theMission.m_e8 = -1.0f;
-    func_0033B420(&thePipe, zdb::CWorld::GetTexHandle("noise50.tif"));
+    thePipe.SetOverlayTexture(zdb::CWorld::GetTexHandle("noise50.tif"));
     *(volatile unsigned int *)0x10003010 |= 4;
     zSysFifoEnd();
     zVid.m_91 = 0;
-    func_003B17D0(CVideo::m_defaultFrameRate);
+    CVideo::MaxFrameRate(CVideo::m_defaultFrameRate);
     zVid_Sync0();
     return true;
 }
@@ -687,17 +698,17 @@ bool CCoreState::Tick(float dT)
             fade = 1.0f;
             theMission.EndMission();
         }
-        func_003B1760(0, 0, 0, fade);
+        CVideo::Fade(fade, 0, 0, 0);
         running = false;
     } else {
         m_c8 = m_c0;
     }
-    func_002D9E40(dT);
+    CInput::Tick(dT);
     if (running) {
         theReco.Tick(dT);
         m_hud->PreDITick(dT);
-        if (!theReco.m_running && !func_001FA300(m_hud))
-            func_0034E070(&zTaskScheduler, dT);
+        if (!theReco.m_running && !m_hud->PauseGame())
+            zTaskScheduler.Tick(dT);
         if (OurGameName == 1)
             CameraZoom::Tick(dT);
     }
@@ -712,11 +723,11 @@ bool CCoreState::Tick(float dT)
     func_00336230(data_00488F10);
     cam->Update(zdb::ZCAM_TYPE_0);
     m_hud->PostDITick(dT);
-    if (running && !func_001FA300(m_hud))
+    if (running && !m_hud->PauseGame())
         func_003C3390(data_004B5170, dT);
     func_003B1160(1);
     hide = appCamera->m_camera_mode == 3;
-    pEntNode = func_0029ED20(appCamera->m_bc);
+    pEntNode = appCamera->m_bc->GetNode();
     CZSealBody *player = ftsGetPlayer();
     void *control = player ? player->m_control : 0;
 
@@ -729,13 +740,13 @@ bool CCoreState::Tick(float dT)
     data_00408C08 = func_00339DE0(&thePipe, m_world);
     if (hide)
         pEntNode->SetActive(camera_entity_active);
-    if (running && !func_001FA300(m_hud)) {
+    if (running && !m_hud->PauseGame()) {
         func_0033CD50(thePipe.m_688);
-        func_0033B370(&thePipe);
+        thePipe.RandomizeOverlay();
     }
     func_0033B5B0(&thePipe);
     func_0033B570(&thePipe);
-    func_0033B500(&thePipe);
+    thePipe.KickOverlay();
     if (gopt[0]) {
         if (running)
             m_hud->Tick(dT);
@@ -743,17 +754,17 @@ bool CCoreState::Tick(float dT)
         thePipe.m_assetHUD2 =
             zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[39 + data_00408C08]];
         func_0033BF30(&thePipe, thePipe.m_assetHUD2);
-        func_0033BE70(&thePipe, thePipe.m_assetHUD1);
+        thePipe.FIFO_Signal(thePipe.m_assetHUD1);
         m_hud->DrawPhase(zdb::RENDER_PHASE_12, cam);
         thePipe.m_assetHUDX = zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[42]];
         func_0033BF30(&thePipe, thePipe.m_assetHUDX);
-        func_0033BE70(&thePipe, thePipe.m_assetHUD2);
+        thePipe.FIFO_Signal(thePipe.m_assetHUD2);
         m_hud->DrawPhase(zdb::RENDER_PHASE_13, cam);
         func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
-        func_0033BE70(&thePipe, thePipe.m_assetHUDX);
+        thePipe.FIFO_Signal(thePipe.m_assetHUDX);
         m_hud->DrawPhase(zdb::RENDER_PHASE_14, cam);
         m_hud->m_compass.Draw(cam);
-        if (!theReco.m_running && !func_001FA300(m_hud))
+        if (!theReco.m_running && !m_hud->PauseGame())
             m_hud->m_flashfx.Tick(dT);
         m_hud->m_flashfx.Draw(cam);
         m_hud->m_18900.Draw(cam);
@@ -763,7 +774,7 @@ bool CCoreState::Tick(float dT)
         func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
     }
     if (!theNetwork.m_9 && theGame.m_6c)
-        func_003AFD50(1, 0, 0, 0, 0);
+        CVideo::Clear(true, 0, 0, 0, 0);
     return false;
 }
 
@@ -775,13 +786,13 @@ void CCoreState::UnInit()
     asm volatile {
         sync
     }
-    func_003B17D0(-1);
-    func_003B1760(0, 0, 0, 1.0f);
+    CVideo::MaxFrameRate(-1);
+    CVideo::Fade(1.0f, 0, 0, 0);
     zVid.m_91 = 1;
     m_loading = false;
     m_loadstarted = false;
     auxUnload();
-    func_00351CB0();
+    CValve::Reset();
     zTaskScheduler.ClearFreeList(true);
     func_005B61A0();
 }
@@ -797,7 +808,7 @@ static void LoadThreadEntry(void *arg)
     if (!func_001EA720())
         exit(0);
     if (theNetwork.m_9)
-        func_00223290(&theGame.m_MPexitState);
+        theGame.m_MPexitState.LoadLibs();
     theGame.m_coreState.m_loading = false;
     func_002A6950(&theMission);
     ExitDeleteThread();
@@ -854,7 +865,7 @@ void CCoreState::Load(bool async)
     if (!func_001EA720())
         exit(0);
     if (theNetwork.m_9)
-        func_00223290(&theGame.m_MPexitState);
+        theGame.m_MPexitState.LoadLibs();
     m_loading = false;
 }
 
@@ -904,12 +915,12 @@ void CCoreState::auxUnload()
         marks->UnInit();
     m_world = 0;
     zdb::CTexManager::DestroyBuffers(zdb::CTexManager::m_texmanager, false);
-    func_001F1840(0);
-    func_001FCB70(&m_hud);
+    CameraZoom::AttachHud(0);
+    CHUD::ReleaseHUD(&m_hud);
     ftsSetPlayer(0);
-    func_001F1870(0);
-    func_003D3930();
-    func_003D37E0();
-    func_0032C2B0("readerm.zar", 0);
+    CameraZoom::AttachSeal(0);
+    CZWeapon::DestroyProjectileList();
+    CZWeapon::DestroyMarkList();
+    CRdrArchive::RemoveArchive("readerm.zar", 0);
     zTaskScheduler.ClearFreeList(true);
 }
