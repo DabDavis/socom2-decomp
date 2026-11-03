@@ -1283,20 +1283,20 @@ const char *CCharacterType::match_name_to_chartype(CRdrFile *rdr, const char *gr
 /* the type a character name is, out of chartype.rdr's three groups (SOCOM 1's); GetByNameMod
  * inlines whole in the target, the group names held in saved registers from the start, each
  * match tested on v0 with the copy in the delay slot (assignments inside the && conditions).
- * OPEN, right size at -inline level=5 (was 0x150 against 0x140 at 4), 2 instructions: the first
- * call's arguments -- the target sets "navyseals" in a1 before rdr in a0, this build the other
- * way round; the string locals' and the result's declaration orders and a negated test tried */
+ * All three group names are string locals: with "navyseals" a literal in the first call, MW set
+ * rdr in a0 before the name in a1 (two instructions swapped, rounds 3-14) */
 CCharacterType *CCharacterType::RdrFetch_CharacterType(const char *name)
 {
     CRdrFile *rdr = func_0032C040("chartype.rdr", 0);
 
     if (!rdr)
         return 0;
+    const char *seals = "navyseals";
     const char *tangos = "terrorists";
     const char *escortees = "escortees";
     const char *type;
 
-    if ((type = match_name_to_chartype(rdr, "navyseals", name)) == 0 &&
+    if ((type = match_name_to_chartype(rdr, seals, name)) == 0 &&
         (type = match_name_to_chartype(rdr, tangos, name)) == 0)
         type = match_name_to_chartype(rdr, escortees, name);
     CCharacterType *t = GetByNameMod(type);
