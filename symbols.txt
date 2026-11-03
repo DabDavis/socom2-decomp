@@ -12241,14 +12241,14 @@
 0x00626948 0x60 func_00626948  # OVL2 unaligned
 0x006269A8 0x8C func_006269A8  # OVL2 unaligned
 0x00626A38 0xD4 func_00626A38  # OVL2 unaligned
-0x00626B10 0xBC func_00626B10  # OVL2
+0x00626B10 0xBC lintSetSmallValue  # OVL2; s1:order (the gcc lane, round 8b): first of LargeInt.c's object as SOCOM 1's (0x406C28), its body (the number cleared -- a copy of a zero constant now -- and word 0 set), IsEven after it as there
 0x00626BD0 0x10 IsEven  # OVL2; s1:exact
-0x00626BE0 0x38 func_00626BE0  # OVL2
-0x00626C18 0x50 func_00626C18  # OVL2 unaligned
-0x00626C68 0x44 func_00626C68  # OVL2 unaligned
-0x00626CB0 0x24 func_00626CB0  # OVL2
-0x00626CD8 0x24 func_00626CD8  # OVL2 unaligned
-0x00626D00 0x28 func_00626D00  # OVL2
+0x00626BE0 0x38 IsZero  # OVL2; s1:order (the gcc lane, round 8b): after IsEven as SOCOM 1's, its body (1 when every word is 0; the walk upward now)
+0x00626C18 0x50 IsOne  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after IsZero as SOCOM 1's, its body (word 0 is 1, the rest 0)
+0x00626C68 0x44 IsEqual  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after IsOne as SOCOM 1's, its body (two numbers word by word)
+0x00626CB0 0x24 lintGetBit  # OVL2; s1:order (the gcc lane, round 8b): SOCOM 1's lintGetBit's instructions (0x24, the bit tested, reordered), first of the three bit functions as there
+0x00626CD8 0x24 lintSetBit  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after lintGetBit as SOCOM 1's, its body (0x24, the bit or'ed in)
+0x00626D00 0x28 lintClearBit  # OVL2; s1:order (the gcc lane, round 8b): after lintSetBit as SOCOM 1's, its body (0x28, the bit and'ed out)
 0x00626D28 0x50 func_00626D28  # OVL2 unaligned
 0x00626D78 0x74 func_00626D78  # OVL2 unaligned
 0x00626DF0 0x180 func_00626DF0  # OVL2
