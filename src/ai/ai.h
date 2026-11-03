@@ -826,11 +826,6 @@ public:
 
         return l ? l->m_cells : 0;
     }
-    /* every cell of the map handed to a callback, row by row, until one returns false (SOCOM
-     * 1's foreach, the name ours): too big to inline whole, so a caller inlines it one level and
-     * calls its pieces out of line -- the region's constructor and size, the walk struct's
-     * constructor, the scanlines' size and [], the layer's cells, _saturate, _max, _min */
-    bool ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
     /* a region of a layer's cells (the whole map for none) set to a value -- a soil, a shadow, a
      * boundary, the occupied bit, as the flags choose -- whether any cell changed (SOCOM 1's
      * Tile(region, value, flags); the layer new: the walker unit's 0x536230) */
@@ -857,9 +852,8 @@ public:
         }
         return false;
     }
-    /* ForEachCell over a region: the map's own when none is given (the name ours: FloodFill's
-     * walk resetting the cells it marked, inlined one level -- the unused region's constructor
-     * still called) */
+    /* every cell of a region, the whole map for none, handed to a callback until one returns
+     * false (SOCOM 1's foreach, the name ours: below, after MAP_FOREACH_STRUCT) */
     bool ForEachCell(const region *pr, bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer);
     /* the cells around one flooded out to a radius from a direction, each handed to a callback
      * until one returns true (SOCOM 1's FloodFill, 0x536C80) */
@@ -1028,48 +1022,14 @@ struct MAP_FOREACH_STRUCT {
     CAiMapLoc m_loc;   // 0xc
 };
 
-/* every cell of the map handed to a callback, row by row, until one returns false (SOCOM 1's
- * foreach, the name ours): too big to inline whole, so a caller inlines it one level and calls its
- * pieces out of line -- the region's constructor and size, GetMapRegion, the walk struct's
- * constructor, the scanlines' size and [], the layer's cells, _saturate, _max, _min. The region is
- * read through the walk struct, so after each call it is read again */
-inline bool CAiMap::ForEachCell(bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data, int layer)
-{
-    region r;
-
-    GetMapRegion(r);
-    MAP_FOREACH_STRUCT s;
-    const region *pr = &r;
-
-    s.m_map = this;
-    s.m_region = pr;
-    s.m_loc.m_mapid = GetMapId();
-    int y0 = pr->m_loc.y;
-    int y1 = pr->m_loc.y + pr->GetDy();
-
-    _saturate(&y0, 0, (int)m_scanlines.size());
-    _saturate(&y1, 0, (int)m_scanlines.size());
-    CAiCell *cells = GetLayerCells(layer);
-
-    if (cells) {
-        for (int y = y0; y < y1; y++) {
-            scanline &sl = m_scanlines[y];
-
-            s.m_loc.y = y;
-            int x0 = ai::_max(sl.m_start, (unsigned short)pr->m_loc.x);
-            int x1 = ai::_min(sl.m_end, (unsigned short)(pr->m_loc.x + pr->GetDx()));
-
-            for (int x = x0; x < x1; x++) {
-                s.m_loc.x = x;
-                s.m_cell = &cells[sl.m_index + (x - sl.m_start)];
-                if (!f(s, data))
-                    return false;
-            }
-        }
-    }
-    return true;
-}
-
+/* every cell of a region (the whole map for none) handed to a callback, row by row, until one
+ * returns false (SOCOM 1's foreach, the name ours): too big to inline whole, so a caller inlines it
+ * one level and calls its pieces out of line -- the region's constructor and size, GetMapRegion,
+ * the walk struct's constructor, the scanlines' size and [], the layer's cells, _saturate, _max,
+ * _min. The region is a pointer assigned in a branch, which MW cannot resolve: ResetCells (none
+ * given) reads the row through it twice as the target does, where a walk always over its own
+ * region shared the loads; FloodFill and Tile pass theirs (the branch folds away, the region's
+ * constructor stays a call) and share the walk's constant pool (0x64F9D0) */
 inline bool CAiMap::ForEachCell(const region *pr, bool (*f)(const MAP_FOREACH_STRUCT &s, void *data), void *data,
                                  int layer)
 {

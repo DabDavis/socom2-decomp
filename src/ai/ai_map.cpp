@@ -424,18 +424,13 @@ bool CAiMap::_validate_cell(const MAP_FOREACH_STRUCT &s, void *data)
 
 /* every cell of the first layer reset through _reset_cell (SOCOM 1's ResetCells, a loop of its own
  * there): the walk inlined one level, its pieces called out of line in reverse of their first use
- * after it (0x5176D0-0x51784F, all byte-exact from here); false whatever the walk did.
- * OPEN, right size, 44 instructions: the region's reads. The target keeps &r in s5 and reads the
- * row through it twice (`lhu v0,2(s5)` for y0, again for y1 ahead of GetDy's call, held in s0
- * across it); here MW resolves the pointer to sp+176, shares the two loads and calls GetDy first.
- * Tried: r read directly (the same), through the walk struct's m_region (the loads and the call's
- * order right, the pointer reloaded from the struct after each call), the walk taking the region
- * by reference with region() and GetMapRegion in ResetCells (resolved to sp+176 again), y1 built
- * in a register local (the loads shared). The target's reads behave as through a pointer MW cannot
- * resolve, kept in a register: what spelling gives that is open */
+ * after it (0x5176D0-0x51784F, all byte-exact from here); false whatever the walk did. The walk
+ * is the region walk FloodFill and Tile inline, given no region: its pointer, assigned in the
+ * walk's branch, is what keeps &r in s5 and the row read through it twice (a walk always over its
+ * own region let MW resolve the pointer to sp+176 and share the loads -- 44 instructions off) */
 bool CAiMap::ResetCells()
 {
-    ForEachCell(_reset_cell, 0, 0);
+    ForEachCell(0, _reset_cell, 0, 0);
     return false;
 }
 

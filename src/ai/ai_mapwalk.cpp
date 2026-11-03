@@ -166,6 +166,34 @@ static bool _tile_occupied(const MAP_FOREACH_STRUCT &s, void *data)
     return true;
 }
 
+/* a region of a layer's cells (the whole map for none) set to a value: the flags pick one tile --
+ * the soil (4), the boundary (8), the shadow (16), the occupied bit (32) -- whether any cell
+ * changed (SOCOM 1's Tile(region, value, flags); the layer new). Each tile is the region walk
+ * inlined one level, its region's constructor and GetMapRegion called (FloodFill's walk).
+ * OPEN (0x8BC against 0x8B4), 2 instructions at the start, all else the target's (the four walks
+ * byte for byte): the target stores the flags and reads them back sp-relative (`sw a3,356(sp);
+ * lw v1,356(sp)`, the value's store in the first test's delay slot), this build takes &t.m_flags
+ * into v0 for the pair and fills the delay slot with the region's address instead. Tried: the
+ * stores in either order, `= {value, flags}` (with and without the third), a local copy of the
+ * flags, the struct through a pointer local (0x8E4), the tests in an inline over the data
+ * pointer (not inlined), the value stored inside the first arm */
+bool CAiMap::Tile(const region *r, unsigned int value, unsigned int flags, int layer)
+{
+    TILE_DATA t = {0};
+
+    t.m_value = value;
+    t.m_flags = flags;
+    if (t.m_flags & 4)
+        ForEachCell(r, _tile_soil, &t, layer);
+    else if (t.m_flags & 8)
+        ForEachCell(r, _tile_boundary, &t, layer);
+    else if (t.m_flags & 0x10)
+        ForEachCell(r, _tile_shadow, &t, layer);
+    else if (t.m_flags & 0x20)
+        ForEachCell(r, _tile_occupied, &t, layer);
+    return t.m_changed;
+}
+
 /* whether a step may end on the cell: CAiMap::IsTraversable's body (ai_maps.cpp, 0x52A090), as an
  * inline of this unit's -- too big to inline whole, it is inlined one level, GetCell and the cell's
  * own test (ai_astar.cpp's copy, 0x511F40) called out of line */
