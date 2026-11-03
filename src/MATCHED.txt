@@ -4816,7 +4816,7 @@
 0x0033BD20 func_0033BD20
 0x0033BD90 FIFO_Flush__5CPipeFv
 0x0033BE70 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBuffer
-0x0033BF30 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBufferPUi
+0x0033BF30 FIFO_Load__5CPipeFPQ23zdb12CGSTexBuffer
 0x0033C010 InterruptFromVIF1__Fi
 0x0033C120 __dt__5CPipeFv
 0x0033C1C0 __ct__5CPipeFv
@@ -4899,7 +4899,10 @@
 0x003404E0 snd_SetMasterVolume
 0x00340520 snd_UnloadBank
 0x00340550 snd_ResolveBankXREFS
+0x00340570 snd_BankLoadByLoc
+0x00340760 snd_BankLoad
 0x003408C0 snd_StopSoundSystem
+0x00340D80 snd_StartSoundSystem
 0x00340F70 SetDialogMode__4CSndFv
 0x00340F90 func_00340F90
 0x00340FA0 func_00340FA0
@@ -5098,6 +5101,8 @@
 0x0034D460 func_0034D460
 0x0034D470 func_0034D470
 0x0034D480 func_0034D480
+0x0034D500 __ct__14CSubtitleTableFv
+0x0034D560 Dump__14CSubtitleTableFv
 0x0034D920 func_0034D920
 0x0034E410 _task_cleanup__FP11CSched_Task
 0x0034E480 Clear__14CSched_ManagerFv

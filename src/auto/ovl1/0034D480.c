@@ -8,11 +8,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 #pragma mpwc_relax on
-s32 func_0034D940();              /* extern */
+s32 Find__14CSubtitleTableFPCcPiPi(); /* extern */
 
 s32 func_0034D480(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
-    if (func_0034D940(arg0 + 0xC) != 0) {
+    if (Find__14CSubtitleTableFPCcPiPi(arg0 + 0xC) != 0) {
         return 1;
     }
-    return (!func_0034D940(arg0, arg1, arg2, arg3)) ? 0 : 2;
+    return (!Find__14CSubtitleTableFPCcPiPi(arg0, arg1, arg2, arg3)) ? 0 : 2;
 }

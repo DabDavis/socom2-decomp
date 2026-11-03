@@ -1888,6 +1888,25 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 6** (the sound banks, the subtitle table, FIFO_Signal settled):
+  - A CAST ON THE BASE OF AN INLINE ACCESSOR'S FIELD READ keeps that field's address in a saved register across calls,
+    even for by-value or volatile reads: include/list's `((node *)node_)->data_` is what holds a walk's element address
+    -- SOCOM 1's DWARF has the iterator hold `node *node_` (its links `node *` too), measured over every hand-written unit
+    as +2 (SerializeValves 0x352A90, CLobbySaveManager::Load 0x33E850), nothing lost (Particle::Source::List::Uninit
+    declares its end first, matching under both shapes) -- applied by the integrator after this round;
+  - a list end built from a reference accessor (`end_node()` or `tail()`) is hoisted out of nested loops into an
+    out-of-line preheader that repeats the entry test; building the wrapper's own end() through end_node() trades Load
+    for CGraph::BuildTree, so end() stays; MW 3.0 pads an empty `for (;;);` to `nop x5; b; nop`; `(unsigned
+    long)(unsigned int)x & 2` gives the target's dsll32/dsrl32 before the `andi`;
+  - snd_BankLoad, snd_BankLoadByLoc and snd_StartSoundSystem are SOCOM 1's code plus SOCOM II's error word and quiet
+    flag (gLastLoadError, gQuiet ours; 17 data rows by SOCOM 1's names); zsnd_subtitles.cpp (0x34D180-0x34E06F, names
+    ours) holds CSubtitleTable (its constructor and Dump); 0x33BF30 is FIFO_Load (SOCOM 1's two-argument FIFO_Signal
+    minus the wait-time pointer: no caller sets a2, the body never reads it), 0x33BE70 keeps FIFO_Signal; 0x402FF0 is
+    most likely __sinit_zsnd_csnd.cpp (it builds the reverb vectors, the sound list, the subtitle table, the bank
+    archive, a CSTable, a CBufferIO and the vocal queue);
+  - open: CSubtitleTable::Find 0x34D940 (9, registers: the iterator in a3 against a1), the table's reserve 0x34DED0,
+    CValveOpDelete (6), CSched_Manager::Tick (4), CSnd::Init (2); five placeholders wait on other lanes' headers (zar.h's
+    ReleaseDataBuffer/ReOpen, CFileCD::Find, CVisual::GetTextureSelectBlock's return).
 - **Tells from the HUD, round 25** (zui_2d.cpp's list-box items: ListItem, CListItemTypeImpl and the five looks):
   - zui_2d.cpp holds SOCOM 1's ListItem and CListItemTypeImpl and the five item looks (string, timed, wrapped, image, array)
     in the unit's anonymous namespace: 31 rows, and about 40 drafted ones from source (CRenderableString's constructor
