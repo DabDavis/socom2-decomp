@@ -1,7 +1,7 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
 /* prime.c: the RT library's 256-bit prime source (OVL2 0x62A3B0-0x62A5A8), SCEA's rt_crypt, prebuilt
- * with ee-gcc 2.96 at -O2 -G0 (README "The GCC front"). RSAGenerateKeyPair (rsa.c) draws its two
- * primes here, where SOCOM 1's searched with lintPrime (the demo's LargeInt object, 0x408EBC). The
+ * with ee-gcc 2.96 at -O2 -G0 (README "The GCC front"). rsa.c's second key-pair generator (0x62B548)
+ * draws its two primes here, where RSAGenerateKeyPair searches with lintPrime (LargeInt.c). The
  * object has no `$Header`; the name is ours (it sits between peer.c and rc.c in the link). Round 18b.
  *
  * SOCOM II does not search: a prime is a fixed 256-bit base (0x6514A8, a LINT whose high 96 words
