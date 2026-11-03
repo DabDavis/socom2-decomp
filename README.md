@@ -6183,6 +6183,57 @@ recv_circ_buf, update_connection, the connect step 0x634C48, and the channel che
 draft; 87 of 92) -- 9 rows new to the map's byte-exact rows (4,668 bytes; `src/lib/medius` 862 -> 872 of
 932), one superseding a matched draft; 6 rows named or corrected. No tool changed.
 
+**Round 17b: the voice library's small objects, RSA.c, and two opens closed by rules already known.**
+
+- **The objects between peer.c and rt_circ_buf.c, by what each reads**: the RC cipher (rc.c), then a
+  voice-stream object of ours, `voicebuf.c` (0x62A870-0x62B168: a 0x30-byte stream record -- the codec
+  kind and a limit, a pool of rt_window.c frame buffers and a pool of codec.c decoders, each two rings of
+  16-byte nodes, in use and free, and the one encoder; audio.c and grid.c call it), then 0x62B168 and
+  **RSA.c** -- SOCOM 1's RSA object in its order, the sizes agreeing (RSADecryptBlock 0x298 and
+  RSADecrypt 0x94 in both builds; `s1:order`): the parameters read off the two wrappers, which pass a
+  static 64-byte exponent 17 each (0x655530, 0x655570) where SOCOM 1 built it on the stack -- then
+  **rt_audio.c** from 0x62BCA8 (its first function returns "rt_audio version: 1.08.0009", whose `$Header`
+  follows md5_platform.h's in .rodata): the dotted-quad parser and printer, the forwarders, and a copy of
+  rt_time_platform.c's helpers -- the count register (`mfc0 $9; sync.p`), a millisecond clock over it
+  (294912 counts a millisecond), the alarm callback and libmc's delay. codec.c's small functions (the
+  record's destroy and reset, four accessors, a call counter and four stubs) are written; its create and
+  frame calls are not. The fifteen 8-byte stubs after the server key are a dummy codec's entry points
+  (codec.c's create stores 0x64F588/0x64F590 as a codec's reset and destroy), all matched drafts.
+- **Round 13c's rule closed round 13b's one-word open**: func_006189C8's `beq` on 0xFFFF (`beql` here)
+  keeps its slot once its fall-through's DmeToRtMsgConnectionIndex is compiled above it -- written with its
+  twin and func_00614290 at their place in DmeLocal.c (all three matched drafts). **Round 14b's join
+  rule closed rt_udp's 0x63E230**: each arm ends in the one `return 0` (an else arm stores the flag where a
+  `return 0` after the call's test let CSE reuse the known-zero v0; 8 words).
+- **A ring search with a head test and a do-while**: voicebuf.c's releases test the head, then walk
+  `do { p = p->pNext; if (p == pHead) p = 0; } while (p != 0 && p->pData != pData);` (a `for` with a
+  `break` lays the loop out the other way, 53s); a frame-resident node's two links are one chained store
+  (`p->pPrev = p->pNext = p`: two statements reload p between them, the store order following the
+  chain); a result variable zeroed at the top and returned once keeps its zero live in a saved register
+  (early returns propagate the constant and swap s0/s1); a field tested again after the block that may
+  clear it reloads at the join (a local copy lets the jump thread); a pool trimmed in a loop decrements
+  in its test after the unlink, `if (--n <= 0)` -- PRE then feeds the body from both loop edges, the
+  target's `move` at the bottom test.
+- **Shapes, measured**: the clock's quotient a variable of its own (computed twice, its two constants
+  take each other's registers); the address printer's tens digit one block that the hundreds enter by
+  `goto` (written twice, 2.96 schedules the copies apart and cross-jumping misses them: 35-43s); a
+  `char` digit test is a range (`c >= '0' && c <= '9'` folds to the target's `andi; sltiu`); rt_msg_client's
+  last function 0x638828 is two spins on one counter -- the second starts at 16 and 2.96's loop optimizer
+  leaves its entry test reading an unset v0 (the target's `beqz v0`); a group's member walk takes the
+  element's address and its peer into locals (the peer read through the member twice: 23 words; indexing
+  swaps the address sum's operands: 1); codec.c's reset returns an int (declared void, the constant
+  stored after the call takes v0 where the target has v1).
+- **Open, diagnosed in place**: serverkey.c's 0x64F4E0 (round 15b's, five more return shapes: the
+  target's v0 is free for the key's address through the copy -- its null test's slot empty -- where this
+  sets the return value first), and the earlier opens.
+
+Hand-written in round 17b: `medius/voicebuf.c` (10 of 10, new), `medius/codec.c` (11 of 11, new),
+`medius/rt_audio.c` (7 of 7, new), `medius/rsa.c` (4 of 4, new), `medius/grid.c` (+2, 0x626240 and
+0x6264C0: 30 of 31), `medius/dmelocal.c` (+4: func_006189C8 closed, the connection-index pair and
+func_00614290 over their drafts; 77 of 87), `medius/rt_udp.c` (+1, 0x63E230 closed: 38 of 46),
+`medius/rt_msg_client.c` (+1, 0x638828: 88 of 93) -- 19 rows new to the map's byte-exact rows (4,812
+bytes; `src/lib/medius` 872 -> 912 of 970), 21 superseding matched drafts; 4 rows named (RSAEncryptBlock,
+RSADecryptBlock, RSAEncrypt, RSADecrypt: `s1:order`). No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
