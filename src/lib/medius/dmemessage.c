@@ -19,9 +19,9 @@ extern char *strncpy(char *dst, const char *src, unsigned int n);
 
 extern int func_0061C720(int nWorld, int nClient, char **ppClient);
 extern int func_006126E8(char **ppClient, int nWorld, int nClient);
-extern char *func_006127D0(int nWorld, int nClient);
-extern int func_00612C80(int nWorld, int nClient);
-extern int func_00612E48(int nWorld, int nClient);
+extern char *NetCreateClient(int nWorld, int nClient);
+extern int NetClientJoins(int nWorld, int nClient);
+extern int NetClientLeaves(int nWorld, int nClient);
 extern int func_00614B18(int nWorld, int nClient, char *szIp, unsigned short nPort);
 extern int func_00614F10(unsigned char **ppStream, int nIndex);
 extern int NetIpBinaryToString(char *szIp, void *pBinary);
@@ -154,7 +154,7 @@ int ClientLeavesPacketHandler(int nConnection, int nUnused, int nClient, void *p
         return 1;
     if ((unsigned int)nClient >= DME_MAX_CLIENTS)
         return 1;
-    func_00612E48(nConnection, nClient);
+    NetClientLeaves(nConnection, nClient);
     return 1;
 }
 
@@ -186,7 +186,7 @@ int ClientUpdatePacketHandler(int nConnection, int nUnused, int nClient, ClientU
                 if (nIndex < DME_MAX_CLIENTS) {
                     func_006126E8(&pClient, nConnection, nIndex);
                     if (pClient == 0)
-                        pClient = func_006127D0(nConnection, nIndex);
+                        pClient = NetCreateClient(nConnection, nIndex);
                     if (pClient != 0) {
                         *(unsigned short *)(pClient + 4) = pMsg->w[0];
                         *(unsigned short *)(pClient + 6) = pMsg->w[1];
@@ -195,7 +195,7 @@ int ClientUpdatePacketHandler(int nConnection, int nUnused, int nClient, ClientU
                         *(unsigned short *)(pClient + 12) = pMsg->w[4];
                         strcpy(pClient + 14, pMsg->szName);
                         if (*(int *)pClient == 0)
-                            func_00612C80(nConnection, nIndex);
+                            NetClientJoins(nConnection, nIndex);
                     }
                 }
             }

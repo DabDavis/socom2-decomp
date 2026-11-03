@@ -2,11 +2,27 @@
  * (SOCOM 1's unit, __sinit_seal_aievent.cpp: CanHearAttenuatedExplosionEvent, EventTick, SetAiEvent,
  * CAiDodge::Destroy and its list's destructor, in that order; this tree keeps the AI states' units
  * under src/ai). OVL2 from after seal_aistate.cpp's tail (0x5F8D40) to 0x5FADEF, before
- * seal_aifollow.cpp's ~CAiSFollow. So far CAiDodge::Destroy: SetAiEvent (0x5FAD00, SOCOM 1's code
- * with the event at 0x628) waits on zseal.h, which cannot declare a member taking CAiEvent::EVENT
- * without ai.h. Defined in reverse of their image order (-inline deferred). */
+ * seal_aifollow.cpp's ~CAiSFollow. So far SetAiEvent (round 14: zseal.h includes ai.h for
+ * CAiEvent::EVENT) and CAiDodge::Destroy; 0x5F8D40 (CanHearAttenuatedExplosionEvent by SOCOM 1's
+ * order), 0x5F95D0 (EventTick) and 0x5FAAE0 are open. Defined in reverse of their image order
+ * (-inline deferred). */
 
 #include <list>
+
+#include "../gamez/zseal/zseal.h"
+
+/* (OVL2 0x5FAD00; SOCOM 1's, the event 0x1A8 further on: SEAL_AI_PARAMS's bytes at 0x628 read as
+ * the CAiEvent they are -- the kind into its 15 bits, the duration, the place copied field by
+ * field -- and the kind handed back, `move v0,a1`) */
+CAiEvent::EVENT CSealCtrlAi::SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos)
+{
+    CAiEvent *ev = (CAiEvent *)m_event;
+
+    ev->m_type = e;
+    ev->m_duration = duration;
+    ev->m_pos = *pos;
+    return e;
+}
 
 /* a dodge the AI makes (SOCOM 1's CAiDodge; no DWARF: only what Destroy touches) and the list of
  * them (SOCOM 1's CAiDodge::CList, whose destructor its unit emits; OVL1 bss 0x44D648) */

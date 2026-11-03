@@ -657,6 +657,303 @@ void MediusGetClientAddrList(NetAddressList *list)
     *list = gstClientAddressList;
 }
 
+/* ---- the library's core (round 7b): SOCOM 1's statics and its initialise, connect and update
+ * calls, by position in SOCOM 1's object and by what each calls (the DME API's locked wrappers,
+ * symbols.txt says which); SOCOM II drops the keep-alive's client-state request (the timestamp
+ * is still kept) and adds a forwarder for the connect callback (0x647188, 0x6471C8, 0x6471D8)
+ * and an update that disconnects on a server flag (0x647AC0). ---- */
+
+typedef enum MediusProcessingState {
+    MediusProcessingNone,               /* 0 */
+    MediusProcessingQueued,             /* 1: a request waits for the address resolution */
+    MediusProcessingFailed              /* 2 */
+} MediusProcessingState;
+
+/* the two requests that wait for the client's addresses: their packets' last 48 bytes are the
+ * address list MediusCheckRequestQueue fills in (SOCOM 1's queued 128 and 236 bytes) */
+typedef struct MediusJoinGameRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
+    char Data38[110];
+    NetAddressList AddressList;         /* 0x94 */
+} MediusJoinGameRequest;                /* 0xC4 */
+
+typedef struct MediusCreateGameOnSelfRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];
+    char Data38[150];
+    NetAddressList AddressList;         /* 0xBC */
+} MediusCreateGameOnSelfRequest;        /* 0xEC */
+
+#define MEDIUS_REQUEST_CREATEGAMEONSELF 18  /* SOCOM 1's 17 */
+#define MEDIUS_REQUEST_JOINGAME         44  /* SOCOM 1's 42 */
+
+/* what MediusInitialize is given (the game's Medius init parameters) */
+typedef struct MediusInitializeParams {
+    int Field00;                        /* 0x00: DME's own parameter at 8 */
+    MediusCallback ChatFwdMessageCallback;          /* 0x04 */
+    MediusCallback AddToBuddyListFwdConfirmationCallback;  /* 0x08 */
+    MediusCallback ErrorMessageCallback;            /* 0x0C */
+    MediusCallback ReassignGameMediusWorldIDCallback;  /* 0x10 */
+    void (*pfnConnectCallback)(int);    /* 0x14: forwarded through 0x647188 */
+    int Field18;                        /* 0x18: its user data, DME's 0x18 */
+    unsigned int KeepAliveInterval;     /* 0x1C */
+} MediusInitializeParams;
+
+typedef struct MediusInitializeBareParams {
+    MediusCallback ChatFwdMessageCallback;          /* 0x00 */
+    MediusCallback AddToBuddyListFwdConfirmationCallback;  /* 0x04 */
+    MediusCallback ErrorMessageCallback;            /* 0x08 */
+    MediusCallback ReassignGameMediusWorldIDCallback;  /* 0x0C */
+    unsigned int KeepAliveInterval;     /* 0x10 */
+} MediusInitializeBareParams;
+
+/* DME's initialise parameters (SOCOM 1's NetSetDefaultInitializeParams fills them) */
+typedef struct NetInitializeParams {
+    int Field00;
+    int SoftwareID;                     /* 0x04 */
+    int Field08;
+    int Field0C;
+    int Field10;
+    void (*pfnConnectCallback)(int);    /* 0x14 */
+    int Field18;
+} NetInitializeParams;                  /* 0x1C */
+
+/* what DME's connect callback is handed */
+typedef struct NetConnectStatus {
+    int nConnectionIndex;               /* 0x00 */
+    int nStatus;                        /* 0x04: 1 connected */
+} NetConnectStatus;
+
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+extern void *memset(void *p, int c, unsigned int n);
+extern char *strcpy(char *dst, const char *src);
+extern char *strncpy(char *dst, const char *src, unsigned int n);
+extern unsigned int strlen(const char *s);
+
+extern int NetSetDefaultInitializeParams(NetInitializeParams *pParams);
+extern int NetInitialize(NetInitializeParams *pParams, void *pOut);
+extern int NetClose(void);
+extern int NetDisconnect(int nConnectionIndex);
+extern int NetUpdate(void);
+extern int NetGetLocalTime(unsigned int *pTime);
+extern int RegisterPackets(void);
+
+extern unsigned int KeepAliveInterval;
+extern unsigned int KeepAliveTimestamp;
+extern char CurrentSessionKey[MEDIUS_SESSIONKEY_MAXLEN];
+extern int LastDMENetError;
+extern MediusCallback ErrorMessageCallbackFunctionPtr;
+extern MediusCallback ChatFwdMessageCallbackFunctionPtr;
+extern MediusCallback AddToBuddyListFwdConfirmationRequestCallbackFunctionPtr;
+extern MediusCallback MediusReassignGameMediusWorldIDCallbackFunctionPtr;
+extern MediusProcessingState geMediusProcessingState;
+extern int geQueuedRequestType;
+extern void (*data_006562EC)(int nConnectionIndex);    /* the client's connect callback */
+extern void (*data_006562F0)(int nConnectionIndex);    /* the game's, forwarded */
+extern char *data_006562F4;             /* the client's version string */
+extern int data_006561AC;
+extern int data_006561B0;
+extern int data_006561B4;               /* the server asked for a disconnect */
+extern int data_00686BA8;               /* PacketTypeCreateGameOnSelfRequest */
+extern int data_00686BC0;               /* PacketTypeJoinGameRequest */
+extern MediusJoinGameRequest data_006764D8;             /* gstQueuedJoinGameRequest */
+extern MediusCreateGameOnSelfRequest data_006765A0;     /* gstQueuedCreateGameOnSelfRequest */
+
+void MediusSetProcessingState(MediusProcessingState eState)
+{
+    geMediusProcessingState = eState;
+}
+
+MediusProcessingState MediusGetProcessingState(void)
+{
+    return geMediusProcessingState;
+}
+
+void MediusResolveAddrCallback(int *pResult)
+{
+    if (pResult[1] != 0) {
+        MediusSetProcessingState(MediusProcessingFailed);
+        return;
+    }
+    if (pResult[0] == 0) {
+        MediusSetProcessingState(MediusProcessingFailed);
+        return;
+    }
+    MediusSetClientAddrList(*(NetAddressList *)(pResult + 2));
+    MediusSetProcessingState(MediusProcessingQueued);
+}
+
+void MediusSetQueuedRequest(int nType, void *pRequest)
+{
+    geQueuedRequestType = nType;
+    switch (nType) {
+    case MEDIUS_REQUEST_JOINGAME:
+        memcpy(&data_006764D8, pRequest, sizeof(MediusJoinGameRequest));
+        break;
+    case MEDIUS_REQUEST_CREATEGAMEONSELF:
+        memcpy(&data_006765A0, pRequest, sizeof(MediusCreateGameOnSelfRequest));
+        break;
+    }
+}
+
+void MediusGetQueuedRequestType(int *pnType)
+{
+    *pnType = geQueuedRequestType;
+}
+
+void MediusGetQueuedRequest(void *pRequest)
+{
+    switch (geQueuedRequestType) {
+    case MEDIUS_REQUEST_JOINGAME:
+        memcpy(pRequest, &data_006764D8, sizeof(MediusJoinGameRequest));
+        break;
+    case MEDIUS_REQUEST_CREATEGAMEONSELF:
+        memcpy(pRequest, &data_006765A0, sizeof(MediusCreateGameOnSelfRequest));
+        break;
+    }
+}
+
+int MediusCheckRequestQueue(void)
+{
+    MediusJoinGameRequest joinRequest;
+    MediusCreateGameOnSelfRequest createRequest;
+    int nType;
+    int result = 0;
+
+    if (MediusGetProcessingState() == MediusProcessingFailed) {
+        MediusSetProcessingState(MediusProcessingNone);
+        return MediusErrorGeneral;
+    }
+    if (MediusGetProcessingState() == MediusProcessingQueued) {
+        MediusSetProcessingState(MediusProcessingNone);
+        MediusGetQueuedRequestType(&nType);
+        switch (nType) {
+        case MEDIUS_REQUEST_JOINGAME:
+            MediusGetQueuedRequest(&joinRequest);
+            MediusGetClientAddrList(&joinRequest.AddressList);
+            result = NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686BC0,
+                                    sizeof(joinRequest), &joinRequest);
+            break;
+        case MEDIUS_REQUEST_CREATEGAMEONSELF:
+            MediusGetQueuedRequest(&createRequest);
+            MediusGetClientAddrList(&createRequest.AddressList);
+            result = NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686BA8,
+                                    sizeof(createRequest), &createRequest);
+            break;
+        }
+    }
+    if (result != 0)
+        return MediusErrorGeneral;
+    return MediusErrorNone;
+}
+
+void (*MediusGetClientConnectCallback(void))(int);
+
+void MediusLocalConnectCallback(NetConnectStatus *pStatus)
+{
+    if (pStatus->nStatus == 1)
+        MyConnectionIndex = pStatus->nConnectionIndex;
+    else
+        MyConnectionIndex = pStatus->nConnectionIndex;
+    if (MediusGetClientConnectCallback() != 0)
+        MediusGetClientConnectCallback()(MyConnectionIndex);
+}
+
+void MediusSetClientConnectCallback(void (*pfnCallback)(int))
+{
+    data_006562EC = pfnCallback;
+}
+
+void (*MediusGetClientConnectCallback(void))(int)
+{
+    return data_006562EC;
+}
+
+void MediusClearClientConnectCallback(void)
+{
+    data_006562EC = 0;
+}
+
+void (*func_006471D8(void))(int);
+
+/* new in SOCOM II: DME's connect callback, forwarded to the game's (MediusInitialize's 0x14) */
+void func_00647188(int nConnectionIndex)
+{
+    if (func_006471D8() != 0)
+        func_006471D8()(nConnectionIndex);
+}
+
+void func_006471C8(void (*pfnCallback)(int))
+{
+    data_006562F0 = pfnCallback;
+}
+
+void (*func_006471D8(void))(int)
+{
+    return data_006562F0;
+}
+
+MediusErrorCode MediusInitialize(MediusInitializeParams *pParams, int *pResult)
+{
+    NetInitializeParams params;
+    char netResult[32];
+
+    if (GlobalInitFlag == 1) {
+        *pResult = -1;
+        return MediusErrorCallMediusCloseBeforeReinitializing;
+    }
+    MediusSetProcessingState(MediusProcessingNone);
+    NetSetDefaultInitializeParams(&params);
+    params.Field08 = pParams->Field00;
+    if (pParams->pfnConnectCallback != 0) {
+        func_006471C8(pParams->pfnConnectCallback);
+        params.Field18 = pParams->Field18;
+    } else {
+        func_006471C8(0);
+    }
+    params.pfnConnectCallback = func_00647188;
+    if (NetInitialize(&params, netResult) != 0) {
+        *pResult = -1;
+        return MediusErrorInitializing;
+    }
+    ChatFwdMessageCallbackFunctionPtr = pParams->ChatFwdMessageCallback;
+    AddToBuddyListFwdConfirmationRequestCallbackFunctionPtr = pParams->AddToBuddyListFwdConfirmationCallback;
+    ErrorMessageCallbackFunctionPtr = pParams->ErrorMessageCallback;
+    MediusReassignGameMediusWorldIDCallbackFunctionPtr = pParams->ReassignGameMediusWorldIDCallback;
+    KeepAliveInterval = pParams->KeepAliveInterval;
+    NetGetLocalTime(&KeepAliveTimestamp);
+    if (RegisterPackets() != 0) {
+        *pResult = -1;
+        return MediusErrorInitializing;
+    }
+    GlobalInitFlag = 1;
+    *pResult = 0;
+    return MediusErrorNone;
+}
+
+MediusErrorCode MediusInitializeBare(MediusInitializeBareParams *pParams, int *pResult)
+{
+    if (GlobalInitFlag == 1) {
+        *pResult = -1;
+        return MediusErrorCallMediusCloseBareBeforeReinitializing;
+    }
+    MediusSetProcessingState(MediusProcessingNone);
+    ChatFwdMessageCallbackFunctionPtr = pParams->ChatFwdMessageCallback;
+    AddToBuddyListFwdConfirmationRequestCallbackFunctionPtr = pParams->AddToBuddyListFwdConfirmationCallback;
+    ErrorMessageCallbackFunctionPtr = pParams->ErrorMessageCallback;
+    MediusReassignGameMediusWorldIDCallbackFunctionPtr = pParams->ReassignGameMediusWorldIDCallback;
+    KeepAliveInterval = pParams->KeepAliveInterval;
+    NetGetLocalTime(&KeepAliveTimestamp);
+    if (RegisterPackets() != 0) {
+        *pResult = -1;
+        return MediusErrorInitializing;
+    }
+    GlobalInitFlag = 1;
+    *pResult = 0;
+    return MediusErrorNone;
+}
+
 /* The library's build stamp: its object's own __DATE__ and __TIME__ (mediusapi.c built Sep 18 2003,
  * 18:02:53 -- spelled out, since a rebuild's would be today's), as "DD.MM.YYYY.hh.mm.ss". */
 #define MEDIUS_BUILD_DATE   "Sep 18 2003"
@@ -681,6 +978,14 @@ int MediusGetBuildTimeStamp(char *szTimeStamp)
     return 0;
 }
 
+MediusErrorCode MediusVersionClient(char *szVersion)
+{
+    if (szVersion == 0)
+        return MediusErrorCallMediusCloseBeforeReinitializing;
+    strcpy(szVersion, data_006562F4);
+    return MediusErrorNone;
+}
+
 MediusErrorCode MediusVersionServer(MediusVersionServerRequest *request, MediusCallback callback)
 {
     if (GlobalInitFlag != 1)
@@ -691,6 +996,122 @@ MediusErrorCode MediusVersionServer(MediusVersionServerRequest *request, MediusC
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CAC,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
+    return MediusErrorNone;
+}
+
+MediusErrorCode MediusGetMySessionKey(char *szSessionKey)
+{
+    if (CurrentSessionKey[0] == 0)
+        return MediusErrorSessionInactive;
+    strncpy(szSessionKey, CurrentSessionKey, strlen(CurrentSessionKey) + 1);
+    return MediusErrorNone;
+}
+
+MediusErrorCode MediusDisconnect(void);
+
+MediusErrorCode MediusClose(void)
+{
+    memset(CurrentSessionKey, 0, sizeof(CurrentSessionKey));
+    if (GlobalInitFlag != 1)
+        return MediusErrorNotInitialized;
+    if (MyConnectionIndex >= 0)
+        MediusDisconnect();
+    if (NetClose() != 0)
+        return MediusErrorClosing;
+    GlobalInitFlag = 0;
+    return MediusErrorNone;
+}
+
+MediusErrorCode MediusCloseBare(void)
+{
+    memset(CurrentSessionKey, 0, sizeof(CurrentSessionKey));
+    if (GlobalInitFlag != 1)
+        return MediusErrorNotInitialized;
+    GlobalInitFlag = 0;
+    return MediusErrorNone;
+}
+
+MediusErrorCode MediusDisconnect(void)
+{
+    int result;
+
+    if (GlobalInitFlag != 1)
+        return MediusErrorNotInitialized;
+    if (MyConnectionIndex < 0)
+        return MediusErrorNotConnected;
+    result = NetDisconnect(MyConnectionIndex);
+    MyConnectionIndex = -1;
+    if (result != 0)
+        return MediusErrorDisconnecting;
+    return MediusErrorNone;
+}
+
+MediusErrorCode MediusUpdate(void)
+{
+    unsigned int nNow = 0;
+    int result;
+
+    NetGetLocalTime(&nNow);
+    if (GlobalInitFlag != 1)
+        return MediusErrorNotInitialized;
+    result = MediusCheckRequestQueue();
+    if (result != 0)
+        return result;
+    if (nNow - KeepAliveTimestamp > KeepAliveInterval && CurrentSessionKey[0] != 0 && MyConnectionIndex >= 0)
+        KeepAliveTimestamp = nNow;
+    result = NetUpdate();
+    if (result != 0) {
+        LastDMENetError = result;
+        return MediusErrorGeneral;
+    }
+    return MediusErrorNone;
+}
+
+/* new in SOCOM II: MediusUpdate, and the connection dropped when the server has flagged it (0x6561B4
+ * set and the two counts at 0x6561AC and 0x6561B0 agreeing) */
+MediusErrorCode func_00647AC0(void)
+{
+    unsigned int nNow = 0;
+    int result;
+
+    NetGetLocalTime(&nNow);
+    if (GlobalInitFlag != 1)
+        return MediusErrorNotInitialized;
+    result = MediusCheckRequestQueue();
+    if (result != 0)
+        return result;
+    if (nNow - KeepAliveTimestamp > KeepAliveInterval && CurrentSessionKey[0] != 0 && MyConnectionIndex >= 0)
+        KeepAliveTimestamp = nNow;
+    result = NetUpdate();
+    if (data_006561B4 == 1 && data_006561AC == data_006561B0) {
+        data_006561B4 = 0;
+        data_006561AC = 0;
+        data_006561B0 = 0;
+        result = NetDisconnect(MyConnectionIndex);
+        MyConnectionIndex = -1;
+        if (result != 0)
+            return MediusErrorDisconnecting;
+        return MediusErrorNone;
+    }
+    if (result == 0)
+        return MediusErrorNone;
+    LastDMENetError = result;
+    return MediusErrorGeneral;
+}
+
+MediusErrorCode MediusUpdateBare(void)
+{
+    unsigned int nNow = 0;
+    int result;
+
+    NetGetLocalTime(&nNow);
+    if (GlobalInitFlag != 1)
+        return MediusErrorNotInitialized;
+    result = MediusCheckRequestQueue();
+    if (result != 0)
+        return result;
+    if (nNow - KeepAliveTimestamp > KeepAliveInterval && CurrentSessionKey[0] != 0 && MyConnectionIndex >= 0)
+        KeepAliveTimestamp = nNow;
     return MediusErrorNone;
 }
 
@@ -1554,6 +1975,102 @@ MediusErrorCode func_0064A1F8(MediusRequest_0064A1F8 *request, MediusCallback ca
  * error codes' names, in the vendor's enum order -- MediusWorldCreatedSizeReduced (3, a status code
  * the server also sends as an error) sits after MediusErrorItemAlreadyExists there, and its case
  * block does here: GCC lays the cases out in source order. */
+/* NetUpdate's last error, as MediusUpdate kept it (SOCOM 1's; zNetUpdate asks for it) */
+int MediusGetLastNetUpdateError(void)
+{
+    return LastDMENetError;
+}
+
+/* every MediusCallbackStatus named, in the enum's order: 40 cases over 1005 values, so no table --
+ * 2.96 builds the balanced decision tree the target has (round 7b) */
+char *MediusGetCallbackStatusString(MediusCallbackStatus status)
+{
+    switch (status) {
+    case MediusBeginSessionFailed:
+        return "MediusBeginSessionFailed";
+    case MediusAccountAlreadyExists:
+        return "MediusAccountAlreadyExists";
+    case MediusAccountNotFound:
+        return "MediusAccountNotFound";
+    case MediusAccountLoggedIn:
+        return "MediusAccountLoggedIn";
+    case MediusEndSessionFailed:
+        return "MediusEndSessionFailed";
+    case MediusLoginFailed:
+        return "MediusLoginFailed";
+    case MediusRegistrationFailed:
+        return "MediusRegistrationFailed";
+    case MediusIncorrectLoginStep:
+        return "MediusIncorrectLoginStep";
+    case MediusAlreadyLeaderOfClan:
+        return "MediusAlreadyLeaderOfClan";
+    case MediusWMError:
+        return "MediusWMError";
+    case MediusNotClanLeader:
+        return "MediusNotClanLeader";
+    case MediusPlayerNotPrivileged:
+        return "MediusPlayerNotPrivileged";
+    case MediusDBError:
+        return "MediusDBError";
+    case MediusDMEError:
+        return "MediusDMEError";
+    case MediusExceedsMaxWorlds:
+        return "MediusExceedsMaxWorlds";
+    case MediusRequestDenied:
+        return "MediusRequestDenied";
+    case MediusSetGameListFilterFailed:
+        return "MediusSetGameListFilterFailed";
+    case MediusClearGameListFilterFailed:
+        return "MediusClearGameListFilterFailed";
+    case MediusGetGameListFilterFailed:
+        return "MediusGetGameListFilterFailed";
+    case MediusNumFiltersAtMax:
+        return "MediusNumFiltersAtMax";
+    case MediusFilterNotFound:
+        return "MediusFilterNotFound";
+    case MediusInvalidRequestMsg:
+        return "MediusInvalidRequestMsg";
+    case MediusInvalidPassword:
+        return "MediusInvalidPassword";
+    case MediusGameNotFound:
+        return "MediusGameNotFound";
+    case MediusChannelNotFound:
+        return "MediusChannelNotFound";
+    case MediusGameNameExists:
+        return "MediusGameNameExists";
+    case MediusChannelNameExists:
+        return "MediusChannelNameExists";
+    case MediusGameNameNotFound:
+        return "MediusGameNameNotFound";
+    case MediusPlayerBanned:
+        return "MediusPlayerBanned";
+    case MediusClanNotFound:
+        return "MediusClanNotFound";
+    case MediusClanNameInUse:
+        return "MediusClanNameInUse";
+    case MediusSessionKeyInvalid:
+        return "MediusSessionKeyInvalid";
+    case MediusTextStringInvalid:
+        return "MediusTextStringInvalid";
+    case MediusFilterFailed:
+        return "MediusFilterFailed";
+    case MediusFail:
+        return "MediusFail";
+    case MediusSuccess:
+        return "MediusSuccess";
+    case MediusNoResult:
+        return "MediusNoResult";
+    case MediusRequestAccepted:
+        return "MediusRequestAccepted";
+    case MediusWorldCreatedSizeReduced:
+        return "MediusWorldCreatedSizeReduced";
+    case MediusPass:
+        return "MediusPass";
+    default:
+        return "UNKNOWN MEDIUSCALLBACKSTATUS";
+    }
+}
+
 char *MediusGetErrorCodeString(MediusErrorCode code)
 {
     switch (code) {
