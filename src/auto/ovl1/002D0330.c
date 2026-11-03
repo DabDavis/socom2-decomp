@@ -19,23 +19,23 @@ M2C_UNK Uninit__4CSndFv();                          /* extern */
 M2C_UNK Uninit__5CPipeFv();                         /* extern */
 M2C_UNK Uninit__6CInputFv();                        /* extern */
 M2C_UNK Uninit__6CValveFv();                        /* extern */
+M2C_UNK Uninit__Q23zdb17CTextureFXManagerFv(M2C_UNK *); /* extern */
 M2C_UNK Uninit__Q23zdb6CWorldFv();                  /* extern */
 M2C_UNK Uninit__Q23zdb7CRippleFv();                 /* extern */
 M2C_UNK func_0039C6F0();                            /* extern */
 M2C_UNK func_003B11F0();                            /* extern */
-M2C_UNK func_003C0620(M2C_UNK *);                   /* extern */
 M2C_UNK func_00576120();                            /* extern */
 M2C_UNK uninit_trig_table__Fv();                    /* extern */
 M2C_UNK zUISchedulerClear__Fv();                    /* extern */
 extern M2C_UNK ZAnim;
-extern M2C_UNK data_004B50D0;
+extern M2C_UNK theTextureFXManager__3zdb;
 extern M2C_UNK zTaskScheduler;
 
 void StopEngine__5CGameFv(void) {
     Uninit__Q23zdb6CWorldFv();
     Close__10CZAnimMainFv(&ZAnim);
     UninitSystemTuners__Fv();
-    func_003C0620(&data_004B50D0);
+    Uninit__Q23zdb17CTextureFXManagerFv(&theTextureFXManager__3zdb);
     Uninit__Q23zdb7CRippleFv();
     Uninit__5CPipeFv();
     Close__10CZAnimMainFv(&ZAnim);

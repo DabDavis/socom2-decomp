@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 s32 GetIDType__8CZWeaponF10EQUIP_ITEM();            /* extern */
-s32 func_003D1D90(s32);                             /* extern */
-s32 func_003D1DA0(s32);                             /* extern */
-s32 func_003D1DB0(s32);                             /* extern */
+s32 IsLauncherType__8CZWeaponF10EQUIP_ITEM(s32);    /* extern */
+s32 IsPrimaryType__8CZWeaponF10EQUIP_ITEM(s32);     /* extern */
+s32 IsSecondaryType__8CZWeaponF10EQUIP_ITEM(s32);   /* extern */
 
 s32 func_005B8820(void) {
     s32 temp_v0;
@@ -19,11 +19,11 @@ s32 func_005B8820(void) {
 
     temp_v0 = GetIDType__8CZWeaponF10EQUIP_ITEM();
     var_s0 = 0;
-    if (func_003D1DB0(temp_v0) != 0) {
+    if (IsPrimaryType__8CZWeaponF10EQUIP_ITEM(temp_v0) != 0) {
         var_s0 = 1;
-    } else if (func_003D1DA0(temp_v0) != 0) {
+    } else if (IsSecondaryType__8CZWeaponF10EQUIP_ITEM(temp_v0) != 0) {
         var_s0 = 2;
-    } else if (func_003D1D90(temp_v0) != 0) {
+    } else if (IsLauncherType__8CZWeaponF10EQUIP_ITEM(temp_v0) != 0) {
         var_s0 = 4;
     } else {
         temp_v1 = temp_v0 & 0xFF;

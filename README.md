@@ -1701,6 +1701,42 @@ locale.cpp, the logic_error family, the other three `__sinit` rows.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the weapons, round 12** (vis_texfx.cpp whole, a new unit vis_ripple.cpp, GetTextureSelectBlock):
+  - vis_ripple.cpp (0x3C0CF0-0x3C356F, its initialiser 0x404B30; vis_main.cpp starts at 0x3C3570) is
+    SOCOM II's water ripples, with no SOCOM 1 counterpart: a manager global (theWaterRippleManager
+    0x4B5170) that CCoreState::Tick ticks and the ZAnim RIPPLE/RIPPLE_NODE_GROUP handlers feed -- its
+    class, function and global names are ours; vis_texfx.cpp is 0x3BFB60-0x3C0CEF, and RTPool is
+    global-namespace (SOCOM 1's `26RTPool<...>`, not `Q23zdb`);
+  - a bool result compared `!= false` (or `== false`) gets `andi 0xff` before the branch, `== true`
+    compares against 1 (Update, the manager's Tick); an inline `bool Lifts() { return m_bit; }` tested
+    `!= false` turns the bit into a bool with `sltu` first, tested plainly it folds away;
+  - a point written and read through a `float *` set before a call keeps its stores and reloads the
+    other pointer's fields after each store (SetLevel); through a `CPnt3D *` parameter it lives in
+    registers;
+  - GetBBox passed as the argument of an inline overlap test is inlined one level, its recursion left a
+    call; called inside an inline that also stores, it is called whole;
+  - `push_back(this)` in a constructor forces `this` into memory; through an inline `Add(T *r)` the copy
+    is a parameter of its own and `this` stays in a register;
+  - erasing through an inline wrapper creates the erase's temporaries after an inlined clear()'s, the
+    target's stack-slot order -- a lead that MSL's list<T *> has an inline erase(iterator);
+  - a callee's float/pointer parameter interleaving shows in the caller's argument set-up: a1, a2, f12,
+    a3, f13, f14 is (ptr, ptr, float, ptr, float, float) (the ripple constructors' signatures);
+  - `CPnt3D d; d = a - b;` makes two copies (ld/sd, then lwc1/swc1), initialising makes one; `dist *= k;
+    dist += c;` keeps the sum in dist's own register before a `cosf` call, one expression computes it
+    straight into $f12;
+  - a nearest-so-far test is two arms with one body, `if (!best) {X} else if (d < min) {X}`: `!best ||
+    d < min` lets MW merge the arms; `(x pair) && (z pair)` branches past both z tests at once when the x
+    pair fails;
+  - include/list gains the sized members (resize, insert(n), init(n), advance_to, splice) and list<T
+    *>::resize(n, x = 0), additive;
+  - open: the list's resize in vis_texfx.cpp (7: the inlined erase's two node registers swapped) and
+    insert(position, n, x) (the temporary's destructor inlined where the target calls ~__list_deleter);
+    Gather 0x3C3120 (3, a delay slot around the live-ripple test); ClearGroups 0x3C2A10 (0xD8 against
+    0xF8: the target inlines the group's whole destructor at the delete, six levels high here with the
+    node vector's destructor alone five, so MW calls clear() and the vector destructor -- another
+    inline-depth witness, "Open, and next"); Flatten 0x3C0CF0 (0x260 against 0x274: the target
+    multiplies 32767.5 by 1.0 and 0.0 at run time); Ripple 0x3C2CB0 (57: the target keeps `this` in s8
+    and reaches the vertex through one pointer register).
 - **Tells from the AI core, round 14** (CCharacterType's Open, Parse, constructor, InitMultiplayerMessages):
   - an inline setter taking a class BY VALUE builds the parameter on the stack (four floats, then two) and
     assigns member by member; a plain assignment or a returned copy is scalarised (the constructor's
