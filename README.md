@@ -1647,6 +1647,51 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 12** (anim.cpp's name lookups, seal_kit.cpp's items and fire modes):
+  - a switch's compare chain tests its cases in reverse source order: list them 2, 1, 0 for the
+    target's 0, 1, 2 chain; an empty `case 0: break;` keeps its own test;
+  - `bit ? 1 : 0` folds to `sltu` whatever its type; the target's `li 1; movz` plus a sign extension
+    is a signed byte-enum local assigned in an if/else;
+  - a field read in place several times shares one load in a temporary; taken into a named local it
+    shifts every temporary of an inlined walk (NextFireMode, 21 instructions);
+  - the same accessor with a signed bound (`slt`) is a different inline from its out-of-line copy
+    (`sltu`); written out at the call site the saved registers s1/s2 swap;
+  - a callee of at most 15 statements too big to inline whole keeps its callers out of line: writing
+    the callee (SetItemByIndex, 20 statements) removed RemoveItem's and SetItem's pins;
+  - SOCOM II's zdb::IntersectStruct has a constructor zeroing m_poly and m_node (node_world.h does
+    not declare it); the statics defined in order after <iostream> give __sinit_seal_kit.cpp;
+  - a template copy proven by its caller can be emitted by an explicit instantiation and scored
+    through an ovl-copy note (ai::_max<unsigned char> 0x5DEE70; anim.cpp's string-map find 0x58D090
+    and string compares 0x58D250/0x58D740).
+- **Tells from the HUD, round 19** (mp_rating.cpp, reco.cpp):
+  - a list walk `i = begin(); iterator e = end(); for (; i != e; ++i)` (iterator assigned, end
+    initialised) keeps `this + 4` in `this`'s register (mp_rating.cpp's walks);
+  - push_back taking the pointer's address made MW number the parameters last; passing it by value
+    through an inline wrapper put them first again (AddPlayer);
+  - a bool local returned from an `int` function adds `andi 0xff`, from a `bool` function it is a
+    plain `move`; a bool local just assigned true (`daddiu`) is reused as the value of a one-bit
+    field set true in the same block (CReco::Init); `found == false` as a loop test keeps `andi;
+    bnez`, `!found` drops it;
+  - indexing a two-slot member array (`m_teams[i]`) gives the target's registers, a named walking
+    pointer moves them;
+  - units: mp_rating.cpp (SOCOM II's Elo ratings, CRatingTeam/CRatingMatch) runs 0x239770-0x23A2DF,
+    reco.cpp (the voice recogniser's wrapper, the 0x40-byte theReco 0x414680) 0x23A2E0-0x23B98F with
+    its initialiser 0x3FF7B0 -- the cut by what the code touches (the recogniser's fields at 0x2C/0x30).
+- **Tells from the game states, round 17** (SetMovie and its cue sort, fts_message.cpp):
+  - a function calling trivial accessors -- even leaves -- out of line holds a big EXPLICIT-inline helper
+    MW inlines one level: the helper's callees become calls, their copies following the caller in
+    reverse order of first use (SetMovie's ReadSubtitles, 0x1EDE70-0x1EDF3C);
+  - zsys.h's inline FreeVector reached through a one-level helper is emitted with the unit's own code
+    right after its caller, and requests the deleter's clear and destructor in the tail's first round
+    (the class vector's reserve and insert then inline their temporary's teardown);
+  - a sort comparator with no store and no constructor call is a default-initialised POD local; its
+    slot below the iterators' says they were named locals built in place and declared before it;
+  - `name = f(); if (!name) name = K;` puts the copy in the branch's delay slot, a ternary branches
+    twice; an override passing its own bool argument on leaves a2 untouched at the call -- an unset
+    argument register can be a pass-through, not a missing parameter (C2DMessageString::SetString);
+  - include/vector's class vector has `reserve(n)` forwarding to __vector_imp's (0x1EDF10, a `j` to
+    0x1EF190, as clear()'s copy 0x1ED000); fts_message.cpp (ours) runs 0x2B5830-0x2B794F after
+    fts_action.cpp, as in SOCOM 1's symtab.
 - **Tells from the AI core, round 11** (FreeTables, AI_PARAMS::Merge, the character type's packing):
   - an int counter indexing a member array (`m_start[i]`) is strength-reduced; `m_start[(unsigned
     int)i]` keeps the target's per-pass recompute (startvec::Load);
@@ -1976,6 +2021,36 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 8** (the erase/remove family, include/algorithm's
+  remove and remove_if, the class insert's end register):
+  - THE erase(remove(...), end()) FAMILY IS THE CALLERS' FORM, not a header's: MW builds an argument
+    list's temporaries LEFT TO RIGHT but evaluates it RIGHT TO LEFT, so in the one-line idiom erase's
+    end() always lands in a slot below remove's temporaries and is copied into its parameter before
+    the call (const-reference forwarding in erase moves the copies but not the slot, and loses
+    CGrid::Destroy). The target's slots read `iterator e = end(); iterator i = std::remove(begin(), e,
+    x); erase(i, e);` -- the end declared first takes the highest slot, the new end the next, both of
+    erase's copies follow the call (DeleteLightMap, CTurretList::Remove, CTargetList::RemoveTarget,
+    CWorld::DeleteChild, CNodeVector::Remove; CleanupTemporary and RemoveInvalidPoints as probes) --
+    or with a separate `end()` for remove_if's last (RemoveEmptyGames, RemoveUncheckedGames: six
+    slots, two of them ends);
+  - std::remove has remove_if's ternary shape (`first = find(...); ForwardIterator i = first; return
+    first == last ? first : remove_copy(++i, ...);`): the dead copy of begin() into remove's own first,
+    `i = first` scheduled ahead of the test, the two results joined through an address -- the early
+    return was 0x18 off in every instance (the AI core's remove<CAiMapLoc> 0x529D70 byte-exact so);
+  - remove_if searches with `find_if<ForwardIterator, Predicate &>(first, last, pred)` (libc++'s
+    form, MSL C++'s sibling): the predicate is read in place where a by-value find_if copied it
+    (delshadow's 0x320800). The list instances stay 6 instructions off: MW numbers inlined copies in
+    creation order, a by-value find_if creates last's copy first, and the target made the list
+    iterator's copies in parameter order but the vector iterator's right to left -- a const-reference
+    search copying into locals serves the lists and loses the vectors (build/p8/rif1.cpp);
+  - the class vector's range erase reads its iterators through pointer references, as the pointer
+    vector's does (RemoveTarget: MW copies a named iterator into the parameter only when its address
+    is taken); resize is declared AHEAD of erase (a unit whose own code instantiates erase otherwise
+    has resize<CAiPath::point> inline it: RemoveInvalidPoints and 0x528430 byte-exact together);
+  - MW's DWARF 1 lists a function's locals in plain declaration order, nested scopes flattened in
+    source order (3.0b52 and 3.0b22 alike): SOCOM 1's class insert declares i, j, newcap, newsize,
+    tmp, j, i, k, j, xp, t1 -- no end local. The in-place end's register is per ELEMENT across the
+    image's 29 class inserts (include/vector's insert comment): still open.
 - **Tells from completing the MSL headers, round 7** (include/deque's copy constructor chain, include/memory):
   - THE TAIL'S GENERATION ORDER, measured (probes build/p7/ord*.cpp): the unit's own functions are
     taken in reverse definition order (their emission order), each one's template requests generated
@@ -2920,7 +2995,8 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 | MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111-01-dtls13010` `-O2 -G0` (991111 compiles their C the same) | libvu0's inline asm: 32 of 32 only under the dtls13010 build, whose GNU as fills the delay slots 991111's leaves empty and encodes vsqrt as 2.96's does not (below); `memclr` is byte-exact only under 2.9-ee-991111 and its -01, a and dtls rebuilds: 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
 | MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s) |
 | OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
-| OVL1 0x2430F0-0x248350 | the recogniser's heap (`heap_*`), lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
+| OVL1 0x2430F0-0x243840 | the recogniser's heap (`heap_*`, ScanSoft's) | `ee-gcc2.96` `-O2 -G0` **`-funroll-loops`** (the unit carries the recogniser's `-fno-strict-aliasing` too, untold) | SearchFor's loop unrolled by four: byte-exact only with the flag (without: 50s) -- round 3a |
+| OVL1 0x243840-0x248350 | lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
 | OVL1 0x248350-0x256FD0 | Nellymoser's speech codec (SaseEncVad, SaseDec) | `ee-gcc2.96` **`-O2 -G8`** | five functions byte-exact only so: their scalars and float literals are `$gp`-relative (small data in MAIN's 0x1D5300-0x1D55C0, `.lit4`); at -G0 every one misses |
 | OVL2 0x4C5400-0x50DC50 | ScanSoft's speech recogniser (asrspi\*, casr\*, mtx\*) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing -funroll-loops` | the loop unrolling: ContextActivateParams (below, round 2b); `casrStoreSegmentation` keeps its `short` store above the load of the next node: byte-exact only without strict aliasing, and none of the library's drafts is lost by the flag; the sibling calls -- func_004CCC50, ConstructMel, func_004F7038 -- 2.96 only (every 2.9x and 2.95.x 5s-15s); its leaf functions do not tell 2.9x, 2.95.x and 2.96 apart. `mtxConstruct` makes no sibling call because 2.96 declines one where the return types differ |
 | OVL2 0x60FB50-0x64F720 | Medius, DME and the rt_\* libraries (SCEA) | `ee-gcc2.96` `-O2 -G0` | rt_comm_get_channel, rt_memory_register_callbacks, rt_msg_client_change_state, rt_msg_set_byte: all four only under 2.96 -O2 (2.9x 5/=/9s/6, 2.95.x 4/=/10s/5, 3.2 =/5/3/=); strict aliasing stays on -- two sibling drafts of one shape (0x61E7F0, 0x61E858) match only with it: thin, one shape |
@@ -3036,16 +3112,59 @@ newlib's libm objects `libm/s_copysign.c`, `s_isinf.c`, `s_isnan.c`, `sf_copysig
 its return's slot empty after the copy into v0). With the assembler units: 222 byte-exact of the 229
 functions written (154 of them assembler), four superseding drafts that matched (GetRomName, IsT10K, iSyncDCache, iInvalidDCache: `automatch.py --emit` drops them).
 
+**Round 3a** (2026-11-02, by hand): libkernl's last five C objects -- `sdk/tlbfunc.c` (18 of 19),
+`initsys.c` (9), `libosd.c` (6, the ExecPS2 patch), `exit.c` (9), `alarm.c` (5); OVL1's
+`ovl1/lgaud.c` (16: the RPC wrappers, PrepareForReboot, the async end callbacks), `ovl1/heap.c`
+(heap_GetVersion, SearchFor); newlib from newlib's own text -- `libc/strrchr.c`, `strstr.c`,
+`strcasecmp.c`, `strncasecmp.c`, `strtok_r.c`, `rand.c` (srand, rand), `abort.c`, `assert.c`, the
+eight reentrant syscall wrappers (`closer.c` ... `writer.c`) and `strtod.c` (strtod; strtof OPEN):
+86 functions byte-exact of 88 written. What they showed:
+
+- **A static several objects define is `NAME@UNIT` in the map** (`Copy@tlbfunc`, `kCopy@exit`):
+  libkernl links five objects with static `Copy`/`kCopy`/`setup`/`GetEntryAddress` syscall
+  wrappers. A GNU object's local function `NAME` scores as the row `NAME@UNIT` (UNIT the source's
+  stem) when the map has one (`scdiff.qualify_statics`; sccheck, ccsweep and scdiff apply it); a
+  static the map names once stays bare. Drafts spell such a row `func_<VA>` (`as=` renames them).
+  Proved: master's tree scores the same rows with master's tools and these, 5,108 hand-written and
+  843 GCC-draft rows.
+- **991111's sibling call is the void-context call's only**: `InitTLB() { if (...) InitTLB32MB();
+  else _InitTLB(); }` compiles to two `j`s, the target's `return InitTLB32MB(); return _InitTLB();`
+  to jals under the frame -- the opposite of 2.96, which tail-calls a returned call.
+- **A register variable lives across calls unsaved**: InitTLB32MB keeps its index in t9 across
+  every `_SetTLBEntry` (`register int i asm ("$25")`; GCC gives a pseudo a saved register), and
+  returns it shifted. The syscall wrappers are C: `asm volatile ("li $3, N\n\tsyscall")` in a body
+  with no return statement gives the stub's four words.
+- **An inline-asm function can end without its own delay slot**: libsif's sceSifWriteBackDCache
+  ends in its asm's `jr ra; nop` and then GCC's `jr ra`, whose slot is the next object's first word;
+  the seed had cut both words into 4-byte rows (merged back: the function is 0xB0, sceSifInitRpc
+  starts at 0x1A6368, both as the demo's).
+- **OVL1's heap is ScanSoft's** (the demo links it inside the recogniser): SearchFor's search is
+  unrolled by four, byte-exact only with `-funroll-loops` (-O2 -G0: 50s). automatch's GCC_RANGES give
+  it the recogniser's flags, and the recogniser's own range gains `-funroll-loops`.
+- **newlib compiles as written**: every newlib function written from newlib's source matched as it
+  stands, its R5900 short-loop nops GNU as's; `_read_r`'s `(_ssize_t)read(...)` cast (a long from an
+  int) is newlib's own and the target's extra move. The reent wrappers use the system layer's global
+  `errno` (0x1E6640), newlib undefining the macro there. `abort` ends at a noreturn `_exit` (crt0's,
+  `Exit(0)`), where the demo's older newlib loops back.
+- **Statement shapes the vendors used**: lgAud folds the reply's device bits in two statements
+  (`devicechanged &= ~2; devicechanged |= ...`; one expression swaps the registers) and assigns
+  through a test (`if ((*hint = devicechanged) == 1)`); libkernl's kFindAddress walks its parameter
+  itself (a local copy moves the early exit), supplement_crt0 sets its semaphores in field order.
+- **Open, diagnosed in place**: InitTLB32MB (5 words: the last loop's first EntryHi is computed after
+  the exit test in the target -- a giv's preheader -- and before it here), strtof (its delay slots are
+  empty in the target; -fno-delayed-branch, -O1 and -fno-schedule-insns2 do not reproduce it).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
-FUNCTION` tries every order of a marked block). The rest of libkernl's C objects (the thread,
-TLB-setup, initsys/ExecPS2 and alarm objects, their static `Copy`/`setup`/`GetEntryAddress`
-syscall wrappers the map leaves as `s1~` placeholders), libgraph, libipu/libmpeg, libmc, the
-newlib stdio wrappers and libgcc's fp-bit are open. Still open: the strict-aliasing setting of the
-SDK, newlib, OVL1's heap/lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds
--01 and a (no probe separates them from 991111), and the generated tier's GCC near misses, not yet
-classified as amsurvey classified MW's.
+FUNCTION` tries every order of a marked block). libkernl's thread, tty/printf and SIF objects
+(sifcmd, sifrpc, the libmrpc copy), libgraph, libipu/libmpeg, libmc, libcdvd, the rest of libscf,
+newlib's stdio wrappers and libgcc's fp-bit are open, and in OVL1 lgAud's big calls (Init, Open,
+Read/Write, the mixer, the async reads), libnetb and the codec. automatch over OVL1's three library
+ranges (round 3a, `--max-size 0x400`) found nothing new: 298 tried, 0 hits. Still open: the
+strict-aliasing setting of the SDK, newlib, lgAud/libnetb and the codec (no function yet tells), the
+991111 rebuilds -01 and a (no probe separates them from 991111), and the generated tier's GCC near
+misses, not yet classified as amsurvey classified MW's.
 
 ### The recogniser and Medius by hand (round 2b)
 
@@ -3166,9 +3285,9 @@ What is open across lanes, and what comes next:
   structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
   string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780)
-  (include/tree), the erase(remove(...), end()) family (eight open
-  functions: the target builds end() once and copies it into erase's parameter after remove's
-  call -- include/vector's range erase), the class vector's destroy for elements with a virtual
+  (include/tree), the list instances of std::remove_if (0x29FE70, 0x3C6560, 0x352500, 0x50F670,
+  0x5F8AF0: find_if's two iterator copies in parameter order -- include/algorithm), the class
+  vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
   end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren; the zdb world's round 6
   measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall).

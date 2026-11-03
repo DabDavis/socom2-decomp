@@ -3,7 +3,7 @@
 # func_<VA> to the mangled name its source defines. SIZE excludes MW's zero padding.
 
 0x00180008 0x1C0 func_00180008  # MAIN unaligned
-0x001801C8 0x8 func_001801C8  # MAIN unaligned
+0x001801C8 0x8 _exit  # MAIN unaligned; by body (crt0's _exit: Exit(0) whatever the status; newlib's abort calls _exit(1) through it, as the demo's abort calls its crt0 stub 0x1401D0, unnamed there)
 0x001801D0 0x10 func_001801D0  # MAIN; s1~ ExitThread (one of 2)
 0x001801E0 0x9C _strdup__FPCcPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _strdup where SOCOM II's call this)
 0x00180280 0x314 _free__FPvPCci  # MAIN; s1:calls (SOCOM 1's CNode::SetName and SetModelname call _free where SOCOM II's call this; file and line passed as 0 here)
@@ -329,7 +329,7 @@
 0x001914F8 0xCC func_001914F8  # MAIN unaligned
 0x001915C8 0x64 calloc  # MAIN unaligned
 0x00191630 0xB4 func_00191630  # MAIN
-0x001916E8 0x58 func_001916E8  # MAIN unaligned
+0x001916E8 0x58 _close_r  # MAIN unaligned; by body (newlib's reent/closer.c: errno zeroed, close(fd), errno copied into ptr->_errno on -1; the demo's _close_r is 0x58 too)
 0x00191740 0x22C func_00191740  # MAIN
 0x00191970 0x1264 func_00191970  # MAIN
 0x00192BD8 0x8 func_00192BD8  # MAIN unaligned
@@ -354,7 +354,7 @@
 0x00193628 0x2F4 func_00193628  # MAIN unaligned
 0x00193920 0x16C func_00193920  # MAIN
 0x00193A90 0x4AC func_00193A90  # MAIN
-0x00193F40 0x5C func_00193F40  # MAIN
+0x00193F40 0x5C _fstat_r  # MAIN; by body (newlib's reent/fstatr.c: the same around fstat(fd, buf); the demo's _fstat_r is 0x5C too)
 0x00193FA0 0x104 func_00193FA0  # MAIN
 0x001940A8 0x3E0 func_001940A8  # MAIN unaligned
 0x00194488 0x94 func_00194488  # MAIN unaligned
@@ -367,7 +367,7 @@
 0x001947F0 0xC func_001947F0  # MAIN
 0x00194800 0x24 func_00194800  # MAIN
 0x00194828 0x1C func_00194828  # MAIN unaligned
-0x00194848 0x60 func_00194848  # MAIN unaligned
+0x00194848 0x60 _lseek_r  # MAIN unaligned; by body (newlib's reent/lseekr.c: the same around lseek(fd, pos, whence); the demo's _lseek_r is 0x60 too)
 0x001948A8 0x154 func_001948A8  # MAIN unaligned
 0x00194A00 0x64 func_00194A00  # MAIN
 0x00194A68 0x1C8 func_00194A68  # MAIN unaligned
@@ -400,15 +400,15 @@
 0x00196898 0x184 func_00196898  # MAIN unaligned
 0x00196A20 0xCC func_00196A20  # MAIN
 0x00196AF0 0x70 func_00196AF0  # MAIN
-0x00196B60 0x60 func_00196B60  # MAIN
+0x00196B60 0x60 _open_r  # MAIN; by body (newlib's reent/openr.c: the same around open(file, flags, mode))
 0x00196BC0 0x5C func_00196BC0  # MAIN
 0x00196C20 0x70 printf  # MAIN; s1:callee
 0x00196C90 0x84 func_00196C90  # MAIN
 0x00196D18 0x20 puts  # MAIN unaligned; by hand (newlib's: _puts_r on _impure_ptr; the FIFO kick passes it "D9 Busy"/"D8 Busy") -- the sound lane
 0x00196D38 0x9EC qsort  # MAIN unaligned; s1:calls (DiIntersect::SortNearToFar calls it with (idx, n, 4, _cmpdi) where SOCOM 1's calls qsort; newlib's, 0x9EC bytes against SOCOM 1's 0xA24) -- the zdb-world lane
-0x00197728 0x18 func_00197728  # MAIN unaligned
+0x00197728 0x18 srand  # MAIN unaligned; s1:order (the demo's rand object 0x3E48E0: srand, before rand; stores the seed, zero-extended, in the reentrancy block's _rand_next that rand reads)
 0x00197740 0x64 rand  # MAIN; s1:callee by hand (zAnimRandomWeightTick calls it where SOCOM 1 calls rand; newlib's 64-bit LCG)
-0x001977A8 0x60 func_001977A8  # MAIN unaligned
+0x001977A8 0x60 _read_r  # MAIN unaligned; by body (newlib's reent/readr.c: the same around read(fd, buf, cnt); the demo's _read_r is 0x60 too)
 0x00197808 0x64 realloc  # MAIN unaligned; s1:calls (_realloc calls it where SOCOM 1's calls realloc) -- the sound lane
 0x00197870 0x5A0 func_00197870  # MAIN
 0x00197E10 0x34 func_00197E10  # MAIN
@@ -418,20 +418,20 @@
 0x00198058 0x48 isinf  # MAIN unaligned; s1:exact
 0x001980A0 0x3C isnan  # MAIN; s1:exact
 0x001980E0 0x1E4 scalbn  # MAIN; s1:exact
-0x001982C8 0x58 func_001982C8  # MAIN unaligned
+0x001982C8 0x58 _sbrk_r  # MAIN unaligned; by body (newlib's reent/sbrkr.c: the same around sbrk(incr), failing on (void *)-1; the demo's _sbrk_r is 0x5C)
 0x00198320 0x58 func_00198320  # MAIN
 0x00198378 0x64 func_00198378  # MAIN unaligned
 0x001983E0 0x3C copysignf  # MAIN; s1:exact
 0x00198420 0xC8 scalbnf  # MAIN; s1:exact
 0x001984E8 0x70 func_001984E8  # MAIN unaligned
 0x00198558 0x80 func_00198558  # MAIN unaligned
-0x001985D8 0xD8 func_001985D8  # MAIN unaligned
+0x001985D8 0xD8 _raise_r  # MAIN unaligned; s1:callee by hand (raise's one callee, as the demo's raise calls _raise_r)
 0x001986B0 0x98 func_001986B0  # MAIN
-0x00198748 0x20 func_00198748  # MAIN unaligned
+0x00198748 0x20 raise  # MAIN unaligned; s1:callee by hand (abort's first call, raise(6), where the demo's abort calls raise; _raise_r(_impure_ptr, sig) as the demo's raise)
 0x00198768 0x24 func_00198768  # MAIN unaligned
 0x00198790 0x1C func_00198790  # MAIN
 0x001987B0 0x20 func_001987B0  # MAIN
-0x001987D0 0x5C func_001987D0  # MAIN
+0x001987D0 0x5C _kill_r  # MAIN; by body (newlib's reent/signalr.c: the same around kill(pid, sig); the demo's _kill_r is 0x5C too)
 0x00198830 0x14 func_00198830  # MAIN
 0x00198848 0x88 func_00198848  # MAIN unaligned
 0x001988D0 0x90 sprintf  # MAIN; s1:callee
@@ -458,7 +458,7 @@
 0x00199A10 0x84 strstr  # MAIN; s1:callee
 0x00199A98 0xF14 _strtod_r  # MAIN unaligned; s1:calls (strtod, 0x19A9B0, tail-calls it with the reentrancy pointer first, as SOCOM 1's strtod calls _strtod_r) -- the integrator
 0x0019A9B0 0x24 strtod  # MAIN; s1:calls (CRdrFile::MakeUnion calls it where SOCOM 1's calls strtod; the same body -- _strtod_r(_impure_ptr, s, end) -- tail-jumped where SOCOM 1's newlib used jal) -- the rdr lane
-0x0019A9D8 0x28 func_0019A9D8  # MAIN unaligned
+0x0019A9D8 0x28 strtof  # MAIN unaligned; by body (newlib's stdlib/strtod.c: strtof after strtod in the same object, (float)strtod(s, se) through dptofp)
 0x0019AA00 0x20 strtok  # MAIN; s1:calls (PS2FileName calls it where SOCOM 1's calls strtok; SOCOM 1's body: the reentrancy block + 92 handed to strtok_r) -- the UI-widgets lane; the seed's 0xE8 row split: its tail jump lands on the next instruction, strtok_r
 0x0019AA20 0xC8 strtok_r  # MAIN; s1:exact by hand (SOCOM 1's strtok_r word for word at its start: the delimiter scan, lb/beql); split off strtok's row, which tail-jumps into it -- the integrator
 0x0019AAE8 0x238 _strtol_r  # MAIN unaligned; s1:calls
@@ -484,7 +484,7 @@
 0x0019E7E8 0x54 vsprintf  # MAIN unaligned; s1:calls (SOCOM 1's identical CConsole::Debug calls vsprintf at the same instruction; 0x54 bytes in both) -- the entity lane
 0x0019E840 0x54 func_0019E840  # MAIN
 0x0019E898 0x110 func_0019E898  # MAIN unaligned
-0x0019E9A8 0x60 func_0019E9A8  # MAIN unaligned
+0x0019E9A8 0x60 _write_r  # MAIN unaligned; by body (newlib's reent/writer.c: the same around write(fd, buf, cnt); the demo's _write_r is 0x60 too)
 0x0019EA08 0x10C func_0019EA08  # MAIN unaligned
 0x0019EB18 0x74 __muldi3  # MAIN unaligned; s1:exact
 0x0019EB90 0x694 __divdi3  # MAIN; s1:exact
@@ -683,13 +683,13 @@
 0x001A40E8 0x7C write  # MAIN unaligned; s1:exact
 0x001A4168 0x74 read  # MAIN unaligned; s1:exact
 0x001A41E0 0x28 open  # MAIN; s1:gap
-0x001A4208 0x8 func_001A4208  # MAIN unaligned
-0x001A4210 0x8 func_001A4210  # MAIN
-0x001A4218 0x8 func_001A4218  # MAIN unaligned
+0x001A4208 0x8 close  # MAIN unaligned; s1:order (libkernl's glue object, the demo's 0x15B9A0, in the demo's order: close after open, before ioctl; _close_r calls it)
+0x001A4210 0x8 ioctl  # MAIN; s1:order (libkernl's glue object in the demo's order: ioctl after close, before lseek)
+0x001A4218 0x8 lseek  # MAIN unaligned; s1:order (libkernl's glue object in the demo's order: lseek after ioctl, before sbrk; _lseek_r calls it)
 0x001A4220 0xAC sbrk  # MAIN; s1:exact
-0x001A42D0 0x8 func_001A42D0  # MAIN
+0x001A42D0 0x8 isatty  # MAIN; s1:order (libkernl's glue object in the demo's order: isatty after sbrk, before fstat)
 0x001A42D8 0x14 fstat  # MAIN unaligned; s1:exact
-0x001A42F0 0x8 func_001A42F0  # MAIN
+0x001A42F0 0x8 getpid  # MAIN; s1:order (libkernl's glue object in the demo's order: getpid after fstat, before kill)
 0x001A42F8 0x28 kill  # MAIN unaligned; s1:exact
 0x001A4320 0x28 stat  # MAIN; s1:gap
 0x001A4348 0x28 unlink  # MAIN unaligned; s1:gap
@@ -753,10 +753,8 @@
 0x001A6110 0x3C sceSifSendCmd  # MAIN; s1:exact
 0x001A6150 0x3C isceSifSendCmd  # MAIN; s1:exact
 0x001A6190 0x128 _sceSifCmdIntrHdlr  # MAIN; s1:exact
-0x001A62B8 0xAC sceSifWriteBackDCache  # MAIN unaligned; s1:gap
-0x001A6364 0x4 func_001A6364  # MAIN unaligned
-0x001A6368 0x4 func_001A6368  # MAIN unaligned; s1~ sceSifInitRpc (one of 2)
-0x001A636C 0x198 sceSifInitRpc  # MAIN unaligned; s1:gap
+0x001A62B8 0xB0 sceSifWriteBackDCache  # MAIN unaligned; s1:gap; 0xB0 as the demo's (the GCC lane: its asm ends in its own `jr ra; nop`, then GCC's `jr ra` whose delay slot is the next object's first word -- the seed cut that last `jr ra` off as func_001A6364, merged back)
+0x001A6368 0x19C sceSifInitRpc  # MAIN unaligned; s1:gap; starts at 0x1A6368, 0x19C as the demo's (the GCC lane: its prologue's first word, the delay slot of sceSifWriteBackDCache's last `jr ra`, was cut off as func_001A6368 -- merged back)
 0x001A6508 0x24 sceSifExitRpc  # MAIN unaligned; s1:exact
 0x001A6530 0xA8 _sceRpcGetPacket  # MAIN; s1:gap
 0x001A65D8 0x1C func_001A65D8  # MAIN unaligned; s1~ _sceRpcFreePacket (one of 2)
@@ -854,21 +852,21 @@
 0x001ABEC8 0x110 sceSifRebootIop  # MAIN unaligned; s1:exact
 0x001ABFD8 0x60 SetTLBHandler  # MAIN unaligned; s1:exact
 0x001AC038 0x84 SetDebugHandler  # MAIN unaligned; s1:exact
-0x001AC0C0 0x10 func_001AC0C0  # MAIN; s1~ Copy (one of 5)
-0x001AC0D0 0x38 func_001AC0D0  # MAIN; s1~ kCopy (one of 5)
-0x001AC108 0x10 func_001AC108  # MAIN unaligned; s1~ GetEntryAddress (one of 3)
-0x001AC118 0x10 func_001AC118  # MAIN unaligned; s1~ setup (one of 5)
+0x001AC0C0 0x10 Copy@tlbfunc  # MAIN; s1~ Copy (one of 5); s1:order (the demo's TLB object 0x1638D0: its static Copy, the third function, syscall 0x5A here and there; `NAME@UNIT` is a static several objects define, README "The GCC front")
+0x001AC0D0 0x38 kCopy@tlbfunc  # MAIN; s1~ kCopy (one of 5); s1:order (the demo's TLB object 0x1638D0: its static kCopy, the fourth function, a word copy here and there)
+0x001AC108 0x10 GetEntryAddress@tlbfunc  # MAIN unaligned; s1~ GetEntryAddress (one of 3); s1:order (the demo's TLB object 0x1638D0: its static GetEntryAddress, the fifth function, syscall 0x5B)
+0x001AC118 0x10 setup@tlbfunc  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's TLB object 0x1638D0: its static setup, the sixth function, syscall 0x74)
 0x001AC128 0xC4 InitTLBFunctions  # MAIN unaligned; s1:exact
 0x001AC1F0 0x10 PutTLBEntry  # MAIN; s1:exact
-0x001AC200 0x10 func_001AC200  # MAIN
+0x001AC200 0x10 iPutTLBEntry  # MAIN; s1:order (the demo's TLB object 0x1638D0: iPutTLBEntry between PutTLBEntry and _SetTLBEntry, syscall -0x55 here and there)
 0x001AC210 0x10 _SetTLBEntry  # MAIN; s1:callee
 0x001AC220 0x30 SetTLBEntry  # MAIN; s1:exact
 0x001AC250 0x10 iSetTLBEntry  # MAIN; s1:exact
-0x001AC260 0x10 func_001AC260  # MAIN
+0x001AC260 0x10 GetTLBEntry  # MAIN; s1:order (the demo's TLB object 0x1638D0: GetTLBEntry between iSetTLBEntry and iGetTLBEntry, syscall 0x57)
 0x001AC270 0x10 iGetTLBEntry  # MAIN; s1:exact
 0x001AC280 0x10 ProbeTLBEntry  # MAIN; s1:exact
-0x001AC290 0x10 func_001AC290  # MAIN
-0x001AC2A0 0x10 func_001AC2A0  # MAIN
+0x001AC290 0x10 iProbeTLBEntry  # MAIN; s1:order (the demo's TLB object 0x1638D0: iProbeTLBEntry between ProbeTLBEntry and ExpandScratchPad, syscall -0x58)
+0x001AC2A0 0x10 ExpandScratchPad  # MAIN; s1:order (the demo's TLB object 0x1638D0: ExpandScratchPad before InitTLB, syscall 0x59)
 0x001AC2B0 0x40 InitTLB  # MAIN; s1:exact
 0x001AC2F0 0x1F4 InitTLB32MB  # MAIN; s1:exact
 0x001AC500 0x11C _kTLBException  # MAIN; s1:ref (taken by address where SOCOM 1 takes _kTLBException's); split: the row held the demo's whole assembler object 0x163E00-0x164160, its three functions at the same offsets (+0, +0x140, +0x240), the gaps zero
@@ -877,33 +875,33 @@
 0x001AC860 0x48 DIntr  # MAIN; s1:exact
 0x001AC8A8 0x18 EIntr  # MAIN unaligned; s1:exact
 0x001AC8C0 0x48 supplement_crt0  # MAIN; s1:exact
-0x001AC908 0x10 func_001AC908  # MAIN unaligned; s1~ Copy (one of 5)
-0x001AC918 0x38 func_001AC918  # MAIN unaligned; s1~ kCopy (one of 3)
+0x001AC908 0x10 Copy@initsys  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's initsys object 0x1641C0: its static Copy, after supplement_crt0, syscall 0x5A)
+0x001AC918 0x38 kCopy@initsys  # MAIN unaligned; s1~ kCopy (one of 3); s1:order (the demo's initsys object 0x1641C0: its static kCopy, a word copy, after Copy)
 0x001AC950 0x40 kFindAddress  # MAIN; s1:exact
 0x001AC990 0x10 FindAddress  # MAIN; s1:exact
 0x001AC9A0 0x34 GetSystemCallEntry  # MAIN; s1:exact
 0x001AC9D8 0xFC InitSystemCallTableAddress  # MAIN unaligned; s1:exact
-0x001ACAD8 0x10 func_001ACAD8  # MAIN unaligned; s1~ setup (one of 5)
+0x001ACAD8 0x10 setup@initsys  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's initsys object 0x1641C0: its static setup, before _InitSys, syscall 0x74)
 0x001ACAE8 0x3C _InitSys  # MAIN unaligned; s1:exact
-0x001ACB28 0x10 func_001ACB28  # MAIN unaligned; s1~ setup (one of 5)
-0x001ACB38 0x10 func_001ACB38  # MAIN unaligned; s1~ Copy (one of 5)
-0x001ACB48 0x38 func_001ACB48  # MAIN unaligned; s1~ kCopy (one of 3)
-0x001ACB80 0x10 func_001ACB80  # MAIN; s1~ GetEntryAddress (one of 3)
+0x001ACB28 0x10 setup@libosd  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's InitExecPS2 object 0x164428: its static setup, the first function, syscall 0x74)
+0x001ACB38 0x10 Copy@libosd  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's InitExecPS2 object 0x164428: its static Copy, the second, syscall 0x5A)
+0x001ACB48 0x38 kCopy@libosd  # MAIN unaligned; s1~ kCopy (one of 3); s1:order (the demo's InitExecPS2 object 0x164428: its static kCopy, the third, a word copy)
+0x001ACB80 0x10 GetEntryAddress@libosd  # MAIN; s1~ GetEntryAddress (one of 3); s1:order (the demo's InitExecPS2 object 0x164428: its static GetEntryAddress, the fourth, syscall 0x5B)
 0x001ACB90 0x68 PatchIsNeeded  # MAIN; s1:exact
 0x001ACBF8 0xAC InitExecPS2  # MAIN unaligned; s1:exact
-0x001ACCA8 0x10 func_001ACCA8  # MAIN unaligned; s1~ Copy (one of 5)
-0x001ACCB8 0x30 kCopy  # MAIN unaligned; s1:exact
-0x001ACCE8 0x10 func_001ACCE8  # MAIN unaligned; s1~ setup (one of 5)
+0x001ACCA8 0x10 Copy@exit  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static Copy, the first function, syscall 0x5A)
+0x001ACCB8 0x30 kCopy@exit  # MAIN unaligned; s1:exact; s1:order (the demo's ExecPS2 object 0x1645A8: its static kCopy, the byte copy; qualified as the other four objects' are)
+0x001ACCE8 0x10 setup@exit  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static setup, the third, syscall 0x74)
 0x001ACCF8 0x118 SetArg  # MAIN unaligned; s1:exact
 0x001ACE10 0x8 TerminateLibrary  # MAIN; s1:callee
 0x001ACE18 0x70 ExecPS2  # MAIN unaligned; s1:exact
 0x001ACE88 0x48 LoadExecPS2  # MAIN unaligned; s1:exact
 0x001ACED0 0x28 Exit  # MAIN; s1:exact
 0x001ACEF8 0x4C ExecOSD  # MAIN unaligned; s1:exact
-0x001ACF48 0x10 func_001ACF48  # MAIN unaligned; s1~ setup (one of 5)
-0x001ACF58 0x10 func_001ACF58  # MAIN unaligned; s1~ Copy (one of 5)
-0x001ACF68 0x38 func_001ACF68  # MAIN unaligned; s1~ kCopy (one of 5)
-0x001ACFA0 0x10 func_001ACFA0  # MAIN; s1~ GetEntryAddress (one of 3)
+0x001ACF48 0x10 setup@alarm  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's InitAlarm object 0x164848: its static setup, the first function, syscall 0x74)
+0x001ACF58 0x10 Copy@alarm  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's InitAlarm object 0x164848: its static Copy, the second, syscall 0x5A)
+0x001ACF68 0x38 kCopy@alarm  # MAIN unaligned; s1~ kCopy (one of 5); s1:order (the demo's InitAlarm object 0x164848: its static kCopy, the third, a word copy)
+0x001ACFA0 0x10 GetEntryAddress@alarm  # MAIN; s1~ GetEntryAddress (one of 3); s1:order (the demo's InitAlarm object 0x164848: its static GetEntryAddress, the fourth, syscall 0x5B)
 0x001ACFB0 0xD4 InitAlarm  # MAIN; s1:exact
 0x001AD088 0x49C __ieee754_exp  # MAIN unaligned; s1:exact
 0x001AD528 0xF4C __ieee754_pow  # MAIN unaligned; s1:exact
@@ -1498,25 +1496,25 @@
 0x001ECC40 0xA8 DisplayMessage__10CCoreStateFPCcPCciiiUcUcc  # OVL1; by hand (the states lane, round 15): slot 0x2C of CCoreState's vtable (0x404F60), CGameState::DisplayMessage's override; byte-exact from st_core.cpp
 0x001ECCF0 0x264 UnInit__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's UnInit slot)
 0x001ECF60 0x94 FreeVector<Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>>__FRQ23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>_v  # OVL1; by hand (the states lane, round 15): zsys.h's FreeVector as a plain function template over the film's cue vector (8-byte elements, a float and a word: 0x1EF190's copy loop), its instance following its one caller CCinematicState::UnInit; CMovieCue is our name
-0x001ED000 0x8 func_001ED000  # OVL1
+0x001ED000 0x8 clear__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 17): the cue vector's clear() (`j` to the deleter's clear 0x1EF310), its out-of-line copy following UnInit with FreeVector's (0x1ECF60), reverse of their first use: both called from an inline helper inlined one level (FreeVector is zsys.h's inline, taller than the budget)
 0x001ED010 0x54C Tick__15CCinematicStateFf  # OVL1; s1:vtable (CCinematicState's Tick slot)
 0x001ED560 0x4F4 Init__15CCinematicStateFv  # OVL1; s1:vtable (CCinematicState's Init slot)
-0x001EDA60 0x408 func_001EDA60  # OVL1; s1~ SetMovie__15CCinematicStateFPCc (the UI-commands lane's lead: SOCOM 1's paired handler calls SetMovie from the same place, but SOCOM II's takes three arguments after this -- (name, 0, 0) at that call -- so SOCOM 1's signature does not carry; the states lane)
-0x001EDE70 0x18 func_001EDE70  # OVL1
-0x001EDE90 0xC func_001EDE90  # OVL1
-0x001EDEA0 0x1C func_001EDEA0  # OVL1
-0x001EDEC0 0x10 func_001EDEC0  # OVL1
-0x001EDED0 0x3C func_001EDED0  # OVL1
-0x001EDF10 0x8 func_001EDF10  # OVL1
-0x001EDF20 0x1C func_001EDF20  # OVL1
+0x001EDA60 0x408 SetMovie__15CCinematicStateFPCcUcUc  # OVL1; s1~ SetMovie__15CCinematicStateFPCc (the UI-commands lane's lead: SOCOM 1's paired handler calls SetMovie from the same place, but SOCOM II's takes three arguments after this -- (name, 0, 0) at that call -- so SOCOM 1's signature does not carry; the states lane); by hand (the states lane, round 17): SOCOM 1's SetMovie (st_core.cpp, before ~CCinematicState as here), its two callers the menu's PlayMPEG commands (0x27AAEC, 0x27ABB0) as SOCOM 1's; SOCOM II's takes a flag (stored at 0x28) and a subtitles flag (lbu-loaded by both callers) -- with it set the subtitles' rdr is read through an inline helper inlined one level, so every accessor below is called out of line
+0x001EDE70 0x18 end__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>Fv  # OVL1; by hand (the states lane, round 17): the cue vector's end(), its out-of-line copy following SetMovie, its only caller (copies in reverse of their first use there)
+0x001EDE90 0xC begin__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>Fv  # OVL1; by hand (the states lane, round 17): the cue vector's begin(), its out-of-line copy following SetMovie
+0x001EDEA0 0x1C push_back__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>FRC9CMovieCue  # OVL1; by hand (the states lane, round 17): the cue vector's push_back (insert(end, 1, x) out of line, 0x1EED40), its copy following SetMovie
+0x001EDEC0 0x10 __ct__9CMovieCueFfPc  # OVL1; by hand (the states lane, round 17): a film's cue built from its AT time and its PRINT text (SetMovie's loop; the names ours)
+0x001EDED0 0x3C Item__5_zrdrCFUi  # OVL1; by hand (the states lane, round 17): zrdr.h's _zrdr::Item(i), its out-of-line copy from st_core.cpp (SetMovie's first call to it) -- the overlay's linked copy, called by the zrdr units' recursive walkers (0x32CCB0, 0x32D1B0, 0x334EA0-0x335E20, 0x385EA0)
+0x001EDF10 0x8 reserve__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>FUi  # OVL1; by hand (the states lane, round 17): the class vector's reserve forwarder (`j` to __vector_imp's, 0x1EF190, as vector::clear()'s copy 0x1ED000 jumps to the deleter's clear), its copy following SetMovie
+0x001EDF20 0x1C Count__5_zrdrCFv  # OVL1; by hand (the states lane, round 17): zrdr.h's _zrdr::Count(), its out-of-line copy from st_core.cpp (SetMovie's first call) -- the overlay's linked copy, called by the zrdr units' recursive walkers as Item's
 0x001EDF40 0xC0 __dt__15CCinematicStateFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001EE000 0x77C sort<Q33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator,7CueLess>__3stdFQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator7CueLess_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; sort of st_core.cpp's film cues (0x1EDA60 calls it with an empty comparator by value comparing m_time, its name ours: struct CueLess { bool operator()(CMovieCue a, CMovieCue b) const }); the probe build/p6/cue.cpp; byte-exact as written, its shuffle static's relocations aside)
 0x001EE780 0x3BC func_001EE780  # OVL1
 0x001EEB40 0x30 assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; ours (the MSL headers round 5: include/string's assign(const char *), out of class, replace(0, size(), s) as a tail call; st_core.cpp's tail emits it, byte-exact -- the states lane's stand-in under the placeholder retired)
 0x001EEB70 0x30 append__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; ours (the MSL headers round 5: include/string's append(const char *), out of class, replace(size(), 0, s) as a tail call; st_core.cpp's tail emits it, byte-exact)
 0x001EEBA0 0x198 reserve__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi  # OVL1; s1:calls (fprintf/abort twice, new, delete -- SOCOM 1's reserve of it; CZAnimExVector::Add grows by it before its inlined push_back)
-0x001EED40 0x444 func_001EED40  # OVL1
-0x001EF190 0x180 func_001EF190  # OVL1
+0x001EED40 0x444 insert__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>FP9CMovieCueUiRC9CMovieCue  # OVL1; by hand (the states lane, round 17): the cue vector's insert(position, n, x), push_back's (0x1EDEA0 calls it with the end and 1), in st_core.cpp's template tail
+0x001EF190 0x180 reserve__Q23std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>FUi  # OVL1; by hand (the states lane, round 17): the cue vector's reserve, out of class (the forwarder 0x1EDF10 jumps to it), in st_core.cpp's template tail
 0x001EF310 0x8 clear__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 15): the cue vector's deleter clear (out of class, size zeroed), called by FreeVector<cues> (0x1ECF60) and the vector's clear() copy 0x1ED000; st_core.cpp's tail emits it byte-exact
 0x001EF320 0x68 __dt__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv  # OVL1; by hand (the states lane, round 15): the cue vector's deleter destructor (clear, the storage freed), FreeVector<cues>'s temporary's, called with 0; st_core.cpp's tail emits it byte-exact
 0x001EF390 0x68 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCc  # OVL1; ours (the MSL headers round 5: include/string's replace(pos, n1, const char *), out of class: s..s+strlen(s) and the iterator category handed to the template replace 0x1EE780; st_core.cpp's tail emits it, byte-exact)
@@ -2256,35 +2254,35 @@
 0x002393F0 0x17C Tick__17CRadioIcon_StaticFf  # OVL1; s1:calls; by hand (CRadioIcon_Static's vtable slot 12, C2D's Tick: SOCOM 1's CZStaticRadioBitmap::HudTick, renamed in SOCOM II's RTTI)
 0x00239570 0x178 Init__17CRadioIcon_StaticFP3C2D  # OVL1; by hand (the HUD lane: the static radio icon's six textures, listed under its parent; after the icons' Ticks in hud_mpinfobox.cpp, the dynamic icon's own inlined into CWhosTalking::Init; the name ours)
 0x002396F0 0x78 __ct__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc  # OVL1; include/string's basic_string(const char *), byte-exact (build/scratch/str/ctor_probe.cpp): the words zeroed, strlen, reserve, the template replace with its category byte; the copy closing the HUD's info box unit -- the integrator
-0x00239770 0x80 func_00239770  # OVL1
-0x002397F0 0x188 func_002397F0  # OVL1
-0x00239980 0xF0 func_00239980  # OVL1
-0x00239A70 0xB0 func_00239A70  # OVL1
-0x00239B20 0x68 func_00239B20  # OVL1
-0x00239B90 0x110 func_00239B90  # OVL1
-0x00239CA0 0x9C func_00239CA0  # OVL1
-0x00239D40 0x2E4 func_00239D40  # OVL1
-0x0023A030 0x140 func_0023A030  # OVL1
-0x0023A170 0xD0 func_0023A170  # OVL1
-0x0023A240 0x78 func_0023A240  # OVL1
-0x0023A2C0 0x18 func_0023A2C0  # OVL1
+0x00239770 0x80 GetNewRating__11CRatingTeamFiPf  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp, SOCOM II's Elo ratings -- a team's walk for the player whose id is at 0 of each 0x18-byte record, the new rating at 0x14 out; CRatingMatch::GetNewRating's call per team)
+0x002397F0 0x188 Update__11CRatingTeamFbiff  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- the Elo step: 1/(1+10^((opponent - rating)/400)) through pow, each player's rating plus K times share minus expectation, floored at 200; the team's own for one player a side)
+0x00239980 0xF0 SetShares__11CRatingTeamFf  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- each player's share of the team's result by its score over the team's summed score, returning their sum)
+0x00239A70 0xB0 SetAverage__11CRatingTeamFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- the team's rating at 0x10, its players' ratings averaged over the list's size)
+0x00239B20 0x68 SumScores__11CRatingTeamFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- the players' scores summed into 0x1C)
+0x00239B90 0x110 __dt__11CRatingTeamFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- deletes each player, clears the list, the list's three this-tested destructor levels; ~CRatingMatch's call)
+0x00239CA0 0x9C GetNewRating__12CRatingMatchFiPf  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- each of the two teams asked in turn until one has the player; CMPExitState's 0x2253C0 calls it)
+0x00239D40 0x2E4 Compute__12CRatingMatchFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- sums, averages, the draw's weight by the game's length 3/5/7/9/11, the shares, K = 3 x players or 50, both teams' Update)
+0x0023A030 0x140 AddPlayer__12CRatingMatchFiiif  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- finds the team by its id at 0xC, news a 0x18-byte player and push_backs it)
+0x0023A170 0xD0 AddTeam__12CRatingMatchFiibf  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- news a 0x24-byte team into the first free of two slots)
+0x0023A240 0x78 __dt__12CRatingMatchFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- deletes both teams)
+0x0023A2C0 0x18 __ct__12CRatingMatchFv  # OVL1; ours (the HUD lane, round 19: mp_rating.cpp -- the two team slots and two flags zeroed; CMPExitState's 0x2253C0 builds one on its stack)
 0x0023A2E0 0x8 func_0023A2E0  # OVL1
 0x0023A2F0 0x74 func_0023A2F0  # OVL1
 0x0023A370 0x8 func_0023A370  # OVL1
 0x0023A380 0x2B4 func_0023A380  # OVL1
 0x0023A640 0xE4 func_0023A640  # OVL1
-0x0023A730 0x12C func_0023A730  # OVL1
+0x0023A730 0x12C AdjustVolume__5CRecoFi  # OVL1; ours (the HUD lane, round 19: reco.cpp, SOCOM II's voice recogniser -- the recording volume stepped by a0 and clamped to the .data levels 100/20, then lgAudEnumerate/lgAudOpen for the first device that opens and lgAudSetRecordingVolume; 0x23A380 calls it with +5/-5)
 0x0023A860 0x3CC func_0023A860  # OVL1
 0x0023AC30 0xA8 func_0023AC30  # OVL1
 0x0023ACE0 0xA8 func_0023ACE0  # OVL1
 0x0023AD90 0x378 func_0023AD90  # OVL1
-0x0023B110 0x7C func_0023B110  # OVL1
-0x0023B190 0x70 func_0023B190  # OVL1
-0x0023B200 0x100 func_0023B200  # OVL1
-0x0023B300 0x23C func_0023B300  # OVL1
+0x0023B110 0x7C Resume__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the push-to-talk flags at 0x38: bit 3 set, bits 2 and 4 cleared, the timer at 0x3C zeroed, then bits 4 and 2 set; the radio menu's calls)
+0x0023B190 0x70 Suspend__5CRecoFb  # OVL1; ours (the HUD lane, round 19: reco.cpp -- bit 3 set, bits 2 and 4 cleared, the timer at 0x3C 0 or the .data delay 1.0 by the flag; CHUD::Tick, PlayCamera and the radio menu call it)
+0x0023B200 0x100 UnInit__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the engine stopped if initialised and running, its context deactivated, closed and zeroed, the library's two shutdowns, the initialised bit cleared; ~CHUD's call)
+0x0023B300 0x23C Init__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the speech library opened with the result callback 0x23A860, the language loaded, the engine opened into 0, the notify callback 0x23A640, the first context (0x34 = 0) made the engine's immediate one and started, three engine parameters, ExecServer, the initialised bit and Suspend(true) inlined; true when it all worked; CHUD::Init's call)
 0x0023B540 0x310 func_0023B540  # OVL1
-0x0023B850 0x44 func_0023B850  # OVL1
-0x0023B8A0 0xF0 func_0023B8A0  # OVL1
+0x0023B850 0x44 __dt__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the recogniser's empty destructor, which its initialiser 0x3FF7B0 registers)
+0x0023B8A0 0xF0 __ct__5CRecoFv  # OVL1; ours (the HUD lane, round 19: reco.cpp -- the 0x40-byte recogniser's constructor: the handles and files zeroed three contexts at a time, 0xDEADBEEF at 0x34, the five flags and the 27-bit rest at 0x38; the initialiser 0x3FF7B0 builds the global 0x414680 with it)
 0x0023B990 0x14 SetTrans__12SelectedSlotFf  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); by hand (the HUD lane: slot 11 of SelectedSlot's vtable 0x405D00 -- its name's SetTrans)
 0x0023B9B0 0x2A0 func_0023B9B0  # OVL1
 0x0023BC50 0x2B4 func_0023BC50  # OVL1
@@ -2353,10 +2351,10 @@
 0x00243398 0x118 func_00243398  # OVL1 unaligned
 0x002434B0 0xEC heap_Free  # OVL1; s1:callee
 0x002435A0 0x78 func_002435A0  # OVL1
-0x00243618 0x24 func_00243618  # OVL1 unaligned
+0x00243618 0x24 heap_GetVersion  # OVL1 unaligned; s1:order (the demo heap object 0x378348: heap_GetVersion before heap_Open, 0x20 bytes there; stores the version 0x01000001, 0x800B0183 for a null pointer, as the demo's)
 0x00243640 0xC8 heap_Open  # OVL1; s1:calls
 0x00243708 0x58 func_00243708  # OVL1 unaligned
-0x00243760 0xDC func_00243760  # OVL1
+0x00243760 0xDC SearchFor  # OVL1; s1:order (the demo heap object 0x378348: its last function, SearchFor -- the same search of a counted list, unrolled by four here (-funroll-loops))
 0x00243840 0x3A4 func_00243840  # OVL1
 0x00243BE8 0x7C lgAudEnumHint  # OVL1 unaligned; s1:exact
 0x00243C68 0x1D8 lgAudEnumerate  # OVL1 unaligned; s1:callee
@@ -2367,23 +2365,23 @@
 0x00244378 0x178 func_00244378  # OVL1 unaligned
 0x002444F0 0x128 func_002444F0  # OVL1
 0x00244618 0x120 func_00244618  # OVL1 unaligned
-0x00244738 0xE8 func_00244738  # OVL1 unaligned
-0x00244820 0xE8 func_00244820  # OVL1
+0x00244738 0xE8 lgAudGetRemainingPlaybackBytes  # OVL1 unaligned; s1:order (the demo's lgAud object 0x3B5980: after lgAudSetMixer as there; RPC 0x13 and the message 'lgAudGetRemainingPlaybackBytes: rpc call failed')
+0x00244820 0xE8 lgAudGetAvailableRecordingBytes  # OVL1; s1:order (the demo's lgAud object: after GetRemainingPlaybackBytes; RPC 0x12 and its own message)
 0x00244908 0xD4 lgAudStartRecording  # OVL1 unaligned; s1:callee
 0x002449E0 0xD4 lgAudStopRecording  # OVL1; s1:callee
-0x00244AB8 0xD4 func_00244AB8  # OVL1 unaligned
-0x00244B90 0xD4 func_00244B90  # OVL1
-0x00244C68 0xD4 func_00244C68  # OVL1 unaligned
-0x00244D40 0xFC func_00244D40  # OVL1
+0x00244AB8 0xD4 lgAudStartPlayback  # OVL1 unaligned; s1:order (the demo's lgAud object: after lgAudStopRecording; RPC 6 and the message 'lgAudStartPlayback: rpc call failed')
+0x00244B90 0xD4 lgAudStopPlayback  # OVL1; s1:order (the demo's lgAud object: after lgAudStartPlayback; RPC 7 and its own message)
+0x00244C68 0xD4 lgAudResumePlayback  # OVL1 unaligned; s1:order (the demo's lgAud object: after lgAudStopPlayback; RPC 0x11 and its own message)
+0x00244D40 0xFC lgAudSetPlaybackVolume  # OVL1; s1:order (the demo's lgAud object: after lgAudResumePlayback, before lgAudSetRecordingVolume (RPC 0xE); RPC 0xD, the two volume bytes as SetRecordingVolume's)
 0x00244E40 0xFC lgAudSetRecordingVolume  # OVL1; s1:callee
-0x00244F40 0xF0 func_00244F40  # OVL1
+0x00244F40 0xF0 lgAudPrepareForReboot  # OVL1; by hand (its messages 'lgAudPrepareForReboot: rpc call failed' and '...: error: an async call is in progress'; new in liblgaud 1.08, not in the demo)
 0x00245030 0x50 lgAudASync  # OVL1; s1:exact
-0x00245080 0x80 func_00245080  # OVL1
+0x00245080 0x80 fnReadEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudASync, before lgAudARead; copies the reply's data out, the read's end callback)
 0x00245100 0x13C lgAudARead  # OVL1; s1:callee
-0x00245240 0x58 func_00245240  # OVL1
+0x00245240 0x58 fnWriteEndFunc  # OVL1; s1:order (the demo's lgAud object: the static after lgAudARead, before lgAudAWrite)
 0x00245298 0x164 func_00245298  # OVL1 unaligned
 0x00245400 0x164 func_00245400  # OVL1
-0x00245568 0x58 func_00245568  # OVL1 unaligned
+0x00245568 0x58 fnCheckDeviceChangeEndFunc  # OVL1 unaligned; s1:order (the demo's lgAud object: the static before lgAudAEnumHint; stores the device-change hint)
 0x002455C0 0xCC lgAudAEnumHint  # OVL1; s1:callee
 0x00245690 0xB8 libnetb_is_data_waiting  # OVL1; s1:callee
 0x00245748 0x40 libnetb_udp_init_buffer  # OVL1 unaligned; s1:exact
@@ -4006,14 +4004,14 @@
 0x002B6430 0xF4 func_002B6430  # OVL1
 0x002B6530 0x7CC func_002B6530  # OVL1
 0x002B6D00 0x60 SetBkgColor__12C2DMessage_QFfff  # OVL1; s1:align
-0x002B6D60 0x78 func_002B6D60  # OVL1
+0x002B6D60 0x78 LastMessage__12C2DMessage_QFv  # OVL1; s1:order by hand (the states lane, round 17): SOCOM 1's LastMessage (0x200890) sits between SetBkgColor and Clear_Messages as this does, and does the same -- the list's last line's text, "" with none; fts_message.cpp (open)
 0x002B6DE0 0xF4 Clear_Messages__12C2DMessage_QFv  # OVL1; s1:calls by hand (the HUD lane: CHUD::ReleaseHUD's three calls on its message queues, as SOCOM 1's)
 0x002B6EE0 0xE0 __dt__12C2DMessage_QFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B6FC0 0x558 func_002B6FC0  # OVL1
 0x002B7520 0xC func_002B7520  # OVL1
 0x002B7530 0xD8 func_002B7530  # OVL1
 0x002B7610 0x110 func_002B7610  # OVL1
-0x002B7720 0x74 SetString__16C2DMessageStringFPCc  # OVL1; s1:align
+0x002B7720 0x74 SetString__16C2DMessageStringFPCcb  # OVL1; s1:align; by hand (the states lane, round 17): SOCOM II's override of C2DString's slot 26, SetString(const char *, bool) -- the target passes its own a2 on to C2DString::SetString untouched (SOCOM 1's took the string only); fts_message.cpp
 0x002B77A0 0x1A8 Tick__16C2DMessageStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B7950 0x98 func_002B7950  # OVL1
 0x002B79F0 0x28 ftsNetworkGameUninit__Fv  # OVL1; s1:align
@@ -6672,11 +6670,11 @@
 0x00361790 0x20C reserve__Q23std52__vector_imp<7C2DPoly,Q23std19allocator<7C2DPoly>,0>FUi  # OVL1; s1:calls by hand (C2DTriFan's constructor reserves its triangle vector with it, 5, as SOCOM 1's template instance; c2dpoly.cpp's instance, after the triangle's copy constructor it calls)
 0x003619A0 0x8C clear__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
 0x00361A30 0xC8 __dt__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
-0x00361B00 0x18 func_00361B00  # OVL1
-0x00361B20 0x14 func_00361B20  # OVL1
-0x00361B40 0x14 func_00361B40  # OVL1
-0x00361B60 0x58 func_00361B60  # OVL1
-0x00361BC0 0xC func_00361BC0  # OVL1
+0x00361B00 0x18 IncLanguageVersion__Fv  # OVL1; ours by its code (the HUD lane, round 19: the counter at 0x49E9B0 incremented -- SetLanguage's call after the string tables' Reload, so text built in the old language can tell; the font unit's, the UI lane's lead)
+0x00361B20 0x14 GetStringId__FPCc  # OVL1; ours by its code (the HUD lane, round 19: GetId(name, 0) on the string tables' global 0x49E9D0, no table name; the pop-up dialog's parsers call it)
+0x00361B40 0x14 GetString__Fi  # OVL1; ours by its code (the HUD lane, round 19: GetString(id, 0) on the string tables' global 0x49E9D0, no table name; 32 callers -- the HUD, the pop-up dialog, the lobby, zAnimMessageTick)
+0x00361B60 0x58 TranslateString__FPCc  # OVL1; ours by its code (the HUD lane, round 19: the name's id on the string tables' global, its string when the id is positive, else the name itself; CTeleType/CWrappedText::SetString and the sound's play calls use it)
+0x00361BC0 0xC GetStringTables__Fv  # OVL1; ours by its code (the HUD lane, round 19: returns the string tables' global 0x49E9D0; the states' Init/UnInit and CHUD's load and unload their tables through it)
 0x00361BD0 0x780 func_00361BD0  # OVL1
 0x00362350 0x290 func_00362350  # OVL1
 0x003625E0 0x320 func_003625E0  # OVL1
@@ -8382,7 +8380,7 @@
 0x003D2680 0xC0 IsLegalAmmo__8CZWeaponFP6CZAmmo  # OVL1; s1:align confirmed by hand (the wep lane: walks m_LegalAmmoList (0xC4) comparing CZAmmo::GetName's strings, as SOCOM 1's); zwep_weapon.cpp
 0x003D2740 0x8 func_003D2740  # OVL1
 0x003D2750 0x8 func_003D2750  # OVL1
-0x003D2760 0x8 func_003D2760  # OVL1
+0x003D2760 0x8 GetAssociatedGearName__8CZWeaponFv  # OVL1; s1:calls by hand (the kit lane's round 12, vetted by the integrator: called where SOCOM 1's SetItemByIndex calls CZWeapon::GetAssociatedGearName, with the same arguments)
 0x003D2770 0x34 func_003D2770  # OVL1
 0x003D27B0 0x8 func_003D27B0  # OVL1
 0x003D27C0 0x8 func_003D27C0  # OVL1
@@ -8513,7 +8511,7 @@
 0x003FF4A0 0x168 func_003FF4A0  # OVL1 data area; a static initialiser
 0x003FF610 0x64 __sinit_hud_ammo.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_ammo.cpp's initialiser (between the radio menu's 0x3FF4A0 and hud_mpinfobox.cpp's 0x3FF680, as the code): its four bss floats computed off s_polyy and s_ammox (s_texty, s_magx, s_magy, s_bitmapy)
 0x003FF680 0x124 __sinit_hud_mpinfobox.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_mpinfobox.cpp's initialiser (between hud_ammo.cpp's and 0x3FF7B0, as the code): thirteen bss floats of the box's places computed off its data variables, in their order
-0x003FF7B0 0x3C func_003FF7B0  # OVL1 data area; a static initialiser; s1~ si_object.cpp (shape 0.45, a hint)
+0x003FF7B0 0x3C __sinit_reco.cpp  # OVL1 data area; a static initialiser; s1~ si_object.cpp (shape 0.45, a hint); ours (the HUD lane, round 19: reco.cpp's initialiser -- theReco (0x414680) constructed and its destructor registered; the old s1~ si_object.cpp hint was wrong)
 0x003FF7F0 0x1D0 func_003FF7F0  # OVL1 data area; a static initialiser
 0x003FF9C0 0x88 __sinit_hud_healthbar.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane: hud_healthbar.cpp's initialiser -- it builds the bar's five colours, 0x4148B0-0x4148F0, which only CHealthBar's functions read)
 0x003FFA50 0xB0 func_003FFA50  # OVL1 data area; a static initialiser
@@ -10957,7 +10955,7 @@
 0x005B99B0 0x1C SetWeaponInfoChanged__5CZKitFv  # OVL2; s1:exact
 0x005B99D0 0x24 PendingPickupHandled__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's PendingPickupHandled, after SetWeaponInfoChanged as there: a flag bit cleared (bit 14, SOCOM 1's 13) and the pickup wait zeroed, 0x8B8 here, SOCOM 1's 0x878)
 0x005B9A00 0x1A8 func_005B9A00  # OVL2
-0x005B9BB0 0x258 func_005B9BB0  # OVL2
+0x005B9BB0 0x258 RemoveItemAndAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 12): SOCOM 1's RemoveItemAndAmmo__5CZKitFi (0x2A5830 there) opens alike -- the index wrapped on m_num_items, the item's slot, magazines and ammunition cleared, the count made the last item's place plus one, the selection reset -- with SOCOM II's closing up (0x5B9A00) and WepWaitOn added; RemoveItem (0x5B9E10) calls it; seal_kit.cpp byte-exact
 0x005B9E10 0xEC RemoveItem__5CZKitF10EQUIP_ITEM  # OVL2; by hand (the kit lane, round 11): HandlePlaceMPBomb (0x5BC200) drops the MP bomb, item 154, through it where SOCOM 1's HandlePlaceMPBomb dropped it inline; FindItemWithAmmo inlined, then 0x5B9BB0 (by its place and its opening wrap SOCOM 1's RemoveItemAndAmmo(int)) on the index -- new in SOCOM II, the name ours
 0x005B9F00 0x134 func_005B9F00  # OVL2
 0x005BA040 0x390 func_005BA040  # OVL2
@@ -11018,7 +11016,7 @@
 0x005BFAC0 0x378 func_005BFAC0  # OVL2
 0x005BFE40 0x18 func_005BFE40  # OVL2
 0x005BFE60 0x1C0 func_005BFE60  # OVL2
-0x005C0020 0x108 func_005C0020  # OVL2
+0x005C0020 0x108 HandlePlacingExlosive__5CZKitF10EQUIP_ITEMff  # OVL2; s1:calls by hand (the kit lane, round 12): CSealCtrl::OnActionButton calls it with an explosive's kind (151, 152, 154) and two floats where SOCOM 1's OnActionButton calls HandlePlacingExlosive__5CZKitF10EQUIP_ITEMff (sic; 0x2A94F0 there), and it opens as SOCOM 1's does -- the selection kept, SetCurItemEnum(item), IsDirectFire's undo, CanFire, the wait -- the placing itself moved out (0x5BD530, 0x5BE9A0); seal_kit.cpp byte-exact
 0x005C0130 0x11C func_005C0130  # OVL2
 0x005C0250 0x6E4 func_005C0250  # OVL2
 0x005C0940 0xA8 GetShotCount__5CZKitFv  # OVL2; by hand (the kit lane, round 11): the rounds a trigger pull fires -- 1 without ammunition, 0 on safety, 3 in burst, 10000 in auto -- SOCOM 1's WillFireWeapon's inline switch moved out (new in SOCOM II, the name ours); called beside GetFireDelay by 0x5C0AE0 and 0x5C0FD0
@@ -11034,7 +11032,7 @@
 0x005C2670 0x414 func_005C2670  # OVL2
 0x005C2A90 0x568 func_005C2A90  # OVL2
 0x005C3000 0x2B0 func_005C3000  # OVL2
-0x005C32B0 0xB0 func_005C32B0  # OVL2
+0x005C32B0 0xB0 SetFireDelay__5CZKitFfb  # OVL2; by hand (the kit lane, round 12): a kit member (this the kit: m_fire_delay at 0x820) -- -1 takes the item in hand's own wait (its float at 0x60 when the bool is set, else at 0x5C), then hands the weapons' shared record the delay (0x3D00D0) and keeps the bool in bit 17; CSealCtrl::PreTick and 0x5C5340 call it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C3360 0x3E0 func_005C3360  # OVL2
 0x005C3740 0x34 GetItemByIndex__5CZKitCFi  # OVL2; by hand: an item by index -- the index through 0x5C6600 (with 255), then the item array at 0xE4 (SOCOM 1's m_item at 0xD0, 0x14 on); GetCurItem (const) tail-calls it with the selected item, so it is const here
 0x005C3780 0x8 GetCurItem__5CZKitCFv  # OVL2; s1:calls by hand (the HUD lane: at SOCOM 1's call site in ZoomIn/ZoomOut; its result's type byte is compared with 11)
@@ -11046,12 +11044,12 @@
 0x005C3CE0 0x8 func_005C3CE0  # OVL2
 0x005C3CF0 0x1E4 GetMaxAmmoCount__5CZKitFi  # OVL2; s1:calls (the HUD lane's round 15, vetted by the integrator: PlaceWeaponText calls it where SOCOM 1's calls GetMaxAmmoCount__5CZKitFi)
 0x005C3EE0 0x59C func_005C3EE0  # OVL2
-0x005C4480 0x134 func_005C4480  # OVL2
+0x005C4480 0x134 NextFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member -- the selected item's mode (m_firemode, 0x6FC), and when it is 4 or more (a launcher ammunition's item kind) that kind's first item with ammunition (kit.h's FindItemWithAmmo inlined) and the kind, handed to 0x5C3EE0 with the selected item's firing item (GetFiringItem); 0x5C4600 calls it with the selected index, which it does not read; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C45C0 0x40 func_005C45C0  # OVL2
 0x005C4600 0x288 func_005C4600  # OVL2
 0x005C4890 0x8 func_005C4890  # OVL2
 0x005C48A0 0x8 func_005C48A0  # OVL2
-0x005C48B0 0xA8 func_005C48B0  # OVL2
+0x005C48B0 0xA8 SetHandFireMode__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member storing the mode in m_firemode[bit 18 ? 1 : 0] and at 0x7EC, then -- the body alive (0xE1 bit 4) -- that slot's item kind at 0x7F0; CZSealBody::ReCreate calls it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C4960 0x8 func_005C4960  # OVL2
 0x005C4970 0x40 GetNumMags__5CZKitFi  # OVL2; s1:order by hand (SOCOM 1's GetNumMags: counts the item's ten magazines (0x1D4 + 40*index, SOCOM 1's 0x1C0) holding rounds)
 0x005C49B0 0x154 GetCurNumMags__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetCurNumMags, after GetNumMags as there: the selected item -- or, in its grenade launcher's mode (0x5BD7E0), the first item of its fire mode's kind with ammunition -- and GetNumMags inlined; 0 for none)
@@ -11063,10 +11061,10 @@
 0x005C6510 0x18 func_005C6510  # OVL2
 0x005C6530 0xC8 GetAmmoItemIndex__5CZKitF8FIREMODE  # OVL2; by hand (the kit lane, round 11): kit.h's FindItemWithAmmo on the fire mode as an item kind (a launcher's mode is its ammunition's item) -- CAmmoDisplay::Update asks it for the firemode graphic; new in SOCOM II, the name ours
 0x005C6600 0x1C4 unwrap__5CZKitCFi8FIREMODE  # OVL2; by hand: SOCOM 1's unwrap(int, int) inlined on m_num_items, then the item's fire mode (255: its own, m_firemode at 0x6FC) and, for a grenade launcher (0x3C5D80) in a mode of 4 and up, the first item of that kind with ammunition (the name ours, after the unwrap it inlines; GetItemByIndex passes 255)
-0x005C67D0 0x144 func_005C67D0  # OVL2
+0x005C67D0 0x144 GetFiringItem__5CZKitFi  # OVL2; by hand (the kit lane, round 12): a kit member -- unwrap(index, 255)'s item, or, when it is a launcher's grenades (IsGrenadeLauncherAmmo), the first class-145 item (OVL1 0x3C5C20's test) or the first primary weapon: GetClass145Index's and GetPrimaryIndex's walks inlined; WeaponIsLauncherMode, WeaponIsGrenadeLauncherMode, GetReticuleByIndex and four more call it; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C6920 0x48 GetAmmoByIndex__5CZKitFi  # OVL2; by hand: new in SOCOM II -- m_ammo (0x15C, SOCOM 1's 0x148) at unwrap(index, 255), after a GetCurItem whose result is dropped; CAiSNoAmmo::Tick calls it after GetItemByIndex where SOCOM 1's called GetWeapon (the name ours)
 0x005C6970 0x8 GetCurAmmo__5CZKitFv  # OVL2; by hand: GetAmmoByIndex(m_selected_item), tail-called (the name ours)
-0x005C6980 0xC0 func_005C6980  # OVL2
+0x005C6980 0xC0 AttachItemNode__5CZKitFUcPCc  # OVL2; by hand (the kit lane, round 12): a kit member -- the body's attachment record of a kind (8-byte entries at body+0x388), the item in hand's node (the item pointers' vector at 0x834, one place on), the body's part of a name (CBody::FindPart on body+0x170: 0x5C50B0 passes "aimnodes") -- the node hidden (CNode slot 0x38, SetActive(false)), made the part's child (slot 0x18, AddChild) and kept at the record's +0xC; new in SOCOM II, the name ours; seal_kit.cpp byte-exact
 0x005C6A40 0x358 func_005C6A40  # OVL2
 0x005C6DA0 0x368 func_005C6DA0  # OVL2
 0x005C7110 0x90 GetClass145Index__5CZKitFv  # OVL2; by hand (the kit lane, round 11): GetPrimaryIndex's loop with 0x3D1CB0 (an item kind of class 145) -- new in SOCOM II, the name ours
@@ -11094,12 +11092,12 @@
 0x005C8930 0x4C GetSecondaryEnum__5CZKitCFv  # OVL2; by hand: GetCurItemEnum's code on item 1 (new in SOCOM II, before it; the name ours)
 0x005C8980 0x4C GetPrimaryEnum__5CZKitCFv  # OVL2; by hand: GetCurItemEnum's code on item 0 (new in SOCOM II, before it; the name ours)
 0x005C89D0 0x4C GetCurItemEnum__5CZKitCFv  # OVL2; s1:order by hand (SOCOM 1's GetCurItemEnum, after HasItem and the index lookups as there: the selected item through unwrap(sel, 255), its m_equip (lb 0x7C), 255 without one)
-0x005C8A20 0x778 func_005C8A20  # OVL2
+0x005C8A20 0x778 SetCurItemEnum__5CZKitF10EQUIP_ITEM  # OVL2; s1:calls by hand (the kit lane, round 12): HandlePlacingExlosive (0x5C0020) calls it first with its item kind, as SOCOM 1's calls SetCurItemEnum__5CZKitF10EQUIP_ITEM (0x2AF610 there), and it sits after GetCurItemEnum as SOCOM 1's (0x778 here, 0x374 there)
 0x005C91A0 0xC func_005C91A0  # OVL2
 0x005C91B0 0x7C sealSaveFireModes__Fv  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's sealSaveFireModes -- the local player's kit's item count into g_iNumSavedFireModes (0x66B670), each item's id and fire mode into g_arrSavedFireModeInfo (0x66B580) -- right before CSavedFireModeInfo's constructor as there; CMPExitState::Init calls it
 0x005C9230 0x14 __ct__Q222@unnamed@seal_kit_cpp@18CSavedFireModeInfoFv  # OVL2; s1:exact
-0x005C9250 0x18 func_005C9250  # OVL2
-0x005C9270 0xCC func_005C9270  # OVL2
+0x005C9250 0x18 PerturbAimVector__11CSealCtrlAiFP6CPnt3D  # OVL2; by hand (the kit lane, round 12): slot +0x74 of CSealCtrlAi's table (0x669464 holds it; CSealCtrl's PerturbAimVector at 0x592260 is the same slot of its own), SOCOM 1's position (after CSavedFireModeInfo(), before CAiWepHint's statics) and its tail: m_target.ModifyAimDir(v, accuracy, aiAccuracyAngle) as SOCOM 1's ends; seal_kit.cpp byte-exact
+0x005C9270 0xCC GetAccuracyFactor__11CSealCtrlAiFv  # OVL2; by hand (the kit lane, round 12): the stance/pace factor SOCOM 1's PerturbAimVector computed inline (GetStance(false): crouched 1.25, prone 1.5; ai::is_moving(velW, 625) 0.7), times the controller's floats at 0xD4 and 0x70C -- 0x55F0A0 calls it; the name ours; seal_kit.cpp byte-exact
 0x005C9340 0x74 GetWeaponAccuracy__10CAiWepHintFP8CZWeaponfb  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponAccuracy -- AI_PARAMS::GetAccuracy of the weapon (0 without one), now doubled when the bool is set and _saturate'd to [0, 1] -- before GetWeaponEffectiveRange as there
 0x005C93C0 0x38 GetWeaponEffectiveRange__10CAiWepHintFP8CZWeapon  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponEffectiveRange -- the same 0.5 * (max + min) of the weapon's AI_PARAMS (SOCOM II's at 0x70), 0 without a weapon -- the kit unit's last as there, after GetWeaponAccuracy
 0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11262,7 +11260,7 @@
 0x005DEB10 0x198 func_005DEB10  # OVL2
 0x005DECB0 0xB8 test<i>__2aiFRCiQ22ai7TEST_OPRCi_b  # OVL2; by hand (the kit lane, round 11): a value tested against another by a byte operator (1 !=, 2 ==, 3 >, 4 <, 5 >=, 6 <=, else true: a 7-entry jump table) -- SOCOM 1's MW 2.4 inlined the same switch into CTParam::Tick; SOCOM II's 0x5D4770 calls this int instance (the template's names ours)
 0x005DED70 0x100 test<f>__2aiFRCfQ22ai7TEST_OPRCf_b  # OVL2; by hand (the kit lane, round 11): the float instance of ai::test (0x5DECB0's int one), called from the same 0x5D4770
-0x005DEE70 0x18 func_005DEE70  # OVL2; the same words as _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x005DEE70 0x18 func_005DEE70  # OVL2; the same words as _max<Uc>__2aiFRCUcRCUc_RCUc (0x2afc40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); proven by its caller (the kit lane, round 12): ai::PARAM's tick (0x5D4770) passes it a byte it computed and the controller's byte at 0x5D0 and reads the result with lbu -- seal_tasks.cpp's explicit instance byte-exact; ovl-copy: _max<Uc>__2aiFRCUcRCUc_RCUc
 0x005DEE90 0x2C func_005DEE90  # OVL2
 0x005DEEC0 0x4A8 func_005DEEC0  # OVL2
 0x005DF370 0x64 GetFP__10CZSealBodyFR6CPnt3D  # OVL2; s1:calls
@@ -11305,9 +11303,9 @@
 0x005E3EE0 0x9C __dt__12CAnimTypeRecFv  # OVL2; by hand (the kit lane, round 10): the destructor the 600-record pool's new[] (0x5E5B10, 0x5E5BF0) passes to __construct_new_array; the record cleared as the constructor clears it, deleted when asked -- class name ours
 0x005E3F80 0x68 __ct__12CAnimTypeRecFv  # OVL2; by hand (the kit lane, round 10): the constructor the 600-record pool's new[] passes to __construct_new_array: both shorts -1, the bits and the count zeroed, the pointer at 8 zeroed -- class name ours
 0x005E3FF0 0xF28 func_005E3FF0  # OVL2
-0x005E4F20 0x6C func_005E4F20  # OVL2
-0x005E4F90 0x6C func_005E4F90  # OVL2
-0x005E5000 0x6C func_005E5000  # OVL2
+0x005E4F20 0x6C FindAnimKind__FPCc  # OVL2; by hand (the kit lane, round 12): FindAnimType's shape over the other int map 0x44C460, the int returned whole (lw); 0x574C30 keeps five of them ("ready", "suspicious", "conversation"...: the variant kinds CAnimTypeRec's groups are keyed by, likely); new in SOCOM II, the name ours; anim.cpp byte-exact
+0x005E4F90 0x6C LookupAnimType__FPCc  # OVL2; by hand (the kit lane, round 12): FindAnimType's words exactly, the same map 0x44C420 -- only InitializeAnimNames (0x5E1DF0) calls it, once per anim type global (SOCOM 1's InitializeAnimNames inlined FindAnimType's find instead); the name ours; anim.cpp byte-exact
+0x005E5000 0x6C FindAnimType__FPCc  # OVL2; s1:calls by hand (the kit lane, round 12): CTPlay::Parse calls it where SOCOM 1's calls FindAnimType (0x2CD240 there), the same body (the name map's find, -1 when absent or for a null name, the type read with lh); its map 0x44C420 (SOCOM 1's newNamesMap); anim.cpp byte-exact
 0x005E5070 0x70 CloseAll__7AnimSetFv  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's CloseAll walks AnimSet::list (0x509710 there, 0x44D430 here) calling Close; CGame::StopEngine calls this as SOCOM 1's calls CloseAll -- SOCOM II's walk is left empty
 0x005E50E0 0x264 func_005E50E0  # OVL2
 0x005E5350 0x1B0 func_005E5350  # OVL2
@@ -11740,7 +11738,7 @@
 0x00609D60 0x78 __dt__10CAiSShotAtFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00609DE0 0x8 CanPursue__10CAiSShotAtCFP11CSealCtrlAi  # OVL2; by hand: CAiSShotAt's vtable slot +0x2C (CanPursue, as SOCOM 1's)
 0x00609DF0 0x20C CheckLineOfFire__2aiFPC7CEntityPC7CTargetf  # OVL2; s1:calls
-0x0060A000 0x2C8 func_0060A000  # OVL2
+0x0060A000 0x2C8 ModifyAimDir__9CAiTargetFP6CPnt3Dff  # OVL2; s1:calls by hand (the kit lane, round 12): CSealCtrlAi::PerturbAimVector (0x5C9250) tail-calls it on its target (+0x67C) with (v, accuracy, aiAccuracyAngle) where SOCOM 1's PerturbAimVector calls ModifyAimDir__9CAiTargetFP6CPnt3Dff (0x2E9900 there) with the same three; first of CAiTarget's stretch after CheckLineOfFire, as SOCOM 1's; OVL1's 0x3A8D20 calls it too (SOCOM 1's CTurret::Fire does)
 0x0060A2D0 0x18 func_0060A2D0  # OVL2
 0x0060A2F0 0x16C func_0060A2F0  # OVL2
 0x0060A460 0x12C func_0060A460  # OVL2

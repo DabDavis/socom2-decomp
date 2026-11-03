@@ -8,8 +8,8 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_001A42F0();                            /* extern */
+M2C_UNK getpid();                                   /* extern */
 
 void func_00198830(void) {
-    func_001A42F0();
+    getpid();
 }

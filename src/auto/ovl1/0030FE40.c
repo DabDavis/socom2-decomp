@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00244B90(s32);                         /* extern */
 M2C_UNK func_003105D0(s32);                         /* extern */
 M2C_UNK func_003107D0(s32);                         /* extern */
 M2C_UNK lgAudClose(s32);                            /* extern */
+M2C_UNK lgAudStopPlayback(s32);                     /* extern */
 M2C_UNK lgAudStopRecording(s32);                    /* extern */
 
 void func_0030FE40(char *arg0) {
@@ -24,7 +24,7 @@ void func_0030FE40(char *arg0) {
             SC_MEMBER(arg0, u8 *, 0x48) = 0U;
         }
         if (SC_MEMBER(arg0, u8 *, 0x49) != 0) {
-            func_00244B90(SC_MEMBER(arg0, s32 *, 0x38));
+            lgAudStopPlayback(SC_MEMBER(arg0, s32 *, 0x38));
             SC_MEMBER(arg0, u8 *, 0x49) = 0U;
         }
         lgAudClose(SC_MEMBER(arg0, s32 *, 0x38));

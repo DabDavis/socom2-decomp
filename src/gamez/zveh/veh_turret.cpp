@@ -431,7 +431,10 @@ extern "C" bool func_003A7FA0(CTurret *t)
 #pragma auto_inline off
 void CTurretList::Remove(CTurret *turret)
 {
-    erase(std::remove(begin(), end(), turret), end());
+    iterator e = end();
+    iterator i = std::remove(begin(), e, turret);
+
+    erase(i, e);
 }
 #pragma auto_inline reset
 

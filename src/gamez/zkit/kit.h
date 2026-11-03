@@ -39,21 +39,42 @@ struct CKitCtrl {
     /* the bit the MP bomb's placing sets (inlined with true: `daddiu ...,0x10`; SOCOM 1's at 0x168
      * -- the name ours) */
     void SetBombPlaced(bool b) { m_bomb_placed = b; }
+    /* (inlined with false: the target keeps `andi v0,zero,1`, the mask unfolded) */
+    void SetThrowing(bool b) { m_throwing = b; }
 
     unsigned char _0[0x130];
     float m_130;   // 0x130
     unsigned char _134[0x170 - 0x134];
     unsigned char m_170 : 4;   // 0x170
     unsigned char m_bomb_placed : 1;   // bit 4
+    unsigned char m_bit5 : 1;
+    unsigned char m_throwing : 1;   // bit 6 (SOCOM 1's m_throwing, the same bit)
 };
 
 /* the body as the kit reads it (CZSealBody; only its controller, CEntity's m_control, and the byte
  * the scope tests read -- SOCOM 1's at 0x160) */
 struct CKitBody {
-    unsigned char _0[0xc0];
+    unsigned char _0[0x38];
+    CPnt3D m_velW;   // 0x38: CEntity's world velocity (the AI's accuracy asks whether it moves)
+    unsigned char _44[0xc0 - 0x44];
     CKitCtrl *m_control;   // 0xc0
-    unsigned char _c4[0x200 - 0xc4];
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char _e1 : 4;   // 0xe1
+    unsigned char m_alive : 1;   // bit 4: CEntity's alive bit
+    unsigned char _e1_5 : 3;
+    unsigned char _e2[0x170 - 0xe2];
+    unsigned char m_cbody[0x90];   // 0x170: the CBody base (0x90 bytes: the parts FindPart searches)
     signed char m_200;   // 0x200: the current item's zoom class (binoculars 4, scopes 5 and up)
+    unsigned char _201[0x388 - 0x201];
+    /* 0x388: attachments by kind, 8 bytes each -- the first word a record whose +0xC keeps the node
+     * hung on it (0x5C6980; the names ours) */
+    struct Attach {
+        struct Record {
+            unsigned char _0[0xc];
+            void *m_node;   // 0xc
+        } *m_rec;
+        unsigned int m_4;
+    } m_attach[4];
 };
 
 /* a weapon as the kit reads it (CZWeapon; only the wait between shots, SOCOM 1's m_firewait --
@@ -103,7 +124,7 @@ public:
     bool WeaponIsLauncherMode(int index);
     bool WeaponIsM203Mode(int index);
     bool SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds);
-    bool SetItemByIndex(int index, CZWeapon *w);
+    void SetItemByIndex(int index, CZWeapon *w);
     bool ItemHasFiremodeGraphic(int index);
     bool CurItemHasFiremodeGraphic();
     bool IsUsingItem(int index);
@@ -118,6 +139,57 @@ public:
      * SOCOM 1's WillFireWeapon did it inline: the name ours -- and 0x5C09F0, SOCOM 1's) */
     int GetShotCount();
     float GetFireDelay();
+    /* the wait before the next shot set, -1 for the item in hand's own: its second wait when asked,
+     * else its first -- the weapons' shared record told (OVL2 0x5C32B0, new in SOCOM II: CSealCtrl's
+     * PreTick and 0x5C5340 call it; the name ours) */
+    void SetFireDelay(float delay, bool alt);
+    /* the hand's fire mode slot (0 or 1, by bit 18) set to a mode, the mode kept, and -- the body
+     * alive -- the slot's item kind noted (OVL2 0x5C48B0, new in SOCOM II: CZSealBody::ReCreate
+     * calls it; the name ours) */
+    void SetHandFireMode(int mode);
+    /* the item in hand's node hung under a part of the body -- hidden, made the part's child, kept in
+     * the body's attachment of a kind (OVL2 0x5C6980, new in SOCOM II: 0x5C50B0 hangs it on
+     * "aimnodes"; the name ours) */
+    void AttachItemNode(unsigned char kind, const char *part);
+    /* the item an index's ammunition is fired from: the item itself, or -- when it is a launcher's
+     * grenades -- the first class-145 item (for that class's ammunition) or the first primary
+     * weapon (OVL2 0x5C67D0, new in SOCOM II: the launcher-mode tests, GetReticuleByIndex and four
+     * more call it; the name ours) */
+    CZFTSWeapon *GetFiringItem(int index);
+    /* the mode after the selected item's: from its launcher ammunition's item when the mode is one
+     * (4 and up, the mode the item kind), through 0x5C3EE0 with the item it fires from (OVL2
+     * 0x5C4480, new in SOCOM II: 0x5C4600 passes the selected item, which it reads again itself --
+     * the index unused; the name ours) */
+    int NextFireMode(int index);
+    /* an explosive of a kind taken in hand and placed: the item before it kept to go back to, a
+     * direct-fire weapon's selection undone, else -- the body able, the wait run out, the placing
+     * allowed (0x5BD530) -- placed (0x5BE9A0), or the item before it taken back (OVL2 0x5C0020;
+     * SOCOM 1's HandlePlacingExlosive, sic, which placed it inline) */
+    void HandlePlacingExlosive(EQUIP_ITEM item, float a, float b);
+    /* the item of a kind taken in hand (OVL2 0x5C8A20: SOCOM 1's, unwritten) and the item at an
+     * index (OVL2 0x5C4B10: SOCOM 1's, unwritten) */
+    bool SetCurItemEnum(EQUIP_ITEM item);
+    void SetCurItemByIndex(int index);
+    /* the item pointer of an index, as GetItemPtr but the bound compared signed (inline: 0x5C6980
+     * expands it -- its slt where GetItemPtr's own copy has sltu; the name ours) */
+    void *ItemPtr(int index) const
+    {
+        return index + 1 < (int)m_itemptr.size() ? m_itemptr[index + 1] : 0;
+    }
+    /* the hand's slot (inline; the names ours): a signed byte enum assigned in an if/else -- the
+     * target's `li 1; movz` and sign extension; `bit ? 1 : 0` (any type) folds to an sltu, and the
+     * enum's ternary branches */
+    enum HAND_SLOT { HAND_NONE = -1, HAND_FIRST = 0, HAND_SECOND = 1 };
+    HAND_SLOT HandSlot() const
+    {
+        HAND_SLOT h;
+
+        if (m_second_hand)
+            h = HAND_SECOND;
+        else
+            h = HAND_FIRST;
+        return h;
+    }
     /* the sniper's kick begun: the baseline taken, its distance drawn (OVL2 0x5B91C0, new in SOCOM
      * II: the name ours) */
     void StartSniperKick();
@@ -184,6 +256,10 @@ public:
     void *GetItemPtr(int index);
     void ClearItemPtr(int index);
     void SetItemPtr(int index, void *p);
+    /* an item let go with its ammunition: the slots closed up (0x5B9A00), the count made the last
+     * item's place plus one, the selection reset when it fell off (OVL2 0x5B9BB0; SOCOM 1's
+     * RemoveItemAndAmmo(int), which SOCOM II's closing up and WepWaitOn join) */
+    void RemoveItemAndAmmo(int index);
 
     /* an index wrapped into [0, n), or -1 (SOCOM 1's unwrap__5CZKitFii, out of line there; SOCOM
      * II inlines it everywhere) */
@@ -204,6 +280,39 @@ public:
                 i += n;
             while (i < 0);
         return i;
+    }
+    /* an item's magazines emptied, its ammunition let go, the count made the last item's place
+     * plus one (inline: RemoveItemAndAmmo expands them -- each wraps its index again, as the
+     * target's three wraps do; the names ours) */
+    void ClearReloads(int index)
+    {
+        int i = wrap(index, m_num_items);
+
+        for (int k = 0; k < 10; k++)
+            m_reloads[i][k] = 0;
+    }
+    void ClearAmmo(int index)
+    {
+        int i = wrap(index, m_num_items);
+
+        ClearReloads(i);
+        m_ammo[i] = 0;
+    }
+    /* the count raised past an index (inline: SetItemByIndex expands it; the name ours) */
+    void GrowTo(int index)
+    {
+        if (index >= m_num_items)
+            m_num_items = index + 1;
+    }
+    void ResetZoom(CKitCtrl *ctrl);
+    void UpdateNumItems()
+    {
+        int last = -1;
+
+        for (int i = 0; i < 30; i++)
+            if (m_item[i])
+                last = i;
+        m_num_items = last + 1;
     }
     /* the first item of that kind with ammunition, else the last of that kind, else -1 (inlined
      * in each caller; the name ours) */
@@ -237,7 +346,10 @@ public:
     unsigned int m_bit13 : 1;   // new in SOCOM II
     unsigned int m_current_requested_ammo : 1;   // bit 14 (SOCOM 1's bit 13)
     unsigned int m_heartbeat_enabled : 1;
-    unsigned int m_unused : 16;
+    unsigned int m_bit16 : 1;   // new in SOCOM II (the names ours)
+    unsigned int m_alt_firedelay : 1;   // bit 17: the fire delay the item's second wait (0x5C32B0)
+    unsigned int m_second_hand : 1;   // bit 18: the hand's fire mode slot 1, not 0 (0x5C48B0)
+    unsigned int m_unused : 13;
     bool m_hotswap;   // 0x4: new in SOCOM II, CWeaponSel::CheckHotSwap's (the name ours)
     unsigned char _5[0x28 - 0x5];
     float m_sniper_posx;   // 0x28 (SOCOM 1's 0x14)
@@ -259,7 +371,14 @@ public:
     int m_reloads[30][10];   // 0x1d4 (SOCOM 1's 0x1c0): each item's magazines, the rounds in each
     int m_currentmag[30];   // 0x684 (SOCOM 1's 0x670)
     int m_firemode[30];   // 0x6fc (SOCOM 1's 0x6e8): read as a FIREMODE, its low byte
-    unsigned char _774[0x820 - 0x774];
+    void *m_associatedgear[30];   // 0x774 (SOCOM 1's CCharacterGear *, 0x760): the item's gear
+    int m_hand_firemode;   // 0x7ec: the mode SetHandFireMode was last given (new; the names ours)
+    EQUIP_ITEM m_hand_item;   // 0x7f0: the hand slot's item kind
+    unsigned char m_iteminuse[30];   // 0x7f1 (SOCOM 1's 0x7d8: 0x5B9A00 closes it up with the items)
+    int m_cur_zoom;   // 0x810 (SOCOM 1's 0x7f8)
+    unsigned char _814[0x81c - 0x814];
+    float m_81c;   // 0x81c: a wait the explosive's placing needs run out (SOCOM 1's tested its
+                   // m_fire_delay there; the name ours)
     float m_fire_delay;   // 0x820 (SOCOM 1's 0x804)
     int m_selected_item;   // 0x824 (SOCOM 1's 0x808)
     int m_last_selected;   // 0x828
