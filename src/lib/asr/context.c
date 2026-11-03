@@ -2,7 +2,8 @@
 /* The recogniser's contexts (OVL2 0x4C57F8-0x4C60F8): ScanSoft's speech recogniser, prebuilt with
  * ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README "The GCC front"). SOCOM 1's
  * demo carries the file (its object at 0x3372C8: the same functions in the same order, but the
- * last, the error translator, which is SOCOM II's); the names are its symbols. A context holds
+ * last, gsapi_ErrorGetString, which SOCOM 1 defines in its gsapi object); the names are its
+ * symbols (the last's: the body and CReco's calls, where SOCOM 1's reco calls it). A context holds
  * the engine handle, its action table and a lazily allocated parameter block. */
 
 #include "gsapi.h"
@@ -72,17 +73,17 @@ typedef struct PARAM {
     int value;
 } PARAM;
 
-typedef struct ERRMAP {
-    int code;
-    int value;
-} ERRMAP;
+typedef struct ERRSTR {
+    int code;                           /* the low seven bits of a 0x80CCxxxx code; 127 ends */
+    char *string;
+} ERRSTR;
 
 extern int asrspi_ActivateCtx(void *engine, int a, int b);
 extern int asrspi_ActivateWords(void *engine, void *words, int n);
 extern int asrspi_SetParamList(void *engine, PARAM *list, int n);
 extern void *func_00243398(void *heap, int count, int size);       /* the heap's calloc */
 extern int TranslateGsapiParamId2AsrSpiParamId(int id);
-extern ERRMAP data_00656400[];
+extern ERRSTR data_00656400[];       /* "Call Succeeded", then {code, message} to 127's */
 
 int ContextGetAction(CONTEXT *c, RESULT *r, int *action)
 {
@@ -196,21 +197,25 @@ int ContextActivateParams(CONTEXT *dst, CONTEXT *c)
     return asrspi_SetParamList(dst->engine, list, n);
 }
 
-/* OPEN: the error translator (new since SOCOM 1: a 0x80CCxxxx code to the host's, through the
- * {code, value} table at 0x656400 that ends at code 127). The target re-tests err == 0 after
- * substituting 0x80CC007F for a foreign code (a jump back to the top) and walks the table from
- * its second entry; this first shape is 26 words off and the size differs (0x84 against 0x80). */
-int func_004C6078(unsigned int err)
+/* SOCOM 1's gsapi_ErrorGetString (its gsapi object's; here at the end of the context object, the
+ * extaudio object between): a code's message out of the table that starts with the success
+ * string and ends at code 127. A code with bit 7 set (SOCOM II's test) or of another module is
+ * asked for again as 0x80CC007F: 2.96 turns the tail recursion into the jump back to the top,
+ * the table's address re-set in its delay slot. The recursion last puts its block after the
+ * loop's return, as the target has it; the key compared first gives `beq key, code`. */
+char *gsapi_ErrorGetString(unsigned int err)
 {
-    ERRMAP *m = data_00656400;
+    ERRSTR *e = data_00656400;
 
-    if (err != 0) {
-        if (((err >> 7) & 1) || ((err >> 16) & 0x7FFF) != 0xCC)
-            err = 0x80CC007F;
-        if (m->code != 127)
-            for (m++; m->code != 127; m++)
-                if ((err & 0x7F) == m->code)
-                    break;
+    if (err == 0)
+        return e->string;
+    if (!((err >> 7) & 1) && ((err >> 16) & 0x7FFF) == 0xCC) {
+        while (e->code != 127) {
+            e++;
+            if ((err & 0x7F) == e->code)
+                return e->string;
+        }
+        return e->string;
     }
-    return m->value;
+    return gsapi_ErrorGetString(0x80CC007F);
 }

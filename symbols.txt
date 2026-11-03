@@ -8628,31 +8628,31 @@
 0x004C5E48 0x48 ContextGetParam  # OVL2 unaligned; s1:order (SOCOM 1's object at 0x3372C8, same position; the parameter mask and 0x80CC0008 as there)
 0x004C5E90 0x94 ContextSetParam  # OVL2; s1:order (SOCOM 1's object at 0x3372C8, same position; heap_Calloc of 84 bytes and 0x80CC0086 as there)
 0x004C5F28 0x150 ContextActivateParams  # OVL2 unaligned; s1:order (SOCOM 1's object at 0x3372C8, same position; the 18-parameter loop unrolled by 3 into asrspi_SetParamList as there)
-0x004C6078 0x80 func_004C6078  # OVL2 unaligned
+0x004C6078 0x80 gsapi_ErrorGetString  # OVL2 unaligned; s1:calls (SOCOM 1's gsapi_ErrorGetString's body: the {code, string} table walked to its 127 sentinel, a code outside module 0xCC read as 0x80CC007F -- SOCOM II adds a bit-7 test; CReco hands each error to it where SOCOM 1's reco calls gsapi_ErrorGetString -- the HUD lane's lead. It sits at the end of the context object here, not in gsapi's: the extaudio object lies between)
 0x004C60F8 0x20 ExtAudioClose  # OVL2 unaligned; s1:exact
 0x004C6118 0x38 ExtAudioInit  # OVL2 unaligned; s1:align
-0x004C6150 0x10 func_004C6150  # OVL2
-0x004C6160 0xC func_004C6160  # OVL2
+0x004C6150 0x10 ExtAudioStart  # OVL2; s1:order (SOCOM 1's extaudio object at 0x337B10, the 3rd function: stores 1, the same 4 instructions; StartListening calls it where SOCOM 1's calls ExtAudioStart)
+0x004C6160 0xC ExtAudioStop  # OVL2; s1:order (SOCOM 1's extaudio object, the 4th: the same 3 instructions; StopListening and gsapi_EngineStop call it where SOCOM 1's call ExtAudioStop)
 0x004C6170 0x2C ExtAudioGetSamples  # OVL2; s1:align
-0x004C61A0 0x8 func_004C61A0  # OVL2
+0x004C61A0 0x8 ExtAudioGetSamplesLeft  # OVL2; s1:order (SOCOM 1's extaudio object, the 6th and last: the same 2 instructions)
 0x004C61A8 0x88 InitDefaultParams  # OVL2 unaligned; s1:align
 0x004C6230 0x1C8 ProcessAudio  # OVL2; s1:align
 0x004C63F8 0xD0 CreateWordIdList  # OVL2 unaligned; s1:calls
-0x004C64C8 0x104 func_004C64C8  # OVL2 unaligned
+0x004C64C8 0x104 gsapi_Close  # OVL2 unaligned; s1:calls (SOCOM 1's gsapi_Close: gsapi_EngineClose, gsapi_LanguageUnLoad, heap_Free, rsrc_Close, heap_Close in that order)
 0x004C65D0 0x144 gsapi_ContextActivate  # OVL2; s1:calls
 0x004C6718 0x120 gsapi_ContextDeActivate  # OVL2 unaligned; s1:calls
 0x004C6838 0x108 gsapi_ContextDisableWords  # OVL2 unaligned; s1:callee (gsapi_ContextDisableAllWords calls it, as SOCOM 1's calls gsapi_ContextDisableWords)
 0x004C6940 0x108 gsapi_ContextEnableWords  # OVL2; s1:callee (gsapi_ContextEnableAllWords calls it with every word, as SOCOM 1's calls gsapi_ContextEnableWords)
 0x004C6A48 0x108 gsapi_ContextUnLoad  # OVL2 unaligned; s1:calls
-0x004C6B50 0x184 func_004C6B50  # OVL2; size 0x184 (the seed cut it at 0x4C6C28, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C6CD8 0x1C0 func_004C6CD8  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C6DF0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C6E98 0x158 func_004C6E98  # OVL2 unaligned
-0x004C6FF0 0x174 func_004C6FF0  # OVL2
-0x004C7168 0x1C0 func_004C7168  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C7238, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C7328 0xF4 func_004C7328  # OVL2 unaligned; size 0xF4 (the seed cut it at 0x4C73F0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C7420 0xE4 func_004C7420  # OVL2
-0x004C7508 0x20C func_004C7508  # OVL2 unaligned; size 0x20C (the seed cut it at 0x4C76A0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
-0x004C7718 0xDC func_004C7718  # OVL2 unaligned; size 0xDC (the seed cut it at 0x4C77B8, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README)
+0x004C6B50 0x184 gsapi_EngineClose  # OVL2; size 0x184 (the seed cut it at 0x4C6C28, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_EngineClose, the same position: gsapi_EngineStop, ExtAudioClose, SidIsRecording, SidStop, SidClose, ContextDeActivate, ContextUnLoad, memset, asrspi_CloseEngine in that order)
+0x004C6CD8 0x1C0 gsapi_EngineOpen  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C6DF0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_EngineOpen, the same position: ExtAudioInit, SidInit, memset, asrspi_OpenEngine, asrspi_ActivateLng in that order; CReco passes (0, &engine) -- the HUD lane's lead)
+0x004C6E98 0x158 gsapi_EngineSetParam  # OVL2 unaligned; s1:calls (SOCOM 1's gsapi_EngineSetParam, the same position: ContextSetParam then ContextActivateParams, 0x80CC0089/0x80CC000C/0x80CC000D, the 18 parameters)
+0x004C6FF0 0x174 gsapi_EngineStart  # OVL2; s1:calls (SOCOM 1's gsapi_EngineStart, the same position: asrspi_Start then StartListening, 0x80CC0089)
+0x004C7168 0x1C0 gsapi_EngineStop  # OVL2 unaligned; size 0x1C0 (the seed cut it at 0x4C7238, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_EngineStop, the same position: ExtAudioStop, SidIsRecording, SidStop, asrspi_GetState, asrspi_Stop, 0x80CC0089; gsapi_EngineClose calls it where SOCOM 1's calls gsapi_EngineStop; CReco's stop -- the HUD lane's lead)
+0x004C7328 0xF4 gsapi_Init  # OVL2 unaligned; size 0xF4 (the seed cut it at 0x4C73F0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_Init, the same position in the gsapi object: 0x80CC0083 for a null callback, the safe-handle test, heap_Open, heap_Calloc of n*108 (0x80CC0086), rsrc_Open; CReco's init passes it the result callback and 0 where SOCOM 1's recoInit2 calls gsapi_Init -- the HUD lane's lead)
+0x004C7420 0xE4 gsapi_GetVersion  # OVL2; s1:calls (SOCOM 1's gsapi_GetVersion, the same position: strncpy, strlen, asrspi_GetVersion, sprintf, the 30-byte buffer)
+0x004C7508 0x20C gsapi_LanguageLoadBuffer  # OVL2 unaligned; size 0x20C (the seed cut it at 0x4C76A0, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_LanguageLoadBuffer, the same position: the safe-handle test, gsapi_LanguageUnLoad, InitDefaultParams, the same constants 116/24/9/12/17; CReco calls it after gsapi_Init as recoSetupLanguage does -- the HUD lane's lead)
+0x004C7718 0xDC gsapi_LanguageUnLoad  # OVL2 unaligned; size 0xDC (the seed cut it at 0x4C77B8, a DNAS.BIN call target -- MAIN's and OVL1's DNAS clients call DNAS.BIN loaded in the OVL2 slot: one prologue, the rest running on its frame to the one epilogue; README); s1:calls (SOCOM 1's gsapi_LanguageUnLoad, the same position after gsapi_LanguageLoadBuffer: the safe-handle test, the same constants; gsapi_LanguageLoadBuffer and gsapi_Close call it where SOCOM 1's call gsapi_LanguageUnLoad)
 0x004C77F8 0x14C gsapi_EngineSetImmediateContext  # OVL2 unaligned; s1:calls
 0x004C7948 0xFC gsapi_ContextLoadBuffer  # OVL2 unaligned; s1:calls
 0x004C7A48 0x8C gsapi_ContextSetGcdData  # OVL2 unaligned; s1:order (SOCOM 1's gsapi object 0x337BC8: after gsapi_ContextLoadBuffer, before gsapi_ContextSetWrdData; hands on to ContextSetGcdData as SOCOM 1's does; the gcc lane, round 3b)
@@ -8663,9 +8663,9 @@
 0x004C7CC0 0x104 gsapi_EngineDisableWords  # OVL2; s1:callee (gsapi_EngineDisableAllWords calls it, as SOCOM 1's calls gsapi_EngineDisableWords)
 0x004C7DC8 0x28 gsapi_EngineEnableAllWords  # OVL2 unaligned; s1:order (SOCOM 1's object at 0x337BC8, same position; through gsapi_EngineEnableWords as there)
 0x004C7DF0 0x28 gsapi_EngineDisableAllWords  # OVL2; s1:order (SOCOM 1's object at 0x337BC8, same position; through gsapi_EngineDisableWords as there)
-0x004C7E18 0x118 func_004C7E18  # OVL2 unaligned
-0x004C7F30 0xC0 func_004C7F30  # OVL2
-0x004C7FF0 0x134 func_004C7FF0  # OVL2
+0x004C7E18 0x118 gsapi_ContextSetParam  # OVL2 unaligned; s1:calls (SOCOM 1's gsapi_ContextSetParam, the same position: ContextSetParam then ContextActivateParams, 0x80CC0089/0x80CC000C)
+0x004C7F30 0xC0 gsapi_ContextGetParam  # OVL2; s1:calls (SOCOM 1's gsapi_ContextGetParam, the same position: ContextGetParam, 0x80CC0089/0x80CC0083/0x80CC000C)
+0x004C7FF0 0x134 gsapi_EngineGetParam  # OVL2; s1:calls (SOCOM 1's gsapi_EngineGetParam, the same position: the engine check, ContextGetParam, 0x80CC0089/0x80CC0083/0x80CC000C/0x80CC000D)
 0x004C8128 0x104 gsapi_EngineSetMode  # OVL2 unaligned; s1:order (SOCOM 1's gsapi object, before gsapi_ExecServer: the handle and engine checks, a mode of 0 or with both low bits set refused with 0x80CC0007, stored at the engine's +4)
 0x004C8230 0xC0 gsapi_ExecServer  # OVL2; s1:calls
 0x004C82F0 0x13C func_004C82F0  # OVL2
@@ -8676,13 +8676,13 @@
 0x004C8758 0x68 gsapi_GetHeapHandle  # OVL2 unaligned; s1:align
 0x004C87C0 0x60 gsapi_SetHeapUserData  # OVL2; s1:align
 0x004C8820 0x5C gsapi_UseExternalAudio  # OVL2; s1:align
-0x004C8880 0xC func_004C8880  # OVL2
+0x004C8880 0xC gsapi_GetNumContextsLoaded  # OVL2; s1:order (SOCOM 1's gsapi_GetNumContextsLoaded, after gsapi_UseExternalAudio as there: it returns gGSAPI+136, the count gsapi_Init zeroes and gsapi_ContextUnLoad decrements; 0x4C8890 beside it, returning gGSAPI+16, is new in SOCOM II)
 0x004C8890 0xC func_004C8890  # OVL2
-0x004C88A0 0x11C func_004C88A0  # OVL2
+0x004C88A0 0x11C ActivateDefaultParams  # OVL2; s1:calls (SOCOM 1's ActivateDefaultParams, the same position: asrspi_SetParamList over the 18 parameters, 255 for an unset one)
 0x004C89C0 0xBC RestartEngine  # OVL2; s1:align
 0x004C8A80 0x14 TranslateGsapiParamId2AsrSpiParamId  # OVL2; s1:callee (ContextActivateParams calls it from the same three sites as SOCOM 1's)
-0x004C8A98 0xD0 func_004C8A98  # OVL2 unaligned
-0x004C8B68 0xD0 func_004C8B68  # OVL2 unaligned
+0x004C8A98 0xD0 StartListening  # OVL2 unaligned; s1:calls (SOCOM 1's StartListening: SidIsRecording, ExtAudioStart, SidStart, state 2; gsapi_EngineStart calls it where SOCOM 1's calls StartListening)
+0x004C8B68 0xD0 StopListening  # OVL2 unaligned; s1:calls (SOCOM 1's StopListening: SidIsRecording, ExtAudioStop, SidStop, state 3; after StartListening as there)
 0x004C8C38 0x7C func_004C8C38  # OVL2 unaligned
 0x004C8CB8 0x58 func_004C8CB8  # OVL2 unaligned
 0x004C8D10 0x158 func_004C8D10  # OVL2
@@ -8720,7 +8720,7 @@
 0x004CC958 0x138 func_004CC958  # OVL2 unaligned
 0x004CCA90 0x3C asrspi_GetVersion  # OVL2; s1:align
 0x004CCAD0 0x14 asrspi_GetUswVersion  # OVL2; s1:exact
-0x004CCAE8 0x44 func_004CCAE8  # OVL2 unaligned
+0x004CCAE8 0x44 asrspi_GetState  # OVL2 unaligned; s1:calls (SOCOM 1's asrspi_GetState, the same position in the asrspi object: 0x8xxx0083 for a null pointer, the 11111 magic test; gsapi_EngineStop calls it where SOCOM 1's calls asrspi_GetState)
 0x004CCB30 0x120 asrspi_UswGetRecordingInfo  # OVL2; s1:align
 0x004CCC50 0x18 func_004CCC50  # OVL2
 0x004CCC68 0x18 func_004CCC68  # OVL2 unaligned
