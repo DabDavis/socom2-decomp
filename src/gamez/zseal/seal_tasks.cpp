@@ -60,6 +60,9 @@ bool zrdr_tobool(const _zrdr *rdr, bool *out);
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
 bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
+bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
+/* a team block's teams as a mask (fts_player.cpp's, OVL1 0x2B34A0) */
+unsigned int ParseTeamBlock(_zrdr *rdr);
 bool zrdr_finduint(const _zrdr *rdr, const char *tag, unsigned int *out, int n);
 /* a tag's values as a team mask (SOCOM 1's ftmask_create; OVL2 0x5B8190, seal_ex.cpp's) */
 unsigned int ftmask_create(_zrdr *rdr);
@@ -207,6 +210,40 @@ template <class T> inline T *NewTask()
     return cmd;
 }
 
+/* a name's length, 0 for none (inline;
+ * the names ours) */
+inline unsigned int TaskStrLen(const char *s)
+{
+    return s ? strlen(s) : 0;
+}
+
+/* a name a block carries at its end, sized to it (its Set an inline member, the name's address a
+ * local of its own: the target computes it once, ahead of the test, and stores the empty name
+ * through it -- written m_str in place MW folds it into each arm; the names ours) */
+struct TASK_NAME {
+    unsigned int Set(const char *s)
+    {
+        char *d = m_str;
+
+        if (s) {
+            strcpy(d, s);
+            return strlen(s);
+        }
+        *d = 0;
+        return 0;
+    }
+
+    char m_str[16];
+};
+
+/* a size rounded up to words (inline; the name ours) */
+inline unsigned int TaskAlign(unsigned int n)
+{
+    if (n & 3)
+        n += 4 - (n & 3);
+    return n;
+}
+
 /* a period and its countdown as the tasks hold it: SOCOM 1's CAiTimer (its DWARF: Rfloat m_period,
  * float m_timer; 0xc bytes), its inlines ours -- aitimer.h's CAiTimer spells the period as two
  * floats. Set's `this` stays in a register across rand() (CTWait::Parse) */
@@ -352,6 +389,34 @@ struct CTTurret : TASK_HDR {
     }
 };
 
+/* ai::INVIEW (SOCOM 1's CTInView): a viewer entity seeing a target entity, or any of a team's, with
+ * an item in hand (the names ours but the tags') */
+struct CTInView : TASK_HDR {
+    int m_equip;   // 0x8: the tag "equip", an EQUIP_ITEM (0 for none)
+    unsigned int m_team;   // 0xc: the tag "team"'s mask
+    TASK_ENT m_viewer;   // 0x10: the tag "viewer"
+    TASK_ENT m_target;   // 0x18: the tag "target"
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    /* a block made (inline: its arguments read before the allocation) */
+    static CTInView *Create(const char *viewer, const char *target, const char *equip, unsigned int team)
+    {
+        CTInView *cmd = NewTask<CTInView>();
+
+        cmd->m_viewer.m_name = 0;
+        cmd->m_viewer.m_id = CEntity::invalidId;
+        cmd->m_viewer.m_type = 0;
+        cmd->m_viewer.SetName(viewer);
+        cmd->m_target.m_name = 0;
+        cmd->m_target.m_id = CEntity::invalidId;
+        cmd->m_target.m_type = 0;
+        cmd->m_target.SetName(target);
+        cmd->m_equip = equip ? CZWeapon::GetWeaponId(equip) : 0;
+        cmd->m_team = team;
+        return cmd;
+    }
+};
+
 /* ai::INSTATE (SOCOM 1's CTInState): an entity's AI in a state, or with it on its stack */
 struct CTInState : TASK_HDR {
     unsigned int m_state : 31;   // 0x8: an AI_STATE
@@ -425,7 +490,47 @@ struct CTHold : TASK_HDR {
 
 /* ai::EVENT (SOCOM 1's CTEvent) */
 struct CTEvent : TASK_HDR {
+    /* the bits set through bool setters (the names ours) */
+    void SetVis(bool b) { m_vis = b; }
+    void SetRange(bool b) { m_hasRange = b; }
+    void SetDuration(bool b) { m_hasDuration = b; }
+    void SetNode(bool b) { m_hasNode = b; }
+
+    CPnt3D m_pos;   // 0x8: the tag "pos"
+    float m_range;   // 0x14: the tag "range"
+    float m_duration;   // 0x18: the tag "duration"
+    int m_nodes;   // 0x1c: the tag "node"'s names, the running anim's
+    short m_type;   // 0x20: a CAiEvent::EVENT, the tag "type"
+    unsigned char m_vis : 1;   // 0x22 bit 0: the tag "vis"
+    unsigned char m_hasRange : 1;   // bit 1
+    unsigned char m_hasDuration : 1;   // bit 2
+    unsigned char m_hasNode : 1;   // bit 3
+    unsigned char _22 : 4;
+    unsigned char _23;   // 0x24 bytes
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+};
+
+/* ai::DEBUG (SOCOM 1's CTDebug): a message, "DEBUG on"/"DEBUG off" for the words on and off (the
+ * mode 1 or 0, else -1) -- the block sized to it, its type left unset (the names ours) */
+struct CTDebug : TASK_HDR {
+    int m_mode;   // 0x8
+    TASK_NAME m_text;   // 0xc
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    /* a block made for a text, or none (inline) */
+    static CTDebug *Create(const char *text)
+    {
+        if (!text)
+            return 0;
+        unsigned int size = TaskAlign(TaskStrLen(text)) + 16;
+        CTDebug *cmd = (CTDebug *)_calloc(size, 1, 0, 0);
+
+        cmd->hdr.data_size = size;
+        cmd->m_text.Set(text);
+        return cmd;
+    }
 };
 
 /* ai::DRAIN (SOCOM II's) */
@@ -493,40 +598,6 @@ struct CTPaint : TASK_HDR {
 struct CTMove : TASK_HDR {
     static void End(_zanim_cmd_hdr *hdr);
 };
-
-/* a name's length, 0 for none, and the name copied, "" for none -- its length returned (inline;
- * the names ours) */
-inline unsigned int TaskStrLen(const char *s)
-{
-    return s ? strlen(s) : 0;
-}
-
-/* a name a block carries at its end, sized to it (its Set an inline member, the name's address a
- * local of its own: the target computes it once, ahead of the test, and stores the empty name
- * through it -- written m_str in place MW folds it into each arm; the names ours) */
-struct TASK_NAME {
-    unsigned int Set(const char *s)
-    {
-        char *d = m_str;
-
-        if (s) {
-            strcpy(d, s);
-            return strlen(s);
-        }
-        *d = 0;
-        return 0;
-    }
-
-    char m_str[16];
-};
-
-/* a size rounded up to words (inline; the name ours) */
-inline unsigned int TaskAlign(unsigned int n)
-{
-    if (n & 3)
-        n += 4 - (n & 3);
-    return n;
-}
 
 /* ai::MACRO (SOCOM 1's CTMacro): an anim of the set, by name -- the block sized to the name */
 struct CTMacro : TASK_HDR {
@@ -743,6 +814,73 @@ _zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
             cmd->m_flags |= 4;
             cmd->m_active = active;
         }
+    }
+    return &cmd->hdr;
+}
+
+/* a viewer and a target or a team (OVL2 0x5D8690) */
+_zanim_cmd_hdr *CTInView::Parse(_zrdr *rdr)
+{
+    const char *viewer = zrdr_findstring(rdr, "viewer");
+    const char *target = zrdr_findstring(rdr, "target");
+    const char *equip = zrdr_findstring(rdr, "equip");
+    unsigned int team = ParseTeamBlock(zrdr_findtag(rdr, "team"));
+
+    if (viewer && (target || team))
+        return &Create(viewer, target, equip, team)->hdr;
+    return 0;
+}
+
+/* an AI event's type, place and parameters (OVL2 0x5DD0E0) */
+_zanim_cmd_hdr *CTEvent::Parse(_zrdr *rdr)
+{
+    CTEvent *cmd = NewTask<CTEvent>();
+
+    cmd->m_pos = CPnt3D::zero;
+    cmd->m_type = CAiEvent::AIE_GENERIC;
+    cmd->m_type = CAiEvent::GetEventFromString(zrdr_findstring(rdr, "type"), CAiEvent::AIE_GENERIC);
+    zrdr_findPNT3D(rdr, "pos", &cmd->m_pos);
+    const char *node = zrdr_findstring(rdr, "node");
+
+    if (node) {
+        cmd->m_nodes = ZAnim.m_CurAnim->LoadNodeNames(0, node, 0, 1);
+        cmd->SetNode(true);
+    }
+    if (zrdr_findreal(rdr, "range", &cmd->m_range, 1))
+        cmd->SetRange(true);
+    if (zrdr_findreal(rdr, "duration", &cmd->m_duration, 1))
+        cmd->SetDuration(true);
+    if (zrdr_findtag(rdr, "vis"))
+        cmd->SetVis(true);
+    return &cmd->hdr;
+}
+
+/* the first item a text, on or off; an integer gives none (OVL2 0x5DD7C0) */
+_zanim_cmd_hdr *CTDebug::Parse(_zrdr *rdr)
+{
+    CTDebug *cmd = 0;
+    _zrdr *item = rdr->Item(0);
+
+    if (item) {
+        const char *text = 0;
+        int mode = -1;
+
+        switch (item->type) {
+        case 3:
+            text = item->String();
+            if (!strcasecmp(text, "on"))
+                mode = 1;
+            else if (!strcasecmp(text, "off"))
+                mode = 0;
+            break;
+        case 1:
+            return 0;
+        }
+        if (mode != -1)
+            text = mode ? "DEBUG on" : "DEBUG off";
+        cmd = Create(text);
+        if (cmd)
+            cmd->m_mode = mode;
     }
     return &cmd->hdr;
 }
