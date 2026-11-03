@@ -18,6 +18,9 @@ namespace zdb {
  * after it tested before the chain is sent */
 class CGSTexBuffer {
 public:
+    /* the buffer loaded (ztex_manager.cpp's Load: hooked up and sent at once when now) */
+    u_long128 *Load(bool now);
+
     unsigned char _0[0x18];   // 0x0
     void *m_chainp;   // 0x18
     unsigned int m_1c;   // 0x1c (SOCOM 1 tested its packet vector's size, at 0x20)
@@ -53,8 +56,6 @@ u_long128 *zSysSprGetPacket(u_long128 **p);
 void zSysFifoKick(u_long128 *p, unsigned int qwc);
 void *_realloc(void *p, unsigned int size, const char *file, int line);
 
-/* zdb::CGSTexBuffer's upload into the GS, not named yet (0x356BE0) */
-extern "C" void func_00356BE0(zdb::CGSTexBuffer *buf, int flags);
 
 /* one texture command of the chain the FIFO handler walks (SOCOM 1's tag_TexLoadCmds; SOCOM II
  * keeps a buffer to load and one to signal apart -- the names ours) */
@@ -331,7 +332,7 @@ void CPipe::FIFO_Signal(zdb::CGSTexBuffer *buf, unsigned int *data)
 {
     if (!buf)
         return;
-    func_00356BE0(buf, 0);
+    buf->Load(false);
     tag_TexLoadCmds &c = m_texLoadChain[m_texLoadIdx++];
 
     c.m_cmd = 0;

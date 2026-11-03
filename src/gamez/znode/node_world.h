@@ -221,37 +221,81 @@ public:
 
 /* CDynTexList is znode.h's (a cell holds one) */
 
-/* a GS texture buffer: only what the world touches (its dynamic list at 0x28) */
+/* a GS texture buffer (SOCOM 1's DWARF, 0x40 bytes): a stretch of GS memory its dynamic textures
+ * and palettes are placed in one after another, and the DMA chain that loads them, built in its
+ * packet buffer (ztex_manager.cpp's) */
 class CGSTexBuffer {
 public:
-    unsigned char _0[0x18];
-    int m_18;   // 0x18
-    unsigned char _1c[0x28 - 0x1c];
-    CDynTexList m_dyntex;   // 0x28
-};
+    CGSTexBuffer();
+    ~CGSTexBuffer();
+    /* the name copied (ours, inline: doAddBuffer frees the old one, then copies, as CTexHandle's) */
+    void SetName(const char *name)
+    {
+        if (m_name)
+            _free(m_name, 0, 0);
+        m_name = 0;
+        m_name = name ? _strdup(name, 0, 0) : 0;
+    }
+    unsigned int Setup(float start, float end);
+    unsigned int Setup(unsigned int start, unsigned int end);
+    void Add(CTexList *list, bool b);
+    void Add(CAssetLib *lib, bool b);
+    void SetDynTexList(CDynTexList *list);
+    u_long128 *Load(bool now);
+    /* the chain built into p (SOCOM 1's took a count as well; SOCOM II's Load passes none and its
+     * MakeChain reads none) */
+    u_long128 *MakeChain(u_long128 *p);
+    void RelocateAll();
+    void Hookup(CAssetLib *lib);
+    void UpdateTextureSelects();
+    /* the packet buffer emptied and given back, the chain dropped; emptied and made room in for n
+     * quadwords (SOCOM II's; the names ours) */
+    void WipePktBuf();
+    void ReservePktBuf(unsigned int n);
+    /* the chain dropped, to be rebuilt at the next load (SOCOM II's, out of line: SOCOM 1 stored
+     * the zero in place; the name ours) */
+    void DropChain();
 
-/* the texture manager: the buffers, and each render phase's buffer index (SOCOM 1's statics; SOCOM
- * 1's DWARF has m_texmanager a CTexManager whose first member is the buffers' vector, and its
- * methods are called on it) */
+    char *m_name;   // 0x0
+    unsigned char m_checkForOverflow;   // 0x4
+    unsigned int m_startAddress;   // 0x8
+    unsigned int m_nextAddress;   // 0xc
+    unsigned int m_endAddress;   // 0x10
+    CAssetLib *m_assetLib;   // 0x14
+    u_long128 *m_chainp;   // 0x18
+    std::vector<u_long128> m_pktbuf;   // 0x1c
+    CDynTexList m_dyntex_list;   // 0x28
+};   // 0x40 bytes
+
+/* the texture manager: the buffers (SOCOM 1's DWARF, 0x1c bytes; m_texmanager the one there is),
+ * the render maps' and shadow maps' sizes, a new buffer's two default fractions and each render
+ * phase's buffer indices (SOCOM 1's statics: SOCOM 1 had 17 phases, SOCOM II has 19, three
+ * indices each -- DestroyBuffers zeroes 19 x 12 bytes) */
 class CTexManager {
 public:
-    static std::vector<CGSTexBuffer *> m_texmanager;
+    CTexManager();
+    static void ClearPktBufs(CTexManager &tm, bool all);
+    static bool DestroyBuffers(CTexManager &tm, bool all);
+    void doSetupBuffers();
+    static void WipePktBuf();
+    void doDelBuffer(CGSTexBuffer *buf);
+    int doAddBuffer(const char *name, float start, float end);
+    /* the buffer by index (ours, inline) */
+    CGSTexBuffer *operator[](unsigned int i) { return m_buffer[i]; }
+
+    std::vector<CGSTexBuffer *> m_buffer;   // 0x0
+    unsigned int m_renderMapNum;   // 0xc
+    unsigned int m_renderMapNumBytes;   // 0x10
+    unsigned int m_shadowMapSize;   // 0x14
+    unsigned int m_reflectionMapSize;   // 0x18
+
+    static CTexManager m_texmanager;
     /* a new buffer's two sizes, first (SOCOM 1's 16-byte static after m_texmanager) */
     static float TexBufParams[4];
-    static int TexPhase[55];
-};
+    static int TexPhase[19][3];
+};   // 0x1c bytes
 
 }
-
-/* the texture manager's buffer made, by name and size, its index given back, and its buffer let go
- * of (vis code, not named yet: SOCOM 1's CTexManager::doAddBuffer and doDelBuffer, called on
- * m_texmanager); a buffer's dynamic list set, a library added, and its textures released (SOCOM 1's
- * CGSTexBuffer::SetDynTexList and Add; the third SOCOM II's) */
-extern "C" int func_003566C0(void *texmanager, const char *name, float a, float b);
-extern "C" void func_00356570(void *texmanager, zdb::CGSTexBuffer *buf);
-extern "C" void func_00357820(zdb::CGSTexBuffer *buf, zdb::CDynTexList *list);
-extern "C" void func_003569F0(zdb::CGSTexBuffer *buf, zdb::CAssetLib *lib, bool b);
-extern "C" void func_00356BE0(zdb::CGSTexBuffer *buf, bool b);
 
 namespace zdb {
 
@@ -262,7 +306,7 @@ namespace zdb {
 class CTextureAssetCharacters {
 public:
     CTextureAssetCharacters(CAssetLib *lib, CNode *node, CDynTexList *dyntex);
-    ~CTextureAssetCharacters() { func_00356570(&CTexManager::m_texmanager, m_buffer); }
+    ~CTextureAssetCharacters() { CTexManager::m_texmanager.doDelBuffer(m_buffer); }
     /* the visible nodes counted, each node's in-view bit set (SOCOM 1's) */
     int TestFOV(CCamera *cam);
 

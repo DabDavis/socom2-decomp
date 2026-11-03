@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00356BE0(s32, M2C_UNK);                /* extern */
+M2C_UNK Load__Q23zdb12CGSTexBufferFb(s32, M2C_UNK); /* extern */
 extern s32 *data_0049E888;
 
 void EndBatchReloc__Q23zdb15CBatchRelocatorCFv(void) {
-    func_00356BE0(*data_0049E888, 1);
+    Load__Q23zdb12CGSTexBufferFb(*data_0049E888, 1);
 }

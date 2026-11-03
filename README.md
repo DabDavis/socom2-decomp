@@ -1675,6 +1675,32 @@ builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.p
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the world, rdr and sound, round 2** (ztex_manager.cpp written whole on SOCOM 1's classes,
+  SetupSpecialTextures):
+  - MW's scheduler reorders independent float stores to globals: TexBufParams' four defaults written
+    0-1-2-3 land 0-1-3-2 in the image, and writing them in the image's order misses by 18 (CTexManager());
+  - a `u_long128 *` cursor stepped `p++` per quadword gets one `addiu +32` after each pair of quadwords;
+    `p += 2` after four doubleword stores folds every step into the store offsets;
+  - libgraph's `SCE_GIF_SET_TAG` builds its constant once and two tags in one function share it; a
+    hand-folded `x | 0x8000 | (2 << 58)` ORs the low part into x before widening it to 64 bits;
+  - `x > K` and `i <= 13` compare into `at`; `x >= K+1` and `i < 14` compare into v0;
+  - for a function's first store to go through a0, declare the next local after that store; declared
+    before it, the store goes through the saved copy of `this`;
+  - a materialised `a.empty() && b.empty()` is a bool local, not a test written inside the `if` (Load);
+  - a value pushed by reference is stored to the stack where it is set; a copy made at the push
+    (`T *p = t; push_back(p)`) is stored only at the call (Hookup);
+  - a select's register-address word is written before its data word (SetupSpecialTextures); an Exists
+    with a local found iterator stores each temporary next to its copy (CDynTexList::Add(CTexPalette *));
+  - ztex_main.cpp ends at 0x35597F; ztex_manager.cpp runs 0x355980-0x357E8F (CBatchRelocator's slots at
+    its head stay drafts), moved from ztwod/ to src/gamez/ztex/ and written on znode.h's CTexture and
+    node_world.h's real CGSTexBuffer/CTexManager (the HUD lane's stand-in classes are gone); MakeChain
+    takes no count (`FP1`, not `FP1i`: SOCOM II's Load never sets a2 and the body never reads it);
+    0x356B90's s1:align name `swap` was wrong (ReservePktBuf);
+  - open: UpdateTextureSelects 0x355DE0 (11, registers only: both loop-end tests swap a0/a1, and the
+    palette test wants its operands in one order for the loads and the other for the branch); Hookup
+    0x3571D0 (42, registers only: this s3, lib s2, tex s1, i s0 against the target's s2/s1/s0/s4; six
+    declaration orders change nothing). The lane's scratch (callers.py, the caller scanner; open.py) is
+    build/scratch/wld-r2/.
 - **Tells from the kit and AI states, round 15** (seal_ik.cpp, ~CSealUnit, the aim parameters):
   - single-bit `unsigned int` bitfields written one at a time compile to lbu/sb: splitting the 3-bit
     field was enough for TurnSetup 0x5B8270 (round 14's unsigned-char guess was not needed);
@@ -1706,7 +1732,7 @@ builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.p
     match only under a function-scoped `#pragma opt_propagation off` (a constant kept in a register,
     a forwarded copy kept in memory; every plain form tried was 3-5 instructions off; unit-wide it
     loses others, and swept over 14 units with open functions only Add gained -- five other optimiser
-    pragmas gained nothing: build/scratch/wld/propsweep.py); Resolve needs a `volatile` store to keep
+    pragmas gained nothing: build/scratch/wld-r1/propsweep.py); Resolve needs a `volatile` store to keep
     the flags' unchanged write-back;
   - ztex_main.cpp (the press beta's assert names it) starts at 0x354510, straight after valve_main.cpp,
     in SOCOM 1's order; its boundary with ztex_manager.cpp falls in 0x355A70-0x355DE0; znode.h's
