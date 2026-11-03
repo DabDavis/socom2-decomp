@@ -773,7 +773,7 @@ int func_00622578(int arg0, int arg1)
     return result;
 }
 
-int func_00622620(int arg0, int arg1)
+int NetSendMyClientUpdate(int arg0, int arg1)
 {
     int result;
 
@@ -853,7 +853,7 @@ int func_006228C0(int arg0, int arg1)
     return result;
 }
 
-int func_00622968(int arg0, int arg1, int arg2)
+int NetGetClientStatus(int arg0, int arg1, int arg2)
 {
     int result;
 
@@ -869,7 +869,7 @@ int func_00622968(int arg0, int arg1, int arg2)
     return result;
 }
 
-int func_00622A20(int arg0, int arg1, int arg2)
+int NetGetClient(int arg0, int arg1, int arg2)
 {
     int result;
 
@@ -1109,7 +1109,7 @@ int func_00623330(int arg0, int arg1)
     return result;
 }
 
-int func_006233D8(int arg0)
+int NetSetMyClientObject(int arg0)
 {
     int result;
 

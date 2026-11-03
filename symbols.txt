@@ -11900,20 +11900,20 @@
 0x00612518 0xB4 func_00612518  # OVL2 unaligned
 0x006125D0 0x60 func_006125D0  # OVL2
 0x00612630 0x70 func_00612630  # OVL2
-0x006126A0 0x44 func_006126A0  # OVL2
-0x006126E8 0x64 func_006126E8  # OVL2 unaligned
-0x00612750 0x7C func_00612750  # OVL2
-0x006127D0 0xAC func_006127D0  # OVL2
-0x00612880 0x68 func_00612880  # OVL2
-0x006128E8 0x64 func_006128E8  # OVL2 unaligned
-0x00612950 0x4C func_00612950  # OVL2
+0x006126A0 0x44 NetInitializeClients  # OVL2; s1:order (the gcc lane, round 7b): first of SOCOM 1's first DME object (0x4181C0), the same order here; DMEmalloc's table into NetClientPointerList, MyClientIsJoined cleared, the table memset -- SOCOM 1's body at one world's 256 clients
+0x006126E8 0x64 func_006126E8  # OVL2 unaligned; the body of SOCOM 1's NetGetClient (s1:order, the gcc lane round 7b: second of SOCOM 1's first DME object, *ppClient = 0, the range checks, NetClientPointerList[nClient]); the public name is the Dme.c wrapper's, 0x622A20
+0x00612750 0x7C func_00612750  # OVL2; the body of SOCOM 1's NetGetClientStatus (s1:order, round 7b: third of the object; (pStatus, world, client), the range checks returning 8, the status from the world's client record); the public name is the Dme.c wrapper's, 0x622968
+0x006127D0 0xAC NetCreateClient  # OVL2; s1:order (round 7b): fourth; DMEmalloc(28) zeroed field by field and stored in NetClientPointerList, returned -- SOCOM 1's body
+0x00612880 0x68 NetFreeClient  # OVL2; s1:order (round 7b): fifth; DmeFree of the client's NetClientPointerList slot -- SOCOM 1's body
+0x006128E8 0x64 NetFreeClients  # OVL2 unaligned; s1:order (round 7b): sixth; NetFreeClient over a world's clients, then MyClientIsJoined cleared -- SOCOM 1's body
+0x00612950 0x4C NetFreeAllClients  # OVL2; s1:order (round 7b): seventh; NetFreeClients over the four worlds, then MyClientIsJoined cleared -- SOCOM 1's body
 0x006129A0 0x30 NetFreeClientPointers  # OVL2; s1:exact
-0x006129D0 0xDC func_006129D0  # OVL2
-0x00612AB0 0x138 func_00612AB0  # OVL2
-0x00612BE8 0x98 func_00612BE8  # OVL2 unaligned
-0x00612C80 0x100 func_00612C80  # OVL2
-0x00612D80 0xC4 func_00612D80  # OVL2
-0x00612E48 0x310 func_00612E48  # OVL2 unaligned
+0x006129D0 0xDC ReserveNetObjectsAndDataStreamsForClient  # OVL2; s1:order (round 7b): ninth (after NetFreeClientPointers); NetObjectStatus 0 -> 1 over the client's object block, each of its data streams' state set to 1 -- SOCOM 1's body with null tests
+0x00612AB0 0x138 func_00612AB0  # OVL2; the body of SOCOM 1's NetSendMyClientUpdate (s1:order, round 7b: tenth of the object; SOCOM 1's 36-byte client update, field for field); the public name is the Dme.c wrapper's, 0x622620
+0x00612BE8 0x98 MyClientJoins  # OVL2 unaligned; s1:order (round 7b): eleventh; NetGetClient, NetCreateClient when none, the object 0x1000, NetSendMyClientUpdate(world, -1), ReserveNetObjectsAndDataStreamsForClient -- SOCOM 1's sequence
+0x00612C80 0x100 NetClientJoins  # OVL2; s1:order (round 7b): twelfth; NetGetClient, NetCreateClient when none, ReserveNetObjectsAndDataStreamsForClient, the joins callback, NetSendMyClientUpdate(world, client) -- SOCOM 1's sequence
+0x00612D80 0xC4 func_00612D80  # OVL2; the body of SOCOM 1's NetSetMyClientObject (s1:order, round 7b: thirteenth of the object; NetGetClient's body on this client, NetGetObject's body on the index, the owner test, NetSendMyClientUpdate's body); the public name is the Dme.c wrapper's, 0x6233D8
+0x00612E48 0x310 NetClientLeaves  # OVL2 unaligned; s1:order (round 7b): fourteenth; the leaves callback, the object walk up to ActiveNetObjectCount (status 2: creator and owner reassigned, NetFreeRemoteObject, RemoteObjectUpdate(-1, i, -2)), the client's reserved objects and streams released, NetFreeClient -- SOCOM 1's body with the session master's hand-over (0x613158) new
 0x00613158 0x160 func_00613158  # OVL2 unaligned
 0x006132B8 0x498 func_006132B8  # OVL2 unaligned
 0x00613750 0x3C func_00613750  # OVL2
@@ -12154,13 +12154,13 @@
 0x00622428 0xB8 func_00622428  # OVL2 unaligned
 0x006224E0 0x98 func_006224E0  # OVL2
 0x00622578 0xA4 func_00622578  # OVL2 unaligned
-0x00622620 0xA4 func_00622620  # OVL2
+0x00622620 0xA4 NetSendMyClientUpdate  # OVL2; s1:order (the gcc lane, round 7b): Dme.c's locked wrapper over 0x612AB0, the body SOCOM 1's NetSendMyClientUpdate has
 0x006226C8 0xA4 func_006226C8  # OVL2 unaligned
 0x00622770 0xA4 func_00622770  # OVL2
 0x00622818 0xA4 NetGetObject  # OVL2 unaligned; s1:calls (zNetGetObject's callee, the prebuilt DME code, as SOCOM 1's) -- the states lane
 0x006228C0 0xA4 func_006228C0  # OVL2
-0x00622968 0xB8 func_00622968  # OVL2 unaligned
-0x00622A20 0xB8 func_00622A20  # OVL2
+0x00622968 0xB8 NetGetClientStatus  # OVL2 unaligned; s1:order (the gcc lane, round 7b): Dme.c's locked wrapper over 0x612750, the body SOCOM 1's NetGetClientStatus has (the wrappers carry SOCOM 1's API names, as NetGetObject and NetSendMessage do)
+0x00622A20 0xB8 NetGetClient  # OVL2; s1:calls (the gcc lane, round 7b): zNetGetGameClient calls it where SOCOM 1's calls NetGetClient; Dme.c's locked wrapper over 0x6126E8, the body SOCOM 1's NetGetClient has
 0x00622AD8 0x98 func_00622AD8  # OVL2 unaligned
 0x00622B70 0xB8 func_00622B70  # OVL2
 0x00622C28 0x98 func_00622C28  # OVL2 unaligned
@@ -12175,7 +12175,7 @@
 0x006231E0 0xA4 func_006231E0  # OVL2
 0x00623288 0xA4 func_00623288  # OVL2 unaligned
 0x00623330 0xA4 func_00623330  # OVL2
-0x006233D8 0x98 func_006233D8  # OVL2 unaligned
+0x006233D8 0x98 NetSetMyClientObject  # OVL2 unaligned; s1:calls (the gcc lane, round 7b): Dme.c's locked wrapper over 0x612D80, the body SOCOM 1's NetSetMyClientObject has; OVL1's thunk 0x30CDE0 jumps to it (SOCOM 1's ftsNetworkPlayerInit calls NetSetMyClientObject)
 0x00623470 0x98 NetFreeObject  # OVL2; s1:calls (the DME's; UpdateLocalGrenade calls it where SOCOM 1's does) -- the states lane
 0x00623508 0x88 func_00623508  # OVL2 unaligned
 0x00623590 0x98 func_00623590  # OVL2
