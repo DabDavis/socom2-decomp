@@ -9023,7 +9023,7 @@
 0x004F78A8 0x19C QrPreMult  # OVL2 unaligned; s1:calls (SOCOM 1's Smoothing calls QrPreMult where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F7A48 0x200 smtConstruct  # OVL2 unaligned; s1:calls
 0x004F7C48 0x45C Smoothing  # OVL2 unaligned; s1:calls
-0x004F80A8 0x84 func_004F80A8  # OVL2 unaligned
+0x004F80A8 0x84 smtDestruct  # OVL2 unaligned; s1:calls (SOCOM 1's FreeResourcesAcne tail-calls smtDestruct(smoother, tos) at the point where ours -- FreeResourcesAcne inlined into ControlAcne -- calls this row; the smoothing object's, after smtConstruct) -- the gcc lane, round 11c (found by its helper)
 0x004F8130 0x244 SpecSubPutSession  # OVL2; s1:calls (SOCOM 1's ControlSpecSub calls SpecSubPutSession where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004F8378 0xF0 SpecSubGetSession  # OVL2 unaligned; s1:align
 0x004F8468 0x1208 func_004F8468  # OVL2 unaligned

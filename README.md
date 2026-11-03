@@ -4847,9 +4847,20 @@ DestructQueue, DestructArchitecture, _tosControl, tosBaseBlockControl, tosInit, 
 DisabledProcess over its draft; 14 of 16), `asr/voicing.c` (+3: InitVoicing,
 Voicing_MaintainNoiseEner, Voicing_AddSignal; 5 of 5), `asr/fftmod.c` (+1, InitFFTMod; 3 of 3
 written), `asr/window.c` (+2, ProcessWindow and InitWindow; 4 of 4 written), `asr/nbestdp.c`
-(ExtendBacktraceStack, new), `asr/train.c` (TrainFree, new: the training object's span and head)
--- ROUND11C_COUNTS. Named: Subsampler_Process, Subsampler_CheckImpulseResponse (`s1:order`),
-SetAndControlQSizes (`s1:calls`: SOCOM 1's tosInit calls it at the same point). No tool changed.
+(2, new: ExtendBacktraceStack, and ScoreCompare@nbestdp over its draft), `asr/isowdp.c`
+(ScoreCompare@isowdp, new), `asr/train.c` (TrainFree, new: the training object's span and head),
+`asr/acne.c` (4 of 5, new: Reset, NormalizeAndEnQ, InitAcne, ConstructAcne over its draft; its two
+21-float 11 kHz tables statics checked by content; SOCOM 1's FreeResourcesAcne a `static __inline__`
+inlined into ControlAcne, which is OPEN: 48 words, the right size, the session pointer and the
+array size swap s0/s1 over five shapes) -- 22 rows new to the map's byte-exact rows (11,280 bytes),
+three matched drafts superseded (DisabledProcess, ScoreCompare@nbestdp, ConstructAcne);
+`src/lib/asr` 387 of 424. gender.c waits on a shape: InitGender inlines ResetGender while
+ControlGender calls it twice, so ResetGender is a `static __inline__` between them whose copy
+exists only once ControlGender (0x58C) is written. Named: Subsampler_Process,
+Subsampler_CheckImpulseResponse, ScoreCompare@isowdp, ScoreCompare@nbestdp, ConstructAcne
+(`s1:order`), SetAndControlQSizes (`s1:calls`: SOCOM 1's tosInit calls it at the same point),
+smtDestruct (`s1:calls`: SOCOM 1's FreeResourcesAcne tail-calls it where ControlAcne's inlined copy
+calls 0x4F80A8). No tool changed.
 
 ## Open, and next
 
