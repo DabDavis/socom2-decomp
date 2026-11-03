@@ -3914,19 +3914,19 @@
 0x002B12A0 0x68 func_002B12A0  # OVL1
 0x002B1310 0x8 func_002B1310  # OVL1
 0x002B1320 0x68 func_002B1320  # OVL1
-0x002B1390 0x19C func_002B1390  # OVL1
+0x002B1390 0x19C resize__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FUi  # OVL1; by hand (the states lane, round 21, the UI lane's round 13 lead verified): __sinit_fts_mission.cpp (0x400160) calls it once, on theUIVarManager with 256, where SOCOM 1's __sinit_fts_mission.cpp calls this name with 256; the body grows through insert(end, n - size, tmp) 0x2B1BD0 with a temporary CUIVariable (its bases built by 0x2B17E0 and 0x2B17C0, the vtables 0x4062B0/0x4062B8 stored, the watchers by 0x2B17A0 and reserve(16) 0x2B1600) torn down through Destroy 0x386B00, ~UIVarMixin's DetachUIVar and ~_zrdr, and shrinks through erase<CUIVariable> 0x2B1A40 -- SOCOM 1's resize's shape
 0x002B1530 0xC8 __dt__11CUIVariableFv  # OVL1; the integrator 2026-11-04, by the UI lane round 13: CUIVariable's vtable 0x4062B0 slot (its inline virtual destructor's copy; zui_var.cpp emits it under this name)
 0x002B1600 0x198 func_002B1600  # OVL1
-0x002B17A0 0x14 func_002B17A0  # OVL1
-0x002B17C0 0x18 func_002B17C0  # OVL1
-0x002B17E0 0xB4 func_002B17E0  # OVL1
+0x002B17A0 0x14 __ct__Q23std54vector<P10UIVarMixin,Q23std24allocator<P10UIVarMixin>>Fv  # OVL1; by hand (the states lane, round 21): a pointer vector's default constructor out of line (three words zeroed, as the other 0x14-byte copies); resize<CUIVariable> 0x2B1390 calls it for its temporary's watchers m_attached_items at +0x18 (zui.h's std::vector<UIVarMixin *>)
+0x002B17C0 0x18 __ct__10UIVarMixinFv  # OVL1; by hand (the states lane, round 21): zui_uivar.h's inline UIVarMixin() out of line -- UIVarMixin's vtable 0x4050B0 stored and m_uivar zeroed; resize<CUIVariable> 0x2B1390 calls it for its temporary's UIVarMixin base at +8 before storing CUIVariable's own tables
+0x002B17E0 0xB4 __ct__5_zrdrFv  # OVL1; by hand (the states lane, round 21): the out-of-line copy of zrdr.h's _zrdr() -- the first word read, masked and written back field by field (type, isclone, packed, nofree, unused, length cleared); resize<CUIVariable> 0x2B1390 calls it for its temporary CUIVariable's _zrdr base
 0x002B18A0 0x68 func_002B18A0  # OVL1
 0x002B1910 0x60 __dt__17CValveSaveManagerFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B1970 0x60 func_002B1970  # OVL1
 0x002B19D0 0x3C __ct__12CUIVarSTableFv  # OVL1; s1:align
 0x002B1A10 0x2C UpdateUIVar__11CUIVariableFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the UI lane round 13: vtable 0x4062B0's UpdateUIVar slot (inline virtual; zui_var.cpp emits it)
 0x002B1A40 0x190 erase__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FP11CUIVariableP11CUIVariable  # OVL1; s1:align
-0x002B1BD0 0x510 func_002B1BD0  # OVL1
+0x002B1BD0 0x510 insert__Q23std62__vector_imp<11CUIVariable,Q23std24allocator<11CUIVariable>,0>FP11CUIVariableUiRC11CUIVariable  # OVL1; by hand (the states lane, round 21): resize<CUIVariable> 0x2B1390 calls it with (end, n - size, the temporary) where SOCOM 1's resize calls this name; CUIVariable's copy constructor 0x386BF0 six times, the watchers' pod assignment 0x259AF0 twice, new, the element destructor through the vtable and delete, as SOCOM 1's insert of it (0x1FC0A0)
 0x002B20E0 0x84 func_002B20E0  # OVL1
 0x002B2170 0x8 @8@UpdateUIVar__11CUIVariableFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the UI lane round 13: the UIVarMixin-base thunk of UpdateUIVar (zui_var.cpp emits it)
 0x002B2180 0x8 @8@__dt__11CUIVariableFv  # OVL1; the integrator 2026-11-04, by the UI lane round 13: the UIVarMixin-base thunk of ~CUIVariable (vtable 0x4062B0's second part; zui_var.cpp emits it)
