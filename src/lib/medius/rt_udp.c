@@ -17,14 +17,16 @@
  * prologue's `move s1,zero`); a result kept in a saved register to one `return result` after a
  * time stamp call (0x641230); the RTO as `n = srtt + MAX(rttvar, 1); if (n > 500) n = 500;`; the
  * header stores in the orders tools/ccperm.py found (0x63F948, 0x641A70, 0x63F3A8); a final `return 0`
- * that is a join of every arm (0x63E230: an else arm stores the flag rather than falling past it).
+ * that is a join of every arm (0x63E230: an else arm stores the flag rather than falling past it);
+ * the shared slot's test POSITIVE, its `return 17` in an else (0x641E30, round 18b: as a guard the
+ * return is if-converted above the branch, so the loaded slot takes v1 and the `li v0,17` fills a
+ * plain slot; the positive form also gives the port query's `bnez` -- three words, one shape).
  * OPEN: 0x63DD18 (the create: the target lays the allocation out after the option copy, jumping
  * back to it, and keeps the new record in one register through the copy -- 95 words with a local
  * copy, 111 without), 0x63EBA0 (the raw send: the length test's `return 1` is a fall-through `b`,
  * 33s), 0x63E4A0 (11:
  * the index lives in v1 and the -2 in v0), 0x63E5E8 (10, the connect), 0x63F168 and 0x6419E8 (2
  * each: the call's arguments scheduled the other way -- the -1 key-manager id in the delay slot),
- * 0x641E30 (3: a bnez/bnezl choice and a register after the shared channel's port query),
  * 0x63ECC8 (round 12b, 93s: the receive -- the reliable test reads the header's first word, `lw;
  * andi 6`, as a word-wide `& 6` gives; the loop's message pointer lives in a0 where the target's is
  * v0, and the endpoint path's free does not cross-jump with the connection's). Round 12b: 0x63E928
@@ -1231,14 +1233,15 @@ int func_00641E30(RT_UDP *pUdp)
                 return 16;
             pUdp->nPort = gnSharedPort;
         }
-        if (gapUdp[pUdp->nShared] != 0)
+        if (gapUdp[pUdp->nShared] == 0) {
+            if (pUdp->nPort != gnSharedPort)
+                return 16;
+            gapUdp[pUdp->nShared] = pUdp;
+            pUdp->nChannel = gnSharedChannel;
+            pUdp->pSendBuf = gpSharedSendBuf;
+            pUdp->pRecvBuf = gpSharedRecvBuf;
+        } else
             return 17;
-        if (pUdp->nPort != gnSharedPort)
-            return 16;
-        gapUdp[pUdp->nShared] = pUdp;
-        pUdp->nChannel = gnSharedChannel;
-        pUdp->pSendBuf = gpSharedSendBuf;
-        pUdp->pRecvBuf = gpSharedRecvBuf;
     } else {
         if (pUdp->nMaxPacket > 1438)
             return 1;
