@@ -1647,6 +1647,17 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the kit and AI states, round 14** (seal_unit.cpp, SetAiEvent, CalcAimGoal):
+  - a bare float test `len ? a / len : 1.0f` gives `c.eq.s len,0`; `len != 0.0f` swaps the operands;
+  - a helper with a function-local static inlined into its only caller wants `static inline`: `static`
+    alone still emits a copy, `inline` alone makes the static external (compared by name, not content);
+  - `r = 0; if (inlineBool(...)) r = v;` keeps the result in a saved register across the call, the
+    ternary does not; `s = (E)m; if (m == 3) s = f();` puts the narrowing in the compare's delay slot;
+  - grouped cases listed 3, 4, 0 then 1, 2 give the compare chain 2, 1, 0, 4, 3; a recursive
+    auto-inline candidate (15 statements or fewer) inlines itself unless pinned;
+  - 0x5E6C90's second walk tests against begin() -- an original bug (`beq s3,s3`), kept;
+  - zseal.h includes ai/ai.h (CSealCtrlAi::SetAiEvent returns the event kind) and CalcGoalDir returns
+    bool (CalcAimGoal keeps its result).
 - **Tells from the SEALs, round 13** (small rows: CAiSAnimate's list instances, CAiSGrenade::OnSignal, the blender):
   - MW 3.0b52 refuses an explicit instantiation of a class template's member function ("illegal
     explicit template specialization"); `template class X<T>;` compiles but emits every member, so
