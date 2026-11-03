@@ -133,7 +133,14 @@ public:
     /* a character (0x2CA6E0) */
     charT &operator[](size_type pos) { return (is_long() ? (charT *)w_[2] : s_.data_)[pos]; }
     /* short form first: the hoisted text addresses take the target's registers (CSaveManager::Load's
-     * s7/s8, the rdr lane's round 4; nothing lost over every hand-written unit) */
+     * s7/s8, the rdr lane's round 4; nothing lost over every hand-written unit).
+     * OPEN (the MSL headers round 9, build/p9/v_lm*.txt over fts_message.cpp): LastMessage 0x2B6D60
+     * wants the short-form test as a stored, negated, narrowed bool (`sltu; xori 1; andi 0xff;
+     * beqz`) and a `b` joining the two forms. Through a helper `bool short = (is_long() == false)`
+     * the target's sltu appears and the function grows 0x68 -> 0x70 (of 0x78), the branch then
+     * `bnez` on the un-negated bool; `!is_long()` in a bool helper, a second bool level, a bool
+     * local, `? false : true`, a bool parameter of an inline picker, data() over c_str() and an
+     * if/else body all stay at 0x68 -- c_str() itself unchanged */
     const charT *c_str() const { return !is_long() ? s_.data_ : (const charT *)w_[2]; }
     const charT *data() const { return c_str(); }
 

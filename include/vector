@@ -320,7 +320,15 @@ inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
  * assignment 0x393D30, the copy 0x393D80, init 0x393F00, assign 0x393FB0. Not modelled: the
  * destructor's depth (zui_hangul.cpp's 0x3940F0 tests `this` four times, the elements holding one
  * five or six: an extra level and the deallocation's capacity/allocator accessors, out of line where
- * the chain is cut -- 0x392740/0x392750, and the 4-byte pod's 0x2B5740/0x2B5750 alike) */
+ * the chain is cut -- 0x392740/0x392750, and the 4-byte pod's 0x2B5740/0x2B5750 alike).
+ * Measured, not adopted (the MSL headers round 9, build/p9/vc2.cpp): the unit's three element
+ * vectors -- {vector<char>, a count with a zeroing constructor} (16 bytes: insert 0x392BE0, erase
+ * 0x392AB0, ~E 0x390760 with six this-tests), {pointer-sized pod vector, a byte} (16: insert
+ * 0x3931A0, erase 0x393030, clear 0x393E40, the deleter's destructor 0x393DD0) and {vector<char>,
+ * two words} (20: insert 0x393790, erase 0x3935F0, clear 0x393C60). The second's elements assign
+ * through the 4-byte pod's out-of-class operator= 0x259AF0 and assign 0x259D20, which this header
+ * does not have (its pod's copy assignment is implicit, a bitwise copy), and the statics' destructor
+ * chain 0x394170 -> 0x394090 -> 0x393DD0 is a level deeper than a class vector's here */
 template <class T, class U>
 inline U *__pod_copy(T *first, T *last, U *result)
 {
@@ -908,7 +916,18 @@ void __vector_imp<T, Allocator, IsPOD>::reserve(unsigned int n)
  * count after the range, is a signed int, and the destroy loop starts n past first (the UI lane's
  * measurement: erase<ActionItem> 0x383E00 byte-exact so, ~ActionItem called with -1). MW 3.0
  * deletes the destroy loop for a trivially destructible element, so the other class erases are
- * unchanged */
+ * unchanged.
+ * OPEN (the MSL headers round 9, build/p9/vs1.cpp): zui_skbview.cpp's tail, the soft keyboard look's
+ * source vectors -- 0x2C-byte elements {CSaferStr, two 16-byte rectangles} (the look parser 0x3963F0
+ * resizes m_sources[i] by one and assigns the new back()'s string at +0: zui_skb.h's
+ * vector<CSkbKey> there is a 4-byte stand-in). With the unit's own code generating the string's copy
+ * and assignment first, the element's copy constructor comes out of line at the target's size
+ * (0x398910, 0xD0, the string copy inlined in it) and resize at its 0xE4 (0x397FE0), but this erase and
+ * the insert call copy/copy_backward/fill_n's helpers out of line (each calling is_long() out of
+ * line) where the target inlines them whole -- 0x1C0 against 0x3980D0's 0x220, 0x4A0 against
+ * 0x3982F0's 0x618: the element's assignment (CSaferStr's implicit one over basic_string's
+ * out-of-class operator=, the rectangles copied through the FPRs) is a level too tall for the
+ * wrapper/helper pair, which the turret's cut needs */
 template <class T, class Allocator, bool IsPOD>
 T *__vector_imp<T, Allocator, IsPOD>::erase(T *first, T *last)
 {
