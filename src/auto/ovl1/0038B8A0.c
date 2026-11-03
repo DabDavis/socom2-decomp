@@ -4,10 +4,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-s32 func_0038CB90();                                /* extern */
-s32 func_0038CC50(s32, s32);                        /* extern */
+s32 FindKeyProps__13CSoftKeyboardFRC7CSkbKey(s32, s32); /* extern */
+s32 GetCurKey__13CSoftKeyboardCFv();                /* extern */
 M2C_UNK func_00397590(s32);                         /* extern */
 extern s32 data_0049ECC0;
 extern s32 data_0049ECC8;
@@ -15,5 +16,5 @@ extern s32 data_0049ECC8;
 void func_0038B8A0(s32 arg0, s32 arg1, s32 arg2) {
     data_0049ECC0 = arg1;
     data_0049ECC8 = arg2;
-    func_00397590(func_0038CC50(arg0, func_0038CB90()));
+    func_00397590(FindKeyProps__13CSoftKeyboardFRC7CSkbKey(arg0, GetCurKey__13CSoftKeyboardCFv()));
 }

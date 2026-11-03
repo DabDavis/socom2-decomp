@@ -1647,6 +1647,27 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the UI, round 9** (zui_skb.h, zui_skbview.cpp, zui_skbkeys.cpp):
+  - an RTTI class-name string shows the namespace: SOCOM II's "CBmpWithNode" (0x3FAEA8) lacks SOCOM 1's
+    `@unnamed@zui_skb_cpp@::` prefix -- the keyboard's classes come from a shared header (zui_skb.h);
+  - a static of a class holding `U m[n]` registers that class's implicit `(this, flag)` destructor;
+    a static `T[n]` gets a bare `__arraydtor$N`, a `T[4][10]` is flattened with no per-row helpers;
+  - a virtual call on a static CRenderableString goes through the table (no devirtualisation);
+    `on ? 1 : 0` into an `unsigned char` folds to the bool, a byte-enum keeps `li`/`movz`; a float
+    taken into a local before a call fixes `add.s`'s operand order;
+  - units: zui_hangul.cpp is 0x3903A0-0x3941CF (its tail ends on the two vector destructors its
+    initialiser 0x403770 registers), zui_skbview.cpp runs to ~0x398ADF, zui_skbkeys.cpp ~0x398AE0-
+    0x39BBBF (it inlines none of its own small wrappers).
+- **Tells from the online lobby, round 9** (zNetMediusClan.cpp complete, the lobby's callbacks):
+  - an unsigned operand moves v0/v1: StoredClanInfo's leader id unsigned closed IsLeaderOfClan (open
+    since round 1); an unsigned stat addend gives the target's registers where int operands swap them;
+  - a counter that must survive a call is assigned before it (`int n = 8;` ahead of std::sort lands
+    `li s0,8` in the call's delay slot); a switch with only `case 0` and `default` gives `beqz` plus
+    `b` with the zero case first, where a ternary gives a select;
+  - walking `_zrdr::Item(i)` items, test `line->type == 3` on the bit-field directly, sharing one load
+    with ZString's test; `strlen` into an int local before an int sum keeps the target's `addu` order;
+  - a struct field the target reads past where the header ends shows a missing SDK field
+    (MediusGetClanInvitationsSentResponse's ResponseTime before EndOfList).
 - **Tells from the kit and AI states, round 12** (anim.cpp's name lookups, seal_kit.cpp's items and fire modes):
   - a switch's compare chain tests its cases in reverse source order: list them 2, 1, 0 for the
     target's 0, 1, 2 chain; an empty `case 0: break;` keeps its own test;
@@ -1945,7 +1966,8 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a local bitfield struct cleared in the mem-initializer list gives the word-wide read-mask-write;
     clearing it in the body narrows the stores to sb/sh;
   - std::map's no-argument constructor passes a bare stack slot for the allocator: the allocator's
-    constructor has to be inline (0x3A2BE0 through an explicit inline specialisation for now);
+    constructor has to be inline (in include/memory since the MSL headers' round 7; util_options.cpp's
+    explicit specialisation is gone);
   - the reverse switch-test order holds for grouped cases: tests 4, 2, 3, 1 come from `case 1: case 3:
     case 2: ... case 4:`;
   - a type byte read again after a whole-word mask test reloads only through a byte member in a union;

@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __construct_array(char *, M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
+extern M2C_UNK __ct__11CSkbCapLookFv;
+extern M2C_UNK __dt__11CSkbCapLookFv;
 extern M2C_UNK func_0038D130;
-extern M2C_UNK func_0038D1A0;
-extern M2C_UNK func_0038E890;
 extern M2C_UNK func_0038E8D0;
 
 char *func_0038E790(char *arg0) {
@@ -49,7 +49,7 @@ char *func_0038E790(char *arg0) {
     SC_MEMBER(arg0, s32 *, 0xD4) = 0;
     SC_MEMBER(arg0, s32 *, 0xD8) = 0;
     SC_MEMBER(arg0, s32 *, 0xDC) = 0;
-    __construct_array(arg0 + 0xE0, &func_0038E890, &func_0038D1A0, 0x24, 3);
+    __construct_array(arg0 + 0xE0, &__ct__11CSkbCapLookFv, &__dt__11CSkbCapLookFv, 0x24, 3);
     SC_MEMBER(arg0, s32 *, 0x14C) = 0;
     SC_MEMBER(arg0, s32 *, 0x150) = 0;
     SC_MEMBER(arg0, s32 *, 0x154) = 0;
