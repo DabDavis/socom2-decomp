@@ -97,6 +97,41 @@ int ExitUserWordTraining(CASR *c)
     return 0;
 }
 
+/* every whole label of utterance n written so far into the label queue one at a time, the engine
+ * run on each (its result an unsigned char: the target's andi at the one return).
+ * OPEN (26 words, the right size; round 15c): the result through an int assigned at each exit
+ * gives the target's single `andi v0,a0,0xff` (`return` per exit masks each path, an int
+ * initialised at the top lives across the calls in s3, 0xF0 bytes); the division unsigned (the
+ * target's divu: the size an unsigned int). What is left: the target loads the buffer into a1 and
+ * copies it to p's s0 after the subtraction, here p takes the load (a separate buffer local, 27). */
+unsigned char SendLabelsToEngine(CASR *c, const unsigned char *blocks, int n)
+{
+    char *pos = c->lab_pos[n];
+    char *p = c->lab_buf[n];
+    unsigned int size = LABELQ(c)->elemsize;
+    char *e = p + (pos - p) / size * size;
+    int ret;
+
+    if (pos < p)
+        p = pos;
+    if (pos < e)
+        e = pos;
+    while (p < e) {
+        if (qEnQueue(LABELQ(c), p, 1) == 0) {
+            ret = _tosErrorLog(c->event, 1);
+            goto out;
+        }
+        p += LABELQ(c)->elemsize;
+        if (tosRun(c, blocks) != 0) {
+            ret = 1;
+            goto out;
+        }
+    }
+    ret = 0;
+out:
+    return ret;
+}
+
 /* labels [start, end) of utterance n -- clipped to what was written -- into the label queue one at
  * a time, the engine run on each.
  * OPEN (36s): SOCOM 1's order (the step before tosRun: both builds put it in the call's slot). The
