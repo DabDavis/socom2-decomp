@@ -61,6 +61,12 @@ char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 bool zrdr_finduint(const _zrdr *rdr, const char *tag, unsigned int *out, int n);
 /* a tag's values as a team mask (SOCOM 1's ftmask_create; OVL2 0x5B8190, seal_ex.cpp's) */
 unsigned int ftmask_create(_zrdr *rdr);
+/* a state by its name (OVL2 0x575410, seal_ai.cpp's) */
+namespace sealai {
+AI_STATE get_state(const char *name);
+}
+/* a state by name or alias (below) */
+AI_STATE get_state_fixup(const char *name);
 
 extern "C" {
 /* the anim's index'th command argument (SOCOM 1's CZAnimArgList::GetCmd(int); OVL1 0x2720E0) */
@@ -74,8 +80,6 @@ void func_0056D090(CSealCtrlAi *ai);
  * SOCOM II added after it (OVL2 0x598840) */
 void func_00574830(bool enabled, bool alarm);
 void func_00598840(bool enabled);
-/* an AI state by name, 0 for none (OVL2 0x5D8CC0, this unit's: a generated draft) */
-AI_STATE func_005D8CC0(const char *name);
 /* the AI's stance set, and set for a time (OVL2 0x5631A0, 0x5631B0: the SEAL lane's rows, where
  * SOCOM 1's CTStance::Begin called CSealCtrlAi::SetStance) */
 void func_005631A0(CSealCtrlAi *ai, SEAL_STANCE stance);
@@ -649,6 +653,36 @@ bool CTHold::Tick(_zanim_cmd_hdr *hdr, float *dT)
     return done;
 }
 
+/* a state by name, its own or one of the task scripts' aliases, 0 for none (SOCOM 1's
+ * get_state_fixup, the next function after CTInState::Parse there too: SOCOM II added
+ * "restrained"; "path reco" gives the reload, as SOCOM 1's did) (OVL2 0x5D8CC0) */
+AI_STATE get_state_fixup(const char *name)
+{
+    AI_STATE state = sealai::get_state(name);
+
+    if (name && state == AI_STATE_UNKNOWN) {
+        if (!strcasecmp(name, "following"))
+            state = AI_STATE_FOLLOW;
+        else if (!strcasecmp(name, "avoiding"))
+            state = AI_STATE_AVOID;
+        else if (!strcasecmp(name, "breaching"))
+            state = AI_STATE_BREACH;
+        else if (!strcasecmp(name, "deploying"))
+            state = AI_STATE_DEPLOY;
+        else if (!strcasecmp(name, "holding"))
+            state = AI_STATE_HOLD;
+        else if (!strcasecmp(name, "path reco"))
+            state = AI_STATE_RELOAD;
+        else if (!strcasecmp(name, "reloading"))
+            state = AI_STATE_RELOAD;
+        else if (!strcasecmp(name, "rushing"))
+            state = AI_STATE_RUSH;
+        else if (!strcasecmp(name, "restrained"))
+            state = AI_STATE_HOSTAGE;
+    }
+    return state;
+}
+
 /* the entity, the state by name and whether the whole stack counts (OVL2 0x5D8B80) */
 _zanim_cmd_hdr *CTInState::Parse(_zrdr *rdr)
 {
@@ -659,7 +693,7 @@ _zanim_cmd_hdr *CTInState::Parse(_zrdr *rdr)
     AI_STATE state;
     bool stack = zrdr_findtag(rdr, "stack") != 0;
 
-    state = func_005D8CC0(statename);
+    state = get_state_fixup(statename);
     if (state != 0)
         return &Create(state, stack, name)->hdr;
     return 0;
