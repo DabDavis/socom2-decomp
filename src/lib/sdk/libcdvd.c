@@ -3,100 +3,11 @@
  * functions in the demo's order -- the delay thread, the N-command callback and its callback
  * thread, the power-off callback, the search, the N- and S-command pre-checks, sync, init and
  * disk-ready. Prebuilt with the SDK's ee-gcc 2.9-991111-01, the dtls13010 build (README "The GCC
- * front": cdvd_exit's broken sibling call is that build's). Names are SOCOM 1's (s1:exact and the
- * demo's globals, data.txt); the callback number is read back after each store (volatile), the
- * semaphore ids and flags are plain. */
+ * front"). Names are SOCOM 1's (s1:exact and the demo's globals, data.txt; libcdvd.h). Not yet
+ * written: sceCdLayerSearchFile, sceCdInit, sceCdDiskReady and the newer 0x18EF70. The functions
+ * appear in the target's order, which is the demo's but for the accessor func_0018E9E8. */
 
-typedef unsigned int u_int;
-typedef unsigned short u_short;
-
-struct SemaParam {
-	int currentCount;
-	int maxCount;
-	int initCount;
-	int numWaitThreads;
-	u_int attr;
-	u_int option;
-};
-
-extern int CreateSema(struct SemaParam *sema);
-extern int DeleteSema(int sema_id);
-extern int WaitSema(int sema_id);
-extern int iSignalSema(int sema_id);
-struct ThreadParam {
-	int status;
-	void *entry;
-	void *stack;
-	int stackSize;
-	void *gpReg;
-	int initPriority;
-	int currentPriority;
-	u_int attr;
-	u_int option;
-	int waitType;
-	int waitId;
-	int wakeupCount;
-};
-
-extern int SetAlarm(u_short time, void (*handler)(int, u_short, void *), void *common);
-extern int DIntr(void);
-extern int EIntr(void);
-extern int sceCdSync(int mode);
-extern int scePrintf(const char *fmt, ...);
-extern void ExitDeleteThread(void);
-extern int GetThreadId(void);
-extern int ReferThreadStatus(int thread_id, struct ThreadParam *info);
-extern int CreateThread(struct ThreadParam *thread);
-extern int StartThread(int thread_id, void *arg);
-extern int ChangeThreadPriority(int thread_id, int priority);
-extern int SignalSema(int sema_id);
-extern void *sceSifRemoveCmdHandler(u_int cid);
-extern void sceSifAddCmdHandler(u_int cid, void (*handler)(void *), void *data);
-extern int sceSifCallRpc(void *cd, u_int fno, u_int mode, void *send, int ssize, void *recv, int rsize,
-                         void (*end)(void *), void *end_param);
-extern int sceSifCheckStatRpc(void *cd);
-
-extern volatile int sceCdCbfunc_num;            /* the demo's globals (data.txt) */
-extern volatile int sceCdCbfunc_number;
-extern volatile int cb_semid;
-extern volatile int _sceCd_ncmd_semid;
-extern volatile int _sceCd_scmd_semid;
-extern volatile int data_001CA870;              /* a third command semaphore */
-extern volatile int _sceCd_c_cb_sem;
-extern int data_001CA854;                              /* the callback thread is running */
-extern void (*sceCdCbfunc)(int);
-extern int data_001D5F84;                       /* the caller's $gp, for the callback thread */
-extern int SCE_CD_debug;
-extern int my_thid;
-extern volatile int data_001D5F94;
-extern struct ThreadParam data_001D5FA0;        /* the caller's status */
-extern struct ThreadParam data_001D5FD0;        /* the callback thread's parameters */
-extern int _icmd_bind;
-extern int Init_seq;
-extern void (*data_001D5F88)(void *);           /* the power-off callback, its $gp and argument */
-extern int data_001D5F8C;
-extern void *data_001D5F90;
-typedef struct {
-	int rpcd[4];
-	u_int command;
-	void *buff;
-	void *cbuff;
-	void (*func)(void *);
-	void *para;
-	void *serve;
-} sceSifClientData;
-
-extern sceSifClientData _sceCd_cd_ncmd;         /* the N- and S-command RPC clients */
-extern sceSifClientData _sceCd_cd_scmd;
-extern int ncmd_sema_keep_cmd;
-extern int scmd_sema_keep_cmd;
-extern int _ncmd_bind;
-extern int _scmd_bind;
-extern int PollSema(int sema_id);
-extern void sceSifInitRpc(u_int mode);
-extern int sceSifBindRpc(sceSifClientData *cd, u_int num, u_int mode);
-extern int sceCdSyncS(int mode);
-extern int data_001CA8C0[];                     /* the N commands' receive buffer */
+#include "libcdvd.h"
 
 static void CB_DelayTh(int id, u_short time, void *arg)
 {
@@ -420,5 +331,37 @@ int _sceCd_scmd_prechk(int cmd)
 			;
 	}
 	_scmd_bind = 0;
+	return 1;
+}
+
+/* OPEN (1 word over: 0xB4 for 0xB0): a newer call the demo lacks -- the N and S commands' semaphores,
+ * buffers and clients by id. The target dispatches by a chain of equality tests (0x8001, 0x8003,
+ * 0x8002, 0x8004, 0x8011, 0x8013, 0x8012, 0x8014) and lays the bodies after it in reverse, each
+ * setting one value stored once: a switch lowered without a table. This build makes a jump table for
+ * these eight cases (range 20) in source order or sorted, an int or u_int index alike; the if-chain
+ * interleaves the bodies with the tests. */
+int func_0018E9E8(int id, u_int *out)
+{
+	u_int v;
+
+	if (id == 0x8001)
+		v = _sceCd_ncmd_semid;
+	else if (id == 0x8003)
+		v = (u_int)data_001CA8C0;
+	else if (id == 0x8002)
+		v = (u_int)_sceCd_ncmdsdata;
+	else if (id == 0x8004)
+		v = (u_int)&_sceCd_cd_ncmd;
+	else if (id == 0x8011)
+		v = _sceCd_scmd_semid;
+	else if (id == 0x8013)
+		v = (u_int)_sceCd_scmdrdata;
+	else if (id == 0x8012)
+		v = (u_int)data_001CBE80;
+	else if (id == 0x8014)
+		v = (u_int)&_sceCd_cd_scmd;
+	else
+		v = 0;
+	*out = v;
 	return 1;
 }
