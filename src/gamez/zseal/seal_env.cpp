@@ -285,10 +285,9 @@ void CZSealBody::CheckForRegionTrigger(unsigned int regions)
 }
 
 extern "C" {
-/* (OVL2 0x58A4D0, seal_cfg.cpp's, not written yet: called with 0 before an anim is pushed over the
- * blends; 0x588BC0 pushes an anim on the body -- an anim type, the state, a flag and a kind; 0x58A920
- * sets bits of a blend's flags; 0x588AB0 tells the network of the push) */
-void func_0058A4D0(CZSealBody *seal, int a);
+/* (0x588BC0 pushes an anim on the body -- an anim type, the state, a flag and a kind; 0x58A920 sets
+ * bits of a blend's flags; 0x588AB0 tells the network of the push; ClearToBase, 0x58A4D0, is
+ * seal_body.cpp's) */
 void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
 unsigned short func_0058A920(unsigned short flags, unsigned short bits, bool on);
 void func_00588AB0(CZSealBody *seal, int time, unsigned int anim);
@@ -305,7 +304,7 @@ extern "C" CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type)
         return 0;
     if (seal->m_eb8)
         return 0;
-    func_0058A4D0(seal, 0);
+    seal->ClearToBase(false);
     CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, type, seal->m_state, 0, 13);
 
     b->m_flags &= ~4;
