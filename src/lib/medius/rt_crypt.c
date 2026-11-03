@@ -602,7 +602,7 @@ extern void RCEncrypt(RCState *pState, void *pData, int nLength);
 extern void RCDecrypt(RCState *pState, void *pData, int nLength);
 extern void KM_GetSoftwareKeyPair(RSAKey *pPub, RSAKey *pPriv);
 void func_00631008(void *pData, RSAKey *pKey);
-extern void func_00629034(RSAKey *pData, RSAKey *pKey);
+extern void lintAddIP(RSAKey *pData, RSAKey *pKey);
 extern void *memcpy(void *d, const void *s, unsigned int n);
 
 /* SOCOM 1's KM_Encrypt grown: the hash's top three bits say which key enciphered the data -- 3 the
@@ -874,6 +874,6 @@ void func_00631008(void *pData, RSAKey *pKey)
     memcpy(&data, pData, sizeof data);
     memset(&zero2, 0, sizeof zero2);
     memcpy(&key, pKey, sizeof key);
-    func_00629034(&data, &key);
+    lintAddIP(&data, &key);
     memcpy(pData, &data, sizeof data);
 }

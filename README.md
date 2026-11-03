@@ -5569,7 +5569,7 @@ rt_p2p by address -- six rows at once.
   37; } else { ...; } return DME_OK;` -- a join, so the zero is materialised (`move v0,zero`) where guard
   clauses let 2.96 if-convert or reuse a known zero. The same for a body inside a positive test
   (`if (!bStarted) {...} return DME_OK;`, the startup) and for a callback's `!=` test around its send.
-- **The known-zero v0 is cse-follow-jumps'**: func_00614758 (round 4b's OPEN) is byte-exact under
+- **The known-zero v0 is cse-follow-jumps'** (REFUTED by round 14b below: a join before the final `return 0` -- positive nesting, a `break` out of the loop, the body inside a positive test -- keeps the target's `move v0,zero`; a source shape, not the toolchain): func_00614758 (round 4b's OPEN) is byte-exact under
   `-fno-cse-follow-jumps` alone, and func_00615B48 comes from 65s to 1 word -- 2.96's CSE follows the
   jump past `return 37` with v0 still the call's result and deletes the target's copy into the return
   register, so reorg cannot put the constant in the branch's slot. Not the vendor's flag: it reallocates
@@ -5653,6 +5653,59 @@ of 3) and `asr/chinese_tree.c` (new: their `_TreeCtx` copies, 2 of 3) -- 8 funct
 new to the map's byte-exact rows (3,588 bytes); `src/lib/asr` 425 of 467 (417 of 460 before). 2 rows
 named (Tone_Of_Final, Tone_Of_Final_TreeCtx: `s1:order`, SOCOM 1's objects 0x3404E8 and 0x345CD0). No
 tool changed.
+
+**Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
+
+- **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
+  md5.c): every row saves the argument and temporary registers it uses with `sq`, branches to the very
+  next instruction, pads with stray nops, swaps a0/a1 with two moves that leave both equal, counts
+  leading zeros with `plzcw` and carries through doublewords (`daddu; dsrl32`). `tools/asmunit.py`
+  transcribed the run into `medius/largeint_asm.s` under 2.96's GNU as: 14 of 14 byte-exact, 3,836
+  bytes (two `ori $2,$0,1` the tool left as `.word` for objdump's `dli`). SOCOM 1 compiled all of them
+  from C; whether SCEA kept a `.s` or top-level asm in LargeInt.c, the bytes are one. Named: lintGetBits
+  by the prime search's assert on its result ("nBits == lintGetBits(pPrime)"), IsGreater, IsSMaller,
+  IsNotGreater, IsNotSmaller, ShiftRight, ShiftLeft, lintAddIP, lintSubIP by SOCOM 1's C bodies of those
+  names (`s1:body`, the comparisons in SOCOM 1's order). `build/scratch/gcc/sqscan.py` finds such rows
+  (`sq`/`lq`, MMI, branch-to-next) in a GCC range: no other run in Medius/DME/RT.
+- **A count or room test is POSITIVE, its error in an else** -- `if (nUsed >= nBytes) {...} else return
+  1;`, `if (cb->nStart != 0) {...} return 0;`. Written as a guard (`if (n < x) return 1;`) the return is
+  a one-insn THEN block that 2.96's first if-conversion pass (ifcvt's find_if_case_1, after combine and
+  before register allocation; this 2.96 has no `-fno-if-conversion`) hoists above its branch as `li
+  v0,1`, so v0 is live across the tested count's load and the count takes v1 -- round 4b's one
+  diagnosis for rt_circ_buf's nine, "every shape tried". The vendor wrote both forms (rt_list's own
+  0x631FD8 keeps the guard and the target's v1); the register says which. rt_circ_buf 7 -> 15 of 16.
+- **The known-zero v0 is a shape too** (round 13b held it a toolchain difference): a `return 0` reached
+  straight from `if (f()) return ...;` lets CSE follow the jump with v0 known zero and drop the final
+  `move v0,zero`; SCEA's join before it -- the last test positive with its error in an else
+  (func_00614758, open since round 4b), the loop inside `if (pMask->nLast >= 0)` (func_00615B48), a
+  loop that `break`s to the one `return 0` (the UDP poll), a body inside `if (nTarget != 0xFFFF)`
+  (0x635D98) -- keeps the copy, and the target's.
+- **A constant held from the entry is guard clauses**: rt_table's accessors load `li v0,3` once and keep
+  it through every test -- each `return 3` hoisted by the same pass, the later copies deleted by the
+  post-reload CSE; round 11b's result variables read it backwards (2 of the five closed).
+- **An earlier function's spelling moves a later one's registers**: func_00614758 written with its call's
+  test a guard is byte-exact too but sends func_0061C510's element-address high part into s3 across
+  DMEmalloc; a deeper nesting of 0x615B48's loop does the same to func_0061C7A8 (an unrelated function
+  inserted between moves neither). Each kept spelling holds both -- run the whole unit after any change.
+- **Narrowing at the call**: an `unsigned int` length passed to an `unsigned short` callback parameter as
+  `nLength - 4` is the target's `li 0xfffc; addu; andi` (the narrowed unsigned subtraction); an `unsigned
+  short` parameter adds an entry `andi`, an `int` gives `addiu -4`. Round 13c's callee-definition rule
+  met again: 0x637230's `bne` (not `bnel`) needed 0x635940, its fall-through's callee, compiled above
+  it. A switch-like equality chain in an order no switch would sort is an `||` chain in source order
+  (is_valid_outgoing_msg: SOCOM 1's ten types, 21-23, 27 and 29 added).
+- **Open, diagnosed in place**: rt_circ_buf_is_wrapped (16: the stored 1 is `sltu a2,zero,a0` -- cb != 0
+  -- hoisted into the first guard's slot), rt_table's 0x63CBD0 (1: memset's row address base-first,
+  six spellings) and 0x63C8A0 (32: nRow kept in a1 there, moved here), rt_list's init; rt_udp's
+  0x63F168/0x6419E8 stay round 11b's argument-scheduling pair.
+
+Hand-written in round 14b: `medius/largeint_asm.s` (14 of 14, new), `medius/rt_circ_buf.c` (+8: free,
+use, store, copy, normalize_with_buf, get_avail_nowrap, get_start_used_ptr, get_start_avail_ptr; 15 of
+16), `medius/rt_list.c` (+6: 0x631508, 0x631670, 0x631748, 0x631BC0, 0x631D18, 0x6321B8; 21 of 22),
+`medius/rt_msg_client.c` (+8: the UDP poll closed, 0x635078, 0x635940, 0x635D98, 0x637230, 0x637438,
+0x637900, is_valid_outgoing_msg; 68 of 69), `medius/dmelocal.c` (+2: func_00614758, func_00615B48 closed;
+73 of 84), `medius/rt_table.c` (+2: 0x63CB48, 0x63CC60; 3 of 6) -- 40 rows new to the map's byte-exact
+rows (`src/lib/medius` 810 -> 850 of 905), none superseding a draft; 9 rows named (above). No tool
+changed.
 
 ## Open, and next
 
