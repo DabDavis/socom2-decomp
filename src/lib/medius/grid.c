@@ -411,7 +411,48 @@ void func_00626410(GRID *p)
         func_00624510(&p->pMembers[i]);
 }
 
-/* 0x6264C0: not written */
+typedef struct PEER_INFO {              /* what a peer tells of itself (audio.c's, 32 bytes at 0x20) */
+    int nAddr;                          /* 0x00 */
+    int nAddr2;                         /* 0x04 */
+    int nPort;                          /* 0x08 */
+    int nPort2;                         /* 0x0C */
+    int nGrid;                          /* 0x10 */
+    int nId;                            /* 0x14 */
+    unsigned int nFlags;                /* 0x18 */
+    int x1C;                            /* 0x1C */
+} PEER_INFO;
+
+extern void *memcpy(void *d, const void *s, unsigned int n);
+extern unsigned int func_0062A130(void *pPeer);         /* peer.c: the peer's flags */
+
+/* Each joined member's self-description (0x8000 set when its peer's flags hold 0x4000) to the
+ * caller's function, until it returns 0 -- audio.c's 0x611BA0 over a group's table. The element's
+ * address and its peer each a local (the peer read through the member twice keeps the call's
+ * argument out of a0 until after the copy, 23 words; indexing swaps the sum's operands, 1). */
+int func_006264C0(GRID *p, int (*pfn)(void *pAudio, void *pUser, PEER_INFO *pInfo), void *pUser)
+{
+    PEER_INFO info;
+    GRID_MEMBER *m;
+    void *pPeer;
+    int i;
+
+    for (i = 0; i < p->nMembers; i++) {
+        m = &p->pMembers[i];
+        if (m->nState == 2) {
+            pPeer = m->pPeer;
+            if (pPeer != 0) {
+                memcpy(&info, (char *)pPeer + 0x20, sizeof(info));
+                if (func_0062A130(pPeer) & 0x4000)
+                    info.nFlags |= 0x8000;
+                else
+                    info.nFlags &= ~0x8000;
+                if (pfn(p->pAudio, pUser, &info) == 0)
+                    break;
+            }
+        }
+    }
+    return 0;
+}
 
 void func_006265F0(GRID *p)
 {
