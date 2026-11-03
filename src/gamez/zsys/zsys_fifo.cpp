@@ -7,7 +7,7 @@
 
 #include "zsys_public.h"
 
-extern "C" int func_00196D18(const char *s);   /* newlib's puts (MAIN) */
+extern "C" int puts(const char *s);   /* newlib (MAIN) */
 extern "C" void func_003AFBA0(void);            /* SOCOM II's, before the end packet (not named) */
 extern "C" int sceGsSyncPath(int mode, unsigned short timeout);
 
@@ -202,9 +202,9 @@ void zSysFifoKick(u_long128 *packet, unsigned int qwc)
         } while (tadr != madr);
     }
     while (*D9_CHCR & 0x100)
-        func_00196D18("D9 Busy");
+        puts("D9 Busy");
     while (*D8_CHCR & 0x100)
-        func_00196D18("D8 Busy");
+        puts("D8 Busy");
     *D8_SADR = (unsigned int)packet;
     *D8_QWC = qwc;
     D8_CHCR_F->STR = 1;
