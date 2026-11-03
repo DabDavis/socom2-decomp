@@ -18,7 +18,7 @@ extern "C" int strncasecmp(const char *a, const char *b, size_t n);
 extern "C" void func_0028B0E0(void *vec, unsigned int n, const unsigned int &x);
 
 int CZSIScript::m_version = 5;
-int siNumBodyObjects = 32;
+unsigned int siNumBodyObjects = 32;
 int numSiScript;
 int numSiCommon;
 /* the name Read shares a common by: a global another unit owns, never set in r0001 (bss) */

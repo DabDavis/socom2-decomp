@@ -1,12 +1,12 @@
 /* seal_weapon.cpp -- the SEAL's weapon handling: the fire point, WeaponsTick, the weapon state and
  * the wait on it (SOCOM 1's CZSealBody functions in this order, right before AnimSet's; OVL2 from
- * ~0x5DF370 to ~0x5E0023: GetFP/GetAP, Virtual64, WeaponsTick, SetWeaponState, WepWaitOn/Off,
+ * ~0x5DF370 to ~0x5E0023: GetFP/GetAP, GetFirepointNode, WeaponsTick, SetWeaponState, WepWaitOn/Off,
  * GetWeaponState; SOCOM II's 0x5DF4E0, 0x5DF600 and 0x5DF8B0 are SOCOM 1's SetAimPointW, CalcAimGoal
  * and SetAimDirR). The unit's name is ours. So far CalcAimGoal (round 14), SetAimDirR and
  * GetWeaponState; round 15 UpdateAimParams and SetAimPointW. Open: 0x5DFAD0 is SOCOM 1's
- * GetFirepointNode(const char *), CZSealBody's override of the slot zentity.h spells
- * `Virtual64()` (no name: the entity lane's header). Defined in reverse of their image order
- * (-inline deferred). */
+ * GetFirepointNode(const char *), CZSealBody's override of CEntity's slot +0x64 (zentity.h names
+ * it since the SEAL lane's round 14; UpdateAimParams calls it through the real slot). Defined in
+ * reverse of their image order (-inline deferred). */
 
 #include "zseal.h"
 
@@ -160,36 +160,6 @@ bool CZSealBody::SetAimPointW(const CPnt3D *aimpt, const CPnt3D *aimnorm, bool k
     return func_005DEEC0(this, keep);
 }
 
-/* the body's table as far as its slot 0x64: SOCOM 1's GetFirepointNode(const char *), virtual in
- * SOCOM II (OVL2 0x5DFAD0, this unit's -- zentity.h's CEntity spells the slot Virtual64() with no
- * name; the 23 slots before it unnamed here) */
-struct CSealBodyTable {
-    virtual void Slot08();
-    virtual void Slot0C();
-    virtual void Slot10();
-    virtual void Slot14();
-    virtual void Slot18();
-    virtual void Slot1C();
-    virtual void Slot20();
-    virtual void Slot24();
-    virtual void Slot28();
-    virtual void Slot2C();
-    virtual void Slot30();
-    virtual void Slot34();
-    virtual void Slot38();
-    virtual void Slot3C();
-    virtual void Slot40();
-    virtual void Slot44();
-    virtual void Slot48();
-    virtual void Slot4C();
-    virtual void Slot50();
-    virtual void Slot54();
-    virtual void Slot58();
-    virtual void Slot5C();
-    virtual void Slot60();
-    virtual zdb::CNode *GetFirepointNode(const char *name);   /* +0x64 */
-};
-
 /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
  * m_curr_firepos and m_curr_firept, 0x1100-0x111F there, 0x3A0 on here: zseal.h keeps the body's
  * tail as bytes -- the view ours) */
@@ -214,9 +184,9 @@ void CZSealBody::UpdateAimParams()
     CSealAimPoints *a = (CSealAimPoints *)this;
 
     if (!a->m_curr_aimpt)
-        a->m_curr_aimpt = ((CSealBodyTable *)this)->GetFirepointNode("aimpoint");
+        a->m_curr_aimpt = GetFirepointNode("aimpoint");
     if (!a->m_curr_firept)
-        a->m_curr_firept = ((CSealBodyTable *)this)->GetFirepointNode("firepoint");
+        a->m_curr_firept = GetFirepointNode("firepoint");
     func_005DF930(this, a->m_curr_aimpt, &a->m_curr_aimpos, false);
     func_005DF930(this, a->m_curr_firept, &a->m_curr_firepos, false);
 }

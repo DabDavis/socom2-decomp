@@ -79,11 +79,12 @@ extern "C" unsigned char func_0057DBB0(CZSealBody *seal)
     return 0;
 }
 
-/* the state of the topmost blend not in state 3, else 0 (OVL2 0x57DC20; new in SOCOM II, its name
- * unknown -- seal_env.cpp's 0x5A82E0 and the weapon unit ask it) */
-extern "C" unsigned char func_0057DC20(CZSealBody *seal)
+/* the state of the topmost blend not in state 3, else 0 (OVL2 0x57DC20; SOCOM 1's PeekBaseState --
+ * the weapon unit's CalcAimGoal asks it in state 3 from the same place as SOCOM 1's; seal_env.cpp's
+ * 0x5A82E0 too) */
+unsigned char CZSealBody::PeekBaseState()
 {
-    CBodyAnimBlendStack *stack = &seal->m_blends;
+    CBodyAnimBlendStack *stack = &m_blends;
 
     for (int i = stack->m_top; i >= 0; i--) {
         unsigned char s = BlendAt(stack, i)->m_state;

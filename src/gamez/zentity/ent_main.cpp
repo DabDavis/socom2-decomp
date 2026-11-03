@@ -509,7 +509,7 @@ bool CEntity::Virtual68(CPnt3D *out)
     return false;
 }
 
-zdb::CNode *CEntity::Virtual64()
+zdb::CNode *CEntity::GetFirepointNode(const char *name)
 {
     return 0;
 }
@@ -519,9 +519,9 @@ bool CEntity::Virtual60(CPnt3D *out)
     return false;
 }
 
-int CEntity::Virtual5C()
+bool CEntity::Virtual5C(CZSealBody *seal, CTurret *turret)
 {
-    return 0;
+    return false;
 }
 
 /* the entity of a name: its node's (SOCOM 1's; the node at 0x28 now) */

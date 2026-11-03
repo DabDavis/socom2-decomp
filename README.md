@@ -153,16 +153,17 @@ its directive (`/* sc: compiler=mwcps2-3.0b52-030722; flags=... */`), as the GCC
 
 | group | units (src/main/) | build | flags | evidence |
 |---|---|---|---|---|
-| the game's own MAIN units | the pool unit 0x1801E0-0x18194F (alloc.cpp?), MAIN's copies of zsys_memory.cpp (0x181950-0x181C1F) and zvid.cpp (0x181C20) | 3.0b52 | the game's | `__nwa__FUi` is a tail call (`j`), which needs exceptions off; `_delete_vec` exact on every 3.0 build |
+| the game's own MAIN units | the pool unit zmalloc.cpp 0x1801E0-0x18194F (the name ours; its `__sinit` 0x1D4B00), MAIN's copies of zsys_memory.cpp (0x181950-0x181C1F) and zvid.cpp (0x181C20) | 3.0b52 | the game's | `__nwa__FUi` is a tail call (`j`), which needs exceptions off; `_delete_vec` exact on every 3.0 build; round 2: the pool unit's 17 rows and its initialiser at the game's flags |
 | MW's C++ runtime | runtime/: gcc_wrapper.c 0x181C50, mwoverlay.c 0x181C90-0x181E2F, NMWException.cpp 0x181E30-0x18280F, global_destructor_chain.c 0x182810, __init_cpp_rts.c 0x182840, ptmf.c 0x1828A0; the exception-handling unit 0x182930-0x1845FF | 3.0b38, b50 or b52 | the game's plus `-Cpp_exceptions on`, deferred | `__destroy_arr`/`__destroy_new_array` match only on 3.0b22-020926 and 3.0b38+; `__initialize_cpp_rts`'s short-loop nops rule out 3.0b22-020926; with exceptions off `terminate`/`unexpected` become tail calls (9 words off); `,p` required; without `-sdatathreshold 0` `__register_global_object` is 8 words off; the image holds the PowerPC runtime's source order reversed |
-| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -sdatathreshold 0 -inline auto -enum min -Cpp_exceptions on -wchar_t on`, NOT deferred | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
+| MSL C++'s prebuilt library | msl/: ios.cpp 0x184600, iostream.cpp 0x184C80, locale.cpp 0x18CF20-0x18DB8F (SOCOM 1's DWARF spans), with its own msl/msl.h | 3.0b38, b50 or b52 | `-O4,p -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on`, NOT deferred (round 2: the default small-data threshold, not 0 -- `locale::global`'s 8-byte static locale is `addiu a0,gp,-31928` and `__use_facet`'s facet ids `lw -31904(gp)`; round 1 had carried the runtime group's 0 over; and an explicit level: `~__locale_imp<1>` inlines the facet vector's three destructor levels only at level>=3 or with bottomup, plain auto calls it -- nothing tells the two apart, so the game's pair) | `showmanyc<wchar_t>` divides by 4 where SOCOM 1's divides by 2: a 4-byte `wchar_t`, which only 3.0b22-020926 and later give; `do_widen<wchar_t>`'s six-instruction loop rules out 3.0b22-020926; `getloc` keeps its frame (exceptions on); SOCOM 1's DWARF lines rise with the addresses (source order) |
 
 So SOCOM II's prebuilt MSL is **not CodeWarrior 2.4's build**, though SOCOM 1's DWARF names that
 install; and none of the 81 rows separates 3.0b38 from 3.0b50 or 3.0b52. The `.comment`'s
 2.4.1.01 comes from none of these groups -- MW's assembler writes DWARF but no `.comment`, and
 crt0.s (`_start`, `_exit`, `_root` 0x1801D0) is one MW-assembled object (SOCOM 1's DWARF has its
-unit), which scdiff has no MW assembler path for (GNU as through tools/asmunit.py should give the
-same bytes). Rules measured on the way: with `-wchar_t on` a `wchar_t` is a 4-byte built-in from
+unit), which scdiff has no MW assembler path for -- GNU as gives the same bytes (round 2: src/main/crt0.s
+through the assembler path, all three byte-exact; `_start` ends `Exit(main(argc, argv))`, so 0x1C4CC0 is
+the boot ELF's main, unnamed only because OVL1's main.cpp holds the map's `main`). Rules measured on the way: with `-wchar_t on` a `wchar_t` is a 4-byte built-in from
 3.0b22-020926 on yet loaded and stored 16-bit (`sh`/`lhu` with a 4-byte step); six-instruction loops
 tell builds apart (3.0b38+ leave the delay slot empty and pad two nops, 3.0b22-020926 fills it); in
 the non-deferred library an inline callee is inlined only if generated before its caller (`template
@@ -171,7 +172,32 @@ templates (one source order reproduces MAIN's and OVL1's zsys_memory.cpp); the P
 bodies compile byte-exact on MIPS once adapted to the ABI (the destructor flag `short`, 64-bit
 `long`); MW inline `asm` functions reproduce an assembly runtime function byte-exact; a local copy of
 a pointer parameter is numbered right after the parameters. The sweep (ccsweep extended to the MW
-builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.py.
+builds, adapting flags the older builds reject) is tools/mwsweep.py (round 2 moved it there; it
+defaults to the unit's own `sc: flags=`).
+
+Round 2 (2026-11-03, 136 of 141 in src/main: the pool unit zmalloc.cpp, ios.cpp whole, the
+istream/ostream classes over a virtual basic_ios, crt0.s) measured: `~ios_base` matches only under
+`#pragma opt_strength_reduction off` (the image recomputes `n*8` on every pass of the callback loop,
+as SOCOM 1's copy does; `~__locale_imp`'s loop is strength-reduced, so it is not library-wide, and no
+command-line option does it); MW 3.0 appends a function template instance's RETURN TYPE to its
+mangled name (`min<i>__3stdFRCiRCi_RCi`, `..._RCQ23std8ctype<c>`), so names carried from SOCOM 1 for
+template functions need the suffix; a virtual-base destructor thunk is `@offset@dispoffset@name`
+(`@8@72@__dt__...`: a class with a virtual base keeps the base's displacement word just past the
+base, +72 for basic_ios); `delete (--p->ref_ == 0 ? p : 0)` is the image's `movn` null-test merge;
+case labels written ascending give a descending compare chain; `T *p = a = b = f();` keeps the
+result in v0 for every use; in the non-deferred library an inline template defined before a caller
+is always inlined, defined after it is called there and then everywhere else too (RefCountedPtr's
+operator= defined after the streambuf instantiations keeps their `imbue` calls out of line); ios.cpp
+(0x184600-0x184C7F) holds three functions the image dead-strips (failure's constructor, `imbue`,
+`~_MSLstring`) -- `no-target` rows, two more in NMWException.cpp -- and they are what makes the unit
+emit `~locale` and the RefCountedPtr<char> pair; 0x1D4B80 is iostream.cpp's initialiser (`__nInit`,
+`__wInit` and their destructors). Open: `__nw__` (0x508 against 0x4E0) and func_001805A0 (0x500
+against 0x4DC) -- the switch's compare chain is right but the image puts each case constant in a0 and
+leaves every delay slot empty, ours uses v0; `do_length<wchar_t>` (0x38 against 0x3C) -- the image
+calls `min<int>` from its first user and inlines it in the later ones, which no definition order or
+inline flag reproduces both of. Not started: the filebuf bodies (26 rows), the exception-handling
+unit (18), `__nInit`/`__wInit`, `ctype<wchar_t>`'s range maps, `__locale_imp::replace`, the rest of
+locale.cpp, the logic_error family, the other three `__sinit` rows.
 
 ## What the source has to reproduce
 
@@ -1675,6 +1701,85 @@ builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.p
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the AI core, round 14** (CCharacterType's Open, Parse, constructor, InitMultiplayerMessages):
+  - an inline setter taking a class BY VALUE builds the parameter on the stack (four floats, then two) and
+    assigns member by member; a plain assignment or a returned copy is scalarised (the constructor's
+    SetVoiceFont);
+  - a float array copied into a CPnt3D member as `*(CPnt3D *)arr` loads the owner once and reads elements
+    1-2 through computed addresses; field-by-field stores reload the owner before each store (Open's gear
+    offset and rotation);
+  - `return t == 3 ? strcmp(a, b) == 0 : false;` in an inline bool gives `xor v0,v0,zero; sltiu; andi
+    0xff` before the branch, the if/else and `&&` forms do not (Open's ':' test); `state = p ? 1 :
+    -state;` leaves the join unpadded where the if/else pads it;
+  - a count read through a reference-taking min is reloaded; min's result taken into a reference before
+    `T *p = data_` keeps the copy loop unrolled 8x, `p` declared first does not (the class assign);
+  - -inline auto inlined the 12-statement AddAnimSetName into Parse although its push_back calls an
+    out-of-line insert: it needs `#pragma auto_inline off` (round 13's "the insert keeps it out" was
+    never measured);
+  - SOCOM II's HEALTH_PARAMS is three float[6] arrays (health, armour, maxima; the implicit assignment
+    copies each four then two); zchar.h's MultiplayerMsg is SOCOM 1's DWARF layout; include/vector gains,
+    additively, the class `__vector_imp`'s operator=, its out-of-class range assign and a
+    reference-taking `__vector_min`;
+  - OVL2 copies marked by words and calls: 0x540D00 of the template replace 0x1EE780 (the SEALs' string
+    constructor copy 0x58CE70 calls it at +0x54 where OVL1's 0x2396F0 calls 0x1EE780 -- 0x58CE70 matches
+    with the mark), 0x541240 of 0x1EF400, 0x528C30/0x529030 of the 4-byte pod's operator=/assign;
+  - NAMING, open: the class and pod range assigns are spelled `assign` (include/vector, row 0x259D20,
+    0x53F370, 0x53F730), but SOCOM 1's symtab calls every one of them `do_assign` (`do_assign<PC3LOD>`
+    0x24B2E0, `do_assign<PC14CCharacterWeap>` 0x1D7700, the pod's `do_assign<PCUi>` 0x1FC880) -- the MSL
+    headers' next round renames them;
+  - open: the LODs' class insert 0x540410 (0x590 against 0x500: the target calls the reallocation
+    temporary's destructor 0x540A50 out of line, ours inlines it -- the class inserts' generation-order
+    question); the LOD deleter's clear 0x540990 and destructor 0x540A50 are emitted but miss (our clear
+    calls the string destructor out of line where the target inlines it; both rows stay matched as drafts).
+- **Tells from the SEALs, round 14** (CEntity's slots 0x5C/0x64, seal_ai.cpp's small rows, seal_cfg.cpp's lookups):
+  - A RECURSIVE INLINE'S OUT-OF-LINE COPY INLINES ITSELF EXACTLY AS MANY TIMES AS THE INLINE DEPTH (7, 8
+    and 9 give that many copies): CSealUnit::GetTop's copy (0x561D20) shows eight, so seal_ai.cpp carries
+    `#pragma inline_depth(8)` (the state at the unit's end acts); every function the unit matched at 5
+    holds at 8, as does every unit including zseal.h, where 8 also matches veh_vehicle.cpp's copy of
+    zdb::CNode::GetBBox (0x262550, the other self-recursive inline, open at 5) -- evidence that the
+    original's level is 8 with deeper MSL headers ("Open, and next");
+  - `return s ? InlineBool(s) : false;` puts the `andi 0xff` on the true arm (0x559000); a byte-enum field
+    read into a local keeps an inlined `&&` as branches, compared straight MW if-converts it;
+  - a float constant read from data for a compare is a variable too (190.0f at 0x64FE08 in 0x561B90);
+  - a member factor passed as an inline's argument is loaded ahead of the inline's test (0x572240);
+  - a callee inlined only one level calls every one of its own callees out of line, trivial accessors
+    included (AnimSet's name accessor from 0x58C4B0 and 0x5784A0): 0x5788C0/0x578920 inline AnimSet::Find
+    one level with nine iterator and name pieces out of line, where our include/vector's Find is 4 high
+    and inlines whole -- an MSL depth question;
+  - CEntity's slot 0x5C is `bool (CZSealBody *, CTurret *)` (0x5A88C0 calls it with the SEAL and the entity
+    when it is a turret) and 0x64 SOCOM 1's GetFirepointNode(const char *), virtual in SOCOM II;
+    zbody.h's siNumBodyObjects is `unsigned int` (si_script.cpp's definition with it); zseal.h's members
+    split out of padding: CZSealBody's m_carry 0xEAC (SOCOM 1's 0xDA8), CSealUnit's m_parent 0x60 (0x3C);
+  - open: 0x572240 (0xBC against 0xC4: the target reads the range at 0x6F4 again for the product, seven
+    shapes in its OPEN note); 0x58CE70, the string constructor's OVL2 copy, misses only its call to
+    0x540D00 until that row carries `ovl-copy: func_001EE780` (the AI core's round 14 marks it);
+    0x5781C0-0x579D9F is unclaimed, probably seal_body.cpp's head.
+- **Tells from the world, rdr and sound, round 2** (ztex_manager.cpp written whole on SOCOM 1's classes,
+  SetupSpecialTextures):
+  - MW's scheduler reorders independent float stores to globals: TexBufParams' four defaults written
+    0-1-2-3 land 0-1-3-2 in the image, and writing them in the image's order misses by 18 (CTexManager());
+  - a `u_long128 *` cursor stepped `p++` per quadword gets one `addiu +32` after each pair of quadwords;
+    `p += 2` after four doubleword stores folds every step into the store offsets;
+  - libgraph's `SCE_GIF_SET_TAG` builds its constant once and two tags in one function share it; a
+    hand-folded `x | 0x8000 | (2 << 58)` ORs the low part into x before widening it to 64 bits;
+  - `x > K` and `i <= 13` compare into `at`; `x >= K+1` and `i < 14` compare into v0;
+  - for a function's first store to go through a0, declare the next local after that store; declared
+    before it, the store goes through the saved copy of `this`;
+  - a materialised `a.empty() && b.empty()` is a bool local, not a test written inside the `if` (Load);
+  - a value pushed by reference is stored to the stack where it is set; a copy made at the push
+    (`T *p = t; push_back(p)`) is stored only at the call (Hookup);
+  - a select's register-address word is written before its data word (SetupSpecialTextures); an Exists
+    with a local found iterator stores each temporary next to its copy (CDynTexList::Add(CTexPalette *));
+  - ztex_main.cpp ends at 0x35597F; ztex_manager.cpp runs 0x355980-0x357E8F (CBatchRelocator's slots at
+    its head stay drafts), moved from ztwod/ to src/gamez/ztex/ and written on znode.h's CTexture and
+    node_world.h's real CGSTexBuffer/CTexManager (the HUD lane's stand-in classes are gone); MakeChain
+    takes no count (`FP1`, not `FP1i`: SOCOM II's Load never sets a2 and the body never reads it);
+    0x356B90's s1:align name `swap` was wrong (ReservePktBuf);
+  - open: UpdateTextureSelects 0x355DE0 (11, registers only: both loop-end tests swap a0/a1, and the
+    palette test wants its operands in one order for the loads and the other for the branch); Hookup
+    0x3571D0 (42, registers only: this s3, lib s2, tex s1, i s0 against the target's s2/s1/s0/s4; six
+    declaration orders change nothing). The lane's scratch (callers.py, the caller scanner; open.py) is
+    build/scratch/wld-r2/.
 - **Tells from the kit and AI states, round 15** (seal_ik.cpp, ~CSealUnit, the aim parameters):
   - single-bit `unsigned int` bitfields written one at a time compile to lbu/sb: splitting the 3-bit
     field was enough for TurnSetup 0x5B8270 (round 14's unsigned-char guess was not needed);
@@ -1706,7 +1811,7 @@ builds, adapting flags the older builds reject) is build/scratch/rt-r1/mwsweep.p
     match only under a function-scoped `#pragma opt_propagation off` (a constant kept in a register,
     a forwarded copy kept in memory; every plain form tried was 3-5 instructions off; unit-wide it
     loses others, and swept over 14 units with open functions only Add gained -- five other optimiser
-    pragmas gained nothing: build/scratch/wld/propsweep.py); Resolve needs a `volatile` store to keep
+    pragmas gained nothing: build/scratch/wld-r1/propsweep.py); Resolve needs a `volatile` store to keep
     the flags' unchanged write-back;
   - ztex_main.cpp (the press beta's assert names it) starts at 0x354510, straight after valve_main.cpp,
     in SOCOM 1's order; its boundary with ztex_manager.cpp falls in 0x355A70-0x355DE0; znode.h's
