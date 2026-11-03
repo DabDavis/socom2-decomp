@@ -248,6 +248,22 @@ def local_object_ok(elf: E.Elf, sec_index: int, start: int, want: int, fsym: E.E
     return True
 
 
+def gnu_static_size(elf: E.Elf, sec_index: int, off: int) -> int:
+    """The extent of a GNU object's static variable at `sec`+off: GCC labels each with a sized
+    LOCAL OBJECT symbol (`.size x,N`), which GNU as keeps while relocating every reference against
+    the section. 0 when no such symbol starts there (then local_object_ok's heuristics -- a
+    relocated table, a string to its NUL -- decide, and an int before a pointer read as a 5-byte
+    string: loadfile.c's _bind_check, -1, then _lfwildcard). Only plain data takes it: an object
+    holding a relocation (a table of pointers) keeps the heuristics' extent, as before -- the
+    recogniser's virtual tables, whose first slot is null, are still read to that byte."""
+    for s in elf.symbols:
+        if s.shndx == sec_index and s.bind == 0 and s.type == "OBJECT" and s.value == off and s.size:
+            if any(off <= r.offset < off + s.size for r in elf.relocs_for(sec_index)):
+                return 0
+            return s.size
+    return 0
+
+
 def is_gnu(elf: E.Elf) -> bool:
     """A GCC object (GNU as writes .reginfo; Metrowerks never does)."""
     return any(s.name == ".reginfo" for s in elf.sections)
@@ -439,6 +455,8 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
                 out.append(RelocFinding(r.offset, r.type, named[0], want, got, "ok" if got == want else "MISMATCH"))
             elif local_sec is not None:
                 size = r.sym.size if (r.sym.type == "OBJECT" and add == 0) else 0
+                if not size and gnu:
+                    size = gnu_static_size(elf, local_sec, local_base + add)
                 ok = local_object_ok(elf, local_sec, local_base + add, want, fsym, taddr, st, img, size)
                 status = "unchecked" if ok is None else ("content-ok" if ok else "CONTENT-MISMATCH")
                 out.append(RelocFinding(r.offset, r.type, name, want, None, status))

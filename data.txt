@@ -38,6 +38,7 @@
 0x001CCC00 0x10 init_mp3.3  # MAIN; s1:data-exact (size SOCOM 1's; via sceGsExecStoreImage)
 0x001CCC20 0x50 iqval  # MAIN; s1:data-exact (size SOCOM 1's; via sceIpuInit)
 0x001CCC70 0x20 vqval  # MAIN; s1:data-exact (size SOCOM 1's; via sceIpuInit)
+0x001CCC90 0x10 __ps2_klibinfo__  # MAIN; SOCOM 1's symbol (the demo's GLOBAL OBJECT at the head of the same .data run, before ttyinit): "PsIIlibkernl2710", libkernl's stamp; _lf_version compares the loader's version with its last four bytes
 0x001CCCA0 0x4 ttyinit  # MAIN; s1:data-exact (size SOCOM 1's; via read +2)
 0x001CCCA4 0x4 heap_ptr.30  # MAIN; s1:data-exact (size SOCOM 1's; via sbrk)
 0x001CCCA8 0x4 topId  # MAIN; s1:data-exact (size SOCOM 1's; via InitThread +3)
