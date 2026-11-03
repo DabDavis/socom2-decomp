@@ -7381,8 +7381,8 @@
 0x00391F80 0x190 func_00391F80  # OVL1
 0x00392110 0x14 func_00392110  # OVL1
 0x00392130 0x2A4 func_00392130  # OVL1
-0x003923E0 0x220 func_003923E0  # OVL1
-0x00392600 0x64 func_00392600  # OVL1
+0x003923E0 0x220 insert__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod insert (memmove, memset, memcpy), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's template tail, the composition's push_backs call it
+0x00392600 0x64 resize__Q23std36__vector_pod<c,Q23std12allocator<c>>FUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod resize(n, c), insert or erase, byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's tail
 0x00392670 0xCC func_00392670  # OVL1
 0x00392740 0x8 func_00392740  # OVL1
 0x00392750 0x8 func_00392750  # OVL1
@@ -7392,7 +7392,7 @@
 0x003928E0 0x68 func_003928E0  # OVL1
 0x00392950 0x68 func_00392950  # OVL1
 0x003929C0 0x6C func_003929C0  # OVL1
-0x00392A30 0x80 func_00392A30  # OVL1
+0x00392A30 0x80 erase__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcPc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range erase (the tail memcpy'd down), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's tail, resize calls it
 0x00392AB0 0x128 func_00392AB0  # OVL1
 0x00392BE0 0x450 func_00392BE0  # OVL1
 0x00393030 0x168 func_00393030  # OVL1
@@ -7400,12 +7400,12 @@
 0x003935F0 0x1A0 func_003935F0  # OVL1
 0x00393790 0x4C8 func_00393790  # OVL1
 0x00393C60 0xC8 func_00393C60  # OVL1
-0x00393D30 0x44 func_00393D30  # OVL1
-0x00393D80 0x48 func_00393D80  # OVL1
+0x00393D30 0x44 __as__Q23std36__vector_pod<c,Q23std12allocator<c>>FRCQ23std36__vector_pod<c,Q23std12allocator<c>>  # OVL1; the MSL headers round 9: include/vector's 1-byte pod assignment (assign over the other's bytes), byte-exact as a probe (build/p9/vc1.cpp); the keyboard elements' copies call it
+0x00393D80 0x48 __ct__Q23std36__vector_pod<c,Q23std12allocator<c>>FRCQ23std36__vector_pod<c,Q23std12allocator<c>>  # OVL1; the MSL headers round 9: include/vector's 1-byte pod copy (zeroed, then init), byte-exact as a probe (build/p9/vc1.cpp); the keyboard elements' inserts call it
 0x00393DD0 0x68 func_00393DD0  # OVL1
 0x00393E40 0xC0 func_00393E40  # OVL1
-0x00393F00 0xA8 func_00393F00  # OVL1
-0x00393FB0 0xD8 func_00393FB0  # OVL1
+0x00393F00 0xA8 init<PCc>__Q23std36__vector_pod<c,Q23std12allocator<c>>FPCcPCcQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range init (memcpy), byte-exact as a probe (build/p9/vc1.cpp); the copy calls it
+0x00393FB0 0xD8 assign<PCc>__Q23std36__vector_pod<c,Q23std12allocator<c>>FPCcPCcQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 9: include/vector's 1-byte pod range assign (memcpy), byte-exact as a probe (build/p9/vc1.cpp); the assignment calls it
 0x00394090 0x60 func_00394090  # OVL1
 0x003940F0 0x78 func_003940F0  # OVL1
 0x00394170 0x60 func_00394170  # OVL1
@@ -7511,7 +7511,7 @@
 0x0039B1D0 0x17C func_0039B1D0  # OVL1
 0x0039B350 0x260 func_0039B350  # OVL1
 0x0039B5B0 0x6C func_0039B5B0  # OVL1
-0x0039B620 0x50 func_0039B620  # OVL1
+0x0039B620 0x50 assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCcUi  # OVL1; the MSL headers round 9: include/string's assign(const char *, n), out of class, replace(0, size(), s, s + n) through the template replace 0x1EE780 with its category byte; byte-exact as a probe (build/p9/sa.cpp); zui_skbkeys.cpp's tail, 0x39B350 calls it
 0x0039B670 0x4CC func_0039B670  # OVL1
 0x0039BB40 0x68 func_0039BB40  # OVL1
 0x0039BBB0 0x8 func_0039BBB0  # OVL1

@@ -109,6 +109,7 @@ public:
     basic_string &operator=(const charT *s) { return assign(s); }
     basic_string &operator=(const basic_string &str);
     basic_string &assign(const charT *s);
+    basic_string &assign(const charT *s, size_type n);
     basic_string &append(const charT *s);
     basic_string &operator+=(const charT *s) { return append(s); }
     basic_string &erase()
@@ -231,6 +232,16 @@ template <class charT, class traits, class Allocator>
 basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::assign(const charT *s)
 {
     return replace(0, size(), s);
+}
+
+/* the text replaced by n characters (0x39B620, zui_skbkeys.cpp's tail: the whole text replaced by
+ * s..s+n through the template replace, with its category byte -- the MSL headers round 9) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::assign(const charT *s, size_type n)
+{
+    forward_iterator_tag category;
+
+    return *(basic_string *)func_001EE780(this, 0, size(), s, s + n, category);
 }
 
 /* a C string appended (0x1EEB70: replace(size(), 0, s), a tail call) */

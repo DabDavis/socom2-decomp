@@ -74,6 +74,7 @@
 #include <new>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* MSL's error report with exceptions off: the message to stderr, then abort */
 #define __msl_error(str) \
@@ -297,6 +298,218 @@ inline void swap(__vector_pod<T, Allocator> &x, __vector_pod<T, Allocator> &y)
         std::swap(x.capacity_, y.capacity_);
         std::swap(x.data_, y.data_);
         std::swap(x.size_, y.size_);
+    }
+}
+
+/* A 1-byte pod (vector<char>, the soft keyboard's Korean unit: zui_hangul.cpp's template tail
+ * 0x3923E0-0x393FB0) moves its bytes through memcpy, memmove and memset where the 4-byte pod
+ * (above, SOCOM 1's) walks them in loops -- SOCOM II's 2-byte pod (OVL2's 0x5B68E0) is the same
+ * insert again, memmove and memcpy with a fill loop -- so MSL 3.0's copy, copy_backward and fill_n
+ * dispatch to the C library for the narrow types. The structure is the 4-byte pod's (0x1FE340's
+ * insert, 0x259B90's init, 0x259D20's assign, 0x259AF0's operator=, 0x259B40's copy, 0x28F220's
+ * erase), statement for statement; the helpers' names are ours. Each helper takes the range's
+ * length into a local first: through it MW simplifies the reallocating insert's (old + k) - old to
+ * k as the target does, and shares the in-place shift's length with m (written straight, or with
+ * the length recomputed in the call, MW kept the end in a fresh register or the position alive). The
+ * length the init and assign store comes through std::distance (include/iterator): the target
+ * recomputes last - first for the memcpy, which MW does only when the two are different expressions
+ * (written `last - first` both times, it keeps the length in a saved register across the
+ * allocation). The capacity test reads through capacity() and the growth reads capacity_ again; the
+ * insertion offset k is taken before old (both, the target's register numbering). Byte-exact as
+ * probes (build/p9/vc1.cpp, untracked): insert 0x3923E0, erase 0x392A30, resize 0x392600, the
+ * assignment 0x393D30, the copy 0x393D80, init 0x393F00, assign 0x393FB0. Not modelled: the
+ * destructor's depth (zui_hangul.cpp's 0x3940F0 tests `this` four times, the elements holding one
+ * five or six: an extra level and the deallocation's capacity/allocator accessors, out of line where
+ * the chain is cut -- 0x392740/0x392750, and the 4-byte pod's 0x2B5740/0x2B5750 alike) */
+template <class T, class U>
+inline U *__pod_copy(T *first, T *last, U *result)
+{
+    unsigned int n = last - first;
+
+    memcpy(result, first, n * sizeof(U));
+    return result + n;
+}
+
+template <class T>
+inline T *__pod_copy_backward(T *first, T *last, T *result)
+{
+    unsigned int n = last - first;
+
+    result -= n;
+    memmove(result, first, n * sizeof(T));
+    return result;
+}
+
+/* the fill: the value as an unsigned byte (the target's lbu) */
+inline void __pod_fill_n(char *first, unsigned int n, const char &value)
+{
+    memset(first, (unsigned char)value, n);
+}
+
+template <class Allocator>
+class __vector_pod<char, Allocator> {
+public:
+    typedef char T;
+
+    __vector_pod() { capacity_ = 0; size_ = 0; data_ = 0; }
+    __vector_pod(const __vector_pod &x);
+    ~__vector_pod()
+    {
+        if (data_)
+            deallocate(data_);
+    }
+    __vector_pod &operator=(const __vector_pod &x);
+    static void deallocate(T *p) { operator delete(p); }
+    T *&data() { return data_; }
+    unsigned int &cap() { return capacity_; }
+    unsigned int capacity() const { return capacity_; }
+    T *begin() { return data(); }
+    T *end() { return data() + size_; }
+    unsigned int size() const { return size_; }
+    static unsigned int max_size() { return (unsigned int)-1 / sizeof(T); }
+    static T *allocate(unsigned int n)
+    {
+        T *p = (T *)operator new(n * sizeof(T));
+        if (!p)
+            __msl_error("Memory allocation failure");
+        return p;
+    }
+    void insert(T *position, unsigned int n, const T &x);
+    T *erase(T *first, T *last);
+    template <class InputIterator>
+    void init(InputIterator first, InputIterator last, forward_iterator_tag);
+    template <class InputIterator>
+    void assign(InputIterator first, InputIterator last, forward_iterator_tag);
+    void resize(unsigned int sz, const T &c);
+    void push_back(const T &x) { insert(data() + size_, 1, x); }
+
+    unsigned int capacity_;
+    unsigned int size_;
+    T *data_;
+};
+
+/* the copy (0x393D80): zeroed, then init over the other's bytes */
+template <class Allocator>
+__vector_pod<char, Allocator>::__vector_pod(const __vector_pod &x)
+{
+    capacity_ = 0;
+    size_ = 0;
+    data_ = 0;
+    init((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+}
+
+/* the assignment (0x393D30): assign over the other's bytes unless it is this one */
+template <class Allocator>
+__vector_pod<char, Allocator> &__vector_pod<char, Allocator>::operator=(const __vector_pod &x)
+{
+    if (this != &x)
+        assign((const T *)x.data_, (const T *)x.data_ + x.size_, forward_iterator_tag());
+    return *this;
+}
+
+/* a range copied into an empty vector (0x393F00) */
+template <class Allocator>
+template <class InputIterator>
+void __vector_pod<char, Allocator>::init(InputIterator first, InputIterator last, forward_iterator_tag)
+{
+    size_ = cap() = distance(first, last);
+    if (size_ > max_size())
+        __msl_error("vector length error\n");
+    if (size_) {
+        data() = allocate(size_);
+        __pod_copy(first, last, data_);
+    }
+}
+
+/* a range copied over the contents (0x393FB0): a fresh block when it does not fit, the old freed */
+template <class Allocator>
+template <class InputIterator>
+void __vector_pod<char, Allocator>::assign(InputIterator first, InputIterator last, forward_iterator_tag)
+{
+    unsigned int n = distance(first, last);
+
+    if (n > capacity_) {
+        if (n > max_size())
+            __msl_error("vector length error\n");
+        size_ = 0;
+        if (data_) {
+            deallocate(data_);
+            data_ = 0;
+            capacity_ = 0;
+        }
+        data() = allocate(n);
+        capacity_ = n;
+    }
+    __pod_copy(first, last, data_);
+    size_ = n;
+}
+
+/* the tail moved down over the range (0x392A30) */
+template <class Allocator>
+char *__vector_pod<char, Allocator>::erase(T *first, T *last)
+{
+    if (first == last)
+        return first;
+    T *e = data_ + size_;
+
+    if (e - last)
+        __pod_copy(last, e, first);
+    size_ -= last - first;
+    return first;
+}
+
+/* copies of c inserted at the end, or the tail erased (0x392600) */
+template <class Allocator>
+void __vector_pod<char, Allocator>::resize(unsigned int sz, const T &c)
+{
+    if (sz > size())
+        insert(end(), sz - size(), c);
+    else if (sz < size())
+        erase(begin() + sz, end());
+}
+
+/* n copies of x inserted before position (0x3923E0): shifted up and filled in place, or a fresh
+ * block filled, the old bytes copied around the gap and freed */
+template <class Allocator>
+void __vector_pod<char, Allocator>::insert(T *position, unsigned int n, const T &x)
+{
+    if (n == 0)
+        return;
+    if (n > max_size() || size_ > max_size() - n)
+        __msl_error("vector::insert length error\n");
+    const T *xp = &x;
+    unsigned int newsize = size_ + n;
+
+    if (newsize <= capacity()) {
+        T *e = data_ + size_;
+        unsigned int m = e - position;
+
+        if (e - (m - n) <= xp && xp < e)
+            xp += n;
+        if (m)
+            __pod_copy_backward(position, e, e + n);
+        __pod_fill_n(position, n, *xp);
+        size_ += n;
+    } else {
+        unsigned int k = position - data_;
+        T *old = data_;
+        unsigned int newcap = capacity_ ? capacity_ : 1;
+
+        while (newsize > newcap) {
+            if (newcap < max_size() / 2)
+                newcap *= 2;
+            else
+                newcap = max_size();
+        }
+        data() = allocate(newcap);
+        __pod_fill_n(data_ + k, n, *xp);
+        if (old) {
+            __pod_copy(old, old + k, data_);
+            __pod_copy(old + k, old + size_, data_ + k + n);
+            deallocate(old);
+        }
+        size_ = newsize;
+        capacity_ = newcap;
     }
 }
 
@@ -915,6 +1128,24 @@ public:
 __MSL_VECTOR_SCALAR(float)
 __MSL_VECTOR_SCALAR(int)
 __MSL_VECTOR_SCALAR(unsigned int)
+
+/* vector<char>: the 1-byte pod above, its iterators the scalar vectors' */
+template <class Allocator>
+class __vector_imp<char, Allocator, true> : public __vector_pod<char, Allocator> {
+    typedef __vector_pod<char, Allocator> __base;
+
+public:
+    __MSL_VECTOR_ITERATOR(char)
+    iterator begin() { return iterator(__base::begin()); }
+    iterator end() { return iterator(__base::end()); }
+    unsigned int size() const { return this->size_; }
+    char &operator[](unsigned int n) { return __base::data()[n]; }
+    void clear() { this->size_ = 0; }
+};
+
+template <class Allocator>
+class vector<char, Allocator> : public __vector_imp<char, Allocator, true> {
+};
 
 template <class T, class Allocator>
 class vector<T *, Allocator> : public __vector_imp<T *, Allocator, true> {
