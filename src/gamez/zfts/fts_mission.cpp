@@ -1274,9 +1274,9 @@ bool HUDTriggerMissionCamTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
-/* a bare timeless command (SOCOM II's, between the defuse timer's tick and parser; OVL1
+/* a bare timeless command, the weapons timer clear (SOCOM II's, before the defuse timer's pair; OVL1
  * 0x2AE510) */
-extern "C" _zanim_cmd_hdr *func_002AE510(_zrdr *rdr)
+_zanim_cmd_hdr *HUDClearTimerParse(_zrdr *rdr)
 {
     _zanim_cmd_hdr *cmd;
 
@@ -1341,7 +1341,7 @@ inline bool IsNumber(_zrdr *z)
     return z->type == 1 || z->type == 2;
 }
 
-extern "C" _zanim_cmd_hdr *func_002AE5B0(_zrdr *rdr)
+_zanim_cmd_hdr *HUDStartDefuseTimerParse(_zrdr *rdr)
 {
     _start_defuse_timer_cmd *cmd;
     float time;
@@ -1365,4 +1365,28 @@ extern "C" _zanim_cmd_hdr *func_002AE5B0(_zrdr *rdr)
     cmd->time = time;
     cmd->countup = countup;
     return (_zanim_cmd_hdr *)cmd;
+}
+
+/* START_DEFUSE_TIMER's tick: the HUD's defuse timer started on the command's flag and time (SOCOM 1's,
+ * SOCOM II's with the flag; OVL1 0x2AE580) */
+void hudStartDefuseTimer(bool countup, float time);
+
+bool HUDStartDefuseTimerTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    _start_defuse_timer_cmd *cmd = (_start_defuse_timer_cmd *)hdr;
+
+    hudStartDefuseTimer(cmd->countup, cmd->time);
+    return true;
+}
+
+/* the bare command's tick: the weapons' timer cleared (SOCOM II's, the name ours; OVL1 0x2AE4F0) */
+class CZWeapon {
+public:
+    static void ClearTimer(float *pCurval);
+};
+
+bool HUDClearTimerTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZWeapon::ClearTimer(0);
+    return true;
 }

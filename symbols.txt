@@ -3867,10 +3867,10 @@
 0x002AE050 0x2F0 func_002AE050  # OVL1
 0x002AE340 0x5C func_002AE340  # OVL1
 0x002AE3A0 0x148 func_002AE3A0  # OVL1
-0x002AE4F0 0x20 HUDStartDefuseTimerTick__FP14_zanim_cmd_hdrPf  # OVL1; tu: fts_mission.cpp~ (1.0 beta); s1:align
-0x002AE510 0x6C func_002AE510  # OVL1
-0x002AE580 0x2C func_002AE580  # OVL1; tu: fts_mission.cpp~ (1.0 beta)
-0x002AE5B0 0x1A4 func_002AE5B0  # OVL1
+0x002AE4F0 0x20 HUDClearTimerTick__FP14_zanim_cmd_hdrPf  # OVL1; tu: fts_mission.cpp~ (1.0 beta); s1:align; corrected (the states lane, round 21; the name ours): it calls CZWeapon::ClearTimer(0) and returns true -- the tick of the bare command 0x2AE510 parses -- where SOCOM 1's HUDStartDefuseTimerTick, the name the alignment gave it, calls hudStartDefuseTimer; that one is 0x2AE580
+0x002AE510 0x6C HUDClearTimerParse__FP5_zrdr  # OVL1; ours (the states lane, round 21): the bare timeless command whose tick 0x2AE4F0 clears the weapons' timer; fts_mission.cpp
+0x002AE580 0x2C HUDStartDefuseTimerTick__FP14_zanim_cmd_hdrPf  # OVL1; tu: fts_mission.cpp~ (1.0 beta); s1 by hand (the states lane, round 21): SOCOM 1's HUDStartDefuseTimerTick hands the command's time to hudStartDefuseTimer, as this hands its flag and time to SOCOM II's hudStartDefuseTimer(bool, float), returning true
+0x002AE5B0 0x1A4 HUDStartDefuseTimerParse__FP5_zrdr  # OVL1; s1 by hand (the states lane, round 21): SOCOM 1's HUDStartDefuseTimerParse, a 12-byte command (the time, a number, and SOCOM II's COUNT_UP flag) the tick 0x2AE580 reads; fts_mission.cpp, byte-exact
 0x002AE760 0x64 HUDTriggerMissionCamTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:align
 0x002AE7D0 0x50 HUDTriggerMissionCamBegin__FP14_zanim_cmd_hdr  # OVL1; s1:calls
 0x002AE820 0x148 HUDTriggerMissionCamParse__FP5_zrdr  # OVL1; s1:align
