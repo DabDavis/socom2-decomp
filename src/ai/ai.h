@@ -1304,6 +1304,8 @@ public:
     /* each leg smoothed, the invalid points dropped and the points' storage trimmed to them, when
      * the plan is complete and smoothing is on or forced (SOCOM 1's took no flag) */
     bool SmoothPath(bool force);
+    /* whether a cell suits the path's kind (0x526310, the name ours) */
+    bool IsPreferredCell(const CAiCell *cell) const;
     /* points made and the plan complete (the name ours: SmoothPath materialises both tests, as a
      * call of an inline bool does -- SOCOM 1's SmoothPath alike) */
     bool HasPoints() const { return !m_points.empty() && m_state == COMPLETE; }
@@ -1319,6 +1321,9 @@ public:
     /* whether a point lies on the cell, its index handed back when asked (SOCOM 1's tested the
      * points' widths around the cell) */
     bool PointInPath(const CAiMapLoc &loc, unsigned int *index) const;
+    /* the point on the cell itself, its index handed back when asked (new in SOCOM II, the name ours:
+     * 0x524880) */
+    bool FindPoint(const CAiMapLoc &loc, unsigned int *index) const;
     void plan_setup();
     bool plan_addleg(CAiMap *map, const CAiMapLoc &start, const CAiMapLoc &goal);
     bool plan_legcomplete(PATH_STATE state);

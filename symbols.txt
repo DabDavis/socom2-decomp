@@ -9561,8 +9561,8 @@
 0x00524160 0x8 clear__Q23std56__vector_deleter<8link_v22,Q23std20allocator<8link_v22>>Fv  # OVL2; by hand, the AI core round 12 (the old links' deleter destructor 0x51E5B0 calls it first, as every deleter destructor calls its clear)
 0x00524170 0x4E8 func_00524170  # OVL2
 0x00524660 0xF4 func_00524660  # OVL2
-0x00524760 0x120 func_00524760  # OVL2
-0x00524880 0xD0 PointInPath__7CAiPathCFRC9CAiMapLocPUi  # OVL2; s1:order by hand (the demo's PointInPath 0x193540, the first of the points' functions before PrintPath in both builds: the points walked for the cell, its index handed back when asked; SOCOM II drops the width test -- ai_path.cpp)
+0x00524760 0x120 PointInPath__7CAiPathCFRC9CAiMapLocPUi  # OVL2; the AI core round 17: SOCOM 1's PointInPath by its body (the demo's 0x193540, 0xE4: none without points or the snake flag 4, each point within its width of the cell -- |dx| unsigned, |dy| signed, against the width byte -- its index counted from the back); SOCOM II adds the map id's test and walks the class iterator; the leg smoother 0x525C80, ExtendPath 0x52BDF0 (twice), CAiSFollow::Tick 0x5FB1C0 and 0x5FD790 call it
+0x00524880 0xD0 FindPoint__7CAiPathCFRC9CAiMapLocPUi  # OVL2; s1:order by hand (the demo's PointInPath 0x193540, the first of the points' functions before PrintPath in both builds: the points walked for the cell, its index handed back when asked; SOCOM II drops the width test -- ai_path.cpp); the AI core round 17: the point on the cell itself (the name ours, new in SOCOM II): the points walked for x and y equal, the forward index handed back -- no snake flag, no width; CAiSBreach::Tick 0x5F2120 calls it. PointInPath by place before, but SOCOM 1's PointInPath body (the demo's 0x193540: flag 4, the widths, the index from the back) is 0x524760
 0x00524950 0x380 PrintPath__7CAiPathCFPCc  # OVL2; s1:callee by hand (PostProcess calls it when bit 6 of m_flags is set, where SOCOM 1's calls PrintPath__7CAiPathCFv; SOCOM II passes a name -- "dbg_path" -- and builds the text with sprintf/strcat; TickPathPlanner and the AI states call it too)
 0x00524CD0 0x2C func_00524CD0  # OVL2
 0x00524D00 0x48 PopPoint__7CAiPathFP9CAiMapLoc  # OVL2; ours (new in SOCOM II, among the points' functions after PrintPath: the last 8-byte point of m_points (0x98) taken off, its cell handed back when asked, a bool; the SEALs call it -- ai_path.cpp)
@@ -9574,7 +9574,7 @@
 0x00525810 0x450 func_00525810  # OVL2
 0x00525C60 0x18 func_00525C60  # OVL2
 0x00525C80 0x68C func_00525C80  # OVL2
-0x00526310 0x68 func_00526310  # OVL2
+0x00526310 0x68 IsPreferredCell__7CAiPathCFPC7CAiCell  # OVL2; the AI core round 17: whether a cell suits the path's kind (the name ours, new in SOCOM II): a stealth path's m_type 2 takes soils 2/4/5/12 (one bit test, 0x40D from 2), a basic one's 1 soil 3, any other every cell; the leg smoother 0x525C80 calls it twice
 0x00526380 0xCC SmoothPath__7CAiPathFb  # OVL2; s1:callee by hand (PostProcess's first call, with false, as SOCOM 1's PostProcess calls SmoothPath__7CAiPathFv first: the legs smoothed by 0x525810, the invalid points dropped (0x527CE0), the points trimmed by a copy and swap -- ai_path.cpp)
 0x00526450 0x60 __dt__Q23std60vector<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; by hand (SmoothPath's trim destroys its copy with -1: the points' implicit destructor, ~__vector_deleter called); by hand: SmoothPath's trim copy is a std::vector<point>, as node_world.cpp's TrimVector<std::vector<CNode *> > (two this-tests; the points subclass's would be three)
 0x005264B0 0x40 swap__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>FRQ23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>  # OVL2; by hand (SmoothPath's trim swaps the copy in through it: the this test, capacity, data, size)

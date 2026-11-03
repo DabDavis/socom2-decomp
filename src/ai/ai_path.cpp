@@ -220,6 +220,25 @@ bool CAiPath::SmoothPath(bool force)
     return done;
 }
 
+/* whether a cell suits the path's kind (new in SOCOM II, the name ours: the leg smoother 0x525C80
+ * asks it twice, out of line): a stealthy path keeps to soils 2, 4, 5 and 12 (water, brush,
+ * forest, grass -- one bit test), a basic one to roads, any other takes every cell */
+#pragma auto_inline off
+bool CAiPath::IsPreferredCell(const CAiCell *cell) const
+{
+    bool ok = true;
+
+    if (m_type == PATH_STEALTH) {
+        unsigned int soil = cell->m_soil;
+
+        ok = soil == 2 || soil == 4 || soil == 5 || soil == 12;
+    } else if (m_type == PATH_BASIC) {
+        ok = cell->m_soil == 3;
+    }
+    return ok;
+}
+#pragma auto_inline reset
+
 /* the snake's length: none (when one was set) clears flag 2 and empties the path, Clear inlined;
  * a new one cuts the points to it, reserves them, sets flag 2 and completes the plan (SOCOM 1's) */
 void CAiPath::SetSnakeLength(unsigned int len)
@@ -254,15 +273,16 @@ bool CAiPath::PopPoint(CAiMapLoc *loc)
     return popped;
 }
 
-/* whether a point lies on the cell, its index handed back when asked (SOCOM 1's; SOCOM II's
- * wants the cell itself where SOCOM 1's took a point within its width, and no snake flag).
+/* the point on the cell itself, its index handed back when asked (new in SOCOM II, the name ours:
+ * 0x524880, which CAiSBreach::Tick calls -- the row carried PointInPath by its place until the AI
+ * core's round 17 read SOCOM 1's PointInPath body in 0x524760, below).
  * OPEN (0xC8 against 0xD0): GetRouteIndex's and GetRegionContaining's question (ai_maptable.cpp)
  * -- the target re-reads data_ and size_ for each pass's end test (the first test reusing the
  * emptiness test's size and begin's data), this build hoists the end out of the loop. Postfix
  * steps, a cast `this`, `!(it == end())` and the iterator declared outside were tried; perhaps
  * the original iterator stays in memory (a user-declared copy constructor?) long enough that its
  * stores block the hoist */
-bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index) const
+bool CAiPath::FindPoint(const CAiMapLoc &loc, unsigned int *index) const
 {
     if (m_points.size() == 0)
         return false;
@@ -279,4 +299,35 @@ bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index) const
         }
     }
     return found;
+}
+
+/* whether a snake path passes within a point's width of the cell, the point's index counted from
+ * the path's end handed back when asked (SOCOM 1's PointInPath, the demo's 0x193540: the snake flag
+ * 4, the widths, the index from the back -- SOCOM II adds the map's test; 0x524760, which the leg
+ * smoother, ExtendPath and CAiSFollow::Tick call).
+ * OPEN: FindPoint's question (above) -- the target re-reads size_ and data_ for each pass's end */
+bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index) const
+{
+    if (m_points.size() == 0 || !(m_flags & 4))
+        return false;
+    points &p = const_cast<points &>(m_points);
+    unsigned int n = 0;
+
+    for (points::iterator it = p.begin(); it != p.end(); ++it, ++n) {
+        if ((*it).m_loc.m_mapid == loc.m_mapid) {
+            unsigned int px = (*it).m_loc.x;
+            unsigned int lx = loc.x;
+            int dx = lx < px ? px - lx : lx - px;
+            int py = (*it).m_loc.y;
+            int ly = loc.y;
+            int dy = ly < py ? py - ly : ly - py;
+
+            if (!((*it).m_width < dx + dy)) {
+                if (index)
+                    *index = m_points.size() - n - 1;
+                return true;
+            }
+        }
+    }
+    return false;
 }
