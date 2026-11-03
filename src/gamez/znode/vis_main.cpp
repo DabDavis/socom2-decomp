@@ -6,11 +6,16 @@
  * half was is not settled. Only some of its functions so far; the rest stay generated drafts or
  * placeholders. Defined in reverse of their image order (-inline deferred). */
 
+#include <stack>
 #include "znode.h"
 #include "../zar/zar.h"
 #include "../zsys/zsys_public.h"
 
 namespace zdb {
+
+/* the free view ids' stack (znode.h's CVisual::m_stack_vid; vis_vu.cpp's class) */
+class CVidStack : public std::stack<void *> {
+};
 
 /* a decal on a visual: what its view's list walk reads (vis_decal.cpp's class; SOCOM 1's, no DWARF
  * -- the names ours) */
@@ -114,7 +119,7 @@ void CVisual::Init()
     int i;
 
     for (i = 0; i < 32; i++)
-        m_stack_vid.push_back((const void *)i);
+        m_stack_vid.push((void *)i);
     for (i = 0; i < 32; i++)
         func_003349C0(&m_stack_vid);
     func_0028B0E0(&m_lightMapList, 16, 0);
@@ -299,7 +304,7 @@ bool CVisual::Read(zar::CZAR &zar)
         char *data = (char *)(d + m_numDetails);
 
         for (unsigned int i = 0; i < m_numDetails; i++, d++) {
-            d->m_data = data;
+            d->m_data = (tag_DETAIL_PARAMS::ENTRY *)data;
             data += d->m_count * 12;
         }
     }

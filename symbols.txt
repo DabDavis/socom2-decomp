@@ -7869,12 +7869,12 @@
 0x003B52C0 0x78 func_003B52C0  # OVL1
 0x003B5340 0x2C Render__Q23zdb7CVisualFP7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003B5370 0x164 func_003B5370  # OVL1
-0x003B54E0 0x244 func_003B54E0  # OVL1
-0x003B5730 0x180 func_003B5730  # OVL1
-0x003B58B0 0xF0 func_003B58B0  # OVL1
+0x003B54E0 0x244 VuLightMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: SOCOM 1's VuLightMap in role -- 0x3B5B90 calls it last on &cursor with the tag 56/58 when m_lightMapCnt is set; the first map's texture select, SaveTextureSelect with its blend word, then per map of m_lightMapList its position through m_WorldToModel, falloff, range, colour and opacity, as SOCOM 1's; the signature SOCOM II's)
+0x003B5730 0x180 VuShadowMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: SOCOM 1's VuShadowMap in role -- 0x3B5B90 calls it on &cursor with the tag 60/62 when m_shadowMapCnt is set; per map of m_shadowMapList a command, its texture select, position and direction through m_WorldToModel, its world-to-UV matrix times m_ModelToWorld, range, falloff, colour and opacity, as SOCOM 1's wrote once for the first map; the signature SOCOM II's)
+0x003B58B0 0xF0 VuProjectedMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: the projected map's pass -- 0x3B5B90 calls it on &cursor with the tag 118/120 when m_projectedMapList is not empty, between the specular and shadow passes; it walks m_projectedMapList's first map: its texture select, its node's position through m_WorldToModel, its matrix times m_ModelToWorld. SOCOM II's, the name ours, after SOCOM 1's VuShadowMap/VuLightMap)
 0x003B59A0 0x68 func_003B59A0  # OVL1
 0x003B5A10 0x20 func_003B5A10  # OVL1
-0x003B5A30 0x158 func_003B5A30  # OVL1
+0x003B5A30 0x158 VuDetailMap__Q23zdb7CVisualFPP8_word128UiPQ23zdb17tag_DETAIL_PARAMS  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's VuDetailMap -- 0x3B5B90 calls it first on &cursor with the tag 48/50 and its detail-layer argument; per texture while m_rangeSqdToCamera is within the layer's range: CopyTextureSelect, the entry's halfword and float at the same offsets as SOCOM 1's; SOCOM II adds the command quadword and the texture base offset)
 0x003B5B90 0x388 func_003B5B90  # OVL1
 0x003B5F20 0x61C func_003B5F20  # OVL1
 0x003B6540 0x140 func_003B6540  # OVL1
@@ -7883,8 +7883,8 @@
 0x003B6870 0x2A8 func_003B6870  # OVL1
 0x003B6B20 0x1E4 func_003B6B20  # OVL1
 0x003B6D10 0xF4 NodeSetup__Q23zdb7CVisualFPQ23zdb5CNodePQ23zdb5CNodeP7CMatrixi  # OVL1; s1:align
-0x003B6E10 0x190 func_003B6E10  # OVL1
-0x003B6FA0 0xE0 func_003B6FA0  # OVL1
+0x003B6E10 0x190 GetChainData__Q23zdb7CVisualFv  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's CVisual::GetChainData -- VuUpdate's first call, whose bool it keeps in _DoDetail as SOCOM 1's; the top of m_stack_vid behind a break, the view's VU buffer from m_lodMesh, m_dmaChain/m_dmaQwc/m_dmaSubfaceQwc from its head and the detail layers' cut, store for store; SOCOM II keeps the subface offset 0x4B4ED0)
+0x003B6FA0 0xE0 SaveTextureSelect__Q23zdb7CVisualFP8_word128PQ23zdb8CTextureUl  # OVL1; s1:order by hand (the wep lane, round 13: SOCOM 1's CVisual::SaveTextureSelect, the same code -- the select's DMA reference written at _savedTS (0x3E1440) through the uncached mirror, the blend register's when the word is not the default 0x4000000000000000 nor the select's; VuLightMap and 0x3B5B90 call it as SOCOM 1's VuLightMap does)
 0x003B7080 0xA4 AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D  # OVL1; s1:align
 0x003B7130 0x1C func_003B7130  # OVL1
 0x003B7150 0x18 func_003B7150  # OVL1
