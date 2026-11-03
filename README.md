@@ -1759,6 +1759,29 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 14** (the deques' instances; probes build/p14/, untracked):
+  - the circular buffer's end() takes its index (`cap ? (start + size) % cap : 0`) into a local before it loads
+    data_ -- written inside the iterator constructor's first argument MW loads data_ first: ~__deque_buf byte-exact
+    for the pointer deques, the lobby queue and the state machine (0x2CEFB0, 0x2E19E0, 0x3A6E60);
+  - __deque_imp::push_back's growth path holds its new block in MSL's alloc_ptr WITH ITS COUNT KEPT ({allocator,
+    128, block} on the stack: include/msl_utility's alloc_ptr<T, A, unsigned int>), released after the buffer's
+    push_back; `*(back() = ap.get()) = x` loads x and the block before either store (two statements reload the
+    block after the back() store); the other path's block goes from the allocator straight into back() (named
+    `last`/`b` locals swap their saved registers); a count `c ? (c - 1) * k : 0` lays the nonzero arm first,
+    `c == 0 ? 0 : (c - 1) * k` the zero arm, as the target -- 0x2CF970 and the lobby's 0x2E1610 byte-exact;
+    the function-local guarded statics need data.txt rows (`@GUARD@<fn>@max`, `@LOCAL@<fn>@max`) to resolve;
+  - MW's scalariser splits an iterator object unless its fields live in a BASE class (an empty base does not
+    stop it): with the fields in a base every make_iterator object stays in memory, but the implicit copy
+    becomes an FPU block copy where the target copies word by word through the fields' registers -- the
+    make_iterator shape that does both is not found (include/deque's comment lists twenty variants); a
+    constructor (`new X`) emits X's implicit destructor levels at once, before any of the unit's deferred
+    functions: a stand-in that builds one reorders the whole tail (zrdr_parse.cpp's comment);
+  - open: every make_iterator, the chat's push_back (its growth path builds and swaps a temporary buffer),
+    the chat's range destroy and teardown, the copy chain's generation order (init, the buffers' copies), the
+    class insert/erase end register; measured for the integrator: renaming 0x333330/0x333390 gains
+    ~zrdr_symtab and __sinit_zrdr_parse.cpp at the cost of an eleventh draft-only row -- APPLIED at integration
+    (__sinit_zrdr_parse.cpp 0x402DB0 new, ~zrdr_symtab 0x333390 from source where its draft matched before,
+    ~__vector_imp<zrdr_sym> 0x333330 on its renamed draft: +1 byte-exact, +6 with the deques).
 - **Tells from completing the MSL headers, round 13** (the instances other lanes waited on):
   - include/list's range and single erases DESTROY each element (its destructor called with -1) before freeing the
     node -- pointer lists unaffected; the list erase re-reads the iterator's node after the element's destructor
@@ -1818,6 +1841,33 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 13** (CUIVariable's UIVarMixin base, the look's background pieces, the hangul functions,
+  CGameMenu's background film):
+  - CUIVariable is `: _zrdr, UIVarMixin` -- the mixin at 0x8 with its own vptr at 0x10 (vtable 0x4062B0), an inline
+    virtual destructor and UpdateUIVar, an inline default constructor, the longevity a byte enum, a callback pair at
+    0x28/0x2C (its copy constructor 0x386BF0 byte-exact); zui_var.cpp emits the vtable's four slots, so fts_mission.cpp's
+    tail rows 0x2B1530, 0x2B1A10, 0x2B2170 and 0x2B2180 carry CUIVariable's names (renamed at integration:
+    ~CUIVariable byte-exact, the three others from source where drafts matched them);
+  - A WRONG STAND-IN ELEMENT IN ONE MEMBER CAN COST UNRELATED TEMPLATE INSTANCES: m_sources[4]'s real element --
+    CSkbBgPiece {CSaferStr texture; CSkbRect source, display}, 0x2C bytes, inside CSkbBgPieces, a class over the
+    vector (its destructor tests `this` three times where a plain vector's tests twice) -- put zui_skb.cpp's template
+    tail in the target's order, which brought insert<CSkbKey> and the grid's clear 0x38FEF0 in (no longer a
+    draft-only row);
+  - with a constant n, `Count() > n` branches straight on `blez`, `n < Count()` keeps `slt`/`beqz`; a push_back
+    argument the target first copies to a stack byte is an rvalue (`(char)x`), and taking the receiver into a
+    reference local first puts its address ahead of that copy; a store in a call's delay slot was written before the
+    call; an inline inlined one level turns its by-value parameter into a stack copy, its callees appearing as
+    out-of-line copies beside the caller;
+  - SOCOM 1's CGameMenu film trio, by order and fields: TickMPEG 0x366940 (SOCOM II loops by the byte at 0x27A),
+    RestartBackgroundMPEG(const char *) 0x366A00 (the restart takes a name), HaltBackgroundMPEG 0x366B10;
+  - open: Attach 0x3869F0 (0xE4 vs 0xC0: the target inlines IsAttached one level and calls the vector's begin, end,
+    find and != out of line -- the original's tree is taller than five), the grid's insert 0x38F7D0 (0x5C0 vs 0x5D8:
+    row destructors through two out-of-line `return this` accessors 0x38FDB0/0x38FDC0, a chain cut at its leaves,
+    and an s0/s1 swap), SkbHangulBack 0x3910E0 (0x19C vs 0x190: the local pieces' size and data address kept in
+    s0/s1 across the call), CSkbPieces::Append 0x3908A0 (1: the add's operand order, about fifteen forms), the display
+    unit's piece tail 0x397FE0-0x3989DF (resize exact under a probe; erase and insert wait on the look parser
+    0x3963F0 using CSaferStr's copy and assignment first), CreateSoftKeyboard, GetCurKeyProps (perhaps an inline too
+    tall for its callers: untested).
 - **Tells from the HUD, round 23** (the radio command menu: hud_tcmcmds.cpp and hud_tcm.cpp):
   - the menu 0x22EDB0-0x23775F is THREE units, cut where calls stop inlining: hud_tcmcmds.cpp 0x22EDB0-0x231A2F (its
     initialiser 0x3FF430 matches; the tree calls its two 8-byte node setters out of line), the tree 0x231A30-0x23624F
@@ -3809,7 +3859,7 @@ constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' 
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0, 0x2F6230
-and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the keyboard grid's clear 0x38FEF0 and the hangul pieces' clear 0x3929C0 (their elements' destructors one inline level deeper in the original; drafts with `sc: as=` lines) -- TEN rows in all -- 0x29FF60 and
+and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line) -- TEN rows in all -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
 
@@ -5694,6 +5744,49 @@ of 3) and `asr/chinese_tree.c` (new: their `_TreeCtx` copies, 2 of 3) -- 8 funct
 new to the map's byte-exact rows (3,588 bytes); `src/lib/asr` 425 of 467 (417 of 460 before). 2 rows
 named (Tone_Of_Final, Tone_Of_Final_TreeCtx: `s1:order`, SOCOM 1's objects 0x3404E8 and 0x345CD0). No
 tool changed.
+
+**Round 15c: the training object whole but one, and four block objects' small functions.**
+
+- **The training object is SOCOM 1's, in its order** -- round 11c's "four SOCOM II additions before
+  TrainSmoothCounts (0x4E0D00)" was a row off: DoUserWordTraining calls 0x4DFD20 then 0x4E0D00 where
+  SOCOM 1's calls TrainInit then TrainModels, and 0x4E0D00 calls 0x4DF470, 0x4DF898, 0x4E0050 where
+  SOCOM 1's TrainModels calls TrainSmoothCounts, TrainProbsFromCounts, TrainSelectPhenom (`s1:calls`,
+  ten rows named with TrainCountsFromAcq and the four entropy functions by order and body; their
+  tables log_p_average_, global_log_p_average, p_Log_p are SOCOM 1's LOCALs byte for byte, data.txt).
+- **Public inlines come out at the object's end, in definition order -- which is how a function
+  "moves"**: the image has TrainCountsFromAcq, TrainFree, CalcEntropy ... CalcEntropyMerged4bit after
+  TrainModels, where SOCOM 1 had TrainFree after TrainInit. All six are `__inline__` above their
+  callers (TrainModels inlines TrainCountsFromAcq and TrainFree -- SOCOM 1's tail-called TrainFree;
+  TrainSelectPhenom inlines the entropy four, which is why they have no caller in either build) and
+  2.96 defers their own copies; SOCOM II only made TrainFree an inline. TrainModels' smoothing test is
+  `beqz` once TrainSmoothCounts is defined above it (round 13c's rule).
+- **A fourth object built with `-ffast-math`**: the training's preconditioned first copy stores the
+  product over the 0 it has just stored (`*acc = 0; *acc += x` folded; TrainSmoothCounts 202 words
+  without), as window.c, dctlift.c and gender.c. SOCOM 1's copy of the object was not unrolled.
+- **Shapes, measured**: a value stored and summed through its own local, summed first (`t = ...; sum
+  += t; *prob = t;` -- the sum's register takes the first copy's quotient, 34 words otherwise); a
+  pointer bumped inside the expression (`logf(*prob++ / sum)`: the unroller's split pointer, 8 words
+  shorter otherwise); a chain's link set after the head is cleared and moved past each record last;
+  a size summed into the count's own variable (`n += s->nring * n;`, the sessions' last memcpy); the
+  stride declared first (TrainCountsFromAcq: the loads' registers); case bodies in the target's order
+  (ControlSpecSub 2, 1, 3, 4, 255; CombinerControl 2, 1, 255); `unsigned short` session indices (`lhu`,
+  the VAD pair) and an unsigned state (`sltiu`, the combiner); an `int` count where the target does
+  not mask the parameter (ResizeQueues); a per-loop pointer in the spectral reset (round 14c's rule:
+  21 words to 3). An `unsigned char` result with ONE `andi` at the return is an int assigned at each
+  exit and returned once (SendLabelsToEngine; `return` per exit masks each path).
+- **Open, diagnosed in place**: ControlSpecSub (3 words: which of the two +84 loads keeps a1),
+  SendLabelsToEngine (26: the buffer's copy into p), and TrainSelectPhenom (0xCB0, not written: the
+  entropy inlines it takes are in place above it).
+
+Hand-written in round 15c: `asr/train.c` (+9: TrainSmoothCounts, TrainProbsFromCounts, TrainInit,
+TrainModels, TrainCountsFromAcq, CalcEntropy, CalcEntropy4bit, CalcEntropyMerged, CalcEntropyMerged4bit;
+10 of 10 written, TrainSelectPhenom not), `asr/specsub.c` (new: the session pair, ConstructSpecSub and
+ProcessSpecSub over their drafts; 4 of 5), `asr/vad.c` (+2, VadGetSession and VadPutSession: 3 of 3),
+`asr/distsil.c` (new: ResizeQueues), `asr/combiner.c` (new: CombinerInit and CombinerControl,
+ConstructCombiner over its draft) and `asr/userword.c` (SendLabelsToEngine OPEN) -- 16 rows new to the
+map's byte-exact rows (9,020 bytes), 3 matched drafts superseded; `src/lib/asr` 444 of 488 (425 of 467
+before). 14 rows named (10 training, SpectralSubtraction `s1:calls`, InitSpecSub, ProcessSpecSub and
+CombinerInit by their constructors' slots), 3 data rows (`s1:data`). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
