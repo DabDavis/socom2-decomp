@@ -152,7 +152,9 @@ typedef std::map<CSkbKey, CSkbKeyProps *> CSkbKeyMap;
 class CSkbGrid : public std::vector<std::vector<CSkbKey> > {
 public:
     bool IsValidRow(int y) const { return y >= 0 && y < size(); }
-    bool IsValidPos(int x, int y) const { return IsValidRow(y) && x >= 0 && x < (*this)[y].size(); }
+    /* the row test `!= false`: its && is then materialised (slt, xori, sltu, andi 0xff) before the
+     * branch, as in every inlined copy in the target (GetCurKeyProps, SkbHandleKey) */
+    bool IsValidPos(int x, int y) const { return (IsValidRow(y) != false) && x >= 0 && x < (*this)[y].size(); }
     /* the key at a position, or a null key (one function-local static: SOCOM 1's GetSkbKey and
      * GetKeyAtGridPos share its guard) */
     const CSkbKey &GetSkbKey(int x, int y) const

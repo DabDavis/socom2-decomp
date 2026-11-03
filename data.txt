@@ -576,6 +576,7 @@
 0x003FAB28 0x8 __RTTI__18CStickInertiaTuner  # RTTI of CStickInertiaTuner: found by its RTTI's name
 0x003FAB68 0x8 __RTTI__19CStickDeadzoneTuner  # RTTI of CStickDeadzoneTuner: found by its RTTI's name
 0x003FAB98 0x8 __RTTI__12CDialogTuner  # RTTI of CDialogTuner: found by its RTTI's name
+0x003FABA0 0x4 @LOCAL@GetSkbKey__8CSkbGridCFii@s_nullKey  # OVL1 data; zui_skb.cpp's: CSkbGrid::GetSkbKey's function-local null key (a CSkbKey: its row byte zeroed with sb, its code with sh at +2, under the guard 0x49ECB0) -- the UI lane round 14: 15 references in 4 functions (GetCurKeyProps 0x38B2A0, 0x38C130, GetCurKey 0x38CB90, SkbHandleKey 0x38DFE0)
 0x003FAF00 0x8 __RTTI__12CBmpWithNode  # RTTI of CBmpWithNode: found by its RTTI's name
 0x003FB000 0x1A s_keyJamo  # OVL1 data; zui_hangul.cpp's static (name ours): the 2-set keyboard's jamo for the keys a-z (Mieum, Yu, Chieuch ...); 1 reference in 1 function (KeyToJamo, addressed as the table minus 'a')
 0x003FB020 0x1A s_shiftKeyJamo  # OVL1 data; zui_hangul.cpp's static (name ours): the jamo for the shifted keys A-Z (the doubled consonants and Yae, Ye); 1 reference in 1 function (KeyToJamo, addressed as the table minus 'A')
