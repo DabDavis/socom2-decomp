@@ -379,11 +379,30 @@ extern "C" int func_002A6AD0(CMission *mission);
 /* SOCOM II's spectator test, or so (0x2C2FA0: CAmmoDisplay::On asks it too; no row yet) */
 extern "C" bool func_002C2FA0();
 
-/* the jukebox's, or so: a string table registered by name (no rows named yet) */
-class CStringTables;
-extern "C" CStringTables *func_00361BC0();
-extern "C" int func_003A4460();
-extern "C" void func_003A3900(CStringTables *tables, const char *name, int lang);
+/* the localised string tables (util_loc.cpp's; only what is called): a table loaded and unloaded by
+ * name, the language it is loaded in, and the tables' global (GetStringTables, 0x361BC0, returns it) */
+enum LANGUAGE {
+    LANG_STATES,
+    LANG_UK,
+    LANG_FRANCE,
+    LANG_GERMANY,
+    LANG_SPAIN,
+    LANG_ITALY,
+    LANG_JAPAN,
+    LANG_KOREA,
+    LANG_TEST,
+    LANG_COUNT,
+    LANG_UNSET = 99
+};
+
+LANGUAGE GetLanguage();
+
+class CStringTables {
+public:
+    void Load(const char *name, LANGUAGE lang);
+    void Unload(const char *name);
+};
+CStringTables *GetStringTables();
 
 class CHUD {
 public:
@@ -494,9 +513,9 @@ CHUD::CHUD()
 {
     theHUD = this;
     m_newmap = !theNetwork.m_bNetwork ? new CZNewHudMap : 0;
-    CStringTables *tables = func_00361BC0();
+    CStringTables *tables = GetStringTables();
 
-    func_003A3900(tables, "HudC", func_003A4460());
+    tables->Load("HudC", GetLanguage());
 }
 
 CZSealBody *CHUD::GetHUDOwner()
@@ -586,7 +605,6 @@ extern CReco theReco;
 extern unsigned char data_003DC3E0;
 extern "C" void func_002370D0(CHudNetState *state);
 extern "C" void func_0022F3B0();
-extern "C" void func_003A3740(CStringTables *tables, const char *name);
 extern "C" void func_002CA050(C2DMessage_Q *q);
 extern "C" void func_00363E60(float f);
 extern "C" void func_00363E50(float f);
@@ -613,7 +631,7 @@ CHUD::~CHUD()
         m_newmap = 0;
     }
     theHUD = 0;
-    func_003A3740(func_00361BC0(), "HudCommon");
+    GetStringTables()->Unload("HudCommon");
     CameraZoom::Reset();
     func_002CA050(&theMission.m_messages4);
     func_00363E60(0.0f);
@@ -815,7 +833,7 @@ public:
 /* the entity list's find by id (0x29E4E0), the string table's text by id (0x361B40) and the
  * screen's width (OVL1 bss 0x4A44C4); no rows named yet */
 extern "C" CEntity *func_0029E4E0(unsigned char *list, int id);
-extern "C" const char *func_00361B40(unsigned int id);
+const char *GetString(int id);
 extern unsigned int data_004A44C4;
 extern "C" int toupper(int c);
 
@@ -1003,7 +1021,7 @@ void CHUD::SetupSpectatingText(MENU_STATE menustate)
 
     if (entity) {
         CEntity *seal = entity && entity->m_type == 2 ? entity : 0;
-        const char *text = func_00361B40(0xec4f);
+        const char *text = GetString(0xec4f);
         char name[256];
 
         m_piggyback_text[0].SetString(text, false);

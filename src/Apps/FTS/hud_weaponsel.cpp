@@ -81,7 +81,7 @@ public:
 };
 
 /* a localised string by its id (the string table's; 0x361B40, no row named yet) */
-extern "C" const char *func_00361B40(int id);
+const char *GetString(int id);
 
 /* SOCOM 1's CSealCtrl::SetMenuState with a flag added (OVL2; the row unnamed: called as C) */
 extern "C" void func_00597740(CSealCtrl *ctrl, int state, int flag);
@@ -987,7 +987,7 @@ void CWeaponSel::CheckHotSwap()
 
             if (item == (int)ctrl->m_hotswap1) {
                 C2DFont *font = m_myfont;
-                const char *str = func_00361B40(0xEC6D);
+                const char *str = GetString(0xEC6D);
 
                 m_hotswapL1text.Load(0.9f, str, font, 90, (int)(62.0f + s_fRowY), true);
                 m_hotswapL1text.UpdatePos();
@@ -997,7 +997,7 @@ void CWeaponSel::CheckHotSwap()
                 m_hotswapL1text.SetTrans(0.0f);
             } else if (item == (int)ctrl->m_hotswap2) {
                 C2DFont *font = m_myfont;
-                const char *str = func_00361B40(0xEC6E);
+                const char *str = GetString(0xEC6E);
 
                 m_hotswapL2text.Load(0.9f, str, font, 90, (int)(62.0f + s_fRowY), true);
                 m_hotswapL2text.UpdatePos();
@@ -1252,7 +1252,7 @@ void CWeaponSel::PlaceWeaponText()
                 func_001FE120(tempstr, 80, 0xEC42, mags);
                 text = tempstr;
             } else {
-                text = func_00361B40(0xEC43);
+                text = GetString(0xEC43);
             }
             m_magcount.Load(0.9f, text, m_myfont, topx, topy, true);
         } else {
@@ -1294,7 +1294,7 @@ void CWeaponSel::PlaceHotSwapLabels()
         y = (int)(62.0f + m_menuposy[1]);
         x = (int)(80.0f + m_menuposx[1]);
 
-        const char *str = func_00361B40(0xEC6D);
+        const char *str = GetString(0xEC6D);
 
         m_hotswapL1text.Load(0.9f, str, font, x, y, true);
         m_hotswapL1text.UpdatePos();
@@ -1310,7 +1310,7 @@ void CWeaponSel::PlaceHotSwapLabels()
         y = (int)(62.0f + m_menuposy[1]);
         x = (int)(80.0f + m_menuposx[1]);
 
-        const char *str = func_00361B40(0xEC6E);
+        const char *str = GetString(0xEC6E);
 
         m_hotswapL2text.Load(0.9f, str, font, x, y, true);
         m_hotswapL2text.UpdatePos();

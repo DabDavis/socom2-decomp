@@ -6672,11 +6672,11 @@
 0x00361790 0x20C reserve__Q23std52__vector_imp<7C2DPoly,Q23std19allocator<7C2DPoly>,0>FUi  # OVL1; s1:calls by hand (C2DTriFan's constructor reserves its triangle vector with it, 5, as SOCOM 1's template instance; c2dpoly.cpp's instance, after the triangle's copy constructor it calls)
 0x003619A0 0x8C clear__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
 0x00361A30 0xC8 __dt__Q23std54__vector_deleter<7C2DPoly,Q23std19allocator<7C2DPoly>>Fv  # OVL1; s1:align
-0x00361B00 0x18 func_00361B00  # OVL1
-0x00361B20 0x14 func_00361B20  # OVL1
-0x00361B40 0x14 func_00361B40  # OVL1
-0x00361B60 0x58 func_00361B60  # OVL1
-0x00361BC0 0xC func_00361BC0  # OVL1
+0x00361B00 0x18 IncLanguageVersion__Fv  # OVL1; ours by its code (the HUD lane, round 19: the counter at 0x49E9B0 incremented -- SetLanguage's call after the string tables' Reload, so text built in the old language can tell; the font unit's, the UI lane's lead)
+0x00361B20 0x14 GetStringId__FPCc  # OVL1; ours by its code (the HUD lane, round 19: GetId(name, 0) on the string tables' global 0x49E9D0, no table name; the pop-up dialog's parsers call it)
+0x00361B40 0x14 GetString__Fi  # OVL1; ours by its code (the HUD lane, round 19: GetString(id, 0) on the string tables' global 0x49E9D0, no table name; 32 callers -- the HUD, the pop-up dialog, the lobby, zAnimMessageTick)
+0x00361B60 0x58 TranslateString__FPCc  # OVL1; ours by its code (the HUD lane, round 19: the name's id on the string tables' global, its string when the id is positive, else the name itself; CTeleType/CWrappedText::SetString and the sound's play calls use it)
+0x00361BC0 0xC GetStringTables__Fv  # OVL1; ours by its code (the HUD lane, round 19: returns the string tables' global 0x49E9D0; the states' Init/UnInit and CHUD's load and unload their tables through it)
 0x00361BD0 0x780 func_00361BD0  # OVL1
 0x00362350 0x290 func_00362350  # OVL1
 0x003625E0 0x320 func_003625E0  # OVL1
