@@ -12,17 +12,30 @@
 
 using namespace zdb;
 
-/* not yet written here (placeholders): the turret list's remove, the turret's halves of the
- * tick, the network turret's send (fts_*'s, 0x2C7A60) and the AI maps' cell lookup */
+/* the network platform's state (fts_net_platform.cpp's class): only the send a gunner's turret
+ * makes */
+class CZPlatformState {
+public:
+    static void UpdateLocalPlatform(CTurret *turret, bool now);
+};
+
+/* not yet written here (placeholders): the turret list's remove and the turret's halves of the
+ * tick */
 extern "C" {
-void func_003A7350(CTurret *turret, float dT);
+/* the yaw joint and the pitch joint turned by a rate over a step into a matrix, the angle reached
+ * written out; whether the joint moved (not written: 0x3A76D0, 0x3A7490 -- the pitch's limited,
+ * its third float 0x3C0). The floats come first: Rotate's set-up loads the rate ahead of the node
+ * and moves the step to $f12 before the call (the pointers first, the floats last: 2 off) */
+bool func_003A76D0(CTurret *t, float dT, float rate, CNode *node, CMatrix *m, float *angle);
+bool func_003A7490(CTurret *t, float dT, float rate, float extra, CNode *node, CMatrix *m,
+                   float *angle);
 void func_003A78E0(CTurret *turret, float dT);
 void func_003A82C0(CTurret *turret);
 void func_003A84E0(CTurret *turret);
 void func_003A88C0(CTurret *turret, float dT);
-void func_003A8D20(CTurret *turret);
-void func_002C7A60(CTurret *turret, int n);
-int func_0052DC70(CAiMaps *maps, const CPnt3D *pos, unsigned int *loc);
+/* the weapon's fire animation, its zoomed one or not (SOCOM 1's GetFireAnim__8CZWeaponFb: 0x84 or
+ * 0x88; zwep_weapon.cpp's draft) */
+CZAnim *func_003D22B0(CZWeapon *weapon, bool zoomed);
 /* the turrets made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4020;
 extern int data_003E0800;
@@ -271,7 +284,7 @@ void CTurret::UpdateAiMapLoc()
 {
     unsigned int loc;
 
-    if (func_0052DC70(&AiMaps, &m_posW, &loc)) {
+    if (AiMaps.GetLocation(&m_posW, *(CAiMapLoc *)&loc)) {
         *(unsigned int *)&m_mapLoc = loc;
         *(unsigned int *)&m_mapLocValid = loc;
     }
@@ -319,15 +332,20 @@ static inline bool TickTimer(CAiTimer &t, float dT)
     return r;
 }
 
-/* the countdown started over from a random period */
+/* the countdown started over from a random period: the random factor in a local of its own, as
+ * aitimer.h's CAiTimer::Period (and SOCOM 1's Fire) -- the target computes the range's product
+ * into $f0 and pads the store's join with two nops; written inline in the sum it does neither */
 static inline float RandomPeriod(const CAiTimer &t)
 {
     float f;
 
     if (t.m_range == 0.0f)
         f = t.m_min;
-    else
-        f = t.m_min + t.m_range * (4.656613e-10f * rand());
+    else {
+        float r = 4.656612873e-10f * (float)rand();
+
+        f = t.m_min + t.m_range * r;
+    }
     return f;
 }
 
@@ -336,21 +354,20 @@ static inline void ResetTimer(CAiTimer &t)
     t.m_timer = RandomPeriod(t);
 }
 
-/* OPEN, 2 instructions: the network test loads the player's controller into v0 and this one's
- * into v1, then `beq v1,v0` (this one's first); every spelling here gives either the two
- * registers the other way (the call's side first: `ftsGetPlayer()->m_control != m_control`,
- * `!(... == ...)`) or this one's hoisted above the call into a saved register (`m_control !=
- * ftsGetPlayer()->m_control`, through an inline accessor too, or a cast). PrePostTick's test
- * matched only with the player in a local, which loads this one's first: the opposite. Round 6:
- * an inline taking the turret and the player (the compare in its body, the player's controller in
- * a local or not) leaves it the same. */
+/* the network test is the player in a local, assigned in the test (`pl = ftsGetPlayer(), m_control
+ * != pl->m_control`: the player's controller loaded into v0 after the call, this one's into v1,
+ * `beq v1,v0`) -- PrePostTick's player local, the comma keeping the call ahead of this one's load
+ * (`m_control != ftsGetPlayer()->m_control` hoists that load above the call into a saved register,
+ * the call's side first swaps the two registers); the timer's reset is aitimer.h's Period shape */
 void CTurret::Tick(float dT)
 {
+    CZSealBody *pl;
+
     if (!GetFlag(1))
         return;
     if (GetFlag(2))
         func_003A84E0(this);
-    else if (theNetwork.m_9 && ftsGetPlayer()->m_control != m_control)
+    else if (theNetwork.m_9 && (pl = ftsGetPlayer(), m_control != pl->m_control))
         func_003A78E0(this, dT);
     else if (m_control) {
         CEntityCtrl *ctrl = m_control;
@@ -361,10 +378,10 @@ void CTurret::Tick(float dT)
         m_velR.y = m_3a8;
         m_velR.z = 0.0f;
     }
-    func_003A7350(this, dT);
+    Rotate(dT);
     if (GetFlag(4)) {
         if (TickTimer(m_fireTimer, dT))
-            func_003A8D20(this);
+            Fire();
     } else
         ResetTimer(m_fireTimer);
 }
@@ -384,7 +401,7 @@ void CTurret::PrePostTick(float dT)
         CZSealBody *player = ftsGetPlayer();
 
         if (m_control == player->m_control)
-            func_002C7A60(this, 0);
+            CZPlatformState::UpdateLocalPlatform(this, false);
     }
 }
 
@@ -426,6 +443,113 @@ void CTurret::SampleDynamics(float dT)
 
         m_velW = v;
     }
+}
+
+/* the joints turned: the yaw's angle kept in 0x3B0, the pitch's in 0x3B8 (its extra cleared), then
+ * the aim -- the pitch joint's world Z negated -- and bit 3 set, and while bit 1 is clear the scope's
+ * frame from the pitch joint (SOCOM 1's Rotate, split; the name ours) */
+void CTurret::Rotate(float dT)
+{
+    CMatrix m;
+    float yaw;
+    float pitch;
+
+    if (func_003A76D0(this, dT, m_3a8, m_yawNode, &m, &yaw)) {
+        m_yawNode->SetMatrix(&m);
+        m_3b0 = yaw;
+    }
+    if (func_003A7490(this, dT, m_3ac, m_3c0, m_pitchNode, &m, &pitch)) {
+        m_pitchNode->SetMatrix(&m);
+        m_3b8 = pitch;
+        m_3c0 = 0.0f;
+    }
+    sceVu0UnitMatrix(m.m_matrix);
+    if (m_pitchNode->BuildMTW(m)) {
+        CPnt3D *z = (CPnt3D *)m.m_matrix[2];
+
+        m_38c.x = -z->x;
+        m_38c.y = -z->y;
+        m_38c.z = -z->z;
+        m_flags |= 8;
+    } else
+        m_flags |= 8;
+    if (!GetFlag(2)) {
+        sceVu0UnitMatrix(m_2c0.m_matrix);
+        m_pitchNode->BuildMTW(m_2c0);
+    }
+}
+
+/* the AI's target (ai_target.cpp's class, OVL2): its sighting clock and the aim's spread */
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+    void ModifyAimDir(CPnt3D *dir, float error, float limit);
+};
+
+/* an animation (zanim.h's CZAnim: only its activation with arguments) */
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+};
+
+/* the entity a controller drives, none without one (inline; the name ours) */
+static inline CEntity *ControlledEntity(CEntityCtrl *ctrl)
+{
+    return ctrl ? ctrl->m_entity : 0;
+}
+
+/* the SEAL's zoom (SOCOM 1's ZOOMSTATE m_zoomstate, a signed byte enum: 0x160 there, 0x200 here --
+ * zseal.h's CZSealBody does not place it) */
+static inline signed char ZoomState(CEntity *e)
+{
+    return *((signed char *)e + 0x200);
+}
+
+/* a round fired: a projectile numbered for the tracers, the weapon's fire animation (the zoomed one
+ * while the gunner looks through the scope) started at the fire point with the turret's velocity,
+ * the AI's aim spread, the weapon's virtual Fire from the fire point, the fire timer reset (SOCOM 1's
+ * Fire; Tick's call when the fire timer runs out). The gunner's test is a controller local tested
+ * twice (the target's `beqz v0; beqz v0` on one load: through IsControlled() it is reloaded, through
+ * a `c ? c->m_entity : 0` inline the null is materialised) and the flag is set to an int 1 (`andi
+ * a1,t0,0xff` off the 1 the tracer index stored; `true` is a daddiu of its own).
+ * OPEN, 2 instructions: the weapon's call loads the shooter id (t3) ahead of the node (a1), here the
+ * node first -- the same set-up otherwise. Tried: the id or the node in a local (before the call, at
+ * the top, before the anim), the call through an inline wrapper in SOCOM 1's static parameter order
+ * and in the member's, accessors for the id and the node, the weapon in a local, `false` for the last
+ * word -- none moves the two loads */
+void CTurret::Fire()
+{
+    if (!m_weapon || m_weapon->m_ID == EQUIP_NONE)
+        return;
+
+    CZAmmo *ammo = m_ammoType ? m_ammoType : m_weapon->GetDefaultAmmo();
+    CZProjectile *p = CZWeapon::m_pProjectilelist->GetNextFreeProjectile();
+
+    if (!p)
+        return;
+    p->m_flyout_idx = 1;
+    p->m_tracer_count = ++m_shots;
+    p->SetUseFlyout(false);
+    p->SetIsPlayer(false);
+
+    bool zoomed = false;
+    CEntityCtrl *c = m_control;
+
+    if (c && c && c->m_entity && ZoomState(c->m_entity) > 0)
+        zoomed = 1;
+
+    CZAnim *anim = func_003D22B0(m_weapon, zoomed);
+    const CPnt3D *pos = &m_380;
+
+    if (anim)
+        anim->ActivateArg(3, 3, m_288, 5, &CPnt3D::zero, 6, &m_velW, 0);
+
+    CPnt3D dir = m_38c;
+
+    if (GetFlag(2))
+        ((CAiTarget *)m_target)->ModifyAimDir(&dir, m_aimError, 0.267949f);
+    m_weapon->Fire(m_node, ammo, pos, &dir, &CPnt3D::zero, p, m_id, 0);
+    ResetTimer(m_fireTimer);
 }
 
 /* a rate moved toward a step, at most the limit either way: down only while the step is below
@@ -487,13 +611,7 @@ extern "C" void func_003A8BD0(CTurret *t, const CPnt3D *target, float *yaw, floa
  * slot of its own (sp+72) copied into erase's parameters; here end() is built twice (and with `e`
  * a named local the temporaries' copies fold away: 0x11C/0x100). Tried: the end in a local, the
  * result in a local, begin() in a local, this->end(), a copy of the pointer */
-/* the AI's target (ai_target.cpp's: its sighting clock only) and its validity test (OVL2 0x60A850,
- * the kit lane's) */
-class CAiTarget {
-public:
-    float GetTimeSinceLastSighting() const;
-};
-
+/* the AI's target's validity test (OVL2 0x60A850, the kit lane's) */
 extern "C" bool func_0060A850(void *target);
 
 /* the turret's target in sight: a valid target held (bit 9), or seen within the last three seconds

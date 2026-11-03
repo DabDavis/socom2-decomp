@@ -555,15 +555,22 @@ public:
     void SetFormation(signed char formation, int slot);
     /* the offset's length in the world (inline: both setters end on it; the name ours) */
     void UpdateOffsetLength();
+    /* the hide flag at 0x79 brought to `hide`; when hiding and not `b`, a hide cell (0xC0) further
+     * than the limit (0xC4) from the cell at 0xC8 clears `*out` and the answer; when still hiding,
+     * 0x5FDAD0 runs (OVL2 0x5FC7D0: SOCOM 1's HandleFollowTickHideCheck by its place; the names
+     * ours) */
+    bool HideCheck(CSealCtrlAi *ai, bool b, bool hide, char *out);
 
-    unsigned char _58[0x5c - 0x58];
+    class CZSealBody *m_master;   // 0x58: the SEAL followed (SetFollowMaster clears it; the name ours)
     int m_5c[2];   // 0x5c: the offset from the leader, in cells (0x5F6F20 zeroes them)
     float m_64;   // 0x64: its length in the world, 10 to a cell
     unsigned char _68[0x6c - 0x68];
     unsigned int m_6c;   // 0x6c: flags (0x5F6F10 builds them with 0)
     int m_70;   // 0x70: the formation's slot
     signed char m_74;   // 0x74: the formation
-    unsigned char _75[0x7c - 0x75];
+    unsigned char _75[0x79 - 0x75];
+    unsigned char m_79;   // 0x79: hiding (HideCheck's flag; the name ours)
+    unsigned char _7a[0x7c - 0x7a];
     unsigned char m_7c;   // 0x7c: a flag (the follow's mode 4 when set: 0x5FD6F0)
     unsigned char m_7d;   // 0x7d: a flag (mode 3)
     unsigned char _7e[0x88 - 0x7e];
@@ -574,7 +581,7 @@ public:
     float m_b0[3];   // 0xb0
     unsigned char _bc[0xc0 - 0xbc];
     unsigned int m_c0;   // 0xc0
-    unsigned char _c4[0xc8 - 0xc4];
+    int m_c4;   // 0xc4: how far the hide cell may be from the cell at 0xc8 (HideCheck; the name ours)
     unsigned int m_c8;   // 0xc8
     float m_cc[3];   // 0xcc
     float m_d8[3];   // 0xd8

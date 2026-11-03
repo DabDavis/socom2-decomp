@@ -18,8 +18,6 @@
 /* __vector_pod<unsigned int>::resize(n, x) (0x28B0E0, not named yet: include/vector has no
  * resize; LoadTable passes the constant zero's address, MW's anonymous static) */
 extern "C" void func_0028B0E0(void *v, unsigned int n, const unsigned int &x);
-/* basic_string::push_back(char) (0x284B40, not named yet: include/string has none) */
-extern "C" void func_00284B40(std::string *s, char c);
 
 /* a UTF-16 character appended to a string as one to three UTF-8 bytes (ours).
  * OPEN, 34 instructions, nearly all registers: the target keeps the int copy in s0 and the string
@@ -33,14 +31,14 @@ void UTF8Append(std::string &s, unsigned short c)
     int u = c;
 
     if (u < 0x80)
-        func_00284B40(&s, (unsigned char)c);
+        s.push_back((unsigned char)c);
     else if (u < 0x800) {
-        func_00284B40(&s, (unsigned char)((c >> 6) + 0xC0));
-        func_00284B40(&s, (unsigned char)(c % 64 + 0x80));
+        s.push_back((unsigned char)((c >> 6) + 0xC0));
+        s.push_back((unsigned char)(c % 64 + 0x80));
     } else {
-        func_00284B40(&s, (unsigned char)((u >> 12) + 0xE0));
-        func_00284B40(&s, (unsigned char)((c >> 6) % 64 + 0x80));
-        func_00284B40(&s, (unsigned char)(c % 64 + 0x80));
+        s.push_back((unsigned char)((u >> 12) + 0xE0));
+        s.push_back((unsigned char)((c >> 6) % 64 + 0x80));
+        s.push_back((unsigned char)(c % 64 + 0x80));
     }
 }
 

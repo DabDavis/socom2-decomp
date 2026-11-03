@@ -245,12 +245,17 @@ extern "C" bool AddTask__14CSched_ManagerFPCcPFfPv_bfPv(CSched_Manager *sched, c
 /* the mission completed (SOCOM 1's name, at its call; OVL1 0x2AA910, not written yet) */
 void _OnMissionComplete();
 
+/* the video (zvid's CVideo: only the screen's clear) */
+class CVideo {
+public:
+    static void Clear(bool on, unsigned char r, unsigned char g, unsigned char b, unsigned char a);   /* 0x3AFD50 */
+};
+
 extern "C" {
 void Flash__4CHUDFfRC6CPnt3Dfff(CHUD *hud, float time, const CPnt3D *colour, float in, float hold, float out);
 void Reset__14CFlashFXVectorFv(void *flashes);
 void ResetDeathCam__10CAppCameraFv(void *camera);
 void Push__5CGameFP10CGameStateUi(void *game, void *state, unsigned int arg);
-void func_003AFD50(int a0, int a1, int a2, int a3, int a4);   /* (the screen cleared: SOCOM 1's CVideo::Clear) */
 extern void *appCamera;
 extern unsigned char data_004086A0[];                    /* (a state in theGame, at 0x1E0) */
 }
@@ -323,7 +328,7 @@ void CMission::EndMission()
 {
     if (!m_DelayEndMission) {
         _OnMissionComplete();
-        func_003AFD50(1, 0, 0, 0, 0);
+        CVideo::Clear(true, 0, 0, 0, 0);
         Reset__14CFlashFXVectorFv(theHUD->m_flashes);
         theMission.SetDelayEndMission(false);
         SetFadingToEndMission(false);
@@ -857,6 +862,12 @@ int g_iNumUiVehicles;
 extern "C" const char *data_003F02B0[32];   /* GetCustomCharTypeName's c_arrCustomCharTypeNames */
 const char *GetCustomCharTypeName(int i);
 
+/* a character type's weapons (zchar's CCharacterWeapList: only the slots' padding, OVL2's) */
+class CCharacterWeapList {
+public:
+    void PadWeaponSlots();   /* OVL2 0x53B070 */
+};
+
 /* a character type (zchar's CCharacterType: only what the custom types touch) */
 class CCharacterType {
 public:
@@ -865,7 +876,9 @@ public:
     static CCharacterType *Create(const char *name, const CCharacterType *base, bool temporary);
 
     char *m_name;   // 0x0
-    unsigned char _4[0x300 - 0x4];
+    unsigned char _4[0x2e8 - 0x4];
+    CCharacterWeapList m_weapons;   // 0x2e8
+    unsigned char _2e9[0x300 - 0x2e9];
     unsigned char m_custom;   // 0x300: a custom type (the name ours: stored with li, so no bool)
 };
 
@@ -896,7 +909,6 @@ public:
     CVehicleRdrEntry *GetEntryByName(const char *name) const;
 };
 
-extern "C" void func_0053B070(void *weapons);   /* (OVL2: a custom type's weapons, at 0x2E8) */
 
 namespace {
 /* the custom character types the "UiVehicles" list names, each a copy of the character type of
@@ -929,7 +941,7 @@ void CreateCustomCharTypes(CVehicleRdr *vehicles, _zrdr *rdr)
 
             custom->m_custom = 1;
             entry->SetCharacterName(name);
-            func_0053B070((char *)custom + 0x2e8);
+            custom->m_weapons.PadWeaponSlots();
             UpdateCharWeaponUiVars(i);
         }
     }
@@ -1026,10 +1038,20 @@ struct MissionBankList {
 
 extern "C" {
 extern MissionBankList data_00440B80;
-void *func_00361BC0();                                  /* (the sound system) */
-void func_003A3900(void *snd, const char *bank, void *arg);   /* (a bank loaded) */
-void *func_003A4460();
 }
+
+/* the localised string tables (util_loc.cpp's; only the load), the language a word as st_mpexit.cpp
+ * has it */
+enum LANGUAGE {
+    LANGUAGE_ALIGNMENT_HACK = 0x7FFFFFFF
+};
+LANGUAGE GetLanguage();   /* 0x3A4460 */
+
+class CStringTables {
+public:
+    void Load(const char *name, LANGUAGE language);   /* 0x3A3900 */
+};
+CStringTables *GetStringTables();   /* 0x361BC0 */
 
 extern "C" char *strcpy(char *dst, const char *src);
 
@@ -1059,11 +1081,16 @@ extern "C" void func_002AF410(const _zrdr *rdr)
  * it with the load screen's; OVL1 0x2AF360) */
 extern "C" void func_002AF360(const char *bank)
 {
-    func_003A3900(func_00361BC0(), bank, func_003A4460());
+    CStringTables *tables = GetStringTables();
+
+    tables->Load(bank, GetLanguage());
     int n = data_00440B80.m_count;
 
-    for (int i = 0; i < n; i++)
-        func_003A3900(func_00361BC0(), data_00440B80.GetBank(i), func_003A4460());
+    for (int i = 0; i < n; i++) {
+        CStringTables *t = GetStringTables();
+
+        t->Load(data_00440B80.GetBank(i), GetLanguage());
+    }
 }
 
 /* the player's SEAL and its controller (only the controller's state byte) */
@@ -1077,6 +1104,9 @@ class CZSealBody {
 public:
     unsigned char _0[0xc0];
     CSealCtrl *m_control;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char m_e1_0 : 4;   // 0xe1
+    unsigned char m_e1_4 : 1;   // 0xe1, bit 4: TRIGGER_POPUP's test (the name ours)
 };
 
 CZSealBody *ftsGetPlayer();
@@ -1244,9 +1274,9 @@ bool HUDTriggerMissionCamTick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
-/* a bare timeless command (SOCOM II's, between the defuse timer's tick and parser; OVL1
+/* a bare timeless command, the weapons timer clear (SOCOM II's, before the defuse timer's pair; OVL1
  * 0x2AE510) */
-extern "C" _zanim_cmd_hdr *func_002AE510(_zrdr *rdr)
+_zanim_cmd_hdr *HUDClearTimerParse(_zrdr *rdr)
 {
     _zanim_cmd_hdr *cmd;
 
@@ -1256,4 +1286,107 @@ extern "C" _zanim_cmd_hdr *func_002AE510(_zrdr *rdr)
     cmd->data_size = sizeof(_zanim_cmd_hdr);
     cmd->timeless = 1;
     return cmd;
+}
+
+/* TRIGGER_POPUP (SOCOM II's, before the defuse timer's tick; the names ours): the popup the command
+ * names, its one string kept among the current anim's names (OVL1 0x2AE3A0 the parser, the same code
+ * as TRIGGER_MISSION_CAM's; 0x2AE340 the tick, a popup shown for the player when its flag at 0xE1 is
+ * set) */
+struct _trigger_popup_cmd {
+    _zanim_cmd_hdr hdr;
+    unsigned char name;   // 0x4
+};
+
+void hudTriggerPopup(const char *name);
+
+extern "C" _zanim_cmd_hdr *func_002AE3A0(_zrdr *rdr)
+{
+    _trigger_popup_cmd *cmd = 0;
+
+    if (!rdr)
+        return 0;
+    if (rdr->type == 4 && rdr->Count() && rdr->Item(0)->type == 3) {
+        CZAnim *anim = ZAnim.m_CurAnim;
+
+        cmd = (_trigger_popup_cmd *)_calloc(1, sizeof(_trigger_popup_cmd), 0, 0);
+        cmd->hdr.data_size = sizeof(_trigger_popup_cmd);
+        cmd->hdr.timeless = 1;
+        cmd->name = anim->AddName(rdr->Item(0)->String());
+    }
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+extern "C" bool func_002AE340(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player && player->m_e1_4)
+        hudTriggerPopup(ZAnim.m_CurAnim->GetName(((_trigger_popup_cmd *)hdr)->name));
+    return true;
+}
+
+/* START_DEFUSE_TIMER (SOCOM 1's, SOCOM II's with a COUNT_UP flag; the tick 0x2AE580 hands both to
+ * hudStartDefuseTimer(bool, float), a draft's): the time, a number (a thousandth by default), and the
+ * flag (OVL1 0x2AE5B0; SOCOM 1's parser refused a bare command, SOCOM II's builds one on its
+ * defaults) */
+struct _start_defuse_timer_cmd {
+    _zanim_cmd_hdr hdr;
+    unsigned char countup : 1;   // 0x4
+    float time;   // 0x8
+};
+
+/* a number, an integer or a real (ours) */
+inline bool IsNumber(_zrdr *z)
+{
+    return z->type == 1 || z->type == 2;
+}
+
+_zanim_cmd_hdr *HUDStartDefuseTimerParse(_zrdr *rdr)
+{
+    _start_defuse_timer_cmd *cmd;
+    float time;
+    bool countup;
+
+    if (!rdr)
+        return 0;
+    time = 0.001f;
+    countup = false;
+    if (rdr->type == 4 && rdr->Count()) {
+        if (IsNumber(rdr->Item(0)))
+            time = rdr->Item(0)->Real();
+        else
+            return 0;
+        if (zrdr_findtag(rdr, "COUNT_UP"))
+            countup = true;
+    }
+    cmd = (_start_defuse_timer_cmd *)_calloc(1, sizeof(_start_defuse_timer_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_start_defuse_timer_cmd);
+    cmd->hdr.timeless = 1;
+    cmd->time = time;
+    cmd->countup = countup;
+    return (_zanim_cmd_hdr *)cmd;
+}
+
+/* START_DEFUSE_TIMER's tick: the HUD's defuse timer started on the command's flag and time (SOCOM 1's,
+ * SOCOM II's with the flag; OVL1 0x2AE580) */
+void hudStartDefuseTimer(bool countup, float time);
+
+bool HUDStartDefuseTimerTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    _start_defuse_timer_cmd *cmd = (_start_defuse_timer_cmd *)hdr;
+
+    hudStartDefuseTimer(cmd->countup, cmd->time);
+    return true;
+}
+
+/* the bare command's tick: the weapons' timer cleared (SOCOM II's, the name ours; OVL1 0x2AE4F0) */
+class CZWeapon {
+public:
+    static void ClearTimer(float *pCurval);
+};
+
+bool HUDClearTimerTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    CZWeapon::ClearTimer(0);
+    return true;
 }

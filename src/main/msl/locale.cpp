@@ -1,4 +1,4 @@
-/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on -str readonly */
+/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -inline auto,bottomup,level=8 -enum min -Cpp_exceptions on -wchar_t on -str readonly */
 /* locale.cpp -- the prebuilt MSL C++ library's locale unit (MAIN 0x18CF20-0x18DB8F): SOCOM 1's
  * DWARF names it (CodeWarrior 2.4's MSL_Common\Src\locale.cpp: locale::global and classic, then
  * ctype<char>, lines 221-291 for its conversions). Written: global and classic, ctype<char>'s
@@ -28,7 +28,13 @@
  * cntrl 0x4, digit 0x8, graph 0x10, lower 0x20, print 0x40, punct 0x80, space 0x100, upper 0x200,
  * xdigit 0x400: a two-byte enum whose operator| is a function, so only single masks initialise
  * statically), then sets two guards (0x1D5658, 0x1D565C) -- two template static members' ids, not
- * identified; msl.h keeps ctype_base::mask one byte until the wide ctype's rows are renamed with it. */
+ * identified. Round 5: the mask IS that two-byte enum (msl.h; ctype<wchar_t>'s do_is masks again after
+ * its and), so ctype<char>'s constructor takes `const mask *` and its row is renamed with it
+ * (__ct__Q23std8ctype<c>FPCQ33std10ctype_base4maskbUi). The initialiser stays unwritten: its two
+ * guards and iostream.cpp's two (0x1D4BF0) look like the facets' template ids' (ctype<char>/codecvt<char>
+ * after their ids at 0x1D5650/0x1D5654, the wchar_t pair's at 0x1D5620/0x1D5624) -- guarded template
+ * statics, which msl.h's explicit specialisations do not make; modelling the four facets as instances
+ * of their primary templates is the next step there. */
 
 #include "msl.h"
 

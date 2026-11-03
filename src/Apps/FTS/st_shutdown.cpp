@@ -11,6 +11,8 @@
 
 #include "fts_state.h"
 
+#include <iostream>
+
 extern "C" {
 char *strcpy(char *dst, const char *src);
 char *strcat(char *dst, const char *src);

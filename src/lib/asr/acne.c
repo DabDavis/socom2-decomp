@@ -70,7 +70,7 @@ extern int Smoothing(void *smoother, float *x);
 extern void *qDeQueueOne(void *q, int reader);
 extern void qFreeUnusedElemements(void *q);
 extern float HLnOnePlusExpHFloat(float x);
-extern float func_004F6000(float x, float y);
+extern float LogAdd(float a, float b);
 extern int qQueueControl(void *q, unsigned char cmd, int arg, int n);
 extern void smtDestruct(void *smoother, TOS *tos);    /* SOCOM 1's smtDestruct */
 
@@ -139,7 +139,7 @@ static int NormalizeAndEnQ(ACNE *a)
         }
     } else
         memcpy(p, noise, n * sizeof(float));
-    *out = func_004F6000(in[n] - a->f68, a->f112);
+    *out = LogAdd(in[n] - a->f68, a->f112);
     qFreeUnusedElemements(a->q);
     return 1;
 }

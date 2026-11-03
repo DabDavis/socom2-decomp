@@ -271,7 +271,7 @@ bool CZOnlineLobby::IsIgnored(const char *name)
 struct MediusErrorMessage;
 
 struct MediusInitializeParams {
-    void (*cb0)(int, int, int, void *);   // 0x0
+    void (*cb0)(int, int, int, MediusChatFwdMessage *);   // 0x0: the chat unit's cbChatMessage
     void (*cb1)(int, int, int, void *);   // 0x4
     void (*ErrorCallback)(int, int, int, MediusErrorMessage *);   // 0x8
     int _c;   // 0xc
@@ -281,11 +281,11 @@ struct MediusInitializeParams {
 };
 
 void cbErrorMessage(int, int, int, MediusErrorMessage *);
+void cbChatMessage(int, int, int, MediusChatFwdMessage *msg);   /* (the chat unit's) */
 
 extern "C" {
-void func_002F4EF0(int, int, int, void *);
 void func_003009C0(int, int, int, void *);
-MediusErrorCode func_00647318(MediusInitializeParams *p, int *handle);   /* MediusInitialize? */
+MediusErrorCode MediusInitializeBare(MediusInitializeParams *p, int *handle);
 }
 
 bool MediusInit()
@@ -293,11 +293,11 @@ bool MediusInit()
     int handle;
     MediusInitializeParams p;
 
-    p.cb0 = func_002F4EF0;
+    p.cb0 = cbChatMessage;
     p.cb1 = func_003009C0;
     p.ErrorCallback = cbErrorMessage;
     p.Timeout = 30000;
-    bool ok = CheckMediusError(func_00647318(&p, &handle));
+    bool ok = CheckMediusError(MediusInitializeBare(&p, &handle));
 
     return ok;
 }
@@ -709,8 +709,8 @@ extern "C" {
 extern int myConnectionIndex;   /* the Medius connection, -1 none (SOCOM 1's) */
 extern unsigned char data_0044FDA0;   /* the kind of server it is to: 1 the lobby, 2 the universes' */
 extern void (*data_0044FDA8)(int index);   /* the caller's callback, called once connected */
-MediusErrorCode func_006479B8();   /* (OVL2: the connection closed) */
-MediusErrorCode func_006476E0(FriendsConnectParams *params, FriendsConnectResult *result);   /* (OVL2: one opened) */
+MediusErrorCode MediusDisconnect();   /* (OVL2: the connection closed) */
+MediusErrorCode MediusConnect(FriendsConnectParams *params, FriendsConnectResult *result);   /* (OVL2: one opened) */
 void func_002F3FF0(void *params);   /* (the chat unit's) */
 void func_00300800(int index);   /* the connection made: the caller's callback called */
 
@@ -723,7 +723,7 @@ bool func_00300740(int kind, FriendsConnectParams *params)
 
     if (myConnectionIndex != -1) {
         if (data_0044FDA0 == 1)
-            CheckMediusError(func_006479B8());
+            CheckMediusError(MediusDisconnect());
         myConnectionIndex = -1;
     }
     data_0044FDA0 = kind;
@@ -731,6 +731,6 @@ bool func_00300740(int kind, FriendsConnectParams *params)
     data_0044FDA8 = params->Callback;
     params->Callback = func_00300800;
     myConnectionIndex = -1;
-    return CheckMediusError(func_006476E0(params, &result));
+    return CheckMediusError(MediusConnect(params, &result));
 }
 }

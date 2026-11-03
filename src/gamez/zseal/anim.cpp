@@ -147,6 +147,15 @@ public:
     bool TypeBit1(AnimType type);
     int GetVariantIndex(AnimType type, int kind, int anim);
     int PickVariant(AnimType type, int kind);
+    /* a type's motion script: a variant of a kind drawn when the type has groups (the archive its
+     * group's state names), else its own anim's (the record's state naming the archive), or 0 --
+     * and the same for kind 0 (OVL2 0x5E3C20, 0x5E3D90: the SEAL's tick, the ladder and the strafe
+     * lookups call the second; new in SOCOM II, the names ours) */
+    CZSIScriptCommon *GetScript(AnimType type, int kind);
+    CZSIScriptCommon *GetScript(AnimType type);
+    /* the script of a type's variant by kind and index, or 0 (OVL2 0x5E3B20: seal_body.cpp's
+     * 0x57DCC0 and 0x5880E0 call it; new in SOCOM II, the name ours) */
+    CZSIScriptCommon *GetVariantScript(AnimType type, int kind, int index);
     int AnimId(AnimType type) const;
     /* a rifle anim type's variant set, both types' anims there: the group's (CAnimsByFP's) and the
      * variant's base type (OVL2 0x5E1CF0, 0x5E1BF0, 0x5E1AF0; DefineFPAnims calls them -- new in
@@ -478,6 +487,78 @@ int AnimSet::AnimId(AnimType type) const
 
 /* an anim picked from a type's variant group, or -1 (OVL2 0x5E3E10, new in SOCOM II; the name
  * ours) */
+/* (OVL2 0x5E3B20: the compare chain tests 2, then 1) */
+CZSIScriptCommon *AnimSet::GetVariantScript(AnimType type, int kind, int index)
+{
+    if (type >= 0 && type < m_types.size()) {
+        CAnimTypeRec *rec = m_types[type];
+
+        if (rec && rec->m_8) {
+            int v = rec->GetVariant(kind, index);
+
+            if (v >= 0) {
+                switch (rec->GetGroup(v)->m_state) {
+                case 1:
+                    return zBoneArchive()->m_byRdr[v];
+                case 2:
+                    return zBoneMapArchive()->m_byRdr[v];
+                default:
+                    return 0;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+/* (OVL2 0x5E3D90) */
+CZSIScriptCommon *AnimSet::GetScript(AnimType type)
+{
+    return GetScript(type, 0);
+}
+
+/* (OVL2 0x5E3C20: each switch's compare chain tests 2, then 1 -- the cases in reverse) */
+CZSIScriptCommon *AnimSet::GetScript(AnimType type, int kind)
+{
+    CZSIScriptCommon *script = 0;
+
+    if (type >= 0 && type < m_types.size()) {
+        CAnimTypeRec *rec = m_types[type];
+
+        if (rec) {
+            if (rec->m_8) {
+                int v = rec->PickVariant(kind);
+
+                if (v >= 0) {
+                    switch (rec->GetGroup(v)->m_state) {
+                    case 1:
+                        script = zBoneArchive()->m_byRdr[v];
+                        break;
+                    case 2:
+                        script = zBoneMapArchive()->m_byRdr[v];
+                        break;
+                    }
+                }
+            }
+            if (!script) {
+                int id = rec->m_id;
+
+                if (id >= 0) {
+                    switch (rec->GetState()) {
+                    case 1:
+                        script = zBoneArchive()->m_byRdr[id];
+                        break;
+                    case 2:
+                        script = zBoneMapArchive()->m_byRdr[id];
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    return script;
+}
+
 int AnimSet::PickVariant(AnimType type, int kind)
 {
     if (type >= 0 && type < m_types.size()) {

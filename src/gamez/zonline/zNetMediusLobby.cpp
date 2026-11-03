@@ -89,10 +89,6 @@ public:
     unsigned int m_unused : 6;   // 0x4
 };
 
-extern "C" {
-CUIVariable *func_003857C0(void *mgr, const char *name, void *rdr, int longevity);   /* CUIVarManager::Add */
-}
-
 /* the usage policy asked for (SOCOM II's request, the policy 0) */
 struct MediusGetPolicyRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
@@ -195,7 +191,15 @@ struct MediusPlayerInfoRequest {
     int AccountID;   // 0x28
 };   // 0x2c
 
-struct MediusPlayerInfoResponse { MEDIUS_RESPONSE_HEAD };
+/* the player's info (the SDK's MediusPlayerInfoResponse: the account's stats as text at 0x48) */
+struct MediusPlayerInfoResponse {
+    MEDIUS_RESPONSE_HEAD
+    char AccountName[32];   // 0x1c
+    int ApplicationID;   // 0x3c
+    int PlayerStatus;   // 0x40
+    int ConnectionClass;   // 0x44
+    char Stats[256];   // 0x48
+};
 struct MediusUpdateAccountStatsResponse { MEDIUS_RESPONSE_HEAD };
 struct MediusUpdateLadderStatsResponse { MEDIUS_RESPONSE_HEAD };
 
@@ -232,11 +236,37 @@ void CZOnlineLobby::PasswordSecurity()
     CValve *valve = CValve::Create("SecurePassword", VALVE_TYPE_1);
 
     if (valve->IsOff())
-        func_003862A0(func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, 1), "");
+        *theUIVarManager.Add("PLAYERPASSWORD", 0, UIVL_TEMPORARY) = "";
+}
+
+/* a variable's text when it holds one (as the clan unit's) */
+inline char *ZString(_zrdr *z)
+{
+    return z->type == 3 ? z->string : 0;
+}
+
+/* a variable given an integer, the watchers told when it changes (ours: zui.h's float setter's
+ * shape, for an int) */
+inline void SetInteger(CUIVariable *var, int n)
+{
+    if (var->type != 1 || var->integer != n) {
+        var->DeleteChildren();
+        var->type = 1;
+        var->integer = n;
+        var->UpdateDependents();
+    }
+}
+
+extern "C" {
+void func_002F3EE0(GamePlayerStats *stats);   /* (the chat unit's: the stats put in order) */
+extern char data_0066A7B0[];   /* our home town, in our stats (0x60) */
+extern char data_0066A7EF[];   /* our description, in them (0x9F) */
 }
 
 /* our stats sent to the server: built into a text, kept, unpacked, and our ladder figure sent too
- * (SOCOM II's; OVL1 0x2FAA80: the active lobby's handler sends them every five minutes) */
+ * (SOCOM II's; OVL1 0x2FAA80: the active lobby's handler sends them every five minutes; our info's
+ * callback 0x2FA8F0 calls it out of line, pinned) */
+#pragma auto_inline off
 extern "C" void func_002FAA80(CZOnlineLobby *lobby)
 {
     if (lobby->m_isopen) {
@@ -257,6 +287,32 @@ extern "C" void func_002FAA80(CZOnlineLobby *lobby)
         ladder.Stat = data_0066A754;
         CheckMediusError(func_0064B248(&ladder, func_002FAB60));
     }
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* our own info come in: our stats unpacked, the home town taken from the menu's variable, our
+ * ladder figure and description handed to theirs, and our stats sent back unless the server's
+ * are an 'E' record (SOCOM II's; OVL1 0x2FA8F0: func_002FA870's callback) */
+void func_002FA8F0(int, int, int, MediusPlayerInfoResponse *resp)
+{
+    if (CheckMediusCallbackStatus("MediusGetPlayerStats", resp->StatusCode)) {
+        func_002F9AC0(&data_0066A750, resp->Stats);
+        func_002F3EE0(&data_0066A750);
+        CUIVariable *town = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVL_TEMPORARY);
+
+        if (town->type == 3 && ZString(town))
+            strncpy(data_0066A7B0, ZString(town), 63);
+        else
+            strncpy(data_0066A7B0, "", 63);
+        CUIVariable *rating = theUIVarManager.Add("LadderRating", 0, UIVL_TEMPORARY);
+
+        SetInteger(rating, data_0066A754);
+        *theUIVarManager.Add("PlayerDescription", 0, UIVL_TEMPORARY) = data_0066A7EF;
+        if (resp->Stats[0] != 'E')
+            func_002FAA80(&theLobby);
+    }
+}
 }
 
 /* our own info asked for (SOCOM 1's active lobby asked for the stats so; OVL1 0x2FA870) */
@@ -296,6 +352,119 @@ void CZOnlineLobby::BanSelfFromGame()
         req.MediusWorldID = MediusWorldID;
         CheckMediusError(MediusBanPlayer(&req, cbBanSelfFromGame));
     }
+}
+
+void SetClanTeam(unsigned int team);   /* (the clan unit's) */
+
+extern "C" {
+extern int data_0066A998;   /* the game's players when joined */
+extern BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
+extern unsigned char g_bJoiningRandomGame;
+
+/* the random game picked from those the game list offered (0x44FAB0): the one with the most room,
+ * the lower of the 0x38 figures between equals; its world, clan team, name and player count
+ * taken, no password, its room looked up by the game's 0x34 and joined -- the menus told either
+ * way -- and the candidates let go (OVL1 0x2F9220: the random game's list callback 0x2F8FD0 calls
+ * it at the list's end; the name ours) */
+void func_002F9220()
+{
+    if (!data_0044FAB0.size()) {
+        LobbyEvent("MP_MEDIUS_JOIN_GAME_FAILURE", 0);
+        return;
+    }
+    RoomGame *best = *data_0044FAB0.begin();
+
+    /* the postfix step: MW hoists the end into a preheader after the function's last block, the
+     * entry test repeated there (the weapons' and the clan unit's tell) */
+    for (BriefingRoom::iterator i = data_0044FAB0.begin(); i != data_0044FAB0.end(); i++) {
+        RoomGame *g = *i;
+        int room = best->m_info.m_maxPlayers - best->m_info.m_22;
+        int groom = g->m_info.m_maxPlayers - g->m_info.m_22;
+
+        if (room < groom)
+            best = g;
+        else if (groom == room && g->m_info.m_38 < best->m_info.m_38)
+            best = g;
+    }
+    MediusWorldID = best->m_info.m_ip;
+    SetClanTeam(best->m_info.m_3c);
+    *theLobby.uiv_GameNameVar = best->m_info.m_name;
+    data_0066A998 = best->m_info.m_players;
+    *theUIVarManager.Add("PlayerGamePassword", 0, UIVL_PERMANENT) = "";
+    BriefingRoom *room = (BriefingRoom *)((BriefingRoom *)&data_0044F568)->FindGame(best->m_info.m_port);
+
+    if (room) {
+        g_bJoiningRandomGame = 1;
+        LobbyEvent("MP_RANDOM_GAME_FOUND", 0);
+        theLobby.JoinRoom(room->LobbyName);
+    } else {
+        LobbyEvent("MP_MEDIUS_JOIN_GAME_FAILURE", 0);
+    }
+    data_0044FAB0.DeleteGames();
+}
+}
+
+/* the game list's filter dropped (the SDK's request: the filter's id) */
+struct MediusClearGameListFilterRequest {
+    char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
+    char SessionKey[MEDIUS_SESSIONKEY_MAXLEN];   // 0x15
+    unsigned int FilterID;   // 0x28
+};   // 0x2c
+
+bool GamePassesFilters(RoomGame *game);   /* (the rooms' unit's) */
+bool IsClanTeamAllowed(unsigned int team);   /* (the clan unit's) */
+
+extern "C" {
+MediusErrorCode MediusClearGameListFilter(MediusClearGameListFilterRequest *req,
+                              void (*cb)(int, int, int, MediusClearGameListFilterResponse *));
+
+/* the random game's filter dropped: nothing to do (OVL1 0x2F9210) */
+void func_002F9210(int, int, int, MediusClearGameListFilterResponse *)
+{
+}
+
+/* a page of the game list for the random game: a game with room for us past its spectators'
+ * seats, players but not too many for the menu's filter, passing the room's filters, not locked,
+ * no player password, our clan team allowed, our rank's type and missions -- kept as a candidate,
+ * any other dropped; at the list's end the game picked and the filter dropped (OVL1 0x2F8FD0: the
+ * game list's callback cbSetGameListFilter asks with; the name ours) */
+void func_002F8FD0(int, int, int, MediusGameListResponse *resp)
+{
+    if (CheckMediusCallbackStatus("GetRandomGame::GetGameList", (MediusCallbackStatus)resp->m_18)) {
+        if (resp->m_ip > -1) {
+            RoomGame *game = new TransientGame(resp);
+            GameRules rules;
+
+            func_002F7D90(&rules, (GameRules *)resp->m_rules);
+            int room = resp->m_maxPlayers - rules.m_spectators;
+
+            if (game && resp->m_players < room && data_0044F530 < resp->m_players &&
+                resp->m_players > 0 && GamePassesFilters(game) && resp->m_lock != 3 &&
+                !(resp->m_flags & 1) && IsClanTeamAllowed(resp->m_3c) &&
+                game->AllowsType(theLobby.GetRankTier(-1)) && game->HasMissions())
+                data_0044FAB0.push_back(game);
+            else
+                delete game;
+        }
+        if (resp->m_18c) {
+            func_002F9220();
+            MediusClearGameListFilterRequest req;
+
+            memset(&req, 0, sizeof(req));
+            SetSessionKey(req.SessionKey);
+            req.FilterID = 1;
+            MediusClearGameListFilter(&req, func_002F9210);
+        }
+    } else {
+        LobbyEvent("MP_MEDIUS_JOIN_GAME_FAILURE", 0);
+        MediusClearGameListFilterRequest req;
+
+        memset(&req, 0, sizeof(req));
+        SetSessionKey(req.SessionKey);
+        req.FilterID = 1;
+        MediusClearGameListFilter(&req, func_002F9210);
+    }
+}
 }
 
 /* the random game's filters set from the menu's valves, then the game list asked for, a page
@@ -434,6 +603,125 @@ void CZOnlineLobby::SetConnectionInfo(NetConnectionInfo *info)
     *info = data_0066A8F0;
 }
 
+/* a game's rules' older versions (zonline.h's GameRules is 'D'): each lacks the last of the bytes
+ * before the sequence ('C' 39, 'B' 38, 'A' 37), and the first, unlettered one held five bytes, its
+ * third dropped (the names ours) */
+struct GameRulesC {
+    char m_version;   // 0x0: 'C'
+    unsigned char m_fields[6];   // 0x1
+    unsigned char m_missions[32];   // 0x7
+};   // 0x27
+struct GameRulesB {
+    char m_version;   // 0x0: 'B'
+    unsigned char m_fields[5];   // 0x1
+    unsigned char m_missions[32];   // 0x6
+};   // 0x26
+struct GameRulesA {
+    char m_version;   // 0x0: 'A'
+    unsigned char m_fields[4];   // 0x1
+    unsigned char m_missions[32];   // 0x5
+};   // 0x25
+
+/* a record copied from where the source is (the destination a local, its test is not folded:
+ * CopyField's) */
+inline void CopyIn(void *dst, const void *src, unsigned int n)
+{
+    if (src)
+        memcpy(dst, src, n);
+}
+
+extern "C" {
+extern int data_00441458;   /* (the persona state's: the side) */
+
+/* a game's rules read into the current version, an older one brought up a version at a time
+ * (OVL1 0x2F7D90: RoomGame::UpdateInfo hands it the game's info) -- the current one's copy
+ * returning at the end, after the chain; the version read once (the target keeps it and the 'A'
+ * for the unlettered form's bytes) */
+GameRules *func_002F7D90(GameRules *dst, const GameRules *src)
+{
+    char version = src->m_version;
+
+    if (version == 'D') {
+        CopyField(dst, src, sizeof(GameRules));
+    } else if (version == 'A') {
+        GameRulesA a;
+        GameRulesB b;
+
+        CopyIn(&a, src, sizeof(a));
+        b.m_version = 'B';
+        b.m_fields[0] = a.m_fields[0];
+        b.m_fields[1] = a.m_fields[1];
+        b.m_fields[2] = a.m_fields[2];
+        b.m_fields[3] = a.m_fields[3];
+        b.m_fields[4] = 0;
+        memcpy(b.m_missions, a.m_missions, sizeof(b.m_missions));
+        return func_002F7D90(dst, (GameRules *)&b);
+    } else if (version == 'B') {
+        GameRulesB b;
+        GameRulesC c;
+
+        CopyIn(&b, src, sizeof(b));
+        c.m_version = 'C';
+        c.m_fields[0] = b.m_fields[0];
+        c.m_fields[1] = b.m_fields[1];
+        c.m_fields[2] = b.m_fields[2];
+        c.m_fields[3] = b.m_fields[3];
+        c.m_fields[4] = b.m_fields[4];
+        c.m_fields[5] = 0;
+        memcpy(c.m_missions, b.m_missions, sizeof(c.m_missions));
+        return func_002F7D90(dst, (GameRules *)&c);
+    } else if (version == 'C') {
+        GameRulesC c;
+        GameRules d;
+
+        CopyIn(&c, src, sizeof(c));
+        d.m_version = 'D';
+        d.m_rounds = c.m_fields[0];
+        d.m_minutes = c.m_fields[1];
+        d.m_side = c.m_fields[2];
+        d.m_spectators = c.m_fields[3];
+        d.m_eqlimit = c.m_fields[4];
+        d.m_sort = c.m_fields[5];
+        d.m_rank = 0;
+        memcpy(d.m_missions, c.m_missions, sizeof(d.m_missions));
+        return func_002F7D90(dst, &d);
+    } else {
+        const char *old = (const char *)src;
+        GameRulesA a;
+        /* its bytes read before any is stored (the target loads all three, then stores the
+         * five; read in the stores, MW keeps each load beside its store) */
+        char f1 = old[1];
+        char f3 = old[3];
+        char f4 = old[4];
+
+        a.m_version = 'A';
+        a.m_fields[0] = version;
+        a.m_fields[1] = f1;
+        a.m_fields[2] = f3;
+        a.m_fields[3] = f4;
+        CopyIn(a.m_missions, old + 5, sizeof(a.m_missions));
+        return func_002F7D90(dst, (GameRules *)&a);
+    }
+    return dst;
+}
+
+/* the rules of the game we host, from the valves the menus set and the lobby's mission sequence
+ * (OVL1 0x2F7C40: the game's details sent to the lobby and the LAN lobby's game info) */
+void func_002F7C40(GameRules *r)
+{
+    r->m_version = 'D';
+    r->m_rounds = CValve::Create("mp_max_rounds", VALVE_TYPE_1)->m_value;
+    r->m_minutes = CValve::Create("mp_max_round_time", VALVE_TYPE_1)->m_value / 60u;   /* (an unsigned divide) */
+    r->m_side = data_00441458;
+    r->m_spectators = CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->m_value;
+    r->m_eqlimit = CValve::Create("EQlimit", VALVE_TYPE_1)->m_value;
+    r->m_sort = CValve::Create("mp_game_sort_order", VALVE_TYPE_1)->m_value;
+    r->m_rank = CValve::Create("mp_rank_restrictions", VALVE_TYPE_1)->m_value;
+    for (int i = 0; i < 32; i++)
+        r->m_missions[i] = theLobby.m_MissionSequence[i];
+}
+}
+
 /* a page of the usage policy: added to the lines kept so far in 'TempUsagePolicy', all of them
  * handed to 'UsagePolicy' with the last page (SOCOM II's, the name ours: GetUsagePolicy's callback,
  * its status 'GetPolicyRequest'; OVL1 0x2F7AC0) */
@@ -466,9 +754,8 @@ void cbGetPolicy(int, int, int, MediusGetPolicyResponse *resp)
 void CZOnlineLobby::GetUsagePolicy()
 {
     if (m_isopen) {
-        func_003862A0(func_003857C0(&theUIVarManager, "UsagePolicy", 0, 1),
-                      "Retrieving Usage Policy.....");
-        func_003862A0(func_003857C0(&theUIVarManager, "TempUsagePolicy", 0, 1), " ");
+        *theUIVarManager.Add("UsagePolicy", 0, UIVL_TEMPORARY) = "Retrieving Usage Policy.....";
+        *theUIVarManager.Add("TempUsagePolicy", 0, UIVL_TEMPORARY) = " ";
         MediusGetPolicyRequest req;
 
         memset(&req, 0, sizeof(req));
@@ -476,12 +763,6 @@ void CZOnlineLobby::GetUsagePolicy()
         req.Policy = 0;
         CheckMediusError(MediusGetPolicy(&req, cbGetPolicy));
     }
-}
-
-/* a variable's text when it holds one (as the clan unit's) */
-inline char *ZString(_zrdr *z)
-{
-    return z->type == 3 ? z->string : 0;
 }
 
 /* an announcement: shown first, a blank line after it, then as many of the lines shown before as
@@ -520,14 +801,14 @@ void cbGetAnnouncements(int, int, int, MediusGetAnnouncementsResponse *resp)
         ed.pop();
         theLobby.uiv_MediusMOTD->Set(&ed);
     } else
-        func_003862A0(theLobby.uiv_MediusMOTD, "No server messages.");
+        *theLobby.uiv_MediusMOTD = "No server messages.";
 }
 
 /* the announcements asked for, the menu told meanwhile (SOCOM 1's; OVL1 0x2F7710) */
 void CZOnlineLobby::GetAnnouncements()
 {
     if (m_isopen && m_current_state == LOBBY_ACTIVE) {
-        func_003862A0(theLobby.uiv_MediusMOTD, "Retrieving messages from server...");
+        *theLobby.uiv_MediusMOTD = "Retrieving messages from server...";
         MediusGetAnnouncementsRequest req;
 
         memset(&req, 0, sizeof(req));
@@ -535,6 +816,41 @@ void CZOnlineLobby::GetAnnouncements()
         req.ApplicationID = 10472;
         CheckMediusError(MediusGetAnnouncements(&req, cbGetAnnouncements));
     }
+}
+
+extern "C" {
+/* the game's players as the three lists the page shows, built while the answer comes in (the
+ * names ours) */
+extern CRdrEditor *data_0044FA70;
+extern CRdrEditor *data_0044FA78;
+extern CRdrEditor *data_0044FA80;
+void func_002F7020(int, int, int, MediusGetGamePlayersResponse *);   /* the players shown */
+}
+
+/* the players of the game we are in asked for, unless an answer is still being built: the three
+ * lists made, each opened, the count started again (SOCOM 1's RefreshGamePlayerList; OVL1
+ * 0x2F6EC0) */
+bool CZOnlineLobby::RefreshGamePlayerList(C2D *page)
+{
+    if (!m_isopen)
+        return false;
+    if (data_0044FA70 || data_0044FA78 || data_0044FA80)
+        return true;
+    data_0066A990 = 0;
+    data_0044FA70 = new CRdrEditor;
+    data_0044FA70->push(0);
+    data_0044FA78 = new CRdrEditor;
+    data_0044FA78->push(0);
+    data_0044FA80 = new CRdrEditor;
+    data_0044FA80->push(0);
+    MediusGetGamePlayersRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.MediusWorldID = MediusWorldID;
+    func_002F4080(&req, 32);
+    CheckMediusError(MediusGetGamePlayers(&req, func_002F7020));
+    return true;
 }
 
 /* a page of the game's players counted: those flagged in their stats, the total kept when the

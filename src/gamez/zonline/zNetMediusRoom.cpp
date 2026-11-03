@@ -217,13 +217,12 @@ void BriefingRoomDB::Add(MediusChannelListResponse *resp)
 }
 
 /* a room deleted and its slot cleared: DeleteAll hands it to std::transform by address, which
- * makes it a direct call (OVL1 0x2E4220) */
-extern "C" void func_002E48C0(BriefingRoom *room, int flag);   /* ~BriefingRoom (see there) */
-
+ * makes it a direct call (OVL1 0x2E4220); the delete passes the room straight to ~BriefingRoom
+ * with 1, the destructor testing it */
 #pragma auto_inline off
 BriefingRoom *DeleteRoom(BriefingRoom *room)
 {
-    func_002E48C0(room, 1);
+    delete room;
     return 0;
 }
 #pragma auto_inline reset

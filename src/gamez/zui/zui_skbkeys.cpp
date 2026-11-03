@@ -273,11 +273,11 @@ void SkbUsbDigit(const SKBUSBKEY *key, int arg)
 extern "C" {
 void func_0039A5B0(const char *text, CSoftKeyboard *skb);
 void func_0039A1D0(int a, CSoftKeyboard *skb, int b);
-void func_00395DE0(int state);
 void func_0039A400(CSoftKeyboard *skb);
-bool func_00394840(CSoftKeyboard *skb);
-void func_00394920(CSoftKeyboard *skb);
 }
+void SkbPlaySound(unsigned char which);
+bool SkbToggleCaption1(CSoftKeyboard *skb);
+void SkbToggleCaption2(CSoftKeyboard *skb);
 
 extern "C" {
 int func_00396EF0();
@@ -359,7 +359,7 @@ void SkbTypeOrBack(CSoftKeyboard *skb)
         else
             func_003952F0();
     }
-    func_00395DE0(3);
+    SkbPlaySound(3);
 }
 
 /* the text cleared: whether there was any, the composition flushed and the keyboard put in state 3
@@ -373,7 +373,7 @@ bool SkbClearText(CSoftKeyboard *skb)
     func_0039A5B0("", skb);
     func_0039A1D0(0, skb, 0);
     SkbHangulClear();
-    func_00395DE0(3);
+    SkbPlaySound(3);
     return had;
 }
 
@@ -404,7 +404,7 @@ void SkbCloseText0(CSoftKeyboard *skb)
     s_textString0.UpdatePos();
     if (was)
         func_0039A400(skb);
-    func_00394920(skb);
+    SkbToggleCaption2(skb);
 }
 
 /* a jamo typed into the composition: the pieces composed with it handed to the keyboard's text
@@ -427,7 +427,7 @@ void SkbSwitchText(CSoftKeyboard *skb)
 {
     bool was = s_textSel;
 
-    s_textSel = func_00394840(skb);
+    s_textSel = SkbToggleCaption1(skb);
     s_textNode->SetActive(s_textSel);
     if (s_textSel || was)
         func_0039A400(skb);

@@ -11,13 +11,10 @@
 using namespace zdb;
 
 extern "C" {
-/* not yet written here (placeholders): the vehicle's half of the tick and the AI maps' cell
- * lookup, map and region fill (OVL2) */
+/* not yet written here (placeholders): the vehicle's half of the tick and the AI map's region
+ * fill (OVL2) */
 void func_003ACC10(CVehicle *vehicle, float dT);
-void func_003AD3B0(CVehicle *vehicle);
 void func_003ADAB0(CVehicle *vehicle, CNode *node, const CVehicleDef *def);
-int func_0052DC70(CAiMaps *maps, const CPnt3D *pos, unsigned int *loc);
-void *func_0052E6B0(CAiMaps *maps, unsigned int mapid);
 void func_00515880(void *map, CPnt3D *corners, void *region);
 /* the vehicles made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4120;
@@ -274,14 +271,14 @@ void CVehicle::PreTick(float dT)
             SetFlag(1, false);
             m_isAlive = false;
         }
-        func_003AD3B0(this);
+        SampleDynamics(dT);
     }
 }
 
-/* OPEN, 8 bytes long, 25 differing: all but the matrix's set-up -- the target computes &m (sp+64)
- * early among the corners' loads and fills sceVu0UnitMatrix's delay slot with the last corner's
- * store, then reloads m_root after the call; here the &m move takes the delay slot. Tried: the
- * matrix declared first (0x180), a const factor. */
+/* the region's corners pushed out 5 units and carried into the world through the root's matrix --
+ * CMatrix's default constructor is the unit-matrix call (a SetIdentity after it was a second call,
+ * 8 bytes long: the constructor's &m is computed early among the corners' loads, the last corner's
+ * store fills the call's delay slot) */
 void CVehicle::Tick(float dT)
 {
     unsigned int loc;
@@ -295,9 +292,9 @@ void CVehicle::Tick(float dT)
     func_003ACC10(this, dT);
     if (!GetNode())
         return;
-    if (!func_0052DC70(&AiMaps, &m_posW, &loc))
+    if (!AiMaps.GetLocation(&m_posW, *(CAiMapLoc *)&loc))
         return;
-    map = func_0052E6B0(&AiMaps, ((CAiMapLoc *)&loc)->m_mapid);
+    map = AiMaps.GetMapByIndex(((CAiMapLoc *)&loc)->m_mapid);
     if (!map)
         return;
     float d = 5.0f;
@@ -316,10 +313,69 @@ void CVehicle::Tick(float dT)
     m_corners[3].z = m_bounds[3].z + d;
     CMatrix m;
 
-    m.SetIdentity();
     m_root->BuildMTW(m);
     m.Transform(m_corners, 4);
     func_00515880(map, m_corners, &m_region);
+}
+
+/* the node's frame sampled into 0x1E0: the cosine between its old and new Z (the turn), the step
+ * from the position to the frame's origin and the velocity as the step over the frame (the
+ * turret's SampleDynamics, its twin). The old Z assigned, so scalarised into $f20-$f22 across the
+ * calls (copy-constructed it stays on the stack) */
+void CVehicle::SampleDynamics(float dT)
+{
+    if (m_1d0) {
+        CPnt3D z;
+
+        z = *(CPnt3D *)m_1e0.m_matrix[2];
+
+        sceVu0UnitMatrix(m_1e0.m_matrix);
+        m_1d0->BuildMTW(m_1e0);
+
+        CPnt3D *nz = (CPnt3D *)m_1e0.m_matrix[2];
+
+        m_turn = z.x * nz->x + z.y * nz->y + z.z * nz->z;
+
+        CPnt3D d = *(CPnt3D *)m_1e0.m_matrix[3] - m_posW;
+
+        m_step = d;
+
+        CPnt3D v = m_step * (1.0f / dT);
+
+        m_velW = v;
+    }
+}
+
+/* whether a point lies inside a quad of four corners in XZ (no edge's cross with it below zero),
+ * the nearest point of the edges given back while it does (0x3ACC10's test, made twice -- new in
+ * SOCOM II, not named). The edge's start is a pointer of its own walked with the index, stepped
+ * first (`&corners[i]` strength-reduced, or declared in the loop, swaps it with the end's register) */
+extern "C" bool func_003AD1F0(const CPnt3D *corners, const CPnt3D *p, CPnt3D *nearest)
+{
+    bool inside = true;
+    float best;
+    int i;
+    const CPnt3D *a;
+
+    for (i = 0, a = corners; i < 4 && inside; a++, i++) {
+        const CPnt3D *b = &corners[(i + 1) % 4];
+        CPnt3D e = *b - *a;
+        CPnt3D d = *p - *a;
+
+        if (e.z * d.x - e.x * d.z < 0.0f)
+            inside = false;
+        if (inside && nearest) {
+            CPnt3D q;
+            float t;
+
+            p->DistToVector(a, b, &q, &t);
+            if (i == 0 || t < best) {
+                best = t;
+                *nearest = q;
+            }
+        }
+    }
+    return inside;
 }
 
 void CVehicle::PrePostTick(float dT)
@@ -362,7 +418,7 @@ void CVehicle::UpdateAiMapLoc()
 {
     unsigned int loc;
 
-    if (func_0052DC70(&AiMaps, &m_posW, &loc)) {
+    if (AiMaps.GetLocation(&m_posW, *(CAiMapLoc *)&loc)) {
         *(unsigned int *)&m_mapLoc = loc;
         *(unsigned int *)&m_mapLocValid = loc;
     }

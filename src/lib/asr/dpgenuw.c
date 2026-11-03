@@ -9,8 +9,8 @@
  * and s1:slot). The block runs a phoneme loop over the frames of a word being trained (twenty
  * phoneme cells and the garbage phoneme's two), back pointers taken from a free list of chunks
  * as in the DpScoreUw object. MakeUserWordsActiveDist, the object's last function, is
- * ctxutil.c's (byte-exact there). DynProgUserWords is not written yet: declared here, its row
- * open. SendResultUserWords (round 12c) walks the backtrace as `for (; bt->next != 0; bt =
+ * ctxutil.c's (byte-exact there). DynProgUserWords (round 16c) is written and OPEN, the
+ * diagnosis at it. SendResultUserWords (round 12c) walks the backtrace as `for (; bt->next != 0; bt =
  * bt->next)` (a `next` variable copies the test's load differently), its score's nonzero arm
  * first; the frame counter and the +112 word are unsigned (both convert by the halving trick). */
 #include "tosblk.h"
@@ -110,8 +110,6 @@ typedef struct DPGENUW {
 int _tosControl(void *b, unsigned char cmd, void *arg, int arg2);
 void qQueueReset(void *q);
 
-/* not written yet (its row open) */
-int DynProgUserWords(DPGENUW *e, short *frame);
 /* ctxutil.c */
 unsigned short MakeUserWordsActiveDist(DPGENUW *e, unsigned short *dist, unsigned char *active);
 
@@ -119,6 +117,7 @@ static BTNODE *AllocateBacktrace(DPGENUW *e, BTNODE *prev);
 static void InitViterbi(DPGENUW *e);
 static int InitDpGenUw(DPGENUW *e);
 static void SendResultUserWords(DPGENUW *e, void *arg, void *arg2);
+static int DynProgUserWords(DPGENUW *e, short *frame);
 static void DpGenUwProcess(DPGENUW *e, short **in);
 static __inline__ void FreeBacktrace(TOS *tos, DPGENUW *e);
 static int func_004E5538(DPGENUW *e, GENUWSETUP *s);
@@ -290,6 +289,187 @@ static void SendResultUserWords(DPGENUW *e, void *arg, void *arg2)
     if (_tosControl(e, 12, r, 1) != 0)
         _tosErrorLog(e, 1);
     heap_Free(tos->heap, r);
+}
+
+/* a back pointer for phen off the free list (a chunk more when the list runs dry), after prev */
+#define NEWBACKTRACE(e, n, prev, phen)                  \
+    do {                                                \
+        (n) = (e)->freelist;                            \
+        if ((n)->next == 0)                             \
+            (e)->freelist = AllocateBacktrace((e), (n)); \
+        else                                            \
+            (e)->freelist = (n)->next;                  \
+        (n)->next = (prev);                             \
+        (prev)->count++;                                \
+        (n)->f4 = (phen);                               \
+        (n)->count = 0;                                 \
+        (n)->f8 = (e)->frame;                           \
+        (e)->f232++;                                    \
+    } while (0)
+
+/* a back pointer let go: when nothing points at it any more, it and the nodes before it that only
+ * it held go back to the free list */
+static __inline__ void ReleaseBacktrace(DPGENUW *e, BTNODE *bt)
+{
+    BTNODE *p, *n;
+
+    if (--bt->count <= 0) {
+        p = bt;
+        n = bt->next;
+        e->f232--;
+        while (n->count < 2) {
+            p = n;
+            n = p->next;
+            e->f232--;
+        }
+        n->count--;
+        p->next = e->freelist;
+        e->freelist = bt;
+    }
+}
+
+/* the word cell with the best score and the one with the worst (the last of equals) */
+static __inline__ GENCELL *BestWordCell(GENCELL *cells)
+{
+    GENCELL *best = cells, *c = cells + 1;
+    unsigned short i;
+
+    for (i = 1; i < NWORDCELLS; i++, c++)
+        if (c->score < best->score)
+            best = c;
+    return best;
+}
+
+static __inline__ GENCELL *WorstWordCell(GENCELL *cells)
+{
+    GENCELL *worst = cells, *c = cells + 1;
+    unsigned short i;
+
+    for (i = 1; i < NWORDCELLS; i++, c++)
+        if (c->score >= worst->score)
+            worst = c;
+    return worst;
+}
+
+/* one frame of the phoneme loop: every cell's score less the best's, a cell entered from the
+ * garbage phoneme or from the best word cell when that is cheaper than staying, the garbage
+ * phoneme's second cell entered from the words; then each of the word's phonemes tried in the worst
+ * word cell.
+ * OPEN (round 16c; 0x60C against 0x61C, every block the target's in its order but two): (1) the
+ * target keeps the new node (s0, both copies) apart from gnode (s4) and wnode (t3) -- with the
+ * helper an inline returning its node, GCSE's copy propagation replaces gnode by the inline's node
+ * everywhere (tools/ccdump.py -dG: "COPY-PROP: Replacing reg 91 ... with reg 170"), one long-lived
+ * pseudo, and the frame pointer then takes the s-register the target gives the node; as this
+ * macro on a shared node the copies survive and the frame goes to a caller-saved register round the
+ * rare AllocateBacktrace (the target's t4 and `sq t4`), but wnode merges into the node instead
+ * (the eq arm's `wnode = gnode` propagated). -fno-gcse gives the target's three registers -- and
+ * loses three of the object's matched functions, so the source keeps them apart otherwise. (2) The
+ * target loads the garbage penalty (+52) twice, `lh` for the first cell and `lhu` + sign extension
+ * for the second (a halfword value live across the first cell's if/else: combine keeps the load it
+ * folds), where a short local is promoted and loaded once. */
+static int DynProgUserWords(DPGENUW *e, short *frame)
+{
+    GENCELL *cells, *best, *from, *c, *worst;
+    BTNODE *gnode, *wnode, *old, *node, *prev;
+    unsigned short *w;
+    unsigned short phen, bphen;
+    short gpen;
+    int min, enter, wordexit, gscore, s;
+    unsigned short i;
+    unsigned int j;
+
+    c = e->cells;
+    for (i = 1; i < NWORDCELLS + 2; i++) {
+        if (c->score > 31622)
+            c->score = 31622;
+        c++;
+    }
+    cells = e->cells;
+    best = BestWordCell(cells);
+    min = best->score;
+    wordexit = min + e->f54;
+    c = &cells[NWORDCELLS];
+    gpen = e->f52;
+    enter = c->score + gpen;
+    if (c->score < min)
+        min = c->score;
+    bphen = best->phen;
+    if (enter < wordexit) {
+        phen = c->phen;
+        from = c;
+    } else {
+        phen = bphen;
+        enter = wordexit;
+        from = best;
+    }
+    gscore = frame[c->phen];
+    c++;
+    if (c->score < min)
+        min = c->score;
+    if (c->score + gpen < enter) {
+        phen = c->phen;
+        enter = c->score + gpen;
+        from = c;
+    }
+    prev = from->bt;
+    NEWBACKTRACE(e, node, prev, phen);
+    gnode = node;
+    gnode->count++;
+    if (bphen != phen) {
+        prev = best->bt;
+        NEWBACKTRACE(e, node, prev, bphen);
+        wnode = node;
+        wnode->count++;
+    } else {
+        wnode = gnode;
+        wnode->count++;
+    }
+
+    c = e->cells;
+    for (j = 0; j < NWORDCELLS; j++) {
+        if (c->score < enter)
+            c->score = c->score + frame[c->phen] - min;
+        else {
+            old = c->bt;
+            c->score = frame[c->phen] + enter - min;
+            c->bt = gnode;
+            gnode->count++;
+            ReleaseBacktrace(e, old);
+        }
+        frame[c->phen] = 1024;
+        c++;
+    }
+    c->score = c->score + gscore - min;
+    c++;
+    if (c->score <= wordexit)
+        c->score = c->score + gscore - min;
+    else {
+        old = c->bt;
+        c->score = wordexit + gscore - min;
+        c->bt = wnode;
+        wnode->count++;
+        ReleaseBacktrace(e, old);
+    }
+    e->f112 = (unsigned short)c->score;
+
+    worst = WorstWordCell(e->cells);
+    w = e->words;
+    for (j = 0; j < e->nwords; j++) {
+        s = enter + frame[w[j]] - min;
+        if (s < worst->score) {
+            worst->phen = w[j];
+            worst->score = s;
+            old = worst->bt;
+            worst->bt = gnode;
+            gnode->count++;
+            ReleaseBacktrace(e, old);
+            worst = WorstWordCell(e->cells);
+        }
+    }
+    ReleaseBacktrace(e, gnode);
+    ReleaseBacktrace(e, wnode);
+    e->f108 += (unsigned short)min;
+    return 0;
 }
 
 static void DpGenUwProcess(DPGENUW *e, short **in)

@@ -50,11 +50,12 @@ void *_memalign(unsigned int align, unsigned int size, const char *file, int lin
 /* the network (SOCOM 1's CZNetwork: zNetUpdate and zNetTick, the session flags at 0 and 1) */
 class CZNetwork {
 public:
+    void zNetUpdate();   /* 0x30DA00 (SOCOM 1's call here) */
+
     unsigned char m_8;   // 0x0
     unsigned char m_9;   // 0x1: an online game
 };
 extern CZNetwork theNetwork;
-extern "C" void func_0030DA00(CZNetwork *net);   /* CZNetwork::zNetUpdate (SOCOM 1's call here) */
 extern "C" int func_0030D9B0(CZNetwork *net);    /* CZNetwork::zNetTick */
 
 class CConsole {
@@ -133,7 +134,7 @@ int CGame::Tick(float dT)
     CGameStateChangeCmd *cmd;
     unsigned char online = theNetwork.m_9;
 
-    func_0030DA00(&theNetwork);
+    theNetwork.zNetUpdate();
     data_00416240.Tick();
     CGameState *cur = GetCurrentState();
 

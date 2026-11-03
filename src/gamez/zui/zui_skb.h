@@ -108,6 +108,10 @@ public:
             return (unsigned char)m_row < (unsigned char)k.m_row;
         return m_code < k.m_code;
     }
+    /* (ours: the cursor mover 0x38C130 materialises the two `<` as one value, then branches) */
+    bool operator!=(const CSkbKey &k) const { return *this < k || k < *this; }
+    /* a key there, not the null key (ours: the bare conversions -- `m_row != 0` re-extends the row byte) */
+    bool IsSet() const { return m_row || m_code; }
 
     union {
         unsigned char m_urow;
@@ -149,10 +153,35 @@ typedef std::map<CSkbKey, CSkbKeyProps *> CSkbKeyMap;
 /* the keys by grid position, a vector of rows (SOCOM 1's CSkbGrid: GetSkbKey at 0x3A3230 there,
  * inlined in SOCOM II). The column tests are an inline bool's tail: they branch the target's way
  * only so */
+/* the cursor's axis (ours: a byte enum, passed as `li 1; movz`; SOCOM 1's TwoDAxis) */
+enum SKBAXIS { SKB_AXIS_ROW, SKB_AXIS_COLUMN };
+
 class CSkbGrid : public std::vector<std::vector<CSkbKey> > {
 public:
+    /* the position stepped along an axis (x along a row, y down the rows), wrapping at either end;
+     * nothing past the last row (SOCOM 1's, out of line there; inlined in SOCOM II's cursor mover) */
+    void MoveToNextPos(int *x, int *y, SKBAXIS axis, int (*step)(int)) const
+    {
+        int *p = axis == SKB_AXIS_ROW ? x : y;
+
+        *p = step(*p);
+        int count;
+
+        if (axis == SKB_AXIS_ROW) {
+            if (*y >= size())
+                return;
+            count = (*this)[*y].size();
+        } else
+            count = size();
+        if (*p < 0)
+            *p = count - 1;
+        else if (*p >= count)
+            *p = 0;
+    }
     bool IsValidRow(int y) const { return y >= 0 && y < size(); }
-    bool IsValidPos(int x, int y) const { return IsValidRow(y) && x >= 0 && x < (*this)[y].size(); }
+    /* the row test `!= false`: its && is then materialised (slt, xori, sltu, andi 0xff) before the
+     * branch, as in every inlined copy in the target (GetCurKeyProps, SkbHandleKey) */
+    bool IsValidPos(int x, int y) const { return (IsValidRow(y) != false) && x >= 0 && x < (*this)[y].size(); }
     /* the key at a position, or a null key (one function-local static: SOCOM 1's GetSkbKey and
      * GetKeyAtGridPos share its guard) */
     const CSkbKey &GetSkbKey(int x, int y) const
@@ -233,6 +262,20 @@ struct CIntPair {
     int m_2nd;   // 0x4
 };
 
+/* an rdr array walked by index: the array a tag names, and the index (the look parser's; the Korean
+ * input unit's constructor and More, 0x3909F0 and 0x3909C0, the look parser calls out of line; ours) */
+struct CSkbRdrIter {
+    CSkbRdrIter(_zrdr *rdr, const char *tag);
+    /* the index is still inside the array */
+    bool More() const;
+    /* the item at the index, or none (ours) */
+    _zrdr *Item() const { return m_rdr->Item(m_index); }
+    void Next() { m_index++; }
+
+    _zrdr *m_rdr;   // 0x0
+    int m_index;   // 0x4
+};
+
 /* the pair of ints a tag names (SOCOM 1's ReadIntPair; the display unit's, 0x395300) */
 CIntPair ReadIntPair(_zrdr *rdr, const char *tag);
 
@@ -252,6 +295,19 @@ struct CSkbRect {
         m_pos[1] = 0;
         m_size[0] = 0;
         m_size[1] = 0;
+    }
+    /* a place and a size (the display unit's out-of-line copy, 0x396C80: the look parser's
+     * background pieces; ours) */
+    CSkbRect(const CIntPair &pos, const CIntPair &size);
+    /* a copy, word by word: CSkbBgPiece's implicit copy (0x398910) moves the rectangles with lw/sw,
+     * where the implicit assignment (SetRect, the look parser's pieces) block-copies each int pair
+     * through the FPRs -- a user-declared copy constructor beside the implicit operator= */
+    CSkbRect(const CSkbRect &r)
+    {
+        m_pos[0] = r.m_pos[0];
+        m_pos[1] = r.m_pos[1];
+        m_size[0] = r.m_size[0];
+        m_size[1] = r.m_size[1];
     }
     /* (ours) */
     void Set(const CIntPair &pos, const CIntPair &size)
@@ -320,7 +376,12 @@ public:
     /* the key under the cursor (SOCOM 1's GetCurKey: the grid positions are loaded first, as an
      * inline's arguments; defined in zui_skb.cpp, which holds them) */
     inline const CSkbKey &GetCurKey() const;
-    CSkbKeyProps *GetCurKeyProps();
+    /* the cursor's key's props: inline and too tall for its callers (they inline its body and call
+     * GetCurKey and FindKeyProps out of line, 0x38C130), its own copy inlining both (0x38B2A0) */
+    inline CSkbKeyProps *GetCurKeyProps();
+    /* the cursor's key's button put into a state (ours: inlined one level, so its callers call
+     * GetCurKeyProps out of line -- ShutdownBegin, SwitchTo, 0x38C130) */
+    inline void SetCurKeyState(void (C2DButton::*state)());
     void ParseLook(_zrdr *rdr);
     void ParseKeyProps(_zrdr *rdr);
     void SwitchTo(CSoftKeyboard *to);

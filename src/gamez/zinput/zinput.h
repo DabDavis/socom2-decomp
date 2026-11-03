@@ -17,14 +17,15 @@ enum PAD_BUTTON {
 /* a button's state (SOCOM 1's DWARF) */
 enum KEY_STATE { KEY_UP, KEY_FALLING, KEY_DOWN, KEY_RISING };
 
-/* the IOP reboot notifier: callbacks run before (phase 0) and after a reboot (SOCOM 1's; only the
- * registration declared) */
+/* the IOP reboot notifier: callbacks run before (phase 0) and after a reboot (SOCOM 1's; the
+ * registration and its removal declared -- util_main.cpp defines them on its own copy of the class) */
 class CIOPManager {
 public:
     enum RebootPhase { REBOOT_BEGIN, REBOOT_END };
     enum RebootMode { REBOOT_MODE };
     typedef bool (*RebootCallback)(RebootPhase phase, RebootMode mode, void *data);
     int RegisterRebootCallback(RebootCallback cb, void *data);
+    void UnRegisterRebootCallback(int id);
 };
 
 extern CIOPManager theIOPManager;

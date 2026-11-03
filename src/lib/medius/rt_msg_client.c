@@ -2859,3 +2859,17 @@ unsigned char func_006387E0(unsigned int nType, char *pa, char *pb, char *pc)
     return 0;
 }
 
+/* a spin of 16 steps, then a second loop on the same counter, which is 16 already: 2.96's loop
+ * optimizer counts the first down from 15 and leaves the second's entry test reading v0 before
+ * anything sets it (the target's `beqz v0` at 0x63884C) -- `for (; i < 16; i++)`, `while (i < 16)
+ * i++` and a counter initialised at its declaration all give it; no row calls the function. */
+void func_00638828(void)
+{
+    int i;
+
+    for (i = 0; i < 16; i++)
+        ;
+    for (; i < 16; i++)
+        ;
+}
+

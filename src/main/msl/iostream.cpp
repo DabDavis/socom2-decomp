@@ -1,4 +1,4 @@
-/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -inline auto,bottomup,level=5 -enum min -Cpp_exceptions on -wchar_t on -str readonly */
+/* sc: compiler=mwcps2-3.0b52-030722; flags=-O4,p -inline auto,bottomup,level=8 -enum min -Cpp_exceptions on -wchar_t on -str readonly */
 /* iostream.cpp -- the prebuilt MSL C++ library's standard streams unit (MAIN 0x184C80-0x18CF1F):
  * SOCOM 1's DWARF names it (CodeWarrior 2.4's MSL_Common\Src\iostream.cpp) and puts there the
  * stream objects' Init classes (__nInit, __wInit) and every template the streams instantiate --
@@ -15,8 +15,12 @@
  * fills the slot, 7 words off); the game's 3.0b52 here. -Cpp_exceptions ON (getloc keeps its frame
  * around the copy constructor's call; off, it is `j`), -wchar_t on (the `w` in every name), and
  * NOT deferred: SOCOM 1's DWARF lines rise with the addresses in this library (locale.cpp's
- * ctype<char> 221..288), the order SOCOM II keeps. The inline depth is explicit (`bottomup,level=5`,
- * the game's): ios.cpp's ~__locale_imp needs it (round 2). */
+ * ctype<char> 221..288), the order SOCOM II keeps. The inline depth is explicit (`bottomup`): ios.cpp's
+ * ~__locale_imp needs it (round 2); and it is at least 6, not the game's 5 (round 5): the ostream
+ * sentries inline setstate whole -- clear, the failure, its counted string and the counted pointer's
+ * constructor, six high -- which level=5 cuts to one level (rdstate, operator| and clear called);
+ * 6, 7, 8 and 9 give the same 142 over the library, so the units carry 8, the level the game's
+ * deepest witnesses ask for (README "Open, and next"). */
 
 #include "msl.h"
 
@@ -582,6 +586,52 @@ basic_ostream<charT, traits>::basic_ostream(basic_streambuf<charT, traits> *sb)
     this->init(sb);
 }
 
+/* the output guard (SOCOM 1's ostream lines): any exception on the way caught and turned into the
+ * stream's bad state, rethrown when the stream's mask asks */
+template <class charT, class traits>
+basic_ostream<charT, traits>::sentry::sentry(basic_ostream &os)
+    : ok_(false), uncaught_exception_(false), os_(os)
+{
+    try {
+        if (os_.good()) {
+            if (os_.tie())
+                os_.tie()->flush();
+            if (os_.good())
+                ok_ = true;
+            else
+                os_.setstate(ios_base::failbit);
+        } else
+            os_.setstate(ios_base::failbit);
+    } catch (...) {
+        if (!(os_.rdstate() & ios_base::failbit))
+            os_.iostate_ |= ios_base::badbit;
+        if (os_.exceptions() & os_.rdstate())
+            throw;
+    }
+}
+
+/* SOCOM 1's ostream 1046-1071: the buffer synced under the guard, its failure the stream's bad state */
+template <class charT, class traits>
+basic_ostream<charT, traits> &basic_ostream<charT, traits>::flush()
+{
+    sentry ok(*this);
+    ok.uncaught_exception_ = true;
+    bool failed = false;
+    if (this->rdbuf()) {
+        try {
+            if (this->rdbuf()->pubsync() == -1)
+                failed = true;
+        } catch (...) {
+            this->iostate_ |= ios_base::badbit;
+            if (this->exceptions() & ios_base::badbit)
+                throw;
+        }
+        if (failed)
+            this->setstate(ios_base::badbit);
+    }
+    return *this;
+}
+
 template class basic_filebuf<char, char_traits<char> >;
 template class basic_filebuf<wchar_t, char_traits<wchar_t> >;
 template class basic_istream<char, char_traits<char> >;
@@ -679,6 +729,89 @@ int codecvt<wchar_t, char, int>::do_max_length() const
 wchar_t ctype<wchar_t>::do_widen(char c) const
 {
     return (wchar_t)c;
+}
+
+/* the classic classification of the first 128 characters, and the case maps over 0-0xFFFF */
+ctype<wchar_t>::ctype(size_t refs)
+    : locale::facet(refs)
+{
+    __table_.insert(0, 8, cntrl);
+    __table_.insert(9, cntrl | space | blank);
+    __table_.insert(10, 13, cntrl | space);
+    __table_.insert(14, 31, cntrl);
+    __table_.insert(32, space | blank | print);
+    __table_.insert(33, 47, punct | graph | print);
+    __table_.insert(48, 57, digit | xdigit | graph | print);
+    __table_.insert(58, 64, punct | graph | print);
+    __table_.insert(65, 70, upper | xdigit | alpha | graph | print);
+    __table_.insert(71, 90, upper | alpha | graph | print);
+    __table_.insert(91, 96, punct | graph | print);
+    __table_.insert(97, 102, lower | xdigit | alpha | graph | print);
+    __table_.insert(103, 122, lower | alpha | graph | print);
+    __table_.insert(123, 126, punct | graph | print);
+    __table_.insert(127, cntrl);
+    __lower_map_.insert(0, 0xFFFF, 0, 0xFFFF);
+    __lower_map_.insert('A', 'Z', 'a', 'z');
+    __upper_map_.insert(0, 0xFFFF, 0, 0xFFFF);
+    __upper_map_.insert('a', 'z', 'A', 'Z');
+}
+
+bool ctype<wchar_t>::do_is(mask m, wchar_t c) const
+{
+    return (__table_[c] & m) != 0;
+}
+
+const wchar_t *ctype<wchar_t>::do_is(const wchar_t *low, const wchar_t *high, mask *vec) const
+{
+    for (const wchar_t *p = low; p < high; ++p, ++vec)
+        *vec = __table_[*p];
+    return high;
+}
+
+const wchar_t *ctype<wchar_t>::do_scan_is(mask m, const wchar_t *low, const wchar_t *high) const
+{
+    const wchar_t *p;
+    for (p = low; p < high; ++p) {
+        mask t = __table_[*p];
+        if ((t & m) != 0)
+            break;
+    }
+    return p;
+}
+
+const wchar_t *ctype<wchar_t>::do_scan_not(mask m, const wchar_t *low, const wchar_t *high) const
+{
+    const wchar_t *p;
+    for (p = low; p < high; ++p) {
+        mask t = __table_[*p];
+        if ((t & m) == 0)
+            break;
+    }
+    return p;
+}
+
+wchar_t ctype<wchar_t>::do_toupper(wchar_t c) const
+{
+    return __upper_map_[c];
+}
+
+const wchar_t *ctype<wchar_t>::do_toupper(wchar_t *low, const wchar_t *high) const
+{
+    for (; low < high; ++low)
+        *low = __upper_map_[*low];
+    return high;
+}
+
+wchar_t ctype<wchar_t>::do_tolower(wchar_t c) const
+{
+    return __lower_map_[c];
+}
+
+const wchar_t *ctype<wchar_t>::do_tolower(wchar_t *low, const wchar_t *high) const
+{
+    for (; low < high; ++low)
+        *low = __lower_map_[*low];
+    return high;
 }
 
 const char *ctype<wchar_t>::do_widen(const char *low, const char *high, wchar_t *to) const
