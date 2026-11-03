@@ -54,7 +54,7 @@
 0x001827F0 0x1C dthandler__3stdFv  # MAIN; s1:order (the same; static: abort()); src/main/runtime/NMWException.cpp
 0x00182810 0x24 __register_global_object  # MAIN; s1:exact
 0x00182840 0x54 __initialize_cpp_rts  # MAIN; s1:align
-0x001828A0 0x40 __ptmf_scall  # MAIN; s1:callee
+0x001828A0 0x34 __ptmf_scall  # MAIN; s1:callee; size 0x34, not 0x40: the seed counted three words of zero padding (SOCOM 1's symbol is 0x34; asm: src/main/runtime/ptmf.c)
 0x001828E0 0x4C __ptmf_cmpr  # MAIN; MW's C++ runtime (the HUD lane's round 17, vetted by the integrator: a pointer-to-member == compiles to !__ptmf_cmpr(&a, &b); the body compares the two PTMFs' three words and returns nonzero when they differ -- st_mpexit.cpp's SetFinalTeamTotalsUiVar calls it)
 0x00182930 0xA8 __DecodeUnsignedNumber__FPcPUi  # MAIN; s1:align
 0x001829E0 0xA8 __DecodeSignedNumber__FPcPi  # MAIN; s1:align
