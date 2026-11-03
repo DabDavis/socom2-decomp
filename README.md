@@ -1647,6 +1647,22 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the weapons, round 11** (vis_data.cpp, CZMarkList::AddNewMark):
+  - a user-declared out-of-line empty destructor keeps a band's member list teardown at its
+    definition point, and -inline auto then refuses it to the vector's clear (~CPreLight_band);
+  - a constant-initialised function-local `static float` is read with `lwc1` from data, a literal
+    is built with `lui`/`ori` (ColConvTo3D); storing a constant in a member and reading it back stops
+    constant folding, an inline parameter is folded;
+  - `a >= b` materialises into a register where `b <= a` uses `at`; `m_index > m_first` loads m_first
+    first; `!found & (q <= m_end)` (bitwise) gives a computed-and-ANDed loop test, `&&` branches;
+  - an inline helper's parameter order sets its argument load order and its FPRs (`RandRange(hi,
+    lo)`); `k * rand()` held in a local fixes the multiply's operand order; `(n << 4) + (unsigned
+    int)p` puts the scaled index first in the `addu`, every pointer form the base;
+  - a `return;` at the end of the last if-block emits the target's `b epilogue; nop`; `CPnt3D v = a -
+    b;` puts operator-'s temporary below the named copy; `m_a = m_b = x` stores m_b first; a copy
+    constructor `{ *this = b; }` makes the vector insert construct through `if (p) p->operator=(x)`;
+  - vis_data.cpp runs 0x3BA300-0x3BD99F (SOCOM 1's 0x310460-0x312DDF; no assert names it);
+    znode.h's *_Object stubs are SOCOM 1's DWARF shape (a std::vector<band> plus m_bandMax).
 - **Tells from the HUD, round 20** (reco.cpp's Load/Tick/callbacks, __sinit_hud_mpweaponsel.cpp, zui_2d.cpp):
   - MW knows what an already-generated function of the same unit clobbers: Load keeps `lang` in a0
     across a call to a pinned lookup defined after it (generated first); the target's second call
