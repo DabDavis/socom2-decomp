@@ -8997,7 +8997,7 @@
 0x004F5E70 0x3C ConstructGender  # OVL2; s1:align
 0x004F5EB0 0x6C ResetGender  # OVL2; s1:exact
 0x004F5F20 0xDC HLnOnePlusExpHFloat  # OVL2; s1:align
-0x004F6000 0x10C func_004F6000  # OVL2
+0x004F6000 0x10C LogAdd  # OVL2; s1:calls (SOCOM 1's NormalizeAndEnQ calls LogAdd where ours, 0x4F3690, calls this row; the object SOCOM 1's 0x3629D0 with HLnOnePlusExpHFloat, here after it and calling it where SOCOM 1's inlined it) -- the gcc lane, round 16c; src/lib/asr/logadd.c
 0x004F6110 0x808 MelInitBands  # OVL2; s1:align
 0x004F6918 0x3C ConstructMel  # OVL2 unaligned; s1:align
 0x004F6958 0x1AC func_004F6958  # OVL2 unaligned
