@@ -103,6 +103,7 @@ public:
 
     basic_string() { init(); }
     basic_string(const charT *s);
+    basic_string(const charT *s, size_type n);
     basic_string(const basic_string &str);
     ~basic_string();
 
@@ -181,6 +182,18 @@ basic_string<charT, traits, Allocator>::basic_string(const charT *s)
 {
     init();
     size_type n = strlen(s);
+    forward_iterator_tag category;
+
+    reserve(n);
+    func_001EE780(this, 0, 0, s, s + n, category);
+}
+
+/* from n characters (0x39B5B0, zui_skbkeys.cpp's tail: the keyboard's text wrap builds each word's
+ * string so): the C-string constructor without the strlen (the UI lane's round 10) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::basic_string(const charT *s, size_type n)
+{
+    init();
     forward_iterator_tag category;
 
     reserve(n);

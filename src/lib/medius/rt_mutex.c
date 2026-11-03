@@ -129,3 +129,20 @@ int rt_mutex_unlock(rt_mutex *mutex, int *pLockCount)
     }
     return RT_MUTEX_OK;
 }
+
+/* SOCOM II's two additions, after the five SOCOM 1 had: each hands on to the platform's interrupt
+ * mask (0x639568: DisableIntc of the two channels it masks; its twin 0x639590 enables them) -- both
+ * call the disabling one, as the target does. The platform function returns a narrower type than
+ * these (unsigned char or short): the modes differ, so 2.96 makes no sibling call (a `jal` under a
+ * frame, where a void or int callee gives `j`; ccsweep, 2 of 5 shapes). */
+extern unsigned char func_00639568(void);
+
+int func_006393A0(void)
+{
+    return func_00639568();
+}
+
+int func_006393C0(void)
+{
+    return func_00639568();
+}

@@ -13,8 +13,8 @@ typedef struct IMPORT {
     void *heap;
 } IMPORT;
 
-extern int func_00509730(int queue, int what, int id, int arg);
-extern int func_004DC178(CASR *c);
+extern int qQueueControl(int queue, int what, int id, int arg);
+extern int casrDoSpelling(CASR *c);
 extern int casrDoIsoWordSecondPass(CASR *c);
 extern int casrDoNormalSecondPass(CASR *c);
 extern unsigned char _tosErrorLog(void *log, unsigned short code);
@@ -100,7 +100,7 @@ IMPORT *casrImportData(void *heap, void *data)
     return p;
 }
 
-short *func_004DE910(CASR *c, int i, int j)
+short *casrGetSegmStart(CASR *c, int i, int j)
 {
     return c->segtab[i * 3 + j];
 }
@@ -121,8 +121,8 @@ void casrStoreSegmentation(CASR *c, int i, int j, SEGLABEL *l)
 int casrEnableLabelInQueue(CASR *c, unsigned char enable)
 {
     if (enable)                         /* the two calls are cross-jumped into one */
-        return func_00509730(c->queue, 5, c->queue_id, 0) == 0;
-    return func_00509730(c->queue, 8, c->queue_id, 0) == 0;
+        return qQueueControl(c->queue, 5, c->queue_id, 0) == 0;
+    return qQueueControl(c->queue, 8, c->queue_id, 0) == 0;
 }
 
 /* OPEN: the target tests the result at the join with a branch (bnez; li 1; move 0) where every
@@ -132,7 +132,7 @@ int casrDoSecondPass(CASR *c)
     int ok;
 
     if (c->use_dp)
-        ok = func_004DC178(c);
+        ok = casrDoSpelling(c);
     else if (c->iso_word)
         ok = casrDoIsoWordSecondPass(c);
     else

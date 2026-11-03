@@ -5,6 +5,7 @@
 #ifndef ZCHAR_H
 #define ZCHAR_H
 
+#include <string>
 #include <vector>
 
 #include "../zweapon/zweapon.h"
@@ -17,6 +18,27 @@ class CRdrFile;
  * 0x120-0x15B) */
 class AI_PARAMS {
 public:
+    /* the defaults (SOCOM 1's __ct__9AI_PARAMSFv, out of line there; SOCOM II's visual sensitivity
+     * 1 where SOCOM 1's was 0.8 -- zveh.h's CTurretAiParams has the same): inline, CVehicleRdrEntry's
+     * constructor stores them in place (0x5331D0) */
+    AI_PARAMS()
+    {
+        mask = 0;
+        accuracy = 0.8f;
+        courage = 0.6f;
+        surrender = 0.2f;
+        stealth = 0.5f;
+        training = 0.5f;
+        visual_sens = 1.0f;
+        visual_range = 400.0f;
+        visual_fov = 60.0f;
+        aware_decay = -0.075f;
+        thip_range = 25.0f;
+        respawn = 0;
+        target_delay = 0.75f;
+        target_discipline = 0.5f;
+        m_veh = 0;
+    }
     void Parse(_zrdr *rdr);
     /* each field the first set has (its mask bit), else the second's, else the first's; the masks
      * joined (SOCOM 1's Merge, 0x533DB0) */
@@ -45,6 +67,10 @@ public:
 /* a starting point: a map location's name and a direction (SOCOM 1's DWARF) */
 class start {
 public:
+    /* no direction, no name (CVehicleRdrEntry's constructor builds the four of each set in a loop:
+     * the direction stored, then the name's first byte) */
+    start() : m_dir(0) { m_name[0] = 0; }
+
     char m_name[16];   // 0x0
     int m_dir;   // 0x10
 };
@@ -52,6 +78,9 @@ public:
 /* up to four of them (SOCOM 1's DWARF) */
 class startvec {
 public:
+    /* none (the count zeroed, then each start built) */
+    startvec() : m_count(0) {}
+
     unsigned int m_count;   // 0x0
     start m_start[4];   // 0x4
 
@@ -83,6 +112,8 @@ public:
  * 0x70, a second set of starts for respawning, the start index packed into the flags word) */
 class CVehicleRdrEntry {
 public:
+    /* an empty entry (out of line, 0x5331D0: the resize's fill value, 0x534320) */
+    CVehicleRdrEntry();
     const char *GetStartPos() const;
     int GetStartDir() const;
     /* the respawning set's (new in SOCOM II; the names are ours) */
@@ -90,6 +121,9 @@ public:
     int GetRespawnDir() const;
     void SetCharacterName(const char *name);
     void Randomize(bool reset);
+    /* the start's place as a matrix: the start picked (at random for -1), its location found and
+     * its cell's centre taken, the rotation its direction gives (SOCOM 1's; 0x532D10) */
+    bool GetStartMatrix(class CMatrix &m, unsigned int index);
     /* one entry out of the file's item (SOCOM 1's CVehicleRdr::Load did every entry; the name is
      * ours) */
     void Load(_zrdr *rdr);
@@ -97,20 +131,22 @@ public:
     char m_name[32];   // 0x0
     char m_character[48];   // 0x20
     char m_display_name[32];   // 0x50
-    unsigned int m_unk70;   // 0x70
+    char m_unk70;   // 0x70: a byte (Load stores it with sb, the assignment copies it lb/sb)
     startvec m_start;   // 0x74
     startvec m_respawn;   // 0xc8: new in SOCOM II ("respawn_setup")
     int m_teamMask;   // 0x11c
     AI_PARAMS m_aiParams;   // 0x120
-    unsigned short m_debug : 1;   // 0x15c: a halfword of flags in SOCOM II (lhu, no masking)
-    unsigned short m_disabled : 1;
-    unsigned short m_nofade : 1;
-    unsigned short m_noshoot : 1;
-    unsigned short m_recycle : 1;
-    unsigned short m_nosnooze : 1;
-    unsigned short m_startIndex : 4;   // SOCOM 1's m_startIndex, a word at 0x108 there
-    unsigned short m_respawnIndex : 4;   // new (the name is ours)
-    unsigned short m_unused : 2;
+    /* 0x15c: a word of flags in SOCOM II -- the constructor's mem-initializer list clears them with
+     * word read-mask-writes, the getters read the index through lhu (MW narrows it) */
+    unsigned int m_debug : 1;
+    unsigned int m_disabled : 1;
+    unsigned int m_nofade : 1;
+    unsigned int m_noshoot : 1;
+    unsigned int m_recycle : 1;
+    unsigned int m_nosnooze : 1;
+    unsigned int m_startIndex : 4;   // SOCOM 1's m_startIndex, a word at 0x108 there
+    unsigned int m_respawnIndex : 4;   // new (the name is ours)
+    unsigned int m_unused : 2;
 };
 
 /* the vehicle file: every entry (SOCOM 1's DWARF: a vector and nothing more) */
@@ -251,6 +287,9 @@ class CCharacterWeap {
 public:
     /* none, no ammunition (AddWeapon's temporary, 0x53B3A0: 255 in both bytes, the counts zeroed) */
     CCharacterWeap() : m_wepId(EQUIP_NONE), m_ammoId(AMMO_NONE), m_ammoCount(0), m_magCount(0) {}
+    /* the item set, and its magazine size, magazines and default ammunition when the weapon
+     * list knows it (SOCOM 1's; 0x53EEE0 -- the weapon selector calls it after AddWeapon) */
+    void SetupCharacterWeapon(EQUIP_ITEM item);
 
     EQUIP_ITEM m_wepId;   // 0x0
     EQUIP_AMMO m_ammoId;   // 0x1
@@ -273,6 +312,16 @@ public:
     /* an empty weapon pushed (SOCOM 1's AddWeapon; the item unread -- the callers set it up after,
      * through SetupCharacterWeapon 0x53EEE0) */
     void AddWeapon(EQUIP_ITEM item);
+    /* every weapon of the item dropped, true if there was one (SOCOM 1's RemoveWeapon, char_type.cpp's
+     * last function in both builds: 0x53B300) */
+    bool RemoveWeapon(EQUIP_ITEM item);
+    /* a set-up weapon of the item put at an index, the ones from there on moved up one, the last
+     * pushed (new in SOCOM II, the name ours: 0x53B160) */
+    void InsertWeapon(int index, EQUIP_ITEM item);
+    /* after every weapon taking several slots, an EQUIP_END for each slot past the first (new in
+     * SOCOM II, the name ours: 0x53B070 -- CreateCustomCharTypes calls it on a custom type's
+     * weapons) */
+    void PadWeaponSlots();
 };
 
 /* a multiplayer message a type can say (SOCOM 1's MultiplayerMsg; only the sound laid out) */
@@ -286,6 +335,20 @@ public:
 class CMultiplayerMsgVec : public std::vector<MultiplayerMsg *> {
 };
 
+/* the type's animation sets' names (SOCOM 1's `vector m_anim_sets`; a pointer vector in a class of
+ * its own here -- ~CCharacterType tests it four times, as a derived pointer vector; the name ours) */
+class CAnimSetVec : public std::vector<char *> {
+};
+
+/* the gears (SOCOM 1's CCharacterGearList; SOCOM II's a vector of pointers -- CCharacterType::
+ * m_gear_list stays declared as the plain vector, which its users bind; zseal.h has CCharacterGear) */
+class CCharacterGearList : public std::vector<class CCharacterGear *> {
+public:
+    /* the gear of that name, none for no name (SOCOM 1's FindGear, const there; SOCOM II's is not -- the
+     * walk reads the size and data off `this` each pass: 0x53EFF0, called on m_gear_list) */
+    CCharacterGear *FindGear(const char *name);
+};
+
 /* a kind of character: model, sounds, gear, weapons, AI and health (SOCOM 1's DWARF, 0x2FC bytes;
  * SOCOM II's is 0x3AC -- 85 sounds where SOCOM 1 had 66, each name a plain pointer where SOCOM 1
  * kept a 4-byte CSaferStr, so everything from the LODs on sits 0x98 further, the temporary flag at
@@ -295,6 +358,19 @@ namespace zdb { class CNode; }
 
 class CCharacterType {
 public:
+    /* a level of detail: a model file and name and the distance it starts at (SOCOM 1's global
+     * LOD, nested here: zanim.h's enum LOD shares the name and units see both; SOCOM II's strings
+     * are 12 bytes, so 0x1C -- the vector's teardown 0x540A50 frees both) */
+    class LOD {
+    public:
+        std::string m_file;   // 0x0
+        std::string m_name;   // 0xc
+        float m_dist;   // 0x18
+    };
+    /* the type's levels of detail (SOCOM 1's DWARF: a vector and nothing more) */
+    class LODVec : public std::vector<LOD> {
+    };
+
     CCharacterType(const char *name, const CCharacterType *base);
     ~CCharacterType();
 
@@ -335,11 +411,11 @@ public:
     unsigned int m_parentID;   // 0x10
     char *m_arrSoundNames[CHRSND_MAX];   // 0x14
     CSnd *m_sounds[CHRSND_MAX];   // 0x168
-    unsigned char m_LODs[0xc];   // 0x2bc: LODVec
-    unsigned char m_anim_sets[0xc];   // 0x2c8: a vector
+    LODVec m_LODs;   // 0x2bc
+    CAnimSetVec m_anim_sets;   // 0x2c8
     char *m_texture_asset;   // 0x2d4
     CModel *m_model;   // 0x2d8
-    unsigned char m_gear[0xc];   // 0x2dc: CCharacterGearList
+    CCharacterGearList m_gear;   // 0x2dc
     CCharacterWeapList m_weapons;   // 0x2e8
     int m_strength;   // 0x2f4
     int m_recovery_factor;   // 0x2f8
@@ -359,15 +435,6 @@ public:
      * vector of pointers, OVL1 bss 0x44CD68, the same 0x20 on: CZSealBody::FindGear walks its data
      * and size) -- added by the SEAL lane */
     static std::vector<class CCharacterGear *> m_gear_list;
-};
-
-/* the gears (SOCOM 1's CCharacterGearList; SOCOM II's a vector of pointers -- CCharacterType::
- * m_gear_list stays declared as the plain vector, which its users bind; zseal.h has CCharacterGear) */
-class CCharacterGearList : public std::vector<class CCharacterGear *> {
-public:
-    /* the gear of that name, none for no name (SOCOM 1's FindGear, const there; SOCOM II's is not -- the
-     * walk reads the size and data off `this` each pass: 0x53EFF0, called on m_gear_list) */
-    CCharacterGear *FindGear(const char *name);
 };
 
 /* the types (SOCOM 1's DWARF: a vector of pointers and nothing more) */
