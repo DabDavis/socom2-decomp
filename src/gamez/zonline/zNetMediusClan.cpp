@@ -23,7 +23,8 @@ struct StoredClanInfoType {
     int ClanID;   // 0x1c
     unsigned char _20[4];
     char ClanName[32];   // 0x24
-    int LeaderAccountID;   // 0x44
+    unsigned int LeaderAccountID;   // 0x44 (unsigned: a member's id compared with it gives the
+                                    // target's registers, IsLeaderOfClan's and UpdateClanRoster's)
     char LeaderAccountName[32];   // 0x48
     char Stats[256];   // 0x68: the icon (three digits), the ranking stat (twelve), the description
     unsigned char _168[0x170 - 0x168];
@@ -1020,9 +1021,10 @@ inline void SetVarInt(CUIVariable *var, int i)
 /* the members handed to the menus, best first: each one's account (as VALUE), name, whether online,
  * description, ladder position and rank, the leader marked, and where he is (the main menu, a room
  * and a game, or nothing offline); the clan's rating -- its eight best members' average, as
- * UpdateClanRanking's -- kept and shown (SOCOM II's, the name ours; OVL1 0x2E6AF0). The member's account
- * compared and its stat added as unsigned give the target's registers (int operands swap v1 and a0,
- * as in UpdateClanRanking); the online mark is a switch, its zero case laid out first */
+ * UpdateClanRanking's -- kept and shown (SOCOM II's, the name ours; OVL1 0x2E6AF0). The leader's id
+ * unsigned (StoredClanInfoType) and the stat added as unsigned give the target's registers (int
+ * operands swap v1 and a0, as in UpdateClanRanking); the online mark is a switch, its zero case laid
+ * out first */
 void UpdateClanRoster()
 {
     CRdrEditor ed;
@@ -1035,7 +1037,7 @@ void UpdateClanRoster()
     std::sort(ClanMemberVec.begin(), ClanMemberVec.end(), ClanMemberOrder());
     ed.push(0);
     for (ClanMemberVector::iterator i = ClanMemberVec.begin(); i != ClanMemberVec.end(); ++i) {
-        bool leader = StoredClanInfo.LeaderAccountID == (unsigned int)(*i)->AccountID;
+        bool leader = StoredClanInfo.LeaderAccountID == (*i)->AccountID;
         bool counted = false;
 
         if (ClanMemberVec.size() >= 8 && n-- > 0)
@@ -1154,19 +1156,16 @@ bool CZOnlineLobby::IsMemberOfClan()
     return PlayerClanID != -1;
 }
 
-/* the named member -- or we, when none is -- the clan's leader (SOCOM 1's; OVL1 0x2E67D0).
- * OPEN, 1 instruction: the member's compare is `xor v0,v0,v1` in the target (the leader first, the
- * member's id loaded into v1), `xor v0,v1,v0` here; written leader-first the member's id lands in v0
- * instead and the loads trade registers. Tried: either operand order, an accessor, a local id, a
- * ternary, a bool local, if/else; and (round 5) the member's arm through an inline taking the id,
- * `IsClanLeader(m->AccountID)`: `leader == id` inside gives the target's xor order with the loads
- * swapped (the id in v0), `id == leader` the target's loads with the xor reversed. */
+/* the named member -- or we, when none is -- the clan's leader (SOCOM 1's; OVL1 0x2E67D0). The
+ * leader's id is unsigned: compared leader-first with the member's int id, the compare is unsigned
+ * and MW loads the id into v1 and xors v0,v0,v1 as the target (an int leader, either order, left the
+ * xor reversed or the loads swapped -- rounds 1 to 8) */
 bool CZOnlineLobby::IsLeaderOfClan(const char *name)
 {
     ClanMemberItem *m = ClanMemberVec.Find(name);
 
     if (m)
-        return m->AccountID == StoredClanInfo.LeaderAccountID;
+        return StoredClanInfo.LeaderAccountID == m->AccountID;
     return AccountInfo.AccountID == StoredClanInfo.LeaderAccountID;
 }
 
