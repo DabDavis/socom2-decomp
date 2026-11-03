@@ -54,7 +54,9 @@ TRIPLES = ("mipsee-gcc-c", "mipsee-mwcc-c")   # the second converts about 1 % mo
 # toolchain's newlib and libm, built with 2.96: the first is the range's own, the second for the
 # other's pieces); its draft carries the directive of the one that matched.
 # (lo, hi, [(toolchain, flags), ...], what)
-SDK, LIBC = ("ee-gcc2.9-991111", "-O2 -G0"), ("ee-gcc2.96", "-O2 -G0")
+# the SDK's own build is dtls13010 (README "The GCC front": libvu0's inline asm, the broken sibling
+# call); its C compiles as 991111's but where that sibling call shows, so it goes first
+SDK, LIBC = ("ee-gcc2.9-991111-01-dtls13010", "-O2 -G0"), ("ee-gcc2.96", "-O2 -G0")
 GCC_RANGES = [
     (0x18DB90, 0x191410, [SDK, LIBC], "MAIN: libcdvd, libdma (Sony's SDK 2.7)"),
     (0x191410, 0x1A13D0, [LIBC, SDK], "MAIN: newlib's libc, libgcc and fp-bit"),
@@ -68,8 +70,12 @@ GCC_RANGES = [
     # by four, byte-exact only with the recogniser's -funroll-loops (src/lib/ovl1/heap.c)
     (0x2430F0, 0x243840, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing -funroll-loops")],
      "OVL1: the recogniser's heap (heap_*)"),
-    (0x243840, 0x248350, [("ee-gcc2.96", "-O2 -G0")], "OVL1: lgAud, libnetb/inet"),
-    (0x248350, 0x256FD0, [("ee-gcc2.96", "-O2 -G8")], "OVL1: Nellymoser's speech codec (SaseEncVad, SaseDec)"),
+    (0x243840, 0x2484A0, [("ee-gcc2.96", "-O2 -G0")], "OVL1: lgAud, libnetb/inet (and the UDP ring's last two)"),
+    # the codec's two libraries were built apart (round 12a): the encoder reaches its scalars and
+    # .lit4 floats through $gp (-G8), the decoder reaches the same host callbacks by lui (-G0)
+    (0x2484A0, 0x253510, [("ee-gcc2.96", "-O2 -G8")], "OVL1: Nellymoser's encoder (SaseEncVad)"),
+    (0x253510, 0x256F48, [("ee-gcc2.96", "-O2 -G0")], "OVL1: Nellymoser's decoder (SaseDec)"),
+    (0x256F48, 0x256FD0, [("ee-gcc2.96", "-O2 -G8")], "OVL1: the codec's host-callback setters"),
     (0x4C5400, 0x50DC50, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing -funroll-loops")],
      "OVL2: ScanSoft's recogniser (asrspi, casr)"),
     (0x60FB50, 0x64F720, [("ee-gcc2.96", "-O2 -G0")], "OVL2: Medius, DME and the rt_* libraries"),
@@ -1246,13 +1252,16 @@ def main(argv=None) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     tally = {}
     hits = {}
+    verdicts = []
     with ProcessPoolExecutor(a.jobs) as ex:
         for addr, kind, src in ex.map(attempt, sorted(cands)):
             tally[kind] = tally.get(kind, 0) + 1
+            verdicts.append(f"0x{addr:08X} {kind}\n")
             if src:
                 (OUT / f"{addr:08X}.c").write_text(src)
                 hits[addr] = src
     total = sum(tally.values())
+    (OUT / "verdicts.txt").write_text("".join(verdicts))      # each row's verdict, for the next look
     print(f"{total} tried: " + ", ".join(f"{k} {v}" for k, v in sorted(tally.items())))
     print(f"hit rate {100 * tally.get('hit', 0) / max(total, 1):.1f} %  (hits in {OUT})")
     if a.emit:

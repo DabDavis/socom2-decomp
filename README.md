@@ -3758,7 +3758,8 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 | OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
 | OVL1 0x2430F0-0x243840 | the recogniser's heap (`heap_*`, ScanSoft's) | `ee-gcc2.96` `-O2 -G0` **`-funroll-loops`** (the unit carries the recogniser's `-fno-strict-aliasing` too, untold) | SearchFor's loop unrolled by four: byte-exact only with the flag (without: 50s) -- round 3a |
 | OVL1 0x243840-0x248350 | lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
-| OVL1 0x248350-0x256FD0 | Nellymoser's speech codec (SaseEncVad, SaseDec) | `ee-gcc2.96` **`-O2 -G8`** | five functions byte-exact only so: their scalars and float literals are `$gp`-relative (small data in MAIN's 0x1D5300-0x1D55C0, `.lit4`); at -G0 every one misses |
+| OVL1 0x2484A0-0x253510, 0x256F48-0x256FD0 | Nellymoser's speech codec: the encoder (SaseEncVad) and the host-callback setters | `ee-gcc2.96` **`-O2 -G8`** | five functions byte-exact only so: their scalars and float literals are `$gp`-relative (small data in MAIN's 0x1D5300-0x1D55C0, `.lit4`); at -G0 every one misses |
+| OVL1 0x253510-0x256F48 | Nellymoser's decoder (SaseDec) | `ee-gcc2.96` `-O2 -G0` | round 12a: the decoder reaches the same host callbacks and instance count by lui and an offset, never $gp (sase_decapi.c 5 of 5; two drafts matched at -G0 at once) |
 | OVL2 0x4C5400-0x50DC50 | ScanSoft's speech recogniser (asrspi\*, casr\*, mtx\*) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing -funroll-loops` | the loop unrolling: ContextActivateParams (below, round 2b); `casrStoreSegmentation` keeps its `short` store above the load of the next node: byte-exact only without strict aliasing, and none of the library's drafts is lost by the flag; the sibling calls -- func_004CCC50, ConstructMel, func_004F7038 -- 2.96 only (every 2.9x and 2.95.x 5s-15s); its leaf functions do not tell 2.9x, 2.95.x and 2.96 apart. `mtxConstruct` makes no sibling call because 2.96 declines one where the return types differ |
 | OVL2 0x60FB50-0x64F720 | Medius, DME and the rt_\* libraries (SCEA) | `ee-gcc2.96` `-O2 -G0` | rt_comm_get_channel, rt_memory_register_callbacks, rt_msg_client_change_state, rt_msg_set_byte: all four only under 2.96 -O2 (2.9x 5/=/9s/6, 2.95.x 4/=/10s/5, 3.2 =/5/3/=); strict aliasing stays on -- two sibling drafts of one shape (0x61E7F0, 0x61E858) match only with it: thin, one shape |
 
@@ -4226,6 +4227,77 @@ sccheck and scdecomp and these: identical but `_copyAddRefImage`'s `_maxval`, un
 verdict changed. automatch over this lane's GCC ranges (`--range 18DB90 1C4CC0`, `1CCD78 1CE2A4`,
 `1E7F58 1E8FD4`, `243000 256FD0`, `--max-size 0x400 --emit --no-prune`, 2 jobs): 526 tried, 0 hits
 (m2c refused 44, 99 drafts would not build).
+
+**Round 12a** (2026-11-03, by hand, half of it OVL1's codec): 73 rows newly byte-exact -- 71 by hand (of
+74 functions written or rewritten), 2 drafts -- and 12 rows named. MAIN: libscf's getters and AdjustTime (`sdk/libscf.c`
+18 of 21: +6), libdbc (`sdk/libdbc.c`, new: Sony's DBC client under libpad2, 7 of 9 -- sceDbcSetWorkAddr,
+DeleteSocket, InitSocket, ResetSocket, GetDeviceStatus, 0x1904F8, the compiled-out debug printf).
+OVL1, Nellymoser's codec, a unit per source file the asserts name (58): `ovl1/sase_encsc.c` (EncSC.c's
+setters, 11 of 11), `sase_encapi.c` (the encoder API, 12 of 13), `sase_parapi.c` (the parameter block's
+API, 13 of 13), `sase_decsc.c` (4 of 4), `sase_decapi.c` (the decoder API, 5 of 5), `sase_ldpda.c` (4),
+`sase_libvect.c` (3), `sase_codepv.c` (3), `sase_libquan.c` (1), `sase_misc.c` (libsnd.c's release,
+QP0SC3.c's dequantiser). Named (12, `sceDbc*`): libdbc is not in SOCOM 1 (it links libpad), and each
+RPC wrapper prints its own name in its error message. What they showed:
+
+- **Sony's getters keep one exit**: libscf's five open since round 2a store their value in one `ret` on
+  every path (`if (IsT10K()) ret = gConfig.X; else { ...; ret = p2.x; } return ret;`) -- a `return` per
+  path builds the T10K path's address in v1 where the target has v0, loads the field straight into v0,
+  and selects GetTimeZone's 540 by branch where the target has movz. AdjustTime tests `m >= 0` first (its
+  else loop laid out last, entered by the bltzl) and sums into a variable of its own: expand_binop puts
+  the target first when it is an operand, so `min += t->minute` and `min = t->minute + min` both give
+  `addu s0,s0,v0` against the target's `addu s0,v0,s0`.
+- **adddate and subdate are GCSE's**: byte-exact under dtls13010 with `-fno-gcse` -- this build's GCSE
+  removes the t->year reload the target keeps -- while GetRomName needs GCSE (it keeps gRomName's %hi in
+  s1 and builds the address from it twice: 28 words off without). Their source differs from these
+  somewhere still (round 4a's 990721/2.95.x match was the same effect: those builds have no such GCSE).
+- **The codec's asserts name its objects**: `__assert("../../SaseEncVad/source/EncSC.c", 876, "pEncMemBlk !=
+  NellyNull")` is newlib's `assert` in the vendor's file at that line; a `#line 876
+  "../../SaseEncVad/source/EncSC.c"` before the assert gives __FILE__ and __LINE__ exactly, the
+  expression text is the macro's `#e`. 27 source files are named so (libquan.c 23 functions, libtran.c
+  19, LDPDA.c 15, PtchCand.c 12, EncSC.c 12, ...); the entry points carry none (a handle check: a 64-bit
+  magic 0xface, the kind -- 10 the encoder, 11 the decoder -- then 6100/6110/6115).
+- **The codec is two libraries built apart**: the encoder (SaseEncVad, 0x2484A0-0x253510) reaches its
+  scalars and .lit4 floats through $gp (-G8); the decoder (SaseDec, 0x253510-0x256F48) reaches the same
+  host callbacks (MAIN 0x1D55A8-0x1D55C0) by lui and an offset -- built at -G0 (automatch's ranges now
+  split there: two decoder drafts matched at once, 0x254250 and 0x256970).
+- **This GCC's decimal-to-float conversion is not the vendor's**: `0.011747969314455986f`, the exact
+  value of the target's 0x3C407A8E, converts to 0x3C407A8D here (so does its exact decimal expansion, 30
+  digits); a hex float (`0x1.80f51cp-7f`) gives the bits exactly. The codebooks are written so;
+  QP0SC3's constant as a decimal between the target's float and the next.
+- **Shapes, measured**: a setter's changed-flag store comes first in the source (the scheduler reverses
+  the pair); a flag-only setter reads the parameter block before its assert, as a declaration's
+  initialiser (the load sits in the assert branch's delay slot); a callee whose value is discarded is
+  declared returning int (the free callback's pointer is then loaded into v1 after it, as the target's
+  is -- round 5a's void-callee variant the other way round); the decoder's destructor leaves the
+  caller's pointer as it was where the encoder's zeroes it.
+- **Open, diagnosed in place**: frombcd (the product allocated to LO -- mulsi3's two-operand
+  alternative -- in eleven spellings, 64-bit ones too), adddate, subdate (above); sceDbcCreateSocket and
+  sceDbcReceiveData (the buffer's base held in a saved register from the first store; a fourth saved
+  register here), the encoder's func_0024F888 (the coded buffer's address born while the handle is
+  live: three saved registers in the target, two here).
+
+**The tools, round 12a**: (1) **`scdiff.lit_entry`: a literal-pool entry is compared alone** -- a GNU
+`.lit4`/`.lit8` reference was compared as an unnamed literal over up to 16 bytes, but the object's pool
+holds its constants in first-use order and the image's in the link's, so a right constant read its
+neighbours (QP0SC3's dequantiser: a false CONTENT-MISMATCH); it is now compared over its own 4- or
+8-byte entry. Narrower than before, so no verdict could turn from a match to a miss. Proved over every
+unit (`--files .`, 10,243 functions scored) under master's (74a85b36) scdiff and this one: the 9,976
+lines are identical but func_00250C68's, WRONG REFERENCE -> match (9,774 -> 9,775); the canary's
+`test_gnu_literal_is_its_own_entry` pairs it with a corrupted entry (fails) and a corrupted neighbour
+(still matches). sccheck.py, scdecomp.py and `include/` are master's. (2) **automatch's GCC ranges**: the codec split by its -G (the encoder and the host-callback
+setters -G8, the decoder -G0, the UDP ring's last two with libnetb), Sony's SDK rows tried under the
+dtls13010 build first (991111's C compiles the same but where that build's sibling call shows), and
+`build/automatch/verdicts.txt` lists each row's verdict. **Why GCC drafts do not build** (the lead
+from round 11a): over this lane's 463 placeholder rows up to 0x400, m2c's GNU C as automatch prepares
+it builds for 404, m2c refuses 18, and 41 fail: an undeclared frame base -- `sp` (13) or a slot
+`spXX` (6) where `stack_locals` declares none (no locals below the saves), `saved_reg_*` (2) -- an
+int dereference the repair misses (10), an argument count disagreeing with another call (5), a parse
+error on m2c's cast spelling (6); automatch's own tally (99 "build", round 11a's too) counts besides
+the named rows the ranges hold (sceCd*, sceSif*: GCC ranges try rows with real names) and every
+exception `try_one` swallows. So the drafts mostly build and miss: the near misses are what to
+classify next (`tools/amsurvey.py near`). automatch over the four ranges (`--max-size 0x400 --emit
+--no-prune`, 2 jobs): 445 tried, **2 hits** (both decoder rows the -G0 split opened), 99 build
+failures, 42 m2c refusals.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

@@ -285,20 +285,20 @@
 0x0018FCB8 0x54 func_0018FCB8  # MAIN unaligned
 0x0018FD10 0x23C func_0018FD10  # MAIN
 0x0018FF50 0x48 func_0018FF50  # MAIN
-0x0018FF98 0x6C func_0018FF98  # MAIN unaligned
-0x00190008 0xD8 func_00190008  # MAIN unaligned
-0x001900E0 0x88 func_001900E0  # MAIN
-0x00190168 0x148 func_00190168  # MAIN unaligned
+0x0018FF98 0x6C sceDbcSetWorkAddr  # MAIN unaligned; libdbc: by its own message 'sceDbcSetWorkAddr: rpc error' (RPC 0x80001304) -- round 12a
+0x00190008 0xD8 sceDbcCreateSocket  # MAIN unaligned; libdbc: by its own message 'sceDbcCreateSocket: rpc error' (RPC 0x80001301) -- round 12a
+0x001900E0 0x88 sceDbcDeleteSocket  # MAIN; libdbc: by its own message 'sceDbcDeleteSocket: rpc error' (RPC 0x80001302) -- round 12a
+0x00190168 0x148 sceDbcGetDepNumber  # MAIN unaligned; libdbc: by its own message 'sceDbcGetDepNumber: rpc error' -- round 12a
 0x001902B0 0xF4 func_001902B0  # MAIN
-0x001903A8 0x70 func_001903A8  # MAIN unaligned
-0x00190418 0x70 func_00190418  # MAIN unaligned
-0x00190488 0x70 func_00190488  # MAIN unaligned
+0x001903A8 0x70 sceDbcInitSocket  # MAIN unaligned; libdbc: by its own message 'sceDbcInitSocket: rpc error' (RPC 0x80001315) -- round 12a
+0x00190418 0x70 sceDbcResetSocket  # MAIN unaligned; libdbc: by its own message 'sceDbcResetSocket: rpc error' (RPC 0x80001316) -- round 12a
+0x00190488 0x70 sceDbcGetDeviceStatus  # MAIN unaligned; libdbc: by its own message 'sceDbcGetDeviceStatus: rpc error' (RPC 0x80001317; 0x1904F8, RPC 0x8000131D, prints the same message and keeps its placeholder) -- round 12a
 0x001904F8 0x88 func_001904F8  # MAIN unaligned
-0x00190580 0x148 func_00190580  # MAIN
-0x001906C8 0x12C func_001906C8  # MAIN unaligned
-0x001907F8 0x15C func_001907F8  # MAIN unaligned
-0x00190958 0x158 func_00190958  # MAIN unaligned
-0x00190AB0 0xEC func_00190AB0  # MAIN
+0x00190580 0x148 sceDbcSRData  # MAIN; libdbc: by its own message 'sceDbcSRData: rpc error' -- round 12a
+0x001906C8 0x12C sceDbcSendData  # MAIN unaligned; libdbc: by its own message 'sceDbcSendData: rpc error' -- round 12a
+0x001907F8 0x15C sceDbcSendData2  # MAIN unaligned; libdbc: by its own messages 'libdbc: SendData2 data length too long', 'sceDbcSendData2: rpc error' -- round 12a
+0x00190958 0x158 sceDbcSendData3  # MAIN unaligned; libdbc: by its own messages 'libdbc: SendData3 data length too long', 'dbcman : SendData3 BUSY' -- round 12a
+0x00190AB0 0xEC sceDbcReceiveData  # MAIN; libdbc: by its own message 'sceDbcReceiveData: rpc error' (RPC 0x8000131A) -- round 12a
 0x00190BA0 0x28 func_00190BA0  # MAIN
 0x00190BC8 0x70 WaitDma  # MAIN unaligned; s1:exact
 0x00190C38 0x84 WatchDma  # MAIN unaligned; s1:exact
