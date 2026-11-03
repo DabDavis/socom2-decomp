@@ -289,18 +289,79 @@ bool basic_filebuf<charT, traits>::unshift()
     return true;
 }
 
+/* a fixed-width encoding: n bytes in, one character out (put back again when peeking) */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::int_type
 basic_filebuf<charT, traits>::read2(int n, bool peek)
 {
-    return traits::eof();
+    char extern_buf[12];
+    char_type intern_buf;
+    const char *extern_end;
+    char_type *intern_end;
+    if ((unsigned int)n > sizeof(extern_buf))
+        return traits::eof();
+    for (int i = 0; i < n; ++i) {
+        int c = getc(file_);
+        if (c == EOF)
+            return traits::eof();
+        extern_buf[i] = (char)c;
+    }
+    switch (a_codecvt_->in(state_, extern_buf, extern_buf + n, extern_end,
+                           &intern_buf, &intern_buf + 1, intern_end)) {
+    case codecvt_base::error:
+    case codecvt_base::partial:
+        return traits::eof();
+    case codecvt_base::noconv:
+        intern_buf = *(char_type *)extern_buf;
+        break;
+    case codecvt_base::ok:
+        break;
+    }
+    if (peek) {
+        while (n > 0)
+            if (ungetc(extern_buf[--n], file_) == EOF)
+                return traits::eof();
+    }
+    return traits::to_int_type(intern_buf);
 }
 
+/* a variable-width encoding: bytes in one at a time until a character comes out */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::int_type
 basic_filebuf<charT, traits>::read3(bool peek)
 {
-    return traits::eof();
+    char extern_buf[12];
+    const char *extern_end;
+    char_type intern_buf;
+    char_type *intern_end = &intern_buf;
+    size_t i = 0;
+    size_t offset = 0;
+    while (intern_end < &intern_buf + 1) {
+        if (i == sizeof(extern_buf))
+            return traits::eof();
+        int c = getc(file_);
+        if (c == EOF)
+            return traits::eof();
+        extern_buf[i++] = (char)c;
+        switch (a_codecvt_->in(state_, extern_buf + offset, extern_buf + i, extern_end,
+                               &intern_buf, &intern_buf + 1, intern_end)) {
+        case codecvt_base::error:
+            return traits::eof();
+        case codecvt_base::ok:
+        case codecvt_base::partial:
+            offset = (size_t)(extern_end - extern_buf);
+            break;
+        case codecvt_base::noconv:
+            intern_buf = *(char_type *)extern_buf;
+            intern_end = &intern_buf + 1;
+            break;
+        }
+    }
+    if (peek)
+        while (i != 0)
+            if (ungetc(extern_buf[--i], file_) == EOF)
+                return traits::eof();
+    return traits::to_int_type(intern_buf);
 }
 
 template <class charT, class traits>
