@@ -1095,6 +1095,12 @@ public:
     /* the anim set's speeds set, the prone and ladder ones from their anims' scaled times (SOCOM 1's;
      * OVL2 0x58BCB0, seal_cfg.cpp) */
     void SetMaxMotion();
+    /* a new anim set bound: a carried body let go, the blends cleared, the set swapped in (the old one
+     * kept), the speeds and the weapon reset and the type's blend pushed in the state (SOCOM 1's took the
+     * set alone; OVL2 0x58C350, seal_cfg.cpp) */
+    void BindAnimSet(class AnimSet *set, AnimType type, SEAL_STATE state, bool force);
+    /* the carried body let go of (SOCOM 1's; OVL2 0x579220, seal_body.cpp) */
+    void DetachBody();
     /* the animation set's limits on the sideways and forward motion (seal_cfg.cpp) */
     void GetMaxXMotion(float &a, float &b);
     void GetMaxZMotion(float &a, float &b);
@@ -1376,7 +1382,8 @@ public:
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
     unsigned char _438[0x528 - 0x438];
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
-    unsigned char _52c[0x534 - 0x52c];
+    class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
+    unsigned char _530[0x534 - 0x530];
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
     unsigned char _536[0x58c - 0x536];
     /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its

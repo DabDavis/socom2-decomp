@@ -416,11 +416,9 @@ extern "C" bool func_005804E0(CZSealBody *seal)
 }
 
 extern "C" {
-/* two more anim types read as variables (OVL1 data, -1 in the image) and what the carried body is
- * told first (OVL2 0x579220, not written yet) */
+/* two more anim types read as variables (OVL1 data, -1 in the image) */
 extern short data_003DEE08;
 extern short data_003DEE48;
-void func_00579220(CZSealBody *seal);
 }
 
 /* the body carried let go, when the SEAL is in state 9 or one of two carry anims: its blends popped
@@ -439,7 +437,7 @@ void CZSealBody::DropBody()
                 type = (AnimType)data_003DEED8;
             else
                 type = (AnimType)data_003DEED0;
-            func_00579220(c);
+            c->DetachBody();
             c->ClearStack(1, true);
             CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(c, type, 8, 0, 0);
 

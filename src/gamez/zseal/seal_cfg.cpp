@@ -324,6 +324,51 @@ void func_005E0450(AnimSet *set);
 CZSIScriptCommon *func_005E3D90(AnimSet *set, AnimType type);
 }
 
+extern "C" {
+/* (seal_body.cpp's: a blend pushed for an anim type in a state, OVL2 0x588BC0; and the body's top
+ * blend, 0x555170 -- RTStack<CZBodyAnimBlend>::Top's OVL2 copy) */
+void *func_00588BC0(CZSealBody *seal, AnimType type, int state, int flag, int kind);
+void *func_00555170(void *v);
+}
+
+/* a new anim set bound, unless none or the bound one without the force flag: a carried body let go
+ * (both bodies cleared to their base in the carry states 10 and 9), the blend overlay and the stack
+ * cleared, the set swapped in with the old one kept, the weapon id zeroed and the speeds set, the
+ * type's blend pushed in the state at full weight and the parts saved (OVL2 0x58C350: SOCOM 1's
+ * BindAnimSet(AnimSet *), the order of the carry tests and the calls the same) */
+void CZSealBody::BindAnimSet(AnimSet *set, AnimType type, SEAL_STATE state, bool force)
+{
+    if (!set)
+        return;
+    if (set == m_animset && !force)
+        return;
+    if (m_carry) {
+        if (m_root->m_parent) {
+            if (m_state == 10) {
+                m_carry->ClearToBase(false);
+                ClearToBase(false);
+            }
+            DetachBody();
+        } else {
+            if (m_state == 9) {
+                m_carry->ClearToBase(false);
+                ClearToBase(false);
+            }
+            m_carry->DetachBody();
+        }
+    }
+    ClearBlendOverlay();
+    ClearStack(0, true);
+    m_default_animset = m_animset;
+    m_animset = set;
+    m_weapon_id = 0;
+    SetMaxMotion();
+    func_00588BC0(this, type, state, 0, 0);
+    ((CZBodyAnimBlend *)func_00555170(&m_blends))->SetRepresentativeWt(1.0f);
+    m_desiredState = state;
+    SaveParts();
+}
+
 /* a script's factor at 0x1C, read by value (SetMaxMotion loads it ahead of the scale's call) */
 static inline float Factor(CZSIScriptCommon *a)
 {

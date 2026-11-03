@@ -10403,7 +10403,7 @@
 0x00578D20 0x264 func_00578D20  # OVL2
 0x00578F90 0x27C StabBuddy__10CZSealBodyFP10CZSealBody  # OVL2; s1:calls (ExecuteAction_KnifeAttack calls it where SOCOM 1's does)
 0x00579210 0x8 func_00579210  # OVL2
-0x00579220 0x2AC func_00579220  # OVL2
+0x00579220 0x2AC DetachBody__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's DetachBody__10CZSealBodyFv, after StabBuddy and the 8-byte RestoreCameraPosition in both builds; BindAnimSet calls it on the SEAL and on the carried body where SOCOM 1's BindAnimSet calls DetachBody, as DropBody does)
 0x005794D0 0x244 func_005794D0  # OVL2
 0x00579720 0x30C func_00579720  # OVL2
 0x00579A30 0x370 func_00579A30  # OVL2
@@ -10544,7 +10544,7 @@
 0x0058BDF0 0x4C0 func_0058BDF0  # OVL2
 0x0058C2B0 0x38 func_0058C2B0  # OVL2
 0x0058C2F0 0x60 func_0058C2F0  # OVL2
-0x0058C350 0x14C func_0058C350  # OVL2
+0x0058C350 0x14C BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb  # OVL2; s1:order by hand (the SEAL lane, round 17: SOCOM 1's BindAnimSet__10CZSealBodyFP7AnimSet, after RefPoint in both builds -- SOCOM II adds the type, the state and a force flag: the carry tests, the two ClearToBase calls and DetachBody in SOCOM 1's order, then ClearBlendOverlay, ClearStack and the set swapped in)
 0x0058C4A0 0x10 func_0058C4A0  # OVL2
 0x0058C4B0 0x11C func_0058C4B0  # OVL2
 0x0058C5D0 0x28 func_0058C5D0  # OVL2
