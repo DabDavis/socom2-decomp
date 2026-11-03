@@ -998,6 +998,36 @@ int func_00616C98(void)
     return DME_OK;
 }
 
+extern int func_00633108(char *szIp);
+extern int data_0067B7B0;
+extern int data_0067C5B4;
+extern unsigned int data_00686A4C;
+extern int strncmp(const char *a, const char *b, unsigned int n);
+
+/* (0x616DA0) this client's own address told to the server, by the peer layer */
+int func_00616DA0(int nValue)
+{
+    char szIp[16];
+    unsigned char abIp[4];
+    int nMsg;
+    int result;
+
+    if (data_006511D4 == 0) {
+        result = func_00616C98();
+        if (result != 0)
+            return result;
+    }
+    result = NetMapMsgClientError(func_00633108(szIp), 24);
+    if (result != 0)
+        return result;
+    data_0067C5B4 = nValue;
+    nMsg = data_0067B7B0;
+    if (strncmp(szIp, "0.0.0.0", 16) == 0)
+        return 35;
+    func_006148E0(abIp, szIp);
+    return func_00615558(0, abIp, 0, data_00686A4C, 4, &nMsg);
+}
+
 int NetFreeAllObjects(void)
 {
     int i;
@@ -1069,6 +1099,36 @@ int func_00616F80(int *pMode, int nMode)
 
 extern unsigned short data_0067A6E0;    /* the port */
 
+extern void (*data_00651198)(int *pInfo);
+extern int data_0065119C;
+
+/* a world's connection lost (0x617560): the host told, as func_0061D530 tells it.
+ * OPEN (9 words, the right size), func_0061D530's diagnosis: the target loads pWorld, its field and the
+ * host's data word ahead of all five report stores (8, 0, 4, 16, 12); none of the 120 orders does
+ * (tools/ccperm.py, nearest 7). */
+void func_00617560(unsigned short nConnection)
+{
+    int info[5];
+    DmeWorld *pWorld = 0;
+    unsigned int nWorld = RtMsgToDmeConnectionIndex(nConnection);
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(nWorld, &pWorld) != 0)
+        return;
+    if (pWorld == 0)
+        return;
+    if (data_00651198 != 0) {
+        memset(info, 0, sizeof(info));
+        info[2] = 1;
+        info[0] = nWorld;
+        info[1] = pWorld->field_438;
+        info[4] = data_0065119C;
+        info[3] = 0;
+        data_00651198(info);
+    }
+}
+
 /* OPEN (7 words): the scheduler interleaves the port load with the zeroing stores differently
  * (the target loads it right after the store at 8); m2c's store order kept -- nine stores are past
  * tools/ccperm.py's reach. */
@@ -1093,6 +1153,56 @@ int func_00617610(int *pParams)
         pParams[0] = 1;
     return result;
 }
+typedef struct DmeConnectKind {
+    int nType;                          /* 1, 3 and 4 client-server, 2 peer to peer */
+} DmeConnectKind;
+
+typedef struct DmeConnectParams {
+    int nVersion;                       /* 0x00: 1 */
+    int field_04;
+    DmeConnectKind kind;                /* 0x08 */
+} DmeConnectParams;
+
+typedef struct DmeConnectStatus {
+    int field_00;
+    int nResult;                        /* 0x04: 3 while connecting */
+} DmeConnectStatus;
+
+extern int func_0061D3C8(void);
+extern int func_00617788(DmeConnectParams *pParams, DmeConnectKind *pKind, DmeConnectStatus *pStatus);
+extern int func_00617CD8(DmeConnectParams *pParams, DmeConnectKind *pKind, DmeConnectStatus *pStatus);
+
+/* SOCOM 1's NetConnect grown (0x617690): the worlds' links checked, then the connection by its kind */
+int func_00617690(DmeConnectParams *pParams, DmeConnectStatus *pStatus)
+{
+    DmeConnectKind *pKind;
+    int result;
+
+    if (pStatus == 0)
+        return DME_ERR_ARGUMENT;
+    pStatus->nResult = 3;
+    pStatus->field_00 = 1;
+    result = func_0061D3C8();
+    if (result != DME_OK)
+        return result;
+    if (pParams == 0) {
+        pStatus->nResult = DME_ERR_ARGUMENT;
+        return DME_ERR_ARGUMENT;
+    }
+    if (pParams->nVersion != 1) {
+        pStatus->nResult = 38;
+        return 38;
+    }
+    pKind = &pParams->kind;
+    if (pKind->nType == 1 || pKind->nType == 3 || pKind->nType == 4)
+        pStatus->nResult = func_00617788(pParams, pKind, pStatus);
+    else if (pKind->nType == 2)
+        pStatus->nResult = func_00617CD8(pParams, pKind, pStatus);
+    else
+        pStatus->nResult = DME_ERR_ARGUMENT;
+    return pStatus->nResult;
+}
+
 
 int func_00618158(int *pParams)
 {
