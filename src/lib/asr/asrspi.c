@@ -38,7 +38,9 @@ typedef struct USWCB {                  /* asrspi_UswStartRecording's callbacks 
 typedef struct ASRSPI {
     int magic;                          /* +0: ASRSPI_MAGIC */
     CASR *casr;                         /* +4 */
-    int pad8[3];
+    int *ctxdata;                       /* +8: the active context's data */
+    void *ctx;                          /* +12: the active context (casrImportContext) */
+    void *data;                         /* +16: the active language (casrImportData) */
     int user;                           /* +20: the host's data, passed to its callbacks */
     int pad24;
     int utt_accepted;                   /* +28: the training's events (ASRSPICBTRAIN) */
@@ -56,7 +58,12 @@ typedef struct ASRSPI {
     USWTRAINED trained_cb;              /* +104 */
     unsigned short gain;                /* +108 */
     int aborting;                       /* +112 */
-    char pad116[92];
+    int pad116;
+    int open_mode;                      /* +120 */
+    struct {                            /* +124: the active context's accessors */
+        int *data;
+        void *fn[20];                   /* FillContextV2VirtualTable */
+    } ctxv2;
     void *heap;                         /* +208 */
     CRITSEC *cs;                        /* +212 */
 } ASRSPI;                               /* 0xD8 */
@@ -81,6 +88,34 @@ extern int casrSetParam(CASR *c, int id, int value);
 extern int casrStartUserWordTraining(CASR *c, void **rec, void **rec_info);
 extern void heap_Free(void *heap, void *p);
 extern void *memset(void *p, int c, unsigned int n);
+extern void *heap_Calloc(void *heap, int count, int size);
+extern void *casrOpen(void *heap, const void *callbacks, ASRSPI *e);
+extern int casrClose(CASR *c);
+extern int casrCloseData(void *data);
+extern void *casrImportData(void *heap, int *data);
+extern int casrActivateData(CASR *c, void *data);
+extern int casrActivateContext(CASR *c, void *ctx, int a2);
+extern void FillContextV2VirtualTable(void **vt);
+
+typedef struct SAFEH {                  /* a safe handle, passed by value */
+    int id;
+    int check;
+} SAFEH;
+
+typedef struct RSRC {                   /* the resources InitRsrcFunction hands out */
+    int f0;
+    void *heap;                         /* +4 */
+} RSRC;
+
+extern int InitRsrcFunction(SAFEH h, RSRC **rsrc);
+
+int ASRSPICBTS(int event, CASRCB *cb);
+int ASRSPICBSTARTDET(int event, CASRCB *cb);
+int ASRSPICBRESULT(int event, CASRCB *cb);
+int ASRSPICBTRAIN(int event, CASRCB *cb);
+int ASRSPICBABNORM(int event, CASRCB *cb);
+int ASRSPICBAGC(int event, CASRCB *cb);
+int ASRSPICBASKCURRENTGAIN(int event, CASRCB *cb);
 
 static const long UswVersionCode = 0x16000001;
 static const long g_ApiVersion = 0;
@@ -129,6 +164,13 @@ static __inline__ int StateError2(ASRSPI *e, int s1, int s2)
 static __inline__ int StateError3(ASRSPI *e, int s1, int s2, int s3)
 {
     if (e->state != s1 && e->state != s2 && e->state != s3)
+        return g_StateError[e->state];
+    return 0;
+}
+
+static __inline__ int StateError4(ASRSPI *e, int s1, int s2, int s3, int s4)
+{
+    if (e->state != s1 && e->state != s2 && e->state != s3 && e->state != s4)
         return g_StateError[e->state];
     return 0;
 }
@@ -225,6 +267,12 @@ int ASRSPICBTRAIN(int event, CASRCB *cb)
     }
     return err;
 }
+
+/* the callbacks casrOpen registers for every engine */
+static int (*const g_APIRecogCallBacks[8])(int event, CASRCB *cb) = {
+    ASRSPICBTS, ASRSPICBSTARTDET, ASRSPICBRESULT, 0,
+    ASRSPICBTRAIN, ASRSPICBABNORM, ASRSPICBAGC, ASRSPICBASKCURRENTGAIN,
+};
 
 int asrspi_UswStartRecording(ASRSPI *e, int mode, USWCB *cb, int user, int setparams)
 {
@@ -399,6 +447,172 @@ int asrspi_UswGetNbrRecsNeeded(ASRSPI *e, int *n)
         err = ConvErr(e, casrGetLastError(e->casr));
     ENGINE_LEAVE(e);
     return err;
+}
+
+int asrspi_OpenEngine(SAFEH rsrc, int mode, ASRSPI **out)
+{
+    RSRC *r;
+    ASRSPI *e;
+    CASR *c;
+    int err;
+
+    if (out == 0)
+        return ASRSPI_E_NULLPTR;
+    err = InitRsrcFunction(rsrc, &r);
+    if (err < 0)
+        return err;
+    e = heap_Calloc(r->heap, 1, sizeof(ASRSPI));
+    if (e == 0)
+        return 0x8004002F;
+    memset(e, 0, sizeof(ASRSPI));
+    e->heap = r->heap;
+    if (mode != 0 && mode != 2 && mode != 4) {
+        heap_Free(e->heap, e);
+        return 0x80040004;
+    }
+    c = casrOpen(r->heap, g_APIRecogCallBacks, e);
+    if (c == 0) {
+        heap_Free(e->heap, e);
+        return 0x80040086;
+    }
+    e->casr = c;
+    e->magic = ASRSPI_MAGIC;
+    e->open_mode = mode;
+    e->state = 0;
+    e->verdict = 0;
+    FillContextV2VirtualTable((void **)&e->ctxv2);
+    e->gain = 0xBFFF;
+    *out = e;
+    return 0;
+}
+
+int asrspi_CloseEngine(ASRSPI *e)
+{
+    int err;
+
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError4(e, 0, 1, 6, 2);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    if (e->state == 6 && e->rec)
+        heap_Free(e->heap, e->rec);
+    e->rec = 0;
+    e->rec_info = 0;
+    if (casrClose(e->casr) != 0) {
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    if ((e->ctx && casrCloseContext(e->ctx)) || (e->data && casrCloseData(e->data))) {
+        ENGINE_LEAVE(e);
+        return 0x80040086;
+    }
+    e->magic = 0;
+    heap_Free(e->heap, e);
+    return 0;
+}
+
+int asrspi_ActivateLng(ASRSPI *e, int *lng)
+{
+    int err;
+    void *data;
+
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError4(e, 0, 1, 6, 2);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    if (e->state == 6 && e->rec)
+        heap_Free(e->heap, e->rec);
+    e->rec = 0;
+    data = 0;
+    e->rec_info = 0;
+    if (lng) {
+        if (*lng != 0x1003 && *lng != 0x1004) {
+            ENGINE_LEAVE(e);
+            return 0x80040008;
+        }
+        data = casrImportData(e->heap, lng);
+        if (data == 0) {
+            ENGINE_LEAVE(e);
+            return 0x80040086;
+        }
+    }
+    if (casrActivateData(e->casr, data) != 0) {
+        err = ConvErr(e, casrGetLastError(e->casr));
+        if (err == 0x8004000A)
+            err = 0x80040008;
+        casrCloseData(data);
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    if (e->ctx && casrCloseContext(e->ctx)) {
+        ENGINE_LEAVE(e);
+        return 0x80040086;
+    }
+    e->ctx = 0;
+    if (e->data && casrCloseData(e->data)) {
+        ENGINE_LEAVE(e);
+        return 0x80040086;
+    }
+    e->data = data;
+    if (lng)
+        e->state = 1;
+    else
+        e->state = 0;
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+int asrspi_ActivateCtx(ASRSPI *e, int *ctxdata, int a2)
+{
+    int state_err, err;
+    void *c;
+
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    state_err = StateError3(e, 1, 6, 2);
+    if (state_err) {
+        ENGINE_LEAVE(e);
+        return state_err;
+    }
+    if (e->state == 6 && e->rec)
+        heap_Free(e->heap, e->rec);
+    e->rec = 0;
+    e->rec_info = 0;
+    if (ctxdata) {
+        if (ctxdata[1] == 24 && ctxdata[0] != 2) {
+            ENGINE_LEAVE(e);
+            return 0x80040026;
+        }
+        c = casrImportContext(e->heap, ctxdata);
+        if (c == 0) {
+            ENGINE_LEAVE(e);
+            return 0x80040009;
+        }
+    } else
+        c = 0;
+    if (casrActivateContext(e->casr, c, a2) != 0) {
+        err = ConvErr(e, casrGetLastError(e->casr));
+        casrCloseContext(c);
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    if (e->ctx)
+        casrCloseContext(e->ctx);
+    e->ctx = c;
+    e->ctxdata = ctxdata;
+    e->ctxv2.data = ctxdata;
+    if (ctxdata)
+        e->state = 2;
+    else
+        e->state = 1;
+    ENGINE_LEAVE(e);
+    return 0;
 }
 
 int asrspi_GetState(ASRSPI *e, int *state)
