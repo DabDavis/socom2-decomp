@@ -3863,6 +3863,49 @@ What they showed:
 - **Open, diagnosed in place**: sceMcWrite (the head split's `buff - 16` is reassociated here, kept in
   the target), sceGsResetGraph (4 words, a v0/v1 swap).
 
+**Round 10a** (2026-11-03, by hand, MAIN's densest library first): Sony's libmpeg, five of the
+demo's six objects -- 46 rows newly byte-exact (7,072 bytes), 31 matched drafts superseded, 77
+functions byte-exact of 82 written, 17 rows named. `sdk/libmpeg.h` (the public sceMpeg and its
+callback data as Sony's libmpeg.h declares them; the decoder's private state, sceMpeg.sys, 0x10C0
+bytes, its offsets checked by `MPEG_AT` typedefs), `sdk/mpeg_api.c` (the demo's object 0x1593B8:
+sceMpegInit ... _sceMpegFlush, the allocator, the picture loop; 35 of 36), `sdk/mpeg_sysbit.c`
+(7 of 7, the system-stream bit reader), `sdk/mpeg_seq.c` (0x159F10: the resets, the error path,
+_sendDataToIPU's DMA chain, the sequence header and extensions; 17 of 19), `sdk/mpeg_defcb.c`
+(2 of 2) and `sdk/mpeg_dec.c` (the decoder object's bitstream layer and header parsers, 16 of 18;
+its motion compensation and picture output are not written). Named `s1:order`, each body checked
+against the demo's: sceMpegAddBs, sceMpegSetDefaultPtsGap, sceMpegResetDefaultPtsGap,
+sceMpegSetImageBuff, sceMpegDispWidth/Height, sceMpegDispCenterOffX/Y, sceSetPtm,
+_alalcSetDynamic, _initSeqAgain, the four extension stubs (by their own messages too),
+_defStopDMA, _defRestartDMA. What they showed:
+
+- **libmpeg is 991111's**: sibling calls in void context only (`_sysbitInit`'s `j _sysbitFlush`,
+  `_pictureHeader`'s `j _updateTempTackData`), loops aligned to 8 (the padding nop at a loop's
+  head), every function byte-exact under the dtls13010 build as written.
+- **The IPU's idle wait and command write are macros**, expanded in the bit readers as well as
+  standing as functions (`_waitIpuIdle`, `_sendIpuCommand`): the expansions keep no constant in a
+  saved register where the functions do. The command's `>> 28` index into `_isDirty` is `srl` or
+  `sra` by the command expression's own type at each site.
+- **A value fold would distribute is its own statement**: `(size ? 3 : 0) << 28` folds into a
+  ternary of shifted constants and a branch, `ps != (c ? 2 : 1)` into two compares -- the target's
+  movn means the value was computed first (`_sendDataToIPU`'s tag id). And `ret = ret &&
+  _decPicture(d)` after `ret = _updateRefImage(d, 0)` routes the result through a temporary (the
+  target's `move s2,v1` at the join): `ret` in its own expression is not a safe target.
+- **Field extraction order shows in the registers**: `_sequenceExtension` takes the extension's
+  fields from the low bits up (bit_rate, vertical, horizontal, chroma) before its first check.
+- **Stores, measured** (`tools/ccperm.py`, 14 functions): with independent stores at a function's
+  end the last source store is often scheduled first and the delay slot takes the next-to-last --
+  but not always; measuring was quicker than predicting every time.
+- **Open, diagnosed in place**: _decodeOrSkipField (the constant 1 lives in s1 across the calls and
+  feeds three movn's), _initSeq (right size, the reallocation block's schedule), _initRefImages
+  (the target multiplies by 384 once per picture, GCC CSEs every spelling), _ipuVdec (IPU_TOP read
+  as `lui; ld 0x2030(reg)`), _extensionAndUserData (both start codes hoisted into saved registers).
+
+**The tools, round 10a**: `tools/ccperm.py` keeps the probe's own directory on the include path
+(its variants are compiled under build/ccsweep, so a probe's `#include` of a header beside it was
+lost and every order failed to build). No tool that scores changed: scdiff.py, sccheck.py,
+scdecomp.py and `include/` are byte-identical to master's (3daf64e5), so no unit can score
+differently. automatch was not run this round.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
