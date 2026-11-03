@@ -215,7 +215,9 @@ void func_0036A210(float t);
 /* the keyboard shown with a text, unless one is showing: its cursor at its start position, its
  * node lists laid out, its text, captions and caps made, its node on, the active one, its first
  * element set shown, the menu faded to half, its IgnoreUnchangedString taken (SOCOM 1's ShowSkb,
- * SOCOM II's with the text; 0x38B440, the first caller of the CIntPair copies before it) */
+ * SOCOM II's with the text; 0x38B440, the first caller of the CIntPair copies before it; SkbOpen
+ * calls it out of line: pinned) */
+#pragma auto_inline off
 void CSoftKeyboard::ShowSkb(const char *text)
 {
     if (!g_pActiveSkb) {
@@ -234,6 +236,7 @@ void CSoftKeyboard::ShowSkb(const char *text)
         g_bIgnoreUnchanged = m_ignoreUnchangedString;
     }
 }
+#pragma auto_inline reset
 
 /* a keyboard by its name, or none (ours) */
 static inline CSoftKeyboard *FindSkb(const char *name)
@@ -265,6 +268,77 @@ void CSoftKeyboard::SwitchToNamed(int i)
         int x = func_0038B540(&pos) - 1;
         func_0038B8A0(to, x, func_0038B530(&pos) - 1);
     }
+}
+
+/* a valve (zanim.h's CValve; the stand-in util_memcard.cpp and util_loc.cpp carry: the unit
+ * reaches only its value and callbacks) */
+enum VALVE_TYPE {};
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+};
+
+/* CValve::SetValue, inlined (util_memcard.cpp's SetValveValue, taking a bool here: the target
+ * re-extends the value at each use) */
+static inline void SetValveValue(CValve *valve, bool value)
+{
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != value)
+        state = value == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = value;
+    if (state != VALVE_SAME)
+        valve->MakeCallbacks(state);
+}
+
+/* the display unit's: the name of the keyboard to open (0x397640) and its root node */
+extern "C" const char *func_00397640();
+extern zdb::CNode *g_skbDisplayNode;
+
+namespace {
+
+/* the text the keyboard opens with (0x49EC70, the unit's first static: only SkbOpen reads it, an
+ * empty string; the name ours) */
+char s_openText[0x40];
+
+}
+
+/* the UI command opening the keyboard the display unit names (KEYBOARD's when it names none) with
+ * the empty text, the display's root on, skb_done set to whether none was found, the sound played
+ * (0x38D770; the name ours: the command table's handler 0x2808D0 jumps here). The valve's value
+ * a ternary: the target computes it at each of the setter's uses, after the value's load (`!skb`
+ * is computed once, ahead of it) */
+bool SkbOpen()
+{
+    const char *p = func_00397640();
+    const char *name;
+
+    if (*p)
+        name = p;
+    else
+        name = "KEYBOARD";
+    CSoftKeyboard *skb;
+
+    if (!name)
+        skb = 0;
+    else
+        skb = FindSkb(name);
+    if (skb) {
+        skb->ShowSkb(s_openText);
+        g_skbDisplayNode->SetActive(true);
+    }
+    SetValveValue(CValve::Create("skb_done", (VALVE_TYPE)1), skb ? false : true);
+    func_00395DE0(0);
+    return true;
 }
 
 /* the cursor's axis (ours: a byte enum, passed as `li 1; movz`) */
