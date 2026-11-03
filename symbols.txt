@@ -4956,8 +4956,8 @@
 0x002F5700 0x238 func_002F5700  # OVL1
 0x002F5940 0xE4 func_002F5940  # OVL1
 0x002F5A30 0xD8 clear__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 11 (the chat deque's clear: its pop_front 0x2F51E0 calls it when one line is left, as the lobby queue's pop_front 0x2E1560 calls its clear 0x2E1B20; it leaves start_ at 4, half of the 8-line block)
-0x002F5B10 0x1F8 func_002F5B10  # OVL1
-0x002F5D10 0x13C func_002F5D10  # OVL1
+0x002F5B10 0x1F8 destroy__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iteratorQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iterator  # OVL1; the MSL headers round 13: the chat deque's range destroy, block by block (clear 0x2F5A30 and the teardown 0x2F62B0 call it with begin and end); include/deque's destroy, open (0x20C against 0x1F8: the block iterators' difference called out of line, the by-value iterators copied in)
+0x002F5D10 0x13C make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, non-const (clear 0x2F5A30 and the teardown 0x2F62B0 call it twice each with (result, this, n)); include/deque's make_iterator, open as every instance's (the block iterator built in memory)
 0x002F5E50 0x70 __dt__10CChatQueueFv  # OVL1; ours, the online lane round 10 (the chat queues' destructor: __sinit_zNetMediusChat.cpp registers it for both)
 0x002F5EC0 0x10 empty__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>CFv  # OVL1; ours, the online lane round 10 (the chat queue's empty(), out of line from the initialiser; byte-exact)
 0x002F5ED0 0x8 pop__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>Fv  # OVL1; ours, the online lane round 10 (the chat queue's pop(), `j pop_front`, out of line from the initialiser; byte-exact)
@@ -4976,7 +4976,7 @@
 0x002F6600 0x444 func_002F6600  # OVL1
 0x002F6A50 0x8 func_002F6A50  # OVL1
 0x002F6A60 0x8 func_002F6A60  # OVL1
-0x002F6A70 0x144 func_002F6A70  # OVL1
+0x002F6A70 0x144 make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>CFUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, const (the copy constructor 0x2F5F80 calls it for x's end and begin); include/deque's make_iterator, open as every instance's
 0x002F6BC0 0x138 func_002F6BC0  # OVL1
 0x002F6D00 0x6C func_002F6D00  # OVL1
 0x002F6D70 0xBC CountGamePlayers__Fv  # OVL1; ours (a lobby state handler 0x2EF3C0 calls it: with 'late_joiner' on and the net game in progress, MediusGetGamePlayers asked once at a time, 0x44FA88 the flag)
@@ -5862,15 +5862,15 @@
 0x00331B20 0x1FC ReadToken__8CRdrFileFP6CRdrIOPP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's ReadToken: ';' comments skipped to the line's end, a token ended by '(' ')' or white space and made a value by MakeUnion (0x331D20), a quoted string read whole, the 800-byte limit; SOCOM II reads through the CRdrIO passed in (fread, slot 0x24) where SOCOM 1 read its file stack's top) -- the rdr lane
 0x00331D20 0x100 MakeUnion__8CRdrFileFPCcb  # OVL1; s1:order by hand (SOCOM 1's MakeUnion, the same 0x100: a token made an integer (strtol over all of it), else a real (strtod), else a string through the file's CSTable::CreateString at this+8; the value from the allocator 0x335BC0 where SOCOM 1's called _calloc) -- the rdr lane
 0x00331E20 0xC func_00331E20  # OVL1
-0x00331E30 0x94 func_00331E30  # OVL1
-0x00331ED0 0x54 func_00331ED0  # OVL1
-0x00331F30 0x54 func_00331F30  # OVL1
-0x00331F90 0x54 func_00331F90  # OVL1
-0x00331FF0 0x54 func_00331FF0  # OVL1
-0x00332050 0x8C func_00332050  # OVL1
+0x00331E30 0x94 at__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00331ED0 0x54 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00331F30 0x54 find_last_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00331F90 0x54 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00331FF0 0x54 find_last_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00332050 0x8C __eq<c,Q23std14char_traits<c>,Q23std12allocator<c>>__3stdFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>RCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_b  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x003320E0 0xE4 func_003320E0  # OVL1
-0x003321D0 0x38 func_003321D0  # OVL1
-0x00332210 0x38 func_00332210  # OVL1
+0x003321D0 0x38 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Ui  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00332210 0x38 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Ui  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00332250 0xD0 func_00332250  # OVL1
 0x00332320 0xD0 func_00332320  # OVL1
 0x003323F0 0x168 func_003323F0  # OVL1
@@ -5880,10 +5880,10 @@
 0x00332AD0 0x7C func_00332AD0  # OVL1
 0x00332B50 0x1A0 func_00332B50  # OVL1
 0x00332CF0 0xFC func_00332CF0  # OVL1
-0x00332DF0 0xB8 func_00332DF0  # OVL1
-0x00332EB0 0xD0 func_00332EB0  # OVL1
-0x00332F80 0xC8 func_00332F80  # OVL1
-0x00333050 0xC8 func_00333050  # OVL1
+0x00332DF0 0xB8 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00332EB0 0xD0 find_last_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00332F80 0xC8 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00333050 0xC8 find_last_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00333120 0xC4 func_00333120  # OVL1
 0x003331F0 0x68 func_003331F0  # OVL1
 0x00333260 0xC4 func_00333260  # OVL1
@@ -6057,7 +6057,7 @@
 0x0033E4D0 0x40 __ct__12CSaveManagerFP3CIO  # OVL1; s1:exact
 0x0033E510 0x178 func_0033E510  # OVL1
 0x0033E690 0xF4 func_0033E690  # OVL1
-0x0033E790 0x58 func_0033E790  # OVL1
+0x0033E790 0x58 splice__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>RQ23std42__list_deleter<PCv,Q23std14allocator<PCv>>  # OVL1; the MSL headers round 13: the pointer lists' splice(position, x), include/list's (SOCOM 1's 0x1DAF10 shape); vis_texfx.cpp's tail emits it byte-exact (its insert(position, n, x) calls it), 0x33E690 calls this copy
 0x0033E7F0 0x58 func_0033E7F0  # OVL1
 0x0033E850 0x1B4 func_0033E850  # OVL1
 0x0033EA10 0x154 func_0033EA10  # OVL1
@@ -11819,7 +11819,7 @@
 0x0060E930 0x6C remove_copy<Q33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iterator,Q33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iterator,P11CSealCtrlAi>__3stdFQ33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iteratorQ33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iteratorQ33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iteratorRCP11CSealCtrlAi_Q33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iterator  # OVL2; by hand (the kit lane, round 16): std::remove_copy over the group member vector (std::remove's tail in RemoveMember 0x60CE40) -- ai_group.cpp emits it byte-exact
 0x0060E9A0 0xE4 remove_if<Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>,PFP8CAiGroup_b>__3stdFQ33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>PFP8CAiGroup_b_Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 16): std::remove_if over the group list with TickGroup (0x60E410), TickAll's (0x60E590) -- ai_group.cpp emits it
 0x0060EA90 0xCC erase__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>FQ33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>Q33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 16): the group step list's range erase -- each step destroyed (~step with -1, 0x60DA50) before its node is freed, as include/list's erase does not yet; ~CAiGroup and Abort call it
-0x0060EB60 0x8C func_0060EB60  # OVL2
+0x0060EB60 0x8C erase__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>FQ33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>  # OVL2; the MSL headers round 13: the step list's erase(position), include/list's erase destroying the element (~step with -1) before freeing its node; byte-exact as a probe (build/p13/erase1.cpp), CAiGroup::Tick 0x60C3E0 calls it
 0x0060EBF0 0x128 insert__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>FQ33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>RCQ28CAiGroup4step  # OVL2; by hand (the kit lane, round 16): the group step list's insert (AddStep 0x60CDD0 pushes a step through it) -- ai_group.cpp emits it byte-exact but for its call to the pointer deleter's allocator constructor, whose OVL2 copy 0x5EF9B0 carries no ovl-copy note
 0x0060ED20 0x18 __ct__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>Fv  # OVL2; by hand (the kit lane, round 16): the group step list's deleter constructor (out of class, so CAiGroup's constructor calls it); ai_group.cpp emits it
 0x0060ED40 0xB8 remove_copy_if<Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>,Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>,PFP8CAiGroup_b>__3stdFQ33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>PFP8CAiGroup_b_Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 16): std::remove_copy_if over the group list with TickGroup, the group remove_if's (0x60E9A0) tail -- ai_group.cpp emits it byte-exact
