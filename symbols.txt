@@ -11376,7 +11376,7 @@
 0x005EA550 0x80 __ct__8CAiTimerFf  # OVL2; by hand (the kit lane, round 10): CAiTimer(float)'s out-of-line copy (aitimer.h's inline constructor: the range t - t, the countdown zeroed, the period drawn) -- CAiState::Create calls it for the breach, rush, stun-response and vehicle states' timers, IssueCommand for its static breach state; seal_aistate.cpp emits it
 0x005EA5D0 0x1AC __ct__8CAiStateF8AI_STATE  # OVL2; by hand (the kit lane, round 4): CAiState's constructor -- its table (0x669950) stored, the stack built (0x5F8520), Reset inlined with the kind in a1; Create calls it for the base of every state but the plain one (seal_unit.cpp's copy, after the CAiTimer constructor it also uses)
 0x005EA780 0x38 GetBreachState__FP11CSealCtrlAi  # OVL2; by hand: CSealCtrlAi::GetAiState (0x5F6010), returned when its kind (the byte at 0x30) is 17, the breach, else 0 -- after CAiState's constructor in seal_unit.cpp, whose breach code (SOCOM 1's AddBreachMember) works on CAiSBreach (the name ours)
-0x005EA7C0 0x14 func_005EA7C0  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding)
+0x005EA7C0 0x14 GetSealCtrlAi__10CZSealBodyFv  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding); by hand (the kit lane, round 19; the name ours): an inline's out-of-line copy, the controller's GetSealCtrlAi (slot 0x38) tail-called -- GetFollowMaster's fifth level calls it; seal_unit.cpp's copy (after its IssueCommand's other copies) is the one linked
 0x005EA7E0 0x88 __ct__9CAiMapLocFRC9CAiMapLoc  # OVL2; s1:exact
 0x005EA870 0x8 func_005EA870  # OVL2
 0x005EA880 0x34 IsAi__10CZSealBodyFv  # OVL2; by hand (the kit lane, round 14): the SEAL's controller tested and its IsAi (CSealCtrl slot 0x30) called, the shape of zseal.h's IsPlayer/IsRemote; an inline's copy among IssueCommand's (IssueCommand calls it on 0x5EEDB0's SEAL) -- the name ours
@@ -11552,9 +11552,9 @@
 0x005F8390 0xF4 Clear__13CAiStateStackFv  # OVL2; by hand: every state in the stack deleted through its virtual destructor (slot +0x4C of CAiState's table) and the nodes erased (the OVL2 pointer list's erase 0x50F990); SOCOM 1's CAiStateStack : list (DWARF, 0xC bytes, CSealCtrlAi::m_stateStack) -- the name ours; ~CSealCtrlAi and ~CAiStateStack call it
 0x005F8490 0x90 __dt__13CAiStateStackFv  # OVL2; by hand: CAiStateStack's destructor (Clear, then the pointer list's three this-tested levels and erase); the member at +8 of every CAiState (new in SOCOM II: sub-states) and CSealCtrlAi's m_stateStack -- every CAiS* destructor calls it with -1
 0x005F8520 0x38 __ct__13CAiStateStackFv  # OVL2; by hand (the kit lane, round 4): CAiStateStack's constructor -- the pointer list's deleter constructor (0x50FFA0) and the three words after it (-1, 0, 0); CAiState's constructor and Create's plain state call it out of line, as every unit calls the destructor (0x5F8490)
-0x005F8560 0xC func_005F8560  # OVL2
-0x005F8570 0x138 func_005F8570  # OVL2
-0x005F86B0 0x8 func_005F86B0  # OVL2
+0x005F8560 0xC reset__14CAiHidePlannerFR6CAiMapRC9CAiMapLocRC9CAiMapLoc  # OVL2; by hand (the kit lane, round 19): slot +0x8 of __vt__14CAiHidePlanner (0x6696B0) -- the search's start (a2) kept at +0x10, as the AI core's round 17 read CAiPlanner::reset's (map, start, goal)
+0x005F8570 0x138 is_goal__14CAiHidePlannerFR6CAiMapRC9CAiMapLocRC9CAiMapLoc  # OVL2; by hand (the kit lane, round 19): slot +0xC of __vt__14CAiHidePlanner -- a cell off the start, at least m_dist (+8) from it, from which ComputeLineVisibility to the other end (8.0 up at both) is at most the threshold (+0xC) with the flag (+4), at least without
+0x005F86B0 0x8 dist__14CAiHidePlannerFR6CAiMapRC9CAiMapLocRC9CAiMapLoc  # OVL2; by hand (the kit lane, round 19): slot +0x10 of __vt__14CAiHidePlanner -- 0 for every step
 0x005F86C0 0xA8 __dt__8CAiSPlanFv  # OVL2; by hand: CAiSPlan's vtable slot +0x4C (the destructor: stores CAiSPlan's table, then CAiState's, ~CAiStateStack(this + 8, -1))
 0x005F8770 0x78 __dt__13CAiSCQBAttackFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F87F0 0x8 CanAttack__13CAiSCQBAttackCFv  # OVL2; by hand: CAiSCQBAttack's vtable slot +0x24 (CanAttack, as SOCOM 1's)
@@ -11586,10 +11586,10 @@
 0x005FC7D0 0x140 func_005FC7D0  # OVL2
 0x005FC910 0x58 GetStanceFromState__10CZSealBodyF10SEAL_STATE11SEAL_STANCE  # OVL2; s1:calls by hand (the SEAL lane's lead, verified: SOCOM II's CSealCtrlAi::OnStateChange calls it twice where SOCOM 1's calls GetStanceFromState twice; a switch on the state byte (0, 1, 2), the given stance otherwise)
 0x005FC970 0x2C8 func_005FC970  # OVL2
-0x005FCC40 0xE8 func_005FCC40  # OVL2
-0x005FCD30 0x1CC func_005FCD30  # OVL2
-0x005FCF00 0x8 func_005FCF00  # OVL2
-0x005FCF10 0xFC func_005FCF10  # OVL2
+0x005FCC40 0xE8 InvalidateFollowParams__10CZSealBodyFv  # OVL2; s1:order by hand (the kit lane, round 19): SOCOM 1's InvalidateFollowParams (0x2E1BA0), after UpdateFollowParams in both builds -- the flags at 0x514/0x515 (SOCOM 1's 0x458/0x459) cleared, SetSnakePathUpdate(false, 50) unless a player (slot 0x2C) or a remote console running one (slot 0x34, GetRemoteControl, 0x5E6AA0); SOCOM II tests the follower count at 0x520
+0x005FCD30 0x1CC GetFollowMaster__11CSealCtrlAiFb  # OVL2; s1:order by hand (the kit lane, round 19): SOCOM 1's GetFollowMaster(int *) (0x2E1C20) by its body -- the master at +0x5D4, with the flag the head of the chain of masters (each master's AI, not this one, asked in turn); recursive, inlined into itself four times at level 5, the accessors' copies 0x5FCF00/0x5EA7C0 at the bottom
+0x005FCF00 0x8 GetControl__10CZSealBodyFv  # OVL2; by hand (the kit lane, round 19; the name ours): an inline accessor's out-of-line copy, the SEAL's controller (+0xC0) -- GetFollowMaster's fourth self-inlined level calls it, the copy following its caller
+0x005FCF10 0xFC SetFollowMaster__11CSealCtrlAiFP10CZSealBody  # OVL2; s1:order by hand (the kit lane, round 19): SOCOM 1's SetFollowMaster (0x2E1D60, 0x1C), among the follow helpers in both builds -- the master at +0x5D4 and its id at +0x5D8, the masters' follower counts (+0x520) stepped, a live master (CEntity bit 12) other than the SEAL taken; without one the follow state (9, FindAiState) has its running bit and master (+0x58) cleared; SOCOM II returns whether it was taken
 0x005FD010 0x40 func_005FD010  # OVL2
 0x005FD050 0x84 SetFormation__10CAiSFollowFSci  # OVL2; by hand (the kit lane, round 18; the name ours): the follow's formation (+0x74, a byte) and slot (+0x70) set, the offset in cells read from them (0x5EB910) and its length kept as SetOffset's -- CSealCtrlAi::OnCommand and 0x5EB6D0 call it. seal_aifollow.cpp
 0x005FD0E0 0x64 SetOffset__10CAiSFollowFPCi  # OVL2; by hand (the kit lane, round 18; the name ours): the follow's offset from its leader set as two cell counts (+0x5C) and its world length kept (+0x64, 10 to a cell) -- CTState::Tick passes it a cell pair; where SOCOM 1's CSealCtrlAi::SetFollowOffset took a point. seal_aifollow.cpp

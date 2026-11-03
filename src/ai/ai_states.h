@@ -556,7 +556,7 @@ public:
     /* the offset's length in the world (inline: both setters end on it; the name ours) */
     void UpdateOffsetLength();
 
-    unsigned char _58[0x5c - 0x58];
+    class CZSealBody *m_master;   // 0x58: the SEAL followed (SetFollowMaster clears it; the name ours)
     int m_5c[2];   // 0x5c: the offset from the leader, in cells (0x5F6F20 zeroes them)
     float m_64;   // 0x64: its length in the world, 10 to a cell
     unsigned char _68[0x6c - 0x68];

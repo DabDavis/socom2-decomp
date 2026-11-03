@@ -704,7 +704,12 @@ public:
     CAiPathBytes m_path;   // 0x46c: a CAiPath (SOCOM 1's m_path, 0x36c)
     CAiRouteBytes m_route;   // 0x514: a route (its path reset at 0x527310, its state read after
                              // the update at 0x555420)
-    unsigned char _5c0[0x5e0 - 0x5c0];
+    unsigned char _5c0[0x5d4 - 0x5c0];
+    /* the SEAL followed and its entity id (SOCOM 1's SetFollowMaster sets them; SetFollowMaster
+     * counts the master's followers -- the kit lane, round 19, the names ours) */
+    class CZSealBody *m_follow_master;   // 0x5d4
+    unsigned int m_follow_master_id;   // 0x5d8
+    unsigned char _5dc[0x5e0 - 0x5dc];
     /* the leg being walked: its two cells' centres flat on the ground, the direction between them
      * and its length, four words cleared with it, and the cell it starts from (0x56C080 sets them
      * from a path's last point; the names ours) */
@@ -791,6 +796,16 @@ public:
     AI_STATE PopAiState(AI_STATE state);
     CAiState *FindAiState(AI_STATE state) const;
     bool CanPushAiState(AI_STATE state, unsigned int flags);
+    /* the SEAL to follow set, the old master's followers counted down and the new one's up -- a
+     * live one, not the SEAL itself, or none; without a master the follow state's running bit is
+     * cleared and its master forgotten; whether it was taken (SOCOM 1's SetFollowMaster, which
+     * returned nothing; OVL2 0x5FCF10, seal_aifollow.cpp's) */
+    bool SetFollowMaster(class CZSealBody *master);
+    /* the SEAL followed, or with `recurse` the head of the chain of masters, each master's AI asked
+     * in turn (SOCOM 1's GetFollowMaster(int *), which counted the chain; OVL2 0x5FCD30, recursive:
+     * it inlines itself four times, the two accessors under it called out of line at the bottom --
+     * 0x5FCF00 and seal_unit.cpp's 0x5EA7C0) */
+    class CZSealBody *GetFollowMaster(bool recurse);
 
     /* the animations bound (SOCOM 1's; OVL2 0x562AD0) and a task begun: its kind, a flag, then the
      * task's own arguments (SOCOM 1's; OVL2 0x561F00) */
@@ -1160,6 +1175,22 @@ public:
     /* a weapon's event handed to every SEAL's controller (SOCOM 1's static callback; OVL2 0x5A4F80) */
     static void HandleWeaponEvent(CZProjectile *proj, unsigned int event, void *data);
     void SetSnakePathUpdate(bool on, unsigned int length);
+    /* the follow parameters marked stale; with no followers the saved formation direction too, and
+     * the snake path's update stopped unless a player drives the SEAL or its remote console says
+     * it runs one (SOCOM 1's; OVL2 0x5FCC40, seal_aifollow.cpp's) */
+    void InvalidateFollowParams();
+    /* a follower counted on and off (inline: SetFollowMaster steps the master's count so; the names
+     * ours) */
+    void AddFollower() { m_followers++; }
+    /* the SEAL's controller, and its AI (inline: the follow chain's walk calls their copies at its
+     * bottom -- OVL2 0x5FCF00, 0x5EA7C0; the names ours) */
+    CEntityCtrl *GetControl() { return m_control; }
+    class CSealCtrlAi *GetSealCtrlAi() { return ((CSealCtrl *)GetControl())->GetSealCtrlAi(); }
+    void RemoveFollower()
+    {
+        if (m_followers > 0)
+            m_followers--;
+    }
     void RestrainBuddy(CZSealBody *victim);
     void StabBuddy(CZSealBody *victim);
     bool ExecuteAction_ApplyRestraint(CZSealBody *victim);
@@ -1390,7 +1421,14 @@ public:
     CAiEvent *m_aiEvent;   // 0x428: the SEAL's own AI event (SOCOM 1's 0x380)
     unsigned char _42c[0x434 - 0x42c];
     unsigned char m_snakePath[4];   // 0x434: a CAiPath (SOCOM 1's 0x384)
-    unsigned char _438[0x528 - 0x438];
+    unsigned char _438[0x514 - 0x438];
+    /* (SOCOM 1's m_follow_params_are_current and m_saved_formation_dir_is_valid, 0x458/0x459:
+     * InvalidateFollowParams clears them -- the kit lane, round 19) */
+    unsigned char m_follow_params_are_current;   // 0x514
+    unsigned char m_saved_formation_dir_is_valid;   // 0x515
+    unsigned char _516[0x520 - 0x516];
+    int m_followers;   // 0x520: how many follow this SEAL (the name ours)
+    unsigned char _524[0x528 - 0x524];
     class AnimSet *m_animset;   // 0x528 (SOCOM 1's 0x45c)
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
     unsigned char _530[0x534 - 0x530];

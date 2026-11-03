@@ -25,6 +25,79 @@ inline void CAiSFollow::UpdateOffsetLength()
     m_64 = v.Length();
 }
 
+/* the remote console's word at 0xC of its +4 set (OVL2 0x5E6AA0, a named draft in seal_unit.cpp's
+ * range; the name ours) */
+extern "C" bool func_005E6AA0(CEntityCtrl *rc);
+
+/* (OVL2 0x5FCC40; SOCOM 1's, the followers counted where SOCOM 1 tested the current flag, and a
+ * remote SEAL's console asked) */
+void CZSealBody::InvalidateFollowParams()
+{
+    if (m_followers <= 0) {
+        m_saved_formation_dir_is_valid = 0;
+        if (!IsPlayer()) {
+            bool keep = false;
+
+            if (IsRemote()) {
+                CEntityCtrl *rc = m_control->GetRemoteControl();
+
+                keep = rc ? !func_005E6AA0(rc) : false;
+            }
+            if (!keep)
+                SetSnakePathUpdate(false, 50);
+        }
+    }
+    m_follow_params_are_current = 0;
+}
+
+/* (OVL2 0x5FCD30) */
+CZSealBody *CSealCtrlAi::GetFollowMaster(bool recurse)
+{
+    CZSealBody *master = m_follow_master;
+
+    if (master && recurse) {
+        CSealCtrlAi *ai = master->GetSealCtrlAi();
+
+        if (ai && ai != this) {
+            CZSealBody *top = ai->GetFollowMaster(recurse);
+
+            if (top)
+                master = top;
+        }
+    }
+    return master;
+}
+
+/* (OVL2 0x5FCF10) */
+bool CSealCtrlAi::SetFollowMaster(CZSealBody *master)
+{
+    bool ok = false;
+    CZSealBody *self = (CZSealBody *)m_entity;
+
+    if (m_follow_master) {
+        m_follow_master->RemoveFollower();
+        m_follow_master = 0;
+    }
+    if (!master || self != master && master->m_isAlive) {
+        m_follow_master = master;
+        if (m_follow_master) {
+            m_follow_master->AddFollower();
+            m_follow_master_id = m_follow_master->m_id;
+        }
+        ok = true;
+    }
+    if (!m_follow_master) {
+        CAiState *s = FindAiState(AI_STATE_FOLLOW);
+        CAiSFollow *f = s && s->m_state == AI_STATE_FOLLOW ? (CAiSFollow *)s : 0;
+
+        if (f) {
+            f->m_active = 0;
+            f->m_master = 0;
+        }
+    }
+    return ok;
+}
+
 /* (OVL2 0x5FD0E0; CTState::Tick calls it) */
 void CAiSFollow::SetOffset(const int *cells)
 {

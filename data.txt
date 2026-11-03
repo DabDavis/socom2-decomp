@@ -1320,6 +1320,7 @@
 0x0064F8B0 0x4 s_eventRangeDefault  # OVL2 data; ours (ai_events.cpp's static, 200.0: GetEventRange's default; 1 reference in 1 function)
 0x0064F8B8 0x4 s_eventRangeGeneric  # OVL2 data; ours (ai_events.cpp's static, 250.0: GetEventRange for AIE_GENERIC; 1 reference in 1 function)
 0x0064F8C0 0x4 s_eventRangeEntity  # OVL2 data; ours (ai_events.cpp's static, 80.0: GetEventRange for AIE_ENTITY; 1 reference in 1 function)
+0x0064F8C8 0x4 s_hideHeight  # OVL2 data; ours (the kit lane, round 19): 8.0, the height above both ends CAiHidePlanner::is_goal (0x5F8570) sees its line from, passed twice to ComputeLineVisibility -- 1 reference in 1 function
 0x0064F8D0 0x4 s_typeBias  # OVL2 data; ours (ai_astar.cpp's static, 1.0f: find_path sets it from the path's type bias, the stealth and basic planners' fcosts weigh by it -- SOCOM 1's gp float at -32456 alike; 4 references in 3 functions)
 0x0064F8D8 0x4 timerlimit  # OVL2 data; SOCOM 1's (timerlimit, gp-relative there): ai_astar.cpp's T0 budget for one planner tick, 33; PathPlanImmediate saves it, sets -1 and restores it, TickPathPlanner compares the elapsed count with it; 4 references in 2 functions
 0x0064F8F0 0x8 s_allDirs  # OVL2 data; ours (ai_astar.cpp's static: the eight directions 0-7 in order, find_path's default list; 1 reference in 1 function)
