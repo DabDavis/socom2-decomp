@@ -12,18 +12,18 @@
 0x00180AD0 0x324 __dl__FPv  # MAIN; s1:callee
 0x00180E00 0x10 __nwa__FUi  # MAIN; s1:exact
 0x00180E10 0x508 __nw__FUi  # MAIN; s1:callee
-0x00181320 0x48 func_00181320  # MAIN
-0x00181370 0xAC func_00181370  # MAIN
-0x00181420 0x48 func_00181420  # MAIN
-0x00181470 0xAC func_00181470  # MAIN
-0x00181520 0x48 func_00181520  # MAIN
-0x00181570 0xB4 func_00181570  # MAIN
-0x00181630 0x48 func_00181630  # MAIN
-0x00181680 0xAC func_00181680  # MAIN
-0x00181730 0x48 func_00181730  # MAIN
-0x00181780 0xBC func_00181780  # MAIN
-0x00181840 0x48 func_00181840  # MAIN
-0x00181890 0xB4 func_00181890  # MAIN
+0x00181320 0x48 __ct__15_zmalloc<4four>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 4-byte pool's constructor (m_bytes 4, the count, five counters cleared, init_page) -- SOCOM 1's __ct__15_zmalloc<4four>FUi in main.cpp; src/main/zmalloc.cpp
+0x00181370 0xAC init_page__15_zmalloc<4four>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 4-byte pool's init_page (_calloc(4, count), the free list linked) -- SOCOM 1's init_page__15_zmalloc<4four>Fv; src/main/zmalloc.cpp
+0x00181420 0x48 __ct__16_zmalloc<5eight>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 8-byte pool's constructor (the block class name ours, after SOCOM 1's four/twelve); src/main/zmalloc.cpp
+0x00181470 0xAC init_page__16_zmalloc<5eight>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 8-byte pool's init_page (_calloc(8, count)); src/main/zmalloc.cpp
+0x00181520 0x48 __ct__17_zmalloc<6twelve>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 12-byte pool's constructor -- SOCOM 1's __ct__17_zmalloc<6twelve>FUi; src/main/zmalloc.cpp
+0x00181570 0xB4 init_page__17_zmalloc<6twelve>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 12-byte pool's init_page (_calloc(12, count)) -- SOCOM 1's init_page__17_zmalloc<6twelve>Fv; src/main/zmalloc.cpp
+0x00181630 0x48 __ct__18_zmalloc<7sixteen>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 16-byte pool's constructor (the block class name ours); src/main/zmalloc.cpp
+0x00181680 0xAC init_page__18_zmalloc<7sixteen>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 16-byte pool's init_page (_calloc(16, count)); src/main/zmalloc.cpp
+0x00181730 0x48 __ct__17_zmalloc<6twenty>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 20-byte pool's constructor (the block class name ours); src/main/zmalloc.cpp
+0x00181780 0xBC init_page__17_zmalloc<6twenty>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 20-byte pool's init_page (_calloc(20, count)); src/main/zmalloc.cpp
+0x00181840 0x48 __ct__22_zmalloc<10twentyfour>FUi  # MAIN; by hand (MAIN runtime lane round 2): the 24-byte pool's constructor (the block class name ours); src/main/zmalloc.cpp
+0x00181890 0xB4 init_page__22_zmalloc<10twentyfour>Fv  # MAIN; by hand (MAIN runtime lane round 2): the 24-byte pool's init_page (_calloc(24, count)); src/main/zmalloc.cpp
 0x00181950 0x7C func_00181950  # MAIN; zsys_memory.cpp's _strdup, MAIN's copy (SOCOM 1's order; the name is taken by the pool's _strdup, 0x1801E0, which the game calls): src/main/zsys_memory.cpp
 0x001819D0 0x70 func_001819D0  # MAIN; the same words as _calloc__FUiUiPCci (0x34eae0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: _calloc__FUiUiPCci (MAIN's copy of zsys_memory.cpp: src/main/zsys_memory.cpp)
 0x00181A40 0x60 func_00181A40  # MAIN; ovl-copy: _malloc__FUiPCci (MAIN's copy of zsys_memory.cpp: src/main/zsys_memory.cpp)
@@ -1365,7 +1365,7 @@
 0x001CCF20 0x130 func_001CCF20  # MAIN
 0x001CD078 0x122C func_001CD078  # MAIN unaligned
 0x001CF830 0x44 inflate_mask  # MAIN data: zlib infutil.c, uInt[17]
-0x001D4B00 0x74 func_001D4B00  # MAIN
+0x001D4B00 0x74 __sinit_zmalloc.cpp  # MAIN; by hand (MAIN runtime lane round 2): the pool unit's static initialiser -- constructs the six pools (24-byte first, 2200 blocks, ... 4-byte last, 8800) at 0x1D5690..0x1D5780; the unit's file name ours; src/main/zmalloc.cpp
 0x001D4B80 0x64 func_001D4B80  # MAIN
 0x001D4BF0 0x28 func_001D4BF0  # MAIN
 0x001D4C20 0x370 func_001D4C20  # MAIN
