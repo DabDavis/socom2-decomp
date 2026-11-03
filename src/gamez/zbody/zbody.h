@@ -802,7 +802,7 @@ public:
 };
 
 /* the body parts a script has object slots for (32; si_script.cpp's, the SEAL's code reads it too) */
-extern int siNumBodyObjects;
+extern unsigned int siNumBodyObjects;
 /* the scripts and their common data alive (SOCOM 1's, si_script.cpp's) */
 extern int numSiScript;
 extern int numSiCommon;
