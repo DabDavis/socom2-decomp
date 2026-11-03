@@ -11,28 +11,15 @@
 
 #include "node_world.h"
 
-/* the archive's calls not named in the map yet (SOCOM 1's names; each called where SOCOM 1's
- * code calls that one): zar::CZAR::Close, Open (with a fifth argument, the s1~ note's),
- * Fetch(const char *, int *) and ReleaseDataBuffer */
-extern "C" void func_00258CE0(zar::CZAR *zar);
+/* the archive's calls zar.h does not declare yet (SOCOM 1's names; each called where SOCOM 1's
+ * code calls that one): Open (with a fifth argument, the s1~ note's) and ReleaseDataBuffer
+ * (0x257F90, named: it gives the CBufferIO's buffer back, so a `void *ReleaseDataBuffer();` member
+ * -- zar.h is another lane's) */
 extern "C" bool func_00258920(zar::CZAR *zar, const char *name, int version, unsigned int a,
                               unsigned int b, int c);
-extern "C" bool func_0025AB70(zar::CZAR *zar, const char *name, int *value);
 extern "C" void *func_00257F90(zar::CZAR *zar);
 
 namespace zdb {
-
-/* the asset calls not named yet: SOCOM 1's CNode::Read(CSaveLoad &, CNode *) and CModel::Create
- * (both static), CTexture's constructor, CAssetLib::AddTexture(CTexture *) and RootName, and the
- * map's AddPalette and its neighbour -- by their callers AddModel (0x3215D0: it sets the model's
- * library) and AddPalette (0x321500, the bool) */
-extern "C" CNode *func_00311520(CSaveLoad *io, CNode *parent);
-extern "C" CModel *func_003119A0(CSaveLoad *io, CAssetLib *lib);
-extern "C" CTexture *func_00354D90(CTexture *tex, const char *name);
-extern "C" void func_00321670(CAssetLib *lib, CTexture *tex);
-extern "C" const char *func_00321900(CAssetLib *lib);
-extern "C" void func_003215D0(CAssetLib *lib, CModel *model);
-extern "C" void func_00321500(CAssetLib *lib, CTexPalette *pal, bool b);
 
 /* an empty loader: no world, the archive closed, no file name (SOCOM 1's) */
 CSaveLoad::CSaveLoad()
@@ -44,7 +31,7 @@ CSaveLoad::CSaveLoad()
 /* the archive closed, then destroyed (SOCOM 1's) */
 CSaveLoad::~CSaveLoad()
 {
-    func_00258CE0(&m_zfile);
+    m_zfile.Close();
 }
 
 }
@@ -111,7 +98,7 @@ inline bool OpenZed(CSaveLoad *io)
     bool ok = func_00258920(&io->m_zfile, io->m_zed_filename, CWorld::GetVersion(), 1, 16, 0);
 
     if (!ok)
-        func_00258CE0(&io->m_zfile);
+        io->m_zfile.Close();
     return ok;
 }
 
@@ -127,7 +114,7 @@ bool CSaveLoad::LoadAssetLib_PS2(CWorld *world, CAssetLib *lib, int flags)
         char root[512];
         char folder[256];
 
-        strcpy(root, func_00321900(lib));
+        strcpy(root, lib->RootName());
         if (strlen(root) > 4)
             root[4] = 0;
         FilterAssetLibFolder(lib->m_name, folder);
@@ -137,14 +124,14 @@ bool CSaveLoad::LoadAssetLib_PS2(CWorld *world, CAssetLib *lib, int flags)
         } else {
             if (!LoadTextures_PS2(lib))
                 result = false;
-            func_00258CE0(&m_zfile);
+            m_zfile.Close();
         }
     }
     if (flags & 4) {
         char root[512];
         char folder[256];
 
-        strcpy(root, func_00321900(lib));
+        strcpy(root, lib->RootName());
         if (strlen(root) > 4)
             root[4] = 0;
         FilterAssetLibFolder(lib->m_name, folder);
@@ -154,14 +141,14 @@ bool CSaveLoad::LoadAssetLib_PS2(CWorld *world, CAssetLib *lib, int flags)
         } else {
             if (!LoadPalettes_PS2(lib))
                 result = false;
-            func_00258CE0(&m_zfile);
+            m_zfile.Close();
         }
     }
     if (flags & 2) {
         char root[512];
         char folder[256];
 
-        strcpy(root, func_00321900(lib));
+        strcpy(root, lib->RootName());
         if (strlen(root) > 4)
             root[4] = 0;
         FilterAssetLibFolder(lib->m_name, folder);
@@ -171,7 +158,7 @@ bool CSaveLoad::LoadAssetLib_PS2(CWorld *world, CAssetLib *lib, int flags)
         } else {
             if (!LoadModels_PS2(lib))
                 result = false;
-            func_00258CE0(&m_zfile);
+            m_zfile.Close();
         }
     }
     return result;
@@ -184,7 +171,7 @@ bool CSaveLoad::LoadTextures_PS2(CAssetLib *lib)
 {
     int phase = -1;
 
-    if (func_0025AB70(&m_zfile, "renderphase", &phase)) {
+    if (m_zfile.Fetch("renderphase", &phase)) {
         if (phase >= CHARSET1 && phase < ALPHA)
             phase = CHARSETCUSTOM;
         lib->m_renderphase = (_RenderPhase)phase;
@@ -199,12 +186,10 @@ bool CSaveLoad::LoadTextures_PS2(CAssetLib *lib)
                 const char *name = k->m_name;
 
                 if (!CAssetMgr::m_assets.GetTexHandle(name) && !lib->AddTexture(name)) {
-                    CTexture *tex = (CTexture *)operator new(0x70);
+                    CTexture *tex = new CTexture(name);
 
-                    if (tex)
-                        tex = func_00354D90(tex, name);
                     if (tex->Read(*this))
-                        func_00321670(lib, tex);
+                        lib->AddTexture(tex);
                     else
                         delete tex;
                 }
@@ -233,7 +218,7 @@ bool CSaveLoad::LoadPalettes_PS2(CAssetLib *lib)
                 CTexPalette *pal = new CTexPalette(name);
 
                 pal->Read(*this);
-                func_00321500(lib, pal, false);
+                lib->AddPalette(pal, false);
                 m_zfile.CloseKey(k);
             }
         }
@@ -253,10 +238,10 @@ bool CSaveLoad::LoadModels_PS2(CAssetLib *lib)
     if ((key = m_zfile.OpenKey("models")) != 0) {
         for (zar::CKeyRing::iterator it = key->begin(); it != key->end(); ++it) {
             if (m_zfile.OpenKey(*it)) {
-                CModel *model = func_003119A0(this, 0);
+                CModel *model = CModel::Create(*this, 0);
 
                 if (model)
-                    func_003215D0(lib, model);
+                    lib->AddModel(model);
                 m_zfile.CloseKey(*it);
             }
         }
@@ -283,7 +268,7 @@ bool CWorld::Read(CSaveLoad &io)
     if (key) {
         for (zar::CKeyRing::iterator it = key->begin(); it != key->end(); ++it) {
             zfile->OpenKey(*it);
-            func_00311520(&io, this);
+            CNode::Read(io, this);
             zfile->CloseKey(*it);
         }
         zfile->CloseKey(key);

@@ -6022,7 +6022,7 @@
 0x0033BD20 0x68 func_0033BD20  # OVL1
 0x0033BD90 0xD4 FIFO_Flush__5CPipeFv  # OVL1; the rdr lane: SOCOM II's, the name ours (a texture command queued with bit 0 of its first byte set and no buffers, and a FIFO packet kicked with the marker word 0x66666666 -- FIFO_Signal's 0x44444444/0x55555555 packets' form -- and fourteen zero quadwords; 0x33CD50 calls it)
 0x0033BE70 0xB4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBuffer  # OVL1; s1:align
-0x0033BF30 0xD4 FIFO_Signal__5CPipeFPQ23zdb12CGSTexBufferPUi  # OVL1; s1:calls
+0x0033BF30 0xD4 FIFO_Load__5CPipeFPQ23zdb12CGSTexBuffer  # OVL1; s1:calls; the world lane r6: renamed from SOCOM 1's FIFO_Signal(CGSTexBuffer *, unsigned int *) (s1:calls) -- SOCOM II's takes one argument (no caller sets a2: CCoreState::Tick x4, CMenuState::Tick x1; the body never reads it), so it cannot share FIFO_Signal(CGSTexBuffer *) with 0x33BE70, which keeps SOCOM 1's one-argument body (signal only, 0x55555555); this one loads the buffer and queues it (0x44444444). The name ours
 0x0033C010 0x104 InterruptFromVIF1__Fi  # OVL1; the rdr lane: s1:order (SOCOM 1's InterruptFromVIF1, after FIFO_Insert: cause 5, thePipe's texture command at m_texIntIdx taken -- SOCOM II's flush bit wakes the thread at 0x3E1418 --, a load's chain sent through D2 after sceDmaSync of the GIF channel, a signal's buffer updated, VIF1_FBRST 8, sync, ei)
 0x0033C120 0xA0 __dt__5CPipeFv  # OVL1; the world lane r3: SOCOM 1's ~CPipe (the opacity stack freed, the delayed nodes cleared, the members' destructors after: the effect's 0x33D110 and the alpha pass's 0x3378A0 out of line); the initialiser registers it -- zrndr_pipe.cpp
 0x0033C1C0 0xD4 __ct__5CPipeFv  # OVL1; the world lane r3: SOCOM 1's CPipe() (the two flags in the initialiser list after the alpha pass, the delayed nodes' vector and the effect; the opacity stack of 32, resize(48), the texture indices zeroed) with SOCOM II's colours and overlay; __sinit_zrndr_pipe.cpp builds thePipe through it -- zrndr_pipe.cpp
@@ -6352,14 +6352,14 @@
 0x0034D460 0x8 func_0034D460  # OVL1
 0x0034D470 0x8 func_0034D470  # OVL1
 0x0034D480 0x7C func_0034D480  # OVL1
-0x0034D500 0x54 func_0034D500  # OVL1
-0x0034D560 0x68 func_0034D560  # OVL1
+0x0034D500 0x54 __ct__14CSubtitleTableFv  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): the subtitle table's constructor -- two 12-byte-record vectors (three zero words each), the byte at 0x20 cleared, reserve(10) and reserve(11500) through 0x34DED0; zsnd_csnd.cpp's initialiser 0x402FF0 builds the global 0x48DC30 with it
+0x0034D560 0x68 Dump__14CSubtitleTableFv  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): an empty walk of the first vector's 12-byte records (its print compiled out), called by Find 0x34D940 when no record matches
 0x0034D5D0 0x168 func_0034D5D0  # OVL1
 0x0034D740 0x1D8 func_0034D740  # OVL1
 0x0034D920 0x14 func_0034D920  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
-0x0034D940 0xB8 func_0034D940  # OVL1
+0x0034D940 0xB8 Find__14CSubtitleTableFPCcPiPi  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): the first vector's record whose word at 8 is the name's hash (0x3A59C0) gives its words 0 and 4 back through a2/a3, true; else Dump 0x34D560 and false
 0x0034DA00 0x4CC func_0034DA00  # OVL1
-0x0034DED0 0x1A0 func_0034DED0  # OVL1
+0x0034DED0 0x1A0 reserve__Q23std68__vector_imp<14CSubtitleEntry,Q23std27allocator<14CSubtitleEntry>,0>FUi  # OVL1; the world lane r6, zsnd_subtitles.cpp: include/vector's class reserve for the subtitle table's 12-byte record (the element name ours) -- the constructor 0x34D500 calls it with 10 and 11500; it closes the unit
 0x0034E070 0x160 Tick__14CSched_ManagerFf  # OVL1; SOCOM 1's CSched_Manager::Tick by its body (the same walk: T0_COUNT start/stop stamps, the callback or the remove flag, erase into the free list) and its caller (CCoreState's tick passes zTaskScheduler and dT)
 0x0034E1D0 0x240 ClearFreeList__14CSched_ManagerFb  # OVL1; s1:callee
 0x0034E410 0x68 _task_cleanup__FP11CSched_Task  # OVL1; s1:ref (taken by address where SOCOM 1 takes _task_cleanup__FP11CSched_Task's)

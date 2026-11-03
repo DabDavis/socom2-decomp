@@ -331,6 +331,10 @@
 0x003DFD10 0x4 UNNAMED_NODE  # OVL1; SOCOM 1 name (node_main.cpp's file static: the name nameless nodes share; CNode::SetName reads it)
 0x003DFD18 0x4 DELETED_NODE  # OVL1; SOCOM 1 name (the name a node is left with as it is destroyed; ~CNode stores it after SetName(0), as SOCOM 1's)
 0x003DFE10 0x4 m_scale__Q23zdb6CWorld  # OVL1; s1:data-seq (size SOCOM 1's; via Load__17CharacterDynamicsFRC8CRdrFile)
+0x003DFF88 0x8 gSndCommandBuffePtr  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475370 in $gp's area, 8 bytes) -- snd_StartSoundSystem points it at the two command buffers as SOCOM 1's does
+0x003DFF90 0x8 gCommandBuffeBytesAvail  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475378, 8 bytes) -- snd_StartSoundSystem sets both to 4092 as SOCOM 1's does
+0x003DFF98 0x8 gSndCommandReturnDefPtr  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475380, 8 bytes) -- snd_StartSoundSystem points it at the two return-definition buffers
+0x003DFFA0 0x8 gReturnValuesPtr  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475388, 8 bytes) -- snd_StartSoundSystem points it at the two return-value buffers
 0x003DFFD0 0x4 m_bnkoffset__4CSnd  # OVL1 data; SOCOM 1's CSnd static (its symbol): CSnd::Init stores the bank archive's disc offset (CFileCD's entry for BNKSTORE.ZAR, word 1) in it as SOCOM 1's Init stores m_bnkoffset; 2 references in 2 functions
 0x003E0070 0x4 m_mastervol__12CSndInstance  # OVL1; s1:data-seq (size SOCOM 1's; via SetVol__12CSndInstanceFf)
 0x003E0080 0x1 m_jukebox_stopped__11CSndJukebox  # OVL1 data; SOCOM 1's CSndJukebox static (its symbol, 0x4755B0 there): Start clears it and Cleanup sets it in both builds (was m_inFight, ours); 4 references in 4 functions
@@ -1134,12 +1138,27 @@
 0x00488680 0xD0 ZDB  # OVL1 bss; SOCOM 1's (ZDB, 0xD0 bytes in both: two flag bytes, then two alpha environments of 0x60 -- qwc, GIF tag, sceGsAlphaEnv -- at 0x10 and 0x70; zrndr_init.cpp's, after its <iostream> init objects): 27 references in 1 function (zRndrInit) -- the rdr lane
 0x004887C0 0x720 thePipe  # OVL1 bss; SOCOM 1's (0x694 bytes; SOCOM II's runs to VifHandlerID at 0x720: the camera at 0x628, the UI node at 0x630, its flags at 0x711 and 0x714 as the states use them): 115 references in 32 functions take 0x4887C0-0x488ED8
 0x00488EE0 0x4 VifHandlerID  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Uninit__5CPipeFv)
+0x00488F70 0x28 gSLClientData  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x509B50, 0x28 bytes: sceSifClientData) -- the command client snd_StartSoundSystem binds (0x123456), waiting on its server word at 0x24
+0x00488FA8 0x4 gLastLoadError  # OVL1 bss; the world lane r6: SOCOM II's (the name ours) -- snd_BankLoad and snd_BankLoadByLoc clear it on entry and store 262 when their RPC call fails; 4 references in 2 functions
 0x00488FB0 0x4 gStreamingInited  # OVL1 bss; s1:data-seq (size SOCOM 1's; via snd_StopSoundSystem +1)
 0x00488FC0 0x4 gSSRead  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdRead sets it as SOCOM 1's does (gp 0x476414 there); 3 references in 2 functions
 0x00488FC8 0x4 gSSReadDone  # OVL1 bss; SOCOM 1's global (its symbol): snd_StreamSafeCdSync stores the status block's !busy in it as SOCOM 1's does (0x476418 there); 13 references in 6 functions
+0x00489080 0x100 gSyncStringBuffer  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x509C00, 0x100 bytes) -- snd_BankLoad's request, the offset at 0 and the name from 4, as SOCOM 1's; 3 references in 1 function
+0x00489180 0x1000 gSndCommandBuffer1  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x509D00, 0x1000 bytes) -- snd_StartSoundSystem's first pointer, its first word cleared
+0x0048A180 0x1000 gSndCommandBuffer2  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50AD00, 0x1000 bytes) -- snd_StartSoundSystem's second pointer, its first word cleared
+0x0048B180 0x1000 gSndCommandReturnDef1  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50BD00, 0x1000 bytes)
+0x0048C180 0x1000 gSndCommandReturnDef2  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50CD00, 0x1000 bytes)
+0x0048D180 0x440 gActualReturnValues1  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50DD00, 0x420 bytes there; 0x440 to the next here)
+0x0048D5C0 0x440 gActualReturnValues2  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50E140, 0x420 bytes there; 0x440 to gStats here)
 0x0048DA00 0x40 gStats  # OVL1 bss; SOCOM 1's global (its symbol, 32 bytes there): the status block the IOP writes (word 0 busy, word 4 the read's error), invalidated by snd_StreamSafeCdSync, registered by snd_StartSoundSystem; 22 references in 7 functions
 0x0048DA48 0x4 gCaching  # OVL1 bss; SOCOM 1's global (its symbol, 0x476424): snd_StartCaching sets it, snd_SendCache clears it, the senders test it; 8 references in 5 functions
+0x0048DA50 0x28 gSLClientLoaderData  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50E5A0, 0x28 bytes: sceSifClientData) -- the loader's RPC client, checked and called by both loads, bound by snd_StartSoundSystem (0x123457) as SOCOM 1's; 7 references in 3 functions
 0x0048DA78 0x4 gLoadBusy  # OVL1 bss; SOCOM 1's global (its symbol, 0x476428): tested before streaming starts or stops as SOCOM 1's is; 8 references in 6 functions
+0x0048DA80 0x4 gLoadCB  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x47642C) -- cleared by snd_StartSoundSystem with gLoadBusy and gLoadUserData, as SOCOM 1's
+0x0048DA88 0x8 gLoadUserData  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x476430, 8 bytes: cleared with sd) -- cleared by snd_StartSoundSystem
+0x0048DAC0 0x10 gLoadReturnValue  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50E600, 0x10 bytes) -- the loads' reply, set to -1 and waited on, cleared by snd_StartSoundSystem, as SOCOM 1's; 7 references in 3 functions
+0x0048DB00 0x20 gLoadParams  # OVL1 bss; the world lane r6: SOCOM 1's global (its symbol, 0x50E640, 0x20 bytes) -- snd_BankLoadByLoc's request, the sector at 0 and the offset at 4; 3 references in 1 function
+0x0048DB30 0x4 gQuiet  # OVL1 bss; the world lane r6: SOCOM II's (the name ours) -- snd_StartSoundSystem sets it from its flag 2; the two command senders, both loads and the flush skip their messages while it is set; 17 references in 6 functions
 0x0048DC70 0xA4 m_bnkArchive__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol, a zar::CZAR, size SOCOM 1's): CSnd::Init opens run/sounds/bnkstore.zar on it and keeps its directory, as SOCOM 1's Init does with m_bnkArchive; 4 references in 2 functions
 0x0048DD28 0x1 m_isDisabled__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via LoadCSndGroup__9CSndGroupFP5_zrdr +8)
 0x0048DD30 0x1 m_hasreverb__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol): CSnd::Init (and the reboot handler) ramp the reverb down and clear it when set, as SOCOM 1's Init does with m_hasreverb; 10 references in 3 functions

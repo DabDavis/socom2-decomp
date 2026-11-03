@@ -17,11 +17,10 @@ public:
 
 CRdrArchiveList CRdrArchive::m_list;
 
-/* zar::CZAR::ReOpen(int, unsigned int), not named yet: the archive opened again by its name
- * unless it is open (SOCOM 1's OpenAll and FindRdr call ReOpen there) */
+/* zar::CZAR::ReOpen(int, unsigned int) (0x258B40, named: zar.h, another lane's, does not declare
+ * it): the archive opened again by its name unless it is open (SOCOM 1's OpenAll and FindRdr call
+ * ReOpen there) */
 extern "C" bool func_00258B40(zar::CZAR *zar, int a, unsigned int b);
-/* CRdrFile::Load(zar::CZAR *, zar::CKey *, int) (zrdr_file.cpp) */
-extern "C" CRdrFile *func_0032C980(zar::CZAR *zar, zar::CKey *key, int flags);
 
 void CRdrArchive::OpenAll()
 {
@@ -135,7 +134,7 @@ CRdrFile *CRdrArchive::FindRdr(const char *path, int flags)
         file = 0;
         zar::CKey *key = archive->OpenKey(name);
         if (key) {
-            file = func_0032C980(archive, key, flags);
+            file = CRdrFile::Load(archive, key, flags);
             archive->CloseKey(key);
         }
         if (opened)

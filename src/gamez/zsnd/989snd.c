@@ -14,6 +14,165 @@ int snd_SendIOPCommandAndWait(int command, int size, char *data);
 
 extern "C" int snd_FlushSoundCommands(void);   /* 0x3408F0 (SOCOM 1's name, by position) */
 
+extern "C" {
+int printf(const char *fmt, ...);
+char *strcpy(char *to, const char *from);
+unsigned int strlen(const char *s);
+void FlushCache(int op);
+int sceSifCallRpc(void *cd, unsigned int fno, unsigned int mode, void *send, int ssize, void *recv,
+                  int rsize, void (*end)(void *), void *end_param);
+int sceSifCheckStatRpc(void *cd);
+}
+
+/* the bank loader's RPC (SOCOM 1's globals, its symbols): the client bound to 989snd's loader, the
+ * name request (the offset, then the name), the request by disc location (sector and offset), the
+ * reply (the bank, -1 while the IOP works) */
+char gSyncStringBuffer[256];
+int gSLClientLoaderData[10];   /* sceSifClientData */
+int gLoadReturnValue[4];
+int gLoadParams[8];
+/* SOCOM II's (the names ours): the last load's error -- cleared by each load, 262 when its RPC call
+ * failed -- and the messages switched off (snd_StartSoundSystem's flag 2) */
+int gLastLoadError;
+int gQuiet;
+extern int gLoadBusy;
+extern unsigned int gStats[16];
+
+/* the command buffers, double-buffered (SOCOM 1's globals, its symbols): the commands queued, their
+ * return definitions and the values the IOP returns, the pointers to each pair and the room left */
+extern "C" {
+void sceSifInitRpc(unsigned int mode);
+int sceSifBindRpc(void *cd, unsigned int num, unsigned int mode);
+}
+int gSndCommandBuffer1[0x400];
+int gSndCommandBuffer2[0x400];
+int gSndCommandReturnDef1[0x400];
+int gSndCommandReturnDef2[0x400];
+int gActualReturnValues1[0x110];
+int gActualReturnValues2[0x110];
+int *gSndCommandBuffePtr[2];
+int gCommandBuffeBytesAvail[2];
+int *gSndCommandReturnDefPtr[2];
+int *gReturnValuesPtr[2];
+/* the command client (SOCOM 1's gSLClientData, sceSifClientData: the server at 0x24) and the load
+ * callback and its data (SOCOM 1's gLoadCB, gLoadUserData) */
+int gSLClientData[10];
+SndCompleteProc gLoadCB;
+unsigned long gLoadUserData;
+
+/* SOCOM 1's, with SOCOM II's quiet flag (flags bit 2) and the flags passed to the IOP after the
+ * status block: the buffers set up, the command and loader clients bound -- a failed bind hangs --
+ * and the IOP's side started */
+int snd_StartSoundSystem(int flags)
+{
+    int data[2];
+
+    gSndCommandBuffePtr[0] = gSndCommandBuffer1;
+    gSndCommandBuffePtr[1] = gSndCommandBuffer2;
+    gReturnValuesPtr[0] = gActualReturnValues1;
+    gReturnValuesPtr[1] = gActualReturnValues2;
+    gSndCommandReturnDefPtr[0] = gSndCommandReturnDef1;
+    gSndCommandReturnDefPtr[1] = gSndCommandReturnDef2;
+    if ((unsigned long)(unsigned int)flags & 2)
+        gQuiet = 1;
+    else
+        gQuiet = 0;
+    sceSifInitRpc(0);
+    do {
+        if (sceSifBindRpc(gSLClientData, 0x123456, 0) < 0) {
+            printf("error: sceSifBindRpc in %s, at line %d\n", "989snd.c", 177);
+            for (;;)
+                ;
+        }
+    } while (!gSLClientData[9]);
+    gLoadBusy = 0;
+    gLoadCB = 0;
+    gLoadUserData = 0;
+    gLoadReturnValue[0] = 0;
+    do {
+        if (sceSifBindRpc(gSLClientLoaderData, 0x123457, 0) < 0) {
+            printf("error: sceSifBindRpc in %s, at line %d\n", "989snd.c", 198);
+            for (;;)
+                ;
+        }
+    } while (!gSLClientLoaderData[9]);
+    /* in SOCOM II's order (SOCOM 1's interleaved the byte counts with the buffers) */
+    gStats[0] = 0;
+    gStats[4] = 0;
+    gSndCommandBuffer1[0] = 0;
+    gSndCommandBuffer2[0] = 0;
+    gCommandBuffeBytesAvail[0] = 4092;
+    gCommandBuffeBytesAvail[1] = 4092;
+    data[0] = (int)gStats;
+    data[1] = flags;
+    return snd_SendIOPCommandAndWait(0, 8, (char *)data);
+}
+
+/* SOCOM 1's, with SOCOM II's error and quiet flag: a bank loaded by its file name and offset; the
+ * IOP's bank, 0 when a load is under way or the RPC call fails */
+SoundBankPtr snd_BankLoad(char *name, int offset)
+{
+    gLastLoadError = 0;
+    if (gLoadBusy) {
+        if (!gQuiet)
+            printf("snd_BankLoad: Load already in progress!\n");
+        return 0;
+    }
+    ((int *)gSyncStringBuffer)[0] = offset;
+    strcpy(gSyncStringBuffer + 4, name);
+    gLoadReturnValue[0] = -1;
+    while (sceSifCheckStatRpc(gSLClientLoaderData)) {
+        if (!gQuiet)
+            printf("989snd.c: RPC collision!\n");
+        snd_FlushSoundCommands();
+        FlushCache(0);
+    }
+    if (sceSifCallRpc(gSLClientLoaderData, 2, 1, gSyncStringBuffer, strlen(name) + 5, gLoadReturnValue, 4, 0, 0) < 0) {
+        if (!gQuiet)
+            printf("989snd.c: RPC call has failed inside snd_BankLoad\n");
+        gLastLoadError = 262;
+        return 0;
+    }
+    while (gLoadReturnValue[0] == -1)
+        FlushCache(0);
+    return (SoundBankPtr)gLoadReturnValue[0];
+}
+
+/* SOCOM 1's, as snd_BankLoad: a bank loaded by its disc sector and the offset in it, refused while
+ * the stream-safe CD read is busy */
+SoundBankPtr snd_BankLoadByLoc(int loc, int offset)
+{
+    gLastLoadError = 0;
+    if (gLoadBusy) {
+        if (!gQuiet)
+            printf("snd_BankLoadByLoc: Load already in progress!\n");
+        return 0;
+    }
+    if (snd_StreamSafeCdSync(1) == 1) {
+        if (!gQuiet)
+            printf("snd_BankLoadByLoc: CD BUSY!\n");
+        return 0;
+    }
+    gLoadParams[0] = loc;
+    gLoadParams[1] = offset;
+    gLoadReturnValue[0] = -1;
+    while (sceSifCheckStatRpc(gSLClientLoaderData)) {
+        if (!gQuiet)
+            printf("989snd.c: RPC collision!\n");
+        snd_FlushSoundCommands();
+        FlushCache(0);
+    }
+    if (sceSifCallRpc(gSLClientLoaderData, 3, 1, gLoadParams, 8, gLoadReturnValue, 4, 0, 0) < 0) {
+        if (!gQuiet)
+            printf("989snd.c: RPC call has failed inside snd_BankLoadByLoc\n");
+        gLastLoadError = 262;
+        return 0;
+    }
+    while (gLoadReturnValue[0] == -1)
+        FlushCache(0);
+    return (SoundBankPtr)gLoadReturnValue[0];
+}
+
 void snd_ResolveBankXREFS(void)
 {
     snd_SendIOPCommandNoWait(8, 0, 0, 0, 0);

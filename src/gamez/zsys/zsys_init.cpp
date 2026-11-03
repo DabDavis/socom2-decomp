@@ -6,6 +6,8 @@
 
 #include "zsys_public.h"
 #include "../zvid/zvid.h"
+/* CFileIO (zutil.h): its static PS2FileName (SOCOM 1's) builds the module paths */
+#include "../zutil/zutil.h"
 
 extern "C" {
 int GetThreadId(void);
@@ -21,8 +23,7 @@ int sceSifUnloadModule(int modid);
 int sceDevctl(const char *name, int cmd, void *arg, unsigned int arglen, void *buf,
               unsigned int buflen);
 int sceUmount(const char *name);
-void func_0039EE50(const char *name, char *path, bool cd);     /* CFileIO::PS2FileName (SOCOM 1's) */
-void func_0034BCA0(void);                                   /* SOCOM II's, a sound flag cleared */
+void func_0034BCA0(void);                                  /* SOCOM II's, a sound flag cleared */
 }
 
 /* the IOP's manager (SOCOM 1's class; SOCOM II adds reboot modes 4-6, names ours) */
@@ -117,7 +118,7 @@ int zSysLoadIRX(char *name, int argc, char *argv, bool retry)
     char path[256];
     int id;
 
-    func_0039EE50(name, path, false);
+    CFileIO::PS2FileName(name, path, false);
     do
         id = sceSifLoadModule(path, argc, argv);
     while (id < 0 && retry);
@@ -129,7 +130,7 @@ inline int zSysLoadStartIRX(char *name, int argc, char *argv, int *result)
 {
     char path[256];
 
-    func_0039EE50(name, path, false);
+    CFileIO::PS2FileName(name, path, false);
     return sceSifLoadStartModule(path, argc, argv, result);
 }
 

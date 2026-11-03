@@ -35,9 +35,6 @@ public:
     int right;   // 0x8
     int bottom;   // 0xc
 };
-
-/* CSTable::CreateString, not written yet: the string table's copy of a string */
-extern "C" char *func_0039F1C0(CSTable *table, const char *s);
 /* the array allocator (zrdr's, 0x334170): `count` zeroed values for `rdr` */
 void zrdr_newarray(_zrdr *rdr, int count);
 /* zrdr_freearray (0x335AA0): an array's values freed, recursively */
@@ -75,7 +72,7 @@ void _zrdr::Clone(_zrdr *src, CSTable *strings)
     case ZRDR_STRING:
         if (!strings && s_warn)
             s_warn = false;
-        string = strings ? func_0039F1C0(strings, src->string) : src->string;
+        string = strings ? strings->CreateString(src->string) : src->string;
         break;
     case ZRDR_ARRAY: {
         int n = src->Count();

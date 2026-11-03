@@ -43,6 +43,8 @@ void snd_SetPlaybackMode(int mode);
 int snd_GetMasterVolume(int which);
 void snd_SetMasterVolume(int which, int vol);
 void snd_UnloadBank(SoundBankPtr bank);
+SoundBankPtr snd_BankLoad(char *name, int offset);
+SoundBankPtr snd_BankLoadByLoc(int loc, int offset);
 void snd_ResolveBankXREFS(void);
 void snd_StartCaching(void);
 int snd_SendCache(void);

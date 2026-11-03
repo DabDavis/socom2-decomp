@@ -24,11 +24,10 @@ extern "C" double strtod(const char *s, char **end);   /* newlib (MAIN) */
 /* the values allocator (zrdr_pack.cpp's unit, 0x335BC0): `n` zeroed values, the first typed */
 extern "C" _zrdr *func_00335BC0(unsigned char type, int n);
 
-/* basic_string's members the map has not named (placeholders, `this` first): substr, and the
- * assignment from a string (find_last_of and find_first_of over a C string are include/string's
- * since the MSL headers round 13, 0x331F30 and 0x331ED0 with their cores in this unit's tail) */
+/* basic_string's substr, which the map has not named (a placeholder, `this` first; find_last_of
+ * and find_first_of over a C string are include/string's since the MSL headers round 13, 0x331F30
+ * and 0x331ED0 with their cores in this unit's tail) */
 extern "C" std::string func_0032FC40(const std::string *s, unsigned int pos, unsigned int n);
-extern "C" void *func_0022E4D0(std::string *s, const std::string &x);
 
 /* basic_string's erase(pos, n) and operator[] (inline; include/string has neither) */
 static inline std::string &string_erase(std::string &s, unsigned int pos, unsigned int n)

@@ -126,14 +126,14 @@ public:
     static CRdrArchiveList m_list;   // 0x488510
 };   // 0xb8 bytes
 
-/* the engine's string table (util_stable.cpp, not written yet): SOCOM 1's CSTable grown by a
- * vtable pointer at 0xC, 0x20 bytes. Its constructor and destructor are still placeholders, so
- * CRdrFile calls them by hand where its member's would run: an inline wrapper adds the null test
- * MW puts around an inlined member destructor */
-extern "C" void func_0039FBD0(CSTable *table, unsigned int bytes, unsigned int strings);
-extern "C" void func_0039FB30(CSTable *table, int flags);
+/* the engine's string table (util_stable.cpp): SOCOM 1's CSTable grown by a vtable pointer at
+ * 0xC, 0x20 bytes -- a stand-in of util_stable.h's real class (a unit includes one or the other),
+ * its members the ones the rdr units call, all out of line (CRdrFile builds and destroys it as a
+ * member: the constructor 0x39FBD0, the destructor 0x39FB30) */
 class CSTable {
 public:
+    CSTable(unsigned int bytes, unsigned int strings);
+    ~CSTable();
     void LoadTable(void *table, unsigned int bytes, bool copy);
     char *CreateString(const char *s);
 
@@ -186,12 +186,12 @@ public:
 _zrdr *zrdr_read(const char *name, const char *path, int flags);
 int zrdr_free(CRdrFile *file);
 
-/* the deque pieces the editor's stack calls that include/deque does not declare yet, out of line
- * in zrdr_edit.cpp's template tail (placeholders, the deque first): back() (0x3335C0) and
- * pop_back() (0x3349C0), both deque<const void *>'s (SOCOM 1's back__Q23std33deque<PCv,...>Fv,
- * pop_back__Q23std33deque<PCv,...>Fv) */
+/* the deque's back() the editor's stack calls out of line, in zrdr_edit.cpp's template tail
+ * (0x3335C0, a placeholder, the deque first: include/deque's back() is in class, so inline):
+ * SOCOM 1's back__Q23std33deque<PCv,...>Fv. Its pop_back() (0x3349C0) is include/deque's
+ * __deque_imp<const void *>::pop_back, out of class (the tail emits it: OPEN, include/deque's
+ * comment) */
 extern "C" const void **func_003335C0(void *deque);
-extern "C" void func_003349C0(void *deque);
 
 namespace std {
 
@@ -208,7 +208,7 @@ public:
     unsigned int size() const { return c.size(); }
     T &top() { return (T &)*func_003335C0(&c); }
     void push(const T &x) { c.push_back(x); }
-    void pop() { func_003349C0(&c); }
+    void pop() { c.pop_back(); }
 
     Container c;   // 0x0
 };

@@ -24,13 +24,11 @@ int zrdr_free(CRdrFile *file);
 
 /* zar::CZAR's members zar.h does not declare (placeholders, the archive first): the archive
  * opened (SOCOM 1's Open(const char *, int, unsigned, unsigned), a word more in SOCOM II), a key
- * made under the open key, a key's data fetched into a buffer, data written as a new key, the
- * archive written out, its data buffer handed over */
+ * made under the open key, the archive written out, its data buffer handed over (0x257F90, named
+ * ReleaseDataBuffer: zar.h, another lane's, has no declaration) */
 extern "C" bool func_00258920(zar::CZAR *zar, const char *name, int flags, unsigned int mode, unsigned int align,
                               int a);
 extern "C" zar::CKey *func_00258740(zar::CZAR *zar, const char *name);
-extern "C" bool func_0025A000(zar::CZAR *zar, zar::CKey *key, void *buf, int size, unsigned int a);
-extern "C" void func_0025A2F0(zar::CZAR *zar, const char *name, const void *data, int size);
 extern "C" void func_00258BD0(zar::CZAR *zar);
 extern "C" void *func_00257F90(zar::CZAR *zar);
 
@@ -150,7 +148,7 @@ bool CSaveManager::Save(const char *name, int flags, int version, char *desc, ch
         header.m_flags = flags;
         sprintf(header.m_desc, "%s", desc ? desc : "");
         header.m_version = version;
-        func_0025A2F0(&archive, "zSaveHeader", &header, header.m_size);
+        archive.Insert("zSaveHeader", &header, header.m_size);
         zar::CKey *modules = func_00258740(&archive, "CSaveModuleList");
         if (modules) {
             iterator it;
@@ -333,7 +331,7 @@ bool CSaveManager::GetHeader(const char *name, int flags, CSaveHeader *header)
         zar::CKey *key = archive.OpenKey("zSaveHeader");
 
         if (key) {
-            ok = func_0025A000(&archive, key, header, 268, 0);
+            ok = archive.Fetch(key, header, 268, 0);
             archive.CloseKey(key);
         }
         buf.Close();

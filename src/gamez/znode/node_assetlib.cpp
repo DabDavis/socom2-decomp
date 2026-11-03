@@ -12,9 +12,6 @@
 
 #include "node_world.h"
 
-/* the texture test the mip walk makes (SOCOM II's, vis code, not named yet) */
-extern "C" bool func_00357470(zdb::CTexture *tex, zdb::CTexture *parent);
-
 namespace zdb {
 
 namespace {
@@ -260,7 +257,7 @@ CTexHandle *CAssetList::FindMipLevel(_RenderPhase phase, CTexHandle *tex)
         if (phase == 19 || ((CAssetLib *)*it)->m_renderphase == phase)
             for (CTexList::iterator t = ((CAssetLib *)*it)->m_textures.begin();
                  t != ((CAssetLib *)*it)->m_textures.end() && !found; ++t)
-                if (func_00357470((*t)->m_texture, tex->m_texture))
+                if ((*t)->m_texture->HasMipLevel(tex->m_texture))
                     found = *t;
     return found;
 }
