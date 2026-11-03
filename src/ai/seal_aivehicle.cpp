@@ -8,15 +8,9 @@
 extern "C" {
 /* a CZSealBody function (OVL2 0x545EE0, the SEAL lane's range), told 1 as the state ends */
 void func_00545EE0(CEntity *seal, int x);
-/* a CSealCtrl function taking a signed byte (OVL2 0x600D40, unclaimed), told 10 as the state
- * ends */
-void func_00600D40(CSealCtrlAi *ai, int x);
-/* a CSealCtrlAi function (OVL2 0x56D090, the SEAL lane's range) */
-void func_0056D090(CSealCtrlAi *ai);
-/* the SEAL put into a vehicle entity (OVL2 0x546210, the SEAL lane's range: a byte answer) and a
- * look of a kind at a point (OVL2 0x600DD0, this lane's range, unwritten) */
+/* the SEAL put into a vehicle entity (OVL2 0x546210, the SEAL lane's range: a byte answer); the
+ * look (ClearLook 0x600D40, SetLookDirR 0x600DD0) and RestoreAiMode (0x56D090) are zseal.h's members */
 bool func_00546210(CEntity *seal, CEntity *vehicle);
-void func_00600DD0(CSealCtrlAi *ai, int kind, const CPnt3D *pos, int x);
 }
 
 /* the SEAL's word at 0xEB8, which the vehicle state tests before letting go (zseal.h does not
@@ -102,9 +96,9 @@ void CAiSUseVehicle::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_2:
         if (InVehicle(ai)) {
             func_00545EE0(ai->m_entity, 1);
-            func_00600D40(ai, 10);
+            ai->ClearLook(AIL_10);
             ai->SetDoAiMapCollide(true);
-            func_0056D090(ai);
+            ai->RestoreAiMode();
         }
         break;
     case SIGNAL_3:
@@ -170,7 +164,7 @@ bool CAiSUseVehicle::Board(CSealCtrlAi *ai)
 
             if (t)
                 pos = (const CPnt3D *)(((CTurretView *)t)->m_27c + 400);
-            func_00600DD0(ai, 10, pos, 0);
+            ai->SetLookDirR(AIL_10, pos, false);
             ai->SetDoAiMapCollide(false);
             ai->SetAiMode((AI_MODE)2);
             ai->ClearGoal(GOAL_NONE);

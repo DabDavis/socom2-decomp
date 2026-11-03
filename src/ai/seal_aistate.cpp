@@ -852,6 +852,68 @@ void CAiStateStack::PopAll(CSealCtrlAi *ai)
 }
 #pragma auto_inline reset
 
+/* the planner a hiding state hands its path (new in SOCOM II, the name its RTTI's: 0x14 bytes,
+ * table 0x6696B0 -- reset, is_goal and dist its own, is_traversable and fcost the base's). Made by
+ * 0x5F0990 and 0x5F0B30 with the flag clear, a distance of 5 and a threshold of 0.5; its goal is a
+ * cell off the start, far enough from it, from which the line to the threat is seen through at
+ * most (or, without the flag, at least) the threshold (the names ours) */
+class CAiHidePlanner : public CAiPlanner {
+public:
+    virtual void reset(CAiMap &map, const CAiMapLoc &start, const CAiMapLoc &goal);
+    virtual bool is_goal(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b);
+    virtual int dist(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b);
+
+    bool m_hide;   // 0x4
+    int m_dist;   // 0x8: the least distance from the start, in cells (0: any)
+    float m_thresh;   // 0xc
+    CAiMapLoc m_start;   // 0x10: the search's start, kept by reset
+};
+
+/* (OVL2 0x5F8560) */
+void CAiHidePlanner::reset(CAiMap &, const CAiMapLoc &start, const CAiMapLoc &)
+{
+    m_start = start;
+}
+
+/* the height above both ends the hide planner's line is seen from, 8.0 (OVL2 data among
+ * ai_events.cpp's and ai_astar.cpp's statics; the name ours) */
+extern float s_hideHeight;
+
+/* two cells' x and y distances summed (CAiPlanner::dist's shape, unscaled; inline, the name ours) */
+inline int HideDist(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = a.y > b.y ? a.y - b.y : b.y - a.y;
+
+    return dx + dy;
+}
+
+/* (OVL2 0x5F8570: the line seen from eight units up at both ends -- the height a variable, read from
+ * data; the distance an inline, whose x fields MW shares with operator!='s, as the target does).
+ * OPEN, 0x130 against 0x138: the target leaves the m_dist test's delay slot empty (ours takes the
+ * first compare of the distance) and pads the visibility block's label -- the early `return r`
+ * forms, the test nested or negated and the compare in a materialised inline bool all tried */
+bool CAiHidePlanner::is_goal(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    bool r = false;
+
+    if (m_start != a && (!m_dist || HideDist(a, m_start) >= m_dist)) {
+        float vis = map.ComputeLineVisibility(a, b, 0, s_hideHeight, s_hideHeight);
+
+        if (m_hide)
+            r = vis <= m_thresh;
+        else
+            r = vis >= m_thresh;
+    }
+    return r;
+}
+
+/* (OVL2 0x5F86B0: every step alike) */
+int CAiHidePlanner::dist(CAiMap &, const CAiMapLoc &, const CAiMapLoc &)
+{
+    return 0;
+}
+
 /* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */
 CAiStateStack::CAiStateStack() : m_c(-1), m_10(0), m_14(0)
 {
