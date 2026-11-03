@@ -174,6 +174,9 @@ public:
     char *GetDescription() const;
     /* the animations let go of (SOCOM 1's ClearAnims, 0x3D21C0) */
     void ClearAnims();
+    /* the fire animation, the zoomed one or not (SOCOM 1's, 0x3D22B0: `zoomed ? m_zoomedfireanim :
+     * m_fireanim`; CTurret::Fire calls it, its draft defines it) */
+    CZAnim *GetFireAnim(bool zoomed);
     /* the id by value (inline: GetWeapon(EQUIP_ITEM) narrows its argument into a register of its
      * own only so; the name is ours) */
     EQUIP_ITEM GetId() const { return m_ID; }
