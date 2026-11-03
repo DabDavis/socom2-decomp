@@ -45,10 +45,10 @@ extern int rt_msg_client_idisconnect_all(void);
 extern int func_00634078(unsigned short, unsigned char);
 extern int rt_msg_client_iudp_disable_heartbeat(void);
 extern int rt_msg_client_iupdate_all(unsigned char);
-extern int rt_msg_client_isend_target(unsigned short, unsigned short, int, int, unsigned short);
+extern int rt_msg_client_isend_target(unsigned short, unsigned short, int, unsigned char *, unsigned short);
 extern int rt_msg_client_isend_client_set(unsigned short, unsigned short, unsigned short, int, int, int, unsigned short);
 extern int func_00634278(unsigned char *, char *, unsigned short);
-extern int rt_msg_client_iget_buffer_status(unsigned short, int, int, int, int);
+extern int rt_msg_client_iget_buffer_status(unsigned short, unsigned int *, unsigned int *, unsigned int *, unsigned int *);
 extern int func_00634508(int);
 extern int func_00634550(int);
 extern int rt_msg_client_iget_host_by_name(char *, char *);
@@ -617,12 +617,34 @@ unsigned char rt_msg_client_ishutdown(void)
  * enum. Not written: the connect/disconnect/update/send bodies and the buffer processing
  * (0x633790-0x638500's large rows). */
 
+/* rt_circ_buf's ring (rt_circ_buf.c) */
+typedef struct rt_circ_buf {
+    unsigned int nStart;
+    unsigned int nEnd;
+    unsigned int nSize;
+    unsigned int nUsed;
+    char *pBuf;
+    void *pNormalizeBuf;
+} rt_circ_buf;                          /* 0x18 */
+
+extern int rt_circ_buf_get_used(rt_circ_buf *cb, unsigned int *pnUsed);
+extern int rt_circ_buf_copy(void *pDest, rt_circ_buf *cb, unsigned int nBytes);
+
+/* a channel: a connection's (one of two) or the UDP side's -- its rt_comm channel and its two
+ * rings, each with the size it was made with (round 15b: the buffer status's sums) */
 typedef struct rt_msg_client_comm {
     char pad0[5];
     unsigned char bKind;                /* 0x05: 1 a connection's own channel (0x635078's test) */
     unsigned short nId;                 /* 0x06: its connection's id (rt_msg_client_link's view) */
     char pad08[0x14];
     int nChannelId;                     /* 0x1C: the connection's rt_comm channel */
+    char pad20[0x20];
+    int nValue;                         /* 0x40: 0x6347C8's setting */
+    char pad44[4];
+    unsigned int nSendBufSize;          /* 0x48 */
+    unsigned int nRecvBufSize;          /* 0x4C */
+    rt_circ_buf recvBuf;                /* 0x50 */
+    rt_circ_buf sendBuf;                /* 0x68: create_send_buf_space's */
 } rt_msg_client_comm;
 
 /* a connection's state: an enum in SCEA's header, so compared unsigned (is_valid_connection's
@@ -644,9 +666,15 @@ typedef struct rt_msg_client_connection {
     unsigned short nConnectDataLength;  /* 0x40 */
     char pad42[0x1A];
     char szIP[0x1C];                    /* 0x5C: the server's address, dotted */
-    struct rt_msg_client_channel *apChannels[2]; /* 0x78 */
-    rt_msg_client_comm *pComm;          /* 0x80 */
-    char pad84[0x10];
+    rt_msg_client_comm *apChannels[2];  /* 0x78: the connection's channels */
+    rt_msg_client_comm *pComm;          /* 0x80: the one it sends on */
+    char pad84[4];
+    /* 0x88: the application's messages (types 2, 3 and 10): the connection, the source client, the
+     * message and its length */
+    void (*pfnAppMessage)(unsigned short nId, unsigned short nSource, unsigned char *pMsg,
+                          unsigned short nLength);
+    char pad8C[4];
+    void (*pfnDisconnect)(unsigned short nId, int nReason); /* 0x90 */
     /* 0x94: the application's message callback (round 14b: 0x637438) */
     void (*pfnCallback)(unsigned short nId, unsigned char b0, unsigned char b1, unsigned char b2,
                         unsigned char b3, unsigned short nLength, unsigned char *pData);
@@ -697,6 +725,56 @@ int func_00633960(rt_msg_client_udp_options *pOptions)
 }
 
 int rt_msg_client_is_valid_connection_id(unsigned short nConnection);
+extern int rt_msg_client_change_state(rt_msg_client_connection *pConnection, unsigned int nState);
+extern int rt_msg_client_send_buffer(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned int nLength,
+                                     unsigned int nTimeout);
+extern int rt_msg_client_send_disconnect(rt_msg_client_comm *pComm);
+extern int rt_msg_client_set_scratch_buf_min_size(unsigned int nSize);
+extern int rt_comm_destroy(int nChannelId);
+extern void *gpScratchBuffer;
+
+/* SOCOM 1's idisconnect, grown: a connected connection's unsent bytes flushed through the scratch
+ * buffer and its disconnect sent (states 9, then 10), both its channels destroyed (SOCOM 1 had
+ * one), then state 1 and its index freed; a connection already in state 1 is only freed */
+int rt_msg_client_idisconnect(unsigned short nConnection)
+{
+    rt_msg_client_connection *pConnection = 0;
+    unsigned int nUsed = 0;
+    rt_msg_client_comm *pComm;
+    unsigned int i;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    result = rt_msg_client_get_connection(nConnection, &pConnection);
+    if (result != 0)
+        return result;
+    if (pConnection != 0) {
+        if (pConnection->nState != 1) {
+            if (pConnection->nState == 8) {
+                pComm = pConnection->pComm;
+                if (pComm != 0 && rt_circ_buf_get_used(&pComm->sendBuf, &nUsed) == 0) {
+                    if (nUsed != 0) {
+                        rt_msg_client_set_scratch_buf_min_size(nUsed);
+                        if (rt_circ_buf_copy(gpScratchBuffer, &pComm->sendBuf, nUsed) == 0)
+                            rt_msg_client_send_buffer(pComm, gpScratchBuffer, nUsed, 10000);
+                    }
+                    rt_msg_client_change_state(pConnection, 9);
+                    rt_msg_client_send_disconnect(pComm);
+                }
+            }
+            rt_msg_client_change_state(pConnection, 10);
+            for (i = 0; i < 2; i++) {
+                pComm = pConnection->apChannels[i];
+                if (pComm != 0)
+                    rt_comm_destroy(pComm->nChannelId);
+            }
+            rt_msg_client_change_state(pConnection, 1);
+        }
+        rt_msg_client_free_connection_index(nConnection);
+    }
+    return 0;
+}
 
 /* SOCOM 1's idisconnect_all (s1:exact): every valid connection disconnected, the first failure
  * returned */
@@ -746,6 +824,48 @@ int rt_msg_client_iupdate_all(unsigned char bFlag)
     return 0;
 }
 
+extern int rt_msg_client_store_msg_in_send_buf(rt_msg_client_comm *pComm, int nType, unsigned short nTarget,
+                                               unsigned char *pMsg, int nLength, int nFlags);
+
+/* SOCOM 1's isend_target, grown: a message of at most 512 bytes for one client (type 3), every client
+ * (0xFFFE, type 2) or the server (0xFFFF, type 11) stored in the connection's send ring -- on its
+ * second channel when the connection has one of its own kind and the flags ask for neither 0x10 nor
+ * 0x40; flag 0x80 passed on */
+int rt_msg_client_isend_target(unsigned short nConnection, unsigned short nTarget, int nFlags,
+                               unsigned char *pData, unsigned short nLength)
+{
+    rt_msg_client_connection *pConnection = 0;
+    rt_msg_client_comm *pComm;
+    rt_msg_client_comm *pAlt;
+    int nType;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (pData == 0)
+        return 2;
+    if (nLength > 512)
+        return 2;
+    result = rt_msg_client_get_valid_connection(nConnection, &pConnection);
+    if (result != 0)
+        return result;
+    if (pConnection->nState != 8)
+        return 23;
+    pComm = pConnection->pComm;
+    if (pConnection->nConnectKind == 1) {
+        pAlt = pConnection->apChannels[1];
+        if (pAlt != 0 && pAlt->bKind == 1 && (nFlags & 0x50) == 0)
+            pComm = pAlt;
+    }
+    if (nTarget == 0xFFFE)
+        nType = 2;
+    else if (nTarget == 0xFFFF)
+        nType = 11;
+    else
+        nType = 3;
+    return rt_msg_client_store_msg_in_send_buf(pComm, nType, nTarget, pData, nLength, (nFlags >> 7) & 1);
+}
+
 /* the UDP send internal (SOCOM 1's isend_udp): an address checked, the datagram sent on the
  * UDP channel */
 int func_00634278(unsigned char *pbSent, char *szAddress, unsigned short nPort)
@@ -762,6 +882,68 @@ int func_00634278(unsigned char *pbSent, char *szAddress, unsigned short nPort)
     if (strlen(szAddress) >= 16)
         return 2;
     return rt_msg_client_map_comm_error(func_0062CEF8(gUDPInfo.nChannel, pbSent, szAddress, nPort));
+}
+
+/* SOCOM 1's iget_buffer_status over both channels: the bytes waiting in the send and receive rings,
+ * summed, and each as a percentage of the rings' sizes (at most 100; 1 when a ring has none).
+ * The receive percentage is POSITIVE with its error in an else (round 14b's rule): with the guard,
+ * loop.c's exit-block move (find_and_verify_loops) puts the loop's `return 21` block after that
+ * guard's barrier, here after the last statement, as the target. OPEN (10 words, registers only):
+ * the send sum takes s2 and the strength-reduced channel offset s1, the target's the other way round;
+ * 40 declaration orders tried (build/scratch/gcc/declperm.py) move only the zeroed slots' stores. */
+int rt_msg_client_iget_buffer_status(unsigned short nConnection, unsigned int *pnSendUsed,
+                                     unsigned int *pnRecvUsed, unsigned int *pnSendPercent,
+                                     unsigned int *pnRecvPercent)
+{
+    unsigned int nSendBytes = 0;
+    unsigned int nRecvBytes = 0;
+    rt_msg_client_connection *pConnection = 0;
+    unsigned int nSendSize = 0;
+    unsigned int nRecvUsed = 0;
+    unsigned int nRecvSize = 0;
+    rt_msg_client_comm *pComm;
+    unsigned int i;
+    int result;
+    unsigned int nSendUsed = 0;
+
+    if (data_00655614 != 1)
+        return 5;
+    result = rt_msg_client_get_valid_connection(nConnection, &pConnection);
+    if (result != 0)
+        return result;
+    for (i = 0; i < 2; i++) {
+        pComm = pConnection->apChannels[i];
+        if (pComm != 0) {
+            if (rt_circ_buf_get_used(&pComm->sendBuf, &nSendBytes) != 0)
+                return 21;
+            nSendUsed += nSendBytes;
+            nSendSize += pComm->nSendBufSize;
+            if (rt_circ_buf_get_used(&pComm->recvBuf, &nRecvBytes) != 0)
+                return 21;
+            nRecvSize += pComm->nRecvBufSize;
+            nRecvUsed += nRecvBytes;
+        }
+    }
+    if (pnSendUsed != 0)
+        *pnSendUsed = nSendUsed;
+    if (pnRecvUsed != 0)
+        *pnRecvUsed = nRecvUsed;
+    if (pnSendPercent != 0) {
+        if (nSendSize == 0)
+            return 1;
+        *pnSendPercent = nSendUsed * 100 / nSendSize;
+        if (*pnSendPercent > 100)
+            *pnSendPercent = 100;
+    }
+    if (pnRecvPercent != 0) {
+        if (nRecvSize != 0) {
+            *pnRecvPercent = nRecvUsed * 100 / nRecvSize;
+            if (*pnRecvPercent > 100)
+                *pnRecvPercent = 100;
+        } else
+            return 1;
+    }
+    return 0;
 }
 
 int rt_msg_client_iget_host_by_name(char *szName, char *szAddress)
@@ -866,11 +1048,6 @@ int rt_msg_client_iget_metrics(int nConnection, rt_msg_client_metrics *pMetrics)
     pMetrics->bytesReceived.fMaxRate = metrics.bytesReceived.fMaxRate;
     return 0;
 }
-
-typedef struct rt_msg_client_channel {
-    char pad0[0x40];
-    int nValue;                         /* 0x40 */
-} rt_msg_client_channel;
 
 int func_006347C8(unsigned short nConnection, int nValue)
 {
@@ -1124,8 +1301,8 @@ typedef struct rt_msg_client_header {
 } rt_msg_client_header;
 
 int rt_msg_client_set_header(unsigned char *pMsg, rt_msg_client_header *pHeader, unsigned short *pnLength);
-extern int rt_msg_client_send_buffer(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned short nLength,
-                                     int nTimeout);
+extern int rt_msg_client_send_buffer(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned int nLength,
+                                     unsigned int nTimeout);
 
 /* SOCOM 1's send_disconnect: a bare header of type 1 sent at once */
 int rt_msg_client_send_disconnect(rt_msg_client_comm *pComm)
@@ -1224,6 +1401,77 @@ extern void *memcpy(void *dst, const void *src, unsigned int n);
 
 extern int KM_AddSymmetricKey(int nKMID, int nClientID, void *pKey);
 extern int rt_msg_client_change_state(rt_msg_client_connection *pConnection, unsigned int nState);
+
+extern int func_00638178(int *pnReason, unsigned char nReason);
+
+/* SOCOM 1's process_app_message: an application message for the connection's callback -- types 2 and
+ * 3 carry their source client first (two bytes), type 10 is the server's (0xFFFF) */
+int rt_msg_client_process_app_message(rt_msg_client_connection *pConnection, int nType, unsigned char *pMsg,
+                                      unsigned int nLength)
+{
+    unsigned short nSource = 0;
+    unsigned int nOffset = 0;
+    unsigned short nId;
+
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    if (nType != 2 && nType != 3 && nType != 10)
+        return 2;
+    if (nType == 10) {
+        nSource = 0xFFFF;
+    } else {
+        if (nLength > nOffset + 1) {
+            if (rt_msg_get_u2byte(pMsg, &nSource) != 0)
+                return 7;
+            pMsg += 2;
+            nOffset = 2;
+        } else
+            return 1;
+    }
+    if (pConnection->pfnAppMessage != 0) {
+        nId = pConnection->nId;
+        pConnection->pfnAppMessage(nId, nSource, pMsg, nLength - nOffset);
+        if (rt_msg_client_is_valid_connection_id(nId) == 0)
+            return 11;
+    }
+    return 0;
+}
+
+/* SOCOM 1's process_disconnect_message: the server's reason byte mapped (0x638178, SOCOM 1's
+ * map_fdisconnect_reason) and handed to the connection's disconnect callback */
+int rt_msg_client_process_disconnect_message(rt_msg_client_connection *pConnection, int nType,
+                                             unsigned char *pMsg, unsigned int nLength)
+{
+    unsigned char nByte;
+    int nReason = 0;
+    unsigned int nOffset = 0;
+    unsigned short nId;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    if (nLength > nOffset) {
+        if (rt_msg_get_ubyte(pMsg, &nByte) != 0)
+            return 7;
+        result = func_00638178(&nReason, nByte);
+        if (result != 0)
+            return result;
+        if (pConnection->pfnDisconnect != 0) {
+            nId = pConnection->nId;
+            pConnection->pfnDisconnect(nId, nReason);
+            if (rt_msg_client_is_valid_connection_id(nId) == 0)
+                return 11;
+        }
+    } else
+        return 1;
+    return 0;
+}
 
 /* the server's symmetric key (message 27 carries a key id first): kept in the key master under the
  * connection's id, then the connection's next step when it waits for the key */
@@ -1336,6 +1584,43 @@ int rt_msg_client_get_header(unsigned char *pMsg, rt_msg_client_header *pHeader,
     if (rt_msg_get_u2byte(pMsg + 1, &pHeader->nLength) != 0)
         return 7;
     *pnLength += 2;
+    return 0;
+}
+
+extern int rt_time_start(rt_msg_client_time *pStart);
+extern int rt_time_elapsed(rt_msg_client_time *pStart, unsigned int *pnMsecs);
+extern int func_006385F0(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned int nLength,
+                         unsigned short *pnSent);
+
+/* SOCOM 1's send_buffer: the bytes sent in pieces (0x6385F0) until none is left, failing after the
+ * timeout's milliseconds */
+int rt_msg_client_send_buffer(rt_msg_client_comm *pComm, unsigned char *pMsg, unsigned int nLength,
+                              unsigned int nTimeout)
+{
+    rt_msg_client_time tStart;
+    unsigned int nElapsed = 0;
+    unsigned short nSent = 0;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    if (rt_time_start(&tStart) != 0)
+        return 24;
+    do {
+        result = func_006385F0(pComm, pMsg, nLength, &nSent);
+        if (result != 0)
+            return result;
+        nLength -= nSent;
+        pMsg += nSent;
+        if (rt_time_elapsed(&tStart, &nElapsed) != 0)
+            return 24;
+        if (nElapsed > nTimeout)
+            return 13;
+    } while (nLength != 0);
     return 0;
 }
 
