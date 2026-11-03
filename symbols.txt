@@ -6035,7 +6035,7 @@
 0x0033C5C0 0x710 insert__Q23std70__vector_imp<15tag_DelayedNode,Q23std28allocator<15tag_DelayedNode>,0>FP15tag_DelayedNodeUiRC15tag_DelayedNode  # OVL1; the world lane r3: the delayed nodes' insert(position, n, x) (the length error, the in-place and reallocating branches) -- zrndr_pipe.cpp's tail
 0x0033CCD0 0x80 __dt__12CFlareSystemFv  # OVL1; the world lane r3: the flare system's implicit destructor (its pointer vector's three this-tested levels, the delete flag), generated last in zrndr_pipe.cpp's tail; the unit's initialiser registers it for the system at 0x488F10 -- zrndr_pipe.cpp
 0x0033CD50 0x3A8 func_0033CD50  # OVL1
-0x0033D100 0x10 func_0033D100  # OVL1
+0x0033D100 0x10 SetOn__11CPipeEffectFb  # OVL1; the world lane r3: ours (the flag byte at 0x31 set and mirrored into the byte at 0x4A4548; CCoreState's 0x264610 calls it twice) -- zrndr_postfx.cpp
 0x0033D110 0x44 __dt__11CPipeEffectFv  # OVL1; the world lane r3: ours (the effect's destructor, empty: ~CPipe calls it out of line) -- declared in zrndr_pipe.cpp
 0x0033D160 0x80 __ct__11CPipeEffectFv  # OVL1; the world lane r3: ours, the class and its name (SOCOM II's effect at thePipe+0x688, its unit 0x33CD50-0x33D22F after zrndr_pipe.cpp's tail: CPipe() calls its constructor out of line) -- declared in zrndr_pipe.cpp
 0x0033D1E0 0x4C func_0033D1E0  # OVL1
@@ -8577,7 +8577,7 @@
 0x00402DB0 0x3C __sinit_zrdr_parse.cpp  # OVL1 data area; a static initialiser; by its body (the preprocessor's define table at 0x488630, its destructor 0x333390 registered) -- the rdr lane
 0x00402DF0 0x64 __sinit_zrndr_init.cpp  # OVL1 data area; a static initialiser; s1~ zrdr_parse.cpp (shape 0.60, a hint); by its body (iostream's init objects; ZDB its bss) -- the rdr lane
 0x00402E60 0x11C __sinit_zrndr_pipe.cpp  # OVL1 data area; a static initialiser; by its body (thePipe built through CPipe's constructor 0x33C1C0, 0x33C120 registered) -- the rdr lane
-0x00402F80 0x64 func_00402F80  # OVL1 data area; a static initialiser; s1~ zrndr_init.cpp (shape 0.46, a hint)
+0x00402F80 0x64 __sinit_zrndr_postfx.cpp  # OVL1 data area; a static initialiser; s1~ zrndr_init.cpp (shape 0.46, a hint); the world lane r3: ours, the unit after zrndr_pipe.cpp (0x33CD50-0x33D22F, CPipeEffect's): its initialiser builds only <iostream>'s two objects, right after the pipe's -- zrndr_postfx.cpp
 0x00402FF0 0x240 func_00402FF0  # OVL1 data area; a static initialiser
 0x00403230 0xA4 __sinit_zsnd_csndinstance.cpp  # OVL1 data area; a static initialiser; s1~ pickup_main.cpp (shape 0.25, a hint); registers zsnd_csndinstance.cpp's list (0x347B20), pool and vector destructors -- the sound lane
 0x004032E0 0x8C __sinit_zsnd_jukebox.cpp  # OVL1 data area; a static initialiser; constructs and registers the jukebox's two arrays (destructors 0x349A50, 0x349A30) -- the sound lane
