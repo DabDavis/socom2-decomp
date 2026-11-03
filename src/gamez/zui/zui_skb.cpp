@@ -602,6 +602,40 @@ inline void CSoftKeyboard::SetCurKeyState(void (C2DButton::*state)())
         GetCurKeyProps()->SetButtonState(state);
 }
 
+/* a key and its props paired for the map, the key taken by value (ours: as SOCOM 1's make_pair,
+ * whose key parameter is a copy -- the target block-copies it, then copies it into the pair and
+ * that into the map's value) */
+static inline std::pair<CSkbKey, CSkbKeyProps *> SkbKeyPair(CSkbKey key, CSkbKeyProps *props)
+{
+    return std::pair<CSkbKey, CSkbKeyProps *>(key, props);
+}
+
+/* a key's props found, or made and mapped -- a key of row 2 sets 0x174 -- then given the key's
+ * place and size (0x38B770; ParseKeyProps calls it; the name ours). Written round 15 for the map's
+ * insert_one 0x38EC10 and insert_node_at 0x38EF50, byte-exact through it.
+ * OPEN, 0xFC against 0x124: the target keeps the insert's three temporaries in memory -- the key
+ * block-copied (lh/sh, lh/sh) to 104, a pair<CSkbKey, CSkbKeyProps *> at 80 copy-constructed from
+ * it (lb/lhu) with the props stored and reloaded, the map's value at 88 copied from that -- where
+ * MW scalarises every form tried: this by-value helper (SOCOM 1's make_pair takes its key by value:
+ * its pair constructor 0x3A8E40 is out of line there), include/utility's make_pair, a named pair,
+ * value_type(pair), a local key copy. Fields kept in memory point at MSL's pair holding them in a
+ * base class (the deque iterator's tell, round 14 of the MSL headers) -- not tried */
+void CSoftKeyboard::AddKeyProps(const CSkbKey &key, const CSkbRect &r)
+{
+    CSkbKeyProps *props = FindKeyProps(key);
+
+    if (!props) {
+        props = new CSkbKeyProps;
+        m_keyProps.insert(SkbKeyPair(key, props));
+        if (key.m_urow == 2)
+            m_174 = true;
+    }
+    props->m_x = r.m_pos[0];
+    props->m_y = r.m_pos[1];
+    props->m_w = r.m_size[0];
+    props->m_h = r.m_size[1];
+}
+
 /* a key's properties, or none (SOCOM 1's): the found branch first -- `i == end() ? 0 : ...` and
  * its if/return lay out a bne and a b, 8 bytes longer */
 CSkbKeyProps *CSoftKeyboard::FindKeyProps(const CSkbKey &key)

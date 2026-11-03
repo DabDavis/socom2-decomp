@@ -7255,7 +7255,7 @@
 0x0038B550 0x18 func_0038B550  # OVL1
 0x0038B570 0x8 func_0038B570  # OVL1
 0x0038B580 0x1EC func_0038B580  # OVL1
-0x0038B770 0x124 func_0038B770  # OVL1
+0x0038B770 0x124 AddKeyProps__13CSoftKeyboardFRC7CSkbKeyRC8CSkbRect  # OVL1; the UI lane round 15: ours, by its body (zui_skb.cpp: the key's props found through the inlined FindKeyProps, else newed zeroed and inserted into the key map at 0x164 -- the map's insert_one 0x38EC10 and insert_node_at 0x38EF50 byte-exact through it -- a row-2 key setting 0x174; then the place and size copied from the rectangle; ParseKeyProps 0x38DCB0 calls it)
 0x0038B8A0 0x48 func_0038B8A0  # OVL1
 0x0038B8F0 0x1B8 func_0038B8F0  # OVL1
 0x0038BAB0 0x8 func_0038BAB0  # OVL1
