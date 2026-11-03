@@ -647,7 +647,8 @@ typedef struct rt_msg_client_comm {
     char pad1A[2];
     int nChannelId;                     /* 0x1C: the connection's rt_comm channel */
     rt_msg_client_time tLastSend;       /* 0x20: recv_circ_buf's (the last piece that moved) */
-    char pad28[0x14];
+    rt_msg_client_time tLastRecv;       /* 0x28: 0x637D50's (the last piece that came in) */
+    char pad30[0xC];
     short n3C;                          /* 0x3C: one less for each type-5 message (0x6364C0) */
     char pad3E[2];
     int nValue;                         /* 0x40: 0x6347C8's setting */
@@ -1180,7 +1181,7 @@ unsigned char func_00634A08(unsigned short nConnection, unsigned char bFlag)
 
 extern int func_0062D178(int nChannelId, unsigned char *pbReceived, char *szAddress, unsigned short *pnPort);
 
-extern int func_00637D50(rt_msg_client_comm *pComm);
+extern int rt_msg_client_recv_circ_buf(rt_msg_client_comm *pComm);
 extern int rt_msg_client_process_recv_buf(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm);
 
 /* one connection's channel updated (0x635078): the connection and its channel valid and its own, the
@@ -1199,7 +1200,7 @@ int func_00635078(rt_msg_client_connection *pConnection, rt_msg_client_comm *pCo
         return 2;
     if (pConnection->nId != pComm->nId)
         return 2;
-    result = func_00637D50(pComm);
+    result = rt_msg_client_recv_circ_buf(pComm);
     if (result != 0)
         return result;
     if (bProcess == 1) {
@@ -1517,7 +1518,7 @@ int rt_msg_client_store_msg_in_send_buf(rt_msg_client_comm *pComm, int nType, un
 
 extern int rt_circ_buf_get_avail_nowrap(void *pBuf, unsigned int *pnAvail);
 extern int rt_circ_buf_normalize_with_buf(void *pBuf, int bForce, void *pScratch);
-int rt_msg_client_recv_circ_buf(rt_msg_client_comm *pChannel);
+int rt_msg_client_send_circ_buf(rt_msg_client_comm *pChannel);
 
 /* SOCOM 1's: room for nSize bytes at the send buffer's end without wrapping -- received data
  * taken off first, the buffer normalised through the scratch buffer if still short */
@@ -1537,7 +1538,7 @@ int rt_msg_client_create_send_buf_space(void *pChannel, unsigned int nSize)
     if (rt_circ_buf_get_avail_nowrap(pBuf, &nAvail) != 0)
         return 21;
     if (nAvail < nSize) {
-        result = rt_msg_client_recv_circ_buf(pChannel);
+        result = rt_msg_client_send_circ_buf(pChannel);
         if (result != 0)
             return result;
         if (rt_circ_buf_normalize_with_buf(pBuf, 1, gpScratchBuffer) != 0)
@@ -2257,10 +2258,11 @@ extern int rt_circ_buf_is_wrapped(rt_circ_buf *cb, unsigned char *pbWrapped);
 extern int rt_circ_buf_get_start_used_ptr(rt_circ_buf *cb, unsigned char **ppStart);
 extern int rt_circ_buf_free(rt_circ_buf *cb, unsigned int nBytes);
 
-/* SOCOM 1's recv_circ_buf (s1:align; it drains the SEND ring): the bytes waiting sent in pieces
+/* SOCOM 1's send_circ_buf (renamed round 16b: its callees, and create_send_buf_space calls it as
+ * SOCOM 1's calls send_circ_buf; it was recv_circ_buf by s1:align): the bytes waiting sent in pieces
  * (0x6385F0) while each piece moves some -- a datagram channel's ring normalised first, so a
  * piece never wraps -- and the channel's send time taken whenever one did */
-int rt_msg_client_recv_circ_buf(rt_msg_client_comm *pComm)
+int rt_msg_client_send_circ_buf(rt_msg_client_comm *pComm)
 {
     unsigned char bWrapped;
     unsigned char *pData = 0;
@@ -2306,6 +2308,87 @@ int rt_msg_client_recv_circ_buf(rt_msg_client_comm *pComm)
             if (rt_circ_buf_get_used_nowrap(pBuf, &nUsed) != 0)
                 return 21;
         } while (nUsed != 0 && nSent != 0);
+    }
+    return 0;
+}
+
+extern int rt_comm_receive(int nChannelId, void *pData, unsigned short nLength, unsigned short *pnReceived);
+extern int rt_comm_receive_from(int nChannelId, char *szAddress, unsigned short *pnPort, void *pData,
+                                unsigned short nLength, unsigned short *pnReceived);
+extern int strcmp(const char *a, const char *b);
+
+/* SOCOM 1's recv_circ_buf (s1:calls+body, round 16b; the name was 0x637BC0's), grown by the datagram
+ * channel: the channel's waiting input read into the receive ring's room
+ * while there is room and more may wait -- a stream until a read comes back short (at most 4096 bytes
+ * a read), datagrams one at a time with room for the largest (584), one from another address or
+ * port dropped -- and the channel's receive time taken whenever some came in. Shapes, measured: the
+ * address and port are the datagram arm's own (block locals get their slots after the function's: the
+ * target's frame, 122 declaration orders at function level missed), the zeroed locals in reverse, the
+ * clamp `nMax = 4096; if (nAvail <= 4096) nMax = nAvail;` (the target's movn; a ternary gives movz) */
+int rt_msg_client_recv_circ_buf(rt_msg_client_comm *pComm)
+{
+    unsigned char *pData = 0;
+    unsigned int nAvail = 0;
+    unsigned short nReceived = 0;
+    rt_circ_buf *pBuf;
+    unsigned short nMax;
+    unsigned char bMore;
+    int result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (pComm->bKind != 1)
+        return 2;
+    pBuf = &pComm->recvBuf;
+    if ((pBuf != 0) != 1)
+        return 2;
+    if (rt_circ_buf_normalize_with_buf(pBuf, 0, 0) != 0)
+        return 21;
+    if (rt_circ_buf_get_avail_nowrap(pBuf, &nAvail) != 0)
+        return 21;
+    if (nAvail != 0) {
+        do {
+            nReceived = 0;
+            bMore = 0;
+            if (rt_circ_buf_get_start_avail_ptr(pBuf, &pData) != 0)
+                return 21;
+            if (pComm->nKind == 0) {
+                nMax = 4096;
+                if (nAvail <= 4096)
+                    nMax = nAvail;
+                result = rt_msg_client_map_comm_error(rt_comm_receive(pComm->nChannelId, pData, nMax, &nReceived));
+                if (result != 0)
+                    return result;
+                if (nReceived == nMax)
+                    bMore = 1;
+            } else if (pComm->nKind == 1) {
+                char szAddress[16];
+                unsigned short nPort;
+
+                if (nAvail >= 584) {
+                    result = rt_msg_client_map_comm_error(rt_comm_receive_from(pComm->nChannelId, szAddress, &nPort,
+                                                                               pData, 584, &nReceived));
+                    if (result != 0)
+                        return result;
+                    if (nReceived != 0) {
+                        if (nPort != pComm->nPort || strcmp(szAddress, pComm->szAddress) != 0)
+                            nReceived = 0;
+                        bMore = 1;
+                    }
+                }
+            } else
+                return 3;
+            if (nReceived != 0) {
+                if (rt_time_start(&pComm->tLastRecv) != 0)
+                    return 24;
+                if (rt_circ_buf_use(pBuf, nReceived) != 0)
+                    return 21;
+            }
+            if (rt_circ_buf_get_avail_nowrap(pBuf, &nAvail) != 0)
+                return 21;
+        } while (nAvail != 0 && bMore == 1);
     }
     return 0;
 }

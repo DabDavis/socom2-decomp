@@ -12605,8 +12605,8 @@
 0x006379B0 0x90 rt_msg_client_set_header  # OVL2; s1:exact
 0x00637A40 0x90 rt_msg_client_get_header  # OVL2; s1:exact
 0x00637AD0 0xEC rt_msg_client_send_buffer  # OVL2; s1:align
-0x00637BC0 0x18C rt_msg_client_recv_circ_buf  # OVL2; s1:align
-0x00637D50 0x218 func_00637D50  # OVL2
+0x00637BC0 0x18C rt_msg_client_send_circ_buf  # OVL2; s1:align; s1:calls+body (the gcc lane, round 16b; was rt_msg_client_recv_circ_buf, s1:align): SOCOM 1's send_circ_buf's callees in order (the used span sent, freed, re-measured; rt_comm_send's place taken by 0x6385F0), and create_send_buf_space calls it at the point SOCOM 1's calls send_circ_buf
+0x00637D50 0x218 rt_msg_client_recv_circ_buf  # OVL2; s1:calls+body (the gcc lane, round 16b): SOCOM 1's recv_circ_buf's callees exactly (normalize, avail, start, rt_comm_receive, time, use, avail), grown by the datagram channel's rt_comm_receive_from
 0x00637F68 0xB8 rt_msg_client_is_valid_outgoing_msg  # OVL2 unaligned; s1:align
 0x00638020 0x24 rt_msg_client_change_state  # OVL2; s1:align
 0x00638048 0x68 rt_msg_client_is_wait_state  # OVL2 unaligned; s1:align
