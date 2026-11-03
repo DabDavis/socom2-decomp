@@ -59,6 +59,7 @@
 0x001CD0F0 0x4 _kExecArg  # MAIN; s1:data-exact (size SOCOM 1's; via ExecOSD +4)
 0x001CD3A8 0x1C TLBInfo  # MAIN; s1:data-exact (size SOCOM 1's; via InitTLB32MB)
 0x001CD3C8 0x4 _SyscallEntry  # MAIN; s1:data-exact (size SOCOM 1's; via GetSystemCallEntry +1)
+0x001CD3E0 0x4 __sce_sema_id  # MAIN; s1:data by hand (the demo's global OBJECT __sce_sema_id, 4 bytes, before __sce_eh_sema_id in the initsys object's .data; supplement_crt0 stores the first CreateSema's id here, the second's at +4) -- the GCC lane
 0x001CD3E4 0x4 __sce_eh_sema_id  # MAIN; s1:data-exact (size SOCOM 1's; via supplement_crt0)
 0x001CD3E8 0x7A8 osdsrc  # MAIN; s1:data-exact (size SOCOM 1's; via InitExecPS2)
 0x001CDB90 0x18 SysExecPS2Entry  # MAIN; s1:data-exact (size SOCOM 1's; via InitExecPS2)
@@ -152,6 +153,7 @@
 0x001E0400 0x0 retval  # MAIN bss; s1:data-exact (size SOCOM 1's; via _lmcGetClientPtr +2)
 0x001E0440 0x200 _sprtagdata.24  # MAIN bss; s1:data-exact (size SOCOM 1's; via dmaRefImage)
 0x001E0640 0x0 _packet_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifMInitRpc)
+0x001E6640 0x4 errno  # MAIN bss; by use (the GCC lane): the system layer's global errno that newlib's reent wrappers (_close_r, _read_r, _write_r ... reent/*.c, which undefine the errno macro) zero before the call and copy into ptr->_errno after a failure
 0x003D7540 0x0 vu0_CodeSegment  # OVL1; s1:data-seq (size SOCOM 1's; via zMath_Init__Fv)
 0x003D8270 0x0 vu1_CodeSegment1  # OVL1; SOCOM 1's (vu1_CodeSegment1, the VU1 microcode's DMA chain, .vutext): zRndrInit sends it second, by physical address, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
 0x003DBFE0 0x0 vu1_DataSegment1  # OVL1; SOCOM 1's (vu1_DataSegment1, the VU1 data's DMA chain at the microcode blob's end): zRndrInit sends it first, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
@@ -172,6 +174,10 @@
 0x003DC860 0x4 @LOCAL@sort<Q33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iterator,PFP10CZSealBodyP10CZSealBody_b>__3stdFQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorQ33std62__vector_imp<P10CZSealBody,Q23std24allocator<P10CZSealBody>,1>8iteratorPFP10CZSealBodyP10CZSealBody_b_v@shuffle  # OVL1 data; ours (the MSL headers round 6): std::sort's static shuffle (-4 in data, stepped -4..4 twice a pass) for the instance at 0x226060
 0x003DC868 0x4 s_bitmap1Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the ok-to-talk bitmap's size, 32.0 -- 4 references in 4 functions (CMPTeammateNames::Tick, both Inits, the unit's initialiser 0x3FE940)
 0x003DC870 0x4 s_bitmap2Size  # OVL1 data; ours (the HUD lane, round 16): hud_teammatenames.cpp's file static, the off arrow's size, 32.0 -- 5 references in 4 functions (CMPTeammateNames::Tick x2, both Inits, the initialiser)
+0x003DCCD8 0x4 s_delay  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the push-to-talk delay (1.0) -- 1 reference in 1 function (CReco::Suspend)
+0x003DCD68 0x4 s_volume  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the recording volume (50) -- 3 references in 1 function (CReco::AdjustVolume: read twice, written)
+0x003DCD70 0x4 s_volume_max  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the recording volume's ceiling (100) -- 1 reference in 1 function (CReco::AdjustVolume)
+0x003DCD78 0x4 s_volume_min  # OVL1 data; ours (the HUD lane, round 19): reco.cpp's file static, the recording volume's floor (20) -- 1 reference in 1 function (CReco::AdjustVolume)
 0x003DCFB4 0x0 devRpcData  # OVL1; s1:data-seq (size SOCOM 1's; via lgAudClose +4)
 0x003DCFB8 0x4 devicechanged  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +3)
 0x003DCFBC 0x4 threadsafeSema  # OVL1; s1:data-exact (size SOCOM 1's; via lgAudClose +4)
@@ -201,6 +207,7 @@
 0x003DE5F8 0x4 LADDER_MASK  # OVL1; s1:data-seq (size SOCOM 1's; via GetLadderByIndex__11CLadderListFi)
 0x003DF170 0x2 nextPickupId__7CPickup  # OVL1 data; SOCOM 1's nextPickupId__7CPickup (0x474EF8, a halfword 4 bytes before bit_count; here 8 before, MW 3.0's layout): Create (0x542B90) takes it and adds one (lhu/sh), 1 at the start -- 2 references in 1 function (the SEAL lane, round 8)
 0x003DF178 0x4 bit_count__7CPickup  # OVL1 data; SOCOM 1's bit_count__7CPickup (0x474EFC, the word Open__7CPickupFUi stores its argument to, gp-relative there): Open (0x542FC0) stores its argument here, 0x542930 and 0x542B90 (Create, NetworkCreate by SOCOM 1's order) read it -- 3 references in 3 functions (the SEAL lane, round 3)
+0x003DF180 0x4 aiAccuracyAngle__11CSealCtrlAi  # OVL1 data; SOCOM 1's aiAccuracyAngle__11CSealCtrlAi (gp-31896 there, 0x474F58) by hand (the kit lane, round 12): 0.2617994 (15 degrees), the angle CSealCtrlAi::PerturbAimVector (0x5C9250) passes ModifyAimDir as SOCOM 1's does -- 2 references (0x5C9250, 0x574BA0: SOCOM 1's SetAiAccuracyAngle sets it, likely)
 0x003DF218 0x4 deadZoneScaleFactor  # OVL1; s1:data-seq (size SOCOM 1's; via SetDeadZone__4CPadFif)
 0x003DF270 0x4 m_backface_mask__Q23zdb3CDI  # OVL1 data; SOCOM 1's zdb::CDI::m_backface_mask (gp-32136 there): CGrid::GetAltitude (0x2D4A24) sets it to 32 where SOCOM 1's does; read in the node walks 0x2D2890 and 0x2D3030, CDIBBox::GetIntersect and 0x2DD210 -- 9 references (the zdb-world lane)
 0x003DF288 0x4 @LOCAL@sort<Q33std66__vector_imp<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>,1>8iterator,PFP12BriefingRoomP12BriefingRoom_b>__3stdFQ33std66__vector_imp<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>,1>8iteratorQ33std66__vector_imp<P12BriefingRoom,Q23std26allocator<P12BriefingRoom>,1>8iteratorPFP12BriefingRoomP12BriefingRoom_b_v@shuffle  # OVL1 data; ours (the MSL headers round 6): std::sort's static shuffle (-4 in data, stepped -4..4 twice a pass) for the instance at 0x2e5150
@@ -753,6 +760,7 @@
 0x00414648 0x4 s_box_w  # OVL1 bss; ours (the HUD lane, round 17): hud_mpinfobox.cpp's file static, the box's width (s_namewidth), computed by the unit's initialiser 0x3FF680 -- read by none in code
 0x00414650 0x4 s_box_x2  # OVL1 bss; ours (the HUD lane, round 17): hud_mpinfobox.cpp's file static, the box's right (s_box_x1 + s_box_w), computed by the unit's initialiser 0x3FF680 -- read by Init, ReInit
 0x00414658 0x4 s_box_y2  # OVL1 bss; ours (the HUD lane, round 17): hud_mpinfobox.cpp's file static, the box's bottom (s_box_y1 + 20), computed by the unit's initialiser 0x3FF680 -- read by Init, ReInit
+0x00414680 0x40 theReco  # OVL1 bss; ours (the HUD lane, round 19): reco.cpp's global, the voice recogniser (CReco, 0x40 bytes), built by __sinit_reco.cpp 0x3FF7B0 -- 25 references (main, CCoreState::Tick, CHUD::Init/Tick/~CHUD, the mission cams, the radio menu, the recogniser's own functions)
 0x004148B0 0xC s_hbHealthColor  # OVL1 bss; hud_healthbar.cpp's static (0, 128, 64), name ours: the health left -- the initialiser 0x3FF9C0 builds it, CHealthBar's constructor sets its first bitmap to it, the Tick fades the flash back to it; 9 references in 3 functions -- the HUD lane
 0x004148C0 0xC s_hbFlashColor  # OVL1 bss; hud_healthbar.cpp's static (128, 128, 128), name ours: the flash a rise starts from (CHealthBar::Tick); 5 references in 2 functions (the Tick, the initialiser) -- the HUD lane
 0x004148D0 0xC s_hbRestColor  # OVL1 bss; hud_healthbar.cpp's static (128, 64, 64), name ours: the rest of the bar while its owner lives (the constructor, Update); 5 references in 3 functions -- the HUD lane
@@ -1269,6 +1277,9 @@
 0x0066A5E8 0x1 g_bJoiningRandomGame  # OVL2 bss; s1:data-seq (SOCOM 1's g_bJoiningRandomGame, a static of its zNetMedius.cpp: UnInit, ReleaseUIResources and Init clear it as SOCOM 1's do); in OVL2's bss in SOCOM II, so another unit's global, the unnamed-namespace mangling dropped
 0x0066A5F0 0x4 MediusWorldID  # OVL2 bss; s1 by hand (SOCOM 1's MediusWorldID: BanSelfFromGame and SendEndGameReport send it as the game's world, as SOCOM 1's send theirs); size SOCOM 1's; 14 references in 12 functions
 0x0066B540 0xC projDirDown  # OVL2 bss; s1:data-seq (size SOCOM 1's; via HandleBloodDrip__10CZSealBodyFf)
+0x0066B580 0xF0 g_arrSavedFireModeInfo__22@unnamed@seal_kit_cpp@  # OVL2 bss; SOCOM 1's (its symbol table: seal_kit.cpp's anonymous namespace, 30 CSavedFireModeInfo of 8 bytes) by hand (the kit lane, round 12): __sinit_seal_kit.cpp constructs it (__construct_array, 30 x 8, the constructor 0x5C9230) -- 3 references (the initialiser, sealSaveFireModes, 0x5C0250)
+0x0066B670 0x4 g_iNumSavedFireModes__22@unnamed@seal_kit_cpp@  # OVL2 bss; SOCOM 1's (seal_kit.cpp's anonymous namespace) by hand (the kit lane, round 12): the saved table's count, right after it -- 5 references (sealSaveFireModes 3, 0x5C0250 2)
+0x0066B680 0x20 g_placeHit__22@unnamed@seal_kit_cpp@  # OVL2 bss; by hand (the kit lane, round 12): a zdb::IntersectStruct the initialiser builds (its polygon and node zeroed: 0x66B68C, 0x66B69C), copied whole from a 32-byte hit by 0x5BE9A0 and asked its material (GetMaterial) and normal by 0x5C1970 -- the explosives' placing, likely; the name ours -- 23 references (0x5BE9A0 12, 0x5C1970 9, the initialiser 2)
 0x0066B7E0 0x18 ai_cmdid  # OVL2 bss; s1:data by hand (the kit lane, round 8): SOCOM 1's ai_cmdid (0x18 bytes at its 0x43A580) -- both builds' CSealCtrlAi::RegisterCommands store every AddCmd result to its first word, the task parsers copy that word into their blocks' type and the handlers pass its third word (0x66B7E8) to the inlined taskFindParam as the SEAL argument's type -- 73 references in 31 functions to the first word, 60 in 55 to the third, one each to 0x66B7F0/0x66B7F4 (the kit lane, round 8)
 0x0066B990 0x58 _unknown  # OVL2 bss; SOCOM 1's _unknown (0x509870, 40 bytes there: a static CAiSUnknown seal_aistate.cpp's initialiser builds); CSealCtrlAi::GetAiState returns it when the stack is empty (0x5F5FD0, 0x5F6010) -- 2 references in 2 functions (the kit lane, round 3)
 0x0066BAC8 0xC ai_line_pos__2ai  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MoveTo__2aiFRC6CPnt3D)

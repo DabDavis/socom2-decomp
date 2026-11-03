@@ -559,10 +559,14 @@ inline bool HoldBroken(const CAiState *s)
  * `move v0,zero` for no state. The ternary over the inline (here) puts the andi on a block of its
  * own; `if (s) return HoldBroken(s); return false;` is 0x68, the true in v0 and no andi; a bool
  * local `r = false; if (a && b) r = true;` (inline or not, nested ifs too) is if-converted into
- * sltu; `? true : false` and `HoldBroken(s) != false` miss further. */
+ * sltu; `? true : false` and `HoldBroken(s) != false` miss further; the materialised `&&` written
+ * in the ternary's arm is 0x68 with the test in v1 (the kit lane, round 12). The stack is read
+ * through a const reference: the target calls its const GetState (0x5F8330), the non-const copy
+ * 0x5F8360 otherwise. */
 extern "C" bool func_00607830(CSealCtrlAi *ai)
 {
-    const CAiState *s = ai->m_stateStack.size() == 0 ? 0 : ai->m_stateStack.GetState();
+    const CAiStateStack &st = ai->m_stateStack;
+    const CAiState *s = st.size() == 0 ? 0 : st.GetState();
 
     return s ? HoldBroken(s) : false;
 }

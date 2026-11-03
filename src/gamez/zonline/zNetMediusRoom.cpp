@@ -135,16 +135,18 @@ bool RemoveEmptyGame(RoomGame *g)
 }
 
 /* the games nobody is in dropped (OVL1 0x2E4700: the game list's request calls it out of line,
- * pinned).
- * OPEN, 20 instructions, the same 0x84 bytes: include/vector's erase/end question, as
- * CCharacterType::CleanupTemporary's (OVL2 0x53DF50) -- the target computes end() once, stores it
- * for remove_if's last (48(sp)) and for erase's (60(sp)), and copies the latter into erase's
- * parameter (40(sp)) after the call; this copies erase's last into its parameter before
- * evaluating remove_if. An end in a local passed to both is 0x70 (no copy at all) */
+ * pinned). The end and the new end are locals, the end taken first: its slot is the highest
+ * (60(sp)), remove_if's result next (56), then remove_if's own begin() and end() (52, 48), and both
+ * of erase's copies are made after the call (the MSL headers round 8). Written as the one-line
+ * idiom, MW builds an argument list's temporaries left to right and evaluates it right to left, so
+ * erase's end() lands below remove_if's and is copied into its parameter before the call */
 #pragma auto_inline off
 void BriefingRoom::RemoveEmptyGames()
 {
-    erase(std::remove_if(begin(), end(), RemoveEmptyGame), end());
+    iterator e = end();
+    iterator i = std::remove_if(begin(), end(), RemoveEmptyGame);
+
+    erase(i, e);
 }
 #pragma auto_inline reset
 
@@ -158,12 +160,15 @@ bool RemoveUncheckedGame(RoomGame *g)
     return unchecked;
 }
 
-/* the games the new list did not report dropped (OVL1 0x2E4630: pinned, as RemoveEmptyGames).
- * OPEN, 20 instructions: RemoveEmptyGames' (see there) */
+/* the games the new list did not report dropped (OVL1 0x2E4630: pinned, written as
+ * RemoveEmptyGames) */
 #pragma auto_inline off
 void BriefingRoom::RemoveUncheckedGames()
 {
-    erase(std::remove_if(begin(), end(), RemoveUncheckedGame), end());
+    iterator e = end();
+    iterator i = std::remove_if(begin(), end(), RemoveUncheckedGame);
+
+    erase(i, e);
 }
 #pragma auto_inline reset
 
