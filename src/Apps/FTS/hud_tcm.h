@@ -68,6 +68,11 @@ public:
  * 0x232490 tears it down) */
 class CTCMNode {
 public:
+    /* the tree's (0x232660, out of line in the menu object's constructor; the destructor 0x232490
+     * a written one: its first test reads the parent) */
+    CTCMNode();
+    ~CTCMNode();
+
     /* whether the node is still waiting out its last message's delay (ours: the commands test the
      * flag through it, materialised) */
     bool IsWaiting() const { return !m_ready; }
@@ -96,6 +101,8 @@ class CSnd;
  * .TCM_SLIDE, .TCM_SELECT twice -- Play 0x232890, Clear 0x232950) */
 class CTCMSounds {
 public:
+    CTCMSounds();
+
     bool m_loaded;   // 0x0
     CSnd *m_back;   // 0x4: Play(2)
     CSnd *m_slide;   // 0x8: Play(0)
@@ -108,6 +115,7 @@ public:
  * and the tree call it): the recogniser's listening states 1 and 6 (reco.cpp's) */
 class CTCMMode {
 public:
+    CTCMMode() : m_mode(4) {}
     void Set(int mode);
 
     unsigned char m_mode;   // 0x0
@@ -117,6 +125,8 @@ class CTCM : public CTCMNode {
 public:
     /* the item cache's name, if any (ours: SetCache tests it, then copies it) */
     static const char *CacheName(CTCMCache *cache) { return cache ? cache->m_name : 0; }
+
+    CTCM();
 
     void Hold(bool reset, float t);
     CTCMNode *GetColumn(unsigned int depth);

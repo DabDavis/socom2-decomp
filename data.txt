@@ -230,6 +230,7 @@
 0x003DC9C0 0x10 s_shutdownArgs  # OVL1 data; ours (the states lane, round 19): st_shutdown.cpp's -- the network GUI's LoadExecPS2 arguments ("ENGLISH", the game's ELF, "--menu_state", the dialog) -- 2 references in 1 function take 0x3DC9C0 (Init__14CShutdownStateFv)
 0x003DC9D0 0x10 s_errorRebootArgs  # OVL1 data; ours (the states lane, round 19): st_reboot.cpp's -- the error reboot's LoadExecPS2 arguments ("--menu_state", "dlgAfterErrorReboot.rdr", "") -- 2 references in 1 function take 0x3DC9D0 (RebootAfterError__Fv)
 0x003DC9E0 0x10 s_rebootArgs  # OVL1 data; ours (the states lane, round 19): st_reboot.cpp's -- the reboot's LoadExecPS2 arguments ("--menu_state", "dlgAfterReboot.rdr", "") -- 2 references in 1 function take 0x3DC9E0 (Init__12CRebootStateFv)
+0x003DCB28 0x4 s_tcm_dd8  # OVL1 data; ours (the HUD lane, round 24): hud_tcm.cpp's file static, 0.3 -- CTCM's constructor stores it into m_dd8 (1 reference); one of the 8-byte-spaced float pool 0x3DCB00-0x3DCB3C
 0x003DCCB0 0x4 s_volumeUp  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the recording volume's step up (5) -- 1 reference in 1 function (PrintResult, under s_confLow)
 0x003DCCB8 0x4 s_volumeDown  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the recording volume's step down (-5) -- 1 reference in 1 function (PrintResult, over s_confHigh)
 0x003DCCC0 0x4 s_confHigh  # OVL1 data; ours (the HUD lane, round 20): reco.cpp's file static, the confidence over which the volume steps down (7500) -- 1 reference in 1 function (PrintResult)

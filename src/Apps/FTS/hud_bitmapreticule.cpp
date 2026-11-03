@@ -30,6 +30,7 @@ public:
     virtual void On();
     void OnPauseTest();
     void UnInit();
+    void HideTimer();
 
     /* SOCOM 1's DWARF names at SOCOM II's offsets (read off the constructor 0x218DE0 and the
      * destructor 0x219090); SOCOM II's own members named by offset */
@@ -117,15 +118,15 @@ public:
     static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
 };
 
-/* the weapons' timer registration (SOCOM 1's CZWeapon statics; only the current value's pointer) */
+/* the weapons' timer registration (SOCOM 1's CZWeapon statics; only the current value's pointer)
+ * and the timer registered: its value, its maximum, whether it counts up (SOCOM 1's
+ * CZWeapon::RegisterTimer(float *, float, bool), 0x3D0060, the same five stores) */
 class CZWeapon {
 public:
+    static void RegisterTimer(float *pCurval, float maxval, bool bIncr);
+
     static float *m_timer_pCurval;
 };
-
-/* the weapons' timer registered: its value, its maximum, whether it counts up (SOCOM 1's
- * CZWeapon::RegisterTimer(float *, float, bool), 0x3D0060, the same five stores; unnamed yet) */
-extern "C" void func_003D0060(float *pCurval, float maxval, bool bIncr);
 
 /* the binoculars' reticle texture (ret_binocs2.tif): Init loads it, MapCompass's binocular view
  * draws with it, the destructor forgets it (the name ours) */
@@ -138,7 +139,7 @@ void hudStartDefuseTimer(bool bIncr, float t)
 {
     g_fDefuseTime = t;
     if (CZWeapon::m_timer_pCurval != &g_fDefuseTime) {
-        func_003D0060(&g_fDefuseTime, t, bIncr);
+        CZWeapon::RegisterTimer(&g_fDefuseTime, t, bIncr);
         CValve::Create(c_szDefusingValve, 1, VALVE_TEMP);
     }
 }
@@ -225,4 +226,14 @@ void BitmapReticule::UnInit()
     m_lase_update.ClearAndWipe();
     m_detonation_update.ClearAndWipe();
     m_enemy_name.ClearAndWipe();
+}
+
+/* the timer's four bitmaps faded out (SOCOM II's, the unit's first in the image: CHUD::ReInit_Init
+ * calls it; the name ours) */
+void BitmapReticule::HideTimer()
+{
+    m_timer_IMAGE.SetTrans(0.0f);
+    m_timer_BKGRD.SetTrans(0.0f);
+    m_socom2_43a0.SetTrans(0.0f);
+    m_socom2_4420.SetTrans(0.0f);
 }
