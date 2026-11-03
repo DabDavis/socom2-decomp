@@ -8875,13 +8875,13 @@
 0x004E3CC8 0x54 userwordStartUserWordTraining  # OVL2 unaligned; s1:align
 0x004E3D20 0xE8 SendPartOfLabelsToEngine  # OVL2; s1:align
 0x004E3E08 0xCC cbUserWordResultAvailable  # OVL2 unaligned; s1:calls
-0x004E3ED8 0x50 func_004E3ED8  # OVL2 unaligned
+0x004E3ED8 0x50 cbScoreUserWordResultAvailable  # OVL2 unaligned; s1:order (SOCOM 1's user-word object: after cbUserWordResultAvailable as here, the same 0x50 body -- the scoring block's 36-byte result, dpscoreuw.c's SCOREUWRESULT, copied to +944) -- the gcc lane, round 13c
 0x004E3F28 0x50 DoLabelStop  # OVL2 unaligned; s1:align
 0x004E3F78 0x50 DoLabelStart  # OVL2 unaligned; s1:align
 0x004E3FC8 0x3C cbCancelUserWordTraining  # OVL2 unaligned; s1:align
-0x004E4008 0x84 func_004E4008  # OVL2 unaligned
-0x004E4090 0xE0 func_004E4090  # OVL2
-0x004E4170 0xE4 func_004E4170  # OVL2
+0x004E4008 0x84 cbUtteranceNotAccepted  # OVL2 unaligned; s1:order (SOCOM 1's user-word object at 0x34FFE0: cbCancelUserWordTraining, cbUtteranceNotAccepted, cbUtteranceAccepted, cbLastUtteranceAccepted, cbDoUserWordTraining, the same order here; the body SOCOM 1's: the utterance's labels and segmentation dropped, train_state 0) -- the gcc lane, round 13c
+0x004E4090 0xE0 cbUtteranceAccepted  # OVL2; s1:order (SOCOM 1's user-word object, after cbUtteranceNotAccepted as here; the same body: the frames against parameter +428, warning 35, else the count bumped and train_state 0) -- the gcc lane, round 13c
+0x004E4170 0xE4 cbLastUtteranceAccepted  # OVL2; s1:order (SOCOM 1's user-word object, after cbUtteranceAccepted as here; the same body with train_state 2) -- the gcc lane, round 13c
 0x004E4258 0x4C cbDoUserWordTraining  # OVL2 unaligned; s1:align
 0x004E42A8 0x16C ProcessDelayBlock  # OVL2 unaligned; s1:align
 0x004E4418 0x3C ConstructDelayBlock  # OVL2 unaligned; s1:align

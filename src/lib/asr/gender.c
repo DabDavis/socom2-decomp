@@ -5,9 +5,8 @@
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. The block takes four inputs (a frame's level and three
  * frames of features) and gives one output; its data (0x94 bytes with the scheduler's record) is
- * named by use. Not yet written: ProcessGender (declared); GenderDataCompute is OPEN. The object
- * is built with -ffast-math (GenderDataCompute's sqrt.s and folded first step; the other five
- * compile the same either way).
+ * named by use. GenderDataCompute is OPEN. The object is built with -ffast-math
+ * (GenderDataCompute's sqrt.s and folded first step; the other six compile the same either way).
  * SetLanguage is ours: command 1's body, a `static __inline__` returning the scheduler's
  * `unsigned char` error -- the target zero-extends the result once at the join of its two
  * returns (one `andi` the error arm's `b` copies into its slot), which an inlined function's
@@ -48,9 +47,18 @@ typedef struct WARP {
     int f4;
 } WARP;
 
+/* the block's state (ProcessGender switches on it: an enum, compared unsigned -- the target's
+ * 1, 0, 2 equality chain, where an int takes slti): the ring filling with no gender chosen, a
+ * gender chosen (or fixed), and the ring draining (ours) */
+typedef enum GENDERSTATE {
+    GENDER_FILL,
+    GENDER_CHOSEN,
+    GENDER_DRAIN
+} GENDERSTATE;
+
 typedef struct GENDER {
     TOSBLOCK b;
-    int selected;                       /* +40: 1 when a gender is chosen (or fixed) */
+    GENDERSTATE state;                  /* +40 */
     int mask;                           /* +44: the genders allowed (command 8), the top bit
                                          * for an automatic choice */
     unsigned short frames;              /* +48: the fixed gender + 1, or the frames seen */
@@ -61,7 +69,7 @@ typedef struct GENDER {
     float *pos;                         /* +60 */
     float *last;                        /* +64 */
     float *scores;                      /* +68: one per model */
-    int f72;
+    int count;                          /* +72: the frames in the ring */
     float f76;
     int f80;
     float f84;
@@ -93,7 +101,7 @@ extern int qQueueControl(void *q, unsigned char cmd, unsigned short reader, void
 extern unsigned char _tosControl(void *log, unsigned char cmd, int arg, int n);
 extern float sqrtf(float x);
 
-extern void ProcessGender(GENDER *g, unsigned char **in, int n);
+static void ProcessGender(GENDER *g, unsigned char **in);
 static __inline__ void ResetGender(GENDER *g);
 
 static __inline__ unsigned char SetLanguage(GENDER *g, LANG *lng)
@@ -125,10 +133,10 @@ static int ControlGender(GENDER *g, unsigned char cmd, void *arg, int *pos)
 
     switch (cmd) {
     case 3:
-        if (g->f72 != 0 || arg != 0) {
+        if (g->count != 0 || arg != 0) {
             if (g->frames == 0)
                 g->f84 = g->f136 + 1.0f;
-            g->selected = 1;
+            g->state = 1;
         }
         break;
     case 6:
@@ -136,7 +144,7 @@ static int ControlGender(GENDER *g, unsigned char cmd, void *arg, int *pos)
             unsigned char *p = (unsigned char *)arg + *pos;
             unsigned int i;
 
-            g->selected = *(int *)p;
+            g->state = *(int *)p;
             p += 4;
             g->frames = *(unsigned short *)p;
             p += 4;
@@ -144,7 +152,7 @@ static int ControlGender(GENDER *g, unsigned char cmd, void *arg, int *pos)
                 g->scores[i] = *(float *)p;
                 p += 4;
             }
-            g->f72 = *(int *)p;
+            g->count = *(int *)p;
             p += 4;
             g->f76 = *(float *)p;
             p += 4;
@@ -160,7 +168,7 @@ static int ControlGender(GENDER *g, unsigned char cmd, void *arg, int *pos)
             unsigned char *p = (unsigned char *)arg + *pos;
             unsigned int i;
 
-            *(int *)p = g->selected;
+            *(int *)p = g->state;
             p += 4;
             *(int *)p = g->frames;
             p += 4;
@@ -168,7 +176,7 @@ static int ControlGender(GENDER *g, unsigned char cmd, void *arg, int *pos)
                 *(float *)p = g->scores[i];
                 p += 4;
             }
-            *(int *)p = g->f72;
+            *(int *)p = g->count;
             p += 4;
             *(float *)p = g->f76;
             p += 4;
@@ -203,8 +211,8 @@ static int ControlGender(GENDER *g, unsigned char cmd, void *arg, int *pos)
             ResetGender(g);
         if (one) {
             g->frames = sel + 1;
-            if (g->selected == 0)
-                g->selected = 1;
+            if (g->state == 0)
+                g->state = 1;
         }
         g->fixed = one;
         g->mask = mask;
@@ -340,7 +348,7 @@ static unsigned short GenderSelection(GENDER *g)
         }
         g->fixed = 1;
         g->f84 = 0;
-        g->selected = 1;
+        g->state = 1;
         return best;
     }
     best++;
@@ -352,16 +360,16 @@ static __inline__ void ResetGender(GENDER *g)
 {
     unsigned int i;
 
-    g->selected = 0;
+    g->state = 0;
     if (g->fixed != 0)
-        g->selected = 1;
+        g->state = 1;
     else
         g->frames = 0;
     g->last = g->start;
     g->pos = g->start;
     for (i = 0; i < g->nmodels; i++)
         g->scores[i] = 0;
-    g->f72 = 0;
+    g->count = 0;
     g->f76 = 0;
     g->f80 = 0;
     g->f84 = 0;
@@ -394,6 +402,84 @@ static int InitGender(GENDER *g)
     g->mask = 0x7FFFFFFF;
     ResetGender(g);
     return 0;
+}
+
+/* the oldest frame in the ring out to the output queue, as the selected (or fixed) gender's
+ * features; the selection is redone first while no gender is chosen, or the evidence since the
+ * last choice is enough (ours: SOCOM 1's ProcessGender holds it inlined three times too) */
+static __inline__ void OutputFrame(GENDER *g)
+{
+    float *out;
+
+    if (g->count != 0) {
+        out = qEnQueueOne(g->b.outputs[0].q);
+        if (out != 0) {
+            if (g->fixed == 0 && (g->state == GENDER_FILL || g->f136 < g->f84))
+                g->frames = GenderSelection(g);
+            memcpy(out, g->pos + (g->frames - 1) * g->n, g->n * 4);
+            g->pos += g->framesize;
+            if (g->pos == g->end)
+                g->pos = g->start;
+            g->count--;
+        }
+    }
+}
+
+/* a frame in: each enabled model's features into the ring (a disabled model's slot is skipped),
+ * and the scores updated when the level is above the floor and the gender is not fixed (ours).
+ * The write position is read before the input test (the target's load in that branch's slot)
+ * and the level into a local before the fixed test (in the slot of that one: the first in[0]
+ * load serves it when the copy loop is skipped); the new position is a conditional
+ * expression (a copy, a0, where an `if` updates p in place). */
+static __inline__ void InputFrame(GENDER *g, unsigned char **in)
+{
+    float *p = g->last;
+    unsigned int i;
+    float level;
+
+    if (in[0] != 0) {
+        for (i = 1; i <= g->nmodels; i++) {
+            if (g->enabled[i])
+                memcpy(p, in[i], g->n * 4);
+            p += g->n;
+        }
+        level = *(float *)in[0];
+        if (g->fixed == 0 && level > 0.001f)
+            GenderDataCompute(g, g->last, level);
+        g->count++;
+        g->last = p == g->end ? g->start : p;
+    }
+}
+
+/* the ring fills while no gender is chosen (a frame out only once it is full), drains and
+ * refills while one is, then drains what is left. The chosen state tests the input at the call
+ * as well (both builds load the write position after that test there, before it in the other
+ * two: the inline's own test folds away behind it) -- SOCOM 1's ProcessGender has the same
+ * three placements. */
+static void ProcessGender(GENDER *g, unsigned char **in)
+{
+    switch (g->state) {
+    case GENDER_FILL:
+        if (g->count == g->nframes)
+            OutputFrame(g);
+        if (g->count < g->nframes)
+            InputFrame(g, in);
+        if (g->f140 < g->f76)
+            g->state = GENDER_CHOSEN;
+        break;
+    case GENDER_CHOSEN:
+        OutputFrame(g);
+        if (in[0] != 0)
+            InputFrame(g, in);
+        if (g->count == 0)
+            g->state = GENDER_DRAIN;
+        break;
+    case GENDER_DRAIN:
+        if (g->count < g->nframes)
+            InputFrame(g, in);
+        OutputFrame(g);
+        break;
+    }
 }
 
 TOSBLOCK *ConstructGender(TOS *tos, unsigned char id)

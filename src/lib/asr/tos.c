@@ -15,8 +15,8 @@ typedef void (*TOSLOGCB)(TOS *t, int code);
 typedef struct TOSCB {
     unsigned char (*setmode)(TOS *t, unsigned short mode);   /* +0 */
     void *f4;
-    void *f8;
-    void *f12;
+    unsigned char (*input_queue)(TOS *t, void *q, unsigned short reader);   /* +8 */
+    unsigned char (*output_queue)(TOS *t, void *q);                         /* +12 */
     TOSLOGCB error_cb;                  /* +16 */
     TOSLOGCB warning_cb;                /* +20 */
 } TOSCB;
@@ -35,7 +35,8 @@ struct TOS {
     unsigned short mode;                /* +50 */
     int error;                          /* +52: the first error, block << 16 | code */
     int warning;                        /* +56 */
-    char pad60[8];
+    char pad60[4];
+    struct TOSPROC *procs;              /* +64: each block id's constructor, the architecture's */
     unsigned char *writers;             /* +68: {queue, -, block} for each block writing a queue */
     unsigned char *readers;             /* +72: {queue, block} for each block reading one, ended by 255 */
     void *f76;                          /* +76: freed with the tables */
@@ -116,6 +117,99 @@ extern __inline__ unsigned char tosBaseBlockStartInputQueues(TOSBLOCK *b, int n)
 
 extern void *func_00243398(void *heap, int count, int size);       /* the heap's calloc */
 
+/* the architecture's blocks (InitialProcs): each id's constructor */
+typedef struct TOSPROC {
+    unsigned char id;
+    TOSBLOCK *(*construct)(TOS *t, unsigned char id);   /* +4 */
+} TOSPROC;
+
+/* a queue as the scheduler sees it: the scheduler, its id, its element's bytes */
+typedef struct TOSQUEUE {
+    TOS *tos;                           /* +0 */
+    unsigned char id;                   /* +4: 255 for a queue outside the tables */
+    char pad5[3];
+    unsigned short elemsize;            /* +8 */
+} TOSQUEUE;
+
+void *tosGetQueuePtr(TOS *t, unsigned char id);
+
+/* a block's n-th output queue: set, the queue's element size taken from the block's when it has
+ * none; the scheduler's own (the record a block id's constructor may hand back is the scheduler)
+ * through the host's callback, at the block's control slot. A 1 is a failure. */
+static __inline__ unsigned char RegisterOutputQueue(TOSBLOCK *b, TOS *t, TOSQUEUE *q, unsigned char n)
+{
+    if (b == (TOSBLOCK *)t)
+        return ((TOS *)b)->cb.output_queue((TOS *)b, q) != 0;
+    if (b != 0 && q != 0) {
+        b->outputs[n].q = q;
+        if (q->elemsize == 0)
+            q->elemsize = b->outputs[n].reader;
+    }
+    return 0;
+}
+
+/* a block's n-th input queue and its reader id: set and the reader opened (10); with no block the
+ * reader disabled (8), the scheduler's through the host's callback. A 1 is a failure. */
+static __inline__ unsigned char RegisterInputQueue(TOSBLOCK *b, TOS *t, TOSQUEUE *q, unsigned short n,
+                                                   unsigned short reader)
+{
+    if (b == 0) {
+        if (q != 0 && qQueueControl(q, 8, reader, 0) == 0)
+            return 1;
+        return 0;
+    }
+    if (b == (TOSBLOCK *)t)
+        return ((TOS *)b)->cb.input_queue((TOS *)b, q, reader) != 0;
+    b->inputs[n].q = q;
+    b->inputs[n].reader = reader;
+    if (q != 0 && qQueueControl(q, 10, reader, 0) == 0)
+        return 1;
+    return 0;
+}
+
+/* block i built: its id's constructor, its output queues (QueueWriters' entries naming it), its
+ * input queues (QueueReaders'), each reader numbered down from the queue's count of readers, then
+ * its init; a 1 on any failure. tosGetQueuePtr is called out of line: its body comes later.
+ * OPEN (149 words, 4 short): the walks, tests and calls are the target's, but the output count is
+ * kept in s3 and narrowed at each use there (`andi v1,s3,0xff` before the bump) where 2.96 copies
+ * it into the inline's argument registers here, and the readers' and writers' saved registers
+ * trade places (s5/s6). Its definition here is what tosCallControlFunc needed (below). */
+static unsigned char ConstructBlock(TOS *t, unsigned char id, int i)
+{
+    TOSPROC *p = t->procs;
+    unsigned short nin = 0;
+    TOSBLOCK *b;
+    unsigned char *w, *r, *counts;
+    unsigned char nout;
+
+    while (p->id != id)
+        p++;
+    b = p->construct(t, id);
+    if (b == 0)
+        return 1;
+    t->blocks[i] = b;
+    nout = 0;
+    for (w = t->writers; w[0] != 0xFF; w += 3)
+        if (w[2] == id && RegisterOutputQueue(b, t, tosGetQueuePtr(t, w[0]), nout++))
+            return 1;
+    counts = func_00243398(t->heap, t->nqueues, 1);
+    if (counts == 0)
+        return 1;
+    for (r = t->readers; r[0] != 0xFF; r += 2)
+        counts[r[0] - t->queuebase]++;
+    for (r = t->readers; r[0] != 0xFF; r += 2) {
+        unsigned char k = r[0] - t->queuebase;
+
+        counts[k]--;
+        if (r[1] == id && RegisterInputQueue(b, t, t->queues[k], nin++, counts[k])) {
+            heap_Free(t->heap, counts);
+            return 1;
+        }
+    }
+    heap_Free(t->heap, counts);
+    return b->init(b) != 0;
+}
+
 /* a block or a queue by its id: the scheduler numbers its blocks from blockbase and its queues
  * from queuebase (GNU extern inlines: their own copies are defined further on) */
 extern __inline__ TOSBLOCK *tosGetBlockPtr(TOS *t, unsigned char id)
@@ -136,17 +230,11 @@ extern __inline__ void *tosGetQueuePtr(TOS *t, unsigned char id)
     return 0;
 }
 
-extern unsigned char ConstructBlock(TOS *t, unsigned char id, int i);    /* not yet written */
 extern unsigned char ConstructQueue(TOS *t, unsigned char id, int i);    /* not yet written */
 int tosBaseBlockControl(TOSBLOCK *b, unsigned char cmd, int arg, int n);
 
 extern void qQueueReset(void *q);
 
-/* a queue as the scheduler sees it: the scheduler and its id */
-typedef struct TOSQUEUE {
-    TOS *tos;                           /* +0 */
-    unsigned char id;                   /* +4: 255 for a queue outside the tables */
-} TOSQUEUE;
 
 /* a queue reset and freed: every block writing it and every block reading it forgets it, and the
  * scheduler's slot is cleared (block id 0 is the scheduler itself, which keeps no slots) */
@@ -229,11 +317,10 @@ static unsigned char DestructArchitecture(TOS *t)
 /* a command (msg[1]) to a block or a queue (msg[0]): a block's own control first (always the
  * destroy, 255, other commands only while it is enabled), the scheduler's commands (248 up) to
  * the block as well; a queue's to the queue; 248 to an id with nothing there constructs it.
- * OPEN (1 word): the branch over ConstructBlock is `bnez` in the target and `bnezl` here (its slot,
- * the epilogue's `move v0,s2`, annulled: reorg takes v0 as live past the call) -- the queue
- * branch after it fills alike in both; the block test spelled through the inline lookup, a goto
- * past the call, an assignment in the test, constructors returning void or a value: the same;
- * so is every optimisation switch of 2.96-ee-001003-1 (round 12c): a later SCE 2.96's reorg. */
+ * The branch over ConstructBlock is `bnez` with the epilogue's `move v0,s2` in its slot only with
+ * ConstructBlock defined above (round 13c): reorg leaves a slot unannulled before a call to a
+ * function the object has already compiled (`bnezl` with it only declared -- the word rounds 11c
+ * and 12c held open as a toolchain question). */
 int tosCallControlFunc(TOS *t, unsigned char *msg, int arg, int n)
 {
     unsigned char ret = 0;
