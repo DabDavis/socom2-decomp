@@ -118,9 +118,16 @@ class CSkbKeyProps {
 public:
     ~CSkbKeyProps();
     void SetButtonState(void (C2DButton::*state)());
+    /* its button's spec replaced by one read from an rdr block, or none (0x394210; ours) */
+    void SetSpec(_zrdr *rdr);
 
-    unsigned char _0[0x14];
+    int m_x;   // 0x0: the key's place and size (SkbPlaceCursor's; the names ours)
+    int m_y;   // 0x4
+    int m_w;   // 0x8
+    int m_h;   // 0xc
+    CButtonSpec *m_spec;   // 0x10
     C2DButton *m_button;   // 0x14
+    zdb::CNode *m_node;   // 0x18
 };
 
 typedef std::map<CSkbKey, CSkbKeyProps *> CSkbKeyMap;
