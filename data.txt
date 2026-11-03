@@ -31,12 +31,14 @@
 0x001CBA40 0x420 _sceCd_scmdrdata  # MAIN; s1:data-exact (size SOCOM 1's; via sceCdDiskReady +2)
 0x001CC3C0 0x28 _sceCd_cd_scmd  # MAIN; s1:data-exact (size SOCOM 1's; via _sceCd_scmd_prechk +5)
 0x001CC428 0x28 dch  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaGetChan +1)
+0x001CC458 0x4 p_environ  # MAIN; newlib getenv_r.c's static (char ***p_environ = &environ), read by _findenv_r
 0x001CC750 0x4 _impure_ptr  # MAIN; s1:data-exact (size SOCOM 1's; via __assert +8)
 0x001CCBD0 0x10 gp.6  # MAIN; s1:data-seq (size SOCOM 1's; via sceGsGetGParam)
 0x001CCBE0 0x20 init_vif_regs.3  # MAIN; s1:data-exact (size SOCOM 1's; via sceGsResetPath)
 0x001CCC00 0x10 init_mp3.3  # MAIN; s1:data-exact (size SOCOM 1's; via sceGsExecStoreImage)
 0x001CCC20 0x50 iqval  # MAIN; s1:data-exact (size SOCOM 1's; via sceIpuInit)
 0x001CCC70 0x20 vqval  # MAIN; s1:data-exact (size SOCOM 1's; via sceIpuInit)
+0x001CCC90 0x10 __ps2_klibinfo__  # MAIN; SOCOM 1's symbol (the demo's GLOBAL OBJECT at the head of the same .data run, before ttyinit): "PsIIlibkernl2710", libkernl's stamp; _lf_version compares the loader's version with its last four bytes
 0x001CCCA0 0x4 ttyinit  # MAIN; s1:data-exact (size SOCOM 1's; via read +2)
 0x001CCCA4 0x4 heap_ptr.30  # MAIN; s1:data-exact (size SOCOM 1's; via sbrk)
 0x001CCCA8 0x4 topId  # MAIN; s1:data-exact (size SOCOM 1's; via InitThread +3)
@@ -84,6 +86,9 @@
 0x001D0880 0xA stdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)
 0x001D0890 0xA mfdtbl  # MAIN; s1:data-exact (size SOCOM 1's; via sceDmaPutEnv)
 0x001D08D0 0x101 _ctype_  # MAIN; the SDK libc's (newlib's) character table, read as (_ctype_ + 1)[c] & 8 for white space (newlib's _S): 7 %hi/%lo references in the overlays -- ReadToken (0x331BD0), the preprocessor 0x32FE70, 0x281D40 (3), 0x3996B0, 0x39AE50 -- the rdr lane
+0x001D0A98 0xC8 __mprec_tens  # MAIN; newlib mprec.c's tens[] (mprec.h: #define tens __mprec_tens): 1e0..1e24, read by _mprec_log10
+0x001D0B60 0x28 __mprec_bigtens  # MAIN; newlib mprec.c's bigtens[]: 1e16, 1e32, 1e64, 1e128, 1e256, after tens
+0x001D0B88 0x28 __mprec_tinytens  # MAIN; newlib mprec.c's tinytens[]: 1e-16 .. 1e-256, after bigtens
 0x001D1930 0x18 __thenan_df  # MAIN; s1:data-exact (size SOCOM 1's; via _fpadd_parts +2)
 0x001D2DE0 0x10 atanhi  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
 0x001D2DF0 0x10 atanlo  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)

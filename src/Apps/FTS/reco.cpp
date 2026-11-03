@@ -24,10 +24,13 @@
 
 #include "../../gamez/zutil/zutil.h"
 
-/* the speech library (OVL2, GCC: the recogniser lane's; called by placeholder where unnamed --
- * by SOCOM 1's recoInit2/recoSetupLanguage/recoSetContextByCol, which make the same calls at the
- * same places: 0x4C7328 gsapi_Init, 0x4C7508 gsapi_LanguageLoadBuffer, 0x4C6CD8 gsapi_EngineOpen,
- * 0x4C7168 gsapi_EngineStop, 0x4C6078 gsapi_ErrorGetString) */
+/* the speech library (OVL2, GCC: the recogniser lane's, src/lib/asr; called by the names that lane
+ * gave its rows -- SOCOM 1's recoInit2/recoSetupLanguage/recoSetContextByCol make the same calls at
+ * the same places; round 21 respelled ten placeholders so, the object's code unchanged: gsapi_Init
+ * 0x4C7328, gsapi_LanguageLoadBuffer 0x4C7508, gsapi_EngineOpen 0x4C6CD8, gsapi_EngineStart
+ * 0x4C6FF0, gsapi_EngineSetParam 0x4C6E98, gsapi_EngineStop 0x4C7168, gsapi_EngineClose 0x4C6B50,
+ * gsapi_LanguageUnLoad 0x4C7718, gsapi_Close 0x4C64C8, gsapi_ErrorGetString 0x4C6078; 0x4C82F0, a
+ * word's text by its id, is still unnamed) */
 enum _GSAPI_RESULTTYPE {
     GSAPI_RESULTTYPE_FINAL,
     GSAPI_RESULTTYPE_PREMATURE,
@@ -59,20 +62,20 @@ enum _GSAPI_NOTIFY_TYPE {
 };
 
 extern "C" {
-int func_004C7168(int engine);    /* the engine stopped */
-int func_004C6B50(int engine);    /* the engine closed */
-int func_004C7718(void);
-int func_004C64C8(void);
-void func_004C6078(int err);      /* an error reported */
+int gsapi_EngineStop(int engine);    /* the engine stopped */
+int gsapi_EngineClose(int engine);    /* the engine closed */
+int gsapi_LanguageUnLoad(void);
+int gsapi_Close(void);
+char *gsapi_ErrorGetString(unsigned int err);   /* an error reported (src/lib/asr/context.c) */
 int gsapi_ContextDeActivate(int engine);
-int func_004C7328(void *callback, int arg);   /* the library opened, the result callback set */
-int func_004C7508(void *language, int arg);   /* the language loaded from its file */
-int func_004C6CD8(int arg, int *engine);      /* the engine opened into *engine */
+int gsapi_Init(void *callback, int arg);   /* the library opened, the result callback set */
+int gsapi_LanguageLoadBuffer(void *language, int arg);   /* the language loaded from its file */
+int gsapi_EngineOpen(int arg, int *engine);      /* the engine opened into *engine */
 int gsapi_NotifySetCallback(void *callback);
 int gsapi_EngineSetMode(int engine, int mode);
 int gsapi_EngineSetImmediateContext(int engine, void *context, int handle, void *words);
-int func_004C6FF0(int engine);                /* the engine started */
-int func_004C6E98(int engine, int param, int value);
+int gsapi_EngineStart(int engine);                /* the engine started */
+int gsapi_EngineSetParam(int engine, int param, int value);
 int gsapi_ExecServer(int arg);
 int func_004C82F0(void *engine, unsigned int id, char **word);   /* a word's text by its id */
 }
@@ -161,23 +164,23 @@ public:
     void Start()
     {
         if (m_init && !m_running) {
-            int err = func_004C6FF0(m_engine);
+            int err = gsapi_EngineStart(m_engine);
 
             if (err >= 0)
                 m_running = 1;
             else
-                func_004C6078(err);
+                gsapi_ErrorGetString(err);
         }
     }
     void Stop()
     {
         if (m_init && m_running) {
-            int err = func_004C7168(m_engine);
+            int err = gsapi_EngineStop(m_engine);
 
             if (err >= 0)
                 m_running = 0;
             else
-                func_004C6078(err);
+                gsapi_ErrorGetString(err);
         }
     }
     /* a context made the engine's immediate one, and the engine started */
@@ -191,7 +194,7 @@ public:
         if (err >= 0)
             Start();
         else
-            func_004C6078(err);
+            gsapi_ErrorGetString(err);
         return err;
     }
 
@@ -330,16 +333,16 @@ bool CReco::Init()
     bool ok = false;
     int err;
 
-    if (!m_init && m_language && func_004C7328((void *)cbrecoResult, 0) >= 0) {
-        err = func_004C7508(m_language, 0);
+    if (!m_init && m_language && gsapi_Init((void *)cbrecoResult, 0) >= 0) {
+        err = gsapi_LanguageLoadBuffer(m_language, 0);
         if (err >= 0) {
-            err = func_004C6CD8(0, &m_engine);
+            err = gsapi_EngineOpen(0, &m_engine);
             if (err >= 0) {
                 err = gsapi_NotifySetCallback((void *)cbrecoNotify);
                 if (err >= 0) {
                     err = gsapi_EngineSetMode(m_engine, 5);
                     if (err < 0)
-                        func_004C6078(err);
+                        gsapi_ErrorGetString(err);
                 }
             }
         }
@@ -351,23 +354,23 @@ bool CReco::Init()
                                                 m_words[m_context]);
             if (r >= 0) {
                 if (m_init && !m_running) {
-                    int e = func_004C6FF0(m_engine);
+                    int e = gsapi_EngineStart(m_engine);
 
                     if (e >= 0)
                         m_running = 1;
                     else
-                        func_004C6078(e);
+                        gsapi_ErrorGetString(e);
                 }
             } else
-                func_004C6078(r);
+                gsapi_ErrorGetString(r);
             if (r >= 0) {
-                err = func_004C6E98(m_engine, 1, 0);
+                err = gsapi_EngineSetParam(m_engine, 1, 0);
                 if (err >= 0) {
-                    err = func_004C6E98(m_engine, 0, 1);
+                    err = gsapi_EngineSetParam(m_engine, 0, 1);
                     if (err >= 0) {
-                        err = func_004C6E98(m_engine, 8, 1);
+                        err = gsapi_EngineSetParam(m_engine, 8, 1);
                         if (err < 0)
-                            func_004C6078(err);
+                            gsapi_ErrorGetString(err);
                     }
                 }
                 if (err >= 0) {
@@ -387,25 +390,25 @@ void CReco::UnInit()
     int err;
 
     if (m_init && m_running) {
-        err = func_004C7168(m_engine);
+        err = gsapi_EngineStop(m_engine);
         if (err >= 0)
             m_running = 0;
         else
-            func_004C6078(err);
+            gsapi_ErrorGetString(err);
     }
     gsapi_ContextDeActivate(m_engine);
     if (m_engine) {
-        err = func_004C6B50(m_engine);
+        err = gsapi_EngineClose(m_engine);
         if (err < 0)
-            func_004C6078(err);
+            gsapi_ErrorGetString(err);
         m_engine = 0;
     }
-    err = func_004C7718();
+    err = gsapi_LanguageUnLoad();
     if (err < 0)
-        func_004C6078(err);
-    err = func_004C64C8();
+        gsapi_ErrorGetString(err);
+    err = gsapi_Close();
     if (err < 0)
-        func_004C6078(err);
+        gsapi_ErrorGetString(err);
     m_init = 0;
 }
 

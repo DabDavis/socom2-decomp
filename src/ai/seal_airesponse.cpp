@@ -32,8 +32,8 @@ inline bool NavySeal(CSealCtrlAi *ai)
 /* a map cell copied field by field (SOCOM 1's written copy constructor, CAiMapLoc(const
  * CAiMapLoc &), whose out-of-line copy is 0x5EA7E0; zentity.h's CAiMapLoc has none -- the name
  * ours) */
-struct CAiCell {
-    CAiCell(const CAiMapLoc &o) : m_mapid(o.m_mapid), x(o.x), y(o.y) {}
+struct CAiMapLocCopy {
+    CAiMapLocCopy(const CAiMapLoc &o) : m_mapid(o.m_mapid), x(o.x), y(o.y) {}
 
     unsigned int m_mapid : 6;
     unsigned int x : 13;
@@ -63,7 +63,7 @@ bool func_005629B0(CSealCtrlAi *ai);
  * OVL2 0x529A30, the AI core's row) */
 bool func_00529A30(CAiMaps *maps, const CPnt3D *pos, void *loc);
 /* a cell to flee to, and its centre (OVL2 0x52A3C0, 0x529EE0, the AI core's rows) */
-void *func_0052A3C0(CAiMaps *maps, CAiCell *from, int a, int b);
+void *func_0052A3C0(CAiMaps *maps, CAiMapLocCopy *from, int a, int b);
 bool func_00529EE0(CAiMaps *maps, void *cell, unsigned int *loc);
 /* the goto pushed to a cell (OVL2 0x5F0830, seal_aistate.cpp's) */
 void func_005F0830(CSealCtrlAi *ai, unsigned int *loc, int mode, int kind, int step);
@@ -798,7 +798,7 @@ int CAiSReload::Tick(CSealCtrlAi *ai)
 int CAiSFlee::Tick(CSealCtrlAi *ai)
 {
     STEP step = (STEP)m_phase;
-    CAiCell from(ai->m_entity->m_mapLocValid);
+    CAiMapLocCopy from(ai->m_entity->m_mapLocValid);
 
     switch (step) {
     case STEP_0: {
