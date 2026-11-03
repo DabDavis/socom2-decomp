@@ -10,7 +10,7 @@
  * virtual, opens it (0x2FAFC0), the vector instances, the deleting destructor 0x300570 and the
  * thunks of CAcctDB's secondary tables close it (0x2FE230-0x30066F). Its static initialiser 0x4022D0
  * builds theAcctDB (0x44FC60) and the two universe vectors (0x44FD50, 0x44FD70) and registers their
- * destructors; the statics are declared here, not defined, as the other lobby units do.
+ * destructors (defined at theAcctDB's former declaration below; the initialiser open at level 5).
  * Grouped by role, not yet in reverse of their image order (-inline deferred): every function
  * scores alone, but the unit wants reordering before its inline copies are placed. */
 
@@ -242,8 +242,17 @@ struct MediusGetUniverseNewsResponse {
     char EndOfList;   // 0x11c
 };   // 0x120
 
-typedef std::vector<UniverseStatus> UniverseStatusList;
-typedef std::vector<MediusGetUniverseNewsResponse> UniverseNewsList;
+/* the universes and the news: room for 16 of each at the start (the initialiser calls the two
+ * reserves, 0x300250 and 0x3000A0; the classes' names ours) */
+class UniverseStatusList : public std::vector<UniverseStatus> {
+public:
+    UniverseStatusList() { reserve(16); }
+};
+
+class UniverseNewsList : public std::vector<MediusGetUniverseNewsResponse> {
+public:
+    UniverseNewsList() { reserve(16); }
+};
 
 extern UniverseStatusList data_0044FD50;   /* the universes */
 extern UniverseNewsList data_0044FD70;   /* the news */
@@ -406,10 +415,21 @@ public:
     CSaferStr m_name;   // 0x8
 };   // 0x14
 
+/* the memory card (zutil.h's CMemCard: the game save's manager) */
+extern CMemCard theMemCard;
+
+extern "C" CSaveManager *func_002AFBA0();   /* the lobby's save manager (an accessor of OVL1 0x4364A0) */
+
 class CZUniversInformationServer {
 public:
     class CAcctDB : public std::vector<AcctRecord>, public CSaveModule, public CLobbySaveModule {
     public:
+        /* a module of the game save and of the lobby's, room for 48 accounts (theAcctDB's, built
+         * by the unit's initialiser 0x4022D0) */
+        CAcctDB() : CSaveModule("CAcctDB", theMemCard.m_gameSave), CLobbySaveModule("CAcctDB", func_002AFBA0())
+        {
+            reserve(48);
+        }
         void Serialize(int flags);
         void UnSerialize(const char *name, CRdrFile *file, int flags);
         void Save();
@@ -476,6 +496,11 @@ public:
             return r;
         }
     };
+
+    /* the accounts: the server object's one member (its implicit destructor, 0x300570 -- the
+     * one the initialiser registers -- inlines ~CAcctDB one level: ~CLobbySaveModule 0x2FD000 and
+     * the vector's destructor 0x2FD070 called) */
+    CAcctDB m_acctDB;   // 0x0
 };
 
 typedef CZUniversInformationServer::CAcctDB CAcctDB;
@@ -1111,7 +1136,18 @@ public:
     CValve *m_valve;   // 0x38
 };   // 0x3c
 
-extern CAcctDB data_0044FC60;   /* theAcctDB */
+/* the unit's three dynamically initialised statics, in the order its initialiser (0x4022D0) builds
+ * them and registers their destructors (0x300570, 0x3004F0, 0x300470). theAcctDB is the server
+ * object's member: the destructor the initialiser registers (0x300570) is not CAcctDB's (its table
+ * holds 0x2FAFC0) but a wrapper's with two this-tests and ~CAcctDB inlined one level.
+ * OPEN, the initialiser (0xC4 against 0x144): the wrapper's implicit constructor inlines whole
+ * but calls CAcctDB() out of line -- with CAcctDB()'s tree it is six high, one more than
+ * -inline level=5 takes with these headers (inline_max_size is not the cut: 2000 changes nothing);
+ * at level=6 the initialiser is byte-exact. A global CAcctDB inlines its constructor at level 5 but
+ * registers the wrong destructor, so the wrapper stays (README "Level 6?") */
+CZUniversInformationServer data_0044FC60;   /* theAcctDB's server */
+UniverseStatusList data_0044FD50;
+UniverseNewsList data_0044FD70;
 extern char data_0045A14C[];   /* theNetwork's universe server address */
 extern int data_0045A18C;   /* and port */
 extern CSMGetServerList *data_0044FD98;   /* the 'GetServerList' command's machine */
@@ -1152,7 +1188,7 @@ void CSMGetServerList::Connect(unsigned char event)
 {
     switch (event) {
     case 0:
-        data_0044FC60.ConnectToUniverse(data_0045A14C, data_0045A18C);
+        data_0044FC60.m_acctDB.ConnectToUniverse(data_0045A14C, data_0045A18C);
         break;
     case 1:
         if (ConnectStatus() > 0) {

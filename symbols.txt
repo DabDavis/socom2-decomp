@@ -5046,8 +5046,8 @@
 0x002FC9E0 0x1B4 GetChecksum__Q226CZUniversInformationServer7CAcctDBFv  # OVL1; ours (the current account's profile checksum, 0 none: the save manager's 0x33EA94 calls it) -- byte-exact, zNetMediusUniverse.cpp
 0x002FCBA0 0x1C0 SetChecksum__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours (CLobbySaveModule's slot 2 through the thunk 0x300640: the current account's 16-byte profile checksum at 0x104 set) -- byte-exact, zNetMediusUniverse.cpp
 0x002FCD60 0x294 Save__Q226CZUniversInformationServer7CAcctDBFv  # OVL1; ours (CLobbySaveModule's slot 0, CAcctDB's override through the thunk 0x300660 (-0x24): the current account's named missions written as the lobby's blob, a count byte and the 0x24-byte entries, through 0x33EEA0)
-0x002FD000 0x68 func_002FD000  # OVL1
-0x002FD070 0x60 func_002FD070  # OVL1
+0x002FD000 0x68 __dt__16CLobbySaveModuleFv  # OVL1; ours, the online lane round 10 (CLobbySaveModule's destructor, its vtable 0x406740 stored and its name string destroyed out of line: 0x300570 calls it; open, 0x80 against 0x68 -- this unit's copy inlines the string's destructor)
+0x002FD070 0x60 __dt__Q23std52vector<10AcctRecord,Q23std23allocator<10AcctRecord>>Fv  # OVL1; ours, the online lane round 10 (the accounts vector's destructor: 0x300570 calls it; the draft stands, this unit's copy is 0x78 against 0x60)
 0x002FD0D0 0x34 SetAcctInfo__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCcib  # OVL1; ours (UIUpdateAcctInfo 0x2752BC calls it on theAcctDB: a named account's details through Add, the password only when it is to be kept, no profiles)
 0x002FD110 0xFC GetGender__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's gender byte at 0x103, 0 none: the persona handlers call it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FD210 0xFC GetSavePassword__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's SAVEPASSWORD flag at 0x1314) -- byte-exact, zNetMediusUniverse.cpp
@@ -5070,9 +5070,9 @@
 0x002FE1D0 0x54 Start__16CSMGetServerListFv  # OVL1; ours (CSMGetServerList's slot 0, its vtable 0x406730 by the RTTI at 0x3F5E48: the base's Start inlined, then the Connect state) -- byte-exact, zNetMediusUniverse.cpp
 0x002FE230 0x1AC erase__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecord  # OVL1; ours (the accounts vector's one-element erase: CAcctDB::Delete 0x2FBAE0 passes the iterator's word, the tail assigned down member by member, the count cut, the position returned in v0; include/vector's erase(T *))
 0x002FE3E0 0x6E8 insert__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FP10AcctRecordUiRC10AcctRecord  # OVL1; ours (the accounts' insert: CAcctDB::Add 0x2FBCE0 pushes a blank record through it; it calls the record's copy constructor 0x2FEAD0 and placement new 0x2FECA0 out of line)
-0x002FEAD0 0x1C4 func_002FEAD0  # OVL1
+0x002FEAD0 0x1C4 __ct__10AcctRecordFRC10AcctRecord  # OVL1; ours, the online lane round 10 (the account record's implicit copy constructor, member by member -- the char arrays bytewise, the missions as one block: the accounts vector's reserve and insert call it out of line; byte-exact)
 0x002FECA0 0x8 __nw__FUiPv  # OVL1; by hand, the MSL headers round 4 (include/new's placement new, out of line: the class vectors' construct() cut to one level calls it before the element's copy constructor -- six times in each such insert, LOD's, CDesignDlgObj's, the turret's -- and vector<C2DPoly>::reserve once, byte-exact through it; jr ra; move v0,a1)
-0x002FECB0 0x19C func_002FECB0  # OVL1
+0x002FECB0 0x19C reserve__Q23std60__vector_imp<10AcctRecord,Q23std23allocator<10AcctRecord>,0>FUi  # OVL1; ours, the online lane round 10 (CAcctDB() reserves 48 accounts through it; open in include/vector, 0x194 against 0x19C)
 0x002FEE50 0xB0C insert__Q23std68__vector_imp<14UniverseStatus,Q23std27allocator<14UniverseStatus>,0>FP14UniverseStatusUiRC14UniverseStatus  # OVL1; ours (the universe list's insert: cbGetUniverseStatusList 0x2FDAF0 pushes each 0x3D8-byte universe through it)
 0x002FF960 0x5BC insert__Q23std98__vector_imp<29MediusGetUniverseNewsResponse,Q23std42allocator<29MediusGetUniverseNewsResponse>,0>FP29MediusGetUniverseNewsResponseUiRC29MediusGetUniverseNewsResponse  # OVL1; ours (the news list's insert, include/vector's class insert: cbGetUniverseNews 0x2FDED0 pushes each 0x120-byte line through it)
 0x002FFF20 0x68 __dt__Q23std62__vector_deleter<10AcctRecord,Q23std23allocator<10AcctRecord>>Fv  # OVL1; ours (the accounts vector's deleter destructor, out of class in include/vector: its clear 0x2FFFA0, then the storage deleted; ~CAcctDB calls it)
@@ -5081,17 +5081,17 @@
 0x002FFFB0 0x68 __dt__Q23std70__vector_deleter<14UniverseStatus,Q23std27allocator<14UniverseStatus>>Fv  # OVL1; ours (the universe list's deleter destructor, its clear inlined: the count zeroed, the storage deleted)
 0x00300020 0x68 __dt__Q23std100__vector_deleter<29MediusGetUniverseNewsResponse,Q23std42allocator<29MediusGetUniverseNewsResponse>>Fv  # OVL1; ours (the news list's deleter destructor: its clear 0x300090, then the storage deleted)
 0x00300090 0x8 clear__Q23std100__vector_deleter<29MediusGetUniverseNewsResponse,Q23std42allocator<29MediusGetUniverseNewsResponse>>Fv  # OVL1; ours (the news list's clear: the count zeroed)
-0x003000A0 0x1A8 func_003000A0  # OVL1
-0x00300250 0x218 func_00300250  # OVL1
-0x00300470 0x80 func_00300470  # OVL1
-0x003004F0 0x80 func_003004F0  # OVL1
-0x00300570 0x98 func_00300570  # OVL1
-0x00300610 0x8 func_00300610  # OVL1
-0x00300620 0x8 func_00300620  # OVL1
-0x00300630 0x8 func_00300630  # OVL1
-0x00300640 0x8 func_00300640  # OVL1
-0x00300650 0x8 func_00300650  # OVL1
-0x00300660 0x8 func_00300660  # OVL1
+0x003000A0 0x1A8 reserve__Q23std98__vector_imp<29MediusGetUniverseNewsResponse,Q23std42allocator<29MediusGetUniverseNewsResponse>,0>FUi  # OVL1; ours, the online lane round 10 (UniverseNewsList() reserves 16 through it; open in include/vector, 0x1E0 against 0x1A8)
+0x00300250 0x218 reserve__Q23std68__vector_imp<14UniverseStatus,Q23std27allocator<14UniverseStatus>,0>FUi  # OVL1; ours, the online lane round 10 (UniverseStatusList() reserves 16 through it; open in include/vector, 0x360 against 0x218)
+0x00300470 0x80 __dt__16UniverseNewsListFv  # OVL1; ours, the online lane round 10 (the news list's destructor: __sinit_zNetMediusUniverse.cpp registers it for 0x44FD70; byte-exact)
+0x003004F0 0x80 __dt__18UniverseStatusListFv  # OVL1; ours, the online lane round 10 (the universes' list destructor, four this-tests and the deleter's clear inlined: __sinit_zNetMediusUniverse.cpp registers it for 0x44FD50; byte-exact)
+0x00300570 0x98 __dt__26CZUniversInformationServerFv  # OVL1; ours, the online lane round 10 (the server object's implicit destructor -- theAcctDB at 0x44FC60 is a CZUniversInformationServer whose one member, at 0, is the CAcctDB: two this-tests, ~CAcctDB inlined one level, ~CLobbySaveModule 0x2FD000 and the vector's destructor 0x2FD070 called; __sinit_zNetMediusUniverse.cpp registers it, where CAcctDB's vtable holds 0x2FAFC0; byte-exact)
+0x00300610 0x8 @12@UnSerialize__Q226CZUniversInformationServer7CAcctDBFPCcP8CRdrFilei  # OVL1; ours, the online lane round 10 (MW's this-adjusting thunk, CSaveModule's table in CAcctDB's (-0xC); byte-exact)
+0x00300620 0x8 @12@Serialize__Q226CZUniversInformationServer7CAcctDBFi  # OVL1; ours, the online lane round 10 (MW's this-adjusting thunk, -0xC; byte-exact)
+0x00300630 0x8 @12@__dt__Q226CZUniversInformationServer7CAcctDBFv  # OVL1; ours, the online lane round 10 (MW's this-adjusting thunk, -0xC; byte-exact)
+0x00300640 0x8 @36@SetChecksum__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours, the online lane round 10 (MW's this-adjusting thunk, CLobbySaveModule's table in CAcctDB's (-0x24); byte-exact)
+0x00300650 0x8 @36@Load__Q226CZUniversInformationServer7CAcctDBFPCc  # OVL1; ours, the online lane round 10 (MW's this-adjusting thunk, -0x24; byte-exact)
+0x00300660 0x8 @36@Save__Q226CZUniversInformationServer7CAcctDBFv  # OVL1; ours, the online lane round 10 (MW's this-adjusting thunk, -0x24; byte-exact)
 0x00300670 0x8 func_00300670  # OVL1
 0x00300680 0x50 func_00300680  # OVL1
 0x003006D0 0x64 func_003006D0  # OVL1
@@ -5346,7 +5346,7 @@
 0x0030E3C0 0x10 func_0030E3C0  # OVL1
 0x0030E3D0 0x18 func_0030E3D0  # OVL1
 0x0030E3F0 0x18 func_0030E3F0  # OVL1
-0x0030E410 0x78 func_0030E410  # OVL1
+0x0030E410 0x78 __dt__9CZNetworkFv  # OVL1; ours, the online lane round 10 (CZNetwork's implicit destructor, the two lists' __list_imp destructors called: __sinit_zNetDme.cpp registers it for theNetwork, as SOCOM 1's registers its; byte-exact)
 0x0030E490 0xA8 func_0030E490  # OVL1
 0x0030E540 0x10 func_0030E540  # OVL1
 0x0030E550 0x28 func_0030E550  # OVL1
@@ -8554,7 +8554,7 @@
 0x00401FA0 0x134 __sinit_zNetMediusLadder.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusLadder.cpp's static initialiser: the four ladder lists built -- LadderList() sets +0xC to 2, ClanLadderList() +0x10 -- and their destructors registered, in definition order; byte-exact)
 0x004020E0 0x168 func_004020E0  # OVL1 data area; a static initialiser
 0x00402250 0x78 __sinit_zNetMediusLobby.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusLobby.cpp's static initialiser, between the chat unit's 0x4020E0 and the universe unit's 0x4022D0: the room 0x44FAB0 built empty -- BriefingRoom(0) inlined one level -- and ~BriefingRoom 0x2E48C0 registered; byte-exact)
-0x004022D0 0x144 func_004022D0  # OVL1 data area; a static initialiser
+0x004022D0 0x144 __sinit_zNetMediusUniverse.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusUniverse.cpp's static initialiser: the server object 0x44FC60 built -- CAcctDB() inlined whole, its two save modules, its tables, reserve(48) -- and its destructor 0x300570 registered, then the two universe lists reserved 16; open at level 5, byte-exact at level 6: the wrapper's constructor and CAcctDB()'s tree are one level too tall for these headers)
 0x00402420 0xD0 __sinit_zNetMediusFriends.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMediusFriends.cpp's static initialiser: FriendVec 0x44FDC0 zeroed, the ignore list 0x44FDE0 resized to 64, the friend invitations 0x44FE00 reserved 64, their destructors 0x303410/0x303390/0x303310 registered, in definition order; byte-exact)
 0x004024F0 0x78 __sinit_zNetLANLobby.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetLANLobby.cpp's static initialiser: the LAN room 0x44FFC0 built empty and ~BriefingRoom 0x2E48C0 registered; byte-exact)
 0x00402570 0x64 __sinit_zNetMediusFile.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 8 (zNetMediusFile.cpp's static initialiser: builds the transfers' map 0x450070 and registers ~map 0x3056A0)
@@ -8562,7 +8562,7 @@
 0x00402630 0x84 __sinit_zmath_matrix.cpp  # OVL1 data area; a static initialiser; s1:unit zmath_matrix.cpp (names 0.75)
 0x004026C0 0x84 __sinit_zmath_pnt3d.cpp  # OVL1 data area; a static initialiser; s1:unit zmath_pnt3d.cpp (exact)
 0x00402750 0xA8 __sinit_zmath_pnt4d.cpp  # OVL1 data area; a static initialiser; s1:unit zmath_pnt4d.cpp (exact)
-0x00402800 0xD0 func_00402800  # OVL1 data area; a static initialiser
+0x00402800 0xD0 __sinit_zNetDme.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetDme.cpp's static initialiser, s1:unit by shape -- SOCOM 1's __sinit_zNetDme.cpp builds theNetwork the same way: CZNetwork()'s initialisers inlined (no team indices, 100 objects, no streams, the game-info exchange cleared), the two lists, the destructor 0x30E410 registered; byte-exact)
 0x004028D0 0x70 __sinit_node_main.cpp  # OVL1 data area; a static initialiser; s1~ node_main.cpp (shape 0.46, a hint); s1:unit node_main.cpp (its two statics, CLight::m_tick_list and the deferred visuals, built in that order)
 0x00402940 0x20 func_00402940  # OVL1 data area; a static initialiser
 0x00402960 0x30 __sinit_node_util.cpp  # OVL1 data area; a static initialiser; s1:unit node_util.cpp (exact)
