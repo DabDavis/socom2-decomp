@@ -1273,10 +1273,10 @@
 0x001C15E0 0x78 func_001C15E0  # MAIN
 0x001C1658 0x40 func_001C1658  # MAIN unaligned
 0x001C1698 0x1BC func_001C1698  # MAIN unaligned
-0x001C1858 0x60 func_001C1858  # MAIN unaligned
-0x001C18B8 0x64 func_001C18B8  # MAIN unaligned
-0x001C1920 0x7C func_001C1920  # MAIN
-0x001C19A0 0x330 func_001C19A0  # MAIN
+0x001C1858 0x60 inet_ntoa  # MAIN unaligned; by body: BIND's inet_ntoa -- its own message '[inet_ntoa error]' copied into an 18-byte static, then inet_ntop(AF_INET, &in, ret, 18)
+0x001C18B8 0x64 inet_ntop  # MAIN unaligned; by body: BIND's inet_ntop -- AF_INET (2) to inet_ntop4, AF_INET6 (28) to inet_ntop6, else errno EAFNOSUPPORT (106) and NULL
+0x001C1920 0x7C inet_ntop4  # MAIN; by body: BIND's static inet_ntop4 -- its format '%u.%u.%u.%u', ENOSPC (28) when the text exceeds size
+0x001C19A0 0x330 inet_ntop6  # MAIN; by body: BIND's static inet_ntop6 -- inet_ntop's AF_INET6 case, '%x' per word, inet_ntop4 for the mapped tail
 0x001C1CD0 0x38 func_001C1CD0  # MAIN
 0x001C1D08 0x34 func_001C1D08  # MAIN unaligned
 0x001C1D40 0x150 func_001C1D40  # MAIN

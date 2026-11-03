@@ -3027,7 +3027,8 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 name in any range). Sony's SDK libraries were built with 2.9-ee-991111 (November 1999), the
 rest -- and the runtime the game linked -- with 2.96. **Strict aliasing is per vendor**: this
 2.96 enables it at -O2, ScanSoft's and the mic library's builds turned it off, SCEA's Medius kept
-it, and the other libraries show no function either way (`tools/ccflags.py LO HI
+it, and so did lgAud (25 of its functions lose without it, round 5a); the other libraries show no
+function either way (`tools/ccflags.py LO HI
 FLAGS` recompiles a range's drafts with a flag added: a flag the vendor used loses none).
 Outside these ranges no row saves its s-registers with `sd` and never `sq`: amsurvey's 428 such
 functions (above) were theirs.
@@ -3229,6 +3230,60 @@ printf objects, sceScfGetGMTfromRTC). No tool changed. What they showed:
   (above), AdjustTime (branch order and a `j` sibling call where the target falls through and ends
   in the jal form).
 
+**Round 5a** (2026-11-03, by hand, OVL1's libraries first): 74 functions written byte-exact of 79 --
+57 rows newly byte-exact, 17 matched drafts superseded -- and 37 rows named. `ovl1/lgaud.c` (27 of 28:
+Enumerate, Open, Read, Write, WriteVag, GetMixer, SetMixer, ARead, AWrite, AWriteVag, AEnumHint new),
+`ovl1/heap.c` (9 of 9: Realloc, Alloc, Calloc, Free new; GetMemInfo, Open, Close over their drafts),
+`ovl1/sid.c` (the microphone whole, 14 of 14: openmic, getsamples, SidInit, SidAdvanceBuffer new),
+`ovl1/libnet.c` (new: Sony's sample inet client over libmrpc, OVL1 0x245AD8-0x247050, 33 of 33, 24
+new), `ovl1/libnetb.c` (10 of 11: sceBInetCreate, Close, IP2Address, libnetb_trans_data,
+libnetb_alloc_bufs new), `ovl1/libnetb_udp.c` (new: libnetb's UDP ring, the demo's object 0x424DF8,
+2 of 5), `ovl1/nelly.c` (8 of 8, 3 new), and in MAIN `sdk/inet_ntop.c` (new: BIND's inet_ntop.c in the
+network library, inet_ntoa/inet_ntop/inet_ntop4/inet_ntop6, 4 of 4 as BIND wrote them -- under the
+SDK's 2.9 builds only, 2.96 17-196 words off). Named: lgAud 7 (their own messages), the heap 5 (the
+C library call each wraps), SidIsRecording, libnet 17 (`s1:order`: the demo's libnet object 0x4223A0
+holds them in the same order, and the RPC numbers agree), libnetb 3, BIND's four (inet_ntoa by its own message '[inet_ntoa error]', the rest by body). What they showed:
+
+- **lgAud keeps strict aliasing** (`-fno-strict-aliasing` loses 25 of its matched functions), and so
+  does libnet: SCEA's and Sony's 2.96 libraries are built at plain `-O2 -G0`.
+- **The R5900's short loops are GNU as's**: lgAudInit's halts are `for (;;);` and its bind delay
+  `while (i--);` -- as pads each to the target's five nops (2.96's as, 2.10), so the nops are no
+  source's; and its delay count is reset before the bind call (it lives across the call, in s0).
+- **SCEA checks each argument with its own `return 2`** (libnetb_trans_data, the UDP ring): one
+  hoisted `li v0,2` and every test branching to the epilogue; a combined `a || b || c` splits the
+  returns. Sony's libnet combines its two size checks (`size < 0 || room < size`) where SCEA would not.
+- **A value computed and never used can be the source**: libnet's get-string helper computes its
+  siblings' `room` and never uses it -- dead, but it gave the target its registers (an unused local
+  in the other place did too, which was the hint).
+- **2.96 inlines an `__inline__` helper into a caller, the result through its own register**:
+  heap_Realloc's null-block path is heap_Alloc's body (`move v1,s1 ... move v0,v1`); heap_Alloc itself
+  is written out (through the helper: 12 words).
+- **A struct parameter whose address is taken is copied where the source copies it**: sceBInetClose
+  takes `&n` for rt_memory_free; the target stores the local copy in the RPC call's delay slot, which
+  only `LIBNETB *n; ... n = s;` right before the call gives.
+- **Statement orders, measured** (`tools/ccperm.py`): lgAud's request stores (handle, size, channel),
+  heap_Free's counters, SidInit's three fields, the codec allocator's, sceBInetIP2Address's bytes.
+- **Open, diagnosed in place**: lgAudInit (32 words, all registers: &cdUA and dealloc take each
+  other's s2/s3), sceBInetGetBuildTimestamp (the frame: six saved registers in the target),
+  libnetb_udp_init_buffer, libnetb_udp_create_space, libnetb_get_valid_data_header_ptr.
+
+**The tools, round 5a** (the 3b lane does not change them): `tools/amsurvey.py` drives automatch's GCC
+attempts too (its wrapper refused the range's toolchain argument and every GCC row crashed): over
+OVL1's 247 open library rows it found 49 right-size near misses, 23 within five words, most of them
+written by hand above; `tools/automatch.py` retries a GCC draft with every callee whose value it
+discards declared void (m2c's M2C_UNK callee sets v0, which keeps the result register out of the
+allocation after the call -- the draft's `lui v1` where the target's is `lui v0`): over MAIN's 345 open
+library rows up to 0x100, 0 -> 4 byte-exact (__sinit, sceSifExitRpc, _sceFsWaitS, _sceMpegFlush), none
+lost; `tools/ccperm.py` writes its variants file per process (two lanes at once) and shows the nearest
+orders when none matches. automatch over MAIN's library ranges (`--range 18DB90 1C4CC0` and `1CCD78 1CE2A4`,
+`--max-size 0x400 --emit --no-prune`, 2 jobs): 896 tried, 44 hits -- 40 of them rows hand-written
+source already matches (automatch's `hand_defined()` reads `build/obj`, which a lane's private
+`--build-dir` checks never fill: they were deleted) and the 4 the void-callee variant gained, kept
+as drafts (m2c refused 283 of the 896, 83 drafts would not build). No tool that scores changed: scdiff.py and sccheck.py are
+master's, so every MW and GCC unit scores as before, row for row (`./sccheck.py --files
+'^(?!auto/)'`: scdiff.py, sccheck.py, scdecomp.py and `include/` are byte-identical to dc0c477's, so no
+unit can score differently; every `src/lib` unit: 820 byte-exact of 862, each miss OPEN in place).
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -3239,10 +3294,15 @@ above; it reads its semaphores and callback number through volatile and plain gl
 schedules apart), newlib's stdio bodies (_vfprintf_r, __svfscanf, findfp.c, fflush, __sfvwrite,
 mallocr) and libm's fdlibm functions (the double moves above will hold some open) are open; the
 network library at 0x1C0948-0x1C4CC0 (inet_aton at -O2 beside RPC stubs built at -O0: frame pointer,
-spilled arguments) is not yet identified; in OVL1 lgAud's big calls (Init, Open, Read/Write, the
-mixer, the async reads), libnetb and the codec. automatch over OVL1's three library ranges (round
-3a, `--max-size 0x400`) found nothing new: 298 tried, 0 hits. Still open: the strict-aliasing setting
-of the SDK, newlib, lgAud/libnetb and the codec (no function yet tells), the 991111 rebuilds -01 and
+spilled arguments) holds BIND's inet_ntop.c (round 5a: Sony's SDK toolchain, inet_ntop's returned
+calls jal-and-return); in OVL1 lgAudInit (registers), libnetb's Open, Recv/RecvFrom, Send/SendTo,
+GetAvailBytesToRead, recv_from/send_to and three helpers, its UDP ring's three, libnet's Recv/Send
+family, Control, the interface and routing calls, and the codec (round 5a's survey: 0x251348,
+0x251A98 -- a switch on the codec's mode the target tests as an if-chain -- and 0x2533B0, a
+soft-float compare, are the nearest). automatch over OVL1's three library ranges (round
+3a, `--max-size 0x400`) found nothing new: 298 tried, 0 hits; `tools/amsurvey.py near` lists the
+near misses now that it drives GCC rows (round 5a). Still open: the strict-aliasing setting
+of the SDK, newlib and the codec (no function yet tells), the 991111 rebuilds -01 and
 a (no probe separates them from 991111), and the generated tier's GCC near misses, not yet
 classified as amsurvey classified MW's.
 
