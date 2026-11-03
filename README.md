@@ -1779,7 +1779,9 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
   - open: every make_iterator, the chat's push_back (its growth path builds and swaps a temporary buffer),
     the chat's range destroy and teardown, the copy chain's generation order (init, the buffers' copies), the
     class insert/erase end register; measured for the integrator: renaming 0x333330/0x333390 gains
-    ~zrdr_symtab and __sinit_zrdr_parse.cpp at the cost of an eleventh draft-only row.
+    ~zrdr_symtab and __sinit_zrdr_parse.cpp at the cost of an eleventh draft-only row -- APPLIED at integration
+    (__sinit_zrdr_parse.cpp 0x402DB0 new, ~zrdr_symtab 0x333390 from source where its draft matched before,
+    ~__vector_imp<zrdr_sym> 0x333330 on its renamed draft: +1 byte-exact, +6 with the deques).
 - **Tells from completing the MSL headers, round 13** (the instances other lanes waited on):
   - include/list's range and single erases DESTROY each element (its destructor called with -1) before freeing the
     node -- pointer lists unaffected; the list erase re-reads the iterator's node after the element's destructor
@@ -3830,7 +3832,7 @@ constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' 
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0, 0x2F6230
-and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the keyboard grid's clear 0x38FEF0 and the hangul pieces' clear 0x3929C0 (their elements' destructors one inline level deeper in the original; drafts with `sc: as=` lines) -- TEN rows in all -- 0x29FF60 and
+and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the keyboard grid's clear 0x38FEF0 and the hangul pieces' clear 0x3929C0 (their elements' destructors one inline level deeper in the original; drafts with `sc: as=` lines), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line) -- ELEVEN rows in all -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
 
