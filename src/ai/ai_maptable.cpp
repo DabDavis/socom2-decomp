@@ -26,7 +26,7 @@ const T &_min(const T &a, const T &b)
  * 0x531190; the name ours) */
 static bool _name_less(const CAiMap::name &a, const CAiMap::name &b)
 {
-    return func_001993C0(a.m_name, b.m_name, 15) < 0;
+    return strncasecmp(a.m_name, b.m_name, 15) < 0;
 }
 
 /* two cells' x and y distances summed (the name ours) */

@@ -53,6 +53,11 @@ public:
     /* how many cells apart two cells are, across maps on the first map's grid (SOCOM 1's
      * GetLocationDelta, by its place: 0x52C320) */
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
+    /* a path planned from a cell through the given cells (SOCOM 1's RegisterPathPlan, 0x52C5C0:
+     * CSealCtrlAi::SetRoute calls it; not written yet), and the one-goal form over it (SOCOM 1's
+     * three-argument RegisterPathPlan, 0x52C5B0: the goal passed as a run of one) */
+    bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *goals, int count, CAiPath *path);
+    bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc &goal, CAiPath *path);
     /* a line between two points walked over the maps, each cell handed to a callback (new in
      * SOCOM II, the name ours: the visibility tests' walk, 0x5352D0, the step 0.2 as the maps'
      * own WalkLines take it) */
