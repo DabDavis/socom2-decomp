@@ -9042,14 +9042,14 @@
 0x004FB520 0x478 InitVad  # OVL2; s1:calls
 0x004FB998 0x9C ConstructVad  # OVL2 unaligned; s1:align
 0x004FBA38 0x160 LoadCodeBooks  # OVL2 unaligned; s1:align
-0x004FBB98 0x46C func_004FBB98  # OVL2 unaligned
+0x004FBB98 0x46C GetLabel  # OVL2 unaligned; s1:order (SOCOM 1's object 0x367F48: LoadCodeBooks, GetLabel, ... in this order; Vq1500Process calls it once per codebook with the codebook and the frame, as SOCOM 1's calls GetLabel; the same two searches, nearest first codeword then nearest listed second codeword) -- the gcc lane, round 8c
 0x004FC008 0x3C ConstructVq  # OVL2 unaligned; s1:align
 0x004FC048 0x58 InitVq1500Process  # OVL2 unaligned; s1:align
 0x004FC0A0 0x38 FreeCodeBooks  # OVL2; s1:align
-0x004FC0D8 0x8 func_004FC0D8  # OVL2 unaligned
-0x004FC0E0 0x84 func_004FC0E0  # OVL2
+0x004FC0D8 0x8 IdleVq1500Process  # OVL2 unaligned; s1:order (SOCOM 1's object 0x367F48, after FreeCodeBooks as here; an empty process function, ConstructVq's process slot and ControlVq1500Process's fallback as SOCOM 1's) -- the gcc lane, round 8c
+0x004FC0E0 0x84 ControlVq1500Process  # OVL2; s1:order (SOCOM 1's object 0x367F48, after IdleVq1500Process as here; ConstructVq passes it in the control slot; command 1 loads the codebooks, 255 frees the block, as SOCOM 1's) -- the gcc lane, round 8c
 0x004FC168 0x98 Vq1500Process  # OVL2 unaligned; s1:align
-0x004FC200 0x40 func_004FC200  # OVL2
+0x004FC200 0x40 FreeVq1500  # OVL2; s1:calls (SOCOM 1's ControlVq1500Process calls LoadCodeBooks and FreeVq1500 where ours call LoadCodeBooks and this row; the same body, the codebooks freed then tosBaseBlockDestruct; SOCOM II defines it last in the object) -- the gcc lane, round 8c
 0x004FC240 0x3E0 WindowFlush  # OVL2; s1:align
 0x004FC620 0x50C func_004FC620  # OVL2
 0x004FCB30 0x274 func_004FCB30  # OVL2
