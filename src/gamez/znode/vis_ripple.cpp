@@ -237,6 +237,10 @@ public:
         }
         return group;
     }
+    /* a ripple's node unlinked (Update's and ClearRipples' erase): through an inline the erase's
+     * argument and result temporaries are made after an inlined clear()'s, as the target's stack
+     * slots have them -- erase called straight puts them first. A stand-in: MSL's list<T *> likely
+     * has an inline erase(iterator) (include/list's wrapper has none; ClearGroups is exact either way) */
     iterator Remove(iterator i) { return m_ripples.erase(i); }
     /* a ripple listed (its constructors) */
     void Add(CWaterRipple *r) { m_ripples.push_back(r); }
@@ -305,7 +309,12 @@ bool CWaterRippleManager::Update(float dt)
     return m_ripples.size() == 0;
 }
 
-/* the live ripples that reach a surface listed, each placed in its frame */
+/* the live ripples that reach a surface listed, each placed in its frame.
+ * OPEN, 3 instructions (6 counted): the live test's layout -- the target fills the first test's
+ * branch delay slot with the second bit's shift and leaves the second's empty, MW here branches into
+ * the second test's beqz to share its delay slot with the Affects call's argument. Everything else
+ * is exact. Tried: the test inline (as here), written out, nested ifs, `!= false`/`== true`, a bool
+ * local, `continue`, bool accessors per bit, a const inline -- none moves it */
 void CWaterRippleManager::Gather(CNode *node)
 {
     m_active.clear();
@@ -355,7 +364,14 @@ bool CWaterRippleManager::GetOffset(const CPnt3D *p, CPnt3D *out, bool *level)
     return any;
 }
 
-/* a surface's vertices moved: each one's normal tilted by the offset, its height set where a
+/* OPEN, 0x330 bytes (57 instructions off as written, the right size): the target addresses the
+ * vertex point through one pointer register (s3 = &p, set in SelectVertexStrips' delay slot each
+ * strip, so hoisted out of the vertex loop only) and keeps this in s8; here the point's y and z
+ * addresses are hoisted as well and this spills. SetLevel's shape (a float pointer to the point,
+ * set before the select) matches there; here it hoists the pointer out of both loops and spills
+ * this and node (0x360), declared in the vertex loop it is propagated (0x340). The locals are
+ * declared in the target's slot order (n 288, p 272, off 256, the bool at 303).
+ * a surface's vertices moved: each one's normal tilted by the offset, its height set where a
  * ripple lifts it */
 void CWaterRippleManager::Ripple(CNode *node)
 {
@@ -419,6 +435,12 @@ void CWaterRippleManager::ClearRipples()
     }
 }
 
+/* OPEN, 0xD8 against 0xF8: the group's delete -- the target inlines its destructor whole (the
+ * name freed, the vector's size zeroed in the first this-test's delay slot, then four this-tests and
+ * the data's delete), here the destructor's body is inlined and calls clear() and ~CNodeVector:
+ * ~CNodeVector is five high (four this-tested levels and the pod's deallocate, include/vector) and
+ * the destructor above it makes six. An implicit destructor with the clean-up at the delete site
+ * is six as well (~CNodeVector called); out of class the destructor is not inlined at all */
 void CWaterRippleManager::ClearGroups()
 {
     group_iterator i;
@@ -904,7 +926,13 @@ bool CWaterRipple::GetOffset(const CPnt3D *p, CPnt3D *out)
     return ok;
 }
 
-/* a surface laid flat: back to its rest height where the ripple lifted it, its normals up */
+/* a surface laid flat: back to its rest height where the ripple lifted it, its normals up.
+ * OPEN, 0x260 against 0x274: the up normal -- the target multiplies 32767.5 by 1.0 and by 0.0 at run
+ * time (both products hoisted to the function's top in f20/f21, converted to shorts once per strip,
+ * stored with sh), where every spelling tried here folds them to constants (a CPnt3D local, float
+ * arguments, a reference temporary, CPnt3D::unit_y, a helper per component; opt_propagation off
+ * keeps the constants in registers but multiplies in the loop). The point is written and read
+ * through a float pointer as in SetLevel, which matches */
 void CWaterRipple::Flatten(CNode *node)
 {
     for (CVisualVector::iterator it = node->m_visual.begin(); it != node->m_visual.end(); ++it) {
