@@ -4,19 +4,20 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK DeleteAll__8CAiGroupFv();                   /* extern */
 M2C_UNK func_005CC5F0();                            /* extern */
 M2C_UNK func_00607560();                            /* extern */
-M2C_UNK func_0060E4E0();                            /* extern */
 M2C_UNK memset(M2C_UNK *, M2C_UNK, M2C_UNK);        /* extern */
-extern M2C_UNK data_0044D4D8;
-extern M2C_UNK data_0044D4E0;
+extern M2C_UNK aiSoundHandle__11CSealCtrlAi;
+extern M2C_UNK aiSoundInstance__11CSealCtrlAi;
 
 void func_00574BD0(void) {
-    memset(&data_0044D4D8, 0, 8);
-    memset(&data_0044D4E0, 0, 8);
+    memset(&aiSoundHandle__11CSealCtrlAi, 0, 8);
+    memset(&aiSoundInstance__11CSealCtrlAi, 0, 8);
     func_00607560();
     func_005CC5F0();
-    func_0060E4E0();
+    DeleteAll__8CAiGroupFv();
 }

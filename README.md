@@ -1766,6 +1766,25 @@ wholly another overlay's copy -- a scorer change for the tools' owner (with the 
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 16** (ai_group.cpp written as a unit, 0x60C190-0x60EDFF):
+  - a for_each whose functor inlines a member walk is cut to one level even at level 5: its iterator pieces, the
+    functor call and the implicit copy for the return go out of line, their copies following the caller
+    (steplist::Stop and stopper::operator());
+  - a 4-byte functor zeroed with one `sw zero` has a declared constructor -- value-initialising `F()` without one
+    zeroes it byte by byte in a loop; a member that is a class over a std container adds one this-test in its
+    owner's destructor (~CAiGroup: 4/4/3); a byte-enum member returned or copied loads with `lb`;
+  - `new T(..., f(x))` calls new first and evaluates f(x) under the null test; a walk's end taken into a local
+    keeps the sentinel in a saved register, and the element read into a local before the compare puts the field
+    first in the `bne` (that closed Find, open since round 10); a sibling that tail-jumps to a function shows it was
+    never inlined -- pin it; a flag setter fed a global byte takes an unsigned int, not a bool;
+  - 0x60C170 is seal_aiparams.cpp's; 0x60BF10 is an out-of-line copy of a bool setter on zdb::DiIntersect's byte-2
+    bit 0, after its only caller 0x60BC40 in ai_target.cpp; 0x5EF9B0 is OVL2's copy of the pointer lists' deleter
+    constructor (marked `ovl-copy` by the integrator: the step-list insert 0x60EBF0 matches with it);
+  - open: RemoveMember 0x60CE40 (6, the entity and SetGroup's inlined `this` swapped), TickStep 0x60C220 (11, the
+    walk's begin and end swapped), Start 0x60CBD0 (5: the camera flag re-normalised before it is negated),
+    remove_if 0x60E9A0 (6, the README's swapped-copies list remove_if), the step list's erases 0x60EA90/0x60EB60
+    (the target destroys each element before freeing it, include/list's general erase does not -- the MSL lane's);
+    not written: Tick 0x60C3E0, AddMember 0x60D020, act_camera::Tick 0x60DB60 with 0x60DCF0/0x60DE30, 0x60CAD0.
 - **Tells from the AI core, round 15** (FloodFill and the walker unit's list tail, ResetCells, GetLocationDelta):
   - under bottom-up inlining a call through an inline one level deeper is expanded later, so its temporaries get
     the LOWER stack slots: a wrapper fixed GetLocationDelta (its two lookups by cell) and FloodFill (pop_front as an

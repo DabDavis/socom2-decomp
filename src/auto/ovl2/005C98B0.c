@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+s32 InGroup__11CSealCtrlAiFv();                     /* extern */
 M2C_UNK func_005C9B30(char *, f32);                 /* extern */
 M2C_UNK func_0060A850(char *);                      /* extern */
-s32 func_0060E6E0();                                /* extern */
 extern f32 data_00650A60;
 
 void func_005C98B0(char *arg0, f32 fparg0) {
@@ -16,11 +17,11 @@ void func_005C98B0(char *arg0, f32 fparg0) {
     char *temp_s0;
 
     temp_s0 = arg0 + 0xD0;
-    temp_f20 = M2C_FIELD(arg0, f32 *, 0xE8);
-    if (func_0060E6E0() != 0) {
-        M2C_FIELD(temp_s0, f32 *, 0x18) = (f32) (M2C_FIELD(temp_s0, f32 *, 0x18) * data_00650A60);
+    temp_f20 = SC_MEMBER(arg0, f32 *, 0xE8);
+    if (InGroup__11CSealCtrlAiFv() != 0) {
+        SC_MEMBER(temp_s0, f32 *, 0x18) = (f32) (SC_MEMBER(temp_s0, f32 *, 0x18) * data_00650A60);
     }
     func_005C9B30(arg0, fparg0);
-    M2C_FIELD(temp_s0, f32 *, 0x18) = temp_f20;
+    SC_MEMBER(temp_s0, f32 *, 0x18) = temp_f20;
     func_0060A850(arg0 + 0x67C);
 }
