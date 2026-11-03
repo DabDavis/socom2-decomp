@@ -24,15 +24,15 @@
 0x00181780 0xBC func_00181780  # MAIN
 0x00181840 0x48 func_00181840  # MAIN
 0x00181890 0xB4 func_00181890  # MAIN
-0x00181950 0x7C func_00181950  # MAIN
-0x001819D0 0x70 func_001819D0  # MAIN; the same words as _calloc__FUiUiPCci (0x34eae0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
-0x00181A40 0x60 func_00181A40  # MAIN
-0x00181AA0 0x60 func_00181AA0  # MAIN
+0x00181950 0x7C func_00181950  # MAIN; zsys_memory.cpp's _strdup, MAIN's copy (SOCOM 1's order; the name is taken by the pool's _strdup, 0x1801E0, which the game calls): src/main/zsys_memory.cpp
+0x001819D0 0x70 func_001819D0  # MAIN; the same words as _calloc__FUiUiPCci (0x34eae0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: _calloc__FUiUiPCci (MAIN's copy of zsys_memory.cpp: src/main/zsys_memory.cpp)
+0x00181A40 0x60 func_00181A40  # MAIN; ovl-copy: _malloc__FUiPCci (MAIN's copy of zsys_memory.cpp: src/main/zsys_memory.cpp)
+0x00181AA0 0x60 _new_vec__FUiPCci  # MAIN; s1:order (MAIN's copy of zsys_memory.cpp keeps SOCOM 1's zsys_memory order: _strdup, _calloc, [_realloc, _memalign stripped], _malloc, _new_vec, _delete_vec, _new, _delete, _free; operator new[] calls it); src/main/zsys_memory.cpp
 0x00181B00 0x40 _delete_vec__FPvPCci  # MAIN; s1:exact
-0x00181B40 0x60 func_00181B40  # MAIN
-0x00181BA0 0x34 func_00181BA0  # MAIN
-0x00181BE0 0x34 func_00181BE0  # MAIN
-0x00181C20 0x24 func_00181C20  # MAIN; the same words as zVid_Assert__FbUiPci (0x3b2c80) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x00181B40 0x60 _new__FUiPCci  # MAIN; s1:order (the same order; operator new calls it); src/main/zsys_memory.cpp
+0x00181BA0 0x34 _delete__FPvPCci  # MAIN; s1:order (the same order; operator delete calls it); src/main/zsys_memory.cpp
+0x00181BE0 0x34 func_00181BE0  # MAIN; zsys_memory.cpp's _free, MAIN's copy (SOCOM 1's order; the name is taken by the pool's _free, 0x180280, which the game calls): src/main/zsys_memory.cpp
+0x00181C20 0x24 func_00181C20  # MAIN; the same words as zVid_Assert__FbUiPci (0x3b2c80) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: zVid_Assert__FbUiPci (MAIN links its own copy of zvid.cpp, dead-stripped to zVid_Assert: src/main/zvid.cpp)
 0x00181C50 0x20 _dpfgt  # MAIN; s1:exact
 0x00181C70 0x20 _dpflt  # MAIN; s1:exact
 0x00181C90 0xF0 func_00181C90  # MAIN
