@@ -4052,6 +4052,56 @@ matching drafts (ASRSPICBAGC, ASRSPICBASKCURRENTGAIN, asrspi_GetLngGenders, asrs
 asrspi_GetUswVersion, _engineMalloc, _engineCalloc, _engineFree); 9 rows named (asrspi_GainSet
 `s1:calls`, the other eight `s1:order`), 5 data rows (`s1:data`).
 
+**Round 8c: the engine's processing blocks.** The front end is a chain of blocks the scheduler
+(tos.c) runs, one demo object each, every one the same four functions: a constructor
+(`tosBaseBlockConstruct` with the block's size, a sibling call under a vestigial frame), an init
+(reads the block's profile, sizes its queue elements, allocates), a process (one input frame, or
+a null frame while flushing) and a control (a command: 255 destroys). `asr/tosblk.h` is the
+blocks' view of the scheduler: the record's head (scheduler, id, queue tables, the three
+functions, data from +40).
+
+- **The constructor's slots name the statics.** The demo marks Process/Control/Init LOCAL, so
+  they are `static` with prototypes at the top; the row the constructor passes in
+  `tosBaseBlockConstruct`'s process (or init) slot takes the demo's name of that slot, the
+  object's order agreeing (`s1:order`). The align map was a row off at some object edges
+  (ProcessGenderFilter precedes the constructor in the demo; the subsampler object starts with
+  Subsampler_Process): follow the demo's object list.
+- **A `static __inline__` defined after one caller and before another**: GCC 2.96 inlines only a
+  body it has already seen, so the VQ's FreeCodeBooks is a real call in LoadCodeBooks and inlined
+  into FreeVq1500, its argument (`v->b.tos`) read before the test -- one source, both shapes.
+- **One division for a test and a quotient**: InitUndersampler takes `n / factor` into a local
+  before the input size is stored; the test's `div` then gives the quotient and only its zero
+  trap stays in the success path (a store between reloads the factor -- `-fno-strict-aliasing`
+  -- and divides again). Two `unsigned short` rates divide unsigned (2.96 shortens it), an int
+  signed. A division's zero trap can vanish: the spellings that divided before the test kept no
+  trap after the first (mips.md's div_trap prints nothing when it is anti-dependent on an
+  earlier trap in its block), the target's only one sits in the success path.
+- **ScanSoft's shapes, measured**: a store and its pointer's increment as two statements
+  (`*h->pos = bin; h->pos++;`: one expression keeps `&h->pos` in a register); a pointer of its
+  own per loop (one shared pointer moves every register); `for (sum = *p++; p < group; p++)` for
+  a group sum; a loop bound taken into a local (`end = s->end`) where the unroller would copy the
+  register; an index initialised at its declaration (zeroed in the prologue); the found-node
+  branch first (`if (p != 0)`) and case bodies in source order; store orders by
+  `tools/ccperm.py` (the delay line's reset, the median's reset -- the same five stores in two
+  functions).
+- **Literals**: the EE's largest float is 0x7FFFFFFF (no infinity), `6.80564694e+38f` through
+  2.96's parser (the VQ's FLT_MAX); `0.001` comes out an ulp low (0x3F50624DD2F1A9FB) and `0.1f`
+  0x3DCCCCCC, both the target's.
+- **Open, diagnosed in place**: ProcessStationarity (50 words, the right size: the first block's
+  registers), GetLabel (0x46C, the VQ's two-stage search: both outer loops unrolled by two, each
+  distance loop's first step outside, pointers strength-reduced -- the break after the sum is the
+  target's). Of language.c's twelve only `_cdbGetCodeBookSize` was retried, its sum factored as
+  the target computes it (`(dim + nbr_in_sec_search) * first_size`, three spellings): still 32s.
+
+Hand-written in round 8c: `asr/delayblk.c` (4 of 4), `asr/lookahd.c` (4 of 4), `asr/gendfilt.c`
+(4 of 4), `asr/undersmp.c` (4 of 4), `asr/stacker.c` (4 of 4), `asr/median.c` (5 of 5),
+`asr/station.c` (3 of 4), `asr/vq.c` (8 of 9), `asr/slhisto.c` (8 of 8, with SOCOM II's three
+session functions) -- 44 functions byte-exact, 26 new to the map's byte-exact rows (6,336 bytes),
+18 superseding matching drafts; 11 rows named (ProcessGenderFilter, ProcessUndersampler,
+InitUndersampler, ProcessStacker, ProcessMedian, ProcessStationarity, GetLabel,
+IdleVq1500Process, ControlVq1500Process `s1:order`; FreeVq1500 `s1:calls`; SlidingHisto_Free by
+body).
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
