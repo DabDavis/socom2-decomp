@@ -428,6 +428,28 @@ void CTurret::SampleDynamics(float dT)
     }
 }
 
+/* the yaw and pitch toward a direction in the turret's frame (0x3A8910, not written) */
+extern "C" void func_003A8910(CTurret *t, const CPnt3D *dir, float *yaw, float *pitch);
+
+/* the yaw and pitch toward a point: the direction to it from the fire point, unit length, into the
+ * turret's frame; straight ahead (-z) without one (new in SOCOM II, not named: the SEALs' vehicle
+ * state asks it for the point it aims at) */
+extern "C" void func_003A8BD0(CTurret *t, const CPnt3D *target, float *yaw, float *pitch)
+{
+    CPnt3D dir;
+
+    if (target) {
+        CPnt3D d = *target - t->m_380;
+
+        t->m_398 = d;
+        t->m_398.Normalize();
+        TransformVectors(&t->m_340, &t->m_398, &dir, 1);
+    } else {
+        dir = CPnt3D::unit_nz;
+    }
+    func_003A8910(t, &dir, yaw, pitch);
+}
+
 /* (called, never inlined: ~CTurret calls it). Its remove_copy instance (0x3AB9A0) is byte-exact.
  * OPEN, 12 bytes short: the same calls and loop, but the target builds one end() temporary first
  * (sp+76) and serves both std::remove's last and erase's last from it, std::remove's result in a
