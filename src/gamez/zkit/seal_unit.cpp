@@ -83,6 +83,13 @@ public:
     unsigned char _0[0x264];
     unsigned int m_debug : 1;   // 0x264
     unsigned int m_navyseal : 1;   // bit 1
+    unsigned char _265[0x26c - 0x265];   /* (the two bits take one byte) */
+    /* SEAL_AI_PARAMS's two mode bytes at 0x26C/0x26D (zseal.h's m_26c: 4, any target taken) */
+    signed char m_26c;   // 0x26c
+    signed char m_26d;   // 0x26d
+    unsigned char _26e[0x42c - 0x26e];
+    /* its state stack's kinds, a bit each (CAiStateStack::m_10, the stack at 0x41C) */
+    unsigned int m_stateKinds;   // 0x42c
 };
 
 /* a point-out's state, the leader's and the follower's (SOCOM 1's DWARF: UnitPointData, 0x14 bytes,
@@ -151,6 +158,9 @@ public:
     /* the squad's SEALs counted, with those of the squads under it to a depth (OVL2 0x5ED9B0, new in
      * SOCOM II: recursive, inlined into itself twice; the name ours) */
     int GetSealCount(int depth);
+    /* the index'th SEAL of the squad, counted on through the squads under it to a depth, or 0
+     * (SOCOM 1's GetSealByIndex(unsigned int), the depth new; OVL2 0x5EDBB0) */
+    CZSealBody *GetSealByIndex(int index, int depth);
 
     class CCompassAnchor *m_compassanchor;   // 0x0
     /* the table at 4: IssueCommand, AllowCommand (0x669650) */
@@ -223,6 +233,13 @@ public:
      * one squad's tick (SOCOM 1's took the scheduler's data too: SOCOM II's callers pass none) */
     static bool TickAll(float dT, void *data);
     void Tick(float dT);
+    /* a squad under this one told of an order (SOCOM 1's): on a follow (4), whether every AI SEAL
+     * of this squad and every squad under it follows -- the flag at 0xA0 set -- or some do (0xA1) */
+    void CommandNotifyFromChild(CSealUnit *child, CZSealBody *seal, FT_COMMAND cmd, void *data);
+    /* the AI's two mode bytes (SEAL_AI_PARAMS 0x26C/0x26D) of the squad's first AI SEAL, else of the
+     * last squad under it that has one; whether any had (OVL2 0x5EAA70, new in SOCOM II: the team
+     * command menu asks it through 0x5EABA0; the name ours) */
+    bool GetAiModes(signed char *a, signed char *b);
 };
 
 bool CSealUnit::m_created_units_test;
@@ -367,6 +384,31 @@ int CSealUnit::GetSealCount(int depth)
     return n;
 }
 
+/* (OVL2 0x5EDBB0: the squad's own SEALs walked to the index, else the squads under it asked in
+ * turn, each one's count taken off the index) */
+CZSealBody *CSealUnit::GetSealByIndex(int index, int depth)
+{
+    CZSealBody *seal = 0;
+
+    if (index >= 0 && (unsigned int)index < m_seals.size()) {
+        slist::iterator i = m_seals.begin();
+
+        while (index--)
+            ++i;
+        seal = *i;
+    } else if (depth > 0) {
+        index -= m_seals.size();
+        for (ulist::iterator u = m_sub_units.begin(); !seal && u != m_sub_units.end(); ++u) {
+            CSealUnit *unit = *u;
+
+            seal = unit->GetSealByIndex(index, depth - 1);
+            if (!seal)
+                index -= unit->GetSealCount(depth - 1);
+        }
+    }
+    return seal;
+}
+
 /* (OVL2 0x5EDDD0; GetUnitByTeam inlined) */
 bool CSealUnit::IsMemberOfUnit(unsigned int team, CZSealBody *seal, bool recurse)
 {
@@ -419,6 +461,85 @@ CSealUnit::~CSealUnit()
     }
     m_sub_units.clear();
     m_seals.clear();
+}
+
+/* (OVL2 0x5E8CA0; SOCOM 1's, the AI's follow state (9) read off its stack's kinds where SOCOM 1
+ * called FindAiState) */
+void CSealUnit::CommandNotifyFromChild(CSealUnit *child, CZSealBody *seal, FT_COMMAND cmd, void *data)
+{
+    switch (cmd) {
+    case 4:
+        bool all = true;
+        bool some = false;
+        slist::iterator e = m_seals.end();
+
+        for (slist::iterator i = m_seals.begin(); i != e; ++i) {
+            CZSealBody *s = *i;
+
+            if (s->IsAi()) {
+                if (((CUnitSealCtrl *)s->m_control)->GetSealCtrlAi()->m_stateKinds & (1 << 9))
+                    some = true;
+                else
+                    all = false;
+            }
+        }
+        ulist::iterator ue = m_sub_units.end();
+
+        for (ulist::iterator u = m_sub_units.begin(); u != ue; ++u) {
+            CSealUnit *unit = *u;
+
+            if (*unit->m_commands.begin() == 4) {
+                if (unit != child)
+                    some = true;
+            } else
+                all = false;
+        }
+        if (all) {
+            some = false;
+            m_a0 = 1;
+        }
+        if (some)
+            m_a1 = 1;
+        break;
+    }
+}
+
+/* (OVL2 0x5EAA70) */
+bool CSealUnit::GetAiModes(signed char *a, signed char *b)
+{
+    *a = 0;
+    *b = 0;
+    bool found = false;
+
+    if (m_seals.size() != 0) {
+        slist::iterator e = m_seals.end();
+
+        for (slist::iterator i = m_seals.begin(); i != e; ++i) {
+            CSealCtrlAi *ai = ((CUnitSealCtrl *)(*i)->m_control)->GetSealCtrlAi();
+
+            if (ai) {
+                found = true;
+                *a = ai->m_26c;
+                *b = ai->m_26d;
+                break;
+            }
+        }
+    }
+    if (m_sub_units.size() != 0 && !found)
+        for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u) {
+            signed char ta, tb;
+
+            /* the first byte tested through an unsigned view (the target's lbu, then lb for the
+             * copy; `(bool)ta`, `ta != 0` and an unsigned cast all test the lb load) -- a stand-in
+             * spelling */
+            (*u)->GetAiModes(&ta, &tb);
+            if (*(unsigned char *)&ta) {
+                found = true;
+                *a = ta;
+                *b = tb;
+            }
+        }
+    return found;
 }
 
 /* (OVL2 0x5EA880) */

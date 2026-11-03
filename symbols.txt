@@ -11368,7 +11368,7 @@
 0x005E8C70 0x8 func_005E8C70  # OVL2
 0x005E8C80 0x8 func_005E8C80  # OVL2
 0x005E8C90 0x8 func_005E8C90  # OVL2
-0x005E8CA0 0x168 func_005E8CA0  # OVL2
+0x005E8CA0 0x168 CommandNotifyFromChild__9CSealUnitFP9CSealUnitP10CZSealBody10FT_COMMANDPv  # OVL2; s1:order by hand (the kit lane, round 19): SOCOM 1's CommandNotifyFromChild (0x2D0620, 0x1B8), between GetLeader and IssueCommand in both builds -- on a follow (4) the squad's AI SEALs and sub-squads walked, the flags at 0xA0/0xA1 set; SOCOM II reads the follow state (9) off the stack's kind bits (+0x42C) where SOCOM 1 called FindAiState
 0x005E8E10 0x1640 IssueCommand__9CSealUnitFP10CZSealBody10FT_COMMANDPvb  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EA450 0x68 __dt__8CAiStateFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005EA4C0 0x8 OnSignal__8CAiStateFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -11381,7 +11381,7 @@
 0x005EA870 0x8 func_005EA870  # OVL2
 0x005EA880 0x34 IsAi__10CZSealBodyFv  # OVL2; by hand (the kit lane, round 14): the SEAL's controller tested and its IsAi (CSealCtrl slot 0x30) called, the shape of zseal.h's IsPlayer/IsRemote; an inline's copy among IssueCommand's (IssueCommand calls it on 0x5EEDB0's SEAL) -- the name ours
 0x005EA8C0 0x1B0 func_005EA8C0  # OVL2
-0x005EAA70 0x128 func_005EAA70  # OVL2
+0x005EAA70 0x128 GetAiModes__9CSealUnitFPScPSc  # OVL2; by hand (the kit lane, round 19; the name ours): the two AI mode bytes (SEAL_AI_PARAMS 0x26C/0x26D) of the squad's first AI SEAL, else from each sub-squad (recursive); 0x5EABA0 calls it for the team command menu
 0x005EABA0 0x1C4 func_005EABA0  # OVL2
 0x005EAD70 0x13C func_005EAD70  # OVL2
 0x005EAEB0 0x68 func_005EAEB0  # OVL2
@@ -11425,7 +11425,7 @@
 0x005ED980 0x1C func_005ED980  # OVL2; s1~ one of three std::list<T *>::generic_iterator constructors (T = CAiMap, CAiState, CEntity) with identical code
 0x005ED9A0 0xC func_005ED9A0  # OVL2
 0x005ED9B0 0x1F8 GetSealCount__9CSealUnitFi  # OVL2; by hand (the kit lane, round 15): the squad's SEALs counted, with the squads' under it to a depth (m_seals' size, then each of m_sub_units' with depth - 1) -- recursive, inlined into itself twice, the third copy a call with depth - 3; GetSealByIndex (0x5EDBB0, CTeamNames::Init's) subtracts it per squad; new in SOCOM II, the name ours
-0x005EDBB0 0x108 func_005EDBB0  # OVL2
+0x005EDBB0 0x108 GetSealByIndex__9CSealUnitFii  # OVL2; s1:order by hand (the kit lane, round 19): SOCOM 1's GetSealByIndex (0x2D5FB0, unsigned) after GetSealCount in SOCOM II's -- the squad's SEALs walked to the index, else the sub-squads asked to a depth (new), each one's GetSealCount taken off the index; recursive, signed index (bltz)
 0x005EDCC0 0xF8 IsMemberOfUnit__9CSealUnitFP10CZSealBodyb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's IsMemberOfUnit(CZSealBody *, bool) (0x2D6040) -- the SEALs (0x64), the escortees (0x70), then with the flag each sub-squad (0x7C) asked again, recursing as there; before its by-number overload as there
 0x005EDDC0 0x10 func_005EDDC0  # OVL2
 0x005EDDD0 0x70 IsMemberOfUnit__9CSealUnitFUiP10CZSealBodyb  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's IsMemberOfUnit(unsigned int, CZSealBody *, bool) (0x2D61B0) -- the squad of the number found (GetUnitByTeam inlined: m_list, the number at 0x58) and asked through 0x5EDCC0
