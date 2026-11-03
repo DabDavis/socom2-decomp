@@ -280,11 +280,10 @@ struct NetIfInfo {
     unsigned char _208[0x240 - 0x208];
 };
 
-/* the interfaces listed, at most `max`; their count (OVL1 0x30BD40).
- * OPEN, 2 instructions, scheduling: the target zeroes the counter in the loop guard's delay slot
- * (`beqz at; move s2,zero`) where MW puts it ahead of the branch; the pointer's and the counter's
- * registers and the pointer's sinking need `int i; int *id;` and `for (i = 0, id = ids; ...)`
- * (the other orders swap registers or hoist the pointer). */
+/* the interfaces listed, at most `max`; their count (OVL1 0x30BD40). The loop is an explicit guard
+ * around a do-while: the target zeroes the counter in the guard's delay slot (`beqz at; move
+ * s2,zero`) and sets the cursor after it, where a for loop's initialisation puts both ahead of the
+ * branch (the cursor then in the slot); `int i; int *id;` in that order keeps their registers */
 extern "C" int func_0030BD40(NetIfInfo *info, int max)
 {
     int ids[256];
@@ -299,12 +298,19 @@ extern "C" int func_0030BD40(NetIfInfo *info, int max)
         int i;
         int *id;
 
-        for (i = 0, id = ids; i < n; i++, info++, id++) {
-            memset(info, 0, sizeof(*info));
-            info->m_id = *id;
-            sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 8, &info->m_flags, 4);
-            sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 2, info->m_vendor, 256);
-            sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 3, info->m_product, 256);
+        i = 0;
+        if (i < n) {
+            id = ids;
+            do {
+                memset(info, 0, sizeof(*info));
+                info->m_id = *id;
+                sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 8, &info->m_flags, 4);
+                sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 2, info->m_vendor, 256);
+                sceInetInterfaceControl(data_00456780, data_00455F80, info->m_id, 3, info->m_product, 256);
+                i++;
+                info++;
+                id++;
+            } while (i < n);
         }
     }
     return n;

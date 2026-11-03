@@ -923,6 +923,7 @@ public:
     ~CZOnlineLobby();
     bool Init();
     void UnInit();
+    bool Open(const char *host, int port);
     void Close();
     void ReleaseUIResources();
     void CreateUIResources();

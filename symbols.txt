@@ -4662,7 +4662,7 @@
 0x002DFDD0 0x38 Close__13CZOnlineLobbyFv  # OVL1; s1:ui (the UI command table's 'UnInitNetwork' handler 0x27E5C0 calls it on theLobby where SOCOM 1's UIUnInitNetwork calls Close)
 0x002DFE10 0x34 RunStateHandler__13CZOnlineLobbyF11LOBBY_STATE16LOBBY_STATE_FLAG  # OVL1; ours (the state's handler, m_state_handler[state] at +0, called with the flag when there is one; the state an int narrowed inside, andi 0xff; the state machine 0x2ED460 calls it on theLobby)
 0x002DFE50 0x1D4 Tick__13CZOnlineLobbyFv  # OVL1; s1:order by hand, the online lane round 11 (SOCOM 1's CZOnlineLobby::Tick 0x327C50 instruction for instruction but the game clock now a member read through this and its float setter's equality test; CZNetwork::zNetUpdate calls it on theLobby as SOCOM 1's does)
-0x002E0030 0x410 func_002E0030  # OVL1
+0x002E0030 0x410 Open__13CZOnlineLobbyFPCci  # OVL1; ours, the online lane round 12 (CZOnlineLobby::Open(host, port): UILobbyConnect 0x276AC0 calls it on theLobby; the session's globals reset, the handlers registered through the chat unit's table 0x2ED460, the lobby server looked up and its connection asked for through 0x300740 with 0x2E0440 as the callback -- SOCOM 1's Open registered the handlers itself) -- byte-exact, zNetMedius.cpp
 0x002E0440 0x10 func_002E0440  # OVL1
 0x002E0450 0x17C Init__13CZOnlineLobbyFv  # OVL1; s1 by hand (COurGame::StartEngine calls it on theLobby where SOCOM 1's StartEngine calls CZOnlineLobby::Init)
 0x002E05D0 0x54 DMEInit__13CZOnlineLobbyFv  # OVL1; ours (the UI command table's 'DMEInit' handler 0x276CE0 calls it on theLobby: the DME's set up once, when theLobby+0xA8 allows, through OVL2 0x6305C8 on 0x44F490 and 0x44F4D0, and 0x44F490 returned)

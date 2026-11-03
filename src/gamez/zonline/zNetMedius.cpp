@@ -6,7 +6,9 @@
  * the queue's deque instances (0x2E07B0-0x2E1BB0) close it, before the rooms' unit (0x2E1CE0).
  * Only some of it so far. Defined in reverse of their image order (-inline deferred). */
 
+#include <stdio.h>
 #include "zonline.h"
+#include "../znet/znet.h"
 
 extern "C" {
 extern int myConnectionIndex;   /* the Medius connection (SOCOM 1's) */
@@ -155,6 +157,161 @@ void *CZOnlineLobby::DMEInit()
         data_0044F510 = 1;
     }
     return data_0044F490;
+}
+
+/* ---- Open: the lobby server's connection asked for ---- */
+
+/* a server's addresses, its key, and where it is (the universe unit's layouts: the info a class
+ * with a constructor, so copied member by member; the key a plain struct, as eight two-word
+ * passes) */
+struct NetAddressList {
+    int AddressType0;   // 0x0
+    char Address0[16];   // 0x4
+    int BinaryAddress0;   // 0x14
+    int AddressType1;   // 0x18
+    char Address1[16];   // 0x1c
+    int BinaryAddress1;   // 0x2c
+};   // 0x30
+
+struct NetServerKey {
+    unsigned int m_words[16];
+};   // 0x40
+
+struct NetConnectionInfo {
+    NetConnectionInfo() {}
+
+    int Type;   // 0x0
+    NetAddressList AddressList;   // 0x4
+    int WorldID;   // 0x34
+    NetServerKey ServerKey;   // 0x38
+    char SessionKey[17];   // 0x78
+    char AccessKey[17];   // 0x89
+};   // 0x9c
+
+/* a connection asked for: the server's info, then the buffer's size and the callback told the
+ * connection's index */
+struct MediusConnectParams {
+    NetConnectionInfo ConnectInfo;   // 0x0
+    unsigned char _9c[0xf0 - 0x9c];
+    int BufferSize;   // 0xf0: 256
+    void (*Callback)(int index);   // 0xf4
+    int _f8;   // 0xf8
+    int _fc;   // 0xfc
+};   // 0x100
+
+/* the account logged in (OVL2 bss; SOCOM 1's AccountInfo, its name and password Open sets) */
+struct AccountInfoType {
+    int AccountID;   // 0x0
+    char AccountName[32];   // 0x4
+    char AccountPassword[32];   // 0x24
+};
+
+/* our stats (0x66A750, the lobby unit's GamePlayerStats: the side's two bits in byte 2, the
+ * ladder figure at 4 -- only what Open sets) */
+struct OpenStats {
+    unsigned int _0 : 15;
+    unsigned int _late : 1;
+    signed char _2 : 5;
+    signed char m_side : 2;   // byte 2, bits 5-6
+    unsigned char _3;
+    int m_rating;   // 0x4
+};
+
+extern "C" {
+extern int MediusWorldID;   /* the game joined (SOCOM 1's) */
+extern int LobbyWorldID;   /* the room we are in (SOCOM 1's) */
+extern AccountInfoType AccountInfo;
+extern unsigned char data_0066A8E0;   /* logged in (the chat unit's) */
+extern unsigned char data_0044F470;
+extern char data_0066A9B0[256];   /* the lobby server's host */
+extern int data_0066AAB0;   /* and port */
+extern OpenStats data_0066A750;   /* our stats */
+extern char data_0066A7EF[];   /* our description, in them (0x9F) */
+extern int data_0066A838;   /* our performance figure, in them (0xE8; SOCOM 1's
+                               UniversalGamePerformanceMetric) */
+extern NetConnectionInfo data_0066A540;   /* the lobby server (OVL2 bss) */
+void func_002ED460(CZOnlineLobby *lobby);   /* the state handlers registered (the chat unit's table) */
+MediusErrorCode MediusVersionClient(char *version);
+int MediusGetBuildTimeStamp(char *stamp);
+void func_0064A750(NetConnectionInfo *info, int type, const char *ip, int port, int flags);   /* (the info built for an address) */
+void func_0064F4E0(NetServerKey *key);   /* (the DNAS key) */
+bool func_00300740(int kind, MediusConnectParams *params);   /* a connection asked for (the friends' unit's) */
+}
+
+/* a field copied into a global's, only the destination's address tested (as SOCOM 1's Open copies
+ * the account's default name and password; CopyField's test of the literal is not folded) */
+inline void CopyTo(char *dst, const char *src, unsigned int n)
+{
+    if (dst)
+        memcpy(dst, src, n);
+}
+
+/* the lobby server connected: the session begun (OVL1 0x2E0440, the callback Open hands over) */
+extern "C" void func_002E0440(int index)
+{
+    theLobby.ChangeState(SESSION_BEGIN);
+}
+
+/* the lobby opened on a server (SOCOM 1's Open, which registered the handlers itself; OVL1
+ * 0x2E0030: UILobbyConnect calls it on theLobby with the server's host and port): once, the
+ * session's globals reset, the handlers registered by the chat unit's table, the UI variables
+ * made, the server looked up and its connection asked for -- the error state entered at once
+ * when it cannot be */
+bool CZOnlineLobby::Open(const char *host, int port)
+{
+    if (m_isopen)
+        return false;
+    m_isopen = true;
+    MediusWorldID = -1;
+    SessionKey[0] = 0;
+    data_0066A8E0 = 0;
+    data_0044F470 = 0;
+    strncpy(data_0066A9B0, host, 256);
+    data_0066AAB0 = port;
+    LobbyWorldID = -1;
+    data_0066A750.m_rating = 99;
+    data_0066A750.m_side = 0;
+    sprintf(data_0066A7EF, "Description Not Set");
+    data_0066A838 = 65000;
+    func_002E9920();
+    AccountInfo.AccountID = -1;
+    CopyTo(AccountInfo.AccountName, "zname_a", 32);
+    CopyTo(AccountInfo.AccountPassword, "zpass_a", 32);
+    m_current_state = ROOT_LOBBY_STATE;
+    for (int i = 0; i < MAX_LOBBY_STATES; i++)
+        m_state_handler[i] = 0;
+    while (!m_state_change_fifo.empty())
+        m_state_change_fifo.pop();
+    func_002ED460(this);
+    CreateUIResources();
+    char ip[64];
+    char server[64];
+    char stamp[64];
+    char client[64] = {0};
+    MediusConnectParams params;
+    NetServerKey key;
+
+    theNetwork.zNetLookupHost(host, ip, sizeof(ip));
+    MediusVersionClient(server);
+    MediusGetBuildTimeStamp(stamp);
+    MediusVersionClient(client);
+    func_0064A750(&params.ConnectInfo, 0, ip, port, 1);
+    params.BufferSize = 256;
+    memcpy(&data_0066A540, &params.ConnectInfo, sizeof(NetConnectionInfo));
+    if (theLobby.m_a8)
+        func_0064F4E0(&key);
+    else
+        memset(&key, 0, sizeof(key));
+    data_0066A540.ServerKey = key;
+    params.ConnectInfo = data_0066A540;
+    params.Callback = func_002E0440;
+    params._f8 = 0;
+    params._fc = 0;
+    if (!func_00300740(1, &params)) {
+        theLobby.ChangeState(CONNECT_ERROR);
+        theLobby.Tick();
+    }
+    return true;
 }
 
 /* the lobby's lists given back: each deleted and its storage freed, the UI variables forgotten,
