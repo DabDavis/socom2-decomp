@@ -397,8 +397,11 @@ public:
      * are 12 bytes, so 0x1C -- the vector's teardown 0x540A50 frees both) */
     class LOD {
     public:
-        std::string m_file;   // 0x0
-        std::string m_name;   // 0xc
+        /* empty, at no distance (Parse's temporary: all seven words zeroed) */
+        LOD() : m_dist(0.0f) {}
+
+        std::string m_file;   // 0x0: the model's name, the file's without its extension
+        std::string m_name;   // 0xc: the file's name (SOCOM 1's names, both builds' use)
         float m_dist;   // 0x18
     };
     /* the type's levels of detail (SOCOM 1's DWARF: a vector and nothing more) */
@@ -422,6 +425,10 @@ public:
     /* the sound list's kind/file pairs into the sound names, then its multiplayer messages (new in
      * SOCOM II as a function, the name ours: SOCOM 1's Parse did it in place; OVL2 0x53BEF0) */
     void ParseSounds(_zrdr *list);
+    /* the type's record of chartype.rdr: model, texture, controller, anim sets, gear, weapons,
+     * strength, health, voice font, levels of detail, AI parameters and sounds (SOCOM 1's; OVL2
+     * 0x53CE00, Open's) */
+    bool Parse(_zrdr *rdr);
     static CCharacterType *RdrFetch_CharacterType(const char *name);
     /* a type's weapons replaced by the eight a packed loadout holds, up to its first empty one
      * (SOCOM 1's UnPack, 0x53EC60: CZSealBody's remote respawn and creation call it) */

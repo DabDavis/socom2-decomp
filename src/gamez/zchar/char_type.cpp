@@ -495,6 +495,132 @@ CCharacterType *CCharacterType::Acquire() const
     return 0;
 }
 
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+
+/* the type's record (SOCOM 1's, whose LOD names went through a string's find and replace): the
+ * model and texture names, the controller, the anim sets (each name the list's copy), the default
+ * gear (found by name in the gear list) and weapons (each with its ammunition and counts), the
+ * strength and recovery, the health, the voice font, the levels of detail (a file's name, the
+ * model's without the extension, and a distance), the AI parameters and the sounds */
+bool CCharacterType::Parse(_zrdr *rdr)
+{
+    const char *model = zrdr_findstring(rdr, "model_name");
+    const char *texture = zrdr_findstring(rdr, "texture_asset");
+
+    zrdr_findint(rdr, "controller_id", &m_controller_id, 1);
+
+    _zrdr *sets = func_0032F0D0(rdr, "anim_set");
+
+    if (sets && sets->type == 4) {
+        m_anim_sets.clear();
+        for (int i = 0; i < sets->Count(); i++) {
+            char *name = sets->Item(i)->String();
+
+            name = AddAnimSetName(name);
+            m_anim_sets.push_back(name);
+        }
+    }
+
+    _zrdr *gear = func_0032F0D0(rdr, "default_gear");
+
+    if (gear && gear->type == 4) {
+        m_gear.clear();
+        for (int i = 0; i < gear->Count(); i++) {
+            CCharacterGear *g = ((CCharacterGearList &)m_gear_list).FindGear(gear->Item(i)->String());
+
+            if (g)
+                m_gear.push_back(g);
+        }
+    }
+
+    _zrdr *weapons = func_0032F0D0(rdr, "default_weapons");
+
+    if (weapons && weapons->type == 4) {
+        m_weapons.clear();
+        for (int i = 0; i < weapons->Count(); i++) {
+            _zrdr *item = weapons->Item(i);
+            EQUIP_ITEM wep = CZWeapon::GetWeaponId(zrdr_findstring(item, "wep_name"));
+
+            if (wep != EQUIP_NONE) {
+                CCharacterWeap w;
+
+                w.m_wepId = wep;
+                w.m_ammoId = CZAmmo::GetAmmoId(zrdr_findstring(item, "ammo_name"));
+                zrdr_findint(item, "ammo_count", &w.m_ammoCount, 1);
+                zrdr_findint(item, "mag_count", &w.m_magCount, 1);
+                m_weapons.push_back(w);
+            }
+        }
+    }
+    zrdr_findint(rdr, "strength", &m_strength, 1);
+    zrdr_findint(rdr, "recovery_factor", &m_recovery_factor, 1);
+    m_healthParams.Parse(rdr);
+
+    _zrdr *voice = func_0032F0D0(rdr, "VoiceFont");
+
+    if (voice) {
+        zrdr_findreal(voice, "SetPitchOffset", &m_voiceFont.m_pitchOffset, 1);
+        zrdr_findreal(voice, "SetSpectralFactor", &m_voiceFont.m_spectralFactor, 1);
+        zrdr_findreal(voice, "SetSpectralLedge", &m_voiceFont.m_spectralLedge, 1);
+        zrdr_findreal(voice, "SetRoboOffset", &m_voiceFont.m_roboOffset, 1);
+        zrdr_findreal(voice, "SetRoboSquash", &m_voiceFont.m_roboSquash, 1);
+        zrdr_findreal(voice, "SetWhisperFactor", &m_voiceFont.m_whisperFactor, 1);
+    }
+
+    _zrdr *lods = func_0032F0D0(rdr, "lods");
+
+    if (lods) {
+        m_LODs.clear();
+        int n = lods->Count();
+
+        for (int i = 0; i < n; i++) {
+            _zrdr *item = lods->Item((unsigned int)i);
+            const char *s = item->Item(0)->String();
+            char *file = s ? _strdup(s, 0, 0) : 0;
+
+            if (file) {
+                LOD lod;
+
+                lod.m_name = file;
+                char *dot = strchr(file, '.');
+
+                if (dot)
+                    *dot = 0;
+                lod.m_file = file;
+                lod.m_dist = item->Item(1)->Real();
+                m_LODs.push_back(lod);
+                if (file)
+                    _free(file, 0, 0);
+            }
+        }
+    }
+    if (model) {
+        m_model_file = _strdup(model, 0, 0);
+        char *name;
+
+        if (!model) {
+            name = 0;
+        } else {
+            name = _strdup(model, 0, 0);
+            char *dot = strchr(name, '.');
+
+            if (dot)
+                *dot = 0;
+        }
+        m_model_name = name;
+    }
+    if (texture) {
+        if (m_texture_asset)
+            _free(m_texture_asset, 0, 0);
+        m_texture_asset = 0;
+        m_texture_asset = _strdup(texture, 0, 0);
+    }
+    m_aiParams.Parse(func_0032F0D0(rdr, "ai_params"));
+    ParseSounds(func_0032F0D0(rdr, "sounds"));
+    return true;
+}
+
 /* the count dropped; at none -- clamped there, new in SOCOM II -- each gear's count dropped and at
  * none zeroed with its model, then the type's model and sounds forgotten (SOCOM 1's, whose gear
  * list was a list and whose model stores were null-tested) */
@@ -690,8 +816,10 @@ void CCharacterType::ParseSounds(_zrdr *list)
 }
 
 /* the list's copy of an anim set's name, else a copy pushed (SOCOM 1's Parse inlined this walk,
- * SOCOM II's calls it -- the push's insert out of line keeps -inline auto off it). The iterator
- * assigned, so it lives in memory; the end in a register */
+ * SOCOM II's Parse calls it). The iterator assigned, so it lives in memory; the end in a register.
+ * Pinned: twelve statements, -inline auto would take it into Parse (the push's insert out of line
+ * does not stop it) */
+#pragma auto_inline off
 char *CCharacterType::AddAnimSetName(const char *name)
 {
     if (m_anim_set_names.size()) {
@@ -710,6 +838,7 @@ char *CCharacterType::AddAnimSetName(const char *name)
     m_anim_set_names.push_back(s);
     return s;
 }
+#pragma auto_inline reset
 
 /* a SEAL's wait before its next pain sound (CZSealBody's float at 0x424, the name ours; zseal.h is
  * not included here) */
