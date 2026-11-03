@@ -9,7 +9,11 @@
  * II's CBmpWithNode is a shared class, not SOCOM 1's file-local one (the linker kept zui_skb.cpp's
  * copies of its inline members for both units) -- the keyboard's classes are zui_skb.h's.
  *
- * OPEN, not written yet: everything but the text getter, ReadIntPair and the rectangle reader below. */
+ * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
+ * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
+ * OPEN, not written yet: the tick 0x3949C0, the display's builders 0x394520, 0x394DA0, 0x394F60,
+ * 0x395140, 0x395540, 0x3958D0, the look parser 0x3963F0, 0x397070, 0x397640, 0x397950 and the
+ * template tail 0x397FE0-0x398910. */
 
 #include <string>
 #include "zui.h"
