@@ -95,8 +95,16 @@ public:
  * yet), the index of a fire mode's graphic, and two tests of an item's type */
 extern "C" int func_005C3CE0(CZKit *kit);
 extern "C" int func_005C3890(CZKit *kit);
-extern "C" bool func_003D1DA0(EQUIP_IDTYPE type);
-extern "C" bool func_003D1DB0(EQUIP_IDTYPE type);
+
+/* the weapons' class tests (zwep_weapon.cpp's statics, 0x3D1DA0 and 0x3D1DB0: their parameter is
+ * zweapon.h's EQUIP_ITEM, a byte enum, handed the item's class) */
+enum EQUIP_ITEM { EQUIP_NONE = 255 };
+
+class CZWeapon {
+public:
+    static bool IsSecondaryType(EQUIP_ITEM type);
+    static bool IsPrimaryType(EQUIP_ITEM type);
+};
 
 /* only the bit the counts test (MapCompass::On tests it too) and the kit */
 class CZSealBody {
@@ -294,9 +302,9 @@ void CAmmoDisplay::Update()
     bool pistol = false;
 
     if (theNetwork.m_bNetwork && kit) {
-        pistol = func_003D1DA0(kit->GetCurItemIDType());
+        pistol = CZWeapon::IsSecondaryType((EQUIP_ITEM)kit->GetCurItemIDType());
         if (!pistol && data_00437CE8->m_respawns)
-            pistol = func_003D1DB0(kit->GetCurItemIDType());
+            pistol = CZWeapon::IsPrimaryType((EQUIP_ITEM)kit->GetCurItemIDType());
     }
     sprintf(text, "%d/%d", rounds, clip);
     m_ammo.SetString(text, true);

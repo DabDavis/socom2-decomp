@@ -20,7 +20,7 @@ extern "C" const char _ctype_[];
 #define rdr_isspace(c) ((_ctype_ + 1)[c] & 8)
 
 /* newlib's strtod (MAIN 0x19A9B0, SOCOM 1's strtod by name) */
-extern "C" double func_0019A9B0(const char *s, char **end);
+extern "C" double strtod(const char *s, char **end);   /* newlib (MAIN) */
 /* the values allocator (zrdr_pack.cpp's unit, 0x335BC0): `n` zeroed values, the first typed */
 extern "C" _zrdr *func_00335BC0(unsigned char type, int n);
 
@@ -173,7 +173,11 @@ public:
 
             for (unsigned int n = 0; n < m_base; n++, i++)
                 ;
-            erase(i, end());
+            /* both bound to references: a temporary a reference binds takes its slot ahead of
+             * the loop's postfix ++ temporary (zrdr_read's 0x140/0x144/0x148, as the target);
+             * written `erase(i, end())` the three slots come out in the reverse order */
+            const iterator &e = end();
+            const iterator &r = erase(i, e);
         }
         last = end();
         first = std::remove_if(begin(), last, IsUndefined);
@@ -219,7 +223,7 @@ _zrdr *CRdrFile::MakeUnion(const char *token, bool quoted)
             u->integer = i;
             return u;
         }
-        float f = func_0019A9B0(token, &end);
+        float f = strtod(token, &end);
 
         if (len == end - token) {
             u->type = ZRDR_REAL;
@@ -286,7 +290,12 @@ int CRdrFile::ReadToken(CRdrIO *io, _zrdr **out)
  * spelling tried here falls through into it (`if (!depth) {} else`, if/else with `array = this`
  * or `array = array`, ternaries -- the forms that leave `array` uninitialised at its declaration
  * lose the coalescing of `array` with `this` in s0 and move every register); the loop label's
- * alignment nop follows from it */
+ * alignment nop follows from it. Part (1) no longer differs (17 instructions, all the depth test's).
+ * Round 5 of the world lane, every one 17 or 47: `if (!depth) ; else`, a do/while(0) with a break,
+ * a goto over the call, a switch, a while with a break, an unsigned count, the count read back
+ * from array->length; and the shape a block emptied only after allocation would give (an
+ * explicit `array = this` arm, either way round, with `array` initialised or not; an inline helper
+ * returning `this` early, or its ternary) -- each loses the this/array coalescing (47) */
 _zrdr *CRdrFile::ReadArray(CRdrIO *io, int depth)
 {
     _zrdr *rdr = 0;
@@ -673,11 +682,9 @@ bool _preproc_filter(CRdrIO *io)
  * (its text dumped beside it as "<name>pp" when the flags ask, 2) and parsed; the symbols the file
  * defined are dropped after. CRdrIO's GetSize and Close are called through the vtable on the local
  * (MW devirtualises a member only when the object's own class declares it: CFileIO's are direct).
- * OPEN, 3 instructions: inside the inlined Pop the postfix ++'s result takes sp+0x140 and end()'s
- * sp+0x148 where the target has them the other way round (the target's block allocates end()'s
- * and erase's temporaries before the loop's) -- the counter loop written with the step in the
- * body, in the for's third clause, as a while, in a block, the iterator built by direct
- * initialisation, its counter declared first: none moves them */
+ * Byte-exact once Pop binds end() and erase's result to const references (its comment): every
+ * plain form -- the step in the body or the for's third clause, a while, a block, the counter
+ * declared first, end() alone bound -- left the inlined Pop's temporaries in another order */
 _zrdr *zrdr_read(const char *name, const char *path, int flags)
 {
     CRdrFile *file = 0;

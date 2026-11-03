@@ -15,6 +15,41 @@
 extern "C" CTCMNode *func_00236D20(CTCMEntry *entry, int arg, const char *caption, const char *text2,
                                    const char *name, int flags);
 
+/* the menu's time constant (0.3; a variable: read with lwc1 -- the name ours) */
+static float s_tcm_dd8 = 0.3f;
+
+/* the menu built: the root node, the mode 4, the three backing polys untextured, translucent and
+ * black with two corners clear, the counters and the holds (SOCOM II's) */
+CTCM::CTCM() : m_cache(0), m_da8(0), m_dac(0), m_db0(1.0f), m_hold(-1.0f)
+{
+    strcpy(m_cacheName, "No Cache Available");
+    m_7d0.SetHasTexture(false);
+    m_7d0.SetIsTrans(true);
+    m_7d0.SetTrans(1, 0.0f);
+    m_7d0.SetTrans(2, 0.0f);
+    m_7d0.SetColor(0.0f, 0.0f, 0.0f);
+    m_9c0.SetHasTexture(false);
+    m_9c0.SetIsTrans(true);
+    m_9c0.SetTrans(2, 0.0f);
+    m_9c0.SetTrans(3, 0.0f);
+    m_9c0.SetColor(0.0f, 0.0f, 0.0f);
+    m_bb0.SetHasTexture(false);
+    m_bb0.SetIsTrans(true);
+    m_bb0.SetTrans(2, 0.0f);
+    m_bb0.SetTrans(3, 0.0f);
+    m_bb0.SetColor(0.0f, 0.0f, 0.0f);
+    m_da0 = 0;
+    m_da4 = -1.0f;
+    m_dc8 = 0;
+    m_dcd = 0;
+    m_dcc = 0;
+    m_dd4 = 0;
+    m_dd8 = s_tcm_dd8;
+    m_dd0 = 0;
+    m_dce = 0;
+    m_13b0 = 0;
+}
+
 void CTCM::Init()
 {
     func_002344E0();

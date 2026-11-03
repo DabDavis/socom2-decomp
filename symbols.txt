@@ -1688,15 +1688,15 @@
 0x001FE330 0x8 Tick__3C2DFf  # OVL1; s1:vtable by hand (C2D's slot 12, inline and empty)
 0x001FE340 0x420 insert__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiUiRCUi  # OVL1; s1:calls (SOCOM 1's push_back of it is insert(data_ + size_, 1, x); CZAnimExVector::Add and zar::CKeyRing::push inline that push_back)
 0x001FE760 0x27C destroy__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FPQ33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4node  # OVL1; by hand (the HUD lane, round 22: the glyph map's recursive destroy, self-inlined once -- each node's pair destroyed at node + 0x10 through the allocator (0x1FEAB0, 0x1FEA70), the node freed through the node allocator (0x1FEA60, 0x1FEA50); ~C2DFont (0x369EB0, byte-exact as a probe), the font's clear 0x35C800, ReleaseHUD and the UI classes' destructors that delete a font call it; C2DGlyph's name ours, src/gamez/ztwod/c2dfont.h)
-0x001FE9E0 0x70 func_001FE9E0  # OVL1
-0x001FEA50 0x8 func_001FEA50  # OVL1
-0x001FEA60 0x8 func_001FEA60  # OVL1
-0x001FEA70 0x3C func_001FEA70  # OVL1
-0x001FEAB0 0x8 func_001FEAB0  # OVL1
+0x001FE9E0 0x70 __dt__Q23std19pair<CUs,8C2DGlyph>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph map's pair destructor -- the glyph tree's destroy 0x1FE760 calls it, as hud_main.cpp emits it from c2dfont.h's C2DFont; ~C2DGlyph's piece vector torn down inline)
+0x001FEA50 0x8 deallocate__Q23std211allocator<Q33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4node>FPQ33std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>4nodeUi  # OVL1; by hand (the HUD lane, round 24: the glyph tree's node deallocate, the innermost call of its destroy 0x1FE760, as hud_main.cpp emits it)
+0x001FEA60 0x8 node_alloc__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph tree's node allocator accessor, called by its destroy 0x1FE760, as hud_main.cpp emits it)
+0x001FEA70 0x3C destroy__Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>FPQ23std19pair<CUs,8C2DGlyph>  # OVL1; by hand (the HUD lane, round 24: the glyph pair's allocator destroy, called by the glyph tree's destroy 0x1FE760 on node + 0x10, as hud_main.cpp emits it)
+0x001FEAB0 0x8 alloc__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph tree's value allocator accessor, called by its destroy 0x1FE760, as hud_main.cpp emits it)
 0x001FEAC0 0x20 __ct__Q23std186__tree<Q23std19pair<CUs,8C2DGlyph>,Q33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compare,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>FRCQ33std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>13value_compareRCQ23std38allocator<Q23std19pair<CUs,8C2DGlyph>>  # OVL1; by hand (the HUD lane, round 22: the font's glyph map's tree constructor, include/tree's out-of-class __tree(comp, a) -- C2DFont's constructor 0x38E590 and the font unload 0x35A650 call it with a comparator and an allocator temporary, map() 0x1FB3F0 likewise; the map is std::map<unsigned short, C2DGlyph> (src/gamez/ztwod/c2dfont.h: the value 16-aligned at node + 0x10, the key a halfword -- 0x35C630's find, 0x35D240's 0x50-byte nodes); C2DFont() and ~C2DFont byte-exact as a probe, build/scratch/hud/font/probe.cpp; C2DGlyph's name ours)
 0x001FEAE0 0x100 insert__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>RCPCv  # OVL1; s1:name (SOCOM 1's single insert of the pointer lists; push_back is insert(end(), x) -- the network receive and ActivateExV push arguments through it)
-0x001FEBE0 0x68 func_001FEBE0  # OVL1
-0x001FEC50 0x8 func_001FEC50  # OVL1
+0x001FEBE0 0x68 __dt__Q23std68__vector_deleter<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph's piece vector's deleter destructor, clear 0x1FEC50 then the delete -- the pair destructor 0x1FE9E0 calls it, as hud_main.cpp emits it)
+0x001FEC50 0x8 clear__Q23std68__vector_deleter<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>>Fv  # OVL1; by hand (the HUD lane, round 24: the glyph's piece vector cleared -- size zeroed, the pieces trivially destroyed; the deleter's destructor 0x1FEBE0 calls it)
 0x001FEC60 0xC RemoveLetterbox__10CLetterBoxFv  # OVL1; s1:exact by hand (hud_letterbox.cpp)
 0x001FEC70 0x48 AddLetterbox__10CLetterBoxFv  # OVL1; s1:exact
 0x001FECC0 0x1D0 Tick__10CLetterBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -1910,7 +1910,7 @@
 0x002133E0 0x1B0 reserve__Q23std62__vector_imp<11nav_package,Q23std24allocator<11nav_package>,0>FUi  # OVL1; by hand (MapCompass's constructor reserves 48)
 0x00213590 0x8 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the deleter's clear, whole: vector<nav_package>::clear's copy calls it out of line)
 0x002135A0 0x68 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the vector's destructor's last level)
-0x00213610 0x70 func_00213610  # OVL1
+0x00213610 0x70 HideTimer__14BitmapReticuleFv  # OVL1; ours by hand (the HUD lane, round 24: hud_bitmapreticule.cpp's first in the image, so defined last -- the timer's four bitmaps (0x4290, 0x4310, 0x43A0, 0x4420) faded out through their tables' SetTrans; CHUD::ReInit_Init calls it; new in SOCOM II)
 0x00213680 0x1BC func_00213680  # OVL1
 0x00213840 0x220 func_00213840  # OVL1
 0x00213A60 0x3C0 func_00213A60  # OVL1
@@ -2197,12 +2197,12 @@
 0x00232460 0x10 func_00232460  # OVL1
 0x00232470 0x10 func_00232470  # OVL1
 0x00232480 0x10 func_00232480  # OVL1
-0x00232490 0x1D0 func_00232490  # OVL1
-0x00232660 0x22C func_00232660  # OVL1
+0x00232490 0x1D0 __dt__8CTCMNodeFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- CTCMNode's destructor, round 23's lead; hud_tcm.cpp emits its implicit copy with CTCM's constructor)
+0x00232660 0x22C __ct__8CTCMNodeFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- CTCMNode's constructor, called out of line by CTCM's 0x237390 at its start, as round 23's notes had it)
 0x00232890 0xBC func_00232890  # OVL1
 0x00232950 0x14 func_00232950  # OVL1
 0x00232970 0x58 func_00232970  # OVL1
-0x002329D0 0x18 func_002329D0  # OVL1
+0x002329D0 0x18 __ct__10CTCMSoundsFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- the menu's sounds' constructor, called out of line by CTCM's constructor 0x237390 on CTCM+0xDB8, as round 23's notes had it)
 0x002329F0 0x1CC func_002329F0  # OVL1
 0x00232BC0 0x1918 func_00232BC0  # OVL1
 0x002344E0 0xA54 func_002344E0  # OVL1
@@ -2230,7 +2230,7 @@
 0x002371A0 0x170 func_002371A0  # OVL1
 0x00237310 0x38 ClearItems__4CTCMFv  # OVL1; tu: node_world.cpp~ (1.0 beta); ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item list bitmap's list at +0xDE0 cleared; CHUD calls it)
 0x00237350 0x3C Init__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the caches built (0x2344E0), the path and the root's children reserved)
-0x00237390 0x1E8 func_00237390  # OVL1
+0x00237390 0x1E8 __ct__4CTCMFv  # OVL1; by hand (the HUD lane, round 24: hud_tcm.cpp -- the menu object's constructor: the root node's (0x232660) out of line, the mode 4, the path, the six polys, the sounds' constructor 0x2329D0; the initialiser 0x3FF4A0 builds theTCM with it)
 0x00237580 0x1E0 func_00237580  # OVL1
 0x00237760 0x3D8 Update__12CAmmoDisplayFv  # OVL1; by hand (the HUD lane: the ammo counts from the HUD owner's kit, the unit's first function in the image; the name ours)
 0x00237B40 0x1C0 SetMags__12CAmmoDisplayFiPQ23zdb10CTexHandle  # OVL1; by hand (the ammo unit's: a switch on a byte, 1-3 lighting the four magazine bitmaps at CAmmoDisplay+0x3C0, past that a texture argument in the first; On passes the cached count 0x3DCBD8 and texture 0x4145E0; the name ours); an int count, narrowed to a byte inside (andi 0xff) where On passes the cached word whole
@@ -6058,15 +6058,15 @@
 0x0033E510 0x178 func_0033E510  # OVL1
 0x0033E690 0xF4 func_0033E690  # OVL1
 0x0033E790 0x58 splice__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>RQ23std42__list_deleter<PCv,Q23std14allocator<PCv>>  # OVL1; the MSL headers round 13: the pointer lists' splice(position, x), include/list's (SOCOM 1's 0x1DAF10 shape); vis_texfx.cpp's tail emits it byte-exact (its insert(position, n, x) calls it), 0x33E690 calls this copy
-0x0033E7F0 0x58 func_0033E7F0  # OVL1
-0x0033E850 0x1B4 func_0033E850  # OVL1
-0x0033EA10 0x154 func_0033EA10  # OVL1
-0x0033EB70 0x1A0 func_0033EB70  # OVL1
-0x0033ED10 0x5C func_0033ED10  # OVL1
-0x0033ED70 0xB0 func_0033ED70  # OVL1
-0x0033EE20 0x80 func_0033EE20  # OVL1
-0x0033EEA0 0x100 func_0033EEA0  # OVL1
-0x0033EFA0 0xA8 __ct__16CLobbySaveModuleFPCcP12CSaveManager  # OVL1; ours (the online lane's lead, vetted by the integrator: stores CLobbySaveModule's vtable 0x406740, zeroes the name string and assigns it through assign(const char *) when given, keeps the CSaveManager; the initialiser 0x4022D0 calls it on theAcctDB + 0x24)
+0x0033E7F0 0x58 Pending__17CLobbySaveManagerFv  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the lobby save manager's transfer test -- the file there and Medius's transfer map 0x450070 empty drops the blob and answers false, else whether there is a file; UICharacterProfile negates it)
+0x0033E850 0x1B4 Load__17CLobbySaveManagerFPCci  # OVL1; ours (the world lane r5, zsav_lobby.cpp: once fsyncAsync(0) is idle, the fetched blob's header version checked against a2, each 40-byte entry handed to the list's modules of its name -- vtable 0xC with the data and size, 0x10 with the file's GetChecksum -- the blob freed and the file closed; UICharacterProfile calls it with (name, 0))
+0x0033EA10 0x154 Fetch__17CLobbySaveManagerFPCcii  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the file opened (mode 1) when not open, else read whole with freadAsync into a fresh blob unless theAcctDB's GetChecksum equals the file's, when the UI hears MP_MEDIUS_FILE_DOES_NOT_EXIST; UICharacterProfile passes (name, 0, 0))
+0x0033EB70 0x1A0 Save__17CLobbySaveManagerFPCcii  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the blob built -- the header {a2, 0}, one 40-byte entry per listed module, each module's slot 8 called with a3 -- the file opened (mode 10), the checksum 0x64BB80 taken over the blob and handed to every module (slot 0x10), the blob sent with fwriteAsync)
+0x0033ED10 0x5C Close__17CLobbySaveManagerFv  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the file closed through its vtable when there is one, the blob freed; CMenuState::UnInit calls it)
+0x0033ED70 0xB0 __dt__17CLobbySaveManagerFv  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the file deleted, the string at 0xC and the module list torn down; the memory card unit's initialiser 0x400160 registers it for 0x4364A0)
+0x0033EE20 0x80 __ct__17CLobbySaveManagerFv  # OVL1; ours (the world lane r5, zsav_lobby.cpp: the module list built, the blob's pointers cleared, a CLobbyFileIO made (0x9C bytes, CIO's and CLobbyFileIO's vtables stored); the initialiser 0x400160 builds 0x4364A0 with it)
+0x0033EEA0 0x100 Write__16CLobbySaveModuleFPCci  # OVL1; ours (the world lane r5, zsav_lobby.cpp; the online lane's Write: the module's name and blob appended to its manager's (the entry table at the manager's 0x24, the header's count at 0x20's 4, the blob realloced at 0x1C, its used size at 0x28))
+0x0033EFA0 0xA8 __ct__16CLobbySaveModuleFPCcP17CLobbySaveManager  # OVL1; ours (the online lane's lead, vetted by the integrator: stores CLobbySaveModule's vtable 0x406740, zeroes the name string and assigns it through assign(const char *) when given, keeps the CSaveManager; the initialiser 0x4022D0 calls it on theAcctDB + 0x24); ours (the world lane r5, zsav_lobby.cpp: the manager is the lobby's CLobbySaveManager -- a list of modules, a CLobbyFileIO at 0x18 -- not zsave.h's CSaveManager, so the parameter is respelled)
 0x0033F050 0x3C func_0033F050  # OVL1
 0x0033F090 0x48 snd_DoExternCall_CB  # OVL1; s1:exact
 0x0033F0E0 0x48 snd_DoExternCall_A  # OVL1; s1:exact
@@ -6870,7 +6870,7 @@
 0x00370990 0x284 HandlePad__12CPopUpDialogFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370C20 0x88 func_00370C20  # OVL1
 0x00370CB0 0x58 func_00370CB0  # OVL1
-0x00370D10 0x9C func_00370D10  # OVL1
+0x00370D10 0x9C ShowChoice__11CRadioStripFv  # OVL1; ours by hand (the HUD lane, round 24: zui_2d.cpp -- the radio strip's buttons shown after a new choice, the chosen one through slot 18 (SetActive), the others slot 19 (SetNormal); CRadioStrip::TickZAnimCmd calls it out of line)
 0x00370DB0 0x1B0 func_00370DB0  # OVL1
 0x00370F60 0x15C func_00370F60  # OVL1
 0x003710C0 0xC func_003710C0  # OVL1
@@ -6913,7 +6913,7 @@
 0x00376530 0x68 func_00376530  # OVL1
 0x003765A0 0xEC HandlePad__14CHandlerButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376690 0x8 func_00376690  # OVL1
-0x003766A0 0x120 func_003766A0  # OVL1
+0x003766A0 0x120 SetActive__9C2DButtonFv  # OVL1; by hand (the HUD lane, round 24: zui_2d.cpp -- slot 18 of every button's table, C2D's SetActive: the state at 0xFC shown and the button's type-1 event-2 actions run)
 0x003767C0 0xA8 GetZAnimCmdType__9C2DButtonFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376870 0x150 TickZAnimCmd__9C2DButtonFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 22: slot +0x64 of C2DButton's table 0x407790; CRadioStrip::TickZAnimCmd 0x3710D0 falls through to it)
 0x003769C0 0x180 ParseZAnimCmd__9C2DButtonFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
