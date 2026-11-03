@@ -4,14 +4,15 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK ShutdownBegin__13CSoftKeyboardFP9CGameMenu(); /* extern */
 M2C_UNK func_00367810(s32, M2C_UNK, M2C_UNK);       /* extern */
-M2C_UNK func_0038B390();                            /* extern */
 M2C_UNK func_00395DE0(M2C_UNK);                     /* extern */
 
 void func_0038C000(s32 arg0, s32 arg1) {
-    func_0038B390();
+    ShutdownBegin__13CSoftKeyboardFP9CGameMenu();
     func_00367810(arg1, 0x1D, 0);
     func_00395DE0(3);
 }

@@ -171,15 +171,17 @@ bool DeleteTemporaryCharType(CCharacterType *t)
     return deleted;
 }
 
-/* every temporary type deleted and dropped from the list (SOCOM 1's).
- * OPEN (0x84 against 0x80; unchanged at -inline level=5): CWorld::DeleteLightMap's and DeleteChild's include/vector question --
- * the target builds end() once (44(sp)), passes it to remove_if and copies it for erase's last
- * after the call (to 28(sp)), where this builds it twice and copies before; an end iterator in a
- * local passed to both is 0x70 (no copy for erase at all), an explicit copy of it 0x88 */
+/* every temporary type deleted and dropped from the list (SOCOM 1's). The end taken once into a local
+ * and passed to both: MW makes an argument list's temporaries left to right and evaluates them right
+ * to left, so `erase(remove_if(...), end())` puts erase's end below remove_if's temporaries and copies
+ * it before the call -- the target's stack slots are this form's (README "Tells from completing the
+ * MSL headers, round 8") */
 void CCharacterType::CleanupTemporary()
 {
-    m_char_list.erase(std::remove_if(m_char_list.begin(), m_char_list.end(), DeleteTemporaryCharType),
-                      m_char_list.end());
+    CCharTypeVec::iterator e = m_char_list.end();
+    CCharTypeVec::iterator i = std::remove_if(m_char_list.begin(), e, DeleteTemporaryCharType);
+
+    m_char_list.erase(i, e);
 }
 
 /* every used type's sounds looked up by name, the death and damage ones set to dialogue, and a

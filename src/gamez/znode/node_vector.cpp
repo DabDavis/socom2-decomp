@@ -162,14 +162,11 @@ bool CNodeVector::Exists(const CNode *node)
 }
 
 /* a node taken off the list, every time it is on it (std::remove, then the tail erased): whether
- * it was.
- * OPEN (0x134 of 0x14C): find inlines whole inside the inlined remove (its loop tests == -- with
- * the iterator's !=, which calls ==, it would be one level too tall in remove), but the target
- * keeps two things MW drops here: the dead copy of begin() into remove's own `first` (assigned
- * from find before it is read), and a separate return slot for remove_copy, both returns
- * handing back the iterator's address and `it` copied from it after the join (here `it` is
- * remove_copy's return slot and the other return stores to it directly). Tried: direct-init,
- * an assigned default-constructed `it` (remove a level deeper: find one level), end() for e. */
+ * it was. find inlines whole inside the inlined remove (its loop tests == -- with the iterator's
+ * !=, which calls ==, it would be one level too tall in remove); the dead copy of begin() into
+ * remove's own `first` and remove_copy's separate return slot, both returns handing back the
+ * iterator's address and `it` copied from it after the join, are include/algorithm's remove in
+ * remove_if's ternary shape (byte-exact since the MSL headers round 8) */
 bool CNodeVector::Remove(const CNode *node)
 {
     iterator e = end();

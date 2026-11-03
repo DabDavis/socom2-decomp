@@ -8,9 +8,10 @@
  * request, in the same order from CreateClan's): the names are SOCOM 1's (s1:order), the five the
  * online lane named by call site among them. Four are SOCOM II's own, after UpdateClanStats:
  * - 0x646708 keeps SOCOM 1's GetClanMemberList slot (the 26th) and its request (the session key
- *   and a clan id), so it is SOCOM 1's MediusGetClanMemberList; the name sits on 0x6468C8, which
- *   the lobby's GetClanRoster calls -- a request with paging and no session key, new here (its
- *   slot is the 29th); the online lane's source calls it by that name, so the map keeps it;
+ *   and a clan id): it is SOCOM 1's MediusGetClanMemberList. 0x6468C8, which the lobby's
+ *   GetClanRoster calls, is a request with paging and no session key, new here (its slot is the
+ *   29th; a 476-byte extra-info answer): MediusGetClanMemberList_ExtraInfo, a predicted name (the
+ *   online lane's round 9 verdict moved the names; the integrator applied it);
  * - 0x6467A8 and 0x646838: the clan ladder's list and a clan's position (the online lane's
  *   GetClanLadderList/GetClanLadderLeaders and GetClanRanking call them);
  * - 0x646958: an invitation by account name, answered through InvitePlayerToClan's slot. */
@@ -230,55 +231,55 @@ typedef struct MediusInvitePlayerToClanByNameRequest {
     char InviteMessage[MEDIUS_CLANMSG_MAXLEN];
 } MediusInvitePlayerToClanByNameRequest;
 
-extern MediusCallback data_00686A5C;
+extern MediusCallback CreateClanCallbackFunctionPtr;
 extern int data_00686CB4;
-extern MediusCallback data_00686A60;
+extern MediusCallback DisbandClanCallbackFunctionPtr;
 extern int data_00686CBC;
-extern MediusCallback data_00686A64;
+extern MediusCallback GetClanByNameCallbackFunctionPtr;
 extern int data_00686CCC;
-extern MediusCallback data_00686A68;
+extern MediusCallback GetClanByIDCallbackFunctionPtr;
 extern int data_00686CC4;
-extern MediusCallback data_00686A6C;
+extern MediusCallback TransferClanLeadershipCallbackFunctionPtr;
 extern int data_00686CD4;
-extern MediusCallback data_00686A70;
+extern MediusCallback AddPlayerToClanCallbackFunctionPtr;
 extern int data_00686CDC;
-extern MediusCallback data_00686A74;
+extern MediusCallback RemovePlayerFromClanCallbackFunctionPtr;
 extern int data_00686CE4;
-extern MediusCallback data_00686A78;
+extern MediusCallback InvitePlayerToClanCallbackFunctionPtr;
 extern int data_00686CEC;
-extern MediusCallback data_00686A7C;
+extern MediusCallback CheckMyClanInvitationsCallbackFunctionPtr;
 extern int data_00686CF4;
-extern MediusCallback data_00686A80;
+extern MediusCallback GetClanInvitationsSentCallbackFunctionPtr;
 extern int data_00686CFC;
-extern MediusCallback data_00686A84;
+extern MediusCallback RespondToClanInvitationCallbackFunctionPtr;
 extern int data_00686D04;
-extern MediusCallback data_00686A88;
+extern MediusCallback RevokeClanInvitationCallbackFunctionPtr;
 extern int data_00686D0C;
-extern MediusCallback data_00686A8C;
+extern MediusCallback GetMyClanMessagesCallbackFunctionPtr;
 extern int data_00686D1C;
-extern MediusCallback data_00686A90;
+extern MediusCallback SendClanMessageCallbackFunctionPtr;
 extern int data_00686D24;
-extern MediusCallback data_00686A94;
+extern MediusCallback ModifyClanMessageCallbackFunctionPtr;
 extern int data_00686D2C;
-extern MediusCallback data_00686A98;
+extern MediusCallback DeleteClanMessageCallbackFunctionPtr;
 extern int data_00686D34;
-extern MediusCallback data_00686A9C;
+extern MediusCallback RequestClanTeamChallengeCallbackFunctionPtr;
 extern int data_00686D14;
-extern MediusCallback data_00686AA0;
+extern MediusCallback RespondToClanTeamChallengeCallbackFunctionPtr;
 extern int data_00686D3C;
-extern MediusCallback data_00686AA4;
+extern MediusCallback RevokeClanTeamChallengeCallbackFunctionPtr;
 extern int data_00686D44;
-extern MediusCallback data_00686AA8;
+extern MediusCallback GetClanTeamChallengesCallbackFunctionPtr;
 extern int data_00686D54;
-extern MediusCallback data_00686AAC;
+extern MediusCallback GetMyClansCallbackFunctionPtr;
 extern int data_00686D4C;
-extern MediusCallback data_00686AB0;
+extern MediusCallback ConfirmClanTeamChallengeCallbackFunctionPtr;
 extern int data_00686D5C;
-extern MediusCallback data_00686AB4;
+extern MediusCallback GetAllClanMessagesCallbackFunctionPtr;
 extern int data_00686D64;
-extern MediusCallback data_00686AB8;
+extern MediusCallback GetClanTeamChallengeHistoryCallbackFunctionPtr;
 extern int data_00686D6C;
-extern MediusCallback data_00686ABC;
+extern MediusCallback UpdateClanStatsCallbackFunctionPtr;
 extern int data_00686D74;
 extern MediusCallback data_00686AC0;
 extern int data_00686D9C;
@@ -299,7 +300,7 @@ MediusErrorCode MediusCreateClan(MediusCreateClanRequest *request, MediusCallbac
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A5C = callback;
+    CreateClanCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CB4,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -314,7 +315,7 @@ MediusErrorCode MediusDisbandClan(MediusDisbandClanRequest *request, MediusCallb
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A60 = callback;
+    DisbandClanCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CBC,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -330,7 +331,7 @@ MediusErrorCode MediusGetClanByName(MediusGetClanByNameRequest *request, MediusC
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A64 = callback;
+    GetClanByNameCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CCC,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -345,7 +346,7 @@ MediusErrorCode MediusGetClanByID(MediusGetClanByIDRequest *request, MediusCallb
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A68 = callback;
+    GetClanByIDCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CC4,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -361,7 +362,7 @@ MediusErrorCode MediusTransferClanLeadership(MediusTransferClanLeadershipRequest
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A6C = callback;
+    TransferClanLeadershipCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CD4,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -377,7 +378,7 @@ MediusErrorCode MediusAddPlayerToClan(MediusAddPlayerToClanRequest *request, Med
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A70 = callback;
+    AddPlayerToClanCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CDC,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -392,7 +393,7 @@ MediusErrorCode MediusRemovePlayerFromClan(MediusRemovePlayerFromClanRequest *re
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A74 = callback;
+    RemovePlayerFromClanCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CE4,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -408,7 +409,7 @@ MediusErrorCode MediusInvitePlayerToClan(MediusInvitePlayerToClanRequest *reques
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A78 = callback;
+    InvitePlayerToClanCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CEC,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -423,7 +424,7 @@ MediusErrorCode MediusCheckMyClanInvitations(MediusCheckMyClanInvitationsRequest
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A7C = callback;
+    CheckMyClanInvitationsCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CF4,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -438,7 +439,7 @@ MediusErrorCode MediusGetClanInvitationsSent(MediusGetClanInvitationsSentRequest
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A80 = callback;
+    GetClanInvitationsSentCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686CFC,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -454,7 +455,7 @@ MediusErrorCode MediusRespondToClanInvitation(MediusRespondToClanInvitationReque
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A84 = callback;
+    RespondToClanInvitationCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D04,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -469,7 +470,7 @@ MediusErrorCode MediusRevokeClanInvitation(MediusRevokeClanInvitationRequest *re
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A88 = callback;
+    RevokeClanInvitationCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D0C,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -484,7 +485,7 @@ MediusErrorCode MediusGetMyClanMessages(MediusGetMyClanMessagesRequest *request,
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A8C = callback;
+    GetMyClanMessagesCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D1C,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -500,7 +501,7 @@ MediusErrorCode MediusSendClanMessage(MediusSendClanMessageRequest *request, Med
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A90 = callback;
+    SendClanMessageCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D24,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -516,7 +517,7 @@ MediusErrorCode MediusModifyClanMessage(MediusModifyClanMessageRequest *request,
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A94 = callback;
+    ModifyClanMessageCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D2C,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -531,7 +532,7 @@ MediusErrorCode MediusDeleteClanMessage(MediusDeleteClanMessageRequest *request,
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A98 = callback;
+    DeleteClanMessageCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D34,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -547,7 +548,7 @@ MediusErrorCode MediusRequestClanTeamChallenge(MediusRequestClanTeamChallengeReq
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A9C = callback;
+    RequestClanTeamChallengeCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D14,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -563,7 +564,7 @@ MediusErrorCode MediusRespondToClanTeamChallenge(MediusRespondToClanTeamChalleng
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686AA0 = callback;
+    RespondToClanTeamChallengeCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D3C,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -578,7 +579,7 @@ MediusErrorCode MediusRevokeClanTeamChallenge(MediusRevokeClanTeamChallengeReque
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686AA4 = callback;
+    RevokeClanTeamChallengeCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D44,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -593,7 +594,7 @@ MediusErrorCode MediusGetClanTeamChallenges(MediusGetClanTeamChallengesRequest *
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686AA8 = callback;
+    GetClanTeamChallengesCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D54,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -608,7 +609,7 @@ MediusErrorCode MediusGetMyClans(MediusGetMyClansRequest *request, MediusCallbac
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686AAC = callback;
+    GetMyClansCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D4C,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -623,7 +624,7 @@ MediusErrorCode MediusConfirmClanTeamChallenge(MediusConfirmClanTeamChallengeReq
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686AB0 = callback;
+    ConfirmClanTeamChallengeCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D5C,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -638,7 +639,7 @@ MediusErrorCode MediusGetAllClanMessages(MediusGetAllClanMessagesRequest *reques
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686AB4 = callback;
+    GetAllClanMessagesCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D64,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -653,7 +654,7 @@ MediusErrorCode MediusGetClanTeamChallengeHistory(MediusGetClanTeamChallengeHist
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686AB8 = callback;
+    GetClanTeamChallengeHistoryCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D6C,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
@@ -669,14 +670,14 @@ MediusErrorCode MediusUpdateClanStats(MediusUpdateClanStatsRequest *request, Med
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686ABC = callback;
+    UpdateClanStatsCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686D74,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;
     return MediusErrorNone;
 }
 
-MediusErrorCode func_00646708(MediusClanMembersRequest *request, MediusCallback callback)
+MediusErrorCode MediusGetClanMemberList(MediusClanMembersRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     iTerminateString(request->SessionKey, MEDIUS_SESSIONKEY_MAXLEN);
@@ -719,7 +720,7 @@ MediusErrorCode func_00646838(MediusClanLadderPositionRequest *request, MediusCa
     return MediusErrorNone;
 }
 
-MediusErrorCode MediusGetClanMemberList(MediusGetClanMemberListRequest *request, MediusCallback callback)
+MediusErrorCode MediusGetClanMemberList_ExtraInfo(MediusGetClanMemberListRequest *request, MediusCallback callback)
 {
     iTerminateString(request->MessageID, MEDIUS_MESSAGEID_MAXLEN);
     if (GlobalInitFlag != 1)
@@ -742,7 +743,7 @@ MediusErrorCode func_00646958(MediusInvitePlayerToClanByNameRequest *request, Me
         return MediusErrorNotInitialized;
     if (MyConnectionIndex < 0)
         return MediusErrorNotConnected;
-    data_00686A78 = callback;
+    InvitePlayerToClanCallbackFunctionPtr = callback;
     if (NetSendMessage(MEDIUS_MSG_CLASS, MyConnectionIndex, MEDIUS_TO_SERVER, 1, data_00686E48,
                        sizeof(*request), request) != 0)
         return MediusErrorSendingMessage;

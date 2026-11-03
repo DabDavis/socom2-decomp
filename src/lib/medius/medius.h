@@ -2,8 +2,9 @@
  * 1.50.0013"), as far as the hand-written units use it. The error codes are the library's own:
  * MediusGetErrorCodeString (0x64A5D8) names each value. Request layouts are from the code (each
  * API terminates its strings and sends sizeof the request); field names follow the online lane's
- * zonline.h where it has the type. The library's globals are reached through their map
- * placeholders; the names beside them are SOCOM 1's symbols for the same slots. */
+ * zonline.h where it has the type. The library's globals carry SOCOM 1's names where data.txt
+ * has them (GlobalInitFlag, MyConnectionIndex, the requests' callback slots), placeholders
+ * elsewhere. */
 #ifndef MEDIUS_H
 #define MEDIUS_H
 
@@ -35,7 +36,8 @@ typedef enum MediusErrorCode {
     MediusErrorDisconnecting = -3,
     MediusErrorConnecting = -2,
     MediusErrorInitializing = -1,
-    MediusErrorNone = 0
+    MediusErrorNone = 0,
+    MediusErrorWorldCreatedSizeReduced = 3   /* named MediusWorldCreatedSizeReduced */
 } MediusErrorCode;
 
 /* a response's handler: the request's own callback type in the vendor's headers; one here */
@@ -69,9 +71,7 @@ typedef struct MediusFileAttributes {
  * its own object reads it: the API object, which defines it, a halfword -- SOCOM 1's symbol is 2
  * bytes -- the clan object a word), MyConnectionIndex the DME connection to the lobby server
  * (negative before MediusConnect) */
-#define GlobalInitFlag      data_00656188
-extern int data_0065618C;
-#define MyConnectionIndex   data_0065618C
+extern int MyConnectionIndex;
 
 /* NetSendMessage's message class for every Medius request, and its broadcast target */
 #define MEDIUS_MSG_CLASS    64

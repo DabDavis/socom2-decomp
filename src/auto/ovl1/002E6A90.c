@@ -9,7 +9,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 M2C_UNK Add__16ClanMemberVectorFP31MediusGetClanMemberListResponse(M2C_UNK *, char *); /* extern */
 s32 CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(M2C_UNK *, s32); /* extern */
-M2C_UNK func_002E6AF0();                            /* extern */
+M2C_UNK UpdateClanRoster__Fv();                     /* extern */
 extern M2C_UNK ClanMemberVec;
 extern M2C_UNK data_003F3FE0;
 
@@ -17,7 +17,7 @@ void cbGetClanMemberList__F15MediusErrorCode15MediusErrorCode15MediusErrorCodeP3
     if (CheckMediusCallbackStatus__FPCc20MediusCallbackStatus(&data_003F3FE0, SC_MEMBER(arg3, s32 *, 0x18)) != 0) {
         Add__16ClanMemberVectorFP31MediusGetClanMemberListResponse(&ClanMemberVec, arg3);
         if (SC_MEMBER(arg3, s8 *, 0x1D8) != 0) {
-            func_002E6AF0();
+            UpdateClanRoster__Fv();
         }
     }
 }

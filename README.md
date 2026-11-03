@@ -1647,6 +1647,57 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from the UI, round 9** (zui_skb.h, zui_skbview.cpp, zui_skbkeys.cpp):
+  - an RTTI class-name string shows the namespace: SOCOM II's "CBmpWithNode" (0x3FAEA8) lacks SOCOM 1's
+    `@unnamed@zui_skb_cpp@::` prefix -- the keyboard's classes come from a shared header (zui_skb.h);
+  - a static of a class holding `U m[n]` registers that class's implicit `(this, flag)` destructor;
+    a static `T[n]` gets a bare `__arraydtor$N`, a `T[4][10]` is flattened with no per-row helpers;
+  - a virtual call on a static CRenderableString goes through the table (no devirtualisation);
+    `on ? 1 : 0` into an `unsigned char` folds to the bool, a byte-enum keeps `li`/`movz`; a float
+    taken into a local before a call fixes `add.s`'s operand order;
+  - units: zui_hangul.cpp is 0x3903A0-0x3941CF (its tail ends on the two vector destructors its
+    initialiser 0x403770 registers), zui_skbview.cpp runs to ~0x398ADF, zui_skbkeys.cpp ~0x398AE0-
+    0x39BBBF (it inlines none of its own small wrappers).
+- **Tells from the online lobby, round 9** (zNetMediusClan.cpp complete, the lobby's callbacks):
+  - an unsigned operand moves v0/v1: StoredClanInfo's leader id unsigned closed IsLeaderOfClan (open
+    since round 1); an unsigned stat addend gives the target's registers where int operands swap them;
+  - a counter that must survive a call is assigned before it (`int n = 8;` ahead of std::sort lands
+    `li s0,8` in the call's delay slot); a switch with only `case 0` and `default` gives `beqz` plus
+    `b` with the zero case first, where a ternary gives a select;
+  - walking `_zrdr::Item(i)` items, test `line->type == 3` on the bit-field directly, sharing one load
+    with ZString's test; `strlen` into an int local before an int sum keeps the target's `addu` order;
+  - a struct field the target reads past where the header ends shows a missing SDK field
+    (MediusGetClanInvitationsSentResponse's ResponseTime before EndOfList).
+- **Tells from the kit and AI states, round 12** (anim.cpp's name lookups, seal_kit.cpp's items and fire modes):
+  - a switch's compare chain tests its cases in reverse source order: list them 2, 1, 0 for the
+    target's 0, 1, 2 chain; an empty `case 0: break;` keeps its own test;
+  - `bit ? 1 : 0` folds to `sltu` whatever its type; the target's `li 1; movz` plus a sign extension
+    is a signed byte-enum local assigned in an if/else;
+  - a field read in place several times shares one load in a temporary; taken into a named local it
+    shifts every temporary of an inlined walk (NextFireMode, 21 instructions);
+  - the same accessor with a signed bound (`slt`) is a different inline from its out-of-line copy
+    (`sltu`); written out at the call site the saved registers s1/s2 swap;
+  - a callee of at most 15 statements too big to inline whole keeps its callers out of line: writing
+    the callee (SetItemByIndex, 20 statements) removed RemoveItem's and SetItem's pins;
+  - SOCOM II's zdb::IntersectStruct has a constructor zeroing m_poly and m_node (node_world.h does
+    not declare it); the statics defined in order after <iostream> give __sinit_seal_kit.cpp;
+  - a template copy proven by its caller can be emitted by an explicit instantiation and scored
+    through an ovl-copy note (ai::_max<unsigned char> 0x5DEE70; anim.cpp's string-map find 0x58D090
+    and string compares 0x58D250/0x58D740).
+- **Tells from the HUD, round 19** (mp_rating.cpp, reco.cpp):
+  - a list walk `i = begin(); iterator e = end(); for (; i != e; ++i)` (iterator assigned, end
+    initialised) keeps `this + 4` in `this`'s register (mp_rating.cpp's walks);
+  - push_back taking the pointer's address made MW number the parameters last; passing it by value
+    through an inline wrapper put them first again (AddPlayer);
+  - a bool local returned from an `int` function adds `andi 0xff`, from a `bool` function it is a
+    plain `move`; a bool local just assigned true (`daddiu`) is reused as the value of a one-bit
+    field set true in the same block (CReco::Init); `found == false` as a loop test keeps `andi;
+    bnez`, `!found` drops it;
+  - indexing a two-slot member array (`m_teams[i]`) gives the target's registers, a named walking
+    pointer moves them;
+  - units: mp_rating.cpp (SOCOM II's Elo ratings, CRatingTeam/CRatingMatch) runs 0x239770-0x23A2DF,
+    reco.cpp (the voice recogniser's wrapper, the 0x40-byte theReco 0x414680) 0x23A2E0-0x23B98F with
+    its initialiser 0x3FF7B0 -- the cut by what the code touches (the recogniser's fields at 0x2C/0x30).
 - **Tells from the game states, round 17** (SetMovie and its cue sort, fts_message.cpp):
   - a function calling trivial accessors -- even leaves -- out of line holds a big EXPLICIT-inline helper
     MW inlines one level: the helper's callees become calls, their copies following the caller in
@@ -1915,7 +1966,8 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
   - a local bitfield struct cleared in the mem-initializer list gives the word-wide read-mask-write;
     clearing it in the body narrows the stores to sb/sh;
   - std::map's no-argument constructor passes a bare stack slot for the allocator: the allocator's
-    constructor has to be inline (0x3A2BE0 through an explicit inline specialisation for now);
+    constructor has to be inline (in include/memory since the MSL headers' round 7; util_options.cpp's
+    explicit specialisation is gone);
   - the reverse switch-test order holds for grouped cases: tests 4, 2, 3, 1 come from `case 1: case 3:
     case 2: ... case 4:`;
   - a type byte read again after a whole-word mask test reloads only through a byte member in a union;
@@ -1991,6 +2043,36 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 8** (the erase/remove family, include/algorithm's
+  remove and remove_if, the class insert's end register):
+  - THE erase(remove(...), end()) FAMILY IS THE CALLERS' FORM, not a header's: MW builds an argument
+    list's temporaries LEFT TO RIGHT but evaluates it RIGHT TO LEFT, so in the one-line idiom erase's
+    end() always lands in a slot below remove's temporaries and is copied into its parameter before
+    the call (const-reference forwarding in erase moves the copies but not the slot, and loses
+    CGrid::Destroy). The target's slots read `iterator e = end(); iterator i = std::remove(begin(), e,
+    x); erase(i, e);` -- the end declared first takes the highest slot, the new end the next, both of
+    erase's copies follow the call (DeleteLightMap, CTurretList::Remove, CTargetList::RemoveTarget,
+    CWorld::DeleteChild, CNodeVector::Remove; CleanupTemporary and RemoveInvalidPoints as probes) --
+    or with a separate `end()` for remove_if's last (RemoveEmptyGames, RemoveUncheckedGames: six
+    slots, two of them ends);
+  - std::remove has remove_if's ternary shape (`first = find(...); ForwardIterator i = first; return
+    first == last ? first : remove_copy(++i, ...);`): the dead copy of begin() into remove's own first,
+    `i = first` scheduled ahead of the test, the two results joined through an address -- the early
+    return was 0x18 off in every instance (the AI core's remove<CAiMapLoc> 0x529D70 byte-exact so);
+  - remove_if searches with `find_if<ForwardIterator, Predicate &>(first, last, pred)` (libc++'s
+    form, MSL C++'s sibling): the predicate is read in place where a by-value find_if copied it
+    (delshadow's 0x320800). The list instances stay 6 instructions off: MW numbers inlined copies in
+    creation order, a by-value find_if creates last's copy first, and the target made the list
+    iterator's copies in parameter order but the vector iterator's right to left -- a const-reference
+    search copying into locals serves the lists and loses the vectors (build/p8/rif1.cpp);
+  - the class vector's range erase reads its iterators through pointer references, as the pointer
+    vector's does (RemoveTarget: MW copies a named iterator into the parameter only when its address
+    is taken); resize is declared AHEAD of erase (a unit whose own code instantiates erase otherwise
+    has resize<CAiPath::point> inline it: RemoveInvalidPoints and 0x528430 byte-exact together);
+  - MW's DWARF 1 lists a function's locals in plain declaration order, nested scopes flattened in
+    source order (3.0b52 and 3.0b22 alike): SOCOM 1's class insert declares i, j, newcap, newsize,
+    tmp, j, i, k, j, xp, t1 -- no end local. The in-place end's register is per ELEMENT across the
+    image's 29 class inserts (include/vector's insert comment): still open.
 - **Tells from completing the MSL headers, round 7** (include/deque's copy constructor chain, include/memory):
   - THE TAIL'S GENERATION ORDER, measured (probes build/p7/ord*.cpp): the unit's own functions are
     taken in reverse definition order (their emission order), each one's template requests generated
@@ -3192,6 +3274,49 @@ CheckEngineHandle inlined comes within 11 words; the target zeroes the result be
 Next in the same vein: rt_msg_client's internal functions, DME's internals behind each wrapper
 (SOCOM 1's same-named bodies), and gsapi's remaining wrappers (handle test, a context loop).
 
+**Round 4b: the RT objects, DME's internals, the globals named.**
+
+- **Medius's globals carry SOCOM 1's names in `data.txt`**: `GlobalInitFlag` (0x656188, 2 bytes)
+  and `MyConnectionIndex` (0x65618C), referenced at the instructions SOCOM 1's MediusSessionBegin
+  references its own (133 and 132 references), and 69 request callback slots (`s1:slot`: SOCOM
+  1's slot of the same position, its request storing it as SOCOM 1's does, each with its count):
+  44 of the API object's (.data, 0x6561C0-) and 25 of the clan object's (.bss, 0x686A5C-). The
+  two slots whose function names are disputed (0x656278, 0x686AC0) stay placeholders. The units
+  dropped their `#define`s.
+- **The link order is the .data `$Header:` order, but not alphabetical**: DmeLocal.c,
+  DmeMessage.c, *then* Dme.c. Each object's functions address its own .data, so a function's
+  object reads off the `$Header` span its references land in (`build/scratch/gcc/dataobj.py`):
+  audio.c 0x60FF00-0x612630; an object without a `$Header` -- SOCOM 1's first DME object,
+  NetInitializeClients .. NetClientLeaves, 15 rows, 0x6126A0-0x6132B8; codec.c to 0x613FD0;
+  DmeLocal.c (SOCOM 1's Dme.c bodies) from 0x613FD0 past 0x61CCA8; DmeMessage.c around 0x61F518;
+  Dme.c from 0x6204B8 (NetGetBuildTimeStamp, then the locked wrappers); grid.c from 0x6250D0;
+  md5_platform.c at 0x62B168.
+- **SCEA's shapes, each measured**: one guard clause per test, each returning its constant (an
+  `||` of them makes 2.96 build a shared return block the target lacks: rt_mutex); a test whose
+  else-block the target carries in a branch-likely's delay slot was written the other way round
+  (`if (used != 0) {...} else *p = 0;`, `if (ok) { ...; return 0; } return ERR;`); a count bumped
+  in each branch, which 2.96 cross-jumps into one store; a call's result returned through a
+  variable after a join is no sibling call (func_0061BEB8).
+- **Per-object flags again**: rt_memory.c is built without sibling calls (rt_memory_align_alloc
+  returns rt_memory_get_aligned_address's result through a jal: 14 words off with them), as is
+  the recogniser's user-word object (DoLabelStop/DoLabelStart: 10 and 6 off); rt_mutex,
+  rt_circ_buf (normalize ends in `j`) and DmeLocal.c (DmeFree is `j rt_memory_free`) keep them.
+- **The build stamps** (MediusGetBuildTimeStamp, NetGetBuildTimeStamp, rt_msg_client's): each
+  object's own `__DATE__`/`__TIME__`, spelled out (a rebuild's would be today's); the month table
+  is a 38-byte literal -- its last byte is copied from .rodata, so the vendor's ends in an explicit
+  `\0`; the date and time are local pointers, set after DME's and the client's argument test.
+- **Open, diagnosed in place**: rt_circ_buf's nine (after `result = getter(cb, &n); if (result)
+  return result;` the target tests n in v0, 2.96 here in v1 -- every shape tried; free's and use's
+  start update is byte-exact only under `-fno-sched-interblock`, which no other unit takes), four
+  of DmeLocal.c's and cbDoUserWordTraining (2.96 folds `if (f()) return 1; return 0;` into `sltu`).
+
+Hand-written in round 4b: `medius/rt_mutex.c` (5 of 5) and `rt_mutex_platform.c` (6 of 6),
+`medius/rt_memory.c` (8 of 8), `medius/rt_circ_buf.c` (7 of 16), `medius/dmelocal.c` (15 of 19),
+`asr/userword.c` (4 of 5), and MediusGetErrorCodeString, MediusSetClientAddrList,
+MediusGetBuildTimeStamp, NetGetBuildTimeStamp, rt_msg_client_get_build_timestamp in their units
+-- 50 functions, 40 new to the map's byte-exact rows (ten supersede matching drafts); 15 rows
+named (rt_circ_buf's 14 by SOCOM 1's order, FindFreePingSlot).
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
@@ -3225,9 +3350,9 @@ What is open across lanes, and what comes next:
   structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
   string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780)
-  (include/tree), the erase(remove(...), end()) family (eight open
-  functions: the target builds end() once and copies it into erase's parameter after remove's
-  call -- include/vector's range erase), the class vector's destroy for elements with a virtual
+  (include/tree), the list instances of std::remove_if (0x29FE70, 0x3C6560, 0x352500, 0x50F670,
+  0x5F8AF0: find_if's two iterator copies in parameter order -- include/algorithm), the class
+  vector's destroy for elements with a virtual
   destructor (C2DPoly's deleter), __vector_imp::resize out of line (CPool), and the pod vector's
   end() reusing begin()'s load (AddPalette, ~CAssetLib, DeleteChildren; the zdb world's round 6
   measured `return data() + size_;`: +4, but CCharacterType::Create one level too tall).
