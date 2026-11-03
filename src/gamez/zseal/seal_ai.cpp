@@ -102,7 +102,18 @@ public:
 
 class CAiSGrenade : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ctrl);
     virtual ~CAiSGrenade();
+
+    /* (the names ours: what OnSignal's reset clears) */
+    unsigned int m_58;   // 0x58
+    unsigned int m_5c;   // 0x5c
+    unsigned char m_60;   // 0x60
+    unsigned char _61[0x6c - 0x61];
+    unsigned char m_6c;   // 0x6c
+    unsigned char _6d[0x7c - 0x6d];
+    CAiMapLoc m_7c;   // 0x7c
+    CAiMapLoc m_80;   // 0x80
 };
 
 class CAiSDeploy : public CAiState {
@@ -597,6 +608,24 @@ static inline CZSealBody *SealOf(CSealCtrlAi *ai)
     return (CZSealBody *)ai->m_entity;
 }
 
+/* bit 7 set or cleared -- never set with bit 1 -- its byte and block reset as it is set, the range
+ * put back to its goal as it is cleared; the bit returned (OVL2 0x561E20, new in SOCOM II:
+ * CAiSNoAmmo::Tick sets it with -1; the name unknown) */
+extern "C" bool func_00561E20(CSealCtrlAi *ai, bool on, signed char c)
+{
+    bool cleared = !on && ai->m_aibit7;
+
+    if (ai->m_navyseal)
+        on = false;
+    ai->m_aibit7 = on;
+    if (ai->m_aibit7) {
+        memset(ai->m_3e4, 0, sizeof(ai->m_3e4));
+        ai->m_3e0 = c;
+    } else if (cleared)
+        ai->m_6f4 = ai->m_6f8;
+    return ai->m_aibit7;
+}
+
 /* (OVL2 0x56D890).
  * OPEN, 9 instructions: the target loads the team straight into a0 (`lw a0,4(a0); lw a0,0xC8(a0)`)
  * and reads m_entity again for the kit's test after the two team tests; MW here keeps the entity in
@@ -923,6 +952,35 @@ extern "C" void func_002707C0(CZAnim *anim, bool now);
 
 extern "C" {
 extern float data_004365C0;   /* (OVL1 data: the delay a new stance waits, read as a variable) */
+/* (OVL2 data: how long after its time at 0x40C the controller stays busy) */
+extern float data_00650000;
+}
+
+/* whether a stack's current state is of a kind, through the const GetState (0x5F8330) */
+static inline bool StateIs(const CAiStateStack &stack, AI_STATE state)
+{
+    return !(stack.size() == 0) && stack.GetState()->m_state == state;
+}
+
+/* whether the controller is busy: never a navy SEAL's; within a while of its time at 0x40C, or in
+ * state 28 (OVL2 0x572190, new in SOCOM II: 0x5D4770, ai::PARAM's tick, asks it; the name unknown).
+ * OPEN, 0x9C against 0xAC: the stack test is the kit lane's open Is() shape (seal_aistate.cpp's
+ * Pop(ai, AI_STATE)): the target materialises `!(size() == 0) && GetState()->m_state == 28` whole --
+ * xor/sltiu/xori, the compare's sltiu in a `b` to the join, `move v0,zero` as the false arm -- and
+ * branches once on the value; MW here branches on each operand. Tried: the const GetState through a
+ * const-stack inline (the target calls 0x5F8330, the const one: kept), the inline as an if/else
+ * assigning a bool local (0x9C, the andi back). */
+extern "C" bool func_00572190(CSealCtrlAi *ai)
+{
+    bool r = false;
+
+    if (!ai->IsNavySeal()) {
+        if (data_004365C0 - ai->m_40c < data_00650000)
+            r = true;
+        else if (StateIs(ai->m_stateStack, (AI_STATE)28))
+            r = true;
+    }
+    return r;
 }
 
 /* a stance changed with the state: taken as the goal after the delay, unless either end has none
@@ -1030,6 +1088,33 @@ void CAiSAnimate::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
     case SIGNAL_0:
         break;
     case SIGNAL_1:
+        break;
+    case SIGNAL_2:
+        break;
+    case SIGNAL_3:
+        break;
+    }
+}
+
+/* (OVL2 0x55CCD0, new in SOCOM II's form: SOCOM 1's cleared one byte on signal 0) signal 4 resets
+ * the state, its two cells made the invalid one; signal 0 clears the byte at 0x60; signal 1 has a
+ * prone SEAL (or one about to go prone) crouch after a random delay -- ChangeStanceDelayed inlined */
+void CAiSGrenade::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
+{
+    switch (sig) {
+    case SIGNAL_4:
+        m_60 = 0;
+        m_58 = 0;
+        m_5c = 0;
+        m_6c = 0;
+        m_7c = CAiMapLoc::invalid;
+        m_80 = m_7c;
+        break;
+    case SIGNAL_0:
+        m_60 = 0;
+        break;
+    case SIGNAL_1:
+        ctrl->ChangeStanceDelayed(STANCE_PRONE, STANCE_CROUCH, -1.0f);
         break;
     case SIGNAL_2:
         break;

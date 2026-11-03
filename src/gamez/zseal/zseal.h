@@ -574,7 +574,10 @@ public:
      * bit 2 the one 0x56D890 sets, which a covered state keeps (0x5F6350); a breach clears 13 on
      * entry, then sets 16 from its own bit 13, clears 17 and sets 13 as it ends (0x5F3620) */
     unsigned int m_aibit2 : 1;
-    unsigned int m_bits3 : 5;
+    unsigned int m_bits3 : 4;
+    /* bit 7: set and cleared by 0x561E20 (CAiSNoAmmo's Tick sets it), never with bit 1 (the name
+     * ours) */
+    unsigned int m_aibit7 : 1;
     unsigned int m_aibit8 : 1;   // bits 8 and 9: either refuses a state push without flag 4
     unsigned int m_aibit9 : 1;   // (0x5F5CD0)
     unsigned int m_bits10 : 3;
@@ -596,10 +599,16 @@ public:
     float m_280;   // 0x280: the delay before the asked stance is taken (cleared by SetStance)
     unsigned char _284[0x364 - 0x284];
     CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
-    unsigned char _370[0x3f4 - 0x370];
+    unsigned char _370[0x3e0 - 0x370];
+    /* what 0x561E20 stores as it sets bit 7: a byte and 16 bytes zeroed (the names ours) */
+    signed char m_3e0;   // 0x3e0
+    unsigned char _3e1[0x3e4 - 0x3e1];
+    unsigned char m_3e4[0x10];   // 0x3e4
     unsigned char m_3f4;   // 0x3f4: a mode (7 keeps the AI-map collision off; the name ours)
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
-    unsigned char _3f6[0x41c - 0x3f6];
+    unsigned char _3f6[0x40c - 0x3f6];
+    float m_40c;   // 0x40c: a time on the game's clock 0x572190 measures from (the name ours)
+    unsigned char _410[0x41c - 0x410];
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
      * seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
     CAiStateStack m_stateStack;   // 0x41c (SOCOM 1's 0x324; 0x20 bytes in SOCOM II)
