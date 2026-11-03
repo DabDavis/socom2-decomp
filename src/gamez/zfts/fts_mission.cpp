@@ -245,12 +245,17 @@ extern "C" bool AddTask__14CSched_ManagerFPCcPFfPv_bfPv(CSched_Manager *sched, c
 /* the mission completed (SOCOM 1's name, at its call; OVL1 0x2AA910, not written yet) */
 void _OnMissionComplete();
 
+/* the video (zvid's CVideo: only the screen's clear) */
+class CVideo {
+public:
+    static void Clear(bool on, unsigned char r, unsigned char g, unsigned char b, unsigned char a);   /* 0x3AFD50 */
+};
+
 extern "C" {
 void Flash__4CHUDFfRC6CPnt3Dfff(CHUD *hud, float time, const CPnt3D *colour, float in, float hold, float out);
 void Reset__14CFlashFXVectorFv(void *flashes);
 void ResetDeathCam__10CAppCameraFv(void *camera);
 void Push__5CGameFP10CGameStateUi(void *game, void *state, unsigned int arg);
-void func_003AFD50(int a0, int a1, int a2, int a3, int a4);   /* (the screen cleared: SOCOM 1's CVideo::Clear) */
 extern void *appCamera;
 extern unsigned char data_004086A0[];                    /* (a state in theGame, at 0x1E0) */
 }
@@ -323,7 +328,7 @@ void CMission::EndMission()
 {
     if (!m_DelayEndMission) {
         _OnMissionComplete();
-        func_003AFD50(1, 0, 0, 0, 0);
+        CVideo::Clear(true, 0, 0, 0, 0);
         Reset__14CFlashFXVectorFv(theHUD->m_flashes);
         theMission.SetDelayEndMission(false);
         SetFadingToEndMission(false);
@@ -857,6 +862,12 @@ int g_iNumUiVehicles;
 extern "C" const char *data_003F02B0[32];   /* GetCustomCharTypeName's c_arrCustomCharTypeNames */
 const char *GetCustomCharTypeName(int i);
 
+/* a character type's weapons (zchar's CCharacterWeapList: only the slots' padding, OVL2's) */
+class CCharacterWeapList {
+public:
+    void PadWeaponSlots();   /* OVL2 0x53B070 */
+};
+
 /* a character type (zchar's CCharacterType: only what the custom types touch) */
 class CCharacterType {
 public:
@@ -865,7 +876,9 @@ public:
     static CCharacterType *Create(const char *name, const CCharacterType *base, bool temporary);
 
     char *m_name;   // 0x0
-    unsigned char _4[0x300 - 0x4];
+    unsigned char _4[0x2e8 - 0x4];
+    CCharacterWeapList m_weapons;   // 0x2e8
+    unsigned char _2e9[0x300 - 0x2e9];
     unsigned char m_custom;   // 0x300: a custom type (the name ours: stored with li, so no bool)
 };
 
@@ -896,7 +909,6 @@ public:
     CVehicleRdrEntry *GetEntryByName(const char *name) const;
 };
 
-extern "C" void func_0053B070(void *weapons);   /* (OVL2: a custom type's weapons, at 0x2E8) */
 
 namespace {
 /* the custom character types the "UiVehicles" list names, each a copy of the character type of
@@ -929,7 +941,7 @@ void CreateCustomCharTypes(CVehicleRdr *vehicles, _zrdr *rdr)
 
             custom->m_custom = 1;
             entry->SetCharacterName(name);
-            func_0053B070((char *)custom + 0x2e8);
+            custom->m_weapons.PadWeaponSlots();
             UpdateCharWeaponUiVars(i);
         }
     }
@@ -1026,10 +1038,20 @@ struct MissionBankList {
 
 extern "C" {
 extern MissionBankList data_00440B80;
-void *func_00361BC0();                                  /* (the sound system) */
-void func_003A3900(void *snd, const char *bank, void *arg);   /* (a bank loaded) */
-void *func_003A4460();
 }
+
+/* the localised string tables (util_loc.cpp's; only the load), the language a word as st_mpexit.cpp
+ * has it */
+enum LANGUAGE {
+    LANGUAGE_ALIGNMENT_HACK = 0x7FFFFFFF
+};
+LANGUAGE GetLanguage();   /* 0x3A4460 */
+
+class CStringTables {
+public:
+    void Load(const char *name, LANGUAGE language);   /* 0x3A3900 */
+};
+CStringTables *GetStringTables();   /* 0x361BC0 */
 
 extern "C" char *strcpy(char *dst, const char *src);
 
@@ -1059,11 +1081,16 @@ extern "C" void func_002AF410(const _zrdr *rdr)
  * it with the load screen's; OVL1 0x2AF360) */
 extern "C" void func_002AF360(const char *bank)
 {
-    func_003A3900(func_00361BC0(), bank, func_003A4460());
+    CStringTables *tables = GetStringTables();
+
+    tables->Load(bank, GetLanguage());
     int n = data_00440B80.m_count;
 
-    for (int i = 0; i < n; i++)
-        func_003A3900(func_00361BC0(), data_00440B80.GetBank(i), func_003A4460());
+    for (int i = 0; i < n; i++) {
+        CStringTables *t = GetStringTables();
+
+        t->Load(data_00440B80.GetBank(i), GetLanguage());
+    }
 }
 
 /* the player's SEAL and its controller (only the controller's state byte) */

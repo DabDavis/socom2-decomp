@@ -172,6 +172,9 @@ void func_005EC9F0(CZSealBody *seal, int arg);   /* CSealUnit::InitalizeSealUnit
 void func_0026ADA0(CZAnimMain *zanim, zdb::CNode *node);
 }
 
+/* an rdr array's tag looked up (zrdr.h's) */
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);   /* 0x32F0D0 */
+
 /* the squirm switch (SOCOM 1's file static) */
 static bool doSquirm;
 
@@ -286,7 +289,7 @@ _zanim_cmd_hdr *CftsPlayer::CmdParseControls(_zrdr *rdr)
     cmd = (_player_controls_cmd *)_calloc(1, sizeof(_player_controls_cmd), 0, 0);
     cmd->hdr.data_size = sizeof(_player_controls_cmd);
     cmd->hdr.timeless = 1;
-    if (func_0032F0D0(rdr, "ON"))
+    if (zrdr_findtag(rdr, "ON"))
         cmd->on = 1;
     else
         cmd->off = 1;
@@ -325,7 +328,7 @@ _zanim_cmd_hdr *CftsPlayer::CmdParseIsPlayerNode(_zrdr *rdr)
     cmd->hdr.data_size = sizeof(_is_player_node_cmd);
     cmd->hdr.timeless = 1;
     cmd->node = anim->LoadNodeNames(rdr, 0, 0, anim->node_search_scope);
-    if (func_0032F0D0(rdr, "SEARCH_CHILDREN"))
+    if (zrdr_findtag(rdr, "SEARCH_CHILDREN"))
         cmd->search_children = 1;
     return (_zanim_cmd_hdr *)cmd;
 }

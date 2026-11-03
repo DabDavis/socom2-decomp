@@ -65,9 +65,6 @@ CValve *func_002846F0(C2DAnimCmdHdr *hdr);       /* CValve::Create(ArgName(hdr),
 bool func_003515D0(void *modules, unsigned char set);
 extern unsigned char data_0049E7E8[];            /* the IOP's module sets */
 extern float data_004A449C;                      /* the frame's time */
-/* std::string's copy constructor (another unit's copy, out of line) */
-void func_0022E560(void *str, const void *from);
-void func_001E7EF0(void *str, int flags);        /* ~basic_string */
 }
 
 /* the lobby's file over HTTP (SOCOM II's CLobbyFileIO, the online lane's: its vtable 0x406760; 0x9C
@@ -345,15 +342,13 @@ void CSMDownloadPatch::ParseURI(unsigned char event)
 {
     switch (event) {
     case 0: {
-        unsigned int uri[3];
+        std::string uri(m_url);
 
-        func_0022E560(uri, &m_url);
-        std::func_001EEB70(uri, "APACHE00.ZDB");
-        m_uri = func_005448F8((uri[0] & 1) ? (const char *)uri[2] : (const char *)uri + 1, 0x60);
+        uri.append("APACHE00.ZDB");
+        m_uri = func_005448F8(uri.c_str(), 0x60);
         if (!m_uri)
             Error("Bad URI", 0);
         SetState((SSMState)&CSMDownloadPatch::Open);
-        func_001E7EF0(uri, -1);
         break;
     }
     case 1:
