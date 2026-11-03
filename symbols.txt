@@ -9057,7 +9057,7 @@
 0x004FCDE8 0xBC ControlWindow  # OVL2 unaligned; s1:align
 0x004FCEA8 0x3FC CombinerProcess  # OVL2 unaligned; s1:order (ConstructCombiner's process slot, as SOCOM 1's LOCAL CombinerProcess, the first function of SOCOM 1's combiner object at 0x368FC0) -- the gcc lane, round 10c
 0x004FD2A8 0x3C ConstructCombiner  # OVL2 unaligned; s1:align
-0x004FD2E8 0xFC func_004FD2E8  # OVL2 unaligned
+0x004FD2E8 0xFC CombinerInit  # OVL2 unaligned; s1:order (ConstructCombiner's init slot, as SOCOM 1's LOCAL CombinerInit, between ConstructCombiner and CombinerControl in both objects) -- the gcc lane, round 15c
 0x004FD3E8 0xFC CombinerControl  # OVL2 unaligned; s1:calls
 0x004FD4E8 0xDC ResizeQueues  # OVL2 unaligned; s1:align
 0x004FD5C8 0x22C func_004FD5C8  # OVL2 unaligned
