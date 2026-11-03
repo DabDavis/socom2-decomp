@@ -6,9 +6,20 @@
  * A group is the scripted ai::GROUP command's (CTGroup::Begin, seal_tasks.cpp, builds it): its member
  * AIs (a vector), a cell each may be sent to, and a list of steps, each a list of actions run
  * together -- the step done once every action is (2), the next taken after. Groups live in a global
- * list ticked once a frame (TickAll, a remove_if dropping the finished ones). Many of the unit's
- * small functions are byte-exact drafts (the actions' destructors among them). Defined in reverse of
- * their image order (-inline deferred). */
+ * list ticked once a frame (TickAll, a remove_if dropping the finished ones).
+ *
+ * Round 16 (the kit lane) wrote the unit's classes and 45 of its rows: the actions' Ticks, Stops and
+ * table copies, the step builders, the group's lifecycle, Abort with the steps' stop walk (std::
+ * for_each inlined one level -- its iterator pieces, functor and copy out of line after it), the AI's
+ * group members, Find, EndCameras and the template tail's remove_copy/remove_copy_if. Each member is
+ * a class over its container (one this-test more in ~CAiGroup than the container's own chain).
+ * OPEN: Start and TickStep (registers / the camera flag's negation), RemoveMember (two registers),
+ * the group remove_if (the list remove_if family), the step list's insert (code-exact; its call to
+ * the deleter's allocator constructor resolves only once OVL2's copy 0x5EF9B0 carries an ovl-copy
+ * note), the step list's erase(position) 0x60EB60 and its range erase 0x60EA90 (MSL's erase destroys
+ * each element: include/list's does not). Not written: Tick (0x60C3E0, 0x6E4 bytes), AddMember
+ * (0x60D020), act_camera::Tick (0x60DB60) with its helpers 0x60DCF0/0x60DE30 and the look-at matrix
+ * 0x60CAD0. Defined in reverse of their image order (-inline deferred) where it matters. */
 
 #include <list>
 #include <vector>
