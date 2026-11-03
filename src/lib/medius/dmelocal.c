@@ -434,6 +434,74 @@ int NetFreeAllObjects(void)
     return DME_OK;
 }
 
+int func_00616F80(int *pMode, int nMode)
+{
+    if (pMode == 0)
+        return DME_ERR_ARGUMENT;
+    switch (nMode) {
+    case 0:
+        *pMode = 0;
+        break;
+    case 2:
+        *pMode = 2;
+        break;
+    case 3:
+        *pMode = 3;
+        break;
+    case 4:
+        *pMode = 4;
+        break;
+    case 5:
+        *pMode = 5;
+        break;
+    case 6:
+        *pMode = 6;
+        break;
+    case 7:
+        *pMode = 7;
+        break;
+    case 8:
+        *pMode = 8;
+        break;
+    case 9:
+        *pMode = 9;
+        break;
+    case 1:
+        *pMode = 1;
+        break;
+    default:
+        return DME_ERR_ARGUMENT;
+    }
+    return DME_OK;
+}
+
+extern unsigned short data_0067A6E0;    /* the port */
+
+/* OPEN (7 words): the scheduler interleaves the port load with the zeroing stores differently
+ * (the target loads it right after the store at 8); m2c's store order kept -- nine stores are past
+ * tools/ccperm.py's reach. */
+int func_00617610(int *pParams)
+{
+    int result;
+
+    if (pParams == 0)
+        return DME_ERR_ARGUMENT;
+    memset(pParams, 0, 0x128);
+    pParams[1] = 256;
+    pParams[2] = 0;
+    pParams[41] = 0;
+    pParams[43] = 0;
+    pParams[73] = data_0067A6E0 + 1;
+    pParams[45] = 0;
+    pParams[47] = 0;
+    pParams[49] = 0;
+    pParams[50] = 0;
+    result = func_006437E0(pParams + 51);
+    if (result == DME_OK)
+        pParams[0] = 1;
+    return result;
+}
+
 int func_00618158(int *pParams)
 {
     int result;
@@ -474,6 +542,29 @@ int func_00618AD0(int *pParams, int *pStatus)
     return pStatus[1] = func_00618B38(pParams);
 }
 
+extern int DmeToRtMsgConnectionIndex(int nConnection);
+extern int rt_msg_client_receive_broadcasts(int nConnection, unsigned char bEnable);
+extern int NetMapMsgClientError(int nError, int nDefault);
+extern int func_0063A760(int nConnection, unsigned char bEnable, int nIndex);
+
+/* OPEN (1 word): the target branches with beq on 0xFFFF where 2.96 here takes beql (the lui of
+ * data_006511D8 in the slot either way) -- the RT path first (`!= 0 && != 0xFFFF`), an if/else,
+ * else-if and a result variable tried; the broadcast flag is an int narrowed at each call. */
+int func_006189C8(unsigned int nConnection, int bEnable)
+{
+    int result;
+
+    if (nConnection >= DME_MAX_WORLDS)
+        return DME_ERR_ARGUMENT;
+    if (nConnection != 0 && nConnection != 0xFFFF) {
+        result = NetMapMsgClientError(rt_msg_client_receive_broadcasts(DmeToRtMsgConnectionIndex(nConnection), bEnable), 24);
+        if (result != DME_OK)
+            return result;
+    } else if (func_0063A760(data_006511D8, bEnable, nConnection) != 0)
+        return 37;
+    return DME_OK;
+}
+
 int FindFreePingSlot(void)
 {
     int i;
@@ -482,6 +573,72 @@ int FindFreePingSlot(void)
         if (data_0067B7B8[i].bInUse == 0)
             return i;
     return DME_MAX_PING_SLOTS;
+}
+
+/* a data stream's record (NetGetDataStream hands one out) */
+typedef struct DmeStream {
+    unsigned char bOpen;                /* 0x00 */
+    unsigned char field_01[3];
+    unsigned char bClosing;             /* 0x04 */
+    unsigned char field_05[7];
+    int nOwner;                         /* 0x0C */
+} DmeStream;
+
+int func_0061A078(unsigned int nStream)
+{
+    DmeWorld *pWorld;
+    DmeStream *pStream;
+    int result;
+
+    pStream = 0;
+    pWorld = 0;
+    if (nStream >= DME_MAX_STREAMS)
+        return DME_ERR_ARGUMENT;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return 9;
+    result = func_0061C600(data_00651178, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    result = func_00614F10((void **)&pStream, nStream);
+    if (result != DME_OK)
+        return 9;
+    if (pStream == 0 || pStream->nOwner != pWorld->nMyClient)
+        return 9;
+    pStream->bClosing = 1;
+    return result;
+}
+
+extern int func_0061A800(int nOwner, unsigned int nIndex);
+extern int data_00686A38;               /* the ownership release's message type */
+
+int func_0061A240(unsigned int nIndex)
+{
+    DmeWorld *pWorld;
+    DmeObject *pObject;
+    unsigned short msg[1];
+    int result;
+
+    pObject = 0;
+    pWorld = 0;
+    if (nIndex >= DME_MAX_OBJECTS)
+        return DME_ERR_ARGUMENT;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    result = func_0061C600(data_00651178, &pWorld);
+    if (result != DME_OK || pWorld == 0)
+        return result;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return DME_ERR_RANGE;
+    if (pObject->nOwner == pWorld->nMyClient) {
+        pObject->nOwner = -1;
+        RemoteObjectUpdate(-1, nIndex, -2);
+        msg[0] = nIndex;
+        func_0061A800(-1, nIndex);
+        func_00615DE0(80, data_00651178, -1, data_00686A38, 2, msg);
+        return DME_OK;
+    }
+    return DME_ERR_RANGE;
 }
 
 int func_0061BEB8(void)
