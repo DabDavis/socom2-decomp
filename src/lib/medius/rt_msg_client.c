@@ -696,7 +696,9 @@ typedef struct rt_msg_client_connection {
      * message and its length */
     void (*pfnAppMessage)(unsigned short nId, unsigned short nSource, unsigned char *pMsg,
                           unsigned short nLength);
-    char pad8C[4];
+    /* 0x8C: another client's connect notice (0x636E68): its id, its address and key, whether the
+     * key came with it */
+    void (*pfnClientConnect)(unsigned short nId, unsigned short nClient, void *pInfo, unsigned char bHasKey);
     void (*pfnDisconnect)(unsigned short nId, int nReason); /* 0x90 */
     /* 0x94: the application's message callback (round 14b: 0x637438) */
     void (*pfnCallback)(unsigned short nId, unsigned char b0, unsigned char b1, unsigned char b2,
@@ -1727,6 +1729,69 @@ int rt_msg_client_process_connect_result(rt_msg_client_connection *pConnection, 
             if (rt_msg_client_is_valid_connection_id(nId) == 0)
                 return 11;
         }
+    }
+    return 0;
+}
+
+extern int KM_SetPublicKey(int nKMID, int nClientID, void *pKey);
+
+/* a client's connect notice: its address and, with type 8, its RSA public key -- a byte record (the
+ * copies are 1-aligned block moves on both sides, as the target's) */
+typedef struct rt_msg_client_notify_info {
+    char szAddress[16];                 /* 0x00 */
+    unsigned char abKey[64];            /* 0x10 */
+} rt_msg_client_notify_info;
+
+/* SOCOM 1's process_client_connect_notify (round 16b; its callback moved to 0x8C, the connection
+ * perhaps gone after it): another client's id and address, its public key kept for type 8.
+ * OPEN (4 words short, 106 differ): the target -- SOCOM 1's copy alike -- copies pMsg into a1 before
+ * its null test (`beq v0,v1; move a1,s0; b ret; li v0,2`) and keeps the block moves' address in a1
+ * (`a1 = pMsg + 2` after the id, `a1 += 16` before the key), never stepping pMsg itself; every
+ * spelling tried -- pMsg stepped, &pMsg[nOffset], a cursor assigned once or twice, the null test on
+ * the cursor or on &pMsg[nOffset] -- tests s0 and folds the address into the loads' offsets
+ * (build/scratch/gcc/v_ccn.c). The length test is a guard (the target compares in v1, the hoisted
+ * `li v0,1` holding v0: round 14b's rule the other way round). */
+int rt_msg_client_process_client_connect_notify(rt_msg_client_connection *pConnection, int nType,
+                                                unsigned char *pMsg, unsigned int nLength)
+{
+    rt_msg_client_notify_info info;
+    unsigned short nClient = 0;
+    unsigned int nOffset = 0;
+    unsigned char bHasKey = 0;
+    unsigned short nId;
+
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (pMsg == 0)
+        return 2;
+    if (nType == 8)
+        bHasKey = 1;
+    else if (nType != 9)
+        return 2;
+    if (nOffset + 1 >= nLength)
+        return 1;
+    if (rt_msg_get_u2byte(pMsg, &nClient) != 0)
+        return 7;
+    pMsg += 2;
+    nOffset += 2;
+    if (bHasKey) {
+        if (nLength - nOffset != 80)
+            return 1;
+    } else {
+        if (nLength - nOffset != 16)
+            return 1;
+    }
+    memcpy(info.szAddress, pMsg, 16);
+    pMsg += 16;
+    if (bHasKey) {
+        memcpy(info.abKey, pMsg, 64);
+        KM_SetPublicKey(pConnection->nId, nClient, info.abKey);
+    }
+    if (pConnection->pfnClientConnect != 0) {
+        nId = pConnection->nId;
+        pConnection->pfnClientConnect(nId, nClient, &info, bHasKey);
+        if (rt_msg_client_is_valid_connection_id(nId) == 0)
+            return 11;
     }
     return 0;
 }
