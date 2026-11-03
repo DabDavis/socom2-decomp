@@ -2080,6 +2080,21 @@ serve `<...>` includes; `-nostdinc` keeps the host's headers out.
     value), `== true` li 1/bne;
   - git merged two identical RTArray::GetOldestUsed definitions silently (two lanes added it): a
     merge can duplicate an additive member -- the build catches it.
+- **Tells from completing the MSL headers, round 9** (the 1-byte pod vector<char>, basic_string::assign(const char *, n)):
+  - MW reuses a pointer difference only when both are the same expression: the target recomputes
+    `last - first` after an allocation, so its two lengths come from different expressions;
+  - a move helper taking its length into a local (`unsigned int n = last - first`) lets MW fold
+    `(old + k) - old` to `k`; inline-helper parameters of type `const T *` given `T *` arguments block
+    reuse of the caller's `e - position`, plain `T *` parameters allow it;
+  - `k = position - data_` declared before `T *old = data_` gives the target's numbering; testing
+    capacity through capacity() while the growth reads capacity_ keeps the target's second load;
+  - in a unit's tail a class vector's move helpers inline the string's copy and assignment only if the
+    unit's own code generated them first;
+  - include/vector's char pod (moves through memcpy/memmove/memset) gives the keyboard unit A's seven
+    instances byte-exact as probes (0x3923E0, 0x392A30, 0x392600, 0x393D30, 0x393D80, 0x393F00,
+    0x393FB0) and assign(const char *, n) 0x39B620 through the template replace 0x1EE780 -- they count
+    once the UI writes their callers; unit B's 0x2C-byte element (CSaferStr plus two rects) and the
+    element-vector chain 0x393DD0/0x393E40/0x394090 are recorded open.
 - **Tells from completing the MSL headers, round 8** (the erase/remove family, include/algorithm's
   remove and remove_if, the class insert's end register):
   - THE erase(remove(...), end()) FAMILY IS THE CALLERS' FORM, not a header's: MW builds an argument
