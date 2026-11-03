@@ -1818,6 +1818,22 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 16** (seal_body.cpp's stance family, TurnControl, ClearToBase, DropBody):
+  - SOCOM 1's seal_body.cpp lines up one to one with 0x581110-0x58A5E0, BlendedClimb to StanceChanged: the stance
+    family named by its order (BlendedClimb, Hang_0, SetStanceIdle, Prone_0, Prone, Crouch_0, Crouch, Stand_0 --
+    SOCOM II adds a float --, Stand, ClearStack, SetStance), TurnControl taking one float (SOCOM 1's two);
+  - a constant stored through a call's result (`f()->m = 8`) is loaded before the call into a saved register,
+    through a block-local taken from the call after it (0x589900, DropBody);
+  - ClearStack written out is 16 statements and will not auto-inline; with its loop body one comma statement it is
+    15 (a STAND-IN spelling) and Stand inlines it and Crouch inlines Stand, as SOCOM 1's Crouch does; Prone_0 is
+    short enough to auto-inline but the target calls it (pinned `auto_inline off`); a blend count compared signed
+    (`slti`, ClearToBase) and one compared unsigned (`sltiu`, ClearStack) are two different inlines;
+  - in TurnControl, `bool neg;` declared ahead of the first local gives the target's saved registers, and passing
+    `neg ? -a : a` keeps `a` in $f0 until the call where `if (neg) a = -a;` keeps it in $f20;
+  - leads: 0x668940 looks like `__sinit_seal_body.cpp` (it builds `newanims` 0x66B2F0 through 0x58A9F0, the RTList
+    constructor's OVL2 copy, and registers 0x58AAC0 as its destructor); 0x58A950 pinned as a stand-in for
+    RTList<ACTIVE_ANIM>::Clear's OVL2 copy; open: Crouch 0x581990 (5: inside the inlined Stand(1) the stance and
+    ClearStack's stack pointer take each other's saved registers), 0x57DCC0 (6: the AnimSet calls' argument order).
 - **Tells from the game states, round 20** (CCtrlrConfigs::Init, CGraph::CreateNode(void)):
   - MW's own construction of a member array of class elements is a never-unrolled pointer `!=` loop with no entry
     guard, where a written loop over the same 13 bytes unrolls 6x; a constructor inlined one level emits one
