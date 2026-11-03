@@ -7866,7 +7866,7 @@
 0x003B5270 0x24 func_003B5270  # OVL1
 0x003B52A0 0x8 func_003B52A0  # OVL1
 0x003B52B0 0x10 func_003B52B0  # OVL1
-0x003B52C0 0x78 func_003B52C0  # OVL1
+0x003B52C0 0x78 GetVid__Q23zdb7CVisualFv  # OVL1; by hand (the wep lane, round 13: CVisual::GetVid's out-of-line copy (vis_vu.cpp, inline: the name ours) -- the top of m_stack_vid behind the break/nop intrinsics with empty() and top() inlined whole, as GetChainData inlines the same function one level (calling 0x321F40/0x321EF0); it follows VuUpdate, its one caller, among VuUpdate's other out-of-line helpers 0x3B5250-0x3B52B0; emitted once VuUpdate is written)
 0x003B5340 0x2C Render__Q23zdb7CVisualFP7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003B5370 0x164 VuSpecularSetup__Q23zdb7CVisualFP8_word128P6CPnt4DP6CPnt3Df  # OVL1; by hand (the wep lane, round 13: 0x3B5B90's specular pass calls it with the command's data, a copy of m_mtl_band's colour, the band's rgb and opacity: a frame along the direction about CPnt4D::unit_w (0x307700) times m_ModelToWorld, the band's intensity and falloffs, m_camera's position through m_WorldToModel. SOCOM II's; the name ours)
 0x003B54E0 0x244 VuLightMap__Q23zdb7CVisualFPP8_word128Ui  # OVL1; by hand (the wep lane, round 13: SOCOM 1's VuLightMap in role -- 0x3B5B90 calls it last on &cursor with the tag 56/58 when m_lightMapCnt is set; the first map's texture select, SaveTextureSelect with its blend word, then per map of m_lightMapList its position through m_WorldToModel, falloff, range, colour and opacity, as SOCOM 1's; the signature SOCOM II's)
