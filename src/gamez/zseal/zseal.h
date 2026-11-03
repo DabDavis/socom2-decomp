@@ -605,10 +605,14 @@ void *func_005281B0(void *path, int flags);
  * declare SOCOM II's ~CAiPath) and the fields the controller reads: the plan's state, the search's
  * status, the smoothed points' end (an empty vector's is 0) */
 struct CAiPathBytes {
-    unsigned char _0[0x80];
+    unsigned char _0[0xc];
+    float m_type_bias;   // 0xc (SOCOM 1's: the planner's bias, set with the type)
+    unsigned char _10[0x80 - 0x10];
     unsigned char m_state;   // 0x80: CAiPath::PATH_STATE (1-3 planning, 4 complete)
     signed char m_status;   // 0x81: CAiPath::ASTAR_STATUS
-    unsigned char _82[0x9c - 0x82];
+    unsigned char _82[0x8c - 0x82];
+    unsigned int m_search_limit;   // 0x8c (SOCOM 1's 0x84)
+    unsigned char _90[0x9c - 0x90];
     void *m_9c;   // 0x9c: the points vector's second word
     unsigned char _a0[0xa8 - 0xa0];
 };
@@ -711,7 +715,7 @@ public:
      * counts the master's followers -- the kit lane, round 19, the names ours) */
     class CZSealBody *m_follow_master;   // 0x5d4
     unsigned int m_follow_master_id;   // 0x5d8
-    unsigned char _5dc[0x5e0 - 0x5dc];
+    float m_pathTolerance;   // 0x5dc (SOCOM 1's 0x47c: a new route zeroes it)
     /* the leg being walked: its two cells' centres flat on the ground, the direction between them
      * and its length, four words cleared with it, and the cell it starts from (0x56C080 sets them
      * from a path's last point; the names ours) */
@@ -881,8 +885,12 @@ public:
     virtual void Initalize();
     /* a Navy SEAL (SOCOM 1's bit; the accessor ours, as the code tests it materialised) */
     bool IsNavySeal() const { return m_navyseal ? true : false; }
-    /* the planner a new route takes (SOCOM 1's; OVL2 0x5627E0, seal_ai.cpp's) */
+    /* the planner a new route takes (SOCOM 1's; OVL2 0x5627E0, seal_ai.cpp's) and its bias (SOCOM 1's,
+     * inline in SOCOM II: seal_ai.cpp's, no copy) */
     CAiPath::PATH_TYPE GetDefaultRouteType();
+    inline float GetDefaultRouteBias();
+    /* a route planned from the SEAL's cell through a list of cells (SOCOM 1's; OVL2 0x562200) */
+    bool SetRoute(const CAiMapLoc *locs, int count);
     /* whether the current state is of a kind (SOCOM 1's AiStateIs, const: the stack's const GetState,
      * 0x5F8330). Built whole in a register with an explicit false arm, as the target does: the first
      * operand a materialised inline bool, the second a `? true : false` of its own -- `&&`, a plain

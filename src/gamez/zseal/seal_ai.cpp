@@ -541,6 +541,73 @@ CAiPath::PATH_TYPE CSealCtrlAi::GetDefaultRouteType()
     return t;
 }
 
+extern "C" {
+/* the maps' path plan registered from a cell through a list of cells into a path (SOCOM 1's
+ * CAiMaps::RegisterPathPlan by its call here; OVL2 0x52C5C0, the AI core's) and a path's planner set,
+ * whether it took (SOCOM 1's CAiPath::SetPathType; OVL2 0x524CD0, the AI core's) */
+bool func_0052C5C0(CAiMaps *maps, const CAiMapLoc &start, const CAiMapLoc *locs, int count,
+                   CAiPathBytes *path);
+bool func_00524CD0(CAiPathBytes *path, CAiPath::PATH_TYPE type);
+}
+
+/* whether the current state is of kind 8 with flag 1 (0x559000's shape, kind 2 and flag 0x80 there) */
+static inline bool IsKind8Flag1(CAiState *s)
+{
+    bool r = false;
+
+    AI_STATE st = s->m_state;
+
+    if (st == (AI_STATE)8 && (s->m_flags & 1))
+        r = true;
+    return r;
+}
+
+static inline bool InKind8Flag1(const CSealCtrlAi *ai)
+{
+    CAiState *s;
+
+    if (ai->m_stateStack.size() == 0)
+        s = 0;
+    else
+        s = ai->m_stateStack.GetState();
+
+    return s ? IsKind8Flag1(s) : false;
+}
+
+/* the bias a new route's planner takes: 1, whatever the state (SOCOM 1's GetDefaultRouteBias, two
+ * statics initialised and unread; inline in SOCOM II -- both SetRoutes test the Navy SEAL's states and
+ * keep only the calls). The tests' answer is a bool never read: returned straight, the 1 folds into the
+ * caller's store (returned from each arm, MW holds it in $f20 across the planner's call); the second
+ * test's kind is not in the image, its compare dead */
+inline float CSealCtrlAi::GetDefaultRouteBias()
+{
+    if (IsNavySeal()) {
+        bool b = InKind8Flag1(this) || AiStateIs((AI_STATE)8);
+    }
+    return 1.0f;
+}
+
+/* a route planned from the SEAL's last good cell through a list of cells: once registered the AI moves
+ * (mode 3), the planner set with its bias, the search limit and the tolerance cleared (OVL2 0x562200:
+ * SOCOM 1's SetRoute(const CAiMapLoc *, int), its failure's debug prints gone) */
+bool CSealCtrlAi::SetRoute(const CAiMapLoc *locs, int count)
+{
+    CAiMapLoc start(m_entity->m_mapLocValid);
+    bool ok = func_0052C5C0(&AiMaps, start, locs, count, &m_path);
+
+    if (ok) {
+        SetAiMode((AI_MODE)3);
+
+        float bias = GetDefaultRouteBias();
+
+        if (func_00524CD0(&m_path, GetDefaultRouteType()))
+            m_path.m_type_bias = bias;
+        m_path.m_search_limit = 0;
+        m_pathTolerance = 0.0f;
+    }
+    return ok;
+}
+
 /* the five bands of an alertness (OVL2 data 0x65C700: 0.05, 0.4, 0.6, 0.8, 1) */
 extern "C" float data_0065C700[5];
 
@@ -631,6 +698,28 @@ CValve *CSealCtrlAi::GetValve(SEAL_VALVE v) const
     return 0;
 }
 
+/* whether the SEAL may be taken hostage (state 23 pushed with no flags): for kind 3 a restrainable one,
+ * or online one of team bit 17; otherwise one of team bit 17 already holding the state or free to take
+ * it (OVL2 0x555B80, new in SOCOM II: 0x5784A0 and 0x5A90B0 ask it; the name unknown). A switch (the
+ * case's block first behind its beq, a `b` to the default) assigning one bool, masked once at the join:
+ * returned from each case, the andi goes */
+extern "C" bool func_00555B80(CSealCtrlAi *ai, int kind)
+{
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    bool r;
+
+    switch (kind) {
+    case 3:
+        r = (seal->m_restrainable || (data_0045A0C1 && (seal->m_team & 0x20000))) && ai->CanPushAiState(AI_STATE_HOSTAGE, 0);
+        break;
+    default:
+        r = (seal->m_team & 0x20000) && ((ai->m_stateStack.m_10 & (1 << AI_STATE_HOSTAGE)) || ai->CanPushAiState(AI_STATE_HOSTAGE, 0));
+        break;
+    }
+    return r;
+}
+
 /* the AI's state brought up to date, the route's state returned (OVL2 0x5558A0; the AI states'
  * OnSignal call it) */
 extern "C" AI_ROUTE func_005558A0(CSealCtrlAi *ai)
@@ -667,6 +756,54 @@ extern "C" void func_00555820(CSealCtrlAi *ai, bool keep)
         ai->m_route.m_state = keep ? ROUTE_2 : ROUTE_NONE;
         break;
     }
+}
+
+extern "C" {
+/* a path started over from a cell of a map (OVL2 0x526810, the AI core's: the route's legs begun at the
+ * SEAL's cell) and a path's plan copied from another, whether it held one (OVL2 0x527FD0, the AI core's) */
+void func_00526810(CAiPathBytes *path, const CAiMapLoc &loc, CAiMap *map, int a, int b);
+bool func_00527FD0(CAiPathBytes *path, const CAiPathBytes *from);
+}
+
+/* a path's plan under way (states 1-3: ai.h's CAiPath::IsPlanning) and one held complete (state 4 with
+ * points: IsState4Held's test on a path) */
+static inline bool PathPlanning(const CAiPathBytes *p)
+{
+    return (unsigned int)(p->m_state - 1) < 3;
+}
+
+static inline bool PathHeld(const CAiPathBytes *p)
+{
+    return !(p->m_9c == 0) && p->m_state == 4;
+}
+
+/* a route made from a path: cleared, then begun at the SEAL's last good cell -- as a route still planning
+ * (2) while the path plans, or (1) with the path's plan copied once it is held; whether it was made
+ * (OVL2 0x5556A0, new in SOCOM II: 0x5558D0 and 0x55E3B0 call it; the name unknown) */
+extern "C" bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRouteBytes *route)
+{
+    CEntity *e = ai->m_entity;
+
+    func_00527310(&route->m_path);
+    route->m_state = ROUTE_NONE;
+
+    const CAiMapLoc &loc = e->m_mapLocValid;
+
+    route->m_state = ROUTE_NONE;
+
+    bool r = false;
+
+    if (PathPlanning(path)) {
+        func_00526810(&route->m_path, loc, AiMaps.GetMapByIndex(loc.m_mapid), 0, 1);
+        route->m_state = ROUTE_2;
+        r = true;
+    } else if (PathHeld(path)) {
+        func_00527FD0(&route->m_path, path);
+        func_00526810(&route->m_path, loc, AiMaps.GetMapByIndex(loc.m_mapid), 0, 1);
+        route->m_state = ROUTE_1;
+        r = true;
+    }
+    return r;
 }
 
 /* a table of two rows of eighteen, the row picked by whether the word at 0xC is empty (OVL2
