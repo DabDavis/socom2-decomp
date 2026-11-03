@@ -1404,7 +1404,7 @@
 0x001E8230 0x78 startrecording  # OVL1; s1:exact
 0x001E82A8 0x74 stoprecording  # OVL1 unaligned; s1:exact
 0x001E8320 0x98 SidInit  # OVL1; s1:calls
-0x001E83B8 0x8 func_001E83B8  # OVL1 unaligned
+0x001E83B8 0x8 SidIsRecording  # OVL1 unaligned; s1:order (the demo's SidIsRecording 0x3B76A0: the same 8-byte body, after SidInit as here)
 0x001E83C0 0x44 SidClose  # OVL1; s1:exact
 0x001E8408 0x20 SidStart  # OVL1 unaligned; s1:exact
 0x001E8428 0x20 SidStop  # OVL1 unaligned; s1:exact
