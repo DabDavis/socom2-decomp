@@ -16,11 +16,12 @@
  * Round 17 wrote the rest: Tick, AddMember, act_camera::Tick with its point reader (campoint::Get,
  * byte-exact) and LookAt, and FaceXZ -- with act_camera::Tick in the unit, its table and destructor
  * (0x60C190) come out byte-exact too.
+ * With the MSL headers' round 13 (include/list's erases destroy their elements) the step list's range
+ * erase 0x60EA90 and Tick's erase(position) 0x60EB60 come out of this unit byte-exact.
  * OPEN: Start and TickStep (registers / the camera flag's negation), RemoveMember (two registers),
- * the group remove_if (the list remove_if family), the step list's erase(position) 0x60EB60 and its
- * range erase 0x60EA90 (MSL's erase destroys each element: include/list's does not), Tick (the cell
- * index's strength reduction), AddMember (Is() materialised), act_camera::Tick, LookAt and FaceXZ
- * (frame-address CSE and the translation row's copy) -- each with its note. Defined in reverse of
+ * the group remove_if (the list remove_if family), Tick (the cell index's strength reduction),
+ * AddMember (Is() materialised), act_camera::Tick, LookAt and FaceXZ (frame-address CSE and the
+ * translation row's copy) -- each with its note. Defined in reverse of
  * their image order (-inline deferred) where it matters. */
 
 #include <list>
@@ -642,8 +643,8 @@ static void FaceXZ(const CPnt3D *from, const CPnt3D *to, CMatrix *m)
  * counter in the loop (`sll v1,s3,2`); with that register taken every saved register shifts, and
  * &p.z (the target's s8, hoisted with &p.y into s7) is computed in the loop. `#pragma
  * opt_strength_reduction off` drops the index register but the &p.y/&p.z hoisting with it (0x6C8).
- * Tried: the increments in the for header, `int i`, an inline GetLoc (0x6FC). The step list's
- * erase(begin()) calls OVL2 0x60EB60, which the map does not name yet (the MSL lane's) */
+ * Tried: the increments in the for header, `int i`, an inline GetLoc (0x6FC). Its erase(begin())
+ * emits the step list's erase(position), 0x60EB60, byte-exact */
 bool CAiGroup::Tick()
 {
     STATE state = m_state;
