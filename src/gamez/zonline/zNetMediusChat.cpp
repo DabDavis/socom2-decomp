@@ -346,7 +346,7 @@ extern "C" void func_002E1610(void *fifo, const LOBBY_STATE *state);   /* the qu
 
 void CZOnlineLobby::ChangeState(LOBBY_STATE state)
 {
-    func_002E1610(m_state_change_fifo, &state);
+    func_002E1610(&m_state_change_fifo, &state);
 }
 
 /* --- the state handlers (SOCOM 1's; the table the lobby's 0x2ED460 fills, by state) ---------- */

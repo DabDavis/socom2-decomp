@@ -51,6 +51,10 @@ struct AccountInfoType {
 void cbGetAnnouncements(int, int, int, MediusGetAnnouncementsResponse *);
 void cbBanSelfFromGame(int, int, int, MediusBanPlayerResponse *);
 
+/* a room (0x44FAB0; ReleaseUIResources empties its games): the unit's one dynamically initialised
+ * static, built empty and its destructor registered by the unit's initialiser 0x402250 */
+BriefingRoom data_0044FAB0(0);
+
 extern "C" {
 extern AccountInfoType AccountInfo;
 extern int MediusWorldID;   /* the game joined (SOCOM 1's) */
