@@ -9,13 +9,14 @@
 
 /* the flare system (OVL1 bss 0x488F10; no rows yet): a flare made at a point with a size (its
  * handle back), moved, moved and sized, asked whether it shows, and released */
-struct CFlareSystem;
+struct CFlareSystem {
+    void Release(int handle);
+};
 extern CFlareSystem data_00488F10;
 extern "C" int func_00336650(CFlareSystem *system, CPnt3D *pos, float size);
 extern "C" void func_00336580(CFlareSystem *system, int handle, CPnt3D *pos);
 extern "C" void func_003365E0(CFlareSystem *system, int handle, CPnt3D *pos, float size);
 extern "C" bool func_00336520(CFlareSystem *system, int handle, void *query);
-extern "C" void func_003364D0(CFlareSystem *system, int handle);
 
 /* every flare deleted, the list emptied, inactive.
  * OPEN (4 bytes short): the target keeps three saved registers -- this, the end (this + 4) and
@@ -72,7 +73,7 @@ void CLensFlareManager::Reset()
         CLensFlareEntry *flare = *i;
 
         if (flare->m_handle >= 0)
-            func_003364D0(&data_00488F10, flare->m_handle);
+            data_00488F10.Release(flare->m_handle);
         flare->m_handle = -1;
     }
 }

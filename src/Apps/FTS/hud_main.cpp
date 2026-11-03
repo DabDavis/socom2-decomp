@@ -33,6 +33,7 @@
 #include "hud_missioncams.h"
 #include "hud_mpinfobox.h"
 #include "hud_newhudmap.h"
+#include "hud_tcm.h"
 #include "hud_teammatenames.h"
 #include "hud_weaponsel.h"
 
@@ -63,19 +64,52 @@ public:
     MENU_STATE m_menustate;   // 0x221
 };
 
+class CZFTSWeapon;
+
 /* the seal's kit (SOCOM 1's CZKit, at 0x520 there): its flag word, one bit past SOCOM 1's last
- * (m_heartbeat_enabled was bit 14) */
+ * (m_heartbeat_enabled was bit 14), and the kit's own functions the HUD calls (OVL2) */
 class CZKit {
 public:
+    void SetCurReticule(bool flag);   /* SOCOM 1's, a flag added */
+    CZFTSWeapon *GetCurItem() const;
+    bool IsUsingScope();
+    bool NVG_Enabled() const;
+    float GetCurZoom();
+
     unsigned int _b0 : 16;
     unsigned int m_socom2_b16 : 1;   // bit 16: cleared when the HUD goes off
     unsigned int _b17 : 15;
 };
 
-/* the seal as the HUD reads it: its controller (CEntity's, at 0xC0) and its kit */
-class CZSealBody {
+class CRespawnNode;
+class CEntity;
+
+/* the entities (SOCOM 1's CEntityList, CEntity::m_list): the find by id (0x29E4E0) */
+class CEntityList {
 public:
-    unsigned char _0[0xc0];
+    CEntity *GetEntityById(unsigned int id) const;
+
+    unsigned char _0[0xc];
+};
+
+/* an entity as the spectator's line reads it: its type (2 a seal) and its name (SOCOM II's
+ * layout), and its node (SOCOM 1's CEntity::GetNode, 0x29ED20) */
+class CEntity {
+public:
+    CRespawnNode *GetNode();
+
+    static CEntityList m_list;
+
+    unsigned char _0[0x10];
+    unsigned char m_type;   // 0x10
+    unsigned char _11[0x14 - 0x11];
+    const char *m_name;   // 0x14
+};
+
+/* the seal as the HUD reads it: its controller (CEntity's, at 0xC0) and its kit */
+class CZSealBody : public CEntity {
+public:
+    unsigned char _18[0xc0 - 0x18];
     CSealCtrl *m_ctrl;   // 0xc0
     unsigned char _c4[0xe1 - 0xc4];
     unsigned char _e1_0 : 4;
@@ -98,19 +132,12 @@ public:
     unsigned char m_type;   // 0x7c
 };
 
-/* the kit's own functions the HUD calls (OVL2; no rows named yet, so called as C) */
-extern "C" void func_005BE570(CZKit *kit, bool flag);   /* SOCOM 1's SetCurReticule, a flag added */
-extern "C" CZFTSWeapon *func_005C3780(CZKit *kit);     /* SOCOM 1's GetCurItem */
-extern "C" bool func_005B9990(CZKit *kit);             /* SOCOM 1's NVG_Enabled */
-extern "C" bool func_005C80F0(CZKit *kit);             /* SOCOM II's: tested with NVG_Enabled */
-extern "C" float func_005BE660(CZKit *kit);            /* SOCOM 1's GetCurZoom */
-
 /* the HUD's elements fade in from this time (SOCOM 1's g_fElemsFadeInTime, hud_main.cpp's own;
  * other units read it in SOCOM II) */
 extern float g_fElemsFadeInTime;
 
-/* MSL's toupper (MAIN; no map row yet) */
-extern "C" int func_0019AFD0(int c);
+/* MSL's toupper (MAIN) */
+extern "C" int toupper(int c);
 
 /* the app camera: only the SEAL it follows (SOCOM 1's m_entity, 0x80 further on in SOCOM II) */
 class CAppCamera {
@@ -158,56 +185,21 @@ public:
     CSaferStr();
 };
 
-/* the font's glyph map (SOCOM II's: a std::map, 0x10 bytes -- its tree's constructor 0x1FB3F0
- * and recursive destroy 0x1FE760 are out of line; the destructor tests the root at 4) */
-extern "C" void func_001FE760(void *tree, void *root);
-
-class C2DFontTree {
-public:
-    ~C2DFontTree()
-    {
-        if (m_root)
-            func_001FE760(this, m_root);
-    }
-
-    unsigned int m_size;   // 0x0
-    void *m_root;   // 0x4
-    unsigned char m_comp;   // 0x8
-    void *m_header;   // 0xc
-};
-
-class C2DFontMap {
-public:
-    C2DFontTree m_tree;   // 0x0
-};
-
-/* the HUD's font as its delete sees it (SOCOM II's C2DFont: a glyph map, a pointer vector, the
- * name). The destructor's body is one call (0x35A650, the font's unload; no row named yet), then
- * the members in reverse; the whole of it is four high, so ReleaseHUD's delete inlines it all */
-extern "C" void func_0035A650(C2DFont *font);
-
-class C2DFont {
-public:
-    ~C2DFont() { func_0035A650(this); }
-
-    C2DFontMap m_glyphs;   // 0x0
-    std::vector<void *> m_list;   // 0x10
-    unsigned char _1c[0x58 - 0x1c];
-    CSaferStr m_name;   // 0x58
-};
+/* the HUD's font as its delete sees it: c2dfont.h's C2DFont (a glyph map, a pointer vector, the
+ * name). Its destructor's body is one call (0x35A650, the font's unload; no row named yet), then
+ * the members in reverse -- ReleaseHUD's delete inlines it all, the glyph tree's recursive
+ * destroy (0x1FE760) called out of line */
+#include "../../gamez/ztwod/c2dfont.h"
 
 class UIVarMixin;
 
-/* SOCOM 1's UIVarMixin::DetachUIVar(CUIVariable *) (0x385D90; no row yet: called as the
- * placeholder until it is named) */
-extern "C" void func_00385D90(UIVarMixin *mixin, CUIVariable *var);
-
 /* a UI variable's hook (SOCOM 1's DWARF; the vtable pointer first). The destructor detaches
- * whatever is attached, as SOCOM 1's */
+ * whatever is attached, as SOCOM 1's (DetachUIVar, 0x385D90) */
 class UIVarMixin {
 public:
     UIVarMixin() { m_uivar = 0; }
-    virtual ~UIVarMixin() { func_00385D90(this, 0); }
+    virtual ~UIVarMixin() { DetachUIVar(0); }
+    void DetachUIVar(CUIVariable *var);
 
     CUIVariable *m_uivar;   // 0x4
 };   // 8 bytes
@@ -292,10 +284,9 @@ public:
     BitmapReticule();
     virtual ~BitmapReticule();
     void UnInit();
+    void OnPauseTest();
     unsigned char _18[0x47b0 - 0x18];
 } __attribute__((aligned(16)));
-
-extern "C" void func_00215180(BitmapReticule *reticule);
 
 class CTeamNames : public C2D {
 public:
@@ -358,24 +349,33 @@ public:
     unsigned char _1c[0x4e0 - 0x1c];
 };   // 0x4e0 bytes (the queues' stride)
 
-/* the mission: its four message queues (the HUD re-inits the fourth) and the online game */
+/* the message editor, the chat line (fts_missionlist.cpp's CMsgEditor, the states lane's: a C2D,
+ * 0x150 bytes -- its Clear 0x2CA0B0) */
+class CMsgEditor : public C2D {
+public:
+    void Clear();
+
+    unsigned char _18[0x150 - 0x18];
+} __attribute__((aligned(16)));
+
+/* the mission: its three message queues, the chat line (the HUD re-inits it) and the online game */
 class CMission {
 public:
+    /* the round time, if any (0x2A6AD0: positive while the network game has a timer) */
+    int GetTimeLeft();
+
     unsigned char _0[0xe0];
     float m_socom2_e0;   // 0xe0: the mission's clock (the respawn wait is measured on it)
     unsigned char _e4[0x1c0 - 0xe4];
     C2DMessage_Q m_messages;   // 0x1c0
     C2DMessage_Q m_messages2;   // 0x6a0
     C2DMessage_Q m_messages3;   // 0xb80
-    C2DMessage_Q m_messages4;   // 0x1060
-    unsigned char _1540[0x1808 - 0x1540];
+    CMsgEditor m_messages4;   // 0x1060: the chat line
+    unsigned char _11b0[0x1808 - 0x11b0];
     void *m_1808;   // 0x1808
 };
 
 extern CMission theMission;
-/* the mission's round time, if any (0x2A6AD0: positive while the network game has a timer; no
- * row named yet) */
-extern "C" int func_002A6AD0(CMission *mission);
 /* SOCOM II's spectator test, or so (0x2C2FA0: CAmmoDisplay::On asks it too; no row yet) */
 extern "C" bool func_002C2FA0();
 
@@ -528,7 +528,7 @@ void CHUD::HudText_to_upper(char *instr)
     int len = strlen(instr);
 
     for (int kk = 0; kk < len; kk++)
-        instr[kk] = func_0019AFD0(instr[kk]);
+        instr[kk] = toupper(instr[kk]);
 }
 
 /* the map items' textures (SOCOM 1's statics; ReleaseHUD lets them go) */
@@ -594,8 +594,6 @@ public:
 };
 
 void hudTurnOffScorePopup();
-struct CHudNetState;
-extern CHudNetState data_00413120;
 /* the voice recogniser (reco.cpp's; only what is called) */
 class CReco {
 public:
@@ -603,9 +601,8 @@ public:
 };
 extern CReco theReco;
 extern unsigned char data_003DC3E0;
-extern "C" void func_002370D0(CHudNetState *state);
 void tcmResetVoteAll();   // hud_tcmcmds.cpp's: VOTE ALL's choice cleared
-extern "C" void func_002CA050(C2DMessage_Q *q);
+extern "C" void func_002CA050(CMsgEditor *q);
 extern "C" void func_00363E60(float f);
 extern "C" void func_00363E50(float f);
 
@@ -622,7 +619,7 @@ extern "C" void func_00363E50(float f);
 CHUD::~CHUD()
 {
     m_actionbitmap.UnInit();
-    func_002370D0(&data_00413120);
+    theTCM.Reset();
     tcmResetVoteAll();
     if (!theNetwork.m_bNetwork)
         theReco.UnInit();
@@ -658,16 +655,8 @@ zdb::CTexture *GetTextureByName(zdb::CWorld *world, const char *name)
 
 void hudTurnOffScorePopup();
 
-/* the multiplayer HUD's state (OVL1 bss, 0x413120; no row yet): a byte at 0xDCD, a list at 0xDE0
- * (func_00237310 clears it) */
-struct CHudNetState {
-    unsigned char _0[0xdcd];
-    unsigned char m_dcd;   // 0xdcd
-};
-
-extern CHudNetState data_00413120;
-extern "C" void func_00235300(CHudNetState *state, int flag);
-extern "C" void func_00237310(CHudNetState *state);
+/* the radio command menu's (hud_tcm.h; 0x235300 the tree unit's, no row named yet) */
+extern "C" void func_00235300(CTCM *tcm, int flag);
 /* the members' clean-ups not named yet: the info box's, the spectator's, the ammo counts', the
  * lens flares' */
 extern "C" void func_00242AB0(CSpectatorInfo *info);
@@ -714,10 +703,10 @@ void CHUD::ReInit_Uninit()
     func_00242AB0(&m_spectatorinfo);
     CZPlayerMapItem::MissionEndCleanup();
     hudTurnOffScorePopup();
-    func_00235300(&data_00413120, 0);
-    data_00413120.m_dcd = 1;
+    func_00235300(&theTCM, 0);
+    theTCM.m_dcd = 1;
     m_lensflares.Reset();
-    func_00237310(&data_00413120);
+    theTCM.ClearItems();
 }
 
 extern "C" int sprintf(char *buf, const char *fmt, ...);
@@ -725,12 +714,10 @@ extern "C" int sprintf(char *buf, const char *fmt, ...);
 /* not named yet: SOCOM II's own re-inits and resets */
 extern "C" void func_003C6980();
 extern "C" void func_0022D190();
-extern "C" void func_00238710(CMPInfoBox *box);
 extern "C" void func_00242B20(CSpectatorInfo *info);
-extern "C" void func_002CA0B0(C2DMessage_Q *q);
 extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, int c, float time);
 extern "C" void func_00213610(BitmapReticule *reticule);
-extern "C" void func_002371A0(CHudNetState *state);
+extern "C" void func_002371A0(CTCM *tcm);
 
 
 /* the HUD made ready for the next mission: on, the letterbox and the piggyback strings put away,
@@ -756,7 +743,7 @@ void CHUD::ReInit_Init()
         m_teamnames.Off();
     m_pausetest.ReInit();
     m_poseBitmap.ReInit();
-    func_00238710(&m_infobox);
+    m_infobox.ReInit();
     func_00242B20(&m_spectatorinfo);
     if (theNetwork.m_bNetwork) {
         m_teamMateNames.Init();
@@ -768,7 +755,7 @@ void CHUD::ReInit_Init()
     theMission.m_messages2.m_font = m_myfont;
     theMission.m_messages.m_font = m_myfont;
     theMission.m_messages3.m_font = m_myfont;
-    func_002CA0B0(&theMission.m_messages4);
+    theMission.m_messages4.Clear();
     if (theMission.m_1808 && theNetwork.m_bNetwork) {
         CValve *max = CValve::GetByName("mp_max_rounds");
         CValve *count = CValve::GetByName("mp_round_count");
@@ -790,7 +777,7 @@ void CHUD::ReInit_Init()
     func_00213610(&m_bitmapReticule);
     m_ammodisplay.Reset();
     CameraZoom::Reset();
-    func_002371A0(&data_00413120);
+    func_002371A0(&theTCM);
     m_weaponsel.ResetHotSwap(true);
     m_lensflares.ReInit();
     m_socom2_1a0e8 = 0.0f;
@@ -815,24 +802,8 @@ static float s_piggyback_x = 324.0f;
 static float s_piggyback_y = 380.0f;
 static float s_piggyback_spacing = 18.0f;
 
-/* a C2DString's own (0x362B70, ztwod's; no row named yet) */
-extern "C" void func_00362B70(C2DString *s);
-
-/* an entity as the spectator's line reads it: its type (2 a seal) and its name (SOCOM II's
- * layout; the static list is SOCOM 1's CEntity::m_list) */
-class CEntity {
-public:
-    static unsigned char m_list[0xc];
-
-    unsigned char _0[0x10];
-    unsigned char m_type;   // 0x10
-    unsigned char _11[0x14 - 0x11];
-    const char *m_name;   // 0x14
-};
-
-/* the entity list's find by id (0x29E4E0), the string table's text by id (0x361B40) and the
- * screen's width (OVL1 bss 0x4A44C4); no rows named yet */
-extern "C" CEntity *func_0029E4E0(unsigned char *list, int id);
+/* the string table's text by id (0x361B40) and the screen's width (OVL1 bss 0x4A44C4); no rows
+ * named yet */
 const char *GetString(int id);
 extern unsigned int data_004A44C4;
 extern "C" int toupper(int c);
@@ -896,7 +867,7 @@ void CHUD::SetupGhostText(MENU_STATE menustate)
         m_piggyback_text[i].m_isCentered = 1;
         m_piggyback_text[i].SetPos((int)s_piggyback_x,
                                    (int)(s_piggyback_y + i * s_piggyback_spacing));
-        func_00362B70(&m_piggyback_text[i]);
+        m_piggyback_text[i].UpdatePos();
         if (menustate != statePauseTestMenu)
             m_piggyback_text[i].On();
         else
@@ -904,16 +875,15 @@ void CHUD::SetupGhostText(MENU_STATE menustate)
     }
 }
 
-/* the seal's node as the respawn text reads it (SOCOM 1's CEntity::GetNode, 0x29ED20; a float
- * at 0x9C zero once the seal lies dead) and the pad's type (0x2C6430: 11 for one layout of the
- * buttons; no rows named yet) */
+/* the seal's node as the respawn text reads it (CEntity::GetNode's; a float at 0x9C zero once the
+ * seal lies dead) and the pad's type (0x2C6430: 11 for one layout of the buttons; no row named
+ * yet) */
 class CRespawnNode {
 public:
     unsigned char _0[0x9c];
     float m_9c;   // 0x9c
 };
 
-extern "C" CRespawnNode *func_0029ED20(CZSealBody *seal);
 extern "C" unsigned char func_002C6430(int pad);
 
 /* the dead player's respawn lines: a ghost's (it plays the next round, may select new weapons
@@ -934,7 +904,7 @@ void CHUD::SetupRespawnText(MENU_STATE menustate)
         m_piggyback_text[1].SetString(line1, true);
         if (data_00437CE8->m_respawns) {
             float waited = theMission.m_socom2_e0 - player->m_socom2_fb4;
-            CRespawnNode *node = player ? func_0029ED20(player) : 0;
+            CRespawnNode *node = player ? player->GetNode() : 0;
             bool still = node ? node->m_9c == 0.0f : false;
 
             if (!func_002C2FA0() && still && !(waited <= 5.0f)) {
@@ -967,7 +937,7 @@ void CHUD::SetupRespawnText(MENU_STATE menustate)
         m_piggyback_text[0].SetString(line0, true);
         if (data_00437CE8->m_respawns) {
             float waited = theMission.m_socom2_e0 - player->m_socom2_fb4;
-            CRespawnNode *node = player ? func_0029ED20(player) : 0;
+            CRespawnNode *node = player ? player->GetNode() : 0;
             bool still = node ? node->m_9c == 0.0f : false;
 
             if (!func_002C2FA0() && still && !(waited <= 5.0f)) {
@@ -1001,7 +971,7 @@ void CHUD::SetupRespawnText(MENU_STATE menustate)
         m_piggyback_text[i].m_isCentered = 1;
         m_piggyback_text[i].SetPos((int)s_piggyback_x,
                                    (int)(s_piggyback_y + i * s_piggyback_spacing));
-        func_00362B70(&m_piggyback_text[i]);
+        m_piggyback_text[i].UpdatePos();
         if (menustate != statePauseTestMenu)
             m_piggyback_text[i].On();
         else
@@ -1017,7 +987,7 @@ void CHUD::SetupSpectatingText(MENU_STATE menustate)
 {
     if (menustate != stateNone)
         return;
-    CEntity *entity = func_0029E4E0(CEntity::m_list, ftsGetPlayer()->m_socom2_fc4);
+    CEntity *entity = CEntity::m_list.GetEntityById(ftsGetPlayer()->m_socom2_fc4);
 
     if (entity) {
         CEntity *seal = entity && entity->m_type == 2 ? entity : 0;
@@ -1080,7 +1050,7 @@ void CHUD::SetupSpectatorText(MENU_STATE menustate)
         m_piggyback_text[i].m_isCentered = 1;
         m_piggyback_text[i].SetPos((int)s_piggyback_x,
                                    (int)(s_piggyback_y + i * s_piggyback_spacing));
-        func_00362B70(&m_piggyback_text[i]);
+        m_piggyback_text[i].UpdatePos();
         if (menustate != statePauseTestMenu)
             m_piggyback_text[i].On();
         else
@@ -1122,7 +1092,7 @@ void CHUD::On()
     if (theNetwork.m_bNetwork)
         m_num_connected.On();
     if (!theNetwork.m_bNetwork) {
-        if (func_002A6AD0(&theMission) > 0) {
+        if (theMission.GetTimeLeft() > 0) {
             m_timertext.On();
             m_socom2_4ec0.On();
         }
@@ -1202,7 +1172,7 @@ void CHUD::Off()
         m_spectatorinfo.Off();
     }
     if (menustate == statePauseTestMenu)
-        func_00215180(&m_bitmapReticule);
+        m_bitmapReticule.OnPauseTest();
     m_ison = false;
     theMission.m_messages.Off();
     theMission.m_messages3.Off();
@@ -1224,7 +1194,7 @@ void CHUD::ZoomOut()
     CZSealBody *owner = appCamera->m_bc;
     CZKit *kit = &owner->m_kit;
 
-    func_005C3780(kit);
+    kit->GetCurItem();
     if (!theNetwork.m_bNetwork && m_newmap->m_isFullScreen)
         return;
     m_hudmode = ZOOMOUT;
@@ -1234,8 +1204,8 @@ void CHUD::ZoomOut()
     weapon.On();
     if (!owner)
         return;
-    func_005BE570(kit, false);
-    if (!func_005B9990(kit) && !func_005C80F0(kit))
+    kit->SetCurReticule(false);
+    if (!kit->IsUsingScope() && !kit->NVG_Enabled())
         m_ammodisplay.On();
     m_ammodisplay.Update();
     theMission.m_messages.SetBkgColor(128.0f, 128.0f, 128.0f);
@@ -1271,16 +1241,16 @@ void CHUD::ZoomIn()
 
     if (!owner)
         return;
-    func_005BE570(&owner->m_kit, false);
+    owner->m_kit.SetCurReticule(false);
     CZKit *kit = &owner->m_kit;
-    CZFTSWeapon *pItem = func_005C3780(kit);
+    CZFTSWeapon *pItem = kit->GetCurItem();
 
     if (pItem && pItem->m_type == 11)
         m_ammodisplay.Off();
     /* the target's block order: the night-vision path's Off first, jumping over the other's
      * (an if/else with an Off in each arm puts the then-arm's whole; a goto reproduces it) */
-    if (!func_005B9990(kit)) {
-        func_005C80F0(kit);
+    if (!kit->IsUsingScope()) {
+        kit->NVG_Enabled();
         goto off;
     }
     m_ammodisplay.Off();
@@ -1417,7 +1387,7 @@ void CHUD::SetupZoomText()
     case 10:
     case 11:
     case 12:
-        zoom = func_005BE660(kit);
+        zoom = kit->GetCurZoom();
         break;
     }
     if (zoom <= 1.01f) {
@@ -1438,7 +1408,7 @@ extern int data_00408F88;
  * (SOCOM II's: CHUD::Tick calls it; the name ours) */
 void CHUD::SetupTimerText()
 {
-    int time = func_002A6AD0(&theMission);
+    int time = theMission.GetTimeLeft();
     int secs = time % 60;
 
     if (secs != data_00408F88) {

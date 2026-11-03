@@ -4,8 +4,6 @@
 
 #include "hud_teammatenames.h"
 
-/* C2DBitmap's placement by ints (0x364660; no row yet) */
-extern "C" void func_00364660(C2DBitmap *bitmap, int x, int y, int w, int h);
 
 /* the two bitmaps' sizes (variables: read with lwc1), and their halves, which the unit's
  * initialiser (0x3FE940) computes and Tick reads (the names ours) */
@@ -60,13 +58,13 @@ void CMPTeammateNames::Init(C2DFont *font)
     m_bitmap1.SetColor(128.0f, 128.0f, 128.0f);
     m_bitmap1.SetTrans(64.0f);
     m_bitmap1.m_pTexHandle = zdb::CAssetMgr::m_assets.GetTexHandle("action_ok_talk2.tif");
-    func_00364660(&m_bitmap1, 0, 0, (int)s_bitmap1Size, (int)s_bitmap1Size);
+    m_bitmap1.SetPos(0, 0, (int)s_bitmap1Size, (int)s_bitmap1Size);
     theHUD->Add2D(&m_bitmap1, -1, true);
     m_bitmap2.Off();
     m_bitmap2.SetColor(40.0f, 96.0f, 110.0f);
     m_bitmap2.SetTrans(64.0f);
     m_bitmap2.m_pTexHandle = zdb::CAssetMgr::m_assets.GetTexHandle("hud_arrow_off2.tif");
-    func_00364660(&m_bitmap2, 0, 0, (int)s_bitmap2Size, (int)s_bitmap2Size);
+    m_bitmap2.SetPos(0, 0, (int)s_bitmap2Size, (int)s_bitmap2Size);
     theHUD->Add2D(&m_bitmap2, -1, true);
     m_socom2_5e4 = CValve::Create("DISPLAY_MP_TEAM_NAMES", (VALVE_TYPE)1)->m_value != 0;
     theHUD->Add2D(this, 1, true);
@@ -79,11 +77,11 @@ void CMPTeammateNames::Init()
     m_bitmap1.Off();
     m_bitmap1.SetColor(128.0f, 128.0f, 128.0f);
     m_bitmap1.SetTrans(64.0f);
-    func_00364660(&m_bitmap1, 0, 0, (int)s_bitmap1Size, (int)s_bitmap1Size);
+    m_bitmap1.SetPos(0, 0, (int)s_bitmap1Size, (int)s_bitmap1Size);
     m_bitmap2.Off();
     m_bitmap2.SetColor(40.0f, 96.0f, 110.0f);
     m_bitmap2.SetTrans(64.0f);
-    func_00364660(&m_bitmap2, 0, 0, (int)s_bitmap2Size, (int)s_bitmap2Size);
+    m_bitmap2.SetPos(0, 0, (int)s_bitmap2Size, (int)s_bitmap2Size);
 }
 
 /* the font as the test reads it: the glyphs' top and bottom (SOCOM 1's, 8 bytes on in SOCOM II) */

@@ -108,7 +108,6 @@ public:
 
 zdb::CTexHandle *PrepTexture(const char *name, zdb::CTextureRelocMgr *mgr);
 
-extern "C" void func_00385D90(class UIVarMixin *mixin, CUIVariable *var);
 
 /* a UI variable's value written out as text into a buffer (zui_var.cpp's, 0x3860F0; no row
  * named yet) */
@@ -117,7 +116,8 @@ extern "C" char *func_003860F0(CUIVariable *var, char *buf, int size);
 /* a UI variable's hook (SOCOM 1's DWARF; the vtable pointer first) */
 class UIVarMixin {
 public:
-    virtual ~UIVarMixin() { func_00385D90(this, 0); }
+    virtual ~UIVarMixin() { DetachUIVar(0); }
+    void DetachUIVar(CUIVariable *var);
     /* the variable changed (an override takes a new primary slot after all the tables, so the
      * secondary tables' offsets stand) */
     virtual void UpdateUIVar(CUIVariable *var);

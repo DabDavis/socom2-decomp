@@ -117,15 +117,15 @@ public:
     static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
 };
 
-/* the weapons' timer registration (SOCOM 1's CZWeapon statics; only the current value's pointer) */
+/* the weapons' timer registration (SOCOM 1's CZWeapon statics; only the current value's pointer)
+ * and the timer registered: its value, its maximum, whether it counts up (SOCOM 1's
+ * CZWeapon::RegisterTimer(float *, float, bool), 0x3D0060, the same five stores) */
 class CZWeapon {
 public:
+    static void RegisterTimer(float *pCurval, float maxval, bool bIncr);
+
     static float *m_timer_pCurval;
 };
-
-/* the weapons' timer registered: its value, its maximum, whether it counts up (SOCOM 1's
- * CZWeapon::RegisterTimer(float *, float, bool), 0x3D0060, the same five stores; unnamed yet) */
-extern "C" void func_003D0060(float *pCurval, float maxval, bool bIncr);
 
 /* the binoculars' reticle texture (ret_binocs2.tif): Init loads it, MapCompass's binocular view
  * draws with it, the destructor forgets it (the name ours) */
@@ -138,7 +138,7 @@ void hudStartDefuseTimer(bool bIncr, float t)
 {
     g_fDefuseTime = t;
     if (CZWeapon::m_timer_pCurval != &g_fDefuseTime) {
-        func_003D0060(&g_fDefuseTime, t, bIncr);
+        CZWeapon::RegisterTimer(&g_fDefuseTime, t, bIncr);
         CValve::Create(c_szDefusingValve, 1, VALVE_TEMP);
     }
 }
