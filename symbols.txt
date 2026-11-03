@@ -8778,12 +8778,12 @@
 0x004D8140 0x24 func_004D8140  # OVL2
 0x004D8168 0x100 Calculate_NbrOfStatesInDict_ForChinese_TreeCtx  # OVL2 unaligned; s1:align
 0x004D8268 0x130 Calculate_NbrOfItemNodes_In_FinalSwappedTranslatedTree_TreeCtx  # OVL2 unaligned; s1:align
-0x004D8398 0xEE0 func_004D8398  # OVL2 unaligned
-0x004D9278 0x678 func_004D9278  # OVL2 unaligned
-0x004D98F0 0x1D8 func_004D98F0  # OVL2
+0x004D8398 0xEE0 casrCreateResult  # OVL2 unaligned; s1:calls (SOCOM 1's cbTOSRecognised and cbDoSecondPassIfEnabled call casrCreateResult where ours call this row, with the same arguments -- the result's address, the frame, 1); s1:order, the head of SOCOM 1's casr object (0x348248), its static CalcWordConfidence before it not a row here -- the gcc lane, round 9c
+0x004D9278 0x678 cbIsoWordRecognised  # OVL2 unaligned; s1:calls (SOCOM 1's cbDoSecondPassIfEnabled calls cbIsoWordRecognised where ours call this row, its two byte arguments passed on); s1:order, after casrCreateResult as in SOCOM 1's casr object -- the gcc lane, round 9c
+0x004D98F0 0x1D8 cbDoSecondPassIfEnabled  # OVL2; s1:calls (the callee sequence and immediates of SOCOM 1's cbDoSecondPassIfEnabled -- casrGetParam 15, _tosControl 2 or 7, cbIsoWordRecognised or casrCreateResult and the result callback -- its casrFreeResult inlined here; moved: SOCOM 1's sits after cbDoSecondPass) -- the gcc lane, round 9c
 0x004D9AC8 0x400 casrEnableGenders  # OVL2 unaligned; s1:calls (SOCOM 1's casrSetParam, casrStart, casrStartUserWordTraining call casrEnableGenders where ours call this row, 3 call sites; the same position in SOCOM 1's object)
 0x004D9EC8 0x210 casrOpen  # OVL2 unaligned; s1:align
-0x004DA0D8 0x1C4 func_004DA0D8  # OVL2 unaligned
+0x004DA0D8 0x1C4 casrGetSessionData  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: the static after casrOpen, 0x1BC; the same callee sequence -- _tosControl 39 for the size, heap_Alloc, _tosControl 39 for the data, heap_Free on failure -- and immediates) -- the gcc lane, round 9c
 0x004DA2A0 0x158 casrClose  # OVL2; s1:align
 0x004DA3F8 0x184 casrStart  # OVL2 unaligned; s1:align
 0x004DA580 0x178 casrReadLabelInQueue  # OVL2; s1:calls
@@ -8827,29 +8827,29 @@
 0x004DE988 0x4C casrEnableLabelInQueue  # OVL2 unaligned; s1:align
 0x004DE9D8 0x60 casrDoSecondPass  # OVL2 unaligned; s1:align
 0x004DEA38 0x74 cbStateHandler  # OVL2 unaligned; s1:align
-0x004DEAB0 0x34 func_004DEAB0  # OVL2
-0x004DEAE8 0x34 func_004DEAE8  # OVL2 unaligned
+0x004DEAB0 0x34 casrSetParamNoClearErrorLog  # OVL2; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; casrSetParam between a save and a restore of last_error) -- the gcc lane, round 9c
+0x004DEAE8 0x34 casrGetParamNoClearErrorLog  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; casrGetParam so) -- the gcc lane, round 9c
 0x004DEB20 0x28 cbInitArchitectureQueues  # OVL2; s1:align
 0x004DEB48 0x10 cbRegisterInputQueue  # OVL2 unaligned; s1:exact
-0x004DEB58 0x44 func_004DEB58  # OVL2 unaligned
-0x004DEBA0 0x64 func_004DEBA0  # OVL2
-0x004DEC08 0x5C func_004DEC08  # OVL2 unaligned
-0x004DEC68 0x58 func_004DEC68  # OVL2 unaligned
+0x004DEB58 0x44 cbRegisterOutputQueue  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; the first free of the four output slots, as cbRegisterInputQueue's neighbour) -- the gcc lane, round 9c
+0x004DEBA0 0x64 cbGainRequest  # OVL2; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; the gain callback at +532 with an unsigned short) -- the gcc lane, round 9c
+0x004DEC08 0x5C cbAskCurrentGain  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; the callback at +536 with the info alone) -- the gcc lane, round 9c
+0x004DEC68 0x58 cbTOSAbnormalCond  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248, between cbStateHandler and CalcSentenceConfidence: casrSetParamNoClearErrorLog, casrGetParamNoClearErrorLog, cbInitArchitectureQueues, cbRegisterInputQueue, cbRegisterOutputQueue, cbGainRequest, cbAskCurrentGain, cbTOSAbnormalCond -- the same eight in the same order; the callback at +528, code 70 told as 4) -- the gcc lane, round 9c
 0x004DECC0 0x164 CalcSentenceConfidence  # OVL2; s1:align
-0x004DEE28 0x74 func_004DEE28  # OVL2 unaligned
-0x004DEEA0 0x80 func_004DEEA0  # OVL2
-0x004DEF20 0x74 func_004DEF20  # OVL2
-0x004DEF98 0x120 func_004DEF98  # OVL2 unaligned
-0x004DF0B8 0xC func_004DF0B8  # OVL2 unaligned
-0x004DF0C8 0x90 func_004DF0C8  # OVL2 unaligned
-0x004DF158 0x90 func_004DF158  # OVL2 unaligned
+0x004DEE28 0x74 cbTSDetected  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the talk-spurt callback at +508 with frame * 110) -- the gcc lane, round 9c
+0x004DEEA0 0x80 cbTSAfterStartDetected  # OVL2; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the same callback, the frame offset added and 1 passed) -- the gcc lane, round 9c
+0x004DEF20 0x74 cbStartDetected  # OVL2; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the start callback at +512 with (end - start) * 110) -- the gcc lane, round 9c
+0x004DEF98 0x120 cbTOSRecognised  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: after cbStartDetected, before cbSpellRecognised) and s1:calls (SOCOM 1's cbTOSRecognised calls casrCreateResult, the result callback at +516 and casrFreeResult -- inlined here: four heap_Free) -- the gcc lane, round 9c
+0x004DF0B8 0xC cbSpellRecognised  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; 0xC, the demo's size) -- the gcc lane, round 9c
+0x004DF0C8 0x90 cbNothingRecognised  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the result callback at +516 with reason 2 or 0, immediates 2 27) -- the gcc lane, round 9c
+0x004DF158 0x90 cbSpellNothingRecognised  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248: between CalcSentenceConfidence and cbDoSecondPass, in the demo's order; the same body as cbNothingRecognised) -- the gcc lane, round 9c
 0x004DF1E8 0x18 cbDoSecondPass  # OVL2 unaligned; s1:exact
 0x004DF200 0x58 cbTrain  # OVL2; s1:align
 0x004DF258 0x20 cbNewUserWordUtterance  # OVL2 unaligned; s1:exact
 0x004DF278 0x10 cbDTMFDetected  # OVL2 unaligned; s1:exact
 0x004DF288 0x40 cbGenderDisable  # OVL2 unaligned; s1:align
-0x004DF2C8 0x154 func_004DF2C8  # OVL2 unaligned
-0x004DF420 0x4C func_004DF420  # OVL2
+0x004DF2C8 0x154 Set_EndBackTraceMask_In_StateDict  # OVL2 unaligned; s1:order (SOCOM 1's casr object at 0x348248 ends Set_EndBackTraceMask_In_StateDict, CopyContextInfo; ours cbGenderDisable, this row, CopyContextInfo) and its immediates (the 0xFF and 0xF/5/9/13 tests, six 0xFFFD masks); smaller than SOCOM 1's 0x23C -- the gcc lane, round 9c
+0x004DF420 0x4C CopyContextInfo  # OVL2; s1:order (the last of SOCOM 1's casr object) and the same body -- 0x4C, heap_Alloc of the record's size and memcpy -- the gcc lane, round 9c
 0x004DF470 0x424 func_004DF470  # OVL2
 0x004DF898 0x488 func_004DF898  # OVL2 unaligned
 0x004DFD20 0x330 func_004DFD20  # OVL2
@@ -8887,24 +8887,24 @@
 0x004E4418 0x3C ConstructDelayBlock  # OVL2 unaligned; s1:align
 0x004E4458 0xF4 ControlDelayBlock  # OVL2 unaligned; s1:align
 0x004E4550 0xD8 InitDelayBlock  # OVL2; s1:align
-0x004E4628 0x1D0 func_004E4628  # OVL2 unaligned
-0x004E47F8 0x248 InitViterbi  # OVL2 unaligned; s1:align
+0x004E4628 0x1D0 AllocateBacktrace@dpgenuw  # OVL2 unaligned; s1:order (SOCOM 1's DpGenUw object at 0x352770: first, the same body; called by DynProgUserWords and func_004E5538 as there by DynProgUserWords and ControlDpGenUw) -- the gcc lane, round 9c
+0x004E47F8 0x248 InitViterbi@dpgenuw  # OVL2 unaligned; s1:align; s1:order (SOCOM 1's DpGenUw object at 0x352770: second; a static the DpScoreUw object defines too) -- the gcc lane, round 9c
 0x004E4A40 0x120 InitDpGenUw  # OVL2; s1:align
-0x004E4B60 0x260 func_004E4B60  # OVL2
+0x004E4B60 0x260 SendResultUserWords  # OVL2; s1:order (SOCOM 1's DpGenUw object at 0x352770: fourth, after InitDpGenUw); s1:slot (ConstructDpGenUw stores it at +148, the send-result hook ControlDpGenUw's command 4 calls, as the demo's does) -- the gcc lane, round 9c
 0x004E4DC0 0x61C DynProgUserWords  # OVL2; s1:calls (SOCOM 1's DpGenUwProcess calls DynProgUserWords where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E53E0 0x158 DpGenUwProcess  # OVL2; s1:align
 0x004E5538 0x12C func_004E5538  # OVL2 unaligned
-0x004E5668 0x27C ControlDpScoreUw  # OVL2 unaligned; s1:calls
+0x004E5668 0x27C ControlDpGenUw  # OVL2 unaligned; s1:order (SOCOM 1's DpGenUw object at 0x352770: after DpGenUwProcess, before ConstructDpGenUw, the same switch -- the call-site vote's ControlDpScoreUw is the next object's, 0x4E67B0); s1:slot (ConstructDpGenUw passes it as the control) -- the gcc lane, round 9c
 0x004E58E8 0x5C ConstructDpGenUw  # OVL2 unaligned; s1:align
-0x004E5948 0x8 func_004E5948  # OVL2 unaligned
+0x004E5948 0x8 IdleDpGenUwProcess  # OVL2 unaligned; s1:order (SOCOM 1's DpGenUw object at 0x352770: after ConstructDpGenUw, the same empty body); s1:slot (ConstructDpGenUw passes it as the process) -- the gcc lane, round 9c
 0x004E5950 0x10 MakeUserWordsActiveDist  # OVL2; s1:exact
-0x004E5960 0x1D4 func_004E5960  # OVL2
-0x004E5B38 0x234 func_004E5B38  # OVL2 unaligned
+0x004E5960 0x1D4 AllocateBacktrace@dpscoreuw  # OVL2; s1:order (SOCOM 1's DpScoreUw object at 0x3539F0: first, the same body; called by SendResultScoreUserWords, DynProgScoreUserWords and InitScoreUserWords as there) -- the gcc lane, round 9c
+0x004E5B38 0x234 InitViterbi@dpscoreuw  # OVL2 unaligned; s1:order (SOCOM 1's DpScoreUw object at 0x3539F0: second, the same body; called by ControlDpScoreUw's command 1 as there) -- the gcc lane, round 9c
 0x004E5D70 0x28C SendResultScoreUserWords  # OVL2; s1:align
 0x004E6000 0x4DC DynProgScoreUserWords  # OVL2; s1:calls (SOCOM 1's DpScoreUwProcess calls DynProgScoreUserWords where ours call this row, 1 call site; the same position in SOCOM 1's object)
 0x004E64E0 0x12C DpScoreUwProcess  # OVL2; s1:align
-0x004E6610 0x1A0 func_004E6610  # OVL2
-0x004E67B0 0x22C func_004E67B0  # OVL2
+0x004E6610 0x1A0 InitScoreUserWords  # OVL2; s1:order (SOCOM 1's DpScoreUw object at 0x3539F0: sixth, after DpScoreUwProcess, the same body; called by ControlDpScoreUw's command 4 as there) -- the gcc lane, round 9c
+0x004E67B0 0x22C ControlDpScoreUw  # OVL2; s1:order (SOCOM 1's DpScoreUw object at 0x3539F0: seventh, before ConstructDpScoreUw, the same switch; s1:slot, ConstructDpScoreUw passes it as the control) -- the gcc lane, round 9c
 0x004E69E0 0x5C ConstructDpScoreUw  # OVL2; s1:align
 0x004E6A40 0x8 IdleDpScoreUwProcess  # OVL2; s1:ref (taken by address where SOCOM 1 takes IdleDpScoreUwProcess's)
 0x004E6A48 0xA8 InitDpScoreUw  # OVL2 unaligned; s1:align
