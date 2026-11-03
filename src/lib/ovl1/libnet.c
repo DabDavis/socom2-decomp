@@ -6,14 +6,18 @@
  * buffer too small ("CallRpc() in Libnet send:%d, recv:%d, max:%d"); a failed call is -542
  * (sceINETE_RPC), a short buffer -543. A newer libnet than the demo's object 0x4223A0 (libmrpc,
  * the marshalling helpers, more calls), its functions in the same order: the names by that order
- * and the RPC numbers' (s1:order); the helpers and the calls the demo lacks keep placeholders. */
+ * and the RPC numbers' (s1:order); the helpers and the calls the demo lacks keep placeholders. Its
+ * init and term moved behind the calls and were renamed: sceLibnetInitialize prints its own name,
+ * sceLibnetTerminate is the demo's libnet_term's unbind loop. The whole object is byte-exact (44). */
 
 #include <stdarg.h>
 
 typedef unsigned int u_int;
 
 typedef struct {
-	int pad[12];
+	int pad[9];
+	void *serve;                    /* 0x24: sceSifClientData's serve, set once bound */
+	int pad28[2];
 	int bufsize;                    /* 0x30: net_buf's bytes */
 } LIBNET_CD;                            /* sceSifMClientData and the buffer's size */
 
@@ -24,6 +28,9 @@ typedef struct {
 extern int scePrintf(const char *fmt, ...);
 extern int sceSifMCallRpc(void *cd, int fno, int mode, void *send, int ssize, void *recv, int rsize,
                           void *end, void *end_arg);
+extern int sceSifMBindRpcParam(void *cd, u_int num, u_int mode, u_int buffersize, u_int stacksize,
+                               int priority);
+extern int sceSifMUnBindRpc(void *cd, u_int mode);
 extern void *memcpy(void *d, const void *s, unsigned int n);
 extern unsigned int strlen(const char *s);
 extern char *strcpy(char *d, const char *s);
@@ -209,12 +216,192 @@ int sceInetClose(LIBNET_CD *cd, u_int *buf, int s, int ms)
 	return buf[0];
 }
 
+int sceInetRecv(LIBNET_CD *cd, u_int *buf, int s, void *ptr, int count, int *pflags, int ms)
+{
+	int ret;
+
+	buf[0] = s;
+	if (pflags != 0)
+		buf[1] = *pflags;
+	else
+		buf[1] = 0;
+	buf[3] = ms;
+	buf[2] = count;
+	if (func_00245AD8(cd, 4, buf, 16, count + 8) < 0)
+		return -542;
+	if ((int)buf[0] < 0)
+		return buf[0];
+	if (pflags != 0)
+		*pflags = buf[1];
+	ret = func_00245BB0(cd, ptr, buf, 2, buf[0]);
+	if (ret < 0)
+		return ret;
+	return buf[0];
+}
+
+int sceInetRecvFrom(LIBNET_CD *cd, u_int *buf, int s, void *ptr, int count, int *pflags,
+                    sceInetAddress_t *paddr, int *pport, int ms)
+{
+	int ret;
+
+	buf[0] = s;
+	if (pflags != 0)
+		buf[1] = *pflags;
+	else
+		buf[1] = 0;
+	buf[2] = count;
+	buf[3] = ms;
+	if (func_00245AD8(cd, 13, buf, 16, count + 28) < 0)
+		return -542;
+	if ((int)buf[0] < 0)
+		return buf[0];
+	if (pflags != 0)
+		*pflags = buf[1];
+	ret = func_00245BB0(cd, paddr, buf, 2, 16);
+	if (ret < 0)
+		return ret;
+	if (pport != 0)
+		*pport = buf[6];
+	ret = func_00245BB0(cd, ptr, buf, 7, buf[0]);
+	if (ret < 0)
+		return ret;
+	return buf[0];
+}
+
+int sceInetSend(LIBNET_CD *cd, u_int *buf, int s, void *ptr, int count, int *pflags, int ms)
+{
+	int ret;
+
+	buf[0] = s;
+	if (pflags != 0)
+		buf[1] = *pflags;
+	else
+		buf[1] = 0;
+	buf[3] = ms;
+	buf[2] = count;
+	ret = func_00245B58(cd, buf, 4, ptr, count);
+	if (ret < 0)
+		return ret;
+	if (func_00245AD8(cd, 5, buf, count + 16, 8) < 0)
+		return -542;
+	if (pflags != 0)
+		*pflags = buf[1];
+	return buf[0];
+}
+
+int sceInetSendTo(LIBNET_CD *cd, u_int *buf, int s, void *ptr, int count, int *pflags,
+                  sceInetAddress_t *paddr, int port, int ms)
+{
+	int ret;
+
+	buf[0] = s;
+	if (pflags != 0)
+		buf[1] = *pflags;
+	else
+		buf[1] = 0;
+	buf[2] = count;
+	buf[3] = ms;
+	buf[4] = port;
+	ret = func_00245B58(cd, buf, 5, paddr, 16);
+	if (ret < 0)
+		return ret;
+	ret = func_00245B58(cd, buf, 9, ptr, count);
+	if (ret < 0)
+		return ret;
+	if (func_00245AD8(cd, 14, buf, count + 36, 8) < 0)
+		return -542;
+	if (pflags != 0)
+		*pflags = buf[1];
+	return buf[0];
+}
+
 int sceInetAbort(LIBNET_CD *cd, u_int *buf, int s, int flags)
 {
 	buf[0] = s;
 	buf[1] = flags;
 	if (func_00245AD8(cd, 15, buf, 8, 4) < 0)
 		return -542;
+	return buf[0];
+}
+
+int sceInetControl(LIBNET_CD *cd, u_int *buf, int s, int code, void *ptr, int len)
+{
+	int ret;
+
+	buf[0] = s;
+	buf[1] = code;
+	buf[2] = len;
+	ret = func_00245B58(cd, buf, 3, ptr, len);
+	if (ret < 0)
+		return ret;
+	if (func_00245AD8(cd, 19, buf, len + 12, len + 12) < 0)
+		return -542;
+	ret = func_00245BB0(cd, ptr, buf, 3, len);
+	if (ret < 0)
+		return ret;
+	return buf[0];
+}
+
+int sceInetGetInterfaceList(LIBNET_CD *cd, u_int *buf, int *ids, int n)
+{
+	int ret;
+
+	buf[0] = n;
+	if (func_00245AD8(cd, 8, buf, 4, n * 4 + 4) < 0)
+		return -542;
+	if ((int)buf[0] < 0)
+		return buf[0];
+	ret = func_00245BB0(cd, ids, buf, 1, buf[0] * 4);
+	if (ret < 0)
+		return ret;
+	return buf[0];
+}
+
+int sceInetInterfaceControl(LIBNET_CD *cd, u_int *buf, int id, int code, void *ptr, int len)
+{
+	int ret;
+
+	buf[0] = id;
+	buf[1] = code;
+	buf[2] = len;
+	ret = func_00245B58(cd, buf, 3, ptr, len);
+	if (ret < 0)
+		return ret;
+	if (func_00245AD8(cd, 9, buf, len + 12, len + 12) < 0)
+		return -542;
+	ret = func_00245BB0(cd, ptr, buf, 3, len);
+	if (ret < 0)
+		return ret;
+	return buf[0];
+}
+
+int sceInetGetRoutingTable(LIBNET_CD *cd, u_int *buf, void *p, int n)
+{
+	int ret;
+
+	buf[0] = n;
+	if (func_00245AD8(cd, 10, buf, 4, n * 72 + 4) < 0)
+		return -542;
+	if ((int)buf[0] < 0)
+		return buf[0];
+	ret = func_00245BB0(cd, p, buf, 1, buf[0] * 72);
+	if (ret < 0)
+		return ret;
+	return buf[0];
+}
+
+int sceInetGetNameServers(LIBNET_CD *cd, u_int *buf, void *p, int n)
+{
+	int ret;
+
+	buf[0] = n;
+	if (func_00245AD8(cd, 11, buf, 4, n * 16 + 4) < 0)
+		return -542;
+	if ((int)buf[0] < 0)
+		return buf[0];
+	ret = func_00245BB0(cd, p, buf, 1, buf[0] * 16);
+	if (ret < 0)
+		return ret;
 	return buf[0];
 }
 
@@ -305,6 +492,46 @@ int func_002469C0(LIBNET_CD *cd, u_int *buf, int arg, int *inout)
 	if (inout != 0)
 		*inout = buf[1];
 	return buf[0];
+}
+
+int sceLibnetInitialize(LIBNET_CD *cd, u_int buffersize, u_int stacksize, int priority)
+{
+	int i;
+
+	if (buffersize < 128)
+		return -543;
+	if (buffersize != ((buffersize + 63) & ~63)) {
+		scePrintf("sceLibnetInitialize() buffersize\n");
+		return -543;
+	}
+	while (1) {
+		if (sceSifMBindRpcParam(cd, 0x80001201, 0, buffersize, stacksize, priority) < 0)
+			return -540;
+		if (cd->serve != 0)
+			break;
+		i = 0x10000;
+		while (i--)
+			;
+	}
+	return 0;
+}
+
+int sceLibnetTerminate(LIBNET_CD *cd)
+{
+	int ret;
+	int i;
+
+	while (1) {
+		ret = sceSifMUnBindRpc(cd, 0);
+		if (ret < 0)
+			return -540;
+		if (ret == 1)
+			break;
+		i = 0x10000;
+		while (i--)
+			;
+	}
+	return 0;
 }
 
 int func_00246C58(LIBNET_CD *cd, u_int *buf, int *out, int n, int fno)

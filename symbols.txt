@@ -1413,19 +1413,19 @@
 0x001E84C8 0x68 SidAdvanceBuffer  # OVL1 unaligned; s1:exact
 0x001E8530 0xC8 func_001E8530  # OVL1
 0x001E85F8 0x88 func_001E85F8  # OVL1 unaligned
-0x001E8680 0xBC func_001E8680  # OVL1
-0x001E8740 0xCC func_001E8740  # OVL1
+0x001E8680 0xBC ezNetCnfGetCount  # OVL1; by its own message ('ezNetCnfGetCount returned %d'; libezcnf, RPC 0 to the eznetcnf server)
+0x001E8740 0xCC ezNetCnfGetCombinationList  # OVL1; by its own message ('ezNetCnfGetCombinationList returned %d'; RPC 1)
 0x001E8810 0x7C ezNetCnfGetCombination  # OVL1; tu: libezcnf.c~ (1.0 beta); its own messages ('ezNetCnfGetCombination: pList is empty', '... invalid Combination number (%d)'), libezcnf.c 1.0 beta (the gcc lane)
 0x001E8890 0x7C ezNetCnfGetDefault  # OVL1; its own messages ('ezNetCnfGetDefault: pList is empty', '... defaultNumber exceeds listLength (%d)'), libezcnf.c 1.0 beta (the gcc lane)
-0x001E8910 0xD4 func_001E8910  # OVL1
-0x001E89E8 0xC8 func_001E89E8  # OVL1 unaligned
-0x001E8AB0 0x88 func_001E8AB0  # OVL1
-0x001E8B38 0x120 func_001E8B38  # OVL1 unaligned
-0x001E8C58 0xC4 func_001E8C58  # OVL1 unaligned
-0x001E8D20 0xA0 func_001E8D20  # OVL1
-0x001E8DC0 0x74 func_001E8DC0  # OVL1
-0x001E8E38 0x74 func_001E8E38  # OVL1 unaligned
-0x001E8EB0 0x74 func_001E8EB0  # OVL1
+0x001E8910 0xD4 ezNetCnfGetNetcnfifData  # OVL1; by its own message ('ezNetCnfGetNetcnfifData returned %d'; RPC 2)
+0x001E89E8 0xC8 initEzNetCtl  # OVL1 unaligned; s1:order (the demo's libezctl object 0x425EA0 opens with initEzNetCtl, 0xC8 as here: the eznetctl module search and RPC 0x75488909 bind; the demo reaches its flag by $gp)
+0x001E8AB0 0x88 exitEzNetCtl  # OVL1; s1:order (the demo's libezctl object: after initEzNetCtl; the eznetctl module stopped and unloaded)
+0x001E8B38 0x120 ezNetCtlSetProperties  # OVL1 unaligned; by its own message ('ezNetCtlSetProperties returned %d') and s1:order (the demo's libezctl object, 0x120 as here)
+0x001E8C58 0xC4 ezNetCtlSetCombination  # OVL1 unaligned; by its own message ('ezNetCtlSetCombination returned %d') and s1:order (RPC 2 as the demo's)
+0x001E8D20 0xA0 ezNetCtlGetStatus  # OVL1; by its own message ('ezNetCtlGetStatus returned %d') and s1:order (RPC 3 as the demo's)
+0x001E8DC0 0x74 ezNetCtlSetAutoMode  # OVL1; s1:order (the demo's libezctl object: after ezNetCtlGetStatus, RPC 4 and 0x74 as here)
+0x001E8E38 0x74 ezNetCtlUpInterface  # OVL1 unaligned; s1:order (the demo's libezctl object: RPC 5 and 0x74 as here)
+0x001E8EB0 0x74 ezNetCtlDownInterface  # OVL1; s1:order (the demo's libezctl object: RPC 6 and 0x74 as here)
 0x001E8F28 0xAC dmaIOP  # OVL1 unaligned; tu: libezctl.c (1.0 beta); s1:calls (exact but for its two printf calls, which are scePrintf here)
 0x001E8FE0 0x138 func_001E8FE0  # OVL1
 0x001E9120 0x94 func_001E9120  # OVL1
@@ -2417,8 +2417,8 @@
 0x00246930 0x44 func_00246930  # OVL1
 0x00246978 0x44 func_00246978  # OVL1 unaligned
 0x002469C0 0x74 func_002469C0  # OVL1
-0x00246A38 0xD4 func_00246A38  # OVL1 unaligned
-0x00246B10 0x7C func_00246B10  # OVL1
+0x00246A38 0xD4 sceLibnetInitialize  # OVL1 unaligned; by its own message ('sceLibnetInitialize() buffersize'); the demo's libnet object opens with its older libnet_init (the same bind loop, RPC 0x80001201)
+0x00246B10 0x7C sceLibnetTerminate  # OVL1; by body: the demo's libnet_term (sceSifMUnBindRpc until it returns 1, the 0x10000 delay between), here returning -540 on failure; the newer release's pair of sceLibnetInitialize, whose own message names it
 0x00246B90 0x40 func_00246B90  # OVL1
 0x00246BD0 0x40 func_00246BD0  # OVL1
 0x00246C10 0x44 func_00246C10  # OVL1
@@ -2456,8 +2456,8 @@
 0x002481F8 0x80 func_002481F8  # OVL1 unaligned
 0x00248278 0x7C libnetb_alloc_bufs  # OVL1 unaligned; s1:callee (sceBInetCreate calls it where the demo's calls libnetb_alloc_bufs; before libnetb_free_bufs as there)
 0x002482F8 0x54 libnetb_free_bufs  # OVL1 unaligned; s1:callee
-0x00248350 0xA8 func_00248350  # OVL1
-0x002483F8 0xA8 func_002483F8  # OVL1 unaligned
+0x00248350 0xA8 libnetb_prepare_async_receive  # OVL1; s1:order (the demo's libnetb object 0x423D38: after libnetb_free_bufs; RPC 100, then libnetb_udp_init_buffer, as the demo's)
+0x002483F8 0xA8 libnetb_prepare_async_send  # OVL1 unaligned; s1:order (the demo's libnetb object: after libnetb_prepare_async_receive; RPC 101, then libnetb_udp_init_buffer, as the demo's)
 0x002484A0 0x12C func_002484A0  # OVL1
 0x002485D0 0x144 func_002485D0  # OVL1
 0x00248718 0x20 func_00248718  # OVL1 unaligned
@@ -4956,8 +4956,8 @@
 0x002F5700 0x238 func_002F5700  # OVL1
 0x002F5940 0xE4 func_002F5940  # OVL1
 0x002F5A30 0xD8 clear__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 11 (the chat deque's clear: its pop_front 0x2F51E0 calls it when one line is left, as the lobby queue's pop_front 0x2E1560 calls its clear 0x2E1B20; it leaves start_ at 4, half of the 8-line block)
-0x002F5B10 0x1F8 func_002F5B10  # OVL1
-0x002F5D10 0x13C func_002F5D10  # OVL1
+0x002F5B10 0x1F8 destroy__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iteratorQ33std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>8iterator  # OVL1; the MSL headers round 13: the chat deque's range destroy, block by block (clear 0x2F5A30 and the teardown 0x2F62B0 call it with begin and end); include/deque's destroy, open (0x20C against 0x1F8: the block iterators' difference called out of line, the by-value iterators copied in)
+0x002F5D10 0x13C make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>FUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, non-const (clear 0x2F5A30 and the teardown 0x2F62B0 call it twice each with (result, this, n)); include/deque's make_iterator, open as every instance's (the block iterator built in memory)
 0x002F5E50 0x70 __dt__10CChatQueueFv  # OVL1; ours, the online lane round 10 (the chat queues' destructor: __sinit_zNetMediusChat.cpp registers it for both)
 0x002F5EC0 0x10 empty__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>CFv  # OVL1; ours, the online lane round 10 (the chat queue's empty(), out of line from the initialiser; byte-exact)
 0x002F5ED0 0x8 pop__Q23std100queue<17MediusChatMessage,Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>>Fv  # OVL1; ours, the online lane round 10 (the chat queue's pop(), `j pop_front`, out of line from the initialiser; byte-exact)
@@ -4976,7 +4976,7 @@
 0x002F6600 0x444 func_002F6600  # OVL1
 0x002F6A50 0x8 func_002F6A50  # OVL1
 0x002F6A60 0x8 func_002F6A60  # OVL1
-0x002F6A70 0x144 func_002F6A70  # OVL1
+0x002F6A70 0x144 make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>CFUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, const (the copy constructor 0x2F5F80 calls it for x's end and begin); include/deque's make_iterator, open as every instance's
 0x002F6BC0 0x138 func_002F6BC0  # OVL1
 0x002F6D00 0x6C func_002F6D00  # OVL1
 0x002F6D70 0xBC CountGamePlayers__Fv  # OVL1; ours (a lobby state handler 0x2EF3C0 calls it: with 'late_joiner' on and the net game in progress, MediusGetGamePlayers asked once at a time, 0x44FA88 the flag)
@@ -5862,15 +5862,15 @@
 0x00331B20 0x1FC ReadToken__8CRdrFileFP6CRdrIOPP5_zrdr  # OVL1; s1:order by hand (SOCOM 1's ReadToken: ';' comments skipped to the line's end, a token ended by '(' ')' or white space and made a value by MakeUnion (0x331D20), a quoted string read whole, the 800-byte limit; SOCOM II reads through the CRdrIO passed in (fread, slot 0x24) where SOCOM 1 read its file stack's top) -- the rdr lane
 0x00331D20 0x100 MakeUnion__8CRdrFileFPCcb  # OVL1; s1:order by hand (SOCOM 1's MakeUnion, the same 0x100: a token made an integer (strtol over all of it), else a real (strtod), else a string through the file's CSTable::CreateString at this+8; the value from the allocator 0x335BC0 where SOCOM 1's called _calloc) -- the rdr lane
 0x00331E20 0xC func_00331E20  # OVL1
-0x00331E30 0x94 func_00331E30  # OVL1
-0x00331ED0 0x54 func_00331ED0  # OVL1
-0x00331F30 0x54 func_00331F30  # OVL1
-0x00331F90 0x54 func_00331F90  # OVL1
-0x00331FF0 0x54 func_00331FF0  # OVL1
-0x00332050 0x8C func_00332050  # OVL1
+0x00331E30 0x94 at__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00331ED0 0x54 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00331F30 0x54 find_last_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00331F90 0x54 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00331FF0 0x54 find_last_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00332050 0x8C __eq<c,Q23std14char_traits<c>,Q23std12allocator<c>>__3stdFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>RCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>_b  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x003320E0 0xE4 func_003320E0  # OVL1
-0x003321D0 0x38 func_003321D0  # OVL1
-0x00332210 0x38 func_00332210  # OVL1
+0x003321D0 0x38 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Ui  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00332210 0x38 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Ui  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00332250 0xD0 func_00332250  # OVL1
 0x00332320 0xD0 func_00332320  # OVL1
 0x003323F0 0x168 func_003323F0  # OVL1
@@ -5880,10 +5880,10 @@
 0x00332AD0 0x7C func_00332AD0  # OVL1
 0x00332B50 0x1A0 func_00332B50  # OVL1
 0x00332CF0 0xFC func_00332CF0  # OVL1
-0x00332DF0 0xB8 func_00332DF0  # OVL1
-0x00332EB0 0xD0 func_00332EB0  # OVL1
-0x00332F80 0xC8 func_00332F80  # OVL1
-0x00333050 0xC8 func_00333050  # OVL1
+0x00332DF0 0xB8 find_first_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00332EB0 0xD0 find_last_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00332F80 0xC8 find_first_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
+0x00333050 0xC8 find_last_not_of__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFPCcUiUi  # OVL1; the MSL headers round 13: include/string's (byte-exact as a probe, build/p13/strfind.cpp; zrdr_parse.cpp's preprocessor/zrdr_read call it)
 0x00333120 0xC4 func_00333120  # OVL1
 0x003331F0 0x68 func_003331F0  # OVL1
 0x00333260 0xC4 func_00333260  # OVL1
@@ -6057,7 +6057,7 @@
 0x0033E4D0 0x40 __ct__12CSaveManagerFP3CIO  # OVL1; s1:exact
 0x0033E510 0x178 func_0033E510  # OVL1
 0x0033E690 0xF4 func_0033E690  # OVL1
-0x0033E790 0x58 func_0033E790  # OVL1
+0x0033E790 0x58 splice__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>FQ33std42__list_deleter<PCv,Q23std14allocator<PCv>>19generic_iterator<0>RQ23std42__list_deleter<PCv,Q23std14allocator<PCv>>  # OVL1; the MSL headers round 13: the pointer lists' splice(position, x), include/list's (SOCOM 1's 0x1DAF10 shape); vis_texfx.cpp's tail emits it byte-exact (its insert(position, n, x) calls it), 0x33E690 calls this copy
 0x0033E7F0 0x58 func_0033E7F0  # OVL1
 0x0033E850 0x1B4 func_0033E850  # OVL1
 0x0033EA10 0x154 func_0033EA10  # OVL1
@@ -11770,13 +11770,13 @@
 0x0060C220 0x1A4 TickStep__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the group's first step ticked -- its actions started on its first frame (the clock at 0x38 zeroed, the step then 2), then ticked on the clock (m_dT added) until all are done (3); each action's member by index or 0; Tick (0x60C3E0) calls it; the name ours
 0x0060C3D0 0x10 Tick__Q28CAiGroup6actionFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::action's vtable (0x669EE0) -- done at once (the state at 0xC set to 2 and returned); the signature the overrides' (the member's AI in a1, the step's clock in $f12); the name ours
 0x0060C3E0 0x6E4 Tick__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): a group's frame (TickGroup 0x60E410 calls it, its bool the done flag): the members sent to their cells by the group's state, the current step ticked (0x60C220) -- the name ours
-0x0060CAD0 0xF4 func_0060CAD0  # OVL2
+0x0060CAD0 0xF4 FaceXZ__FPC6CPnt3DPC6CPnt3DP7CMatrix  # OVL2; by hand (the kit lane, round 17): the matrix at a point facing another in the ground plane (the unit matrix, the xz direction normalised into rows 0 and 2, the point as the translation) -- CAiGroup::Tick (0x60C3E0) teleports a member at its cell facing the group's centre with it; a static of ai_group.cpp, the name ours
 0x0060CBD0 0x164 Start__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the group begun (state 0 only): each member's bit 19 set to !(flag 1), bit 21 set and its stack's bits updated (0x5F7470); the goal cell's centre fetched when it is not the invalid cell (state 1), else state 5 -- CTGroup::Begin calls it last; the name ours
 0x0060CD40 0x78 SetMemberLoc__8CAiGroupFUiRC9CAiMapLoc  # OVL2; by hand (the kit lane, round 16): CTGroup::Begin's per-member cell -- below the member count, the vector<CAiMapLoc> at 0x44 resized to it when short (0x51C4A0), the cell stored; the name ours
 0x0060CDC0 0x8 EndStep__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the step being built (0x40) cleared -- CTGroup::Begin calls it after each step's actions; the name ours
 0x0060CDD0 0x6C AddStep__8CAiGroupFUi  # OVL2; by hand (the kit lane, round 16): a new step pushed on the list at 0x28 (its insert 0x60EBF0, the temporary's destructor 0x60DA50) and made current (0x40, the last node's value); CTGroup::Begin passes the step's action count, unread; the name ours
 0x0060CE40 0x1E0 RemoveMember__8CAiGroupFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 16): a member let go -- its states popped to a hold and cleared, its group id cleared, its look and target-list flags reset, then std::remove over the member vector (0x60E930) and the erase (0x53AAC0); Abort calls it for the first member while any is left; the name ours
-0x0060D020 0x25C func_0060D020  # OVL2
+0x0060D020 0x25C AddMember__8CAiGroupFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 17): an AI taken into a group (CTGroup::Begin 0x5D9840 calls it) unless it is in one -- a suspension popped (unless the byte 0x3DF188), two resets, a hold pushed (flags 3) and its flags set (0x108), the AI pushed on the members (0x5192E0), its bit 0 at 0x264 cleared, SetGroup inlined, its mode 2, goal cleared, stance stand, target none; the bool whether it joined; the name ours
 0x0060D280 0x84 Abort__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): the steps stopped (0x60D4B0) and cleared (0x60EA90), the group's ZAnim at 0x54 activated, every member let go (RemoveMember 0x60CE40 on the first while any is left) -- the SEAL AI's death, stun, weapon events and KillGroup call it; the name ours
 0x0060D310 0xE8 __dt__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): CAiGroup's destructor (not virtual: delete calls it with 1) -- the members' destructors, each a class over its container (one this-test more than the container's chain): the cell vector's deleter (0x515200), the step list's erase (0x60EA90), the member vector's data deleted
 0x0060D400 0xA8 __ct__8CAiGroupFv  # OVL2; by hand (the kit lane, round 16): CAiGroup's constructor -- the flags, the member vector, the step list (its deleter's constructor called, 0x60ED20), the current step, the cell vector and three words zeroed, the id the next of 0x3DF1E8, the centre CPnt3D::zero, the ring 10; Create (0x60E610) news 0x5C bytes for it
@@ -11793,9 +11793,9 @@
 0x0060D8F0 0xB0 AddAnim__8CAiGroupFisff  # OVL2; by hand (the kit lane, round 16): an act_anim (a member's anim type, a length, a time) added to the current step; CTGroup::Begin's action kind 0x100; the name ours
 0x0060D9A0 0xB0 AddSound__8CAiGroupFiPCcf  # OVL2; by hand (the kit lane, round 16): a member's sound (an act_sound) added to the current step; CTGroup::Begin's action kind 0x200; the name ours
 0x0060DA50 0x104 __dt__Q28CAiGroup4stepFv  # OVL2; by hand (the kit lane, round 16): a group step's destructor -- a pointer list of actions, each deleted through its virtual destructor, then cleared and the base list's chain (three this-tests); AddStep (0x60CDD0) calls it with -1 on its temporary, the list's erases (0x60EA90, 0x60EB60) per element; the class name ours
-0x0060DB60 0x18C func_0060DB60  # OVL2
-0x0060DCF0 0x138 func_0060DCF0  # OVL2
-0x0060DE30 0x110 func_0060DE30  # OVL2
+0x0060DB60 0x18C Tick__Q28CAiGroup10act_cameraFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 17): slot +0xC of CAiGroup::act_camera's vtable (0x669EC0) -- done at once unless the ticking group (0x44D678) runs cameras (flag 1); once the step's clock reaches the move's time, appCamera's camera node (0xB4) set to the identity at the start point (0x60DE30), turned by the end point's angles (flag 0x200: RotMatrixY, X, Z) or aimed at it (0x100: 0x60DCF0)
+0x0060DCF0 0x138 LookAt__FPC6CPnt3DPC6CPnt3DP7CMatrix  # OVL2; by hand (the kit lane, round 17): CAppCamera::LookAt's body (0x29BC90: Sub, Normalize twice, sceVu0OuterProduct, the rows) without the eye's store -- act_camera::Tick (0x60DB60) aims the camera matrix at the end point with it; a static of ai_group.cpp, the name ours
+0x0060DE30 0x110 Get__Q28CAiGroup8campointCFP8CAiGroupP6CPnt3D  # OVL2; by hand (the kit lane, round 17): a group camera point's world position -- flag 0x100 it has one; 0x400 the member of index flags & 0xFF (GetMember inlined) transforms it through its entity's node matrix (CMatrix::Transform, n 1), 0x800 it is added to the group's centre at 0xC (operator+ inlined), else copied; act_camera::Tick (0x60DB60) calls it for both ends; the names ours
 0x0060DF40 0x74 Tick__Q28CAiGroup9act_zanimFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::act_zanim's vtable (0x669F00) -- the ZAnim at 0x10 activated once the step's clock reaches the action's time, done the tick after; the name ours
 0x0060DFC0 0x40 Stop__Q28CAiGroup8act_animFv  # OVL2; by hand (the kit lane, round 16): slot +0x10 of CAiGroup::act_anim's vtable (0x669F20) -- the playing member's anim of the type at 0x18 stopped (0x571100), then done; the name ours
 0x0060E000 0x11C Tick__Q28CAiGroup8act_animFP11CSealCtrlAif  # OVL2; by hand (the kit lane, round 16): slot +0xC of CAiGroup::act_anim's vtable (0x669F20) -- the member's anim of a type played (0x571150, mode 7 with a length, else 11), done when it ends (0x5712F0) or stopped after its length; the name ours
@@ -11819,7 +11819,7 @@
 0x0060E930 0x6C remove_copy<Q33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iterator,Q33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iterator,P11CSealCtrlAi>__3stdFQ33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iteratorQ33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iteratorQ33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iteratorRCP11CSealCtrlAi_Q33std64__vector_imp<P11CSealCtrlAi,Q23std25allocator<P11CSealCtrlAi>,1>8iterator  # OVL2; by hand (the kit lane, round 16): std::remove_copy over the group member vector (std::remove's tail in RemoveMember 0x60CE40) -- ai_group.cpp emits it byte-exact
 0x0060E9A0 0xE4 remove_if<Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>,PFP8CAiGroup_b>__3stdFQ33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>PFP8CAiGroup_b_Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 16): std::remove_if over the group list with TickGroup (0x60E410), TickAll's (0x60E590) -- ai_group.cpp emits it
 0x0060EA90 0xCC erase__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>FQ33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>Q33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 16): the group step list's range erase -- each step destroyed (~step with -1, 0x60DA50) before its node is freed, as include/list's erase does not yet; ~CAiGroup and Abort call it
-0x0060EB60 0x8C func_0060EB60  # OVL2
+0x0060EB60 0x8C erase__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>FQ33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>  # OVL2; the MSL headers round 13: the step list's erase(position), include/list's erase destroying the element (~step with -1) before freeing its node; byte-exact as a probe (build/p13/erase1.cpp), CAiGroup::Tick 0x60C3E0 calls it
 0x0060EBF0 0x128 insert__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>FQ33std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>19generic_iterator<0>RCQ28CAiGroup4step  # OVL2; by hand (the kit lane, round 16): the group step list's insert (AddStep 0x60CDD0 pushes a step through it) -- ai_group.cpp emits it byte-exact but for its call to the pointer deleter's allocator constructor, whose OVL2 copy 0x5EF9B0 carries no ovl-copy note
 0x0060ED20 0x18 __ct__Q23std68__list_deleter<Q28CAiGroup4step,Q23std27allocator<Q28CAiGroup4step>>Fv  # OVL2; by hand (the kit lane, round 16): the group step list's deleter constructor (out of class, so CAiGroup's constructor calls it); ai_group.cpp emits it
 0x0060ED40 0xB8 remove_copy_if<Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>,Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>,PFP8CAiGroup_b>__3stdFQ33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>PFP8CAiGroup_b_Q33std46list<P8CAiGroup,Q23std21allocator<P8CAiGroup>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 16): std::remove_copy_if over the group list with TickGroup, the group remove_if's (0x60E9A0) tail -- ai_group.cpp emits it byte-exact
