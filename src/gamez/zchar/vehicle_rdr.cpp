@@ -15,6 +15,10 @@ class CRdrFile;
 
 _zrdr *zrdr_read(const char *name, const char *file, int line);
 void zrdr_free(CRdrFile *file);
+/* zrdr.h's readers (its _zrdr is zanim.h's, so the header itself stays out) */
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
 extern "C" float cosf(float);
 
 /* an array's item, or none: an unsigned index (zanim.h's Item takes an int, which lets MW
@@ -53,7 +57,9 @@ void startvec::Load(_zrdr *rdr)
 /* a team block: its numbers as a mask, or the first number out of range (new in SOCOM II, the name
  * ours: the same code as fts_player.cpp's ParseTeamBlock (OVL1 0x2B34A0), a second global function
  * -- the turret and vehicle definitions' parsers, CTRegion::Parse and OVL1's 0x2B4F40 call this one,
- * only CTInView::Parse the other) */
+ * only CTInView::Parse the other). Short enough for -inline auto only with the item's number through
+ * _zrdr::Int(): CVehicleRdrEntry::Load inlines it whole (the written-out type switch is over the
+ * 15 statements) */
 unsigned int ParseTeams(_zrdr *rdr)
 {
     unsigned int mask = 0;
@@ -61,15 +67,8 @@ unsigned int ParseTeams(_zrdr *rdr)
     if (!rdr || rdr->type != 4)
         return 0;
     for (unsigned int i = 0; i < rdr->Count(); i++) {
-        _zrdr *item = rdr->Item(i);
-        int team;
+        int team = rdr->Item(i)->Int();
 
-        if (item->type == 1)
-            team = item->integer;
-        else if (item->type == 2)
-            team = (int)item->real;
-        else
-            team = 0;
         if (team < 0 || team > 31) {
             mask = team;
             break;
@@ -177,6 +176,62 @@ static inline int RandomIndex(int max)
     else
         i = rand() % (max + 1);
     return i;
+}
+
+/* the entry kinds' names, by kind (OVL2 0x64F9C0: "Undefined", then the two tags an entry's
+ * character can be named by, then "Max"; the name ours) -- Load keeps the kind found at 0x70 */
+static const char *s_entryTypeNames[] = {"Undefined", "character", "vehicle", "Max"};
+
+/* one entry out of the file's item (SOCOM 1's CVehicleRdr::Load did every entry in place; SOCOM II's
+ * Open hands each item here): the names and the teams found first, the six flags read, the AI's
+ * parameters parsed, the names copied or emptied, the character's name by the first tag present,
+ * then the team mask, the flags (byte read-mask-writes) and both start sets. ParseTeams and
+ * SetCharacterName inline; the found test written `!= 0` branches (a bare test materialised) */
+void CVehicleRdrEntry::Load(_zrdr *rdr)
+{
+    bool debug = false;
+    bool disabled = false;
+    bool nofade = false;
+    bool noshoot = false;
+    bool recycle = false;
+    bool nosnooze = false;
+    const char *name = zrdr_findstring(rdr, "name");
+    const char *display = zrdr_findstring(rdr, "display");
+    unsigned int teams = ParseTeams(zrdr_findtag(rdr, "team"));
+
+    zrdr_findbool(rdr, "debug", &debug);
+    zrdr_findbool(rdr, "disabled", &disabled);
+    zrdr_findbool(rdr, "nofade", &nofade);
+    zrdr_findbool(rdr, "noshoot", &noshoot);
+    zrdr_findbool(rdr, "recycle", &recycle);
+    zrdr_findbool(rdr, "nosnooze", &nosnooze);
+    m_aiParams.Parse(zrdr_findtag(rdr, "ai_params"));
+    if (name)
+        strncpy(m_name, name, sizeof(m_name));
+    else
+        m_name[0] = 0;
+    if (display)
+        strncpy(m_display_name, display, sizeof(m_display_name));
+    else
+        m_display_name[0] = 0;
+    for (int i = 1; i < 3; i++) {
+        const char *ch = zrdr_findstring(rdr, s_entryTypeNames[i]);
+
+        if (ch != 0) {
+            SetCharacterName(ch);
+            m_unk70 = i;
+            break;
+        }
+    }
+    m_teamMask = teams;
+    m_debug = debug;
+    m_disabled = disabled;
+    m_nofade = nofade;
+    m_noshoot = noshoot;
+    m_recycle = recycle;
+    m_nosnooze = nosnooze;
+    m_start.Load(zrdr_findtag(rdr, "setup"));
+    m_respawn.Load(zrdr_findtag(rdr, "respawn_setup"));
 }
 
 /* an empty entry: the byte at 0x70, both start sets, the team mask, the AI's defaults and the flags
