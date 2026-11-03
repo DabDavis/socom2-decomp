@@ -1818,6 +1818,25 @@ the mask is likely a two-byte enum whose `operator|` is a function, which rename
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 12** (C2DFont through c2dfont.h, CSkbFonts(), the vector<CSkbKey> instances):
+  - MW's implicit operator= copies a union as its first member: a class that copy-constructs with lb/lhu but assigns
+    with lbu/lh has UNION members -- CSkbKey's, which unlocked its vector's erase, resize, init and do_assign;
+  - a ternary bool argument (`p ? false : true`) passed to an inline setter is recomputed at every use after the
+    setter's own loads, written `!p` it is computed once ahead of them;
+  - a loop whose element address is the induction variable (base+offset stepping) belongs in a member function of
+    the array's owner (CSkbTexLists::Free, CSkbFonts::Unload), where FreeVector must be written out (called, it is
+    one inline level too deep); through a const item pointer with const accessors the type byte loads once for
+    Type()/String()/Integer(), non-const accessors reload it; `if (!name) to = 0; else to = Find(name);` lays the
+    zero arm out before the search;
+  - zui_skb.h includes the HUD's c2dfont.h (C2DFont(), ~C2DFont, CSkbFonts() byte-exact; the 0x64-byte stand-in
+    gone); the hangul composition types moved to a new zui_hangul.h; 0x3503F0 is vector<CIOPManager::CRegistrant>'s
+    range erase (renamed by the integrator: util_main.cpp's copy and UnRegisterRebootCallback match with it);
+  - open: CreateSoftKeyboard (the target's size, ~100 instructions shifted: one register short -- the target
+    recomputes the key's address each pass), insert<CSkbKey> 0x38F1F0 (8 short), the grid's clear 0x38FEF0 and the
+    pieces' clear 0x3929C0 (the element's destructor one inline level deeper in the original), the vector<vector<
+    CSkbKey>> pieces 0x38EDC0/0x38F640/0x38F7D0; CSkbLook() 0x38E790 is code-exact but for 0x38D130, ~vector of a
+    0x2C-byte {CSaferStr, two rects} -- m_sources[4]'s real element; CUIVariable's UIVarMixin base (zui_2d.h's, the
+    HUD lane's) is not modelled yet (moving it ahead of zui.h is not additive).
 - **Tells from the AI core, round 16** (the ai_maps.cpp block, CAiMap::CreateGraph and its walk):
   - a pointer passed to push_back by reference lives in memory: copying it into a second local first (`CAiMap *m =
     map; push_back(m);`) keeps the original in a saved register (ReadMapSet);
