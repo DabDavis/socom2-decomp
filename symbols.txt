@@ -11576,7 +11576,7 @@
 0x005F8D40 0x884 func_005F8D40  # OVL2
 0x005F95D0 0x1504 func_005F95D0  # OVL2
 0x005FAAE0 0x218 func_005FAAE0  # OVL2
-0x005FAD00 0x4C func_005FAD00  # OVL2
+0x005FAD00 0x4C SetAiEvent__11CSealCtrlAiFQ28CAiEvent5EVENTfPC6CPnt3D  # OVL2; s1:order by hand (the kit lane, round 14): SOCOM 1's SetAiEvent (0x2DEFF0), the same words with the event 0x1A8 further on (0x628), between EventTick and CAiDodge::Destroy as in SOCOM 1's seal_aievent.cpp
 0x005FAD50 0x98 Destroy__8CAiDodgeFv  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's CAiDodge::Destroy (0x2DF040), after SetAiEvent as there (0x5FAD00 is SOCOM 1's SetAiEvent, the same words with the event 0x1A8 on) -- the same size test, front, erase and delete over m_list (0x44D648)
 0x005FADF0 0x78 __dt__10CAiSFollowFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FAE70 0x348 func_005FAE70  # OVL2

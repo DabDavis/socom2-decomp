@@ -8,6 +8,21 @@
 
 #include <list>
 
+#include "../gamez/zseal/zseal.h"
+
+/* (OVL2 0x5FAD00; SOCOM 1's, the event 0x1A8 further on: SEAL_AI_PARAMS's bytes at 0x628 read as
+ * the CAiEvent they are -- the kind into its 15 bits, the duration, the place copied field by
+ * field -- and the kind handed back, `move v0,a1`) */
+CAiEvent::EVENT CSealCtrlAi::SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos)
+{
+    CAiEvent *ev = (CAiEvent *)m_event;
+
+    ev->m_type = e;
+    ev->m_duration = duration;
+    ev->m_pos = *pos;
+    return e;
+}
+
 /* a dodge the AI makes (SOCOM 1's CAiDodge; no DWARF: only what Destroy touches) and the list of
  * them (SOCOM 1's CAiDodge::CList, whose destructor its unit emits; OVL1 bss 0x44D648) */
 class CAiDodge {

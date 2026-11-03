@@ -15,6 +15,8 @@
 #include "../zcamera/zcamera.h"
 #include "aitimer.h"
 #include "../../ai/ai_states.h"
+/* (the kit lane, round 14: CSealCtrlAi::SetAiEvent takes CAiEvent::EVENT) */
+#include "../../ai/ai.h"
 #include "../zchar/zchar.h"
 
 class CZSealBody;
@@ -650,6 +652,9 @@ public:
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
+    /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
+     * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
+    CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
 
     /* the AI's mode set (SOCOM 1's; OVL2 0x56CBF0) and its states dropped (SOCOM 1's
      * ClearAiState, the AI-states lane's 0x5F5F20) */
