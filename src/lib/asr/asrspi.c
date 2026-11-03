@@ -60,7 +60,9 @@ typedef struct CONTEXTV2 {              /* a context's accessors (contextv2.c) *
     int (*CheckDataType)(struct CONTEXTV2 *c);
     int (*GetSize)(struct CONTEXTV2 *c);
     char *(*GetLanguageVersionInfo)(struct CONTEXTV2 *c);
-    void *fn[17];
+    void *fn4[5];                       /* GetTS .. GetNbrItem */
+    unsigned int (*GetNbrWord)(struct CONTEXTV2 *c);
+    void *fn10[11];
 } CONTEXTV2;
 
 typedef struct LANG {                   /* a language's accessors (language.c) */
@@ -154,6 +156,7 @@ extern int casrGetSNR(CASR *c, short *snr);
 extern int casrStart(CASR *c);
 extern int casrExportData(CASR *c, int what, void **data, unsigned int *size);
 extern int casrGetActiveWords(CASR *c, int **words, unsigned int *count);
+extern int casrSetActiveWords(CASR *c, int *words, unsigned int n);
 extern void FillContextV2VirtualTable(CONTEXTV2 *vt);
 extern void FillLanguageVirtualTable(LANG *vt);
 extern void *heap_Alloc(void *heap, int size);
@@ -790,6 +793,78 @@ int asrspi_GetActiveWords(ASRSPI *e, int *ids, unsigned int *count)
         memcpy(ids, words, n * 4);
     }
     *count = n;
+    heap_Free(e->heap, words);
+    ENGINE_LEAVE(e);
+    return 0;
+}
+
+/* the index of a word in the active list, -1 when it is not there */
+static __inline__ unsigned int FindWord(int *words, unsigned int count, unsigned int id)
+{
+    unsigned int k;
+
+    for (k = 0; k < count; k++)
+        if (words[k] == id)
+            return k;
+    return (unsigned int)-1;
+}
+
+int asrspi_DeActivateWords(ASRSPI *e, unsigned int *ids, unsigned int n)
+{
+    int *words;
+    unsigned int count;
+    unsigned int nbr, i, j, m;
+    int *p, *q;
+    int err;
+
+    if (ids == 0 && n != (unsigned int)-1)
+        return ASRSPI_E_NULLPTR;
+    ENGINE_CHECK(e);
+    ENGINE_ENTER(e);
+    err = StateError1(e, 2);
+    if (err) {
+        ENGINE_LEAVE(e);
+        return err;
+    }
+    if (n == (unsigned int)-1) {
+        if (casrSetActiveWords(e->casr, 0, 0) != 0) {
+            ENGINE_LEAVE(e);
+            return ConvErr(e, casrGetLastError(e->casr));
+        }
+        ENGINE_LEAVE(e);
+        return 0;
+    }
+    if (casrGetActiveWords(e->casr, &words, &count) != 0) {
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
+    nbr = e->ctxv2.GetNbrWord(&e->ctxv2);
+    for (i = 0; i < n; i++) {
+        if (ids[i] >= nbr) {
+            heap_Free(e->heap, words);
+            ENGINE_LEAVE(e);
+            return 0x80040018;
+        }
+        j = FindWord(words, count, ids[i]);
+        if (j != (unsigned int)-1)
+            words[j] = -1;
+    }
+    q = words;
+    p = words;
+    for (i = 0, m = 0; i < count; i++) {
+        if (q != p)
+            *p = *q;
+        q++;
+        if (*p != -1) {
+            p++;
+            m++;
+        }
+    }
+    if (casrSetActiveWords(e->casr, words, m) != 0) {
+        heap_Free(e->heap, words);
+        ENGINE_LEAVE(e);
+        return ConvErr(e, casrGetLastError(e->casr));
+    }
     heap_Free(e->heap, words);
     ENGINE_LEAVE(e);
     return 0;
