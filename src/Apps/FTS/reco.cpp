@@ -7,9 +7,9 @@
  * three of the push-to-talk state), the push-to-talk timer at 0x3C. main loads its files
  * (0x23B540), CHUD::Init starts the engine (0x23B300), ~CHUD stops it (UnInit), CCoreState::Tick
  * ticks it (0x23AD90). Written: the constructor and destructor (the initialiser registers the
- * destructor), UnInit, the two push-to-talk setters and the recording volume's step; the rest
+ * destructor), Init, UnInit, the two push-to-talk setters and the recording volume's step; the rest
  * are the m2c drafts or unwritten (the result and notify callbacks 0x23A860/0x23A640, their
- * helper 0x23A380, the Tick, Init and the files' loader). Defined in reverse of their image order
+ * helper 0x23A380, the Tick and the files' loader). Defined in reverse of their image order
  * (-inline deferred). */
 
 /* the speech library (OVL2, GCC: the recogniser lane's; unnamed yet) */
@@ -20,6 +20,18 @@ int func_004C7718(void);
 int func_004C64C8(void);
 void func_004C6078(int err);      /* an error reported */
 int gsapi_ContextDeActivate(int engine);
+int func_004C7328(void *callback, int arg);   /* the library opened, the result callback set */
+int func_004C7508(void *language, int arg);   /* the language loaded from its file */
+int func_004C6CD8(int arg, int *engine);      /* the engine opened into *engine */
+int gsapi_NotifySetCallback(void *callback);
+int func_004C8128(int engine, int arg);
+int gsapi_EngineSetImmediateContext(int engine, void *context, int handle, void *words);
+int func_004C6FF0(int engine);                /* the engine started */
+int func_004C6E98(int engine, int param, int value);
+int gsapi_ExecServer(int arg);
+/* the recogniser's two callbacks (this unit's, not written yet) */
+void func_0023A860();
+void func_0023A640();
 }
 
 /* the Logitech USB audio library (zsnd_headset.cpp's view: the description's fields read there,
@@ -50,6 +62,7 @@ public:
     CReco();
     ~CReco();
 
+    bool Init();
     void UnInit();
     void Suspend(bool now);
     void Resume();
@@ -62,7 +75,7 @@ public:
     void *m_words[3];   // 0x20: the contexts' word files
     float m_level;   // 0x2c
     float m_threshold;   // 0x30
-    unsigned int m_magic;   // 0x34
+    unsigned int m_context;   // 0x34: the active context (0xDEADBEEF none)
     unsigned int m_init : 1;   // 0x38 bit 0
     unsigned int m_running : 1;   // bit 1
     unsigned int m_listening : 1;   // bit 2
@@ -86,7 +99,7 @@ CReco::CReco()
         m_handles[i] = 0;
         m_words[i] = 0;
     }
-    m_magic = 0xDEADBEEF;
+    m_context = 0xDEADBEEF;
     m_init = 0;
     m_running = 0;
     m_listening = 0;
@@ -100,6 +113,63 @@ CReco::CReco()
 
 CReco::~CReco()
 {
+}
+
+bool CReco::Init()
+{
+    bool ok = false;
+    int err;
+
+    if (!m_init && m_language && func_004C7328((void *)func_0023A860, 0) >= 0) {
+        err = func_004C7508(m_language, 0);
+        if (err >= 0) {
+            err = func_004C6CD8(0, &m_engine);
+            if (err >= 0) {
+                err = gsapi_NotifySetCallback((void *)func_0023A640);
+                if (err >= 0) {
+                    err = func_004C8128(m_engine, 5);
+                    if (err < 0)
+                        func_004C6078(err);
+                }
+            }
+        }
+        if (err >= 0) {
+            int r;
+
+            m_context = 0;
+            r = gsapi_EngineSetImmediateContext(m_engine, m_contexts[m_context], m_handles[m_context],
+                                                m_words[m_context]);
+            if (r >= 0) {
+                if (m_init && !m_running) {
+                    int e = func_004C6FF0(m_engine);
+
+                    if (e >= 0)
+                        m_running = 1;
+                    else
+                        func_004C6078(e);
+                }
+            } else
+                func_004C6078(r);
+            if (r >= 0) {
+                err = func_004C6E98(m_engine, 1, 0);
+                if (err >= 0) {
+                    err = func_004C6E98(m_engine, 0, 1);
+                    if (err >= 0) {
+                        err = func_004C6E98(m_engine, 8, 1);
+                        if (err < 0)
+                            func_004C6078(err);
+                    }
+                }
+                if (err >= 0) {
+                    gsapi_ExecServer(0);
+                    ok = true;
+                    m_init = 1;
+                    Suspend(true);
+                }
+            }
+        }
+    }
+    return ok;
 }
 
 void CReco::UnInit()
