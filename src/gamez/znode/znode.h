@@ -805,8 +805,10 @@ public:
     /* SOCOM II's (ours): translucent, and blended rather than bump-mapped or 1-bit */
     bool IsAlphaBlended();
     CTexture(const char *name);
-    /* ztex_main.cpp's (SOCOM 1's): the TEX0 and MIPTBP registers found in the GIF select */
+    /* ztex_main.cpp's (SOCOM 1's): the TEX0 and MIPTBP registers found in the GIF select; a shadow
+     * or reflection texture's own select built */
     void SetGifPtrs();
+    int SetupSpecialTextures();
     /* ztex_manager.cpp's: the MIPTBP registers' levels at one GS address moved to another (SOCOM
      * 1's); the TEX0 register's texture and palette moved, then its mip levels', the next free
      * address given back (SOCOM II's, the name ours); whether a palette of a list is this

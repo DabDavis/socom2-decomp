@@ -23,10 +23,12 @@
  * Defined in reverse of their image order (-inline deferred). The names marked ours are. */
 
 #include <algorithm>
+#include <stdio.h>
 #include <string.h>
 #include <vector>
 
 #include "../znode/node_world.h"
+#include "../zrdr/zrdr.h"
 #include "../zsys/zsys_public.h"
 
 char *_strdup(const char *s, const char *file, int line);
@@ -559,6 +561,51 @@ void CTexManager::WipePktBuf()
     for (unsigned int i = 0; i < n; i++)
         if (m_texmanager.m_buffer[i])
             m_texmanager.m_buffer[i]->WipePktBuf();
+}
+
+/* the buffers made: dyntex.rdr's boundaries give the first fraction, the second halfway from it to
+ * the top, the third and fourth halfway again; then each render phase's buffers between them, in
+ * SOCOM II's set (SOCOM 1's doSetupBuffers, which took an unused name and inlined doAddBuffer; the
+ * state core calls this one on the manager, its body naming the manager itself). The second
+ * fraction reads the boundary itself (through TexBufParams[0] the load is CSE'd and [0] never
+ * reloaded), the fractions are written 0-1-2-3 (the target's stores fall 0-1-3-2), and the loop
+ * runs to `<= 13` (`< 14` tests into v0 where the target's slti writes at) */
+void CTexManager::doSetupBuffers()
+{
+    char name[64];
+    _zrdr *rdr = zrdr_read("dyntex.rdr", 0, 0);
+
+    if (rdr) {
+        PNT2D bounds;
+
+        if (zrdr_findPNT2D(rdr, "boundaries", &bounds)) {
+            TexBufParams[0] = bounds.x;
+            TexBufParams[1] = bounds.x + 0.5f * (1.0f - bounds.x);
+            TexBufParams[2] = TexBufParams[0] + 0.5f * (TexBufParams[1] - TexBufParams[0]);
+            TexBufParams[3] = TexBufParams[1] + 0.5f * (1.0f - TexBufParams[1]);
+        }
+        zrdr_free((CRdrFile *)rdr);
+    }
+    TexPhase[15][0] = m_texmanager.doAddBuffer("TexShadow:A", 0.0f, TexBufParams[0]);
+    for (int i = 12; i <= 13; i++) {
+        sprintf(name, "TexHUD%d:B1", i - 12);
+        TexPhase[i][0] = m_texmanager.doAddBuffer(name, TexBufParams[0], TexBufParams[1]);
+        sprintf(name, "TexHUD%d:B2", i - 12);
+        TexPhase[i][1] = m_texmanager.doAddBuffer(name, TexBufParams[1], 1.0f);
+    }
+    TexPhase[14][0] = m_texmanager.doAddBuffer("TexHUDSmall:A", 0.0f, TexBufParams[0]);
+    TexPhase[2][0] = m_texmanager.doAddBuffer("TexCommonCS:B1", TexBufParams[0], TexBufParams[1]);
+    TexPhase[2][1] = m_texmanager.doAddBuffer("TexCommonCS:B2", TexBufParams[1], 1.0f);
+    TexPhase[11][0] = m_texmanager.doAddBuffer("TexAlpha:B1", TexBufParams[0], TexBufParams[1]);
+    TexPhase[11][1] = m_texmanager.doAddBuffer("TexAlpha:B2", TexBufParams[1], 1.0f);
+    TexPhase[0][0] = m_texmanager.doAddBuffer("TexWorld:B", TexBufParams[0], 1.0f);
+    TexPhase[16][0] = m_texmanager.doAddBuffer("TexCustomCS:0", 0.0f, 0.001f);
+    TexPhase[16][1] = m_texmanager.doAddBuffer("TexCustomCS:1", 0.0f, 0.001f);
+    TexPhase[16][2] = m_texmanager.doAddBuffer("TexCustomCS:2", 0.0f, 0.001f);
+    TexPhase[17][0] = m_texmanager.doAddBuffer("TexCustomNS:0", 0.0f, 0.001f);
+    TexPhase[17][1] = m_texmanager.doAddBuffer("TexCustomNS:1", 0.0f, 0.001f);
+    TexPhase[17][2] = m_texmanager.doAddBuffer("TexCustomNS:2", 0.0f, 0.001f);
+    TexPhase[18][0] = m_texmanager.doAddBuffer("Subtitles", 0.0f, 1.0f);
 }
 
 /* the buffers deleted from the last, all of them or all but the first, and every render phase's
