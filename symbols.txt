@@ -8666,13 +8666,13 @@
 0x004C7E18 0x118 func_004C7E18  # OVL2 unaligned
 0x004C7F30 0xC0 func_004C7F30  # OVL2
 0x004C7FF0 0x134 func_004C7FF0  # OVL2
-0x004C8128 0x104 func_004C8128  # OVL2 unaligned
+0x004C8128 0x104 gsapi_EngineSetMode  # OVL2 unaligned; s1:order (SOCOM 1's gsapi object, before gsapi_ExecServer: the handle and engine checks, a mode of 0 or with both low bits set refused with 0x80CC0007, stored at the engine's +4)
 0x004C8230 0xC0 gsapi_ExecServer  # OVL2; s1:calls
 0x004C82F0 0x13C func_004C82F0  # OVL2
 0x004C8430 0x5C gsapi_NotifySetCallback  # OVL2; s1:align
-0x004C8490 0xE8 func_004C8490  # OVL2
-0x004C8578 0xE8 func_004C8578  # OVL2 unaligned
-0x004C8660 0xF4 func_004C8660  # OVL2
+0x004C8490 0xE8 gsapi_NotifySetEnergyInterval  # OVL2; s1:order (SOCOM 1's gsapi object, after gsapi_NotifySetCallback: the same handle and engine checks and the store to the engine's +80, as the demo's)
+0x004C8578 0xE8 gsapi_EngineSetUserData  # OVL2 unaligned; s1:order (SOCOM 1's gsapi object, the next: the engine's +76 stored, as the demo's)
+0x004C8660 0xF4 gsapi_EngineGetUserData  # OVL2; s1:order (SOCOM 1's gsapi object, the next: the engine's +76 read out, 0x80CC0083 for a null pointer, as the demo's)
 0x004C8758 0x68 gsapi_GetHeapHandle  # OVL2 unaligned; s1:align
 0x004C87C0 0x60 gsapi_SetHeapUserData  # OVL2; s1:align
 0x004C8820 0x5C gsapi_UseExternalAudio  # OVL2; s1:align
@@ -9136,99 +9136,99 @@
 0x005081E8 0x6C Voicing_Free  # OVL2 unaligned; s1:align
 0x00508258 0xD8 FillContextV2VirtualTable  # OVL2 unaligned; s1:align
 0x00508330 0x14 _contextCheckDataType  # OVL2; s1:exact
-0x00508348 0xC func_00508348  # OVL2 unaligned
-0x00508358 0xC func_00508358  # OVL2 unaligned
-0x00508368 0xC func_00508368  # OVL2 unaligned
-0x00508378 0xC func_00508378  # OVL2 unaligned
-0x00508388 0xC func_00508388  # OVL2 unaligned
-0x00508398 0xC func_00508398  # OVL2 unaligned
-0x005083A8 0xC func_005083A8  # OVL2 unaligned
-0x005083B8 0xC func_005083B8  # OVL2 unaligned
-0x005083C8 0xC func_005083C8  # OVL2 unaligned
-0x005083D8 0xC func_005083D8  # OVL2 unaligned
-0x005083E8 0xC func_005083E8  # OVL2 unaligned
-0x005083F8 0xC func_005083F8  # OVL2 unaligned
-0x00508408 0xC func_00508408  # OVL2 unaligned
+0x00508348 0xC _contextGetSize  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object at 0x373080, the 3rd function: the same load of the data's +4; in _ContextV2VirtualTable's slot 2)
+0x00508358 0xC _contextGetLanguageVersionInfo  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 4th: the data's +8 by address; table slot 3)
+0x00508368 0xC _contextGetTS  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 5th: the data's +136; table slot 4)
+0x00508378 0xC _contextGetAccuracy  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 6th: the data's +140; table slot 5)
+0x00508388 0xC _contextGetRejection  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 7th: the data's +144; table slot 6)
+0x00508398 0xC _contextGetGarbage  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 8th: the data's +148; table slot 7)
+0x005083A8 0xC _contextGetNbrItem  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 9th: the data's +152; table slot 8)
+0x005083B8 0xC _contextGetNbrWord  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 10th: the data's +156; table slot 9)
+0x005083C8 0xC _contextGetNbrPron  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 11th: the data's +160; table slot 10)
+0x005083D8 0xC _contextGetNbrFollower  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 12th: the data's +164; table slot 11)
+0x005083E8 0xC _contextGetNbrStartWord  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 13th: the data's +168; table slot 12)
+0x005083F8 0xC _contextGetNbrStopWord  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 14th: the data's +172; table slot 13)
+0x00508408 0xC _contextGetGarbageWordID  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 15th: the data's +176; table slot 14)
 0x00508418 0x14 _contextIsSpellingContext  # OVL2 unaligned; s1:exact
 0x00508430 0x14 _contextIsIsoWordContext  # OVL2; s1:exact
-0x00508448 0xC func_00508448  # OVL2 unaligned
-0x00508458 0x28 func_00508458  # OVL2 unaligned
-0x00508480 0x38 func_00508480  # OVL2
+0x00508448 0xC _contextGetpLex  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 18th: the data's +184 by address; table slot 16)
+0x00508458 0x28 _contextGetpBeginOfWords  # OVL2 unaligned; s1:order (SOCOM 1's contextv2 object, the 19th: the lexicon past the even-rounded item and pronunciation counts, as SOCOM 1's; table slot 17)
+0x00508480 0x38 _contextGetpWordProp  # OVL2; s1:order (SOCOM 1's contextv2 object, the 20th: the words' end, the same sum as SOCOM 1's; table slot 18)
 0x005084B8 0x4C _contextGetpSyntax  # OVL2 unaligned; s1:align
-0x00508508 0x210 func_00508508  # OVL2 unaligned
+0x00508508 0x210 _langGetpDimensionsOfToneConversionMatrix  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +188, as the demo's; the offsets and the matrix follow it at +6 and +8)
 0x00508718 0xE8 FillLanguageVirtualTable  # OVL2 unaligned; s1:align
-0x00508800 0x80 func_00508800  # OVL2
-0x00508880 0x24 func_00508880  # OVL2
+0x00508800 0x80 _cdbGetCodeBookSize  # OVL2; s1:slot (_LangVirtualTable slot +220, as the demo's)
+0x00508880 0x24 _transwGetSize  # OVL2; s1:slot (_LangVirtualTable slot +252, as the demo's)
 0x005088A8 0x10 _langCheckBitField  # OVL2 unaligned; s1:exact
 0x005088B8 0x14 _langCheckDataType  # OVL2 unaligned; s1:exact
-0x005088D0 0xC func_005088D0  # OVL2
-0x005088E0 0xC func_005088E0  # OVL2
-0x005088F0 0xC func_005088F0  # OVL2
-0x00508900 0xC func_00508900  # OVL2
+0x005088D0 0xC _langGetSize  # OVL2; s1:slot (_LangVirtualTable slot +8, as the demo's)
+0x005088E0 0xC _langGetVersionInfo  # OVL2; s1:slot (_LangVirtualTable slot +12, as the demo's)
+0x005088F0 0xC _langGetNbrCodeBook  # OVL2; s1:slot (_LangVirtualTable slot +16, as the demo's)
+0x00508900 0xC _langGetNbrState  # OVL2; s1:slot (_LangVirtualTable slot +20, as the demo's)
 0x00508910 0x14 _langGetNbrPhenome  # OVL2; s1:exact
-0x00508928 0xC func_00508928  # OVL2 unaligned
-0x00508938 0xC func_00508938  # OVL2 unaligned
-0x00508948 0xC func_00508948  # OVL2 unaligned
-0x00508958 0xC func_00508958  # OVL2 unaligned
-0x00508968 0xC func_00508968  # OVL2 unaligned
-0x00508978 0xC func_00508978  # OVL2 unaligned
-0x00508988 0xC func_00508988  # OVL2 unaligned
-0x00508998 0xC func_00508998  # OVL2 unaligned
-0x005089A8 0xC func_005089A8  # OVL2 unaligned
-0x005089B8 0xC func_005089B8  # OVL2 unaligned
-0x005089C8 0xC func_005089C8  # OVL2 unaligned
-0x005089D8 0xC func_005089D8  # OVL2 unaligned
-0x005089E8 0xC func_005089E8  # OVL2 unaligned
-0x005089F8 0xC func_005089F8  # OVL2 unaligned
-0x00508A08 0xC func_00508A08  # OVL2 unaligned
-0x00508A18 0xC func_00508A18  # OVL2 unaligned
-0x00508A28 0xC func_00508A28  # OVL2 unaligned
-0x00508A38 0xC func_00508A38  # OVL2 unaligned
-0x00508A48 0xC func_00508A48  # OVL2 unaligned
-0x00508A58 0xC func_00508A58  # OVL2 unaligned
-0x00508A68 0x8 func_00508A68  # OVL2 unaligned
-0x00508A70 0x8 func_00508A70  # OVL2
-0x00508A78 0x8 func_00508A78  # OVL2 unaligned
-0x00508A80 0x8 func_00508A80  # OVL2
-0x00508A88 0x8 func_00508A88  # OVL2 unaligned
-0x00508A90 0x8 func_00508A90  # OVL2
-0x00508A98 0xC func_00508A98  # OVL2 unaligned
-0x00508AA8 0xC func_00508AA8  # OVL2 unaligned
-0x00508AB8 0x18 func_00508AB8  # OVL2 unaligned
-0x00508AD0 0x2C _langGetpErgodicPhenomes  # OVL2; s1:align
-0x00508B00 0x3C func_00508B00  # OVL2
-0x00508B40 0x4C func_00508B40  # OVL2
-0x00508B90 0x188 func_00508B90  # OVL2
-0x00508D18 0x198 func_00508D18  # OVL2 unaligned
-0x00508EB0 0x1A8 func_00508EB0  # OVL2
-0x00509058 0x1C4 func_00509058  # OVL2 unaligned
-0x00509220 0x1D4 func_00509220  # OVL2
-0x005093F8 0x20 func_005093F8  # OVL2 unaligned
-0x00509418 0x20 func_00509418  # OVL2 unaligned
-0x00509438 0x98 func_00509438  # OVL2 unaligned
-0x005094D0 0x18 func_005094D0  # OVL2
-0x005094E8 0x8 func_005094E8  # OVL2 unaligned
+0x00508928 0xC _langGetAdaptSilState  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +32, as the demo's)
+0x00508938 0xC _langGetNbrErgodicStates  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +36, as the demo's)
+0x00508948 0xC _langGetNbrStateErgodicStates  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +40, as the demo's)
+0x00508958 0xC _langGetNbrErgodicPhenomes  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +44, as the demo's)
+0x00508968 0xC _langGetNbrStateErgodicPhenomes  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +48, as the demo's)
+0x00508978 0xC _langGetNbrNonErgodicPhenomes  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +52, as the demo's)
+0x00508988 0xC _langGetSilencePhenome  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +56, as the demo's)
+0x00508998 0xC _langGetUWSilencePhenome  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +60, as the demo's)
+0x005089A8 0xC _langGetSingleWordGarbagePhenome  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +64, as the demo's)
+0x005089B8 0xC _langGetSentenceGarbagePhenome  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +68, as the demo's)
+0x005089C8 0xC _langGetAnySpeechGarbagePhenome  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +72, as the demo's)
+0x005089D8 0xC _langGetNbrSpeechUnit  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +80, as the demo's)
+0x005089E8 0xC _langGetNbrWarpFactors  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +76, as the demo's)
+0x005089F8 0xC _langGetNbrSpeechUnitClass  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +84, as the demo's)
+0x00508A08 0xC _langGetNbrTones  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +88, as the demo's)
+0x00508A18 0xC _langGetUserWordSpeechUnitClass  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +92, as the demo's)
+0x00508A28 0xC _langGetNbrTransWord  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +96, as the demo's)
+0x00508A38 0xC _langGetNbrPhenUserWordTraining  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +100, as the demo's)
+0x00508A48 0xC _langGetRecogWTP  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +104, as the demo's)
+0x00508A58 0xC _langGetSpellingWTP  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +108, as the demo's)
+0x00508A68 0x8 _cdbGetCodeBookDim  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +112, as the demo's)
+0x00508A70 0x8 _cdbGetFirstCdbSize  # OVL2; s1:slot (_LangVirtualTable slot +116, as the demo's)
+0x00508A78 0x8 _cdbGetNbrInSecSearch  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +120, as the demo's)
+0x00508A80 0x8 _cdbGetSecondCdbSize  # OVL2; s1:slot (_LangVirtualTable slot +124, as the demo's)
+0x00508A88 0x8 _cdbGetCompStart  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +128, as the demo's)
+0x00508A90 0x8 _cdbGetNbrGastone  # OVL2; s1:slot (_LangVirtualTable slot +132, as the demo's)
+0x00508A98 0xC _langGetSilPhenome  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +148, as the demo's)
+0x00508AA8 0xC _langGetpWarpFactors  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +136, as the demo's)
+0x00508AB8 0x18 _langGetpGastone  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +140, as the demo's)
+0x00508AD0 0x2C _langGetpErgodicStates  # OVL2; s1:align; s1:slot (_LangVirtualTable, 0x65A698, is SOCOM 1's _LangVirtualTable slot for slot: 79 words, the same four null slots; this row is slot +152, the demo's _langGetpErgodicStates -- the same 0x2C body -- not _langGetpErgodicPhenomes, which is slot +156)
+0x00508B00 0x3C _langGetpErgodicPhenomes  # OVL2; s1:slot (_LangVirtualTable slot +156, as the demo's)
+0x00508B40 0x4C _langGetpErgodicPenalty  # OVL2; s1:slot (_LangVirtualTable slot +160, as the demo's)
+0x00508B90 0x188 _langGetpCodeBook  # OVL2; s1:slot (_LangVirtualTable slot +164, as the demo's: the same offset sum over the data's counts and the codebook walk, unrolled by 4)
+0x00508D18 0x198 _langGetpSpeechUnit  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +168, as the demo's)
+0x00508EB0 0x1A8 _langGetSizeSpeechUnits  # OVL2; s1:slot (_LangVirtualTable slot +176, as the demo's)
+0x00509058 0x1C4 _langGetpTransWord  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +172, as the demo's)
+0x00509220 0x1D4 _langGetpPhenUserWordTraining  # OVL2; s1:slot (_LangVirtualTable slot +184, as the demo's)
+0x005093F8 0x20 _langGetpOffsetForFinals  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +192, as the demo's: the dimensions' pointer + 6)
+0x00509418 0x20 _langGetpToneConversionMatrix  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +196, as the demo's: the dimensions' pointer + 8)
+0x00509438 0x98 _langGetpExtraEventContext  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +200, as the demo's)
+0x005094D0 0x18 _langIsNormalPhenome  # OVL2; s1:slot (_LangVirtualTable slot +204, as the demo's; the same 0x18 body)
+0x005094E8 0x8 _transwGetpTransWordLex  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +256, as the demo's)
 0x005094F0 0x14 _transwGetpBeginOfTransWords  # OVL2; s1:exact
-0x00509508 0x8 func_00509508  # OVL2 unaligned
-0x00509510 0x20 func_00509510  # OVL2
+0x00509508 0x8 _cdbGetpFirstCdb  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +232, as the demo's)
+0x00509510 0x20 _cdbGetpIndexInSecCdb  # OVL2; s1:slot (_LangVirtualTable slot +236, as the demo's)
 0x00509530 0x30 _cdbGetpSecondCdb  # OVL2; s1:gap
 0x00509560 0x40 _cdbGetpProbMatrix  # OVL2; s1:gap
 0x005095A0 0x74 _cdbGetpSmoothMatrix  # OVL2; s1:gap
 0x00509618 0x34 _cdbGetProbMatrixSize  # OVL2 unaligned; s1:exact
 0x00509650 0x10 _cdbGetSmoothMatrixSize  # OVL2; s1:exact
-0x00509660 0x8 func_00509660  # OVL2
-0x00509668 0x8 func_00509668  # OVL2 unaligned
-0x00509670 0x8 func_00509670  # OVL2
-0x00509678 0x8 func_00509678  # OVL2 unaligned
-0x00509680 0x8 func_00509680  # OVL2
-0x00509688 0x8 func_00509688  # OVL2 unaligned
-0x00509690 0x8 func_00509690  # OVL2
-0x00509698 0x8 func_00509698  # OVL2 unaligned
-0x005096A0 0x8 func_005096A0  # OVL2
-0x005096A8 0x8 func_005096A8  # OVL2 unaligned
-0x005096B0 0x8 func_005096B0  # OVL2
-0x005096B8 0x20 func_005096B8  # OVL2 unaligned
-0x005096D8 0x8 func_005096D8  # OVL2 unaligned
+0x00509660 0x8 _exevGetLeading_NBS_penalty  # OVL2; s1:slot (_LangVirtualTable slot +264, as the demo's)
+0x00509668 0x8 _exevGetTrailing_NBS_penalty  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +268, as the demo's)
+0x00509670 0x8 _exevGetRejection_NBS_penalty  # OVL2; s1:slot (_LangVirtualTable slot +272, as the demo's)
+0x00509678 0x8 _exevGetRejection_NBS_path_penalty  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +276, as the demo's)
+0x00509680 0x8 _exevGetExtraEventSilencePhenome  # OVL2; s1:slot (_LangVirtualTable slot +280, as the demo's)
+0x00509688 0x8 _exevGetNbrItemsInLexicon  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +284, as the demo's)
+0x00509690 0x8 _exevGetNbrOfPronunciations  # OVL2; s1:slot (_LangVirtualTable slot +288, as the demo's)
+0x00509698 0x8 _exevGetLeading_NBS_WordIndex  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +292, as the demo's)
+0x005096A0 0x8 _exevGetTrailing_NBS_WordIndex  # OVL2; s1:slot (_LangVirtualTable slot +296, as the demo's)
+0x005096A8 0x8 _exevGetRejection_NBS_WordIndex  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +300, as the demo's)
+0x005096B0 0x8 _exevGetpBeginOfItems  # OVL2; s1:slot (_LangVirtualTable slot +312, as the demo's)
+0x005096B8 0x20 _exevGetpBeginOfWords  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +304, as the demo's)
+0x005096D8 0x8 _exevGetpBeginOfProns  # OVL2 unaligned; s1:slot (_LangVirtualTable slot +308, as the demo's)
 0x005096E0 0x20 _GetNbrStatesInPhenome  # OVL2; s1:exact
 0x00509700 0x30 _ConvPhenomesToStates  # OVL2; s1:exact
 0x00509730 0x3BC func_00509730  # OVL2
@@ -9273,23 +9273,23 @@
 0x0050D360 0xFC func_0050D360  # OVL2
 0x0050D460 0xF4 func_0050D460  # OVL2
 0x0050D558 0x8 func_0050D558  # OVL2 unaligned
-0x0050D560 0x118 func_0050D560  # OVL2
-0x0050D678 0x4C func_0050D678  # OVL2 unaligned
-0x0050D6C8 0x144 func_0050D6C8  # OVL2 unaligned
-0x0050D810 0x20 func_0050D810  # OVL2
-0x0050D830 0x64 func_0050D830  # OVL2
-0x0050D898 0x24 func_0050D898  # OVL2 unaligned
-0x0050D8C0 0x8 func_0050D8C0  # OVL2
-0x0050D8C8 0x8 func_0050D8C8  # OVL2 unaligned
-0x0050D8D0 0x60 func_0050D8D0  # OVL2
+0x0050D560 0x118 fastallo_AllocateMemoryFromChunk  # OVL2; s1:align (SOCOM 1's fastallo object at 0x377C70: the same 0x118 body, chunks grown through the heap's realloc, a block of up to 64 words cut from the current chunk; SOCOM II defines it first)
+0x0050D678 0x4C fastallo_Init  # OVL2 unaligned; s1:align (SOCOM 1's fastallo object: the same 0x4C body, the 280-byte state cleared and the heap and chunk size kept)
+0x0050D6C8 0x144 fastallo_Terminate  # OVL2 unaligned; s1:align (SOCOM 1's fastallo object: every chunk freed, then the chunk table)
+0x0050D810 0x20 critsec_GetVersion  # OVL2; s1:order (SOCOM 1's critsec object at 0x377F20, its first function: the same version word stored, 0x80140183 for a null pointer)
+0x0050D830 0x64 critsec_ObjOpen  # OVL2; s1:order (SOCOM 1's critsec object, the 2nd: an 8-byte block from the heap holding the heap, 0x80140183/0x80140186 as the demo's)
+0x0050D898 0x24 critsec_ObjClose  # OVL2 unaligned; s1:order (SOCOM 1's critsec object, the 3rd: heap_Free of the block through its own heap, as the demo's)
+0x0050D8C0 0x8 critsec_Enter  # OVL2; s1:order (SOCOM 1's critsec object, the 4th: returns 0)
+0x0050D8C8 0x8 critsec_Leave  # OVL2 unaligned; s1:order (SOCOM 1's critsec object, the 5th: returns 0)
+0x0050D8D0 0x60 safeh_HandleCheck  # OVL2; s1:order (SOCOM 1's safeh object at 0x377FE0, its first function: the check word, then osspi's read and write tests, 0x80170189 as the demo's)
 0x0050D930 0x34 safeh_HandlesEqual  # OVL2; s1:exact-by-hand (SOCOM 1's safeh_HandlesEqual at 0x378040, the same 13 instructions; the gsapi guards compare g_lhNullHandle with it)
-0x0050D968 0x20 func_0050D968  # OVL2 unaligned
-0x0050D988 0x10 func_0050D988  # OVL2 unaligned
-0x0050D998 0x10 func_0050D998  # OVL2 unaligned
-0x0050D9A8 0x10 func_0050D9A8  # OVL2 unaligned
-0x0050D9B8 0xE8 func_0050D9B8  # OVL2 unaligned
-0x0050DAA0 0xE4 func_0050DAA0  # OVL2
-0x0050DB88 0xC0 func_0050DB88  # OVL2 unaligned
+0x0050D968 0x20 osspi_SpiGetVersion  # OVL2 unaligned; s1:order (SOCOM 1's osspi object at 0x378078, its first function: the version word, 0x80060183 for a null pointer)
+0x0050D988 0x10 osspi_IsGoodReadPtr  # OVL2 unaligned; s1:order (SOCOM 1's osspi object, the 2nd; safeh_HandleCheck calls it first, as the demo's)
+0x0050D998 0x10 osspi_IsGoodWritePtr  # OVL2 unaligned; s1:order (SOCOM 1's osspi object, the 3rd; safeh_HandleCheck calls it second, as the demo's)
+0x0050D9A8 0x10 osspi_IsGoodStringPtr  # OVL2 unaligned; s1:order (SOCOM 1's osspi object, the 4th)
+0x0050D9B8 0xE8 rsrc_Open  # OVL2 unaligned; s1:calls (SOCOM 1's rsrc object at 0x3780C8, after osspi's: osspi_IsGoodWritePtr on the out handle, a 20-byte heap calloc, the 0x1E61 magic, the block freed on failure -- as the demo's rsrc_Open)
+0x0050DAA0 0xE4 rsrc_Close  # OVL2; s1:calls (SOCOM 1's rsrc object: safeh_HandlesEqual against the null handle, safeh_HandleCheck(h, 0x1E61, 20), the magic cleared and the block freed -- the demo's rsrc_Close with its static FreeRsrc inlined)
+0x0050DB88 0xC0 InitRsrcFunction  # OVL2 unaligned; s1:calls (SOCOM 1's rsrc object, its last: safeh_HandlesEqual, safeh_HandleCheck(h, 0x1E61, 20), the block handed out -- as the demo's)
 0x0050DC50 0x1C8 get_clock_direction__2aiFPC6CPnt3D  # OVL2; s1:order by hand (the demo's 0x17DE90, the first function before quadratic: the same fabsf of x, the same three constants 0.2833, 0.708, -0.2833 and the same twelve hour returns in the same branch shape)
 0x0050DE20 0xF0 quadratic__2aiFfffRfRf  # OVL2; s1:order by hand (the SEAL lane's lead, vetted: the demo's 0x17E070 -- the same 4.0/1.0/2.0 constants, the bool through a local, and the linear case storing its root twice into r2; SOCOM II inlines sqrtf)
 0x0050DF10 0x20 elevate__2aiFR6CPnt3Dff  # OVL2; s1:exact

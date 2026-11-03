@@ -3399,6 +3399,42 @@ MediusGetBuildTimeStamp, NetGetBuildTimeStamp, rt_msg_client_get_build_timestamp
 -- 50 functions, 40 new to the map's byte-exact rows (ten supersede matching drafts); 15 rows
 named (rt_circ_buf's 14 by SOCOM 1's order, FindFreePingSlot).
 
+**Round 5c: the recogniser, object by object.**
+
+- **The two data tables name every accessor** (`s1:slot`): FillContextV2VirtualTable and
+  FillLanguageVirtualTable each copy a LOCAL table of SOCOM 1's (`_ContextV2VirtualTable`, 21
+  words; `_LangVirtualTable`, 79 words) whole into the caller's (a struct assignment: 2.96's
+  ldl/ldr block move); SOCOM II's tables are the demo's slot for slot -- the same length, the
+  same null slots -- so each static takes the demo's name from its slot, not from its size or
+  position: 0x508AD0 is `_langGetpErgodicStates` (it had the align pass's
+  `_langGetpErgodicPhenomes`), 0x508B90 is `_langGetpCodeBook` (the align pass saw no pair), and
+  the language file's section walkers are in another order than the demo's. The tables are
+  statics of their units; scdiff resolves the `.data` reference by data.txt's name.
+- **SOCOM 1's CheckEngineHandle is an inline function in SOCOM II** (the open engine accessors
+  of round 3b): `static __inline__`, the array base read into a local first and the result
+  set to 0 before the tests, `ok = e->engine != 0` when the engine is a live slot (null, below
+  the base, not 108-aligned, past the last) -- byte-exact in five gsapi calls. An early-return
+  inline keeps a 0 per failing test; a one-expression one loads the base after the null test.
+- **ScanSoft's shapes, each measured**: one guard per test, even with the same code twice
+  (safeh_HandleCheck: the `||` builds one shared code); `if (x < n) return 0; return 1;` for a
+  boolean the target computes with `sltiu` (`!(x < n)` and `== 0` give `xori`); an engine-array
+  loop takes the element's address into a local before testing it (indexing gives the operands
+  of the address sum the other way round); a pointer kept as a local before an offset is added
+  (`m = Dims + 8; return m + n` -- added at once, 2.96 reassociates).
+- **Open, diagnosed in place**: the language file's offset chains (`_langGetpErgodicStates` 4
+  words, Phenomes 6, Penalty 18, `_cdbGetpProbMatrix` 14: the same instructions, the sums in
+  another order -- 45 spellings in `build/scratch/gcc/spec_*.py`), `_cdbGetCodeBookSize` (the
+  target reloads the second codebook's size inside the smoothing test) and the six codebook
+  walkers waiting on it, `_contextGetpSyntax` (a copied register), fastallo's allocation (p in a
+  saved register to a single return), gsapi_NotifySetEnergyInterval and EngineSetUserData (the
+  inlined check zeroes twice there).
+
+Hand-written in round 5c: `asr/contextv2.c` (20 of 21, new), `asr/language.c` (64 of 76, new;
+`_ConvPhenomesToStates` moved there from ctxutil.c), `asr/critsec.c` (5 of 5), `asr/safeh.c` (2
+of 2), `asr/osspi.c` (4 of 4), `asr/fastallo.c` (2 of 3), `asr/gsapi.c` (+12, 21 of 23) -- 22
+functions new to the map's byte-exact rows (4,016 bytes), the rest superseding matching drafts;
+101 rows named (65 `s1:slot`, 30 `s1:order`, 3 `s1:align`, 3 `s1:calls`).
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
