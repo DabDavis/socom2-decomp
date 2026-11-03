@@ -12,42 +12,95 @@ extern "C" {
 AnimType func_005E1A90(AnimSet *set, AnimType type);
 }
 
-/* the SEAL's animation blender (SOCOM 1's CSealAnim: only what the one-anim pass sets -- the names
- * ours) and the one the unit uses (OVL1 bss 0x44CDE0, a pointer) */
-struct CSealAnimBlender {
+/* a part's pose as the blender keeps it (SOCOM 1's records, 0x20 bytes: a position, the part's id
+ * -- below zero for none -- and a rotation; the names ours) */
+struct CSealAnimRec {
+    CPnt3D m_pos;   // 0x0
+    short m_id;   // 0xc
+    CQuat m_rot;   // 0x10
+};
+
+/* a frame on the blender's stack: the parts' records and the anim pushed (0xc bytes; the names ours) */
+struct CSealAnimFrame {
+    int m_0;   // 0x0
+    CSealAnimRec *m_recs;   // 0x4
+    CZSIScriptCommon *m_anim;   // 0x8
+};
+
+/* the SEAL's animation blender (SOCOM 1's CSealAnim: a stack of frames of part records -- SOCOM II's
+ * frames point at their records; only what the written members touch) and the one the unit uses (OVL1
+ * bss 0x44CDE0, a pointer) */
+class CSealAnim {
+public:
     /* emptied and given a SEAL (an inline: both stores through one load of the global) */
     void Begin(CZSealBody *seal)
     {
         m_count = 0;
         m_seal = seal;
     }
+    /* an anim's pose at its frame and fraction pushed at a weight (SOCOM 1's took the SEAL and the
+     * active anim; OVL2 0x5777D0, not written yet), and the top frame's records put back on the
+     * SEAL's parts, the depth left returned (SOCOM 1's took the body; OVL2 0x577700) */
+    void AnimPush(CZSIScriptCommon *anim, float ffrac, float wt, short frame);
+    int AnimPop();
 
     int m_count;   // 0x0
     CZSealBody *m_seal;   // 0x4
+    CSealAnimFrame *m_frames;   // 0x8
 };
 
 extern "C" {
-extern CSealAnimBlender *data_0044CDE0;
-/* an anim added to the blender at its frame, fraction and weight, and the blend applied (OVL2
- * 0x5777D0, 0x577700, not written yet) */
-void func_005777D0(CSealAnimBlender *b, CZSIScriptCommon *anim, float ffrac, float wt, short frame);
-void func_00577700(CSealAnimBlender *b);
+extern CSealAnim *data_0044CDE0;
+/* the number of records a frame holds (OVL1 data; SOCOM 1's 32 were a constant) */
+extern unsigned int data_003DE1E8;
 }
 
-/* a SEAL posed by one anim alone: the blender emptied and given the SEAL, the anim added, the pose
- * applied (OVL2 0x577DF0, new in SOCOM II: seal_cfg.cpp's 0x58C600 calls it; the name unknown).
+/* a SEAL posed by one anim alone: the blender emptied and given the SEAL, the anim pushed, the pose
+ * popped onto the parts (OVL2 0x577DF0, new in SOCOM II: seal_cfg.cpp's 0x58C600 calls it; the name
+ * unknown).
  * OPEN, 0x50 against 0x4C (1 instruction more, the rest reordered): the two stores through one load
  * of the global needed the inline Begin (written out, MW reloads the global between them); left, MW
  * copies the anim pointer to v1 (`move v1,a1`) and loads its m_anim into a1 second, where the target
  * loads the frame (a2), the two floats, then m_anim into a1 last, off a1 itself. Tried: the floats
- * before or around the frame in 0x5777D0's prototype (the same code), the fields in locals first, the
- * anim through a local. 0x5777D0's parameter order is unproven. */
+ * before or around the frame in AnimPush's prototype (the same code), the fields in locals first, the
+ * anim through a local, the calls as CSealAnim members (round 12: SOCOM 1's AnimPush/AnimPop), an
+ * inline AnimPush(const ACTIVE_ANIM *) unpacking the fields. */
 extern "C" void func_00577DF0(CZSealBody *seal, ACTIVE_ANIM *anim)
 {
     data_0044CDE0->Begin(seal);
-    func_005777D0(data_0044CDE0, anim->m_anim, anim->m_ffrac, anim->m_wt, anim->m_frame);
-    func_00577700(data_0044CDE0);
+    data_0044CDE0->AnimPush(anim->m_anim, anim->m_ffrac, anim->m_wt, anim->m_frame);
+    data_0044CDE0->AnimPop();
 }
+
+/* the top frame's records put back on the SEAL's parts, each with a part, its position and rotation
+ * (OVL2 0x577700; SOCOM 1's AnimPop, after AnimBlend in both builds, its 32 records a count now) --
+ * called out of line from 0x577DF0: pinned */
+/* OPEN, 0xCC both (the loop's registers): the target loads the record count into a3 before the loop
+ * and keeps it for the bottom test, re-reading the global only for the entry test; MW here re-reads it
+ * every pass (a local bound drops the entry test's own load: 0xC4). Tried: the count const, an int
+ * counter, the record copies through an inline. The index `top` (kept, not folded into the -12) and
+ * `> -1` (slti) are the target's. */
+#pragma auto_inline off
+int CSealAnim::AnimPop()
+{
+    std::vector<CZBodyPart *> &parts = m_seal->m_body_parts;
+    int top = m_count - 1;
+    CSealAnimRec *rec = m_frames[top].m_recs;
+
+    for (unsigned int i = 0; i < data_003DE1E8; i++, rec++) {
+        if (rec->m_id > -1) {
+            CZBodyPart *part = parts[rec->m_id];
+
+            if (part) {
+                part->m_pos = rec->m_pos;
+                part->m_rot = rec->m_rot;
+            }
+        }
+    }
+    m_count--;
+    return m_count;
+}
+#pragma auto_inline reset
 
 /* the SEAL's adrenaline (OVL2 0x5781B0, the unit's last; SOCOM 1's, the same load) */
 CAdrenaline *CZSealBody::Adrenaline()
