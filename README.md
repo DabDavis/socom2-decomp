@@ -3836,6 +3836,58 @@ Hand-written in round 6c: `asr/queue.c` (16 of 17, new: SOCOM 1's queue object w
 functions new to the map's byte-exact rows (6,752 bytes); 117 rows named (95 `s1:calls`/
 `s1:order` from call sites and object order, 22 by the gsapi object's callees and order).
 
+**Round 7c: the SPI object and the resource object, whole.**
+
+- **The asrspi object is SOCOM 1's at 0x33A768, two functions moved**: `_engineFree` follows
+  `_engineCalloc` (SOCOM 1's object starts with it) and `asrspi_GainSet` (0x4CBC68) follows
+  `asrspi_Stop`. Every entry point checks the handle (null 0x80040083, magic 11111 0x80040001),
+  takes the engine's busy flag under its critical section (0x80040003 when held), checks the
+  states the call is allowed in through `g_StateError`, calls casr and turns its error through
+  `ConvErr`. Two exits leave the flag set, as the target does (SetParamList's 0x80040013,
+  Start's 0x80040017).
+- **The state check is an inline per count of states, not a macro**: the target loads every
+  allowed state into its own register before the first test (`li v0,1; li a0,2; li a1,5; li a2,4;
+  beq ...`) -- integrate.c copies an inline's constant arguments into pseudos at the call -- and
+  a macro's `s == 1 || s == 2` folds into a range test (`addiu; sltiu`). The test is
+  `if (s != a && s != b) return g_StateError[s]; return 0;` (the `==` form lays the zero first).
+- **A static the code reads must be defined above its first use**: `lw rt,g_StateError(rs)` is a
+  GNU as macro; for a symbol not yet defined in the file as puts it in a variant frag (it might
+  be small data) and will not swap it into the branch's delay slot -- the target's
+  `b; lw` came out `lw; b; nop` with the table defined at the end.
+- **The converters are inlines with out parameters**: ConvResultKind, ConvSampleFormat and
+  TranslateParamId `return` their error from a switch's default and store the value through a
+  pointer; ConvAbnorm's and TranslateParamId's variables stay in memory (`move a2,sp; sw v0,0(a2)`),
+  ConvResultKind's and ConvSampleFormat's go back to registers. A switch on an unsigned value (an
+  enum) tests 0 by equality, which gives the target's 1, 0, 2, 4 chain where an `int` takes `slti`.
+- **No sibling call from a function with a stack slot**: 2.96's sibcall pass gives up when
+  `frame_offset` is nonzero, so ConvErr, intAcquisition, asrspi_Stop, the session-data and word
+  functions `jal ConvErr` where the frameless entry points `j ConvErr` -- and two such calls
+  cross-jump into one (intAcquisition).
+- **Shapes, each measured**: intAcquisition's chunk loop is a `goto` loop (`for`/`while` rotate
+  the exit test or invert the last-chunk test, 20 words; returning 0 from its top takes v1 for the
+  flag); ActivateCtx's state result has its own variable (the ConvErr result takes another
+  register); the rsrc lookup keeps `err = 0` to a single `return err` (its s0) with the other
+  exits returning directly; Start's four stores in one order of 24 (`tools/ccperm.py`).
+- **The tables**: data.txt names the asrspi object's .rodata from SOCOM 1's symtab
+  (`UswVersionCode`, `g_ApiVersion`, `_sizeof_asrspi_engine`, `g_StateError`, the same values) and
+  the rsrc object's (`g_NullResource` beside `g_lhNullHandle`). `g_APIRecogCallBacks` (eight
+  callbacks) is referenced through `.rodata` and so checked by content, each callback at the same
+  distance from asrspi_OpenEngine as in the target: OpenEngine reads R until every function
+  between is the right size. The integrator's table check of FillLanguageVirtualTable and
+  FillContextV2VirtualTable: every slot names the map's function at the target's word (79 of 79,
+  21 of 21), resolved through the object's own function at each offset; by distance
+  _LangVirtualTable shifts 73 slots only because four OPEN functions of language.c are the wrong
+  size.
+- **Open, diagnosed in place**: asrspi_ActivateWords (0x600 against 0x5A0: m2c's shape, its
+  exits share more code in the target), and with it asrspi_OpenEngine's table reference.
+
+Hand-written in round 7c: `asr/asrspi.c` (41 of 43, new: SOCOM 1's asrspi object whole),
+`asr/rsrc.c` (3 of 3, new: rsrc_Open, rsrc_Close, InitRsrcFunction, SOCOM 1's FreeRsrc inlined)
+-- 44 functions byte-exact, 36 new to the map's byte-exact rows (14,768 bytes), eight superseding
+matching drafts (ASRSPICBAGC, ASRSPICBASKCURRENTGAIN, asrspi_GetLngGenders, asrspi_GetVersion,
+asrspi_GetUswVersion, _engineMalloc, _engineCalloc, _engineFree); 9 rows named (asrspi_GainSet
+`s1:calls`, the other eight `s1:order`), 5 data rows (`s1:data`).
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
