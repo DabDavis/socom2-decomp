@@ -5,6 +5,12 @@ independent stores; which source order gives the target's is easier measured tha
 import itertools, os, re, subprocess, sys
 from pathlib import Path
 D = Path(__file__).resolve().parents[1]
+# `--stem UNIT` (anywhere): score the probe's statics as unit UNIT's (`NAME@UNIT` rows), as sccheck would
+stem = []
+if "--stem" in sys.argv:
+    i = sys.argv.index("--stem")
+    stem = ["--stem", sys.argv[i + 1]]
+    del sys.argv[i:i + 2]
 src = Path(sys.argv[1]).read_text()
 fn = sys.argv[2]
 tc = sys.argv[3] if len(sys.argv) > 3 else "ee-gcc2.96"
@@ -22,15 +28,17 @@ try:
     # the variants are written under build/ccsweep: the probe's own directory stays on the include
     # path, so a probe may #include the header beside it
     r = subprocess.run([sys.executable, str(D / "tools" / "ccsweep.py"), str(vf), "--variants", "-t", tc,
-                        "-F", fl, "-f", f"^{fn}$", "-I", str(Path(sys.argv[1]).resolve().parent)],
+                        "-F", fl, "-f", f"^{fn}$", "-I", str(Path(sys.argv[1]).resolve().parent)] + stem,
                        capture_output=True, text=True, cwd=D)
     perms = list(itertools.permutations(stmts))
     hits = 0
     for line in r.stdout.splitlines():
-        mm = re.match(r"^p(\d+) .*\s=\s*$", line)
+        mm = re.match(r"^p(\d+) .*\s(=|R)\s*$", line)
         if mm:
             hits += 1
-            print(f"MATCH order {mm.group(1)}:\n" + "".join(perms[int(mm.group(1))]))
+            # R: every byte right, a reference not (a static the map qualifies: give --stem)
+            print(f"MATCH order {mm.group(1)}" + " (bytes only: a reference differs)" * (mm.group(2) == "R")
+                  + ":\n" + "".join(perms[int(mm.group(1))]))
             if hits >= 3:
                 break
     if hits:
