@@ -112,12 +112,14 @@ static void Actual_DP(PITCHDP *p, unsigned int nbins, unsigned int ncols)
     }
 }
 
-/* OPEN (68 words, the right size): every instruction is the target's but the registers: best_i and
- * track take each other's t6/t7, and the cell pointer and the index's *4 each other's a0/a2.
- * Tried: every order of the five declarations (all 68), int or unsigned best_i and i, the first
- * search's pointer through its own local (the shape that brought it from 212 to 68: c = rows[i] +
- * t), the backtrace as while (t != 0) { t--; ... } on the same unsigned short t (147 -> 68 with
- * the c local; a for with n - 1 indices, or `t-- > 0`, is the wrong size). */
+/* the best path: the last column's best bin, then each column's bin back through the cells' back
+ * links. The column index t is a register-wide variable assigned through `(unsigned short)` (the
+ * target's `andi 0xffff` at both assignments): the backtrace's `t--` is then a plain decrement and
+ * the loop strength-reduces &track[t] and t's cell offset into pointers stepped by 4 and 12, which
+ * an `unsigned short t` (masked at every step) does not give -- 68 words, with best_i and track,
+ * the cell pointer and the index's *4 swapping registers besides (an int t compiles the same).
+ * The first search's cell pointer is the backtrace's (c = rows[i] + t: a pointer of its own there
+ * is 147 words). */
 static void BackTracking(PITCHDP *p, unsigned int ncols)
 {
     unsigned short nbins = p->nbins;
@@ -125,13 +127,12 @@ static void BackTracking(PITCHDP *p, unsigned int ncols)
     CELL **rows = p->rows;
     float *freqs = p->freqs;
     unsigned int i, best_i;
-    unsigned short t;
-    unsigned int n;
+    unsigned int t;
     float best;
     CELL *c;
 
     if (ncols > 1) {
-        t = ncols - 1;
+        t = (unsigned short)(ncols - 1);
         best = rows[0][t].score;
         track[t] = freqs[0];
         best_i = 0;
@@ -144,7 +145,7 @@ static void BackTracking(PITCHDP *p, unsigned int ncols)
             }
         }
         c = &rows[best_i][ncols - 1];
-        t = ncols - 1;
+        t = (unsigned short)(ncols - 1);
         while (t != 0) {
             t--;
             track[t] = freqs[c->back];
@@ -289,11 +290,15 @@ static void ProcessPitchDP(PITCHDP *p, float **in)
         FlushPitchDP(p);
 }
 
-/* 201 restarts the tracker, 200 asks for a flush, 255 destroys the block */
-/* OPEN (10 words, the right size): command 201's ten independent stores schedule in another
- * order (the target: fresh, last, block, flushed, len, col, first, nflush, flushing, then unflushed
- * in the loop branch's slot); this source order is the target's output order. The four zero
- * stores keep their order here; ten stores are past tools/ccperm.py's reach whole. */
+/* 201 restarts the tracker, 200 asks for a flush, 255 destroys the block.
+ * Command 201's ten stores are independent, and the first scheduling pass (before register
+ * allocation) ranks a store that is the LAST USE of its value's register first (it frees a
+ * register: INSN_REG_WEIGHT), then source order. The target's output -- fresh, last, block,
+ * flushed, len, col, first, nflush, flushing, unflushed (in the loop branch's slot) -- so
+ * needs fresh after unflushed (fresh then frees the 1), last after len (last frees the sum),
+ * last before block, and the stores that free nothing in output order: one such source is
+ * this one (written as the output order, it was 10 words off: unflushed, block and len freed
+ * their registers and went first). */
 static int ControlPitchDP(PITCHDP *p, unsigned char cmd)
 {
     switch (cmd) {
@@ -304,16 +309,16 @@ static int ControlPitchDP(PITCHDP *p, unsigned char cmd)
         unsigned short i, j;
 
         p->overlap = _tosGetProfileU32(p, 5, 6);
-        p->fresh = 1;
-        p->last = p->lookahead + p->overlap;
-        p->block = 1.0f;
         p->flushed = 0;
         p->len = p->lookahead + p->overlap;
+        p->last = p->lookahead + p->overlap;
+        p->block = 1.0f;
         p->col = 0;
         p->first = 0;
         p->nflush = 0;
         p->flushing = 0;
         p->unflushed = 1;
+        p->fresh = 1;
         for (i = 0; i < ncols; i++)
             for (j = 0; j < nbins; j++)
                 cells[j * ncols + i].score = 0;
