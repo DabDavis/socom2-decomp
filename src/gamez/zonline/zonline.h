@@ -22,6 +22,15 @@ inline void CopyField(void *dst, const void *src, unsigned int n)
         memcpy(dst, src, n);
 }
 
+/* a field copied in, only the destination's address tested (Open's account defaults from
+ * literals, the room player's clan tag from a local: CopyField's test of either source is not
+ * folded; the name ours) */
+inline void CopyTo(char *dst, const char *src, unsigned int n)
+{
+    if (dst)
+        memcpy(dst, src, n);
+}
+
 /* --- the Medius SDK's types (Sony's prebuilt library in OVL2; only what the lobby passes) ---- */
 
 /* an API call's result: 0 on success (int-sized: its values run past a byte) */
@@ -684,7 +693,23 @@ struct MediusGameListResponse {
 };   // 0x190
 typedef MediusGameListResponse LANGameInfo;
 
-extern "C" void func_002F7D90(void *dst, void *rules);   /* a game's mission sequence read from its rules (the lobby unit's) */
+/* a game's rules as its info carries them (at 0x8c; a RoomGame keeps them at 0x19a): a version
+ * letter, then the round count and time, the side byte, the spectators, the equipment limit, the
+ * sort order and the rank restrictions, then the mission sequence -- 'D', 40 bytes (the lobby
+ * unit's builder 0x2F7C40 and reader 0x2F7D90; the names ours) */
+struct GameRules {
+    char m_version;   // 0x0: 'D'
+    unsigned char m_rounds;   // 0x1
+    unsigned char m_minutes;   // 0x2
+    unsigned char m_side;   // 0x3
+    unsigned char m_spectators;   // 0x4
+    unsigned char m_eqlimit;   // 0x5
+    unsigned char m_sort;   // 0x6
+    unsigned char m_rank;   // 0x7
+    unsigned char m_missions[32];   // 0x8
+};   // 0x28
+
+extern "C" GameRules *func_002F7D90(GameRules *dst, const GameRules *src);   /* a game's rules read, an older version brought up to date (the lobby unit's) */
 
 /* a game in a room (SOCOM 1's RoomGame: a table, but not a virtual destructor -- its delete calls
  * operator delete straight). SOCOM II's keeps the game's 0x190-byte info first and its table after
@@ -700,7 +725,7 @@ public:
     {
         if (info) {
             m_info = *info;
-            func_002F7D90(m_19a, info->m_rules);
+            func_002F7D90((GameRules *)m_19a, (GameRules *)info->m_rules);
             if (!m_info.m_mission)
                 SetMission(m_missionSeq[0]);
         } else
@@ -845,6 +870,28 @@ public:
     void Release();
 };
 
+class C2D;
+
+/* the LAN lobby (the UI lane's name; zNetLANLobby.cpp's, 0x44FE10): its room, then the game info
+ * it hosts. Declared here for the units that call it by name (zNetMedius.cpp's room test,
+ * zNetDme.cpp's game info and IsActive) */
+class CZLANLobby {
+public:
+    bool GameHasPassword(const char *game);
+    bool CreateGame();
+    void GetGameInfo(LANGameInfo *out);
+    bool RefreshGameList(C2D *page);
+    bool Disconnect();
+    bool Connect();
+    bool IsActive();
+
+    BriefingRoom *m_room;   // 0x0
+    unsigned char _4[0x10 - 0x4];
+    LANGameInfo m_info;   // 0x10
+};   // 0x1a0
+
+extern CZLANLobby data_0044FE10;   /* the LAN lobby */
+
 /* --- the lobby --------------------------------------------------------------------------- */
 
 /* the lobby's states (SOCOM 1's DWARF; a byte) */
@@ -901,6 +948,7 @@ public:
     ~CZOnlineLobby();
     bool Init();
     void UnInit();
+    bool Open(const char *host, int port);
     void Close();
     void ReleaseUIResources();
     void CreateUIResources();
@@ -950,6 +998,7 @@ public:
     bool RejoinRoom();
     bool JoinRoom(const char *name);
     bool RefreshGameList(C2D *page);
+    bool RefreshGamePlayerList(C2D *page);
     void GetLadderInfo();
     void GetLadderRanking();
     int GetRankTier(int rank);
@@ -1062,11 +1111,5 @@ struct CMessageGame {
 };
 
 extern CMessageGame theGame;   /* 0x4084C0 */
-
-/* the UI variables' setters (unnamed yet: CUIVariable::operator=(const char *) and
- * CUIVarManager::Add) */
-extern "C" {
-void func_003862A0(CUIVariable *var, const char *text);
-}
 
 #endif
