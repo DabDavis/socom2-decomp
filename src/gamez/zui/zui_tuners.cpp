@@ -23,9 +23,6 @@ public:
     static void Brightness(float b);
 };
 
-/* CIOPManager::UnRegisterRebootCallback (SOCOM 1's; zinput.h declares only the registration) */
-extern "C" void func_0039C590(CIOPManager *iop, int id);
-
 bool UIStoreOptions(class C2DAnimCmdHdr *hdr, float *dT);
 
 /* a tuner: an option's UI variable made, attached and applied (SOCOM 1's, no DWARF) */
@@ -178,7 +175,7 @@ void UninitSystemTuners()
     if (s_dialogTuner)
         delete s_dialogTuner;
     s_dialogTuner = 0;
-    func_0039C590(&theIOPManager, s_rebootCallbackId);
+    theIOPManager.UnRegisterRebootCallback(s_rebootCallbackId);
 }
 
 void CSoundTuner::UpdateUIVar(CUIVariable *var)

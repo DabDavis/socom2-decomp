@@ -5710,6 +5710,7 @@
 0x0038B170 UpdateUIVar__11SystemTunerFP11CUIVariable
 0x0038B180 SwitchTo__13CSoftKeyboardFP13CSoftKeyboard
 0x0038B250 SetButtonState__12CSkbKeyPropsFM9C2DButtonFPCvPv_v
+0x0038B2A0 GetCurKeyProps__13CSoftKeyboardFv
 0x0038B390 ShutdownBegin__13CSoftKeyboardFP9CGameMenu
 0x0038B440 ShowSkb__13CSoftKeyboardFPCc
 0x0038B530 func_0038B530
@@ -5723,11 +5724,13 @@
 0x0038BFE0 func_0038BFE0
 0x0038C000 func_0038C000
 0x0038C040 OnEnterKey__13CSoftKeyboardFP9CGameMenu
+0x0038C130 SkbMoveAlong__FP13CSoftKeyboard7SKBAXISPFi_i
 0x0038C450 SkbMoveCursor__FP13CSoftKeyboardUc
 0x0038C4B0 func_0038C4B0
 0x0038C4C0 func_0038C4C0
 0x0038C4D0 InvalidateDisplay__13CSoftKeyboardFv
 0x0038CB80 func_0038CB80
+0x0038CB90 GetCurKey__13CSoftKeyboardCFv
 0x0038CC50 FindKeyProps__13CSoftKeyboardFRC7CSkbKey
 0x0038D130 __dt__12CSkbBgPiecesFv
 0x0038D1A0 __dt__11CSkbCapLookFv
@@ -5738,10 +5741,12 @@
 0x0038D680 __ct__Q23std60vector<P13CSoftKeyboard,Q23std27allocator<P13CSoftKeyboard>>Fv
 0x0038D6A0 ZuiInit__Fv
 0x0038D770 SkbOpen__Fv
+0x0038D8F0 SkbTick__FP9CGameMenubf
 0x0038DC00 func_0038DC00
 0x0038DEA0 PrepSkbsForDisplay__FPQ23zdb5CNodePQ23zdb16CTextureRelocMgrP7C2DFont
 0x0038DF40 InvalidateSkbsDisplay__Fv
 0x0038DFC0 func_0038DFC0
+0x0038DFE0 SkbHandleKey__FiP4CPadP9CGameMenu
 0x0038E490 __dt__12CBmpWithNodeFv
 0x0038E550 __ct__9CSkbFontsFv
 0x0038E590 __ct__7C2DFontFv
@@ -5786,7 +5791,7 @@
 0x00390860 LastJamo__10CSkbPiecesFi
 0x003909A0 Seq__7SKBRULEFi
 0x003909C0 More__11CSkbRdrIterCFv
-0x003909F0 func_003909F0
+0x003909F0 __ct__11CSkbRdrIterFP5_zrdrPCc
 0x00390A30 SkbHangulType__FP10CSkbPiecesc
 0x00390BB0 FindJamo__FPCc
 0x003910B0 SkbRdrCount__FP5_zrdr
@@ -5853,8 +5858,8 @@
 0x00396300 SkbToggleBmp4__Fv
 0x00396BD0 SetRect__8CSkbLookFUcRC8CSkbRect
 0x00396C00 ReadSkbRect__FP8CSkbRectP5_zrdr
-0x00396C70 func_00396C70
-0x00396C80 func_00396C80
+0x00396C70 SkbFindTag__FP5_zrdrPCc
+0x00396C80 __ct__8CSkbRectFRC8CIntPairRC8CIntPair
 0x00396CB0 SkbShifted2__FP4CPad
 0x00396E60 SkbShifted__FP4CPad
 0x00396EC0 func_00396EC0
@@ -5868,6 +5873,8 @@
 0x003978C0 func_003978C0
 0x003978D0 func_003978D0
 0x00397BC0 SkbFindSounds__Fv
+0x00397FE0 resize__Q23std62__vector_imp<11CSkbBgPiece,Q23std24allocator<11CSkbBgPiece>,0>FUi
+0x00398910 __ct__11CSkbBgPieceFRC11CSkbBgPiece
 0x003989E0 __dt__11CSkbBmpRowsFv
 0x00398A40 __dt__10CSkbBmpRowFv
 0x00398AA0 __ct__10CSkbBmpRowFv

@@ -1857,6 +1857,26 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 14** (the soft keyboard's cursor, tick and key handling, the look parser, the piece tail):
+  - CALLERS THAT INLINE A FUNCTION'S BODY BUT CALL ITS CALLEES mean it is declared inline and too tall; callers that call
+    it outright reach it through another inline that is itself inlined one level -- GetCurKeyProps is an inline behind an
+    inline SetCurKeyState (GetCurKey and FindKeyProps called out of line); an `end()` passed to an inline `!=` is checked
+    a level deeper, taken into a local first (`iterator e = end(); if (i != e)`) it stays whole when inlined;
+  - an inline bool's `&&` result is materialised (slt/xori/sltu/andi, then the branch) when the outer `&&` tests it
+    `!= false`; on a signed char member `m_row || m_code` reuses the loaded byte where `m_row != 0` sign-extends it
+    again; a byte enum tested against an enumerator is narrowed once, into the parameter's own register (a bare
+    `if (axis)` keeps an extra saved register); an if/else-if chain tests in source order, a switch on the same two
+    values tests the higher one first;
+  - `int f()` passed to an `int` parameter costs nothing at the call, a `char` return re-extends and an `unsigned char`
+    parameter narrows at the caller -- a callee that switches on `andi 0xff` with an unnarrowed caller takes an `int`
+    and casts; a user-declared copy constructor beside the implicit assignment makes the element copy move int-pair
+    arrays with lw/sw where assignment block-copies them through the FPRs (CSkbRect); an inline helper's named locals take
+    frame slots after the function's own;
+  - open: ParseLook 0x3963F0 (0x810 vs 0x7D8: the second walker's slot, five toggle rectangles the target never zeroes --
+    ReadSkbRect returning by value? -- and the list index narrowed into a variable of its own), the pieces' erase 0x3980D0
+    and insert 0x3982F0 (the target inlines the whole element assignment, string copy-assignment included: about two
+    inline levels shallower than include/vector, algorithm and string give -- the MSL lane's); CIOPManager's
+    UnRegisterRebootCallback is declared in zinput.h now (zui_tuners.cpp calls it by name, unchanged).
 - **Tells from the kit and AI states, round 19** (seal_unit.cpp's queries, CAiHidePlanner, the follow master, AnimSet's
   scripts):
   - a whole-body `if (x == K)` that compiles to `beq; b end` is a one-case switch (SOCOM 1's copy has the same shape);
