@@ -13,7 +13,7 @@
  * the sync and its dispatcher, the five result handlers but Read's, the state setters, the
  * INTC 3 handler the init installs (0x1BF600: each keyboard's repeat timer counted per vblank),
  * the key ring's clear, push and pop (0x1BF688-0x1BF728: four codes at the state's +0x22, through
- * a pointer to its +0x10 block) and the 21-entry lookup 0x1BFA38 (OPEN, below); not written:
+ * a pointer to its +0x10 block) and the 21-entry lookup 0x1BFA38 (round 17a, below); not written:
  * Read's result, the key-code conversion (0x1BEFF8, 0x574) and its two converters 0x1BF790
  * (each raw code copied, or converted through 0x1BF8E0 by the keyboard's arrangement) and
  * 0x1BF8E0 (it prints "Arrangement error!"). The library's data has no names
@@ -525,23 +525,28 @@ typedef struct {
 
 extern UsbKbCnv data_001D4280[2][21];
 
-/* OPEN (31 words, 0x84 against 0x70): the key's entry in one of two 21-entry tables, its code |
- * 0x4000, else the key itself. The target's loop is untouched by loop.c -- the type's * 84 and the
- * table's %lo recomputed every pass, i * 4 not strength-reduced -- yet its first comparison is
- * peeled, as jump.c's exit-test duplication peels a while loop's; here every for/while/do form is
- * loop-optimized (ccdump's .loop: the mult and the address moved, the givs reduced: 26-55 words),
- * a goto loop is not but has no peeled test (29), and -fno-strength-reduce (29-33) or -O1 (the
- * unit's other functions lost) do not give it either. 0x1BF790's copy loops show the same. */
+/* The key's entry in one of two 21-entry tables, its code | 0x4000, else the key itself (OPEN
+ * since round 15a; round 17a). The target's loop is untouched by loop.c -- the type's * 84 and the
+ * table's %lo recomputed every pass, i * 4 not strength-reduced -- with its first comparison
+ * peeled: a for loop whose body ENDS in `if (...) {...; break;}`. expand_end_loop rolls the loop's
+ * leading exits to its end, scanning to the last jump to the end label before the first code
+ * label -- here the exit test, the match test and the break, the whole body; jump.c's
+ * duplicate_loop_exit_test copies that before the loop (i = 0 folds the copy's i < 21), and the
+ * copy's jump to the increment, a label inside the loop, is a second entry: loop.c ignores the loop
+ * ("multiple entry points"). The found value goes through `ret` (a test after the loop, or a return
+ * inside it, is 27-32 words off), the compare names the key first (the target's beq a1,v1).
+ * fileio.c's no-wait queue and copy loops are the same shape. */
 int func_001BFA38(int type, u_char key)
 {
 	u_int i;
+	int ret = key;
 
-	i = 0;
-	while (data_001D4280[type & 1][i].key != key) {
-		if (++i >= 21)
-			return key;
-	}
-	return data_001D4280[type & 1][i].code | 0x4000;
+	for (i = 0; i < 21; i++)
+		if (key == data_001D4280[type & 1][i].key) {
+			ret = data_001D4280[type & 1][i].code | 0x4000;
+			break;
+		}
+	return ret;
 }
 
 int func_001BFAA8(int no, u_int rmode)
