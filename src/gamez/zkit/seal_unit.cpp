@@ -51,6 +51,9 @@ public:
  * the same in SOCOM II) */
 class UnitPointData {
 public:
+    /* (inline: the squad's constructor stores the bytes, the direction and the timer) */
+    UnitPointData() : start_anim(0), in_point(0), dirW(CPnt3D::unit_nz), timer(0.0f) {}
+
     unsigned char start_anim;   // 0x0
     unsigned char start_turn;   // 0x1
     unsigned char in_point;   // 0x2
@@ -63,7 +66,7 @@ public:
  * -- this unit does not include it). Only what a written function touches */
 class CSealUnit {
 public:
-    /* a squad of a number (SOCOM 1's; OVL2 0x5EE6F0, not written yet: 200 bytes) */
+    /* a squad of a number (SOCOM 1's; OVL2 0x5EE6F0: 200 bytes) */
     CSealUnit(unsigned int team);
     static CSealUnit *GetUnitByTeam(unsigned int team);
     static CSealUnit *Create(unsigned int team);
@@ -108,10 +111,17 @@ public:
     std::list<CZSealBody *> m_seals;   // 0x64 (SOCOM 1's 0x40): the squad's SEALs, the leader first
     std::list<CZSealBody *> m_escortees;   // 0x70: the escorted SEALs (SOCOM 1's at 0x4c)
     std::list<CSealUnit *> m_sub_units;   // 0x7c: the squads under this one (SOCOM 1's ulist at 0x58)
-    unsigned char _88[0x9c - 0x88];
-    unsigned char *m_9c;   // 0x9c: a block whose byte 8 is 4 for ... (SOCOM 1's at 0x78)
-    unsigned char m_a0;   // 0xa0: set when an escortee joins so (SOCOM 1's 0x7c)
-    unsigned char _a1[0xc0 - 0xa1];
+    std::list<CZSealBody *> m_dead_guys;   // 0x88 (SOCOM 1's 0x64)
+    std::list<FT_COMMAND> m_commands;   // 0x94 (SOCOM 1's clist at 0x70): the squad's orders
+    unsigned char m_a0;   // 0xa0: set when an escortee joins so (SOCOM 1's m_issue_unit_follow, 0x7c)
+    unsigned char m_a1;   // 0xa1 (SOCOM 1's m_issue_sub_unit_follow)
+    unsigned char _a2;
+    unsigned char m_a3;   // 0xa3 (SOCOM 1's m_member_died)
+    unsigned char m_a4;   // 0xa4 (SOCOM 1's m_ambush)
+    unsigned char _a5[0xb4 - 0xa5];
+    CZSealBody *m_follow_source;   // 0xb4 (SOCOM 1's 0x8c)
+    unsigned char _b8[0xbc - 0xb8];
+    int m_point_ticks;   // 0xbc (SOCOM 1's 0x9c)
     CValve *m_valve;   // 0xc0: the radio channel's valve, team 24's (SOCOM 1's 0xa0)
     unsigned int m_c4;   // 0xc4 (zeroed with the valve; new in SOCOM II -- the name ours)
 
@@ -153,7 +163,7 @@ void CSealUnit::EscorteeJoinUnit(CZSealBody *seal)
     }
     m_escortees.push_back(seal);
     ((CUnitCtrl *)((CEntity *)seal)->m_control)->m_unit = this;
-    if (m_9c[8] == 4 || HostEscort())
+    if (*m_commands.begin() == 4 || HostEscort())
         m_a0 = 1;
     func_005E7830(this);
 }
@@ -270,4 +280,19 @@ bool CSealUnit::IsMemberOfUnit(CZSealBody *seal, bool recurse)
                 found = (*u)->IsMemberOfUnit(seal, true);
     }
     return found;
+}
+
+/* (OVL2 0x5EE6F0; SOCOM 1's, the lists built out of line, the team's bit new) */
+CSealUnit::CSealUnit(unsigned int team) : m_8(1), m_unit_num(team)
+{
+    m_parent = 0;
+    m_a0 = 0;
+    m_a1 = 0;
+    m_a3 = 0;
+    m_follow_source = 0;
+    m_a4 = 0;
+    m_unit_in_point = 0;
+    m_point_ticks = 0;
+    m_compassanchor = 0;
+    m_5c = 1 << (team & 0x1f);
 }
