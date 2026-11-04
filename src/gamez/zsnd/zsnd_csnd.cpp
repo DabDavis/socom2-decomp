@@ -1,7 +1,8 @@
 /* zsnd_csnd.cpp -- CSnd, a named sound out of sounds.rdr, and the sound system's statics (OVL1
- * 0x340F70-0x3462FF). The unit name is SOCOM 1's (its __sinit_zsnd_csnd.cpp and asserts; SOCOM
- * II's has no static initialiser: its sounds-by-name map is gone). Defined in reverse of their
- * image order (-inline deferred). */
+ * 0x340F70-0x3462FF). The unit name is SOCOM 1's (its __sinit_zsnd_csnd.cpp and asserts). SOCOM
+ * II's sounds-by-name map is gone, but the unit still has an initialiser (0x402FF0): the statics
+ * below, in its order -- defined so, it is byte-exact, and its registered destructors are this
+ * unit's tail (0x345F70-0x346260). Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
 
@@ -10,25 +11,42 @@
 /* the finder (zrdr_main.cpp; zanim.h still calls it by its placeholder) */
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 #include "../zanim/zanim.h"
+#include "../zutil/util_stable.h"
+#include "zsnd_queue.h"
+#include "zsnd_subtitles.h"
 
-/* SOCOM II's headset voice queue, a global (CSndVocalQueue by the functions its calls land in;
- * the slots' names ours) */
-class CSndVocalQueue {
-public:
-    virtual void Slot08();
-    virtual void Slot0C();
-    virtual void Open();
-    virtual void Close();
+/* a loaded bank (SOCOM II's; the names ours): SOCOM 1's two vectors m_soundbank and m_bankloaded
+ * made one of records -- the name LoadBank (0x343DD0) loaded it by, the bank, and 1 when it loaded
+ * (-1 when it failed) */
+struct CSndBank {
+    char m_name[16];            /* 0x00 */
+    SoundBankPtr m_bank;        /* 0x10 */
+    int m_loaded;               /* 0x14 */
+};   /* 0x18 bytes */
+
+/* the sounds file read into a buffer whole (the RTTI's name; its vtable is CBufferIO's) */
+class CSoundBufferIO : public CBufferIO {
 };
-extern CSndVocalQueue data_0048DEE0;
+
+/* The unit's statics, in the order its initialiser (0x402FF0) builds them. SOCOM II's reverb
+ * tables, indoor and outdoor: depths and times per record (names not known) */
+std::vector<int> data_0048DB68;
+std::vector<int> data_0048DB88;
+std::vector<int> data_0048DBA8;
+std::vector<int> data_0048DBC8;
+std::vector<CSndBank> data_0048DBE8;    /* the banks loaded */
+std::vector<CSnd *> CSnd::m_soundlist;
+CSubtitleTable data_0048DC30;
+zar::CZAR CSnd::m_bnkArchive(0, 0);
+CMatrix CSnd::m_listenermatrix;
+CSTable data_0048DE60(0, 1024);         /* the subtitles' strings */
+CSoundBufferIO data_0048DE90;           /* the file they are read from */
+CSndVocalQueue data_0048DEE0;           /* SOCOM II's headset voice queue */
 /* called through a reference local, as the target's calls dispatch through the vtable (on the
  * object itself MW calls the function directly) */
 
 extern _zrdr *data_0048DF18;            /* the sounds file (GetSoundRdrFile's) */
 
-/* SOCOM II's reverb tables, indoor and outdoor: depths and times per record, and two levels each
- * (names not known) */
-extern std::vector<unsigned int> data_0048DB68, data_0048DB88, data_0048DBA8, data_0048DBC8;
 extern int data_003DFFB0, data_003DFFB8, data_003DFFC0, data_003DFFC8;
 static bool snd_system_initialized;     /* SOCOM 1's static (LOCAL in its symbols) */
 int zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
@@ -132,12 +150,8 @@ static bool IOPRebootHandler(CIOPManager::RebootPhase phase, CIOPManager::Reboot
 }
 
 extern CIOPManager theIOPManager;
-extern std::vector<unsigned int> data_0048DBE8;  /* a vector of a class (its reserve, 0x345DC0, closes
-                                                   the unit); reserved by its placeholder */
-extern "C" void func_00345DC0(void *v, unsigned int n);
 static bool bnkArchiveIsOpen;           /* SOCOM 1's static */
 extern char data_003E0520[];            /* CFileIO's root path ("host0:.\\") */
-extern char data_0048DC30[];
 extern unsigned char data_0048DE48;     /* the subtitles' string table wanted (name not known) */
 /* a file in the CD's table of contents (SOCOM 1's DWARF, as util_sonyio.cpp's) */
 struct _FILECD {
@@ -152,30 +166,9 @@ extern "C" void func_00258E60(void *zar);           /* zar::CZAR::CloseKeepDir *
 extern "C" void func_0034D180(void *p);
 extern "C" void func_0034C4A0();
 
-class CSTable {
-public:
-    void LoadTable(void *data, unsigned int size, bool copy);
-};
-extern CSTable data_0048DE60;           /* the subtitles' strings */
-
-/* the file the subtitles' table is read from (a file object of the IO layer; names ours) */
-class CSndStrFile {
-public:
-    virtual void Open(const char *name);
-    virtual void Slot0C();
-    virtual int Read();
-
-    int m_4, m_8, m_c, m_10;
-    void *m_data;               /* 0x14 */
-    int m_size;                 /* 0x18 */
-};
-extern CSndStrFile data_0048DE90;
-
-/* OPEN, 2 instructions: one register -- the target materialises the initialised flag's 1 in a2
- * (sb a2), MW here in v1. Tried: the flag static (SOCOM 1's) or extern, bool or unsigned char,
- * `= 1`; the store after the subtitles' block or after Headset::Create (worse: MW keeps it put);
- * the subtitles' flag bool; the file object through a pointer, a reference declared earlier.
- * m_size is an int (LoadTable takes unsigned: the converted argument loads first, as the target's) */
+/* The initialised flag's 1 is the subtitles' file Open's mode argument too (a2, loaded once for
+ * both: round 6's two-instruction miss was that argument left out). The file is a CBufferIO, read
+ * whole: its buffer and the word after it are the table's */
 void CSnd::Init()
 {
     if (m_isDisabled)
@@ -184,7 +177,7 @@ void CSnd::Init()
     data_0048DBA8.reserve(10);
     data_0048DB88.reserve(10);
     data_0048DB68.reserve(10);
-    func_00345DC0(&data_0048DBE8, 10);
+    data_0048DBE8.reserve(10);
     if (!m_isDisabled && !bnkArchiveIsOpen) {
         bnkArchiveIsOpen = true;
         _FILECD *entry = CFileCD::Find("RUN\\SOUNDS\\BNKSTORE.ZAR;1");
@@ -199,7 +192,7 @@ void CSnd::Init()
         CFileIO::SetRootPath(path);
         func_00258E60(&m_bnkArchive);
     }
-    func_0034D180(data_0048DC30);
+    func_0034D180(&data_0048DC30);
     snd_StartSoundSystem(0);
     CSndInstance::Init();
     func_0034C4A0();
@@ -222,11 +215,11 @@ void CSnd::Init()
     theIOPManager.RegisterRebootCallback(IOPRebootHandler, 0);
     snd_system_initialized = true;
     if (data_0048DE48) {
-        CSndStrFile &f = data_0048DE90;
+        CSoundBufferIO &f = data_0048DE90;
 
-        f.Open("RUN\\SOUNDS\\SOUNDRDR.STR");
-        if (f.Read())
-            data_0048DE60.LoadTable(data_0048DE90.m_data, data_0048DE90.m_size, false);
+        f.Open("RUN\\SOUNDS\\SOUNDRDR.STR", 1);
+        if (f.IsOpen())
+            data_0048DE60.LoadTable(data_0048DE90.m_buffer, data_0048DE90.m_reserve, false);
     }
     Headset::Create();
 }
@@ -347,6 +340,31 @@ CSndInstance *CSnd::PlaySoundVolPanPitch(float vol, int pan, int pitch, bool one
     return r;
 }
 
+extern int data_0048DB38, data_0048DB40;   /* (the loader's counts; names not known) */
+
+/* every voice stopped, the banks unloaded and every sound deleted, both lists' storage given up
+ * (SOCOM 1's, the banks now one vector of records): FreeVector's four pieces are calls, and
+ * their out-of-line copies follow this function, the list's first (the image's order) */
+void CSnd::UnloadAllSounds()
+{
+    if (m_isDisabled)
+        return;
+    CSndInstance::StopAllSounds();
+    for (int i = 0; i < data_0048DBE8.size(); i++)
+        if (data_0048DBE8[i].m_loaded == 1)
+            snd_UnloadBank(data_0048DBE8[i].m_bank);
+    FreeVector(data_0048DBE8);
+    for (int i = 0; i < m_soundlist.size(); i++)
+        if (m_soundlist[i])
+            delete m_soundlist[i];
+    FreeVector(m_soundlist);
+    snd_ResolveBankXREFS();
+    data_0048DB40 = 0;
+    data_0048DB38 = 0;
+    CSndInstance::Cleanup();
+    func_0034BE10();
+}
+
 void CSnd::PlayErrorSound()
 {
     if (m_errorsound)
@@ -367,7 +385,7 @@ void CSnd::WaitForCDRead()
 
 /* a reverb record into its two tables: depth (to 32767) and time (to 240 ticks); the count
  * starts at 0 from -1 (ours: the loaders read both values before it, as arguments) */
-static inline void AddReverb(std::vector<unsigned int> &depths, std::vector<unsigned int> &times,
+static inline void AddReverb(std::vector<int> &depths, std::vector<int> &times,
                              int &count, float depth, float seconds)
 {
     if (count == -1)

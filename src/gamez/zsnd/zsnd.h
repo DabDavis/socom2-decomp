@@ -140,6 +140,7 @@ public:
     static void NetOpen();
     static void WaitForCDRead();
     static void PlayErrorSound();
+    static void UnloadAllSounds();
     static void OnListenerDeath();
     static bool GetSubtitles();
     static void SetSubtitles(bool on);
@@ -152,6 +153,10 @@ public:
     static bool m_hasreverb;            /* 0x48DD30 (SOCOM 1's) */
     static int m_bnkoffset;             /* 0x3DFFD0: the bank archive's disc offset (SOCOM 1's) */
     static zar::CZAR m_bnkArchive;      /* 0x48DC70: the bank archive (SOCOM 1's) */
+    static std::vector<CSnd *> m_soundlist;  /* 0x48DC08: every sound made (SOCOM 1's: AddNewCSnd
+                                                pushes onto it, UnloadAllSounds deletes them) */
+    static CMatrix m_listenermatrix;    /* 0x48DD40: the listener (SOCOM 1's: CalcVolPan transforms
+                                           by it) */
 
     float m_vol;                        /* 0x04 */
     char *m_name;                       /* 0x08 */

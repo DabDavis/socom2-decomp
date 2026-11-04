@@ -11,30 +11,11 @@
 #include <vector>
 
 #include "zsnd.h"
+#include "zsnd_subtitles.h"
 
 /* the string hash the lookups key on (0x3A59C0, an earlier unit's: a tail call into the util
  * unit's hash, not named yet) */
 extern "C" unsigned int func_003A59C0(const char *s);
-
-/* a record (ours): two words given back and the hash it is found by */
-struct CSubtitleEntry {
-    int m_0;   // 0x0
-    int m_4;   // 0x4
-    unsigned int m_hash;   // 0x8
-};   // 0xc bytes
-
-class CSubtitleTable {
-public:
-    CSubtitleTable();
-    void Dump();
-    bool Find(const char *name, int *a, int *b);
-
-    std::vector<CSubtitleEntry> m_entries;   // 0x0: the lookup's records (10 reserved)
-    std::vector<CSubtitleEntry> m_lines;   // 0xc: 11500 reserved
-    int m_18;   // 0x18
-    int m_1c;   // 0x1c
-    unsigned char m_20;   // 0x20
-};
 
 /* the records with the hash of a name: its two words given back and true; else the table walked
  * (its dump compiled out) and false.

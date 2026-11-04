@@ -39,9 +39,9 @@ public:
 class CSndQueue {
 public:
     CSndQueue();
-    /* declared only: the image holds no destructor (the queue is a global never destroyed), and an
-     * implicit one would be emitted with the vocal queue's constructor */
-    ~CSndQueue();
+    /* inline: no copy of its own in the image -- the vocal queue's implicit destructor (0x345FF0,
+     * zsnd_csnd.cpp's tail: its initialiser registers it for the global) inlines it */
+    ~CSndQueue() {}
     virtual void Stop();
     virtual void OnPlay(CSndQueueEntry *entry);
     virtual void Open();

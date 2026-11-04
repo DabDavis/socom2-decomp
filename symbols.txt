@@ -6142,14 +6142,14 @@
 0x00341A30 0x2C OnListenerDeath__4CSndFv  # OVL1; s1:align
 0x00341A60 0x4AC PostTick__4CSndFfPv  # OVL1; s1:calls (CZObjectiveList::Tick calls it at SOCOM 1's instruction with (0.0f, 0); five direct callers in OVL1 and its address taken once, at 0x1EC7AC -- a (float, void *) tick callback's shape; 0x4AC bytes against SOCOM 1's 0x150, SOCOM II's sound reworked) -- the HUD lane
 0x00341F10 0x180 UnloadAllSounds__4CSndFv  # OVL1; s1:align
-0x00342090 0x70 func_00342090  # OVL1
-0x00342100 0x40 func_00342100  # OVL1
-0x00342140 0x8 func_00342140  # OVL1
-0x00342150 0x14 func_00342150  # OVL1
-0x00342170 0x60 func_00342170  # OVL1
-0x003421D0 0x40 func_003421D0  # OVL1
-0x00342210 0x8 func_00342210  # OVL1
-0x00342220 0x14 func_00342220  # OVL1
+0x00342090 0x70 __dt__Q23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>Fv  # OVL1; the world lane r7: CSnd::m_soundlist's destructor (__sinit_zsnd_csnd.cpp registers it; UnloadAllSounds' FreeVector temporary's)
+0x00342100 0x40 swap__Q23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>FRQ23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>  # OVL1; the world lane r7: UnloadAllSounds' FreeVector swap of CSnd::m_soundlist
+0x00342140 0x8 clear__Q23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>Fv  # OVL1; the world lane r7: UnloadAllSounds' FreeVector clear of CSnd::m_soundlist
+0x00342150 0x14 __ct__Q23std40vector<P4CSnd,Q23std17allocator<P4CSnd>>Fv  # OVL1; the world lane r7: UnloadAllSounds' FreeVector temporary's constructor (CSnd::m_soundlist's type)
+0x00342170 0x60 __dt__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv  # OVL1; the world lane r7: the banks vector's destructor (__sinit_zsnd_csnd.cpp registers it for 0x48DBE8; UnloadAllSounds' FreeVector temporary's; the element name ours)
+0x003421D0 0x40 swap__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>FRQ23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>  # OVL1; the world lane r7: UnloadAllSounds' FreeVector swap of the banks vector (the class vector swaps through its deleter)
+0x00342210 0x8 clear__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv  # OVL1; the world lane r7: UnloadAllSounds' FreeVector clear of the banks vector (a tail call into the deleter's clear 0x345F70)
+0x00342220 0x14 __ct__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv  # OVL1; the world lane r7: UnloadAllSounds' FreeVector temporary's constructor (the banks vector, three words zeroed), its out-of-line copy after it
 0x00342240 0x428 func_00342240  # OVL1
 0x00342670 0x230 CalcVolPan__4CSndFPC6CPnt3DfPiPi  # OVL1; s1:calls by hand (SOCOM 1's CalcVolPan: CSndInstance::Tick calls it at the same place with the same arguments -- the parent, &m_pos, m_vol, &vol, &pan; SOCOM II's returns the distance in $f0, which Tick keeps for its Doppler shift)
 0x003428A0 0x50 func_003428A0  # OVL1
@@ -6192,14 +6192,14 @@
 0x00345620 0x1D8 __ct__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's CSnd constructor, after the destructor in both builds: CSnd's vtable stored, nothing more when CSnd::m_isDisabled, the instance pool reserved to 48 as SOCOM 1's reserves its vector)
 0x00345800 0xC GetSoundRdrFile__Fv  # OVL1; s1:order by hand (SOCOM 1's GetSoundRdrFile, after the constructor in both builds: the sounds file Open reads)
 0x00345810 0x5A4 func_00345810  # OVL1
-0x00345DC0 0x1B0 func_00345DC0  # OVL1
-0x00345F70 0x8 func_00345F70  # OVL1
-0x00345F80 0x68 func_00345F80  # OVL1
-0x00345FF0 0xC8 func_00345FF0  # OVL1
-0x003460C0 0x98 func_003460C0  # OVL1
-0x00346160 0x90 func_00346160  # OVL1
-0x003461F0 0x68 func_003461F0  # OVL1
-0x00346260 0x8 func_00346260  # OVL1
+0x00345DC0 0x1B0 reserve__Q23std54__vector_imp<8CSndBank,Q23std20allocator<8CSndBank>,0>FUi  # OVL1; the world lane r7: the banks vector's reserve (CSnd::Init reserves 10; 24-byte elements copied whole), zsnd_csnd.cpp's template tail
+0x00345F70 0x8 clear__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>Fv  # OVL1; the world lane r7: the banks vector's deleter clear (the size zeroed; the vector's clear 0x342210 tail-calls it)
+0x00345F80 0x68 __dt__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>Fv  # OVL1; the world lane r7: the banks vector's deleter destructor (~vector<CSndBank> 0x342170 calls it; clear inline)
+0x00345FF0 0xC8 __dt__14CSndVocalQueueFv  # OVL1; the world lane r7: the vocal queue's implicit destructor (CSndQueue's inline: the two entry vectors), __sinit_zsnd_csnd.cpp registers it for 0x48DEE0
+0x003460C0 0x98 __dt__14CSoundBufferIOFv  # OVL1; the world lane r7: the RTTI's class (vtable 0x406B00, CBufferIO's slots): its implicit destructor, __sinit_zsnd_csnd.cpp registers it for 0x48DE90 (CBufferIO's and CFileIO's Close inline)
+0x00346160 0x90 __dt__14CSubtitleTableFv  # OVL1; the world lane r7: the subtitle table's implicit destructor (__sinit_zsnd_csnd.cpp registers it for 0x48DC30: its two record vectors)
+0x003461F0 0x68 __dt__Q23std70__vector_deleter<14CSubtitleEntry,Q23std27allocator<14CSubtitleEntry>>Fv  # OVL1; the world lane r7: the subtitle records' deleter destructor (~CSubtitleTable 0x346160 calls it for both vectors; its clear 0x346260 out of line)
+0x00346260 0x8 clear__Q23std70__vector_deleter<14CSubtitleEntry,Q23std27allocator<14CSubtitleEntry>>Fv  # OVL1; the world lane r7: the subtitle records' deleter clear (the size zeroed): the deleter's destructor, zsnd_subtitles.cpp's 0x34DA00 and its reserve 0x34DED0 call it, zsnd_csnd.cpp's copy linked first
 0x00346270 0x90 func_00346270  # OVL1
 0x00346300 0x10 PlaySoundCallback__12CSndInstanceFUiUl  # OVL1; s1:exact
 0x00346310 0x70 __dt__Q23std58vector<P12CSndInstance,Q23std26allocator<P12CSndInstance>>Fv  # OVL1; s1:order by hand (SOCOM 1's vector<CSndInstance *> destructor, right after PlaySoundCallback in both builds; the unit's static initialiser 0x403230 registers it for the second vector of instances)
@@ -8578,7 +8578,7 @@
 0x00402DF0 0x64 __sinit_zrndr_init.cpp  # OVL1 data area; a static initialiser; s1~ zrdr_parse.cpp (shape 0.60, a hint); by its body (iostream's init objects; ZDB its bss) -- the rdr lane
 0x00402E60 0x11C __sinit_zrndr_pipe.cpp  # OVL1 data area; a static initialiser; by its body (thePipe built through CPipe's constructor 0x33C1C0, 0x33C120 registered) -- the rdr lane
 0x00402F80 0x64 __sinit_zrndr_postfx.cpp  # OVL1 data area; a static initialiser; s1~ zrndr_init.cpp (shape 0.46, a hint); the world lane r3: ours, the unit after zrndr_pipe.cpp (0x33CD50-0x33D22F, CPipeEffect's): its initialiser builds only <iostream>'s two objects, right after the pipe's -- zrndr_postfx.cpp
-0x00402FF0 0x240 func_00402FF0  # OVL1 data area; a static initialiser
+0x00402FF0 0x240 __sinit_zsnd_csnd.cpp  # OVL1 data area; a static initialiser; the world lane r7: zsnd_csnd.cpp's own (SOCOM 1's unit has one: the reverb vectors, the banks, m_soundlist, the subtitle table, m_bnkArchive, m_listenermatrix, the subtitles' CSTable and file, the vocal queue, built in that order from source)
 0x00403230 0xA4 __sinit_zsnd_csndinstance.cpp  # OVL1 data area; a static initialiser; s1~ pickup_main.cpp (shape 0.25, a hint); registers zsnd_csndinstance.cpp's list (0x347B20), pool and vector destructors -- the sound lane
 0x004032E0 0x8C __sinit_zsnd_jukebox.cpp  # OVL1 data area; a static initialiser; constructs and registers the jukebox's two arrays (destructors 0x349A50, 0x349A30) -- the sound lane
 0x00403370 0xB0 func_00403370  # OVL1 data area; a static initialiser
