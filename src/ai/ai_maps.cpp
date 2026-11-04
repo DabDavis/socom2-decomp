@@ -1057,35 +1057,45 @@ bool CAiMaps::Tile(const CAiMap::region *r, unsigned int value, unsigned int fla
 /* the region's type changed: its cell removed from the old type's list and added to the new
  * one's, true when it had the type already (SOCOM 1's). The removal is an inline cut to one level
  * (CAiMapLocVec::Remove): the target calls even its iterators' constructors and assignment, and
- * std::remove, out of line (0x529D30-0x529ED7, after it), where push_back is inlined.
- * OPEN, right size, 10 instructions: registers only -- the target keeps the region in s1 and the
- * type in s2, here the other way round. Tried: `old == type`, `old` unsigned, the test on the
- * field, the cell as a reference local, the region cast into a non-const local (57 off) */
+ * std::remove, out of line (0x529D30-0x529ED7, after it), where push_back is inlined. Byte-exact
+ * (the AI core round 22) through a non-const local of the region, numbered after the parameters
+ * (the region s1, the type s2), the old type read through the const parameter (the store then
+ * reloads the byte), and the new type stored as an int: the narrowed type the compare made (andi
+ * 0xff in v0) is reused for the store's mask, as the target's -- stored plain it is masked from the
+ * parameter's register (3 off), the type through `reg` 57 off */
 bool CAiMaps::SetRegionType(const CAiMap::region *r, CAiMap::region::TYPE type)
 {
+    CAiMap::region *reg = (CAiMap::region *)r;
     CAiMap::region::TYPE old = (CAiMap::region::TYPE)r->m_type;
 
     if (type == old)
         return true;
-    ((CAiMap::region *)r)->m_type = type;
-    m_regions[old].Remove(r->m_loc);
-    m_regions[type].push_back(r->m_loc);
+    reg->m_type = (int)type;
+    m_regions[old].Remove(reg->m_loc);
+    m_regions[type].push_back(reg->m_loc);
     return false;
+}
+
+/* a draw below m, an inline of its own: its exit, the end of the ternary's second arm, is the
+ * label MW pads to 8 bytes after the `mfhi` -- the target's nop -- where the draw written in the
+ * ternary leaves the join unpadded (and fills the y draw's `b` with the next load). The names ours */
+inline int _rnd(int m)
+{
+    return rand() % m;
 }
 
 /* 0 to n, n not drawn for (the name ours: GetRandomLoc's two draws) */
 inline int _random(int n)
 {
-    return n == 0 ? 0 : rand() % (n + 1);
+    return n == 0 ? 0 : _rnd(n + 1);
 }
 
 /* a random cell of the region on the region's map, drawn up to eight times until one is
  * traversable (SOCOM 1's; the cell's test through the map's IsTraversable, new in SOCOM II).
- * OPEN, 2 instructions short (0x1A4 against 0x1AC): the target pads each draw's join with a nop
- * after the `mfhi` (and so leaves the y draw's `b` delay slot empty, where this build fills it
- * with the next load) -- registers, branches and order otherwise as the target's. Tried: the
- * draw as a ternary either way round, if/else, early returns, through a local, and written out
- * in the body; GetMap pinned (the target calls it: inlined, the map's walk adds 0x58 bytes) */
+ * Byte-exact (the AI core round 22) once the draw went through an inline of its own (_rnd above:
+ * each draw's join padded with a nop after the `mfhi`, the y draw's `b` delay slot left empty);
+ * the ternary either way round, if/else, early returns and a local all gave 0x1A4. GetMap pinned
+ * (the target calls it: inlined, the map's walk adds 0x58 bytes) */
 bool CAiMaps::GetRandomLoc(const CAiMap::region *r, CAiMapLoc &loc)
 {
     bool found = false;
