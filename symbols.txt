@@ -3322,7 +3322,7 @@
 0x00282980 0x108 ExecuteChooseDefaultEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 3 (registered as "ChooseDefaultEquipment" in both builds' UI command tables: SOCOM 1's ExecuteChooseDefaultEquipment, zanim_menu.cpp's anonymous namespace -- the type's default weapons assigned, or the list cleared; SOCOM II pads the slots)
 0x00282A90 0x184 ChooseEquipmentForCharacter__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEM  # OVL1; s1:callee by hand, the core lane round 2 (ExecuteChooseEquipment calls it with the iterator and the item in its loop where SOCOM 1's calls ChooseEquipmentForCharacter, 0x1D74B0)
 0x00282C20 0x290 func_00282C20  # OVL1
-0x00282EB0 0x70 func_00282EB0  # OVL1
+0x00282EB0 0x70 FindItemSlot__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEMi  # OVL1; ours, the core lane round 7 (SOCOM II's: a selected character's first weapon slot holding the item, past the one to skip, among the first five, else -1 -- the new choosers 0x280E90, 0x283170 and six more call it; the name ours, in the unit's anonymous namespace beside ChooseEquipmentForCharacter)
 0x00282F20 0x248 func_00282F20  # OVL1
 0x00283170 0x9D8 func_00283170  # OVL1
 0x00283B50 0x304 func_00283B50  # OVL1

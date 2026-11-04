@@ -262,6 +262,28 @@ inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM 
 
 namespace {
 
+/* the slot of a character's first weapon of the item past the one to skip, among the first five,
+ * or -1 (SOCOM II's, 0x282EB0: the new choosers' search -- the name ours). Called out of line
+ * everywhere: pinned */
+#pragma auto_inline off
+int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip)
+{
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+    int found = -1;
+    int i = 0;
+
+    for (CCharacterWeapList::iterator w = weapons->begin(), e = weapons->end();
+         w != e && found == -1 && i < 5; ++w, ++i)
+        if ((*w).m_wepId == item && i != skip)
+            found = i;
+    return found;
+}
+#pragma auto_inline reset
+
+}
+
+namespace {
+
 /* the item put on one selected character: none when the character has it already or carries fewer
  * than two weapons, else a primary or a secondary through its pick, anything else into the first free
  * equipment slot (-1); whether it took, the character's UI variables updated (SOCOM 1's, which set the
