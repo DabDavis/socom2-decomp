@@ -501,7 +501,34 @@ __deque_buf<T, Allocator>::~__deque_buf()
 }
 
 template <class T, class Allocator>
-class __deque_imp : public __deque_buf<T, Allocator>, public allocator<const void *> {
+class __deque_imp;
+
+/* a class element's teardown level, between __deque_imp and the block buffer: the elements destroyed
+ * over the whole range, then the buffer's destructor (the chat lines' 0x2F62B0: begin's and end's
+ * make_iterator, the range destroy 0x2F5B10, ~__deque_buf 0x2F6BC0 called with 0). A scalar element's
+ * deque has none (the lobby's and the pointer deques' chains call ~__deque_buf after their own
+ * this-tests): the base is picked by has_trivial_dtor. The name ours */
+template <class T, class Allocator>
+class __deque_destroy : public __deque_buf<T, Allocator> {
+public:
+    __deque_destroy() {}
+    explicit __deque_destroy(const Allocator &a) : __deque_buf<T, Allocator>(a) {}
+    ~__deque_destroy();
+};
+
+template <class T, class Allocator, bool trivial>
+struct __deque_base {
+    typedef __deque_destroy<T, Allocator> type;
+};
+
+template <class T, class Allocator>
+struct __deque_base<T, Allocator, true> {
+    typedef __deque_buf<T, Allocator> type;
+};
+
+template <class T, class Allocator>
+class __deque_imp : public __deque_base<T, Allocator, Metrowerks::has_trivial_dtor<T>::value>::type,
+                    public allocator<const void *> {
 public:
     /* 512-byte blocks: 128 pointers, 42 of CSimpleStateMachine's 12-byte member pointers (its
      * pop_front 0x3A6C40 and clear 0x3A6FA0 keep 84 and 21) -- but never fewer than 8 elements: the
@@ -544,7 +571,8 @@ public:
     typedef iterator const_iterator;
 
     __deque_imp() {}
-    explicit __deque_imp(const Allocator &a) : __deque_buf<T, Allocator>(a) {}
+    explicit __deque_imp(const Allocator &a)
+        : __deque_base<T, Allocator, Metrowerks::has_trivial_dtor<T>::value>::type(a) {}
     unsigned int size() const { return this->size_; }
     bool empty() const { return this->size_ == 0; }
     T &front() { return this->buf_.second_[this->start_ / buf_size][this->start_ % buf_size]; }
@@ -577,6 +605,14 @@ public:
 
 template <class T, class Allocator>
 const typename __deque_imp<T, Allocator>::size_type __deque_imp<T, Allocator>::buf_size;
+
+template <class T, class Allocator>
+__deque_destroy<T, Allocator>::~__deque_destroy()
+{
+    __deque_imp<T, Allocator> *d = static_cast<__deque_imp<T, Allocator> *>(this);
+
+    d->destroy(d->begin(), d->end());
+}
 
 /* the elements of [first, last) destroyed a block at a time (the chat lines' 0x2F5B10): the count
  * taken first, the first block's run as far as the count or the block's end allows (min over the

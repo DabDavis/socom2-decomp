@@ -4964,13 +4964,13 @@
 0x002F6230 0x28 __ct__Q23std65deque<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); ours, the online lane round 10 (the chat deque's default constructor: the initialiser builds the queue's Container() temporary with it; the draft stands, this unit's copy 0x30 against 0x28 as the lobby queue's)
 0x002F6260 0x30 func_002F6260  # OVL1
 0x002F6290 0x18 func_002F6290  # OVL1
-0x002F62B0 0x88 __dt__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's block buffer's out-of-class destructor: the chat queues' destructors 0x2F5E50 and 0x2F5EF0 call it -- the chat unit's tail, not the lobby unit's first function; it walks the elements through 0x2F5D10 and destroys them with 0x2F5B10; open in include/deque, 0x110 against 0x88)
+0x002F62B0 0x88 __dt__Q23std75__deque_destroy<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; ours, the online lane round 10 (the chat deque's block buffer's out-of-class destructor: the chat queues' destructors 0x2F5E50 and 0x2F5EF0 call it -- the chat unit's tail, not the lobby unit's first function; it walks the elements through 0x2F5D10 and destroys them with 0x2F5B10; open in include/deque, 0x110 against 0x88); the MSL headers round 19: a class element's teardown level between __deque_imp and __deque_buf (include/deque's __deque_destroy, picked by has_trivial_dtor): destroy(begin(), end()) -- end's make_iterator first -- then ~__deque_buf 0x2F6BC0 with 0; byte-exact from the chat unit's tail (was ~__deque_buf's name)
 0x002F6340 0x2BC func_002F6340  # OVL1
 0x002F6600 0x444 func_002F6600  # OVL1
 0x002F6A50 0x8 func_002F6A50  # OVL1
 0x002F6A60 0x8 func_002F6A60  # OVL1
 0x002F6A70 0x144 make_iterator__Q23std71__deque_imp<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>CFUi  # OVL1; the MSL headers round 13: the chat deque's iterator to an element, const (the copy constructor 0x2F5F80 calls it for x's end and begin); include/deque's make_iterator, open as every instance's
-0x002F6BC0 0x138 func_002F6BC0  # OVL1
+0x002F6BC0 0x138 __dt__Q23std71__deque_buf<17MediusChatMessage,Q23std30allocator<17MediusChatMessage>>Fv  # OVL1; the MSL headers round 19: the chat deque's block buffer's out-of-class destructor (the blocks freed, the buffer's five this-tests), called with 0 by the teardown level 0x2F62B0 -- the name 0x2F62B0 carried until then; byte-exact from the chat unit's tail (include/deque's ~__deque_buf, as the lobby's 0x2E19E0)
 0x002F6D00 0x6C func_002F6D00  # OVL1
 0x002F6D70 0xBC CountGamePlayers__Fv  # OVL1; ours (a lobby state handler 0x2EF3C0 calls it: with 'late_joiner' on and the net game in progress, MediusGetGamePlayers asked once at a time, 0x44FA88 the flag)
 0x002F6E30 0x90 cbCountGamePlayers__FiiiP28MediusGetGamePlayersResponse  # OVL1; ours (CountGamePlayers' MediusGetGamePlayers callback: 'MediusGetGamePlayers' checked, flagged players counted into 0x66A990, the total to 0x66A9A0 at the list's end)
