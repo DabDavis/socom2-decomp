@@ -1965,6 +1965,22 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 31** (six static initialisers, zui_2d.cpp's LoadSpecs, the glyph pair's copy):
+  - a member stored `0.0f` rather than int `0` gives the same `sw zero` but creates an FP temporary at that point, which
+    fixes the later float registers (CTeleType::LoadSpec's f0/f1); a copy through a stack slot, re-read from the member,
+    comes from an inline by-value accessor (CRenderableString::LoadSpec's colour);
+  - a virtual call through a secondary base's vptr with no null test of `this` is an inline member of that base
+    (UIVarMixin::WatchUIVar); a pointer cast adds a null test, a pointer local a saved register;
+  - 12-byte CPnt3D file statics sit 16 bytes apart in bss; a static array of a class with an empty user constructor builds
+    through `__construct_array`, which emits that constructor out of line (hud_linemap.cpp's clip buffers);
+  - the initialisers by the research: hud_linemap.cpp's (SOCOM 1's `_linedata`, nine LINE_DATA entries, CZLineMap's six
+    CPnt4D[2] clip buffers), hud_main.cpp's (m_hud_textcolor, SOCOM 1's X_WeaponBackground), hud_lensflare.cpp's and
+    zui_2d.cpp's (<iostream>'s pair only), hud_pausemenu.cpp's (five CPnt3D colours), c2dstring.cpp's (its span starts at
+    0x361B00, as the research said); __sinit_hud_newhudmap.cpp matches since GCC 24a's local-function check;
+  - the glyph pair's copy 0x35D370 matched with the colour type 4-aligned and the m_20 member 16-aligned (the MSL lane's
+    measurement); zui_2d.cpp's LoadSpecs are SOCOM 1's names;
+  - open: __sinit_hud_tcm.cpp 0x3FF4A0 (2 instructions short: for each cache's strcpy the target takes the name off the
+    object's address register, `addiu a0,v0,12`, where MW folds the name's address into one lui/addiu pair).
 - **Tells from the world, rdr and sound, round 10** (eight initialisers, AddNewCSnd, ~CValvePool, the rdr packers):
   - a user-declared constructor, even an empty one, makes the implicit copy member by member (words through v0, a bool with
     lbu/sb); a trivial class copies as an FPU block (the CRegistrant vector's reserve 0x3506B0);
