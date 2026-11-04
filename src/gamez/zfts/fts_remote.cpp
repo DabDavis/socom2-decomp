@@ -1400,7 +1400,9 @@ int PickupMayIPacketHandler(int, int, int, void *data)
     return 24;
 }
 
-/* the pickup's acknowledgement (OVL1 0x2BA1F0): SOCOM II's packet is 8 bytes, the id first */
+/* the pickup's acknowledgement (OVL1 0x2BA1F0): SOCOM II's packet is 8 bytes, the id first; the
+ * first parameter an int (its caller 0x59E830 zero-extends the count with andi 0xffff before both
+ * calls, as MW passes an unsigned short to an int parameter -- the SEALs' round 27) */
 union AckUnion {
     unsigned char b;
 };
@@ -1412,7 +1414,7 @@ struct PickupAckPacket {
     AckUnion ack;   // 0x7
 };
 
-void SendPickupAckMessage(unsigned short who, int id, int obj, AckUnion ack)
+void SendPickupAckMessage(int who, int id, int obj, AckUnion ack)
 {
     PickupAckPacket p;
 
