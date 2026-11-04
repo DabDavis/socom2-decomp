@@ -88,6 +88,9 @@ public:
 class CSealCtrlAi {
 public:
     bool ClearAiState(bool all);
+    /* a state pushed, and the current one (zseal.h's, OVL2 0x5F5C00, 0x5F6010) */
+    bool PushAiState(AI_STATE state, unsigned int flags);
+    CAiState *GetAiState();
 
     unsigned char _0[0x264];
     unsigned int m_debug : 1;   // 0x264
@@ -153,6 +156,12 @@ public:
      * under it -- a walk that never runs: its test is against begin() (OVL2 0x5E6C90, new in SOCOM
      * II; the name ours) */
     void ClearAiStates(bool all, bool recurse);
+    /* a state of a kind pushed on each of the squad's AI SEALs, when the model state takes the kind,
+     * and the new state given the model's steps, clocks and two bits, then handed it (slot 0x48) --
+     * with `recurse` the squads under it too, a walk that never runs (its test against begin(), as
+     * ClearAiStates'); OVL2 0x5E6AB0, new in SOCOM II: the squad's private news 0x5ED140 calls it;
+     * the name ours */
+    void PushAiState(AI_STATE state, CAiState *proto, bool recurse);
     /* a SEAL's news: 1 and 2 kept to this squad (0x5ED140), 0, 3 and 4 handed to the top squad's
      * (0x5ED4F0) -- SOCOM 1's PrivateNotify and DistributeNotify by their order (OVL2 0x5ED7B0) */
     void Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
@@ -183,6 +192,10 @@ public:
      * follower's (the second), when the squad is pointing and the AI is a SEAL's (SOCOM 1's; OVL2
      * 0x5E7580) */
     bool GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir);
+    /* the SEAL's point-out anim started, taken once: the leader's or the follower's start byte, when
+     * the squad is pointing, the AI is a SEAL's and the player stands within 200 and faces away from
+     * it (SOCOM 1's, its guarded statics plain data here -- 0x650B10, 0x650B18; OVL2 0x5E7390) */
+    bool GetMyPointOutAnimStart(CZSealBody *seal);
     /* a SEAL's look out of a direction (SOCOM 1's; OVL2 0x5EEF80) */
     void GetMyLookDir(CPnt3D *out, CPnt3D *dir, CZSealBody *seal);
     /* a SEAL among the squad's or its escortees, or with `recurse` in a squad under it; and the same
@@ -235,6 +248,19 @@ public:
      * menu and the AI's handlers read the target SEAL so; the names ours) */
     void *GetDataPtr();
     bool SetDataPtr(void *p);
+    /* the squad's awareness: its SEALs' controllers' aware counts, with those of every squad under it
+     * (SOCOM 1's GetAwareCounter by its place and its walks -- the count read off the SEAL's
+     * controller here, SOCOM 1's off the SEAL; OVL2 0x5E76D0: the squad's aware sound 0x5EAEB0 asks
+     * it) */
+    int GetAwareCounter() const;
+    /* the farthest any of the squad's SEALs stands from a point, squared, with the squads under it
+     * to a depth (OVL2 0x5E7230, new in SOCOM II: AllowCommand asks it twice; the name ours) */
+    float GetMaxDistSq(const CPnt3D *pos, int depth);
+    /* the squad's centre: its SEALs' positions (only the AI's with `ai`) averaged, with those of the
+     * squads under it to a depth weighted by their counts; the count returned (OVL2 0x5E7030, new
+     * in SOCOM II -- SOCOM 1's CheckPathProximity's size and place, not its code: AllowCommand asks
+     * it; the name ours) */
+    float GetCenter(CPnt3D *out, int depth, bool ai);
 
     void AddSub(CSealUnit *const &unit) { m_sub_units.push_back(unit); }
     unsigned int m_data_size;   // 0x34
@@ -326,6 +352,13 @@ void func_005E7830(CSealUnit *unit);
 struct CUnitCtrl {
     unsigned char _0[0x10c];
     CSealUnit *m_unit;   // 0x10c
+};
+
+/* the controller's aware count (CSealCtrl at 0xC0, in zseal.h's padding -- the view and the name
+ * ours) */
+struct CAwareCtrl {
+    unsigned char _0[0xc0];
+    int m_aware;   // 0xc0
 };
 
 /* an escortee taken in: out of its old squad, then the leader's squad itself when this is squad
@@ -424,6 +457,74 @@ bool GetPlayAutoMessages()
 void SetPlayAutoMessages(bool on)
 {
     bgAutoMessagesOn = on;
+}
+
+/* the player (fts_player.cpp's, OVL1 0x2B3580) */
+CZSealBody *ftsGetPlayer();
+
+/* a point's difference, given back by value (inline here: SOCOM II's CPnt3D::operator- const,
+ * whose copies zmath.h declares out of line) */
+static inline CPnt3D Minus(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D r;
+
+    a.Sub(&b, &r);
+    return r;
+}
+
+/* (OVL2 0x5E7390) the result a local: `return true` in place gives `li` and its own block where
+ * the target sets the bool with daddiu, its zero in the test's delay slot.
+ * OPEN, 16 instructions at the right size, registers and two stores: the target gives `this` s1 (shared
+ * after the walk with &d.y) and the start byte's pointer s2, here the other way round (the pointer
+ * declared first, a dead first definition, a `self` copy and the bool test in place tried); and it
+ * stores d.y's zero (in Normalize's delay slot) and the negated look.z straight to their stack slots
+ * while every load of them goes through the saved address registers -- here the stores take the
+ * registers too (LenSq/Dot/negate as inline helpers over references or pointers drop the address
+ * registers altogether: 0x1E0-0x1E4) */
+bool CSealUnit::GetMyPointOutAnimStart(CZSealBody *seal)
+{
+    bool navy = ((CUnitSealCtrl *)((CEntity *)seal)->m_control)->GetSealCtrlAi()->m_navyseal;
+
+    if (!navy)
+        return false;
+    unsigned char *start = 0;
+
+    if (m_unit_in_point) {
+        std::list<CZSealBody *>::iterator i = m_seals.begin();
+
+        if (*i == seal) {
+            if (m_leader_point_data.start_anim)
+                start = &m_leader_point_data.start_anim;
+        } else if (*++i == seal) {
+            if (m_follower_point_data.start_anim)
+                start = &m_follower_point_data.start_anim;
+        }
+    }
+    if (!start)
+        return false;
+    static float maxdist = 40000.0f;
+    CPnt3D d = Minus(ftsGetPlayer()->m_posW, seal->m_posW);
+
+    if (d.x * d.x + d.y * d.y + d.z * d.z > maxdist)
+        return false;
+    d.y = 0.0f;
+    d.Normalize();
+    CPnt3D look = *(const CPnt3D *)ftsGetPlayer()->m_node->m_matrix.m_matrix[2];
+
+    look.x = -look.x;
+    look.y = -look.y;
+    look.z = -look.z;
+    look.y = 0.0f;
+    look.Normalize();
+    static float mincos = -0.8f;
+
+    bool ok = false;
+
+    if (look.x * d.x + look.y * d.y + look.z * d.z < mincos) {
+        *start = 0;
+        ok = true;
+    }
+    return ok;
 }
 
 /* (OVL2 0x5E7580) */
@@ -753,9 +854,6 @@ bool CSealUnit::GetData(void *data, unsigned int size)
     return ok;
 }
 
-/* the player (fts_player.cpp's, OVL1 0x2B3580) */
-CZSealBody *ftsGetPlayer();
-
 /* the mission as far as the squads read it: its AI parameters' fireteam command (SOCOM 1's
  * CMission::m_ai_params at 0xB4, AI_PARAMS::fireteam_command at +4 -- the byte SOCOM 1's
  * CreateSinglePlayerUnits reads; SOCOM II's at 0x148, read by this unit alone). fts_state.h's
@@ -837,9 +935,7 @@ CZSealBody *CSealUnit::FindRescuedNear(CZSealBody *seal)
 
 
 extern "C" {
-/* the squad's awareness (0x5E76D0: SOCOM 1's GetAwareCounter by position), a squad sound by number
- * with a chance (0x5EAF20) and the squad's formation set (0x5EB6D0) */
-int func_005E76D0(CSealUnit *unit);
+/* a squad sound by number with a chance (0x5EAF20) and the squad's formation set (0x5EB6D0) */
 bool func_005EAF20(CSealUnit *unit, int sound, bool b, float chance);
 /* (the sound's answer and its bool argument: the two command voicings use the one and pass the
  * other unextended), and a command that takes an item (seal_cfg.cpp's 0x58DFA0, the SEALs': kinds 2, 9-13 and 16) */
@@ -997,10 +1093,97 @@ extern "C" void func_005EB8A0(CSealUnit *unit)
     }
 }
 
+/* (OVL2 0x5E76D0; pinned: -inline auto takes it, and the target's recursion is a call) */
+#pragma auto_inline off
+/* a point scaled, given back by value (inline here: SOCOM II's CPnt3D::operator*(float) const,
+ * whose copies zmath.h declares out of line -- the result copied into the caller's temporary) */
+static inline CPnt3D Scaled(const CPnt3D &p, float k)
+{
+    CPnt3D r;
+
+    p.Scale(k, &r);
+    return r;
+}
+
+/* (OVL2 0x5E7030) */
+float CSealUnit::GetCenter(CPnt3D *out, int depth, bool ai)
+{
+    float n = 0.0f;
+    std::list<CZSealBody *>::iterator e = m_seals.end();
+    std::list<CZSealBody *>::iterator i;
+
+    *out = CPnt3D::zero;
+    for (i = m_seals.begin(); i != e; ++i) {
+        CZSealBody *seal = *i;
+
+        if (!ai || seal->IsAi()) {
+            out->Add(&seal->m_posW, out);
+            n += 1.0f;
+        }
+    }
+    if (depth > 0) {
+        std::list<CSealUnit *>::iterator u;
+
+        for (u = m_sub_units.begin(); u != m_sub_units.end(); ++u) {
+            CPnt3D c;
+            float k = (*u)->GetCenter(&c, depth - 1, ai);
+
+            *out += Scaled(c, k);
+            n += k;
+        }
+    }
+    if (n > 0.0f)
+        out->Scale(1.0f / n, out);
+    return n;
+}
+
+/* (OVL2 0x5E7230: the walks' iterators assigned, in memory -- two copies each) */
+float CSealUnit::GetMaxDistSq(const CPnt3D *pos, int depth)
+{
+    float max = 0.0f;
+    std::list<CZSealBody *>::iterator e = m_seals.end();
+    std::list<CZSealBody *>::iterator i;
+
+    for (i = m_seals.begin(); i != e; ++i) {
+        CPnt3D d;
+
+        pos->Sub(&(*i)->m_posW, &d);
+        float l = d.x * d.x + d.y * d.y + d.z * d.z;
+
+        if (l > max)
+            max = l;
+    }
+    if (depth > 0) {
+        std::list<CSealUnit *>::iterator u;
+
+        for (u = m_sub_units.begin(); u != m_sub_units.end(); ++u) {
+            float l = (*u)->GetMaxDistSq(pos, depth - 1);
+
+            if (l > max)
+                max = l;
+        }
+    }
+    return max;
+}
+
+int CSealUnit::GetAwareCounter() const
+{
+    int n = 0;
+    slist::const_iterator i;
+    ulist::const_iterator u;
+
+    for (i = m_seals.begin(); i != m_seals.end(); ++i)
+        n += ((CAwareCtrl *)(*i)->m_control)->m_aware;
+    for (u = m_sub_units.begin(); u != m_sub_units.end(); ++u)
+        n += (*u)->GetAwareCounter();
+    return n;
+}
+#pragma auto_inline reset
+
 /* sound 79 when the squad is aware, else 78 (OVL2 0x5EAEB0) */
 extern "C" void func_005EAEB0(CSealUnit *unit)
 {
-    if (func_005E76D0(unit))
+    if (unit->GetAwareCounter())
         func_005EAF20(unit, 79, 0, 1.0f);
     else
         func_005EAF20(unit, 78, 0, 1.0f);
@@ -1190,6 +1373,38 @@ void CSealUnit::CreateSinglePlayerUnits()
 /* (OVL2 0x5E6C90; pinned: at fifteen statements -inline auto takes it, and the target's recursion
  * is a call, not the self-inlined copies MW makes of it) */
 #pragma auto_inline off
+/* (OVL2 0x5E6AB0, before ClearAiStates in the image) */
+void CSealUnit::PushAiState(AI_STATE state, CAiState *proto, bool recurse)
+{
+    if (proto->Virtual44(state)) {
+        std::list<CZSealBody *>::iterator e = m_seals.end();
+
+        for (std::list<CZSealBody *>::iterator i = m_seals.begin(); i != e; ++i) {
+            CAiState *s;
+            CSealCtrlAi *ai = ((CUnitSealCtrl *)(*i)->m_control)->GetSealCtrlAi();
+
+            if (ai && ai->PushAiState(state, 0)) {
+                s = ai->GetAiState();
+
+                if (proto->Virtual44(s->m_state)) {
+                    s->m_flags = proto->m_flags;
+                    s->m_phase = proto->m_phase;
+                    s->m_nextPhase = proto->m_nextPhase;
+                    s->m_delay = proto->m_delay;
+                    s->m_time = proto->m_time;
+                    s->m_flags = proto->m_flags;
+                    s->m_bit3 = proto->m_bit3;
+                    s->m_bit15 = proto->m_bit15;
+                    s->Virtual48((int)ai, proto);
+                }
+            }
+        }
+        if (recurse)
+            for (std::list<CSealUnit *>::iterator u = m_sub_units.begin(); u != m_sub_units.begin(); ++u)
+                (*u)->PushAiState(state, proto, recurse);
+    }
+}
+
 void CSealUnit::ClearAiStates(bool all, bool recurse)
 {
     std::list<CZSealBody *>::iterator e = m_seals.end();
