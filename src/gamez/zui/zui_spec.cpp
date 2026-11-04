@@ -564,8 +564,12 @@ CDesignDlgObj::~CDesignDlgObj()
 }
 
 /* a copy of another's: the old spec deleted and the other's copied through its Copy slot, the
- * position, opacity, name and parent assigned (SOCOM 1's CDesignDlgObj assignment; out of line) */
-#pragma auto_inline off
+ * position, opacity, name and parent assigned (SOCOM 1's CDesignDlgObj assignment; out of line).
+ * NOT pinned (the UI lane's round 20): MW refuses to auto-inline it on its own, and the refusal
+ * propagates (the engine core's round 5) -- std::copy's, copy_backward's and fill_n's helpers over
+ * CDesignDlgObj (0x3845B0, 0x384B00, 0x384AA0) are then refused in turn and called out of line
+ * from the tail's erase and insert, each calling this out of line, as in the target; pinned with
+ * `#pragma auto_inline off`, the helpers inlined whole and their three rows were never emitted */
 void CDesignDlgObj::operator=(const CDesignDlgObj &o)
 {
     delete m_spec;
@@ -576,7 +580,6 @@ void CDesignDlgObj::operator=(const CDesignDlgObj &o)
     m_name = o.m_name;
     m_childOf = o.m_childOf;
 }
-#pragma auto_inline reset
 
 /* the map's corners, its ELEMENTS (each an object spec at an offset, added to the design objects)
  * and its ANIMATIONS (SOCOM 1's; CDlgObjSpec's constructor inlined) *
