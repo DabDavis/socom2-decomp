@@ -15,10 +15,82 @@
 
 #include "hud_tcm.h"
 #include "../../gamez/zsys/zsys_public.h"
+#include "../../gamez/zinput/zinput.h"
 
-class CZSealBody;
+/* the controller's menu states (zseal.h's MENU_STATE; the names ours) */
+enum MENU_STATE {
+    MENU_STATE_NONE = 0,
+    MENU_STATE_1 = 1,
+    MENU_STATE_TCM = 2
+};
+
+/* the controller as the menu reads it (zseal.h's CSealCtrl) */
+class CSealCtrl {
+public:
+    void SetMenuState(MENU_STATE state, bool b);
+    void StopRumbler();
+
+    unsigned char _0[0x114];
+    unsigned int m_padIndex;   // 0x114: its pad
+    unsigned char _118[0x221 - 0x118];
+    unsigned char m_221;   // 0x221: 3 leaves the menu state alone on a close
+};
+
+/* the player (zseal.h's CZSealBody: its controller) */
+class CZSealBody {
+public:
+    unsigned char _0[0xc0];
+    CSealCtrl *m_ctrl;   // 0xc0
+};
 
 CZSealBody *ftsGetPlayer();
+
+/* OVL2's: the player's menu flag (by address) and OVL1's pad call (by address) */
+extern "C" void func_005AA620(CZSealBody *seal, int on);
+extern "C" void func_002C5D10(CPad *pad, int a, int b);
+
+/* the HUD's compass (hud_mapcompass.h's MapCompass: only its switches) */
+class MapCompass {
+public:
+    void Off();
+    void On();
+};
+
+/* the HUD (hud_main.cpp's CHUD: only its compass) */
+class CHUD {
+public:
+    unsigned char _0[0x4fe0];
+    MapCompass m_compass;   // 0x4fe0
+};
+
+extern CHUD *theHUD;
+
+/* the voice recogniser (reco.cpp's theReco) */
+class CReco {
+public:
+    void Suspend(bool now);
+    void Resume();
+};
+
+extern CReco theReco;
+
+/* the network game (fts_net_game's): whether it is one */
+class CZNetwork {
+public:
+    unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_bNetwork;   // 0x1
+};
+
+extern CZNetwork theNetwork;
+
+/* hud_tcmcmds.cpp's (0x231690, not written yet): the menu laid out */
+extern "C" void func_00231690(CTCM *tcm, float t);
+
+/* a pad by its index, none past the last (SOCOM 1's inline over CInput's table) */
+static inline CPad *GetPad(unsigned int n)
+{
+    return n < CInput::NUM_PADS ? CInput::m_pads[n] : 0;
+}
 
 /* hud_tcmcmds.cpp's: the node an item's test runs for */
 void tcmSetCurNode(CTCMNode *node);
@@ -32,6 +104,167 @@ public:
 
     static CSnd *GetSoundByName(const char *name);
 };
+
+/* the unit's float pool (0x3DCAF0-0x3DCB20, 8 bytes apart: function-local statics, written as file
+ * statics -- scdiff compares them by content) */
+static float s_tcm_slidehold = 0.2f;   // 0x3DCAF0: the hold after a slide
+
+/* the next selectable item of a column after the open one, wrapping round to the first; with no
+ * other, the open one if asked (else -1). Members reading theTCM, not `this` (a0 is never read) */
+int CTCM::FindNext(CTCMNode *column, bool wrap)
+{
+    CTCMNode *c;
+    int found = -1;
+
+    if (!column)
+        return found;
+    unsigned int cur = theTCM.m_path.back();
+    unsigned int n = column ? column->m_children.size() : 0;
+
+    for (unsigned int i = cur + 1; i < n && found == -1; i++) {
+        c = column->m_children[i];
+
+        if (c && c->m_state != TCM_HIDDEN && !c->m_741)
+            found = i;
+    }
+    if (found == -1)
+        for (unsigned int i = 0; i < cur && found == -1; i++) {
+            c = column->m_children[i];
+
+            if (c && c->m_state != TCM_HIDDEN && !c->m_741)
+                found = i;
+        }
+    if (wrap && found == -1)
+        found = cur;
+    return found;
+}
+
+/* the previous selectable item of a column, wrapping round to the last; the open one if none */
+int CTCM::FindPrev(CTCMNode *column)
+{
+    CTCMNode *c;
+    unsigned int cur = theTCM.m_path.back();
+    int found = -1;
+    unsigned int n = column ? column->m_children.size() : 0;
+
+    for (int i = cur - 1; i >= 0 && found == -1; i--) {
+        c = column->m_children[i];
+
+        if (c && c->m_state != TCM_HIDDEN && !c->m_741)
+            found = i;
+    }
+    if (found == -1)
+        for (unsigned int i = n - 1; cur < i && found == -1; i--) {
+            c = column->m_children[i];
+
+            if (c && c->m_state != TCM_HIDDEN && !c->m_741)
+                found = i;
+        }
+    if (found == -1)
+        found = cur;
+    return found;
+}
+
+/* the open column's next item selected, with the slide's sound and a short hold */
+void CTCM::Next()
+{
+    CTCMNode *column = GetColumn(m_path.size() - 1);
+
+    if (column && column->m_children.size() > 1) {
+        int next = FindNext(column, true);
+
+        m_path[m_path.size() - 1] = next;
+        m_sounds.Play(TCM_SND_SLIDE);
+        Hold(false, s_tcm_slidehold);
+    }
+}
+
+/* the root's items shown: the first one shown or with no test opened, the select sound, the
+ * layout (the pushed selection a ternary: its temporary stored in each arm, the count declared
+ * first).
+ * OPEN, 4 instructions, one register pair: the target keeps the walked child in v1 (the address
+ * temporary's register) and its state byte in a1, MW the child in a1 and the byte in v1 -- a named
+ * child at the top, after the counters, through GetChild or CTCMNodeList::Get, or none (the
+ * element read twice) all tried */
+void CTCM::ShowRoot()
+{
+    unsigned int n = m_children.size();
+    int first = -1;
+
+    for (unsigned int i = 0; i < n && first == -1; i++) {
+        CTCMNode *c = m_children[i];
+
+        if (c->m_state == TCM_SHOWN)
+            first = i;
+        if (c->m_entry && !c->m_entry->m_update)
+            first = i;
+    }
+    m_path.clear();
+    if (m_children.size()) {
+        m_path.push_back(first != -1 ? first : 0);
+    }
+    m_root.On();
+    unsigned int count = m_children.size();
+
+    for (unsigned int i = 0; i < count; i++)
+        m_children[i]->m_root.On();
+    m_sounds.Play(TCM_SND_SELECT);
+    func_00231690(&theTCM, 0.0f);
+}
+
+/* the menu opened: the player's controls in the menu state, the states updated, the root shown,
+ * the compass off, the recogniser listening */
+void CTCM::Open()
+{
+    CZSealBody *player = ftsGetPlayer();
+    CSealCtrl *ctrl = player->m_ctrl;
+    CPad *pad = GetPad(ctrl->m_padIndex);
+
+    func_005AA620(player, 1);
+    m_dc8 = 0;
+    ctrl->SetMenuState(MENU_STATE_TCM, false);
+    ctrl->StopRumbler();
+    if (pad)
+        func_002C5D10(pad, 11, 1);
+    UpdateState(true);
+    ShowRoot();
+    m_mode.Set(0);
+    theHUD->m_compass.Off();
+    m_da0 = 0;
+    m_da4 = 1.0f;
+    g_tcmColumns[0].m_dir = 1.0f;
+    g_tcmColumns[0].m_4 = 1.0f;
+    m_root.On();
+    func_00231690(this, 0.0f);
+    if (!theNetwork.m_bNetwork)
+        theReco.Resume();
+    m_13b0 = 0;
+}
+
+/* the menu closed (selected: mode 2 and the selection's flags; else mode 3), the columns sliding
+ * out, the compass back, the recogniser suspended */
+void CTCM::Close(bool selected)
+{
+    CZSealBody *player = ftsGetPlayer();
+
+    if (player->m_ctrl->m_221 != 3)
+        player->m_ctrl->SetMenuState(MENU_STATE_NONE, m_mode.m_mode == 5);
+    func_005AA620(player, 0);
+    if (m_mode.m_mode != 6)
+        Hold(false, 0.3f);
+    m_mode.Set(selected ? 2 : 3);
+    if (selected) {
+        m_dce = 1;
+        m_dd0 = 0;
+    }
+    for (int i = 0; i < 8; i++)
+        g_tcmColumns[i].m_dir = -1.0f;
+    theHUD->m_compass.On();
+    m_da4 = -1.0f;
+    if (!theNetwork.m_bNetwork)
+        theReco.Suspend(false);
+    CInput::Flush();
+}
 
 CTCMSounds::CTCMSounds()
 {
@@ -57,6 +290,8 @@ void CTCMSounds::Clear()
     m_back = 0;
 }
 
+/* called out of line by the unit's own callers (Next): pinned */
+#pragma auto_inline off
 void CTCMSounds::Play(TCM_SOUND which)
 {
     if (m_loaded) {
@@ -76,6 +311,7 @@ void CTCMSounds::Play(TCM_SOUND which)
         }
     }
 }
+#pragma auto_inline reset
 
 /* a string freed and cleared (ours: the name's, inlined in its setter and the destructor) */
 static inline void FreeString(char *&s)
@@ -199,7 +435,11 @@ void CTCMNode::SetText2(const char *s)
 
 /* a child taken out of the list and returned (as the target does it: every later child copied
  * into its slot in turn, and the parent cleared through the found pointer before it is set --
- * never the child's; a signed counter, or MW unrolls the copy 8x) */
+ * never the child's; a signed counter, or MW unrolls the copy 8x).
+ * OPEN, 5 instructions, registers: the target computes `n - 1` into t1 and the data pointer into
+ * t0 and adds the store's address data first (`addu a2,t0,t2`), MW swaps the two and adds the
+ * outer offset first -- `n - 1` as a local, `n - 1 != i`, begin()/data() indexing, a local for the
+ * copied child, signed outer counters all tried */
 CTCMNode *CTCMNode::RemoveChild(CTCMNode *child)
 {
     CTCMNode *found = 0;

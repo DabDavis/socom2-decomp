@@ -168,6 +168,13 @@ public:
 
     void Hold(bool reset, float t);
     CTCMNode *GetColumn(unsigned int depth);
+    /* the tree unit's (hud_tcmtree.cpp; the names ours) */
+    void Next();
+    void ShowRoot();
+    void Open();
+    void Close(bool selected);
+    int FindPrev(CTCMNode *column);
+    int FindNext(CTCMNode *column, bool wrap);
     void SetCache(CTCMCache *cache);
     void Reset();
     void ClearItems();
@@ -214,7 +221,7 @@ public:
     CTCMColumn() : m_dir(1.0f), m_4(0) {}
 
     float m_dir;   // 0x0
-    int m_4;   // 0x4
+    float m_4;   // 0x4 (a float: the menu's open stores 1.0 there)
 };
 
 extern CTCMColumn g_tcmColumns[8];

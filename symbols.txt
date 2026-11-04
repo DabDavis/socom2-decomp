@@ -2208,12 +2208,12 @@
 0x002344E0 0xA54 func_002344E0  # OVL1
 0x00234F40 0x25C func_00234F40  # OVL1
 0x002351A0 0x154 func_002351A0  # OVL1
-0x00235300 0x140 func_00235300  # OVL1
-0x00235440 0x11C func_00235440  # OVL1
-0x00235560 0x170 func_00235560  # OVL1
-0x002356D0 0x88 func_002356D0  # OVL1
-0x00235760 0x110 func_00235760  # OVL1
-0x00235870 0x128 func_00235870  # OVL1
+0x00235300 0x140 Close__4CTCMFb  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the menu closed: the controller's menu state, the player's flag (0x5AA620, 0), a 0.3 hold unless mode 6, mode 2 or 3, the eight columns' -1 slides, the compass on, theReco suspended offline, CInput::Flush; CHUD::Tick, ReInit_Uninit and the recogniser's callback call it)
+0x00235440 0x11C Open__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the menu opened: the player's flag, the controller's TCM state and rumble stopped, the pad's call (11, 1), UpdateState(true), ShowRoot, mode 0, the compass off, the first column's slides, the root on, the layout, theReco resumed offline)
+0x00235560 0x170 ShowRoot__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the first shown or untested root item put on the cleared path, the root and its items on, the select sound, the layout (0x231690 on theTCM); Open calls it)
+0x002356D0 0x88 Next__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the open column's next item (FindNext with wrap) stored at the path's back, the slide sound, Hold(false, 0.2); tcmOpenNode calls it)
+0x00235760 0x110 FindPrev__4CTCMFP8CTCMNode  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the previous selectable child (not hidden, +0x741 clear) before theTCM's path back, wrapping from the last; the current one if none; 0x235D40 calls it)
+0x00235870 0x128 FindNext__4CTCMFP8CTCMNodeb  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the next selectable child after theTCM's path back, wrapping from the first; -1 for no column, the current one if asked; Next and 0x235D40 call it)
 0x002359A0 0x394 func_002359A0  # OVL1
 0x00235D40 0x384 func_00235D40  # OVL1
 0x002360D0 0x180 func_002360D0  # OVL1
