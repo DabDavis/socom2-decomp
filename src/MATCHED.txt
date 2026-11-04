@@ -2367,7 +2367,7 @@
 0x00267E70 OpenZAR__10CZAnimMainFPCc
 0x00267FA0 LoadZAR__10CZAnimMainFP9CZAnimZARPCc
 0x002681C0 func_002681C0
-0x00268250 func_00268250
+0x00268250 Load__10CZAnimMainFPCcPCc
 0x00268260 UnloadCmdSet__10CZAnimMainFi
 0x00268360 UnloadSIScript__10CZAnimMainFP16_zanim_si_script
 0x002683B0 Unload__10CZAnimMainFv
@@ -2726,6 +2726,7 @@
 0x0027FF20 OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x0027FFB0 OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x00280040 func_00280040
+0x002800C0 OnRemoveEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x00280770 func_00280770
 0x002808D0 func_002808D0
 0x00281030 func_00281030
@@ -2734,8 +2735,15 @@
 0x00281060 func_00281060
 0x00281070 func_00281070
 0x00281080 func_00281080
+0x00281090 UICopyUIVar__FP13C2DAnimCmdHdrPf
+0x00281A70 OnCloseAndSwitch__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x00281BC0 func_00281BC0
 0x00282410 func_00282410
+0x00282420 UIChooseEquip3__FP13C2DAnimCmdHdrPf
+0x00282500 UIChooseEquip2__FP13C2DAnimCmdHdrPf
+0x002825E0 UIChooseEquip1__FP13C2DAnimCmdHdrPf
+0x002827E0 UIChoosePrimary__FP13C2DAnimCmdHdrPf
+0x002828B0 ExecuteChooseEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x002846F0 func_002846F0
 0x00284B40 push_back__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fc
 0x00285230 func_00285230
@@ -2864,7 +2872,7 @@
 0x0028DC90 PushBlend__5CBodyFP16CZSIScriptCommonsc
 0x0028DFB0 BodySetState__5CBodyFi
 0x0028DFC0 SetPartActive__5CBodyFiP10CZBodyPart
-0x0028E040 SmoothPart__5CBodyFP10CZBodyPartf
+0x0028E040 SmoothPart__5CBodyFfP10CZBodyPart
 0x0028E0D0 SmoothAnims__5CBodyFf
 0x0028E1B0 OrientAuxParts__5CBodyFv
 0x0028E290 OrientParts__5CBodyFv
@@ -7167,8 +7175,11 @@
 0x003FF7B0 __sinit_reco.cpp
 0x003FF7F0 __sinit_hud_mpweaponsel.cpp
 0x003FF9C0 __sinit_hud_healthbar.cpp
+0x003FFB70 __sinit_zanim_cmd_tick.cpp
+0x003FFC30 __sinit_zanim_anim.cpp
 0x003FFCA0 __sinit_zanim_menu.cpp
 0x003FFCE0 __sinit_bone_init.cpp
+0x003FFDD0 __sinit_camera.cpp
 0x003FFFB0 __sinit_ent_main.cpp
 0x00400030 __sinit_ent_target.cpp
 0x004000C0 __sinit_compass.cpp
@@ -7180,6 +7191,7 @@
 0x00400770 __sinit_fts_net_platform.cpp
 0x00401BD0 __sinit_game_state.cpp
 0x00401CC0 __sinit_grid_di.cpp
+0x00401CF0 __sinit_grid_clutter.cpp
 0x00401D80 __sinit_int_shapes.cpp
 0x00401DB0 __sinit_int_material.cpp
 0x00401E30 __sinit_zNetMedius.cpp

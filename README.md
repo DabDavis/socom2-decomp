@@ -1965,6 +1965,22 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 2** (zanim_menu.cpp's equipment handlers, three initialisers, 249 respells):
+  - a function template declared but not defined gives a call to the instance an earlier unit emits, and emits no copy of
+    its own (zin_pad.cpp's `_saturate<f>`);
+  - passing an int to a parameter of a single-enumerator byte enum adds a conversion, a local of the enum type removes it
+    (UIRebootIOP); for an int `x ? 1 : 0` folds to sltu -- the target's li/movz select comes from a byte-enum ternary
+    passed straight;
+  - an auto-inline helper with no caller in its unit inlines the moment a caller is written: pin it where the target calls
+    it (CSelectedCharsItr::Advance);
+  - 0x2800C0 up to the deques is zanim_menu.cpp's own tail (SOCOM 1 names six of its handlers in the unit's anonymous
+    namespace); camera.cpp's statics (SOCOM 1's dilr0-dilr3 and tetherPos, three new points) bring __sinit_camera.cpp
+    0x3FFDD0 once camera.h's DiIntersect declares DiIntersect(int) and ~DiIntersect(); CZAnimMain::Load 0x268250 is SOCOM
+    1's Load(name, set) reduced to `return true`; CBody::SmoothPart takes the fraction first (the SEALs' round 22);
+  - placeholders left raw: SetAcctInfo 0x2FD0D0 (the row's int gender loses the caller's li/movz select), GetUsedSpace
+    0x3A1060 (the call passes an argument the row's name does not take);
+  - open: UINetGetInterfaceList (12: the CRdrEditor takes the lowest frame slot under every declaration order), ThisFoot
+    (2: the FPR pair).
 - **Tells from the kit and AI states, round 24** (CZKit::UnInit by std::transform, isSelectableItem):
   - CZKit::UnInit 0x5C7CE0 is `std::transform(v.begin(), v.end(), v.begin(), op)` over a function object (an empty user
     constructor; its `operator()` deletes an unparented node and returns 0): the target's frame-resident iterators are the
