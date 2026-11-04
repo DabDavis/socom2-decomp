@@ -2060,6 +2060,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 40** (c2dbitmap_poly.cpp and hud_missioncams.cpp complete, SOCOM II's Draw3DLine):
+  - a by-value inline's arguments are read last-first but numbered in declaration order; passed by `const &`, a
+    two-operand test got the target's load order and registers (C2DBitmapPoly::Rotate_Zaxis 0x358730 / 0x3589D0's centre
+    helper); an inline rotating one point computed y' before x' whatever its source order, written out on the function's
+    own locals (y declared first) the order followed the stores;
+  - `r[1][1] = cosf(..); r[0][0] = r[1][1];` keeps the cosine in its register for the next read, the chained `r[0][0] =
+    r[1][1] = cosf(..)` reloads it; a named local holding a product is numbered below an inline's variables, left as a
+    temporary in the call it takes the target's last saved float register;
+  - to keep a packet's DMA-tag pointer in its own saved register declare it first with no initialiser and assign it from
+    the cursor (initialised from the packet it merges with the packet); a pointer written as a block local in each half
+    gave the target's order where one function-level pointer swapped registers (Draw3DLine 0x360030, SOCOM II's own body);
+  - an if/else chain instead of mid-function returns gives the target's join nops; out-of-line bool calls compared
+    `== false` give its `andi`; a bitfield written `(bool)x != false` gives both its `sltu`s; an inline bool accessor
+    compared `== false` keeps its `sltu` where `!f()` folds it away (CZHudMissionCams::HudTick 0x229810: SOCOM 1's with
+    SOCOM II's skip through theGame.m_coreState's SetSkipSwap); every one of tcmAddItem's ~100 callers passes a constant 0
+    or 1 last -- its last parameter is a bool (the retype queued with the item builder).
 - **Tells from the UI, round 22** (the soft keyboard's key textures and display, closed by the core's preheader rule):
   - a 2-D walk through nested reference-returning `operator[]`s leaves the inner loop entered at its bottom test -- the row
     reference is computed inside the body and hoisted, so MW lays the preheader after the return (the engine core's round
