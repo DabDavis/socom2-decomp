@@ -9,15 +9,15 @@
  * (0x5ED9B0, open on the MSL's depths: 0x5ED8F0/0x5ED950/0x5ED980 are its iterator copies);
  * round 21: FindRescuedNear (0x5EEDB0, new) and GetMyLookDir (0x5EEF80, SOCOM 1's), the stand-in
  * controller given its real state stack for AiStateIs.
- * Open: 0x5EBDC0 is CAiState's implicit operator= (0x5EBB50 assigns a breach state to the one it
- * pushed: the vptr skipped, m_time, the stack -- the list's assignment, then its words at 0xC-0x1B
- * copied as one aggregate through the FPU, lwc1/swc1, m_result with lw/sw -- then CAiState's
- * members, m_loc an aggregate too). The list assignment is MSL's: x.end(), then
- * min(size(), x.size()) through references, the element at that index found from the nearer end
- * (0x5EF7F0, an advance either way), and the assign of [first, mid, last) (0x5EF470: past mid a
- * temporary list built on this one's allocator (0x5EF9B0) and init'ed (0x5EF8D0), the overlap
- * copied, the temporary spliced on (0x5EF950) and destroyed (0x510110); else the overlap copied
- * and the rest erased inline). include/list has none of it. Defined in reverse of their image
+ * round 33: the breach push 0x5EBB50 with CAiState's implicit operator= 0x5EBDC0 and CAiTimer's
+ * 0x5EBDA0 after it, and the list assignment's advance_to 0x5EF7F0 and splice 0x5EF950 in the tail.
+ * OPEN, 0x1D8 against 0x198: the assignment's do_assign 0x5EF470 (include/list's) -- the target
+ * calls the temporary's destructor (0x510110) and inlines the else arm's range erase; here both are
+ * inlined (the destructor's out-of-line copy is generated mid-unit, after the constructor, before
+ * the tail: taken out with the constructor and destructor, the destructor is inlined one level and
+ * both erases are called, 0x170), so the original generated the destructor after do_assign and the
+ * erase before it. OPEN, 0x70 against 0x78: init 0x5EF8D0 calls end() out of line (0x50FED0)
+ * before each insert, as OVL1's 0x317720 does; here end() is inlined. Defined in reverse of their image
  * order (-inline deferred) where it matters. */
 
 #include <list>
@@ -96,7 +96,12 @@ public:
     unsigned char _0[0x264];
     unsigned int m_debug : 1;   // 0x264
     unsigned int m_navyseal : 1;   // bit 1
-    unsigned char _265[0x26c - 0x265];   /* (the two bits take one byte) */
+    unsigned int m_bits2 : 14;   // bits 2-15
+    /* bits 16 and 17 (zseal.h's m_aibit16/17: a breach begun clears both, the state's bit 13 set
+     * from 16 without 17 -- 0x5EBB50) */
+    unsigned int m_aibit16 : 1;
+    unsigned int m_aibit17 : 1;
+    unsigned char _267[0x26c - 0x267];   /* (the bits take three bytes) */
     /* SEAL_AI_PARAMS's two mode bytes at 0x26C/0x26D (zseal.h's m_26c: 4, any target taken) */
     signed char m_26c;   // 0x26c
     signed char m_26d;   // 0x26d
@@ -1224,6 +1229,59 @@ bool CSealUnit::AcknowledgeCommand(FT_COMMAND cmd, unsigned char item, int flags
                 break;
             }
         }
+    }
+    return r;
+}
+
+/* the controller's current state if it is a breach (kind 10), else 0 (inline: 0x5EBB50 twice) */
+static inline CAiSBreach *GetBreach(CSealCtrlAi *ai)
+{
+    CAiState *s = ai->GetAiState();
+
+    return s && s->m_state == AI_STATE_BREACH ? (CAiSBreach *)s : 0;
+}
+
+/* the bits a breach clears as it is pushed, each through a bool (the target's `andi zero,1`) */
+static inline void SetAiBit16(CSealCtrlAi *ai, bool b) { ai->m_aibit16 = b; }
+static inline void SetAiBit17(CSealCtrlAi *ai, bool b) { ai->m_aibit17 = b; }
+
+/* a breach pushed on a SEAL's AI and made the squad's prototype (the squad's data pointer: the
+ * CSealCtrlAi::OnCommand caller passes it): the state copied whole (CAiSBreach's implicit
+ * operator=, inlined a level -- CAiState's 0x5EBDC0 and CAiTimer's 0x5EBDA0 called), the first
+ * SEAL made the team's first and last and its valve made, or a later SEAL made the last, its
+ * place in the team counted and the valve stepped (OVL2 0x5EBB50; new in SOCOM II, the name ours) */
+extern "C" bool func_005EBB50(CAiSBreach *proto, CSealCtrlAi *ai)
+{
+    bool r = ai->PushAiState(AI_STATE_BREACH, 0);
+
+    if (r) {
+    CAiSBreach *s = GetBreach(ai);
+
+    *s = *proto;
+    if (s->m_64 == 0) {
+        s->m_64 = s->m_68 = ai;
+        proto->m_64 = proto->m_68 = ai;
+        s->m_70 = CValve::Create(0, 0, VALVE_TEMP);
+        proto->m_70 = s->m_70;
+        s->m_6c = 0;
+        proto->m_6c = 0;
+    } else if (s->m_64 == s->m_68) {
+        s->m_68 = ai;
+        proto->m_68 = ai;
+        CAiSBreach *first = GetBreach(s->m_64);
+
+        if (first)
+            first->m_68 = ai;
+    }
+    s->m_6c = proto->m_6c++;
+    CValve *v = s->m_70;
+
+    v->SetValue(v->m_value + 1);
+    s->SetBit13(ai->m_aibit16 && !ai->m_aibit17);
+    SetAiBit16(ai, false);
+    SetAiBit17(ai, false);
+    s->SetActive(true);
+    r = true;
     }
     return r;
 }

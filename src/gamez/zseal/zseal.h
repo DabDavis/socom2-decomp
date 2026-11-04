@@ -86,8 +86,14 @@ enum AnimType { animTypeUndefined = -1, animTypeRef = 0, animTypeLast = 142 };
  * stores them; OVL1 data, 8 bytes apart in SOCOM 1's order -- SOCOM 1's 4). Only the ones read here */
 class AnimTypes {
 public:
+    /* (SOCOM 1's KickGrenade, 33 before Stand2Prone in both builds: the grenade state's kick,
+     * 0x55AC20, plays it with the timed call that throws the grenade from where it lies) */
+    static short KickGrenade;   // OVL1 0x3DEB40
     static short Stand2Prone;   // OVL1 0x3DEC48
     static short PistolStand2Prone;   // OVL1 0x3DEC50
+    /* (SOCOM 1's SwapRifle, six after Stand2Prone in both builds: the weapon swap's blends,
+     * 0x57D5E0, are looked up again unless it is on the stack) */
+    static short SwapRifle;   // OVL1 0x3DEC78
     static short ClimbMedium;   // OVL1 0x3DEC90
     static short ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
     static short ProneLStrafe;   // OVL1 0x3DECD0
@@ -142,6 +148,10 @@ public:
     bool CanAddAmmo(int index, int rounds);
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
     class CZFTSWeapon *GetCurItem() const;
+    /* the weapons parented to the hand for the rifle or the pistol (kit.h's; OVL2 0x5C6A40, 0x5C6DA0:
+     * the two takes start with them) */
+    void ReParentToRifle();
+    void ReParentToPistol();
     /* whether the item in hand has rounds left (kit.h's; OVL2 0x5BDB00) */
     bool CurItemHasAmmo();
     /* the items held, an item set at an index, its magazines and rounds, its ammunition set -- with a
@@ -262,8 +272,12 @@ public:
     bool GetLocation(const char *name, CAiMapLoc &loc);
     /* a point's cell (ai_maps.h's, OVL2 0x52DC70) */
     bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc);
-    /* a cell's map (ai_maps.h's, OVL2 0x52E6B0) */
+    /* a cell's map (ai_maps.h's, OVL2 0x52E6B0), and a location's (OVL2 0x52A180) */
     class CAiMap *GetMapByIndex(unsigned int i) const;
+    class CAiMap *GetMap(const CAiMapLoc &loc) const;
+    /* whether a straight line runs from one cell to another, where it stops handed back (ai_maps.h's,
+     * OVL2 0x52CC80) */
+    bool CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out);
     /* a location's cell (ai_maps.h's, OVL2 0x52D6A0) */
     CAiCell *GetCell(const CAiMapLoc &loc);
     /* an action by its id, its cell and its record (ai_maps.h's, OVL2 0x52DAA0) */
@@ -617,6 +631,9 @@ public:
     void SetLookFlags(unsigned int flags);
     void SetLookTimer(float t);
     void SetLookRate(float rate);
+    /* the speed a throttle gives along an axis (SOCOM 1's sealctrl.cpp; OVL2 0x592880: the body's
+     * GetMaxZMotion/GetMaxXMotion) */
+    float GetSpeedFromThrottle(float throttle, int axis);
 
     unsigned char _18[0x24 - 0x18];
     /* SOCOM 1's AI_LOOK, a signed byte (AIL_ALL is -1: compared with `lb`); the enum is
@@ -1003,7 +1020,11 @@ public:
     AI_SOUND_PRIORITY m_sound_priority;   // 0x764
     unsigned char _768[0x76c - 0x768];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
-    unsigned char _76d[0x7c0 - 0x76d];
+    unsigned char _76d[0x774 - 0x76d];
+    /* a point a thrower's own grenade is measured from (the grenade state's Tick, 0x55AC20: within
+     * 50 of it the throw back is not wanted; the name ours) */
+    CPnt3D m_774;   // 0x774
+    unsigned char _780[0x7c0 - 0x780];
 };
 
 class CSealCtrlAi : public CSealCtrl, public SEAL_AI_PARAMS {
@@ -1436,6 +1457,9 @@ public:
     /* the anim set's speeds set, the prone and ladder ones from their anims' scaled times (SOCOM 1's;
      * OVL2 0x58BCB0, seal_cfg.cpp) */
     void SetMaxMotion();
+    /* the anims of a blendable's speed bands mixed into a list by a speed and a weight, how many
+     * handed back (SOCOM 1's MixAnims without its flag; OVL2 0x58BDF0, seal_cfg.cpp) */
+    int MixAnims(class CActiveAnimList *list, class CBlendable *blendable, float scale, float wt);
     /* a new anim set bound: a carried body let go, the blends cleared, the set swapped in (the old one
      * kept), the speeds and the weapon reset and the type's blend pushed in the state (SOCOM 1's took the
      * set alone; OVL2 0x58C350, seal_cfg.cpp) */
