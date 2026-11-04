@@ -175,6 +175,9 @@ public:
     virtual bool AttachTo(CZSealBody *prey);
 
     void FTSTick();
+    /* the nearest hit of the world's along a chord, the followed SEAL and the one it carries kept out
+     * of the test (SOCOM II's, 0x29CBB0: GetThirdPersonCamPos's; the name ours) */
+    bool ClipChord(CPnt3D *from, CPnt3D *to, CPnt3D *hit);
     void APLookAt(float dT, CEntity *target, CMatrix &cTw);
     void UpdateCameraRegions();
 

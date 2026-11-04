@@ -53,6 +53,16 @@ public:
      * into the string table at base (SOCOM 1's) */
     bool Read(CZAR *zar, CIO *io, int base);
     CKey *InsertKey(CKey *key);
+    /* the key's record and its children's written through the archive's file (SOCOM 1's;
+     * 0x25B030, WriteDirectory calls it on the root as SOCOM 1's does) */
+    void Write(CZAR *zar);
+    /* the keys counted, the key itself included, the children's own when deep (SOCOM II's,
+     * 0x25B300: WriteDirectory sizes the directory with it on the root, true; the name ours) */
+    int CountKeys(bool deep);
+    /* a key's directory record, 16 bytes (SOCOM II's, 0x25B2F0, called out of line; the name ours) */
+    static int RecordSize();
+    /* the names made the string table's packed copies (SOCOM 1's; CSTable::Pack's callback) */
+    static void fixupKey(CSTable *table, void *key);
 
     /* the children forgotten, each deleted too when asked (SOCOM II's, 0x25B580: FreeDirectory
      * deletes them when the key buffer holds none of the keys -- the keys then their own
@@ -148,7 +158,7 @@ public:
      * name ours: CZSIObject::Read reads the object's name with it) */
     int ReadString(char **str);
     /* the directory written at the file's end (SOCOM 1's; 0x257590) */
-    void WriteDirectory();
+    bool WriteDirectory();
     /* the directory written if it changed, while the file is open: whether it is (SOCOM II's --
      * CSaveManager::Save calls it; the name ours) */
     bool Flush();

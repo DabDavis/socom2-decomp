@@ -1356,7 +1356,37 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  * its own data_+size_ (CMeshLOD 0x3B9BD0 and CCharacterWeap 0x53FD60 byte-exact, AcctRecord 0x2FE3E0 and
  * the turret 0x3ABD90 lost: not adopted), e through end().m_p, an iterator local (scalarised into an
  * inliner temp, @2456), the old size and data held in locals with the end re-formed (copy_backward's
- * parameter temp absorbs it, 7 instructions moved elsewhere), copy_backward's decrements as statements */
+ * parameter temp absorbs it, 7 instructions moved elsewhere), copy_backward's decrements as statements.
+ * APPLIED BY THE INTEGRATOR (2026-11-04: +35/-5 over every hand-written unit, the integration check's
+ * count in the commit) AFTER THE MSL HEADERS ROUND 19 MEASURED IT (build/scratch/msl-r19-p19/, untracked: ig/renum.py and ig/subset.py
+ * renumber a vreg or a set of them in an igdump record and replay MW's colouring against the target's
+ * registers, ig/insmap.py runs it over a unit's inserts, board.py scores every class insert against a
+ * shadow header in 4 s): THE IMAGE'S CLASS INSERTS ARE TWO POPULATIONS, by whether the element's
+ * construct() is cut to one level (placement new 0x2FECA0/0x51D210 called out of line):
+ *  - placement new INLINED (FriendInvitationItem 0x302AA0, IgnoreItem 0x3022F0, UniverseStatus 0x2FEE50,
+ *    the news 0x2FF960, the room players 0x2F2D90, CLadderData 0x2B0260, the delayed nodes 0x33C5C0,
+ *    CMovieCue, the float and CTexHandle * sequence entries, the A* nodes, CAiMapLoc, CAiPath::point, the
+ *    AI maps' readers, names, links, regions, spores, actions, CVehicleDef, CMeshLOD, CCharacterWeap,
+ *    CUIVariable, ActionItem, c2dfont.cpp's four): the end must be numbered after m -- the target's end
+ *    is copy_backward's result temp (inliner, so after every declared local) with the else loop's cursor
+ *    numbered BELOW it. Written
+ *        iterator e = this->end();   (an object: MW's scalariser merges e.m_p into copy_backward's
+ *                                     result parameter temp, which keeps the temp's number)
+ *        ... T *j = e.m_p - n; for (T *k = e.m_p; j < e.m_p; ++j, ++k) construct(k, *j) ...
+ *    (the else loop's cursor declared there, after j: the in-place `i` reused there is replaced by a
+ *    loop-optimiser induction temp numbered past the end; the end an object alone, or the cursor alone,
+ *    moves nothing) -- and the end object declared at function scope, the reallocating branch's end
+ *    `e = this->end()` too (+1, CAiMap::action) -- every hand-written unit 9629 -> 9654 (+35: all of the
+ *    above byte-exact, 51.25 % of the map's bytes);
+ *  - placement new CALLED (AcctRecord 0x2FE3E0, CTurretDef 0x3ABD90, zrdr_sym 0x3325E0, CDlgDesignModel
+ *    0x384ED0, CVehicleRdrEntry 0x534630): the end must be numbered BEFORE m and the else branch's j --
+ *    the declared local this insert had before (which they matched) -- and the object form, applied, loses all
+ *    five (-5: OPEN, the shape that does both still to find). So the original's end is a declared-local number when construct is cut and copy_backward's
+ *    temp when it is not; no form found does both (tried: the object built by its constructor (-2), the
+ *    object declared ahead of the length test (no change), m through the iterator's operator- (no
+ *    change), e through an inline returning the end pointer (no change), every cursor an iterator object
+ *    (-32)). The renumbering replays show it is the order of e against m alone (subset.py: AcctRecord's
+ *    target needs m and the else j after the end, FriendInvitationItem's m before it) */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
@@ -1365,31 +1395,32 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
     if (n > max_size() || this->size_ > max_size() - n)
         __msl_error("vector::insert length error\n");
     const T *xp = &x;
+    iterator e;
 
     if (this->size_ + n <= this->capacity_) {
-        T *e = this->data_ + this->size_;
-        unsigned int m = e - position;
+        e = this->end();
+        unsigned int m = e.m_p - position;
         T *i;
 
         if (m < n) {
-            for (i = e; m < n; --n, ++i) {
+            for (i = e.m_p; m < n; --n, ++i) {
                 this->construct(i, *xp);
                 ++this->size_;
             }
-            for (T *j = position; j < e; ++j, ++i) {
+            for (T *j = position; j < e.m_p; ++j, ++i) {
                 this->construct(i, *j);
                 ++this->size_;
             }
         } else {
-            T *j = e - n;
+            T *j = e.m_p - n;
 
-            for (i = e; j < e; ++j, ++i) {
-                this->construct(i, *j);
+            for (T *k = e.m_p; j < e.m_p; ++j, ++k) {
+                this->construct(k, *j);
                 ++this->size_;
             }
-            if (e - (m - n) <= xp && xp < e)
+            if (e.m_p - (m - n) <= xp && xp < e.m_p)
                 xp += n;
-            std::copy_backward(position, position + (m - n), e);
+            std::copy_backward(position, position + (m - n), e.m_p);
         }
         std::fill_n(position, n, *xp);
     } else {
@@ -1407,7 +1438,7 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
         tmp.capacity_.n_ = newcap;
         T *i = tmp.data_;
         T *j = this->data_;
-        T *e = this->data_ + this->size_;
+        e = this->end();
 
         for (; j < position; ++j, ++i) {
             this->construct(i, *j);
@@ -1417,7 +1448,8 @@ void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, cons
             this->construct(i, *xp);
             ++tmp.size_;
         }
-        for (; j < e; ++j, ++i) {
+        for (; j < e.m_p; ++j, ++i) {
+
             this->construct(i, *j);
             ++tmp.size_;
         }
