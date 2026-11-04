@@ -127,6 +127,67 @@ void func_005C4600(CZKit *kit);
 extern float data_00650670;
 }
 
+namespace zdb {
+/* the camera's collision bit demanded of the polygons a test hits (SOCOM 1's; grid_di.cpp's) */
+void SetCameraCollideFlagRequired(bool on);
+}
+
+extern "C" {
+/* (OVL2 0x5B4340, seal_env.cpp's, unwritten: a SEAL's test with a flag, 0x7FC bytes) */
+bool func_005B4340(CZSealBody *seal, int b);
+}
+
+/* a polygon's camera type (DI_PARAMS's two bits at 18, as a byte enum: seal_body.cpp's) */
+enum CAMERA_TYPE { CAMERA_TYPE_0, CAMERA_TYPE_1, CAMERA_TYPE_2, CAMERA_TYPE_3 };
+
+static inline CAMERA_TYPE CameraType(zdb::IntersectStruct *hit)
+{
+    return (CAMERA_TYPE)hit->m_poly->m_flags.m_cameratype;
+}
+
+/* whether there is room to the side: a ray across the SEAL's frame at the root part's height (8 at
+ * most), d to the left (-1) or right (1), with the SEAL's node switched off and camera-collision
+ * polygons asked for -- clear unless it hits a polygon of a camera type other than 1; none when
+ * 0x5B4340 refuses (OVL2 0x596D60, new in SOCOM II: PreTick asks it twice; the name unknown. The
+ * shape is seal_body.cpp's head-room test 0x57F150) */
+extern "C" bool func_00596D60(CSealCtrl *ctrl, signed char side, float d)
+{
+    zdb::IntersectStruct *hit;
+    bool was;
+    CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
+
+    if (!func_005B4340(seal, 1))
+        return false;
+    float h = seal->GetRootPart()->m_pos.y;
+
+    if (h > 8.0f)
+        h = 8.0f;
+    CPnt3D from;
+
+    /* (z zeroed first: `a = b = 0`, or the fields set z first -- the three-float constructor zeroes x
+     * first) */
+    from.x = from.z = 0.0f;
+    from.y = h;
+    CPnt3D to = from;
+
+    if (side == -1)
+        to.x -= d;
+    else if (side == 1)
+        to.x += d;
+    seal->m_node->m_matrix.Transform(&from, 1);
+    seal->m_node->m_matrix.Transform(&to, 1);
+    was = seal->GetNode()->SetActive(false);
+    zdb::SetCameraCollideFlagRequired(true);
+    hit = zdb::CWorld::m_world->GetIntersect(&from, &to);
+    seal->GetNode()->SetActive(was);
+    if (hit && CameraType(hit) != CAMERA_TYPE_1) {
+        zdb::SetCameraCollideFlagRequired(false);
+        return false;
+    }
+    zdb::SetCameraCollideFlagRequired(false);
+    return true;
+}
+
 /* the reload button: double-clicked, or held past the limit, reloads the SEAL's kit; while held its
  * time runs, else it is cleared (OVL2 0x594B70, new in SOCOM II: PreTick calls it; the name unknown).
  * The double-click's result taken into a byte local first (the flag's zero after the call) and the
