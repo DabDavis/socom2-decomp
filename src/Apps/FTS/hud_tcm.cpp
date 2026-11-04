@@ -12,7 +12,18 @@
 
 #include "hud_tcm.h"
 
-/* the tree's (0x231A30-0x23624F): an item's node made from its cache entry */
+/* an item's node made from its cache entry (0x236D20, this unit's -- not written: the HUD's round 39
+ * had it at the target's size, 51 instructions off, and took it out). Read off the target: for a
+ * non-null entry, the nodes named by the second argument (theTCM.Find((const char *)arg, found,
+ * true)) or theTCM itself (found.push_back(&theTCM)); for each a new CTCMNode given SetCaption(a2,
+ * 0), SetName(a3), SetText2(t0), SetEntry(entry), m_741 = the last argument's byte, the back and the
+ * bar on GetTexHandle("TCM.tif") (an inline setting the poly's and both triangles' texture to the
+ * handle's +0xC or 0, then SetHasTexture), UVs (1,0,0,1) and (0.7,0,0.3,1), the icon on
+ * "TCMarrow.tif", AddChild under the found node and its m_root pushed onto theTCM.m_root (the list's
+ * address hoisted into a saved register: a reference local gives the size); 0 returned on every
+ * path. Open: the target homes t0 and the flag (`sb t1`) at 188/187 in a 224-byte frame where the
+ * draft took 240 -- and with a `bool` last parameter tcmAddItem would convert its int (it passes t1
+ * through untouched) */
 extern "C" CTCMNode *func_00236D20(CTCMEntry *entry, int arg, const char *caption, const char *text2,
                                    const char *name, int flags);
 
