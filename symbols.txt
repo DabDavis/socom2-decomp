@@ -1702,16 +1702,16 @@
 0x001FF370 0xE4 ReInit__17CLensFlareManagerFv  # OVL1; by hand (hud_lensflare.cpp: CHUD::ReInit_Init's last call on the manager at CHUD+0x1A698; the flares walked as Tick's and PreDITick's, each on a node placed at CPnt3D::zero through TransformToWorld and made (0x336650) or moved (0x3365E0) in the flare system; the name ours)
 0x001FF460 0x8C Reset__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on the manager: each flare's handle at 0x8C given back to the system at 0x488F10 and set to -1; the name ours)
 0x001FF4F0 0x140 LoadRdr__17CLensFlareManagerFPCc  # OVL1; by hand (Init's call with lensflare.rdr's name, as SOCOM 1's CLensFlareSaturate::LoadRdr took one)
-0x001FF630 0x270 func_001FF630  # OVL1
-0x001FF8A0 0x69C func_001FF8A0  # OVL1
-0x001FFF40 0x920 func_001FFF40  # OVL1
-0x00200860 0x110 func_00200860  # OVL1
+0x001FF630 0x270 LoadLightSource__17CLensFlareManagerFP5_zrdr  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- LoadRdr 0x1FF4F0 calls it with the record after each LightSourceDefinition string: when active is "on", group_node's name expanded through FirstFlareName/NextFlareName, each found as a landmark (CWorld slot +0x4C) or a node (FindChild), a new CLensFlareEntry pushed for each; byte-exact)
+0x001FF8A0 0x69C Tick__15CLensFlareEntryFf  # OVL1; by hand (the HUD lane, round 36: slot +0x38 of CLensFlareEntry's table 0x4052B0, C2D's Tick(float) by ztwod.h's slot order; it places each element through 0x200C10; unwritten)
+0x001FFF40 0x920 LoadFlare__15CLensFlareEntryFP5_zrdrPQ23zdb5CNode  # OVL1; ours (the HUD lane, round 36: the constructor 0x200AC0's last call, passing its record and node on: it reads the flare's settings and news its 0xA0-byte elements element1, element2, ... through 0x200D60; unwritten)
+0x00200860 0x110 Init__15CLensFlareEntryFv  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the constructor 0x200AC0's first call: the flags cleared through bool setters, no handle, the glare's defaults, SetColor(225, 224, 133), Off; byte-exact)
 0x00200970 0x150 __dt__15CLensFlareEntryFv  # OVL1; by hand (slot 0 of CLensFlareEntry's vtable 0x4052B0: the destructor)
-0x00200AC0 0x150 func_00200AC0  # OVL1
-0x00200C10 0x144 func_00200C10  # OVL1
-0x00200D60 0x1C8 func_00200D60  # OVL1
-0x00200F30 0x118 func_00200F30  # OVL1
-0x00201050 0x1A0 func_00201050  # OVL1
+0x00200AC0 0x150 __ct__15CLensFlareEntryFP5_zrdrPQ23zdb5CNode  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the 0xE0-byte entry LoadRdr's helper 0x1FF630 news with the record and the node it found; C2DBitmap() then the table 0x4052B0 and the element vector, Init, Load(0, 0, 640, 448), SetTrans(128), SetIsTrans(true), then 0x1FFF40 with both; byte-exact)
+0x00200C10 0x144 Place__13CFlareElementFfbPC6CPnt3D  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- an element of a flare, 0xA0 bytes with a C2DBitmap member at 0: shown at the point projected through appCamera's camera (0x290370), sized and faded through its ranges, else Off; called from CLensFlareEntry::Tick; byte-exact)
+0x00200D60 0x1C8 Load__13CFlareElementFP5_zrdr  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the element's record: texture, color, position_scale, size, opacity, scale; LoadFlare 0x1FFF40 calls it on each new element and keeps the element when it returns true; 3 instructions open)
+0x00200F30 0x118 NextFlareName__Fv  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the loader's next name: the wildcards' digits counted up as an odometer, 0 when they come round; byte-exact)
+0x00201050 0x1A0 FirstFlareName__FPc  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the flare loader 0x1FF630 calls it on a strdup'd node name, then 0x200F30 until it returns 0, finding a node by each: up to five '*' wildcards in the name counted through as digits; byte-exact)
 0x002011F0 0x384 func_002011F0  # OVL1
 0x00201580 0xC On__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00201590 0x8 Off__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6828,7 +6828,7 @@
 0x0036C3B0 0x174 ZoomIn__10CUIMapCtrlFfPQ23zdb5CNodef  # OVL1; ours (the HUD lane, round 30: CUIMapCtrl::TickZAnimCmd 0x36C600's ZOOM_IN case calls it with 1.0, the command's node (CZAnim::GetNode) and *dT -- set up f13, a1, f12, so the scale is first; unwritten)
 0x0036C530 0xD0 GetZAnimCmdType__10CUIMapCtrlFPCc  # OVL1; s1:calls
 0x0036C600 0x144 TickZAnimCmd__10CUIMapCtrlFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 30: slot +0x64 of CUIMapCtrl's table 0x407260; zui_2d.cpp -- PAN, ZOOM_IN, ZOOM_OUT relative to C2D's count, as the parser 0x36C760 makes them; byte-exact)
-0x0036C750 0xC func_0036C750  # OVL1
+0x0036C750 0xC Tick__10CUIMapCtrlFf  # OVL1; by hand (the HUD lane, round 36: slot +0x38 of CUIMapCtrl's table 0x407260 -- C2D's Tick(float) by ztwod.h's slot order; it stores dT to 0x49EBE8, which only CUIMapCtrl::HandlePad 0x36D2E0 reads, for its zooms; SOCOM 1's CUIMapCtrl has no Tick; zui_2d.cpp)
 0x0036C760 0x2CC ParseZAnimCmd__10CUIMapCtrlFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036CA30 0x498 OnPan__10CUIMapCtrlCFRC20CUIMapCtrlAnimCmdHdrf  # OVL1; s1:name by its call (the HUD lane, round 30: CUIMapCtrl::TickZAnimCmd 0x36C600's PAN case calls it with the command and *dT, as SOCOM 1's TickZAnimCmd calls OnPan(const CUIMapCtrlAnimCmdHdr &, float) const; unwritten)
 0x0036CED0 0x18C func_0036CED0  # OVL1
@@ -6890,7 +6890,7 @@
 0x00372F10 0x730 func_00372F10  # OVL1
 0x00373640 0x210 func_00373640  # OVL1
 0x00373850 0x6CC Draw__10CUIListBoxFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00373F20 0xE4 func_00373F20  # OVL1
+0x00373F20 0xE4 AddItem__10CUIListBoxFP8ListItemi  # OVL1; ours (the HUD lane, round 36: zui_2d.cpp -- CUIListBox::UpdateUIVar 0x3754D0 and 0x372980 call it: the item given the box's font (+0xA0) and scale (+0xCC), then pushed onto the item list +0xC0 when the second argument is -1, else inserted before the highlighted row (+0x194); 6 instructions open, stack slots)
 0x00374010 0x2D8 func_00374010  # OVL1
 0x003742F0 0x2E8 func_003742F0  # OVL1
 0x003745E0 0x46C HandlePad__10CUIListBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
