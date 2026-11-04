@@ -1,6 +1,12 @@
-/* zar_main.cpp -- zar::CZAR, the archive (OVL1 0x258000-...): its file, its stack of open keys
- * and what it fetches. The unit name is SOCOM 1's (the press beta's asserts name it). Defined in
- * reverse of their image order (-inline deferred). */
+/* zar_main.cpp -- zar::CZAR, the archive (OVL1 0x256FD0-0x259EDF, the README's zar units): its
+ * file, its stack of open keys and what it fetches. The unit name is SOCOM 1's (the press beta's
+ * asserts name it). Defined in reverse of their image order (-inline deferred). Written: the
+ * constructor, SetFilename, CloseKeepDir, Flush, the key stack's six (CloseKey .. GetSize) and
+ * ReadString. Not yet: ~CZAR 0x258F20 (it frees m_key_buffer, a vector<CKey> -- NewKey's 24-byte
+ * pushes -- through four out-of-line pieces at 0x2574C0-0x257570, whose element type include/vector
+ * must carry first), Close, the 0x258C40 close (SOCOM 1's Close(bool) without the flag), Open
+ * 0x258920, NewKey, WriteDirectory, the buffer writers below 0x257590 and the CKey vector's class
+ * insert 0x259250. */
 
 #include "zar.h"
 #include "../zutil/util_stable.h"
