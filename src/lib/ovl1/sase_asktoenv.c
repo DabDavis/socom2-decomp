@@ -1,7 +1,7 @@
 /* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
 /* Nellymoser's decoder, AskToEnvInline.c (OVL1 0x253510-0x2539C0): the decoder's spectral envelope
  * from the received reflection coefficients -- the envelope itself (0x253510, its asserts this
- * file's), its helpers 0x253760, the step-up recursion (0x253888: libtran.c's 0x24EA68 at the
+ * file's), its cepstrum 0x253760 (GCC round 28a), the step-up recursion (0x253888: libtran.c's 0x24EA68 at the
  * decoder's fixed order 12, the odd-order swap folded away, no assert) and the envelope's
  * resampling by a pitch ratio (0x253920, 65 points); and after them the decoder's bit reader
  * (0x2539C0, called by the frame unpackers 0x253DF8 and 0x254020) -- no assert names its file, so
@@ -11,6 +11,46 @@
 
 #define DEC_LPC_ORDER 12
 #define ENV_POINTS 65
+#define NUM_CEPS 44
+
+/* the cepstrum's lifter: 1 / (2 n ln 2) after a leading 1 (OVL1 0x3EC1C8) */
+static const float afLifter[NUM_CEPS] = {
+	0x1.0p+0F, 0x1.715476p-1F, 0x1.715486p-2F, 0x1.ec7086p-3F, 0x1.715486p-3F, 0x1.27768p-3F,
+	0x1.ec710cp-4F, 0x1.a617cp-4F, 0x1.7154p-4F, 0x1.484b5cp-4F, 0x1.277706p-4F, 0x1.0c9a76p-4F,
+	0x1.ec7p-5F, 0x1.c68ec4p-5F, 0x1.a617cp-5F, 0x1.89f40ap-5F, 0x1.7154p-5F, 0x1.5b9a5ap-5F,
+	0x1.484b5cp-5F, 0x1.370478p-5F, 0x1.2775fap-5F, 0x1.19652ap-5F, 0x1.0c9b84p-5F, 0x1.00ecfap-5F,
+	0x1.ec7p-6F, 0x1.d8be72p-6F, 0x1.c68ec4p-6F, 0x1.b5bb38p-6F, 0x1.a615a8p-6F, 0x1.97891ep-6F,
+	0x1.89f40ap-6F, 0x1.7d3d42p-6F, 0x1.7154p-6F, 0x1.66234ap-6F, 0x1.5b9a5ap-6F, 0x1.51ac9ap-6F,
+	0x1.484944p-6F, 0x1.3f6c26p-6F, 0x1.370478p-6F, 0x1.2f09d8p-6F, 0x1.277814p-6F, 0x1.204294p-6F,
+	0x1.19652ap-6F, 0x1.12dba4p-6F,
+};
+
+/* the predictor's cepstrum, 44 terms, by the LPC recursion (n c[n] form: -n a[n] less the sum of
+ * a[k] c[n - k]; past the order the sum alone), then liftered (GCC round 28a). The first loop's
+ * bound is a variable: its exit test is `li t2,12; slt v1,t2,t0; beqz` -- MIPS's LE of two
+ * registers (operands reversed, the branch inverted), the 12 found by CSE after expansion; the
+ * literal bound is `slti v1,t0,13` (2 words short, the loop head's alignment nop with them) */
+void func_00253760(const float *pfA, float *pfC, float fC0)
+{
+	float fSum;
+	int n, k, iOrder = DEC_LPC_ORDER;
+
+	pfC[0] = fC0;
+	for (n = 1; n <= iOrder; n++) {
+		fSum = -(float)n * pfA[n];
+		for (k = 1; k < n; k++)
+			fSum -= pfA[k] * pfC[n - k];
+		pfC[n] = fSum;
+	}
+	for (; n < NUM_CEPS; n++) {
+		fSum = 0.0F;
+		for (k = 1; k <= DEC_LPC_ORDER; k++)
+			fSum -= pfA[k] * pfC[n - k];
+		pfC[n] = fSum;
+	}
+	for (n = 1; n < NUM_CEPS; n++)
+		pfC[n] = afLifter[n] * pfC[n];
+}
 
 /* the predictor polynomial from the reflection coefficients, by the step-up recursion */
 void func_00253888(const float *pfk, float *pfA)

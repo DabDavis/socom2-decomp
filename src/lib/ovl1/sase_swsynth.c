@@ -4,6 +4,7 @@
  * encoder's minimal-standard RNG again, SWSynth.c:359; libmath.c's 0x24AEB0 is the same text).
  * Asserting as the codec does (file and line by `#line`, as in sase_encsc.c); the decoder is
  * built at -G0 (sase_decapi.c), so its float constants are lui/ori immediates, not .lit4 entries.
+ * Round 28a: the random phases 0x256DB0, which inline the noise generator -- so it is `inline`.
  * Written in the GCC lane's round 27a: the frame wrappers 0x256190 and 0x256280 (the gain pair
  * chosen by if/else into a pointer of its own -- the target's `move v0,v1` and `addiu v0,v1,8` from
  * the parameter kept in v1; a conditional expression shares one register, a pre-assignment is a
@@ -95,8 +96,10 @@ void func_00256CC8(int iLength, int n, int iFactor, float *pfB, float *pfA, int 
 }
 
 /* the noise generator: libmath.c's minimal-standard RNG (0x24AEB0) again, the same text, its
- * assert at SWSynth.c:359 -- the high half the accumulator, updated in place (GCC round 19a) */
-void func_00256380(int *plSeed)
+ * assert at SWSynth.c:359 -- the high half the accumulator, updated in place (GCC round 19a).
+ * `inline` (GCC round 28a): nothing calls 0x256380 -- the random phases 0x256DB0 inline it, assert
+ * and all, and the public copy is the one GCC emits besides */
+inline void func_00256380(int *plSeed)
 {
 	unsigned int lo, hi;
 	unsigned int ulLo = *plSeed & 0xFFFF;
@@ -112,6 +115,17 @@ void func_00256380(int *plSeed)
 	hi += lo;
 	hi += hi >> 31;
 	*plSeed = (hi << 1) >> 1;
+}
+
+/* random phases in [0, 2 pi) for the bands iStart up to iEnd, the noise generator inlined */
+void func_00256DB0(int iStart, int iEnd, int *plSeed, float *pfPhase)
+{
+	int i;
+
+	for (i = iStart; i < iEnd; i++) {
+		func_00256380(plSeed);
+		pfPhase[i] = (float)*plSeed * (TWOPI / 2147483648.0F);
+	}
 }
 
 /* the phase advanced by the mean of the last and current frequencies over iLength samples,
