@@ -12197,7 +12197,7 @@
 0x00623F00 0x8 func_00623F00  # OVL2
 0x00623F08 0x24 func_00623F08  # OVL2 unaligned
 0x00623F30 0x140 func_00623F30  # OVL2
-0x00624070 0x10C func_00624070  # OVL2
+0x00624070 0x10C RegisterChildStructure  # OVL2; s1:order+body (gcc r20b: SOCOM 1's static RegisterChildStructure 0x420B50, fifth of the six-function object NetRegisterMessageStart .. NetRegisterStructure as here -- the same field walk and self-recursion on a structure field, &NetStructureList[type - 16]; SOCOM II adds the two null guards; NetRegisterStructure's body 0x624180 calls it as SOCOM 1's does)
 0x00624180 0x1B4 func_00624180  # OVL2
 0x00624338 0x84 func_00624338  # OVL2 unaligned
 0x006243C0 0x58 func_006243C0  # OVL2
