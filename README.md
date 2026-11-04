@@ -1927,6 +1927,38 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 13** (CAcctDB::Save, the stats record, Login/Register/CreateGame, the deque's end):
+  - a plain variable's argument move is placed after a constant argument's when the variable is declared in an inner block,
+    before it when declared in the enclosing block (CAcctDB::Save: `total` moved into the `if (size)` block);
+  - a bit-field group is copied by its first field's type at the group's first byte -- an int group at byte 3 copies as an
+    unaligned word (lwr/lwl) overlapping the next word's copy: zonline.h's GamePlayerStats is the real 0xE4-byte record
+    (the unpacker's 'E' branch memcpys 228 bytes); a byte group's copy takes its first field's signedness, a group not
+    filling its byte merges with the next; a byte-enum bit-field assigned a ternary of its two enumerators gives `li 1;
+    movz` plus `andi` of the width; a copy whose source is built twice is a macro, not CopyField (Login/Register);
+  - a value returned through an in-class inline (`T t(...); return t;`) keeps its temporary in the caller's frame and copies
+    it out, `return T(...)` builds it in the return slot; inlined reference-returning accessors turn field addresses into
+    inliner temporaries numbered before CSE's; a constructor parameter taken by const reference is read where the body
+    uses it, by value at the call -- include/deque's cdeque<T *> iterator now takes start/capacity by const reference with
+    a user copy constructor (a shape change, nothing lost over every unit): the lobby deque's end() 0x2E0C10 and
+    util_ssm.cpp's twin 0x3A62B0 byte-exact (renamed at integration);
+  - open: begin 0x2E0CB0 (14, one register permutation), init 0x2E0B40 (0xC0 vs 0xC8: by-address iterators copied as FPU
+    blocks in the target), the rdr editor's pointer-deque pair 0x333F90/0x334030, setLoadImageTags (2).
+- **Tells from the world, rdr and sound, round 8** (zrndr_pipe.cpp: the flare system, the shadows, the delayed nodes):
+  - a 4-aligned CPnt4D with no written copy constructor copies by-value arguments through four FPU registers --
+    RenderLineWorld 0x33B5F0 byte-exact with such a local stand-in (CPnt4D_4): the original had a second 4D point shape
+    zmath.h does not model;
+  - `IsActive() == false` through an inline bool accessor keeps the `sltu`, `!IsActive()` folds to a bit test; `T *o =
+    out ? out : &local;` gives the target's beqz/b/addiu shape, `if (!out) out = &local;` does not; `m_next++; return
+    m_next++;` in an inline reproduces CAlpha::Next's double step; floats copied one field at a time interleave lwc1/swc1
+    through one register, a struct copy loads everything first; a byte member passed to an inline taking `unsigned int`
+    is narrowed again unless taken into an unsigned local first; statement order in a block decides which independent
+    move fills a call's delay slot;
+  - the flare system's code (0x336230-0x336810) heads the pipe unit (CFlareSystem::Tick calls CPnt4D's empty constructor by
+    hand as func_002110E0: a stand-in); RenderUiNodeRecursive, RenderDelayedNodes, BuildLightMapList, RenderWorld,
+    RenderVisual, CAlpha::Add and RenderNodeShadow by SOCOM 1's call patterns; CVisual::m_fogEnable/m_lightingEnable data
+    rows (SOCOM 1's statics); 0x3B6D10 NodeSetup's fourth argument is never set (the row's trailing `i`?);
+  - open: BuildProjectedMapList 0x339470 (42, right size: the box-overlap test -- the target folds the axes as xy/xyz
+    flags), CHeap::Alloc (7).
 - **Tells from the AI core, round 20** (CreateGraph, the path's snake points and length, AbortPathPlan):
   - ONE MSL CHAIN CAN BE MADE TALLER FOR A SINGLE INSTANCE BY SPECIALISING THE FUNCTION TEMPLATE IN A HEADER: std::find over
     the planner queue one level taller in ai.h -- the extra level must take the first iterator by reference, or the

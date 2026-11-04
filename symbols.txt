@@ -7690,7 +7690,7 @@
 0x003A6120 0x40 __ct__Q210Metrowerks185__compressed_pair_imp<Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>,Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>RCQ210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>  # OVL1; the MSL headers round 7: include/deque -- the blocks' pair: the allocator's copy (0x3A63C0) and the buffer's (0x3A6160); byte-exact
 0x003A6160 0x78 __ct__Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>FRCQ210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>  # OVL1; the MSL headers round 7: include/deque -- the block buffer's copy constructor, called by the byte-exact 0x3A6120; OPEN as 0x333E40
 0x003A61E0 0xC8 func_003A61E0  # OVL1
-0x003A62B0 0xA0 func_003A62B0  # OVL1
+0x003A62B0 0xA0 end__Q210Metrowerks94cdeque<PM19CSimpleStateMachineFPCvPvUc_v,Q23std44allocator<PM19CSimpleStateMachineFPCvPvUc_v>>CFv  # OVL1; the integrator 2026-11-04, by the online lane round 13: util_ssm.cpp emits it byte-exact under include/deque's new cdeque<T *> iterator; its neighbours mirror the lobby deque's (the copy constructor 0x3A6160, init 0x3A61E0, end, begin 0x3A6350)
 0x003A6350 0x70 func_003A6350  # OVL1
 0x003A63C0 0x8 __ct__Q23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>FRCQ23std43allocator<M19CSimpleStateMachineFPCvPvUc_v>  # OVL1; the MSL headers round 7: include/deque and include/memory -- the allocator's copy constructor, out of class; byte-exact
 0x003A63D0 0x18 func_003A63D0  # OVL1
