@@ -12249,21 +12249,21 @@
 0x00626CB0 0x24 lintGetBit  # OVL2; s1:order (the gcc lane, round 8b): SOCOM 1's lintGetBit's instructions (0x24, the bit tested, reordered), first of the three bit functions as there
 0x00626CD8 0x24 lintSetBit  # OVL2 unaligned; s1:order (the gcc lane, round 8b): after lintGetBit as SOCOM 1's, its body (0x24, the bit or'ed in)
 0x00626D00 0x28 lintClearBit  # OVL2; s1:order (the gcc lane, round 8b): after lintSetBit as SOCOM 1's, its body (0x28, the bit and'ed out)
-0x00626D28 0x50 func_00626D28  # OVL2 unaligned
-0x00626D78 0x74 func_00626D78  # OVL2 unaligned
+0x00626D28 0x50 lintIncrement  # OVL2 unaligned; s1:order+calls (gcc r19b: SOCOM 1's lintIncrement 0x4073A0 -- p += n, word 0 by n and the carry run up -- after the bit functions as there (ShiftRight and ShiftLeft between them gone into the assembly); lintPrime calls it four times where SOCOM 1's calls lintIncrement, (p, 210 - t[0]) and the deltas)
+0x00626D78 0x74 lintDecrement  # OVL2 unaligned; s1:order+calls (gcc r19b: SOCOM 1's lintDecrement 0x4073F8 -- p -= n, the borrow run up -- after lintIncrement as there; LucasTest and lintIsbSPRP call it (n, 1) where SOCOM 1's LucasTest calls lintDecrement)
 0x00626DF0 0x180 lintAdd  # OVL2; s1:order (round 18b: SOCOM 1's lintAdd after the in-place add and subtract, here after the carry pair; the sum into a third number through a copy; 0x180 against 0x17C)
 0x00626F70 0x180 lintSub  # OVL2; s1:order+calls (round 18b: after lintAdd as SOCOM 1's; RSAGenerateKeyPair calls it (b, a, b) where SOCOM 1's calls lintSub)
 0x006270F0 0x180 MOD  # OVL2; s1:calls (round 18b: lintPrime's fourth call, SOCOM 1's MOD there)
-0x00627270 0x310 func_00627270  # OVL2
+0x00627270 0x310 QUO  # OVL2; s1:order+calls (gcc r19b: after MOD and before QRMOD as SOCOM 1's QUO 0x407C20; its eight calls are SOCOM 1's QUO's in order -- lintGetBits twice, lintSetSmallValue, ShiftLeft, ShiftRight, IsNotSmaller, lintSubIP, lintGetBits, lintSetBit, ShiftRight -- QRMOD's division keeping only the quotient; the result copied out where SOCOM 1 returned it by value)
 0x00627580 0x268 QRMOD  # OVL2; s1:calls (round 18b: its ten calls are SOCOM 1's QRMOD's in order -- lintGetBits twice, lintSetSmallValue, ShiftLeft, ShiftRight, IsNotSmaller, lintSubIP, lintGetBits, lintSetBit, ShiftRight -- and RSAGenerateKeyPair calls it where SOCOM 1's calls QRMOD)
 0x006277E8 0x308 GCD  # OVL2 unaligned; s1:calls (round 18b: lintPrime's two GCD calls before IsOne, SOCOM 1's GCD there; 0x308 against 0x310)
-0x00627AF0 0x280 func_00627AF0  # OVL2
+0x00627AF0 0x280 EMOD  # OVL2; s1:order+body (gcc r19b: SOCOM 1's EMOD 0x40895C's body -- lintGetBits of the exponent, MOD of the base, r set to 1, the bits from the bottom with b squared by XMOD each step and r multiplied where the bit is set, r copied out -- at its place after GCD, SOCOM 1's MULT and XMOD between them now in the assembly; grown by an assert(0) on a zero modulus, LargeInt.c:663. NOT the brief's "XMOD": it calls XMOD. Its old call sites (RSADecryptBlock, lintIsbSPRP, LucasTest) call the new 0x6283F8, which falls back on this one for an even modulus)
 0x00627D70 0x1F8 lintIsbSPRP  # OVL2; s1:calls (round 18b: lintPrime's strong-probable-prime test, SOCOM 1's lintIsbSPRP there)
 0x00627F68 0x150 LucasTest  # OVL2 unaligned; s1:calls (round 18b: lintPrime's last test, SOCOM 1's LucasTest there; 0x150 both builds)
 0x006280B8 0x100 lintRandomize  # OVL2 unaligned; s1:calls (round 18b: lintPrime's first call, SOCOM 1's lintRandomize there)
 0x006281B8 0x1D8 lintPrime  # OVL2 unaligned; s1:calls (round 18b: RSAGenerateKeyPair's (p, 256) prime draw at SOCOM 1's lintPrime's places; its own thirteen calls are SOCOM 1's lintPrime's in order, with its assert "nBits == lintGetBits(pPrime)")
 0x00628390 0x64 func_00628390  # OVL2
-0x006283F8 0x74C func_006283F8  # OVL2 unaligned
+0x006283F8 0x74C func_006283F8  # OVL2 unaligned; s1~ (gcc r19b): NOT EMOD -- a new exponentiation by Montgomery products (MULT, the helper 0x628390, the bit-limited add and subtract), asserting a nonzero modulus (LargeInt.c:975) and falling back on EMOD 0x627AF0 for an even one (:985); RSADecryptBlock, lintIsbSPRP and LucasTest call it where SOCOM 1's call EMOD, whose body is 0x627AF0's
 0x00628B48 0x80 lintGetBits  # OVL2 unaligned; s1:body+assert (the gcc lane, round 14b): LargeInt.c's prime search asserts `nBits == lintGetBits(pPrime)` on this call's result (0x628214, the string at 0x6640D8); hand-written EE assembly (plzcw on the top nonzero word), the first of the asm run 0x628B48-0x629A44
 0x00628BC8 0x74 IsGreater  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's IsGreater in EE assembly -- the words compared from the top, 1 at the first a > b, 0 at a < b or all equal; first of SOCOM 1's four comparisons in their order
 0x00628C3C 0x74 IsSMaller  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's IsSMaller (its spelling) in EE assembly -- 1 at the first a < b from the top, else 0; second of the four
@@ -12276,8 +12276,8 @@
 0x00629154 0x84 lintSubIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintSubIP(a, b) in EE assembly -- a -= b in place over all 32 words, the borrow by dsra32; after the bit-limited add as lintSubIP follows lintAddIP there
 0x006291D8 0x9C func_006291D8  # OVL2 unaligned
 0x00629274 0x42C MODIP  # OVL2 unaligned; s1:calls (round 18b: MOD calls it in place where SOCOM 1's MOD calls MODIP; one of LargeInt's assembly primitives here, SOCOM 1's C)
-0x006296A0 0x1C8 func_006296A0  # OVL2
-0x00629868 0x1DC func_00629868  # OVL2 unaligned
+0x006296A0 0x1C8 MULT  # OVL2; s1:body+order (gcc r19b: SOCOM 1's MULT 0x40847C in EE assembly -- lintGetBits of both factors, three numbers zeroed, multu word by word, three arguments -- before XMOD as there; RSAGenerateKeyPair calls it (n = p * q) where SOCOM 1's calls MULT)
+0x00629868 0x1DC XMOD  # OVL2 unaligned; s1:body+calls (gcc r19b: SOCOM 1's XMOD 0x4086E4 in EE assembly -- MULT's product then MODIP by the fourth argument; EMOD 0x627AF0 calls it twice, (b, b, b, n) and (r, r, b, n), where SOCOM 1's EMOD calls XMOD, and RSAGenerateKeyPair where SOCOM 1's calls XMOD)
 0x00629A48 0x5C func_00629A48  # OVL2 unaligned
 0x00629AA8 0x90 func_00629AA8  # OVL2 unaligned
 0x00629B38 0x3C func_00629B38  # OVL2 unaligned
