@@ -1927,6 +1927,24 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 18** (a new vis_load.cpp; OpenDecals, NodeSetup, LandmarkEnable, AlphaEnable):
+  - two bool calls guarding a cleanup, written `bool ok = f(); if (ok) ok = g(); if (!ok) X;`, give the target's padded join
+    label before the second branch (`andi; nop; bnez`); `f() == false || g() == false` pads after the branch instead;
+  - a loop count in an int local and the array pointer in a local load once, the object's register reused; reading
+    `size()` and `[i]` in the loop re-reads both after every out-of-line push_back; a pointer read into a local before a
+    class-vector element reference is taken loads ahead of the vector's data pointer;
+  - an inline bool predicate `return a && !b && !c;` used in an `if` materialises its value; written in place, the
+    condition branches directly;
+  - `<iostream>`'s initialiser pair needs no data rows to match, so an unnamed `__sinit` placed by its neighbours opens a
+    unit on its own: 0x404500 is __sinit_vis_load.cpp, a third unit at 0x3B2CB0-0x3B36EF between zvid_init.cpp (closed by
+    zVid_Assert 0x3B2C80) and vis_vu.cpp (LoadNodeVisuals, LoadMeshNode; the 0x700-byte recursive reader 0x3B2FF0
+    unwritten; the names ours);
+  - SOCOM II's CMission::Open calls OpenDecals() 0x3D03C0, a tail call passing "decals.rdr" to an overload (0x3D0870, SOCOM
+    1's body) that never reads the name; NodeSetup 0x3B6D10's fourth argument is gone (no caller sets it, the code never
+    reads it); LandmarkEnable 0x3B7130 is SOCOM 1's, AlphaEnable 0x3B7150 SOCOM 1's with the z-write argument inverted;
+  - open: HandleTimers 0x3C99A0 (2: 0x1C8 vs 0x1D0 -- the target sets v0 = 0 early and pads two more labels),
+    InitializeWeapons (the end computed in place in `this`'s register: the end-in-a-local rule 52 off, begin() first
+    0x3C8 long), GetDamage (3), CTurret::Fire (2: `m_id` loaded before `m_node`).
 - **Tells from the SEALs, round 21** (CZSealBody's database handles, OKToStand, the ladder state, three new rows):
   - `p = c ? q : p;` leaves the join label unaligned, `if (c) p = q;` pads it to 8 with a nop (0x560340, a state's nod to
     its squad leader);
