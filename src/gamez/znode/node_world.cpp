@@ -6,6 +6,7 @@
  * inlined into the command's tick, so they are this unit's), and adds a shadow caster list.
  * Defined in reverse of their image order (-inline deferred). */
 
+#include <iostream>
 #include <algorithm>
 #include <stdio.h>
 #include <string.h>
