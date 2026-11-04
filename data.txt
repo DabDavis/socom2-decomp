@@ -342,6 +342,7 @@
 0x003DE268 0x4 save_short_tether_length  # OVL1; SOCOM 1's (save_short_tether_length, camera.cpp's; 10000 in data, as ResetDeathCam puts back): 8 references in 2 functions (ResetDeathCam, ClipCameraChord)
 0x003DE2D0 0x4 m_debug__8CConsole  # OVL1; s1:data-seq (size SOCOM 1's; via Debug__8CConsoleFiP7CPacketPCc)
 0x003DE2E0 0x4 recycler_index  # OVL1; s1:data-seq (size SOCOM 1's; via CreateEntity__7CEntityFP7CEntityb)
+0x003DE2E8 0x4 rrTargetListCount__7CEntity  # OVL1; SOCOM 1's CEntity::rrTargetListCount ($gp-32296 there, read by its UpdateTargetList for CRobin::setup): 3, how many entities a tick's target-list slice takes; SOCOM II's UpdateTargetList reads it once (the core lane round 11); ent_target.cpp's
 0x003DE2F8 0x4 @LOCAL@sort<Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator,PFRC7CTargetRC7CTarget_b>__3stdFQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorPFRC7CTargetRC7CTarget_b_v@shuffle  # OVL1 data; ours (the MSL headers round 6): std::sort's static shuffle (-4 in data, stepped -4..4 twice a pass) for the instance at 0x2a12e0
 0x003DE5F8 0x4 LADDER_MASK  # OVL1; s1:data-seq (size SOCOM 1's; via GetLadderByIndex__11CLadderListFi)
 0x003DE6D0 0x4 s_fadeRate  # OVL1 data; ours (the states lane, round 18): fts_message.cpp's file static, a message line's fade speed, alpha a second (280.0, read with lwc1: a variable) -- 2 references in 1 function (C2DMessageString::Tick, fading in and out)
@@ -1151,6 +1152,7 @@
 0x004362E0 0xC m_list__7CEntity  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __sinit_ent_main.cpp)
 0x00436300 0xC m_recycle__7CEntity  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __sinit_ent_main.cpp)
 0x00436310 0x4 nextEntityId__7CEntity  # OVL1 bss; SOCOM 1's nextEntityId__7CEntity ($gp small data there, gp-29376): the constructor takes an entity's id from it and counts it up, RemoveAll clears it; 2 references
+0x00436318 0x4 rrTargetListFirst__7CEntity  # OVL1 bss; SOCOM 1's CEntity::rrTargetListFirst ($gp-29372 there): where the next slice starts; UpdateTargetList reads it and stores the next (2 references, the core lane round 11); ent_target.cpp's
 0x00436330 0xC m_target_inc__7CEntity  # OVL1 bss; SOCOM 1's (0x4BC460, the first list __sinit_ent_target.cpp builds, 0x400030); RemoveAll clears it; ent_target.cpp's
 0x00436350 0xC m_target_add__7CEntity  # OVL1 bss; SOCOM 1's (0x4BC480, the second list ent_target.cpp's initialiser builds); RemoveAll clears it
 0x00436370 0xC m_target_rem__7CEntity  # OVL1 bss; SOCOM 1's (0x4BC4A0, the third list ent_target.cpp's initialiser builds); RemoveAll clears it

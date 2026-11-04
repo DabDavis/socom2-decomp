@@ -331,6 +331,37 @@ extern "C" int func_00273780(CZAnimMain *main, ZAnimNetworkPacket *packet, ZAnim
     return packet->packet_size;
 }
 
+/* an available copy activated with commands: each of the list's entries, up to and with the zero
+ * that ends it, appended to the copy's user commands and given it as a command argument (SOCOM 1's
+ * ActivateEx, 0x1CEEE0, which read its own va_list) */
+CZAnim *CZAnim::ActivateExV(char *args)
+{
+    CZAnim *anim = GetAvailable();
+
+    if (anim) {
+        if (anim->m_arg_list)
+            delete anim->m_arg_list;
+        anim->m_arg_list = 0;
+
+        int cmd;
+        int i = 0;
+
+        do {
+            cmd = va_arg(args, int);
+            anim->m_user_cmd = (_zanim_cmd_hdr **)_realloc(anim->m_user_cmd, (i + 1) * sizeof(_zanim_cmd_hdr *), 0, 0);
+            anim->m_user_cmd[i] = (_zanim_cmd_hdr *)cmd;
+
+            CZAnimArg *arg = new CZAnimArgCmd(cmd);
+
+            arg->m_type = CZAnimArg::TYPE_CMD;
+            anim->AddArg(arg);
+            i++;
+        } while (cmd);
+        anim = anim->Activate(this);
+    }
+    return anim;
+}
+
 /* SOCOM II's: an available copy activated with commands (SOCOM 1's ActivateEx, its list read by
  * ActivateExV now) */
 CZAnim *CZAnim::ActivateEx(int cmd, ...)
