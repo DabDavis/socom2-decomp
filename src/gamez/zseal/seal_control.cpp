@@ -30,6 +30,67 @@ extern "C" void func_00597530(const CMatrix *m, CPnt3D *p, int count)
     TransformVectors(m, p, p, count);
 }
 
+extern "C" {
+/* the controllers' switch (OVL1 data 0x3DF1B0, 1 to begin with: 0x598840 sets it, CTStopAll::Tick and
+ * the mission cameras call that; PreTick, Tick and PostTick each do nothing while it is off -- the
+ * name unknown) and a flag nothing sets (OVL2 bss 0x66B3E0, read only here: the look's tick below
+ * never runs) */
+extern bool data_003DF1B0;
+extern bool data_0066B3E0;
+/* CSealCtrl::ScanTick (SOCOM 1's ScanTick__9CSealCtrlFf, which its Tick calls in the same place; OVL2
+ * 0x600550, the kit lane's seal_look.cpp range, not written) */
+void func_00600550(CSealCtrl *ctrl, float dT);
+/* CZSealState::UpdateLocalSeal (SOCOM 1's UpdateLocalSeal__11CZSealStateFP10CZSealBody; OVL1
+ * 0x2BD640), SOCOM II's taking a further argument */
+void func_002BD640(CEntity *seal, int x);
+}
+
+/* the SEAL's state sent on and the bomb's wait run down; first, were the flag ever set, the look:
+ * aiming, or neither standing nor crouched, toward -z, else turned with the yaw throttle (SOCOM 1's
+ * Tick, the look kinds renumbered: its 5 and 1 are SOCOM II's 3 and 1), and the scan ticked (OVL2
+ * 0x596F10, slot 0x10; SOCOM 1's with the switch, the flag, the wait and UpdateLocalSeal's argument
+ * added) */
+bool CSealCtrl::Tick(float dT)
+{
+    if (!data_003DF1B0)
+        return false;
+    bool turning;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    float yaw = m_throttle[2];
+
+    if (data_0066B3E0) {
+        static float lo = 0.0f;
+        static float eps = 0.05f;
+
+        turning = !_close_enough(yaw, lo, eps);
+        bool aiming = seal->GetWeaponState() == 1;
+        bool upright = seal->m_state == stateStand || seal->m_state == stateCrouch;
+
+        if (aiming || !upright) {
+            SetLookDirR(AIL_EVENT, &CPnt3D::unit_nz, true);
+        } else {
+            ClearLook(AIL_EVENT);
+            if (turning) {
+                static float scale = -1.5f;
+                float a = scale * (m_scan_limits * yaw);
+                CPnt3D dir;
+
+                dir.x = sinf(a);
+                dir.z = cosf(a);
+                dir.z = -dir.z;
+                dir.y = 0.0f;
+                SetLookDirR(AIL_TURNING, &dir, true);
+            } else {
+                ClearLook(AIL_TURNING);
+            }
+        }
+        func_00600550(this, dT);
+    }
+    func_002BD640(m_entity, 0);
+    m_244 -= dT;
+    return true;
+}
+
 /* the world's camera and its far plane (zdb::CWorld holds it at 0x128, the plane at 0xEC) */
 struct CViewCamera {
     unsigned char _0[0xec];

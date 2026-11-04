@@ -4267,16 +4267,16 @@
 0x002C93E0 0x108 Clear__17CMultiMissionListFv  # OVL1; by hand (the states lane, round 15; the names ours): every mission deleted through std::transform onto itself, then the three vectors (0, 0xC, 0x18) cleared; the list's destructor (0x2C9720) calls it first
 0x002C94F0 0x4C func_002C94F0  # OVL1
 0x002C9540 0x1D8 __ct__13CMultiMissionFPC5_zrdr  # OVL1; ours (the states lane, round 23): a mission from its rdr record -- NAME into the CSaferStr at 0, NUMBER and VERSION by zrdr_findint, MULTIPLAYER's tag a bool at 0xC, the byte at 0x1C cleared, TYPE's five game types (DEMOLITION 2, EXTRACTION 4, SUPPRESSION 5, BREACH 1, ESCORT 3, else 0) at 0x14; the list's Read (0x2C8C10) news each
-0x002C9720 0xE8 func_002C9720  # OVL1
+0x002C9720 0xE8 __dt__17CMultiMissionListFv  # OVL1; by hand (the states lane, round 27): the mission list's destructor -- the initialiser __sinit_fts_missionlist.cpp 0x4007D0 registers it for the list 0x441650; CMultiMissionList::Clear 0x2C93E0 called first, then the two index vectors and the base pointer vector freed (three this-tests each), the missions half's last function; byte-exact from fts_missionlist.cpp
 0x002C9810 0x150 SendWhisper__FPcPc  # OVL1; by hand (the states lane, round 16; the name ours): a whisper sent by player name -- CEntity::m_list.GetEntity(name); another player on the same team (0xC8), alive or dead alike (CEntity's m_isAlive) and of the same persona byte (0x2C2FD0) gets theLobby.SendChat(msg, name) and the message echoed to theMission's first queue (C2DMessage_Q::Add_Message 0x2B6530), anyone else ":: Player \"%s\" is unavailable"; called only by ParseWhisper (0x2C9990); fts_missionlist.cpp
 0x002C9960 0x30 SetMaxLength__10CMsgEditorFi  # OVL1; by hand (the states lane, round 15; the method name ours, the class CMsgEditor's RTTI): the word at 0x140 (5 at construction, 0x2CA2D0) set from n, kept within 5 to 100
 0x002C9990 0x1F0 ParseWhisper__FPc  # OVL1; by hand (the states lane, round 16; the name ours): the "/w" command's arguments -- ` name message` or ` "a name" message` -- split in a _strdup copy, the whisper sent through 0x2C9810 (name, message), the copy freed; whether it was sent (a bool: daddiu). Called only by CMsgEditor::Submit (0x2C9B80); fts_missionlist.cpp
 0x002C9B80 0x140 Submit__10CMsgEditorFv  # OVL1; by hand (the states lane, round 16; the names ours): the message editor's line entered -- a leading "/" command copied (up to 7 characters, an 8-byte buffer initialised "xxxx") and, when it is "w" (strcasecmp), the rest handed to the whisper parser 0x2C9990; the text then emptied (SetString(0) through slot 0x70, UpdatePos); fts_missionlist.cpp
-0x002C9CC0 0x40 func_002C9CC0  # OVL1
+0x002C9CC0 0x40 Cancel__10CMsgEditorFv  # OVL1; by hand (the states lane, round 27; the name ours): the message editor's line dropped unsent -- the text's SetString(0, true) through its vtable and UpdatePos, Submit's tail without the send; the chat keyboard handler 0x2C6C70 calls it for the escape key (HID 41), between its calls for backspace (DeleteCharacter) and enter (Submit); byte-exact from fts_msgeditor.cpp
 0x002C9D00 0x90 DeleteCharacter__10CMsgEditorFv  # OVL1; by hand (the states lane, round 16; the names ours): the editor's last character dropped (strcpy, the end moved back one, SetString through slot 0x70, UpdatePos); fts_missionlist.cpp
 0x002C9D90 0xF4 AddCharacter__10CMsgEditorFc  # OVL1; by hand (the states lane, round 16; the names ours): a character appended to the editor's text (strcpy into a 100-byte buffer, SetString through slot 0x70, UpdatePos) while the line's width and the length limit at 0x140 allow; fts_missionlist.cpp
-0x002C9E90 0x1BC func_002C9E90  # OVL1
-0x002CA050 0x54 func_002CA050  # OVL1
+0x002C9E90 0x1BC Tick__10CMsgEditorFf  # OVL1; by hand (the states lane, round 27): CMsgEditor's Tick override -- slot 12 of its vtable 0x4064B0, C2D's Tick slot (C2D's table 0x406EF0 holds its empty Tick 0x1FE330 there); the cursor's and the text's alphas faded in while the text has characters, out while it has none, each SetTrans told; byte-exact from fts_msgeditor.cpp
+0x002CA050 0x54 UnInit__10CMsgEditorFv  # OVL1; by hand (the states lane, round 27; the name ours): the message editor's teardown -- the text's ClearAndWipe (slot 0x8C) and the C2D's child list erased; ~CHUD 0x1FBAE0 calls it on theMission+0x1060 where CHUD::Init calls CMsgEditor::Init; byte-exact from fts_msgeditor.cpp
 0x002CA0B0 0x4C Clear__10CMsgEditorFv  # OVL1; by hand (the states lane, round 16; the names ours): the message editor's text wiped through C2DString's slot 0x8C (ClearAndWipe), its cursor's and text's alphas zeroed and the cursor's SetTrans (slot 0x34) told -- CHUD::Init calls it on theMission+0x1060 (hud_main.cpp's m_messages4); fts_missionlist.cpp
 0x002CA100 0x138 Init__10CMsgEditorFP7C2DFont  # OVL1; by hand (the states lane, round 16; the names ours): the message editor set up -- both alphas zeroed, the text loaded through C2DString's slot 0x7C (scale 0.8, the font CHUD::Init passes) and coloured, the cursor bitmap loaded over the line (C2DBitmap::Load, the bounds at 0x3DE7A8-0x3DE7C0), untextured, black, both pushed onto the C2D's child list; fts_missionlist.cpp
 0x002CA240 0x90 __dt__10CMsgEditorFv  # OVL1; by hand (the states lane, round 26): CMsgEditor's destructor -- it stores CMsgEditor's vtable 0x4064B0 (found by its RTTI's name) and is that table's slot 2, then tears down the text at 0xA4 (C2DString), the cursor at 0x20 (C2DBitmap's implicit destructor inlined: its vtable, ~C2D) and the C2D base; ~CMission calls it for its +0x1060 editor (hud_main.cpp's m_messages4)
@@ -4477,7 +4477,7 @@
 0x002D2640 0xBC erase__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>Q33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2700 0x108 insert__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>FQ33std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>19generic_iterator<0>RC11CGQueueAtom  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
 0x002D2810 0x18 __ct__Q23std62__list_deleter<11CGQueueAtom,Q23std24allocator<11CGQueueAtom>>Fv  # OVL1; by hand (the states lane, round 15): called by CGraph::BuildTree (0x2D1790), whose inline helpers -- the graph Reset and the queue pop and update, too big to inline whole -- are inlined one level and call their pieces out of line; graph_tree.cpp emits the copy
-0x002D2830 0x60 func_002D2830  # OVL1
+0x002D2830 0x60 __dt__10CGTreePoolFv  # OVL1; by hand (the states lane, round 27): ~CGTreePool -- SOCOM 1's __sinit_graph_tree.cpp builds its file static _pool and registers ~CGTreePool, the last function of its graph_tree.cpp, as SOCOM II's __sinit_graph_tree.cpp 0x401C80 registers this one, graph_tree.cpp's last; a pointer list's implicit destructor (two this-tests, ~__list_imp<PCv> 0x1EA250 called), emitted byte-exact by graph_tree.cpp's CGTreePool
 0x002D2890 0x560 func_002D2890  # OVL1
 0x002D2DF0 0x114 InitDescendantsVisuals__Q23zdb5CGridFv  # OVL1; s1:calls by hand (the zdb-world lane: CWorld's InitDescendantsVisuals calls it where SOCOM 1's does)
 0x002D2F10 0x114 InitDescendantsDI__Q23zdb5CGridFv  # OVL1; s1:calls by hand (the zdb-world lane: CWorld's InitDescendantsDI calls it where SOCOM 1's does)
@@ -5664,7 +5664,7 @@
 0x00321F50 0x180 Tick__Q23zdb7CRippleFf  # OVL1; s1:calls (SOCOM 1's VisualEffectsTick calls CRipple::Tick second)
 0x003220D0 0xF0 func_003220D0  # OVL1
 0x003221C0 0x2C Uninit__Q23zdb7CRippleFv  # OVL1; s1:align
-0x003221F0 0x8 func_003221F0  # OVL1
+0x003221F0 0x8 Init__Q23zdb7CRippleFv  # OVL1; s1:calls -- SOCOM 1's CGame::StartEngine calls Init__Q23zdb7CRippleFv at the place SOCOM II's StartEngine 0x2D0410 calls this (the game states' round 27, renamed at integration)
 0x00322200 0x90 func_00322200  # OVL1
 0x00322290 0xD8 func_00322290  # OVL1
 0x00322370 0x60 func_00322370  # OVL1
@@ -8526,7 +8526,7 @@
 0x004003E0 0x20 __sinit_fts_message.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 18): fts_message.cpp's initialiser -- __construct_array over its six message colours (0x440C70, s_msgColors) with CPnt4D's empty constructor 0x2110E0 and no destructor, a tail call; the unit's one dynamically initialised static
 0x00400400 0x244 __sinit_fts_remote.cpp  # OVL1 data area; a static initialiser; __sinit_fts_remote.cpp: HIGH by the initialisers' link order and the statics it builds (the integrator's research 2026-11-04, build/scratch/sinit/report.txt); unit src/gamez/zfts/fts_remote.cpp
 0x00400650 0x58 __sinit_fts_net_seal.cpp  # OVL1 data area; a static initialiser; s1~ game_state.cpp (shape 0.46, a hint); by hand (the states lane, round 13: builds CZSealState::m_RemoteGuyList (0x441000) with CRemoteGuyList's inline constructor -- three words zeroed, reserve(30) -- and registers 0x2BFFC0; not game_state.cpp's)
-0x004006B0 0x8 func_004006B0  # OVL1 data area; a static initialiser
+0x004006B0 0x8 __sinit_fts_net_bomb.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 27): fts_net_bomb.cpp's initialiser -- empty (jr ra; nop), between fts_net_seal.cpp's and fts_net_persona.cpp's, as fts_net_bomb.cpp's definition of CZBombState::m_BombStatus (TypeBombStatus, whose CPnt3D's empty inline constructor makes the implicit constructor non-trivial and inline to nothing) emits it byte-exact; fts_net_game.cpp and fts_net_grenade.cpp define no such static (SOCOM 1's __sinit_fts_net_bomb.cpp built only the header CSTable SOCOM II dropped)
 0x004006C0 0x68 __sinit_fts_net_persona.cpp  # OVL1 data area; a static initialiser; __sinit_fts_net_persona.cpp: HIGH by the initialisers' link order and the statics it builds (the integrator's research 2026-11-04, build/scratch/sinit/report.txt); unit src/gamez/zfts/fts_net_persona.cpp
 0x00400730 0x34 __sinit_fts_controller.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 26): fts_controller.cpp's initialiser -- CCtrlrConfigs::m_configs (0x4415C8) cleared word by word and its destructor 0x2C6ED0 registered with the chain node 0x4415B8; emitted byte-exact by the unit's definition of m_configs
 0x00400770 0x58 __sinit_fts_net_platform.cpp  # OVL1 data area; a static initialiser; s1~ graph_tree.cpp (shape 0.46, a hint); by hand (the states lane, round 13: builds CZPlatformState::m_PendingList (0x4415F0) with CPendingList's inline constructor -- three words zeroed, reserve(20) -- and registers 0x2C86E0; not graph_tree.cpp's)
@@ -10044,7 +10044,7 @@
 0x00552850 0x508 func_00552850  # OVL2
 0x00552D60 0x158 func_00552D60  # OVL2
 0x00552EC0 0x3C4 func_00552EC0  # OVL2
-0x00553290 0x14C func_00553290  # OVL2
+0x00553290 0x14C AddWeapon__10CZSealBodyF14SEAL_ITEM_BYTE  # OVL2; s1:order by hand (the SEALs, round 23): SOCOM 1's AddWeapon__10CZSealBodyF9SEAL_ITEM (0x256E90), right before ~CZSealBody in both builds and called twice by the constructor in both, the same code (a node new'd, pushed on m_deallocList through the pod insert, parented by the item's switch with the names rifle/pistol/grenade, AddBodyPart) -- SOCOM II files the part in m_item_gear and returns part != 0; the parameter is zseal.h's byte enum SEAL_ITEM_BYTE (zweapon.h's word-sized SEAL_ITEM stand-in holds SOCOM 1's enum name); seal.cpp
 0x005533E0 0x974 __dt__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00553D60 0x44 func_00553D60  # OVL2
 0x00553DB0 0x8 GetRootPart__10CZSealBodyCFv  # OVL2; s1:order (seal.cpp, right before OnRecycleEntity, as SOCOM 1's GetRootPart__10CZSealBodyCFv: the root part, m_root at 0x2E8 -- SOCOM 1's 0x26C; CBody's slot 0x10, through the thunk 0x5552A0, and CZSealBody's 0x88) -- the SEAL lane, round 4
@@ -10748,7 +10748,7 @@
 0x005A1B70 0x10 RemoteWeaponDamageNonVictim__10CZSealBodyF15DAMAGE_LOCATIONP10CZSealBodyP10CZSealBodyUcb  # OVL2; s1:exact
 0x005A1B80 0x44C RemoteWeaponDamageVictim__10CZSealBodyF15DAMAGE_LOCATIONffP10CZSealBodyP10CZSealBodyUcb  # OVL2; s1:callee by hand (the states lane's lead, vetted: RemoteWeaponDamageNonVictim, s1:exact at 0x5A1B70, is `mtc1 zero; j 0x5A1B80; mov.s` in both builds, SOCOM 1's j targeting RemoteWeaponDamageVictim, the next function there as here; the prologue keeps SOCOM 1's parameters -- a0 this, a1 the location, f12/f13 two floats, a2/a3 two seals, t0 a byte, t1 a bool; HitPacketHandler calls it) -- the SEAL lane, round 7
 0x005A1FD0 0x1C func_005A1FD0  # OVL2
-0x005A1FF0 0x1B4 func_005A1FF0  # OVL2
+0x005A1FF0 0x1B4 ReportWeaponHitDamage__10CZSealBodyFP12CZProjectileii15DAMAGE_LOCATIONffbUc  # OVL2; s1:order by hand (the SEALs, round 23): SOCOM 1's ReportWeaponHitDamage__10CZSealBodyFii15DAMAGE_LOCATIONffbUc (0x291040), after RemoteWeaponDamageVictim in both builds, the same calls (GetEntityById, the SEAL cast, SendHitMessage with the same seven arguments, Hit/WasHit/HeadShot on the stats) -- SOCOM II passes the projectile first (0x5A5A80 hands it in a1; its weapon's GetIDType spares grenades, items 121/171, the head shot) and its head-shot counter is a halfword; seal_env.cpp
 0x005A21B0 0x1DC func_005A21B0  # OVL2
 0x005A2390 0xF8 func_005A2390  # OVL2
 0x005A2490 0x1E8 func_005A2490  # OVL2
@@ -10800,8 +10800,8 @@
 0x005A6D30 0x180 func_005A6D30  # OVL2
 0x005A6EB0 0x10C func_005A6EB0  # OVL2
 0x005A6FC0 0x124 func_005A6FC0  # OVL2
-0x005A70F0 0x168 func_005A70F0  # OVL2
-0x005A7260 0x158 func_005A7260  # OVL2
+0x005A70F0 0x168 ChangeToRifleMode__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 23): SOCOM 1's ChangeToRifleMode__10CZSealBodyFb (0x298390), before ChangeToPistolMode and the pistol callbacks in both builds, its first call the kit's ReParentToRifle (here OVL2 0x5C6A40) on m_kit; the rifle into the right hand, the pistol holstered when the bool says, m_item 1; seal_env.cpp
+0x005A7260 0x158 ChangeToPistolMode__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 23): SOCOM 1's ChangeToPistolMode__10CZSealBodyFb (0x298540), after ChangeToRifleMode in both builds, its first call the kit's ReParentToPistol (here OVL2 0x5C6DA0) on m_kit; the pistol into the right hand when the bool says, the rifle slung, m_item 2 (li: SOCOM 1's li v1,2/sb at 0xe58 too); seal_env.cpp
 0x005A73C0 0xBC func_005A73C0  # OVL2
 0x005A7480 0xA0 func_005A7480  # OVL2
 0x005A7520 0xAC func_005A7520  # OVL2
