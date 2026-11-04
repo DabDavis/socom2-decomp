@@ -842,6 +842,82 @@ extern "C" bool func_0054F6E0(CZSealBody *seal, bool blend, bool mount, bool ani
                       seal->IsCurrentBlend((AnimType)data_003DEF40)));
 }
 
+extern "C" {
+void func_0054F7E0(CZSealBody *seal, float dT);
+/* the speed below which a SEAL stops checking player collision, squared (OVL2 data, 0.0001: a
+ * variable -- read with lwc1 for the compare) */
+extern float data_0064FCD0;
+}
+
+/* the new-altitude bit through an accessor, and the player-collision and new-altitude bits set
+ * together (inlines, the names ours: the target reads the byte twice -- the bit passed back read
+ * through the accessor, which MW never shares with the setter's read-modify-write; read in place
+ * the two loads merge, and `!= 0` in the accessor merges them too) */
+static inline bool GetNewAltitude(const CEntity *e) { return e->m_get_new_altitude; }
+static inline void SetCollisionBits(CEntity *e, bool check, bool alt)
+{
+    e->m_check_player_collision = check;
+    e->m_get_new_altitude = alt;
+}
+
+/* the SEALs' collision tick, the scheduler's "body_collide_tick" (OVL2 0x54F570, new in SOCOM II:
+ * st_core.cpp adds it): offline, each SEAL out of state 8 that checks player collision calls
+ * 0x54F7E0 -- once its motion all but stops (squared under 0.0001) the check goes off and the call
+ * is skipped (the name unknown). GetWeapon's walk: the iterator assigned from begin(), the end
+ * taken once; the `&&` held in a bool (`!(x == 8)`: xori/sltiu/xori) and its test nesting the rest */
+extern "C" bool func_0054F570(float dT, void *data)
+{
+    if (!theNetwork.m_9) {
+        CEntityList::iterator i;
+
+        i = CEntity::m_list.begin();
+        for (CEntityList::iterator e = CEntity::m_list.end(); i != e; ++i) {
+            CZSealBody *seal = AsSeal(*i);
+
+            if (seal) {
+                bool check = !(seal->m_state == stateDead) && seal->m_check_player_collision;
+
+                if (check) {
+                    if (seal->m_f44.x * seal->m_f44.x + seal->m_f44.y * seal->m_f44.y +
+                            seal->m_f44.z * seal->m_f44.z <
+                        data_0064FCD0) {
+                        SetCollisionBits(seal, false, GetNewAltitude(seal));
+                        check = false;
+                    }
+                    if (check)
+                        func_0054F7E0(seal, dT);
+                }
+            }
+        }
+    }
+    return false;
+}
+
+extern "C" {
+/* the SEAL's delayed ground probes: fifty intersection sets and the count used this frame (OVL1
+ * data, the SEAL's alone: PreTick zeroes the count, 0x5483D0 reads the sets; the names unknown) */
+extern zdb::DiIntersect *data_003DE940[];
+extern int data_0044AF78;
+}
+
+/* a delayed probe from a point to another, the SEAL's node its own and characters not hit -- the
+ * height kept when m_1340 is set -- or none when the fifty are spent (OVL2 0x54F410, new in SOCOM
+ * II: PostPreTick 0x54AA30 asks it 31 times; the name unknown) */
+extern "C" bool func_0054F410(CZSealBody *seal, const CPnt3D *from, CPnt3D *to)
+{
+    if (seal->m_1340 != 0.0f)
+        to->y = from->y;
+    if (data_0044AF78 >= 50)
+        return false;
+    data_003DE940[data_0044AF78]->m_Type = 2;
+    data_003DE940[data_0044AF78]->SetMask(seal->m_last_altitude.GetRegion());
+    zdb::CWorld::m_world->RegIntersectDelayed(data_003DE940[data_0044AF78], from, to, (unsigned int)-1);
+    data_003DE940[data_0044AF78]->m_Node = seal->GetNode();
+    data_003DE940[data_0044AF78]->SetIntersectCharacters(false);
+    data_0044AF78++;
+    return true;
+}
+
 /* whether a hit stops the SEAL: a node's, not of kind 1; on a slope too steep to stand on, unless its
  * edge drops less than 4 under a SEAL that is not prone; on a flatter one, only kind 0 -- the kind is
  * the polygon's three bits at 28, 4 with no polygon (OVL2 0x54F330, new in SOCOM II: 0x54EDF0 asks
@@ -862,6 +938,48 @@ extern "C" bool func_0054F330(CZSealBody *seal, zdb::IntersectStruct *hit)
         return true;
     }
     return type == 0;
+}
+
+/* the height a direction reaches over the length of b - a, turned by a matrix's rotation (OVL2
+ * 0x54ECD0, new in SOCOM II: PostPreTick 0x54AA30 asks it eight times; the name unknown) */
+extern "C" float func_0054ECD0(const CMatrix *m, const CPnt3D *dir, const CPnt3D *a, const CPnt3D *b)
+{
+    CPnt3D d(b->x - a->x, b->y - a->y, b->z - a->z);
+    CPnt3D r = *dir * d.Length();
+
+    TransformVectors(m, &r, &r, 1);
+    return r.y;
+}
+
+/* where a carrying SEAL holds the body it carries, in the world: moving up (m_velM.z over 0.01),
+ * midway between the carried body's feet and 1.6 on, else 2.5 short of its head -- each part placed
+ * in the SEAL's body, turned onto the world by its node and m_f44 added; the SEAL's own spot at the
+ * same height given back too (OVL2 0x54E760, new in SOCOM II: PostPreTick 0x54AA30 asks it; the
+ * name unknown) */
+extern "C" bool func_0054E760(CZSealBody *seal, CPnt3D *pos, CPnt3D *pt)
+{
+    CZSealBody *carry = seal->m_state == stateCarrying ? seal->m_carry : 0;
+
+    if (seal->m_velM.z > 0.01f) {
+        CPnt3D zero(0.0f, 0.0f, 0.0f);
+        CPnt3D r;
+
+        seal->PartInSpace(carry->m_lfoot, &zero, pt, 0);
+        seal->PartInSpace(carry->m_rfoot, &zero, &r, 0);
+        pt->Add(&r, pt);
+        pt->Scale(0.5f, pt);
+        pt->z += 1.6f;
+    } else {
+        CPnt3D zero(0.0f, 0.0f, 0.0f);
+
+        seal->PartInSpace(carry->m_head, &zero, pt, 0);
+        pt->z -= 2.5f;
+    }
+    seal->m_node->m_matrix.Transform(pt, 1);
+    pt->Add(&seal->m_f44, pt);
+    *pos = *(CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
+    pos->y = pt->y;
+    return true;
 }
 
 /* the heartbeat kept at the adrenaline's pace: three loops by level (none as 1), the one playing

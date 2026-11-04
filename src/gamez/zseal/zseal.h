@@ -1520,7 +1520,11 @@ public:
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned char _ed4[0xee0 - 0xed4];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0xf74 - 0xee4];
+    unsigned char _ee4[0xf44 - 0xee4];
+    /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
+     * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
+    CPnt3D m_f44;   // 0xf44
+    unsigned char _f50[0xf74 - 0xf50];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
     /* an item the anim choice falls back on with no base blend (0x58C820 copies it with lb, tests it
@@ -1638,7 +1642,10 @@ public:
     } m_climb;   // 0x1328
     AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
-    unsigned char _1338[0x1350 - 0x1338];
+    unsigned char _1338[0x1340 - 0x1338];
+    float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
+                    // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)
+    unsigned char _1344[0x1350 - 0x1344];
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     unsigned char _135c[0x1440 - 0x135c];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
