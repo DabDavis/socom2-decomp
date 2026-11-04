@@ -13,7 +13,9 @@
 /* the chain for a frame at (0, 0) of the frame buffer `dbp`, the macroblocks 1024 bytes apart
  * (Sony's; OVL1 0x30B9B0).
  * OPEN, 2 instructions, a register: the target swaps the height through v1 on its way to t0 where
- * MW takes v0 here, void or returning the call's int alike. */
+ * MW takes v0 here, void or returning the call's int alike; round 17: a local copy of each argument
+ * (height, dbp, width, image, tags, a named 1024, width and height in either order) changes nothing --
+ * the node holding v0 in the target is not a local the source can name. */
 void setLoadImageTags(unsigned int *tags, void *image, int width, int height, unsigned int dbp)
 {
     setLoadImageTagsYX(tags, image, 1024, width, height, dbp);

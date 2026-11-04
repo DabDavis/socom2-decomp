@@ -288,14 +288,14 @@ struct VBIT_CMD {
 };   // 0x10 bytes
 
 /* the block's data compared, as the VALVE command's tick (0x353260; the name ours) */
-bool CmdTickVBit(_zanim_cmd_hdr *hdr, float *dT)
+bool CValve::CmdTickVBit(_zanim_cmd_hdr *hdr, float *dT)
 {
     return ((VALVE_CMD_DATA *)((char *)hdr + 4))->Compare();
 }
 
 /* the valve named by the first item, the operator by the second, the bits by the rest (0x353270;
  * the name ours) */
-_zanim_cmd_hdr *CmdParseVBit(_zrdr *rdr)
+_zanim_cmd_hdr *CValve::CmdParseVBit(_zrdr *rdr)
 {
     VBIT_CMD *cmd = 0;
     int n = rdr->Count();

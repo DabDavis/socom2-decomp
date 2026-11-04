@@ -143,6 +143,7 @@ extern CMission theMission;
 class CZOnlineLobby {
 public:
     unsigned char GetRankLevel(int rank);   /* 0x2EAEE0 */
+    bool IsIgnored(const char *name);   /* 0x3008E0 */
 };
 
 extern CZOnlineLobby theLobby;
@@ -174,7 +175,7 @@ struct PersonaData {
     CZNetGame::MP_MINOR_GAME_STATE m_41;   // 0x41
     unsigned char m_42;   // 0x42
     signed char m_43;   // 0x43
-    unsigned char _44[4];   // (the fields from here on are not sent)
+    int m_44;   // 0x44: the client it came from (the fields from here on are not sent; the name ours)
     unsigned char m_48;   // 0x48
     unsigned char m_49;   // 0x49
     unsigned char m_4a;   // 0x4a: ready
@@ -318,7 +319,96 @@ void CZPersonaState::zNetRegisterPersona()
                                                 RemotePersonaDeletionCallback);
 }
 
-/* nothing on an update (OVL1 0x2C5800: its data's load kept, as in fts_net_blather.cpp) */
+/* a client's slot taken ahead of its persona (24 of them at 0x441580: the slot, the side -- 1 the
+ * terrorists, 2 the SEALs -- and whether it is held; the names ours) */
+enum PendingSide {
+    SIDE_NONE,
+    SIDE_TERRORISTS,
+    SIDE_SEALS,
+    SIDE_3
+};
+
+struct PendingSlot {
+    unsigned char slot : 3;
+    unsigned char side : 3;   // a PendingSide: compared as the byte enum (the target's andi 0xff)
+    unsigned char held : 2;
+};
+
+extern "C" PendingSlot data_00441580[24];
+
+/* the voice chat's object (0x45B718: its mode set, a client's ignore flag passed on while its byte
+ * 0x4C is set, its word at 0x2C read back; the names ours) */
+struct VoiceChat {
+    unsigned char _0[0x2c];
+    int m_2c;   // 0x2c
+    unsigned char _30[0x4c - 0x30];
+    unsigned char m_4c;   // 0x4c
+    unsigned char m_4d;   // 0x4d
+};
+
+extern "C" VoiceChat *data_0045B718;
+extern "C" void func_0030FCD0(VoiceChat *chat, int mode, int extra);
+extern "C" void func_0030E580(VoiceChat *chat, int client, bool ignored);
+
+/* the online game's state (fts_net_game.cpp's: only the local game's update) */
+class CZGameState {
+public:
+    static void UpdateLocalGame(CZNetGame *game);
+};
+
+/* a client's persona arrived: its two flags cleared and its client noted; the session master checks
+ * the slot held for it -- none, or no team: an E3 refusal (index 4, 5) sent -- and lets it in only
+ * when held or on a side, the slot freed and the local game updated either way; then its entry
+ * taken if free, the lists rebuilt, the voice chat told whether the lobby ignores its name, and the
+ * update and post-update work done (OVL1 0x2C5830: SOCOM II's own -- SOCOM 1's assigned the team
+ * and the E3 index here) */
+void CZPersonaState::RemotePersonaCreationCallback(int client, int index)
+{
+    NetObject *obj = theNetwork.zNetGetObject(index);
+
+    if (!obj)
+        return;
+    PersonaData *data = (PersonaData *)obj->m_data;
+
+    if (!data)
+        return;
+    data->m_49 = 0;
+    data->m_48 = 0;
+    data->m_44 = client;
+    if (theNetwork.m_bSessionMaster) {
+        PendingSlot &s = data_00441580[client];
+        PendingSide side = (PendingSide)s.side;
+
+        if (side == SIDE_NONE || !data->m_team) {
+            NetSendE3Index__FiUii(client, 4, 5);
+            *(unsigned char *)&s = 0;
+            CZGameState::UpdateLocalGame(theMission.m_pNetGame);
+            return;
+        }
+        if (s.held != 1 && side != SIDE_3 && side != SIDE_SEALS && side != SIDE_TERRORISTS) {
+            NetSendE3Index__FiUii(client, 4, 5);
+            *(unsigned char *)&s = 0;
+            CZGameState::UpdateLocalGame(theMission.m_pNetGame);
+            return;
+        }
+        *(unsigned char *)&s = 0;
+        CZGameState::UpdateLocalGame(theMission.m_pNetGame);
+    }
+    if (m_PersonaList[client].m_index == -1 && !m_PersonaList[client].m_data) {
+        m_PersonaList[client].m_index = index;
+        m_PersonaList[client].m_data = data;
+    }
+    UpdatePersonaLists();
+    if (data_0045B718 && data_0045B718->m_4c)
+        func_0030E580(data_0045B718, client, theLobby.IsIgnored(data->m_name));
+    RemotePersonaUpdateCallback(client, index, -1);
+    UpdatePersonaLists();
+    UpdateLocalPersona();
+}
+
+/* nothing on an update (OVL1 0x2C5800: its data's load kept, as in fts_net_blather.cpp; pinned: the
+ * creation callback calls it out of line) */
+#pragma auto_inline off
 void CZPersonaState::RemotePersonaUpdateCallback(int client, int index, int field)
 {
     NetObject *obj = theNetwork.zNetGetObject(index);
@@ -326,6 +416,7 @@ void CZPersonaState::RemotePersonaUpdateCallback(int client, int index, int fiel
     if (obj)
         void *data = *(void *volatile *)&obj->m_data;
 }
+#pragma auto_inline reset
 
 /* after an update: the lists rebuilt and our persona sent (OVL1 0x2C57D0, as SOCOM 1's) */
 void CZPersonaState::RemotePersonaPostUpdateCallback(int client, int index, int field)
@@ -388,23 +479,6 @@ void CZPersonaState::UpdateLocalPersona()
     UpdatePersonaLists();
 }
 #pragma auto_inline reset
-
-/* a client's slot taken ahead of its persona (24 of them at 0x441580: the slot, the side -- 1 the
- * terrorists, 2 the SEALs -- and whether it is held; the names ours) */
-enum PendingSide {
-    SIDE_NONE,
-    SIDE_TERRORISTS,
-    SIDE_SEALS,
-    SIDE_3
-};
-
-struct PendingSlot {
-    unsigned char slot : 3;
-    unsigned char side : 3;   // a PendingSide: compared as the byte enum (the target's andi 0xff)
-    unsigned char held : 2;
-};
-
-extern "C" PendingSlot data_00441580[24];
 
 /* a client moved to the other side when that side has a slot free: its slot and team taken there,
  * the switch sent and the counts moved (OVL1 0x2C4290; the session master's answer to a team
@@ -1071,16 +1145,6 @@ extern "C" void func_002C2D50(signed char value)
         p->m_43 = value;
 }
 
-/* the voice chat's object (0x45B718: its mode set, its word at 0x2C read back; the names ours) */
-struct VoiceChat {
-    unsigned char _0[0x2c];
-    int m_2c;   // 0x2c
-    unsigned char _30[0x4d - 0x30];
-    unsigned char m_4d;   // 0x4d
-};
-
-extern "C" VoiceChat *data_0045B718;
-extern "C" void func_0030FCD0(VoiceChat *chat, int mode, int extra);
 
 /* the voice chat put in a mode: 3 for a player not yet in, 10 for the lobby's flag, with 4 added
  * for a SEAL on the SEALs' side when the chat's byte 0x4D is clear (OVL1 0x2C2C20; the load state

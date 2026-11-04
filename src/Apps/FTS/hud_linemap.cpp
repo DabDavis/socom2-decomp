@@ -7,7 +7,7 @@
  * inlines of the class's, their copies linked from here); (round 35) SetupWideLine (0x20EF50, SOCOM
  * II's body: the C2D library builds the wide line), the iterator's FindValid (0x20F100) and Advance
  * (0x2107C0), CalcPoint (0x210870), and with them every copy they leave out of line -- ai.h's
- * CAiMap::GetCellCenter (0x20F220), GetCell (0x2106A0), GetAltitude (0x210630, made inline here),
+ * CAiMap::GetCellCenter (0x20F220), GetCell (0x2106A0), GetAltitude (0x210630, inline in ai.h),
  * IsMapCell, GetIndex, IsLayer and the vector pieces, all on the AI core's real ai.h. Defined in
  * reverse of their image order (-inline deferred). */
 
@@ -15,18 +15,6 @@
 #include "../../ai/ai.h"
 #include "hud_newhudmap.h"
 #include <map>
-
-/* a cell's altitude: the box's floor plus the quantum times the cell's altitude bits (ai_map.cpp's
- * 0x516940 -- an inline in SOCOM II: OVL1 has its copy, 0x210630, and GetCellCenter's out-of-line
- * copy 0x20F220 inlines it whole; ai.h declares it out of line, so it is made inline here) */
-inline bool CAiMap::GetAltitude(const CAiCell *cell, float &alt) const
-{
-    if (cell) {
-        alt = m_bbox.m_min.y + m_alt_quant * (float)cell->m_altitude;
-        return true;
-    }
-    return false;
-}
 
 /* a point iterator over a line (SOCOM 1's CPtItr: only its vtable -- the walk's step, the point,
  * whether it is still on the line; CPtItr's own table 0x405560 holds three zeros) */

@@ -797,9 +797,12 @@ public:
     void MakeCallbacks(VALVE_STATE state);
     /* the valve lane's (src/gamez/zvalve/) */
     /* SOCOM II's VWATCH and VBIT ZAnim commands (RegisterCommands' third and second; the names
-     * ours, after SOCOM 1's CmdParseCmp/CmdTickCmp, VALVE's pair) */
+     * ours, after SOCOM 1's CmdParseCmp/CmdTickCmp, VALVE's pair: CValve statics, as the CMP pair
+     * beside them in valve_main.cpp is -- the VBIT tick is CmdTickCmp's eight-byte twin) */
     static _zanim_cmd_hdr *CmdParseVWatch(_zrdr *rdr);
     static bool CmdTickVWatch(_zanim_cmd_hdr *hdr, float *dT);
+    static _zanim_cmd_hdr *CmdParseVBit(_zrdr *rdr);
+    static bool CmdTickVBit(_zanim_cmd_hdr *hdr, float *dT);
     /* an operator's name to its code: 0x353D10, a chain of 22 strcmp calls, no `this` (the world
      * lane's round 12 measured it; declared by the integrator for the world's unit to define) */
     static int ParseOperator(const char *op);

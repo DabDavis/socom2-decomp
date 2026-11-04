@@ -1329,8 +1329,8 @@
 0x001EA6B0 func_001EA6B0
 0x001EA6C0 func_001EA6C0
 0x001EA6D0 func_001EA6D0
-0x001EA6E0 func_001EA6E0
-0x001EA720 func_001EA720
+0x001EA6E0 testUnload__Fv
+0x001EA720 testLoad__Fv
 0x001EA7E0 __eq__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
 0x001EA800 __ne__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorCFRCQ33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iterator
 0x001EA820 __pp__Q33std62__vector_imp<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>,1>8iteratorFv
@@ -2191,6 +2191,7 @@
 0x00249C78 func_00249C78
 0x00249EE0 func_00249EE0
 0x00249F68 func_00249F68
+0x0024A438 func_0024A438
 0x0024A7C0 func_0024A7C0
 0x0024A840 func_0024A840
 0x0024A8B0 func_0024A8B0
@@ -2214,8 +2215,13 @@
 0x0024C6C0 func_0024C6C0
 0x0024C7D0 func_0024C7D0
 0x0024C8C0 func_0024C8C0
+0x0024C8E8 func_0024C8E8
+0x0024D190 func_0024D190
 0x0024D330 func_0024D330
+0x0024D370 func_0024D370
 0x0024D498 func_0024D498
+0x0024D770 func_0024D770
+0x0024DA70 func_0024DA70
 0x0024E8D0 func_0024E8D0
 0x0024E918 func_0024E918
 0x0024E9C0 func_0024E9C0
@@ -2249,6 +2255,10 @@
 0x0024FE38 func_0024FE38
 0x0024FF58 func_0024FF58
 0x0024FFB8 func_0024FFB8
+0x002504F0 func_002504F0
+0x00250708 func_00250708
+0x002508F0 func_002508F0
+0x00250A38 func_00250A38
 0x00250BE0 func_00250BE0
 0x00250C68 func_00250C68
 0x00250CC0 func_00250CC0
@@ -2307,6 +2317,8 @@
 0x00255DF8 func_00255DF8
 0x00255E48 func_00255E48
 0x00256130 func_00256130
+0x00256190 func_00256190
+0x00256280 func_00256280
 0x00256380 func_00256380
 0x00256970 func_00256970
 0x002569D8 func_002569D8
@@ -2322,6 +2334,7 @@
 0x00256FA8 func_00256FA8
 0x00256FB8 func_00256FB8
 0x00256FD0 WriteBuffer__Q23zar4CZARFPCvUi
+0x00257050 Write__Q23zar10CZARBufferFPCvUi
 0x002571D0 NewKey__Q23zar4CZARFPCc
 0x00257320 FreeDirectory__Q23zar4CZARFv
 0x002573E0 __dt__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>Fv
@@ -2414,6 +2427,7 @@
 0x0025D550 zAnimCallAnimTick__FP14_zanim_cmd_hdrPf
 0x0025DCE0 zAnimFailTick__FP14_zanim_cmd_hdrPf
 0x0025DCF0 zAnimRandomWeightTick__FP14_zanim_cmd_hdrPf
+0x0025DD40 zAnimLODTestTick__FP14_zanim_cmd_hdrPf
 0x0025DE00 zAnimHealthTestTick__FP14_zanim_cmd_hdrPf
 0x0025DE90 zAnimRangeTestTick__FP14_zanim_cmd_hdrPf
 0x0025E1D0 zAnimNodeRenderedTick__FP14_zanim_cmd_hdrPf
@@ -2436,6 +2450,7 @@
 0x0025F050 zAnimMultiObjectMotionScriptTick__FP14_zanim_cmd_hdrPf
 0x0025F140 zAnimMultiObjectMotionScriptBegin__FP14_zanim_cmd_hdr
 0x0025F1B0 zAnimObjectMotionScriptTick__FP14_zanim_cmd_hdrPf
+0x0025F880 zAnimObjectOpacityFromToTick__FP14_zanim_cmd_hdrPf
 0x0025F960 zAnimObjectOpacityFromToBegin__FP14_zanim_cmd_hdr
 0x0025F9B0 zAnimObjectMotionFromToTick__FP14_zanim_cmd_hdrPf
 0x002606F0 Tick__15CZAnimFromToAccFfP6CPnt3D
@@ -2846,6 +2861,8 @@
 0x002800C0 OnRemoveEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x00280770 func_00280770
 0x002808D0 func_002808D0
+0x00280D60 UICanCharactersSelectUIWeapon__FP13C2DAnimCmdHdrPf
+0x00280E90 CanTakeItem__24@unnamed@zanim_menu_cpp@F10EQUIP_ITEMRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr
 0x00281030 func_00281030
 0x00281040 func_00281040
 0x00281050 func_00281050
@@ -2853,8 +2870,10 @@
 0x00281070 func_00281070
 0x00281080 func_00281080
 0x00281090 UICopyUIVar__FP13C2DAnimCmdHdrPf
+0x00281950 IsSlotLocked__24@unnamed@zanim_menu_cpp@FQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItri10EQUIP_ITEM
 0x00281A70 OnCloseAndSwitch__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x00281BC0 func_00281BC0
+0x00281BE0 UIChooseDefaultEquipmentOnly__FP13C2DAnimCmdHdrPf
 0x00282410 func_00282410
 0x00282420 UIChooseEquip3__FP13C2DAnimCmdHdrPf
 0x00282500 UIChooseEquip2__FP13C2DAnimCmdHdrPf
@@ -2863,6 +2882,8 @@
 0x002827E0 UIChoosePrimary__FP13C2DAnimCmdHdrPf
 0x002828B0 ExecuteChooseEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x00282980 ExecuteChooseDefaultEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
+0x00282EB0 FindItemSlot__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEMi
+0x00284640 NextFreeSlot__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItri
 0x002846F0 func_002846F0
 0x00284720 func_00284720
 0x00284B40 push_back__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fc
@@ -2967,6 +2988,7 @@
 0x0028C160 ReverseDir__15CZBodyAnimBlendFv
 0x0028C1E0 Representative__15CZBodyAnimBlendFv
 0x0028C1F0 SetRepresentativeWt__15CZBodyAnimBlendFf
+0x0028C220 ThisFoot__15CZBodyAnimBlendFv
 0x0028C250 GetVelocity__15CZBodyAnimBlendFP6CPnt3D
 0x0028C380 Synch__15CZBodyAnimBlendFv
 0x0028C4F0 Propagate__15CZBodyAnimBlendFfb
@@ -2979,6 +3001,7 @@
 0x0028CFC0 RenormAnims__FP15CActiveAnimListf
 0x0028D020 CallbackTick__13CBlendOverlayFPvf
 0x0028D0A0 IsTriggerTime__13CBlendOverlayFff
+0x0028D170 Tick__13CBlendOverlayFP5CBodyf
 0x0028D3F0 Trigger__13CBlendOverlayFb
 0x0028D450 IsTriggerTime__13CBlendOverlayFffb
 0x0028D570 SetPlayback__11ACTIVE_ANIMFf
@@ -3179,6 +3202,7 @@
 0x0029EC50 OnMissionStart__7CEntityFv
 0x0029EC60 ResetToInitialState__7CEntityFv
 0x0029EC70 SetDisplayName__7CEntityFPCc
+0x0029ECE0 JoinTeam__7CEntityFUi
 0x0029ED10 SetTeamMask__7CEntityFUi
 0x0029ED20 GetNode__7CEntityFv
 0x0029ED30 __dt__7CEntityFv
@@ -3277,6 +3301,7 @@
 0x002A74A0 func_002A74A0
 0x002A7510 SetE3RoundCount__9CZNetGameFi
 0x002A7560 func_002A7560
+0x002A75F0 UnInitialize__9CZNetGameFv
 0x002A8F30 __ct__6CPnt3DFfff
 0x002A8F50 GetClosestLadder__11CLadderListFPC6CPnt3Df
 0x002A90F0 GetLadderByNode__11CLadderListFPQ23zdb5CNodei
@@ -3306,7 +3331,7 @@
 0x002ABD40 ReOpen_Load__8CMissionFv
 0x002AC060 ReOpen_Unload2__8CMissionFv
 0x002AC0E0 ReOpen_Unload1__8CMissionFv
-0x002AC410 Open__8CMissionFPCci
+0x002AC410 Open__8CMissionFPCc
 0x002ACA30 func_002ACA30
 0x002ACAD0 CreateCompassNavPoints__8CMissionFv
 0x002AD940 __dt__8CMissionFv
@@ -3445,6 +3470,7 @@
 0x002B7950 func_002B7950
 0x002B79F0 ftsNetworkGameUninit__Fv
 0x002B7A20 ftsNetworkGameInit__Fv
+0x002B7A90 func_002B7A90
 0x002B7C90 func_002B7C90
 0x002B7CF0 func_002B7CF0
 0x002B7D60 ftsNetworkPlayerInit__Fv
@@ -3607,6 +3633,7 @@
 0x002C5750 RemotePersonaDeletionCallback__14CZPersonaStateFii
 0x002C57D0 RemotePersonaPostUpdateCallback__14CZPersonaStateFiii
 0x002C5800 RemotePersonaUpdateCallback__14CZPersonaStateFiii
+0x002C5830 RemotePersonaCreationCallback__14CZPersonaStateFii
 0x002C5A10 zNetRegisterPersona__14CZPersonaStateFv
 0x002C5C90 func_002C5C90
 0x002C5D10 func_002C5D10
@@ -4321,6 +4348,7 @@
 0x002F6D70 CountGamePlayers__Fv
 0x002F6E30 cbCountGamePlayers__FiiiP28MediusGetGamePlayersResponse
 0x002F6EC0 RefreshGamePlayerList__13CZOnlineLobbyFP3C2D
+0x002F7020 func_002F7020
 0x002F7690 func_002F7690
 0x002F7710 GetAnnouncements__13CZOnlineLobbyFv
 0x002F77A0 cbGetAnnouncements__FiiiP30MediusGetAnnouncementsResponse
@@ -4335,6 +4363,7 @@
 0x002F8270 SetMissionSequence__13CZOnlineLobbyFUcPUc
 0x002F82E0 GetMissionSequence__13CZOnlineLobbyFPUcPUc
 0x002F8350 ForceStatusReport__13CZOnlineLobbyFv
+0x002F83B0 JoinGame__13CZOnlineLobbyFPCc
 0x002F8BC0 func_002F8BC0
 0x002F8C60 func_002F8C60
 0x002F8CE0 func_002F8CE0
@@ -4474,6 +4503,7 @@
 0x00303410 __dt__12FriendVectorFv
 0x00303490 erase__Q23std60__vector_imp<10IgnoreItem,Q23std23allocator<10IgnoreItem>,0>FP10IgnoreItemP10IgnoreItem
 0x00303730 GameHasPassword__10CZLANLobbyFPCc
+0x003039B0 JoinGame__10CZLANLobbyFPCc
 0x003042B0 RefreshGameList__10CZLANLobbyFP3C2D
 0x00304390 cbLANInfoRequest__Fii
 0x003043E0 Disconnect__10CZLANLobbyFv
@@ -4642,6 +4672,7 @@
 0x0030D5E0 zNetGetGameClient__9CZNetworkFi
 0x0030D620 func_0030D620
 0x0030D630 zNetGetObject__9CZNetworkFi
+0x0030D670 zNetCreateObject__9CZNetworkFPi18NetOwnershipStatus17NetObjectLifespanUiiUiiPvPci
 0x0030D770 func_0030D770
 0x0030D7D0 zNetPlayFixList__9CZNetworkFv
 0x0030D870 AddToFixList__9CZNetworkFPQ29CZNetwork18TypeRTimeFixStruct
@@ -5623,8 +5654,8 @@
 0x00352EA0 __ct__6CValveFPCcUi10VALVE_TYPE
 0x00353030 CmdTickVWatch__6CValveFP14_zanim_cmd_hdrPf
 0x003530D0 CmdParseVWatch__6CValveFP5_zrdr
-0x00353260 CmdTickVBit__FP14_zanim_cmd_hdrPf
-0x00353270 CmdParseVBit__FP5_zrdr
+0x00353260 CmdTickVBit__6CValveFP14_zanim_cmd_hdrPf
+0x00353270 CmdParseVBit__6CValveFP5_zrdr
 0x00353C70 ParseValveName__14VALVE_CMD_DATAFPCcRi
 0x00353D00 CmdTickCmp__6CValveFP14_zanim_cmd_hdrPf
 0x00353D10 ParseOperator__6CValveFPCc
@@ -8700,6 +8731,7 @@
 0x00550570 PostTick__10CZSealBodyFf
 0x00550E50 CreateAiEvent__10CZSealBodyFv
 0x00552780 func_00552780
+0x00552D60 UpdateStance__10CZSealBodyFv
 0x00553290 AddWeapon__10CZSealBodyF14SEAL_ITEM_BYTE
 0x00553D60 func_00553D60
 0x00553DB0 GetRootPart__10CZSealBodyCFv
@@ -8988,12 +9020,17 @@
 0x00581C10 Stand_0__10CZSealBodyFiif
 0x00581DC0 Stand__10CZSealBodyFi
 0x00582500 StanceChanged__10CZSealBodyFv
+0x00583350 func_00583350
 0x00583960 TurnControl__10CZSealBodyFf
 0x00584240 InStateClimbLadder__10CZSealBodyFv
 0x00584B00 func_00584B00
 0x00584C10 func_00584C10
 0x005857E0 func_005857E0
 0x00585FF0 func_00585FF0
+0x00586050 StandTurning__10CZSealBodyFf
+0x00586240 StandStill__10CZSealBodyFff
+0x00586C10 SmoothXZThrottles__10CZSealBodyFRfRf
+0x00586F00 IsStopped__10CZSealBodyFfff
 0x00587670 func_00587670
 0x005876B0 func_005876B0
 0x00587740 func_00587740
@@ -9153,6 +9190,7 @@
 0x0059A720 func_0059A720
 0x0059A730 FindGear__10CZSealBodyFPCc
 0x0059A7F0 PreCreateSeal__10CZSealBodyFPC14CCharacterTypePCcPPQ23zdb5CNode
+0x0059A8E0 func_0059A8E0
 0x0059AA60 func_0059AA60
 0x0059AB30 func_0059AB30
 0x0059ABC0 func_0059ABC0
@@ -9176,6 +9214,7 @@
 0x0059DDB0 DropAllItems__10CZSealBodyFv
 0x0059DEF0 HandlePickupMPBomb__10CZSealBodyFP7CPickup
 0x0059DF60 EnableMPBombGear__10CZSealBodyFb
+0x0059E830 CanPickupNetItem__10CZSealBodyFUsiPUsi
 0x0059F610 func_0059F610
 0x0059F6F0 func_0059F6F0
 0x005A0B60 func_005A0B60
@@ -9253,6 +9292,7 @@
 0x005AA620 func_005AA620
 0x005AA690 func_005AA690
 0x005AA6D0 func_005AA6D0
+0x005AC070 HandleDamageExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION
 0x005AC620 func_005AC620
 0x005AC660 func_005AC660
 0x005ACA10 func_005ACA10
@@ -9672,6 +9712,7 @@
 0x005F1AD0 OnSignal__13CAiSCQBAttackFQ28CAiState6SIGNALP11CSealCtrlAi
 0x005F1B50 Tick__11CAiSUnknownFP11CSealCtrlAi
 0x005F1BF0 OnSignal__11CAiSUnknownFQ28CAiState6SIGNALP11CSealCtrlAi
+0x005F3100 func_005F3100
 0x005F33A0 GetStatus__10CAiSBreachCFv
 0x005F34D0 Virtual34__10CAiSBreachFP11CSealCtrlAiP8CAiEventP10CZSealBodyb
 0x005F3620 OnSignal__10CAiSBreachFQ28CAiState6SIGNALP11CSealCtrlAi
@@ -9776,10 +9817,12 @@
 0x005FF090 __dt__15CSealCtrlSquirmFv
 0x005FF0F0 __ct__15CSealCtrlSquirmFv
 0x005FF200 SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat
-0x005FFDB0 func_005FFDB0
-0x005FFDC0 func_005FFDC0
+0x005FFDB0 StackTop__2aiFR6CStack
+0x005FFDC0 LineColor__2aiFRC6CPnt3D
 0x005FFDD0 __ct__6CPnt4DFffff
+0x005FFDF0 DrawLine__2aiFQ22ai9LINE_TYPEPC6CPnt3DPC6CPnt3D
 0x005FFF10 LineOn__2aiFQ22ai9LINE_TYPE
+0x005FFF40 LineTo__2aiFRC6CPnt3D
 0x00600070 MoveTo__2aiFRC6CPnt3D
 0x006000A0 SetLineFuncOpacity__2aiFf
 0x006000F0 SetLineFuncOpacity__2aiFff
@@ -9871,8 +9914,11 @@
 0x00609D60 __dt__10CAiSShotAtFv
 0x00609DE0 CanPursue__10CAiSShotAtCFP11CSealCtrlAi
 0x0060A2D0 func_0060A2D0
+0x0060A2F0 OnSetVisible__9CAiTargetFb
+0x0060A460 Tick__9CAiTargetFP7CEntityf
 0x0060A5B0 func_0060A5B0
-0x0060A5F0 func_0060A5F0
+0x0060A5F0 SetTarget__9CAiTargetFP7CTarget
+0x0060A6A0 func_0060A6A0
 0x0060A850 func_0060A850
 0x0060A940 __ct__9CAiTargetFv
 0x0060B7F0 func_0060B7F0
