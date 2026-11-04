@@ -63,7 +63,11 @@
  * it; written inline the call goes but the by-value iterators are still copied in, 0x270), and the
  * chat's teardown level 0x2F62B0 (destroy, then ~__deque_buf 0x2F6BC0 called with 0: a destroying class
  * between __deque_imp and __deque_buf for class elements only -- the lobby's chain calls ~__deque_buf
- * after the same four this-tests -- which needs make_iterator and destroy below it, in __deque_buf).
+ * after the same four this-tests). MODELLED in the MSL headers' round 19: __deque_destroy below, the
+ * base has_trivial_dtor picks (a scalar element's __deque_imp derives from __deque_buf straight), its
+ * out-of-class destructor reaching __deque_imp's make_iterator and destroy through a static_cast of this
+ * (offset 0: no null test) -- 0x2F62B0 and ~__deque_buf 0x2F6BC0 byte-exact (renamed: 0x2F62B0 had
+ * carried ~__deque_buf's name), ~deque 0x2F5EF0 and ~CChatQueue 0x2F5E50 kept, nothing lost.
  * make_iterator: begin() of the buffer in class makes it 0xB8 (all scalarised), its copy kept in memory
  * by `return t += n` in operator+ 0x100; the target keeps begin()'s object in memory too (0x130/0x138) --
  * neither a user copy constructor nor a member operator- does it.
