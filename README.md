@@ -2032,6 +2032,135 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the online lobby, round 17** (JoinGame twice, the game-players callback, zNetCreateObject, znet.h's members):
+  - a call result tested `== 0` with the success arm first (`f() == 0 ? n : -1`) gives the if-assign layout -- the load on
+    the fall-through, the constant in the retargeted branch's delay slot; `f() ? -1 : n` and `!f() ? n : -1` lay the
+    constant arm first; a pointer pick behaves the same (zNetCreateObject 0x30D670, the callback 0x2F7020's clan tag);
+  - an inline's local is laid out below every local of its caller, a constructed object included (CZOnlineLobby::JoinGame
+    0x2F83B0: its RANDOM request sits below the CRdrEditor only through an inline, GetRandomGame -- ours); an if-chain
+    tests in source order where a switch tests in reverse; a second null test whose false path goes to the function's
+    end, as the first's, was nested inside the first;
+  - a signed char bit-field's store reads its byte with `lb`, so a unit reading the same field with `lbu`/`dsrl` reads a
+    second declaration; `field & 3` does not fold into the zero-extension (an `andi` more); TypeRTimeFixStruct's kind is
+    `unsigned int m_kind : 8` -- the only shape giving both the switch's `lbu` and AddToFixList's seven-word copy;
+    `new T(*p)` on a plain struct is an FPR block copy behind a null test, `*q = *p` copies member by member;
+  - znet.h has fts_remote.cpp's members now (zNetGetGameSessionMasterClientIndex, zNetGetObject, the inline
+    GetGameConnectionIndex; NetObject's real layout: type index 0, owner 4, the kind's name 0xC, data 0x1C; m_master_index
+    is m_sessionmaster_index); CZLANLobby::JoinGame 0x3039B0 (UIJoinMPGame calls it on 0x44FE10 where it otherwise calls
+    the online one); open: GetGameInfo (21), CreateGame (10) and the world report (9: every `&&` spelling folds the
+    target's bnez/b pair into one beqz), FriendInvitationVector::Remove.
+- **Tells from the engine core, round 7** (six register misses closed by const locals, the equipment slots, the VBIT pair):
+  - A `const` LOCAL SURVIVES MW'S COPY PROPAGATION AND KEEPS A NAMED VARIABLE'S NUMBER, where a plain local copy folds into
+    its use -- that alone fixed float and GPR pair swaps in CZBodyAnimBlend::ThisFoot 0x28C220 (`const float t =
+    m_tfrac;`), CBlendOverlay::Tick 0x28D170 and zar::CZARBuffer::Write 0x257050 (a const block size, both growths as
+    ternaries); a local read, modified and written back survives too (CEntity::JoinTeam 0x29ECE0, zAnimObjectOpacity-
+    FromToTick 0x25F880);
+  - MW creates a float constant's register before any load's (the register dumps show it): a load is coloured after the
+    constant only as a surviving named variable; a caller generated after its callee knows which registers the callee
+    writes and keeps an argument register live across the call (NextFreeSlot 0x284640 keeps the slot in a2) -- so
+    definition order matters beyond where functions land in the image;
+  - a `return false` the target keeps as its own block, with a nop in the last test's delay slot, is an inline's return
+    (zAnimLODTestTick 0x25DD40: the tick's body an inline, the enum compared with the byte uncast); a member compared with
+    a call's result in one expression is loaded before the call, the result taken into a local first keeps the load after;
+  - zanim_menu.cpp's equipment slots (FindItemSlot 0x282EB0, IsSlotLocked 0x281950, NextFreeSlot, CanTakeItem 0x280E90:
+    names ours) and the UI commands 0xCF (UICanCharactersSelectUIWeapon 0x280D60) and 0x8F (UIChooseDefaultEquipmentOnly
+    0x281BE0); the VBIT pair 0x353260/0x353270 are CValve statics now; 0x2578F0 is SOCOM 1's _countKeys and 0x257CC0
+    CKey::fixupKey (WriteDirectory stores the first's count and hands the second to CSTable::Pack);
+  - open: GetNextCell / SetCellBoundary (9: the target colours the lookup's z before the clamped x), CClutterList::Add
+    (13), GetCmd (8: the strength-reduced j*12 offset wanted just after j), CPacketMsg::GetArg (4 bytes),
+    SetTraversalExtents (4).
+- **Tells from the kit and AI states, round 28** (seal_ailines.cpp whole, CAiTarget's tick and setters, the breach door):
+  - IN DEFERRED MODE `#pragma dont_inline` ACTS BY ITS STATE AT THE UNIT'S END: set around two functions and reset, or
+    flushed with `defer_codegen` off/on, every inline still expands; left on, every inline stays a call -- the implicit
+    CPnt3D assignment and the static initialiser's constructors included; so a unit whose functions call tiny inline
+    constructors and accessors out of line, the copies right after their first caller, is a dont_inline unit: write its
+    struct copies field by field (seal_ailines.cpp 16 of 16: DrawLine 0x5FFDF0 and LineTo 0x5FFF40, SOCOM 1's; MoveTo and
+    the copies StackTop 0x5FFDB0, LineColor 0x5FFDC0, CPnt4D(ffff) 0x5FFDD0 -- the two names ours);
+  - an inline's final `return a == b;` compiles to xor/sltiu, `if (a == b) return true; return false;` gives the target's
+    branching form (SOCOM 1's compare_target); a member of a class nested in another header's class needs that header
+    included -- ai_states.h includes ai.h now (neutral over 30 units), CAiSBreach::m_78 being a CAiMap::action *;
+  - CAiTarget::OnSetVisible 0x60A2F0 (SOCOM 1's, the validity test inlined), Tick(CEntity *, float) 0x60A460 (the caller
+    puts dT back into f12: the float argument is real), SetTarget(CTarget *) 0x60A5F0 (pinned: Tick calls it out of line;
+    SOCOM 1's took a threat float too), the target-change test 0x60A6A0, the breach door's centre cell 0x5F3100;
+  - open: the breach side test 0x5F3270 (16: the 0 in the dots is the points' literal), CAiSScript::CanPushAiState (0x84
+    vs 0x80), GetTimeSinceLastSighting (3: the igdump colouring shows the field numbered before the clock in every
+    spelling); __sinit_seal_ailines.cpp 0x668FB0 stays unnamed -- named, it scores WRONG, our initialiser calling CStack()
+    out of line under the unit's pragma where the target inlines it.
+- **Tells from the SEALs, round 27** (UpdateStance, the standing and turning set, the explosive damage, the net pickup):
+  - any assignment to a variable at a loop's exit, even `sum = +sum;`, gives the exit its own label, so MW does not jump
+    the loop's first test straight past it (StandStill 0x586240; `(void)0;` and `*= 1.0f` do not); a `short` local set in
+    an if/else and stored once after the join gives a single store, the ternary puts its 2 in the first test's delay slot
+    (StandTurning 0x586050);
+  - MW keeps a product's operands in the target's order only when the last factor comes from an inline -- `(b - a) *
+    Ease8(x)`; swapping the operands in source changes nothing (SmoothXZThrottles 0x586C10, whose float numbering
+    tools/perm.py found over a block of dead first definitions where no declaration order did);
+  - in `call() == load` MW loads the plain operand first, into a saved register across the call, whichever side it is
+    on -- the call's result taken into a local first keeps the load after the call (CanPickupNetItem 0x59E830); an `andi
+    0xffff` on an unsigned short argument before a call shows the callee's parameter is an int (SendPickupAckMessage
+    0x2BA1F0's first, the states' row); IsAi written in IsPlayer's ternary form keeps the result in v0 (UpdateStance
+    0x552D60); a function-local `static float` written twice is compared by content (the blend split 0x583350);
+  - SOCOM 1's order names the set: UpdateStance after UpdateLODFlags, HandleDamageExplosive 0x5AC070 (HandleDamage calls
+    it first), IsStopped 0x586F00, CheckForAmmoPickups 0x59E580 and HandlePickupAck 0x59DFB0 (named, unwritten); a
+    tick that inlines GetSeal (0x59A8E0) needs GetSeal in its unit -- and 0x59B440, which calls it out of line, may open
+    a unit of its own (0x59AD30-0x59BA7F, untested); open: AnimSignal 0x562030 (include/list's reverse_iterator), the
+    string-keyed map's insert 0x58CEF0/0x58D2B0 (include/tree).
+- **Tells from the UI, round 19** (Serialize, Append, CGameMenu::Add2dNode, the soft keyboard's elements and bitmaps):
+  - a reference bound between two tests, followed by `if (!x) continue;`, puts its address in the second test's delay slot
+    (CUIVarManager::Serialize 0x385670); `a += b` through a class's `operator+=(const T &)` converts and binds the argument
+    before `this`, then adds in written order -- through the conversion operator the other operand always came first, and
+    a by-value `operator+=(T)` numbers the value after the code (CSkbPieces::Append 0x3908A0: a new CInit::operator+=);
+  - to keep a found pointer in v0 through a fallback and copy it afterwards, write `found ? found : fallback` into a
+    second variable -- `if (!p) p = fallback` holds one variable in a saved register (CGameMenu::Add2dNode 0x3696D0, the
+    block SOCOM 1's LoadFromDesign inlined; CGameMenu now has SOCOM 1's DWARF members to 0x210);
+  - a byte passed to an inline's `unsigned char` parameter is masked with `andi 0xff` at the call, tested directly it is
+    not, and a test through a bool inline makes the body load the pointer again (CSoftKeyboard::ShowElements 0x38B580);
+    written out with a named key, a find puts the key's frame slot, then the iterator's, above later temporaries, and a
+    reassigned variable presets the null in the delay slot where a second variable gives each arm its own block
+    (PrepKeyBitmaps 0x38B8F0); a branch-free chain of compares (`sltu`/`or`) comes from a bool built with `|=`, `||`
+    branches;
+  - CUIVariable::Format 0x3860F0 is SOCOM 1's without its separator between array items; open: SkbPadKeyEvent 0x394F60
+    (16 bytes short: the target loads the event with `lb`, keeps it in v0 and masks it at each test), SkbWrapText (3) and
+    SkbWrapTokens (5: the igdump records show MW's scheduler places wordChar's zero and the index arithmetic where the
+    target does not, whatever the declaration order).
+- **Tells from the weapons, round 21** (the projectile's detonation and timers, the turret's two setters, zVid_Assert's home):
+  - a result local that an arm assigns again keeps the early return-value set-up and the padded labels
+    (CZProjectile::HandleTimers 0x3C99A0, open since round 18: SOCOM 1's shape with its `= true` turned `= false`); an
+    inlined parameter given an expression (a ternary) is re-evaluated at every use, a local computes it once;
+  - `if (i > 0)` around `for (j = i - 1; j >= 0 && f; j--)` gives the target's `blez` ahead of the loop's bottom-tested
+    entry; `while (again)` against `do {} while (again)` swaps the saved registers of the two strength-reduced offsets; an
+    `unsigned int` counter over `v[i]` is strength-reduced (one more saved register), an `int` counter is not;
+  - inline bool predicates materialise their values -- written out, even with a doubled null test, they branch directly;
+    a switch's compare chain fills no delay slots, `||` and `!=` chains fill them and `||` folds consecutive constants into
+    range tests; an inline's pointer parameter copied into a local keeps the loads going through the pointer register; a
+    local zeroed before an out-of-line copy is live across it and takes a saved register; `(unsigned int)f() >
+    0xFFFFFFFFu` folds the test but keeps the call;
+  - RegisterNextHit 0x3C7EE0 (SOCOM II's: the detonation's next hit on a node extension no earlier hit reached, a delayed
+    ray to its box centre), HandleDetonateExplosion 0x3C7AF0 (SOCOM 1's ground mark, then the hits reordered so instanced
+    nodes come first, swapped through memcpy), HandleDelayedDetonate 0x3C8330, PreFireProjectile 0x3CAF60 (a launcher
+    fire animation before SOCOM 1's body, a volatile round's collision-piece copy after); zVid_Assert is zvid_init.cpp's
+    last function in OVL1 too (src/gamez/zvid/zvid.cpp, which held nothing else, is gone);
+  - leads: 0x3C9B70 is SOCOM 1's HandleIntersections in place, 0x3BECA0 CDecal::AddDecal (a new point parameter),
+    0x3CB1A0 SetProjectile; open: func_003C5C20 (3), UnpackItemAndAmmoEnums (1: dsra32 vs dsrl32), GetDamage (3),
+    CZProjectileList::Clear (4 short).
+- **Tells from the HUD, round 35** (the CZLineMap unit hud_linemap.cpp, 60 of 61):
+  - a function a shared header declares out of line can be made inline in one unit by an `inline` out-of-class definition
+    placed before use -- it reproduces another overlay's copy without touching the header (ai.h's
+    CAiMap::GetAltitude(cell): OVL1 has a copy and OVL1's GetCellCenter copy 0x20F220 inlines it whole);
+  - deleting a vector-derived class with a user destructor merges the delete's null test with the derived class's
+    this-test, deleting a plain vector keeps the null test (~CZLineMap 0x20FCF0); `x = c ? k * x : x;` gives `mul.s
+    x,k,x`, constant first -- `x = k * x`, `x = x * k` and `x *= k` under an `if` all give the operands the other way
+    round;
+  - a bitfield `||` materialised into one register comes from a bool local, a lone `sltu; beqz` from `(bool)field !=
+    false`; an inline taking the record by reference re-reads its bitfield after a call, passed by value the field stays
+    in an extra saved register;
+  - when an inline is cut one level, an argument evaluated at the caller's level still inlines (`*_it`): FindValid
+    0x20F100's copy inlines `*_it` while Advance, which inlines FindValid one level, calls it out of line; the unit's image
+    order is known and the file is laid out in its reverse (GetLocPoint between Advance and hudAddLineType, the
+    constructor and destructor between hudGetTacMapPulseTrans and LineTo, IsValid after MoveTo);
+  - TickLine 0x20E470 and SetupPolygon 0x20F5C0 carry SOCOM 1's names by their call positions in TickLines (0x20EF50 is
+    SetupWideLine); open: LineTo(const CPnt3D *) 0x20FA70 (8 bytes: `this` and the line swap saved registers -- the
+    target's 500-line test ends its true arm with a `b` over a lone nop), and the unit's unwritten Draw 0x20D390, Clip
+    0x20D5F0, Tick 0x20EBD0, SetupPolygon and four more; the C2D wide-line builder 0x357F30 (0x670).
 - **Tells from the game states, round 30** (the player's team, the CTickLight FreeVector, the respells):
   - a `PNT4D` local passed by value goes as its own address with no copy, a sliced `CPnt4D` is copied first (10
     instructions in each of thezoom.cpp's three SetLightTints callers); a bool inline compared `!= false` keeps the

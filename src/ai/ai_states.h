@@ -19,6 +19,9 @@
 #include "../gamez/zmath/zmath.h"
 #include "../gamez/zentity/zentity.h"
 #include "../gamez/zseal/aitimer.h"
+/* CAiMap's nested action (CAiSBreach::m_78) cannot be declared ahead: ai.h first (it includes
+ * only the MSL headers, zmath.h and zentity.h; zseal.h included it right after this one) */
+#include "ai.h"
 
 class CSealCtrlAi;
 class CAiEvent;
@@ -401,7 +404,9 @@ public:
     unsigned int m_6c;   // 0x6c
     unsigned int m_70;   // 0x70
     unsigned int m_74;   // 0x74
-    unsigned int m_78;   // 0x78
+    /* 0x78: the door's action -- the side test 0x5F3270 reads its direction nibble, the centre
+     * 0x5F3100 its six cells */
+    CAiMap::action *m_78;
     class CValve *m_valve;   // 0x7c: set to 3 when the breach begins (unless the SEAL is dead)
     CAiMapLoc m_80;   // 0x80
     CAiTimer m_timer;   // 0x84 (Create builds it with 0.0, its constructor out of line: 0x5EA550)

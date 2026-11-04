@@ -916,6 +916,8 @@ class CZLANLobby {
 public:
     bool GameHasPassword(const char *game);
     bool CreateGame();
+    /* a game of the room joined (OVL1 0x3039B0) */
+    bool JoinGame(const char *name);
     void GetGameInfo(LANGameInfo *out);
     bool RefreshGameList(C2D *page);
     bool Disconnect();
@@ -1009,6 +1011,8 @@ public:
     void CreateClan(const char *name);
     void TransferLeadership(const char *name);
     void ChangeState(LOBBY_STATE state);
+    /* a game of the room joined by name, or a random one (SOCOM 1's; OVL1 0x2F83B0) */
+    bool JoinGame(const char *name);
     bool CreateGame();
     bool Login(const char *name, const char *password);
     bool Register(const char *name, const char *password);

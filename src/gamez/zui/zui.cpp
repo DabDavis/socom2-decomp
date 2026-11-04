@@ -166,6 +166,43 @@ extern _zsys_public zSys;
 
 /* the game menu (SOCOM 1's DWARF: 0x890 bytes, no vtable pointer in its members; SOCOM II's members
  * come first and its vtable pointer follows them at 0x910). Only what is written so far is placed */
+/* a node of the world (znode.h's zdb::CNode, 0xC0 bytes: only what the menu calls -- its vtable
+ * pointer at 0x60, slots as SOCOM II's table 0x4067B0 holds them) and a visual (znode.h's
+ * zdb::CVisual; C2DVisual, a 2D object's visual, is 0x70 bytes as the menu news it) */
+namespace zdb {
+class CVisual {
+public:
+    unsigned char _0[0x70];
+};
+
+class CNode {
+public:
+    static CNode *Create(const char *name);
+    bool AddVisual(CVisual *visual);
+    void SetPosition(float x, float y, float z);
+    void SetName(const char *name);
+
+    unsigned char _0[0x60];
+    virtual ~CNode();                                     /* +0x08 */
+    virtual CNode *_Copy(CNode *to) const;
+    virtual void UpdateGrid();
+    virtual void ReserveChildren(int n);
+    virtual void AddChild(CNode *child);                  /* +0x18 */
+    virtual int DeleteChild(CNode *child);
+    virtual void DeleteChildren();
+    virtual CNode *FindChild(const char *name, bool deep);   /* +0x24 */
+    virtual CNode *FindChild(CNode *node, bool deep);     /* +0x28 */
+    unsigned char _64[0x9c - 0x64];
+    float m_Opacity;   // 0x9c
+    unsigned char _a0[0xc0 - 0xa0];
+};
+}
+
+class C2DVisual : public zdb::CVisual {
+public:
+    C2DVisual(C2D *c2d, zdb::CTextureRelocMgr *mgr);
+};
+
 class CGameMenu {
 public:
     /* the background movie (SOCOM 1's TickMPEG/RestartBackgroundMPEG/HaltBackgroundMPEG, SOCOM II's
@@ -184,10 +221,18 @@ public:
     void LoadDesign(const char *name, CZAnimZAR *zar);
     /* the menu set up over a relocator, its own rdr's design loaded (SOCOM 1's) */
     bool Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar);
+    /* a design object's control made in the menu's font, with a node of its own under the node it
+     * names (else the backplane) (0x3696D0, ours) */
+    C2D *Add2dNode(CDesignDlgObj *obj);
 
-    unsigned char _0[0xc0];
+    zdb::CNode m_nodeTop;         // 0x0 (SOCOM 1's DWARF, as the members to 0x210)
     CZAnimZAR *m_zar;             // 0xc0 (SOCOM 1's at 0xc0 too)
-    unsigned char _c4[0x278 - 0xc4];
+    zdb::CNode *m_pBackplaneNode;   // 0xc4
+    zdb::CNode *m_pForeplaneNode;   // 0xc8
+    zdb::CNode *m_popupnode;      // 0xcc
+    unsigned char _d0[0x210 - 0xd0];
+    unsigned char m_font[0x64];   // 0x210: the menu's C2DFont (SOCOM 1's 0x30 bytes, SOCOM II's 0x64)
+    unsigned char _274[0x278 - 0x274];
     bool m_movierunning;          // 0x278 (SOCOM 1's at 0x244)
     bool m_has_mpeg_background;   // 0x279
     bool m_loopMPEG;              // 0x27a: SOCOM II's (TickMPEG loops the movie when set; the name ours)
@@ -445,6 +490,31 @@ void UiLoadCountSound()
     CSaferStr &name = theGame.m_ttySoundString;
 
     s_countSound = CSnd::GetSoundByName(name.c_str());
+}
+
+/* a design object's control made in the menu's font, given a node of its own ("Add2dNode": the
+ * control told of it, its visual added) under the menu's node the object names, else under the
+ * backplane, placed at the object's position with its opacity and named after it; the control
+ * returned (0x3696D0, ours: SOCOM 1's LoadFromDesign inlined the same block at each of its three
+ * places, without the control's node hand-over and the opacity, which SOCOM II's adds). The node
+ * found and the parent are two variables, the backplane chosen by a ternary (`if (!parent) parent =
+ * ...` on one variable keeps it in a saved register from the search on: 8 bytes short) */
+C2D *CGameMenu::Add2dNode(CDesignDlgObj *obj)
+{
+    C2D *ctrl = obj->m_spec->CreateDisplayObj((C2DFont *)m_font, m_Reloc);
+    zdb::CNode *found = *obj->m_childOf.c_str() ? m_nodeTop.FindChild(obj->m_childOf.c_str(), true) : 0;
+    zdb::CNode *parent = found ? found : m_pBackplaneNode;
+    zdb::CTextureRelocMgr *reloc = m_Reloc;
+    zdb::CNode *node = zdb::CNode::Create("Add2dNode");
+
+    ctrl->Slot10(node);
+    node->AddVisual(new C2DVisual(ctrl, reloc));
+    parent->FindChild(node, true);
+    parent->AddChild(node);
+    node->SetPosition(obj->m_xpos, obj->m_ypos, 0.0f);
+    node->m_Opacity = obj->m_opacity;
+    node->SetName(obj->m_name.c_str());
+    return ctrl;
 }
 
 /* slot 0x10: the menu's rdr (SOCOM 1's) */

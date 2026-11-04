@@ -1602,6 +1602,34 @@ extern "C" void func_005AC620(CZSealBody *seal, float dT)
     }
 }
 
+/* an explosion's damage: online, nothing for another console's SEAL; the projectile's bit 1
+ * cleared; with no check running, one when it hurts here or is weapon 123 -- a delayed intersection
+ * from the projectile's frame start to the head, the SEAL's own node ignored (OVL2 0x5AC070; SOCOM
+ * 1's HandleDamageExplosive, called from the same place in HandleDamage, without its fling and
+ * remade intersection) */
+void CZSealBody::HandleDamageExplosive(CZProjectile *proj, CZBodyPart *part, DAMAGE_LOCATION *where)
+{
+    if (theNetwork.m_9 && IsRemote())
+        return;
+    proj->SetIsFirstHit(false);
+    if (m_projectileintersecthandle == -1) {
+        if (proj->GetDamage(&m_posW, 0.0f) > 0.0f || proj->m_weapon->m_ID == 123) {
+            CPnt3D head;
+
+            m_tempprojectile = proj;
+            PartInSpace(m_head, 0, &head, 0);
+            m_quat.Apply(&head, &head, 1);
+            head = head + m_posW;
+            m_projectileintersecthandle = zdb::CWorld::m_world->RegIntersectDelayed(m_projectiledi,
+                &proj->m_framestartpos, &head, -1);
+            /* (the world taken first: its load stays ahead of GetNode, in s0, as SOCOM 1's) */
+            zdb::CWorld *world = zdb::CWorld::m_world;
+
+            world->RegIgnoreNodeDelayed(m_projectiledi, GetNode());
+        }
+    }
+}
+
 /* a stun taken: stunned, the kind's highest amount kept, and the controller told with it (OVL2
  * 0x5A53D0; SOCOM 1's without the recovery's switch -- the kind passed on as it came) */
 void CZSealBody::HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from)
@@ -1896,6 +1924,61 @@ void CZSealBody::HandlePickupMPBomb(CPickup *pickup)
     CPnt3D pos(0.0f, 0.0f, 0.0f);
 
     CZBombState::RequestNewBombState(m_id, (CZBombState::EnumBombState)2, &pos);
+}
+
+/* a pickup's acknowledgement, one byte (fts_remote.cpp's AckUnion: bit 0 a weapon taken), and its
+ * message (OVL1 0x2BA1F0, fts_remote.cpp's) */
+union AckUnion {
+    struct {
+        unsigned char m_weapon : 1;
+        unsigned char m_rest : 7;
+    } bits;
+    unsigned char b;
+};
+
+/* (called through its map name with an int first parameter: this caller zero-extends the count at
+ * both calls, as it would for an int -- passed to an unsigned short parameter it would go as it is) */
+extern "C" void SendPickupAckMessage__FUsii8AckUnion(int who, int id, int obj, AckUnion ack);
+
+/* a console's request for a pickup answered: none found, the pickups dumped and an empty answer
+ * sent; else for each of the count, an ammunition pickup's rounds taken by 0x59E580, a weapon's
+ * matched against the first item (bit 0 set); the answer sent, and with the asker an entity, its SEAL
+ * handed the answer and the ammunition pickup cleaned up (OVL2 0x59E830; SOCOM 1's CanPickupNetItem,
+ * after CheckForAmmoPickups in both builds -- SOCOM II finds the pickup by its own id and passes the
+ * asker whole) */
+void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *items, int client)
+{
+    AckUnion ack;
+    CPickup *p = CPickup::FindPickup(id);
+
+    ack.b = 0;
+    if (!p) {
+        CPickup::DebugPickups();
+        SendPickupAckMessage__FUsii8AckUnion(count, id, client, ack);
+        return;
+    }
+    for (int i = 0; i < count; i++) {
+        if (p->m_type == 9)
+            CheckForAmmoPickups(count, p->GetAmmo(), items, &ack);
+        else if (p->m_type == 8) {
+            /* (the weapon taken first: compared in place, MW loads the item ahead of the call) */
+            CZWeapon *w = p->GetWeapon();
+
+            if (*items == w->m_ID)
+                ack.bits.m_weapon = true;
+        }
+    }
+    SendPickupAckMessage__FUsii8AckUnion(count, id, client, ack);
+    CEntity *e = CEntity::m_list.GetEntityById(client);
+
+    if (e) {
+        CZSealBody *seal = AsSeal(e);
+
+        if (e) {
+            seal->HandlePickupAck(count, id, &ack);
+            CPickup::CleanupAmmoPickup(p);
+        }
+    }
 }
 
 extern "C" {

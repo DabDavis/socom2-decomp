@@ -131,6 +131,8 @@ public:
             m_callback(var, m_callbackData);
     }
     void UpdateDependents();
+    /* a value written as text into a buffer of that size (0x3860F0, SOCOM 1's) */
+    static char *Format(_zrdr *value, char *buf, int size);
     void DetachAll();
     void Destroy();
     CUIVariable &operator=(const char *str);

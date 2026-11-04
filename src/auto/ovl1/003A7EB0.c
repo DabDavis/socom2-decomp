@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK FindTarget__11CTargetListFP7CEntity(char *, s32); /* extern */
-M2C_UNK func_0060A5F0(char *, char *);              /* extern */
+M2C_UNK SetTarget__9CAiTargetFP7CTarget(char *, char *); /* extern */
 M2C_UNK func_0060A6A0(char *, char *);              /* extern */
 s32 func_0060A850(char *);                          /* extern */
 
@@ -32,7 +32,7 @@ block_7:
         if (func_0060A850(arg0 + 0x194) != 0) {
             FindTarget__11CTargetListFP7CEntity(arg0 + 0xD0, SC_MEMBER(arg0, s32 *, 0x194));
         }
-        func_0060A5F0(arg0 + 0x194, arg1);
+        SetTarget__9CAiTargetFP7CTarget(arg0 + 0x194, arg1);
     }
     if ((!func_0060A850(arg0 + 0x194)) && (SC_MEMBER(arg0, s32 *, 0x3A4) & 0x10)) {
         SC_MEMBER(arg0, s32 *, 0x398) = 0xBF3504F7;
