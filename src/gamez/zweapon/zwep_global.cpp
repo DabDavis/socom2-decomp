@@ -1,8 +1,9 @@
 /* zwep_global.cpp -- the weapon events' callbacks (SOCOM 1's zwep_global.cpp, by its static
  * initialiser, which builds m_callbacks): OVL1 0x3C63D0-0x3C69BF, after CZFTSWeapon and before
- * CFlyoutMachine, as SOCOM 1's (0x315F40 in the demo). The three functions and the template tail's
- * erase, insert and remove_copy_if (0x3C6610-0x3C685F) from source; the rest of the tail (the
- * deleter's constructor, ~CWepCallbackList, the begin/end copies, 0x3C6860-0x3C69BF) are drafts.
+ * CFlyoutMachine, as SOCOM 1's (0x315F40 in the demo). The three functions, the template tail's
+ * erase, insert and remove_copy_if (0x3C6610-0x3C685F), the deleter's constructor, ~CWepCallbackList
+ * (0x3C6920) and the initialiser (0x404B70) from source; the rest of the tail (~__list_imp 0x3C6880,
+ * the begin/end copies) are drafts.
  * std::remove_if's instance (0x3C6560) is OPEN, 0x10 bytes long: the target uses its predicate
  * parameter in place (`sw a3,44(sp)`, compared from there), where include/algorithm's find_if
  * copies it first (a 4-byte block copy through $f0) -- and find_if's first/last take the other
@@ -29,7 +30,13 @@ struct WEAPON_CALLBACK_STRUCT {
 class CWepCallbackList : public std::list<WEAPON_CALLBACK_STRUCT> {
 };
 
-extern CWepCallbackList m_callbacks;
+/* defined here (round 17): the unit's initialiser (0x404B70) builds it through the list deleter's
+ * constructor (0x3C6860, out of line) and registers ~CWepCallbackList (0x3C6920 -- the base
+ * __list_imp's destructor 0x3C6880 called on it, then the delete on the flag), all three from
+ * source now. The tail's ~__list_imp (0x3C6880) stays its draft's: include/list's inlines the clear
+ * (0xB8) where the target calls begin(), end() and the range erase (0x3C6910, 0x3C6900, 0x3C6610)
+ * out of line -- README "Level 6, or 8?", ~__list_deleter written `erase(begin(), end())` */
+CWepCallbackList m_callbacks;
 
 /* a callback's test by its function (SOCOM 1's predicate, its remove_if's) */
 struct _compare_callback {

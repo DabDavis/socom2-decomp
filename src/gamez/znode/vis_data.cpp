@@ -30,8 +30,9 @@ namespace zdb {
  * insert<CLOD_band> (0x3BBFE0, 0x5C4 against 0x5CC) and insert<CScrollingTexture_band> (0x3BB7E0,
  * 0x754 against 0x75C) are 8 bytes short each, as insert<CVehicleDef> 0x3AF040 is. */
 
-/* the colour a material band starts with (never written: zero) */
-PNT4D CMaterial_band::m_defaultColor;
+/* the colour a material band starts with: 0, 1, 0, 0 (the unit's initialiser, 0x4049E0 -- new in
+ * SOCOM II; SOCOM 1's vis_data.cpp had none) */
+CPnt4D CMaterial_band::m_defaultColor(0.0f, 1.0f, 0.0f, 0.0f);
 
 /* constructed empty, room for 256 bands (SOCOM 1's) */
 CLOD_Object::CLOD_Object()

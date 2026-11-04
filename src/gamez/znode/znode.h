@@ -1723,8 +1723,9 @@ public:
         m_falloff = f;
         m_invFalloff = f != 0.0f ? 1.0f / f : 0.0f;
     }
-    /* the colour a band starts with (0x4B5020, BSS: not named yet) */
-    static PNT4D m_defaultColor;
+    /* the colour a band starts with, green (0x4B5020, BSS: vis_data.cpp's initialiser 0x4049E0
+     * builds it through CPnt4D's constructor) */
+    static CPnt4D m_defaultColor;
 
     CPnt3D m_rgb;   // 0x0
     float m_opacity;   // 0xc
