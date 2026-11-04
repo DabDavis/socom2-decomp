@@ -2795,7 +2795,7 @@
 0x0025CB00 0xD0 func_0025CB00  # OVL1
 0x0025CBD0 0x98 zAnimCmdAddData__FP14_zanim_cmd_hdrPvi  # OVL1; s1:calls (SOCOM 1's zAnimCmdAddData: CmdParseParams appends each key through it)
 0x0025CC70 0x8 zAnimDebugTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim DEBUG tick (InitCommands' #51, file id 0x34); s1:cmd (registered under "DEBUG" tick in both builds' InitCommands)
-0x0025CC80 0x28 func_0025CC80  # OVL1; ZAnim REMOVE_SATCHELS tick (InitCommands' #57, file id 0x3a)
+0x0025CC80 0x28 zAnimRemoveSatchelsTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim REMOVE_SATCHELS tick (InitCommands' #57, file id 0x3a); ours, the core lane round 3: ZAnim REMOVE_SATCHELS's tick by the command's name (SOCOM II's command; SOCOM 1's zAnim<Name>Tick convention) -- zanim_cmd_parse.cpp's, byte-exact
 0x0025CCB0 0x57C zAnimFireWeaponTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim FIRE_WEAPON tick (InitCommands' #56, file id 0x39); s1:cmd (registered under "FIRE_WEAPON" tick in both builds' InitCommands)
 0x0025D230 0x38 zAnimStopSequenceTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:exact
 0x0025D270 0x38 zAnimCallSequenceTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:exact
@@ -8508,7 +8508,7 @@
 0x003FF7F0 0x1D0 __sinit_hud_mpweaponsel.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 20): hud_mpweaponsel.cpp's static initialiser -- its file statics defined in address order, eight colour CPnt3Ds and fourteen places computed from the .data layout statics (s_listx, s_width, s_gap ...), byte-exact as MW emits them
 0x003FF9C0 0x88 __sinit_hud_healthbar.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane: hud_healthbar.cpp's initialiser -- it builds the bar's five colours, 0x4148B0-0x4148F0, which only CHealthBar's functions read)
 0x003FFA50 0xB0 func_003FFA50  # OVL1 data area; a static initialiser
-0x003FFB00 0x64 func_003FFB00  # OVL1 data area; a static initialiser
+0x003FFB00 0x64 __sinit_zanim_cmd_parse.cpp  # OVL1 data area; a static initialiser; s1:unit by hand, the core lane round 3 (the integrator's initialiser research: SOCOM 1's __sinit_zanim_cmd_parse.cpp, the <iostream> pair alone, linked right before __sinit_zanim_cmd_tick.cpp -- byte-exact from the new zanim_cmd_parse.cpp)
 0x003FFB70 0x64 __sinit_zanim_cmd_tick.cpp  # OVL1 data area; a static initialiser; s1:unit by the integrator's initialiser research (build/scratch/sinit/report.txt, MEDIUM: the second of the two pair-only initialisers SOCOM 1 links right before __sinit_anim_main.cpp, its objects ending where ZAnim begins), the core lane round 2: zanim_cmd_tick.cpp's <iostream> pair (0x414B88, 0x414BA0) byte-exact
 0x003FFBE0 0x50 __sinit_anim_main.cpp  # OVL1 data area; a static initialiser; s1:unit by hand, the core lane round 3 (the integrator's initialiser research, HIGH: CZAnimMain's inline constructor on ZAnim 0x414BB0, SOCOM 1's __sinit_anim_main.cpp storing the same four fields -- byte-exact from anim_main.cpp's definition)
 0x003FFC30 0x64 __sinit_zanim_anim.cpp  # OVL1 data area; a static initialiser; s1:unit by the integrator's initialiser research (build/scratch/sinit/report.txt, MEDIUM: pair-only, between anim_main.cpp's statics and zanim_menu.cpp's, as SOCOM 1's __sinit_zanim_anim.cpp precedes __sinit_zanim_menu.cpp), the core lane round 2: zanim_anim.cpp's <iostream> pair (0x414DD8, 0x414DF0) byte-exact
