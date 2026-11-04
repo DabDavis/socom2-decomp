@@ -6,8 +6,11 @@
  * What is written so far: the small virtual slots (named by the vtables at 0x1D5050-0x1D5200),
  * uflow, xsgetn<char>, the filebufs' setbuf/showmanyc, the getlocs, codecvt's stubs and
  * ctype<wchar_t>'s widen/narrow; round 3: the Init classes (__nInit/__wInit), xsputn, and
- * basic_filebuf's bodies but overflow and seekoff (placeholders) -- SOCOM 1's DWARF names the
- * members and their locals (fstream lines 203-863).
+ * basic_filebuf's bodies -- SOCOM 1's DWARF names the members and their locals (fstream lines
+ * 203-863); round 6: overflow and seekoff, and the generation order (the inline ~basic_filebuf,
+ * _RefCountedPtr's copy constructor, unshift and write2 defined after the instantiations, min<int>
+ * instantiated), which closed every filebuf row; the unit's __sinit (the wide ids' guards). Open:
+ * the pod vector's insert copy (msl.h) and the class vector inserts (declared, not written).
  *
  * THE COMPILER (README "MAIN's Metrowerks runtime"): 3.0b38/3.0b50/3.0b52 -- showmanyc<wchar_t>
  * and setbuf<wchar_t> need a 4-byte wchar_t (3.0b22-020926 and later); ctype<wchar_t>::do_widen's
@@ -74,8 +77,7 @@ basic_streambuf<charT, traits>::xsgetn(char_type *s, streamsize n)
     return i;
 }
 
-/* xsputn<char> matches; OPEN, xsputn<wchar_t> (0x185C20: 0x13C against 0x21C): as xsgetn<wchar_t>,
- * the target's wide copy is a loop, the traits' memcpy here */
+/* both xsputn match (xsputn<wchar_t> since round 6: the wide traits' copy is an assign loop, msl.h) */
 template <class charT, class traits>
 streamsize
 basic_streambuf<charT, traits>::xsputn(const char_type *s, streamsize n)
@@ -96,8 +98,13 @@ basic_streambuf<charT, traits>::xsputn(const char_type *s, streamsize n)
     return i;
 }
 
+/* INLINE (round 6): the image generates ~basic_filebuf<char> right after __nInit's constructor, which
+ * takes its address for the static filebufs' registration -- what MW does with an inline function
+ * referenced and not inlined (an out-of-line template member waits for the unit's end: probed in
+ * build/scratch/rt/p2*.cpp). So generated, ahead of _RefCountedPtr's instantiation, it inlines
+ * ~basic_streambuf and ~locale and calls ~_RefCountedPtr (0x184A00), as the target's both do. */
 template <class charT, class traits>
-basic_filebuf<charT, traits>::~basic_filebuf()
+inline basic_filebuf<charT, traits>::~basic_filebuf()
 {
 }
 
@@ -108,18 +115,52 @@ basic_streambuf<charT, traits> *basic_filebuf<charT, traits>::setbuf(charT *, st
     return this;
 }
 
-/* NOT WRITTEN (round 3): a placeholder body so the class instantiates -- the target's seekoff is 0x268
- * (char) / 0x278 (wchar_t): encoding(), the flush-out test, unshift, fseek/ftell by way */
+/* a seek by an offset (round 6, both byte-exact; SOCOM 1's DWARF: fstream lines 734-774, locals width
+ * and whence): the encoding's width asked first, the put area flushed, the conversion state shifted back
+ * unless this is a zero seek from the current position, the file sought in bytes and the buffers
+ * dropped. The way is a bitmask enum (beg 1, cur 2, end 4: the target's compare chain, msl.h) */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::pos_type
 basic_filebuf<charT, traits>::seekoff(off_type off, ios_base::seekdir way, ios_base::openmode which)
 {
-    return pos_type(off_type(-1));
+    int width = a_codecvt_->encoding();
+    if (file_ == 0 || (off != 0 && width <= 0))
+        return pos_type(off_type(-1));
+    if (this->pptr() > this->pbase() && traits::eq_int_type(overflow(traits::eof()), traits::eof()))
+        return pos_type(off_type(-1));
+    if (!(way == ios_base::cur && off == 0) && overflow_called_last_ && width < 0) {
+        if (!unshift())
+            return pos_type(off_type(-1));
+    }
+    int whence;
+    switch (way) {
+    case ios_base::beg:
+        whence = SEEK_SET;
+        break;
+    case ios_base::cur:
+        whence = SEEK_CUR;
+        if (which & ios_base::in)
+            off -= this->egptr() - this->gptr();
+        break;
+    case ios_base::end:
+        whence = SEEK_END;
+        break;
+    default:
+        return pos_type(off_type(-1));
+    }
+    if (width < 0)
+        width = 0;
+    if (fseek(file_, width * off, whence) != 0)
+        return pos_type(off_type(-1));
+    this->setg(0, 0, 0);
+    this->setp(0, 0);
+    overflow_called_last_ = false;
+    return pos_type(ftell(file_));
 }
 
-/* seekpos<wchar_t> matches; OPEN, seekpos<char> (0x186B20, 0x340 against 0x1C8): it inlines
- * unshift<char> here, which the explicit instantiation generates ahead of it (after overflow), where
- * the wide one's seekpos comes first and calls it, as the target's both do */
+/* both seekpos match (seekpos<char> since round 6: it had inlined unshift<char>, which the explicit
+ * instantiation generated ahead of it -- unshift is now defined after the instantiations, so every
+ * caller calls it, as the target's do: the image generates both unshifts late, 0x188CB0/0x189D60) */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::pos_type
 basic_filebuf<charT, traits>::seekpos(pos_type sp, ios_base::openmode which)
@@ -254,13 +295,59 @@ basic_filebuf<charT, traits>::pbackfail(int_type c)
     return traits::not_eof(c);
 }
 
-/* NOT WRITTEN (round 3): a placeholder body -- the target's overflow is 0x474 (char) / 0x4C4
- * (wchar_t): the put area, unshift on the switch to output, write2 when converting */
+/* the put area written out (round 6, both byte-exact; SOCOM 1's DWARF: fstream lines 667-721, a local
+ * p in each branch): an unbuffered-so-far file gets its put area (the get area's position given back
+ * to the file first), then each character goes out -- as it is, through putc, when the facet does no
+ * conversion, else through write2 -- the unwritten tail kept at the front on a failure; c last. The
+ * no-conversion branch's last test is a flag set in two steps (`a && b`, an if over a bool local
+ * initialised from a, all keep a saved-register flag the target does not have); write2 is defined
+ * after the class instantiations, so it is called, as the image's late write2 are. */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::int_type
 basic_filebuf<charT, traits>::overflow(int_type c)
 {
-    return traits::eof();
+    if (file_ == 0)
+        return traits::eof();
+    if (buffered_ && this->pptr() == 0) {
+        if (this->gptr() < this->egptr()) {
+            if (seekoff(0, ios_base::cur, ios_base::in) == pos_type(off_type(-1)))
+                return traits::eof();
+        }
+        this->setp(input_buffer_, input_buffer_ + sizeof(input_buffer_) / sizeof(char_type));
+    }
+    overflow_called_last_ = true;
+    if (always_noconv_) {
+        for (char_type *p = this->pbase(); p < this->pptr(); ++p) {
+            if (traits::eq_int_type(write1(*p), traits::eof())) {
+                if (this->pbase() < p) {
+                    memcpy(this->pbase(), p, (this->pptr() - p) * sizeof(char_type));
+                    this->pbump(int(this->pbase() - p));
+                }
+                return traits::eof();
+            }
+        }
+        this->pbump(int(this->pbase() - this->pptr()));
+        bool failed = !traits::eq_int_type(c, traits::eof());
+        if (failed)
+            failed = traits::eq_int_type(write1(traits::to_char_type(c)), traits::eof());
+        if (failed)
+            return traits::eof();
+    } else {
+        int width = a_codecvt_->encoding();
+        for (char_type *p = this->pbase(); p < this->pptr(); ++p) {
+            if (traits::eq_int_type(write2(width, *p), traits::eof())) {
+                if (this->pbase() < p) {
+                    memcpy(this->pbase(), p, (this->pptr() - p) * sizeof(char_type));
+                    this->pbump(int(this->pbase() - p));
+                }
+                return traits::eof();
+            }
+        }
+        this->pbump(int(this->pbase() - this->pptr()));
+        if (!traits::eq_int_type(c, traits::eof()) && traits::eq_int_type(write2(width, traits::to_char_type(c)), traits::eof()))
+            return traits::eof();
+    }
+    return traits::not_eof(c);
 }
 
 template <class charT, class traits>
@@ -275,30 +362,6 @@ basic_filebuf<charT, traits>::read1(bool peek)
             return traits::eof();
     }
     return c;
-}
-
-template <class charT, class traits>
-bool basic_filebuf<charT, traits>::unshift()
-{
-    codecvt_base::result r = codecvt_base::partial;
-    char to[4];
-    while (r == codecvt_base::partial) {
-        char *to_next = to;
-        r = a_codecvt_->unshift(state_, to, to + sizeof(to), to_next);
-        switch (r) {
-        case codecvt_base::error:
-            return false;
-        case codecvt_base::noconv:
-            break;
-        case codecvt_base::ok:
-        case codecvt_base::partial:
-            for (char *t = to; t < to_next;)
-                if (putc(*t++, file_) == EOF)
-                    return false;
-            break;
-        }
-    }
-    return true;
 }
 
 /* a fixed-width encoding: n bytes in, one character out (put back again when peeking) */
@@ -376,32 +439,6 @@ basic_filebuf<charT, traits>::read3(bool peek)
     return traits::to_int_type(intern_buf);
 }
 
-template <class charT, class traits>
-typename basic_filebuf<charT, traits>::int_type
-basic_filebuf<charT, traits>::write2(int n, char_type intern_buf)
-{
-    char extern_buf[12];
-    char *extern_end;
-    const char_type *intern_end;
-    switch (a_codecvt_->out(state_, &intern_buf, &intern_buf + 1, intern_end,
-                            extern_buf, extern_buf + sizeof(extern_buf), extern_end)) {
-    case codecvt_base::error:
-    case codecvt_base::partial:
-        return traits::eof();
-    case codecvt_base::noconv:
-        n = sizeof(char_type);
-        memcpy(extern_buf, &intern_buf, (unsigned int)n);
-        break;
-    case codecvt_base::ok:
-        n = extern_end - extern_buf;
-        break;
-    }
-    for (int i = 0; i < n; ++i) {
-        if (putc(extern_buf[i], file_) == EOF)
-            return traits::eof();
-    }
-    return traits::to_int_type(intern_buf);
-}
 
 
 /* The stream classes (round 2): basic_istream/basic_ostream over a virtual basic_ios (MW's layout:
@@ -413,9 +450,8 @@ basic_filebuf<charT, traits>::write2(int n, char_type intern_buf)
  *
  * The two codecvt destructors (0x18A550, 0x18A5B0, 0x5C each) are implicit: they match once
  * locale::facet's destructor is inline (msl.h), its vtable store folded into theirs.
- * OPEN: xsgetn<wchar_t> (0x185EB0, 0x214) instantiates from the char body 0x134: the wide traits'
- * copy is a loop there, not memcpy -- not written. ~ctype<char> (locale.cpp) is generated, not
- * written.
+ * xsgetn<wchar_t> (0x185EB0) matches since round 6 (the wide traits' copy, msl.h). ~ctype<char>
+ * (locale.cpp) is generated, not written.
  *
  * codecvt<char, char, int>: no conversion */
 codecvt_base::result codecvt<char, char, int>::do_out(int &, const char *from, const char *, const char *&from_next,
@@ -455,8 +491,8 @@ int codecvt<char, char, int>::do_max_length() const
     return 1;
 }
 
-/* min<int> is called here before its definition (below) and generated after this, its first user
- * (0x18A530); do_length<wchar_t> inlines it */
+/* min<int> is called here before its definition (below) and generated right after this, its first
+ * user (0x18A530); do_length<wchar_t> inlines it */
 int codecvt<char, char, int>::do_length(int &, const char *from, const char *from_end, size_t max) const
 {
     return min(int(from_end - from), int(max));
@@ -467,6 +503,10 @@ inline const T &min(const T &a, const T &b)
 {
     return b < a ? b : a;
 }
+
+/* generated here, so later callers inline it (round 6: MW auto-inlines a function once it has been
+ * generated, a caller generated before keeping its call -- build/scratch/rt/pm2.cpp) */
+template const int &min<int>(const int &, const int &);
 
 template class fpos<int>;        /* generated first: seekoff/seekpos inline its constructor */
 template class basic_streambuf<char, char_traits<char> >;
@@ -543,19 +583,15 @@ __wInit::~__wInit()
 template class _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > >;
 
 /* The filebufs' FILE constructors and imbue, defined after the locale pointer's instance so that
- * their temporary locale's destructor inlines it, as the target's do. imbue<char>/<wchar_t> match.
- * OPEN, the constructors (0x1878D0, 0x188A10: 0x160 against 0x134) and ~basic_filebuf (0x184F20,
- * 0x185460: 0xA8 against 0x78): the generation order. The target's constructors inline
- * ~_RefCountedPtr but CALL its copy constructor (0x1848C0); its destructors call ~_RefCountedPtr
- * (0x184A00). MW decides inlining when a template member is instantiated, and every arrangement tried
- * gives one side: the filebuf class instantiated before _RefCountedPtr's (round 2's order) makes the
- * destructors right and the constructors and imbue call ~_RefCountedPtr; __nInit's constructor ahead
- * of the instantiations (the image's order: it is the unit's first function) instantiates the
- * constructor and destructor at once, after ios_base::getloc has instantiated the copy constructor,
- * which then inlines everywhere. Measured in build/scratch/rt/t2.cpp: a member instantiated by a
- * mid-unit reference calls a template already called out of line; one instantiated at the unit's
- * end (the vtables' pass) inlines it -- the target's constructors, emitted in that pass's reverse
- * order (0x1878D0 after showmanyc), look like the second kind, its destructors like the first. */
+ * their temporary locale's destructor inlines it, as the target's do -- and ahead of the copy
+ * constructor's definition (after the class instantiations below), which they call. All four match
+ * (round 6; the constructors were round 3's open: 0x160 against 0x134). THE RULE, measured: MW
+ * auto-inlines a non-inline function only once it has been GENERATED (a later one is called, and
+ * the call decided afresh at each inline level), while an inline function is expanded wherever its
+ * definition is known; an inline function referenced and not expanded is generated right after the
+ * top-level function that needs it, a non-inline template member at the unit's end -- the target's
+ * destructors are the first kind (generated after __nInit's and __wInit's constructors), its
+ * constructors the second (after showmanyc, in the end pass). */
 template <class charT, class traits>
 basic_filebuf<charT, traits>::basic_filebuf(FILE *file)
     : file_(file), state_(0), overflow_called_last_(false), buffered_(true)
@@ -634,6 +670,75 @@ basic_ostream<charT, traits> &basic_ostream<charT, traits>::flush()
 
 template class basic_filebuf<char, char_traits<char> >;
 template class basic_filebuf<wchar_t, char_traits<wchar_t> >;
+
+/* RefCountedPtrArray.h's copy constructor (0x1848C0, ios.cpp's copy kept), defined only now: MW
+ * auto-inlines a non-inline template member only once it has been generated, so the filebufs'
+ * FILE constructors, generated above, call it (their default locale's imp_(global().imp_)) while
+ * inlining ~_RefCountedPtr, instantiated ahead of them -- as the target's do (round 6) */
+template <class T, class Destructor>
+_RefCountedPtr<T, Destructor>::_RefCountedPtr(const _RefCountedPtr &other)
+    : ptr_(other.ptr_), refCount_(other.refCount_)
+{
+    if (refCount_)
+        ++*refCount_;
+}
+
+/* one character converted and written (overflow's, defined after the instantiations so that it is
+ * generated after overflow and called, as the image's write2<char> 0x1892A0 is) */
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::write2(int n, char_type intern_buf)
+{
+    char extern_buf[12];
+    char *extern_end;
+    const char_type *intern_end;
+    switch (a_codecvt_->out(state_, &intern_buf, &intern_buf + 1, intern_end,
+                            extern_buf, extern_buf + sizeof(extern_buf), extern_end)) {
+    case codecvt_base::error:
+    case codecvt_base::partial:
+        return traits::eof();
+    case codecvt_base::noconv:
+        n = sizeof(char_type);
+        memcpy(extern_buf, &intern_buf, (unsigned int)n);
+        break;
+    case codecvt_base::ok:
+        n = extern_end - extern_buf;
+        break;
+    }
+    for (int i = 0; i < n; ++i) {
+        if (putc(extern_buf[i], file_) == EOF)
+            return traits::eof();
+    }
+    return traits::to_int_type(intern_buf);
+}
+
+/* the conversion state shifted back to its initial state, its bytes written out (the target's
+ * seekpos, seekoff and overflow call it; defined after the instantiations, so it is generated
+ * after them all, as the image's unshift<char> 0x188CB0 and unshift<wchar_t> 0x189D60 are) */
+template <class charT, class traits>
+bool basic_filebuf<charT, traits>::unshift()
+{
+    codecvt_base::result r = codecvt_base::partial;
+    char to[4];
+    while (r == codecvt_base::partial) {
+        char *to_next = to;
+        r = a_codecvt_->unshift(state_, to, to + sizeof(to), to_next);
+        switch (r) {
+        case codecvt_base::error:
+            return false;
+        case codecvt_base::noconv:
+            break;
+        case codecvt_base::ok:
+        case codecvt_base::partial:
+            for (char *t = to; t < to_next;)
+                if (putc(*t++, file_) == EOF)
+                    return false;
+            break;
+        }
+    }
+    return true;
+}
+
 template class basic_istream<char, char_traits<char> >;
 template class basic_ostream<char, char_traits<char> >;
 template class basic_istream<wchar_t, char_traits<wchar_t> >;
@@ -660,12 +765,11 @@ _RefCountedPtr<T, Destructor> &_RefCountedPtr<T, Destructor>::operator=(const _R
 
 /* codecvt<wchar_t, char, int> */
 /* the wide conversion is no conversion at all: each wchar_t's four bytes as they lie in memory.
- * OPEN, 2 x 40 instructions (0x98 against 0xA0 each): the byte loop is MW's to unroll here (four
- * lb/sb pairs) and the target keeps it a loop (counter in a1, the source pointer stepped in the
- * delay slot); and the closing `?:` is a select here, branches in the target. Tried: int/size_t
- * counters, while/do forms, a variable bound, `*p++`; -O3,p and `-opt nounroll` change nothing;
- * only `#pragma opt_unroll_loops off` keeps the loop (then 2 instructions off in the scheduling)
- * -- SOCOM 1's copies (0x14A630, 0x14A6C0) have the loop too. */
+ * Both match since round 6: the byte copy is a do-while over an index with the other side's pointer
+ * stepped (MW unrolls the for-loop forms into four lb/sb pairs, the target keeps a loop: a do-while
+ * it does not unroll -- `#pragma opt_unroll_loops off` over the for-loop gives the same words), and
+ * the exit is an if (`?:` makes a select where the target branches). SOCOM 1's copies (0x14A630,
+ * 0x14A6C0) keep the loop too. */
 codecvt_base::result
 codecvt<wchar_t, char, int>::do_out(int &, const wchar_t *from, const wchar_t *from_end, const wchar_t *&from_next,
                                    char *to, char *to_limit, char *&to_next) const
@@ -674,10 +778,14 @@ codecvt<wchar_t, char, int>::do_out(int &, const wchar_t *from, const wchar_t *f
     to_next = to;
     for (; from_next < from_end && to_next < to_limit - (sizeof(wchar_t) - 1); ++from_next, to_next += sizeof(wchar_t)) {
         const char *p = (const char *)from_next;
-        for (size_t i = 0; i < sizeof(wchar_t); ++i)
-            to_next[i] = p[i];
+        size_t i = 0;
+        do
+            to_next[i] = *p++;
+        while (++i < sizeof(wchar_t));
     }
-    return from_next < from_end ? partial : ok;
+    if (from_next < from_end)
+        return partial;
+    return ok;
 }
 
 codecvt_base::result
@@ -688,10 +796,14 @@ codecvt<wchar_t, char, int>::do_in(int &, const char *from, const char *from_end
     to_next = to;
     for (; from_next < from_end - (sizeof(wchar_t) - 1) && to_next < to_limit; from_next += sizeof(wchar_t), ++to_next) {
         char *p = (char *)to_next;
-        for (size_t i = 0; i < sizeof(wchar_t); ++i)
-            p[i] = from_next[i];
+        size_t i = 0;
+        do
+            *p++ = from_next[i];
+        while (++i < sizeof(wchar_t));
     }
-    return from_next < from_end ? partial : ok;
+    if (from_next < from_end)
+        return partial;
+    return ok;
 }
 
 codecvt_base::result codecvt<wchar_t, char, int>::do_unshift(int &, char *to, char *, char *&to_next) const
@@ -710,11 +822,8 @@ bool codecvt<wchar_t, char, int>::do_always_noconv() const
     return false;
 }
 
-/* OPEN, 0x38 vs 0x3C: the target inlines min<int> here (generated after do_length<char>, its first
- * user, which calls it); this unit calls it. With min defined ahead of both, both inline it (and
- * do_length<char>, 0x34, misses instead); defined between them, neither does -- under -inline
- * auto, auto,level=5 and auto,bottomup,level=5 alike. Neither order of generation reproduces
- * "call it first, inline it after". */
+/* inlines min<int>, generated (explicitly instantiated) after do_length<char> called it -- round 6;
+ * rounds 2-5 had min defined ahead of both (both inline it) or between them (neither does) */
 int codecvt<wchar_t, char, int>::do_length(int &, const char *from, const char *from_end, size_t max) const
 {
     return min(int((from_end - from) / sizeof(wchar_t)), int(max)) * sizeof(wchar_t);
@@ -834,5 +943,14 @@ const wchar_t *ctype<wchar_t>::do_narrow(const wchar_t *low, const wchar_t *high
         *to++ = do_narrow(*low++, dfault);
     return high;
 }
+
+/* The wide facets' ids (0x1D5620, 0x1D5624) and so this unit's static initialiser, __sinit_iostream.cpp
+ * (0x1D4BF0, round 6): locale::id has a constructor, so each id of a class template's instance gets a
+ * guard byte (`@GUARD@id__...`, 0x1D5628 and 0x1D562C after the ids, in their order), which the
+ * initialiser tests and sets -- the empty constructor itself leaves nothing (SOCOM 1's guard-only
+ * `__sinit_iostream.cpp`, whose 2.4 build names the guard `__init__id__Q23std8ctype<w>`). locale.cpp
+ * defines the char pair after its classic table. */
+locale::id codecvt<wchar_t, char, int>::id;
+locale::id ctype<wchar_t>::id;
 
 }

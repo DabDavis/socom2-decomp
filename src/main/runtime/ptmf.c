@@ -15,15 +15,17 @@ typedef struct __ptmf {
     int f_data;
 } __ptmf;
 
-/* OPEN, 19 instructions (7 differ): the three words xored pairwise, each widened to a long, or-ed,
- * tested `!= 0` -- nonzero when the two differ; st_mpexit.cpp's `==` on two PTMFs compiles to
- * !__ptmf_cmpr(&a, &b). The target loads a's 0 and 4 into t0/a2 and or-s (x0 | x4) | x8; every
- * order and association of the three terms (24 spellings, both operand orders) gives this
- * compiler's other allocation (x4 in t0), 7 words off at best; `!=` chains branch (16-19 words). */
+/* the three words xored pairwise, each widened to a long, or-ed into one accumulator and tested
+ * `!= 0` -- nonzero when the two differ; st_mpexit.cpp's `==` on two PTMFs compiles to
+ * !__ptmf_cmpr(&a, &b). The accumulator is the shape (round 6): the target keeps the or-chain in the
+ * first term's register (a1) -- one expression, in any of 24 orders and associations, puts the
+ * first term's load in a2 and the result in v0, 7 words off. */
 long __ptmf_cmpr(const __ptmf *ptmf1, const __ptmf *ptmf2)
 {
-    return ((long)(ptmf1->this_delta ^ ptmf2->this_delta) | (long)(ptmf1->v_offset ^ ptmf2->v_offset)
-            | (long)(ptmf1->f_data ^ ptmf2->f_data)) != 0;
+    long r = (long)(ptmf1->this_delta ^ ptmf2->this_delta);
+    r |= (long)(ptmf1->v_offset ^ ptmf2->v_offset);
+    r |= (long)(ptmf1->f_data ^ ptmf2->f_data);
+    return r != 0;
 }
 
 asm void __ptmf_scall(void)
