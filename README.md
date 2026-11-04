@@ -1888,6 +1888,25 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 20** (CZKit's ammo, the fire-class index, the Is() shape where GetState inlines):
+  - THE Is() FALSE ARM HOLDS ONLY WHERE GetState IS A CALL (the SEALs' 0x572190): in seal_aistate.cpp the target inlines
+    GetState and MW then turns the ternary's first operand into a plain branch -- probes show it stays materialised only
+    when the true arm holds a call, a loop, a switch, a store or a volatile read (a two-armed if/return inline folds it);
+    the one GetState body that keeps it (`s = 0; if (c) s = x;`) compiles out of line to 0x20 bytes, not the target's
+    0x24 -- about 40 spellings, so Pop 0x5F7990, PopTo 0x5F7B10, 0x5F43B0 and StateTick 0x5F55E0 stay open; 0x602B20
+    calls GetState out of line (AiStateIs should apply there);
+  - `T **p = &a[i]` puts `this` first in the address add, reading a[i] in place gives the index-first add and keeps the
+    address (CanAddAmmo); a member's offset folds into an inlined member's loads only when its base pointer is first
+    taken into a named local (cast in place MW adds the offset once into a register); a shift written inside an if
+    body is hoisted into the size test's delay slot, a local for the index keeps the target's nop; a const inline bool
+    helper reloads a count the caller's loop holds in a register, non-const it reuses it; declaring a local after a
+    call's result makes MW zero it after the call;
+  - RemoveAmmo, AddAmmo (by order) and CanAddAmmo (by calls) are SOCOM 1's; 0x5C74E0 gives item 193 for a held 153 (the
+    claymore: SOCOM 1 did it inside AddAmmo); 64 placeholders respelled (13 constructors/destructors called by hand stay
+    by address);
+  - open: CompactItems 0x5B9A00 (15, registers after the magazine loop: the permuter's 3,284 steps found nothing),
+    GetPickupSlot 0x5BAE60 (right size, 39, registers), HasPickupSlot 0x5BAC30 (0x220 vs 0x228: `this` in s0 in the
+    target).
 - **Tells from the SEALs, round 19** (seal_env.cpp's death and flinch readers, the footfall pair, the stun pair):
   - SOCOM II's MSL runs a 2-byte vector (vector<AnimType>) on `__vector_pod<unsigned short>`: elements read back with `lh`,
     and its reserve (0x5B6BD0, named by behaviour) copies with memcpy where the 4-byte pod loops -- include/vector's
