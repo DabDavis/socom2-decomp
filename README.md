@@ -6229,6 +6229,84 @@ byte-exact (1,844,036 bytes) 47.03 % -> 47.10 %. (3) automatch's runtime toolcha
 (`LIBC`). No tool that scores changed: scdiff.py, sccheck.py, scdecomp.py and `include/` are master's,
 so no MW or GCC unit can score differently; the retired rows are named by no unit. automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's `src/lib` build): MAIN `18DB90 1C4CC0` 54 tried, 0 hits (7 build failures, 13 m2c refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22, 8): 152 tried, none byte-exact (round 22a: 172, 0) -- every draft that built missed; the rows -g opened were written by hand first.
 
+**Round 24a** (2026-11-04, the tools first, then round 22a's and 23a's opens): 7 rows newly byte-exact
+-- the lane's `src/lib` sdk/libc rows +7, none lost (`--files '^lib/'`: 2,628 of 2,774 before the
+round's last three, no regression) -- and sceCdStRead 65 words -> 10. **newlib's runtime is whole**:
+`_d2b` (open since round 6a) is newlib 1.9.0's text (mprec.c 17 of 17). **libdbc whole as written**
+(`sdk/libdbc.c` 16 of 16): sceDbcCreateSocket (round 12a's 40 words), sceDbcSendData (round 22a's 21)
+and sceDbcReceiveData (round 12a's 61) closed, sceDbcSRData, sceDbcSendData2 and sceDbcSendData3 new,
+each byte-exact as first written. No rows named. What they showed:
+
+- **A loop's base assigned inside the loop is hoisted where the target has it**: libdbc's copies run
+  through `addiu a2,s2,12` in the loop's preheader -- after the size test, whose delay slot then
+  takes `i = 0` -- which is loop.c's invariant motion of `d = (char *)&p[3];` written in the body;
+  combine runs after loop.c, so it can no longer fold the 12 into the store (`d[i]` through a base
+  assigned before the loop is the test's delay slot and swaps two saved registers; `((char
+  *)&p[3])[i]` folds the 12 at once: `sb v1,12(a0)`, 4 bytes short).
+- **Strict aliasing reads the vendor's types off a schedule**: sceDbcCreateSocket's words 10 and 11
+  are the caller's two buffer addresses (libpad2's 0x1BD630 passes one it checks for 64-byte
+  alignment and that one + 128); stored as pointers they alias no int load, so the parameter's second
+  word is loaded right after the first buffer's store -- as int stores the load waits two cycles
+  behind them (a true memory dependence, sched2's `queued for 2 cycles`) and `i = 0` takes its place.
+  The other way round is round 11a's sifrpc ten (the target never hoists a load above a store through
+  another structure): their packet fields are in alias sets that conflict in the vendor's types and
+  not in these -- the next thing to try there.
+- **newlib 1.9.0 tests a word before storing it**: `_d2b`'s `if (d1) { y = d1; k = lo0bits (&y); if
+  (k) ...` puts the store to y's slot after the branch (the target's `sw a1,0(sp)` in lo0bits' delay
+  slot); 1.8.2's `if (y = d1)`, which the unit had, stores before the test (5 words).
+- **A block-local temporary is local-alloc's, tied to v0**: sceCdStRead's two stream calls each split
+  their own result; one `ret` for both is a pseudo live in two blocks, which global-alloc gave a2,
+  and both splits read a copy (`move a2,v0`, the 8 bytes over).
+- **Open, diagnosed in place**: sceCdStRead (10 words, registers only: `last` and SCE_CD_debug's %hi
+  tie in global-alloc's priority -- 4 refs over 88 insns and 5 over 110, both 909 -- and the lower
+  pseudo, last, takes s6; 14 spellings of the loop keep no extra RTL insn past CSE). Not reached:
+  sceGsSetDefDispEnv (round 22a's diagnosis stands), the densest stretches (OVL1's codec
+  0x248000-0x256000 and 0x250000's 36, libmrpc 0x1BC000, libmpeg's last six, the tty/SIF objects),
+  libdbc's sceDbcGetDepNumber and 0x1902B0.
+
+**The tools, round 24a**: (1) **scdiff resolves a TU-local function no name reaches by its code** (the
+HUD lane's request): Metrowerks' static initialiser registers each static array's destructor, a local
+`__arraydtor$N` (N a per-unit counter no row can carry), and its address was compared as a local
+object -- raw bytes, relocation fields included -- so the code-exact `__sinit_hud_newhudmap.cpp`
+(0x3FDE80) scored WRONG REFERENCE on its four. `scdiff.local_code_ok` compares the candidate's
+function against the target's function at the referenced address (a map row of its size there), its
+bytes masked by its own relocations and each of those resolved one level deeper (`LOCAL_CODE_DEPTH`
+2); `content-ok` when it holds, else the reference stays as the other rules leave it, so nothing can
+turn into a miss -- for an MW object (each function its own section) and as a GNU object's last
+resort before `unchecked`. **Proved** over every unit (`--files .`, `-v`, 2 jobs, one frozen snapshot,
+`build/scratch/gcc/proof.sh`): master c53574dd's sccheck.py, scdiff.py and scdecomp.py with its map
+and these, 14,115 lines, identical but the initialiser's (WRONG -> match: 10,961 -> 10,962);
+hud_newhudmap.o is the one object defining such a function today. The canary's
+`test_mw_local_function_resolves_by_its_code` holds the four content-ok at their rows and fails a
+destructor with another count, or with its array's %lo 16 bytes on (masked alike: only the
+destructor's own relocations see it), and the four with the resolution switched off. (2) **sccheck's
+"superseded" summary follows the scoring** (the integrator's follow-up to 82c1ff75, merged): a draft is
+listed when a strong hand-written definition has its name, or a byte-exact copy matched at the
+draft's own address -- by name it listed OVL1's ~vector<CZDecalDef> 0x2CDB30, which the scoring keeps
+since 82c1ff75 (seal_env.cpp's copy matches OVL2's 0x5A3C60) and automatch keeps too (its
+`hand_defined()` already keys a copy's match by the row it matched). The canary's
+`test_copy_supersedes_a_draft_only_where_it_matched` builds seal_env.cpp and that draft (both match,
+nothing listed) and swaps the rows' roles in the map (the copy matches at the draft's address: the
+draft superseded and listed); it fails under c53574dd's sccheck (the draft dropped) and 82c1ff75's
+(listed). Re-proved with master 82c1ff75's tools and map against these, every unit: identical rows
+but the initialiser, and the false summary line gone (10,963 -> 10,964). (3) **automatch's GCC drafts
+build** (the round's lead): of the lane's 29 build failures, 17 were loads through an int that
+`gcc_repair` rewrites -- but it returned None while any error it cannot repair remained (an undeclared
+frame slot only `stack_locals`' variant declares), discarding its repairs, so every variant started
+from the unrepaired body; it keeps them now (`GCC_PARTIAL`). And: a slot m2c only subscripts
+(`&sp50[0]`: an array passed by address) is a pointer to its elements, typed by m2c's own cast
+(`(f32 (*)[]) &sp1B0[0]`), also when the bare frame is never named, never over m2c's function-pointer
+declarator (`STACK_ARRAYS`, `STACK_SLOTS`: 9 rows); m2c's `saved_reg_<r>` declared from GCC's own error
+(`GCC_SAVED_REGS`); a load behind m2c's cast of it (`(f32) *((i * 4) + p)`, an `lwc1`) made as that
+type, or as its assigned variable's (`GCC_TYPED_LOADS` -- an s32 load was an `lw` and a `cvt.s.w`);
+newlib's `__assert` unprototyped though m2c gave it a stray f32 (`GCC_NARROW_LIBC`). MW's repair path
+is unchanged. automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2
+--obj-dir` the lane's `src/lib` build): MAIN `18DB90 1C4CC0` 54 tried, 0 hits (build failures 7 -> 2,
+13 m2c refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22 -> 3, 8):
+152 tried, build failures 29 -> 5 (calls through an int, a frameless function's stack argument, a
+pointer sum, a TImode operation, one nested load past the repair's rounds), none byte-exact -- every
+draft that builds misses: what the generator leaves here is near misses, now nearly all measurable.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -6236,7 +6314,7 @@ FUNCTION` tries every order of a marked block). libkernl's thread, tty/printf an
 (sifcmd, sifrpc, the libmrpc copy), fileio, libgraph, libipu/libmpeg, libmc, libpad (its version
 is not the demo's: its rows are unnamed), libcdvd (its first object is dtls13010's: the sibling call
 above; it reads its semaphores and callback number through volatile and plain globals the target
-schedules apart) are open -- newlib's libc, libm and libgcc are whole but `_d2b` (round 23a); the
+schedules apart) are open -- newlib's libc, libm and libgcc are whole (`_d2b`, the last, in round 24a); the
 network library at 0x1C0948-0x1C4CC0 (inet_aton at -O2 beside RPC stubs built at -O0: frame pointer,
 spilled arguments) holds BIND's inet_ntop.c (round 5a: Sony's SDK toolchain, inet_ntop's returned
 calls jal-and-return); in OVL1 lgAudInit (registers), libnetb's Open, Recv/RecvFrom, Send/SendTo,
