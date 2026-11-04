@@ -87,6 +87,8 @@ public:
     C2DLine *LineTo(const CPnt3D *p);
     C2DLine *LineTo(const CAiMapLoc &loc);
     C2DLine *NewLine();
+    /* whether a line is one of the current objective's (SOCOM II's, the name ours) */
+    bool IsObjectiveLine(const CAiMap::line &line) const;
     /* a world point as the map draws it (SOCOM 1's WorldToDraw; out of line at 0x20F210) */
     CPnt3D WorldToDraw(const CPnt3D *p) const { return m_hudmap->MapPoint(p); }
     /* a cell's drawn point, false for a cell off the map (the name ours: the iterator's walks;
@@ -208,6 +210,36 @@ CZLineMap *g_pLineMap;
 
 /* the default looks, nine (SOCOM 1's file static _linedata, 180 bytes; OVL1 .data 0x3E42D0-0x3E4383,
  * stored by the unit's initialiser) */
+/* the map's line kinds (SOCOM 1's DWARF; a byte) -- the default looks' order */
+enum LINE_TYPES {
+    LINETYPE_NORMAL_WHITE = 0,
+    LINETYPE_EXTRACT = 1,
+    LINETYPE_NAVLINE = 2,
+    LINETYPE_NAVPOINT = 3,
+    LINETYPE_NORMAL_GREY = 4,
+    LINETYPE_NORMAL_YELLOW = 5,
+    LINETYPE_NORMAL_BLUE = 6,
+    LINETYPE_NORMAL_RED = 7,
+    LINETYPE_NORMAL_GREEN = 8,
+    LINETYPE_MAX = 9
+};
+
+/* the objective a mission shows (zfts' class; here only the map lines it lights, SOCOM II's: a
+ * vector of line ids at 0x44 -- the name ours) */
+class CMissionObjectiveCam {
+public:
+    bool HasLine(int id)
+    {
+        for (int i = 0; i < m_lines.size(); i++)
+            if (id == m_lines[i])
+                return true;
+        return false;
+    }
+
+    unsigned char _0[0x44];
+    std::vector<int> m_lines;   // 0x44
+};
+
 static LINE_DATA _linedata[9] = {
     LINE_DATA(200.0f, 200.0f, 200.0f, 100.0f, 1.0f),
     LINE_DATA(200.0f, 0.0f, 200.0f, 100.0f, 1.0f),
@@ -441,6 +473,63 @@ void CZLineMap::SetupWideLine(const CAiMap::line &line, const LINE_DATA &data)
     func_00357F30(polys, &itr, data._fWidth);
     polys->SetColor(data.color);
     polys->SetTrans((1.0f / 128.0f) * data.opacity);
+}
+
+inline bool CZLineMap::IsObjectiveLine(const CAiMap::line &line) const
+{
+    CMissionObjectiveCam *obj = m_hudmap->m_objectivelist.GetCurrentObjective();
+
+    return obj && obj->HasLine(line.m_id);
+}
+
+/* a line drawn cell to cell in its type's look -- the type's own, or a default one -- pulsing when
+ * the current objective lights it, dimmed on request; a wide line as polygons (SOCOM 1's, the
+ * objective's highlight and the wide line SOCOM II's) */
+void CZLineMap::TickLine(const CAiMap::line &line, float fPulseTrans, bool bDim)
+{
+    static const LINE_TYPES c_arrTypes[7] = {
+        LINETYPE_NORMAL_WHITE, LINETYPE_NAVLINE, LINETYPE_NORMAL_GREY, LINETYPE_NORMAL_YELLOW,
+        LINETYPE_NORMAL_BLUE, LINETYPE_NORMAL_RED, LINETYPE_NORMAL_GREEN,
+    };
+
+    if (line.empty())
+        return;
+
+    LINE_DATA *pLineData;
+    int type = line.m_type;
+    std::map<int, LINE_DATA>::iterator it = g_mapLineProps.find(type);
+
+    if (it != g_mapLineProps.end())
+        pLineData = &(*it).second;
+    else if (type >= 0 && type < 7)
+        pLineData = &_linedata[c_arrTypes[type]];
+    else
+        pLineData = 0;
+
+    bool bObjective = line.m_id && IsObjectiveLine(line);
+    float trans = pLineData ? pLineData->opacity : 0.0f;
+
+    fPulseTrans = bObjective ? fPulseTrans : trans;
+    fPulseTrans = bDim ? 0.3f * fPulseTrans : fPulseTrans;
+    if (pLineData && pLineData->_fWidth > 1.01f) {
+        LINE_DATA props = *pLineData;
+
+        props.opacity = fPulseTrans;
+        SetupWideLine(line, props);
+        return;
+    }
+
+    CAiMapLocVec::const_iterator li = line.begin();
+
+    MoveTo(*li);
+    for (++li; li != line.end(); ++li) {
+        C2DLine *l = LineTo(*li);
+
+        if (l && pLineData) {
+            l->SetColor(pLineData->color.x, pLineData->color.y, pLineData->color.z);
+            l->SetTrans(fPulseTrans);
+        }
+    }
 }
 
 /* each of the map's lines: drawn as a line unless it is a polygon without its outline, and a
