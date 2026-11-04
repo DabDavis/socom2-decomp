@@ -1927,6 +1927,28 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 21** (CZSealBody's database handles, OKToStand, the ladder state, three new rows):
+  - `p = c ? q : p;` leaves the join label unaligned, `if (c) p = q;` pads it to 8 with a nop (0x560340, a state's nod to
+    its squad leader);
+  - a byte call result taken into an `unsigned char` local before a flag's zero puts the zero after the call; `bit = (x ==
+    2) != 0` gives the target's second `sltu` before a bit-field store (0x594B70, the reload button: double-click or held
+    0.4 s);
+  - a callee reading an argument register no caller sets has a real parameter (an uninitialised local lands in v0
+    instead): SOCOM II's OKToStand 0x57EFE0 takes a stance none of its three callers passes;
+  - two `return`s joining at one shared `move sN,v0` are an inlined function's result -- InStateHang's last arm is
+    Stand(-1);
+  - `if ((t = f()) != 0)` tests v0 with the copy in the delay slot, `t = f(); if (t)` copies first and tests the saved
+    register;
+  - one variable reused across two loops gets separate register webs (the first loop stays the target's), separate
+    variables renumber everything; a loop counter declared before the count fixed ReInitDatabaseHandles 0x5A49F0;
+  - defining, in an OVL2 unit, a function whose row is in OVL1 moves the unit's span into OVL1, and sccheck then scores the
+    unit's template copies against OVL1's rows (insert<CZDecalDef> 0x3D3D90 showed as a regression until the definition
+    went);
+  - InitDatabaseHandles 0x5A4CE0 is SOCOM 1's tail call into ReInitDatabaseHandles (the game states' lead, confirmed);
+    InStateProne/Crouch/Stand named from the state dispatcher 0x5870E0's jump table (data 0x65D100) and SOCOM 1's order;
+  - open: InitDecalHandles 0x5A4CF0 (10, right size: the blood tag and the loop count swap s0/s5), InStateHang 0x584390 (5:
+    Crouch 0x581990's register pair inside the inlined Stand(-1)); seal_env.cpp's vector<CZDecalDef> reserve and insert
+    (8 bytes short each: the MSL headers' question).
 - **Tells from the kit and AI states, round 22** (CSealUnit's creators; CZKit's lase, detonation and 2X ammo):
   - a walk over a static list that two functions share, written as a static inline helper, puts its iterator below the
     callers' temporaries in the frame and keeps its end in a saved register; written in place, the iterator takes an
