@@ -4,7 +4,34 @@
 
 #include "zar.h"
 
+/* the root key's name and a deleted key's (SOCOM 1's file statics, "ROOT" and "DELETED"; OVL1
+ * 0x3DD000 and 0x3DD008, 8 bytes apart as MW 3.0 lays such statics out) */
+static const char *DEFAULT_ZAR_NAME = "ROOT";
+static const char *DELETED_ZAR_NAME = "DELETED";
+
 namespace zar {
+
+/* the name copied in unless it is the one held: the old copy freed (never the default's own
+ * pointer), no name or the default's kept as the default's pointer (SOCOM 1's) */
+void CZAR::SetFilename(const char *name)
+{
+    if (m_filename && m_filename != DEFAULT_ZAR_NAME) {
+        if (m_filename == name)
+            return;
+        _free(m_filename, 0, 0);
+        m_filename = 0;
+    }
+    if (!name || name == DEFAULT_ZAR_NAME)
+        m_filename = (char *)DEFAULT_ZAR_NAME;
+    else
+        m_filename = _strdup(name, 0, 0);
+}
+
+/* (SOCOM 1's, the same code) */
+void CZAR::CloseKeepDir()
+{
+    m_pFile->Close();
+}
 
 /* a key pushed when there is one: SOCOM 1's (a list's push_front) tests twice too */
 inline void CKeyRing::push(CKey *key)

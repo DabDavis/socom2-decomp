@@ -70,6 +70,11 @@ public:
     CKey *FindKey(const char *name);
     void CloseKey(CKey *key);
     void Close();
+    /* the file closed, the directory kept (SOCOM 1's: the file's Close, a tail call) */
+    void CloseKeepDir();
+    /* the archive's file name: a copy of the name given, or DEFAULT_ZAR_NAME's own pointer for
+     * none (SOCOM 1's) */
+    void SetFilename(const char *name);
     /* the in-memory data buffer handed to the caller (0x257F90): the CBufferIO under m_pFile
      * releases it and the archive forgets it (the word at 0x1C, the byte at 0x24) -- 0 when none */
     void *ReleaseDataBuffer();

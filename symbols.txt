@@ -2737,8 +2737,8 @@
 0x00258BD0 0x70 func_00258BD0  # OVL1
 0x00258C40 0xA0 func_00258C40  # OVL1
 0x00258CE0 0x17C Close__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: the loaders close their archives through it where SOCOM 1's call CZAR::Close)
-0x00258E60 0x14 func_00258E60  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
-0x00258E80 0x9C func_00258E80  # OVL1
+0x00258E60 0x14 CloseKeepDir__Q23zar4CZARFv  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:order by hand, the core lane round 4 (SOCOM 1's CloseKeepDir 0x1D98F0, the same 0x14 bytes -- m_pFile's Close through its table, a tail call -- between Close() and SetFilename as here)
+0x00258E80 0x9C SetFilename__Q23zar4CZARFPCc  # OVL1; s1:order by hand, the core lane round 4 (SOCOM 1's SetFilename 0x1D9910 after CloseKeepDir and before ~CZAR as here: m_filename (0xA4 here, SOCOM 1's 0x90) freed unless the default name's pointer or the name itself, then the name _strdup'd or DEFAULT_ZAR_NAME)
 0x00258F20 0x17C __dt__Q23zar4CZARFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002590A0 0x190 __ct__Q23zar4CZARFPCcP3CIO  # OVL1; s1:callee by hand (OpenZAR calls it on the fresh CZAnimZAR with (0, 0) where SOCOM 1's OpenZAR calls zar::CZAR::CZAR(const char *, CIO *))
 0x00259230 0xC func_00259230  # OVL1

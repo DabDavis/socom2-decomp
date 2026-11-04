@@ -19,12 +19,11 @@
 #include "zbody.h"
 #include "../zsys/zsys.h"
 
-/* the ZAR's functions zar.h does not declare: SOCOM II's five-argument Open, the key count, the
- * archive name's setter and the data buffer handed over (called by their map names) */
+/* the ZAR's functions zar.h does not declare: SOCOM II's five-argument Open, the key count and the
+ * data buffer handed over (called by their map names) */
 extern "C" {
 void func_00258920(zar::CZAR *zar, const char *name, int version, unsigned int a, unsigned int b, int c);
 int func_0025B300(zar::CKey *key, int deep);
-void func_00258E80(zar::CZAR *zar, const char *name);
 void *ReleaseDataBuffer__Q23zar4CZARFv(zar::CZAR *zar);
 }
 
@@ -189,7 +188,7 @@ void zBoneUnloadMap()
     mapBoneArchive.m_zar.Close();
     zBoneUnloadAll(&mapBoneArchive);
     mapBoneArchive.m_callbacks.Clear();
-    func_00258E80(&mapBoneArchive.m_zar, 0);
+    mapBoneArchive.m_zar.SetFilename(0);
     mapBoneArchive.SetPresent(false);
 }
 
