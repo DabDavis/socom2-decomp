@@ -647,6 +647,118 @@ extern "C" void func_00574EF0(CSealCtrlAi *ai, int value)
     }
 }
 
+/* the scripted groups (ai_group.cpp's class: only its statics here) */
+class CAiGroup {
+public:
+    static void DeleteAll();
+    static void ResetIds();
+};
+
+/* (declared again below where their users are: the doze count, the task anims' switch, the row) */
+namespace ai {
+extern int snooze_count;
+}
+
+extern "C" {
+extern unsigned char data_003DF188;
+extern int data_0066AFD8;
+/* the callouts' sounds looked up and forgotten (OVL2 0x6075C0, 0x607560: the AI states' seal_airesponse.cpp) */
+void func_006075C0();
+void func_00607560();
+/* a doze's start (SOCOM 1's ai::snooze_time, -3 there; OVL2 bss 0x66AFF0) and two flags cleared with
+ * it (OVL2 bss 0x66B008, 0x66AFE0; the names ours) */
+extern float data_0066AFF0;
+extern unsigned char data_0066B008;
+extern unsigned char data_0066AFE0;
+/* the AI's tuning, twice (OVL2 bss 0x66AD20 and 0x66AE80, 0x154 bytes each: the second's fields set
+ * after both are cleared) and the idle anims' kinds (OVL2 bss 0x66AD00) -- the names ours */
+extern unsigned char data_0066AD20[0x154];
+extern unsigned char data_0066AE80[0x154];
+extern float data_0066AE94;
+extern float data_0066AF6C;
+extern float data_0066AF70;
+extern float data_0066AF74;
+extern float data_0066AF80;
+extern float data_0066AF88;
+extern float data_0066AF9C;
+extern float data_0066AFA0;
+extern float data_0066AFA8;
+extern float data_0066AFAC;
+extern int data_0066B048;
+extern int data_0066B050;
+extern int data_0066AFE8;
+extern int data_0066AD00[7];
+}
+
+/* the anim kind of a name (anim.cpp's, the kit lane's: C++ linkage) */
+int FindAnimKind(const char *name);
+
+/* the AI's handles let go: the loops' sounds and instances, the callouts' sounds, the request pool, the
+ * groups (OVL2 0x574BD0; SOCOM 1's ReleaseDatabaseHandles, the integrator's lead from the kit's round
+ * 25: SOCOM 1's two memsets and CloseDiPool, SOCOM II's callouts and groups around them) */
+void CSealCtrlAi::ReleaseDatabaseHandles()
+{
+    memset(aiSoundHandle, 0, sizeof aiSoundHandle);
+    memset(aiSoundInstance, 0, sizeof aiSoundInstance);
+    func_00607560();
+    CloseDiPool();
+    CAiGroup::DeleteAll();
+}
+
+/* the AI's handles taken: the loops' sounds, the callouts', the task anims allowed, the request pool
+ * opened, the doze count and time reset, the difficulty off its valve (within 0 to 7, else 1), the
+ * squad's radio valves closed, the tuning cleared and set, the slices reset, the idle anims' kinds
+ * looked up and the groups' ids (OVL2 0x574C30; SOCOM 1's AcquireDatabaseHandles, the integrator's
+ * lead from the kit's round 25: SOCOM 1's two GetSoundByName and OpenDiPool, then its doze reset) */
+void CSealCtrlAi::AcquireDatabaseHandles()
+{
+    aiSoundHandle[0] = CSnd::GetSoundByName("SND_STREAM_ABORT");
+    aiSoundHandle[1] = CSnd::GetSoundByName("STREAMING_BOUNDRY_WARNING");
+    func_006075C0();
+    data_003DF188 = 1;
+    OpenDiPool();
+    ai::snooze_count = 0;
+    data_0066AFF0 = -2.0f;
+    data_0066B008 = 0;
+    data_0066AFE0 = 0;
+
+    CValve *v = CValve::GetByName("ai_difficulty");
+
+    if (v) {
+        data_0066AFD8 = v->m_value;
+        _saturate(&data_0066AFD8, 0, 7);
+    } else {
+        data_0066AFD8 = 1;
+    }
+    func_00574EF0(0, 0);
+    memset(data_0066AD20, 0, sizeof data_0066AD20);
+    memset(data_0066AE80, 0, sizeof data_0066AE80);
+    data_0066AF70 = 1.5f;
+    data_0066AF74 = 1.5f;
+    data_0066AF6C = 1.25f;
+    data_0066AE94 = 0.15f;
+    data_0066AF9C = 3.5f;
+    data_0066AFA0 = 2.5f;
+    data_0066AFAC = 3.0f;
+    data_0066AFA8 = 5.0f;
+    data_0066B050 = 4;
+    data_0066AF88 = 3.0f;
+    data_0066AF80 = 3.0f;
+    ai_slice0.Reset();
+    ai_slice1.Reset();
+    ai_slice4.Reset();
+    data_0066B048 = 0;
+    data_0066AD00[0] = 0;
+    data_0066AD00[2] = FindAnimKind("bored02");
+    data_0066AD00[3] = FindAnimKind("bored03");
+    data_0066AD00[1] = data_0066AD00[2];
+    data_0066AD00[4] = FindAnimKind("suspicious");
+    data_0066AD00[5] = FindAnimKind("ready");
+    data_0066AD00[6] = FindAnimKind("conversation");
+    CAiGroup::ResetIds();
+    data_0066AFE8 = 0;
+}
+
 /* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
  * OVL2 0x50F4C0 by its address) */
 extern "C" float func_0050F4C0(CAiEvent::EVENT event);

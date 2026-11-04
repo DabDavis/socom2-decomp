@@ -1003,6 +1003,12 @@ public:
      * seal_sensors.cpp, the kit lane's) */
     static void CloseDiPool();
     static void OpenDiPool();
+    /* the AI's handles let go and taken (SOCOM 1's statics: the two loops' sounds, the request pool
+     * -- SOCOM II's take the callouts' sounds, the difficulty, the squad's radio valves, the tuning,
+     * the frame slices, the idle anims' kinds and the groups' ids besides; OVL2 0x574BD0, 0x574C30,
+     * seal_ai.cpp) */
+    static void ReleaseDatabaseHandles();
+    static void AcquireDatabaseHandles();
     /* a spray of fire timed, when the item in hand fires fully automatic (SOCOM 1's; OVL2 0x565AE0) */
     void SetSprayTimer(float t);
     /* the aim turned off its line by the target's error (slot +0x74, SOCOM 1's; OVL2 0x5C9250, the
