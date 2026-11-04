@@ -1927,6 +1927,26 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 25** (CMission::Close and its anchor vector, MissionBankList::Resize, the deleters):
+  - an empty loop reached through an inline accessor returning the element's address leaves its arm's shell -- the test
+    stays, and the build loop's arm becomes a lone jump placed after the body; without the accessor MW folds both arms
+    away: func_002AF410's "two empty arms" are MissionBankList::Resize, a fixed-array resize whose loops reach each slot
+    through an inline `At(i)` (`At(i)->~MissionBank()` down, `new (At(i)) MissionBank` up), its element's destructor
+    trivial (the initialiser registers none for the global; build/scratch/states-r25/gen_resize3.py has the probe matrix);
+  - writing CMission::Close 0x2AB3F0 (0x604) generates the anchor vector's deleter's clear and destructor first, so they
+    inline where they must: reserve<SObjectiveCam_Anchor> 0x2B00E0, ~vector 0x2ABA00, the deleter's member swap 0x2ABA60,
+    clear 0x2ABAA0, vector() 0x2ABAB0 and the camera path's clear 0x2B1310 match from source with it (0x2ABA00's old
+    swap name was wrong; the free swap's name does not move to 0x2ABA60);
+  - a CPnt3D stored into a matrix row through a cast pointer goes through an address register, element-wise stores or the
+    matrix indexed as a CPnt3D array store straight to the frame; `for (e = end(), i = begin(); ...)` swaps a walk's saved
+    registers;
+  - a loaded byte's `andi 0xff` survives when the conversion is applied after a ternary's join (an inline returning the raw
+    char); comparing two one-byte enum wrappers through their conversions narrows even a constant at runtime -- the
+    byte-enum family's two partial reproductions (the button's own `lb; andi` still folds to `lbu`);
+  - 0x2B55E0 is CNodeAction::Close (SOCOM 1's call at the same place); ~CMissionObjectiveCam 0x2C7490 and
+    ftsNetworkPlayerInit 0x2B7D60 byte-exact; RenderWorld and CFlareSystem::Tick respelled (no code change);
+  - open: insert<CLadderData> 0x2B0260 (right size, 55: the class insert's end register), NVGNoiseParse (t0/t1),
+    UnInitialize (v0/v1).
 - **Tells from the UI, round 16** (the dialog design's loaders and their template tail, zui_spec.cpp):
   - an `int` counter compared with an unsigned count (`sltu`) keeps `i*8` recomputed each pass; an `unsigned` counter is
     strength-reduced to a byte offset stepped by 8 (LoadFromRdr's SCRIPT_LIBRARY loop);
