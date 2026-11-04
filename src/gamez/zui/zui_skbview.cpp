@@ -1171,3 +1171,9 @@ bool SkbScaling()
 {
     return s_scaling != SKBSCALE_NONE;
 }
+
+/* whether the caption shows mode 1, the two edit strings (0x396F10; 0x399100 asks; the name ours) */
+bool SkbTwoEdits()
+{
+    return s_captionMode == CAPTION_1;
+}

@@ -7441,7 +7441,7 @@
 0x00396EC0 0x10 SkbScaling__Fv  # OVL1; the UI lane round 22: ours, by its body (zui_skbview.cpp: the scaling state 0x4A1078 not none, as a bool; HandlePad 0x38C990 returns at once while it holds)
 0x00396ED0 0x14 SkbQuotesAllowed__Fv  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: !s_noQuotes 0x4A0A58 -- the set-up command's byte at 0xA8; 0x399EC0 types a double quote (34) as an apostrophe (39) when it is false)
 0x00396EF0 0x14 func_00396EF0  # OVL1
-0x00396F10 0x14 func_00396F10  # OVL1
+0x00396F10 0x14 SkbTwoEdits__Fv  # OVL1; the UI lane round 22: ours, by its body (zui_skbview.cpp: the caption mode 0x4A0A60 is 1 -- the two edit strings shown; 0x399100 asks)
 0x00396F30 0x134 SkbForgetDisplay__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the bitmaps' nodes, the 40 key-row bitmaps' through slot 0x30, the six sounds, the display's root node 0x49ED50 and the caption's node zeroed, the caption's text set to none; InvalidateSkbsDisplay calls it)
 0x00397070 0x520 SkbReadUiParams__FP8CRdrFile  # OVL1; the UI lane round 22: ours, by its body (zui_skbview.cpp: UiParams.rdr's CommonSoftKeyboardProps -- RepeatDelay/SpeedStart/AccelTime/SpeedEnd, the six sound names into the CSaferStr statics SkbFindSounds reads, Legend's Texture, Pos/Size rectangle and slide times, UsbKbdOnIcon, the typed text reserved 800, SkbParseKoreanRules on the file, BackgroundsOpacity x 128 given to bitmaps 6/7 and the 40 keys through C2D's SetTrans; SkbLoadUiParams calls it)
 0x00397590 0xA8 SkbPlaceCursor__FP12CSkbKeyProps  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 2 reloaded at the key's size with its own texture, its node put at the key's place, the key's button SetActive through a member pointer {0, 0x50, 0xC})
@@ -7470,7 +7470,7 @@
 0x00398FC0 0x7C func_00398FC0  # OVL1
 0x00399040 0x24 func_00399040  # OVL1
 0x00399070 0x88 SkbTypeJamo__FiScP4CPad  # OVL1; the UI lane round 9: ours, by its body (a jamo replaced by its doubled form from the seven pairs at 0x3FB840 when 0x396E60 says so, then typed through 0x399200) -- byte-exact in zui_skbkeys.cpp; the UI lane round 11: the third parameter is the pad (0x38D200's, CPad's L1 state read by SkbShifted)
-0x00399100 0x48 func_00399100  # OVL1
+0x00399100 0x48 SkbToggleTextSel__FP13CSoftKeyboard  # OVL1; the UI lane round 22: ours, by its body (zui_skbkeys.cpp: while the two edits show, s_textSel 0x4A1330 inverted and the cursor put at the string's end through SkbCursorToEnd; HandlePad's SELECT)
 0x00399150 0xA4 SkbSwitchText__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (0x394840's mode switch decides whether string 0 is current; its node shown or hidden, 0x39A400 when either was string 0, string 0 emptied) -- byte-exact in zui_skbkeys.cpp
 0x00399200 0x74 SkbHangulTypeJamo__FiSc  # OVL1; by hand (the UI lane, round 12, ours: a jamo typed into a CSkbPieces of its own through SkbHangulType 0x390A30, the pieces handed to 0x398AE0 when they composed, SkbHangulClear when it refuses them, the pieces destroyed through ~__vector_deleter<SKBPIECE> 0x3928E0 with 0; SkbTypeJamo and SkbUsbLetter call it -- zui_skbkeys.cpp)
 0x00399280 0x94 SkbCloseText0__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (string 0 no longer current, its node hidden, its text emptied; laid out again through 0x39A400 if it was current, then 0x394920) -- byte-exact in zui_skbkeys.cpp

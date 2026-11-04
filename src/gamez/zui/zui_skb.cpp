@@ -591,11 +591,11 @@ struct KeyInput {
 };
 int GetKeyReadThisFrame(KeyInput *key);
 extern "C" {
-/* the USB keyboard's key handled (0x38C630) and SELECT's toggle (zui_skbkeys.cpp's, 0x399100), not
- * written yet */
+/* the USB keyboard's key handled (0x38C630, not written yet) */
 void func_0038C630(CSoftKeyboard *skb, CGameMenu *menu, KeyInput *key);
-void func_00399100(CSoftKeyboard *skb);
 }
+/* the other edit string selected (zui_skbkeys.cpp's, 0x399100) */
+void SkbToggleTextSel(CSoftKeyboard *skb);
 
 /* the pad's buttons handled, while the keyboard is not scaling: cross pressed and let go presses
  * and lights the cursor's key, circle enters, triangle closes (the menu's event 29 run first), R1
@@ -625,7 +625,7 @@ void CSoftKeyboard::HandlePad(CPad *pad, CGameMenu *menu)
     } else if (pad->m_state[PAD_SQUARE] == KEY_FALLING)
         SkbTypeOrBack(this);
     else if (pad->m_state[PAD_SELECT] == KEY_FALLING)
-        func_00399100(this);
+        SkbToggleTextSel(this);
     if (pad->m_state[PAD_TRIGGER_L1] == KEY_FALLING || pad->m_state[PAD_TRIGGER_L1] == KEY_RISING)
         SkbShowKeyRows(pad, this, m_174);
     KeyInput key;
