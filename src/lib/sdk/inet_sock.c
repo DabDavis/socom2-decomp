@@ -18,7 +18,25 @@
  *    the thread id on a list (0x1CE628) of at most 255, the oldest dropped first.
  *
  * The data are this object's own (.data and .bss); they keep the map's placeholders (data_<VA>)
- * until a data row names them. */
+ * until a data row names them. Shapes the target showed: the new free block's neighbours are tested
+ * through the copies just stored into it (`p->next = b->next; if (p->next) ...`: testing b->next
+ * reloads it past the stores, 2 words); the lock's semaphore is created with only its counts and
+ * option set; libinet's errors map through one switch in libinet's code order (the case tree's
+ * leaves laid out in source order); libnet's buffer size is masked with an unsigned ~63U (lui/ori,
+ * held across the call) where the aligned pointer's mask is a plain -64.
+ *
+ * OPEN: func_001C1D40, the first-fit allocation (0x14C against 0x150: the target computes the
+ *   remainder as (size' - 12) - size from the loop's own load of the block's size, and after a split
+ *   reloads the new block's size where the exact fit keeps the loop's -- nine spellings of the
+ *   remainder over four loop forms are all a word short; build/scratch/gcc/gen_malloc.py);
+ *   func_001C1E90, the release (0x1B0 against 0x198: the run of used neighbours is walked with the
+ *   size held from the start, the merges reuse the adjacency sums -- the walk's shape is not yet the
+ *   target's); func_001C2028, the heap's set-up (right size, 34: the first `return -1` is the one
+ *   the second test jumps back to, and nine stores in another order -- not yet permuted);
+ *   func_001C2160, the thread context (right size, 26: the target stores the thread id first and
+ *   loads the unsigned mask before the buffer's allocation into the id's freed s1, and reloads the
+ *   dropped context's next before its prev; 120 store orders and 27 mask/unlink spellings leave 24,
+ *   build/scratch/gcc/gen_ctx.py). */
 
 typedef unsigned int u_int;
 typedef unsigned int size_t;
@@ -331,7 +349,7 @@ CTX *func_001C2160(int keep)
 		return 0;
 	}
 	c->abuf = (void *)(((u_int)c->buf + 63) & ~63);
-	sceLibnetInitialize(c->client, (c->bufsize + 99) & ~63, c->rpcsize, c->prio);
+	sceLibnetInitialize(c->client, (c->bufsize + 99) & ~63U, c->rpcsize, c->prio);
 	c->next = data_001CE628;
 	if (data_001CE628)
 		data_001CE628->prev = c;
