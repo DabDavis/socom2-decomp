@@ -1776,6 +1776,42 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 18** (the instances other lanes waited on; probes build/p18/, untracked):
+  - AN INLINE REFERENCE ACCESSOR'S TEMPORARY FOLDS OFF THE FUNCTION'S OWN PARAMETER AND STAYS A VARIABLE OFF AN INLINED
+    ARGUMENT AT AN OFFSET: include/string's copy constructor reading the long size through `const size_type &long_size()
+    const` keeps the out-of-line copy 0x22E560 (and a member at offset 0) folding `lw 4(s1)`, while CDlgDesignModel's
+    second string (+12) holds `&str.w_[1]` in s3 across reserve -- 0x3854C0 byte-exact (+1, the UI's request); a
+    reference local is a variable at every site (0x22E560 grows to 0x9C), a by-reference helper parameter or a reference
+    to the word array renumbers the rest;
+  - THE VID STACK IS std::stack<void *> (the weapons' round 19 request, settled): 0x3B7D50, the destructor
+    __sinit_vis_vu.cpp registers for m_stack_vid, is ~stack<Pv> inlining ~deque<Pv> and calling 0x3B7C90 -- ~deque<PCv>,
+    the POINTER deque's base (one this-tested level, then ~__deque_buf<PCv> with 0), not ~CVisBase -- and a plain
+    `std::stack<void *>` static compiles to both byte for byte (build/p18/vis/stk.cpp); vis_vu.cpp now defines
+    CVisual::m_stack_vid and its tail emits the chain: 0x3B7C90, 0x3B7D50, the deque<void *> copy 0x3B7DB0 and its
+    begin()/end() const 0x3B7F40/0x3B7EE0 byte-exact (+5; rows named, init 0x3B7E30 too). znode.h's CVidStack wrapper
+    registers a destructor of its own, so __sinit_vis_vu.cpp needs the static declared `std::stack<void *>` (a shared
+    header: the integrator's); deque<void *>() 0x3B7FA0 (calling the rdr editor's middle level 0x334120) stays open with
+    0x3340F0 and keeps its placeholder name while only its draft matches;
+  - EVERY DEQUE do_assign CALLS ITS ITERATORS' OPERATORS OUT OF LINE (the online lobby's two operator++ copies, generalised):
+    the lobby's 0x2E1090, the rdr editor's 0x334440 and the vid stack's 0x3B8000 call the source's !=, * and ++, the
+    destination's * and ++ and the destination iterator's copy constructor (std::copy's returned iterator) -- out-of-class
+    members generated after do_assign; the source and destination are different classes (identical copies of ++ and *),
+    the pointer deques' sources per element type and their destinations shared. The head is std::distance by value (two
+    by-value levels: $f0 copies, then lq/sq, the difference over the copies in memory), the tail std::copy by value with a
+    `!=` loop. As probes the lobby's six operator copies come out byte-exact (0x2E1420-0x2E1550) with *, ++, != and the
+    destination's copy constructor out of class; do_assign stays 0x31C against 0x384 while the source is copied through
+    the buffer iterator's user copy constructor (the target's source copy is bitwise: a const buffer iterator without
+    one). Recorded in include/deque's comment, not applied (every init/do_assign row would be renamed `14const_iterator`);
+  - THE CLASS ERASE'S END IS PER ELEMENT, as the insert's: the string-element erases (CSaferStr's 0x383BC0,
+    CDlgDesignModel's 0x384BD0, zrdr_sym's) want the end coloured before the count and cursor -- `iterator e = end()`, a
+    scalarised object numbered after the named locals, makes all three byte-exact and loses 28 (9232 -> 9209): the ends
+    there are the plain local's (include/vector's erase comment); not applied;
+  - not reached: the class insert's end register (insert<CLadderData> 0x2B0260, the delayed nodes' 0x33C5C0), the deques'
+    make_iterator, ~CAssetLib's two data addresses (the target keeps `&m_models.data_` and `&m_palettes.data_` -- this+16,
+    this+40 -- in saved registers from the walks to the vectors' inlined destructors: the reference-accessor tell's
+    pattern, no pod form found), AddKeyProps' pair temporary, GetSealCount's outer copy, remove_if<_tick>, 0x359740's
+    requester; CreateSoftKeyboard's grid store (the code read through a reference accessor, the ternary passed straight)
+    moves nothing.
 - **Tells from completing the MSL headers, round 17** (the instances other lanes waited on; probes build/p17/, untracked):
   - THE CLASS VECTOR'S COPY CONSTRUCTOR IS SOCOM 1's MSL (its Props::Branch 0x237ED0 calls every piece out of line): the
     deleter built from the other's `alloc() const`, then init over the other's RAW `begin()/end() const` (a pointer in v0).
@@ -1965,6 +2001,60 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 33** (C2DString's text functions, hud_main.cpp's help windows and hudInit, the popup triggers):
+  - a const inline accessor reading a local object's member folds into a frame offset, a non-const one shares the saved
+    address register the object's inline constructor and destructor keep (GetCharWidth 0x363C20, AddCharacter 0x362E00);
+  - a same-type cast (`(float)f`, `(int)i`) makes MW load that operand first -- it closed C2DString::Load 0x3630E0 after
+    120 earlier groupings, and AddCharacter's padding;
+  - a byte enum's constant stores need no `andi 0xff`, an unsigned char's do (FormatString 0x363F60's state); an int counter
+    over `Item(unsigned)` stops strength reduction, separate loop-scoped variables per walk give the target's registers
+    where one shared list variable does not (hudInit 0x1FDEE0, SOCOM 1's);
+  - `if (a) return; if (!f()) return; x = true; return;` gives one `b epilogue` per test, `if (!a && f()) x = true;
+    return;` joins first; MW keeps va_start's dead `li v0,2; slti at,v0,8` when the va_list is unused (Format 0x363830's
+    buffer is 10512 bytes);
+  - C2DString's 0x3C member is SOCOM 1's m_length (the text's pixel length: AddCharacter adds each advance to it) -- the
+    rename waits on its other users (fts_message.cpp, fts_msgeditor.cpp, zui_skbkeys.cpp);
+  - open: MakePacket 0x3635C0 and the four layout functions 0x361BD0-0x362B1F (unwritten: a packet writer and a layout
+    cursor on its stack -- c2dstring.cpp's header comment).
+- **Tells from the engine core, round 4** (a new int_circleclip.cpp, CZAnimArgList's getters, zar::CZAR):
+  - an iterator ASSIGNED from std::find_if (`iterator it; it = find_if(...)`) lives in its stack slot, copied bitwise out of
+    find_if's return temporary: written `if (it != end()) return X; return 0;` it is all eight CZAnimArgList getters
+    (0x2720E0-0x272720), and the destructor's walk wants it too, with end() in a local;
+  - `t = d != 0.0f ? x / d : 0.0f` gives the target's three nops after div.s, `t = 0; if (d) t = x / d;` pads only to the
+    label's alignment; `0.0f < x` compiles to `c.lt.s 0,x`, `x > 0.0f` to `c.le.s x,0`;
+  - `#pragma inline_intrinsics off` keeps MSL's abs a call (under -O4 abs expands inline whatever header declares it);
+    `m_pFile = io ? io : (m_pFileAlloc = new CFileIO)` gives the shape both builds share (CZAR's constructor 0x2590A0); a
+    plain CPnt3D assignment inside an inline cut by height calls the implicit copy out of line (0x20F1F0 then matches);
+  - int_circleclip.cpp is SOCOM 1's zdb::CCircleClip::CircleSegmentClip 0x2DF160 (0x3F4), between int_material.cpp and the
+    lobby, as in SOCOM 1; CDI::LoadPlaneVU0 0x2DD130 written as an asm function;
+  - open: ~CZAR (its key buffer a vector of 24-byte CKeys freed through out-of-line pieces), CPacketMsg::GetArg (4 bytes).
+- **Tells from the online lobby, round 15** (the room player list's sort and erase, setLoadImageTagsYX):
+  - a unit pragma fitted to older headers goes stale: the chat unit's `#pragma inline_max_size(100)` (round 10) was what held
+    std::sort<RoomPlayer> 0x2F1980 with __sort132 and __selection_sort (6.2 KB) -- re-measure inline_max_size when headers
+    deepen;
+  - two functions reading one guarded function-local static means the static belongs to an inline both expand (the class
+    deque's do_assign reads push_back's `max`: cdeque<PCv>'s max_size 0x285CE0, named at integration);
+  - a nested ternary's inner join is never threaded (a target whose inner arm branches straight to the outer join assigns one
+    variable in every arm); MW folds `(x & A) & B`, a pointer cast between the masks keeps them apart; a pointer declared
+    first but assigned after the counts keeps the highest saved register; a member-wise copy of a struct block-copied
+    elsewhere is a layout-identical class with a user constructor;
+  - sccheck lists draft matches only with `-v` ("nothing lost" checks need it); scdiff's relocation lines can show a wrong
+    global the instruction count hides (the world report read the wrong global: LobbyWorldID 0x66A538);
+  - open: 0x2F13F0 (34: the last page's erase walk), the world report 0x2EF590 (9: jump threading, as CreateGame's and
+    GetGameInfo's), insert<RoomPlayer> 0x2F2D90 (59: the class insert's register), the two do_assigns.
+- **Tells from the SEALs, round 24** (the frame slices, the radio valve, the database-handle statics, the alert records):
+  - an `int` member passed to an `unsigned int` parameter loads after the other arguments, typed `unsigned int` it loads first
+    (0x56D2B0: `m_270` is a team mask); MW aligns 0x18-byte bss objects to 16 (the five slices sit 0x20 apart:
+    __sinit_seal_ai.cpp 0x6687E0);
+  - a flat difference built with the three-float CPnt3D constructor subtracts x first, float locals declared x-first subtract
+    z first (0x5582C0); a float constant passed as a call argument and loaded with lwc1 from data is a variable (25.0 at
+    0x651028);
+  - to test a word's bit and its low byte, read it once: `unsigned int w = ...; if (w & 0x100) { int level = w & 0xff; ...
+    }` puts the andi ahead of the inline call (0x5712F0); an `extern "C"` declaration under a mangled name (e.g.
+    `__dt__8CAiEventFv`) lets source call an implicit destructor by hand;
+  - CSealCtrlAi::ReleaseDatabaseHandles/AcquireDatabaseHandles (the kit's leads) and CZSealBody::
+    Uninit_ReInitDatabaseHandles 0x5A3B50 (the game states' lead) are SOCOM 1's;
+  - open: 0x5712F0 (3: the clock loaded before the anim's time), 0x5B1350 (1).
 - **Tells from the game states, round 28** (a new fts_ovl2statics.cpp: the OVL1 unit of OVL2 classes' statics; ReOpen):
   - fts_ovl2statics.cpp (0x2CD670-0x2CE7FF, the file name ours) has no functions of its own: about sixty statics of OVL2
     classes defined in its initialiser's order, with SOCOM 1's names, and a tail emitting the destructors it registers in
@@ -8310,7 +8400,9 @@ What is open across lanes, and what comes next:
   element copies and four destructors (about 15) evidence not found. The flag stays at 5, the headers
   at their level-5 shapes, seal_ai.cpp's pragma with them.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
-  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
+  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short) and
+  its iterator classes (every do_assign calls separate source and destination operators out of line,
+  std::distance and std::copy by value: the MSL headers' round 18), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
   string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780)
   (include/tree), the list instances of std::remove_if (0x29FE70, 0x3C6560, 0x352500, 0x50F670,

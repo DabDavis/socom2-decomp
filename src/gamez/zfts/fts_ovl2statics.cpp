@@ -456,75 +456,88 @@ public:
 
 CSealUnit::ulist CSealUnit::m_list;
 
-/* the sensors' query pool (SOCOM 1's seal_sensors.cpp's _diPool, a CDiPool -- the kit lane's
- * seal_dipool.h has its users' view: its dirlist is this unit's CDiList, the used list, and its
- * dirlist::DeleteAll this unit's CDirList::DeleteAll, OVL2's copy 0x5CC6C0 of OVL1's 0x2CD9F0 -- but
- * ~CDiPool, which only this unit emits, shows the free list's class apart: a user destructor calling
- * DeleteAll, a word after the list the initialiser stores through the list's own address, and
- * list<dir *> its direct base, its destructor 0x2CD690 called with 0): six queries of
- * thirty-two hits each, malloc'd and built in place, the free ones and the directions handed out
- * kept in lists -- SOCOM II's has three counts and three more words. The destructor (0x2CD8A0) tears
- * the queries down and frees them, empties the free list, and the members go: the directions list
- * deleting what it holds (0x2CD9F0, called), then the free list */
+/* the sensors' query pool (SOCOM 1's seal_sensors.cpp's _diPool, a CDiPool -- its users are OVL2's,
+ * whose view is the kit lane's seal_dipool.h: the same classes and names, only what this unit needs
+ * here): six queries of thirty-two hits each, malloc'd and built in place, the requests in use and
+ * the free ones kept in lists -- SOCOM II's has three counts and three more words. The destructor
+ * (0x2CD8A0) tears the queries down and frees them, empties the used list, and the members go: the
+ * free list deleting the requests it holds (DeleteAll 0x2CD9F0, called, then its base ~list<dir *>
+ * 0x2CD690 with 0), then the used list (its implicit destructor inlined whole) */
+class CEntity;
+
 class CDiPool {
 public:
-    /* a direction handed out (SOCOM 1's CDiPool::dir) */
-    class dir {
-    public:
-        unsigned char _0[0x10];
+    /* a request (SOCOM 1's CDiPool::dir: a ray, its query's index, its age and whose test it is) */
+    struct dir {
+        unsigned char m_state;   // 0x0
+        CPnt3D m_tail;   // 0x4
+        CPnt3D m_tip;   // 0x10
+        int m_index;   // 0x1C
+        int m_limited;   // 0x20
+        float m_age;   // 0x24
+        CEntity *m_ent;   // 0x28
+        int m_2c;   // 0x2C
+        int m_30;   // 0x30
     };
 
-    /* the queries free (the class ours) */
-    class CDiList : public std::list<zdb::DiIntersect *> {
+    /* the requests in use (seal_dipool.h's, but its range erase: the destructor below empties the
+     * list through the base's erase, the wrapper's moves the call's set-up -- the class name ours) */
+    class CDiList : public std::list<dir *> {
     };
 
-    /* the directions handed out, deleted with the list, and a count (the initialiser zeroes the word
-     * after the list through the list's own address, kept across the list's constructor: a member of
-     * the list's class, as SOCOM 1's -- the class and its members' names ours) */
+    /* the free requests, deleted with the list, and a count (the initialiser zeroes the word after
+     * the list through the list's own address, kept across the list's constructor: a member of the
+     * list's class -- seal_dipool.h's, the class and its members' names ours) */
     class CDirList : public std::list<dir *> {
     public:
         CDirList() : m_n(0) {}
         ~CDirList() { DeleteAll(); }
+        void Free(dir *d)
+        {
+            d->m_state = 0;
+            d->m_2c = 0;
+            push_back(d);
+        }
         void DeleteAll()
         {
-            iterator e = end();
             iterator i;
+            iterator e = end();
 
             for (i = begin(); i != e; ++i)
                 delete *i;
-            erase(begin(), end());
+            clear();
         }
 
         int m_n;   // 0xc
     };   // 0x10 bytes
 
-    CDiPool() : m_count(6), m_8(2), m_c(1), m_2c(0), m_30(0), m_34(0), m_38(0)
+    CDiPool() : m_count(6), m_8(2), m_limitedMax(1), m_2c(0), m_registered(0), m_34(0), m_limitedUsed(0)
     {
-        m_buf = (zdb::DiIntersect *)_malloc(6 * sizeof(zdb::DiIntersect), 0, 0);
+        m_pool = (zdb::DiIntersect *)_malloc(6 * sizeof(zdb::DiIntersect), 0, 0);
         for (int i = 0; i < 6; i++)
-            new (&m_buf[i]) zdb::DiIntersect(32);
+            new (&m_pool[i]) zdb::DiIntersect(32);
     }
     ~CDiPool()
     {
-        if (m_buf) {
+        if (m_pool) {
             for (int i = 0; i < m_count; i++)
-                m_buf[i].~DiIntersect();
-            _free(m_buf, 0, 0);
-            m_buf = 0;
+                m_pool[i].~DiIntersect();
+            _free(m_pool, 0, 0);
+            m_pool = 0;
         }
-        m_free.erase(m_free.begin(), m_free.end());
+        m_used.erase(m_used.begin(), m_used.end());
     }
 
-    zdb::DiIntersect *m_buf;   // 0x0
+    zdb::DiIntersect *m_pool;   // 0x0
     int m_count;   // 0x4
     int m_8;   // 0x8
-    int m_c;   // 0xc
-    CDiList m_free;   // 0x10
-    CDirList m_dirs;   // 0x1c
+    int m_limitedMax;   // 0xc
+    CDiList m_used;   // 0x10
+    CDirList m_free;   // 0x1c
     unsigned char m_2c;   // 0x2c
-    int m_30;   // 0x30
+    int m_registered;   // 0x30
     int m_34;   // 0x34
-    int m_38;   // 0x38
+    int m_limitedUsed;   // 0x38
 };   // 0x3c bytes
 
 CDiPool _diPool;
