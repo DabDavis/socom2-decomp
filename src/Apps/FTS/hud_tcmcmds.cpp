@@ -739,7 +739,10 @@ int tcmUpdateVote(CZSealBody *player, int arg)
 
 /* OPEN, 5 instructions (registers only): with both ids read through GetId (expanded ahead of
  * the call, the target's order) the target's remove is s0 and its id s1, here swapped. Tried:
- * the second id alone through GetId (4 bytes short), an unsigned char or an int local. */
+ * the second id alone through GetId (4 bytes short), an unsigned char or an int local; round 36:
+ * the id an int local with a dead first definition (`int id = 0;` at the top, after the persona or
+ * after cur, then assigned before the call) and remove assigned late -- all 5 off, so numbering
+ * by first definition does not move it (`bool remove = !f(persona);` folded: 14) */
 int tcmVote(CZSealBody *player, int arg)
 {
     if (s_tcmTarget) {
