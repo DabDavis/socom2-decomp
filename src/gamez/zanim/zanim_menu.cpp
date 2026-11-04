@@ -18,6 +18,9 @@
 #include "zanim_menu.h"
 #include "../zsys/zsys.h"
 
+/* MAIN's strncasecmp (0x1993C0, newlib's; include/string.h has none: declared as ai.h does) */
+extern "C" int strncasecmp(const char *a, const char *b, unsigned int n);
+
 /* the lobby objects the handlers also reach (the LAN lobby: zonline.h's CZLANLobby, its object not
  * named yet) */
 class CZLANLobby {
@@ -238,6 +241,38 @@ bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 }
 
 namespace {
+
+/* a single-player mission's title by its code's first three characters, "UU" for none (SOCOM II's;
+ * the name ours -- 0x2801C0 asks it of the mission it lists; the first four codes carry a space the
+ * three-character compare never reaches) */
+const char *GetMissionTitle(const char *code)
+{
+    if (!strncasecmp(code, "m51 ", 3))
+        return "Seeding Chaos";
+    if (!strncasecmp(code, "m52 ", 3))
+        return "Terminal Transaction";
+    if (!strncasecmp(code, "m53 ", 3))
+        return "Upland Assault";
+    if (!strncasecmp(code, "m61 ", 3))
+        return "Urban Sweep";
+    if (!strncasecmp(code, "m62", 3))
+        return "Stranglehold";
+    if (!strncasecmp(code, "m63", 3))
+        return "Hydroelectric";
+    if (!strncasecmp(code, "m71", 3))
+        return "Guardian Angels";
+    if (!strncasecmp(code, "m72", 3))
+        return "Protect and Serve";
+    if (!strncasecmp(code, "m73", 3))
+        return "Against the Tide";
+    if (!strncasecmp(code, "m81", 3))
+        return "Lockdown";
+    if (!strncasecmp(code, "m82", 3))
+        return "Guided Tour";
+    if (!strncasecmp(code, "m83", 3))
+        return "Doomsday Delivery";
+    return "UU";
+}
 
 /* the item the argument names taken from every selected character -- not a primary or a secondary,
  * which stay (SOCOM 1's) */

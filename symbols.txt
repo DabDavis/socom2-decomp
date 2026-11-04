@@ -3290,7 +3290,7 @@
 0x00280040 0x74 func_00280040  # OVL1
 0x002800C0 0x100 OnRemoveEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "RemoveEquipment" in both builds' UI command tables: SOCOM 1's OnRemoveEquipment, zanim_menu.cpp's anonymous namespace -- the same GetWeaponId/IsPrimary/IsSecondary tests and the UiCharSet walk over RemoveWeapon)
 0x002801C0 0x394 func_002801C0  # OVL1
-0x00280560 0x208 func_00280560  # OVL1
+0x00280560 0x208 GetMissionTitle__24@unnamed@zanim_menu_cpp@FPCc  # OVL1; ours, the core lane round 13 (SOCOM II's: a single-player mission's title by its code's first three characters -- twelve strncasecmp tests against m51..m83, "UU" for none -- the strings it returns read off its addiu pairs; 0x2801C0 its only caller; zanim_menu.cpp's anonymous namespace, between OnIsEquipmentSelected and OnRemoveEquipment by image order)
 0x00280770 0x14 func_00280770  # OVL1
 0x00280790 0x138 OnIsEquipmentSelected__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 3 (registered as "IsEquipmentSelected" in both builds' UI command tables: SOCOM 1's OnIsEquipmentSelected, zanim_menu.cpp's anonymous namespace -- the same walk of the selected characters' weapons for the item, Advance called out of line)
 0x002808D0 0x8 func_002808D0  # OVL1
