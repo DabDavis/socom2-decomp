@@ -2997,6 +2997,159 @@ extern "C" float func_00557D90(float x)
     return x >= 0.0f ? 1.0f : -1.0f;
 }
 
+/* a mover: where it is, its heading flattened, the heading's length and the room it keeps (the
+ * class and its names ours: 0x557190 builds one for each of its six tests) */
+struct CAiMover {
+    CAiMover(const CPnt3D &pos, const PNT3D &vel, float radius)
+        : m_pos(pos), m_dir(*(const CPnt3D *)&vel), m_radius(radius)
+    {
+        m_dir.y = 0.0f;
+        m_len = m_dir.Normalize();
+    }
+
+    CPnt3D m_pos;   // 0x0
+    CPnt3D m_dir;   // 0xc
+    float m_len;   // 0x18
+    float m_radius;   // 0x1c
+};
+
+/* whether a mover's path ahead passes within reach of a point, flat on the ground: the turn away
+ * handed back -- the way across the path, or turned about by the side the point lies on. An inline
+ * past inline_max_size, expanded one level: its own body only, its vector pieces called out of line
+ * (their copies 0x557D90-0x557E90 after 0x557190, in reverse first use; the names ours) */
+static inline bool AvoidPoint(const CAiMover &m, const CPnt3D &pt, CPnt3D &out, bool turn)
+{
+    static float s_reach = 20.0f;
+    static float s_side = 0.45f;
+    bool found = false;
+    float reach = s_reach;
+    CPnt3D side(-m.m_dir.z, 0.0f, m.m_dir.x);
+    CPnt3D p(pt.x, 0.0f, pt.z);
+    CPnt3D q(m.m_pos.x, 0.0f, m.m_pos.z);
+    CPnt3D d = p - q;
+
+    d.y = 0.0f;
+    d.Normalize();
+    float dot = Dot(d, side);
+    CPnt3D ahead = q + m.m_dir * m.m_radius;
+    CPnt3D aside = q + side * (s_side * (m.m_radius * func_00557D90(dot)));
+
+    aside.y = 0.0f;
+    ahead.y = 0.0f;
+    CPnt3D g = ahead - aside;
+    CPnt3D h(-g.z, 0.0f, g.x);
+    CPnt3D nearest;
+    float dist;
+
+    if (p.DistToVector(&aside, &ahead, &nearest, &dist) && dist < reach) {
+        if (turn)
+            out = h * func_00557D90(dot);
+        else
+            out = g;
+        found = true;
+    }
+    return found;
+}
+
+/* the AI's way past another entity (OVL2 0x557190, new in SOCOM II: 0x556370 calls it; the name
+ * unknown): with the player, both moving answers true; else whichever moves is tested against the
+ * other's place -- the AI's own move turned across the path, the other's turned about -- and a turn
+ * found is scaled and handed to the fudge velocity. With an AI both moving the same way the faster
+ * slows (the forward throttle by 0.95), else the same tests as with the player.
+ * The copies it leaves out of line match: CPnt3D's +, * and - (0x557DC0, 0x557E10, 0x557E90 -- the
+ * round 24 names) and the sign, 0x557D90 (the stand-in below).
+ * OPEN, 2 instructions short (765 of 767; round 32): the calls to CPnt3D's constructors (OVL2's
+ * copies 0x5414F0, 0x516900) and to its assignment (0x539E90) need ovl-copy marks on those rows (the
+ * char_type.cpp tail's and the AI core's range: the integrator's) before any relocation can resolve;
+ * the code itself misses on registers -- the target keeps &m.m_dir and &m.m_radius in s1/s2 from
+ * before each mover is built (its stores go through them) and the AI in s0, the other entity in s4,
+ * where MW here computes the two addresses after the Normalize and gives the AI s4. Tried: the four
+ * copies assigned, copy-constructed (the target's ld-free three-and-three shape) and through a PNT3D
+ * cast (the same) */
+extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
+{
+    static float s_still = 25.0f;
+    static float s_room = 20.0f;
+    static float s_slow = 0.95f;
+    static float s_scale = 1.0f;
+    CEntity *e = ai->m_entity;
+    CPnt3D myVel(e->m_velW);
+    CPnt3D otherVel(other->m_velW);
+    CPnt3D myPos(e->m_posW);
+    CPnt3D otherPos(other->m_posW);
+    bool result = false;
+    bool meMoving = ai::is_moving(&myVel, s_still);
+    bool otherMoving = ai::is_moving(&otherVel, s_still);
+    static float s_radius = s_room;
+
+    if (other->m_control ? ((CSealCtrl *)other->m_control)->IsPlayer() : false) {
+        if (meMoving && otherMoving)
+            result = true;
+        else if (meMoving) {
+            CAiMover m(myPos, myVel, s_radius);
+            bool found = AvoidPoint(m, otherPos, myVel, false);
+
+            result = found;
+            if (found) {
+                myVel.Scale(s_scale, &myVel);
+                ai->SetFudgeVelW(&myVel);
+                result = false;
+            }
+        } else if (otherMoving) {
+            CAiMover m(otherPos, otherVel, s_radius);
+            bool found = AvoidPoint(m, myPos, myVel, true);
+
+            result = found;
+            if (found) {
+                myVel.Scale(s_scale, &myVel);
+                ai->SetFudgeVelW(&myVel);
+            }
+        }
+    } else if (other->m_control ? ((CSealCtrl *)other->m_control)->IsAi() : false) {
+        ((CSealCtrl *)other->m_control)->GetSealCtrlAi();
+        if (meMoving && otherMoving) {
+            CPnt3D d = otherPos - myPos;
+
+            if (Dot(myVel, otherVel) > 0.0f) {
+                if (Dot(d, myVel) > 0.0f) {
+                    float t = ai->m_throttle[0];
+
+                    if (t > fabsf(other->m_control->m_throttle[0]))
+                        ai->SetThrottle(0, t * s_slow);
+                }
+            } else {
+                CAiMover m(otherPos, otherVel, s_radius);
+                bool found = AvoidPoint(m, myPos, myVel, true);
+
+                result = found;
+                if (found) {
+                    myVel.Scale(s_scale, &myVel);
+                    ai->SetFudgeVelW(&myVel);
+                }
+            }
+        } else if (meMoving) {
+            CAiMover m(myPos, myVel, s_radius);
+            bool found = AvoidPoint(m, otherPos, myVel, false);
+
+            result = found;
+            if (found) {
+                myVel.Scale(s_scale, &myVel);
+                ai->SetFudgeVelW(&myVel);
+            }
+        } else if (otherMoving) {
+            CAiMover m(otherPos, otherVel, s_radius);
+            bool found = AvoidPoint(m, myPos, myVel, true);
+
+            result = found;
+            if (found) {
+                myVel.Scale(s_scale, &myVel);
+                ai->SetFudgeVelW(&myVel);
+            }
+        }
+    }
+    return result;
+}
+
 /* CZAnim::Stop, which SOCOM II gave a flag (zanim.h's declaration) */
 extern "C" void func_002707C0(CZAnim *anim, bool now);
 
