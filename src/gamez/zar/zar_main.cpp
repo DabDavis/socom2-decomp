@@ -21,6 +21,9 @@ extern "C" char *strtok(char *s, const char *delim);
 
 static const char *DEFAULT_ZAR_NAME = "ROOT";
 static const char *DELETED_ZAR_NAME = "DELETED";
+/* whether the loads are 64-byte aligned (the next file static, 0x3DD010: SOCOM 1's at gp-32348,
+ * after DELETED_ZAR_NAME's gp-32352; true; the name ours) */
+static bool s_alignLoads = true;
 
 namespace zar {
 
@@ -102,7 +105,7 @@ bool CZAR::Open(const char *name, int dir, unsigned int mode, unsigned int padde
             if (!ok)
                 Close();
             else
-                m_tail._5c = dir;
+                m_tail.appversion = dir;
         }
     }
     if (ok && data && name) {
@@ -218,6 +221,107 @@ int CZAR::GetSize(const char *name)
     return key ? key->m_size : -1;
 }
 
+/* a block allocated 64-aligned when the archive aligns its loads, else plainly (ours) */
+static inline void *LoadAlloc(unsigned int size)
+{
+    return s_alignLoads ? _memalign(64, size, 0, 0) : _malloc(size, 0, 0);
+}
+
+/* the directory off the file's head: an empty file gets a fresh tail (versioned, the directory's
+ * number kept, to be written); else the tail read and checked, the string table loaded, the key
+ * buffer cleared and sized for the keys, the keys read from a buffer of their own, the file sought
+ * past the padding -- and the data either located (mode bit 0x20) or loaded whole, the file then
+ * swapped for a buffer over it (SOCOM 1's, grown: SOCOM 1's copied a static zero tail, SOCOM II's
+ * clears it -- a brace-initialised struct is MW's null-tested byte loop, as func_002642F0's PNT4D;
+ * its key buffer's reserve, 0x2597B0, is byte-exact from here).
+ * OPEN, the target's size, 47 instructions: the seek's and the read's results reach `ok` through
+ * an `andi` (computed in v0, branched on there, narrowed into s0 in the slot -- an int-typed
+ * right side: `(int)` casts give the size, not the narrowing; `!(... == -1)` is 8 bytes long), the
+ * padding's total and pad trade s3/s4, and the data's read loads its size late */
+bool CZAR::ReadDirectory(int dir, unsigned int mode)
+{
+    bool ok = false;
+
+    if (IsOpen()) {
+        TAIL tail = { 0 };
+
+        ok = true;
+        if (!m_pFile->GetSize()) {
+            m_tail = tail;
+            m_tail.version = 0x20002;
+            m_tail.appversion = dir;
+            m_modified = 1;
+            m_pFile->fseek(0, 0);
+        } else {
+            ok = (int)(m_pFile->fseek(0, 0) != -1);
+            if (ok)
+                ok = (int)(m_pFile->fread(&tail, sizeof(tail)) == sizeof(tail));
+            if (ok) {
+                ok = tail.version == 0x20002;
+                if (ok) {
+                    m_tail = tail;
+
+                    int size = m_tail.stable_size;
+                    char *buf = (char *)_malloc(size, 0, 0);
+
+                    m_pFile->fread(buf, size);
+                    m_stable->Destroy();
+                    m_stable->LoadTable(buf, size, true);
+
+                    int base = (int)buf - m_tail.stable_ofs;
+
+                    m_key_buffer.clear();
+                    m_key_buffer.reserve(m_tail.key_count);
+                    m_root->clear();
+
+                    CBufferIO io;
+                    int bytes = m_tail.key_count * 16;
+                    void *keys = LoadAlloc(bytes);
+
+                    m_pFile->fread(keys, bytes);
+                    io.Open(keys, bytes);
+                    ok = m_root->Read(this, &io, base);
+                    io.Close();
+
+                    int total = bytes + (size + 100);
+                    int rem = total % m_tail.padded;
+                    int pad;
+
+                    if (rem)
+                        pad = m_tail.padded - rem;
+                    else
+                        pad = 0;
+                    m_pFile->fseek(pad, 1);
+                    if (mode & 0x20)
+                        m_data_start = pad + total;
+                    else {
+                        m_data_size = m_tail.offset;
+                        if (m_data_size) {
+                            if (!m_24 || !m_databuffer)
+                                m_databuffer = LoadAlloc(m_data_size);
+                            m_data_start = pad + total;
+                            m_pFile->fread(m_databuffer, m_data_size);
+                            if (m_pFileAlloc) {
+                                m_pFileAlloc->Close();
+                                delete m_pFileAlloc;
+                                m_pFile = 0;
+                                m_pFileAlloc = 0;
+
+                                CBufferIO *b = new CBufferIO;
+
+                                m_pFileAlloc = m_pFile = b;
+                                b->Open(m_databuffer, m_data_size);
+                                m_data_start = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return ok;
+}
+
 int CZAR::ReadString(char **str)
 {
     int len = 0;
@@ -299,10 +403,10 @@ bool CZAR::WriteDirectory()
         m_tail.version = 0x20002;
         m_tail.key_count = _countKeys(m_root);
         m_stable->Pack(CKey::fixupKey, m_root);
-        m_tail.reserved[0] = m_data_padded;
+        m_tail.padded = m_data_padded;
         m_tail.stable_size = m_stable->m_bytes;
         m_tail.stable_ofs = (int)m_stable->m_buffer;
-        m_tail.crc = m_34 ? m_34->m_used : 0;
+        m_tail.offset = m_34 ? m_34->m_used : 0;
         m_pFile->fwrite(&m_tail, sizeof(m_tail));
         m_pFile->fwrite(m_stable->m_buffer, m_stable->m_bytes);
         m_root->Write(this);
