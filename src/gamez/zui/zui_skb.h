@@ -82,6 +82,13 @@ public:
         return *this;
     }
     operator T() const { return m_val; }
+    /* (ours: CSkbPieces::Append adds a sequence's value through it -- the argument converted and
+     * read before `this`, then `m_val + x` in written order: the target's add, round 19) */
+    CInit &operator+=(const T &x)
+    {
+        m_val += x;
+        return *this;
+    }
 
     T m_val;
 };

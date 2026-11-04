@@ -280,20 +280,19 @@ CUIVariable *CUIVarManager::Add(const char *name, _zrdr *value, UIVAR_LONGEVITY 
 
 /* each persistent variable saved, as an rdr of its own value -- the player's password and the
  * flag to store it only when the SecurePassword valve is on (SOCOM 1's, the password SOCOM II's).
- *
- * OPEN, 2 instructions (one swapped pair): the target computes the name's address (s3) in the
- * delay slot of the name's null test and loads the first string after it; here the two trade
- * places. The flag as `!(bool)value` gives the target's sltu/xori/andi, and the name reached
- * through a reference after the null test its reload for the second compare; the reference
- * declared ahead of the test is 2 instructions longer */
+ * The flag as `!(bool)value` gives the target's sltu/xori/andi; the name is a reference bound
+ * between the longevity test and its own null test (`if (!name) continue;`), which puts its
+ * address (s3) in the null test's delay slot -- the `a && b` test with the reference inside the
+ * block left it two instructions late, the reference ahead of both tests is 13 off (round 19) */
 void CUIVarManager::Serialize(int flags)
 {
     bool nopassword = !(bool)CValve::Create("SecurePassword", (VALVE_TYPE)1)->m_value;
     iterator i;
 
     for (i = begin(); i != end(); ++i) {
-        if ((*i).m_longevity == UIVL_PERSISTENT && (*i).m_name) {
+        if ((*i).m_longevity == UIVL_PERSISTENT) {
             char *&name = (*i).m_name;
+            if (!name) continue;
 
             if ((strcasecmp("PLAYERPASSWORD", name) && strcasecmp("STORE_PASSWORD", name)) || !nopassword) {
                 CRdrEditor rdr;
