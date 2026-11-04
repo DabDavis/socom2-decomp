@@ -192,34 +192,12 @@ bool _task_cleanup(CSched_Task *t)
     return false;
 }
 
-/* std::remove_if for this list's iterator, SPECIALISED here (a STAND-IN, as ai.h's std::find: the
- * original has one remove_if in its MSL) in the MSL headers' round-8 shape C -- the search taking
- * the iterators by const reference and copying them into locals in order, first then last: the
- * target makes the two copies in parameter order (first s5, last s4), include/algorithm's by-value
- * find_if in argument order, right to left (s4/s5: 6 instructions). include/algorithm's comment
- * has why no one shape serves the list and the vector instances; this one is the list's
- * (0x34E8C0 byte-exact, remove_copy_if 0x34E9B0 as before) */
-template <class I, class P>
-inline I sched_find_if(const I &f, const I &l, P pred)
-{
-    I first = f;
-    I last = l;
-
-    while (first != last && !pred(*first))
-        ++first;
-    return first;
-}
-
-namespace std {
-template <>
-CSched_Manager::iterator remove_if<CSched_Manager::iterator, bool (*)(CSched_Task *)>(CSched_Manager::iterator first,
-    CSched_Manager::iterator last, bool (*pred)(CSched_Task *))
-{
-    first = sched_find_if<CSched_Manager::iterator, bool (*&)(CSched_Task *)>(first, last, pred);
-    CSched_Manager::iterator i = first;
-    return first == last ? first : remove_copy_if(++i, last, first, pred);
-}
-}
+/* std::remove_if's instance for this list (0x34E8C0) is include/algorithm's: the world's round 14
+ * matched it through a stand-in specialisation here in the MSL headers' round-8 shape C (the
+ * search by const reference, its two copies made in order, first s5 then last s4), which the MSL
+ * headers' round 20 made the header's own for every bidirectional iterator (include/algorithm's
+ * remove_if) -- the specialisation retired, remove_if and remove_copy_if 0x34E9B0 byte-exact as
+ * before */
 
 /* ClearFreeList's three list operations, each one inline level deeper than include/list's (STAND-INS
  * for SOCOM II's own MSL, whose list<T *> forwards to the base a level further; what they reproduce

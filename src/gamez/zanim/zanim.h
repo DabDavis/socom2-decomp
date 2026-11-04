@@ -847,6 +847,10 @@ public:
         }
         return false;
     }
+    /* the value, read through a const accessor (ours: the SEALs' round 29 and the engine core's round 9
+     * read it so -- MW keeps that load apart from SetValue's own read of the field, which a plain
+     * `m_value` shares: the target's double `lhu`) */
+    unsigned int GetValue() const { return m_value; }
 
     char* m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4

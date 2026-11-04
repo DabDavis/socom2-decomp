@@ -187,6 +187,9 @@ public:
     IntersectStruct *GetNearestIntersect();
     /* the hits' indices sorted by their squared distance from the tail (SOCOM 1's) */
     void SortNearToFar(int *idx, float *dist);
+    /* the model-space tip and tail into VU0's vf1 and vf2 for the polygon queries (SOCOM 1's, which
+     * wrote them to VU0's data memory; int_shapes.cpp's, 0x2DD210) */
+    void LoadTipAndTail();
     /* whether characters are hit, the old setting given back (inline: the queries save and
      * restore it -- read old, store new, store old; the name is ours) */
     bool SetIntersectCharacters(bool on)

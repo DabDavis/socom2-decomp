@@ -270,7 +270,12 @@ def main(argv=None, root: Path = SRC) -> int:
     auto_at: set[int] = set()                    # matched by a generated draft
     hand_at: set[int] = set()                    # matched by hand-written source
     hand_names: set[str] = set()     # what hand-written source defines as its own (not inline copies)
-    superseded: set[str] = set()     # the drafts hand-written source supersedes, by the two rules below
+    # the drafts hand-written source supersedes, keyed by their rows' ADDRESSES (a name the map has no
+    # row of by its name): what automatch --emit drops. By name, a draft of an `ovl-copy:` row -- its
+    # placeholder's name, never the copy's -- was not listed though a hand-written copy matched its
+    # address and --emit dropped it: the integration checks found 14 dropped where the line named 4
+    # (GCC round 28a). The scoring is the two rules below, unchanged.
+    superseded: dict[int | str, str] = {}
     # one row per overlay (`ovl-copy:`): a definition of such a name -- an explicit template instance
     # (seal_tasks.cpp's _max<unsigned char>), a unit linked in two overlays (zsys_memory.cpp's
     # _malloc) -- is one overlay's, so it supersedes as a copy does, only where it matched
@@ -302,7 +307,8 @@ def main(argv=None, root: Path = SRC) -> int:
             if rx and not rx.search(fs.name):
                 continue
             if is_auto and fs.name in hand_names:
-                superseded.add(fs.name)
+                at = st.address_of(fs.name)
+                superseded[fs.name if at is None else at] = fs.name
                 continue                     # superseded by hand-written source
             if fs.name in absent:
                 rows.append(("absent", src.name, fs.name, ""))
@@ -320,8 +326,13 @@ def main(argv=None, root: Path = SRC) -> int:
             # its draft in the other (seal_env.cpp's ~vector<CZDecalDef> is OVL2's 0x5A3C60; OVL1's
             # 0x2CDB30 stays its draft's -- the integrator, 2026-11-04)
             if is_auto and fs.name in hand_copies and sym.addr in hand_at:
-                superseded.add(fs.name)
+                superseded[sym.addr] = fs.name
                 continue                     # superseded by a hand-written copy at this address
+            if is_auto and sym.addr in hand_at:
+                # hand-written source matched this row under another name (a copy scored at its
+                # overlay's `ovl-copy:` row, which the draft defines by its placeholder): --emit drops
+                # the draft (automatch.hand_defined: the matched row's name). Listed; still scored
+                superseded[sym.addr] = fs.name
             res = D.compare(obj, fs.name, sym, img, st)
             if not res.match and is_copy(elf, fs) and span and not span[0] <= sym.addr < span[1]:
                 rows.append(("elsewhere", src.name, fs.name, f"inline copy; linked at {sym.addr:#x}"))
@@ -366,10 +377,13 @@ def main(argv=None, root: Path = SRC) -> int:
     # count addresses: a template instance two units emit (an MSL vector's reserve) is one
     # function, and one name can be matched once per overlay (its copies)
     matched_bytes = sum(st.at_addr(a).size for a in now)
-    # what --emit would drop, by the rules the scoring applied: a strong hand-written definition by
-    # name, a byte-exact copy only at its own address (by name, OVL1's ~vector<CZDecalDef> draft
-    # 0x2CDB30 was listed though seal_env.cpp's copy matched OVL2's row -- automatch keeps it)
-    superseded = sorted(superseded)
+    # what --emit would drop, by the rules the scoring applied, one entry per draft (its row's
+    # address): a strong hand-written definition by name, a byte-exact copy only at its own address
+    # (by name, OVL1's ~vector<CZDecalDef> draft 0x2CDB30 was listed though seal_env.cpp's copy
+    # matched OVL2's row -- automatch keeps it), and a row hand-written source matched under another
+    # name (an `ovl-copy:` row's placeholder draft)
+    superseded = [f"{n} {k:#x}" if isinstance(k, int) and not E.is_placeholder(n) else n
+                  for k, n in sorted(superseded.items(), key=lambda kv: (isinstance(kv[0], str), kv[0]))]
     n_auto = len(auto_at - hand_at)
     print(f"\n{len(now)} byte-exact of {len(scored_at)} scored"
           f" ({matched_bytes:,} of {total_code:,} bytes in the map, {100 * matched_bytes / max(total_code, 1):.2f} %)")
