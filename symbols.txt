@@ -1904,8 +1904,8 @@
 0x00213590 0x8 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the deleter's clear, whole: vector<nav_package>::clear's copy calls it out of line)
 0x002135A0 0x68 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv  # OVL1; by hand (the vector's destructor's last level)
 0x00213610 0x70 HideTimer__14BitmapReticuleFv  # OVL1; ours by hand (the HUD lane, round 24: hud_bitmapreticule.cpp's first in the image, so defined last -- the timer's four bitmaps (0x4290, 0x4310, 0x43A0, 0x4420) faded out through their tables' SetTrans; CHUD::ReInit_Init calls it; new in SOCOM II)
-0x00213680 0x1BC func_00213680  # OVL1
-0x00213840 0x220 func_00213840  # OVL1
+0x00213680 0x1BC TimerProgressTick__14BitmapReticuleFf  # OVL1; s1:order by hand (the HUD lane, round 41: hud_bitmapreticule.cpp -- SOCOM 1's TimerProgressTick, the code alike: the bomb timer's bar from m_pCurval, m_maxval_frac and m_bIncrTimer, faded out at 400 a second without one; SOCOM II takes the frame time, SOCOM 1 read a global) 
+0x00213840 0x220 ReloadTimerTick__14BitmapReticuleFfP10CZSealBody  # OVL1; ours by hand (the HUD lane, round 41: hud_bitmapreticule.cpp -- SOCOM II's second bar, TimerProgressTick's sibling on the 0x43A0/0x4420 bitmaps and the second timer 0x44A0-0x44A8, shown while the seal reloads at a turret (IsReloading and its +0xEB8); 0x216770 calls it after TimerProgressTick)
 0x00213A60 0x3C0 func_00213A60  # OVL1
 0x00213E20 0x1354 func_00213E20  # OVL1
 0x00215180 0x14 OnPauseTest__14BitmapReticuleFv  # OVL1; split by hand (the HUD lane: a tail call through a member's vtable, padded to 0x2151A0); by hand (the HUD lane, round 16): BitmapReticule's (this+0x34, the second of the three plain C2D groups its constructor builds at 0x1C/0x34/0x4C, turned on through its vtable); CHUD::Off calls it on its reticle (+0x...) only in the pause test menu state -- SOCOM II's, the name ours
@@ -2196,7 +2196,7 @@
 0x00232950 0x14 Clear__10CTCMSoundsFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the loaded flag and the three sounds cleared; CTCM::Reset calls it)
 0x00232970 0x58 Load__10CTCMSoundsFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- .TCM_SLIDE, .TCM_SELECT twice by CSnd::GetSoundByName)
 0x002329D0 0x18 __ct__10CTCMSoundsFv  # OVL1; by hand (the HUD lane, round 24: the menu tree unit's -- the menu's sounds' constructor, called out of line by CTCM's constructor 0x237390 on CTCM+0xDB8, as round 23's notes had it)
-0x002329F0 0x1CC func_002329F0  # OVL1
+0x002329F0 0x1CC tcmAddKindItems__FUc  # OVL1; ours by hand (the HUD lane, round 41: hud_tcmtree.cpp -- one kind's items for the cache builder 0x232BC0, which calls it twenty times with byte constants: the kind's item under the first three groups' parents (0x58DD70(1..3)), then its entries (0x58DF20 to 0x58DEB0) under the third one's caption)
 0x00232BC0 0x1918 func_00232BC0  # OVL1
 0x002344E0 0xA54 func_002344E0  # OVL1
 0x00234F40 0x25C Select__4CTCMFPCc  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the recogniser's word: the open column's child of that name (+0x698) put on the path and run through its entry's command at +0x60 between tcmSetCurNode/tcmClearCurNode, a submenu opened (tcmOpenNode) or the menu closed with the back sound; a hidden item's command in the recogniser's mode; cbrecoResult calls it)
@@ -2217,8 +2217,8 @@
 0x00236AA0 0x80 GetColumn__4CTCMFUi  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the node of a depth's column, the path at +0x754 walked down from the root; the layout and the tree call it)
 0x00236B20 0x180 GetSelected__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 39: hud_tcm.cpp -- the node the menu's path selects, the path started at the first child when empty; Layout and the tree's pad handlers call it; byte-exact)
 0x00236CA0 0x78 SetCache__4CTCMFP9CTCMCache  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item cache at +0x760 and its name at +0x764, "No Cache Available" without one; inlined into Reset)
-0x00236D20 0x2E0 func_00236D20  # OVL1
-0x00237000 0xCC tcmAddItem__FPCciPCcPCcPCci  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- an item's node from theTCM's cache entry of that name (Find), the captions defaulting to the name; the menu builders 0x2329F0/0x232BC0 call it)
+0x00236D20 0x2E0 tcmCreateItem__FP9CTCMEntryPCcPCcPCcPCcb  # OVL1; ours by hand (the HUD lane, round 41: hud_tcm.cpp -- tcmAddItem's only callee: the item's node made under each node its parent name finds, theTCM itself without one, for a non-null cache entry; 0 returned on every path)
+0x00237000 0xCC tcmAddItem__FPCcPCcPCcPCcPCcb  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- an item's node from theTCM's cache entry of that name (Find), the captions defaulting to the name; the menu builders 0x2329F0/0x232BC0 call it); retyped (the HUD lane, round 41): the second parameter a parent's name (the cache builders pass string literals such as "RADIO" and the builder hands it to CTCMNode::Find), the last a bool (every one of the ~100 calls passes a constant 0 or 1)
 0x002370D0 0xCC Reset__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the tree emptied, the cache cleared, the strings wiped, the lists cleared; CHUD calls it on theTCM)
 0x002371A0 0x170 SetupItemBars__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 39: hud_tcm.cpp -- the item list's two backing bars set up and listed, the closing clock cleared; CHUD::ReInit_Init and the builder 0x232BC0 call it; byte-exact)
 0x00237310 0x38 ClearItems__4CTCMFv  # OVL1; tu: node_world.cpp~ (1.0 beta); ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item list bitmap's list at +0xDE0 cleared; CHUD calls it)
@@ -2744,7 +2744,7 @@
 0x00259230 0xC func_00259230  # OVL1
 0x00259240 0xC func_00259240  # OVL1
 0x00259250 0x558 insert__Q23std58__vector_imp<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>,0>FPQ23zar4CKeyUiRCQ23zar4CKey  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey calls it twice with (end, 1, key) where SOCOM 1 calls its insert at 0x1D9ED0: the key buffer's class insert, zar_main.cpp's template tail)
-0x002597B0 0x1F4 func_002597B0  # OVL1
+0x002597B0 0x1F4 reserve__Q23std58__vector_imp<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>,0>FUi  # OVL1; by hand, the core lane round 12 (the key buffer's class reserve: ReadDirectory 0x258000 calls it with the tail's key count right after the buffer's clear 0x2599B0; include/vector's class reserve for the 24-byte CKey, byte-exact as zar_main.cpp's copy, emitted by ReadDirectory); zar_main.cpp
 0x002599B0 0x7C clear__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's clear, ~CKey with -1 from the back; zar_main.cpp's template tail)
 0x00259A30 0xB8 __dt__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's deleter destructor, its clear inlined: zar_main.cpp's template tail)
 0x00259AF0 0x4C __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1; the MSL headers round 10: include/vector's 4-byte pod operator= (out of class, the char pod's: assign over the other's words unless this one), byte-exact as a probe (build/p10/e/podas.cpp); calls 0x259D20
@@ -2755,7 +2755,7 @@
 0x0025A000 0x11C Fetch__Q23zar4CZARFPQ23zar4CKeyPviUi  # OVL1; s1:calls (CRdrFile::Load calls it with SOCOM 1's (key, buf, size, 0)) -- the rdr lane
 0x0025A120 0x1C4 Insert__Q23zar4CZARFPQ23zar4CKeyPCvi  # OVL1; s1:calls (CRdrFile::Insert calls it where SOCOM 1's calls zar::CZAR::Insert) -- the rdr lane
 0x0025A2F0 0x98 Insert__Q23zar4CZARFPCcPCvi  # OVL1; s1:order by hand (SOCOM 1's Insert(const char *, const void *, int) 0x1DB680 step for step: NewKey, the open key, Insert(CKey *, ...), then InsertKey or the key deleted -- SOCOM II's through the out-of-line ~CKey 0x25BB50)
-0x0025A390 0x23C func_0025A390  # OVL1
+0x0025A390 0x23C FetchAll__Q23zar4CZARFPFRQ23zar4CZARPCcPviPv_iPv  # OVL1; s1:calls by hand, the core lane round 12 (SOCOM 1's zar::CZAR::FetchAll(int (*)(CZAR &, const char *, void *, int, void *), void *) 0x1DB880: CScriptArchive::LoadAll 0x288710 calls it with CZSIScript::CreateAndReadIt and the archive where SOCOM 1's LoadAll calls FetchAll; the same walk -- each key of the open one opened, sought, fetched in place and handed to the callback, the ones it takes counted -- SOCOM II's returning the count and inlining the in-place fetch); zar_search.cpp
 0x0025A5D0 0x144 Fetch__Q23zar4CZARFPCcPvi  # OVL1; s1:callee
 0x0025A720 0x1C4 Fetch__Q23zar4CZARFPCcPPc  # OVL1; s1:calls by hand (the zdb-world lane: the string fetch, at SOCOM 1's call sites)
 0x0025A8F0 0x138 Fetch__Q23zar4CZARFPCcPf  # OVL1; s1:calls by hand (the zdb-world lane: the float fetch, at SOCOM 1's call sites)
@@ -6895,12 +6895,12 @@
 0x003742F0 0x2E8 func_003742F0  # OVL1
 0x003745E0 0x46C HandlePad__10CUIListBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00374A50 0x100 func_00374A50  # OVL1
-0x00374B50 0x15C func_00374B50  # OVL1
+0x00374B50 0x15C GetItemText__10CUIListBoxFi  # OVL1; ours by hand (the HUD lane, round 41: zui_2d.cpp -- an item's text by index: none out of range, else its action's argument, its own string or its look's GetString; the walk AddItem's; the lobby's 0x2F0EA0 calls it)
 0x00374CB0 0x388 func_00374CB0  # OVL1
 0x00375040 0x488 Tick__10CUIListBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003754D0 0x238 UpdateUIVar__10CUIListBoxFP11CUIVariable  # OVL1; by hand (the HUD lane, round 16): CUIListBox's secondary table (0x4076E0: RTTI, -128, @128@__dt__10CUIListBoxFv, the thunk 0x37D060, then this) holds it where CSliderBar's holds UpdateUIVar__10CSliderBarFP11CUIVariable; it reads the variable's type byte (4, a list) as the other UpdateUIVars do
 0x00375710 0x554 __dt__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00375C70 0x1A8 func_00375C70  # OVL1
+0x00375C70 0x1A8 RemoveAllItems__10CUIListBoxFv  # OVL1; ours by hand (the HUD lane, round 41: zui_2d.cpp -- every item's node erased and the item deleted (ListItem's inline destructor), then the box's own font at 0xBC deleted and cleared; UpdateUIVar 0x3754D0 and 0x372980 call it)
 0x00375E20 0x5F8 func_00375E20  # OVL1
 0x00376420 0x110 SetNormal__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376530 0x68 func_00376530  # OVL1
@@ -7363,15 +7363,15 @@
 0x00391DE0 0x8 func_00391DE0  # OVL1
 0x00391DF0 0xC func_00391DF0  # OVL1
 0x00391E00 0x14 func_00391E00  # OVL1
-0x00391E20 0x10 func_00391E20  # OVL1
+0x00391E20 0x10 SkbSeqJamo__FP6SKBSEQi  # OVL1; the UI lane round 23: ours, by its body and its caller (zui_hangul.cpp: a SKBSEQ's jamo byte i, sign-extended -- the composer 0x391670 calls it with the sequence from SKBRULE::Seq and compares it with the jamo string's byte; byte-exact)
 0x00391E30 0xC func_00391E30  # OVL1
 0x00391E40 0x8 func_00391E40  # OVL1
-0x00391E50 0x14 func_00391E50  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta)
+0x00391E50 0x14 Part__9CSkbSplitFi  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); the UI lane round 23: ours, by its body and its caller (zui_hangul.cpp: the composer's split, a total and a vector of parts at 4 -- its part i; the composer 0x391670 calls it with the split built by 0x391F80 at sp+256; byte-exact)
 0x00391E70 0xD0 func_00391E70  # OVL1
 0x00391F40 0x8 func_00391F40  # OVL1
 0x00391F50 0x10 func_00391F50  # OVL1
 0x00391F60 0x20 func_00391F60  # OVL1
-0x00391F80 0x190 func_00391F80  # OVL1
+0x00391F80 0x190 __ct__9CSkbSplitFii  # OVL1; the UI lane round 23: ours, by its body and its callers (zui_hangul.cpp: the composer's split of n jamo into k parts -- k-1 parts of 1 and the rest last, through OVL1's pod resize 0x28B0E0 and a reverse iterator; the composer 0x391670 builds one at sp+256 and at sp+240; byte-exact)
 0x00392110 0x14 func_00392110  # OVL1
 0x00392130 0x2A4 SkbParseComplete__FP15CSkbCompleteVecP5_zrdrPCc  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries -- each Seq's production names by their index in s_rules, pushed onto the entry's index vector, and a Val2 flag -- the vector grown to each index through 0x392770; 0x390C40 calls it with s_complete); the UI lane round 10: ours, by its body (zui_hangul.cpp: CompleteCharacter's entries, each Seq's production names by index in s_rules pushed onto the entry's index vector, a Val2 flag; the vector grown through 0x392770; 0x390C40 calls it with s_complete)
 0x003923E0 0x220 insert__Q23std36__vector_pod<c,Q23std12allocator<c>>FPcUiRCc  # OVL1; the MSL headers round 9: include/vector's 1-byte pod insert (memmove, memset, memcpy), byte-exact as a probe (build/p9/vc1.cpp); zui_hangul.cpp's template tail, the composition's push_backs call it
@@ -8129,50 +8129,50 @@
 0x003C5E10 0x30 IsM203Weapon__11CZFTSWeaponF10EQUIP_ITEM  # OVL1; by hand (the same test as IsM203Weapon of an id byte, 52 or 61; the member one, next to it, inlines it -- its true a daddiu; the name is ours)
 0x003C5E40 0x30 IsM203Weapon__11CZFTSWeaponFv  # OVL1; s1:order by hand (SOCOM 1's test of the id byte against 52 and 61)
 0x003C5E70 0x38 AddZoommode__11CZFTSWeaponFf  # OVL1; s1:order by hand (a float pushed on the zoom vector at 0x280 through the pod insert)
-0x003C5EB0 0x8 func_003C5EB0  # OVL1
-0x003C5EC0 0x8 func_003C5EC0  # OVL1
-0x003C5ED0 0x8 func_003C5ED0  # OVL1
-0x003C5EE0 0x20 func_003C5EE0  # OVL1
-0x003C5F00 0x20 func_003C5F00  # OVL1
-0x003C5F20 0x8 func_003C5F20  # OVL1
-0x003C5F30 0x8 func_003C5F30  # OVL1
-0x003C5F40 0x20 func_003C5F40  # OVL1
+0x003C5EB0 0x8 GetRumbleLow_Power__11CZFTSWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetRumbleLow_Power__11CZFTSWeaponCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_rumblelow_power); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5EC0 0x8 GetRumbleLow_Time__11CZFTSWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetRumbleLow_Time__11CZFTSWeaponCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_rumblelow_time); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5ED0 0x8 GetRumbleLow_Enable__11CZFTSWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetRumbleLow_Enable__11CZFTSWeaponCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_rumblelow_enable); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5EE0 0x20 SetRumbleLow_Power__11CZFTSWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetRumbleLow_Power__11CZFTSWeaponFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_rumblelow_power); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5F00 0x20 SetRumbleLow_Time__11CZFTSWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetRumbleLow_Time__11CZFTSWeaponFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_rumblelow_time); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5F20 0x8 GetRumbleHigh_Time__11CZFTSWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetRumbleHigh_Time__11CZFTSWeaponCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_rumblehigh_time); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5F30 0x8 GetRumbleHigh_Enable__11CZFTSWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetRumbleHigh_Enable__11CZFTSWeaponCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_rumblehigh_enable); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5F40 0x20 SetRumbleHigh_Time__11CZFTSWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetRumbleHigh_Time__11CZFTSWeaponFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_rumblehigh_time); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
 0x003C5F60 0x8 GetFireRifle_KickRandomDist__11CTargetModsCFv  # OVL1; s1:order (the integrator's lead from the kit lane, vetted by the wep lane: SOCOM 1's CTargetMods getter 0x315AA0 reads +0x44, SOCOM II's +0x48 -- the float SOCOM II inserts at 0x28 moves every later member 4 on; first of the pair in both builds, and SOCOM 1's CZKit::Fire calls them at the same point of the kick)
 0x003C5F70 0x8 GetFireRifle_KickBaseDist__11CTargetModsCFv  # OVL1; s1:order (the integrator's lead, vetted by the wep lane: SOCOM 1's 0x315AB0 reads +0x40, SOCOM II's +0x44, right after KickRandomDist in both builds)
-0x003C5F80 0x8 func_003C5F80  # OVL1
-0x003C5F90 0x8 func_003C5F90  # OVL1
-0x003C5FA0 0x8 func_003C5FA0  # OVL1
-0x003C5FB0 0x8 func_003C5FB0  # OVL1
-0x003C5FC0 0x8 func_003C5FC0  # OVL1
-0x003C5FD0 0x8 func_003C5FD0  # OVL1
-0x003C5FE0 0x8 func_003C5FE0  # OVL1
-0x003C5FF0 0x8 func_003C5FF0  # OVL1
-0x003C6000 0x8 func_003C6000  # OVL1
-0x003C6010 0x8 func_003C6010  # OVL1
-0x003C6020 0x8 func_003C6020  # OVL1
-0x003C6030 0x8 func_003C6030  # OVL1
-0x003C6040 0x8 func_003C6040  # OVL1
-0x003C6050 0x8 func_003C6050  # OVL1
-0x003C6060 0x8 func_003C6060  # OVL1
-0x003C6070 0x8 func_003C6070  # OVL1
-0x003C6080 0x8 func_003C6080  # OVL1
-0x003C6090 0x8 func_003C6090  # OVL1
-0x003C60A0 0x8 func_003C60A0  # OVL1
-0x003C60B0 0x8 func_003C60B0  # OVL1
-0x003C60C0 0x8 func_003C60C0  # OVL1
-0x003C60D0 0x8 func_003C60D0  # OVL1
-0x003C60E0 0x8 func_003C60E0  # OVL1
-0x003C60F0 0x8 func_003C60F0  # OVL1
-0x003C6100 0x8 func_003C6100  # OVL1
-0x003C6110 0x8 func_003C6110  # OVL1
+0x003C5F80 0x8 GetFireRifle_KickReturnRate__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetFireRifle_KickReturnRate__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_firerifle_kickreturnrate); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5F90 0x8 GetFireRifle_KickRate__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetFireRifle_KickRate__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_firerifle_kickrate); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5FA0 0x8 SetFireRifle_KickRandomDist__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetFireRifle_KickRandomDist__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_firerifle_kickrandomdist); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5FB0 0x8 SetFireRifle_KickBaseDist__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetFireRifle_KickBaseDist__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_firerifle_kickbasedist); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5FC0 0x8 SetFireRifle_KickReturnRate__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetFireRifle_KickReturnRate__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_firerifle_kickreturnrate); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5FD0 0x8 SetFireRifle_KickRate__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetFireRifle_KickRate__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_firerifle_kickrate); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5FE0 0x8 GetSniper_DecayRate__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetSniper_DecayRate__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_sniper_decayrate); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C5FF0 0x8 SetSniper_DecayRate__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetSniper_DecayRate__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_sniper_decayrate); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6000 0x8 GetSniper_DistLimit_PosY__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetSniper_DistLimit_PosY__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_distlimit_posy); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6010 0x8 GetSniper_DistLimit_PosX__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetSniper_DistLimit_PosX__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_distlimit_posx); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6020 0x8 SetSniper_DistLimit_PosY__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetSniper_DistLimit_PosY__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_distlimit_posy); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6030 0x8 SetSniper_DistLimit_PosX__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetSniper_DistLimit_PosX__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_distlimit_posx); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6040 0x8 GetSniper_DistPPFrame_PosY__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetSniper_DistPPFrame_PosY__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_distppframe_posy); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6050 0x8 GetSniper_DistPPFrame_PosX__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetSniper_DistPPFrame_PosX__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_distppframe_posx); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6060 0x8 SetSniper_DistPPFrame_PosY__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetSniper_DistPPFrame_PosY__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_distppframe_posy); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6070 0x8 SetSniper_DistPPFrame_PosX__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetSniper_DistPPFrame_PosX__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_distppframe_posx); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6080 0x8 GetTarget_Max__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetTarget_Max__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_target_max); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6090 0x8 GetTarget_Min__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetTarget_Min__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_target_min); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C60A0 0x8 GetTarget_Constrict__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetTarget_Constrict__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_target_constrict); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C60B0 0x8 GetTarget_DilateUponMovementMult__11CTargetModsCFv  # OVL1; by hand (the weapons lane, round 23: new in SOCOM II among SOCOM 1's accessors -- ReadWeapon's "TargetDilateUponMovementMult" key; the name ours); zwep_ftsweapon.cpp
+0x003C60C0 0x8 GetTarget_DilateUponMovement__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetTarget_DilateUponMovement__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_target_dilateuponmovement); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C60D0 0x8 GetTarget_DilateUponFire__11CTargetModsCFv  # OVL1; by hand (the weapons lane, round 23: new in SOCOM II among SOCOM 1's accessors -- ReadWeapon's "TargetDilateUponFire" key; the name ours); zwep_ftsweapon.cpp
+0x003C60E0 0x8 SetTarget_Max__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetTarget_Max__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_target_max); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C60F0 0x8 SetTarget_Min__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetTarget_Min__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_target_min); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6100 0x8 SetTarget_Constrict__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetTarget_Constrict__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_target_constrict); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6110 0x8 SetTarget_DilateUponMovementMult__11CTargetModsFf  # OVL1; by hand (the weapons lane, round 23: new in SOCOM II among SOCOM 1's accessors -- ReadWeapon's "TargetDilateUponMovementMult" key; the name ours); zwep_ftsweapon.cpp
 0x003C6120 0x1C SetTarget_DilateUponMovement__11CTargetModsFf  # OVL1; s1:order by hand (SOCOM 1's: the value and its square root, at 0x24 and 0x2C)
-0x003C6140 0x8 func_003C6140  # OVL1
-0x003C6150 0x8 func_003C6150  # OVL1
-0x003C6160 0x8 func_003C6160  # OVL1
-0x003C6170 0x8 func_003C6170  # OVL1
-0x003C6180 0x8 func_003C6180  # OVL1
-0x003C6190 0x8 func_003C6190  # OVL1
-0x003C61A0 0x8 func_003C61A0  # OVL1
+0x003C6140 0x8 SetTarget_DilateUponFire__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetTarget_DilateUponFire__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_target_dilateuponfire); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6150 0x8 GetReticuleKnock_Max__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetReticuleKnock_Max__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_reticuleknock_max); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6160 0x8 GetReticuleKnock_Return__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetReticuleKnock_Return__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_reticuleknock_return); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6170 0x8 GetReticuleKnock__11CTargetModsCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetReticuleKnock__11CTargetModsCFv in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_reticuleknock); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6180 0x8 SetReticuleKnock_Max__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetReticuleKnock_Max__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_reticuleknock_max); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C6190 0x8 SetReticuleKnock_Return__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetReticuleKnock_Return__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_reticuleknock_return); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
+0x003C61A0 0x8 SetReticuleKnock__11CTargetModsFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetReticuleKnock__11CTargetModsFf in the same run of accessors, 0x3159C0-0x315CD0 there, at SOCOM II's offset of the same DWARF member (m_reticuleknock); ReadWeapon's rdr keys confirm the setters); zwep_ftsweapon.cpp
 0x003C61B0 0x8 Recoil__11CZFTSWeaponFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003C61C0 0x50 AccuracyScalar_Max__11CZFTSWeaponFf  # OVL1; s1:order by hand (SOCOM 1's shape: the maximum stored, the slope over the burst counts recomputed; 0xC0 later)
 0x003C6210 0x50 AccuracyScalar_Min__11CZFTSWeaponFf  # OVL1; s1:order by hand (the same for the minimum)
@@ -8258,11 +8258,11 @@
 0x003CCC90 0xF8 SetAllFlag18__16CZProjectileListFv  # OVL1; by hand (the wep lane: SOCOM II's -- flag 18 set on every charge and every projectile in use; _OnMissionComplete calls it; the name ours)
 0x003CCD90 0x118 ForgetHitNode__16CZProjectileListFPQ23zdb5CNode  # OVL1; by hand (the wep lane: SOCOM II's -- CZProjectile::ForgetHitNode on every charge and every projectile in use; ~CZSealBody calls it; the name ours)
 0x003CCEB0 0x2A0 Clear__16CZProjectileListFi10EQUIP_ITEM  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::Clear(int) with a weapon id added -- a shooter's charges (of that weapon) and, with none given, his projectiles made to explode and taken out; CZSealBody::Destroy and _OnMissionComplete call it)
-0x003CD150 0x24C func_003CD150  # OVL1
-0x003CD3A0 0x70 func_003CD3A0  # OVL1
-0x003CD410 0x40 func_003CD410  # OVL1
-0x003CD450 0x8 func_003CD450  # OVL1
-0x003CD460 0x14 func_003CD460  # OVL1
+0x003CD150 0x24C Clear__16CZProjectileListFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's Clear__16CZProjectileListFv 0x31B2A0, between Clear(int) and Init as here -- the charges reported, their pickups destroyed, deleted and erased, the charges' vector freed, then the slots' projectiles up to the last used, a network game's only the player's, set to 3, reported and freed; UnInit and CZWeapon::Close call it, as SOCOM 1's UnInit); zwep_projlist.cpp
+0x003CD3A0 0x70 __dt__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>Fv  # OVL1; by hand (the weapons lane, round 23: CZProjectileList::Clear()'s FreeVector of the charges -- the temporary's destructor, called with -1, three this-tests; byte-exact as zwep_projlist.cpp emits it); zwep_projlist.cpp
+0x003CD410 0x40 swap__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>FRQ23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>  # OVL1; by hand (the weapons lane, round 23: CZProjectileList::Clear()'s FreeVector swap, out of line; byte-exact as zwep_projlist.cpp emits it); zwep_projlist.cpp
+0x003CD450 0x8 clear__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>Fv  # OVL1; by hand (the weapons lane, round 23: CZProjectileList::Clear()'s FreeVector clear, the size zeroed, out of line; byte-exact as zwep_projlist.cpp emits it); zwep_projlist.cpp
+0x003CD460 0x14 __ct__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>Fv  # OVL1; by hand (the weapons lane, round 23: CZProjectileList::Clear()'s FreeVector temporary's constructor, out of line; byte-exact as zwep_projlist.cpp emits it); zwep_projlist.cpp
 0x003CD480 0x22C Init__16CZProjectileListFv  # OVL1; s1:calls
 0x003CD6B0 0x88 __dt__16CZProjectileListFv  # OVL1; s1:align
 0x003CD740 0xD0 __ct__16CZProjectileListFi  # OVL1; by hand (the wep lane: CZWeapon::CreateProjectileList news 0x208 bytes -- CZProjectileList's size -- and calls it with the block and its count, as SOCOM 1's CreateProjectileList__8CZWeaponFi calls __ct__16CZProjectileListFi; not written)
@@ -8272,14 +8272,14 @@
 0x003CF190 0x44 __dt__10ZWepReaderFv  # OVL1; s1:align
 0x003CF1E0 0x8 __ct__10ZWepReaderFv  # OVL1; by hand (the weapons lane, round 22: an empty class's constructor handing back this, right after ~ZWepReader 0x3CF190 at the end of the reader's unit; zwep_reader.cpp defines both)
 0x003CF1F0 0x90C GetEnableValve__8CZWeaponF10EQUIP_ITEM  # OVL1; by hand (the weapons lane, round 22: a switch over items, each returning CValve::GetByName("Enable_<item>") -- Enable_LAW, Enable_M16 ...; none for the rest; zanim_menu.cpp's slot test reads the valve's flags at +4, as the engine core's round 7 found; the name ours); zwep_weapon.cpp
-0x003CFB00 0x8 func_003CFB00  # OVL1
-0x003CFB10 0x8 func_003CFB10  # OVL1
+0x003CFB00 0x8 GetAnim__11CZItemStashFv  # OVL1; by hand (the weapons lane, round 23: CZItemStash's word at 0x24 returned -- the CZAnim * CreateNetAmmoPickup and 0x59FAC0 store through 0x3CFB10 from CZAnim::ActivateArg's result; CPickup::Destroy reads it before deleting the stash; the name ours); zwep_weapon.cpp
+0x003CFB10 0x8 SetAnim__11CZItemStashFP6CZAnim  # OVL1; by hand (the weapons lane, round 23: CZItemStash's word at 0x24 set -- CreateNetAmmoPickup 0x59E9E0 and 0x59FAC0/0x59FD50 pass it CZAnim::ActivateArg's result (a CZAnim *); the name ours); zwep_weapon.cpp
 0x003CFB20 0x118 Compact__11CZItemStashFv  # OVL1; by hand (the wep lane: a 0x28-byte object of three parallel pod vectors at 0/0xC/0x18 and a word at 0x24; erases, through the pod vector's erase 0x28F220, every entry whose third word is zero; CPickup::CleanupAmmoPickup calls it; the class and its names ours); zwep_weapon.cpp
 0x003CFC40 0xA8 Clear__11CZItemStashFi  # OVL1; by hand (the wep lane: zeroes entry i of all three lists when the live count reaches i; OVL2's 0x59DFB0 calls it for eight slots; the name ours); zwep_weapon.cpp
 0x003CFCF0 0x78 Count__11CZItemStashFv  # OVL1; by hand (the wep lane: the third list's non-zero entries counted; the kit and the pickups call it; the name ours); zwep_weapon.cpp
 0x003CFD70 0xC8 Get__11CZItemStashFiPiPiPi  # OVL1; by hand (the wep lane: entry i's three words out, false when fewer are live; the name ours); zwep_weapon.cpp
-0x003CFE40 0xA8 Set__11CZItemStashFiiii  # OVL1; by hand (the wep lane: entry i's three words set when enough are live; the kit calls it; the name ours); zwep_weapon.cpp
-0x003CFEF0 0x88 Add__11CZItemStashFiii  # OVL1; by hand (the wep lane: the three words pushed through the pod insert 0x1FE340; the pickups call it; the name ours); zwep_weapon.cpp
+0x003CFE40 0xA8 Set__11CZItemStashFiP8CZWeaponP6CZAmmoi  # OVL1; by hand (the wep lane: entry i's three words set when enough are live; the kit calls it; the name ours); zwep_weapon.cpp; by hand (the weapons lane, round 23: the parameters typed as the stash's three vectors -- a CZWeapon *, a CZAmmo *, a count; no hand-written caller spells the old name, the kit's 0x5BB990 calls it); zwep_weapon.cpp
+0x003CFEF0 0x88 Add__11CZItemStashFP8CZWeaponP6CZAmmoi  # OVL1; by hand (the wep lane: the three words pushed through the pod insert 0x1FE340; the pickups call it; the name ours); zwep_weapon.cpp; by hand (the weapons lane, round 23: the parameters typed as the stash's three vectors -- CreateNetAmmoPickup pushes CZWeaponList::GetWeapon's and CZAmmoList::GetAmmo's results and a count, the kit's 0x5BA040 its slot's weapon and ammunition pointers; no hand-written caller spells the old name); zwep_weapon.cpp
 0x003CFF80 0x30 __ct__11CZItemStashFv  # OVL1; by hand (the wep lane: zeroes the 0x28-byte CZItemStash -- its three word vectors and the word at 0x24 -- right after CZItemStash::Add; the kit (0x59E9E0, 0x59FAC0, 0x59FD50) and 0x2A8140 build theirs with it; the name ours)
 0x003CFFB0 0x10 RemoveExplosivesInRange__8CZWeaponFPC6CPnt3Df  # OVL1; by hand (the wep lane: tail-calls CZProjectileList::RemoveExplosivesInRange on m_pProjectilelist with its point and range; 0x25CC80 calls it; the name ours)
 0x003CFFC0 0xC TimerCleared__8CZWeaponFv  # OVL1; s1:order (SOCOM 1's CZWeapon::TimerCleared 0x31C9A0, first of its timer statics as here: returns m_timer_bTimerCleared, 0x4B52D0)
@@ -8366,13 +8366,13 @@
 0x003D2410 0x8 GetHitAnimName__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: the "%s_%s" hit animations' prefix, as SOCOM 1's; m_hitanimname, 0xA8)
 0x003D2420 0x44 AllocateHitAnimMem__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons calls it first of the two allocators, as SOCOM 1's; m_hitanim, 0x80, _malloc'd for the materials)
 0x003D2470 0x44 AllocateSpecialMaterialAnimMem__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: the second allocator, m_specialmaterialanim, 0x94)
-0x003D24C0 0x6C func_003D24C0  # OVL1
-0x003D2530 0x6C func_003D2530  # OVL1
-0x003D25A0 0x6C func_003D25A0  # OVL1
-0x003D2610 0x6C func_003D2610  # OVL1
+0x003D24C0 0x6C SetSpecialMaterialAnimName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetSpecialMaterialAnimName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_specialmaterialanimname); ReadWeapon calls it for "SpecialMaterialAnimName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2530 0x6C SetDefaultSpecialAnimName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetDefaultSpecialAnimName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_defaultspecialanimname); ReadWeapon calls it for "DefaultSpecialAnimName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D25A0 0x6C SetFireAnimName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetFireAnimName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_fireanimname); ReadWeapon calls it for "FireAnimName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2610 0x6C SetHitAnimName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetHitAnimName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_hitanimname); ReadWeapon calls it for "HitAnimName" where SOCOM 1's Read calls it); zwep_weapon.cpp
 0x003D2680 0xC0 IsLegalAmmo__8CZWeaponFP6CZAmmo  # OVL1; s1:align confirmed by hand (the wep lane: walks m_LegalAmmoList (0xC4) comparing CZAmmo::GetName's strings, as SOCOM 1's); zwep_weapon.cpp
 0x003D2740 0x8 GetIconTextureName__8CZWeaponCFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons tests it and passes it to CWorld::GetTexHandle as SOCOM 1's does; returns m_icontexname, 0x14)
-0x003D2750 0x8 func_003D2750  # OVL1
+0x003D2750 0x8 GetModelName__8CZWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetModelName__8CZWeaponCFv 0x31EBE0, between GetIconTextureName and GetAssociatedGearName as here -- m_modelname, 0x18 in SOCOM 1 and 0x1C here, both neighbours shifted by the same word; its callers hand it to CWorld::GetModel); zwep_weapon.cpp
 0x003D2760 0x8 GetAssociatedGearName__8CZWeaponFv  # OVL1; s1:calls by hand (the kit lane's round 12, vetted by the integrator: called where SOCOM 1's SetItemByIndex calls CZWeapon::GetAssociatedGearName, with the same arguments)
 0x003D2770 0x34 func_003D2770  # OVL1
 0x003D27B0 0x8 func_003D27B0  # OVL1
@@ -8385,24 +8385,24 @@
 0x003D2820 0x8 func_003D2820  # OVL1
 0x003D2830 0x8 GetDescription__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 8, SOCOM 1's m_description; next to GetName as in SOCOM 1's zwep_weapon.cpp)
 0x003D2840 0x8 GetName__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 4, m_name; CZWeaponList::GetWeapon(name) compares it)
-0x003D2850 0x6C func_003D2850  # OVL1
-0x003D28C0 0x6C func_003D28C0  # OVL1
-0x003D2930 0x6C func_003D2930  # OVL1
-0x003D29A0 0x8 func_003D29A0  # OVL1
-0x003D29B0 0x8 func_003D29B0  # OVL1
-0x003D29C0 0x8 func_003D29C0  # OVL1
-0x003D29D0 0x8 func_003D29D0  # OVL1
-0x003D29E0 0x8 func_003D29E0  # OVL1
-0x003D29F0 0x8 func_003D29F0  # OVL1
-0x003D2A00 0x10 func_003D2A00  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta)
-0x003D2A10 0x8 func_003D2A10  # OVL1
-0x003D2A20 0x8 func_003D2A20  # OVL1
+0x003D2850 0x6C SetIconTextureName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetIconTextureName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_icontexname); ReadWeapon calls it for "IconTextureName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D28C0 0x6C SetModelName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetModelName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_modelname); ReadWeapon calls it for "ModelName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2930 0x6C SetAssociatedGearName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetAssociatedGearName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_associatedgearname); ReadWeapon calls it for "AssociatedGear" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29A0 0x8 SetGravity__8CZWeaponFf  # OVL1; by hand (the weapons lane, round 23: new in SOCOM II among SOCOM 1's setters, before SetMuzzleVelocity -- the float at 0x48, ReadWeapon's Gravity_Acceleration (9.8 scaled by default), -1 in the constructor; the name ours); zwep_weapon.cpp
+0x003D29B0 0x8 SetMuzzleVelocity__8CZWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetMuzzleVelocity__8CZWeaponFf in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_muzzlevel); ReadWeapon calls it for "Muzzle_Velocity" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29C0 0x8 SetImpactRadius__8CZWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetImpactRadius__8CZWeaponFf in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_impactradius); ReadWeapon calls it for "ImpactRadius" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29D0 0x8 SetEffectiveRange__8CZWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetEffectiveRange__8CZWeaponFf in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_effectiverange); ReadWeapon calls it for "Effective_Range" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29E0 0x8 SetMaxRange__8CZWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetMaxRange__8CZWeaponFf in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_maxrange); ReadWeapon calls it for "Maximum_Range" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29F0 0x8 SetEncumbrance__8CZWeaponF11ENCUMBRANCE  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetEncumbrance__8CZWeaponF11ENCUMBRANCE in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_encumb); ReadWeapon calls it for "Encumbrance" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2A00 0x10 SetSoundRadius__8CZWeaponFf  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:order by hand (the weapons lane, round 23: SOCOM 1's SetSoundRadius__8CZWeaponFf, the radius and its square at 0x30/0x34, between SetEncumbrance and SetNumMags as here; ReadWeapon's Sound_Radius); zwep_weapon.cpp
+0x003D2A10 0x8 SetNumMags__8CZWeaponFi  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetNumMags__8CZWeaponFi in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_nummags); ReadWeapon calls it for "NumMags" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2A20 0x8 SetAmmoCapacity__8CZWeaponFi  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetAmmoCapacity__8CZWeaponFi in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_ammocap); ReadWeapon calls it for "Ammo_Capacity" where SOCOM 1's Read calls it); zwep_weapon.cpp
 0x003D2A30 0x30 SetHasFireMode__8CZWeaponF8FIREMODE  # OVL1; s1:order by hand (SOCOM 1's: the mode's flag set at 0xD0, the maximum mode at 0x24 raised to it)
 0x003D2A60 0x20 HasFireMode__8CZWeaponCFi  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's, the same code -- true past mode 4, else the byte at 0xD0+mode, SOCOM 1's 0xA8)
 0x003D2A80 0x40 SetMaxFireMode__8CZWeaponF8FIREMODE  # OVL1; by hand (new in SOCOM II, right after SetHasFireMode: the maximum mode stored at 0x24 and every mode up to it, at most five, flagged at 0xD0; the name is ours)
 0x003D2AC0 0x6C func_003D2AC0  # OVL1
-0x003D2B30 0x6C func_003D2B30  # OVL1
-0x003D2BA0 0x6C func_003D2BA0  # OVL1
+0x003D2B30 0x6C SetDescription__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetDescription__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_description); ReadWeapon calls it for "DisplayName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2BA0 0x6C SetName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_name); ReadWeapon calls it for "InternalName" where SOCOM 1's Read calls it); zwep_weapon.cpp
 0x003D2C10 0x8 func_003D2C10  # OVL1
 0x003D2C20 0x8 func_003D2C20  # OVL1
 0x003D2C30 0x8 func_003D2C30  # OVL1
@@ -9911,9 +9911,9 @@
 0x00542290 0x14C TickTimers__7CPickupFPC6CPnt3Df  # OVL2; ours (new in SOCOM II, after DestroyNetPickups): every pickup's time (the float at 0) run down by the second argument unless it is -1 (0x3F3440); one run out is destroyed when farther than 300 from the point (90000 squared, 0x64FC50), else given 60 again (0x64FC58) (the SEAL lane, round 3)
 0x005423E0 0x88 NetTick__7CPickupFPC6CPnt3Df  # OVL2; ours (new in SOCOM II; pickup_main.cpp, between TickTimers and Destroy): CMission::Tick calls it with the player's place and dT where an offline game calls TickTimers (theNetwork's online byte picks), ftsNetworkGameUninit with (0, 0); it ignores both, deleting the MP bomb's node (DeleteMPBombNode inlined) when the byte at 0x44D4A8 is set -- the SEAL lane, round 9
 0x00542470 0x36C Destroy__7CPickupFP7CPickup  # OVL2; s1:calls (DestroyNetPickups calls it where SOCOM 1's does)
-0x005427E0 0x70 func_005427E0  # OVL2
-0x00542850 0x70 func_00542850  # OVL2
-0x005428C0 0x70 func_005428C0  # OVL2
+0x005427E0 0x70 __dt__Q23std48vector<P8CZWeapon,Q23std21allocator<P8CZWeapon>>Fv  # OVL2; the stash's vector<CZWeapon *> at +0 (the weapons' round 23: CZItemStash's members, one per member, by the target's call order -- CreateNetAmmoPickup, CPickup::Destroy and 0x59FD50 destroy +0x18, +0xC, +0 -- and a compiled delete of the retyped stash calling the three out of line in that order; the three bodies are identical (a 4-byte pod vector's), so the order is the evidence)
+0x00542850 0x70 __dt__Q23std44vector<P6CZAmmo,Q23std19allocator<P6CZAmmo>>Fv  # OVL2; the stash's vector<CZAmmo *> at +0xC (the weapons' round 23: CZItemStash's members, one per member, by the target's call order -- CreateNetAmmoPickup, CPickup::Destroy and 0x59FD50 destroy +0x18, +0xC, +0 -- and a compiled delete of the retyped stash calling the three out of line in that order; the three bodies are identical (a 4-byte pod vector's), so the order is the evidence)
+0x005428C0 0x70 func_005428C0  # OVL2; OVL2's copy of vector<int>'s destructor (OVL1 0x2C7290, the same words), the stash's vector<int> at +0x18 (the weapons' round 23: CZItemStash's members, one per member, by the target's call order -- CreateNetAmmoPickup, CPickup::Destroy and 0x59FD50 destroy +0x18, +0xC, +0 -- and a compiled delete of the retyped stash calling the three out of line in that order; the three bodies are identical (a 4-byte pod vector's), so the order is the evidence); ovl-copy: __dt__Q23std30vector<i,Q23std12allocator<i>>Fv
 0x00542930 0x258 NetworkCreate__7CPickupFUiQ27CPickup7PU_TYPEPQ23zdb5CNodePv  # OVL2; s1:order by hand (SOCOM 1's NetworkCreate__7CPickupFUcQ27CPickup7PU_TYPEPQ23zdb5CNodePv, before DebugPickups as here: the same making, the id the network's -- SOCOM II's a word, the owner its upper half; the SEAL lane, round 8)
 0x00542B90 0x260 Create__7CPickupFUiQ27CPickup7PU_TYPEPQ23zdb5CNodePv  # OVL2; s1:order by hand (SOCOM 1's Create__7CPickupFQ27CPickup7PU_TYPEPQ23zdb5CNodePv: the pool's front or a new CPickup, nextPickupId taken, the list's push_back -- SOCOM II adds the owner's entity id first: CreateMPBombPickup passes the player's; the SEAL lane, round 8)
 0x00542DF0 0x60 DebugPickups__7CPickupFv  # OVL2; s1:order (after NetworkCreate's place, before Close, as SOCOM 1's DebugPickups__7CPickupFv: the list walked with an assigned iterator and nothing done -- its printing compiled out in both) (the SEAL lane, round 3)
@@ -9954,7 +9954,7 @@
 0x00544C30 0xC CurrentPickup__10CZSealBodyFv  # OVL2; s1:order (after CurrentPickupSecondary); FindPickup of m_control's pickup id (SOCOM 1's 0x148, now 0x14C)
 0x00544C40 0x18 CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (SOCOM 1's CompassAnchor_Hostage, the one before it, is gone); the anchor at 0xEC4 (SOCOM 1's 0xDB8) swapped in, whether there was none returned
 0x00544C60 0x18 CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor  # OVL2; s1:order (after CompassAnchor_MPBase); the anchor at 0xEC0 (SOCOM 1's 0xDB4)
-0x00544C80 0x14 func_00544C80  # OVL2
+0x00544C80 0x14 ActionSelectionMask__10CZSealBodyFUc  # OVL2; by hand (the SEALs, round 33): SOCOM 1's CZSealBody::ActionSelectionMask (Uib, the selection word at 0xdc4 -- SOCOM II's 0xED4, after ActionAvailableMask's 0xED0, as SOCOM 1's 0xdc4 after 0xdc0) reshaped to take the action alone, its bit stored (1 << id), the HUD's round 39 reading by hud_actionbitmap.cpp's call; the byte narrowed in the callee (andi 0xff) as ActionAvailableMask's unsigned char next to it; seal.cpp
 0x00544CA0 0x50 ActionAvailableMask__10CZSealBodyFUcb  # OVL2; size 0x50 (the seed split it after its first branch: 0x544CA8 was its body): a bit (1 << id) set in or cleared from the mask at 0xED0 by a bool, SOCOM 1's ActionSelectionMask or ActionAvailableMask reshaped (which one unproven); s1:calls by hand (CSealCtrl::PerformReticleActions calls it with (14, true) and (15, true) where SOCOM 1's calls ActionAvailableMask__10CZSealBodyFUib; SOCOM II's narrows the id to a byte, andi 0xff, so an unsigned char parameter); the seed's cut (0x544ca8): jal target of OVL1's DNAS client, which calls DNAS.BIN loaded in the OVL2 slot (README)
 0x00544CF0 0x64 func_00544CF0  # OVL2
 0x00544D60 0x260 func_00544D60  # OVL2
@@ -10184,7 +10184,7 @@
 0x00561D20 0xF4 GetTop__9CSealUnitFv  # OVL2; by hand (the SEAL lane, round 14): CSealUnit's top squad, m_parent (0x60, SOCOM 1's 0x3C) ? m_parent->GetTop() : this -- an inline's out-of-line copy (recursive: inlined into itself eight times), right after 0x561B90 its first caller; the name ours
 0x00561E20 0xD4 func_00561E20  # OVL2
 0x00561F00 0x12C ActivateEx__11CSealCtrlAiF9SEAL_TASKbe  # OVL2; s1:calls (CSealCtrlAi::OnMissionStart calls it twice with (task, flag, 1, the body's TASK_SELECT, 3, the node, 0), as SOCOM 1's calls ActivateEx__11CSealCtrlAiF9SEAL_TASKbe; variadic: it stores a3-t3 to its frame) -- the SEAL lane, round 4
-0x00562030 0x180 func_00562030  # OVL2
+0x00562030 0x180 AnimSignal__11CSealCtrlAiFP6CZAnim9AI_SIGNAL  # OVL2; s1:order by hand (the SEALs, round 33): SOCOM 1's CSealCtrlAi::AnimSignal(CZAnim *, AI_SIGNAL) -- the same seven-case byte switch on a2 (andi 0xff, sltiu 7 where SOCOM 1's 6), its signals 4 and 5 SOCOM 1's PushAiState/PopAiState of state 18; SOCOM II's walks the state stack backwards (the MSL lane's round 22 reading: include/list's reverse iterator) handing each state anim, signal and this through slot 0xC, then calls the stack's flag update 0x5F7470; seal_ai.cpp
 0x005621B0 0x8 func_005621B0  # OVL2
 0x005621C0 0x2C GetValve__11CSealCtrlAiCF10SEAL_VALVE  # OVL2; s1:order (SOCOM 1's GetValve__11CSealCtrlAiCF10SEAL_VALVE word for word but the bound, 3, and the array, 0x750: the valve of a kind or 0) -- the SEAL lane, round 4
 0x005621F0 0x8 func_005621F0  # OVL2
@@ -11094,13 +11094,13 @@
 0x005C9340 0x74 GetWeaponAccuracy__10CAiWepHintFP8CZWeaponfb  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponAccuracy -- AI_PARAMS::GetAccuracy of the weapon (0 without one), now doubled when the bool is set and _saturate'd to [0, 1] -- before GetWeaponEffectiveRange as there
 0x005C93C0 0x38 GetWeaponEffectiveRange__10CAiWepHintFP8CZWeapon  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponEffectiveRange -- the same 0.5 * (max + min) of the weapon's AI_PARAMS (SOCOM II's at 0x70), 0 without a weapon -- the kit unit's last as there, after GetWeaponAccuracy
 0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005C9520 0x200 func_005C9520  # OVL2
+0x005C9520 0x200 UpdateViewCone__9CSealCtrlFv  # OVL2; by hand (the kit lane, round 35): CSealCtrl's vtable slot +0xA8 (0x669558, the slot CSealCtrlAi's UpdateViewCone 0x5C9400 overrides at the same offset), right after it as SOCOM 1's UpdateViewCone__9CSealCtrlFv follows the AI's; SOCOM II looks from the app camera when it shows the SEAL; byte-exact from seal_sensors.cpp
 0x005C9720 0x78 SetViewFOV__9CSealCtrlFf  # OVL2; s1:calls
 0x005C97A0 0x30 push_back__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>FRCPQ27CDiPool3dir  # OVL2; by hand (the kit lane, round 25): the request list's push_back (include/list's: the base's insert at the sentinel), out of line -- target_post_tick's cut of CDiPool::PostTick calls it (and 0x5CC120); seal_sensors.cpp's copy, the first
 0x005C97D0 0x58 func_005C97D0  # OVL2
 0x005C9830 0x74 func_005C9830  # OVL2
 0x005C98B0 0x7C func_005C98B0  # OVL2
-0x005C9930 0x1CC func_005C9930  # OVL2
+0x005C9930 0x1CC EnemyCallout__11CSealCtrlAiFP7CEntityP7CEntity  # OVL2; by hand (the kit lane, round 35): SOCOM 1's EnemyCallout__11CSealCtrlAiFPC7CTargetP7CEntity by its body (the same squad Notify, is_moving at 800, the conjugated quaternion's Apply, the 0.15 high test, get_clock_direction + base, + 12 when high, PlayAiSound through slot +0x24) after CSealCtrl::UpdateViewCone as in SOCOM 1's seal_sensors.cpp; SOCOM II passes the entity (OnSetTargetVisible 0x5CA470 hands it target.m_ent and ftsGetPlayer()) and keeps a squad bit; byte-exact from seal_sensors.cpp
 0x005C9B00 0x8 NotifyTargetDown__9CSealCtrlFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9B10 0x20 NotifyTargetDown__11CSealCtrlAiFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9B30 0x63C func_005C9B30  # OVL2
@@ -11284,7 +11284,7 @@
 0x005E1DF0 0x12FC func_005E1DF0  # OVL2
 0x005E30F0 0x624 func_005E30F0  # OVL2
 0x005E3720 0x18 Get__12CAnimAuxDataFUi  # OVL2; s1:exact
-0x005E3740 0x200 func_005E3740  # OVL2
+0x005E3740 0x200 Inherit__7AnimSetFP7AnimSet  # OVL2; by hand (the kit lane, round 35): SOCOM 1's Inherit__7AnimSetFP7AnimSet by its body (the self test, the base's includes resolved while this set is not ready -- SOCOM 1's walk inline, SOCOM II's call to 0x5E3940 --, the records put at their types' places, the anims-by-item groups copied, m_ready set; 312 groups where SOCOM 1 had 300), in SOCOM 1's place after Load; byte-exact from anim.cpp
 0x005E3940 0x180 func_005E3940  # OVL2
 0x005E3AC0 0x60 TypeBit1__7AnimSetF8AnimType  # OVL2; by hand (the kit lane, round 10): AnimSet's per-type record (the vector at 0x44, as BaseAnim reads it) tested for its byte-5 bit 1; new in SOCOM II, the name ours
 0x005E3B20 0xFC GetVariantScript__7AnimSetF8AnimTypeii  # OVL2; by hand (the kit lane, round 19; the name ours): AnimSet's script of a type's variant by kind and index -- GetVariant, then GetGroup's state naming the archive (1 zBoneArchive, 2 zBoneMapArchive), m_byRdr[variant]; 0 without one
@@ -11449,7 +11449,7 @@
 0x005F0180 0x204 func_005F0180  # OVL2
 0x005F0390 0xD8 GetStatus__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x18 (GetStatus, the CAiState table read from every SOCOM 1 override)
 0x005F0470 0x240 OnSignal__10CAiSActionFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x8 (OnSignal)
-0x005F06B0 0x90 Virtual0C__10CAiSActionFiiP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x0C (the base's 0x5F6050 takes the same id, event byte and controller): its object's id told event 1 drops it, event 6 sets the flags' bit 2; the AI's stack bit 0 set either way (the kit lane, round 3)
+0x005F06B0 0x90 Virtual0C__10CAiSActionFP6CZAnim9AI_SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x0C (the base's 0x5F6050 takes the same id, event byte and controller): its object's id told event 1 drops it, event 6 sets the flags' bit 2; the AI's stack bit 0 set either way (the kit lane, round 3); by hand (the kit lane, round 35, the SEALs' round-33 request): slot +0x0C retyped to the caller's (CZAnim *, AI_SIGNAL, CSealCtrlAi *) -- CSealCtrlAi::AnimSignal 0x562030 hands each state the anim and the signal as it came; code-identical, byte-exact from seal_aistate.cpp
 0x005F0740 0x60 Virtual34__10CAiSActionFP11CSealCtrlAiP8CAiEventP10CZSealBodyb  # OVL2; by hand (the kit lane, round 5): CAiSAction's vtable slot +0x34 -- true while m_phase < 6, else for a friend's event of kind 3 or 6 (the name ours, by slot)
 0x005F07A0 0xC Virtual38__10CAiSActionFv  # OVL2; by hand: CAiSAction's vtable slot +0x38, one of SOCOM II's six new CAiState slots (the name ours, by its slot): the word at +0x34 below 6
 0x005F07B0 0x10 CanAttack__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x24 (CanAttack)
@@ -11481,7 +11481,7 @@
 0x005F37C0 0x3D4 Tick__10CAiSScriptFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F3BA0 0x414 OnSignal__10CAiSScriptFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F3FC0 0x28 func_005F3FC0  # OVL2
-0x005F3FF0 0x90 Virtual0C__10CAiSScriptFiiP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 6): CAiSScript's vtable slot +0x0C (0x669860+0xC) -- its own sequence id (0x58) told an event: 1 clears the id, 2 and 3 set and clear the hold bit (0x5C bit 0) through a bool, the byte at 0x5F made 255
+0x005F3FF0 0x90 Virtual0C__10CAiSScriptFP6CZAnim9AI_SIGNALP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 6): CAiSScript's vtable slot +0x0C (0x669860+0xC) -- its own sequence id (0x58) told an event: 1 clears the id, 2 and 3 set and clear the hold bit (0x5C bit 0) through a bool, the byte at 0x5F made 255; by hand (the kit lane, round 35, the SEALs' round-33 request): slot +0x0C retyped to the caller's (CZAnim *, AI_SIGNAL, CSealCtrlAi *) -- CSealCtrlAi::AnimSignal 0x562030 hands each state the anim and the signal as it came; code-identical, byte-exact from seal_aistate.cpp
 0x005F4080 0x8 CanAttack__10CAiSScriptCFv  # OVL2; by hand: CAiSScript's vtable slot +0x24 (CanAttack)
 0x005F4090 0x60 CanPursue__10CAiSScriptCFP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x2C (CanPursue; SOCOM 1's 0x6C bytes, this 0x60)
 0x005F40F0 0x80 CanPushAiState__10CAiSScriptF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x1C (CanPushAiState)
@@ -11510,7 +11510,7 @@
 0x005F5FC0 0x8 FindAiState__11CSealCtrlAiCF8AI_STATE  # OVL2; s1:order by hand (SOCOM 1's FindAiState, between ClearAiState and GetAiState() const there and here; SOCOM II's tail-calls the stack's walk 0x5F8270 on its stack at 0x41C; the states call it with a kind -- the kit lane, round 3)
 0x005F5FD0 0x38 GetAiState__11CSealCtrlAiCFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState() const, after ClearAiState as there: the state stack at 0x41C (SOCOM 1's 0x324), empty -> the static unknown state at 0x66B990 (SOCOM 1's at 0x509870), else its front)
 0x005F6010 0x38 GetAiState__11CSealCtrlAiFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState(), next: the same code, non-const)
-0x005F6050 0xA8 Virtual0C__8CAiStateFiiP11CSealCtrlAi  # OVL2; by hand: CAiState's vtable slot +0x0C, the base's own (not inline): the AI's script state (kind 1, through FindAiState) running sequence `id` and told event 2 ends this state (the name ours, by slot; the kit lane, round 3)
+0x005F6050 0xA8 Virtual0C__8CAiStateFP6CZAnim9AI_SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiState's vtable slot +0x0C, the base's own (not inline): the AI's script state (kind 1, through FindAiState) running sequence `id` and told event 2 ends this state (the name ours, by slot; the kit lane, round 3); by hand (the kit lane, round 35, the SEALs' round-33 request): slot +0x0C retyped to the caller's (CZAnim *, AI_SIGNAL, CSealCtrlAi *) -- CSealCtrlAi::AnimSignal 0x562030 hands each state the anim and the signal as it came; code-identical, byte-exact from seal_aistate.cpp
 0x005F6100 0x8C func_005F6100  # OVL2
 0x005F6190 0x48 func_005F6190  # OVL2
 0x005F61E0 0x88 func_005F61E0  # OVL2

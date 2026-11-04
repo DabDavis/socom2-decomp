@@ -4,6 +4,7 @@
  * (-inline deferred). */
 
 #include "zseal.h"
+#include <map>
 
 /* a blend's anims (anim.cpp's CBlendable, the kit lane's: only the test here) and its four speed
  * bands, each an anim and the speeds it covers, the first unused band's type -1 (MixAnims reads
@@ -24,6 +25,10 @@ public:
 class CAnimsByFP {
 public:
     AnimType PistolAnim(AnimType type) const;
+    /* an anim type's rifle and pistol variants (OVL2 0x5E1A10, 0x5E19D0, anim.cpp's: the shorts at 4 and
+     * 6 of the type's 8-byte record, -1 past the 312 types) */
+    AnimType RifleFPAnim(AnimType type) const;
+    AnimType PistolFPAnim(AnimType type) const;
 };
 
 struct AnimSetByFP {
@@ -31,30 +36,19 @@ struct AnimSetByFP {
     CAnimsByFP *m_byfp;   // 0x5c
 };
 
-/* a name-to-id map (MSL's map<string, int>: a tree node's links, then the pair; OVL1 bss 0x44AF60, its
- * header node at +4). OVL2 calls its find and its operator[]'s insert out of line (0x58D090, 0x58CEF0
- * -- the string-keyed tree is not modelled in include/tree), as it does the string's constructor and
- * destructor (0x58CE70, 0x53FAD0: ovl-copy rows) */
-struct CNameIdNode {
-    unsigned char _0[0xc];
-    std::string m_key;   // 0xc
-    int m_id;   // 0x18
-};
-
-struct CNameIdPair {
-    std::string first;   // 0x0
-    int second;   // 0xc
-};
+/* the body parts' names to their ids (SOCOM 1's seal_cfg.cpp's bodyPartNames_map, a map<string, int>:
+ * OVL1 bss 0x44AF60, fts_ovl2statics.cpp's). This unit's tail emits OVL2's copies of the tree's find
+ * 0x58D090, find_or_insert 0x58CEF0 (operator[]'s half) and insert_node_at 0x58D2B0 -- the material
+ * unit's word for word (the MSL headers' round 22: include/map as it stands) -- as it does the string's
+ * constructor and destructor (0x58CE70, 0x53FAD0: ovl-copy rows) */
+extern std::map<std::string, int> bodyPartNames_map;
 
 extern "C" {
-extern unsigned char data_0044AF60[];
 /* whether the map is filled (OVL1 bss 0x44AF70), and the next id handed out (OVL1 data 0x3DE930) */
 extern bool data_0044AF70;
 extern int data_003DE930;
 /* the map filled (OVL2 0x58CC30, not written yet) */
 void func_0058CC30();
-void func_0058D090(CNameIdNode **it, void *map, const std::string &key);
-CNameIdPair *func_0058CEF0(void *map, const std::string &key);
 }
 
 extern "C" {
@@ -68,38 +62,39 @@ extern unsigned int data_003DE928;
 /* (zbody.h declares it, as an int) */
 extern "C" int func_0058CB30(const char *name)
 {
-    CNameIdNode *it;
-
     if (!data_0044AF70)
         func_0058CC30();
-    func_0058D090(&it, data_0044AF60, std::string(name));
-    if (it != (CNameIdNode *)(data_0044AF60 + 4))
-        return it->m_id;
+    std::map<std::string, int>::iterator it = bodyPartNames_map.find(std::string(name));
+
+    if (it != bodyPartNames_map.end())
+        return (*it).second;
 
     unsigned int id = data_003DE928;
 
     if (id >= siNumBodyObjects - 4)
         return -1;
-    func_0058CEF0(data_0044AF60, std::string(name))->second = id;
+    bodyPartNames_map[std::string(name)] = id;
     data_003DE928++;
     return id;
 }
 
 /* a name's id: the map filled once, the name found -- or given the next id (OVL2 0x58CA60, new in
- * SOCOM II; the names ours) */
+ * SOCOM II; the names ours). The end taken into a local: compared straight (`it != map.end()`), the
+ * end() an argument of the iterator's != sits a level deeper, and both AddItems -- which inline this --
+ * call the tree's tail() out of line (8 bytes each; the out-of-line copy matches either way) */
 extern "C" int func_0058CA60(const char *name)
 {
-    CNameIdNode *it;
-
     if (!data_0044AF70)
         func_0058CC30();
-    func_0058D090(&it, data_0044AF60, std::string(name));
-    if (it != (CNameIdNode *)(data_0044AF60 + 4))
-        return it->m_id;
+    std::map<std::string, int>::iterator it = bodyPartNames_map.find(std::string(name));
+    std::map<std::string, int>::iterator e = bodyPartNames_map.end();
+
+    if (it != e)
+        return (*it).second;
 
     int id = data_003DE930;
 
-    func_0058CEF0(data_0044AF60, std::string(name))->second = id;
+    bodyPartNames_map[std::string(name)] = id;
     data_003DE930++;
     return id;
 }
@@ -307,15 +302,8 @@ void CZSealBody::SetPartAsGear(CZBodyPart *part, CCharacterGear *gear)
     SetBodyPart(part->m_id, 0);
 }
 
-/* an animation set's anims by the item in hand (SOCOM 1's CAnimsByFP: an anim type's pistol and
- * rifle variants) -- only its two lookups (OVL2 0x5E1A10 and 0x5E19D0, the kit lane's range: the
- * shorts at 4 and 6 of an anim type's 8-byte record, -1 past the 312 types) */
-class CAnimsByFP;
-
-extern "C" {
-AnimType func_005E1A10(CAnimsByFP *anims, AnimType type);
-AnimType func_005E19D0(CAnimsByFP *anims, AnimType type);
-}
+/* (an animation set's anims by the item in hand -- SOCOM 1's CAnimsByFP: its two lookups declared
+ * above, called by name) */
 
 /* a SEAL's animations (SOCOM 1's DWARF: AnimSet, its speeds first) -- only those here */
 class AnimSet {
@@ -442,7 +430,9 @@ static inline float Factor(CZSIScriptCommon *a)
  * (252) and keeps the two edge types in the frame (224, 208: the max's copied from the min's -1),
  * with a 304-byte frame against 256 here, where MW keeps the list in s8; its blendable test is a
  * `slti; movn` on the parameter's register (the ternary assigned back to the parameter still
- * branches here); the float registers follow the frame (minEnd f21, maxEnd f22 in the target) */
+ * branches here); the float registers follow the frame (minEnd f21, maxEnd f22 in the target).
+ * Round 33: the edge types set through an inline taking a short reference, or through `*&`, change
+ * nothing (MW folds both); the blendable test as an if-assign loses 6 */
 int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float scale, float wt)
 {
     if (wt <= 0.0f)
@@ -860,9 +850,9 @@ extern "C" AnimType func_0058C970(CZSealBody *seal, AnimType type, unsigned char
 {
     switch (item) {
     case 1:
-        return func_005E1A10(seal->m_animset->m_animsbyfp, type);
+        return seal->m_animset->m_animsbyfp->RifleFPAnim(type);
     case 2:
-        return func_005E19D0(seal->m_animset->m_animsbyfp, type);
+        return seal->m_animset->m_animsbyfp->PistolFPAnim(type);
     default:
         return type;
     }

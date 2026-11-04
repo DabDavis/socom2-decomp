@@ -752,9 +752,7 @@ void CSealCtrlAi::AcquireDatabaseHandles()
     data_0066AFE8 = 0;
 }
 
-/* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
- * OVL2 0x50F4C0 by its address) */
-extern "C" float func_0050F4C0(CAiEvent::EVENT event);
+/* (how far an event's kind carries: SOCOM 1's static CAiEvent::GetEventRange, OVL2 0x50F4C0 -- ai.h's) */
 /* the voice's reach scale (OVL2 data 0x650380, read as a variable) */
 extern "C" float data_00650380;
 
@@ -765,7 +763,7 @@ extern "C" CAiEvent *func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
     CAiEvent *r = 0;
 
     if (event != CAiEvent::AIE_NONE) {
-        float range = func_0050F4C0(event);
+        float range = CAiEvent::GetEventRange(event);
 
         r = ctrl->CreateAiEvent(CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW, event);
     }
@@ -785,9 +783,8 @@ extern "C" {
  * state returned -- OVL2 0x5556A0, 0x5558A0) */
 bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRouteBytes *route);
 AI_ROUTE func_005558A0(CSealCtrlAi *ai);
-/* the kit's current item by its index (CZKit::SetCurItemByIndex, OVL2 0x5C4B10: zseal.h's kit is a
- * stand-in) and its fire mode (0x5C37B0, declared below) */
-void func_005C4B10(CZKit *kit, int index);
+/* the kit's fire mode (0x5C37B0, declared below; its current item by index is zseal.h's
+ * CZKit::SetCurItemByIndex, OVL2 0x5C4B10) */
 bool func_005C37B0(CZKit *kit, FIREMODE mode);
 }
 
@@ -832,7 +829,7 @@ void CAiSDeploy::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_1: {
         CZKit *kit = &seal->m_kit;
 
-        func_005C4B10(kit, 0);
+        kit->SetCurItemByIndex(0);
         func_005C37B0(kit, (FIREMODE)2);
         ai->ClearLook(AIL_11);
         ai->SetDesiredStance(STANCE_PRONE, 0.0f, false);
@@ -1327,6 +1324,53 @@ CValve *CSealCtrlAi::GetValve(SEAL_VALVE v) const
     if (v < 3)
         return m_valve[v];
     return 0;
+}
+
+extern "C" {
+/* the stack's bits brought up to date (OVL2 0x5F7470, seal_aistate.cpp's: the stack, the AI, a flag) */
+void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
+}
+
+/* an anim's signal taken: 1, 2, 3 and 6 handed to every state of the stack, the top last-first --
+ * through the stack's reverse iterator (include/list's rbegin()/rend(), the MSL headers' round 22: the
+ * end pair's second() its one call, 0x5621B0); 4 the suspended state pushed, kept only when it is the
+ * state on top, its flags set and marked running; 5 the suspended state popped; then the stack's bits
+ * brought up to date (OVL2 0x562030: SOCOM 1's AnimSignal, whose 0x404 bytes walked the stack forward
+ * for its signals 1 and 2).
+ * OPEN, 0x17C against 0x180 (0x174 before the kit's round 35 retyped slot 0xC to the caller's (CZAnim *,
+ * AI_SIGNAL, CSealCtrlAi *): the target hands the signal on as it came, `move s0,a2`, the andi only the
+ * switch's), on (2) this unit's inline_depth(8) -- the MSL lane's probe at 5 calls the end
+ * pair's second() (0x5621B0) as the target does at each rbegin()/rend(); at 8 MW inlines it, holding
+ * the sentinel's next in a fourth saved register (the frame 96 bytes against 80). The probe's own
+ * last difference (the end pair's address kept, not rebuilt per call) sits behind that */
+void CSealCtrlAi::AnimSignal(CZAnim *anim, AI_SIGNAL sig)
+{
+    switch (sig) {
+    case 1:
+    case 2:
+    case 3:
+    case 6: {
+        CAiStateStack::reverse_iterator i;
+
+        for (i = m_stateStack.rbegin(); i != m_stateStack.rend(); ++i)
+            (*i)->Virtual0C(anim, sig, this);
+        break;
+    }
+    case 4:
+        if (PushAiState((AI_STATE)18, 1)) {
+            CAiState *s = GetAiState();
+
+            s = s && s->m_state == 18 ? s : 0;
+
+            s->SetFlags(7, 0);
+            s->m_active = true;
+        }
+        break;
+    case 5:
+        PopAiState((AI_STATE)18);
+        break;
+    }
+    func_005F7470(&m_stateStack, this, 1);
 }
 
 /* whether the SEAL may be taken hostage (state 23 pushed with no flags): for kind 3 a restrainable one,
@@ -1838,14 +1882,14 @@ extern "C" bool func_00561E20(CSealCtrlAi *ai, bool on, signed char c)
     return ai->m_aibit7;
 }
 
-/* (OVL2 0x56D890).
- * OPEN, 9 instructions: the target loads the team straight into a0 (`lw a0,4(a0); lw a0,0xC8(a0)`)
- * and reads m_entity again for the kit's test after the two team tests; MW here keeps the entity in
- * a1 across both (and moves `on` to s0 first). Tried: the kit through this inline, the team in a
- * local, every test through the inline, the tests unparenthesised. */
+/* (OVL2 0x56D890). Byte-exact since round 33 (the kit's round-34 measurement): both team tests read
+ * the team through a const view of the controller -- the target loads the entity and its team straight
+ * into a0 for each test and reads m_entity again for the kit's, where plain reads let MW keep the
+ * entity in a1 across all three (round 32's 9 instructions) */
 void CSealCtrlAi::SetAiBit2(bool on)
 {
-    if ((m_entity->m_team & 0x20000) || (m_entity->m_team & 0x4000000) || !SealOf(this)->m_kit.GetCurItem())
+    if ((((const CSealCtrlAi *)this)->m_entity->m_team & 0x20000) ||
+        (((const CSealCtrlAi *)this)->m_entity->m_team & 0x4000000) || !SealOf(this)->m_kit.GetCurItem())
         on = false;
     m_aibit2 = on;
 }
@@ -3016,23 +3060,27 @@ struct CAiMover {
 /* whether a mover's path ahead passes within reach of a point, flat on the ground: the turn away
  * handed back -- the way across the path, or turned about by the side the point lies on. An inline
  * past inline_max_size, expanded one level: its own body only, its vector pieces called out of line
- * (their copies 0x557D90-0x557E90 after 0x557190, in reverse first use; the names ours) */
-static inline bool AvoidPoint(const CAiMover &m, const CPnt3D &pt, CPnt3D &out, bool turn)
+ * (their copies 0x557D90-0x557E90 after 0x557190, in reverse first use; the names ours). The mover's
+ * fields come in as references (the round 33 fix): their addresses, bound as the inline's
+ * parameters, are what the mover's own stores and the Normalize go through -- the target's s1/s2 held
+ * from before each mover is built */
+static inline bool AvoidPoint(const CPnt3D &pos, const CPnt3D &dir, const float &radius, const CPnt3D &pt,
+                              CPnt3D &out, bool turn)
 {
     static float s_reach = 20.0f;
     static float s_side = 0.45f;
     bool found = false;
     float reach = s_reach;
-    CPnt3D side(-m.m_dir.z, 0.0f, m.m_dir.x);
+    CPnt3D side(-dir.z, 0.0f, dir.x);
     CPnt3D p(pt.x, 0.0f, pt.z);
-    CPnt3D q(m.m_pos.x, 0.0f, m.m_pos.z);
+    CPnt3D q(pos.x, 0.0f, pos.z);
     CPnt3D d = p - q;
 
     d.y = 0.0f;
     d.Normalize();
     float dot = Dot(d, side);
-    CPnt3D ahead = q + m.m_dir * m.m_radius;
-    CPnt3D aside = q + side * (s_side * (m.m_radius * func_00557D90(dot)));
+    CPnt3D ahead = q + dir * radius;
+    CPnt3D aside = q + side * (s_side * (radius * func_00557D90(dot)));
 
     aside.y = 0.0f;
     ahead.y = 0.0f;
@@ -3058,14 +3106,10 @@ static inline bool AvoidPoint(const CAiMover &m, const CPnt3D &pt, CPnt3D &out, 
  * slows (the forward throttle by 0.95), else the same tests as with the player.
  * The copies it leaves out of line match: CPnt3D's +, * and - (0x557DC0, 0x557E10, 0x557E90 -- the
  * round 24 names) and the sign, 0x557D90 (the stand-in below).
- * OPEN, 2 instructions short (765 of 767; round 32): the calls to CPnt3D's constructors (OVL2's
- * copies 0x5414F0, 0x516900) and to its assignment (0x539E90) need ovl-copy marks on those rows (the
- * char_type.cpp tail's and the AI core's range: the integrator's) before any relocation can resolve;
- * the code itself misses on registers -- the target keeps &m.m_dir and &m.m_radius in s1/s2 from
- * before each mover is built (its stores go through them) and the AI in s0, the other entity in s4,
- * where MW here computes the two addresses after the Normalize and gives the AI s4. Tried: the four
- * copies assigned, copy-constructed (the target's ld-free three-and-three shape) and through a PNT3D
- * cast (the same) */
+ * Byte-exact since round 33: the slowing product its own statement (`t *= s_slow;` -- the target's
+ * `mul.s $f20` then `mov.s $f12`, the two instructions round 32 was short), and AvoidPoint taking the
+ * mover's fields by reference: the two addresses held across the Normalize add the neighbours that
+ * keep the AI deferred past the other four (igdump: all five over K), so it colours first, s0 */
 extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
 {
     static float s_still = 25.0f;
@@ -3087,7 +3131,7 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
             result = true;
         else if (meMoving) {
             CAiMover m(myPos, myVel, s_radius);
-            bool found = AvoidPoint(m, otherPos, myVel, false);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, otherPos, myVel, false);
 
             result = found;
             if (found) {
@@ -3097,7 +3141,7 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
             }
         } else if (otherMoving) {
             CAiMover m(otherPos, otherVel, s_radius);
-            bool found = AvoidPoint(m, myPos, myVel, true);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, myPos, myVel, true);
 
             result = found;
             if (found) {
@@ -3114,12 +3158,14 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
                 if (Dot(d, myVel) > 0.0f) {
                     float t = ai->m_throttle[0];
 
-                    if (t > fabsf(other->m_control->m_throttle[0]))
-                        ai->SetThrottle(0, t * s_slow);
+                    if (t > fabsf(other->m_control->m_throttle[0])) {
+                        t *= s_slow;
+                        ai->SetThrottle(0, t);
+                    }
                 }
             } else {
                 CAiMover m(otherPos, otherVel, s_radius);
-                bool found = AvoidPoint(m, myPos, myVel, true);
+                bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, myPos, myVel, true);
 
                 result = found;
                 if (found) {
@@ -3129,7 +3175,7 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
             }
         } else if (meMoving) {
             CAiMover m(myPos, myVel, s_radius);
-            bool found = AvoidPoint(m, otherPos, myVel, false);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, otherPos, myVel, false);
 
             result = found;
             if (found) {
@@ -3138,7 +3184,7 @@ extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
             }
         } else if (otherMoving) {
             CAiMover m(otherPos, otherVel, s_radius);
-            bool found = AvoidPoint(m, myPos, myVel, true);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, myPos, myVel, true);
 
             result = found;
             if (found) {
@@ -3187,21 +3233,19 @@ extern float data_0064FE48;
 }
 
 /* the range narrowed by a factor unless it stands (an inline: the factor, its argument, is loaded
- * ahead of the test, and the range read again for the product) */
+ * ahead of the test; the test reads the range through a const view, so the product reads it again --
+ * plain reads MW merges) */
 static inline void ScaleRange(CSealCtrlAi *ai, float k)
 {
-    if (data_0064FE48 != ai->m_6f4)
+    if (data_0064FE48 != ((const CSealCtrlAi *)ai)->m_6f4)
         ai->m_6f4 *= k;
 }
 
 /* an alert taken in: its amount (a default for none) summed, its point filled, its word kept, the range
  * narrowed unless it stands, then the pair OnDeath makes (OVL2 0x572240, new in SOCOM II; the name
- * unknown).
- * OPEN, 0xBC against 0xC4: through the inline the factor loads ahead of the test and the compare is the
- * target's (constant first), but the target reads the range again for the product (`lwc1; mul.s
- * $f0,$f0,$f2`) and pads the block, where MW here reuses the compare's load. Tried: the product as
- * `= m * k`, `= k * m`, through a pointer, a local copy, the test through an accessor or a cast
- * address, the test negated, the factor and the test written out in the function. */
+ * unknown). Byte-exact since round 33: the range's second load (`lwc1; mul.s $f0,$f0,$f2`) is the
+ * const view's in ScaleRange -- the kit's round-34 rule for two loads of one member with nothing
+ * between */
 extern "C" void func_00572240(CSealCtrlAi *ai, CAiAlert *alert, float amount)
 {
     if (alert) {
@@ -3304,16 +3348,13 @@ bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance)
 /* a direction as the goal, unless a goal of a higher kind is set: flattened, and made a unit
  * vector unless it came flat and asked to stay so; a position of another kind cleared (SetGoalPos
  * inlined), the facing's dot product with it returned -- none clears the direction, and the kind
- * once no position is left (OVL2 0x56D920; SOCOM 1's, its sqrtf now sqrt.s).
- * OPEN, 8 instructions (the size right): the target reads x again for the scaling after the sqrt
- * (`lwc1 $f0,0x174(a0)` after `mtc1 1.0`), x and z loaded into f1/f2, x*x in the mula, the root in
- * f2; MW here keeps the x it loaded for the length in a register across the sqrt and the test, as
- * the matched CPnt3D::Normalize does in the target (so sqrt.s is no barrier). The sum is written
- * z first, which gets the rest (`x*x + z*z`, SOCOM 1's order, is 18 off: x in f2 kept). Tried: the
- * components by value into a length inline, the scaling or the whole normalisation through an
- * inline taking the point by pointer, a scalar copy of the point, `len = 1.0f / len`, the two
- * scalings each `*= 1.0f / len`. The three-float constructor gives the stores (z loaded first) and
- * m_matrix's elements read straight give the dot's operand order (through operator() they swap) */
+ * once no position is left (OVL2 0x56D920; SOCOM 1's, its sqrtf now sqrt.s). Byte-exact since round
+ * 33: the target reads x again for its scaling after the sqrt (`lwc1 $f0,0x174(a0)` after `mtc1 1.0`)
+ * -- x scaled through a const view of the controller, the kit's round-34 rule, where a plain read lets
+ * MW keep the length's x across the sqrt; with it the sum is SOCOM 1's order, x*x first (round 32's 8
+ * instructions, its z-first sum a fit to the merged load). The three-float constructor gives the
+ * stores (z loaded first) and m_matrix's elements read straight give the dot's operand order (through
+ * operator() they swap) */
 float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
 {
     float dot = 1.0f;
@@ -3323,12 +3364,12 @@ float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
     if (dir) {
         m_goal_dir = CPnt3D(dir->x, 0.0f, dir->z);
         if (!flat || dir->y != 0.0f) {
-            float len = sqrtf(m_goal_dir.z * m_goal_dir.z + m_goal_dir.x * m_goal_dir.x);
+            float len = sqrtf(m_goal_dir.x * m_goal_dir.x + m_goal_dir.z * m_goal_dir.z);
 
             if (len != 0.0f) {
                 float inv = 1.0f / len;
 
-                m_goal_dir.x *= inv;
+                m_goal_dir.x = ((const CSealCtrl *)this)->m_goal_dir.x * inv;
                 m_goal_dir.z *= inv;
             }
         }

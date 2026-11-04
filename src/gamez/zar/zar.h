@@ -26,19 +26,21 @@ public:
 
 class CZAR;
 
-/* the archive's directory tail, at the file's end (SOCOM 1's DWARF: 0x60 bytes; SOCOM II's 0x64,
- * the version a word later -- CZAR() sets it, 0x20002 where SOCOM 1's set 0x20001) */
+/* the archive's directory tail, at the file's end (SOCOM 1's DWARF: 0x60 bytes; SOCOM II's 0x64 --
+ * CZAR() versions it 0x20002 where SOCOM 1's set 0x20001). SOCOM II's new word is the padding at
+ * 0x10, ahead of the array: ReadDirectory's copy of a tail moves five words, the array as a block,
+ * then four (round 12; SOCOM 1's fields after it each a word later) */
 struct TAIL {
     int flags;   // 0x0
     int key_count;   // 0x4
     int stable_size;   // 0x8
     int stable_ofs;   // 0xc
-    int reserved[16];   // 0x10
-    int offset;   // 0x50
-    int crc;   // 0x54
-    int appversion;   // 0x58
-    int _5c;   // 0x5c: SOCOM II's
-    int version;   // 0x60
+    int padded;   // 0x10: SOCOM II's (the name ours): the data's padding, m_data_padded when written
+    int reserved[16];   // 0x14 (SOCOM 1: 0x10)
+    int offset;   // 0x54 (SOCOM 1: 0x50): the data's size, the buffer's used bytes when written
+    int crc;   // 0x58 (SOCOM 1: 0x54)
+    int appversion;   // 0x5c (SOCOM 1: 0x58): the directory number Open is given
+    int version;   // 0x60 (SOCOM 1: 0x5c)
 };   // 0x64 bytes
 
 class CKey : public CKeyRing {
@@ -114,6 +116,10 @@ public:
     CKey *Insert(const char *name, const void *data, int size);
     /* a key's data in place, a pointer into the CBufferIO's buffer */
     bool FetchLIP(CKey *key, void **buf);
+    /* every key of the open one fetched in place and handed to func -- the archive, the key's
+     * name, its data and size, and data: the keys func took counted (SOCOM 1's FetchAll, 0x25A390;
+     * SOCOM 1's said only whether there were any) */
+    int FetchAll(int (*func)(CZAR &zar, const char *name, void *buf, int size, void *data), void *data);
     bool Fetch(CKey *key, void *buf, int size, unsigned int flags);
     bool Fetch(const char *name, void *buf, int size);
     bool Fetch(const char *name, char **str);
