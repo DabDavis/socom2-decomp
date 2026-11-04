@@ -8,18 +8,21 @@
  * (README "The GCC front"). Names are SOCOM 1's, each by its body and a call site (README "The
  * recogniser and Medius by hand", round 18c).
  *
- * SOCOM II's object inlines: SetIsolatedWordDpActiveWords holds FreeTree's body, and FreeTree
- * _FreeTree's first level (its children's loop, calling _FreeTree for theirs); CalcNrNodes10 holds
+ * SOCOM II's object inlines: SetIsolatedWordDpActiveWords holds FreeTree's and
+ * CreateActiveWordsCtxTree's bodies, and FreeTree _FreeTree's first level (its children's loop,
+ * calling _FreeTree for theirs); CalcNrNodes10 holds
  * CalcNrNodes' first level at a budget of 12 (aNodesFr[12] read directly -- SOCOM 1's at 14);
  * GetIsolatedWordDpActiveWords holds the first levels of _CountWordsInTree and _GetWordsInTree. 2.96
  * inlines only a body it has seen and defers an inline's own copy to the object's end, in
  * declaration order -- the image's FreeTree, _FreeTree, CalcNrNodes, _CountWordsInTree,
- * _GetWordsInTree, CompareIDs, CreateActiveWordsCtxTree after SetIsolatedWordDpActiveWords. Only the
- * functions written so far are here: FreeTree, _FreeTree and CalcNrNodes as the inlines they are,
- * CalcNrNodes10, SetIsolatedWordDpActiveWords (OPEN), CalcAccuracyCtxTree, and _CountWordsInTree and
+ * _GetWordsInTree, CompareIDs, CreateActiveWordsCtxTree after SetIsolatedWordDpActiveWords,
+ * CreateCtxTree and CalcAccuracyCtxTree (CompareIDs, qsort's comparator, is deferred as well: its
+ * copy follows _GetWordsInTree's). Only the functions written so far are here: FreeTree, _FreeTree,
+ * CalcNrNodes, CompareIDs and CreateActiveWordsCtxTree as the inlines they are, CalcNrNodes10,
+ * SetIsolatedWordDpActiveWords, CreateCtxTree, CalcAccuracyCtxTree, and _CountWordsInTree and
  * _GetWordsInTree as plain statics until GetIsolatedWordDpActiveWords, their inliner, is written (a
- * static inline with no caller has no copy); CreateCtxTree and CreateActiveWordsCtxTree are in
- * ctxutil.c. */
+ * static inline with no caller has no copy). CreateCtxTree and CreateActiveWordsCtxTree were in
+ * ctxutil.c until round 19c. */
 
 #include "casr.h"
 
@@ -62,6 +65,9 @@ static float CalcNrNodes10(int *tab, int *uwtab, unsigned short n, TNODE *node, 
                            unsigned int *maxc);
 static int _CountWordsInTree(WORDREC *tab, TNODE *n);
 static void _GetWordsInTree(WORDREC *tab, TNODE *n, int **out);
+int CompareIDs(const void *a, const void *b);
+int CreateActiveWordsCtxTree(CASR *c, unsigned int *ids, unsigned int n);
+long CreateCtxTree(CASR *c, CTXVT *vt);
 
 /* each budget level's weight (SOCOM 1's aNodesFr: 13 floats) */
 extern float aNodesFr[13];
@@ -167,21 +173,29 @@ static float CalcNrNodes10(int *tab, int *uwtab, unsigned short n, TNODE *node, 
     return best;
 }
 
+/* the tree of the activated context's words: a table of the context accessors on the stack, over
+ * the activated context's data -- an `__inline__`, so SetIsolatedWordDpActiveWords holds its body
+ * (the table then a block of the inline's frame, above the caller's own locals) and its own copy
+ * comes out at the object's end; a call, not a sibling one (the table is a stack slot) */
+__inline__ int CreateActiveWordsCtxTree(CASR *c, unsigned int *ids, unsigned int n)
+{
+    CTXVT vt;
+
+    FillContextV2VirtualTable(&vt);
+    vt.data = c->ctx->data;
+    return intCreateCtxTree(c, &vt, ids, n);
+}
+
 /* a new list of active words for the isolated-word context: the old tree freed, a new one built
  * from the context and handed to the scheduler with the user words' tables (a null list stands for
  * none: the handle is passed for it -- SOCOM 1's movz too). The tree test is positive, its error
- * last (round 14b's rule: the target's `beqz` to the end).
- * OPEN (6 words, the frame): the target keeps the tables' pair at sp+0 and the accessor table at
- * sp+16 -- the pair declared first, or the table in the inner block, gives that frame but then the
- * two `&vt` arguments (sibling-call placeholders compute arguments into pseudos) are merged by CSE
- * into a saved register across FillContextV2VirtualTable (`addiu s0,sp,16`, 2 words longer), where
- * the target computes `addiu a0,sp,16` and `addiu a1,sp,16` at each call; -fno-cse-skip-blocks,
- * -fno-cse-follow-jumps and the null-list test between the calls leave it
- * (build/scratch/gcc/ctree/v_siw*.py). As here, with the table first at sp+0, every register is
- * the target's. */
+ * last (round 14b's rule: the target's `beqz` to the end). The accessor table is the inlined
+ * CreateActiveWordsCtxTree's: integrate.c gives the inline's frame its block where the call is
+ * expanded, above the tables' pair (sp+16 against sp+0), and each `&vt` is the inline's own
+ * address, formed at each call (round 18c's OPEN: with the table a local of this function, CSE
+ * kept the two `&vt` arguments in one saved register across FillContextV2VirtualTable). */
 int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n)
 {
-    CTXVT vt;
     UWTABLES uw;
     unsigned char err;
 
@@ -191,9 +205,7 @@ int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n)
         FreeTree(c);
         if (n == 0)
             ids = (unsigned int *)c;
-        FillContextV2VirtualTable(&vt);
-        vt.data = c->ctx->data;
-        err = intCreateCtxTree(c, &vt, ids, n);
+        err = CreateActiveWordsCtxTree(c, ids, n);
         if (err != 0)
             return err;
         uw.states = c->uw_states;
@@ -205,6 +217,13 @@ int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n)
         return 0;
     }
     return _tosErrorLog(c->event, 4);
+}
+
+/* a tree over the given accessor table (no words chosen); no sibling call -- 2.96 declines one where
+ * the return types differ (as mtxConstruct) */
+long CreateCtxTree(CASR *c, CTXVT *vt)
+{
+    return intCreateCtxTree(c, vt, 0, 0);
 }
 
 /* the tree's accuracy: its weighted node count (CalcNrNodes10 over the speech units and the user
@@ -269,4 +288,10 @@ static void _GetWordsInTree(WORDREC *tab, TNODE *n, int **out)
             for (j = ~w; j != -1; j = tab[j].next)
                 *(*out)++ = tab[j].id;
     }
+}
+
+/* qsort's order for the active words' ids (GetIsolatedWordDpActiveWords sorts them) */
+__inline__ int CompareIDs(const void *a, const void *b)
+{
+    return *(const int *)a - *(const int *)b;
 }

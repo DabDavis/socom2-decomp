@@ -395,14 +395,22 @@ struct CONE {
  * matrix row field by field, one register (as SOCOM 1's): GetPosition()'s by-value copy stores
  * through a pointer; the -z axis through a row pointer keeps the node in one register; IsInCone
  * is pinned (called out of line).
- * OPEN, the right size (0x4D0), 5 instructions: (1) the falloff's 2.0f * (r - 0.5f) -- the target
+ * OPEN, 0x4C8 against 0x4D0, 3 instructions: (1) the falloff's 2.0f * (r - 0.5f) -- the target
  * puts the product in f1 (the 2.0's register), here f0 (SOCOM 1's colouring is ours); (2) the
- * impact's `dist - eff` -- the target computes it in the span test's delay slot, here after the
- * branch; (3) the id -- the target copies the byte enum with `lb` and narrows it (`andi 0xff`)
- * for the compares, here one `lbu` (a local, an assigned local, GetId(), CLAYMORE/159 as
- * enumerators, a weapon local, a switch either way round -- the switches 8 and 16 bytes longer --
- * all give lbu). Tried for (1)/(2): `damage = damage * (...)`, the product reversed, brackets, `r`
- * divided as its own statement, `span > 0.0f` first */
+ * id -- the target copies the byte enum with `lb` and narrows it (`andi 0xff`) once for both
+ * compares, here one `lbu`; the target's label pad before the 159 test (`b; nop; nop`) follows
+ * from (2). Round 17: the impact arm is the target's -- `over` (dist - eff) a variable of its own,
+ * declared ahead of `span` and assigned after it (the subtraction in the span test's delay slot,
+ * span in f1 and over in f2); declared after span the two FPRs swap, inline in the division it
+ * sinks below the branch. For (2): a byte enum held in a real variable is `lb` plus `andi` at the
+ * compare (an id declared and initialised at the top: `lb s0` there, `andi v1,s0,0xff` at the
+ * test -- CZProjectileList::Clear's `w ? w->m_ID : EQUIP_NONE` join is the same pair), so the
+ * target's id is a variable MW does not fold into the compares; a local, an assigned local, an
+ * assignment in the condition, a const, int, char or signed-char-cast local, a weapon local,
+ * GetId(), and a switch on the local or the field (lbu, a compare chain 8 bytes longer) all
+ * fold. Tried for (1): `damage = damage * (...)`, the product reversed, `/ 0.5f`, brackets, the
+ * product, the difference or the factor in a variable, `r` and `dist` declared apart, a radius
+ * variable */
 float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
 {
     float damage;
@@ -433,12 +441,15 @@ float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
         float eff = m_weapon->GetEffectiveRange();
 
         if (dist > eff) {
+            float over;
             float span = m_weapon->GetMaxRange() - eff;
+
+            over = dist - eff;
 
             if (span <= 0.0f)
                 damage = 0.0f;
             else
-                damage *= 1.0f - (dist - eff) / span;
+                damage *= 1.0f - over / span;
         }
     }
     if (damage && !(damage < minimum))

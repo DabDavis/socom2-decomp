@@ -248,27 +248,35 @@ static void *_LangVirtualTable[79] = {
         + ((d)->nbr_warp_factors * 4 + (d)->nbr_state * (d)->nbr_codebook + (d)->nbr_ergodic_states \
            + (d)->nbr_state_ergodic_states + (d)->nbr_ergodic_phenomes)) * 2))
 
-/* OPEN, and the walkers below but _langGetpCodeBook (the count's reload: _langGetpSpeechUnit's
- * note): m2c's shape, every one a walk over the codebooks (2.96 unrolls it by four), each
- * codebook four-aligned. In SOCOM II the
- * file opens with this function (SOCOM 1's with _langGetpPhenUserWordTraining and
+/* the tone conversion matrix's dimensions: past the codebooks (the walk 2.96 unrolls by four, each
+ * codebook four-aligned), the speech units (their size the last word of their offset table, in
+ * halfwords), the transcribed words and the user-word training phenomes, and an extra codebook when
+ * the file's bit 2 says so -- each walker's head as _langGetpSpeechUnit's (below). The offset past
+ * the speech units is an int aligned in place (`off = ALIGN4(off)`: the `+ 3` then takes a register
+ * of its own, the target's v1 between two v0s -- one expression ties it to its input). In SOCOM II
+ * the file opens with this function (SOCOM 1's with _langGetpPhenUserWordTraining and
  * _langGetpExtraEventContext), ahead of FillLanguageVirtualTable. */
 static unsigned short *_langGetpDimensionsOfToneConversionMatrix(LANG *l)
 {
     LANGDATA *d = l->data;
-    char *p = CODEBOOKS(d);
     unsigned int n = d->nbr_codebook;
     unsigned int i;
+    char *p;
+    int off;
 
     if (d->bits & 4)
         n++;
+    d = l->data;
+    p = CODEBOOKS(d);
     for (i = 0; i < n; i++)
         p += ALIGN4(_cdbGetCodeBookSize(l, (CDB *)p));
-    p += ((unsigned short *)p)[d->nbr_speech_unit * 2] * 2;
-    p = (char *)d + ALIGN4(p - (char *)d);
-    p += _transwGetSize(l, (TRANSW *)p) + l->data->nbr_phen_uw_training * 2;
+    off = p + ((int *)p)[d->nbr_speech_unit] * 2 - (char *)d;
+    off = ALIGN4(off);
+    p = (char *)d + off;
+    p += _transwGetSize(l, (TRANSW *)p);
+    p += l->data->nbr_phen_uw_training * 2;
     if (l->CheckBitField(l, 4))
-        p += _cdbGetCodeBookSize(l, (CDB *)p);
+        return (unsigned short *)(p + _cdbGetCodeBookSize(l, (CDB *)p));
     return (unsigned short *)p;
 }
 
@@ -289,7 +297,12 @@ void FillLanguageVirtualTable(void **vt)
  * the result are two values in the target. The square's reload SOCOM 1's copy has as well (its
  * own compiler), so it is the source's; an inlined helper (a static inline probe), the gastone
  * term added in each arm and seven statement shapes (build/scratch/gcc/lang/v_cbs*.py, v_sm.py,
- * the same on _cdbGetpSmoothMatrix) leave both. */
+ * the same on _cdbGetpSmoothMatrix) leave both. Round 19c: the walkers' reload (below) was a
+ * second read after a join through another base register; here the base is the parameter, and
+ * _cdbGetProbMatrixSize and _cdbGetSmoothMatrixSize as `__inline__` helpers above it (both are
+ * small rows near the object's end, as deferred copies would be) reorder the sum (0x84-0x98) or,
+ * the smoothing size alone inlined, leave the read merged by CSE1 (build/scratch/gcc/r19c/
+ * gen_cbs*.py). */
 static int _cdbGetCodeBookSize(LANG *l, CDB *cdb)
 {
     int bits = l->data->bits;
@@ -555,72 +568,87 @@ static CDB *_langGetpCodeBook(LANG *l, unsigned int n)
     return (CDB *)p;
 }
 
-/* OPEN, and the four walkers after it (round 18c: the CODEBOOKS sum is the target's now --
- * _langGetpCodeBook matches): the target reloads nbr_codebook for the count (`lw s1,136(a1)`)
- * after loading it for the gastone term, and SOCOM 1's copy (its own compiler) reloads it too, so
- * the source keeps the two reads apart -- the same as _cdbGetCodeBookSize's second_size; here CSE
- * merges them (`move s4,t1`). The count set in an if/else gives the target's `movn` and the right
- * size (44 words, the registers); through l, an inline, volatile, `?:` or the count first leave it
- * (build/scratch/gcc/lang/v_su*.py). */
+/* the speech units: past the codebooks, counted first -- the count read and incremented in place
+ * (`if (d->bits & 4) n++`), then the first codebook's address from l->data read again. The target
+ * (and SOCOM 1's copy) loads nbr_codebook twice, once for the count and once for the gastone term,
+ * and selects the count with a movn; it takes this order: the count's `if` is still a branch when CSE
+ * runs, so the sum after its join starts a new extended block, and GCSE's one pass hashes the sum's
+ * load against the second l->data load's register, another expression than the count's -- the
+ * two loads survive until the if-conversion after combine makes the branch a movn. With the sum
+ * first, or through the same d, CSE merges the two reads (round 18c's diagnosis: "the source keeps
+ * the two reads apart"); a count copied to another variable leaves a move (round 19c,
+ * build/scratch/gcc/r19c/v_su*.py). */
 static unsigned short *_langGetpSpeechUnit(LANG *l)
 {
     LANGDATA *d = l->data;
-    char *p = CODEBOOKS(d);
     unsigned int n = d->nbr_codebook;
     unsigned int i;
+    char *p;
 
     if (d->bits & 4)
         n++;
+    d = l->data;
+    p = CODEBOOKS(d);
     for (i = 0; i < n; i++)
         p += ALIGN4(_cdbGetCodeBookSize(l, (CDB *)p));
     return (unsigned short *)p;
 }
 
-/* OPEN */
+/* the speech units' size: the last word of their offset table */
 static int _langGetSizeSpeechUnits(LANG *l)
 {
     LANGDATA *d = l->data;
-    char *p = CODEBOOKS(d);
     unsigned int n = d->nbr_codebook;
     unsigned int i;
+    char *p;
 
     if (d->bits & 4)
         n++;
+    d = l->data;
+    p = CODEBOOKS(d);
     for (i = 0; i < n; i++)
         p += ALIGN4(_cdbGetCodeBookSize(l, (CDB *)p));
-    return ((unsigned short *)p)[d->nbr_speech_unit * 2] * 2;
+    return ((int *)p)[d->nbr_speech_unit];
 }
 
-/* OPEN */
+/* the transcribed words: past the speech units, four-aligned from the file's start */
 static TRANSW *_langGetpTransWord(LANG *l)
 {
     LANGDATA *d = l->data;
-    char *p = CODEBOOKS(d);
     unsigned int n = d->nbr_codebook;
     unsigned int i;
+    char *p;
+    int off;
 
     if (d->bits & 4)
         n++;
+    d = l->data;
+    p = CODEBOOKS(d);
     for (i = 0; i < n; i++)
         p += ALIGN4(_cdbGetCodeBookSize(l, (CDB *)p));
-    p += ((unsigned short *)p)[d->nbr_speech_unit * 2] * 2;
-    return (TRANSW *)((char *)d + ALIGN4(p - (char *)d));
+    off = p + ((int *)p)[d->nbr_speech_unit] * 2 - (char *)d;
+    off = ALIGN4(off);
+    return (TRANSW *)((char *)d + off);
 }
 
-/* OPEN */
+/* the user-word training phenomes: past the transcribed words */
 static unsigned short *_langGetpPhenUserWordTraining(LANG *l)
 {
     LANGDATA *d = l->data;
-    char *p = CODEBOOKS(d);
     unsigned int n = d->nbr_codebook;
     unsigned int i;
+    char *p;
+    int off;
 
     if (d->bits & 4)
         n++;
+    d = l->data;
+    p = CODEBOOKS(d);
     for (i = 0; i < n; i++)
         p += ALIGN4(_cdbGetCodeBookSize(l, (CDB *)p));
-    p += ((unsigned short *)p)[d->nbr_speech_unit * 2] * 2;
-    p = (char *)d + ALIGN4(p - (char *)d);
+    off = p + ((int *)p)[d->nbr_speech_unit] * 2 - (char *)d;
+    off = ALIGN4(off);
+    p = (char *)d + off;
     return (unsigned short *)(p + _transwGetSize(l, (TRANSW *)p));
 }
 
