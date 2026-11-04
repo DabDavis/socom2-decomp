@@ -11397,9 +11397,9 @@
 0x005EBF00 0x324 func_005EBF00  # OVL2
 0x005EC230 0x2A4 func_005EC230  # OVL2
 0x005EC4E0 0x1B8 func_005EC4E0  # OVL2
-0x005EC6A0 0x348 func_005EC6A0  # OVL2
-0x005EC9F0 0x2D4 func_005EC9F0  # OVL2
-0x005ECCD0 0x214 func_005ECCD0  # OVL2
+0x005EC6A0 0x348 CreateSinglePlayerUnits__9CSealUnitFv  # OVL2; s1:order by hand (the kit lane, round 22, from the game states' round 24): SOCOM 1's CreateSinglePlayerUnits -- CMission::Open calls it when !theNetwork.m_bNetwork (0x5ECCD0 otherwise) and ReOpen_Load calls it alone, as SOCOM 1's do; it makes squads 1-3 (2 and 3 under 1), 28, 17, 18, 4, 29 and 5-15, runs InitalizeSealUnit over the entities and issues order 6 and the mission's fireteam command (theMission+0x148, SOCOM 1's m_ai_params.fireteam_command) as SOCOM 1's; in SOCOM 1's order before InitalizeSealUnit
+0x005EC9F0 0x2D4 InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit  # OVL2; s1:order by hand (the kit lane, round 22): SOCOM 1's InitalizeSealUnit (between the two creators, as SOCOM 1's 0x2D4250) -- the SEAL put in the squad its team bits name (8 -> 3, 4 -> 2, bit 28 -> 28, bit 17 -> 17, bit 18 -> 18, bits 5-15, else 4); SOCOM II adds the squad as a second argument (0x56F210 passes its controller's squad, CTTeam/CTCreate/CSpawners::Tick and the creators 0)
+0x005ECCD0 0x214 CreateMultiPlayerUnits__9CSealUnitFv  # OVL2; s1:order by hand (the kit lane, round 22, from the game states' round 24): SOCOM 1's CreateMultiPlayerUnits -- CMission::Open's network arm; guarded by m_created_units_test as SOCOM 1's, it makes squads 0, 28, 17, 31, 30, 26, 25, 24 and joins each SEAL to 28 or 17 by its team bits, the player to 0; after InitalizeSealUnit, before UnInit, as in SOCOM 1
 0x005ECEF0 0x9C UnInit__9CSealUnitFv  # OVL2; s1:order by hand (the kit lane, round 14): SOCOM 1's UnInit -- every squad erased from m_list (0x44D5B0) and deleted (~CSealUnit 0x5EE4D0 with the delete flag), then m_created_units_test (0x44D5C0) cleared; ReOpen_Unload1 calls it
 0x005ECF90 0x1AC func_005ECF90  # OVL2
 0x005ED140 0x3A8 func_005ED140  # OVL2
