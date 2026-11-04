@@ -424,13 +424,25 @@ public:
 /* the mission (only what the handlers read) */
 class CRdrFile;
 
+/* how the mission stands (SOCOM 1's DWARF: a byte enum) */
+enum MISSION_STATE {
+    MISSION_UNLOADED = 0,
+    MISSION_RUNNING = 1,
+    MISSION_SUCCESS = 2,
+    MISSION_FAILURE = 3,
+    MISSION_ABORTED = 4,
+    MISSION_TIMEDOUT = 5
+};
+
 class CMission {
 public:
     void CreateNetGame();
     void DestroyNetGame();   /* 0x2A9EF0 */
     void PreOpen(const char *database);   /* 0x2ACC10 (fts_mission.cpp's: SOCOM 1's) */
 
-    unsigned char _0[0x1c];
+    unsigned char _0[0x18];
+    MISSION_STATE m_state;   // 0x18 (SOCOM 1's)
+    unsigned char _19[0x1c - 0x19];
     char *m_database;   // 0x1c (SOCOM 1's)
     unsigned char _20[0x1808 - 0x20];
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)

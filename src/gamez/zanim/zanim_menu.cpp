@@ -242,6 +242,12 @@ bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 
 namespace {
 
+/* whether the mission was won (SOCOM 1's: the UI command table's IsMissionSuccessful, id 2) */
+bool OnIsMissionSuccessful(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return theMission.m_state == MISSION_SUCCESS;
+}
+
 /* a single-player mission's title by its code's first three characters, "UU" for none (SOCOM II's;
  * the name ours -- 0x2801C0 asks it of the mission it lists; the first four codes carry a space the
  * three-character compare never reaches) */
