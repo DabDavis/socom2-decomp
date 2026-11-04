@@ -1066,12 +1066,27 @@ struct SKBTOGGLE {
  * placed at the look's position, the cursor (bitmap 2) hidden, the legend (bitmap 3) placed slid in,
  * the plain background's keys shown, the caption given cap 1's look, the caret (bitmap 1) sized and
  * hidden, the scaling up started, and the three toggles sized, placed at their rectangles and hidden
- * (0x395540; ShowSkb calls it with the font; the name ours) */
+ * (0x395540; ShowSkb calls it with the font; the name ours).
+ * OPEN, 1 instruction: the legend's `mul.s $f0,$f0,$f1` (1.0 times the width, the 1.0 in f0) comes
+ * out `mul.s $f0,$f1,$f0`: written `t * w` MW numbers the 1.0 before the width and colours the
+ * width into f0, written `w * t` (as below) the registers are the target's and the operands
+ * swapped -- the target wants the 1.0 first in the product but numbered after the width (tried: the
+ * width or the x in a named local, an int, an inline accessor, a const or swapped parameter, the
+ * comma form, a negated product, t as a local or a const local -- that one folds). The caption's
+ * look is written here, not through SkbApplyCapLook (0x395440): the target converts the colour's
+ * three components each into f0 at its store, which only int components read into locals (b, g,
+ * r) give -- SkbApplyCapLook inlined keeps SetColor's g and b as named variables, converted in
+ * place; the font choice `font = name.size() == 0 ? s_defaultFont : font` leaves the join unpadded
+ * as the target (`if (!name.size())` pads it: the game states' round-34 ternary rule; `!size() ?`
+ * gives two arms); the node read into a local first (the target keeps it in s1 across the calls).
+ * Round 23: 0x398 -> 0x390, 18 lines off -> 1. */
 /* the legend (bitmap 3) placed slid in by t, a fraction of its width (ours: the 1.0f a caller
- * passes is still multiplied) */
+ * passes is still multiplied; the width written first gives the target's registers -- the 1.0 then
+ * numbered after it, so coloured first into f0 -- with the product's operands the wrong way round,
+ * the one instruction SkbStartDisplay misses on) */
 static inline void SkbPlaceLegend(CSoftKeyboard *skb, float t)
 {
-    s_bmp3.m_node->SetPosition((float)skb->m_6c - t * (float)s_rect.m_size[0], 0.0f, 0.0f);
+    s_bmp3.m_node->SetPosition((float)skb->m_6c - (float)s_rect.m_size[0] * t, 0.0f, 0.0f);
 }
 
 /* a node put at a place raised by dy (ours: the 0.0f a caller passes is still added) */
@@ -1105,7 +1120,21 @@ void SkbStartDisplay(CSoftKeyboard *skb, C2DFont *font)
             if (bmp.m_node)
                 bmp.m_node->SetActive(on);
         }
-    SkbApplyCapLook(&s_caption, s_captionNode, skb, 1, font, 0.0f);
+    {
+        zdb::CNode *node = s_captionNode;
+        CSkbCapLook *caps = skb->m_caps;
+        CSkbCapLook *cap = &caps[1];
+        const CSaferStr &name = cap->m_texture;
+
+        font = name.size() == 0 ? s_defaultFont : font;
+        s_caption.SetFont(font);
+        int b = cap->m_b, g = cap->m_g, r = cap->m_r;
+
+        s_caption.SetColor(r, g, b);
+        s_caption.m_scale = cap->m_scale;
+        SkbPlaceNode(node, cap->m_0, cap->m_4, 0.0f);
+        node->SetActive(false);
+    }
     s_bmp1.Load(0.0f, 0.0f, (float)skb->m_d0, (float)skb->m_d4, s_bmp1.m_pTexHandle);
     if (s_bmp1.m_node)
         s_bmp1.m_node->SetActive(false);
