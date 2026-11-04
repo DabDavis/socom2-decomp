@@ -25,6 +25,26 @@
  * leaves laid out in source order); libnet's buffer size is masked with an unsigned ~63U (lui/ori,
  * held across the call) where the aligned pointer's mask is a plain -64.
  *
+ *  - the BSD calls (GCC round 21a): socket 0x1C2B90, bind 0x1C2CD8, connect 0x1C2DD0, listen 0x1C3120
+ *    (a libinet listener per backlog slot, 0x1C2F38), close 0x1C3CE8, and around them the thread's
+ *    buffer resize 0x1C2648, its context's drop 0x1C2A98, the send side's lazy open 0x1C35A0, an
+ *    option setter 0x1C4088, the abort 0x1C4C20; each takes the thread's context with the lock,
+ *    releases the lock around every libinet call (func_001C2140 ... func_001C20D8) and returns
+ *    through func_001C2310 with an errno.
+ *
+ * Shapes the target showed, round 21a: EVERY UNLINK READS THE OTHER LINK INTO A LOCAL FIRST --
+ * `{ CTX *n = c->next; if (c->prev) c->prev->next = n; else head = n; }` and the second test on the
+ * fields themselves: the target's non-annulled slot loads the local before the branch and the
+ * reloads after the store come in the target's order (written on the fields, the context's three
+ * unlinks reloaded prev before next, the socket's beqzl'd its first arm: 2-24 words; ten spellings
+ * of the fields alike, build/scratch/gcc/gen_unlink*.py, gen_close.py). libnet's buffer mask is a
+ * local `mask = ~63U` assigned before the buffer's allocation (its lui/ori in the freed tid's s1,
+ * held across the calls) and the aligned pointer an int's (`li -64`: as u_int it is the mask's
+ * constant, which CSE then reuses). socket()'s case 2 is written first (its body follows the case
+ * tree, so the tree's last test is `beq 3 -> the allocation; b default`), its record filled in field
+ * order (one of three orders of 120). The send side's open nests its body under `if (s->cid ==
+ * 0)`, its final `return 0` laid out last.
+ *
  * OPEN: func_001C1D40, the first-fit allocation (0x14C against 0x150: the target computes the
  *   remainder as (size' - 12) - size from the loop's own load of the block's size, and after a split
  *   reloads the new block's size where the exact fit keeps the loop's -- nine spellings of the
@@ -33,10 +53,10 @@
  *   size held from the start, the merges reuse the adjacency sums -- the walk's shape is not yet the
  *   target's); func_001C2028, the heap's set-up (right size, 34: the first `return -1` is the one
  *   the second test jumps back to, and nine stores in another order -- not yet permuted);
- *   func_001C2160, the thread context (right size, 26: the target stores the thread id first and
- *   loads the unsigned mask before the buffer's allocation into the id's freed s1, and reloads the
- *   dropped context's next before its prev; 120 store orders and 27 mask/unlink spellings leave 24,
- *   build/scratch/gcc/gen_ctx.py). */
+ *   func_001C48A0, gethostbyname (0x178 against 0x180: the target keeps each error path's
+ *   `func_001C2310(c, X); return 0;` apart -- three calls, each `b epilogue; move v0,zero` -- where
+ *   this compile cross-jumps them into one call; the h_errno chain's value through one store as
+ *   the target's). */
 
 typedef unsigned int u_int;
 typedef unsigned int size_t;
@@ -59,6 +79,15 @@ extern int GetThreadId(void);
 extern int *__errno(void);
 extern int sceLibnetInitialize(void *client, u_int bufsize, int a, int b);
 extern int sceLibnetTerminate(void *client);
+extern int DeleteSema(int sema);
+extern void *memset(void *p, int c, size_t n);
+extern int sceInetCreate(void *cd, void *buf, void *param);
+extern int sceInetOpen(void *cd, void *buf, int s, int ms);
+extern int sceInetAbort(void *cd, void *buf, int s, int flags);
+extern int sceInetClose(void *cd, void *buf, int s, int ms);
+extern int sceInetControl(void *cd, void *buf, int s, int code, void *ptr, int len);
+extern int sceInetName2Address(void *cd, void *buf, int flags, void *paddr, const char *name, int ms,
+			       int nretry);
 
 /* the first-fit heap's block header: the payload follows it */
 typedef struct _blk {
@@ -282,12 +311,36 @@ int func_001C20D8(void)
 	return WaitSema(data_001CE620) < 0 ? -1 : 0;
 }
 
+/* libinet's address and connection parameters (libinet.h's sceInetAddress and sceInetParam) */
+typedef struct {
+	int reserved;
+	unsigned char data[12];	/* +4: the IPv4 address, network order */
+} sceInetAddress_t;
+
+typedef struct {
+	int type;			/* +0x00 */
+	int local_port;			/* +0x04: -1 any */
+	sceInetAddress_t remote_addr;	/* +0x08 */
+	int remote_port;		/* +0x18 */
+	int reserved[9];
+} sceInetParam_t;
+
+/* a BSD socket address (4.4BSD's, with its length byte) */
+struct sockaddr_in {
+	unsigned char sin_len;
+	unsigned char sin_family;
+	unsigned short sin_port;
+	u_int sin_addr;
+	char sin_zero[8];
+};
+
 /* a socket's record: on the list at 0x1CE630, by its descriptor */
 typedef struct _sock {
 	struct _sock *next;	/* 0x00 */
 	struct _sock *prev;	/* 0x04 */
 	int id;			/* 0x08: the descriptor */
-	int pad0c[17];
+	int cid;		/* 0x0C: libinet's connection */
+	sceInetParam_t param;	/* 0x10 */
 	struct _sock *conn;	/* 0x50: its connections */
 	int pad54;
 	struct _sock *pend;	/* 0x58 */
@@ -313,6 +366,7 @@ CTX *func_001C2160(int keep)
 {
 	int tid;
 	CTX *c;
+	u_int mask;
 
 	tid = GetThreadId();
 	if (func_001C20D8() < 0)
@@ -322,10 +376,14 @@ CTX *func_001C2160(int keep)
 			goto found;
 	if (++data_001CE624 >= 256) {
 		c = data_001CE62C;
-		if (c->prev)
-			c->prev->next = c->next;
-		else
-			data_001CE628 = c->next;
+		{
+			CTX *n = c->next;
+
+			if (c->prev)
+				c->prev->next = n;
+			else
+				data_001CE628 = n;
+		}
 		if (c->next)
 			c->next->prev = c->prev;
 		else
@@ -342,14 +400,15 @@ CTX *func_001C2160(int keep)
 	c->bufsize = 2048;
 	c->rpcsize = 8192;
 	c->prio = 32;
-	c->buf = func_001C1CD0(2048 + 127);
+	mask = ~63U;
+	c->buf = func_001C1CD0((c->bufsize + 99) | 63);
 	if (c->buf == 0) {
 		func_001C1D08(c);
 		func_001C2140();
 		return 0;
 	}
-	c->abuf = (void *)(((u_int)c->buf + 63) & ~63);
-	sceLibnetInitialize(c->client, (c->bufsize + 99) & ~63U, c->rpcsize, c->prio);
+	c->abuf = (void *)(((int)c->buf + 63) & ~63);
+	sceLibnetInitialize(c->client, (c->bufsize + 99) & mask, c->rpcsize, c->prio);
 	c->next = data_001CE628;
 	if (data_001CE628)
 		data_001CE628->prev = c;
@@ -513,4 +572,413 @@ int func_001C2878(int id, int v)
 	s->opt68 = v;
 	func_001C2310(c, 0);
 	return 0;
+}
+
+/* the calling thread's libnet buffer resized: its client restarted over a new buffer (the context
+ * dropped when there is none) */
+int func_001C2648(int bufsize, int rpcsize, int prio)
+{
+	CTX *c;
+	u_int mask;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	mask = ~63U;
+	sceLibnetTerminate(c->client);
+	func_001C1D08(c->buf);
+	c->rpcsize = rpcsize;
+	c->prio = prio;
+	c->bufsize = bufsize;
+	c->buf = func_001C1CD0((bufsize + 99) | 63);
+	if (c->buf == 0) {
+		{
+			CTX *n = c->next;
+
+			if (c->prev)
+				c->prev->next = n;
+			else
+				data_001CE628 = n;
+		}
+		if (c->next)
+			c->next->prev = c->prev;
+		else
+			data_001CE62C = c->prev;
+		func_001C1D08(c);
+		return func_001C2310(c, 12);
+	}
+	c->abuf = (void *)(((int)c->buf + 63) & ~63);
+	sceLibnetInitialize(c->client, (c->bufsize + 99) & mask, c->rpcsize, c->prio);
+	return func_001C2310(c, 0);
+}
+
+/* a thread's context dropped (the calling thread's for 0); the lock deleted with the last */
+int func_001C2A98(int tid)
+{
+	CTX *c;
+
+	if (tid == 0)
+		tid = GetThreadId();
+	if (func_001C20D8() < 0)
+		return -1;
+	for (c = data_001CE628; c; c = c->next)
+		if (tid == c->tid)
+			break;
+	if (c) {
+		{
+			CTX *n = c->next;
+
+			if (c->prev)
+				c->prev->next = n;
+			else
+				data_001CE628 = n;
+		}
+		if (c->next)
+			c->next->prev = c->prev;
+		else
+			data_001CE62C = c->prev;
+		sceLibnetTerminate(c->client);
+		func_001C1D08(c->buf);
+		func_001C1D08(c);
+		if (--data_001CE624 <= 0) {
+			DeleteSema(data_001CE620);
+			data_001CE620 = -1;
+			return 0;
+		}
+	}
+	func_001C2140();
+	return 0;
+}
+
+extern SOCK *data_001CE634;
+
+/* socket(): a record on the list under the lowest free descriptor */
+int func_001C2B90(int domain, int type, int protocol)
+{
+	CTX *c;
+	SOCK *s;
+	int id;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	if (domain != 2)
+		return func_001C2310(c, 96);
+	id = func_001C25D0();
+	switch (type) {
+	case 2:
+		type = 0;
+		break;
+	case 1:
+	case 3:
+		break;
+	default:
+		return func_001C2310(c, 107);
+	}
+	s = func_001C1CD0(sizeof(SOCK));
+	if (s == 0)
+		return func_001C2310(c, 12);
+	memset(s, 0, sizeof(SOCK));
+	s->id = id;
+	s->param.type = type;
+	s->opt60 = -1;
+	s->opt64 = -1;
+	s->opt68 = -1;
+	s->next = data_001CE630;
+	if (data_001CE630)
+		data_001CE630->prev = s;
+	else
+		data_001CE634 = s;
+	data_001CE630 = s;
+	s->prev = 0;
+	func_001C2310(c, 0);
+	return id;
+}
+
+extern int func_001C2488(int port);
+extern void func_001C2410(sceInetAddress_t *a, u_int *in);
+
+/* bind(): the local port, refused when another socket holds it */
+int func_001C2CD8(int id, struct sockaddr_in *addr, int len)
+{
+	CTX *c;
+	SOCK *s, *t;
+	int port;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (len != 16)
+		return func_001C2310(c, 22);
+	if (addr->sin_family != 2)
+		return func_001C2310(c, 106);
+	port = func_001C2488(addr->sin_port);
+	for (t = data_001CE630; t; t = t->next)
+		if (port == t->param.local_port)
+			return func_001C2310(c, 112);
+	s->param.local_port = port;
+	return func_001C2310(c, 0);
+}
+
+/* connect(): libinet's connection created and opened, the lock released around each call */
+int func_001C2DD0(int id, struct sockaddr_in *addr, int len)
+{
+	CTX *c;
+	SOCK *s;
+	int r;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (len != 16)
+		return func_001C2310(c, 22);
+	if (addr->sin_family != 2)
+		return func_001C2310(c, 106);
+	func_001C2410(&s->param.remote_addr, &addr->sin_addr);
+	s->param.remote_port = func_001C2488(addr->sin_port);
+	if (s->param.local_port == 0)
+		s->param.local_port = -1;
+	func_001C2140();
+	r = sceInetCreate(c->client, c->abuf, &s->param);
+	if (func_001C20D8() < 0)
+		return func_001C2310(c, -1);
+	if (r <= 0)
+		return func_001C2310(c, func_001C24D0(r));
+	s->cid = r;
+	func_001C2140();
+	r = sceInetOpen(c->client, c->abuf, s->cid, -1);
+	if (func_001C20D8() < 0)
+		return func_001C2310(c, -1);
+	if (r < 0)
+		return func_001C2310(c, func_001C24D0(r));
+	return func_001C2310(c, 0);
+}
+
+extern int func_001C2F38(CTX *c, SOCK *s);
+
+/* libinet's connection information (sceInetControl's GET_INFO) */
+typedef struct {
+	int cid;
+	int proto;
+	int recv_queue_length;
+	int send_queue_length;
+	sceInetAddress_t local_adr;	/* 0x10 */
+	int local_port;			/* 0x20 */
+	sceInetAddress_t remote_adr;
+	int remote_port;
+	int state;
+	int reserved[4];
+} sceInetInfo_t;
+
+/* listen(): a listening connection per backlog slot; the port the first one got kept */
+int func_001C3120(int id, int backlog)
+{
+	CTX *c;
+	SOCK *s;
+	int i, r;
+	sceInetInfo_t info;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (s->param.type != 1)
+		return func_001C2310(c, 95);
+	s->param.type = 2;
+	if (s->param.local_port == 0)
+		s->param.local_port = -1;
+	for (i = 0; i < backlog; i++) {
+		r = func_001C2F38(c, s);
+		if (r)
+			return func_001C2310(c, r);
+		if (i == 0 && s->param.local_port == -1) {
+			func_001C2140();
+			r = sceInetControl(c->client, c->abuf, s->conn->cid, 1, &info, sizeof(info));
+			if (func_001C20D8() < 0)
+				return func_001C2310(c, -1);
+			if (r < 0)
+				return func_001C2310(c, func_001C24D0(r));
+			s->param.local_port = info.local_port;
+		}
+	}
+	return func_001C2310(c, 0);
+}
+
+struct hostent {
+	char *h_name;
+	char **h_aliases;
+	int h_addrtype;
+	int h_length;
+	char **h_addr_list;
+};
+
+extern struct hostent data_001E6098;
+extern char *data_001CE640[];
+extern char *data_001CE648[];
+extern u_int data_001E5F90;
+extern void func_001C2458(u_int *in, sceInetAddress_t *a);
+
+/* gethostbyname(): libinet's resolver into one static hostent */
+struct hostent *func_001C48A0(const char *name)
+{
+	struct hostent *h = &data_001E6098;
+	CTX *c;
+	int r;
+	sceInetAddress_t addr;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return 0;
+	c->herr = 0;
+	func_001C2140();
+	r = sceInetName2Address(c->client, c->abuf, 65, &addr, name, 0, 0);
+	if (func_001C20D8() < 0) {
+		c->herr = -1;
+		func_001C2310(c, -1);
+		return 0;
+	}
+	if (r < 0) {
+		if (r == -500 || r == -515)
+			c->herr = 1;
+		else if (r == -516)
+			c->herr = 2;
+		else if (r == -517)
+			c->herr = 3;
+		else if (r == -518)
+			c->herr = 4;
+		else {
+			c->herr = -1;
+			func_001C2310(c, func_001C24D0(r));
+			return 0;
+		}
+		func_001C2310(c, 0);
+		return 0;
+	}
+	h->h_name = 0;
+	h->h_aliases = data_001CE640;
+	h->h_addrtype = 2;
+	h->h_length = 4;
+	func_001C2458(&data_001E5F90, &addr);
+	c->herr = 0;
+	data_001CE648[0] = (char *)&data_001E5F90;
+	h->h_addr_list = data_001CE648;
+	func_001C2310(c, 0);
+	return h;
+}
+
+/* every pending libinet call of the thread aborted */
+int func_001C4C20(int unused)
+{
+	CTX *c;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	func_001C2140();
+	sceInetAbort(c->client, c->abuf, 0, 0x52534C56);
+	if (func_001C20D8() < 0)
+		return func_001C2310(c, -1);
+	return func_001C2310(c, 0);
+}
+
+/* a datagram or raw socket's libinet connection made at its first send (128 for a connection socket
+ * never connected) */
+int func_001C35A0(CTX *c, SOCK *s)
+{
+	int r;
+
+	if (s->cid == 0) {
+		if (s->param.type != 0 && s->param.type != 3)
+			return 128;
+		memset(&s->param.remote_addr, 0, sizeof(s->param.remote_addr));
+		s->param.remote_port = 0;
+		if (s->param.local_port == 0)
+			s->param.local_port = -1;
+		r = sceInetCreate(c->client, c->abuf, &s->param);
+		if (r <= 0)
+			return func_001C24D0(r);
+		s->cid = r;
+		r = sceInetOpen(c->client, c->abuf, r, -1);
+		if (r < 0)
+			return func_001C24D0(r);
+	}
+	return 0;
+}
+
+/* close(): the socket's connection closed, then each pending one, and the record freed */
+int func_001C3CE8(int id)
+{
+	CTX *c;
+	SOCK *s, *t;
+	int r;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	r = 0;
+	if (s->cid) {
+		func_001C2140();
+		r = sceInetClose(c->client, c->abuf, s->cid, s->opt68);
+		if (func_001C20D8() < 0)
+			return func_001C2310(c, -1);
+	}
+	{
+		SOCK *p = s->prev;
+
+		if (s->next)
+			s->next->prev = p;
+		else
+			data_001CE634 = p;
+	}
+	if (s->prev)
+		s->prev->next = s->next;
+	else
+		data_001CE630 = s->next;
+	while ((t = s->conn) != 0) {
+		s->conn = t->next;
+		if (t->cid) {
+			func_001C2140();
+			sceInetClose(c->client, c->abuf, t->cid, 0);
+			if (func_001C20D8() < 0)
+				return func_001C2310(c, -1);
+		}
+		func_001C1D08(t);
+	}
+	func_001C1D08(s);
+	if (r < 0)
+		return func_001C2310(c, func_001C24D0(r));
+	return func_001C2310(c, 0);
+}
+
+/* an option of the socket's connection set through libinet (code 16, one word) */
+int func_001C4088(int id, int val)
+{
+	CTX *c;
+	SOCK *s;
+	int r;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	func_001C2140();
+	r = sceInetControl(c->client, c->abuf, s->cid, 16, &val, 4);
+	if (func_001C20D8() < 0)
+		return func_001C2310(c, -1);
+	if (r < 0)
+		return func_001C2310(c, func_001C24D0(r));
+	return func_001C2310(c, 0);
 }
