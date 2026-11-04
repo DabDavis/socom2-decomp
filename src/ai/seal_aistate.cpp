@@ -23,8 +23,6 @@
 
 extern "C" {
 /* (CSealCtrlAi::RestoreAiMode, OVL2 0x56D090, zseal.h's: called twice on leaving the unknown state) */
-/* the AI's mode, a byte (OVL2 0x560A60, the SEAL lane's range) */
-unsigned char func_00560A60(CSealCtrlAi *ai);
 }
 
 /* the controller's state clock: its stack's (SEAL_AI_PARAMS's stack at 0x41C, the clock 0x18 into
@@ -231,7 +229,7 @@ extern "C" void func_005F3FC0(CAiSScript *script, CSealCtrlAi *ai, bool on)
 /* pursued from: in its own AI mode and half a second on (OVL2 0x5F4090; SOCOM 1's 0x6C bytes) */
 bool CAiSScript::CanPursue(CSealCtrlAi *ai) const
 {
-    return m_mode == func_00560A60(ai) && m_60 >= 0.5f;
+    return m_mode == ai->GetAiAware() && m_60 >= 0.5f;
 }
 
 /* a script sequence run on the AI's script state, when that is the current one: whether it began
