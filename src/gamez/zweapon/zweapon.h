@@ -51,6 +51,7 @@ class CZAmmo;
 class CZWeaponList;
 class CZProjectile;
 class CZProjectileList;
+class CValve;
 
 /* a cartridge type (SOCOM 1's DWARF: a byte enum, AMMO_NONE 255 and AMMO_END 254) */
 enum EQUIP_AMMO {
@@ -171,6 +172,13 @@ public:
      * member one handing it the id, 0x3D1E10) */
     static EQUIP_ITEM GetIDType(EQUIP_ITEM id);
     EQUIP_ITEM GetIDType();
+    /* the valve that enables an item in the menus ("Enable_<item>"), none for the rest (SOCOM II's,
+     * 0x3CF1F0, zwep_weapon.cpp's first function: the kit's slot test reads its flags; the name
+     * ours) */
+    static CValve *GetEnableValve(EQUIP_ITEM item);
+    /* an item's place in the weapon menus, the value UiWeapon holds; -1 for none (SOCOM II's,
+     * 0x3D3230; the name ours) */
+    static int GetMenuValue(EQUIP_ITEM item);
     /* the name and the description (zwep_weapon.cpp's, out of line: 0x3D2840, 0x3D2830 -- in
      * SOCOM 1's order, GetDescription before GetName) */
     char *GetName() const;

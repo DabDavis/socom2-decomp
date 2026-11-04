@@ -14,6 +14,12 @@
 
 using namespace zdb;
 
+/* a valve (zvalve's: the lookup by name only) */
+class CValve {
+public:
+    static CValve *GetByName(const char *name);
+};
+
 /* the decal sets and the bullet marks: this unit's classes alone (seal_env.cpp, which includes
  * zweapon.h through zseal.h, has a CZDecalDef of its own) */
 namespace zdb {
@@ -336,6 +342,161 @@ void CZWeapon::SetBulletPassSound(CSnd *snd)
 void CZWeapon::SetRocketPassSound(CSnd *snd)
 {
     m_rocketpassSound = snd;
+}
+
+/* an item's place in the weapon menus -- what the UiWeapon valve holds (zanim_menu.cpp asks it of
+ * every item to find the one the valve names), -1 for none (SOCOM II's, 0x3D3230: the switch as
+ * m2c's draft read it; the name ours) */
+int CZWeapon::GetMenuValue(EQUIP_ITEM item)
+{
+    switch (item) {
+    case 51:
+        return 1;
+    case 33:
+        return 2;
+    case 31:
+        return 3;
+    case 58:
+        return 4;
+    case 59:
+        return 5;
+    case 60:
+        return 7;
+    case 57:
+        return 8;
+    case 37:
+        return 9;
+    case 102:
+        return 10;
+    case 91:
+        return 11;
+    case 92:
+        return 12;
+    case 106:
+        return 13;
+    case 105:
+        return 14;
+    case 101:
+        return 15;
+    case 103:
+        return 17;
+    case 54:
+        return 18;
+    case 61:
+        return 19;
+    case 62:
+        return 20;
+    case 143:
+        return 21;
+    case 142:
+        return 22;
+    case 34:
+        return 23;
+    case 52:
+        return 24;
+    case 83:
+        return 25;
+    case 81:
+        return 26;
+    case 84:
+        return 27;
+    case 68:
+        return 28;
+    case 65:
+        return 29;
+    case 64:
+        return 30;
+    case 66:
+        return 31;
+    case 38:
+        return 32;
+    case 63:
+        return 33;
+    case 104:
+        return 34;
+    case 67:
+        return 65;
+    case 15:
+        return 75;
+    case 16:
+        return 76;
+    case 6:
+        return 77;
+    case 5:
+        return 81;
+    case 14:
+        return 79;
+    case 4:
+        return 80;
+    case 8:
+        return 78;
+    case 7:
+        return 82;
+    case 11:
+        return 83;
+    case 12:
+        return 84;
+    case 13:
+        return 85;
+    case 194:
+        return 35;
+    case 121:
+        return 36;
+    case 126:
+        return 37;
+    case 122:
+        return 49;
+    case 123:
+        return 39;
+    case 152:
+        return 54;
+    case 153:
+        return 41;
+    case 151:
+        return 42;
+    case 171:
+        return 43;
+    case 173:
+        return 44;
+    case 175:
+        return 45;
+    case 179:
+        return 46;
+    case 178:
+        return 47;
+    case 176:
+        return 48;
+    case 158:
+        return 38;
+    case 145:
+        return 50;
+    case 146:
+        return 51;
+    case 195:
+        return 52;
+    case 127:
+        return 53;
+    case 186:
+        return 40;
+    case 181:
+        return 55;
+    case 182:
+        return 56;
+    case 183:
+        return 57;
+    case 128:
+        return 58;
+    case 141:
+        return 252;
+    case 185:
+        return 254;
+    case 254:
+        return 255;
+    case 255:
+        return 0;
+    default:
+        return -1;
+    }
 }
 
 /* the sound listener: the app camera's camera node (0x48DB48, set where the mission opens) */
@@ -1348,4 +1509,218 @@ void CZItemStash::Compact()
             ++b;
         }
     }
+}
+
+/* the menus' valve for an item -- "Enable_" and its name -- none for any other (SOCOM II's, 0x3CF1F0:
+ * the unit's first function in the image, so defined last; the cases in the target's block order,
+ * its compare chain their reverse) */
+CValve *CZWeapon::GetEnableValve(EQUIP_ITEM item)
+{
+    CValve *v = 0;
+
+    switch (item) {
+    case 34:
+        v = CValve::GetByName("Enable_FNP");
+        break;
+    case 51:
+        v = CValve::GetByName("Enable_M16");
+        break;
+    case 61:
+        v = CValve::GetByName("Enable_m4Acarbine_203");
+        break;
+    case 52:
+        v = CValve::GetByName("Enable_M16203");
+        break;
+    case 33:
+        v = CValve::GetByName("Enable_mp5sd");
+        break;
+    case 31:
+        v = CValve::GetByName("Enable_mp5");
+        break;
+    case 58:
+        v = CValve::GetByName("Enable_ak47");
+        break;
+    case 59:
+        v = CValve::GetByName("Enable_aks74");
+        break;
+    case 83:
+        v = CValve::GetByName("Enable_jack");
+        break;
+    case 81:
+        v = CValve::GetByName("Enable_spas");
+        break;
+    case 60:
+        v = CValve::GetByName("Enable_m14_gun");
+        break;
+    case 57:
+        v = CValve::GetByName("Enablesig_commando");
+        break;
+    case 37:
+        v = CValve::GetByName("Enable_uzi");
+        break;
+    case 102:
+        v = CValve::GetByName("Enable_remington700");
+        break;
+    case 91:
+        v = CValve::GetByName("Enable_m60e");
+        break;
+    case 92:
+        v = CValve::GetByName("Enable_m63a");
+        break;
+    case 106:
+        v = CValve::GetByName("Enable_stoner_sr25");
+        break;
+    case 101:
+        v = CValve::GetByName("Enable_barret_lightm82A1");
+        break;
+    case 84:
+        v = CValve::GetByName("Enable_870");
+        break;
+    case 103:
+        v = CValve::GetByName("Enable_EquipmcmillanM87");
+        break;
+    case 54:
+        v = CValve::GetByName("Enable_m4Acarbine");
+        break;
+    case 62:
+        v = CValve::GetByName("Enable_M4A1_SD");
+        break;
+    case 105:
+        v = CValve::GetByName("Enable_stoner_sr25_SD");
+        break;
+    case 68:
+        v = CValve::GetByName("Enable_STEYR");
+        break;
+    case 142:
+        v = CValve::GetByName("Enable_mglmk1");
+        break;
+    case 143:
+        v = CValve::GetByName("Enable_m79");
+        break;
+    case 63:
+        v = CValve::GetByName("Enable_F2000");
+        break;
+    case 67:
+        v = CValve::GetByName("Enable_552SD");
+        break;
+    case 104:
+        v = CValve::GetByName("Enable_Dragonov");
+        break;
+    case 64:
+        v = CValve::GetByName("Enable_SA-80");
+        break;
+    case 65:
+        v = CValve::GetByName("Enable_AK105");
+        break;
+    case 66:
+        v = CValve::GetByName("Enable_OC14");
+        break;
+    case 15:
+        v = CValve::GetByName("Enable_Mark23");
+        break;
+    case 16:
+        v = CValve::GetByName("Enable_mark23sd");
+        break;
+    case 6:
+        v = CValve::GetByName("Enable_Sig226");
+        break;
+    case 8:
+        v = CValve::GetByName("Enable_HkP9s");
+        break;
+    case 14:
+        v = CValve::GetByName("Enable_glock18");
+        break;
+    case 4:
+        v = CValve::GetByName("Enable_fiveseven");
+        break;
+    case 5:
+        v = CValve::GetByName("Enable_beretta_m9");
+        break;
+    case 7:
+        v = CValve::GetByName("Enable_desert_eagle");
+        break;
+    case 13:
+        v = CValve::GetByName("Enable_SR1_Gyurza");
+        break;
+    case 12:
+        v = CValve::GetByName("Enable_P228");
+        break;
+    case 38:
+        v = CValve::GetByName("Enable_MP5K");
+        break;
+    case 194:
+        v = CValve::GetByName("Enable_2xammo");
+        break;
+    case 195:
+        v = CValve::GetByName("Enable_ThermScope");
+        break;
+    case 121:
+        v = CValve::GetByName("Enable_frag");
+        break;
+    case 122:
+        v = CValve::GetByName("Enable_smoke");
+        break;
+    case 123:
+        v = CValve::GetByName("Enable_flash");
+        break;
+    case 124:
+        v = CValve::GetByName("Enable_phos");
+        break;
+    case 152:
+        v = CValve::GetByName("Enable_satchel");
+        break;
+    case 153:
+        v = CValve::GetByName("Enable_claymore");
+        break;
+    case 158:
+        v = CValve::GetByName("Enable_pmn");
+        break;
+    case 151:
+        v = CValve::GetByName("Enable_c4");
+        break;
+    case 171:
+        v = CValve::GetByName("Enable_203HE");
+        break;
+    case 173:
+        v = CValve::GetByName("Enable_203SMK");
+        break;
+    case 175:
+        v = CValve::GetByName("Enable_203FRAG");
+        break;
+    case 172:
+        v = CValve::GetByName("Enable_203ILL");
+        break;
+    case 126:
+        v = CValve::GetByName("Enable_HEgren");
+        break;
+    case 179:
+        v = CValve::GetByName("Enable_GLFRAG");
+        break;
+    case 178:
+        v = CValve::GetByName("Enable_GLSMK");
+        break;
+    case 176:
+        v = CValve::GetByName("Enable_GLHE");
+        break;
+    case 186:
+    case 146:
+        v = CValve::GetByName("Enable_RPG");
+        break;
+    case 145:
+        v = CValve::GetByName("Enable_LAW");
+        break;
+    case 183:
+        v = CValve::GetByName("Enable_F2000FRAG");
+        break;
+    case 182:
+        v = CValve::GetByName("Enable_F2000SMK");
+        break;
+    case 181:
+        v = CValve::GetByName("Enable_F2000HE");
+        break;
+    case 127:
+        v = CValve::GetByName("Enable_red_smoke");
+        break;
+    }
+    return v;
 }

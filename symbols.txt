@@ -8271,7 +8271,7 @@
 0x003CEDB0 0x3DC func_003CEDB0  # OVL1
 0x003CF190 0x44 __dt__10ZWepReaderFv  # OVL1; s1:align
 0x003CF1E0 0x8 func_003CF1E0  # OVL1
-0x003CF1F0 0x90C func_003CF1F0  # OVL1
+0x003CF1F0 0x90C GetEnableValve__8CZWeaponF10EQUIP_ITEM  # OVL1; by hand (the weapons lane, round 22: a switch over items, each returning CValve::GetByName("Enable_<item>") -- Enable_LAW, Enable_M16 ...; none for the rest; zanim_menu.cpp's slot test reads the valve's flags at +4, as the engine core's round 7 found; the name ours); zwep_weapon.cpp
 0x003CFB00 0x8 func_003CFB00  # OVL1
 0x003CFB10 0x8 func_003CFB10  # OVL1
 0x003CFB20 0x118 Compact__11CZItemStashFv  # OVL1; by hand (the wep lane: a 0x28-byte object of three parallel pod vectors at 0/0xC/0x18 and a word at 0x24; erases, through the pod vector's erase 0x28F220, every entry whose third word is zero; CPickup::CleanupAmmoPickup calls it; the class and its names ours); zwep_weapon.cpp
@@ -8409,7 +8409,7 @@
 0x003D2C40 0x8 func_003D2C40  # OVL1
 0x003D2C50 0x11C PlayFireSound__8CZWeaponFPC6CPnt3D  # OVL1; by hand (the wep lane: picks m_firesound[0..2] (0xE0) by the listener's squared distance against the WEAPON_GLOBAL sound distances 0x4B52F8/0x4B52F4 and plays it through CSnd's slot +0x14, PlaySound3D(pos, 1.0, 0, 0, 255); the name ours); zwep_weapon.cpp
 0x003D2D70 0x4B4 func_003D2D70  # OVL1
-0x003D3230 0x520 func_003D3230  # OVL1
+0x003D3230 0x520 GetMenuValue__8CZWeaponF10EQUIP_ITEM  # OVL1; by hand (the weapons lane, round 22: a switch from items to their weapon-menu values, -1 for none -- zanim_menu.cpp walks every item for the one whose value the UiWeapon valve holds, as the engine core's round 7 found; m2c's draft was byte-exact; the name ours); zwep_weapon.cpp
 0x003D3750 0x40 func_003D3750  # OVL1
 0x003D3790 0xC SetRocketPassSound__8CZWeaponFP4CSnd  # OVL1; by hand (the wep lane, round 17: InitializeWeapons hands it the ".ROCKET_BY" sound right after the bullets' -- new in SOCOM II, the name ours; stores the static 0x4B52A8)
 0x003D37A0 0xC SetBulletPassSound__8CZWeaponFP4CSnd  # OVL1; s1:calls by hand (the wep lane, round 17: SOCOM 1's InitializeWeapons hands SetBulletPassSound__8CZWeaponFP4CSnd the ".BUL_PASSING" sound at the same place SOCOM II's hands this one it; stores the static 0x4B52A0 as SOCOM 1's stores m_bulletpassSound)
