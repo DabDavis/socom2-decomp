@@ -3785,11 +3785,11 @@
 0x002A3B90 0x24 TestFlags__11CSaveModuleCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A3BC0 0x25C func_002A3BC0  # OVL1
 0x002A3E20 0x38 func_002A3E20  # OVL1
-0x002A3E60 0x1F0 func_002A3E60  # OVL1
-0x002A4050 0x194 func_002A4050  # OVL1
+0x002A3E60 0x1F0 Dequeue__13CMessageQueueFP14CQueuedMessage  # OVL1; by hand (the states lane, round 24): the message ring's head copied into a CQueuedMessage (text, sender, type) and its slot cleared with "QHEAD RETRIEVED (strdup)"; CMenuState::Tick and CHUD::Tick call it while 0x2A4270 says one waits. The names ours
+0x002A4050 0x194 Enqueue__13CMessageQueueFPCc7MSGTYPEPCc  # OVL1; by hand (the states lane, round 24): theMission's message ring at +0x11B0 (fts_state.h's m_netQueue: 10 entries of 0xA1 bytes after a head and a tail) -- a line added at the tail unless full; the chat's cbChatMessage and the core state's alert call it with the text, a type and a sender. SOCOM II's, the class and member names ours
 0x002A41F0 0x78 func_002A41F0  # OVL1
-0x002A4270 0x14 func_002A4270  # OVL1
-0x002A4290 0xC func_002A4290  # OVL1
+0x002A4270 0x14 HasMessages__13CMessageQueueFv  # OVL1; by hand (the states lane, round 24): head != tail of the message ring (CMenuState::Tick's and CHUD::Tick's loop test before Dequeue 0x2A3E60). The name ours
+0x002A4290 0xC __ct__14CQueuedMessageFv  # OVL1; by hand (the states lane, round 24): the queued message's constructor out of line (its type byte cleared; CMenuState::Tick's and CHUD::Tick's locals). The names ours
 0x002A42A0 0x8 func_002A42A0  # OVL1
 0x002A42B0 0x338 func_002A42B0  # OVL1
 0x002A45F0 0x10 RecoverFromNetError__8CMissionFi  # OVL1; s1:calls by hand (SOCOM 1's 0x10-byte static RecoverFromNetError: theMission's address loaded, a tail jump into the member _RecoverFromNetError right after it; st_load.cpp stores it as the net-error callback) -- the seed's 0x1BC row split: its j lands on the next instruction

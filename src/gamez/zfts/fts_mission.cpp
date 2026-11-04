@@ -663,6 +663,109 @@ extern "C" void func_002A41F0(bool on)
     data_003DE620 = on;
 }
 
+/* ---- the player's message queue (theMission's at 0x11B0, fts_state.h's m_netQueue: the chat's and
+ * the core state's lines, shown by the menu state and the HUD; SOCOM II's, the names ours) ---- */
+
+/* a message's type (fts_state.h's: a byte enum; the chat's CHAT_COLOR is the same three values) */
+enum MSGTYPE {
+    MSGTYPE_PLAYER = 0,
+    MSGTYPE_SYSTEM = 1,
+    MSGTYPE_ALERT = 5
+};
+
+extern "C" {
+unsigned int strlen(const char *s);
+void *memset(void *p, int c, unsigned int n);
+}
+
+/* a queued message: its type, its text and its sender, 0xA1 bytes (st_menu.cpp's CQueuedMessage) */
+class CQueuedMessage {
+public:
+    CQueuedMessage();
+    /* the text kept to 127 characters, an empty one (a single character too) left as it was, none
+     * given made "[empty message]" */
+    void SetText(const char *text)
+    {
+        if (text && strlen(text) < 128)
+            strcpy(m_text, text);
+        else if (text && strlen(text) > 1) {
+            strncpy(m_text, text, 126);
+            m_text[127] = 0;
+        } else if (!text)
+            strcpy(m_text, "[empty message]");
+    }
+    MSGTYPE GetType() { return m_type; }
+    void SetType(MSGTYPE type) { m_type = type; }
+    /* the sender's name, or none */
+    void SetName(const char *name)
+    {
+        if (name && *name)
+            strncpy(m_name, name, 32);
+        else
+            memset(m_name, 0, 32);
+    }
+
+    MSGTYPE m_type;   // 0x0
+    char m_text[128];   // 0x1
+    char m_name[32];   // 0x81
+};
+
+/* ten messages in a ring: taken at the head, added at the tail, one slot always left free */
+class CMessageQueue {
+public:
+    bool HasMessages();
+    void Dequeue(CQueuedMessage *msg);
+    void Enqueue(const char *text, MSGTYPE type, const char *name);
+
+    int m_head;   // 0x0
+    int m_tail;   // 0x4
+    CQueuedMessage m_msgs[10];   // 0x8
+};
+
+/* an empty message, untyped (OVL1 0x2A4290: the menu state's and the HUD's locals) */
+CQueuedMessage::CQueuedMessage()
+{
+    m_type = MSGTYPE_PLAYER;
+}
+
+/* whether a message waits (OVL1 0x2A4270) */
+bool CMessageQueue::HasMessages()
+{
+    return m_head != m_tail;
+}
+
+/* a message added at the tail unless the ring is full; a text shorter than two characters is not
+ * queued (OVL1 0x2A4050: the chat's lines and the core state's alerts) */
+void CMessageQueue::Enqueue(const char *text, MSGTYPE type, const char *name)
+{
+    if (text && strlen(text) > 1) {
+        int last = m_head == 0 ? 9 : m_head - 1;
+
+        if (last != m_tail) {
+            int next = m_tail == 9 ? 0 : m_tail + 1;
+
+            m_msgs[m_tail].SetText(text);
+            m_msgs[m_tail].SetName(name);
+            m_msgs[m_tail].SetType(type);
+            m_tail = next;
+        }
+    }
+}
+
+/* the message at the head copied out and its slot cleared (OVL1 0x2A3E60: the menu state's and the
+ * HUD's ticks) */
+void CMessageQueue::Dequeue(CQueuedMessage *msg)
+{
+    if (m_head != m_tail) {
+        msg->SetText(m_msgs[m_head].m_text);
+        msg->SetName(m_msgs[m_head].m_name);
+        msg->SetType(m_msgs[m_head].GetType());
+        m_msgs[m_head].SetText("QHEAD RETRIEVED (strdup)");
+        m_msgs[m_head].SetType(MSGTYPE_PLAYER);
+        m_head = m_head == 9 ? 0 : m_head + 1;
+    }
+}
+
 extern "C" int func_0019AFB0(int c);   /* (MAIN: tolower) */
 
 /* a nav point's anchor type from its name's first letter, 'c' onwards (SOCOM 1's
