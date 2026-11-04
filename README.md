@@ -7269,6 +7269,52 @@ type-22 message 0x635E60 OPEN; 89 of 95) -- 8 rows new to the map's byte-exact r
 934 of 992), none superseding a draft; 6 rows named (QUO, EMOD, MULT, XMOD, lintIncrement, lintDecrement by
 SOCOM 1's bodies, order and calls; 0x6283F8's `s1~` noted), 4 data rows. No tool changed.
 
+**Round 20b: LargeInt.c's loops, Dme.c's structure registry, DmeLocal.c's ping and timebase by SOCOM 1's bodies.**
+
+- **A loop entered in its middle is one loop.c leaves alone**: lintIncrement and lintDecrement (open since
+  round 8b) are for loops rotated only up to the nonzero words' `break` -- word 0's exit a `return`
+  (lintIncrement) or a `break` in an else after the borrow case (lintDecrement), past expand_end_loop's
+  30-insn scan; the moved region then holds the arms' labels, so its test is not copied, and the entry (i
+  known 0) is threaded straight into word 0's case. With two entries the loop is not optimized: the index is
+  recomputed (`sll; addu`) and -1 loaded inside, as in the target and SOCOM 1's copies. lintIsbSPRP's squaring
+  loop is labels and gotos (no loop notes: jump.c copies no test, loop.c moves no address into a second
+  register) -- any loop statement is copied, the shape the vendor wrote there not found; its first IsEqual's
+  failure branch holds `r = 1; goto test`, its `return 1` the block the loop's IsEqual cross-jumps to.
+- **A pointer initialised at its declaration aliases every global**: two sets (`= 0` and the address) leave
+  alias analysis no base for it, so its stores may clobber anything and the target reloads around them --
+  NetObjectField's body 0x623F30 reloads NetFieldCount after the field's stores only as `NetField *pField =
+  0;` (26 words otherwise). The same idea read backwards closed nothing open; try it where a target reloads a
+  global ours keeps.
+- **Round 13c's callee-definition rule, three more times**: NetFreeRemoteObject's last `beqz` (DmeFree defined
+  above it, and void: as int its reload of the record took v1), the timebase callback 0x619138's `bne`/`beqz`
+  (NetResetTime and NetGetTime's body defined above), and round 19b's 0x635E60 by another route (below).
+  Defining a callee can also move a later function: NetGetLocalTime's body written in DmeLocal.c is
+  byte-exact but moves func_0061C7A8's registers after DMEmalloc (23s), so it stays a draft (round 14b's rule).
+- **The message is the cursor rewound**: 0x635E60 passes `pMsg - 29` after its last `pMsg += 2`, not the
+  buffer's address -- then the write pointer stays one register updated in place (round 19b's open).
+- **A record typed as its filler writes it closes its reader**: 0x6192A0 fills a ping slot (a halfword port, the
+  callback as the in-use word, the world and client) and so types it; round 13b's 0x61C9E8, which read the
+  port as an int and called the flag through a cast (16 bytes long), is byte-exact under that type.
+- **Shapes, measured**: `pStruct->a[pStruct->n] = x; pStruct->b[pStruct->n] = y; pStruct->n++;` (the
+  increment inside the index computes the count's address once and loop.c hoists it: 65s); an index zeroed at
+  its declaration is the prologue's `move s3,zero`; GCC's multiply-accumulate for `nTotal += a * b` (madd,
+  the accumulator zeroed by `mtlo` at the entry); a sample index bumped right after its store (`a[n++] = x`) to
+  reach the following test's delay slot.
+- **Names**: RegisterChildStructure (0x624070: SOCOM 1's static of that name, fifth of the same six-function
+  object, `s1:order+body`), NetResetTime (0x614838: SOCOM 1's, byte-identical, before DMEmalloc; no Dme.c
+  wrapper calls it); data: NetFieldList, NetStructureList, NetFieldCount, NetStructureCount,
+  GlobalObjectFieldCount, GlobalObjectFieldList, CurrentNetTime (SOCOM 1's at the same accesses).
+- **Open, diagnosed in place**: rt_udp's 0x63F168 (2: `li a0,-1` against `move a2,sp` for the call's slot --
+  sched1's ready-list tie goes to the lower LUID; a pseudo dying at a2's move would weigh less, no spelling
+  found) and 0x6419E8 (round 19b's), and the earlier opens.
+
+Hand-written in round 20b: `medius/largeint.c` (+3: lintIncrement, lintDecrement, lintIsbSPRP -- 21 of 21, the C
+part whole but the Montgomery exponentiation), `medius/rt_msg_client.c` (+1, 0x635E60: 90 of 95), `medius/dme.c`
+(+3: 0x623F30, RegisterChildStructure, 0x624180; 90 of 90), `medius/dmelocal.c` (+8: 0x613FD0, NetResetTime,
+DmeFree, 0x615068, NetFreeRemoteObject, 0x619138, 0x6192A0, and 0x61C9E8 closed) -- 15 functions byte-exact
+(`src/lib/medius` 934 -> 949 of 1,002), 12 rows new to the map's byte-exact rows, 3 superseding matched drafts
+(NetResetTime, DmeFree, 0x615068); 2 rows named, 7 data rows. No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
