@@ -6528,8 +6528,8 @@
 0x003586B0 0x44 func_003586B0  # OVL1
 0x00358700 0x18 func_00358700  # OVL1
 0x00358720 0xC func_00358720  # OVL1
-0x00358730 0x298 Rotate_Zaxis__13C2DBitmapPolyFff  # OVL1; s1:calls by hand (MapCompass::Tick calls it right after SetCenterPos, as SOCOM 1's Tick calls Rotate_Zaxis(float, float); 0x298 against SOCOM 1's 0x294, the same centre-and-rotate code)
-0x003589D0 0x2EC Rotate_Zaxis__13C2DBitmapPolyFf  # OVL1; s1:order by hand (after Rotate_Zaxis(float, float) as in SOCOM 1's unit, 0x2EC against 0x2E4; the reticle's 0x215250 calls it after SetCenterPos)
+0x00358730 0x298 Rotate_Zaxis__13C2DBitmapPolyFff  # OVL1; s1:calls by hand (MapCompass::Tick calls it right after SetCenterPos, as SOCOM 1's Tick calls Rotate_Zaxis(float, float); 0x298 against SOCOM 1's 0x294, the same centre-and-rotate code); byte-exact (the HUD lane, round 40: c2dbitmap_poly.cpp -- the corners turned about their extent's centre by the static r 0x3E0300)
+0x003589D0 0x2EC Rotate_Zaxis__13C2DBitmapPolyFf  # OVL1; s1:order by hand (after Rotate_Zaxis(float, float) as in SOCOM 1's unit, 0x2EC against 0x2E4; the reticle's 0x215250 calls it after SetCenterPos); byte-exact (the HUD lane, round 40: c2dbitmap_poly.cpp -- degrees to radians, sinf/cosf into r, then as the two-parameter turn)
 0x00358CC0 0x84 FlipImage_XYaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: the first of SOCOM 1's three flips, 0x84 in both, after the two Rotate_Zaxis)
 0x00358D50 0xC4 FlipImage_Yaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: SOCOM 1's second flip, 0xC4 in both)
 0x00358E20 0xC4 FlipImage_Xaxis__13C2DBitmapPolyFv  # OVL1; s1:order by hand (c2dbitmap_poly.cpp: SOCOM 1's third flip, 0xC4 in both, before SetUseFrameBufferAlpha)
