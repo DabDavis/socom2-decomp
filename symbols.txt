@@ -5664,7 +5664,7 @@
 0x00321F50 0x180 Tick__Q23zdb7CRippleFf  # OVL1; s1:calls (SOCOM 1's VisualEffectsTick calls CRipple::Tick second)
 0x003220D0 0xF0 func_003220D0  # OVL1
 0x003221C0 0x2C Uninit__Q23zdb7CRippleFv  # OVL1; s1:align
-0x003221F0 0x8 func_003221F0  # OVL1
+0x003221F0 0x8 Init__Q23zdb7CRippleFv  # OVL1; s1:calls -- SOCOM 1's CGame::StartEngine calls Init__Q23zdb7CRippleFv at the place SOCOM II's StartEngine 0x2D0410 calls this (the game states' round 27, renamed at integration)
 0x00322200 0x90 func_00322200  # OVL1
 0x00322290 0xD8 func_00322290  # OVL1
 0x00322370 0x60 func_00322370  # OVL1

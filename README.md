@@ -1965,6 +1965,25 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 27** (sixteen static initialisers, CGame's engine pair, fts_msgeditor.cpp):
+  - a static whose class's implicit constructor only runs a member's empty inline constructor emits an empty `__sinit`
+    (`jr ra; nop`): CZBombState::m_BombStatus with its CPnt3D -- 0x4006B0 is __sinit_fts_net_bomb.cpp; an initialiser whose
+    body is another function's: an empty static with an inline constructor calling a same-unit function auto-inlines it
+    (ClearPersonaList);
+  - a base's word stored after the members' words in an initialiser is a reset in the class's constructor body -- dead-store
+    elimination of the base's first store (`CMultiMissionList() { clear(); }`); an initialiser calling an unnamed out-of-line
+    constructor matches through an inline constructor forwarding to the placeholder (the schedules');
+  - a class whose virtuals are all declared but not defined in a unit emits no vtable there, so an inline constructor can
+    store a table defined in another unit (st_menu.cpp's CDblBufTextureRelocator);
+  - a `while` inside an `if` gets its test, call included, copied above the loop; the target's jump-to-the-bottom-test entry
+    comes from an early return before the loop (the chat key handler 0x2C6C70); `m == f()` against `f() == m` sets the
+    xor's operand order;
+  - units: fts_msgeditor.cpp (0x2C9810-0x2CA32F, the file name ours) split out of fts_missionlist.cpp and complete;
+    game_engine.cpp (0x2D0330-0x2D04EF: CGame's Stop/StartEngine, Stop/StartPlay), fts_main.cpp (0x2A2EB0-0x2A3BBF: its
+    statics and CDIDummy) and database.cpp (0x1E8FE0-0x1EB03F: its initialiser so far) new;
+  - open: CNodeAction::Close 0x2B55E0 (0xE0 of 0x154: its operation's tree is six levels high -- the level-6 question),
+    0x2C60C0 (2), 0x2C6290 (6); the 0x134C-byte initialiser 0x400870 (about sixty statics of OVL2 classes, in order) not
+    started.
 - **Tells from the HUD, round 31** (six static initialisers, zui_2d.cpp's LoadSpecs, the glyph pair's copy):
   - a member stored `0.0f` rather than int `0` gives the same `sw zero` but creates an FP temporary at that point, which
     fixes the later float registers (CTeleType::LoadSpec's f0/f1); a copy through a stack slot, re-read from the member,
