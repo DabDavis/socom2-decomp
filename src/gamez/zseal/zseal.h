@@ -1502,6 +1502,11 @@ public:
      * what it holds (SOCOM 1's; OVL2 0x5A8CB0) */
     bool IsThrowing(bool started);
     bool CanFire(bool a, bool b);
+    /* the rifle, or the pistol, taken into the hand: the kit's own reparenting, the weapon into the
+     * right hand (the pistol only when asked), the other worn (the pistol holstered only when asked),
+     * the item in hand set (SOCOM 1's; OVL2 0x5A70F0, 0x5A7260) */
+    void ChangeToRifleMode(bool holster);
+    void ChangeToPistolMode(bool hand);
     /* whether a weapon change, or a reload, is under way (SOCOM 1's; OVL2 0x5A7980, and 0x5A7AB0 not
      * written yet) */
     bool IsChangingWeapons(bool kit);
@@ -1775,9 +1780,15 @@ public:
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     unsigned char _135c[0x1440 - 0x135c];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)
-    unsigned char _144c[0x14b0 - 0x144c];
+    unsigned char _144c[0x14a0 - 0x144c];
+    /* the aim and fire points and their positions (SOCOM 1's m_curr_aimpos, m_curr_aimpt,
+     * m_curr_firepos and m_curr_firept, 0x1100-0x111F there: the weapon takes look the points up by
+     * name again, seal_weapon.cpp's UpdateAimParams through a view of its own) */
+    CPnt3D m_curr_aimpos;   // 0x14a0
+    zdb::CNode *m_curr_aimpt;   // 0x14ac
     CPnt3D m_curr_firepos;   // 0x14b0 (SOCOM 1's 0x1110, m_aim_dir's 0x3a0 on as here)
-    unsigned char _14bc[0x14cc - 0x14bc];
+    zdb::CNode *m_curr_firept;   // 0x14bc
+    unsigned char _14c0[0x14cc - 0x14c0];
     short m_last_foot;   // 0x14cc (SOCOM 1's 0x112c: Prone_0 sets it to 2, as SOCOM 1's does)
     unsigned char _14ce[0x14e0 - 0x14ce];   // (0x14E0 bytes: Create news 5344)
 };

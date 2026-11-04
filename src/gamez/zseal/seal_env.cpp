@@ -683,6 +683,11 @@ extern "C" {
 /* the body-part ids of the rifle and the pistol (OVL1 data, read as variables) */
 extern int data_003DF148;
 extern int data_003DF150;
+/* a third id, cleared as either weapon is taken (OVL1 data, read as a variable) and the kit's two
+ * selections the takes start with (OVL2 0x5C6A40, 0x5C6DA0: the kit lane's range) */
+extern int data_003DF160;
+void func_005C6A40(CZKit *kit);
+void func_005C6DA0(CZKit *kit);
 }
 
 /* The weapons moved between the hand and where they are worn: the part's node taken from its parent's
@@ -785,6 +790,49 @@ void ParentPistolToRHandCallback(void *data, void *arg)
     }
 }
 
+/* the pistol taken: the kit's pistol chosen, the pistol into the right hand when asked, the rifle
+ * slung on the back -- still the body's rifle --, the third part none, the pistol the item in hand
+ * (OVL2 0x5A7260; SOCOM 1's ChangeToPistolMode, its kit call ReParentToPistol -- OVL2 0x5C6DA0 --
+ * in the same place, after ChangeToRifleMode as here) */
+void CZSealBody::ChangeToPistolMode(bool hand)
+{
+    func_005C6DA0(&m_kit);
+    if (hand)
+        func_005A7690(this);
+    if (m_rifle->m_node) {
+        m_rifle->m_parent->m_node->DeleteChild(m_rifle->m_node);
+        m_rifle->m_parent = m_spinelo;
+        m_rifle->m_parent->m_node->AddChild(m_rifle->m_node);
+        SetBodyPart(data_003DF148, m_rifle);
+        m_rifle->SetActive(false);
+    }
+    SetBodyPart(data_003DF160, 0);
+    m_item = ITEM_PISTOL;
+}
+
+/* the rifle taken: the kit's rifle chosen, the rifle into the right hand, the pistol holstered as
+ * gear when asked -- the callback's work written through the SEAL, which the target reloads (the
+ * callback inlined keeps the member's address instead) --, the third part none, the rifle the item
+ * in hand (OVL2 0x5A70F0; SOCOM 1's ChangeToRifleMode, its kit call ReParentToRifle -- OVL2
+ * 0x5C6A40 -- in the same place) */
+void CZSealBody::ChangeToRifleMode(bool holster)
+{
+    func_005C6A40(&m_kit);
+    func_005A7480(this);
+    if (holster) {
+        if (m_pistol->m_node) {
+            m_pistol->m_parent->m_node->DeleteChild(m_pistol->m_node);
+            m_pistol->m_parent = m_rthigh;
+            m_pistol->m_parent->m_node->AddChild(m_pistol->m_node);
+            SetBodyPart(data_003DF150, 0);
+            m_pistol->SetActive(false);
+        }
+        SetPartAsGear(m_item_gear[2].m_part, m_item_gear[2].m_gear);
+    }
+    SetBodyPart(data_003DF160, 0);
+    m_item = ITEM_RIFLE;
+}
+
 extern "C" {
 /* the blend on top of the body's stack (seal.cpp's tail copy, OVL2 0x555170) */
 void *func_00555170(void *stack);
@@ -808,6 +856,90 @@ extern short data_003DF110;
 extern short data_003DEC68;
 extern short data_003DF0F0;
 extern short data_003DF0F8;
+}
+
+extern "C" {
+/* the anim set a throwable binds (OVL1 bss 0x44D408: seal_body.cpp's 0x580E80 tests the SEAL's set
+ * against it) */
+extern AnimSet *data_0044D408;
+}
+
+/* whether the rifle is the weapon in the right hand -- the pistol there says not, neither says it is
+ * (an inline: the three arms' bool assignments, the names ours) */
+static inline bool RifleInHand(CZSealBody *seal)
+{
+    if (seal->m_rifle->m_parent == seal->m_rhand)
+        return true;
+    if (seal->m_pistol->m_parent == seal->m_rhand)
+        return false;
+    return true;
+}
+
+/* whether a weapon change leaves the rifle: the item asked for says so, else the last item, else it
+ * does (an inline returning one constant from several arms, held in the compare's register -- the
+ * name ours) */
+static inline unsigned char ToRifle(CZSealBody *seal, SEAL_ITEM_BYTE item)
+{
+    if (item == ITEM_RIFLE)
+        return 1;
+    if (item == ITEM_PISTOL)
+        return 0;
+    if (seal->m_lastitem == ITEM_RIFLE)
+        return 1;
+    if (seal->m_lastitem == ITEM_PISTOL)
+        return 0;
+    return 1;
+}
+
+/* a weapon put away for an item: the blend for putting away the pistol, or the rifle, pushed -- a
+ * throwables' set its own two --, that weapon no longer the body's, the item in hand, the aim and
+ * fire points looked up again (OVL2 0x5A6B70, new in SOCOM II: SOCOM 1's ChangeWeapon did it inline;
+ * the name unknown) */
+extern "C" bool func_005A6B70(CZSealBody *seal, SEAL_ITEM_BYTE item)
+{
+    if (ToRifle(seal, item)) {
+        if (seal->m_animset != data_0044D408)
+            func_00588BC0(seal, (AnimType)data_003DF0F0, 0, 0, 0);
+        else
+            func_00588BC0(seal, (AnimType)data_003DF0E0, 0, 1, 0);
+        seal->SetBodyPart(data_003DF150, 0);
+    } else {
+        if (seal->m_animset != data_0044D408)
+            func_00588BC0(seal, (AnimType)data_003DF0F8, 0, 0, 0);
+        else
+            func_00588BC0(seal, (AnimType)data_003DF0E8, 0, 1, 0);
+        seal->SetBodyPart(data_003DF148, 0);
+    }
+    seal->m_item = item;
+    seal->m_curr_aimpt = seal->GetFirepointNode("aimpoint");
+    seal->m_curr_firept = seal->GetFirepointNode("firepoint");
+    return true;
+}
+
+/* a throwable taken: the throwables' anim set bound (anim 18, crouched), the blend for putting away
+ * the rifle or the pistol in hand pushed, the item kept as the last and none in hand (4), the
+ * throwable's part into the right hand, the aim and fire points looked up again (OVL2 0x5A6D30, new
+ * in SOCOM II: SOCOM 1's ChangeWeapon did it inline; the name unknown) */
+extern "C" bool func_005A6D30(CZSealBody *seal, SEAL_ITEM_BYTE item)
+{
+    seal->BindAnimSet(data_0044D408, (AnimType)18, stateCrouch, false);
+    if (RifleInHand(seal))
+        func_00588BC0(seal, (AnimType)data_003DF0E0, 1, 0, 0);
+    else
+        func_00588BC0(seal, (AnimType)data_003DF0E8, 1, 0, 0);
+    seal->m_lastitem = item;
+    seal->m_item = ITEM_DONE;
+    CZBodyPart *part = seal->m_item_gear[4].m_part;
+
+    if (part && part->m_node) {
+        part->m_parent->m_node->DeleteChild(part->m_node);
+        part->m_parent = seal->m_rhand;
+        part->m_parent->m_node->AddChild(part->m_node);
+        part->SetActive(false);
+    }
+    seal->m_curr_aimpt = seal->GetFirepointNode("aimpoint");
+    seal->m_curr_firept = seal->GetFirepointNode("firepoint");
+    return true;
 }
 
 /* whether the top blend is a throw's, the start's two too unless told not (OVL2 0x5A7D10; SOCOM 1's

@@ -10800,8 +10800,8 @@
 0x005A6D30 0x180 func_005A6D30  # OVL2
 0x005A6EB0 0x10C func_005A6EB0  # OVL2
 0x005A6FC0 0x124 func_005A6FC0  # OVL2
-0x005A70F0 0x168 func_005A70F0  # OVL2
-0x005A7260 0x158 func_005A7260  # OVL2
+0x005A70F0 0x168 ChangeToRifleMode__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 23): SOCOM 1's ChangeToRifleMode__10CZSealBodyFb (0x298390), before ChangeToPistolMode and the pistol callbacks in both builds, its first call the kit's ReParentToRifle (here OVL2 0x5C6A40) on m_kit; the rifle into the right hand, the pistol holstered when the bool says, m_item 1; seal_env.cpp
+0x005A7260 0x158 ChangeToPistolMode__10CZSealBodyFb  # OVL2; s1:order by hand (the SEALs, round 23): SOCOM 1's ChangeToPistolMode__10CZSealBodyFb (0x298540), after ChangeToRifleMode in both builds, its first call the kit's ReParentToPistol (here OVL2 0x5C6DA0) on m_kit; the pistol into the right hand when the bool says, the rifle slung, m_item 2 (li: SOCOM 1's li v1,2/sb at 0xe58 too); seal_env.cpp
 0x005A73C0 0xBC func_005A73C0  # OVL2
 0x005A7480 0xA0 func_005A7480  # OVL2
 0x005A7520 0xAC func_005A7520  # OVL2
