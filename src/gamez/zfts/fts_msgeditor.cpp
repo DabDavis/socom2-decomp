@@ -158,7 +158,7 @@ void CMsgEditor::AddCharacter(char c)
 
     len = s ? strlen(s) : 0;
 
-    if (m_text.m_charheight < (data_003DE7B8 - data_003DE7A8) - 4.0f * data_003DE7E0 &&
+    if (m_text.m_length < (data_003DE7B8 - data_003DE7A8) - 4.0f * data_003DE7E0 &&
         len < m_maxlen - 2) {
         if (len > 0)
             strcpy(buf, s);

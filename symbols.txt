@@ -2071,7 +2071,7 @@
 0x0022AE90 0x4C4 SetupBackgroundBox__28@unnamed@hud_scorepopup_cpp@Fv  # OVL1; s1:order by hand (the HUD lane: hud_scorepopup.cpp -- SOCOM 1's SetupBackgroundBox at the same place, between Draw and the hudTurnOffScorePopup group; the same nine pieces loaded and UV'd from one texture, plus SOCOM II's local static bottom and sixteen bitmaps)
 0x0022B360 0x140 GetTagIPNT2D__FPC5_zrdrPCc  # OVL1; ours by hand (the HUD lane: hud_scorepopup.cpp's -- a tag's first two numbers as integers through zrdr.h's Item/Int, returned by value; called twice by 0x22D660, the message loader; byte-exact)
 0x0022B4A0 0x628 func_0022B4A0  # OVL1
-0x0022BAD0 0x60 func_0022BAD0  # OVL1
+0x0022BAD0 0x60 __dt__Q23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>Fv  # OVL1; the integrator 2026-11-04, by the UI lane round 18: the deleting destructor's shape (~__vector_deleter<CSaferStr> 0x22E460 with 0, operator delete on a positive flag); LoadDesign 0x367430 is its only caller and zui.cpp's copy scores match against it
 0x0022BB30 0x10C hudTurnOffScorePopup__Fv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call right after CZPlayerMapItem::MissionEndCleanup, as SOCOM 1's; the same shape: a flag byte cleared, then two loops wiping string arrays, 45 entries where SOCOM 1 had 27)
 0x0022BC40 0x110 hudTriggerPopup__FP14CTriggerSource  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record for this map (GetDatabase) and the object's name (+0x20) opened once through 0x22B4A0; the names ours)
 0x0022BD50 0xC8 hudTriggerPopup__FPCc  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record named so opened once through 0x22B4A0; a ZAnim command (0x2AE340) passes it an anim's name; the name ours)
@@ -6612,7 +6612,7 @@
 0x0035D940 0x5F4 insert__Q23std66__vector_imp<13C2DGlyphPiece,Q23std26allocator<13C2DGlyphPiece>,0>FP13C2DGlyphPieceUiRC13C2DGlyphPiece  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
 0x0035DF40 0x1C0 erase__Q23std52__vector_imp<7CLayout,Q23std19allocator<7CLayout>,0>FP7CLayoutP7CLayout  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
 0x0035E100 0x5D0 insert__Q23std52__vector_imp<7CLayout,Q23std19allocator<7CLayout>,0>FP7CLayoutUiRC7CLayout  # OVL1; s1:calls; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the layout vector's insert, which its resize 0x35CC50 calls with a three-part CLayout built by __construct_array; not SOCOM 1's LOD: the element is the Korean composer's 0x48-byte layout)
-0x0035E6D0 0xBC func_0035E6D0  # OVL1
+0x0035E6D0 0xBC __ct__7CLayoutFRC7CLayout  # OVL1; by hand (the HUD lane, round 34: c2dfont.cpp's CLayout copy, implicit -- three CJamoPlaces, each placement copied and its key vector through the pod's copy constructor 0x259B40 out of line; the class inserts call it six times, its copy follows insert<CLayout> 0x35E100; byte-exact from c2dfont.cpp)
 0x0035E790 0x2D8 erase__Q23std56__vector_imp<9CTrailRow,Q23std21allocator<9CTrailRow>,0>FP9CTrailRowP9CTrailRow  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
 0x0035EA70 0x5BC insert__Q23std56__vector_imp<9CTrailRow,Q23std21allocator<9CTrailRow>,0>FP9CTrailRowUiRC9CTrailRow  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
 0x0035F030 0x288 erase__Q23std56__vector_imp<9CVowelRow,Q23std21allocator<9CVowelRow>,0>FP9CVowelRowP9CVowelRow  # OVL1; ours (the HUD lane, round 28: c2dfont.cpp, SOCOM II's font -- the unit's template tail: the instance its code makes)
@@ -6743,20 +6743,20 @@
 0x00366B60 0x210 func_00366B60  # OVL1
 0x00366D70 0x35C func_00366D70  # OVL1
 0x003670D0 0x35C func_003670D0  # OVL1
-0x00367430 0x238 func_00367430  # OVL1
+0x00367430 0x238 LoadDesign__9CGameMenuFPCcP9CZAnimZAR  # OVL1; the UI lane round 18: ours by its body and callers (this, an rdr name, the ZAR: a CGameDlgDesign built on the stack, "(%.2f)CGameDlgDesign::LoadFromRdr(): %s" printed into a 0x100-byte static with zVid.runTime, the rdr read from data/common/zrdr/dialog with LoadDialogsFromReader's flags, LoadFromRdr and zrdr_free, then the menu's reader name assigned and LoadFromDesign 0x367950 -- the block SOCOM 1's Init and SwitchMenu inlined; SOCOM II's Init 0x368570 and 0x365A00 call it); zui.cpp
 0x00367670 0x60 __dt__Q23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; by its body (~vector<ActionItem>: calls 0x36AC10, the deleter's destructor, with 0) -- the UI-widgets lane
-0x003676D0 0x60 func_003676D0  # OVL1
-0x00367730 0x60 func_00367730  # OVL1
-0x00367790 0x14 func_00367790  # OVL1
-0x003677B0 0x14 func_003677B0  # OVL1
-0x003677D0 0x14 func_003677D0  # OVL1
-0x003677F0 0x14 func_003677F0  # OVL1
+0x003676D0 0x60 __dt__Q23std58vector<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>Fv  # OVL1; the UI lane round 18: by its callers and body (CGameMenu::LoadDesign 0x367430 destroys its design's two CDesignDlgObj vectors, CONTROLS and OBJECTS at 0x4C/0x58, through it: the deleter's destructor 0x36AC80 with 0, the object deleted when asked); zui.cpp's out-of-line copy after its first user, LoadDesign compiling to the target's code with every call so named
+0x00367730 0x60 __dt__Q23std62vector<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>>Fv  # OVL1; the UI lane round 18: by its callers and body (LoadDesign 0x367430 destroys its design's MODELS vector at 0x64 through it: the deleter's destructor 0x36ACF0 with 0); zui.cpp's copy after its first user
+0x00367790 0x14 __ct__Q23std62vector<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>>Fv  # OVL1; the UI lane round 18: by its caller (CGameDlgDesign's inline constructor in LoadDesign 0x367430 builds MODELS at 0x64 with it; three words zeroed); zui.cpp's copies follow LoadDesign in reverse of their first use
+0x003677B0 0x14 __ct__Q23std58vector<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>>Fv  # OVL1; the UI lane round 18: by its caller (the design's CONTROLS and OBJECTS at 0x4C/0x58, built in LoadDesign 0x367430; three words zeroed)
+0x003677D0 0x14 __ct__Q23std52vector<10ActionItem,Q23std23allocator<10ActionItem>>Fv  # OVL1; the UI lane round 18: by its caller (the design's ANIMATIONS at 0x40, built in LoadDesign 0x367430; three words zeroed)
+0x003677F0 0x14 __ct__Q23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>Fv  # OVL1; the UI lane round 18: by its caller (the design's LIBRARIES at 0 and SCRIPT_LIBRARY at 0x34, built first and fifth in LoadDesign 0x367430; three words zeroed)
 0x00367810 0x138 RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc  # OVL1; the UI lane round 15: SOCOM 1's RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc by its body (the 30 commands at 0x6F8 walked to m_numCommands 0x8D8 as SOCOM 1's at 0x68C/0x86C, each event action of the event started through CZAnim::ActivateArg(1, 8, arg) or Activate(0); TickMPEG passes ONMPEGEND), byte-exact from zui.cpp
 0x00367950 0xBE8 LoadFromDesign__9CGameMenuFRC14CGameDlgDesignP9CZAnimZAR  # OVL1; s1:calls by hand (the menu's design loader: this, the design and the ZAR in a0-a2 as SOCOM 1's; its first call 0x369210 at +0x34 as SOCOM 1's Clear, then UiSetCounterSpeedFactor and UiSetTtySpeedFactor with 1.0 in that order, as SOCOM 1's at +0x44/+0x54; SOCOM II adds a flag block between; 0xBE8 against 0xBA4)
 0x00368540 0x8 NumChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368550 0x8 GetChild__11CDlgObjSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368560 0x8 HasChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00368570 0xB4 func_00368570  # OVL1
+0x00368570 0xB4 Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR  # OVL1; the UI lane round 18: SOCOM 1's Init__9CGameMenuFPQ23zdb16CTextureRelocMgrP9CZAnimZAR by its body (Clear, the ZAR stored at 0xC0, a zVid flag cleared, the relocator given or g_relocBatch at 0x8DC, StartBatchReloc, the design of GetReaderFileName loaded, EndBatchReloc, true -- SOCOM 1's with the design load moved out to 0x367430); zui.cpp
 0x00368630 0x1C GetReaderFileName__9CGameMenuFv  # OVL1; s1:vtable by hand (slot 0x10 of __vt__9CGameMenu 0x406F80, SOCOM 1's GetReaderFileName's slot: the reader's name string returned)
 0x00368650 0xB20 func_00368650  # OVL1
 0x00369170 0x48 DrawForeplane__9CGameMenuFv  # OVL1; s1:exact
@@ -6770,7 +6770,7 @@
 0x00369F70 0x24 __ct__10ActionItemFv  # OVL1; tu: zui.cpp~ (1.0 beta); s1:exact
 0x00369FA0 0xB8 __as__10ActionItemFRC10ActionItem  # OVL1; s1:order by hand (SOCOM 1's __as__10ActionItemFRC10ActionItem, zui.cpp lines 404-407, instruction for instruction but the file/line arguments: the type byte, each string freed and duplicated, PadButton then State; vector<ActionItem>'s range init calls it after the inline copy constructor's three stores, as SOCOM 1's) -- zui.cpp
 0x0036A060 0x1A0 UiGetDirStickMoved__Fv  # OVL1; s1:order by hand (zui.cpp's free helpers in reverse alphabetical order as SOCOM 1's, UiGetDirStickMoved first; its body is the one DidStickMovePrev/Next inline) -- the UI-widgets lane
-0x0036A200 0xC func_0036A200  # OVL1
+0x0036A200 0xC UiGetCurMenu__Fv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: SOCOM 1's CHProgressBar::Draw calls UiGetCurMenu at the same point; its body is SOCOM 1's (one global load, 0x49EA90, and return)
 0x0036A210 0x20 func_0036A210  # OVL1
 0x0036A230 0x84 PrepTexture__FPCcPQ23zdb16CTextureRelocMgr  # OVL1; s1:exact
 0x0036A2C0 0x3C PlaySelectionSound__Fv  # OVL1; s1:order by hand (SOCOM 1's PlaySelectionSound__Fv at the same place before PlayCountSound, the same 0x3C: theGame's menu state's SelectionSound, +0xA4, played through its slot 0x1C with (1, 0, 255) if loaded) -- zui.cpp
@@ -7020,9 +7020,9 @@
 0x0037CE80 0x80 SetHeight__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 16 of the array look's table (through the items' own slot 2); the name ours; zui_2d.cpp
 0x0037CF00 0x80 SetWidth__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 17 of the array look's table (through the items' own slot 3); the name ours; zui_2d.cpp
 0x0037CF80 0x70 __dt__10C2DCounterFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037CFF0 0x8 func_0037CFF0  # OVL1
+0x0037CFF0 0x8 @152@__dt__10C2DCounterFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37CF80` ~C2DCounter, `addiu a0,a0,-152`)
 0x0037D000 0x8 @152@__dt__17CRenderableStringFv  # OVL1; by hand (the HUD lane, round 25): MW's this-adjusting thunk (`j __dt__17CRenderableStringFv; addiu a0,a0,-152`), emitted with CRenderableString's table now that zui_2d.cpp defines its destructor
-0x0037D010 0x8 func_0037D010  # OVL1
+0x0037D010 0x8 @152@__dt__12CWrappedTextFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x379D90` ~CWrappedText, `addiu a0,a0,-152`)
 0x0037D020 0x8 @128@__dt__9CPlainBmpFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CPlainBmpFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D030 0x8 @152@__dt__9CTeleTypeFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CTeleTypeFv` with `addiu a0,a0,-152`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D040 0x8 @192@__dt__9C2DButtonFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9C2DButtonFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
@@ -7036,14 +7036,14 @@
 0x0037D0C0 0x8 @192@UpdateUIVar__9CCheckBoxFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9CCheckBoxFP11CUIVariable` with `addiu a0,a0,-192`, CCheckBox's UIVarMixin table's second slot; the HUD lane, round 16)
 0x0037D0D0 0x8 @192@__dt__9CCheckBoxFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CCheckBoxFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0E0 0x8 @192@UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9C2DButtonFP11CUIVariable` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
-0x0037D0F0 0x8 func_0037D0F0  # OVL1
+0x0037D0F0 0x8 @192@__dt__11CRadioStripFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37C1B0` ~CRadioStrip, `addiu a0,a0,-192`)
 0x0037D100 0x8 func_0037D100  # OVL1
-0x0037D110 0x8 func_0037D110  # OVL1
-0x0037D120 0x8 func_0037D120  # OVL1
-0x0037D130 0x8 func_0037D130  # OVL1
-0x0037D140 0x8 func_0037D140  # OVL1
+0x0037D110 0x8 @128@__dt__12CPopUpDialogFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x27C8D0` ~CPopUpDialog, `addiu a0,a0,-128`)
+0x0037D120 0x8 @152@__dt__11CScrollTextFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37C110` ~CScrollText, `addiu a0,a0,-152`)
+0x0037D130 0x8 @152@UpdateUIVar__8C2DClockFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x36B0A0` C2DClock::UpdateUIVar, `addiu a0,a0,-152`)
+0x0037D140 0x8 @152@__dt__8C2DClockFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37C020` ~C2DClock, `addiu a0,a0,-152`)
 0x0037D150 0x8 @152@UpdateUIVar__17CRenderableStringFP11CUIVariable  # OVL1; by hand (the HUD lane, round 22: the this-adjusting thunk in the UIVarMixin part of CRenderableString's and its subclasses' tables -- j 0x379260 with a0 -= 152 (UIVarMixin at 0x98); MW's name, SOCOM 1's @136@ at its offset)
-0x0037D160 0x8 func_0037D160  # OVL1
+0x0037D160 0x8 @152@__dt__11CSecureTextFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x36AF30` ~CSecureText, `addiu a0,a0,-152`)
 0x0037D170 0xA0 __dt__10CClockSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D210 0xC GetType__10CClockSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D220 0x84 CreateDisplayObj__10CClockSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
