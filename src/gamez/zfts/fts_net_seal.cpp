@@ -11,6 +11,7 @@ class CZSealBody;
 #include <vector>
 
 #include "../zanim/zanim.h"
+#include "../znet/znet.h"
 
 class CZSealState {
 public:
@@ -95,17 +96,6 @@ public:
 typedef CZSealState::TypeSealState NetObjectData;
 
 CZSealState::CRemoteGuyList CZSealState::m_RemoteGuyList;
-
-/* a network object as the DME hands it out: its kind's name, and its data (only what this unit
- * touches) */
-struct NetObject {
-    unsigned char _0[0xc];
-    union {
-        char m_name[0x10];   // 0xc: its kind's name,
-        char m_type;   //      its first letter ('S' a SEAL)
-    };
-    NetObjectData *m_data;   // 0x1c
-};
 
 /* the SEALs' units (zseal.h's CSealUnit: SOCOM 1's Create, SealJoinUnit and EscorteeJoinUnit are
  * still placeholders, called below by address) */
@@ -248,28 +238,6 @@ public:
     static BombStatus m_BombStatus;
 };
 
-/* the network (only its calls here; theNetwork at 0x45A0C0, fts_remote.cpp's head says why) */
-/* the DME's ownership and lifespan of an object (their values are not in SOCOM 1's DWARF) */
-enum NetOwnershipStatus {};
-enum NetObjectLifespan {};
-
-struct GameClient;
-
-class CZNetwork {
-public:
-    GameClient *zNetGetGameClient(int client);   /* 0x30D5E0 */
-    int zNetGetTime();
-    int zNetGetLocalTime();
-    int zNetGetMyGameClientIndex();
-    int zNetCreateObject(int *index, NetOwnershipStatus own, NetObjectLifespan life, unsigned int a,
-                         int b, unsigned int c, int d, void *e, char *name, int structure);
-    NetObject *zNetGetObject(int index);
-    void zNetRegisterRemoteObjectCallback(int index, void (*creation)(int, int),
-                                          void (*update)(int, int, int),
-                                          void (*postupdate)(int, int, int),
-                                          void (*deletion)(int, int));
-};
-
 /* a game client as the network keeps it (only its object: 0x1000 until its SEAL's is known) */
 struct GameClient {
     unsigned char _0[4];
@@ -284,8 +252,6 @@ struct GameClient {
 extern "C" CZSealBody *CreateRemoteSeal__10CZSealBodyFiiPCciPcUiPUc(int client, int index, const char *name,
                                                                     int chartype, char *a, unsigned int flags,
                                                                     unsigned char *weapons);
-
-extern CZNetwork theNetwork;
 
 extern "C" {
 int NetGetObject(NetObject **obj, int index);   /* the DME's (prebuilt C) */
@@ -415,7 +381,7 @@ void CZSealState::RemoteSealPostUpdateCallback(int client, int index, int field)
 
     if (!obj)
         return;
-    TypeSealState *data = obj->m_data;
+    TypeSealState *data = (TypeSealState *)obj->m_data;
     CZSealBody *body;
 
     if (!(data && (body = data->m_body)))
@@ -499,7 +465,7 @@ int CZSealState::CreateLocalSeal(CZSealBody *body, bool local)
         body->m_fc8 = -1;
     body->m_fdc = theNetwork.zNetGetLocalTime() + 10000;
     memset(obj->m_data, 0, sizeof(NetObjectData));
-    obj->m_data->m_body = body;
+    ((NetObjectData *)obj->m_data)->m_body = body;
     return index;
 }
 
@@ -521,7 +487,7 @@ void CZSealState::RemoteSealCreationCallback(int client, int index)
 
     if (!obj)
         return;
-    TypeSealState *data = obj->m_data;
+    TypeSealState *data = (TypeSealState *)obj->m_data;
 
     if (!theMission.m_180c) {
         TypeRemoteGuy guy;
@@ -587,7 +553,7 @@ void CZSealState::RemoteSealDeletionCallback(int client, int index)
         return;
     if (obj->m_type != 'S')
         return;
-    NetObjectData *data = obj->m_data;
+    NetObjectData *data = (NetObjectData *)obj->m_data;
 
     if (!data)
         return;
@@ -645,7 +611,7 @@ CZSealBody *CZSealState::GetBodyFromObjectIndex(int index)
         return 0;
     if (strcmp(obj->m_name, "SealObject"))
         return 0;
-    return obj->m_data ? obj->m_data->m_body : 0;
+    return obj->m_data ? ((NetObjectData *)obj->m_data)->m_body : 0;
 }
 
 /* a SEAL's packed weapon data, out of its network object (OVL1 0x2BD3D0: the index read before the
@@ -658,5 +624,5 @@ void *CZSealState::GetPackedWeaponData(CZSealBody *body)
 
     if (!obj || error)
         return 0;
-    return obj->m_data->m_weapons;
+    return ((NetObjectData *)obj->m_data)->m_weapons;
 }
