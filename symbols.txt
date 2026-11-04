@@ -2764,12 +2764,12 @@
 0x0025ACB0 0x144 Fetch__Q23zar4CZARFPCcPb  # OVL1; s1:calls by hand (the zdb-world lane: the bool fetch, at SOCOM 1's call sites)
 0x0025AE00 0x108 FindKey__Q23zar4CKeyFPCc  # OVL1; s1:callee by hand (OpenKey(const char *) calls it on the open key where SOCOM 1's calls zar::CKey::FindKey; the same search by name)
 0x0025AF10 0x114 Read__Q23zar4CKeyFPQ23zar4CZARP3CIOi  # OVL1; s1:calls by hand (SOCOM 1's CKey::Read 0x1DC1D0: called by ReadDirectory 0x258000 and by itself for each child, as SOCOM 1's; the 16-byte record, NewKey(0), the child pushed -- SOCOM II reserves first and clamps a negative count)
-0x0025B030 0x280 func_0025B030  # OVL1
+0x0025B030 0x280 Write__Q23zar4CKeyFPQ23zar4CZAR  # OVL1; SOCOM 1 name, the core lane round 8 (SOCOM 1's CKey::Write(CZAR *) 0x1DC2D0: WriteDirectory 0x257590 calls it on m_root with this where SOCOM 1's WriteDirectory calls Write; the same record, name/offset/size then the child count, through the archive's file)
 0x0025B2B0 0x8 func_0025B2B0  # OVL1
 0x0025B2C0 0x14 func_0025B2C0  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
 0x0025B2E0 0x8 func_0025B2E0  # OVL1
-0x0025B2F0 0x8 func_0025B2F0  # OVL1
-0x0025B300 0x240 func_0025B300  # OVL1
+0x0025B2F0 0x8 RecordSize__Q23zar4CKeyFv  # OVL1; ours, the core lane round 8 (SOCOM II's: returns 16, a key's directory record; WriteDirectory calls it with no arguments after each CountKeys -- a static member)
+0x0025B300 0x240 CountKeys__Q23zar4CKeyFb  # OVL1; ours, the core lane round 8 (SOCOM II's: WriteDirectory 0x257590 calls it twice on m_root with true and multiplies by RecordSize's 16 to size the directory; the key itself plus its children's, recursing only when the bool is set -- the loop tests it with the iterators)
 0x0025B540 0x38 InsertKey__Q23zar4CKeyFPQ23zar4CKey  # OVL1; s1:order by hand (SOCOM 1's CKey::InsertKey 0x1DC450 after CKey::Write, as here: push_back and return the key; CreateKey 0x258740 and 0x25A2F0 call it)
 0x0025B580 0x398 DeleteChildren__Q23zar4CKeyFb  # OVL1; ours, the core lane round 5 (FreeDirectory 0x257320 calls it on the root with true when the key buffer holds no keys and false otherwise; with true each child key is deleted after its own children; signature from the call sites: a0 the key, a1 a bool tested beqz)
 0x0025B920 0x8 func_0025B920  # OVL1
