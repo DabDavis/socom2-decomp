@@ -225,6 +225,7 @@ class CAiMaps : public std::list<CAiMap *> {
 public:
     bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     void Close();   /* OVL2 0x52E780 */
+    void Reset();   /* OVL2 0x52E720 */
     void ReadMapSet(const char *file, const char *path);   /* OVL2 0x52B0D0 */
 
     unsigned char _c[0x48 - 0xc];
@@ -279,6 +280,8 @@ class CMissionCamList : public std::list<CMissionCam *> {
 };
 
 class CMissionObjectiveCamList : public std::list<CMissionObjectiveCam *> {
+public:
+    void Reset();   /* 0x2C6F40 */
 };
 
 /* a point of a camera path (the names ours): where, which way, and its name -- 0x98 bytes, the
@@ -374,8 +377,16 @@ class C2DMessage_Q {
 public:
     C2DMessage_Q();   /* 0x2B7610 */
     ~C2DMessage_Q();   /* 0x2B6EE0 */
+    void Clear_Messages();   /* 0x2B6DE0 */
+    void ResetScroll();
 
-    unsigned char _0[0x4e0];
+    unsigned char _0[0x438];
+    /* the scroll: the top line, the move's time and the top it moves to (SOCOM 1's m_cur_top,
+     * m_moveTime and m_target_top, 0x15C-0x164 there) */
+    int m_cur_top;   // 0x438
+    float m_moveTime;   // 0x43c
+    float m_target_top;   // 0x440
+    unsigned char _444[0x4e0 - 0x444];
 };
 
 class CMsgEditor {
@@ -406,6 +417,7 @@ public:
     void CreateCompassNavPoints();
     CZNetGame *CreateNetGame();
     bool ReOpen_Unload2();
+    bool ReOpen_Load();
     void FadeToEndMission(float time, int counter);
     bool FadeToEndMissionTick(float dT);
     static bool fadeToEndMissionTick(float dT, void *data);
@@ -1302,6 +1314,7 @@ class CRdrArchive {
 public:
     static CRdrArchive *AddArchive(const char *name, const char *path);   /* 0x32C1E0 */
     static void RemoveArchive(const char *name, const char *path);   /* 0x32C2B0 */
+    static void CloseAll();   /* 0x32C4F0 */
     static void OpenAll();   /* 0x32C570 */
 };
 
@@ -1422,6 +1435,7 @@ public:
     static void NetworkPlayerCreate();   /* OVL2 0x5442C0 */
     static void UninitDatabaseHandles();   /* OVL2 0x5A3BB0 */
     static void InitDatabaseHandles();   /* OVL2 0x5A4CE0 */
+    static void ReInitDatabaseHandles();   /* OVL2 0x5A49F0 */
     static void InitDecalHandles();   /* OVL2 0x5A4CF0 */
 
     unsigned char _0[0x4];
@@ -1630,6 +1644,18 @@ void CMission::FadeToEndMission(float time, int counter)
     }
 }
 
+/* the application's camera (camera.h's CAppCamera: its two virtuals, declared only, the zoom and the
+ * controlled view) */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);   /* its table's third word */
+    void SetZoom(float zoom);   /* 0x29B2F0 */
+
+    unsigned char _4[0xe4 - 0x4];
+    unsigned char m_ctrl_view;   // 0xe4 (camera.h's CAMVIEW: cam_view_third 0)
+};
+
 /* the second half of a reload's unload: the entities and AI events gone, the world's lists and
  * garbage cleared (SOCOM 1's), then -- SOCOM II's -- the scheduler's free list, the headset and
  * the sounds (OVL1 0x2AC060) */
@@ -1646,6 +1672,90 @@ bool CMission::ReOpen_Unload2()
     ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
     Headset::Reset();
     CSndInstance::PostTick(0.0f, 0);
+    return true;
+}
+
+extern "C" {
+void func_003249D0();   /* (SOCOM 1's Particle::ReserveNodePool at the same place) */
+void func_002B6430(C2DMessage_Q *q, float dT);   /* (fts_message.cpp's: SOCOM 1's ScrollUp here) */
+}
+
+/* a queue's lines gone and its scroll put back (SOCOM 1's ScrollUp and the two members, SOCOM II's
+ * clear first; the name ours) */
+inline void C2DMessage_Q::ResetScroll()
+{
+    Clear_Messages();
+    func_002B6430(this, 0.0f);
+    m_moveTime = 2.0f;
+    m_cur_top = (int)m_target_top;
+}
+
+/* the mission reloaded over its world: the reader's UI archive dropped, the valves reset and the
+ * mission's made again, the AI maps reset, the extraction point, the weapons, the vehicles, the
+ * characters' sounds and the SEALs' handles, the AI events, the pickups and the units, the ladders
+ * freed, the AI maps fixed up, the camera on the player, the queues cleared, the clock off unless a
+ * network game (SOCOM 1's ReOpen_Load with SOCOM II's additions; OVL1 0x2ABD40) */
+bool CMission::ReOpen_Load()
+{
+    m_wait_before_falling = 10.0f;
+    CRdrArchive::CloseAll();
+    CRdrArchive::RemoveArchive("readerc.zar", "run/ui");
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    CValve::Reset();
+    m_objectivecams.Reset();
+    m_valve_complete = CValve::Create("mission_complete", 0, VALVE_PERM);
+    m_valve_failure = CValve::Create("mission_failure", 0, VALVE_PERM);
+    m_valve_abort = CValve::Create("mission_abort", 0, VALVE_PERM);
+    m_valve_timeout = CValve::Create("mission_timeout", 0, VALVE_PERM);
+    CValve::Create("mission_replay", 1, VALVE_PERM);
+    m_valve_nofade = CValve::Create("nofade", 0, VALVE_PERM);
+    InitalizeTeamValves();
+    AiMaps.Reset();
+    Sample_ExtractionLoc();
+    CZWeapon::Open();
+    func_00574C30();
+    func_002B2E50(this);
+    world->AddCustomCharacters();
+    m_chars_loaded = 1;
+    CCharacterType::AcquireSoundHandles();
+    CZSealBody::ReInitDatabaseHandles();
+    func_00295660();
+    unsigned int count = CEntity::m_list.size();
+
+    CAiEvent::Open(count);
+    CPickup::Open(count);
+    CSealUnit::CreateSinglePlayerUnits();
+    RefreshTeamValves();
+    CLadderList *ladders = m_ladders;
+
+    if (ladders) {
+        for (CLadderList::iterator l = ladders->begin(); l != ladders->end(); ++l) {
+            l->m_users = 0;
+            l->m_owner = CEntity::invalidId;
+        }
+    }
+    CAiMaps::iterator i, e = AiMaps.end();
+
+    for (i = AiMaps.begin(); i != e; ++i)
+        ftsFixupAiMap(*i);
+    func_003249D0();
+    appCamera->AttachTo(ftsGetPlayer());
+    CRdrArchive::CloseAll();
+    /* each queue through a pointer of its own, declared where it is used: MW keeps each in a saved
+     * register, s0, s2, s0 as the target (the members named straight fold the address into every
+     * access; one pointer reassigned numbers them s2, s0, s2) */
+    C2DMessage_Q *q = &m_messages;
+
+    q->ResetScroll();
+    C2DMessage_Q *r = &m_messages3;
+
+    r->ResetScroll();
+    C2DMessage_Q *t = &m_messages2;
+
+    t->ResetScroll();
+    if (!theNetwork.m_bNetwork)
+        m_e8 = -1.0f;
     return true;
 }
 
@@ -2491,19 +2601,10 @@ void UpdateMissionArchive(const char *olddb, const char *newdb)
 }
 }
 
-/* the input (zinput's CInput: only the flush) and the application's camera (camera.h's CAppCamera:
- * only the zoom and the controlled view) */
+/* the input (zinput's CInput: only the flush) */
 class CInput {
 public:
     static void Flush();   /* 0x2D9E00 */
-};
-
-class CAppCamera {
-public:
-    void SetZoom(float zoom);   /* 0x29B2F0 */
-
-    unsigned char _0[0xe4];
-    unsigned char m_ctrl_view;   // 0xe4 (camera.h's CAMVIEW: cam_view_third 0)
 };
 
 extern "C" {
