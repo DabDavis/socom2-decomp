@@ -11592,7 +11592,7 @@
 0x005FD620 0xC8 func_005FD620  # OVL2
 0x005FD6F0 0x94 func_005FD6F0  # OVL2
 0x005FD790 0x33C func_005FD790  # OVL2
-0x005FDAD0 0x224 func_005FDAD0  # OVL2
+0x005FDAD0 0x224 SetHideLook__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 34; the name ours): the follower's look while the follow hides, set once (flag 2 at +0x6C) -- an escortee (team bit 0x20000) looks along +0xE8, a follower of an AI master holding (state 2, flags bit 5) at the hold's point, else the squad's look (GetMyLookDir) through 0x559580; HideCheck's one call (a0 the state)
 0x005FDD00 0x38 Virtual3C__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C; by hand (the kit lane, round 29): slot +0x3C takes the AI -- both callers (0x5FDE30, 0x5586E8) pass it in a1 after testing its bit 13; the code reads none of it
 0x005FDD40 0x180 CheckMaster__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 29; the name ours): CAiSFollow::Tick's first call (0x5FB220) -- the AI's follow master (+0x5D4) made the state's (+0x58; a new one restarts the step, UpdatePhase(0) inlined), true while it lives (CEntity's m_isAlive), flag 8 (+0x6C) set when a navy SEAL's AI-driven master's AI has bit 13 and its state's +0x3C answers, else SetFollowMaster(0); open, 0x178 against 0x180
 0x005FDEC0 0xB8 GetStatus__10CAiSFollowCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
