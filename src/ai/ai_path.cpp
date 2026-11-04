@@ -87,7 +87,13 @@ CAiPath::~CAiPath()
  * data through it, the size straight; the implicit CAiPathStats assignment here folds both reads into
  * offsets of `path` and swaps the two registers. As a CAiMapLocVec (SOCOM 1's DWARF) the visited cells
  * give the tag temporaries' slots (19 off) but cost CAiPath() a level (~CAiPath's note); a written
- * inline assignment of the stats does not help (21 and 23) */
+ * inline assignment of the stats does not help (21 and 23). The AI core round 21: the visited cells
+ * reached through a reference local (`const std::vector<CAiMapLoc> &v = path->m_stats.m_visited;`,
+ * the other words copied field by field, then `m_stats.m_visited = v;`) gives the target's v1 for
+ * their address and the data read through it -- 8 off, 7 with the copy in an inline taking both stats
+ * by pointer -- but then reads the size through v1 too (the target: off s1), copies m_current with
+ * lw/sw (the implicit assignment's lwc1/swc1 lost) and keeps the tag slots swapped
+ * (build/scratch/ai/v_copy.py) */
 bool CAiPath::CopyPlan(const CAiPath *path)
 {
     bool ok = false;
@@ -223,7 +229,12 @@ void CAiPath::IncrementPathId()
  * the AI core round 19 added an inline member returning the planned leg's map called as a
  * statement (ternary, if-assign and early-return bodies, `(void)` cast) and empty-bodied ifs
  * (`{}`, `;`, `(void)0`, `m_maps[m_planleg];`, either sense): deleted whole too. MW keeps such a
- * branch only for a body the front end cannot see is empty (a compiled-out macro?) */
+ * branch only for a body the front end cannot see is empty (a compiled-out macro?). The AI core round
+ * 21: dead locals assigned in the arms (if, if/else, ternary, through data()'s reference) are deleted
+ * whole as well; an inline taking a CONST path, declared before this function and defined after it,
+ * keeps both branches and the reloads of m_planleg after them -- but calls the pointer vector's const
+ * operator[] out of line inside them (0xC8): the shape the target's is, with the access inlined away
+ * after the branches were built (build/scratch/ai/v_plc.py) */
 bool CAiPath::plan_legcomplete(PATH_STATE state)
 {
     bool more = false;
@@ -508,6 +519,15 @@ inline CAiMapLoc on_map(const CAiMapLoc &l, unsigned int id)
     return CAiMapLoc(l.x, l.y, id);
 }
 
+/* a point turned round into another (the name ours: FindDetour's second walk, the input read before
+ * each output store) */
+inline void negate(const CPnt3D *in, CPnt3D *out)
+{
+    out->x = -in->x;
+    out->y = -in->y;
+    out->z = -in->z;
+}
+
 /* what FindDetour's walks carry (the name ours): the two ends a detour joins, the cell found
  * (CAiMapLoc::invalid for none) and how far a walk goes */
 struct DETOUR_DATA {
@@ -539,18 +559,21 @@ static bool _DetourLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
  * side, then the other -- for a cell both legs reach (new in SOCOM II, the name ours: 0x524170,
  * called by an AI state's 0x602270). The found cell rebuilt through on_map, so its `!=` stays the
  * target's materialised bool (the AI core's round 19 rule: the x its first operand read is used after).
- * OPEN, 22 instructions, the right size: (1) the head -- the target materialises the test of the last
- * point as `v0 = !empty()`, NARROWED (andi 0xff), then `if (v0) v0 = m_state == COMPLETE` and branches
- * on v0, where HasPoints() as a ternary's condition (or through a bool local, an if, a helper returning
- * the point, `!= false`, `&& true`) gives MW's branch form with a `daddiu 1` bool (SmoothPath's
- * HasPoints, in an `&&`, has the target's shape without the andi); (2) the second walk's turn -- the
- * target loads side.y and side.z off sp and stores them through the field-address registers s7/s8,
- * this build loads through the registers too (a negating helper by value or by pointer, a copy, a
- * pointer local and the three-float constructor tried) */
+ * The head's test is HasPoints() written out through a bool local -- `b = !empty(); if (b) b = m_state
+ * == COMPLETE;` -- which narrows the negation (andi 0xff) and materialises the state's compare into the
+ * same register (HasPoints() in any form gives MW's `daddiu 1` bool); the second walk's turn is a
+ * negation into an out-parameter (negate(&side, &side)): the input's loads fold into sp offsets while
+ * the output's stores take the field-address registers s7/s8, as the target's do (negating the fields
+ * in place, a copy, a pointer or reference local, a by-value helper and the three-float constructor all
+ * load through the registers too) */
 bool CAiPath::FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapLoc &goal, int cells)
 {
     bool ok = false;
-    point *p = HasPoints() ? &m_points[m_points.size() - 1] : 0;
+    bool b = !m_points.empty();
+
+    if (b)
+        b = m_state == COMPLETE;
+    point *p = b ? &m_points[m_points.size() - 1] : 0;
 
     if (!p)
         return false;
@@ -584,9 +607,7 @@ bool CAiPath::FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapL
 
     map->WalkLine(from, &end, _DetourLineCallback, &d, 0.2f);
     if (d.m_found == CAiMapLoc::invalid) {
-        side.x = -side.x;
-        side.y = -side.y;
-        side.z = -side.z;
+        negate(&side, &side);
         end = *pos + side * d.m_range;
         map->WalkLine(from, &end, _DetourLineCallback, &d, 0.2f);
     }
