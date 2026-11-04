@@ -35,6 +35,33 @@ public:
     static void Destroy(CPickup *pickup);
 };
 
+/* the marks left by hits (zwep_weapon.cpp's class, its layout there: only the call here) */
+class CZMarkList {
+public:
+    void AddNewMark(zdb::IntersectStruct *is, CZProjectile *proj, float size);
+};
+
+/* something the AI notices (ai.h's CAiEvent: its fields and the pool's two calls) */
+class CAiEvent {
+public:
+    static CAiEvent *Acquire();
+    static void Create(CAiEvent *e);
+
+    CPnt3D m_pos;   // 0x0
+    float m_rangeSq;   // 0xc
+    float m_duration;   // 0x10
+    int m_owner;   // 0x14
+    unsigned int m_id : 16;   // 0x18
+    unsigned int m_visible : 1;   // 0x1a
+    unsigned int m_type : 15;   // AIE_EXPLOSION is 8
+};
+
+/* an animation (zanim.h's class: the call only) */
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+};
+
 /* MSL's, in double (MAIN's copy) */
 extern "C" double tan(double x);
 
@@ -202,6 +229,48 @@ void CZProjectile::Init()
     m_hasrested = 0;
 }
 
+/* made ready to fly: a launcher's fire animation started on the node (SOCOM II's), the
+ * intersection taken from the direct- or the indirect-fire table and two flags cleared (SOCOM 1's
+ * whole body), a volatile round's node given its first child's collision pieces and its extension,
+ * and the node's pieces made its descendants' and its box rebuilt from them (SOCOM 1's
+ * PreFireProjectile, 0x3CAF60: CZWeapon::Fire's set-up, SOCOM II's 0x3CB1A0 calls it) */
+void CZProjectile::PreFireProjectile()
+{
+    EQUIP_ITEM type = CZWeapon::GetIDType(m_weapon->m_ID);
+
+    if (type == 121 || type == 171 || type == 185 || type == 230) {
+        CZAnim *anim = m_weapon->GetFireAnim(false);
+        CZAnim *inst = 0;
+
+        if (anim && CZWeapon::m_allowFireAnimations)
+            inst = anim->ActivateArg(1, 3, m_instance, 0);
+        m_animinstance = inst;
+    }
+    if (m_shottype == ONE_FRAME)
+        CZWeapon::m_pProjectilelist->GetNextDirectFireDI(&m_di, &m_di_handle);
+    else
+        CZWeapon::m_pProjectilelist->GetNextIndirectFireDI(&m_di, &m_di_handle);
+    SetFlag17(false);
+    SetFlag18(false);
+    if (m_ammo->IsVolatile()) {
+        CNode *first = 0;
+        CNodeVector children = m_instance->m_child;
+
+        if (children.size())
+            first = children[0];
+        if (first) {
+            CDIVector &src = first->m_di;
+            CDIVector dis = src;
+
+            for (int i = 0; i < dis.size(); i++)
+                m_instance->AddDI(dis[i]);
+        }
+        m_instance->SetNodeEx(&m_nodeex, false);
+    }
+    m_instance->SetDescendantDI(true);
+    m_instance->UpdateBBoxFromDI(true);
+}
+
 /* its velocity: none, at rest; else flying and not done (SOCOM 1's) */
 void CZProjectile::SetVelW(const CPnt3D *vel)
 {
@@ -221,17 +290,17 @@ void CZProjectile::SetVelW(const CPnt3D *vel)
  * the test written out each time (an inline bool predicate materialises its value); the fuse out, it is to be detonated -- done, and with the removal time out too
  * flagged (bit 17) unless remote; the removal time out once done, removed (7) unless remote and
  * no longer done. SOCOM 1's called the explosive's anim and returned true on a removal).
- * OPEN, 2 instructions: 0x1C8 against 0x1D0 -- the same blocks and the same reuse of the first
- * network load in the last test (a reload after the stores, as the target's), but the target sets
- * v0 = 0 in the fuse test's delay slot (its temporaries move to v1/a1/a2) and pads two more labels
- * (ahead of the flag-17 store and of the else arm's SetDone). Tried: a bool/int result variable
- * (top, after the test, returned everywhere), an else-if chain with one return, the m_done test
- * nested, the timers or the "never" constant in locals, the network flag in a bool/uchar/int local
- * (a bool used first and last gives the size, 92 off: MW then reuses it in the middle) */
+ * SOCOM 1's shape: a result local (SOCOM 1's `move v0,zero` at the top), the fuse's no-removal arm
+ * returning false itself, the removal arm falling through to `return r`, and the done arm ASSIGNING
+ * the result -- SOCOM 1's `= true` (daddiu) is `= false` in SOCOM II, which keeps the variable and so
+ * the target's early `v0 = 0` and its two padded labels (round 21: the result declared after the
+ * network test or numbered there; at the top, or without the done arm's assignment, 8 bytes short) */
 bool CZProjectile::HandleTimers()
 {
     if (theNetwork.m_bNetwork && !m_isplayer && !m_lastHitWasPerson)
         return false;
+    bool r = false;
+
     if (m_time <= 0.0f && m_time != 9999999.0f && !m_done) {
         m_state = PROJECTILE_TO_BE_DETONATED;
         m_grenadestate = DETONATE;
@@ -239,17 +308,18 @@ bool CZProjectile::HandleTimers()
             SetDone(true);
             if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
                 SetFlag17(true);
-        } else
+        } else {
             SetDone(true);
-        return false;
-    }
-    if (m_done && m_removaltime <= 0.0f && m_removaltime != 9999999.0f) {
+            return false;
+        }
+    } else if (m_done && m_removaltime <= 0.0f && m_removaltime != 9999999.0f) {
         if (!theNetwork.m_bNetwork || m_isplayer || m_lastHitWasPerson)
             m_state = (PROJECTILE_STATE)7;
         SetDone(false);
         m_grenadestate = REMOVE;
+        r = false;
     }
-    return false;
+    return r;
 }
 
 /* (a material's resistance to a blast is int_material.h's CMaterialEx::m_penetration, PENETRATION) */
@@ -310,6 +380,59 @@ bool CZProjectile::CheckHit(DiIntersect *di, IntersectStruct *hit)
     return true;
 }
 
+/* the detonation's next hit on a node extension no earlier hit reached, a delayed ray registered
+ * from the explosion's point to the centre of its node's box, the second intersection taken from
+ * the direct-fire table for it and told to hit characters; true once no hit is left (the second
+ * intersection given back) or none can be had (SOCOM II's, 0x3C7EE0: both PreTicks call it ahead
+ * of HandleNextHit; the name ours) */
+bool CZProjectile::RegisterNextHit()
+{
+    while (m_di && m_hitindex < m_di->m_Cnt && m_hitindex < 127) {
+        /* the index a local of its own, numbered ahead of the extension (in the bitfield's place
+         * the index takes another register), and the backward search guarded by it: the
+         * target's `blez i` ahead of the loop's bottom-tested entry */
+        int i = m_hitindex;
+
+        IntersectStruct *hit = &m_di->m_Intersects[i];
+        CNode *node = hit->m_node;
+
+        if (node && node->m_nodeEx) {
+            CNodeEx *ex = node->m_nodeEx;
+            bool first = true;
+
+            if (i > 0) {
+                for (int j = i - 1; j >= 0 && first; j--) {
+                    CNode *n = m_di->m_Intersects[j].m_node;
+
+                    if (n && n->m_nodeEx == ex)
+                        first = false;
+                }
+            }
+            if (first) {
+                CPnt3D center;
+
+                if (hit->m_node) {
+                    hit->m_node->GetBBox()->GetCenter(&center);
+                    hit->m_node->TransformToWorld(center);
+                }
+                if (!m_di2 && !CZWeapon::m_pProjectilelist->GetNextDirectFireDI(&m_di2, &m_di2_handle))
+                    return true;
+                CWorld::m_world->RegIntersectDelayed(m_di2, &m_framestartpos, &center, -1);
+                m_di2->m_Node = hit->m_node;
+                m_di2->SetCharacterHits(true);
+                return false;
+            }
+        }
+        m_hitindex++;
+    }
+    if (m_di2) {
+        CZWeapon::m_pProjectilelist->ReleaseDirectFireDI(&m_di2, &m_di2_handle);
+        m_di2 = 0;
+        m_di2_handle = -1;
+    }
+    return true;
+}
+
 /* the next hit, if it counts, handed to its node's extension -- an instance's to the node it
  * instances -- and the index moved on; none without both intersections */
 bool CZProjectile::HandleNextHit()
@@ -340,6 +463,73 @@ void CZProjectile::ForgetHitNode(zdb::CNode *node)
 
         if (hit && hit->m_node == node)
             hit->m_node = 0;
+    }
+}
+
+/* the detonation: its mark on the ground under it (SOCOM 1's HandleDetonateExplosion, which then
+ * handed each hit to its node's extension -- SOCOM II's leaves that to HandleNextHit), detonated,
+ * the hit index back at the first, and the hits reordered, pass after pass until none moves: each
+ * plain hit's place taken by a later instance's (0x3C7AF0; HandleDelayedDetonate calls it). The
+ * shapes the target fixed: the node tests written out, each with its doubled null test (inline
+ * bool predicates materialise their values); the flags set ahead of the three copies, each copy
+ * indexing the array afresh; `j <= i` (the compare in at; `!(i < j)` materialises it);
+ * `again = false` ahead of the search flag; the two di tests nested ifs (their exits share the
+ * loop's); and the pass loop a `while (again)` -- as a do-while the loop optimiser numbers the
+ * two strength-reduced offsets the other way round (s0/s1 swapped) */
+void CZProjectile::HandleDetonateExplosion()
+{
+    if (!m_di)
+        return;
+
+    IntersectStruct *ground = CWorld::m_world->GetAltitude(&m_framestartpos, 10.0f);
+
+    if (ground) {
+        ground->GetRegion();
+        CZWeapon::m_pMarklist->AddNewMark(ground, this, 1.0f);
+    }
+
+    DiIntersect *di = m_di;
+
+    if (di) {
+        m_state = PROJECTILE_WAS_DETONATED;
+        m_hitindex = 0;
+        if (di->m_Cnt > 0) {
+            bool again = true;
+            int i = 0;
+            int j = 0;
+
+            while (again) {
+                if (i < di->m_Cnt - 1) {
+                    IntersectStruct *a = &di->m_Intersects[i];
+
+                    if (a->m_node && a->m_node &&
+                        (!(a->m_node->m_socom2_a1 & 4) || a->m_node->m_socom2_a1_bits.bit3)) {
+                        again = false;
+                        bool searching = true;
+
+                        if (j <= i)
+                            j = i + 1;
+                        for (; searching && j < di->m_Cnt; j++) {
+                            if (di->m_Intersects[j].m_node && di->m_Intersects[j].m_node &&
+                                (di->m_Intersects[j].m_node->m_socom2_a1 & 4) &&
+                                !a->m_node->m_socom2_a1_bits.bit3) {
+                                IntersectStruct t;
+
+                                t.m_poly = 0;
+                                t.m_node = 0;
+                                again = true;
+                                searching = false;
+                                memcpy(&t, &di->m_Intersects[i], sizeof(IntersectStruct));
+                                memcpy(&di->m_Intersects[i], &di->m_Intersects[j], sizeof(IntersectStruct));
+                                memcpy(&di->m_Intersects[j], &t, sizeof(IntersectStruct));
+                            }
+                        }
+                    }
+                    i++;
+                } else
+                    again = false;
+            }
+        }
     }
 }
 
@@ -388,6 +578,98 @@ void CZProjectile::Cleanup()
 void CZProjectile::Detonate()
 {
     m_state = PROJECTILE_TO_BE_DETONATED;
+}
+
+/* the detonation dealt with once its proximity has been registered: detonated; the blast's point
+ * kept for the camera's shake unless the weapon is one of twelve; a noise the AI hears within the
+ * weapon's sound radius; the weapon's default animation for nine weapons, else the material's
+ * under the point (a flag set over water) or the default; the explosion handled when it has a
+ * radius, the pickup destroyed, the claymore's (and 158's) node switched off, 158's removal timer
+ * set; detonated, the point lifted (SOCOM 1's, 0x3C8330: its noise took the impact radius through
+ * a call, its anim list five weapons long). The twelve are a switch (a compare chain in reverse
+ * case order, no delay slot filled; written as `!=` tests MW fills them), the nine an `||` chain
+ * (MW folds 127/128 and 172/173 into range tests); the underwater bit is tested as a bool
+ * (`(bool)b != false` keeps the target's sltu) and the explosion setter copies through a local
+ * pointer (zweapon.h's SetNewExplosion: through the parameter the offset folds into the loads) */
+void CZProjectile::HandleDelayedDetonate()
+{
+    m_state = PROJECTILE_WAS_DETONATED;
+
+    EQUIP_ITEM id = m_weapon->m_ID;
+
+    switch (id) {
+    case 122:
+    case 125:
+    case 123:
+    case 127:
+    case 128:
+    case 159:
+    case 172:
+    case 173:
+    case 174:
+    case 177:
+    case 178:
+    case 182:
+        break;
+    default:
+        SetNewExplosion(&m_framestartpos);
+        break;
+    }
+
+    float r = m_weapon->m_soundradius;
+
+    if (r > 1.0f) {
+        CAiEvent *e = CAiEvent::Acquire();
+
+        e->m_pos = m_framestartpos;
+        e->m_rangeSq = r * r;
+        e->m_duration = 0.5f;
+        e->m_type = 8;
+        e->m_owner = m_shooterID;
+        CAiEvent::Create(e);
+    }
+    if (id == 122 || id == 127 || id == 128 || id == 172 || id == 173 || id == 178 || id == 182 ||
+        id == 125 || id == CLAYMORE) {
+        CZAnim *anim = m_weapon->GetDefaultSpecialAnim();
+
+        if (anim && CZWeapon::m_allowImpactAnimations)
+            anim->ActivateArg(1, 3, m_instance, 0);
+    } else {
+        IntersectStruct *hit = CWorld::m_world->GetAltitude(&m_framestartpos, 0.5f);
+        CMaterialEx *ex = 0;
+        int mat = 0;
+
+        if (hit) {
+            mat = hit->GetMaterial();
+            ex = CMaterialExArray::GetMaterialEx(mat);
+        }
+
+        CZAnim *anim = 0;
+
+        if (ex) {
+            if ((bool)ex->m_underwater != false)
+                SetFlag19(true);
+            if (!(hit->m_pos.y <= m_framestartpos.y - 10.0f))
+                anim = m_weapon->GetSpecialMaterialAnim(mat);
+            if (!anim)
+                anim = m_weapon->GetDefaultSpecialAnim();
+        } else
+            anim = m_weapon->GetDefaultSpecialAnim();
+        if (anim && CZWeapon::m_allowImpactAnimations)
+            anim->ActivateArg(1, 5, &m_framestartpos, 0);
+    }
+    if (m_ammo->GetExplosionRadius() > 0.0f)
+        HandleDetonateExplosion();
+    if (m_pickup) {
+        CPickup::Destroy(m_pickup);
+        m_pickup = 0;
+    }
+    if (m_weapon->m_ID == CLAYMORE || m_weapon->m_ID == 158)
+        m_instance->SetActive(false);
+    if (m_weapon->m_ID == 158)
+        m_removaltime = m_weapon->GetTimer(1);
+    m_state = PROJECTILE_WAS_DETONATED;
+    m_framestartpos.y += 1.0f;
 }
 
 bool CZProjectile::GetFlag9()
@@ -457,7 +739,10 @@ struct CONE {
  * fold. Tried for (1): `damage = damage * (...)`, the product reversed, `/ 0.5f`, brackets, the
  * product, the difference or the factor in a variable, `r` and `dist` declared apart, a radius
  * variable. Round 18: the switch with its cases in either order (159 first: 125 off; the claymore
- * first: 0x4D8), `r -= 0.5f`, `t = r - 0.5f` and `k = 2.0f * (r - 0.5f)` locals change nothing */
+ * first: 0x4D8), `r -= 0.5f`, `t = r - 0.5f` and `k = 2.0f * (r - 0.5f)` locals change nothing.
+ * Round 21 for (2), by the first-definition rule: a dead `id = EQUIP_NONE` at the top or just ahead,
+ * the id declared at the top uninitialised, read twice, through an int or a signed-char view --
+ * all fold to lbu; assigned in both arms of the detonation test (a join) it is 0x4DC */
 float CZProjectile::GetDamage(const CPnt3D *pos, float minimum)
 {
     float damage;
