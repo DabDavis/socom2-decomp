@@ -111,10 +111,14 @@ public:
      * 0x575F40, the unit's template tail) */
     virtual ~CAiSAnimate();
 
-    unsigned char _58[0x5a - 0x58];
-    unsigned char m_5a;   // 0x5a (SOCOM 1's 0x28)
+    virtual int Tick(CSealCtrlAi *ai);
+
+    AnimType m_anim;   // 0x58: the anim played, or -1 (SOCOM 1's at 0x2c)
+    unsigned char m_5a;   // 0x5a (SOCOM 1's 0x28): the state the anim's blend is pushed in
     float m_5c;   // 0x5c (SOCOM 1's 0x30)
-    unsigned int m_60;   // 0x60 (SOCOM 1's 0x8)
+    /* how long the anim may hold the state when flag 1 says so, on the state stack's clock (SOCOM
+     * 1's 0x8 -- a countdown there) */
+    float m_60;   // 0x60
     CAnimTimedCallList m_timed;   // 0x64
     CAnimSpanCallList m_spans;   // 0x70
 };
@@ -3148,6 +3152,77 @@ void CAiSAnimate::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
     case SIGNAL_3:
         break;
     }
+}
+
+/* the anim played out (OVL2 0x55A920, slot 0x10: SOCOM 1's CAiSAnimate::Tick without its dT, the
+ * blend pushed through 0x588BC0 in the state's own stance, and SOCOM II's timed and span calls):
+ * steps 0 and 1 push the anim unless it is on top already, step 2 runs the timed calls the anim's
+ * fraction has reached -- each erased once it answers true, the step done when one answers false --
+ * and every span call the fraction is inside, then ends once the anim is off the top or, under flag
+ * 1, the state has held its time; done, the state stops running */
+static inline short TypeOf(const CZBodyAnimBlend *b)
+{
+    return b->m_animType;
+}
+
+int CAiSAnimate::Tick(CSealCtrlAi *ai)
+{
+    STEP step = (STEP)m_phase;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (m_anim == -1)
+        step = STEP_2;
+
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+    switch (step) {
+    case STEP_0:
+    case STEP_1:
+        if (!top || m_anim != TypeOf(top)) {
+            func_00588BC0(seal, m_anim, m_5a, 0, 0);
+            step = STEP_2;
+        } else
+            step = STEP_3;
+        break;
+    case STEP_2:
+        if (!top || m_anim != top->m_animType) {
+            step = STEP_3;
+            break;
+        }
+        {
+            float t = top->m_tfrac;
+
+            while (m_timed.size() != 0) {
+                const ANIM_TIMED_CALL &c = *((const CAnimTimedCallList &)m_timed).begin();
+
+                if (t < c.m_time)
+                    break;
+                if (c.m_func(this, ai, c.m_data) == false) {
+                    step = STEP_3;
+                    break;
+                }
+                m_timed.erase(m_timed.begin());
+            }
+            CAnimSpanCallList::iterator e = m_spans.end();
+
+            for (CAnimSpanCallList::iterator i = m_spans.begin(); i != e; ++i) {
+                ANIM_SPAN_CALL &c = *i;
+
+                if (!(t < c.m_start) && t < c.m_end)
+                    c.m_func(this, ai, c.m_data);
+            }
+        }
+        if (step != STEP_3) {
+            if ((m_flags & 1) && (m_anim != TypeOf(top) || !(ai->m_stateStack.m_timer < m_60)))
+                step = STEP_3;
+        } else
+            step = STEP_3;
+        break;
+    }
+    if (step == STEP_3)
+        SetActive(false);
+    UpdatePhase(step);
+    return Result();
 }
 
 /* the grenade the state holds: its pickup's projectile, while the pickup is still the one the state
