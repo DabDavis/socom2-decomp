@@ -2060,6 +2060,45 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 24** (SkbPadKeyEvent at last):
+  - MW loads a byte-enum field with `lb` and narrows it with `andi 0xff` at each read; a `signed char` field cast to the
+    enum folds into `lbu` in every form tried (`(E)(signed char)`, `(E)(int)`, a char or int local first, an inline
+    returning it) -- SkbPadKeyEvent 0x394F60 (open since round 19) matches with the pad table's event field an SKBKEY read
+    without a cast (the table's data unchanged);
+  - a byte enum tested `== E_0` / `!= E_0` narrows at the test, `!e` / `if (e)` tests the loaded byte directly (16 bytes
+    shorter); a 2-byte enum loads a `signed char` field with `lb` and narrows with `andi 0xffff`, a signed byte enum (one
+    enumerator -1) sign-extends at each read instead;
+  - MW numbers a float expression's temporaries in source order (left operand first) though the loads are emitted first;
+    a constant passed through an inline's parameter, or held in a caller local defined before calls, is propagated before
+    that numbering (SkbStartDisplay stays 1 off on it); CSkbSplit's sum 0x391E70 written (12: a register rotation).
+- **Tells from the engine core, round 13** (the pop-up dialog's model, the network packet arguments, the mission title):
+  - a jump table that starts at 0 needs its empty cases written, otherwise MW builds a compare chain
+    (CZAnimArgList::AddNetworkPacketArgs 0x271EE0, SOCOM 1's); a `li a3,1` shared by a `== 1` compare and the call's third
+    argument means the argument really is 1 (UICompareValues 0x274DB0: UIVAR_SESSION); a `signed char` return compared as
+    `(unsigned char)` gives the target's `andi 0xff` instead of a sign extension;
+  - a member read twice, once for a test and once as a call argument: take the test's read into a local through a const
+    view, ahead of the unrelated `index = -1` store -- the load comes first and the store fills the branch's delay slot;
+  - zanim_menu.h's minimal CPopUpDialog (a CPlainBmp base, the text at 0xB0, a C2D at 0x314, two buttons; 0xBF0 bytes) with
+    its destructor inline in the class and a later virtual out of line reproduces the image: zanim_menu.cpp emits no
+    vtable (zui_2d.cpp's at 0x4073A0 is the real one) and the destructor's copy lands after UIFlushMenuHistory
+    (~CPopUpDialog 0x27C8D0, CMenuStack::GetPopUp 0x27F190);
+  - renaming a row that only a draft matches makes that draft no-target until automatch --stale runs: write the function
+    from source first, or keep the placeholder; 0x2A2EB0-0x2A3AF8 is a unit of its own (ftsGetAltitudeApprox, SOCOM II's,
+    and OVL1's copy of CAiMap::GetLocation 0x2A3950).
+- **Tells from the HUD, round 42** (the TCM builder, the root's show, the button's and wrapped text's destructors):
+  - calling a virtual through a local copy of `this` defined in the block where it is used computes the object ahead of
+    the argument and puts the argument in the call's delay slot; copied at the top of the function the copy becomes the
+    stores' base register instead (tcmCreateItem 0x236D20: SetTexture through `self = this` after the texture's ternary);
+  - a local declared uninitialised ahead of an element pointer in a loop body is numbered below the pointer and coloured
+    after it (CTCM::ShowRoot 0x235560: the state); a negation written at both uses is a common subexpression, a temporary
+    numbered after an inline's variables, so it takes s0 -- a named local swaps it (tcmVote 0x22F3C0: `!cur` twice);
+  - in sequential walks a function-level counter shared by some loops, the others loop-scoped, decides which saved
+    registers the counters share; all loop-scoped, the parameters are coloured first and two more saved registers are
+    needed (CZLineMap::Draw 0x20D390); defining a destructor that was only declared emits its this-adjusting thunk too,
+    and both match (~CWrappedText 0x379D90 / @152@ 0x37D010, ~C2DButton 0x377510 / @192@ 0x37D040);
+  - SetupBackgroundBox 0x22AE90 matches through a STAND-IN: the bottom-right corner's u read as `*(volatile float
+    *)&s_fCornerU` (about 20 natural spellings let MW hoist v's load; the variable volatile everywhere moves six loads);
+    ActionSelectionMask's caller measured: the callee's parameter is an int (`1 << (unsigned char)id`).
 - **Tells from the kit and AI states, round 35** (the view cone, the enemy callout, the pickup scan, slot 0xC retyped):
   - MW folds a mask local read only once back into the expression, and an `&` then evaluates the word's index first
     whatever order is written; redefining the local (`m &= word`) keeps the mask first (0x5CB450 / 0x5CB630 at 2: which
