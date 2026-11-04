@@ -691,17 +691,19 @@ AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai)
 }
 
 /* a state of a kind deleted, for remove_if (Remove's; the template tail's remove_if and
- * remove_copy_if, 0x5F8AF0 and 0x5F8C40, inline it -- the name ours).
- * OPEN, both instances (include/algorithm's, the other lane's this round): the target's inlined
- * find_if reads the functor from remove_if's parameter slot at every step (`lbu a1,104(sp)`, the
- * functor's kind first in the bne), where include/algorithm's find_if takes its copy -- a byte
- * copied to a fresh slot and held in s0 -- so remove_if is 0x124 against 0x110; MSL's find_if
- * passing the predicate on without a copy (or by reference) should close both */
+ * remove_copy_if, 0x5F8AF0 and 0x5F8C40, inline it -- the name ours). The kind read into a local
+ * first, then compared on the left (round 31): remove_if's search, which reaches the functor through
+ * a reference, then re-reads its byte at every step (`lbu a1,104(sp)`, the virtual destructor's call
+ * in the loop kills it) while remove_copy_if's by-value copy is hoisted into s0 -- both instances
+ * byte-exact so; read in place, either operand order, through a reference, a `self` pointer or a
+ * non-const operator() MW hoists the read in both (0x114 and 0xE8 against 0x110 and 0x100) */
 struct CAiStateDeleteKind {
     CAiStateDeleteKind(AI_STATE state) : m_state(state) {}
     bool operator()(CAiState *s) const
     {
-        if (s->m_state == m_state) {
+        AI_STATE k = m_state;
+
+        if (k == s->m_state) {
             delete s;
             return true;
         }

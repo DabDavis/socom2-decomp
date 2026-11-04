@@ -727,18 +727,17 @@ done:
 
 /* (OVL2 0x5EDE40; SOCOM 1's: the two walks after the dead list's look for the SEAL and do nothing
  * -- compiled-out code. Each walk's end taken into a local ahead of its iterator: the target's
- * iterator in a1, the end in a2.)
- * OPEN, 3 instructions: the SEAL lives in its home (push_back takes its address) and the target reads
- * it there again ahead of the second and third walks (`lw a0,36(sp)` in each loop's entry) -- written
- * plainly MW keeps the entry's load in a register through all three walks (0x140 bytes); read through
- * the reference local below the reloads are the target's but through an address register of their
- * own (`addiu a3,sp,36` at entry, `lw a0,0(a3)`). Tried: a reference per walk (4), a pointer local
- * (3), `*&seal`, an inline taking it by reference (both folded: 0x140), std::find, an inline Has()
- * over a reference parameter (0x170), gotos for the returns, the compare's operands swapped */
+ * iterator in a1, the end in a2.) The SEAL lives in its home (push_back takes its address) and the
+ * target reads it there again ahead of the second and third walks (`lw a0,36(sp)` in each loop's
+ * preheader): those two walks read it through a `CZSealBody *const *` view of the home -- an
+ * expression of its own, which CSE does not merge with the entry's load while loop-invariant motion
+ * still hoists it, and the address folds into the load (round 31; a const view, `void **` and a
+ * cast through `unsigned int *` all match; an `int *` view does not: 2). Written plainly MW keeps
+ * the entry's load through all three walks (0x140 bytes); through a reference local the reloads are
+ * the target's but through an address register (`addiu a3,sp,36`); `opt_common_subs off` reloads in
+ * the first walk too; a `volatile` view folds like the plain read */
 void CSealUnit::Revive(CZSealBody *seal)
 {
-    CZSealBody *const &s = seal;
-
     if (!seal->m_isAlive)
         return;
     for (std::list<CZSealBody *>::iterator e = m_dead_guys.end(), i = m_dead_guys.begin(); i != e; ++i)
@@ -751,10 +750,10 @@ void CSealUnit::Revive(CZSealBody *seal)
             return;
         }
     for (std::list<CZSealBody *>::iterator e = m_seals.end(), i = m_seals.begin(); i != e; ++i)
-        if (*i == s)
+        if (*i == *(CZSealBody *const *)&seal)
             return;
     for (std::list<CZSealBody *>::iterator e = m_escortees.end(), i = m_escortees.begin(); i != e; ++i)
-        if (*i == s)
+        if (*i == *(CZSealBody *const *)&seal)
             return;
 }
 
