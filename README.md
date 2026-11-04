@@ -8317,6 +8317,71 @@ they showed:
   volatile, 15 words of the plain QWC/CHCR stores' schedule), `_doCSC2` (0x1B8 against 0x1C0). Not
   reached: sceGsExecStoreImage (0x68C), `_csc_storeRefImage`, round 28a's and 26a's opens.
 
+**The tools, round 30a** (the lanes' requests): (1) **the canary's `test_stale_follows_a_callee_rename`
+uses a synthetic row**: its fixture draft was 0x2808D0's own placeholder, which the engine core's round
+14 matches from source as UIGetTextInput -- a draft whose row is renamed is stale by the own-row rule, so
+every `== set()` assertion would fail once the core names it. The fixture row is now a placeholder added
+to a copy of the map at 0xFFFFF0 (past OVL2: no row can hold it, asserted), every assertion kept (and one
+added: against the real map the same draft is stale -- its row is the copy's). Proved: with 0x2808D0
+renamed in the map the old test fails at "which the placeholder rule alone misses" and the new one passes
+(9 assertions). (2) **include/libvu0.h declares `sceVu0InterVectorXYZ`** (the SEALs' round 34 declared it
+in seal_anim.cpp; body.cpp's `float *` spelling is the same function to MW) and **include/string.h
+`strncasecmp`** (the engine core's round 13, zanim_menu.cpp and ai.h; size_t is unsigned int, as their
+`unsigned int` and si_script.cpp's `size_t`): additive, `tools/objcmp.py HEAD --auto` over every unit,
+2,197, 0 differ. No tool that scores changed (scdiff.py, sccheck.py, scdecomp.py are master's), so no MW
+or GCC unit can score differently. automatch over the lane's three ranges (`--max-size 0x400 --emit
+--no-prune --jobs 1 --obj-dir` the lane's private `src/lib` build): MAIN `18DB90 1C4CC0` 21 tried, 0 hits
+(1 build failure, 3 m2c refusals, 17 misses), OVL1 `1E7F58 1E8FD4` 0 tried, `243000 256FD0` 56 tried, 0
+hits (build failures 0x24B2F8, 0x24DBB8; m2c refuses 0x247D30, 0x247FE8, 0x2485D0, 0x2488A0, 0x24D560):
+77 tried, none byte-exact (round 28a: 102, 0).
+
+**Round 30a** (2026-11-04, the requests first, then MAIN's small rows): 15 rows newly byte-exact (4,100
+bytes) of 16 written -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows 1,254 -> 1,269 of 1,326 scored
+(after merging master b2d4693b), none lost. libpad2 whole (`sdk/libpad2.c` 14 of 14: the socket's
+creation 0x1BD630, the button read 0x1BD790, the profile read 0x1BD868, the state 0x1BD938, a button's
+value 0x1BDA78, the profile's parse 0x1BDD58); a new `sdk/libvib.c` (0x1BE530, 0x1BE5B0: a profile
+received and two buffers sent over libdbc, libvib's GetProfile/SetActParam shapes -- no name given, no demo
+row, string or caller); libmpeg's demux 2 -> 5 (`sdk/mpeg_demux.c` over libmpeg.h: `_type2id`, open since
+round 19a, and `_id2type`, sceMpegAddStrCallback, `_pack_header`) and picture output (`sdk/mpeg_dec.c`:
+`_getPtsDtsFlags`, `_dispRefImage`, `_dispRefImageField`; dmaRefImage OPEN). No rows named. What they showed:
+
+- **A struct passed as an int is a union**: libpad2's receive command (a 14-bit size, a 2-bit type, two
+  bytes) is a u_long bitfield struct -- a DImode register, so the last mask keeps the upper word
+  (0xFFFFFFFF00FFFFFF) -- and passed as a union's int (its low word sign-extended into a1);
+  `*(int *)&cmd` goes through ADDRESSOF and builds it in a1 off another register (39 words). The same
+  command in libvib's object is passed as the struct itself (no truncation): two objects, two prototypes.
+- **A switch's case tree reads the table's values**: `_type2id`'s cases are the three masks `_strmap`
+  holds, 0xFFFFFFFFFF first and no default -- the root 0xFFFF<<24, the 0xFFFFFFFFFF node a bare `sltu`
+  (its shift-0 body cross-jumps with the fall-through), and the 16-byte frame the code never uses comes
+  with it; two cases are an xor and a movn. `_id2type`'s 0xFF00 class is an if/else-if (each `bne`
+  falls into its body), its 0xFFFF class a switch.
+- **What loop.c hoists says how a value is spelled**: a per-case `v = id & CONST` into one variable keeps
+  the AND in the loop and hoists only the constant (a test per case hoists the AND; a mask variable set in
+  each case hoists nothing); the switched-on id held in a variable is compared after the switch with no
+  reload; a default spelled with its case's own constant reads the hoisted constant's register (through
+  the mask variable a3 stays live and the dispatch's beq turns beql); dmaRefImage's count read once
+  into a local (through the field it is reloaded every pass).
+- **fold pairs a long OR chain, each pair in source order**: `_getPtsDtsFlags`'s six-term flags word is
+  the target's only from the highest bit down; its PTS is `last + (half + odd)`, each product a DImode
+  `__muldi3` of `& 1` terms (the odd half of the gap alternated through a parity count).
+- **A store that may alias a load stays below it**: `_dispRefImageField`'s `d->_080 = mp->pts` comes
+  before `d->_088 = 1` (a long store, a long load through another pointer); libpad2's button record is
+  copied from `q + 20`, q the table's base plus `(n * 16 + port * 820)` -- any field spelling folds the
+  20 into the symbol (4-10 words).
+- **Guard clauses and layout**: libpad2's creation returns on `s < 0` and stores the state before the
+  buffer (1 of 4); its reads' `return -1` comes first (`if (b->f04) return b->b2;` puts -1 in the
+  likely slot); the state's failure block sits inside the else before the shared `return state` (a label
+  at the end lays it last); a button's value is a switch inside `if (b.present)`, its bit case `if (x)
+  return 0; return 1;` (a movn off the known size; `x ? 0 : 1` folds to xori); libvib's `size = 40`
+  comes before the command's fields and the profile's length between the two copies (1 of 60).
+- **Open, diagnosed in place**: dmaRefImage (12 words, registers: the index and tag pointer trade t3/t2,
+  the hoisted `n - 1` before the two bases; the tag id a variable between the two stores, else fold
+  branches on it; 48 declaration orders alike); htonl/htons (inet_addr.c's note: htonl is byte-exact
+  through one reused temporary with both schedulers off, htons a register off -- code no scheduler
+  touched, a separate object or assembly the demo cannot tell). Not reached: sceGsSetDefDBuff,
+  `_ch3dmaCSC`, `_doCSC2`, 0x252D68, 0x250320 (their diagnoses stand), libcdvd's sceCdDiskReady/sceCdRead,
+  OVL1's codec and libnetb rows.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
