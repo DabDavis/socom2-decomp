@@ -7,7 +7,7 @@
  * IdleProcess, all but the constructor and FindBestRecognised LOCAL there), ScanSoft's speech
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. Only the functions written so far are here, in image
- * order: InitNBestDynProgProcess and PrunDynProg (OPEN) (round 19c), FindBestRecognised (round
+ * order: InitNBestDynProgProcess and PrunDynProg (round 19c; PrunDynProg closed in 20c), FindBestRecognised (round
  * 17c), ExtendBacktraceStack, ScoreCompare (NAME@nbestdp in the map: the iso-word object has its
  * own). SOCOM II's rows hold SOCOM 1's in order: 0x4EB5E8 is CollectDummyMemory's position,
  * 0x4EB7D8 InitViterbi's, 0x4EBCB0 InitDynprogContext's, 0x4EC130 new. The backtrace stack is a list of three-word records from the
@@ -123,12 +123,12 @@ static int InitNBestDynProgProcess(NBESTDP *d)
  * SOCOM 1's body (0x1F4 in both builds). Measured: the flag's store before the flag (`d->pruning
  * = 1; pruning = 1;` -- the store takes a constant of its own, the target's v0), the ring index an
  * int (no `andi` after its increment), `x < 0` and `x > MAX` two tests (one `||` folds into an
- * unsigned compare), the sum an int, the rate read into a local before the product (its load
- * first, the product in f228's register).
- * OPEN (17 words, the right size, registers only): global-alloc takes x (a dozen references over
- * the clamps) first, into a0, and the old level after it into a1; the target has old in a0 and x
- * in a1. The sum and shift spelled four ways, the declarations reordered, the product through a
- * variable and the clamp as an inline helper leave it (build/scratch/gcc/r19c/v_prun*.py). */
+ * unsigned compare), the sum an int, the rate read into x itself before the product (`x =
+ * d->rate; ... x = diff * (d->f228 * x)`: round 19c's 17 words, registers only, were global-alloc
+ * giving x -- a dozen references over the clamps, allocated first -- the first free register, a0;
+ * with the rate's load in x's own live range x conflicts with the f228 load local-alloc put in a0
+ * and takes a1, the old level then a0: the target's, byte-exact. A rate local of its own leaves x
+ * free of a0, whatever the order). */
 static void PrunDynProg(NBESTDP *d)
 {
     unsigned char pruning = d->pruning;
@@ -146,12 +146,9 @@ static void PrunDynProg(NBESTDP *d)
             d->rate = s1 / (s2 >> 7);
         else
             d->rate = (s1 << 7) / s2;
-        {
-            unsigned int r = d->rate;
-
-            diff = d->maxframes - d->frame;
-            x = diff * (d->f228 * r);
-        }
+        x = d->rate;
+        diff = d->maxframes - d->frame;
+        x = diff * (d->f228 * x);
         if (diff > 0) {
             if (x < 0)
                 x = 0x1FFFC000;
