@@ -12,6 +12,7 @@
 
 
 extern "C" void *memcpy(void *, const void *, unsigned int);
+extern "C" void *memmove(void *, const void *, unsigned int);
 extern "C" void free(void *);
 extern "C" unsigned int strlen(const char *);
 extern "C" char *strcpy(char *, const char *);
@@ -72,7 +73,14 @@ typedef unsigned int size_t;
 typedef long streamsize;
 typedef long streamoff;
 
-template <class T> class allocator {};
+/* <memory>'s allocator: operator new and delete; with exceptions on, new's failure is its own throw
+ * (the game's exceptions-off build tests the result and reports "Memory allocation failure") */
+template <class T> class allocator {
+public:
+    typedef std::size_t size_type;
+    T *allocate(size_type n) { return (T *)operator new(n * sizeof(T)); }
+    void deallocate(T *p, size_type) { operator delete(p); }
+};
 template <class charT> struct char_traits;
 
 /* <algorithm>'s min, defined after codecvt<char>'s do_length (iostream.cpp) */
@@ -82,8 +90,11 @@ template <>
 struct char_traits<char> {
     typedef char char_type;
     typedef int int_type;
+    static void assign(char_type &c1, const char_type &c2) { c1 = c2; }
     static char_type *copy(char_type *s1, const char_type *s2, unsigned int n)
         { memcpy(s1, s2, n); return s1; }
+    static char_type *move(char_type *s1, const char_type *s2, unsigned int n)
+        { memmove(s1, s2, n); return s1; }
     static int_type eof() { return -1; }
     static int_type not_eof(const int_type &c) { return eq_int_type(c, eof()) ? 0 : c; }
     static bool eq_int_type(const int_type &c1, const int_type &c2) { return c1 == c2; }
@@ -184,17 +195,70 @@ inline _MSLstring::_MSLstring(const char *value)
     strcpy(data_.get(), value);
 }
 
-/* the game's (CodeWarrior 3.0's) basic_string<char>, as far as the locale's name needs it: three
- * words, bit 0 of the first the long form's mark, the text the third (include/string's shape; MAIN's
- * copy of its destructor is 0x184C10, OVL1's 0x1E7EF0) */
+/* <iterator>'s tags: the template replace takes the range's category by value (an empty class: a byte
+ * loaded off the stack and never stored) */
+struct input_iterator_tag {};
+struct forward_iterator_tag : public input_iterator_tag {};
+
+/* <iterator>'s distance over pointers, by value (the string's replace; the class iterators' form is
+ * below, by lower_bound) */
+template <class T>
+inline int distance(T *first, T *last)
+{
+    return last - first;
+}
+
+/* the game's (CodeWarrior 3.0's) basic_string<char>, the library's build of it (exceptions on: the
+ * length and range checks throw): twelve bytes, a long form (the capacity's word holding the mark in
+ * bit 0, the size, the text) over a short form (the mark and the size in the first byte, eleven
+ * characters with the terminator in place) -- include/string's shape, its members out of class (MAIN's
+ * copy of the destructor is 0x184C10, OVL1's 0x1E7EF0). THE LONG FORM'S BITFIELDS ARE size_type,
+ * `typename Allocator::size_type`: MW narrows a bitfield access to a byte only when the field's declared
+ * type is not template-dependent -- the mark's tests and stores here are words (lw/sw), the short form's
+ * `unsigned char` size a byte (build/scratch/rt/r7/bf4.cpp; OVL1's reserve 0x1E7C90 byte-exact so, the
+ * exceptions-off build, as a probe: build/scratch/rt/r7/g1.cpp) */
 template <class charT, class traits = char_traits<charT>, class Allocator = allocator<charT> >
-class basic_string {
+class basic_string : private Allocator {
 public:
+    typedef typename Allocator::size_type size_type;
+
+    basic_string() { init(); }
     basic_string(const charT *s);
     ~basic_string();
     const charT *c_str() const { return !(w_[0] & 1) ? (const charT *)w_ + 1 : (const charT *)w_[2]; }
+    const charT *data() const { return l_.is_long_ ? l_.data_ : s_.data_; }
+    size_type size() const { return l_.is_long_ ? l_.size_ : (unsigned char)s_.size_; }
+    size_type max_size() const { return 0x7FFFFFFE; }
+    void reserve(size_type res_arg = 0);
+    template <class InputIterator> basic_string &assign(InputIterator first, InputIterator last, void * = 0);
+    template <class ForwardIterator>
+    basic_string &replace(size_type pos, size_type n1, ForwardIterator j1, ForwardIterator j2,
+                          forward_iterator_tag);
 private:
-    unsigned int w_[3];
+    void init()
+    {
+        unsigned int (&a)[3] = w_;
+
+        for (unsigned int i = 0; i < 3; ++i)
+            a[i] = 0;
+    }
+
+    struct __long {
+        size_type is_long_ : 1;
+        size_type cap_ : 31;
+        size_type size_;
+        charT *data_;
+    };
+    struct __short {
+        unsigned char is_long_ : 1;
+        unsigned char size_ : 7;
+        charT data_[11];
+    };
+    union {
+        unsigned int w_[3];
+        __long l_;
+        __short s_;
+    };
 };
 
 template <class charT, class traits, class Allocator>
@@ -204,31 +268,17 @@ basic_string<charT, traits, Allocator>::~basic_string()
         operator delete((void *)w_[2]);
 }
 
-/* <iterator>'s tags: the template replace takes the range's category by value (an empty class: a byte
- * loaded off the stack and never stored) */
-struct input_iterator_tag {};
-struct forward_iterator_tag : public input_iterator_tag {};
-
-/* MAIN's own copies of the string's out-of-line pieces, which throw (the library has exceptions on):
- * reserve 0x18D8C0 and the template replace 0x18D3E0 are not written -- called by address */
-extern "C" void func_0018D8C0(void *str, unsigned int n);     /* reserve(n) */
-extern "C" void *func_0018D3E0(void *str, unsigned int pos, unsigned int n1, const char *first,
-                               const char *last, forward_iterator_tag);   /* replace(pos, n1, first, last, cat) */
-
 /* from a C string (0x18D2C0, MAIN's copy of OVL1's 0x2396F0, include/string's shape): the words
  * zeroed, the length taken, the room reserved, the text replaced in (locale.cpp's __locale_imp name) */
 template <class charT, class traits, class Allocator>
 basic_string<charT, traits, Allocator>::basic_string(const charT *s)
 {
-    unsigned int (&a)[3] = w_;
-
-    for (unsigned int i = 0; i < 3; ++i)
-        a[i] = 0;
-    unsigned int n = strlen(s);
+    init();
+    size_type n = strlen(s);
     forward_iterator_tag category;
 
-    func_0018D8C0(this, n);
-    func_0018D3E0(this, 0, 0, s, s + n, category);
+    reserve(n);
+    replace(0, 0, s, s + n, category);
 }
 
 typedef basic_string<char> string;
@@ -259,6 +309,155 @@ class out_of_range : public logic_error {
 public:
     explicit out_of_range(const char *what_arg) : logic_error(what_arg) {}
 };
+
+/* basic_string's out-of-line members (locale.cpp's template tail: classic()'s "C" instantiates them) */
+
+/* room for res_arg characters (0x18D8C0, MAIN's copy of OVL1's reserve 0x1E7C90): the capacity rounded
+ * up to a multiple of 16 or the short form's 11, the text moved to the new room. Growing, the
+ * allocation's failure is the caller's; shrinking, it is not (the try around the second allocation:
+ * the game's build tests the result instead) */
+template <class charT, class traits, class Allocator>
+void basic_string<charT, traits, Allocator>::reserve(size_type res_arg)
+{
+    if (res_arg > max_size())
+        throw length_error("basic_string::reserve length_error");
+    size_type cap, sz;
+    charT *new_data, *old_data;
+    bool now_long;
+    bool is_long = l_.is_long_;
+    if (!is_long) {
+        cap = 11;
+        sz = (unsigned char)s_.size_;
+    } else {
+        sz = l_.size_;
+        cap = l_.cap_;
+    }
+    if (res_arg < sz)
+        res_arg = sz;
+    if (res_arg + 1 < 12)
+        res_arg = 11;
+    else
+        res_arg = (res_arg + 16) & ~15;
+    if (res_arg == cap)
+        return;
+    if (res_arg == 11) {
+        old_data = l_.data_;
+        new_data = s_.data_;
+        now_long = false;
+    } else {
+        if (cap < res_arg)
+            new_data = this->allocate(res_arg);
+        else {
+            try {
+                new_data = this->allocate(res_arg);
+            } catch (...) {
+                return;
+            }
+        }
+        now_long = true;
+        old_data = is_long ? l_.data_ : s_.data_;
+    }
+    traits::copy(new_data, old_data, sz);
+    new_data[sz] = charT();
+    if (is_long)
+        this->deallocate(old_data, cap);
+    l_.is_long_ = now_long;
+    if (!now_long)
+        s_.size_ = sz;
+    else {
+        l_.data_ = new_data;
+        l_.size_ = sz;
+        l_.cap_ = res_arg;
+    }
+}
+
+/* the whole text replaced by a range (0x18DB40): the template replace over (0, size()) */
+template <class charT, class traits, class Allocator>
+template <class InputIterator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::assign(InputIterator first,
+                                                                                       InputIterator last, void *)
+{
+    forward_iterator_tag category;
+
+    return replace(0, size(), first, last, category);
+}
+
+/* n1 characters at pos replaced by the range j1..j2 (0x18D3E0, MAIN's copy of OVL1's 0x1EE780): the
+ * checks, then either a new buffer (the head, the range, the tail copied in) or the text moved in place
+ * -- the range first copied out (assign into a temporary) when the tail's move would overwrite it.
+ * Byte-exact (round 7) -- each piece measured: the locals declared at the top, the mark's bool LAST
+ * (as reserve's: it takes the highest number, so its spill slot is the first after new_data's -- the
+ * target's 176; first, it was the last slot), the short form's size read before its capacity (the
+ * byte's load scheduled first, into v1), n2 through distance(j1, j2) by value (written `j2 - j1` the
+ * allocator spilled j2 rather than xlen and new_data: 0x438), and the temporary's text read through a
+ * reference to it, short form first, assigned in each arm (data() inlined leaves an empty join block,
+ * which takes the outer join's alignment nop: `b` one word early; folded onto the frame, the address
+ * register goes) -- build/scratch/rt/r7/rp*.py */
+template <class charT, class traits, class Allocator>
+template <class ForwardIterator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::replace(size_type pos,
+    size_type n1, ForwardIterator j1, ForwardIterator j2, forward_iterator_tag)
+{
+    charT *data;
+    size_type sz, cap, xlen, n2, new_size, tail;
+    bool is_long = l_.is_long_;
+    if (!is_long) {
+        data = s_.data_;
+        sz = (unsigned char)s_.size_;
+        cap = 11;
+    } else {
+        data = l_.data_;
+        sz = l_.size_;
+        cap = l_.cap_;
+    }
+    if (pos > sz)
+        throw out_of_range("basic_string: out_of_range");
+    xlen = min(n1, sz - pos);
+    n2 = (size_type)distance(j1, j2);
+    if (n2 > max_size() || sz - xlen > max_size() - n2)
+        throw length_error("basic_string: length_error");
+    new_size = n2 + (sz - xlen);
+    tail = sz - (pos + xlen);
+    if (new_size >= cap) {
+        size_type newcap = (cap + 15) & ~15;
+        while (newcap < new_size + 1)
+            newcap = (2 * newcap + 15) & ~15;
+        charT *new_data = this->allocate(newcap);
+        if (pos != 0)
+            traits::copy(new_data, data, pos);
+        charT *p = new_data + pos;
+        traits::copy(p, j1, (size_type)(j2 - j1));
+        if (tail != 0)
+            traits::copy(p + n2, data + pos + xlen, tail);
+        traits::assign(new_data[new_size], charT());
+        if (is_long)
+            this->deallocate(data, cap);
+        else
+            l_.is_long_ = true;
+        l_.data_ = new_data;
+        l_.size_ = new_size;
+        l_.cap_ = newcap;
+    } else {
+        basic_string temp;
+        if (tail != 0 && data + pos + n2 < j2 && j2 <= data + sz) {
+            temp.assign(j1, j2);
+            const basic_string &t = temp;
+            if (!t.l_.is_long_)
+                j1 = t.s_.data_;
+            else
+                j1 = t.l_.data_;
+        }
+        if (tail != 0)
+            traits::move(data + pos + n2, data + pos + xlen, tail);
+        traits::move(data + pos, j1, n2);
+        traits::assign(data[new_size], charT());
+        if (!is_long)
+            s_.size_ = new_size;
+        else
+            l_.size_ = new_size;
+    }
+    return *this;
+}
 
 /* <vector>, CodeWarrior 3.0's MSL shape (the game's map names its instances so): a vector of
  * pointers is __vector_imp<T, A, 1> over the pod vector of unsigned int (capacity, size, data -- the
