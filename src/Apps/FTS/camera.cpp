@@ -26,6 +26,7 @@ static CPnt3D firstPersonPos(0.0f, 2.5f, 4.0f);
 static CPnt3D thirdPersonPos(0.0f, 5.2f, 15.0f);
 static CPnt3D thirdPersonPos2(0.0f, 5.2f, 15.0f);
 extern "C" bool func_002C2FD0(CZSealBody *seal);
+CZSealBody *ftsGetPlayer();
 extern "C" CCameraPreset *data_0044C408;          /* the views' presets */
 extern "C" void func_002956E0(CAppCamera *cam, CZSealBody *prey, int arg);
 
@@ -417,6 +418,30 @@ inline void CAppCamera::WiggleEcho(bool flag)
         m_wiggle_cur_time = 0.0f;
 }
 
+/* what the camera sees from where it is (SOCOM II's; CZHudMissionCams::HudTick calls it on
+ * appCamera; the name ours): the ground below its origin, unless a SEAL's -- every region when the
+ * player is (func_002C2FD0), else the ground's -- and the ground's material, and with a polygon
+ * whether it is indoors and its flag */
+void CAppCamera::UpdateCameraRegions()
+{
+    CPnt3D p(0.0f, 0.0f, 0.0f);
+
+    m_camera->TransformToWorld(p);
+    zdb::IntersectStruct *is = zdb::CWorld::m_world->GetAltitude(&p, 0.0f, true);
+
+    if (is && !CZSealBody::GetSeal(is->m_node)) {
+        if (func_002C2FD0(ftsGetPlayer()))
+            m_camera->SetCameraCanSeeRegions(-1);
+        else
+            m_camera->SetCameraCanSeeRegions(is->GetRegion());
+        m_camera->m_AboveMaterial = is->GetMaterial();
+        if (is->m_poly) {
+            m_camera->m_IsInside = is->IsInside();
+            m_camera->m_AbovePolyFlag = is->GetPolyFlag27();
+        }
+    }
+}
+
 /* the shake stopped: its parameters forgotten, its angles put back to a random quarter (x at 90 or
  * 270 degrees, y at 0 or 180), its amplitudes nothing (the name ours) */
 void CAppCamera::StopShake()
@@ -490,6 +515,34 @@ void CAppCamera::Shake(unsigned char level)
         StopShake();
         break;
     }
+}
+
+/* the camera aimed past the SEAL it follows: the aim and the tie carried into the SEAL's space, the
+ * goal the tie plus the view direction at the tether's length, the chord clipped against the world,
+ * then looked along (SOCOM 1's; SOCOM II's controller is the camera's own at 0xC4, the target
+ * argument unread as in SOCOM 1's). The controller through a local: read through the member twice,
+ * MW keeps &m_130 in a register and stores through it (7 instructions off) */
+void CAppCamera::APLookAt(float dT, CEntity *target, CMatrix &cTw)
+{
+    CAppCameraCtrl *ctrl = m_ctrl;
+
+    if (ctrl && ctrl->m_130 != 0.0f)
+        ctrl->m_130 = 0.0f;
+    CPnt3D aim = m_cameraAim;
+
+    m_entity->GetMatrix()->Transform(&aim, 1);
+    CPnt3D tie = m_cameraTie;
+
+    m_entity->GetMatrix()->Transform(&tie, 1);
+    CPnt3D dir = m_rPos;
+
+    dir.Normalize();
+    dir.Scale(m_goal_t_len, &dir);
+    CPnt3D goal = tie;
+
+    goal.Add(&dir, &goal);
+    ClipCameraChord(dT, &aim, &goal, &goal);
+    LookAt(&goal, &aim, cTw);
 }
 
 /* the death camera put back: no death state, the automatic death camera on, the short tether's

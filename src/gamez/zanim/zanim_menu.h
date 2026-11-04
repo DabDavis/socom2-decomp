@@ -205,19 +205,6 @@ public:
     C2D *m_c2d;   // 0x68
 };
 
-/* a node's visual as the menu sees it: zdb::CVisual's table up to Get2DVisual, its sixth slot (+0x1C;
- * SOCOM 1's seventh). znode.h's CVisual does not declare it yet, so its out-of-line copy (0x274860,
- * this unit's in both builds: `return 0;`) is still the generated draft's */
-class CVisualView {
-public:
-    unsigned char _0[0x20];
-    virtual ~CVisualView();
-    virtual void Slot0C();
-    virtual void Slot10();
-    virtual void Slot14();
-    virtual void Slot18();
-    virtual C2DVisual *Get2DVisual();
-};
 
 /* a UI variable (SOCOM 1's DWARF: CUIVariable : _zrdr, 0x1C bytes) */
 enum UIVAR_LONGEVITY {
@@ -440,6 +427,7 @@ class CMission {
 public:
     void CreateNetGame();
     void DestroyNetGame();   /* 0x2A9EF0 */
+    void PreOpen(const char *database);   /* 0x2ACC10 (fts_mission.cpp's: SOCOM 1's) */
 
     unsigned char _0[0x1c];
     char *m_database;   // 0x1c (SOCOM 1's)
@@ -820,7 +808,6 @@ void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
 /* more of the lobby (SOCOM 1's names by the calls SOCOM 1's handlers make) */
 void func_0030E290(CZNetwork *net);                                 /* (the network's initialisation started) */
 bool func_0030BF20();                                               /* (whether the network is up) */
-void func_002ACC10(CMission *mission, const char *name);            /* (the mission set by name) */
 bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
 bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */
 bool func_002F8C60(CZOnlineLobby *lobby, const char *name);         /* (clan game closed) */

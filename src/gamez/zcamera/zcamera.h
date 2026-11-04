@@ -248,7 +248,11 @@ public:
     CPnt3D m_worldPos;   // 0x2ac: SOCOM II's, the camera's origin in the world (Update; the name
                          //   is ours)
     bool m_IsInside;   // 0x2b8 (CmdTickIndoorsTest; SOCOM 1: 0x2ac)
-    unsigned char _socom2_2b9[0x2c4 - 0x2b9];   // SOCOM 1's m_AboveMaterial among them
+    unsigned char _socom2_2b9[0x2bc - 0x2b9];
+    /* the ground's polygon flag and material below the camera (CAppCamera::UpdateCameraRegions
+     * sets them from the altitude's hit; SOCOM 1's m_AboveMaterial; the names ours) */
+    int m_AbovePolyFlag;   // 0x2bc
+    int m_AboveMaterial;   // 0x2c0
     float m_landmark_far_plane;   // 0x2c4 (GetLandmarkFarPlane; SOCOM 1: 0x2b4)
     float m_ZoomedRangeScale;   // 0x2c8: SOCOM II's, the range scale over the zoom (CAppCamera
                                 //   sets it; GetScaledRangeSquared reads it; the name is ours)

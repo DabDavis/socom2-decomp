@@ -472,11 +472,11 @@ void CGrid::gridGetGridXandZIndex(int *ix, int *iz, float x, float z)
 }
 
 /* the walk's next atom: the next in the cell, else the next cell's first, skipping inactive nodes
- * and those this walk already gave (SOCOM 1's).
- * OPEN, 7 instructions (right size): the target takes the atom's node in an argument register (a0
- * here, a1 in GetNextAtomOrdered where a0 holds the grid) and &node->m_TickNum in v1; this puts the
- * node in v1 and the address in a0 -- SOCOM 1's own registers. Not the test's shape, the reference
- * or pointer, nor an inline taking the node */
+ * and those this walk already gave (SOCOM 1's). The grid's tick is a local of its own, numbered
+ * ahead of the node's tick reference by a dead first definition (`int now = 0;`, overwritten before
+ * any use: MW numbers a variable at its first definition) -- so &node->m_TickNum is coloured first
+ * and takes v1, the node an argument register (a0 here, a1 in GetNextAtomOrdered); written as
+ * SOCOM 1's `tick < m_TickNum` it is SOCOM 1's registers, the node in v1 (7 instructions off) */
 CGridAtom *CGrid::GetNextAtom()
 {
     for (;;) {
@@ -493,10 +493,12 @@ CGridAtom *CGrid::GetNextAtom()
             CNode *node = m_NextAtom->Ent;
 
             if (node->m_active) {
+                int now = 0;
                 int &tick = node->m_TickNum;
 
-                if (tick < m_TickNum) {
-                    tick = m_TickNum;
+                now = m_TickNum;
+                if (tick < now) {
+                    tick = now;
                     return m_NextAtom;
                 }
             }
@@ -504,8 +506,8 @@ CGridAtom *CGrid::GetNextAtom()
     }
 }
 
-/* the ordered walk's next atom: the cells' atoms in ring order (SOCOM 1's).
- * OPEN, 7 instructions (right size): GetNextAtom's registers (the node in a1 in the target) */
+/* the ordered walk's next atom: the cells' atoms in ring order (SOCOM 1's; the tick as
+ * GetNextAtom's) */
 CGridAtom *CGrid::GetNextAtomOrdered()
 {
     for (;;) {
@@ -520,10 +522,12 @@ CGridAtom *CGrid::GetNextAtomOrdered()
             CNode *node = m_NextAtom->Ent;
 
             if (node->m_active) {
+                int now = 0;
                 int &tick = node->m_TickNum;
 
-                if (tick < m_TickNum) {
-                    tick = m_TickNum;
+                now = m_TickNum;
+                if (tick < now) {
+                    tick = now;
                     return m_NextAtom;
                 }
             }
