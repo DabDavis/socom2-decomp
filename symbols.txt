@@ -277,10 +277,10 @@
 0x0018F840 0x2C func_0018F840  # MAIN
 0x0018F870 0x2C func_0018F870  # MAIN
 0x0018F8A0 0x38 func_0018F8A0  # MAIN
-0x0018F8D8 0x188 func_0018F8D8  # MAIN unaligned
-0x0018FA60 0x50 func_0018FA60  # MAIN
-0x0018FAB0 0x54 func_0018FAB0  # MAIN
-0x0018FB08 0x48 func_0018FB08  # MAIN unaligned
+0x0018F8D8 0x188 sceCdStRead  # MAIN unaligned; by its own message ('sceCdStRead call read size= %d mode= %d'; strfile.cpp's call already notes it) -- the GCC lane r22a
+0x0018FA60 0x50 sceCdStPause  # MAIN; by its own message ('sceCdStPause call') -- the GCC lane r22a
+0x0018FAB0 0x54 sceCdStResume  # MAIN; by its own message ('sceCdStResume call') -- the GCC lane r22a
+0x0018FB08 0x48 sceCdStStat  # MAIN unaligned; by its own message ('sceCdStStat call') -- the GCC lane r22a
 0x0018FB50 0x168 func_0018FB50  # MAIN
 0x0018FCB8 0x54 func_0018FCB8  # MAIN unaligned
 0x0018FD10 0x23C func_0018FD10  # MAIN
@@ -369,8 +369,8 @@
 0x00194828 0x1C localeconv  # MAIN unaligned; s1:order (newlib locale.c: _localeconv_r(_REENT))
 0x00194848 0x60 _lseek_r  # MAIN unaligned; by body (newlib's reent/lseekr.c: the same around lseek(fd, pos, whence); the demo's _lseek_r is 0x60 too)
 0x001948A8 0x154 __smakebuf  # MAIN unaligned; s1:order (newlib makebuf.c, after _lseek_r as in the demo: _fstat_r, _malloc_r, isatty, __sseek)
-0x00194A00 0x64 func_00194A00  # MAIN
-0x00194A68 0x1C8 func_00194A68  # MAIN unaligned
+0x00194A00 0x64 memalign  # MAIN; s1:order (newlib malign.c: the demo's memalign object precedes _memalign_r's as this precedes 0x194A68, which it calls with _impure_ptr inside the malloc lock; src/lib/libc/malign.c) -- the GCC lane r22a
+0x00194A68 0x1C8 _memalign_r  # MAIN unaligned; by body (newlib 1.9's mallocr.c built with DEFINE_MEMALIGN compiles to it byte for byte, src/lib/libc/malignr.c; the demo's _memalign_r object follows memalign's as this follows 0x194A00) -- the GCC lane r22a
 0x00194C30 0x54 malloc  # MAIN; s1:callee
 0x00194C88 0x48 free  # MAIN unaligned; zcfree's only callee (Sony libc: 8-aligned, GCC-built)
 0x00194CD0 0x258 malloc_extend_top  # MAIN; s1:order (newlib mallocr.c's static, the demo's 0x3E1F48: _sbrk_r, _free_r)
@@ -478,9 +478,9 @@
 0x0019C0D0 0x74 vfprintf  # MAIN; by body (newlib's stdio/vfprintf.c: CHECK_INIT, then the tail call to _vfprintf_r; printf, fprintf, sprintf and vsprintf call it -- byte-exact in src/lib/libc)
 0x0019C148 0x1670 _vfprintf_r  # MAIN unaligned; by call (vfprintf's tail call, newlib's _VFPRINTF_R)
 0x0019D7B8 0x1C0 cvt  # MAIN unaligned; s1:calls
-0x0019D978 0xDC func_0019D978  # MAIN unaligned
+0x0019D978 0xDC exponent  # MAIN unaligned; by body (newlib vfprintf.c's static exponent compiles to it byte for byte -- with the snapshot's char expbuf[MAXEXP] -- and cvt, the static before it, is vfprintf.c's too: src/lib/libc/vfprintf.c) -- the GCC lane r22a
 0x0019DA58 0xC8C __svfscanf  # MAIN unaligned; by call (newlib's sscanf calls __svfscanf; src/lib/libc/sscanf.c byte-exact)
-0x0019E6E8 0x100 func_0019E6E8  # MAIN unaligned
+0x0019E6E8 0x100 __sccl  # MAIN unaligned; by body (newlib vfscanf.c's __sccl compiles to it byte for byte, src/lib/libc/vfscanf.c; the demo's vfscanf object holds __sccl right after __svfscanf, which calls it, as here) -- the GCC lane r22a
 0x0019E7E8 0x54 vsprintf  # MAIN unaligned; s1:calls (SOCOM 1's identical CConsole::Debug calls vsprintf at the same instruction; 0x54 bytes in both) -- the entity lane
 0x0019E840 0x54 _vsprintf_r  # MAIN; by body (newlib vsprintf.c's reentrant form after vsprintf: a string FILE, _data the first argument)
 0x0019E898 0x110 __swbuf  # MAIN unaligned; s1:order (newlib wbuf.c, after vsprintf as in the demo: CHECK_INIT, __swsetup, fflush)
@@ -533,11 +533,11 @@
 0x001A3058 0x3C func_001A3058  # MAIN unaligned
 0x001A3098 0x1C func_001A3098  # MAIN unaligned
 0x001A30B8 0x74 setD3_CHCR  # MAIN unaligned; s1:callee
-0x001A3130 0x74 func_001A3130  # MAIN; s1~ setD4_CHCR (one of 2)
+0x001A3130 0x74 setD4_CHCR@libipu  # MAIN; s1~ setD4_CHCR (one of 2); s1:order (the demo's libipu DMA object 0x15AA38 holds setD3_CHCR, setD4_CHCR, sceIpuStopDMA ... as here; sceIpuStopDMA and sceIpuRestartDMA call it; src/lib/sdk/libipu.c) -- the GCC lane r22a
 0x001A31A8 0xE4 sceIpuStopDMA  # MAIN unaligned; s1:exact
 0x001A3290 0x150 sceIpuRestartDMA  # MAIN; s1:exact
 0x001A33E0 0x68 sceIpuSync  # MAIN; s1:exact
-0x001A3448 0x64 func_001A3448  # MAIN unaligned; s1~ setD4_CHCR (one of 2)
+0x001A3448 0x64 setD4_CHCR@ipu_init  # MAIN unaligned; s1~ setD4_CHCR (one of 2); s1:order (the demo's libipu init object 0x15ADA8: its own static setD4_CHCR, then sceIpuInit, which calls it; src/lib/sdk/ipu_init.c) -- the GCC lane r22a
 0x001A34B0 0x238 sceIpuInit  # MAIN; s1:exact
 0x001A3700 0x10 RFU000_FullReset  # MAIN; s1:exact
 0x001A3710 0x10 ResetEE  # MAIN; s1:exact

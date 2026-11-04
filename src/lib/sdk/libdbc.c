@@ -6,8 +6,9 @@
  * both ways, its function number 0x80001300 + n; the reply's words are read back out of it. The
  * debug printf is compiled out: an empty varargs function (func_00190BA0, the object's last).
  * The client data and the buffer are the object's own .bss, spelled by address here (data_<VA>).
- * Not written: sceDbcInit (0x18FD10, the three binds and the version check), the end
- * (0x18FF50), sceDbcGetDepNumber and 0x1902B0 (interrupts off around a cache sync), the send and
+ * Its init (0x18FD10: the three binds and the version check), end (0x18FF50) and version query
+ * (0x18FCB8) keep placeholders (they print no name; sceDbcInit/sceDbcEnd by the API, not proven).
+ * Not written: sceDbcGetDepNumber and 0x1902B0 (interrupts off around a cache sync), the send and
  * receive-and-send calls (sceDbcSRData, sceDbcSendData, SendData2, SendData3). */
 
 typedef struct { int a[10]; } sceSifClientData;
@@ -24,6 +25,104 @@ typedef struct {
 } sceDbcSocketParam;
 
 void func_00190BA0(const char *fmt, ...);
+
+struct SemaParam {
+	int currentCount;
+	int maxCount;
+	int initCount;
+	int numWaitThreads;
+	unsigned int attr;
+	unsigned int option;
+};
+
+extern int sceSifInitRpc(unsigned int mode);
+extern int sceSifBindRpc(sceSifClientData *cd, unsigned int request, unsigned int mode);
+extern int CreateSema(struct SemaParam *p);
+extern int DeleteSema(int sema);
+extern int scePrintf(const char *fmt, ...);
+int sceDbcSetWorkAddr(int addr);
+
+extern sceSifClientData data_001D6270;          /* the client of server 0x8000131B */
+extern sceSifClientData data_001D6298;          /* the client of server 0x8000131C */
+extern int data_001D9800;                       /* the library's semaphore */
+extern int data_001D97C0[16];
+extern int data_001D9740[32];                   /* the work area handed to dbcman */
+
+/* dbcman's version: (major << 8) | minor, the server's reply word (RPC 0x80001363) */
+int func_0018FCB8(void)
+{
+	sceSifCallRpc(&data_001D6248, 0x80001363, 0, data_001D62C0, 640, data_001D62C0, 640, 0, 0);
+	return data_001D62C0[0];
+}
+
+/* the library's init: the three servers bound (each retried after a short delay until it serves),
+ * dbcman's major version checked against the library's 3, the semaphore made, the work area
+ * cleared and handed over; each bind's failure prints and returns on its own (cross-jumping keeps
+ * one copy, laid out after the semaphore's failure: as one goto label at the end it sits last) */
+int func_0018FD10(void)
+{
+	struct SemaParam sp;
+	int i, ver;
+
+	if (data_001CC410 == 1)
+		return 1;
+	data_001D9800 = 0;
+	sceSifInitRpc(0);
+	for (;;) {
+		if (sceSifBindRpc(&data_001D6248, 0x80001300, 0) < 0)
+			{ func_00190BA0("libdbc: bind failed\n"); return 0; }
+		if (data_001D6248.a[9] != 0)
+			break;
+		i = 0x10000;
+		while (i--)
+			;
+	}
+	for (;;) {
+		if (sceSifBindRpc(&data_001D6270, 0x8000131B, 0) < 0)
+			{ func_00190BA0("libdbc: bind failed\n"); return 0; }
+		if (data_001D6270.a[9] != 0)
+			break;
+		i = 0x10000;
+		while (i--)
+			;
+	}
+	for (;;) {
+		if (sceSifBindRpc(&data_001D6298, 0x8000131C, 0) < 0)
+			{ func_00190BA0("libdbc: bind failed\n"); return 0; }
+		if (data_001D6298.a[9] != 0)
+			break;
+		i = 0x10000;
+		while (i--)
+			;
+	}
+	ver = func_0018FCB8();
+	if ((ver >> 8) != 3) {
+		scePrintf("libdbc: Module version mismatch ");
+		scePrintf("[libdbc.a = %d.%d, dbcman.irx = %d.%d]\n", 3, 0, ver >> 8, ver & 0xff);
+		return 0;
+	}
+	sp.initCount = 1;
+	sp.maxCount = 127;
+	if ((data_001D9800 = CreateSema(&sp)) < 0)
+		return 0;
+	for (i = 15; i >= 0; i--)
+		data_001D97C0[i] = 0;
+	func_00190BA0("libdbc: SifDmaAddr %08x\n", data_001D9740);
+	sceDbcSetWorkAddr((int)data_001D9740);
+	data_001CC410 = 1;
+	return 1;
+}
+
+/* the library's end: the semaphore deleted once bound */
+int func_0018FF50(void)
+{
+	if (data_001CC410 == 0)
+		return 0;
+	data_001CC410 = 0;
+	if (data_001D9800 >= 0)
+		DeleteSema(data_001D9800);
+	return 1;
+}
 
 int sceDbcSetWorkAddr(int addr)
 {
@@ -116,6 +215,42 @@ int func_001904F8(int *p)
 		return -1;
 	}
 	return data_001D62C0[1];
+}
+
+extern int WaitSema(int sema);
+extern int SignalSema(int sema);
+
+/* Function 0x80001319, under the library's semaphore: the data copied in after the size; the size
+ * written back from the reply when its result is not negative. The buffer's address is taken
+ * after the wait (its first store goes through the %lo, the rest through the register: as a local
+ * initialised at its declaration it is held across WaitSema).
+ * OPEN (right size, 21 words; GCC r22a): the buffer's base takes s3 and the size pointer s2 here,
+ * the other way round in the target, whose `i = 0` sits in the size test's delay slot and whose
+ * copy runs through a base made in the loop's preheader (`addiu a2,s2,12`); copying through
+ * `((char *)&p[3])[i]` instead folds the 12 into the store (`sb v1,12(a0)`, 0x124). */
+int sceDbcSendData(int s, int a1, int *size, char *buf)
+{
+	unsigned int *p;
+	char *d;
+	int i;
+
+	WaitSema(data_001D9800);
+	p = data_001D62C0;
+	p[0] = s;
+	p[1] = a1;
+	p[2] = *size;
+	d = (char *)&p[3];
+	for (i = 0; i < *size; i++)
+		d[i] = buf[i];
+	if (sceSifCallRpc(&data_001D6248, 0x80001319, 0, data_001D62C0, 640, data_001D62C0, 640, 0, 0) < 0) {
+		func_00190BA0("sceDbcSendData: rpc error\n");
+		SignalSema(data_001D9800);
+		return 0;
+	}
+	if ((int)p[131] >= 0)
+		*size = p[2];
+	SignalSema(data_001D9800);
+	return p[131];
 }
 
 /* OPEN (61 words, a frame 16 bytes smaller in the target): the target holds the buffer's address
