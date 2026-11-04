@@ -7,6 +7,7 @@
  * Its range starts at 0x326F50 at the latest (Destruction_Instance::Recycle). */
 
 #include <iostream>
+#include <stdlib.h>
 #include "zparticle.h"
 
 /* Sony's libvu0 (MAIN): v0 = v1 * t + v2 * (1 - t) */
@@ -151,6 +152,40 @@ void Instance::Recycle()
     Expire();
     m_listNext = 0;
     m_instance_pool.Push(this);
+}
+
+/* SOCOM 1's: the instance's links, texture, age, properties and life set, its position and
+ * velocity copied; a rotated one given a random angle and spin from its source, a streak its start;
+ * the properties counted */
+Instance::Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &unused, float f, float life, float age,
+                   zdb::CTexHandle *tex, Props *props, Source *source)
+{
+    m_source = source;
+    m_texture = tex;
+    m_age = age;
+    m_props = props;
+    m_44 = f;
+    m_lifespan = life;
+    m_invLifespan = 1.0f / life;
+    m_listNext = 0;
+    m_pos[0] = pos.x;
+    m_pos[1] = pos.y;
+    m_pos[2] = pos.z;
+    m_pos[3] = pos.w;
+    m_vel[0] = vel.x;
+    m_vel[1] = vel.y;
+    m_vel[2] = vel.z;
+    m_vel[3] = vel.w;
+    if (m_source->m_drawType == PT_ROTATED) {
+        m_10[1] = m_source->m_minRot + (m_source->m_maxRot - m_source->m_minRot) * (rand() * 4.656613e-10f);
+        m_10[2] = m_source->m_minRotAcc + (m_source->m_maxRotAcc - m_source->m_minRotAcc) * (rand() * 4.656613e-10f);
+    } else if (m_source->m_drawType == PT_STREAKED) {
+        m_10[0] = pos.x;
+        m_10[1] = pos.y;
+        m_10[2] = pos.z;
+        m_10[3] = pos.w;
+    }
+    m_props->m_refCount++;
 }
 
 /* SOCOM 1's, the visual left to SetVisual: the base's three links cleared, the properties

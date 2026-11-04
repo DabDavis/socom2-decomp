@@ -277,6 +277,9 @@ public:
     /* whether its source ages it at the LOD's rate (SOCOM 1's test of m_doAgeLOD; the name ours) */
     bool AgeLOD() const;
 
+    /* SOCOM 1's (0x327CD0; Source::Tick calls it): the CPnt3D is unused in SOCOM II */
+    Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &unused, float f, float life, float age,
+             zdb::CTexHandle *tex, Props *props, Source *source);
     /* SOCOM 1's constructor's common part (inline: Destruction_Instance's constructor inlines it):
      * no properties, no source, not linked -- stored in this order, as the target's */
     Instance()
@@ -306,9 +309,9 @@ public:
         Source *m_source;   // 0x4: the emitter (SOCOM 1's; Expire drops its count)
         Instance *m_next;   // 0x4: the next free instance, in a pool
     };
-    unsigned char _8[0x4];   // 0x8
+    zdb::CTexHandle *m_texture;   // 0x8 (the constructor's; the name ours)
     float m_age;   // 0xc
-    unsigned char _10[0x10];   // 0x10
+    float m_10[4];   // 0x10: a streak's start (its position), a rotated one's angle (0x14) and spin (0x18)
     float m_pos[4];   // 0x20 (SOCOM 1's constructor copies a CPnt4D in)
     float m_vel[4];   // 0x30: the velocity (a CPnt4D copied in; the name ours)
     Props *m_props;   // 0x40
@@ -398,7 +401,11 @@ public:
 
     unsigned char _0[0x19];   // 0x0: SOCOM 1's m_active .. m_landmark, and SOCOM II's word
     unsigned char m_doAgeLOD;   // 0x19 (SOCOM 1: 0x15)
-    unsigned char _1a[0x3c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_maxRotAcc
+    unsigned char _1a[0x2c - 0x1a];   // 0x1a: SOCOM 1's m_doSpawnLOD .. m_streakFade
+    float m_minRot;   // 0x2c (SOCOM 1's names, 4 bytes later: the instance constructor's ranges)
+    float m_maxRot;   // 0x30
+    float m_minRotAcc;   // 0x34
+    float m_maxRotAcc;   // 0x38
     PARTICLE_TYPE m_drawType;   // 0x3c (SOCOM 1: 0x38)
     unsigned char _3d[0xdc - 0x3d];   // 0x3d: SOCOM 1's m_numPeriods .. m_initialAgeRange
     std::vector<zdb::CTexHandle *> m_textures;   // 0xdc
