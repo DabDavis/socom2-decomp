@@ -16,12 +16,21 @@ public:
 };
 
 /* a part's pose as the blender keeps it (SOCOM 1's records, 0x20 bytes: a position, the part's id
- * -- below zero for none -- and a rotation; the names ours) */
+ * -- below zero for none -- and a rotation; the names ours). SOCOM II's halfword at 0xe: AnimPush sets
+ * it on every record, AnimOverlay lays a position over only where one of the two lacks it -- the
+ * position's fourth word, which VU0's XYZ interpolation writes, so AnimOverlay keeps the word across
+ * the call */
 struct CSealAnimRec {
     CPnt3D m_pos;   // 0x0
     short m_id;   // 0xc
+    short m_nopos;   // 0xe
     CQuat m_rot;   // 0x10
 };
+
+extern "C" {
+/* v0 = v1 * r + v2 * (1 - r), the x, y and z (Sony's libvu0, MAIN 0x1C0768: a quadword written) */
+void sceVu0InterVectorXYZ(sceVu0FVECTOR v0, sceVu0FVECTOR v1, sceVu0FVECTOR v2, float r);
+}
 
 /* a frame on the blender's stack: the parts' records and the anim pushed (0xc bytes; the names ours) */
 struct CSealAnimFrame {
@@ -100,6 +109,8 @@ public:
     /* frame a's rotations moved toward frame b's by b's share of their weights, a given both (SOCOM
      * 1's; OVL2 0x576E30) */
     int CombineRotations(int a, int b);
+    /* the top frame laid over the one below it at a fraction and popped (SOCOM 1's; OVL2 0x576BB0) */
+    int AnimOverlay(float t);
 
     int m_count;   // 0x0
     CZSealBody *m_seal;   // 0x4
@@ -214,6 +225,78 @@ int CSealAnim::CombineRotations(int a, int b)
     }
     fa->m_wt = sum;
     return a;
+}
+
+/* the top frame laid over the one below it at a fraction and popped: every part the top holds given to
+ * the frame below, its position moved there by the fraction where either lacks one (VU0's XYZ
+ * interpolation, the record's fourth word kept), then its rotation (Slerp); near enough to either end
+ * each snaps (OVL2 0x576BB0: SOCOM 1's AnimOverlay by its place, before CombineRotations in both
+ * builds -- SOCOM 1's weighted the positions with Scale and Add over 32 records), the depth left
+ * returned. The record loops' shape (above AnimPop); `> -1` (slti) the target's tests.
+ * OPEN, 22 instructions (the size the target's, round 34): registers only -- the first loop's counter
+ * and the count trade s5/s1, and the second loop's record cursor (rb reassigned) is a web of its own in
+ * s1 where the target keeps the first loop's s3. The locals' order is tools/perm.py's best over the
+ * uninitialised declarations and the assignments (400 s; the natural order 49 off); a counter of its
+ * own for the second loop, or cursors of their own, lose more (34-36). */
+int CSealAnim::AnimOverlay(float t)
+{
+    unsigned int n;
+    int top;
+    CSealAnimRec *rb;
+    CSealAnimRec *ra;
+    float r;
+    unsigned int i;
+    CSealAnimFrame *fb;
+    CSealAnimFrame *fa;
+    top = m_count - 1;
+    r = 1.0f - t;
+    fb = &m_frames->m_frames[top - 1];
+    fa = &m_frames->m_frames[top];
+    n = siNumBodyObjects;
+    ra = fa->m_recs;
+    rb = fb->m_recs;
+    i = 0;
+
+    if (i < *(const unsigned int *)&siNumBodyObjects) {
+        do {
+            if (ra->m_id > -1) {
+                rb->m_id = ra->m_id;
+                if (!rb->m_nopos || !ra->m_nopos) {
+                    if (t >= 0.999f)
+                        rb->m_pos = ra->m_pos;
+                    else if (t > 0.001f) {
+                        float w = *(float *)&rb->m_id;
+
+                        sceVu0InterVectorXYZ((float *)rb, (float *)rb, (float *)ra, r);
+                        *(float *)&rb->m_id = w;
+                    }
+                }
+            }
+            i++;
+            rb++;
+            ra++;
+        } while (i < n);
+    }
+    rb = fb->m_recs;
+    ra = fa->m_recs;
+    i = 0;
+    if (i < n) {
+        do {
+            if (ra->m_id > -1) {
+                if (rb->m_id == -1)
+                    rb->m_rot = ra->m_rot;
+                else if (t >= 0.999f)
+                    rb->m_rot = ra->m_rot;
+                else if (t > 0.001f)
+                    rb->m_rot.Slerp(&ra->m_rot, t, &rb->m_rot);
+            }
+            i++;
+            rb++;
+            ra++;
+        } while (i < n);
+    }
+    m_count = top;
+    return m_count;
 }
 
 /* the SEAL's adrenaline (OVL2 0x5781B0, the unit's last; SOCOM 1's, the same load) */
