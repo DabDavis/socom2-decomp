@@ -1965,6 +1965,28 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 17** (the soft keyboard's text tests, zui.cpp's initialiser, util_main.cpp's tail):
+  - when the target keeps an object's address in a saved register from before its zeroing through later calls, the object
+    is built by a constructor whose `this` is that variable (`struct CTypedText : CSaferStr { CTypedText() : CSaferStr(a)
+    { *this += b; } };` -- a shape that reproduces the code); a local built in the caller folds the address into each use,
+    and an inline returning the class by value is never inlined;
+  - CSaferStr's implicit copy assignment is one inline level taller than a user-declared one calling `assign(s)`; `CSaferStr
+    s; s = p;` zeroes the words before reading `p`, `CSaferStr s(p)` reads `p` first;
+  - a callee whose result is tested through an `int` inline must be declared `int` (a `bool` return moves the caller:
+    OnEnterKey, 6 instructions); `bool b = c ? false : inlineBool();` gives the materialised bool with the `andi` at the join;
+    an inline returning `const int &` from a ternary selects the address and then loads once;
+  - `if (p) { const char *q = p; return f(q); } return 0;` keeps the store out of the test's delay slot and pads both
+    labels (the ternary and if-return forms fill the slot); an inline's `if (n < 0) return 0;` lays the zero arm out first,
+    `if (n >= 0) { ...; return x; } return 0;` puts the loop on the fall-through path;
+  - a declaration inside an `extern "C"` block keeps C linkage: respelling a placeholder there gives a WRONG REFERENCE --
+    move the declaration out of the block;
+  - zUtilInit 0x39C700 and zUtilUninit 0x39C6F0 are empty in SOCOM II (both games' main and StopEngine call them);
+    GetUsedSpace 0x3A1060 takes an int no caller sets but 0; util_main.cpp runs to 0x39CDB7; 0x1F3B40 is ~CFileIO (renamed
+    at integration: it completes __sinit_util_main.cpp);
+  - open: __sinit_zui_hangul.cpp (matches at level 6: the unit gains it and resize<SKBCOMPLETE> but loses CInit<Us,0>() --
+    left at 5), SkbCursorBack 0x399530 (13: SkbTypeOrBack's saved-register numbering), erase<CSaferStr> (two saved
+    registers), CDlgDesignModel's copy constructor (include/string's copy constructor keeps `&str.w_[1]` in a fourth saved
+    register).
 - **Tells from the SEALs, round 23** (PostTick, AddWeapon, the damage report, the rifle/pistol swaps, the homings, Tick):
   - an out-parameter negate, `NegateInto(&d, &d)` writing `out->x = -in->x` and so on, loads the fields straight off sp and
     keeps one field-address register for the stores (the AI core's round-21 rule again): the carry's homing 0x5B1750 went

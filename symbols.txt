@@ -1552,7 +1552,7 @@
 0x001F3B10 0x8 func_001F3B10  # OVL1
 0x001F3B20 0x8 MyTick__9CGameMenuFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001F3B30 0x8 PrepControls__9CGameMenuFPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001F3B40 0x68 func_001F3B40  # OVL1
+0x001F3B40 0x68 __dt__7CFileIOFv  # OVL1; ~CFileIO: stores CFileIO's vtable 0x408180, calls its slot 0x0C (Close) through it, then honours the deleting flag; util_main.cpp's copy of the inline destructor is byte-exact with --target 0x1F3B40, completing __sinit_util_main.cpp (the UI's round 17, renamed at integration)
 0x001F3BB0 0x18 func_001F3BB0  # OVL1
 0x001F3BD0 0x8 func_001F3BD0  # OVL1
 0x001F3BE0 0x8 func_001F3BE0  # OVL1
