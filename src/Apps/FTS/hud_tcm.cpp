@@ -218,8 +218,8 @@ inline void C2DBitmapPoly::SetTexture(zdb::CTexHandle *h)
  * call's delay slot -- the poly evaluated ahead of the argument; MW evaluates the argument first in
  * every form tried: the setter a member, a free inline on a reference, a pointer or either
  * parameter order, the bool a local, `!!t`, `(bool)t`, the texture a parameter, the stores
- * chained or the value an assignment expression, the poly through an inline accessor or a copy of
- * `this` */
+ * chained or the value an assignment expression, the poly through an inline accessor, a copy of
+ * `this` or a C2D pointer (a cast or a local) */
 CTCMNode *tcmCreateItem(CTCMEntry *entry, const char *parent, const char *caption, const char *name,
                         const char *text2, bool flag)
 {
