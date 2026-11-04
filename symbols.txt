@@ -369,8 +369,8 @@
 0x00194828 0x1C localeconv  # MAIN unaligned; s1:order (newlib locale.c: _localeconv_r(_REENT))
 0x00194848 0x60 _lseek_r  # MAIN unaligned; by body (newlib's reent/lseekr.c: the same around lseek(fd, pos, whence); the demo's _lseek_r is 0x60 too)
 0x001948A8 0x154 __smakebuf  # MAIN unaligned; s1:order (newlib makebuf.c, after _lseek_r as in the demo: _fstat_r, _malloc_r, isatty, __sseek)
-0x00194A00 0x64 func_00194A00  # MAIN
-0x00194A68 0x1C8 func_00194A68  # MAIN unaligned
+0x00194A00 0x64 memalign  # MAIN; s1:order (newlib malign.c: the demo's memalign object precedes _memalign_r's as this precedes 0x194A68, which it calls with _impure_ptr inside the malloc lock; src/lib/libc/malign.c) -- the GCC lane r22a
+0x00194A68 0x1C8 _memalign_r  # MAIN unaligned; by body (newlib 1.9's mallocr.c built with DEFINE_MEMALIGN compiles to it byte for byte, src/lib/libc/malignr.c; the demo's _memalign_r object follows memalign's as this follows 0x194A00) -- the GCC lane r22a
 0x00194C30 0x54 malloc  # MAIN; s1:callee
 0x00194C88 0x48 free  # MAIN unaligned; zcfree's only callee (Sony libc: 8-aligned, GCC-built)
 0x00194CD0 0x258 malloc_extend_top  # MAIN; s1:order (newlib mallocr.c's static, the demo's 0x3E1F48: _sbrk_r, _free_r)
