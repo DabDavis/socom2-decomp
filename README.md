@@ -1965,6 +1965,24 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 30** (zui_2d.cpp's ListItem and ZAnim commands, CZNewHudMap::Draw):
+  - stack slots follow the front end's creation order: a walk's iterator below its begin() temporary is an inline taking
+    begin() by const reference and assigning it into its own local (a by-value iterator parameter goes to a register);
+    `k <= 8` as a loop test gives `slti at`, `k < 9` gives `slti v0`;
+  - a new-expression's constructor arguments are evaluated after the allocation and skipped with the construction when
+    it fails: code that formats into the new object only on success is a constructor taking that argument
+    (CListItemStringTypeImpl(const char *));
+  - a local CSaferStr destroys its std::string base with flag 0, a plain std::string local passes -1; `return *done =
+    true;` gives the command ticks' `daddiu v0,zero,1`; the clamp `z = z < m ? z : m;` keeps the target's branch layout,
+    `if (!(z < m)) z = m;` inverts it;
+  - a unit's `__arraydtor$N` number depends only on what precedes the static, headers included -- unusable as a row name;
+    scdiff compares such a local reference by its raw bytes (relocation fields included), so __sinit_hud_newhudmap.cpp
+    0x3FDE80, code-exact, scores WRONG REFERENCE until the tools resolve it;
+  - CZNewHudMap::Draw 0x209790 with the unit's remaining statics defined (the legend's nine CPlainBmps, a show-legend
+    bool, SOCOM 1's four scroll bitmaps, three computed floats at 0x3E4090-0x3E40A0); the ListItem constructors and
+    DrawPrep, the ZAnim Parse/Tick pairs of C2DButton, CRenderableString and CUIMapCtrl byte-exact;
+  - open: CUIMapCtrl::ZoomIn 0x36C3B0 (0x160 vs 0x174: the target copies the node's position three times through stack
+    slots).
 - **Tells from the SEALs, round 22** (UpdateEventMask, CreateAiEvent, the sleep pair, seal_cfg.cpp's cell search):
   - a float parameter's place in the signature shows only in the caller's load order (MW evaluates arguments left to
     right; an inline wrapper cannot change it): CBody::SmoothPart takes the fraction first -- the SEALs' 0x576700 (twenty
@@ -4669,7 +4687,10 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   deleting it -- three matches had been lost that way and restored by hand. A
   hand-written unit's inline copy supersedes a draft only when it is byte-exact (sccheck and
   automatch alike): a copy that misses leaves the draft's match standing, as the linker keeps
-  a strong definition over the copies.
+  a strong definition over the copies -- and only AT THE ADDRESS IT MATCHED (2026-11-04): an
+  instance with a row in each overlay (`ovl-copy:`) can be matched by hand in one and by its draft
+  in the other (seal_env.cpp's byte-exact ~vector<CZDecalDef> is OVL2's 0x5A3C60; OVL1's 0x2CDB30
+  stays its draft's, which sccheck had stopped scoring by name).
 
 ## The map: `symbols.txt`
 
@@ -4844,7 +4865,7 @@ are counted apart by `sccheck.py`, and are **not finished source**: placeholder 
   of them -- the overlays were built with the toolchain zlib settled, throughout);
 - a correct starting body for whoever writes the real TU;
 - disposable: hand-written source supersedes them (sccheck skips a generated function the
-  hand tier defines, or emits a byte-exact inline copy of, and says so), and
+  hand tier defines, or emits a byte-exact inline copy of at the same address, and says so), and
   `automatch.py --emit` deletes superseded files.
 
 Data references in a draft are `data_<VA>` placeholders (BSS included) or `data.txt` names,
