@@ -1990,6 +1990,63 @@ extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
 }
 
 extern "C" {
+/* (OVL1 0x2B9E50, the game states': a SEAL's taking of a ladder passed on, with a byte and the index) */
+void func_002B9E50(CZSealBody *seal, unsigned char b, int index);
+}
+
+/* whether a ladder has no SEAL on it (an inline bool, the ladder looked up again) */
+static inline bool LadderFree(int index)
+{
+    CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(index);
+
+    return ladder ? !(ladder->m_users > 0) : false;
+}
+
+/* whether a SEAL may take a ladder: the one it is on, or with none a free one -- an AI's only in the
+ * ladder mode (7) with a leg of its climb to go (an inline bool: its `return true` the target's
+ * `daddiu 1`) */
+static inline bool CanTakeLadder(CZSealBody *seal, int index)
+{
+    if (seal->m_ladder == index)
+        return true;
+    if (seal->m_ladder != data_003F3438)
+        return false;
+
+    bool free = LadderFree(index);
+
+    if (free) {
+        /* (the bool tested `!= false`: the target narrows it at the if-form's join, `move v1,v0`
+         * then `andi`) */
+        if (seal->IsAi() != false) {
+            CSealCtrlAi *c = seal->GetSealCtrlAi();
+
+            free = c->m_3f4 == 7 && (c->m_448 & 7) != 0;
+        }
+    }
+    return free;
+}
+
+/* a ladder taken by the SEAL when it may and no one holds it: the SEAL its owner, the taking passed on
+ * (OVL2 0x5B1350, new in SOCOM II: OVL1's 0x2B9F10 and 0x2B9F60 call it; the name unknown). The byte
+ * an int here, narrowed at the call (`andi a1,s2,0xff`).
+ * OPEN, 1 instruction (the size right): in the inlined IsAi the target keeps the call's bool with a
+ * `move v1,v0` and narrows it once at the join; here MW narrows it in the call's arm too (`andi
+ * v1,v0,0xff`). Tried: IsAi in the `&&`, in its own if, into a bool, unsigned char or int local, the
+ * if-form written out over a bool, unsigned char or int result, `== true`, `(bool)x != false`; only
+ * `!= false` gives the join's andi and the size. */
+extern "C" void func_005B1350(CZSealBody *seal, int b, int index)
+{
+    CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(index);
+
+    if (ladder) {
+        if (CanTakeLadder(seal, index) && ladder->m_owner == CEntity::invalidId) {
+            ladder->m_owner = seal->m_id;
+            func_002B9E50(seal, b, index);
+        }
+    }
+}
+
+extern "C" {
 /* CPnt3D's implicit assignment, OVL2's out-of-line copy (OVL1's is 0x20F1F0, CHoming's reset's): the
  * homing's points are set through it, the inline that sets them too tall for it to inline */
 CPnt3D *func_00539E90(CPnt3D *to, const CPnt3D *from);
