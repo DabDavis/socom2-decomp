@@ -47,8 +47,7 @@ CAiSBreach *GetBreachState(CSealCtrlAi *ai)
 /* what a squad is told of its SEALs (SOCOM 1's UNIT_MESSAGE, a byte; the names ours) */
 enum UNIT_MESSAGE { UNIT_MSG_0 = 0, UNIT_MSG_1 = 1, UNIT_MSG_2 = 2, UNIT_MSG_3 = 3, UNIT_MSG_4 = 4 };
 
-/* the squad's formation (the byte at 8: 1 when made; the names ours) */
-enum UNIT_FORMATION { FORMATION_0 = 0, FORMATION_1 = 1, FORMATION_2 = 2, FORMATION_LAST = 255 };
+/* the squad's formation is ai_states.h's UNIT_FORMATION (the byte at 8) */
 
 /* a squad command (zseal.h's FT_COMMAND, which this unit does not include: the same byte enum) */
 enum FT_COMMAND { CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_LAST = 255 };
@@ -203,6 +202,9 @@ public:
      * follower's (the second), when the squad is pointing and the AI is a SEAL's (SOCOM 1's; OVL2
      * 0x5E7580) */
     bool GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir);
+    /* a formation given the squad, slots counted on from an index; the next one returned (OVL2
+     * 0x5EB6D0; the name ours) */
+    int SetFormation(UNIT_FORMATION f, int index);
     /* an order the network squads take as radio traffic (OVL2 0x5E6E40; the name ours) */
     bool RadioCommand(CZSealBody *seal, FT_COMMAND cmd);
     /* a target handed to the squad's AI SEALs, the SEAL's place in the squad returned (OVL2
@@ -1222,10 +1224,6 @@ bool CSealUnit::AcknowledgeCommand(FT_COMMAND cmd, unsigned char item, int flags
     return r;
 }
 
-extern "C" {
-void func_005EB6D0(CSealUnit *unit, UNIT_FORMATION f, int b);
-}
-
 /* the formation set to the leader's: 2 inside, else 1, when it differs (OVL2 0x5EB8A0; the
  * formation byte and the name ours) */
 extern "C" void func_005EB8A0(CSealUnit *unit)
@@ -1240,9 +1238,73 @@ extern "C" void func_005EB8A0(CSealUnit *unit)
         else
             f = FORMATION_1;
         if (f != unit->m_8)
-            func_005EB6D0(unit, f, 0);
+            unit->SetFormation(f, 0);
     }
 }
+
+/* the controller's current state if it is a follow (kind 9), else 0 (GetBreachState's twin, inlined
+ * here; the name ours) */
+static inline CAiSFollow *GetFollowState(CSealCtrlAi *ai)
+{
+    CAiState *s = ai->GetAiState();
+
+    return s && s->m_state == 9 ? (CAiSFollow *)s : 0;
+}
+
+/* a formation given the squad: each AI SEAL that follows takes its slot in it, counted on from
+ * `index` -- the SEALs in order, the escortees after the first of them (seen to at once when the
+ * squad has no SEAL, 0x5E7830), then the squads under it in turn; the formation kept at 8 and the
+ * flag at 0xA2 cleared; the next slot returned (OVL2 0x5EB6D0, new in SOCOM II: the leader asked for
+ * and not used; the name ours -- SOCOM 1's SetFormation took a SEAL and a point). Pinned: the
+ * target's callers and its own recursion call it. The formation goes to CAiSFollow::SetFormation
+ * unconverted: both take UNIT_FORMATION (round 31: with CAiSFollow's as a signed char MW
+ * sign-extends it into a register of its own, 0x1E0; with this one's 0x5EB8A0 does).
+ * OPEN, 12 instructions, registers and one placement: the escortees' end taken first (numbered
+ * before the SEALs' walk: s6, the target's) is computed at the top, the target's after the walk's
+ * guard; and the squads' walk takes the iterator s4 and the end s3, the target's the other way --
+ * in all three loop forms. Tried: the three forms of each walk (27: best 14, the SEALs' end
+ * first), the escortees' end declared at the top (12) or in the loop body (0x1E0), reassigned in
+ * the body (0x1EC), the list through a reference (46), the leader kept, `esc` assigned later or
+ * by a ternary, postfix steps */
+#pragma auto_inline off
+int CSealUnit::SetFormation(UNIT_FORMATION f, int index)
+{
+    GetLeader();
+    slist::iterator f2 = m_escortees.end();
+    bool esc = !m_escortees.empty();
+
+    for (slist::iterator e = m_seals.end(), i = m_seals.begin(); i != e; ++i) {
+        CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)*i)->m_control)->GetSealCtrlAi();
+
+        if (ai) {
+            CAiSFollow *fs = GetFollowState(ai);
+
+            if (fs)
+                fs->SetFormation(f, index++);
+        }
+        if (esc) {
+            for (slist::iterator j = m_escortees.begin(); j != f2; ++j) {
+                CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)*j)->m_control)->GetSealCtrlAi();
+
+                if (ai) {
+                    CAiSFollow *fs = GetFollowState(ai);
+
+                    if (fs)
+                        fs->SetFormation(f, index++);
+                }
+            }
+            esc = false;
+        }
+    }
+    if (esc)
+        func_005E7830(this);
+    for (ulist::iterator u = m_sub_units.begin(); u != m_sub_units.end(); ++u)
+        index = (*u)->SetFormation(f, index);
+    m_a2 = 0;
+    m_8 = f;
+    return index;
+}
+#pragma auto_inline reset
 
 /* (OVL2 0x5E76D0; pinned: -inline auto takes it, and the target's recursion is a call) */
 #pragma auto_inline off
@@ -1603,7 +1665,7 @@ void CSealUnit::CreateSinglePlayerUnits()
     default:
         alpha->IssueCommand(player, cmd, 0, true);
     }
-    func_005EB6D0(alpha, alpha->m_8, 0);
+    alpha->SetFormation(alpha->m_8, 0);
     m_created_units_test = true;
     UpdateUnits();
 }

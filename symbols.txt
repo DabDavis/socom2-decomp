@@ -11381,7 +11381,7 @@
 0x005EAF20 0x270 func_005EAF20  # OVL2
 0x005EB190 0x3E8 func_005EB190  # OVL2
 0x005EB580 0x148 FollowSeal__9CSealUnitFP10CZSealBody  # OVL2; by hand (the kit lane, round 29; the name ours): new in SOCOM II -- IssueCommand's four calls (0x5E97B8, 0x5E9A48, 0x5E9BF8, 0x5E9C90): the SEAL made the follow's source (+0xB4, SOCOM 1's m_follow_source), the new byte +0xA2 set, the follow (4) given every other SEAL, the escortees with the first and every squad under it (their table's IssueCommand), 0x5E7830 when no SEAL took the escortees; the SEAL returned
-0x005EB6D0 0x1CC func_005EB6D0  # OVL2
+0x005EB6D0 0x1CC SetFormation__9CSealUnitF14UNIT_FORMATIONi  # OVL2; by hand (the kit lane, round 31; the name ours, SOCOM 1's SetFormation took a SEAL and a point): a CSealUnit member -- GetLeader called and unused, each AI SEAL whose state is a follow (kind 9) given CAiSFollow::SetFormation(a1, slot++) 0x5FD050, the SEALs then the escortees (0x5E7830 when only escortees), the sub-squads recursively (the slot returned), the formation stored at 8 (lb'd by all four callers) and 0xA2 cleared; written, open on registers; the formation an unsigned byte enum (round 31): passed on to CAiSFollow::SetFormation unconverted, compared unsigned by 0x5EB8A0
 0x005EB8A0 0x70 func_005EB8A0  # OVL2
 0x005EB910 0x240 func_005EB910  # OVL2
 0x005EBB50 0x250 func_005EBB50  # OVL2
@@ -11584,7 +11584,7 @@
 0x005FCF00 0x8 GetControl__10CZSealBodyFv  # OVL2; by hand (the kit lane, round 19; the name ours): an inline accessor's out-of-line copy, the SEAL's controller (+0xC0) -- GetFollowMaster's fourth self-inlined level calls it, the copy following its caller
 0x005FCF10 0xFC SetFollowMaster__11CSealCtrlAiFP10CZSealBody  # OVL2; s1:order by hand (the kit lane, round 19): SOCOM 1's SetFollowMaster (0x2E1D60, 0x1C), among the follow helpers in both builds -- the master at +0x5D4 and its id at +0x5D8, the masters' follower counts (+0x520) stepped, a live master (CEntity bit 12) other than the SEAL taken; without one the follow state (9, FindAiState) has its running bit and master (+0x58) cleared; SOCOM II returns whether it was taken
 0x005FD010 0x40 func_005FD010  # OVL2
-0x005FD050 0x84 SetFormation__10CAiSFollowFSci  # OVL2; by hand (the kit lane, round 18; the name ours): the follow's formation (+0x74, a byte) and slot (+0x70) set, the offset in cells read from them (0x5EB910) and its length kept as SetOffset's -- CSealCtrlAi::OnCommand and 0x5EB6D0 call it. seal_aifollow.cpp
+0x005FD050 0x84 SetFormation__10CAiSFollowF14UNIT_FORMATIONi  # OVL2; by hand (the kit lane, round 18; the name ours): the follow's formation (+0x74, a byte) and slot (+0x70) set, the offset in cells read from them (0x5EB910) and its length kept as SetOffset's -- CSealCtrlAi::OnCommand and 0x5EB6D0 call it. seal_aifollow.cpp; the kit lane, round 31: the formation is CSealUnit's UNIT_FORMATION byte (ai_states.h), not a signed char -- the squad's setter 0x5EB6D0 hands its own parameter on with no conversion, OnCommand 0x590608 passes the squad's m_8 (lb); the body byte-exact either way
 0x005FD0E0 0x64 SetOffset__10CAiSFollowFPCi  # OVL2; by hand (the kit lane, round 18; the name ours): the follow's offset from its leader set as two cell counts (+0x5C) and its world length kept (+0x64, 10 to a cell) -- CTState::Tick passes it a cell pair; where SOCOM 1's CSealCtrlAi::SetFollowOffset took a point. seal_aifollow.cpp
 0x005FD150 0x288 func_005FD150  # OVL2
 0x005FD3E0 0x7C func_005FD3E0  # OVL2
