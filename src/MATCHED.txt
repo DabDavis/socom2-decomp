@@ -2260,6 +2260,7 @@
 0x00257CB0 func_00257CB0
 0x00257EC0 func_00257EC0
 0x00257ED0 func_00257ED0
+0x00257EE0 ReadString__Q23zar4CZARFPPc
 0x00257F90 ReleaseDataBuffer__Q23zar4CZARFv
 0x00258510 GetSize__Q23zar4CZARFPCc
 0x00258570 GetOpenKey__Q23zar4CZARFv
@@ -2268,9 +2269,12 @@
 0x00258650 OpenKey__Q23zar4CZARFPCc
 0x00258720 CloseKey__Q23zar4CZARFPQ23zar4CKey
 0x00258B40 ReOpen__Q23zar4CZARFiUi
+0x00258BD0 Flush__Q23zar4CZARFv
 0x00258C40 func_00258C40
 0x00258CE0 Close__Q23zar4CZARFv
-0x00258E60 func_00258E60
+0x00258E60 CloseKeepDir__Q23zar4CZARFv
+0x00258E80 SetFilename__Q23zar4CZARFPCc
+0x002590A0 __ct__Q23zar4CZARFPCcP3CIO
 0x00259230 func_00259230
 0x00259240 func_00259240
 0x002599B0 func_002599B0
@@ -2511,7 +2515,16 @@
 0x00271890 PauseSequence__6CZAnimFPCc
 0x002718F0 StopSequence__6CZAnimFPCc
 0x00271950 ActivateSequence__6CZAnimFPCc
+0x002719B0 __dt__13CZAnimArgListFv
 0x00271AE0 __dt__9CZAnimArgFv
+0x002720E0 GetCmd__13CZAnimArgListFi
+0x002721C0 GetValve__13CZAnimArgListFi
+0x002722A0 FindNode__13CZAnimArgListFPQ23zdb5CNode
+0x00272390 GetNode__13CZAnimArgListFi
+0x00272480 GetCharP__13CZAnimArgListFi
+0x00272560 GetInt__13CZAnimArgListFQ29CZAnimArg4TYPE
+0x00272640 HasArg__13CZAnimArgListFQ29CZAnimArg4TYPE
+0x00272720 GetPnt3D__13CZAnimArgListFQ29CZAnimArg4TYPE
 0x00272800 Copy__12CZAnimArgIntFv
 0x00272860 Copy__14CZAnimArgPnt3DFv
 0x002728D0 __ct__14CZAnimArgPnt3DFQ29CZAnimArg4TYPEPC6CPnt3D
@@ -3875,6 +3888,7 @@
 0x002DCCD0 GetBBoxCorners__3zdbFP6CPnt3DPC5CBBox
 0x002DD020 GetAltitude__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect
 0x002DD030 SetEdgeVecsAndNorm__Q23zdb3CDIFv
+0x002DD130 LoadPlaneVU0__Q23zdb3CDIFv
 0x002DDAB0 __dt__Q23zdb7CDIBBoxFv
 0x002DDB30 __ct__Q23zdb7CDIBBoxFv
 0x002DDB70 __dt__Q23zdb7CDIPolyFv
@@ -3900,6 +3914,7 @@
 0x002DEE30 compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
 0x002DEE90 insert_node_at__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>
 0x002DF030 compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFUiUiPCcUi
+0x002DF160 CircleSegmentClip__Q23zdb11CCircleClipFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D
 0x002DF560 SyncGameClock__13CZOnlineLobbyFi
 0x002DF640 MediusConnectionIndex__13CZOnlineLobbyFv
 0x002DF650 UnInit__13CZOnlineLobbyFv
@@ -4162,7 +4177,12 @@
 0x002F10B0 func_002F10B0
 0x002F11F0 func_002F11F0
 0x002F1240 func_002F1240
-0x002F1950 func_002F1950
+0x002F1670 UpdateRoomPlayerListDisplay__Fv
+0x002F1950 PlayerNameLess__FR10RoomPlayerR10RoomPlayer
+0x002F1980 sort<Q33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iterator,PFR10RoomPlayerR10RoomPlayer_b>__3stdFQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorPFR10RoomPlayerR10RoomPlayer_b_v
+0x002F2740 erase__Q23std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>FP10RoomPlayer
+0x002F33E0 __sort132<Q33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iterator,PFR10RoomPlayerR10RoomPlayer_b>__3stdFQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorPFR10RoomPlayerR10RoomPlayer_b_v
+0x002F3B90 __selection_sort<Q33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iterator,PFR10RoomPlayerR10RoomPlayer_b>__3stdFQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorPFR10RoomPlayerR10RoomPlayer_b_v
 0x002F3EE0 func_002F3EE0
 0x002F3EF0 func_002F3EF0
 0x002F3FF0 func_002F3FF0
@@ -4470,6 +4490,7 @@
 0x0030B6F0 uninitPssAudio__Fv
 0x0030B700 initPssAudio__FP12playPssRsrcs
 0x0030B740 loadImage__FPUi
+0x0030B770 setLoadImageTagsYX__FPUiPviiiUi
 0x0030B9D0 strFileRead__FPvi
 0x0030BA90 strFileClose__Fv
 0x0030BAF0 strFileRewind__Fv
@@ -4533,8 +4554,8 @@
 0x0030E3A0 func_0030E3A0
 0x0030E3B0 func_0030E3B0
 0x0030E3C0 func_0030E3C0
-0x0030E3D0 func_0030E3D0
-0x0030E3F0 func_0030E3F0
+0x0030E3D0 __ct__19CZBroadcastScheduleFUi18NetThresholdMethodPFP15NetFieldCompare_bUc
+0x0030E3F0 __ct__19CZBroadcastScheduleFUi18NetThresholdMethodfUc
 0x0030E410 __dt__9CZNetworkFv
 0x0030E490 func_0030E490
 0x0030E540 func_0030E540
@@ -6032,6 +6053,7 @@
 0x00384ED0 insert__Q23std70__vector_imp<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>,0>FP15CDlgDesignModelUiRC15CDlgDesignModel
 0x00385370 __fill_n<P15CDlgDesignModel,Ui,15CDlgDesignModel>__3stdFP15CDlgDesignModelUiRC15CDlgDesignModel_v
 0x00385410 __copy_backward<P15CDlgDesignModel,P15CDlgDesignModel>__3stdFP15CDlgDesignModelP15CDlgDesignModelP15CDlgDesignModel_P15CDlgDesignModel
+0x003854C0 __ct__15CDlgDesignModelFRC15CDlgDesignModel
 0x00385610 UnSerialize__13CUIVarManagerFPCcP8CRdrFilei
 0x003857C0 Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY
 0x00385900 Find__13CUIVarManagerFPCc
@@ -6673,9 +6695,12 @@
 0x003B7590 func_003B7590
 0x003B7620 func_003B7620
 0x003B7B90 DrawLOD__Q23zdb7CVisualFPQ23zdb9CLOD_bandfPf
-0x003B7C90 __dt__8CVisBaseFv
+0x003B7C90 __dt__Q23std33deque<PCv,Q23std14allocator<PCv>>Fv
 0x003B7CF0 __ct__Q23zdb10AddonPointFv
-0x003B7D50 __dt__Q23std49stack<Ui,Q23std31deque<Ui,Q23std13allocator<Ui>>>Fv
+0x003B7D50 __dt__Q23std49stack<Pv,Q23std31deque<Pv,Q23std13allocator<Pv>>>Fv
+0x003B7DB0 __ct__Q23std31deque<Pv,Q23std13allocator<Pv>>FRCQ23std31deque<Pv,Q23std13allocator<Pv>>
+0x003B7EE0 end__Q23std31deque<Pv,Q23std13allocator<Pv>>CFv
+0x003B7F40 begin__Q23std31deque<Pv,Q23std13allocator<Pv>>CFv
 0x003B7FA0 func_003B7FA0
 0x003B7FD0 __ct__Q23zdb15tag_GlobalLightFv
 0x003B83B0 func_003B83B0
@@ -8562,6 +8587,8 @@
 0x00557F30 func_00557F30
 0x00557F60 func_00557F60
 0x005582B0 func_005582B0
+0x005582C0 func_005582C0
+0x00558440 func_00558440
 0x00558590 Reset__8CAiStampFv
 0x005585B0 func_005585B0
 0x005585E0 func_005585E0
@@ -8655,6 +8682,7 @@
 0x0056C340 ComputeTurnThrottle__11CSealCtrlAiFPC6CPnt3DPC6CPnt3DPf
 0x0056D090 RestoreAiMode__11CSealCtrlAiFv
 0x0056D0C0 SetSleeping__11CSealCtrlAiFb
+0x0056D2B0 func_0056D2B0
 0x0056D450 func_0056D450
 0x0056D6A0 SetSnoozing__11CSealCtrlAiFb
 0x0056DAA0 SetGoalPos__9CSealCtrlF9GOAL_TYPEPC6CPnt3Df
@@ -8694,7 +8722,9 @@
 0x00574AE0 StopAiSound__11CSealCtrlAiF8AI_SOUND
 0x00574B30 PlayAiSound__11CSealCtrlAiF8AI_SOUND
 0x00574BA0 SetAiAccuracyAngle__11CSealCtrlAiFf
-0x00574BD0 func_00574BD0
+0x00574BD0 ReleaseDatabaseHandles__11CSealCtrlAiFv
+0x00574C30 AcquireDatabaseHandles__11CSealCtrlAiFv
+0x00574EF0 func_00574EF0
 0x005750A0 func_005750A0
 0x005750B0 func_005750B0
 0x005750C0 func_005750C0
@@ -8998,7 +9028,7 @@
 0x005A3220 GetTargetPosW__10CZSealBodyFP6CPnt3D
 0x005A3280 func_005A3280
 0x005A39B0 HandleFootfallSound__10CZSealBodyFP6CPnt3D
-0x005A3B50 func_005A3B50
+0x005A3B50 Uninit_ReInitDatabaseHandles__10CZSealBodyFv
 0x005A3BB0 UninitDatabaseHandles__10CZSealBodyFv
 0x005A3C60 func_005A3C60
 0x005A3CC0 swap__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>FRQ23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>
@@ -11098,6 +11128,7 @@
 0x00668540 __sinit_ai_astar.cpp
 0x00668630 __sinit_ai_map.cpp
 0x00668680 __sinit_ai_path.cpp
+0x006687E0 __sinit_seal_ai.cpp
 0x00668940 __sinit_seal_body.cpp
 0x00668DB0 __sinit_seal_kit.cpp
 0x006690C0 __sinit_seal_handsig.cpp
