@@ -174,6 +174,12 @@ public:
     /* a SEAL back from the dead: off the dead list and onto the escortees (a team-bit-17 SEAL of
      * squad 17) or the SEALs (SOCOM 1's; OVL2 0x5EDE40) */
     void Revive(CZSealBody *seal);
+    /* the SEALs of a team an order can go to: the one the SEAL looks at when it is of the team (and
+     * then only it), else the team's among its squad's escortees; then, when `unit` is the team's
+     * squad, every SEAL of it -- each added to `out` (OVL2 0x5EA8C0, new in SOCOM II: IssueCommand
+     * and AllowCommand ask it for squad 18, `this` and `unit` the same squad -- this one unread;
+     * the name ours) */
+    void GetTeamSeals(int team, CZSealBody *seal, CSealUnit *unit, std::list<CZSealBody *> *out);
     /* a SEAL taken out of its squad: off its SEALs, escortees and dead, the follow's source handed on
      * to the new leader, the follow flag set again when the squad still follows; the squad updated
      * (SOCOM 1's, static; OVL2 0x5EDF90) */
@@ -651,6 +657,72 @@ CZSealBody *CSealUnit::GetSealByIndex(int index, int depth)
         }
     }
     return seal;
+}
+
+extern "C" {
+/* the SEAL a SEAL is looking at (seal_env.cpp's, OVL2 0x5AA690: its cached one or its reticule
+ * node's) */
+CZSealBody *func_005AA690(CZSealBody *seal);
+}
+
+/* MSL's back_insert_iterator and copy as far as the squads use them (the target's second walk is
+ * copy's: its first iterator a by-value parameter in the frame below the caller's temporaries) */
+struct CSealPusher {
+    CSealPusher(std::list<CZSealBody *> *l) : c(l) {}
+    CSealPusher &operator=(CZSealBody *const &v)
+    {
+        c->push_back(v);
+        return *this;
+    }
+    CSealPusher &operator*() { return *this; }
+    CSealPusher &operator++() { return *this; }
+
+    std::list<CZSealBody *> *c;
+};
+
+template <class I, class O>
+inline O CopyAll(I first, I last, O result)
+{
+    for (; first != last; ++first, ++result)
+        *result = *first;
+    return result;
+}
+
+/* (OVL2 0x5EA8C0: the walks' iterators assigned, in memory; the looked-at SEAL in its home, its
+ * address handed to push_back; `(1 << team) & m_team`, the mask first in the target's `and`).
+ * OPEN, 0x1B8 against 0x1B0: the squad's walk. The target walks it with the iterator assigned from
+ * begin() in the frame (two copies, its slot BELOW every push_back temporary), the end in a saved
+ * register, the loop top-tested and not rotated, and out->end() rebuilt inside the loop. Written as
+ * a plain walk after the early return MW hoists out->end() into a saved register and enters the
+ * loop at its bottom test (0x1C8, the first walk's push temporaries a slot lower too); through an
+ * inline (a plain walk, or as here MSL's copy over a back-inserter stand-in) the first walk's frame is
+ * the target's but the squad's iterator goes to a register; `goto` for the return, a do-while and an
+ * assigned iterator inside the copy (0x1D8) tried. Also: the escortees' end and the team mask take
+ * s0/s1 the other way round */
+void CSealUnit::GetTeamSeals(int team, CZSealBody *seal, CSealUnit *unit, std::list<CZSealBody *> *out)
+{
+    CZSealBody *s = 0;
+
+    if (seal) {
+        s = func_005AA690(seal);
+        if (s && ((1 << team) & s->m_team)) {
+            out->push_back(s);
+            goto done;
+        }
+        CSealUnit *u = ((CUnitCtrl *)((CEntity *)seal)->m_control)->m_unit;
+        std::list<CZSealBody *>::iterator i;
+
+        for (i = u->m_escortees.begin(); i != u->m_escortees.end(); ++i) {
+            s = *i;
+            if ((1 << team) & s->m_team)
+                out->push_back(s);
+        }
+    }
+    if (unit && unit->m_unit_num == team) {
+        CopyAll(unit->m_seals.begin(), unit->m_seals.end(), CSealPusher(out));
+    }
+done:
+    ;
 }
 
 /* (OVL2 0x5EDE40; SOCOM 1's: the two walks after the dead list's look for the SEAL and do nothing
