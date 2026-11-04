@@ -69,6 +69,7 @@
 #define _MSL_TREE
 
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <new>
 #include <stdio.h>
@@ -375,6 +376,12 @@ public:
 
     class iterator {
     public:
+        /* what std::remove_if's dispatch reads (MSL's tree iterators are bidirectional; no instance
+         * over a tree tells it -- code-neutral, the MSL headers round 21) */
+        typedef typename __tree::value_type value_type;
+        typedef int difference_type;
+        typedef bidirectional_iterator_tag iterator_category;
+
         iterator() {}
         iterator(node *p) : ptr_(p) {}
         /* user-declared: MW then passes the iterator by address (erase's position, OVL1 0x305F80) */

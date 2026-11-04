@@ -7,13 +7,13 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK SkbCursorToEnd__FP13CSoftKeyboard(s32);     /* extern */
 s32 func_00396F10();                                /* extern */
-M2C_UNK func_0039A400(s32);                         /* extern */
-extern u8 data_004A1330;
+extern u8 s_textSel;
 
 void func_00399100(s32 arg0) {
     if (func_00396F10() != 0) {
-        data_004A1330 = !data_004A1330;
-        func_0039A400(arg0);
+        s_textSel = !s_textSel;
+        SkbCursorToEnd__FP13CSoftKeyboard(arg0);
     }
 }

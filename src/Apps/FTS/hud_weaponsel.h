@@ -194,6 +194,15 @@ public:
     unsigned char _11a9[0x11b0 - 0x11a9];
 } __attribute__((aligned(16)));   // 0x11b0 bytes
 
+/* a weapon's kind as the network selector's category page keeps it (a byte enum: copied with lb,
+ * compared with andi -- the slot test 0x23C390 masks it before comparing with 2, 1 and 0; the
+ * name ours) */
+enum WEAPON_KIND { KIND_PRIMARY, KIND_SECONDARY, KIND_OTHER };
+
+/* the network selector's state and its category page's (a byte enum: the state switch 0x240B90
+ * masks it for its compare chain and stores it whole; the names ours) */
+enum SEL_STATE { SEL_CLOSED, SEL_CHOSEN, SEL_LIST, SEL_PAGE };
+
 /* the network selector's slots (their vtables found by their RTTI names: CWeaponSlot 0x405E00,
  * CategorySlot 0x405D80, SelectedSlot 0x405D00, SlotList 0x405E80) */
 class CZWeapon;
@@ -256,7 +265,15 @@ public:
     EQUIP_ITEM NextClass(bool up, EQUIP_ITEM cls);
     /* the next weapon's index up or down the weapons' list that the slot takes (0x23C6F0; the name
      * ours: its last two arguments passed through to the slot's test) */
-    int NextWeapon(bool up, int index, int a, int b);
+    int NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind);
+
+    /* no owner, no slots yet (inline: the selector's constructor builds two) */
+    SlotList()
+    {
+        for (int i = 0; i < 5; i++)
+            m_slots[i] = 0;
+        m_owner = 0;
+    }
 
     class CMPWeaponSel *m_owner;   // 0x18: the selector (its Init sets the category page's)
     unsigned char _1c[0x20 - 0x1c];
@@ -272,6 +289,9 @@ extern "C" void func_0023D860(CMPWeaponCategories *page, float dT);
 /* the selector's category page (no vtable, so no RTTI name: the name is ours) */
 class CMPWeaponCategories {
 public:
+    /* inline: the selector's constructor builds it in place */
+    CMPWeaponCategories() : m_f34(1.0f), m_f38(0) {}
+
     /* the page's arrows, title, backdrops and list off (its category slots stay) */
     void Off()
     {
@@ -307,13 +327,24 @@ public:
     void SetWeapon(CZWeapon *weapon);
     /* the four arrows off, or grey (0x23D460; the name ours) */
     void ShowArrows();
+    /* the arrows pulsed (0x23D2B0; the name ours) */
+    void TickArrows(float dT);
+    /* the cursor moved a weapon (2, -2) or a class (-1, 1) (0x23D060; the name ours) */
+    void Move(signed char dir);
+    /* the page's buttons while it is up (0x23D1B0; the name ours) */
+    void HandlePad(CPad *pad);
 
     EQUIP_ITEM m_type;   // 0xf20
-    unsigned char m_kind;   // 0xf21
+    WEAPON_KIND m_kind;   // 0xf21
+    SEL_STATE m_state;   // 0xf22: 3 while the page is up, 2 back to the list, 1 chosen
     int m_index;   // 0xf24
-    unsigned char _f28[0xf30 - 0xf28];
+    float m_pulse;   // 0xf28: the arrows' colour blend, 0 grey to 1 yellow
+    bool m_pulseup;   // 0xf2c: the blend rising
+    unsigned char _f2d[0xf30 - 0xf2d];
     class CMPWeaponSel *m_owner;   // 0xf30: the selector (its Init sets it)
-    unsigned char _f34[0xf40 - 0xf34];
+    float m_f34;   // 0xf34: 1 from the constructor
+    int m_f38;   // 0xf38
+    unsigned char _f3c[0xf40 - 0xf3c];
 } __attribute__((aligned(16)));   // 0xf40 bytes
 
 /* the network game's weapon selector: slot lists honouring the server's weapon valves
@@ -330,11 +361,24 @@ public:
     /* the cursor moved a slot on (2) or back (-2), round the five, on past the slots its test
      * refuses; the category page shows the slot's weapon (0x23EAE0; the name ours) */
     void Scroll(signed char dir);
+    /* the list's buttons (0x23EBC0; the name ours) */
+    void HandlePad(CPad *pad);
+    /* the five selected slots' weapons given to the HUD owner's character (0x23E5E0; the name ours) */
+    void SetCharacterWeapons();
+    /* opened on the list, the slots filled from the owner's weapons (0x23E370; the name ours) */
+    void Open();
+    /* the selector's state changed (0x240B90; the name ours) */
+    void SetState(SEL_STATE state);
+    /* whether a slot can be chosen (0x23E910; the name ours), the equipment slot holding an item
+     * (the one asked about skipped) and the item's own test (inline) */
+    bool CanSelect(int index);
+    inline int FindEquipment(EQUIP_ITEM item, int skip);
+    inline void CheckItem(EQUIP_ITEM item, int index, bool &ok);
     inline void Set203(bool on);
     inline void SetGL(bool on);
     inline void SetF2000(bool on);
 
-    bool m_active;   // 0x0: set while the selector is up (On does nothing without it)
+    SEL_STATE m_state;   // 0x0: closed (0) or up (On does nothing closed)
     C2DString m_title;   // 0x4
     C2DBitmap m_bitmap1;   // 0xa0
     C2DBitmap m_bitmap2;   // 0x120
@@ -347,7 +391,9 @@ public:
     bool m_203;   // 0x1532: the M203's grenades enabled (Enable_203FRAG and the rest)
     bool m_f2000;   // 0x1533: the F2000's (Enable_F2000FRAG ...)
     bool m_gl;   // 0x1534: the grenade launcher's (Enable_GLFRAG ...)
-    unsigned char _1535[0x1540 - 0x1535];
+    unsigned char _1535[0x1538 - 0x1535];
+    float m_1538;   // 0x1538: 1 from the constructor
+    int m_153c;   // 0x153c
 } __attribute__((aligned(16)));   // 0x1540 bytes
 
 #endif

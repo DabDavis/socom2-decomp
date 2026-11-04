@@ -111,10 +111,14 @@ public:
      * 0x575F40, the unit's template tail) */
     virtual ~CAiSAnimate();
 
-    unsigned char _58[0x5a - 0x58];
-    unsigned char m_5a;   // 0x5a (SOCOM 1's 0x28)
+    virtual int Tick(CSealCtrlAi *ai);
+
+    AnimType m_anim;   // 0x58: the anim played, or -1 (SOCOM 1's at 0x2c)
+    unsigned char m_5a;   // 0x5a (SOCOM 1's 0x28): the state the anim's blend is pushed in
     float m_5c;   // 0x5c (SOCOM 1's 0x30)
-    unsigned int m_60;   // 0x60 (SOCOM 1's 0x8)
+    /* how long the anim may hold the state when flag 1 says so, on the state stack's clock (SOCOM
+     * 1's 0x8 -- a countdown there) */
+    float m_60;   // 0x60
     CAnimTimedCallList m_timed;   // 0x64
     CAnimSpanCallList m_spans;   // 0x70
 };
@@ -145,10 +149,29 @@ public:
 
 class CAiSDeploy : public CAiState {
 public:
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     /* slots 0x24 and 0x3C of its table, both false (OVL2 0x575BE0, 0x575BD0: the tail's stubs) */
     virtual bool CanAttack() const { return false; }
     virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
+    /* slot 0x1C: no state pushed over a deploy (OVL2 0x55E660, out of line: mid-unit, after
+     * OnSignal) */
+    virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual ~CAiSDeploy();
+
+    /* what signal 4 resets (the names ours) */
+    unsigned char _58[0x70 - 0x58];
+    unsigned int m_70;   // 0x70
+    CAiMapLoc m_74;   // 0x74: a cell, the invalid one when reset
+    unsigned char _78[0x7c - 0x78];
+    unsigned char m_7c;   // 0x7c: 2 when reset
+    unsigned char _7d[0x80 - 0x7d];
+    unsigned int m_80;   // 0x80
+    unsigned int m_84;   // 0x84
+    unsigned char _88[0x8c - 0x88];
+    unsigned int m_8c;   // 0x8c
+    float m_timer;   // 0x90: a weapon timer (CZWeapon::ClearTimer clears it)
+    unsigned int m_94;   // 0x94
+    unsigned int m_98;   // 0x98
 };
 
 /* (OVL2 0x543480, seal.cpp's: the hostage's compass anchor deleted, as SOCOM 1's OnSignal did here
@@ -277,7 +300,7 @@ extern "C" bool func_005659E0(CSealCtrlAi *ai, float dT)
             ai->m_spraytimer = 0.0f;
         else {
             ai->m_spraytimer -= dT;
-            ai->m_3d0 = 0;
+            ai->m_fire.m_spread = 0;
             func_0060A2D0(ai->m_67c, true);
             func_005C37B0(kit, AUTOFIRE);
             ai->SetTrigger(true, 0.0f);
@@ -738,6 +761,105 @@ extern "C" CAiEvent *func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
  * __dt__13CAiStateStackFv (verified with that name aliased: build/scratch/seal/adiff.py). */
 CAiSDeploy::~CAiSDeploy()
 {
+}
+
+extern "C" {
+/* (below: the route walked on along a path, and the AI's state brought up to date, the route's
+ * state returned -- OVL2 0x5556A0, 0x5558A0) */
+bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRouteBytes *route);
+AI_ROUTE func_005558A0(CSealCtrlAi *ai);
+/* the kit's current item by its index (CZKit::SetCurItemByIndex, OVL2 0x5C4B10: zseal.h's kit is a
+ * stand-in) and its fire mode (0x5C37B0, declared below) */
+void func_005C4B10(CZKit *kit, int index);
+bool func_005C37B0(CZKit *kit, FIREMODE mode);
+}
+
+/* the fire's aim dropped: the two aim flags off, its time restarted (an inline both FireWhenReady and
+ * the deploy's signals show; the name ours) */
+static inline void DropAim(AI_FIREPARAMS &p)
+{
+    p.m_flags &= ~0x4200000;
+    p.m_timeout = 0.0f;
+}
+
+/* the deploy told: signal 4 resets it; 1 starts it -- the kit's first item on full auto, the look of
+ * mode 11 cleared, the SEAL to go prone at once, the aim dropped, the weapon to state 2 and the
+ * timer cleared; 2 stops it -- in the first three steps the route walked on (0x5556A0), in steps 3-5
+ * the step back to 0, in step 8 the timer cleared and the step back to 0, past them the state no
+ * longer running -- and drops the aim and the look; 3 ends a route under way: brought up to date
+ * (the step back to 0 when it is a route of kind 2), its path cleared and a running one ended (OVL2
+ * 0x55E3B0: SOCOM 1's OnSignal, its signal 1 alone -- the stance, the timer and signals 2 and 3 new) */
+static inline int PhaseOf(const CAiState *s)
+{
+    return s->m_phase;
+}
+
+void CAiSDeploy::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
+{
+    CZSealBody *seal = ai ? (CZSealBody *)ai->m_entity : 0;
+
+    switch (sig) {
+    case SIGNAL_4:
+        m_80 = 0;
+        m_84 = 0;
+        m_98 = 0;
+        m_94 = 0;
+        m_70 = 0;
+        m_timer = 0.0f;
+        m_8c = 0;
+        *(unsigned int *)&m_74 = *(unsigned int *)&CAiMapLoc::invalid;
+        m_7c = 2;
+        break;
+    case SIGNAL_0:
+        break;
+    case SIGNAL_1: {
+        CZKit *kit = &seal->m_kit;
+
+        func_005C4B10(kit, 0);
+        func_005C37B0(kit, (FIREMODE)2);
+        ai->ClearLook(AIL_11);
+        ai->SetDesiredStance(STANCE_PRONE, 0.0f, false);
+        DropAim(ai->m_fire);
+        seal->SetWeaponState((WEAPON_STATE)2);
+        CZWeapon::ClearTimer(&m_timer);
+        break;
+    }
+    case SIGNAL_2: {
+        int step = PhaseOf(this);
+
+        if (step < 3)
+            func_005556A0(ai, &ai->m_path, &ai->m_route);
+        else if (step < 6)
+            UpdatePhase(0);
+        else if (step == 8) {
+            CZWeapon::ClearTimer(&m_timer);
+            UpdatePhase(0);
+        } else
+            SetActive(false);
+        DropAim(ai->m_fire);
+        ai->ClearLook(AIL_11);
+        break;
+    }
+    case SIGNAL_3:
+        if (ai->m_route.m_state != ROUTE_NONE) {
+            if (func_005558A0(ai) == ROUTE_2)
+                UpdatePhase(0);
+            ((CAiPath *)&ai->m_route.m_path)->Clear();
+            switch (ai->m_route.m_state) {
+            case ROUTE_1:
+            case ROUTE_2:
+                ai->m_route.m_state = ROUTE_NONE;
+                break;
+            }
+        }
+        break;
+    }
+}
+
+/* (OVL2 0x55E660: slot 0x1C of __vt__10CAiSDeploy) */
+bool CAiSDeploy::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
+{
+    return false;
 }
 
 CAiSGrenade::~CAiSGrenade()
@@ -1914,6 +2036,80 @@ void CSealCtrlAi::SetDesiredStance(SEAL_STANCE stance, float delay, bool force)
     }
 }
 
+extern "C" {
+/* the AI states' range (the kit lane's): the aim's direction in the SEAL's frame set, or for none
+ * the reference direction (0x60F9F0, seal_aivehicle.cpp's), the aim's point set (0x60FA90) -- each
+ * whether the body took it -- and the aim's cosine, 1 in a turret (0x60F9B0) */
+bool func_0060F9F0(CSealCtrlAi *ai, const CPnt3D *dir);
+bool func_0060FA90(CSealCtrlAi *ai, const CPnt3D *point);
+float func_0060F9B0(CSealCtrlAi *ai);
+}
+
+namespace ai {
+/* a clear line from the SEAL to its target, within a slack (SOCOM 1's; OVL2 0x609DF0, ai_target.cpp's) */
+int CheckLineOfFire(const CEntity *e, const CTarget *target, float slack);
+}
+
+/* the shot taken once it may be: the time run up; under 0x2000000 the look turned onto the fire's
+ * direction (11) and no shot until the body faces within acos 0.92 of it; the body able to fire and,
+ * under 0x800000, a clear line to the target (8 of slack); then the aim set -- in the SEAL's frame
+ * (0x100000) or at a point (0x400000), else the two aim flags dropped and the time restarted -- and,
+ * under 0x1000000, the weapon raised and the shot only once the aim is within acos 0.98 with the
+ * weapon's state 1; under 0x40 a delay run down first (OVL2 0x563BD0: SOCOM 1's FireWhenReady, its
+ * flags a bit higher, the static cosine 0.92 where SOCOM 1's was 0.98, the slack 8 where SOCOM 1's
+ * was 10, the aim through the AI states' helpers, and the delay new). What the target fixes: the
+ * fire test one `&&`/`||` expression, CanFire's bool taken through `(int)` (the target's andi before
+ * the sltu: unconverted, MW gives the sltu alone), the aim's two flag tests through an inline (one load
+ * for both, the drop's own load after them, as the target has it -- tested in place, MW reuses the
+ * first load for the drop and fills no delay slot), `dot > 0.98f` (bc1f, the 1 in its delay slot) */
+static inline unsigned int Flag(const AI_FIREPARAMS &q, unsigned int f)
+{
+    return q.m_flags & f;
+}
+
+bool CSealCtrlAi::FireWhenReady(AI_FIREPARAMS &p, float dT)
+{
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    static float s_cos = 0.92f;
+    static float s_slack = 8.0f;
+
+    p.m_timeout += dT;
+    if (p.m_flags & 0x2000000) {
+        if (m_look_mode != AIL_11)
+            SetLookDirW(AIL_11, &p.m_lookDirW, true);
+
+        const CMatrix &m = seal->m_node->m_matrix;
+
+        if (-m.m_matrix[2][0] * p.m_lookDirW.x + -m.m_matrix[2][1] * p.m_lookDirW.y +
+            -m.m_matrix[2][2] * p.m_lookDirW.z < s_cos)
+            return false;
+    }
+
+    bool fire = (int)seal->CanFire(true, true) &&
+                (!(p.m_flags & 0x800000) || ai::CheckLineOfFire(seal, (const CTarget *)m_67c, s_slack));
+
+    if (fire) {
+        if (Flag(p, 0x100000))
+            fire = func_0060F9F0(this, &p.m_aimDirM);
+        else if (Flag(p, 0x400000))
+            fire = func_0060FA90(this, &p.m_aimPointW);
+        else {
+            p.m_flags &= ~0x4200000;
+            p.m_timeout = 0.0f;
+            fire = false;
+        }
+        if (fire && (p.m_flags & 0x1000000)) {
+            seal->SetWeaponState((WEAPON_STATE)1);
+            fire = func_0060F9B0(this) > 0.98f && seal->m_weapon_state == 1;
+        }
+        if (fire && (p.m_flags & 0x40)) {
+            p.m_delay -= dT;
+            fire = p.m_delay <= 0.0f;
+        }
+    }
+    return fire;
+}
+
 /* two bytes of OVL2 bss either of which keeps the duck off (debug switches? the names unknown) */
 extern "C" unsigned char data_0066B040;
 extern "C" unsigned char data_0066B038;
@@ -2177,7 +2373,7 @@ extern "C" {
 /* whether the SEAL is in a turret (its body's 0xEB8; OVL2 0x60F9A0) and the aim's point set, or for
  * none dropped (OVL2 0x60FA90) -- the AI states' range */
 bool func_0060F9A0(CSealCtrlAi *ai);
-void func_0060FA90(CSealCtrlAi *ai, const CPnt3D *point);
+bool func_0060FA90(CSealCtrlAi *ai, const CPnt3D *point);
 }
 
 /* an Rfloat's roll read through a float pointer (its min, then its range): the target recomputes each
@@ -3000,6 +3196,63 @@ extern "C" {
 void func_00545480(CSealStats *stats);
 }
 
+extern "C" float floorf(float);
+
+/* a node's fade in fifteenths: 15 times the faded part when it is shown, else none (seal.cpp's
+ * helper: the target tests the shown flag again inside it) */
+static inline unsigned int FadeLevel(bool active, float opacity)
+{
+    return active ? (unsigned int)floorf(15.0f * (1.0f - opacity)) : 0;
+}
+
+/* this console's state for the others, as a word's bits (OVL2 0x56F6C0, slot 0x6C: SOCOM 1's
+ * CSealCtrlAi::GetAiNetState -- the state's kind, through slot 0xA4 now where SOCOM 1 inlined its
+ * GetAiStateEnum; the id the kind names: the master followed, the rescuer, else the master's id
+ * where SOCOM 1 sent none; the fade, the restraint and the friend's marker). The switch tests the
+ * call's value (`andi v1,v0,0xff`): `switch (st.m_code)` after the store re-reads the byte (lbu),
+ * and a local of any type (AI_STATE, unsigned char, int) or the assignment as the switch's value
+ * matches, under slot 0xA4 typed bool or AI_STATE alike -- this code cannot tell the slot's type */
+unsigned int CSealCtrlAi::GetAiNetState() const
+{
+    zdb::CNode *node;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    REMOTE_NET_STATE st;
+    unsigned int zero = 0;
+    unsigned int state;
+
+    memcpy(&st, &zero, sizeof(st));
+    node = seal->GetNode();
+    switch (st.m_code = GetJumpFlag()) {
+    case 9: {
+        const CAiState *s = GetAiState();
+
+        st.m_id = m_follow_master ? m_follow_master->m_id : 0;
+        break;
+    }
+    case 17: {
+        const CAiState *s = GetAiState();
+        const CAiSRescued *r = s && s->m_state == AI_STATE_RESCUED ? (const CAiSRescued *)s : 0;
+
+        st.m_id = r->m_5c;
+        break;
+    }
+    default:
+        st.m_id = m_follow_master_id;
+        break;
+    }
+    bool active = node->m_active;
+    float opacity = node->m_Opacity;
+
+    if (active && opacity > 0.0f)
+        st.m_fade = FadeLevel(active, opacity);
+    else
+        st.m_fade = 15;
+    st.m_restrained = seal->m_restrained ? true : false;
+    st.m_friend = seal->m_isAlive && (seal->m_team & 0x20000);
+    memcpy(&state, &st, sizeof(st));
+    return state;
+}
+
 /* the restraint taken from the state when it changes (an inline: both bits made bools) */
 static inline void SetRestrained(CZSealBody *seal, bool on)
 {
@@ -3047,6 +3300,78 @@ void CRemoteCtrl::SetAiNetState(unsigned int state)
     SetRestrained(seal, cur.m_restrained);
 }
 
+extern "C" {
+/* (OVL2 0x5EC9F0, seal_unit.cpp's: zseal.h's CSealUnit does not declare it) */
+void InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(CZSealBody *seal, CSealUnit *unit);
+}
+
+/* the remote SEAL taken over by the AI: its controller's network state read, the old controller
+ * deleted, a new AI's set up in the squad -- the followed one's squad kept for a follower whose squad
+ * still has SEALs -- and then, by the state's code, the follow order given to the SEAL it named (9),
+ * the rescued state pushed with the rescuer's id (17), or the id kept as the master's (OVL2
+ * 0x56F210: SOCOM 1's CZSealBody::AcquireRemoteAi, the squad, the deletion and the default new).
+ * The registers want the code, the squad and the unit declared at the top in that order (the six
+ * orders give 2 to 12 off; declared where defined, 37), the squad set to the unit and then cleared
+ * (the ternary duplicates the block), and the unit stored into the new AI before the squad's set-up
+ * (the store in that call's delay slot) */
+void CZSealBody::AcquireRemoteAi(CZSealBody *seal)
+{
+    unsigned int code;
+    CSealUnit *squad;
+    CSealUnit *unit;
+    CSealCtrl *ctrl = (CSealCtrl *)seal->m_control;
+    CSealCtrl *remote = (CSealCtrl *)ctrl->GetRemoteControl();
+
+    if (!remote)
+        return;
+
+    REMOTE_NET_STATE st;
+    unsigned int state = remote->GetAiNetState();
+
+    memcpy(&st, &state, sizeof(st));
+
+    unit = ctrl->m_unit;
+    code = st.m_code;
+    squad = unit;
+
+    if (code != 9 || !unit->GetSealCount(0))
+        squad = 0;
+
+    seal->SetController(0);
+    if (remote)
+        delete remote;
+
+    CSealCtrlAi *ai = new CSealCtrlAi;
+
+    seal->SetController(ai);
+    ai->m_unit = unit;
+    InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit(seal, squad);
+    ai->Initalize();
+    ai->InitAiBrain();
+    ai->Dump();
+    switch (code) {
+    case 9: {
+        CZSealBody *leader = AsSeal(CEntity::m_list.GetEntityById(st.m_id));
+
+        if (leader)
+            seal->IssueCommand(leader, (FT_COMMAND)4, 0, false);
+        break;
+    }
+    case 17:
+        if (ai->PushAiState(AI_STATE_RESCUED, 0)) {
+            CAiState *s = ai->GetAiState();
+            CAiSRescued *r = s && s->m_state == AI_STATE_RESCUED ? (CAiSRescued *)s : 0;
+
+            r->m_5c = st.m_id;
+            r->SetActive(true);
+        }
+        break;
+    default:
+        ai->m_follow_master_id = st.m_id;
+        break;
+    }
+}
+
 /* the destructor of the network's controller (OVL2 0x56F460: CSealCtrl's called as a base) */
 CRemoteCtrl::~CRemoteCtrl()
 {
@@ -3091,6 +3416,84 @@ void CAiSAnimate::OnSignal(SIGNAL sig, CSealCtrlAi *ctrl)
     case SIGNAL_3:
         break;
     }
+}
+
+/* the anim played out (OVL2 0x55A920, slot 0x10: SOCOM 1's CAiSAnimate::Tick without its dT, the
+ * blend pushed through 0x588BC0 in the state's own stance, and SOCOM II's timed and span calls):
+ * steps 0 and 1 push the anim unless it is on top already, step 2 runs the timed calls the anim's
+ * fraction has reached -- each erased once it answers true, the step done when one answers false --
+ * and every span call the fraction is inside, then ends once the anim is off the top or, under flag
+ * 1, the state has held its time; done, the state stops running. The shapes the target fixes: the
+ * timed list's front read through the CONST begin() (front() and erase(begin()) both through the
+ * sentinel's reference make MW keep &end_.next_ in a saved register and renumber s0-s5); the top
+ * blend's anim type through an inline (loaded ahead of m_anim, compared second) where steps 0/1 and
+ * the hold test read it, plainly in step 2; the call's bool tested `== false` (its `andi 0xff`); the
+ * step defined before the SEAL; the span walk's end a declared local (s5); and the hold test as
+ * `if (step != STEP_3) {...} else step = STEP_3;` -- the arm that sets the 3 again (`move s2,v0`,
+ * the compare's constant) laid last */
+static inline short TypeOf(const CZBodyAnimBlend *b)
+{
+    return b->m_animType;
+}
+
+int CAiSAnimate::Tick(CSealCtrlAi *ai)
+{
+    STEP step = (STEP)m_phase;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (m_anim == -1)
+        step = STEP_2;
+
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+
+    switch (step) {
+    case STEP_0:
+    case STEP_1:
+        if (!top || m_anim != TypeOf(top)) {
+            func_00588BC0(seal, m_anim, m_5a, 0, 0);
+            step = STEP_2;
+        } else
+            step = STEP_3;
+        break;
+    case STEP_2:
+        if (!top || m_anim != top->m_animType) {
+            step = STEP_3;
+            break;
+        }
+        {
+            float t = top->m_tfrac;
+
+            while (m_timed.size() != 0) {
+                const ANIM_TIMED_CALL &c = *((const CAnimTimedCallList &)m_timed).begin();
+
+                if (t < c.m_time)
+                    break;
+                if (c.m_func(this, ai, c.m_data) == false) {
+                    step = STEP_3;
+                    break;
+                }
+                m_timed.erase(m_timed.begin());
+            }
+            CAnimSpanCallList::iterator e = m_spans.end();
+
+            for (CAnimSpanCallList::iterator i = m_spans.begin(); i != e; ++i) {
+                ANIM_SPAN_CALL &c = *i;
+
+                if (!(t < c.m_start) && t < c.m_end)
+                    c.m_func(this, ai, c.m_data);
+            }
+        }
+        if (step != STEP_3) {
+            if ((m_flags & 1) && (m_anim != TypeOf(top) || !(ai->m_stateStack.m_timer < m_60)))
+                step = STEP_3;
+        } else
+            step = STEP_3;
+        break;
+    }
+    if (step == STEP_3)
+        SetActive(false);
+    UpdatePhase(step);
+    return Result();
 }
 
 /* the grenade the state holds: its pickup's projectile, while the pickup is still the one the state
