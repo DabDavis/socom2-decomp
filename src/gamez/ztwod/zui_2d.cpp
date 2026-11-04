@@ -67,6 +67,8 @@ struct _zrdr {
 class CUIVariable : public _zrdr {
 public:
     void UpdateDependents();
+    /* the value replaced by a copy of an rdr's (zui_var.cpp's, 0x386460) */
+    void Set(_zrdr *value);
     /* a value written out as text into a buffer of that size (zui.h's static, zui_var.cpp's
      * 0x3860F0) */
     static char *Format(_zrdr *value, char *buf, int size);
@@ -165,6 +167,7 @@ enum UIVAR_LONGEVITY {
 class CUIVarManager {
 public:
     CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+    CUIVariable *Find(const char *name);
 };
 extern CUIVarManager theUIVarManager;
 
@@ -584,6 +587,12 @@ enum VALVE_STATE { VALVE_SAME = 0, VALVE_ON = 1, VALVE_OFF = 2 };
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
+    /* made with a value if new (zanim.h's: the list box's count and focus valves) */
+    static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
+    static CValve *GetByName(const char *name);
+    /* the value (inline, const: the list box's RemoveItem reads it again at every step of its
+     * walk's remainder loop, as the target does; read straight MW hoists it) */
+    unsigned int GetValue() const { return m_value; }
     void MakeCallbacks(VALVE_STATE state);
     /* the value set, its callbacks told when it changed (the README's shape: both builds inline
      * it -- an int parameter, the state compared against an enumerator) */
@@ -2567,11 +2576,15 @@ int CUIMapCtrl::GetZAnimCmdType(const char *name)
 /* an .rdr built in memory (zrdr.h's CRdrEditor: only the three node adders the list items call) */
 class CRdrEditor {
 public:
+    CRdrEditor();
+    ~CRdrEditor();
     bool push(const char *name);
     bool pop();
     bool addintnode(int i);
     bool addrealnode(float f);
     bool addstringnode(const char *s);
+
+    unsigned char _0[0x4c];   // zrdr.h's: an rdr file (the value first) and the open lists' stack
 };
 
 /* strtod (MSL's; include/stdlib.h has no declaration of it) */
@@ -2776,6 +2789,8 @@ public:
     void RemoveAllItems();
     /* the secondary table's slot (0x4076E0: after the thunk 0x37D060): the variable's list shown */
     virtual void UpdateUIVar(CUIVariable *var);
+    /* slot 23: the box's commands run */
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
 
     /* the highlighted row set and the window scrolled to it (inline: UpdateUIVar and the
      * focus command do it alike, the row read back for the product) */
@@ -2798,7 +2813,8 @@ public:
     unsigned char _d0[0xd4 - 0xd0];
     std::vector<ColumnData *> m_columns;   // 0xd4
     int m_highlightAlpha;   // 0xe0
-    unsigned char _e4[0xe9 - 0xe4];
+    unsigned char _e4[0xe8 - 0xe4];
+    bool m_noHighlight;   // 0xe8: HIGHLIGHT_OFF's (the spec's byte at 0x36)
     bool m_followEnd;   // 0xe9: a new list highlights its last row (the spec's byte at 0x35)
     unsigned char _ea[0x130 - 0xea];
     CPnt3D m_color;   // 0x130: the rows' colour
@@ -2969,6 +2985,120 @@ int CUIListBox::GetZAnimCmdType(const char *name)
     if (!strcasecmp("GetContents", name))
         return C2DCmdType(0) + 10;
     return C2DCmdType(name);
+}
+
+/* the box's commands (SOCOM II's eleven; SOCOM 1's four): FINISH finishes every row and the
+ * command; the highlight switched; HAS_ITEMS answers through *done; the count and the focus row
+ * given to a valve made for it, or the focus taken from one; AddItem a row made from the n-th
+ * value of a UI variable, n a valve's; RemoveItem the n-th row taken out and deleted; GetContents
+ * the rows written into a UI variable; RemoveAllItems. Each is done at once; anything else none */
+bool CUIListBox::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    CListBoxCmd *cmd = (CListBoxCmd *)hdr;
+
+    switch (cmd->m_type - C2DCmdType(0)) {
+    case 1:
+        {
+            std::list<ListItem *>::iterator e = m_items.end();
+
+            for (std::list<ListItem *>::iterator it = m_items.begin(); it != e; ++it)
+                (*it)->Finish();
+        }
+        *done = true;
+        return true;
+    case 2:
+        m_noHighlight = false;
+        return true;
+    case 3:
+        m_noHighlight = true;
+        return true;
+    case 4:
+        *done = m_items.size() != 0;
+        return true;
+    case 5:
+        {
+            CValve *valve = CValve::Create(ZAnim.m_CurAnim->GetName(cmd->m_arg), 0, VALVE_TEMP);
+
+            valve->SetValue(m_items.size());
+        }
+        return true;
+    case 6:
+        {
+            CValve *valve = CValve::Create(ZAnim.m_CurAnim->GetName(cmd->m_arg), 0, VALVE_TEMP);
+
+            if (valve)
+                valve->SetValue(m_highlighted);
+        }
+        return true;
+    case 7:
+        {
+            CValve *valve = CValve::GetByName(ZAnim.m_CurAnim->GetName(cmd->m_arg));
+
+            if (valve)
+                Highlight(valve->m_value);
+        }
+        return true;
+    case 8:
+        {
+            CZAnim *anim = ZAnim.m_CurAnim;
+            const char *valveName = anim->GetName(cmd->m_arg);
+            const char *varName = anim->GetName(cmd->m_var);
+            CValve *valve = CValve::GetByName(valveName);
+            CUIVariable *var = theUIVarManager.Find(varName);
+
+            if (valve && var) {
+                CUIVariable *e = var->Item(valve->m_value);
+                ListItem *item = new ListItem(e, m_columns, m_font, m_scale);
+
+                if (e && e->IsString())
+                    item->SetString(e->GetString());
+                AddItem(item, -1);
+                if (m_followEnd)
+                    Highlight(m_items.size() - 1);
+            }
+        }
+        return true;
+    case 9:
+        {
+            CValve *valve = CValve::GetByName(ZAnim.m_CurAnim->GetName(cmd->m_arg));
+
+            if (valve) {
+                std::list<ListItem *>::iterator it;
+
+                it = m_items.begin();
+                for (unsigned int i = 0; i < valve->GetValue(); i++)
+                    ++it;
+
+                ListItem *item = *it;
+
+                m_items.remove(item);
+                delete item;
+            }
+        }
+        return true;
+    case 11:
+        RemoveAllItems();
+        return true;
+    case 10:
+        {
+            CUIVariable *var = theUIVarManager.Find(ZAnim.m_CurAnim->GetName(cmd->m_var));
+
+            if (var) {
+                CRdrEditor ed;
+
+                ed.push(0);
+                std::list<ListItem *>::iterator e = m_items.end();
+
+                for (std::list<ListItem *>::iterator it = m_items.begin(); it != e; ++it)
+                    (*it)->AddToRdr(&ed);
+                ed.pop();
+                var->Set((_zrdr *)&ed);
+            }
+        }
+        return true;
+    default:
+        return false;
+    }
 }
 
 /* the eleven commands, each a 20-byte record typed by slot 24: the four queries and RemoveItem take
