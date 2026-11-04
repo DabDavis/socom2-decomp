@@ -1965,6 +1965,23 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 19** (CTurretDef::Parse, __sinit_zwep_weapon.cpp, the explosion statics):
+  - an inline's by-value float whose address is taken (saturated in place) gets the frame's lowest slot, below the caller's
+    temporaries; a named local sits above them; `m_b = m_a = x` stores both from one register where two statements reload an
+    address-taken `x` in between; an inline taking a float by value keeps it in $f20 across two calls, reading the member
+    twice reloads it;
+  - CTurretDef::Parse 0x3AAD20 (0x8D0) matched with each findtag assigned inside its `if` test, the limits' sine and cosine
+    through a small inline and an inline SetMaxAngle in zveh.h; veh_turret.cpp emits its own ai::_max<float> 0x3AB970 (an
+    `ovl-copy:` of the AI template); __sinit_zwep_weapon.cpp with its four statics in order; zwep_projectile.cpp opens at
+    0x3C6980 (its last two functions read the unit's own statics);
+  - the vid stack's names are in question: the initialiser research made 0x3B7D50 the stack's destructor ~stack<Ui> (it is
+    registered for m_stack_vid), but its element type contradicts the stack<Pv> rows 0x321EF0/0x321F40, and 0x3B7C90,
+    named ~CVisBase, is a level of the stack's deque destructor (it calls ~__deque_buf<PCv> with 0 after two this-tests) --
+    __sinit_vis_vu.cpp 0x404570 waits on the chain's real names (0x3B7FA0 the deque's default constructor, 0x3B7DB0 its
+    copy);
+  - open: ApplyDecalRender 0x3B3950 (2: the copy call's second argument loaded before its first in the target -- the same
+    miss as CTurret::Fire's and the yaw joint's CopyMatrix call at 0x3A76D0; 3.0b50 gives the same), InitializeWeapons (52
+    under the numbering rule: the frame saves one register fewer than the target's s0-s5), UnpackItemAndAmmoEnums.
 - **Tells from the UI, round 17** (the soft keyboard's text tests, zui.cpp's initialiser, util_main.cpp's tail):
   - when the target keeps an object's address in a saved register from before its zeroing through later calls, the object
     is built by a constructor whose `this` is that variable (`struct CTypedText : CSaferStr { CTypedText() : CSaferStr(a)

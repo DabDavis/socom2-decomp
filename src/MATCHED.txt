@@ -6553,8 +6553,10 @@
 0x003AAA90 Init__7CTurretFPCcPCc
 0x003AAAB0 Init__16CTurretDefVectorFPCcPCc
 0x003AAC40 PrefixMatch__16CTurretDefVectorFPCc
+0x003AAD20 Parse__10CTurretDefFPCcP5_zrdr
 0x003AB5F0 __ct__10CTurretDefFv
 0x003AB8C0 resize__Q23std60__vector_imp<10CTurretDef,Q23std23allocator<10CTurretDef>,0>FUi
+0x003AB970 func_003AB970
 0x003AB9A0 remove_copy<Q33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iterator,Q33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iterator,P7CTurret>__3stdFQ33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iteratorQ33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iteratorQ33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iteratorRCP7CTurret_Q33std54__vector_imp<P7CTurret,Q23std20allocator<P7CTurret>,1>8iterator
 0x003ABA10 erase__Q23std60__vector_imp<10CTurretDef,Q23std23allocator<10CTurretDef>,0>FP10CTurretDefP10CTurretDef
 0x003ABAE0 __copy<P10CTurretDef,P10CTurretDef>__3stdFP10CTurretDefP10CTurretDefP10CTurretDef_P10CTurretDef
@@ -6615,7 +6617,7 @@
 0x003B10C0 SetGSReg__FsUl
 0x003B1160 func_003B1160
 0x003B1180 func_003B1180
-0x003B11F0 func_003B11F0
+0x003B11F0 zVid_Uninit__Fv
 0x003B13B0 zvid_KickPacket__FPUlibb
 0x003B14A0 zvid_SetVideoMode__F10_zvid_modeb
 0x003B1760 Fade__6CVideoFfUcUcUc
@@ -6935,8 +6937,8 @@
 0x003C6900 func_003C6900
 0x003C6910 func_003C6910
 0x003C6920 __dt__16CWepCallbackListFv
-0x003C6980 func_003C6980
-0x003C6990 func_003C6990
+0x003C6980 ClearNewExplosion__12CZProjectileFv
+0x003C6990 GetNewExplosion__12CZProjectileFv
 0x003C69C0 OnWeaponHit__12CZProjectileFPQ23zdb15IntersectStructP12CZProjectile
 0x003C6AC0 SetLastHitWasPerson__12CZProjectileFb
 0x003C6AE0 SetPositionVel__12CZProjectileFPC6CPnt3DPC6CPnt3D
@@ -7302,6 +7304,7 @@
 0x00404AB0 __sinit_vis_texfx.cpp
 0x00404B30 __sinit_vis_ripple.cpp
 0x00404B70 __sinit_zwep_global.cpp
+0x00404C10 __sinit_zwep_weapon.cpp
 0x00404CD0 __sinit_zwep_ammo.cpp
 0x004C53C0 func_004C53C0
 0x004C5610 asrspi_cbAbnorm
