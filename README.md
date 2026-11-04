@@ -5623,6 +5623,73 @@ lane's `src/lib` build): MAIN `18DB90 1C4CC0` 116 tried, 0 hits (12 build failur
 `1CCD78 1CE2A4` 6 tried, 0 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96
 tried, 0 hits (22, 8): 220 tried, none byte-exact (round 19a: 247, 0).
 
+**The tools, round 21a: an MW function-local static resolves by its function's rows.** The HUD
+lane's request: Metrowerks names a function-local static of a function emitted ONCE `name$N` and
+its guard `@GUARD@name$N` (N a per-unit counter: ShowArrows' `s_grey$678`), where an inline
+function's own are `@LOCAL@<fn>@name` / `@GUARD@<fn>@name` (the MSL lane's push_back statics); no
+data row can carry the counter, so ShowArrows' guard 0x4147C8 and object 0x4147D0 went unchecked.
+`scdiff.fn_static_row` maps such a local to the data row of the function under comparison
+(`@LOCAL@<fn>@s_grey`, `@GUARD@<fn>@s_grey`; by its object name, else its map row's), failing that
+to the one function of the object the data map gives such a row (a static of a function inlined
+into the one compared); never a guess -- a GNU object, two statics of one name in an object (the
+counter alone cannot tell whose), or several candidate rows leave it unresolved, as before. The
+data map names both kinds the same way. 79 such locals sit in the hand-written MW objects today;
+only ShowArrows' have rows. **Proved** over every unit (`--files .`, `-v` so the generated tier's
+matches are listed too, 2 jobs, `build/scratch/gcc/proof.sh`): master ad2fbf89's sccheck.py,
+scdiff.py and scdecomp.py and these, over one frozen snapshot of src/ and include/, give 13,611
+lines, identical but ShowArrows' (`10 relocs, 8 unchecked` -> `10 relocs`); 10,681 byte-exact
+under both. The canary's `test_mw_function_static_resolves_by_its_function` pairs it with the rows
+moved (MISMATCH) and removed (the 8 unchecked again), and fails with the mapping switched off.
+automatch over the lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the
+lane's `src/lib` build): MAIN `18DB90 1C4CC0` 91 tried, 0 hits (12 build failures, 15 m2c
+refusals), `1CCD78 1CE2A4` 6 tried, 0 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits,
+`243000 256FD0` 96 tried, 0 hits (22, 8): 195 tried, none byte-exact (round 20a: 220, 0) -- the 34
+that do not build are round 16a's kinds; every draft that builds misses.
+
+**Round 21a** (2026-11-04, the tools first, then the socket layer): 16 rows newly byte-exact -- the
+lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows 1,102 -> 1,118 of 1,184 scored, none lost -- of 18
+functions written. `sdk/inet_sock.c` (13 -> 29 of 35): the BSD calls over libinet -- socket
+0x1C2B90, bind 0x1C2CD8, connect 0x1C2DD0, listen 0x1C3120 and its per-slot listener 0x1C2F38,
+send/recv 0x1C3660/0x1C3810, sendto/recvfrom 0x1C39B0/0x1C3B20, close 0x1C3CE8 -- and the thread's
+buffer resize 0x1C2648, its context's drop 0x1C2A98, the send side's lazy open 0x1C35A0, an option
+setter 0x1C4088, the abort 0x1C4C20, and round 20a's open thread context 0x1C2160. No rows named
+(not in SOCOM 1; inet_bsd.c's wrappers say which call is which: socket ... shutdown in libinsck's
+alphabetical order). What they showed:
+
+- **Every unlink reads the other link into a local first**: `{ CTX *n = c->next; if (c->prev)
+  c->prev->next = n; else head = n; }` and then the second test on the fields. The target's
+  non-annulled delay slot loads the local before the branch, and the reloads after the store come
+  in its order; on the fields, the three context unlinks reloaded prev before next (the PRE-inserted
+  reloads come in GCSE's expression order, which the search loop's `c = c->next` sets) and the
+  socket's beqzl'd its first arm. Ten spellings on the fields were all 2-24 words off; this one
+  closed 0x1C2160 (open since round 20a), 0x1C2648, 0x1C2A98, 0x1C3CE8 at once.
+- **A list push tests the copy it just stored** (`t->prev = s->ctail; if (t->prev) t->prev->next =
+  t;` -- round 20a's allocator shape again: testing the source reloads it past the store).
+- **An `int` returned as a `long` keeps two insns in an error tail**: the data calls return a long
+  (64-bit on the EE), so `return func_001C2310(c, X)` widens the int with extendsidi2 -- a register
+  `move v0,v0`, which no no-op deletion removes -- and the error paths' tails cross-jump into the
+  target's one call site, its slot `move v0,v0`; as int, each path kept its own call (86 words).
+- **A constant held in a saved register is a local assigned early**: libnet's buffer mask is `mask =
+  ~63U` before the buffer's allocation (its lui/ori in the thread id's freed s1). And this cc1 keeps
+  a u_int constant 0xFFFFFFC0 apart from the int -64 (lui/ori against li): the aligned pointer is
+  an int's, else CSE reuses the mask's register.
+- **A min written as a conditional expression folds to a signed MIN_EXPR**: `n = len < b ? ... : len`
+  into an int compares with `slt`; the target's `sltu; movz` is an if/else.
+- **Layout**: socket()'s case 2 written first (the tree's last test then branches to the
+  allocation), the send side's open nested under `if (s->cid == 0)` and the listener slot's `if (r <
+  0 && r != -500) return f(r); return 0;` -- each target's final `return 0` laid out last; accept's
+  failure paths are gotos after the success return, as the target lays them out.
+- **Measured** (`tools/ccperm.py`): socket()'s record in field order (one of three of 120), the
+  listener slot's -1 options in field order (one of two of 24).
+- **Open, diagnosed in place**: accept 0x1C32A8 (10 words, right size: s5/s6 between the peer's
+  address pointer and libnet's client address), getsockname/getpeername 0x1C46D0 (4: the 16 for
+  `*namelen` in v1 before the port's store, the target's v0 after), gethostbyname 0x1C48A0 (0x178
+  against 0x180: the target keeps its three error paths' `func_001C2310(c, X); return 0;` apart,
+  this compile cross-jumps them), and round 20a's allocator three (0x1C1D40, 0x1C1E90, 0x1C2028).
+  Not written: the socket calls 0x1C28F8, 0x1C3E60, getsockopt 0x1C4140, setsockopt 0x1C43D0,
+  0x1C4A20. Not reached: libmpeg's last six, libgraph and libipu (0x1A13D0-0x1A3448), libkernl's
+  tty and SIF objects, OVL1's codec.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
