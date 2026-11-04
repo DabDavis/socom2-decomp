@@ -307,7 +307,8 @@ extern "C" float func_001F3550(CObjectiveCounts *counts)
  * the delay slot with its addiu, where MW puts the li in the slot. Round 34 measured every
  * placement of the li: defined in the call's block it lands in the slot whatever its numbering
  * (after the kills, through an inline's parameter, a by-reference out-parameter, an inline holding
- * the lookup, a comma in the call's argument, a const local, the name in a local ahead), defined
+ * the lookup, the whole alarm term an inline taking the 35 by value, a comma in the call's argument,
+ * a const local, the name in a local ahead), defined
  * after the call the jal's block changes (0x2B0). The image's only matched witness of the target's
  * shape is zui_hangul.cpp's SkbHangulRestart 0x3914C8 (an inlined loop counter set from the inline's
  * parameter just before the loop guard's call); a plain named local set before a call gives this
