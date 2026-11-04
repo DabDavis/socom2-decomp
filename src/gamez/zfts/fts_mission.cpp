@@ -2150,6 +2150,68 @@ extern "C" bool func_002AA890()
     return true;
 }
 
+/* START_IMAGE_RECORDER: the recorder's file name, its lines and rate (SOCOM 1's command; SOCOM II's
+ * antialias flag and intensity new) */
+struct _start_image_recorder_cmd {
+    _zanim_cmd_hdr hdr;
+    unsigned int name : 8;   // 0x4: the file name's index among the current anim's names
+    unsigned int top_line : 10;
+    unsigned int bottom_line : 10;
+    unsigned int antialias : 1;
+    unsigned int unused : 3;
+    float rate;   // 0x8
+    float intensity;   // 0xc
+};
+
+extern "C" int data_004A44C8;   /* (the screen's lines: the bottom line's default is the last) */
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
+
+/* START_IMAGE_RECORDER's parser: the FILENAME kept among the current anim's names, the whole screen
+ * at 29.97 frames by default, then TOP_LINE, BOTTOM_LINE, RATE, ANTIALIAS and INTENSITY where given
+ * (SOCOM 1's; OVL1 0x2AED40) */
+_zanim_cmd_hdr *StartImageRecorderParse(_zrdr *rdr)
+{
+    _start_image_recorder_cmd *cmd;
+    int i;
+    float f;
+    bool b;
+
+    if (!rdr)
+        return 0;
+    cmd = (_start_image_recorder_cmd *)_calloc(1, sizeof(_start_image_recorder_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_start_image_recorder_cmd);
+    cmd->hdr.timeless = 1;
+    CZAnim *anim = ZAnim.m_CurAnim;
+    const char *name = zrdr_findstring(rdr, "FILENAME");
+
+    if (name)
+        cmd->name = anim->AddName(name);
+    cmd->top_line = 0;
+    cmd->bottom_line = data_004A44C8 - 1;
+    cmd->rate = 29.97f;
+    cmd->antialias = false;
+    cmd->intensity = 1.0f;
+    if (zrdr_findint(rdr, "TOP_LINE", &i, 1))
+        cmd->top_line = i;
+    if (zrdr_findint(rdr, "BOTTOM_LINE", &i, 1))
+        cmd->bottom_line = i;
+    if (zrdr_findreal(rdr, "RATE", &f, 1))
+        cmd->rate = f;
+    if (zrdr_findbool(rdr, "ANTIALIAS", &b))
+        cmd->antialias = b;
+    if (zrdr_findreal(rdr, "INTENSITY", &f, 1))
+        cmd->intensity = f;
+    return &cmd->hdr;
+}
+
+/* START_IMAGE_RECORDER's tick: done at once (SOCOM 1's; OVL1 0x2AED30) */
+bool StartImageRecorderTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    return true;
+}
+
 /* a switch command: ON or OFF (the letterbox's, the HUD's) */
 struct _hud_switch_cmd {
     _zanim_cmd_hdr hdr;
@@ -2168,6 +2230,12 @@ _zanim_cmd_hdr *StopImageRecorderParse(_zrdr *rdr)
     cmd->data_size = sizeof(_zanim_cmd_hdr);
     cmd->timeless = 1;
     return cmd;
+}
+
+/* STOP_IMAGE_RECORDER's tick: done at once (SOCOM 1's; OVL1 0x2AECB0) */
+bool StopImageRecorderTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    return true;
 }
 
 /* HUD ON (OVL1 0x2AEC20) */
