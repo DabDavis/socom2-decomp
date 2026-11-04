@@ -2970,6 +2970,50 @@ extern "C" void func_005B1350(CZSealBody *seal, int b, int index)
 }
 
 extern "C" {
+/* (OVL2 0x5B1C80, not written: the ladder taken up by its index) */
+void func_005B1C80(CZSealBody *seal, int ladder);
+}
+
+/* the SEAL's hold on a ladder ticked: in state 1 a held ladder the SEAL can no longer take lets the
+ * hold go; state 3 takes a held ladder up (0x5B1C80) and lets the hold go; state 2, and any but 0, let
+ * it go (OVL2 0x5B1570, new in SOCOM II: PreTick calls it with the SEAL's m_climb; the name unknown).
+ * CanTakeLadder inlined (0x5B1350's); the switch's chain tests 3, 2, 1, then 0. The hold's flag is
+ * tested by a one-case switch in states 1 and 3 (`beq` to the case over a `b` out): an `if` branches
+ * straight past (0x10 short) */
+extern "C" void func_005B1570(CZSealBody::CSealClimb *climb, CZSealBody *seal)
+{
+    switch (climb->m_state) {
+    case 0:
+        break;
+    case 1:
+        switch (climb->m_active) {
+        case 1:
+            if (!CanTakeLadder(seal, climb->m_ladder)) {
+                climb->m_state = 0;
+                climb->m_active = 0;
+            }
+        }
+        break;
+    case 2:
+        climb->m_state = 0;
+        climb->m_active = 0;
+        break;
+    case 3:
+        switch (climb->m_active) {
+        case 1:
+            func_005B1C80(seal, climb->m_ladder);
+        }
+        climb->m_state = 0;
+        climb->m_active = 0;
+        break;
+    default:
+        climb->m_state = 0;
+        climb->m_active = 0;
+        break;
+    }
+}
+
+extern "C" {
 /* CPnt3D's implicit assignment, OVL2's out-of-line copy (OVL1's is 0x20F1F0, CHoming's reset's): the
  * homing's points are set through it, the inline that sets them too tall for it to inline */
 CPnt3D *func_00539E90(CPnt3D *to, const CPnt3D *from);
@@ -3000,6 +3044,58 @@ public:
 static inline CHomingAim *HomingOf(CZBodyAnimBlend *b)
 {
     return (CHomingAim *)&b->m_homing;
+}
+
+/* the wall's hit the SEAL holds kept or dropped: dropped when asked, or when the SEAL is more than 24
+ * from it on the flat, stands behind its face or faces away from it -- and, on a climbable face
+ * (application flags 2), when its edge's drop is within 15 but the edge's foot above the SEAL by more
+ * than 10, or for a SEAL of bit 9; kept as it is when the face's edges cannot be found (OVL2 0x5B3890,
+ * new in SOCOM II: the stance setters, the ladder's leave and the states call it; the name unknown).
+ * The edge points declared lower first (the target's upper one at the lower slot).
+ * OPEN, 16 instructions (the size right): the flattening store -- the target stores d.y = 0 with
+ * `sw zero,100(sp)` in the reach test's delay slot and loads d.x twice (f2 squared in place, f7 for
+ * the face's dot), d.z once; MW here stores it early through `addiu a0,sp,100` and keeps d.x and d.z
+ * in f3/f7 for both. Tried: zmath.h's Dot for either or both products (the zero is then reloaded, 0x1D0
+ * and more), a pointer Dot, the reach in a local, 24*24, the flag declared first, the zero an int, a
+ * PNT3D view, a Flatten inline, the normal by reference. */
+extern "C" void func_005B3890(CZSealBody *seal, int drop_now)
+{
+    zdb::IntersectStruct *hit = seal->m_1090.m_node ? &seal->m_1090 : 0;
+
+    if (!hit || drop_now) {
+        seal->m_1090.m_node = 0;
+        return;
+    }
+
+    CPnt3D d;
+    bool drop = false;
+
+    seal->m_posW.Sub(&hit->m_pos, &d);
+    d.y = 0.0f;
+    if (d.x * d.x + d.y * d.y + d.z * d.z > 576.0f)
+        drop = true;
+    if (d.x * hit->m_norm.x + d.y * hit->m_norm.y + d.z * hit->m_norm.z <= 0.0f)
+        drop = true;
+
+    const CMatrix &m = seal->m_node->m_matrix;
+
+    if (m.m_matrix[2][0] * hit->m_norm.x + m.m_matrix[2][1] * hit->m_norm.y + m.m_matrix[2][2] * hit->m_norm.z <= 0.0f)
+        drop = true;
+
+    unsigned char kind = (unsigned char)hit->m_poly->m_flags.m_appflags & 7;
+
+    if (!drop && kind == 2) {
+        CPnt3D lo, hi;
+
+        if (!hit->GetIntersectedEdgePoints(&hi, &lo))
+            return;
+        if (hi.y - lo.y <= 15.0f && !(lo.y <= seal->m_posW.y + 10.0f))
+            drop = true;
+        if (seal->m_bit9)
+            drop = true;
+    }
+    if (drop)
+        seal->m_1090.m_node = 0;
 }
 
 /* a body carried: the top blend homed onto a point, along the flat reverse of a direction, its target

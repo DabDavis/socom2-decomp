@@ -2976,6 +2976,71 @@ float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
     return dot;
 }
 
+/* the state the other console sends for its SEAL, as a word's bits (seal.cpp's SEAL_NET_STATE read
+ * whole: a code -- 17 a kill to credit -- the entity it names, the node's fade in fifteenths, the
+ * restraint, a friend's compass marker; the names ours) */
+struct REMOTE_NET_STATE {
+    unsigned int m_code : 8;   // 0x0
+    unsigned int m_id : 16;   // 0x1
+    unsigned int m_fade : 4;   // 0x3
+    unsigned int m_restrained : 1;
+    unsigned int m_friend : 1;
+    unsigned int m_bit6 : 1;
+    unsigned int m_bit7 : 1;
+};
+
+extern "C" {
+/* a kill credited to a SEAL's stats (OVL2 0x545480, seal.cpp's span) */
+void func_00545480(CSealStats *stats);
+}
+
+/* the restraint taken from the state when it changes (an inline: both bits made bools) */
+static inline void SetRestrained(CZSealBody *seal, bool on)
+{
+    if (on != (bool)seal->m_restrained)
+        seal->m_restrained = on;
+}
+
+/* the other console's state taken: kept, the node faded and shown by it, the friend's marker made or
+ * dropped, a new kill credited to the SEAL it names, the restraint (OVL2 0x56F4C0: SOCOM 1's
+ * CRemoteCtrl::SetAiNetState, its hostage anchor and its credit to the player SOCOM II's marker and
+ * stats). The registers want the node declared ahead of the SEAL and the state copied into a local
+ * between the two memcpys (the copy numbered last: s0; the parameter's own address taken instead
+ * homes it on the stack) */
+void CRemoteCtrl::SetAiNetState(unsigned int state)
+{
+    zdb::CNode *node;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+
+    node = seal->GetNode();
+    REMOTE_NET_STATE old;
+    REMOTE_NET_STATE cur;
+    unsigned int prev = GetAiNetState();
+    unsigned int now;
+
+    memcpy(&old, &prev, sizeof(old));
+    now = state;
+    memcpy(&cur, &now, sizeof(cur));
+    m_ai_net_state = state;
+    node->m_Opacity = 1.0f - cur.m_fade / 15.0f;
+    node->SetActive(cur.m_fade != 15);
+    if (seal->m_isAlive && (cur.m_friend ? true : false))
+        seal->CreateCompassAnchor(4, 0);
+    else
+        func_00543480(seal);
+    if (old.m_code != cur.m_code) {
+        switch (cur.m_code) {
+        case 17: {
+            CZSealBody *killer = AsSeal(CEntity::m_list.GetEntityById(cur.m_id));
+
+            if (killer)
+                func_00545480(&killer->m_stats);
+        }
+        }
+    }
+    SetRestrained(seal, cur.m_restrained);
+}
+
 /* the destructor of the network's controller (OVL2 0x56F460: CSealCtrl's called as a base) */
 CRemoteCtrl::~CRemoteCtrl()
 {

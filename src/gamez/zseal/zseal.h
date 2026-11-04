@@ -634,7 +634,9 @@ public:
      * stores visual_range; the name ours) */
     AI_PARAMS m_aiParams;   // 0xd0
     CSealUnit *m_unit;   // 0x10c: the squad (SOCOM 1's 0xdc)
-    unsigned char _110[0x114 - 0x110];
+    /* the state the network last gave (SOCOM 1's m_ai_net_state, 0xe4 there: SOCOM II has no
+     * m_vismap before it; CRemoteCtrl::SetAiNetState stores it) */
+    unsigned int m_ai_net_state;   // 0x110
     unsigned int m_padid;   // 0x114 (SOCOM 1's 0xe8: SOCOM II dropped the ten button readings)
     TRIGGER m_trigger;   // 0x118 (SOCOM 1's 0xec)
     float m_trigger_power;   // 0x11c
@@ -2042,7 +2044,11 @@ public:
     unsigned int m_ladder : 16;   // 0x1062
     unsigned char _1064[0x1070 - 0x1064];
     CQuat m_fwdlook;   // 0x1070 (SOCOM 1's 0xf60: RotateHead sets it, the app camera's transitions call that)
-    unsigned char _1080[0x10d0 - 0x1080];
+    unsigned char _1080[0x1090 - 0x1080];
+    /* a wall's hit the SEAL holds to (new in SOCOM II: held while its node is set -- 0x5B3890 drops
+     * it once the SEAL strays, faces off it or the ledge is out of reach; the name ours) */
+    zdb::IntersectStruct m_1090;   // 0x1090
+    unsigned char _10b0[0x10d0 - 0x10b0];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
     unsigned char _10d4[0x10e0 - 0x10d4];
     /* the last weapon hit (SOCOM 1's m_wephit, an IntersectStruct * at 0xf84; SOCOM II holds it:
