@@ -589,13 +589,16 @@ inline bool FindSlot(VoiceRadio *r, int &slot)
     return false;
 }
 
-/* a slot held by another client (the name ours) */
+/* a slot held by another client (the name ours). The slot reached as the radio stepped by i
+ * slots, its client then at +0x70: the target keeps r + 8i across the call and reads 0x70(s0)
+ * twice (a stand-in spelling -- `r->m_slots[i]` read twice keeps the whole address instead) */
 inline bool SlotTaken(VoiceRadio *r, int i)
 {
-    bool b = r->m_slots[i].m_client != 256;
+    VoiceRadio *p = (VoiceRadio *)(i + (VoiceSlot *)r);
+    bool b = p->m_slots[0].m_client != 256;
 
     if (b)
-        b = r->m_slots[i].m_client != theNetwork.zNetGetMyGameClientIndex();
+        b = p->m_slots[0].m_client != theNetwork.zNetGetMyGameClientIndex();
     return b;
 }
 
@@ -630,17 +633,17 @@ inline void StopRecording(VoiceRadio *r)
  * goes or its time is up -- the closing tone, the slot given back (3) -- and the radio rests a
  * while (4); a channel change gives the slot back at once. The master frees the slots whose time
  * is up, telling everyone. The state returned (OVL1 0x30EC10; 0x30F990 ticks it).
- * OPEN, 0x9E8 against 0x9E0 (round 19, first written: every block, call and frame slot the
- * target's, r in s3, slot s2, err s1): (1) SlotTaken keeps &m_slots[i] (r + 8i + 0x70) across the
- * call where the target keeps r + 8i and reads 0x70(s0) twice -- two direct reads CSE the whole
- * address, a getter (`int SlotClient(r, i)`) CSEs the value across the call (no reload, s4 more),
- * mixed, by reference, const views, a VoiceSlot accessor, the index by const reference or
- * unsigned: none gives the base alone (the extra addiu, then an alignment nop: the 2 words);
- * (2) the five sends load the connection (a2) ahead of the message id (t0) and func_00623AE8's
- * a0 ahead of a1, the target the other way round -- the same SendChannelStatus gives the target's
- * order inside func_0030E8E0 (an accessor, a wrapper inline: no change). Settled on the way: the
- * clocks compared `GetLocalTime() > field` (the call first, the field loaded after it), the
- * master asked for inside the request before the slot is read, the tone loops `*s++` / `*s--`
+ * OPEN, 13 instructions (round 19, first written: every block, call and frame slot the target's,
+ * r in s3, slot s2, err s1): (1) the five sends load the connection (a2) ahead of the message id
+ * (t0), and func_00623AE8's a0 ahead of a1, where the target loads the other argument first (10 + 2)
+ * -- the same SendChannelStatus gives the target's order inside func_0030E8E0; an accessor, a
+ * wrapper inline, change nothing; (2) SlotTaken's step adds r + 8i where the target adds 8i + r (1:
+ * every spelling of the stand-in alike). SlotTaken itself: `r->m_slots[i]` read twice keeps the
+ * whole address (r + 8i + 0x70, the extra addiu and an alignment nop: 0x9E8), a getter CSEs the
+ * value across the call, by reference, const views, a VoiceSlot accessor, a member: the same; only
+ * the stepped radio (`(VoiceRadio *)(i + (VoiceSlot *)r)`, its slot 0) keeps r + 8i. Settled on the
+ * way: the clocks compared `GetLocalTime() > field` (the call first, the field loaded after it),
+ * the master asked for inside the request before the slot is read, the tone loops `*s++` / `*s--`
  * (MW unrolls them in pairs, the target's), StartRecording's result kept, its zero arm first */
 unsigned char func_0030EC10(VoiceRadio *r)
 {
