@@ -48,6 +48,7 @@ struct MediusBanPlayerResponse { MEDIUS_RESPONSE_HEAD };
 struct AccountInfoType {
     int AccountID;   // 0x0
     char AccountName[32];   // 0x4
+    char AccountPassword[32];   // 0x24
 };
 
 void cbGetAnnouncements(int, int, int, MediusGetAnnouncementsResponse *);
@@ -71,7 +72,9 @@ MediusErrorCode MediusBanPlayer(MediusBanPlayerRequest *req,
 /* a valve: a named 16-bit value (SOCOM 1's CValve; only what is read here) */
 enum VALVE_TYPE {
     VALVE_TYPE_0,
-    VALVE_TYPE_1
+    VALVE_TYPE_1,
+    VALVE_TYPE_2,
+    VALVE_TYPE_3
 };
 
 class CValve {
@@ -328,6 +331,48 @@ extern "C" void func_002FA870(CZOnlineLobby *lobby)
     }
 }
 
+extern "C" GamePlayerStats data_0044FB60;   /* a new account's stats (the unit's bss) */
+
+/* a new account's stats made: the 'E' record, a rating of 1000, no side, not counted, the gender
+ * the menu's valve holds (SOCOM II's; the name ours: inline -- Login and Register build it twice,
+ * once for the copy's test of its source and once for the copy). The valve taken into a local
+ * (or tested through IsOff(), or the ternary cast to the enum) numbers the select after the
+ * value's load: straight off Create() the two swap a1/a2 */
+inline GamePlayerStats *NewAccountStats()
+{
+    memset(&data_0044FB60, 0, sizeof(data_0044FB60));
+    data_0044FB60.m_format = 'E';
+    data_0044FB60.m_rating = 1000;
+    data_0044FB60.m_side = 0;
+    data_0044FB60.m_late = 0;
+    CValve *gender = CValve::Create("PLAYERGENDER", VALVE_TYPE_3);
+
+    data_0044FB60.m_gender = gender->m_value ? GENDER_FEMALE : GENDER_MALE;
+    return &data_0044FB60;
+}
+
+/* a field copied when both ends are there, its source evaluated twice -- a macro, where zonline.h's
+ * CopyField is a function (SOCOM 1's Login copied a constant source the same way) */
+#define COPY_FIELD(dst, src, n) \
+    if ((dst) && (src))         \
+    memcpy((dst), (src), (n))
+
+/* logged in as an existing account: the account's name and password kept, our stats' text reset to
+ * a new account's, and the login state entered (SOCOM 1's, which pushed the state itself and copied
+ * a constant record; OVL1 0x2FA5A0: the UI's LobbyLogin calls it) */
+bool CZOnlineLobby::Login(const char *name, const char *password)
+{
+    if (!m_isopen)
+        return false;
+    AccountInfo.AccountID = -1;
+    CopyField(AccountInfo.AccountName, name, sizeof(AccountInfo.AccountName));
+    CopyField(AccountInfo.AccountPassword, password, sizeof(AccountInfo.AccountPassword));
+    memset(data_0066A648, 0, sizeof(data_0066A648));
+    COPY_FIELD(data_0066A648, NewAccountStats(), sizeof(data_0066A648));
+    ChangeState(ACCOUNT_LOGIN);
+    return true;
+}
+
 /* the session ended: the lobby's queue told to end it (SOCOM 1's, which ran the Medius calls
  * itself; OVL1 0x2FA560) */
 bool CZOnlineLobby::Logout()
@@ -335,6 +380,21 @@ bool CZOnlineLobby::Logout()
     if (!m_isopen)
         return false;
     ChangeState(END_SESSION);
+    return true;
+}
+
+/* a new account registered: as Login, the registration state entered (SOCOM 1's; OVL1 0x2FA320: the
+ * UI's LobbyRegister calls it) */
+bool CZOnlineLobby::Register(const char *name, const char *password)
+{
+    if (!m_isopen)
+        return false;
+    AccountInfo.AccountID = -1;
+    CopyField(AccountInfo.AccountName, name, sizeof(AccountInfo.AccountName));
+    CopyField(AccountInfo.AccountPassword, password, sizeof(AccountInfo.AccountPassword));
+    memset(data_0066A648, 0, sizeof(data_0066A648));
+    COPY_FIELD(data_0066A648, NewAccountStats(), sizeof(data_0066A648));
+    ChangeState(ACCOUNT_REGISTRATION);
     return true;
 }
 

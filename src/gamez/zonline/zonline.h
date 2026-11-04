@@ -593,6 +593,11 @@ struct LadderPlayerInfo {
  * char: Open's store reads it with lb), byte 3's unsigned int bit-field as an UNALIGNED word
  * (lwr/lwl 3..6, overlapping the next word's copy), eight words, eight unsigned shorts and four
  * char arrays (two bytes a pass where the length is even) */
+enum PLAYER_GENDER {
+    GENDER_MALE,
+    GENDER_FEMALE
+};
+
 struct GamePlayerStats {
     char m_format;   // 0x0: 'E'
     unsigned char m_1 : 7;   // 0x1
@@ -600,7 +605,9 @@ struct GamePlayerStats {
     unsigned char m_2 : 5;   // 0x2
     signed char m_side : 2;   // byte 2, bits 5-6
     unsigned char m_2_7 : 1;
-    unsigned int m_3 : 8;   // 0x3
+    PLAYER_GENDER m_gender : 2;   // 0x3: the PLAYERGENDER valve's (a byte enum: stored through lb,
+                                  //   a ternary of its two enumerators `li 1; movz`)
+    int m_3_2 : 6;
     int m_rating;   // 0x4: the ladder figure
     int m_8;   // 0x8
     int m_c;   // 0xc
@@ -1001,6 +1008,8 @@ public:
     void CreateClan(const char *name);
     void TransferLeadership(const char *name);
     void ChangeState(LOBBY_STATE state);
+    bool Login(const char *name, const char *password);
+    bool Register(const char *name, const char *password);
     bool Logout();
     void BanSelfFromGame();
     void SetConnectionInfo(struct NetConnectionInfo *info);
