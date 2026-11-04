@@ -146,6 +146,19 @@ public:
     void AddAmmo(CZAmmo *ammo);
 };   // 0xc bytes
 
+/* the weapons rdr's reader (SOCOM 1's ZWepReader, an empty class: its Read took the archive and
+ * both lists; SOCOM II's reads a file and hands each AMMO and WEAPONS entry to a reader of its
+ * own -- 0x3CD810, 0x3CDA30, 0x3CEDB0, the destructor 0x3CF190; the readers' names ours) */
+class ZWepReader {
+public:
+    ZWepReader();
+    ~ZWepReader();
+    void Read(const char *file);
+    void ReadWeapon(_zrdr *entry);
+    /* one AMMO entry: a new CZAmmo, its fields set (lengths scaled to the world's), listed */
+    void ReadAmmo(_zrdr *entry);
+};
+
 /* how a weapon weighs on its carrier (SOCOM 1's DWARF: a byte enum) */
 enum ENCUMBRANCE {
     LIGHTLY_ENCUMBERED = 0,
@@ -223,6 +236,8 @@ public:
      * an overload that reads the rdr the mark list loaded and never looks at the name (0x3D0870) */
     static void OpenDecals();
     static void OpenDecals(const char *file);
+    /* the flyout machine set up and zweapon.rdr read (SOCOM 1's Init, 0x3D0420) */
+    static bool Init();
     /* the name, packed with the ammo into a word for the network (SOCOM 1's statics) */
     static unsigned short PackItemAndAmmoEnums(EQUIP_ITEM item, EQUIP_AMMO ammo);
     static void UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo);

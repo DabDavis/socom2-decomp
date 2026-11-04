@@ -8266,11 +8266,11 @@
 0x003CD480 0x22C Init__16CZProjectileListFv  # OVL1; s1:calls
 0x003CD6B0 0x88 __dt__16CZProjectileListFv  # OVL1; s1:align
 0x003CD740 0xD0 __ct__16CZProjectileListFi  # OVL1; by hand (the wep lane: CZWeapon::CreateProjectileList news 0x208 bytes -- CZProjectileList's size -- and calls it with the block and its count, as SOCOM 1's CreateProjectileList__8CZWeaponFi calls __ct__16CZProjectileListFi; not written)
-0x003CD810 0x220 func_003CD810  # OVL1
-0x003CDA30 0x137C func_003CDA30  # OVL1
-0x003CEDB0 0x3DC func_003CEDB0  # OVL1
+0x003CD810 0x220 Read__10ZWepReaderFPCc  # OVL1; by hand (the weapons lane, round 22: SOCOM 1's ZWepReader::Read in its place after CZProjectileList, SOCOM II's reading a file -- zrdr_read, WEAPON_GLOBAL's three SoundDistance reals to CZWeapon::SetSoundDistance(0..2) scaled by CWorld::m_scale, each ZAMMO entry to ReadAmmo 0x3CEDB0 and each ZWEAPON entry to 0x3CDA30 with this in a0, zrdr_free); zwep_weapon.cpp
+0x003CDA30 0x137C ReadWeapon__10ZWepReaderFP5_zrdr  # OVL1; by hand (the weapons lane, round 22: ZWepReader::Read 0x3CD810 hands it each element of the rdr's ZWEAPON array with this in a0, as ReadAmmo the ZAMMO ones; not written; the name ours)
+0x003CEDB0 0x3DC ReadAmmo__10ZWepReaderFP5_zrdr  # OVL1; by hand (the weapons lane, round 22: ZWepReader::Read 0x3CD810 hands it each element of the rdr's AMMO array with this in a0 -- a new CZAmmo (0x40), InternalName/DisplayName/Description to SetName/SetDescription/SetLongDescription, ID, ImpactDamage, HitAnimName, Stun, Piercing, Explosion_*, NumProjectilesFired, Blowback_*, ProximityDistance, AccelerationFactor, the Volitile and IgnoreExplosionDI tags, then CZAmmo::m_ammolist.AddAmmo; the name ours); zwep_weapon.cpp
 0x003CF190 0x44 __dt__10ZWepReaderFv  # OVL1; s1:align
-0x003CF1E0 0x8 func_003CF1E0  # OVL1
+0x003CF1E0 0x8 __ct__10ZWepReaderFv  # OVL1; by hand (the weapons lane, round 22: an empty class's constructor handing back this, right after ~ZWepReader 0x3CF190 at the end of the reader's unit; zwep_reader.cpp defines both)
 0x003CF1F0 0x90C GetEnableValve__8CZWeaponF10EQUIP_ITEM  # OVL1; by hand (the weapons lane, round 22: a switch over items, each returning CValve::GetByName("Enable_<item>") -- Enable_LAW, Enable_M16 ...; none for the rest; zanim_menu.cpp's slot test reads the valve's flags at +4, as the engine core's round 7 found; the name ours); zwep_weapon.cpp
 0x003CFB00 0x8 func_003CFB00  # OVL1
 0x003CFB10 0x8 func_003CFB10  # OVL1
@@ -8299,7 +8299,7 @@
 0x003D0350 0x64 Close__8CZWeaponFv  # OVL1; s1:align
 0x003D03C0 0xC OpenDecals__8CZWeaponFv  # OVL1; by hand (the wep lane, round 18: CMission::Open calls it where SOCOM 1's calls CZWeapon::OpenDecals -- the game states' round 24 lead, verified: a tail call passing "decals.rdr" (0x3FD318) to 0x3D0870, which never reads it); zwep_weapon.cpp
 0x003D03D0 0x44 Open__8CZWeaponFv  # OVL1; s1:calls
-0x003D0420 0x4C func_003D0420  # OVL1
+0x003D0420 0x4C Init__8CZWeaponFv  # OVL1; by hand (the weapons lane, round 22: SOCOM 1's CZWeapon::Init by its calls -- CFlyoutMachine::Init(100) on m_flyout_machine and a stack ZWepReader's constructor, Read and destructor(-1); SOCOM II's reads zweapon.rdr by name, no archive, and returns true; m2c's draft was byte-exact); zwep_weapon.cpp
 0x003D0470 0x1C0 ReadDecalEntry__10CZDecalSetFP5_zrdr  # OVL1; s1:calls by hand (the wep lane: ReadDecalSet calls it per entry as SOCOM 1's calls ReadDecalEntry__10CZDecalSetFP5_zrdr -- SETNAME, PERMENANT, MATERIALNAME/TEXTURENAME/MIN_SIZE/MAX_SIZE); zwep_weapon.cpp
 0x003D0630 0x238 ReadDecalSet__10CZDecalSetFP5_zrdr  # OVL1; s1:calls by hand (the wep lane: OpenDecals calls it on each DECAL_SETS item as SOCOM 1's calls ReadDecalSet__10CZDecalSetFP5_zrdr -- the new set built inline, ReadDecalEntry per entry, pushed onto m_decalsets); zwep_weapon.cpp
 0x003D0870 0xB8 OpenDecals__8CZWeaponFPCc  # OVL1; s1:calls; by hand (the wep lane, round 18: SOCOM 1's OpenDecals body -- the DECAL_SETS walk over the rdr global 0x437D00 -- taking the file name 0x3D03C0 passes and never reading it; the overload's name ours); zwep_weapon.cpp

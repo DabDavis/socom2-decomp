@@ -919,7 +919,20 @@ void CZDecalSet::ReadDecalEntry(_zrdr *entry)
         CWorld::m_world->AddTextureAssetDecals(tex);
 }
 
-/* (the image's 0x3D0420 and Open, 0x3D03D0, sit here: generated drafts still) */
+/* the weapons made ready: the flyout machine's hundred and zweapon.rdr read through a reader on
+ * the stack -- its constructor and destructor called out of line, zwep_reader.cpp's (SOCOM 1's
+ * Init, 0x3D0420: it opened an archive for its reader, and set the machine up last) */
+bool CZWeapon::Init()
+{
+    m_flyout_machine.Init(100);
+
+    ZWepReader reader;
+
+    reader.Read("zweapon.rdr");
+    return true;
+}
+
+/* (the image's Open, 0x3D03D0, sits here: a generated draft still) */
 
 /* the decal sets (SOCOM 1's OpenDecals, CMission::Open's call): the overload above, given the file's
  * name, called out of line (a tail call) */
