@@ -65,8 +65,8 @@ _DIRECTIVE = re.compile(r"sc:\s*(.*?)\s*(?:\*/|$)")
 SUFFIXES = (".c", ".cpp", ".s")   # .s: an assembler unit (scdiff.compile_cmd; README "The GCC front")
 
 
-def sources() -> list[Path]:
-    return sorted(p for p in SRC.rglob("*") if p.suffix in SUFFIXES and p.is_file())
+def sources(root: Path = SRC) -> list[Path]:
+    return sorted(p for p in root.rglob("*") if p.suffix in SUFFIXES and p.is_file())
 
 
 def object_path(src: Path, build: Path = BUILD, root: Path = SRC) -> Path:
@@ -234,7 +234,10 @@ def unit_span(obj: Path, st, overlay: str | None = None) -> tuple[int, int] | No
     return (lo, hi) if lo is not None else None
 
 
-def main(argv=None) -> int:
+def main(argv=None, root: Path = SRC) -> int:
+    """`root`: the tree to build and score, src/ unless a caller names another (the canary builds a
+    scratch copy of the hand-written tree with a fixture draft in it); the map, MATCHED.txt and
+    ABSENT.txt are always the real ones."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("-f", "--filter", help="regex over symbol names")
     ap.add_argument("--wrong", action="store_true", help="print the diff of every mismatch")
@@ -257,8 +260,8 @@ def main(argv=None) -> int:
     if clash:
         raise SystemExit(f"{ABSENT.name} lists names symbols.txt maps: {clash}")
     with ThreadPoolExecutor(a.jobs) as ex:
-        units = [p for p in sources() if not frx or frx.search(str(p.relative_to(SRC)))]
-        built = list(ex.map(lambda p: build_one(p, a.build_dir.resolve()), units))
+        units = [p for p in sources(root) if not frx or frx.search(str(p.relative_to(root)))]
+        built = list(ex.map(lambda p: build_one(p, a.build_dir.resolve(), root), units))
 
     rows, matched, failed_builds = [], [], 0      # matched: (name, address) pairs
     scored_at: set[int] = set()                  # the addresses scored (match or WRONG)
@@ -271,14 +274,14 @@ def main(argv=None) -> int:
     # _malloc) -- is one overlay's, so it supersedes as a copy does, only where it matched
     several = lambda name: len(st.overlays_of(name)) > 1
     for src, obj, err in built:
-        if obj is not None and "auto" not in src.relative_to(SRC).parts:
+        if obj is not None and "auto" not in src.relative_to(root).parts:
             elf = E.Elf.read(obj)
             hand_names.update(f.name for f in elf.functions() if not is_copy(elf, f) and not several(f.name))
     # hand-written source supersedes the generated tier where it defines a function, or emits a
     # byte-exact inline copy of it -- a copy that misses does not: the linker keeps a strong
     # definition over every unit's copy, so the draft's match stands (zsnd_csndsequence.cpp's
     # ~__vector_deleter, 0x34A5A0). Hand-written units are scored first to know which copies match.
-    is_auto_src = lambda src: "auto" in src.relative_to(SRC).parts
+    is_auto_src = lambda src: "auto" in src.relative_to(root).parts
     hand_copies: set[str] = set()
     for src, obj, err in sorted(built, key=lambda b: is_auto_src(b[0])):
         if obj is None:
