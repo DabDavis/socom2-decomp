@@ -1742,6 +1742,8 @@
 0x00213590 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv
 0x002135A0 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv
 0x00213610 HideTimer__14BitmapReticuleFv
+0x00213680 TimerProgressTick__14BitmapReticuleFf
+0x00213840 ReloadTimerTick__14BitmapReticuleFfP10CZSealBody
 0x00215180 OnPauseTest__14BitmapReticuleFv
 0x002151A0 Off__14BitmapReticuleFv
 0x002151F0 On__14BitmapReticuleFv
@@ -1992,6 +1994,7 @@
 0x00232950 Clear__10CTCMSoundsFv
 0x00232970 Load__10CTCMSoundsFv
 0x002329D0 __ct__10CTCMSoundsFv
+0x002329F0 tcmAddKindItems__FUc
 0x002351A0 TalkTick__4CTCMFf
 0x00235300 Close__4CTCMFb
 0x00235440 Open__4CTCMFv
@@ -2005,7 +2008,7 @@
 0x00236AA0 GetColumn__4CTCMFUi
 0x00236B20 GetSelected__4CTCMFv
 0x00236CA0 SetCache__4CTCMFP9CTCMCache
-0x00237000 tcmAddItem__FPCciPCcPCcPCci
+0x00237000 tcmAddItem__FPCcPCcPCcPCcPCcb
 0x002370D0 Reset__4CTCMFv
 0x002371A0 SetupItemBars__4CTCMFv
 0x00237310 ClearItems__4CTCMFv
@@ -6183,6 +6186,8 @@
 0x00372870 GetZAnimCmdType__10CSliderBarFPCc
 0x00373640 GetZAnimCmdType__10CUIListBoxFPCc
 0x00374A50 func_00374A50
+0x00374B50 GetItemText__10CUIListBoxFi
+0x00375C70 RemoveAllItems__10CUIListBoxFv
 0x00376420 SetNormal__10CUIListBoxFv
 0x00376530 func_00376530
 0x00376690 LoadSpec__14CHandlerButtonFRC18CHandlerButtonSpec
