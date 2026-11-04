@@ -1965,6 +1965,22 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 28** (a new fts_ovl2statics.cpp: the OVL1 unit of OVL2 classes' statics; ReOpen):
+  - fts_ovl2statics.cpp (0x2CD670-0x2CE7FF, the file name ours) has no functions of its own: about sixty statics of OVL2
+    classes defined in its initialiser's order, with SOCOM 1's names, and a tail emitting the destructors it registers in
+    reverse order of the statics -- __sinit_fts_ovl2statics.cpp 0x400870 (0x134C, 592 relocations) byte-exact once OVL2's
+    0x5D9540 was named ~CMallocBlocks at integration; ~vector<CModel *> 0x2CD710 survives the link only because
+    __sinit_zwep_projectile.cpp registers it;
+  - a class vector over the 2-byte pod needs `__vector_imp<AnimType, A, true>` and `vector<AnimType>` partial
+    specialisations in the unit to mangle as `vector<8AnimType,...>`; an array static's `__arraydtor$N` resolves by its code
+    now (GCC 24a); a word the initialiser stores through a member list's address after that list's constructor belongs to
+    the list's own class (CDiPool's free list: a class of its own -- the kit's seal_dipool.h models it differently: queued);
+  - members of a class object at a constant offset are folded into `this+offset` at every access, even through an inline
+    member; a separate pointer local declared at each use keeps each one in a saved register (CMission::ReOpen_Load
+    0x2ABD40's queues), one pointer reassigned three times numbers the registers the other way round;
+  - CMission::ReOpen_Load and ReOpen_Unload1 0x2AC0E0 byte-exact; 0x3249D0 is SOCOM 1's Particle::ReserveNodePool (named at
+    integration), 0x5A3B50 SOCOM 1's CZSealBody::Uninit_ReInitDatabaseHandles (the SEALs');
+  - open: CNodeAction::Close (level 6), UnInitialize (the valve inline's temporaries).
 - **Tells from the kit and AI states, round 25** (SOCOM 1's request pool CDiPool, the target ticks, the Cur ammo wrappers):
   - when every small piece of a walk (begin, end, !=, *, the assignment, postfix ++) is a separate call, the walk is an
     inline member inlined only one level: write it inside an inline and call that -- SOCOM 1's CDiPool in a new
