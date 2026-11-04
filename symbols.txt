@@ -7741,8 +7741,8 @@
 0x003A9A30 0x44 OnMissionStart__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's slot +0x4C -- a "Turret" compass anchor, type 11); veh_turret.cpp
 0x003A9A80 0x41C func_003A9A80  # OVL1
 0x003A9EA0 0x110 SetThermal__7CTurretFPQ23zdb5CNodeb  # OVL1; by hand (the wep lane: finds "scope" and "thermal_scope" under the node once, kept at 0x290/0x294, and shows one or the other; the name ours); veh_turret.cpp
-0x003A9FB0 0x68 func_003A9FB0  # OVL1
-0x003AA020 0x80 func_003AA020  # OVL1
+0x003A9FB0 0x68 SetOpacity__7CTurretFf  # OVL1; by hand (the wep lane, round 21: veh_turret.cpp -- the six nodes' CNode::m_Opacity (+0x9C) set, thermal scope, scope, yaw, pitch, fire-point node, root; the SEAL's UpdateTurretScope passes its value; new in SOCOM II, the name ours)
+0x003AA020 0x80 SetVisible__7CTurretFb  # OVL1; by hand (the wep lane, round 21: veh_turret.cpp -- SetOpacity(visible ? 1 : 0) with SetOpacity inlined; IncrZoomState hides the turret for its thermal view, two OVL2 zoom-state functions (0x545EE0, 0x5463C0) call it too; new in SOCOM II, the name ours)
 0x003AA0A0 0x104 Create__7CTurretFi  # OVL1; by hand (the wep lane: a turret for NodeUniverse's element at the index when a definition prefix-matches its name, under the unit's turret limit -- ScanForTurretDefinitionHookups' creation for one node; the name ours); veh_turret.cpp
 0x003AA1B0 0xB8 __dt__7CTurretFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003AA270 0x70 __dt__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>Fv  # OVL1; by hand (the wep lane: ~CTurret's FreeVector temporary destroyed with -1, three this-tests); veh_turret.cpp
@@ -8214,10 +8214,10 @@
 0x003C7600 0x4D0 GetDamage__12CZProjectileFPC6CPnt3Df  # OVL1; s1:order by hand (the wep lane: SOCOM 1's GetDamage(const CPnt3D *, float), 0x498 there, after ResolveDamage and the four-argument GetDamage; OnWeaponHit calls it on the other projectile with (&m_frameendpos, 1.0f))
 0x003C7AD0 0x8 SetInstance__12CZProjectileFPQ23zdb5CNode  # OVL1; s1:order by hand (the wep lane: SOCOM 1's SetInstance right before GetInstance -- the node at 0x20)
 0x003C7AE0 0x8 GetInstance__12CZProjectileFv  # OVL1; s1:calls by hand (SOCOM 1's GetNumRemoteExplosives calls GetInstance at the same place SOCOM II's calls this; it returns the word at 0x20, SOCOM 1's m_instance 0x18 moved 8 on)
-0x003C7AF0 0x258 func_003C7AF0  # OVL1
+0x003C7AF0 0x258 HandleDetonateExplosion__12CZProjectileFv  # OVL1; s1:order by hand (the wep lane, round 21: zwep_projectile.cpp -- SOCOM 1's HandleDetonateExplosion 0x317CD0 in its place after GetInstance, the ground mark by GetAltitude/GetRegion/AddNewMark the same; SOCOM II then sets the detonated state, zeroes the hit index and reorders the hits (instanced nodes' first, swapped through memcpy) instead of calling each node extension's OnWeaponHit; HandleDelayedDetonate calls it, as SOCOM 1's does)
 0x003C7D50 0x78 ForgetHitNode__12CZProjectileFPQ23zdb5CNode  # OVL1; by hand (the wep lane: a detonated projectile's (state 5) intersection walked, every hit whose node (0x1C) is the argument cleared; CZProjectileList's 0x3CCD90 calls it twice -- new in SOCOM II, the name ours)
 0x003C7DD0 0x110 HandleNextHit__12CZProjectileFv  # OVL1; by hand (the wep lane: with both intersections, m_di's hit at the 7-bit index (bits 10-16 of the word at 4) checked through 0x3C80E0 against m_di2, handed to its node's extension's OnWeaponHit (an instance's to its first child), the index moved on; CZProjectile::PostTick and PlacedExplosive::PostTick call it -- new in SOCOM II, the name ours)
-0x003C7EE0 0x1FC func_003C7EE0  # OVL1
+0x003C7EE0 0x1FC RegisterNextHit__12CZProjectileFv  # OVL1; by hand (the wep lane, round 21: zwep_projectile.cpp -- the detonation's next hit on a node extension no earlier hit reached (the 7-bit hit index at +4 stepped), a delayed ray from m_framestartpos to its node's bbox centre through the direct-fire table's second intersection; called by both PreTicks (CZProjectile 0x3CA5A0 +0x100, PlacedExplosive 0x3C51F0 +0xCC); new in SOCOM II, the name ours)
 0x003C80E0 0x204 CheckHit__12CZProjectileFPQ23zdb11DiIntersectPQ23zdb15IntersectStruct  # OVL1; by hand (the wep lane: HandleNextHit calls it with m_di2 and m_di's next hit and tests the bool -- new in SOCOM II, the name ours)
 0x003C82F0 0x20 SetFlag9__12CZProjectileFb  # OVL1; by hand (the wep lane: bit 9 of the word at 4 from a bool -- new in SOCOM II, the name ours)
 0x003C8310 0x14 GetFlag9__12CZProjectileFv  # OVL1; by hand (the wep lane: bit 9 of the word at 4 as a bool -- new in SOCOM II, the name ours)
@@ -8233,7 +8233,7 @@
 0x003CA5A0 0x63C PreTick__12CZProjectileFf  # OVL1; s1:vtable by hand (the wep lane: slot +0x08 of __vt__12CZProjectile, 0x4083D0, where SOCOM 1's has PreTick__12CZProjectileFf; PostTick, the next slot, already carries its name)
 0x003CABE0 0x300 SetModelOrientation__12CZProjectileFbPC6CPnt3D  # OVL1; s1:order by hand (the wep lane: SOCOM 1's SetModelOrientation, 0x300 bytes in both builds, after PreTick; UpdateGrenadePosition calls it as SOCOM 1's UpdateGrenade does)
 0x003CAEE0 0x80 SetVelW__12CZProjectileFPC6CPnt3D  # OVL1; s1:calls (called where SOCOM 1's calls it; 0x80 against SOCOM 1's 0x7C) -- the SEAL lane
-0x003CAF60 0x234 func_003CAF60  # OVL1
+0x003CAF60 0x234 PreFireProjectile__12CZProjectileFv  # OVL1; s1:calls by hand (the wep lane, round 21: zwep_projectile.cpp -- SOCOM 1's PreFireProjectile 0x319F90 as its middle: the shot type's direct- or indirect-fire DI from the projectile list, then the flags cleared; SOCOM II adds a launcher's fire anim ahead (m_allowFireAnimations, SOCOM 1's static) and a volatile round's DI copy after; 0x3CB1A0 calls it)
 0x003CB1A0 0x454 func_003CB1A0  # OVL1
 0x003CB600 0x1E0 Init__12CZProjectileFv  # OVL1; by hand (the wep lane: CZProjectile's constructor calls it between the owner's store and the extension's SetProjectile -- SOCOM 1's constructor's inline stores (rotation 0, time 9999999, the flags, handles -1, flyout index 1), with SOCOM II's members; the name ours)
 0x003CB7E0 0xC0 __dt__12CZProjectileFv  # OVL1; s1:align, checked by hand (stores __vt__12CZProjectile, cleans up; PlacedExplosive's destructor calls it as its base's)
@@ -8353,7 +8353,7 @@
 0x003D2290 0x8 SetZoomedFireAnim__8CZWeaponFP6CZAnim  # OVL1; s1:calls by hand (the wep lane, round 17: takes "%s_zoom"'s animation, as SOCOM 1's; stores 0x88, which GetFireAnim(true) returns)
 0x003D22A0 0x8 func_003D22A0  # OVL1
 0x003D22B0 0x1C GetFireAnim__8CZWeaponFb  # OVL1; the integrator 2026-11-04, by the weapons lane round 15: its body is zoomed ? m_88 : m_84, and SOCOM 1's Fire calls GetFireAnim at the same site (CTurret::Fire 0x3A8D20 calls it)
-0x003D22D0 0x8 func_003D22D0  # OVL1
+0x003D22D0 0x8 GetDefaultSpecialAnim__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, round 21: zwep_weapon.cpp -- SOCOM 1's GetDefaultSpecialAnim 0x31E760 in its place between GetFireAnim and GetHitAnim, the same 8-byte accessor of m_defaultspecialanim (0x90 here, SOCOM 1's 0x70); HandleDelayedDetonate calls it where SOCOM 1's does)
 0x003D22E0 0x2C GetHitAnim__8CZWeaponFi  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim[i], 0 unless i is below CMaterialExArray's list size)
 0x003D2310 0x8 GetFireAnimName__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons looks its result up for the fire, "%s_zoom" and "%s_zoom_TT" animations, as SOCOM 1's; m_fireanimname, 0xAC)
 0x003D2320 0x2C GetSpecialMaterialAnim__8CZWeaponFi  # OVL1; s1:order by hand (the same over m_specialmaterialanim, 0x94)

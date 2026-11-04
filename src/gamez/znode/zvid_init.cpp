@@ -1,6 +1,9 @@
 /* zvid_init.cpp -- the video set-up: CVideo and the zVid_ calls (SOCOM 1's zvid_init.cpp, by its
- * static initialiser): OVL1 0x3AFBE0-..., after CTurret's unit, as SOCOM 1's 0x307790-0x308F3F
- * follows CMemCard. Defined in reverse of their image order (-inline deferred). */
+ * static initialiser): OVL1 0x3AFBE0-0x3B2CA3, after CTurret's unit, as SOCOM 1's 0x307790-0x308F3F
+ * follows CMemCard. Defined in reverse of their image order (-inline deferred). The unit's last
+ * function is zVid_Assert 0x3B2C80 (SOCOM 1's zvid_init.cpp holds it too, 0x307A40, and so does
+ * MAIN's copy of the unit, src/main/zvid_init.cpp): it was src/gamez/zvid/zvid.cpp until the weapons'
+ * round 21, a file holding nothing else. */
 
 #include <eetypes.h>
 #include <iostream>
@@ -138,6 +141,18 @@ extern CValve *lodLevel;
 
 /* an address through the EE's uncached mirror */
 #define UNCACHED(p) ((unsigned int)(p) | 0x20000000)
+
+/* the machine's reset (OVL1 0x22ED10, st_reboot.cpp's) */
+void RebootAfterError();
+
+/* a failed check stops the machine. SOCOM 1's prints the file and line in the colour given first;
+ * SOCOM II's callers pass neither, and it only resets (the unit's last function: nothing here
+ * calls it, the allocators' check in zsys_memory.cpp does) */
+void zVid_Assert(bool ok, unsigned int color, char *file, int line)
+{
+    if (!ok)
+        RebootAfterError();
+}
 
 /* the last sixteen frames' times, a ring, and the newest's place in it (new in SOCOM II, not
  * named) */
