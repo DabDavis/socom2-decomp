@@ -107,6 +107,20 @@ public:
             dir = m_start[i].m_dir;
         return dir;
     }
+    /* both at once, false if none (the name is ours: GetStartMatrix inlines it -- the test's own
+     * `sltu` is the false result, the `daddiu 1` the true one, and the caller's bool is numbered at
+     * the join; SOCOM 1's GetStartMatrix has the same shape) */
+    bool Get(unsigned int i, const char *&name, int &dir) const
+    {
+        bool found = i < m_count;
+
+        if (found) {
+            name = m_start[i].m_name;
+            dir = m_start[i].m_dir;
+            found = true;
+        }
+        return found;
+    }
 };
 
 /* one character a mission places (SOCOM 1's DWARF, 0x10C bytes; SOCOM II's is 0x160: a word at
