@@ -2060,6 +2060,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 36** (seal_tasks.cpp's set-mode, region, range and event tasks):
+  - an enum local tested `== 0` keeps the target's extra andi before the branch, `!mode` tests the register directly
+    (CTSetMode::Tick 0x5D2480 / Parse 0x5D2630: SOCOM II's mode the low 16 bits of a flags word, "always" and
+    "respawn_only" bits 16 and 17); inside an inline `Count() > i` folds to beqz for item 0 where `i < Count()` keeps an
+    sltu;
+  - a float default the target loads from data is a static, not a literal (MW builds a literal in registers:
+    lui/ori/mtc1); a local declared before the TASK_SEAL find and assigned after it takes the counter's register and
+    leaves the block in s1, declared after the find the two swap; a bool preset to true and cleared under two tests the
+    target computes as values keeps the inner test a branch with `else byId = byId;` (CTRange::Tick 0x5CF480 through
+    TASK_ENT::Get: by name until found, then by id unless its bit 13 is set; CTRegion::Parse 0x5CF290; CTEvent::Tick
+    0x5DCE70);
+  - a callee whose inline tree is taller than five gets only its own body inlined, everything it calls staying a call --
+    AnimSet::Find's caller 0x5E3940 wants a tree six high (a probe with GetName five levels deep is byte-exact): the tall
+    chain must be c_str (two levels today) or the iterator's constructor or assignment (the MSL's question).
 - **Tells from the HUD, round 43** (GetBlipID, the line map's Tick and TickRegions):
   - `x = c ? k * x : x;` multiplies constant-first and leaves the join unpadded; `if (c) x = k * x;`, `x *= k` and `x = x *
     k` all multiply variable-first and pad the join (CZLineMap::TickRegions 0x20DF70, SOCOM 1's); a static reference bound
