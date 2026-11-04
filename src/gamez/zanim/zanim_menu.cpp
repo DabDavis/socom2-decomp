@@ -163,6 +163,8 @@ public:
     static bool IsPrimary(EQUIP_ITEM item);            /* 0x3D1D10 */
     static bool IsSecondary(EQUIP_ITEM item);          /* 0x3D1CE0 */
     static EQUIP_ITEM GetIDType(EQUIP_ITEM item);      /* 0x3D1A60: the item's class */
+    static CValve *GetEnableValve(EQUIP_ITEM item);    /* 0x3CF1F0: "Enable_<item>", none for the rest */
+    static int GetMenuValue(EQUIP_ITEM item);          /* 0x3D3230: the value UiWeapon holds */
 };
 class CZFTSWeapon {
 public:
@@ -287,13 +289,9 @@ struct CHAR_SLOT_PICKS {
 };
 extern CHAR_SLOT_PICKS data_003DD060[];
 
-/* a weapon's definition as the slot test reads it: its flags at 4 (0x3CF1F0's result, zwep_weapon.cpp's
- * lookup by item -- not named yet; the stand-in type ours) */
-struct CItemDefFlags {
-    int _0;
-    unsigned short m_flags;   // 0x4: 0x30 an item that keeps its slot
-};
-extern "C" CItemDefFlags *func_003CF1F0(EQUIP_ITEM item);
+/* (the slot tests read an item's menu valve, CZWeapon::GetEnableValve: a value with 0x30 set keeps
+ * the item in its slot -- the weapons' round 22 named 0x3CF1F0; read here as `lhu 4(v)`, CValve's
+ * 16-bit value) */
 
 /* the new choosers' slot helpers (SOCOM II's, the names ours), each called out of line: pinned. They
  * are defined in the reverse of their image order (IsSlotLocked 0x281950, FindItemSlot 0x282EB0,
@@ -599,12 +597,12 @@ bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item)
 
     if (slot < weapons->size())
         cur = (*weapons)[slot].m_wepId;
-    CItemDefFlags *def = func_003CF1F0(cur);
+    CValve *def = CZWeapon::GetEnableValve(cur);
 
     if (cur == item)
         return false;
     if (cur == 141 || cur == 185 || (cur == 186 && FindItemSlot(it, cur, slot) == -1) ||
-        cur == EQUIP_END || (def && (def->m_flags & 0x30)))
+        cur == EQUIP_END || (def && (def->m_value & 0x30)))
         return true;
     return false;
 }
@@ -615,18 +613,16 @@ bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item)
  * them (eight on the network, else four) for the walk, then put back (SOCOM II's, 0x2815D0; the name
  * ours, after the three DoAllSelCharsHaveLockedEquip commands that jump to it). Its lock test is
  * IsSlotLocked's in another order, written out; a vector of items is made and never used (the
- * have-equipment test's, 0x281160, parses the command's argument into one) */
-/* a valve's value read through a reference (ours): read so, MW keeps it apart from SetValue's own
- * read of the same field -- the target reads m_value twice for the saved selection and the lock
- * count, where a plain read merges with SetValue's */
-inline unsigned int ValveValue(const CValve &v) { return v.m_value; }
-
+ * have-equipment test's, 0x281160, parses the command's argument into one -- a one-byte pod: the class
+ * vector's teardown is 12 bytes shorter). The valve's value is read through CValve's const GetValue:
+ * read so, MW keeps it apart from SetValue's own read of the same field -- the target reads m_value
+ * twice for the saved selection and the lock count, where a plain read merges with SetValue's */
 bool SelCharsHaveLockedEquip(int equip, C2DAnimCmdHdr *hdr)
 {
     int slot = equip + 2;
     std::vector<char> items;
     CValve *set = CValve::GetByName("UiCharSet");
-    unsigned int mask = ValveValue(*set);
+    unsigned int mask = set->GetValue();
 
     if (theNetwork.m_bNetwork)
         set->SetValue(255);
@@ -645,11 +641,11 @@ bool SelCharsHaveLockedEquip(int equip, C2DAnimCmdHdr *hdr)
 
         if (slot < weapons->size())
             cur = (*weapons)[slot].m_wepId;
-        CItemDefFlags *def = func_003CF1F0(cur);
+        CValve *def = CZWeapon::GetEnableValve(cur);
 
         if ((cur == 186 && FindItemSlot(c, cur, slot) == -1) || cur == 185 || cur == 141 ||
-            cur == EQUIP_END || (def && (def->m_flags & 0x30))) {
-            unsigned int v = ValveValue(*locked);
+            cur == EQUIP_END || (def && (def->m_value & 0x30))) {
+            unsigned int v = locked->GetValue();
 
             locked->SetValue(v + bit);
         }
@@ -710,9 +706,6 @@ bool CanTakeItem(EQUIP_ITEM item, const CSelectedCharsItr &it)
 
 }
 
-/* zwep_weapon.cpp's 0x3D3230 (not named yet): an item's weapon-menu value, what UiWeapon holds */
-extern "C" int func_003D3230(EQUIP_ITEM item);
-
 /* "CanCharactersSelectUIWeapon" (SOCOM II's command 0xCF, the UI command table's record at 0x3DE1A0;
  * the name ours, after the table's): the item whose menu value UiWeapon holds -- the first of the
  * items below EQUIP_END to give it -- and whether every selected character may take it. The value
@@ -729,7 +722,7 @@ bool UICanCharactersSelectUIWeapon(C2DAnimCmdHdr *hdr, float *dT)
     bool found;
 
     for (found = false, i = 0; i < 254 && !found; i++) {
-        int value = func_003D3230((EQUIP_ITEM)i);
+        int value = CZWeapon::GetMenuValue((EQUIP_ITEM)i);
 
         if (value == v->m_value)
             found = true;

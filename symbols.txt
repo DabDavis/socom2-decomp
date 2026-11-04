@@ -2708,15 +2708,15 @@
 0x002578F0 0x294 _countKeys__FPQ23zar4CKey  # OVL1; s1:calls by hand, the core lane round 7 (SOCOM 1's _countKeys 0x1D8480: WriteDirectory 0x257590 calls it on m_root and stores the count at +0x3C, the tail's key count, where SOCOM 1's WriteDirectory inlines it into the same slot; recursive as SOCOM 1's -- it self-inlines three levels, the deeper ones calling vector<CKey *>'s iterator pieces 0x257B90-0x257CB0 out of line)
 0x00257B90 0x8 func_00257B90  # OVL1
 0x00257BA0 0x14 func_00257BA0  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
-0x00257BC0 0x14 func_00257BC0  # OVL1
-0x00257BE0 0x14 func_00257BE0  # OVL1
-0x00257C00 0x10 func_00257C00  # OVL1; tu: char_type.cpp~ (1.0 beta)
-0x00257C10 0x18 func_00257C10  # OVL1
-0x00257C30 0x18 func_00257C30  # OVL1
-0x00257C50 0x14 func_00257C50  # OVL1
-0x00257C70 0x8 func_00257C70  # OVL1
-0x00257C80 0xC func_00257C80  # OVL1
-0x00257C90 0xC func_00257C90  # OVL1
+0x00257BC0 0x14 __eq__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorCFRCQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iterator  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator ==, the two words compared: zar_main.cpp emits its out-of-line pieces right after _countKeys in the image's order -- ==, prefix ++, copy, !=, end, postfix ++, *, begin, __iter -- the target holding three more between them, 0x257B90/0x257BA0/0x257CA0, include/vector's open shapes)
+0x00257BE0 0x14 __pp__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorFv  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator prefix ++, a 4-byte step returning this: zar_main.cpp's pieces after _countKeys in the image's order)
+0x00257C00 0x10 __ct__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorFRCQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iterator  # OVL1; tu: char_type.cpp~ (1.0 beta); by hand, the core lane round 10 (vector<CKey *>'s iterator copy constructor: zar_main.cpp's pieces after _countKeys in the image's order; 0x257CA0 has the same words, another piece)
+0x00257C10 0x18 __ne__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorCFRCQ33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iterator  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator != as !(==): zar_main.cpp's pieces after _countKeys in the image's order; the world's subtitle loader 0x34D190 walks a ZAR's keys with them)
+0x00257C30 0x18 end__Q23std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>Fv  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s end(), data + size*4 into the returned iterator: zar_main.cpp's pieces after _countKeys in the image's order)
+0x00257C50 0x14 __pp__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorFi  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator postfix ++, the old pointer returned: zar_main.cpp's pieces after _countKeys in the image's order; the subtitle loader's 0x34D5D0/0x34D740 call it)
+0x00257C70 0x8 __ml__Q33std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>8iteratorCFv  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s iterator *, the element's address: zar_main.cpp's pieces after _countKeys in the image's order, between postfix ++ and begin; 0x257B90 has the same words, another piece)
+0x00257C80 0xC begin__Q23std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>Fv  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s begin(), the data pointer into the returned iterator: zar_main.cpp's pieces after _countKeys in the image's order)
+0x00257C90 0xC __iter__Q23std60__vector_imp<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>,1>FRCPUi  # OVL1; by hand, the core lane round 10 (vector<CKey *>'s __iter(unsigned int *const &), the raw pointer read through the reference: zar_main.cpp's pieces after _countKeys in the image's order)
 0x00257CA0 0x10 func_00257CA0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257CB0 0x8 func_00257CB0  # OVL1
 0x00257CC0 0x1F8 fixupKey__Q23zar4CKeyFP7CSTablePv  # OVL1; s1:calls by hand, the core lane round 7 (SOCOM 1's CKey::fixupKey 0x1D8600: WriteDirectory 0x257590 hands it to CSTable::Pack 0x39F6F0 with m_root, as SOCOM 1's WriteDirectory hands 0x1D8600 to Pack; recursive, calling itself at 0x257DEC)
@@ -4608,10 +4608,10 @@
 0x002DD030 0xF4 SetEdgeVecsAndNorm__Q23zdb3CDIFv  # OVL1; s1:calls
 0x002DD130 0x1C LoadPlaneVU0__Q23zdb3CDIFv  # OVL1; ours, the core lane round 4 (SOCOM II's: the DI's points (0x10) loaded into vf4-vf6, three quadwords, and vcallms 0x70; the grid's node walks 0x2D2890 and 0x2D3030 call it with the DI)
 0x002DD150 0xC0 GetIntersect__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002DD210 0x9C func_002DD210  # OVL1
+0x002DD210 0x9C LoadTipAndTail__Q23zdb11DiIntersectFv  # OVL1; s1:order by hand, the core lane round 10 (SOCOM 1's DiIntersect::LoadTipAndTail 0x21DAC0, between CDIPoly::GetIntersect and GetEdgeIntersectsY in both builds: m_MTail and m_MTip made CPnt4Ds with w 1, the tail's w then CDI::m_backface_mask's bits; SOCOM 1 wrote them to VU0's data memory, SOCOM II lqc2s them into vf1/vf2)
 0x002DD2B0 0x21C GetEdgeIntersectsY__Q23zdb3CDIFP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePointsY calls it where SOCOM 1's calls GetEdgeIntersectsY, after LoadTipAndTail as there)
 0x002DD4D0 0x1BC GetEdgeIntersects__Q23zdb3CDIFP6CPnt3DP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePoints calls it where SOCOM 1's calls GetEdgeIntersects, after GetEdgeIntersectsY as there)
-0x002DD690 0x244 func_002DD690  # OVL1
+0x002DD690 0x244 intersect2d__FPC6CPnt3DPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand, the core lane round 10 (GetEdgeIntersects 0x2DD4D0 calls it where SOCOM 1's GetEdgeIntersects calls intersect2d 0x21DFB0, with (point, previous vertex, vertex, crossing); the body SOCOM 1's: two CPnt3D::Sub calls, the -1e-5 tolerance 0xB727C5AC, 0x244 against 0x248)
 0x002DD8E0 0x1D0 GetAltitude__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DDAB0 0x78 __dt__Q23zdb7CDIBBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DDB30 0x38 __ct__Q23zdb7CDIBBoxFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site; 0x38 in both)
