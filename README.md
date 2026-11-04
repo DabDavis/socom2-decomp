@@ -6668,6 +6668,49 @@ func_00614290 over their drafts; 77 of 87), `medius/rt_udp.c` (+1, 0x63E230 clos
 bytes; `src/lib/medius` 872 -> 912 of 970), 21 superseding matched drafts; 4 rows named (RSAEncryptBlock,
 RSADecryptBlock, RSAEncrypt, RSADecrypt: `s1:order`). No tool changed.
 
+**Round 18b: the server key is the title's -O1, codec.c and RSA.c whole, LargeInt's C by SOCOM 1's calls.**
+
+- **The server key object is built at -O1, as kmsoftware.c is** (the title's glue, not SCEA's): 0x64F4E0,
+  open since round 15b on "registers only" through eight return shapes, is byte-exact unchanged at
+  `-O1 -G0`. At -O2 the first scheduling pass hoists the return's `v0 = 0` above the block move, so v0 is
+  live through it and the key's address and the move's scratches each move up a register. A register-only
+  open in a glue object: try -O1 before shapes.
+- **RSA.c starts at 0x62B168, and there are two key-pair generators**: SOCOM 1's RSAGenerateKeyPair (its
+  primes two `lintPrime(p, 256)` draws, asserting at RSA.c:164) and a twin 0x62B548 whose primes come from
+  a table (RSA.c:293) -- a new `prime.c` (0x62A3B0, ours): a fixed 256-bit base plus the sum of the first
+  n of 8191 sixteen-bit gaps, n from the Mersenne twister seeded once. Each has its own copy of SOCOM 1's
+  KM_GenerateRSAKeyPair in rt_crypt.c (0x6305C8, named; 0x630600). Their check is `assert(0)` (the
+  expression text "0"), its line a `#line`. lintPrime's thirteen calls are SOCOM 1's in order, which names
+  its callees (`s1:calls`): lintRandomize, MOD, GCD, lintIsbSPRP, LucasTest; LargeInt's C then follows
+  SOCOM 1's bodies -- lintAdd, lintSub and MOD are a memcpy in, the assembly's in-place primitive (MODIP
+  named so), a memcpy out; QRMOD is SOCOM 1's algorithm.
+- **A loop whose exits are `return`s stays unrotated** (round 16b's rule met again): QRMOD's `for (;;)`
+  with `if (...) return;` at its head and in its else keeps the test at the loop's top, as the target
+  (and SOCOM 1's copy) has it; `while (cond)` and `break` rotate it.
+- **2.96 rotates a loop at the last exit within its first 30 insns, not only a leading test**: codec.c's
+  pass-through loop (`while (nIn > 0 || nOutSize > 0)`) has its full-output case -- store the input,
+  `break` -- moved to the loop's end with the test; in the source that case comes first in the body.
+  RSAGenerateKeyPair's inner `for (;;)` shows the same: its first branch (`... d = q; break;`) is laid
+  out last.
+- **Round 14b's guard rule closes a three-word open**: rt_udp's 0x641E30 shared-slot test written positive
+  (`if (gapUdp[n] == 0) {...} else return 17;`) gives the target's slot register and, through the changed
+  join, the port query's plain `bnez` too.
+- **codec.c's record, typed**: two switches on the codec type (one per kind, identical bodies: the stub
+  codecs' entry points at 0x64F580 for 34-36, the object's dummy for 33/63, cross-jumped once); the
+  dummy's create returns its call count as the context; a 480-byte coded and a 2048-byte PCM buffer give
+  the 0xA20; the field at 0x38 is the session's counters, handed to audio.c's tallies. Updates in the
+  orders tools/ccperm.py found.
+
+Hand-written in round 18b: `medius/serverkey.c` (1 of 1, the directive), `medius/rt_udp.c` (+1, 0x641E30: 39
+of 46), `medius/codec.c` (+3: the create and both frame calls; 14 of 14, whole), `medius/rsa.c` (+2:
+RSAGenerateKeyPair, 0x62B548; 6 of 6), `medius/prime.c` (1 of 1, new), `medius/rt_crypt.c` (+2:
+KM_GenerateRSAKeyPair and its twin over their drafts; 30 of 33), `medius/largeint.c` (+4: lintAdd, lintSub,
+MOD, QRMOD; 12 of 14) -- 14 functions byte-exact, 12 rows new to the map's byte-exact rows (8,196 bytes;
+`src/lib/medius` 912 -> 926 of 982), 2 superseding matched drafts; 12 rows named (RSAGenerateKeyPair
+moved to 0x62B168, 0x62B548 back to its placeholder; KM_GenerateRSAKeyPair `s1:order`; lintPrime,
+lintRandomize, MOD, GCD, lintIsbSPRP, LucasTest, QRMOD, MODIP `s1:calls`; lintAdd, lintSub `s1:order`).
+No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
