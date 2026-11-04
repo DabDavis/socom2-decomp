@@ -10,10 +10,10 @@
  * these functions (the beta's int_main.cpp asserts end at DiIntersect(n), before SetCDIBBox); the
  * unit's name is ours. Written so far: the shapes' constructors and destructors,
  * CDIBBox::GetAltitude, SetEdgeVecsAndNorm, LoadPlaneVU0, GetBBoxCorners and (round 10) the edge
- * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690). Unwritten, in image
- * order: SetCDIBBox, CDIBBox::GetIntersect, CDIPoly::GetIntersect, DiIntersect::LoadTipAndTail
- * (0x2DD210) and CDIPoly::GetAltitude -- VU0 code throughout. Defined in reverse of their image
- * order (-inline deferred). */
+ * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690), and
+ * DiIntersect::LoadTipAndTail (0x2DD210, open). Unwritten, in image order: SetCDIBBox,
+ * CDIBBox::GetIntersect, CDIPoly::GetIntersect and CDIPoly::GetAltitude -- VU0 code throughout.
+ * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
 
@@ -83,6 +83,27 @@ bool intersect2d(const CPnt3D *p, const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
 }
 
 namespace zdb {
+
+/* the model-space tip and tail as points (w 1), the tail's w then the back-face mask's bits, loaded
+ * into VU0 -- the tip in vf1, the tail in vf2 -- for the polygon queries' microprograms (SOCOM 1's,
+ * which wrote the pair to VU0's data memory instead).
+ * OPEN, 5 instructions (the right size, every store in the target's order): the mask's load and the
+ * 1.0f constant trade v1/a1 (the target loads the mask into a1). The asm's operands listed tail
+ * first fixed the address pair; tried for the rest (build/scratch/core/v_ltt*.py): the mask in a
+ * const or plain local (top, middle, a dead first definition), the 1.0f in a local before or after,
+ * the w through an int pointer, an int array index, unsigned, a float cast, tip built first */
+void DiIntersect::LoadTipAndTail()
+{
+    CPnt4D tip, tail;
+
+    tail = CPnt4D(m_MTail.x, m_MTail.y, m_MTail.z, 1.0f);
+    *(int *)&tail.w = CDI::m_backface_mask;
+    tip = CPnt4D(m_MTip.x, m_MTip.y, m_MTip.z, 1.0f);
+    asm __volatile__ (
+        "lqc2 $vf1, 0(%1)\n"
+        "lqc2 $vf2, 0(%0)\n"
+        : : "r"(&tail), "r"(&tip) : "memory");
+}
 
 /* a polygon point as a CPnt3D (its w ignored; ours) */
 inline CPnt3D &Pnt3(CPnt4D &p) { return *(CPnt3D *)&p; }

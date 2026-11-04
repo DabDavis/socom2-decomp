@@ -4608,7 +4608,7 @@
 0x002DD030 0xF4 SetEdgeVecsAndNorm__Q23zdb3CDIFv  # OVL1; s1:calls
 0x002DD130 0x1C LoadPlaneVU0__Q23zdb3CDIFv  # OVL1; ours, the core lane round 4 (SOCOM II's: the DI's points (0x10) loaded into vf4-vf6, three quadwords, and vcallms 0x70; the grid's node walks 0x2D2890 and 0x2D3030 call it with the DI)
 0x002DD150 0xC0 GetIntersect__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x002DD210 0x9C func_002DD210  # OVL1
+0x002DD210 0x9C LoadTipAndTail__Q23zdb11DiIntersectFv  # OVL1; s1:order by hand, the core lane round 10 (SOCOM 1's DiIntersect::LoadTipAndTail 0x21DAC0, between CDIPoly::GetIntersect and GetEdgeIntersectsY in both builds: m_MTail and m_MTip made CPnt4Ds with w 1, the tail's w then CDI::m_backface_mask's bits; SOCOM 1 wrote them to VU0's data memory, SOCOM II lqc2s them into vf1/vf2)
 0x002DD2B0 0x21C GetEdgeIntersectsY__Q23zdb3CDIFP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePointsY calls it where SOCOM 1's calls GetEdgeIntersectsY, after LoadTipAndTail as there)
 0x002DD4D0 0x1BC GetEdgeIntersects__Q23zdb3CDIFP6CPnt3DP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePoints calls it where SOCOM 1's calls GetEdgeIntersects, after GetEdgeIntersectsY as there)
 0x002DD690 0x244 intersect2d__FPC6CPnt3DPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand, the core lane round 10 (GetEdgeIntersects 0x2DD4D0 calls it where SOCOM 1's GetEdgeIntersects calls intersect2d 0x21DFB0, with (point, previous vertex, vertex, crossing); the body SOCOM 1's: two CPnt3D::Sub calls, the -1e-5 tolerance 0xB727C5AC, 0x244 against 0x248)
