@@ -1321,6 +1321,12 @@ public:
     void DropBody();
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
     void HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
+    /* the stuns run down by the character's recovery (SOCOM 1's; OVL2 0x5A50A0), each kind's
+     * recovery as it reaches zero (SOCOM 1's; SOCOM II inlines it, seal_env.cpp) and the stunned
+     * bit set (an inline: its bool is not folded, `andi zero,1`; the name ours) */
+    void TickStun(float dT);
+    inline void HandleStunRecovery(STUN_TYPE type);
+    void SetAmStunned(bool on) { m_am_stunned = on; }
     /* the HUD's flags: the hit set, and each taken once (seal_env.cpp, SOCOM 1's) */
     void SetHudHitFlag();
     bool HudUpdateViewCone();
@@ -1485,7 +1491,9 @@ public:
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
     unsigned char _530[0x534 - 0x530];
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
-    unsigned char _536[0x58c - 0x536];
+    unsigned char _536[0x540 - 0x536];
+    class CCharacterType *m_charType;   // 0x540 (SOCOM 1's 0x468: TickStun reads its recovery factor)
+    unsigned char _544[0x58c - 0x544];
     /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its
      * counters -- the CQB attack two of them -- and 0x545890 returns its address) */
     CSealStats m_stats;   // 0x58c

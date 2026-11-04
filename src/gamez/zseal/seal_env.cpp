@@ -1582,6 +1582,53 @@ extern "C" void func_005A5250(CZSealBody *seal, EQUIP_ITEM item, const CPnt3D *f
     }
 }
 
+/* a kind's stun recovered: the stunned bit cleared, and a kind-5 stun leaving twenty of kind 6 (SOCOM
+ * 1's HandleStunRecovery, its other cases' additions gone -- their table slots kept; SOCOM II inlines
+ * it everywhere) */
+inline void CZSealBody::HandleStunRecovery(STUN_TYPE type)
+{
+    SetAmStunned(false);
+    switch (type) {
+    case 0:
+        break;
+    case 1:
+        break;
+    case 2:
+        break;
+    case 3:
+        break;
+    case 4:
+        break;
+    case 5:
+        HandleStunDamage((STUN_TYPE)6, 20.0f, 0);
+        break;
+    case 6:
+        break;
+    }
+}
+
+/* the stuns run down at the character's recovery rate, the SEAL stunned while any is left, each kind
+ * recovered as it reaches zero; not stunned, the bit cleared (OVL2 0x5A50A0; SOCOM 1's, the else
+ * new) */
+void CZSealBody::TickStun(float dT)
+{
+    if (m_stunned) {
+        m_stunned = 0;
+        for (int i = 0; i < 7; i++) {
+            bool was = m_stunval[i] > 0.0f;
+
+            if (m_stunval[i] > 0.0f && m_charType) {
+                m_stunval[i] -= (float)m_charType->m_recovery_factor * dT;
+                if (m_stunval[i] > 0.0f)
+                    m_stunned = 1;
+            }
+            if (was && m_stunval[i] <= 0.0f)
+                HandleStunRecovery((STUN_TYPE)i);
+        }
+    } else
+        SetAmStunned(false);
+}
+
 /* in tear gas (item 125): its stun taken and the flag set (OVL2 0x5A0B60; 0x5B5050 calls it) */
 extern "C" void func_005A0B60(CZSealBody *seal)
 {
