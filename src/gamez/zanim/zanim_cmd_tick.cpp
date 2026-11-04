@@ -2749,10 +2749,13 @@ struct zanim_cmd_lod {
     unsigned char level;
 };
 
-/* OPEN, 8 bytes short, in the last two tests only: `>` takes the level into v0 where the target
- * keeps the LOD there (SOCOM 1 the same), and the last test's branch carries `return false` in
- * its delay slot where the target leaves a nop and a block of its own. Neither order of the
- * operands, reading m_Lod per test, else-if, nor one result variable (worse) gives it. */
+/* OPEN, 8 bytes short, in the tail only: the last test's branch carries `return false` in its
+ * delay slot where the target leaves a nop and a block of its own (then a pad). The four ordered
+ * tests read the level first (`cmd->level > lod` for lod < level): the level's load is then made
+ * before the narrowed LOD and coloured after it, the LOD in v0 and the level in v1 as the target's;
+ * the equality keeps the LOD first (its xor's operand order). Not else-if, `return 0`, a test
+ * inverted to an early `return false`, nor a bool local in the last arm; one result variable for
+ * all of them is 42 off */
 bool zAnimLODTestTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_lod *cmd = (zanim_cmd_lod *)hdr;
@@ -2761,13 +2764,13 @@ bool zAnimLODTestTick(_zanim_cmd_hdr *hdr, float *dT)
     if (cmd->flags & 1)
         return (unsigned char)lod == cmd->level;
     if (cmd->flags & 2)
-        return (unsigned char)lod < cmd->level;
+        return cmd->level > (unsigned char)lod;
     if (cmd->flags & 4)
-        return (unsigned char)lod <= cmd->level;
+        return cmd->level >= (unsigned char)lod;
     if (cmd->flags & 8)
-        return (unsigned char)lod > cmd->level;
+        return cmd->level < (unsigned char)lod;
     if (cmd->flags & 0x10)
-        return (unsigned char)lod >= cmd->level;
+        return cmd->level <= (unsigned char)lod;
     return false;
 }
 
