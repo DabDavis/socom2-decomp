@@ -602,6 +602,7 @@ public:
 class CSliderBar : public C2DButton {
 public:
     virtual ~CSliderBar();
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void UpdateUIVar(CUIVariable *var);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
@@ -819,6 +820,24 @@ void C2DButton::UpdateUIVar(CUIVariable *var)
             _strCaption.UpdatePos();
         }
     }
+}
+
+/* the slider drawn: the button, then its knob, placed by the matrix and along the width by the
+ * value, drawn with no matrix of its own (SOCOM 1's CSliderBar::Draw, slot 2: the button's Draw
+ * inlined, the corner transformed out of line in SOCOM II) */
+void CSliderBar::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+    CMatrix mat;
+
+    C3StateButton::Draw(m, mgr);
+    int y = (int)p.y;
+    int x = (int)(p.x + m_value * _fWidth);
+
+    m_knob.Load(x, y, x + m_knobW, y + m_knobH, m_knobTex);
+    m_knob.Draw(mat, mgr);
 }
 
 /* the slider set from a real: below the centre value the left half in proportion, above it the
