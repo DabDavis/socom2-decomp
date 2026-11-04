@@ -1,10 +1,14 @@
-/* hud_lensflare.cpp -- the HUD's lens flares (OVL1 0x1FF060-0x20157F): SOCOM 1's unit (its DWARF names
+/* hud_lensflare.cpp -- the HUD's lens flares (OVL1 0x1FF060-0x2011EF): SOCOM 1's unit (its DWARF names
  * it, Z:\dev\Apps\FTS\hud_lensflare.cpp), between the letterbox and the pause menu as there. SOCOM
- * II replaced CLensFlareSaturate with a manager of flare entries. Written: the manager's Tick,
- * PreDITick, Init, ReInit and Reset (the unit's first functions in the image); Clear open. Defined
- * in reverse of their image order (-inline deferred). Its initialiser, 0x3FDAB0, builds only
- * <iostream>'s two init objects (SOCOM 1's built only the header CSTable SOCOM II dropped: SOCOM
- * II's unit includes <iostream>). */
+ * II replaced CLensFlareSaturate with a manager of flare entries, each a bitmap with elements (the
+ * HUD lane's round 36: the unit ends at 0x2011EF -- 0x2011F0 ticks the pause menu's bitmaps and its
+ * static 0x409080, so it is hud_pausemenu.cpp's first function; this unit's bss runs 0x408FD0-0x40901B,
+ * the pause menu's from 0x409020). Written: the manager's Tick, PreDITick, Init, ReInit, Reset,
+ * LoadRdr and LoadLightSource; the wildcard name pair; the entry's constructor, destructor and Init;
+ * the element's Place -- all byte-exact; open: Clear, the element's Load (3); unwritten: the entry's
+ * Tick 0x1FF8A0 and LoadFlare 0x1FFF40. Defined in reverse of their image order (-inline deferred).
+ * Its initialiser, 0x3FDAB0, builds only <iostream>'s two init objects (SOCOM 1's built only the
+ * header CSTable SOCOM II dropped: SOCOM II's unit includes <iostream>). */
 
 #include <iostream>
 

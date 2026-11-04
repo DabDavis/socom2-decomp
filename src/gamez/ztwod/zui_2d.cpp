@@ -2252,8 +2252,16 @@ public:
     float GetPulseTime(int idx) const { return m_highlighted == idx ? m_pulseTime : 0.0f; }
     float GetPulseMax(int idx) const { return m_highlighted == idx ? m_pulseMax : 0.0f; }
     float GetPulseMin(int idx) const { return m_highlighted == idx ? m_pulseMin : 0.0f; }
+    /* an item added with the box's font and scale: at the end, or (any other `where`) before the
+     * highlighted row (SOCOM II's, 0x373F20, the name ours: UpdateUIVar and 0x372980 call it) */
+    void AddItem(ListItem *item, int where);
 
-    unsigned char _0[0xd4];
+    unsigned char _0[0xa0];
+    C2DFont *m_font;   // 0xa0
+    unsigned char _a4[0xc0 - 0xa4];
+    std::list<ListItem *> m_items;   // 0xc0
+    float m_scale;   // 0xcc: the items' scale
+    unsigned char _d0[0xd4 - 0xd0];
     std::vector<ColumnData *> m_columns;   // 0xd4
     int m_highlightAlpha;   // 0xe0
     unsigned char _e4[0x130 - 0xe4];
@@ -2267,6 +2275,29 @@ public:
     unsigned char _180[0x194 - 0x180];
     int m_highlighted;   // 0x194
 };
+
+/* the iterator taken from begin() is a local in memory (ASSIGNED from begin(), its copy goes through
+ * a float register; initialised from it, it lives in a register: 0xC4 against 0xE4), stepped on to
+ * the highlighted row or the end.
+ * OPEN, 6 instructions (stack slots): the target puts push_back's end and returned iterators at
+ * sp+60/64, below the insert's returned one at 68; here they are at 64/68 and the insert's at 60.
+ * Tried: the if/else the other way round (0xEC), the iterator declared at the top, the insert's
+ * result assigned or kept, insert(end(), item) for the push_back (6 each) */
+void CUIListBox::AddItem(ListItem *item, int where)
+{
+    item->SetFont(m_font);
+    item->SetScale(m_scale);
+    if (where == -1)
+        m_items.push_back(item);
+    else {
+        std::list<ListItem *>::iterator it;
+
+        it = m_items.begin();
+        for (int i = 0; i < m_highlighted && it != m_items.end(); i++)
+            ++it;
+        m_items.insert(it, item);
+    }
+}
 
 namespace {
 /* a list item's text look (SOCOM 1's CListItemStringTypeImpl, the unit's anonymous namespace,
