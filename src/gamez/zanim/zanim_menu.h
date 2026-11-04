@@ -782,6 +782,12 @@ struct MPMissionInfo {
 extern std::vector<MPMissionInfo *> data_00441650;
 MPMissionView *func_002C8DB0(void *missions, int number, int arg);
 MPMissionView *func_002C8840(void *missions, int arg);
+/* the same object as fts_missionlist.cpp's CMultiMissionList (a pointer vector of the missions,
+ * OVL1 0x2C8840's this): only its random pick */
+class CMultiMissionList : public std::vector<MPMissionInfo *> {
+public:
+    MPMissionView *GetRandom(bool multi);
+};
 int func_002F8120(CZOnlineLobby *lobby);
 bool func_003042B0(void *lan, C2D *list);
 bool func_002E28D0(CZOnlineLobby *lobby, C2D *list);
