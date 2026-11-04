@@ -148,6 +148,10 @@ public:
     bool CanAddAmmo(int index, int rounds);
     /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
     class CZFTSWeapon *GetCurItem() const;
+    /* the weapons parented to the hand for the rifle or the pistol (kit.h's; OVL2 0x5C6A40, 0x5C6DA0:
+     * the two takes start with them) */
+    void ReParentToRifle();
+    void ReParentToPistol();
     /* whether the item in hand has rounds left (kit.h's; OVL2 0x5BDB00) */
     bool CurItemHasAmmo();
     /* the items held, an item set at an index, its magazines and rounds, its ammunition set -- with a
