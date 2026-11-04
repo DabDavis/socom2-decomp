@@ -208,6 +208,8 @@ public:
      * the same places of its InitializeWeapons; the zoomed thermal fire animation's setter is new in
      * SOCOM II, the name ours -- InitializeWeapons is every one's only caller) */
     char *GetDecalSetName();
+    /* the decal set's name kept (SOCOM 1's; ZWepReader::ReadWeapon calls it) */
+    void SetDecalSetName(const char *name);
     char *GetIconTextureName() const;
     /* the model's name (SOCOM 1's, 0x3D2750: the pickups and the fire command pass it to
      * CWorld::GetModel) */
