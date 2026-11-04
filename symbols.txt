@@ -7353,7 +7353,7 @@
 0x003914A0 0x1C4 SkbHangulRestart__FP10CSkbPieces  # OVL1; the UI lane round 10: ours, by its body (zui_hangul.cpp: the composition's single jamo string -- s_compose resized to one, the string emptied through resize(0, 0) -- refilled with the last piece's jamo through LastJamo 0x390860; 0x390A30 calls it)
 0x00391670 0x358 SkbHangulCompose__FP10CSkbPiecesPQ23std30vector<c,Q23std12allocator<c>>  # OVL1; the UI lane, round 13: ours, by its callers (zui_hangul.cpp: the jamo composed into pieces by the rules -- SkbHangulType 0x390A30 and SkbHangulBack 0x3910E0 call it with the pieces and a vector<char> of jamo and test its bool; it calls the rule matcher 0x3919D0); not written yet
 0x003919D0 0x360 func_003919D0  # OVL1
-0x00391D30 0xC func_00391D30  # OVL1
+0x00391D30 0xC __ml__Q23std75reverse_iterator<Q33std40__vector_imp<Ui,Q23std13allocator<Ui>,1>8iterator>CFv  # OVL1; by hand, the MSL headers round 23: vector<unsigned int>'s reverse iterator *, the base copied and stepped back (include/iterator over include/vector's scalar rbegin(): its out-of-line copy is these three words) -- the soft keyboard's matcher 0x3919D0 calls it beside the scalar end() 0x391D40 (whose 0x38 bytes keep __iter's two temporaries and an FPR copy, where the isolated copy is 0x18: not named)
 0x00391D40 0x38 func_00391D40  # OVL1
 0x00391D80 0x10 func_00391D80  # OVL1
 0x00391D90 0xC func_00391D90  # OVL1
