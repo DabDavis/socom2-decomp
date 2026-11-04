@@ -29,7 +29,7 @@ struct WEAPON_CALLBACK_STRUCT {
 class CWepCallbackList : public std::list<WEAPON_CALLBACK_STRUCT> {
 };
 
-extern CWepCallbackList m_callbacks;
+CWepCallbackList m_callbacks;
 
 /* a callback's test by its function (SOCOM 1's predicate, its remove_if's) */
 struct _compare_callback {
