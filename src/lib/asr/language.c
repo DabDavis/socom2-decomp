@@ -287,37 +287,35 @@ void FillLanguageVirtualTable(void **vt)
     *(struct VT *)vt = *(struct VT *)_LangVirtualTable;
 }
 
-/* OPEN (32 words, 4 short): the target reloads the second codebook's size inside the smoothing
- * test (a separate expression -- an inlined _cdbGetSmoothMatrixSize?) and adds the gastone term
- * with a madd at the join; here 2.96 hoists the square to the top. Round 18c: combine does form
- * the multiply-add here too (`*mul_acc_si_r5900`); the tables' size pseudo, its addend, costs the
- * same in GR_REGS and LO_REG (36 each, the .lreg dump), so its class is their union and global
- * gives it v0 -- the split alternative, `mult; addu` -- where the target's sits in LO (`mtlo` after
- * the `+ 24`, before the branch), and the madd's result is another register (a0): the addend and
- * the result are two values in the target. The square's reload SOCOM 1's copy has as well (its
- * own compiler), so it is the source's; an inlined helper (a static inline probe), the gastone
- * term added in each arm and seven statement shapes (build/scratch/gcc/lang/v_cbs*.py, v_sm.py,
- * the same on _cdbGetpSmoothMatrix) leave both. Round 19c: the walkers' reload (below) was a
- * second read after a join through another base register; here the base is the parameter, and
- * _cdbGetProbMatrixSize and _cdbGetSmoothMatrixSize as `__inline__` helpers above it (both are
- * small rows near the object's end, as deferred copies would be) reorder the sum (0x84-0x98) or,
- * the smoothing size alone inlined, leave the read merged by CSE1 (build/scratch/gcc/r19c/
- * gen_cbs*.py). */
+/* a codebook's size: the header, the tables, the probabilities (4-bit: two to a byte) and, with a
+ * smoothing matrix, that after them four-aligned. Open since round 5c; round 20c: (1) the
+ * probabilities' size added in each arm of the 4-bit test makes `size` the addend of two
+ * multiply-adds, so LO is its cheaper class (one move for the addsi3 that defines it, one per madd
+ * for a GR) -- the target's `mtlo` before the branch; the two madds are cross-jumped into one at the
+ * join after reload, the arms' shared load goes into the branch's slot (as _cdbGetpSmoothMatrix);
+ * (2) the square reads the second size through a pointer to the field: `(mem (reg s))` is another
+ * expression than the header's `(mem (plus cdb 12))`, so GCSE's PRE does not find it redundant
+ * (`PRE: redundant insn ... reaching reg` in the -dG dump for every field spelling) and the load
+ * stays in the smoothing block -- the reload SOCOM 1's copy has too. The sum aligned in place. */
 static int _cdbGetCodeBookSize(LANG *l, CDB *cdb)
 {
     int bits = l->data->bits;
-    unsigned int ng;
     int size;
+    int n;
 
     size = (cdb->dim * cdb->first_size + cdb->nbr_in_sec_search * cdb->first_size
             + cdb->dim * cdb->second_size + cdb->second_size) * 4 + 24;
-    ng = cdb->nbr_gastone;
     if (bits & 1)
-        ng = (ng + 1) >> 1;
-    size += cdb->second_size * ng;
-    if (bits & 2)
-        size = ALIGN4(size) + cdb->second_size * cdb->second_size * 4;
-    return size;
+        n = size + cdb->second_size * ((unsigned int)(cdb->nbr_gastone + 1) >> 1);
+    else
+        n = size + cdb->second_size * cdb->nbr_gastone;
+    if (bits & 2) {
+        int *s = &cdb->second_size;
+
+        n = ALIGN4(n);
+        n += *s * *s * 4;
+    }
+    return n;
 }
 
 static int _transwGetSize(LANG *l, TRANSW *tw)
@@ -723,20 +721,33 @@ static int *_cdbGetpProbMatrix(CDB *cdb)
            + cdb->dim * cdb->second_size + cdb->second_size;
 }
 
+/* the smoothing matrix, after the probabilities (four-aligned), when the file has one. The
+ * probabilities' size is added in each arm of the 4-bit test (round 20c, open since round 5c): two
+ * multiply-adds on the one `size` make LO its cheaper class -- regclass counts a move for the
+ * addsi3 that defines it and one per madd for a GR -- so it is the target's `mtlo` before the
+ * branch, the two `madd`s cross-jumped into one at the join after reload and the arms' shared load
+ * in the branch's slot; added once after an adjusted count, LO and GR cost the same and global
+ * gives it v0 (`mult; addu`). The sum aligned in place (`n = ALIGN4(n)`) gives the `+ 3` its own
+ * register, as the walkers' */
 static int *_cdbGetpSmoothMatrix(LANG *l, CDB *cdb)
 {
     int bits = l->data->bits;
-    unsigned int ng;
     int size;
 
     if ((bits & 2) == 0)
         return 0;
     size = (cdb->dim * cdb->first_size + cdb->nbr_in_sec_search * cdb->first_size
             + cdb->dim * cdb->second_size + cdb->second_size) * 4 + 24;
-    ng = cdb->nbr_gastone;
-    if (bits & 1)
-        ng = (ng + 1) >> 1;
-    return (int *)((char *)cdb + ALIGN4(size + cdb->second_size * ng));
+    {
+        int n;
+
+        if (bits & 1)
+            n = size + cdb->second_size * ((unsigned int)(cdb->nbr_gastone + 1) >> 1);
+        else
+            n = size + cdb->second_size * cdb->nbr_gastone;
+        n = ALIGN4(n);
+        return (int *)((char *)cdb + n);
+    }
 }
 
 static int _cdbGetProbMatrixSize(LANG *l, CDB *cdb)

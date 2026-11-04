@@ -19,10 +19,9 @@
 #include "zbody.h"
 #include "../zsys/zsys.h"
 
-/* the ZAR's functions zar.h does not declare: SOCOM II's five-argument Open, the key count and the
- * data buffer handed over (called by their map names) */
+/* the ZAR's functions zar.h does not declare: SOCOM II's five-argument Open and the data buffer
+ * handed over (called by their map names) */
 extern "C" {
-int func_0025B300(zar::CKey *key, int deep);
 void *ReleaseDataBuffer__Q23zar4CZARFv(zar::CZAR *zar);
 }
 
@@ -127,7 +126,7 @@ void zBoneLoad()
         OpenArchive(archive, "run/motion.zar");
     }
     curArchive = archive;
-    int n = func_0025B300(archive->m_zar.GetOpenKey(), 1);
+    int n = archive->m_zar.GetOpenKey()->CountKeys(true);
 
     if (n > 1) {
         archive->m_commons.reserve(n);
@@ -157,7 +156,7 @@ void zBoneLoadMap(const char *dir, CRdrFile *rdr)
     strcat(path, "motion_s.zar");
     OpenArchive(archive, path);
     curArchive = archive;
-    int n = func_0025B300(archive->m_zar.GetOpenKey(), 1);
+    int n = archive->m_zar.GetOpenKey()->CountKeys(true);
     bool loaded;
 
     if (n < 2) {

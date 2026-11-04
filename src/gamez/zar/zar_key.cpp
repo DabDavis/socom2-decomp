@@ -37,6 +37,12 @@ struct CKeyNamed {
     const char *m_name;
 };
 
+/* a key's directory record (SOCOM II's, called out of line by WriteDirectory) */
+int CKey::RecordSize()
+{
+    return 16;
+}
+
 /* a child key added at the end (SOCOM 1's inserted into a list) */
 CKey *CKey::InsertKey(CKey *key)
 {

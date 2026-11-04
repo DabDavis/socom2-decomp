@@ -127,6 +127,67 @@ void func_005C4600(CZKit *kit);
 extern float data_00650670;
 }
 
+namespace zdb {
+/* the camera's collision bit demanded of the polygons a test hits (SOCOM 1's; grid_di.cpp's) */
+void SetCameraCollideFlagRequired(bool on);
+}
+
+extern "C" {
+/* (OVL2 0x5B4340, seal_env.cpp's, unwritten: a SEAL's test with a flag, 0x7FC bytes) */
+bool func_005B4340(CZSealBody *seal, int b);
+}
+
+/* a polygon's camera type (DI_PARAMS's two bits at 18, as a byte enum: seal_body.cpp's) */
+enum CAMERA_TYPE { CAMERA_TYPE_0, CAMERA_TYPE_1, CAMERA_TYPE_2, CAMERA_TYPE_3 };
+
+static inline CAMERA_TYPE CameraType(zdb::IntersectStruct *hit)
+{
+    return (CAMERA_TYPE)hit->m_poly->m_flags.m_cameratype;
+}
+
+/* whether there is room to the side: a ray across the SEAL's frame at the root part's height (8 at
+ * most), d to the left (-1) or right (1), with the SEAL's node switched off and camera-collision
+ * polygons asked for -- clear unless it hits a polygon of a camera type other than 1; none when
+ * 0x5B4340 refuses (OVL2 0x596D60, new in SOCOM II: PreTick asks it twice; the name unknown. The
+ * shape is seal_body.cpp's head-room test 0x57F150) */
+extern "C" bool func_00596D60(CSealCtrl *ctrl, signed char side, float d)
+{
+    zdb::IntersectStruct *hit;
+    bool was;
+    CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
+
+    if (!func_005B4340(seal, 1))
+        return false;
+    float h = seal->GetRootPart()->m_pos.y;
+
+    if (h > 8.0f)
+        h = 8.0f;
+    CPnt3D from;
+
+    /* (z zeroed first: `a = b = 0`, or the fields set z first -- the three-float constructor zeroes x
+     * first) */
+    from.x = from.z = 0.0f;
+    from.y = h;
+    CPnt3D to = from;
+
+    if (side == -1)
+        to.x -= d;
+    else if (side == 1)
+        to.x += d;
+    seal->m_node->m_matrix.Transform(&from, 1);
+    seal->m_node->m_matrix.Transform(&to, 1);
+    was = seal->GetNode()->SetActive(false);
+    zdb::SetCameraCollideFlagRequired(true);
+    hit = zdb::CWorld::m_world->GetIntersect(&from, &to);
+    seal->GetNode()->SetActive(was);
+    if (hit && CameraType(hit) != CAMERA_TYPE_1) {
+        zdb::SetCameraCollideFlagRequired(false);
+        return false;
+    }
+    zdb::SetCameraCollideFlagRequired(false);
+    return true;
+}
+
 /* the reload button: double-clicked, or held past the limit, reloads the SEAL's kit; while held its
  * time runs, else it is cleared (OVL2 0x594B70, new in SOCOM II: PreTick calls it; the name unknown).
  * The double-click's result taken into a byte local first (the flag's zero after the call) and the
@@ -158,8 +219,8 @@ extern "C" {
 /* (OVL1, unowned: a SEAL's side in the game, both builds' net code; seal.cpp's too) */
 bool func_002C30B0(const CZSealBody *seal);
 /* the two teams' bomb sites (OVL1 bss, past theMission's mapped size; the names ours) */
-extern unsigned int data_00437DCC;
-extern unsigned int data_00437DD0;
+extern zdb::CNode *data_00437DCC;
+extern zdb::CNode *data_00437DD0;
 /* the time the mission has left (OVL1 0x2A6AD0, on theMission) */
 int func_002A6AD0(void *mission);
 extern unsigned char data_004364E0[];
@@ -180,9 +241,9 @@ bool CSealCtrl::CanPlaceBomb(CNodeAction *action)
 
     site = false;
 
-    if (side && action->m_team == data_00437DCC)
+    if (side && action->m_node == data_00437DCC)
         site = true;
-    if (!side && action->m_team == data_00437DD0)
+    if (!side && action->m_node == data_00437DD0)
         site = true;
     bool time = true;
 
@@ -667,6 +728,57 @@ void CSealCtrl::StopRumbler()
     m_rumblestr = 0.0f;
     CInput::Flush();
     CZSealBody::StopAllHeartbeatSounds();
+}
+
+extern "C" {
+/* the planting's second time (OVL2 data, read as a variable; SOCOM 1's was the constant 0.2) */
+extern float data_00650678;
+}
+
+/* the timer's flag cleared (an inline, the name ours: the constant left unfolded before the store) */
+inline void MPBomb_TimerEngaged(CSealCtrl *ctrl, bool on)
+{
+    ctrl->m_mpbomb_bTimerEngaged = on;
+}
+
+/* the MP bomb worked at: its timer runs while the reticule's action, the reticule's hit or the MP bomb
+ * is the bomb's node; run out, a defusal under way is attempted once the bomb is planted (state 3),
+ * else the charge is planted at a bomb action the controller can take -- not over a planted bomb --
+ * and the bomb let go (OVL2 0x5920C0; SOCOM 1's TickMPBomb, its proximity search gone) */
+void CSealCtrl::TickMPBomb(float dT)
+{
+    if (m_mpbomb_node) {
+        CNodeAction *action = 0;
+        CZSealBody *seal = (CZSealBody *)m_entity;
+
+        action = seal->GetReticuleAction(true);
+        zdb::CNode *bomb = CPickup::m_mpbombnode;
+
+        if (action && m_mpbomb_node == action->m_node)
+            m_mpbomb_timer -= dT;
+        else if (m_mpbomb_node == seal->m_last_reticule.m_node)
+            m_mpbomb_timer -= dT;
+        else if (m_mpbomb_node == bomb)
+            m_mpbomb_timer -= dT;
+        if (m_mpbomb_timer < 0.0f) {
+            if (m_bomb_defusal_node) {
+                if (CZBombState::m_BombStatus.m_state == 3) {
+                    m_bombpickuptimer = 1.0f;
+                    seal->AttemptBombDefuse();
+                    m_bomb_defusal_node = 0;
+                }
+            } else if (action && CanPerformAction(action) && action->m_type == NODEACTION_BOMB) {
+                CZSealBody *body = (CZSealBody *)m_entity;
+
+                if (CZBombState::m_BombStatus.m_state != 3) {
+                    action->ExecuteAction(body, 0);
+                    body->m_kit.HandlePlacingExlosive((EQUIP_ITEM)154, 1.0f, data_00650678);
+                }
+                MPBomb_TimerEngaged(this, false);
+            }
+            m_mpbomb_node = 0;
+        }
+    }
 }
 
 /* the MP bomb's timer offered (OVL2 0x5920A0) */
