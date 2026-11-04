@@ -1927,6 +1927,26 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 29** (CZNewHudMap: CalcNewMatrix, UninitMap, RemoveItem, the constructor; the map's statics):
+  - a struct the target keeps on the stack, where MW scalarises a named one, comes out of a reference bound to a
+    default-constructed temporary whose address the filler takes: `const SealDir &d = SealDir(); Fill((SealDir *)&d);`;
+  - an inline's parameter order fixes the float registers (CalcNewMatrix 0x20AE50's clamp matched only with the width
+    last); for the larger of two floats `b > a ? b : a` reproduces the false arm's copy through a temporary, `b <= a ? a :
+    b` or a ternary assigned straight to the variable loses it; an inline's by-value float parameter is loaded once and
+    reused across a branch, read as a member it is reloaded;
+  - `iterator next; next = erase(i);` keeps the target's copy through the frame, `iterator next = erase(i);` loses it; an
+    `iterator e = end()` taken once lives in a saved register;
+  - a virtual destructor declared and not defined keeps a unit from emitting the implicit copy: a stand-in member type
+    cannot regress a destructor only its draft matches (hud_main.cpp no longer emits ~CZNewHudMap);
+  - hud_newhudmap.cpp's statics run 0x409F20-0x40BE7F in SOCOM 1's order (COverlayLine[7], COverlayLine[9], C2DString[9],
+    CPlainBmp[9], four C2DBitmapPolys, three COverlayLines), the float statics after (the grid's alpha 24.0 at 0x3DC490),
+    its initialiser 0x3FDE80; CZObjectiveList is 0x730 bytes; CZNewHudMap keeps m_parent at 0x810 and the zoom sounds at
+    0x814/0x818;
+  - the zoom getter hud_newhudmap.cpp calls (0x2AF870) is in question: SOCOM 1's SwitchMapToFullScreen calls
+    ftsGetTacMapZoom at that point, but SOCOM 1's getter order and its globals' order make 0x2AF870 the far zoom (the
+    game states' round 26 settles it);
+  - open: FrameObjective 0x20B800 (4: the target adds z's sum, then x's, into temporaries and multiplies by 0.5 held in
+    f0).
 - **Tells from the game states, round 25** (CMission::Close and its anchor vector, MissionBankList::Resize, the deleters):
   - an empty loop reached through an inline accessor returning the element's address leaves its arm's shell -- the test
     stays, and the build loop's arm becomes a lone jump placed after the body; without the accessor MW folds both arms
