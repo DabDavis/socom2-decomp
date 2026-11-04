@@ -1927,6 +1927,29 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 23** (the CT* task handlers: seal_tasks.cpp 33 -> 60 of 62):
+  - AN INLINE'S VARIABLES ARE NUMBERED AFTER ALL THE CALLER'S NAMED LOCALS, an outer inline's locals before its inner
+    inlines -- so no inline version of the parameter find could place the block between its counter and the list, and the
+    13 register-only Begin/End handlers stayed open from round 8: with the find's type, index and counter the handler's own
+    locals, declared before the block (seal_tasks.cpp's TASK_SEAL(T) macro -- a shape that reproduces the numbering, not
+    necessarily the original's), they and the Ticks match (type s4, index s3, counter s2, block s1, list s0);
+  - an inlined `if (!(bool)p) break;` is reproduced in the caller only through a bool local (`bool end = !(bool)p; if
+    (end) break;` keeps sltu/xori); an inlined `return p` inside a loop is `{ found = p; goto found_it; }` (a bare goto
+    folds into the compare);
+  - a local whose only use is `if (!x) return;` at the end of a void function keeps its assignment's moves, a local with
+    no use loses them (CTPursue::End); a by-value inline argument is read before the inline's first test (`Update(*dT)`
+    in CTWait::Tick);
+  - a jump-table switch over names with a default preset in a local and each case returning keeps a branch at the end of
+    every case, the last included -- assigning in the cases drops the last branch (get_param_name 0x5DEB10); the AI
+    pointer's ternary needs `seal ? SealAi(seal) : 0` (the call inside an inline) where the AI is used, the plain call
+    where it is not;
+  - CTPlay::Create 0x5D3F00 (SOCOM 1's, called from the same place in CTPlay::Parse); CTLookAt::Create 0x5D7E70 and
+    get_param_name named by us; 0x572D70 looks like SOCOM 1's CSealCtrlAi::UpdateEventMask (CTTeam::Tick calls it in its
+    join and leave cases, as SOCOM 1's does -- the SEALs' row);
+  - open: CTTeam::Tick 0x5CEA40 (20: the block and the counter trade saved registers -- all 60 declaration orders of the
+    find tried, best 17), CTMacro::Tick 0x5D6DC0 (8 bytes short: the target computes a bool in v0 and masks it into s4 at
+    the join); 0x5D9540 is a destructor nothing calls or references (a pointer vector's elements freed from the back);
+    seal_sensors.cpp's 0x5CC6C0/0x5CC800/0x5CC8A0 walk static lists through out-of-line iterator pieces.
 - **Tells from the engine core, round 1** (a new int_material.cpp, __sinit_zanim_menu.cpp, the zanim respells):
   - after an early return on the same test, `if (n) do ... while (n)` keeps the loop's own top test; a `while`, or a `for`
     with `break`, lets MW skip it (CMaterialExArray::UnInit 0x2DE750, 8 bytes);
