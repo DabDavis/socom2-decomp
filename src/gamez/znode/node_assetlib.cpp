@@ -51,7 +51,13 @@ struct DeleteModel {
 /* a palette deleted */
 struct DeletePalette {
     DeletePalette() {}
-    void operator()(CTexPalette *pal) const { delete pal; }
+    /* the null test written out: the target tests each palette before its deleting destructor,
+     * where `delete pal` alone calls it straight */
+    void operator()(CTexPalette *pal) const
+    {
+        if (pal)
+            delete pal;
+    }
 };
 
 void EmptyAssetRecycleBin()
@@ -79,9 +85,11 @@ CAssetLib::CAssetLib(const char *name)
 
 /* the models let go of and deleted, the buffers freed, the textures and palettes freed, the names
  * freed (SOCOM 1's).
- * OPEN, 6 instructions short (0x2D0 of 0x2E8, re-measured after the MSL headers' round 4 made the
- * pod vector's end() read through data(), which closed AddPalette below): the target keeps
- * &m_models.data_ and &m_palettes.data_ in s1/s0 for the vectors' destructors */
+ * OPEN, 4 instructions short (0x2D8 of 0x2E8; 0x2D0 before the world lane's round 10 wrote the
+ * palette functor's null test, which the target has): the target keeps &m_models.data_ and
+ * &m_palettes.data_ in s1/s0 from the walks' begin() to the vectors' destructors, as a pod
+ * destructor reading data_ through data()'s reference would -- the MSL headers' open item ("Open,
+ * and next": the pod vector's end() reusing begin()'s load) */
 CAssetLib::~CAssetLib()
 {
     std::transform(m_models.begin(), m_models.end(), m_models.begin(), DeleteModel());
@@ -243,17 +251,14 @@ CTexHandle *CAssetList::GetTexHandle(const char *name)
     return h;
 }
 
-/* OPEN, 1 instruction (0x104 of 0x100): the target reloads the library from its node (8(node)) at
- * each of its three uses and re-derives end() from `this` each pass; here MW keeps the element's
- * address (node + 8) in a saved register -- the base iterator's by-value cast avoids that only in
- * the one-use walks (FindTextureLib); by-value helpers, the node's data read directly and end()
- * per pass were tried */
+/* a texture with a mip level of `tex`'s, from the phase's libraries (SOCOM 1's). The end re-derived
+ * from `this` each pass, as the target does (`it != end()`, nothing hoisted: `this` keeps s5, the
+ * result s3) -- byte-exact since include/list's iterator holds `node *` */
 CTexHandle *CAssetList::FindMipLevel(_RenderPhase phase, CTexHandle *tex)
 {
     CTexHandle *found = 0;
-    lib_iterator e = end();
 
-    for (lib_iterator it = begin(); it != e && !found; ++it)
+    for (lib_iterator it = begin(); it != end() && !found; ++it)
         if (phase == 19 || ((CAssetLib *)*it)->m_renderphase == phase)
             for (CTexList::iterator t = ((CAssetLib *)*it)->m_textures.begin();
                  t != ((CAssetLib *)*it)->m_textures.end() && !found; ++t)

@@ -5624,7 +5624,7 @@
 0x0031FE00 0x50C __dt__Q23zdb6CWorldFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00320310 0x344 func_00320310  # OVL1
 0x00320660 0x78 func_00320660  # OVL1
-0x003206E0 0x78 func_003206E0  # OVL1
+0x003206E0 0x78 __dt__Q23zdb15CLightMapVectorFv  # OVL1; the world lane r10: the destructor vis_vu.cpp's initialiser 0x404570 registers for CVisual's m_specMapList, m_lightMapList and m_shadowMapList (the sinit research; SOCOM 1's __sinit_vis_main.cpp registers __dt__Q23zdb15CLightMapVectorFv there), a class over the pointer vector (four this-tests); like SOCOM 1's (0x2304B0) it follows CWorld's constructor in node_world.cpp
 0x00320760 0x8 Uninit__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Uninit, Init, GetVersion in that order, each as empty)
 0x00320770 0x8 Init__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Init, between Uninit and GetVersion)
 0x00320780 0xC GetVersion__Q23zdb6CWorldFv  # OVL1; s1:exact by hand (SOCOM 1's GetVersion, the same three words returning 0x10001, after Uninit and Init as there; Load and LoadAssetLib_PS2 pass it to the archive's Open)
@@ -8577,7 +8577,7 @@
 0x00403370 0xB0 __sinit_zsnd_positions.cpp  # OVL1 data area; a static initialiser; the world lane r10: zsnd_positions.cpp's initialiser (the sinit research, HIGH; the unit's header named 0x403370): its three vectors zeroed, each registering 0x34C4F0 -- byte-exact from source
 0x00403420 0x3C __sinit_zsys_sched.cpp  # OVL1 data area; a static initialiser; s1~ remote_control.cpp (shape 0.45, a hint); the world lane r10: zsys_sched.cpp's initialiser (the sinit research, HIGH; SOCOM 1's __sinit_zsys_sched.cpp builds zTaskScheduler with CSched_Manager() and registers ~CSched_Manager, as this does)
 0x00403460 0x64 __sinit_zsys_init.cpp  # OVL1 data area; a static initialiser; the world lane r10: zsys_init.cpp's initialiser (the sinit research, HIGH; SOCOM 1's __sinit_zsys_init.cpp builds theIOPManager with reserve(16) and ~CIOPManager): the vector zeroed, reserve(16), SOCOM II's mode byte cleared -- byte-exact from source
-0x004034D0 0x1C func_004034D0  # OVL1 data area; a static initialiser
+0x004034D0 0x1C __sinit_zsys_overlay.cpp  # OVL1 data area; a static initialiser; the world lane r10: the overlay loader's unit's initialiser (the integrator's sinit research, HIGH: between zsys_vu.cpp's bss and valve_list.cpp's, it clears the three slot bytes of the object 0x49E7E8 whose one method is 0x3515D0); file name ours, byte-exact from source
 0x004034F0 0x90 __sinit_valve_list.cpp  # OVL1 data area; a static initialiser; the world lane r10: valve_list.cpp's initialiser (the sinit research, HIGH; SOCOM 1's __sinit_valve_list.cpp, the same 0x90 bytes): CValve::m_list then valvePool -- code-exact from source, its m_list destructor reference waits on zanim.h declaring m_list a CValveList (SOCOM 1's registers __dt__10CValveListFv)
 0x00403580 0x3C __sinit_ztex_manager.cpp  # OVL1 data area; a static initialiser; s1~ seal_aievent.cpp (shape 0.45, a hint); the world lane r2: ztex_manager.cpp's static initialiser (m_texmanager built through CTexManager() 0x356940, ~CTexManager 0x357E10 registered)
 0x004035C0 0x60 func_004035C0  # OVL1 data area; a static initialiser
