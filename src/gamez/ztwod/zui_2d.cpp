@@ -294,6 +294,8 @@ struct ButtonState {
  * 0x3890C0; the type and the key state byte enums) */
 class ActionItem {
 public:
+    /* zui_spec.h's: a button action on the falling edge of no button (the list items build theirs) */
+    ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
     ~ActionItem();
     void Run() const;
 
@@ -1349,6 +1351,8 @@ public:
 class ListItem {
 public:
     ListItem(const char *s);
+    ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols);
+    ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font, float scale);
     ~ListItem()
     {
         if (m_text)
@@ -1365,6 +1369,7 @@ public:
     void SetPos(int x, int y);
     void PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font, float scale,
                       zdb::CTextureRelocMgr *mgr);
+    void DrawPrep(const CUIListBox &box, int x, int y, int idx);
 
     /* the look's, when it has one (inlined into the array look's walks) */
     void Finish()
@@ -1492,6 +1497,14 @@ public:
     {
         SetColored(false);
         SetString(&m_text);
+    }
+    /* the look with its text formatted in (SOCOM II's: ListItem's constructors new it, the format
+     * skipped with the construction when the allocation fails) */
+    CListItemStringTypeImpl(const char *s)
+    {
+        SetColored(false);
+        SetString(&m_text);
+        m_str->Format(s);
     }
     /* the flag SetColor sets (an inline of its own: it is what makes the derived looks'
      * constructors expand past inline_max_size, inlined one level in the makers, and ListItem's
@@ -1645,6 +1658,8 @@ public:
 class CListItemArrayTypeImpl : public CListItemTypeImpl {
 public:
     CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols);
+    CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font,
+                           float scale);
     virtual ~CListItemArrayTypeImpl()
     {
         for (int i = 0; i < m_items.size(); i++)
@@ -1923,6 +1938,46 @@ void CListItemArrayTypeImpl::DrawPrep(const CUIListBox &box, int x, int y, int i
                 str->SetScale(box.m_columns[i]->m_scale);
         }
     }
+}
+
+/* an item of one text (SOCOM II's: the array look's constructor news one per column), its look a
+ * text look holding it */
+ListItem::ListItem(const char *s) : m_text(0), m_24(true), m_impl(new CListItemStringTypeImpl(s))
+{
+}
+
+/* an item from a reader: an array's columns as an array look (SOCOM 1's constructor) */
+ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols)
+    : m_text(0), m_24(true), m_impl(0)
+{
+    const ZRdrNode *r = (const ZRdrNode *)rdr;
+
+    if (r && RdrCount(r))
+        m_impl = new CListItemArrayTypeImpl(rdr, cols);
+}
+
+/* an item from a reader in a font and scale: a string as a text look, an array as an array look,
+ * the item not ready while its columns are not (SOCOM II's) */
+ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font, float scale)
+    : m_text(0), m_24(true), m_impl(0)
+{
+    const ZRdrNode *r = (const ZRdrNode *)rdr;
+
+    if (r->type == 3)
+        m_impl = new CListItemStringTypeImpl(RdrString(r));
+    else if (RdrCount(r)) {
+        m_impl = new CListItemArrayTypeImpl(rdr, cols, font, scale);
+        if (!m_impl->IsReady())
+            m_24 = false;
+    }
+}
+
+/* the row drawn: a text look made first when the item has none (SOCOM II's; the name ours) */
+void ListItem::DrawPrep(const CUIListBox &box, int x, int y, int idx)
+{
+    if (!m_impl)
+        m_impl = new CListItemStringTypeImpl;
+    m_impl->DrawPrep(box, x, y, idx);
 }
 
 /* the look's font, scale and place, a text look made first when the item has none (SOCOM II's;
