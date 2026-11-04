@@ -1,13 +1,18 @@
 /* util_main.cpp -- the package CFileIO::Open reads through, the IOP reboot notifier's registration
- * and the string helper after it (OVL1 0x39C330-0x39CD3F). SOCOM 1's demo holds COutput, CIOPManager::(Un)RegisterRebootCallback and
+ * and the string helper after it (OVL1 0x39C330-0x39CDB7). SOCOM 1's demo holds COutput, CIOPManager::(Un)RegisterRebootCallback and
  * zUtilInit/Uninit as one run between CBufferIO's unit and CFileIO's, ending on the CRegistrant
  * vector's template instances; no assert names the file, so util_main.cpp is ours. theIOPManager
  * itself is zsys_init.cpp's (its static initialiser is that unit's).
  *
- * OPEN, not written yet: 0x39C500 (named COutput's destructor by s1:align, but it is the package's:
- * Close inlined, then the deleting flag -- its draft matches) and 0x39C580, and the template tail's
- * insert 0x39C7F0 and 0x39CD40. Round 12 wrote UnRegisterRebootCallback with SOCOM 1's delid: its
- * remove_if 0x39C710 and remove_copy_if 0x39CCB0 byte-exact. */
+ * The unit's statics, in __sinit_util_main.cpp's (0x4041A0) order: the package (0x4A15F8, its
+ * header pointer zeroed, ~CPackage 0x39C500 registered), a registrant vector (0x4A1610, three words
+ * zeroed, its destructor 0x39CD40 -- the unit's last tail function -- registered) and the package's
+ * file (0x4A1630, CFileIO() 0x39EFD0, ~CFileIO's first OVL1 copy 0x1F3B40 registered).
+ *
+ * OPEN, not written yet: 0x39C580 (the registrant vector's address handed out -- its draft matches;
+ * zanim_menu.cpp's Unload_MissionReader calls it and drops the result) and the template tail's insert
+ * 0x39C7F0. Round 12 wrote UnRegisterRebootCallback with SOCOM 1's delid: its remove_if 0x39C710 and
+ * remove_copy_if 0x39CCB0 byte-exact. */
 
 #include <vector>
 #include <algorithm>
@@ -43,8 +48,56 @@ public:
     int RegisterRebootCallback(RebootCallback cb, void *data);
     void UnRegisterRebootCallback(int id);
 
-    std::vector<CRegistrant> m_registrants;   // 0x0
+    std::vector<CRegistrant> m_registrants;   // 0x0 (SOCOM 1's DWARF: m_reboot_callback_vec)
 };
+
+/* The package CFileIO::Open reads through (SOCOM II's, the names ours; 0x39C330-0x39C57F, before
+ * the reboot registration): a header read whole -- 252 bytes with the first entry, the count at
+ * 0x98, the entries from 0xA0, 92 bytes each -- and the one file it was read from, a static
+ * (0x4A1630). fts_mission.cpp's UpdateMissionArchive closes and opens it; CFileIO::Open finds a
+ * name in it, seeks its file to the entry and shares the descriptor. Its destructor inlines Close,
+ * so the two are one unit with the reboot registration after them. */
+struct PAKENTRY {
+    int _0;
+    char name[0x40];   // 0x4
+    int offset;        // 0x44
+    int size;          // 0x48
+    unsigned char _4c[0x5c - 0x4c];
+};   // 0x5c bytes
+
+struct PAKHEADER {
+    unsigned char _0[0x98];
+    unsigned int count;    // 0x98
+    int _9c;
+    PAKENTRY entries[1];   // 0xa0
+};   // 0xfc bytes
+
+class CPackage {
+public:
+    /* (only the header pointer zeroed: __sinit_util_main.cpp's one store) */
+    CPackage() : m_header(0) {}
+    ~CPackage() { Close(); }
+    PAKENTRY *Find(const char *name);
+    int Seek(int offset, int whence);
+    CFileIO *GetFile();
+    bool Close();
+    bool Open(const char *name);
+
+    PAKHEADER *m_header;   // 0x0
+    PAKENTRY *m_entry;     // 0x4: the entry CFileIO::Open opened
+
+    static CFileIO s_file;   // 0x4A1630
+};
+
+/* the package (0x4A15F8; the name ours): util_sonyio.cpp's CFileIO::Open, Close and fseek read it,
+ * fts_mission.cpp's UpdateMissionArchive opens and closes it */
+CPackage thePackage;
+
+/* a second registrant vector (0x4A1610; ours: a CRegistrant vector by its destructor, the unit's
+ * only class vector), only its address handed out (0x39C580) */
+static std::vector<CIOPManager::CRegistrant> s_registrants;
+
+CFileIO CPackage::s_file;
 
 /* the next registration's id (0x49E2F0; ours) */
 extern int data_0049E2F0;
@@ -83,42 +136,6 @@ void zUtilStrUpr(char *s)
     for (i = 0; i < len; i++)
         s[i] = toupper(s[i]);
 }
-
-/* The package CFileIO::Open reads through (SOCOM II's, the names ours; 0x39C330-0x39C57F, before
- * the reboot registration): a header read whole -- 252 bytes with the first entry, the count at
- * 0x98, the entries from 0xA0, 92 bytes each -- and the one file it was read from, a static
- * (0x4A1630). fts_mission.cpp's UpdateMissionArchive closes and opens it; CFileIO::Open finds a
- * name in it, seeks its file to the entry and shares the descriptor. Its destructor inlines Close,
- * so the two are one unit with the reboot registration after them. */
-struct PAKENTRY {
-    int _0;
-    char name[0x40];   // 0x4
-    int offset;        // 0x44
-    int size;          // 0x48
-    unsigned char _4c[0x5c - 0x4c];
-};   // 0x5c bytes
-
-struct PAKHEADER {
-    unsigned char _0[0x98];
-    unsigned int count;    // 0x98
-    int _9c;
-    PAKENTRY entries[1];   // 0xa0
-};   // 0xfc bytes
-
-class CPackage {
-public:
-    ~CPackage() { Close(); }
-    PAKENTRY *Find(const char *name);
-    int Seek(int offset, int whence);
-    CFileIO *GetFile();
-    bool Close();
-    bool Open(const char *name);
-
-    PAKHEADER *m_header;   // 0x0
-    PAKENTRY *m_entry;     // 0x4: the entry CFileIO::Open opened
-
-    static CFileIO s_file;   // 0x4A1630
-};
 
 bool CPackage::Open(const char *name)
 {

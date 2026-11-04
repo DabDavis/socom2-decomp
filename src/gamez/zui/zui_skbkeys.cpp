@@ -166,6 +166,34 @@ bool SkbWrapTokens(std::vector<CSaferStr> &lines, std::vector<SKBTOKEN> &tokens,
     return true;
 }
 
+int UTF8CharLen(const char *&s);
+
+/* the width a string's first n characters take as shown (0x39B1D0; the name ours -- 0x399320,
+ * 0x399530, 0x39A1D0 and 0x39A400 call it with one of the three text strings): its text from the
+ * first shown character copied, the first n UTF-8 characters' bytes counted, the string set to that
+ * substring (include/string's (str, pos, n) constructor, 0x332320) and measured, then set back */
+float SkbTextWidth(C2DString *s, int n)
+{
+    CSaferStr text(ShownText(s));
+    const char *p = text.c_str();
+    int len = 0;
+
+    for (int i = 0; i < n; i++) {
+        const char *q = p + len;
+
+        len += UTF8CharLen(q);
+    }
+    std::string sub(text, 0, len);
+
+    s->SetString(sub.c_str(), true);
+    s->UpdatePos();
+    float w = StringWidth(*s);
+
+    s->SetString(text.c_str(), true);
+    s->UpdatePos();
+    return w;
+}
+
 /* a flag's negation (ours: materialised, sltu and xori, before each test branches on it) */
 static inline bool SkbNot(int x)
 {

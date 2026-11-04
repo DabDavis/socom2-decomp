@@ -231,7 +231,7 @@ struct CSkbFonts {
     void Unload()
     {
         for (int i = 0; i < 3; i++)
-            func_0035A650(&m_fonts[i]);
+            m_fonts[i].Unload();
     }
 
     C2DFont m_fonts[3];
