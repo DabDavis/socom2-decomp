@@ -7,7 +7,7 @@
  * IdleProcess, all but the constructor and FindBestRecognised LOCAL there), ScanSoft's speech
  * recogniser, prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing -funroll-loops (README
  * "The GCC front"). Names are SOCOM 1's. Only the functions written so far are here, in image
- * order: CollectDummyMemory (round 20c), InitNBestDynProgProcess and PrunDynProg (round 19c; PrunDynProg closed in 20c), FindBestRecognised (round
+ * order: CollectDummyMemory and InitViterbi (OPEN) (round 20c), InitNBestDynProgProcess and PrunDynProg (round 19c; PrunDynProg closed in 20c), FindBestRecognised (round
  * 17c), ExtendBacktraceStack, ScoreCompare (NAME@nbestdp in the map: the iso-word object has its
  * own). SOCOM II's rows hold SOCOM 1's in order: 0x4EB5E8 is CollectDummyMemory's position,
  * 0x4EB7D8 InitViterbi's, 0x4EBCB0 InitDynprogContext's, 0x4EC130 new. The backtrace stack is a list of three-word records from the
@@ -40,15 +40,23 @@ typedef struct BTSTACK {
 
 /* a backtrace record the tokens share: its count of users at +12 */
 typedef struct BTREC {
-    int pad0[3];
+    int f0;                             /* +0 */
+    int f4;                             /* +4 */
+    int pad8;
     unsigned short users;               /* +12 */
+    int f16;                            /* +16 */
 } BTREC;
 
 /* a token on the active lists at +112 (seven words) and +116 (five) */
 typedef struct NBTOKEN {
     struct NBTOKEN *next;               /* +0 */
-    int pad4[2];
+    short f4;                           /* +4 */
+    unsigned char f6;                   /* +6 */
+    short *state;                       /* +8 */
     BTREC *bt;                          /* +12 */
+    int *f16;                           /* +16 */
+    int *f20;                           /* +20 */
+    int f24;                            /* +24 */
 } NBTOKEN;
 
 /* a link of a word record's list (two words) */
@@ -95,7 +103,12 @@ typedef struct NBESTDP {
     DPTOS *tos;                         /* +0: the block's head (tosblk.h) */
     char pad4[8];
     NBQIN *inputs;                      /* +12 */
-    char pad16[72];
+    char pad16[48];
+    int f64;                            /* +64 */
+    unsigned int f68;                   /* +68: f144's last index */
+    char pad72[8];
+    int *states;                        /* +80: per word an offset into it, then the states */
+    short *f84;                         /* +84: a short per state */
     BTSTACK *stack;                     /* +88: the stack's first record */
     NBRESULT *results;                  /* +92 */
     char pad96[12];
@@ -103,15 +116,23 @@ typedef struct NBESTDP {
     NBTOKEN *tok7;                      /* +112 */
     NBTOKEN *tok5;                      /* +116 */
     NBWORD *words;                      /* +120 */
-    char pad124[48];
+    char pad124[4];
+    unsigned char *active;              /* +128: a bit per word id, the high bit first */
+    char pad132[8];
+    int f140;                           /* +140 */
+    int *f144;                          /* +144 */
+    int *f148;                          /* +148: a word per word, and f152 more */
+    unsigned int f152;                  /* +152 */
+    char pad156[16];
     int f172;                           /* +172 */
     unsigned short f176;                /* +176 */
     char pad178[6];
     unsigned int nresults;              /* +184: the sequences asked for (profile 7) */
-    char pad188[8];
+    unsigned int nwords;                /* +188 */
+    int *wordids;                       /* +192 */
     unsigned int beam;                  /* +196: profile 6 */
     unsigned int beam10;                /* +200: ten times it */
-    char pad204[4];
+    int f204;                           /* +204 */
     unsigned int maxframes;             /* +208: profile 9 */
     unsigned char pruning;              /* +212 */
     char pad213;
@@ -123,8 +144,12 @@ typedef struct NBESTDP {
     unsigned int hist[5];               /* +232 */
     unsigned int hist2[5];              /* +252 */
     unsigned char nhist;                /* +272 */
-    char pad273[7];
+    char pad273;
+    short f274;                         /* +274 */
+    int f276;                           /* +276 */
     short f280;                         /* +280: profile 14 */
+    char pad282[2];
+    int f284;                           /* +284 */
 } NBESTDP;
 
 extern int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
@@ -133,6 +158,7 @@ extern float _tosGetProfileFloat(void *b, unsigned short key, float def);
 
 extern unsigned int FindBestBacktraces(NBESTDP *d, NBTRACE ***bt);
 extern void CleanUpParBTProc(NBESTDP *d, BTREC *bt);
+static void ExtendBacktraceStack(NBESTDP *d, BTSTACK *top);
 extern NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTRACE *bt);
 extern void heap_Free(void *heap, void *p);
 
@@ -210,6 +236,87 @@ static void CollectDummyMemory(NBESTDP *d)
         FREE_REC(tos, 5, pr);
     }
     d->results = 0;
+}
+
+/* a record of N words from the scheduler's free list of its size, else from a new chunk */
+#define ALLOC_REC(tos, k, p) { int **fl_ = &(tos)->fa.free[k]; \
+    if (*fl_ != 0) { (p) = (void *)*fl_; *fl_ = *(int **)(p); } \
+    else (p) = (void *)fastallo_AllocateMemoryFromChunk(&(tos)->fa, k); }
+
+/* a new utterance's start: the backtrace stack made, the last pass's memory given back, the
+ * counters and the score tables cleared, one backtrace record shared by a token for every state of
+ * every active word (chained at +112, the count its users), the pruning level reset. SOCOM 1's body
+ * with the token and result lists' release moved into CollectDummyMemory. The scheduler, the
+ * word's index and the chain's head are spilled (sp+0, +4, +8: declaration order; the clearing
+ * loops' counter of their own, else the index takes a register and its scaled copy spills), the
+ * token count kept in a caller-saved register round the rare allocations (`sq t1`).
+ * OPEN (round 20c, 0x3B8 against 0x3C0, 2 words short): the token loop is unrolled by two with a
+ * preconditioning copy as the target's, but cross-jumped elsewhere -- the target's first copy
+ * loads its state, steps the pointer and stores the state and the zero at +24 before it joins
+ * the last copy's tail (`b; addiu t1,t1,1`), here it joins right after the backtrace's store;
+ * and the registers follow (the count t0 here, t1 there; the record allocation's reload of the
+ * spilled scheduler a1 here, v0 there). `*s++` in the state's store, the count first or in the
+ * for's step, `&d->f84[*s]` leave it (build/scratch/gcc/r20c/v_iv.py) */
+static void InitViterbi(NBESTDP *d)
+{
+    DPTOS *tos = d->tos;
+    unsigned int i;
+    NBTOKEN *head = 0;
+    NBTOKEN *t = 0;
+    BTREC *bt;
+    unsigned int n, k;
+
+    if (d->stack == 0)
+        ExtendBacktraceStack(d, 0);
+    CollectDummyMemory(d);
+    d->f284 = 0;
+    d->f176 = 0xFFFF;
+    d->f64 = 0;
+    d->f204 = 0;
+    d->f274 = 0;
+    d->f276 = 0;
+    for (k = 0; k <= d->f68; k++)
+        d->f144[k] = 0;
+    for (k = 0; k < d->nwords + d->f152; k++)
+        d->f148[k] = 0;
+    ALLOC_REC(tos, 5, bt);
+    bt->f16 = 0;
+    bt->f4 = 0;
+    bt->f0 = 0;
+    n = 0;
+    for (i = 0; i < d->nwords; i++) {
+        int w = d->wordids[i];
+
+        if (d->active[w >> 3] & (128 >> (w & 7))) {
+            int *st = d->states;
+            int *s = st + st[w];
+            int *end = st + st[w + 1];
+
+            for (; s < end; s++) {
+                ALLOC_REC(tos, 7, t);
+                t->f4 = 0;
+                t->bt = bt;
+                t->state = d->f84 + *s;
+                t->f24 = 0;
+                t->f16 = &d->f140;
+                t->f6 = 1;
+                t->next = head;
+                head = t;
+                t->f20 = d->f148 + i;
+                n++;
+            }
+        }
+    }
+    d->tok7 = t;
+    bt->users = n;
+    d->frame = n;
+    d->level = d->maxlevel;
+    d->pruning = 0;
+    for (k = 0; k < 5; k++) {
+        d->hist[k] = 0;
+        d->hist2[k] = 0;
+    }
+    d->nhist = 0;
 }
 
 /* the block's profile: SOCOM 1's body, its fraction converted inline where SOCOM 1 called fptoui
