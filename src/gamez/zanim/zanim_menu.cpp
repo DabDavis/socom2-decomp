@@ -216,7 +216,11 @@ namespace {
  * iterators, the iterator assigned, postfix/`+= 1`/`i = i + 1` steps, a while, a do-while behind
  * an if, a goto loop, a found flag with break (0x130), the walk as an inline member or free function
  * (21 off), the end spelled `begin() + size()` or through raw pointers, an index loop (0x100); the
- * item's unsigned compare (andi/lbu) is EQUIP_ITEM's (build/scratch/core/v_iseq.py) */
+ * item's unsigned compare (andi/lbu) is EQUIP_ITEM's (build/scratch/core/v_iseq.py). Round 12: the
+ * found flag in either loop's condition with a break (SequenceRunning's shape: 0x118-0x134, the
+ * blocks moved), the end through reference accessors on the list (the size `unsigned int &`, the
+ * data's reference, a const local) -- MW hoists the end whatever its spelling, so the target's
+ * loop holds something that blocks the hoist (build/scratch/core/v_iseq2.py, v_iseq3.py) */
 bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 {
     EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
