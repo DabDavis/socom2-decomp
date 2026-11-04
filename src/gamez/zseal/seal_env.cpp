@@ -1926,6 +1926,61 @@ void CZSealBody::HandlePickupMPBomb(CPickup *pickup)
     CZBombState::RequestNewBombState(m_id, (CZBombState::EnumBombState)2, &pos);
 }
 
+/* a pickup's acknowledgement, one byte (fts_remote.cpp's AckUnion: bit 0 a weapon taken), and its
+ * message (OVL1 0x2BA1F0, fts_remote.cpp's) */
+union AckUnion {
+    struct {
+        unsigned char m_weapon : 1;
+        unsigned char m_rest : 7;
+    } bits;
+    unsigned char b;
+};
+
+/* (called through its map name with an int first parameter: this caller zero-extends the count at
+ * both calls, as it would for an int -- passed to an unsigned short parameter it would go as it is) */
+extern "C" void SendPickupAckMessage__FUsii8AckUnion(int who, int id, int obj, AckUnion ack);
+
+/* a console's request for a pickup answered: none found, the pickups dumped and an empty answer
+ * sent; else for each of the count, an ammunition pickup's rounds taken by 0x59E580, a weapon's
+ * matched against the first item (bit 0 set); the answer sent, and with the asker an entity, its SEAL
+ * handed the answer and the ammunition pickup cleaned up (OVL2 0x59E830; SOCOM 1's CanPickupNetItem,
+ * after CheckForAmmoPickups in both builds -- SOCOM II finds the pickup by its own id and passes the
+ * asker whole) */
+void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *items, int client)
+{
+    AckUnion ack;
+    CPickup *p = CPickup::FindPickup(id);
+
+    ack.b = 0;
+    if (!p) {
+        CPickup::DebugPickups();
+        SendPickupAckMessage__FUsii8AckUnion(count, id, client, ack);
+        return;
+    }
+    for (int i = 0; i < count; i++) {
+        if (p->m_type == 9)
+            CheckForAmmoPickups(count, p->GetAmmo(), items, &ack);
+        else if (p->m_type == 8) {
+            /* (the weapon taken first: compared in place, MW loads the item ahead of the call) */
+            CZWeapon *w = p->GetWeapon();
+
+            if (*items == w->m_ID)
+                ack.bits.m_weapon = true;
+        }
+    }
+    SendPickupAckMessage__FUsii8AckUnion(count, id, client, ack);
+    CEntity *e = CEntity::m_list.GetEntityById(client);
+
+    if (e) {
+        CZSealBody *seal = AsSeal(e);
+
+        if (e) {
+            seal->HandlePickupAck(count, id, &ack);
+            CPickup::CleanupAmmoPickup(p);
+        }
+    }
+}
+
 extern "C" {
 /* (the kit's item at an index let go is CZKit::RemoveItemAndAmmo, zseal.h's; OVL2 0x5B9BB0, the kit
  * lane's) the ground under a point within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540,

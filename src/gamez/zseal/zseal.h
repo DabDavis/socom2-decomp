@@ -1555,6 +1555,13 @@ public:
     void AttemptBombDefuse();
     /* the MP bomb picked up (SOCOM 1's; OVL2 0x59DEF0) */
     void HandlePickupMPBomb(CPickup *pickup);
+    /* a console's request for one of the SEAL's pickups answered: the ammunition taken and the
+     * weapon checked, the answer sent and handed to the asker's SEAL (SOCOM 1's; OVL2 0x59E830 --
+     * fts_remote.cpp's message handler calls it -- with its pieces 0x59E580 and 0x59DFB0, seal_env.cpp:
+     * SOCOM II passes the pickup's id and the asker whole) */
+    void CanPickupNetItem(unsigned short count, int id, unsigned short *items, int client);
+    void CheckForAmmoPickups(int count, class CPickupAmmo *ammo, unsigned short *items, union AckUnion *ack);
+    void HandlePickupAck(int count, int id, union AckUnion *ack);
     /* the MP bomb made a pickup at a point (SOCOM 1's; OVL2 0x59DAB0, not written yet) and every
      * item dropped (SOCOM 1's; OVL2 0x59DDB0) */
     static class CPickup *CreateMPBombPickup(const CPnt3D *pos, bool b);
