@@ -14,6 +14,7 @@ public:
     CZSIScriptCommon *GetScript(AnimType type);
     CZSIScriptCommon *GetScript(AnimType type, int kind);
     int GetVariantIndex(AnimType type, int kind, int anim);
+    AnimType BaseAnim(AnimType type);
 };
 
 /* THE UNIT'S STATICS, in the order its initialiser builds them (__sinit_seal_body.cpp, OVL2 0x668940):
@@ -67,18 +68,24 @@ void *func_00555170(void *v);
 /* the weapon in hand set and every blend's anim looked up again for it -- the weapon's own, else
  * weapon 0's -- the parts' poses saved, and both interpolations set to the top anim's blend-in time
  * (OVL2 0x57D710, new in SOCOM II: seal_cfg.cpp's 0x58C5D0 calls it; the name unknown).
- * OPEN, 0xE4 against 0xF8: the body is the target's (the BlendAt walk keeps its per-pass sll/addu);
- * left, the loop's entry -- the target jumps to a test block of its own placed after the return
- * (`bltz i` to the exit, `b` to the bottom `bgez`), where MW tests at the top -- and the SEAL and the
- * stack trading s1/s2. Tried: the stack declared before the store, a while loop with the counter
- * declared first, `if (i >= 0) do ... while (--i >= 0)`, the stack through a reference, a goto
- * into the bottom test (all 0xE4). */
+ * OPEN, 14 instructions (the size the target's since round 33): the stack's address assigned again in
+ * the loop is hoisted, and that gives the target's entry -- a test block of its own after the return
+ * (`bltz i` to the exit, `b` to the bottom `bgez`: the engine core's round-11 preheader rule; before,
+ * MW tested at the top, 0xE4). Left: MW puts the hoisted addiu in that block (the bltz's delay slot)
+ * where the target computes it before the entry `b` (its delay slot), and the SEAL and the stack trade
+ * s1/s2 (igdump: seal, stack and i all over K, coloured highest index first -- the target wants the
+ * stack after the SEAL). Tried with the in-loop assignment: it at the body's end or after the
+ * representative (0xE0/0xE4), another local for it, the accessor's `&seal->m_blends` alone (0xD8),
+ * dead first definitions of rep, id or i ahead of the stack (14-21), the counter or the stack
+ * declared first. Before round 33: the stack declared before the store, a while loop, `if (i >= 0)
+ * do ... while (--i >= 0)`, the stack through a reference, a goto into the bottom test. */
 extern "C" bool func_0057D710(CZSealBody *seal, short weapon)
 {
     seal->m_weapon_id = weapon;
     CBodyAnimBlendStack *stack = &seal->m_blends;
 
     for (int i = stack->m_top; i >= 0; i--) {
+        stack = &seal->m_blends;
         ACTIVE_ANIM *rep = BlendAt(stack, i)->Representative();
         short id = rep->m_id;
         CZSIScriptCommon *anim = seal->m_animset->GetScript((AnimType)id, seal->m_weapon_id);
@@ -93,6 +100,45 @@ extern "C" bool func_0057D710(CZSealBody *seal, short weapon)
 
     seal->m_interp2 = seal->m_interp1 = t;
     return true;
+}
+
+extern "C" {
+/* an anim type for an item (OVL2 0x58C820, seal_cfg.cpp's) */
+AnimType func_0058C820(CZSealBody *seal, AnimType type, SEAL_ITEM_BYTE item);
+}
+
+/* every blend's anim type taken over to an item -- its type for the item, its anim looked up again (the
+ * weapon's own, else weapon 0's) -- and the top blend's base type kept, unless a rifle swap is on the
+ * stack (OVL2 0x57D5E0, new in SOCOM II: AnimTypes::SwapRifle, SOCOM 1's static six after Stand2Prone;
+ * the name unknown). The walk is 0x57D710's, the stack's address assigned in the loop as there.
+ * OPEN, 9 instructions (the size the target's): 0x57D710's two misses exactly -- the hoisted addiu in
+ * the preheader's bltz delay slot where the target has it in the entry `b`'s (the counter's lw before
+ * the b), and the stack and the counter trading s0/s1 (igdump: seal, item, stack and i all over K and
+ * coloured highest index first; the target wants the stack's index above the counter's -- a web made
+ * late, as the split rule's). Tried: the counter defined or declared first (a dead `i = 0` too), the
+ * prefix step, a while loop, the stack and counter both in the for's init, an inline accessor
+ * returning the stack's address (22: its temporary s3), the member indexed straight (0x10C) */
+extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item)
+{
+    if (seal->IsCurrentBlend((AnimType)AnimTypes::SwapRifle))
+        return;
+    CBodyAnimBlendStack *stack = &seal->m_blends;
+
+    for (int i = stack->m_top; i >= 0; i--) {
+        stack = &seal->m_blends;
+        ACTIVE_ANIM *rep = BlendAt(stack, i)->Representative();
+        AnimType id = func_0058C820(seal, (AnimType)rep->m_id, item);
+
+        rep->m_id = id;
+        CZSIScriptCommon *anim = seal->m_animset->GetScript(id, seal->m_weapon_id);
+
+        if (!anim)
+            anim = seal->m_animset->GetScript(id, 0);
+        if (anim)
+            rep->m_anim = anim;
+    }
+    seal->m_curblend = (AnimType)((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->Representative()->m_id;
+    seal->m_curblend = seal->m_animset->BaseAnim(seal->m_curblend);
 }
 
 /* the state of the topmost blend in state 0, 1 or 2, else 0 (OVL2 0x57DBB0; new in SOCOM II, its

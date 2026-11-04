@@ -146,8 +146,10 @@ public:
     /* whether an item has room for rounds (SOCOM 1's; OVL2 0x5BA5B0, kit.h's -- the AI's ammunition
      * search asks it) */
     bool CanAddAmmo(int index, int rounds);
-    /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) */
+    /* the item in hand (kit.h's: const in SOCOM II; OVL2 0x5C3780) and the item made current by its
+     * index (kit.h's; OVL2 0x5C4B10) */
     class CZFTSWeapon *GetCurItem() const;
+    void SetCurItemByIndex(int index);
     /* the weapons parented to the hand for the rifle or the pistol (kit.h's; OVL2 0x5C6A40, 0x5C6DA0:
      * the two takes start with them) */
     void ReParentToRifle();
@@ -185,6 +187,12 @@ public:
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
     FIRE_CLASS GetCurItemFireClass();
+    /* an item's fire class, no kit asked (the kit lane's round 32 name: a static member, the item in
+     * a0; OVL2 0x5B8820 -- seal_env.cpp compares it with the pistol's 2) */
+    static FIRE_CLASS GetItemFireClass(EQUIP_ITEM item);
+    /* a weapon's ammunition taken in, the rounds read and handed back (SOCOM 1's PickupAmmo by its
+     * arguments, the kit lane's round 32; OVL2 0x5BB000 -- HandlePickupAck's eight takes call it) */
+    void PickupAmmo(class CZFTSWeapon *weapon, class CZAmmo *ammo, int *rounds);
     /* the frame's kit work before the SEAL's (SOCOM 1's PreTick; OVL2 0x5C1660, seal_kit.cpp's range:
      * WeaponsTick calls it last, as SOCOM 1's does) */
     void PreTick(float dT);
@@ -211,6 +219,10 @@ struct AI_SOUND_PRIORITY {
      * target tests it on the word, `andi 0x100`: 0x5712F0) */
     unsigned int m_rest : 24;
 };
+
+/* an anim's signal to its controller (SOCOM 1's AI_SIGNAL by AnimSignal's mangled name; a byte -- the
+ * switch narrows it with andi -- its cases 1 to 6, the names unknown) */
+enum AI_SIGNAL { AI_SIGNAL_0 = 0, AI_SIGNAL_LAST = 255 };
 
 /* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
@@ -523,6 +535,9 @@ enum AI_LOOK {
 class CSealCtrl : public CEntityCtrl {
 public:
     CSealCtrl();
+    /* the scan's tick (OVL2 0x600550, the kit lane's range: the map's ScanTick__9CSealCtrlFf; CSealCtrlAi's
+     * PreTick, seal_control.cpp's, calls it) */
+    void ScanTick(float dT);
     virtual ~CSealCtrl();
     virtual bool PreTick(float dT);
     virtual bool Tick(float dT);
@@ -1110,6 +1125,9 @@ public:
      * task's own arguments (SOCOM 1's; OVL2 0x561F00) */
     bool SetupAnimations();
     bool ActivateEx(SEAL_TASK task, bool b, ...);
+    /* an anim's signal taken: 1, 2, 3 and 6 handed to every state, the top last-first; 4 the suspended
+     * state pushed, 5 popped; then the stack's bits (SOCOM 1's AnimSignal; OVL2 0x562030) */
+    void AnimSignal(CZAnim *anim, AI_SIGNAL sig);
     /* the stance the body is to take, set when prone, when a target is held with its bit 9, or
      * when forced, its timer restarted with the delay (OVL2 0x5631B0, new in SOCOM II: CTStance's
      * Begin and End call it; the name ours) */
@@ -1588,6 +1606,8 @@ public:
     static void AcquireRemoteAi(CZSealBody *seal);
     /* an action offered or withdrawn (SOCOM 1's took an unsigned int id) */
     void ActionAvailableMask(unsigned char id, bool on);
+    /* the action shown selected, its bit alone (OVL2 0x544C80, seal.cpp; SOCOM 1's took a flag too) */
+    void ActionSelectionMask(unsigned char id);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */
     void SetRestrained(bool on) { m_restrained = on; }
     /* the squad-joined flag set (an inline: `(b & 1) << 6` even for a constant) */
@@ -1980,7 +2000,8 @@ public:
      * new in SOCOM II, the name ours) */
     CCompassAnchor *m_hostile_anchor;   // 0xecc
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
-    unsigned char _ed4[0xee0 - 0xed4];
+    unsigned int m_action_selection;   // 0xed4: the selected action's bit (SOCOM 1's m_action_selection_mask, 0xdc4)
+    unsigned char _ed8[0xee0 - 0xed8];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
     unsigned char _ee4[0xf44 - 0xee4];
     /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the

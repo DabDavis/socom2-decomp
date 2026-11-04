@@ -2060,6 +2060,52 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 41** (tcmAddKindItems, the reticule's two timer bars, the list box's text and clear):
+  - calls written as another call's arguments run last to first: a target that fetches them in argument order had named
+    locals (tcmAddKindItems 0x2329F0, the cache builder's twenty calls); a byte-enum return held in an enum local isn't
+    narrowed at the assignment and is zero-extended only where compared as an int, as `unsigned char` locals MW narrows
+    at the call and swaps two register pairs;
+  - `x = x < 0.0f ? 0.0f : x;` leaves no join nop where `if (x < 0.0f) x = 0.0f;` pads the join
+    (BitmapReticule::TimerProgressTick 0x213680, SOCOM 1's, the bar's rectangle constants; ReloadTimerTick 0x213840, SOCOM
+    II's second bar: reloading at a turret); a single return of a local preset to none gives the target's `move v0,zero`
+    at entry and straight branches to the epilogue, early returns each build a block (CUIListBox::GetItemText 0x374B50);
+  - `next = l.erase(it);` assigned goes through the conversion's temporary and a bitwise copy through an FPR, initialised
+    MW builds it in place (16 bytes short, two registers swapped: RemoveAllItems 0x375C70, the box's own font at +0xBC
+    deleted); a list reached through an inline accessor keeps its address saved without hoisting its end node, a
+    reference local declared before the loop hoists and spills the end node too;
+  - a dead first definition after the count (`T *tex = 0;`) numbers a loop-body local ahead of the loop counter
+    (tcmCreateItem 0x236D20: 51 -> 6 off, the virtual SetHasTexture's object pointer set up before the bool argument in
+    the target); tcmAddItem 0x237000's second parameter is a parent node's name, its last a bool (renamed, byte-exact);
+    hud_bitmapreticule.cpp starts at 0x213610.
+- **Tells from the online lobby, round 19** (CMPEG::IdleTick, GamePassesTypeFilter, the radio tick written whole):
+  - a loop invariant that is nothing but a signed-to-unsigned conversion is still hoisted, its empty preheader laid after
+    the function's last block (the engine core's round 11): CMPEG::IdleTick 0x309780 matches with `int` line counts and
+    the loop inside `if (p_mp)` -- the target's two jump-only blocks;
+  - an `unsigned char` local compared repeatedly can take three registers where an `int` takes one (GamePassesTypeFilter
+    0x2E31E0: the first mission an int defined after `mixed`, narrowed back with `(unsigned char)first` in the chain);
+    `do { ... } while (*++seq);` stops MW carrying the loop test's load into the next pass's first read, `p++; while
+    (*p)` does not;
+  - a field compared with a call's result is loaded in the order the comparison is written: `call() > field` loads it
+    after the call, `field < call()` before, held in a saved register; an `*s++` byte-to-halfword loop is unrolled in
+    pairs stepping the pointer by 2 (offsets 0 and 1), `s[i]` gives an `addu` and offsets 0-7; an element field read twice
+    across a call keeps the element's whole address, read through a getter inline it is shared as a value;
+  - the radio tick 0x30EC10 (0x9E0) written whole, every block, call and frame slot the target's, 13 off (the five sends'
+    argument load order); the chat queue's copy chain named after the lobby queue's mirror.
+- **Tells from the kit and AI states, round 34** (SetHideLook, CAiSTarget::Tick, three long opens):
+  - a member the target loads twice with nothing between: read one of the two through a const view,
+    `((const T *)p)->m` -- plain reads are merged -- and take the second as a local before the test (CAiSFollow::SetHideLook
+    0x5FDAD0, new in SOCOM II; CAiSUseVehicle::OnSignal 0x60F5E0, open since round 32; the SEALs' SetAiBit2 0x56D890);
+  - a stack ternary through a const local (`const CSealCtrlAi *c = ai;`) keeps the target's delay-slot copy and its
+    left-behind original, read through the parameter MW moves or hoists the stack's address instead; `return a || b;` of
+    two bools in an inline gives MW's value select -- the target's preset-then-clear `||` and set-under-test `&&` are a
+    preset bool with nested ifs and `else r = r;`, and a `!m_flag` the target computes into a value (sltu/xori) is an
+    inline of its own (CAiSTarget::Tick 0x604880, its vtable slot +0x10 now declared);
+  - the HUD's round 33 same-type cast works on float clocks too: `(float)clock` changes MW's float load order and
+    colouring (0x5F6270, open since round 13; CAiTarget::GetTimeSinceLastSighting 0x60A590, open since round 7), but not
+    an integer add's operand order; an object reached through a const local pointer keeps its field reads through the
+    pointer and shares one size read between the test and the index, a plain pointer folds every field into the outer
+    object's offsets and reloads the size; a null-tested element pointer needs an if of its own, not a ternary (0x5FD460);
+  - seal_aistate.cpp re-tested under 3.0b52: only 0x5F3270 moves, and matches only under b50 -- the unit's b50 line holds.
 - **Tells from completing the MSL headers, round 22** (the cdeque iterator, reverse_iterator, OVL2's map inserts; probes
   build/scratch/msl-r22-p22/, untracked):
   - cdeque<T *>::iterator's constructor as an initialiser list (the world's round 16 measurement, applied): end() 0x333F90
