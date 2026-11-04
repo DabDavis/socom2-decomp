@@ -37,6 +37,40 @@ typedef void (*NetCreateObjectCallback)(int, int);
 typedef void (*NetUpdateObjectCallback)(int, int, int);
 typedef void (*NetDestroyObjectCallback)(int, int);
 
+/* how a schedule decides a field has changed enough to send (SOCOM 1's NetThresholdMethod, by its
+ * constructor's mangled name: its position schedules 2 with a threshold, its flags 1 with none --
+ * the enumerators ours; int-sized, the constructors store it with sw) */
+enum NetThresholdMethod {
+    NET_THRESHOLD_ANY = 1,
+    NET_THRESHOLD_DELTA = 2,
+    NetThresholdMethod_Extent = 0x7FFFFFFF
+};
+
+/* what a schedule's compare function is handed (fts_remote.cpp's: the field's index, the new and
+ * the old value) */
+struct NetFieldCompare;
+
+/* a network field's broadcast schedule (SOCOM 1's CZBroadcastSchedule, 16 bytes here: SOCOM 1's
+ * double threshold is a float, or a compare function in its place, and SOCOM II passes the byte at
+ * 0xC that SOCOM 1 zeroed). The DME copies it whole when a field is registered with it (two ldl/ldr
+ * pairs, NetObjectField's 0x623F30), so nothing types the byte: unsigned char, as fts_remote.cpp's.
+ * Both constructors are zNetDme.cpp's, its last own functions (OVL1 0x30E3D0, 0x30E3F0; SOCOM 1's
+ * one at 0x322300, right before ~CZNetwork as here) */
+class CZBroadcastSchedule {
+public:
+    CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, float threshold, unsigned char c);
+    CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, bool (*compare)(NetFieldCompare *),
+                        unsigned char c);
+
+    unsigned int m_rate;   // 0x0: in ms
+    NetThresholdMethod m_method;   // 0x4
+    union {
+        float m_threshold;   // 0x8
+        bool (*m_compare)(NetFieldCompare *);
+    };
+    unsigned char m_c;   // 0xc (SOCOM II's)
+};
+
 /* --- the network ------------------------------------------------------------------------- */
 
 class CZNetwork {

@@ -5337,8 +5337,8 @@
 0x0030E3A0 0x8 func_0030E3A0  # OVL1
 0x0030E3B0 0x10 func_0030E3B0  # OVL1
 0x0030E3C0 0x10 func_0030E3C0  # OVL1
-0x0030E3D0 0x18 func_0030E3D0  # OVL1
-0x0030E3F0 0x18 func_0030E3F0  # OVL1
+0x0030E3D0 0x18 __ct__19CZBroadcastScheduleFUi18NetThresholdMethodPFP15NetFieldCompare_bUc  # OVL1; ours, the online lane round 15 (the game states' round-27 request: the broadcast schedule's compare-function constructor, SOCOM II's -- the function stored where the threshold goes, the byte at 0xC; __sinit_fts_remote.cpp builds the two position schedules with func_002BD270; zNetDme.cpp, byte-exact)
+0x0030E3F0 0x18 __ct__19CZBroadcastScheduleFUi18NetThresholdMethodfUc  # OVL1; ours, the online lane round 15 (the game states' round-27 request: the broadcast schedule's threshold constructor -- SOCOM 1's __ct__19CZBroadcastScheduleFUi18NetThresholdMethodd 0x322300, the last own function of its zNetDme.cpp right before ~CZNetwork as here; the double now a float in $f12 and a byte parameter stored at 0xC where SOCOM 1 zeroed it; __sinit_fts_remote.cpp builds sixteen statics with it; zNetDme.cpp, byte-exact)
 0x0030E410 0x78 __dt__9CZNetworkFv  # OVL1; ours, the online lane round 10 (CZNetwork's implicit destructor, the two lists' __list_imp destructors called: __sinit_zNetDme.cpp registers it for theNetwork, as SOCOM 1's registers its; byte-exact)
 0x0030E490 0xA8 func_0030E490  # OVL1
 0x0030E540 0x10 func_0030E540  # OVL1
