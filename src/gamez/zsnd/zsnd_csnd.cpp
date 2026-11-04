@@ -419,6 +419,45 @@ CSndInstance *CSnd::PlaySoundVolPanPitch(float vol, int pan, int pitch, bool one
     return r;
 }
 
+/* a 3D sound's volume and pan at a position (SOCOM 1's; SOCOM II's ranges are two shorts and it
+ * returns the distance): nothing while the system is off, none without a listener; full inside the
+ * near range, falling to none at the far one; the pan the position's bearing in degrees, 0-359.
+ * The distance is CPnt3D::Length() (inline: the point's fields read off the frame, not through a
+ * CSE'd address), the bearing's depth negated in place in a local of its own (`z *= -1.0f`: the
+ * product takes the depth's register, the constant f0 -- `p.z * -1.0f` in the argument swaps them) */
+float CSnd::CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan)
+{
+    if (m_isDisabled)
+        return 0.0f;
+    if (!m_listenerIsValid) {
+        *outVol = 0;
+        *outPan = 0;
+        return 0.0f;
+    }
+    CPnt3D p;
+
+    m_listenermatrix.Transform(pos, &p, 1);
+    float dist = p.Length();
+    float att;
+
+    if (dist <= m_range_min)
+        att = 1.0f;
+    else if (dist <= m_range_max)
+        att = 1.0f - (dist - m_range_min) / (m_range_max - m_range_min);
+    else
+        att = 0.0f;
+    *outVol = (int)(vol * (1024.0f * att * CSndInstance::m_mastervol));
+    float z = p.z;
+
+    z *= -1.0f;
+    int pan = (int)(57.29578f * atan2f(p.x, z));
+
+    if (pan < 0)
+        pan += 360;
+    *outPan = pan;
+    return dist;
+}
+
 extern int data_0048DB38, data_0048DB40;   /* (the loader's counts; names not known) */
 
 /* every voice stopped, the banks unloaded and every sound deleted, both lists' storage given up

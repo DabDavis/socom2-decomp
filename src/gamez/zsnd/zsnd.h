@@ -153,6 +153,8 @@ public:
     static void SetSubtitles(bool on);
 
     static bool m_isDisabled;           /* 0x48DD28 */
+    static bool m_listenerIsValid;      /* 0x48DB50: SOCOM 1's, beside m_listener (CalcVolPan gives
+                                           no volume and no pan while it is clear) */
     static CSnd *m_errorsound;          /* 0x48DD90 */
     static int m_max_num_vags;          /* 0x48DD98 */
     static int m_numStreams;            /* 0x48DD80: streamed voices playing (name ours) */

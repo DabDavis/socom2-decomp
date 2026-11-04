@@ -133,6 +133,50 @@ void CWorld::GarbageCollect()
             (*it)->ShrinkAtomBasePtrs();
 }
 
+/* a node's box through one inline level more than CNode::GetBBox (ours, a stand-in): the set's
+ * TestFOV and the shadow caster's constructor call GetBBox straight, with no one-level copy of its
+ * body -- what a wrapper inlined one level gives, the recursive GetBBox under it called out of
+ * line, where a direct call inlines GetBBox's body once (every other caller) */
+static inline const CBBox *NodeBBox(CNode *node)
+{
+    return node->GetBBox();
+}
+
+/* a caster for the node: its box's size, and the box of its corners carried into the world by the
+ * node's matrix (new in SOCOM II, the name ours).
+ * OPEN, 0x1F0 of 0x228: the target calls CPnt3D()'s out-of-line copy (0x1FB3C0) for each corner
+ * and GetBBox straight, which is what an inline helper inlined ONE level gives (its callees called,
+ * as hud_linemap.cpp's GetCellCenter calls CPnt3D()) -- the corners, their transform and the box
+ * likely an inline of the original's too tall to inline whole; the box is then built through a
+ * temporary (the first corner copied whole into 0xD0, from there whole into the temporary's
+ * minimum at 0x50 and field by field into its maximum at 0x5C, the temporary assigned to m_bbox
+ * field by field: a CBBox made from one point, by value?), the minimum kept with `<=` and the
+ * maximum with `<` */
+CShadowCaster::CShadowCaster(CNode *node)
+{
+    m_node = node;
+    node->GetBBox()->GetSize(&m_size);
+    const CBBox *box = NodeBBox(m_node);
+    CPnt3D pts[8];
+
+    GetBBoxCorners(pts, box);
+    m_node->m_matrix.Transform(pts, 8);
+    CPnt3D p = pts[0];
+    CBBox b;
+
+    b.m_min = p;
+    b.m_max = p;
+    m_bbox = b;
+    for (int i = 1; i < 8; i++) {
+        m_bbox.m_min.x = m_bbox.m_min.x >= pts[i].x ? pts[i].x : m_bbox.m_min.x;
+        m_bbox.m_min.y = m_bbox.m_min.y >= pts[i].y ? pts[i].y : m_bbox.m_min.y;
+        m_bbox.m_min.z = m_bbox.m_min.z >= pts[i].z ? pts[i].z : m_bbox.m_min.z;
+        m_bbox.m_max.x = m_bbox.m_max.x > pts[i].x ? m_bbox.m_max.x : pts[i].x;
+        m_bbox.m_max.y = m_bbox.m_max.y > pts[i].y ? m_bbox.m_max.y : pts[i].y;
+        m_bbox.m_max.z = m_bbox.m_max.z > pts[i].z ? m_bbox.m_max.z : pts[i].z;
+    }
+}
+
 /* a shadow caster made for the node and listed (pinned: AddChild calls it, where AddShadow, its
  * neighbour, is inlined) */
 #pragma auto_inline off
@@ -889,15 +933,6 @@ CTextureAssetCharacterList::iterator CTextureAssetCharacterList::TestFOV(CCamera
         }
     }
     return found;
-}
-
-/* a node's box through one inline level more than CNode::GetBBox (ours, a stand-in): the set's
- * TestFOV and the shadow caster's constructor call GetBBox straight, with no one-level copy of its
- * body -- what a wrapper inlined one level gives, the recursive GetBBox under it called out of
- * line, where a direct call inlines GetBBox's body once (every other caller) */
-static inline const CBBox *NodeBBox(CNode *node)
-{
-    return node->GetBBox();
 }
 
 /* the set's nodes in view counted: each active node's box, its eight corners carried into the
