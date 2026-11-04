@@ -10,6 +10,8 @@
  * 0x45A0C0 and 0x45A0C1, so SOCOM II dropped the two team indices ahead of them (the map row
  * has moved). */
 
+#include <list>
+
 #include "../zmath/zmath.h"
 
 struct ClientConnectArgs;
@@ -171,6 +173,22 @@ public:
     int m_4;   // 0x4: its network object
 };
 
+/* the world's entities (zentity.h's CEntity: only the list and the kind -- 2 a SEAL, 3 a turret) */
+class CEntity;
+
+class CEntityList : public std::list<CEntity *> {
+};
+
+class CEntity {
+public:
+    static const CEntityList &GetEntityList() { return m_list; }
+
+    static CEntityList m_list;
+
+    unsigned char _0[0x10];
+    unsigned char m_type;   // 0x10
+};
+
 /* a turret (veh_turret.cpp's CTurret: only its network object here) */
 class CTurret : public CZVehicle {
 };
@@ -217,6 +235,8 @@ public:
 
 class CMission {
 public:
+    void RefreshTeamValves();   /* 0x2B23A0 */
+
     unsigned char _0[0x1ac];
     struct CMissionInfo *m_info;   // 0x1ac: the mission's info (its halfword at 4 the game mode)
     unsigned char _1b0[0x1c0 - 0x1b0];
@@ -1864,6 +1884,49 @@ extern "C" void func_002B7C90(CTurret *turret)
     if (!(theNetwork.m_bNetwork && theNetwork.m_bSessionMaster && turret))
         return;
     turret->m_4 = CZPlatformState::CreateLocalPlatform(turret);
+}
+
+/* the entity as a SEAL or a turret, if it is one (seal.cpp's AsSeal; the turret's the same, ours) */
+inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == 2 ? (CZSealBody *)e : 0;
+}
+
+inline CTurret *AsTurret(CEntity *e)
+{
+    return e && e->m_type == 3 ? (CTurret *)e : 0;
+}
+
+/* whether a SEAL is a player's (its controller asked; ours) */
+inline bool IsPlayerSeal(CZSealBody *seal)
+{
+    return seal->m_ctrl ? seal->m_ctrl->IsPlayer() : false;
+}
+
+extern "C" unsigned char data_0044CE50;   /* (set by OVL2's NetworkPlayerCreate: the objects asked for) */
+
+/* the network objects made when asked (SOCOM II's; OVL1 0x2B7A90): the request cleared, the player's
+ * SEAL put in, then every player SEAL's and every turret's local object made by the session master
+ * (0x2B7CF0 and 0x2B7C90 inlined), and the mission's team valves refreshed */
+extern "C" void func_002B7A90()
+{
+    if (!data_0044CE50)
+        return;
+    data_0044CE50 = 0;
+    ftsNetworkPlayerInit();
+    CEntityList::const_iterator i;
+
+    for (i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end(); ++i) {
+        CZSealBody *seal = AsSeal(*i);
+        CTurret *turret = AsTurret(*i);
+
+        if (seal) {
+            if (IsPlayerSeal(seal))
+                func_002B7CF0(0, seal);
+        } else if (turret)
+            func_002B7C90(turret);
+    }
+    theMission.RefreshTeamValves();
 }
 
 /* the game's and the persona's network objects made (OVL1 0x2B7A20) */

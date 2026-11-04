@@ -551,6 +551,26 @@ _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 /* data appended to a command, which may move: the command given back (SOCOM 1's) */
 _zanim_cmd_hdr *zAnimCmdAddData(_zanim_cmd_hdr *hdr, void *data, int size);
 
+/* the GS ALPHA register (sceGsAlpha's layout): (A - B) * C + D, C or D the FIX alpha */
+struct GsAlpha {
+    unsigned long A : 2;
+    unsigned long B : 2;
+    unsigned long C : 2;
+    unsigned long D : 2;
+    unsigned long pad8 : 24;
+    unsigned long FIX : 8;
+    unsigned long pad40 : 24;
+};
+
+/* an alpha driven by an expression track (zanim_cmd_parse.cpp's, 0x25C5F0; the name ours) */
+void zAnimAlphaExpr(GsAlpha *alpha, char *expr, int n, float t);
+/* a colour driven by an expression track (0x25C6E0; the channel unread -- the name ours) */
+void zAnimColorExpr(PNT4D *color, char *expr, int n, int channel, float t);
+/* the same made four bytes (0x25C880; the name ours) */
+void zAnimRGBAExpr(unsigned char *rgba, char *expr, int n, float t);
+/* a heading and pitch in degrees made a direction (0x25CB00; the name ours) */
+void zAnimHeadingToDir(CPnt3D *dir, float heading, float pitch);
+
 /* the wildcard search over node names (anim_main.cpp) */
 const char *ZAnimWildcardApply(const char *name);
 const char *ZAnimWildcardNext();
@@ -622,7 +642,7 @@ public:
     void FreeNetworkPacketBuffer();
     void Close();
     void Open();
-    void InitCommands();
+    bool InitCommands();
     float InvExp(float x);
     void AddPath(const char *path);
     int Unload();
