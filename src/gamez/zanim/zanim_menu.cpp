@@ -235,10 +235,64 @@ bool OnRemoveEquipment(C2DAnimCmdHdr *hdr, float *dT)
 
 }
 
+/* the per-character picks the new choosers make (SOCOM II's, not named yet): a primary weapon, an
+ * item into one of the three equipment slots (2 to 4) */
+extern "C" bool func_00284360(const CSelectedCharsItr &it, EQUIP_ITEM item);
+extern "C" bool func_00282C20(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+/* the selection's item valves brought up to date (SOCOM II's, not named yet: UpdateSelItemValves
+ * 0x282410 is a jump to it) */
+extern "C" void func_00282140();
+
+/* the secondary weapon given to one selected character: its second weapon set up as the item unless
+ * it is that already, its UI variables and the selection's valves updated (SOCOM II's; the name ours,
+ * after ChooseEquipmentForCharacter) -- true either way */
+inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
+{
+    CCharacterWeap &w = (*(CCharacterWeapList *)it.m_weapons)[1];
+
+    if (item == w.m_wepId)
+        return true;
+    w.SetupCharacterWeapon(item);
+    UpdateCharWeaponUiVars(it.m_index);
+    func_00282140();
+    return true;
+}
+
 namespace {
 
-/* the item put on one selected character, or as much of it as fits (SOCOM 1's; not written yet) */
-bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item);
+/* the item put on one selected character: none when the character has it already or carries fewer
+ * than two weapons, else a primary or a secondary through its pick, anything else into the first free
+ * equipment slot (-1); whether it took, the character's UI variables updated (SOCOM 1's, which set the
+ * two weapons up itself and pushed the rest when four slots allowed). OPEN, 0x154 against 0x184:
+ * the walk and the early return are the target's (its `i != e` narrowed and reused after the loop;
+ * a1/a2 swapped), the three picks are not -- the target materialises each pick's result into the
+ * bool (`move s0,zero; beqz v0; daddiu s0,zero,1; andi s0,s0,0xff` in every arm, the secondary's
+ * inlined pick behind a `daddiu a1,zero,1; beqz a1` test of its own), where a bool assigned a bool
+ * call is a move. `ok = false; if (f()) ok = true;` in the two calling arms gives their first three
+ * instructions (0x16C); ternaries, int-returning picks (sltu), if-return wrappers, `&&` forms and a
+ * ternary chain fold or lose (build/scratch/core/v_cefc.py) */
+bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
+{
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+    CCharacterWeapList::iterator i = weapons->begin(), e = weapons->end();
+
+    for (; i != e; ++i)
+        if ((*i).m_wepId == item)
+            break;
+    if (i != e || weapons->size() < 2)
+        return false;
+
+    bool ok;
+
+    if (CZWeapon::IsPrimary(item))
+        ok = func_00284360(it, item);
+    else if (CZWeapon::IsSecondary(item))
+        ok = ChooseSecondaryForCharacter(it, item);
+    else
+        ok = func_00282C20(it, item, -1);
+    UpdateCharWeaponUiVars(it.m_index);
+    return ok;
+}
 
 /* the item the argument names put on every selected character: whether any took it (SOCOM 1's) */
 bool ExecuteChooseEquipment(C2DAnimCmdHdr *hdr, float *dT)
@@ -253,14 +307,6 @@ bool ExecuteChooseEquipment(C2DAnimCmdHdr *hdr, float *dT)
 }
 
 }
-
-/* the per-character picks the new choosers make (SOCOM II's, not named yet): a primary weapon, an
- * item into one of the three equipment slots (2 to 4) */
-extern "C" bool func_00284360(const CSelectedCharsItr &it, EQUIP_ITEM item);
-extern "C" bool func_00282C20(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
-/* the selection's item valves brought up to date (SOCOM II's, not named yet: UpdateSelItemValves
- * 0x282410 is a jump to it) */
-extern "C" void func_00282140();
 
 namespace {
 
@@ -296,21 +342,6 @@ bool UIChoosePrimary(C2DAnimCmdHdr *hdr, float *dT)
         if (!func_00284360(it, item))
             ok = false;
     return ok;
-}
-
-/* the secondary weapon given to one selected character: its second weapon set up as the item unless
- * it is that already, its UI variables and the selection's valves updated (SOCOM II's; the name ours,
- * after ChooseEquipmentForCharacter) -- true either way */
-inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
-{
-    CCharacterWeap &w = (*(CCharacterWeapList *)it.m_weapons)[1];
-
-    if (item == w.m_wepId)
-        return true;
-    w.SetupCharacterWeapon(item);
-    UpdateCharWeaponUiVars(it.m_index);
-    func_00282140();
-    return true;
 }
 
 /* the secondary the argument names given to every selected character: whether any took it (SOCOM
