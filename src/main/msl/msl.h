@@ -91,12 +91,21 @@ struct char_traits<char> {
     static int_type to_int_type(const char_type &c) { return (unsigned char)c; }
 };
 
+/* the wide traits copy element by element through assign (round 6: the streambufs' xsgetn/xsputn
+ * <wchar_t>, 0x185EB0/0x185C20, byte-exact so -- the reference parameters keep each `p + 4` in a
+ * register of its own in MW's unrolled loop; a plain `*s1++ = *s2++` folds it into the offsets) */
 template <>
 struct char_traits<wchar_t> {
     typedef wchar_t char_type;
     typedef int int_type;
+    static void assign(char_type &c1, const char_type &c2) { c1 = c2; }
     static char_type *copy(char_type *s1, const char_type *s2, unsigned int n)
-        { memcpy(s1, s2, n * sizeof(char_type)); return s1; }
+    {
+        char_type *s = s1;
+        for (size_t i = 0; i < n; ++i)
+            assign(*s1++, *s2++);
+        return s;
+    }
     static int_type eof() { return -1; }
     static int_type not_eof(const int_type &c) { return eq_int_type(c, eof()) ? 0 : c; }
     static bool eq_int_type(const int_type &c1, const int_type &c2) { return c1 == c2; }

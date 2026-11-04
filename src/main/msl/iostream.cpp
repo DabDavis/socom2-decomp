@@ -74,8 +74,7 @@ basic_streambuf<charT, traits>::xsgetn(char_type *s, streamsize n)
     return i;
 }
 
-/* xsputn<char> matches; OPEN, xsputn<wchar_t> (0x185C20: 0x13C against 0x21C): as xsgetn<wchar_t>,
- * the target's wide copy is a loop, the traits' memcpy here */
+/* both xsputn match (xsputn<wchar_t> since round 6: the wide traits' copy is an assign loop, msl.h) */
 template <class charT, class traits>
 streamsize
 basic_streambuf<charT, traits>::xsputn(const char_type *s, streamsize n)
@@ -394,9 +393,8 @@ basic_filebuf<charT, traits>::write2(int n, char_type intern_buf)
  *
  * The two codecvt destructors (0x18A550, 0x18A5B0, 0x5C each) are implicit: they match once
  * locale::facet's destructor is inline (msl.h), its vtable store folded into theirs.
- * OPEN: xsgetn<wchar_t> (0x185EB0, 0x214) instantiates from the char body 0x134: the wide traits'
- * copy is a loop there, not memcpy -- not written. ~ctype<char> (locale.cpp) is generated, not
- * written.
+ * xsgetn<wchar_t> (0x185EB0) matches since round 6 (the wide traits' copy, msl.h). ~ctype<char>
+ * (locale.cpp) is generated, not written.
  *
  * codecvt<char, char, int>: no conversion */
 codecvt_base::result codecvt<char, char, int>::do_out(int &, const char *from, const char *, const char *&from_next,
