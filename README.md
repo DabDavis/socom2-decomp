@@ -2033,6 +2033,21 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 32** (the danger level, the spawners' insert, SendPickupAckMessage's int, znet.h):
+  - an iterator INITIALISED from `GetEntityList().begin()` gives one copy and lives in a register, ASSIGNED it gives two
+    copies and lives in memory (LoadVehicles 0x2B2E50 against 0x2B7A90); a push_back made inside an inline helper puts its
+    iterator temporaries below the caller's frame objects -- that fixed all of LoadVehicles' stack slots (it stays 41 off
+    in the colouring: the entry iterator wanted after c, r, rows and cols, which no declaration order reaches -- best of
+    9,000 orders searched offline with build/scratch/states-r32/ig/search.py: 4 off);
+  - a same-team test written as a positive inline used as a plain truth test, the other entity the inline's parameter,
+    keeps that member's address hoisted (spelled `!IsEnemy(...)` it keeps a sltu/xori pair); a local assigned from an
+    inline accessor's result is absorbed into the inline's temporary, numbered after later named locals; a byte read
+    through `*_max<Uc>()` into an int local is compared directly, an unsigned char local gets an `andi 0xff` (the danger
+    around the player 0x2A4A10, its tail emitting _max<Uc> 0x2AFC40);
+  - a box passed by value to an inline keeps GetBBox, written as that call's argument, out of line, a local copy inlines it
+    one level; the grid's base point is stored z, x, y field by field as in SOCOM 1 (the three-float constructor evaluates
+    x first, 8 bytes longer); SendPickupAckMessage 0x2BA1F0 takes an int first (renamed __Fiii8AckUnion, seal_env.cpp
+    respelled at integration); fts_remote.cpp and fts_net_seal.cpp include znet.h now (the online lobby's transform).
 - **Tells from the HUD, round 36** (hud_lensflare.cpp's loaders and entries, CUIMapCtrl::Tick, a unit boundary):
   - a `const _zrdr *` lets MW read the type byte once for every inline test, a plain pointer reloads it after an
     intervening null test (CLensFlareManager::LoadLightSource 0x1FF630 and LoadRdr 0x1FF4F0); the loader's first name is
