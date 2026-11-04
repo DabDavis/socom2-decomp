@@ -16,10 +16,12 @@
 #include <string.h>
 #include "zui.h"
 
-/* an rdr value packed into a buffer, its size returned (zrdr_pack, 0x334DB0); by address: two values the
- * same (0x335E20) and the variable revived as a new one (0x386B80) -- the drafts stand for them */
+/* an rdr value packed into a buffer, its size returned (zrdr_pack, 0x334DB0), two values the same
+ * (zrdr_equal 0x335E20, both zrdr_pack.cpp's: the world's round 15 named it -- `if (zrdr_equal(..))`
+ * on the bool branches on v0 as the int placeholder did, Set unchanged); by address: the variable
+ * revived as a new one (0x386B80) -- its draft stands for it */
 unsigned int zrdr_pack(_zrdr *rdr, void *buf, unsigned int size);   /* (zrdr_pack.cpp's) */
-extern "C" int func_00335E20(_zrdr *a, _zrdr *b);
+bool zrdr_equal(const _zrdr *a, const _zrdr *b);
 
 /* a value's strings made again in the table: a string's text re-created, an array's items in turn
  * (0x385EA0; SOCOM 1's _Refresh, at the same place in the run). The walk inlines itself twice and
@@ -157,7 +159,7 @@ void CUIVariable::DetachAll()
 
 void CUIVariable::Set(_zrdr *value)
 {
-    if (func_00335E20(this, value))
+    if (zrdr_equal(this, value))
         return;
     if (!packed)
         DeleteChildren();

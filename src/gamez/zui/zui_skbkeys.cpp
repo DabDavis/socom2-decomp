@@ -312,6 +312,8 @@ void SkbUsbDigit(const SKBUSBKEY *key, int arg)
 bool SkbSetText(const char *text, CSoftKeyboard *skb);
 void SkbCursorTo(int pos, CSoftKeyboard *skb, bool before);
 void SkbCursorToEnd(CSoftKeyboard *skb);
+/* whether the two edit strings show (the display unit's, 0x396F10) */
+bool SkbTwoEdits();
 void SkbPlaySound(unsigned char which);
 bool SkbToggleCaption1(CSoftKeyboard *skb);
 void SkbToggleCaption2(CSoftKeyboard *skb);
@@ -897,4 +899,14 @@ void SkbTypeJamo(int arg, signed char jamo, CPad *pad)
         }
     }
     SkbHangulTypeJamo(arg, jamo);
+}
+
+/* the other edit string selected, the cursor put at its end, while the two show (0x399100; HandlePad's
+ * SELECT; the name ours) */
+void SkbToggleTextSel(CSoftKeyboard *skb)
+{
+    if (SkbTwoEdits()) {
+        s_textSel = !s_textSel;
+        SkbCursorToEnd(skb);
+    }
 }

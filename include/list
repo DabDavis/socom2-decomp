@@ -507,15 +507,24 @@ public:
      * inlined into CAiState's implicit operator= 0x5EBDC0): the source's end, then the node at the
      * shorter length found from its nearer end, and the three handed to do_assign -- the arguments
      * evaluated right to left, so x.end() is taken first and min()'s two temporaries x.size() before
-     * size() */
+     * size(). The kit lane's round 33 (0x5EBDC0 byte-exact from seal_unit.cpp): x.begin() is read
+     * through the sentinel's reference, tail() (MW keeps &x.end_, x.end()'s, in a saved register and
+     * loads the first node 4 past it -- the const begin() folds to 16(x)); the node at the shorter
+     * length is found through a const view one inline level down (advance_to_c), so its returned
+     * iterator takes the frame's lowest slot, below x.end()'s and min()'s temporaries */
     __list_imp &operator=(const __list_imp &x)
     {
         typedef typename __list_deleter<T, Allocator>::const_iterator const_iterator;
 
         if (this != &x)
-            do_assign(x.begin(), const_iterator(((__list_imp &)x).advance_to(min(this->size(), x.size()))),
+            do_assign(const_iterator(x.tail().next_), x.advance_to_c(min(this->size(), x.size())),
                       x.end());
         return *this;
+    }
+    /* the n-th node's const iterator (advance_to through a const view: the assignment's; the name ours) */
+    typename __list_deleter<T, Allocator>::const_iterator advance_to_c(unsigned int n) const
+    {
+        return typename __list_deleter<T, Allocator>::const_iterator(((__list_imp *)this)->advance_to(n));
     }
     /* [first, last) assigned, mid the source's node at this list's length: past it a temporary list
      * built on this one's allocator, the overlap copied over the front and the temporary spliced in

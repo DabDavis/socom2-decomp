@@ -176,14 +176,10 @@ bool CAiSAction::Virtual38()
     return m_phase < 6;
 }
 
-/* a script takes kinds 12 and 26 only when it may be pursued from (OVL2 0x5F40F0).
- * OPEN, 0x84 against 0x80: the target keeps the inlined test's result in s0, zeroed in the delay
- * slot of the !m_hold branch (materialised, sltu/xori, as NotHeld() gives it) and set to 1 after
- * the virtual CanPursue, then copies it with andi; here the inline's return true/false lands in
- * v0 at its own labels -- a result local assigned false first is if-converted into an sltu on
- * the call's result instead (0x6C), with == true or != false 0x74; round 28, Pursuable as `bool r;
- * if (...) r = true; else r = false;` (0x84), `r = false` with the two tests nested (0x6C), `return
- * NotHeld() && CanPursue(ai)` and the && into a local (0x6C) */
+/* a script takes kinds 12 and 26 only when it may be pursued from (OVL2 0x5F40F0; byte-exact in the
+ * kit lane's round 33: Pursuable's result local zeroed ahead of the tests, set by the call's test
+ * with a self-assigning else arm -- without it MW if-converts the test into an sltu on the call's
+ * result, 0x6C; `else r = false` leaves a `b` over the vanished arm) */
 bool CAiSScript::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
 {
     bool ok = true;
