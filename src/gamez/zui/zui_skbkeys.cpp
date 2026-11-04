@@ -111,7 +111,7 @@ struct SKBTOKEN {
 /* a string's measured width (ours: the extent UpdatePos leaves at 0x3C, read through its address) */
 static inline const float &StringWidth(const C2DString &s)
 {
-    return s.m_charheight;
+    return s.m_length;
 }
 
 /* the pieces laid out in lines no wider than width at the scale: each line as many pieces as fit,

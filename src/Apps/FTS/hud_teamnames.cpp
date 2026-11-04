@@ -226,7 +226,7 @@ void CTeamNames::SetupTeamNameEntry(int index, CZSealBody *seal, bool add)
     if (bludshot)
         strName.m_scale = s_bludshotscale;
     strName.UpdatePos();
-    strName.SetPos((int)(510.0f - strName.m_charheight), (int)(RowY(index) - (bludshot ? 2 : 1)));
+    strName.SetPos((int)(510.0f - strName.m_length), (int)(RowY(index) - (bludshot ? 2 : 1)));
     SetTextColor(&strName);
     if (add) {
         push_back(&strName);

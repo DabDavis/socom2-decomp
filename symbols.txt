@@ -2071,7 +2071,7 @@
 0x0022AE90 0x4C4 SetupBackgroundBox__28@unnamed@hud_scorepopup_cpp@Fv  # OVL1; s1:order by hand (the HUD lane: hud_scorepopup.cpp -- SOCOM 1's SetupBackgroundBox at the same place, between Draw and the hudTurnOffScorePopup group; the same nine pieces loaded and UV'd from one texture, plus SOCOM II's local static bottom and sixteen bitmaps)
 0x0022B360 0x140 GetTagIPNT2D__FPC5_zrdrPCc  # OVL1; ours by hand (the HUD lane: hud_scorepopup.cpp's -- a tag's first two numbers as integers through zrdr.h's Item/Int, returned by value; called twice by 0x22D660, the message loader; byte-exact)
 0x0022B4A0 0x628 func_0022B4A0  # OVL1
-0x0022BAD0 0x60 func_0022BAD0  # OVL1
+0x0022BAD0 0x60 __dt__Q23std48vector<9CSaferStr,Q23std21allocator<9CSaferStr>>Fv  # OVL1; the integrator 2026-11-04, by the UI lane round 18: the deleting destructor's shape (~__vector_deleter<CSaferStr> 0x22E460 with 0, operator delete on a positive flag); LoadDesign 0x367430 is its only caller and zui.cpp's copy scores match against it
 0x0022BB30 0x10C hudTurnOffScorePopup__Fv  # OVL1; s1:calls by hand (CHUD::ReInit_Uninit's call right after CZPlayerMapItem::MissionEndCleanup, as SOCOM 1's; the same shape: a flag byte cleared, then two loops wiping string arrays, 45 entries where SOCOM 1 had 27)
 0x0022BC40 0x110 hudTriggerPopup__FP14CTriggerSource  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record for this map (GetDatabase) and the object's name (+0x20) opened once through 0x22B4A0; the names ours)
 0x0022BD50 0xC8 hudTriggerPopup__FPCc  # OVL1; by hand (the HUD lane: hud_scorepopup.cpp's -- the pop-up record named so opened once through 0x22B4A0; a ZAnim command (0x2AE340) passes it an anim's name; the name ours)
@@ -6770,7 +6770,7 @@
 0x00369F70 0x24 __ct__10ActionItemFv  # OVL1; tu: zui.cpp~ (1.0 beta); s1:exact
 0x00369FA0 0xB8 __as__10ActionItemFRC10ActionItem  # OVL1; s1:order by hand (SOCOM 1's __as__10ActionItemFRC10ActionItem, zui.cpp lines 404-407, instruction for instruction but the file/line arguments: the type byte, each string freed and duplicated, PadButton then State; vector<ActionItem>'s range init calls it after the inline copy constructor's three stores, as SOCOM 1's) -- zui.cpp
 0x0036A060 0x1A0 UiGetDirStickMoved__Fv  # OVL1; s1:order by hand (zui.cpp's free helpers in reverse alphabetical order as SOCOM 1's, UiGetDirStickMoved first; its body is the one DidStickMovePrev/Next inline) -- the UI-widgets lane
-0x0036A200 0xC func_0036A200  # OVL1
+0x0036A200 0xC UiGetCurMenu__Fv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: SOCOM 1's CHProgressBar::Draw calls UiGetCurMenu at the same point; its body is SOCOM 1's (one global load, 0x49EA90, and return)
 0x0036A210 0x20 func_0036A210  # OVL1
 0x0036A230 0x84 PrepTexture__FPCcPQ23zdb16CTextureRelocMgr  # OVL1; s1:exact
 0x0036A2C0 0x3C PlaySelectionSound__Fv  # OVL1; s1:order by hand (SOCOM 1's PlaySelectionSound__Fv at the same place before PlayCountSound, the same 0x3C: theGame's menu state's SelectionSound, +0xA4, played through its slot 0x1C with (1, 0, 255) if loaded) -- zui.cpp

@@ -456,7 +456,7 @@ void C2DString::AddCharacter(char c)
     if (c == '\n')
         return;
 
-    int x = (int)m_charheight;
+    int x = (int)m_length;
     C2DGlyphRef ref;
 
     m_font->GetGlyph(&ref, c);
@@ -470,7 +470,7 @@ void C2DString::AddCharacter(char c)
     else
         x += g->m_10;
     x += (int)m_font->XPadding + g->m_16;
-    m_charheight += x;
+    m_length += x;
 }
 
 void C2DString::NewLine()
@@ -494,7 +494,7 @@ void C2DString::DeleteCharacter()
 void C2DString::UpdatePos()
 {
     m_shortLength = 0;
-    m_charheight = 0.0f;
+    m_length = 0.0f;
     m_numLines = 0;
     if (!m_string || !m_font)
         return;
@@ -508,7 +508,7 @@ void C2DString::UpdatePos()
         if (c == '\n') {
             m_numLines++;
             i++;
-            m_charheight += m_shortLength;
+            m_length += m_shortLength;
             m_shortLength = 0;
             continue;
         }
@@ -530,7 +530,7 @@ void C2DString::UpdatePos()
         m_shortLength += 0.5f + scale * (ref.Get()->GetWidth() - 1);
         m_shortLength += m_font->XPadding;
     }
-    m_charheight += m_shortLength;
+    m_length += m_shortLength;
 }
 
 /* the font, and an opaque string takes the font's opacity */

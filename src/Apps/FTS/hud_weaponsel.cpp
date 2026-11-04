@@ -999,7 +999,7 @@ void CWeaponSel::CheckHotSwap()
 
                 m_hotswapL1text.Load(0.9f, str, font, 90, (int)(62.0f + s_fRowY), true);
                 m_hotswapL1text.UpdatePos();
-                m_hotswapL1text.SetPos((int)(148.0f - m_hotswapL1text.m_charheight), (int)(62.0f + s_fRowY));
+                m_hotswapL1text.SetPos((int)(148.0f - m_hotswapL1text.m_length), (int)(62.0f + s_fRowY));
                 m_hotswapL1text.UpdatePos();
                 m_hotswapL1text.On();
                 m_hotswapL1text.SetTrans(0.0f);
@@ -1009,7 +1009,7 @@ void CWeaponSel::CheckHotSwap()
 
                 m_hotswapL2text.Load(0.9f, str, font, 90, (int)(62.0f + s_fRowY), true);
                 m_hotswapL2text.UpdatePos();
-                m_hotswapL2text.SetPos((int)(148.0f - m_hotswapL2text.m_charheight), (int)(62.0f + s_fRowY));
+                m_hotswapL2text.SetPos((int)(148.0f - m_hotswapL2text.m_length), (int)(62.0f + s_fRowY));
                 m_hotswapL2text.UpdatePos();
                 m_hotswapL2text.On();
                 m_hotswapL2text.SetTrans(0.0f);
@@ -1245,7 +1245,7 @@ void CWeaponSel::PlaceWeaponText()
             sprintf(tempstr, "%d/%d", ammo, ammomax);
             m_ammocount.Load(0.9f, tempstr, m_myfont, 80.0f + topx, topy, true);
             m_ammocount.UpdatePos();
-            m_ammocount.SetPos((int)(148.0f - m_ammocount.m_charheight), (int)topy);
+            m_ammocount.SetPos((int)(148.0f - m_ammocount.m_length), (int)topy);
             m_ammocount.UpdatePos();
         } else {
             m_ammocount.Off();
@@ -1306,7 +1306,7 @@ void CWeaponSel::PlaceHotSwapLabels()
 
         m_hotswapL1text.Load(0.9f, str, font, x, y, true);
         m_hotswapL1text.UpdatePos();
-        m_hotswapL1text.SetPos((int)(148.0f - m_hotswapL1text.m_charheight), (int)(62.0f + m_menuposy[1]));
+        m_hotswapL1text.SetPos((int)(148.0f - m_hotswapL1text.m_length), (int)(62.0f + m_menuposy[1]));
         m_hotswapL1text.UpdatePos();
     } else {
         m_hotswapL1text.Off();
@@ -1322,7 +1322,7 @@ void CWeaponSel::PlaceHotSwapLabels()
 
         m_hotswapL2text.Load(0.9f, str, font, x, y, true);
         m_hotswapL2text.UpdatePos();
-        m_hotswapL2text.SetPos((int)(148.0f - m_hotswapL2text.m_charheight), (int)(62.0f + m_menuposy[1]));
+        m_hotswapL2text.SetPos((int)(148.0f - m_hotswapL2text.m_length), (int)(62.0f + m_menuposy[1]));
         m_hotswapL2text.UpdatePos();
     } else {
         m_hotswapL2text.Off();
