@@ -6411,7 +6411,7 @@
 0x003513E0 0x98 __dt__3CVUFv  # OVL1; s1:calls
 0x00351480 0x120 __ct__3CVUFUi  # OVL1; s1:order (after Code and the destructor; registers the same VIF0 handler and fills the same 0xCDCD pattern)
 0x003515A0 0x30 InterruptFromVIF0__Fi  # OVL1; s1:order (the handler CVU::CVU registers, in both builds)
-0x003515D0 0x2EC func_003515D0  # OVL1
+0x003515D0 0x2EC Load__14COverlayLoaderF12OVERLAY_KIND  # OVL1; by hand (the world lane r11, zsys_overlay.cpp: the overlays' loader -- its object 0x49E7E8 is what fts_patch.cpp's CSMDownloadPatch and fts_dnas.cpp's CSMDNASAuthenticate pass in a0 with the kind; the kind's switch names FTSCORE/ZSEALETC/DNAS, the file OVERLAY\\REL\\%s.BIN, the slot's byte stored on success; the class and member names ours)
 0x003518C0 0x98 DeleteCallbacks__6CValveFv  # OVL1; s1:callee
 0x00351960 0x88 AddCallback__6CValveFUiPFP6CValvePv_vPv  # OVL1; s1:align
 0x003519F0 0xA0 MakeCallbacks__6CValveF11VALVE_STATE  # OVL1; s1:calls by hand (the states lane: zRemoteClientJoinsCallback's inlined valve setter calls it where SOCOM 1's does)
