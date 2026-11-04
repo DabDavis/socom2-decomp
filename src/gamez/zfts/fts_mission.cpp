@@ -354,6 +354,7 @@ public:
     void Dequeue(CQueuedMessage *msg);
     void Enqueue(const char *text, MSGTYPE type, const char *name);
 
+    CMessageQueue();
     ~CMessageQueue();
 
     int m_head;   // 0x0
@@ -371,6 +372,16 @@ CMessageQueue::~CMessageQueue()
     m_tail = 0;
     for (unsigned int i = 0; i < 10; i++)
         m_msgs[i].SetText("NULL MSG QUEUE(dtor)");
+}
+
+/* built empty, every text "NULL MSG QUEUE(ctor)" after MW's own construction of the ten messages --
+ * the destructor's twin, auto-inlined into CMission() and its own copy stripped as well */
+CMessageQueue::CMessageQueue()
+{
+    m_head = 0;
+    m_tail = 0;
+    for (unsigned int i = 0; i < 10; i++)
+        m_msgs[i].SetText("NULL MSG QUEUE(ctor)");
 }
 
 /* the HUD's message lists (fts_message.cpp's C2DMessage_Q, 0x4E0 bytes) and the chat line's editor
@@ -399,9 +410,68 @@ public:
     unsigned char _0[0x150];
 };
 
+class CVehicleRdr;
+
+/* the single-player career's stats (theMission's two, at 0x191C and 0x1950: CMission() clears both
+ * through the constructor -- Clear's stores, m_kills before m_18, twice; SOCOM II's, the names ours) */
+class CCareerStats {
+public:
+    CCareerStats() { Clear(); }
+    void Clear();
+    void SetUIVars();
+
+    int m_0;   // 0x0
+    int m_4;   // 0x4
+    int m_8;   // 0x8
+    int m_c;   // 0xc
+    int m_10;   // 0x10
+    int m_14;   // 0x14
+    int m_18;   // 0x18
+    int m_kills;   // 0x1c: the valve sp_career_kills mirrors it (the name ours)
+    int m_20;   // 0x20
+    int m_24;   // 0x24
+    int m_28;   // 0x28
+    int m_2c;   // 0x2c
+    int m_30;   // 0x30
+};
+
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CMission : public CSaveModule {
 public:
+    /* the mission's AI parameters (SOCOM 1's CMission::m_ai_params, an AI_PARAMS of 0x24 bytes there:
+     * SOCOM II's has six more words, light_scale to nosnooze_limit, by Read's "ai_params" tags). Nested
+     * here: the character types' AI_PARAMS is the top-level one, and this unit uses both. Its defaults
+     * are an out-of-line member (0x2AB360) the constructor and Read share -- SOCOM 1's Read and
+     * constructor expand the same seven stores in place; the reset's name ours */
+    class AI_PARAMS {
+    public:
+        AI_PARAMS()
+        {
+            Reset();
+            player_grid_spacing = 15.0f;
+            player_grid_count = 0;
+        }
+        void Reset();
+
+        float weather_factor;   // 0x0
+        unsigned int fireteam_command;   // 0x4
+        float recycle_range;   // 0x8
+        float recycle_time;   // 0xc
+        float respawn_time;   // 0x10
+        float respawn_fade;   // 0x14
+        float respawn_range;   // 0x18: squared as read
+        float light_scale;   // 0x1c (SOCOM II's)
+        float light_inside;   // 0x20
+        float shadow_scale;   // 0x24
+        float shadow_inside;   // 0x28
+        float stealth_noise;   // 0x2c
+        float ambient_noise;   // 0x30
+        unsigned int active_limit;   // 0x34
+        unsigned int nosnooze_limit;   // 0x38
+        float player_grid_spacing;   // 0x3c (SOCOM 1's at 0x1c)
+        unsigned int player_grid_count;   // 0x40
+    };   // 0x44 bytes
+
     CMission();    /* 0x2ADBC0 */
     ~CMission();   /* 0x2AD940: its vtable's slot 2 (0x406290) */
     void Serialize(int flags);   /* 0x2A6340: slot 3 */
@@ -428,6 +498,7 @@ public:
     void SetDelayEndMission(bool b) { m_DelayEndMission = b; }
     void SetFadingToEndMission(bool b) { m_FadingToEndMission = b; }
     void SetFc2(bool b) { m_fc_2 = b; }
+    void SetFc3(unsigned int v) { m_fc_3 = v; }
     bool ReOpen_Unload1();
     unsigned int GetTimeLeft();
     void EndMission();
@@ -440,11 +511,15 @@ public:
     char m_db_string[0x80];   // 0x60 (SOCOM 1's at 0x20)
     int m_timer;   // 0xe0: cleared by Open and before the second unload (SOCOM 1's at 0x60)
     unsigned char _e4[0xe8 - 0xe4];
-    float m_e8;   // 0xe8: the mission's own clock, in seconds (the name ours)
-    unsigned char _ec[0xfc - 0xec];
+    float m_e8;   // 0xe8: the mission's own clock, in seconds (SOCOM 1's m_winlosstimer at 0x68; the name ours)
+    float m_winlossinc;   // 0xec (SOCOM 1's at 0x6c: the constructor sets both -1)
+    unsigned char _f0[0xf4 - 0xf0];
+    float m_elevation_max;   // 0xf4: Read's "elevation" max (127 by default; SOCOM II's, the names ours)
+    float m_elevation_min;   // 0xf8: its min (-127)
     unsigned char m_DelayEndMission : 1;   // 0xfc (SOCOM 1's bytes at 0x70, 0x71)
     unsigned char m_FadingToEndMission : 1;
     unsigned char m_fc_2 : 1;   // SOCOM II's (a reload's unload clears it through a bool setter; the name ours)
+    unsigned int m_fc_3 : 29;   // SOCOM II's: the word's rest, the constructor zeroes it through a setter (word-wide: lw/sw)
     int m_fade_counter;   // 0x100 (SOCOM 1's at 0x74)
     float m_next_fade_time;   // 0x104 (SOCOM 1's at 0x78)
     float m_wait_before_falling;   // 0x108 (SOCOM 1's at 0x7c)
@@ -452,7 +527,15 @@ public:
     std::vector<CCompassAnchor *> m_anchors;   // 0x118: the nav points' anchors (SOCOM 1's at 0x8c)
     CCompassAnchor *m_whoistalking;   // 0x124: SOCOM II's (Open makes it "WhoIsTalking"; the name ours)
     CObjAnchorVec m_objanchor_vec;   // 0x128 (SOCOM 1's at 0x98)
-    unsigned char _134[0x1a4 - 0x134];
+    CMissionObjectiveCam *m_prev_selected_objcam;   // 0x134 (SOCOM 1's at 0xa4)
+    float m_objectives_timer;   // 0x138 (SOCOM 1's at 0xa8)
+    unsigned char m_ignore_objectives;   // 0x13c (SOCOM 1's at 0xac)
+    unsigned int m_load_ai;   // 0x140 (SOCOM 1's at 0xb0)
+    AI_PARAMS m_ai_params;   // 0x144 (SOCOM 1's at 0xb4)
+    float m_init_aim_pitch;   // 0x188: Read's "init_aim_pitch" (SOCOM II's)
+    float m_seefarther_binocs;   // 0x18c (SOCOM 1's at 0xd8)
+    float m_seefarther_weapzoom;   // 0x190 (SOCOM 1's at 0xdc)
+    unsigned char _194[0x1a4 - 0x194];
     CValve *m_valve_complete;   // 0x1a4 (SOCOM 1's at 0xe0)
     CValve *m_valve_failure;   // 0x1a8
     CValve *m_valve_abort;   // 0x1ac
@@ -467,23 +550,39 @@ public:
     class CLadderList *m_ladders;   // 0x1804 (SOCOM 1's at 0x580)
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
     unsigned char m_chars_loaded;   // 0x180c (SOCOM 1's at 0x588)
-    unsigned char _180d[0x181c - 0x180d];
+    unsigned char _180d[0x1814 - 0x180d];
+    CVehicleRdr *m_vehicle_rdr;   // 0x1814 (SOCOM 1's at 0x590; fts_player.cpp's name)
+    CRdrFile *m_ordersRdr;   // 0x1818 (SOCOM 1's at 0x594)
     CRdrFile *m_materialsRdr;   // 0x181c (SOCOM 1's at 0x598)
-    unsigned char _1820[0x183c - 0x1820];
-    CSaferStr m_183c;   // 0x183c: a string ~CMission tears down (SOCOM 1's at 0x5a8)
+    CRdrFile *m_decalsRdr;   // 0x1820 (SOCOM 1's at 0x59c)
+    CRdrFile *m_fontsRdr;   // 0x1824 (SOCOM 1's at 0x5a0)
+    _zrdr *m_subtitles;   // 0x1828: the films' subtitles (fts_state.h's; the constructor clears it last)
+    CRdrFile *m_messagesRdr;   // 0x182c (SOCOM 1's at 0x5a4)
+    CRdrFile *m_subtitlesRdr;   // 0x1830 (SOCOM 1's at 0x5a8)
+    CRdrFile *m_smallmessagesRdr;   // 0x1834 (SOCOM 1's at 0x5ac)
+    CRdrFile *m_1838;   // 0x1838: SOCOM II's
+    CSaferStr m_183c;   // 0x183c: SOCOM 1's m_strLoadingScrLib (at 0x5b0): "ui/assetlib/junk_name" by default
     CMissionCamList m_missioncams;   // 0x1848 (SOCOM 1's at 0x5b4)
     CMissionObjectiveCamList m_objectivecams;   // 0x1854 (SOCOM 1's at 0x5c0)
-    float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM II's; the name ours)
-    unsigned char _1864[0x18ec - 0x1864];
+    float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM 1's m_fighttimer at 0x5cc; the name ours)
+    float m_satcheltimer;   // 0x1864 (SOCOM 1's at 0x5d0: 10 by default, Read's "SATCHEL_TIMER")
+    CValve *m_team_valves[32];   // 0x1868 (SOCOM 1's m_teamValve at 0x5d4; fts_player.cpp's name)
+    CValve *m_player_valve_alive;   // 0x18e8 (SOCOM 1's m_player_valve at 0x654; fts_player.cpp's name)
     zdb::CNode *m_sealbombshack;   // 0x18ec (SOCOM 1's at 0x658)
     zdb::CNode *m_terroristbombshack;   // 0x18f0 (SOCOM 1's at 0x65c)
-    unsigned char _18f4[0x1910 - 0x18f4];
+    unsigned char m_e3_team;   // 0x18f4 (SOCOM 1's E3_TEAMS_ENUM at 0x660, a byte)
+    unsigned char _18f5[0x1910 - 0x18f5];
     CCamPath m_campath;   // 0x1910: SOCOM II's camera path (the name ours)
+    CCareerStats m_careerstats0;   // 0x191c (SOCOM II's; the names ours)
+    CCareerStats m_careerstats;   // 0x1950: the UI's CLEAR_CAREER_STATS and SET_CAREER_STATS_UI_VARS ones
+
+    static char m_weaponmodelpostfix[30];   // 0x436430 (SOCOM 1's static, 0x4BC590 there)
 };
 
 /* ---- the unit's statics with constructors, in the order its initialiser (0x400160) builds them,
  * after <iostream>'s two (SOCOM 1's __sinit_fts_mission.cpp builds the same, but for the lobby's
  * save manager, SOCOM II's, and the extra string tables below) ---- */
+char CMission::m_weaponmodelpostfix[30];    // 0x436430 (SOCOM 1's, before theMemCard there too)
 CMemCard theMemCard;                        // 0x436460
 CLobbySaveManager theLobbySaveManager;      // 0x4364A0 (zsav_lobby.h's; the name ours)
 CMission theMission;                        // 0x4364E0
@@ -862,26 +961,6 @@ public:
 };
 
 extern "C" int sprintf(char *buf, const char *fmt, ...);
-
-class CCareerStats {
-public:
-    void Clear();
-    void SetUIVars();
-
-    int m_0;   // 0x0
-    int m_4;   // 0x4
-    int m_8;   // 0x8
-    int m_c;   // 0xc
-    int m_10;   // 0x10
-    int m_14;   // 0x14
-    int m_18;   // 0x18
-    int m_kills;   // 0x1c: the valve sp_career_kills mirrors it (the name ours)
-    int m_20;   // 0x20
-    int m_24;   // 0x24
-    int m_28;   // 0x28
-    int m_2c;   // 0x2c
-    int m_30;   // 0x30
-};
 
 /* the stats made the UI variable SPCareerStats, a list of their thirteen numbers as strings, and
  * the kills the valve sp_career_kills (OVL1 0x2A3BC0) */
@@ -1503,6 +1582,50 @@ void func_003448D0(const char *name);   /* (the jukebox's lists) */
 extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
 void func_002B2E50(CMission *mission);   /* (SOCOM 1's CMission::LoadVehicles) */
 void func_00295660();
+}
+
+/* the mission built (OVL1 0x2ADBC0; __sinit_fts_mission.cpp's theMission): the save module "CMission"
+ * of the config save, the members in order -- the AI parameters' defaults, the three message queues,
+ * the chat editor and the message ring, the lists, the camera path, the career stats -- then SOCOM
+ * 1's body in its order, SOCOM II's members among it (the talker's anchor, the bit setters, the
+ * elevation), the camera path reserved last */
+CMission::CMission()
+    : CSaveModule("CMission", theMemCard.m_configSave), m_state(MISSION_UNLOADED), m_database(0),
+      m_timer(0), m_ladders(0), m_pNetGame(0), m_music_hold(0.0f), m_satcheltimer(10.0f)
+{
+    strncpy(m_weaponmodelpostfix, "", 30);
+    m_chars_loaded = 0;
+    m_ignore_objectives = 0;
+    m_winlossinc = -1.0f;
+    m_e8 = -1.0f;
+    m_e3_team = 0;
+    m_20 = 0;
+    m_vehicle_rdr = 0;
+    m_183c = "ui/assetlib/junk_name";
+    memset(m_team_valves, 0, sizeof(m_team_valves));
+    m_player_valve_alive = 0;
+    m_whoistalking = 0;
+    m_objectives_timer = 0.0f;
+    m_prev_selected_objcam = 0;
+    strcpy(m_db_string, "UNKNOWN");
+    m_ordersRdr = 0;
+    m_materialsRdr = 0;
+    m_decalsRdr = 0;
+    m_fontsRdr = 0;
+    m_messagesRdr = 0;
+    m_subtitlesRdr = 0;
+    m_smallmessagesRdr = 0;
+    m_1838 = 0;
+    m_subtitles = 0;
+    m_seefarther_binocs = 200.0f;
+    m_seefarther_weapzoom = 300.0f;
+    SetDelayEndMission(false);
+    SetFadingToEndMission(false);
+    SetFc2(false);
+    SetFc3(0);
+    m_elevation_max = 127.0f;
+    m_elevation_min = -127.0f;
+    m_campath.reserve(16);
 }
 
 /* the mission torn down: its members in reverse, then the save module (OVL1 0x2AD940, SOCOM 1's
@@ -2199,6 +2322,32 @@ void CMission::Close()
         CZWeapon::m_pProjectilelist->Dump();
     theUIVarManager.CollectGarbage();
     m_20 = 0;
+}
+
+/* the shortest respawn time Read lets "ai_params" set, and the default (10 in data: a variable, it
+ * is loaded with lwc1; SOCOM 1's default was the constant 5) */
+extern float data_003DE5F0;
+
+/* the mission's AI parameters' defaults (OVL1 0x2AB360): SOCOM 1's seven, in its order (the recycle
+ * time ahead of the range), SOCOM II's six after them -- sixteen statements, so never auto-inlined:
+ * CMission()'s AI_PARAMS() and Read call it */
+void CMission::AI_PARAMS::Reset()
+{
+    weather_factor = 0.0f;
+    fireteam_command = 4;
+    recycle_time = 60.0f;
+    recycle_range = 10000.0f;
+    respawn_time = data_003DE5F0;
+    respawn_fade = 0.75f;
+    respawn_range = 2500.0f;
+    light_scale = 0.85f;
+    light_inside = 0.65f;
+    shadow_scale = 1.0f;
+    shadow_inside = 0.5f;
+    ambient_noise = 1.0f;
+    stealth_noise = 1.0f;
+    active_limit = 9;
+    nosnooze_limit = 5;
 }
 
 /* the point `step` on from `index`, wrapping both ways, read out through at(); the index it lands
