@@ -2298,7 +2298,7 @@
 0x0023C370 0x8 SetWeapon__11CWeaponSlotFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): slot +0x70 of CWeaponSlot's table 0x405E00, the class's first own slot (the name ours) -- the weapon kept at 0x18; hud_mpweaponsel.cpp, byte-exact
 0x0023C380 0x8 Draw__11CWeaponSlotFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane, round 26): slot 1 of CWeaponSlot's table 0x405E00 -- empty; hud_mpweaponsel.cpp, byte-exact
 0x0023C390 0x354 func_0023C390  # OVL1
-0x0023C6F0 0x144 func_0023C6F0  # OVL1
+0x0023C6F0 0x144 NextWeapon__8SlotListFbiii  # OVL1; by hand (the HUD lane, round 26): SlotList's (the page's 0x23CD20 and 0x23D060 and the list's 0x23D860 call it, the list's +0x960 as this) -- recursive: the index stepped up or down CZWeapon::m_listWeapons (its count at 0) round the list, again while 0x23C390 refuses the weapon, a search start kept in .data 0x3DCEB0 (-1 between searches), 0 without the HUD's owner; the name ours; hud_mpweaponsel.cpp, OPEN (registers)
 0x0023C840 0x344 func_0023C840  # OVL1
 0x0023CB90 0x118 NextClass__8SlotListFb10EQUIP_ITEM  # OVL1; by hand (the HUD lane, round 26): SlotList's (the list's 0x23C840 calls it on the category page's list +0x960; this unused) -- an id stepped up or down, then on round 0-254 until it is one of GetIDType's sixteen class starts (4, 31 ... 230: an inlined switch's bool); the name ours; hud_mpweaponsel.cpp, byte-exact
 0x0023CCB0 0x70 Draw__8SlotListFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane: slot 1 of SlotList's vtable 0x405E80 -- its five slot pointers drawn while it is on)

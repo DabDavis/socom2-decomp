@@ -59,6 +59,9 @@ class CZWeaponList {
 public:
     int GetWeaponIndex(CZWeapon *weapon);
     CZWeapon *GetWeapon(EQUIP_ITEM item);
+    CZWeapon *GetWeaponByIndex(int index);
+
+    int m_count;   // 0x0
 };
 
 /* a weapon as its slot shows it: its description and its icon, its item and its class
@@ -427,6 +430,52 @@ EQUIP_ITEM SlotList::NextClass(bool up, EQUIP_ITEM cls)
     }
     return (EQUIP_ITEM)id;
 }
+
+/* whether the list's slot can show a weapon (0x23C390; no row named yet) */
+extern "C" bool func_0023C390(SlotList *list, CZWeapon *weapon, int a, int b);
+
+/* where a search for the next weapon started (.data 0x3DCEB0, -1 between searches; the name ours) */
+static int s_searchstart = -1;
+
+/* the next weapon's index up or down the weapons' list, round it, on past the weapons the slot
+ * refuses, back where the search started; none without the HUD's owner. Pinned: the target calls
+ * itself out of line.
+ * OPEN, 28 instructions, registers only (the code is the target's, size equal): the target numbers
+ * the index LAST (s0; this s5, up s4, a s3, b s2, the list s1) where MW here numbers it with the
+ * parameters (s3, the list s0). A local copy of the index declared after the list coalesces back
+ * into the parameter (no change). Untried: the list through a pointer, the index's first read
+ * moved, a temporary the recursive call's result is split into. The first GetWeaponByIndex
+ * re-materialises the list's address, the last uses the saved one: the source spells them apart */
+#pragma auto_inline off
+int SlotList::NextWeapon(bool up, int index, int a, int b)
+{
+    if (index == s_searchstart)
+        return index;
+    if (s_searchstart == -1)
+        s_searchstart = index;
+    if (!CHUD::GetHUDOwner()) {
+        s_searchstart = -1;
+        return 0;
+    }
+
+    CZWeaponList &list = CZWeapon::m_listWeapons;
+
+    if (up) {
+        index++;
+        if (index >= list.m_count)
+            index = 0;
+    } else {
+        index--;
+        if (index < 0)
+            index = list.m_count - 1;
+    }
+    if (!func_0023C390(this, CZWeapon::m_listWeapons.GetWeaponByIndex(index), a, b))
+        index = NextWeapon(up, index, a, b);
+    list.GetWeaponByIndex(index);
+    s_searchstart = -1;
+    return index;
+}
+#pragma auto_inline reset
 
 /* the slots' text: the weapon's description, upper-cased into a buffer of its own, at 0.9 (each slot
  * class its buffer, bss 0x414810 and 0x414860), and the slots' offsets (the unit's 8-byte-spaced

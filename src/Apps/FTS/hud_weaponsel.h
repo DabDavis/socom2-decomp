@@ -254,6 +254,9 @@ public:
     /* the next weapon class's first id up or down from a class, round 0-254 (0x23CB90; the name
      * ours) */
     EQUIP_ITEM NextClass(bool up, EQUIP_ITEM cls);
+    /* the next weapon's index up or down the weapons' list that the slot takes (0x23C6F0; the name
+     * ours: its last two arguments passed through to the slot's test) */
+    int NextWeapon(bool up, int index, int a, int b);
 
     class CMPWeaponSel *m_owner;   // 0x18: the selector (its Init sets the category page's)
     unsigned char _1c[0x20 - 0x1c];
