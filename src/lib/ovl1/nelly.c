@@ -141,6 +141,28 @@ int func_00249F68(void **pblock)
     return 0;
 }
 
+/* the warp's table (GCC round 26a): 256 bins read back from the warped spectrum in fixed point,
+ * the upper 169 by a quadratic in the bin, the lower 87 by a straight line, from the top down.
+ * The upper index is a variable of its own (the target adds its 29 before the scaling; in one
+ * expression combine folds it into the load's offset, 116(v0): 21 words) */
+void func_00251678(const float *pfIn, float *pfOut)
+{
+	unsigned int i, uPos, k;
+
+	pfOut += 255;
+	uPos = 0xA280;
+	for (i = 255; i >= 87; i--) {
+		uPos -= 162;
+		k = ((((uPos >> 8) + 65) * i + 209) >> 8) + 29;
+		*pfOut-- = pfIn[k];
+	}
+	uPos = 17789;
+	for (i = 87; i != 0; i--) {
+		uPos -= 203;
+		*pfOut-- = pfIn[uPos >> 8];
+	}
+}
+
 float func_00251700(float x)                    /* a frequency warp (the .lit4 constants) */
 {
     if (x > 97.0f)
