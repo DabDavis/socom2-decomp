@@ -1665,6 +1665,23 @@ void CWrappedText::LoadSpec(const CWrapSpec &spec, zdb::CTextureRelocMgr *mgr)
     m_displayOneLine = spec.m_displayOneLine;
 }
 
+/* the lines deleted, each taken off the list first (SOCOM 1's ~CWrappedText, 0x391480 there: the
+ * same walk, ~CUIMapCtrl's shape), then the arrows and the renderable string */
+CWrappedText::~CWrappedText()
+{
+    iterator i;
+    iterator e = end();
+
+    for (i = begin(); i != e;) {
+        C2D *p = *i;
+        iterator next;
+
+        next = erase(i);
+        delete p;
+        i = next;
+    }
+}
+
 bool CWrappedText::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
 {
     C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
