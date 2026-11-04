@@ -16,6 +16,17 @@
 extern "C" CTCMNode *func_00236D20(CTCMEntry *entry, int arg, const char *caption, const char *text2,
                                    const char *name, int flags);
 
+/* the world's action points as the menu names them (zseal.h's CNodeAction: its prompt at 0x2C) and
+ * the ones the radio menu lists (OVL1 0x2B4CD0: the enabled ones of the action list, pushed onto
+ * the vector given) */
+class CNodeAction {
+public:
+    unsigned char _0[0x2c];
+    const char *m_uistring;   // 0x2c
+};
+
+extern "C" void func_002B4CD0(std::vector<CNodeAction *> *actions);
+
 /* the menu's time constant (0.3; a variable: read with lwc1 -- the name ours) */
 static float s_tcm_dd8 = 0.3f;
 
@@ -38,6 +49,50 @@ static CPnt3D s_tcmColor4 = s_tcmColor3;
 CTCM theTCM;
 CTCMCache mpCache("mpCache");
 CTCMCache spCache("spCache");
+
+/* the action points given to the items under each "NODEACTION ROOT" node, child by child, each
+ * item's two lines set to its prompt (0x236260: the tree's builder calls it; the name ours). The
+ * child and its action are declared ahead of the inner walk: inside it they take the walk's index's
+ * saved register and it theirs (MW spills the node to the frame either way, as the target does) */
+void tcmSetNodeActions()
+{
+    std::vector<CNodeAction *> actions;
+
+    func_002B4CD0(&actions);
+
+    std::vector<CTCMNode *> found;
+
+    theTCM.Find("NODEACTION ROOT", found, true);
+
+    unsigned int n = found.size();
+
+    if (n && actions.size()) {
+        for (unsigned int i = 0; i < n; i++) {
+            CTCMNode *node = found[i];
+
+            if (node) {
+                unsigned int m = node->GetNumChildren();
+
+                if (m) {
+                    unsigned int e = actions.size();
+                    CTCMNode *child;
+                    CNodeAction *action;
+
+                    for (unsigned int j = 0; j < m && j < e; j++) {
+                        child = node->m_children[j];
+                        action = actions[j];
+
+                        if (child && action) {
+                            child->m_action = action;
+                            child->m_text.SetString(action->m_uistring, true);
+                            child->m_text2.SetString(action->m_uistring, true);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 /* the item list's bars: a dark one at 110 and a blue-grey one opaque, both untextured over the same
  * box, each turned on and added to the item list's bitmap, then the closing clock and its flag
