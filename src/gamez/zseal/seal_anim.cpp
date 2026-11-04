@@ -93,8 +93,9 @@ public:
     }
     /* an anim's pose at its frame and fraction pushed at a weight (SOCOM 1's took the SEAL and the
      * active anim; OVL2 0x5777D0, not written yet), and the top frame's records put back on the
-     * SEAL's parts, the depth left returned (SOCOM 1's took the body; OVL2 0x577700) */
-    void AnimPush(CZSIScriptCommon *anim, float ffrac, float wt, short frame);
+     * SEAL's parts, the depth left returned (SOCOM 1's took the body; OVL2 0x577700). The frame an
+     * `int` (round 34: 0x577DF0's call evaluates the short field's conversion first) */
+    void AnimPush(CZSIScriptCommon *anim, float ffrac, float wt, int frame);
     int AnimPop();
     /* frame a's rotations moved toward frame b's by b's share of their weights, a given both (SOCOM
      * 1's; OVL2 0x576E30) */
@@ -111,14 +112,11 @@ extern CSealAnim *data_0044CDE0;
 
 /* a SEAL posed by one anim alone: the blender emptied and given the SEAL, the anim pushed, the pose
  * popped onto the parts (OVL2 0x577DF0, new in SOCOM II: seal_cfg.cpp's 0x58C600 calls it; the name
- * unknown).
- * OPEN, 0x50 against 0x4C (1 instruction more, the rest reordered): the two stores through one load
- * of the global needed the inline Begin (written out, MW reloads the global between them); left, MW
- * copies the anim pointer to v1 (`move v1,a1`) and loads its m_anim into a1 second, where the target
- * loads the frame (a2), the two floats, then m_anim into a1 last, off a1 itself. Tried: the floats
- * before or around the frame in AnimPush's prototype (the same code), the fields in locals first, the
- * anim through a local, the calls as CSealAnim members (round 12: SOCOM 1's AnimPush/AnimPop), an
- * inline AnimPush(const ACTIVE_ANIM *) unpacking the fields. */
+ * unknown). The two stores through one load of the global need the inline Begin (written out, MW
+ * reloads the global between them); the target loads the frame (a2), the two floats, then m_anim into
+ * a1 last, off a1 itself -- AnimPush takes the frame as an `int` (round 34): an argument needing a
+ * conversion is evaluated earlier, so the short field goes first; with a `short` (or `unsigned short`)
+ * parameter MW loads m_anim first and copies the anim pointer to v1 (0x50 bytes). */
 extern "C" void func_00577DF0(CZSealBody *seal, ACTIVE_ANIM *anim)
 {
     data_0044CDE0->Begin(seal);
