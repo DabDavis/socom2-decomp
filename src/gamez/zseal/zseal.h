@@ -1454,6 +1454,9 @@ public:
     /* the anim set's speeds set, the prone and ladder ones from their anims' scaled times (SOCOM 1's;
      * OVL2 0x58BCB0, seal_cfg.cpp) */
     void SetMaxMotion();
+    /* the anims of a blendable's speed bands mixed into a list by a speed and a weight, how many
+     * handed back (SOCOM 1's MixAnims without its flag; OVL2 0x58BDF0, seal_cfg.cpp) */
+    int MixAnims(class CActiveAnimList *list, class CBlendable *blendable, float scale, float wt);
     /* a new anim set bound: a carried body let go, the blends cleared, the set swapped in (the old one
      * kept), the speeds and the weapon reset and the type's blend pushed in the state (SOCOM 1's took the
      * set alone; OVL2 0x58C350, seal_cfg.cpp) */
