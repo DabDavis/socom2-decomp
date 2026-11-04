@@ -311,6 +311,11 @@ public:
     /* the explosive's damage taken from the first explosive's ammunition (OVL2 0x5C77B0, new in
      * SOCOM II: PostSetupItems calls it; the name ours) */
     void SetupExplosiveDamage();
+    /* with item 194 held, each rifle's magazines doubled (SOCOM 1's; OVL2 0x5C75F0) */
+    void Setup2XAmmo();
+    /* the items' nodes deleted, each that has no parent, the pointers cleared and the list emptied,
+     * the light map deleted (SOCOM 1's; OVL2 0x5C7CE0) */
+    void UnInit();
     void *GetCurAmmo();
     void NVG_Enabled(bool on);
     bool NVG_Enabled() const;
@@ -471,7 +476,9 @@ public:
      * environment's pickup code (OVL2 0x59F0C0, 0x59F730) sets, reads and clears it through the
      * three accessors below 0x5B9020 (the names ours) */
     std::vector<void *> m_itemptr;
-    unsigned char _840[0x8a0 - 0x840];
+    unsigned char _840[0x884 - 0x840];
+    zdb::CLightMap *m_lightMap;   // 0x884 (SOCOM 1's 0x864)
+    unsigned char _888[0x8a0 - 0x888];
     float m_explosiveDamage;   // 0x8a0: the first explosive's ammunition's damage (new; the name ours)
     unsigned char _8a4[0x8b8 - 0x8a4];
     float m_pickupRequestWait;   // 0x8b8 (SOCOM 1's 0x878)

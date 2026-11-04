@@ -477,6 +477,33 @@ int CZKit::GetCurNumMags()
     return 0;
 }
 
+/* (OVL2 0x5C7CE0; SOCOM 1's UnInit over its m_items_avail -- SOCOM II's item pointers -- and its
+ * light map).
+ * OPEN, 0xCC against 0x120: the target keeps the three iterators in the frame -- out, end and the
+ * walk's, in that order, each copied through $f0 from a begin()/end() temporary (40 from 52, 44 from
+ * 56, 48 from 60) and re-read and re-stored at every step, as list<T *>'s assigned wrapper iterators
+ * are -- where include/vector's pointer-vector iterator (one raw pointer) is scalarised here in every
+ * form tried: initialised, assigned in each declaration order, postfix steps. Likely the original
+ * MSL's iterator over a nested base iterator (the MSL lane's); the rest of the body is SOCOM 1's */
+void CZKit::UnInit()
+{
+    std::vector<void *>::iterator out = m_itemptr.begin();
+    std::vector<void *>::iterator e = m_itemptr.end();
+
+    for (std::vector<void *>::iterator i = m_itemptr.begin(); i != e; ++i, ++out) {
+        zdb::CNode *n = (zdb::CNode *)*i;
+
+        if (n && !n->GetParent())
+            zdb::CNode::Delete(n);
+        *out = 0;
+    }
+    m_itemptr.clear();
+    if (m_lightMap) {
+        delete m_lightMap;
+        m_lightMap = 0;
+    }
+}
+
 /* the first explosive's (151) ammunition's damage kept, none without one (OVL2 0x5C77B0, new in
  * SOCOM II: PostSetupItems calls it; the name ours) */
 void CZKit::SetupExplosiveDamage()
@@ -486,6 +513,32 @@ void CZKit::SetupExplosiveDamage()
         if (m_item[i] && m_item[i]->m_ID == 151) {
             m_explosiveDamage = ((CZAmmo *)GetAmmoByIndex(i))->GetExplosionDamage();
             break;
+        }
+    }
+}
+
+/* with item 194 held, every weapon of id types 4, 31, 51, 81, 91 and 101 gets twice its magazines:
+ * the extra ones (up to ten) filled as the first is, the rest emptied (OVL2 0x5C75F0; SOCOM 1's
+ * Setup2XAmmo, its item 188 and its count of magazines asked of the weapon list's own weapon in
+ * SOCOM II) */
+void CZKit::Setup2XAmmo()
+{
+    if (HasItem((EQUIP_ITEM)194)) {
+        for (int i = 0; i < m_num_items; i++) {
+            if (m_item[i]) {
+                EQUIP_ITEM t = m_item[i]->GetIDType();
+
+                if (t == 4 || t == 31 || t == 51 || t == 81 || t == 91 || t == 101) {
+                    int n = CZWeapon::m_listWeapons.GetWeapon(m_item[i]->m_ID)->GetNumMags();
+                    int j;
+
+                    for (j = n; j < 2 * n; j++)
+                        if (j < 10)
+                            m_reloads[i][j] = m_reloads[i][0];
+                    for (; j < 10; j++)
+                        m_reloads[i][j] = 0;
+                }
+            }
         }
     }
 }

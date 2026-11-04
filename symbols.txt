@@ -11073,11 +11073,11 @@
 0x005C72C0 0x18C func_005C72C0  # OVL2
 0x005C7450 0x84 SetupBinocular__5CZKitFv  # OVL2; s1:calls by hand (the kit lane, round 11): SOCOM 1's SetupBinocular -- HasItem inlined on the binoculars (190, SOCOM 1's 182), else the item added at m_num_items through SetItem(unsigned, EQUIP_ITEM)
 0x005C74E0 0x110 func_005C74E0  # OVL2
-0x005C75F0 0x1B4 func_005C75F0  # OVL2
+0x005C75F0 0x1B4 Setup2XAmmo__5CZKitFv  # OVL2; s1:order by hand (the kit lane, round 22): SOCOM 1's Setup2XAmmo (0x2AE5A0, 0x184) -- after SetupBinocular as in SOCOM 1 (with SOCOM II's 0x5C74E0 between): with item 194 held (SOCOM 1's 188), each weapon of id types 4/31/51/81/91/101 (GetIDType) gets its magazines doubled (the count GetNumMags of CZWeapon::m_listWeapons' weapon), the extra rows filled from the first, the rest zeroed
 0x005C77B0 0x80 SetupExplosiveDamage__5CZKitFv  # OVL2; by hand (the kit lane, round 11): the kit's float at 0x8A0 zeroed, then set to the first explosive's (151) ammunition's GetExplosionDamage -- PostSetupItems calls it, 0x5C7830 jumps to it; new in SOCOM II, the name ours
 0x005C7830 0x8 func_005C7830  # OVL2
 0x005C7840 0x498 PostSetupItems__5CZKitFv  # OVL2; s1:calls (called where SOCOM 1's calls CZKit::PostSetupItems) -- the SEAL lane
-0x005C7CE0 0x120 func_005C7CE0  # OVL2
+0x005C7CE0 0x120 UnInit__5CZKitFv  # OVL2; s1:order by hand (the kit lane, round 22): SOCOM 1's CZKit::UnInit (0x2AE910) -- after PostSetupItems as in SOCOM 1: the item pointer vector (SOCOM 1's m_items_avail at 0x818, SOCOM II's 0x834) walked, each node without a parent Deleted (zdb::CNode::Delete), the slots cleared, the size zeroed, then the light map (SOCOM 1's m_lightMap 0x864, here 0x884) deleted through its virtual destructor and cleared
 0x005C7E00 0x238 func_005C7E00  # OVL2
 0x005C8040 0x34 GetCurItemIDType__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's GetCurItemIDType: the selected item's GetIDType (OVL1 0x3D1E10), 254 without one; 0x34 bytes in both, before NVG_Enabled as there)
 0x005C8080 0x68 NVG_Enabled__5CZKitFb  # OVL2; s1:order by hand (SOCOM 1's NVG_Enabled(bool): bit 4 set only while zdb::CWorld::m_world's m_night_mission (0x5DC) is set, cleared otherwise)
