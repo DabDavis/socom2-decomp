@@ -652,6 +652,8 @@ class CAiGroup {
 public:
     static void DeleteAll();
     static void ResetIds();
+    /* the group's act broken off (OVL2 0x60D280) */
+    void Abort();
 };
 
 /* (declared again below where their users are: the doze count, the task anims' switch, the row) */
@@ -924,8 +926,6 @@ extern "C" {
 /* the maps' path plan registered from a cell through a list of cells into a path (SOCOM 1's
  * CAiMaps::RegisterPathPlan by its call here; OVL2 0x52C5C0, the AI core's) and a path's planner set,
  * whether it took (SOCOM 1's CAiPath::SetPathType; OVL2 0x524CD0, the AI core's) */
-bool func_0052C5C0(CAiMaps *maps, const CAiMapLoc &start, const CAiMapLoc *locs, int count,
-                   CAiPathBytes *path);
 }
 
 /* whether the current state is of kind 8 with flag 1 (0x559000's shape, kind 2 and flag 0x80 there) */
@@ -971,7 +971,7 @@ inline float CSealCtrlAi::GetDefaultRouteBias()
 bool CSealCtrlAi::SetRoute(const CAiMapLoc *locs, int count)
 {
     CAiMapLoc start(m_entity->m_mapLocValid);
-    bool ok = func_0052C5C0(&AiMaps, start, locs, count, &m_path);
+    bool ok = AiMaps.RegisterPathPlan(start, locs, count, (CAiPath *)&m_path);
 
     if (ok) {
         SetAiMode((AI_MODE)3);
@@ -2460,9 +2460,6 @@ extern "C" {
 extern float data_0064FDD8;
 extern float data_0064FDF0;
 extern float data_0064FE48;
-/* (OVL2 0x60E7A0 and 0x60D280, unowned: OnDeath and OnStunDamage make the same pair of calls) */
-void *func_0060E7A0(CSealCtrlAi *ai);
-void func_0060D280(void *p);
 }
 
 /* the range narrowed by a factor unless it stands (an inline: the factor, its argument, is loaded
@@ -2491,10 +2488,10 @@ extern "C" void func_00572240(CSealCtrlAi *ai, CAiAlert *alert, float amount)
         ai->m_730 = alert->m_4;
         ScaleRange(ai, data_0064FDF0);
 
-        void *p = func_0060E7A0(ai);
+        CAiGroup *g = ai->GetGroup();
 
-        if (p)
-            func_0060D280(p);
+        if (g)
+            g->Abort();
     }
 }
 
@@ -3307,7 +3304,6 @@ extern "C" bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc)
 
 extern "C" {
 /* (OVL2 0x52D950, the AI core's: the AI maps' cell at a location) */
-void *func_0052D950(CAiMaps *maps, const CAiMapLoc *loc);
 }
 
 /* whether a location is the invalid cell (an inline bool: the target materialises the `&&`) */
@@ -3330,7 +3326,7 @@ extern "C" bool func_0056D450(CSealCtrlAi *ctrl, const CAiMapLoc *loc, int n)
         ctrl->m_270 = 0;
     } else {
         ctrl->m_270 = 0;
-        ctrl->m_274 = func_0052D950(&AiMaps, loc);
+        ctrl->m_274 = AiMaps.GetRegion(*loc);
         if (ctrl->m_274) {
             ctrl->m_270 = n;
             ok = true;

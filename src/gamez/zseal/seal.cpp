@@ -16,9 +16,6 @@
 class CValve;
 
 extern "C" {
-void func_005C7840(CZKit *kit);   /* CZKit::PostSetupItems (SOCOM 1's OnMissionStart calls it) */
-void func_003CAEE0(CZProjectile *proj, const CPnt3D *vel);   /* CZProjectile::SetVelW (SOCOM 1's
-                                                                 _rethrow_grenade calls it) */
 void func_00525200(void *path);   /* (a CAiPath reset: its member at 0x98's, tail-called) */
 void func_00525210(void *path, unsigned int length);   /* CAiPath::SetSnakeLength (SOCOM 1's
                                                           SetSnakePathUpdate calls it) */
@@ -405,7 +402,7 @@ static void _rethrow_grenade(CValve *valve, void *data)
     vel.y = up;
     vel.x *= scale;
     vel.z *= scale;
-    func_003CAEE0(grenade, &vel);
+    grenade->SetVelW(&vel);
 }
 
 /* the AI's aiming helper, CAi, is ai.h's */
@@ -438,7 +435,7 @@ CZAnim *CZSealBody::PickupObject(CPickup *pickup)
                 CValve *valve = CValve::Create(0, (VALVE_TYPE)2);
 
                 func_00351960(valve, 1, _rethrow_grenade, pickup);
-                func_003CAEE0((CZProjectile *)pickup->m_data, 0);
+                ((CZProjectile *)pickup->m_data)->SetVelW(0);
                 CMatrix m;
                 const CMatrix *from = &m_node->m_matrix;
 
@@ -558,7 +555,7 @@ void CZSealBody::ResetAltitude(float y)
 /* the mission's start: the kit's items set up, then the controller's (OVL2 0x553E60) */
 void CZSealBody::OnMissionStart()
 {
-    func_005C7840(&m_kit);
+    m_kit.PostSetupItems();
     ((CSealCtrl *)m_control)->OnMissionStart();
 }
 

@@ -142,6 +142,9 @@ public:
     bool SetItemAmmo(unsigned int index, void *ammo, int rounds, int count);
     /* the item at an index let go with its ammunition (SOCOM 1's; OVL2 0x5B9BB0, the kit lane's) */
     void RemoveItemAndAmmo(int index);
+    /* the items' set-up finished (SOCOM 1's; OVL2 0x5C7840, the kit lane's -- the SEAL's OnMissionStart
+     * calls it) */
+    void PostSetupItems();
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
@@ -219,6 +222,10 @@ public:
     class CAiMap *GetMapByIndex(unsigned int i) const;
     /* a location's cell (ai_maps.h's, OVL2 0x52D6A0) */
     CAiCell *GetCell(const CAiMapLoc &loc);
+    /* a path planned from a cell through a list of cells, and a cell's region (ai_maps.h's, OVL2
+     * 0x52C5C0, 0x52D950) */
+    bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *locs, int count, CAiPath *path);
+    CAiMap::region *GetRegion(const CAiMapLoc &loc);
     /* the cells between two points walked over the maps, each handed to a callback (ai_maps.h's,
      * OVL2 0x5352D0) */
     bool WalkLine(const CPnt3D *from, const CPnt3D *to, bool (*f)(const MAP_LINEWALK_STRUCT &s, void *data),
@@ -901,6 +908,8 @@ public:
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
 
+    /* the scripted group the AI is in, or none (ai_group.cpp's, OVL2 0x60E7A0) */
+    class CAiGroup *GetGroup();
     /* the AI's mode set (SOCOM 1's; OVL2 0x56CBF0) and its states dropped (SOCOM 1's
      * ClearAiState, the AI-states lane's 0x5F5F20) */
     void SetAiMode(AI_MODE mode);
