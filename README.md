@@ -2033,6 +2033,25 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 20** (remove_if by iterator category; probes build/scratch/msl-r20-p20/,
+  untracked):
+  - std::remove_if picks its search by the iterator's category: list iterators (bidirectional) are copied into remove_if's
+    own locals, first then last, and searched by reference -- 0x29FE70 (ent_main.cpp), 0x3C6560 (zwep_global.cpp) and
+    0x60E9A0 (ai_group.cpp) byte-exact from the header, and the world's 0x34E8C0 no longer needs zsys_sched.cpp's stand-in
+    specialisation (object identical); vectors and pointers (random access) are searched by value as before (all seven
+    vector instances unchanged); iterator_traits gains iterator_category, the list and vector iterators their typedefs --
+    AN ITERATOR PASSED TO std::remove_if NOW NEEDS iterator_category (the deque, string and tree iterators have none yet);
+  - a search whose predicate is too tall is inlined one level: its operators, the predicate and its return's copy become
+    calls, copies its caller makes stay inline; by-value parameters' stack slots come after the callee's return temporary,
+    a function's own named locals take the top slots; an inline identity helper around an argument is elided; a reference
+    local bound to a by-value parameter compiles to nothing; iterator typedefs and the iterator_traits member are
+    code-neutral;
+  - measured, not met: the class insert's second population (FriendInvitationItem accepts the end anywhere after m,
+    AcctRecord only before it; a plain `T *e` declared after m scores 20 of 65 on the board against 41 -- include/
+    vector's comment), CountAwareness (master already materialises its first test; its 8 bytes are the inner walk's
+    registers: the target keeps &e->m_targets for end()'s re-reads); still open: the list remove_ifs 0x352500 and 0x50F670
+    (the target's size, 9 off: stack slots only), the kit's 0x5F8AF0 (the functor byte re-read each step), 0x5EBDC0 (MSL's
+    whole list assignment, not in include/list).
 - **Tells from the weapons, round 22** (a new zwep_reader.cpp, CZWeapon's valve and menu value, the map-texture statics):
   - a float argument scaled through an inline that multiplies its by-value parameter in place (`f *= k; return f;`) loads
     straight into $f12 and multiplies there, written `f * k` or through a named local it takes a register of its own;
