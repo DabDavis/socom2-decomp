@@ -1024,6 +1024,13 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
         void push_back(const T &x) { __base::push_back((const unsigned int &)x); }              \
         /* (the HUD lane, round 23: the radio command menu's path, 0x2302D0's size decrement) */ \
         void pop_back() { this->size_--; }                                                      \
+        /* the reverse walk (std::reverse_iterator, include/iterator), the end built in its      \
+         * argument (the MSL headers round 23: the soft keyboard's CSkbSplit(n, k) 0x391F80 stores \
+         * its last part through `*m_parts.rbegin()`, end() 0x391D40 and the reverse *  0x391D30 \
+         * out of line in the matcher 0x3919D0) */                                               \
+        typedef std::reverse_iterator<iterator> reverse_iterator;                               \
+        reverse_iterator rbegin() { return reverse_iterator(end()); }                           \
+        reverse_iterator rend() { return reverse_iterator(begin()); }                           \
         void clear() { __base::clear(); }                                                       \
         void swap(__vector_imp &x) { __base::swap(x); }                                         \
     };                                                                                          \
