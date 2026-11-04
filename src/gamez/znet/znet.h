@@ -11,11 +11,22 @@
 
 /* --- the DME library's types (Sony's prebuilt code in OVL2; only what is passed) ------------- */
 
-/* a network object: its type indexes the callback lists, its data is the owner's */
+/* a network object as the DME hands it out (NetGetObject; CZNetwork::zNetGetObject): the type it
+ * was registered under indexes the callback lists, its owner is the `client` the type's callbacks
+ * are given (zNetRemoteObjectUpdateCallback reads both, 0x30CDF0: lbu 0, lw 4), and the game's
+ * units read the kind's name and the owner's data (fts_remote.cpp, fts_net_seal.cpp,
+ * fts_net_persona.cpp, fts_net_grenade.cpp and fts_net_bomb.cpp: a letter at 0xc, a pointer at
+ * 0x1c). Not in SOCOM 1's DWARF (the DME is Sony's prebuilt code); the names are ours */
 struct NetObject {
-    unsigned char m_type;   // 0x0
-    void *m_data;   // 0x4
-};
+    unsigned char m_type_index;   // 0x0: zNetRegisterRemoteObjectCallback's index
+    int m_client;   // 0x4: the owner
+    unsigned char _8[0xc - 0x8];
+    union {
+        char m_name[0x10];   // 0xc: its kind's name (zNetCreateObject's),
+        char m_type;   //      its first letter ('S' a SEAL, 'B' a blather object, 'T' ...)
+    };
+    void *m_data;   // 0x1c: the owner's data (zNetCreateObject's)
+};   // 0x20
 
 /* an object's ownership and life (int-sized: passed through as they come) */
 enum NetOwnershipStatus {
@@ -76,10 +87,17 @@ public:
 class CZNetwork {
 public:
     /* a remote action held until its time comes (SOCOM 1's nested struct, 28 bytes: fts_remote.cpp's
-     * zRemoteDelayedAction plays it) */
+     * zRemoteDelayedAction plays it). The kind is an 8-bit field of an int group: the switch reads
+     * it with lbu (0x2BBFA0, SOCOM 1's 0x203C90 alike) while AddToFixList's implicit assignment
+     * copies the group as a word, seven lw/sw pairs in all (0x30D870, SOCOM 1's 0x321940) -- an
+     * unsigned char kind copies with lbu/sb, an int kind is switched on with lw, copy construction
+     * is an FPR block behind a null test; the senders write the kind as a word (sw 2) into a zeroed
+     * 28-byte local, fts_remote.cpp's NetMessage. Measured 2026-11-04, the online lane's round 17 */
     struct TypeRTimeFixStruct {
-        int m_0, m_4, m_8, m_c, m_10, m_14, m_18;
-    };
+        unsigned int m_kind : 8;   // 0x0: 2 a client gone, 4 the game server joined, 5 the game's objects made
+        int m_client;   // 0x4
+        int m_8, m_c, m_10, m_14, m_18;
+    };   // 0x1c
 
     /* an application message queued for the next update: the arguments the send was given, the
      * payload after them (the name ours; SOCOM 1 allocated it the same way) */
@@ -107,6 +125,14 @@ public:
     bool zNetLoadIRX();
     int zNetLookupHost(const char *host, char *ip, int len);
     int zNetGetMyGameClientIndex();
+    /* the game session's master client, -1 when the DME has none (0x30D560: it asks about the
+     * game connection through the global, theNetwork's +0xf4, as SOCOM 1's 0x321710 does) */
+    int zNetGetGameSessionMasterClientIndex();
+    /* an object by index, 0 when the DME has none (0x30D630, SOCOM 1's 0x321820) */
+    NetObject *zNetGetObject(int index);
+    /* the game connection (an accessor, inlined: fts_remote.cpp's senders load it ahead of an
+     * out-of-line call among their arguments, NetSendRequestTeamSwitch's master index) */
+    int GetGameConnectionIndex() { return m_GameConnectionIndex; }
     /* the clients in the game (0x30D510; the LAN lobby counts its players with it) */
     int zNetGetValidGameClientCount();
     int zNetGetTime();

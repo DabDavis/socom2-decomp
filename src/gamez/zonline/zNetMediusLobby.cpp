@@ -10,6 +10,7 @@
 #include <string.h>
 #include "zonline.h"
 #include "../znet/znet.h"
+#include "../zmath/zmath.h"
 
 struct MediusGetAnnouncementsRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
@@ -683,6 +684,130 @@ void cbClearGameListFilter(int, int, int, MediusClearGameListFilterResponse *res
     CheckMediusError(MediusSetGameListFilter(&req, cbSetGameListFilter));
 }
 
+void SetDatabase(const char *name);   /* the mission database by name (OVL1 0x27F810, SOCOM 1's) */
+
+extern "C" {
+int sprintf(char *s, const char *format, ...);
+int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator (above, unwritten) */
+bool func_002E34D0(RoomGame *game);   /* the game's friendly fire (its 0x30 flags' bit 0; the room unit's) */
+bool func_002E33D0(RoomGame *game);   /* and its respawns (bit 1) */
+}
+
+/* the random game asked for: the candidates let go, the game list's filter dropped -- its callback
+ * sets the filter the random game is picked by (an inline: its request lies below every local of
+ * JoinGame, the editor's included, as an inline's do; the name ours, after the callbacks' status
+ * texts "GetRandomGame::...") */
+inline void GetRandomGame()
+{
+    data_0044FAB0.DeleteGames();
+    MediusClearGameListFilterRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.FilterID = 10;
+    CheckMediusError(MediusClearGameListFilter(&req, cbClearGameListFilter));
+}
+
+/* a game of the room joined by its name: "RANDOM" has the game list's filter dropped and a game
+ * picked from the list (cbClearGameListFilter goes on); a game the room has sets the menus' valves
+ * from its rules -- refused when it has no mission of ours, a spectator joining a game without
+ * spectator room taken as joined -- its world, clan team and passwords, takes its mission sequence
+ * and the database of the current mission (with no mission, the sequence is printed and the join
+ * refused); then the player lists cleared and the join (a world known) or the game's creation
+ * entered (SOCOM 1's, 0x574 bytes there; OVL1 0x2F83B0: the UI's JoinMPGame calls it) */
+bool CZOnlineLobby::JoinGame(const char *name)
+{
+    if (!m_isopen)
+        return false;
+    if (m_current_state != LOBBY_ACTIVE)
+        return false;
+    if (!strcmp(name, "RANDOM")) {
+        GetRandomGame();
+        return true;
+    }
+    BriefingRoom *room = data_0044F568.FindRoom(ZString(uiv_LobbyWorldNameVar));
+
+    if (!room)
+        return false;
+    data_0066A998 = 0;
+    MediusWorldID = -1;
+    RoomGame *game = room->FindGame(name);
+
+    if (game) {
+        if (!game->HasMissions())
+            return false;
+        if (func_002F6D00(&theLobby) && !game->m_maxSpectators)
+            return true;
+        CValve::Create("mp_game_sort_order", VALVE_TYPE_1)->SetValue(game->m_19f[1]);
+        CValve::Create("MaxPlayersValve", VALVE_TYPE_1)->SetValue(game->m_info.m_maxPlayers);
+        CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(game->m_maxSpectators);
+        CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(func_002E34D0(game));
+        CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(func_002E33D0(game));
+        CValve::Create("EQlimit", VALVE_TYPE_1)->SetValue(game->m_19f[0]);
+        CValve::Create("mp_max_rounds", VALVE_TYPE_1)->SetValue(game->m_19a[1]);
+        CValve::Create("mp_max_round_time", VALVE_TYPE_1)->SetValue(game->m_19a[2] * 60);
+        CValve::Create("mp_rank_restrictions", VALVE_TYPE_1)->SetValue(game->m_types);
+        data_0066A998 = game->m_info.m_players;
+        MediusWorldID = game->m_info.m_ip;
+        SetClanTeam(game->m_info.m_3c);
+        if (!(game->m_info.m_flags & 1))
+            *theUIVarManager.Add("PlayerGamePassword", 0, UIVL_PERMANENT) = "";
+        if (!(game->m_info.m_flags & 4))
+            *theUIVarManager.Add("SpectatorGamePassword", 0, UIVL_PERMANENT) = "";
+        unsigned char *seq = game->GetMissionSequence();
+
+        for (int i = 0; i < 32; i++)
+            m_MissionSequence[i] = seq[i];
+        m_curr_seq_idx = 0;
+        for (int i = 0; i < 31; i++) {
+            if (!m_MissionSequence[i + 1]) {
+                m_curr_seq_idx = i;
+                break;
+            }
+        }
+        if (m_MissionSequence[m_curr_seq_idx] > 0) {
+            char db[16];
+
+            sprintf(db, "mp%d", m_MissionSequence[m_curr_seq_idx]);
+            SetDatabase(db);
+        } else {
+            char text[256];
+
+            text[0] = 0;
+            for (int i = 0; i < 32; i++)
+                sprintf(text, "%s %d", text, m_MissionSequence[i]);
+            return false;
+        }
+    }
+    *uiv_GameNameVar = name;
+    CUIVariable *seals = theUIVarManager.Add("BSEALLISTVAR", 0, UIVL_PERMANENT);
+    CUIVariable *terrs = theUIVarManager.Add("BTERRLISTVAR", 0, UIVL_PERMANENT);
+    CUIVariable *specs = theUIVarManager.Add("BSPECLISTVAR", 0, UIVL_PERMANENT);
+    CRdrEditor ed;
+
+    ed.push(0);
+    ed.pop();
+    seals->Set(&ed);
+    terrs->Set(&ed);
+    specs->Set(&ed);
+    if (MediusWorldID > -1) {
+        ChangeState(JOIN_GAME);
+    } else {
+        CValve *password = CValve::Create("PasswordValve", VALVE_TYPE_1);
+        CUIVariable *spec = theUIVarManager.Add("SpectatorGamePassword", 0, UIVL_PERMANENT);
+
+        password->SetValue(0);
+        CValve::Create("MaxPlayersValve", VALVE_TYPE_1)->SetValue(16);
+        if (data_0044FE10.IsActive())
+            CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(4);
+        else
+            CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(8);
+        *spec = "";
+        ChangeState(CREATE_NEW_GAME);
+    }
+    return true;
+}
+
 /* the mission sequence handed out: its index and the 32 missions (SOCOM 1's 12; OVL1 0x2F82E0) */
 void CZOnlineLobby::GetMissionSequence(unsigned char *idx, unsigned char *seq)
 {
@@ -1007,6 +1132,156 @@ extern CRdrEditor *data_0044FA70;
 extern CRdrEditor *data_0044FA78;
 extern CRdrEditor *data_0044FA80;
 void func_002F7020(int, int, int, MediusGetGamePlayersResponse *);   /* the players shown */
+}
+
+extern "C" {
+extern int data_00441470;   /* the player's team (fts_net_persona.cpp's: the side tests read it) */
+extern char data_0066A784[];   /* our clan's tag */
+bool func_002C31A0();   /* we play on the game's first side (the states lane's) */
+bool func_002C3080();   /* or on its second (the states lane's) */
+bool func_002C2FA0();   /* or watch it (the states lane's) */
+
+/* the stats' side as this callback reads it: UNSIGNED (lbu, dsll32 25, dsrl32 30), where every store
+ * to GamePlayerStats::m_side -- Login, Register, Open, 0x2EF7F0 -- loads the byte signed (lb), so no one
+ * declaration of the field serves both (made unsigned it costs those four; `m_side & 3` extracts
+ * signed and masks, an andi more). The original read a second declaration of the record's head; this
+ * view reproduces it (the name ours) */
+struct GamePlayerSide {
+    unsigned char m_0, m_1;
+    unsigned char m_2 : 5;
+    unsigned char m_side : 2;   // byte 2, bits 5-6: 0 the SEALs, 1 the terrorists, 2 a spectator
+};
+
+/* the game's players as they come in, each put in the list of its side -- the SEALs', the
+ * terrorists', the spectators' -- with its rank and, in its own colour, its clan's tag (we by our
+ * own name, in the list of the side we are on, once we have one); the late joiners counted, and at
+ * the list's end the three lists closed, shown and let go; a failure lets them go (SOCOM II's; OVL1
+ * 0x2F7020: RefreshGamePlayerList's callback). The tag tested is ours for our own line, but the
+ * text printed is the stats' either way, as the target has it; the tag's pointer a success-first
+ * ternary (the if-assign shape: the stats' tag in the branch's delay slot -- zNetCreateObject's
+ * tell); the sides an if-chain in source order (a switch tests them in reverse) */
+void func_002F7020(int, int, int, MediusGetGamePlayersResponse *resp)
+{
+    func_002F4030(resp, 32);
+    if (CheckMediusCallbackStatus("MediusGetGamePlayers", resp->StatusCode) && data_0044FA70 &&
+        data_0044FA78 && data_0044FA80) {
+        PNT3D color;
+        GamePlayerStats stats;
+        char tag[32];
+
+        func_002F9AC0(&stats, resp->Stats);
+        color.x = 128.0f;
+        color.y = 64.0f;
+        color.z = 32.0f;
+        char *clan = resp->AccountID == AccountInfo.AccountID ? data_0066A784 : stats.m_clan;
+        if (clan && *clan)
+            sprintf(tag, "[%s]", stats.m_clan);
+        else
+            sprintf(tag, "");
+        if (resp->AccountID == AccountInfo.AccountID) {
+            if (data_00441470) {
+                if (func_002C31A0()) {
+                    data_0044FA70->push(0);
+                    data_0044FA70->addstringnode(AccountInfo.AccountName);
+                    data_0044FA70->addintnode(theLobby.GetRankLevel(-1));
+                    data_0044FA70->addintnode(0);
+                    data_0044FA70->push(0);
+                    data_0044FA70->addSTRING("VALUE", tag);
+                    data_0044FA70->addPNT3D("COLOR", color);
+                    data_0044FA70->pop();
+                    data_0044FA70->pop();
+                } else if (func_002C3080()) {
+                    data_0044FA78->push(0);
+                    data_0044FA78->addstringnode(AccountInfo.AccountName);
+                    data_0044FA78->addintnode(theLobby.GetRankLevel(-1));
+                    data_0044FA78->addintnode(0);
+                    data_0044FA78->push(0);
+                    data_0044FA78->addSTRING("VALUE", tag);
+                    data_0044FA78->addPNT3D("COLOR", color);
+                    data_0044FA78->pop();
+                    data_0044FA78->pop();
+                } else if (func_002C2FA0()) {
+                    data_0044FA80->addstringnode(AccountInfo.AccountName);
+                }
+            }
+        } else {
+            int side = ((GamePlayerSide *)&stats)->m_side;
+
+            if (side == 0) {
+                data_0044FA70->push(0);
+                data_0044FA70->addstringnode(resp->AccountName);
+                data_0044FA70->addintnode(theLobby.GetRankLevel(stats.m_8));
+                data_0044FA70->addintnode(0);
+                data_0044FA70->push(0);
+                data_0044FA70->addSTRING("VALUE", tag);
+                data_0044FA70->addPNT3D("COLOR", color);
+                data_0044FA70->pop();
+                data_0044FA70->pop();
+            } else if (side == 1) {
+                data_0044FA78->push(0);
+                data_0044FA78->addstringnode(resp->AccountName);
+                data_0044FA78->addintnode(theLobby.GetRankLevel(stats.m_8));
+                data_0044FA78->addintnode(0);
+                data_0044FA78->push(0);
+                data_0044FA78->addSTRING("VALUE", tag);
+                data_0044FA78->addPNT3D("COLOR", color);
+                data_0044FA78->pop();
+                data_0044FA78->pop();
+            } else if (side == 2) {
+                data_0044FA80->addstringnode(resp->AccountName);
+            }
+        }
+        if (stats.m_late)
+            data_0066A990++;
+        if (resp->EndOfList) {
+            data_0044FA70->pop();
+            data_0044FA78->pop();
+            data_0044FA80->pop();
+            CUIVariable *seals = theUIVarManager.Add("BSEALLISTVAR", 0, UIVL_PERMANENT);
+            CUIVariable *terrs = theUIVarManager.Add("BTERRLISTVAR", 0, UIVL_PERMANENT);
+            CUIVariable *specs = theUIVarManager.Add("BSPECLISTVAR", 0, UIVL_PERMANENT);
+
+            if (seals)
+                seals->Set(data_0044FA70);
+            if (terrs)
+                terrs->Set(data_0044FA78);
+            if (specs)
+                specs->Set(data_0044FA80);
+            if (data_0044FA70) {
+                delete data_0044FA70;
+                data_0044FA70 = 0;
+            }
+            if (data_0044FA78) {
+                delete data_0044FA78;
+                data_0044FA78 = 0;
+            }
+            if (data_0044FA80) {
+                delete data_0044FA80;
+                data_0044FA80 = 0;
+            }
+            data_0066A9A0 = data_0066A990;
+        }
+    } else {
+        if (data_0044FA70)
+            data_0044FA70->pop();
+        if (data_0044FA78)
+            data_0044FA78->pop();
+        if (data_0044FA80)
+            data_0044FA80->pop();
+        if (data_0044FA70) {
+            delete data_0044FA70;
+            data_0044FA70 = 0;
+        }
+        if (data_0044FA78) {
+            delete data_0044FA78;
+            data_0044FA78 = 0;
+        }
+        if (data_0044FA80) {
+            delete data_0044FA80;
+            data_0044FA80 = 0;
+        }
+    }
+}
 }
 
 /* the players of the game we are in asked for, unless an answer is still being built: the three
