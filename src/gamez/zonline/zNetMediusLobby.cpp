@@ -10,6 +10,7 @@
 #include <string.h>
 #include "zonline.h"
 #include "../znet/znet.h"
+#include "../zmath/zmath.h"
 
 struct MediusGetAnnouncementsRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
@@ -1131,6 +1132,156 @@ extern CRdrEditor *data_0044FA70;
 extern CRdrEditor *data_0044FA78;
 extern CRdrEditor *data_0044FA80;
 void func_002F7020(int, int, int, MediusGetGamePlayersResponse *);   /* the players shown */
+}
+
+extern "C" {
+extern int data_00441470;   /* the player's team (fts_net_persona.cpp's: the side tests read it) */
+extern char data_0066A784[];   /* our clan's tag */
+bool func_002C31A0();   /* we play on the game's first side (the states lane's) */
+bool func_002C3080();   /* or on its second (the states lane's) */
+bool func_002C2FA0();   /* or watch it (the states lane's) */
+
+/* the stats' side as this callback reads it: UNSIGNED (lbu, dsll32 25, dsrl32 30), where every store
+ * to GamePlayerStats::m_side -- Login, Register, Open, 0x2EF7F0 -- loads the byte signed (lb), so no one
+ * declaration of the field serves both (made unsigned it costs those four; `m_side & 3` extracts
+ * signed and masks, an andi more). The original read a second declaration of the record's head; this
+ * view reproduces it (the name ours) */
+struct GamePlayerSide {
+    unsigned char m_0, m_1;
+    unsigned char m_2 : 5;
+    unsigned char m_side : 2;   // byte 2, bits 5-6: 0 the SEALs, 1 the terrorists, 2 a spectator
+};
+
+/* the game's players as they come in, each put in the list of its side -- the SEALs', the
+ * terrorists', the spectators' -- with its rank and, in its own colour, its clan's tag (we by our
+ * own name, in the list of the side we are on, once we have one); the late joiners counted, and at
+ * the list's end the three lists closed, shown and let go; a failure lets them go (SOCOM II's; OVL1
+ * 0x2F7020: RefreshGamePlayerList's callback). The tag tested is ours for our own line, but the
+ * text printed is the stats' either way, as the target has it; the tag's pointer a success-first
+ * ternary (the if-assign shape: the stats' tag in the branch's delay slot -- zNetCreateObject's
+ * tell); the sides an if-chain in source order (a switch tests them in reverse) */
+void func_002F7020(int, int, int, MediusGetGamePlayersResponse *resp)
+{
+    func_002F4030(resp, 32);
+    if (CheckMediusCallbackStatus("MediusGetGamePlayers", resp->StatusCode) && data_0044FA70 &&
+        data_0044FA78 && data_0044FA80) {
+        PNT3D color;
+        GamePlayerStats stats;
+        char tag[32];
+
+        func_002F9AC0(&stats, resp->Stats);
+        color.x = 128.0f;
+        color.y = 64.0f;
+        color.z = 32.0f;
+        char *clan = resp->AccountID == AccountInfo.AccountID ? data_0066A784 : stats.m_clan;
+        if (clan && *clan)
+            sprintf(tag, "[%s]", stats.m_clan);
+        else
+            sprintf(tag, "");
+        if (resp->AccountID == AccountInfo.AccountID) {
+            if (data_00441470) {
+                if (func_002C31A0()) {
+                    data_0044FA70->push(0);
+                    data_0044FA70->addstringnode(AccountInfo.AccountName);
+                    data_0044FA70->addintnode(theLobby.GetRankLevel(-1));
+                    data_0044FA70->addintnode(0);
+                    data_0044FA70->push(0);
+                    data_0044FA70->addSTRING("VALUE", tag);
+                    data_0044FA70->addPNT3D("COLOR", color);
+                    data_0044FA70->pop();
+                    data_0044FA70->pop();
+                } else if (func_002C3080()) {
+                    data_0044FA78->push(0);
+                    data_0044FA78->addstringnode(AccountInfo.AccountName);
+                    data_0044FA78->addintnode(theLobby.GetRankLevel(-1));
+                    data_0044FA78->addintnode(0);
+                    data_0044FA78->push(0);
+                    data_0044FA78->addSTRING("VALUE", tag);
+                    data_0044FA78->addPNT3D("COLOR", color);
+                    data_0044FA78->pop();
+                    data_0044FA78->pop();
+                } else if (func_002C2FA0()) {
+                    data_0044FA80->addstringnode(AccountInfo.AccountName);
+                }
+            }
+        } else {
+            int side = ((GamePlayerSide *)&stats)->m_side;
+
+            if (side == 0) {
+                data_0044FA70->push(0);
+                data_0044FA70->addstringnode(resp->AccountName);
+                data_0044FA70->addintnode(theLobby.GetRankLevel(stats.m_8));
+                data_0044FA70->addintnode(0);
+                data_0044FA70->push(0);
+                data_0044FA70->addSTRING("VALUE", tag);
+                data_0044FA70->addPNT3D("COLOR", color);
+                data_0044FA70->pop();
+                data_0044FA70->pop();
+            } else if (side == 1) {
+                data_0044FA78->push(0);
+                data_0044FA78->addstringnode(resp->AccountName);
+                data_0044FA78->addintnode(theLobby.GetRankLevel(stats.m_8));
+                data_0044FA78->addintnode(0);
+                data_0044FA78->push(0);
+                data_0044FA78->addSTRING("VALUE", tag);
+                data_0044FA78->addPNT3D("COLOR", color);
+                data_0044FA78->pop();
+                data_0044FA78->pop();
+            } else if (side == 2) {
+                data_0044FA80->addstringnode(resp->AccountName);
+            }
+        }
+        if (stats.m_late)
+            data_0066A990++;
+        if (resp->EndOfList) {
+            data_0044FA70->pop();
+            data_0044FA78->pop();
+            data_0044FA80->pop();
+            CUIVariable *seals = theUIVarManager.Add("BSEALLISTVAR", 0, UIVL_PERMANENT);
+            CUIVariable *terrs = theUIVarManager.Add("BTERRLISTVAR", 0, UIVL_PERMANENT);
+            CUIVariable *specs = theUIVarManager.Add("BSPECLISTVAR", 0, UIVL_PERMANENT);
+
+            if (seals)
+                seals->Set(data_0044FA70);
+            if (terrs)
+                terrs->Set(data_0044FA78);
+            if (specs)
+                specs->Set(data_0044FA80);
+            if (data_0044FA70) {
+                delete data_0044FA70;
+                data_0044FA70 = 0;
+            }
+            if (data_0044FA78) {
+                delete data_0044FA78;
+                data_0044FA78 = 0;
+            }
+            if (data_0044FA80) {
+                delete data_0044FA80;
+                data_0044FA80 = 0;
+            }
+            data_0066A9A0 = data_0066A990;
+        }
+    } else {
+        if (data_0044FA70)
+            data_0044FA70->pop();
+        if (data_0044FA78)
+            data_0044FA78->pop();
+        if (data_0044FA80)
+            data_0044FA80->pop();
+        if (data_0044FA70) {
+            delete data_0044FA70;
+            data_0044FA70 = 0;
+        }
+        if (data_0044FA78) {
+            delete data_0044FA78;
+            data_0044FA78 = 0;
+        }
+        if (data_0044FA80) {
+            delete data_0044FA80;
+            data_0044FA80 = 0;
+        }
+    }
+}
 }
 
 /* the players of the game we are in asked for, unless an answer is still being built: the three
