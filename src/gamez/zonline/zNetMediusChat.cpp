@@ -1594,6 +1594,270 @@ bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list)
 }
 }
 
+extern "C" {
+void func_002F3EE0(GamePlayerStats *stats);   /* the stats put in order (the unit's: an 8-byte row) */
+
+/* a player's info come in, made the menu's three pages: the name (with the clan's tag), the
+ * whereabouts and the ladder figures; the online state from the list the request's message id names
+ * (the ladder, the clan, the friends, else the room's players); a failure says so (SOCOM II's; OVL1
+ * 0x2F0020: MediusGetPlayerInfo's callback, func_002EFE50 asks for it). Round 18, byte-exact: the
+ * clan's and the friend's whereabouts read through a reference local (the target keeps the member's
+ * address, c + 0x140, in a register for the copy's two arrays: written straight the offsets fold, as
+ * the room player's and the ladder's do); the room player looked up if-assign (the zero in the null
+ * test's delay slot: a ternary branches over it) */
+void func_002F0020(int, int, int, MediusPlayerInfoResponse *resp)
+{
+    PNT3D color;
+    PlayerWhereabouts where;
+    char text[128];
+    GamePlayerStats stats;
+    char name[256];
+
+    color.x = 91.0f;
+    color.y = 72.0f;
+    color.z = 36.0f;
+    CUIVariable *info = theUIVarManager.Add("PLAYER_INFO_VAR1", 0, UIVL_TEMPORARY);
+    CUIVariable *figures = theUIVarManager.Add("PLAYER_INFO_VAR2", 0, UIVL_TEMPORARY);
+    CUIVariable *desc = theUIVarManager.Add("PLAYER_INFO_DESCRIPTION", 0, UIVL_TEMPORARY);
+
+    if (resp->StatusCode == 0) {
+        memset(&where, 0, sizeof(where));
+        func_002F9AC0(&stats, resp->Stats);
+        if (!strcmp(resp->MessageID, "LADDER")) {
+            LadderItem *l = LadderLeaders.Find(resp->AccountName);
+
+            if (l) {
+                where = *(PlayerWhereabouts *)&l->m_info;
+                stats.m_8 = l->m_position;
+            }
+        } else if (!strcmp(resp->MessageID, "CLAN")) {
+            ClanMemberItem *c = ClanMemberVec.Find(resp->AccountName);
+
+            if (c) {
+                const MediusPlayerOnlineState &s = c->OnlineState;
+
+                where = *(PlayerWhereabouts *)&s;
+                stats.m_8 = c->LadderPosition;
+            }
+        } else if (!strcmp(resp->MessageID, "FRIEND")) {
+            FriendItem *f = FriendVec.Find(resp->AccountName);
+
+            if (f) {
+                const MediusPlayerOnlineState &s = f->OnlineState;
+
+                where = *(PlayerWhereabouts *)&s;
+            }
+        } else {
+            BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+            MediusLobbyWorldPlayerListResponse *p = 0;
+
+            if (room)
+                p = room->FindPlayer(resp->AccountName);
+
+            if (p)
+                where = *(PlayerWhereabouts *)&p->OnlineState;
+        }
+        func_002F3EE0(&stats);
+        if (stats.m_clan[0])
+            sprintf(name, "#C\x80@ [%s] #CSH$%s", stats.m_clan, resp->AccountName);
+        else
+            sprintf(name, "%s", resp->AccountName);
+        *theUIVarManager.Add("PLAYER_INFO_NAME_VAR", 0, UIVL_TEMPORARY) = name;
+        *theUIVarManager.Add("PLAYER_INFO_CHAT_NAME_VAR", 0, UIVL_TEMPORARY) = resp->AccountName;
+
+        CRdrEditor page;
+        CRdrEditor numbers;
+        CRdrEditor about;
+
+        page.push(0);
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.addintnode(theLobby.GetRankLevel(stats.m_8));
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        sprintf(text, "%s %s", stats.m_40, stats.m_2_7 ? "(Leader)" : "");
+        page.addstringnode(text);
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_8);
+        page.addstringnode("LADDER POSITION:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_rating);
+        page.addstringnode("SCORE:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_games);
+        page.addstringnode("TOTAL # OF GAMES:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_14);
+        page.addstringnode("ROUNDS WON:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_18);
+        page.addstringnode("ROUNDS LOST:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        sprintf(text, "%s", stats.m_town);
+        page.addstringnode("HOMETOWN:");
+        page.addstringnode(text);
+        page.pop();
+        if (where.ConnectStatus) {
+            page.push(0);
+            sprintf(text, "%d min.", stats.m_c);
+            page.addstringnode("ONLINE:");
+            page.addstringnode(text);
+            page.pop();
+            page.push(0);
+            if (!strncmp(where.LobbyName, "Medius", 6))
+                sprintf(text, "MAIN MENU");
+            else
+                sprintf(text, "%s", where.LobbyName);
+            page.addstringnode("BRIEFING ROOM:");
+            page.addstringnode(text);
+            page.pop();
+            page.push(0);
+            page.addstringnode("GAME:");
+            switch (where.ConnectStatus) {
+            case 0:
+                page.addstringnode("Disconnecting");
+                break;
+            case 1:
+                page.addstringnode("Logging In");
+                break;
+            case 2:
+                page.push(0);
+                page.addSTRING("VALUE", "In Lobby");
+                page.addPNT3D("COLOR", color);
+                page.pop();
+                break;
+            case 3:
+                page.addstringnode(where.GameName);
+                break;
+            default:
+                page.addstringnode(" ");
+                break;
+            }
+            page.pop();
+        } else {
+            page.push(0);
+            page.addstringnode("NOT CURRENTLY LOGGED IN\n");
+            page.addstringnode(" ");
+            page.pop();
+        }
+        page.pop();
+        info->Set(&page);
+        about.push(0);
+        about.push(0);
+        sprintf(text, "%s", stats.m_desc);
+        about.addstringnode("DESCRIPTION:\n");
+        about.addstringnode(text);
+        about.pop();
+        about.pop();
+        desc->Set(&about);
+        numbers.push(0);
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_kills);
+        numbers.addstringnode("KILLS:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_deaths);
+        numbers.addstringnode("DEATHS:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_2c);
+        numbers.addstringnode("SUICIDES:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_2e);
+        numbers.addstringnode("BOMBS PLANTED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_30);
+        numbers.addstringnode("BOMBS DEFUSED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_24);
+        numbers.addstringnode("HOSTAGES RESCUED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_26);
+        numbers.addstringnode("VIPs RESCUED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_28);
+        numbers.addstringnode("VIPs KILLED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_20_22);
+        numbers.addstringnode("BONUS OBJECTIVES:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d %%", stats.m_1);
+        numbers.addstringnode("HIT PERCENTAGE:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_32);
+        numbers.addstringnode("HEAD SHOTS:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        numbers.addstringnode(" ");
+        numbers.addstringnode(" ");
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d : %.2d", stats.m_time / 3600, stats.m_time % 3600 / 60);
+        numbers.addstringnode("TOTAL PLAYING TIME:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.pop();
+        figures->Set(&numbers);
+        return;
+    }
+    *info = "Could not retrieve player information.";
+    *figures = " ";
+    *desc = " ";
+}
+}
+
 /* a player's info asked for, the menu's fields blanked meanwhile; the request's message id names
  * the menu it is for (SOCOM II's; OVL1 0x2EFE50: UIGetPlayerInfo calls it on theLobby) */
 extern "C" void func_002EFE50(CZOnlineLobby *lobby, const char *id, int what)
