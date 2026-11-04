@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/exit.c (MAIN 0x192BF8), the toolchain's libc: the atexit functions in reverse
  * order, then the stdio cleanup, then crt0's _exit. */
 

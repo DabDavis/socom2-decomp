@@ -330,8 +330,8 @@
 0x001915C8 0x64 calloc  # MAIN unaligned
 0x00191630 0xB4 _calloc_r  # MAIN; s1:order (newlib: the demo's callocr object between calloc and closer; _malloc_r then memset)
 0x001916E8 0x58 _close_r  # MAIN unaligned; by body (newlib's reent/closer.c: errno zeroed, close(fd), errno copied into ptr->_errno on -1; the demo's _close_r is 0x58 too)
-0x00191740 0x22C func_00191740  # MAIN
-0x00191970 0x1264 func_00191970  # MAIN
+0x00191740 0x22C quorem  # MAIN; by call (newlib dtoa.c's static quorem: _dtoa_r calls it twice, as the demo's _dtoa_r calls its quorem -- GCC round 23a)
+0x00191970 0x1264 _dtoa_r  # MAIN; by call (newlib vfprintf.c's cvt calls _dtoa_r at this instruction -- byte-exact under the runtime's -g, GCC round 23a; the demo's cvt 0x3EA220 calls its _dtoa_r 0x3DF370 alike)
 0x00192BD8 0x8 __env_lock  # MAIN unaligned; s1:order (newlib envlock.c, between dtoa's and errno's objects: the empty hook _findenv_r calls before its walk)
 0x00192BE0 0x8 __env_unlock  # MAIN; s1:order (newlib envlock.c: the empty hook _findenv_r calls after its walk)
 0x00192BE8 0xC __errno  # MAIN unaligned; s1:callee

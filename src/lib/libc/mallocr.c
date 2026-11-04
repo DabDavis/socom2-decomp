@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's mallocr.o: mallocr.c built with DEFINE_MALLOC -- malloc_extend_top and _malloc_r, and the allocator's state (__malloc_av_ and the bookkeeping words after it) (README "The GCC front"). */
 #define DEFINE_MALLOC
 #include "mallocr.h"

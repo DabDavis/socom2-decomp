@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/fopen.c (MAIN 0x1933A8-0x1934AC), the toolchain's libc: _fopen_r and fopen. */
 
 #include "newlib.h"

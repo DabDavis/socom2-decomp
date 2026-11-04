@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/wsetup.c (MAIN 0x19EA08), the toolchain's libc: make a stream writable. */
 
 #include "newlib.h"

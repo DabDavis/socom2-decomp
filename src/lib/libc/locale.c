@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's locale/locale.c (MAIN 0x194760-0x194844), the toolchain's libc: only the "C" locale
  * (no MB_CAPABLE), the static lconv. The demo's object 0x3E1A70 holds the same four. */
 

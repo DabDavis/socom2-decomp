@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* fp-bit's L_make_sf object (MAIN 0x1A06F0): __make_fp (fp-bit.h holds the shared text). */
 #define FLOAT
 #define L_make_sf

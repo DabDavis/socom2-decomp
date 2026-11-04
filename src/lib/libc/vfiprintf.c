@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/vfiprintf.c (MAIN 0x19B260-0x19BFD0), the toolchain's libc: vfprintf.c built with
  * INTEGER_ONLY -- the statics __sprint and __sbprintf (rows __sprint@vfiprintf, __sbprintf@vfiprintf:
  * vfprintf.c defines its own pair), vfiprintf and _vfiprintf_r, newlib's text as it stands but for

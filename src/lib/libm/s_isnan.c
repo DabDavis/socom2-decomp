@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's libm/common/s_isnan.c (isnan, MAIN 0x1980A0), from the toolchain's own libm: ee-gcc 2.96 -O2 -G0
  * (README "The GCC front"; every 2.9x/2.95.x/3.2 build misses). One object, as in the demo. */
 

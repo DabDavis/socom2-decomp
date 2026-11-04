@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's string/strncasecmp.c (MAIN 0x1993C0), the toolchain's libc: one object, as in the demo. */
 
 #include "newlib.h"

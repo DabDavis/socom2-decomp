@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/realloc.c as the EE's newlib has it (MAIN 0x197808): realloc on the global
  * reentrancy block inside the malloc lock (stock newlib calls _realloc_r straight through). */
 

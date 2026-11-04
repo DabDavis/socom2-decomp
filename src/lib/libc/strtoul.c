@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/strtoul.c (MAIN 0x19AD50-0x19AFAC), the toolchain's libc: _strtoul_r and strtoul (the map's func_0019AF80, named here by its body),
  * newlib's text (BSD's strtoul). long is 64-bit on the EE, so the cutoff divides through libgcc's
  * __udivdi3/__umoddi3. */

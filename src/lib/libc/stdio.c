@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/stdio.c (MAIN 0x198A10-0x198B7C), the toolchain's libc: the four cookie
  * functions a FILE's _read/_write/_seek/_close point at (the map's func_00198A10 ... func_00198B60,
  * named here by their bodies). */

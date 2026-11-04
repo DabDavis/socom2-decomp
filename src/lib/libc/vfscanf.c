@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/vfscanf.c (MAIN 0x19DA58-0x19E7E4), the toolchain's libc: __sccl, the %[...] scanset
  * builder, as newlib wrote it (1.8.2 and 1.9.0 alike); the demo's vfscanf object holds the same
  * pair, __svfscanf then __sccl. Not written: __svfscanf (0xC8C) -- not newlib's text as 1.8.2 or

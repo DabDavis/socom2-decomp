@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib conversions (MAIN 0x191428-0x1914D4), from the libc.a of the ee-gcc 2.96
  * toolchain the game was linked with -- not Sony's SDK build (README "The GCC front": atof and
  * atol are 2.96's sibling calls under a leftover frame, which 2.9-ee-991111 never emits).

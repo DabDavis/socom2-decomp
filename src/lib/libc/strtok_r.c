@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's string/strtok_r.c (MAIN 0x19AA20), the toolchain's libc (BSD's strtok_r): one object, as
  * in the demo. */
 

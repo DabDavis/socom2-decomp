@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin -g */
 /* newlib's libm/math/ef_exp.c (__ieee754_expf, MAIN 0x1AF6F8), as newlib wrote it, under the EE's
  * float model (fdlibm.h). One object, as in the demo. */
 

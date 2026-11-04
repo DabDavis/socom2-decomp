@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/findfp.c (MAIN 0x192FF8-0x193294), the toolchain's libc: std (static), the glue
  * allocator, __sfp (a free FILE for fopen, its descriptor -1), the exit-time cleanup that flushes
  * every open stream, and __sinit, which sets up stdin/stdout/stderr in the reentrancy block. The

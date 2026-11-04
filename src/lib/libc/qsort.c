@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/qsort.c (MAIN 0x196D38), the toolchain's libc: Bentley & McIlroy's "Engineering
  * a Sort Function" as 4.4BSD has it, med3 and swapfunc inlined (long is 64-bit here: the word
  * swap moves doublewords). */

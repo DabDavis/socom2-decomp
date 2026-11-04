@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/vfprintf.c (MAIN 0x19BFD0-0x19DA54), the toolchain's libc: the statics __sprint and
  * __sbprintf (rows __sprint@vfprintf, __sbprintf@vfprintf: vfiprintf.c defines its own pair),
  * vfprintf, _vfprintf_r and its statics cvt and exponent -- newlib 1.9.0's text with the
@@ -8,12 +8,15 @@
  * exponent's `char expbuf[MAXEXP]` (a 320-byte frame; 1.9.0's 40 gives 48). Built against GCC
  * 2.96's builtin stdarg (gccstdarg.h), _NO_LONGLONG and _NO_LONGDBL (newlib's defaults).
  *
- * OPEN, the runtime compiler's double moves (README "The GCC front", round 4a: the runtime's 2.96
- * never puts a DFmode register move in a delay slot, this toolchain's does): _vfprintf_r (0x1660
- * against 0x1670, every other word as the target's: `jal dpcmp; move a1,zero` here, `nop; jal;
- * nop` there, at each compare of the argument with 0.0 and the isinf/isnan calls), cvt (0x1B0
- * against 0x1C0: `move a0,zero; jal dpsub; nop` against the zero in the slot, the same at the
- * dpcmp calls). exponent is byte-exact. */
+ * The whole object byte-exact (GCC round 23a): _vfprintf_r and cvt under the runtime's -g (open
+ * since round 22a: `jal dpcmp; move a1,zero` against `nop; jal; nop` at each compare of the
+ * argument with 0.0, cvt's `move a0,zero; jal dpsub; nop`) -- GCC gives a DFmode register move a
+ * length of two instructions, so reorg leaves a slot whose only candidate is one to GNU as, which
+ * fills it -- but not under -g, which GNU as reads as -O0 on MIPS; the runtime's objects were built
+ * with GCC's CFLAGS_FOR_TARGET, -g -O2 (SCE's patch appends -G0). cc1's output is the same with and
+ * without -g -- and with newlib 1.10.0's `if (expt || ndig)` in the 'f' conversion's fraction
+ * (1.9.0's `if (ndig)` is three words short): the snapshot is not one release's text. cvt calls
+ * dtoa.c's _dtoa_r (0x191970, named by this call). */
 #define VFPRINTF vfprintf
 #define _VFPRINTF_R _vfprintf_r
 #define FLOATING_POINT
@@ -714,7 +717,7 @@ number:			if ((dprec = prec) >= 0)
 					}
 				} else if (expt <= 0) {
 					PRINT("0", 1);
-					if(ndig) {
+					if(expt || ndig) {	/* 1.10.0's test: the target's expt, then ndig */
 						PRINT(decimal_point, 1);
 						PAD(-expt, zeroes);
 						PRINT(cp, ndig);

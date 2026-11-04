@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's string/strrchr.c (MAIN 0x1999C0), the toolchain's libc (README "The GCC front"): one
  * object, as in the demo. */
 

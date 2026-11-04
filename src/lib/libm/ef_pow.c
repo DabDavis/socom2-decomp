@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin -g */
 /* newlib's libm/math/ef_pow.c (__ieee754_powf, MAIN 0x1AFD18), as newlib wrote it, under the EE's
  * float model (fdlibm.h); -fno-builtin as newlib is built (fabsf, scalbnf called). One object, as in
  * the demo. */

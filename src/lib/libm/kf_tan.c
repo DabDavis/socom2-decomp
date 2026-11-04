@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin -g */
 /* newlib's libm/math/kf_tan.c (__kernel_tanf, MAIN 0x1B2A00), as newlib wrote it, built as newlib
  * is with -fno-builtin: GCC's builtin fabsf is an abs.s, the target calls fabsf (0x14 bytes short
  * without the flag). One object, as in the demo. */

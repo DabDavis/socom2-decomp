@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin -g */
 /* newlib's libm/math/kf_rem_pio2.c (__kernel_rem_pio2f, MAIN 0x1B2090), as newlib wrote it;
  * -fno-builtin as newlib is built (scalbnf, floorf called). One object, as in the demo. */
 

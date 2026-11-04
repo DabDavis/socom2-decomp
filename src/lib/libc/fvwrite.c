@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/fvwrite.c (MAIN 0x1940A8), the toolchain's libc: write a uio vector to a stream,
  * unbuffered, fully buffered (a string stream copies what fits and pretends it wrote all) or line
  * buffered. */
