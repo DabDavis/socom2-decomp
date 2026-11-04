@@ -112,13 +112,47 @@ basic_streambuf<charT, traits> *basic_filebuf<charT, traits>::setbuf(charT *, st
     return this;
 }
 
-/* NOT WRITTEN (round 3): a placeholder body so the class instantiates -- the target's seekoff is 0x268
- * (char) / 0x278 (wchar_t): encoding(), the flush-out test, unshift, fseek/ftell by way */
+/* a seek by an offset (round 6, both byte-exact; SOCOM 1's DWARF: fstream lines 734-774, locals width
+ * and whence): the encoding's width asked first, the put area flushed, the conversion state shifted back
+ * unless this is a zero seek from the current position, the file sought in bytes and the buffers
+ * dropped. The way is a bitmask enum (beg 1, cur 2, end 4: the target's compare chain, msl.h) */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::pos_type
 basic_filebuf<charT, traits>::seekoff(off_type off, ios_base::seekdir way, ios_base::openmode which)
 {
-    return pos_type(off_type(-1));
+    int width = a_codecvt_->encoding();
+    if (file_ == 0 || (off != 0 && width <= 0))
+        return pos_type(off_type(-1));
+    if (this->pptr() > this->pbase() && traits::eq_int_type(overflow(traits::eof()), traits::eof()))
+        return pos_type(off_type(-1));
+    if (!(way == ios_base::cur && off == 0) && overflow_called_last_ && width < 0) {
+        if (!unshift())
+            return pos_type(off_type(-1));
+    }
+    int whence;
+    switch (way) {
+    case ios_base::beg:
+        whence = SEEK_SET;
+        break;
+    case ios_base::cur:
+        whence = SEEK_CUR;
+        if (which & ios_base::in)
+            off -= this->egptr() - this->gptr();
+        break;
+    case ios_base::end:
+        whence = SEEK_END;
+        break;
+    default:
+        return pos_type(off_type(-1));
+    }
+    if (width < 0)
+        width = 0;
+    if (fseek(file_, width * off, whence) != 0)
+        return pos_type(off_type(-1));
+    this->setg(0, 0, 0);
+    this->setp(0, 0);
+    overflow_called_last_ = false;
+    return pos_type(ftell(file_));
 }
 
 /* both seekpos match (seekpos<char> since round 6: it had inlined unshift<char>, which the explicit

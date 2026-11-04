@@ -546,7 +546,7 @@ public:
                     unitbuf = 0x2000, uppercase = 0x4000 };
     enum iostate { goodbit = 0, badbit = 1, eofbit = 2, failbit = 4 };
     enum openmode { app = 0x01, ate = 0x02, binary = 0x04, in = 0x08, out = 0x10, trunc = 0x20 };
-    enum seekdir { beg, cur, end };
+    enum seekdir { beg = 0x01, cur = 0x02, end = 0x04 };   /* a bitmask: seekoff's compare chain */
     enum event { erase_event, imbue_event, copyfmt_event };
     typedef void (*event_callback)(event, ios_base &, int index);
 
