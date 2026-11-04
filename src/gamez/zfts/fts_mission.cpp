@@ -354,9 +354,33 @@ extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 class CEntity;
 class CEntityList : public std::list<CEntity *> {
 };
+class CQuat;
 class CEntity {
 public:
+    /* zentity.h's virtual functions up to OnMissionEnd (+0x50), for the mission's end */
+    virtual ~CEntity();                                         /* +0x08 */
+    virtual const CMatrix *GetPosW() const;
+    virtual void UpdatePosW();
+    virtual void PreTick(float dT);
+    virtual void Tick(float dT);
+    virtual void PostPreTick(float dT);                         /* +0x1C */
+    virtual void PrePostTick(float dT);
+    virtual void PostTick(float dT);
+    virtual void ComputeNextPosition(float dT);
+    virtual void UpdateNextPosition();                          /* +0x2C */
+    virtual CPnt3D *GetTargetPosW(CPnt3D *out);
+    virtual CPnt3D *GetHeadPosW(CPnt3D *out);
+    virtual CPnt3D *GetNeckPosW(CPnt3D *out);
+    virtual void TeleportTo(const CPnt3D *pos, const CQuat *quat);   /* +0x3C */
+    virtual void TeleportTo(const CMatrix *m);
+    virtual void ResetToInitialState();
+    virtual void UpdateAiMapLoc();                              /* +0x48 */
+    virtual void OnMissionStart();
+    virtual void OnMissionEnd();                                /* +0x50 */
+
     static void RemoveAll();
+    /* the entities, const (zentity.h's) */
+    static const CEntityList &GetEntityList() { return m_list; }
 
     static const unsigned int invalidId;   /* 0x3EFFB0 */
     static CEntityList m_list;   /* 0x4362E0 */
@@ -371,7 +395,7 @@ extern "C" void ClearFreeList__14CSched_ManagerFb(CSched_Manager *sched, bool al
 extern "C" bool AddTask__14CSched_ManagerFPCcPFfPv_bfPv(CSched_Manager *sched, const char *name,
                                                          bool (*func)(float dT, void *data), float priority, void *data);
 
-/* the mission completed (SOCOM 1's name, at its call; OVL1 0x2AA910, not written yet) */
+/* the mission completed (SOCOM 1's name, at its call; OVL1 0x2AA910, below) */
 void _OnMissionComplete();
 
 /* the video (zvid's CVideo: only the screen's clear) */
@@ -385,7 +409,7 @@ void Flash__4CHUDFfRC6CPnt3Dfff(CHUD *hud, float time, const CPnt3D *colour, flo
 void Reset__14CFlashFXVectorFv(void *flashes);
 void ResetDeathCam__10CAppCameraFv(void *camera);
 void Push__5CGameFP10CGameStateUi(void *game, void *state, unsigned int arg);
-extern void *appCamera;
+extern class CAppCamera *appCamera;
 extern unsigned char data_004086A0[];                    /* (a state in theGame, at 0x1E0) */
 }
 
@@ -1013,12 +1037,14 @@ public:
 };
 
 class CZWeaponList;
+class CZProjectileList;
 class CZWeapon {
 public:
     static void Open();   /* 0x3D03D0 */
     static void ClearTimer(float *pCurval);
 
     static CZWeaponList m_listWeapons;   /* 0x4B5210 */
+    static CZProjectileList *m_pProjectilelist;   /* 0x4B5220 */
     static CZMarkList *m_pMarklist;   /* 0x4B5248 */
 };
 
@@ -1066,6 +1092,8 @@ public:
  * creation) */
 class CSealCtrl {
 public:
+    void StopRumbler();   /* OVL2 0x592AC0 */
+
     unsigned char _0[0x221];
     unsigned char m_221;   // 0x221
 };
@@ -1074,7 +1102,9 @@ class CZSealBody {
 public:
     static void NetworkPlayerCreate();   /* OVL2 0x5442C0 */
 
-    unsigned char _0[0xc0];
+    unsigned char _0[0x4];
+    unsigned int m_id;   // 0x4 (zentity.h's CEntity)
+    unsigned char _8[0xc0 - 0x8];
     CSealCtrl *m_control;   // 0xc0
     unsigned char _c4[0xe1 - 0xc4];
     unsigned char m_e1_0 : 4;   // 0xe1
@@ -1086,6 +1116,7 @@ CZSealBody *ftsGetPlayer();
 /* the pickups (OVL2's CPickup: only its open) */
 class CPickup {
 public:
+    static void Close(bool all);   /* OVL2 0x542E50 */
     static void Open(unsigned int count);   /* OVL2 0x542FC0 */
 };
 
@@ -1797,6 +1828,83 @@ void UpdateMissionArchive(const char *olddb, const char *newdb)
         CRdrArchive::OpenAll();
     }
 }
+}
+
+/* the projectiles in flight (zweapon.h's CZProjectileList: only the two the mission's end calls) */
+class CZProjectileList {
+public:
+    void Clear(int owner, EQUIP_ITEM item);   /* 0x3CCEB0 */
+    void SetAllFlag18();   /* 0x3CCC90 */
+};
+
+/* the input (zinput's CInput: only the flush) and the application's camera (camera.h's CAppCamera:
+ * only the zoom and the controlled view) */
+class CInput {
+public:
+    static void Flush();   /* 0x2D9E00 */
+};
+
+class CAppCamera {
+public:
+    void SetZoom(float zoom);   /* 0x29B2F0 */
+
+    unsigned char _0[0xe4];
+    unsigned char m_ctrl_view;   // 0xe4 (camera.h's CAMVIEW: cam_view_third 0)
+};
+
+extern "C" {
+CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
+void func_00326FB0();
+void func_005781C0(CZSealBody *player);   /* (OVL2) */
+extern unsigned char data_0048DB50;
+extern int data_00488EA0;
+}
+
+/* the mission over: the common and mission anims stopped, the sounds and the music, the player's
+ * rumble and the input; in a network game the player's projectiles, the pickups and the rest of
+ * the projectiles let go; every entity told, the network packets freed, the camera's zoom and view
+ * put back (SOCOM 1's, SOCOM II's anim sets first and the network part its own; OVL1 0x2AA910) */
+void _OnMissionComplete()
+{
+    CZAnimSet *set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "common");
+
+    if (set)
+        set->Stop();
+    set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "mission");
+    if (set)
+        set->Stop();
+    func_00326FB0();
+    CSndInstance::StopAllSounds();
+    CSnd::Close();
+    CSndJukebox::Stop();
+    data_0048DB50 = 0;
+    CZSealBody *player = ftsGetPlayer();
+    CSealCtrl *ctrl = player ? player->m_control : 0;
+
+    if (ctrl)
+        ctrl->StopRumbler();
+    CInput::Flush();
+    if (theNetwork.m_bNetwork) {
+        CZSealBody *seal;
+        CZProjectileList *list = CZWeapon::m_pProjectilelist;
+
+        seal = ftsGetPlayer();
+
+        if (seal) {
+            func_005781C0(seal);
+            list->Clear(seal->m_id, EQUIP_NONE);
+        }
+        CPickup::Close(false);
+        list->SetAllFlag18();
+        data_00488EA0 = 0;
+    }
+    CEntityList::const_iterator i;
+
+    for (i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end(); ++i)
+        (*i)->OnMissionEnd();
+    ZAnim.FreeNetworkPacketBuffer();
+    appCamera->SetZoom(1.0f);
+    appCamera->m_ctrl_view = 0;
 }
 
 /* whether the player's controller is in none of states 2 to 5 (SOCOM II's; OVL1 0x2AA890). One
