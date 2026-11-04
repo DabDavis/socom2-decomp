@@ -2743,7 +2743,7 @@
 0x002590A0 0x190 __ct__Q23zar4CZARFPCcP3CIO  # OVL1; s1:callee by hand (OpenZAR calls it on the fresh CZAnimZAR with (0, 0) where SOCOM 1's OpenZAR calls zar::CZAR::CZAR(const char *, CIO *))
 0x00259230 0xC func_00259230  # OVL1
 0x00259240 0xC func_00259240  # OVL1
-0x00259250 0x558 func_00259250  # OVL1
+0x00259250 0x558 insert__Q23std58__vector_imp<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>,0>FPQ23zar4CKeyUiRCQ23zar4CKey  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey calls it twice with (end, 1, key) where SOCOM 1 calls its insert at 0x1D9ED0: the key buffer's class insert, zar_main.cpp's template tail)
 0x002597B0 0x1F4 func_002597B0  # OVL1
 0x002599B0 0x7C clear__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's clear, ~CKey with -1 from the back; zar_main.cpp's template tail)
 0x00259A30 0xB8 __dt__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's deleter destructor, its clear inlined: zar_main.cpp's template tail)
@@ -2786,7 +2786,7 @@
 0x0025BAE0 0x40 func_0025BAE0  # OVL1
 0x0025BB20 0x24 func_0025BB20  # OVL1
 0x0025BB50 0x88 __dt__Q23zar4CKeyFv  # OVL1; by hand: Insert(const char *, const void *, int) 0x25A2F0 deletes the key it could not write through it, (key, 1), where SOCOM 1's inlines ~CKey (its list's destructor, then delete)
-0x0025BBE0 0x20 func_0025BBE0  # OVL1
+0x0025BBE0 0x20 __ct__Q23zar4CKeyFv  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey builds its nameless key with it where SOCOM 1 calls CKey() 0x1DC4A0: the ring and the three fields zeroed; before CKey(const char *) as in SOCOM 1)
 0x0025BC00 0x20 __ct__Q23zar4CKeyFPCc  # OVL1; s1:order by hand (SOCOM 1's CKey(const char *) 0x1DC4E0, last of its zar_search.cpp: the list (here the vector) built, the name stored, size and offset zeroed; CZAR's constructor calls it with "" for the root)
 0x0025BC20 0x9D0 InitCommands__10CZAnimMainFv  # OVL1; s1:calls by hand (registers the core ZAnim commands through AddCmd, as SOCOM 1's InitCommands does; SOCOM II adds 11 to its 49)
 0x0025C5F0 0xE8 func_0025C5F0  # OVL1

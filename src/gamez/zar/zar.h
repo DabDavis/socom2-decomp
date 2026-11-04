@@ -43,6 +43,8 @@ struct TAIL {
 
 class CKey : public CKeyRing {
 public:
+    /* an empty key, no name (SOCOM 1's; NewKey pushes one for a nameless key) */
+    CKey();
     CKey(const char *name);
     /* out of line (0x25BB50): Insert(const char *, ...) deletes a key it could not write through it */
     ~CKey();

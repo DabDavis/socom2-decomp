@@ -15,6 +15,10 @@ CKey::CKey(const char *name) : m_name((char *)name), m_size(0), m_offset(0)
 {
 }
 
+CKey::CKey() : m_name(0), m_size(0), m_offset(0)
+{
+}
+
 /* SOCOM 1's destroyed only its list; SOCOM II's first forgets its children (DeleteChildren,
  * 0x25B580, not yet written) */
 CKey::~CKey()

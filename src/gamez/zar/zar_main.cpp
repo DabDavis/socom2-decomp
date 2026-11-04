@@ -2,9 +2,9 @@
  * file, its stack of open keys and what it fetches. The unit name is SOCOM 1's (the press beta's
  * asserts name it). Defined in reverse of their image order (-inline deferred). Written: the
  * constructor, the destructor, SetFilename, both Closes, CloseKeepDir, Flush, the key stack's six
- * (CloseKey .. GetSize), ReadString and FreeDirectory -- whose FreeVectors give the vector<CKey>
+ * (CloseKey .. GetSize), ReadString, NewKey and FreeDirectory -- whose FreeVectors give the vector<CKey>
  * and vector<CKey *> pieces 0x2573E0-0x25757F right after it, and the key buffer's clear and
- * deleter 0x2599B0/0x259A30 in the tail. Not yet: Open 0x258920, NewKey, WriteDirectory, the
+ * deleter 0x2599B0/0x259A30 in the tail. Not yet: Open 0x258920, WriteDirectory, the
  * buffer writers below 0x257320, the directory reader 0x258000 and the CKey vector's class insert
  * 0x259250. */
 
@@ -178,6 +178,30 @@ int CZAR::ReadString(char **str)
         n += m_pFile->fread(*str, len);
     }
     return n;
+}
+
+/* a fresh key: put in the key buffer when the file is read (its mode's bit 0), the name made a
+ * string of the table's -- else allocated on its own (SOCOM 1's, the same code; SOCOM II's
+ * nameless key built by CKey(), its temporary destroyed out of line; one result for both paths,
+ * as the target's single exit). Its push_backs instantiate the key buffer's class insert
+ * (0x259250) and, through CKey's implicit copies, the CKeyRing pod's copy constructor, operator=,
+ * init and do_assign (0x259AF0-0x259EDF, byte-exact in the tail). The insert stays OPEN: it calls
+ * __copy_backward and __fill_n out of line at -inline level=5 (0x4F8 against 0x558; CKey's
+ * assignment chain is one level too tall -- at level 6 it is the target's size, 53 instructions
+ * off), inline_max_size changes nothing */
+CKey *CZAR::NewKey(const char *name)
+{
+    CKey *key;
+
+    if (m_pFile->GetMode() & 1) {
+        if (name)
+            m_key_buffer.push_back(CKey(m_stable->CreateString(name)));
+        else
+            m_key_buffer.push_back(CKey());
+        key = &m_key_buffer.back();
+    } else
+        key = new CKey(m_stable->CreateString(name));
+    return key;
 }
 
 #pragma auto_inline off
