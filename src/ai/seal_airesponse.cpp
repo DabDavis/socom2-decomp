@@ -357,6 +357,48 @@ struct CAiCtrl32C {
 /* the shot-at state's limit (a function-local static in the original: 8-byte-spaced data) */
 static float s_shotAtTime = 15.0f;
 
+extern "C" {
+/* the SEAL's grenade about to go off called out, when it may (OVL2 0x584B00 and 0x57E540, the
+ * SEALs' seal_body.cpp and seal_ai.cpp rows) */
+bool func_00584B00(CZSealBody *seal);
+void func_0057E540(CZSealBody *seal);
+}
+
+/* the shot-at state's reaction at its step: in step 2 the AI's sound 72 at a quarter's chance, then
+ * -- at a quarter's chance, when the SEAL may -- its grenade's callout, else at 0.15's chance and in
+ * an AI mode of 3 or more a spray of 0.15 seconds; in step 3 the callout alone, in step 4 the spray
+ * alone (0.75 seconds); nothing in step 6 (OVL2 0x609190: CAiSShotAt::Tick calls it four times, a
+ * member -- the state in a0; the name unknown). The chances function-local statics (8-byte-spaced
+ * data after the shot-at time's) */
+extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
+{
+    CAiState::STEP step = (CAiState::STEP)s->m_phase;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    float chance = 4.656613e-10f * rand();
+    static float callChance = 0.25f;
+    static float sprayChance = 0.15f;
+
+    switch (step) {
+    case CAiState::STEP_2:
+        ai->PlayAiSound((CHARACTER_SOUND)72, 0.25f, 0);
+        if (chance < callChance && func_00584B00(seal))
+            func_0057E540(seal);
+        else if (chance < sprayChance && func_00560A60(ai) > 2)
+            ai->SetSprayTimer(0.15f);
+        break;
+    case CAiState::STEP_3:
+        if (chance < callChance && func_00584B00(seal))
+            func_0057E540(seal);
+        break;
+    case CAiState::STEP_4:
+        if (chance < sprayChance && func_00560A60(ai) > 2)
+            ai->SetSprayTimer(0.75f);
+        break;
+    case CAiState::STEP_6:
+        break;
+    }
+}
+
 /* shot at, the sub-step: over after its time; before, once the AI's byte at 0x32C is set, the
  * sub-state ended and step 3 taken (OVL2 0x609340).
  * OPEN, 0x9C against 0xA4: the target zero-extends the byte it tests (`lbu; dsll32 v0,v0,0;
@@ -643,6 +685,41 @@ extern "C" void func_00607560()
         CAiCallout *c = &s_callouts[i];
 
         c->m_snd = 0;
+    }
+}
+
+/* the callouts' first float for the positional player (OVL2 data 0x650F78, after the table: three
+ * of the unit's functions read it -- 0x6067A0, 0x606DB0, 0x606EC0; the name ours) */
+static float s_calloutRange = 5.0f;
+
+/* the positional player (OVL1 0x3428F0, char_type.cpp's reading: the sound, the entity's id, the
+ * position, two floats) */
+extern "C" void func_003428F0(CSnd *sound, unsigned int id, const CPnt3D *pos, float a, float b);
+
+/* a callout played for a SEAL: at its position, or as its own when the sound's bit 3 is set (inline:
+ * its by-value arguments read before the null test, the float first; the name ours) */
+inline void PlayCallout(CSnd *snd, CEntity *seal, float range)
+{
+    if (snd) {
+        if (snd->m_socom2_bit3)
+            func_003428F0(snd, seal->m_id, 0, range, 1.0f);
+        else
+            func_003428F0(snd, seal->m_id, &seal->m_posW, range, 1.0f);
+    }
+}
+
+/* a SEAL's callout on being hit, under the state's flag bit 7: "^CS_0288" when the shooter shares
+ * its team, "^CS_0295" otherwise (OVL2 0x606DB0: CSealCtrlAi::OnWeaponHit calls it with the state
+ * and controller 0x572880 hands back and the shooter; the name unknown) */
+extern "C" void func_00606DB0(CAiState *s, CSealCtrlAi *ai, CEntity *e)
+{
+    if (ai && e && (s->m_flags & 0x80)) {
+        CEntity *seal = ai->m_entity;
+
+        if (seal->m_team & e->m_team)
+            PlayCallout(s_callouts[40].m_snd, seal, s_calloutRange);
+        else
+            PlayCallout(s_callouts[41].m_snd, seal, s_calloutRange);
     }
 }
 
