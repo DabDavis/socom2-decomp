@@ -2821,8 +2821,9 @@ public:
  * the box's columns, font and scale -- a string's own text set -- and added at the end; the last
  * row highlighted when the box follows its end; the rows' sequences laid one after another from the
  * box's start; then the actions on event 46 run (SOCOM II's: SOCOM 1's built its rows otherwise).
- * The counter an int (unsigned, MW strength-reduces Item's i*8 into a sixth saved register).
- * OPEN, 7 instructions: the sequence walk's iterator and end node swap s0/s1 */
+ * The counter an int (unsigned, MW strength-reduces Item's i*8 into a sixth saved register); the
+ * sequence walk's end a local declared before its iterator (end() in the test swaps the two's saved
+ * registers) */
 void CUIListBox::UpdateUIVar(CUIVariable *var)
 {
     if (var->IsArray()) {
@@ -2839,8 +2840,9 @@ void CUIListBox::UpdateUIVar(CUIVariable *var)
             Highlight(m_items.size() - 1);
 
         float t = m_seqStart;
+        std::list<ListItem *>::iterator e = m_items.end();
 
-        for (std::list<ListItem *>::iterator it = m_items.begin(); it != m_items.end(); ++it)
+        for (std::list<ListItem *>::iterator it = m_items.begin(); it != e; ++it)
             t = (*it)->SetSequenceTime(t, m_seqLength);
         for (int i = 0; i < m_numActions; i++)
             if (m_actions[i].Type == 1 && m_actions[i].Event == 46) {
