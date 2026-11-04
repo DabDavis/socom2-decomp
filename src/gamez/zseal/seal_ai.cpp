@@ -3000,6 +3000,63 @@ extern "C" {
 void func_00545480(CSealStats *stats);
 }
 
+extern "C" float floorf(float);
+
+/* a node's fade in fifteenths: 15 times the faded part when it is shown, else none (seal.cpp's
+ * helper: the target tests the shown flag again inside it) */
+static inline unsigned int FadeLevel(bool active, float opacity)
+{
+    return active ? (unsigned int)floorf(15.0f * (1.0f - opacity)) : 0;
+}
+
+/* this console's state for the others, as a word's bits (OVL2 0x56F6C0, slot 0x6C: SOCOM 1's
+ * CSealCtrlAi::GetAiNetState -- the state's kind, through slot 0xA4 now where SOCOM 1 inlined its
+ * GetAiStateEnum; the id the kind names: the master followed, the rescuer, else the master's id
+ * where SOCOM 1 sent none; the fade, the restraint and the friend's marker). The switch tests the
+ * call's value (`andi v1,v0,0xff`): `switch (st.m_code)` after the store re-reads the byte (lbu),
+ * and a local of any type (AI_STATE, unsigned char, int) or the assignment as the switch's value
+ * matches, under slot 0xA4 typed bool or AI_STATE alike -- this code cannot tell the slot's type */
+unsigned int CSealCtrlAi::GetAiNetState() const
+{
+    zdb::CNode *node;
+    CZSealBody *seal = (CZSealBody *)m_entity;
+    REMOTE_NET_STATE st;
+    unsigned int zero = 0;
+    unsigned int state;
+
+    memcpy(&st, &zero, sizeof(st));
+    node = seal->GetNode();
+    switch (st.m_code = GetJumpFlag()) {
+    case 9: {
+        const CAiState *s = GetAiState();
+
+        st.m_id = m_follow_master ? m_follow_master->m_id : 0;
+        break;
+    }
+    case 17: {
+        const CAiState *s = GetAiState();
+        const CAiSRescued *r = s && s->m_state == AI_STATE_RESCUED ? (const CAiSRescued *)s : 0;
+
+        st.m_id = r->m_5c;
+        break;
+    }
+    default:
+        st.m_id = m_follow_master_id;
+        break;
+    }
+    bool active = node->m_active;
+    float opacity = node->m_Opacity;
+
+    if (active && opacity > 0.0f)
+        st.m_fade = FadeLevel(active, opacity);
+    else
+        st.m_fade = 15;
+    st.m_restrained = seal->m_restrained ? true : false;
+    st.m_friend = seal->m_isAlive && (seal->m_team & 0x20000);
+    memcpy(&state, &st, sizeof(st));
+    return state;
+}
+
 /* the restraint taken from the state when it changes (an inline: both bits made bools) */
 static inline void SetRestrained(CZSealBody *seal, bool on)
 {
