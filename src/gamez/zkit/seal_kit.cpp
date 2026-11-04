@@ -667,6 +667,12 @@ int CZKit::GetMaxAmmoCount(int index)
     return m_item[index]->GetAmmoCapacity();
 }
 
+/* (OVL2 0x5C3CE0; SOCOM 1's, a tail call here) */
+int CZKit::GetCurMaxAmmoCount()
+{
+    return GetMaxAmmoCount(m_selected_item);
+}
+
 /* the rounds in all an item's magazines (OVL2 0x5C3C10, where SOCOM 1's EmptyAmmoCountTotal
  * sat -- that one emptied them; the name ours) */
 int CZKit::GetAmmoTotal(int index)
@@ -677,6 +683,12 @@ int CZKit::GetAmmoTotal(int index)
     for (int i = 0; i < 10; i++)
         total += m_reloads[index][i];
     return total;
+}
+
+/* (OVL2 0x5C3890; SOCOM 1's, a tail call here -- GetAmmoCount 0x5C38A0, between the two, unwritten) */
+int CZKit::GetCurAmmoCount()
+{
+    return GetAmmoCount(m_selected_item);
 }
 
 /* the current item's fire mode set, when the item has it and the ammunition for it -- a grenade

@@ -33,6 +33,7 @@ class CHUD {
 public:
     void On() { m_ison = true; }
     void Off() { m_ison = false; }
+    void ReInit_Uninit();   /* 0x1FB790 */
 
     unsigned char _0[0x11c90];
     CZNewHudMap *m_newmap;   // 0x11c90 (SOCOM 1's map embedded, at 0xe370)
@@ -225,6 +226,7 @@ class CAiMaps : public std::list<CAiMap *> {
 public:
     bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
     void Close();   /* OVL2 0x52E780 */
+    void Reset();   /* OVL2 0x52E720 */
     void ReadMapSet(const char *file, const char *path);   /* OVL2 0x52B0D0 */
 
     unsigned char _c[0x48 - 0xc];
@@ -279,6 +281,9 @@ class CMissionCamList : public std::list<CMissionCam *> {
 };
 
 class CMissionObjectiveCamList : public std::list<CMissionObjectiveCam *> {
+public:
+    void Reset();   /* 0x2C6F40 */
+    void ClearValves();   /* 0x2C7000 */
 };
 
 /* a point of a camera path (the names ours): where, which way, and its name -- 0x98 bytes, the
@@ -374,8 +379,16 @@ class C2DMessage_Q {
 public:
     C2DMessage_Q();   /* 0x2B7610 */
     ~C2DMessage_Q();   /* 0x2B6EE0 */
+    void Clear_Messages();   /* 0x2B6DE0 */
+    void ResetScroll();
 
-    unsigned char _0[0x4e0];
+    unsigned char _0[0x438];
+    /* the scroll: the top line, the move's time and the top it moves to (SOCOM 1's m_cur_top,
+     * m_moveTime and m_target_top, 0x15C-0x164 there) */
+    int m_cur_top;   // 0x438
+    float m_moveTime;   // 0x43c
+    float m_target_top;   // 0x440
+    unsigned char _444[0x4e0 - 0x444];
 };
 
 class CMsgEditor {
@@ -406,6 +419,7 @@ public:
     void CreateCompassNavPoints();
     CZNetGame *CreateNetGame();
     bool ReOpen_Unload2();
+    bool ReOpen_Load();
     void FadeToEndMission(float time, int counter);
     bool FadeToEndMissionTick(float dT);
     static bool fadeToEndMissionTick(float dT, void *data);
@@ -413,6 +427,8 @@ public:
     bool _RecoverFromNetError(int error);
     void SetDelayEndMission(bool b) { m_DelayEndMission = b; }
     void SetFadingToEndMission(bool b) { m_FadingToEndMission = b; }
+    void SetFc2(bool b) { m_fc_2 = b; }
+    bool ReOpen_Unload1();
     unsigned int GetTimeLeft();
     void EndMission();
     void CreateLadderTable();
@@ -428,6 +444,7 @@ public:
     unsigned char _ec[0xfc - 0xec];
     unsigned char m_DelayEndMission : 1;   // 0xfc (SOCOM 1's bytes at 0x70, 0x71)
     unsigned char m_FadingToEndMission : 1;
+    unsigned char m_fc_2 : 1;   // SOCOM II's (a reload's unload clears it through a bool setter; the name ours)
     int m_fade_counter;   // 0x100 (SOCOM 1's at 0x74)
     float m_next_fade_time;   // 0x104 (SOCOM 1's at 0x78)
     float m_wait_before_falling;   // 0x108 (SOCOM 1's at 0x7c)
@@ -1302,6 +1319,7 @@ class CRdrArchive {
 public:
     static CRdrArchive *AddArchive(const char *name, const char *path);   /* 0x32C1E0 */
     static void RemoveArchive(const char *name, const char *path);   /* 0x32C2B0 */
+    static void CloseAll();   /* 0x32C4F0 */
     static void OpenAll();   /* 0x32C570 */
 };
 
@@ -1327,6 +1345,9 @@ CStringTables *GetStringTables();   /* 0x361BC0 */
 namespace Particle {
 void Close();   /* 0x324820 */
 void Open();   /* 0x324B20 */
+void FlushDynTexList();   /* 0x3246F0 */
+void FreeNodePool();   /* 0x3248E0 */
+void FreeInstances();   /* 0x326FF0 */
 }
 
 /* the materials (int_material.cpp's CMaterialExArray: only the default's setter) */
@@ -1422,6 +1443,7 @@ public:
     static void NetworkPlayerCreate();   /* OVL2 0x5442C0 */
     static void UninitDatabaseHandles();   /* OVL2 0x5A3BB0 */
     static void InitDatabaseHandles();   /* OVL2 0x5A4CE0 */
+    static void ReInitDatabaseHandles();   /* OVL2 0x5A49F0 */
     static void InitDecalHandles();   /* OVL2 0x5A4CF0 */
 
     unsigned char _0[0x4];
@@ -1449,6 +1471,7 @@ class CNodeAction {
 public:
     static void Open(zdb::CWorld *world, const char *name);   /* 0x2B4F40 */
     static void Close();   /* 0x2B55E0 */
+    static void Reset();   /* 0x2B5510 */
 };
 
 void ftsFixupAiMap(CAiMap *map);   /* 0x2A8140 */
@@ -1630,6 +1653,18 @@ void CMission::FadeToEndMission(float time, int counter)
     }
 }
 
+/* the application's camera (camera.h's CAppCamera: its two virtuals, declared only, the zoom and the
+ * controlled view) */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);   /* its table's third word */
+    void SetZoom(float zoom);   /* 0x29B2F0 */
+
+    unsigned char _4[0xe4 - 0x4];
+    unsigned char m_ctrl_view;   // 0xe4 (camera.h's CAMVIEW: cam_view_third 0)
+};
+
 /* the second half of a reload's unload: the entities and AI events gone, the world's lists and
  * garbage cleared (SOCOM 1's), then -- SOCOM II's -- the scheduler's free list, the headset and
  * the sounds (OVL1 0x2AC060) */
@@ -1646,6 +1681,90 @@ bool CMission::ReOpen_Unload2()
     ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
     Headset::Reset();
     CSndInstance::PostTick(0.0f, 0);
+    return true;
+}
+
+extern "C" {
+void func_003249D0();   /* (SOCOM 1's Particle::ReserveNodePool at the same place) */
+void func_002B6430(C2DMessage_Q *q, float dT);   /* (fts_message.cpp's: SOCOM 1's ScrollUp here) */
+}
+
+/* a queue's lines gone and its scroll put back (SOCOM 1's ScrollUp and the two members, SOCOM II's
+ * clear first; the name ours) */
+inline void C2DMessage_Q::ResetScroll()
+{
+    Clear_Messages();
+    func_002B6430(this, 0.0f);
+    m_moveTime = 2.0f;
+    m_cur_top = (int)m_target_top;
+}
+
+/* the mission reloaded over its world: the reader's UI archive dropped, the valves reset and the
+ * mission's made again, the AI maps reset, the extraction point, the weapons, the vehicles, the
+ * characters' sounds and the SEALs' handles, the AI events, the pickups and the units, the ladders
+ * freed, the AI maps fixed up, the camera on the player, the queues cleared, the clock off unless a
+ * network game (SOCOM 1's ReOpen_Load with SOCOM II's additions; OVL1 0x2ABD40) */
+bool CMission::ReOpen_Load()
+{
+    m_wait_before_falling = 10.0f;
+    CRdrArchive::CloseAll();
+    CRdrArchive::RemoveArchive("readerc.zar", "run/ui");
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    CValve::Reset();
+    m_objectivecams.Reset();
+    m_valve_complete = CValve::Create("mission_complete", 0, VALVE_PERM);
+    m_valve_failure = CValve::Create("mission_failure", 0, VALVE_PERM);
+    m_valve_abort = CValve::Create("mission_abort", 0, VALVE_PERM);
+    m_valve_timeout = CValve::Create("mission_timeout", 0, VALVE_PERM);
+    CValve::Create("mission_replay", 1, VALVE_PERM);
+    m_valve_nofade = CValve::Create("nofade", 0, VALVE_PERM);
+    InitalizeTeamValves();
+    AiMaps.Reset();
+    Sample_ExtractionLoc();
+    CZWeapon::Open();
+    func_00574C30();
+    func_002B2E50(this);
+    world->AddCustomCharacters();
+    m_chars_loaded = 1;
+    CCharacterType::AcquireSoundHandles();
+    CZSealBody::ReInitDatabaseHandles();
+    func_00295660();
+    unsigned int count = CEntity::m_list.size();
+
+    CAiEvent::Open(count);
+    CPickup::Open(count);
+    CSealUnit::CreateSinglePlayerUnits();
+    RefreshTeamValves();
+    CLadderList *ladders = m_ladders;
+
+    if (ladders) {
+        for (CLadderList::iterator l = ladders->begin(); l != ladders->end(); ++l) {
+            l->m_users = 0;
+            l->m_owner = CEntity::invalidId;
+        }
+    }
+    CAiMaps::iterator i, e = AiMaps.end();
+
+    for (i = AiMaps.begin(); i != e; ++i)
+        ftsFixupAiMap(*i);
+    func_003249D0();
+    appCamera->AttachTo(ftsGetPlayer());
+    CRdrArchive::CloseAll();
+    /* each queue through a pointer of its own, declared where it is used: MW keeps each in a saved
+     * register, s0, s2, s0 as the target (the members named straight fold the address into every
+     * access; one pointer reassigned numbers them s2, s0, s2) */
+    C2DMessage_Q *q = &m_messages;
+
+    q->ResetScroll();
+    C2DMessage_Q *r = &m_messages3;
+
+    r->ResetScroll();
+    C2DMessage_Q *t = &m_messages2;
+
+    t->ResetScroll();
+    if (!theNetwork.m_bNetwork)
+        m_e8 = -1.0f;
     return true;
 }
 
@@ -1836,6 +1955,115 @@ public:
 extern "C" {
 CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
 void func_00574BD0();   /* (OVL2: SOCOM 1's CSealCtrlAi::ReleaseDatabaseHandles here) */
+void func_005A3B50();   /* (OVL2: SOCOM 1's CZSealBody::Uninit_ReInitDatabaseHandles here) */
+void func_00295610();
+void func_005B61A0();   /* (OVL2) */
+}
+
+/* the AI's planner queue flushed (OVL2's ai::FlushPlannerQueue), the pipe (zrndr's CPipe: only its
+ * flush) and the texture manager's packet buffers */
+namespace ai {
+void FlushPlannerQueue();   /* OVL2 0x510D10 */
+}
+
+class CPipe {
+public:
+    void Flush();   /* 0x33B720 */
+};
+extern CPipe thePipe;   /* 0x4887C0 */
+
+namespace zdb {
+class CTexManager {
+public:
+    static void ClearPktBufs(CTexManager &manager, bool all);   /* 0x355F20 */
+
+    static CTexManager m_texmanager;   /* 0x49E880 */
+};
+}
+
+/* a queue's lines gone, through its pointer (SOCOM 1's ReOpen_Unload1 tests each queue's address
+ * too; the name ours) */
+inline void ClearQueue(C2DMessage_Q *q)
+{
+    if (q)
+        q->Clear_Messages();
+}
+
+/* the first half of a reload's unload: the extraction and objective anchors deleted, the HUD map's
+ * selection, the headset, the world's decals and characters, the fade's task, the camera let go,
+ * the planner queue, the clutter's effectors and animations, the SEALs' and the weapons' handles,
+ * the pickups, the common and mission anims stopped and collected and reset, the ripples, dodges,
+ * spawners, bone callbacks and units, the actions, the objectives' valves, the valves, the HUD, the
+ * stream, the queues, the particles, the pipe and the packet buffers (SOCOM 1's ReOpen_Unload1 with
+ * SOCOM II's additions; OVL1 0x2AC0E0) */
+bool CMission::ReOpen_Unload1()
+{
+    while (m_anchor_extraction.size()) {
+        CCompass::DeleteAnchor(m_anchor_extraction.back());
+        m_anchor_extraction.pop_back();
+    }
+    while (m_objanchor_vec.size()) {
+        CCompass::DeleteAnchor(m_objanchor_vec.back().m_anchor);
+        m_objanchor_vec.pop_back();
+    }
+    if (theHUD && !theNetwork.m_bNetwork)
+        theHUD->m_newmap->m_cur_selected_objective = 0;
+    Headset::Reset();
+    zdb::CWorld *world = zdb::CWorld::m_world;
+
+    world->m_diIntDelayCnt = 0;
+    world->RemoveDecals();
+    world->WipeoutTextureAssetCharacters();
+    zTaskScheduler.RemoveTask("MissionFadeToEnd", true);
+    ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
+    appCamera->AttachTo(0);
+    m_chars_loaded = 0;
+    ai::FlushPlannerQueue();
+    world->m_grid.m_ClutterAnimManager->ClearEffectors();
+    world->m_grid.m_ClutterAnimManager->ClearAnimations(true);
+    func_005A3B50();
+    func_00295610();
+    CZWeapon::Close();
+    CPickup::Close(true);
+    CZAnimSet *set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "common");
+
+    if (set) {
+        set->Stop();
+        set->GarbageCollect();
+    }
+    set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "mission");
+    if (set) {
+        set->Stop();
+        set->GarbageCollect();
+    }
+    set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "common");
+    if (set)
+        set->Reset();
+    set = GetAnimSet__10CZAnimMainFPCc(&ZAnim, "mission");
+    if (set)
+        set->Reset();
+    zdb::theWaterRippleManager.Clear();
+    CAiDodge::Destroy();
+    func_00574BD0();
+    spawners.Clear();
+    zBoneResetCallbacks();
+    CSealUnit::UnInit();
+    func_005B61A0();
+    CNodeAction::Reset();
+    m_objectivecams.ClearValves();
+    CValve::Close();
+    theHUD->ReInit_Uninit();
+    Headset::ResetStream();
+    SetFc2(false);
+    ClearQueue(&m_messages);
+    ClearQueue(&m_messages2);
+    ClearQueue(&m_messages3);
+    Particle::FreeInstances();
+    Particle::FlushDynTexList();
+    Particle::FreeNodePool();
+    thePipe.Flush();
+    zdb::CTexManager::ClearPktBufs(zdb::CTexManager::m_texmanager, true);
+    return true;
 }
 
 /* the mission closed: its sounds, decals and archive, the extra string tables, the objective and
@@ -2439,15 +2667,17 @@ void UpdateCharWeaponUiVars(int i)
         *theUIVarManager.Add(names[i][n], 0, UIVL_TEMPORARY) = "<NONE>";
 }
 
-/* the mission's package (util_main.cpp's CPackage: only its open and close; the object ours) */
+/* the mission's package (util_main.cpp's CPackage: only its open and close) and the package itself
+ * (util_main.cpp's thePackage, 0x4A15F8) */
 class CPackage {
 public:
     bool Close();   /* 0x39C3F0 */
     bool Open(const char *name);   /* 0x39C440 */
 };
 
+extern CPackage thePackage;
+
 extern "C" {
-extern CPackage data_004A15F8;
 unsigned int strlen(const char *s);
 }
 
@@ -2467,14 +2697,14 @@ void UpdateMissionArchive(const char *olddb, const char *newdb)
             path += "sp/";
         path += olddb;
         CRdrArchive::RemoveArchive("readerm.zar", path.c_str());
-        data_004A15F8.Close();
+        thePackage.Close();
     }
     if (newdb && strlen(newdb)) {
         char name[32] = "run/";
 
         strcat(name, newdb);
         strcat(name, ".zdb");
-        data_004A15F8.Open(name);
+        thePackage.Open(name);
         CSaferStr path;
 
         path = "run/";
@@ -2489,19 +2719,10 @@ void UpdateMissionArchive(const char *olddb, const char *newdb)
 }
 }
 
-/* the input (zinput's CInput: only the flush) and the application's camera (camera.h's CAppCamera:
- * only the zoom and the controlled view) */
+/* the input (zinput's CInput: only the flush) */
 class CInput {
 public:
     static void Flush();   /* 0x2D9E00 */
-};
-
-class CAppCamera {
-public:
-    void SetZoom(float zoom);   /* 0x29B2F0 */
-
-    unsigned char _0[0xe4];
-    unsigned char m_ctrl_view;   // 0xe4 (camera.h's CAMVIEW: cam_view_third 0)
 };
 
 extern "C" {
