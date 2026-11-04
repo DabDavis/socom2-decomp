@@ -187,6 +187,10 @@ public:
         return m_btns.m_btn[func].m_btn != PAD_BUTTON_NONE ? pad->m_state[m_btns.m_btn[func].m_btn] : KEY_UP;
     }
     bool IsDown(int func, const CPad *pad) const { return GetButtonState(func, pad) == KEY_DOWN; }
+    KEY_STATE ButtonState(int func, const CPad *pad) const
+    {
+        return Button(func) != PAD_BUTTON_NONE ? pad->m_state[Button(func)] : KEY_UP;
+    }
     bool HoldsLook() const { return m_11.m_on; }
 
     CSaferStr m_name;   // 0x0: SelectConfig's key
@@ -306,6 +310,20 @@ extern "C" float func_002C6290(const CPad *pad)
     return 0.0f;
 }
 
+/* whether a function's button is down on the pad (OVL1 0x2C60C0: the button's lb/andi through its
+ * byte temporary, KEY_DOWN's runtime narrowing -- `li a2,2` in the test's delay slot, `andi` at the
+ * join -- through one of its own on the compare's right).
+ * OPEN, 2 instructions: the join's two andi's in the other order (the target narrows the constant
+ * first, into v1, then the state; this the state first), the xor alike. The constant's temporary on
+ * the LEFT folds its narrowing away (daddiu), as a named local, a member operator== or the
+ * in-place ternary do (xori); through g_pCurrentConfig without the local, 7 off */
+extern "C" bool func_002C60C0(unsigned char func, const CPad *pad)
+{
+    const CCtrlrConfig *config = g_pCurrentConfig;
+
+    return config->ButtonState(func, pad) == CByteEnum<KEY_STATE>(KEY_DOWN);
+}
+
 /* the strafe: the layout's stick's x when it has one, else its two buttons, left -1 and right 1
  * (OVL1 0x2C6110; the buttons' value through a result local -- returned straight, the 1.0f's
  * branch lands on the zero's nop) */
@@ -343,6 +361,30 @@ void CCtrlrConfigs::Init()
         new CCtrlrConfig("NoDefaultDummy");
         data_004415B0 = g_pCurrentConfig;
     }
+}
+
+/* the first pad's y flags set from the pitch's stick masks when function 1's button goes down (the
+ * held set) or up (the other) (OVL1 0x2C5C90: the state's ternary in place -- through an inline
+ * taking the pad its index's add takes the pad first --, the mask a char narrowed after the join,
+ * the rising test's return its own block) */
+extern "C" void func_002C5C90(CPad *pad)
+{
+    const CCtrlrConfig *config = g_pCurrentConfig;
+    char mask;
+
+    KEY_STATE state = config->Button(1) != PAD_BUTTON_NONE ? pad->m_state[config->Button(1)] : KEY_UP;
+
+    if (state == KEY_FALLING)
+        mask = config->m_pitchSticksHeld.m_mask;
+    else {
+        if (state != KEY_RISING)
+            return;
+        mask = config->m_pitchSticks.m_mask;
+    }
+    unsigned char m = mask;
+
+    pad->m_leftFlagY = (m & 1) != 0;
+    pad->m_rightFlagY = (m & 2) != 0;
 }
 
 /* a function's button's state set on a pad (OVL1 0x2C5D10: the layout read ahead of the pad's
