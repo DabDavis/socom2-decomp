@@ -176,6 +176,71 @@ static inline CValve *ArgValve(CZAnim *anim, int ref)
     return args ? args->GetValve(ref) : 0;
 }
 
+/* SOCOM II's VBIT command (RegisterCommands' second, "VBIT"; the names ours): a valve's bits
+ * tested, set or cleared -- the valve named as VWATCH's, the operator ParseOperator's code for
+ * "get" (`&`), "set" (`|=`) or "clr" (`&=~`), the bits the items after it. The block from +4 is the
+ * VALVE command's data (the tick compares it as CmdTickCmp does). A 16-byte block */
+struct VBIT_CMD {
+    _zanim_cmd_hdr hdr;   // 0x0
+    int ref;   // 0x4: the anim's valve index, or the argument's
+    unsigned int bits;   // 0x8
+    unsigned char op;   // 0xc
+    unsigned char isArg : 1;   // 0xd
+    unsigned char isAnim : 1;   // 0xd
+    unsigned char _d2 : 1;   // 0xd: cleared (the parse's last three stores)
+    unsigned char _d3 : 1;   // 0xd
+    unsigned char _d4 : 1;   // 0xd
+
+    /* the three flags the parse clears: through a setter `false` stays `(0 & 1) << n` at run time */
+    void SetFlags(bool a, bool b, bool c)
+    {
+        _d2 = a;
+        _d3 = b;
+        _d4 = c;
+    }
+};   // 0x10 bytes
+
+/* the block's data compared, as the VALVE command's tick (0x353260; the name ours) */
+bool CmdTickVBit(_zanim_cmd_hdr *hdr, float *dT)
+{
+    return ((VALVE_CMD_DATA *)((char *)hdr + 4))->Compare();
+}
+
+/* the valve named by the first item, the operator by the second, the bits by the rest (0x353270;
+ * the name ours) */
+_zanim_cmd_hdr *CmdParseVBit(_zrdr *rdr)
+{
+    VBIT_CMD *cmd = 0;
+    int n = rdr->Count();
+
+    if (n > 2 && zrdr_isitemtype(rdr, 0, 3) && zrdr_isitemtype(rdr, 1, 3)) {
+        int index = -1;
+        CValve *valve = VALVE_CMD_DATA::ParseValveName(rdr->Item(0)->String(), index);
+        char *op = rdr->Item(1)->String();
+
+        if (valve) {
+            cmd = (VBIT_CMD *)_calloc(1, sizeof(VBIT_CMD), 0, 0);
+            cmd->hdr.data_size = sizeof(VBIT_CMD);
+            cmd->isArg = index != -1;
+            cmd->isAnim = true;
+            cmd->ref = index != -1 ? index : (index = ZAnim.m_CurAnim->AddValve(valve->m_name));
+            unsigned int bits = 0;
+
+            for (unsigned int i = 2; (int)i < n; i++)
+                bits |= 1 << rdr->Item(i)->Int();
+            if (!strcmp(op, "get"))
+                cmd->op = 8;
+            else if (!strcmp(op, "set"))
+                cmd->op = 15;
+            else if (!strcmp(op, "clr"))
+                cmd->op = 18;
+            cmd->bits = bits;
+            cmd->SetFlags(false, false, false);
+        }
+    }
+    return (_zanim_cmd_hdr *)cmd;
+}
+
 /* the watched valve marked (its bit 26), whichever way the command names it; always done */
 bool CValve::CmdTickVWatch(_zanim_cmd_hdr *hdr, float *dT)
 {

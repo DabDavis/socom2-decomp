@@ -75,6 +75,8 @@ struct CValveOpDelete {
 /* a valve command's data (SOCOM 1's struct name, from its mangled members) */
 struct VALVE_CMD_DATA {
     static CValve *ParseValveName(const char *name, int &index);
+    /* the valve's value against the block's, by its operator (0x353FD0, SOCOM 1's) */
+    bool Compare();
 };
 
 #endif
