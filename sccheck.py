@@ -65,8 +65,8 @@ _DIRECTIVE = re.compile(r"sc:\s*(.*?)\s*(?:\*/|$)")
 SUFFIXES = (".c", ".cpp", ".s")   # .s: an assembler unit (scdiff.compile_cmd; README "The GCC front")
 
 
-def sources() -> list[Path]:
-    return sorted(p for p in SRC.rglob("*") if p.suffix in SUFFIXES and p.is_file())
+def sources(root: Path = SRC) -> list[Path]:
+    return sorted(p for p in root.rglob("*") if p.suffix in SUFFIXES and p.is_file())
 
 
 def object_path(src: Path, build: Path = BUILD, root: Path = SRC) -> Path:
@@ -157,7 +157,7 @@ def build_one(src: Path, build: Path = BUILD, root: Path = SRC) -> tuple[Path, P
     try:
         D.compile_obj(src, obj, opts.get("compiler", D.COMPILER),
                       opts["flags"].split() if "flags" in opts else None, [INCLUDE, root])
-        D.qualify_statics(obj, src, E.symbols(), root)    # a GCC unit's statics: `Copy@tlbfunc`
+        D.qualify_statics(obj, src, E.symbols(), root)    # its statics: `Copy@tlbfunc`, `stack@grid_clutter`
         if "as" in opts:
             old_name, new_name = opts["as"].split(None, 1)
             rename_symbol(obj, old_name, new_name)
@@ -179,18 +179,54 @@ def is_copy(elf: E.Elf, f: E.ElfSymbol) -> bool:
             and elf.sections[f.shndx].name.startswith(".gnu.linkonce."))
 
 
+def unit_overlay(elf: E.Elf, st, overlay: str | None = None) -> str | None:
+    """The overlay a unit is linked in: the one its directive names (`overlay=`), else the one most
+    of its own (non-inline) functions' rows lie in -- counting the names the map holds once, when
+    there are any: a name with a row in each overlay (`ovl-copy:`) names one overlay's row whichever
+    overlay the unit is linked in. An explicit template instance is the unit's own (bound global,
+    not an inline copy), so seal_tasks.cpp's `_max<unsigned char>` -- the name OVL1's 0x2AFC40,
+    OVL2's copy 0x5DEE70 -- once made OVL2's seal_tasks.cpp an OVL1 unit by its lowest address,
+    and the instance scored, and was credited, at OVL1's row (GCC round 25a). A tie keeps the
+    overlay of the lowest address, the rule before this one. None for a unit the map has no row of."""
+    if overlay:
+        return overlay
+    names = [f.name for f in elf.functions() if not is_copy(elf, f) and f.name in st._by_name]
+    sure = [n for n in names if len(st.overlays_of(n)) == 1] or names
+    if not sure:
+        return None
+    count: dict[str, int] = {}
+    for n in sure:
+        o = st.overlay_of(st.get(n).addr)
+        count[o] = count.get(o, 0) + 1
+    lowest = st.overlay_of(min(st.get(n).addr for n in sure))
+    return max(count, key=lambda o: (count[o], o == lowest))
+
+
+def scoring_row(st, name: str, overlay: str | None):
+    """The row a unit linked in `overlay` scores `name` against: its named row, or the copy the map
+    lists in `overlay` when the named row lies in another (`ovl-copy:`; each overlay links its own
+    template copies -- fts_remote.cpp's _saturate<int> is OVL1's 0x2BD220, the name OVL2's
+    0x519290). KeyError when the map has no row of the name."""
+    sym = st.get(name)
+    if overlay is not None and st.overlay_of(sym.addr) != overlay:
+        copy = st.address_in(name, OVERLAY_HOME[overlay])
+        if copy is not None and copy != sym.addr and st.at_addr(copy) is not None:
+            sym = st.at_addr(copy)
+    return sym
+
+
 def unit_span(obj: Path, st, overlay: str | None = None) -> tuple[int, int] | None:
-    """The map addresses the unit's own (non-inline) functions cover (in `overlay`, when the unit
-    names its own: their rows there)."""
+    """The map addresses the unit's own (non-inline) functions cover: their rows in the unit's
+    overlay (`unit_overlay`: the directive's, else the one its functions' rows lie in); a function
+    with no row there (an unmarked copy) is left out, so the span is never stretched across two
+    overlays."""
     lo = hi = None
     elf = E.Elf.read(obj)
+    ov = unit_overlay(elf, st, overlay)
     for f in elf.functions():
-        if is_copy(elf, f):
+        if is_copy(elf, f) or ov is None:
             continue
-        try:
-            sym = st.get(f.name) if overlay is None else overlay_symbol(st, f.name, overlay)
-        except KeyError:
-            continue
+        sym = overlay_symbol(st, f.name, ov)
         if sym is None:
             continue
         lo = sym.addr if lo is None else min(lo, sym.addr)
@@ -198,7 +234,10 @@ def unit_span(obj: Path, st, overlay: str | None = None) -> tuple[int, int] | No
     return (lo, hi) if lo is not None else None
 
 
-def main(argv=None) -> int:
+def main(argv=None, root: Path = SRC) -> int:
+    """`root`: the tree to build and score, src/ unless a caller names another (the canary builds a
+    scratch copy of the hand-written tree with a fixture draft in it); the map, MATCHED.txt and
+    ABSENT.txt are always the real ones."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("-f", "--filter", help="regex over symbol names")
     ap.add_argument("--wrong", action="store_true", help="print the diff of every mismatch")
@@ -221,8 +260,8 @@ def main(argv=None) -> int:
     if clash:
         raise SystemExit(f"{ABSENT.name} lists names symbols.txt maps: {clash}")
     with ThreadPoolExecutor(a.jobs) as ex:
-        units = [p for p in sources() if not frx or frx.search(str(p.relative_to(SRC)))]
-        built = list(ex.map(lambda p: build_one(p, a.build_dir.resolve()), units))
+        units = [p for p in sources(root) if not frx or frx.search(str(p.relative_to(root)))]
+        built = list(ex.map(lambda p: build_one(p, a.build_dir.resolve(), root), units))
 
     rows, matched, failed_builds = [], [], 0      # matched: (name, address) pairs
     scored_at: set[int] = set()                  # the addresses scored (match or WRONG)
@@ -230,15 +269,19 @@ def main(argv=None) -> int:
     hand_at: set[int] = set()                    # matched by hand-written source
     hand_names: set[str] = set()     # what hand-written source defines as its own (not inline copies)
     superseded: set[str] = set()     # the drafts hand-written source supersedes, by the two rules below
+    # one row per overlay (`ovl-copy:`): a definition of such a name -- an explicit template instance
+    # (seal_tasks.cpp's _max<unsigned char>), a unit linked in two overlays (zsys_memory.cpp's
+    # _malloc) -- is one overlay's, so it supersedes as a copy does, only where it matched
+    several = lambda name: len(st.overlays_of(name)) > 1
     for src, obj, err in built:
-        if obj is not None and "auto" not in src.relative_to(SRC).parts:
+        if obj is not None and "auto" not in src.relative_to(root).parts:
             elf = E.Elf.read(obj)
-            hand_names.update(f.name for f in elf.functions() if not is_copy(elf, f))
+            hand_names.update(f.name for f in elf.functions() if not is_copy(elf, f) and not several(f.name))
     # hand-written source supersedes the generated tier where it defines a function, or emits a
     # byte-exact inline copy of it -- a copy that misses does not: the linker keeps a strong
     # definition over every unit's copy, so the draft's match stands (zsnd_csndsequence.cpp's
     # ~__vector_deleter, 0x34A5A0). Hand-written units are scored first to know which copies match.
-    is_auto_src = lambda src: "auto" in src.relative_to(SRC).parts
+    is_auto_src = lambda src: "auto" in src.relative_to(root).parts
     hand_copies: set[str] = set()
     for src, obj, err in sorted(built, key=lambda b: is_auto_src(b[0])):
         if obj is None:
@@ -248,11 +291,11 @@ def main(argv=None) -> int:
         is_auto = is_auto_src(src)
         overlay = tu_options(src).get("overlay")        # the unit's own word for its overlay
         span = unit_span(obj, st, overlay)
+        elf = E.Elf.read(obj)
         # each overlay links its own template copies: an instance the unit emits is the copy in
         # the unit's own overlay when the map lists one there (`ovl-copy:`), not the named row
-        # (fts_remote.cpp's _saturate<int> is OVL1's 0x2BD220, the name OVL2's 0x519290)
-        home = OVERLAY_HOME[overlay] if overlay else span[0] if span else None
-        elf = E.Elf.read(obj)
+        # (scoring_row; unit_overlay says which overlay the unit is linked in)
+        home = unit_overlay(elf, st, overlay)
         for fs in elf.functions():
             if rx and not rx.search(fs.name):
                 continue
@@ -263,17 +306,13 @@ def main(argv=None) -> int:
                 rows.append(("absent", src.name, fs.name, ""))
                 continue
             try:
-                sym = st.get(fs.name)
+                sym = scoring_row(st, fs.name, home)
             except KeyError:
                 rows.append(("no-target", src.name, fs.name, ""))
                 continue
             if overlay and overlay_symbol(st, fs.name, overlay) is None:
                 rows.append(("no-target", src.name, fs.name, f"no {overlay} row (an `ovl-copy:` mark names one)"))
                 continue
-            if home is not None and st.overlay_of(sym.addr) != st.overlay_of(home):
-                copy = st.address_in(fs.name, home)
-                if copy is not None and copy != sym.addr and st.at_addr(copy) is not None:
-                    sym = st.at_addr(copy)
             # a byte-exact hand-written copy supersedes a draft only at the address it matched: an
             # instance with a row in each overlay (`ovl-copy:`) can be matched by hand in one and by
             # its draft in the other (seal_env.cpp's ~vector<CZDecalDef> is OVL2's 0x5A3C60; OVL1's
@@ -289,7 +328,7 @@ def main(argv=None) -> int:
             if res.match:
                 matched.append((fs.name, sym.addr))
                 (auto_at if is_auto else hand_at).add(sym.addr)
-                if not is_auto and is_copy(elf, fs):
+                if not is_auto and (is_copy(elf, fs) or several(fs.name)):
                     hand_copies.add(fs.name)
                 note = f"{len(res.relocs)} relocs" + (f", {len(res.reloc_unchecked)} unchecked"
                                                        if res.reloc_unchecked else "")

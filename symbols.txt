@@ -1117,10 +1117,10 @@
 0x001BCD30 0x24 _defStopDMA  # MAIN; s1:order (the demo's object 0x15AA18, its first: sceIpuStopDMA(&sys->dmaEnv); the callback sceMpegCreate installs for sceMpegCbStopDMA)
 0x001BCD58 0x24 _defRestartDMA  # MAIN unaligned; s1:order (the demo's object 0x15AA18, its second: sceIpuRestartDMA(&sys->dmaEnv); installed for sceMpegCbRestartDMA)
 0x001BCD80 0xC4 sceSifMInitRpc  # MAIN; s1:exact
-0x001BCE48 0xC func_001BCE48  # MAIN unaligned
-0x001BCE58 0xA8 func_001BCE58  # MAIN unaligned; s1~ _sceRpcGetPacket (one of 2)
-0x001BCF00 0x1C func_001BCF00  # MAIN; s1~ _sceRpcFreePacket (one of 2)
-0x001BCF20 0x108 func_001BCF20  # MAIN; s1~ _request_end (one of 2)
+0x001BCE48 0xC sceSifMExitRpc  # MAIN unaligned; s1:order (the GCC lane r25a: the demo's libmrpc object 0x379AB0 holds sceSifMExitRpc, 0xC, second, after sceSifMInitRpc, as here; clears _sceSifMInitCheck; src/lib/sdk/libmrpc.c)
+0x001BCE58 0xA8 _sceRpcGetPacket@libmrpc  # MAIN unaligned; s1~ _sceRpcGetPacket (one of 2); s1:order (the GCC lane r25a: the demo's libmrpc object's LOCAL _sceRpcGetPacket, 0xA8, third, as here -- sifrpc.c's text over libmrpc's own table; qualified: sifrpc's row holds the bare name; src/lib/sdk/libmrpc.c)
+0x001BCF00 0x1C _sceRpcFreePacket@libmrpc  # MAIN; s1~ _sceRpcFreePacket (one of 2); s1:order (the GCC lane r25a: the demo's libmrpc LOCAL _sceRpcFreePacket, 0x1C, fourth, as here; qualified as sifrpc's; src/lib/sdk/libmrpc.c)
+0x001BCF20 0x108 _request_end@libmrpc  # MAIN; s1~ _request_end (one of 2); s1:order (the GCC lane r25a: the demo's libmrpc LOCAL _request_end, 0x108, fifth, as here: command 0x80000018's handler, which sceSifMInitRpc registers; qualified as sifrpc's; src/lib/sdk/libmrpc.c)
 0x001BD028 0x24 sceSifMBindRpc  # MAIN unaligned; s1:exact
 0x001BD050 0x1AC sceSifMBindRpcParam  # MAIN; s1:callee
 0x001BD200 0x11C sceSifMUnBindRpc  # MAIN; s1:exact

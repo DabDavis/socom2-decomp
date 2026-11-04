@@ -239,9 +239,12 @@ def gcc_repair(tmp: Path, body: str, cc: tuple[str, str], rounds: int = 3) -> st
             if not 1 <= n <= len(lines):
                 continue
             if "invalid type argument of `unary *'" in msg:
-                lines[n - 1] = _deref_ints(lines[n - 1], decl, typed=_on("GCC_TYPED_LOADS"))
+                lines[n - 1] = _deref_ints(lines[n - 1], decl, typed=_on("GCC_TYPED_LOADS"),
+                                           nested=_on("GCC_NESTED_LOADS"))
             if "invalid operands to binary -" in msg and _on("GCC_PTRDIFF"):
                 lines[n - 1] = _byte_differences(lines[n - 1], decl)
+            if "invalid operands to binary +" in msg and _on("GCC_PTRSUM"):
+                lines[n - 1] = _byte_sums(lines[n - 1], decl)
             unproto |= set(re.findall(r"too (?:many|few) arguments to function `([A-Za-z_]\w*)'", msg))
             if _on("GCC_SAVED_REGS"):
                 saved |= set(re.findall(r"`(saved_reg_\w+)' undeclared", msg))
@@ -358,6 +361,28 @@ def _byte_differences(line: str, decl: dict[str, str]) -> str:
             if left.startswith("(s32) (") or _pointerish(right, decl) is not True:
                 continue
             line = line[:lo] + f"((s32) ({left}) - (s32) ({right}))" + line[hi:]
+            done = True
+            break
+        if not done:
+            break
+    return line
+
+
+def _byte_sums(line: str, decl: dict[str, str]) -> str:
+    """`p + q` of two pointers (GCC: "invalid operands to binary +"): m2c's self-relative fixup
+    `p->f = p + p->f` (the recogniser's ContextSetGcdData, an offset field turned into a pointer),
+    meaning the registers' byte sum, as `(s32) (p) + (s32) (q)` (GCC round 25a)."""
+    for _ in range(8):
+        cands = [m.start() for m in re.finditer(r"(?<=[\w)\]]) \+ (?![+=])", line)]
+        done = False
+        for k in reversed(cands):
+            lo, hi = _operand_left(line, k), _operand_right(line, k + 2)
+            if hi < 0 or lo >= k:
+                continue
+            left, right = line[lo:k].strip(), line[k + 2:hi].strip()
+            if left.startswith("(s32) (") or _pointerish(left, decl) is not True or _pointerish(right, decl) is not True:
+                continue
+            line = line[:lo] + f"((s32) ({left}) + (s32) ({right}))" + line[hi:]
             done = True
             break
         if not done:
@@ -1259,9 +1284,11 @@ def _assignment(line: str) -> tuple[str, str] | None:
     return None
 
 
-def _pointerish(term: str, decl: dict[str, str], loads: bool = False) -> bool | None:
+def _pointerish(term: str, decl: dict[str, str], loads: bool = False, nested: bool = False) -> bool | None:
     """Whether an expression's leading term is a pointer, by the draft's own declarations (with
-    `loads`, GCC's repair: a leading load through a cast pointer, `*(s32 *)p * 4`, by its type)."""
+    `loads`, GCC's repair: a leading load through a cast pointer, `*(s32 *)p * 4`, by its type; with
+    `nested`, GCC round 25a, any leading load whose pointer's type the draft declares -- `*var_a7 *
+    4`, var_a7 an `s32 *`: an int, so `*((*var_a7 * 4) + temp_s0)` is a load through an int)."""
     t = term.strip()
     while t.startswith("(") and _group(t, 0) == len(t):
         t = t[1:-1].strip()
@@ -1274,12 +1301,14 @@ def _pointerish(term: str, decl: dict[str, str], loads: bool = False) -> bool | 
         return False                                  # a cast to an integer: `*((s32) p | 0x20000000)`
     if loads and (m := re.match(r"^\*\s*\(([^()]*?)\s*\*\)", t)):
         return "*" in m.group(1)                      # a load: a pointer iff its type is one
+    if nested and t.startswith("*") and (ty := _term_type(t, decl)) is not None:
+        return "*" in ty                              # a load through a declared pointer: its pointee
     if t.startswith("M2C_FIELD("):
         a = _args(t, len("M2C_FIELD"))
         return None if a is None or len(a[0]) != 3 else a[0][1].count("*") > 1
     if t.startswith("("):                              # (a + b) ...: its first term
         end = _group(t, 0)
-        return _pointerish(t[:end], decl, loads) if end > 0 else None
+        return _pointerish(t[:end], decl, loads, nested) if end > 0 else None
     m = re.match(r"^([A-Za-z_]\w*)\s*(.*)$", t)
     if m and not m.group(2).startswith("("):
         ty = decl.get(m.group(1))
@@ -1292,22 +1321,31 @@ def _pointerish(term: str, decl: dict[str, str], loads: bool = False) -> bool | 
 _SCALAR = r"(?:unsigned\s+|signed\s+)?(?:[su](?:8|16|32)|f32|int|short|char|M2C_UNK(?:32)?)"
 
 
-def _deref_ints(line: str, decl: dict[str, str], typed: bool = False) -> str:
+def _deref_ints(line: str, decl: dict[str, str], typed: bool = False, nested: bool = False) -> str:
     """`*x` / `*(x + ...)` whose operand leads with an int: a word load through an int pointer.
 
     `typed` (GCC's repair, GCC_TYPED_LOADS, round 24a): also a load behind m2c's cast of it,
     `(f32) *((i * 4) + p)` -- m2c's type for a load whose pointer it holds as an int, an `lwc1`
     here -- and the load made as that type, or as the type of the variable it is assigned to
     (`temp_f2 = *(var_a6 + arg0)`); an s32 load converted to the float was an `lw` and a
-    `cvt.s.w` the target does not have."""
+    `cvt.s.w` the target does not have.
+
+    `nested` (GCC_NESTED_LOADS, GCC round 25a: six of OVL2's sixteen GCC drafts that would not
+    build): an operand leading with a load through a declared pointer (`*((*var_a7 * 4) + p)`,
+    _pointerish's `nested`), an `M2C_FIELD(...)` operand taken whole (`*M2C_FIELD(arg0, u32 *, 0x68)`:
+    a pointer held in a u32 field), and a store through one made as the type of the value m2c casts
+    for it (`*M2C_FIELD(...) = (f32) ...;` a float's `swc1`, not an int's conversion)."""
     out, i = [], 0
     assigned = re.match(r"^\s*([A-Za-z_]\w*)\s*=[^=]", line)
+    store = _assignment(line) if nested else None
     while i < len(line):
         c = line[i]
         before = line[:i].rstrip()
         prev = before[-1:] if before else "("
         cast = re.search(rf"\(({_SCALAR})\)$", before) if typed and prev == ")" else None
-        if c == "*" and (prev in "(,=!&|?:*" or cast or before.endswith("return")) and line[i + 1:i + 2] not in "=":
+        # (`nested`: after a binary operator too -- `x + *(...)` is a load -- but not a `p++ *`)
+        unary = prev in "(,=!&|?:*" or (nested and prev in "+-/%<>^~" and before[-2:] not in ("++", "--", "->"))
+        if c == "*" and (unary or cast or before.endswith("return")) and line[i + 1:i + 2] not in "=":
             j = i + 1
             if line[j:j + 1] == "(":
                 end = _group(line, j)
@@ -1315,18 +1353,54 @@ def _deref_ints(line: str, decl: dict[str, str], typed: bool = False) -> str:
             else:
                 m = re.match(r"[A-Za-z_]\w*", line[j:])
                 operand = m.group(0) if m and line[j + len(m.group(0)):j + len(m.group(0)) + 1] != "(" else ""
-            if operand and _pointerish(operand, decl, loads=typed) is False:
+                if nested and m and m.group(0) == "M2C_FIELD" and line[j + 9:j + 10] == "(":
+                    end = _group(line, j + 9)
+                    operand = line[j:end] if end > 0 else ""
+            if operand and _pointerish(operand, decl, loads=typed, nested=nested) is False:
                 ty = "s32"
                 if cast:
                     ty = cast.group(1)
                 elif typed and assigned and prev == "=" and re.fullmatch(_SCALAR, decl.get(assigned.group(1), "")):
                     ty = decl[assigned.group(1)]
+                elif (store and not before and store[0].strip() == "*" + operand
+                      and (sc := re.match(rf"^\(({_SCALAR})\)", store[1]))):
+                    ty = sc.group(1)
                 out.append(f"*({ty} *)" + operand)
                 i = j + len(operand)
                 continue
         out.append(c)
         i += 1
     return "".join(out)
+
+
+def _term_type(term: str, decl: dict[str, str]) -> str | None:
+    """The declared type of an expression's leading term, when the draft says it: a variable's
+    declaration, a cast's type, an `M2C_FIELD(p, T *, off)`'s T, a load `*x`'s pointee -- else None."""
+    t = term.strip()
+    while t.startswith("(") and _group(t, 0) == len(t):
+        t = t[1:-1].strip()
+    if t.startswith("*"):
+        inner = _term_type(t[1:], decl)
+        if inner is None or "*" not in inner:
+            return None
+        k = inner.rindex("*")
+        return (inner[:k] + inner[k + 1:]).strip()
+    if t.startswith("M2C_FIELD("):
+        a = _args(t, len("M2C_FIELD"))
+        if a is None or len(a[0]) != 3 or "*" not in a[0][1]:
+            return None
+        k = a[0][1].rindex("*")
+        return (a[0][1][:k] + a[0][1][k + 1:]).strip()
+    if (m := re.match(r"^\(([^()]*)\)\s*[A-Za-z_(*]", t)) and (re.fullmatch(_SCALAR, m.group(1).strip())
+                                                         or m.group(1).strip().endswith("*")):
+        return m.group(1).strip()                     # a cast
+    if t.startswith("("):
+        end = _group(t, 0)
+        return _term_type(t[:end], decl) if end > 0 else None
+    m = re.match(r"^([A-Za-z_]\w*)\b\s*(.?)", t)
+    if m and m.group(2) != "(":
+        return decl.get(m.group(1))
+    return None
 
 
 # C library functions whose real parameters are all ints and pointers, so that a float or a wide
@@ -1508,46 +1582,60 @@ def _hand_objects():
                 yield o
 
 
+def _object_source(o: Path) -> Path | None:
+    """The hand-written unit an object of `_hand_objects` was built from (sccheck.object_path's
+    inverse: `x.o` from x.c or x.cpp, `x.s.o` from x.s), or None."""
+    for obj_root in [HERE / "build" / "obj", *OBJ_DIRS]:
+        try:
+            rel = o.relative_to(obj_root)
+        except ValueError:
+            continue
+        stem = rel.with_suffix("")
+        for cand in ([stem] if stem.suffix == ".s" else [stem.with_suffix(".c"), stem.with_suffix(".cpp")]):
+            if (HERE / "src" / cand).is_file():
+                return HERE / "src" / cand
+    return None
+
+
 def hand_defined() -> set[str]:
     """Function names hand-written source defines (anything under src/ but src/auto): its own
     definitions, and the inline copies it emits byte-exact. A copy that misses supersedes no
     draft -- the linker keeps a strong definition over every unit's copy, as sccheck scores it
-    (zsnd_csndsequence.cpp's ~__vector_deleter against the draft of 0x34A5A0)."""
-    names, copies, own = set(), {}, {}
+    (zsnd_csndsequence.cpp's ~__vector_deleter against the draft of 0x34A5A0). A definition of a
+    name the map gives a row in each overlay (`ovl-copy:`) is a copy's case: the name of the row
+    it matches, in the unit's own overlay (GCC round 25a)."""
+    names, copies = set(), {}
+    img, st = E.image(), E.symbols()
     for o in _hand_objects():
         try:
             elf = E.Elf.read(o)
             for f in elf.functions():
-                if sccheck.is_copy(elf, f):
+                if sccheck.is_copy(elf, f) or len(st.overlays_of(f.name)) > 1:
+                    # a copy, or a name with a row per overlay (an explicit template instance):
+                    # it defines the row it matches, as sccheck scores it
                     copies.setdefault(f.name, []).append(o)
                 else:
                     names.add(f.name)
-                    own.setdefault(o, []).append(f.name)
         except Exception:
             pass
-    img, st = E.image(), E.symbols()
 
     def home(o):
-        # an address of the unit's own: its template copies are linked in that overlay
-        for n in own.get(o, ()):
-            a = st.address_of(n)
-            if a is not None:
-                return a
-        return None
+        # the overlay the unit is linked in, by sccheck's rule (its `overlay=` directive when its
+        # source is found, else the overlay its own functions' rows lie in): its copies are there
+        src = _object_source(o)
+        overlay = sccheck.tu_options(src).get("overlay") if src is not None else None
+        try:
+            return sccheck.unit_overlay(E.Elf.read(o), st, overlay)
+        except Exception:
+            return None
 
     for name, objs in copies.items():
-        try:
-            named = st.get(name)
-        except KeyError:
+        if name not in st._by_name:
             continue
         for o in objs:
             # sccheck scores a copy against its own overlay's row when the map lists one there
             # (`ovl-copy:`): a match there supersedes that row's draft, under the row's name
-            sym, h = named, home(o)
-            if h is not None and st.overlay_of(named.addr) != st.overlay_of(h):
-                a = st.address_in(name, h)
-                if a is not None and a != named.addr and st.at_addr(a) is not None:
-                    sym = st.at_addr(a)
+            sym = sccheck.scoring_row(st, name, home(o))
             if sym.name in names:
                 continue
             try:
