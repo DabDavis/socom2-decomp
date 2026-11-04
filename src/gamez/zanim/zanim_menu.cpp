@@ -2198,16 +2198,19 @@ bool UINetCnfClose(C2DAnimCmdHdr *hdr, float *dT)
 }
 
 /* the valve the argument names set to the index of the configuration in use, among the valid ones.
- * OPEN, 22 instructions: the same code with the loop's registers permuted (as SelectCombo's) */
+ * The list walked through a pointer local defined after the default's lookup, its count after it
+ * (SelectCombo's shape): valve s5, the default s4, the cursor s3, the count s2, the index s1 and
+ * i s0, as the target numbers them (the count read before the lookup was 22 instructions off) */
 bool UINetCnfCurrCombo(C2DAnimCmdHdr *hdr, float *dT)
 {
     CValve *valve = CValve::Create(ArgText(ArgName(hdr)), (VALVE_TYPE)2);
-    int count = data_00457C40.m_count;
     NetCnfEntry *cur = ezNetCnfGetDefault(&data_00457C40);
+    NetCnfList *list = &data_00457C40;
+    int count = list->m_count;
     int index = 0;
 
     for (int i = 0; i < count; i++) {
-        NetCnfEntry *e = data_00457C40.Entry(i);
+        NetCnfEntry *e = list->Entry(i);
 
         if (e && e->m_type >= 0) {
             if (!strcmp(cur->m_name, e->m_name)) {
@@ -2221,12 +2224,11 @@ bool UINetCnfCurrCombo(C2DAnimCmdHdr *hdr, float *dT)
 }
 
 /* the configuration the argument's valve indexes (among the valid ones) selected, when no memory
- * card has changed.
- * OPEN, 16 instructions, registers only: the target keeps the count in t0, the walking pointer in
- * t1, i in a2, the index in a3 and the entry in a1; here count a1, walk a2, i t0, index t1, entry
- * a3. Measured without result: i or the index declared outside the loop or the function's top,
- * the count in a local, the entry declared before the loop or assigned in the test, the accessor
- * called three times, the compare's operands swapped */
+ * card has changed. The list is walked through a pointer local and its count read into a local
+ * after it, both ahead of the index: the loop's strength-reduced cursor merges into the pointer
+ * (numbered first), so the colouring runs entry a1, i a2, index a3, count t0, cursor t1 as the
+ * target's; through the global itself the cursor and the count were the optimiser's temporaries,
+ * numbered last (16 instructions off) */
 bool UINetCnfSelectCombo(C2DAnimCmdHdr *hdr, float *dT)
 {
     bool ok = false;
@@ -2235,10 +2237,12 @@ bool UINetCnfSelectCombo(C2DAnimCmdHdr *hdr, float *dT)
         CValve *valve = CValve::Create(ArgText(ArgName(hdr)), (VALVE_TYPE)2);
 
         if (valve) {
+            NetCnfList *list = &data_00457C40;
+            int count = list->m_count;
             int index = 0;
 
-            for (int i = 0; i < data_00457C40.m_count; i++) {
-                NetCnfEntry *e = data_00457C40.Entry(i);
+            for (int i = 0; i < count; i++) {
+                NetCnfEntry *e = list->Entry(i);
 
                 if (e && e->m_type >= 0 && index++ == valve->m_value) {
                     if (ezNetCnfGetNetcnfifData(data_003DF360, e->m_name, data_004567C0) >= 0)
@@ -2252,25 +2256,23 @@ bool UINetCnfSelectCombo(C2DAnimCmdHdr *hdr, float *dT)
 }
 
 /* the network interfaces listed into the UI variable the argument names, "vendor/product" each.
- * OPEN, 12 instructions, all stack offsets: the target's frame is 48 bytes larger (0xED0), the
- * text at 0xE00 and the reader at 0xE80 with a hole between the list's end (0xDD0) and the text --
- * a local the original kept a slot for (an unused array is dropped here; a 176-byte text buffer
- * fixes the frame but not the text's offset; the list's 0x240 stride is fixed by the loop). Since
- * the respell the reader is a CRdrEditor whose constructor runs where the target's does (after the
- * list and the variable), so it is declared there and sits lowest (0x50); the target keeps it at
- * the top though it is built third -- declared first it is built first (48 off), and a block, the
- * text in the loop or the text after it all leave the 12 (the placeholder form, an 80-byte POD
- * declared first, was 10 off) */
+ * The list is the buffer the inet library's interface calls fill (func_0030BD40 calls
+ * sceInetGetInterfaceList and sceInetInterfaceControl, whose RPC buffers Sony's samples align to
+ * 64): 64-byte aligned, it takes the frame's bottom (0x50) and pushes the reader to the top
+ * (0xE80), the frame 0xED0 as the target's; the text, a block local of the loop, lands at 0xE00
+ * past the alignment's hole (declared at the top it sits at 0xDD0, 2 instructions off; with no
+ * alignment the reader sat lowest, 12 off) */
 bool UINetGetInterfaceList(C2DAnimCmdHdr *hdr, float *dT)
 {
-    char text[128];
-    NetInterfaceInfo list[6];
+    NetInterfaceInfo list[6] __attribute__((aligned(64)));
     int n = func_0030BD40(list, 6);
     CUIVariable *var = theUIVarManager.Add(ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
     CRdrEditor rdr;
 
     rdr.push(0);
     for (int i = 0; i < n; i++) {
+        char text[128];
+
         sprintf(text, "%s/%s", list[i].m_vendor, list[i].m_product);
         rdr.addstringnode(text);
     }
@@ -2768,24 +2770,24 @@ bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)
 }
 
 /* the server's news put in SERVER_NEWS (its message, then the lines) and its name in SERVER_NAME,
- * for the server the argument's valve picks.
- * OPEN, 10 instructions, registers only: the target keeps the valve in s0 and the counter (then the
- * SERVER_NAME variable) in s1; here the other way round. Measured without result: the counter or
- * the variable declared first, a while loop, the line in a local, the valve after the reader, the
- * reader as a class with its constructor and destructor (0x333AE0/0x333A20 renamed for the test) */
+ * for the server the argument's valve picks. The counter and the variable are defined first (dead
+ * first definitions: MW numbers a variable where it is first defined), so the valve is numbered last
+ * and takes s0, the two s1 -- declared at their first uses they took s0 and the valve s1 */
 bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
+    int i = 0;
+    CUIVariable *name = 0;
     CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
     CRdrEditor rdr;
 
     rdr.push(0);
     rdr.addstringnode(data_0044FC60.GetUniverseDescription(valve->m_value));
     rdr.addstringnode("\n\n");
-    for (int i = 0; i < data_0044FC60.GetNewsCount(); i++)
+    for (i = 0; i < data_0044FC60.GetNewsCount(); i++)
         rdr.addstringnode(data_0044FC60.GetNewsLine(i));
     rdr.pop();
     theUIVarManager.Add("SERVER_NEWS", &rdr, UIVAR_SESSION);
-    CUIVariable *name = theUIVarManager.Add("SERVER_NAME", 0, UIVAR_SESSION);
+    name = theUIVarManager.Add("SERVER_NAME", 0, UIVAR_SESSION);
 
     if (name)
         *name = data_0044FC60.GetUniverseName(valve->m_value);

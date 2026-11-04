@@ -715,7 +715,9 @@ bool zAnimSoundTick(_zanim_cmd_hdr *hdr, float *dT)
 }
 
 
-/* the light's clamp is zmath.h's _saturate<float>, whose instance (0x267A60) this unit links */
+/* the light's clamp is zmath.h's _saturate<float>, whose instance (0x267A60) this unit links. The
+ * key count is read off the command at each use (one CSE temporary, coloured ahead of n - 1: the
+ * count in a0, n - 1 in v1); a named `n` local is coloured first and swaps the pair */
 
 extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -758,10 +760,9 @@ extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
             if (!(t <= key[0].t)) {
                 bool found;
                 int i;
-                unsigned short n = cmd->count;
 
                 found = false;
-                for (i = 0; i < n - 1; i++) {
+                for (i = 0; i < cmd->count - 1; i++) {
                     bool in = t <= key[i + 1].t;
 
                     if (in) {
@@ -771,7 +772,7 @@ extern "C" bool func_002656F0(_zanim_cmd_hdr *hdr, float *dT)
                     }
                 }
                 if (!found)
-                    v = key[n - 1].v;
+                    v = key[cmd->count - 1].v;
             }
             NodeLight(node) = 127 - (int)v;
         }
