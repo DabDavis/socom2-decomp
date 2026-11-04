@@ -6,8 +6,8 @@
  * zui_var.cpp is ours (the press beta's zui.cpp may be it).
  *
  * Round 19: the manager's Serialize and the variable's Format (0x3860F0, SOCOM 1's) byte-exact.
- * OPEN, not written yet: _Refresh (0x385E50-0x3860EF) and
- * 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
+ * Round 20: RefreshUIVar 0x385E50 byte-exact and _Refresh 0x385EA0 written (OPEN: byte-exact but
+ * two calls to rows the rdr units have not named, below). OPEN, not written yet: 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
  * (0x386910-0x3869EF, 0x386AB0) and the thunks stand as generated drafts. Round 13: CUIVariable's
  * copy constructor 0x386BF0 byte-exact (zui.h's CUIVariable : _zrdr, UIVarMixin); Attach written,
  * open (below). */

@@ -28,7 +28,15 @@
  * 0x3836E0-0x3855FF; the ActionItem and CDesignDlgObj erases (0x383E00 and 0x384410) need MSL's destroy loop
  * in the class vector's erase (probed: erase<ActionItem> byte-exact with `for (p = first + n; p < e;
  * ++p) p->~T();` after the copy -- a request), the CDesignDlgObj ones also MSL's out-of-line
- * std::copy (0x3845B0) and its kin (0x384AA0, 0x384B00, 0x384B70). */
+ * std::copy (0x3845B0) and its kin (0x384AA0, 0x384B00, 0x384B70).
+ * Round 20: those four byte-exact once CDesignDlgObj's assignment is no longer pinned (MW's own
+ * refusal to inline it propagates to the helpers and the copy constructor, as in the target).
+ * OPEN: erase<CDesignDlgObj> 0x384410 (the target's size, 19 instructions: the end and the
+ * count/destroy cursor in s0/s1 swapped -- the MSL headers' round 18 measured that a string
+ * element's erase wants `iterator e = end()`, which loses 28 other erases); insert<CDesignDlgObj>
+ * 0x384620 (0x540 against 0x478: the copy constructor inlined at the six construct sites where the
+ * target calls it after the out-of-line placement new -- include/vector's construct cut, the
+ * integrator's accepted loss of round 20). */
 
 #include "zui_2d.h"
 

@@ -11,8 +11,11 @@
  *
  * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
- * OPEN, not written yet: the tick 0x3949C0, the display's builders 0x394520, 0x394DA0, 0x394F60,
- * 0x395140, 0x395540, 0x3958D0, 0x397070, 0x397640, 0x397950, the cap look reader 0x397D30.
+ * OPEN, not written yet: the tick 0x3949C0, the display's builders 0x394520, 0x394DA0, 0x395140,
+ * 0x395540, 0x3958D0, 0x397070, 0x397950, the cap look reader 0x397D30.
+ * Round 20: the key props' SetShown 0x3941D0 and destructor 0x394370 (the unit's stretch opens at
+ * 0x3941D0), the set-up from the open command SkbSetPurpose 0x397640 (SOCOM 1's UiSetSkbPurpose its
+ * first part) and its two flags' readers 0x395110 and 0x396ED0, byte-exact.
  * Round 14 wrote the look parser 0x3963F0 (OPEN, below) with its out-of-line helpers (0x396C70,
  * 0x396C80: pinned) and the walker's constructor (zui_hangul.cpp's 0x3909F0): the template tail
  * 0x397FE0-0x398910 is the background pieces' vector (zui_skb.h's CSkbBgPiece, the parser's resize

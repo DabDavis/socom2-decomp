@@ -7,8 +7,9 @@
  *     CBmpWithNode's constructor and destructor (0x38E620 and 0x38E490, taken by 0x398AA0 and
  *     0x398A40 for __construct_array, and by its initialiser 0x403800), the linker having kept the
  *     first unit's copies;
- *   - the Korean input unit (zui_hangul.cpp) defines ~CSkbKeyProps (0x394370), which zui_skb.cpp's
- *     ~CSoftKeyboard calls;
+ *   - the display unit (zui_skbview.cpp) defines ~CSkbKeyProps (0x394370) and SetShown (0x3941D0),
+ *     which zui_skb.cpp's ~CSoftKeyboard and ShowElements call (the UI lane's round 20: they open
+ *     that unit's stretch, after the Korean unit's template tail);
  *   - zui_skb.cpp calls the display unit's ReadIntPair (0x395300) and the Korean unit's
  *     SkbRdrCount (0x3910B0) out of line.
  * MW names an unnamed namespace after the COMPILED file, so a header's unnamed namespace would have
@@ -148,7 +149,7 @@ public:
 class CSoftKeyboard;
 
 /* a key's props: its button among them (SOCOM 1's CSkbKeyProps; only what is read here). Its
- * destructor is the Korean input unit's (0x394370) */
+ * destructor is the display unit's (0x394370) */
 class CSkbKeyProps {
 public:
     /* (ours: AddKeyProps 0x38B770 news one, every word zeroed) */
