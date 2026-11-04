@@ -1508,46 +1508,60 @@ def _hand_objects():
                 yield o
 
 
+def _object_source(o: Path) -> Path | None:
+    """The hand-written unit an object of `_hand_objects` was built from (sccheck.object_path's
+    inverse: `x.o` from x.c or x.cpp, `x.s.o` from x.s), or None."""
+    for obj_root in [HERE / "build" / "obj", *OBJ_DIRS]:
+        try:
+            rel = o.relative_to(obj_root)
+        except ValueError:
+            continue
+        stem = rel.with_suffix("")
+        for cand in ([stem] if stem.suffix == ".s" else [stem.with_suffix(".c"), stem.with_suffix(".cpp")]):
+            if (HERE / "src" / cand).is_file():
+                return HERE / "src" / cand
+    return None
+
+
 def hand_defined() -> set[str]:
     """Function names hand-written source defines (anything under src/ but src/auto): its own
     definitions, and the inline copies it emits byte-exact. A copy that misses supersedes no
     draft -- the linker keeps a strong definition over every unit's copy, as sccheck scores it
-    (zsnd_csndsequence.cpp's ~__vector_deleter against the draft of 0x34A5A0)."""
-    names, copies, own = set(), {}, {}
+    (zsnd_csndsequence.cpp's ~__vector_deleter against the draft of 0x34A5A0). A definition of a
+    name the map gives a row in each overlay (`ovl-copy:`) is a copy's case: the name of the row
+    it matches, in the unit's own overlay (GCC round 25a)."""
+    names, copies = set(), {}
+    img, st = E.image(), E.symbols()
     for o in _hand_objects():
         try:
             elf = E.Elf.read(o)
             for f in elf.functions():
-                if sccheck.is_copy(elf, f):
+                if sccheck.is_copy(elf, f) or len(st.overlays_of(f.name)) > 1:
+                    # a copy, or a name with a row per overlay (an explicit template instance):
+                    # it defines the row it matches, as sccheck scores it
                     copies.setdefault(f.name, []).append(o)
                 else:
                     names.add(f.name)
-                    own.setdefault(o, []).append(f.name)
         except Exception:
             pass
-    img, st = E.image(), E.symbols()
 
     def home(o):
-        # an address of the unit's own: its template copies are linked in that overlay
-        for n in own.get(o, ()):
-            a = st.address_of(n)
-            if a is not None:
-                return a
-        return None
+        # the overlay the unit is linked in, by sccheck's rule (its `overlay=` directive when its
+        # source is found, else the overlay its own functions' rows lie in): its copies are there
+        src = _object_source(o)
+        overlay = sccheck.tu_options(src).get("overlay") if src is not None else None
+        try:
+            return sccheck.unit_overlay(E.Elf.read(o), st, overlay)
+        except Exception:
+            return None
 
     for name, objs in copies.items():
-        try:
-            named = st.get(name)
-        except KeyError:
+        if name not in st._by_name:
             continue
         for o in objs:
             # sccheck scores a copy against its own overlay's row when the map lists one there
             # (`ovl-copy:`): a match there supersedes that row's draft, under the row's name
-            sym, h = named, home(o)
-            if h is not None and st.overlay_of(named.addr) != st.overlay_of(h):
-                a = st.address_in(name, h)
-                if a is not None and a != named.addr and st.at_addr(a) is not None:
-                    sym = st.at_addr(a)
+            sym = sccheck.scoring_row(st, name, home(o))
             if sym.name in names:
                 continue
             try:

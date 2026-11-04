@@ -350,6 +350,63 @@ def test_shared_stem_qualifies_by_path():
     ck(not any(b == "kCopy@exit" for _, b in bare), "a bare row of a shared stem resolves for neither")
 
 
+def test_mw_statics_qualify_by_unit():
+    """Two Metrowerks units' file statics can carry one name: SOCOM 1 calls both grid_di.cpp's and
+    grid_clutter.cpp's `static CStack` `stack`, MW names each object's LOCAL symbol so, and the data
+    map holds grid_di's bare and grid_clutter's as `stack@grid_clutter` (scdiff.qualify_statics, GNU
+    objects' only before GCC round 25a, so the clutter's was spelt `clutterStack`). Built under
+    SOCOM 1's name, grid_clutter's initialiser resolves its static through the qualified row; with
+    no qualified row the bare name is grid_di's and the reference fails, so does the qualified row
+    moved -- and grid_di.cpp's own `stack` still scores bare."""
+    import re
+    img, st = E.image(), E.symbols()
+    znode = HERE / "src" / "gamez" / "znode"
+    text = (znode / "grid_clutter.cpp").read_text()
+    var = re.search(r"static CStack (\w+)\(false\);", text).group(1)
+    tmp = HERE / "build" / "tmp" / f"qual.{os.getpid()}"
+    tmp.mkdir(parents=True, exist_ok=True)
+    unit = tmp / "grid_clutter.cpp"
+    unit.write_text(re.sub(rf"\b{var}\b", "stack", text))
+    data = E.DATA.read_text()
+    clutter = next(l for l in data.splitlines(True) if l.startswith("0x0044F0F0 "))
+    rows = tmp / "data.txt"
+    try:
+        def table(row: str) -> E.SymbolTable:
+            rows.write_text(data.replace(clutter, row))
+            return E.SymbolTable(E.SYMBOLS, rows)
+
+        def score(row: str | None):
+            obj = BUILD / "grid_clutter_q.o"
+            D.compile_obj(unit, obj, includes=[HERE / "include", HERE / "src", znode])
+            t = table(row) if row is not None else st
+            pairs = D.qualify_statics(obj, unit, t)
+            sym = st.get("__sinit_grid_clutter.cpp")
+            return pairs, D.compare(obj, sym.name, sym, img, t)
+
+        qual = "0x0044F0F0 0x1 stack@grid_clutter  # the canary's\n"
+        pairs, r = score(qual)
+        ck(("stack", "stack@grid_clutter") in pairs, f"the clutter's `stack` is its unit's row: {pairs}")
+        ck(r.match and any(f.symbol == "stack@grid_clutter" and f.want == 0x44F0F0 and f.status == "ok"
+                           for f in r.relocs), f"and its initialiser resolves it there: {r.verdict}")
+        pairs, r = score(None if var == "stack" else clutter)
+        ck(not pairs and not r.match and any(f.symbol == "stack" and f.got == 0x44D750 and f.status == "MISMATCH"
+                                             for f in r.relocs), "with no qualified row, the bare name is grid_di's: fails")
+        pairs, r = score(qual.replace("0x0044F0F0", "0x0044F100"))
+        ck(not r.match and any(f.symbol == "stack@grid_clutter" and f.status == "MISMATCH" for f in r.relocs),
+           "the qualified row moved fails")
+        obj = BUILD / "grid_di_q.o"
+        D.compile_obj(znode / "grid_di.cpp", obj, includes=[HERE / "include", HERE / "src"])
+        t = table(qual)
+        ck(not any(a == "stack" for a, _ in D.qualify_statics(obj, znode / "grid_di.cpp", t)),
+           "grid_di.cpp's own static is not renamed")
+        sym = st.get("__sinit_grid_di.cpp")
+        r = D.compare(obj, sym.name, sym, img, t)
+        ck(r.match and any(f.symbol == "stack" and f.want == 0x44D750 and f.status == "ok" for f in r.relocs),
+           f"and still resolves bare: {r.verdict}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_mw_function_static_resolves_by_its_function():
     """Metrowerks names a function-local static of a function emitted once `name$N` and its guard
     `@GUARD@name$N`, N a per-unit counter no map row can carry (an inline function's own are
@@ -532,6 +589,56 @@ def test_copy_supersedes_a_draft_only_where_it_matched():
         swapped.unlink()
     ck(row("seal_env.cpp") and not row("002CDB30.c"), "swapped, the copy matches at the draft's address")
     ck(re.search(rf"1 generated function\(s\) superseded .*{re.escape(name)}", out), "and the draft is superseded")
+
+
+def test_explicit_instance_scores_in_its_units_overlay():
+    """seal_tasks.cpp (OVL2) instantiates `ai::_max<unsigned char>` explicitly: a global, the
+    unit's own, whose name the map gives OVL1's 0x2AFC40 and whose OVL2 copy is 0x5DEE70
+    (`ovl-copy:`). By the unit's lowest address the instance made the unit an OVL1 one, so it was
+    scored -- and credited -- at OVL1's row, OVL2's never (the kit lane's round 24, GCC round 25a).
+    The unit's overlay is now the one its functions' rows lie in, counting the names the map holds
+    once: OVL2, the instance scored at 0x5DEE70 and the span inside OVL2. With the copy's mark gone
+    the named row is all there is again; the old rule's lowest address is OVL1's."""
+    import contextlib
+    import io
+    img, st = E.image(), E.symbols()
+    name = "_max<Uc>__2aiFRCUcRCUc_RCUc"
+    files = r"^gamez/zseal/seal_tasks\.cpp$"
+    scored = []
+    orig, orig_sym = D.compare, E.symbols
+
+    def run(table):
+        def compare(obj, fn, sym, *a, **k):
+            r = orig(obj, fn, sym, *a, **k)
+            scored.append((fn, sym.addr, r.match))
+            return r
+        D.compare, E.symbols = compare, (lambda: table)
+        scored.clear()
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                C.main(["--files", files, "--build-dir", str(BUILD / "ovlhome"), "-j", "2"])
+        finally:
+            D.compare, E.symbols = orig, orig_sym
+        return [(a, m) for fn, a, m in scored if fn == name]
+
+    ck(run(st) == [(0x5DEE70, True)], "the instance scores, and matches, at OVL2's copy")
+    obj = BUILD / "ovlhome" / "gamez" / "zseal" / "seal_tasks.o"
+    elf = E.Elf.read(obj)
+    ck(C.unit_overlay(elf, st) == "OVL2", "the unit is OVL2's")
+    span = C.unit_span(obj, st)
+    ck(span is not None and st.overlay_of(span[0]) == st.overlay_of(span[1] - 1) == "OVL2",
+       f"its span lies in OVL2: {span}")
+    own = [st.get(f.name).addr for f in elf.functions() if not C.is_copy(elf, f) and f.name in st._by_name]
+    ck(st.overlay_of(min(own)) == "OVL1", "while its lowest named row is OVL1's (the old rule's pick)")
+    unmarked = HERE / "build" / "tmp" / f"syms_unmarked.{os.getpid()}.txt"
+    unmarked.parent.mkdir(parents=True, exist_ok=True)
+    text = E.SYMBOLS.read_text()
+    row = next(l for l in text.splitlines(True) if l.startswith("0x005DEE70 "))
+    unmarked.write_text(text.replace(row, "0x005DEE70 0x18 func_005DEE70  # the canary's: no mark\n"))
+    try:
+        ck(run(E.SymbolTable(unmarked, E.DATA)) == [(0x2AFC40, True)], "unmarked, the named row is scored")
+    finally:
+        unmarked.unlink()
 
 
 def test_everything_baselined_still_matches():
