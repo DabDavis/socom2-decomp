@@ -6,8 +6,10 @@
  * total scaled in its own variable) and the voicing candidate 0x24A9F0 (its thresholds a static
  * const table, compared whole; `if (c) r = last; else r = index;` is if-converted after the
  * compare -- the target's `move` in the branch's slot -- where `r = index; if (c) r = last;`
- * assigns first and re-forms the address from it, 2 words long). The analysis functions
- * (0x249FA8-0x24A5A8) are not written.
+ * assigns first and re-forms the address from it, 2 words long). GCC round 27a: the
+ * autocorrelation of the resampled power spectrum 0x24A438 (its Q15 accumulator set before the
+ * spectrum's pointer: two words the other way; the host's memcpy, data_001D55B4, copies the lags
+ * out). The other analysis functions (0x249FA8, 0x24A210, 0x24A5A8) are not written.
  * Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
 #define NellyNull 0
@@ -33,6 +35,43 @@ static const float fPitchTable[89] = {
 	92.375f, 95.25f, 98.25f, 101.1875f, 104.375f, 107.5f, 110.875f, 114.1875f, 117.75f, 121.3125f,
 	125.125f, 128.9375f, 133.0f, 137.0625f, 141.25f, 145.625f, 150.0625f, 154.625f, 159.4375f,
 };
+
+extern void (*data_001D55B4)(void *pDst, const void *pSrc, int n);	/* the host's memcpy */
+extern void func_00251AF8(float *pfIn, int n, float *pfRe, float *pfIm);
+extern int func_00251C00(float *pfRe, float *pfIm, int n);
+extern void func_00251B38(float *pfRe, float *pfIm, int n, float *pfOut);
+
+/* the autocorrelation of a power spectrum resampled to 64 bins (Q15 steps through iBins of it,
+ * the ends zero), by the inverse transform; its first iOrder + 1 lags copied out */
+void func_0024A438(const float *pfPower, int iBins, float *pfRs, int iOrder)
+{
+	float afSpec[130];
+	float afRe[65], afIm[65];
+	float *pf;
+	float fStep;
+	int i, iStep, iAcc;
+
+#line 712 "../../SaseEncVad/source/LDPDA.c"
+	assert(pfPower != NellyNull);
+	assert(pfRs != NellyNull);
+	fStep = (float)iBins * 0.015625F * 32768.0F;
+	iStep = (int)((fStep > 0.0F) ? fStep + 0.5F : fStep - 0.5F);
+	afSpec[0] = 0.0F;
+	afSpec[1] = 0.0F;
+	iAcc = iStep + 16384;
+	pf = &afSpec[2];
+	for (i = 1; i < 64; i++) {
+		*pf++ = pfPower[iAcc >> 15];
+		*pf++ = 0.0F;
+		iAcc += iStep;
+	}
+	afSpec[128] = 0.0F;
+	afSpec[129] = 0.0F;
+	func_00251B38(afRe, afIm, 128, afSpec);
+	func_00251C00(afRe, afIm, 128);
+	func_00251AF8(afSpec, 128, afRe, afIm);
+	data_001D55B4(pfRs, afSpec, (iOrder + 1) * sizeof(float));
+}
 
 void func_0024A7C0(const float **pfPitchTable, int *piSize)
 {
