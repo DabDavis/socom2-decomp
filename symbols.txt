@@ -6762,7 +6762,7 @@
 0x00369170 0x48 DrawForeplane__9CGameMenuFv  # OVL1; s1:exact
 0x003691C0 0x44 Draw2dOnly__9CGameMenuFv  # OVL1; s1:exact
 0x00369210 0x4BC Clear__9CGameMenuFv  # OVL1; s1:calls by hand (called at LoadFromDesign+0x34 and ~CGameMenu+0x24, the offsets of SOCOM 1's calls to CGameMenu::Clear in both; 0x4BC against 0x51C)
-0x003696D0 0x1A4 func_003696D0  # OVL1
+0x003696D0 0x1A4 Add2dNode__9CGameMenuFP13CDesignDlgObj  # OVL1; ours (the UI lane round 19: LoadFromDesign calls it for each design object and each child a spec holds, pushing the control it returns; its node is created as "Add2dNode" -- SOCOM 1's LoadFromDesign inlined the same block)
 0x00369880 0x40 UiLoadCountSound__Fv  # OVL1; ours (SOCOM II's: CMenuState::Init and 0x1F53D0 call it; the count sound PlayCountSound plays, 0x49EA88, looked up by name from theGame's menu state's TtySoundString, +0x8C) -- zui.cpp
 0x003698C0 0x2A0 __dt__9CGameMenuFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00369B60 0x348 __ct__9CGameMenuFv  # OVL1; s1:calls
