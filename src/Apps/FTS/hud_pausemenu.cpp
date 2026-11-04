@@ -1,4 +1,4 @@
-/* hud_pausemenu.cpp -- the HUD's pause menu (CZPauseTest, OVL1 0x201580-0x2057FF): SOCOM 1's unit (its
+/* hud_pausemenu.cpp -- the HUD's pause menu (CZPauseTest, OVL1 0x2011F0-0x205C3F: round 36 put its start at 0x2011F0, its last function is the lines' test 0x205A70): SOCOM 1's unit (its
  * DWARF names it, Z:\dev\Apps\FTS\hud_pausemenu.cpp), after the lens flares and before the
  * objectives as there; its first functions in the image are the vtable's On, Off and Draw, its
  * last the destructor and the constructor. SOCOM II's CZPauseTest is 0x13C0 bytes (SOCOM 1's
