@@ -3288,7 +3288,7 @@
 0x0027FF20 0x90 OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetTtySpeedFactor" in both builds' UI command tables: SOCOM II's id 0x75 at 0x3DDC00, SOCOM 1's UICommandTable id 0x83 -> OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf); the HUD lane's lead agrees: SOCOM 1's body, UiSetTtySpeedFactor__Ff (0x37B980) called at +0x74
 0x0027FFB0 0x90 OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetCounterSpeedFactor" in both builds' UI command tables: SOCOM II's id 0x76 at 0x3DDC10, SOCOM 1's UICommandTable id 0x84 -> OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf); the HUD lane's lead agrees: SOCOM 1's body, UiSetCounterSpeedFactor__Ff (0x37B990) called at +0x74
 0x00280040 0x74 func_00280040  # OVL1
-0x002800C0 0x100 func_002800C0  # OVL1
+0x002800C0 0x100 OnRemoveEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "RemoveEquipment" in both builds' UI command tables: SOCOM 1's OnRemoveEquipment, zanim_menu.cpp's anonymous namespace -- the same GetWeaponId/IsPrimary/IsSecondary tests and the UiCharSet walk over RemoveWeapon)
 0x002801C0 0x394 func_002801C0  # OVL1
 0x00280560 0x208 func_00280560  # OVL1
 0x00280770 0x14 func_00280770  # OVL1
@@ -3313,14 +3313,14 @@
 0x00281D40 0x400 func_00281D40  # OVL1
 0x00282140 0x2C8 func_00282140  # OVL1
 0x00282410 0x8 func_00282410  # OVL1
-0x00282420 0xD4 func_00282420  # OVL1
-0x00282500 0xD4 func_00282500  # OVL1
-0x002825E0 0xD4 func_002825E0  # OVL1
+0x00282420 0xD4 UIChooseEquip3__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip3" (id 0x8, record 7; slot 4)
+0x00282500 0xD4 UIChooseEquip2__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip2" (id 0x7, record 6; slot 3)
+0x002825E0 0xD4 UIChooseEquip1__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip1" (id 0x6, record 5; slot 2 to the per-character pick 0x282C20)
 0x002826C0 0x11C func_002826C0  # OVL1
-0x002827E0 0xCC func_002827E0  # OVL1
-0x002828B0 0xCC func_002828B0  # OVL1
+0x002827E0 0xCC UIChoosePrimary__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChoosePrimary" (id 0x4, the UI command table's record 3); SOCOM 1's table has none, so UI<command> by its convention
+0x002828B0 0xCC ExecuteChooseEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "ChooseEquipment" in both builds' UI command tables: SOCOM 1's ExecuteChooseEquipment, zanim_menu.cpp's anonymous namespace, the same walk over ChooseEquipmentForCharacter)
 0x00282980 0x108 func_00282980  # OVL1
-0x00282A90 0x184 func_00282A90  # OVL1
+0x00282A90 0x184 ChooseEquipmentForCharacter__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEM  # OVL1; s1:callee by hand, the core lane round 2 (ExecuteChooseEquipment calls it with the iterator and the item in its loop where SOCOM 1's calls ChooseEquipmentForCharacter, 0x1D74B0)
 0x00282C20 0x290 func_00282C20  # OVL1
 0x00282EB0 0x70 func_00282EB0  # OVL1
 0x00282F20 0x248 func_00282F20  # OVL1

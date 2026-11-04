@@ -119,9 +119,142 @@ public:
 };
 extern "C" void func_003B0C00(int on);
 
+namespace {
+
+/* the selected characters one by one: a bit for each of the 32 in a mask, the weapons list of the
+ * character the index is on (SOCOM 1's class; the members' names ours) */
+class CSelectedCharsItr {
+public:
+    /* the first selected character of the valve's mask (SOCOM 1's, inlined in every handler) */
+    CSelectedCharsItr(const char *valve)
+    {
+        m_index = -1;
+        m_weapons = 0;
+        CValve *v = CValve::GetByName(valve);
+
+        m_mask = v ? v->m_value : 0;
+        Advance();
+    }
+    void Advance();
+    /* (an accessor: the loop's test then reads the index apart from the body, as the target's
+     * does -- written out, MW keeps the test's load for the shift) */
+    bool Valid() const { return m_index < 32; }
+
+    unsigned int m_mask;   // 0x0
+    int m_index;   // 0x4
+    void *m_weapons;   // 0x8
+};
+
+}
+
 /* ---- the handlers from 0x280000 to the deque's instances that close the unit (SOCOM 1 keeps the
  * ones it has -- RemoveEquipment, ListSavedGames, IsEquipmentSelected, CloseAndSwitch, the equipment
  * choices -- in zanim_menu.cpp's anonymous namespace, so the stretch is this unit's) ---- */
+
+/* the weapons as the equipment handlers see them (zweapon.h's: SOCOM 1's EQUIP_ITEM, a signed byte
+ * -- EQUIP_NONE is -1 -- and the four lookups they make) */
+enum EQUIP_ITEM { EQUIP_NONE = -1, EQUIP_PISTOL = 0 };
+class CZWeapon {
+public:
+    static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
+    static bool IsPrimary(EQUIP_ITEM item);            /* 0x3D1D10 */
+    static bool IsSecondary(EQUIP_ITEM item);          /* 0x3D1CE0 */
+};
+class CCharacterWeapList {
+public:
+    bool RemoveWeapon(EQUIP_ITEM item);   /* 0x53B300 */
+};
+void UpdateCharWeaponUiVars(int index);   /* 0x2AF190 */
+
+namespace {
+
+/* the item the argument names taken from every selected character -- not a primary or a secondary,
+ * which stay (SOCOM 1's) */
+bool OnRemoveEquipment(C2DAnimCmdHdr *hdr, float *dT)
+{
+    EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
+
+    if (CZWeapon::IsPrimary(item) || CZWeapon::IsSecondary(item))
+        return true;
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
+        if (((CCharacterWeapList *)it.m_weapons)->RemoveWeapon(item))
+            UpdateCharWeaponUiVars(it.m_index);
+    return true;
+}
+
+}
+
+namespace {
+
+/* the item put on one selected character, or as much of it as fits (SOCOM 1's; not written yet) */
+bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item);
+
+/* the item the argument names put on every selected character: whether any took it (SOCOM 1's) */
+bool ExecuteChooseEquipment(C2DAnimCmdHdr *hdr, float *dT)
+{
+    EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
+    bool chosen = false;
+
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
+        if (ChooseEquipmentForCharacter(it, item))
+            chosen = true;
+    return chosen;
+}
+
+}
+
+/* the per-character picks the new choosers make (SOCOM II's, not named yet): a primary weapon, an
+ * item into one of the three equipment slots (2 to 4) */
+extern "C" bool func_00284360(const CSelectedCharsItr &it, EQUIP_ITEM item);
+extern "C" bool func_00282C20(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+
+/* the primary the argument names given to every selected character: whether all took it (SOCOM II's;
+ * the name ours by the command's) */
+bool UIChoosePrimary(C2DAnimCmdHdr *hdr, float *dT)
+{
+    EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
+    bool ok = true;
+
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
+        if (!func_00284360(it, item))
+            ok = false;
+    return ok;
+}
+
+/* the item the argument names put into an equipment slot of every selected character: whether any
+ * took it (SOCOM II's three, slots 2 to 4; the names ours by the commands') */
+bool UIChooseEquip1(C2DAnimCmdHdr *hdr, float *dT)
+{
+    EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
+    bool chosen = false;
+
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
+        if (func_00282C20(it, item, 2))
+            chosen = true;
+    return chosen;
+}
+
+bool UIChooseEquip2(C2DAnimCmdHdr *hdr, float *dT)
+{
+    EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
+    bool chosen = false;
+
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
+        if (func_00282C20(it, item, 3))
+            chosen = true;
+    return chosen;
+}
+
+bool UIChooseEquip3(C2DAnimCmdHdr *hdr, float *dT)
+{
+    EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
+    bool chosen = false;
+
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
+        if (func_00282C20(it, item, 4))
+            chosen = true;
+    return chosen;
+}
 
 namespace {
 
@@ -2621,21 +2754,9 @@ bool zAnimUIAppMenuTick(_zanim_cmd_hdr *hdr, float *dT)
 
 namespace {
 
-/* the selected characters one by one: a bit for each of the 32 in a mask, the weapons list of the
- * character the index is on (SOCOM 1's class; the members' names ours) */
-class CSelectedCharsItr {
-public:
-    void Advance();
-    /* (an accessor: the loop's test then reads the index apart from the body, as the target's
-     * does -- written out, MW keeps the test's load for the shift) */
-    bool Valid() const { return m_index < 32; }
-
-    unsigned int m_mask;   // 0x0
-    int m_index;   // 0x4
-    void *m_weapons;   // 0x8
-};
-
-/* on to the next selected character that has a type (and so its weapons) */
+/* on to the next selected character that has a type (and so its weapons). Called out of line by
+ * every equipment handler in both builds, so pinned */
+#pragma auto_inline off
 void CSelectedCharsItr::Advance()
 {
     for (m_index++; Valid(); m_index++) {
@@ -2648,5 +2769,6 @@ void CSelectedCharsItr::Advance()
         }
     }
 }
+#pragma auto_inline reset
 
 }
