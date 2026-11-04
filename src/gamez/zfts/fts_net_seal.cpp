@@ -369,14 +369,17 @@ void CZSealState::zNetRegisterSeal()
 
 /* after a remote SEAL's update: the lobby told once, in play, when its time comes due, and the SEAL
  * put in its unit once its controller is ready (OVL1 0x2BE020; SOCOM 1's had only the unit).
- * OPEN, 10 instructions, registers only: the client and the hit time trade s2 and s3 (the target's
- * client s2, time s3). The time declared first, uninitialised, fixed the data's and the body's
- * registers (21 -> 10). `!(t - time < 8000)` gives the target's registers exactly but a subu/slti
- * where it has addiu/slt; tried the comparison's operands swapped and reversed, the time
- * unsigned, a local copy of the client (round 13) */
+ * The time declared first, uninitialised, fixes the data's and the body's registers; the client
+ * through a `const` copy declared right after it (round 34, the engine core's round-7 rule: a const
+ * local survives copy propagation, where a plain copy -- round 13's -- folds into the parameter).
+ * Read off MW's colouring: the client (26 neighbours), the time (25), the data and the body (29)
+ * all sit at or over K = 25 until the first sweep has pushed the temporaries, then go in one sweep
+ * in index order, so the later-numbered is coloured first -- the copy, numbered after the time,
+ * takes s2 and the time s3, as the target's */
 void CZSealState::RemoteSealPostUpdateCallback(int client, int index, int field)
 {
     int t;
+    const int c = client;
     NetObject *obj = theNetwork.zNetGetObject(index);
 
     if (!obj)
@@ -390,7 +393,7 @@ void CZSealState::RemoteSealPostUpdateCallback(int client, int index, int field)
 
     if (t && theMission.m_pNetGame->m_mp_major_game_state == 3 && !(t < theNetwork.zNetGetTime() + 8000) &&
         body->m_fd8 > 0.0f && !(body->m_1044 < body->m_fd8)) {
-        func_002F9690(&theLobby, func_002C3B10(client), 1);
+        func_002F9690(&theLobby, func_002C3B10(c), 1);
         body->m_fd8 = 1.0f;
         body->m_fd4 = 0;
     }

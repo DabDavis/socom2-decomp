@@ -403,12 +403,6 @@ public:
 namespace std {
 template <class charT> struct char_traits {};
 
-/* include/string's template replace, under its placeholder (st_core.cpp's template tail holds it) */
-extern "C" {
-void *func_001EE780(void *str, unsigned int pos, unsigned int n1, const char *first, const char *last,
-                    forward_iterator_tag);   /* replace(pos, n1, first, last, category) */
-}
-
 template <class charT, class traits = char_traits<charT>, class Allocator = allocator<charT> >
 class basic_string {
 public:
@@ -419,16 +413,21 @@ public:
 
     /* include/string's: assign, append and replace(pos, n1, s) out of line (st_core.cpp's template
      * tail defines them: 0x1EEB40, 0x1EEB70, 0x1EF390), erase() the template replace over (0, npos)
-     * with an empty range */
+     * with an empty range -- the template replace, MSL 3.0's member template over the iterators and
+     * their category (0x1EE780), declared only: include/string's users' tails emit it (it was called
+     * through its placeholder until round 34; the same code) */
     basic_string &assign(const charT *s);
     basic_string &append(const charT *s);
     basic_string &replace(unsigned int pos, unsigned int n1, const charT *s);
+    template <class ForwardIterator>
+    basic_string &replace(unsigned int pos, unsigned int n1, ForwardIterator first, ForwardIterator last,
+                          forward_iterator_tag);
     basic_string &operator+=(const charT *s) { return append(s); }
     basic_string &erase()
     {
         forward_iterator_tag category;
 
-        return *(basic_string *)func_001EE780(this, 0, (unsigned int)-1, 0, 0, category);
+        return replace(0, (unsigned int)-1, (const charT *)0, (const charT *)0, category);
     }
 
     /* the short form: its text in place after the first byte (bit 0 of the first word clear) */

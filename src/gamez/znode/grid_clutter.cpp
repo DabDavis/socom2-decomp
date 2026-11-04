@@ -204,6 +204,34 @@ void CClutterAnimManager::ClearEffectors()
     m_ClutterEffectors.clear();
 }
 
+/* whether the cell at mid wants animating, for a viewer at pos: within four half-cells of the
+ * viewer, and an effector within a half-cell and its radius of the cell's middle, in x and z
+ * (SOCOM 1's TestCellMid, 0x217F50, its differences through CPnt3D::Sub; SOCOM II's take the two
+ * components straight) */
+void CClutterAnimManager::TestCellMid(CPnt3D *mid, CPnt3D *pos)
+{
+    m_CellAnimate = false;
+    if (m_ClutterEffectors.size()) {
+        float half = 0.5f * CWorld::m_world->m_grid.m_CellDim;
+        float range = 4.0f * half;
+
+        if (!(fabsf(pos->x - mid->x) <= range && fabsf(pos->z - mid->z) <= range))
+            return;
+
+        std::list<CClutterEffector *>::iterator it = m_ClutterEffectors.begin(), e = m_ClutterEffectors.end();
+
+        for (; it != e; ++it) {
+            CClutterEffector *f = *it;
+
+            if (fabsf(mid->x - f->m_pos->x) <= half + f->GetRadius() &&
+                fabsf(mid->z - f->m_pos->z) <= half + f->GetRadius()) {
+                m_CellAnimate = true;
+                return;
+            }
+        }
+    }
+}
+
 /* the clutter task taken off the scheduler, the animations and the effectors let go of (SOCOM
  * 1's). The effector list's implicit destructor reads its first node through the inlined
  * ClearEffectors' &end_.next_ (lw v0,0(s2)): byte-exact since include/list's ~__list_deleter binds

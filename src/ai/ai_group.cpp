@@ -98,6 +98,9 @@ public:
     unsigned char _0[0x24];
 };
 
+/* how alert the AI is, the bands of its alertness (zseal.h's, SOCOM 1's DWARF: AI_AWARE, a byte) */
+enum AI_AWARE { AIA_UNAWARE = 0, AIA_SUSPICIOUS = 1, AIA_GENERAL = 2, AIA_DIRECTION = 3, AIA_SPECIFIC = 4 };
+
 /* the AI controller as far as this unit reads it (zseal.h's CSealCtrlAi, which this unit does not
  * include): its entity (CEntityCtrl's), the bits at 0x264, its state stack, its group's id and the
  * three throttle points a group's member starts from -- and its group members, which this unit
@@ -117,6 +120,8 @@ public:
     void SetGroup(CAiGroup *g);
     bool InGroup();
     CAiGroup *GetGroup();
+    /* the band the alertness's value lies in (zseal.h's, SOCOM 1's; OVL2 0x560A60) */
+    AI_AWARE GetAiAware() const;
     /* the bit at 0x264 (inline; the name ours) */
     void SetAiBit0(bool b) { m_aibit0 = b; }
     /* whether the current state is of a kind (zseal.h's AiStateIs, SOCOM 1's: the stack's const
@@ -193,9 +198,7 @@ void SetLookDirR__9CSealCtrlF7AI_LOOKPC6CPnt3Db(CSealCtrlAi *ai, signed char loo
 void SetLookPosW__9CSealCtrlF7AI_LOOKPC6CPnt3D(CSealCtrlAi *ai, signed char look, const CPnt3D *pos);
 void SetLookFlags__9CSealCtrlFUi(CSealCtrlAi *ai, unsigned int flags);
 void SetLookTimer__9CSealCtrlFf(CSealCtrlAi *ai, float t);
-/* a controller's state of a kind (OVL2 0x560A60, the SEAL lane's: a byte), a setting (0x565B80)
- * and another (0x5604D0) */
-unsigned char func_00560A60(CSealCtrlAi *ai);
+/* a setting (OVL2 0x565B80, the SEAL lane's) and another (0x5604D0) */
 void func_00565B80(CSealCtrlAi *ai, int x);
 void func_005604D0(CSealCtrlAi *ai, int x);
 }
@@ -766,7 +769,7 @@ bool CAiGroup::Tick()
         for (memberlist::iterator it = m_members.begin(); it != m_members.end(); ++it) {
             CSealCtrlAi *ai = *it;
 
-            if (!(m_flags & 1) && func_00560A60(ai) == 4)
+            if (!(m_flags & 1) && ai->GetAiAware() == AIA_SPECIFIC)
                 state = DONE;
             else {
                 SetLookDirR__9CSealCtrlF7AI_LOOKPC6CPnt3Db(ai, data_00651130, &CPnt3D::unit_nz, true);

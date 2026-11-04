@@ -519,7 +519,15 @@ extern "C" STICK func_002C6220(const STICK *stick);
  * OPEN, 6 instructions: the layout's pointer and its button trade registers (the target holds the
  * layout in v1 and the button in a2, this the other way round). Tried: the global read at each use
  * (worse: a1/a2), `bool look;` declared first, HoldsLook as `!= 0`, IsDown through a button local or
- * an if-assigned state (both 0x10 shorter) */
+ * an if-assigned state (both 0x10 shorter). Round 34, read off MW's colouring (igdump): the button is
+ * a code-generation temporary (r43, the two reads of m_btn merged after the front end), the layout
+ * the named r33, so the button is coloured first and takes v1 -- the target's colouring needs the
+ * layout numbered after the button. The global read at each use (the layout a front-end CSE
+ * temporary) with the button an inline's named local gives exactly the target's three registers
+ * (v1, a1, a2) -- but a button held in any scalar (a local, a const local, a by-value parameter,
+ * `(b = ...) != NONE`) makes MW if-convert the select (the zero in the beq's delay slot, 0x10
+ * shorter), and through a reference (to the button, its CCfgButton, or GetButton) the select stays
+ * two-armed and the button a late temporary again (6 or 9 off) */
 extern "C" float func_002C6290(const CPad *pad)
 {
     const CCtrlrConfig *config = g_pCurrentConfig;
