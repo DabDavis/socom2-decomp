@@ -319,6 +319,10 @@ public:
      * commands keep their caption or valve so) */
     int AddName(const char *name);
     const char *GetName(int index);
+    /* the animation's nodes looked up again; a node by its reference index (the map control's
+     * zooms) */
+    void Refresh(bool force);
+    zdb::CNode *GetNode(int index, bool create);
 };
 
 class CZAnimMain {
@@ -1354,11 +1358,20 @@ int CPopUpDialog::GetZAnimCmdType(const char *name)
 
 /* the map control (SOCOM 1's CUIMapCtrl, a C2D: its destructor and command lookup here -- the
  * destructor its key function, so this unit takes its table 0x407260) */
+class CUIMapCtrlAnimCmdHdr;
+
 class CUIMapCtrl : public C2D {
 public:
     virtual ~CUIMapCtrl();
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
+    /* a pan step (SOCOM 1's OnPan, 0x36CA30) and the two zooms towards a node (SOCOM II's,
+     * 0x36C3B0 and 0x36BFF0: the scale first, the node, the time -- the call's argument order;
+     * the names ours) */
+    void OnPan(const CUIMapCtrlAnimCmdHdr &cmd, float dT) const;
+    void ZoomIn(float scale, zdb::CNode *node, float dT);
+    void ZoomOut(float scale, zdb::CNode *node, float dT);
 
     ActionItem m_actions[30];   // 0x18
     int m_numActions;   // 0x1f8 (the destructor zeroes it)
@@ -1393,6 +1406,35 @@ public:
     int m_accel;   // 0x18
     int m_limit;   // 0x1c
 };   // 0x20 bytes
+
+/* PAN: a step of the pan; ZOOM_IN and ZOOM_OUT: the current animation refreshed and the zoom made
+ * towards the command's node; each done at once (SOCOM 1's PAN; the zooms SOCOM II's) */
+bool CUIMapCtrl::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+
+    switch (cmd->m_type - C2D::GetZAnimCmdType(0)) {
+    case 1:
+        OnPan(*(CUIMapCtrlAnimCmdHdr *)cmd, *dT);
+        return *done = true;
+    case 2: {
+        ZAnim.m_CurAnim->Refresh(false);
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node_ref_index, false);
+
+        ZoomIn(1.0f, node, *dT);
+        return *done = true;
+    }
+    case 3: {
+        ZAnim.m_CurAnim->Refresh(false);
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node_ref_index, false);
+
+        ZoomOut(1.0f, node, *dT);
+        return *done = true;
+    }
+    default:
+        return false;
+    }
+}
 
 /* PAN with its direction and rates, or ZOOM_IN, or ZOOM_OUT, as a command (SOCOM 1's); anything
  * else none. The direction is UP unless the name says otherwise; each rate 0 unless given */
