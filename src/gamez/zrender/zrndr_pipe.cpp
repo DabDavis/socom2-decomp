@@ -1025,9 +1025,8 @@ void CPipe::PushOpacity(float opacity)
 }
 #pragma auto_inline reset
 
-/* zcamera's: a world point projected to the screen, false behind the camera (0x290450, not named)
- * -- and zvid_init.cpp's depth under a screen point, false off the screen */
-extern "C" bool func_00290450(zdb::CCamera *camera, const CPnt3D *p, CPnt4D *out);
+/* zvid_init.cpp's: the depth under a screen point, false off the screen (the point's projection is
+ * zdb::CCamera::GetScreenPosPers, 0x290450: false behind the camera) */
 extern "C" bool func_003B0E70(const float *p, unsigned int *z);
 
 /* SOCOM II's (the name ours; pinned: CFlareSystem::Tick calls it out of line): whether a point is in
@@ -1051,7 +1050,7 @@ bool CPipe::TestFlare(const CPnt3D *pos, CPnt4D *out, float pull)
         moved = p;
         pos = &moved;
     }
-    if (func_00290450(m_camera, pos, o)) {
+    if (m_camera->GetScreenPosPers(pos, o)) {
         unsigned int z;
 
         if (func_003B0E70((float *)o, &z))
