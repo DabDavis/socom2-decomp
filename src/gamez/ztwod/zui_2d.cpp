@@ -14,6 +14,9 @@
  * slider's command ticks, the counter's parser and Tick. MW's slots for a class with a secondary
  * base: the primary base's, then the secondary's part, then the class's own new virtuals and an
  * overrider's primary slot (CRenderableString: Update +0xA0, UpdateUIVar +0xA4).
+ * Round 26: the unit's head -- CSecureText::SetString (0x36AFF0) and C2DClock::UpdateUIVar
+ * (0x36B0A0), defined last; the inline copies before them (0x36AFA0-0x36AFEF, CSecureText's table's)
+ * come with ~CSecureText (zui.cpp's 0x36AF30) and stay drafts.
  * The classes' layouts are zui_2d.h's (the UI lane's), redeclared here with the virtuals these
  * functions need. Defined in reverse of their image order (-inline deferred). */
 

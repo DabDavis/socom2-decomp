@@ -2,7 +2,11 @@
  * no RTTI name; the class's and the unit's names are ours). Its slots' vtables (CWeaponSlot,
  * CategorySlot, SelectedSlot, SlotList) put it after the mission cams, OVL1 ...-0x241BDF, the
  * constructor last as in SOCOM 1's selector units. Written: Off (0x23E700), On (0x23E800) and
- * UnInit (0x240D50), which inlines Off. The layout is hud_weaponsel.h's.
+ * UnInit (0x240D50), which inlines Off; round 26: the slot classes' own virtuals (CWeaponSlot's
+ * SetWeapon/SetPos at +0x70/+0x74, CategorySlot's and SelectedSlot's overrides and their SetColor
+ * at +0x78, the three Draws: 0x23BF10-0x23C387, defined here, not inline -- they sit mid-unit in
+ * reverse of their definition), the category page's SetWeapon and ShowArrows, the selector's
+ * Scroll and SlotList::NextClass. The layout is hud_weaponsel.h's.
  * The initialiser (0x3FF7F0) is the file statics below, defined in address order (round 20).
  * Defined in reverse of their image order (-inline deferred). */
 
