@@ -306,6 +306,221 @@ bool CZSealBody::CanTurn()
 }
 
 extern "C" {
+/* the top blend popped (OVL2 0x589AA0, SOCOM 1's PopBlend's place; defined below) */
+CZBodyAnimBlend *func_00589AA0(CZSealBody *seal);
+}
+
+/* a blend's anims (anim.cpp's CBlendable, the kit lane's: four 12-byte slots -- only the test here),
+ * and the animation set's strafe blendables (SOCOM 1's DWARF holds them as pointers, m_strafeL_anims
+ * 0x6c and m_strafeR_anims 0x70 after the move ones; SOCOM II's set holds the 0x30-byte blendables
+ * themselves from 0x60 -- a view, the names SOCOM 1's) */
+class CBlendable {
+public:
+    bool Contains(AnimType type);
+
+    unsigned char _0[0x30];
+};
+
+struct AnimSetStrafes {
+    unsigned char _0[0xc0];
+    CBlendable m_strafeL_anims;   // 0xc0
+    CBlendable m_strafeR_anims;   // 0xf0
+};
+
+/* standing still: unless the stand is on top already, the top blend's weight in strafe anims summed
+ * (the right's, or the left's negated when the strafe is to the left), the blends popped down to one
+ * and the step's foot kept -- 2 past 0.6, 32 below -0.6, 2 turning, else by the foot -- and the stand
+ * (1) pushed in place of the top unless it is current; the turn's timing cleared, the turning and
+ * moving flags cleared either side of the top made whole, which is returned (OVL2 0x586240; SOCOM 1's
+ * StandStill, after StandTurning and before InStateStand in both builds) */
+CZBodyAnimBlend *CZSealBody::StandStill(float x, float z)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170(&m_blends);
+    int foot = top->ThisFoot();
+
+    if (!IsCurrentBlend((AnimType)1)) {
+        float sum = 0.0f;
+
+        if (z >= 0.0f) {
+            CBlendable *strafe = &((AnimSetStrafes *)m_animset)->m_strafeR_anims;
+
+            for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = top->m_anims.Next())
+                if (strafe->Contains((AnimType)a->m_id))
+                    sum += a->m_wt;
+            /* (the sign kept, as the left's is turned: an assignment to the sum here keeps the loop's
+             * exit a label of its own, `b join` behind it, where the target's first test lands --
+             * without it MW chains that test straight to the join; `(void)0;` and `sum *= 1.0f` do
+             * not serve) */
+            sum = +sum;
+        } else {
+            CBlendable *strafe = &((AnimSetStrafes *)m_animset)->m_strafeL_anims;
+
+            for (ACTIVE_ANIM *a = top->m_anims.Begin(); a; a = top->m_anims.Next())
+                if (strafe->Contains((AnimType)a->m_id))
+                    sum += a->m_wt;
+            sum = -sum;
+        }
+        ClearStack(1, true);
+        if (sum > 0.6f)
+            m_last_foot = 2;
+        else if (sum < -0.6f)
+            m_last_foot = 32;
+        else if (m_is_turning)
+            m_last_foot = 2;
+        else {
+            short last;
+
+            if (foot >= 17 && foot < 48)
+                last = 32;
+            else
+                last = 2;
+            m_last_foot = last;
+        }
+        if (!IsCurrentBlend((AnimType)1)) {
+            func_00589AA0(this);
+            func_00588BC0(this, (AnimType)1, 0, 0, 0);
+        }
+    }
+    m_turnip.Clear();
+    SetIsTurning(false);
+    SetIsMoving(false);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&m_blends);
+
+    b->SetRepresentativeWt(1.0f);
+    SetIsMoving(false);
+    SetIsTurning(false);
+    return b;
+}
+
+/* standing, turned in place: unless the turn is on top already, the blends popped down to one, the
+ * turn (16) pushed and -- limping -- the step's foot kept (32 for a foot in 17-47, its time from the
+ * half, else 2), the turn set up and its timing started full; the turning flag set, the moving one
+ * cleared, the turn controlled (OVL2 0x586050; SOCOM 1's StandTurning, after UpdateQuadrant and before
+ * StandStill in both builds -- SOCOM II starts the turn only limping) */
+CZBodyAnimBlend *CZSealBody::StandTurning(float turn)
+{
+    int foot = ((CZBodyAnimBlend *)func_00555170(&m_blends))->ThisFoot();
+
+    if (!IsCurrentBlend((AnimType)16)) {
+        ClearStack(1, true);
+        CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(this, (AnimType)16, 0, 0, 0);
+
+        if (!m_limp)
+            return b;
+        /* (a short local set in an if/else: one store after the join -- the ternary puts the 2 in
+         * the first test's delay slot, stores in each arm give two) */
+        short last;
+
+        if (foot >= 17 && foot < 48)
+            last = 32;
+        else
+            last = 2;
+        m_last_foot = last;
+        if (m_last_foot == 32)
+            b->m_tfrac = 0.5f;
+        TurnSetup(foot);
+        m_turnip.Start(0.8f, 3000.0f, 0.4f);
+        m_turnip.m_currT = m_turnip.m_holdT + m_turnip.m_downT;
+    }
+    SetIsTurning(true);
+    SetIsMoving(false);
+    return TurnControl(turn);
+}
+
+extern "C" {
+/* the throttles' easing rates, from and to, for the side and the move throttle (OVL1 bss: SOCOM 1's
+ * four small-data floats in the same order) */
+extern float data_0044C294;
+extern float data_0044C298;
+extern float data_0044C29C;
+extern float data_0044C2A0;
+}
+
+/* a throttle's nearness to full: one minus the eighth power of what it lacks (inline: the factor of
+ * the easing rate's lerp, its last factor -- the right operand of the product) */
+static inline float Ease8(float t)
+{
+    float p = 1.0f - fabsf(t);
+
+    p *= p;
+    p *= p;
+    p *= p;
+    return 1.0f - p;
+}
+
+/* the throttles eased: an AI SEAL's left as they are; else each one's step from its last value held
+ * to a rate that runs from its first toward its second limit as the throttle nears full (one minus
+ * the eighth power of what it lacks), the change flagged; then a throttle that was past 0.78 (the
+ * side) or 0.9 (the move) and jumps by more than ten times that per step taken whole, the body's
+ * parts saved and their easing set to 0.2; the eased pair handed back and whether either step was held
+ * (OVL2 0x586C10; SOCOM 1's SmoothXZThrottles, after StandStill's stretch and before IsStopped in both
+ * builds -- SOCOM II adds the AI's exit and the snap) */
+bool CZSealBody::SmoothXZThrottles(float &x, float &z)
+{
+    bool changed = false;
+
+    if (!(m_control ? ((CSealCtrl *)m_control)->IsAi() : false)) {
+        /* (the order of first definitions is MW's numbering -- tools/perm.py's arrangement, the dead
+         * zeroes cost nothing: it gives the move pair's rates f26/f20 as the target has them, which no
+         * plain declaration order tried does -- a shape for the registers, not the original's) */
+        float c, nx, nz, px, d, pz, a, b;
+
+        px = 0.0f;
+        nz = 0.0f;
+        nx = 0.0f;
+        pz = 0.0f;
+        b = 0.0f;
+        a = data_0044C294;
+        nz = z;
+        d = 0.0f;
+        b = data_0044C298;
+        c = 0.0f;
+        c = data_0044C29C;
+        nx = x;
+        d = data_0044C2A0;
+        px = m_prevx;
+        pz = m_prevz;
+        a = a + (b - a) * Ease8(nx);
+        d = c + (d - c) * Ease8(nz);
+        if (fabsf((nx - px) / m_2e0) > a) {
+            if (nx > px)
+                nx = px + a * m_2e0;
+            else
+                nx = px - a * m_2e0;
+            changed = true;
+        }
+        if (fabsf((nz - pz) / m_2e0) > d) {
+            if (nz > pz)
+                nz = pz + d * m_2e0;
+            else
+                nz = pz - d * m_2e0;
+            changed = true;
+        }
+        bool snap = false;
+        float dx = fabsf(x - px) / m_2e0;
+
+        if (fabsf(px) > 0.78f && dx > 0.78f * 10.0f) {
+            nx = x;
+            snap = true;
+        }
+        float dz = fabsf(z - pz) / m_2e0;
+
+        if (fabsf(pz) > 0.9f && dz > 0.9f * 10.0f) {
+            nz = z;
+            snap = true;
+        }
+        if (snap) {
+            SaveParts();
+            m_interp1 = 0.2f;
+            m_interp2 = 0.2f;
+        }
+        x = nx;
+        z = nz;
+    }
+    return changed;
+}
+
+extern "C" {
 /* how far the throttles may stray for a hang to hold, and for the SEAL to count as stopped (OVL1
  * data; seal_env.cpp's ladder test reads it) */
 extern float data_003F3428;

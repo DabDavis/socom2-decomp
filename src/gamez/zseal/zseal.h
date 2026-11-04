@@ -1204,6 +1204,11 @@ public:
     unsigned char _61[0x70 - 0x61];   // (SOCOM II's CLook is 0x70: CBlink's m_org at 0x70)
 };
 
+/* a turn in place's timing (SOCOM 1's DWARF: CTurnInPlace : CSequence, 0x10 bytes, nothing of its
+ * own) */
+class CTurnInPlace : public CSequence {
+};
+
 /* the eyelids: a look down and back up (SOCOM 1's DWARF: CBlink : CLook) */
 class CBlink : public CLook {
 public:
@@ -1447,8 +1452,18 @@ public:
     void SetIsTurning(bool on) { m_is_turning = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* the throttles' change per step held to a rate that grows as each nears full, an AI SEAL's
+     * left alone (SOCOM 1's; OVL2 0x586C10, seal_body.cpp) */
+    bool SmoothXZThrottles(float &x, float &z);
     /* whether the throttles leave the SEAL stopped (SOCOM 1's; OVL2 0x586F00, seal_body.cpp) */
     bool IsStopped(float x, float z, float t);
+    /* standing, turned in place (SOCOM 1's took three throttles; OVL2 0x586050, seal_body.cpp:
+     * InStateStand returns it) */
+    CZBodyAnimBlend *StandTurning(float turn);
+    /* standing still: the step's foot from the strafe's weight, the stand blend asked for, the turn's
+     * timing and the moving flags cleared (SOCOM 1's took three throttles; OVL2 0x586240, seal_body.cpp:
+     * InStateStand returns it) */
+    CZBodyAnimBlend *StandStill(float x, float z);
     /* the state set: its blend and the body's state (SOCOM 1's; OVL2 0x581ED0, seal_body.cpp's -- not
      * written yet: 0 or 1 back), and the desired state taken when it may be (SOCOM 1's; OVL2 0x552D60,
      * seal.cpp) */
@@ -1654,7 +1669,11 @@ public:
     unsigned char _239[0x240 - 0x239];
     float m_240;   // 0x240: PostCheckDILadder checks the ladder only from 0.03 up (the name ours)
     float m_244;   // 0x244: InStateHang's second throttle with 0x240 (the name ours)
-    unsigned char _248[0x2e0 - 0x248];
+    /* the side and move throttles as last eased (SOCOM 1's at 0x194/0x198: SmoothXZThrottles eases
+     * toward them; the names ours) */
+    float m_prevx;   // 0x248
+    float m_prevz;   // 0x24c
+    unsigned char _250[0x2e0 - 0x250];
     float m_2e0;   // 0x2e0: the time step the overlay ticks by (0x579EF0; the names ours)
     float m_alt;   // 0x2e4 (SOCOM 1's 0xe98)
     CZBodyPart *m_root;   // 0x2e8 (SOCOM 1's 0x26c)
@@ -1878,7 +1897,11 @@ public:
     CLook m_look;   // 0x1190
     CLook m_eyelook;   // 0x1200
     CBlink m_blink;   // 0x1270
-    unsigned char _12e8[0x1314 - 0x12e8];
+    unsigned char _12e8[0x12f0 - 0x12e8];
+    /* the turn in place's timing (SOCOM 1's m_turnip, a CTurnInPlace * at 0xf9c right after m_blink:
+     * SOCOM II holds it, as the looks; StandTurning starts it) */
+    CTurnInPlace m_turnip;   // 0x12f0
+    unsigned char _1300[0x1314 - 0x1300];
     /* a point and two values 0x57ED10 sets for a SEAL this console plays, clears for a remote one
      * (the names ours) */
     CPnt3D m_1314;   // 0x1314
