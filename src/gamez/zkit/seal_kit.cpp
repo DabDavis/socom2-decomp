@@ -26,9 +26,6 @@ void AdrenalineIncr__10CZSealBodyFf(CZSealBody *body, float amount);
  * IsGrenadeLauncherAmmo, GetDescription, the static GetIDType and class tests, GetAmmoCapacity,
  * GetNumMags, GetDefaultAmmo, CZWeaponList::GetWeapon, RegisterTimer2, CTargetMods' kick
  * distances -- are zweapon.h's, called as members since the rows carry their names) */
-/* the current weapon in its grenade launcher's mode (OVL2 0x5BD7E0, this unit's, a byte-exact
- * draft: the index version 0x5BD7F0 on the selected item) */
-bool func_005BD7E0(CZKit *kit);
 /* a controller's word at 0x11C cleared (OVL2 0x592D40, the SEAL lane's row) */
 void func_00592D40(CKitCtrl *ctrl);
 /* a weapon's two shot waits (its floats at 0x60 and 0x5C; OVL1 0x3D2C20, 0x3D2C40, unclaimed) */
@@ -469,7 +466,7 @@ int CZKit::GetCurNumMags()
 {
     int index = m_selected_item;
 
-    if (func_005BD7E0(this))
+    if (CurWeaponIsLauncherMode())
         index = FindItemWithAmmo((EQUIP_ITEM)GetCurFireMode());
     if (index != -1)
         return GetNumMags(index);
@@ -1187,6 +1184,16 @@ bool CZKit::WeaponIsLauncherMode(int index)
     return false;
 }
 
+/* the item in hand in its launcher's fire mode (OVL2 0x5BD7E0, a tail call: every caller -- this
+ * unit's CurMagHasAmmo, GetCurNumMags, 0x5C0AE0, 0x5C2A90, 0x5C3000, and the SEAL's IncrZoomState --
+ * calls it out of line, so it is pinned; the name ours, after SOCOM 1's CurWeaponIsM203Mode) */
+#pragma auto_inline off
+bool CZKit::CurWeaponIsLauncherMode()
+{
+    return WeaponIsLauncherMode(m_selected_item);
+}
+#pragma auto_inline reset
+
 /* a grenade launcher in its launcher's fire mode (OVL2 0x5BD6E0, its selected item's 0x5BD6D0:
  * SOCOM 1's WeaponIsGrenadeLauncherMode, the item through 0x5C67D0 where SOCOM 1's unwrapped it) */
 bool CZKit::WeaponIsGrenadeLauncherMode(int index)
@@ -1223,7 +1230,7 @@ bool CZKit::CurMagHasAmmo()
 {
     if (((CKitAmmoBody *)m_body)->m_infiniteammo ? true : false)
         return true;
-    if (func_005BD7E0(this)) {
+    if (CurWeaponIsLauncherMode()) {
         int i = FindItemWithAmmo((EQUIP_ITEM)m_firemode[m_selected_item]);
 
         return i != -1 && m_reloads[i][m_currentmag[i]] > 0;
@@ -1694,6 +1701,14 @@ void CZKit::ResetScreenOffsetXY()
         cam->SetScreenOffsetX(0.0f);
         cam->SetScreenOffsetY(0.0f);
     }
+}
+
+/* the reticle's offsets cleared (OVL2 0x5B9020, new in SOCOM II: the SEAL's DecrZoomState calls it
+ * as it steps out of a scope, where SOCOM 1's called InitializeSniperKick; the name ours) */
+void CZKit::ResetRetOffsetXY()
+{
+    m_retoffsetx = 0.0f;
+    m_retoffsety = 0.0f;
 }
 
 /* the per-item pointers at 0x834, one place on so that item -1 has slot 0: read (or 0 past the

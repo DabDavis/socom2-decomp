@@ -10932,7 +10932,7 @@
 0x005B8F20 0xA0 SetItemPtr__5CZKitFiPv  # OVL2; by hand (the kit lane, round 7): called on the SEAL's kit (body+0x5E0) by 0x59F0C0; pushes nulls through the pod insert until slot index+1 exists, then stores -- the name ours
 0x005B8FC0 0x30 ClearItemPtr__5CZKitFi  # OVL2; by hand (the kit lane, round 7): called on the SEAL's kit (body+0x5E0) by 0x59F0C0/0x59F730; zeroes the vector at kit+0x834's slot index+1 -- the name ours
 0x005B8FF0 0x2C GetItemPtr__5CZKitFi  # OVL2; by hand (the kit lane, round 7): called on the SEAL's kit (body+0x5E0) by 0x59F0C0/0x59F730; reads the pointer vector at kit+0x834 one place on -- the name ours
-0x005B9020 0xC func_005B9020  # OVL2
+0x005B9020 0xC ResetRetOffsetXY__5CZKitFv  # OVL2; by hand (the kit lane, round 27): new in SOCOM II, before ResetScreenOffsetXY -- zeroes the kit's 0x20/0x24, SOCOM 1's m_retoffsetx/m_retoffsety (0xC/0x10, its TickReticule's) with the reticle block 0x14 on; DecrZoomState 0x544400 calls it twice where SOCOM 1's DecrZoomState called InitializeSniperKick -- the name ours
 0x005B9030 0x8C ResetScreenOffsetXY__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ResetScreenOffsetXY, the unit's first as there: both screen offsets zeroed; SOCOM II then hands the camera (CWorld::m_world->m_camera) the sniper position (0x28/0x2C, SOCOM 1's 0x14/0x18) under a scope's zoom class, else zero)
 0x005B90C0 0x10 IncrScreenOffsetY__5CZKitFf  # OVL2; s1:order by hand (SOCOM 1's IncrScreenOffsetY: the same add to the screen offset's y, at 0x5C here where SOCOM 1's is 0x48 -- the reticle block 0x14 on; the kit's first accessors in SOCOM 1's order)
 0x005B90D0 0x8 ScreenOffsetY__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's ScreenOffsetY, after IncrScreenOffsetY: the float at 0x5C, SOCOM 1's 0x48)
@@ -10975,7 +10975,7 @@
 0x005BD530 0x198 CurMagHasAmmo__5CZKitFv  # OVL2; s1:order by hand (the kit lane, round 24): SOCOM 1's CurMagHasAmmo (0x2A7880) sits in the same place, right before WeaponIsGrenadeLauncherMode, with the same code -- the body's infinite-ammunition bit (0x105C bit 5) answers true, a launcher's mode reads the magazine of its ammunition's item, else the selected item's m_reloads[sel][m_currentmag[sel]] > 0; HandlePlacingExlosive and CSealCtrlSquirm::PreTick call it
 0x005BD6D0 0x8 func_005BD6D0  # OVL2
 0x005BD6E0 0xF4 WeaponIsGrenadeLauncherMode__5CZKitFi  # OVL2; s1:calls by hand (the kit lane, round 11): SOCOM 1's WeaponIsGrenadeLauncherMode(int) -- the index wrapped, the item's IsGrenadeLauncherWeapon, its fire mode past 3 -- the item now through 0x5C67D0; 0x5BD6D0 is its selected-item wrapper
-0x005BD7E0 0x8 func_005BD7E0  # OVL2
+0x005BD7E0 0x8 CurWeaponIsLauncherMode__5CZKitFv  # OVL2; by hand (the kit lane, round 27): a tail call to WeaponIsLauncherMode(m_selected_item) (0x824), between WeaponIsGrenadeLauncherMode and WeaponIsLauncherMode; CurMagHasAmmo, GetCurNumMags, 0x5C0AE0, 0x5C2A90, 0x5C3000 and IncrZoomState call it -- the name ours, after SOCOM 1's CurWeaponIsM203Mode
 0x005BD7F0 0xF4 WeaponIsLauncherMode__5CZKitFi  # OVL2; by hand (the kit lane, round 11): WeaponIsGrenadeLauncherMode's code with IsLauncherWeapon (new in SOCOM II, the name ours); 0x5BD7E0 is its selected-item wrapper
 0x005BD8F0 0x108 WeaponIsM203Mode__5CZKitFi  # OVL2; s1:calls by hand (the kit lane, round 11): SOCOM 1's CurWeaponIsM203Mode on an index -- IsM203Weapon (or class 145, 0x3C5CA0), the fire mode past 3; 0x5BDA00 is its selected-item wrapper (the name ours, after SOCOM 1's)
 0x005BDA00 0x8 func_005BDA00  # OVL2

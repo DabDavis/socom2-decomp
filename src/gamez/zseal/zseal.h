@@ -911,6 +911,8 @@ public:
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
+    /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
+    virtual void UpdateViewCone();
     /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
