@@ -117,6 +117,74 @@ void Tile__7CAiMapsFPCQ26CAiMap6regionUiUi(CAiMaps *maps, const CAiMapRegion *r,
 bool SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(CAiMaps *maps, const CAiMapRegion *r, unsigned char type);
 }
 
+/* the AI's parameters ai::PARAM tests and sets, in its parser's order (the names its tags'; the
+ * enum ours, a byte) */
+enum AI_PARAM {
+    PARAM_NONE = 0, PARAM_COURAGE, PARAM_HEALTH, PARAM_SPEED, PARAM_ACCURACY, PARAM_SLEEP,
+    PARAM_STANCE, PARAM_AWARE, PARAM_AWARE_DECAY, PARAM_INSIDE, PARAM_OUTSIDE, PARAM_WEAPON_UP,
+    PARAM_SPRAY, PARAM_DOCORPSE, PARAM_DEEPSLEEPER, PARAM_NOFADE, PARAM_VISRANGE, PARAM_THROTTLE,
+    PARAM_ROLE, PARAM_SLEEP_REGION, PARAM_AWARE_COUNT, PARAM_CANCHAT, PARAM_REDSMOKE,
+    PARAM_LAST = 255
+};
+
+/* a parameter's name, "param_none" for none (OVL2 0x5DEB10: CTParam::Parse matches its tag against
+ * each in turn, where SOCOM 1's get_param(const char *) compared the tag with each name; the unit's
+ * first function, ahead of RegisterCommands. The default preset in a local and each case returning:
+ * the preset lands in the range test's delay slot and every case, the last too, branches to the
+ * shared return -- assigning in the cases drops the last branch; the name ours) */
+const char *get_param_name(AI_PARAM p)
+{
+    const char *s = "param_none";
+
+    switch (p) {
+    case PARAM_COURAGE:
+        return "courage";
+    case PARAM_HEALTH:
+        return "health";
+    case PARAM_SPEED:
+        return "speed";
+    case PARAM_ACCURACY:
+        return "accuracy";
+    case PARAM_SLEEP:
+        return "sleep";
+    case PARAM_STANCE:
+        return "stance";
+    case PARAM_AWARE:
+        return "aware";
+    case PARAM_AWARE_DECAY:
+        return "aware_decay";
+    case PARAM_INSIDE:
+        return "inside";
+    case PARAM_OUTSIDE:
+        return "outside";
+    case PARAM_WEAPON_UP:
+        return "weapon_up";
+    case PARAM_SPRAY:
+        return "spray";
+    case PARAM_DOCORPSE:
+        return "docorpse";
+    case PARAM_DEEPSLEEPER:
+        return "deepsleeper";
+    case PARAM_NOFADE:
+        return "nofade";
+    case PARAM_VISRANGE:
+        return "visrange";
+    case PARAM_THROTTLE:
+        return "throttle";
+    case PARAM_ROLE:
+        return "role";
+    case PARAM_SLEEP_REGION:
+        return "sleep_region";
+    case PARAM_AWARE_COUNT:
+        return "aware_count";
+    case PARAM_CANCHAT:
+        return "canchat";
+    case PARAM_REDSMOKE:
+        return "redsmoke";
+    }
+    return s;
+}
+
 /* the commands' ids (SOCOM 1's ai_cmdid, 0x18 bytes: RegisterCommands stores every command's id
  * in the first word, which each Parse copies into its block's type; the third is the type of the
  * command argument that carries a task's SEAL) */
@@ -639,14 +707,20 @@ struct CTLookAt : TASK_HDR {
     /* (the names ours) */
     void SetLooking(unsigned int n) { m_looking = n; }
 
-    Rfloat m_wait;   // 0x8
+    Rfloat m_wait;   // 0x8: the tag "wait"
     float m_timer;   // 0x10
-    unsigned char _14[0x18 - 0x14];
-    unsigned char m_18_0 : 4;   // 0x18
+    float m_rate;   // 0x14: the tag "rate" (0.85 unless given)
+    unsigned char m_kind : 4;   // 0x18: what is looked at -- 2 the entity (the names ours)
     unsigned char m_looking : 4;   // 0x18 bits 4-7 (bit 4: the look to clear at the end)
+    unsigned int m_flags : 16;   // 0x19: the tag "flags", look flags by name (lw/sw: a word's bits)
+    unsigned int m_18_24 : 8;
+    unsigned char _1c[0x28 - 0x1c];
+    TASK_ENT m_ent;   // 0x28: the tag "entity"
 
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
     static void End(_zanim_cmd_hdr *hdr);
+    static CTLookAt *Create(const char *name);
 };
 
 /* a scripted AI group (ai_group.cpp's class, OVL2 0x60C190-0x60EDFF: its Find by id, 0x60E460) */
@@ -727,6 +801,20 @@ struct CTComm : TASK_HDR {
         c->m_cmd = cmd;
         return c;
     }
+};
+
+/* ai::PLAY (SOCOM 1's CTPlay): anims played, their types at the block's end (the names ours) */
+struct CTPlay : TASK_HDR {
+    Rfloat m_8;   // 0x8
+    Rfloat m_10;   // 0x10
+    unsigned char _18[0x20 - 0x18];
+    signed char m_count;   // 0x20: the anims (SOCOM 1's a bitfield at 0x20 bit 1)
+    unsigned char _21;
+    unsigned char m_22;   // 0x22: 11 when made
+    unsigned char _23[0x30 - 0x23];
+    unsigned int m_anims[1];   // 0x30: m_count of them (SOCOM 1's at 0x24)
+
+    static CTPlay *Create(int count, unsigned int *anims, float a, float b);
 };
 
 /* the pursuit state as the task sets it (CAiSPursue, seal_ai.cpp's: its duration at 0x58) */
@@ -1183,6 +1271,29 @@ void CTHold::Begin(_zanim_cmd_hdr *hdr)
     }
 }
 
+/* a block made for an entity's name or none (OVL2 0x5D7E70: out of line, CTLookAt::Parse's first
+ * call; SOCOM 1's Parse built it inline and copied the name to the block's end -- SOCOM II still
+ * sizes the block for it but adds the name to the running anim's names; the name ours) */
+CTLookAt *CTLookAt::Create(const char *name)
+{
+    unsigned int size = TaskAlign(TaskStrLen(name)) + 48;
+    CTLookAt *cmd = (CTLookAt *)_calloc(size, 1, 0, 0);
+
+    cmd->hdr.data_size = size;
+    cmd->hdr.data_type = ai_cmdid[0];
+    cmd->m_kind = name ? 2 : 0;
+    cmd->m_flags = 1;
+    cmd->m_rate = 0.85f;
+    cmd->m_timer = CAiTimer::infinite;
+    cmd->m_wait = CAiTimer::infinite;
+    cmd->SetLooking(0);
+    cmd->m_ent.m_name = 0;
+    cmd->m_ent.m_id = CEntity::invalidId;
+    cmd->m_ent.m_type = 0;
+    cmd->m_ent.SetName(name);
+    return cmd;
+}
+
 /* the look drawn (OVL2 0x5D7850: the bit cleared in place gives the byte mask `andi 0xfb`; through
  * the int setter it is `li -5; and`) */
 void CTLookAt::Begin(_zanim_cmd_hdr *hdr)
@@ -1272,6 +1383,28 @@ bool CTPaint::Tick(_zanim_cmd_hdr *hdr, float *dT)
     }
     *dT = 0.0f;
     return true;
+}
+
+/* a block made for a count of anims, copied when given (OVL2 0x5D3F00: SOCOM 1's CTPlay::Create, out
+ * of line in both, called from the same place in CTPlay::Parse -- SOCOM II's anims at 0x30, the
+ * count a byte at 0x20, 11 at 0x22) */
+CTPlay *CTPlay::Create(int count, unsigned int *anims, float a, float b)
+{
+    unsigned int size = (count - 1) * 4 + sizeof(CTPlay);
+    CTPlay *cmd = (CTPlay *)_calloc(size, 1, 0, 0);
+
+    cmd->hdr.data_size = size;
+    cmd->hdr.data_type = ai_cmdid[0];
+    cmd->hdr.quad_align = true;
+    cmd->m_count = count;
+    if (anims) {
+        for (int i = 0; i < count; i++)
+            cmd->m_anims[i] = anims[i];
+    }
+    cmd->m_22 = 11;
+    cmd->m_8 = a;
+    cmd->m_10 = b;
+    return cmd;
 }
 
 /* (OVL2 0x5D4080: the AI tested and nothing done -- the test keeps the ternary's moves into v1 that
