@@ -151,6 +151,18 @@ void lintSub(LINT *pResult, LINT *a, LINT *b)
     memcpy(pResult, &t, sizeof t);
 }
 
+extern void MODIP(LINT *a, LINT *b);   /* largeint_asm.s: a %= b in place */
+
+/* the remainder into a third number, through a copy (SOCOM 1's MOD, lintPrime's call; round 18b) */
+void MOD(LINT *pResult, LINT *a, LINT *b)
+{
+    LINT t;
+
+    memcpy(&t, a, sizeof t);
+    MODIP(&t, b);
+    memcpy(pResult, &t, sizeof t);
+}
+
 extern unsigned int lintGetBits(LINT *p);       /* largeint_asm.s */
 extern int IsNotSmaller(LINT *a, LINT *b);
 extern void ShiftLeft(LINT *p, unsigned int n);

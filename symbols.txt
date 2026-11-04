@@ -12275,7 +12275,7 @@
 0x006290B8 0x9C func_006290B8  # OVL2 unaligned
 0x00629154 0x84 lintSubIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintSubIP(a, b) in EE assembly -- a -= b in place over all 32 words, the borrow by dsra32; after the bit-limited add as lintSubIP follows lintAddIP there
 0x006291D8 0x9C func_006291D8  # OVL2 unaligned
-0x00629274 0x42C func_00629274  # OVL2 unaligned
+0x00629274 0x42C MODIP  # OVL2 unaligned; s1:calls (round 18b: MOD calls it in place where SOCOM 1's MOD calls MODIP; one of LargeInt's assembly primitives here, SOCOM 1's C)
 0x006296A0 0x1C8 func_006296A0  # OVL2
 0x00629868 0x1DC func_00629868  # OVL2 unaligned
 0x00629A48 0x5C func_00629A48  # OVL2 unaligned

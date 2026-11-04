@@ -15,7 +15,7 @@
 # prime search's assert on its result ("nBits == lintGetBits(pPrime)"); SOCOM 1's IsGreater,
 # IsSMaller, IsNotGreater, IsNotSmaller (its order), ShiftRight, ShiftLeft, lintAddIP and
 # lintSubIP by their bodies; func_006290B8 and func_006291D8 are the add and subtract over the
-# words a bit count covers (count / 32 + 1, at most 32), new in SOCOM II; func_00629274 (a copy
+# words a bit count covers (count / 32 + 1, at most 32), new in SOCOM II; MODIP (a copy
 # of its second number, lintGetBits of both, a shift and subtract) and the two multiplies
 # func_006296A0 and func_00629868 (lintGetBits of both factors, three zeroed numbers, multu word
 # by word; the second takes a fourth argument) keep placeholders. The two `ori $2,$0,0x1` are the
@@ -602,10 +602,10 @@ func_006291D8:
 	.end	func_006291D8
 	.size	func_006291D8,.-func_006291D8
 
-	.globl	func_00629274
-	.type	func_00629274,@function
-	.ent	func_00629274
-func_00629274:
+	.globl	MODIP
+	.type	MODIP,@function
+	.ent	MODIP
+MODIP:
 	addiu	$29,$29,-320
 	sq	$23,176($29)
 	sq	$22,160($29)
@@ -896,8 +896,8 @@ func_00629274:
 	addiu	$29,$29,320
 	jr	$31
 	sll	$0,$0,0x0
-	.end	func_00629274
-	.size	func_00629274,.-func_00629274
+	.end	MODIP
+	.size	MODIP,.-MODIP
 
 	.globl	func_006296A0
 	.type	func_006296A0,@function
@@ -1139,7 +1139,7 @@ func_00629868:
 	sll	$0,$0,0x0
 	addiu	$4,$29,448
 	lwu	$5,28($29)
-	jal	func_00629274
+	jal	MODIP
 	sll	$0,$0,0x0
 	addiu	$8,$0,32
 	addiu	$9,$29,448
