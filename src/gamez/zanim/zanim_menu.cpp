@@ -1359,7 +1359,7 @@ bool UIIsSpaceForSaveGameFile(C2DAnimCmdHdr *hdr, float *dT)
     int space = theMemCard.GetFreeSpace();
 
     if (space <= 3000)
-        space += func_003A1060(&theMemCard, 0);
+        space += theMemCard.GetUsedSpace(0);
     return space >= 3000;
 }
 

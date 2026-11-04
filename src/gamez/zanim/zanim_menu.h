@@ -813,9 +813,6 @@ void func_00346C00();
 void func_0030C6A0();
 void func_0030C6E0();
 
-/* the memory card's used space: the row 0x3A1060 is CMemCard::GetUsedSpace() (zutil.h's), yet the
- * handler passes it an argument the name does not take -- left raw until its unit settles which */
-int func_003A1060(CMemCard *card, int arg);
 
 /* the text entry the chat commands open (SOCOM II's) */
 void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
