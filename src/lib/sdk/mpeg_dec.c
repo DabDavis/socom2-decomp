@@ -14,7 +14,9 @@
  * blocks BDEC's, every byte-exact as that text reads but where the IPU changed it. _updateTempTackData
  * is left to its matching draft. GCC round 30a the picture output's _dispRefImage (as first written)
  * and _dispRefImageField (`d->_080 = pts` before `d->_088 = 1`: the long store may alias the long load,
- * so it stays below it), over libmpeg.h's MpegRef with its time stamps, flags, centre offsets and display
+ * so it stays below it) and _getPtsDtsFlags (each product of the PTS interpolation a DImode __muldi3;
+ * `last + (half + odd)`; the flags ORed from the highest bit down -- fold pairs the six terms and each
+ * pair's operands follow the source's order), over libmpeg.h's MpegRef with its time stamps, flags, centre offsets and display
  * size named. Names are SOCOM 1's (s1:exact).
  *
  * The IPU's idle wait and the command write are macros, expanded inside the readers
@@ -2044,11 +2046,34 @@ int _isOutSizeOK(MpegDec *d, MpegRef *ref)
 /* GCC round 30a: a frame output -- its time stamps and flags into the caller's sceMpeg, the
  * aspect code its flags select (a 16-entry table, 0x1CE3E0), its display size and centre offsets;
  * the picture stored colour-converted or as RAW8 when the buffer holds it and the picture is valid */
-extern void _getPtsDtsFlags(MpegDec *d, MpegRef *ref, long *pts, long *dts, u_long *flags);
 extern void _csc_storeRefImage(MpegDec *d, MpegRef *ref);
 extern void _cpr8(MpegDec *d, MpegRef *ref);
 extern void _markOutput(MpegDec *d);
 extern u_int data_001CE3E0[16];
+
+/* a picture's time stamps and flags: with the default PTS gap set, a picture without a PTS is
+ * given the last one plus half the gap times its field count (the odd half alternated by a parity
+ * count); a PTM set by sceSetPtm overrides it once; the flags packed from the picture's */
+void _getPtsDtsFlags(MpegDec *d, MpegRef *ref, long *pts, long *dts, u_long *flags)
+{
+	if (d->ptsGapSet && ref->pts < 0 && d->_080 >= 0) {
+		int n = d->_088;
+		int odd = (n & 1) * (d->ptsGap & 1) * (d->_090 & 1);
+
+		*pts = d->_080 + ((int)((d->ptsGap * n) >> 1) + odd);
+		if ((n & 1) * (d->ptsGap & 1))
+			d->_090++;
+	} else
+		*pts = ref->pts;
+	if (d->ptmSet == 2 && d->ptm >= 0) {
+		*pts = d->ptm;
+		d->ptmSet = 0;
+		d->ptm = -1;
+	}
+	*dts = ref->dts;
+	*flags = ((u_long)ref->_34 << 8) | ((u_long)ref->_38 << 7) | ((u_long)ref->_3c << 6) |
+		((u_long)ref->_40 << 5) | ((u_long)ref->_30 << 3) | (u_long)ref->_2c;
+}
 
 void _dispRefImage(MpegDec *d, MpegRef *ref, int frameNo)
 {
