@@ -248,7 +248,10 @@ struct UniverseStatus : public MediusUniverseStatusListResponse {
     char m_url[0x80];   // 0x358
 };   // 0x3d8
 
-/* a line of the universe's news (the SDK's MediusGetUniverseNewsResponse) */
+/* a line of the universe's news (the SDK's MediusGetUniverseNewsResponse): a plain struct -- copied
+ * into raw storage as one block (the reserve 0x3000A0, the insert 0x2FF960's constructions), assigned
+ * member by member (the insert's moves); an empty constructor of its own made every copy member by
+ * member (0x1E0 against 0x1A8) */
 struct MediusGetUniverseNewsResponse {
     char MessageID[21];   // 0x0
     MediusCallbackStatus StatusCode;   // 0x18
@@ -257,7 +260,9 @@ struct MediusGetUniverseNewsResponse {
 };   // 0x120
 
 /* the universes and the news: room for 16 of each at the start (the initialiser calls the two
- * reserves, 0x300250 and 0x3000A0; the classes' names ours) */
+ * reserves, 0x300250 and 0x3000A0, byte-exact; the classes' names ours). Their inserts are the
+ * target's size and OPEN on the class insert's in-place registers alone (include/vector's open:
+ * 0x2FEE50 150 instructions, 0x2FF960 45) */
 class UniverseStatusList : public std::vector<UniverseStatus> {
 public:
     UniverseStatusList() { reserve(16); }
@@ -427,7 +432,11 @@ public:
     class CAcctDB : public std::vector<AcctRecord>, public CSaveModule, public CLobbySaveModule {
     public:
         /* a module of the game save and of the lobby's, room for 48 accounts (theAcctDB's, built
-         * by the unit's initialiser 0x4022D0) */
+         * by the unit's initialiser 0x4022D0). The reserve 0x2FECB0 is OPEN, 0x194 against 0x19C:
+         * the target cuts its construct() to one level -- the placement new 0x2FECA0 and the copy
+         * constructor both called, as the accounts' insert 0x2FE3E0 does -- where here the reserve
+         * inlines the placement new and calls only the copy constructor (an own-code stand-in that
+         * copy-constructs an account first, before or after the unit's functions, changes nothing) */
         CAcctDB() : CSaveModule("CAcctDB", theMemCard.m_gameSave), CLobbySaveModule("CAcctDB", GetLobbySaveManager())
         {
             reserve(48);
