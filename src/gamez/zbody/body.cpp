@@ -599,12 +599,9 @@ bool CBlendOverlay::Trigger(bool reverse)
 }
 
 /* the overlay run on: its time moved by dT, the anim placed, put back once played out (SOCOM 1's).
- * OPEN, 3 instructions: the first division's operands trade float registers (the target loads
- * m_ovlyT into $f0, the script's time into $f1; the second division, through the loop share, is
- * the target's). Tried: a (float) cast, the time through a local, a compound division, the time
- * or the fraction through an inline (an accessor, a divide taking either order), the overlay's
- * time read into a local first, the done fraction declared first, m_anim->m_anim spelled out --
- * all leave the pair as it is (ScaleTime, which fixed IsTriggerTime's pair, is a multiply) */
+ * The script's time in a CONST local: it survives MW's copy propagation as a named variable,
+ * numbered before the overlay time's load, so the division's operands take the target's $f0/$f1
+ * (a plain local, a cast, an accessor or a divide inline are propagated away: the pair swapped) */
 bool CBlendOverlay::Tick(CBody *body, float dT)
 {
     if (m_state == 1)
@@ -617,8 +614,9 @@ bool CBlendOverlay::Tick(CBody *body, float dT)
     if (!m_anim)
         return false;
     CZSIScriptCommon *anim = m_anim->m_anim;
-    float frac = m_ovlyT / anim->m_10;
-    float done = m_ovlyT / (anim->m_10 * anim->TrueLoopTime());
+    const float time = anim->m_10;
+    float frac = m_ovlyT / time;
+    float done = m_ovlyT / anim->LoopTime();
 
     body->m_blends.Top();
     if (m_state == -1) {
@@ -978,20 +976,19 @@ void CZBodyAnimBlend::GetVelocity(CPnt3D *vel)
     vel->z = sum.z;
 }
 
-/* the frame of the step: the blend's time fraction in sixtieths (SOCOM 1's called fptosi).
- * OPEN, 3 instructions (right size): the target loads m_tfrac into $f1 and 60 into $f0 and
- * multiplies $f0 * $f1 -- SOCOM 1's registers too; every spelling tried (either operand order, a
- * float local for either, the product in a local) loads m_tfrac into $f0. The 60 through an inline
- * returning it (`(int)(FootRate() * m_tfrac)`) gives the target's operand order, 2 instructions off:
- * the two registers still trade places, with either order, a (float) cast or a local. Round 4: the
- * fraction through an inline accessor, a conversion helper taking it by value (either operand
- * order), and an in-place scaling inline (ScaleTime's shape: the product lands in the first
- * parameter's register, the second gets $f0 -- the registers right only with the product in m_tfrac's)
- * -- none gives 60 in $f0 with the product there too */
+/* the frame of the step: the blend's time fraction in sixtieths (SOCOM 1's called fptosi). The
+ * target loads m_tfrac into $f1 and 60 into $f0, as SOCOM 1 does: MW creates a float constant's
+ * register before the load's in code generation, so the constant is coloured second (f1) unless
+ * the fraction is a NAMED local that survives into the colouring, numbered before both (igdump:
+ * build/scratch/core/ig/). A plain local is propagated into its use and vanishes (so are an
+ * accessor's result, a by-value helper's parameter, a const or a macro for the 60); a CONST local
+ * is not */
 
 int CZBodyAnimBlend::ThisFoot()
 {
-    return (int)(m_tfrac * 60.0f);
+    const float t = m_tfrac;
+
+    return (int)(t * 60.0f);
 }
 
 /* the representative's weight (SOCOM 1's) */
