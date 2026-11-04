@@ -1588,7 +1588,10 @@ void func_00295660();
  * of the config save, the members in order -- the AI parameters' defaults, the three message queues,
  * the chat editor and the message ring, the lists, the camera path, the career stats -- then SOCOM
  * 1's body in its order, SOCOM II's members among it (the talker's anchor, the bit setters, the
- * elevation), the camera path reserved last */
+ * elevation), the camera path reserved last. The default text goes through CSaferStr's
+ * operator=(const char *): its null test folds, and the erase arm it drops leaves the 16 frame bytes
+ * the target has and nothing touches (assign() called straight is the same code in an 80-byte frame;
+ * dead locals, an allocator temporary or a volatile pointer add nothing) */
 CMission::CMission()
     : CSaveModule("CMission", theMemCard.m_configSave), m_state(MISSION_UNLOADED), m_database(0),
       m_timer(0), m_ladders(0), m_pNetGame(0), m_music_hold(0.0f), m_satcheltimer(10.0f)
