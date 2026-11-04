@@ -2304,7 +2304,7 @@
 0x0023D610 0x1F8 func_0023D610  # OVL1
 0x0023D810 0x50 SetTrans__12CategorySlotFf  # OVL1; by hand (the HUD lane: slot 11 of CategorySlot's vtable 0x405D80 -- its name's and bitmap's SetTrans through their tables)
 0x0023D860 0x714 func_0023D860  # OVL1
-0x0023DF80 0x50 func_0023DF80  # OVL1
+0x0023DF80 0x50 __ct__12CategorySlotFv  # OVL1; by hand (the HUD lane, round 38: hud_mpweaponsel.cpp -- CategorySlot's implicit constructor (C2D's, CWeaponSlot's and CategorySlot's vtables, its bitmap and name), the out-of-line copy CMPWeaponSel's constructor 0x241A90 hands __construct_array for the page's four slots; m2c's draft matched it)
 0x0023DFD0 0x60 __dt__11CWeaponSlotFv  # OVL1; by hand (slot 0 of CWeaponSlot's vtable 0x405E00: the implicit destructor)
 0x0023E030 0x340 func_0023E030  # OVL1
 0x0023E370 0x268 Open__12CMPWeaponSelFv  # OVL1; ours (the HUD lane, round 38: hud_mpweaponsel.cpp -- the selector opened on the list: m_1530/m_1531 255, the five slots emptied and given the owner's character's first weapons (CCharacterType::GetWeaponByIndex read again when it reads 0, through CZWeaponList::GetWeapon), the page shown the list's slot, the cursor -1 then Scroll(2), On inlined, the update 0x23E030, the controller's SetMenuState(stateWeaponSel, false), both lists' m_owner, the state 2; SetState's list case calls it from closed)
@@ -2323,7 +2323,7 @@
 0x00240D50 0x104 UnInit__12CMPWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x38E0 only in a network game, the member 0x241A90 constructs -- a SOCOM II selector honouring the server's Enable_203FRAG.. valves; the class name ours; s1:calls had shifted SOCOM 1's names one member along)
 0x00240E60 0xC2C Init__12CMPWeaponSelFv  # OVL1; s1:calls by hand (the HUD lane: CHUD::Init calls it on CHUD+0x38E0, the network selector, only in a network game -- UnInit's test too; it lists the selected slots, loads the three backdrops and sets the Enable_203/GL/F2000 valves; after UnInit, before the constructor, as SOCOM 1's selector units end)
 0x00241A90 0x150 __ct__12CMPWeaponSelFv  # OVL1; by hand (CHUD's constructor builds CHUD+0x38E0 with it, after UnInit and Init at 0x240D50/0x240E60; no vtable, so no RTTI name: the class name ours)
-0x00241BE0 0x48 func_00241BE0  # OVL1
+0x00241BE0 0x48 __ct__12SelectedSlotFv  # OVL1; by hand (the HUD lane, round 38: hud_mpweaponsel.cpp -- SelectedSlot's implicit constructor (C2D's, CWeaponSlot's and SelectedSlot's vtables, its name), the out-of-line copy CMPWeaponSel's constructor 0x241A90 hands __construct_array for its five slots, right after it; m2c's draft matched it)
 0x00241C30 0x64 SetTrans__10CHealthBarFf  # OVL1; by hand (slot 11 of CHealthBar's vtable 0x405EF0, C2D's SetTrans: SetTrans on the bitmaps at +0x30, +0xB0, +0x130)
 0x00241CA0 0xC SetPos__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x1C/0x20; CMPInfoBox's Init and re-init call it on CMPInfoBox+0x20 before SetSize; the name ours)
 0x00241CB0 0xC SetSize__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x24/0x28, after SetPos; the name ours)

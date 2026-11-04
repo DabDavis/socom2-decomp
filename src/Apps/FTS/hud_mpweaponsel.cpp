@@ -243,6 +243,13 @@ inline void CMPWeaponSel::SetF2000(bool on)
     SetValve("Enable_F2000HE", on ? 9 : 0);
 }
 
+/* the members built in place: the title, the backdrops, the category page (its polys, list and
+ * slots through __construct_array), the list and the five selected slots (0x241A90; CHUD's
+ * constructor calls it -- the unit's last function, so defined first) */
+CMPWeaponSel::CMPWeaponSel() : m_1538(1.0f), m_153c(0)
+{
+}
+
 /* closed; the slots listed; the backdrops loaded, added to the HUD's phases and faded out; the
  * grenades of the owner's primary weapon let through, the others' not */
 void CMPWeaponSel::Init()

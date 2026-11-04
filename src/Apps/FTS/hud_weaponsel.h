@@ -267,6 +267,14 @@ public:
      * ours: its last two arguments passed through to the slot's test) */
     int NextWeapon(bool up, int index, EQUIP_ITEM type, WEAPON_KIND kind);
 
+    /* no owner, no slots yet (inline: the selector's constructor builds two) */
+    SlotList()
+    {
+        for (int i = 0; i < 5; i++)
+            m_slots[i] = 0;
+        m_owner = 0;
+    }
+
     class CMPWeaponSel *m_owner;   // 0x18: the selector (its Init sets the category page's)
     unsigned char _1c[0x20 - 0x1c];
     CWeaponSlot *m_slots[5];   // 0x20
@@ -281,6 +289,9 @@ extern "C" void func_0023D860(CMPWeaponCategories *page, float dT);
 /* the selector's category page (no vtable, so no RTTI name: the name is ours) */
 class CMPWeaponCategories {
 public:
+    /* inline: the selector's constructor builds it in place */
+    CMPWeaponCategories() : m_f34(1.0f), m_f38(0) {}
+
     /* the page's arrows, title, backdrops and list off (its category slots stay) */
     void Off()
     {
@@ -331,7 +342,9 @@ public:
     bool m_pulseup;   // 0xf2c: the blend rising
     unsigned char _f2d[0xf30 - 0xf2d];
     class CMPWeaponSel *m_owner;   // 0xf30: the selector (its Init sets it)
-    unsigned char _f34[0xf40 - 0xf34];
+    float m_f34;   // 0xf34: 1 from the constructor
+    int m_f38;   // 0xf38
+    unsigned char _f3c[0xf40 - 0xf3c];
 } __attribute__((aligned(16)));   // 0xf40 bytes
 
 /* the network game's weapon selector: slot lists honouring the server's weapon valves
@@ -378,7 +391,9 @@ public:
     bool m_203;   // 0x1532: the M203's grenades enabled (Enable_203FRAG and the rest)
     bool m_f2000;   // 0x1533: the F2000's (Enable_F2000FRAG ...)
     bool m_gl;   // 0x1534: the grenade launcher's (Enable_GLFRAG ...)
-    unsigned char _1535[0x1540 - 0x1535];
+    unsigned char _1535[0x1538 - 0x1535];
+    float m_1538;   // 0x1538: 1 from the constructor
+    int m_153c;   // 0x153c
 } __attribute__((aligned(16)));   // 0x1540 bytes
 
 #endif
