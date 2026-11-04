@@ -1927,6 +1927,52 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 22** (CSealUnit's creators; CZKit's lase, detonation and 2X ammo):
+  - a walk over a static list that two functions share, written as a static inline helper, puts its iterator below the
+    callers' temporaries in the frame and keeps its end in a saved register; written in place, the iterator takes an
+    earlier slot and the end is rebuilt each pass (CreateMultiPlayerUnits 0x5ECCD0 through `UpdateUnits()`, taking the
+    end into a local);
+  - an int local passed by address to an inline (`SetData(&data, 4)`) takes the slot right under the function's first
+    named iterator, an inline's by-value parameter (SetDataPtr) lands lower; a list push_back reached through one more
+    inline level puts the insert's temporaries under a later walk's;
+  - in a leaf, a field read in place at each test, not taken into a local, keeps the target's temporary registers
+    (InitalizeSealUnit 0x5EC9F0's team); a member vector reached through a reference local has its address computed once
+    into a register, through the global MW folds the address into each load;
+  - a pointer-vector walk `for (it = begin(), e = end(); ...)` gives the iterator s2 and the end s1 (the end declared ahead
+    swaps them); a pointer local declared before a struct copy-initialisation (`CPnt3D c = CPnt3D::zero`) loads before the
+    copy;
+  - CMission::Open picks CreateSinglePlayerUnits 0x5EC6A0 or CreateMultiPlayerUnits on theNetwork.m_bNetwork, as SOCOM 1
+    does; FetchLaseTarget 0x5BFE60, DetonateRemoteExplosives 0x5C0130 and Setup2XAmmo 0x5C75F0 sit in SOCOM 1's order;
+    0x5C7E00 is CZKit::Init by order and calls (unwritten);
+  - open: CreateSinglePlayerUnits (11: the "units made" flag's store scheduled after the walk's first-node load in the
+    target -- the order-5 test a one-case switch, the data an int local and push_back one inline level deeper got it this
+    close), CZKit::UnInit 0x5C7CE0 (0xCC vs 0x120: the target keeps its three pointer-vector iterators in the frame and
+    copies them through $f0; include/vector's pointer iterator stays in registers in every form tried),
+    GetTimeSinceLastSighting 0x60A590 (3: the clock always in $f0, under 3.0b50, 3.0b38 and 3.0b22 too), 0x5F6270 (0x48 vs
+    0x44).
+- **Tells from the HUD, round 28** (a new c2dfont.cpp: SOCOM II's font and its Korean composer, 0x359820-0x35F8EF):
+  - pieces written `(it - 1)->field` a statement at a time, the iterator kept on the stack (end() stored, then copied
+    through a float register), are a reverse iterator -- a class holding end() and dereferencing `current - 1`: AddPiece
+    0x35C2C0 matched only so (include/vector has no rbegin(); the unit carries its own);
+  - a row of -1 shorts filled by a loop that is not unrolled is an array of a class with an inline -1 constructor (a
+    written `for` loop unrolls 8x): the table rows' two resizes match so;
+  - a target calling tiny inline pieces out of line cuts the inline that holds them a level: one more inline level under
+    the int reader (SOCOM 1's GetRdrArrayInt) reproduced ReadPoint's cut and emits the point reader's five pieces
+    0x35A140-0x35A230; the target inlines CHangulFont() one level (0x35A240-0x35A2B0 not emitted here: open);
+  - `store(v >= 0 ? v : def)` doubles the target's counter step into both arms, `if (v < 0) v = def;` does not; naming the
+    first call argument as a local (`ul = findtag(e, "UL"); AddPiece(ul, findtag(e, "LR"), h)`) gives the loop item's
+    registers;
+  - a Metrowerks unit's static named like another unit's data.txt row resolves to that row and reports WRONG REFERENCE:
+    give statics names unique to their unit;
+  - 0x35E100's s1:calls name vector_imp<LOD>::insert was wrong: resize<CLayout> 0x35CC50 calls it, its element 0x48 bytes
+    (renamed to the CLayout instance); the class names (CHangulFont, CLayout, CJamoPlace, CTrailRow, CVowelRow, CJamoIndex,
+    C2DPlacement, C2DGlyphRef) and the JAMO enum are ours;
+  - open: AddJamo 0x359820 (22: registers, two stack slots), Compose 0x3599D0 and LoadChar 0x35BEF0 (8 bytes: the
+    font-texture lookup's branch layout), Load 0x359C40 and ReadPlacement 0x35AA80 (4: the findtag wrapper 0x35A240 called
+    out of line), GetGlyph 0x35A3A0 (frame 0x70 vs 0x50), the range loaders (registers), the tail's copy constructors
+    0x35D370/0x35D420 (include/vector's copy constructor would call begin, end, the deleter's constructor and the
+    allocator out of line, 0x35D490-0x35D4E0) and the four inserts; 0x359740, a list<const void *> piece only
+    __list_imp::resize 0x3C0B14 calls, unassigned.
 - **Tells from the online lobby, round 13** (CAcctDB::Save, the stats record, Login/Register/CreateGame, the deque's end):
   - a plain variable's argument move is placed after a constant argument's when the variable is declared in an inner block,
     before it when declared in the enclosing block (CAcctDB::Save: `total` moved into the `if (size)` block);
@@ -7424,6 +7470,52 @@ lintPrime -- 18 of 21, the whole C part but the Montgomery exponentiation and it
 type-22 message 0x635E60 OPEN; 89 of 95) -- 8 rows new to the map's byte-exact rows (`src/lib/medius` 926 ->
 934 of 992), none superseding a draft; 6 rows named (QUO, EMOD, MULT, XMOD, lintIncrement, lintDecrement by
 SOCOM 1's bodies, order and calls; 0x6283F8's `s1~` noted), 4 data rows. No tool changed.
+
+**Round 20b: LargeInt.c's loops, Dme.c's structure registry, DmeLocal.c's ping and timebase by SOCOM 1's bodies.**
+
+- **A loop entered in its middle is one loop.c leaves alone**: lintIncrement and lintDecrement (open since
+  round 8b) are for loops rotated only up to the nonzero words' `break` -- word 0's exit a `return`
+  (lintIncrement) or a `break` in an else after the borrow case (lintDecrement), past expand_end_loop's
+  30-insn scan; the moved region then holds the arms' labels, so its test is not copied, and the entry (i
+  known 0) is threaded straight into word 0's case. With two entries the loop is not optimized: the index is
+  recomputed (`sll; addu`) and -1 loaded inside, as in the target and SOCOM 1's copies. lintIsbSPRP's squaring
+  loop is labels and gotos (no loop notes: jump.c copies no test, loop.c moves no address into a second
+  register) -- any loop statement is copied, the shape the vendor wrote there not found; its first IsEqual's
+  failure branch holds `r = 1; goto test`, its `return 1` the block the loop's IsEqual cross-jumps to.
+- **A pointer initialised at its declaration aliases every global**: two sets (`= 0` and the address) leave
+  alias analysis no base for it, so its stores may clobber anything and the target reloads around them --
+  NetObjectField's body 0x623F30 reloads NetFieldCount after the field's stores only as `NetField *pField =
+  0;` (26 words otherwise). The same idea read backwards closed nothing open; try it where a target reloads a
+  global ours keeps.
+- **Round 13c's callee-definition rule, three more times**: NetFreeRemoteObject's last `beqz` (DmeFree defined
+  above it, and void: as int its reload of the record took v1), the timebase callback 0x619138's `bne`/`beqz`
+  (NetResetTime and NetGetTime's body defined above), and round 19b's 0x635E60 by another route (below).
+  Defining a callee can also move a later function: NetGetLocalTime's body written in DmeLocal.c is
+  byte-exact but moves func_0061C7A8's registers after DMEmalloc (23s), so it stays a draft (round 14b's rule).
+- **The message is the cursor rewound**: 0x635E60 passes `pMsg - 29` after its last `pMsg += 2`, not the
+  buffer's address -- then the write pointer stays one register updated in place (round 19b's open).
+- **A record typed as its filler writes it closes its reader**: 0x6192A0 fills a ping slot (a halfword port, the
+  callback as the in-use word, the world and client) and so types it; round 13b's 0x61C9E8, which read the
+  port as an int and called the flag through a cast (16 bytes long), is byte-exact under that type.
+- **Shapes, measured**: `pStruct->a[pStruct->n] = x; pStruct->b[pStruct->n] = y; pStruct->n++;` (the
+  increment inside the index computes the count's address once and loop.c hoists it: 65s); an index zeroed at
+  its declaration is the prologue's `move s3,zero`; GCC's multiply-accumulate for `nTotal += a * b` (madd,
+  the accumulator zeroed by `mtlo` at the entry); a sample index bumped right after its store (`a[n++] = x`) to
+  reach the following test's delay slot.
+- **Names**: RegisterChildStructure (0x624070: SOCOM 1's static of that name, fifth of the same six-function
+  object, `s1:order+body`), NetResetTime (0x614838: SOCOM 1's, byte-identical, before DMEmalloc; no Dme.c
+  wrapper calls it); data: NetFieldList, NetStructureList, NetFieldCount, NetStructureCount,
+  GlobalObjectFieldCount, GlobalObjectFieldList, CurrentNetTime (SOCOM 1's at the same accesses).
+- **Open, diagnosed in place**: rt_udp's 0x63F168 (2: `li a0,-1` against `move a2,sp` for the call's slot --
+  sched1's ready-list tie goes to the lower LUID; a pseudo dying at a2's move would weigh less, no spelling
+  found) and 0x6419E8 (round 19b's), and the earlier opens.
+
+Hand-written in round 20b: `medius/largeint.c` (+3: lintIncrement, lintDecrement, lintIsbSPRP -- 21 of 21, the C
+part whole but the Montgomery exponentiation), `medius/rt_msg_client.c` (+1, 0x635E60: 90 of 95), `medius/dme.c`
+(+3: 0x623F30, RegisterChildStructure, 0x624180; 90 of 90), `medius/dmelocal.c` (+8: 0x613FD0, NetResetTime,
+DmeFree, 0x615068, NetFreeRemoteObject, 0x619138, 0x6192A0, and 0x61C9E8 closed) -- 15 functions byte-exact
+(`src/lib/medius` 934 -> 949 of 1,002), 12 rows new to the map's byte-exact rows, 3 superseding matched drafts
+(NetResetTime, DmeFree, 0x615068); 2 rows named, 7 data rows. No tool changed.
 
 ## Open, and next
 

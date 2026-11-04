@@ -230,18 +230,8 @@ public:
 
 extern CTCMColumn g_tcmColumns[8];
 
-/* the tree's (0x231A30-0x23624F, not written yet): the caption cut to a length, the name, the
- * second string, the message delay, the subtree's display */
+/* the tree's menu builder (0x2344E0, hud_tcmtree.cpp's: not written yet) */
 extern "C" {
-void func_00232170(CTCMNode *node, const char *caption, int len);
-void func_00232100(CTCMNode *node, const char *name);
-void func_002320E0(CTCMNode *node, const char *s);
-void func_00232240(CTCMNode *node, float delay);
-void func_00231BA0(CTCMNode *node);
-void func_002356D0(CTCM *tcm);
-void func_00232890(CTCMSounds *sounds, int which);
-void func_00231FD0(CTCMNode *node);
-void func_00232950(CTCMSounds *sounds);
 void func_002344E0();
 }
 

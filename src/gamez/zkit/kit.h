@@ -166,6 +166,11 @@ public:
      * allowed (0x5BD530) -- placed (0x5BE9A0), or the item before it taken back (OVL2 0x5C0020;
      * SOCOM 1's HandlePlacingExlosive, sic, which placed it inline) */
     void HandlePlacingExlosive(EQUIP_ITEM item, float a, float b);
+    /* the laser target the SEAL's aim point is near: the first of the AI maps' laser names whose cell
+     * is within range of him and whose anim of that name is ready (SOCOM 1's; OVL2 0x5BFE60) */
+    bool FetchLaseTarget();
+    /* the SEAL's remote charges in range set off, the detonator taken up (SOCOM 1's; OVL2 0x5C0130) */
+    void DetonateRemoteExplosives();
     /* the item of a kind taken in hand (OVL2 0x5C8A20: SOCOM 1's, unwritten) and the item at an
      * index (OVL2 0x5C4B10: SOCOM 1's, unwritten) */
     bool SetCurItemEnum(EQUIP_ITEM item);
@@ -306,6 +311,11 @@ public:
     /* the explosive's damage taken from the first explosive's ammunition (OVL2 0x5C77B0, new in
      * SOCOM II: PostSetupItems calls it; the name ours) */
     void SetupExplosiveDamage();
+    /* with item 194 held, each rifle's magazines doubled (SOCOM 1's; OVL2 0x5C75F0) */
+    void Setup2XAmmo();
+    /* the items' nodes deleted, each that has no parent, the pointers cleared and the list emptied,
+     * the light map deleted (SOCOM 1's; OVL2 0x5C7CE0) */
+    void UnInit();
     void *GetCurAmmo();
     void NVG_Enabled(bool on);
     bool NVG_Enabled() const;
@@ -439,7 +449,9 @@ public:
     unsigned char _55[0x58 - 0x55];
     float m_screenoffset_x;   // 0x58 (SOCOM 1's 0x44)
     float m_screenoffset_y;   // 0x5c (SOCOM 1's 0x48)
-    unsigned char _60[0x6c - 0x60];
+    float m_lase_timer;   // 0x60 (SOCOM 1's 0x4c)
+    class CZAnim *m_lase_anim;   // 0x64 (SOCOM 1's 0x50)
+    struct CKitMapName *m_lase_mapname;   // 0x68 (SOCOM 1's CAiMap::name *, 0x54)
     unsigned int m_itemstate[30];   // 0x6c (SOCOM 1's 0x58): bit 3, the item in use
     CZFTSWeapon *m_item[30];   // 0xe4 (SOCOM 1's 0xd0)
     void *m_ammo[30];   // 0x15c (SOCOM 1's CZAmmo *, 0x148)
@@ -451,7 +463,8 @@ public:
     EQUIP_ITEM m_hand_item;   // 0x7f0: the hand slot's item kind
     unsigned char m_iteminuse[30];   // 0x7f1 (SOCOM 1's 0x7d8: 0x5B9A00 closes it up with the items)
     int m_cur_zoom;   // 0x810 (SOCOM 1's 0x7f8)
-    unsigned char _814[0x81c - 0x814];
+    int m_restore_zoom;   // 0x814 (SOCOM 1's 0x7fc)
+    int m_burst_count;   // 0x818 (SOCOM 1's 0x800: DetonateRemoteExplosives counts up)
     float m_81c;   // 0x81c: a wait the explosive's placing needs run out (SOCOM 1's tested its
                    // m_fire_delay there; the name ours)
     float m_fire_delay;   // 0x820 (SOCOM 1's 0x804)
@@ -463,7 +476,9 @@ public:
      * environment's pickup code (OVL2 0x59F0C0, 0x59F730) sets, reads and clears it through the
      * three accessors below 0x5B9020 (the names ours) */
     std::vector<void *> m_itemptr;
-    unsigned char _840[0x8a0 - 0x840];
+    unsigned char _840[0x884 - 0x840];
+    zdb::CLightMap *m_lightMap;   // 0x884 (SOCOM 1's 0x864)
+    unsigned char _888[0x8a0 - 0x888];
     float m_explosiveDamage;   // 0x8a0: the first explosive's ammunition's damage (new; the name ours)
     unsigned char _8a4[0x8b8 - 0x8a4];
     float m_pickupRequestWait;   // 0x8b8 (SOCOM 1's 0x878)

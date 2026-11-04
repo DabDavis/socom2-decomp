@@ -64,7 +64,7 @@ void CTCM::ClearItems()
 
 void CTCM::Reset()
 {
-    func_00231FD0(this);
+    DeleteChildren();
     SetCache(0);
     m_text.ClearAndWipe();
     m_text2.ClearAndWipe();
@@ -73,7 +73,7 @@ void CTCM::Reset()
     C2D &root = m_root;
 
     root.clear();
-    func_00232950(&m_sounds);
+    m_sounds.Clear();
     m_items.clear();
 }
 
