@@ -258,19 +258,27 @@ zdb::CNode *GetMenuNode()
 }
 
 
+/* (pinned: __sinit_zanim_menu.cpp calls it, where MW would inline it into the initialiser) */
+#pragma auto_inline off
 CMenuStack::CMenuStack()
 {
     m_top = 0;
     m_count = 0;
     m_popup = 0;
 }
+#pragma auto_inline reset
 
 /* OPEN, 1 instruction (round 2: the size now right, written as FlushHistory(true) and CleanPopup()):
  * the history's member destruction reads m_free's data_ through the pointer its this-tests use,
  * `addiu v0,s2,3636 ... lw a0,8(v0)`, where MW folds it into lw a0,0xE3C(s2) -- m_used's, destroyed
  * after, is folded in the target too (lw a0,2096(s2)). Round 1: with FlushHistory written out the
  * same instruction was left; m_used as CMenuHistory's base gives the same fold. include/vector's
- * pointer back() and push_back a level lower would likely settle the first form */
+ * pointer back() and push_back a level lower would likely settle the first form. Round 3 (the core
+ * lane): a user-declared ~CMenuHistory() {}, m_free or m_used as vector<void *>/<const char *>, a
+ * CMenuHistory reference local, FlushHistory written out, the constructor defined after the
+ * destructor or with mem-initializers -- the same instruction each time. (Our unit also emits an
+ * out-of-line ~CMenuHistory and Flush the image does not hold; whether the linker strips them is
+ * not known) */
 CMenuStack::~CMenuStack()
 {
     FlushHistory(true);
@@ -1177,7 +1185,7 @@ _zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
     func_0032DC00(rdr, "INTERLACE", &cmd->m_interlace);
     cmd->m_stream_type = 0;
     cmd->m_stream = 0;
-    stream = func_0032F0D0(rdr, "AUDIOSTREAM");
+    stream = zrdr_findtag(rdr, "AUDIOSTREAM");
     if (stream) {
         if (stream->type == 1) {
             cmd->m_stream_type = 0;
@@ -1476,13 +1484,13 @@ _zanim_cmd_hdr *UIGetPlayerInfoParse(const char *name, _zrdr *rdr)
         strcpy(buf, s);
         cmd->SetArgument(buf);
     }
-    if (func_0032F0D0(rdr, "BRIEFING"))
+    if (zrdr_findtag(rdr, "BRIEFING"))
         cmd->m_what = 0;
-    else if (func_0032F0D0(rdr, "CLAN"))
+    else if (zrdr_findtag(rdr, "CLAN"))
         cmd->m_what = 1;
-    else if (func_0032F0D0(rdr, "FRIEND"))
+    else if (zrdr_findtag(rdr, "FRIEND"))
         cmd->m_what = 2;
-    else if (func_0032F0D0(rdr, "LADDER"))
+    else if (zrdr_findtag(rdr, "LADDER"))
         cmd->m_what = 3;
     else
         cmd->m_what = 0;
@@ -1682,28 +1690,28 @@ _zanim_cmd_hdr *UIGetLadderInfoParse(const char *name, _zrdr *rdr)
 
     cmd->header.timeless = 1;
     cmd->header.data_size = sizeof(UILadderCmd);
-    if (func_0032F0D0(rdr, "CLAN")) {
-        if (func_0032F0D0(rdr, "Top10"))
+    if (zrdr_findtag(rdr, "CLAN")) {
+        if (zrdr_findtag(rdr, "Top10"))
             cmd->m_op = 7;
-        else if (func_0032F0D0(rdr, "LadderPressUp"))
+        else if (zrdr_findtag(rdr, "LadderPressUp"))
             cmd->m_op = 8;
-        else if (func_0032F0D0(rdr, "LadderPressDown"))
+        else if (zrdr_findtag(rdr, "LadderPressDown"))
             cmd->m_op = 9;
-        else if (func_0032F0D0(rdr, "LadderUp"))
+        else if (zrdr_findtag(rdr, "LadderUp"))
             cmd->m_op = 10;
-        else if (func_0032F0D0(rdr, "LadderDown"))
+        else if (zrdr_findtag(rdr, "LadderDown"))
             cmd->m_op = 11;
         else
             cmd->m_op = 6;
-    } else if (func_0032F0D0(rdr, "Top10")) {
+    } else if (zrdr_findtag(rdr, "Top10")) {
         cmd->m_op = 1;
-    } else if (func_0032F0D0(rdr, "LadderPressUp")) {
+    } else if (zrdr_findtag(rdr, "LadderPressUp")) {
         cmd->m_op = 2;
-    } else if (func_0032F0D0(rdr, "LadderPressDown")) {
+    } else if (zrdr_findtag(rdr, "LadderPressDown")) {
         cmd->m_op = 3;
-    } else if (func_0032F0D0(rdr, "LadderUp")) {
+    } else if (zrdr_findtag(rdr, "LadderUp")) {
         cmd->m_op = 4;
-    } else if (func_0032F0D0(rdr, "LadderDown")) {
+    } else if (zrdr_findtag(rdr, "LadderDown")) {
         cmd->m_op = 5;
     } else {
         cmd->m_op = 0;
@@ -2307,7 +2315,7 @@ _zanim_cmd_hdr *UIGetMissionInformationParse(const char *name, _zrdr *rdr)
 
     cmd->header.timeless = 1;
     cmd->header.data_size = sizeof(UIMissionInfoCmd);
-    if (func_0032F0D0(rdr, "MULTIPLAYER"))
+    if (zrdr_findtag(rdr, "MULTIPLAYER"))
         cmd->m_multiplayer = 1;
     else
         cmd->m_multiplayer = 0;
@@ -2324,21 +2332,21 @@ _zanim_cmd_hdr *UICharacterProfileParse(const char *name, _zrdr *rdr)
 
     cmd->header.timeless = 1;
     cmd->header.data_size = sizeof(UIProfileCmd);
-    if (func_0032F0D0(rdr, "EXISTS"))
+    if (zrdr_findtag(rdr, "EXISTS"))
         cmd->m_op = UIPROFILE_EXISTS;
-    else if (func_0032F0D0(rdr, "LOAD"))
+    else if (zrdr_findtag(rdr, "LOAD"))
         cmd->m_op = UIPROFILE_LOAD;
-    else if (func_0032F0D0(rdr, "SAVE"))
+    else if (zrdr_findtag(rdr, "SAVE"))
         cmd->m_op = UIPROFILE_SAVE;
-    else if (func_0032F0D0(rdr, "SaveToServer"))
+    else if (zrdr_findtag(rdr, "SaveToServer"))
         cmd->m_op = UIPROFILE_SAVE_TO_SERVER;
-    else if (func_0032F0D0(rdr, "WaitForServerSaveComplete"))
+    else if (zrdr_findtag(rdr, "WaitForServerSaveComplete"))
         cmd->m_op = UIPROFILE_WAIT_FOR_SERVER_SAVE;
-    else if (func_0032F0D0(rdr, "LoadFromServer"))
+    else if (zrdr_findtag(rdr, "LoadFromServer"))
         cmd->m_op = UIPROFILE_LOAD_FROM_SERVER;
-    else if (func_0032F0D0(rdr, "WaitForLoadComplete"))
+    else if (zrdr_findtag(rdr, "WaitForLoadComplete"))
         cmd->m_op = UIPROFILE_WAIT_FOR_LOAD;
-    else if (func_0032F0D0(rdr, "DELETE"))
+    else if (zrdr_findtag(rdr, "DELETE"))
         cmd->m_op = UIPROFILE_DELETE;
     else
         cmd->m_op = UIPROFILE_NONE;
@@ -2408,11 +2416,11 @@ _zanim_cmd_hdr *UICompareValuesParse(const char *name, _zrdr *rdr)
     }
     if (s)
         cmd->m_value2 = ZAnim.m_CurAnim->AddName(s);
-    if (func_0032F0D0(rdr, "CASE_INSENSITIVE"))
+    if (zrdr_findtag(rdr, "CASE_INSENSITIVE"))
         cmd->m_case_insensitive = 1;
     else
         cmd->m_case_insensitive = 0;
-    if (func_0032F0D0(rdr, "COMPARE_AFTER_FORMATTING"))
+    if (zrdr_findtag(rdr, "COMPARE_AFTER_FORMATTING"))
         cmd->m_after_formatting = 1;
     else
         cmd->m_after_formatting = 0;
@@ -2455,7 +2463,10 @@ bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-extern CMenuStack g_MenuStack;
+/* the menu's screen stack (SOCOM 1's g_MenuStack, 0x414ED0): the unit's one dynamically built
+ * static, so its initialiser (__sinit_zanim_menu.cpp, 0x3FFCA0: CMenuStack's constructor, then
+ * ~CMenuStack registered) sits first of the body code's in the table, ahead of bone_init.cpp's */
+CMenuStack g_MenuStack;
 
 CMenuStack *GetMenuStack()
 {

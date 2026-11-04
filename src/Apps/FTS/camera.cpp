@@ -9,6 +9,16 @@
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 
 extern bool camera_tether_intersects_something;
+
+/* NOT YET DEFINED: the camera's file statics, as __sinit_camera.cpp (0x3FFDD0) builds them --
+ * <iostream>'s pair (the unit includes <iostream>: its __nInit/__wInit at 0x415FD0/0x415FE8), then
+ * four `static zdb::DiIntersect dilrN(16);` (SOCOM 1's dilr0-dilr3, 0x416050/0x4160B0/0x416110/
+ * 0x416170, each registered with ~DiIntersect 0x2DC680), then the points' stores: SOCOM 1's
+ * `static CPnt3D tetherPos(0, 8, 40)` (0x4161C8) and three new in SOCOM II, (0, 2.5, 4) at 0x4161D8
+ * (GetFirstPersonCamPos's), (0, 5.2, 15) at 0x4161E8 (GetThirdPersonCamPos's) and at 0x4161F8
+ * (0x29A660's). Written so, they compile only once camera.h's DiIntersect stand-in declares
+ * DiIntersect(int) and ~DiIntersect() (node_world.h's real class has both) -- camera.h is the game
+ * states' file */
 extern "C" bool func_002C2FD0(CZSealBody *seal);
 extern "C" CCameraPreset *data_0044C408;          /* the views' presets */
 extern "C" void func_002956E0(CAppCamera *cam, CZSealBody *prey, int arg);
