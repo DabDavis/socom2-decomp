@@ -216,7 +216,14 @@ def gcc_build_errors(tmp: Path, src: str, cc: tuple[str, str]) -> dict[int, str]
 
 
 def gcc_repair(tmp: Path, body: str, cc: tuple[str, str], rounds: int = 3) -> str | None:
-    """The draft made to build with GCC, or None (the body unchanged when it already builds)."""
+    """The draft made to build with GCC, or None (the body unchanged when it already builds).
+
+    A draft left with errors no repair here makes -- an undeclared frame slot, which only
+    stack_locals' variant declares -- keeps the repairs made so far (GCC_PARTIAL, GCC round 24a):
+    returning None threw them away, and every variant then started from the unrepaired body
+    (17 of the lane's 29 build failures were loads through an int this repair rewrites). m2c's
+    `saved_reg_<r>` -- a callee-saved register's value at the entry, no variable of the draft's -- is
+    declared from GCC's own "undeclared" error (GCC_SAVED_REGS): an int, a float for an FPR."""
     prelude = GCC_PRELUDE if _on("GCC_PRELUDE") else PRELUDE
     base = prelude.count("\n")
     text = body
@@ -227,19 +234,34 @@ def gcc_repair(tmp: Path, body: str, cc: tuple[str, str], rounds: int = 3) -> st
         lines = text.split("\n")
         decl = _declared(text)
         unproto: set[str] = set()
+        saved: set[str] = set()
         for n, msg in sorted((k - base, v) for k, v in errs.items()):
             if not 1 <= n <= len(lines):
                 continue
             if "invalid type argument of `unary *'" in msg:
-                lines[n - 1] = _deref_ints(lines[n - 1], decl)
+                lines[n - 1] = _deref_ints(lines[n - 1], decl, typed=_on("GCC_TYPED_LOADS"))
             if "invalid operands to binary -" in msg and _on("GCC_PTRDIFF"):
                 lines[n - 1] = _byte_differences(lines[n - 1], decl)
             unproto |= set(re.findall(r"too (?:many|few) arguments to function `([A-Za-z_]\w*)'", msg))
-        new = _unprototype("\n".join(lines), unproto)
+            if _on("GCC_SAVED_REGS"):
+                saved |= set(re.findall(r"`(saved_reg_\w+)' undeclared", msg))
+        new = _declare_saved(_unprototype("\n".join(lines), unproto), saved)
         if new == text:
-            return None
+            break
         text = new
-    return None
+    return text if text != body and _on("GCC_PARTIAL") else None
+
+
+def _declare_saved(text: str, names: set[str]) -> str:
+    """m2c's `saved_reg_<r>` names declared at the top of the draft's function (an FPR's a float)."""
+    if not names:
+        return text
+    m = re.search(r"^[^\n;{}]*\b[A-Za-z_]\w*\([^()]*\)\s*\{\n", text, re.M)
+    if m is None:
+        return text
+    fpr = re.compile(r"saved_reg_f\d")
+    decls = "".join("    %s %s;\n" % ("f32" if fpr.match(n) else "s32", n) for n in sorted(names))
+    return text[:m.end()] + decls + text[m.end():]
 
 
 _CAST = re.compile(r"^\((?:const\s+)?(?:unsigned\s+|signed\s+)?(?:struct\s+)?[A-Za-z_]\w*(?:\s*\*)*\)$")
@@ -358,16 +380,29 @@ def stack_below_saves(img, addr: int, size: int) -> int:
 
 def stack_locals(body: str, name: str, below: int) -> str | None:
     """A draft that takes the frame's own address (`f((s32) sp)`, a callee filling a local
-    buffer m2c never saw declared) with the buffer declared: `sp` as an array the size of the
-    frame below the saves, and each undeclared `spXX` slot as its word."""
-    if not re.search(r"\bsp\b", body) or re.search(r"^\s+\S+\s+\**sp(\[[^\]]*\])?;", body, re.M) or below <= 0:
+    buffer m2c never saw declared), or names a frame slot it never declared, with the buffer
+    declared: `sp` as an array the size of the frame below the saves, and each undeclared `spXX`
+    slot as its word -- or, when m2c only ever subscripts it (`&sp50[0]`, `(&sp1B0[0])[i]`: an
+    array it passes by address), as a pointer to its elements, typed by m2c's own cast of it
+    (`(f32 (*)[]) &sp1B0[0]`; GCC round 24a: 9 of the lane's 29 build failures). A slot m2c
+    declares as a function pointer (`s32 (*spA0)(...)`) is declared."""
+    decl = _declared(body)
+    slots = sorted({s for s in re.findall(r"\bsp([0-9A-F]+)\b", body) if f"sp{s}" not in decl
+                    and not re.search(rf"\(\*\s*sp{s}\)\s*\(", body)})
+    bare = re.search(r"\bsp\b", body)
+    if not (bare or (slots and _on("STACK_SLOTS"))) or re.search(r"^\s+\S+\s+\**sp(\[[^\]]*\])?;", body, re.M) or below <= 0:
         return None
     m = re.search(rf"^[^\n]*\b{re.escape(name)}\([^)]*\)\s*\{{\n", body, re.M)
     if m is None:
         return None
-    decl = _declared(body)
-    slots = sorted({s for s in re.findall(r"\bsp([0-9A-F]+)\b", body) if f"sp{s}" not in decl})
-    defs = "".join(f"#define sp{s} (*(s32 *)((char *)sp + 0x{s}))\n" for s in slots)
+    defs = ""
+    for s in slots:
+        uses = re.findall(rf"\bsp{s}\b(\s*\[)?", body)
+        if uses and all(u for u in uses) and _on("STACK_ARRAYS"):
+            t = re.search(rf"\(([A-Za-z_]\w*) \(\*\)\[\]\) &sp{s}\[0\]", body)
+            defs += f"#define sp{s} (({t.group(1) if t else 's32'} *)((char *)sp + 0x{s}))\n"
+        else:
+            defs += f"#define sp{s} (*(s32 *)((char *)sp + 0x{s}))\n"
     return defs + body[:m.end()] + f"    s32 sp[{(below + 3) // 4}];\n" + body[m.end():]
 
 
@@ -1224,8 +1259,9 @@ def _assignment(line: str) -> tuple[str, str] | None:
     return None
 
 
-def _pointerish(term: str, decl: dict[str, str]) -> bool | None:
-    """Whether an expression's leading term is a pointer, by the draft's own declarations."""
+def _pointerish(term: str, decl: dict[str, str], loads: bool = False) -> bool | None:
+    """Whether an expression's leading term is a pointer, by the draft's own declarations (with
+    `loads`, GCC's repair: a leading load through a cast pointer, `*(s32 *)p * 4`, by its type)."""
     t = term.strip()
     while t.startswith("(") and _group(t, 0) == len(t):
         t = t[1:-1].strip()
@@ -1236,12 +1272,14 @@ def _pointerish(term: str, decl: dict[str, str]) -> bool | None:
         return True                                   # a cast to a pointer
     if re.match(r"^\((?:unsigned\s+|signed\s+)?(?:[su](?:8|16|32|64)|int|short|char|long|M2C_UNK(?:32)?)\)", t):
         return False                                  # a cast to an integer: `*((s32) p | 0x20000000)`
+    if loads and (m := re.match(r"^\*\s*\(([^()]*?)\s*\*\)", t)):
+        return "*" in m.group(1)                      # a load: a pointer iff its type is one
     if t.startswith("M2C_FIELD("):
         a = _args(t, len("M2C_FIELD"))
         return None if a is None or len(a[0]) != 3 else a[0][1].count("*") > 1
     if t.startswith("("):                              # (a + b) ...: its first term
         end = _group(t, 0)
-        return _pointerish(t[:end], decl) if end > 0 else None
+        return _pointerish(t[:end], decl, loads) if end > 0 else None
     m = re.match(r"^([A-Za-z_]\w*)\s*(.*)$", t)
     if m and not m.group(2).startswith("("):
         ty = decl.get(m.group(1))
@@ -1251,13 +1289,25 @@ def _pointerish(term: str, decl: dict[str, str]) -> bool | None:
     return None
 
 
-def _deref_ints(line: str, decl: dict[str, str]) -> str:
-    """`*x` / `*(x + ...)` whose operand leads with an int: a word load through an int pointer."""
+_SCALAR = r"(?:unsigned\s+|signed\s+)?(?:[su](?:8|16|32)|f32|int|short|char|M2C_UNK(?:32)?)"
+
+
+def _deref_ints(line: str, decl: dict[str, str], typed: bool = False) -> str:
+    """`*x` / `*(x + ...)` whose operand leads with an int: a word load through an int pointer.
+
+    `typed` (GCC's repair, GCC_TYPED_LOADS, round 24a): also a load behind m2c's cast of it,
+    `(f32) *((i * 4) + p)` -- m2c's type for a load whose pointer it holds as an int, an `lwc1`
+    here -- and the load made as that type, or as the type of the variable it is assigned to
+    (`temp_f2 = *(var_a6 + arg0)`); an s32 load converted to the float was an `lw` and a
+    `cvt.s.w` the target does not have."""
     out, i = [], 0
+    assigned = re.match(r"^\s*([A-Za-z_]\w*)\s*=[^=]", line)
     while i < len(line):
         c = line[i]
-        prev = line[:i].rstrip()[-1:] if line[:i].strip() else "("
-        if c == "*" and (prev in "(,=!&|?:*" or line[:i].rstrip().endswith("return")) and line[i + 1:i + 2] not in "=":
+        before = line[:i].rstrip()
+        prev = before[-1:] if before else "("
+        cast = re.search(rf"\(({_SCALAR})\)$", before) if typed and prev == ")" else None
+        if c == "*" and (prev in "(,=!&|?:*" or cast or before.endswith("return")) and line[i + 1:i + 2] not in "=":
             j = i + 1
             if line[j:j + 1] == "(":
                 end = _group(line, j)
@@ -1265,8 +1315,13 @@ def _deref_ints(line: str, decl: dict[str, str]) -> str:
             else:
                 m = re.match(r"[A-Za-z_]\w*", line[j:])
                 operand = m.group(0) if m and line[j + len(m.group(0)):j + len(m.group(0)) + 1] != "(" else ""
-            if operand and _pointerish(operand, decl) is False:
-                out.append("*(s32 *)" + operand)
+            if operand and _pointerish(operand, decl, loads=typed) is False:
+                ty = "s32"
+                if cast:
+                    ty = cast.group(1)
+                elif typed and assigned and prev == "=" and re.fullmatch(_SCALAR, decl.get(assigned.group(1), "")):
+                    ty = decl[assigned.group(1)]
+                out.append(f"*({ty} *)" + operand)
                 i = j + len(operand)
                 continue
         out.append(c)
@@ -1274,11 +1329,18 @@ def _deref_ints(line: str, decl: dict[str, str]) -> str:
     return "".join(out)
 
 
+# C library functions whose real parameters are all ints and pointers, so that a float or a wide
+# type in m2c's prototype is m2c's misreading (newlib's `__assert(const char *, int, const char *)`,
+# which m2c gave a fourth f32 from one call's stale $f12: two of the codec's drafts, GCC round 24a)
+NARROW_LIBC = {"__assert"}
+
+
 def _unprototype(text: str, names: set[str]) -> str:
     """Declare these functions without parameter types, when each is an int or a pointer."""
     for name in names:
         m = re.search(rf"^(?P<ret>[^\n(;{{}}]*?\b){re.escape(name)}\((?P<params>[^()\n]*)\);", text, re.M)
-        if m and m.group("params").strip() not in ("", "void") and not _WIDE.search(m.group("params")):
+        if m and m.group("params").strip() not in ("", "void") and (
+                not _WIDE.search(m.group("params")) or (name in NARROW_LIBC and _on("GCC_NARROW_LIBC"))):
             text = text[:m.start("params")] + text[m.end("params"):]
     return text
 
