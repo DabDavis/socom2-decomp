@@ -272,6 +272,10 @@ static float s_tcmSlideOut = 1000.0f;   // 0x3DCA90
 /* the cursor's fade rates, in and out (0x3DCA98, 0x3DCAA0: alpha a second) */
 static float s_tcmFadeIn = 450.0f;   // 0x3DCA98
 static float s_tcmFadeOut = 600.0f;   // 0x3DCAA0
+/* the closing menu's hold, and its pulse: the rate and the direction it swings (0x3DCAA8-0x3DCAB8) */
+static float s_tcmCloseHold = 1.0f;   // 0x3DCAA8
+static float s_tcmPulseRate = 12.0f;   // 0x3DCAB0
+static float s_tcmPulseDir = 1.0f;   // 0x3DCAB8
 /* computed by the unit's initialiser (0x3FF430), in this order: the first column's left, the
  * columns' span, the cursor's colour (the layout reads its three components, the slide its alpha) */
 static float s_tcmLeft = s_tcmColumnX;   // 0x413020
@@ -280,6 +284,8 @@ static CPnt4D s_tcmCursorColor(160.0f, 250.0f, 250.0f, 100.0f);   // 0x413030
 
 /* the menu's columns (constructed by the initialiser 0x3FF430) */
 CTCMColumn g_tcmColumns[8];
+/* the closing menu's pulse, 0 to 1 and back (OVL1 bss 0x413080) */
+static float s_tcmPulse;
 
 /* the screen's size (zVid's, OVL1 bss 0x4A44C4/0x4A44C8; no rows) */
 extern unsigned int data_004A44C4;
@@ -301,6 +307,88 @@ extern CHUD *theHUD;
 extern "C" void func_00230870(CTCM *tcm, CTCMNode *cur, float x, float y, float dir, unsigned int depth,
                               bool b);
 
+
+/* the node the menu's path selects (0x236B20, hud_tcm.cpp's, not written yet) */
+extern "C" CTCMNode *func_00236B20(CTCM *tcm);
+
+/* the menu laid out for its mode (0x231690; the tree's Open and ShowRoot call it with 0, the menu
+ * object's tick with the frame's time; the name ours): opening, the cursor fades in as the root
+ * slides in, then the menu is open (1); open, the cursor and the columns placed, and closed when the
+ * selected item hides; closing (2, 3), the columns settle, then the closing pulse runs out or the
+ * cursor fades as the root slides out, and the menu waits (3) or is shut (4: the path emptied, every
+ * node hidden); shut, the root kept at the left edge; listening (5, 6), the cursor and the columns */
+void CTCM::Layout(float t)
+{
+    CTCMNode *cur = func_00236B20(this);
+
+    switch (m_mode.m_mode) {
+    case 0: {
+        bool faded = FadeCursor(cur, true, t);
+        bool slid = SlideRoot(cur, false, t);
+
+        if (faded && slid)
+            m_mode.Set(1);
+        break;
+    }
+    case 2:
+    case 3: {
+        bool settled = true;
+
+        for (unsigned int i = 0; i < 8 && settled; i++) {
+            if (0.0f != g_tcmColumns[i].m_4)
+                settled = false;
+        }
+        if (!settled) {
+            func_00230870(this, cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
+        } else if (m_dce) {
+            m_dd0 += t;
+            if (m_dd0 > s_tcmCloseHold) {
+                m_dce = 0;
+                m_dd0 = s_tcmCloseHold;
+            }
+            s_tcmPulse += s_tcmPulseDir * (t * s_tcmPulseRate);
+            if (s_tcmPulse > 1.0f) {
+                s_tcmPulse = 1.0f;
+                s_tcmPulseDir *= -1.0f;
+            } else if (s_tcmPulse < 0.0f) {
+                s_tcmPulse = 0.0f;
+                s_tcmPulseDir *= -1.0f;
+            }
+            func_00230870(this, cur, s_tcmLeft, 1.0f, s_tcmPulse, 0, false);
+        } else {
+            bool faded = FadeCursor(cur, false, t);
+            bool slid = SlideRoot(cur, true, t);
+
+            if (faded && slid) {
+                if (m_mode.m_mode == 2) {
+                    m_mode.Set(3);
+                } else {
+                    m_mode.Set(4);
+                    m_path.clear();
+                    HideAll();
+                }
+            }
+        }
+        break;
+    }
+    case 1:
+        PlaceCursor(cur);
+        func_00230870(this, cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
+        if (cur->m_state == TCM_HIDDEN) {
+            m_sounds.Play(TCM_SND_SLIDE);
+            Close(false);
+        }
+        break;
+    case 5:
+    case 6:
+        PlaceCursor(cur);
+        func_00230870(this, cur, s_tcmLeft, 1.0f, -1.0f, 0, false);
+        break;
+    case 4:
+        AlignRoot(cur);
+        break;
+    }
+}
 
 /* the cursor faded in or out by a frame: its three bitmaps' alpha moved at the fade's rate and
  * clamped, true once it is fully in or out (0x231540, the menu layout 0x231690's; the name ours) */

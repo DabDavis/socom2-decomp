@@ -177,6 +177,7 @@ public:
     bool FadeCursor(CTCMNode *cur, bool in, float dt);
     bool SlideRoot(CTCMNode *cur, bool out, float dt);
     void PlaceCursor(CTCMNode *cur);
+    void Layout(float t);
     /* the tree unit's (hud_tcmtree.cpp; the names ours) */
     void Tick(CPad *pad, float dt);
     void TalkTick(float dt);
@@ -210,7 +211,7 @@ public:
     unsigned char m_dcc;   // 0xdcc
     unsigned char m_dcd;   // 0xdcd
     unsigned char m_dce;   // 0xdce
-    int m_dd0;   // 0xdd0
+    float m_dd0;   // 0xdd0 (a float: the closing hold's clock)
     int m_dd4;   // 0xdd4
     float m_dd8;   // 0xdd8
     C2DBitmapPoly m_items;   // 0xde0: the item list's bitmap (ClearItems empties its list)
