@@ -2030,6 +2030,27 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 34** (zui_2d.cpp's SOCOM 1 Draws and HandlePads, CLayout's copy constructor by a scan):
+  - MW 3.0 emits nothing for an explicit instantiation of an inline function template (`template It std::find(It, It,
+    const T &);`): the out-of-line copy appears only when some caller leaves it a call (0x3586B0, std::find over
+    C2D::CLibList, waits on the real GetAssetLibs shape);
+  - a SAME-SIZE SCAN names rows for free: c2dfont.cpp already emitted CLayout's copy constructor 0x35E6D0 byte-exact under
+    no row (build/scratch/hud-r34/samescan.py compares every function the units emit with every open row of its size);
+  - in a loop, the target's reload of a byte through a saved pointer register: declare a pointer to the array element
+    first, test the byte through the array (`!m_actions[i].Event`), then read it again through the pointer (testing
+    through the pointer reuses the first load -- with an `andi` for `!x`, without one for `x == 0`); a byte-enum local
+    assigned constants compiles to `li`/`move` and zero-extends (`andi`) when compared with an unsigned char field, an
+    unsigned char local gets `daddiu` stores and `andi` on every copy;
+  - in `call()->Method(m_str.c_str(), ...)` MW evaluates the arguments before the call yielding `this`: the target's
+    call-first order needs the result in a local; a load the target makes after a virtual call must be defined after that
+    call's expression (CScrollText::Draw's `str = *i` after the row-height expression);
+  - SOCOM 1's Draws carry over, inlining the unit's C3StateButton::Draw and CPlainBmp::Draw under `-inline auto`, with
+    SOCOM II's out-of-line CMatrix::Transform and C2DString::SetPos(int, int): CSliderBar::Draw 0x372220,
+    CHProgressBar::Draw 0x3717C0 (its +0xA4 an int width), CScrollText::Draw 0x370350, CUIMapCtrl::HandlePad 0x36D2E0,
+    CPopUpDialog::HandlePad 0x370990 (+0x330 its CValve, +0x334 the choice, two C2DButtons, a C2DString, +0xBE0 a stay-up
+    flag); CPopUpDialog is a CPlainBmp, not a C2D; the range's eight this-adjusting thunks are named `@N@target`;
+  - open: CPopUpDialog::Draw 0x370690 (22, the two buttons' block: the target loads p.z early and numbers its address
+    before the matrix cells').
 - **Tells from the online lobby, round 16** (the element copies read off their instances, the RoomPlayer rename):
   - MW's implicit assignment copies a struct's char arrays member by member -- even-length arrays too, two bytes a step
     -- and a struct-typed member as one block; copy-constructing a plain struct is one block, odd-length arrays and all;
