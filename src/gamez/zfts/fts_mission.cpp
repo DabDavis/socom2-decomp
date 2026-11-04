@@ -645,6 +645,26 @@ extern "C" void func_002A94E0(CornerBox *box)
     }
 }
 
+/* the box around eight points -- a box's corners carried through a matrix -- each bound a ternary
+ * keeping the point when it is beyond (`p <= min ? p : min`, `p >= max ? p : max`: MIN/MAX's operand
+ * order compares the other way round). OVL1 0x2A9550: the copy the world's ladder walk (0x2A9260)
+ * and grid_main.cpp's gridAddNodeToGrids call, after the corners (0x2A96B0, open: its CPnt3D(fff)
+ * and assignments are calls in the target's copy, inlined in every shape tried -- a class, a member,
+ * a class template, a template member out of class) and their transform (0x2A9680) */
+extern "C" void func_002A9550(CBBox *out, const CPnt3D *p)
+{
+    out->m_min = p[0];
+    out->m_max = p[0];
+    for (int i = 1; i < 8; i++) {
+        out->m_min.x = p[i].x <= out->m_min.x ? p[i].x : out->m_min.x;
+        out->m_min.y = p[i].y <= out->m_min.y ? p[i].y : out->m_min.y;
+        out->m_min.z = p[i].z <= out->m_min.z ? p[i].z : out->m_min.z;
+        out->m_max.x = p[i].x >= out->m_max.x ? p[i].x : out->m_max.x;
+        out->m_max.y = p[i].y >= out->m_max.y ? p[i].y : out->m_max.y;
+        out->m_max.z = p[i].z >= out->m_max.z ? p[i].z : out->m_max.z;
+    }
+}
+
 /* a ladder (SOCOM 1's CLadderData, 0x28 bytes, SOCOM II's laid out again: its box first, then its
  * node, the SEALs on it and the one holding it -- seal_env.cpp's -- and its place in the list; the
  * last three names ours) */
