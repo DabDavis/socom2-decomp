@@ -152,6 +152,9 @@ public:
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
     FIRE_CLASS GetCurItemFireClass();
+    /* the frame's kit work before the SEAL's (SOCOM 1's PreTick; OVL2 0x5C1660, seal_kit.cpp's range:
+     * WeaponsTick calls it last, as SOCOM 1's does) */
+    void PreTick(float dT);
 
     /* kit.h's flags (the kit lane's names): only bit 12 here */
     unsigned int m_bits0 : 12;   // 0x0
@@ -1299,6 +1302,12 @@ public:
     /* the fire point of a name (OVL2 0x5DFAD0, seal_weapon.cpp's range: SOCOM 1's
      * GetFirepointNode, virtual in SOCOM II -- CEntity's slot +0x64) */
     virtual zdb::CNode *GetFirepointNode(const char *name);
+    /* where a named point of the item in hand lies in the world, if the item is worn (SOCOM 1's;
+     * OVL2 0x5DFB70, seal_weapon.cpp -- the bool its own) */
+    bool GetFirepointPos(CPnt3D &pos, const char *name);
+    /* where a node of the item in hand lies, in the world or turned into it (SOCOM 1's; OVL2 0x5DF930,
+     * seal_weapon.cpp) */
+    bool GetNodePos(const zdb::CNode *node, CPnt3D &pos, bool world);
     virtual bool Virtual68(CPnt3D *out);
     /* the root part and the state set (CBody's virtuals, overridden), with one of the SEAL's own
      * between them: MW lists them after the CBody table, from +0x88, and calls them through the
@@ -1412,6 +1421,9 @@ public:
     WEAPON_STATE GetWeaponState() const;
     /* the weapon's state set (SOCOM 1's; OVL2 0x5DFE30, the kit lane's seal_weapon.cpp range) */
     void SetWeaponState(WEAPON_STATE state);
+    /* the weapon state machine stepped, the aim and the kit after it (SOCOM 1's; OVL2 0x5DFC80,
+     * seal_weapon.cpp) */
+    void WeaponsTick(float dT);
     /* the aim's goal from a point along a direction, and the aim set along a direction -- whether a
      * goal came of it (made the unit -z when asked, should none) -- SOCOM 1's; OVL2 0x5DF600 and
      * 0x5DF8B0, seal_weapon.cpp (the kit lane) */

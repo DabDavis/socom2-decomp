@@ -11017,7 +11017,7 @@
 0x005C0AD0 0x8 func_005C0AD0  # OVL2
 0x005C0AE0 0x4EC func_005C0AE0  # OVL2
 0x005C0FD0 0x690 func_005C0FD0  # OVL2
-0x005C1660 0x1A0 func_005C1660  # OVL2
+0x005C1660 0x1A0 PreTick__5CZKitFf  # OVL2; s1:callee by hand (the kit lane, round 26): CZSealBody::WeaponsTick (0x5DFC80) calls it last with the frame time, from the same instruction as SOCOM 1's WeaponsTick calls PreTick__5CZKitFf (0x2AA190, 0x17C there)
 0x005C1800 0x170 func_005C1800  # OVL2
 0x005C1970 0xA8C func_005C1970  # OVL2
 0x005C2400 0x24 IsFireDelayed__5CZKitFv  # OVL2; by hand: the float at 0x820 (SOCOM 1's m_fire_delay at 0x804, before m_selected_item as there) above zero (the name ours)
@@ -11262,9 +11262,9 @@
 0x005DF4E0 0x11C SetAimPointW__10CZSealBodyFPC6CPnt3DPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 15): SOCOM 1's SetAimPointW in the same place (after UpdateAimParams, before CalcAimGoal), the same code with the fields 0x3A0 on (the point 0x10B8 -> 0x1458, the reticle's 0x10C4 -> 0x1464, the normal 0x10D0 -> 0x1470; the bits at 0xF58/0xF5B -> 0x105C/0x105F), UpdateAimDir (0x5DEEC0) called last, CalcAimGoal toward CPnt3D::unit_nz without a point
 0x005DF600 0x2AC CalcAimGoal__10CZSealBodyFPC6CPnt3DPC6CPnt3DP6CPnt3D  # OVL2; s1:callee by hand (the kit lane, round 13): SetAimDirR (0x5DF8B0) calls it from the same instruction as SOCOM 1's SetAimDirR calls CalcAimGoal (0x2BFBA0, 0x2B8 against 0x2AC here), with this, the aim point (0x1440), the direction and the goal (0x144C), and tests its bool -- between SetAimPointW's place and SetAimDirR's as in SOCOM 1's order
 0x005DF8B0 0x74 SetAimDirR__10CZSealBodyFPC6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 13): SOCOM 1's SetAimDirR (0x2BFE60, 0x70), the same code with the aim's fields 0x3A0 on (0x10A0/0x10AC -> 0x1440/0x144C), after CalcAimGoal as there; byte-exact from seal_weapon.cpp
-0x005DF930 0x198 func_005DF930  # OVL2
+0x005DF930 0x198 GetNodePos__10CZSealBodyFPCQ23zdb5CNodeR6CPnt3Db  # OVL2; s1:order by hand (the kit lane, round 26): SOCOM 1's GetNodePos__10CZSealBodyFPCQ23zdb5CNodeR6CPnt3Db (0x2BFED0) in the same place, before GetFirepointNode -- the node's translation through the worn item's part, the world transform or the rotation alone by the bool; UpdateAimParams calls it twice as SOCOM 1's does (seal_weapon.cpp, open on two registers)
 0x005DFAD0 0x94 GetFirepointNode__10CZSealBodyFPCc  # OVL2; by hand (CZSealBody's vtable slot 0x64; the name ours, as the lane's Virtual5C/60/68) -- the SEAL lane; by hand (the SEAL lane, round 14, the kit lane's request): SOCOM 1's GetFirepointNode__10CZSealBodyFPCc, virtual in SOCOM II (CEntity's slot 0x64): UpdateAimParams (0x5DF450) and CZKit::ShowProjectile (0x5B85A0) pass a name in a1 and it hands a1 to FindChild
-0x005DFB70 0x108 func_005DFB70  # OVL2
+0x005DFB70 0x108 GetFirepointPos__10CZSealBodyFR6CPnt3DPCc  # OVL2; s1:order by hand (the kit lane, round 26): SOCOM 1's GetFirepointPos__10CZSealBodyFR6CPnt3DPCc (0x2C0140) in the same place, right after GetFirepointNode -- the same walk by the fire class here, the world transform a call; byte-exact from seal_weapon.cpp
 0x005DFC80 0x1AC WeaponsTick__10CZSealBodyFf  # OVL2; s1:calls
 0x005DFE30 0x188 SetWeaponState__10CZSealBodyF12WEAPON_STATE  # OVL2; s1:order (the same ~0x10 state mask, 0x184 -> 0x188)
 0x005DFFC0 0x2C WepWaitOn__10CZSealBodyFv  # OVL2; s1:order (the same four constants, the fields 276 bytes on)
