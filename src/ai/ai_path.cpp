@@ -140,7 +140,11 @@ void CAiPath::IncrementPathId()
  * OPEN (0x7C against 0xAC): the target keeps two compares of m_planleg against m_legcount whose
  * bodies compiled to nothing -- the first a branch to the next instruction, the second with
  * `more = true` in its delay slot (SOCOM 1's called the maps' data() out of line in both). Every
- * spelling tried -- an if, a ternary statement, a dead local, GetLegMap(-1) -- is deleted whole */
+ * spelling tried -- an if, a ternary statement, a dead local, GetLegMap(-1) -- is deleted whole;
+ * the AI core round 19 added an inline member returning the planned leg's map called as a
+ * statement (ternary, if-assign and early-return bodies, `(void)` cast) and empty-bodied ifs
+ * (`{}`, `;`, `(void)0`, `m_maps[m_planleg];`, either sense): deleted whole too. MW keeps such a
+ * branch only for a body the front end cannot see is empty (a compiled-out macro?) */
 bool CAiPath::plan_legcomplete(PATH_STATE state)
 {
     bool more = false;

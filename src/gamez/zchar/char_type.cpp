@@ -1169,21 +1169,23 @@ static inline CCharacterType *nth_type(unsigned int n)
 }
 
 /* the name of the type this one was made from, or none -- the type itself not counted (SOCOM 1's,
- * the self test new): the parent's index walked along the list.
- * OPEN (0x84 against 0x88): the range test. The target materialises it (sltu v0, then bnez to the
- * walk, the base zeroed in the delay slot and a `b` to the self test; SOCOM 1's has the same
- * shape), this build branches on `sltu at`; the test as `size() > id`, an if/else, the base
- * zeroed first and an inline bool helper all compile to one of two shorter forms. An inline
- * `type_at(n)` (`if (n >= size()) return 0; return nth_type(n);`) gives the target's sltu/bnez
- * shape, but is an inline height too tall at level 4 (size() and the walk called); at level 5 it
- * is 0x8C, the zero in v0 where the target's base is v1 (a result local in the helper: 0x7C) */
+ * the self test new): the parent's index walked along the list. The range test written `>=` with
+ * the zero arm first (the target materialises `id < size` -- sltu v0, bnez to the walk, the base
+ * zeroed in the delay slot -- where `<` with the walk first branches on `sltu at`), and the name a
+ * result local assigned under a test (so the base keeps v1 and the zero goes in the beqz's slot;
+ * a ternary return gives the base v0): the AI core round 19, 0x84 before */
 char *CCharacterType::GetBaseName()
 {
-    CCharacterType *base = m_parentID < m_char_list.size() ? nth_type(m_parentID) : 0;
+    CCharacterType *base = m_parentID >= m_char_list.size() ? 0 : nth_type(m_parentID);
 
     if (base == this)
         base = 0;
-    return base ? base->m_name : 0;
+
+    char *name = 0;
+
+    if (base)
+        name = base->m_name;
+    return name;
 }
 
 /* a carried weapon by index, none past the end (SOCOM 1's) */

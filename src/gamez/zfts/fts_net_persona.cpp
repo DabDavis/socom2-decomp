@@ -496,6 +496,77 @@ extern "C" void func_002C4DF0(int nseals, int nterrs, int nnone, const char *nam
     }
 }
 
+/* whether a persona is the terrorists', or the SEALs' (ours: a null persona neither -- the test
+ * materialised, the team read after the swap flag) */
+inline bool IsPersonaTerrorist(PersonaData *p)
+{
+    return p ? IsTerroristTeam(p->m_team) : false;
+}
+
+inline bool IsPersonaSeal(PersonaData *p)
+{
+    return p ? IsSealTeam(p->m_team) : false;
+}
+
+inline bool IsPersonaFlagged(PersonaData *p);
+
+extern "C" int sprintf(char *buf, const char *format, ...);
+
+/* the fts_remote.cpp sender of the packed lists (OVL1 0x2B9A40) */
+extern "C" void func_002B9A40(int to, int a, int b, int c, int size, const char *names);
+
+/* the host's side of func_002C4DF0: the terrorists', the SEALs' and the flagged personas' names
+ * packed one after another, each null-terminated, and sent to a client with the three counts
+ * (SOCOM II's; 0x2BC620 calls it; OVL1 0x2C4B50) */
+extern "C" void func_002C4B50(int client)
+{
+    char names[24 * 32 + 1];
+    char *dst = names;
+    int size = 0;
+    int nterrs = 0;
+    int nseals = 0;
+    int i;
+    int nflagged = 0;
+
+    for (i = 0; i < 24; i++) {
+        PersonaData *p = CZPersonaState::GetPersona(i);
+
+        if (p && IsPersonaTerrorist(p)) {
+            sprintf(dst, "%s", p->m_name);
+            nterrs++;
+            int len = strlen(p->m_name);
+            dst[len] = 0;
+            size += len + 1;
+            dst += len + 1;
+        }
+    }
+    for (i = 0; i < 24; i++) {
+        PersonaData *p = CZPersonaState::GetPersona(i);
+
+        if (p && IsPersonaSeal(p)) {
+            sprintf(dst, "%s", p->m_name);
+            nseals++;
+            int len = strlen(p->m_name);
+            dst[len] = 0;
+            size += len + 1;
+            dst += len + 1;
+        }
+    }
+    for (i = 0; i < 24; i++) {
+        PersonaData *p = CZPersonaState::GetPersona(i);
+
+        if (p && IsPersonaFlagged(p)) {
+            sprintf(dst, "%s", p->m_name);
+            nflagged++;
+            int len = strlen(p->m_name);
+            dst[len] = 0;
+            size += len + 1;
+            dst += len + 1;
+        }
+    }
+    func_002B9A40(client, nterrs, nseals, nflagged, size, names);
+}
+
 /* the sides counted -- the terrorists, the SEALs, the flagged personas and the rest -- the
  * team-full valve set while either side has more than eight, and a game the host is left alone in
  * with only flagged players abandoned (SOCOM II's; OVL1 0x2C4500) */

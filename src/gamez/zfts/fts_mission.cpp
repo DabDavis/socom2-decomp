@@ -72,6 +72,10 @@ public:
     void Initialize();
     void UnInitialize();
     bool TenSecondLaunch(bool launch);
+    unsigned int DecrementRoundClockSec(int sec);
+
+    /* the round's clock in whole seconds (SOCOM 1's CNetClock accessors, zfts.h: `0.001f * ms`) */
+    unsigned int GetMaxGameTimeSec() { return 0.001f * m_max_game_time; }
     void SetE3RoundCount(int count);
     MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
     MP_MAJOR_GAME_STATE MyMajorGameState(MP_MAJOR_GAME_STATE state);
@@ -115,7 +119,8 @@ public:
     unsigned char m_d9;   // 0xd9: SOCOM II's
     unsigned char _da[0xdc - 0xda];
     bool m_respawn;   // 0xdc: respawning on (with the valve "Respawn")
-    unsigned char _dd[0xe4 - 0xdd];
+    unsigned char _dd[0xe0 - 0xdd];
+    unsigned int m_max_game_time;   // 0xe0: the round's clock in milliseconds (SOCOM 1's m_clock.m_max_game_time, at 0xa0)
     int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
     unsigned char _e8[0xec - 0xe8];
     unsigned int m_round_clock;   // 0xec: the round's time left, in milliseconds (the name ours)
@@ -213,6 +218,7 @@ public:
     void SetFadingToEndMission(bool b) { m_FadingToEndMission = b; }
     unsigned int GetTimeLeft();
     void EndMission();
+    void CreateLadderTable();
 
     unsigned char _0[0xe0];
     int m_e0;   // 0xe0: cleared before the second unload (SOCOM II's; the name ours)
@@ -225,7 +231,8 @@ public:
     float m_next_fade_time;   // 0x104 (SOCOM 1's at 0x78)
     unsigned char _108[0x118 - 0x108];
     std::vector<CCompassAnchor *> m_anchors;   // 0x118: the nav points' anchors (SOCOM 1's at 0x8c)
-    unsigned char _124[0x1808 - 0x124];
+    unsigned char _124[0x1804 - 0x124];
+    class CLadderList *m_ladders;   // 0x1804 (SOCOM 1's at 0x580)
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
     unsigned char _180c[0x1860 - 0x180c];
     float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM II's; the name ours)
@@ -290,6 +297,8 @@ extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 class CEntity {
 public:
     static void RemoveAll();
+
+    static const unsigned int invalidId;   /* 0x3EFFB0 */
 };
 class CAiEvent {
 public:
@@ -640,6 +649,224 @@ extern "C" void func_002A94E0(CornerBox *box)
     }
 }
 
+/* the box around eight points -- a box's corners carried through a matrix -- each bound a ternary
+ * keeping the point when it is beyond (`p <= min ? p : min`, `p >= max ? p : max`: MIN/MAX's operand
+ * order compares the other way round). OVL1 0x2A9550: the copy the world's ladder walk (0x2A9260)
+ * and grid_main.cpp's gridAddNodeToGrids call, after the corners (0x2A96B0, open: its CPnt3D(fff)
+ * and assignments are calls in the target's copy, inlined in every shape tried -- a class, a member,
+ * a class template, a template member out of class) and their transform (0x2A9680) */
+extern "C" void func_002A9550(CBBox *out, const CPnt3D *p)
+{
+    out->m_min = p[0];
+    out->m_max = p[0];
+    for (int i = 1; i < 8; i++) {
+        out->m_min.x = p[i].x <= out->m_min.x ? p[i].x : out->m_min.x;
+        out->m_min.y = p[i].y <= out->m_min.y ? p[i].y : out->m_min.y;
+        out->m_min.z = p[i].z <= out->m_min.z ? p[i].z : out->m_min.z;
+        out->m_max.x = p[i].x >= out->m_max.x ? p[i].x : out->m_max.x;
+        out->m_max.y = p[i].y >= out->m_max.y ? p[i].y : out->m_max.y;
+        out->m_max.z = p[i].z >= out->m_max.z ? p[i].z : out->m_max.z;
+    }
+}
+
+/* a ladder (SOCOM 1's CLadderData, 0x28 bytes, SOCOM II's laid out again: its box first, then its
+ * node, the SEALs on it and the one holding it -- seal_env.cpp's -- and its place in the list; the
+ * last three names ours) */
+class CLadderData {
+public:
+    CLadderData() {}
+    /* a new ladder: its box, its node, no SEALs on it and none holding it, its place (ours: inline,
+     * its arguments read before the stores, the fields' addresses kept across the walk) */
+    CLadderData(const CBBox &box, zdb::CNode *node, int index)
+    {
+        m_bbox = box;
+        m_node = node;
+        m_users = 0;
+        m_owner = CEntity::invalidId;
+        m_index = index;
+    }
+
+    CBBox m_bbox;   // 0x0 (SOCOM 1's at 0xc, after its normal)
+    zdb::CNode *m_node;   // 0x18
+    int m_users;   // 0x1c
+    unsigned int m_owner;   // 0x20
+    int m_index;   // 0x24
+};
+
+/* the bit a ladder's index carries out of GetClosestLadder (SOCOM 1's global, OVL1 0x3DE5F8) */
+extern int LADDER_MASK;
+
+/* the mission's ladders (SOCOM 1's CLadderList : vector<CLadderData>) */
+class CLadderList : public std::vector<CLadderData> {
+public:
+    int GetClosestLadder(const CPnt3D *pos, float range);
+    CLadderData *GetLadderByNode(zdb::CNode *node, int depth);
+    CLadderData *GetLadderByIndex(int index);
+};
+
+/* a ladder entered once: the one for a node, else a new one for it, found again (ours: inlined in
+ * CreateLadderTable -- the node tested again, the find's result unused there) */
+inline CLadderData *AddLadder(CLadderList *ladders, zdb::CNode *node, const CBBox &box)
+{
+    CLadderData *ladder = ladders->GetLadderByNode(node, 0);
+
+    if (!ladder && node) {
+        CLadderData d(box, node, ladders->size());
+
+        ladders->push_back(d);
+        ladder = ladders->GetLadderByNode(node, 0);
+    }
+    return ladder;
+}
+
+/* a node's box carried through a matrix: its corners (0x2A96B0, open: the copy calls CPnt3D(fff) and
+ * the assignments out of line), transformed (0x2A9680) and boxed again (0x2A9550) -- one inline
+ * level here, as the world's ladder walk and gridAddNodeToGrids call all four (ours) */
+extern "C" CPnt3D *func_002A96B0(CPnt3D *pts, const CBBox *box);
+extern "C" CPnt3D *func_002A9680(const CMatrix *m, CPnt3D *pts);
+
+inline void GetWorldBBox(zdb::CNode *node, const CMatrix &m, CBBox *out)
+{
+    PNT3D pts[8];
+
+    func_002A96B0((CPnt3D *)pts, node->GetBBox());
+    func_002A9680(&m, (CPnt3D *)pts);
+    func_002A9550(out, (CPnt3D *)pts);
+}
+
+/* a DI's app flags (tag_DI_HEAD's m_appflags, the flags word's bits 20-22): 2 a ladder polygon
+ * (the names ours) */
+enum DI_APPFLAGS {
+    DI_APP_0,
+    DI_APP_1,
+    DI_APP_LADDER
+};
+
+/* the ladders from the world: every node with a ladder polygon, its box carried through its matrix
+ * (SOCOM 1's CreateLadderTable; OVL1 0x2A9260, Open calls it). The flags are read as a byte and
+ * masked again -- `(unsigned char)flags & 7`, the target's `andi 0xff; andi 7` after the extract
+ * (SOCOM 1's has the `andi 7` alone; no cast, enum bitfield or accessor gives both); the box helper
+ * takes the corners themselves, not the transform's return; the ladder's index is read ahead of its
+ * stores, as a constructor's argument */
+void CMission::CreateLadderTable()
+{
+    if (!zdb::NodeUniverse)
+        return;
+    if (!m_ladders) {
+        m_ladders = new CLadderList;
+        if (!m_ladders)
+            return;
+    }
+    for (zdb::CNodeVector::iterator i = zdb::NodeUniverse->begin(); i != zdb::NodeUniverse->end(); ++i) {
+        zdb::CNode *node = *i;
+
+        if (!node)
+            continue;
+        for (zdb::CDIVector::iterator d = node->m_di.begin(); d != node->m_di.end(); ++d) {
+            if (((unsigned char)(*d)->m_flags.m_appflags & 7) == DI_APP_LADDER) {
+                CBBox world;
+                CMatrix m;
+
+                m.SetIdentity();
+                if (node->BuildMTW(m)) {
+                    GetWorldBBox(node, m, &world);
+                    CLadderList *ladders = m_ladders;
+
+                    AddLadder(ladders, node, world);
+                }
+                break;
+            }
+        }
+    }
+}
+
+/* a point less another by value, through Sub (the copy out of the temporary: the target's) */
+static inline CPnt3D Minus(const CPnt3D *a, const CPnt3D *b)
+{
+    CPnt3D r;
+
+    a->Sub(b, &r);
+    return r;
+}
+
+/* the ground-plane length, the x and z made a unit direction (ours) */
+static inline float NormalizeXZ(CPnt3D *v)
+{
+    float len = sqrtf(v->x * v->x + v->z * v->z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        v->x *= inv;
+        v->z *= inv;
+    }
+    return len;
+}
+
+/* the ladder at an index, the mask's bit taken off it, or none (SOCOM 1's; OVL1 0x2A9210) */
+CLadderData *CLadderList::GetLadderByIndex(int index)
+{
+    index &= ~LADDER_MASK;
+    if (index < 0 || (unsigned int)index >= size())
+        return 0;
+    return &(*this)[index];
+}
+
+/* the ladder a node is, else one among its children to some depth (SOCOM II's; the world's ladder
+ * walk 0x2A9260 and the SEALs call it; OVL1 0x2A90F0) */
+CLadderData *CLadderList::GetLadderByNode(zdb::CNode *node, int depth)
+{
+    CLadderData *found = 0;
+
+    if (node) {
+        for (iterator i = begin(); i != end(); ++i) {
+            if (i->m_node == node) {
+                found = &*i;
+                break;
+            }
+        }
+    }
+    if (!found && depth > 0) {
+        zdb::CNodeVector &children = node->GetChildren();
+
+        for (zdb::CNodeVector::iterator c = children.begin(); c != children.end(); ++c) {
+            found = GetLadderByNode(*c, depth - 1);
+            if (found)
+                break;
+        }
+    }
+    return found;
+}
+
+/* the ladder nearest a point in the ground plane, of those whose foot or top is level with it
+ * (within 15), closer than a range: its index with the mask's bit, else -1 (SOCOM 1's
+ * GetClosestLadder: SOCOM II's tolerance a constant, the mask set at the find; OVL1 0x2A8F50).
+ * The iterator is taken before the unused matrix is built, as both builds load begin() ahead of
+ * sceVu0UnitMatrix; the normalise's z store is dead (the target keeps only x's) */
+int CLadderList::GetClosestLadder(const CPnt3D *pos, float range)
+{
+    int index = 0;
+    iterator i = begin();
+    CMatrix unused;
+    int closest = -1;
+
+    for (; i != end(); ++i, ++index) {
+        if (_close_enough(pos->y, i->m_bbox.m_min.y, 15.0f) || _close_enough(pos->y, i->m_bbox.m_max.y, 15.0f)) {
+            CPnt3D mid;
+
+            i->m_bbox.GetCenter(&mid);
+            CPnt3D d = Minus(pos, &mid);
+            float dist = NormalizeXZ(&d);
+
+            if (dist < range) {
+                range = dist;
+                closest = index | LADDER_MASK;
+            }
+        }
+    }
+    return closest;
+}
+
 /* a range kept at 0xF4 (the top) and 0xF8 (the bottom) of the object 0x341A60 asks (SOCOM II's; the
  * names ours) */
 struct FadeRange {
@@ -779,6 +1006,22 @@ unsigned int CMission::GetTimeLeft()
     if (theNetwork.m_1 && m_pNetGame)
         return 0.001f * m_pNetGame->m_round_clock;
     return (int)m_e8;
+}
+
+/* the round's clock cut by some seconds -- to one second when no more are left -- and its seconds
+ * returned (SOCOM 1's DecrementRoundClockSec, the saved copy gone; CZGameState::UpdateLocalGame calls
+ * it with 60; OVL1 0x2A6960) */
+unsigned int CZNetGame::DecrementRoundClockSec(int sec)
+{
+    if (theNetwork.m_bSessionMaster) {
+        int left = GetMaxGameTimeSec();
+
+        if (sec < left)
+            m_max_game_time = (left - sec) * 1000;
+        else if (left)
+            m_max_game_time = 1000;
+    }
+    return GetMaxGameTimeSec();
 }
 
 /* the online game let go of: its state and clocks cleared, the rounds back to none (OVL1 0x2A75F0,
@@ -1124,12 +1367,16 @@ extern "C" char *strcpy(char *dst, const char *src);
 
 /* the extra string tables the mission's rdr lists, by name (SOCOM II's; PreOpen calls it; OVL1
  * 0x2AF410).
- * OPEN, 0x10C against 0x140: the target keeps two empty if/else tests on the count -- `0 < count`
+ * OPEN, 0x100 against 0x140: the target keeps two empty if/else tests on the count -- `0 < count`
  * before it is cleared, `count + 1 < count` before each increment -- both arms empty, the else arm
  * a jump placed after the epilogue: a fixed array's resize(n) whose element loops vanish for char
  * names. MW folds every empty arm tried away: empty inline helpers (plain or template), empty for
- * loops. The rest (the list's Count/Item/String, the name's address recomputed each pass) is
- * written as the target reads */
+ * loops; round 23 added the resize as a ternary over the two helpers, int loops over a 10-byte
+ * struct with a pseudo-destructor and a placement new (all folded), and loops MW cannot delete
+ * (pointer loops with a user-declared empty destructor 0x280, a dead `while (k-- > 0)` 0x1C0). The
+ * rest (the list's Count/Item/String, the name's address recomputed each pass) is written as the
+ * target reads; the count is an `unsigned short` here where the target's lhu has no andi (an int
+ * there, once the arms are found) */
 extern "C" void func_002AF410(const _zrdr *rdr)
 {
     data_00440B80.Resize(0);

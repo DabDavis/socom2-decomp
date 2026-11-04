@@ -312,24 +312,21 @@ void CAiMap::region::Union(const CAiMapLoc &loc)
 
 /* the run of an id's spores: the first at or past the id and the last before the next id, or
  * -1s and no count (new in SOCOM II, called from two CAiMaps functions -- 0x52B5C0, 0x52B7E0).
- * OPEN, right size, 9 instructions: registers only -- the target walks in t2 with the end in t0
- * and the id read into t1, this build t0, t1, t2; the iterators declared together, apart, the
- * end first, the id hoisted to the top were tried */
+ * The walk's end and the spore's id temporaries (end() in the test, hoisted; the id read twice,
+ * shared), numbered after the iterator: the target walks in t2 with the end in t0 and the id in t1
+ * -- as named locals they rotate to t0, t1, t2 (the AI core round 19; 9 instructions off before) */
 void CAiMap::spores::GetRange(unsigned int id, range &r)
 {
     int first = -1;
     int last = -1;
     int n = 0;
-    iterator e = end();
 
-    for (iterator i = begin(); i != e; ++i, ++n) {
-        unsigned int sid = (*i).m_id;
-
-        if (sid < id)
+    for (iterator i = begin(); i != end(); ++i, ++n) {
+        if ((*i).m_id < id)
             continue;
         if (first == -1)
             first = n;
-        if (id < sid) {
+        if (id < (*i).m_id) {
             last = n - 1;
             break;
         }
@@ -369,18 +366,16 @@ inline int loc_compare(const CAiMapLoc &a, const CAiMapLoc &b)
  * CTMap's Tick on the cell's map, 0x52FD90). The compare as one result local over nested if/else
  * (only that order lays the x-equal arm first and the map's arm last, with the target's delay
  * slots); the found line through a result local (the target's zero in the first test's slot).
- * OPEN, right size, 23 instructions: registers only -- the target loads begin() first (the
- * iterator in v1, the end in a3, the first cell in t0), this build the end first (the end in v1,
- * the iterator in a2, the cell in t0). With end() in the loop test (a hoisted temporary) the target's
- * begin-first order and v1 come, but the end takes t0 and the cell a3, and the compare's y arm loses
- * its delay slot (0xD8); i and e declared apart, either first, before or after the result, a
- * while loop, a reference to the line, the cell in a local, empty() for size() were tried */
+ * The target loads begin() first (the iterator in v1, the end in a3, the first cell in t0): end()
+ * in the loop test (a hoisted temporary) and the first cell read as `(*i)[0]` -- through begin()
+ * the end takes t0 and the cell a3; with an end local the end comes first (the AI core round 19;
+ * 23 instructions off before) */
 CAiMap::line *CAiMap::lines::Find(const CAiMapLoc &loc)
 {
     line *r = 0;
 
-    for (iterator i = begin(), e = end(); i != e; ++i) {
-        if ((*i).size() && !loc_compare(*(*i).begin(), loc)) {
+    for (iterator i = begin(); i != end(); ++i) {
+        if ((*i).size() && !loc_compare((*i)[0], loc)) {
             r = &*i;
             break;
         }
