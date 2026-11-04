@@ -35,12 +35,8 @@ public:
 };
 
 /* SOCOM 1's: every persistent valve written as a NAME and a VAL; SOCOM II's own part of
- * Serialize, which SOCOM 1 inlined (name ours). Pinned: Serialize calls it.
- * OPEN, 1 instruction long (0xE8 of 0xE4): RemoveTask(name)'s include/list shape -- across the
- * editor's calls the wrapper iterator's reference-returning * keeps the element's address (node +
- * 8) in a saved register of its own, where the target re-reads the node from the iterator in
- * memory (a by-value * would: include/list's note on GetWeapon/GetAmmo). A const_iterator walk
- * (by-value *) through a const reference does not inline the const begin() whole (0x120) */
+ * Serialize, which SOCOM 1 inlined (name ours). Pinned: Serialize calls it. Byte-exact since
+ * include/list's iterator holds SOCOM 1's `node *` (the world lane's round 6) */
 #pragma auto_inline off
 void CValveSaveManager::SerializeValves(CRdrEditor *ed)
 {
@@ -176,6 +172,97 @@ static inline CValve *ArgValve(CZAnim *anim, int ref)
     return args ? args->GetValve(ref) : 0;
 }
 
+/* the valve's value tested against the block's by the operator -- the comparisons and bit tests
+ * answer, the assignments set the valve (its callbacks told) and answer true; no valve, false
+ * (SOCOM 1's, with SOCOM II's bit operators and a valve for the value). `a` declared ahead of the
+ * valve takes s1 below the valve's s0; the jump table's case 0 is the last block, as written last;
+ * the clamped difference computed into a local once (passed to the inline SetValue as written, it
+ * is substituted into both of its uses) and written `a >= c ? a - c : 0` (the target's slt into
+ * v0) */
+bool VALVE_CMD_DATA::Compare()
+{
+    unsigned short a;
+    CValve *valve;
+
+    if (isArg)
+        valve = ArgValve(ZAnim.m_CurAnim, ref);
+    else if (isAnim)
+        valve = ZAnim.m_CurAnim->GetValve(ref);
+    else
+        valve = (CValve *)ref;
+    if (!valve)
+        return false;
+
+    a = valve->m_value;
+    int b = value;
+
+    if (valIsValve) {
+        CValve *v;
+
+        if (valIsArg)
+            v = ArgValve(ZAnim.m_CurAnim, b);
+        else if (valIsAnim)
+            v = ZAnim.m_CurAnim->GetValve(b);
+        else
+            v = (CValve *)b;
+        b = v ? v->m_value : 0;
+    }
+    unsigned short c = b;
+
+    switch (op) {
+    case 1:
+        return a != c;
+    case 2:
+        return a == c;
+    case 3:
+        return a > c;
+    case 4:
+        return a < c;
+    case 5:
+        return a >= c;
+    case 6:
+        return a <= c;
+    case 7:
+        return (a | c) != 0;
+    case 8:
+        return (a & c) != 0;
+    case 9:
+        return (a | ~c) != 0;
+    case 10:
+        return (a & ~c) != 0;
+    case 11:
+        valve->SetValue(c);
+        return true;
+    case 12:
+        valve->SetValue(a + c);
+        return true;
+    case 13: {
+        int d = a >= c ? a - c : 0;
+
+        valve->SetValue(d);
+        return true;
+    }
+    case 14:
+        valve->SetValue(a * c);
+        return true;
+    case 15:
+        valve->SetValue(a | c);
+        return true;
+    case 16:
+        valve->SetValue(a & c);
+        return true;
+    case 17:
+        valve->SetValue(a | ~c);
+        return true;
+    case 18:
+        valve->SetValue(a & ~c);
+        return true;
+    case 0:
+        return true;
+    }
+    return false;
+}
+
 /* SOCOM II's VBIT command (RegisterCommands' second, "VBIT"; the names ours): a valve's bits
  * tested, set or cleared -- the valve named as VWATCH's, the operator ParseOperator's code for
  * "get" (`&`), "set" (`|=`) or "clr" (`&=~`), the bits the items after it. The block from +4 is the
@@ -279,11 +366,8 @@ _zanim_cmd_hdr *CValve::CmdParseVWatch(_zrdr *rdr)
     return (_zanim_cmd_hdr *)cmd;
 }
 
-/* SOCOM 1's: the name freed, the callbacks deleted, the list emptied.
- * OPEN, 4 instructions short (0x134 of 0x144): DeleteCallbacks' list-header shape -- the target
- * keeps &end_.next_ (this+16) in a saved register of its own from the walk on and reads both
- * clears' begin through it (clear()'s and the implicit ~CValveCBList's), where include/list reads
- * it off the end node's register; the walk, the deletes and the four this-tests match */
+/* SOCOM 1's: the name freed, the callbacks deleted, the list emptied (byte-exact since include/list's
+ * begin() reads the sentinel through a reference: &end_.next_ kept in a saved register) */
 CValve::~CValve()
 {
     FreeName();
