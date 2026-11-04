@@ -260,7 +260,7 @@ def main(argv=None) -> int:
         for fs in elf.functions():
             if rx and not rx.search(fs.name):
                 continue
-            if is_auto and (fs.name in hand_names or fs.name in hand_copies):
+            if is_auto and fs.name in hand_names:
                 continue                     # superseded by hand-written source
             if fs.name in absent:
                 rows.append(("absent", src.name, fs.name, ""))
@@ -277,6 +277,12 @@ def main(argv=None) -> int:
                 copy = st.address_in(fs.name, home)
                 if copy is not None and copy != sym.addr and st.at_addr(copy) is not None:
                     sym = st.at_addr(copy)
+            # a byte-exact hand-written copy supersedes a draft only at the address it matched: an
+            # instance with a row in each overlay (`ovl-copy:`) can be matched by hand in one and by
+            # its draft in the other (seal_env.cpp's ~vector<CZDecalDef> is OVL2's 0x5A3C60; OVL1's
+            # 0x2CDB30 stays its draft's -- the integrator, 2026-11-04)
+            if is_auto and fs.name in hand_copies and sym.addr in hand_at:
+                continue                     # superseded by a hand-written copy at this address
             res = D.compare(obj, fs.name, sym, img, st)
             if not res.match and is_copy(elf, fs) and span and not span[0] <= sym.addr < span[1]:
                 rows.append(("elsewhere", src.name, fs.name, f"inline copy; linked at {sym.addr:#x}"))
