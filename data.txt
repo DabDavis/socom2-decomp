@@ -647,6 +647,7 @@
 0x003FB000 0x1A s_keyJamo  # OVL1 data; zui_hangul.cpp's static (name ours): the 2-set keyboard's jamo for the keys a-z (Mieum, Yu, Chieuch ...); 1 reference in 1 function (KeyToJamo, addressed as the table minus 'a')
 0x003FB020 0x1A s_shiftKeyJamo  # OVL1 data; zui_hangul.cpp's static (name ours): the jamo for the shifted keys A-Z (the doubled consonants and Yae, Ye); 1 reference in 1 function (KeyToJamo, addressed as the table minus 'A')
 0x003FB170 0x84 s_jamoNames  # OVL1 data; zui_hangul.cpp's static (name ours): the 33 jamo's names, alphabetical (A_Hang .. Yu); 2 references in 2 functions (FindJamo, 0x390C40)
+0x003FB388 0xC s_padKeys  # OVL1 data; zui_skbview.cpp's static (name ours): the four cursor events by stick direction or pad button, {dir, button, event} -- 2 references in 1 function (SkbPadKeyEvent 0x394F60) -- the UI lane round 19
 0x003FB840 0xE s_shiftJamo  # OVL1 data; zui_skbkeys.cpp's static (name ours): seven {jamo, doubled jamo} byte pairs a shifted key composes (0x19->0x17, 0x01->0x1C ...); 2 references in 1 function (SkbTypeJamo 0x399070)
 0x003FB9F0 0x30 s_shiftPunctChars  # OVL1 data; zui_skbkeys.cpp's static (name ours): the shifted punctuation's characters for HID usages 49-56 (| } : " ~ < > ?), ints; 1 reference in 1 function (SkbUsbPunct)
 0x003FBA20 0x30 s_punctChars  # OVL1 data; zui_skbkeys.cpp's static (name ours): the punctuation's characters for HID usages 49-56 (backslash ] ; ' ` , . /), ints; 1 reference in 1 function (SkbUsbPunct)
@@ -1472,6 +1473,8 @@
 0x004A0E40 0xB0 s_bmp5  # OVL1 bss; zui_skbview.cpp's static (name ours): the shift lock's CBmpWithNode (SkbToggleShiftLock, SkbShifted); 16 references in 7 functions (0x394420, 0x394520 2, SkbToggleShiftLock 2, SkbShifted2, SkbShifted, 0x396F30, __sinit_zui_skbview.cpp 8)
 0x004A0F00 0xB0 s_bmp6  # OVL1 bss; zui_skbview.cpp's static (name ours): a CBmpWithNode; 17 references in 7 functions (0x394520, 0x395540, 0x3958D0 3, 0x396F30, 0x397070, 0x397950 2, __sinit_zui_skbview.cpp 8)
 0x004A0FC0 0xB0 s_bmp7  # OVL1 bss; zui_skbview.cpp's static (name ours): a CBmpWithNode; 18 references in 8 functions (0x394520, 0x395140, 0x395540, 0x3958D0 3, 0x396F30, 0x397070, 0x397950 3, __sinit_zui_skbview.cpp 7)
+0x004A1070 0x1 s_keyEvent  # OVL1 bss; zui_skbview.cpp's static (name ours): the key event the pad gave, a byte (0x3978C0 returns it) -- 5 references in 4 functions (SkbPadKeyEvent 0x394F60 2, 0x3949C0, 0x397640, 0x3978C0) -- the UI lane round 19
+0x004A10B8 0x4 s_keyHeld  # OVL1 bss; zui_skbview.cpp's static (name ours): a float, how long the key event has been held (the tick 0x3949C0 adds dT and repeats past a delay; SkbPadKeyEvent and 0x397640 clear it) -- 5 references in 3 functions -- the UI lane round 19
 0x004A10C8 0x4 s_maxBytes0  # OVL1 bss; zui_skbview.cpp's static (name ours): string 0's byte limit (0 none); 2 references in 2 functions (SkbTextFits, 0x397640)
 0x004A10D0 0x4 s_maxChars0  # OVL1 bss; zui_skbview.cpp's static (name ours): string 0's UTF-8 character limit (0 none); 2 references in 2 functions (SkbTextFits, 0x397640)
 0x004A10D8 0x4 s_maxBytes1  # OVL1 bss; zui_skbview.cpp's static (name ours): string 1's byte limit (0 none); 2 references in 2 functions (SkbTextFits, 0x397640)

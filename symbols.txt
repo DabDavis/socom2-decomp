@@ -7416,7 +7416,7 @@
 0x00394920 0x94 SkbToggleCaption2__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (the caption's mode toggled between 2 and 0, its text 0x4A09B0 or 0x4A08F0, its node placed at the second cap's position)
 0x003949C0 0x3D4 func_003949C0  # OVL1
 0x00394DA0 0x1B4 func_00394DA0  # OVL1
-0x00394F60 0x1A8 func_00394F60  # OVL1
+0x00394F60 0x1A8 SkbPadKeyEvent__FP4CPad  # OVL1; ours (the UI lane round 19: the pad's key event through a {dir, button, event} table, then cross/L2/R2 as 5-7; 0x38DC00 hands a nonzero one to SkbHandleKey)
 0x00395110 0xC func_00395110  # OVL1
 0x00395120 0x14 func_00395120  # OVL1
 0x00395140 0x1B0 func_00395140  # OVL1

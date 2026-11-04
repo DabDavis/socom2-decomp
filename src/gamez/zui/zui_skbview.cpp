@@ -108,6 +108,73 @@ static int s_maxChars1;
 static C2DFont *s_defaultFont;
 /* bitmap 4's timer (0x3E04C8: -1 until SkbToggleBmp4 clears it; the name ours) */
 static float s_bmp4Timer = -1.0f;
+/* the key event the pad gave and how long it has been held (0x4A1070, 0x3978C0 returns it;
+ * 0x4A10B8, the tick's repeat timer; the names ours) */
+static signed char s_keyEvent;
+static float s_keyHeld;
+
+/* which way the menus' stick is pushed (zui.cpp's STICK_DIR: a byte enum) */
+enum STICK_DIR { STICK_NONE, STICK_RIGHT, STICK_LEFT, STICK_UP, STICK_DOWN, STICK_CENTERED };
+STICK_DIR UiGetDirStickMoved();
+
+/* a key event (ours: a byte enum -- SkbHandleKey's 1-4 the cursor moves, 5 the cursor's key, 6
+ * and 7 the edit keys) */
+enum SKBKEY { SKBKEY_NONE, SKBKEY_1, SKBKEY_2, SKBKEY_3, SKBKEY_4, SKBKEY_5, SKBKEY_6, SKBKEY_7 };
+
+/* the four cursor events by the stick's direction or the pad button pressed (0x3FB388; ours) */
+struct SKBPADKEY {
+    unsigned char m_dir;     // a STICK_DIR
+    unsigned char m_button;  // a PAD_BUTTON
+    signed char m_event;
+};
+static SKBPADKEY s_padKeys[4] = {{1, 3, 2}, {2, 2, 3}, {3, 4, 1}, {4, 5, 4}};
+
+/* the pad's key event: a cursor move by the stick or the pad, else cross, L2 or R2 (5, 6, 7) --
+ * kept, its hold time restarted; with none, the kept event cleared once the stick is centred or
+ * one of those keys is let go (0x394F60; the name ours). The release test is a bool accumulated
+ * with `|=` (the target's branch-free sltu/or chain; `||` branches, `|` of the compares differs).
+ * OPEN, 16 bytes short (0x198 against 0x1A8): the event. The target loads the table's event with
+ * `lb`, keeps it in v0 (the return value's register) and narrows it with `andi 0xff` at each test;
+ * a byte-enum local folds the narrowing into an `lbu` and drops the tests' andi, a char local gives
+ * the lb but no andi (0x1A0), an int local tested through a byte cast reaches the size but takes a3
+ * and moves every volatile register (35 off): the shape that keeps all three is not found */
+SKBKEY SkbPadKeyEvent(CPad *pad)
+{
+    STICK_DIR dir = UiGetDirStickMoved();
+    SKBKEY event = SKBKEY_NONE;
+
+    for (int i = 0; i < 4; i++) {
+        if (pad->m_state[s_padKeys[i].m_button] == KEY_FALLING || dir == s_padKeys[i].m_dir) {
+            event = (SKBKEY)s_padKeys[i].m_event;
+            break;
+        }
+    }
+    if (!event) {
+        if (pad->m_state[PAD_CROSS] == KEY_FALLING)
+            event = SKBKEY_5;
+        else if (pad->m_state[PAD_TRIGGER_L2] == KEY_FALLING)
+            event = SKBKEY_6;
+        else if (pad->m_state[PAD_TRIGGER_R2] == KEY_FALLING)
+            event = SKBKEY_7;
+    }
+    if (event) {
+        s_keyEvent = event;
+        s_keyHeld = 0.0f;
+        return event;
+    }
+    bool released = dir == STICK_CENTERED;
+
+    released |= pad->m_state[PAD_LEFT] == KEY_RISING;
+    released |= pad->m_state[PAD_RIGHT] == KEY_RISING;
+    released |= pad->m_state[PAD_UP] == KEY_RISING;
+    released |= pad->m_state[PAD_DOWN] == KEY_RISING;
+    released |= pad->m_state[PAD_CROSS] == KEY_RISING;
+    released |= pad->m_state[PAD_TRIGGER_L2] == KEY_RISING;
+    released |= pad->m_state[PAD_TRIGGER_R2] == KEY_RISING;
+    if (released)
+        s_keyEvent = 0;
+    return SKBKEY_NONE;
+}
 
 /* a 2D object given a node of its own under a parent (zui.cpp's, 0x36AB20) */
 extern "C" zdb::CNode *func_0036AB20(C2D *obj, zdb::CTextureRelocMgr *mgr, zdb::CNode *parent);
