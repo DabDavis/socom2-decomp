@@ -9539,7 +9539,7 @@
 0x005B82D0 func_005B82D0
 0x005B8630 GetFireClassIndex__5CZKitFQ25CZKit10FIRE_CLASS
 0x005B8760 GetCurItemFireClass__5CZKitFv
-0x005B8820 func_005B8820
+0x005B8820 GetItemFireClass__5CZKitF10EQUIP_ITEM
 0x005B88C0 func_005B88C0
 0x005B8F20 SetItemPtr__5CZKitFiPv
 0x005B8FC0 ClearItemPtr__5CZKitFi
@@ -9595,6 +9595,7 @@
 0x005BE1D0 GetFiremodeGraphic__5CZKitFi
 0x005BE240 GetItemName__5CZKitFi
 0x005BE2F0 func_005BE2F0
+0x005BE300 GetReticuleByIndex__5CZKitFi
 0x005BE560 GetCurReticule__5CZKitFv
 0x005BE570 SetCurReticule__5CZKitFb
 0x005BE5F0 CurReticuleTypeChanged__5CZKitFv
@@ -9639,6 +9640,7 @@
 0x005C7110 GetClass145Index__5CZKitFv
 0x005C71A0 GetSecondaryIndex__5CZKitFv
 0x005C7230 GetPrimaryIndex__5CZKitFv
+0x005C72C0 InitItemModel__5CZKitFPCcPCc
 0x005C7450 SetupBinocular__5CZKitFv
 0x005C74E0 func_005C74E0
 0x005C75F0 Setup2XAmmo__5CZKitFv
@@ -9781,6 +9783,9 @@
 0x005E1A10 RifleFPAnim__10CAnimsByFPCF8AnimType
 0x005E1A50 PistolAnim__10CAnimsByFPCF8AnimType
 0x005E1A90 BaseAnim__7AnimSetF8AnimType
+0x005E1AF0 SetPistolFPAnim__7AnimSetF8AnimType8AnimType
+0x005E1BF0 SetRifleFPAnim__7AnimSetF8AnimType8AnimType
+0x005E1CF0 SetPistolAnim__7AnimSetF8AnimType8AnimType
 0x005E1DF0 func_005E1DF0
 0x005E3720 Get__12CAnimAuxDataFUi
 0x005E3AC0 TypeBit1__7AnimSetF8AnimType
@@ -9796,6 +9801,8 @@
 0x005E4F90 LookupAnimType__FPCc
 0x005E5000 FindAnimType__FPCc
 0x005E5070 CloseAll__7AnimSetFv
+0x005E50E0 __dt__7AnimSetFv
+0x005E5350 __ct__7AnimSetFv
 0x005E5500 MarkState__12CAnimTypeRecFii
 0x005E5600 ClearState__12CAnimTypeRecFi
 0x005E5790 GetVariantIndex__12CAnimTypeRecFii
@@ -9804,8 +9811,8 @@
 0x005E5AB0 Contains__10CBlendableF8AnimType
 0x005E5B10 MarkStateAll__12CAnimTypeRecFii
 0x005E5BF0 ClearStateAll__12CAnimTypeRecFi
-0x005E6120 func_005E6120
-0x005E6190 func_005E6190
+0x005E6120 __dt__Q23std172__vector_deleter<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,Q23std78allocator<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>>Fv
+0x005E6190 clear__Q23std172__vector_deleter<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,Q23std78allocator<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>>Fv
 0x005E6230 GetRemoteControl__11CRemoteCtrlFv
 0x005E6240 OnStunDamage__11CRemoteCtrlF9STUN_TYPEfPC6CPnt3D
 0x005E6250 IsPlayer__11CRemoteCtrlCFv
@@ -10130,6 +10137,7 @@
 0x00609D50 CanAttack__10CAiSReloadCFv
 0x00609D60 __dt__10CAiSShotAtFv
 0x00609DE0 CanPursue__10CAiSShotAtCFP11CSealCtrlAi
+0x00609DF0 CheckLineOfFire__2aiFPC7CEntityPC7CTargetf
 0x0060A2D0 func_0060A2D0
 0x0060A2F0 OnSetVisible__9CAiTargetFb
 0x0060A460 Tick__9CAiTargetFP7CEntityf

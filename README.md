@@ -2060,6 +2060,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 32** (AnimSet laid out, its setters and pair, the item model, the line of fire):
+  - MW shares one sign-extension of a narrow parameter between an inlined callee and the caller's later uses; passing the
+    argument cast to its own type (`AnimId((AnimType)rifle)`) makes it a separate expression, so the caller re-extends as
+    the target does (AnimSet's SetPistolAnim 0x5E1CF0, SetRifleFPAnim 0x5E1BF0, SetPistolFPAnim 0x5E1AF0, open since
+    round 10);
+  - a 4-pass loop stepping a struct pointer with the counter (`for (i = 0; i < 4; i++, b++) b->f = x;`) unrolls two at a
+    time with one pointer step, written `a[i].f` MW folds all four offsets; AnimSet's constructor 0x5E5350 and destructor
+    0x5E50E0 are `new AnimSet[n]`'s pair, SOCOM 1's eight blend pointers embedded CBlendable members;
+  - `if (!(m = f()))` tests v0 with the copy in the delay slot, `m = f(); if (!m)` copies first (one more); locals whose
+    address is taken (push_back's `const T &`) get frame slots by declaration order, highest address first -- declared
+    uninitialised at the top they order freely; `T id = 255; if (w) id = w->m_ID;` keeps the target's two alignment nops
+    where `w ? w->m_ID : 255` drops them; in a `&` of two fields the one read through a local pointer loads first; a
+    result declared uninitialised at the top and assigned just before its loop keeps its register unzeroed;
+  - CZKit::InitItemModel 0x5C72C0, GetReticuleByIndex 0x5BE300 (GetCurZoom inlined) and ai::CheckLineOfFire 0x609DF0
+    (SOCOM 1's); anim.cpp's tail emits the name list's vector<string> deleter pieces 0x5E6120 / 0x5E6190 and, since the
+    MSL's round 21, the string's reserve / replace<PCc> / assign<PCc>; FT_COMMAND is unsigned in the kit's units (a signed
+    byte with CMD_NONE = -1 loses 9: AllowCommand, OnCommand, CTComm::Parse, six of seal_unit.cpp's).
 - **Tells from the SEALs, round 31** (the AI controller's net state and fire timing, the animate and deploy states):
   - `switch (st.m_code = f())` gives the target's `andi v1,v0,0xff`; switching on `st.m_code` after the store re-reads the
     byte with `lbu` (CSealCtrlAi::GetAiNetState 0x56F6C0); a bool call's result inside a materialised `&&` gets only
