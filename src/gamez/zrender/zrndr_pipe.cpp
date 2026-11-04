@@ -4,9 +4,13 @@
  * class (its DWARF: 0x694 bytes; SOCOM II's thePipe runs to 0x720); SOCOM 1's file name (its
  * __sinit_zrndr_pipe.cpp builds thePipe as SOCOM II's 0x402E60 does). Defined in reverse of their
  * image order (-inline deferred), on node_world.h's real texture classes.
- * Written so far: the lens flares' system's Clear and Release (0x336340, 0x3364D0: the unit opens
- * with that system's code, SOCOM II's), the opacity stack's push, the alpha pass's constructor and
- * destructor, the alpha pass's textures, the noise overlay (its kick, its texture, its pixels),
+ * Written so far: the lens flares' system's Tick, Clear, Release and Add (0x336230-0x336650: the unit
+ * opens with that system's code, SOCOM II's) and the pipe's TestFlare (0x336810), the opacity stack's
+ * push and a node's (PushNodeOpacity, ours), the UI nodes' walk (RenderUiNodeRecursive), the alpha
+ * pass's Add and AddLine and its constructor and destructor, the shadow pass (RenderMeshShadow,
+ * RenderNodeShadow), the delayed nodes' draw (RenderDelayedNodes), the projected maps' list
+ * (BuildProjectedMapList, ours: OPEN), a cell's pass (RenderCell, ours), the alpha pass's textures,
+ * the noise overlay (its kick, its texture, its pixels),
  * Flush with the three texture-buffer inlines' copies after it, the flush FIFO packet, the FIFO
  * signal and load (FIFO_Load ours: SOCOM 1's two-argument FIFO_Signal less its argument), VIF1's interrupt, the destructor and the constructor -- whose resize of the
  * delayed nodes brings the template tail (0x33C2A0-0x33CCCF: resize, the deleters' clears and
