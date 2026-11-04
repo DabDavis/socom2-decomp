@@ -11,7 +11,11 @@
  * pins on each (con_ps2.cpp and ai_util.cpp are the same, README "The inlining mode, measured").
  *
  * OPEN, not written yet: the rest of the unit (0x39AE50-0x39BBB0 holds the string assign through
- * the template replace, 0x39B620, the MSL lane's request). */
+ * the template replace, 0x39B620, the MSL lane's request), the letter caser 0x39A8D0.
+ *
+ * Round 21: the text's editing core byte-exact -- SkbEraseBack 0x398C40, SkbCursorForward 0x399320,
+ * SkbInsertChar 0x399EC0, SkbCursorTo 0x39A1D0 with its two comparators 0x39A3E0/0x39A3F0,
+ * SkbCursorToEnd 0x39A400, SkbSetText 0x39A5B0 (SkbEditCharLen pinned: SkbEraseBack calls it). */
 
 #include "zui_skb.h"
 #include "zui_hangul.h"
