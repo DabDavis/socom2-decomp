@@ -125,3 +125,28 @@ void func_00626D78(LINT *p, unsigned int n)
         }
     }
 }
+
+extern void *memcpy(void *d, const void *s, unsigned int n);
+extern void lintAddIP(LINT *a, LINT *b);       /* largeint_asm.s */
+extern void lintSubIP(LINT *a, LINT *b);
+
+/* the sum and difference into a third number, through a copy (round 18b: SOCOM 1's lintAdd and
+ * lintSub at their place, over the in-place assembly; memcpy both ways, GCC's block move with the
+ * run-time alignment test of the side it does not know) */
+void lintAdd(LINT *pResult, LINT *a, LINT *b)
+{
+    LINT t;
+
+    memcpy(&t, a, sizeof t);
+    lintAddIP(&t, b);
+    memcpy(pResult, &t, sizeof t);
+}
+
+void lintSub(LINT *pResult, LINT *a, LINT *b)
+{
+    LINT t;
+
+    memcpy(&t, a, sizeof t);
+    lintSubIP(&t, b);
+    memcpy(pResult, &t, sizeof t);
+}

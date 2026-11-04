@@ -12251,8 +12251,8 @@
 0x00626D00 0x28 lintClearBit  # OVL2; s1:order (the gcc lane, round 8b): after lintSetBit as SOCOM 1's, its body (0x28, the bit and'ed out)
 0x00626D28 0x50 func_00626D28  # OVL2 unaligned
 0x00626D78 0x74 func_00626D78  # OVL2 unaligned
-0x00626DF0 0x180 func_00626DF0  # OVL2
-0x00626F70 0x180 func_00626F70  # OVL2
+0x00626DF0 0x180 lintAdd  # OVL2; s1:order (round 18b: SOCOM 1's lintAdd after the in-place add and subtract, here after the carry pair; the sum into a third number through a copy; 0x180 against 0x17C)
+0x00626F70 0x180 lintSub  # OVL2; s1:order+calls (round 18b: after lintAdd as SOCOM 1's; RSAGenerateKeyPair calls it (b, a, b) where SOCOM 1's calls lintSub)
 0x006270F0 0x180 MOD  # OVL2; s1:calls (round 18b: lintPrime's fourth call, SOCOM 1's MOD there)
 0x00627270 0x310 func_00627270  # OVL2
 0x00627580 0x268 func_00627580  # OVL2
