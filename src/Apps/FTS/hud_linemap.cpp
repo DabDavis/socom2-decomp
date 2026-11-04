@@ -9,8 +9,8 @@
  * (0x2107C0), CalcPoint (0x210870), and with them every copy they leave out of line -- ai.h's
  * CAiMap::GetCellCenter (0x20F220), GetCell (0x2106A0), GetAltitude (0x210630, inline in ai.h),
  * IsMapCell, GetIndex, IsLayer and the vector pieces, all on the AI core's real ai.h; (round 43)
- * Tick (0x20EBD0, SOCOM 1's: its two map ticks one inline each, TickLines pinned out of line). Not
- * yet: Clip, TickWayPoints, TickRegions, TickAnchors, SetupPolygon. Defined in reverse of their
+ * Tick (0x20EBD0, SOCOM 1's: its two map ticks one inline each, TickLines pinned out of line) and
+ * TickRegions (0x20DF70, SOCOM 1's). Not yet: Clip, TickWayPoints, TickAnchors, SetupPolygon. Defined in reverse of their
  * image order (-inline deferred). */
 
 #include "../../gamez/zmath/zmath.h"
@@ -620,6 +620,52 @@ void CZLineMap::TickLines(const CAiMap &map, float fPulseTrans, bool bDim)
     }
 }
 #pragma auto_inline reset
+
+/* the map's regions of kinds 1 and 5 outlined, corner to corner, in the extract look (dimmed on
+ * request) -- SOCOM 1's TickRegions (its DWARF: myLine, type, loc, rit and the static reference
+ * ld), the corners' cells drawn through SOCOM II's cell LineTo */
+void CZLineMap::TickRegions(const CAiMap &map, bool bDim)
+{
+    static LINE_DATA &ld = _linedata[LINETYPE_EXTRACT];
+    float fTrans = ld.opacity;
+
+    /* (a ternary: the if-statement pads its join and multiplies the other way round, fTrans first) */
+    fTrans = bDim ? 0.3f * fTrans : fTrans;
+
+    const CAiMap::regions &regions = map.m_regionTable;
+
+    for (CAiMap::regions::const_iterator rit = regions.begin(); rit != regions.end(); ++rit) {
+        int type = (*rit).m_type;
+
+        if (type == 1 || type == 5) {
+            CAiMapLoc loc;
+            C2DLine *myLine;
+
+            loc = (*rit).m_loc;
+            MoveTo(loc);
+            loc = CAiMapLoc((*rit).m_loc.x + (*rit).m_dx - 1, (*rit).m_loc.y, 0);
+            if ((myLine = LineTo(loc)) != 0) {
+                myLine->SetColor(ld.color.x, ld.color.y, ld.color.z);
+                myLine->SetTrans(fTrans);
+            }
+            loc = CAiMapLoc((*rit).m_loc.x + (*rit).m_dx - 1, (*rit).m_loc.y + (*rit).m_dy - 1, 0);
+            if ((myLine = LineTo(loc)) != 0) {
+                myLine->SetColor(ld.color.x, ld.color.y, ld.color.z);
+                myLine->SetTrans(fTrans);
+            }
+            loc = CAiMapLoc((*rit).m_loc.x, (*rit).m_loc.y + (*rit).m_dy - 1, 0);
+            if ((myLine = LineTo(loc)) != 0) {
+                myLine->SetColor(ld.color.x, ld.color.y, ld.color.z);
+                myLine->SetTrans(fTrans);
+            }
+            loc = (*rit).m_loc;
+            if ((myLine = LineTo(loc)) != 0) {
+                myLine->SetColor(ld.color.x, ld.color.y, ld.color.z);
+                myLine->SetTrans(fTrans);
+            }
+        }
+    }
+}
 
 /* the map drawn: the active triangles, the lines (at most 500), the wide lines' polygon sets, the
  * bitmaps and the strings (at most 32) -- SOCOM 1's CZLineMap::Draw with SOCOM II's sets and
