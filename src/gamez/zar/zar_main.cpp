@@ -118,6 +118,19 @@ bool CZAR::Open(const char *name, int dir, unsigned int mode, unsigned int padde
     return ok;
 }
 
+/* (SOCOM 1's, the same code: NewKey, GetOpenKey and OpenKey inlined) */
+CKey *CZAR::CreateKey(const char *name)
+{
+    CKey *key = 0;
+
+    if (IsOpen()) {
+        key = NewKey(name);
+        GetOpenKey()->InsertKey(key);
+        OpenKey(key);
+    }
+    return key;
+}
+
 bool CZAR::Flush()
 {
     if (!IsOpen())

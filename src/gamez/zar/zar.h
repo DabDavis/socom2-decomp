@@ -109,6 +109,8 @@ public:
     bool Fetch(const char *name, bool *value);
     /* a fresh key, named so (SOCOM 1's) */
     CKey *NewKey(const char *name);
+    /* a new key under the open one, and opened -- none unless the file is open (SOCOM 1's) */
+    CKey *CreateKey(const char *name);
     /* a key's size by name in the open key, -1 when it has none */
     int GetSize(const char *name);
     CKey *GetOpenKey();
