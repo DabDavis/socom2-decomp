@@ -745,6 +745,49 @@ def test_stale_follows_a_callee_rename():
         shutil.rmtree(auto, ignore_errors=True)
 
 
+def test_objcmp_by_address_equates_a_respelling():
+    """tools/objcmp.py --by-address (GCC round 29a; the game states' round-34 objcmp_addr.py): every
+    lane respells placeholders by their rows' real names, and plain objcmp reports each renamed call
+    as a difference. By address, a unit whose defined function, call and global are respelled --
+    func_001A5C88 as sceSifGetDataTable, func_001A6508 as sceSifExitRpc, data_001D0BB8 as
+    __infinity -- is the same, the three respellings listed. Negatives: the plain comparison
+    differs; a call to another row differs by address too; two names no map resolves are compared
+    by name and differ; and an offset into a placeholder that reaches the global's address
+    (`data_001D0BB0[1]`) differs -- MW's REL relocation keeps the 8 in the instruction's field: a
+    symbol is equated, never a sum."""
+    import objcmp as O
+    src = BUILD / "objcmp_fixture"
+    src.mkdir(parents=True, exist_ok=True)
+
+    def obj(stem: str, fn: str, callee: str, data: str, ref: str | None = None) -> Path:
+        """`double fn(void) { callee(); return ref; }`, ref the global `data` (or an element of it)"""
+        p = src / f"{stem}.c"
+        p.write_text(f"void {callee}(void);\nextern double {data};\n"
+                     f"double {fn}(void) {{ {callee}(); return {ref or data}; }}\n")
+        o = BUILD / f"objcmp_{stem}.o"
+        D.compile_obj(p, o, D.COMPILER, None, [HERE / "include", src])
+        return o
+
+    holder = obj("placeholders", "func_001A5C88", "func_001A6508", "data_001D0BB8")
+    named = obj("named", "sceSifGetDataTable", "sceSifExitRpc", "__infinity")
+    offset = obj("offset", "sceSifGetDataTable", "sceSifExitRpc", "data_001D0BB0[2]", "data_001D0BB0[1]")
+    other = obj("other", "sceSifGetDataTable", "sceSifInitRpc", "__infinity")
+    nowhere_a = obj("nowhere_a", "sceSifGetDataTable", "not_a_row_a", "__infinity")
+    nowhere_b = obj("nowhere_b", "sceSifGetDataTable", "not_a_row_b", "__infinity")
+    res = O.resolver(E.symbols())
+    ck(O.summary(holder) != O.summary(named), "plain, the respelled unit differs")
+    na: dict = {}
+    nb: dict = {}
+    sa, sb = O.summary(holder, res, na), O.summary(named, res, nb)
+    ck(sa == sb, "by address, the respelled unit is the same")
+    ck(set(O.respellings(sa, na, nb)) == {("func_001A5C88", "sceSifGetDataTable"),
+                                          ("func_001A6508", "sceSifExitRpc"), ("data_001D0BB8", "__infinity")},
+       f"and its three respellings are listed: {O.respellings(sa, na, nb)}")
+    ck(O.summary(other, res) != sb, "a call to another row differs by address too")
+    ck(O.summary(offset, res) != sb, "an offset into a placeholder is no symbol: its field differs")
+    ck(O.summary(nowhere_a, res) != O.summary(nowhere_b, res), "names no map resolves are compared by name")
+
+
 def test_explicit_instance_scores_in_its_units_overlay():
     """seal_tasks.cpp (OVL2) instantiates `ai::_max<unsigned char>` explicitly: a global, the
     unit's own, whose name the map gives OVL1's 0x2AFC40 and whose OVL2 copy is 0x5DEE70
