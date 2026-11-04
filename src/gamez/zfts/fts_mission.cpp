@@ -243,6 +243,24 @@ namespace zdb {
 class CNode;
 }
 
+/* a mission camera (fts_objectivecam.cpp's CMissionCam, SOCOM 1's DWARF 0x1C bytes: out of line) and
+ * the mission's lists of them (SOCOM 1's DWARF: each a list and nothing more) */
+class CMissionCam {
+public:
+    CMissionCam();   /* 0x2C78E0 */
+    ~CMissionCam();   /* 0x2C7810 */
+    void Set(const char *identifier, const char *name, const char *desc0, const char *desc1,
+             const char *desc2, const char *anim, const char *music);   /* 0x2C7640 */
+
+    unsigned char _0[0x1c];
+};
+
+class CMissionCamList : public std::list<CMissionCam *> {
+};
+
+class CMissionObjectiveCamList : public std::list<CMissionObjectiveCam *> {
+};
+
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CMission {
 public:
@@ -251,6 +269,7 @@ public:
     bool Open(const char *name, int load_ai);
     static bool tick(float dT, void *data);   /* 0x2AAB00 */
     bool ZAnimLoad();
+    bool LoadMissionCams(CRdrFile *rdr);
     void InitalizeTeamValves();   /* 0x2B2840 */
     void RefreshTeamValves();   /* 0x2B23A0 */
     void CreateCompassNavPoints();
@@ -297,7 +316,9 @@ public:
     unsigned char m_chars_loaded;   // 0x180c (SOCOM 1's at 0x588)
     unsigned char _180d[0x181c - 0x180d];
     CRdrFile *m_materialsRdr;   // 0x181c (SOCOM 1's at 0x598)
-    unsigned char _1820[0x1860 - 0x1820];
+    unsigned char _1820[0x1848 - 0x1820];
+    CMissionCamList m_missioncams;   // 0x1848 (SOCOM 1's at 0x5b4)
+    CMissionObjectiveCamList m_objectivecams;   // 0x1854 (SOCOM 1's at 0x5c0)
     float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM II's; the name ours)
     unsigned char _1864[0x18ec - 0x1864];
     zdb::CNode *m_sealbombshack;   // 0x18ec (SOCOM 1's at 0x658)
@@ -1335,7 +1356,6 @@ void func_002DDE40(CRdrFile *rdr);   /* (SOCOM 1's CMaterialExArray::ReadMateria
 int func_002DE9E0(const char *name);   /* (SOCOM 1's CMaterialExArray::ResolveMaterialIndex) */
 extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
 void func_002A4D30(CMission *mission, CRdrFile *rdr);   /* (SOCOM 1's CMission::LoadObjectiveCams) */
-void func_002A5290(CMission *mission, CRdrFile *rdr);   /* (SOCOM 1's CMission::LoadMissionCams) */
 void func_002B4F40(zdb::CWorld *world, const char *name);   /* (SOCOM 1's CNodeAction::Open) */
 void func_003D03C0();   /* (SOCOM 1's CZWeapon::OpenDecals) */
 void func_005A4CF0();   /* (OVL2: SOCOM 1's CZSealBody::InitDecalHandles) */
@@ -1430,7 +1450,7 @@ bool CMission::Open(const char *name, int load_ai)
         zrdr_free(rdr);
     }
     rdr = zrdr_read("missioncams.rdr", 0, 0);
-    func_002A5290(this, rdr);
+    LoadMissionCams(rdr);
     zrdr_free(rdr);
     func_002B4F40(world, "actions.rdr");
     CreateLadderTable();
@@ -1515,6 +1535,42 @@ bool CMission::ReOpen_Unload2()
     ClearFreeList__14CSched_ManagerFb(&zTaskScheduler, true);
     Headset::Reset();
     CSndInstance::PostTick(0.0f, 0);
+    return true;
+}
+
+const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
+
+/* the mission cameras: the old ones deleted and the list emptied, then each of the rdr's MISSIONCAMS
+ * made from its seven strings, a missing NAME a blank (SOCOM 1's; OVL1 0x2A5290) */
+bool CMission::LoadMissionCams(CRdrFile *rdr)
+{
+    for (CMissionCamList::iterator i = m_missioncams.begin(), e = m_missioncams.end(); i != e; ++i)
+        delete *i;
+    m_missioncams.erase(m_missioncams.begin(), m_missioncams.end());
+    if (!rdr)
+        return false;
+    _zrdr *cams = zrdr_findtag((const _zrdr *)rdr, "MISSIONCAMS");
+
+    if (!cams)
+        return false;
+    for (int i = 0; i < cams->Count(); i++) {
+        _zrdr *cam = cams->Item(i);
+        const char *identifier = zrdr_findstring(cam, "IDENTIFIER");
+        const char *name = zrdr_findstring(cam, "NAME");
+        const char *desc0 = zrdr_findstring(cam, "DESCRIPTION");
+        const char *desc1 = zrdr_findstring(cam, "DESCRIPTION2");
+        const char *desc2 = zrdr_findstring(cam, "DESCRIPTION3");
+        const char *anim = zrdr_findstring(cam, "ON_CALL_ANIMATION");
+        const char *music = zrdr_findstring(cam, "ON_CALL_MUSIC");
+
+        if (!name)
+            name = " ";
+        CMissionCam *mc = new CMissionCam;
+
+        mc->Set(identifier, name, desc0, desc1, desc2, anim, music);
+        m_missioncams.push_back(mc);
+    }
     return true;
 }
 

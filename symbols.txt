@@ -3799,7 +3799,7 @@
 0x002A4A10 0x288 func_002A4A10  # OVL1
 0x002A4CA0 0x84 GetMissionCamByIdentifier__8CMissionFPCc  # OVL1; s1:callee
 0x002A4D30 0x560 func_002A4D30  # OVL1
-0x002A5290 0x248 func_002A5290  # OVL1
+0x002A5290 0x248 LoadMissionCams__8CMissionFP8CRdrFile  # OVL1; s1:calls by hand (the states lane, round 24): CMission::Open calls it on missioncams.rdr where SOCOM 1's Open calls LoadMissionCams__8CMissionFP8CRdrFile, the same body -- the list's cameras deleted and erased, then MISSIONCAMS' seven strings per camera (IDENTIFIER .. ON_CALL_MUSIC), new CMissionCam, Set, push_back
 0x002A54E0 0xE5C func_002A54E0  # OVL1
 0x002A6340 0x610 func_002A6340  # OVL1
 0x002A6950 0xC func_002A6950  # OVL1
