@@ -25,6 +25,7 @@
 
 #include "../../gamez/ztwod/ztwod.h"
 #include "../../gamez/znode/znode.h"
+#include "../../gamez/zrdr/zrdr.h"
 #include "hud_ammo.h"
 #include "hud_fader.h"
 #include "hud_lensflare.h"
@@ -330,10 +331,32 @@ enum HUD_MODE {
 extern "C" void StopShake__10CAppCameraFv(CAppCamera *camera);
 CZSealBody *ftsGetPlayer();
 
+/* a valve's change of state (zanim.h's) */
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
 /* a server setting (SOCOM 1's CValve): its value a halfword at 4 */
 class CValve {
 public:
     static CValve *GetByName(const char *name);
+    void MakeCallbacks(VALVE_STATE state);
+    /* zanim.h's inline setter: the callbacks told when it turns on or off */
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
 
     unsigned char _0[4];
     unsigned short m_value;   // 0x4
@@ -515,6 +538,75 @@ public:
 };   // 0x1acd0 bytes
 
 extern CHUD *theHUD;
+
+/* c2dstring.cpp's: a string table entry with its `$<n>s` arguments filled in (the name ours) */
+void FormatString(char *out, int size, int id, const char **args, int nargs);
+
+/* a number as a string table entry's one argument (SOCOM II's, the unit's last function: the weapon
+ * selector's magazine count; the name ours) */
+void FormatStringInt(char *out, int size, int id, int value)
+{
+    char buf[16];
+    const char *arg;
+
+    sprintf(buf, "%d", value);
+    arg = buf;
+    FormatString(out, size, id, &arg, 1);
+}
+
+/* the help windows' valve (SOCOM II's; OVL1 bss 0x408E30, the name ours): hudInit finds it */
+static CValve *s_helpWindowsValve;
+
+/* hud_linemap.cpp's type readers, and the score popup unit's event popups (SOCOM II's) */
+void hudAddPolyType(_zrdr *pRdr);
+void hudAddLineType(_zrdr *pRdr);
+extern "C" void func_0022D3F0(_zrdr *common);
+extern "C" void func_0022D660(_zrdr *popup);
+
+/* hud.rdr read (SOCOM 1's hudInit, CMission::Init's call): the tactical map's polygon and line
+ * types, then SOCOM II's event popups -- the common look, each definition -- and the help windows'
+ * valve */
+void hudInit()
+{
+    _zrdr *rdr = zrdr_read("hud.rdr", "data/common", 0);
+    _zrdr *tacmap = zrdr_findtag(rdr, "TacMap");
+    _zrdr *polys = zrdr_findtag(tacmap, "Polygons");
+
+    if (polys)
+        for (int i = 0; i < polys->Count(); i++)
+            hudAddPolyType(polys->Item(i));
+
+    _zrdr *lines = zrdr_findtag(tacmap, "Lines");
+
+    if (lines)
+        for (int i = 0; i < lines->Count(); i++)
+            hudAddLineType(lines->Item(i));
+    func_0022D3F0(zrdr_findtag(zrdr_findtag(rdr, "EventPopups"), "Common"));
+
+    _zrdr *popups = zrdr_findtag(rdr, "PopupDefinitions");
+
+    if (popups)
+        for (int i = 0; i < popups->Count(); i++)
+            func_0022D660(popups->Item(i));
+    zrdr_free((CRdrFile *)rdr);
+    s_helpWindowsValve = CValve::GetByName("HelpWindowsEnabled");
+}
+
+/* whether the help windows are on: so unless the valve is there and off (SOCOM II's; the pause
+ * menu and the score popup ask; the name ours) */
+bool hudHelpWindowsEnabled()
+{
+    CValve *v = s_helpWindowsValve;
+
+    return !v || v->m_value != 0;
+}
+
+/* the help windows turned the other way (SOCOM II's; the pause menu's; the name ours) */
+void hudToggleHelpWindows()
+{
+    if (s_helpWindowsValve)
+        s_helpWindowsValve->SetValue(!hudHelpWindowsEnabled());
+}
 
 /* the unit's dynamically initialised statics, in SOCOM 1's order (__sinit_hud_main.cpp 0x3FDA40
  * stores the colour's four words, then builds the bitmap and registers ~C2DBitmap 0x1FCB10; SOCOM

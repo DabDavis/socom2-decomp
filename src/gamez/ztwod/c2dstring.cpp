@@ -97,6 +97,75 @@ const char *TranslateString(const char *name);
 const char *GetString(int id);
 int GetStringId(const char *name);
 
+/* a string table entry by id into a buffer, each `$<n>s` (n 1-9, below the argument count) replaced
+ * by the n'th argument (none: empty), stopping where the next one would not fit; an unknown id
+ * gives the empty string (SOCOM II's, after C2DString's constructor in the image: the HUD's number
+ * formatter 0x1FE120, the score popup, DNASErrorString and 0x30C090 call it; the name ours) */
+enum FORMAT_STATE {
+    FORMAT_TEXT,
+    FORMAT_DOLLAR,
+    FORMAT_ARG
+};
+
+void FormatString(char *out, int size, int id, const char **args, int nargs)
+{
+    const char *s = GetString(id);
+
+    if (!s) {
+        *out = 0;
+        return;
+    }
+
+    int n = 0;
+    FORMAT_STATE state = FORMAT_TEXT;
+    int arg = 0;
+
+    for (int i = 0; s[i]; i++) {
+        if (n + 1 >= size)
+            break;
+
+        char c = s[i];
+
+        out[n++] = c;
+
+        bool done = false;
+
+        switch (state) {
+        case FORMAT_TEXT:
+            if (c == '$')
+                state = FORMAT_DOLLAR;
+            break;
+        case FORMAT_DOLLAR:
+            if (c >= '1' && c <= '9' && c - '1' < nargs) {
+                arg = c - '1';
+                state = FORMAT_ARG;
+            } else
+                state = FORMAT_TEXT;
+            break;
+        case FORMAT_ARG:
+            if (c == 's') {
+                const char *a = args[arg];
+
+                if (!a)
+                    a = "";
+
+                int len = n - 3 + strlen(a);
+
+                if (len < size) {
+                    strcpy(out + n - 3, a);
+                    n = len;
+                } else
+                    done = true;
+            }
+            state = FORMAT_TEXT;
+            break;
+        }
+        if (done)
+            break;
+    }
+    out[n] = 0;
+}
+
 /* empty strings of 15, white and opaque at the window's corner, no font; blended */
 C2DString::C2DString()
 {
