@@ -4,9 +4,12 @@
  * asm), _ipuSetMPEG1 and _dmVector, the IPU command and wait primitives (_sendIpuCommand ...
  * _nextStartCode) and the header parsers (_sliceB ... _copyrightExtension); the motion
  * compensation before them (_motionComp0 ... _doMC), the macroblock layer between (_waitBdecOut,
- * 0x1B6ED0, ... _motionVector) and the picture output after them are not written yet (their rows
- * stand as drafts or open). _updateTempTackData is left to its matching draft. Names are SOCOM
- * 1's (s1:exact).
+ * 0x1B6ED0, ... _motionVector) and most of the picture output after them are not written yet (their
+ * rows stand as drafts or open); GCC round 19a wrote the picture layer's _decPicture (its switch's
+ * frame case first: the target lays case 3's body right after the dispatch tree) and _outputFrame
+ * (the field pair chosen into locals, one call), _isOutSizeOK and the object's last function,
+ * receiveDataFromIPU. _updateTempTackData is left to its matching draft. Names are SOCOM 1's
+ * (s1:exact).
  *
  * The IPU's idle wait and the command write are macros, expanded inside the readers
  * (_ipuVdec, _peepBit, _flushBuf, _nextBit) as well as being functions of their own: the
@@ -1383,4 +1386,99 @@ void _copyrightExtension(MpegDec *d)
 	_nextBit(d, 22);
 	_nextBit(d, 1);
 	_nextBit(d, 22);
+}
+
+/* The picture layer (GCC round 19a): a picture decoded into its structure's reference (the
+ * frame's or a field's third slot), marked valid on success; a frame output, or a field pair. */
+extern int _pictureData0(MpegDec *d);
+extern void _dispRefImage(MpegDec *d, MpegRef *ref, int frameNo);
+extern void _dispRefImageField(MpegDec *d, MpegRef *top, MpegRef *bottom, int frameNo);
+
+int _decPicture(MpegDec *d)
+{
+	MpegRef *ref;
+	int ret;
+
+	if (d->picture_structure == 3 && d->secondField) {
+		_Error(d, "odd number of field pictures");
+		d->secondField = 0;
+	}
+	switch (d->picture_structure) {
+	case 3:
+		ref = d->ref[0][2];
+		break;
+	case 1:
+		ref = d->ref[1][2];
+		break;
+	case 2:
+		ref = d->ref[2][2];
+		break;
+	default:
+		ref = d->ref[0][2];
+		_Error(d, "unknown picture sutructure");
+		break;
+	}
+	ret = _pictureData0(d);
+	if (ret)
+		ref->valid = 1;
+	return ret;
+}
+
+void _outputFrame(MpegDec *d, int frameNo, int output)
+{
+	MpegRef *top, *bottom;
+
+	if (output) {
+		if (d->picture_structure == 3) {
+			if (d->picture_coding_type == 3)
+				top = d->ref[0][3];
+			else
+				top = d->ref[0][0];
+			_dispRefImage(d, top, frameNo - 1);
+		} else {
+			if (d->picture_coding_type == 3) {
+				top = d->ref[1][3];
+				bottom = d->ref[2][3];
+			} else {
+				top = d->ref[1][0];
+				bottom = d->ref[2][0];
+			}
+			_dispRefImageField(d, top, bottom, frameNo - 1);
+		}
+	}
+	if (d->ptmSet == 1)
+		d->ptmSet = 2;
+}
+
+extern int sprintf(char *buf, const char *fmt, ...);
+extern int DIntr(void);
+extern int EIntr(void);
+
+/* the caller's image buffer against the picture: its width and height when set, else its size */
+int _isOutSizeOK(MpegDec *d, MpegRef *ref)
+{
+	char buf[256];
+	int ok;
+
+	if (d->imageY)
+		ok = d->imageX >= ref->width && d->imageY >= ref->height;
+	else
+		ok = d->imageSize >= ref->mbw * ref->mbh;
+	if (!ok) {
+		sprintf(buf, "Too small buffer size for %dx%d picture\n", ref->width, ref->height);
+		_Error(d, buf);
+	}
+	return ok;
+}
+
+/* the IPU's output DMA (channel 3) into the scratchpad */
+void receiveDataFromIPU(void *addr, int size)
+{
+	int ie = DIntr();
+
+	*D3_MADR = ((u_int)addr & 0x0FFFFFFF) | 0x80000000;
+	*D3_QWC = size >> 4;
+	*D3_CHCR = 0x100;
+	if (ie)
+		EIntr();
 }
