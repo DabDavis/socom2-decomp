@@ -1911,3 +1911,76 @@ bool CZSealBody::StanceChanged()
     }
     return false;
 }
+
+/* the object the top blend holds let go: the part's node taken off its parent and given to the
+ * world -- set down at the part's place in the world, at the SEAL's height, turned a quarter about x
+ * -- or to the part the blend names; the node active and marked moved, the blend's hold and the
+ * part's node and parent cleared; then the rifle (the node was the "rifle") or the pistol put back
+ * under its own parent's node, and as gear unless that parent is the right hand (OVL2 0x5781C0, new
+ * in SOCOM II: the deaths, the destructor, the mission's end and the item changes call it; the name
+ * unknown. seal_body.cpp's last-defined function: the unit's first in the image). The locals
+ * declared at the top in this order give the target's saved registers (the flag s4, the new parent
+ * s3, the blend s2, the node s1, the part s0); declared where they are first set they number
+ * blend, part, node, flag, parent */
+extern "C" void func_005781C0(CZSealBody *seal)
+{
+    bool rifle;
+    zdb::CNode *parent;
+    CZBodyAnimBlend *b;
+    zdb::CNode *node;
+    CZBodyPart *part;
+
+    b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
+    if (!b)
+        return;
+    part = (CZBodyPart *)b->m_20;
+    if (!part)
+        return;
+    node = part->m_node;
+    rifle = !strcmp(node->m_name, "rifle");
+    if (!node->m_parent)
+        return;
+    node->m_parent->DeleteChild(node);
+    if (!b->m_24) {
+        CPnt3D p;
+        CPnt3D w;
+
+        seal->PartInSpace(part, 0, &p, 0);
+        seal->m_quat.Apply(&p, &w, 1);
+        w.Add(&seal->m_posW, &w);
+        w.y = seal->m_posW.y;
+        parent = zdb::CWorld::m_world;
+        node->SetPosition(&w);
+        CQuat q;
+
+        q.MakeXRot(1.5707964f);
+        /* (the pointer converted: MW keeps the inline's null test, as the target does) */
+        node->SetRotation((const CQuat *)&q);
+    } else
+        parent = ((CZBodyPart *)b->m_24)->m_node;
+    node->SetActive(true);
+    parent->AddChild(node);
+    node->m_socom2_a1 |= 2;
+    b->m_20 = 0;
+    part->m_node = 0;
+    part->m_parent = 0;
+    if (rifle) {
+        if (seal->m_rifle->m_node && seal->m_rifle->m_node->m_parent)
+            seal->m_rifle->m_node->m_parent->DeleteChild(seal->m_rifle->m_node);
+        if (seal->m_rifle->m_parent && seal->m_rifle->m_parent->m_node) {
+            seal->m_rifle->m_parent->m_node->DeleteChild(seal->m_rifle->m_node);
+            seal->m_rifle->m_parent->m_node->AddChild(seal->m_rifle->m_node);
+        }
+        if (seal->m_rifle->m_parent != seal->m_rhand)
+            seal->SetPartAsGear(seal->m_item_gear[1].m_part, seal->m_item_gear[1].m_gear);
+    } else {
+        if (seal->m_pistol->m_node && seal->m_pistol->m_node->m_parent)
+            seal->m_pistol->m_node->m_parent->DeleteChild(seal->m_pistol->m_node);
+        if (seal->m_pistol->m_parent && seal->m_pistol->m_parent->m_node) {
+            seal->m_pistol->m_parent->m_node->DeleteChild(seal->m_pistol->m_node);
+            seal->m_pistol->m_parent->m_node->AddChild(seal->m_pistol->m_node);
+        }
+        if (seal->m_pistol->m_parent != seal->m_rhand)
+            seal->SetPartAsGear(seal->m_item_gear[2].m_part, seal->m_item_gear[2].m_gear);
+    }
+}

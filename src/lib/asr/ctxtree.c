@@ -17,7 +17,8 @@
  * declaration order -- the image's FreeTree, _FreeTree, CalcNrNodes, _CountWordsInTree,
  * _GetWordsInTree, CompareIDs, CreateActiveWordsCtxTree after SetIsolatedWordDpActiveWords,
  * CreateCtxTree and CalcAccuracyCtxTree (CompareIDs, qsort's comparator, is deferred as well: its
- * copy follows _GetWordsInTree's). Only the functions written so far are here: FreeTree, _FreeTree,
+ * copy follows _GetWordsInTree's). Only the functions written so far are here: AllocateNodeAndFreePrevious
+ * (round 22c: the free list tested before it is read, round 6c's shape), FreeTree, _FreeTree,
  * CalcNrNodes, CompareIDs and CreateActiveWordsCtxTree as the inlines they are, CalcNrNodes10,
  * SetIsolatedWordDpActiveWords, CreateCtxTree, CalcAccuracyCtxTree, and _CountWordsInTree and
  * _GetWordsInTree as plain statics until GetIsolatedWordDpActiveWords, their inliner, is written (a
@@ -57,6 +58,49 @@ extern int intCreateCtxTree(CASR *c, CTXVT *vt, unsigned int *ids, unsigned int 
 extern void FreeCtxInfo(CASR *c);
 
 int SetIsolatedWordDpActiveWords(CASR *c, unsigned int *ids, unsigned int n);
+extern int *fastallo_AllocateMemoryFromChunk(FASTALLO *fa, unsigned short n);
+extern void *heap_Alloc(void *heap, unsigned int size);
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+
+/* a node's children grown by one: n + 1 records (three words each) from the free list of their size
+ * in words -- or a new chunk -- while n is below 8, else from the heap; the n old ones copied in and
+ * given back, to the free list of theirs while fewer than 9, else to the heap (as _FreeTree gives a
+ * node's back); the new record's word and child count cleared. SOCOM 1's body (round 22c) */
+TNODE *AllocateNodeAndFreePrevious(CASR *c, int n, TNODE **children)
+{
+    TNODE *t;
+
+    if (n < 8) {
+        unsigned int k = (unsigned int)(n * 12 + 15) >> 2;
+        int **list = &c->fa.free[k];
+
+        if (*list != 0) {
+            t = (TNODE *)*list;
+            *list = *(int **)t;
+        } else
+            t = (TNODE *)fastallo_AllocateMemoryFromChunk(&c->fa, k);
+    } else
+        t = heap_Alloc(c->tos_heap, n * 12 + 12);
+    if (t == 0)
+        return 0;
+    t[n].nchildren = 0;
+    t[n].pad4 = 0;
+    if (n != 0) {
+        TNODE *old = *children;
+
+        memcpy(t, old, n * 12);
+        if (n < 9) {
+            int **list = &c->fa.free[n * 3];
+
+            *(int **)old = *list;
+            *list = (int *)old;
+        } else
+            heap_Free(c->tos_heap, old);
+    }
+    *children = t;
+    return t;
+}
+
 int CalcAccuracyCtxTree(CASR *c);
 void FreeTree(CASR *c);
 static void _FreeTree(CASR *c, TNODE *n);

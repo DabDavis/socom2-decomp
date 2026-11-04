@@ -573,10 +573,8 @@ static void _rethrow_grenade(CValve *valve, void *data)
 /* the AI's aiming helper, CAi, is ai.h's */
 
 extern "C" {
-/* CValve::AddCallback (SOCOM 1's AddCallback__6CValveFUiPFP6CValvePv_vPv; zanim.h's CValve lacks
- * it: OVL1 0x351960 by its address) */
-void func_00351960(CValve *valve, unsigned int mask, void (*func)(CValve *, void *), void *user);
-/* the other kinds' takers: a weapon, ammunition (OVL2 0x59F610, 0x59F6F0, seal_env.cpp's, matched
+/* (CValve::AddCallback, SOCOM 1's, OVL1 0x351960, is zanim.h's since the game states' round 35)
+ * the other kinds' takers: a weapon, ammunition (OVL2 0x59F610, 0x59F6F0, seal_env.cpp's, matched
  * as drafts; the MP bomb's is HandlePickupMPBomb, 0x59DEF0) */
 void func_0059F610(CZSealBody *seal, CPickup *pickup);
 void func_0059F6F0(CZSealBody *seal, CPickup *pickup);
@@ -599,7 +597,7 @@ CZAnim *CZSealBody::PickupObject(CPickup *pickup)
             if (anim) {
                 CValve *valve = CValve::Create(0, (VALVE_TYPE)2);
 
-                func_00351960(valve, 1, _rethrow_grenade, pickup);
+                valve->AddCallback(1, _rethrow_grenade, pickup);
                 ((CZProjectile *)pickup->m_data)->SetVelW(0);
                 CMatrix m;
                 const CMatrix *from = &m_node->m_matrix;

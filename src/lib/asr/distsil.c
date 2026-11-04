@@ -7,9 +7,9 @@
  * 1's (s1:align, s1:order, s1:slot); the block's fields are named by their use. ResizeQueues
  * (round 15c): SOCOM 1's body instruction for instruction but the prologue's schedule; round 16c
  * the constructor and the three small functions after it (GetpCachedDistances, GetDistanceOffset,
- * IdleDistCalcProcess); round 21c FreeLanguage, FreeDistCalc (OPEN), NormCorrection -- and the
+ * IdleDistCalcProcess); round 21c FreeLanguage, FreeDistCalc, NormCorrection -- and the
  * object's -ffast-math, which NormCorrection's sum shows (README "The recogniser and Medius by
- * hand", round 21c). */
+ * hand", round 21c); round 22c FreeDistCalc byte-exact over a marked stand-in insn. */
 #include "tosblk.h"
 
 /* a queue (queue.c), as far as the block reads it: the bytes of an element at +8 */
@@ -147,12 +147,18 @@ static void FreeLanguage(DISTSIL *d)
  * lists, the ten byte tables, the caches and the cached distances (only the last cleared). SOCOM
  * 1's FreeDistCalc's place (0x25C there, 0x224 here), the tables' counter an int (reversed by
  * loop.c: the target's `li s2,9`, against FreeLanguage's unsigned one).
- * OPEN (round 21c, 31 words, the right size, registers only): d and each codebook expansion's
- * scheduler pointer trade s2/s3 -- a tie in global-alloc's priority, d 17 refs over 119 insns and
- * each expansion's pointer 6 over 21, both exactly 4/7 (build/scratch/gcc/prio.py), broken by pseudo
- * number in d's favour; the target's pointers rank first. The ten tables walked by a pointer, a
- * do-while, the caches' frees in one statement leave it; the +312 table through a local is 13 words
- * (build/scratch/gcc/v_fd1.py) */
+ * Round 21c's 31 words (registers only) were a tie in global-alloc's priority: d 17 refs over 119
+ * insns and each codebook expansion's scheduler pointer 6 over 21, both 5714 (`tools/ccdump.py -f`),
+ * and a tie goes to the lower pseudo -- d, the parameter, always numbered first, so no renumbering
+ * can give the target's order (the pointers s2, d s3). The target's d lives 120 insns or more (5666):
+ * one RTL insn more inside d's life and outside both expansions' -- after the second, or anywhere
+ * past the codebook frees -- gives the target byte for byte (round 22c). FREEDIST_STANDIN is that
+ * insn, a STAND-IN: an empty asm emits nothing and counts in the live length. What the vendor had
+ * there is not known: a result variable, a split `TOSBLOCK *` parameter, a duplicated tail for
+ * cross-jumping, a guard, a goto, a label, a do-while(0), the inline's parameters in any order or
+ * as `const`, its tos passed in or loaded later (19: then it outranks the block's own tos) -- each
+ * leaves the tie (build/scratch/gcc/fd/v1-v6.py) */
+#define FREEDIST_STANDIN() __asm__ __volatile__ ("")
 static int FreeDistCalc(DISTSIL *d)
 {
     TOS *tos = d->b.tos;
@@ -174,6 +180,7 @@ static int FreeDistCalc(DISTSIL *d)
         heap_Free(tos->heap, d->f108);
         d->f108 = 0;
     }
+    FREEDIST_STANDIN();
     tosBaseBlockDestruct(&d->b);
     return 0;
 }
