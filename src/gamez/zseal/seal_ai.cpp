@@ -2293,26 +2293,25 @@ enum AI_WEAPON_KIND {
 
 /* the kind of the weapon the body holds: its row in the table, 2 and 3 both kind 1, none 0 (OVL2
  * 0x560540) */
-/* OPEN, 0x70 against 0x60: the target sets the result to 0 first, takes the row into v0 and tests
- * it against 2 then 3 (`bne 3` straight to the exit), returning 1 for both; MW here tests 3 apart
- * and branches over a join. Tried: the switch after the loop on a result local, returning from
- * inside the loop, the conversion as an inline switch. */
+/* (round 36: the result preset and the loop left by `break`, 2 and 3 joined by `||` -- the target's
+ * `bne 3` straight to the exit; the weapon id an `int` local, defined after the counter's bare
+ * declaration so it is numbered above it: the id a1, the counter a2, the table cursor a0) */
 #pragma auto_inline off
 extern "C" AI_WEAPON_KIND func_00560540(CSealCtrlAi *ai)
 {
-    for (int i = 0; i < 7; i++) {
-        if (((CZSealBody *)ai->m_entity)->m_weapon_id == data_0066AD00[i]) {
-            AI_WEAPON_KIND kind = (AI_WEAPON_KIND)i;
+    AI_WEAPON_KIND kind = WEAPON_KIND_0;
+    int i;
+    int id = ((CZSealBody *)ai->m_entity)->m_weapon_id;
 
-            switch (kind) {
-            case WEAPON_KIND_3:
-            case WEAPON_KIND_2:
-                return WEAPON_KIND_1;
-            }
-            return kind;
+    for (i = 0; i < 7; i++) {
+        if (id == data_0066AD00[i]) {
+            kind = (AI_WEAPON_KIND)i;
+            if (kind == WEAPON_KIND_2 || kind == WEAPON_KIND_3)
+                kind = WEAPON_KIND_1;
+            break;
         }
     }
-    return WEAPON_KIND_0;
+    return kind;
 }
 #pragma auto_inline reset
 
