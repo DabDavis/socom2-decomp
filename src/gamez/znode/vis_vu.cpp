@@ -506,6 +506,58 @@ void CVisual::NodeSetup(CNode *atom, CNode *node, CMatrix *m)
     }
 }
 
+/* the camera's distance to a point (zcamera.h's CCamera::GetZ: its _word128 clashes with
+ * zsys_public.h's here, so the member is declared by its mangled name) and the header's statics:
+ * the far tints' fade switch (0x4B4A70), the light scale 0x3B6B20 keeps (0x4B4A90), the packet's
+ * head cursor (0x4B4AD8) */
+extern "C" float GetZ__Q23zdb7CCameraFP6CPnt3D(CCamera *camera, CPnt3D *pos);
+extern "C" unsigned char data_004B4A70;
+extern "C" float data_004B4A90;
+extern "C" _word128 *data_004B4AD8;
+
+/* the packet's head flag the lights set (ours): bit 0 of the head's word 3 */
+struct VU_HEAD_LIGHTS {
+    unsigned char _0[12];
+    unsigned char m_lights : 1;
+    unsigned char m_b1 : 7;
+};
+
+/* the object header's lights (0x3B6870; new in SOCOM II, not named -- SOCOM 1's VuObjectSetup's
+ * second half): the camera's seven light points into model space at q[4], the model-to-world matrix
+ * at q[0]; while the tint switch is up, the node's tint channel (its 2-bit mode) at q[12] -- channels
+ * 2 and 3 faded from channel 0 by the camera's distance (all of it within 500, none past 800) while
+ * 0x4B4A70 is up; the added colour and the light scale at q[11], the packet's head flagged; the
+ * quadword after the header returned */
+extern "C" _word128 *func_003B6870(_word128 *q, CNode *node)
+{
+    CVisual::m_WorldToModel.Transform((CPnt4D *)((char *)CVisual::m_camera + 0x400), (CPnt4D *)&q[4], 7);
+    sceVu0CopyMatrix((float (*)[4])q, data_004B4E60->m_matrix);
+    if (data_004B4A68) {
+        int ch = node->m_socom2_mode;
+
+        if (ch < 2) {
+            *(CPnt4D *)&q[12] = CVisual::m_lightTint[ch];
+        } else if (data_004B4A70) {
+            float z = GetZ__Q23zdb7CCameraFP6CPnt3D(CVisual::m_camera, (CPnt3D *)data_004B4E60->m_matrix[3]);
+            float f;
+
+            if (!(z < 800.0f))
+                f = 0.0f;
+            else if (z <= 500.0f)
+                f = 1.0f;
+            else
+                f = (1.0f / 300.0f) * (800.0f - z);
+            *(CPnt4D *)&q[12] = CVisual::m_lightTint[0] + (CVisual::m_lightTint[ch] - CVisual::m_lightTint[0]) * f;
+        } else {
+            *(CPnt4D *)&q[12] = CVisual::m_lightTint[ch];
+        }
+    }
+    VecSet(q[11].f32, CVisual::m_addColor.x, CVisual::m_addColor.y, CVisual::m_addColor.z, data_004B4A90);
+    data_004B4AD8->u32[3] = 0;
+    ((VU_HEAD_LIGHTS *)data_004B4AD8)->m_lights = true;
+    return q + 13;
+}
+
 /* the object header's statics: its second quadword (0x4B4D30, 0x3B5A10's scale and offset), the
  * clip word (SOCOM 1's m_fovClipWord), the light scales (SOCOM 1's m_GlobalLightScale and
  * m_AmbientLightScale), the fog switch and the landmark flag (SOCOM 1's m_fogEnable,
