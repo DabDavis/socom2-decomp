@@ -1965,6 +1965,32 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 11** (a new node_wave.cpp, COverlayLoader::Load, Destruction_Instance):
+  - calling a function through one extra inline level expands it later, so its temporaries take lower stack slots (the
+    erase in CRipple::Tick 0x321F50, through a small inline Erase(i): include/list's list<T *> has no erase of its own);
+    taking the inner loop's end() into a local declared after the iterator fixes the temporaries' register order;
+  - an inline function's return value is numbered after the caller's named locals: the loader's slot address read through
+    `OverlaySlot(slot)` gets the target's saved register (COverlayLoader::Load 0x3515D0, 0x2EC); `x = x == y ? x : 0;` gives
+    the target's bne/b pair, `if (x != y) x = 0;` beq; a flags test written `((f & 1) & ((f & 0x100) == 0)) != 0` gives the
+    target's branch-free code (`&&` adds branches, the bit-field spelling loads bytes);
+  - node_wave.cpp is SOCOM 1's unit, 0x321DB0-0x3223CF between node_assetlib.cpp and zparticle.cpp (the lens flare, the
+    ripples, the ripple pool and its initialiser); it carries copies of ~CVisData and std::stack<void *>'s top()/empty() --
+    perhaps from a function the linker removed;
+  - open: CRipple::Flatten 0x3220D0 (0xB8 vs 0xF0: the target multiplies twice at run time and hoists it, MW folds it to
+    constants -- vis_ripple.cpp's CWaterRipple::Flatten has the same miss), ~list<CRipple *> 0x322370 (0xD4 vs 0x60: a
+    pointer-list destructor that calls ~__list_deleter after two levels needs a deleter destructor one level taller -- it
+    costs ~RTPool and Clear; include/list left as it is), __sinit_node_main.cpp (the same ~list shape).
+- **Tells from the HUD, round 32** (CHUD::SetRangeText, the objectives' and the score popup's initialisers):
+  - when an initialiser loads two globals ahead of an object's constructor stores, the globals were defined before that
+    object: MW does not hoist a load across an earlier store to a different object -- __sinit_hud_scorepopup.cpp 0x3FE980
+    (0x9D0, its 34 objects in address order: the two corner texture coordinates are globals computed after the vectors and
+    before the box colour) and __sinit_hud_objectives.cpp 0x3FDBC0 (17 statics);
+  - `__construct_array` passed C2DString's own constructor means the elements are plain C2DStrings (a derived class would
+    pass its own); CScoreBmp's constructor sets its alpha through the vtable; CTeamDisplay is a plain C2DBitmap plus 45
+    C2DStrings;
+  - check the round-start baseline before chasing an apparent regression (SetupBackgroundBox 0x22AE90 was already 2 off);
+  - open: CActionTxtr() 0x220CA0 (0x48 vs 0x54: the name's load reached through a folded test over a dead zero arm),
+    __sinit_hud_actionbitmap.cpp 0x3FE550 (the texture machine 0x40D550 and the computed floats to write), __sinit_hud_tcm.cpp.
 - **Tells from the engine core, round 3** (five static initialisers, a new zanim_cmd_parse.cpp, the equipment pickers):
   - a search loop that breaks on a hit, followed by `i != e`, makes MW narrow the iterator's `!=` result with `andi 0xff` and
     reuse it after the loop (ChooseEquipmentForCharacter 0x282A90);
