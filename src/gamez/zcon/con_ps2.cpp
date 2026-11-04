@@ -493,7 +493,11 @@ unsigned int CPacketMsg::GetArgCount() const
  * if (index >= argc) return 0; return m_args[index]; } return 0;` has the target's blocks in its
  * order -- the null's zero last -- but joins the inner returns before the epilogue (0x50); with
  * else arms the same; `m_data ? (index < argc ? a : 0) : 0` 0x48 (the inner test sltu at/beqz);
- * an inline helper over the inner test 0x40-0x50 */
+ * an inline helper over the inner test 0x40-0x50. Round 5: a result variable gives every instruction
+ * in the target's order -- `void *r; if (m_data) { if (index >= m_data->argc) return 0; r =
+ * m_args[index]; } else r = 0; return r;` -- but the variable pads three labels to 8 bytes (0x50:
+ * README, "MW pads a function's labels ... when a separate variable holds an intermediate value");
+ * without it (ternaries in either arm, if/else arms, a goto to the null's return) 0x48-0x50 */
 void *CPacketMsg::GetArg(unsigned int index) const
 {
     if (!m_data)

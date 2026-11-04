@@ -2692,18 +2692,18 @@
 0x00256F98 0xC func_00256F98  # OVL1 unaligned
 0x00256FA8 0xC func_00256FA8  # OVL1 unaligned
 0x00256FB8 0xC func_00256FB8  # OVL1 unaligned
-0x00256FD0 0x78 func_00256FD0  # OVL1
-0x00257050 0x178 func_00257050  # OVL1
+0x00256FD0 0x78 WriteBuffer__Q23zar4CZARFPCvUi  # OVL1; ours, the core lane round 5 (SOCOM II's: Insert(CKey *, data, size) 0x25A120 calls it twice; the 16-byte buffer at 0x34 made by new on the first write, its four words zeroed, then appended to through 0x257050)
+0x00257050 0x178 Write__Q23zar10CZARBufferFPCvUi  # OVL1; ours, the core lane round 5 (SOCOM II's: the buffer at 0x34 grown by _calloc/_realloc when the bytes do not fit -- 4 KB past them the first time, the block times its growths plus 0x80000 after -- then the bytes memcpy'd at the used mark; returns the size)
 0x002571D0 0x144 NewKey__Q23zar4CZARFPCc  # OVL1; s1:calls by hand (CKey::Read 0x25AF10 calls it with a null name where SOCOM 1's Read calls zar::CZAR::NewKey(const char *); zar_main.cpp's, MW code below the GCC libraries' 0x258000)
-0x00257320 0xC0 func_00257320  # OVL1
-0x002573E0 0x70 func_002573E0  # OVL1
-0x00257450 0x40 func_00257450  # OVL1
-0x00257490 0x8 func_00257490  # OVL1
-0x002574A0 0x14 func_002574A0  # OVL1
-0x002574C0 0x60 func_002574C0  # OVL1
-0x00257520 0x40 func_00257520  # OVL1
-0x00257560 0x8 func_00257560  # OVL1
-0x00257570 0x14 func_00257570  # OVL1
+0x00257320 0xC0 FreeDirectory__Q23zar4CZARFv  # OVL1; ours, the core lane round 5 (SOCOM II's: the tail both closes call -- the root's children through 0x25B580 (deleted when the key buffer is empty), the key buffer cleared and FreeVector'd, the open keys FreeVector'd, the string table's Destroy through its vtable at 0xC; SOCOM 1's Close(bool) did the same inline)
+0x002573E0 0x70 __dt__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector over vector<CKey *>: the temporary's destructor, three this-tests)
+0x00257450 0x40 swap__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>FRQ23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>  # OVL1; the core lane round 5 (FreeVector over vector<CKey *>: the swap)
+0x00257490 0x8 clear__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector over vector<CKey *>: the clear)
+0x002574A0 0x14 __ct__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector of the open keys and of DeleteChildren's child rings: the temporary)
+0x002574C0 0x60 __dt__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s temporary's destructor: two this-tests, then the deleter's destructor with 0)
+0x00257520 0x40 swap__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>FRQ23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s swap, as CVehicleRdr::Close's: zar_main.cpp's inline copy)
+0x00257560 0x8 clear__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s clear, a j to the deleter's clear: zar_main.cpp's inline copy)
+0x00257570 0x14 __ct__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s temporary in ~CZAR and FreeDirectory: zar_main.cpp's inline copy)
 0x00257590 0x358 WriteDirectory__Q23zar4CZARFv  # OVL1; s1:callee by hand, the core lane round 4 (Close() 0x258CE0 calls it at +0x90 where SOCOM 1's Close() calls WriteDirectory at +0x8C; the new flush 0x258BD0 calls it when the modified byte 0x25 is set, clearing it after)
 0x002578F0 0x294 func_002578F0  # OVL1
 0x00257B90 0x8 func_00257B90  # OVL1
@@ -2724,18 +2724,18 @@
 0x00257ED0 0x8 func_00257ED0  # OVL1
 0x00257EE0 0xAC ReadString__Q23zar4CZARFPPc  # OVL1; ours, the core lane round 4 (SOCOM II's: a length word read through m_pFile's fread, then when 4 bytes came and the length is positive a _malloc'd zeroed copy of length+1 filled by a second fread; the bytes read returned -- CIO::fwrite(const char *)'s record read back; CZSIObject::Read calls it for the object's name)
 0x00257F90 0x70 ReleaseDataBuffer__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site)
-0x00258000 0x510 func_00258000  # OVL1
+0x00258000 0x510 ReadDirectory__Q23zar4CZARFiUi  # OVL1; SOCOM 1 name, the core lane round 5 (Open 0x258920 calls it with (dir, mode) right after the file opens, where SOCOM 1's Open calls ReadDirectory(int, unsigned int) 0x1D87B0: 0x510 bytes against SOCOM 1's 0x518)
 0x00258510 0x58 GetSize__Q23zar4CZARFPCc  # OVL1; s1:order by hand (SOCOM 1's GetSize 0x1D8CD0, between ReadDirectory and GetOpenKey there as here: the open key's FindKey, its size or -1; Fetch(const char *, char **) calls it where SOCOM 1's does)
 0x00258570 0x30 GetOpenKey__Q23zar4CZARFv  # OVL1; s1:callee by hand (LoadZAR, CZAnimSet::Load and the name tables call it where SOCOM 1's call GetOpenKey; the open-key stack's top or the root -- a vector here, SOCOM 1's a list)
 0x002585A0 0x54 OpenKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR opens each set's key with it where SOCOM 1's calls OpenKey(CKey *); pushes a non-null key)
 0x00258600 0x4C FindKey__Q23zar4CZARFPCc  # OVL1; s1:order (SOCOM 1's GetOpenKey, OpenKey(CKey *), FindKey(const char *), OpenKey(const char *), CloseKey; FindKey on the open key, as SOCOM 1's)
 0x00258650 0xD0 OpenKey__Q23zar4CZARFPCc  # OVL1; s1:callee by hand (LoadZAR opens Anim_Sets with it where SOCOM 1's calls OpenKey(const char *); FindKey on the open key, then the push)
 0x00258720 0x20 CloseKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR closes each key with it where SOCOM 1's calls CloseKey; pops the stack)
-0x00258740 0x1DC func_00258740  # OVL1
-0x00258920 0x21C func_00258920  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed)
+0x00258740 0x1DC CreateKey__Q23zar4CZARFPCc  # OVL1; SOCOM 1 name, the core lane round 5 (byte-exact from SOCOM 1's CreateKey: nothing unless the file is open, NewKey inlined, the open key's InsertKey, OpenKey's push; CSaveManager::Save and SaveRdr call it)
+0x00258920 0x21C Open__Q23zar4CZARFPCciUiUib  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed); SOCOM 1 name with a fifth argument, the core lane round 5 (byte-exact from source: SOCOM 1's Open(name, int, unsigned, unsigned) -- the file opened, SetFilename, the padding stored, ReadDirectory, Close on failure -- plus the dir stored at 0x94 and, with the fifth argument, a second file "<name>_tmp.<ext>" opened at 0x18; every caller passes t1 = 0, so bool is a guess)
 0x00258B40 0x90 ReOpen__Q23zar4CZARFiUi  # OVL1; tu: zar_main.cpp~ (1.0 beta); s1:calls (CRdrArchive::OpenAll and FindRdr call it with (1, 1) where SOCOM 1's call zar::CZAR::ReOpen) -- the rdr lane
 0x00258BD0 0x70 Flush__Q23zar4CZARFv  # OVL1; ours, the core lane round 4 (SOCOM II's: false unless the file is open -- the inline IsOpen -- then WriteDirectory when the modified byte 0x25 is set, the byte cleared, true; CSaveManager::Save calls it)
-0x00258C40 0xA0 func_00258C40  # OVL1
+0x00258C40 0xA0 Close__Q23zar4CZARFb  # OVL1; ours by SOCOM 1's, the core lane round 5 (SOCOM 1's Close(bool): the owned file closed and deleted or the given one closed, here the second file at 0x18 too, then the directory freed; both callers in 0x1E91C0 pass li a1,1 and neither build's body reads the flag; inlined whole into Close() 0x258CE0 as SOCOM 1's is into its Close)
 0x00258CE0 0x17C Close__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: the loaders close their archives through it where SOCOM 1's call CZAR::Close)
 0x00258E60 0x14 CloseKeepDir__Q23zar4CZARFv  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:order by hand, the core lane round 4 (SOCOM 1's CloseKeepDir 0x1D98F0, the same 0x14 bytes -- m_pFile's Close through its table, a tail call -- between Close() and SetFilename as here)
 0x00258E80 0x9C SetFilename__Q23zar4CZARFPCc  # OVL1; s1:order by hand, the core lane round 4 (SOCOM 1's SetFilename 0x1D9910 after CloseKeepDir and before ~CZAR as here: m_filename (0xA4 here, SOCOM 1's 0x90) freed unless the default name's pointer or the name itself, then the name _strdup'd or DEFAULT_ZAR_NAME)
@@ -2743,10 +2743,10 @@
 0x002590A0 0x190 __ct__Q23zar4CZARFPCcP3CIO  # OVL1; s1:callee by hand (OpenZAR calls it on the fresh CZAnimZAR with (0, 0) where SOCOM 1's OpenZAR calls zar::CZAR::CZAR(const char *, CIO *))
 0x00259230 0xC func_00259230  # OVL1
 0x00259240 0xC func_00259240  # OVL1
-0x00259250 0x558 func_00259250  # OVL1
+0x00259250 0x558 insert__Q23std58__vector_imp<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>,0>FPQ23zar4CKeyUiRCQ23zar4CKey  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey calls it twice with (end, 1, key) where SOCOM 1 calls its insert at 0x1D9ED0: the key buffer's class insert, zar_main.cpp's template tail)
 0x002597B0 0x1F4 func_002597B0  # OVL1
-0x002599B0 0x7C func_002599B0  # OVL1
-0x00259A30 0xB8 func_00259A30  # OVL1
+0x002599B0 0x7C clear__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's clear, ~CKey with -1 from the back; zar_main.cpp's template tail)
+0x00259A30 0xB8 __dt__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's deleter destructor, its clear inlined: zar_main.cpp's template tail)
 0x00259AF0 0x4C __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1; the MSL headers round 10: include/vector's 4-byte pod operator= (out of class, the char pod's: assign over the other's words unless this one), byte-exact as a probe (build/p10/e/podas.cpp); calls 0x259D20
 0x00259B40 0x4C __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1 ; SOCOM 1 name (its copy of the pointer vectors' implementation, the same 0x4C: zeroed, then init over the other's elements)
 0x00259B90 0x190 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1 ; SOCOM 1 name with MW 3.0's return type (_v); the copy calls it as SOCOM 1's does
@@ -2771,7 +2771,7 @@
 0x0025B2F0 0x8 func_0025B2F0  # OVL1
 0x0025B300 0x240 func_0025B300  # OVL1
 0x0025B540 0x38 InsertKey__Q23zar4CKeyFPQ23zar4CKey  # OVL1; s1:order by hand (SOCOM 1's CKey::InsertKey 0x1DC450 after CKey::Write, as here: push_back and return the key; CreateKey 0x258740 and 0x25A2F0 call it)
-0x0025B580 0x398 func_0025B580  # OVL1
+0x0025B580 0x398 DeleteChildren__Q23zar4CKeyFb  # OVL1; ours, the core lane round 5 (FreeDirectory 0x257320 calls it on the root with true when the key buffer holds no keys and false otherwise; with true each child key is deleted after its own children; signature from the call sites: a0 the key, a1 a bool tested beqz)
 0x0025B920 0x8 func_0025B920  # OVL1
 0x0025B930 0x8 func_0025B930  # OVL1
 0x0025B940 0x8 func_0025B940  # OVL1
@@ -2786,7 +2786,7 @@
 0x0025BAE0 0x40 func_0025BAE0  # OVL1
 0x0025BB20 0x24 func_0025BB20  # OVL1
 0x0025BB50 0x88 __dt__Q23zar4CKeyFv  # OVL1; by hand: Insert(const char *, const void *, int) 0x25A2F0 deletes the key it could not write through it, (key, 1), where SOCOM 1's inlines ~CKey (its list's destructor, then delete)
-0x0025BBE0 0x20 func_0025BBE0  # OVL1
+0x0025BBE0 0x20 __ct__Q23zar4CKeyFv  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey builds its nameless key with it where SOCOM 1 calls CKey() 0x1DC4A0: the ring and the three fields zeroed; before CKey(const char *) as in SOCOM 1)
 0x0025BC00 0x20 __ct__Q23zar4CKeyFPCc  # OVL1; s1:order by hand (SOCOM 1's CKey(const char *) 0x1DC4E0, last of its zar_search.cpp: the list (here the vector) built, the name stored, size and offset zeroed; CZAR's constructor calls it with "" for the root)
 0x0025BC20 0x9D0 InitCommands__10CZAnimMainFv  # OVL1; s1:calls by hand (registers the core ZAnim commands through AddCmd, as SOCOM 1's InitCommands does; SOCOM II adds 11 to its 49)
 0x0025C5F0 0xE8 func_0025C5F0  # OVL1

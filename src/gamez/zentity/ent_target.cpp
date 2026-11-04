@@ -32,16 +32,16 @@ void CEntity::SetUpdateTargetList(bool on)
 /* whether the entity is in the others' target lists: queued for adding unless it is already
  * there, or for removal (SOCOM 1's). `this` is handed to the lists by reference, so MW homes it
  * on the stack and reads every member through it (a local copy of it reads the flag from a0).
- * OPEN (right size, 8 instructions): only the temporaries' stack slots -- the target's binder
- * copy at sp+76 and the push_backs' end iterators 4 bytes lower than these; the find written
- * straight into the test is longer (its begin()/end() a level deeper, partly out of line); the
- * found iterator assigned instead (round 4: the CZAnimArgList getters' shape) is 0x168 */
+ * Byte-exact with the first removal through the implementation's remove, one level shallower than
+ * the wrapper's: its binder then takes the frame's top slot (sp+76) above the push_backs'
+ * temporaries, as the target's (round 5; the wrapper's remove put it below them -- the README's
+ * level-6 list counted this function; the second removal's spelling changes nothing) */
 void CEntity::SetIncludeInTargetList(bool on)
 {
     if (on == m_include_in_targetlist)
         return;
     if (on) {
-        m_target_rem.remove(this);
+        m_target_rem.list_imp::remove((const void *const &)this);
 
         CEntityList::iterator it = std::find(m_target_inc.begin(), m_target_inc.end(), this);
 
@@ -49,7 +49,7 @@ void CEntity::SetIncludeInTargetList(bool on)
             m_target_add.push_back(this);
     } else {
         m_target_rem.push_back(this);
-        m_target_add.remove(this);
+        m_target_add.list_imp::remove((const void *const &)this);
     }
     m_include_in_targetlist = on;
 }
