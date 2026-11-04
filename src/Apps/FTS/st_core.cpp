@@ -11,7 +11,6 @@
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
 void func_002A7D40(void *mission);               /* CMission::OnMissionStart */
-int func_001EA720();                             /* testLoad */
 void exit(int code);
 void func_002A6950(void *mission);
 void func_002B6530(void *queue, const char *text, MSGTYPE type, int b, int c, float time);   /* C2DMessage_Q::Add_Message (the type a byte enum: CCoreState::DisplayMessage copies it lb) */
@@ -120,10 +119,9 @@ public:
 
 extern CHUD *theHUD;
 
-extern "C" {
-int func_001EA6E0();                             /* testUnload */
-
-}
+/* database.cpp's (SOCOM 1's) */
+bool testLoad();
+bool testUnload();
 
 void ftsSetPlayer(CZSealBody *seal);
 CZSealBody *ftsGetPlayer();
@@ -806,7 +804,7 @@ static void LoadThreadEntry(void *arg)
     theGame.m_coreState.skyColor[1] = 220;
     theGame.m_coreState.skyColor[2] = 250;
     zdb::CTexManager::m_texmanager.doSetupBuffers();
-    if (!func_001EA720())
+    if (!testLoad())
         exit(0);
     if (theNetwork.m_9)
         theGame.m_MPexitState.LoadLibs();
@@ -863,7 +861,7 @@ void CCoreState::Load(bool async)
     skyColor[1] = 220;
     skyColor[2] = 250;
     zdb::CTexManager::m_texmanager.doSetupBuffers();
-    if (!func_001EA720())
+    if (!testLoad())
         exit(0);
     if (theNetwork.m_9)
         theGame.m_MPexitState.LoadLibs();
@@ -910,7 +908,7 @@ void CCoreState::auxUnload()
 
     if (proj)
         proj->UnInit();
-    if (!func_001EA6E0())
+    if (!testUnload())
         exit(0);
     if (marks)
         marks->UnInit();
