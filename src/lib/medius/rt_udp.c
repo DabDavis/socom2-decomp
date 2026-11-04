@@ -1119,6 +1119,14 @@ int func_00641230(RT_UDP *pUdp, RT_UDP_HEADER *pRecv, unsigned int nConn)
     return result;
 }
 
+/* OPEN (2 words: the target loads pConn->nId before pUdp->nChannel). Round 19b read sched1's dump
+ * (tools/ccdump.py -f): the two loads tie on priority (each 2 + the call's, the header store's
+ * dependence on the call an anti one, cost 0) and rank_for_schedule takes the lighter register
+ * weight -- pUdp dies at the channel load (its last use, the first argument evaluated last), pConn
+ * at the address argument, so the channel load weighs 0 and the id's 1. The target's id load
+ * comes first: one of those deaths is elsewhere in the vendor's RTL. Tried besides round 11b's six
+ * store orders: the id, the channel or the address into a local first, the header through a
+ * pointer, the id stored first and the type last. */
 int func_006419E8(RT_UDP *pUdp, RT_UDP_CONN *pConn)
 {
     unsigned short nSent = 0;

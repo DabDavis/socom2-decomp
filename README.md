@@ -7068,6 +7068,49 @@ moved to 0x62B168, 0x62B548 back to its placeholder; KM_GenerateRSAKeyPair `s1:o
 lintRandomize, MOD, GCD, lintIsbSPRP, LucasTest, QRMOD, MODIP `s1:calls`; lintAdd, lintSub `s1:order`).
 No tool changed.
 
+**Round 19b: LargeInt.c's C by SOCOM 1's bodies, MediusConnect, rt_msg_client's channel send step.**
+
+- **0x627AF0 is EMOD, not XMOD** (the brief's prediction): its body is SOCOM 1's EMOD -- the exponent's bits
+  from the bottom, the base squared by XMOD each step, the result multiplied where the bit is set -- at
+  EMOD's place after GCD (SOCOM 1's MULT and XMOD between them are now in largeint_asm.s: 0x6296A0 and
+  0x629868 are MULT and XMOD by their bodies, their order and EMOD's and RSAGenerateKeyPair's calls),
+  grown by an `assert(0)` on a zero modulus (LargeInt.c:663). EMOD's old call sites (RSADecryptBlock,
+  lintIsbSPRP, LucasTest) call **0x6283F8 instead**, a new exponentiation by Montgomery products that
+  asserts a nonzero modulus (:975) and falls back on EMOD for an even one (:985) -- body and position
+  name 0x627AF0, the call sites a function SOCOM 1 never had; 0x6283F8 keeps its placeholder (`s1~`).
+  The carry pair 0x626D28/0x626D78 are lintIncrement and lintDecrement (position and calls). SOCOM 1's
+  three tables, byte-identical, take their names in data.txt (gCommonPrimes, gCommonPrimes2,
+  gPrimeSearchDeltas), lintRandomize's flag `bHasInitialized.0@largeint` (rt_crypt.c holds the bare name).
+- **An exit test is copied above a loop only when the rotated region holds no call or label**
+  (jump.c's duplicate_loop_exit_test after 2.96's rotation): QUO's divisor-length exit written
+  `if (...) break;` before the shift lies within expand_end_loop's 30-insn scan, so the loop was rotated
+  up to it, call and all, and its test never copied; the shift in the then-arm and the `break` in an else
+  put the exit past the scan, and the target's copied test follows. lintIsbSPRP is the converse, OPEN: the
+  target enters its squaring loop by a jump to an uncopied two-insn test, which no spelling here leaves
+  uncopied.
+- **2.96 makes an index walk the target's pointer**: lintPrime's delta table is indexed in the source
+  (SOCOM 1's index, reset to 0 after an odd delta); written as a pointer, its first assignment lands
+  before the counter's first test, the target's after it.
+- **Each guard stores the status before the index** (MediusConnect, as SOCOM 1's): the other order leaves
+  the two failure blocks a two-insn common tail and jump.c cross-jumps them, the status store sharing
+  the return value's register.
+- **A message byte initialised at its declaration is a scalar**: 0x634DD8's keep-alive byte is `li 165;
+  sb` at the entry in the frame's first slot (SOCOM 1's update_connection alike); a one-byte array's
+  element is `li -91` (the QImode constant) with its slot after the first scalar whose address is taken.
+- **A load order is register weight, read off sched1's dump**: rt_udp's 0x6419E8 loads tie on priority and
+  rank_for_schedule takes the one whose base pseudo dies there (INSN_REG_WEIGHT, ccdump's -f); the
+  target's order needs another death point, not yet found (OPEN, with the dump's reading).
+- **Open, diagnosed in place**: lintIsbSPRP (above), 0x635E60 (the type-22 message: the target keeps the
+  write pointer in one register to the end, here CSE folds the increments after the software id into
+  offsets), 0x6419E8 (above), and the earlier opens.
+
+Hand-written in round 19b: `medius/largeint.c` (+7: QUO, GCD, EMOD, lintIsbSPRP, LucasTest, lintRandomize,
+lintPrime -- 18 of 21, the whole C part but the Montgomery exponentiation and its helper), `medius/mediusapi.c`
+(+1, MediusConnect: 110 of 110, whole), `medius/rt_msg_client.c` (+2: the channel send step 0x634DD8, the
+type-22 message 0x635E60 OPEN; 89 of 95) -- 8 rows new to the map's byte-exact rows (`src/lib/medius` 926 ->
+934 of 992), none superseding a draft; 6 rows named (QUO, EMOD, MULT, XMOD, lintIncrement, lintDecrement by
+SOCOM 1's bodies, order and calls; 0x6283F8's `s1~` noted), 4 data rows. No tool changed.
+
 ## Open, and next
 
 The work runs in lanes (see "Working in parallel"), each an address range with its own units;
