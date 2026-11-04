@@ -31,6 +31,27 @@ typedef struct UTTREC {
 struct LANGVT;
 struct CASR;
 
+/* the scheduler's small-block allocator (fastallo.c's FASTALLO): blocks of up to 64 words, a free
+ * list per size in words */
+typedef struct FASTALLO {
+    void *heap;                         /* +0 */
+    unsigned short chunk_size;          /* +4: bytes */
+    unsigned short left;                /* +6: words left in the current chunk */
+    int nchunks;                        /* +8 */
+    int **chunks;                       /* +12 */
+    int *next;                          /* +16: the current chunk's first free word */
+    int *free[65];                      /* +20 */
+} FASTALLO;
+
+/* a context tree's node (12 bytes, three words of the allocator): its children, or at a leaf the
+ * word it ends (an index, or ~ the first of a list of words), its phoneme and child count */
+typedef struct TNODE {
+    struct TNODE *children;             /* +0 */
+    int pad4;
+    unsigned short ph;                  /* +8 */
+    unsigned short nchildren;           /* +10 */
+} TNODE;
+
 /* the engine's log head: the scheduler's TOSLOG (tos.c) -- the engine itself (its scheduler record
  * is the context's head), block 0 */
 typedef struct CASRLOG {
@@ -61,7 +82,9 @@ typedef struct CASR {
     unsigned short state;               /* +50 */
     int last_error;                     /* +52 */
     int last_warning;                   /* +56 */
-    char pad60[304];
+    char pad60[20];
+    void *tos_heap;                     /* +80: the scheduler's heap */
+    FASTALLO fa;                        /* +84: its small-block allocator (free lists from +104) */
     CASRLOG event[1];                   /* +364: the engine's log head (_tosControl's) */
     int queue;                          /* +372 */
     unsigned short queue_id;            /* +376 */
@@ -103,7 +126,7 @@ typedef struct CASR {
     char pad584[12];
     void *sp_ctx;                       /* +596: the second pass's (CreateSecondPassContext) */
     int pad600;
-    void *iso_ctx;                      /* +604: the iso-word context, run again after a second pass */
+    TNODE *iso_ctx;                     /* +604: the iso-word context's tree, run again after a second pass */
     int f608;                           /* +608 */
     struct LANGVT *lng;                 /* +612 */
     char pad616[4];
@@ -150,11 +173,17 @@ typedef struct CASR {
     short **segtab;                     /* +1068 */
     int pad1072;
     int last_state;                     /* +1076 */
-    char pad1080[8];
+    void *tree_words;                   /* +1080: the context tree's word lists (freed with the tree) */
+    int tree_nwords;                    /* +1084 */
     int f1088;                          /* +1088: parameter 16 */
     int pad1092;
     int f1096;                          /* +1096 */
-    char pad1100[32];
+    char pad1100[16];
+    void *uw_states;                    /* +1116: the user words' states (freed with the tree) */
+    int *uw_offsets;                    /* +1120: each user-word phoneme's first state */
+    short uw_n;                         /* +1124 */
+    short pad1126;
+    int f1128;                          /* +1128 */
 } CASR;                                 /* 1132 bytes (casrOpen's allocation) */
 
 typedef struct LANGVT LANGVT;
@@ -169,7 +198,9 @@ struct LANGVT {
     int (*GetNbrErgodicPhenomes)(LANGVT *l);          /* +44, slot 11 */
     void *s12[3];
     short (*GetUWSilencePhenome)(LANGVT *l);          /* +60, slot 15 */
-    void *s16[9];
+    void *s16[4];
+    int (*GetNbrSpeechUnit)(LANGVT *l);               /* +80, slot 20 */
+    void *s21[4];
     int (*GetNbrPhenUserWordTraining)(LANGVT *l);     /* +100, slot 25 */
     void *s26[5];
     unsigned int (*GetSecondCdbSize)(void *cb);       /* +124, slot 31 */
@@ -179,7 +210,8 @@ struct LANGVT {
     unsigned short *(*GetpGastone)(LANGVT *l);        /* +140, slot 35 */
     void *s36[5];
     void *(*GetpCodeBook)(LANGVT *l, int n);          /* +164, slot 41 */
-    void *s42[4];
+    int *(*GetpSpeechUnit)(LANGVT *l);                /* +168, slot 42 */
+    void *s43[3];
     void *(*GetpPhenUserWordTraining)(LANGVT *l);     /* +184, slot 46 */
     void *s47[5];
     int (*CheckBitField)(LANGVT *l, int mask);        /* +208, slot 52 */

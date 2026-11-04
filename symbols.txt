@@ -8758,14 +8758,14 @@
 0x004D4050 0x554 intCreateCtxTree  # OVL2; s1:callee
 0x004D45A8 0x208 CalcNrNodes10  # OVL2 unaligned; s1:calls
 0x004D47B0 0x8A4 GetIsolatedWordDpActiveWords  # OVL2; s1:calls (SOCOM 1's casrGetActiveWords calls GetIsolatedWordDpActiveWords where ours call this row, 1 call site; the same position in SOCOM 1's object)
-0x004D5058 0x2A0 func_004D5058  # OVL2 unaligned
+0x004D5058 0x2A0 SetIsolatedWordDpActiveWords  # OVL2 unaligned; s1:calls -- the gcc lane, round 18c: SOCOM 1's casrSetActiveWords calls SetIsolatedWordDpActiveWords where ours (casr.c) calls this row, for an isolated-word engine; the body is SOCOM 1's (the tree freed through FreeTree inlined, intCreateCtxTree, the scheduler's command 36), its command 36 now handed the user words' tables
 0x004D52F8 0x20 CreateCtxTree  # OVL2 unaligned; s1:exact
-0x004D5318 0xB0 func_004D5318  # OVL2 unaligned
-0x004D53C8 0x1CC func_004D53C8  # OVL2 unaligned
-0x004D5598 0x180 func_004D5598  # OVL2 unaligned
-0x004D5718 0x114 func_004D5718  # OVL2 unaligned
-0x004D5830 0x184 func_004D5830  # OVL2
-0x004D59B8 0xF0 func_004D59B8  # OVL2 unaligned
+0x004D5318 0xB0 CalcAccuracyCtxTree  # OVL2 unaligned; s1:order -- the gcc lane, round 18c: SOCOM 1's context-tree object's CalcAccuracyCtxTree (public), the same head and tail -- the iso-word tree (+604), the language's speech units (slot +168), CalcNrNodes10 from a zeroed maximum, `(unsigned)(x + 0.5f) + 135` -- its per-child loop moved into SOCOM II's CalcNrNodes10
+0x004D53C8 0x1CC FreeTree  # OVL2 unaligned; s1:calls -- the gcc lane, round 18c: SOCOM 1's FreeCtxInfo calls FreeTree where ours (0x4CE258) calls this row; SOCOM 1's body (the tree, the root to the 3-word free list at +116, the word lists at +1080) with _FreeTree's first level inlined and the user words' tables freed
+0x004D5598 0x180 _FreeTree  # OVL2 unaligned; s1:order+body -- the gcc lane, round 18c: SOCOM 1's LOCAL _FreeTree of the context-tree object (0x3448F0) instruction for instruction: each child's subtree, then the children's array to the free list of its size (fewer than 9) or the heap; FreeTree and SetIsolatedWordDpActiveWords call it for the root's children
+0x004D5718 0x114 CalcNrNodes@ctxtree  # OVL2 unaligned; s1:order+calls -- the gcc lane, round 18c: SOCOM 1's LOCAL CalcNrNodes of the context-tree object (0x3456B0, called by CalcNrNodes10 alone, as here): aNodesFr[budget] plus each child's weight while the phoneme's states leave budget; SOCOM II adds the user words' phoneme table. Qualified: SOCOM 1's iso-word object has its own CalcNrNodes (CalcNrNodes@isowdp)
+0x004D5830 0x184 _CountWordsInTree  # OVL2; s1:order+body -- the gcc lane, round 18c: SOCOM 1's LOCAL _CountWordsInTree (0x345928) instruction for instruction (a leaf's word, or its list's length; GetIsolatedWordDpActiveWords inlines its first level)
+0x004D59B8 0xF0 _GetWordsInTree  # OVL2 unaligned; s1:order+calls -- the gcc lane, round 18c: SOCOM 1's LOCAL _GetWordsInTree (0x345AB8, after _CountWordsInTree as here): a leaf's word or its list appended at *out, each child's in turn (SOCOM II's children loop is not unrolled); GetIsolatedWordDpActiveWords inlines its first level
 0x004D5AA8 0x10 CompareIDs  # OVL2 unaligned; s1:exact
 0x004D5AB8 0x60 CreateActiveWordsCtxTree  # OVL2 unaligned; s1:align
 0x004D5B18 0x888 func_004D5B18  # OVL2 unaligned
