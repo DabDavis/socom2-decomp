@@ -5,11 +5,24 @@
  * and the constructor (0x528340);
  * defined here in reverse of the image's order (-inline deferred). */
 
-#include "ai.h"
+#include "ai_maps.h"
+
+/* ai.h's _min defined (as ai_map.cpp does: MW auto-inlines no template function -- the unsigned
+ * instance, AddSnakePoint's, sits in this unit's template tail, 0x528510) */
+namespace ai {
+template <class T>
+const T &_min(const T &a, const T &b)
+{
+    return a <= b ? a : b;
+}
+}
 
 /* what the path's functions call that is not written yet (this unit's) */
 extern "C" void func_00525520(CAiPath *path);   /* SOCOM 1's UpdateTurnAngles, by position */
 extern "C" void func_00525810(CAiPath *path, unsigned int leg);   /* SOCOM 1's SmoothPathLeg */
+/* a cell put into the path on its map (FindDetour's last call: SOCOM 1's InsertPathLoc or
+ * AppendPathLoc, by its place after PostProcess) */
+extern "C" bool func_00526C10(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
 
 
 /* a vector's storage cut to its size: a copy of it swapped in (node_world.cpp's, the name ours):
@@ -60,6 +73,72 @@ CAiPath::~CAiPath()
 {
     DeletePlanner(true);
     Clear();
+}
+
+/* another path's finished plan taken over -- its flags, legs, maps, tallies, state, length, limits
+ * and points -- unless this one is queued or planning; the id moves on and the path is drawn when
+ * asked (new in SOCOM II, the name ours: 0x527FD0, the SEALs' 0x555420, 0x5556A0 and 0x562790 call it).
+ * The vectors through their assignments: the cells' and the stats' through do_assign<const
+ * CAiMapLoc *> (0x51E7A0), the maps' through the 4-byte pod's operator= (0x528C30), the points'
+ * through do_assign<const point *> (0x5287D0, this unit's tail, byte-exact). The state's two tests
+ * written out on one read (IsPlanning() reloads it and materialises the range test).
+ * OPEN, 21 instructions, the right size: the stats' copy -- the target takes the other stats' visited
+ * cells' address into a register before the nine words (v1; the words through v0) and reads their
+ * data through it, the size straight; the implicit CAiPathStats assignment here folds both reads into
+ * offsets of `path` and swaps the two registers. As a CAiMapLocVec (SOCOM 1's DWARF) the visited cells
+ * give the tag temporaries' slots (19 off) but cost CAiPath() a level (~CAiPath's note); a written
+ * inline assignment of the stats does not help (21 and 23) */
+bool CAiPath::CopyPlan(const CAiPath *path)
+{
+    bool ok = false;
+
+    if (m_state != INQUEUE && (unsigned int)(m_state - 1) > 2 && path->HasPoints()) {
+        ok = true;
+        m_flags = path->m_flags;
+        m_app_flags = path->m_app_flags;
+        m_legcount = path->m_legcount;
+        m_planleg = path->m_planleg;
+        m_curleg = path->m_curleg;
+        m_waypts = path->m_waypts;
+        m_maps = path->m_maps;
+        m_stats = path->m_stats;
+        m_state = path->m_state;
+        m_status = path->m_status;
+        m_length = path->m_length;
+        m_tolerance = path->m_tolerance;
+        m_search_limit = path->m_search_limit;
+        m_unk90 = path->m_unk90;
+        m_snake_len = path->m_snake_len;
+        m_points = path->m_points;
+        m_pathId++;
+        if (m_flags & 0x40)
+            PrintPath("dbg_path");
+    }
+    return ok;
+}
+
+/* the points' length: summed afresh when none is kept or when forced, each step between two
+ * points on one map its straight distance; 0 without points (SOCOM 1's GetLength, the demo's
+ * 0x196510, the same shape: SOCOM II's distance a sqrt.s where SOCOM 1 called sqrtf) */
+float CAiPath::GetLength(bool force)
+{
+    if (m_points.size() != 0 && (m_length == 0.0f || force)) {
+        m_length = 0.0f;
+        points::iterator i = m_points.begin();
+        CAiMapLoc prev;
+        CAiMapLoc cur;
+
+        prev = (*i).m_loc;
+        for (++i; i != m_points.end(); ++i) {
+            cur = (*i).m_loc;
+            if (prev.m_mapid == cur.m_mapid)
+                m_length += GetCellDistance(prev, cur);
+            prev = cur;
+        }
+    } else if (m_points.size() == 0) {
+        m_length = 0.0f;
+    }
+    return m_length;
 }
 
 /* the points on no cell dropped through MSL's remove and the range erase, the count dropped handed
@@ -260,6 +339,79 @@ void CAiPath::SetSnakeLength(unsigned int len)
     }
 }
 
+/* the snake's head moved to a cell (SOCOM 1's AddSnakePoint, the demo's 0x193930, between SetPathType
+ * and SetSnakeLength as here: CZSealBody::UpdateAiMapLoc's call 0x5B7DE8). The first point reserves
+ * the snake and is pushed; SOCOM II then looks for the cell among the first `search` points -- the
+ * head itself only takes the flags, a later one cuts the points before it off -- and otherwise,
+ * as SOCOM 1, keeps the longest step from the old head as the length, grows the snake by one up to
+ * its length, shifts the points down and puts the cell first. The head's width is 0 under flag 8,
+ * else the rings of open cells around it, up to 5; the path's id moves on. Byte-exact, the AI core's
+ * round 20, by these shapes: the search's end the plain vector's (hoisted: points::end() re-reads
+ * the count), its compare the cell's own ==, the moves through operator[] (data()'s reference: the
+ * address of data_ is taken once, ahead of the first move, as the target's s3) and the shift's count
+ * in a local (_min's call written in memmove's arguments loads data_ before it) */
+void CAiPath::AddSnakePoint(const CAiMapLoc &loc, unsigned int search, unsigned int flags)
+{
+    if (!m_snake_len)
+        return;
+    unsigned int n = m_points.size();
+
+    if (n == 0) {
+        m_points.reserve(m_snake_len);
+        m_points.push_back(point(loc));
+        m_points[0].m_flags = flags;
+    } else {
+        int found = -1;
+
+        if (search) {
+            unsigned int i = 0;
+
+            for (points::iterator it = m_points.begin(); it != m_points.std::vector<point>::end() && i <= search; ++it, ++i) {
+                if ((*it).m_loc == loc) {
+                    found = i;
+                    break;
+                }
+            }
+        }
+        if (found == 0) {
+            m_points[0].m_flags = flags;
+        } else if (found > 0) {
+            n -= found;
+            memmove(&m_points[0], &m_points[found], n * sizeof(point));
+            m_points.resize(n);
+            m_points[0].m_flags = flags;
+        } else {
+            point &last = m_points.back();
+
+            if (last.m_loc.m_mapid == loc.m_mapid) {
+                int dx = last.m_loc.x > loc.x ? last.m_loc.x - loc.x : loc.x - last.m_loc.x;
+                int dy = last.m_loc.y > loc.y ? last.m_loc.y - loc.y : loc.y - last.m_loc.y;
+                float d = dx + dy;
+
+                if (!(d <= m_length))
+                    m_length = d;
+            }
+            if (n < m_snake_len)
+                m_points.resize(n + 1);
+            unsigned int k = m_snake_len - 1;
+            unsigned int count = ai::_min(n, k);
+
+            memmove(&m_points[1], &m_points[0], count * sizeof(point));
+            m_points[0] = point(loc);
+            m_points[0].m_flags = flags;
+        }
+    }
+    if (flags & 8) {
+        m_points[0].m_width = 0;
+    } else {
+        CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+
+        if (map)
+            m_points[0].m_width = map->GetLocationWidth(loc, 5);
+    }
+    m_pathId++;
+}
+
 /* the last point taken off, its cell handed back when asked (new in SOCOM II, the name ours: the
  * SEALs call it). Emptiness tested through the inline bool, so back() reads the size again */
 bool CAiPath::PopPoint(CAiMapLoc *loc)
@@ -347,4 +499,101 @@ bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index)
         }
     }
     return false;
+}
+
+/* a cell on a map (ai_astar.cpp's: through the reference MW shares the x the found cell's `!=` read,
+ * which then stays a materialised bool) */
+inline CAiMapLoc on_map(const CAiMapLoc &l, unsigned int id)
+{
+    return CAiMapLoc(l.x, l.y, id);
+}
+
+/* what FindDetour's walks carry (the name ours): the two ends a detour joins, the cell found
+ * (CAiMapLoc::invalid for none) and how far a walk goes */
+struct DETOUR_DATA {
+    CAiMapLoc m_from;   // 0x0
+    CAiMapLoc m_to;   // 0x4
+    CAiMapLoc m_found;   // 0x8
+    float m_range;   // 0xc
+};
+
+/* a walk's cell taken as the detour when the feet reach it from the first end and the second end
+ * from it; the walk goes on to its range (new in SOCOM II, the name ours: 0x524660) */
+static bool _DetourLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
+{
+    DETOUR_DATA *d = (DETOUR_DATA *)data;
+
+    if (s.m_loc == d->m_from)
+        return true;
+    if (s.m_map->CanTravelLine(d->m_from, s.m_loc, 0) && s.m_map->CanTravelLine(s.m_loc, d->m_to, 0)) {
+        d->m_found = s.m_loc;
+        return false;
+    }
+    if (!(s.m_dist <= d->m_range))
+        return false;
+    return true;
+}
+
+/* a cell to step aside to, put into the path: from the cell toward the path's last point (the one
+ * before when the last is the goal), lines walked out from the point square to that way -- one
+ * side, then the other -- for a cell both legs reach (new in SOCOM II, the name ours: 0x524170,
+ * called by an AI state's 0x602270). The found cell rebuilt through on_map, so its `!=` stays the
+ * target's materialised bool (the AI core's round 19 rule: the x its first operand read is used after).
+ * OPEN, 22 instructions, the right size: (1) the head -- the target materialises the test of the last
+ * point as `v0 = !empty()`, NARROWED (andi 0xff), then `if (v0) v0 = m_state == COMPLETE` and branches
+ * on v0, where HasPoints() as a ternary's condition (or through a bool local, an if, a helper returning
+ * the point, `!= false`, `&& true`) gives MW's branch form with a `daddiu 1` bool (SmoothPath's
+ * HasPoints, in an `&&`, has the target's shape without the andi); (2) the second walk's turn -- the
+ * target loads side.y and side.z off sp and stores them through the field-address registers s7/s8,
+ * this build loads through the registers too (a negating helper by value or by pointer, a copy, a
+ * pointer local and the three-float constructor tried) */
+bool CAiPath::FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapLoc &goal, int cells)
+{
+    bool ok = false;
+    point *p = HasPoints() ? &m_points[m_points.size() - 1] : 0;
+
+    if (!p)
+        return false;
+    CAiMapLoc to(p->m_loc);
+
+    if (to == goal && !m_points.empty()) {
+        PopPoint(0);
+        p = &m_points[m_points.size() - 1];
+        if (!p)
+            return false;
+        to = p->m_loc;
+    }
+    if (from.m_mapid != to.m_mapid)
+        return false;
+    CAiMap *map = AiMaps.GetMapByIndex(from.m_mapid);
+    CPnt3D v;
+
+    CAiMap::GetDirVec(CAiMap::GetClosestDir(from, to), v);
+    DETOUR_DATA d;
+
+    d.m_from = from;
+    d.m_to = to;
+    d.m_found = CAiMapLoc::invalid;
+    d.m_range = 10.0f * cells;
+    CPnt3D side;
+
+    side.x = -v.z;
+    side.y = 0.0f;
+    side.z = v.x;
+    CPnt3D end = *pos + side * d.m_range;
+
+    map->WalkLine(from, &end, _DetourLineCallback, &d, 0.2f);
+    if (d.m_found == CAiMapLoc::invalid) {
+        side.x = -side.x;
+        side.y = -side.y;
+        side.z = -side.z;
+        end = *pos + side * d.m_range;
+        map->WalkLine(from, &end, _DetourLineCallback, &d, 0.2f);
+    }
+    if (d.m_found != CAiMapLoc::invalid) {
+        CAiMapLoc l = on_map(d.m_found, map->m_mapid);
+
+        ok = func_00526C10(this, l, map);
+    }
+    return ok;
 }

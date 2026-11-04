@@ -13,6 +13,7 @@
 #include "../zweapon/zweapon.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 /* The unit inlines to depth 8, not the flags' 5 (a pragma acts through its state at the unit's end):
  * CSealUnit::GetTop's out-of-line copy (0x561D20, after 0x561B90) inlines itself eight times, and a
@@ -512,10 +513,6 @@ void CSealCtrlAi::Initalize()
 /* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
  * OVL2 0x50F4C0 by its address) */
 extern "C" float func_0050F4C0(CAiEvent::EVENT event);
-/* CSealCtrl::CreateAiEvent (SOCOM 1's CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi by
- * its order and its call here; OVL2 0x572FA0, called by its address) */
-extern "C" int func_00572FA0(CSealCtrl *ctrl, CAiEvent::EVENT event, float a, float b, bool c,
-                             const CPnt3D *pos, unsigned int d);
 /* the voice's reach scale (OVL2 data 0x650380, read as a variable) */
 extern "C" float data_00650380;
 
@@ -528,7 +525,7 @@ extern "C" int func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
     if (event != CAiEvent::AIE_NONE) {
         float range = func_0050F4C0(event);
 
-        r = func_00572FA0(ctrl, CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW, event);
+        r = ctrl->CreateAiEvent(CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW, event);
     }
     return r;
 }
@@ -1084,10 +1081,6 @@ extern "C" bool func_0056D530(const CAiMap::region *r, unsigned int team)
     return found;
 }
 
-extern "C" {
-/* CSealCtrl::ClearLook(AI_LOOK) (OVL2 0x600D40, the kit lane's seal_look.cpp) */
-void func_00600D40(CSealCtrl *ctrl, int look);
-}
 
 /* the leg to walk: with a planned path's points, from the cell to the path's last point -- both
  * centres flat on the ground, the direction and length between them, the leg's words cleared; else
@@ -1103,7 +1096,7 @@ extern "C" void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *l
         ai->m_60c = 0;
         loc = loc->x == CAiMapLoc::invalid.x && loc->y == CAiMapLoc::invalid.y ? &e->m_mapLocValid : loc;
         ai->m_leg_cell = *loc;
-        func_00600D40(ai, 9);
+        ai->ClearLook(AIL_DEPLOY);
     } else {
         ai->m_leg_cell = *loc;
         AiMaps.GetCellCenter(*loc, &ai->m_leg_from);
@@ -1529,6 +1522,331 @@ Rfloat::operator float() const
 extern "C" bool func_005608B0(const float &chance)
 {
     return Rfloat(0.0f, 1.0f) <= chance;
+}
+
+/* a direction to look in from a map spot (OVL2 0x559580, not written: its arguments are what
+ * 0x567690 passes) */
+extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, int a, unsigned int mask, int b, int n, int c);
+
+/* the AI's glance around before it creeps: while it has a target or acts the countdown is held at 0;
+ * else run down, and on expiry restarted at a random 10 to 15 (a guarded function-local Rfloat,
+ * 0x66B208/0x66B210) and -- with no look of a higher mode -- a normal look set toward a direction the
+ * map gives the SEAL's spot; then the creep (OVL2 0x567690, new in SOCOM II: PreTick and 0x56AF50
+ * call it; the name unknown) */
+/* whether a look of a mode may be set: none of a higher mode holds (an inline, the name ours) */
+static inline bool LookAllowed(CSealCtrlAi *ai, AI_LOOK look)
+{
+    return look >= ai->m_look_mode;
+}
+
+extern "C" void func_00567690(CSealCtrlAi *ai, float dT, bool b)
+{
+    CEntity *e = ai->m_entity;
+    static Rfloat s_wait(10.0f, 5.0f);
+
+    if (!func_0060A850(ai->m_67c) && !ai->AiStateIs(AI_STATE_ACTION)) {
+        ai->m_3fc -= dT;
+        if (ai->m_3fc < 0.0f) {
+            ai->m_3fc = s_wait;
+            if (LookAllowed(ai, AIL_NORMAL)) {
+                if (ai->SetLookDirW(AIL_NORMAL, func_00559580(&e->m_mapLocValid, 0, 0x40000, 0, 20, 0)))
+                    ai->ModifyLookFlags(1, 2);
+            }
+        }
+    } else
+        ai->m_3fc = 0.0f;
+    ai->CreepTick(dT, b);
+}
+
+/* what the AI's line walk carries to its callback (0x56A2E0) and hands back: the walk stopped, an
+ * entity met and where, the follow's restraint, a distance, the target cell, the way back and the
+ * controller (new in SOCOM II; the layout read off 0x56A130 and the callback, the names ours) */
+struct SEAL_LINEWALK {
+    unsigned char m_blocked;   // 0x0
+    unsigned char _1;
+    unsigned char m_met;   // 0x2: an entity in the way
+    unsigned char _3[9 - 3];
+    bool m_restrained;   // 0x9
+    unsigned char _a[0xc - 0xa];
+    CAiMapLoc m_metloc;   // 0xc
+    float m_dist;   // 0x10
+    float m_scale;   // 0x14
+    CAiMapLoc m_to;   // 0x18
+    CPnt3D m_back;   // 0x1c: the SEAL's facing, reversed
+    unsigned char _28[4];
+    CSealCtrlAi *m_ai;   // 0x2c
+};
+
+extern "C" {
+bool func_0056A2E0(const MAP_LINEWALK_STRUCT &s, void *data);
+CEntity *func_00569AA0(CEntity *e, const CAiMapLoc *loc);
+}
+
+/* whether the AI can walk the line from its SEAL's cell to another of the same map: the walk's
+ * data filled -- the follow state offline also carrying the SEAL's restraint -- the line walked in
+ * steps of 0.2, an entity met in the way forgotten when none stands there or it is the SEAL itself
+ * (OVL2 0x56A130, new in SOCOM II: CreepTick, 0x567900 and CAiSAction::Tick call it; the name
+ * unknown) */
+extern "C" bool func_0056A130(CSealCtrlAi *ai, const CAiMapLoc &to, SEAL_LINEWALK *w, float dist)
+{
+    CEntity *e = ai->m_entity;
+    const CAiMapLoc &from = e->m_mapLoc;
+
+    if (to.m_mapid != from.m_mapid)
+        return false;
+    CAiMap *map = AiMaps.GetMapByIndex(from.m_mapid);
+    const CMatrix &m = e->m_node->m_matrix;
+
+    w->m_ai = ai;
+    w->m_back.x = -m.m_matrix[2][0];
+    w->m_back.y = -m.m_matrix[2][1];
+    w->m_back.z = -m.m_matrix[2][2];
+    w->m_to = to;
+    w->m_dist = dist;
+    w->m_scale = 1.0f;
+    if (ai->AiStateIs(AI_STATE_FOLLOW) && !theNetwork.m_9)
+        w->m_restrained = ((CZSealBody *)e)->m_restrained;
+    map->WalkLine(from, to, func_0056A2E0, w, 0.2f);
+    if (w->m_met) {
+        CEntity *met = func_00569AA0(e, &w->m_metloc);
+
+        if (!met || met == e)
+            w->m_met = false;
+    }
+    return !(w->m_blocked || w->m_met);
+}
+
+/* the box around eight points -- a box's corners (OVL2 0x56ACE0, new in SOCOM II: 0x56A8E0 calls it;
+ * the name unknown) */
+/* a bound lowered or raised to a value (inlines, the names ours: the value, the later argument, is
+ * read before the bound -- the ternary written in place reads the bound first) */
+static inline void LowerTo(float &bound, float v)
+{
+    bound = v <= bound ? v : bound;
+}
+
+static inline void RaiseTo(float &bound, float v)
+{
+    bound = v >= bound ? v : bound;
+}
+
+extern "C" void func_0056ACE0(CBBox *box, const CPnt3D *pts)
+{
+    box->m_min = pts[0];
+    box->m_max = pts[0];
+    for (int i = 1; i < 8; i++) {
+        const CPnt3D *p = &pts[i];
+
+        LowerTo(box->m_min.x, p->x);
+        LowerTo(box->m_min.y, p->y);
+        LowerTo(box->m_min.z, p->z);
+        RaiseTo(box->m_max.x, p->x);
+        RaiseTo(box->m_max.y, p->y);
+        RaiseTo(box->m_max.z, p->z);
+    }
+}
+
+extern "C" {
+void func_00570F90(CSealCtrlAi *ai, float t);
+void func_005B3890(CEntity *seal, int x);
+}
+
+/* the AI put back on its feet off a ladder: out of mode 7 -- the mode before it restored -- into
+ * mode 3, the climb's words cleared, the move goal dropped, 0x570F90 asked with 1 and the SEAL's
+ * 0x5B3890 with 1 (OVL2 0x56BEF0, new in SOCOM II: 0x56AF50 calls it three times; the name
+ * unknown) */
+extern "C" void func_0056BEF0(CSealCtrlAi *ai)
+{
+    CEntity *e = ai->m_entity;
+
+    if (ai->m_3f4 == 7) {
+        if (ai->m_3f4 == 7)
+            ai->RestoreAiMode();
+        ai->SetAiMode((AI_MODE)3);
+    }
+    ai->m_448 &= 0xffff0000;
+    ai->m_440 = 0;
+    ai->m_444 = 0;
+    ai->ClearGoal(GOAL_MOVE);
+    func_00570F90(ai, 1.0f);
+    func_005B3890(e, 1);
+}
+
+extern "C" {
+/* the mission's vehicles, counted (OVL2 bss: OnMissionStart sets it), the reach within which a target
+ * vehicle is looked at, squared, and the nearness asked of its box (OVL2 data, 250000 and 5: read
+ * with lwc1, variables; the names ours) */
+extern int data_0066AFE8;
+extern float data_00650170;
+extern float data_00650168;
+bool func_0056A8E0(CEntity *vehicle, const CPnt3D *pos, float near);
+void func_00569550(CSealCtrlAi *ai, unsigned int id);
+}
+
+/* the entity as a vehicle (type 4, CVehicle's), if it is one (an inline, the name ours) */
+static inline CEntity *AsVehicle(CEntity *e)
+{
+    return e && e->m_type == 4 ? e : 0;
+}
+
+/* the vehicle a spot -- the SEAL's own by default -- is at: the SEAL's targets walked nearest first
+ * while within reach, the first vehicle whose box the spot is near; told to 0x569550 when asked (OVL2
+ * 0x56A760, new in SOCOM II: PreTick calls it five times, the line walk's callback once; the name
+ * unknown) */
+extern "C" unsigned int func_0056A760(CSealCtrlAi *ai, const CPnt3D *pos, bool tell)
+{
+    unsigned int id = CEntity::invalidId;
+    CEntity *e = ai->m_entity;
+
+    if (data_0066AFE8 > 0) {
+        if (!pos)
+            pos = &e->m_posW;
+        CTargetList *list = &e->m_targets;
+
+        for (CTargetList::iterator i = list->begin(); i != list->end(); ++i) {
+            if (!(i->m_distSq <= data_00650170))
+                break;
+            CEntity *v = AsVehicle(i->m_ent);
+
+            if (v && func_0056A8E0(v, pos, data_00650168)) {
+                id = v->m_id;
+                break;
+            }
+        }
+        if (tell && id != CEntity::invalidId)
+            func_00569550(ai, id);
+    }
+    return id;
+}
+
+extern "C" {
+/* a switch 0x572880 clears when its question fails (OVL2 bss; the name ours) */
+extern unsigned char data_0066AFE0;
+}
+
+/* the state as a hold (kind 2), if it is one (an inline, the name ours) */
+static inline CAiState *AsHold(CAiState *s)
+{
+    return s && s->m_state == AI_STATE_HOLD ? s : 0;
+}
+
+/* whether a player SEAL hit is the one team 2's second member holds for: the switch on, the SEAL a
+ * player's, that member the AI's, its state a hold with flag 0x80 -- the AI and the state given
+ * back, else the switch, the AI and the state cleared (OVL2 0x572880, new in SOCOM II: OnWeaponHit
+ * asks it; the name unknown) */
+extern "C" bool func_00572880(CZSealBody *seal, CSealCtrlAi **ai, CAiState **state)
+{
+    bool r = false;
+
+    if (data_0066AFE0 && seal && seal->IsPlayer()) {
+        CSealUnit *unit = CSealUnit::GetUnitByTeam(2);
+
+        if (unit) {
+            CZSealBody *s = unit->GetSealByIndex(1, 0);
+
+            if (s && (s->m_control ? ((CSealCtrl *)s->m_control)->IsAi() : false)) {
+                *ai = s->GetSealCtrlAi();
+                *state = AsHold((*ai)->GetAiState());
+                if (*state && ((*state)->m_flags & 0x80))
+                    r = true;
+            }
+        }
+    }
+    if (!r) {
+        data_0066AFE0 = 0;
+        *ai = 0;
+        *state = 0;
+    }
+    return r;
+}
+
+extern "C" {
+/* whether the AI's task anims may run (OVL1 data, a byte; the name ours) */
+extern unsigned char data_003DF188;
+}
+
+/* the state as a script (kind 1), if it is one (an inline, the name ours) */
+static inline CAiSScript *AsScript(CAiState *s)
+{
+    return s && s->m_state == AI_STATE_SCRIPT ? (CAiSScript *)s : 0;
+}
+
+/* a task's anim activated with the arguments that follow, the copy kept four slots on (SOCOM II's
+ * anims and copies, four each from 0x450 -- the task counted from 1); when asked and it ran, a
+ * script state pushed that plays the anim, marked running; whether it ran (OVL2 0x561F00; SOCOM 1's
+ * ActivateEx, variadic: a3-t3 stored to the frame, the flag too, its address taken by va_start) */
+bool CSealCtrlAi::ActivateEx(SEAL_TASK task, bool push, ...)
+{
+    if (!data_003DF188)
+        return false;
+    va_list ap;
+
+    va_start(ap, push);
+    CZAnim *active;
+    CZAnim *anim = m_anims[task - 1];
+
+    active = 0;
+    if (anim)
+        active = anim->ActivateArgV(ap);
+    m_anims[task + 3] = active;
+    if (active && push && PushAiState(AI_STATE_SCRIPT, 1)) {
+        CAiSScript *s = AsScript(GetAiState());
+
+        s->m_58 = (unsigned int)anim;
+        s->m_active = true;
+    }
+    return active != 0;
+}
+
+/* the target's entity, held in the word at 0x67C (an inline, the name ours) */
+static inline CEntity *TargetOf(CSealCtrlAi *ai)
+{
+    return *(CEntity **)ai->m_67c;
+}
+
+extern "C" bool func_0055E670(CSealCtrlAi *ai, AI_FIREPARAMS *p);
+
+/* a shot asked for by the fire parameters (flags 0x4000000 and 0x40000) taken: flag 4 with a target
+ * aims at the target's spot and speed first; either way the aim (0x55E670) fires when ready, and
+ * once done -- when asked -- the request is cleared with the look of mode 11; whether one was asked
+ * (OVL2 0x55EAA0, new in SOCOM II: 0x563E10, 0x5B8920 and 0x5C1970 call it; the name unknown) */
+extern "C" bool func_0055EAA0(CSealCtrlAi *ai, AI_FIREPARAMS *p, bool clear)
+{
+    bool r = false;
+
+    if ((p->m_flags & 0x4000000) && (p->m_flags & 0x40000)) {
+        r = true;
+        if ((p->m_flags & 4) && func_0060A850(ai->m_67c)) {
+            p->m_targetPos = TargetOf(ai)->m_posW;
+            p->m_targetVel = TargetOf(ai)->m_velW;
+            if (func_0055E670(ai, p))
+                ai->FireWhenReady(*p, 0.0f);
+        } else if (func_0055E670(ai, p))
+            ai->FireWhenReady(*p, 0.0f);
+        if (clear) {
+            p->m_flags &= ~0x4000000;
+            ai->ClearLook(AIL_11);
+        }
+    }
+    return r;
+}
+
+/* the fire parameters aimed straight at the target's spot: the look along the line to it, the aim
+ * point the spot, the model's aim down -z, flag 0x100000 on and 0x800000 off, the distance kept
+ * (OVL2 0x55EBE0, new in SOCOM II: 0x55F0A0 picks it by flag 0x80000; the name unknown) */
+extern "C" bool func_0055EBE0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
+{
+    CPnt3D *target = &p->m_targetPos;
+    CPnt3D dir = *target - ai->m_entity->m_posW;
+    float dist = dir.Normalize();
+
+    p->m_aimPointW = *target;
+    p->m_lookDirW = dir;
+    p->m_aimDirM = CPnt3D::unit_nz;
+    p->m_flags &= ~0x800000;
+    p->m_flags |= 0x100000;
+    p->m_dist = dist;
+    return true;
 }
 
 /* whether the body holds a weapon of the kind: kind 1 is rows 2 and 3 (OVL2 0x5609F0).

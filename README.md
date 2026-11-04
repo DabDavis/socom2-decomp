@@ -1927,6 +1927,58 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 20** (CreateGraph, the path's snake points and length, AbortPathPlan):
+  - ONE MSL CHAIN CAN BE MADE TALLER FOR A SINGLE INSTANCE BY SPECIALISING THE FUNCTION TEMPLATE IN A HEADER: std::find over
+    the planner queue one level taller in ai.h -- the extra level must take the first iterator by reference, or the
+    out-of-line copy keeps the iterators in registers (0x40 vs 0x38) -- closes ai::AbortPathPlan 0x5107B0 and find
+    0x510970 together;
+  - round 19's `||` rule held at FindDetour's found cell (its `!=` stays materialised once the cell is rebuilt through an
+    inline taking it by reference); a walk with a raw pointer compared through `iterator(l)` is numbered as a named local,
+    an iterator object shifts its saved register; an iterator assigned from begin() before the end local puts begin's
+    load first, and that end spills when no saved register is free (end() in the test is rematerialised from `this`);
+  - an inline cut to one level calls even its own local's empty constructor out of line (a caller-owned local passed by
+    reference avoids it); an inline taking a const view of a pointer lets MW hoist the fields' addresses out of the
+    enclosing walk; memmove through operator[] takes &data_ once, ahead of the first move -- a call inside memmove's
+    argument list loads data_ before the call (take the count into a local); `if (i <= i1) step = 1; else step = -1;`
+    gives the target's layout, a top-tested walk at a join is `if (i != i1) do ... while`;
+  - CAiMaps::CreateGraph 0x52A8C0 (0x400), CAiPath::GetLength 0x527E70 (SOCOM 1's), AddSnakePoint 0x524D50 (SOCOM 1's
+    with a search count and a flags byte: it emits ai::_min<Ui>), _DetourLineCallback, do_assign<const CAiPath::point *>
+    (through CopyPlan); open: FindDetour 0x524170 (22), CopyPlan 0x527FD0 (21), ExtendPath 0x52BDF0 (2).
+- **Tells from the game states, round 24** (CMission::Open and the CUIVariable tail, the mission's archive and UI vars, the
+  message ring, the NVG noise):
+  - THE MSL LANE'S round-16 RECIPE CLOSED resize<CUIVariable>: `#pragma inline_max_auto_size(17)` placed at the unit's END
+    (it acts on the template tail only -- at the top it also auto-inlined CreateCompassNavPoints into Open) with
+    CMission::Open 0x2AC410 written in its place (it reserves a pointer vector before the tail): resize<CUIVariable>
+    0x2B1390, the pointer vector's reserve 0x2B1600 and _zrdr() 0x2B17E0 byte-exact;
+  - `strcpy(m = buf, src)` puts the store in the call's delay slot, `f(m = g())` keeps g's result in v0 for both uses;
+    early returns branch straight to the epilogue, an if-block's join becomes an aligned label the early-outs jump to; `if
+    ((p = f()) != 0)` tests v0 before the move to a saved register; an int counter passed to `_zrdr::Item(unsigned)` is
+    recomputed each pass, an unsigned one strength-reduced into a saved register; a field store through an inline setter
+    gives `addu this,off`, the direct member store `addu off,this`;
+  - `i < sizeof(a)/sizeof(a[0])` with an int counter gives 8x unrolling plus a remainder loop where `i < 32` unrolls fully,
+    a bound written `if (i >= N) break;` gives the loop guard plus a head test; `x = c < 32 ? c : 31` gives the two-store
+    shape; reading a loop bound from the struct twice, not into a local, gives the target's register order;
+  - theMission +0x11B0 is a 10-entry message ring (0xA1-byte entries; CMessageQueue::Enqueue/Dequeue, ours), +0x1950 the
+    career stats (13 ints: CCareerStats), +0x1848/+0x1854 the camera lists, +0x124 the "WhoIsTalking" anchor; 0x2ABA00's
+    s1:align name swap<SObjectiveCam_Anchor> is wrong (its code is ~vector<SObjectiveCam_Anchor>, the real swap 0x2ABA60);
+  - open: NVGNoiseParse 0x2AE050 (6, registers), reserve<SObjectiveCam_Anchor> 0x2B00E0 (0x178 vs 0x180: it needs
+    CMission::Close 0x2AB3F0 written first -- its FreeVector generates the deleter's pieces), 0x2B55E0 (level 6).
+- **Tells from the SEALs, round 20** (seal.cpp's probes and tasks, the glance timer, the line walk, ActivateEx):
+  - reading a bit through an inline bool accessor is never merged with a setter's read-modify-write of the same byte (the
+    byte loads twice); read in place, or through an accessor returning `!= 0`, the loads merge (0x54F570); GetWeapon's
+    walk (`iterator i; i = begin(); for (iterator e = end(); i != e; ++i)`) gives the one-copy, iterator-in-memory,
+    end-in-a-saved-register shape; a bool holding an `&&` followed by `if (b) { if (c) b = false; if (b) call(); }` lets MW
+    thread the false branch to the loop step;
+  - an inline taking the bound by reference and the value last (`LowerTo(float &bound, float v)`) reads the value first, a
+    ternary in place reads the bound first (0x56ACE0); `if (!a && !b) {...} else x = 0;` lays the zero block last; `slt`
+    then `bnez` comes from an inline bool `look >= m_look_mode`, `m_look_mode <= 0` gives `bgtz`; a bitfield stored into
+    a `bool` member adds `sltu`, into an `unsigned char` member it does not; the three-float CPnt3D constructor for a local
+    difference reproduces the `mov.s` copies and the late stores (0x54ECD0);
+  - AiStateIs closed two farm hits open since round 18 (0x567690 the glance timer with its guarded Rfloat static,
+    0x56A130 the line walk); CSealCtrlAi::ActivateEx 0x561F00 is variadic (stdarg.h); SOCOM II's CreepTick takes a second
+    argument, a bool (0x566DC0/0x567350 renamed); 0x54F7E0 (0xB50) is likely SOCOM 1's CollidePlayers (unnamed);
+  - 13 farm hits where GetState is called out of line remain, all large (0x250-0x1064: 0x591520 worked out, unwritten; the
+    dispatcher 0x55F0A0 read).
 - **Tells from the HUD, round 27** (a new hud_tcmtree.cpp: the radio command menu's tree):
   - IN A SELF-INLINED RECURSIVE FUNCTION THE OUT-OF-LINE ACCESSOR COPIES EACH COPY CALLS SHOW THE ACCESSOR CHAIN'S LEVELS:
     each deeper copy calls a level shallower, and a call made as the receiver of the recursive call is cut one level more
@@ -4449,7 +4501,7 @@ constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' 
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0, 0x2F6230
-and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line) -- TEN rows in all -- 0x29FF60 and
+and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape) -- ELEVEN rows in all -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
 
