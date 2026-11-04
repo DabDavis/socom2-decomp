@@ -32,6 +32,20 @@ public:
     void MakeCallbacks(VALVE_STATE state);
     /* the value as an int (the chat unit's: the test's load serves the sum unmasked) */
     int Value() { return m_value; }
+    /* the value set, the callbacks told when it turns on or off (the lobby unit's, as zanim.h's) */
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
 
     char *m_name;   // 0x0
     unsigned short m_value;   // 0x4
@@ -271,6 +285,77 @@ bool CZLANLobby::CreateGame()
     CopyField(data_0044FE10.m_info.m_name, name, sizeof(data_0044FE10.m_info.m_name));
     func_002F7C40(data_0044FE10.m_info.m_rules);
     func_002F3EF0(data_0044FE10.m_info.m_rules);
+    return true;
+}
+
+void SetDatabase(const char *name);   /* the mission database by name (OVL1 0x27F810, SOCOM 1's) */
+
+extern "C" {
+int sprintf(char *s, const char *format, ...);
+int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator (the lobby unit's) */
+bool func_002E34D0(RoomGame *game);   /* the game's friendly fire (the room unit's) */
+bool func_002E33D0(RoomGame *game);   /* and its respawns */
+extern CUIVariable *data_0044F434;   /* the game's name as the menus show it */
+}
+
+/* a LAN game of the room joined: refused without a mission of ours; the menus' valves set from its
+ * rules, a spectator joining a game without spectator room taken as joined; its server's address
+ * and port made the connection's, its info ours, the passwords cleared that it does not ask for, its
+ * mission sequence taken and the current mission's database set and the game's name shown (with no
+ * mission, the sequence is printed and the join refused) -- the online lobby's JoinGame for the LAN
+ * (SOCOM II's; OVL1 0x3039B0: the UI's JoinMPGame calls it when the LAN lobby is up; the name ours) */
+bool CZLANLobby::JoinGame(const char *name)
+{
+    RoomGame *game = m_room->FindGame(name);
+
+    if (game) {
+        if (!game->HasMissions())
+            return false;
+        if (game) {
+            CValve::Create("MaxPlayersValve", VALVE_TYPE_1)->SetValue(game->m_info.m_maxPlayers);
+            CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(game->m_maxSpectators);
+            CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(func_002E34D0(game));
+            CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(func_002E33D0(game));
+            CValve::Create("EQlimit", VALVE_TYPE_1)->SetValue(game->m_19f[0]);
+            CValve::Create("mp_max_rounds", VALVE_TYPE_1)->SetValue(game->m_19a[1]);
+            CValve::Create("mp_max_round_time", VALVE_TYPE_1)->SetValue(game->m_19a[2]);
+            if (func_002F6D00(&theLobby) && !game->m_maxSpectators)
+                return true;
+            data_0066A924 = 1;
+            data_0066A8F0 = 2;
+            data_0066A8F4 = 1;
+            memcpy(&data_0066A8F8, &((LANGame *)game)->m_addr, sizeof(LANAddress));
+            data_0066A908 = ((LANGame *)game)->m_port;
+            func_002F3FF0(&data_0066A8F0);
+            data_0044FE10.m_info = game->m_info;
+            if (!(game->m_info.m_flags & 1))
+                *theUIVarManager.Add("PlayerGamePassword", 0, UIVL_PERMANENT) = "";
+            if (!(game->m_info.m_flags & 4))
+                *theUIVarManager.Add("SpectatorGamePassword", 0, UIVL_PERMANENT) = "";
+            func_002F3EF0(game->m_19a);
+            theLobby.SetMissionSequence(0, game->GetMissionSequence());
+            theLobby.ResetMissionSequence();
+            unsigned char idx;
+            unsigned char seq[32];
+
+            theLobby.GetMissionSequence(&idx, seq);
+            if (seq[idx] > 0) {
+                char db[15];
+
+                sprintf(db, "mp%d", seq[idx]);
+                SetDatabase(db);
+            } else {
+                char text[256];
+
+                text[0] = 0;
+                for (int i = 0; i < 32; i++)
+                    sprintf(text, "%s%d", text, seq[i]);
+                return false;
+            }
+            if (data_0044F434 && name)
+                *data_0044F434 = name;
+        }
+    }
     return true;
 }
 

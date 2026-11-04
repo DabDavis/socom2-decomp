@@ -916,6 +916,8 @@ class CZLANLobby {
 public:
     bool GameHasPassword(const char *game);
     bool CreateGame();
+    /* a game of the room joined (OVL1 0x3039B0) */
+    bool JoinGame(const char *name);
     void GetGameInfo(LANGameInfo *out);
     bool RefreshGameList(C2D *page);
     bool Disconnect();
