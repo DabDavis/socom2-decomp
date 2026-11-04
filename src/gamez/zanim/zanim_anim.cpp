@@ -427,17 +427,20 @@ struct ZAnimNetworkExtra {
 
 /* SOCOM II's CZAnimMain::NetworkReceive (SOCOM 1's, given a third argument; not named): the
  * packet's anim found, an available copy given the packet's arguments and the extra value,
- * and activated with the activation callback held off; the packet's size.
- * OPEN, registers only (19 instructions): the target gives the extra argument s0 and the anim
- * s1, as if the anim were declared first -- declaration order, an outer `value`, and an inlined
- * helper (cut by the inline level) do not swap them */
+ * and activated with the activation callback held off; the packet's size. The available copy a
+ * named local and the extra a const copy defined after it (the game states' round 34 rule: numbered
+ * after the copy, it takes s0 and the copy s1, as the target's; reassigning `anim` made the copy a
+ * late web numbered last -- the engine core round 14) */
 extern "C" int func_00273780(CZAnimMain *main, ZAnimNetworkPacket *packet, ZAnimNetworkExtra *extra)
 {
     CZAnim *anim = ZAnim.GetAnim(packet->anim_set_index, packet->anim_index);
 
     if (anim) {
         main->m_block_activation_callback = 1;
-        anim = anim->GetAvailable();
+        CZAnim *avail = anim->GetAvailable();
+        ZAnimNetworkExtra *const ex = extra;
+
+        anim = avail;
         if (anim) {
             if (anim->m_arg_list)
                 delete anim->m_arg_list;
@@ -447,8 +450,8 @@ extern "C" int func_00273780(CZAnimMain *main, ZAnimNetworkPacket *packet, ZAnim
                     anim->m_arg_list = new CZAnimArgList;
                 anim->m_arg_list->ParseNetworkPacketArgs(anim, packet);
             }
-            if (extra) {
-                int value = extra->value;
+            if (ex) {
+                int value = ex->value;
                 CZAnimArg *arg = new CZAnimArgInt(CZAnimArg::TYPE_INT, value);
 
                 if (!anim->m_arg_list)
