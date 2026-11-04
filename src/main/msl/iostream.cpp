@@ -122,9 +122,9 @@ basic_filebuf<charT, traits>::seekoff(off_type off, ios_base::seekdir way, ios_b
     return pos_type(off_type(-1));
 }
 
-/* seekpos<wchar_t> matches; OPEN, seekpos<char> (0x186B20, 0x340 against 0x1C8): it inlines
- * unshift<char> here, which the explicit instantiation generates ahead of it (after overflow), where
- * the wide one's seekpos comes first and calls it, as the target's both do */
+/* both seekpos match (seekpos<char> since round 6: it had inlined unshift<char>, which the explicit
+ * instantiation generated ahead of it -- unshift is now defined after the instantiations, so every
+ * caller calls it, as the target's do: the image generates both unshifts late, 0x188CB0/0x189D60) */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::pos_type
 basic_filebuf<charT, traits>::seekpos(pos_type sp, ios_base::openmode which)
@@ -280,30 +280,6 @@ basic_filebuf<charT, traits>::read1(bool peek)
             return traits::eof();
     }
     return c;
-}
-
-template <class charT, class traits>
-bool basic_filebuf<charT, traits>::unshift()
-{
-    codecvt_base::result r = codecvt_base::partial;
-    char to[4];
-    while (r == codecvt_base::partial) {
-        char *to_next = to;
-        r = a_codecvt_->unshift(state_, to, to + sizeof(to), to_next);
-        switch (r) {
-        case codecvt_base::error:
-            return false;
-        case codecvt_base::noconv:
-            break;
-        case codecvt_base::ok:
-        case codecvt_base::partial:
-            for (char *t = to; t < to_next;)
-                if (putc(*t++, file_) == EOF)
-                    return false;
-            break;
-        }
-    }
-    return true;
 }
 
 /* a fixed-width encoding: n bytes in, one character out (put back again when peeking) */
@@ -646,6 +622,33 @@ _RefCountedPtr<T, Destructor>::_RefCountedPtr(const _RefCountedPtr &other)
 {
     if (refCount_)
         ++*refCount_;
+}
+
+/* the conversion state shifted back to its initial state, its bytes written out (the target's
+ * seekpos, seekoff and overflow call it; defined after the instantiations, so it is generated
+ * after them all, as the image's unshift<char> 0x188CB0 and unshift<wchar_t> 0x189D60 are) */
+template <class charT, class traits>
+bool basic_filebuf<charT, traits>::unshift()
+{
+    codecvt_base::result r = codecvt_base::partial;
+    char to[4];
+    while (r == codecvt_base::partial) {
+        char *to_next = to;
+        r = a_codecvt_->unshift(state_, to, to + sizeof(to), to_next);
+        switch (r) {
+        case codecvt_base::error:
+            return false;
+        case codecvt_base::noconv:
+            break;
+        case codecvt_base::ok:
+        case codecvt_base::partial:
+            for (char *t = to; t < to_next;)
+                if (putc(*t++, file_) == EOF)
+                    return false;
+            break;
+        }
+    }
+    return true;
 }
 
 template class basic_istream<char, char_traits<char> >;
