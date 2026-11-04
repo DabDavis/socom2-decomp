@@ -260,6 +260,60 @@ extern "C" void func_0052C310(CAiMaps *maps, void *path);
 /* the plan's goal cell set (OVL2 0x5F1760, a CAiSPlan member: the plan in a0 -- unnamed) */
 extern "C" void func_005F1760(CAiSPlan *plan, void *loc);
 
+/* a leg of a path planned to a cell on a map (OVL2 0x526F20, the AI core's row: ai_maps.cpp
+ * declares it alike) */
+extern "C" bool func_00526F20(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
+
+/* the plan's route begun to its goal cells (its vector at 0x58): a planner it was handed given to
+ * its path; with the flag bit 3 the cells taken leg by leg -- one that fails steps the plan to 3
+ * and answers 4 -- the step then 1 either way; else the whole run registered with the AI maps from
+ * the SEAL's last valid cell, the plan's limits handed on (0x11C the search limit, 0x120 the
+ * path's word at 0x90, 0x130 the tolerance when positive) and the step 1, or 3 when it failed. 4
+ * with no goals, else 0 or 4 (OVL2 0x5F15A0: CAiSPlan::Tick calls it, a member -- the plan in a0;
+ * unnamed). The goals through ai_states.h's member view of the vector, its operator[] taking the data
+ * into a const local: a pointer cast of the plan to a view makes MW hoist the data's address out of
+ * the loop (the target folds it into each load), the data read straight strength-reduces the index */
+extern "C" int func_005F15A0(CAiSPlan *plan, CSealCtrlAi *ai)
+{
+    int r = 4;
+    int n = plan->m_goals.m_size;
+
+    if (n) {
+        CEntity *seal = ai->m_entity;
+
+        if (plan->m_10c) {
+            ((CAiPath *)plan->m_path)->SetPlanner((CAiPlanner *)plan->m_10c);
+            plan->m_10c = 0;
+            plan->m_110 = 0;
+        }
+        if (plan->m_flags & 8) {
+            r = 0;
+            for (int i = 0; i < n; i++) {
+                CAiMap *map = AiMaps.GetMapByIndex(plan->m_goals[i].m_mapid);
+
+                if (!func_00526F20((CAiPath *)plan->m_path, plan->m_goals[i], map)) {
+                    plan->UpdatePhase(3);
+                    r = 4;
+                    break;
+                }
+            }
+            plan->UpdatePhase(1);
+        } else if (AiMaps.RegisterPathPlan(seal->m_mapLocValid, plan->m_goals.m_data, n,
+                       (CAiPath *)plan->m_path)) {
+            if (plan->m_11c)
+                ((CAiPath *)plan->m_path)->m_search_limit = plan->m_11c;
+            if (plan->m_120)
+                ((CAiPath *)plan->m_path)->m_unk90 = plan->m_120;
+            if (plan->m_130 > 0)
+                ((CAiPath *)plan->m_path)->m_tolerance = plan->m_130;
+            plan->UpdatePhase(1);
+            r = 0;
+        } else
+            plan->UpdatePhase(3);
+    }
+    return r;
+}
+
 /* the plan's path flags (its CAiPath's word at 0x1C, the plan's 0x80) changed: `clear` cleared,
  * `set` set (inlined with constants, as the controller's own path's at 0x488; the name ours) */
 inline void SetPathFlags(CAiSPlan *plan, unsigned int set, unsigned int clear)
@@ -851,6 +905,8 @@ void CAiStateStack::PopAll(CSealCtrlAi *ai)
  * most (or, without the flag, at least) the threshold (the names ours) */
 class CAiHidePlanner : public CAiPlanner {
 public:
+    /* (inline: 0x5F0990 and 0x5F0B30 expand it after `new`, the base's table stored first) */
+    CAiHidePlanner(bool hide, int dist, float thresh) : m_hide(hide), m_dist(dist), m_thresh(thresh) {}
     virtual void reset(CAiMap &map, const CAiMapLoc &start, const CAiMapLoc &goal);
     virtual bool is_goal(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b);
     virtual int dist(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b);
@@ -904,6 +960,68 @@ bool CAiHidePlanner::is_goal(CAiMap &map, const CAiMapLoc &a, const CAiMapLoc &b
 int CAiHidePlanner::dist(CAiMap &, const CAiMapLoc &, const CAiMapLoc &)
 {
     return 0;
+}
+
+extern "C" {
+/* a cell to hide in from a point or to see it from, found for the controller (OVL2 0x5F0CD0, this
+ * unit's, unwritten: both pushes below call it first) */
+bool func_005F0CD0(CSealCtrlAi *ai, const CPnt3D *pos, CAiMapLoc *loc);
+}
+
+/* a plan pushed on the current state's own stack to a cell from which the point is seen (the hide
+ * planner's flag clear) or hidden from (set), five cells off at least, at a threshold of a half:
+ * the cell, the planner (its kind 2), the flags `mode`, the state it covers and the kind and step to
+ * come back to; whether it was pushed (OVL2 0x5F0B30 and 0x5F0990, alike but for the flag:
+ * 0x5F0830's shape with the cell searched for first -- CAiSTarget::Tick picks one, CAiSHostage,
+ * CAiSReload and CAiSShotAt call the first, CAiSHold the second; the names unknown) */
+extern "C" bool func_005F0B30(CSealCtrlAi *ai, const CPnt3D *pos, unsigned int mode, int kind, int step)
+{
+    bool r = false;
+    CAiMapLoc loc;
+
+    if (func_005F0CD0(ai, pos, &loc)) {
+        CAiState *s = ai->GetAiState();
+
+        if (s->m_stack.Push(ai, AI_STATE_PLAN, 0)) {
+            CAiState *top = s->m_stack.GetState();
+            CAiSPlan *plan = top ? (top && top->m_state == AI_STATE_PLAN ? (CAiSPlan *)top : 0) : 0;
+
+            func_005F1760(plan, &loc);
+            plan->m_10c = (char *)new CAiHidePlanner(true, 5, 0.5f);
+            plan->m_110 = 2;
+            plan->SetFlags(mode, 0);
+            r = true;
+            plan->m_114 = (unsigned int)s;
+            plan->m_124 = kind;
+            plan->m_128 = step;
+        }
+    }
+    return r;
+}
+
+extern "C" bool func_005F0990(CSealCtrlAi *ai, const CPnt3D *pos, unsigned int mode, int kind, int step)
+{
+    bool r = false;
+    CAiMapLoc loc;
+
+    if (func_005F0CD0(ai, pos, &loc)) {
+        CAiState *s = ai->GetAiState();
+
+        if (s->m_stack.Push(ai, AI_STATE_PLAN, 0)) {
+            CAiState *top = s->m_stack.GetState();
+            CAiSPlan *plan = top ? (top && top->m_state == AI_STATE_PLAN ? (CAiSPlan *)top : 0) : 0;
+
+            func_005F1760(plan, &loc);
+            plan->m_10c = (char *)new CAiHidePlanner(false, 5, 0.5f);
+            plan->m_110 = 2;
+            plan->SetFlags(mode, 0);
+            r = true;
+            plan->m_114 = (unsigned int)s;
+            plan->m_124 = kind;
+            plan->m_128 = step;
+        }
+    }
+    return r;
 }
 
 /* the stack's constructor (OVL2 0x5F8520): out of line, as its destructor is */
@@ -1306,6 +1424,48 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         m_valve = 0;
         break;
     }
+}
+
+/* which side of the breach's door the SEAL stands on: the door's side (the reverse one with the
+ * flag bit 0) against the flat direction from the SEAL to the breach point -- -1 when the
+ * direction's left perpendicular lies within 35 degrees of the side, 1 when its right does within
+ * 20, 2 otherwise or for a door with no side (OVL2 0x5F3270: CAiSBreach::Tick calls it twice, a
+ * member -- the state in a0; the name unknown). The cosines are function-local statics (lwc1 from
+ * 8-byte-spaced data: as literals MW builds them with lui/ori), both dots taken before the tests
+ * (the target ends the second in the first test's delay slot).
+ * OPEN, 16 instructions at the right size, the dots' float scheduling only: the target computes
+ * the y-terms' `0 * v.y` once and adds it into both dots (the first through adda/madd, the second
+ * with two add.s, its z-term first); here the second dot's y-term is fused into a madd of its own.
+ * Tried: the two points field by field (0x134), the dots written out (0x114), one point reused for
+ * both (its x and z reassigned, or negated: 0x134), either dot first, Dot(v, p) */
+extern "C" int func_005F3270(CAiSBreach *b, CSealCtrlAi *ai)
+{
+    int r = 2;
+    CAiMap::DIR dir = (CAiMap::DIR)((CAiMap::action *)b->m_78)->m_direction;
+
+    if (dir != CAiMap::DIR_COUNT) {
+        if (b->m_flags & 1)
+            dir = (CAiMap::DIR)((dir + 4) % 8);
+        CPnt3D v;
+
+        CAiMap::GetDirVec(dir, v);
+        CPnt3D d = b->m_58 - ai->m_entity->m_posW;
+
+        d.y = 0.0f;
+        d.Normalize();
+        CPnt3D left(-d.z, 0.0f, d.x);
+        CPnt3D right(d.z, 0.0f, -d.x);
+        float l = Dot(left, v);
+        float rt = Dot(right, v);
+        static float cosLeft = 0.8191f;
+        static float cosRight = 0.9395f;
+
+        if (l > cosLeft)
+            r = -1;
+        else if (rt > cosRight)
+            r = 1;
+    }
+    return r;
 }
 
 /* what a breach lets be pushed: no avoiding in its steps 4-9, no grenade in steps 6 and 7 -- a

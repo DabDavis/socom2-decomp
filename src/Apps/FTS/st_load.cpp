@@ -98,7 +98,6 @@ public:
 
 extern "C" {
 void func_002AF360(const char *name);
-void func_00368570(CGameMenu *menu, void *reloc, CZAnimZAR *zar);   /* CGameMenu::Init */
 void func_002C2C20(int arg);
 void func_0030E6E0(void *net, int arg);
 void func_0030E7F0(void *net);
@@ -151,7 +150,7 @@ bool CLoadState::Init()
     CStringTables *tables = GetStringTables();
 
     tables->Load("UILd", GetLanguage());
-    func_00368570(m_menu, 0, zar);
+    m_menu->Init(0, zar);
     if (zar)
         ZAnim.CloseZAR(zar);
     m_fadeup = true;

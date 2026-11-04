@@ -35,12 +35,8 @@ public:
 };
 
 /* SOCOM 1's: every persistent valve written as a NAME and a VAL; SOCOM II's own part of
- * Serialize, which SOCOM 1 inlined (name ours). Pinned: Serialize calls it.
- * OPEN, 1 instruction long (0xE8 of 0xE4): RemoveTask(name)'s include/list shape -- across the
- * editor's calls the wrapper iterator's reference-returning * keeps the element's address (node +
- * 8) in a saved register of its own, where the target re-reads the node from the iterator in
- * memory (a by-value * would: include/list's note on GetWeapon/GetAmmo). A const_iterator walk
- * (by-value *) through a const reference does not inline the const begin() whole (0x120) */
+ * Serialize, which SOCOM 1 inlined (name ours). Pinned: Serialize calls it. Byte-exact since
+ * include/list's iterator holds SOCOM 1's `node *` (the world lane's round 6) */
 #pragma auto_inline off
 void CValveSaveManager::SerializeValves(CRdrEditor *ed)
 {
@@ -83,6 +79,63 @@ void CValveSaveManager::UnSerialize(const char *name, CRdrFile *file, int flags)
     }
 }
 
+/* an operator's name to its code, 0 for none. SOCOM 1's chain (the comparisons 1-6, = += -= *=
+ * 7-10, then MOD, NCH, SET and CLR tested with empty arms -- `beqz v0` to the return) with SOCOM
+ * II's bit operators: the tests | & |~ &~ take 7-10, the assignments move to 11-14, and |=~ |= &=~
+ * &= follow as 17, 15, 18, 16 (the strings' order, 0x3F81C0-0x3F826F) */
+int CValve::ParseOperator(const char *op)
+{
+    int code = 0;
+
+    if (op) {
+        if (!strcmp(op, "=="))
+            code = 2;
+        else if (!strcmp(op, "!="))
+            code = 1;
+        else if (!strcmp(op, ">="))
+            code = 5;
+        else if (!strcmp(op, "<="))
+            code = 6;
+        else if (!strcmp(op, ">"))
+            code = 3;
+        else if (!strcmp(op, "<"))
+            code = 4;
+        else if (!strcmp(op, "|"))
+            code = 7;
+        else if (!strcmp(op, "&"))
+            code = 8;
+        else if (!strcmp(op, "|~"))
+            code = 9;
+        else if (!strcmp(op, "&~"))
+            code = 10;
+        else if (!strcmp(op, "="))
+            code = 11;
+        else if (!strcmp(op, "+="))
+            code = 12;
+        else if (!strcmp(op, "-="))
+            code = 13;
+        else if (!strcmp(op, "*="))
+            code = 14;
+        else if (!strcmp(op, "|=~"))
+            code = 17;
+        else if (!strcmp(op, "|="))
+            code = 15;
+        else if (!strcmp(op, "&=~"))
+            code = 18;
+        else if (!strcmp(op, "&="))
+            code = 16;
+        else if (!strcmp(op, "MOD"))
+            ;
+        else if (!strcmp(op, "NCH"))
+            ;
+        else if (!strcmp(op, "SET"))
+            ;
+        else if (!strcmp(op, "CLR"))
+            ;
+    }
+    return code;
+}
+
 /* a ZAnim argument instead of a valve: "INPUT_VALVE<n>" names argument n, anything else a valve,
  * created if new (SOCOM 1's; its debug walk of the argument table after the create is gone) */
 CValve *VALVE_CMD_DATA::ParseValveName(const char *name, int &index)
@@ -117,6 +170,162 @@ static inline CValve *ArgValve(CZAnim *anim, int ref)
     CZAnimArgList *args = anim->m_arg_list;
 
     return args ? args->GetValve(ref) : 0;
+}
+
+/* the valve's value tested against the block's by the operator -- the comparisons and bit tests
+ * answer, the assignments set the valve (its callbacks told) and answer true; no valve, false
+ * (SOCOM 1's, with SOCOM II's bit operators and a valve for the value). `a` declared ahead of the
+ * valve takes s1 below the valve's s0; the jump table's case 0 is the last block, as written last;
+ * the clamped difference computed into a local once (passed to the inline SetValue as written, it
+ * is substituted into both of its uses) and written `a >= c ? a - c : 0` (the target's slt into
+ * v0) */
+bool VALVE_CMD_DATA::Compare()
+{
+    unsigned short a;
+    CValve *valve;
+
+    if (isArg)
+        valve = ArgValve(ZAnim.m_CurAnim, ref);
+    else if (isAnim)
+        valve = ZAnim.m_CurAnim->GetValve(ref);
+    else
+        valve = (CValve *)ref;
+    if (!valve)
+        return false;
+
+    a = valve->m_value;
+    int b = value;
+
+    if (valIsValve) {
+        CValve *v;
+
+        if (valIsArg)
+            v = ArgValve(ZAnim.m_CurAnim, b);
+        else if (valIsAnim)
+            v = ZAnim.m_CurAnim->GetValve(b);
+        else
+            v = (CValve *)b;
+        b = v ? v->m_value : 0;
+    }
+    unsigned short c = b;
+
+    switch (op) {
+    case 1:
+        return a != c;
+    case 2:
+        return a == c;
+    case 3:
+        return a > c;
+    case 4:
+        return a < c;
+    case 5:
+        return a >= c;
+    case 6:
+        return a <= c;
+    case 7:
+        return (a | c) != 0;
+    case 8:
+        return (a & c) != 0;
+    case 9:
+        return (a | ~c) != 0;
+    case 10:
+        return (a & ~c) != 0;
+    case 11:
+        valve->SetValue(c);
+        return true;
+    case 12:
+        valve->SetValue(a + c);
+        return true;
+    case 13: {
+        int d = a >= c ? a - c : 0;
+
+        valve->SetValue(d);
+        return true;
+    }
+    case 14:
+        valve->SetValue(a * c);
+        return true;
+    case 15:
+        valve->SetValue(a | c);
+        return true;
+    case 16:
+        valve->SetValue(a & c);
+        return true;
+    case 17:
+        valve->SetValue(a | ~c);
+        return true;
+    case 18:
+        valve->SetValue(a & ~c);
+        return true;
+    case 0:
+        return true;
+    }
+    return false;
+}
+
+/* SOCOM II's VBIT command (RegisterCommands' second, "VBIT"; the names ours): a valve's bits
+ * tested, set or cleared -- the valve named as VWATCH's, the operator ParseOperator's code for
+ * "get" (`&`), "set" (`|=`) or "clr" (`&=~`), the bits the items after it. The block from +4 is the
+ * VALVE command's data (the tick compares it as CmdTickCmp does). A 16-byte block */
+struct VBIT_CMD {
+    _zanim_cmd_hdr hdr;   // 0x0
+    int ref;   // 0x4: the anim's valve index, or the argument's
+    unsigned int bits;   // 0x8
+    unsigned char op;   // 0xc
+    unsigned char isArg : 1;   // 0xd
+    unsigned char isAnim : 1;   // 0xd
+    unsigned char _d2 : 1;   // 0xd: cleared (the parse's last three stores)
+    unsigned char _d3 : 1;   // 0xd
+    unsigned char _d4 : 1;   // 0xd
+
+    /* the three flags the parse clears: through a setter `false` stays `(0 & 1) << n` at run time */
+    void SetFlags(bool a, bool b, bool c)
+    {
+        _d2 = a;
+        _d3 = b;
+        _d4 = c;
+    }
+};   // 0x10 bytes
+
+/* the block's data compared, as the VALVE command's tick (0x353260; the name ours) */
+bool CmdTickVBit(_zanim_cmd_hdr *hdr, float *dT)
+{
+    return ((VALVE_CMD_DATA *)((char *)hdr + 4))->Compare();
+}
+
+/* the valve named by the first item, the operator by the second, the bits by the rest (0x353270;
+ * the name ours) */
+_zanim_cmd_hdr *CmdParseVBit(_zrdr *rdr)
+{
+    VBIT_CMD *cmd = 0;
+    int n = rdr->Count();
+
+    if (n > 2 && zrdr_isitemtype(rdr, 0, 3) && zrdr_isitemtype(rdr, 1, 3)) {
+        int index = -1;
+        CValve *valve = VALVE_CMD_DATA::ParseValveName(rdr->Item(0)->String(), index);
+        char *op = rdr->Item(1)->String();
+
+        if (valve) {
+            cmd = (VBIT_CMD *)_calloc(1, sizeof(VBIT_CMD), 0, 0);
+            cmd->hdr.data_size = sizeof(VBIT_CMD);
+            cmd->isArg = index != -1;
+            cmd->isAnim = true;
+            cmd->ref = index != -1 ? index : (index = ZAnim.m_CurAnim->AddValve(valve->m_name));
+            unsigned int bits = 0;
+
+            for (unsigned int i = 2; (int)i < n; i++)
+                bits |= 1 << rdr->Item(i)->Int();
+            if (!strcmp(op, "get"))
+                cmd->op = 8;
+            else if (!strcmp(op, "set"))
+                cmd->op = 15;
+            else if (!strcmp(op, "clr"))
+                cmd->op = 18;
+            cmd->bits = bits;
+            cmd->SetFlags(false, false, false);
+        }
+    }
+    return (_zanim_cmd_hdr *)cmd;
 }
 
 /* the watched valve marked (its bit 26), whichever way the command names it; always done */
@@ -157,11 +366,8 @@ _zanim_cmd_hdr *CValve::CmdParseVWatch(_zrdr *rdr)
     return (_zanim_cmd_hdr *)cmd;
 }
 
-/* SOCOM 1's: the name freed, the callbacks deleted, the list emptied.
- * OPEN, 4 instructions short (0x134 of 0x144): DeleteCallbacks' list-header shape -- the target
- * keeps &end_.next_ (this+16) in a saved register of its own from the walk on and reads both
- * clears' begin through it (clear()'s and the implicit ~CValveCBList's), where include/list reads
- * it off the end node's register; the walk, the deletes and the four this-tests match */
+/* SOCOM 1's: the name freed, the callbacks deleted, the list emptied (byte-exact since include/list's
+ * begin() reads the sentinel through a reference: &end_.next_ kept in a saved register) */
 CValve::~CValve()
 {
     FreeName();

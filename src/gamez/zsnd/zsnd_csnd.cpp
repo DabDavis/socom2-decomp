@@ -161,8 +161,6 @@ struct _FILECD {
     unsigned int endSector;     // 0x8
     unsigned int sectorSize;    // 0xc
 };
-extern "C" void func_00258920(void *zar, const char *name, int a, unsigned int b, unsigned int c,
-                              int d);   /* zar::CZAR::Open, a fifth argument added */
 extern "C" void func_0034D180(void *p);
 extern "C" void func_0034C4A0();
 
@@ -188,7 +186,7 @@ void CSnd::Init()
 
         strcpy(path, data_003E0520);
         CFileIO::SetRootPath("cdrom0:\\");
-        func_00258920(&m_bnkArchive, "run/sounds/bnkstore.zar", 0, 33, 16, 0);
+        m_bnkArchive.Open("run/sounds/bnkstore.zar", 0, 33, 16, 0);
         CFileIO::SetRootPath(path);
         m_bnkArchive.CloseKeepDir();
     }
