@@ -1927,6 +1927,25 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 24** (CMission::Open and the CUIVariable tail, the mission's archive and UI vars, the
+  message ring, the NVG noise):
+  - THE MSL LANE'S round-16 RECIPE CLOSED resize<CUIVariable>: `#pragma inline_max_auto_size(17)` placed at the unit's END
+    (it acts on the template tail only -- at the top it also auto-inlined CreateCompassNavPoints into Open) with
+    CMission::Open 0x2AC410 written in its place (it reserves a pointer vector before the tail): resize<CUIVariable>
+    0x2B1390, the pointer vector's reserve 0x2B1600 and _zrdr() 0x2B17E0 byte-exact;
+  - `strcpy(m = buf, src)` puts the store in the call's delay slot, `f(m = g())` keeps g's result in v0 for both uses;
+    early returns branch straight to the epilogue, an if-block's join becomes an aligned label the early-outs jump to; `if
+    ((p = f()) != 0)` tests v0 before the move to a saved register; an int counter passed to `_zrdr::Item(unsigned)` is
+    recomputed each pass, an unsigned one strength-reduced into a saved register; a field store through an inline setter
+    gives `addu this,off`, the direct member store `addu off,this`;
+  - `i < sizeof(a)/sizeof(a[0])` with an int counter gives 8x unrolling plus a remainder loop where `i < 32` unrolls fully,
+    a bound written `if (i >= N) break;` gives the loop guard plus a head test; `x = c < 32 ? c : 31` gives the two-store
+    shape; reading a loop bound from the struct twice, not into a local, gives the target's register order;
+  - theMission +0x11B0 is a 10-entry message ring (0xA1-byte entries; CMessageQueue::Enqueue/Dequeue, ours), +0x1950 the
+    career stats (13 ints: CCareerStats), +0x1848/+0x1854 the camera lists, +0x124 the "WhoIsTalking" anchor; 0x2ABA00's
+    s1:align name swap<SObjectiveCam_Anchor> is wrong (its code is ~vector<SObjectiveCam_Anchor>, the real swap 0x2ABA60);
+  - open: NVGNoiseParse 0x2AE050 (6, registers), reserve<SObjectiveCam_Anchor> 0x2B00E0 (0x178 vs 0x180: it needs
+    CMission::Close 0x2AB3F0 written first -- its FreeVector generates the deleter's pieces), 0x2B55E0 (level 6).
 - **Tells from the SEALs, round 20** (seal.cpp's probes and tasks, the glance timer, the line walk, ActivateEx):
   - reading a bit through an inline bool accessor is never merged with a setter's read-modify-write of the same byte (the
     byte loads twice); read in place, or through an accessor returning `!= 0`, the loads merge (0x54F570); GetWeapon's
