@@ -802,11 +802,186 @@ bool CMission::FadeToEndMissionTick(float dT)
     return false;
 }
 
+/* the player's SEAL and its controller (only the controller's state byte and its AI -- zseal.h's
+ * CSealCtrl::GetSealCtrlAi, the vtable's +0x38 --, the network player's creation and the target
+ * list the danger walks) */
+class CSealCtrlAi;
+
+class CSealCtrl {
+public:
+    void StopRumbler();   /* OVL2 0x592AC0 */
+    virtual ~CSealCtrl();   /* +0x08 (zentity.h's CEntityCtrl's, then zseal.h's CSealCtrl's) */
+    virtual void _slot0c();
+    virtual void _slot10();
+    virtual void _slot14();
+    virtual void _slot18();
+    virtual void _slot1c();
+    virtual void _slot20();
+    virtual void _slot24();
+    virtual void _slot28();
+    virtual void _slot2c();
+    virtual void _slot30();
+    virtual void _slot34();
+    virtual CSealCtrlAi *GetSealCtrlAi();   /* +0x38 */
+
+    unsigned char _4[0x221 - 0x4];
+    unsigned char m_221;   // 0x221
+};
+
+/* what an entity knows of another (zentity.h's CTarget: only the entity and its range squared) */
 class CZSealBody;
+
+struct CTarget {
+    CZSealBody *m_ent;   // 0x0 (an entity: zentity.h's CEntity)
+    unsigned char _4[0x10 - 0x4];
+    float m_distSq;   // 0x10
+    unsigned char _14[0x30 - 0x14];
+};
+
+class CTargetList : public std::vector<CTarget> {
+};
+
+class CZSealBody {
+public:
+    static void NetworkPlayerCreate();   /* OVL2 0x5442C0 */
+    static void UninitDatabaseHandles();   /* OVL2 0x5A3BB0 */
+    static void InitDatabaseHandles();   /* OVL2 0x5A4CE0 */
+    static void ReInitDatabaseHandles();   /* OVL2 0x5A49F0 */
+    static void InitDecalHandles();   /* OVL2 0x5A4CF0 */
+    static void Uninit_ReInitDatabaseHandles();   /* OVL2 0x5A3B50 (SOCOM 1's) */
+
+    /* whether two entities share a team (ours: zentity.h's IsEnemy turned round) */
+    bool IsFriend(const CZSealBody *e) const { return (e->m_team & m_team) != 0; }
+    /* the AI driving it, if any (zseal.h's) */
+    CSealCtrlAi *GetSealCtrlAi() { return m_control->GetSealCtrlAi(); }
+
+    unsigned char _0[0x4];
+    unsigned int m_id;   // 0x4 (zentity.h's CEntity)
+    unsigned char _8[0x10 - 0x8];
+    unsigned char m_type;   // 0x10 (zentity.h's: 2 a SEAL)
+    unsigned char _11[0x1c - 0x11];
+    CPnt3D m_posW;   // 0x1c
+    unsigned char _28[0xc0 - 0x28];
+    CSealCtrl *m_control;   // 0xc0
+    unsigned char _c4[0xc8 - 0xc4];
+    unsigned int m_team;   // 0xc8
+    unsigned char _cc[0xd0 - 0xcc];
+    CTargetList m_targets;   // 0xd0
+    unsigned char _dc[0xe1 - 0xdc];
+    unsigned char m_e1_0 : 4;   // 0xe1
+    unsigned char m_e1_4 : 1;   // 0xe1, bit 4: zentity.h's m_isAlive (TRIGGER_POPUP's test too)
+};
+
 CZSealBody *ftsGetPlayer();
 
+/* the AI's target (ai_target.cpp's CAiTarget: only its entity) */
+struct CAiTarget {
+    CZSealBody *m_entity;   // 0x0
+};
+
+/* the SEALs' AI controller (zseal.h's CSealCtrlAi: its database-handle statics, SOCOM 1's, and what
+ * the danger reads: the alertness, the asleep and snoozing bits, the alert floor, the target) */
+class CSealCtrlAi {
+public:
+    static void ReleaseDatabaseHandles();   /* OVL2 0x574BD0 */
+    static void AcquireDatabaseHandles();   /* OVL2 0x574C30 */
+
+    unsigned char _0[0xb4];
+    float m_alert;   // 0xb4
+    unsigned char _b8[0x264 - 0xb8];
+    unsigned int m_aibits0 : 8;   // 0x264
+    unsigned int m_aibit8 : 1;   // bits 8 and 9: SOCOM 1's m_sleeping and m_snoozing
+    unsigned int m_aibit9 : 1;
+    unsigned int m_bits10 : 22;
+    unsigned char _268[0x5d0 - 0x268];
+    unsigned char m_alert_floor;   // 0x5d0: the alert band it never drops under (the name ours)
+    unsigned char _5d1[0x67c - 0x5d1];
+    CAiTarget m_target;   // 0x67c
+    unsigned char _680[0x6a8 - 0x680];
+    unsigned int m_6a8;   // 0x6a8: the target's flags (bit 9: held)
+};
+
+namespace ai {
+template <class T>
+const T &_max(const T &a, const T &b)
+{
+    return a >= b ? a : b;
+}
+}
+
 extern "C" {
-float func_002A4A10(CZSealBody *body, int a, float range);   /* (the danger around the player) */
+bool func_0060A850(CAiTarget *target);   /* (OVL2: the target valid) */
+unsigned char func_00560AC0(float alert);   /* (OVL2: an alertness's band) */
+extern float data_003DE608;   /* (the danger of a SEAL hunting the player) */
+extern float data_003DE610;   /* (the danger of a SEAL near) */
+}
+
+/* the entity as a SEAL, if it is one; an AI awake; its target held (seal.cpp's) */
+inline CZSealBody *AsSeal(CZSealBody *e)
+{
+    return e && e->m_type == 2 ? e : 0;
+}
+
+inline bool IsAwake(CSealCtrlAi *ai)
+{
+    return !(ai->m_aibit9 || ai->m_aibit8);
+}
+
+inline bool TargetHeld(CSealCtrlAi *ai)
+{
+    return func_0060A850(&ai->m_target) && (ai->m_6a8 & 0x200);
+}
+
+/* the danger around a SEAL (SOCOM II's; OVL1 0x2A4A10, the music's intensity -- 0x2A4920 asks it of
+ * the player with 2 and 350): every live enemy SEAL it knows of whose AI is awake -- one hunting it
+ * counts 1.5, one holding another target 0.75 when it or that target is in range, one holding none
+ * 0.75 in range and alert to the band asked for or more. The target's shape: the range squared in
+ * place (the parameter moved to $f21 first), the list walked through a reference (its address kept
+ * for the end's re-reads), the team test a positive inline used as a plain truth test with the SEAL
+ * as `this` (`!seal->IsEnemy(self)` keeps the bool's sltu/xori; `self->...` loses the hoisted
+ * address of self's team), the AI through CZSealBody's inline (its result the inline's temporary,
+ * numbered after the band's: ai s2, the band s3), the band an int (an unsigned char re-narrows it
+ * with andi before the compare); `_max<Uc>` (0x2AFC40) called out of line, its instance in the tail */
+extern "C" float func_002A4A10(CZSealBody *self, unsigned char level, float range)
+{
+    CTargetList &targets = self->m_targets;
+    float danger = 0.0f;
+
+    range *= range;
+    for (CTargetList::iterator t = targets.begin(); t != targets.end(); ++t) {
+        CZSealBody *seal = AsSeal(t->m_ent);
+
+        if (!seal || !seal->m_e1_4 || seal->IsFriend(self))
+            continue;
+        CSealCtrlAi *ai = seal->GetSealCtrlAi();
+
+        if (!ai || !IsAwake(ai))
+            continue;
+        float distSq = t->m_distSq;
+        unsigned char band = func_00560AC0(ai->m_alert);
+        int alert = ai::_max(band, ai->m_alert_floor);
+
+        if (TargetHeld(ai)) {
+            CZSealBody *target = ai->m_target.m_entity;
+
+            if (target == self)
+                danger += data_003DE608;
+            else if (distSq < range)
+                danger += data_003DE610;
+            else {
+                CPnt3D d;
+
+                target->m_posW.Sub(&self->m_posW, &d);
+                if (d.x * d.x + d.y * d.y + d.z * d.z < range)
+                    danger += data_003DE610;
+            }
+        } else if (distSq < range && alert >= level)
+            danger += data_003DE610;
+    }
+    return danger;
+}
+
+extern "C" {
 extern float data_003DE618;   /* (the raised intensity's hold time) */
 }
 
@@ -1515,42 +1690,6 @@ public:
     unsigned char m_custom;   // 0x300: a custom type (the name ours: stored with li, so no bool)
 };
 
-/* the player's SEAL and its controller (only the controller's state byte, and the network player's
- * creation) */
-class CSealCtrl {
-public:
-    void StopRumbler();   /* OVL2 0x592AC0 */
-
-    unsigned char _0[0x221];
-    unsigned char m_221;   // 0x221
-};
-
-class CZSealBody {
-public:
-    static void NetworkPlayerCreate();   /* OVL2 0x5442C0 */
-    static void UninitDatabaseHandles();   /* OVL2 0x5A3BB0 */
-    static void InitDatabaseHandles();   /* OVL2 0x5A4CE0 */
-    static void ReInitDatabaseHandles();   /* OVL2 0x5A49F0 */
-    static void InitDecalHandles();   /* OVL2 0x5A4CF0 */
-    static void Uninit_ReInitDatabaseHandles();   /* OVL2 0x5A3B50 (SOCOM 1's) */
-
-    unsigned char _0[0x4];
-    unsigned int m_id;   // 0x4 (zentity.h's CEntity)
-    unsigned char _8[0xc0 - 0x8];
-    CSealCtrl *m_control;   // 0xc0
-    unsigned char _c4[0xe1 - 0xc4];
-    unsigned char m_e1_0 : 4;   // 0xe1
-    unsigned char m_e1_4 : 1;   // 0xe1, bit 4: TRIGGER_POPUP's test (the name ours)
-};
-
-CZSealBody *ftsGetPlayer();
-
-/* the SEALs' AI controller (zseal.h's CSealCtrlAi: only its database-handle statics, SOCOM 1's) */
-class CSealCtrlAi {
-public:
-    static void ReleaseDatabaseHandles();   /* OVL2 0x574BD0 */
-    static void AcquireDatabaseHandles();   /* OVL2 0x574C30 */
-};
 
 /* the SEALs' units (zkit's CSealUnit: only its statics) */
 class CSealUnit {
