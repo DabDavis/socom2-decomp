@@ -829,6 +829,9 @@ public:
     static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
     static CValve *GetByName(const char *name);
     void MakeCallbacks(VALVE_STATE state);
+    /* a callback added for the states in the mask (SOCOM 1's, 0x351960: CNodeAction::Open adds
+     * _actionValveCallback for mask 3) */
+    void AddCallback(unsigned int mask, void (*func)(CValve *valve, void *user), void *user);
     /* the valve lane's (src/gamez/zvalve/) */
     /* SOCOM II's VWATCH and VBIT ZAnim commands (RegisterCommands' third and second; the names
      * ours, after SOCOM 1's CmdParseCmp/CmdTickCmp, VALVE's pair: CValve statics, as the CMP pair

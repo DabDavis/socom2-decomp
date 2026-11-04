@@ -340,6 +340,72 @@ ZAnimNetworkPacket *CZAnimArgList::AddNetworkPacketArgs(CZAnim *anim, ZAnimNetwo
     return packet;
 }
 
+/* the arguments a packet carries after its header, each added to the anim: its type word, then by
+ * type a node's index in the universe (a node of type 2 also handed to func_00270460), a point or
+ * an integer -- SOCOM II's -- the rest of the types carrying nothing (SOCOM 1's, its node, point
+ * and list cases; the list itself is not read: the anim's own list is the one filled). The table
+ * runs 0-9, so the empty cases are written; the type word's low byte read unsigned (lbu, where the
+ * enum read in place is lb and an andi for the switch) -- the engine core round 14 */
+void CZAnimArgList::ParseNetworkPacketArgs(CZAnim *anim, ZAnimNetworkPacket *packet)
+{
+    int off = sizeof(ZAnimNetworkPacket);
+
+    while (off < packet->packet_size) {
+        CZAnimArg::TYPE type = (CZAnimArg::TYPE)*((unsigned char *)packet + off);
+
+        off += 4;
+        switch (type) {
+        case 0:
+        case 1:
+        case 4:
+        case 8:
+            break;
+        case 2: {
+            int index = *(int *)((char *)packet + off);
+
+            off += 4;
+            if (index >= 0 && zdb::NodeUniverse) {
+                CNode *node = zdb::NodeUniverse->GetElement(index);
+
+                if (node) {
+                    anim->AddArg(new CZAnimArgNode((CZAnimArg::TYPE)2, node));
+                    func_00270460(anim, node);
+                }
+            }
+            break;
+        }
+        case 3: {
+            int index = *(int *)((char *)packet + off);
+
+            off += 4;
+            if (index >= 0 && zdb::NodeUniverse) {
+                CNode *node = zdb::NodeUniverse->GetElement(index);
+
+                if (node)
+                    anim->AddArg(new CZAnimArgNode(CZAnimArg::TYPE_NODE, node));
+            }
+            break;
+        }
+        case 5:
+        case 6:
+        case 7: {
+            CPnt3D *p = (CPnt3D *)((char *)packet + off);
+
+            off += 12;
+            anim->AddArg(new CZAnimArgPnt3D(type, p));
+            break;
+        }
+        case 9: {
+            int *p = (int *)((char *)packet + off);
+
+            off += 4;
+            anim->AddArg(new CZAnimArgInt(type, *p));
+            break;
+        }
+        }
+    }
+}
+
 /* the arguments deleted with the list: the walk's iterator assigned (it lives in its slot, as the
  * target's) and the end taken into a local first (kept in a saved register) */
 CZAnimArgList::~CZAnimArgList()
@@ -361,17 +427,20 @@ struct ZAnimNetworkExtra {
 
 /* SOCOM II's CZAnimMain::NetworkReceive (SOCOM 1's, given a third argument; not named): the
  * packet's anim found, an available copy given the packet's arguments and the extra value,
- * and activated with the activation callback held off; the packet's size.
- * OPEN, registers only (19 instructions): the target gives the extra argument s0 and the anim
- * s1, as if the anim were declared first -- declaration order, an outer `value`, and an inlined
- * helper (cut by the inline level) do not swap them */
+ * and activated with the activation callback held off; the packet's size. The available copy a
+ * named local and the extra a const copy defined after it (the game states' round 34 rule: numbered
+ * after the copy, it takes s0 and the copy s1, as the target's; reassigning `anim` made the copy a
+ * late web numbered last -- the engine core round 14) */
 extern "C" int func_00273780(CZAnimMain *main, ZAnimNetworkPacket *packet, ZAnimNetworkExtra *extra)
 {
     CZAnim *anim = ZAnim.GetAnim(packet->anim_set_index, packet->anim_index);
 
     if (anim) {
         main->m_block_activation_callback = 1;
-        anim = anim->GetAvailable();
+        CZAnim *avail = anim->GetAvailable();
+        ZAnimNetworkExtra *const ex = extra;
+
+        anim = avail;
         if (anim) {
             if (anim->m_arg_list)
                 delete anim->m_arg_list;
@@ -381,8 +450,8 @@ extern "C" int func_00273780(CZAnimMain *main, ZAnimNetworkPacket *packet, ZAnim
                     anim->m_arg_list = new CZAnimArgList;
                 anim->m_arg_list->ParseNetworkPacketArgs(anim, packet);
             }
-            if (extra) {
-                int value = extra->value;
+            if (ex) {
+                int value = ex->value;
                 CZAnimArg *arg = new CZAnimArgInt(CZAnimArg::TYPE_INT, value);
 
                 if (!anim->m_arg_list)

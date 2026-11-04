@@ -63,6 +63,8 @@ bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
 bool zrdr_findPNT3D(const _zrdr *rdr, const char *tag, PNT3D *out);
 /* a team block's teams as a mask (fts_player.cpp's, OVL1 0x2B34A0) */
 unsigned int ParseTeamBlock(_zrdr *rdr);
+/* the same, OVL2's copy (vehicle_rdr.cpp's, OVL2 0x533C10) */
+unsigned int ParseTeams(_zrdr *rdr);
 bool zrdr_finduint(const _zrdr *rdr, const char *tag, unsigned int *out, int n);
 /* a tag's values as a team mask (SOCOM 1's ftmask_create; OVL2 0x5B8190, seal_ex.cpp's) */
 unsigned int ftmask_create(_zrdr *rdr);
@@ -70,11 +72,31 @@ unsigned int ftmask_create(_zrdr *rdr);
 namespace sealai {
 AI_STATE get_state(const char *name);
 SEAL_STANCE get_stance(const char *name);
+/* a mode by its name, 1 for none (OVL2 0x575790, seal_ai.cpp's) */
+AI_MODE get_mode(const char *name);
 }
 /* a state by name or alias (below) */
 AI_STATE get_state_fixup(const char *name);
 
+/* a turret as the task reads it (zveh.h's CTurret, which this unit cannot include -- its zrdr.h
+ * declares a _zrdr of its own): the flag word at 0x3A4 (bit 5 switched on) */
+class CTurret;
+struct TASK_TURRET {
+    bool GetFlag(unsigned int mask) const { return (m_flags & mask) != 0; }
+
+    unsigned char _0[0x3a4];
+    unsigned int m_flags;   // 0x3a4
+};
+
 extern "C" {
+/* whether one of the teams is in the region (OVL2 0x56D530, seal_ai.cpp's) */
+bool func_0056D530(const CAiMap::region *r, unsigned int team);
+/* the turret's target in sight (OVL1 0x3A7FA0, veh_turret.cpp's) and the turret switched on or off
+ * (OVL1 0x3A9930, CTurret::SetActive) */
+bool func_003A7FA0(CTurret *t);
+void SetActive__7CTurretFb(CTurret *t, bool on);
+/* a node of an anim's by a reader's tag (OVL1 0x26E2D0, zanim_anim.cpp's) */
+int func_0026E2D0(CZAnim *anim, _zrdr *rdr);
 /* the AI's mode put back to the one it saved, which is made 1 (OVL2 0x56D090, the SEAL lane's
  * row: SetAiMode with the byte at 0x3F5, then 1 stored there -- where SOCOM 1's CTHold::End called
  * SetAiMode with 1) */
@@ -370,6 +392,24 @@ struct CTSelect : TASK_HDR {
     static TASK_PARAM *Create(CZSealBody *seal);
 };
 
+/* ai::SETMODE (SOCOM 1's CTSetMode, its mode a word there): the AI's mode set, or for none the AI
+ * put to sleep -- "always", or while it has not respawned unless "respawn_only" (the tags';
+ * SOCOM II's mode a 16-bit field, the two tags bits 16 and 17 of the same word) */
+struct CTSetMode : TASK_HDR {
+    enum { MODE = 0xFFFF, ALWAYS = 0x10000, RESPAWN_ONLY = 0x20000 };
+
+    void SetMode(AI_MODE mode)
+    {
+        m_flags &= ~MODE;
+        m_flags |= mode;
+    }
+
+    unsigned int m_flags;   // 0x8: the AI_MODE (the reader's first item, 0 to sleep), the tags
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+};
+
 /* ai::STOPALL (SOCOM 1's CTStopAll): every AI switched on or off */
 struct CTStopAll : TASK_HDR {
     unsigned char m_enable : 1;   // 0x8 bit 0 (the reader's own value)
@@ -400,8 +440,47 @@ struct TASK_ENT {
         }
     }
 
-    short m_type;   // 0x0
-    short m_name;   // 0x2
+    /* the entity: by the name until it is found, then by its id -- unless it carries bit 13 (new in
+     * SOCOM II), when the name is asked again each time; none for no name (inline; the name ours) */
+    enum TYPE { TYPE_NONE = 0, TYPE_NAME = 1, TYPE_ID = 2 };
+
+    CEntity *Get()
+    {
+        CZAnim *anim = ZAnim.m_CurAnim;
+        CEntity *e = 0;
+
+        switch (m_type) {
+        case TYPE_NONE:
+            break;
+        case TYPE_NAME: {
+            e = CEntity::GetEntityList().GetEntity(anim ? anim->GetName(m_name) : 0);
+            m_id = e ? e->m_id : CEntity::invalidId;
+
+            /* preset, then cleared under two materialised tests: `else byId = byId;` keeps the
+             * inner test a branch */
+            bool byId = true;
+            bool gone = !(bool)e;
+
+            if (!gone) {
+                bool off = !(bool)e->m_bit13;
+
+                if (!off)
+                    byId = false;
+                else
+                    byId = byId;
+            }
+            m_type = byId ? TYPE_ID : TYPE_NAME;
+            break;
+        }
+        case TYPE_ID:
+            e = CEntity::GetEntityList().GetEntityById(m_id);
+            break;
+        }
+        return e;
+    }
+
+    unsigned short m_type;   // 0x0: 0 none, 1 by the name, 2 by the id
+    unsigned short m_name;   // 0x2
     unsigned int m_id;   // 0x4: the entity's id once found
 };
 
@@ -411,6 +490,7 @@ struct CTRange : TASK_HDR {
     TASK_ENT m_ent;   // 0xc
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     /* a block made (inline: the range read before the allocation) */
     static CTRange *Create(float range, const char *name)
     {
@@ -423,6 +503,58 @@ struct CTRange : TASK_HDR {
         cmd->m_ent.SetName(name);
         return cmd;
     }
+};
+
+/* the AI maps as the tasks read them (ai_maps.h's CAiMaps, which this unit cannot see beside zseal.h's):
+ * the cookie ReadMapSet moves on at 0xDC */
+struct TASK_AIMAPS {
+    unsigned char _0[0xdc];
+    unsigned char m_cookie;   // 0xdc
+};
+
+/* a pickup's contents as the tasks read them: the weapon at 0xC (the names ours) */
+struct TASK_PICKUPDATA {
+    unsigned char _0[0xc];
+    CZWeapon *m_weapon;   // 0xc
+};
+
+/* ai::INREGION (SOCOM 1's CTRegion, rewritten): a region of the AI maps holding an entity (kind 1),
+ * one of a team's (2), an item (3) or a database node (4) -- what is tested the first tag of
+ * "entity", "weapon", "dbnode" and "team" given (the names ours but the tags') */
+struct CTRegion : TASK_HDR {
+    /* the region, looked up again when the maps have been read since (inline; the name ours) */
+    bool Fresh()
+    {
+        unsigned char cookie = ((TASK_AIMAPS *)&AiMaps)->m_cookie;
+        bool same = cookie == m_cookie;
+
+        m_cookie = cookie;
+        return same;
+    }
+    const CAiMap::region *GetRegion()
+    {
+        const CAiMap::region *r;
+
+        if (!m_region || !Fresh())
+            r = m_region = AiMaps.GetRegion(m_loc);
+        else
+            r = m_region;
+        return r;
+    }
+
+    CAiMapLoc m_loc;   // 0x8: the tag "region"'s cell
+    const CAiMap::region *m_region;   // 0xc: the region, once looked up
+    union {
+        TASK_ENT m_ent;   // 0x10: kind 1
+        unsigned int m_team;   // kind 2: a team mask
+        int m_weapon;   // kind 3: an EQUIP_ITEM
+        int m_node;   // kind 4: a node of the running anim's
+    };
+    unsigned char m_cookie;   // 0x18: the AI maps' cookie when the region was looked up
+    unsigned char m_kind;   // 0x19
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* the anim set a task names when it names none (OVL2 data 0x650AA8, 0xFFFF: CTSetAnimSet's and
@@ -449,6 +581,7 @@ struct CTTurret : TASK_HDR {
     TASK_ENT m_ent;   // 0x10: the tag "name"
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     /* a block made for a name (inline, as CTRange's: the entity's `this` kept across AddName) */
     static CTTurret *Create(const char *name)
     {
@@ -584,6 +717,7 @@ struct CTEvent : TASK_HDR {
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::DEBUG (SOCOM 1's CTDebug): a message, "DEBUG on"/"DEBUG off" for the words on and off (the
@@ -975,6 +1109,38 @@ _zanim_cmd_hdr *CTTurret::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
+/* the turret named: whether it has a target in sight, whether it is switched on, or switched on
+ * or off (OVL2 0x5CE660; the SEAL's AI asked for and unused).
+ * OPEN, 0x274 against 0x27C: two things. (1) The target ends a block after the anim's load and the
+ * preset `r` (`lw a0; daddiu s0,zero,1; nop`), the entity's switch a block of its own, and leaves
+ * the id ternary's delay slot empty (`beqz v0; nop`) -- CTRange::Tick (byte-exact through the same
+ * TASK_ENT::Get) has neither; `r` before or after the AI, assigned apart, no AI local: no change.
+ * (2) The turret's type test is materialised in the target (sltu; beqz; lbu; xori 3; sltiu; movz
+ * v0,zero,v1 -- the `&&` as a value, then the select): an int local takes the form with an andi
+ * more, a bool local, a bool inline (`== true` compares it), `(bool)e &&` and a type-test inline
+ * all fold back into branches (build/scratch/kit/v_turret*.py) */
+bool CTTurret::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTTurret);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+    bool r = true;
+    CEntity *e = cmd->m_ent.Get();
+    CTurret *turret = e && e->m_type == CEntity::ENT_TYPE_TURRET ? (CTurret *)e : 0;
+
+    if (turret) {
+        if (cmd->m_flags & 1)
+            r = func_003A7FA0(turret);
+        else if (cmd->m_flags & 2)
+            r = ((TASK_TURRET *)turret)->GetFlag(0x20);
+        else if (cmd->m_flags & 4) {
+            SetActive__7CTurretFb(turret, cmd->m_active != 0);
+            r = true;
+        }
+    }
+    *dT = 0.0f;
+    return r;
+}
+
 /* a viewer and a target or a team (OVL2 0x5D8690) */
 _zanim_cmd_hdr *CTInView::Parse(_zrdr *rdr)
 {
@@ -1073,6 +1239,45 @@ _zanim_cmd_hdr *CTDrain::Parse(_zrdr *rdr)
 /* (OVL2 0x5DD0D0) */
 void CTEvent::Begin(_zanim_cmd_hdr *hdr)
 {
+}
+
+/* an AI event made as the task says -- its kind, range (75 unless given) and duration (0.15: both
+ * statics, OVL2 data 0x650AB0 and 0x650AB8 -- a literal is built in registers), at its point or a
+ * node's transform of it -- the SEAL its owner (OVL2 0x5DCE70; SOCOM 1's) */
+bool CTEvent::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    static float duration = 0.15f;
+    static float range = 75.0f;
+    CAiEvent *e;   /* declared ahead of the find: the target's block s1, the event the counter's s2 */
+    TASK_SEAL(CTEvent);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    e = CAiEvent::Acquire();
+
+    e->m_duration = cmd->m_hasDuration ? cmd->m_duration : duration;
+    float r = cmd->m_hasRange ? cmd->m_range : range;
+
+    e->m_rangeSq = r * r;
+    e->m_visible = (bool)cmd->m_vis;
+    CPnt3D pos = CPnt3D::zero;
+
+    if (cmd->m_hasNode) {
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->m_nodes, false);
+
+        if (node) {
+            CMatrix m;
+
+            node->BuildMTW(m);
+            m.Transform(&cmd->m_pos, &pos, 1);
+        }
+    } else
+        pos = cmd->m_pos;
+    e->m_pos = pos;
+    if (seal)
+        e->m_owner = seal->m_id;
+    e->m_type = (CAiEvent::EVENT)cmd->m_type;
+    CAiEvent::Create(e);
+    return true;
 }
 
 /* done at once, the time kept unless there is no AI (OVL2 0x5DC8A0) */
@@ -1604,6 +1809,126 @@ _zanim_cmd_hdr *CTRange::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
+/* the entity within the range of the SEAL (OVL2 0x5CF480; SOCOM 1's) */
+bool CTRange::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTRange);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!seal || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    CEntity *e = cmd->m_ent.Get();
+
+    if (!seal || !e)
+        return false;
+    CPnt3D d = seal->m_posW - e->m_posW;
+
+    return d.x * d.x + d.y * d.y + d.z * d.z <= cmd->m_range2;
+}
+
+/* whether the region holds what the task names: a pickup of the item, the entity, one of the teams
+ * (0x56D530, seal_ai.cpp's) or the node (OVL2 0x5CED60; SOCOM 1's tested an entity, an item in
+ * hand or a pickup's).
+ * OPEN, 0x514 against 0x524: the shape is the target's (the region cached by the maps' cookie, its
+ * fetch the fall-through), but (1) the saved registers -- the target's block s0, list s1, counter
+ * s2, index s3, type s4, `r` s4 and the region s5 after the find; here the block s4, the find's
+ * four a place lower, `r` s3 -- and (2) the kind's dispatch: the target loads each case constant
+ * into v0 in its own compare (two `nop` delay slots), here 2 and 1 sit in a2/a1 and are reused by
+ * the entity's switch in case 1 (enum case labels there: no change) -- CTTurret::Tick's open is the
+ * same constant sharing */
+bool CTRegion::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTRegion);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+    bool r = false;
+    const CAiMap::region *region = cmd->GetRegion();
+
+    if (!region)
+        return false;
+    switch (cmd->m_kind) {
+    case 3: {
+        CPickup::iterator it = CPickup::GetFirst();
+        CPickup *p;
+
+        while (!r && (p = CPickup::GetNext(it, CPickup::PU_NONE)) != 0) {
+            void *a = p->GetData4567();
+            void *b = p->GetData123();
+            CZWeapon *w = a ? ((TASK_PICKUPDATA *)a)->m_weapon : b ? ((TASK_PICKUPDATA *)b)->m_weapon : 0;
+
+            if (w && w->m_ID == cmd->m_weapon) {
+                CAiMapLoc loc;
+
+                if (AiMaps.GetLocation(p->GetPosW(), loc))
+                    r = region->Contains(loc);
+            }
+        }
+        break;
+    }
+    case 1: {
+        CEntity *e = cmd->m_ent.Get();
+
+        if (e)
+            r = region->Contains(e->m_mapLoc);
+        break;
+    }
+    case 2:
+        r = func_0056D530(region, cmd->m_team);
+        break;
+    case 4: {
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->m_node, false);
+        CAiMapLoc loc;
+
+        if (node && AiMaps.GetLocation((const CPnt3D *)node->m_matrix.m_matrix[3], loc))
+            r = region->Contains(loc);
+        break;
+    }
+    }
+    return r;
+}
+
+/* the region by name, then what it is to hold -- a block for none freed (OVL2 0x5CF290; SOCOM 1's
+ * tested an entity's name and an item) */
+_zanim_cmd_hdr *CTRegion::Parse(_zrdr *rdr)
+{
+    CTRegion *cmd = 0;
+    char *entity = zrdr_findstring(rdr, "entity");
+    char *region = zrdr_findstring(rdr, "region");
+    char *weapon = zrdr_findstring(rdr, "weapon");
+    _zrdr *dbnode = zrdr_findtag(rdr, "dbnode");
+    unsigned int team = ParseTeams(zrdr_findtag(rdr, "team"));
+    CAiMapLoc loc;
+
+    if (AiMaps.GetRegion(region, loc)) {
+        cmd = NewTask<CTRegion>();
+        cmd->m_loc = loc;
+        cmd->m_region = 0;
+        cmd->m_cookie = 0;
+        if (entity) {
+            cmd->m_ent.m_name = 0;
+            cmd->m_ent.m_id = CEntity::invalidId;
+            cmd->m_ent.m_type = 0;
+            cmd->m_ent.SetName(entity);
+            cmd->m_kind = 1;
+        } else if (weapon) {
+            cmd->m_weapon = CZWeapon::GetWeaponId(weapon);
+            cmd->m_kind = 3;
+        } else if (dbnode) {
+            cmd->m_node = func_0026E2D0(ZAnim.m_CurAnim, dbnode);
+            cmd->m_kind = 4;
+        } else if (team) {
+            cmd->m_team = team;
+            cmd->m_kind = 2;
+        } else {
+            _free(cmd, 0, 0);
+            cmd = 0;
+        }
+    }
+    return &cmd->hdr;
+}
+
 /* the mission (fts_state.h's CMission: only the team valves' refresh, OVL1 0x2B23A0) and theMission
  * (OVL1 bss 0x4364E0) */
 class CMission {
@@ -1730,6 +2055,71 @@ TASK_PARAM *CTSelect::Create(CZSealBody *seal)
     if (seal)
         p->hdr.data_type = ai_cmdid[2];
     return p;
+}
+
+/* a reader's item a string, or 0 (inline; the name ours) */
+inline char *TaskItemString(_zrdr *rdr, int i)
+{
+    if (rdr && rdr->Count() > i) {
+        _zrdr *item = rdr->Item(i);
+
+        if (item && item->type == 3)
+            return item->String();
+    }
+    return 0;
+}
+
+/* the mode by the first item's name, then the items after it as the tags (OVL2 0x5D2630; SOCOM 1's
+ * read only the mode) */
+_zanim_cmd_hdr *CTSetMode::Parse(_zrdr *rdr)
+{
+    CTSetMode *cmd = 0;
+    char *name = TaskItemString(rdr, 0);
+
+    if (name) {
+        cmd = NewTask<CTSetMode>();
+        cmd->SetMode((AI_MODE)1);
+        cmd->SetMode(sealai::get_mode(name));
+
+        int i = 1;
+        char *s;
+
+        while ((s = TaskItemString(rdr, i++)) != 0) {
+            if (!strcasecmp(s, "always"))
+                cmd->m_flags |= CTSetMode::ALWAYS;
+            else if (!strcasecmp(s, "respawn_only"))
+                cmd->m_flags |= CTSetMode::RESPAWN_ONLY;
+        }
+        cmd->m_param = 0;
+        zrdr_finduint(rdr, "ai", (unsigned int *)&cmd->m_param, 1);
+    }
+    return &cmd->hdr;
+}
+
+/* the AI's mode set, or for none the AI put to sleep (OVL2 0x5D2480; SOCOM 1's slept for mode 0,
+ * and without an AI sent the SEAL to a goal for mode 2 -- SOCOM II dropped that) */
+bool CTSetMode::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTSetMode);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!seal || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    AI_MODE mode = (AI_MODE)(cmd->m_flags & CTSetMode::MODE);
+
+    if (ai) {
+        bool respawned = ai->m_has_respawned ? true : false;
+
+        if (mode == 0) {
+            if ((!respawned && !(cmd->m_flags & CTSetMode::RESPAWN_ONLY)) || (cmd->m_flags & CTSetMode::ALWAYS))
+                ai->SetSleeping(true);
+        } else
+            ai->SetAiMode(mode);
+    }
+    return true;
 }
 
 /* the sound let finish (OVL2 0x5D1210) */
