@@ -424,6 +424,114 @@ bool SkbTextUnchanged()
 
 unsigned short UTF8GetChar(const char *&s);
 
+/* two more words of the text's (0x4A1338: the kana entry enabled while positive, never written in
+ * OVL1; 0x4A1340: the entry's mode, 1 kana, 0x399C00 clears it; the names ours) */
+static int s_kanaEnabled;
+static int s_kanaMode;
+
+/* the string the cursor is in (ours): string 0 while it is edited, else string 2 when string 1
+ * counts, else string 1 */
+static inline C2DString *CursorString()
+{
+    return s_textSel ? &s_textString0 : (s_textCount1 ? &s_textString2 : &s_textString1);
+}
+
+/* a text's n-th UTF-8 character, or none for a negative n (ours) */
+static inline const char *NthChar(const char *text, int n)
+{
+    if (n >= 0) {
+        int len = 0;
+
+        for (int i = 0; i < n; i++)
+            len += CharLen(text + len);
+        return text + len;
+    }
+    return 0;
+}
+
+/* the character at p, 0 for none (ours: read off a copy of the cursor declared in the arm -- the
+ * store stays out of the test's delay slot, both labels padded, as the target's) */
+static inline unsigned short CharCode(const char *p)
+{
+    if (p) {
+        const char *q = p;
+
+        return UTF8GetChar(q);
+    }
+    return 0;
+}
+
+/* the enter key's kana step (0x3999D0, OnEnterKey's first test; the name ours): nothing while the
+ * kana entry is off; in kana mode an `n` before the cursor typed as the syllabic n (U+3093) first;
+ * then the composition cleared */
+int SkbEnterKana(CSoftKeyboard *skb)
+{
+    if (!(s_kanaEnabled > 0))
+        return 0;
+    if (s_kanaMode == 1) {
+        int n = s_textCount0 - 1;
+        const char *p = NthChar(ShownText(CursorString()), n);
+
+        if (CharCode(p) == 'n')
+            func_00398C00(0x3093, skb);
+    }
+    SkbHangulClear();
+    return 1;
+}
+
+/* the text cursor put at a place (0x395120, the display unit's: its node's position) */
+extern "C" void func_00395120(float x, float y);
+
+/* which string props a cursor follows (ours: the look's three, User 0, Purpose 1, MsgPlayer 2) */
+enum SKBPROPS { SKB_PROPS_USER, SKB_PROPS_PURPOSE, SKB_PROPS_MSGPLAYER };
+
+/* the cursor's y (ours: CursorY2nd while string 0 is edited, else CursorY -- by reference, so the
+ * address is selected and then read, as the target's) */
+static inline const int &CursorY(const CSoftKeyboard *skb)
+{
+    return s_textSel ? skb->m_cc : skb->m_c8;
+}
+
+/* a text's characters counted (ours) */
+static inline int CountChars(const char *p)
+{
+    int n = 0;
+
+    for (; HasChar(p); p += CharLen(p))
+        n++;
+    return n;
+}
+
+/* the cursor stepped back a character (0x399530; the name ours: 0x38C630's left key and
+ * SkbHandleKey call it with the showing keyboard): string 1's count down by one, or at its start,
+ * while string 1 counts, string 1 given up and its characters counted into the count; then the
+ * cursor placed after that many characters of the cursor's string -- the props' x plus their width,
+ * the cursor's y plus a line height per counted string -- and the composition cleared.
+ * OPEN, 13 instructions (same size): SkbTypeOrBack's numbering -- the target keeps the count in s0,
+ * skb in s1 and the pointer in s2 (here the pointer s1, skb s2) -- and the line offset's product
+ * takes the converted count in $f0 and the height in $f1, added after the y (here the other way).
+ * Tried: the count loop in the function (p s0), p declared first, a while loop, the global counted
+ * directly, the count's text a parameter or a local of the inline; the y's terms as locals (one,
+ * both, the product, the height), a cast on the product. The count read into a local before the
+ * width call gives the target's argument order (the count loaded ahead of the string's ternary) */
+void SkbCursorBack(CSoftKeyboard *skb)
+{
+    if (s_textCount0 > 0) {
+        s_textCount0--;
+    } else if (s_textCount1) {
+        s_textCount1 = 0;
+        s_textCount0 = CountChars(ShownText(&s_textString1));
+    }
+    int count = s_textCount0;
+    float w = SkbTextWidth(CursorString(), count);
+    SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
+    float x = w + (float)skb->m_caps[props].m_0;
+    float y = (float)CursorY(skb) + *(float *)&skb->m_c4 * (float)s_textCount1;
+
+    func_00395120(x, y);
+    SkbHangulClear();
+}
+
 /* the typed text holds a character other than white space (0x3996B0; the name ours: OnEnterKey takes
  * the text only when this or 0x395110 finds one) -- the typed text built in place, each UTF-8
  * character read off a copy of the cursor and tested against the SDK's table, the cursor stepped by

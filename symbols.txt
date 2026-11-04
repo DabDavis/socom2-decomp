@@ -7475,11 +7475,11 @@
 0x00399200 0x74 SkbHangulTypeJamo__FiSc  # OVL1; by hand (the UI lane, round 12, ours: a jamo typed into a CSkbPieces of its own through SkbHangulType 0x390A30, the pieces handed to 0x398AE0 when they composed, SkbHangulClear when it refuses them, the pieces destroyed through ~__vector_deleter<SKBPIECE> 0x3928E0 with 0; SkbTypeJamo and SkbUsbLetter call it -- zui_skbkeys.cpp)
 0x00399280 0x94 SkbCloseText0__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (string 0 no longer current, its node hidden, its text emptied; laid out again through 0x39A400 if it was current, then 0x394920) -- byte-exact in zui_skbkeys.cpp
 0x00399320 0x204 func_00399320  # OVL1
-0x00399530 0x17C func_00399530  # OVL1
+0x00399530 0x17C SkbCursorBack__FP13CSoftKeyboard  # OVL1; ours (the UI lane round 17: the text cursor a character back -- the count at 0x4A1350 down, or string 1 given up into it -- then placed through 0x395120 after SkbTextWidth of the cursor's string, the props' x, CursorY/CursorY2nd plus the line height; 0x38C630 and SkbHandleKey call it; zui_skbkeys.cpp)
 0x003996B0 0x138 SkbTypedTextNotBlank__Fv  # OVL1; ours (the UI lane round 17: the typed text -- strings 1 and 2 from their first shown characters -- built in place, then walked by UTF-8 character until one is not white space by the SDK's ctype table: true, else false; OnEnterKey calls it after 0x395110; zui_skbkeys.cpp)
 0x003997F0 0xA4 func_003997F0  # OVL1
 0x003998A0 0x12C SkbTextUnchanged__Fv  # OVL1; the UI lane round 9: ours, by its body (the UI variable SkbGetText(false) names, if a string, against string 1's text then string 2's: OnEnterKey's IgnoreUnchangedString test)
-0x003999D0 0x158 func_003999D0  # OVL1
+0x003999D0 0x158 SkbEnterKana__FP13CSoftKeyboard  # OVL1; ours (the UI lane round 17: OnEnterKey's first test -- 0 while the word at 0x4A1338 is not positive; in mode 1 (0x4A1340) the character before the cursor's (string 0, 2 or 1 by the flags) read through UTF8CharLen/UTF8GetChar, an 'n' typed as U+3093 through 0x398C00; then SkbHangulClear and 1; zui_skbkeys.cpp)
 0x00399B30 0xC8 SkbClearText__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (whether the edited string showed text, then 0x39A5B0 with an empty string, 0x39A1D0, the composition flushed, state 3) -- byte-exact in zui_skbkeys.cpp
 0x00399C00 0xC func_00399C00  # OVL1
 0x00399C10 0x8 func_00399C10  # OVL1
