@@ -58,7 +58,7 @@ class CUnitSealCtrl : public CEntityCtrl {
 public:
     virtual void Virtual24();
     virtual void Virtual28();
-    virtual void Virtual2C();
+    virtual bool IsPlayer() const;   /* +0x2C */
     virtual bool IsAi() const;   /* +0x30 */
     virtual void Virtual34();
     virtual class CSealCtrlAi *GetSealCtrlAi();
@@ -72,6 +72,8 @@ public:
      * and IsRemote; the name ours) -- an inline whose out-of-line copy follows IssueCommand (OVL2
      * 0x5EA880), defined here until IssueCommand is written */
     bool IsAi();
+    /* whether the player drives it (zseal.h's IsPlayer: the controller tested, slot 0x2C called) */
+    bool IsPlayer() { return m_control ? ((CUnitSealCtrl *)m_control)->IsPlayer() : false; }
     /* an order given to the SEAL (OVL2 0x590AC0, zseal.h's) */
     void IssueCommand(CZSealBody *from, FT_COMMAND cmd, void *data, bool b);
 
@@ -116,6 +118,8 @@ public:
 class CAiMaps {
 public:
     unsigned int GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b);
+    /* an action found by its id, with its cell (ai_maps.h's, OVL2 0x52DAA0) */
+    bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
 };
 extern CAiMaps AiMaps;
 
@@ -1804,6 +1808,56 @@ bool CSealUnit::RadioCommand(CZSealBody *seal, FT_COMMAND cmd)
                 break;
             }
         }
+    }
+    return r;
+}
+
+/* a node action as far as this unit reads it (zseal.h's CNodeAction, fts_action.cpp's, which this
+ * unit does not include: a word at 8, its type at 0x24, its AI action's id at 0x3C) */
+class CNodeAction {
+public:
+    unsigned char _0[8];
+    unsigned int m_8;   // 0x8
+    unsigned char _c[0x24 - 0xc];
+    unsigned char m_type;   // 0x24 (zseal.h's NODEACTION_TYPE)
+    unsigned char _25[0x3c - 0x25];
+    unsigned short m_id;   // 0x3c
+};
+
+/* whether a SEAL -- the player, or an AI that is a SEAL -- may take a door action from where it
+ * stands: the action's word at 8 at least 2, its type 0, the range at least a half, and the AI map's
+ * action of its id a door, closed (state 0), facing the SEAL's side (the cosine between the door's
+ * direction and the SEAL's from its cell positive) (OVL2 0x5EC4E0, new in SOCOM II: CSealCtrl's
+ * OnActionButton and CAiSAction::Tick ask it; the name ours). The SEAL's cell taken by reference
+ * first (the target computes its address into s0 right after GetSealCtrlAi), the bit through a
+ * ternary (the target's sltu).
+ * OPEN, 0x1B0 against 0x1B8: the type and range tests' early returns -- the target jumps from both
+ * to the shared `return r` (move v0,s1), MW folds r's false into a `return 0` of their own; and the
+ * result, the action and the SEAL's cell take s2/s0/s1 where the target has s1/s2/s0. Tried: one
+ * nested if (0x17C), `(bool)` and `!= 0` for the bit (0x1A8), the cell read in place (0x19C), the
+ * two tests as one `||` (0x1A0) */
+bool CanUseDoorAction(CZSealBody *seal, CNodeAction *a, float range)
+{
+    bool r = false;
+
+    if (a->m_8 < 2)
+        return false;
+    static float minRange = 0.5f;
+
+    if (a->m_type)
+        return r;
+    if (range < minRange)
+        return r;
+    CSealCtrlAi *ai = ((CUnitSealCtrl *)((CEntity *)seal)->m_control)->GetSealCtrlAi();
+    const CAiMapLoc &from = ((CEntity *)seal)->m_mapLocValid;
+
+    if (seal->IsPlayer() || ai && (ai->m_navyseal ? true : false)) {
+        CAiMap::action *act = 0;
+        CAiMapLoc loc;
+
+        if (AiMaps.GetActionById(a->m_id, loc, &act) && act->GetType() == CAiMap::action::DOOR && !act->m_state
+            && CAiMap::GetDirCos(CAiMap::GetClosestDir(from, loc), (CAiMap::DIR)act->m_direction) > 0.0f)
+            r = true;
     }
     return r;
 }
