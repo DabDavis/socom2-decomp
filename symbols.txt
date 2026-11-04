@@ -5784,7 +5784,7 @@
 0x0032C910 0x6C Insert__8CRdrFileFPQ23zar4CZARPQ23zar4CKey  # OVL1; s1:order (SOCOM 1's Insert: Pack, the offsets made again, the buffer written as the key's data (0x25A120, SOCOM 1's CZAR::Insert), resolved again)
 0x0032C980 0xD4 Load__8CRdrFileFPQ23zar4CZARPQ23zar4CKeyi  # OVL1; s1:calls by hand (SOCOM 1's Load(CZAR *, CKey *) with a flags argument: the key's size, the data fetched, the file made; FindRdr and CSaveManager::Load call it where SOCOM 1's call Load)
 0x0032CA60 0x128 Resolve__8CRdrFileFb  # OVL1; s1:order (SOCOM 1's Resolve(bool): the packed buffer's offsets resolved one way or the other, the root's word and count copied, the strings loaded with CSTable::LoadTable)
-0x0032CB90 0x120 func_0032CB90  # OVL1
+0x0032CB90 0x120 _resolveB__FP5_zrdrPC5_zrdrPCc  # OVL1; the world lane r10: s1:order -- SOCOM 1's _resolveB(_zrdr *, const _zrdr *, const char *), right after Resolve as there; Resolve(false) calls it on the root with the root and the strings (a packed tree's offsets made pointers: a string's into the strings, an array's into the tree, its items in turn unless the array is the buffer's)
 0x0032CCB0 0x278 func_0032CCB0  # OVL1
 0x0032CF30 0x8 func_0032CF30  # OVL1
 0x0032CF40 0x26C Pack__8CRdrFileFv  # OVL1; s1:calls by hand (Insert calls it first, before Resolve(true), where SOCOM 1's Insert calls Pack__8CRdrFileFv; it calls the string table's Pack__7CSTable as SOCOM 1's does)
