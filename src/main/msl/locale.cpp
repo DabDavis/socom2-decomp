@@ -17,14 +17,19 @@
  * The vector destructors this unit emits (no-target) are referenced only from exception tables,
  * which the link discarded (the image's table is empty): the image has no copy of them.
  *
- * The library's own basic_string<char> instances that classic's "C" pulls in: the C-string
- * constructor 0x18D2C0 (MAIN's copy of OVL1's 0x2396F0, marked ovl-copy) is byte-exact since round 6
- * (msl.h); NOT WRITTEN: reserve 0x18D8C0 (0x278: OVL1's is 0x258 -- the library throws length_error
- * through _MSLstring where the game's build has exceptions off), the template replace 0x18D3E0 (0x450,
- * OVL1's 0x1EE780 is 0x3BC) and assign(first, last) 0x18DB40 (its caller) -- and ~out_of_range
- * 0x18D830 (the replace's throw, emitted only once the replace is written): MSL's string internals
- * are modelled nowhere (include/string calls the game's reserve and replace through placeholders,
- * msl.h MAIN's). The static initialiser 0x1D4C20 is this
+ * The library's own basic_string<char> instances that classic's "C" pulls in, every one byte-exact
+ * (msl.h's string, round 7): the C-string constructor 0x18D2C0 (MAIN's copy of OVL1's 0x2396F0, since
+ * round 6), then in the template tail the template replace 0x18D3E0, ~out_of_range 0x18D830 (the
+ * replace's throw, generated right after it), reserve 0x18D8C0 (MAIN's copy of OVL1's 0x1E7C90) and
+ * assign(first, last) 0x18DB40 (the replace's temporary) -- the library's ~length_error, ~logic_error
+ * and the counted pointer's pieces are its other units' copies (the linker kept those). The same
+ * source in its exceptions-off forms -- each throw MSL's __msl_error report (fprintf to stderr, abort),
+ * the allocation's result tested ("Memory allocation failure"), reserve's failed shrink a `return` in
+ * place of the try -- compiled with the game's flags is OVL1's reserve 0x1E7C90, replace 0x1EE780 and
+ * assign 0x1EF400 and OVL2's copies 0x541290, 0x540D00, 0x541240 word for word
+ * (build/scratch/rt/r7/g1.cpp). min, which the replace inlines, is
+ * defined here (msl.h declares it; iostream.cpp defines its own after do_length). The static
+ * initialiser 0x1D4C20 is this
  * unit's: it fills std::__ctype_map's entries 9-127, the multi-bit masks (alpha 0x1, blank 0x2,
  * cntrl 0x4, digit 0x8, graph 0x10, lower 0x20, print 0x40, punct 0x80, space 0x100, upper 0x200,
  * xdigit 0x400: a two-byte enum whose operator| is a function, so only single masks initialise
@@ -49,6 +54,13 @@ _RefCountedPtr<T, Destructor>::_RefCountedPtr(const _RefCountedPtr &other)
 {
     if (refCount_)
         ++*refCount_;
+}
+
+/* <algorithm>'s min, by reference (the string's replace cuts its count with it) */
+template <class T>
+inline const T &min(const T &a, const T &b)
+{
+    return b < a ? b : a;
 }
 
 locale &locale::global() throw()

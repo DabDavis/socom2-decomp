@@ -13,7 +13,10 @@
  * rows were 0x70 and 0x80 in the seeded map, zero padding counted in (SOCOM 1's symbols: 0x64, 0x7C).
  *
  * The frame (MW's MIPS prologue): the saved s-registers from FP + saveoffset up, 16 bytes each (`sq`),
- * after the saved $f20.. rounded up to 16; then s8 when it is the frame pointer, then ra. */
+ * after the saved $f20.. rounded up to 16; then s8 when it is the frame pointer, then ra.
+ *
+ * The build (round 7): __PopStackFrame is the runtime's one row that separates 3.0b38 from 3.0b50 and
+ * 3.0b52 -- byte-exact under b50 and b52, 0x2A8 under b38 against the target's 0x2B8. */
 
 #include "ExceptionMIPS.h"
 
