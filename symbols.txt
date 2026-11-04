@@ -4270,7 +4270,7 @@
 0x002C8DB0 0x284 func_002C8DB0  # OVL1
 0x002C9040 0x70 Find__17CMultiMissionListFib  # OVL1; by hand (the states lane, round 15; the names ours): the mission of an id (0x10) and kind (the bool at 0xC), returned through a result local
 0x002C90B0 0xE8 Purge__17CMultiMissionListFv  # OVL1; by hand (the states lane, round 15; the names ours): the missions whose byte at 0x1C is set erased (the pod's single erase, 0x28F220) and deleted
-0x002C91A0 0x238 func_002C91A0  # OVL1
+0x002C91A0 0x238 Add__17CMultiMissionListFPC11MissionDesc  # OVL1; ours (the states lane, round 23): a downloaded mission entered once -- Find(number, kind) inlined, else a new CMultiMission from the description (name at +7, number +2, kind +5, game type +6; an inline constructor, the version cleared) pushed and, for a multiplayer one, the NumMultiMissions valve recounted; 0x278B80 calls it
 0x002C93E0 0x108 Clear__17CMultiMissionListFv  # OVL1; by hand (the states lane, round 15; the names ours): every mission deleted through std::transform onto itself, then the three vectors (0, 0xC, 0x18) cleared; the list's destructor (0x2C9720) calls it first
 0x002C94F0 0x4C func_002C94F0  # OVL1
 0x002C9540 0x1D8 __ct__13CMultiMissionFPC5_zrdr  # OVL1; ours (the states lane, round 23): a mission from its rdr record -- NAME into the CSaferStr at 0, NUMBER and VERSION by zrdr_findint, MULTIPLAYER's tag a bool at 0xC, the byte at 0x1C cleared, TYPE's five game types (DEMOLITION 2, EXTRACTION 4, SUPPRESSION 5, BREACH 1, ESCORT 3, else 0) at 0x14; the list's Read (0x2C8C10) news each

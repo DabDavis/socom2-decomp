@@ -309,6 +309,16 @@ void SendWhisper(char *name, char *msg)
 class CMultiMission {
 public:
     CMultiMission(const _zrdr *rec);
+    /* a mission from a downloaded one's description (ours: inline, the version cleared first; the
+     * parameters' order numbers the inlined temporaries -- name, id, type, kind is one of the four
+     * orders that give the target's registers) */
+    CMultiMission(const char *name, int id, unsigned char type, bool multi) : m_version(0)
+    {
+        m_name = name;
+        m_id = id;
+        m_multi = multi;
+        m_14 = type;
+    }
 
     CSaferStr m_name;   // 0x0
     bool m_multi;   // 0xc: one of the multiplayer missions
@@ -342,6 +352,7 @@ public:
     void Clear();
     void Read(const _zrdr *rdr);
     CMultiMission *GetRandom(bool multi);
+    CMultiMission *Add(const struct MissionDesc *desc);
 
     /* the multiplayer missions that are their names' newest, and the rest, by index into the list
      * (GetRandom's pools, rebuilt when the counts no longer add up; the names ours) */
@@ -419,6 +430,38 @@ inline void SetValveValue(CValve *valve, int value)
     valve->m_value = value;
     if (state != VALVE_SAME)
         valve->MakeCallbacks(state);
+}
+
+/* a downloaded mission's description as 0x278B80 hands it over: its number, whether it is a
+ * multiplayer one, its game type and its name (the names ours) */
+struct MissionDesc {
+    unsigned char _0[2];
+    unsigned char m_id;   // 0x2
+    unsigned char _3[2];
+    unsigned char m_multi;   // 0x5
+    unsigned char m_type;   // 0x6
+    char m_name[1];   // 0x7
+};
+
+/* a downloaded mission entered once: the one of its number and kind, else a new one pushed and,
+ * for a multiplayer one, the "NumMultiMissions" count taken again (OVL1 0x2C91A0; 0x278B80 calls it) */
+CMultiMission *CMultiMissionList::Add(const MissionDesc *desc)
+{
+    CMultiMission *m = Find(desc->m_id, desc->m_multi);
+
+    if (!m) {
+        m = new CMultiMission(desc->m_name, desc->m_id, desc->m_type, desc->m_multi);
+        push_back(m);
+        if (desc->m_multi) {
+            int count = 0;
+
+            for (iterator i = begin(); i != end(); ++i)
+                if ((*i)->m_multi && func_002C94F0(*i))
+                    count++;
+            SetValveValue(CValve::Create("NumMultiMissions", VALVE_PERM), count);
+        }
+    }
+    return m;
 }
 
 /* a mission at random -- a multiplayer one that is its name's newest, or one of the rest -- the
