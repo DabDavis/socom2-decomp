@@ -141,8 +141,14 @@ CMultiMission::CMultiMission(const _zrdr *rec)
         m_14 = MISSION_NONE;
 }
 
-/* whether a mission is its name's newest (OVL1 0x2C94F0, a draft's match) */
-extern "C" bool func_002C94F0(CMultiMission *m);
+/* whether a mission is its name's newest: the list's find by name gives it back (OVL1 0x2C94F0;
+ * pinned: the list's own Read, GetRandom and Purge call it out of line, as zanim_menu.cpp does) */
+#pragma auto_inline off
+extern "C" bool func_002C94F0(CMultiMission *m)
+{
+    return m == data_00441650.Find(m->m_name.c_str());
+}
+#pragma auto_inline reset
 
 /* a valve (zanim.h's CValve: only its creation, its value and the callbacks told of a change) */
 enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
@@ -335,7 +341,9 @@ signed char CMultiMissionList::GetMultiValue(int id)
     return v;
 }
 
-/* the newest version of a name, none (OVL1 0x2C8760) */
+/* the newest version of a name, none (OVL1 0x2C8760; pinned: 0x2C94F0, its one caller here, calls
+ * it out of line) */
+#pragma auto_inline off
 CMultiMission *CMultiMissionList::Find(const char *name)
 {
     CMultiMission *best = 0;
@@ -345,3 +353,4 @@ CMultiMission *CMultiMissionList::Find(const char *name)
             best = *i;
     return best;
 }
+#pragma auto_inline reset
