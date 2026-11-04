@@ -27,7 +27,8 @@
  *
  *  - the BSD calls (GCC round 21a): socket 0x1C2B90, bind 0x1C2CD8, connect 0x1C2DD0, listen 0x1C3120
  *    (a libinet listener per backlog slot, 0x1C2F38), send/recv 0x1C3660/0x1C3810, sendto/recvfrom
- *    0x1C39B0/0x1C3B20, close 0x1C3CE8, accept 0x1C32A8 (OPEN), and around them the thread's buffer resize 0x1C2648, its
+ *    0x1C39B0/0x1C3B20, close 0x1C3CE8, accept 0x1C32A8 (OPEN), gethostbyaddr 0x1C4A20 (OPEN), the
+ *    socket's abort 0x1C28F8, and around them the thread's buffer resize 0x1C2648, its
  *    context's drop 0x1C2A98, the send side's lazy open 0x1C35A0, an option setter 0x1C4088, the
  *    abort 0x1C4C20; each takes the thread's context with the lock,
  *    releases the lock around every libinet call (func_001C2140 ... func_001C20D8) and returns
@@ -69,7 +70,10 @@
  *   func_001C48A0, gethostbyname (0x178 against 0x180: the target keeps each error path's
  *   `func_001C2310(c, X); return 0;` apart -- three calls, each `b epilogue; move v0,zero` -- where
  *   this compile cross-jumps them into one call; the h_errno chain's value through one store as
- *   the target's). */
+ *   the target's); func_001C4A20, gethostbyaddr (0x1EC against 0x1FC: the same question -- the
+ *   target cross-jumps the type, length and h_errno paths into the lock failure's call and keeps
+ *   the errno path's call apart, this compile merges all four; its h_errno 2 and 4 stored from the
+ *   checked type and length, as the target's). */
 
 typedef unsigned int u_int;
 typedef unsigned int size_t;
@@ -99,6 +103,9 @@ extern int sceInetCreate(void *cd, void *buf, void *param);
 extern int sceInetOpen(void *cd, void *buf, int s, int ms);
 extern int sceInetAbort(void *cd, void *buf, int s, int flags);
 extern int sceInetClose(void *cd, void *buf, int s, int ms);
+extern int sceInetAddress2Name(void *cd, void *buf, int flags, char *name, int len, void *paddr, int ms,
+			       int nretry);
+extern void bcopy(const void *src, void *dst, size_t n);
 extern int sceInetSend(void *cd, void *buf, int s, void *ptr, int count, int *pflags, int ms);
 extern int sceInetRecv(void *cd, void *buf, int s, void *ptr, int count, int *pflags, int ms);
 extern int sceInetSendTo(void *cd, void *buf, int s, void *ptr, int count, int *pflags, void *paddr,
@@ -1381,4 +1388,107 @@ close:
 	sceInetClose(c->client, c->abuf, t->cid, 0);
 	func_001C1D08(t);
 	return func_001C2310(c, r);
+}
+
+/* every libinet call pending on a socket aborted: its own connection's, its slots' and its
+ * accepted connections' */
+int func_001C28F8(int id, int flags)
+{
+	CTX *c;
+	SOCK *s, *t;
+	int r;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return -1;
+	s = func_001C23D8(id);
+	if (s == 0)
+		return func_001C2310(c, 9);
+	if (s->cid) {
+		func_001C2140();
+		r = sceInetAbort(c->client, c->abuf, s->cid, flags);
+		if (func_001C20D8() < 0)
+			return func_001C2310(c, -1);
+		if (r < 0)
+			return func_001C2310(c, func_001C24D0(r));
+	}
+	for (t = s->conn; t; t = t->next) {
+		if (t->cid) {
+			func_001C2140();
+			sceInetAbort(c->client, c->abuf, t->cid, flags);
+			if (func_001C20D8() < 0)
+				return func_001C2310(c, -1);
+		}
+	}
+	for (t = s->pend; t; t = t->next) {
+		if (t->cid) {
+			func_001C2140();
+			sceInetAbort(c->client, c->abuf, t->cid, flags);
+			if (func_001C20D8() < 0)
+				return func_001C2310(c, -1);
+		}
+	}
+	func_001C2310(c, 0);
+	return 0;
+}
+
+extern char data_001E5F98[];
+
+/* gethostbyaddr(): libinet's reverse lookup into the same static hostent */
+struct hostent *func_001C4A20(u_int *addr, int len, int type)
+{
+	struct hostent *h = &data_001E6098;
+	CTX *c;
+	int r;
+	sceInetAddress_t a;
+
+	c = func_001C2160(0);
+	if (c == 0)
+		return 0;
+	if (type != 2) {
+		c->herr = -1;
+		func_001C2310(c, 106);
+		return 0;
+	}
+	if (len != 4) {
+		c->herr = -1;
+		func_001C2310(c, 22);
+		return 0;
+	}
+	c->herr = 0;
+	func_001C2140();
+	func_001C2410(&a, addr);
+	r = sceInetAddress2Name(c->client, c->abuf, 64, data_001E5F98, 256, &a, 0, 0);
+	if (func_001C20D8() < 0) {
+		c->herr = -1;
+		func_001C2310(c, -1);
+		return 0;
+	}
+	if (r < 0) {
+		if (r == -500 || r == -515)
+			c->herr = 1;
+		else if (r == -516)
+			c->herr = 2;
+		else if (r == -517)
+			c->herr = 3;
+		else if (r == -518)
+			c->herr = 4;
+		else {
+			c->herr = -1;
+			func_001C2310(c, func_001C24D0(r));
+			return 0;
+		}
+		func_001C2310(c, 0);
+		return 0;
+	}
+	h->h_name = data_001E5F98;
+	h->h_aliases = data_001CE640;
+	h->h_addrtype = type;
+	h->h_length = len;
+	bcopy(addr, &data_001E5F90, 4);
+	c->herr = 0;
+	data_001CE648[0] = (char *)&data_001E5F90;
+	h->h_addr_list = data_001CE648;
+	func_001C2310(c, 0);
+	return h;
 }
