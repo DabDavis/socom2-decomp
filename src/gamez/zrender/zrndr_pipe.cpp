@@ -25,6 +25,7 @@
 #include <eetypes.h>
 #include <vector>
 #include <list>
+#include <stack>
 #include <iostream>
 #include "../zsys/zsys_public.h"
 #include "../zsys/zsys.h"
@@ -65,15 +66,15 @@ extern "C" void func_001EA580(std::list<void *> *list);
 /* a node whose drawing waits (SOCOM 1's tag_DelayedNode, which its DWARF leaves empty: 0x70 bytes,
  * the delayed nodes' element -- SaveDelayedNode fills one; the matrix built unit by CMatrix(), the
  * rest left alone, as the resize's temporary shows; copied member by member, the matrix through
- * sceVu0CopyMatrix). SOCOM 1's SaveDelayedNode stores the FOV verdict at 0x48, the camera at 0x4c,
+ * sceVu0CopyMatrix). SOCOM 1's SaveDelayedNode stores the FOV verdict at 0x48, the pipe's node at 0x4c,
  * the node at 0x50, a point at 0x54, a flag in bit 1 of 0x60 and the opacity at 0x64; the names are
  * ours */
 struct tag_DelayedNode {
     CMatrix m_matrix;   // 0x0
     float m_40;   // 0x40
     unsigned int m_44;   // 0x44
-    signed char m_fov;   // 0x48 (zdb::tag_ZVIS_FOV: copied with lb)
-    zdb::CCamera *m_camera;   // 0x4c
+    zdb::tag_ZVIS_FOV m_fov;   // 0x48 (a byte enum: passed on with lb)
+    zdb::CNode *m_atom;   // 0x4c: the pipe's node when saved, its light lists rebuilt when it changes
     zdb::CNode *m_node;   // 0x50
     CPnt3D m_addColor;   // 0x54: CVisual::m_addColor when saved
     unsigned int m_flag0 : 1;   // 0x60
@@ -146,9 +147,15 @@ public:
     void SetOverlayTexture(zdb::CTexHandle *tex);
     void RenderAtom(zdb::CNode *node);
     void SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
+    void RenderDelayedNodes();
+    bool PushNodeOpacity(zdb::CNode *node);
+    void RenderUiNodeRecursive(zdb::CNode *node);
+    /* SOCOM 1's RenderVisual (0x3374C0, not written) */
+    void RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     /* RenderAtom's callees (not written): SOCOM II's lighting and fog set-up (0x33B230, ours), SOCOM 1's
      * RenderMesh (0x338480) and RenderNode (0x3389C0) */
     void PrepareAtom(zdb::CNode *node);
+    void BuildLightMapList(zdb::CNode *node);
     void RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb::tag_ZVIS_FOV fov);
     void RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
 
@@ -202,6 +209,11 @@ public:
     unsigned char m_reticuleDraw;   // 0x719
     unsigned char _71a[0x720 - 0x71a];   // 0x71a
 };   // 0x720 bytes
+
+/* the world's lighting switch (0x3B7130: a byte set and its inverse beside it) and SOCOM II's second
+ * light list (0x339470, not written), after BuildLightMapList's */
+extern "C" void func_003B7130(bool on);
+extern "C" void func_00339470(CPipe *pipe, zdb::CNode *node);
 
 /* zvid_init.cpp's: the 21-quadword packet's word set, and the packet sent (it reads no argument;
  * the pipe passes one) */
@@ -499,10 +511,6 @@ void CPipe::RandomizeOverlay()
 /* the light lists (SOCOM 1's BuildLightMapList is likely 0x339660; neither written) and the
  * world's lighting switch (0x3B7130: a byte set and its inverse beside it), and four of the light
  * pass's counts (not named) */
-extern "C" void func_003B7130(bool on);
-class CPipe;
-extern "C" void func_00339660(CPipe *pipe, zdb::CNode *node);
-extern "C" void func_00339470(CPipe *pipe, zdb::CNode *node);
 extern int data_004B4DAC, data_004B4DE4, data_004B4E0C, data_004B4E34;
 
 /* SOCOM II's (the name ours): what SOCOM 1's RenderAtom did between its FOV mask and its draw --
@@ -523,7 +531,7 @@ void CPipe::PrepareAtom(zdb::CNode *node)
         func_003B7130(!node->m_socom2_5a_bit2);
     } else {
         func_003B7130(false);
-        func_00339660(this, node);
+        BuildLightMapList(node);
         func_00339470(this, node);
         m_doFog = node->m_fog ? m_camera->TestFOG((const CPnt3D *)node->m_matrix.m_matrix[3], node->GetRadius()) : false;
     }
@@ -583,7 +591,7 @@ void CPipe::SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV
     tag_DelayedNode *d = &m_DelayedNodes[m_delayedNodeNum++];
 
     sceVu0MulMatrix(d->m_matrix.m_matrix, matrix->m_matrix, CStack::m_top->m_matrix);
-    d->m_camera = (zdb::CCamera *)m_node;
+    d->m_atom = m_node;
     d->m_node = node;
     d->m_fov = fov;
     d->m_opacity = m_opacity_stack[m_opacity_stack_index];
@@ -602,6 +610,55 @@ void CPipe::SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV
         for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i)
             if ((*i)->m_active && (*i)->m_hasVisuals)
                 AddAlphaTextures(*i);
+    }
+}
+
+/* SOCOM 1's: the delayed nodes drawn in the order saved -- the light lists rebuilt when the node
+ * saved with one changes (SOCOM II adds its second list), its matrix pushed, its opacity, added
+ * colour, fog and light scale restored (a node's own scale byte when it has one), then drawn; SOCOM
+ * II's altitude-fog switch: with the camera's on, the node is drawn with it as its first visual's
+ * bit 19 says, and the camera's put back after */
+void CPipe::RenderDelayedNodes()
+{
+    m_node = 0;
+    func_003B7130(false);
+    tag_DelayedNode *d = &m_DelayedNodes[0];
+
+    for (unsigned int i = 0; i < m_delayedNodeNum; i++, d++) {
+        if (m_node != d->m_atom) {
+            m_node = d->m_atom;
+            BuildLightMapList(m_node);
+            func_00339470(this, m_node);
+        }
+        s_stack.Push(&d->m_matrix);
+        PushOpacity(d->m_opacity);
+        CPnt3D color(d->m_addColor);
+
+        zdb::CVisual::m_addColor = color;
+        m_doFog = d->m_fog != 0;
+        if (m_node->m_socom2_a1 & 4) {
+            signed char scale = m_node->m_socom2_a0;
+
+            if (scale < 0)
+                zdb::CVisual::m_GlobalLightScale = 1.0f;
+            else
+                zdb::CVisual::m_GlobalLightScale = (1.0f / 127.0f) * scale;
+        } else
+            zdb::CVisual::m_GlobalLightScale = d->m_lightScale;
+        bool altFog = m_camera->m_fog_alt_enabled;
+
+        if (!altFog)
+            RenderNode(d->m_node, d->m_fov);
+        else {
+            zdb::CVisual *v = m_node->GetFirstVisual();
+
+            m_camera->m_fog_alt_enabled = v && v->m_bits.m_b19;
+            RenderNode(d->m_node, d->m_fov);
+            m_camera->m_fog_alt_enabled = altFog;
+        }
+        zdb::CVisual::m_GlobalLightScale = 1.0f;
+        m_opacity_stack_index--;
+        s_stack.Pop();
     }
 }
 
@@ -626,7 +683,72 @@ CPipe::CAlpha::~CAlpha()
 }
 #pragma auto_inline reset
 
-/* an opacity pushed, multiplied into the one under it; the stack grown a slot at a time */
+/* the free view ids' stack (znode.h's CVisual::m_stack_vid; vis_vu.cpp's class) */
+namespace zdb {
+class CVidStack : public std::stack<void *> {
+};
+}
+
+/* SOCOM II's light lists for a node's visuals (0x339AD0, not written: Exists and the pod's insert
+ * twice, as BuildLightMapList) */
+extern "C" void func_00339AD0(CPipe *pipe, zdb::CNode *node);
+
+/* a view id given back -- a `break` if none is out (SOCOM 1's test, as CVisual::GetVid's; the name
+ * ours) */
+static inline void PopVid()
+{
+    if (zdb::CVisual::m_stack_vid.empty()) {
+        __I_break(0);
+        __I_nop();
+    }
+    zdb::CVisual::m_stack_vid.pop();
+}
+
+/* SOCOM 1's: an active UI node drawn with its children -- its view id pushed, its matrix multiplied
+ * onto the stack, its opacity pushed (SOCOM II's helper, out of line), its visuals' lights listed and
+ * its visuals rendered, each child a mesh or a node of its own, then everything popped */
+void CPipe::RenderUiNodeRecursive(zdb::CNode *node)
+{
+    if (node->m_active) {
+        zdb::CVisual::m_stack_vid.push((void *)node->m_vid);
+        s_stack.Multiply(&node->m_matrix, true);
+        bool pushed = PushNodeOpacity(node);
+
+        if (node->m_visual.size()) {
+            func_00339AD0(this, node);
+            RenderVisual(node, (zdb::tag_ZVIS_FOV)0);
+        }
+        zdb::CNodeVector &c = node->m_child;
+        for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i) {
+            if ((*i)->m_hasMesh)
+                RenderMesh(*i, 0, 0, (zdb::tag_ZVIS_FOV)0);
+            else
+                RenderUiNodeRecursive(*i);
+        }
+        if (&node->m_matrix)
+            s_stack.Pop();
+        if (pushed)
+            m_opacity_stack_index--;
+        PopVid();
+    }
+}
+
+/* SOCOM II's (the name ours; 0x336A10 out of line, pinned: RenderUiNodeRecursive, RenderMesh and
+ * RenderNode call it): a translucent node's opacity pushed, and whether it was */
+#pragma auto_inline off
+bool CPipe::PushNodeOpacity(zdb::CNode *node)
+{
+    if (node->m_Opacity < 0.9921875f) {
+        PushOpacity(node->m_Opacity);
+        return true;
+    }
+    return false;
+}
+#pragma auto_inline reset
+
+/* an opacity pushed, multiplied into the one under it; the stack grown a slot at a time (pinned:
+ * PushNodeOpacity and RenderDelayedNodes call it out of line) */
+#pragma auto_inline off
 void CPipe::PushOpacity(float opacity)
 {
     m_opacity_stack_index++;
@@ -636,6 +758,7 @@ void CPipe::PushOpacity(float opacity)
     }
     m_opacity_stack[m_opacity_stack_index] = opacity * m_opacity_stack[m_opacity_stack_index - 1];
 }
+#pragma auto_inline reset
 
 /* SOCOM II's: a flare let go of -- its active bit cleared, when the handle is one */
 void CFlareSystem::Release(int handle)
