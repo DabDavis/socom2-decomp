@@ -74,10 +74,12 @@ struct tag_DelayedNode {
     signed char m_fov;   // 0x48 (zdb::tag_ZVIS_FOV: copied with lb)
     zdb::CCamera *m_camera;   // 0x4c
     zdb::CNode *m_node;   // 0x50
-    CPnt3D m_pos;   // 0x54
-    unsigned int m_flags;   // 0x60
+    CPnt3D m_addColor;   // 0x54: CVisual::m_addColor when saved
+    unsigned int m_flag0 : 1;   // 0x60
+    unsigned int m_fog : 1;   // 0x60: the pipe's m_doFog when saved
+    unsigned int m_flags : 30;   // 0x60
     float m_opacity;   // 0x64
-    float m_68;   // 0x68
+    float m_lightScale;   // 0x68: CVisual::m_GlobalLightScale when saved
 };   // 0x70 bytes
 
 /* SOCOM II's effect the pipe keeps at 0x688, with a unit of its own after this one (0x33CD50-
@@ -142,6 +144,7 @@ public:
     void RandomizeOverlay();
     void SetOverlayTexture(zdb::CTexHandle *tex);
     void RenderAtom(zdb::CNode *node);
+    void SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     /* RenderAtom's callees (not written): SOCOM II's lighting and fog set-up (0x33B230, ours), SOCOM 1's
      * RenderMesh (0x338480) and RenderNode (0x3389C0) */
     void PrepareAtom(zdb::CNode *node);
@@ -545,7 +548,8 @@ void CPipe::RenderAtom(zdb::CNode *node)
 /* SOCOM II's: the dynamic textures of a node's visuals added to the alpha pass's. The list's
  * address a local taken inside the guard (hoisted into a saved register; through the member, or
  * an inline's parameter or `this`, MW adds the offset at each call), the end before the first
- * element (i in s0) */
+ * element (i in s0). Pinned: SaveDelayedNode, below, calls it out of line */
+#pragma auto_inline off
 void CPipe::AddAlphaTextures(zdb::CNode *node)
 {
     if (node->m_visual.size()) {
@@ -554,6 +558,43 @@ void CPipe::AddAlphaTextures(zdb::CNode *node)
 
         for (; i != e; ++i)
             list->Add(&(*i)->m_dynTexList);
+    }
+}
+#pragma auto_inline reset
+
+/* SOCOM 1's: an active node with visuals kept for later -- the delayed nodes grown by 8 when full,
+ * the next one given the matrix on the stack's top times the node's, the pipe's node, the node and
+ * its FOV verdict, the opacity on top of its stack, the visuals' added colour and light scale, the
+ * fog flag; a translucent one's textures (and its active children's) go to the alpha pass
+ * (SOCOM II's AddAlphaTextures, which SOCOM 1 wrote out here) */
+void CPipe::SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
+{
+    if (!node->m_active || !node->m_hasVisuals)
+        return;
+    if (m_delayedNodeNum >= m_DelayedNodes.size())
+        m_DelayedNodes.resize(m_DelayedNodes.size() + 8);
+    tag_DelayedNode *d = &m_DelayedNodes[m_delayedNodeNum++];
+
+    sceVu0MulMatrix(d->m_matrix.m_matrix, matrix->m_matrix, CStack::m_top->m_matrix);
+    d->m_camera = (zdb::CCamera *)m_node;
+    d->m_node = node;
+    d->m_fov = fov;
+    d->m_opacity = m_opacity_stack[m_opacity_stack_index];
+    CPnt3D color(zdb::CVisual::m_addColor);
+
+    d->m_addColor = color;
+    d->m_lightScale = zdb::CVisual::m_GlobalLightScale;
+    d->m_fog = m_doFog;
+    if (d->m_opacity < 0.9921875f || node->m_transparent) {
+        /* the children by reference, taken after the node's own call: the walk then keeps their
+         * vector's address (s2) and every saved register is the target's -- walked through
+         * node->m_child, `this` drops from s0 to s3 and the rest shift (taken before the call,
+         * 8 bytes longer) */
+        AddAlphaTextures(node);
+        zdb::CNodeVector &c = node->m_child;
+        for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i)
+            if ((*i)->m_active && (*i)->m_hasVisuals)
+                AddAlphaTextures(*i);
     }
 }
 
