@@ -126,6 +126,12 @@ public:
 
     /* SOCOM 1's: a 3D sound's volume and pan at a position; SOCOM II's returns the distance */
     float CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan);
+    /* SOCOM 1's: the volume at a distance, through the near and far ranges (SOCOM II's inline:
+     * no out-of-line copy is left; CalcVolPan inlines it) */
+    int CalcVol(float dist, float vol);
+    /* SOCOM 1's: a streamed sound started on a voice (0x342240; SOCOM II's adds a word, tested
+     * whole for the stream's flag 2 -- PlaySoundVolPanPitch passes 0) */
+    bool StreamSoundVolPan(int vol, int pan, CSndInstance *inst, int flag);
 
     static CSnd *GetSoundByName(const char *name);
     /* SOCOM 1's: a bank loaded by name and recorded (0x343DD0) */
@@ -182,7 +188,8 @@ public:
     unsigned short m_range_max;         /* 0x0E */
     unsigned char m_bank;               /* 0x10: 255 for none (SOCOM 1's int m_bank) */
     unsigned short m_ID;                /* 0x12: 0xFFFF for none (SOCOM 1's int m_ID) */
-    int m_14;                           /* 0x14 */
+    CSnd *m_14;                         /* 0x14: a sound played along with this one, at its volume,
+                                           pan and pitch (PlaySoundVolPanPitch; name ours) */
     unsigned int m_18;                  /* 0x18: the name's hash, the sound list's order (compared
                                            unsigned: AddNewCSnd) */
     unsigned int m_isStreamed : 1;      /* 0x1C bit 0 (SOCOM 1's byte at 0x1C) */
@@ -200,9 +207,12 @@ public:
     unsigned int m_mode : 3;            /* bits 5-7: 1 when built, 3 by SetDialogMode */
     char *m_20;                         /* 0x20 */
     char *m_24;                         /* 0x24 */
-    int m_28;                           /* 0x28 */
-    int m_2c;                           /* 0x2C */
-    int m_30;                           /* 0x30 */
+    const char *m_28;                   /* 0x28: the subtitle's string key (TranslateString's; SOCOM
+                                           1's m_subtitle at 0x30) */
+    CValve *m_2c;                       /* 0x2C: the valve the subtitle waits on (CValve::Create(name,
+                                           2) when read; none or a nonzero value shows it) */
+    float m_30;                         /* 0x30: the subtitle's time (converted to int for the
+                                           message queue, SOCOM 1's float at 0x38) */
     float m_34;                         /* 0x34 */
     float m_38;                         /* 0x38 */
 };   /* 0x3C bytes */
@@ -395,6 +405,10 @@ public:
     static void ReleaseSoundInstance(CSndInstance *instance);
     static CSndInstance *AcquireSoundInstance(unsigned int handle, CSnd *parent);
 
+    /* the master volume through an inline read (ours: CSnd::PlaySoundVolPanPitch's three voice
+     * volumes `(int)(GetMasterVol() * (1024.0f * vol * m_vol))` take the target's operand order only
+     * so -- the static read in place, or written last, MW emits the product second) */
+    static float GetMasterVol() { return m_mastervol; }
     static float m_mastervol;                       /* 0x3E0070 */
     static std::list<CSndInstance *> m_list;        /* 0x48DF98: the voices playing */
     static CSndInstanceVec m_pool;                  /* 0x48DFB8: the free ones */

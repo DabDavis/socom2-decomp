@@ -53,6 +53,21 @@ static bool snd_system_initialized;     /* SOCOM 1's static (LOCAL in its symbol
 int zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
 extern "C" int toupper(int c);
 
+/* PlaySoundVolPanPitch's: the subtitles shown (GetSubtitles' byte), the network up (theNetwork's
+ * m_bNetwork, znet.h's), the message queue the subtitle goes to (theMission + 0x6A0) and its
+ * Add_Message (C2DMessage_Q's, 0x2B6530), and the stream held while every stream voice is busy (the
+ * sound, its voice and a word; names not known) */
+extern unsigned char data_003DFFD8;
+extern unsigned char data_0045A0C1;
+extern char data_00436B80[];
+extern "C" void func_002B6530(void *queue, const char *text, int type, int b, int time, float delay);
+extern CSnd *data_0048DE28;
+extern CSndInstance *data_0048DE30;
+extern const CPnt3D *data_0048DE38;
+/* the position tracker's (zsnd_positions.cpp's, 0x34C2F0) */
+extern "C" void func_0034C2F0(CSndInstance *inst);
+const char *TranslateString(const char *name);
+
 _zrdr *zrdr_read(const char *name, const char *file, int line);
 
 /* whether a voice other than `except` plays a sound with bit 4 of its flag byte set (OVL1 0x346270,
@@ -377,6 +392,140 @@ CSndInstance *CSnd::PlaySoundVol(float vol, CSndInstance *inst, unsigned int fla
     return PlaySoundVolPanPitch(vol, -1, 0, inst, flags);
 }
 
+/* the sound played (SOCOM 1's, the same vtable slot; SOCOM II's adds the linked sound, the valve-gated
+ * subtitle through the translated string table and the pending stream): its linked sound first, the
+ * subtitle shown, then -- when its bank is loaded or it streams -- a dialog line stops the entity's
+ * others, a headset sound is queued to the headset offline, a one-shot plays unowned, a stream plays
+ * through StreamSoundVolPan (or is held while every stream voice is busy, when it may be) and anything
+ * else plays with the voice's callback. The last argument is the entity the voice belongs to */
+CSndInstance *CSnd::PlaySoundVolPanPitch(float vol, int pan, int pitch, CSndInstance *inst,
+                                         unsigned int entityID)
+{
+    if (m_isDisabled)
+        return 0;
+    if (m_14)
+        m_14->PlaySoundVolPanPitch(vol, pan, pitch, 0, 255);
+    if (m_28 && data_003DFFD8 && (!m_2c || m_2c->GetValue()))
+        func_002B6530(data_00436B80, TranslateString(m_28), 0, 0, (int)m_30, 0.0f);
+    if (m_bank < (int)data_0048DBE8.size()) {
+        if (data_0048DBE8[m_bank].m_loaded == 1 || m_isStreamed) {
+            if (m_mode == SND_MODE_DIALOG)
+                CSndInstance::Remove(entityID, true, true, false);
+            if (m_socom2_bit3 && !data_0045A0C1) {
+                Headset::ftsGetHeadset()->Queue(entityID, this, (int)(1024.0f * vol));
+            } else if (m_isOneShot && !m_isStreamed) {
+                snd_PlaySoundVolPanPMPB_A(data_0048DBE8[m_bank].m_bank, m_ID,
+                                          (int)(CSndInstance::GetMasterVol() * (1024.0f * vol * m_vol)), pan,
+                                          pitch, 0);
+            } else {
+                if (!inst)
+                    inst = CSndInstance::AcquireSoundInstance(-1, this);
+                else
+                    inst->m_parent = this;
+                if (!inst)
+                    return 0;
+                inst->m_entityID = entityID;
+                if (m_isStreamed) {
+                    if (m_numStreams >= m_max_num_vags && m_socom2_bit7) {
+                        data_0048DE28 = this;
+                        data_0048DE30 = inst;
+                        data_0048DE38 = 0;
+                        return inst;
+                    }
+                    if (!StreamSoundVolPan((int)(CSndInstance::GetMasterVol() * (1024.0f * vol * m_vol)), pan,
+                                           inst, 0)
+                        && inst) {
+                        inst->m_handle = 0;
+                        CSndInstance::ReleaseSoundInstance(inst);
+                        return 0;
+                    }
+                    return inst;
+                }
+                snd_PlaySoundVolPanPMPB_CB(data_0048DBE8[m_bank].m_bank, m_ID,
+                                           (int)(CSndInstance::GetMasterVol() * (1024.0f * vol * m_vol)), pan,
+                                           pitch, 0, CSndInstance::PlaySoundCallback, (unsigned long)inst);
+                return inst;
+            }
+        }
+    }
+    return 0;
+}
+
+/* the sound played at a position (SOCOM 1's, the same vtable slot): as PlaySoundVolPanPitch, the volume
+ * and pan from CalcVolPan (inlined: 1 and -1 while the system is off) -- the subtitle only when it is
+ * heard at all, a one-shot heard nowhere not played, the commands cached from here on -- and a voice's
+ * volume and position set; a stream held keeps its position, and a sound with bit 1 hands its voice
+ * to the position tracker (0x34C2F0) and returns none */
+CSndInstance *CSnd::PlaySound3D(const CPnt3D *pos, float vol, int pitch, CSndInstance *inst,
+                                unsigned int entityID)
+{
+    if (m_isDisabled)
+        return 0;
+    if (m_14)
+        m_14->PlaySound3D(pos, vol, pitch, 0, 255);
+    if (m_bank < (int)data_0048DBE8.size()) {
+        if (data_0048DBE8[m_bank].m_loaded == 1 || m_isStreamed) {
+            int ivol = 1;
+            int ipan = -1;
+
+            CalcVolPan(pos, vol * m_vol, &ivol, &ipan);
+            if (ivol && m_28 && data_003DFFD8 && (!m_2c || m_2c->GetValue()))
+                func_002B6530(data_00436B80, TranslateString(m_28), 0, 0, (int)m_30, 0.0f);
+            if (m_isOneShot && !ivol)
+                return 0;
+            snd_StartCaching();
+            if (m_mode == SND_MODE_DIALOG)
+                CSndInstance::Remove(entityID, true, true, false);
+            if (m_socom2_bit3 && !data_0045A0C1) {
+                Headset::ftsGetHeadset()->Queue(entityID, this, ivol * 1024);
+            } else if (m_isOneShot && !m_isStreamed) {
+                snd_PlaySoundVolPanPMPB_A(data_0048DBE8[m_bank].m_bank, m_ID,
+                                          (int)(CSndInstance::GetMasterVol() * ((float)ivol * m_vol)), ipan,
+                                          pitch, 0);
+            } else {
+                if (!inst)
+                    inst = CSndInstance::AcquireSoundInstance(-1, this);
+                else
+                    inst->m_parent = this;
+                if (!inst)
+                    return 0;
+                inst->Set3D(vol);
+                inst->SetPos(pos);
+                inst->m_entityID = entityID;
+                if (m_isStreamed) {
+                    if (m_numStreams >= m_max_num_vags && m_socom2_bit7) {
+                        data_0048DE28 = this;
+                        data_0048DE30 = inst;
+                        data_0048DE38 = pos;
+                        return inst;
+                    }
+                    if (!StreamSoundVolPan((int)(CSndInstance::GetMasterVol() * ((float)ivol * m_vol)), ipan,
+                                           inst, 1)
+                        && inst) {
+                        inst->m_handle = 0;
+                        CSndInstance::ReleaseSoundInstance(inst);
+                        return 0;
+                    }
+                    if (m_socom2_bit1) {
+                        func_0034C2F0(inst);
+                        return 0;
+                    }
+                    return inst;
+                }
+                snd_PlaySoundVolPanPMPB_CB(data_0048DBE8[m_bank].m_bank, m_ID,
+                                           (int)(CSndInstance::GetMasterVol() * ((float)ivol * m_vol)), ipan,
+                                           pitch, 0, CSndInstance::PlaySoundCallback, (unsigned long)inst);
+                if (m_socom2_bit1) {
+                    func_0034C2F0(inst);
+                    return 0;
+                }
+                return inst;
+            }
+        }
+    }
+    return 0;
+}
+
 CSndInstance *CSnd::PlaySound(bool oneShot, CSndInstance *inst, unsigned int flags)
 {
     bool old = m_isOneShot;
@@ -419,25 +568,11 @@ CSndInstance *CSnd::PlaySoundVolPanPitch(float vol, int pan, int pitch, bool one
     return r;
 }
 
-/* a 3D sound's volume and pan at a position (SOCOM 1's; SOCOM II's ranges are two shorts and it
- * returns the distance): nothing while the system is off, none without a listener; full inside the
- * near range, falling to none at the far one; the pan the position's bearing in degrees, 0-359.
- * The distance is CPnt3D::Length() (inline: the point's fields read off the frame, not through a
- * CSE'd address), the bearing's depth negated in place in a local of its own (`z *= -1.0f`: the
- * product takes the depth's register, the constant f0 -- `p.z * -1.0f` in the argument swaps them) */
-float CSnd::CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan)
+/* the volume at a distance (SOCOM 1's CalcVol, an out-of-line function there at 0x2EC780 that its
+ * CalcVolPan inlines): full inside the near range, falling to none at the far one. SOCOM II's has no
+ * out-of-line copy left, so it is inline */
+inline int CSnd::CalcVol(float dist, float vol)
 {
-    if (m_isDisabled)
-        return 0.0f;
-    if (!m_listenerIsValid) {
-        *outVol = 0;
-        *outPan = 0;
-        return 0.0f;
-    }
-    CPnt3D p;
-
-    m_listenermatrix.Transform(pos, &p, 1);
-    float dist = p.Length();
     float att;
 
     if (dist <= m_range_min)
@@ -446,10 +581,37 @@ float CSnd::CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan)
         att = 1.0f - (dist - m_range_min) / (m_range_max - m_range_min);
     else
         att = 0.0f;
-    *outVol = (int)(vol * (1024.0f * att * CSndInstance::m_mastervol));
-    float z = p.z;
+    return (int)(vol * (1024.0f * att * CSndInstance::m_mastervol));
+}
 
-    z *= -1.0f;
+/* a 3D sound's volume and pan at a position (SOCOM 1's; SOCOM II's ranges are two shorts and it
+ * returns the distance): nothing while the system is off, none without a listener; the volume
+ * CalcVol's, the pan the position's bearing in degrees, 0-359.
+ * The distance is CPnt3D::Length() (inline: the point's fields read off the frame, not through a
+ * CSE'd address), the bearing's depth negated in place in a local of its own (`z *= -1.0f`: the
+ * product takes the depth's register, the constant f0 -- `p.z * -1.0f` in the argument swaps them).
+ * PlaySound3D auto-inlines it, as SOCOM 1's does: MW's auto-inliner counts statements (15 inline, 16
+ * never -- README "Tells from the game states, round 29"), so the body is 15 --
+ * CalcVol a call, the two zero stores chained, the depth's copy and negation one expression. Each
+ * alone leaves it at 16 and PlaySound3D calls it (0x464 against 0x620); CalcVol's own statements do
+ * not count (the world lane's round 17) */
+float CSnd::CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan)
+{
+    if (m_isDisabled)
+        return 0.0f;
+    if (!m_listenerIsValid) {
+        *outPan = *outVol = 0;
+        return 0.0f;
+    }
+    CPnt3D p;
+
+    m_listenermatrix.Transform(pos, &p, 1);
+    float dist = p.Length();
+
+    *outVol = CalcVol(dist, vol);
+    float z;
+
+    (z = p.z) *= -1.0f;
     int pan = (int)(57.29578f * atan2f(p.x, z));
 
     if (pan < 0)
