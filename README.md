@@ -2001,6 +2001,23 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 12** (the particles' instances, the list deleter's merge, PostTick):
+  - MW NUMBERS A VARIABLE AT ITS FIRST DEFINITION, NOT WHERE IT IS DECLARED: a dead first definition overwritten before any use
+    gives the variable that place's number at no code cost (it closed CSndInstance::PostTick 0x347120 and the merge); a
+    variable declared with no initialiser and assigned later is numbered at the assignment, and merged copies keep the
+    earlier number;
+  - placement new written as a statement (`new (p) T(...);`, result unused) keeps `p` in its saved register across the
+    constructor, `p = new (p) T(...)` takes the constructor's return value instead (Destruction_Instance::Create 0x327620);
+    a walk through a reference accessor (`node->GetDIs().begin()`) keeps the vector's address in a saved register for the
+    end re-reads (Particle::PullVisuals 0x3245B0);
+  - include/list gains __list_deleter's merge and sort as out-of-class members (additive, proven over every unit):
+    merge<less<const void *>> 0x33E690 byte-exact; Particle::Instance::Render and Destruction_Instance::Render take no matrix
+    in SOCOM II (neither body reads one, the only caller passes none);
+  - a deleter destructor one level taller (`~__list_deleter() { erase(begin(), end()); }`) makes ~list<CRipple *> 0x322370
+    the target's 0x60 and keeps node_wave.cpp matching -- measured, not applied (~C2D wants the other shape: "Level 6, or
+    8?");
+  - open: sort 0x33E510 (0x1A4 vs 0x178: the temporary list's teardown calls begin, end and erase out of line -- the level
+    question).
 - **Tells from the kit and AI states, round 26** (the firepoint accessors, SetWeaponState, CZKit::PreTick, the CDiPool names):
   - `ok = true; if (!a || !b) ok = false;` gives the target's `daddiu 1` preset with branch-and-zero (`a && b`, `a != 0 && b !=
     0` and an if/else all give the wrong code); an empty `case K: return;` keeps its own `b end` block, `case K: break;`

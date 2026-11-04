@@ -1424,7 +1424,7 @@
 0x001E9120 0x94 func_001E9120  # OVL1
 0x001E91C0 0x1090 func_001E91C0  # OVL1
 0x001EA250 0x78 __dt__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; the pointer lists' __list_imp destructor out of line (include/list's: its this test, the deleter's inlined -- a second this test and the range erase over end_.next_..&end_ -- then delete): ~CEntityList (0x2A00C0) calls it through the implicit ~list<CEntity *>
-0x001EA2D0 0x70 func_001EA2D0  # OVL1; the pointer lists' deleter destructor out of line (__dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv: the range erase over end_.next_..&end_, then delete; 0x3177C0 calls it) -- left unnamed so the generated drafts calling it can spell it
+0x001EA2D0 0x70 func_001EA2D0  # OVL1; ovl-copy: __dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv (OVL1's copy of OVL2's 0x510110: zrndr_pipe.cpp's copy is byte-exact here, scored WRONG against 0x510110 before -- the world lane's round 12 and GCC round 25a, marked at integration); the pointer lists' deleter destructor out of line (__dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv: the range erase over end_.next_..&end_, then delete; 0x3177C0 calls it) -- left unnamed so the generated drafts calling it can spell it
 0x001EA340 0x78 __dt__Q23zdb11CNodeVectorFv  # OVL1; ~CNodeVector: SOCOM 1's __sinit_zparticle.cpp registers it for the node pool; four this-tests; node_world.cpp's copy byte-exact against it (the world lane's round 10, renamed at integration)
 0x001EA3C0 0x70 __dt__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>Fv  # OVL1; by hand (Unload destroys the save's parents at 0x24 with it: the one copy linked, an earlier unit's)
 0x001EA430 0x80 func_001EA430  # OVL1
