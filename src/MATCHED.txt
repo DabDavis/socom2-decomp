@@ -235,10 +235,10 @@
 0x0018D290 do_narrow__Q23std8ctype<c>CFPCcPCccPc
 0x0018D2C0 func_0018D2C0
 0x0018D340 __ct__Q23std80_RefCountedPtr<Q23std15__locale_imp<1>,Q23std32_Single<Q23std15__locale_imp<1>>>FPQ23std15__locale_imp<1>
-0x0018D3E0 replace<PCc>__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCcPCcQ23std20forward_iterator_tag_RQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
+0x0018D3E0 func_0018D3E0
 0x0018D830 __dt__Q23std12out_of_rangeFv
 0x0018D8C0 func_0018D8C0
-0x0018DB40 assign<PCc>__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCcPCcPv_RQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
+0x0018DB40 func_0018DB40
 0x0018DB90 CB_DelayTh
 0x0018DBB8 sceCdDelayThread
 0x0018DC20 sceCdCallback
@@ -1289,6 +1289,7 @@
 0x001E7C60 OnPop__10CGameStateFi
 0x001E7C70 SetSkipSwap__10CGameStateFi
 0x001E7C80 DisplayMessage__10CGameStateFPCcPCciiiUcUc7MSGTYPE
+0x001E7C90 reserve__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUi
 0x001E7EF0 __dt__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fv
 0x001E7F58 flushbuffer
 0x001E7F98 openmic
@@ -1395,6 +1396,7 @@
 0x001EDF20 Count__5_zrdrCFv
 0x001EDF40 __dt__15CCinematicStateFv
 0x001EE000 sort<Q33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator,7CueLess>__3stdFQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator7CueLess_v
+0x001EE780 replace<PCc>__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCcPCcQ23std20forward_iterator_tag_RQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
 0x001EEB40 assign__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc
 0x001EEB70 append__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCc
 0x001EEBA0 reserve__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FUi
@@ -1403,7 +1405,7 @@
 0x001EF310 clear__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv
 0x001EF320 __dt__Q23std58__vector_deleter<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv
 0x001EF390 replace__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FUiUiPCc
-0x001EF400 func_001EF400
+0x001EF400 assign<PCc>__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>FPCcPCcPv_RQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>
 0x001EF450 __sort132<Q33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator,7CueLess>__3stdFQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator7CueLess_v
 0x001EF700 __selection_sort<Q33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator,7CueLess>__3stdFQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iteratorQ33std56__vector_imp<9CMovieCue,Q23std21allocator<9CMovieCue>,0>8iterator7CueLess_v
 0x001EF8C0 __dt__Q23std48vector<9CMovieCue,Q23std21allocator<9CMovieCue>>Fv
@@ -5835,6 +5837,7 @@
 0x00359520 Draw__13C2DBitmapPolyFPQ23zdb7CCamera
 0x00359590 Load__13C2DBitmapPolyFffffffffPQ23zdb8CTexture
 0x00359640 __ct__13C2DBitmapPolyFv
+0x00359740 advance_to__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>FUi
 0x0035A140 __ct__10CFontPointFRC10CFontPoint
 0x0035A160 SetY__10CFontPointFi
 0x0035A170 SetX__10CFontPointFi
@@ -8732,9 +8735,12 @@
 0x00540B50 func_00540B50
 0x00540BC0 remove_copy_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator
 0x00540C70 remove_copy_if<Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator,Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator,12compare_item>__3stdFQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iteratorQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iteratorQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator12compare_item_Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator
+0x00540D00 func_00540D00
 0x005410C0 func_005410C0
 0x00541150 func_00541150
 0x005411E0 func_005411E0
+0x00541240 func_00541240
+0x00541290 func_00541290
 0x005414F0 func_005414F0
 0x00541650 SetVisibleByUnit__7CPickupFUi
 0x005416B0 GetVisibleByUnit__7CPickupFUi

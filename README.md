@@ -2060,6 +2060,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 21** (the library string's pieces in include/string, the list's assignment;
+  probes build/scratch/msl-r21-p21/, untracked):
+  - include/string's reserve, template replace and assign(first, last) out of class, from the same statements as MAIN's
+    msl.h with exceptions off -- three class changes: the allocator a private empty base, size_type the allocator's
+    (`typename Allocator::size_type`), and a long form of size_type bit-fields in the union (THE GAME BUILD KEEPS WORD
+    ACCESS ON A TEMPLATE-DEPENDENT BIT-FIELD, as the library does); every member calls the member template, so 25 units'
+    tails emit the pieces: OVL1's reserve 0x1E7C90 and replace 0x1EE780 and OVL2's 0x541290 / 0x540D00 / 0x541240
+    byte-exact, assign 0x1EF400 through the units' own copies (the rows named; MAIN's 0x18D3E0 / 0x18DB40 ovl-copies now);
+  - the template replace inlines its temporary's destructor only where the unit generated the destructor first (the
+    hud_scorepopup.cpp and util_stable.cpp copies stay `elsewhere`); MW initialises an inlined function's by-value
+    parameters right to left whatever the argument form, their slots in parameter order below the callee's return
+    temporary;
+  - include/list's assignment (operator= over do_assign(first, mid, last), SOCOM 1's shapes, operator-- and a two-way
+    advance): __list_imp<PCv>::advance_to 0x359740 byte-exact from vis_texfx.cpp; one iterator assigned in each arm and
+    advanced in place with one return gives each arm its own inlined advance with shared registers (per-arm iterators with
+    a return each are 8 bytes longer); the target's inlined list assignment reads x.begin() through x's end-node address,
+    shared with x.end() -- the kit's 0x5EBDC0 / 0x5EF470 still miss on seal_unit.cpp's own generation order;
+  - the deque iterators are random access and the tree iterator bidirectional (iterator_category: code-neutral over 633
+    units); not met: the list remove_ifs 0x352500 / 0x50F670 (seven forms in include/algorithm's comment).
 - **Tells from the HUD, round 38** (hud_mpweaponsel.cpp's selector and categories, zui_2d.cpp's radio strip):
   - a member pointer read straight each time (`m_selected[i].m_weapon->...`) becomes a CSE temporary numbered after the
     inlines' variables, a named local, slot pointer or reference swaps its register with an inline parameter's
