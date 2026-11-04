@@ -699,21 +699,33 @@ public:
  * renderable string's (0x36FC10) and the button's (0x3767C0) are declared with their classes
  * above). Each answers its own commands as the UI's count plus an index, and an empty name
  * with 0 */
-class CPopUpDialog : public C2D {
+class CPopUpDialog : public CPlainBmp {
 public:
     /* declared, not defined: stand-ins whose implicit destructors would supersede the drafts */
     virtual ~CPopUpDialog();
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual int GetZAnimCmdType(const char *name);
 
-    /* the parts its Tick ticks (SOCOM II's two members, through their tables; SOCOM 1 ticked the
-     * pointer alone) -- C2D stand-ins, their real classes unknown */
-    unsigned char _18[0x32c - 0x18];
+    /* a plain bitmap (Draw inlines CPlainBmp's), its text a 2D object at 0xB0 placed at an offset;
+     * the parts its Tick ticks (SOCOM II's two members, through their tables; SOCOM 1 ticked the
+     * pointer alone), each with an offset after it, drawn when 0x330 is set; the 2D object drawn
+     * instead of it all when 0x32C points at one -- C2D stand-ins, their real classes unknown */
+    unsigned char _a0[0xb0 - 0xa0];
+    C2D m_text;   // 0xb0
+    unsigned char _c8[0x304 - 0xc8];
+    IPNT2D m_textOffset;   // 0x304
+    unsigned char _30c[0x32c - 0x30c];
     C2D *m_32c;   // 0x32c
-    unsigned char _330[0x340 - 0x330];
+    int m_330;   // 0x330
+    unsigned char _334[0x340 - 0x334];
     C2D m_340;   // 0x340
-    unsigned char _358[0x790 - 0x358];
+    unsigned char _358[0x780 - 0x358];
+    IPNT2D m_340Offset;   // 0x780
+    unsigned char _788[0x790 - 0x788];
     C2D m_790;   // 0x790
+    unsigned char _7a8[0xbd0 - 0x7a8];
+    IPNT2D m_790Offset;   // 0xbd0
 };
 
 
@@ -777,6 +789,59 @@ void CTeleType::SetString(const char *s, bool translate)
     m_text = s;
     m_1a8 = 0;
     Update();
+}
+
+/* slot 2: the 2D object it points at drawn instead, if any; else the bitmap (CPlainBmp's Draw
+ * inlined), its two parts at their offsets from the corner the matrix places when they are shown,
+ * and its text at its offset (SOCOM 1's CPopUpDialog::Draw).
+ * OPEN, 22 instructions, all in the two parts' block: the target keeps &p.y, &p.z and the three
+ * translation cells' addresses in s6, s5, s4, s3, s1 (p.z's address numbered before the matrix's)
+ * and loads p.z with the other loads before any store, for both parts; here p.z's address comes
+ * after two of the matrix's and its load sinks to its store. The text's block and everything else
+ * is the target's. Tried: the cells assigned straight (interleaved stores), a CPnt3D built by its
+ * constructor (y and z swapped: arguments right to left), the parts as an array of 0x450-byte
+ * {object, offset} walked by a loop (not unrolled, two registers more), an inline setter taking the
+ * three floats (23) */
+void CPopUpDialog::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
+{
+    CPnt3D p = CPnt3D::zero;
+
+    m.Transform(&p, 1);
+    if (m_32c) {
+        m_32c->Draw(m, mgr);
+        return;
+    }
+    CPlainBmp::Draw(m, mgr);
+    if (m_330) {
+        CMatrix mat;
+        CPnt3D pos;
+
+        pos.x = p.x + m_340Offset.x;
+        pos.y = p.y + m_340Offset.y;
+        pos.z = p.z;
+        mat(3, 0) = pos.x;
+        mat(3, 1) = pos.y;
+        mat(3, 2) = pos.z;
+        m_340.Draw(mat, mgr);
+        pos.x = p.x + m_790Offset.x;
+        pos.y = p.y + m_790Offset.y;
+        pos.z = p.z;
+        mat(3, 0) = pos.x;
+        mat(3, 1) = pos.y;
+        mat(3, 2) = pos.z;
+        m_790.Draw(mat, mgr);
+    }
+    CPnt3D pos;
+
+    pos.x = p.x + m_textOffset.x;
+    pos.y = p.y + m_textOffset.y;
+    pos.z = p.z;
+    CMatrix mat;
+
+    mat(3, 0) = pos.x;
+    mat(3, 1) = pos.y;
+    mat(3, 2) = pos.z;
+    m_text.Draw(mat, mgr);
 }
 
 /* slot 2: the wrapped lines' strings laid out from the corner the matrix places, side by side
