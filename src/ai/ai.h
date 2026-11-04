@@ -1023,6 +1023,9 @@ public:
     void DestroyGraph();
     void CreateGraph(bool force);
     void ValidateRoutes(bool force);
+    /* a route's path rebuilt between its way points (SOCOM 1's ReRoute, 0x52F8F0: ValidateRoutes calls
+     * it when asked, after _invalid_route in both builds) */
+    void ReRoute(route *r);
     /* every name, action and link checked against the cells, the regions given the map's id,
      * every cell validated; the links on a cell no step may end on counted (SOCOM 1's) */
     int ValidateCells();
