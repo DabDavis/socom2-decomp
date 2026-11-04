@@ -48,7 +48,8 @@ and data reference resolved to the address the shipped code uses.
 | `tools/s1units.py` | SOCOM II's translation units: its static initialisers against SOCOM 1's named `__sinit_<file>`s |
 | `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
-| `tools/try.py` | compile one unit with one textual substitution at a time and score one symbol, in a scratch copy of `src/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`) |
+| `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a) |
+| `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness) |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
@@ -7243,6 +7244,74 @@ ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's priva
 `18DB90 1C4CC0` 43 tried, 0 hits (2 build failures, 11 m2c refusals), OVL1 `1E7F58 1E8FD4` 2, 0,
 `243000 256FD0` 85, 0 (2 build failures -- 0x24B2F8, 0x24DBB8 -- 8 refusals): 130 tried, none
 byte-exact (round 25a: 149 over these three, 0); every draft that built missed.
+
+**The tools, round 27a** (the lane's requests): (1) **`tools/objcmp.py BASE [REGEX]`, the header proof
+every lane hand-rolled** (the SEALs' round-26 harness, adopted): every hand-written unit REGEX names
+(`--auto`: the drafts too) is built twice as sccheck builds it -- from a scratch copy of `src/` and
+`include/` with each file that differs from BASE put back to BASE's text (files added since taken
+out), and as the tree is -- and the objects compared unit by unit: each function's bytes and
+relocations (offset, type, addend, target), each allocated data section's size, bytes and
+relocations, each data object's section, offset and size; a target is named as the scorer resolves
+it, never by a number a header shifts (MW's `@N` by rank in the object, `name$N` as `name$`, a GNU
+section symbol by its section). rc 1 when a unit differs. Fixed from the harness: it built both sides
+against the tree's `include/` (it computed the base's include path and never passed it), so a change
+there could never show -- `sccheck.build_one` takes the include tree now (`include=`, default
+`include/`); data was not compared. Negative controls: `sceVu0ScaleVector`'s float made double in
+`include/libvu0.h` (body.cpp's one function and vis_vu.cpp's four differ) and one character of
+libscf.c's ROMVER path (`section .rodata#1`); 5 units in 1 s. (2) **`tools/try.py`**: a variant of
+several substitutions -- `--and OLD NEW` joins the last `--sub` (before any `--sub`: every variant),
+`--variants FILE.py` names them (`SUBS = {name: [(old, new), ...]}`, or `OLD` and `V`: the AI core's
+round-23 tryv.py folded in); `--target ROW` scores against another row, a name or an address (MAIN
+runtime round 6's v2.py -- try.py already built the unit at its own path and file name, so
+`__sinit_<file>` kept its name); `--all` scores every function of the object against its scoring row
+and lists the misses, `--order REGEX` prints the object's function order (exp.py; its msl.h
+substitution is FILE=msl.h with `--unit`); FILE may be a header under `include/`; the scratch tree
+is copied once a run and each variant's file put back after its build; a build failure shows the
+compiler's first error, not its last line. (3) The integrator's two, noted: 8ece3e5d --
+manglecheck parses `@GUARD@<static member>` (a class template static member's guard, no function
+around it: `@GUARD@id__Q23std8ctype<w>`); 009c00a3 -- `test_mw_statics_qualify_by_unit` takes the
+qualified row (`stack@grid_clutter`) out of a copy of the map instead of scoring the map as it is.
+**Proved**: master 9beafcd3's sccheck.py, scdiff.py and scdecomp.py with its map against this
+lane's, over one frozen snapshot of every unit (`--files .`, `-v`, `build/scratch/gcc/proof.sh`):
+IDENTICAL, 14,702 lines (11,325 byte-exact of 11,813 scored in the snapshot). automatch over the
+lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's private
+`src/lib` build): MAIN `18DB90 1C4CC0` 43 tried, 0 hits (2 build failures -- 0x1B5ED8, 0x1BE530 --
+11 m2c refusals), OVL1 `1E7F58 1E8FD4` 2, 0, `243000 256FD0` 75, 0 (2 build failures -- 0x24B2F8,
+0x24DBB8 -- 6 refusals): 120 tried, none byte-exact (round 26a: 130, 0).
+
+**Round 27a** (2026-11-04, the tools first, then OVL1's codec by hand): 12 rows newly byte-exact (4,500
+bytes) of 13 written -- the lane's `src/lib` rows 1,227 -> 1,239 of 1,292 scored, none lost -- all in
+Nellymoser's encoder and decoder: a new `ovl1/sase_ptchcand.c` (PtchCand.c, by its asserts: 0x2504F0,
+0x250708, 0x2508F0, 0x250A38; 0x250320 OPEN), libspeech.c's LPC recursion 0x24C8E8, peak-pair features
+0x24D190, peak picker 0x24D370 and envelope LPC 0x24D770, libtran.c's inverse FFT driver 0x24DA70,
+LDPDA.c's autocorrelation 0x24A438 and SWSynth.c's frame wrappers 0x256190, 0x256280. No rows named
+(the codec is not in SOCOM 1). What they showed:
+
+- **GCC 2.96 compiles an inlinable function at the end of the unit**: PtchCand.c's 0x2508F0 (its
+  asserts line 314) and 0x250A38 (line 780) link after 0x250708 (line 657); the frame search calls
+  both before their bodies, so neither is inlined, and rest_of_compilation defers each to
+  wrapup_global_declarations, which emits them in declaration order -- written `inline`, a public one
+  emitted with no caller in the unit. A function linked out of its lines' order is the tell.
+- **A value in two roles is a variable of its own**: 0x2504F0's second- and third-harmonic targets are
+  one variable assigned twice (an expression each: f4 and f1 for the target's f2 twice); 0x250708's
+  insert slot is copied out of the scan's index and the shift counts down in the scan's variable (the
+  target's `move a2,a1`); 0x250A38's candidate is kept in f20 across its call (`afPitch[i]` re-read
+  is a 0x10-short frame); 0x256190's gain pair is chosen by if/else into a pointer of its own, the
+  parameter kept in v1 (a conditional expression shares one register; a pre-assignment is a word short).
+- **A parameter stepped in place moves global-alloc's saved registers**: libspeech's peak picker
+  decrements its end (`iEnd--`; `i < iEnd - 1` swaps two), the LPC recursion steps its reflection
+  pointer (`*pfPARCOR++`; indexed, the three pointers take other saved registers) and counts its
+  update loop in its own variable (one counter for both inner loops: 19 words of temporaries).
+- **A loop's counters are the source's**: the envelope LPC's spectrum is filled by two counters
+  stepping 4 and 2 (from one, `4*i` and `2*i`, loop.c reverses a counter of 63, the target's 252);
+  0x24A438's pointer post-incremented twice an iteration is two `addiu 4`s, and its Q15 accumulator
+  is set before the pointer (two words the other way); 0x250708's three cost loads, the new lag's
+  first (one order of six).
+- **Open, diagnosed in place**: 0x250320 (0x1D8 against 0x1CC: loop.c hoists the 0.78 literal's load
+  into a saved f21 where the target loads it in the loop after the call -- the movable's
+  `threshold * savings * lifetime >= insn_count` at its edge with a call in the loop; 26 shapes of the
+  loop tried). Not reached: round 26a's opens (sceSifCallRpc, 0x249B58, the fast log2/exp2,
+  sceSifMCallRpc, sceSifMUnBindRpc, sceCdStRead, sceGsSetDefDispEnv), libmpeg's six, the tty object.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
