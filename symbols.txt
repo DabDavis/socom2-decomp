@@ -7476,7 +7476,7 @@
 0x00399280 0x94 SkbCloseText0__FP13CSoftKeyboard  # OVL1; the UI lane round 9: ours, by its body (string 0 no longer current, its node hidden, its text emptied; laid out again through 0x39A400 if it was current, then 0x394920) -- byte-exact in zui_skbkeys.cpp
 0x00399320 0x204 func_00399320  # OVL1
 0x00399530 0x17C func_00399530  # OVL1
-0x003996B0 0x138 func_003996B0  # OVL1
+0x003996B0 0x138 SkbTypedTextNotBlank__Fv  # OVL1; ours (the UI lane round 17: the typed text -- strings 1 and 2 from their first shown characters -- built in place, then walked by UTF-8 character until one is not white space by the SDK's ctype table: true, else false; OnEnterKey calls it after 0x395110; zui_skbkeys.cpp)
 0x003997F0 0xA4 func_003997F0  # OVL1
 0x003998A0 0x12C SkbTextUnchanged__Fv  # OVL1; the UI lane round 9: ours, by its body (the UI variable SkbGetText(false) names, if a string, against string 1's text then string 2's: OnEnterKey's IgnoreUnchangedString test)
 0x003999D0 0x158 func_003999D0  # OVL1

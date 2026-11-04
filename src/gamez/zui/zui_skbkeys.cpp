@@ -42,14 +42,15 @@ static inline const char *ShownText(const C2DString *s)
     return s->m_string + s->m_firstCharPos;
 }
 
-/* the text typed: string 1's, then string 2's (ours: built in the caller's temporary) */
-static inline CSaferStr TypedText()
-{
-    CSaferStr text(ShownText(&s_textString1));
-
-    text += ShownText(&s_textString2);
-    return text;
-}
+/* the text typed: string 1's, then string 2's, built in place by a constructor (the class ours, the
+ * UI lane's round 17): its `this` is a variable of the caller's, so the object's address sits in a
+ * saved register from before the words' zeroing through the assign and the append, as the target's
+ * SkbTakeText 0x399D20 and 0x3996B0 keep it -- an inline returning the string by value, which MW
+ * never inlines (warn_notinlined gives no reason), and a local built and appended to in the caller
+ * (the address folded into each use) both miss it */
+struct CTypedText : public CSaferStr {
+    CTypedText() : CSaferStr(ShownText(&s_textString1)) { *this += ShownText(&s_textString2); }
+};
 
 /* the keyboard's text variables' names (zui_skbview.cpp's): the edited one's, or the opened one's */
 const char *SkbGetText(bool edited);
@@ -319,23 +320,23 @@ public:
 
 /* the text taken: the typed text into the variable SkbGetText(false) names, string 0's into the
  * other's, the menu's ON_SKB_APPLY2 (or ON_SKB_APPLY, by 0x396EF0) run with it (0x399D20, OnEnterKey's; the name
- * ours).
- * OPEN, 2 instructions long: the target keeps the string's address in s1 from before its zeroing
- * through the assign and the append (and SkbTextUnchanged builds the same text the same way in a
- * conditional temporary), the shape of an inlined function returning the string by value, its
- * hidden result pointer a variable; MW folds the local's address into each use here. TypedText()
- * as such an inline is never inlined (static or not; warn_notinlined gives no reason), and the
- * local written out loses the register */
+ * ours). The typed text built in place (CTypedText); the second name fetched before string 0's text
+ * is read, the empty string an if-assign (the ternary lays its arms out the other way), and the event
+ * chosen into a local ahead of the run (in the argument list c_str() is computed before the call) */
 void SkbTakeText(CGameMenu *menu)
 {
-    CSaferStr text(ShownText(&s_textString1));
+    CTypedText text;
 
-    text += ShownText(&s_textString2);
     *theUIVarManager.Add(SkbGetText(false), 0, UIVL_TEMPORARY) = text.c_str();
+    const char *name = SkbGetText(true);
     const char *s = ShownText(&s_textString0);
 
-    *theUIVarManager.Add(SkbGetText(true), 0, UIVL_TEMPORARY) = s ? s : "";
-    menu->RunEventAnim(func_00396EF0() ? ActionItem::ON_SKB_APPLY2 : ActionItem::ON_SKB_APPLY, text.c_str());
+    if (!s)
+        s = "";
+    *theUIVarManager.Add(name, 0, UIVL_TEMPORARY) = s;
+    ActionItem::EVENT e = func_00396EF0() ? ActionItem::ON_SKB_APPLY2 : ActionItem::ON_SKB_APPLY;
+
+    menu->RunEventAnim(e, text.c_str());
 }
 
 extern "C" {
@@ -410,17 +411,34 @@ bool SkbClearText(CSoftKeyboard *skb)
 }
 
 /* whether the typed text is the string variable SkbGetText(false) names already holds (0x3998A0,
- * OnEnterKey's IgnoreUnchangedString test; the name ours).
- * OPEN, 0x60 bytes short: the target builds the typed text in a temporary only when the variable
- * is a string (a flag in s1 guards its destructor), its address held in s1 through the assign and
- * the append and c_str() read off the temporary, not append's result -- TypedText() inlined, which
- * MW refuses here (see SkbTakeText) */
+ * OnEnterKey's IgnoreUnchangedString test; the name ours): the typed text a conditional temporary,
+ * built only when the variable is a string (a flag in s1 guards its destructor), CTypedText's
+ * constructor keeping its address in s1 through the assign and the append */
 bool SkbTextUnchanged()
 {
     CUIVariable *v = theUIVarManager.Find(SkbGetText(false));
     const char *val = v ? v->String() : 0;
 
-    return val && !strcmp(val, TypedText().c_str());
+    return val && !strcmp(val, CTypedText().c_str());
+}
+
+unsigned short UTF8GetChar(const char *&s);
+
+/* the typed text holds a character other than white space (0x3996B0; the name ours: OnEnterKey takes
+ * the text only when this or 0x395110 finds one) -- the typed text built in place, each UTF-8
+ * character read off a copy of the cursor and tested against the SDK's table, the cursor stepped by
+ * the character's length; an int (OnEnterKey's test of it needs one) */
+int SkbTypedTextNotBlank()
+{
+    CTypedText text;
+
+    for (const char *p = text.c_str(); HasChar(p); p += CharLen(p)) {
+        const char *q = p;
+
+        if (!rdr_isspace(UTF8GetChar(q)))
+            return true;
+    }
+    return false;
 }
 
 /* string 0's edit closed: its node hidden, its text emptied, the text laid out again if it was the

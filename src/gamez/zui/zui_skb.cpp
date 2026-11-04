@@ -187,10 +187,11 @@ void SkbPlaySound(unsigned char which);
 extern "C" {
 int func_003999D0();
 int func_00395110();
-int func_003996B0();
+
 void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu);
 }
 bool SkbTextUnchanged();
+int SkbTypedTextNotBlank();
 void SkbTakeText(CGameMenu *menu);
 
 /* (the next unit's node lists' layout from a grid size, 0x395140; this unit's elements shown or
@@ -534,7 +535,7 @@ void CSoftKeyboard::OnEnterKey(CGameMenu *menu)
             unchanged = true;
         bool empty = false;
 
-        if (IsNone(func_00395110()) && IsNone(func_003996B0()))
+        if (IsNone(func_00395110()) && IsNone(SkbTypedTextNotBlank()))
             empty = true;
         if (unchanged || empty) {
             func_0038C000(this, menu);
