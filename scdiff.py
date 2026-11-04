@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -425,6 +426,44 @@ def bss_local(elf: E.Elf, sec_index: int, off: int, st: E.SymbolTable) -> tuple[
     return best.name, st.data_by_name[best.name].addr + off - best.value
 
 
+# Metrowerks names a function-local static of an inline function (a template instance's) after the
+# function -- `@LOCAL@<fn>@max`, its guard `@GUARD@<fn>@max` (the MSL lane's push_back statics) --
+# but one of a function emitted once only by its own name and a per-unit counter: `s_grey$678`,
+# `@GUARD@s_grey$678` (the HUD lane's CMPWeaponCategories::ShowArrows). The counter is no name a
+# map row can carry, so the data map names both kinds the first way, and such a local resolves
+# through the row of the function that owns it (fn_static_row).
+_FN_STATIC = re.compile(r"^(@GUARD@)?([A-Za-z_]\w*)\$\d+$")
+
+
+def fn_static_row(elf: E.Elf, s: E.ElfSymbol, fsym: E.ElfSymbol, st: E.SymbolTable,
+                  taddr: int | None = None) -> str | None:
+    """The data row (`@LOCAL@<fn>@name` or `@GUARD@<fn>@name`) a Metrowerks object's
+    function-local static `name$N` (or its guard `@GUARD@name$N`) is, or None. Its function is the
+    one under comparison (by its object name, else its map row's at `taddr`); failing that, the one
+    function of the object the data map gives such a row (a static of a function inlined into the
+    one compared). Never a guess: a GNU object, a static the object holds two of by that name (two
+    functions' `s_grey`, which the counter alone cannot tell apart), or several candidate rows
+    leave it None -- unresolved, as before."""
+    if s.bind != 0 or s.type in ("FUNC", "SECTION", "FILE") or is_gnu(elf):
+        return None
+    m = _FN_STATIC.match(s.name or "")
+    if m is None:
+        return None
+    kind, base = ("@GUARD@" if m.group(1) else "@LOCAL@"), m.group(2)
+    twins = [x for x in elf.symbols if x.bind == 0 and x.name and (mm := _FN_STATIC.match(x.name))
+             and mm.group(2) == base and bool(mm.group(1)) == bool(m.group(1))]
+    if len(twins) != 1:
+        return None
+    own = [fsym.name]
+    if taddr is not None and (row := st.at_addr(taddr)) is not None and row.name != fsym.name:
+        own.append(row.name)
+    for fn in own:
+        if f"{kind}{fn}@{base}" in st.data_by_name:
+            return f"{kind}{fn}@{base}"
+    others = {f"{kind}{f.name}@{base}" for f in elf.functions()} & st.data_by_name.keys()
+    return others.pop() if len(others) == 1 else None
+
+
 def code_label(elf: E.Elf, sec_index: int, off: int, st: E.SymbolTable) -> tuple[str, int] | None:
     """A GNU object's reference into its own code at a label that is no function (`.text`+N: an
     asm's data label, GNU as relocating a local label against its section) as (label, address),
@@ -525,6 +564,10 @@ def reloc_check(elf: E.Elf, fsym: E.ElfSymbol, relocs: list[E.Reloc], target: by
             a = _sym_address(st, s.name, taddr)
             if a is not None or s.bind != 0:
                 return s.name, a, None, 0
+        # an MW function-local static of a function emitted once (`s_grey$678`): by its function's
+        # `@LOCAL@<fn>@s_grey` row, and its guard by `@GUARD@<fn>@s_grey` (fn_static_row)
+        if (row := fn_static_row(elf, s, fsym, st, taddr)) is not None:
+            return row, st.data_by_name[row].addr, None, 0
         ok = 0 < s.shndx < len(elf.sections)
         name = s.name or (elf.sections[s.shndx].name if ok else "?")
         return f"{name}(local)", None, (s.shndx if ok else None), (0 if s.type == "SECTION" else s.value)
