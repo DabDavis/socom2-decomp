@@ -812,6 +812,7 @@ public:
     void addstringnode(const char *text);   /* 0x333610 */
     void addintnode(int value);             /* 0x333700 */
     void pop();                             /* 0x333770 */
+    void addrdrnode(_zrdr *node);           /* 0x333540 */
     void push(const char *name);            /* 0x3339B0 */
 
     unsigned char _8[80 - 8];
@@ -939,6 +940,8 @@ MPMissionView *func_002C8DB0(void *missions, int number, int arg);
 class CMultiMissionList : public std::vector<MPMissionInfo *> {
 public:
     MPMissionView *GetRandom(bool multi);
+    /* a mission's multiplayer kind, by its id (fts_missionlist.cpp's, 0x2C8B80) */
+    signed char GetMultiValue(int id);
 };
 bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list);
 bool func_002F11F0(CZOnlineLobby *lobby, C2D *list);

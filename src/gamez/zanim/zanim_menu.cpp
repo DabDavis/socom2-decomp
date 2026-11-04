@@ -2497,6 +2497,33 @@ bool UISelectLocale(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the UI variable the argument names, an array of missions, cut down to the suppression maps:
+ * every entry kept but an array whose first value names a mission of another multiplayer kind
+ * than 5 (SOCOM II's; the name ours) */
+bool UIRemoveNonSuppressionMaps(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = theUIVarManager.Add(ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+
+    if (var && var->type == 4) {
+        CRdrEditor ed;
+
+        ed.push(0);
+        for (unsigned int i = 0; i < var->Count(); i++) {
+            _zrdr *e = var->Item(i);
+
+            if (e->type == 4) {
+                if ((unsigned char)static_cast<CMultiMissionList &>(data_00441650).GetMultiValue(e->Item(0)->Int()) == 5)
+                    ed.addrdrnode(e);
+            } else {
+                ed.addrdrnode(e);
+            }
+        }
+        ed.pop();
+        var->Set(&ed);
+    }
+    return true;
+}
+
 bool UIHaveBeenBannedFromGame(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002C3550();
