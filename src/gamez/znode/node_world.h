@@ -170,6 +170,9 @@ struct IntersectStruct {
     bool GetIntersectedEdgePointsY(CPnt3D *out);
     /* the hit polygon's flag at bit 27 (new in SOCOM II; the name ours) */
     bool GetPolyFlag27();
+    /* the hit polygon's first word, or every bit for none (OVL1 0x2DC1B0; the SEAL's ground
+     * probes pass it to DiIntersect::SetMask) */
+    unsigned int GetRegion();
 };
 
 /* a ray's intersection set (SOCOM 1's DWARF; SOCOM II adds the mask at 0x44, so its hits are 4
