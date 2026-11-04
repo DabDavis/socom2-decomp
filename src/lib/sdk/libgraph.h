@@ -208,7 +208,7 @@ extern int sceGsSetDefClear(sceGsClear *cp, short ztest, short x, short y, short
 #define	SCE_GS_PSMZ16		50
 #define	SCE_GS_PSMZ16S		58
 
-extern int scePrintf(const char *fmt, ...);
+extern void scePrintf(const char *fmt, ...);
 
 /* Host to GS local memory: a GIF tag of four A+D pairs, then an IMAGE tag for the data. */
 typedef struct {
