@@ -12,7 +12,8 @@
  * CDIBBox::GetAltitude, SetEdgeVecsAndNorm, LoadPlaneVU0, GetBBoxCorners and (round 10) the edge
  * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690), and
  * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both open). Unwritten, in
- * image order: SetCDIBBox, CDIBBox::GetIntersect and CDIPoly::GetAltitude -- VU0 code throughout.
+ * image order: SetCDIBBox and CDIBBox::GetIntersect -- VU0 code throughout; CDIPoly::GetAltitude
+ * (0x2DD8E0) written in round 14.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
@@ -21,6 +22,14 @@
  * the DI itself; the name is ours). Built as (0, 1, 0, 0) by the unit's initialiser,
  * __sinit_int_shapes.cpp (0x401D80, byte-exact) */
 static CPnt4D diNorm(0.0f, 1.0f, 0.0f, 0.0f);
+
+/* a polygon point as a CPnt3D (its w ignored; ours) */
+inline CPnt3D &Pnt3(CPnt4D &p) { return *(CPnt3D *)&p; }
+/* two points' differences in x and in z (ours: CDIPoly::GetAltitude's edges -- the arguments
+ * evaluated right to left put the second point's address first, as the target computes it, where
+ * the subtraction written in place takes the first's) */
+inline float SubX(const CPnt4D &a, const CPnt4D &b) { return a.x - b.x; }
+inline float SubZ(const CPnt4D &a, const CPnt4D &b) { return a.z - b.z; }
 
 namespace zdb {
 
@@ -83,6 +92,55 @@ bool intersect2d(const CPnt3D *p, const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
 }
 
 namespace zdb {
+
+/* the polygon's height under the model-space tail: the plane of its first three points loaded into
+ * VU0 (LoadPlaneVU0's body, the normal into diNorm), none for an upright plane or a point outside an
+ * edge -- walked from the last point back, each edge's xz perpendicular against the point beyond a
+ * -1e-5 tolerance -- else the next hit's position (the tail at the plane's height over the first
+ * point) and normal (SOCOM 1's, the normal its own field there; SOCOM II leaves the poly to the
+ * caller as GetIntersect does). The edge vector a local the stores keep in memory (the points
+ * re-read after each), the slopes named locals (otherwise MW multiplies the second before the first
+ * sum), the hit's index read into a local ahead of the normal's temporary (built from a reference
+ * to diNorm, its fields loaded z first), the position's statement reading the count again */
+int CDIPoly::GetAltitude(DiIntersect *di)
+{
+    CPnt3D p;
+    CPnt3D e;
+    CPnt4D *pnts = m_pnts;
+
+    asm volatile {
+        lqc2 vf4, 0(pnts)
+        lqc2 vf5, 16(pnts)
+        lqc2 vf6, 32(pnts)
+        vcallms 0x70
+    }
+    int i = m_flags.m_ptcount - 1;
+
+    p.x = di->m_MTail.x;
+    p.z = di->m_MTail.z;
+    if (diNorm.y == 0.0f)
+        return 0;
+    int j = 0;
+
+    do {
+        e.z = SubX(m_pnts[i], m_pnts[j]);
+        e.x = SubZ(m_pnts[j], m_pnts[i]);
+        if (e.x * (p.x - m_pnts[i].x) + e.z * (p.z - m_pnts[i].z) <= -1e-5f)
+            return 0;
+        j = i;
+    } while (--i >= 0);
+    float inv = 1.0f / diNorm.y;
+    float a = inv * -diNorm.x;
+    float b = inv * -diNorm.z;
+
+    p.y = m_pnts[0].y + a * (p.x - m_pnts[0].x) + b * (p.z - m_pnts[0].z);
+    const CPnt4D &nn = diNorm;
+    int c = di->m_Cnt;
+
+    di->m_Intersects[c].m_norm = CPnt3D(nn.x, nn.y, nn.z);
+    di->m_Intersects[di->m_Cnt].m_pos = p;
+    return 1;
+}
 
 /* the ray against the polygon, edge by edge on VU0 (the tip and tail already loaded): the last
  * point and the first through the microprogram at 0x10, then each next point through 0x20 -- its
@@ -150,9 +208,6 @@ void DiIntersect::LoadTipAndTail()
         "lqc2 $vf2, 0(%0)\n"
         : : "r"(&tail), "r"(&tip) : "memory");
 }
-
-/* a polygon point as a CPnt3D (its w ignored; ours) */
-inline CPnt3D &Pnt3(CPnt4D &p) { return *(CPnt3D *)&p; }
 
 /* the polygon's edges whose height range holds the point's (each edge from the previous point, up
  * or down), the point at that height on each kept in out -- the edge's first point when the edge is
