@@ -407,7 +407,8 @@ struct AcctRecord {
 /* the memory card (zutil.h's CMemCard: the game save's manager) */
 extern CMemCard theMemCard;
 
-extern "C" CLobbySaveManager *func_002AFBA0();   /* the lobby's save manager (an accessor of OVL1 0x4364A0) */
+/* the lobby's save manager: zsav_lobby.h's GetLobbySaveManager() (0x2AFBA0, fts_mission.cpp's accessor of
+ * OVL1 0x4364A0) */
 
 class CZUniversInformationServer {
 public:
@@ -415,7 +416,7 @@ public:
     public:
         /* a module of the game save and of the lobby's, room for 48 accounts (theAcctDB's, built
          * by the unit's initialiser 0x4022D0) */
-        CAcctDB() : CSaveModule("CAcctDB", theMemCard.m_gameSave), CLobbySaveModule("CAcctDB", func_002AFBA0())
+        CAcctDB() : CSaveModule("CAcctDB", theMemCard.m_gameSave), CLobbySaveModule("CAcctDB", GetLobbySaveManager())
         {
             reserve(48);
         }

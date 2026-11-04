@@ -18,7 +18,8 @@ extern unsigned char data_0044F490[0x40];   /* the DME's state (handed to OVL2) 
 extern unsigned char data_0044F4D0[0x40];
 
 void func_00300680();   /* the Medius connection closed */
-void func_006305C8(void *a, void *b);   /* (OVL2: the DME's set up) */
+void KM_GenerateRSAKeyPair(void *pPublic, void *pPrivate);   /* (OVL2 0x6305C8: the DME's RSA key pair,
+                                                               * Medius' rt_crypt.c -- the GCC lane's round 18b) */
 
 extern BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
 extern BriefingRoom data_0044FAB0;   /* a room (the lobby unit's) */
@@ -153,7 +154,7 @@ bool CZOnlineLobby::Init()
 void *CZOnlineLobby::DMEInit()
 {
     if (!data_0044F510 && theLobby.m_a8) {
-        func_006305C8(data_0044F490, data_0044F4D0);
+        KM_GenerateRSAKeyPair(data_0044F490, data_0044F4D0);
         data_0044F510 = 1;
     }
     return data_0044F490;
