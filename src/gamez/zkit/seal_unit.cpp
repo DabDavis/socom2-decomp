@@ -203,6 +203,11 @@ public:
      * follower's (the second), when the squad is pointing and the AI is a SEAL's (SOCOM 1's; OVL2
      * 0x5E7580) */
     bool GetMyPointOutTurnDir(CZSealBody *seal, CPnt3D **dir);
+    /* an order the network squads take as radio traffic (OVL2 0x5E6E40; the name ours) */
+    bool RadioCommand(CZSealBody *seal, FT_COMMAND cmd);
+    /* a target handed to the squad's AI SEALs, the SEAL's place in the squad returned (OVL2
+     * 0x5ECF90; the name ours) */
+    int ShareTarget(CZSealBody *seal, CEntity *target, bool force, int unused);
     /* the SEAL's point-out anim started, taken once: the leader's or the follower's start byte, when
      * the squad is pointing, the AI is a SEAL's and the player stands within 200 and faces away from
      * it (SOCOM 1's, its guarded statics plain data here -- 0x650B10, 0x650B18; OVL2 0x5E7390) */
@@ -1357,6 +1362,93 @@ void CSealUnit::Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data)
     }
 }
 
+/* the AI's target (ai_target.cpp's CAiTarget: only its entity here), the test the AI's code makes
+ * of it (OVL2 0x60A850: an entity, alive, and an AI's unless it holds bit 8 or 9), its sighting
+ * clock (0x60A590) and its setter (0x60A5F0) */
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+    void SetTarget(CTarget *t);
+
+    CEntity *m_ent;   // 0x0
+};
+
+extern "C" bool func_0060A850(const CAiTarget *t);
+
+/* the AI controller as a squad hands it a target (zseal.h's CSealCtrlAi): its target at 0x67C, the
+ * flags word at 0x6A8 (bit 9 lets a held target interrupt) and the virtual SetTarget (+0xB0) -- a
+ * view, the 42 slots before it unnamed here */
+class CUnitAiView {
+public:
+    virtual void v08(); virtual void v0c(); virtual void v10(); virtual void v14(); virtual void v18();
+    virtual void v1c(); virtual void v20(); virtual void v24(); virtual void v28(); virtual void v2c();
+    virtual void v30(); virtual void v34(); virtual void v38(); virtual void v3c(); virtual void v40();
+    virtual void v44(); virtual void v48(); virtual void v4c(); virtual void v50(); virtual void v54();
+    virtual void v58(); virtual void v5c(); virtual void v60(); virtual void v64(); virtual void v68();
+    virtual void v6c(); virtual void v70(); virtual void v74(); virtual void v78(); virtual void v7c();
+    virtual void v80(); virtual void v84(); virtual void v88(); virtual void v8c(); virtual void v90();
+    virtual void v94(); virtual void v98(); virtual void v9c(); virtual void va0(); virtual void va4();
+    virtual void va8(); virtual void vac();
+    virtual void SetTarget(CTarget *t);   /* +0xB0 */
+
+    unsigned char _4[0x67c - 4];
+    CAiTarget m_target;   // 0x67c
+    unsigned char _680[0x6a8 - 0x680];
+    unsigned int m_6a8;   // 0x6a8
+};
+
+/* a held target that may interrupt (an inline bool, seal_aivehicle.cpp's shape: the `&&`
+ * materialised) */
+static inline bool TargetEngaged(CUnitAiView *ai)
+{
+    return func_0060A850(&ai->m_target) && (ai->m_6a8 & 0x200);
+}
+
+/* a target handed to the squad's AI SEALs that know it: each one's entry for it marked (bit 8 of
+ * the target's flags), the AI's own target refreshed when it is the one, else given it when the AI
+ * has none worth keeping or `force` says so; the SEAL's place in the squad returned, -1 when it is
+ * not in it (OVL2 0x5ECF90, new in SOCOM II: the squad's private news 0x5ED140 calls it twice,
+ * passing a fifth argument, 0, that it never reads; the name ours). The loop's locals numbered by
+ * dead first definitions -- the target, the lost flag, then the AI -- and the lost test written
+ * out (seal_aivehicle.cpp's TargetLost as an inline numbers its flag after the AI and the target:
+ * the three trade s1-s3); the AI's own target tested `!=` with its refresh in the else (`==`
+ * lays the refresh out first: 8 bytes short) */
+int CSealUnit::ShareTarget(CZSealBody *seal, CEntity *target, bool force, int unused)
+{
+    int idx = -1;
+    int n = 0;
+
+    for (slist::iterator i = m_seals.begin(); i != m_seals.end(); ++i, n++) {
+        CZSealBody *s = *i;
+        CTarget *t = 0;
+        bool lost = false;
+        CUnitAiView *ai = (CUnitAiView *)((CUnitSealCtrl *)((CEntity *)s)->m_control)->GetSealCtrlAi();
+
+        if (!ai)
+            continue;
+        t = ((CEntity *)s)->m_targets.FindTarget(target);
+
+        if (t) {
+            t->m_flags |= 0x100;
+            if (ai->m_target.m_ent != target) {
+                lost = true;
+                if (func_0060A850(&ai->m_target)) {
+                    if (!TargetEngaged(ai))
+                        lost = ai->m_target.GetTimeSinceLastSighting() > 3.0f;
+                    else
+                        lost = false;
+                }
+                if (lost || force)
+                    ai->SetTarget(t);
+            } else
+                ai->m_target.SetTarget(t);
+        }
+        if (s == seal)
+            idx = n;
+    }
+    return idx;
+}
+
 /* (OVL2 0x5ECEF0; SOCOM 1's, the list emptied from the front) */
 void CSealUnit::UnInit()
 {
@@ -1581,5 +1673,75 @@ void *CSealUnit::GetDataPtr()
 
     if (GetData(&p, 4))
         r = p;
+    return r;
+}
+
+/* the network game (OVL1 bss 0x437CE8, hud_tcmcmds.cpp's CZNetGame): its byte at 0xD2 (the name
+ * ours) */
+struct CUnitNetGame {
+    unsigned char _0[0xd2];
+    unsigned char m_d2;   // 0xd2
+};
+extern CUnitNetGame *data_00437CE8;
+
+extern "C" {
+/* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) and the voice
+ * chat put in a mode (OVL1 0x2C2C20, fts_net_persona.cpp's) */
+int func_005750A0(void);
+int func_002C2C20(int mode);
+}
+
+/* an order the network squads take as radio traffic, online only: squad 26 sends it to everyone and
+ * plays it (PlayRemoteMsg inlined), squads 31 and 30 send it to their two sides, squad 24 switches
+ * the voice chat -- the four channel orders (31-34) the modes 0-3, the first three kept at 0xC4,
+ * the on/off order (35) mode 3 or the kept one -- whether the squad was one of them (OVL2 0x5E6E40,
+ * new in SOCOM II: IssueCommand asks it first and stops when it says so; the name ours). An
+ * if/else chain (a switch tests every number first); squad 26's id read through a const view, so
+ * the inlined PlayRemoteMsg reads it afresh (`lw a0,4(s2)`) -- through the plain pointer MW keeps
+ * the field's address in a saved register across the call (4 off) */
+bool CSealUnit::RadioCommand(CZSealBody *seal, FT_COMMAND cmd)
+{
+    bool r = false;
+
+    if (func_005750A0()) {
+        if (m_unit_num == 26) {
+            r = true;
+            SendMessageMessage(((const CEntity *)seal)->m_id, R_SEND_TO_ALL, cmd);
+            PlayRemoteMsg(seal, cmd, 0);
+        } else if (m_unit_num == 31) {
+            r = true;
+            SendMessageMessage(((CEntity *)seal)->m_id, R_SEND_TO_3, cmd);
+        } else if (m_unit_num == 30) {
+            r = true;
+            SendMessageMessage(((CEntity *)seal)->m_id, R_SEND_TO_2, cmd);
+        } else if (m_unit_num == 24) {
+            r = true;
+            switch (cmd) {
+            case 31:
+                func_002C2C20(0);
+                m_c4 = 0;
+                break;
+            case 32:
+                func_002C2C20(1);
+                m_c4 = 1;
+                break;
+            case 33:
+                func_002C2C20(2);
+                m_c4 = 2;
+                break;
+            case 34:
+                func_002C2C20(3);
+                break;
+            case 35:
+                if (data_00437CE8->m_d2)
+                    func_002C2C20(3);
+                else
+                    func_002C2C20(m_c4);
+                break;
+            case 36:
+                break;
+            }
+        }
+    }
     return r;
 }

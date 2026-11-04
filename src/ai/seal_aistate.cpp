@@ -1444,7 +1444,14 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
  * both (its x and z reassigned, or negated: 0x134), either dot first, Dot(v, p); round 28: the
  * right point's y taken from the left's (16), the y-term in a shared local with the dots written
  * out (22; the second's z-term first, 17). The 0 is the points' literal, not d.y: d is reloaded
- * after Normalize and its y never is */
+ * after Normalize and its y never is.
+ * BYTE-EXACT UNDER 3.0b50 as written (the MAIN runtime lane's round 7, confirmed in round 31 with an
+ * `sc: compiler=mwcps2-3.0b50-030527` line): b50 shares the y-product between the dots, b52 fuses
+ * the second dot's x and y terms into mula/madd and recomputes it. Round 31 under b52: 72 explicit
+ * shared-y-term spellings (either point first, either dot first, the y-term from either point, three
+ * groupings of each dot) give 17 or 22 -- and 17 under b50 too, so the target is b50's Dot form,
+ * not a written-out one; const points, temporaries bound to references or passed straight to Dot,
+ * one declaration for both dots and right.y taken from left.y all stay at 16; d.y as the zero 0x134 */
 extern "C" int func_005F3270(CAiSBreach *b, CSealCtrlAi *ai)
 {
     int r = 2;
