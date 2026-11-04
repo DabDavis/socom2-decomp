@@ -352,6 +352,13 @@ public:
         --current;
         return *this;
     }
+    CPointRevIter operator++(int)
+    {
+        CPointRevIter t(*this);
+
+        ++*this;
+        return t;
+    }
 
     It current;
 };
@@ -369,6 +376,52 @@ inline CPointRevIter rend(CAiPath::points &v)
 inline bool operator!=(const CPointRevIter &x, const CPointRevIter &y)
 {
     return x.current != y.current;
+}
+
+/* the points' flags, last to first (0x525520, by position SOCOM 1's UpdateTurnAngles -- SOCOM II's
+ * points carry no angle: the same reverse walk over the legs as UpdatePathWidth's): at each leg's goal
+ * the leg moves on, the goal and the point after it flagged 2 when the leg crosses maps; elsewhere the
+ * point before a cell holding an action is flagged 1, one before cover (water, brush, forest, grass)
+ * 4. The first point through the reverse iterator's postfix ++ (the old position copied, then
+ * stepped), the size test `<= 2` (sltiu at), the soils an `||` chain MW folds into a bit test, held
+ * in a bool (a switch gives a compare chain) */
+extern "C" void func_00525520(CAiPath *path)
+{
+    if (path->m_points.size() <= 2)
+        return;
+    CPointRevIter i = rbegin(path->m_points);
+    CAiPath::point *prev = &*i++;
+    CAiMap *map;
+    int leg = 0;
+    CAiMapLoc start;
+    CAiMapLoc goal;
+
+    map = path->GetLegMap(leg);
+    path->GetLegPoints(start, goal, leg);
+    for (; i != rend(path->m_points); ++i) {
+        if (prev->m_loc == goal) {
+            leg++;
+            if (prev->m_loc.m_mapid != goal.m_mapid) {
+                prev->m_flags |= 2;
+                (*i).m_flags |= 2;
+            }
+            map = path->GetLegMap(leg);
+            path->GetLegPoints(start, goal, leg);
+        } else if (map) {
+            CAiCell *cell = map->GetCell((*i).m_loc, 0);
+
+            if (cell) {
+                if (cell->HasAction())
+                    prev->m_flags |= 1;
+                unsigned int soil = cell->m_soil;
+                bool cover = soil == 2 || soil == 4 || soil == 5 || soil == 12;
+
+                if (cover)
+                    prev->m_flags |= 4;
+            }
+        }
+        prev = &*i;
+    }
 }
 
 /* each point's width on its leg's map, last to first, the leg moving on at each leg's goal (SOCOM 1's,
