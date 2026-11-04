@@ -1148,7 +1148,7 @@ short _ipuVdec(MpegDec *d, int tbl)
 	bp = *IPU_BP;
 	d->bits = top;
 	d->nbits = (top < 0) ? -(bp & 0x1F) & 0x1F : 32;
-	d->ipuEnd = ((int)r == 0);
+	d->Fault_Flag = ((int)r == 0);
 	return r & 0xFFFF;
 }
 
@@ -1201,7 +1201,7 @@ void _nextStartCode(MpegDec *d)
 
 int _sliceB(MpegDec *d)
 {
-	d->_1b4 = _nextBit(d, 5);
+	d->quantizer_scale_code = _nextBit(d, 5);
 	if (_nextBit(d, 1)) {
 		_nextBit(d, 1);
 		_flushBuf(d, 7);
@@ -1388,6 +1388,252 @@ void _copyrightExtension(MpegDec *d)
 	_nextBit(d, 22);
 }
 
+extern void _Error1(MpegDec *d, char *fmt, int arg);
+
+/* macroblock_address_increment: the IPU's table 0 (34 stuffing, 35 escape, 0 no code: an MPEG-2
+ * stream's stuffing is read off the bits), mpeg2decode's Fault_Flag on an invalid code (GCC round
+ * 20a) */
+int _mbAddressIncrement(MpegDec *d)
+{
+	u_int code;
+	int val, cont;
+
+	val = 0;
+	do {
+		code = _ipuVdec(d, 0);
+		switch (code) {
+		case 35:	/* macroblock_escape */
+			cont = 1;
+			val += 33;
+			break;
+		case 0: {
+			u_int bits = _peepBit(d, 11);
+
+			if (d->mpeg2 && bits == 15) {
+				_flushBuf(d, 11);
+				cont = 1;
+				break;
+			}
+			_Error1(d, "Invalid macroblock_address_increment code(0x%08x)", code);
+			d->Fault_Flag = 1;
+			return 1;
+		}
+		case 34:	/* macroblock_stuffing */
+			cont = 1;
+			break;
+		default:
+			val += code;
+			cont = 0;
+			break;
+		}
+	} while (cont);
+	return val;
+}
+
+extern int func_001B6ED0(MpegDec *d);
+extern int _motionComp0(MpegDec *d, int MBA, int MBAinc, int macroblock_type, int motion_type,
+			int PMV[2][2][2], int motion_vertical_field_select[2][2], int dmvector[2]);
+extern void _doMC(MpegDec *d, int n);
+static int _slice0(MpegDec *d, int MBAmax);
+static int _sliceA0(MpegDec *d, int MBAmax, int *MBA, int *MBAinc, int PMV[2][2][2]);
+static int _skipMB0(MpegDec *d, int PMV[2][2][2], int *motion_type,
+		    int motion_vertical_field_select[2][2], int *macroblock_type);
+static int _decMB0(MpegDec *d, int *macroblock_type, int *motion_type, int *dct_type,
+		   int PMV[2][2][2], int motion_vertical_field_select[2][2], int dmvector[2]);
+
+/* every macroblock of the picture: mpeg2decode's picture_data (getpic.c), a slice at a time while
+ * _slice0 says go on (1, 3), then the last macroblock's compensation (GCC round 20a) */
+int _pictureData0(MpegDec *d)
+{
+	int MBAmax;
+	int ret;
+
+	d->_810 = 0;
+	/* number of macroblocks per picture */
+	MBAmax = d->mb_width * d->mb_height;
+	d->_814 = 0;
+
+	if (d->picture_structure != 3)
+		MBAmax >>= 1; /* field picture has half as mnay macroblocks as frame */
+
+	do {
+		ret = _slice0(d, MBAmax);
+	} while (ret == 1 || ret == 3);
+
+	_waitIpuIdle(d);
+	if (!func_001B6ED0(d)) {
+		if (d->_10a0) {
+			d->_10a0 = 0;
+			ret = 4;
+		} else
+			ret = 2;
+	}
+	while ((*D9_CHCR >> 8) & 1)	/* the scratchpad's channel: STR */
+		;
+	if (ret == 0)
+		_doMC(d, !d->_810);
+	if (ret == 1 || ret == 2)
+		_Error(d, "= Skip to the next picture =");
+	return ret == 0;
+}
+
+/* a slice's header: mpeg2decode's start_of_slice (getpic.c), its DC predictors the IPU's (GCC round
+ * 20a): 2 out of range, 1 a fault, 0 go on */
+static int _sliceA0(MpegDec *d, int MBAmax, int *MBA, int *MBAinc, int PMV[2][2][2])
+{
+	u_int code;
+	int slice_vert_pos_ext;
+
+	d->Fault_Flag = 0;
+
+	_nextStartCode(d);
+	code = _peepBit(d, 32);
+
+	if (code < 0x101 || code > 0x1AF) {
+		_Error1(d, "slice_start_code(0x%08x) out of range", code);
+		return 2;
+	}
+
+	_flushBuf(d, 32);
+
+	/* decode slice header (may change quantizer_scale) */
+	slice_vert_pos_ext = _sliceB(d);
+
+	/* decode macroblock address increment */
+	*MBAinc = _mbAddressIncrement(d);
+
+	if (d->Fault_Flag) {
+		_Error(d, "_sliceA0(): error happens");
+		return 1;
+	}
+
+	/* set current location */
+	*MBA = ((slice_vert_pos_ext << 7) + (code & 255) - 1) * d->mb_width + *MBAinc - 1;
+	*MBAinc = 1; /* first macroblock in slice: not skipped */
+
+	/* reset all DC coefficient and motion vector predictors */
+	d->dcr = 1;
+	PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
+	PMV[0][1][0] = PMV[0][1][1] = PMV[1][1][0] = PMV[1][1][1] = 0;
+
+	return 0;
+}
+
+/* a slice's macroblocks: mpeg2decode's slice (getpic.c), each macroblock decoded into the current
+ * record while the IPU's previous one is compensated (GCC round 20a): 0 the picture's last, 1 and
+ * 3 the next slice, 2 and 4 the next picture */
+static int _slice0(MpegDec *d, int MBAmax)
+{
+	int PMV[2][2][2], motion_vertical_field_select[2][2];
+	int dmvector[2];
+	int MBA;
+	int MBAinc, macroblock_type, motion_type, dct_type;
+	int ret;
+
+	MBA = 0; /* macroblock address */
+	MBAinc = 0;
+
+	if ((ret = _sliceA0(d, MBAmax, &MBA, &MBAinc, PMV)) != 0)
+		return ret;
+
+	d->Fault_Flag = 0;
+
+	for (;;) {
+		/* this is how we properly exit out of macroblock loop */
+		if (MBA >= MBAmax)
+			return 0; /* all macroblocks decoded */
+
+		d->mb[d->_810].noCoef = 0;
+		if (!func_001B6ED0(d)) {
+			if (d->_10a0) {
+				d->_10a0 = 0;
+				return 4;
+			}
+			return 2;
+		}
+
+		if (MBAinc == 0) {
+			if (!_peepBit(d, 23) || d->Fault_Flag) { /* next_start_code or fault */
+				d->Fault_Flag = 0;
+				return 3;
+			}
+			/* decode macroblock address increment */
+			MBAinc = _mbAddressIncrement(d);
+			if (d->Fault_Flag) {
+				d->Fault_Flag = 0;
+				return 1;
+			}
+		}
+
+		if (MBA >= MBAmax) {
+			/* MBAinc points beyond picture dimensions */
+			_Error(d, "Too many macroblocks in picture");
+			return 2;
+		}
+
+		if (MBAinc == 1) { /* not skipped */
+			if (!_decMB0(d, &macroblock_type, &motion_type, &dct_type, PMV,
+				     motion_vertical_field_select, dmvector)) {
+				d->Fault_Flag = 0;
+				return 1;
+			}
+		} else { /* MBAinc!=1: skipped macroblock */
+			if (!_skipMB0(d, PMV, &motion_type, motion_vertical_field_select,
+				      &macroblock_type)) {
+				d->Fault_Flag = 0;
+				return 2;
+			}
+		}
+
+		if (!_motionComp0(d, MBA, MBAinc, macroblock_type, motion_type, PMV,
+				  motion_vertical_field_select, dmvector)) {
+			d->Fault_Flag = 0;
+			return 2;
+		}
+		if (MBA)
+			_doMC(d, d->_810 ^ 1);
+
+		/* advance to next macroblock */
+		MBA++;
+		d->_810 ^= 1;
+		MBAinc--;
+	}
+}
+
+/* a skipped macroblock: mpeg2decode's skipped_macroblock (macroblock.c), its block clears and DC
+ * predictors the IPU's (no coefficients, the DC reset bit) -- as written there (GCC round 20a) */
+static int _skipMB0(MpegDec *d, int PMV[2][2][2], int *motion_type,
+		    int motion_vertical_field_select[2][2], int *macroblock_type)
+{
+	int ret = 1;
+
+	d->mb[d->_810].noCoef = 1;
+	d->dcr = 1;
+
+	/* reset motion vector predictors */
+	if (d->picture_coding_type == 2)
+		PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
+
+	/* derive motion_type */
+	if (d->picture_structure == 3)
+		*motion_type = 2;
+	else {
+		*motion_type = 1;
+		/* predict from field of same parity */
+		motion_vertical_field_select[0][0] = motion_vertical_field_select[0][1] =
+			(d->picture_structure == 2);
+	}
+
+	if (d->picture_coding_type == 1) {
+		_Error(d, "skiped macroblock in I picure is not allowed");
+		ret = 0;
+	}
+
+	/* clear MACROBLOCK_INTRA */
+	*macroblock_type &= ~1;
+	return ret;
+}
+
 /* a motion vector component from its code and residual: the MPEG Software Simulation Group's
  * mpeg2decode text (motion.c's decode_motion_vector), as written there (GCC round 19a) */
 void _decode_motion_vector(int *pred, int r_size, int motion_code, int motion_residual,
@@ -1408,6 +1654,68 @@ void _decode_motion_vector(int *pred, int r_size, int motion_code, int motion_re
 			vec += lim + lim;
 	}
 	*pred = full_pel_vector ? (vec << 1) : vec;
+}
+
+void _motionVector(MpegDec *d, int *PMV, int *dmvector, int h_r_size, int v_r_size, int dmv,
+		   int mvscale, int full_pel_vector);
+
+/* one prediction's motion vectors (and dual-prime's differentials): mpeg2decode's motion_vectors
+ * (motion.c), as written there, the IPU's VLC decoding standing for Get_motion_code and
+ * Get_dmvector (GCC round 20a); MV_FIELD is 0 */
+void _motionVectors(MpegDec *d, int PMV[2][2][2], int dmvector[2],
+		    int motion_vertical_field_select[2][2], int s, int motion_vector_count,
+		    int mv_format, int h_r_size, int v_r_size, int dmv, int mvscale)
+{
+	if (motion_vector_count == 1) {
+		if (mv_format == 0 && !dmv) {
+			motion_vertical_field_select[1][s] = motion_vertical_field_select[0][s] =
+				_nextBit(d, 1);
+		}
+
+		_motionVector(d, PMV[0][s], dmvector, h_r_size, v_r_size, dmv, mvscale, 0);
+
+		/* update other motion vector predictors */
+		PMV[1][s][0] = PMV[0][s][0];
+		PMV[1][s][1] = PMV[0][s][1];
+	} else {
+		motion_vertical_field_select[0][s] = _nextBit(d, 1);
+		_motionVector(d, PMV[0][s], dmvector, h_r_size, v_r_size, dmv, mvscale, 0);
+
+		motion_vertical_field_select[1][s] = _nextBit(d, 1);
+		_motionVector(d, PMV[1][s], dmvector, h_r_size, v_r_size, dmv, mvscale, 0);
+	}
+}
+
+/* one motion vector, horizontal then vertical: mpeg2decode's motion_vector (motion.c), as
+ * written there; the motion code is the IPU's table 2 (GCC round 20a) */
+void _motionVector(MpegDec *d, int *PMV, int *dmvector, int h_r_size, int v_r_size, int dmv,
+		   int mvscale, int full_pel_vector)
+{
+	int motion_code, motion_residual;
+
+	/* horizontal component */
+	motion_code = _ipuVdec(d, 2);
+	motion_residual = (h_r_size != 0 && motion_code != 0) ? _nextBit(d, h_r_size) : 0;
+
+	_decode_motion_vector(&PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
+
+	if (dmv)
+		dmvector[0] = _dmVector(d);
+
+	/* vertical component */
+	motion_code = _ipuVdec(d, 2);
+	motion_residual = (v_r_size != 0 && motion_code != 0) ? _nextBit(d, v_r_size) : 0;
+
+	if (mvscale)
+		PMV[1] >>= 1; /* DIV 2 */
+
+	_decode_motion_vector(&PMV[1], v_r_size, motion_code, motion_residual, full_pel_vector);
+
+	if (mvscale)
+		PMV[1] <<= 1;
+
+	if (dmv)
+		dmvector[1] = _dmVector(d);
 }
 
 /* dual-prime's derived vectors: mpeg2decode's Dual_Prime_Arithmetic (motion.c) over the decoder's
