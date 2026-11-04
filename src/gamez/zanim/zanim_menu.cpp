@@ -2640,11 +2640,10 @@ bool UITestUIVar(C2DAnimCmdHdr *hdr, float *dT)
     return result;
 }
 
-/* the UI variable the argument names emptied as its type has it: 0, 0.0, "" or an empty array.
- * OPEN, 2 instructions short (0x154 of 0x15C): the target tests the type held in a0 (an if-chain,
- * the tests between the bodies) and the inlined setters re-read it (lbu v0,0(s0)); here MW reuses
- * the dispatch's load in them. A switch gives the compare chain first (0x164), the type read in
- * each test or kept in a local both 0x154 */
+/* the UI variable the argument names emptied as its type has it: 0, 0.0, "" or an empty array. The
+ * type read through _zrdr's own accessor (a `const _zrdr *` view): the inlined setters' reads of
+ * the same bitfield through CUIVariable are then not merged with it, and re-read it as the target
+ * does (lbu v0,0(s0)); read as `var->type`, MW reuses the dispatch's load in them (0x154 of 0x15C) */
 bool UIClearUIVar(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *name = ArgName(hdr);
@@ -2653,7 +2652,7 @@ bool UIClearUIVar(C2DAnimCmdHdr *hdr, float *dT)
         CUIVariable *var = theUIVarManager.Find(name);
 
         if (var) {
-            int type = var->type;
+            int type = var->Type();
 
             if (type == 1) {
                 var->SetInt(0);
@@ -3331,9 +3330,11 @@ int GetUICommandType(const char *name)
 inline bool RunUICommand(C2DAnimCmdHdr *hdr, float *dT)
 {
     int i = 0;
-    int type = hdr->m_command_type;
+    int type;
 
-    if (!type) {
+    if (hdr->m_command_type)
+        type = hdr->m_command_type;
+    else {
         type = GetUICommandType(ZAnim.m_CurAnim->GetName(hdr->m_command_index));
         hdr->m_command_type = type;
     }
@@ -3351,26 +3352,27 @@ inline bool RunUICommand(C2DAnimCmdHdr *hdr, float *dT)
 
 /* UI_COMMAND's tick: the command goes to its node's 2D object when the node has one, else to the
  * handler its name registers (the names looked up and left unused are SOCOM 1's too: debug output
- * compiled away).
- * OPEN, size 0x2AC of 0x2B4: every instruction is right but the saved registers. The target has
- * handled s2, node_ref s3, anim s4, the C2D s5 -- and the scan's index in s5 too, set to 0 before
- * the type's lookup (in the delay slot of `if (!type)`), so it lives across the lookup's strcasecmp
- * calls. With the lookup in the caller and the index local to RunUICommand's scan, the first half
- * matches exactly and the index is a2 (its loop placed inline, not after the epilogue with a
- * trampoline as the target's); with the lookup moved into the inline and the index declared first
- * (as here) the tail matches and the first half takes anim s2, handled s3, the C2D s4, node_ref s5.
- * Measured without result: the six declarations permuted (tools/perm.py, best 149 from 156), the
- * dispatch written out in the tick with i and type among them (best 188 from 195). Next: the index
- * as a parameter or member the inline's caller owns, or the type's lookup as its own inline */
+ * compiled away). The scan's index is declared first in RunUICommand (the target's s5, zeroed
+ * before the type's lookup, the scan's preheader after the epilogue with a trampoline), the type an
+ * if/else (the cached arm's `b` with the byte's `andi` in its slot, round 12: 0x2AC -> the size);
+ * node_ref declared ahead of anim (17 -> 9).
+ * OPEN, 9 instructions, registers only: node_ref and the C2D trade s3/s5 (the target's colouring
+ * wants the C2D -- GetCommandC2D's own local, numbered after the caller's -- pushed ahead of anim and
+ * node_ref in the first sweep: numbered below both). Tried in round 12: the declarations permuted
+ * with a C2D local among them (tools/perm.py, 1544 steps, no gain), the C2D declared first, last or
+ * as a dead first definition, the lookup written out in the tick (13), an early-return inline with
+ * no local (0x2BC), the type through an inline of its own, the lookup in the caller, the index by
+ * reference -- build/scratch/core/v_menu*.py */
 bool zAnimUIMenuTick(_zanim_cmd_hdr *cmd, float *dT)
 {
     C2DAnimCmdHdr *hdr = (C2DAnimCmdHdr *)cmd;
     bool handled = false;
     bool done = true;
+    unsigned short node_ref;
     CZAnim *anim = ZAnim.m_CurAnim;
 
     anim->GetName(hdr->m_command_index);
-    unsigned short node_ref = hdr->node_ref_index;
+    node_ref = hdr->node_ref_index;
 
     if (node_ref) {
         C2D *c2d = GetCommandC2D(node_ref);
