@@ -1724,6 +1724,49 @@ void CZKit::SetItemPtr(int index, void *p)
 /* the current item's fire class: 1 for the rifles, 2 the pistol, 4 class 145, 3 the grenades and
  * explosives (121, 151), else none (OVL2 0x5B8760, new in SOCOM II among the kit's additions at
  * the unit's start: CHUD::Tick and the SEAL's fire point lookups call it) */
+extern "C" {
+/* the kit's first frame (OVL2 0x5C0250, unwritten) and the body's change to an item (OVL2 0x5A64C0,
+ * the SEALs' range: the item in hand, the new item's fire class and the kit's bit 13) */
+void func_005C0250(CZKit *kit, float dT);
+void func_005A64C0(CZSealBody *body, int item, CZKit::FIRE_CLASS c, bool b);
+}
+
+/* the item in hand as the kit's frame reads it (CZSealBody's m_item, zseal.h's; the view ours) */
+struct CKitBodyItem {
+    unsigned char _0[0xf79];
+    signed char m_item;   // 0xf79
+};
+
+/* the kit's flag bits set (inline: each store keeps the bool's `andi 1` unfolded, as a setter's
+ * argument; the names ours) */
+inline void SetRequestedItem(CZKit *k, bool b) { k->m_requested_item = b; }
+inline void SetBit13(CZKit *k, bool b) { k->m_bit13 = b; }
+inline void SetReticuleTypeChanged(CZKit *k, bool b) { k->m_reticuletypeChanged = b; }
+
+/* the frame's kit work: the first frame's set-up, or else an item asked for handed to the body with
+ * its fire class, and the reticle brought up to date; the request bits cleared either way (OVL2
+ * 0x5C1660: SOCOM 1's PreTick by WeaponsTick's call, SOCOM II's own body) */
+void CZKit::PreTick(float dT)
+{
+    if (m_first)
+        func_005C0250(this, dT);
+    else if (m_requested_item) {
+        int item = ((CKitBodyItem *)m_body)->m_item;
+        FIRE_CLASS c = FireClassOf(GetFiringItem(m_selected_item));
+
+        func_005A64C0(m_body, item, c, m_bit13 != 0);
+        SetBit13(this, false);
+        RETICULE_TYPE r = GetReticuleByIndex(m_selected_item);
+
+        if (r != m_curitemreticule) {
+            m_curitemreticule = r;
+            SetReticuleTypeChanged(this, true);
+        }
+    }
+    SetRequestedItem(this, false);
+    SetBit13(this, false);
+}
+
 CZKit::FIRE_CLASS CZKit::GetCurItemFireClass()
 {
     FIRE_CLASS c = FIRE_CLASS_NONE;
