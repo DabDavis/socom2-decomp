@@ -340,6 +340,31 @@ CTurret *CTurret::Create(int index)
     return t;
 }
 
+/* shown whole or hidden: SetOpacity inlined (0x3AA020). The opacity is a local: passed straight,
+ * MW substitutes the ternary for the inlined parameter at each of the six stores (0xF8 bytes) */
+void CTurret::SetVisible(bool visible)
+{
+    float opacity = visible ? 1.0f : 0.0f;
+
+    SetOpacity(opacity);
+}
+
+void CTurret::SetOpacity(float opacity)
+{
+    if (m_thermalScope)
+        m_thermalScope->m_Opacity = opacity;
+    if (m_scope)
+        m_scope->m_Opacity = opacity;
+    if (m_yawNode)
+        m_yawNode->m_Opacity = opacity;
+    if (m_pitchNode)
+        m_pitchNode->m_Opacity = opacity;
+    if (m_288)
+        m_288->m_Opacity = opacity;
+    if (m_root)
+        m_root->m_Opacity = opacity;
+}
+
 void CTurret::SetThermal(CNode *node, bool thermal)
 {
     CNode *scope = m_scope;
@@ -627,11 +652,11 @@ static inline CEntity *ControlledEntity(CEntityCtrl *ctrl)
     return ctrl ? ctrl->m_entity : 0;
 }
 
-/* the SEAL's zoom (SOCOM 1's ZOOMSTATE m_zoomstate, a signed byte enum: 0x160 there, 0x200 here --
- * zseal.h's CZSealBody does not place it) */
-static inline signed char ZoomState(CEntity *e)
+/* the SEAL's view state (zseal.h's CZSealBody::m_zoomstate at 0x200, SOCOM 1's 0x160: SOCOM II's
+ * thirteen states, a signed byte enum; the entity is the body's first base) */
+static inline ZOOMSTATE ZoomState(CEntity *e)
 {
-    return *((signed char *)e + 0x200);
+    return ((CZSealBody *)e)->m_zoomstate;
 }
 
 /* a round fired: a projectile numbered for the tracers, the weapon's fire animation (the zoomed one
@@ -664,7 +689,7 @@ void CTurret::Fire()
     bool zoomed = false;
     CEntityCtrl *c = m_control;
 
-    if (c && c && c->m_entity && ZoomState(c->m_entity) > 0)
+    if (c && c && c->m_entity && ZoomState(c->m_entity) > ZOOMSTATE_3RDPERSON)
         zoomed = 1;
 
     CZAnim *anim = m_weapon->GetFireAnim(zoomed);

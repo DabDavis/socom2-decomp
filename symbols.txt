@@ -7741,8 +7741,8 @@
 0x003A9A30 0x44 OnMissionStart__7CTurretFv  # OVL1; by hand (the wep lane: CTurret's slot +0x4C -- a "Turret" compass anchor, type 11); veh_turret.cpp
 0x003A9A80 0x41C func_003A9A80  # OVL1
 0x003A9EA0 0x110 SetThermal__7CTurretFPQ23zdb5CNodeb  # OVL1; by hand (the wep lane: finds "scope" and "thermal_scope" under the node once, kept at 0x290/0x294, and shows one or the other; the name ours); veh_turret.cpp
-0x003A9FB0 0x68 func_003A9FB0  # OVL1
-0x003AA020 0x80 func_003AA020  # OVL1
+0x003A9FB0 0x68 SetOpacity__7CTurretFf  # OVL1; by hand (the wep lane, round 21: veh_turret.cpp -- the six nodes' CNode::m_Opacity (+0x9C) set, thermal scope, scope, yaw, pitch, fire-point node, root; the SEAL's UpdateTurretScope passes its value; new in SOCOM II, the name ours)
+0x003AA020 0x80 SetVisible__7CTurretFb  # OVL1; by hand (the wep lane, round 21: veh_turret.cpp -- SetOpacity(visible ? 1 : 0) with SetOpacity inlined; IncrZoomState hides the turret for its thermal view, two OVL2 zoom-state functions (0x545EE0, 0x5463C0) call it too; new in SOCOM II, the name ours)
 0x003AA0A0 0x104 Create__7CTurretFi  # OVL1; by hand (the wep lane: a turret for NodeUniverse's element at the index when a definition prefix-matches its name, under the unit's turret limit -- ScanForTurretDefinitionHookups' creation for one node; the name ours); veh_turret.cpp
 0x003AA1B0 0xB8 __dt__7CTurretFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003AA270 0x70 __dt__Q23std46vector<P7CTurret,Q23std20allocator<P7CTurret>>Fv  # OVL1; by hand (the wep lane: ~CTurret's FreeVector temporary destroyed with -1, three this-tests); veh_turret.cpp
