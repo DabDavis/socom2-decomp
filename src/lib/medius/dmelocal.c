@@ -228,7 +228,8 @@ int func_00614290(int nA, int nB)
 typedef struct DmeDelayRecord {
     unsigned int anDelay[100];          /* 0x000 */
     unsigned int nCount;                /* 0x190 */
-    int field_194[3];
+    int nNext;                          /* 0x194: the next sample's slot */
+    int tStamp[2];                      /* 0x198: the last sample's time */
 } DmeDelayRecord;
 
 extern int func_0061C510(unsigned int nClient, void **ppRecord);
@@ -456,6 +457,14 @@ int func_006147E0(void)
     return -1;
 }
 
+extern int CurrentNetTime;              /* SOCOM 1's name: the network clock's base */
+
+/* SOCOM 1's NetResetTime (0x614838), byte-identical, before DMEmalloc as there */
+void NetResetTime(int nTime)
+{
+    CurrentNetTime = nTime;
+}
+
 void *DMEmalloc(unsigned int nSize)
 {
     void *pMemory = 0;
@@ -604,6 +613,14 @@ int func_00614F58(unsigned int nStream, void **ppStream)
     return DME_OK;
 }
 
+/* NetGetTime's body (0x615068): SOCOM 1's NetGetTime with a null test */
+int func_00615068(int *pnTime)
+{
+    if (pnTime == 0)
+        return DME_ERR_ARGUMENT;
+    *pnTime = CurrentNetTime;
+    return DME_OK;
+}
 
 int func_00615090(int *pValue, unsigned int nWorld)
 {
@@ -1654,6 +1671,57 @@ int FindFreePingSlot(void)
         if (data_0067B7B8[i].bInUse == 0)
             return i;
     return DME_MAX_PING_SLOTS;
+}
+
+
+
+extern int rt_time_get_time_stamp(void *t);
+
+/* the timebase ping's callback (0x619138, after FindFreePingSlot where SOCOM 1's TimeBasePingCallback
+ * is, rewritten): half the round trip recorded as the client's next delay sample; the session master's
+ * answer, with its time, re-bases the clock unless the median delay is shorter */
+void func_00619138(int nStatus, int nUnused, unsigned int nRoundTrip, int nRemoteTime, unsigned int nWorld,
+                   int nClient)
+{
+    DmeWorld *pWorld = 0;
+    DmeDelayRecord *pRecord;
+    int nHost;
+    int nBase;
+    int nMedian;
+    int nDelay;
+    int n;
+
+    if (func_0061C600(nWorld, &pWorld) != 0)
+        return;
+    if (pWorld == 0)
+        return;
+    if (nWorld != data_00651178)
+        return;
+    if (nClient >= pWorld->field_444)
+        return;
+    if (nStatus != 0)
+        return;
+    nHost = 256;
+    pRecord = 0;
+    func_0061C510(nClient, (void **)&pRecord);
+    if (pRecord == 0)
+        return;
+    nDelay = nRoundTrip / 2;
+    n = pRecord->nNext;
+    pRecord->anDelay[n++] = nDelay;
+    if (pRecord->nCount < 100)
+        pRecord->nCount++;
+    func_00615090(&nHost, nWorld);
+    if (nWorld == data_00651178 && nClient == nHost && nRemoteTime != 0) {
+        func_00615068(&nBase);
+        func_00614380((unsigned int *)&nMedian, nClient);
+        if (nMedian >= nDelay)
+            NetResetTime(nRemoteTime + nDelay);
+    }
+    if (n >= 100)
+        n = 0;
+    pRecord->nNext = n;
+    rt_time_get_time_stamp(pRecord->tStamp);
 }
 
 /* a data stream's record (NetGetDataStream hands one out) */

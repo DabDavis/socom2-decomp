@@ -11943,7 +11943,7 @@
 0x00614758 0x70 func_00614758  # OVL2 unaligned
 0x006147C8 0x18 func_006147C8  # OVL2 unaligned
 0x006147E0 0x58 func_006147E0  # OVL2
-0x00614838 0xC func_00614838  # OVL2 unaligned
+0x00614838 0xC NetResetTime  # OVL2 unaligned; s1:order+body (gcc r20b: SOCOM 1's NetResetTime 0x418FF8, byte-identical -- the clock base stored -- just before DMEmalloc as there; no Dme.c wrapper calls it, so the name is the body's (round 7b's rule); the timebase ping's callback 0x619138 calls it)
 0x00614848 0x40 DMEmalloc  # OVL2 unaligned; s1:calls (exact but it calls rt_memory_allocate_init_zero where the demo calls rt_memory_allocate)
 0x00614888 0x2C func_00614888  # OVL2 unaligned
 0x006148B8 0x28 NetRegisterMallocFreeCallbacks  # OVL2 unaligned; s1:exact

@@ -1685,6 +1685,7 @@
 0x00676480 0x10 gapStreamSessions  # OVL2 bss; ours (round 10b): StreamMedia.c's four sessions, one per DME world (0x228 bytes each, allocated by 0x644100, freed by 0x644258, cleared by the startup's memset of 16 bytes)
 0x00676490 0x0 gstNatServiceAddress  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetNatServiceAddress +1)
 0x006764A8 0x0 gstClientAddressList  # OVL2 bss; s1:data-exact (size SOCOM 1's; via MediusGetClientAddrList +1)
+0x00676698 0x4 CurrentNetTime  # OVL2 bss; s1:data by hand (the gcc lane, round 20b): SOCOM 1's CurrentNetTime (0x5B2EC0): NetResetTime 0x614838 stores it and NetGetTime's body 0x615068 reads it, as SOCOM 1's NetResetTime and NetGetTime do; the timebase ping's callback 0x619138 re-bases it through NetResetTime
 0x0067A7A8 0x1000 NetObjectStatus  # OVL2 bss; s1:data-exact (size SOCOM 1's; via NetFreeAllObjects)
 0x0067C59C 0x4 NetFieldCount  # OVL2 bss; s1:data by hand (the gcc lane, round 20b): SOCOM 1's NetFieldCount (0x5CF9D0): 0x623F30 tests it below 1024, indexes NetFieldList by it and bumps it, as SOCOM 1's NetObjectField
 0x0067C5A0 0x4 NetStructureCount  # OVL2 bss; s1:data by hand (the gcc lane, round 20b): SOCOM 1's NetStructureCount (0x5CF9D4, after NetFieldCount as here): 0x624180 tests it below 16, indexes NetStructureList by it, stores and bumps it, as SOCOM 1's NetRegisterStructure
