@@ -835,4 +835,13 @@ const wchar_t *ctype<wchar_t>::do_narrow(const wchar_t *low, const wchar_t *high
     return high;
 }
 
+/* The wide facets' ids (0x1D5620, 0x1D5624) and so this unit's static initialiser, __sinit_iostream.cpp
+ * (0x1D4BF0, round 6): locale::id has a constructor, so each id of a class template's instance gets a
+ * guard byte (`@GUARD@id__...`, 0x1D5628 and 0x1D562C after the ids, in their order), which the
+ * initialiser tests and sets -- the empty constructor itself leaves nothing (SOCOM 1's guard-only
+ * `__sinit_iostream.cpp`, whose 2.4 build names the guard `__init__id__Q23std8ctype<w>`). locale.cpp
+ * defines the char pair after its classic table. */
+locale::id codecvt<wchar_t, char, int>::id;
+locale::id ctype<wchar_t>::id;
+
 }

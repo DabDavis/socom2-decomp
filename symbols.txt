@@ -1360,8 +1360,8 @@
 0x001CF830 0x44 inflate_mask  # MAIN data: zlib infutil.c, uInt[17]
 0x001D4B00 0x74 __sinit_zmalloc.cpp  # MAIN; by hand (MAIN runtime lane round 2): the pool unit's static initialiser -- constructs the six pools (24-byte first, 2200 blocks, ... 4-byte last, 8800) at 0x1D5690..0x1D5780; the unit's file name ours; src/main/zmalloc.cpp
 0x001D4B80 0x64 func_001D4B80  # MAIN
-0x001D4BF0 0x28 func_001D4BF0  # MAIN
-0x001D4C20 0x370 func_001D4C20  # MAIN
+0x001D4BF0 0x28 __sinit_iostream.cpp  # MAIN; by hand (MAIN runtime lane round 6): iostream.cpp's static initialiser -- the guards of the wide facets' ids (@GUARD@id__Q23std14codecvt<w,c,i> 0x1D5628, @GUARD@id__Q23std8ctype<w> 0x1D562C) tested and set, as SOCOM 1's guard-only __sinit_iostream.cpp (0x469FB0) does for its one; byte-exact from the ids' definitions; src/main/msl/iostream.cpp
+0x001D4C20 0x370 __sinit_locale.cpp  # MAIN; by hand (MAIN runtime lane round 6): locale.cpp's static initialiser -- the classic table __ctype_map's 100 multi-class entries (built with the mask's operator|, a function: no constant expression), then the char facets' id guards (0x1D5658, 0x1D565C), as SOCOM 1's __sinit_locale.cpp (0x469FD0) tests and sets its three; byte-exact; src/main/msl/locale.cpp
 0x001E7040 0xB4 main  # OVL1; s1:calls by hand (FTSCore's first function, main.cpp's: SOCOM 1's main -- GetThreadId, ChangeThreadPriority(5), COurGame::StartEngine and CGame::StartPlay on theGame, then theGame's Tick on zVid.frameTime forever; SOCOM II hands argc/argv to 0x1EABD0 first and sets the UI's VERSION_STRING. The overlay is its own link, so its main does not clash with the boot's, 0x1C4CC0)
 0x001E7100 0x2D8 __dt__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001E73E0 0x8 StopPlay__8COurGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
