@@ -2001,6 +2001,31 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 29** (CMission::CMission(), CMission::AI_PARAMS::Reset, the respells):
+  - A LITERAL ASSIGNED THROUGH AN INLINE `operator=` WHOSE ERASE ARM FOLDS AWAY LEAVES 16 DEAD FRAME BYTES -- the target's:
+    CMission() 0x2ADBC0's default text must go through CSaferStr's operator= (a 96-byte frame; calling assign() directly
+    gives the same code in 80, and dead locals, an allocator temporary or a volatile pointer add nothing);
+  - MW constructors return `this`: a store-only member that sets no v0 is not a constructor, even when a constructor
+    calls it (CMission::AI_PARAMS::Reset 0x2AB360, called by m_ai_params' inline constructor -- the nesting and the name
+    ours); MW's auto-inliner counts statements: a function of 15 stores and its return (16) is never auto-inlined, the
+    same with two stores written as one chained assignment (15) is;
+  - a 29-bit `unsigned int` bitfield after three 1-bit `unsigned char` fields packs into bits 3-31 of the same word (the
+    1-bit fields accessed as bytes, the 29-bit one as a word); MW keeps stores in source order around an unrelated
+    bitfield's read-modify-write;
+  - CMission() is SOCOM 1's constructor over SOCOM II's members: the block at +0x144 is SOCOM 1's m_ai_params (its inline
+    constructor calls the out-of-line Reset, then sets the player grid fields), the message ring has a constructor of its
+    own, the two career-stats blocks construct through Clear(), the SeeFarther stores (200, 300) come before the bit
+    setters; its last store is +0x1980, so theMission is at least 0x1984 bytes (data.txt corrected at integration, no
+    score change); its template tail brings reserve<SCamPathPoint> 0x2B1030;
+  - fts_remote.cpp cannot include znet.h -- its CZNetwork uses members znet.h lacks (GetGameConnectionIndex,
+    zNetGetGameSessionMasterClientIndex, zNetGetObject, m_master_index, a byte-shaped TypeRTimeFixStruct): it declares the
+    schedule class exactly as znet.h does, so the two constructors are called by name and the forwarders are gone;
+    C2DString's m_charheight -> m_length rename was made and proven over every hand-written unit, then reverted while the
+    UI ran (build/scratch/states-r29/respell.patch);
+  - open: LoadVehicles 0x2B2E50 (0x5D8) and its push_back 0x2B3DD0 (the entity-list walk keeps its iterators in stack
+    slots copied through $f0), func_002A8C90 (0x298: 0x2A96B0's box corners; the only caller of ai::_min<float>'s copy
+    0x2AFC60), database.cpp's 0x1E9120 (comes with hand-writing UnloadTheWorld 0x1E8FE0) and 0x1EA4B0 / 0x1EA8D0 (with
+    testLoad 0x1E91C0, 0x1090).
 - **Tells from the weapons, round 20** (__sinit_vis_vu.cpp, CVisual's light tints, the header's lights):
   - AN INITIALISER'S STATICS, DEFINED IN ITS ORDER WITH THEIR OWN CONSTRUCTORS, REPRODUCE IT WHOLE: __sinit_vis_vu.cpp
     0x404570 (0x470) is SOCOM 1's m_customGlobalLight[4], m_stack_vid (a plain std::stack<void *>), m_basefog_color,

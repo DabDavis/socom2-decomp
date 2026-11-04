@@ -3226,7 +3226,7 @@
 0x002AA910 _OnMissionComplete__Fv
 0x002AAB00 tick__8CMissionFfPv
 0x002AB260 GetPoint__8CCamPathFiiP6CPnt3DP6CPnt3DPPCc
-0x002AB360 func_002AB360
+0x002AB360 Reset__Q28CMission9AI_PARAMSFv
 0x002AB3F0 Close__8CMissionFv
 0x002ABA00 __dt__Q23std72vector<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>Fv
 0x002ABA60 swap__Q23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>FRQ23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>
@@ -3240,6 +3240,7 @@
 0x002ACA30 func_002ACA30
 0x002ACAD0 CreateCompassNavPoints__8CMissionFv
 0x002AD940 __dt__8CMissionFv
+0x002ADBC0 __ct__8CMissionFv
 0x002ADF10 NVGNoiseTick__FP14_zanim_cmd_hdrPf
 0x002AE340 func_002AE340
 0x002AE3A0 func_002AE3A0
@@ -3278,6 +3279,7 @@
 0x002AFBB0 clear__Q23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>Fv
 0x002AFBC0 at__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi
 0x002B00E0 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi
+0x002B1030 reserve__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi
 0x002B1220 __dt__Q23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>Fv
 0x002B1290 clear__Q23std64__vector_deleter<11CLadderData,Q23std24allocator<11CLadderData>>Fv
 0x002B12A0 __dt__Q23std64__vector_deleter<11CLadderData,Q23std24allocator<11CLadderData>>Fv
