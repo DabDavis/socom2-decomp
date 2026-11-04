@@ -526,7 +526,8 @@ public:
     std::vector<CSaferStr> m_libraries;          // 0x0: LIBRARY, LIBRARIES (UIVAR <name> by a variable's value)
     CSaferStr m_font;                            // 0xC: FONT
     CSaferStr m_background;                      // 0x18: BACKGROUND's FILENAME
-    unsigned char _24[0x30 - 0x24];
+    CSaferStr m_24;                              // 0x24: SOCOM 1's third string, which its loader clears and
+                                                 // SOCOM II's leaves (zui.cpp's 0x367430 constructs it)
     unsigned char m_backgroundType;              // 0x30: BACKGROUND's TYPE: IMAGE 0, MPEG 1, MPEG_LOOPING 2
     std::vector<CSaferStr> m_scriptLibraries;    // 0x34: SCRIPT_LIBRARY
     std::vector<ActionItem> m_animations;        // 0x40: ANIMATIONS

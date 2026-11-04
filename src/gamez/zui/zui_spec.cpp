@@ -8,12 +8,23 @@
  * pinned (they call it). CDesignDlgObj's destructor and assignment are ordinary functions here
  * (0x37D9B0, 0x37D910: zui.cpp's tail and the tail copies call them), the assignment pinned.
  *
+ * Round 16 wrote the dialog design's loaders (SOCOM 1's CGameDlgDesign::LoadFromRdr 0x381550 and
+ * LoadModels 0x3812B0, byte-exact; LoadDlgObjects 0x383360 open, below), whose requests bring the
+ * CSaferStr and CDlgDesignModel instances into the tail: resize<CSaferStr> 0x383800, the model
+ * vector's insert 0x384ED0 with its __fill_n 0x385370 and __copy_backward 0x385410, its __copy
+ * 0x384D50, CSaferStr's assignment 0x384E00 and the model deleter's clear 0x36AE50 byte-exact.
+ * OPEN, the tail's string pieces: resize<CDesignDlgObj> 0x383960 (6) and resize<CDlgDesignModel>
+ * 0x383AA0 (5) differ only in the temporary's SECOND string's inlined destructor -- the target keeps
+ * the member's address in a0 and reads the text pointer through it (`lw a0,8(a0)`), MW here reads
+ * it from the frame (`lw a0,36(sp)`; the first member, at offset 0, is the target's in both);
+ * `#pragma inline_max_auto_size(16..40)` at the unit's end changes neither (include/string's
+ * destructor shape, the MSL lane's); the CSaferStr erase 0x383BC0 (15) and __copy 0x383D00 (the
+ * copy here calls is_long() out of line), the model vector's erase 0x384BD0 (20) and copy
+ * constructor 0x3854C0 (one saved register short: the strings' copy constructors' shape).
  * OPEN, not written yet: the button family's constructors (CButtonSpec's 0x380620, 0xC8C bytes,
  * CRadioStripSpec's 0x37DA50, CUIListBoxSpec's 0x37EAB0), the list box's CreateDisplayObj 0x37E8B0
- * (CUIListBox's constructor, zui_2d.cpp's class), LoadDlgObjects 0x383360 and the dialog design's
- * loaders 0x3812B0/0x381550 (SOCOM 1's CGameDlgDesign::LoadModels and LoadFromRdr), and the rest
- * of the template tail 0x3836E0-0x3855FF: the CSaferStr and CDlgDesignModel instances come with the
- * loaders; the ActionItem and CDesignDlgObj erases (0x383E00 and 0x384410) need MSL's destroy loop
+ * (CUIListBox's constructor, zui_2d.cpp's class), and the rest of the template tail
+ * 0x3836E0-0x3855FF; the ActionItem and CDesignDlgObj erases (0x383E00 and 0x384410) need MSL's destroy loop
  * in the class vector's erase (probed: erase<ActionItem> byte-exact with `for (p = first + n; p < e;
  * ++p) p->~T();` after the copy -- a request), the CDesignDlgObj ones also MSL's out-of-line
  * std::copy (0x3845B0) and its kin (0x384AA0, 0x384B00, 0x384B70). */
