@@ -2032,6 +2032,21 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 31** (testLoad/testUnload, the persona callback, UnInitialize, CMission::Open's name):
+  - MW 3.0 KEEPS v0 LIVE FROM THE ENTRY AT A VOID OR INT RETURN along any path with no call, so temporaries there take v1;
+    a float return uses $f0 and leaves v0 free (build/scratch/states-r31/p_ret.cpp) -- SOCOM 1's older build used v0 in
+    the same function, a tell between the two compilers: CZNetGame::UnInitialize 0x2A75F0 (open since round 25) matches
+    only declared `float` with no value returned, a reproduction, not evidence the original was float;
+  - MW puts the higher-numbered register first in commutative operations: for `p->a[i]` and `x |= y` it handles the index
+    and the right-hand side first, and the target's base-first order comes from a base that is a plain pointer value (the
+    layout parser 0x2C67F0, 12 off, keeps the natural spelling with the measurements in its OPEN comment);
+  - assigning a const_iterator from `GetEntityList()` reproduces the target's begin copies with the end sentinel kept in
+    s0, as CEntity::PreTickAll -- the shape behind LoadVehicles' "iterators in stack slots"; RemotePersonaCreationCallback
+    0x2C5830 matched once RemotePersonaUpdateCallback was pinned (the target calls it out of line: fts_net_persona.cpp 47 of
+    47);
+  - testLoad 0x1EA720, testUnload 0x1EA6E0 and LoadWorld 0x1E91C0 are SOCOM 1's names by the same calls at the same
+    places; CMission::Open 0x2AC410 takes the name alone (its body never reads a2, its only caller never sets it); data
+    m_listener__4CSnd 0x48DB48 (SOCOM 1's gp-26544).
 - **Tells from the online lobby, round 17** (JoinGame twice, the game-players callback, zNetCreateObject, znet.h's members):
   - a call result tested `== 0` with the success arm first (`f() == 0 ? n : -1`) gives the if-assign layout -- the load on
     the fall-through, the constant in the retargeted branch's delay slot; `f() ? -1 : n` and `!f() ? n : -1` lay the
