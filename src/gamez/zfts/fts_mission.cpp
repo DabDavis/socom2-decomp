@@ -270,6 +270,9 @@ public:
     static bool tick(float dT, void *data);   /* 0x2AAB00 */
     bool ZAnimLoad();
     bool LoadMissionCams(CRdrFile *rdr);
+    bool LoadObjectiveCams(CRdrFile *rdr);   /* 0x2A4D30 */
+    void Sample_ExtractionLoc();   /* 0x2A42B0 */
+    void Close();   /* 0x2AB3F0 */
     void InitalizeTeamValves();   /* 0x2B2840 */
     void RefreshTeamValves();   /* 0x2B23A0 */
     void CreateCompassNavPoints();
@@ -1337,6 +1340,15 @@ public:
 
 CZSealBody *ftsGetPlayer();
 
+/* the map actions (fts_action.cpp's CNodeAction: only the static open) and the AI maps' fix-up
+ * (SOCOM 1's names, at Open's calls) */
+class CNodeAction {
+public:
+    static void Open(zdb::CWorld *world, const char *name);   /* 0x2B4F40 */
+};
+
+void ftsFixupAiMap(CAiMap *map);   /* 0x2A8140 */
+
 /* the pickups (OVL2's CPickup: only its open) */
 class CPickup {
 public:
@@ -1355,8 +1367,6 @@ void func_003448D0(const char *name);   /* (the jukebox's lists) */
 void func_002DDE40(CRdrFile *rdr);   /* (SOCOM 1's CMaterialExArray::ReadMaterials) */
 int func_002DE9E0(const char *name);   /* (SOCOM 1's CMaterialExArray::ResolveMaterialIndex) */
 extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
-void func_002A4D30(CMission *mission, CRdrFile *rdr);   /* (SOCOM 1's CMission::LoadObjectiveCams) */
-void func_002B4F40(zdb::CWorld *world, const char *name);   /* (SOCOM 1's CNodeAction::Open) */
 void func_003D03C0();   /* (SOCOM 1's CZWeapon::OpenDecals) */
 void func_005A4CF0();   /* (OVL2: SOCOM 1's CZSealBody::InitDecalHandles) */
 void func_00574C30();   /* (OVL2) */
@@ -1365,8 +1375,6 @@ void func_005A4CE0();   /* (OVL2: SOCOM 1's CZSealBody::InitDatabaseHandles) */
 void func_00295660();
 void func_005EC6A0();   /* (OVL2: SOCOM 1's CSealUnit::CreateSinglePlayerUnits) */
 void func_005ECCD0();   /* (OVL2: SOCOM 1's CSealUnit::CreateMultiPlayerUnits) */
-void func_002A8140(CAiMap *map);   /* (SOCOM 1's ftsFixupAiMap) */
-void func_002A42B0(CMission *mission);   /* (SOCOM 1's CMission::Sample_ExtractionLoc) */
 }
 
 /* the mission opened: the database's archive and string tables, the vectors reserved, the compass,
@@ -1446,13 +1454,13 @@ bool CMission::Open(const char *name, int load_ai)
     CRdrFile *rdr = zrdr_read("hudobjectives.rdr", 0, 0);
 
     if (rdr) {
-        func_002A4D30(this, rdr);
+        LoadObjectiveCams(rdr);
         zrdr_free(rdr);
     }
     rdr = zrdr_read("missioncams.rdr", 0, 0);
     LoadMissionCams(rdr);
     zrdr_free(rdr);
-    func_002B4F40(world, "actions.rdr");
+    CNodeAction::Open(world, "actions.rdr");
     CreateLadderTable();
     CCharacterModelCache::m_ModelCache.clear();
     func_003D03C0();
@@ -1481,14 +1489,14 @@ bool CMission::Open(const char *name, int load_ai)
     CAiMaps::iterator i, e = AiMaps.end();
 
     for (i = AiMaps.begin(); i != e; ++i)
-        func_002A8140(*i);
+        ftsFixupAiMap(*i);
     world->InitDescendantsDI();
     world->InitDescendantsVisuals();
     if (theNetwork.m_bNetwork) {
         m_sealbombshack = world->FindChild("seal_tent", true);
         m_terroristbombshack = world->FindChild("terrorist_tent", true);
     }
-    func_002A42B0(this);
+    Sample_ExtractionLoc();
     m_state = MISSION_RUNNING;
     return true;
 }
