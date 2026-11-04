@@ -1015,6 +1015,8 @@ public:
     void BanSelfFromGame();
     void SetConnectionInfo(struct NetConnectionInfo *info);
     void GetMissionSequence(unsigned char *idx, unsigned char *seq);
+    /* our game's details for the menus (the room unit's, 0x2E24D0; the name ours) */
+    void GetCurrentGameInfo();
     void SetMissionSequence(unsigned char idx, unsigned char *seq);
     void ResetMissionSequence();
     int AdvanceMissionSequence();

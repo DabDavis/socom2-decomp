@@ -341,8 +341,92 @@ class CMultiMissionList {
 public:
     CMultiMission *Find(int id, bool multi);
     signed char GetMultiValue(int id);
+    signed char GetMultiValue(const char *name);
 };
 extern "C" CMultiMissionList data_00441650;
+
+const char *GetDatabase();   /* (the menus': the mission's database name) */
+
+/* the game we are in described for the menus' GAME_INFO_DETAILS: its type (MEDLEY when its
+ * missions are of more than one), its round count and time, friendly fire, respawns and the
+ * equipment limit, a line each (SOCOM II's; OVL1 0x2E24D0: UIGetGameInfo calls it on theLobby
+ * when it is asked about our own game; the name ours) */
+void CZOnlineLobby::GetCurrentGameInfo()
+{
+    CUIVariable *var = theUIVarManager.Add("GAME_INFO_DETAILS", 0, UIVL_TEMPORARY);
+
+    *var = "";
+    CRdrEditor ed;
+
+    ed.push(0);
+    unsigned char seq[32];
+    char text[16];
+    unsigned char idx;
+    bool medley = false;
+
+    GetMissionSequence(&idx, seq);
+    unsigned char type = data_00441650.GetMultiValue(seq[0]);
+
+    for (int i = 1; i < 32 && seq[i]; i++)
+        if (type != (unsigned char)data_00441650.GetMultiValue(seq[i]))
+            medley = true;
+    if (medley)
+        ed.addstringnode("MEDLEY");
+    else
+        switch ((unsigned char)data_00441650.GetMultiValue(GetDatabase())) {
+        case 2:
+            ed.addstringnode("DEMOLITION");
+            break;
+        case 4:
+            ed.addstringnode("EXTRACTION");
+            break;
+        case 5:
+            ed.addstringnode("SUPPRESSION");
+            break;
+        case 1:
+            ed.addstringnode("BREACH");
+            break;
+        case 3:
+            ed.addstringnode("ESCORT");
+            break;
+        default:
+            ed.addstringnode("UNKNOWN");
+            break;
+        }
+    ed.addstringnode("\n");
+    ed.addstringnode("ROUND COUNT:");
+    sprintf(text, "%d", CValve::Create("mp_max_rounds", VALVE_TYPE_1)->m_value);
+    ed.addstringnode(text);
+    ed.addstringnode("\n");
+    ed.addstringnode("ROUND TIME:");
+    sprintf(text, "%d min.", CValve::Create("mp_max_round_time", VALVE_TYPE_1)->m_value / 60u);
+    ed.addstringnode(text);
+    ed.addstringnode("\n");
+    if (CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->m_value) {
+        ed.addstringnode("FRIENDLY FIRE");
+        ed.addstringnode("\n");
+    }
+    if (CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->m_value) {
+        ed.addstringnode("RESPAWN");
+        ed.addstringnode("\n");
+    }
+    if (CValve::Create("EQlimit", VALVE_TYPE_1)->m_value) {
+        switch (CValve::Create("EQlimit", VALVE_TYPE_1)->m_value) {
+        case 1:
+            ed.addstringnode("PISTOLS ONLY");
+            break;
+        case 2:
+            ed.addstringnode("SHOTGUNS ONLY");
+            break;
+        case 3:
+            ed.addstringnode("SNIPERS ONLY");
+            break;
+        }
+        ed.addstringnode("\n");
+    }
+    ed.pop();
+    var->Set(&ed);
+}
 
 /* the game's missions pass the menu's type filter (0x44F528): all of one type, and the type the
  * filter names -- 248-252 a game type, anything else the one mission (SOCOM 1's took the type;
