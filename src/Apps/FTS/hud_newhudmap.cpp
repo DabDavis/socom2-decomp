@@ -1,9 +1,16 @@
 /* hud_newhudmap.cpp -- the HUD's map (OVL1 0x208FD0-0x20CFxx): SOCOM 1's unit (its DWARF names it,
- * Z:\dev\Apps\FTS\hud_newhudmap.cpp). The explosives' items and a few small functions so far.
- * CZNewHudMap's members to its matrix are SOCOM 1's, 4 lower (C2D's); after it SOCOM II
- * reordered them -- the circle clipper, the centre and the full-screen flag right after the matrix,
- * where SOCOM 1 kept its two background bitmaps -- and only those are placed. Defined in reverse
- * of their image order (-inline deferred). */
+ * Z:\dev\Apps\FTS\hud_newhudmap.cpp). CZNewHudMap's members to its matrix are SOCOM 1's, 4 lower
+ * (C2D's); after it SOCOM II reordered them -- the circle clipper, the centre and the full-screen
+ * flag right after the matrix, where SOCOM 1 kept its two background bitmaps -- then the objective
+ * list and SOCOM 1's last three words. Defined in reverse of their image order (-inline deferred).
+ * Written: the constructor, the explosives' items, CalcNewMatrix, UninitMap, RemoveItem and the
+ * small ones; FrameObjective open. The rest by SOCOM 1's order and calls (unwritten, unnamed):
+ * 0x209350 TickFullScreenAnims (it calls GetScrollPermissions), 0x209AE0 HudTick (CHUD::Tick's
+ * call), 0x209EE0 TickFullScreenMap (HudTick's; SOCOM 1's TickCompassMap inlined into HudTick),
+ * 0x20A120/0x20A330 (TickFullScreenMap's two calls), 0x20A780 SwitchMapToFullScreen (HudTick's; it
+ * calls 0x20BE00), 0x20AAC0 GetScrollPermissions, 0x20BE00 SetupNorthIndicator(CZSealBody *) (the
+ * north lines twice each), 0x20C080 the legend's builder (InitMap's call; the nine labels and
+ * bitmaps through MapCompass's anchor images and the string table). */
 
 #include "hud_newhudmap.h"
 #include "hud_claymoremapitem.h"
