@@ -2060,6 +2060,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 39** (zui_2d.cpp's map control complete, hud_actionbitmap.cpp 8 of 8, hud_tcm.cpp's bars):
+  - `c = f(); c = c && g(); ...` gives the target's materialised bool test at every join, a single `&&` chain branches
+    straight through (CUIMapCtrl::ZoomOut 0x36BFF0, OnPan 0x36CA30); `frame <= s + 1` gives `slt at`, `s + 1 >= frame` puts
+    the result in v0; `if (x > m) x = m;` gives the one-arm clamp;
+  - `name ? name : def` inside an inline called with 0 leaves a `b` over the dead `move zero` arm, a constant condition
+    removes the arm (CActionTxtr() 0x220CA0, open since round 32); an inline returning a CPnt3D by value, used as `p =
+    Inline(p, ...)`, reproduces the target's block copies and its field-by-field copy back (ZoomIn 0x36C3B0, open since
+    round 30 -- a rewrite brought it under 15 statements, so the target's out-of-line call needs `#pragma auto_inline off`);
+  - an `lb` through the field's address after an `lbu` test means a reinterpreting reference, `(signed char &)field`; the
+    plain argument sign-extends the loaded value instead (CActionTxtrMachine::Add 0x2209C0); vtable calls on a global
+    object's members with the address rebuilt at each use go through an inline accessor returning a reference -- a
+    reference local is kept in a saved register, the member used directly devirtualises (TickTransparencyFade 0x2200C0);
+  - declaring loop-body locals, uninitialised, before an inner walk swaps their saved registers with the walk index's
+    (tcmSetNodeActions 0x236260); SOCOM II's CActionTxtrMachine is 0x200 bytes (the driver at 0x1F4, none of SOCOM 1's
+    speech meters), ActionTxtrMachine_HUD 0x40D550 defined in hud_actionbitmap.cpp, its functions in SOCOM 1's order.
 - **Tells from the kit and AI states, round 32** (AnimSet laid out, its setters and pair, the item model, the line of fire):
   - MW shares one sign-extension of a narrow parameter between an inlined callee and the caller's later uses; passing the
     argument cast to its own type (`AnimId((AnimType)rifle)`) makes it a separate expression, so the caller re-extends as
