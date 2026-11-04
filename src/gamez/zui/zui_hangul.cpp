@@ -1,9 +1,10 @@
 /* zui_hangul.cpp -- the soft keyboard's Korean input (OVL1 0x3903A0-0x3941CF, its initialiser
  * 0x403770 building two vectors and a word at 0x49ED08-0x49ED40; its template tail ends on the two
  * vectors' destructors the initialiser registers, 0x3940F0 and 0x394170, so 0x3941D0-0x39441F --
- * CSkbKeyProps' members zui_skb.cpp calls, ~CSkbKeyProps 0x394370, SkbLoadUiParams -- open the
- * next unit: the members are zui_skbview.cpp's since the UI lane's round 20; SkbLoadUiParams stays
- * here until that is measured, as nothing inlines it): the 33 jamo by name, the 2-set
+ * CSkbKeyProps' members zui_skb.cpp calls, ~CSkbKeyProps 0x394370, SkbLoadUiParams 0x3943E0 -- open
+ * the next unit, zui_skbview.cpp (the members since the UI lane's round 20, SkbLoadUiParams since
+ * round 21: its two strings sit in that unit's data, 0x3FB398/0x3FB3A8 between s_padKeys 0x3FB388
+ * and 0x394DA0's valve name 0x3FB3B8)): the 33 jamo by name, the 2-set
  * keyboard's letters mapped to jamo (shifted and not), the syllable being composed, and the rdr
  * helpers the keyboard units share (an rdr array's count, an rdr array walked by index). SOCOM 1 has
  * none of it: the file's name and every name here are ours. Defined in reverse of their image order
@@ -49,9 +50,6 @@
 #include "zui.h"
 #include "zui_skb.h"
 #include "zui_hangul.h"
-
-/* the keyboard display unit's reader of UiParams.rdr (0x397070) */
-extern "C" void func_00397070(CRdrFile *file);
 
 /* the Korean letters (jamo), by name in alphabetical order, as the table of their names lists them
  * (the names ours: the table's own, e.g. Kiyeok, SsangKiyeok, A_Hang) */
@@ -205,15 +203,6 @@ bool SkbHangulCompose(CSkbPieces *pieces, std::vector<char> *jamo);
 static inline int SafeStrcasecmp(const char *a, const char *b)
 {
     return a ? (b ? strcasecmp(a, b) : 1) : -1;
-}
-
-/* the keyboards' display read again from UiParams.rdr (CMission::Init calls it; the image puts it
- * just before the display unit's first function, so it may be that unit's) */
-void SkbLoadUiParams()
-{
-    CRdrFileHolder file("UiParams.rdr", "data/common");
-
-    func_00397070(file);
 }
 
 /* the complete characters (CompleteCharacter: each a Seq of production names, by their index in the

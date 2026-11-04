@@ -330,6 +330,8 @@ public:
     int GetClass145Index();
     /* the binoculars added unless held (OVL2 0x5C7450; SOCOM 1's) */
     void SetupBinocular();
+    /* an item's model instanced and its node kept in m_itemptr (OVL2 0x5C72C0; SOCOM 1's) */
+    bool InitItemModel(const char *model, const char *name);
     /* the explosive's damage taken from the first explosive's ammunition (OVL2 0x5C77B0, new in
      * SOCOM II: PostSetupItems calls it; the name ours) */
     void SetupExplosiveDamage();

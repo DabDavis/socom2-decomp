@@ -6,8 +6,8 @@
  * zui_var.cpp is ours (the press beta's zui.cpp may be it).
  *
  * Round 19: the manager's Serialize and the variable's Format (0x3860F0, SOCOM 1's) byte-exact.
- * Round 20: RefreshUIVar 0x385E50 byte-exact and _Refresh 0x385EA0 written (OPEN: byte-exact but
- * two calls to rows the rdr units have not named, below). OPEN, not written yet: 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
+ * Round 20: RefreshUIVar 0x385E50 and _Refresh 0x385EA0 byte-exact (the latter once the integrator
+ * named its two rdr callees). OPEN, not written yet: 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
  * (0x386910-0x3869EF, 0x386AB0) and the thunks stand as generated drafts. Round 13: CUIVariable's
  * copy constructor 0x386BF0 byte-exact (zui.h's CUIVariable : _zrdr, UIVarMixin); Attach written,
  * open (below). */
@@ -31,9 +31,8 @@ extern "C" int func_00335E20(_zrdr *a, _zrdr *b);
  * three copies with an `unsigned` counter -- an `int` counter, i*8 recomputed each pass, gives two).
  * The cast picks zui.h's const String() (the one over IsString, as zrdr.h has it): the non-const one
  * stays flat for LoadFromRdr, whose type test and String() share one load in the target.
- * OPEN, the code byte-exact but two calls: the out-of-line IsString 0x32C650 and String 0x335700 are
- * the rdr units' rows (func_0032C650, func_00335700 in the map), to be named IsString__5_zrdrCFv
- * and String__5_zrdrCFv as zrdr.h declares them */
+ * Byte-exact since the integrator named the out-of-line IsString 0x32C650 and String 0x335700 (the
+ * rdr units' rows) IsString__5_zrdrCFv and String__5_zrdrCFv, as zrdr.h declares them */
 void _Refresh(_zrdr *rdr, CSTable *table)
 {
     switch (rdr->type) {

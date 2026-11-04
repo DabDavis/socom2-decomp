@@ -2060,6 +2060,86 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 32** (AnimSet laid out, its setters and pair, the item model, the line of fire):
+  - MW shares one sign-extension of a narrow parameter between an inlined callee and the caller's later uses; passing the
+    argument cast to its own type (`AnimId((AnimType)rifle)`) makes it a separate expression, so the caller re-extends as
+    the target does (AnimSet's SetPistolAnim 0x5E1CF0, SetRifleFPAnim 0x5E1BF0, SetPistolFPAnim 0x5E1AF0, open since
+    round 10);
+  - a 4-pass loop stepping a struct pointer with the counter (`for (i = 0; i < 4; i++, b++) b->f = x;`) unrolls two at a
+    time with one pointer step, written `a[i].f` MW folds all four offsets; AnimSet's constructor 0x5E5350 and destructor
+    0x5E50E0 are `new AnimSet[n]`'s pair, SOCOM 1's eight blend pointers embedded CBlendable members;
+  - `if (!(m = f()))` tests v0 with the copy in the delay slot, `m = f(); if (!m)` copies first (one more); locals whose
+    address is taken (push_back's `const T &`) get frame slots by declaration order, highest address first -- declared
+    uninitialised at the top they order freely; `T id = 255; if (w) id = w->m_ID;` keeps the target's two alignment nops
+    where `w ? w->m_ID : 255` drops them; in a `&` of two fields the one read through a local pointer loads first; a
+    result declared uninitialised at the top and assigned just before its loop keeps its register unzeroed;
+  - CZKit::InitItemModel 0x5C72C0, GetReticuleByIndex 0x5BE300 (GetCurZoom inlined) and ai::CheckLineOfFire 0x609DF0
+    (SOCOM 1's); anim.cpp's tail emits the name list's vector<string> deleter pieces 0x5E6120 / 0x5E6190 and, since the
+    MSL's round 21, the string's reserve / replace<PCc> / assign<PCc>; FT_COMMAND is unsigned in the kit's units (a signed
+    byte with CMD_NONE = -1 loses 9: AllowCommand, OnCommand, CTComm::Parse, six of seal_unit.cpp's).
+- **Tells from the SEALs, round 31** (the AI controller's net state and fire timing, the animate and deploy states):
+  - `switch (st.m_code = f())` gives the target's `andi v1,v0,0xff`; switching on `st.m_code` after the store re-reads the
+    byte with `lbu` (CSealCtrlAi::GetAiNetState 0x56F6C0); a bool call's result inside a materialised `&&` gets only
+    `sltu`, `(int)f() && ...` the target's `andi 0xff` and `sltu` (FireWhenReady 0x563BD0);
+  - two flag tests through an inline accessor share one load and leave the later read-modify-write its own reload; written
+    in place, MW reuses the first load and fills no delay slot; `x > k` materialises with `bc1f` and the 1 in its delay
+    slot, `!(x <= k)` adds an `xori`;
+  - include/list's non-const `front()` and `erase(begin())` in one loop make MW keep `&end_.next_` in a saved register;
+    reading the front through the const `begin()` gives the target's plain loads (CAiSAnimate::Tick 0x55A920); `if (s != 3)
+    {...} else s = 3;` gives `move s,v0` (the compare's constant register) with that arm laid last;
+  - an if-chain value read through an inline (`PhaseOf(this)`) makes the callee's own test reload the member, `int step =
+    m_phase` lets MW reuse the load (CAiSDeploy::OnSignal 0x55E3B0); uninitialised declarations at the top in one
+    particular order fixed the static CZSealBody::AcquireRemoteAi 0x56F210 (the six orders of three locals 2-12 off,
+    declaring them where defined 37 off);
+  - zseal.h's AI_FIREPARAMS is embedded at the controller's 0x370 (m_spread at +0x60, m_timeout, m_delay); slot 0xA4's
+    real type is AI_STATE (0x574800 has SOCOM 1's GetAiStateEnum body, GetAiNetState sends it as the state's code) --
+    the retype needs the kit's remote_control.cpp (`AI_STATE CRemoteCtrl::GetJumpFlag() const`), measured neutral there.
+- **Tells from the UI, round 21** (the soft keyboard's text and display units):
+  - for a byte, `!x` followed by `x == k` re-extends the loaded byte with `andi 0xff`, `x == 0` reuses it as loaded
+    (SkbScale 0x394DA0: its state an unsigned char tested `== 0` first, the "done" block the if's body with `return 0`
+    after it); for a float, `!f ? 1 : 2` gives `c.eq.s f,zero` where `f != 0.0f ? 2 : 1` puts the zero first (SkbSetText);
+  - MW threads a loop's entry jump whenever it knows the counter's first value, whatever the source form, an explicit
+    goto-to-test included -- SkbSetKeyTextures 0x395140 (0x194 vs 0x1B0) and SkbForgetDisplay stay open on it: the target
+    enters the inner loop at its bottom test through a preheader laid after the return, so something hides the start value;
+  - an inline temporary's stack slot reflects its inline depth (a walk moved into an inline puts its CharLen copy a level
+    lower; passing the inline's count and flag by reference keeps the caller's numbering: SkbEraseBack 0x398C40); the
+    destructor's flag gives a local's declared type -- a CSaferStr local calls ~basic_string with 0, a std::string local
+    with -1 (SkbInsertChar 0x399EC0); a bool call result in a bool local is narrowed before a ternary tests it, a ternary
+    written directly as an `if` condition is not narrowed at its join (SkbCursorForward 0x399320);
+  - SkbLoadUiParams 0x3943E0 is zui_skbview.cpp's (its strings sit in that unit's data between s_padKeys and SkbScale's
+    "skb_done"): zui_hangul.cpp ends at 0x3941CF; include/string gains erase(pos, n) over the template replace.
+- **Tells from the world, rdr and sound, round 15** (zrdr_pack.cpp's equality and lookup, zrdr_file.cpp's pack and map):
+  - MW keeps a list sentinel's address once, in a saved register, only when the list is a member at a nonzero offset or
+    reached through an inline reference accessor; for a list at offset 0 of a pointer or reference `a+4` is recomputed at
+    every loop test (zrdr_findarray 0x3357C0 matches through a local `list<_zrdr *>::end()` via `end_node()`, a stand-in);
+  - a recursive helper the target inlines one level into its callers is an explicitly `inline` function (MW's one-level
+    fallback; `-inline auto` refuses a recursive function outright: _zrdr_equal 0x3352F0 into zrdr_equal 0x335E20);
+  - `ok = f(); if (ok)` masks the result with `andi 0xff`, `if (f())` branches on v0; `if (f) x = a; else x = 0;` gives two
+    stores where the ternary gives one; a temporary's fields are stored in the order the source assigns them;
+  - zrdr_compress / _zrdr_compress, zrdr_countarray (SOCOM 1's), _zrdr's Int / Real, _resolveA, _fixup, CRdrFile::Pack
+    and its array copier, the map<_zrdr *, _zrdr *>'s find_or_insert / destroy / insert_node_at, CSubtitleTable::Load
+    (the language's VAG index); CWorld::m_scale declared in znode.h (CWorld's class body is there); the subtitle walk
+    0x34D5D0 / 0x34D740 / 0x34DA00 waits on the key ring's iterator shapes (a copy constructor returning `this`, a
+    constructor from a pointer reference, an `__iter` taking the pointer's address, two raw-end copies).
+- **Tells from completing the MSL headers, round 21** (the library string's pieces in include/string, the list's assignment;
+  probes build/scratch/msl-r21-p21/, untracked):
+  - include/string's reserve, template replace and assign(first, last) out of class, from the same statements as MAIN's
+    msl.h with exceptions off -- three class changes: the allocator a private empty base, size_type the allocator's
+    (`typename Allocator::size_type`), and a long form of size_type bit-fields in the union (THE GAME BUILD KEEPS WORD
+    ACCESS ON A TEMPLATE-DEPENDENT BIT-FIELD, as the library does); every member calls the member template, so 25 units'
+    tails emit the pieces: OVL1's reserve 0x1E7C90 and replace 0x1EE780 and OVL2's 0x541290 / 0x540D00 / 0x541240
+    byte-exact, assign 0x1EF400 through the units' own copies (the rows named; MAIN's 0x18D3E0 / 0x18DB40 ovl-copies now);
+  - the template replace inlines its temporary's destructor only where the unit generated the destructor first (the
+    hud_scorepopup.cpp and util_stable.cpp copies stay `elsewhere`); MW initialises an inlined function's by-value
+    parameters right to left whatever the argument form, their slots in parameter order below the callee's return
+    temporary;
+  - include/list's assignment (operator= over do_assign(first, mid, last), SOCOM 1's shapes, operator-- and a two-way
+    advance): __list_imp<PCv>::advance_to 0x359740 byte-exact from vis_texfx.cpp; one iterator assigned in each arm and
+    advanced in place with one return gives each arm its own inlined advance with shared registers (per-arm iterators with
+    a return each are 8 bytes longer); the target's inlined list assignment reads x.begin() through x's end-node address,
+    shared with x.end() -- the kit's 0x5EBDC0 / 0x5EF470 still miss on seal_unit.cpp's own generation order;
+  - the deque iterators are random access and the tree iterator bidirectional (iterator_category: code-neutral over 633
+    units); not met: the list remove_ifs 0x352500 / 0x50F670 (seven forms in include/algorithm's comment).
 - **Tells from the HUD, round 38** (hud_mpweaponsel.cpp's selector and categories, zui_2d.cpp's radio strip):
   - a member pointer read straight each time (`m_selected[i].m_weapon->...`) becomes a CSE temporary numbered after the
     inlines' variables, a named local, slot pointer or reference swaps its register with an inline parameter's
@@ -9174,6 +9254,61 @@ InitViterbi@nbestdp OPEN; 6 of 7), `asr/vad.c` (ChangeMike closed: 6 of 6), `asr
 (`_cdbGetCodeBookSize` and `_cdbGetpSmoothMatrix` closed: 76 of 76) -- 5 rows new to the map's
 byte-exact rows, none superseding a draft; `src/lib/asr` 498 of 530 (493 of 528 before). 2 rows named
 (CollectDummyMemory, InitViterbi@nbestdp: `s1:order`, each body checked). No tool changed.
+
+**Round 21c: DynProgScoreUserWords, the N-best object's middle, the distance block's frees.**
+
+- **Global-alloc's order is computable, ties included**: a pseudo's priority is floor_log2(refs) x
+  refs / live length (the `.lreg` dump's "used N times across M insns"), the saved registers go to
+  the call-crossing pseudos in that order and the rest take caller-saved ones (`sq` round the call);
+  equal priorities fall to the lower pseudo number. `build/scratch/gcc-r21c/prio.py LREG GREG` prints
+  each pseudo's refs, length, priority and register off `tools/ccdump.py -f`'s sections -- it told
+  DynProgScoreUserWords' previous-cell pointer had to rank inside a 0.184-0.196 window, and FreeDistCalc's
+  miss as an exact 4/7 tie.
+- **CSE keeps the longer-lived register of a copy as the pair's canonical one** (cse.c's make_regs_eqv):
+  with `pc = c` and pc living past c, the uses of c in the extended block become pc's and `c++` comes
+  out `pc + 12`. DynProgScoreUserWords (SOCOM 1's body with two trailing loops of SOCOM II's: the back
+  pointer check func_004E6BC0 -- a public inline now, its copy deferred to the object's end -- and an
+  empty walk) is byte-exact once the walk steps `c` itself (`for (i = 0, c = e->cells; ...; i++, c++)`):
+  c then outlives pc, keeps its uses, and pc, copied at the first cell's top, ranks below min (the
+  target's a2 and s8); loop.c deletes the dead stepping afterwards.
+- **2.96's fold distributes a sum over a conditional operand**: `a + (c ? x : y) + b` becomes `c ? a + x
+  + b : a + y + b`, each arm adding into the one temporary stored once at the join, and a non-variable
+  first operand becomes a SAVE_EXPR read before the test. NBestDynProgProcess' garbage scores are one
+  statement over a lazily-scored phoneme (`d->f100[n + 1] = d->f100[n] + SCORE(k) + base`, SCORE a
+  conditional that calls the scorer on 32767): the target's single `sw` at the join, the left side's
+  address first, the array read in the branch's slot -- as statements of their own the adds survive but
+  the shared store and the four saved registers' order do not.
+- **An inline's constant argument is a pseudo reload rematerialises**: FreeLanguage's codebook-list
+  inline takes the count's new value as an argument (0 at both calls): `move v0,zero; sh v0` where
+  `*n = 0` stores $zero (SOCOM 1's compile spilled the first expansion's to the stack, kept the second's
+  in s8 -- the same source).
+- **Shapes, measured**: a static inline between an out-of-line caller and an inlining one
+  (ExtendBacktraceStack: InitViterbi calls it, CleanUpParBTProc holds it twice, its copy deferred to the
+  object's end as the image has it); a block written inline gets locals of its own (FindBestBacktraces
+  holds SOCOM 1's CollectDummyMemory body: one token pointer for three loops crosses the block's call);
+  `f64 > beam` against `beam < f64` orders the two loads (operand 0 expanded first); an unsigned counter
+  compared with a constant counts up (`sltiu`), an int one is reversed by loop.c (FreeLanguage's tables
+  against FreeDistCalc's); the next record read through `top->prev` before top steps (CleanUpParBTProc);
+  a copy's first store after the first field's (CopyParBT: the target's load before it, -fno-strict-
+  aliasing); InitDynprogContext's flags walked by a pointer taken before the loop (the load in the entry
+  test's slot), a counter of its own per loop, the filter's out pointer declared before its table (30 of
+  the 120 declaration orders); FindBestBacktraces' word id `st[1] + (st[2] << 16)`.
+- **A fifth object built with `-ffast-math`: the distance block's** (distsil.c): NormCorrection's
+  unrolled sum loads its first copy straight into the sum (`0 + x` folded); every other function of the
+  object compiles the same with the flag. Its rounding compares in double (`x < 0.0`, the target's
+  dpcmp on x converted once), and its clamp tests the upper bound first (both bounds if-converted into
+  a movn/movz pair; the lower bound first keeps a branch).
+- **Open, diagnosed in place**: FreeDistCalc (31 words, the right size: the priority tie above);
+  InitViterbi@nbestdp not revisited.
+
+Hand-written in round 21c: `asr/dpscoreuw.c` (DynProgScoreUserWords: 12 of 12), `asr/nbestdp.c` (+6:
+InitDynprogContext, CleanUpParBTProc, CopyParBT, FindBestBacktraces, NBestDynProgProcess, and SOCOM II's
+own func_004EC130 -- the context's release -- over its draft; 12 of 13), `asr/distsil.c` (+3: FreeLanguage,
+NormCorrection, FreeDistCalc OPEN; 9 of 10) -- 8 rows new to the map's byte-exact rows (5,624 bytes), one
+matched draft superseded (func_004EC130); `src/lib/asr` 507 of 540 (498 of 530 before). 6 rows named:
+InitDynprogContext, FreeLanguage, NormCorrection (`s1:order`, each body SOCOM 1's), DynProgAccNBestNoOptSil
+and DynProgAccNBestOptSil (`s1:order`, `s1:ref`: InitDynprogContext stores them by the context's silence
+flag as SOCOM 1's does), FreeDistCalc (`s1:order`, `s1:calls`). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 

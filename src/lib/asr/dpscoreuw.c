@@ -8,8 +8,7 @@
  * around them when command 4 asks for it: a Viterbi pass whose back pointers are nodes taken from
  * a free list of chunks (AllocateBacktrace adds one when the list runs dry). Command 4 sets the
  * words up, 7 hands it the language, 1 starts, 2 sends the result (_tosControl 12), 3 stops.
- * DynProgScoreUserWords (0x4E6000, the pass itself) is not written yet: declared here, its row
- * open. */
+ * DynProgScoreUserWords (0x4E6000, the pass itself) closed in round 21c. */
 #include "tosblk.h"
 
 #define WORSTSCORE      0x77FF          /* a cell not reached */
@@ -110,7 +109,6 @@ typedef struct DPSCOREUW {
 int _tosControl(void *b, unsigned char cmd, void *arg, int arg2);
 void qQueueReset(void *q);
 
-/* not written yet (its row open; SOCOM 1's is a static of this object) */
 int DynProgScoreUserWords(DPSCOREUW *e, short *frame);
 
 static BTNODE *AllocateBacktrace(DPSCOREUW *e, BTNODE *prev);
@@ -309,6 +307,139 @@ static void SendResultScoreUserWords(DPSCOREUW *e, void *arg, void *arg2)
         _tosErrorLog(e, 1);
 }
 
+/* new in SOCOM II: walks each cell's back pointers to the last node and keeps nothing (a check
+ * whose report is compiled out). A public inline: DynProgScoreUserWords holds its body, and 2.96
+ * defers its own copy to the object's end, after MakeScoreUserWordsActiveDist (0x4E6BC0) */
+__inline__ void func_004E6BC0(DPSCOREUW *e)
+{
+    WORDCELL *c = e->cells;
+    BTNODE *p;
+    unsigned short i;
+
+    for (i = 0; i < e->ncells; i++) {
+        p = c->bt;
+        while (p->next != 0)
+            p = p->next;
+        c++;
+    }
+}
+
+/* a back pointer let go: when nothing points at it any more, it and the nodes before it that only
+ * it held go back to the free list */
+#define RELEASE(e, b)                                   \
+    if (--(b)->count <= 0) {                            \
+        BTNODE *bt_ = (b), *p_ = bt_, *n_ = bt_->next;  \
+        while (n_->count < 2) {                         \
+            p_ = n_;                                    \
+            n_ = p_->next;                              \
+        }                                               \
+        n_->count--;                                    \
+        p_->next = (e)->freelist;                       \
+        (e)->freelist = bt_;                            \
+    }
+
+/* one frame of the pass: the scores made relative to the last frame's best and clamped, then each
+ * cell entered from the one before it when that is cheaper than staying (a new back pointer), or
+ * from the garbage phoneme's last cell when command 5 allows it; the best cell's score and the
+ * frame's best kept. SOCOM 1's body (0x458), with two loops at the end that SOCOM II added (0x4DC):
+ * the back pointer check (func_004E6BC0, inlined) and an empty walk over the cells. Byte-exact
+ * (round 21c) by three shapes, read off cc1's dumps (tools/ccdump.py -f; global-alloc's priority
+ * is floor_log2(refs) * refs / live length, build/scratch/gcc/prio.py): (1) the previous cell is
+ * copied at the first cell's top (`pc = c`) and the empty walk at the end steps `c` itself -- c's
+ * last use is then after pc's, so CSE keeps c as the pair's canonical register (make_regs_eqv
+ * prefers the one that lives longer: with pc outliving c the first cell's uses became pc's and
+ * `c++` came out `addiu s1,s3,12`); pc, live from the first cell, then ranks below min and takes
+ * the caller-saved a2 (`sq` round the allocation), min the last saved register, s8 -- the target's;
+ * loop.c deletes the walk's dead stepping; (2) the first cell's addend is the int variable `f`
+ * (the target's `lh`: `c->score += frame[...]` narrows the sum to a halfword add, `lhu`);
+ * (3) RELEASE is a macro on its expression: the cell's `c->bt` read again after the decrement, as
+ * the target's (-fno-strict-aliasing) */
+int DynProgScoreUserWords(DPSCOREUW *e, short *frame)
+{
+    WORDCELL *c, *pc;
+    BTNODE *bt, *prevbt, *gbt, *node;
+    int min, score, prevscore, gscore, f;
+    short first;
+    unsigned int i;
+
+    min = 32767;
+    first = e->first;
+    e->base += first;
+    e->base2 += frame[e->swgarbage];
+    c = e->cells;
+    for (i = 0; i < e->ncells; i++) {
+        c->score -= first;
+        if (c->score > 30719)
+            c->score = 30719;
+        c++;
+    }
+    c = e->cells;
+    pc = c;
+    score = c->score;
+    bt = c->bt;
+    f = frame[c->phen];
+    c->score += f;
+    if (c->score < min)
+        min = c->score;
+    bt->count++;
+    gscore = c->score;
+    gbt = c->bt;
+    c++;
+    for (i = 1; i < e->ncells; i++) {
+        prevbt = bt;
+        bt = c->bt;
+        prevscore = score;
+        score = c->score;
+        bt->count++;
+        f = frame[c->phen];
+        if (e->flag != 0 && c->phen == e->garbage && gscore < prevscore && gscore < score) {
+            c->score = gscore + f;
+            if (c->score < min)
+                min = c->score;
+            RELEASE(e, c->bt);
+            c->bt = gbt;
+            gbt->count++;
+        } else if (prevscore < score) {
+            c->score = prevscore + f;
+            if (c->score < min)
+                min = c->score;
+            node = e->freelist;
+            if (node->next == 0)
+                e->freelist = AllocateBacktrace(e, node);
+            else
+                e->freelist = node->next;
+            node->next = prevbt;
+            prevbt->count++;
+            node->word = pc->phen;
+            node->count = 0;
+            node->frame = e->frame;
+            node->score = prevscore + e->base;
+            node->score2 = e->base2;
+            node->count++;
+            RELEASE(e, c->bt);
+            c->bt = node;
+        } else {
+            c->score += f;
+            if (c->score < min)
+                min = c->score;
+        }
+        if (c->phen == e->garbage) {
+            gbt = c->bt;
+            gscore = score;
+        }
+        RELEASE(e, prevbt);
+        pc = c;
+        c++;
+    }
+    RELEASE(e, bt);
+    e->first = min;
+    e->best = pc->score;
+    func_004E6BC0(e);
+    for (i = 0, c = e->cells; i < e->ncells; i++, c++)
+        ;
+    return 0;
+}
+
 static void DpScoreUwProcess(DPSCOREUW *e, short **in)
 {
     short *frame = in[0];
@@ -504,20 +635,4 @@ static unsigned short MakeScoreUserWordsActiveDist(DPSCOREUW *e, unsigned short 
     }
     dist[0] = n;
     return n;
-}
-
-/* new in SOCOM II, and called by nothing: walks each cell's back pointers to the last node and
- * keeps nothing (a check whose report is compiled out) */
-void func_004E6BC0(DPSCOREUW *e)
-{
-    WORDCELL *c = e->cells;
-    BTNODE *p;
-    unsigned short i;
-
-    for (i = 0; i < e->ncells; i++) {
-        p = c->bt;
-        while (p->next != 0)
-            p = p->next;
-        c++;
-    }
 }

@@ -157,6 +157,14 @@ public:
 
         return replace(0, (size_type)npos, (const charT *)0, (const charT *)0, category);
     }
+    /* n characters from pos erased: the same template replace over (pos, n) (the UI lane's round 21:
+     * the soft keyboard's backspace 0x398C40 calls it so; additive) */
+    basic_string &erase(size_type pos, size_type n)
+    {
+        forward_iterator_tag category;
+
+        return replace(pos, n, (const charT *)0, (const charT *)0, category);
+    }
 
     size_type max_size() const { return 0x7FFFFFFE; }
     void reserve(size_type res_arg = 0);

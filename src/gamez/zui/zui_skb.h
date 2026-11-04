@@ -419,7 +419,7 @@ struct CSkbBgPieces : public std::vector<CSkbBgPiece> {};
 struct CSkbLook {
     CSkbLook()
         : m_54(0), m_58(0), m_5c(0), m_60(0), m_64(0), m_68(0), m_6c(0), m_c0(0), m_c4(0), m_c8(0), m_cc(0),
-          m_d0(0), m_d4(0), m_d8(0), m_dc(0)
+          m_d0(0), m_d4(0), m_scaleUpSec(0), m_scaleDownSec(0)
     {
     }
 
@@ -431,7 +431,11 @@ struct CSkbLook {
     CSkbRect m_rects[5];   // 0x70
     int m_c0;   // 0xc0
     float m_c4;   // 0xc4: UserStringLineHeight (a float member: SkbCursorBack 0x399530 reads it plainly)
-    int m_c8, m_cc, m_d0, m_d4, m_d8, m_dc;   // 0xc8
+    int m_c8, m_cc, m_d0, m_d4;   // 0xc8
+    /* ScaleUpSec and ScaleDownSec: how long the keyboard takes to scale up as it opens and down as
+     * it closes (the display unit's scaling step 0x394DA0 reads them with lwc1) */
+    float m_scaleUpSec;   // 0xd8
+    float m_scaleDownSec;   // 0xdc
     CSkbCapLook m_caps[3];   // 0xe0
     std::vector<CSaferStr> m_strings;   // 0x14c
 
@@ -483,8 +487,9 @@ public:
     CInit<bool, 0> m_174;   // 0x174
     CInit<bool, 0> m_ignoreUnchangedString;   // 0x175: IgnoreUnchangedString
     zdb::CNode *m_node;   // 0x178
-    int m_17c;   // 0x17c
-    int m_180;   // 0x180
+    /* the shared bitmaps 6 and 7's texture handles (the display unit's SkbSetKeyTextures sets them) */
+    zdb::CTexHandle *m_17c;   // 0x17c
+    zdb::CTexHandle *m_180;   // 0x180
     CSkbTexLists m_texLists;   // 0x184
     CBmpWithNode m_1c0;   // 0x1c0: the recipient key's state 0 (SkbRecipState0.tif)
     CBmpWithNode m_270;   // 0x270: and its state 1 (SkbRecipState1.tif)

@@ -9,9 +9,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define NULL 0
 s32 LastCode__10CSkbPiecesFv(s32);                  /* extern */
 s32 PrevCode__10CSkbPiecesFv(s32);                  /* extern */
+M2C_UNK SkbEraseBack__FP13CSoftKeyboard();          /* extern */
+M2C_UNK SkbInsertChar__FUsP13CSoftKeyboard(s32, s32); /* extern */
 M2C_UNK func_00398C00(s32, s32);                    /* extern */
-M2C_UNK func_00398C40();                            /* extern */
-M2C_UNK func_00399EC0(s32, s32);                    /* extern */
 
 void func_00398AE0(s32 arg0, s32 arg1, s32 arg2) {
     s32 temp_a0;
@@ -22,7 +22,7 @@ void func_00398AE0(s32 arg0, s32 arg1, s32 arg2) {
             func_00398C00(temp_a0, arg0);
         }
     } else {
-        func_00398C40();
+        SkbEraseBack__FP13CSoftKeyboard();
     }
-    func_00399EC0(LastCode__10CSkbPiecesFv(arg1), arg0);
+    SkbInsertChar__FUsP13CSoftKeyboard(LastCode__10CSkbPiecesFv(arg1), arg0);
 }
