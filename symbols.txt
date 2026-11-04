@@ -11733,11 +11733,11 @@
 0x00609DF0 0x20C CheckLineOfFire__2aiFPC7CEntityPC7CTargetf  # OVL2; s1:calls
 0x0060A000 0x2C8 ModifyAimDir__9CAiTargetFP6CPnt3Dff  # OVL2; s1:calls by hand (the kit lane, round 12): CSealCtrlAi::PerturbAimVector (0x5C9250) tail-calls it on its target (+0x67C) with (v, accuracy, aiAccuracyAngle) where SOCOM 1's PerturbAimVector calls ModifyAimDir__9CAiTargetFP6CPnt3Dff (0x2E9900 there) with the same three; first of CAiTarget's stretch after CheckLineOfFire, as SOCOM 1's; OVL1's 0x3A8D20 calls it too (SOCOM 1's CTurret::Fire does)
 0x0060A2D0 0x18 func_0060A2D0  # OVL2
-0x0060A2F0 0x16C func_0060A2F0  # OVL2
-0x0060A460 0x12C func_0060A460  # OVL2
+0x0060A2F0 0x16C OnSetVisible__9CAiTargetFb  # OVL2; s1:calls by hand (the kit lane, round 28): SOCOM 1's CAiTarget::OnSetVisible (0x2E99E0): the entity's position (0x1C) and velocity (0x38) into the last-known pair (0x58, 0x64), then the visible time (0x50) and the new counter copy or the lost-sight time (0x54) on theMission's clock -- the validity test 0x60A850 inlined; CSealCtrlAi's 0x5CA850/0x5CA948 call it -- ai_target.cpp
+0x0060A460 0x12C Tick__9CAiTargetFP7CEntityf  # OVL2; s1:calls by hand (the kit lane, round 28): SOCOM 1's CAiTarget::Tick(CEntity *, float) (0x2E9AD0): the target set to none when it no longer counts (the validity test 0x60A850 inlined, where SOCOM 1's tested the entity and its alive bit) or its entity's team word (0xC8) shares a bit with the entity's -- CSealCtrlAi::PreTick (0x56E888, dT restored into f12 first) and OVL1's 0x3A804C call it -- ai_target.cpp
 0x0060A590 0x14 GetTimeSinceLastSighting__9CAiTargetCFv  # OVL2; s1:order by hand (the kit lane, round 7): SOCOM 1's GetTimeSinceLastSighting__9CAiTargetCFv, the same 0x14 bytes (the clock less a field: SOCOM 1's m_time_lost_sight at 0x40, here 0x54 -- CAiTarget grew 0x14 before it), in the CAiTarget stretch after the response states as in SOCOM 1; 0x60A5F0 sets 0x54 to the clock when the target is seen
 0x0060A5B0 0x40 func_0060A5B0  # OVL2
-0x0060A5F0 0xAC func_0060A5F0  # OVL2
+0x0060A5F0 0xAC SetTarget__9CAiTargetFP7CTarget  # OVL2; s1:calls by hand (the kit lane, round 28): SOCOM 1's CAiTarget::SetTarget (0x2E9CA0) without its threat float (Tick passes none): the change test 0x60A6A0, then the acquired and visible times (0x4C, 0x50), the last place from the target's entity (0x58) and the lost-sight time (0x54), the new counter copied on a change -- ai_target.cpp
 0x0060A6A0 0x1A8 func_0060A6A0  # OVL2
 0x0060A850 0xE8 func_0060A850  # OVL2
 0x0060A940 0xDC __ct__9CAiTargetFv  # OVL2; by hand (the kit lane, round 6): CAiTarget's constructor -- SEAL_AI_PARAMS's constructor (0x60BF40) calls it on +0x42C (the controller's 0x67C, after the event queue, as SOCOM 1's CSealCtrlAi constructor calls __ct__9CAiTargetFv on m_target after m_eventQueue), CTurret's constructor (0x3AA478) too; SOCOM 1's CheckLineOfFire/CAiTarget unit closes with it, and SOCOM II's sits after CheckLineOfFire (0x609DF0)
