@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/refill.c (MAIN 0x197E10-0x197FC4), the toolchain's libc: lflush (static) and
  * __srefill. This newlib's lflush has the parenthesised test (only line-buffered output streams
  * are flushed: andi 9, compared with 9), not the older text's `== __SLBF | __SWR`. */

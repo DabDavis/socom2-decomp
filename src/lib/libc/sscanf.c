@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/sscanf.c (MAIN 0x198960-0x198A10), the toolchain's libc: eofread (static) and
  * sscanf, into __svfscanf (0x19DA58). */
 

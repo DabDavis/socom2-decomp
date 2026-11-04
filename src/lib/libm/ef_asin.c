@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin -g */
 /* newlib's libm/math/ef_asin.c (__ieee754_asinf, MAIN 0x1AF178), as newlib wrote it; -fno-builtin as
  * newlib is built (fabsf called). One object, as in the demo. */
 

@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's libm/math/kf_sin.c (__kernel_sinf, MAIN 0x1B28F8), as newlib wrote it. One object, as in
  * the demo. */
 

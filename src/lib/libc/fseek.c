@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/fseek.c (MAIN 0x193A90), the toolchain's libc: a read-only regular file seeks
  * inside its buffer when it can, else flushes and seeks the descriptor. */
 

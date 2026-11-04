@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/abort.c (MAIN 0x191410), the toolchain's libc: one object, as in the demo. _exit is
  * noreturn, so the loop leaves no branch behind. */
 

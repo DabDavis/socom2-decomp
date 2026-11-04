@@ -1,15 +1,16 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/mprec.c (MAIN 0x195B48-0x196B5C), the toolchain's libc: David Gay's multiple-
  * precision helpers for dtoa and strtod (Pack_32, IEEE_8087 -- the EE is little-endian -- and
  * no Sudden_Underflow). The demo's object 0x3E2D58 holds the same seventeen in the same order.
  * __ULong and __Long are int here (long is 64-bit on the EE, the digits are words: Balloc's size
  * is 20 + 4 * 2^k). The tables (tens, bigtens, tinytens) are data.txt's __mprec_* rows.
  *
- * OPEN, the runtime compiler's double moves (README "The GCC front", round 4a: this toolchain's
- * 2.96 is not the runtime's, which never puts a DFmode register move in a delay slot): _ulp (the
- * target's return copy into v0 sits before `jr ra; nop`, here in the slot), _ratio (the same, 9
- * words with the frame), _d2b (5 words: y's spill fills the lo0bits call's slot here, the
- * target keeps the DFmode-derived word in a1). Every integer helper is byte-exact as written. */
+ * _ulp and _ratio are byte-exact under the runtime's -g (GCC round 23a; open since round 4a: the
+ * target's return copy into v0 before `jr ra; nop`): GCC gives a DFmode register move a length of
+ * two instructions, so reorg leaves a slot whose only candidate is one to GNU as, which fills it --
+ * but not under -g, which GNU as reads as -O0 on MIPS; the runtime's objects were built with GCC's
+ * CFLAGS_FOR_TARGET, -g -O2 (SCE's patch appends -G0). cc1's output is the same with and without
+ * -g. Every integer helper is byte-exact as written. OPEN: _d2b (below). */
 
 #include "newlib.h"
 

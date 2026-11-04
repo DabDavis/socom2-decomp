@@ -68,7 +68,7 @@
 0x001CCD68 0x4 _bind  # MAIN; s1:data-exact (size SOCOM 1's; via sceSifAllocIopHeap +9)
 0x001CCD70 0x4 _bind_check  # MAIN; s1:data-exact (size SOCOM 1's; via _lf_bind +1)
 0x001CCD74 0x4 _lfwildcard  # MAIN; s1:data-seq (size SOCOM 1's; via _lf_version)
-0x001CCD78 0x330 tlbsrc  # MAIN; s1:data-exact (size SOCOM 1's; via InitTLBFunctions)
+0x001CCD78 0x330 tlbsrc  # MAIN; s1:data-exact (size SOCOM 1's; via InitTLBFunctions); the kernel-mode TLB image libkernl's tlbfunc.c copies to 0x80075000 (InitTLBFunctions: kCopy, sizeof 0x330) -- code linked there (_start 0x80075000, the syscall table's lookup; then PutTLBEntry, SetTLBEntry, GetTLBEntry, ProbeTLBEntry, ExpandScratchPad) and its syscall table at +0x300 ({0x55, 0x80075038} ...); no MAIN-linked unit can score it, so the map holds no rows here (GCC round 23a retired func_001CCD78 ... func_001CCF20 and func_001CD078, 0x122C: the table and the .data after it)
 0x001CD0A8 0x4 _kTLBRefillHandler  # MAIN; s1:data-exact (size SOCOM 1's; via SetTLBHandler)
 0x001CD0B0 0x40 _kDebugHandler  # MAIN; s1:data-exact (size SOCOM 1's; via SetDebugHandler)
 0x001CD0F0 0x4 _kExecArg  # MAIN; s1:data-exact (size SOCOM 1's; via ExecOSD +4)
@@ -103,6 +103,7 @@
 0x001D0A98 0xC8 __mprec_tens  # MAIN; newlib mprec.c's tens[] (mprec.h: #define tens __mprec_tens): 1e0..1e24, read by _mprec_log10
 0x001D0B60 0x28 __mprec_bigtens  # MAIN; newlib mprec.c's bigtens[]: 1e16, 1e32, 1e64, 1e128, 1e256, after tens
 0x001D0B88 0x28 __mprec_tinytens  # MAIN; newlib mprec.c's tinytens[]: 1e-16 .. 1e-256, after bigtens
+0x001D0BB8 0x8 __infinity  # MAIN; SOCOM 1's symbol (the demo's GLOBAL OBJECT __infinity, 8 bytes): newlib libm/common/s_infconst.c's double infinity, 0x7FF00000_00000000 -- HUGE_VAL as newlib's math.h defines it (__infinity[0].d), which _strtod_r's overflow loads (GCC round 23a)
 0x001D1930 0x18 __thenan_df  # MAIN; s1:data-exact (size SOCOM 1's; via _fpadd_parts +2)
 0x001D2DE0 0x10 atanhi  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
 0x001D2DF0 0x10 atanlo  # MAIN; s1:data-exact (size SOCOM 1's; via atanf)
@@ -1029,6 +1030,9 @@
 0x0043FF20 0x800 g_arrDefCharTypeNames__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1:data-exact (size SOCOM 1's; via GetDefCharTypeName__Fi)
 0x00440720 0x3E0 g_arrMapVis__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1:data-seq (via ftsGetVisibleMap__FUii); size SOCOM II's by hand (the states lane: 32 lists of 31 -- ftsGetVisibleMap's stride is 31 and ftsIsMapInVisibleList tests the list < 32 -- running to g_arrMapVisCounts)
 0x00440B00 0x80 g_arrMapVisCounts__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1:data-seq (via ftsGetNumVisibleMaps__FUi); size SOCOM II's by hand (the states lane: ftsGetNumVisibleMaps indexes it under 32)
+0x00440BB8 0x4 g_fTacMapZoomInit__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1 by hand (the states lane, round 26): SOCOM 1's fts_mission.cpp static (the demo's 0x475960, gp-29328), the lowest of the three as there; PreOpen 0x2ACC10 stores "TacMapZoom"'s item 0 (default 1.0) in it as SOCOM 1's PreOpen does first, ftsGetTacMapZoom 0x2AF880 returns it; 2 references in 2 functions
+0x00440BC0 0x4 g_fTacMapZoomNear__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1 by hand (the states lane, round 26): SOCOM 1's static (the demo's 0x475964, gp-29324); PreOpen 0x2ACC10 stores "TacMapZoom"'s item 1 (default 2.2) as SOCOM 1's does second, ftsGetTacMapZoomNear 0x2AF860 returns it; 2 references in 2 functions
+0x00440BC8 0x4 g_fTacMapZoomFar__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1 by hand (the states lane, round 26): SOCOM 1's static (the demo's 0x475968, gp-29320); PreOpen 0x2ACC10 stores "TacMapZoom"'s item 2 (default 0.55) as SOCOM 1's does third, ftsGetTacMapZoomFar 0x2AF870 returns it; 2 references in 2 functions
 0x00440BD0 0x4 g_iNumUiVehicles__25@unnamed@fts_mission_cpp@  # OVL1 bss; s1 by hand (the states lane, round 13: SOCOM 1's fts_mission.cpp static (the demo's 0x47596C, gp-relative there): both CreateCustomCharTypes store the "UiVehicles" list's count in it and loop up to it; 6 references in 2 functions)
 0x00440C10 0x20 spawners  # OVL1 bss; s1 by hand (the states lane: SOCOM 1's global CSpawners spawners, 32 bytes; fts_player.cpp's initialiser 0x400330 builds its two lists and clears the count at +0x18, CMission::RecycleEntity and CSpawners::Tick use +0xC, +0x18 and +0x1C as SOCOM 1's do; 10 references in 6 functions)
 0x00440C30 0x1 doSquirm  # OVL1 bss; s1 by hand (the states lane: SOCOM 1's fts_player.cpp static bool, ftsGetSquirm's; 2 references, ftsGetSquirm and CMission::LoadVehicle)
@@ -1688,6 +1692,15 @@
 0x0066A538 0x4 LobbyWorldID  # OVL2 bss; s1 by hand (SOCOM 1's LobbyWorldID: RejoinRoom 0x2E3730 goes back to the room only when it is not negative, as SOCOM 1's does; JoinRoom stores it); size SOCOM 1's; 12 references in 9 functions
 0x0066A5E8 0x1 g_bJoiningRandomGame  # OVL2 bss; s1:data-seq (SOCOM 1's g_bJoiningRandomGame, a static of its zNetMedius.cpp: UnInit, ReleaseUIResources and Init clear it as SOCOM 1's do); in OVL2's bss in SOCOM II, so another unit's global, the unnamed-namespace mangling dropped
 0x0066A5F0 0x4 MediusWorldID  # OVL2 bss; s1 by hand (SOCOM 1's MediusWorldID: BanSelfFromGame and SendEndGameReport send it as the game's world, as SOCOM 1's send theirs); size SOCOM 1's; 14 references in 12 functions
+0x0066AFF8 0x4 snooze_count__2ai  # OVL2 bss; SOCOM 1's (ai::snooze_count, its $gp word at -28324: SetSnoozing counts the dozing SEALs up and down there as here) -- the SEALs, round 22; 4 references in 1 function (SetSnoozing 0x56D6A0: a load and a store each way)
+0x0066B150 0x4 @LOCAL@UpdateEventMask__11CSealCtrlAiFv@all  # OVL2 bss; ours (the SEALs, round 22): CSealCtrlAi::UpdateEventMask's guarded base mask, ~(1 << AIE_UNKNOWN) -- SOCOM II's own, SOCOM 1 stored -1 -- 2 references in 1 function (the set, the load)
+0x0066B158 0x1 @GUARD@UpdateEventMask__11CSealCtrlAiFv@all  # OVL2 bss; ours (the SEALs, round 22): its guard -- 2 references in 1 function (the test's lb, the set's sb)
+0x0066B160 0x4 @LOCAL@UpdateEventMask__11CSealCtrlAiFv@asleep  # OVL2 bss; ours (the SEALs, round 22): UpdateEventMask's MakeMaskEx static cleared for a sleeping SEAL or a team of bit 26 (SOCOM 1's first) -- 2 references in 1 function
+0x0066B168 0x1 @GUARD@UpdateEventMask__11CSealCtrlAiFv@asleep  # OVL2 bss; ours (the SEALs, round 22): its guard -- 2 references in 1 function
+0x0066B170 0x4 @LOCAL@UpdateEventMask__11CSealCtrlAiFv@unaware  # OVL2 bss; ours (the SEALs, round 22): the static cleared for a team of bit 28 or 17 (SOCOM 1's second) -- 2 references in 1 function
+0x0066B178 0x1 @GUARD@UpdateEventMask__11CSealCtrlAiFv@unaware  # OVL2 bss; ours (the SEALs, round 22): its guard -- 2 references in 1 function
+0x0066B180 0x4 @LOCAL@UpdateEventMask__11CSealCtrlAiFv@deaf  # OVL2 bss; ours (the SEALs, round 22): the static cleared for a team of bit 1 (SOCOM 1's third, which held two kinds) -- 2 references in 1 function
+0x0066B188 0x1 @GUARD@UpdateEventMask__11CSealCtrlAiFv@deaf  # OVL2 bss; ours (the SEALs, round 22): its guard -- 2 references in 1 function
 0x0066B2F0 0x14 newanims  # OVL2 bss; SOCOM 1's name (the SEAL lane, round 17: SOCOM 1's newanims, a CActiveAnimList -- an RTList<ACTIVE_ANIM>, 0x14 bytes -- built by __sinit_seal_body.cpp with 8 links where SOCOM 1's held 12); 29 references in 4 functions: BlendedClimb, 0x582D10, 0x583030 and the initialiser (src/gamez/zseal/seal_body.cpp)
 0x0066B540 0xC projDirDown  # OVL2 bss; s1:data-seq (size SOCOM 1's; via HandleBloodDrip__10CZSealBodyFf)
 0x0066B580 0xF0 g_arrSavedFireModeInfo__22@unnamed@seal_kit_cpp@  # OVL2 bss; SOCOM 1's (its symbol table: seal_kit.cpp's anonymous namespace, 30 CSavedFireModeInfo of 8 bytes) by hand (the kit lane, round 12): __sinit_seal_kit.cpp constructs it (__construct_array, 30 x 8, the constructor 0x5C9230) -- 3 references (the initialiser, sealSaveFireModes, 0x5C0250)

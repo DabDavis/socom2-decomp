@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/fflush.c (MAIN 0x192DA8), the toolchain's libc: a NULL stream flushes every
  * stream (_fwalk with itself). */
 

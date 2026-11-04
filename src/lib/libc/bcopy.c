@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's string/bcopy.c (MAIN 0x1914D8), the toolchain's libc: memmove with the operands the
  * other way round. */
 

@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's libm/math/kf_cos.c (__kernel_cosf, MAIN 0x1B1F40), as newlib wrote it. One object, as in
  * the demo. */
 

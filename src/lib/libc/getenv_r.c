@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/getenv_r.c (MAIN 0x1945F8-0x19475C), the toolchain's libc: _findenv_r and
  * _getenv_r. The environment is reached through the static p_environ (data.txt, 0x1CC458), under
  * the environment lock -- this newlib returns NULL for an unset environ without unlocking. */

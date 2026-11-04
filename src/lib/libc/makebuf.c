@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/makebuf.c (MAIN 0x1948A8), the toolchain's libc: a stream's buffer, BUFSIZ bytes
  * (no st_blksize here: HAVE_BLKSIZE undefined, the optimised-seek block 1024). */
 

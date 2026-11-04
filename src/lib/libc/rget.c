@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/rget.c (MAIN 0x197FC8), the toolchain's libc: getc's slow path. */
 
 #include "newlib.h"

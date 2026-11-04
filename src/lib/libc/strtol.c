@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/strtol.c (MAIN 0x19AAE8-0x19AD4C), the toolchain's libc: _strtol_r and strtol,
  * newlib's text (BSD's strtol). long is 64-bit on the EE, so the cutoff divides through libgcc's
  * __udivdi3/__umoddi3. */

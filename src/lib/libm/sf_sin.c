@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's libm/common/sf_sin.c (sinf, MAIN 0x1B3720), as newlib wrote it, under the EE's float
  * model (fdlibm.h). One object, as in the demo. */
 

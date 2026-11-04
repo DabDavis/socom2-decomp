@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's libm/math/ef_sqrt.c (__ieee754_sqrtf, MAIN 0x1B08A8), as newlib wrote it, under the EE's
  * float model (fdlibm.h: no infinity, no denormals). One object, as in the demo. */
 

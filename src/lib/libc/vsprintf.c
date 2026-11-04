@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/vsprintf.c (MAIN 0x19E7E8-0x19E894), the toolchain's libc: vsprintf, _vsprintf_r. */
 
 #include <stdarg.h>

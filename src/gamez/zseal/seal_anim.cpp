@@ -23,7 +23,7 @@ struct CSealAnimRec {
 
 /* a frame on the blender's stack: the parts' records and the anim pushed (0xc bytes; the names ours) */
 struct CSealAnimFrame {
-    int m_0;   // 0x0
+    float m_wt;   // 0x0: the frame's weight (CombineRotations sums two)
     CSealAnimRec *m_recs;   // 0x4
     CZSIScriptCommon *m_anim;   // 0x8
 };
@@ -94,6 +94,9 @@ public:
      * SEAL's parts, the depth left returned (SOCOM 1's took the body; OVL2 0x577700) */
     void AnimPush(CZSIScriptCommon *anim, float ffrac, float wt, short frame);
     int AnimPop();
+    /* frame a's rotations moved toward frame b's by b's share of their weights, a given both (SOCOM
+     * 1's; OVL2 0x576E30) */
+    int CombineRotations(int a, int b);
 
     int m_count;   // 0x0
     CZSealBody *m_seal;   // 0x4
@@ -151,6 +154,51 @@ int CSealAnim::AnimPop()
 }
 #pragma auto_inline reset
 
+/* frame a's rotations moved toward frame b's by b's share of the two weights -- a part b lacks
+ * takes b's, near enough to either end it snaps -- and a given the sum (OVL2 0x576E30; SOCOM 1's
+ * CombineRotations, the fraction clamped to [0, 1] in SOCOM II, the records a count now and the
+ * rotation copies inline).
+ * OPEN, 0x1C0 against 0x1CC: AnimPop's miss exactly -- the target loads the record count into s1 ahead
+ * of the records, re-reads the global for the loop's entry test and keeps s1 for the bottom test, where
+ * MW re-reads the global every pass (the loop calls Slerp). Tried: a local count at five places (0x1C4
+ * or 0x1BC: MW merges the entry test's load into it), a const reference to the global, an `extern
+ * const` placeholder, an inline returning the count, the loop in an inline helper taking the count by
+ * value (0x1C4 or 0x1E0), an explicit guard on the global before a do-while; the pragmas
+ * opt_pointer_analysis, opt_loop_invariants, opt_lifetimes, opt_rotateloops,
+ * opt_optimizenonregaccess change nothing, and only `opt_common_subs off` or `opt_propagation off`
+ * with a local count give the size (75 and 96 instructions off). The registers otherwise want a s5,
+ * i s4, ra s3, rb s2, the count s1 and frame a's address s0 */
+int CSealAnim::CombineRotations(int a, int b)
+{
+    CSealAnimFrame *fa = &m_frames->m_frames[a];
+    CSealAnimFrame *fb = &m_frames->m_frames[b];
+    float sum = fa->m_wt + fb->m_wt;
+    float frac = fb->m_wt / sum;
+
+    if (frac < 0.0f)
+        frac = 0.0f;
+    if (frac > 1.0f)
+        frac = 1.0f;
+    CSealAnimRec *rb = fb->m_recs;
+    CSealAnimRec *ra = fa->m_recs;
+
+    for (unsigned int i = 0; i < siNumBodyObjects; i++, ra++, rb++) {
+        if (ra->m_id != -1) {
+            if (rb->m_id != -1) {
+                if (frac > 0.001f) {
+                    if (frac >= 0.999f)
+                        ra->m_rot = rb->m_rot;
+                    else
+                        ra->m_rot.Slerp(&rb->m_rot, frac, &ra->m_rot);
+                }
+            } else
+                ra->m_rot = rb->m_rot;
+        }
+    }
+    fa->m_wt = sum;
+    return a;
+}
+
 /* the SEAL's adrenaline (OVL2 0x5781B0, the unit's last; SOCOM 1's, the same load) */
 CAdrenaline *CZSealBody::Adrenaline()
 {
@@ -164,6 +212,68 @@ bool CZSealBody::IsCurrentBlend(AnimType type) const
     if (type == m_curblend)
         return true;
     return m_curblend == func_005E1A90(m_animset, type);
+}
+
+/* CBody::SmoothPart (OVL1 0x28E040, body.cpp's) TAKES THE FRACTION FIRST: every call here loads it
+ * before the part (MW evaluates the arguments left to right), and the member call through zbody.h's
+ * (part, t) declaration gives the same 0x160 bytes with each pair of loads swapped -- written (t,
+ * part) the code is the target's to the word. SOCOM II's own SetPartActive(int, part) has the same
+ * shape; the row's name, `SmoothPart__5CBodyFP10CZBodyPartf`, was ours. Until zbody.h, body.cpp and
+ * the row say `SmoothPart__5CBodyFfP10CZBodyPart` (the engine core's files: asked of the integrator)
+ * the call goes by address, the body by reference so no null test is made */
+extern "C" void func_0028E040(CBody &body, float t, CZBodyPart *part);
+
+/* twenty of the SEAL's parts eased toward their saved poses by the overlay's time left (OVL2 0x576700,
+ * new in SOCOM II: 0x576860 calls it while the overlay runs out; the name unknown) -- the parts
+ * 0x5765F0 saves, in its order */
+extern "C" void func_00576700(CZSealBody *seal)
+{
+    func_0028E040(*seal, seal->m_10d0, seal->m_root);
+    func_0028E040(*seal, seal->m_10d0, seal->m_aimnodes);
+    func_0028E040(*seal, seal->m_10d0, seal->m_lhand);
+    func_0028E040(*seal, seal->m_10d0, seal->m_rhand);
+    func_0028E040(*seal, seal->m_10d0, seal->m_hips);
+    func_0028E040(*seal, seal->m_10d0, seal->m_head);
+    func_0028E040(*seal, seal->m_10d0, seal->m_neck);
+    func_0028E040(*seal, seal->m_10d0, seal->m_spinehi);
+    func_0028E040(*seal, seal->m_10d0, seal->m_spinelo);
+    func_0028E040(*seal, seal->m_10d0, seal->m_rbicep);
+    func_0028E040(*seal, seal->m_10d0, seal->m_rforearm);
+    func_0028E040(*seal, seal->m_10d0, seal->m_lbicep);
+    func_0028E040(*seal, seal->m_10d0, seal->m_lforearm);
+    func_0028E040(*seal, seal->m_10d0, seal->m_lscap);
+    func_0028E040(*seal, seal->m_10d0, seal->m_rscap);
+    func_0028E040(*seal, seal->m_10d0, seal->m_lshoulder_wgt);
+    func_0028E040(*seal, seal->m_10d0, seal->m_rshoulder_wgt);
+    func_0028E040(*seal, seal->m_10d0, seal->m_rifle);
+    func_0028E040(*seal, seal->m_10d0, seal->m_pistol);
+    func_0028E040(*seal, seal->m_10d0, seal->m_weapon);
+}
+
+/* and the same twenty saved (OVL2 0x5765F0, new in SOCOM II: the overlay's starts call it,
+ * 0x579EF0 and 0x57A010; the name unknown) */
+extern "C" void func_005765F0(CZSealBody *seal)
+{
+    seal->SavePart(seal->m_root);
+    seal->SavePart(seal->m_aimnodes);
+    seal->SavePart(seal->m_lhand);
+    seal->SavePart(seal->m_rhand);
+    seal->SavePart(seal->m_hips);
+    seal->SavePart(seal->m_head);
+    seal->SavePart(seal->m_neck);
+    seal->SavePart(seal->m_spinehi);
+    seal->SavePart(seal->m_spinelo);
+    seal->SavePart(seal->m_rbicep);
+    seal->SavePart(seal->m_rforearm);
+    seal->SavePart(seal->m_lbicep);
+    seal->SavePart(seal->m_lforearm);
+    seal->SavePart(seal->m_lscap);
+    seal->SavePart(seal->m_rscap);
+    seal->SavePart(seal->m_lshoulder_wgt);
+    seal->SavePart(seal->m_rshoulder_wgt);
+    seal->SavePart(seal->m_rifle);
+    seal->SavePart(seal->m_pistol);
+    seal->SavePart(seal->m_weapon);
 }
 
 /* a part's node placed where the part is (CZBodyPart::Orient's body, body.cpp's, written out: SOCOM

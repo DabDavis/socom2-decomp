@@ -33,9 +33,12 @@ import scdecomp as E
 
 # MAIN's code, by inspection (README "The image"): the loader's first 512 KB are zero;
 # 0x1CA3D0-0x1CCD78 is a zero block plus Sony's libipu/libkernel tables INSIDE .text;
-# 0x1CE2A0-0x1D4B00 is data (zlib 1.1.4's strings among it); 0x1D4B00-0x1D4F90 are the
-# __sinit_* static initialisers MW places after rodata; then the linker's tables.
-MAIN_TEXT = [(0x00180000, 0x001CA3D0), (0x001CCD78, 0x001CE2A0), (0x001D4B00, 0x001D4F90)]
+# 0x1CCD78-0x1D4B00 is data (zlib 1.1.4's strings among it); 0x1D4B00-0x1D4F90 are the
+# __sinit_* static initialisers MW places after rodata; then the linker's tables. The first
+# seed swept 0x1CCD78-0x1CE2A0 as code: it is libkernl's tlbsrc, a kernel image linked at
+# 0x80075000 (data.txt's 0x330-byte row) and the .data after it -- its seven rows were retired
+# in GCC round 23a (README "The GCC front").
+MAIN_TEXT = [(0x00180000, 0x001CA3D0), (0x001D4B00, 0x001D4F90)]
 
 
 def branch_target(addr: int, w: int) -> int | None:

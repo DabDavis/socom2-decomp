@@ -87,7 +87,13 @@ CAiPath::~CAiPath()
  * data through it, the size straight; the implicit CAiPathStats assignment here folds both reads into
  * offsets of `path` and swaps the two registers. As a CAiMapLocVec (SOCOM 1's DWARF) the visited cells
  * give the tag temporaries' slots (19 off) but cost CAiPath() a level (~CAiPath's note); a written
- * inline assignment of the stats does not help (21 and 23) */
+ * inline assignment of the stats does not help (21 and 23). The AI core round 21: the visited cells
+ * reached through a reference local (`const std::vector<CAiMapLoc> &v = path->m_stats.m_visited;`,
+ * the other words copied field by field, then `m_stats.m_visited = v;`) gives the target's v1 for
+ * their address and the data read through it -- 8 off, 7 with the copy in an inline taking both stats
+ * by pointer -- but then reads the size through v1 too (the target: off s1), copies m_current with
+ * lw/sw (the implicit assignment's lwc1/swc1 lost) and keeps the tag slots swapped
+ * (build/scratch/ai/v_copy.py) */
 bool CAiPath::CopyPlan(const CAiPath *path)
 {
     bool ok = false;
@@ -223,7 +229,12 @@ void CAiPath::IncrementPathId()
  * the AI core round 19 added an inline member returning the planned leg's map called as a
  * statement (ternary, if-assign and early-return bodies, `(void)` cast) and empty-bodied ifs
  * (`{}`, `;`, `(void)0`, `m_maps[m_planleg];`, either sense): deleted whole too. MW keeps such a
- * branch only for a body the front end cannot see is empty (a compiled-out macro?) */
+ * branch only for a body the front end cannot see is empty (a compiled-out macro?). The AI core round
+ * 21: dead locals assigned in the arms (if, if/else, ternary, through data()'s reference) are deleted
+ * whole as well; an inline taking a CONST path, declared before this function and defined after it,
+ * keeps both branches and the reloads of m_planleg after them -- but calls the pointer vector's const
+ * operator[] out of line inside them (0xC8): the shape the target's is, with the access inlined away
+ * after the branches were built (build/scratch/ai/v_plc.py) */
 bool CAiPath::plan_legcomplete(PATH_STATE state)
 {
     bool more = false;
@@ -286,6 +297,85 @@ void CAiPath::PostProcess()
 }
 #pragma auto_inline reset
 
+/* MSL's reverse_iterator over the points (ours: include/vector has none; the HUD's c2dfont.cpp
+ * carries the same shape) -- the base iterator held, `current - 1` at each access */
+class CPointRevIter {
+public:
+    typedef CAiPath::points::iterator It;
+
+    explicit CPointRevIter(It x) : current(x) {}
+    CAiPath::point &operator*() const
+    {
+        It tmp = current;
+
+        return *--tmp;
+    }
+    CAiPath::point *operator->() const { return &(operator*()); }
+    CPointRevIter &operator++()
+    {
+        --current;
+        return *this;
+    }
+    CPointRevIter operator++(int)
+    {
+        CPointRevIter t(*this);
+
+        ++*this;
+        return t;
+    }
+
+    It current;
+};
+
+inline CPointRevIter rbegin(CAiPath::points &v)
+{
+    return CPointRevIter(v.end());
+}
+
+inline CPointRevIter rend(CAiPath::points &v)
+{
+    return CPointRevIter(v.begin());
+}
+
+inline bool operator!=(const CPointRevIter &x, const CPointRevIter &y)
+{
+    return x.current != y.current;
+}
+
+/* the legs rebuilt from a finished path's points, last to first (new in SOCOM II, the name ours:
+ * 0x526540, CAiMaps::ExtendPath's last call): one leg to start, its map the last point's, and a new leg
+ * -- the point before and the point after as its ends, the after point's map -- wherever the points
+ * cross maps; the first point closes the last leg, and the path is smoothed when asked. The walk is
+ * UpdatePathWidth's reverse iterator; each map pushed straight from the lookup (two call
+ * temporaries) */
+extern "C" void func_00526540(CAiPath *path, CAiMaps *maps, bool smooth)
+{
+    if (!maps)
+        return;
+    if (!path->HasPoints())
+        return;
+    path->m_waypts.clear();
+    path->m_maps.clear();
+    path->m_legcount = 1;
+    CPointRevIter i = rbegin(path->m_points);
+    CAiPath::point *prev = &*i;
+
+    path->m_waypts.push_back(prev->m_loc);
+    path->m_maps.push_back(maps->GetMapByIndex((*i).m_loc.m_mapid));
+    for (++i; i != rend(path->m_points); ++i) {
+        if ((*i).m_loc.m_mapid != path->m_waypts.back().m_mapid) {
+            path->m_waypts.push_back(prev->m_loc);
+            path->m_waypts.push_back((*i).m_loc);
+            path->m_maps.push_back(maps->GetMapByIndex((*i).m_loc.m_mapid));
+            path->m_legcount++;
+        }
+        prev = &*i;
+    }
+    path->m_waypts.push_back(prev->m_loc);
+    if (smooth)
+        path->SmoothPath(true);
+}
+
 /* each leg smoothed, the invalid points dropped and the points' storage trimmed, when there are
  * points, the plan is complete and smoothing is forced or on (SOCOM 1's dropped the invalid points
  * itself and trimmed nothing) */
@@ -321,6 +411,79 @@ bool CAiPath::IsPreferredCell(const CAiCell *cell) const
     return ok;
 }
 #pragma auto_inline reset
+
+/* the points' flags, last to first (0x525520, by position SOCOM 1's UpdateTurnAngles -- SOCOM II's
+ * points carry no angle: the same reverse walk over the legs as UpdatePathWidth's): at each leg's goal
+ * the leg moves on, the goal and the point after it flagged 2 when the leg crosses maps; elsewhere the
+ * point before a cell holding an action is flagged 1, one before cover (water, brush, forest, grass)
+ * 4. The first point through the reverse iterator's postfix ++ (the old position copied, then
+ * stepped), the size test `<= 2` (sltiu at), the soils an `||` chain MW folds into a bit test, held
+ * in a bool (a switch gives a compare chain) */
+extern "C" void func_00525520(CAiPath *path)
+{
+    if (path->m_points.size() <= 2)
+        return;
+    CPointRevIter i = rbegin(path->m_points);
+    CAiPath::point *prev = &*i++;
+    CAiMap *map;
+    int leg = 0;
+    CAiMapLoc start;
+    CAiMapLoc goal;
+
+    map = path->GetLegMap(leg);
+    path->GetLegPoints(start, goal, leg);
+    for (; i != rend(path->m_points); ++i) {
+        if (prev->m_loc == goal) {
+            leg++;
+            if (prev->m_loc.m_mapid != goal.m_mapid) {
+                prev->m_flags |= 2;
+                (*i).m_flags |= 2;
+            }
+            map = path->GetLegMap(leg);
+            path->GetLegPoints(start, goal, leg);
+        } else if (map) {
+            CAiCell *cell = map->GetCell((*i).m_loc, 0);
+
+            if (cell) {
+                if (cell->HasAction())
+                    prev->m_flags |= 1;
+                unsigned int soil = cell->m_soil;
+                bool cover = soil == 2 || soil == 4 || soil == 5 || soil == 12;
+
+                if (cover)
+                    prev->m_flags |= 4;
+            }
+        }
+        prev = &*i;
+    }
+}
+
+/* each point's width on its leg's map, last to first, the leg moving on at each leg's goal (SOCOM 1's,
+ * the demo's 0x193E80, after SetSnakeLength in both builds; SOCOM II's walk a reverse iterator: the end
+ * stored and copied into the iterator through $f0, the begin likewise at each test). The cell compared
+ * through CAiMapLoc's == (the point's x loaded first), the map declared ahead of the leg and assigned
+ * after it (the map s4, the leg s3, the leg's zero in the first test's delay slot), rbegin()/rend()
+ * inlines of their own (the iterator then takes the slot above rend's temporary) */
+void CAiPath::UpdatePathWidth(unsigned int width)
+{
+    CPointRevIter i = rbegin(m_points);
+    CAiMap *map;
+    int leg = 0;
+
+    map = GetLegMap(leg);
+    CAiMapLoc start;
+    CAiMapLoc goal;
+
+    GetLegPoints(start, goal, leg);
+    for (; i != rend(m_points); ++i) {
+        (*i).m_width = map->GetLocationWidth((*i).m_loc, width);
+        if ((*i).m_loc == goal) {
+            leg++;
+            map = GetLegMap(leg);
+            GetLegPoints(start, goal, leg);
+        }
+    }
+}
 
 /* the snake's length: none (when one was set) clears flag 2 and empties the path, Clear inlined;
  * a new one cuts the points to it, reserves them, sets flag 2 and completes the plan (SOCOM 1's) */
@@ -508,6 +671,15 @@ inline CAiMapLoc on_map(const CAiMapLoc &l, unsigned int id)
     return CAiMapLoc(l.x, l.y, id);
 }
 
+/* a point turned round into another (the name ours: FindDetour's second walk, the input read before
+ * each output store) */
+inline void negate(const CPnt3D *in, CPnt3D *out)
+{
+    out->x = -in->x;
+    out->y = -in->y;
+    out->z = -in->z;
+}
+
 /* what FindDetour's walks carry (the name ours): the two ends a detour joins, the cell found
  * (CAiMapLoc::invalid for none) and how far a walk goes */
 struct DETOUR_DATA {
@@ -539,18 +711,21 @@ static bool _DetourLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
  * side, then the other -- for a cell both legs reach (new in SOCOM II, the name ours: 0x524170,
  * called by an AI state's 0x602270). The found cell rebuilt through on_map, so its `!=` stays the
  * target's materialised bool (the AI core's round 19 rule: the x its first operand read is used after).
- * OPEN, 22 instructions, the right size: (1) the head -- the target materialises the test of the last
- * point as `v0 = !empty()`, NARROWED (andi 0xff), then `if (v0) v0 = m_state == COMPLETE` and branches
- * on v0, where HasPoints() as a ternary's condition (or through a bool local, an if, a helper returning
- * the point, `!= false`, `&& true`) gives MW's branch form with a `daddiu 1` bool (SmoothPath's
- * HasPoints, in an `&&`, has the target's shape without the andi); (2) the second walk's turn -- the
- * target loads side.y and side.z off sp and stores them through the field-address registers s7/s8,
- * this build loads through the registers too (a negating helper by value or by pointer, a copy, a
- * pointer local and the three-float constructor tried) */
+ * The head's test is HasPoints() written out through a bool local -- `b = !empty(); if (b) b = m_state
+ * == COMPLETE;` -- which narrows the negation (andi 0xff) and materialises the state's compare into the
+ * same register (HasPoints() in any form gives MW's `daddiu 1` bool); the second walk's turn is a
+ * negation into an out-parameter (negate(&side, &side)): the input's loads fold into sp offsets while
+ * the output's stores take the field-address registers s7/s8, as the target's do (negating the fields
+ * in place, a copy, a pointer or reference local, a by-value helper and the three-float constructor all
+ * load through the registers too) */
 bool CAiPath::FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapLoc &goal, int cells)
 {
     bool ok = false;
-    point *p = HasPoints() ? &m_points[m_points.size() - 1] : 0;
+    bool b = !m_points.empty();
+
+    if (b)
+        b = m_state == COMPLETE;
+    point *p = b ? &m_points[m_points.size() - 1] : 0;
 
     if (!p)
         return false;
@@ -584,9 +759,7 @@ bool CAiPath::FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapL
 
     map->WalkLine(from, &end, _DetourLineCallback, &d, 0.2f);
     if (d.m_found == CAiMapLoc::invalid) {
-        side.x = -side.x;
-        side.y = -side.y;
-        side.z = -side.z;
+        negate(&side, &side);
         end = *pos + side * d.m_range;
         map->WalkLine(from, &end, _DetourLineCallback, &d, 0.2f);
     }

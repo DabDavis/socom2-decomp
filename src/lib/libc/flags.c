@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/flags.c (MAIN 0x1932F0), the toolchain's libc: fopen's mode string to the
  * stream's flags and open(2)'s. */
 

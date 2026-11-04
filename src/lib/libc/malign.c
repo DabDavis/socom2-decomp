@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/malign.c as the EE's newlib has it (MAIN 0x194A00): memalign, _memalign_r on the
  * global reentrancy block -- inside the malloc lock here (stock newlib and the SOCOM 1 demo's,
  * 0x2C, call straight through; mlock.c's lock is recursive). */

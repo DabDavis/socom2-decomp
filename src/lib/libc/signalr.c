@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's reent/signalr.c (_kill_r and _getpid_r, MAIN 0x1987D0-0x198844), the toolchain's libc (README "The GCC front"): one object,
  * as in the demo. The system layer's errno is the global one (newlib undefines the macro here), copied
  * into the reentrancy block when the call fails and set it. */

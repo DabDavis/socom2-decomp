@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's string/strcspn.c (MAIN 0x199178), the toolchain's libc. */
 
 #include "newlib.h"

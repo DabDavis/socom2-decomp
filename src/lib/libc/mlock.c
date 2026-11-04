@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/mlock.c as the EE's newlib has it (MAIN 0x195A78-0x195B44, between memset's and
  * mprec's objects in newlib's link order): stock newlib's __malloc_lock and __malloc_unlock are
  * empty (the SOCOM 1 demo's are, 8 bytes each); this toolchain's take the runtime's semaphore

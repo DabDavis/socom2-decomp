@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/mbtowc_r.c (MAIN 0x195650), the toolchain's libc: the "C" locale only (no
  * MB_CAPABLE), one byte one character. */
 

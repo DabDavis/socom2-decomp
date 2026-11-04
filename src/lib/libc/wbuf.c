@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdio/wbuf.c (MAIN 0x19E898), the toolchain's libc: putc's slow path. */
 
 #include "newlib.h"

@@ -1,10 +1,11 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -fno-builtin -g */
 /* newlib's libm/math/s_tan.c (tan, MAIN 0x1B3138), as newlib wrote it (doubles in soft float). One
  * object, as in the demo.
- * OPEN, 0xA0 against 0xA8: the runtime compiler's DFmode moves again (round 4a) -- the target's NaN
- * path is `jal dpsub; nop`, this 2.96 puts the double's `move a1,t0` in the call's slot, and the
- * kernel call's argument setup schedules apart. The double routines of the object (exp, pow,
- * rem_pio2, sqrt, the three kernels, cos, sin, floor) wait on the same toolchain difference. */
+ * Byte-exact under the runtime's -g (GCC round 23a; open since round 16a: the NaN path's `jal
+ * dpsub; nop`). GCC gives a DFmode register move a length of two instructions, so reorg leaves a
+ * slot whose only candidate is one to GNU as, which fills it -- but not under -g, which GNU as
+ * reads as -O0 on MIPS; the runtime's objects were built with GCC's CFLAGS_FOR_TARGET, -g -O2
+ * (SCE's patch appends -G0). cc1's output is the same with and without -g. */
 
 #include "fdlibm.h"
 

@@ -1,4 +1,4 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 -g */
 /* newlib's stdlib/envlock.c (MAIN 0x192BD8-0x192BE4), the toolchain's libc: the environment lock's
  * default no-op hooks, which _findenv_r calls around its walk. */
 

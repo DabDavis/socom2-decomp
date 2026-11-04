@@ -75,7 +75,6 @@ public:
 };
 
 extern "C" {
-void func_003B7150(int arg);
 void func_003B0B90(int a, int b, int w, int h);
 void func_003B09E0(int a, int b, int w, int h);
 void func_00592CA0(void *control);
@@ -499,7 +498,7 @@ void CCinematicState::SetMovie(const char *name, unsigned char flag, unsigned ch
 void CCinematicState::UnInit()
 {
     CMPEG::Uninit();
-    func_003B7150(0);
+    zdb::CVisual::AlphaEnable(false);
     for (int i = 0; i < 3; i++) {
         if (m_items[i]) {
             delete m_items[i];
@@ -752,7 +751,7 @@ bool CCoreState::Tick(float dT)
     if (gopt[0]) {
         if (running)
             m_hud->Tick(dT);
-        func_003B7150(1);
+        zdb::CVisual::AlphaEnable(true);
         thePipe.m_assetHUD2 =
             zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[39 + data_00408C08]];
         thePipe.FIFO_Load(thePipe.m_assetHUD2);
@@ -771,7 +770,7 @@ bool CCoreState::Tick(float dT)
         m_hud->m_flashfx.Draw(cam);
         m_hud->m_18900.Draw(cam);
         func_0022D590()->Draw(cam);
-        func_003B7150(0);
+        zdb::CVisual::AlphaEnable(false);
     } else {
         thePipe.FIFO_Load(zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
     }
