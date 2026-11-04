@@ -2973,17 +2973,34 @@ extern "C" bool func_0055EBE0(CSealCtrlAi *ai, AI_FIREPARAMS *p)
     return true;
 }
 
-/* whether the body holds a weapon of the kind: kind 1 is rows 2 and 3 (OVL2 0x5609F0).
- * OPEN, 15 instructions: the target materialises each row's test (xor, sltiu) and branches on the
- * first, the entity in a2; MW here compares with beq and reuses the 1 the kind test left in v0.
- * Tried: inline bool helpers (the `||` one too), a result local, a bool local for the `||`. */
+/* whether the body holds a weapon of the kind: kind 1 is rows 2 and 3 (OVL2 0x5609F0; round 36: a
+ * result local set in an if/else, kind 1's rows through an inline -- and the other kind's row read
+ * into an `int` local first: MW evaluates `data[k] == seal->m_weapon_id` id first whichever way it
+ * is written, so the id took a register the narrowed kind still held; the element first leaves the
+ * id the kind's v1 and the seal a2, as the target's) */
+/* kind 1's two rows tested as a value, the second only when the first fails: the inline's bool
+ * narrowed into the caller's at the join (the target's `andi` in the `b`'s delay slot) */
+static inline bool IsKind1(CZSealBody *seal)
+{
+    bool r = data_0066AD00[2] == seal->m_weapon_id;
+
+    if (!r)
+        r = data_0066AD00[3] == seal->m_weapon_id;
+    return r;
+}
 extern "C" bool func_005609F0(CSealCtrlAi *ai, unsigned char kind)
 {
     CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    bool r;
 
     if (kind == 1)
-        return data_0066AD00[2] == seal->m_weapon_id || data_0066AD00[3] == seal->m_weapon_id;
-    return data_0066AD00[kind] == seal->m_weapon_id;
+        r = IsKind1(seal);
+    else {
+        int w = data_0066AD00[kind];
+
+        r = w == seal->m_weapon_id;
+    }
+    return r;
 }
 
 /* the three items AllowCommand asks about (OVL2 0x5664F0; the names ours) */
