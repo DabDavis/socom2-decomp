@@ -214,6 +214,19 @@ const char *SkbGetText(bool edited)
     return edited ? s_editText : s_openText.c_str();
 }
 
+/* the display unit's reader of UiParams.rdr (0x397070, not written yet) */
+extern "C" void func_00397070(CRdrFile *file);
+
+/* the keyboards' display read again from UiParams.rdr (0x3943E0; CMission::Init calls it). This
+ * unit's: it lies between ~CSkbKeyProps and 0x394420, and its two strings between s_padKeys and
+ * 0x394DA0's valve name in the unit's data (zui_hangul.cpp's until round 21) */
+void SkbLoadUiParams()
+{
+    CRdrFileHolder file("UiParams.rdr", "data/common");
+
+    func_00397070(file);
+}
+
 /* the key's spec deleted through its virtual destructor (0x394370; ours: ~CSoftKeyboard deletes
  * every key's props) */
 CSkbKeyProps::~CSkbKeyProps()
