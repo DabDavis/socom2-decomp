@@ -205,19 +205,6 @@ public:
     C2D *m_c2d;   // 0x68
 };
 
-/* a node's visual as the menu sees it: zdb::CVisual's table up to Get2DVisual, its sixth slot (+0x1C;
- * SOCOM 1's seventh). znode.h's CVisual does not declare it yet, so its out-of-line copy (0x274860,
- * this unit's in both builds: `return 0;`) is still the generated draft's */
-class CVisualView {
-public:
-    unsigned char _0[0x20];
-    virtual ~CVisualView();
-    virtual void Slot0C();
-    virtual void Slot10();
-    virtual void Slot14();
-    virtual void Slot18();
-    virtual C2DVisual *Get2DVisual();
-};
 
 /* a UI variable (SOCOM 1's DWARF: CUIVariable : _zrdr, 0x1C bytes) */
 enum UIVAR_LONGEVITY {

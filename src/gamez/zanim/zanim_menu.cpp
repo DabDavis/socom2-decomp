@@ -84,7 +84,9 @@ void ftsNetworkGameUninit();
 bool DMEConnectToGameServer();
 void DMEDisconnectFromGameServer();
 
-/* the 2D object a command's node draws, if it has one (ours) */
+/* the 2D object a command's node draws, if it has one (ours). The visual is znode.h's zdb::CVisual:
+ * its virtual call to the inline Get2DVisual (+0x1C, `return 0;`) makes this unit emit the
+ * function's out-of-line copy, 0x274860 -- this unit's in both builds */
 inline C2D *GetCommandC2D(unsigned short node_ref)
 {
     C2D *c2d = 0;
@@ -94,7 +96,7 @@ inline C2D *GetCommandC2D(unsigned short node_ref)
         CNode *node = ZAnim.m_CurAnim->GetNode(node_ref, false);
 
         if (node) {
-            CVisualView *visual = (CVisualView *)node->GetFirstVisual();
+            zdb::CVisual *visual = node->GetFirstVisual();
 
             if (visual) {
                 C2DVisual *v2d = visual->Get2DVisual();
