@@ -660,6 +660,59 @@ extern "C" bool func_0058DFA0(unsigned char item)
     return slot != ITEM_SLOT_NONE;
 }
 
+/* a radio order's group named (OVL2 0x58DD70, new in SOCOM II; the name unknown): 0x58DBB0 below
+ * inlines it. The cases listed in reverse of the target's compare chain */
+extern "C" const char *func_0058DD70(unsigned char who)
+{
+    switch (who) {
+    case 1:
+        return "FIRETEAM";
+    case 2:
+        return "ABLE";
+    case 3:
+        return "BRAVO";
+    case 17:
+        return "ESCORTEE";
+    case 18:
+        return "FRIENDLY";
+    case 26:
+        return "NEUTRAL";
+    case 27:
+        return "TURRETS";
+    case 29:
+        return "SUPPORT";
+    case 28:
+        return "HOSTAGE";
+    case 30:
+        return "ENEMIES";
+    case 31:
+        return "ALLIES";
+    default:
+        return "FT_UNKNOWN";
+    }
+}
+
+/* a radio order's addressee for the HUD: the team, its elements, an escortee and the air support
+ * described, any other group by its name (OVL2 0x58DBB0, new in SOCOM II: OVL1's radio menu builder
+ * 0x232BC0 asks it; the name unknown) -- the names' switch inlined, its compares reusing this one's
+ * constants */
+extern "C" const char *func_0058DBB0(unsigned char who)
+{
+    switch (who) {
+    case 1:
+        return "Issue an order to the entire team . . .";
+    case 2:
+        return "Issue an order to team Able . . .";
+    case 3:
+        return "Issue an order to team Bravo . . .";
+    case 17:
+        return "Issue an order to an Escortee . . .";
+    case 29:
+        return "Call in for air support";
+    }
+    return func_0058DD70(who);
+}
+
 /* an order's name for the HUD (OVL2 0x58E950, a switch over 24 orders; its draft matches) */
 extern "C" const char *func_0058E950(unsigned char cmd);
 
