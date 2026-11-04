@@ -29,6 +29,7 @@
 #include <string>
 
 #include "ztwod.h"
+#include "../zvid/zvid.h"
 
 /* a ZAnim command's header (zanim.h's _zanim_cmd_hdr, SOCOM 1's DWARF) */
 struct _zanim_cmd_hdr {
@@ -2094,6 +2095,83 @@ void CUIMapCtrl::AnchorZoom(CPnt3D &out, const bool *covered, const CPnt3D &pos,
         return;
     }
     out = ZoomAbout(pos, x, y, zoom);
+}
+
+/* the frame the last pan step was taken in and how long the pan has run (SOCOM II's statics, OVL1
+ * 0x3E0430 and bss 0x49EBF0; the names ours) */
+static int s_panFrame = -1;
+static float s_panTime;
+
+/* a step of the pan: the animation's node moved in the command's direction by its speed and its
+ * acceleration over the pan's time, no more than its limit, while the map still covers the
+ * control's corners; when it would not, crept from where it is by the speed alone for as long as
+ * it does (SOCOM 1's CUIMapCtrl::OnPan, its time SOCOM II's). `frame <= s_panFrame + 1` gives the
+ * target's `slt at` (the reversed compare materialises into v0), `if (step > max)` its one-arm clamp
+ * (a MIN ternary is branchy here) */
+void CUIMapCtrl::OnPan(const CUIMapCtrlAnimCmdHdr &cmd, float dT) const
+{
+    ZAnim.m_CurAnim->Refresh(false);
+
+    zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd.node_ref_index, false);
+    CPnt3D pos = node->GetPosition();
+    int frame = zVid.frameNumber;
+    float t;
+
+    if (frame <= s_panFrame + 1)
+        t = s_panTime + dT;
+    else
+        t = 0.0f;
+    s_panFrame = frame;
+    s_panTime = t;
+
+    float step = cmd.m_speed * dT + cmd.m_accel * t;
+    float max = cmd.m_limit * dT;
+
+    if (step > max)
+        step = max;
+    switch (cmd.m_dir) {
+    case 0:
+        pos.y += step;
+        break;
+    case 1:
+        pos.y -= step;
+        break;
+    case 2:
+        pos.x += step;
+        break;
+    case 3:
+        pos.x -= step;
+        break;
+    }
+    if (AllCovered(pos, node->GetScale())) {
+        node->SetPosition(pos.x, pos.y, pos.z);
+        return;
+    }
+
+    CPnt3D p = node->GetPosition();
+
+    for (;;) {
+        CPnt3D q = p;
+
+        switch (cmd.m_dir) {
+        case 0:
+            q.y += cmd.m_speed * dT;
+            break;
+        case 1:
+            q.y -= cmd.m_speed * dT;
+            break;
+        case 2:
+            q.x += cmd.m_speed * dT;
+            break;
+        case 3:
+            q.x -= cmd.m_speed * dT;
+            break;
+        }
+        if (!AllCovered(q, node->GetScale()))
+            break;
+        p = q;
+    }
+    node->SetPosition(p.x, p.y, p.z);
 }
 
 /* the node zoomed out about the control's centre, by a third of the time's step at the given rate,
