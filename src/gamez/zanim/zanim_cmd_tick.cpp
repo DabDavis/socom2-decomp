@@ -688,7 +688,7 @@ bool zAnimSoundTick(_zanim_cmd_hdr *hdr, float *dT)
     if (cmd->flags & 0x100) {
         if (snd && snd->sound_instance) {
             if (snd->fade > 0.0f) {
-                func_00346DD0(snd->sound_instance, snd->fade);
+                snd->sound_instance->FadeOut(snd->fade);
                 snd->sound_instance->TerminateOnFinish();
             } else {
                 snd->sound_instance->Stop();
@@ -696,10 +696,10 @@ bool zAnimSoundTick(_zanim_cmd_hdr *hdr, float *dT)
             }
             snd->sound_instance = 0;
         } else if (snd && snd->sound_handle && snd->sound_handle->m_socom2_bit3) {
-            void *manager = func_0034BB80();
+            Headset *manager = Headset::ftsGetHeadset();
 
             if (manager)
-                func_0034A910(manager, 0, snd->sound_handle);
+                manager->StopSound(0, snd->sound_handle);
         }
     }
     return true;

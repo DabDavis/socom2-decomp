@@ -526,8 +526,8 @@ struct _zrdr {
 };   // 0x8 bytes
 #endif
 
-/* SOCOM 1's zrdr_findtag, matched in its own unit under its address's name */
-extern "C" _zrdr *func_0032F0D0(_zrdr *rdr, const char *tag);
+/* SOCOM 1's zrdr_findtag (zrdr.h's declaration) */
+_zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 /* data appended to a command, which may move: the command given back (SOCOM 1's) */
 _zanim_cmd_hdr *zAnimCmdAddData(_zanim_cmd_hdr *hdr, void *data, int size);
 
@@ -798,12 +798,8 @@ public:
 
 /* the sound classes (CSnd, CSndInstance, CSndJukebox, MUSIC_MODE) are zsnd.h's */
 
-/* SOCOM II's sound calls: SOCOM 1's CSndInstance::IsPlaying (matched in its unit under its
- * address's name), a fade out, and a sound manager and its stop -- not named */
-extern "C" bool func_00346D70(CSndInstance *instance);
-extern "C" void func_00346DD0(CSndInstance *instance, float time);
-extern "C" void *func_0034BB80();
-extern "C" void func_0034A910(void *manager, int channel, CSnd *sound);
+/* (SOCOM II's sound calls are zsnd.h's: CSndInstance::IsPlaying and FadeOut, Headset::ftsGetHeadset
+ * and StopSound) */
 
 /* SOCOM II's sound reference: SOCOM 1's with a fade time at 4 (GetSoundRef starts it at -0.1) */
 class _zanim_sound {
