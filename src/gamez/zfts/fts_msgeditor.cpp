@@ -4,8 +4,8 @@
  * __sinit_fts_msgeditor.cpp 0x400830 (the text's position worked out from the line's bounds),
  * after fts_missionlist.cpp's 0x4007D0, and one unit has one initialiser; the floats it reads are
  * this unit's .data (0x3DE798-0x3DE7E0, read only by its functions). A SOCOM II unit with no
- * SOCOM 1 counterpart: the file name and every name in it are ours. Defined in reverse of their
- * image order (-inline deferred). */
+ * SOCOM 1 counterpart: the file name and every name in it are ours. Complete: its thirteen rows and
+ * its initialiser byte-exact. Defined in reverse of their image order (-inline deferred). */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +24,8 @@ class CMsgEditor : public C2D {
 public:
     CMsgEditor();
     virtual ~CMsgEditor();
+    virtual void Tick(float dT);
+    void UnInit();
     void SetMaxLength(int n);
     void DeleteCharacter();
     void Cancel();
@@ -41,6 +43,10 @@ public:
 
 /* the line's bounds (OVL1 .data floats: its left, top, right and bottom edges and a character's
  * width) and the text's position */
+extern float data_003DE798;   /* the cursor's full alpha */
+extern float data_003DE7A0;   /* and its fade's rate a second */
+extern float data_003DE7C8;   /* the text's full alpha */
+extern float data_003DE7D0;   /* and its rate */
 extern float data_003DE7A8;   /* 25 */
 extern float data_003DE7B0;   /* 338 */
 extern float data_003DE7B8;   /* 615 */
@@ -97,6 +103,50 @@ void CMsgEditor::Clear()
     m_cursorTrans = 0.0f;
     m_textTrans = 0.0f;
     m_cursor.SetTrans(m_cursorTrans);
+}
+
+/* the editor taken down: the text wiped and the children let go of (OVL1 0x2CA050: ~CHUD's call,
+ * Init's counterpart; the name ours) */
+void CMsgEditor::UnInit()
+{
+    m_text.ClearAndWipe();
+    clear();
+}
+
+/* the cursor and the text faded in, each to its full alpha, while there is text, and out to
+ * nothing while there is none (OVL1 0x2C9E90: C2D's Tick slot) */
+void CMsgEditor::Tick(float dT)
+{
+    char *s = m_text.m_string + m_text.m_firstCharPos;
+    bool has = s && strlen(s);
+
+    if (has) {
+        if (m_cursorTrans < data_003DE798) {
+            m_cursorTrans += dT * data_003DE7A0;
+            if (m_cursorTrans > data_003DE798)
+                m_cursorTrans = data_003DE798;
+            m_cursor.SetTrans(m_cursorTrans);
+        }
+        if (m_textTrans < data_003DE7C8) {
+            m_textTrans += dT * data_003DE7D0;
+            if (m_textTrans > data_003DE7C8)
+                m_textTrans = data_003DE7C8;
+            m_text.SetTrans(m_textTrans);
+        }
+    } else {
+        if (m_cursorTrans > 0.0f) {
+            m_cursorTrans -= dT * data_003DE7A0;
+            if (m_cursorTrans < 0.0f)
+                m_cursorTrans = 0.0f;
+            m_cursor.SetTrans(m_cursorTrans);
+        }
+        if (m_textTrans > 0.0f) {
+            m_textTrans -= dT * data_003DE7D0;
+            if (m_textTrans < 0.0f)
+                m_textTrans = 0.0f;
+            m_text.SetTrans(m_textTrans);
+        }
+    }
 }
 
 /* a character typed at the end while the line has room and the limit allows (OVL1 0x2C9D90) */
