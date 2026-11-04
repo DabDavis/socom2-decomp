@@ -4516,7 +4516,7 @@ functions written (154 of them assembler), four superseding drafts that matched 
 eight reentrant syscall wrappers (`closer.c` ... `writer.c`) and `strtod.c` (strtod; strtof OPEN):
 86 functions byte-exact of 88 written. What they showed:
 
-- **A static several objects define is `NAME@UNIT` in the map** (`Copy@tlbfunc`, `kCopy@exit`):
+- **A static several objects define is `NAME@UNIT` in the map** (`Copy@tlbfunc`; `kCopy@sdk/exit`, a path tail since round 18a -- the stem exit is newlib's too):
   libkernl links five objects with static `Copy`/`kCopy`/`setup`/`GetEntryAddress` syscall
   wrappers. A GNU object's local function `NAME` scores as the row `NAME@UNIT` (UNIT the source's
   stem) when the map has one (`scdiff.qualify_statics`; sccheck, ccsweep and scdiff apply it); a
@@ -5253,6 +5253,75 @@ lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the 
 `18DB90 1C4CC0` 145 tried, 0 hits (13 build failures, 16 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0
 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 137 tried, 0 hits (23, 8): 290
 tried, none byte-exact (round 16a: 349, 0).
+
+**Round 18a** (2026-11-04, by hand, OVL1's codec first): 26 rows newly byte-exact (5,628 bytes), two
+matched drafts superseded (0x24C5D0, 0x24C8C0) -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows
+1,021 -> 1,049 of 1,108 scored, none lost -- 28 functions written byte-exact of 30. Nellymoser's
+encoder, a unit per source file its asserts name: `ovl1/sase_libquan.c` (+7: the codebook readers, the
+nearest 2-D codeword, the prediction, the rotate-and-scale pair, the outer-cell test), `sase_libtran.c`
+(new, 6 of 6 written: the de-interleave, k <-> ASK, the step-up recursion, the FFT driver and its bit
+reversal -- Numerical Recipes' four1 shape), `sase_libvect.c` whole (+2), `sase_libsnd.c` (new, the
+circular buffer whole -- round 12a's release moved there from sase_misc.c), `sase_libmath.c` (new: the
+fourth root; the RNG OPEN), `sase_ldpda.c` (+2), `sase_libsigproc.c` (+1), `sase_libspeech.c` (new: the
+parabolic peak), `sase_preproc.c` (new, whole: the DC-blocking high-pass), `sase_bitpackc.c` (new: the
+bit packer), `sase_packsc.c` (new, whole), `sase_encsc.c` (+1, the frame's spectrum); `sase_codepv.c`'s
+decode OPEN. No rows named (the codec is not in SOCOM 1). What they showed:
+
+- **2.96 if-converts an if/else, so its arms are not an assignment and an if**: `if (c) x = a; else x =
+  b;` becomes `x = b; if (c) x = a;` AFTER CSE -- the else's constant materialised again (0x24EF30's
+  reloaded 1.0, `fScale = 1.0F; if (...)` divides f20 by itself, 2 words short), or the assignment
+  placed after the compare it follows (0x24A9F0's `move` in the branch's slot; assigning first re-forms
+  the address from the copy, 2 words long), or the else's zero copied from the compare's (0x24D498:
+  `if (fA != 0.0F) ...; else fX = 0.0F;` -- the default first 4 words off, the test inverted 27). A
+  test of two arms that share one consequence is one conditional expression: PreProc.c's flush `if ((y
+  > 0) ? (y < 1e-5) : (y > -1e-5)) y = 0;` -- nested ifs give two zeroing blocks.
+- **An inline function's output is deferred to the end of the object**: libvect.c's scaled copy is
+  `__inline__` -- 0x24EF30 inlines it, assert and all, and its out-of-line copy is the same code -- and
+  the image holds the object's line-397 function first: GCC emits inline functions at the end, which is
+  why the codec's objects are not in line order (libquan.c 100 ... 1118, then 472, 632, 362 ...).
+- **The target's saved register is the parameter's**: a count decremented in place (`iLength--`, the
+  band edge 0x24A908), a pointer parameter swapped with the scratch array (the step-up 0x24EA68:
+  `pfT = pfA; pfA = pfPrev; pfPrev = pfT`), an offset added to (`iOffset += (n + 1) >> 1`, the ring's
+  centred read) -- each a new variable here moves the allocation.
+- **One temporary per value, as the vendor wrote it**: the fourth root's polynomial through one `fY`
+  (as one expression its product ties to the dying operand: 8 words), the inverse rotation's norm
+  inverted in place (`fNorm = 1.0F / fNorm`), the 2-D distance accumulated (`fDist = d * d; d = ...;
+  fDist += d * d`), the codebook walked `*pfCodeBook++` (an index stride of 2 is one `addiu 8`).
+- **A parameter converted where it is used**: the bit packer's data is an int made short after the
+  assert (a `short` parameter converts at the entry: 49 words); the frame packer's prototype takes an
+  unsigned char (the caller's `lbu` of each int index).
+- **A null test of a dereferenced pointer is deleted** (-fdelete-null-pointer-checks): libsnd.c's write
+  and read read the block's int fields at their declarations and the target tests only the buffer of
+  the assert's two; PreProc.c's float load from its block leaves the test that follows (both as written).
+- **Measured**: PackSC.c's packer block, three store orders of 720 (`tools/ccperm.py`).
+- **Open, diagnosed in place**: the RNG 0x24AEB0 (12 words: the high product in a1, the target's v0 --
+  its halves computed before the assert, else the call reloads the seed; the decoder's copy at 0x256380,
+  SWSynth.c:359, has the same text at -G0), CodePv.c's decode 0x2487E8 (6: two saved registers swapped).
+- **MAIN, the toolchain hunt**: `toolchains/dl/ee-gcc2.9-991111.tar.xz` holds a Linux build of 991111
+  that toolchains/ never linked (the linked `ee-gcc2.9-991111` is the PE32 `.tar.gz`); it compiles
+  fileio's no-wait four as every other 991111 build (98s/87s/126s/98s): no new toolchain. But
+  **sceSifInitIopHeap is byte-exact under `-fno-schedule-insns`**, which costs every other function of
+  iopheap.c 2-34 words: this cc1's first scheduler hoists the return's clear above `_bind`'s store
+  (no dependence, ISSUE_RATE 2) where the vendor's did not -- with the no-wait PRE (round 17a) and
+  adddate's GCSE (round 12a), the third place the vendor's cc1 does less than dtls13010's.
+
+**The tools, round 18a**: (1) **a static's `NAME@UNIT` qualifies by path where a stem is shared**
+(round 17a's hazard): `scdiff.unit_qualifiers` gives a unit's UNITs most specific first -- its path
+under src/ without the suffix and each tail of it (`lib/sdk/exit`, `sdk/exit`), and the bare stem only
+while no other unit in the tree shares it (`exit`, `locale`, `zsys_memory`, `zvid` recur; only
+`exit` is two GCC units', libkernl's and newlib's). sccheck, scdiff and ccsweep pass the unit's path
+(a probe outside the tree is its stem, ccsweep's `--stem` is taken as given); sdk/exit.c's three rows
+are `Copy@sdk/exit`, `kCopy@sdk/exit`, `setup@sdk/exit`. The canary's
+`test_shared_stem_qualifies_by_path` pairs it with its negatives (the bare row of a shared stem
+resolves for neither unit, a unique stem still does). **Proved** over every unit (`--files .`, 1 job,
+`build/scratch/gcc/proof.sh`): master 9fab136a's sccheck.py, scdiff.py and scdecomp.py with master's
+map, and these with this map, over one frozen snapshot of src/ and include/ -- 11,241 lines each,
+identical but the three renamed rows' names (match under both); after merging master 1cb92b57 every
+`src/lib` unit scores with no regression (2,445 of 2,604). automatch over the lane's four ranges
+(`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's build): MAIN `18DB90 1C4CC0` 143
+tried, 0 hits (13 build failures, 16 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0 hits (5 refusals),
+OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 137 tried, 0 hits (23, 8): 288 tried, none
+byte-exact (round 17a: 290, 0).
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
