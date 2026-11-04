@@ -577,6 +577,8 @@ public:
 class CAiSAction : public CAiState {
 public:
     CAiSAction() : CAiState(AI_STATE_ACTION) {}
+    /* +0x08 (0x5F0470) */
+    virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
     virtual void Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai);
     virtual bool CanPushAiState(AI_STATE state, CSealCtrlAi *ai);
     virtual bool CanAttack() const;
@@ -586,12 +588,18 @@ public:
     virtual bool Virtual38();
     virtual ~CAiSAction();
 
-    unsigned char _58[0x60 - 0x58];
+    /* 0x58: the action's object, released on the way out for the SEAL (OnSignal's 0x2B49D0 clears
+     * its holder id at 0x34; the name ours) */
+    void *m_58;
+    unsigned char _5c[0x60 - 0x5c];
     CPnt3D m_60;   // 0x60
-    unsigned char _6c[0x70 - 0x6c];
+    int m_6c;   // 0x6c (0 on a reset)
     CAiMapLoc m_70;   // 0x70
     CAiMapLoc m_74;   // 0x74
-    unsigned char _78[0x84 - 0x78];
+    int m_78;   // 0x78 (0 on a reset and when the anim is dropped)
+    unsigned char _7c[0x80 - 0x7c];
+    /* 0x80: the SEAL's anim set on entry, bound back on the way out (the name ours) */
+    class AnimSet *m_animset;
     int m_84;   // 0x84: the object waited on (an id: slot 0x0C's event 1 drops it; 0x88 bytes)
 };
 
