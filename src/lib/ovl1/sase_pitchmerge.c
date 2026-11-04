@@ -10,10 +10,49 @@
 
 extern float fabsf(float);
 
+/* the decision's state (its other fields not read here) */
+typedef struct {
+	void *pvSpec;			/* 0x00: handed to 0x24F108 */
+	char ac04[0x1C - 0x04];
+	float fPrevMax;			/* 0x1C: 0x24F170's previous maximum */
+	char ac20[0x30 - 0x20];
+	float fVoic;			/* 0x30 */
+	float fPitch;			/* 0x34 */
+} PITCH_STATE;
+
+extern void func_0024F108(void *pvSpec, float *pfBuf, int *piLength, void *pv, float fPitch);
+extern float func_0024F250(float *pfBuf, int iLength, float *pfV, float fPitch, float fMin);
+float func_0024F468(float fP1, float fP2, float fV1, float fV2);
+float func_0024F170(float fA, float fB, float fCur, float fV, float *pfPrev);
+
+/* the frame's pitch and voicing (pfFrame[0] and [1]) from the tracked pitch and the frame's own
+ * candidate (pfFrame[10] and [11]); mode 1 works at twice the pitch. The voicing ratio's
+ * parameters are in the vendor's order -- the floats first, the pointer after fCur: GCC evaluates
+ * a call's arguments right to left, and the target's moves come f14, then a0, then f13 and f12;
+ * the EABI gives each class its registers whatever the order, so only the schedule tells
+ * (the pointer first: 4 words; two of the 120 orders match, build/scratch/gcc/v_pdec2.py). */
+void func_0024F010(PITCH_STATE *p, float *pfFrame, void *pv, void *pvUnused, int iMode, float fMax)
+{
+	float afBuf[264];
+	int iLength;
+	float fV, fPitch, fR;
+	float *pfCand = pfFrame + 10;
+
+	fPitch = func_0024F468(p->fPitch, pfCand[0], p->fVoic, pfCand[1]);
+	if (iMode == 1)
+		fPitch += fPitch;
+	func_0024F108(p->pvSpec, afBuf, &iLength, pv, fPitch);
+	fR = func_0024F250(afBuf, iLength, &fV, fPitch, 0x1.999998p-4F);
+	pfFrame[0] = fR;
+	if (iMode == 1)
+		pfFrame[0] = fR * 0.5F;
+	pfFrame[1] = func_0024F170(p->fVoic, pfCand[1], fMax, fV, &p->fPrevMax);
+}
+
 /* the voicing ratio: the smaller estimate over the previous maximum when weakly voiced, the larger
  * over the current one when not (each maximum floored at 0.1); close estimates averaged; clamped
  * to [0, 1], the current maximum kept for the next frame */
-float func_0024F170(float *pfPrev, float fA, float fB, float fCur, float fV)
+float func_0024F170(float fA, float fB, float fCur, float fV, float *pfPrev)
 {
 	float fR;
 
