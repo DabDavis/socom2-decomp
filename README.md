@@ -49,12 +49,12 @@ and data reference resolved to the address the shipped code uses.
 | `tools/unitscan.py` | where one hand-written unit could be two: its pinned and inlined pairs, the target's own calls, every cut that separates the first and none of the second |
 | `tools/s1vtables.py` | virtual functions named slot by slot: SOCOM II's vtables found by their RTTI's class-name string, aligned with the demo's `__vt__` tables; `--holdout` measures it on names the map already has |
 | `tools/try.py` | compile one unit with one variant at a time and score one symbol, in a scratch copy of `src/` and `include/`, built as sccheck builds it (the unit's own `sc:` directive: a GCC unit's toolchain and flags, `as=`, `overlay=`); a variant is a `--sub` and the `--and`s after it, or one of `--variants FILE.py`'s; `--target ROW` scores against another row, `--all` every function of the unit (GCC round 27a) |
-| `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness) |
+| `tools/objcmp.py` | a header change proved code-neutral: every hand-written unit built at BASE's text and as it is, function by function, data section by section (GCC round 27a, the SEALs' round-26 harness); `--by-address` compares every name a map resolves as its map address, so a placeholder respelled by its row's name is the same (GCC round 29a) |
 | `tools/scperm.py` | the permuter: EQOA's tree-sitter mutations of one function, MW-compiled and alignment-scored (needs `.venv`) |
 | `tools/ccsweep.py` | compiler identification for the GCC front: one source over every ee-gcc toolchain and flag set (and `//==` source variants), every function it defines scored |
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
 | `tools/ccflags.py` | a GCC range's drafts recompiled with a flag added: a flag the vendor used loses none (how strict aliasing was told apart) |
-| `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order and each pseudo's final register -- for register-only misses (GCC round 14c's harness, promoted in 15a) |
+| `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order, each pseudo's final register and global-alloc's priority of each (floor_log2(refs) x refs / live, ties to the lower pseudo; checked against .greg's order: GCC round 29a) -- for register-only misses (GCC round 14c's harness, promoted in 15a) |
 | `tools/treesearch.py` | which source trees of a sum give the target's: every tree over a spec's leaves compiled under its GCC directive, each function's dataflow read back from cc1's RTL dump (2.96's fold regroups sums; the recogniser lane's round 18c, promoted in GCC round 20a) |
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
@@ -2060,6 +2060,58 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 24** (SkbPadKeyEvent at last):
+  - MW loads a byte-enum field with `lb` and narrows it with `andi 0xff` at each read; a `signed char` field cast to the
+    enum folds into `lbu` in every form tried (`(E)(signed char)`, `(E)(int)`, a char or int local first, an inline
+    returning it) -- SkbPadKeyEvent 0x394F60 (open since round 19) matches with the pad table's event field an SKBKEY read
+    without a cast (the table's data unchanged);
+  - a byte enum tested `== E_0` / `!= E_0` narrows at the test, `!e` / `if (e)` tests the loaded byte directly (16 bytes
+    shorter); a 2-byte enum loads a `signed char` field with `lb` and narrows with `andi 0xffff`, a signed byte enum (one
+    enumerator -1) sign-extends at each read instead;
+  - MW numbers a float expression's temporaries in source order (left operand first) though the loads are emitted first;
+    a constant passed through an inline's parameter, or held in a caller local defined before calls, is propagated before
+    that numbering (SkbStartDisplay stays 1 off on it); CSkbSplit's sum 0x391E70 written (12: a register rotation).
+- **Tells from the engine core, round 13** (the pop-up dialog's model, the network packet arguments, the mission title):
+  - a jump table that starts at 0 needs its empty cases written, otherwise MW builds a compare chain
+    (CZAnimArgList::AddNetworkPacketArgs 0x271EE0, SOCOM 1's); a `li a3,1` shared by a `== 1` compare and the call's third
+    argument means the argument really is 1 (UICompareValues 0x274DB0: UIVAR_SESSION); a `signed char` return compared as
+    `(unsigned char)` gives the target's `andi 0xff` instead of a sign extension;
+  - a member read twice, once for a test and once as a call argument: take the test's read into a local through a const
+    view, ahead of the unrelated `index = -1` store -- the load comes first and the store fills the branch's delay slot;
+  - zanim_menu.h's minimal CPopUpDialog (a CPlainBmp base, the text at 0xB0, a C2D at 0x314, two buttons; 0xBF0 bytes) with
+    its destructor inline in the class and a later virtual out of line reproduces the image: zanim_menu.cpp emits no
+    vtable (zui_2d.cpp's at 0x4073A0 is the real one) and the destructor's copy lands after UIFlushMenuHistory
+    (~CPopUpDialog 0x27C8D0, CMenuStack::GetPopUp 0x27F190);
+  - renaming a row that only a draft matches makes that draft no-target until automatch --stale runs: write the function
+    from source first, or keep the placeholder; 0x2A2EB0-0x2A3AF8 is a unit of its own (ftsGetAltitudeApprox, SOCOM II's,
+    and OVL1's copy of CAiMap::GetLocation 0x2A3950).
+- **Tells from the HUD, round 42** (the TCM builder, the root's show, the button's and wrapped text's destructors):
+  - calling a virtual through a local copy of `this` defined in the block where it is used computes the object ahead of
+    the argument and puts the argument in the call's delay slot; copied at the top of the function the copy becomes the
+    stores' base register instead (tcmCreateItem 0x236D20: SetTexture through `self = this` after the texture's ternary);
+  - a local declared uninitialised ahead of an element pointer in a loop body is numbered below the pointer and coloured
+    after it (CTCM::ShowRoot 0x235560: the state); a negation written at both uses is a common subexpression, a temporary
+    numbered after an inline's variables, so it takes s0 -- a named local swaps it (tcmVote 0x22F3C0: `!cur` twice);
+  - in sequential walks a function-level counter shared by some loops, the others loop-scoped, decides which saved
+    registers the counters share; all loop-scoped, the parameters are coloured first and two more saved registers are
+    needed (CZLineMap::Draw 0x20D390); defining a destructor that was only declared emits its this-adjusting thunk too,
+    and both match (~CWrappedText 0x379D90 / @152@ 0x37D010, ~C2DButton 0x377510 / @192@ 0x37D040);
+  - SetupBackgroundBox 0x22AE90 matches through a STAND-IN: the bottom-right corner's u read as `*(volatile float
+    *)&s_fCornerU` (about 20 natural spellings let MW hoist v's load; the variable volatile everywhere moves six loads);
+    ActionSelectionMask's caller measured: the callee's parameter is an int (`1 << (unsigned char)id`).
+- **Tells from the kit and AI states, round 35** (the view cone, the enemy callout, the pickup scan, slot 0xC retyped):
+  - MW folds a mask local read only once back into the expression, and an `&` then evaluates the word's index first
+    whatever order is written; redefining the local (`m &= word`) keeps the mask first (0x5CB450 / 0x5CB630 at 2: which
+    register the seen-bit AND writes);
+  - a float field read in place keeps the source's `mul.s` operand order, through an inline accessor the other operand
+    comes first; a dead first definition orders the numbering (the pickup before the flag in the pickup scan 0x5CB870,
+    new in SOCOM II; the record before the list reference in AnimSet::Inherit 0x5E3740, SOCOM 1's);
+  - on short fields `> -1` gives `slti`/`bnez` and `>= 0` gives `bltz`; `x = K; if (c != 2) x = -1; else {...}` puts K in
+    the beq's delay slot and -1 in the following b's; a 2-byte enum call result passed to a `void *` parameter is
+    re-extended (dsll32/dsra32), to a 2-byte enum parameter it goes through unconverted (0x571010 takes an AnimType);
+  - CSealCtrl::UpdateViewCone 0x5C9520 (slot +0xA8) and CSealCtrlAi::EnemyCallout 0x5C9930 (SOCOM 1's; SOCOM II passes
+    the entity, not the CTarget) in SOCOM 1's seal_sensors.cpp order; CAiState's slot 0xC takes (CZAnim *, AI_SIGNAL,
+    CSealCtrlAi *), AI_SIGNAL in ai_states.h, its three overriders renamed and byte-exact.
 - **Tells from the weapons, round 23** (ZWepReader::ReadWeapon, the projectile list's Clear(), the item stash typed):
   - a call whose result MW folds away: write it `(unsigned int)f() <= 0xFFFFFFFFu && ...` (always true) and the folded
     branch targets the false block, so only that block is padded; the always-false `|| ...` form leaves the true block
@@ -8120,6 +8172,64 @@ showed:
   PtchCand.o's own `.lit4` run in first-use order (0x1D53FC-0x1D5404, then 0.72 and 1.333), literals,
   not `.sdata` variables a call would keep in the loop. Not reached: round 26a's and 27a's other opens,
   libmpeg's six, libgraph's setters.
+
+**The tools, round 29a** (the lanes' requests): (1) **`tools/objcmp.py --by-address`** (the game
+states' round-34 objcmp_addr.py and the kit's round-33 byaddr.py folded in): every lane respells
+placeholders, and plain objcmp reported each renamed call as a difference. With the flag every name
+a map resolves -- a relocation's target, a function's own name, a data object's -- is compared as its
+map address by the scorer's own rule (`scdiff._sym_address`: the row, an `ovl-copy:` from code in
+another overlay, a placeholder's address), the tree's map first, then BASE's (a name since renamed);
+a name no map resolves (a static, MW's `@N`, a section) is compared by name as before. Resolution is
+a function of the name alone, so the flag only equates more; a unit equal only so is listed with its
+respellings (`SAME-BY-ADDRESS`). Both compilers write REL relocations (the offset in the field), so
+`data_001D0BB0[1]` respelled as the row at 0x1D0BB8 still differs: a symbol is equated, never a sum.
+Measured against 2deeccce~1 over all 633 hand-written units: plain mode's output byte-identical to
+master's objcmp (44 differ); by address 36, a strict subset, the 8 equated each a real respelling
+(the states' three CVisual statics in database.cpp, the HUD's two CTCM calls, seal_env.cpp's three
+...), and st_core.cpp differs only in its dropped stand-in -- the states lane's hand result. The
+canary's `test_objcmp_by_address_equates_a_respelling` (6 assertions; negatives: plain differs,
+another row differs, unmapped names compare by name, an offset into a placeholder). (2) **`tools/
+ccdump.py -f` prints global-alloc's priorities** (the GCC c lane's round-21c prio.py folded in): each
+allocno's as global.c's allocno_compare computes it from `.lreg`'s flow info -- (double)(floor_log2(refs)
+x refs) / live x 10000 x size, truncated, ties to the lower pseudo -- with its calls, register and a
+`tie` mark; the order these give is checked against the order `.greg` printed and a disagreement is
+said (sceCdStRead: agrees, and shows round 24a's 909/909 tie at once; one count perturbed: "NOT the
+order .greg printed"). No tool that scores changed: scdiff.py, sccheck.py, scdecomp.py and `include/`
+are master's, so no MW or GCC unit can score differently.
+
+**Round 29a** (2026-11-04, the tools first, then libgraph's setters and libmpeg's CSC object): 8 rows
+newly byte-exact (3,224 bytes) of 11 written -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows
+1,246 -> 1,254 of 1,311 scored, none lost. libgraph, one unit per demo object (`sdk/gs_setdefclear.c`,
+`gs_setdefstoreimage.c`, `gs_setdefloadimage.c`, `gs_execloadimage.c`, `gs_setdefdrawenv.c`,
+`gs_syncpath.c`; libgraph 14 of 17, `gs_setdefdbuff.c` OPEN) over `sdk/libgraph.h`'s new blocks
+(Sony's SCE_GS_SET_* words, the GIF tag's fields, the clear, image, drawing-environment and
+double-buffer packets); libmpeg's colour-space conversion (`sdk/mpeg_csc.c`, new: the demo's object
+0x157C20 -- `_doCSC`, `_ch4dma`; `_ch3dmaCSC`, `_doCSC2` OPEN). No rows named (all had SOCOM 1's). What
+they showed:
+
+- **libgraph's register words are Sony's SET macros**: each field cast to u_long and shifted, no
+  field masked (the masks in the code are the source's: FRAME's `((w + 63) >> 6) & 0x3f`, `psm &
+  0xf`, the depth test's `ztest & 3`); a GIF tag is cleared whole (`por; sq`) and its fields set one by
+  one -- flow folds one word's field stores into a single ld/sd. sceGsSetDefStoreImage and
+  SetDefLoadImage byte-exact as first written; SetDefDrawEnv's XYOFFSET is 64-bit arithmetic (`2048 -
+  (u_long)(w >> 1)`: the target's dsubu; an int difference converted after is 0x1D4).
+- **A do-while(0) macro moves code**: sceGsExecLoadImage's scratchpad test as `do { if ... else ... }
+  while (0)` laid its SPR arm out of line after the return; written bare, in line as the target's.
+  The MADR store is in each arm (a conditional expression's one store forms its address through
+  `$at`), and each wait keeps its own failure block -- cross-jumping merges them, the kept copy after
+  the second SPR arm as the target lays it out; one shared `goto timeout` puts it last.
+- **jump.c copies no loop exit test holding an asm with operands** (duplicate_loop_exit_test's
+  `asm_noperands > 0`): sceGsSyncPath's VU1 wait has its test copied before the loop like every other
+  wait, so its `cfc2 %0,$vi29` is read before the loop and again at the end of the body (in the test
+  the loop is entered by a jump, 8 bytes short; through a `$6` register variable, the AND ties to a2).
+- **scePrintf is void** (eekernel.h's): the address formed right after each call takes v0
+  (sceGsSyncPath's ten-register dump), never v1, which the int's call value keeps out.
+- **A bit read by shift, not by bitfield**: libmpeg's wait on channel 3 reads STR as `(*D3_CHCR >> 8) &
+  1` (`lw; srl; andi`) -- libdma's tD_CHCR bitfield is an `lbu` of the byte, a mask an `andi 0x100`.
+- **Open, diagnosed in place**: sceGsSetDefDBuff (0x290 against 0x298, 122 words exact: the halved page
+  narrowed to a short for DISPFB alone; twelve shapes), `_ch3dmaCSC` (right size with the pass count
+  volatile, 15 words of the plain QWC/CHCR stores' schedule), `_doCSC2` (0x1B8 against 0x1C0). Not
+  reached: sceGsExecStoreImage (0x68C), `_csc_storeRefImage`, round 28a's and 26a's opens.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source

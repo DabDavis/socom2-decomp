@@ -612,7 +612,12 @@ int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out);
  * keep the value form in the target); the reference read into a local first keeps those two and
  * changes nothing here. Everywhere else in the target the file's m_file and m_flags go through
  * saved registers (sp+372 into s0, sp+384 into s1, set up with the inlined constructor): only the
- * inlined IsOpen reads them afresh, so its copy here is not the out-of-line one's source. */
+ * inlined IsOpen reads them afresh, so its copy here is not the out-of-line one's source.
+ * Round 24: the CD test over the union's pointer (`CFileCD *const &`, m_cd) or through the object
+ * (`CDFileOpen(const CFileIO *)` binding a reference to m_file) is 3 off the same way and reads
+ * `lw v1,0(s0)` -- MW merges the reference's address with the constructor's hoisted &m_file where
+ * the target builds it afresh (`addiu v0,sp,372`); a reference accessor over m_file passed to the
+ * by-value test, or a by-value pointer, stays 8 off (the value form). */
 int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out)
 {
     CFileIO file;

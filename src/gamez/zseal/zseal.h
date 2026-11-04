@@ -95,8 +95,11 @@ public:
      * 0x57D5E0, are looked up again unless it is on the stack) */
     static short SwapRifle;   // OVL1 0x3DEC78
     static short ClimbMedium;   // OVL1 0x3DEC90
-    static short ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
-    static short ProneLStrafe;   // OVL1 0x3DECD0
+    /* (SOCOM II's two strafes, AnimType itself, not short -- the SEALs, round 34: SetMaxMotion passes
+     * them to GetScript unconverted, the static loaded ahead of the set as an argument with no
+     * conversion is) */
+    static AnimType ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
+    static AnimType ProneLStrafe;   // OVL1 0x3DECD0
 };
 
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
@@ -1606,8 +1609,10 @@ public:
     static void AcquireRemoteAi(CZSealBody *seal);
     /* an action offered or withdrawn (SOCOM 1's took an unsigned int id) */
     void ActionAvailableMask(unsigned char id, bool on);
-    /* the action shown selected, its bit alone (OVL2 0x544C80, seal.cpp; SOCOM 1's took a flag too) */
-    void ActionSelectionMask(unsigned char id);
+    /* the action shown selected, its bit alone (OVL2 0x544C80, seal.cpp; SOCOM 1's took a flag too):
+     * an int, narrowed inside (the HUD's round 42: its caller loads the byte with `lb`, which only an
+     * int-sized parameter gives) */
+    void ActionSelectionMask(int id);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */
     void SetRestrained(bool on) { m_restrained = on; }
     /* the squad-joined flag set (an inline: `(b & 1) << 6` even for a constant) */
@@ -2145,7 +2150,8 @@ public:
      * SOCOM II (0x5B14E0 lets go of it; the names ours) */
     struct CSealClimb {
         unsigned char m_active;   // 0x0
-        int m_ladder;   // 0x4
+        unsigned int m_ladder;   // 0x4: unsigned (the SEALs, round 34) -- passed to GetLadderByIndex's
+                                 // int, the conversion puts its load after the list's (0x5B14E0, 0x5A2490)
         unsigned char m_state;   // 0x8
     } m_climb;   // 0x1328
     AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)
