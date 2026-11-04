@@ -276,6 +276,7 @@ public:
             operator delete(data_);
     }
     size_t size() const { return size_; }
+    size_t capacity() const { return capacity_; }
     T &operator[](size_t i) { return data_[i]; }
     T *begin() { return data_; }
     T *end() { return data_ + size_; }
@@ -309,26 +310,36 @@ void __vector_pod<T, Allocator>::resize(size_t sz, const T &c)
 
 /* n copies of x at position: in place when the capacity holds them (x itself moved with the tail
  * when it lies there), else into a buffer grown by doubling from the old capacity (SOCOM 1's
- * <vector> 486-530: newcap, newsize, olddata, pos, xp, t1 -- MW's DWARF lists a block's locals in
- * REVERSE declaration order: flush's `failed` before its sentry `ok`).
- * OPEN (MAIN's copy 0x18B810), 0x470 against 0x488: the throw (length_error through the counted
- * string, its constructor inlined once flush has generated it), both branches and the 8x copies are
- * the target's; the registers are numbered otherwise (the target: this s3, position s2, n s1, xp s4
- * from entry, newsize s0, olddata s5, pos s6 -- here this s2, position s1, n s0, x s6) and the in-place
- * branch is 0x18 short. Written so that iostream.cpp emits ~logic_error, ~length_error and what(). */
+ * <vector> 486-530, one block: newcap, newsize, olddata, pos, xp, t1 -- MW's DWARF lists a block's
+ * locals in REVERSE declaration order: flush's `failed` before its sentry `ok`).
+ * OPEN (MAIN's copy 0x18B810), 0x488 like the target's, 20 instructions off (round 6: was 0x470): the
+ * throw (length_error through the counted string), both branches and the 8x copies are the target's,
+ * and every saved register since round 6 -- the six locals declared at the top in SOCOM 1's order
+ * (newsize s0, xp s4, olddata s5, pos s6) and the in-place test through capacity() (the accessor makes
+ * the growth branch re-read capacity_, which the plain field had kept in a saved register); `e - (t1 -
+ * n) <= xp` branches where `!(xp < ...)` made a bool, and the doubling loop's if/else gives the target's
+ * padding. What differs: the loop's max_size() constant is in v1 (the target's v0, its exit test in at)
+ * and the second copy loads data_ before size_ (the target size_ first) -- build/scratch/rt/pi1.py.
+ * Written so that iostream.cpp emits ~logic_error, ~length_error and what(). */
 template <class T, class Allocator>
 void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
 {
+    size_t t1;
+    const T *xp;
+    size_t pos;
+    T *olddata;
+    size_t newsize;
+    size_t newcap;
     if (n == 0)
         return;
     if (n > max_size() || size_ > max_size() - n)
         throw length_error("vector::insert length error");
-    size_t newsize = size_ + n;
-    if (newsize <= capacity_) {
+    newsize = size_ + n;
+    if (newsize <= capacity()) {
         T *e = data_ + size_;
-        size_t t1 = (size_t)(e - position);
-        const T *xp = &x;
-        if (!(xp < e - (t1 - n)) && xp < e)
+        t1 = (size_t)(e - position);
+        xp = &x;
+        if (e - (t1 - n) <= xp && xp < e)
             xp += n;
         if (t1 != 0)
             for (T *i = e, *j = e + n; position < i;)
@@ -337,11 +348,15 @@ void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
             *position++ = *xp;
         size_ += n;
     } else {
-        T *olddata = data_;
-        size_t pos = (size_t)(position - olddata);
-        size_t newcap = capacity_ ? capacity_ : 1;
-        while (newcap < newsize)
-            newcap = newcap < max_size() / 2 ? newcap * 2 : max_size();
+        olddata = data_;
+        pos = (size_t)(position - olddata);
+        newcap = capacity_ ? capacity_ : 1;
+        while (newcap < newsize) {
+            if (newcap < max_size() / 2)
+                newcap *= 2;
+            else
+                newcap = max_size();
+        }
         data_ = (T *)operator new(newcap * sizeof(T));
         T *p = data_ + pos;
         for (size_t k = n; k != 0; --k)

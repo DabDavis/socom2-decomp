@@ -17,13 +17,14 @@
  * The vector destructors this unit emits (no-target) are referenced only from exception tables,
  * which the link discarded (the image's table is empty): the image has no copy of them.
  *
- * NOT WRITTEN (round 4): the library's own basic_string<char> instances that classic's "C" pulls in
- * -- the C-string constructor 0x18D2C0 (MAIN's copy of OVL1's 0x2396F0, marked ovl-copy), reserve
- * 0x18D8C0 (0x278: OVL1's is 0x258 -- the library throws length_error through _MSLstring where the
- * game's build has exceptions off), the template replace 0x18D3E0 (0x450, OVL1's 0x1EE780 is 0x3BC)
- * and assign(first, last) 0x18DB40 (its caller) -- and ~out_of_range 0x18D830 (the replace's throw):
- * neither MSL's string internals nor the logic_error family are modelled yet (include/string calls
- * the game's reserve and replace through placeholders). The static initialiser 0x1D4C20 is this
+ * The library's own basic_string<char> instances that classic's "C" pulls in: the C-string
+ * constructor 0x18D2C0 (MAIN's copy of OVL1's 0x2396F0, marked ovl-copy) is byte-exact since round 6
+ * (msl.h); NOT WRITTEN: reserve 0x18D8C0 (0x278: OVL1's is 0x258 -- the library throws length_error
+ * through _MSLstring where the game's build has exceptions off), the template replace 0x18D3E0 (0x450,
+ * OVL1's 0x1EE780 is 0x3BC) and assign(first, last) 0x18DB40 (its caller) -- and ~out_of_range
+ * 0x18D830 (the replace's throw, emitted only once the replace is written): MSL's string internals
+ * are modelled nowhere (include/string calls the game's reserve and replace through placeholders,
+ * msl.h MAIN's). The static initialiser 0x1D4C20 is this
  * unit's: it fills std::__ctype_map's entries 9-127, the multi-bit masks (alpha 0x1, blank 0x2,
  * cntrl 0x4, digit 0x8, graph 0x10, lower 0x20, print 0x40, punct 0x80, space 0x100, upper 0x200,
  * xdigit 0x400: a two-byte enum whose operator| is a function, so only single masks initialise

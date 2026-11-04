@@ -6,8 +6,11 @@
  * What is written so far: the small virtual slots (named by the vtables at 0x1D5050-0x1D5200),
  * uflow, xsgetn<char>, the filebufs' setbuf/showmanyc, the getlocs, codecvt's stubs and
  * ctype<wchar_t>'s widen/narrow; round 3: the Init classes (__nInit/__wInit), xsputn, and
- * basic_filebuf's bodies but overflow and seekoff (placeholders) -- SOCOM 1's DWARF names the
- * members and their locals (fstream lines 203-863).
+ * basic_filebuf's bodies -- SOCOM 1's DWARF names the members and their locals (fstream lines
+ * 203-863); round 6: overflow and seekoff, and the generation order (the inline ~basic_filebuf,
+ * _RefCountedPtr's copy constructor, unshift and write2 defined after the instantiations, min<int>
+ * instantiated), which closed every filebuf row; the unit's __sinit (the wide ids' guards). Open:
+ * the pod vector's insert copy (msl.h) and the class vector inserts (declared, not written).
  *
  * THE COMPILER (README "MAIN's Metrowerks runtime"): 3.0b38/3.0b50/3.0b52 -- showmanyc<wchar_t>
  * and setbuf<wchar_t> need a 4-byte wchar_t (3.0b22-020926 and later); ctype<wchar_t>::do_widen's
