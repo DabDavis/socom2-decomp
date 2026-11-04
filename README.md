@@ -2060,6 +2060,22 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 34** (the anim stack's pop and rotations, SetMaxMotion, vector<AnimSet *>'s pieces):
+  - the count kept in a register while the entry test re-reads the global comes from: take the count into a local, guard
+    with `if (i < *(const unsigned int *)&g)`, then `do {} while (i < n)` -- MW never hoists the global past a store or a
+    call, and a plain local count folds into the entry test (CSealAnim::AnimPop 0x577700, CombineRotations 0x576E30);
+  - no-op conversions move argument loads: an argument needing one (unsigned to int, short to a short enum) is loaded after
+    the object pointer, one needing none before it (0x5B14E0, CZSealBody::SetMaxMotion 0x58BCB0 -- the strafe statics
+    declared AnimType, passed uncast); among the arguments the converted one is evaluated first (AnimPush 0x577DF0, its
+    frame an int);
+  - in a switch whose cases assign a result and break to `return r`, a default that returns directly leaves its `b
+    epilogue` aimed at the very next instruction (0x58C970); a callee declared `bool` instead of `int` moves the
+    narrowing `andi` into the arm's delay slot (0x556280); a same-type `(float)` cast on a clock loads the clock first in a
+    compare (0x5712F0);
+  - vector<AnimSet *>'s out-of-line pieces 0x5788C0-0x578980 (the kit's reading, probed byte-exact: !=, end, postfix ++,
+    *, operator=, begin, the default constructor, basic_string's c_str, AnimSet's GetName) sit right after their first
+    caller 0x5784A0 -- seal_body.cpp's last-defined functions; OVL1's c_str copy 0x36E860 marked an ovl-copy;
+    ActionSelectionMask takes an int (`1 << (unsigned char)id`).
 - **Tells from the UI, round 24** (SkbPadKeyEvent at last):
   - MW loads a byte-enum field with `lb` and narrows it with `andi 0xff` at each read; a `signed char` field cast to the
     enum folds into `lbu` in every form tried (`(E)(signed char)`, `(E)(int)`, a char or int local first, an inline
