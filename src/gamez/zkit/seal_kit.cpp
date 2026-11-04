@@ -396,6 +396,52 @@ RETICULE_TYPE CZKit::GetCurReticule()
     return GetReticuleByIndex(m_selected_item);
 }
 
+/* an item's reticle: the binoculars' (7), a zoomed scope's (5), a launcher's (3; 1 for an M203 --
+ * or item 63 -- in a fire mode under 5), none for 151/152, then by the item's range (OVL2 0x5BE300;
+ * SOCOM 1's, the ranges and kinds moved on: the binoculars' zoom class 4 where SOCOM 1's was 3,
+ * GetCurZoom inlined, the firing item where SOCOM 1's unwrapped the index). The id preset and
+ * assigned under the test (`w ? w->m_ID : 255` drops the target's two alignment nops) */
+RETICULE_TYPE CZKit::GetReticuleByIndex(int index)
+{
+    CZFTSWeapon *w = GetFiringItem(index);
+    EQUIP_ITEM id = (EQUIP_ITEM)255;
+
+    if (w)
+        id = w->m_ID;
+    RETICULE_TYPE r;
+
+    if (((CKitBody *)m_body)->m_200 == 4)
+        r = (RETICULE_TYPE)7;
+    else if (GetCurZoom() > 1.01f)
+        r = (RETICULE_TYPE)5;
+    else if (w && w->IsLauncherWeapon()) {
+        r = (RETICULE_TYPE)3;
+        if (w->IsM203Weapon() || id == 63)
+            if (m_firemode[index] < 5)
+                r = (RETICULE_TYPE)1;
+    } else if (id == 152 || id == 151)
+        r = RETICULE_NONE;
+    else if (id == 11)
+        r = (RETICULE_TYPE)9;
+    else if (id >= 4 && id < 31)
+        r = (RETICULE_TYPE)0;
+    else if (id >= 31 && id < 81)
+        r = (RETICULE_TYPE)1;
+    else if (id >= 81 && id < 91)
+        r = (RETICULE_TYPE)2;
+    else if (id >= 91 && id < 121)
+        r = (RETICULE_TYPE)1;
+    else if (id >= 121 && id < 141)
+        r = (RETICULE_TYPE)4;
+    else if (id >= 151 && id < 190)
+        r = (RETICULE_TYPE)4;
+    else if (id >= 190 && id < 254)
+        r = (RETICULE_TYPE)0;
+    else
+        r = RETICULE_NONE;
+    return r;
+}
+
 /* the current item's reticle, flagged when it changes or when forced (OVL2 0x5BE570; SOCOM 1's
  * took no flag and always flagged it) */
 extern "C" {
