@@ -60,7 +60,7 @@ public:
 extern "C" int strcasecmp(const char *a, const char *b);
 
 /* the jamo, Unicode's compatibility letters U+3131-U+3163 in order (ours; the rdr names them as
- * s_jamoNames does): thirty consonants, then twenty-one vowels */
+ * s_hangulJamoNames does): thirty consonants, then twenty-one vowels */
 enum JAMO {
     JAMO_KIYEOK, JAMO_SSANGKIYEOK, JAMO_KIYEOKSIOS, JAMO_NIEUN, JAMO_NIEUNCIEUC, JAMO_NIEUNHIEUH,
     JAMO_TIKEUT, JAMO_SSANGTIKEUT, JAMO_RIEUL, JAMO_RIEULKIYEOK, JAMO_RIEULMIEUM, JAMO_RIEULPIEUP,
@@ -75,17 +75,17 @@ enum JAMO {
 
 /* a syllable's lead consonants, vowels and trailing consonants as jamo, in Unicode's order
  * (0x3F84F0, 0x3F8510, 0x3F8530) */
-static JAMO s_leadJamo[19] = {
+static JAMO s_hangulLeads[19] = {
     JAMO_KIYEOK, JAMO_SSANGKIYEOK, JAMO_NIEUN, JAMO_TIKEUT, JAMO_SSANGTIKEUT, JAMO_RIEUL,
     JAMO_MIEUM, JAMO_PIEUP, JAMO_SSANGPIEUP, JAMO_SIOS, JAMO_SSANGSIOS, JAMO_IEUNG, JAMO_CIEUC,
     JAMO_SSANGCIEUC, JAMO_CHIEUCH, JAMO_KHIEUKH, JAMO_THIEUTH, JAMO_PHIEUPH, JAMO_HIEUH
 };
-static JAMO s_vowelJamo[21] = {
+static JAMO s_hangulVowels[21] = {
     JAMO_A, JAMO_AE, JAMO_YA, JAMO_YAE, JAMO_EO, JAMO_E, JAMO_YEO, JAMO_YE, JAMO_O, JAMO_WA,
     JAMO_WAE, JAMO_OE, JAMO_YO, JAMO_U, JAMO_WEO, JAMO_WE, JAMO_WI, JAMO_YU, JAMO_EU, JAMO_YI,
     JAMO_I
 };
-static JAMO s_trailJamo[27] = {
+static JAMO s_hangulTrails[27] = {
     JAMO_KIYEOK, JAMO_SSANGKIYEOK, JAMO_KIYEOKSIOS, JAMO_NIEUN, JAMO_NIEUNCIEUC, JAMO_NIEUNHIEUH,
     JAMO_TIKEUT, JAMO_RIEUL, JAMO_RIEULKIYEOK, JAMO_RIEULMIEUM, JAMO_RIEULPIEUP, JAMO_RIEULSIOS,
     JAMO_RIEULTHIEUTH, JAMO_RIEULPHIEUPH, JAMO_RIEULHIEUH, JAMO_MIEUM, JAMO_PIEUP, JAMO_PIEUPSIOS,
@@ -94,7 +94,7 @@ static JAMO s_trailJamo[27] = {
 };
 
 /* the jamo's names in the rdr (0x3F8770) */
-static const char *s_jamoNames[JAMO_COUNT] = {
+static const char *s_hangulJamoNames[JAMO_COUNT] = {
     "Kiyeok", "SsangKiyeok", "KiyeokSios", "Nieun", "NieunCieuc", "NieunHieuh", "Tikeut",
     "SsangTikeut", "Rieul", "RieulKiyeok", "RieulMieum", "RieulPieup", "RieulSios", "RieulThieuth",
     "RieulPhieuph", "RieulHieuh", "Mieum", "Pieup", "SsangPieup", "PieupSios", "Sios", "SsangSios",
@@ -104,7 +104,7 @@ static const char *s_jamoNames[JAMO_COUNT] = {
 };
 
 /* a layout's three parts (0x3F8858) */
-static const char *s_layoutParts[3] = { "Lead", "Vowel", "Trail" };
+static const char *s_hangulParts[3] = { "Lead", "Vowel", "Trail" };
 
 /* a character code handed by value (ours: a halfword struct -- the composer's caller copies the code
  * into a temporary with lhu/sh and passes it with lh, the composer homes it and reads it with lhu) */
@@ -131,6 +131,16 @@ class CJamoGlyph {
 public:
     CJamoGlyph() {}
 
+    /* the rectangle for a layout id, if the jamo has one */
+    CFontRect *FindAlt(const int &key)
+    {
+        std::map<int, CFontRect>::iterator f = m_alts.find(key);
+
+        if (f != m_alts.end())
+            return &(*f).second;
+        return 0;
+    }
+
     CFontRect m_rect;   // 0x0
     std::map<int, CFontRect> m_alts;   // 0x10
 };
@@ -145,6 +155,8 @@ public:
 /* a syllable's layout: its lead, vowel and trail (ours; the rdr's CharLayouts) */
 class CLayout {
 public:
+    CJamoPlace *GetPart(int i) { return &m_parts[i]; }
+
     CJamoPlace m_parts[3];   // 0x0
 };   // 0x48 bytes
 
@@ -202,6 +214,8 @@ public:
     void LoadLeadRangeLayouts(std::vector<CSaferStr> &names, const _zrdr *rdr, const std::vector<CSaferStr> &vowelNames);
     void LoadVowelRangeLayouts(std::vector<CSaferStr> &names, const _zrdr *rdr, const std::vector<CSaferStr> &layoutNames);
 
+    CJamoGlyph *GetJamo(JAMO which) { return &m_jamo[which]; }
+
     CJamoGlyph m_jamo[JAMO_COUNT];   // 0x0
     std::vector<CLayout> m_layouts;   // 0x660
     std::vector<CTrailRow> m_trailRows;   // 0x66c
@@ -220,11 +234,21 @@ static inline _zrdr *FlatFindTag(const _zrdr *rdr, const char *tag)
 }
 
 /* an array's i-th item as an int, none for a null array (ours) */
+static inline _zrdr *GetRdrArrayItem(const _zrdr *rdr, int i)
+{
+    return rdr ? rdr->Item(i) : 0;
+}
+
+static inline int GetRdrInt(const _zrdr *e)
+{
+    return e ? e->Int() : 0;
+}
+
 static inline int GetInt(const _zrdr *rdr, unsigned int i)
 {
-    _zrdr *e = rdr ? rdr->Item(i) : 0;
+    _zrdr *e = GetRdrArrayItem(rdr, i);
 
-    return e ? e->Int() : 0;
+    return GetRdrInt(e);
 }
 
 /* a point (ours: the drop shadow's offset and a placement's position) */
@@ -250,12 +274,29 @@ static inline CFontPoint ReadPoint(const _zrdr *rdr)
     return p;
 }
 
+/* MSL's reverse_iterator over the pieces (a probe) */
+class CRevIter {
+public:
+    typedef std::vector<C2DGlyphPiece>::iterator It;
+
+    explicit CRevIter(It x) : current(x) {}
+    C2DGlyphPiece &operator*() const
+    {
+        It tmp = current;
+
+        return *--tmp;
+    }
+    C2DGlyphPiece *operator->() const { return &(operator*()); }
+
+    It current;
+};
+
 /* the index of a name in a list, -1 if absent (ours) */
 static inline int FindName(const std::vector<CSaferStr> &names, const char *s)
 {
     if (!s)
         return -1;
-    for (unsigned int i = 0; i < names.size(); i++) {
+    for (int i = 0; i < names.size(); i++) {
         if (!strcasecmp(s, names[i].c_str()))
             return i;
     }
@@ -271,16 +312,14 @@ C2DGlyphPiece *C2DGlyph::AddPiece(const _zrdr *ul, const _zrdr *lr, int height)
 {
     m_pieces.resize(m_pieces.size() + 1);
 
-    std::vector<C2DGlyphPiece>::iterator it;
-
-    it = m_pieces.end();
+    CRevIter it(m_pieces.end());
     CFontRect r = ReadRect(ul, lr);
 
-    (it - 1)->m_0 = r.left;
-    (it - 1)->m_2 = r.right - r.left;
-    (it - 1)->m_4 = height - r.top - 1;
-    (it - 1)->m_6 = height - r.bottom;
-    return &*(it - 1);
+    it->m_0 = r.left;
+    it->m_2 = r.right - r.left;
+    it->m_4 = height - r.top - 1;
+    it->m_6 = height - r.bottom;
+    return &*it;
 }
 
 /* a character of the faces rdr's charoffsets: by its Code, its pieces in Elems, or an item list
@@ -350,7 +389,8 @@ void C2DGlyph::LoadElems(const _zrdr *rdr, int height)
 
     for (int i = 0; i < (elems ? (int)elems->Count() : 0); i++) {
         _zrdr *e = elems->Item(i);
-        C2DGlyphPiece *p = AddPiece(zrdr_findtag(e, "UL"), zrdr_findtag(e, "LR"), height);
+        _zrdr *ul = zrdr_findtag(e, "UL");
+        C2DGlyphPiece *p = AddPiece(ul, zrdr_findtag(e, "LR"), height);
 
         p->m_place = ReadPlacement(e);
     }
@@ -369,7 +409,7 @@ void CHangulFont::LoadCharLayouts(std::vector<CSaferStr> &names, const _zrdr *rd
         CJamoPlace *place = m_layouts.back().m_parts;
 
         for (unsigned int k = 0; k < 3; k++, place++) {
-            _zrdr *part = FlatFindTag(item, s_layoutParts[k]);
+            _zrdr *part = FlatFindTag(item, s_hangulParts[k]);
 
             place->m_place = ReadPlacement(part);
             _zrdr *jamo = FlatFindTag(part, "Jamo");
@@ -388,7 +428,7 @@ void CHangulFont::Load(const _zrdr *rdr)
     std::vector<CSaferStr> jamoNames;
 
     for (int i = 0; i < JAMO_COUNT; i++)
-        LoadJamo(jamoNames, FlatFindTag(jamo, s_jamoNames[i]), (JAMO)i);
+        LoadJamo(jamoNames, FlatFindTag(jamo, s_hangulJamoNames[i]), (JAMO)i);
     std::vector<CSaferStr> layoutNames;
 
     LoadCharLayouts(layoutNames, rdr, jamoNames);
@@ -450,11 +490,10 @@ void CHangulFont::LoadLeadUsage(const _zrdr *rdr, const std::vector<CSaferStr> &
     int def = FindName(names, zrdr_flat_findstring(usage, "Default", 0));
 
     for (unsigned int i = 0; i < 19; i++) {
-        int row = FindName(names, zrdr_flat_findstring(usage, s_jamoNames[s_leadJamo[i]], 0));
+        const char *s = zrdr_flat_findstring(usage, s_hangulJamoNames[s_hangulLeads[i]], 0);
+        int row = FindName(names, s);
 
-        if (row < 0)
-            row = def;
-        m_leadRows[i].m_row = row;
+        m_leadRows[i].m_row = row >= 0 ? row : def;
     }
 }
 
@@ -472,11 +511,9 @@ void CHangulFont::LoadLeadRangeLayouts(std::vector<CSaferStr> &names, const _zrd
         int def = FindName(vowelNames, zrdr_flat_findstring(item, "Default", 0));
 
         for (unsigned int k = 0; k < 21; k++) {
-            int v = FindName(vowelNames, zrdr_flat_findstring(item, s_jamoNames[s_vowelJamo[k]], 0));
+            int v = FindName(vowelNames, zrdr_flat_findstring(item, s_hangulJamoNames[s_hangulVowels[k]], 0));
 
-            if (v < 0)
-                v = def;
-            *row++ = v;
+            *row++ = v >= 0 ? v : def;
         }
     }
 }
@@ -496,15 +533,11 @@ void CHangulFont::LoadVowelRangeLayouts(std::vector<CSaferStr> &names, const _zr
         int def = FindName(layoutNames, zrdr_flat_findstring(item, "Default", 0));
         int none = FindName(layoutNames, zrdr_flat_findstring(item, "NoTrail", 0));
 
-        if (none < 0)
-            none = def;
-        row->m_noTrail = none;
+        row->m_noTrail = none >= 0 ? none : def;
         for (unsigned int k = 0; k < 27; k++) {
-            int v = FindName(layoutNames, zrdr_flat_findstring(item, s_jamoNames[s_trailJamo[k]], 0));
+            int v = FindName(layoutNames, zrdr_flat_findstring(item, s_hangulJamoNames[s_hangulTrails[k]], 0));
 
-            if (v < 0)
-                v = def;
-            row->m_trails[k] = v;
+            row->m_trails[k] = v >= 0 ? v : def;
         }
     }
 }
@@ -528,14 +561,19 @@ C2DPlacement ReadPlacement(const _zrdr *rdr)
 
 CFontRect ReadRect(const _zrdr *ul, const _zrdr *lr)
 {
-    return CFontRect(GetInt(ul, 0), GetInt(ul, 1), GetInt(lr, 0), GetInt(lr, 1));
+    int left = GetInt(ul, 0);
+    int right = GetInt(lr, 0);
+    int top = GetInt(ul, 1);
+    int bottom = GetInt(lr, 1);
+
+    return CFontRect(left, top, right, bottom);
 }
 
 int C2DGlyph::GetWidth()
 {
     int w = 0;
 
-    for (unsigned int i = 0; i < m_pieces.size(); i++) {
+    for (int i = 0; i < m_pieces.size(); i++) {
         C2DGlyphPiece &p = m_pieces[i];
         int r = (int)((float)p.m_place.x + (float)p.m_2 * p.m_place.sx);
 
@@ -693,10 +731,10 @@ bool CHangulFont::Compose(C2DGlyph *glyph, C2DChar code, C2DFont *font)
     zdb::CTexHandle *h = font->GetTexture(m_texture.m_v);
     int height = h ? h->m_texture->m_height : 0;
 
-    AddJamo(glyph, 0, s_leadJamo[lead], layout, height);
-    AddJamo(glyph, 1, s_vowelJamo[vowel], layout, height);
+    AddJamo(glyph, 0, s_hangulLeads[lead], layout, height);
+    AddJamo(glyph, 1, s_hangulVowels[vowel], layout, height);
     if (trail)
-        AddJamo(glyph, 2, s_trailJamo[trail - 1], layout, height);
+        AddJamo(glyph, 2, s_hangulTrails[trail - 1], layout, height);
     glyph->m_12 = m_baseline.m_v;
     glyph->m_14 = m_lKerning.m_v;
     glyph->m_16 = m_rKerning.m_v;
@@ -708,26 +746,30 @@ bool CHangulFont::Compose(C2DGlyph *glyph, C2DChar code, C2DFont *font)
 void CHangulFont::AddJamo(C2DGlyph *glyph, int part, JAMO which, CLayout *layout, int height)
 {
     glyph->m_pieces.resize(glyph->m_pieces.size() + 1);
-    CJamoGlyph *jamo = &m_jamo[which];
-    std::vector<C2DGlyphPiece>::iterator it;
-
-    it = glyph->m_pieces.end();
-    CJamoPlace *place = &layout->m_parts[part];
+    CJamoGlyph *jamo = GetJamo(which);
+    CRevIter it(glyph->m_pieces.end());
+    CJamoPlace *place = layout->GetPart(part);
     const CFontRect *r = 0;
 
-    for (unsigned int i = 0; i < place->m_keys.size(); i++) {
-        std::map<int, CFontRect>::iterator f = jamo->m_alts.find(place->m_keys[i]);
+    std::vector<int> &keys = place->m_keys;
 
-        if (f != jamo->m_alts.end()) {
+    for (int i = 0; i < keys.size(); i++) {
+        std::map<int, CFontRect> &alts = jamo->m_alts;
+        std::map<int, CFontRect>::iterator f = alts.find(keys[i]);
+
+        if (f != alts.end()) {
             r = &(*f).second;
             break;
         }
     }
     if (!r)
         r = &jamo->m_rect;
-    (it - 1)->m_0 = r->left;
-    (it - 1)->m_2 = r->right - r->left;
-    (it - 1)->m_4 = height - r->top - 1;
-    (it - 1)->m_6 = height - r->bottom;
-    (it - 1)->m_place = place->m_place;
+    it->m_0 = r->left;
+    it->m_2 = r->right - r->left;
+    it->m_4 = height - r->top - 1;
+    it->m_6 = height - r->bottom;
+    it->m_place.x = place->m_place.x;
+    it->m_place.y = place->m_place.y;
+    it->m_place.sx = place->m_place.sx;
+    it->m_place.sy = place->m_place.sy;
 }
