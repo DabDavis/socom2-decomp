@@ -255,7 +255,7 @@ public:
 };   // 0xc0 bytes
 
 /* wrapped text (SOCOM 1's CWrappedText; zui_2d.h's layout, 0x250 bytes), its destructor declared
- * first so that this unit does not take its table */
+ * first: defined here since round 42 (0x379D90), so this unit takes its table and the thunk 0x37D010 */
 class CWrappedText : public CRenderableString {
 public:
     virtual ~CWrappedText();
@@ -735,7 +735,8 @@ inline bool SecureMore(const char *s) { return !SecureNull(s) && *s; }
 /* a button showing a spec of its own (SOCOM 1's CHandlerButton; SOCOM II's 0x440 bytes, zui_2d.h's
  * layout). It keeps C2DButton's UpdateUIVar, so its vtable (0x407700) is one of the three that take
  * the button's thunk 0x37D0E0 -- defining its destructor here is what emits that thunk, since
- * C2DButton's own table belongs with ~C2DButton's unit and CCheckBox overrides the slot */
+ * C2DButton's own table (this unit's since round 42, with ~C2DButton) takes the destructor's thunk
+ * and CCheckBox overrides the slot */
 class CHandlerButton : public C2DButton {
 public:
     virtual ~CHandlerButton();
