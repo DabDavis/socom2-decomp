@@ -4537,7 +4537,7 @@
 0x002D8010 0x2C Tick__Q23zdb19CClutterAnimManagerFfPv  # OVL1; s1:align
 0x002D8040 0x2F0 l_Tick__Q23zdb19CClutterAnimManagerFfPv  # OVL1; s1:align
 0x002D8330 0x440 ClutterTick__Q23zdb19CClutterAnimManagerFPQ23zdb8CClutter  # OVL1; s1:align
-0x002D8770 0x148 func_002D8770  # OVL1
+0x002D8770 0x148 TestCellMid__Q23zdb19CClutterAnimManagerFP6CPnt3DP6CPnt3D  # OVL1; s1:order by hand, the core lane round 11 (SOCOM 1's TestCellMid 0x217F50, between ClutterTick and ClearEffectors in both builds: m_CellAnimate cleared, then set when an effector lies within half a cell and its radius of the cell's middle, the cell within four half-cells of the viewer -- the effector list at 0x5C, CWorld::m_world's cell size; CClutterList::Render calls it); grid_clutter.cpp
 0x002D88C0 0x8C ClearEffectors__Q23zdb19CClutterAnimManagerFv  # OVL1; s1:align
 0x002D8950 0x114 ClearAnimations__Q23zdb19CClutterAnimManagerFb  # OVL1; s1:align
 0x002D8A70 0x14C __dt__Q23zdb19CClutterAnimManagerFv  # OVL1; s1:order by hand (the world lane: SOCOM 1's ~CClutterAnimManager after ClearAnimations: the clutter task removed from the scheduler, ClearAnimations(false), the effector list's elements deleted and the lists cleared; ~CGrid deletes m_ClutterAnimManager through it as SOCOM 1's does)
