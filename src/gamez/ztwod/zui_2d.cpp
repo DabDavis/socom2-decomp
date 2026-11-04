@@ -18,7 +18,10 @@
  * (0x36B0A0), defined last; the inline copies before them (0x36AFA0-0x36AFEF, CSecureText's table's)
  * come with ~CSecureText (zui.cpp's 0x36AF30) and stay drafts.
  * The classes' layouts are zui_2d.h's (the UI lane's), redeclared here with the virtuals these
- * functions need. Defined in reverse of their image order (-inline deferred). */
+ * functions need. Defined in reverse of their image order (-inline deferred). Its initialiser,
+ * 0x4036C0, builds only <iostream>'s two init objects, as SOCOM 1's __sinit_zui_2d.cpp. */
+
+#include <iostream>
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -8483,12 +8483,12 @@
 0x003FD8D0 0x64 func_003FD8D0  # OVL1 data area; a static initialiser; s1~ ai_vismap.cpp (shape 0.60, a hint)
 0x003FD940 0x90 func_003FD940  # OVL1 data area; a static initialiser
 0x003FD9D0 0x64 func_003FD9D0  # OVL1 data area; a static initialiser; s1~ zanim_cmd_parse.cpp (shape 0.46, a hint)
-0x003FDA40 0x6C func_003FDA40  # OVL1 data area; a static initialiser
-0x003FDAB0 0x64 func_003FDAB0  # OVL1 data area; a static initialiser; s1~ zanim_cmd_tick.cpp (shape 0.46, a hint)
+0x003FDA40 0x6C __sinit_hud_main.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_main.cpp's initialiser -- CHUD::m_hud_textcolor's four words stored, then SOCOM 1's X_WeaponBackground built with C2DBitmap() and ~C2DBitmap 0x1FCB10 registered; the integrator's sinit report, HIGH)
+0x003FDAB0 0x64 __sinit_hud_lensflare.cpp  # OVL1 data area; a static initialiser; s1~ zanim_cmd_tick.cpp (shape 0.46, a hint); by hand (the HUD lane, round 31: hud_lensflare.cpp's initialiser -- <iostream>'s pair only, the unit's bss after it; the integrator's sinit report, HIGH)
 0x003FDB20 0xA0 func_003FDB20  # OVL1 data area; a static initialiser
 0x003FDBC0 0x2BC func_003FDBC0  # OVL1 data area; a static initialiser
 0x003FDE80 0x308 __sinit_hud_newhudmap.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 30: hud_newhudmap.cpp's initialiser -- it builds the unit's statics in SOCOM 1's order, each __construct_array/__register_global_object pair at its record (0x409F10 ...), the four scroll C2DBitmapPolys, the north lines with COverlayLine's colour, then the three computed .data floats 0x3E4090-0x3E40A0 from hud_main.cpp's 365 and 60: CODE-EXACT from source, the four __arraydtor$N references compared by content fail on their relocation fields (scdiff has no mapping for a unit's numbered array destructors: see the HUD lane's round-30 report))
-0x003FE190 0x2B4 func_003FE190  # OVL1 data area; a static initialiser
+0x003FE190 0x2B4 __sinit_hud_linemap.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_linemap.cpp's initialiser -- the unit emits it as is: the two map<int, LINE_DATA> statics, the 45 .data stores and the six CPnt4D pairs Clip reads; the integrator's sinit report, HIGH)
 0x003FE450 0x34 __sinit_hud_mapcompass.cpp  # OVL1 data area; a static initialiser; hud_mapcompass.cpp by hand (it builds navpoint_vec, this unit's global, and registers its destructor)
 0x003FE490 0x64 __sinit_hud_bitmapreticule.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_bitmapreticule.cpp's initialiser (between hud_mapcompass.cpp's and hud_weaponsel.cpp's, as the code): SOCOM 1's color_base (86, 63, 27), then two CPnt3D colours of SOCOM II's that 0x215C10 reads (24, 200, 44 and 24, 24, 24)
 0x003FE500 0x48 __sinit_hud_weaponsel.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_weaponsel.cpp's static initialiser (between hud_linemap.cpp's 0x3FE190 and hud_actionbitmap.cpp's 0x3FE550, the units' link order) -- it sets the selector's three layout floats (0x3E4A90/98/A0) from the HUD's bottom block, which CWeaponSel's Init, AfterOpenSecond, OnOpen and CheckHotSwap read
@@ -8582,7 +8582,7 @@
 0x00403580 0x3C __sinit_ztex_manager.cpp  # OVL1 data area; a static initialiser; s1~ seal_aievent.cpp (shape 0.45, a hint); the world lane r2: ztex_manager.cpp's static initialiser (m_texmanager built through CTexManager() 0x356940, ~CTexManager 0x357E10 registered)
 0x004035C0 0x60 func_004035C0  # OVL1 data area; a static initialiser
 0x00403620 0x9C func_00403620  # OVL1 data area; a static initialiser
-0x004036C0 0x64 func_004036C0  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint)
+0x004036C0 0x64 __sinit_zui_2d.cpp  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint); by hand (the HUD lane, round 31: zui_2d.cpp's initialiser -- <iostream>'s pair only, as SOCOM 1's __sinit_zui_2d.cpp; the integrator's sinit report, HIGH)
 0x00403730 0x34 __sinit_zui_skb.cpp  # OVL1 data area; a static initialiser; by hand (g_arrSkbs zeroed and its destructor 0x38D5C0 registered: SOCOM 1's .p__sinit_zui_skb.cpp does the same) -- zui_skb.cpp's static initialiser
 0x00403770 0x84 __sinit_zui_hangul.cpp  # OVL1 data area; a static initialiser; the UI lane round 10: zui_hangul.cpp's static initialiser (the file name ours): s_complete (0x49ED08) and s_rules (0x49ED28) zeroed and their destructors 0x394170 and 0x3940F0 registered, s_compose's count (0x49ED40) zeroed
 0x00403800 0x90C __sinit_zui_skbview.cpp  # OVL1 data area; a static initialiser; the UI lane round 9: zui_skbview.cpp's static initialiser (the file name ours): the four rows, eight CBmpWithNode, a CSkbRect, a CRenderableString and nine CSaferStr, in declaration order -- byte-exact from source
