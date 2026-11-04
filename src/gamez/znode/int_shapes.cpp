@@ -25,6 +25,17 @@ static CPnt4D diNorm(0.0f, 1.0f, 0.0f, 0.0f);
 
 /* a polygon point as a CPnt3D (its w ignored; ours) */
 inline CPnt3D &Pnt3(CPnt4D &p) { return *(CPnt3D *)&p; }
+/* whether a segment lies wholly beyond one of a box's six faces (ours: CDIBBox::GetIntersect's
+ * rejection -- an inline's `||` of six `&&`s written in place materialises each level as the
+ * target's, each pair's bool unnarrowed; through inline bool helpers each pair gains an andi, by
+ * value they load first; the int return gives the final andi) */
+inline int SegmentOutside(const CBBox *box, const CPnt3D *a, const CPnt3D *b)
+{
+    return (a->x < box->m_min.x && b->x < box->m_min.x) || (a->x > box->m_max.x && b->x > box->m_max.x) ||
+           (a->y < box->m_min.y && b->y < box->m_min.y) || (a->y > box->m_max.y && b->y > box->m_max.y) ||
+           (a->z < box->m_min.z && b->z < box->m_min.z) || (a->z > box->m_max.z && b->z > box->m_max.z);
+}
+
 /* two points' differences in x and in z (ours: CDIPoly::GetAltitude's edges -- the arguments
  * evaluated right to left put the second point's address first, as the target computes it, where
  * the subtraction written in place takes the first's) */
@@ -292,6 +303,60 @@ void CDI::SetEdgeVecsAndNorm()
     sceVu0OuterProduct((float *)&n, (float *)&a, (float *)&b);
     sceVu0Normalize((float *)&n, (float *)&n);
     VecSet(&diNorm.x, n.x, n.y, n.z, 0.0f);
+}
+
+/* the ray against the box: none when tail and tip lie beyond the same face, else the box's corners
+ * through VU0's microprogram at 0x30 (the high corner's w the back-face flag: 0 when the mask is 48,
+ * 224 else), its hit and normal into the next hit's slot, whether the hit's w is set (SOCOM 1's;
+ * written in the engine core's round 14). The tail numbered before the tip but set after it (the
+ * target computes the tip's address first and gives the pair t3/t2).
+ * OPEN, 8 instructions (0x278 against 0x280), the last test only: the target loads the hit's w
+ * before the zero's mtc1 (then a nop) and puts the return 0's `move v0,zero` in the bc1f's delay
+ * slot -- CDIPoly::GetIntersect's open tail exactly (MW hoists the mtc1 above the asm's lwc1); tried
+ * `w != 0.0f` first and a result local (build/scratch/core/v_bbox*.py) */
+int CDIBBox::GetIntersect(DiIntersect *di)
+{
+    const CBBox *box = m_bbox;
+    const CPnt3D *tail;
+    const CPnt3D *tip;
+
+    tip = &di->m_MTip;
+    tail = &di->m_MTail;
+    if (SegmentOutside(box, tail, tip))
+        return 0;
+    CPnt4D lo;
+    CPnt4D hi;
+    CPnt4D *plo = &lo;
+    CPnt4D *phi = &hi;
+
+    lo.x = m_bbox->m_min.x;
+    lo.y = m_bbox->m_min.y;
+    lo.z = m_bbox->m_min.z;
+    hi.x = m_bbox->m_max.x;
+    hi.y = m_bbox->m_max.y;
+    hi.z = m_bbox->m_max.z;
+    int *flag = (int *)&phi->w;
+
+    if (m_backface_mask != 48)
+        *flag = 224;
+    else
+        *flag = 0;
+    IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
+    CPnt3D *norm = &is->m_norm;
+    float w;
+
+    asm volatile {
+        lqc2 vf3, 0(plo)
+        lqc2 vf4, 0(phi)
+        vcallms 0x30
+        qmtc2.i a0, vf0
+        sqc2 vf10, 0(is)
+        sqc2 vf30, 0(norm)
+        lwc1 w, 12(is)
+    }
+    if (w == 0.0f)
+        return 0;
+    return 1;
 }
 
 /* a box answers no altitude query (SOCOM 1's, the same two words) */
