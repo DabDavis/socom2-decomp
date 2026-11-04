@@ -99,6 +99,138 @@ CTurretDef::CTurretDef() : m_weapon(EQUIP_NONE), m_ammo(AMMO_NONE), m_flags(0)
     m_compass = false;
 }
 
+unsigned int ParseTeams(_zrdr *rdr);
+
+/* a string field set, cut to its 31 characters, or emptied (veh_vehicle.cpp's twin: the length is
+ * taken and not used; the name ours) */
+static inline void SetDefString(char *dst, const char *src)
+{
+    if (!src) {
+        dst[0] = 0;
+    } else {
+        (void)strlen(src);
+        strncpy(dst, src, 31);
+        dst[31] = 0;
+    }
+}
+
+/* an angle's sine and cosine (ours, inline: the angle held in $f20 across the two calls) */
+static inline void SinCos(float a, float *s, float *c)
+{
+    *s = sinf(a);
+    *c = cosf(a);
+}
+
+/* a definition read: its name, up to three PARTS, the LIMITS (degrees in, radians kept) and RATES,
+ * the EFFECT, the teams, the TRIGGER, the AI's look direction, the MANUAL and AUTOSCAN flags, the
+ * compass, the mounting range and angle, the AI's parameters, the health, the WEAPON's name and
+ * ammunition, the destruction anim; then the limits' sines and cosines, the largest limit held in
+ * range (the AI's field of view, and its half's tangent), and the thermal flag (SOCOM 1's, with
+ * SOCOM II's fields; the largest limit through the AI's _max -- its float instance is this unit's
+ * tail copy, 0x3AB970) */
+void CTurretDef::Parse(const char *name, _zrdr *rdr)
+{
+    SetDefString(m_name, name);
+
+    float f = 0.0f;
+    _zrdr *t;
+
+    if ((t = zrdr_findtag(rdr, "PARTS")) != 0) {
+        unsigned int n = t->Count();
+
+        for (unsigned int i = 0; i < n && i < 3; i++) {
+            _zrdr *item = t->Item(i);
+
+            if (item)
+                SetDefString(m_parts[i], item->String());
+        }
+    }
+    if ((t = zrdr_findtag(rdr, "LIMITS")) != 0) {
+        if (zrdr_findreal(t, "YAW", &m_yaw.m_min, 2)) {
+            m_yaw.m_min *= 0.017453292f;
+            m_yaw.m_max *= 0.017453292f;
+        }
+        if (zrdr_findreal(t, "PITCH", &m_pitch.m_min, 2)) {
+            m_pitch.m_min *= 0.017453292f;
+            m_pitch.m_max *= 0.017453292f;
+        }
+    }
+    if ((t = zrdr_findtag(rdr, "RATES")) != 0) {
+        zrdr_findreal(t, "YAW", &m_yawRate, 1);
+        zrdr_findreal(t, "PITCH", &m_pitchRate, 1);
+    }
+    if ((t = zrdr_findtag(rdr, "EFFECT")) != 0) {
+        _zrdr *item = t->Item(0);
+
+        if (item)
+            SetDefString(m_effect, item->String());
+        item = t->Item(1);
+        if (item)
+            m_effectValue = item->Real();
+    }
+    if ((t = zrdr_findtag(rdr, "TEAM")) != 0 && t->type == ZRDR_ARRAY)
+        m_team = ParseTeams(t);
+    if ((t = zrdr_findtag(rdr, "TRIGGER")) != 0) {
+        Rfloat dn;
+        Rfloat up;
+
+        zrdr_findRfloat(t, "dn_time", &dn);
+        zrdr_findRfloat(t, "up_time", &up);
+        m_trigger.SetTimes(dn, up);
+    }
+    zrdr_findPNT3D(rdr, "AI_LOOKDIR", (PNT3D *)&m_lookDir);
+    if (zrdr_findtag(rdr, "MANUAL"))
+        SetFlag(2, false);
+    if (zrdr_findtag(rdr, "AUTOSCAN"))
+        SetFlag(0x10, true);
+    if (zrdr_findtag(rdr, "COMPASS"))
+        m_compass = true;
+    if (!zrdr_findreal(rdr, "MOUNTABLE_RANGE", &f, 1))
+        f = 22.0f;
+    f *= f;
+    m_mountRange = f;
+    if (!zrdr_findreal(rdr, "MOUNTABLE_ANGLE", &f, 1))
+        f = 45.0f;
+    f = cosf(0.017453292f * f);
+    m_mountAngle = f;
+    m_aiParams.Params()->Parse(zrdr_findtag(rdr, "ai_params"));
+    if (zrdr_findreal(rdr, "HEALTH", &f, 1))
+        m_health = f;
+    if ((t = zrdr_findtag(rdr, "WEAPON")) != 0) {
+        _zrdr *w;
+
+        if ((w = zrdr_findtag(t, "NAME")) != 0) {
+            _zrdr *item = w->Item(0);
+
+            if (item)
+                m_weapon = CZWeapon::GetWeaponId(item->String());
+        }
+        if ((w = zrdr_findtag(t, "AMMO")) != 0) {
+            _zrdr *item = w->Item(0);
+
+            if (item)
+                m_ammo = CZAmmo::GetAmmoId(item->String());
+        }
+    }
+    if ((t = zrdr_findtag(rdr, "DESTROY_ANIM")) != 0) {
+        _zrdr *item = t->Item(0);
+
+        if (item)
+            SetDefString(m_destroyAnim, item->String());
+    }
+    SinCos(m_yaw.m_min, &m_yawTrig.m_sinmin, &m_yawTrig.m_cosmin);
+    SinCos(m_yaw.m_max, &m_yawTrig.m_sinmax, &m_yawTrig.m_cosmax);
+    SinCos(m_pitch.m_min, &m_pitchTrig.m_sinmin, &m_pitchTrig.m_cosmin);
+    SinCos(m_pitch.m_max, &m_pitchTrig.m_sinmax, &m_pitchTrig.m_cosmax);
+
+    float yaw = ai::_max(fabsf(m_yaw.m_min), fabsf(m_yaw.m_max));
+    float pitch = ai::_max(fabsf(m_pitch.m_min), fabsf(m_pitch.m_max));
+
+    SetMaxAngle(ai::_max(yaw, pitch));
+    if (zrdr_findtag(rdr, "THERMAL"))
+        m_thermal = true;
+}
+
 /* the definition whose name starts the node's (SOCOM 1's; called, never inlined) */
 #pragma auto_inline off
 const CTurretDef *CTurretDefVector::PrefixMatch(const char *name)

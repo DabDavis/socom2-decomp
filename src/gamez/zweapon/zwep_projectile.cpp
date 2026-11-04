@@ -1,5 +1,5 @@
 /* zwep_projectile.cpp -- CZProjectile, a shot or a thrown thing in flight (SOCOM 1's
- * zwep_projectile.cpp, by its static initialiser's place in the link): OVL1 0x3C69C0-0x3CB8EF,
+ * zwep_projectile.cpp, by its static initialiser's place in the link): OVL1 0x3C6980-0x3CB8EF,
  * after zwep_global.cpp's template tail and before CZProjectileList (zwep_projlist.cpp), as SOCOM
  * 1's CZProjectile (0x317190-0x31A4DF in the demo) follows its flyout machine -- which SOCOM II
  * moved to the end of the overlay. SOCOM II opens the unit with five functions of its own (the hit
@@ -9,6 +9,7 @@
 
 #include "../znode/znode.h"
 #include "../znode/node_world.h"
+#include "../znode/int_material.h"
 #include "zweapon.h"
 #include "../zsys/zsys.h"
 
@@ -42,6 +43,19 @@ extern "C" void func_002707C0(CZAnim *anim, int b);
 
 /* the tracers' speed (0x3E1570, initialised data; not named) */
 extern "C" float data_003E1570;
+
+/* SOCOM 1's tracer pool: a static nothing reads in SOCOM II, still built and torn down by the
+ * initialiser (its destructor is the copy at 0x2CD710, linked from an earlier unit) */
+class CZTracerPool {
+public:
+    static std::vector<zdb::CModel *> m_tracerpool;
+};
+
+/* the unit's statics, in the initialiser's order (__sinit_zwep_projectile.cpp, 0x404BB0: the point
+ * copied from CPnt3D::zero, the pool's three words zeroed and its destructor registered) */
+CPnt3D CZProjectile::m_explosionPos = CPnt3D::zero;
+bool CZProjectile::m_newExplosion;
+std::vector<zdb::CModel *> CZTracerPool::m_tracerpool;
 
 /* ---- the members ---- */
 
@@ -238,11 +252,7 @@ bool CZProjectile::HandleTimers()
     return false;
 }
 
-/* a material's extension (int_material.cpp's, SOCOM 1's class): its resistance to a blast only */
-struct CMaterialEx {
-    unsigned char _0[0x24];
-    float m_blastResist;   // 0x24 (the name ours)
-};
+/* (a material's resistance to a blast is int_material.h's CMaterialEx::m_penetration, PENETRATION) */
 
 /* whether an explosion reaches past the other intersection's hits: none counts for a flag-9
  * projectile, nor a hit on the node (or node extension) of the given one; a material that stops
@@ -276,12 +286,12 @@ bool CZProjectile::CheckHit(DiIntersect *di, IntersectStruct *hit)
             if (mat >= CMaterialExArray::m_materialex_list.size())
                 mat = 0;
 
-            CMaterialEx *ex = (CMaterialEx *)CMaterialExArray::m_materialex_list[mat];
+            CMaterialEx *ex = CMaterialExArray::m_materialex_list[mat];
 
             if (!ex)
                 continue;
 
-            float resist = ex->m_blastResist;
+            float resist = ex->m_penetration;
 
             if (resist < 0.0001f)
                 return false;
@@ -757,4 +767,22 @@ void CZProjectile::OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *projecti
                 ReportGrenadeStatus();
         }
     }
+}
+
+/* the last detonation's point, once: the flag cleared as it is handed out */
+CPnt3D *CZProjectile::GetNewExplosion()
+{
+    CPnt3D *pos = 0;
+
+    if (m_newExplosion) {
+        m_newExplosion = false;
+        pos = &m_explosionPos;
+    }
+    return pos;
+}
+
+/* the last detonation forgotten (the HUD's re-init) */
+void CZProjectile::ClearNewExplosion()
+{
+    m_newExplosion = false;
 }

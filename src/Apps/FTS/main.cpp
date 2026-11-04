@@ -6,6 +6,8 @@
 
 #include "fts_state.h"
 
+#include <iostream>
+
 extern "C" {
 int GetThreadId(void);
 int ChangeThreadPriority(int tid, int prio);
@@ -70,6 +72,10 @@ public:
     void UnInit();
 };
 extern CZOnlineLobby theLobby;
+
+/* the game (its initialiser __sinit_main.cpp 0x3FD680: <iostream>'s pair, then theGame built by
+ * COurGame's constructor and ~COurGame 0x1E7100 registered -- SOCOM 1's __sinit_main.cpp alike) */
+COurGame theGame;
 
 /* the menus first: every other state made, and the film's */
 COurGame::COurGame()

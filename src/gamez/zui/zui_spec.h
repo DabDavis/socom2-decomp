@@ -47,6 +47,14 @@ public:
     CSaferStr() {}
     /* the string made empty, then assigned (SOCOM 1's, as its operator=) */
     CSaferStr(const char *sz) { *this = sz; }
+    /* the copy assignment over assign(str) itself, a level shallower than the implicit one (which
+     * runs basic_string's operator=, a wrapper over assign): the UI lane's round 17 -- __copy<CSaferStr>
+     * 0x383D00 inlines size()'s is_long() only so; the out-of-line copy is 0x384E00 */
+    CSaferStr &operator=(const CSaferStr &s)
+    {
+        assign(s);
+        return *this;
+    }
     /* nothing returned: the out-of-line copy (0x22DCC0) keeps no `this` for a result */
     void operator=(const char *sz)
     {

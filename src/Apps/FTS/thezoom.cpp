@@ -5,6 +5,8 @@
 
 #include "camera.h"
 
+#include <iostream>
+
 /* SOCOM II's lens effects, as the anims are named (a byte under -enum min; 9 is never asked for,
  * and the effect before is taken as the current one while it is 9; the names ours) */
 enum LENS_FX {
@@ -276,7 +278,9 @@ struct CLensColors {
 
 extern "C" {
 extern CLensColors data_004B4D40;
-extern PNT4D data_00408D00;
+/* the first colour kept, the unit's only dynamically initialised static (from CPnt4D::zero:
+ * __sinit_thezoom.cpp 0x3FD850 copies it after <iostream>'s pair) */
+PNT4D data_00408D00 = CPnt4D::zero;
 extern PNT4D data_00408D10;
 extern PNT4D data_00408D20;
 extern PNT4D data_00408D30;

@@ -278,7 +278,8 @@ extern "C" bool func_005659E0(CSealCtrlAi *ai, float dT)
 /* the AI's target (SOCOM 1's CAiTarget at 0x67C, ai_target.cpp's; only its flags: SEAL_AI_PARAMS's
  * m_6a8) -- whether it has one (OVL2 0x60A850, the AI states' range) */
 struct CAiTargetFlags {
-    unsigned char _0[0x2c];
+    CEntity *m_entity;   // 0x0 (Dump compares its targets' with it)
+    unsigned char _4[0x2c - 0x4];
     unsigned int m_flags;   // 0x2c
 };
 
@@ -424,6 +425,43 @@ void CBBox::Normalize()
 
         m_min.z = m_max.z;
         m_max.z = t;
+    }
+}
+
+/* the entity as a SEAL, if it is one (an inline, the name ours) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* the controller's dump: its SEAL's teams written into a line, then each target's SEAL asked for
+ * its AI and marked when it is this AI's target -- nothing printed (OVL2 0x570E00, slot 0x68;
+ * SOCOM 1's walked the targets and asked their AIs alone) */
+void CSealCtrl::Dump()
+{
+    char line[128];
+    char buf[128];
+    CEntity *e = m_entity;
+
+    sprintf(line, "  Team: ");
+    for (int i = 0; i < 32; i++) {
+        if ((1 << i) & e->m_team) {
+            sprintf(buf, "%d ", i);
+            strcat(line, buf);
+        }
+    }
+    CTargetList *list = &e->m_targets;
+    CSealCtrlAi *ai = GetSealCtrlAi();
+
+    for (CTargetList::iterator t = list->begin(); t != list->end(); ++t) {
+        CZSealBody *seal = AsSeal(t->m_ent);
+
+        if (seal)
+            seal->GetSealCtrlAi();
+        if (ai && ((CAiTargetFlags *)ai->m_67c)->m_entity == t->m_ent)
+            sprintf(buf, "* ");
+        else
+            sprintf(buf, "  ");
     }
 }
 

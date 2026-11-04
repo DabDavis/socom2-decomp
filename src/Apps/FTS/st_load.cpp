@@ -4,6 +4,8 @@
 
 #include "fts_state.h"
 
+#include <iostream>
+
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
 int InitThread(void);

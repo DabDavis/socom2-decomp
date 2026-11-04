@@ -39,6 +39,7 @@ public:
     int zNetJoin(void (*joins)(int, int), void (*leaves)(int, int));
     int zNetConnect(void (*connects)(ClientConnectArgs *), void (*disconnects)(ClientConnectArgs *));
     struct NetObject *zNetGetObject(int index);
+    void zNetSetMyClientObject(int object);   /* 0x30CDE0: this console's client object set */
 
     /* an action the network put off to its next update (only what zRemoteDelayedAction reads:
      * its kind, a byte, and the client) */
@@ -391,7 +392,7 @@ extern "C" double fabs(double x);
 
 /* a float field's change tested: the object's (a0's index) data present, a change of more than 4
  * sent; no change not; a smaller one only while the data's two bytes at 0x7a and 0x7c are both
- * zero (SOCOM II's; nothing in either overlay takes its address. OVL1 0x2BD270) */
+ * zero (SOCOM II's; only the two position schedules below take its address. OVL1 0x2BD270) */
 struct NetFieldCompare {
     int m_index;   // 0x0: the object
     unsigned char _4[0x10 - 0x4];
@@ -423,6 +424,135 @@ extern "C" bool func_002BD270(NetFieldCompare *cmp)
     if (d != 0.0f && data[0x7a] == 0.0f && data[0x7c] == 0.0f)
         return true;
     return false;
+}
+
+/* how a schedule decides a field has changed enough to send (SOCOM 1's NetThresholdMethod: its
+ * position schedules 2 with a threshold, its flags 1 with none; the names ours) */
+enum NetThresholdMethod {
+    NET_THRESHOLD_ANY = 1,
+    NET_THRESHOLD_DELTA = 2
+};
+
+/* a field's broadcast schedule (SOCOM 1's CZBroadcastSchedule, 16 bytes here: SOCOM 1's double
+ * threshold is a float, or a compare function in its place, and SOCOM II adds a byte). Its two
+ * constructors are the network unit's (OVL1 0x30E3F0 and 0x30E3D0, unnamed yet), so the inline
+ * ones here forward to them -- the same call */
+class CZBroadcastSchedule;
+
+extern "C" {
+CZBroadcastSchedule *func_0030E3F0(CZBroadcastSchedule *s, unsigned int rate, NetThresholdMethod method,
+                                   float threshold, unsigned char c);
+CZBroadcastSchedule *func_0030E3D0(CZBroadcastSchedule *s, unsigned int rate, NetThresholdMethod method,
+                                   bool (*compare)(NetFieldCompare *), unsigned char c);
+}
+
+class CZBroadcastSchedule {
+public:
+    CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, float threshold, unsigned char c)
+    {
+        func_0030E3F0(this, rate, method, threshold, c);
+    }
+    CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, bool (*compare)(NetFieldCompare *),
+                        unsigned char c)
+    {
+        func_0030E3D0(this, rate, method, compare, c);
+    }
+
+    unsigned int m_rate;   // 0x0: in ms
+    NetThresholdMethod m_method;   // 0x4
+    union {
+        float m_threshold;   // 0x8
+        bool (*m_compare)(NetFieldCompare *);
+    };
+    unsigned char m_c;   // 0xc (SOCOM II's)
+};
+
+/* the schedules, online and on the LAN (SOCOM 1's six were CZNetObject's statics: position,
+ * rotation, flags, flash, grenade position and velocity -- SOCOM II's eighteen are file statics
+ * picked by the getters below; the names ours). Built in this order by the unit's initialiser
+ * __sinit_fts_remote.cpp 0x400400 (0x440CE0-0x440DF0) */
+static CZBroadcastSchedule sched_pos(100, NET_THRESHOLD_DELTA, 2.0f, 0);
+static CZBroadcastSchedule sched_pos_cmp(100, NET_THRESHOLD_DELTA, func_002BD270, 0);
+static CZBroadcastSchedule sched_rot(50, NET_THRESHOLD_DELTA, 0.05f, 0);
+static CZBroadcastSchedule sched_flags(100, NET_THRESHOLD_ANY, 0.0f, 0);
+static CZBroadcastSchedule sched_flash(0, NET_THRESHOLD_ANY, 0.0f, 0);
+static CZBroadcastSchedule sched_grenade_pos(50, NET_THRESHOLD_DELTA, 5.0f, 0);
+static CZBroadcastSchedule sched_grenade_vel(50, NET_THRESHOLD_DELTA, 0.1f, 0);
+static CZBroadcastSchedule sched_slow(2000, NET_THRESHOLD_ANY, 0.0f, 0);
+static CZBroadcastSchedule sched_lan_pos(200, NET_THRESHOLD_DELTA, 2.0f, 0);
+static CZBroadcastSchedule sched_lan_pos_cmp(200, NET_THRESHOLD_DELTA, func_002BD270, 0);
+static CZBroadcastSchedule sched_lan_rot(100, NET_THRESHOLD_DELTA, 0.05f, 0);
+static CZBroadcastSchedule sched_lan_flags(200, NET_THRESHOLD_ANY, 0.0f, 0);
+static CZBroadcastSchedule sched_lan_flags64(200, NET_THRESHOLD_ANY, 0.0f, 64);
+static CZBroadcastSchedule sched_lan_flash(50, NET_THRESHOLD_ANY, 0.0f, 0);
+static CZBroadcastSchedule sched_lan_flash80(50, NET_THRESHOLD_ANY, 0.0f, 80);
+static CZBroadcastSchedule sched_lan_grenade_pos(100, NET_THRESHOLD_DELTA, 5.0f, 0);
+static CZBroadcastSchedule sched_lan_grenade_vel(100, NET_THRESHOLD_DELTA, 0.1f, 0);
+static CZBroadcastSchedule sched_lan_slow(2000, NET_THRESHOLD_ANY, 0.0f, 0);
+
+/* the LAN lobby (zNetLANLobby.cpp's): only whether it is up */
+class CZLANLobby {
+public:
+    bool IsActive();   /* 0x3045B0 */
+};
+extern CZLANLobby data_0044FE10;   /* the LAN lobby */
+
+/* each field's schedule, the LAN's while the LAN lobby is up (SOCOM II's; fts_net_seal.cpp and
+ * fts_net_grenade.cpp register their fields with them -- OVL1 0x2BD020-0x2BD21B, unnamed) */
+extern "C" CZBroadcastSchedule *func_002BD1E0()
+{
+    if (data_0044FE10.IsActive())
+        return &sched_lan_pos_cmp;
+    return &sched_pos_cmp;
+}
+
+extern "C" CZBroadcastSchedule *func_002BD1A0()
+{
+    if (data_0044FE10.IsActive())
+        return &sched_lan_rot;
+    return &sched_rot;
+}
+
+extern "C" CZBroadcastSchedule *func_002BD160()
+{
+    if (data_0044FE10.IsActive())
+        return &sched_lan_flags;
+    return &sched_flags;
+}
+
+extern "C" CZBroadcastSchedule *func_002BD120()
+{
+    if (data_0044FE10.IsActive())
+        return &sched_lan_flags64;
+    return &sched_flags;
+}
+
+extern "C" CZBroadcastSchedule *func_002BD0E0()
+{
+    if (data_0044FE10.IsActive())
+        return &sched_lan_flash;
+    return &sched_flash;
+}
+
+extern "C" CZBroadcastSchedule *func_002BD0A0()
+{
+    if (data_0044FE10.IsActive())
+        return &sched_lan_flash80;
+    return &sched_flash;
+}
+
+extern "C" CZBroadcastSchedule *func_002BD060()
+{
+    if (data_0044FE10.IsActive())
+        return &sched_lan_grenade_pos;
+    return &sched_grenade_pos;
+}
+
+extern "C" CZBroadcastSchedule *func_002BD020()
+{
+    if (data_0044FE10.IsActive())
+        return &sched_lan_grenade_vel;
+    return &sched_grenade_vel;
 }
 
 /* a client disconnected: its word and its pending slot cleared; in a game already under way,
@@ -1686,7 +1816,6 @@ public:
 };
 
 extern "C" {
-void func_0030CDE0(CZNetwork *net, int object);   /* (zNet's: this console's client object set) */
 bool func_002C30B0(CZSealBody *body);
 void func_002B8100(CZSealBody *body, CPnt3D *pos, CMatrix *m, int flags);   /* (the spawn point) */
 void func_00543D50(CZSealBody *body);   /* (OVL2) */
@@ -1703,7 +1832,7 @@ void ftsNetworkPlayerInit()
     CZSealBody *player = ftsGetPlayer();
 
     player->m_4 = CZSealState::CreateLocalSeal(player, true);
-    func_0030CDE0(&theNetwork, player->m_4);
+    theNetwork.zNetSetMyClientObject(player->m_4);
     CPnt3D pos = CPnt3D::zero;
     CMatrix m;
 
