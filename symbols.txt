@@ -9596,7 +9596,7 @@
 0x00527C40 0x38 GetLegMap__7CAiPathFi  # OVL2; s1:callee by hand (CreatePlanner calls it with -1 for the new CAiStar's map, as SOCOM 1's calls GetLegMap__7CAiPathFi)
 0x00527C80 0x58 GetLegPoints__7CAiPathCFR9CAiMapLocR9CAiMapLoci  # OVL2; s1:callee by hand (CreatePlanner calls it with the new CAiStar's two cells and -1, as SOCOM 1's calls GetLegPoints__7CAiPathCFR9CAiMapLocR9CAiMapLoci)
 0x00527CE0 0x18C RemoveInvalidPoints__7CAiPathFv  # OVL2; ours (new in SOCOM II: SmoothPath's call after the legs -- the points on CAiMapLoc::invalid dropped through MSL's remove (find inlined, remove_copy 0x528530) and the range erase 0x528C80, the old size less the new returned; SOCOM 1's SmoothPath did it inline -- ai_path.cpp)
-0x00527E70 0x144 func_00527E70  # OVL2
+0x00527E70 0x144 GetLength__7CAiPathFb  # OVL2; s1:order by hand, the AI core round 20 (SOCOM 1's GetLength, the demo's 0x196510, after GetLegPoints and before ~CAiPath as here; CAiMaps::CreateGraph calls it with false after PathPlanImmediate, as SOCOM 1's does; byte-exact in ai_path.cpp)
 0x00527FC0 0x8 func_00527FC0  # OVL2
 0x00527FD0 0x1DC func_00527FD0  # OVL2
 0x005281B0 0x188 __dt__7CAiPathFv  # OVL2; s1:order (right before CAiPath's constructor, as SOCOM 1's; ~CAiSPlan and ~CAiSPathRecover call it on their path members) -- the kit lane

@@ -62,6 +62,30 @@ CAiPath::~CAiPath()
     Clear();
 }
 
+/* the points' length: summed afresh when none is kept or when forced, each step between two
+ * points on one map its straight distance; 0 without points (SOCOM 1's GetLength, the demo's
+ * 0x196510, the same shape: SOCOM II's distance a sqrt.s where SOCOM 1 called sqrtf) */
+float CAiPath::GetLength(bool force)
+{
+    if (m_points.size() != 0 && (m_length == 0.0f || force)) {
+        m_length = 0.0f;
+        points::iterator i = m_points.begin();
+        CAiMapLoc prev;
+        CAiMapLoc cur;
+
+        prev = (*i).m_loc;
+        for (++i; i != m_points.end(); ++i) {
+            cur = (*i).m_loc;
+            if (prev.m_mapid == cur.m_mapid)
+                m_length += GetCellDistance(prev, cur);
+            prev = cur;
+        }
+    } else if (m_points.size() == 0) {
+        m_length = 0.0f;
+    }
+    return m_length;
+}
+
 /* the points on no cell dropped through MSL's remove and the range erase, the count dropped handed
  * back (new in SOCOM II, the name ours; SmoothPath calls it, never inlined). The end taken once into a
  * local and passed to both (the MSL headers' round 8: the callers' form gives the target's slots);

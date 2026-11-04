@@ -1349,6 +1349,10 @@ public:
     void IncrementPathId();
     CAiMap *GetLegMap(int leg);
     bool GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const;
+    /* the points' length, the straight distances between neighbours on one map summed -- kept,
+     * and summed again when none is kept or when forced; 0 without points (SOCOM 1's GetLength,
+     * the demo's 0x196510, by its place and its call from CAiMaps::CreateGraph: 0x527E70) */
+    float GetLength(bool force);
 
     CAiStar *m_astar;   // 0x0
     CAiPlanner *m_planner;   // 0x4

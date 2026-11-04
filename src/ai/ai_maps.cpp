@@ -200,7 +200,9 @@ bool CAiMaps::GetSporeLocation(unsigned int id, unsigned int n, CPnt3D *pos, CPn
  * 0x14 and at a node's 8, where the per-map graph's fixups in ai_mapio.cpp keep a route and a region) */
 class CGEdge {
 public:
-    unsigned char _0[0x14];
+    unsigned char _0[0x4];
+    float m_length;   // 0x4: graph_tree.h's m_4 (CreateGraph stores the walk's length)
+    unsigned char _8[0xc];
     CAiMap::link *m_link;   // 0x14
 };
 
@@ -297,6 +299,97 @@ CGEdge *CAiMaps::FindLinkEdge(const CAiMapLoc &from, const CAiMapLoc &to)
         found = best;
     }
     return found;
+}
+
+/* graph_tree.cpp's edge flag: bit 30 set or cleared, on setting it the two ends replaced when the
+ * first differs (OVL1 0x2D1410, the states lane's extern "C" stand-in) */
+extern "C" void func_002D1410(CGEdge *edge, bool on, CGNode *from, CGNode *to);
+
+/* whether a step from a cell in a direction ends on a cell a step may end on (new in SOCOM II, the
+ * name ours): GetNeighbor's step, then CAiMap::IsTraversable's test -- too tall to inline whole, so
+ * CreateGraph inlines it one level and calls GetMapId, GetCell and the cell's test out of line */
+inline bool step_traversable(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &n)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map->m_nx && y >= 0 && y < map->m_ny) {
+        n.x = x;
+        n.y = y;
+        n.m_mapid = map->GetMapId();
+        CAiCell *cell = map->GetCell(n, 0);
+
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+/* the map set's graph built unless it is there and not forced: every link of every map a node at
+ * each end and an edge between them (a link with a side, its kind, made one-way: toward its own
+ * cell when the step off that side may end there), and every earlier link of the same map that a
+ * plan reaches an edge as long as the plan (SOCOM 1's; the one-way edges, the edge's link and the
+ * flags' reset new in SOCOM II). Byte-exact, the AI core's round 20, by these shapes: the link a
+ * plain pointer (SOCOM 1's MSL iterator was one) compared through the class iterator -- as an
+ * iterator object the scalariser's temporary numbers it below the nodes and its saved register
+ * moves (s4 for s1); the map walk's iterator ASSIGNED from begin() before its end is taken into a
+ * local, so begin's load comes first and the end, a variable, spills to the frame's 160 for want of
+ * a saved register (end() in the test is rematerialised from `this`, 0x3F8; taken before the
+ * assignment the two set-ups swap registers); the neighbour's cell the caller's (an inline's own
+ * CAiMapLoc is a call to its empty constructor where the inline is cut one level), and the map
+ * handed to the inline non-const (a const view hoists &m_nx and &m_ny out of the walk) */
+void CAiMaps::CreateGraph(bool force)
+{
+    if (force || !m_graph) {
+        CGraph *g = CGraph::Create("AiMap Graph");
+        iterator i;
+        CAiMapLoc n;
+
+        i = begin();
+        iterator last = end();
+
+        for (; i != last; ++i) {
+            CAiMap *map = *i;
+            CAiMap::links &links = map->m_linksTable;
+
+            for (CAiMap::link *l = &*links.begin(); CAiMap::links::iterator(l) != links.end(); ++l) {
+                CGNode *a = g->GetNodeByNodeEx(l);
+
+                if (!a) {
+                    a = g->CreateNode();
+                    a->m_link = l;
+                    CAiMap *far = GetMapByIndex(l->m_link.m_mapid);
+                    CAiMap::link *back = far->GetCellLink(l->m_link);
+                    CGNode *b = g->CreateNode();
+
+                    b->m_link = back;
+                    CGEdge *e = g->CreateEdge(a, b);
+
+                    e->m_link = l;
+                    e->m_length = 0.0f;
+                    if (l->m_kind != 8) {
+                        if (!step_traversable(map, l->m_loc, (CAiMap::DIR)l->m_kind, n))
+                            func_002D1410(e, true, a, b);
+                        else
+                            func_002D1410(e, true, b, a);
+                    }
+                }
+                for (CAiMap::links::iterator o = links.begin(); o != l; ++o) {
+                    CGNode *b = g->GetNodeByNodeEx(&*o);
+
+                    ai::FlushPlannerQueue();
+                    CAiPath path;
+
+                    path.m_flags = 0;
+                    if (ai::PathPlanImmediate(map, l->m_loc, (*o).m_loc, &path)) {
+                        CGEdge *e = g->CreateEdge(a, b);
+
+                        e->m_length = path.GetLength(false);
+                    }
+                }
+            }
+        }
+        m_graph = g;
+    }
 }
 
 /* every map's links checked: each link given its map's index, and a link whose far cell has no link
