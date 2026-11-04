@@ -945,11 +945,6 @@ public:
 extern CMission theMission;
 
 extern "C" {
-/* the kit's two words at +0x20 zeroed (OVL2 0x5B9020, seal_kit.cpp's first row, the kit lane's) */
-void func_005B9020(CZKit *kit);
-}
-
-extern "C" {
 /* a ZAnim let go (OVL1 0x2707C0, unowned: seal_ai.cpp's reading) */
 void func_002707C0(CZAnim *anim, bool now);
 /* the night-vision goggles' sounds (OVL1 bss 0x44CE30, 0x44CE38: seal_env.cpp's
@@ -1068,7 +1063,7 @@ ZOOMSTATE CZSealBody::DecrZoomState()
         break;
     case ZOOMSTATE_BINOCS:
         zs = ZOOMSTATE_1STPERSON;
-        func_005B9020(&m_kit);
+        m_kit.ResetRetOffsetXY();
         break;
     case ZOOMSTATE_WEAPONDEF1:
     case ZOOMSTATE_WEAPONDEF2:
@@ -1088,7 +1083,7 @@ ZOOMSTATE CZSealBody::DecrZoomState()
                     zs = ZOOMSTATE_NVG;
                 else
                     zs = ZOOMSTATE_1STPERSON;
-                func_005B9020(&m_kit);
+                m_kit.ResetRetOffsetXY();
             } else if (level - 1 < (int)w->m_zoommode.size())
                 zs = (ZOOMSTATE)(m_zoomstate - 1);
         }
@@ -1100,11 +1095,8 @@ ZOOMSTATE CZSealBody::DecrZoomState()
 }
 
 extern "C" {
-/* the turret's six nodes' +0x9C set to 1 or 0 (OVL1 0x3AA020, unowned: a CTurret member), and the
- * kit's weapon in its launcher mode (OVL2 0x5BD7E0, the kit lane's: WeaponIsLauncherMode of the
- * current item) */
+/* the turret's six nodes' +0x9C set to 1 or 0 (OVL1 0x3AA020, unowned: a CTurret member) */
 void func_003AA020(CTurret *t, bool on);
-bool func_005BD7E0(CZKit *kit);
 }
 
 /* the view stepped in one place (OVL2 0x5445B0; SOCOM 1's switch with SOCOM II's states: out of the
@@ -1140,7 +1132,7 @@ ZOOMSTATE CZSealBody::IncrZoomState()
             break;
         if (item && CZWeapon::IsLauncher(item->m_ID))
             break;
-        if (func_005BD7E0(&m_kit))
+        if (m_kit.CurWeaponIsLauncherMode())
             break;
         if ((!pref && zdb::CWorld::m_world->m_night_mission) || nvg)
             zs = ZOOMSTATE_NVG;

@@ -163,6 +163,10 @@ public:
     void InitializeSniperKick();
     /* the weapon's display marked changed (SOCOM 1's; OVL2 0x5B99B0, kit.h's) */
     void SetWeaponInfoChanged();
+    /* the reticule's offset zeroed (SOCOM 1's m_retoffsetx/y, 0x20/0x24 here), and whether the weapon
+     * in hand is in its launcher mode (new in SOCOM II; OVL2 0x5B9020, 0x5BD7E0 -- the kit lane's) */
+    void ResetRetOffsetXY();
+    bool CurWeaponIsLauncherMode();
     /* the class of the item in hand (kit.h's byte enum; OVL2 0x5B8760, the kit lane's) */
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
@@ -1443,6 +1447,8 @@ public:
     void SetIsTurning(bool on) { m_is_turning = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* whether the throttles leave the SEAL stopped (SOCOM 1's; OVL2 0x586F00, seal_body.cpp) */
+    bool IsStopped(float x, float z, float t);
     /* the state set: its blend and the body's state (SOCOM 1's; OVL2 0x581ED0, seal_body.cpp's -- not
      * written yet: 0 or 1 back), and the desired state taken when it may be (SOCOM 1's; OVL2 0x552D60,
      * seal.cpp) */
@@ -1507,6 +1513,11 @@ public:
     CZBodyAnimBlend *InStateHang();
     /* the body carried let go (SOCOM 1's DropBody, before OKToStand in both builds: OVL2 0x57EE00) */
     void DropBody();
+    /* an explosion's damage: unless another console's SEAL is hit online, its sight from the head
+     * checked by a delayed intersection when it hurts here or is weapon 123 (SOCOM 1's took the
+     * location by value; SOCOM II's caller, HandleDamage 0x5AB850, passes it by address, and the
+     * part and location go unread; OVL2 0x5AC070, seal_env.cpp) */
+    void HandleDamageExplosive(CZProjectile *proj, CZBodyPart *part, DAMAGE_LOCATION *where);
     /* a stun taken: the kind's highest kept, the controller told (SOCOM 1's; OVL2 0x5A53D0) */
     void HandleStunDamage(STUN_TYPE type, float amount, const CPnt3D *from);
     /* the stuns run down by the character's recovery (SOCOM 1's; OVL2 0x5A50A0), each kind's
@@ -1796,7 +1807,13 @@ public:
     float m_1014[6];   // 0x1014
     unsigned char _102c[0x1044 - 0x102c];
     float m_health;   // 0x1044 (SOCOM 1's 0xea0)
-    unsigned char _1048[0x1058 - 0x1048];
+    unsigned char _1048[0x104c - 0x1048];
+    /* the explosive whose sight from the head is being checked, the check's handle and its
+     * intersection (SOCOM 1's DWARF: m_tempprojectile, m_projectileintersecthandle, m_projectiledi,
+     * 0xf48-0xf50, right before m_lastregion as here: HandleDamageExplosive sets them) */
+    CZProjectile *m_tempprojectile;   // 0x104c
+    int m_projectileintersecthandle;   // 0x1050
+    zdb::DiIntersect *m_projectiledi;   // 0x1054
     unsigned int m_lastregion;   // 0x1058 (SOCOM 1's 0xf54)
     unsigned int m_HudUpdateViewCone : 1;   // 0x105c (SOCOM 1's 0xf58, the same bits)
     unsigned int m_hudwashit : 1;

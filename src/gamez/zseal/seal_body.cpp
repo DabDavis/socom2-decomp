@@ -305,6 +305,46 @@ bool CZSealBody::CanTurn()
     return r;
 }
 
+extern "C" {
+/* how far the throttles may stray for a hang to hold, and for the SEAL to count as stopped (OVL1
+ * data; seal_env.cpp's ladder test reads it) */
+extern float data_003F3428;
+}
+
+/* whether the SEAL counts as stopped: the side throttle within the slack of none, then -- turning --
+ * the move throttle inside the band (below the slack plus the turn's square share of 0.3, above minus
+ * one and a half slacks plus its share of 0.5), moving the move throttle within the slack, else the two throttles'
+ * length within the slack or the move throttle inside the band (OVL2 0x586F00; SOCOM 1's IsStopped,
+ * after SmoothXZThrottles and before SealAnim in both builds, the same body: InStateProne, InStateCrouch
+ * and the two move controls ask it) */
+bool CZSealBody::IsStopped(float x, float z, float t)
+{
+    static float zero_z = 0.0f;
+
+    if (!_close_enough(z, zero_z, data_003F3428))
+        return false;
+    if (m_is_turning) {
+        if (x < data_003F3428 + t * (t * (0.3f - data_003F3428)) &&
+            x > -(1.5f * data_003F3428 + t * (t * (0.5f - 1.5f * data_003F3428))))
+            return true;
+        return false;
+    }
+    if (m_is_moving) {
+        static float zero_x = 0.0f;
+
+        return _close_enough(x, zero_x, data_003F3428);
+    }
+    float l = sqrtf(x * x + t * t);
+    static float zero_l = 0.0f;
+
+    if (_close_enough(l, zero_l, data_003F3428))
+        return true;
+    if (x < data_003F3428 + t * (t * (0.3f - data_003F3428)) &&
+        x > -(1.5f * data_003F3428 + t * (t * (0.5f - 1.5f * data_003F3428))))
+        return true;
+    return false;
+}
+
 /* the jump begun, as the SEAL's own: bit 9 set and 10 cleared, the velocity kept, the push told to
  * the network for a SEAL this console plays (OVL2 0x57E050, new in SOCOM II; 0x5AF930 calls it after
  * 0x57DF20 and 0x57E130 -- the names ours) */
@@ -1461,11 +1501,6 @@ void CZSealBody::BodySetState(int state)
     func_0028DFB0(*this, state);
 }
 
-extern "C" {
-/* how far the throttles may stray for a hang to hold (OVL1 data; seal_env.cpp's ladder test reads it) */
-extern float data_003F3428;
-}
-
 /* hanging: with the throttles within the hang's reach the blends popped down to the hang (34) -- or to
  * one -- the hang pushed if it is not on top, the top made whole and the moving and turning flags
  * cleared; pushed forward, a stand from the hang (stance 4); pulled back from a top blend still
@@ -1573,6 +1608,42 @@ CZBodyAnimBlend *CZSealBody::TurnControl(float turn)
     }
     b->Representative()->SetPlayback(neg ? -a : a);
     return b;
+}
+
+/* a move's throttles split into two blend weights: a dead zone on the second, the first's share of
+ * the length turned into an angle's fraction ((2 / pi) asin, kept within 0 and 1) and the other its
+ * complement, the pair's length's inverse left in a static; the length returned, at most 1 (OVL2
+ * 0x583350, new in SOCOM II: the crouched and standing move controls 0x582D10, 0x583030 ask it with
+ * their throttles swapped -- `this` unread; the name ours) */
+extern "C" float func_00583350(CZSealBody *seal, float *a, float *b, float x, float z)
+{
+    static float inv = 1.0f;
+
+    if (fabsf(z) <= data_003F3428)
+        z = 0.0f;
+    float len = sqrtf(z * z + x * x);
+    float ax = fabsf(x);
+
+    *a = 0.0f;
+    if (len > 0.0f)
+        *a = ax / len;
+    if (*a >= 1.0f)
+        *a = 1.0f;
+    else if (*a <= 0.0f)
+        *a = 0.0f;
+    else {
+        *a = 0.63661975f * asinf(*a);
+        if (*a > 1.0f)
+            *a = 1.0f;
+        else if (*a < 0.0f)
+            *a = 0.0f;
+    }
+    *b = 1.0f - *a;
+    if (len > 1.0f)
+        len = 1.0f;
+    inv = sqrtf(*a * *a + *b * *b);
+    inv = 1.0f / inv;
+    return len;
 }
 
 /* the stance's change taken, once (OVL2 0x582500; SOCOM 1's, the false return its own block) */
