@@ -313,6 +313,8 @@ public:
     void DMEInit();
     bool RefreshGameList(C2D *list);
     bool CanJoinRoom(const char *room);
+    void GetCurrentGameInfo();              /* 0x2E24D0 (the online lane's round 14) */
+    void GetGameInfo(const char *name);     /* 0x2E1F20 (the online lane's round 14) */
     void RejoinRoom();
     bool JoinRoom(const char *room);
     bool RefreshRoomList(C2D *list);
@@ -383,6 +385,7 @@ public:
     unsigned int zNetGetTime();
     unsigned int zNetGetLocalTime();   /* 0x30D540 (SOCOM 1's) */
     bool zNetInitialize();   /* 0x30DBB0 */
+    bool zNetLoadIRX();      /* 0x30DEE0 (SOCOM 1's; the online lane's round 14) */
 
     bool m_bSessionMaster;   // 0x0 (SOCOM 1's at 8)
     bool m_bNetwork;   // 0x1
@@ -760,7 +763,9 @@ public:
 
 /* the account database (the online lane's CZUniversInformationServer::CAcctDB: what the handlers ask
  * of it -- the personas on a host, the patch level, the servers, the news) */
-enum ACCT_GENDER { ACCT_MALE = 0, ACCT_FEMALE = 1 };
+/* an account's gender: INT-SIZED, as the online lane's (zNetMediusUniverse.cpp, round 14): the
+ * handler's `li 1; movz` is a ternary of its enumerators passed to an enum parameter */
+enum ACCT_GENDER { ACCT_MALE = 0, ACCT_FEMALE = 1, ACCT_GENDER_EXTENT = 0x7FFFFFFF };
 class CZUniversInformationServer {
 public:
     class CAcctDB {
@@ -768,7 +773,7 @@ public:
         int Count(const char *host, int port);                              /* 0x2FB920 */
         int Find(const char *host, int port, const char *name);             /* 0x2FBBF0 */
         void SetAcctInfo(const char *host, int port, const char *name, const char *password,
-                         const char *hometown, int gender, bool secure);    /* 0x2FD0D0 */
+                         const char *hometown, ACCT_GENDER gender, bool secure);    /* 0x2FD0D0 */
         const char *GetName(const char *host, int port, int i);             /* 0x2FD510 */
         const char *GetPatchURL(const char *level);                         /* 0x2FD610 */
         bool VerifyPatchLevel(const char *level);                           /* 0x2FD6E0 */
@@ -817,7 +822,6 @@ void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
 
 /* more of the lobby (SOCOM 1's names by the calls SOCOM 1's handlers make) */
 void func_0030E290(CZNetwork *net);                                 /* (the network's initialisation started) */
-bool func_0030DEE0(CZNetwork *net);                                 /* (whether it started) */
 bool func_0030BF20();                                               /* (whether the network is up) */
 void func_002ACC10(CMission *mission, const char *name);            /* (the mission set by name) */
 bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
@@ -832,8 +836,6 @@ void func_001F3BB0(CMenuState *state, float time);                  /* (the menu
 void func_001F3BD0(CMenuState *state, const char *movie);           /* (the background film set) */
 bool func_001F3BE0(CMenuState *state);                              /* (the background film stopped: whether one was playing) */
 char *func_0039C580();
-void func_002E24D0(CZOnlineLobby *lobby);                           /* (the current game's info) */
-void func_002E1F20(CZOnlineLobby *lobby, const char *game);         /* (a game's info) */
 bool func_001EB070(void *core, const char *eventname, const char *argument);       /* (CCoreState's RunEventAnim) */
 
 /* the online services' account database at 0x44FC60 (patches, personas, accounts, news: the

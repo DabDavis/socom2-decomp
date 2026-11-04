@@ -1656,9 +1656,9 @@ bool UIGetGameInfo(C2DAnimCmdHdr *hdr, float *dT)
 
     if (game) {
         if (!strcasecmp(game, "CurrentGame"))
-            func_002E24D0(&theLobby);
+            theLobby.GetCurrentGameInfo();
         else
-            func_002E1F20(&theLobby, game);
+            theLobby.GetGameInfo(game);
     }
     return true;
 }
@@ -2306,7 +2306,7 @@ void CSMInitNetwork::WaitForNetwork(unsigned char event)
 
     switch (event) {
     case 0:
-        if (!func_0030DEE0(&theNetwork)) {
+        if (!theNetwork.zNetLoadIRX()) {
             theLobby.ChangeState(CONNECT_ERROR);
             theLobby.Tick();
             sprintf(text, "Network Initialization Error: %s (%d)", "Cannot Initialize Network", 0);
@@ -2545,13 +2545,9 @@ _zanim_cmd_hdr *UICharacterProfileParse(const char *name, _zrdr *rdr)
 
 /* the account's details sent to the lobby server (its host and port, the name, password, home town,
  * gender and whether the password is kept secure), then the personas listed again */
-/* CZUniversInformationServer::CAcctDB::SetAcctInfo (0x2FD0D0) through its placeholder: the row's name
- * takes the gender as an int, and every int spelling of the argument loses the target's li/movz
- * select (`x ? 1 : 0` folds to sltu, an enum converted adds its andi); only the byte enum passed
- * straight gives it -- so the call stays raw until the callee's parameter type is settled */
-extern "C" void func_002FD0D0(CZUniversInformationServer::CAcctDB *db, const char *host, int port, const char *name,
-                              const char *password, const char *hometown, ACCT_GENDER gender, bool secure);
-
+/* the gender a ternary of ACCT_GENDER's enumerators passed straight to SetAcctInfo's enum parameter
+ * (the target's li/movz select: `x ? 1 : 0` to an int folds to sltu; the online lane's round 14
+ * settled the parameter's type) */
 bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
     CUIVariable *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT);
@@ -2562,7 +2558,8 @@ bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
     CValve *gender = CValve::Create("PLAYERGENDER", (VALVE_TYPE)3);
     bool secure = CValve::Create("SecurePassword", (VALVE_TYPE)1)->m_value != 0;
 
-    func_002FD0D0(&data_0044FC60, host->String(), port->Int(), name->String(), password->String(), hometown->String(), gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
+    data_0044FC60.SetAcctInfo(host->String(), port->Int(), name->String(), password->String(), hometown->String(),
+                              gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
     UpdatePersonaList(host->String(), port->Int());
     return true;
 }
