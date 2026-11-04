@@ -6057,7 +6057,10 @@ data.txt's `__infinity` (0x1D0BB8, the demo's 8-byte GLOBAL OBJECT). What they s
   eight objects it closed (`build/scratch/gcc/gcmp.py`); over every runtime unit (`gsweep.py`, 188
   functions) `-g` loses none and gains eight, and with it the "different 2.96 build" of rounds
   4a-22a, `__fixunsdfdi`'s "older expand_float" included, is gone: every runtime unit's directive
-  is `-O2 -G0 -g` (libm's `-fno-builtin` too).
+  is `-O2 -G0 -g` (libm's `-fno-builtin` too). It is the runtime's alone: over the 13 recogniser and
+  Medius units whose open rows show the same empty slot after a 64-bit move (`gsig.py`; 520
+  functions), `-g` loses 37 byte-exact functions and gains none -- those vendors' builds let GNU as
+  fill the slots; and Sony's SDK as fills them (libvu0, round 2a).
 - **newlib's own text compiles as it stands under `-g`**: the eleven double libm objects, dtoa.c and
   `_strtod_r` are 1.8.2's and 1.9.0's text unchanged (the two releases differ there only in
   parenthesis). Two names their headers give were read off the target: the R5900's float.h
