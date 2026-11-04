@@ -40,6 +40,16 @@
 
 namespace std {
 
+/* RefCountedPtrArray.h's copy constructor, at the top as the header has it (msl.h leaves it to the
+ * units: iostream.cpp must see it late); classic() calls it, the unit emits its copy (ios.cpp's kept) */
+template <class T, class Destructor>
+_RefCountedPtr<T, Destructor>::_RefCountedPtr(const _RefCountedPtr &other)
+    : ptr_(other.ptr_), refCount_(other.refCount_)
+{
+    if (refCount_)
+        ++*refCount_;
+}
+
 locale &locale::global() throw()
 {
     static locale global_locale(classic());

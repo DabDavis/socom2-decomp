@@ -126,6 +126,8 @@ template <class T, class Destructor>
 class _RefCountedPtr {
 public:
     explicit _RefCountedPtr(T *ptr = 0);
+    /* the copy constructor and the assignment are defined by the units, where each must first be
+     * seen (ios.cpp at its top; iostream.cpp after the filebufs, whose constructors call the copy) */
     _RefCountedPtr(const _RefCountedPtr &other);
     ~_RefCountedPtr();
     _RefCountedPtr &operator=(const _RefCountedPtr &other);
@@ -135,14 +137,6 @@ private:
     T *ptr_;
     int *refCount_;
 };
-
-template <class T, class Destructor>
-_RefCountedPtr<T, Destructor>::_RefCountedPtr(const _RefCountedPtr &other)
-    : ptr_(other.ptr_), refCount_(other.refCount_)
-{
-    if (refCount_)
-        ++*refCount_;
-}
 
 template <class T, class Destructor>
 _RefCountedPtr<T, Destructor>::_RefCountedPtr(T *ptr)

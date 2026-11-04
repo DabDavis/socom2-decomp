@@ -96,8 +96,13 @@ basic_streambuf<charT, traits>::xsputn(const char_type *s, streamsize n)
     return i;
 }
 
+/* INLINE (round 6): the image generates ~basic_filebuf<char> right after __nInit's constructor, which
+ * takes its address for the static filebufs' registration -- what MW does with an inline function
+ * referenced and not inlined (an out-of-line template member waits for the unit's end: probed in
+ * build/scratch/rt/p2*.cpp). So generated, ahead of _RefCountedPtr's instantiation, it inlines
+ * ~basic_streambuf and ~locale and calls ~_RefCountedPtr (0x184A00), as the target's both do. */
 template <class charT, class traits>
-basic_filebuf<charT, traits>::~basic_filebuf()
+inline basic_filebuf<charT, traits>::~basic_filebuf()
 {
 }
 
@@ -543,19 +548,15 @@ __wInit::~__wInit()
 template class _RefCountedPtr<__locale_imp<1>, _Single<__locale_imp<1> > >;
 
 /* The filebufs' FILE constructors and imbue, defined after the locale pointer's instance so that
- * their temporary locale's destructor inlines it, as the target's do. imbue<char>/<wchar_t> match.
- * OPEN, the constructors (0x1878D0, 0x188A10: 0x160 against 0x134) and ~basic_filebuf (0x184F20,
- * 0x185460: 0xA8 against 0x78): the generation order. The target's constructors inline
- * ~_RefCountedPtr but CALL its copy constructor (0x1848C0); its destructors call ~_RefCountedPtr
- * (0x184A00). MW decides inlining when a template member is instantiated, and every arrangement tried
- * gives one side: the filebuf class instantiated before _RefCountedPtr's (round 2's order) makes the
- * destructors right and the constructors and imbue call ~_RefCountedPtr; __nInit's constructor ahead
- * of the instantiations (the image's order: it is the unit's first function) instantiates the
- * constructor and destructor at once, after ios_base::getloc has instantiated the copy constructor,
- * which then inlines everywhere. Measured in build/scratch/rt/t2.cpp: a member instantiated by a
- * mid-unit reference calls a template already called out of line; one instantiated at the unit's
- * end (the vtables' pass) inlines it -- the target's constructors, emitted in that pass's reverse
- * order (0x1878D0 after showmanyc), look like the second kind, its destructors like the first. */
+ * their temporary locale's destructor inlines it, as the target's do -- and ahead of the copy
+ * constructor's definition (after the class instantiations below), which they call. All four match
+ * (round 6; the constructors were round 3's open: 0x160 against 0x134). THE RULE, measured: MW
+ * auto-inlines a non-inline function only once it has been GENERATED (a later one is called, and
+ * the call decided afresh at each inline level), while an inline function is expanded wherever its
+ * definition is known; an inline function referenced and not expanded is generated right after the
+ * top-level function that needs it, a non-inline template member at the unit's end -- the target's
+ * destructors are the first kind (generated after __nInit's and __wInit's constructors), its
+ * constructors the second (after showmanyc, in the end pass). */
 template <class charT, class traits>
 basic_filebuf<charT, traits>::basic_filebuf(FILE *file)
     : file_(file), state_(0), overflow_called_last_(false), buffered_(true)
@@ -634,6 +635,19 @@ basic_ostream<charT, traits> &basic_ostream<charT, traits>::flush()
 
 template class basic_filebuf<char, char_traits<char> >;
 template class basic_filebuf<wchar_t, char_traits<wchar_t> >;
+
+/* RefCountedPtrArray.h's copy constructor (0x1848C0, ios.cpp's copy kept), defined only now: MW
+ * auto-inlines a non-inline template member only once it has been generated, so the filebufs'
+ * FILE constructors, generated above, call it (their default locale's imp_(global().imp_)) while
+ * inlining ~_RefCountedPtr, instantiated ahead of them -- as the target's do (round 6) */
+template <class T, class Destructor>
+_RefCountedPtr<T, Destructor>::_RefCountedPtr(const _RefCountedPtr &other)
+    : ptr_(other.ptr_), refCount_(other.refCount_)
+{
+    if (refCount_)
+        ++*refCount_;
+}
+
 template class basic_istream<char, char_traits<char> >;
 template class basic_ostream<char, char_traits<char> >;
 template class basic_istream<wchar_t, char_traits<wchar_t> >;
