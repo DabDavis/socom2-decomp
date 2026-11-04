@@ -88,6 +88,13 @@ public:
 class CZSealBody {
 public:
     CNodeAction *GetReticuleAction(bool b);
+    /* the action the HUD shows marked as the one selected (SOCOM 1's ActionSelectionMask by its call
+     * here, SOCOM II's taking the action alone: OVL2 0x544C80 sets the mask word at 0xED4). An int
+     * (the HUD's round 42: with an unsigned char parameter MW folds the conversion into an `lbu` of the
+     * reinterpreted byte in every spelling, where the target loads it with `lb`; the callee's `andi
+     * 0xff` rules out signed char) -- the row retyped ActionSelectionMask__10CZSealBodyFi by the SEALs'
+     * round 34, its body `1 << (unsigned char)id` */
+    void ActionSelectionMask(int id);
     CPickup *CurrentPickupSecondary();
     CPickup *CurrentPickup();
 
@@ -95,16 +102,6 @@ public:
     CSealCtrl *m_ctrl;   // 0xc0
 };
 
-
-/* the action the HUD shows marked as the one selected (SOCOM 1's CZSealBody::ActionSelectionMask
- * by its call here, SOCOM II's taking the action alone: OVL2 0x544C80 sets the mask word at 0xED4).
- * Still the placeholder (round 42): the row's ActionSelectionMask__10CZSealBodyFUc, called as the
- * member, loads the reinterpreted byte with `lbu` where the target's `lb` (1 off) -- MW folds the
- * conversion to an unsigned char parameter into the load in every spelling (an int, a short, a
- * local, a pointer cast); an int, unsigned int or signed char parameter gives the target's code,
- * and the callee's `andi 0xff` rules out signed char (it sign-extends, dsll32/dsra32): an int
- * parameter narrowed inside, `1 << (unsigned char)id` -- the row's to retype (the SEALs') */
-extern "C" void func_00544C80(CZSealBody *seal, signed char action);
 
 /* the icons' machine (SOCOM 1's CActionTxtrMachine: a vector of the icons shown, the prompt's string
  * at 0x14 -- the texture machine at 0x40D550 -- and the driver, SOCOM II's at 0x1F4) */
@@ -248,7 +245,7 @@ bool CActionTxtrMachine::UpdateDriverPickup()
 unsigned int CActionTxtrMachine::Add(CActionTxtr *pActionTxtr)
 {
     if (!pActionTxtr->m_action_id)
-        func_00544C80(m_driver, (signed char &)pActionTxtr->m_action_id);
+        m_driver->ActionSelectionMask((signed char &)pActionTxtr->m_action_id);
     if (pActionTxtr->m_action_id == 13 || pActionTxtr->m_action_id == 7 ||
         pActionTxtr->m_action_id == 17) {
         zdb::CNode *bomb = CPickup::m_mpbombnode;
