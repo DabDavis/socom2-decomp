@@ -85,7 +85,7 @@ public:
     };
 
     void Initialize();
-    void UnInitialize();
+    float UnInitialize();   /* (no value returned: see the definition) */
     bool TenSecondLaunch(bool launch);
     unsigned int DecrementRoundClockSec(int sec);
 
@@ -2427,10 +2427,13 @@ unsigned int CZNetGame::DecrementRoundClockSec(int sec)
 
 /* the online game let go of: its state and clocks cleared, the rounds back to none (OVL1 0x2A75F0,
  * SOCOM 1's UnInitialize ahead of Initialize, the fields moved; DestroyNetGame ends calling it).
- * OPEN, 6 instructions, registers only: the round valve's value, its state test and the constant 1
- * for 0x112 take v0 in the target, v1 here. Tried: the valve set through zanim.h's SetValue and
- * through the helper with the count stored apart */
-void CZNetGame::UnInitialize()
+ * Declared float and returning nothing: MW 3.0's return of a void (or int) function keeps v0 live
+ * from the entry along any path without a call, so the valve's value, its state test and the
+ * constant 1 for 0x112 took v1 -- the target gives them v0, which only a return in $f0 leaves free
+ * (build/scratch/states/p_ret.cpp: void, int with and without a return, static void and float
+ * probed; SOCOM 1's void copy, an older build, used v0 too). The return type is the reproduction's,
+ * not evidence of the original's */
+float CZNetGame::UnInitialize()
 {
     m_f8 = 0;
     m_100 = 0;
