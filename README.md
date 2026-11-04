@@ -2060,6 +2060,107 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 33** (CAiState's implicit operator=, the breach push, the list's tail copies):
+  - an implicit `operator=` block-copies a trivially-copyable member -- 4 bytes through `lwc1/swc1 $f0` one at a time, a
+    16-byte struct batching its four loads -- while a base class or an anonymous union is copied member by member (MW 3.0
+    has no anonymous structs): CAiState's operator= 0x5EBDC0 byte-exact from seal_unit.cpp, CAiStateStack's three words a
+    4-byte class CAiStateWord with a conversion operator, CAiTimer's own field-by-field operator= (aitimer.h) called out
+    of line as the target's 0x5EBDA0;
+  - include/list's `__list_imp::operator=` (APPROVED AT INTEGRATION, code-neutral elsewhere: objcmp's 3 differing units
+    the kit's own) reads x.begin() through the sentinel's reference, tail() -- MW keeps &x.end_ in a saved register and
+    loads the first node 4 past it -- and the node at the shorter length through a const view one inline level down
+    (advance_to_c): a by-value call result produced one inline level deeper takes the frame's lowest slot, below the
+    caller level's temporaries; advance_to 0x5EF7F0 and splice 0x5EF950 come out of the tail;
+  - in template tail code an in-class inline whose out-of-line copy was already generated mid-unit is inlined whole (the
+    destructors the constructor references: do_assign 0x5EF470 stays open on it, 0x1D8 vs 0x198);
+  - a bool zeroed first and set true under a test keeps that test a branch only with `else r = r;` (the arm itself
+    vanishes): without the arm MW if-converts into an `sltu`, with `else r = false` a `b` over the arm is left behind
+    (build/scratch/kit-r33/ifconv_scan.py finds the shape among open rows); `bool r = f(); if (r) { ...; r = true; } return
+    r;` gives the target's `andi` after the call and `daddiu` at the end (the breach push 0x5EBB50, new in SOCOM II);
+    CAiSScript::CanPushAiState 0x5F40F0 (open since round 6) and 0x607830 (open since round 12).
+- **Tells from the world, rdr and sound, round 16** (the texture-asset FOV test, CSnd's volume and pan, the headset):
+  - a recursive inline like CNode::GetBBox reached through one extra inline level is called directly, where a direct
+    call always inlines one copy of its body -- a bare `jal GetBBox` in the target means a wrapper (probes
+    build/scratch/wld-r16/pb*.cpp; CShadowCaster's constructor 0x31F780 stays open on it, 0x1F0 vs 0x228);
+  - `x *= -1.0f` on a named local gives the product that operand's register, `p.z * -1.0f` as a call argument swaps the
+    registers (CSnd::CalcVolPan 0x342670, SOCOM 1's, through CPnt3D::Length()); CPnt3D::Length() reads the point's fields
+    straight off the frame where the same sum written out keeps one field's address in a register;
+  - an iterator assigned from `begin()` puts a `begin()` temporary in the frame below the other iterators, copied in
+    through the float registers (CTextureAssetCharacterList::TestFOV 0x31C770 matches with the cursor declared ahead of
+    the loop and assigned from begin()); Headset::Remove 0x34AAC0 on StopSound's walk;
+  - measured for the MSL lane, not applied: cdeque<T *>::iterator's constructor as an initialiser list makes end()
+    0x333F90 byte-exact and changes nothing else in 633 units (a const-qualified element type loses the address sharing
+    in the iterator copy under the current one); the pod vector's destructor a level lower (operator delete(data_)
+    instead of deallocate) gains four and loses six (~CNodeVector, ~CCell, ~CHUD, ~CVisual, CPipe::~CAlpha,
+    ~CGSTexBuffer) -- the same split level 6 gives.
+- **Tells from the game states, round 34** (fts_net_seal.cpp complete, ezctl.c's dmaIOP, the stealth rating to 2):
+  - variables at or over K wait for the same simplify sweep and are then coloured highest-index first: a `const` copy of a
+    parameter, numbered after another local, takes the register the target gives the parameter (`const int c = client;`
+    right after the uninitialised `int t;`: CZSealState::RemoteSealPostUpdateCallback 0x2BE020, fts_net_seal.cpp 17 of 17);
+  - a clamp written as a ternary (`x = x < 0 ? 0 : x;`) leaves its join unpadded, the if-statement form pads it to 8 (the
+    stealth rating 0x1F3290: 48 -> 2 off with a dead first definition `int alarms = 0;` -- the 2 a delay slot, MW's `li
+    s2,35` against the target's addiu of the name); a constant assigned to a named local just before a call lands in the
+    jal's delay slot whatever its numbering (the image's only matched counter-example: SkbHangulRestart 0x3914C8);
+  - MW forwards a single-use local's pure expression to its use through inline out-parameters, local structs, references
+    and inline by-value parameters alike (AddMission 0x1F1FB0's percentages stay at their uses); a select over a scalar
+    copy of a member becomes a single branch with the default in the delay slot, through a reference it keeps both arms
+    and the shared load becomes a late code-generation temporary (0x2C6290);
+  - GCC 2.96: an else arm with its own return schedules the call's `li a1,1` after the other argument registers, a shared
+    return puts it first (ezctl.c, the SOCOM 1 demo's code: dmaIOP 0x1E8F28 byte-exact, ezNetCtlSetProperties 3 off);
+  - CMission's +0xE0 m_timer is SOCOM 1's float in fts_mission.cpp too; database.cpp's CVisual texture statics and the
+    string stand-in's template replace are called by name -- respells proved by relocation targets compared by map
+    address (build/scratch/states-r34/objcmp_addr.py).
+- **Tells from the engine core, round 11** (the entity's target list and its vector<CTarget> tail, TestCellMid, ActivateExV):
+  - A HOISTED LOOP INVARIANT MAKES A PREHEADER AFTER THE FUNCTION'S END: when MW hoists a value set inside a loop body (a
+    local holding a global list's end(), assigned in the body), it lays the preheader after the function's last block and
+    enters the loop with a `b` to it -- the shape the zdb world's round 6 could not explain in SortNearToFar and
+    CGrid::Create, and the UI's round 21 in SkbSetKeyTextures / SkbForgetDisplay;
+  - a list element in a named local (`CEntity *ent = *i;`) is numbered before the scalariser's iterator temporaries, `*i`
+    at each use becomes a CSE temporary numbered after them (CEntity::OnUpdateTargetList 0x2A0A10: a three-way register
+    rotation fixed); `bool r = a || b;` declared before `bool changed = false;` keeps the value form narrowed with `andi`
+    at the join, declared after it MW branches; `float d = t.m; c = d < p && d < q;` materialises each compare, reading
+    the member twice gives the jump form;
+  - in an inline, `if (c) return true; return false;` gives the jump form materialised once at the end, `return c;` the
+    value form; a ternary leaves the modulo arm's label unpadded where the same code as if/else pads it, as the target;
+  - a member read through an inline accessor inside an expression is loaded before the expression's out-of-line call and
+    held in a saved register, read directly it loads after the call (CClutterAnimManager::TestCellMid 0x2D8770); an inline
+    taking a pointer by value and pushing it by reference homes only its parameter's copy, after the caller's own stores
+    through the pointer (CZAnim::ActivateExV 0x273320); `l.erase(l.begin(), l.end())` written out gives its temporaries
+    other frame slots than `clear()`;
+  - ent_target.cpp's tail: vector<CTarget>'s resize 0x2A1160, sort / __sort132 / __selection_sort, swap<CTarget>, the
+    iterator's operator*; OVL1's pod-vector resize 0x28B0E0 from si_script.cpp's member call (include/vector has resize).
+- **Tells from the HUD, round 39** (zui_2d.cpp's map control complete, hud_actionbitmap.cpp 8 of 8, hud_tcm.cpp's bars):
+  - `c = f(); c = c && g(); ...` gives the target's materialised bool test at every join, a single `&&` chain branches
+    straight through (CUIMapCtrl::ZoomOut 0x36BFF0, OnPan 0x36CA30); `frame <= s + 1` gives `slt at`, `s + 1 >= frame` puts
+    the result in v0; `if (x > m) x = m;` gives the one-arm clamp;
+  - `name ? name : def` inside an inline called with 0 leaves a `b` over the dead `move zero` arm, a constant condition
+    removes the arm (CActionTxtr() 0x220CA0, open since round 32); an inline returning a CPnt3D by value, used as `p =
+    Inline(p, ...)`, reproduces the target's block copies and its field-by-field copy back (ZoomIn 0x36C3B0, open since
+    round 30 -- a rewrite brought it under 15 statements, so the target's out-of-line call needs `#pragma auto_inline off`);
+  - an `lb` through the field's address after an `lbu` test means a reinterpreting reference, `(signed char &)field`; the
+    plain argument sign-extends the loaded value instead (CActionTxtrMachine::Add 0x2209C0); vtable calls on a global
+    object's members with the address rebuilt at each use go through an inline accessor returning a reference -- a
+    reference local is kept in a saved register, the member used directly devirtualises (TickTransparencyFade 0x2200C0);
+  - declaring loop-body locals, uninitialised, before an inner walk swaps their saved registers with the walk index's
+    (tcmSetNodeActions 0x236260); SOCOM II's CActionTxtrMachine is 0x200 bytes (the driver at 0x1F4, none of SOCOM 1's
+    speech meters), ActionTxtrMachine_HUD 0x40D550 defined in hud_actionbitmap.cpp, its functions in SOCOM 1's order.
+- **Tells from the kit and AI states, round 32** (AnimSet laid out, its setters and pair, the item model, the line of fire):
+  - MW shares one sign-extension of a narrow parameter between an inlined callee and the caller's later uses; passing the
+    argument cast to its own type (`AnimId((AnimType)rifle)`) makes it a separate expression, so the caller re-extends as
+    the target does (AnimSet's SetPistolAnim 0x5E1CF0, SetRifleFPAnim 0x5E1BF0, SetPistolFPAnim 0x5E1AF0, open since
+    round 10);
+  - a 4-pass loop stepping a struct pointer with the counter (`for (i = 0; i < 4; i++, b++) b->f = x;`) unrolls two at a
+    time with one pointer step, written `a[i].f` MW folds all four offsets; AnimSet's constructor 0x5E5350 and destructor
+    0x5E50E0 are `new AnimSet[n]`'s pair, SOCOM 1's eight blend pointers embedded CBlendable members;
+  - `if (!(m = f()))` tests v0 with the copy in the delay slot, `m = f(); if (!m)` copies first (one more); locals whose
+    address is taken (push_back's `const T &`) get frame slots by declaration order, highest address first -- declared
+    uninitialised at the top they order freely; `T id = 255; if (w) id = w->m_ID;` keeps the target's two alignment nops
+    where `w ? w->m_ID : 255` drops them; in a `&` of two fields the one read through a local pointer loads first; a
+    result declared uninitialised at the top and assigned just before its loop keeps its register unzeroed;
+  - CZKit::InitItemModel 0x5C72C0, GetReticuleByIndex 0x5BE300 (GetCurZoom inlined) and ai::CheckLineOfFire 0x609DF0
+    (SOCOM 1's); anim.cpp's tail emits the name list's vector<string> deleter pieces 0x5E6120 / 0x5E6190 and, since the
+    MSL's round 21, the string's reserve / replace<PCc> / assign<PCc>; FT_COMMAND is unsigned in the kit's units (a signed
+    byte with CMD_NONE = -1 loses 9: AllowCommand, OnCommand, CTComm::Parse, six of seal_unit.cpp's).
 - **Tells from the SEALs, round 31** (the AI controller's net state and fire timing, the animate and deploy states):
   - `switch (st.m_code = f())` gives the target's `andi v1,v0,0xff`; switching on `st.m_code` after the store re-reads the
     byte with `lbu` (CSealCtrlAi::GetAiNetState 0x56F6C0); a bool call's result inside a materialised `&&` gets only
@@ -6093,7 +6194,9 @@ every hand-written unit (`--files '^(?!auto/)'`) before it is committed. A workt
 
 `--files '^(?!auto/)'` leaves out the drafts, so a hand-written inline copy that only its draft
 matches reports as a regression there (0x32C5F0, ~CRdrArchiveList's copy, 0x3340F0, the rdr editor's deque
-constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- 0x1EF8C0, st_core.cpp's
+constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' round 7 -- and, since the world's round
+16 named it, 0x3340B0, cdeque<PPCv>'s constructor from an allocator (vis_vu.cpp's inline copy `elsewhere`; its draft
+carries an `sc: as=` line) -- 0x1EF8C0, st_core.cpp's
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0 and 0x2F6230

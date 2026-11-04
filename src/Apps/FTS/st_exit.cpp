@@ -296,16 +296,23 @@ extern "C" float func_001F3550(CObjectiveCounts *counts)
 /* the stealth rating (OVL1 0x1F3290): 35 less the times seen, the stealth kills up to 30, 35 less
  * 35 for each alarm the "scoring_alarm" valve counts -- none under 45 seconds of mission -- as a
  * percentage; the stealth kills, the alarms, the enemy's shots and the rating shown.
- * OPEN, 48 instructions (the target's size), scheduling only: every register is the target's (the
- * first term counted down from a 35 in its own variable, s3; the alarms' 35 numbered before the
- * kills, s2 and s1; the sum a variable of its own, s3), but with the alarms defined ahead of the
- * kills MW fills the kills clamp's delay slot with their `li s2,35`, where the target loads it
- * just before the valve lookup. Defined after the kills the two trade registers (`int alarms;`
- * declared ahead changes nothing); a dead first definition ahead (`int alarms = 0;`) gives both
- * the registers and the li's place, but MW then fills GetByName's delay slot with the li where the
- * target fills it with the name's addiu, and the score's clamp takes a nop more (0x2C0). Tried:
- * the valve's alarms as `35 - 35 * n`, `-=`, a ternary, the valve declared ahead, the kills through
- * an inline clamp, the sum's three spellings */
+ * OPEN, 2 instructions (the target's size; 48 until round 34), one delay slot: every register is
+ * the target's -- the first term counted down from a 35 in its own variable, s3; the alarms
+ * numbered before the kills by a dead first definition ahead of them (`int alarms = 0;`, the world's
+ * round-12 rule: defined at its use after the kills the two trade registers, defined at its
+ * declaration ahead its li fills the kills clamp's delay slot), s2 and s1; the sum a variable of its
+ * own, s3 -- and the final clamps are ternaries: the target leaves their two joins unpadded, as a
+ * join MW makes inside an expression (the if-statement clamps pad both labels to 8: 0x2C0). What
+ * is left: the target schedules the alarms' `li s2,35` between the name's lui and the jal and fills
+ * the delay slot with its addiu, where MW puts the li in the slot. Round 34 measured every
+ * placement of the li: defined in the call's block it lands in the slot whatever its numbering
+ * (after the kills, through an inline's parameter, a by-reference out-parameter, an inline holding
+ * the lookup, the whole alarm term an inline taking the 35 by value, a comma in the call's argument,
+ * a const local, the name in a local ahead), defined
+ * after the call the jal's block changes (0x2B0). The image's only matched witness of the target's
+ * shape is zui_hangul.cpp's SkbHangulRestart 0x3914C8 (an inlined loop counter set from the inline's
+ * parameter just before the loop guard's call); a plain named local set before a call gives this
+ * one's (zNetMediusChat.cpp's delay, 0x2EF46C) */
 extern "C" float func_001F3290(CSealStats **stats)
 {
     int score = 35;
@@ -313,13 +320,14 @@ extern "C" float func_001F3290(CSealStats **stats)
     score -= stats[0]->m_count[16];
     if (score < 0)
         score = 0;
-    int alarms = 35;
+    int alarms = 0;
     int kills = stats[0]->m_count[18];
 
     if (kills < 0)
         kills = 0;
     if (kills > 30)
         kills = 30;
+    alarms = 35;
     CValve *alarm = CValve::GetByName("scoring_alarm");
 
     if (alarm)
@@ -330,10 +338,8 @@ extern "C" float func_001F3290(CSealStats **stats)
 
     if (theMission.m_timer < 45.0f)
         pct = 0;
-    if (pct < 0)
-        pct = 0;
-    if (pct > 100)
-        pct = 100;
+    pct = pct < 0 ? 0 : pct;
+    pct = pct > 100 ? 100 : pct;
     UIVar("StatStealthKills") = stats[0]->m_count[17];
     UIVar("StatAlarmsTriggered") = alarm ? alarm->m_value : 0;
     UIVar("StatEnemyShotsFired") = stats[0]->m_count[5];
@@ -355,7 +361,12 @@ extern "C" float func_001F3290(CSealStats **stats)
  * computed ahead, pe before pd, held in a2/t0/a3/a1), const locals, the percentages in an array with
  * an unrolled loop (0x228+), the constants in float locals or a defaulted parameter. The target's
  * count conversion is $f3, not deferred: its degree must fall under 32, which only an early
- * computation of the percentages gives */
+ * computation of the percentages gives. Round 34, all 0x1EC with each percentage still made
+ * just before its use (one GPR, a1, for all five): each set through an inline's `int &` out-
+ * parameter, a local struct's fields, a reference bound to one, the count read after them or
+ * twice, and the five passed as by-value parameters of one inline doing the averages (a member or
+ * a free function) -- MW forwards a single-use local's pure expression to its use through every
+ * one of them */
 void CCareerStats::AddMission(float a, float b, float c, float d, float e)
 {
     int n = m_missions;

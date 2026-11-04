@@ -286,6 +286,15 @@ public:
     {
         return m_arg_list ? m_arg_list->GetPnt3D(CZAnimArg::TYPE_PNT3D) : 0;
     }
+    /* an argument added, the list made first if there is none (inline: ActivateExV hands it the
+     * new argument by value and it pushes it by reference, so the caller's pointer stays in a
+     * register and only the parameter's copy is homed -- the name ours) */
+    void AddArg(CZAnimArg *arg)
+    {
+        if (!m_arg_list)
+            m_arg_list = new CZAnimArgList;
+        m_arg_list->push_back(arg);
+    }
     /* the index'th string argument, if the anim was given any (the menu's handlers; the name ours) */
     char *GetArgCharP(int index)
     {

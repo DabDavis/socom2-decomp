@@ -1569,6 +1569,9 @@ struct CClutterEffector {
     CPnt3D m_c;   // 0xc
     CPnt3D m_18;   // 0x18
     float m_radius;   // 0x24
+
+    /* inline: TestCellMid reads it ahead of each fabsf call, held in $f21 across it */
+    float GetRadius() const { return m_radius; }
 };
 
 /* a vector between two points, by value: Sub out of line into a temporary, copied out (ld/sd and
@@ -1594,6 +1597,8 @@ public:
     void ClearAnimations(bool detach);
     /* an owner's effector taken off (SOCOM 1's) */
     void UnRegisterEffector(const void *owner);
+    /* whether an effector is near a cell: m_CellAnimate set when one is (SOCOM 1's) */
+    void TestCellMid(CPnt3D *mid, CPnt3D *pos);
 
     unsigned char m_CellAnimate;   // 0x0
     CMatrix m_matrix;   // 0x10
@@ -1672,6 +1677,10 @@ class CRenderMapVector : public std::vector<CRenderMap *> {
 
 /* the world's characters with textures of their own (SOCOM 1's DWARF: a list) */
 class CTextureAssetCharacterList : public std::list<CTextureAssetCharacters *> {
+public:
+    /* the first set in view, every set's visible nodes counted; the common set returned apart
+     * (SOCOM 1's, node_world.cpp: the pipe's RenderWorld calls it) */
+    iterator TestFOV(CCamera *cam, CTextureAssetCharacters **common);
 };   // 0xc bytes
 
 /* the per-band render tables a world reads (SOCOM 1's DWARF: each a vector of its bands and the
