@@ -1927,6 +1927,29 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 28** (a new c2dfont.cpp: SOCOM II's font and its Korean composer, 0x359820-0x35F8EF):
+  - pieces written `(it - 1)->field` a statement at a time, the iterator kept on the stack (end() stored, then copied
+    through a float register), are a reverse iterator -- a class holding end() and dereferencing `current - 1`: AddPiece
+    0x35C2C0 matched only so (include/vector has no rbegin(); the unit carries its own);
+  - a row of -1 shorts filled by a loop that is not unrolled is an array of a class with an inline -1 constructor (a
+    written `for` loop unrolls 8x): the table rows' two resizes match so;
+  - a target calling tiny inline pieces out of line cuts the inline that holds them a level: one more inline level under
+    the int reader (SOCOM 1's GetRdrArrayInt) reproduced ReadPoint's cut and emits the point reader's five pieces
+    0x35A140-0x35A230; the target inlines CHangulFont() one level (0x35A240-0x35A2B0 not emitted here: open);
+  - `store(v >= 0 ? v : def)` doubles the target's counter step into both arms, `if (v < 0) v = def;` does not; naming the
+    first call argument as a local (`ul = findtag(e, "UL"); AddPiece(ul, findtag(e, "LR"), h)`) gives the loop item's
+    registers;
+  - a Metrowerks unit's static named like another unit's data.txt row resolves to that row and reports WRONG REFERENCE:
+    give statics names unique to their unit;
+  - 0x35E100's s1:calls name vector_imp<LOD>::insert was wrong: resize<CLayout> 0x35CC50 calls it, its element 0x48 bytes
+    (renamed to the CLayout instance); the class names (CHangulFont, CLayout, CJamoPlace, CTrailRow, CVowelRow, CJamoIndex,
+    C2DPlacement, C2DGlyphRef) and the JAMO enum are ours;
+  - open: AddJamo 0x359820 (22: registers, two stack slots), Compose 0x3599D0 and LoadChar 0x35BEF0 (8 bytes: the
+    font-texture lookup's branch layout), Load 0x359C40 and ReadPlacement 0x35AA80 (4: the findtag wrapper 0x35A240 called
+    out of line), GetGlyph 0x35A3A0 (frame 0x70 vs 0x50), the range loaders (registers), the tail's copy constructors
+    0x35D370/0x35D420 (include/vector's copy constructor would call begin, end, the deleter's constructor and the
+    allocator out of line, 0x35D490-0x35D4E0) and the four inserts; 0x359740, a list<const void *> piece only
+    __list_imp::resize 0x3C0B14 calls, unassigned.
 - **Tells from the online lobby, round 13** (CAcctDB::Save, the stats record, Login/Register/CreateGame, the deque's end):
   - a plain variable's argument move is placed after a constant argument's when the variable is declared in an inner block,
     before it when declared in the enclosing block (CAcctDB::Save: `total` moved into the `if (size)` block);
