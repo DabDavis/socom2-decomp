@@ -1425,7 +1425,7 @@
 0x001E91C0 0x1090 func_001E91C0  # OVL1
 0x001EA250 0x78 __dt__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; the pointer lists' __list_imp destructor out of line (include/list's: its this test, the deleter's inlined -- a second this test and the range erase over end_.next_..&end_ -- then delete): ~CEntityList (0x2A00C0) calls it through the implicit ~list<CEntity *>
 0x001EA2D0 0x70 func_001EA2D0  # OVL1; the pointer lists' deleter destructor out of line (__dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv: the range erase over end_.next_..&end_, then delete; 0x3177C0 calls it) -- left unnamed so the generated drafts calling it can spell it
-0x001EA340 0x78 func_001EA340  # OVL1
+0x001EA340 0x78 __dt__Q23zdb11CNodeVectorFv  # OVL1; ~CNodeVector: SOCOM 1's __sinit_zparticle.cpp registers it for the node pool; four this-tests; node_world.cpp's copy byte-exact against it (the world lane's round 10, renamed at integration)
 0x001EA3C0 0x70 __dt__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>Fv  # OVL1; by hand (Unload destroys the save's parents at 0x24 with it: the one copy linked, an earlier unit's)
 0x001EA430 0x80 func_001EA430  # OVL1
 0x001EA4B0 0xD0 func_001EA4B0  # OVL1
@@ -1614,7 +1614,7 @@
 0x001FA300 0x5C PauseGame__4CHUDFv  # OVL1; s1:order by hand (hud_main.cpp: between Tick and Init as SOCOM 1's PauseGame; returns the bool CCoreState::Tick tests before ticking the world, as SOCOM 1's -- the menu state among pause/map/orders and not networked)
 0x001FA360 0xF98 Init__4CHUDFPQ23zdb6CWorld  # OVL1; s1:callee (CCoreState::Init's call after the constructor, with the world, as SOCOM 1's; 0xF98 to SOCOM 1's 0xFA0)
 0x001FB300 0x70 __dt__Q23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>Fv  # OVL1; by hand (a pointer vector's destructor, three this tests and data_ at 8 freed, as include/vector's; hud_main.cpp emits vector<CAssetLib *>'s for Add2D's C2D::CLibList, and the font code's callers (0x35A650 frees the font's list at +0x10 through a swapped temporary) link this copy); the integrator (the world lane r3's request, vetted): vector<CTexHandle *>'s, not vector<CAssetLib *>'s -- FreeVector's temporary at 0x35A650 is destroyed through it (the pipe's vector<CTexHandle *> clear/swap copies beside it); hud_main.cpp emits three pointer-vector destructors where the HUD's range holds two (this and 0x1FDDA0)
-0x001FB370 0x44 func_001FB370  # OVL1
+0x001FB370 0x44 Reset__7C2DFontFv  # OVL1; by hand (the HUD lane, round 31: c2dfont.h's inline C2DFont::Reset, out of line -- C2DFont() calls it after its members' constructors, as CRenderableString::LoadSpec's inlined new C2DFont does at 0x3793EC; zui_2d.cpp emits the copy)
 0x001FB3C0 0x8 __ct__6CPnt3DFv  # OVL1; zmath.h's inline CPnt3D() {} out of line (jr ra; move v0,a0): new CZBodyPart calls it for the points at 0x0 and 0x10 before CQuat's copy 0x28EB60 for 0x20/0x30, and CHUD::Init calls it -- the body lane
 0x001FB3D0 0x14 __ct__Q23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>Fv  # OVL1; by hand (the UI lane's round 6, vetted by the integrator: a pointer vector's default constructor -- three words zeroed, this returned -- paired with ~vector<CAssetLib *> (0x1FB300) in the keyboard's __construct_array 0x38E6F0); the integrator (the world lane r3's request, vetted): vector<CTexHandle *>'s, not vector<CAssetLib *>'s -- the font code at 0x35A650 builds FreeVector's temporary through it beside the pipe's own vector<CTexHandle *> clear and swap copies 0x33BBC0/0x33BB80, and Add2D, the old name's basis, inlines its CLibList's constructor; measured: the pipe's CDynTexList::Free byte-exact, nothing lost
 0x001FB3F0 0x30 __ct__Q23std80map<Us,8C2DGlyph,Q23std8less<Us>,Q23std38allocator<Q23std19pair<CUs,8C2DGlyph>>>Fv  # OVL1; by hand (the HUD lane, round 22: the glyph map's default constructor out of line -- the tree constructor 0x1FEAC0 with a comparator and an allocator temporary, this returned; CHUD::Init's and CRenderableString::LoadSpec's inlined new C2DFont call it on font + 0, CGameMenu() and two zui_2d.cpp functions likewise; src/gamez/ztwod/c2dfont.h)
@@ -1651,7 +1651,7 @@
 0x001FDA10 0x1D0 __dt__10CWeaponSelFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FDBE0 0xA0 __dt__9CPlainBmpFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x001FDC80 0x60 __dt__10UIVarMixinFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x001FDCE0 0xC0 func_001FDCE0  # OVL1
+0x001FDCE0 0xC0 __dt__Q23zdb11CDynTexListFv  # OVL1; ~CDynTexList: registered for m_dyntexlist; zparticle.cpp's copy byte-exact against it (the world lane's round 10, renamed at integration)
 0x001FDDA0 0x70 __dt__Q23std68vector<PQ23zdb11CTexPalette,Q23std31allocator<PQ23zdb11CTexPalette>>Fv  # OVL1; the integrator (the world lane r3's request, vetted): vector<CTexPalette *>'s destructor -- CDynTexList::Free 0x33BAA0 calls it for the palette list; hud_main.cpp's own copy matches here with the name
 0x001FDE10 0x20 SetCanHandleInput__3C2DFb  # OVL1; s1:vtable by hand (C2D's slot 17, inline: the flag's top bit set)
 0x001FDE30 0x74 func_001FDE30  # OVL1
@@ -1850,7 +1850,7 @@
 0x0020FCF0 0x334 __dt__9CZLineMapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00210030 0xE8 func_00210030  # OVL1
 0x00210120 0x8 func_00210120  # OVL1
-0x00210130 0xC func_00210130  # OVL1
+0x00210130 0xC hudGetTacMapPulseTrans__Fv  # OVL1; by hand (the HUD lane, round 31: hud_linemap.cpp -- SOCOM 1's hudGetTacMapPulseTrans (0x3CA970 there, before hudAddPolyType as here): g_fPulseTrans returned; CZPlayerMapItem::SetViewCone's call)
 0x00210140 0xC4 hudAddPolyType__FP5_zrdr  # OVL1; s1:order by hand (hud_linemap.cpp: SOCOM 1's hudAddPolyType, 0xC4 in both: Type through zrdr_findint, the map's find_or_insert at 0x40BF60, Color, Opacity times 127 (SOCOM 1: 128) and Width; the first of the pair as SOCOM 1's, its map the later one)
 0x00210210 0xC4 hudAddLineType__FP5_zrdr  # OVL1; s1:order by hand (hud_linemap.cpp: SOCOM 1's hudAddLineType, 0xC4 in both, after hudAddPolyType as there; the same reader on the map at 0x40BF40)
 0x002102E0 0x2FC func_002102E0  # OVL1
@@ -2224,7 +2224,7 @@
 0x00237310 0x38 ClearItems__4CTCMFv  # OVL1; tu: node_world.cpp~ (1.0 beta); ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item list bitmap's list at +0xDE0 cleared; CHUD calls it)
 0x00237350 0x3C Init__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the caches built (0x2344E0), the path and the root's children reserved)
 0x00237390 0x1E8 __ct__4CTCMFv  # OVL1; by hand (the HUD lane, round 24: hud_tcm.cpp -- the menu object's constructor: the root node's (0x232660) out of line, the mode 4, the path, the six polys, the sounds' constructor 0x2329D0; the initialiser 0x3FF4A0 builds theTCM with it)
-0x00237580 0x1E0 func_00237580  # OVL1
+0x00237580 0x1E0 __dt__4CTCMFv  # OVL1; by hand (the HUD lane, round 31: hud_tcm.cpp -- CTCM's implicit destructor, registered by __sinit_hud_tcm.cpp for theTCM: the six C2DBitmapPolys, the path vector, then ~CTCMNode 0x232490)
 0x00237760 0x3D8 Update__12CAmmoDisplayFv  # OVL1; by hand (the HUD lane: the ammo counts from the HUD owner's kit, the unit's first function in the image; the name ours)
 0x00237B40 0x1C0 SetMags__12CAmmoDisplayFiPQ23zdb10CTexHandle  # OVL1; by hand (the ammo unit's: a switch on a byte, 1-3 lighting the four magazine bitmaps at CAmmoDisplay+0x3C0, past that a texture argument in the first; On passes the cached count 0x3DCBD8 and texture 0x4145E0; the name ours); an int count, narrowed to a byte inside (andi 0xff) where On passes the cached word whole
 0x00237D00 0xD8 SetTrans__12CAmmoDisplayFf  # OVL1; by hand (the ammo unit's, between Off and the unit's 0x237B40: SetTrans on the poly (76.8 x), the bitmap and the four bitmaps (128 x), the two count strings by CHUD::m_hud_textcolor's alpha; the name ours)
@@ -4698,9 +4698,9 @@
 0x002E1D50 0xAC __ct__8RoomGameFP22MediusGameListResponse  # OVL1; ours (SOCOM 1's RoomGame constructor: the table at 0x190, the info cleared, its world -1, UpdateInfo inlined one level; LANGame's constructor passes 0, the game list's callback a response); (the info's struct is SOCOM 1's MediusGameListResponse)
 0x002E1E00 0x8 SetMission__8RoomGameFi  # OVL1; ours (the game's mission, the word at +0x28, set: UpdateInfo, inlined one level, calls it out of line with the sequence's first byte)
 0x002E1E10 0x108 __as__22MediusGameListResponseFRC22MediusGameListResponse  # OVL1; ours (the game info's implicit assignment, member by member -- 21 bytes, the words and halfwords, the name and rules two bytes a pass: too big to inline, its copy follows the game's constructor; UpdateInfo calls it); (the struct's name SOCOM 1's)
-0x002E1F20 0x5A0 func_002E1F20  # OVL1
+0x002E1F20 0x5A0 GetGameInfo__13CZOnlineLobbyFPCc  # OVL1; ours, the online lane round 14 (UIGetGameInfo calls it on theLobby with a game's name: the game found in the LAN lobby's room or the lobby's current one, GAME_INFO_DETAILS filled -- its mission's name, MEDLEY or its type, round count and time, friendly fire, respawn, the equipment limit -- when HasMissions, MISSION_AVAILABLE and game_info_rank_restrictions set, else UNAVAILABLE)
 0x002E24C0 0x8 GetMissionSequence__8RoomGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); ours (RoomGame's one virtual, slot 0 of the three game tables 0x4066B0/C0/D0: it returns this + 0x1A2, the mission sequence JoinLANGame hands SetMissionSequence -- SOCOM 1's slot held IsPersistent, the s1:vtable name this row had)
-0x002E24D0 0x400 func_002E24D0  # OVL1
+0x002E24D0 0x400 GetCurrentGameInfo__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 14 (UIGetGameInfo calls it on theLobby for our own game: GAME_INFO_DETAILS filled from our mission sequence's types -- MEDLEY when mixed, else the database's type by CMultiMissionList::GetMultiValue -- the mp_max_rounds and mp_max_round_time valves, friendly fire, respawn and EQlimit, a line each)
 0x002E28D0 0x4C RefreshGameList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGameList' 0x27DB40, as SOCOM 1's UIRefreshGameList calls RefreshGameList; a1 live)
 0x002E2920 0x1D4 func_002E2920  # OVL1
 0x002E2B00 0x1E0 cbGameList__FiiiP22MediusGameListResponse  # OVL1; s1:name (SOCOM 1's cbGameList, the game list request's callback: the same request/update/new-game shape)
@@ -4856,7 +4856,7 @@
 0x002EB780 0xC func_002EB780  # OVL1
 0x002EB790 0xC func_002EB790  # OVL1
 0x002EB7A0 0x15C UpdateLadderBestDisplay__Fv  # OVL1; ours (the player ladder's best, LadderRanking 0x44F7E0, sorted -- std::sort's instance 0x2EC260 -- and built into uiv_MediusLadderTop10: '%d', the name and clan strings at +0x8C/+0x98)
-0x002EB900 0x318 func_002EB900  # OVL1
+0x002EB900 0x318 UpdateLadderListDisplay__Fv  # OVL1; ours, the online lane round 14 (the player ladder around us sorted by compare_ladder 0x2EC260 and handed to uiv_MediusLadderRanking -- each one's figure, name, position, GetRankLevel medal and clan, ours (AccountInfo's name) in colour -- then ON_LADDER_REFRESH: UpdateClanLadderList's shape over LadderLeaders 0x44F7B0; the pages' callback func_002EB6A0 calls it)
 0x002EBC20 0xC8 Find__10LadderListFPCc  # OVL1; ours (the MSL headers round 6, written in zNetMediusLadder.cpp: a player ladder's item by name, case-blind, none for no name -- the name read through LadderItem::GetName, the inlined c_str() folding the string's offset into the item's; the chat unit's player-info callback 0x2F0020 calls it); byte-exact
 0x002EBCF0 0x154 Add__14ClanLadderListFP31MediusGetClanLadderListResponse  # OVL1; ours (cbGetClanLadderList keeps a clan through it: the 0x48-byte response copied whole unless its position (+0x3c) is there, the highest position kept at +0xc; byte-exact)
 0x002EBE50 0x188 Add__10LadderListFP24MediusLadderListResponse  # OVL1; ours, the online lane round 8 (the player ladder's Add: the ladder pages' callback 0x2EB6A0 adds each TheRest/TheBest record to LadderLeaders/LadderRanking; a position already there skipped, the item made by an inline constructor cut to one level, its pointer pushed and the highest position kept, as ClanLadderList::Add; byte-exact)
@@ -5032,7 +5032,7 @@
 0x002FB9F0 0xE8 IndexOf__Q226CZUniversInformationServer7CAcctDBFPCciPCc  # OVL1; ours (the named account's place among the lobby server's, the walk broken on the name: UIGetMUISPersonaInfo 0x2754C0 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FBAE0 0x110 Delete__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account on a lobby server erased through the one-element erase 0x2FE230: UIDeleteMUISPersona 0x276340 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FBBF0 0xE8 Find__Q226CZUniversInformationServer7CAcctDBFPCciPCc  # OVL1; ours (the account by host, port and name, 0 none: UIMUISPersonaExists 0x27668C calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
-0x002FBCE0 0x5A0 Add__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCciP5_zrdrb  # OVL1; ours (an account added -- push_back of a blank record, then memset -- or updated: host, port, name, password, town, gender, the SAVEPASSWORD flag, then PROFILE_CHECKSUM and PROFILE_INFO's SEAL/TERR equipment through SetLoadout; UnSerialize 0x2FC280 and SetAcctInfo 0x2FD0D0 call it)
+0x002FBCE0 0x5A0 Add__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCc11ACCT_GENDERP5_zrdrb  # OVL1; ours (an account added -- push_back of a blank record, then memset -- or updated: host, port, name, password, town, gender, the SAVEPASSWORD flag, then PROFILE_CHECKSUM and PROFILE_INFO's SEAL/TERR equipment through SetLoadout; UnSerialize 0x2FC280 and SetAcctInfo 0x2FD0D0 call it); the online lane round 14: the gender an int-sized ACCT_GENDER (the menus' enum name): see 0x2FD0D0
 0x002FC280 0x1B8 UnSerialize__Q226CZUniversInformationServer7CAcctDBFPCcP8CRdrFilei  # OVL1; ours (CSaveModule's UnSerialize(const char *, CRdrFile *, int) through the thunk 0x300610 (-0xC): each account of the profile file added -- HOST, NAME, TOWN, PASSWORD, PORT, GENDER, PROFILES, SAVEPASSWORD) -- byte-exact, zNetMediusUniverse.cpp
 0x002FC440 0x3B8 Serialize__Q226CZUniversInformationServer7CAcctDBFi  # OVL1; ours (CSaveModule's Serialize through the thunk 0x300620: the accounts written as the AcctInfo rdr through CRdrEditor and SaveRdr) -- byte-exact, zNetMediusUniverse.cpp
 0x002FC800 0x1D8 Load__Q226CZUniversInformationServer7CAcctDBFPCci  # OVL1; ours (CLobbySaveModule's slot 1 through the thunk 0x300650: the lobby's blob read back into the current account's missions through SetLoadout) -- byte-exact, zNetMediusUniverse.cpp; the online lane round 12: CLobbySaveModule's slot 0xC is zsav_lobby.h's Load(const char *data, int size) -- the manager's Load passes the entry's data and its size in a2 (0x33E928) -- so CAcctDB's override takes the size too
@@ -5041,7 +5041,7 @@
 0x002FCD60 0x294 Save__Q226CZUniversInformationServer7CAcctDBFi  # OVL1; ours (CLobbySaveModule's slot 0, CAcctDB's override through the thunk 0x300660 (-0x24): the current account's named missions written as the lobby's blob, a count byte and the 0x24-byte entries, through 0x33EEA0); the online lane round 12: CLobbySaveModule's slot 8 is zsav_lobby.h's Save(int flags) -- the manager's Save passes its flags in a1 to every module (0x33EC44)
 0x002FD000 0x68 __dt__16CLobbySaveModuleFv  # OVL1; ours, the online lane round 10 (CLobbySaveModule's destructor, its vtable 0x406740 stored and its name string destroyed out of line: 0x300570 calls it; open, 0x80 against 0x68 -- this unit's copy inlines the string's destructor)
 0x002FD070 0x60 __dt__Q23std52vector<10AcctRecord,Q23std23allocator<10AcctRecord>>Fv  # OVL1; ours, the online lane round 10 (the accounts vector's destructor: 0x300570 calls it; the draft stands, this unit's copy is 0x78 against 0x60)
-0x002FD0D0 0x34 SetAcctInfo__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCcib  # OVL1; ours (UIUpdateAcctInfo 0x2752BC calls it on theAcctDB: a named account's details through Add, the password only when it is to be kept, no profiles)
+0x002FD0D0 0x34 SetAcctInfo__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCc11ACCT_GENDERb  # OVL1; ours (UIUpdateAcctInfo 0x2752BC calls it on theAcctDB: a named account's details through Add, the password only when it is to be kept, no profiles); the online lane round 14: the gender an INT-SIZED enum (ACCT_GENDER, zanim_menu.h's name) -- UIUpdateAcctInfo 0x2752BC passes a two-enumerator ternary as li 1; movz straight into t2 (an int parameter gives sltu, an int one fed a byte enum's ternary adds andi 0xff), this passes it to Add untouched, Add spills it as a word and UnSerialize loads its local with lw; a one-byte enum costs this an andi (0x3C) or Add/UnSerialize 2 instructions each
 0x002FD110 0xFC GetGender__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's gender byte at 0x103, 0 none: the persona handlers call it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FD210 0xFC GetSavePassword__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's SAVEPASSWORD flag at 0x1314) -- byte-exact, zNetMediusUniverse.cpp
 0x002FD310 0xFC GetTown__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's TOWN at 0xC4) -- byte-exact, zNetMediusUniverse.cpp
@@ -5299,7 +5299,7 @@
 0x0030CD80 0x8 func_0030CD80  # OVL1
 0x0030CD90 0x40 func_0030CD90  # OVL1
 0x0030CDD0 0x10 func_0030CDD0  # OVL1
-0x0030CDE0 0x8 func_0030CDE0  # OVL1
+0x0030CDE0 0x8 zNetSetMyClientObject__9CZNetworkFi  # OVL1; ours, the online lane round 14 (CZNetwork's forwarder: `j NetSetMyClientObject; move a0,a1`, this unused; its one caller ftsNetworkPlayerInit 0x2B7DA4 passes &theNetwork and the new seal's object where SOCOM 1's ftsNetworkPlayerInit calls NetSetMyClientObject itself; the name after the class's zNet* calls)
 0x0030CDF0 0x88 zNetRemoteObjectUpdateCallback__9CZNetworkFiii  # OVL1; s1 by hand (SOCOM 1's zNetRemoteObjectUpdateCallback, the first function of zNetDme.cpp in both builds: NetGetObject, the type's update callback from the list at +0x1114, the field-update flag at +0x10B set; zNetRegisterRemoteObjectCallback registers it with the DME as SOCOM 1's does)
 0x0030CE80 0x6C zNetRegisterRemoteObjectCallback__9CZNetworkFiPFii_vPFiii_vPFiii_vPFii_v  # OVL1; s1:calls (every zNetRegister* calls it last with the index and four callbacks, as SOCOM 1's; the same 0x6C) -- the states lane
 0x0030CEF0 0x100 zNetSendApplicationMessage__9CZNetworkFciiiiPUcb  # OVL1; s1:calls by hand (the states lane: every network sender calls it at SOCOM 1's call site, 39 of them, with the same register handling and calls; zNetDme.cpp's)
@@ -5329,7 +5329,7 @@
 0x0030DBB0 0x130 zNetInitialize__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's zNetInitialize 0x321CA0: NetSetDefaultInitializeParams, NetInitialize, the network's init flag set when it answers no error, our address asked for into the object at 0xD0 (SOCOM 1's 0xAF), the 4096 object-field flags cleared, the error returned; SOCOM II's adds the DME state from DMEInit, a server-message callback 0x30DCE0 and the buffer sizes; UIDMEInit 0x276CF0 calls it on theNetwork)
 0x0030DCE0 0x148 func_0030DCE0  # OVL1
 0x0030DE30 0xAC zNetLookupHost__9CZNetworkFPCcPci  # OVL1; ours (the server list's connect 0x2FDF60 calls it on theNetwork: sceInetName2Address then sceInetAddress2String into the caller's buffer, 30 on failure)
-0x0030DEE0 0x37C func_0030DEE0  # OVL1
+0x0030DEE0 0x37C zNetLoadIRX__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 14 (SOCOM 1's zNetLoadIRX 0x321E20: the same sequence -- CSnd::WaitForCDRead and Close, the netcnf combo's start-up when m_bNetCnfRequired, zSysLoadIRX of the modules by MP_CONNECTION, memcpy/PS2FileName/strcpy/strlen for inetctl's arguments, RegisterRebootCallback with smap, sceSifMInitRpc and the libnet client, CSnd::UIOpen, the loaded flag returned; SOCOM II drops the early return when loaded and loads inet.irx and netcnf.irx with the icon arguments first; CSMInitNetwork::WaitForNetwork 0x27702C calls it on theNetwork)
 0x0030E260 0x2C func_0030E260  # OVL1
 0x0030E290 0x64 func_0030E290  # OVL1
 0x0030E300 0x34 func_0030E300  # OVL1
@@ -5623,8 +5623,8 @@
 0x0031FD20 0xDC Initalize__Q23zdb6CWorldFv  # OVL1; s1:align
 0x0031FE00 0x50C __dt__Q23zdb6CWorldFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00320310 0x344 func_00320310  # OVL1
-0x00320660 0x78 func_00320660  # OVL1
-0x003206E0 0x78 func_003206E0  # OVL1
+0x00320660 0x78 __dt__Q23zdb19CProjectedMapVectorFv  # OVL1; ~CProjectedMapVector: the world lane's round 10 by the initialiser research (0x3206E0, the same code, is ~CLightMapVector); renamed at integration
+0x003206E0 0x78 __dt__Q23zdb15CLightMapVectorFv  # OVL1; the world lane r10: the destructor vis_vu.cpp's initialiser 0x404570 registers for CVisual's m_specMapList, m_lightMapList and m_shadowMapList (the sinit research; SOCOM 1's __sinit_vis_main.cpp registers __dt__Q23zdb15CLightMapVectorFv there), a class over the pointer vector (four this-tests); like SOCOM 1's (0x2304B0) it follows CWorld's constructor in node_world.cpp
 0x00320760 0x8 Uninit__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Uninit, Init, GetVersion in that order, each as empty)
 0x00320770 0x8 Init__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's Init, between Uninit and GetVersion)
 0x00320780 0xC GetVersion__Q23zdb6CWorldFv  # OVL1; s1:exact by hand (SOCOM 1's GetVersion, the same three words returning 0x10001, after Uninit and Init as there; Load and LoadAssetLib_PS2 pass it to the archive's Open)
@@ -5696,7 +5696,7 @@
 0x00326A00 0x21C func_00326A00  # OVL1
 0x00326C20 0xC func_00326C20  # OVL1
 0x00326C30 0x310 func_00326C30  # OVL1
-0x00326F40 0x8 func_00326F40  # OVL1
+0x00326F40 0x8 __ct__Q28Particle13BufferElementFv  # OVL1; the world lane r10: SOCOM 1's (its __sinit_zparticle_buf.cpp constructs Particle::buffer through __construct_array with the element's constructor, as SOCOM II's 0x402BB0 passes this) -- byte-exact from source
 0x00326F50 0x58 Recycle__Q28Particle20Destruction_InstanceFv  # OVL1; the rdr lane: slot 0x14 of Destruction_Instance's table (0x4069E0), the same onto its own pool (0x488468)
 0x00326FB0 0x40 func_00326FB0  # OVL1
 0x00326FF0 0x140 FreeInstances__8ParticleFv  # OVL1; the rdr lane: SOCOM II's (the name ours): Instance::list's dead recycled (0x3280A0), then both pools popped and deleted, ~Instance and ~Destruction_Instance inlined; Particle::Close calls it after the two Uninits
@@ -5768,7 +5768,7 @@
 0x0032B210 0x43C insert__Q23std130__vector_imp<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>,Q23std58allocator<Q28Particle34SequenceEntry<PQ23zdb10CTexHandle>>,0>FPQ28Particle34SequenceEntry<PQ23zdb10CTexHandle>UiRCQ28Particle34SequenceEntry<PQ23zdb10CTexHandle>  # OVL1; s1:callee by hand (TextureSequenceAdd's push_back calls it where SOCOM 1's calls this name: the texture sequence's insert, 0x43C against 0x41C) -- the rdr lane
 0x0032B650 0x53C insert__Q23std106__vector_imp<Q28Particle22SequenceEntry<6CPnt4D>,Q23std46allocator<Q28Particle22SequenceEntry<6CPnt4D>>,0>FPQ28Particle22SequenceEntry<6CPnt4D>UiRCQ28Particle22SequenceEntry<6CPnt4D>  # OVL1; s1:callee by hand (ColorSequenceAdd's push_back calls it where SOCOM 1's calls this name: the CPnt4D sequence's insert, 0x53C against 0x4EC) -- the rdr lane
 0x0032BB90 0x43C insert__Q23std94__vector_imp<Q28Particle16SequenceEntry<f>,Q23std40allocator<Q28Particle16SequenceEntry<f>>,0>FPQ28Particle16SequenceEntry<f>UiRCQ28Particle16SequenceEntry<f>  # OVL1; s1:callee by hand (ScaleSequenceAdd's push_back calls it where SOCOM 1's calls this name: the float sequence's insert, 0x43C against SOCOM 1's 0x41C) -- the rdr lane
-0x0032BFD0 0x68 func_0032BFD0  # OVL1
+0x0032BFD0 0x68 __dt__Q38Particle6Source4ListFv  # OVL1; the world lane r10: the destructor __sinit_zparticle_source.cpp (0x402CE0) registers for Particle::Source::list: Uninit called, then ~__list_imp (SOCOM 1's ~List) -- byte-exact from source
 0x0032C040 0x194 FindRdr__11CRdrArchiveFPCci  # OVL1; s1:align (SOCOM 1's FindRdr: the base name copied, each archive ReOpened, OpenKey, the file loaded, CloseKey, Close; SOCOM II passes a flags argument on to the loader, 0x32C980)
 0x0032C1E0 0xCC AddArchive__11CRdrArchiveFPCcPCc  # OVL1; s1:align (SOCOM 1's AddArchive: "%s/%s" or the name, a new archive pushed on the list; the states call it with (name, path))
 0x0032C2B0 0x11C RemoveArchive__11CRdrArchiveFPCcPCc  # OVL1; s1:calls (called where SOCOM 1's UI handler calls it) -- the UI-commands lane
@@ -5784,7 +5784,7 @@
 0x0032C910 0x6C Insert__8CRdrFileFPQ23zar4CZARPQ23zar4CKey  # OVL1; s1:order (SOCOM 1's Insert: Pack, the offsets made again, the buffer written as the key's data (0x25A120, SOCOM 1's CZAR::Insert), resolved again)
 0x0032C980 0xD4 Load__8CRdrFileFPQ23zar4CZARPQ23zar4CKeyi  # OVL1; s1:calls by hand (SOCOM 1's Load(CZAR *, CKey *) with a flags argument: the key's size, the data fetched, the file made; FindRdr and CSaveManager::Load call it where SOCOM 1's call Load)
 0x0032CA60 0x128 Resolve__8CRdrFileFb  # OVL1; s1:order (SOCOM 1's Resolve(bool): the packed buffer's offsets resolved one way or the other, the root's word and count copied, the strings loaded with CSTable::LoadTable)
-0x0032CB90 0x120 func_0032CB90  # OVL1
+0x0032CB90 0x120 _resolveB__FP5_zrdrPC5_zrdrPCc  # OVL1; the world lane r10: s1:order -- SOCOM 1's _resolveB(_zrdr *, const _zrdr *, const char *), right after Resolve as there; Resolve(false) calls it on the root with the root and the strings (a packed tree's offsets made pointers: a string's into the strings, an array's into the tree, its items in turn unless the array is the buffer's)
 0x0032CCB0 0x278 func_0032CCB0  # OVL1
 0x0032CF30 0x8 func_0032CF30  # OVL1
 0x0032CF40 0x26C Pack__8CRdrFileFv  # OVL1; s1:calls by hand (Insert calls it first, before Resolve(true), where SOCOM 1's Insert calls Pack__8CRdrFileFv; it calls the string table's Pack__7CSTable as SOCOM 1's does)
@@ -5925,7 +5925,7 @@
 0x00334AA0 0x13C make_iterator__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>CFUi  # OVL1; the MSL headers round 7: include/deque -- the iterator to element n: n plus start_, the block buffer's begin() stepped by n / 128 (wrapping), the block or 0 when the buffer is empty; begin()/end() of every pointer deque call it (0x333D30, 0x333CD0, the vis unit's 0x3B7F40/0x3B7EE0); OPEN (the target inlines the buffer's begin() into a local, its fields addressed through registers)
 0x00334BE0 0x134 make_iterator__Q23std39__deque_imp<PCv,Q23std14allocator<PCv>>FUi  # OVL1; the MSL headers round 7: include/deque -- the same, non-const: the range inits' destination (0x334440, the vis unit's 0x3B8000); OPEN as 0x334AA0
 0x00334D20 0x88 zrdr_IsComplex__FP5_zrdr  # OVL1; s1:calls by hand (SOCOM 1's zrdr_IsComplex: true when any item of the array is an array, the walk over Count()/Item(i) as SOCOM 1's, its items from 0)
-0x00334DB0 0xBC func_00334DB0  # OVL1
+0x00334DB0 0xBC zrdr_pack__FP5_zrdrPvUi  # OVL1; the world lane r10: SOCOM 1's zrdr_pack(_zrdr *, void *, unsigned) after the editor's unit as there (the same signature: CUIVarManager::CollectGarbage calls it with the root, a buffer and its size): the values counted (0x335C00), 0 when the buffer is short, else the root copied and marked packed, its arrays copied by 0x3359C0, the bytes used returned
 0x00334E70 0x30 func_00334E70  # OVL1
 0x00334EA0 0x16C func_00334EA0  # OVL1
 0x00335010 0x288 func_00335010  # OVL1
@@ -5939,7 +5939,7 @@
 0x003357A0 0xC func_003357A0  # OVL1
 0x003357B0 0xC func_003357B0  # OVL1
 0x003357C0 0x1FC func_003357C0  # OVL1
-0x003359C0 0xE0 func_003359C0  # OVL1
+0x003359C0 0xE0 zrdr_packarray__FP5_zrdrPc  # OVL1; the world lane r10: SOCOM II's, the name ours -- zrdr_pack's helper (0x334DB0 calls it on the copied root with the buffer after it, and it calls itself): an array's items memcpy'd into the buffer, the array pointed at them, each item that is an array marked packed and copied after them
 0x00335AA0 0x118 zrdr_freearray__FP5_zrdr  # OVL1; s1:calls by hand (SOCOM 1's zrdr_freearray: a string's pointer cleared, an array's values freed recursively then the array (_free), the value made integer 0; DeleteChildren, zrdr_free and CRdrFile's destructor call it where SOCOM 1's inline or call it; SOCOM II skips packed arrays)
 0x00335BC0 0x40 func_00335BC0  # OVL1
 0x00335C00 0x214 func_00335C00  # OVL1
@@ -6312,7 +6312,7 @@
 0x0034BEC0 0x428 func_0034BEC0  # OVL1
 0x0034C2F0 0x1A4 func_0034C2F0  # OVL1
 0x0034C4A0 0x4C func_0034C4A0  # OVL1
-0x0034C4F0 0x70 func_0034C4F0  # OVL1
+0x0034C4F0 0x70 __dt__Q23std58vector<P12CSndPosition,Q23std26allocator<P12CSndPosition>>Fv  # OVL1; the world lane r10: the destructor __sinit_zsnd_positions.cpp registers for its three vector<CSndPosition *> (three this-tests) -- byte-exact from source
 0x0034C560 0x60 DumpFree__9CSndQueueFv  # OVL1; SOCOM II's, name ours: an empty walk over the free entries (a debug print compiled out) (zsnd_queue.cpp)
 0x0034C5C0 0x60 DumpQueue__9CSndQueueFv  # OVL1; SOCOM II's, name ours: an empty walk over the queued entries (a debug print compiled out) (zsnd_queue.cpp)
 0x0034C620 0x2C OnPlay__9CSndQueueFP14CSndQueueEntry  # OVL1; SOCOM II's, name ours: CSndQueue's vtable slot 0x0C -- the two empty walks (zsnd_queue.cpp)
@@ -6393,7 +6393,7 @@
 0x003506B0 0x198 reserve__Q23std92__vector_imp<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>,0>FUi  # OVL1; s1:align
 0x00350850 0x68 __dt__Q23std94__vector_deleter<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>>Fv  # OVL1; s1:align
 0x003508C0 0x80 __dt__11CIOPManagerFv  # OVL1; s1:align
-0x00350940 0x8 func_00350940  # OVL1
+0x00350940 0x8 clear__Q23std94__vector_deleter<Q211CIOPManager11CRegistrant,Q23std39allocator<Q211CIOPManager11CRegistrant>>Fv  # OVL1; the world lane r10: SOCOM 1's name (its clear__Q23std94__vector_deleter<...CRegistrant...>Fv, called by ~CIOPManager and the reserve there, as SOCOM II's 0x3508C0 and 0x3506B0 call this: the size zeroed)
 0x00350950 0x4C Copy__4CSPRFP8_word128P8_word128i  # OVL1; s1:align
 0x003509A0 0x110 Kick__4CSPRFP8_word128b  # OVL1; s1:align
 0x00350AB0 0x204 zSysFifoKick__FP1Ui  # OVL1; s1:callee
@@ -6435,8 +6435,8 @@
 0x003526D0 0x14 __ne__Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>CFRCQ33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>  # OVL1; valve_list.cpp's template tail: the list<CValve *> iterator's operator!=, called out of line by remove_if
 0x003526F0 0x14 __pp__Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>Fv  # OVL1; valve_list.cpp's template tail: the list<CValve *> iterator's prefix ++, called out of line by remove_if
 0x00352710 0x158 remove_copy_if<Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>,Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>,14CValveOpDelete>__3stdFQ33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>14CValveOpDelete_Q33std42list<P6CValve,Q23std19allocator<P6CValve>>19generic_iterator<0>  # OVL1; s1:align; the name as MW 3.0 mangles it (the return type appended, as valve_list.cpp's instance is named)
-0x00352870 0x88 func_00352870  # OVL1
-0x00352900 0x60 func_00352900  # OVL1
+0x00352870 0x88 __dt__10CValvePoolFv  # OVL1; the world lane r10: SOCOM 1's name (its __sinit_valve_list.cpp registers __dt__10CValvePoolFv for valvePool, as SOCOM II's 0x4034F0 registers this): Free called, then the vector freed -- byte-exact from valve.h
+0x00352900 0x60 __dt__10CValveListFv  # OVL1; the world lane r10: SOCOM 1's name (its __sinit_valve_list.cpp registers __dt__10CValveListFv for CValve::m_list, as SOCOM II's 0x4034F0 registers this): two this-tests, ~__list_imp called -- a list-derived class's implicit destructor, ~list inlined one level
 0x00352960 0xD4 UnSerialize__17CValveSaveManagerFPCcP8CRdrFilei  # OVL1; s1:align
 0x00352A40 0x50 Serialize__17CValveSaveManagerFi  # OVL1; s1:order by hand (SOCOM 1's Serialize(int): a CRdrEditor built on the stack, the valves written into it -- here through 0x352A90 -- and CSaveModule::SaveRdr("PersistentValves"), after UnSerialize as SOCOM 1's; the s1:align pass had put the name one function on)
 0x00352A90 0xE4 SerializeValves__17CValveSaveManagerFP10CRdrEditor  # OVL1; s1:align; SOCOM II's, name ours (every persistent valve written into the editor it is given as NAME and VAL: SOCOM 1's Serialize body; the s1:align name it carried is Serialize's, 0x352A40, which calls it)
@@ -6697,7 +6697,7 @@
 0x00363E60 0xC func_00363E60  # OVL1
 0x00363E70 0xF0 __ct__9C2DStringFv  # OVL1; s1:callee (it calls C2D's constructor and stores __vt__9C2DString; CZHudMissionCams constructs its strings with it)
 0x00363F60 0x210 func_00363F60  # OVL1
-0x00364170 0x78 func_00364170  # OVL1
+0x00364170 0x78 __dt__13CStringTablesFv  # OVL1; by hand (the HUD lane, round 31: c2dstring.cpp's template tail -- CStringTables' implicit destructor (util_loc.cpp's class, derived from the pointer vector: four this-tests), registered by __sinit_c2dstring.cpp)
 0x003641F0 0xD8 GetAssetLibs__9C2DBitmapFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003642D0 0xB4 TickFade__9C2DBitmapFv  # OVL1; s1:align
 0x00364390 0x18 Reset__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6855,7 +6855,7 @@
 0x00370160 0x54 __ct__9C2DVisualFP3C2DPQ23zdb16CTextureRelocMgr  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:exact
 0x003701C0 0xB4 HandlePad__11CScrollTextFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370280 0xBC Tick__11CScrollTextFf  # OVL1; s1:calls
-0x00370340 0x8 func_00370340  # OVL1
+0x00370340 0x8 LoadSpec__11CScrollTextFRC11CScrollSpec  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- CScrollSpec::CreateDisplayObj's call where SOCOM 1's calls CScrollText::LoadSpec; SOCOM II's is empty)
 0x00370350 0x2BC Draw__11CScrollTextFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370610 0x74 func_00370610  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
 0x00370690 0x28C Draw__12CPopUpDialogFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6866,12 +6866,12 @@
 0x00370D10 0x9C ShowChoice__11CRadioStripFv  # OVL1; ours by hand (the HUD lane, round 24: zui_2d.cpp -- the radio strip's buttons shown after a new choice, the chosen one through slot 18 (SetActive), the others slot 19 (SetNormal); CRadioStrip::TickZAnimCmd calls it out of line)
 0x00370DB0 0x1B0 func_00370DB0  # OVL1
 0x00370F60 0x15C func_00370F60  # OVL1
-0x003710C0 0xC func_003710C0  # OVL1
+0x003710C0 0xC LoadSpec__11CRadioStripFPC15CRadioStripSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CRadioStrip::LoadSpec (0x38AD50, the same 12 bytes, a spec pointer): CRadioStripSpec::CreateDisplayObj's call)
 0x003710D0 0xCC TickZAnimCmd__11CRadioStripFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003711A0 0xE8 ParseZAnimCmd__11CRadioStripFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00371290 0x108 GetZAnimCmdType__11CRadioStripFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003713A0 0x1A8 Draw__9CCheckBoxFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00371550 0x128 func_00371550  # OVL1
+0x00371550 0x128 LoadSpec__9CCheckBoxFRC13CCheckBoxSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CCheckBox::LoadSpec (0x38B380 there): CCheckBoxSpec::CreateDisplayObj's call)
 0x00371680 0x134 HandlePad__9CCheckBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003717C0 0x21C Draw__13CHProgressBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003719E0 0x30 Tick__13CHProgressBarFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6882,7 +6882,7 @@
 0x003721E0 0x3C func_003721E0  # OVL1
 0x00372220 0x18C Draw__10CSliderBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003723B0 0x13C Tick__9C2DButtonFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x003724F0 0x148 func_003724F0  # OVL1
+0x003724F0 0x148 LoadSpec__10CSliderBarFRC14CSliderBarSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CSliderBar::LoadSpec (0x38C0A0 there): CSliderBarSpec::CreateDisplayObj's call, C2DButton::LoadSpec first)
 0x00372640 0x138 TickZAnimCmd__10CSliderBarFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00372780 0xE8 ParseZAnimCmd__10CSliderBarFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00372870 0x108 GetZAnimCmdType__10CSliderBarFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6905,13 +6905,13 @@
 0x00376420 0x110 SetNormal__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376530 0x68 func_00376530  # OVL1
 0x003765A0 0xEC HandlePad__14CHandlerButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00376690 0x8 func_00376690  # OVL1
+0x00376690 0x8 LoadSpec__14CHandlerButtonFRC18CHandlerButtonSpec  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CHandlerButton::LoadSpec (0x38EC90, the same 8 bytes): CHandlerButtonSpec::CreateDisplayObj's call)
 0x003766A0 0x120 SetActive__9C2DButtonFv  # OVL1; by hand (the HUD lane, round 24: zui_2d.cpp -- slot 18 of every button's table, C2D's SetActive: the state at 0xFC shown and the button's type-1 event-2 actions run)
 0x003767C0 0xA8 GetZAnimCmdType__9C2DButtonFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376870 0x150 TickZAnimCmd__9C2DButtonFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 22: slot +0x64 of C2DButton's table 0x407790; CRadioStrip::TickZAnimCmd 0x3710D0 falls through to it)
 0x003769C0 0x180 ParseZAnimCmd__9C2DButtonFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376B40 0x90 UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D0E0 (-192, C2DButton's UIVarMixin table) jumps to it; its own variable's text (0x3860F0 into a 10500-byte buffer) made the caption, as SOCOM 1's C2DButton::UpdateUIVar)
-0x00376BD0 0x464 func_00376BD0  # OVL1
+0x00376BD0 0x464 LoadSpec__9C2DButtonFRC11CButtonSpec  # OVL1; by hand (the HUD lane, round 31: SOCOM 1's C2DButton::LoadSpec -- CCheckBox::LoadSpec 0x371550 calls it first, as SOCOM 1's 0x38B380 calls 0x38F090; not written yet, zui_2d.cpp's)
 0x00377040 0x338 HandlePad__9C2DButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00377380 0x6C SetCanHandleInput__9C2DButtonFb  # OVL1; by hand (the HUD lane, round 20: zui_2d.cpp -- C2DButton's table +0x4C, C2D's SetCanHandleInput slot, in all five button tables: the C2D flag (byte 0x14 bit 7) set, then SetNormal unless pressed (0xFC) or active (0xC8), or the disabled state (0x164) applied through 0x3773F0 -- SOCOM 1's SetCanHandleInput's shape)
 0x003773F0 0x114 ShowState__9C2DButtonFP11ButtonState  # OVL1; ours by hand (the HUD lane, round 29: zui_2d.cpp -- SetCanHandleInput(false)'s call with the disabled state: the state made current, the background loaded with its texture, the caption's scale and style and the pulse -- SetNormal's body with its four helpers inlined)
@@ -6924,10 +6924,10 @@
 0x00378600 0x194 TickZAnimCmd__9CTeleTypeFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003787A0 0x264 func_003787A0  # OVL1
 0x00378A10 0xE4 SetString__9CTeleTypeFPCcb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the HUD lane, round 22: zui_2d.cpp -- SOCOM II's SetString takes C2DString's translate flag (TranslateString on a2), so the override is SetString(const char *, bool), slot +0x70 of CTeleType's table 0x4078A0; byte-exact)
-0x00378B00 0xF8 func_00378B00  # OVL1
+0x00378B00 0xF8 LoadSpec__9CTeleTypeFRC8CTtySpec  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CTeleType::LoadSpec (0x3906E0 there, the string's own inlined): CTtySpec::CreateDisplayObj's call; CRenderableString::LoadSpec 0x3792F0 first, out of line)
 0x00378C00 0x3B4 Draw__9CTeleTypeFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00378FC0 0xB8 Tick__9CPlainBmpFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00379080 0xDC func_00379080  # OVL1
+0x00379080 0xDC LoadSpec__9CPlainBmpFRC10CImageSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CPlainBmp::LoadSpec (0x390D40 there, the same code but the variable's ternary): CImageSpec::CreateDisplayObj's call)
 0x00379160 0xFC Draw__9CPlainBmpFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00379260 0x90 UpdateUIVar__17CRenderableStringFP11CUIVariable  # OVL1; by hand (the HUD lane, round 22: the slot at +0xA4 of CRenderableString's table 0x407A90, the override's primary slot, and the target of the thunk 0x37D150; SOCOM 1's UpdateUIVar__17CRenderableString clears a 10500-byte buffer the same way)
 0x003792F0 0x1B4 LoadSpec__17CRenderableStringFRC9CTextSpec  # OVL1; s1:calls (SOCOM 1's CClockSpec::CreateDisplayObj calls CRenderableString::LoadSpec at the same place) -- the UI-widgets lane
@@ -6938,7 +6938,7 @@
 0x00379C50 0x140 ParseZAnimCmd__12CWrappedTextFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); by hand (the HUD lane, round 22: SOCOM 1's vtable names slid one class here -- slot +0x60 of CWrappedText's table 0x4079E0 (and CScrollText's 0x4072F0) holds 0x379C50, CRenderableString's own 0x407A90 holds 0x36FE40; it parses SCROLL_UP and SCROLL_DOWN, the wrapped text's commands, and calls 0x36FE40 as its base; zui_2d.cpp, byte-exact)
 0x00379D90 0x1E0 __dt__12CWrappedTextFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00379F70 0x4C0 SetString__12CWrappedTextFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037A430 0x108 func_0037A430  # OVL1
+0x0037A430 0x108 LoadSpec__12CWrappedTextFRC9CWrapSpecPQ23zdb16CTextureRelocMgr  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CWrappedText::LoadSpec: CWrapSpec::CreateDisplayObj's call; the width, spacing and height, CRenderableString::LoadSpec 0x3792F0, the arrows' textures, places and pulses)
 0x0037A540 0xF0 Draw__17CRenderableStringFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037A630 0x8 Update__17CRenderableStringFv  # OVL1; s1:order by hand (the HUD lane, round 22: SOCOM 1's empty Update sits between CRenderableString's Draw and destructor, as 0x37A630 does between 0x37A540 and 0x37A640; it is the slot at +0xA0 of CTeleType's and CRenderableString's tables -- the first after the UIVarMixin part -- which CTeleType::SetString calls last, as SOCOM 1's calls Update)
 0x0037A640 0x12C __dt__17CRenderableStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7889,8 +7889,8 @@
 0x003B7B90 0x100 DrawLOD__Q23zdb7CVisualFPQ23zdb9CLOD_bandfPf  # OVL1; s1:align
 0x003B7C90 0x60 __dt__8CVisBaseFv  # OVL1; s1:align
 0x003B7CF0 0x58 __ct__Q23zdb10AddonPointFv  # OVL1; s1:exact
-0x003B7D50 0x60 __dt__Q23zdb19CProjectedMapVectorFv  # OVL1; s1:align
-0x003B7DB0 0x78 __dt__Q23std49stack<Ui,Q23std31deque<Ui,Q23std13allocator<Ui>>>Fv  # OVL1; s1:align
+0x003B7D50 0x60 __dt__Q23std49stack<Ui,Q23std31deque<Ui,Q23std13allocator<Ui>>>Fv  # OVL1; s1:align; renamed at integration 2026-11-04: the stack's destructor -- __sinit_vis_vu.cpp 0x404570 registers it for m_stack_vid (the initialiser research); the s1:align name ~CProjectedMapVector moved to 0x320660
+0x003B7DB0 0x78 func_003B7DB0  # OVL1; s1:align; renamed at integration 2026-11-04: NOT the stack's destructor -- the deque copy (__sinit_vis_vu.cpp 0x404570 copies a temporary deque into m_stack_vid through it; the integrator's initialiser research, build/scratch/sinit/report.txt); its real name is the weapons lane's to give
 0x003B7E30 0xB0 func_003B7E30  # OVL1
 0x003B7EE0 0x5C func_003B7EE0  # OVL1
 0x003B7F40 0x5C func_003B7F40  # OVL1
@@ -8483,12 +8483,12 @@
 0x003FD8D0 0x64 __sinit_st_exit.cpp  # OVL1 data area; a static initialiser; s1~ ai_vismap.cpp (shape 0.60, a hint); __sinit_st_exit.cpp: HIGH by the initialisers' link order and the statics it builds (the integrator's research 2026-11-04, build/scratch/sinit/report.txt); unit src/Apps/FTS/st_exit.cpp
 0x003FD940 0x90 __sinit_st_menu.cpp  # OVL1 data area; a static initialiser; __sinit_st_menu.cpp: HIGH by the initialisers' link order and the statics it builds (the integrator's research 2026-11-04, build/scratch/sinit/report.txt); unit src/Apps/FTS/st_menu.cpp
 0x003FD9D0 0x64 __sinit_st_load.cpp  # OVL1 data area; a static initialiser; s1~ zanim_cmd_parse.cpp (shape 0.46, a hint); __sinit_st_load.cpp: HIGH by the initialisers' link order and the statics it builds (the integrator's research 2026-11-04, build/scratch/sinit/report.txt); unit src/Apps/FTS/st_load.cpp
-0x003FDA40 0x6C func_003FDA40  # OVL1 data area; a static initialiser
-0x003FDAB0 0x64 func_003FDAB0  # OVL1 data area; a static initialiser; s1~ zanim_cmd_tick.cpp (shape 0.46, a hint)
-0x003FDB20 0xA0 func_003FDB20  # OVL1 data area; a static initialiser
+0x003FDA40 0x6C __sinit_hud_main.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_main.cpp's initialiser -- CHUD::m_hud_textcolor's four words stored, then SOCOM 1's X_WeaponBackground built with C2DBitmap() and ~C2DBitmap 0x1FCB10 registered; the integrator's sinit report, HIGH)
+0x003FDAB0 0x64 __sinit_hud_lensflare.cpp  # OVL1 data area; a static initialiser; s1~ zanim_cmd_tick.cpp (shape 0.46, a hint); by hand (the HUD lane, round 31: hud_lensflare.cpp's initialiser -- <iostream>'s pair only, the unit's bss after it; the integrator's sinit report, HIGH)
+0x003FDB20 0xA0 __sinit_hud_pausemenu.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_pausemenu.cpp's initialiser -- the menu's five colours' fifteen stores, 0x409020-0x40906B; the integrator's sinit report, HIGH)
 0x003FDBC0 0x2BC func_003FDBC0  # OVL1 data area; a static initialiser
 0x003FDE80 0x308 __sinit_hud_newhudmap.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 30: hud_newhudmap.cpp's initialiser -- it builds the unit's statics in SOCOM 1's order, each __construct_array/__register_global_object pair at its record (0x409F10 ...), the four scroll C2DBitmapPolys, the north lines with COverlayLine's colour, then the three computed .data floats 0x3E4090-0x3E40A0 from hud_main.cpp's 365 and 60: CODE-EXACT from source, the four __arraydtor$N references compared by content fail on their relocation fields (scdiff has no mapping for a unit's numbered array destructors: see the HUD lane's round-30 report))
-0x003FE190 0x2B4 func_003FE190  # OVL1 data area; a static initialiser
+0x003FE190 0x2B4 __sinit_hud_linemap.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_linemap.cpp's initialiser -- the unit emits it as is: the two map<int, LINE_DATA> statics, the 45 .data stores and the six CPnt4D pairs Clip reads; the integrator's sinit report, HIGH)
 0x003FE450 0x34 __sinit_hud_mapcompass.cpp  # OVL1 data area; a static initialiser; hud_mapcompass.cpp by hand (it builds navpoint_vec, this unit's global, and registers its destructor)
 0x003FE490 0x64 __sinit_hud_bitmapreticule.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_bitmapreticule.cpp's initialiser (between hud_mapcompass.cpp's and hud_weaponsel.cpp's, as the code): SOCOM 1's color_base (86, 63, 27), then two CPnt3D colours of SOCOM II's that 0x215C10 reads (24, 200, 44 and 24, 24, 24)
 0x003FE500 0x48 __sinit_hud_weaponsel.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 16): hud_weaponsel.cpp's static initialiser (between hud_linemap.cpp's 0x3FE190 and hud_actionbitmap.cpp's 0x3FE550, the units' link order) -- it sets the selector's three layout floats (0x3E4A90/98/A0) from the HUD's bottom block, which CWeaponSel's Init, AfterOpenSecond, OnOpen and CheckHotSwap read
@@ -8501,7 +8501,7 @@
 0x003FF350 0x64 __sinit_st_shutdown.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 21, after the HUD lane's round 23): st_shutdown.cpp's initialiser -- <iostream>'s two init objects (0x412E98, 0x412EB0, their chain nodes 0x412E88, 0x412EA0) built and registered, just below the unit's s_hostElf 0x412EC0; the link's order (0x3FF350, 0x3FF3C0, hud_tcmcmds.cpp's 0x3FF430) is st_shutdown.cpp, st_reboot.cpp, hud_tcmcmds.cpp
 0x003FF3C0 0x64 __sinit_st_reboot.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 21, after the HUD lane's round 23): st_reboot.cpp's initialiser -- <iostream>'s two init objects (0x412FD0, 0x412FE8, their chain nodes 0x412FC0, 0x412FD8) built and registered, just below hud_tcmcmds.cpp's statics 0x412FF0
 0x003FF430 0x70 __sinit_hud_tcmcmds.cpp  # OVL1 data area; a static initialiser; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp's static initialiser -- its layout statics s_tcmLeft/s_tcmSpan (off the data statics 0x3DC9F0, 0x3DCA80) and s_tcmCursorColor, then g_tcmColumns built through __construct_array)
-0x003FF4A0 0x168 func_003FF4A0  # OVL1 data area; a static initialiser
+0x003FF4A0 0x168 __sinit_hud_tcm.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_tcm.cpp's initialiser -- the layout's five colours (the fifth a copy of the fourth), theTCM with CTCM() and its implicit destructor 0x237580 registered, mpCache and spCache built by name with ~CTCMCache 0x230620 registered; the integrator's sinit report, HIGH)
 0x003FF610 0x64 __sinit_hud_ammo.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_ammo.cpp's initialiser (between the radio menu's 0x3FF4A0 and hud_mpinfobox.cpp's 0x3FF680, as the code): its four bss floats computed off s_polyy and s_ammox (s_texty, s_magx, s_magy, s_bitmapy)
 0x003FF680 0x124 __sinit_hud_mpinfobox.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_mpinfobox.cpp's initialiser (between hud_ammo.cpp's and 0x3FF7B0, as the code): thirteen bss floats of the box's places computed off its data variables, in their order
 0x003FF7B0 0x3C __sinit_reco.cpp  # OVL1 data area; a static initialiser; s1~ si_object.cpp (shape 0.45, a hint); ours (the HUD lane, round 19: reco.cpp's initialiser -- theReco (0x414680) constructed and its destructor registered; the old s1~ si_object.cpp hint was wrong)
@@ -8557,9 +8557,9 @@
 0x00402750 0xA8 __sinit_zmath_pnt4d.cpp  # OVL1 data area; a static initialiser; s1:unit zmath_pnt4d.cpp (exact)
 0x00402800 0xD0 __sinit_zNetDme.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetDme.cpp's static initialiser, s1:unit by shape -- SOCOM 1's __sinit_zNetDme.cpp builds theNetwork the same way: CZNetwork()'s initialisers inlined (no team indices, 100 objects, no streams, the game-info exchange cleared), the two lists, the destructor 0x30E410 registered; byte-exact)
 0x004028D0 0x70 __sinit_node_main.cpp  # OVL1 data area; a static initialiser; s1~ node_main.cpp (shape 0.46, a hint); s1:unit node_main.cpp (its two statics, CLight::m_tick_list and the deferred visuals, built in that order)
-0x00402940 0x20 func_00402940  # OVL1 data area; a static initialiser
+0x00402940 0x20 __sinit_node_shadow.cpp  # OVL1 data area; a static initialiser; the world lane r10: node_shadow.cpp's initialiser (the integrator's sinit research, HIGH): SOCOM 1's __sinit_node_shadow.cpp builds the unit's file-static CPnt3D boxAdjust, SOCOM II's stores (5, 5, 5) into 0x45C338 -- byte-exact from source
 0x00402960 0x30 __sinit_node_util.cpp  # OVL1 data area; a static initialiser; s1:unit node_util.cpp (exact)
-0x00402990 0x64 func_00402990  # OVL1 data area; a static initialiser; s1~ node_world.cpp (shape 0.46, a hint)
+0x00402990 0x64 __sinit_node_world.cpp  # OVL1 data area; a static initialiser; s1~ node_world.cpp (shape 0.46, a hint); the world lane r10: node_world.cpp's initialiser (the sinit research, HIGH: pair-only, between node_util's and node_assetlib's, CWorld::m_world after its pair; SOCOM 1's is pair-only too) -- byte-exact from source with <iostream> first
 0x00402A00 0x8C __sinit_node_assetlib.cpp  # OVL1 data area; a static initialiser; s1:unit by hand (the world lane: builds the anonymous recycle bin and CAssetMgr::m_assets, both CAssetLists, and registers ~CAssetList (0x321D40) for each, as SOCOM 1's __sinit_node_assetlib.cpp does; node_assetlib.cpp emits it)
 0x00402A90 0x3C func_00402A90  # OVL1 data area; a static initialiser; s1~ node_assetlib.cpp (shape 0.25, a hint)
 0x00402AD0 0xE0 __sinit_zparticle.cpp  # OVL1 data area; a static initialiser; by its body (builds zparticle.cpp's statics: the node pool, the lists) -- the rdr lane
@@ -8574,15 +8574,15 @@
 0x00402FF0 0x240 __sinit_zsnd_csnd.cpp  # OVL1 data area; a static initialiser; the world lane r7: zsnd_csnd.cpp's own (SOCOM 1's unit has one: the reverb vectors, the banks, m_soundlist, the subtitle table, m_bnkArchive, m_listenermatrix, the subtitles' CSTable and file, the vocal queue, built in that order from source)
 0x00403230 0xA4 __sinit_zsnd_csndinstance.cpp  # OVL1 data area; a static initialiser; s1~ pickup_main.cpp (shape 0.25, a hint); registers zsnd_csndinstance.cpp's list (0x347B20), pool and vector destructors -- the sound lane
 0x004032E0 0x8C __sinit_zsnd_jukebox.cpp  # OVL1 data area; a static initialiser; constructs and registers the jukebox's two arrays (destructors 0x349A50, 0x349A30) -- the sound lane
-0x00403370 0xB0 func_00403370  # OVL1 data area; a static initialiser
-0x00403420 0x3C func_00403420  # OVL1 data area; a static initialiser; s1~ remote_control.cpp (shape 0.45, a hint)
-0x00403460 0x64 func_00403460  # OVL1 data area; a static initialiser
-0x004034D0 0x1C func_004034D0  # OVL1 data area; a static initialiser
-0x004034F0 0x90 func_004034F0  # OVL1 data area; a static initialiser
+0x00403370 0xB0 __sinit_zsnd_positions.cpp  # OVL1 data area; a static initialiser; the world lane r10: zsnd_positions.cpp's initialiser (the sinit research, HIGH; the unit's header named 0x403370): its three vectors zeroed, each registering 0x34C4F0 -- byte-exact from source
+0x00403420 0x3C __sinit_zsys_sched.cpp  # OVL1 data area; a static initialiser; s1~ remote_control.cpp (shape 0.45, a hint); the world lane r10: zsys_sched.cpp's initialiser (the sinit research, HIGH; SOCOM 1's __sinit_zsys_sched.cpp builds zTaskScheduler with CSched_Manager() and registers ~CSched_Manager, as this does)
+0x00403460 0x64 __sinit_zsys_init.cpp  # OVL1 data area; a static initialiser; the world lane r10: zsys_init.cpp's initialiser (the sinit research, HIGH; SOCOM 1's __sinit_zsys_init.cpp builds theIOPManager with reserve(16) and ~CIOPManager): the vector zeroed, reserve(16), SOCOM II's mode byte cleared -- byte-exact from source
+0x004034D0 0x1C __sinit_zsys_overlay.cpp  # OVL1 data area; a static initialiser; the world lane r10: the overlay loader's unit's initialiser (the integrator's sinit research, HIGH: between zsys_vu.cpp's bss and valve_list.cpp's, it clears the three slot bytes of the object 0x49E7E8 whose one method is 0x3515D0); file name ours, byte-exact from source
+0x004034F0 0x90 __sinit_valve_list.cpp  # OVL1 data area; a static initialiser; the world lane r10: valve_list.cpp's initialiser (the sinit research, HIGH; SOCOM 1's __sinit_valve_list.cpp, the same 0x90 bytes): CValve::m_list then valvePool -- code-exact from source, its m_list destructor reference waits on zanim.h declaring m_list a CValveList (SOCOM 1's registers __dt__10CValveListFv)
 0x00403580 0x3C __sinit_ztex_manager.cpp  # OVL1 data area; a static initialiser; s1~ seal_aievent.cpp (shape 0.45, a hint); the world lane r2: ztex_manager.cpp's static initialiser (m_texmanager built through CTexManager() 0x356940, ~CTexManager 0x357E10 registered)
-0x004035C0 0x60 func_004035C0  # OVL1 data area; a static initialiser
+0x004035C0 0x60 __sinit_c2dstring.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: c2dstring.cpp's initialiser -- the string tables g_stringTables 0x49E9D0 built (the vector and the last entry zeroed, reserve(12) through the pod's 0x1EEBA0) and ~CStringTables 0x364170 registered; the integrator's sinit report, HIGH: the unit starts at 0x361B00)
 0x00403620 0x9C __sinit_zui.cpp  # OVL1 data area; a static initialiser; __sinit_zui.cpp: HIGH by the initialisers' link order and the statics it builds (the integrator's research 2026-11-04, build/scratch/sinit/report.txt); unit src/gamez/zui/zui.cpp
-0x004036C0 0x64 func_004036C0  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint)
+0x004036C0 0x64 __sinit_zui_2d.cpp  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint); by hand (the HUD lane, round 31: zui_2d.cpp's initialiser -- <iostream>'s pair only, as SOCOM 1's __sinit_zui_2d.cpp; the integrator's sinit report, HIGH)
 0x00403730 0x34 __sinit_zui_skb.cpp  # OVL1 data area; a static initialiser; by hand (g_arrSkbs zeroed and its destructor 0x38D5C0 registered: SOCOM 1's .p__sinit_zui_skb.cpp does the same) -- zui_skb.cpp's static initialiser
 0x00403770 0x84 __sinit_zui_hangul.cpp  # OVL1 data area; a static initialiser; the UI lane round 10: zui_hangul.cpp's static initialiser (the file name ours): s_complete (0x49ED08) and s_rules (0x49ED28) zeroed and their destructors 0x394170 and 0x3940F0 registered, s_compose's count (0x49ED40) zeroed
 0x00403800 0x90C __sinit_zui_skbview.cpp  # OVL1 data area; a static initialiser; the UI lane round 9: zui_skbview.cpp's static initialiser (the file name ours): the four rows, eight CBmpWithNode, a CSkbRect, a CRenderableString and nine CSaferStr, in declaration order -- byte-exact from source

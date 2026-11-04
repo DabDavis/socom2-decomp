@@ -1,4 +1,4 @@
-/* sc: as=RenderLineWorld__F8CPnt4D_48CPnt4D_48CPnt4D_48CPnt4D_4 RenderLineWorld__F6CPnt4D6CPnt4D6CPnt4D6CPnt4D */
+/* sc: as=RenderLineWorld__F5PNT4D5PNT4D5PNT4D5PNT4D RenderLineWorld__F6CPnt4D6CPnt4D6CPnt4D6CPnt4D */
 /* zrndr_pipe.cpp -- CPipe, the renderer's packet pipe (OVL1 0x336230?-0x33CD4F): what it draws
  * and in which order, the texture loads queued in the GS FIFO between its packets. SOCOM 1's
  * class (its DWARF: 0x694 bytes; SOCOM II's thePipe runs to 0x720); SOCOM 1's file name (its
@@ -480,20 +480,14 @@ void CPipe::Flush()
 int clip3DLine(CPnt4D *planes, CPnt4D *p0, CPnt4D *p1);
 void Draw3DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
 
-/* a CPnt4D aligned to 4 with no written copy constructor -- what RenderLineWorld's four by-value
- * points are (STAND-IN, the unit's `as=` line gives the function its real name): the target copies
- * each into its frame through four FPU registers (lwc1/swc1, as SOCOM 1's 0x245930 does), which only
- * a 4-aligned point with an implicit copy gives -- zmath.h's 16-aligned CPnt4D copies with lq/sq
- * (0xD4 against 0x12C), and with zparticle.h's written copy constructor the callee copies nothing.
- * zmath.h's CPnt4D cannot be both (SeeFarther needs its 128-bit implicit copies, the particles their
- * written one): the original likely had two 4D point classes; this one is ours */
-struct CPnt4D_4 : public PNT4D {
-};
-
 /* SOCOM 1's: a line in the world clipped to the view and drawn; SOCOM II defers a line either of
  * whose colours is translucent to the alpha pass (the opaque test first: the draw is the
- * fall-through, the alpha pass's call last) */
-void RenderLineWorld(CPnt4D_4 p0, CPnt4D_4 p1, CPnt4D_4 c0, CPnt4D_4 c1)
+ * fall-through, the alpha pass's call last). The four points are zmath.h's PNT4D by value (the
+ * unit's `as=` line gives the map's CPnt4D name): 4-aligned with an implicit copy, the callee
+ * copies each into its frame through four FPU registers (lwc1/swc1, as SOCOM 1's 0x245930 does)
+ * -- zmath.h's 16-aligned CPnt4D copies with lq/sq (0xD4 against 0x12C), and with zparticle.h's
+ * written copy constructor the callee copies nothing (the MSL headers' round 17 survey) */
+void RenderLineWorld(PNT4D p0, PNT4D p1, PNT4D c0, PNT4D c1)
 {
     if (clip3DLine((CPnt4D *)&zdb::CWorld::m_world->m_camera->m_ClipSet, (CPnt4D *)&p0, (CPnt4D *)&p1)) {
         if (c0.w >= 0.9921875f && c1.w >= 0.9921875f)

@@ -9,6 +9,7 @@
 
 #include <string.h>
 #include "zonline.h"
+#include "../znet/znet.h"
 
 struct MediusGetAnnouncementsRequest {
     char MessageID[MEDIUS_MESSAGEID_MAXLEN];   // 0x0
@@ -285,6 +286,52 @@ extern "C" {
 void func_002F3EE0(GamePlayerStats *stats);   /* (the chat unit's: the stats put in order) */
 extern char data_0066A7B0[];   /* our home town, in our stats (0x60) */
 extern char data_0066A7EF[];   /* our description, in them (0x9F) */
+}
+
+/* the clan's record (the clan unit's StoredClanInfo: only what the stats read) */
+struct LobbyClanInfo {
+    unsigned char _0[0x24];
+    char ClanName[32];   // 0x24
+    int LeaderAccountID;   // 0x44
+    unsigned char _48[0x170 - 0x48];
+};
+
+extern "C" {
+extern LobbyClanInfo StoredClanInfo;
+extern float data_004A44A0;   /* the clock */
+extern int data_0044F7F8;   /* our position on the ladder (the ladder unit's) */
+extern int data_0044FB48;   /* (the chat unit's: cleared with each record made) */
+extern unsigned char data_0044FB50;
+}
+
+/* our stats as their record (its 'E' text): the kept stats copied -- the record's implicit
+ * assignment, member by member -- with whether we are in a game, the minutes since we logged in,
+ * our clan's name and description and whether we lead it, our home town and our ladder position
+ * put in; two of the chat unit's counts cleared (SOCOM II's; OVL1 0x2FAB80: the stats sender
+ * 0x2FAA80 and the chat unit's player report 0x2EF7F0 call it) */
+extern "C" void func_002FAB80(char *stats)
+{
+    GamePlayerStats *s = (GamePlayerStats *)stats;
+
+    *s = data_0066A750;
+    s->m_late = theNetwork.m_bJoined;
+    s->m_c = (unsigned int)((data_004A44A0 - theLobby.m_loginTime) / 60.0f);
+    strncpy(s->m_40, StoredClanInfo.ClanName, sizeof(s->m_40));
+    CUIVariable *var = theUIVarManager.Add("Clan_Description", 0, UIVL_TEMPORARY);
+
+    strncpy(s->m_clan, var->type == 3 ? ZString(var) : "", sizeof(s->m_clan));
+    if (AccountInfo.AccountID == StoredClanInfo.LeaderAccountID)
+        s->m_2_7 = 1;
+    else
+        s->m_2_7 = 0;
+    var = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVL_TEMPORARY);
+    if (var->type == 3 && ZString(var))
+        strncpy(s->m_town, ZString(var), sizeof(s->m_town));
+    else
+        strncpy(s->m_town, "", sizeof(s->m_town));
+    s->m_8 = data_0044F7F8;
+    data_0044FB48 = 0;
+    data_0044FB50 = 0;
 }
 
 /* our stats sent to the server: built into a text, kept, unpacked, and our ladder figure sent too

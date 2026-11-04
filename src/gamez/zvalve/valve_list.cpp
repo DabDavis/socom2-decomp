@@ -20,6 +20,17 @@ char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
 extern "C" int strcasecmp(const char *a, const char *b);
 
+/* the unit's statics, in its initialiser's order (0x4034F0, SOCOM 1's __sinit_valve_list.cpp):
+ * every valve, then the pool -- their destructors ~CValveList 0x352900 and ~CValvePool 0x352870
+ * close the template tail. OPEN, one relocation: SOCOM 1's m_list is a CValveList (a class over
+ * the pointer list: its initialiser registers __dt__10CValveListFv, two this-tests deep as
+ * 0x352900 is); zanim.h still declares a std::list<CValve *>, whose destructor this unit emits
+ * instead. With `class CValveList : public std::list<CValve *> {};` ahead of CValve in zanim.h
+ * (the engine core lane's) and this definition `CValveList CValve::m_list;`, the initialiser and
+ * ~CValveList are byte-exact and the unit's other functions hold (build/scratch/wld/v_vlist.py) */
+std::list<CValve *> CValve::m_list;
+CValvePool valvePool;
+
 /* a valve deleted (ours: the pool's emptying deletes its valves through std::for_each, the
  * iterators its parameters -- copied into memory, as the target's are) */
 struct CValveDelete {
@@ -28,7 +39,9 @@ struct CValveDelete {
 };
 
 /* the pool emptied: its valves deleted, its names freed (SOCOM 1's destructor did this inline;
- * SOCOM II's calls it -- name ours) */
+ * SOCOM II's calls it -- name ours). Pinned: ~CValvePool 0x352870, its only caller, calls it out
+ * of line, where MW would inline it */
+#pragma auto_inline off
 void CValvePool::Free()
 {
     if (m_initialized) {
@@ -42,6 +55,7 @@ void CValvePool::Free()
         m_namesSize = 0;
     }
 }
+#pragma auto_inline reset
 
 /* the pool's names flushed when no valve holds one, or by force; whether any did (SOCOM 1's).
  * Pinned: Close, Reset and Uninit call it, and MW would inline it there (SOCOM 1's Close did) */
@@ -101,7 +115,7 @@ CValve *CValve::Create(const char *name, unsigned int value, VALVE_TYPE type)
     CValve *valve = name ? GetByName(name) : 0;
 
     if (!valve) {
-        valve = data_0049E820.Acquire(name, type);
+        valve = valvePool.Acquire(name, type);
         valve->SetValue(value);
         m_list.push_back(valve);
     } else {
@@ -156,7 +170,7 @@ void CValve::Uninit()
     std::list<CValve *>::iterator i = std::remove_if(m_list.begin(), e, CValveOpDelete((VALVE_TYPE)0));
 
     m_list.erase(i, e);
-    data_0049E820.FlushNames(false);
+    valvePool.FlushNames(false);
 }
 
 /* a valve file parsed, and the pool made once: 256 pooled valves and 4 KB of names (SOCOM 1's) */
@@ -168,18 +182,18 @@ bool CValve::Open(const char *name, VALVE_TYPE type)
         Parse(rdr, type);
         zrdr_free(rdr);
     }
-    if (!data_0049E820.m_initialized) {
-        data_0049E820.m_free.reserve(256);
+    if (!valvePool.m_initialized) {
+        valvePool.m_free.reserve(256);
         for (unsigned int i = 0; i < 256; i++) {
             CValve *valve = new CValve(0, 0, (VALVE_TYPE)2);
 
             valve->m_pooled = true;
-            data_0049E820.m_free.push_back(valve);
+            valvePool.m_free.push_back(valve);
         }
-        data_0049E820.m_namesSize = 4096;
-        data_0049E820.m_names = new char[4096];
-        data_0049E820.m_initialized = true;
-        data_0049E820.m_namesNext = data_0049E820.m_names;
+        valvePool.m_namesSize = 4096;
+        valvePool.m_names = new char[4096];
+        valvePool.m_initialized = true;
+        valvePool.m_namesNext = valvePool.m_names;
     }
     return true;
 }
@@ -193,7 +207,7 @@ void CValve::Reset()
     std::list<CValve *>::iterator i = std::remove_if(m_list.begin(), e, CValveOpDelete((VALVE_TYPE)2));
 
     m_list.erase(i, e);
-    data_0049E820.FlushNames(false);
+    valvePool.FlushNames(false);
 }
 
 void CValve::Close()
@@ -202,7 +216,7 @@ void CValve::Close()
     std::list<CValve *>::iterator i = std::remove_if(m_list.begin(), e, CValveOpDelete((VALVE_TYPE)2));
 
     m_list.erase(i, e);
-    data_0049E820.FlushNames(false);
+    valvePool.FlushNames(false);
 }
 
 /* the valve file's "valves" list made into valves: each record's name, value and type -- the

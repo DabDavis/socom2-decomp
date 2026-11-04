@@ -15,9 +15,11 @@ struct CSndPosition {
     CSndInstance *m_instance;   /* 0x10 */
 };
 
-extern std::vector<CSndPosition *> data_0049E1F0;  /* the records in hearing range */
-extern std::vector<CSndPosition *> data_0049E210;  /* those the update drops */
-extern std::vector<CSndPosition *> data_0049E230;  /* every record */
+/* the unit's statics, in its initialiser's order (0x403370: each vector's three words zeroed, then
+ * its destructor 0x34C4F0 registered) */
+std::vector<CSndPosition *> data_0049E1F0;  /* the records in hearing range */
+std::vector<CSndPosition *> data_0049E210;  /* those the update drops */
+std::vector<CSndPosition *> data_0049E230;  /* every record */
 extern float data_0049E240;                         /* the update's countdown */
 
 extern "C" void func_0034BEC0(float dT);
