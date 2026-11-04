@@ -560,7 +560,7 @@ static CValve *s_helpWindowsValve;
 /* hud_linemap.cpp's type readers, and the score popup unit's event popups (SOCOM II's) */
 void hudAddPolyType(_zrdr *pRdr);
 void hudAddLineType(_zrdr *pRdr);
-extern "C" void func_0022D3F0(_zrdr *common);
+void hudReadPopupCommon(_zrdr *rdr);
 extern "C" void func_0022D660(_zrdr *popup);
 
 /* hud.rdr read (SOCOM 1's hudInit, CMission::Init's call): the tactical map's polygon and line
@@ -581,7 +581,7 @@ void hudInit()
     if (lines)
         for (int i = 0; i < lines->Count(); i++)
             hudAddLineType(lines->Item(i));
-    func_0022D3F0(zrdr_findtag(zrdr_findtag(rdr, "EventPopups"), "Common"));
+    hudReadPopupCommon(zrdr_findtag(zrdr_findtag(rdr, "EventPopups"), "Common"));
 
     _zrdr *popups = zrdr_findtag(rdr, "PopupDefinitions");
 
@@ -826,7 +826,7 @@ public:
 };
 
 /* not named yet: SOCOM II's own re-inits and resets */
-extern "C" void func_0022D190();
+void hudResetPopupTriggers();
 extern "C" void func_00242B20(CSpectatorInfo *info);
 extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, int c, float time);
 extern "C" void func_002371A0(CTCM *tcm);
@@ -885,7 +885,7 @@ void CHUD::ReInit_Init()
         m_newmap->m_viewer = ftsGetPlayer();
         m_newmap->ReInit();
     }
-    func_0022D190();
+    hudResetPopupTriggers();
     m_bitmapReticule.HideTimer();
     m_ammodisplay.Reset();
     CameraZoom::Reset();

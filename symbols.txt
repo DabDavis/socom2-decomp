@@ -2080,9 +2080,9 @@
 0x0022CC10 0x558 func_0022CC10  # OVL1
 0x0022D170 0x8 func_0022D170  # OVL1
 0x0022D180 0x8 func_0022D180  # OVL1
-0x0022D190 0xE0 func_0022D190  # OVL1
-0x0022D270 0x180 func_0022D270  # OVL1
-0x0022D3F0 0x198 func_0022D3F0  # OVL1
+0x0022D190 0xE0 hudResetPopupTriggers__Fv  # OVL1; ours (the HUD lane, round 33: hud_scorepopup.cpp -- SOCOM II's: the done flags of the by-name (0x412DB0, at 0xC), plain (0x412DD0) and by-map (0x412DF0) message triggers cleared; CHUD::Init and ReInit_Init call it)
+0x0022D270 0x180 hudTriggerPopup__FP12CNamedObject  # OVL1; ours (the HUD lane, round 33: hud_scorepopup.cpp -- SOCOM II's third pop-up trigger, over the by-names records 0x412D90: none in a network game or without an object; a record for this map (GetDatabase) naming the object (the name its first word) opens its message through 0x22B4A0 once; the action icons' 24 calls, 0x21F850; the parameter's type name ours)
+0x0022D3F0 0x198 hudReadPopupCommon__FP5_zrdr  # OVL1; ours (the HUD lane, round 33: hud_scorepopup.cpp -- SOCOM II's: hud.rdr's EventPopups/Common read for the message pop-ups -- TopMargin, LeftMargin, BottomMargin (OVL1 .data 0x3DC8B8, 0x3DC8B0, 0x3DC8A8), PromptText into the CSaferStr 0x412D50, BackgroundOpacity (0x3DC8C0), ForceOpenTime (bss 0x40F618), OpeningSound and ClosingSound into 0x412D10 and 0x412D30; hudInit's one call)
 0x0022D590 0x6C func_0022D590  # OVL1
 0x0022D600 0x60 __dt__Q228@unnamed@hud_scorepopup_cpp@10CHudPopupsFv  # OVL1; by hand (the HUD lane: slot 0 of CHudPopups' vtable 0x405A08, its RTTI's name)
 0x0022D660 0x5E0 func_0022D660  # OVL1
