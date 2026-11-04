@@ -511,13 +511,10 @@ CLobbySaveModule::~CLobbySaveModule()
 /* --- the lobby's blob (CLobbySaveModule) and the profile file (CSaveModule) ------------------ */
 
 /* the current account's missions' equipment written as the lobby's blob: a count byte, then the
- * named entries as they are.
- * OPEN, 4 instructions: two pairs of argument moves come out in parameter order where the target
- * has them the other way round -- _malloc(total, 0, 0)'s `move a0,s1` ahead of `move a1,zero`, and
- * memcpy(out, ...)'s `move a0,s3` ahead of the source's `addiu a1` (the target loads the plain
- * variable last both times). No change from: total unsigned, total assigned after its declaration,
- * no total (the size + 1 then lands in a0 straight), blob and out declared apart, a char * cursor,
- * `r->m_missions + i`, memcpy(out++, ...) */
+ * named entries as they are. The order of a call's argument moves follows where their variables
+ * are declared (round 13): total declared in the `if (size)` block puts _malloc's `move a0,s1` after
+ * `move a1,zero` (at the `if (r)` block's level it came first), and the entry taken into a local of
+ * its own puts memcpy's source ahead of `move a0,s3` -- neither moves a register */
 void CAcctDB::Save(int flags)
 {
     CURRENT_ACCOUNT();
@@ -525,9 +522,9 @@ void CAcctDB::Save(int flags)
 
     if (r) {
         int size = r->MissionCount() * sizeof(AcctMission);
-        int total = size + 1;
 
         if (size) {
+            int total = size + 1;
             char *blob = (char *)_malloc(total, 0, 0);
             AcctMission *out = (AcctMission *)(blob + 1);
 
@@ -535,8 +532,10 @@ void CAcctDB::Save(int flags)
                 memset(blob, 0, total);
                 *blob = r->MissionCount();
                 for (int i = 0; i < ACCT_MISSIONS; i++) {
-                    if (r->m_missions[i].m_mission.m_text[0]) {
-                        memcpy(out, &r->m_missions[i], sizeof(AcctMission));
+                    AcctMission *m = &r->m_missions[i];
+
+                    if (m->m_mission.m_text[0]) {
+                        memcpy(out, m, sizeof(AcctMission));
                         out++;
                     }
                 }
