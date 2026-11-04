@@ -66,13 +66,10 @@ bool CZAR::Fetch(const char *name, char **str)
  * when it answers more than nothing and no more than the key's size; the keys taken counted (SOCOM
  * 1's FetchAll -- the same walk, its end taken once; SOCOM 1's called FetchLIP out of line and
  * returned whether any were taken). The fetch is FetchLIP's body written with the seek's test in
- * the if: inlined, FetchLIP itself (its `ok = seek == offset; if (ok)`, which its own row needs)
- * keeps the compare materialised, 8 bytes long.
- * OPEN, 15 instructions, registers only: the iterator and the offset/ok trade s1/s0 (MW's
- * colouring pushes the scalarised iterator last, so it colours first and takes s0; the target's
- * wants it numbered between the fetch's io and offset). Tried (round 12): the iterator and end
- * declared together, before the loop, the io, offset, ok or key declared at the top, the fetch an
- * inline -- build/scratch/core/v_fa*.py */
+ * the if (inlined, FetchLIP itself -- its `ok = seek == offset; if (ok)`, which its own row needs --
+ * keeps the compare materialised, 8 bytes long) and the key's offset read at each use: one shared
+ * temporary, numbered after the scalarised iterator, so it colours first and takes s0 as the
+ * target's (a named offset local is numbered before the iterator and swaps the pair: 15 off) */
 int CZAR::FetchAll(int (*func)(CZAR &zar, const char *name, void *buf, int size, void *data), void *data)
 {
     int count = 0;
@@ -91,9 +88,7 @@ int CZAR::FetchAll(int (*func)(CZAR &zar, const char *name, void *buf, int size,
 
                 if (IsOpen() && OpenKey(key)) {
                     if (key->m_size) {
-                        int offset = key->m_offset;
-
-                        if (m_pFile->fseek(offset, 0) == offset)
+                        if (m_pFile->fseek(key->m_offset, 0) == key->m_offset)
                             io->fread(key->m_size, &buf);
                     }
                     CloseKey(key);
