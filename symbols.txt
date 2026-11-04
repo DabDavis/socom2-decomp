@@ -10476,17 +10476,17 @@
 0x00583E70 0x3C8 func_00583E70  # OVL2
 0x00584240 0x144 InStateClimbLadder__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateClimbLadder__10CZSealBodyFfff -- after the carry states, before InStateHang in both builds, and the state dispatcher 0x5870E0's case 5 (stateClimbLadder) calls it; the same body (the 0x3DEF50 anim's early return, the climb anim 45 pushed, popped at the ladder's foot going down for 44, the representative's playback from the rate) with SOCOM II's rate read at 0x240 instead of three float arguments
 0x00584390 0x224 InStateHang__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateHang__10CZSealBodyFfff -- after InStateClimbLadder in both builds, and the state dispatcher 0x5870E0's case 4 (stateHang) calls it; the same body (the throttles' length against the hang's reach, the pops down to the hang anim and its push, the moving/turning bits cleared, Stand_0(4, 1) forward, ClearStack(1, true) and Stand_0(state, -1) back) with SOCOM II's throttles read at 0x240/0x244 and Stand_0's added time
-0x005845C0 0x53C func_005845C0  # OVL2
+0x005845C0 0x53C InStateProne__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateProne__10CZSealBodyFfff -- after InStateHang (0x584390) in both builds, and the state dispatcher 0x5870E0's case 2 (stateProne; its table at 0x65D100) calls it with the SEAL alone: SOCOM II's reads the throttles at 0x240/0x244 as InStateClimbLadder and InStateHang do (not written)
 0x00584B00 0x110 func_00584B00  # OVL2
 0x00584C10 0x48 func_00584C10  # OVL2
-0x00584C60 0xB80 func_00584C60  # OVL2
+0x00584C60 0xB80 InStateCrouch__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateCrouch__10CZSealBodyFfff -- after InStateProne in both builds, before CanCrouch (0x5857E0), and the state dispatcher 0x5870E0's case 1 (stateCrouch) calls it with the SEAL alone (not written)
 0x005857E0 0xB8 func_005857E0  # OVL2
 0x005858A0 0x42C func_005858A0  # OVL2
 0x00585CD0 0x31C func_00585CD0  # OVL2
 0x00585FF0 0x60 func_00585FF0  # OVL2
 0x00586050 0x1E8 func_00586050  # OVL2
 0x00586240 0x330 func_00586240  # OVL2
-0x00586570 0x694 func_00586570  # OVL2
+0x00586570 0x694 InStateStand__10CZSealBodyFv  # OVL2; s1:order by hand (the SEAL lane, round 21): SOCOM 1's InStateStand__10CZSealBodyFfff -- after the stand helpers (SOCOM 1's UpdateQuadrant, StandTurning, StandStill), and the state dispatcher 0x5870E0's case 0 (stateStand) calls it with the SEAL alone (not written)
 0x00586C10 0x2EC func_00586C10  # OVL2
 0x00586F00 0x1D4 func_00586F00  # OVL2
 0x005870E0 0x584 func_005870E0  # OVL2

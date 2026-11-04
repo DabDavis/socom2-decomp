@@ -12,8 +12,6 @@ extern "C" int rand(void);
 extern "C" {
 extern bool data_00650698;   /* the rumble switch (SOCOM 1's file static) */
 extern float data_006505E8;  /* (the weapon's raise time a closed menu restarts) */
-/* a team's squad (SOCOM 1's CSealUnit::GetUnitByTeam, by its use; OVL2 0x5EF2F0) */
-CSealUnit *func_005EF2F0(unsigned int team);
 extern CNetGameState *data_00437CE8;
 }
 
@@ -335,7 +333,7 @@ void CSealCtrl::OnMissionStart()
 {
     if (theNetwork.m_9) {
         ClearGoal(GOAL_NONE);
-        CSealUnit *unit = func_005EF2F0(24);
+        CSealUnit *unit = CSealUnit::GetUnitByTeam(24);
 
         if (unit && !data_00437CE8->m_ghost)
             unit->IssueCommand((CZSealBody *)m_entity, (FT_COMMAND)35, 0, false);
@@ -385,7 +383,7 @@ void CSealCtrl::OnDeath()
     if (theNetwork.m_9) {
         if (!data_00437CE8->m_dc || data_00437CE8->m_ghost) {
             func_0030E6E0(data_0045B718, 0);
-            func_005EF2F0(24)->IssueCommand(seal, (FT_COMMAND)34, 0, false);
+            CSealUnit::GetUnitByTeam(24)->IssueCommand(seal, (FT_COMMAND)34, 0, false);
         } else
             func_00552780(seal, 2, 0.0f, 0.1f);
     }
@@ -500,7 +498,7 @@ void CSealCtrl::PerformReticleActions()
     CSealUnit *unit;
     CZSealBody *seal = (CZSealBody *)m_entity;
 
-    unit = func_005EF2F0(17);
+    unit = CSealUnit::GetUnitByTeam(17);
 
     if (unit) {
         if (unit->AllowCommand(seal, (FT_COMMAND)4, 0))
