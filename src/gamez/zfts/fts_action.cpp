@@ -10,6 +10,8 @@
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
 
+extern "C" int strcasecmp(const char *a, const char *b);
+
 /* a SEAL's controller: only the slot this unit calls (fts_remote.cpp's CEntityCtrl, the names
  * ours) */
 class CActionCtrl {
@@ -72,6 +74,54 @@ public:
         m_uidesc = 0;
     }
 
+    /* SOCOM 1's ACTION_TYPE (a byte under -enum min: the type's names by it, 8 the unknown) */
+    enum ACTION_TYPE { ACT_DOOR, ACT_WINDOW, ACT_SWITCH, ACT_DEFUSE, ACT_MPBOMB, ACT_BREACH, ACT_SATCHEL,
+                       ACT_ITEM, ACT_UNKNOWN };
+
+    /* a type's name in the actions file (SOCOM 1's, out of line there; inlined into Open here) */
+    static const char *GetActionType(ACTION_TYPE type)
+    {
+        switch (type) {
+        case ACT_DOOR:
+            return "DOOR";
+        case ACT_WINDOW:
+            return "WINDOW";
+        case ACT_DEFUSE:
+            return "DEFUSE";
+        case ACT_SWITCH:
+            return "SWITCH";
+        case ACT_ITEM:
+            return "ITEM";
+        case ACT_MPBOMB:
+            return "MPBOMB";
+        case ACT_SATCHEL:
+            return "SATCHEL";
+        case ACT_BREACH:
+            return "ACT_BREACH";
+        }
+        return "UNKNOWN";
+    }
+    /* an action made on a node and listed, its id its place in the list (ours, inline: Open's
+     * arguments are read before the new, and the action Open keeps is the returned copy -- the
+     * list's push_back homes only this local) */
+    /* a type by its name, unknown when none matches (ours, inline: SOCOM 1's Open walked the names
+     * itself) */
+    static ACTION_TYPE GetActionType(const char *name)
+    {
+        for (int i = 0; i < 8; i++)
+            if (!strcasecmp(name, GetActionType((ACTION_TYPE)i)))
+                return (ACTION_TYPE)i;
+        return ACT_UNKNOWN;
+    }
+    static CNodeAction *Add(zdb::CNode *node, CZAnim *anim, CValve *valve, zdb::CTexHandle *tex)
+    {
+        CNodeAction *action = new CNodeAction(node, anim, valve, tex);
+
+        action->m_id = m_actions.size();
+        m_actions.push_back(action);
+        return action;
+    }
+    static int Open(zdb::CWorld *world, const char *name);
     static void SyncActionsMP(int who);
     static void Close();
     static void Reset();
@@ -133,6 +183,18 @@ inline void SetValveValue(CValve *valve, int value)
 
 CZSealBody *ftsGetPlayer();
 extern "C" int strcmp(const char *a, const char *b);
+
+/* the rdr reader (zrdr.h's) */
+class CRdrFile;
+_zrdr *zrdr_read(const char *name, const char *path, int flags);
+int zrdr_free(CRdrFile *file);
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+bool zrdr_findint(const _zrdr *rdr, const char *tag, int *out, int n);
+/* a team mask read (vehicle_rdr.cpp's) */
+unsigned int ParseTeams(_zrdr *rdr);
+/* whether the network game swaps its sides (fts_net_game.cpp's) */
+extern "C" unsigned char data_004412D8;
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
@@ -223,6 +285,99 @@ void CNodeAction::Reset()
             action->m_owner = CEntity::invalidId;
         }
     }
+}
+
+/* the map's actions read from its rdr (OVL1 0x2B4F40: SOCOM 1's CNodeAction::Open, grown): for each
+ * entry of `actions`, its node found in the world, its valve made, an action put on the node unless
+ * it already has an extension -- its anim, bitmap, range and elevation, then SOCOM II's settings:
+ * the descriptor, no_netlog, one_shot, points, the type by name, the extra anims, the team (its two
+ * sides swapped when the network game swaps them) and tcm */
+int CNodeAction::Open(zdb::CWorld *world, const char *name)
+{
+    _zrdr *rdr = zrdr_read(name, 0, 0);
+    _zrdr *actions = zrdr_findtag(rdr, "actions");
+
+    if (actions && actions->type == 4) {
+        int n = actions->Count();
+
+        for (unsigned int i = 0; (int)i < n; i++) {
+            _zrdr *entry = actions->Item(i);
+            float range = 32.0f;
+            float elevation = -1.0f;
+            const char *nodeName = zrdr_findstring(entry, "node");
+            const char *animName = zrdr_findstring(entry, "anim");
+            const char *valveName = zrdr_findstring(entry, "valve");
+            const char *bitmap = zrdr_findstring(entry, "bitmap");
+            const char *descriptor = zrdr_findstring(entry, "descriptor");
+            zdb::CTexHandle *tex = 0;
+
+            if (bitmap)
+                tex = zdb::CWorld::GetTexHandle(bitmap);
+            zrdr_findreal(entry, "range", &range, 1);
+            zrdr_findreal(entry, "elevation", &elevation, 1);
+
+            zdb::CNode *node = world->FindChild(nodeName, true);
+            CZAnim *anim = animName ? ZAnim.GetAnim(animName, 0) : 0;
+
+            if (node) {
+                CValve::GetByName(valveName);
+                CValve *valve = CValve::Create(valveName, VALVE_PERM);
+
+                if (!node->m_nodeEx) {
+                    CNodeAction *action = Add(node, anim, valve, tex);
+
+                    action->m_range = range;
+                    action->m_20 = elevation;
+                    node->SetNodeEx(action, false);
+                    valve->AddCallback(3, _actionValveCallback, action);
+                    if (descriptor)
+                        action->m_uidesc = _strdup(descriptor, 0, 0);
+                    if (zrdr_findtag(entry, "no_netlog"))
+                        action->SetNetworked(false);
+                    if (zrdr_findtag(entry, "one_shot"))
+                        action->SetFlag3(true);
+                    zrdr_findint(entry, "points", &action->m_38, 1);
+
+                    const char *type = zrdr_findstring(entry, "type");
+
+                    if (type)
+                        action->m_type = GetActionType(type);
+
+                    _zrdr *anims;
+
+                    if ((anims = zrdr_findtag(entry, "anim")) != 0) {
+                        unsigned int count = anims->Count();
+
+                        for (unsigned int k = 1; k < count; k++) {
+                            if ((anim = ZAnim.GetAnim(anims->Item(k)->String(), 0)) != 0)
+                                action->m_anims.push_back(anim);
+                        }
+                    }
+
+                    _zrdr *team = zrdr_findtag(entry, "team");
+
+                    if (team) {
+                        unsigned int teams = ParseTeams(team);
+
+                        if (theNetwork.m_bNetwork && data_004412D8) {
+                            unsigned int swapped = teams & ~0x101;
+
+                            if (teams & 1)
+                                swapped |= 0x100;
+                            if (teams & 0x100)
+                                swapped |= 1;
+                            teams = swapped;
+                        }
+                        action->m_30 = teams;
+                    }
+                    if (zrdr_findtag(entry, "tcm"))
+                        action->SetTCM(true);
+                }
+            }
+        }
+    }
+    zrdr_free((CRdrFile *)rdr);
+    return 0;
 }
 
 /* the action whose valve has this name (SOCOM II's; OVL1 0x2B4E80). Out of line: the
