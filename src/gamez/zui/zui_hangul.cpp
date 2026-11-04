@@ -33,8 +33,13 @@
  * CSkbVec's, vector's, __vector_imp's, the deleter's and the capacity's constructors) and the target
  * inlines it whole, while its destructor keeps the two this-tests and ~vector's call.
  * OPEN, not written yet: the recursive index stepper 0x3903A0, the composer 0x391670 and its rule
- * matcher 0x3919D0, 0x391E70 (a sum of an index vector's first n), 0x391F80 (the index walker's
- * constructor); everything they call out of line keeps its placeholder.
+ * matcher 0x3919D0, the split's sum 0x391E70 (12 off as measured: CSkbSplit's note); everything
+ * they call out of line keeps its placeholder or its draft. Round 23 wrote the split (CSkbSplit:
+ * its constructor 0x391F80, Part 0x391E50) and a sequence's jamo read 0x391E20, byte-exact; the
+ * composer and matcher call the parts' operator[] 0x391D80, end() 0x391D40 (the scalar vector's
+ * class end(), out of line: only the matcher's call emits it), the reverse iterator's operator*
+ * 0x391D30 and the vector's constructor 0x391DA0 out of line, and keep their counters in stack
+ * slots past nine saved registers.
  * OPEN, written: SkbParseKoreanRules (0x4DC against 0x464), SkbParseComplete (0x318 against 0x2A4):
  * the rdr walks' loop counters (the target keeps the productions' in a stack slot) and the inlined
  * Item()s' shapes; SkbHangulBack (0x19C/0x190: from the start to the resize byte-exact, but the
@@ -232,6 +237,72 @@ void SkbParseComplete(CSkbCompleteVec *complete, _zrdr *rdr, const char *tag)
             (*complete)[i].m_val2 = true;
         }
     }
+}
+
+/* a split of n jamo into k consecutive parts, the composer's walk over every split (ours, 16
+ * bytes: the total, then the parts). Its members not written yet: the stepper 0x3903A0 (recursive), the sum of the first n parts 0x391E70 (unrolled by
+ * 8), the destructor 0x390690 (its draft matches) and the test that a split is left 0x391DF0 (the
+ * parts' size). Measured (the UI's round 23): the sum reaches the target's 0xD0 only with the parts
+ * read through a reference-returning accessor in the body (`Parts()[i]`: the vector's address
+ * hoisted into the test block laid after the remainder loop, the round-22 preheader rule), 12
+ * instructions off then in a t3/t4/t5 rotation of the unroller's temporaries (the counter's
+ * declaration, the sum's form, a while loop, CSkbVec or unsigned parts: no change) */
+/* the last element through a reverse iterator over the parts (ours: MSL's rbegin()/reverse_iterator,
+ * which include/vector lacks -- its operator* copies the base and steps the copy back; the matcher
+ * 0x3919D0 calls end() 0x391D40 and this 0x391D30 out of line, the constructor inlines both) */
+template <class It>
+class CSkbRevIter {
+public:
+    CSkbRevIter(It i) : current(i) {}
+    typename It::value_type &operator*() const
+    {
+        It tmp = current;
+
+        return *--tmp;
+    }
+
+    It current;
+};
+
+class CSkbSplit {
+public:
+    CSkbSplit(int n, int k);
+    unsigned int Part(int i);
+    /* the parts through a reference: the walks' vector address hoisted (ours) */
+    std::vector<unsigned int> &Parts() { return m_parts; }
+    CSkbRevIter<std::vector<unsigned int>::iterator> RBegin()
+    {
+        return CSkbRevIter<std::vector<unsigned int>::iterator>(m_parts.end());
+    }
+
+    int m_n;   // 0x0
+    std::vector<unsigned int> m_parts;   // 0x4
+};
+
+/* the first split of n into k parts: k - 1 of one and the rest last, none when k is out of 1..n
+ * (0x391F80; ours). Byte-exact (the UI's round 23): the test `k > n || k <= 0` (`n < k` puts the
+ * compare in v0), the last part stored through the reverse iterator (two stack temporaries and an
+ * FPR copy, as the scalar vector's class end() and __iter give) */
+CSkbSplit::CSkbSplit(int n, int k) : m_n(n)
+{
+    if (k > n || k <= 0)
+        return;
+    Parts().resize(k, 0);
+    for (int i = 0; i < k - 1; i++)
+        Parts()[i] = 1;
+    *RBegin() = n - k + 1;
+}
+
+/* a split's part i (0x391E50; the composer calls it out of line; ours) */
+unsigned int CSkbSplit::Part(int i)
+{
+    return m_parts[i];
+}
+
+/* a sequence's jamo i, sign-extended (0x391E20; the composer calls it out of line; ours) */
+char SkbSeqJamo(SKBSEQ *seq, int i)
+{
+    return seq->m_jamo[i];
 }
 
 /* the jamo being composed set again from the last piece's (0x3914A0, after a composition; the name

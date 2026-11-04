@@ -318,27 +318,28 @@ void CFileIO::Close()
     }
 }
 
-/* where the open package's file starts, 0 with none (ours) */
-static inline int PakOffset()
-{
-    return data_004A15FC ? data_004A15FC->offset : 0;
-}
-
-/* OPEN, 2 instructions short (0x170 of 0x178): the target reads the package's offset as a full
- * if/else -- `beqz; move t0,zero; b; lw t0,0x44; move t0,zero` -- and keeps it in t0 with the
- * reader in a3; every spelling tried (the ternary initialising or assigned, an inline helper
- * returning it, an if/return, a zeroed local, the reader declared first) if-converts it into
- * `beqz; move; lw` with the two registers swapped. The rest (the CD switch, the sector sum's
- * operand order, the host's 2-1-default chain) matches. */
+/* the read position moved (SOCOM 1's CFileIO::fseek, the package's offset added: SOCOM II's).
+ * Byte-exact since the UI's round 23 (open since round 2, 2 instructions short): the package's offset
+ * read as a plain if/else into a local declared first (the target's `beqz; move t0,zero; b; lw t0;
+ * move t0,zero` -- the ternary, an inline returning it and a zeroed local all if-convert it with the
+ * registers swapped), the host path's 2-1-default chain a SWITCH with the default written first
+ * and case 1 before case 2 (MW tests the higher value first and lays the blocks out in source
+ * order: the if/else-if chain tests 2 then 1 but puts the default last), and the sector's sum
+ * through a local shifted value added first (`s + start`; in place, either order, MW emits the
+ * start sector first). */
 int CFileIO::fseek(int offset, int whence)
 {
     int pos;
 
     if (m_flags & 1) {
-        int base = PakOffset();
+        int base;
         CFileCD *cd;
         int sector;
 
+        if (data_004A15FC)
+            base = data_004A15FC->offset;
+        else
+            base = 0;
         cd = m_cd;
         switch (whence) {
         case 0:
@@ -351,7 +352,9 @@ int CFileIO::fseek(int offset, int whence)
             cd->m_pos = offset + cd->m_toc->sectorSize;
             break;
         }
-        sector = cd->m_toc->startSector + ((cd->m_pos + base) >> 11);
+        unsigned int s = (cd->m_pos + base) >> 11;
+
+        sector = s + cd->m_toc->startSector;
         if (cd->m_headSector != sector) {
             cd->m_headSector = sector;
             cd->m_buf = 0;
@@ -360,17 +363,21 @@ int CFileIO::fseek(int offset, int whence)
     } else {
         int mode;
 
-        if (whence == 2) {
+        switch (whence) {
+        default:
+            mode = 0;
+            if (data_004A15FC)
+                offset += data_004A15FC->offset;
+            break;
+        case 1:
+            mode = 1;
+            break;
+        case 2:
             mode = 0;
             offset += m_filesize;
             if (data_004A15FC)
                 offset += data_004A15FC->offset;
-        } else if (whence == 1) {
-            mode = 1;
-        } else {
-            mode = 0;
-            if (data_004A15FC)
-                offset += data_004A15FC->offset;
+            break;
         }
         pos = sceLseek(m_file, offset, mode);
     }
@@ -598,7 +605,14 @@ int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out);
  * through its address (`addiu v0,sp,372; lw v1,0(v0)`) and materialises `!= -1 && != 0` with two
  * branches and an assigned true (daddiu); CDFileOpen by value gives nor/sltu. Taking it by `const
  * int &` gives the target's size (8 instructions off) but costs IsOpen and Close their matches;
- * `if (...) return true; return false;` and a bool local cost them too. The rest matches. */
+ * `if (...) return true; return false;` and a bool local cost them too. The rest matches.
+ * Round 23, measured again: the helper by `const int &` or `const int *` gives LoadHddIconFile the
+ * target's size and its jump form, 3 instructions off (the field read folded, `lw v1,372(sp)`,
+ * where the target builds the address), and costs IsOpen 0x39EF80 and Close 0x39E8A0 7 each (both
+ * keep the value form in the target); the reference read into a local first keeps those two and
+ * changes nothing here. Everywhere else in the target the file's m_file and m_flags go through
+ * saved registers (sp+372 into s0, sp+384 into s1, set up with the inlined constructor): only the
+ * inlined IsOpen reads them afresh, so its copy here is not the out-of-line one's source. */
 int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out)
 {
     CFileIO file;
