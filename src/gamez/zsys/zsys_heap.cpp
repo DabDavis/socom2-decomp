@@ -46,7 +46,11 @@ CHeap::~CHeap()
 
 /* OPEN, 7 instructions: registers settled by this declaration order (the later-declared takes
  * the lower temporary); left: the target computes the rounded size before best's lui, and makes
- * the split's last store through `found` (v0) where MW here propagates bestBlock (t1) */
+ * the split's last store through `found` (v0) where MW here propagates bestBlock (t1). The world
+ * lane's round 8: a function-scoped `#pragma opt_propagation off` (the stand-in three other
+ * functions need) fixes the store -- 6 -- but not the head's schedule, under any spelling of the
+ * rounding tried (`~3 & (size + 3)`, `& -4`, `4 + ...`, `>> 2 << 2`, the rounding in its own local,
+ * `need` declared first or after `exact`: 6 to 29; build/scratch/wld/v_alloc*.py) */
 void *CHeap::Alloc(unsigned int size)
 {
     Block *found = 0;

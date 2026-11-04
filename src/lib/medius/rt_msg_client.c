@@ -1687,10 +1687,10 @@ extern unsigned char data_006763C0[32];  /* the type-22 message, built in place 
  * three bytes 0x6387E0 gives for the connect kind, the connect port, the title's software id, the
  * connection's local address and port and this client's id -- stored for the channel at once (the
  * flag 1) and the resend timer restarted; 0x635CF0 must give the message's size as 29.
- * OPEN (0x1D8 against 0x1E0, and pMsg in s1 for the target's s0): the target keeps the write pointer in
- * one register to the end, each `pMsg += n` in place (the last message's base `pMsg - 27`); here CSE
- * folds the increments after the software id into offsets from a second register (+16, +18, -9) --
- * a temporary for the id, a cast-off result, sizeof, `pMsg = pMsg + 16` change nothing */
+ * The message handed on is the cursor rewound by its size, `pMsg - 29` after the last `pMsg += 2`
+ * (round 20b): the target keeps the write pointer in one register to the end, each `pMsg += n` in
+ * place, its base `pMsg - 27`. Passing the buffer's own address made CSE fold the increments after
+ * the software id into offsets from a second register (+16, +18, -9; round 19b's open). */
 unsigned char func_00635E60(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm)
 {
     unsigned short nSize = 0;
@@ -1739,7 +1739,8 @@ unsigned char func_00635E60(rt_msg_client_connection *pConnection, rt_msg_client
     pMsg += 2;
     if (rt_msg_set_u2byte(pMsg, pConnection->nClientId) != 0)
         return 7;
-    result = rt_msg_client_store_msg_in_send_buf(pComm, 22, 0xFFFF, data_006763C0, 29, 1);
+    pMsg += 2;
+    result = rt_msg_client_store_msg_in_send_buf(pComm, 22, 0xFFFF, pMsg - 29, 29, 1);
     if (result != 0)
         return result;
     if (rt_time_start(&pConnection->tResend) != 0)

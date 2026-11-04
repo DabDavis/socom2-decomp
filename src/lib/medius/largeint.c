@@ -18,10 +18,13 @@
  * 30 insns 2.96's expand_end_loop scans, so the loop was rotated up to it and its test never copied
  * above the loop -- the target's test is); lintPrime's delta walk is an index (2.96 makes it the
  * target's pointer; a pointer in the source is set before the counter's first test).
- * OPEN: lintIncrement (17 words, the right size with the nonzero words' case written first and a
- * walking pointer: the target lays word 0's case at the loop's head -- entered straight from the
- * initialisation -- and the others' after the test, this one the other way about),
- * lintDecrement (28s: the same layout question, indexed) and lintIsbSPRP (below). */
+ * The carry and borrow runs (round 20b) are for loops rotated only up to the nonzero words' `break`:
+ * expand_end_loop moves the loop's head to its end up to the last exit within 30 insns, so word 0's
+ * exit must lie past it -- a `return` (lintIncrement) or a `break` in an else after the borrow case
+ * (lintDecrement); within the scan, word 0's case is moved too and lands after the test. The moved
+ * region then holds the arm's labels, so its test is not copied; the entry, i known 0, is threaded
+ * straight into word 0's case in the loop's middle, and loop.c leaves a loop entered twice alone --
+ * the index is recomputed (sll; addu) and -1 loaded inside, as the target has them. */
 
 #define LINT_WORDS  32
 
@@ -105,7 +108,7 @@ void lintIncrement(LINT *p, unsigned int n)
         } else {
             *pd += n;
             if (*pd >= n)
-                break;
+                return;
         }
     }
 }
@@ -124,11 +127,12 @@ void lintDecrement(LINT *p, unsigned int n)
             }
             pd[i] = 0xFFFFFFFF;
         } else {
-            if (pd[i] >= n) {
+            if (pd[i] < n) {
+                pd[i] -= n;
+            } else {
                 pd[i] -= n;
                 break;
             }
-            pd[i] -= n;
         }
     }
 }
@@ -325,14 +329,15 @@ extern void func_006283F8(LINT *pResult, LINT *a, LINT *e, LINT *n);    /* a to 
 /* the strong probable-prime test of n to base b (SOCOM 1's lintIsbSPRP, lintPrime's call): n - 1 =
  * d * 2^s, then b^d and its squares against 1 and n - 1. SOCOM 1's GCD test of n and b is gone, n - 1
  * is the word decrement's and the power the new exponentiation's.
- * OPEN (0x210 against 0x1F8): the squaring loop. The target enters it by a jump to its one test at
- * the bottom (`sltu v0,r,s; bnez body`, r++ in the slot -- the body's first insn, stolen by reorg)
- * and keeps x's address in one register; every spelling here (for, while with r++ first, r++ in the
- * test, `for (;;)` with the bound a return or a break, IsOne's exit a break, a goto into a do-while,
- * x through a pointer local) has jump.c copy the two-insn test above the loop
- * (duplicate_loop_exit_test: a rotated test region without a call or label) and loop.c move x's
- * address into a second register for the loop -- the test region the target's compiler would not
- * copy is not found yet. */
+ * The squaring loop is labels and gotos, no C loop statement (round 20b): the target enters it by a
+ * jump to its one test at the bottom (`sltu v0,r,s; bnez body`, r++ in the slot -- the body's first
+ * insn, stolen by reorg) and keeps x's address in one register. Any loop statement (for, while,
+ * do-while, a goto into a do-while; round 19b's eleven spellings) gets loop notes, so jump.c copies
+ * the test above the loop (duplicate_loop_exit_test) and loop.c moves x's address into a second
+ * register; with no loop notes neither pass runs. The first IsEqual's failure branch holds r = 1 and
+ * jumps to the test (reorg steals the 1 into its slot), and its `return 1` is the block the loop's
+ * IsEqual cross-jumps to -- `if (IsEqual) return 1; r = 1; goto test;` inverts that branch (34s), and
+ * `r++ < s` in the test copies r first (`move v0,s2`). */
 int lintIsbSPRP(LINT *n, LINT *b)
 {
     LINT nm1;
@@ -351,15 +356,21 @@ int lintIsbSPRP(LINT *n, LINT *b)
     func_006283F8(&x, b, &d, n);
     if (IsOne(&x))
         return 1;
+    if (!IsEqual(&x, &nm1)) {
+        r = 1;
+        goto test;
+    }
+    return 1;
+loop:
+    r++;
+    XMOD(&x, &x, &x, n);
     if (IsEqual(&x, &nm1))
         return 1;
-    for (r = 1; r < s; r++) {
-        XMOD(&x, &x, &x, n);
-        if (IsEqual(&x, &nm1))
-            return 1;
-        if (IsOne(&x))
-            return 0;
-    }
+    if (IsOne(&x))
+        return 0;
+test:
+    if (r < s)
+        goto loop;
     return 0;
 }
 
