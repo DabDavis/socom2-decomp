@@ -241,12 +241,17 @@ extern unsigned char OurGameName;
 
 extern CReco theReco;
 
+/* the lens flares' system (zrndr_pipe.cpp's, after thePipe: only its tick) */
+class CFlareSystem {
+public:
+    void Tick();   /* 0x336230 */
+};
+
+extern CFlareSystem data_00488F10;
+
 extern "C" {
 extern int data_00408C08;                        /* SOCOM 1's oddeven, a static of Tick's */
-extern char data_00488F10[];
-void func_00336230(void *arg);
 void func_003B1160(int arg);
-int func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
 void func_0033CD50(void *arg);
 void func_0033B5B0(CPipe *pipe);
 void func_0033B570(CPipe *pipe);
@@ -717,7 +722,7 @@ bool CCoreState::Tick(float dT)
     } else {
         func_003AFF30(true, true);
     }
-    func_00336230(data_00488F10);
+    data_00488F10.Tick();
     cam->Update(zdb::ZCAM_TYPE_0);
     m_hud->PostDITick(dT);
     if (running && !m_hud->PauseGame())
@@ -734,7 +739,7 @@ bool CCoreState::Tick(float dT)
         camera_entity_active = pEntNode->m_active;
         pEntNode->SetActive(false);
     }
-    data_00408C08 = func_00339DE0(&thePipe, m_world);
+    data_00408C08 = thePipe.RenderWorld(m_world);
     if (hide)
         pEntNode->SetActive(camera_entity_active);
     if (running && !m_hud->PauseGame()) {
