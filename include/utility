@@ -1,6 +1,24 @@
 /* <utility>: std::pair, as MSL's (a reconstruction). The map's value_type is pair<const Key, T>;
  * its operator[] builds `value_type(key, T())` on the stack and hands it to the tree's
- * insert_node_at, which copies it into the new node in place. */
+ * insert_node_at, which copies it into the new node in place.
+ *
+ * OPEN, the UI's round 15 request (the MSL headers round 16, build/p16/incP/, untracked): AddKeyProps
+ * 0x38B770 keeps three temporaries -- the key at 104 copied BITWISE (lh/sh twice through an address
+ * register), a pair<CSkbKey, CSkbKeyProps *> at 80 copied from it field by field (lb/lhu) with the props
+ * stored and reloaded, the value_type at 88 copied from that. SOCOM 1's soft keyboard (the demo's
+ * CreateSoftKeyboard 0x3A7940) has the same three: make_pair BY VALUE (its x and y in stack slots, x a
+ * bitwise copy though its key's members have copy constructors), the pair built from their addresses by
+ * an out-of-line pair(const T1 &, const T2 &) (0x3A8E40), the value_type converted from it. Measured on
+ * SOCOM II's: MW 3.0b52 copies a by-value argument through the class's copy constructor when one is
+ * user-declared and bitwise only when the copy is implicit, and an implicit copy reads each anonymous
+ * union as its FIRST member -- so with make_pair by value, CSkbKey's copy left implicit, its union views
+ * m_row/m_code declared first and its assignment written (reading m_urow/m_scode, so the unit's
+ * vector<CSkbKey> insert/erase/do_assign hold: zui_skb.cpp 98 as before), the key copy and the value are
+ * the target's word for word (0x10C) -- but the pair temporary between them is folded away in every
+ * form tried: make_pair by value or by const reference, a named or reference-bound local in it, the
+ * pair with a user copy constructor, with a user destructor (make_pair then a call), the fields in a
+ * base class (the pair's constructor then a call at level 5, 0x124 -- inlined at 6 and folded again),
+ * a map insert taking the pair by reference. Not applied: no form keeps the inlined pair in memory. */
 
 #ifndef _MSL_UTILITY_PAIR
 #define _MSL_UTILITY_PAIR

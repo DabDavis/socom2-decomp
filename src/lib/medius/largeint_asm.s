@@ -16,9 +16,10 @@
 # IsSMaller, IsNotGreater, IsNotSmaller (its order), ShiftRight, ShiftLeft, lintAddIP and
 # lintSubIP by their bodies; func_006290B8 and func_006291D8 are the add and subtract over the
 # words a bit count covers (count / 32 + 1, at most 32), new in SOCOM II; MODIP (a copy
-# of its second number, lintGetBits of both, a shift and subtract) and the two multiplies
-# func_006296A0 and func_00629868 (lintGetBits of both factors, three zeroed numbers, multu word
-# by word; the second takes a fourth argument) keep placeholders. The two `ori $2,$0,0x1` are the
+# of its second number, lintGetBits of both, a shift and subtract) by MOD's call (round 18b);
+# the two multiplies MULT and XMOD (lintGetBits of both factors, three zeroed numbers, multu word
+# by word; XMOD takes the modulus fourth and ends in MODIP) by SOCOM 1's bodies and order, and
+# EMOD's and RSAGenerateKeyPair's calls (round 19b). The two `ori $2,$0,0x1` are the
 # target's own encoding of a 1 (GNU as's `li` gives addiu).
 
 	.set	noreorder
@@ -899,10 +900,10 @@ MODIP:
 	.end	MODIP
 	.size	MODIP,.-MODIP
 
-	.globl	func_006296A0
-	.type	func_006296A0,@function
-	.ent	func_006296A0
-func_006296A0:
+	.globl	MULT
+	.type	MULT,@function
+	.ent	MULT
+MULT:
 	addiu	$29,$29,-576
 	sq	$31,176($29)
 	sw	$4,24($29)
@@ -1026,13 +1027,13 @@ func_006296A0:
 	addiu	$29,$29,576
 	jr	$31
 	sll	$0,$0,0x0
-	.end	func_006296A0
-	.size	func_006296A0,.-func_006296A0
+	.end	MULT
+	.size	MULT,.-MULT
 
-	.globl	func_00629868
-	.type	func_00629868,@function
-	.ent	func_00629868
-func_00629868:
+	.globl	XMOD
+	.type	XMOD,@function
+	.ent	XMOD
+XMOD:
 	addiu	$29,$29,-576
 	sq	$31,176($29)
 	sw	$4,24($29)
@@ -1161,5 +1162,5 @@ func_00629868:
 	addiu	$29,$29,576
 	jr	$31
 	sll	$0,$0,0x0
-	.end	func_00629868
-	.size	func_00629868,.-func_00629868
+	.end	XMOD
+	.size	XMOD,.-XMOD

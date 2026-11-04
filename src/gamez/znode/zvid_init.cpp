@@ -3,6 +3,7 @@
  * follows CMemCard. Defined in reverse of their image order (-inline deferred). */
 
 #include <eetypes.h>
+#include <iostream>
 
 #include "../zsys/zsys_public.h"
 #include "../zutil/zutil.h"

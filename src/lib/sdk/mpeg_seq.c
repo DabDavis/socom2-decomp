@@ -73,10 +73,10 @@ void _clearOnce(MpegDec *d)
 	u_int csc = 0x70000000;
 
 	_ipuSetMPEG1(1);
-	d->_590 = csc;
-	d->_594 = 0x70001800;
-	d->_6d0 = 0x70001B00;
-	d->_6d4 = 0x70003300;
+	d->mb[0].mc = csc;
+	d->mb[0].coef = 0x70001800;
+	d->mb[1].mc = 0x70001B00;
+	d->mb[1].coef = 0x70003300;
 	d->_810 = 0;
 }
 
@@ -85,7 +85,7 @@ void _clearEach(MpegDec *d)
 	int ie;
 
 	d->dirty = 1;
-	d->_1b0 = 0;
+	d->dcr = 0;
 	ie = DIntr();
 	*D_ENABLEW = *D_ENABLER | 0x10000;
 	*D3_CHCR = 0;

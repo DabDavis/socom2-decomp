@@ -231,8 +231,8 @@ CZWeapon::CZWeapon()
     m_hitanimname = 0;
     m_hitanim = 0;
     m_specialmaterialanim = 0;
-    m_socom2_90 = 0;
     m_defaultspecialanim = 0;
+    m_zoomedfireanimTT = 0;
     m_zoomedfireanim = 0;
     m_fireanim = 0;
     m_texture = 0;
@@ -308,6 +308,31 @@ bool CZWeapon::CreateWeaponList()
     return true;
 }
 
+/* the passing rounds' sounds (0x3D37C0-0x3D379F: the getters after the setters in the image, the
+ * rockets' first of each pair -- the getters' caller is OVL2's CSealCtrl::OnWeaponEvent) */
+CSnd *CZWeapon::m_bulletpassSound;
+CSnd *CZWeapon::m_rocketpassSound;
+
+CSnd *CZWeapon::GetBulletPassSound()
+{
+    return m_bulletpassSound;
+}
+
+CSnd *CZWeapon::GetRocketPassSound()
+{
+    return m_rocketpassSound;
+}
+
+void CZWeapon::SetBulletPassSound(CSnd *snd)
+{
+    m_bulletpassSound = snd;
+}
+
+void CZWeapon::SetRocketPassSound(CSnd *snd)
+{
+    m_rocketpassSound = snd;
+}
+
 /* the sound listener: the app camera's camera node (0x48DB48, set where the mission opens) */
 extern "C" CNode *data_0048DB48;
 
@@ -356,6 +381,11 @@ int CZWeapon::GetNumMags()
     return m_nummags;
 }
 
+char *CZWeapon::GetIconTextureName() const
+{
+    return m_icontexname;
+}
+
 /* the ammo's name among the legal ammo's (SOCOM 1's) */
 bool CZWeapon::IsLegalAmmo(CZAmmo *ammo)
 {
@@ -371,6 +401,34 @@ bool CZWeapon::IsLegalAmmo(CZAmmo *ammo)
     return false;
 }
 
+/* a table of an animation per material (SOCOM 1's; its true is the table's own test) */
+bool CZWeapon::AllocateSpecialMaterialAnimMem()
+{
+    m_specialmaterialanim = (CZAnim **)_malloc(CMaterialExArray::m_materialex_list.size() * sizeof(CZAnim *), 0, 0);
+    return m_specialmaterialanim != 0;
+}
+
+bool CZWeapon::AllocateHitAnimMem()
+{
+    m_hitanim = (CZAnim **)_malloc(CMaterialExArray::m_materialex_list.size() * sizeof(CZAnim *), 0, 0);
+    return m_hitanim != 0;
+}
+
+char *CZWeapon::GetHitAnimName()
+{
+    return m_hitanimname;
+}
+
+char *CZWeapon::GetDefaultSpecialAnimName()
+{
+    return m_defaultspecialanimname;
+}
+
+char *CZWeapon::GetSpecialMaterialAnimName()
+{
+    return m_specialmaterialanimname;
+}
+
 bool CZWeapon::SetHitAnim(int material, CZAnim *anim)
 {
     if (material < (int)CMaterialExArray::m_materialex_list.size()) {
@@ -378,6 +436,16 @@ bool CZWeapon::SetHitAnim(int material, CZAnim *anim)
         return true;
     }
     return false;
+}
+
+void CZWeapon::SetFireAnim(CZAnim *anim)
+{
+    m_fireanim = anim;
+}
+
+void CZWeapon::SetDefaultSpecialAnim(CZAnim *anim)
+{
+    m_defaultspecialanim = anim;
 }
 
 bool CZWeapon::SetSpecialMaterialAnim(int material, CZAnim *anim)
@@ -396,11 +464,26 @@ CZAnim *CZWeapon::GetSpecialMaterialAnim(int material)
     return 0;
 }
 
+char *CZWeapon::GetFireAnimName()
+{
+    return m_fireanimname;
+}
+
 CZAnim *CZWeapon::GetHitAnim(int material)
 {
     if (material < (int)CMaterialExArray::m_materialex_list.size())
         return m_hitanim[material];
     return 0;
+}
+
+void CZWeapon::SetZoomedFireAnim(CZAnim *anim)
+{
+    m_zoomedfireanim = anim;
+}
+
+void CZWeapon::SetZoomedFireAnimTT(CZAnim *anim)
+{
+    m_zoomedfireanimTT = anim;
 }
 
 void CZWeapon::SetTimer(int i, float t)
@@ -423,6 +506,11 @@ float CZWeapon::GetTimer(int i)
     } else
         t = m_timer[i];
     return t;
+}
+
+char *CZWeapon::GetDecalSetName()
+{
+    return m_decalsetname;
 }
 
 /* the legal ammo list's first (SOCOM 1's; GetDefaultAmmoId inlines it) */
