@@ -362,6 +362,13 @@ CValveSaveManager theValveSaveManager;      // 0x43FF00
  * 0x2B1600 called, the last the pointer vector's reserve forwarder with the pod's reserve inlined --
  * byte-exact under the unit's closing `#pragma inline_max_auto_size(17)` with Open's reserve of a
  * pointer vector generating the pod's first (the MSL headers round 16, the states round 24).
+ * OPEN, reserve<SObjectiveCam_Anchor> 0x2B00E0 (0x178 against 0x180; Open's m_objanchor_vec.reserve(16)
+ * brings it): the element's copy is the target's (lw/sw, SObjectiveCam_Anchor's empty constructor), but
+ * the temporary's teardown calls ~__vector_deleter out of line where the target inlines it (`sw zero`,
+ * the free) -- the deleter's clear and destructor must be generated first, as CMission::Close 0x2AB3F0
+ * does through FreeVector(m_objanchor_vec) (its copies 0x2ABA00-0x2ABAB0, ~__vector_deleter 0x2B1220
+ * and the clear 0x2AFBB0 follow it): it waits on Close, whose Resize(0) of the extra string tables has
+ * func_002AF410's two empty arms.
  * OPEN, insert<CUIVariable> 0x2B1BD0 (0x510, 46 instructions, registers only): the copy loops'
  * end pointer takes s6 where the target's takes s0 (and the cursors s1/s6 against s0/s1) -- the
  * class insert's end register, as the cue vector's 0x1EED40 (include/vector's, the MSL lane's) */
