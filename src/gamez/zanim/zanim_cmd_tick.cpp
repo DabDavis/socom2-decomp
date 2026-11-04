@@ -1276,7 +1276,8 @@ extern "C" bool func_00264610(_zanim_cmd_hdr *hdr, float *dT)
 
 /* TRUE_COLOR_SCALE: set the four true-colour scales (one per channel bit 0-3) -- their rgb
  * (flag 0x10) and/or their a (0x20) -- and/or drive them by an expression, seeded from the
- * first chosen channel, over a time (the table and the expression's function not named yet).
+ * first chosen channel, over a time (the four are zdb::CVisual::m_lensColor, the zoom's lens
+ * colours; the expression's function is not named yet).
  * OPEN, 8 bytes short, in the channel search alone: the target enters it through a jump to
  * the `i < 4` test and reloads `channels` each pass, where this hoists the load, converts the
  * bit to a bool (sltu/xori) and runs the first pass straight. Tried: while, no-break with
@@ -1290,8 +1291,6 @@ struct zanim_cmd_truecolor {
     short expr_off;                 /* from the record */
     float time;
 };
-
-extern PNT4D data_004B4D40[4];
 
 static inline void SetRGB(PNT4D *c, float r, float g, float b)
 {
@@ -1310,9 +1309,9 @@ extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
         for (int i = 0; i < 4; i++) {
             if (cmd->channels & (1 << i)) {
                 if (cmd->channels & 0x10)
-                    SetRGB(&data_004B4D40[i], cmd->r, cmd->g, cmd->b);
+                    SetRGB(&zdb::CVisual::m_lensColor[i], cmd->r, cmd->g, cmd->b);
                 if (cmd->channels & 0x20)
-                    data_004B4D40[i].w = cmd->a;
+                    zdb::CVisual::m_lensColor[i].w = cmd->a;
             }
         }
     }
@@ -1333,14 +1332,14 @@ extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
         PNT4D c = { 0.0f, 0.0f, 0.0f, 0.0f };
 
         if (first >= 0) {
-            PNT4D from = data_004B4D40[first];
+            PNT4D from = zdb::CVisual::m_lensColor[first];
 
             c = from;
         }
         func_0025C6E0(&c, expr, cmd->expr_len, first, t);
         for (int i = 0; i < 4; i++)
             if (cmd->channels & (1 << i))
-                data_004B4D40[i] = c;
+                (PNT4D &)zdb::CVisual::m_lensColor[i] = c;
     }
     if (!(cmd->time <= 0.0f)) {
         float step = *dT;
@@ -1357,29 +1356,27 @@ extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
     return done;
 }
 
-/* SCALE_COLOR: scale a colour's channels -- all of them (flag 0x10), or each one whose bit
- * (0-3) is set -- by a factor; the colour object's two functions are not named yet */
+/* SCALE_COLOR: the light maps' tint set toward a colour over a time -- all four channels (flag
+ * 0x10), or each one whose bit (0-3) is set (zdb::CVisual's SetLightTints / SetLightTint, the
+ * colour by value: MW passes its address in place) */
 struct zanim_cmd_scalecolor {
     _zanim_cmd_hdr hdr;
     unsigned char channels;
     unsigned char pad[3];
-    unsigned char color[0x10];
+    PNT4D color;
     float scale;
 };
-
-extern "C" void func_003B78D0(void *color, float scale);
-extern "C" void func_003B76B0(void *color, int channel, float scale);
 
 extern "C" bool func_00264580(_zanim_cmd_hdr *hdr, float *dT)
 {
     zanim_cmd_scalecolor *cmd = (zanim_cmd_scalecolor *)hdr;
 
     if (cmd->channels & 0x10)
-        func_003B78D0(cmd->color, cmd->scale);
+        zdb::CVisual::SetLightTints(cmd->color, cmd->scale);
     else {
         for (int i = 0; i < 4; i++)
             if (cmd->channels & (1 << i))
-                func_003B76B0(cmd->color, i, cmd->scale);
+                zdb::CVisual::SetLightTint(cmd->color, i, cmd->scale);
     }
     return true;
 }

@@ -773,7 +773,7 @@ bool UISetMission(C2DAnimCmdHdr *hdr, float *dT)
     if (var && var->type == 3)
         name = var->String();
     strcpy(database, name);
-    func_002ACC10(&theMission, name);
+    theMission.PreOpen(name);
     if (background)
         func_001F3BD0(&theGame.m_menuState, 0);
     return true;
@@ -1967,7 +1967,7 @@ bool UIAdvanceMPMission(C2DAnimCmdHdr *hdr, float *dT)
         }
         CZGameState::UpdateLocalGame(game);
     }
-    func_002ACC10(&theMission, database);
+    theMission.PreOpen(database);
     return true;
 }
 

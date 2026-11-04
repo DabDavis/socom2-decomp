@@ -19,9 +19,10 @@
 /* the unit's matrix stack (0x44F0F0): __sinit_grid_clutter.cpp 0x401CF0 builds it after <iostream>'s
  * pair -- CStack(false), the owner byte cleared and nothing pushed, as grid_di.cpp's -- and registers
  * ~CStack 0x2D4FE0. CClutter::Render, CClutterAnimManager() and ClutterTick read it (not written yet).
- * SOCOM 1 calls it `stack`, as grid_di.cpp's; the map's names are unique and grid_di.cpp's holds that
- * one (scdiff qualifies a static by its unit for GNU objects only), so the name here is ours */
-static CStack clutterStack(false);
+ * SOCOM 1 calls it `stack`, as grid_di.cpp's: MW names a file static by its own name, and scdiff
+ * qualifies an MW object's statics as NAME@UNIT (the GCC lane's round 25a), so the map's data row
+ * is stack@grid_clutter, grid_di.cpp's the bare `stack` */
+static CStack stack(false);
 
 extern CSched_Manager zTaskScheduler;
 
