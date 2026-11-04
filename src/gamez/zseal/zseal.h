@@ -66,6 +66,10 @@ enum SEAL_HANDSIGNAL {
     HANDSIGNAL_DEPLOY = 4, HANDSIGNAL_POINT = 5, HANDSIGNAL_COUNT = 6, HANDSIGNAL_LAST = 255
 };
 
+/* where a hit lands (SOCOM 1's DAMAGE_LOCATION, a byte: 0 the head -- ReportWeaponHitDamage counts
+ * a head shot so; the other names not needed) */
+enum DAMAGE_LOCATION { DAMAGE_LOCATION_0 = 0, DAMAGE_LOCATION_LAST = 255 };
+
 /* a kind of collision polygon (SOCOM 1's CDIType; no DWARF, only the size matters here) */
 enum CDIType { CDI_TYPE_0 = 0, CDI_TYPE_LAST = 255 };
 
@@ -1449,6 +1453,10 @@ public:
      * item dropped (SOCOM 1's; OVL2 0x59DDB0) */
     static class CPickup *CreateMPBombPickup(const CPnt3D *pos, bool b);
     void DropAllItems();
+    /* online, a hit on the SEAL reported to the network and the stats (SOCOM 1's, a projectile
+     * first; OVL2 0x5A1FF0) */
+    void ReportWeaponHitDamage(CZProjectile *proj, int shooter_id, int victim_id, DAMAGE_LOCATION where,
+                               float damage, float pierce, bool hit, unsigned char weapon);
     /* the regions entered: each new one's OnEnterRegion anim run (SOCOM 1's; OVL2 0x5A2F90) */
     void CheckForRegionTrigger(unsigned int regions);
     /* the ground under a point found, the SEAL's own node off for it (SOCOM 1's; OVL2 0x5B4F30,
