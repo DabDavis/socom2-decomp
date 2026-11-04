@@ -310,7 +310,13 @@ static inline bool NoNode(CNode *node)
  * test. GetDamage's (2) is the same miss. Tried: GetId() inline, a local (single-assigned, with a dead
  * default, assigned in the condition, through a comma `(id = .., false)`), a goto and a flag form
  * (the local's own statement after the class tests), an inline predicate taking the id (by value;
- * with the rest node), signed-char views of the field */
+ * with the rest node), signed-char views of the field. Round 23: `(unsigned char)(signed char &)w->m_ID`
+ * (the HUD's round-39 reinterpreting reference -- MW folds the pair back to one lbu), `(EQUIP_ITEM)
+ * w->GetId()` (the kit's round-32 self-cast) and the field read straight all stay 0x438; the bounce/
+ * impact choice as a ternary into `r` (the target narrows the result once after the join, here each
+ * arm narrows) is 0x4B0; inline bool predicates taking the id by value -- EQUIP_ITEM, int or unsigned
+ * char, one predicate or a launcher/rest pair, `return` or if/return-true -- materialise (0x450-0x480).
+ * SOCOM 1's (0x3193F8) is `lbu` with 172/173 unfolded too */
 bool CZProjectile::HandleIntersections(float dT)
 {
     if (!m_di || m_state == PROJECTILE_AT_REST)

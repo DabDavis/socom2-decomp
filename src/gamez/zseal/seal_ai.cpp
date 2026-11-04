@@ -1337,11 +1337,9 @@ void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
  * state on top, its flags set and marked running; 5 the suspended state popped; then the stack's bits
  * brought up to date (OVL2 0x562030: SOCOM 1's AnimSignal, whose 0x404 bytes walked the stack forward
  * for its signals 1 and 2).
- * OPEN, 0x174 against 0x180, on two things outside the walk's spelling: (1) slot 0xC's types -- the
- * target hands the signal on as it came (`move s0,a2`, the andi only the switch's), which a parameter
- * of the signal's own type gives; ai_states.h's Virtual0C(int, int, CSealCtrlAi *) converts it (the
- * narrowed copy kept instead). Measured through a stand-in slot (CZAnim *, AI_SIGNAL, CSealCtrlAi *):
- * 0x17C, the rest left being (2) this unit's inline_depth(8) -- the MSL lane's probe at 5 calls the end
+ * OPEN, 0x17C against 0x180 (0x174 before the kit's round 35 retyped slot 0xC to the caller's (CZAnim *,
+ * AI_SIGNAL, CSealCtrlAi *): the target hands the signal on as it came, `move s0,a2`, the andi only the
+ * switch's), on (2) this unit's inline_depth(8) -- the MSL lane's probe at 5 calls the end
  * pair's second() (0x5621B0) as the target does at each rbegin()/rend(); at 8 MW inlines it, holding
  * the sentinel's next in a fourth saved register (the frame 96 bytes against 80). The probe's own
  * last difference (the end pair's address kept, not rebuilt per call) sits behind that */
@@ -1355,7 +1353,7 @@ void CSealCtrlAi::AnimSignal(CZAnim *anim, AI_SIGNAL sig)
         CAiStateStack::reverse_iterator i;
 
         for (i = m_stateStack.rbegin(); i != m_stateStack.rend(); ++i)
-            (*i)->Virtual0C((int)anim, sig, this);
+            (*i)->Virtual0C(anim, sig, this);
         break;
     }
     case 4:

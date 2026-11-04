@@ -382,7 +382,11 @@ static inline bool ClosingIn(CZSealBody *seal)
  * on the AI or on the SEAL, `return a && b`, `if (...) return true; return false;`, nested ifs, the
  * inline's locals in both orders, the result preset or assigned in an else; round 30 (the shape that
  * closed GetFiremodeGraphic), the `&&`s as ternary conditions, in the caller, the inline or both:
- * 0x164-0x190 */
+ * 0x164-0x190. Round 35: the navy SEAL bit through zseal.h's IsNavySeal (`? true : false`) gives the
+ * target's size, 0x180, the bit materialised (sltu) before its branch as the target's; 31
+ * instructions left, the registers of (2) and the bit-13 test's materialisation (through a `? true :
+ * false` accessor too it overshoots to 0x188; a plain inline returning the bit or its negation, 0x178
+ * or 0x188) */
 bool CAiSFollow::CheckMaster(CSealCtrlAi *ai)
 {
     bool alive;
@@ -398,7 +402,7 @@ bool CAiSFollow::CheckMaster(CSealCtrlAi *ai)
         if (alive) {
             bool close = false;
 
-            if (ai->m_navyseal && master->IsAi())
+            if (ai->IsNavySeal() && master->IsAi())
                 close = ClosingIn(m_master);
             SetFlag(8, close);
         } else

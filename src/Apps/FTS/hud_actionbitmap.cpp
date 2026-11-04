@@ -95,8 +95,15 @@ public:
     CSealCtrl *m_ctrl;   // 0xc0
 };
 
+
 /* the action the HUD shows marked as the one selected (SOCOM 1's CZSealBody::ActionSelectionMask
- * by its call here, SOCOM II's taking the action alone: OVL2 0x544C80 sets the mask word at 0xED4) */
+ * by its call here, SOCOM II's taking the action alone: OVL2 0x544C80 sets the mask word at 0xED4).
+ * Still the placeholder (round 42): the row's ActionSelectionMask__10CZSealBodyFUc, called as the
+ * member, loads the reinterpreted byte with `lbu` where the target's `lb` (1 off) -- MW folds the
+ * conversion to an unsigned char parameter into the load in every spelling (an int, a short, a
+ * local, a pointer cast); an int, unsigned int or signed char parameter gives the target's code,
+ * and the callee's `andi 0xff` rules out signed char (it sign-extends, dsll32/dsra32): an int
+ * parameter narrowed inside, `1 << (unsigned char)id` -- the row's to retype (the SEALs') */
 extern "C" void func_00544C80(CZSealBody *seal, signed char action);
 
 /* the icons' machine (SOCOM 1's CActionTxtrMachine: a vector of the icons shown, the prompt's string

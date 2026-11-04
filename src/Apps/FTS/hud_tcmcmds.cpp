@@ -984,21 +984,20 @@ int tcmUpdateVote(CZSealBody *player, int arg)
     return r;
 }
 
-/* OPEN, 5 instructions (registers only): with both ids read through GetId (expanded ahead of
- * the call, the target's order) the target's remove is s0 and its id s1, here swapped. Tried:
- * the second id alone through GetId (4 bytes short), an unsigned char or an int local; round 36:
- * the id an int local with a dead first definition (`int id = 0;` at the top, after the persona or
- * after cur, then assigned before the call) and remove assigned late -- all 5 off, so numbering
- * by first definition does not move it (`bool remove = !f(persona);` folded: 14) */
+/* the vote cast on the target's persona: its current retain flag turned over, sent with the
+ * player's and the target's ids. Both ids read through GetId (expanded ahead of the call, the
+ * target's order); `!cur` written at both uses (round 42): a common subexpression is a temporary,
+ * numbered after GetId's variables, so it takes s0 and the id s1 as the target has them (a named
+ * `remove`, numbered before the inline's variables, swaps the two whatever its first definition;
+ * `bool remove = !f(persona);` folds: 14 off) */
 int tcmVote(CZSealBody *player, int arg)
 {
     if (s_tcmTarget) {
         CZNetPersona *persona = s_tcmTarget->m_persona;
         bool cur = func_002C3980(persona);
-        bool remove = !cur;
 
-        func_002C39D0(persona, remove);
-        SendVoteMessage(ftsGetPlayer()->GetId(), s_tcmTarget->GetId(), remove);
+        func_002C39D0(persona, !cur);
+        SendVoteMessage(ftsGetPlayer()->GetId(), s_tcmTarget->GetId(), !cur);
     }
     return 0;
 }

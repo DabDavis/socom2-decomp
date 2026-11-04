@@ -104,12 +104,12 @@ void ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(CSealCtrlAi 
 void func_005628F0(CSealCtrlAi *ai);
 void func_005B3890(CEntity *seal, int x);
 extern unsigned char data_0066AFE0;
-/* an order given (OVL2 0x571010) with a target this unit picks (0x609530); the stance set after a
+/* an order given (OVL2 0x571010) with an anim this unit picks (0x609530); the stance set after a
  * delay (0x563100); a CSealCtrl call taking a signed byte (0x600D40, this lane's range, unwritten)
  * -- the SEAL lane's rows but 0x609530/0x600D40 */
 enum ORDER_KIND { ORDER_KIND_0 = 0, ORDER_KIND_LAST = 255 };
-void func_00571010(CSealCtrlAi *ai, void *target, int a, ORDER_KIND kind);
-void *func_00609530(int x);
+void func_00571010(CSealCtrlAi *ai, AnimType anim, int a, ORDER_KIND kind);
+AnimType func_00609530(unsigned char kind);
 void SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf(CSealCtrlAi *ai, signed char stance, float delay);
 void ClearLook__9CSealCtrlF7AI_LOOK(CSealCtrlAi *ai, int x);
 /* (OVL2 0x567840, 0x570D60: the SEAL lane's rows -- a stun's controller calls, the second
@@ -556,6 +556,76 @@ inline float Random(float min, float range)
     r.m_min = min;
     r.m_range = range;
     return r;
+}
+
+/* the anim types the response anims are drawn from (OVL1 data: AnimTypes statics 8 bytes apart,
+ * unnamed in the map) */
+extern AnimType data_003DF010, data_003DF018, data_003DF020, data_003DF028, data_003DF030;
+extern AnimType data_003DF048, data_003DF050, data_003DF058, data_003DF060, data_003DF068;
+extern AnimType data_003DEFB0;
+extern AnimType data_003DEFC8, data_003DEFB8, data_003DEFD8, data_003DF008, data_003DF000;
+
+/* a list of anim types to draw from (the name ours) */
+struct CAiAnimList {
+    int m_count;   // 0x0
+    AnimType m_anims[8];   // 0x4
+};
+
+/* an index in [0, max], drawn (inline: zero without a draw for none) */
+static inline int RandIndex(int max)
+{
+    return max == 0 ? 0 : rand() % (max + 1);
+}
+
+/* one of a list's anim types drawn, -1 for none (inline) */
+static inline AnimType PickAnim(const CAiAnimList *l)
+{
+    const AnimType *anims = l->m_anims;
+    int count = l->m_count;
+
+    if (!anims || count <= 0)
+        return animTypeUndefined;
+    return anims[RandIndex(count - 1)];
+}
+
+/* a response anim of a kind drawn from its list, the four lists filled on the first call (five,
+ * five, one and five types; OVL2 0x609530, the shot-at state's, the event state's and the
+ * callouts' orders take it -- the names ours).
+ * OPEN, 22 instructions, the draw's early return only (the fill matches): the target loads the
+ * count before the list's null test and branches both failed tests straight to the epilogue, the
+ * -1 in the first test's delay slot; through a list pointer (here) MW keeps the list in s1 and the
+ * last index in s0 as the target does, but lays the -1 out as a block of its own ahead of the draw
+ * (`||`, `&&`, two ifs, a result local, ternaries); by-value (list, count) parameters load the
+ * count first but fold `(count - 1) + 1` back into the count (the target divides by last + 1) */
+AnimType func_00609530(unsigned char kind)
+{
+    static bool first = true;
+    static CAiAnimList lists[4];
+
+    if (first) {
+        first = false;
+        lists[0].m_count = 5;
+        lists[0].m_anims[0] = data_003DF010;
+        lists[0].m_anims[1] = data_003DF018;
+        lists[0].m_anims[2] = data_003DF020;
+        lists[0].m_anims[3] = data_003DF028;
+        lists[0].m_anims[4] = data_003DF030;
+        lists[1].m_count = 5;
+        lists[1].m_anims[0] = data_003DF048;
+        lists[1].m_anims[1] = data_003DF050;
+        lists[1].m_anims[2] = data_003DF058;
+        lists[1].m_anims[3] = data_003DF060;
+        lists[1].m_anims[4] = data_003DF068;
+        lists[2].m_count = 1;
+        lists[2].m_anims[0] = data_003DEFB0;
+        lists[3].m_count = 5;
+        lists[3].m_anims[0] = data_003DEFC8;
+        lists[3].m_anims[1] = data_003DEFB8;
+        lists[3].m_anims[2] = data_003DEFD8;
+        lists[3].m_anims[3] = data_003DF008;
+        lists[3].m_anims[4] = data_003DF000;
+    }
+    return PickAnim(&lists[kind]);
 }
 
 /* shot at: the stance noted and a short random wait on entry, an order (kind 11) in the AI's

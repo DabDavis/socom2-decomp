@@ -208,7 +208,32 @@ public:
      * the same places of its InitializeWeapons; the zoomed thermal fire animation's setter is new in
      * SOCOM II, the name ours -- InitializeWeapons is every one's only caller) */
     char *GetDecalSetName();
+    /* the decal set's name kept (SOCOM 1's; ZWepReader::ReadWeapon calls it) */
+    void SetDecalSetName(const char *name);
+    /* SOCOM 1's setters ZWepReader::ReadWeapon calls (zwep_weapon.cpp 0x3D24C0-0x3D2BA0; the gravity's
+     * SOCOM II's, the name ours) */
+    void SetSpecialMaterialAnimName(const char * name);
+    void SetDefaultSpecialAnimName(const char * name);
+    void SetFireAnimName(const char * name);
+    void SetHitAnimName(const char * name);
+    void SetIconTextureName(const char * name);
+    void SetModelName(const char * name);
+    void SetAssociatedGearName(const char * name);
+    void SetGravity(float v);
+    void SetMuzzleVelocity(float v);
+    void SetImpactRadius(float v);
+    void SetEffectiveRange(float v);
+    void SetMaxRange(float v);
+    void SetEncumbrance(ENCUMBRANCE v);
+    void SetSoundRadius(float v);
+    void SetNumMags(int v);
+    void SetAmmoCapacity(int v);
+    void SetDescription(const char * name);
+    void SetName(const char * name);
     char *GetIconTextureName() const;
+    /* the model's name (SOCOM 1's, 0x3D2750: the pickups and the fire command pass it to
+     * CWorld::GetModel) */
+    char *GetModelName() const;
     bool AllocateHitAnimMem();
     bool AllocateSpecialMaterialAnimMem();
     char *GetFireAnimName();
@@ -359,8 +384,8 @@ public:
     float m_maxrange;   // 0x3c
     float m_effectiverange;   // 0x40
     float m_muzzlevel;   // 0x44
-    float m_impactradius;   // 0x48 (-1 in SOCOM II's constructor)
-    float m_socom2_4c;   // 0x4c (SOCOM II's)
+    float m_gravity;   // 0x48 (SOCOM II's: ReadWeapon's Gravity_Acceleration, -1 in the constructor)
+    float m_impactradius;   // 0x4c (SOCOM 1: 0x44; ReadWeapon's ImpactRadius)
     float m_firewait;   // 0x50
     float m_reloadtime;   // 0x54
     unsigned char m_reloadAfterShot;   // 0x58
@@ -491,6 +516,40 @@ public:
     void SetWiggleReport(float r);
     float GetWiggleReport();
     void SetTarget_DilateUponMovement(float d);
+    /* SOCOM 1's accessors and SOCOM II's three (zwep_ftsweapon.cpp, 0x3C5F80-0x3C61A0) */
+    float GetFireRifle_KickReturnRate() const;
+    float GetFireRifle_KickRate() const;
+    void SetFireRifle_KickRandomDist(float v);
+    void SetFireRifle_KickBaseDist(float v);
+    void SetFireRifle_KickReturnRate(float v);
+    void SetFireRifle_KickRate(float v);
+    float GetSniper_DecayRate() const;
+    void SetSniper_DecayRate(float v);
+    float GetSniper_DistLimit_PosY() const;
+    float GetSniper_DistLimit_PosX() const;
+    void SetSniper_DistLimit_PosY(float v);
+    void SetSniper_DistLimit_PosX(float v);
+    float GetSniper_DistPPFrame_PosY() const;
+    float GetSniper_DistPPFrame_PosX() const;
+    void SetSniper_DistPPFrame_PosY(float v);
+    void SetSniper_DistPPFrame_PosX(float v);
+    float GetTarget_Max() const;
+    float GetTarget_Min() const;
+    float GetTarget_Constrict() const;
+    float GetTarget_DilateUponMovementMult() const;
+    float GetTarget_DilateUponMovement() const;
+    float GetTarget_DilateUponFire() const;
+    void SetTarget_Max(float v);
+    void SetTarget_Min(float v);
+    void SetTarget_Constrict(float v);
+    void SetTarget_DilateUponMovementMult(float v);
+    void SetTarget_DilateUponFire(float v);
+    float GetReticuleKnock_Max() const;
+    float GetReticuleKnock_Return() const;
+    float GetReticuleKnock() const;
+    void SetReticuleKnock_Max(float v);
+    void SetReticuleKnock_Return(float v);
+    void SetReticuleKnock(float v);
     /* the rifle kick's random and base distances (SOCOM 1's getters, in its order: 0x3C5F60,
      * 0x3C5F70 -- the kit's fire code reads them) */
     float GetFireRifle_KickRandomDist() const;
@@ -506,7 +565,8 @@ public:
     float m_sniper_decayrate;   // 0x1c
     float m_target_dilateuponfire;   // 0x20
     float m_target_dilateuponmovement;   // 0x24
-    float m_socom2_28;   // 0x28 (SOCOM II's: the constructor sets 1)
+    float m_target_dilateuponmovementmult;   // 0x28 (SOCOM II's: the constructor sets 1; ReadWeapon's
+                                              // TargetDilateUponMovementMult)
     float m_target_dilateuponmovementSqrt;   // 0x2c (SOCOM 1: 0x28)
     float m_target_constrict;   // 0x30 (SOCOM 1's from here, 4 bytes later)
     float m_target_min;   // 0x34
@@ -543,6 +603,15 @@ public:
     virtual void Recoil();
     float GetZoomRange(unsigned int i);
     CTargetMods *TargetMods(int i);
+    /* the rumbles' (SOCOM 1's accessors, zwep_ftsweapon.cpp 0x3C5EB0-0x3C5F40) */
+    float GetRumbleLow_Power() const;
+    float GetRumbleLow_Time() const;
+    unsigned char GetRumbleLow_Enable() const;
+    void SetRumbleLow_Power(float v);
+    void SetRumbleLow_Time(float v);
+    float GetRumbleHigh_Time() const;
+    unsigned char GetRumbleHigh_Enable() const;
+    void SetRumbleHigh_Time(float v);
     /* the damage scaled for FTS (x14; static: CZProjectile::GetDamage calls it with no `this` in
      * a0, and the body never reads one) */
     static float ResolveFTSDamage(float damage);
@@ -969,6 +1038,9 @@ public:
     /* a shooter's charges (of one weapon, when given one) and, unless a weapon is given, his
      * projectiles: each set to explode, reported and taken out (SOCOM 1's took the shooter only) */
     void Clear(int shooter, EQUIP_ITEM item);
+    /* every charge and, in a network game only the player's, every projectile taken out, the
+     * charges' storage given up (SOCOM 1's; 0x3CD150: UnInit and CZWeapon::Close call it) */
+    void Clear();
     bool GetNextIndirectFireDI(zdb::DiIntersect **di, int *handle);
     void ReleaseIndirectFireDI(zdb::DiIntersect **di, int *handle);
     bool GetNextDirectFireDI(zdb::DiIntersect **di, int *handle);
