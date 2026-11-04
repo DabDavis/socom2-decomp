@@ -275,6 +275,17 @@ enum ACTION_TYPE { ACTION_TYPE_BUTTON = 0, ACTION_TYPE_EVENT = 1 };
  * zui_cleanup.cpp's (lines 23-24 there: its first function) */
 class ActionItem {
 public:
+    /* the events a menu runs its actions on (SOCOM 1's ActionItem::EVENT, a byte): the names
+     * ParseButtonAnim 0x365D50 maps to each value, the first 25 of 55 spelled here */
+    enum EVENT {
+        ONSTART, ONEXIT, ONACTIVATE, ONMPEGEND, MP_JOIN_ROOM, MP_PLAYER_NOT_FOUND, MP_SUCCESS,
+        MP_CREATE_CLAN_SUCCESS, MP_CREATE_CLAN_FAILURE, MP_DISBAND_CLAN_SUCCESS,
+        MP_DISBAND_CLAN_FAILURE, MP_MEDIUS_ERROR, MP_MEDIUS_HAS_INVITES, ON_STATE_POP, ON_SKB_APPLY,
+        ON_SKB_APPLY2, ON_SKB_CLOSE, ON_LOAD_COMPLETE, ON_CLIENT_CONNECT, ON_FORCE_NEW_DB,
+        ON_LADDER_REFRESH, ON_TTY_DONE, MP_MEDIUS_JOIN_GAME_FAILURE, MP_MEDIUS_READY_TO_CONNECT,
+        MP_PLAYER_ALREADY_MEMBER
+    };
+
     ActionItem() : Type(ACTION_TYPE_BUTTON), Animation(0), Argument(0), State(KEY_FALLING), PadButton(PAD_MAX_BUTTONS) {}
     /* a copy (SOCOM 1's, inline: the strings cleared and the state set, then the assignment --
      * vector<ActionItem>'s range init 0x3836E0 builds each element so) */

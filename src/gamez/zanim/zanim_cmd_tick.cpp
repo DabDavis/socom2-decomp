@@ -10,6 +10,7 @@
 #include "zanim.h"
 #include "../zcamera/zcamera.h"
 #include "../znode/vis_ripple.h"
+#include "../znode/vis_texfx.h"
 
 /* the GS ALPHA register (sceGsAlpha's layout): (A - B) * C + D, C or D the FIX alpha */
 struct GsAlpha {
@@ -1632,9 +1633,7 @@ struct zanim_cmd_scroll {
     int handle;                     /* 0x40 */
 };
 
-extern char data_004B50D0[];
 extern "C" int func_003134C0(zdb::CNode *node, int a, int b, int c, float d, float e);
-extern "C" void func_003C0340(char *owner, int handle, float a, float b);
 
 extern "C" void func_00260FB0(_zanim_cmd_hdr *hdr)
 {
@@ -1650,7 +1649,7 @@ extern "C" void func_00260FB0(_zanim_cmd_hdr *hdr)
             cmd->pos = CPnt3D::zero;
             ref->TransformToWorld(cmd->pos);
             cmd->handle = func_003134C0(node, 0, 1, -1, 0.0f, 0.0f);
-            func_003C0340(data_004B50D0, cmd->handle, 0.0f, 0.0f);
+            zdb::theTextureFXManager.SetSpeed(cmd->handle, 0.0f, 0.0f);
         }
     }
 }
@@ -1739,9 +1738,6 @@ extern "C" void func_00261300(_zanim_cmd_hdr *hdr)
         node->TransformToWorld(cmd->pos);
     }
 }
-
-/* a texture scrolled by the texture effects (not named yet) */
-extern "C" void func_003C0280(char *fx, int handle, bool a, bool b, float du, float dv);
 
 /* 2D helpers through out-parameters (the names are ours) */
 static inline void Set2D(PNT2D *out, float x, float y)
@@ -1838,7 +1834,7 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
         Sub2D(&delta, &pos, (PNT2D *)&cmd->last);
         Mul2D(&s, (PNT2D *)&cmd->su, &delta);
         if (fabsf(s.x) > 0.001f || fabsf(s.y) > 0.001f)
-            func_003C0280(data_004B50D0, cmd->handle, cmd->a, cmd->b, s.x, s.y);
+            zdb::theTextureFXManager.Scroll(cmd->handle, s.x, s.y, cmd->a, cmd->b);
         cmd->last.x = pos.x;
         cmd->last.y = pos.y;
     } else {
@@ -1856,7 +1852,7 @@ extern "C" bool func_00260B40(_zanim_cmd_hdr *hdr, float *dT)
         PNT2D s;
 
         Scale2D(&s, (PNT2D *)&cmd->su, len);
-        func_003C0280(data_004B50D0, cmd->handle, cmd->a, cmd->b, s.x, s.y);
+        zdb::theTextureFXManager.Scroll(cmd->handle, s.x, s.y, cmd->a, cmd->b);
     }
     if (cmd->timed) {
         float step = *dT;

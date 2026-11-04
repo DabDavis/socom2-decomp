@@ -1888,6 +1888,52 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 19** (seal_env.cpp's death and flinch readers, the footfall pair, the stun pair):
+  - SOCOM II's MSL runs a 2-byte vector (vector<AnimType>) on `__vector_pod<unsigned short>`: elements read back with `lh`,
+    and its reserve (0x5B6BD0, named by behaviour) copies with memcpy where the 4-byte pod loops -- include/vector's
+    generic reserve does not model it yet; the 2-byte pod's insert/reserve sit mid-range (0x5B68E0, 0x5B6BD0): a unit
+    boundary near 0x5B6BE0 is a candidate;
+  - saved registers follow declaration order, not first assignment (0x5A3280); float locals initialised in order take
+    $f4/$f3/$f2 (the later-declared the lower) and load before the tests, written straight into the condition each loads
+    lazily (HandleFootfallSound); `case 2: case 1:` sharing a body closes the compare chain with a `b` where `||` inverts
+    the last test; an inlined bool setter leaves its constant unfolded (`andi zero,1` before the bitfield store); MW puts a
+    float literal first in `c.eq.s` whichever way the comparison is written;
+  - the three readers (one macro body) are pinned with `auto_inline off` -- their callers would inline them;
+    InitDeathAndFlinchAnimations, HandleFootfallSound and TickStun by SOCOM 1's order; 0x5A5250 is SOCOM 1's
+    HandleStunFromHit by position (SOCOM II added a `const float *` scale: the placeholder name kept); AnimSet's six
+    `[6][3]` death tables in data.txt;
+  - open: 0x5AA110 (0x128 vs 0x130: the target's `c.eq.s field,zero`, the offset pick's block layout, the network test's
+    own `return 0` block); not reached: the Is() farm's SEAL functions, round 18's leftovers. Leads: 0x5A0950 and 0x5A0270
+    read the death tables, HandleSealStep 0x5A3570 calls the footprint/footfall pair.
+- **Tells from the UI, round 15** (PreGetSprPacket, RunEventAnim, HookupLib, StrToSkbKey, the key map's tree pieces):
+  - a class local returned by name is optimised into registers and copied at the return; to keep it in a stack slot return
+    it through a reference local (`T &r = k; return r;`), to build it in the hidden result use a constructor; a by-value
+    inline helper and make_pair / value_type(pair) still let MW optimise a pair temporary into registers -- a temporary
+    the target keeps on the stack points to something else (MSL's pair with its fields in a base class? untested);
+  - a walk whose end() reads through a register holding the vector's address means a reference local on the vector
+    (HookupLib); a member reached through a reference local to an array element gets a register of its own, indexed in
+    place it uses the loop's strength-reduced pointer (RunEventAnim: the 30 commands at 0x6F8, their count at 0x8D8);
+  - PreGetSprPacket is SOCOM II's three-buffer relocator (small textures to buffer 2, big ones alternating 0 and 1);
+    StrToSkbKey is SOCOM 1's with Switch<n> and jamo keys added; insert_one 0x38EC10 and insert_node_at 0x38EF50 match
+    once AddKeyProps creates them; ActionItem gets SOCOM 1's nested EVENT enum (0-24 named from ParseButtonAnim's
+    strings);
+  - open: AddKeyProps 0x38B770 (0xFC vs 0x124: the insert's three pair temporaries on the stack in the target),
+    ParseKeyProps 0x38DCB0 (0x220 vs 0x1F0: frame and registers).
+- **Tells from the weapons, round 16** (the item groups, the VU0 decal batch, GetTextureSelectBlock's return, the
+  texture-effect respells):
+  - an enum local read in a switch's case blocks is copied with `lb` and narrowed per compare; the same local compared in
+    an if chain becomes one `lbu`; MW folds none of `> 255`, `>= 256`, `== -1` or `== 0x100` on an unsigned byte enum
+    result;
+  - assigning a node's matrix row through a pointer copies field by field straight into an address-taken local, where
+    CNode::GetPosition() by value stores through a pointer register; a static member function shows at its call site by
+    the missing a0 (the mangled name cannot tell: ResolveFTSDamage is static); a user destructor's body statement lands
+    in the delay slot of the first member's this-test (0x3BEB00);
+  - CVisual::GetTextureSelectBlock returns `_word128 *` (ztex_main.cpp's caller func_003C3D90 can be respelled);
+    vis_texfx.h holds the texture-effect classes (zanim_cmd_tick.cpp calls theTextureFXManager.Scroll/SetSpeed,
+    byte-identical); CZWeapon's PostTick, SetDecalSetName, HasFireMode (SOCOM 1's code) and GetEffectiveRange named;
+  - open: GetDamage(pos, minimum) 0x3C7600 (5: the falloff product in f0 against f1, `dist - eff` not in the span test's
+    delay slot, the id test one lbu where the target copies with lb and narrows with andi), UnpackItemAndAmmoEnums (1:
+    `packed % 256ul` gives dsra32 where the target has dsrl32), 0x3C5C20.
 - **Tells from the world, rdr and sound, round 6** (the sound banks, the subtitle table, FIFO_Signal settled):
   - A CAST ON THE BASE OF AN INLINE ACCESSOR'S FIELD READ keeps that field's address in a saved register across calls,
     even for by-value or volatile reads: include/list's `((node *)node_)->data_` is what holds a walk's element address
@@ -6667,6 +6713,49 @@ func_00614290 over their drafts; 77 of 87), `medius/rt_udp.c` (+1, 0x63E230 clos
 `medius/rt_msg_client.c` (+1, 0x638828: 88 of 93) -- 19 rows new to the map's byte-exact rows (4,812
 bytes; `src/lib/medius` 872 -> 912 of 970), 21 superseding matched drafts; 4 rows named (RSAEncryptBlock,
 RSADecryptBlock, RSAEncrypt, RSADecrypt: `s1:order`). No tool changed.
+
+**Round 18b: the server key is the title's -O1, codec.c and RSA.c whole, LargeInt's C by SOCOM 1's calls.**
+
+- **The server key object is built at -O1, as kmsoftware.c is** (the title's glue, not SCEA's): 0x64F4E0,
+  open since round 15b on "registers only" through eight return shapes, is byte-exact unchanged at
+  `-O1 -G0`. At -O2 the first scheduling pass hoists the return's `v0 = 0` above the block move, so v0 is
+  live through it and the key's address and the move's scratches each move up a register. A register-only
+  open in a glue object: try -O1 before shapes.
+- **RSA.c starts at 0x62B168, and there are two key-pair generators**: SOCOM 1's RSAGenerateKeyPair (its
+  primes two `lintPrime(p, 256)` draws, asserting at RSA.c:164) and a twin 0x62B548 whose primes come from
+  a table (RSA.c:293) -- a new `prime.c` (0x62A3B0, ours): a fixed 256-bit base plus the sum of the first
+  n of 8191 sixteen-bit gaps, n from the Mersenne twister seeded once. Each has its own copy of SOCOM 1's
+  KM_GenerateRSAKeyPair in rt_crypt.c (0x6305C8, named; 0x630600). Their check is `assert(0)` (the
+  expression text "0"), its line a `#line`. lintPrime's thirteen calls are SOCOM 1's in order, which names
+  its callees (`s1:calls`): lintRandomize, MOD, GCD, lintIsbSPRP, LucasTest; LargeInt's C then follows
+  SOCOM 1's bodies -- lintAdd, lintSub and MOD are a memcpy in, the assembly's in-place primitive (MODIP
+  named so), a memcpy out; QRMOD is SOCOM 1's algorithm.
+- **A loop whose exits are `return`s stays unrotated** (round 16b's rule met again): QRMOD's `for (;;)`
+  with `if (...) return;` at its head and in its else keeps the test at the loop's top, as the target
+  (and SOCOM 1's copy) has it; `while (cond)` and `break` rotate it.
+- **2.96 rotates a loop at the last exit within its first 30 insns, not only a leading test**: codec.c's
+  pass-through loop (`while (nIn > 0 || nOutSize > 0)`) has its full-output case -- store the input,
+  `break` -- moved to the loop's end with the test; in the source that case comes first in the body.
+  RSAGenerateKeyPair's inner `for (;;)` shows the same: its first branch (`... d = q; break;`) is laid
+  out last.
+- **Round 14b's guard rule closes a three-word open**: rt_udp's 0x641E30 shared-slot test written positive
+  (`if (gapUdp[n] == 0) {...} else return 17;`) gives the target's slot register and, through the changed
+  join, the port query's plain `bnez` too.
+- **codec.c's record, typed**: two switches on the codec type (one per kind, identical bodies: the stub
+  codecs' entry points at 0x64F580 for 34-36, the object's dummy for 33/63, cross-jumped once); the
+  dummy's create returns its call count as the context; a 480-byte coded and a 2048-byte PCM buffer give
+  the 0xA20; the field at 0x38 is the session's counters, handed to audio.c's tallies. Updates in the
+  orders tools/ccperm.py found.
+
+Hand-written in round 18b: `medius/serverkey.c` (1 of 1, the directive), `medius/rt_udp.c` (+1, 0x641E30: 39
+of 46), `medius/codec.c` (+3: the create and both frame calls; 14 of 14, whole), `medius/rsa.c` (+2:
+RSAGenerateKeyPair, 0x62B548; 6 of 6), `medius/prime.c` (1 of 1, new), `medius/rt_crypt.c` (+2:
+KM_GenerateRSAKeyPair and its twin over their drafts; 30 of 33), `medius/largeint.c` (+4: lintAdd, lintSub,
+MOD, QRMOD; 12 of 14) -- 14 functions byte-exact, 12 rows new to the map's byte-exact rows (8,196 bytes;
+`src/lib/medius` 912 -> 926 of 982), 2 superseding matched drafts; 12 rows named (RSAGenerateKeyPair
+moved to 0x62B168, 0x62B548 back to its placeholder; KM_GenerateRSAKeyPair `s1:order`; lintPrime,
+lintRandomize, MOD, GCD, lintIsbSPRP, LucasTest, QRMOD, MODIP `s1:calls`; lintAdd, lintSub `s1:order`).
+No tool changed.
 
 ## Open, and next
 

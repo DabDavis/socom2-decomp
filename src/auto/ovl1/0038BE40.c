@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc(s32, M2C_UNK, M2C_UNK); /* extern */
 M2C_UNK ShutdownBegin__13CSoftKeyboardFP9CGameMenu(); /* extern */
-M2C_UNK func_00367810(s32, M2C_UNK, M2C_UNK);       /* extern */
 
 void func_0038BE40(s32 arg0, s32 arg1) {
     ShutdownBegin__13CSoftKeyboardFP9CGameMenu();
-    func_00367810(arg1, 0x1D, 0);
+    RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc(arg1, 0x1D, 0);
 }

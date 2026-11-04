@@ -10,11 +10,11 @@
  * OPEN, not written yet: CGameMenu itself (Tick 0x3654C0?, SwitchMenu, LoadFromDesign 0x367950,
  * HandlePad 0x368650, Clear 0x369210, the constructor and destructor -- SOCOM 1's DWARF has the
  * layout, SOCOM II's grew the vtable pointer at 0x910), the design's loaders, MakeButtonActive and
- * its neighbours (0x366B60-0x367430), RunEventAnim 0x367810, HookupLib 0x36A430 (its CGSTexBuffer
- * local's constructor 0x357BC0 and Hookup 0x3571D0 are rows outside the lane), 0x369880 (reads a
- * string member of theGame, +0x8C, for a sound), CDblBufTextureRelocator's PreGetSprPacket
- * 0x365210, and the vector instances closing the unit (0x36AE50 among the clears). Generated
- * drafts stand for the rest. */
+ * its neighbours (0x366B60-0x367430), HookupLib 0x36A430 (its CGSTexBuffer local's constructor
+ * 0x357BC0 and Hookup 0x3571D0 are rows outside the lane), 0x369880 (reads a string member of
+ * theGame, +0x8C, for a sound), and the vector instances closing the unit (0x36AE50 among the
+ * clears). Generated drafts stand for the rest. Round 15 wrote RunEventAnim (0x367810) and
+ * CDblBufTextureRelocator's PreGetSprPacket (0x365210), both byte-exact. */
 
 #include "zui_2d.h"
 
@@ -41,8 +41,63 @@ public:
     static CAssetList m_assets;
 };
 
+/* a texture: its size and palette (SOCOM 1's DWARF, znode.h's CTexture; only what the relocator
+ * reads), and the GS memory textures may use (its statics) */
+class CTexPalette;
+class CTexture {
+public:
+    static unsigned int m_baseAddress;
+    static unsigned int m_endAddress;
+
+    unsigned short m_width;              // 0x0
+    unsigned short m_height;             // 0x2
+    unsigned int m_size;                 // 0x4
+    unsigned int m_gsaddr;               // 0x8
+    unsigned int m_texelBitSize : 8;     // 0xc
+    unsigned int m_flags : 24;           // 0xc
+    unsigned char _10[0x1c - 0x10];
+    CTexPalette *m_palette;              // 0x1c
+};
+
+/* a GS buffer's textures and palettes (SOCOM 1's DWARF: two pointer vectors) */
+class CDynTexList {
+public:
+    void Add(CTexPalette *pal, bool b);
+    void Add(CTexHandle *tex, bool b);
+    /* (ours: both lists emptied) */
+    void Clear()
+    {
+        m_tex_list.clear();
+        m_pal_list.clear();
+    }
+
+    std::vector<CTexHandle *> m_tex_list;    // 0x0
+    std::vector<CTexPalette *> m_pal_list;   // 0xc
+};
+
+/* a GS buffer (SOCOM 1's DWARF, 0x40 bytes; only what the relocator reads) */
+class CGSTexBuffer {
+public:
+    CGSTexBuffer();
+    ~CGSTexBuffer();
+    void Load(bool b);
+    void Hookup(CAssetLib *lib);
+
+    unsigned char _0[0x18];
+    void *m_chainp;                  // 0x18
+    unsigned char _1c[0x28 - 0x1c];
+    CDynTexList m_dyntex_list;       // 0x28
+};   // 0x40 bytes
+
+/* a library (znode.h's CAssetLib: only its texture and palette lists) */
+class CAssetLib {
+public:
+    unsigned char _0[0x14];
+    std::vector<CTexHandle *> m_textures;     // 0x14
+    std::vector<CTexPalette *> m_palettes;    // 0x20
+};
+
 /* the texture manager: its GS buffers first (SOCOM 1's; only what the relocator reads) */
-class CGSTexBuffer;
 class CTexManager {
 public:
     int doAddBuffer(const char *name, float start, float end);
@@ -58,10 +113,23 @@ public:
 class CDblBufTextureRelocator : public zdb::CTextureRelocMgr {
 public:
     void Init();
+    void PreGetSprPacket(zdb::CTexHandle *tex);
 
     int _iGsBufToFill;                    // 0x4
     zdb::CGSTexBuffer *_arrGsBufs[3];     // 0x8
+    zdb::CTexHandle *_arrLastTex[3];      // 0x14: SOCOM II's, each buffer's last texture (the name ours)
+    zdb::CTexPalette *_pSavedPalette;     // 0x20 (SOCOM 1's at 0x18)
 };
+
+/* the DMA channels (zsys_public.h's _zsys_public: only the GIF's) */
+struct sceDmaChan;
+extern "C" int sceDmaSync(sceDmaChan *d, int mode, int timeout);
+struct _zsys_public {
+    sceDmaChan *DmaToVif0;   // 0x0
+    sceDmaChan *DmaToVif1;   // 0x4
+    sceDmaChan *DmaToGif;    // 0x8
+};
+extern _zsys_public zSys;
 
 /* the game menu (SOCOM 1's DWARF: 0x890 bytes, no vtable pointer in its members; SOCOM II's members
  * come first and its vtable pointer follows them at 0x910). Only what is written so far is placed */
@@ -72,13 +140,19 @@ public:
     bool TickMPEG();
     bool RestartBackgroundMPEG(const char *name);
     bool HaltBackgroundMPEG();
+    /* the actions on an event run, each with the argument given or its own (SOCOM 1's; SOCOM II
+     * looks the animation up twice) */
+    bool RunEventAnim(ActionItem::EVENT event, const char *arg);
 
     unsigned char _0[0x278];
     bool m_movierunning;          // 0x278 (SOCOM 1's at 0x244)
     bool m_has_mpeg_background;   // 0x279
     bool m_loopMPEG;              // 0x27a: SOCOM II's (TickMPEG loops the movie when set; the name ours)
     CSaferStr m_MPEGName;         // 0x27c
-    unsigned char _288[0x8e0 - 0x288];
+    unsigned char _288[0x6f8 - 0x288];
+    ActionItem m_commands[30];    // 0x6f8 (SOCOM 1's at 0x68c)
+    int m_numCommands;            // 0x8d8
+    zdb::CTextureRelocMgr *m_Reloc;   // 0x8dc
     CSaferStr m_ReaderName;     // 0x8e0: the menu's rdr
     unsigned char _8ec[0x910 - 0x8ec];
 
@@ -121,8 +195,20 @@ struct _zvid_public {
 };
 extern _zvid_public zVid;
 
-/* CGameMenu::RunEventAnim (0x367810, not written yet: the menu, an event, a name) */
-extern "C" void func_00367810(CGameMenu *menu, int event, const char *name);
+/* the animations (zanim.h's CZAnimMain and CZAnim: only what an action calls; ZAnim OVL1 bss
+ * 0x414BB0) */
+class CZAnim {
+public:
+    CZAnim *ActivateArg(int type, ...);
+    void Activate(CZAnim *parent);
+};
+
+class CZAnimMain {
+public:
+    CZAnim *GetAnim(const char *name, const char *set);
+};
+
+extern CZAnimMain ZAnim;
 
 /* a sound (zsnd.h's CSnd: only its lookup by name) */
 class CSnd {
@@ -212,6 +298,26 @@ STICK_DIR GetStickDir()
     return s_fStickX < -s_fStickY ? STICK_DOWN : STICK_RIGHT;
 }
 
+/* a library's palettes and textures hooked up to the GS through a buffer of its own (SOCOM 1's;
+ * SOCOM II's lists one word further on) */
+void HookupLib(zdb::CAssetLib *lib)
+{
+    zdb::CGSTexBuffer buf;
+    std::vector<zdb::CTexPalette *> &pals = lib->m_palettes;
+
+    for (std::vector<zdb::CTexPalette *>::iterator i = pals.begin(); i != pals.end(); ++i) {
+        buf.m_dyntex_list.Add(*i, true);
+        buf.m_chainp = 0;
+    }
+    std::vector<zdb::CTexHandle *> &texs = lib->m_textures;
+
+    for (std::vector<zdb::CTexHandle *>::iterator i = texs.begin(); i != texs.end(); ++i) {
+        buf.m_dyntex_list.Add(*i, true);
+        buf.m_chainp = 0;
+    }
+    buf.Hookup(0);
+}
+
 /* a texture by name, batched for relocation if it is loaded, or 0 (SOCOM 1's) */
 zdb::CTexHandle *PrepTexture(const char *name, zdb::CTextureRelocMgr *mgr)
 {
@@ -278,9 +384,32 @@ const char *CGameMenu::GetReaderFileName()
     return m_ReaderName.c_str();
 }
 
+/* the actions on an event run (0x367810, SOCOM 1's RunEventAnim): each event action of the event
+ * starts its animation with the argument given, else its own, else bare; whether one ran. SOCOM II
+ * looks the animation up twice, the first result unused (SOCOM 1 asked the menu's set first) */
+bool CGameMenu::RunEventAnim(ActionItem::EVENT event, const char *arg)
+{
+    bool ran = false;
 
-/* the relocator's three GS buffers, each a third of the texture memory's upper part (SOCOM II's;
- * the name ours) */
+    for (int i = 0; i < m_numCommands; i++) {
+        if (m_commands[i].Type == ACTION_TYPE_EVENT && m_commands[i].Event == event) {
+            ZAnim.GetAnim(m_commands[i].Animation, 0);
+            CZAnim *anim = ZAnim.GetAnim(m_commands[i].Animation, 0);
+
+            if (anim) {
+                if (arg)
+                    anim->ActivateArg(1, 8, arg, 0);
+                else if (m_commands[i].Argument)
+                    anim->ActivateArg(1, 8, m_commands[i].Argument, 0);
+                else
+                    anim->Activate(0);
+                ran = true;
+            }
+        }
+    }
+    return ran;
+}
+
 /* the background movie stopped, if one runs (SOCOM 1's HaltBackgroundMPEG, 0x366B10) */
 bool CGameMenu::HaltBackgroundMPEG()
 {
@@ -331,7 +460,7 @@ bool CGameMenu::TickMPEG()
             sceGsSyncPath(0, 0);
             zSysFifoEnable(1);
         } else {
-            func_00367810(this, 3, 0);
+            RunEventAnim(ActionItem::ONMPEGEND, 0);
             if (m_loopMPEG) {
                 m_movierunning = CMPEG::Loop();
             } else {
@@ -348,4 +477,51 @@ void CDblBufTextureRelocator::Init()
     _arrGsBufs[0] = zdb::CTexManager::m_texmanager.m_buffers[zdb::CTexManager::m_texmanager.doAddBuffer("Reloc0", 0.0f, 0.4f)];
     _arrGsBufs[1] = zdb::CTexManager::m_texmanager.m_buffers[zdb::CTexManager::m_texmanager.doAddBuffer("Reloc1", 0.4f, 0.8f)];
     _arrGsBufs[2] = zdb::CTexManager::m_texmanager.m_buffers[zdb::CTexManager::m_texmanager.doAddBuffer("Reloc2", 0.8f, 1.0f)];
+}
+
+/* a texture's GS buffer filled before its sprite packet is built: nothing when the texture is one of
+ * the three buffers' last, else it goes into buffer 2 -- or, too big for the memory less a
+ * megabyte, into the buffer to fill (0 or 1), the fill toggled -- and the buffer is loaded; the GIF is synced
+ * unless a texture was loaded on a palette other than the last (SOCOM 1's had two buffers and no
+ * cache) */
+void CDblBufTextureRelocator::PreGetSprPacket(zdb::CTexHandle *tex)
+{
+    bool found = false;
+    bool samePal = false;
+
+    _pSavedPalette = 0;
+    for (int i = 0; i < 3; i++) {
+        if (tex == _arrLastTex[i]) {
+            found = true;
+            break;
+        }
+    }
+    bool load = tex && !found;
+
+    if (load) {
+        int idx = 2;
+        zdb::CTexture *t = tex->m_texture;
+
+        if ((unsigned int)(t->m_height * t->m_width * t->m_texelBitSize / 8) >
+            (zdb::CTexture::m_endAddress - zdb::CTexture::m_baseAddress) * 256 - 0x100000) {
+            idx = _iGsBufToFill;
+            _iGsBufToFill = !idx;
+        }
+        zdb::CGSTexBuffer *buf = _arrGsBufs[idx];
+
+        buf->m_dyntex_list.Add(tex, true);
+        buf->m_chainp = 0;
+        zdb::CTexPalette *pal = tex->m_texture->m_palette;
+
+        if (pal && pal == _pSavedPalette)
+            samePal = true;
+        _pSavedPalette = pal;
+        _arrGsBufs[idx]->Load(true);
+        _arrLastTex[idx] = tex;
+        buf = _arrGsBufs[idx];
+        buf->m_dyntex_list.Clear();
+        buf->m_chainp = 0;
+    }
+    if (!load || samePal)
+        sceDmaSync(zSys.DmaToGif, 0, 0);
 }
