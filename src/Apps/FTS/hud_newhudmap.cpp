@@ -3,20 +3,31 @@
  * (C2D's); after it SOCOM II reordered them -- the circle clipper, the centre and the full-screen
  * flag right after the matrix, where SOCOM 1 kept its two background bitmaps -- then the objective
  * list and SOCOM 1's last three words. Defined in reverse of their image order (-inline deferred).
- * Written: the constructor, the explosives' items, CalcNewMatrix, UninitMap, RemoveItem and the
- * small ones; FrameObjective open. The rest by SOCOM 1's order and calls (unwritten, unnamed):
+ * Written: the constructor, the explosives' items, CalcNewMatrix, UninitMap, RemoveItem, Draw and
+ * the small ones; FrameObjective open. The initialiser (__sinit_hud_newhudmap.cpp 0x3FDE80) is
+ * code-exact once every static is defined (round 30: the legend's pictures and flag, the scroll
+ * bitmaps, the three computed floats); its four __arraydtor$N references stay unresolved (scdiff
+ * compares a local function by its bytes, relocation fields included). The rest by SOCOM 1's
+ * order and calls (unwritten, unnamed):
  * 0x209350 TickFullScreenAnims (it calls GetScrollPermissions), 0x209AE0 HudTick (CHUD::Tick's
  * call), 0x209EE0 TickFullScreenMap (HudTick's; SOCOM 1's TickCompassMap inlined into HudTick),
- * 0x20A120/0x20A330 (TickFullScreenMap's two calls), 0x20A780 SwitchMapToFullScreen (HudTick's; it
- * calls 0x20BE00), 0x20AAC0 GetScrollPermissions, 0x20BE00 SetupNorthIndicator(CZSealBody *) (the
- * north lines twice each), 0x20C080 the legend's builder (InitMap's call; the nine labels and
+ * 0x20A120 and 0x20A330 (TickFullScreenMap's two calls; 0x20A330 is the zoom step, through the far
+ * zoom then the near: its m2c draft matches), 0x20A780 SwitchMapToFullScreen (HudTick's; it calls
+ * 0x20BE00 and ftsGetTacMapZoom, as SOCOM 1's calls the zoom), 0x20AAC0 GetScrollPermissions,
+ * 0x20BE00 SetupNorthIndicator(CZSealBody *) (the north lines twice each), 0x20C080 the
+ * legend's builder (InitMap's call; the nine labels and
  * bitmaps through MapCompass's anchor images and the string table). */
 
 #include "hud_newhudmap.h"
 #include "hud_claymoremapitem.h"
 #include "hud_bombmapitem.h"
+#include "hud_playermapitem.h"
+#include "../../gamez/zvid/zvid.h"
 
 #include <vector>
+
+/* the video's scissor (zvid_init.cpp's) */
+void zVid_Scissor(int x0, int y0, int x1, int y1);
 
 namespace zdb {
 class CNode;
@@ -70,8 +81,11 @@ public:
     unsigned int m_unused : 28;
 };
 
-/* the tactical map's zoom (SOCOM 1's ftsGetTacMapZoom, 0x2AF870 here: a float global returned) */
-extern "C" float func_002AF870();
+/* the tactical map's far zoom (fts_mission.cpp's ftsGetTacMapZoomFar, 0x2AF870: SOCOM 1's, the
+ * second of the three getters -- the game states' round 26 settled it by SOCOM 1's order, its
+ * globals' order, PreOpen's "TacMapZoom" items and the callers; the zoom step 0x20A330 calls it,
+ * then ftsGetTacMapZoomNear 0x2AF860, and SwitchMapToFullScreen 0x20A780 ftsGetTacMapZoom 0x2AF880) */
+float ftsGetTacMapZoomFar();
 /* an empty function of hud_linemap.cpp's (0x210120; SOCOM II's, unnamed) */
 extern "C" void func_00210120();
 
@@ -100,6 +114,42 @@ static inline void SetTranslation(CMatrix &m, float x, float y, float z)
     m.m_matrix[3][2] = z;
 }
 
+/* a UI variable's hook (zui_uivar.h's, SOCOM 1's DWARF; the vtable pointer first) */
+class UIVarMixin {
+public:
+    UIVarMixin() { m_uivar = 0; }
+    virtual ~UIVarMixin() { DetachUIVar(0); }
+    void DetachUIVar(CUIVariable *var);
+    virtual void UpdateUIVar(CUIVariable *var);
+
+    CUIVariable *m_uivar;   // 0x4
+};   // 8 bytes
+
+/* a plain bitmap of the UI's (zui_2d.h's, SOCOM 1's DWARF): the legend's nine pictures. Its
+ * constructor is inline (out of line 0x20CD50, __construct_array's), its camera Draw a tail call
+ * into the bitmap's (0x20D5E0), inlined where the map draws them; the first non-inline virtual
+ * keeps the table out of this unit */
+class CPlainBmp : public C2DBitmap, public UIVarMixin {
+public:
+    CPlainBmp()
+    {
+        SetColor(128.0f, 128.0f, 128.0f);
+        SetTrans(128.0f);
+        SetIsTrans(true);
+        SetCanHandleInput(false);
+        m_pulsing = false;
+        m_period = 1.0f;
+    }
+    virtual void Draw(zdb::CCamera *cam) { C2DBitmap::Draw(cam); }
+    virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    virtual void Tick(float dT);
+    virtual void SetMapOffset(int x, int y);
+
+    bool m_pulsing;   // 0x88
+    float m_period;   // 0x8c
+    float m_curtrans;   // 0x90
+} __attribute__((aligned(16)));   // 0xa0 bytes
+
 namespace {
 /* a line over the map, coloured as the north indicator's (SOCOM 1's class; its constructor's copy
  * 0x20CEE0 is __construct_array's, its destructor 0x20CE70) */
@@ -112,12 +162,19 @@ public:
  * lines (SOCOM 1's names; its sixty hash lines gone), then SOCOM II's nine C2DStrings -- the
  * full-screen map legend's labels (the legend's builder 0x20C080 loads each from the string table;
  * [0] takes SOCOM 1's g_strNorthIndN's colour in the constructor, and UninitMap blanks all nine as
- * SOCOM 1 blanked the one: the name ours) -- nine CPlainBmps (0x40AEB0) and the four scroll
- * bitmaps (C2DBitmapPolys from 0x40B470, SOCOM 1's g_bmpScroll*), not modelled yet, and the north
- * indicator's three lines */
+ * SOCOM 1 blanked the one: the name ours) -- the legend's nine pictures (CPlainBmps, 0x40AEB0, the
+ * name ours) and whether it shows (a bool, 0x40B450: the full-screen tick 0x209EE0 sets it, Draw
+ * tests it; the name ours), the four scroll bitmaps (SOCOM 1's g_bmpScroll*, from 0x40B470), and
+ * the north indicator's three lines. Each object follows its destructor record */
 COverlayLine g_arrHorGridLines[7];
 COverlayLine g_arrVertGridLines[9];
 C2DString g_strLegend[9];
+CPlainBmp g_bmpLegend[9];
+bool g_bShowLegend;
+C2DBitmapPoly g_bmpScrollDown;
+C2DBitmapPoly g_bmpScrollLeft;
+C2DBitmapPoly g_bmpScrollRight;
+C2DBitmapPoly g_bmpScrollUp;
 COverlayLine g_lineNorthIndBarb;
 COverlayLine g_lineNorthIndFrontShaft;
 COverlayLine g_lineNorthIndRearShaft;
@@ -128,6 +185,19 @@ static float s_gridTrans = 24.0f;
 
 /* the narrowest world window (a variable: read with lwc1, where MW builds a constant) */
 static float s_minWorldWidth = 1300.0f;
+
+/* hud_main.cpp's layout floats (365 and 60: the full-screen map's bottom and top, as InitMap
+ * reads them) */
+extern float g_fHudLayout365;
+extern float g_fHudLayout60;
+
+/* the full-screen map's height, an eighth of it, and that eighth corrected from 448 lines to 480
+ * -- computed by the unit's initialiser after the objects (each reusing the value just stored),
+ * read by the full-screen animations' tick 0x209350 (OVL1 .data 0x3E4090-0x3E40A0, 8 apart; the
+ * names ours) */
+static float s_fullMapHeight = g_fHudLayout365 - g_fHudLayout60;
+static float s_fullMapStep = s_fullMapHeight / 8.0f;
+static float s_fullMapStepX = 480.0f / 448.0f * s_fullMapStep;
 
 inline void CZNewHudMap::SetWorldView(float cx, float cy, float width)
 {
@@ -182,7 +252,7 @@ static inline float MaxOf(float a, float b)
 
 /* the full-screen map centred between the viewer and the current objective (if the compass shows
  * it -- else left alone) and widened until both fit inside the frame, 20 units in, no wider than
- * the tactical zoom allows (no SOCOM 1 counterpart; the name ours). The larger scale through
+ * the far tactical zoom allows (no SOCOM 1 counterpart; the name ours). The larger scale through
  * `b > a ? b : a` (the false arm's copy through a temporary; `b <= a ? a : b` or a ternary into
  * scale drops it), the width's clamp `w < maxw ? w : maxw` -- zmath.h's MAX/MIN shapes.
  * OPEN, 4 instructions: the centre's average. The target sums z then x into temporaries (f2, f1),
@@ -223,7 +293,7 @@ void CZNewHudMap::FrameObjective()
         if (!(d <= lim))
             scale = MaxOf(scale, d / lim);
         float w = m_width * scale;
-        float maxw = 2200.0f / func_002AF870();
+        float maxw = 2200.0f / ftsGetTacMapZoomFar();
 
         m_width = w < maxw ? w : maxw;
         func_00210120();
@@ -291,6 +361,66 @@ void CZNewHudMap::SetMapScreenPos(float x1, float y1, float x2, float y2)
 void CZNewHudMap::SetWorldWidth(float width)
 {
     SetWorldView(m_worldcenterx, m_worldcentery, width);
+}
+
+/* each item's PostDraw (ours: an inline, so its iterator is numbered after Draw's temporaries) */
+inline void CZNewHudMap::PostDrawItems(const std::list<CZMapItem *>::iterator &first,
+                                       zdb::CCamera *cam)
+{
+    std::list<CZMapItem *>::iterator j;
+
+    for (j = first; j != m_itemlist.end(); ++j)
+        (*j)->PostDraw(cam);
+}
+
+/* the map drawn, in full screen only: the objectives (nothing more while their camera plays), the
+ * map's children and items inside its rectangle (each item clipped, then drawn; then each one's
+ * PostDraw), the team brackets, then the north indicator, the legend's first label, the scroll
+ * arrows and the grid -- the legend's pictures and other labels while it shows -- and the scissor
+ * opened again (SOCOM 1's, its sixty hash lines gone; SOCOM 1 drew the compass map too) */
+void CZNewHudMap::Draw(zdb::CCamera *cam)
+{
+    if (!IsOn() || !m_isFullScreen)
+        return;
+    m_objectivelist.Draw(cam);
+    if (m_objectivelist.IsPlayingAnimation())
+        return;
+    zVid_Scissor((int)m_screenx1, (int)CalcDrawPos(m_screeny1), (int)m_screenx2,
+                 (int)CalcDrawPos(m_screeny2) - 1);
+    C2D::Draw(cam);
+
+    std::list<CZMapItem *>::iterator i;
+
+    for (i = m_itemlist.begin(); i != m_itemlist.end(); ++i) {
+        CZMapItem *item = *i;
+
+        item->Clip(this);
+        item->Draw(cam);
+    }
+
+    PostDrawItems(m_itemlist.begin(), cam);
+    CZPlayerMapItem::DrawAlphaBravo(cam);
+    if (m_isFullScreen) {
+        g_lineNorthIndFrontShaft.Draw(cam);
+        g_lineNorthIndRearShaft.Draw(cam);
+        g_lineNorthIndBarb.Draw(cam);
+        g_strLegend[0].Draw(cam);
+        g_bmpScrollUp.Draw(cam);
+        g_bmpScrollLeft.Draw(cam);
+        g_bmpScrollRight.Draw(cam);
+        g_bmpScrollDown.Draw(cam);
+        for (unsigned int k = 0; k < 7; k++)
+            g_arrHorGridLines[k].Draw(cam);
+        for (int k = 0; k < 9; k++)
+            g_arrVertGridLines[k].Draw(cam);
+        if (g_bShowLegend) {
+            for (int k = 0; k < 9; k++)
+                g_bmpLegend[k].Draw(cam);
+            for (int k = 1; k <= 8; k++)
+                g_strLegend[k].Draw(cam);
+        }
+    }
+    zVid_Scissor(0, 0, zVid.renderWidth, zVid.renderHeight);
 }
 
 /* a claymore item for every explosive out that has none yet, its owner the SEAL that set it (if

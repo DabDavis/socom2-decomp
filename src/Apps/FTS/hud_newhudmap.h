@@ -33,16 +33,22 @@ public:
 };
 
 /* the map's objective list (hud_objectives.cpp defines the class): a stand-in, as far as the map
- * reaches into it -- 0x730 bytes (its last member a byte at 0x72C, the class 16-aligned) */
+ * reaches into it -- a C2D (SOCOM 1's DWARF), so the map draws it through its table (`lw t9,236`:
+ * the list at 0xE0, its vptr at 0xC), 0x730 bytes (its last member a byte at 0x72C, the class
+ * 16-aligned). IsPlayingAnimation is called on the list (a0 its address), as SOCOM 1's. The
+ * destructor declared, not defined: implicit, a unit including this would emit a copy of it */
 class CMissionObjectiveCam;
 
-class CZObjectiveList {
+class CZObjectiveList : public C2D {
 public:
     CZObjectiveList();
+    virtual ~CZObjectiveList();
+    virtual void Draw(zdb::CCamera *cam);
+    bool IsPlayingAnimation();
     CMissionObjectiveCam *GetCurrentObjective() const;
     void MissionEndCleanup();
 
-    unsigned char _0[0x730];
+    unsigned char _18[0x730 - 0x18];
 };
 
 class CHUD;
@@ -58,6 +64,8 @@ public:
     /* declared, not defined here: its draft (0x20BA00) inlines the real objective list's destructor,
      * which the stand-in above cannot give -- defined, the unit's implicit copy would replace it */
     virtual ~CZNewHudMap();
+    virtual void Draw(zdb::CCamera *cam);
+    void PostDrawItems(const std::list<CZMapItem *>::iterator &first, zdb::CCamera *cam);
     CPnt3D MapPoint(const CPnt3D *p) const;
     CZClaymoreMapItem *FindClaymoreItem(CZProjectile *projectile);
     CZMPBombMapItem *FindMPBombItem();

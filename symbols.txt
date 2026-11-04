@@ -6819,18 +6819,18 @@
 0x0036BA30 0x30 GetNumLines__8ListItemFv  # OVL1; ours by hand (the HUD lane: zui_2d.cpp -- slot 1 of ListItem's vtable 0x407240: the look at 0x28 asked through its slot 15, true without one, as SOCOM 1's CListItemTypeImpl::IsEnabled answers true; byte-exact); by hand (the HUD lane, round 25: was IsEnabled -- slot 15 of the look's tables, which it forwards, is the wrapped look's line count, an int, 1 by default); the name ours; zui_2d.cpp
 0x0036BA60 0x8 GetNumLines__17CListItemTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 15 of CListItemTypeImpl's table 0x4070F0 (return 1); the name ours; zui_2d.cpp
 0x0036BA70 0x8 Finish__17CListItemTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 2 of CListItemTypeImpl's table, SOCOM 1's Finish default (empty); zui_2d.cpp
-0x0036BA80 0x140 func_0036BA80  # OVL1
-0x0036BBC0 0x1FC func_0036BBC0  # OVL1
+0x0036BA80 0x140 DrawPrep__8ListItemFRC10CUIListBoxiii  # OVL1; ours (the HUD lane, round 30: zui_2d.cpp -- the item's DrawPrep, a text look made first when it has none, forwarded through the look's slot 3 (lw t9,12): the same shape as SetFont/SetPos beside it; byte-exact)
+0x0036BBC0 0x1FC __ct__8ListItemFP5_zrdrRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>P7C2DFontf  # OVL1; ours (the HUD lane, round 30: zui_2d.cpp -- stores ListItem's table 0x407240 at 0x2C; a string reader as a text look (new 0xCC, the string's Format), an array as the array look 0x37AE10 with the font and scale, m_24 cleared unless its IsReady (slot 13); SOCOM 1's two-argument constructor's font/scale sibling; byte-exact)
 0x0036BDC0 0x8 IsReady__17CListItemTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 13 of CListItemTypeImpl's table (return true; SOCOM II's, the array look's returns a byte at 0x10); the name ours; zui_2d.cpp
-0x0036BDD0 0xCC func_0036BDD0  # OVL1
-0x0036BEA0 0x14C func_0036BEA0  # OVL1
-0x0036BFF0 0x3BC func_0036BFF0  # OVL1
-0x0036C3B0 0x174 func_0036C3B0  # OVL1
+0x0036BDD0 0xCC __ct__8ListItemFP5_zrdrRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>  # OVL1; s1:name (the HUD lane, round 30: zui_2d.cpp -- SOCOM 1's __ct__8ListItemFP5_zrdrRC... 0x385720, the same body: the actions built, then an array reader's look newed as CListItemArrayTypeImpl(rdr, cols) 0x37B2F0; byte-exact)
+0x0036BEA0 0x14C __ct__8ListItemFPCc  # OVL1; ours (the HUD lane, round 30: zui_2d.cpp -- the array look's constructor 0x37B2F0 news one per column with RdrString: its look a new text look with the text formatted in (slot 0x78 of the renderable string's C2DString table, Format); byte-exact)
+0x0036BFF0 0x3BC ZoomOut__10CUIMapCtrlFfPQ23zdb5CNodef  # OVL1; ours (the HUD lane, round 30: CUIMapCtrl::TickZAnimCmd 0x36C600's ZOOM_OUT case calls it as ZoomIn's (1.0, the node, *dT); it tests the zoomed corners with IsCovered 0x36CED0 four times; unwritten)
+0x0036C3B0 0x174 ZoomIn__10CUIMapCtrlFfPQ23zdb5CNodef  # OVL1; ours (the HUD lane, round 30: CUIMapCtrl::TickZAnimCmd 0x36C600's ZOOM_IN case calls it with 1.0, the command's node (CZAnim::GetNode) and *dT -- set up f13, a1, f12, so the scale is first; unwritten)
 0x0036C530 0xD0 GetZAnimCmdType__10CUIMapCtrlFPCc  # OVL1; s1:calls
-0x0036C600 0x144 func_0036C600  # OVL1
+0x0036C600 0x144 TickZAnimCmd__10CUIMapCtrlFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 30: slot +0x64 of CUIMapCtrl's table 0x407260; zui_2d.cpp -- PAN, ZOOM_IN, ZOOM_OUT relative to C2D's count, as the parser 0x36C760 makes them; byte-exact)
 0x0036C750 0xC func_0036C750  # OVL1
 0x0036C760 0x2CC ParseZAnimCmd__10CUIMapCtrlFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0036CA30 0x498 func_0036CA30  # OVL1
+0x0036CA30 0x498 OnPan__10CUIMapCtrlCFRC20CUIMapCtrlAnimCmdHdrf  # OVL1; s1:name by its call (the HUD lane, round 30: CUIMapCtrl::TickZAnimCmd 0x36C600's PAN case calls it with the command and *dT, as SOCOM 1's TickZAnimCmd calls OnPan(const CUIMapCtrlAnimCmdHdr &, float) const; unwritten)
 0x0036CED0 0x18C func_0036CED0  # OVL1
 0x0036D060 0xD4 Draw__10CUIMapCtrlFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036D140 0x198 func_0036D140  # OVL1
@@ -6948,7 +6948,7 @@
 0x0037AB90 0x260 DrawPrep__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFRC10CUIListBoxiii  # OVL1; by hand (the HUD lane, round 25): slot 1 of the array look's table, SOCOM 1's DrawPrep (each column's item placed, its text look -- a dynamic_cast -- lit); zui_2d.cpp
 0x0037ADF0 0xC SetScale__Q220@unnamed@zui_2d_cpp@23CListItemStringTypeImplFf  # OVL1; by hand (the HUD lane, round 25): slot 8 of the string look's table, SOCOM 1's SetScale (the string's scale); zui_2d.cpp
 0x0037AE00 0x8 IsReady__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFv  # OVL1; by hand (the HUD lane, round 25): slot 13 of the array look's table (its byte at 0x10, cleared by the constructor when an item is not ready); the name ours; zui_2d.cpp
-0x0037AE10 0x4E0 func_0037AE10  # OVL1
+0x0037AE10 0x4E0 __ct__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFP5_zrdrRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>P7C2DFontf  # OVL1; s1:name (the HUD lane, round 30: ListItem(rdr, cols, font, scale) 0x36BBC0 news 0x14 bytes and calls it with the reader, the columns, the font and the scale, as SOCOM 1's four-argument array look constructor 0x392420 (0x584); unwritten)
 0x0037B2F0 0x194 __ct__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFP5_zrdrRCQ23std54vector<P10ColumnData,Q23std24allocator<P10ColumnData>>  # OVL1; by hand (the HUD lane, round 25): stores the array look's table 0x407B90, SOCOM 1's constructor (reader, columns); called by ListItem's constructor 0x36BDD0... (0x36BDD0 calls it); zui_2d.cpp
 0x0037B490 0x124 TickZAnimCmd__10C2DCounterFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037B5C0 0x130 Tick__10C2DCounterFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -8487,7 +8487,7 @@
 0x003FDAB0 0x64 func_003FDAB0  # OVL1 data area; a static initialiser; s1~ zanim_cmd_tick.cpp (shape 0.46, a hint)
 0x003FDB20 0xA0 func_003FDB20  # OVL1 data area; a static initialiser
 0x003FDBC0 0x2BC func_003FDBC0  # OVL1 data area; a static initialiser
-0x003FDE80 0x308 func_003FDE80  # OVL1 data area; a static initialiser
+0x003FDE80 0x308 __sinit_hud_newhudmap.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 30: hud_newhudmap.cpp's initialiser -- it builds the unit's statics in SOCOM 1's order, each __construct_array/__register_global_object pair at its record (0x409F10 ...), the four scroll C2DBitmapPolys, the north lines with COverlayLine's colour, then the three computed .data floats 0x3E4090-0x3E40A0 from hud_main.cpp's 365 and 60: CODE-EXACT from source, the four __arraydtor$N references compared by content fail on their relocation fields (scdiff has no mapping for a unit's numbered array destructors: see the HUD lane's round-30 report))
 0x003FE190 0x2B4 func_003FE190  # OVL1 data area; a static initialiser
 0x003FE450 0x34 __sinit_hud_mapcompass.cpp  # OVL1 data area; a static initialiser; hud_mapcompass.cpp by hand (it builds navpoint_vec, this unit's global, and registers its destructor)
 0x003FE490 0x64 __sinit_hud_bitmapreticule.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_bitmapreticule.cpp's initialiser (between hud_mapcompass.cpp's and hud_weaponsel.cpp's, as the code): SOCOM 1's color_base (86, 63, 27), then two CPnt3D colours of SOCOM II's that 0x215C10 reads (24, 200, 44 and 24, 24, 24)
