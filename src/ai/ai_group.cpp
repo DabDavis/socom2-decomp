@@ -89,12 +89,24 @@ public:
     void ClearGoal(GOAL_TYPE type);
 };
 
+/* the AI's object at 0x324 (zseal.h's CAiStamp, the SEALs' name: its Reset, OVL2 0x558590, is an
+ * ordinary function of seal_ai.cpp -- only the size is this view's) */
+class CAiStamp {
+public:
+    void Reset();
+
+    unsigned char _0[0x24];
+};
+
 /* the AI controller as far as this unit reads it (zseal.h's CSealCtrlAi, which this unit does not
  * include): its entity (CEntityCtrl's), the bits at 0x264, its state stack, its group's id and the
  * three throttle points a group's member starts from -- and its group members, which this unit
  * defines (SetGroup, InGroup, GetGroup: OVL2 0x60E6F0, 0x60E6E0, 0x60E7A0; the names ours) */
 class CSealCtrlAi : public CSealCtrl {
 public:
+    /* asleep or awake, and dozing or not (zseal.h's, SOCOM 1's; OVL2 0x56D0C0, 0x56D6A0) */
+    void SetSleeping(bool on);
+    void SetSnoozing(bool on);
     bool PopToAiState(AI_STATE state, bool inclusive);
     AI_STATE PopAiState(AI_STATE state);
     bool PushAiState(AI_STATE state, unsigned int flags);
@@ -123,7 +135,8 @@ public:
     unsigned int m_aibit21 : 1;   // bit 21 (0x266 bit 5)
     unsigned int m_aibits22 : 10;
     unsigned char _268[0x324 - 0x268];
-    unsigned char m_324[0x41c - 0x324];   // 0x324: an object 0x558590 resets
+    CAiStamp m_stamp;   // 0x324 (zseal.h's; restarted by SetGroup)
+    unsigned char _348[0x41c - 0x348];
     CAiStateStack m_stateStack;   // 0x41c
     int m_group;   // 0x43c: the group's id, or 0
     unsigned char _440[0x780 - 0x440];
@@ -138,11 +151,10 @@ extern "C" {
 void func_00571150(CSealCtrlAi *ai, short anim, int mode);
 bool func_005712F0(CSealCtrlAi *ai, short anim);
 void func_00571100(CSealCtrlAi *ai, short anim);
-/* the stack's bits brought up to date (OVL2 0x5F7470, seal_aistate.cpp's, unwritten), the object at
- * the AI's 0x324 reset (0x558590), an AI function (0x5604C0) and CSealCtrl::ClearLook (0x600D40,
- * s1:order; by its mangled name: zseal.h stays out of this unit) -- the SEAL lane's */
+/* the stack's bits brought up to date (OVL2 0x5F7470, seal_aistate.cpp's, unwritten), an AI
+ * function (0x5604C0) and CSealCtrl::ClearLook (0x600D40, s1:order; by its mangled name: zseal.h
+ * stays out of this unit) -- the SEAL lane's */
 void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
-void func_00558590(void *p);
 void func_005604C0(CSealCtrlAi *ai);
 void ClearLook__9CSealCtrlF7AI_LOOK(CSealCtrlAi *ai, signed char look);
 }
@@ -181,11 +193,9 @@ void SetLookDirR__9CSealCtrlF7AI_LOOKPC6CPnt3Db(CSealCtrlAi *ai, signed char loo
 void SetLookPosW__9CSealCtrlF7AI_LOOKPC6CPnt3D(CSealCtrlAi *ai, signed char look, const CPnt3D *pos);
 void SetLookFlags__9CSealCtrlFUi(CSealCtrlAi *ai, unsigned int flags);
 void SetLookTimer__9CSealCtrlFf(CSealCtrlAi *ai, float t);
-/* a controller's state of a kind (OVL2 0x560A60, the SEAL lane's: a byte) and two of its resets
- * a group's new member runs (0x56D0C0, 0x56D6A0), a setting (0x565B80) and another (0x5604D0) */
+/* a controller's state of a kind (OVL2 0x560A60, the SEAL lane's: a byte), a setting (0x565B80)
+ * and another (0x5604D0) */
 unsigned char func_00560A60(CSealCtrlAi *ai);
-void func_0056D0C0(CSealCtrlAi *ai, int x);
-void func_0056D6A0(CSealCtrlAi *ai, int x);
 void func_00565B80(CSealCtrlAi *ai, int x);
 void func_005604D0(CSealCtrlAi *ai, int x);
 }
@@ -568,7 +578,7 @@ void CSealCtrlAi::SetGroup(CAiGroup *g)
     if (g) {
         m_group = g->m_id;
         StopThrottles(false);
-        func_00558590(m_324);
+        m_stamp.Reset();
         m_780 = m_78c = m_798 = CPnt3D::zero;
     } else {
         func_005F7470(&m_stateStack, this, 1);
@@ -792,8 +802,8 @@ bool CAiGroup::AddMember(CSealCtrlAi *ai)
     if (ai && !ai->InGroup()) {
         if (ai->AiStateIs(AI_STATE_SUSPENDED) && !data_003DF188)
             ai->PopAiState(AI_STATE_SUSPENDED);
-        func_0056D0C0(ai, 0);
-        func_0056D6A0(ai, 0);
+        ai->SetSleeping(false);
+        ai->SetSnoozing(false);
         if (ai->PushAiState(AI_STATE_HOLD, 3)) {
             CAiState *s = ai->GetAiState();
             CAiState *h = s && s->m_state == AI_STATE_HOLD ? s : 0;

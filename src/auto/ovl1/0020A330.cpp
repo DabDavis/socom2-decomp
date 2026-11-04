@@ -14,8 +14,8 @@ struct VC_0 {
     virtual M2C_UNK v_C(M2C_UNK, M2C_UNK);
 };
 extern "C" {
-f32 func_002AF860();                                /* extern */
-f32 func_002AF870();                                /* extern */
+f32 ftsGetTacMapZoomFar__Fv();                      /* extern */
+f32 ftsGetTacMapZoomNear__Fv();                     /* extern */
 extern f32 data_003DC480;
 
 /* Warning: Gap in callee-saved word stack region.
@@ -27,12 +27,12 @@ void func_0020A330(char *arg0, f32 fparg0) {
     char **temp_a0_2;
 
     SC_MEMBER(arg0, f32 *, 0x70) = (f32) (SC_MEMBER(arg0, f32 *, 0x70) - (24.0f * fparg0));
-    temp_f0 = 2200.0f / func_002AF870();
+    temp_f0 = 2200.0f / ftsGetTacMapZoomFar__Fv();
     if (!(SC_MEMBER(arg0, f32 *, 0x70) <= temp_f0)) {
         SC_MEMBER(arg0, f32 *, 0x70) = temp_f0;
         return;
     }
-    var_f1 = 2200.0f / func_002AF860();
+    var_f1 = 2200.0f / ftsGetTacMapZoomNear__Fv();
     if (var_f1 < data_003DC480) {
         var_f1 = data_003DC480;
     }

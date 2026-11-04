@@ -518,9 +518,9 @@ extern "C" float data_00650380;
 
 /* the voice's AI event made where the SEAL stands, unless it has none; the event returned (OVL2
  * 0x55FEE0; PlayAiSound calls it) */
-extern "C" int func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
+extern "C" CAiEvent *func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
 {
-    int r = 0;
+    CAiEvent *r = 0;
 
     if (event != CAiEvent::AIE_NONE) {
         float range = func_0050F4C0(event);
@@ -810,6 +810,91 @@ extern "C" float func_005750D0(unsigned char i)
     return data_0064FE60[data_0066AFD8][i];
 }
 
+/* an AI event of the SEAL's made, no sooner than its kind's rate after the last of the kind: for the
+ * duration, heard within the range, seen or not, at the point given or the SEAL's own, the word
+ * handed on, the SEAL its owner; the event, or none (OVL2 0x572FA0: SOCOM 1's CreateAiEvent, which
+ * answered a bool, took the SEAL's position through a virtual and never met a null event) */
+CAiEvent *CSealCtrl::CreateAiEvent(CAiEvent::EVENT event, float duration, float range, bool visible,
+    const CPnt3D *pos, unsigned int userdata)
+{
+    float now = data_004365C0;
+    float elapsed = now - m_event_time[event];
+    float rate = CAiEvent::GetEventRate(event);
+    CAiEvent *e = 0;
+
+    if (elapsed > rate) {
+        m_event_time[event] = now;
+        CEntity *owner = m_entity;
+
+        e = CAiEvent::Acquire();
+        if (e) {
+            e->m_type = event;
+            e->m_duration = duration;
+            e->m_rangeSq = range * range;
+            e->m_visible = visible;
+            const CPnt3D *p = pos ? pos : &owner->m_posW;
+
+            e->m_pos = *p;
+            e->m_userdata = userdata;
+            e->m_owner = owner->m_id;
+            CAiEvent::Create(e);
+        }
+    }
+    return e;
+}
+
+/* an event kind's bit (an inline: through it the base mask is a guarded static, as the target's) */
+static inline unsigned int EventBit(CAiEvent::EVENT e)
+{
+    return 1 << e;
+}
+
+/* neither of SOCOM 1's m_snoozing (bit 9) and m_sleeping (bit 8) set (an inline bool). The target
+ * materialises it before its branch: bit 9 as a bool (sltu), bit 8 only when that is clear, then a
+ * bare xori -- an int holding the `||` gives exactly that; `!(a || b)` builds 1/0 constants, a bool
+ * local adds a second sltu at the join, bool accessors cost 8 bytes */
+static inline bool AiAwake(const CSealCtrlAi *ai)
+{
+    int r = ai->m_aibit9 != 0;
+
+    if (!r)
+        r = ai->m_aibit8 != 0;
+    return r ^ 1;
+}
+
+/* the kinds of event the AI hears: all but the unknown, less the sleeper's when it sleeps or its team
+ * has bit 26, less the teams' of bits 28 and 17, and only the deaf set's complement for a team of bit
+ * 1 -- none online (OVL2 0x572D70: SOCOM 1's UpdateEventMask, by its order and CTTeam::Tick's calls --
+ * the join and the leave -- where SOCOM 1's calls it; SOCOM II starts from a fourth static and tests
+ * the team's bit 1 first) */
+void CSealCtrlAi::UpdateEventMask()
+{
+    static unsigned int all = ~EventBit(CAiEvent::AIE_UNKNOWN);
+    static unsigned int asleep = CAiEvent::MakeMaskEx(CAiEvent::AIE_UNKNOWN, CAiEvent::AIE_GENERIC,
+        CAiEvent::AIE_POINT, CAiEvent::AIE_ENTITY, CAiEvent::AIE_VOICE, CAiEvent::AIE_CORPSE,
+        CAiEvent::AIE_DOOR, CAiEvent::AIE_HELPME, CAiEvent::AIE_ALARM, CAiEvent::AIE_LIGHTSOFF,
+        CAiEvent::AIE_NONE);
+    static unsigned int unaware = CAiEvent::MakeMaskEx(CAiEvent::AIE_UNKNOWN, CAiEvent::AIE_GENERIC,
+        CAiEvent::AIE_POINT, CAiEvent::AIE_ENTITY, CAiEvent::AIE_CORPSE, CAiEvent::AIE_HELPME,
+        CAiEvent::AIE_ALARM, CAiEvent::AIE_LIGHTSOFF, CAiEvent::AIE_EXPLOSION, CAiEvent::AIE_NONE);
+    static unsigned int deaf = CAiEvent::MakeMaskEx(CAiEvent::AIE_UNKNOWN, CAiEvent::AIE_GENERIC,
+        CAiEvent::AIE_ALARM, CAiEvent::AIE_LIGHTSOFF, CAiEvent::AIE_CORPSE, CAiEvent::AIE_POINT,
+        CAiEvent::AIE_DOOR, CAiEvent::AIE_NONE);
+    CEntity *e = m_entity;
+
+    m_eventMask = all;
+    if (e->m_team & 2)
+        m_eventMask &= ~deaf;
+    else {
+        if (!AiAwake(this) || (e->m_team & 0x4000000))
+            m_eventMask &= ~asleep;
+        if ((e->m_team & 0x10000000) || (e->m_team & 0x20000))
+            m_eventMask &= ~unaware;
+    }
+    if (theNetwork.m_9)
+        m_eventMask = 0;
+}
+
 /* whether an entity may be taken as a target: any in mode 4, else one of no team of ours (OVL2
  * 0x572D30) */
 extern "C" bool func_00572D30(CSealCtrlAi *ai, CEntity *e)
@@ -956,6 +1041,103 @@ extern "C" bool func_0060A850(void *p);
 static inline bool TargetHeld(CSealCtrlAi *ai)
 {
     return func_0060A850(ai->m_67c) && (ai->m_6a8 & 0x200);
+}
+
+/* the SEALs dozing (SOCOM 1's ai::snooze_count, a $gp word there; OVL2 bss 0x66AFF8) */
+namespace ai {
+extern int snooze_count;
+}
+
+/* a doze begun or ended: never for a sleeper or a SEAL that may not doze; begun, the snooze state
+ * pushed and set running, the SEAL dropped from the player checks and counted; ended, the state
+ * popped; either way the stamp restarted (OVL2 0x56D6A0: SOCOM 1's SetSnoozing, which pushed with a
+ * bool, never tested the state for null, kept the entity's bits and the stamp alone) */
+/* the sleep bits as bools (inline accessors: the target turns each into a bool, sltu, before its
+ * branch, and reloads the byte for them; read in place the tests reuse one load and branch on the
+ * bits). In SetSnoozing the state on top is kept only when of the doze's kind through `s = s &&
+ * s->m_state == 18 ? s : 0;` -- an if, or a cast inline, fills two delay slots the target leaves
+ * empty; the first compare is written `bit == on` there and `on == bit` in SetSleeping (MW loads a
+ * comparison's right operand first: the target loads `on` first in the one, the bit in the other) */
+static inline bool Sleeping(const CSealCtrlAi *ai)
+{
+    return ai->m_aibit8 ? true : false;
+}
+
+static inline bool Snoozing(const CSealCtrlAi *ai)
+{
+    return ai->m_aibit9 ? true : false;
+}
+
+static inline bool NoSnooze(const CSealCtrlAi *ai)
+{
+    return ai->m_nosnooze ? true : false;
+}
+
+void CSealCtrlAi::SetSnoozing(bool on)
+{
+    CEntity *e = m_entity;
+
+    if (m_aibit9 == on || Sleeping(this) || NoSnooze(this))
+        return;
+    if (on) {
+        if (PushAiState((AI_STATE)18, 1)) {
+            CAiState *s = GetAiState();
+
+            s = s && s->m_state == 18 ? s : 0;
+
+            s->SetFlags(3, 0);
+            s->m_active = true;
+        }
+        e->m_check_player_collision = false;
+        e->m_get_new_altitude = false;
+        ai::snooze_count++;
+        m_aibit9 = true;
+    } else {
+        PopAiState((AI_STATE)18);
+        e->m_check_player_collision = true;
+        e->m_get_new_altitude = true;
+        m_aibit9 = false;
+        ai::snooze_count--;
+    }
+    m_stamp.Reset();
+}
+
+/* asleep or woken: a dozing SEAL is woken to sleep, never to wake; asleep, the node hidden and the SEAL
+ * out of the target lists and the player checks, the stack told signal 5; woken, all back, the mode 1
+ * and signal 6; then the stamp restarted and the events heard worked out again (OVL2 0x56D0C0: SOCOM
+ * 1's SetSleeping, which kept the entity's bits, signalled nothing and printed the alert) */
+void CSealCtrlAi::SetSleeping(bool on)
+{
+    CEntity *e = m_entity;
+
+    if (on == m_aibit8)
+        return;
+    if (Snoozing(this)) {
+        if (on)
+            SetSnoozing(false);
+        else
+            return;
+    }
+    if (on) {
+        e->GetNode()->SetActive(false);
+        e->SetUpdateTargetList(false);
+        e->SetIncludeInTargetList(false);
+        e->m_check_player_collision = false;
+        e->m_get_new_altitude = false;
+        m_aibit8 = true;
+        CAiState::Signal(&m_stateStack, (CAiState::SIGNAL)5, this);
+    } else if (!on) {
+        e->GetNode()->SetActive(true);
+        e->SetUpdateTargetList(true);
+        e->SetIncludeInTargetList(true);
+        e->m_check_player_collision = true;
+        e->m_get_new_altitude = true;
+        SetAiMode((AI_MODE)1);
+        m_aibit8 = false;
+        CAiState::Signal(&m_stateStack, (CAiState::SIGNAL)6, this);
+    }
+    m_stamp.Reset();
+    UpdateEventMask();
 }
 
 /* (OVL2 0x56D090) */
@@ -2652,6 +2834,17 @@ extern "C" bool func_00556280(CCellWalk *w, CCellGather *g)
         g->m_found = 1;
     }
     return !same;
+}
+
+/* the stamp restarted: the mission's time, its fields cleared (OVL2 0x558590; the sleep setters
+ * inline it, the states and the group call it) */
+void CAiStamp::Reset()
+{
+    m_8 = 0;
+    m_4 = 0;
+    m_time = data_004365C0;
+    m_1c = 0;
+    m_20 = 0;
 }
 
 /* an alert's level record (the names ours: 0x558030, 0x5582C0 and 0x558440 keep one each) */

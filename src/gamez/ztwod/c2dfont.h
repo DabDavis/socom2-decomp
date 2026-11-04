@@ -131,14 +131,15 @@ public:
 
 class CHangulFont;
 
-/* the font's unload (OVL1 0x35A650, c2dfont.cpp's Unload: zui_skb.h calls it by this name) */
+/* the font's unload (OVL1 0x35A650, c2dfont.cpp's C2DFont::Unload) by its address: the UI lane's
+ * zui_skb.h (CSkbFonts::Unload) still calls it by this name -- the destructor calls the member */
 class C2DFont;
 extern "C" void func_0035A650(C2DFont *font);
 
 class C2DFont {
 public:
     C2DFont() { Reset(); }
-    ~C2DFont() { func_0035A650(this); }
+    ~C2DFont() { Unload(); }
 
     /* c2dfont.cpp's (OVL1 0x359740-0x35F8EF; the names ours): the faces rdr's entry by name -- the
      * textures, the scales, the glow texture, the characters, the Korean composer and the drop

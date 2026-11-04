@@ -5,6 +5,7 @@
 
 #include "zseal.h"
 #include "../zanim/zanim.h"
+#include "../zsys/zsys.h"
 #include <stdio.h>
 
 /* the bomb's state machine (SOCOM 1's CZBombState, OVL1's) -- only the request */
@@ -28,6 +29,11 @@ extern float data_0044C2E0;
  * bytes) */
 class CZDecalDef {
 public:
+    /* empty and user-declared, as zwep_weapon.cpp's: the vector's reserve (0x5B71B0) and insert
+     * (0x5B6CE0) then copy an element member by member (lwc1/swc1, lwc1/swc1, lw/sw) where an
+     * implicit one is copied as a block (the MSL headers round 17) */
+    CZDecalDef() {}
+
     float m_decalminsize;   // 0x0
     float m_decalmaxsize;   // 0x4
     zdb::CTexHandle *m_texture;   // 0x8
@@ -954,13 +960,6 @@ void CZSealBody::AimWeapon()
 
 /* (CZWeapon::RemoveWeaponEventCallback is zweapon.h's, through zchar.h) */
 extern "C" {
-/* the blood decals' vector emptied the FreeVector way, through the unit's out-of-line copies of the
- * class vector's pieces, which follow this function in reverse of their first use (OVL2 0x5A3D10 the
- * temporary's constructor, 0x5A3D00 clear, 0x5A3CC0 swap, 0x5A3C60 the temporary's destructor) */
-void *func_005A3D10(void *v);
-void func_005A3D00(void *v);
-void func_005A3CC0(void *a, void *b);
-void func_005A3C60(void *v, int flags);
 /* the decal handles' buffers and counts (OVL1 bss; SOCOM 1's freed one buffer and zeroed one count) */
 extern void *data_0044D550;
 extern void *data_0044D548;
@@ -1135,26 +1134,20 @@ void CZSealBody::ReInitDatabaseHandles()
     data_0044CE48 = CSnd::GetSoundByName(".GUNTOBACK");
 }
 
-/* a 12-byte vector temporary (the class vector's three words) */
-struct CZDecalDefVec {
-    unsigned int m_0;
-    unsigned int m_4;
-    unsigned int m_8;
-};
-
 /* the database's handles let go: the buffers freed, the blood decals' vector emptied, the counts
- * cleared, the weapon-event callback removed (OVL2 0x5A3BB0; SOCOM 1's with two more counts) */
+ * cleared, the weapon-event callback removed (OVL2 0x5A3BB0; SOCOM 1's with two more counts). The
+ * vector goes through FreeVector (zsys.h), inlined one level: the class vector's pieces follow this
+ * function out of line in reverse of their first use (0x5A3C60 the temporary's ~vector, 0x5A3CC0 the
+ * deleter's swap, 0x5A3D00 clear(), 0x5A3D10 the temporary's constructor) -- and, generated in the
+ * unit's first round, the deleter's clear and destructor go ahead of InitDecalHandles' reserve and
+ * insert in the template tail, which then inline the temporary's destructor with its clear as the
+ * target's 0x5B71B0 and 0x5B6CE0 do (the MSL headers round 17: seven rows byte-exact) */
 void CZSealBody::UninitDatabaseHandles()
 {
     if (data_0044D550)
         _free(data_0044D550, 0, 0);
     data_0044D550 = 0;
-    CZDecalDefVec tmp;
-
-    func_005A3D10(&tmp);
-    func_005A3D00(&m_blooddriptexhandles);
-    func_005A3CC0(&m_blooddriptexhandles, &tmp);
-    func_005A3C60(&tmp, -1);
+    FreeVector(m_blooddriptexhandles);
     data_0044D508 = 0;
     data_0044D510 = 0;
     data_0044D518 = 0;

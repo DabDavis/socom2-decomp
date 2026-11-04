@@ -43,7 +43,9 @@ public:
     unsigned short node_ref_index;   // 0x4
     unsigned char m_type;   // 0x6
     unsigned short m_arg;   // 0x8
-    unsigned char _a[0x10 - 0xa];
+    unsigned char _a[0xc - 0xa];
+    unsigned short m_stringid;   // 0xc: a string table id (the renderable string's caption)
+    unsigned char _e[0x10 - 0xe];
 };   // 0x10 bytes
 
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
@@ -211,7 +213,8 @@ public:
 /* a string whose destructor runs MSL's as a base's (passing 0: SOCOM 1's CSaferStr) */
 class CSaferStr : public std::string {
 public:
-    CSaferStr();
+    /* inline (zonline.h's, SOCOM 1's): the renderable string's parser builds one on the stack */
+    CSaferStr() {}
     /* never null: no text empties it (SOCOM 1's zutil.h; nothing returned, as 0x22DCC0) */
     void operator=(const char *sz)
     {
@@ -294,6 +297,8 @@ struct ButtonState {
  * 0x3890C0; the type and the key state byte enums) */
 class ActionItem {
 public:
+    /* zui_spec.h's: a button action on the falling edge of no button (the list items build theirs) */
+    ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
     ~ActionItem();
     void Run() const;
 
@@ -310,12 +315,39 @@ class CZAnim {
 public:
     CZAnim *ActivateArg(int type, ...);
     void Activate(CZAnim *parent);
+    /* the animation's name table: a name added, its index; a name by index (the button's
+     * commands keep their caption or valve so) */
+    int AddName(const char *name);
+    const char *GetName(int index);
+    /* the animation's nodes looked up again; a node by its reference index (the map control's
+     * zooms) */
+    void Refresh(bool force);
+    zdb::CNode *GetNode(int index, bool create);
 };
 
 class CZAnimMain {
 public:
     CZAnim *GetAnim(const char *name, const char *set);
+
+    unsigned char _0[0x38];
+    CZAnim *m_CurAnim;   // 0x38: the animation being parsed or run (zanim.h's)
 };
+
+/* a valve (zanim.h's CValve: only the button's VALVE command's reach -- the valve by name, made if
+ * new, and its value, 16 bits at 4) */
+enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;
+    unsigned int m_flags : 8;
+};
+
+const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 
 extern CZAnimMain ZAnim;
 
@@ -852,6 +884,97 @@ void CPlainBmp::SetPulse(float period)
 }
 #pragma auto_inline reset
 
+/* the caption: from the string table when the command carries an id, else the animation's name,
+ * then the string updated -- done at once; VALVE: the valve's value printed, "0" when the name is
+ * empty (as the button's); anything else not the string's */
+bool CRenderableString::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    switch (cmd->m_type - C2D::GetZAnimCmdType(0)) {
+    case 1:
+        if (cmd->m_stringid)
+            SetStringId(cmd->m_stringid);
+        else
+            SetString(anim->GetName(cmd->m_arg), true);
+        Update();
+        return *done = true;
+    case 2: {
+        char buf[64] = "0";
+        const char *name = anim->GetName(cmd->m_arg);
+
+        if (name && *name)
+            sprintf(buf, "%d", CValve::Create(name, VALVE_PERM)->m_value);
+        SetString(buf, true);
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
+/* CAPTION: the caption taken from the animation's names (SOCOM 1's); VALVE (SOCOM II's): the
+ * valve's value printed as the caption, "0" when the name is empty -- into a buffer on the stack,
+ * which the caption pointer is left holding, as the target does. Both done at once; anything else
+ * not the button's */
+bool C2DButton::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    switch (cmd->m_type - C2D::GetZAnimCmdType(0)) {
+    case 1: {
+        const char *s = anim->GetName(cmd->m_arg);
+
+        _szCaption = (char *)s;
+        if (s) {
+            _strCaption.SetString(s, true);
+            _strCaption.UpdatePos();
+        }
+        return true;
+    }
+    case 2: {
+        char buf[64] = "0";
+        const char *name = anim->GetName(cmd->m_arg);
+
+        if (name && *name)
+            sprintf(buf, "%d", CValve::Create(name, VALVE_PERM)->m_value);
+        _szCaption = buf;
+        _strCaption.SetString(buf, true);
+        _strCaption.UpdatePos();
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
+/* CAPTION or VALVE as a command, the name added to the animation's and its index kept (SOCOM 1's
+ * took CAPTION alone); anything else none -- the base's parser is not asked */
+C2DAnimCmdHdr *C2DButton::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+    const char *caption = zrdr_findstring(rdr, "CAPTION");
+    const char *valve = zrdr_findstring(rdr, "VALVE");
+
+    if (caption) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("CAPTION");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(caption);
+    } else if (valve) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("VALVE");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+    } else
+        cmd = 0;
+    return cmd;
+}
+
 /* SETVALUE's value as a command (SOCOM 1's; SOCOM II's record is 16 bytes and keeps the value as a
  * halfword), anything else the button's */
 C2DAnimCmdHdr *CSliderBar::ParseZAnimCmd(_zrdr *rdr)
@@ -1235,13 +1358,28 @@ int CPopUpDialog::GetZAnimCmdType(const char *name)
 
 /* the map control (SOCOM 1's CUIMapCtrl, a C2D: its destructor and command lookup here -- the
  * destructor its key function, so this unit takes its table 0x407260) */
+class CUIMapCtrlAnimCmdHdr;
+
 class CUIMapCtrl : public C2D {
 public:
     virtual ~CUIMapCtrl();
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
+    /* a pan step (SOCOM 1's OnPan, 0x36CA30) and the two zooms towards a node (SOCOM II's,
+     * 0x36C3B0 and 0x36BFF0: the scale first, the node, the time -- the call's argument order;
+     * the names ours) */
+    void OnPan(const CUIMapCtrlAnimCmdHdr &cmd, float dT) const;
+    void ZoomIn(float scale, zdb::CNode *node, float dT);
+    void ZoomOut(float scale, zdb::CNode *node, float dT);
 
     ActionItem m_actions[30];   // 0x18
     int m_numActions;   // 0x1f8 (the destructor zeroes it)
+    /* the control's rectangle on screen (SOCOM II's; the zooms centre on it; the names ours) */
+    int m_left;   // 0x1fc
+    int m_top;   // 0x200
+    int m_right;   // 0x204
+    int m_bottom;   // 0x208
 };
 
 /* the children deleted, each taken off the list first, the actions forgotten (SOCOM 1's, its count
@@ -1262,6 +1400,145 @@ CUIMapCtrl::~CUIMapCtrl()
         i = next;
     }
     m_numActions = 0;
+}
+
+/* a pan of the map control as its command keeps it (SOCOM 1's CUIMapCtrlAnimCmdHdr: SOCOM II's 32
+ * bytes, the direction and the three rates after the 16-byte header; the names ours) */
+class CUIMapCtrlAnimCmdHdr : public C2DAnimCmdHdr {
+public:
+    int m_dir;   // 0x10: UP, DOWN, LEFT, RIGHT
+    int m_speed;   // 0x14
+    int m_accel;   // 0x18
+    int m_limit;   // 0x1c
+};   // 0x20 bytes
+
+/* the map's node as the zooms move it (znode.h's CNode: its matrix's translation row, the
+ * position and scale accessors) */
+namespace zdb {
+class CNode {
+public:
+    float GetScale();
+    void SetScale(float s);
+    void SetPosition(float x, float y, float z);
+    void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
+    /* ours, a probe of ZoomIn's copies (by value, then into a local): see its OPEN note */
+    void SetPositionV(CPnt3D p)
+    {
+        CPnt3D q;
+
+        q = p;
+        SetPosition(q.x, q.y, q.z);
+    }
+    CPnt3D GetPosition() const { return *(const CPnt3D *)m_matrix.m_matrix[3]; }
+
+    CMatrix m_matrix;   // 0x0
+};
+}
+
+/* the node zoomed in about the control's centre, by half the time's step at the given rate, no
+ * further than twice its unit scale: its position pulled out from the centre by the step, its
+ * scale multiplied by it (SOCOM II's; the name ours).
+ * OPEN, 0x160 against 0x174: everything to the clamp is the target's (the clamp a MIN ternary --
+ * `if (!(z < m)) z = m;` inverts the branch); the position's copies are not. The target stores
+ * GetPosition's value through one pointer into a temporary (sp+80), block-copies it (ld/sd,
+ * lwc1/swc1) into the point (sp+48), computes x and y from the TEMPORARY's fields into the point,
+ * block-copies the point again (sp+64), copies that field by field back into sp+80 and passes
+ * those three to SetPosition(fff). Tried: `CPnt3D pos = node->GetPosition();` with
+ * SetPosition(const CPnt3D &) (the value built in place: 0x12C), an assigned point and a by-value
+ * SetPosition copying into a local (this, 0x160) */
+void CUIMapCtrl::ZoomIn(float scale, zdb::CNode *node, float dT)
+{
+    float cx = 0.5f * (m_left + m_right);
+    float cy = 0.5f * (m_top + m_bottom);
+    float zoom = 1.0f + 0.5f * dT * scale;
+    float maxzoom = 2.0f / node->GetScale();
+
+    zoom = zoom < maxzoom ? zoom : maxzoom;
+
+    CPnt3D pos;
+
+    pos = node->GetPosition();
+    pos.x = cx - zoom * (cx - pos.x);
+    pos.y = cy - zoom * (cy - pos.y);
+    node->SetPositionV(pos);
+    node->SetScale(zoom * node->GetScale());
+}
+
+/* PAN: a step of the pan; ZOOM_IN and ZOOM_OUT: the current animation refreshed and the zoom made
+ * towards the command's node; each done at once (SOCOM 1's PAN; the zooms SOCOM II's) */
+bool CUIMapCtrl::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+
+    switch (cmd->m_type - C2D::GetZAnimCmdType(0)) {
+    case 1:
+        OnPan(*(CUIMapCtrlAnimCmdHdr *)cmd, *dT);
+        return *done = true;
+    case 2: {
+        ZAnim.m_CurAnim->Refresh(false);
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node_ref_index, false);
+
+        ZoomIn(1.0f, node, *dT);
+        return *done = true;
+    }
+    case 3: {
+        ZAnim.m_CurAnim->Refresh(false);
+        zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd->node_ref_index, false);
+
+        ZoomOut(1.0f, node, *dT);
+        return *done = true;
+    }
+    default:
+        return false;
+    }
+}
+
+/* PAN with its direction and rates, or ZOOM_IN, or ZOOM_OUT, as a command (SOCOM 1's); anything
+ * else none. The direction is UP unless the name says otherwise; each rate 0 unless given */
+C2DAnimCmdHdr *CUIMapCtrl::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+    _zrdr *pan = zrdr_findtag(rdr, "PAN");
+
+    if (pan) {
+        CUIMapCtrlAnimCmdHdr *pc =
+            (CUIMapCtrlAnimCmdHdr *)_calloc(1, sizeof(CUIMapCtrlAnimCmdHdr), 0, 0);
+
+        pc->header.timeless = 1;
+        pc->header.data_size = sizeof(CUIMapCtrlAnimCmdHdr);
+        pc->m_type = GetZAnimCmdType("PAN");
+
+        const char *dir = zrdr_findstring(pan, "DIRECTION");
+
+        pc->m_dir = 0;
+        if (!strcmp(dir, "UP"))
+            pc->m_dir = 0;
+        else if (!strcmp(dir, "DOWN"))
+            pc->m_dir = 1;
+        else if (!strcmp(dir, "LEFT"))
+            pc->m_dir = 2;
+        else if (!strcmp(dir, "RIGHT"))
+            pc->m_dir = 3;
+        pc->m_speed = 0;
+        zrdr_findint(pan, "SPEED", &pc->m_speed, 1);
+        pc->m_accel = 0;
+        zrdr_findint(pan, "ACCEL", &pc->m_accel, 1);
+        pc->m_limit = 0;
+        zrdr_findint(pan, "LIMIT", &pc->m_limit, 1);
+        cmd = pc;
+    } else if (zrdr_findtag(rdr, "ZOOM_IN")) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("ZOOM_IN");
+    } else if (zrdr_findtag(rdr, "ZOOM_OUT")) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("ZOOM_OUT");
+    } else
+        cmd = 0;
+    return cmd;
 }
 
 /* the map control's commands: panning and the two zooms, after the UI's own (SOCOM 1's; SOCOM
@@ -1349,6 +1626,8 @@ public:
 class ListItem {
 public:
     ListItem(const char *s);
+    ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols);
+    ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font, float scale);
     ~ListItem()
     {
         if (m_text)
@@ -1365,6 +1644,7 @@ public:
     void SetPos(int x, int y);
     void PrepListItem(const std::vector<ColumnData *> &cols, C2DFont *font, float scale,
                       zdb::CTextureRelocMgr *mgr);
+    void DrawPrep(const CUIListBox &box, int x, int y, int idx);
 
     /* the look's, when it has one (inlined into the array look's walks) */
     void Finish()
@@ -1492,6 +1772,14 @@ public:
     {
         SetColored(false);
         SetString(&m_text);
+    }
+    /* the look with its text formatted in (SOCOM II's: ListItem's constructors new it, the format
+     * skipped with the construction when the allocation fails) */
+    CListItemStringTypeImpl(const char *s)
+    {
+        SetColored(false);
+        SetString(&m_text);
+        m_str->Format(s);
     }
     /* the flag SetColor sets (an inline of its own: it is what makes the derived looks'
      * constructors expand past inline_max_size, inlined one level in the makers, and ListItem's
@@ -1645,6 +1933,8 @@ public:
 class CListItemArrayTypeImpl : public CListItemTypeImpl {
 public:
     CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols);
+    CListItemArrayTypeImpl(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font,
+                           float scale);
     virtual ~CListItemArrayTypeImpl()
     {
         for (int i = 0; i < m_items.size(); i++)
@@ -1833,6 +2123,55 @@ static inline ZRdrNode *RdrElem(const ZRdrNode *r, unsigned int i)
     return i < RdrCount(r) ? &r->array[i] : 0;
 }
 
+/* the string table's id for a name, 0 if it has none (ztwod's, 0x361B20) */
+int GetStringId(const char *name);
+
+/* CAPTION as a command: an array of several strings joined into one name, or a single string --
+ * its string table id when it has one, else the name added to the animation's; VALVE's name
+ * added likewise; anything else none (SOCOM 1's took one CAPTION string) */
+C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+    const ZRdrNode *r = (const ZRdrNode *)zrdr_findtag(rdr, "CAPTION");
+    const char *valve = zrdr_findstring(rdr, "VALVE");
+
+    if (r) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("CAPTION");
+        if (r->type == 4 && RdrCount(r) > 1) {
+            CSaferStr name;
+
+            name = "";
+            for (int i = 0; i < RdrCount(r); i++) {
+                if (RdrElem(r, i)->type == 3)
+                    name += RdrString(RdrElem(r, i));
+            }
+            cmd->m_arg = ZAnim.m_CurAnim->AddName(name.c_str());
+            cmd->m_stringid = 0;
+        } else {
+            const char *str = RdrString(RdrElem(r, 0));
+            int id = GetStringId(str);
+
+            if (id)
+                cmd->m_stringid = id;
+            else {
+                cmd->m_arg = ZAnim.m_CurAnim->AddName(str);
+                cmd->m_stringid = 0;
+            }
+        }
+    } else if (valve) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("VALVE");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+    } else
+        cmd = 0;
+    return cmd;
+}
+
 /* an item per string of the reader's array, as many as there are columns (SOCOM 1's; ready while
  * every item is).
  * OPEN, 10 instructions, all in the prologue: the target builds CListItemTypeImpl's table address,
@@ -1923,6 +2262,46 @@ void CListItemArrayTypeImpl::DrawPrep(const CUIListBox &box, int x, int y, int i
                 str->SetScale(box.m_columns[i]->m_scale);
         }
     }
+}
+
+/* an item of one text (SOCOM II's: the array look's constructor news one per column), its look a
+ * text look holding it */
+ListItem::ListItem(const char *s) : m_text(0), m_24(true), m_impl(new CListItemStringTypeImpl(s))
+{
+}
+
+/* an item from a reader: an array's columns as an array look (SOCOM 1's constructor) */
+ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols)
+    : m_text(0), m_24(true), m_impl(0)
+{
+    const ZRdrNode *r = (const ZRdrNode *)rdr;
+
+    if (r && RdrCount(r))
+        m_impl = new CListItemArrayTypeImpl(rdr, cols);
+}
+
+/* an item from a reader in a font and scale: a string as a text look, an array as an array look,
+ * the item not ready while its columns are not (SOCOM II's) */
+ListItem::ListItem(_zrdr *rdr, const std::vector<ColumnData *> &cols, C2DFont *font, float scale)
+    : m_text(0), m_24(true), m_impl(0)
+{
+    const ZRdrNode *r = (const ZRdrNode *)rdr;
+
+    if (r->type == 3)
+        m_impl = new CListItemStringTypeImpl(RdrString(r));
+    else if (RdrCount(r)) {
+        m_impl = new CListItemArrayTypeImpl(rdr, cols, font, scale);
+        if (!m_impl->IsReady())
+            m_24 = false;
+    }
+}
+
+/* the row drawn: a text look made first when the item has none (SOCOM II's; the name ours) */
+void ListItem::DrawPrep(const CUIListBox &box, int x, int y, int idx)
+{
+    if (!m_impl)
+        m_impl = new CListItemStringTypeImpl;
+    m_impl->DrawPrep(box, x, y, idx);
 }
 
 /* the look's font, scale and place, a text look made first when the item has none (SOCOM II's;
