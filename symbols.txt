@@ -9060,7 +9060,7 @@
 0x004FF158 0x228 FreeLanguage  # OVL2 unaligned; s1:order -- the gcc lane, round 21c: SOCOM 1's distance object (0x369590) holds its LOCAL FreeLanguage (0x248) after DistCalc4Bit, at this row's place after the two distance passes; the same body (both codebook lists' tables, the ten byte tables, the caches at +176/+180, the cached distances at +108)
 0x004FF380 0x224 FreeDistCalc  # OVL2; s1:order, s1:calls -- the gcc lane, round 21c: SOCOM 1's distance object holds its LOCAL FreeDistCalc (0x25C) after FreeLanguage, as this row follows it; ControlDistSilProcess calls it where SOCOM 1's calls FreeDistCalc; the same body (the +312/+292 tables, both codebook lists, the ten tables, the caches, tosBaseBlockDestruct)
 0x004FF5A8 0x518 InitDistSilProcess  # OVL2 unaligned; s1:align
-0x004FFAC0 0x224 func_004FFAC0  # OVL2
+0x004FFAC0 0x224 NormCorrection  # OVL2; s1:order -- the gcc lane, round 21c: SOCOM 1's distance object holds its LOCAL NormCorrection (0x180) after InitDistSilProcess, as this row follows it; the same body (the codeword bytes' table sum, its log scaled by 255 over +296 - +300 and rounded, added to every byte and clamped), logf for SOCOM 1's log
 0x004FFCE8 0x22C func_004FFCE8  # OVL2 unaligned
 0x004FFF18 0x7CC ControlDistSilProcess  # OVL2 unaligned; s1:slot (ConstructDistCalc's control function, as SOCOM 1's ConstructDistCalc hands ControlDistSilProcess, 0x36B368) -- the gcc lane, round 16c
 0x005006E8 0x710 func_005006E8  # OVL2 unaligned
