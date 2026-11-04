@@ -164,6 +164,8 @@ class CSealCtrlAi;
  * ours) */
 struct AI_SOUND_PRIORITY {
     unsigned int m_level : 8;
+    /* (its bit 0, the word's 8: the anim dropped once the alertness's band passes the level -- the
+     * target tests it on the word, `andi 0x100`: 0x5712F0) */
     unsigned int m_rest : 24;
 };
 

@@ -558,6 +558,42 @@ void CSealCtrlAi::Initalize()
     m_3f4 = (AI_MODE)1;
 }
 
+/* a squad mate's radio valve set -- the AI's own by its call sign at 0x26C (1 Able 2, 2 Bravo 1, 3
+ * Bravo 2), or with no AI all three (OVL2 0x574EF0, new in SOCOM II: OnDeath closes the AI's,
+ * 0x573130 opens it as it takes its call sign, 0x574C30 closes all three; the name unknown) */
+extern "C" void func_00574EF0(CSealCtrlAi *ai, int value)
+{
+    if (!ai) {
+        CValve *v;
+
+        v = CValve::GetByName("snd_able2");
+        if (v)
+            SetValveValue(v, value);
+        v = CValve::GetByName("snd_bravo1");
+        if (v)
+            SetValveValue(v, value);
+        /* (the last test on v0, the copy in its delay slot) */
+        if ((v = CValve::GetByName("snd_bravo2")) != 0)
+            SetValveValue(v, value);
+    } else {
+        CValve *v = 0;
+
+        switch (ai->m_26c) {
+        case 1:
+            v = CValve::GetByName("snd_able2");
+            break;
+        case 2:
+            v = CValve::GetByName("snd_bravo1");
+            break;
+        case 3:
+            v = CValve::GetByName("snd_bravo2");
+            break;
+        }
+        if (v)
+            SetValveValue(v, value);
+    }
+}
+
 /* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
  * OVL2 0x50F4C0 by its address) */
 extern "C" float func_0050F4C0(CAiEvent::EVENT event);
@@ -1235,6 +1271,50 @@ static inline ALERT_BAND AlertBand(float x)
             return (ALERT_BAND)i;
     return ALERT_BAND_4;
 }
+
+/* the blend stack's top (seal.cpp's stand-in for RTStack<CZBodyAnimBlend>::Top's OVL2 copy) */
+extern "C" void *func_00555170(void *stack);
+
+/* whether the AI's anim of a kind still plays on top of the body's blends: never for none (-1); the
+ * one the AI made (0x75C) is dropped -- made none, and false -- once its time runs out or, when its
+ * priority says so (bit 8), once the alertness's band passes its level (OVL2 0x5712F0, new in SOCOM
+ * II: 0x571100, 0x571150 and the AI states' ticks ask it; the name unknown). The level is an int of
+ * the word's low byte, taken before the band (its `andi` ahead of the walk), the band AlertBand's
+ * enum (`li 4`).
+ * OPEN, 3 instructions (the size right): the time test -- the target loads the clock (0x4365C0) into
+ * $f1 before the anim's time into $f0, then `c.le.s $f1,$f0; bc1t`; here the time loads first
+ * whatever the spelling: `!(now <= t)`, `now > t`, `t < now` and `!(t >= now)` (both c.lt.s), the
+ * clock through an inline, float locals in either order, a reference to the time, the arms swapped
+ * (40 off). */
+extern "C" bool func_005712F0(CSealCtrlAi *ai, short anim)
+{
+    if (anim == -1)
+        return false;
+
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)ai->m_entity + 0x1c0);
+    bool r = top ? anim == top->m_animType : false;
+
+    if (r && anim == ai->m_sound) {
+        if (!(data_004365C0 <= ai->m_sound_time)) {
+            ai->m_sound = -1;
+            r = false;
+        } else {
+            /* (the priority's word read once: its bit 8 tested, its low byte the level) */
+            unsigned int pri = *(unsigned int *)&ai->m_sound_priority;
+
+            if (pri & 0x100) {
+                int level = pri & 0xff;
+
+                if (level < AlertBand(((CAlertness *)ai)->m_alert)) {
+                    ai->m_sound = -1;
+                    r = false;
+                }
+            }
+        }
+    }
+    return r;
+}
+
 
 /* the AI's turn: at its own rate, slowed by the speed (between 0.35 and the whole, OVL2 data
  * 0x650100/0x650108 -- this function's statics) when the alertness is low or the look deploys,
@@ -3036,20 +3116,19 @@ extern "C" CBoxCorners *func_0056AE40(CBoxCorners *c, const CBBox *b)
 }
 
 extern "C" {
-/* (OVL2 0x5712F0, seal_ai.cpp's: whether the controller's SEAL should act now; and 0x589AA0, the
- * body's: the act) */
-int func_005712F0(CSealCtrlAi *ctrl);
+/* (OVL2 0x589AA0, the body's: the anim on top let go) */
 void func_00589AA0(CZSealBody *seal);
 }
 
-/* the controller's SEAL made to act when it should, saying whether it did (OVL2 0x571100, new in
- * SOCOM II; the AI states' 0x60DFC0 asks it) */
-extern "C" bool func_00571100(CSealCtrlAi *ctrl)
+/* the AI's anim of a kind stopped when it plays on top of the body's blends (0x5712F0), saying whether
+ * it was (OVL2 0x571100, new in SOCOM II; CAiGroup::act_anim::Stop, 0x60DFC0, asks it with the act's
+ * anim -- the kind passed through in a1) */
+extern "C" bool func_00571100(CSealCtrlAi *ctrl, short anim)
 {
     bool acted = false;   /* declared first: the SEAL takes s0, the flag s1 */
     CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
 
-    if (func_005712F0(ctrl)) {
+    if (func_005712F0(ctrl, anim)) {
         func_00589AA0(seal);
         acted = true;
     }
