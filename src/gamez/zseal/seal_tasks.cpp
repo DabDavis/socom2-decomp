@@ -124,49 +124,6 @@ struct TASK_PARAM {
     CZSealBody *m_seal;   // 0xc
 };
 
-/* the index'th SEAL argument of the running anim (SOCOM 1's taskFindParam(type, index), out of
- * line there; SOCOM II inlines it into every handler). The end of the arguments is a `break` on
- * `!(bool)p` -- materialised (sltu, xori) and laid out after the loop, as every inlined copy has
- * it; `if (!p) return 0;` branches inline -- and the counter is declared ahead of the list, which
- * gives the list s0 and the counter s1.
- * Still open in the handlers that use their block after the find: the target keeps the block in
- * s1, between the list and the counter (the find's type and index in s4/s3), where every spelling
- * tried gives it s4 or s0. Measured in round 9 (probes and ~40 real-unit variants): the order is
- * MW's numbering, not degree or use counts (20 extra temporaries or 16 extra uses of the block
- * never move it) -- params first, the handler's named locals in declaration order, then the named
- * variables of the inlined functions in expansion order, then temporaries; the highest number
- * takes s0, and the first-read non-parameter (here the list, by its null test) moves to the end.
- * `T *cmd = (T *)hdr;` is a variable of its own numbered just after the params (CTHold::Tick:
- * dT s5, block s4); a cast through an inline (`template <class T> T *TaskCmd(_zanim_cmd_hdr *h)
- * { return (T *)h; }`, a member returning `this`) makes the block the param's own register, which
- * the m_param read makes first-read: block s0, list s1, only those two swapped (CTGroup::End 5
- * instructions off); any use of hdr after the find gives s4. Written out by hand in a handler,
- * the target's order comes only with the block declared BETWEEN the find's counter and its list
- * -- the original numbers the block where an inlined variable declared between `int i` and the
- * list would be; no C++ shape found that does it. Tried and no better: the find `inline`; the list
- * first, from an inline accessor; the accessors through ((TASK_HDR *)hdr); the block declared after
- * the find, nested, as two locals, from TaskCmd after the find; the work after the find in an
- * inline member or a free inline taking the cast; the find taking the block, or a member with the
- * counter a parameter; GetCmd as a member; tools/perm.py (2 x 150 s over the find's declarations
- * and copies of type/index: best 8 of CTWait::Begin's 14, the block still s4) */
-static _zanim_cmd_hdr *taskFindParam(unsigned int type, int index)
-{
-    int i;
-    CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;
-
-    if (!list)
-        return 0;
-    for (i = 0;; i++) {
-        _zanim_cmd_hdr *p = GetCmd__13CZAnimArgListFi(list, i);
-
-        if (!(bool)p)
-            break;
-        if (p->data_type == type && index-- == 0)
-            return p;
-    }
-    return 0;
-}
-
 /* the SEAL's AI controller, if its controller is one (an inline of its own: the ternary around it
  * keeps the result in both arms) */
 inline CSealCtrlAi *SealAi(CZSealBody *seal)
@@ -178,26 +135,53 @@ inline CSealCtrlAi *SealAi(CZSealBody *seal)
 struct TASK_HDR {
     _zanim_cmd_hdr hdr;   // 0x0
     int m_param;   // 0x4
-
-    TASK_PARAM *GetParam() const
-    {
-        _zanim_cmd_hdr *p = taskFindParam(ai_cmdid[2], m_param);
-
-        return p ? (TASK_PARAM *)p : 0;
-    }
-    CZSealBody *GetSeal() const
-    {
-        TASK_PARAM *p = GetParam();
-
-        return p ? p->m_seal : 0;
-    }
-    CSealCtrlAi *GetAi() const
-    {
-        CZSealBody *seal = GetSeal();
-
-        return seal ? SealAi(seal) : 0;
-    }
 };
+
+/* THE HANDLERS' FIND: the index'th SEAL argument of the running anim (SOCOM 1's taskFindParam(type,
+ * index), out of line there; SOCOM II has it in every handler), then its SEAL, WRITTEN OUT in the
+ * handler (the kit lane, round 23: 15 handlers byte-exact, open since round 8). The handler
+ * declares the find's type, index and counter as its OWN locals, then its block (`cmd`), then the
+ * list: MW numbers named locals in declaration order, and the list, read first by its null test,
+ * moves to the end -- type s4, index s3, counter s2, block s1, list s0, the target's registers in
+ * every handler that uses its block after the find (README "MW's saved-register order is a
+ * NUMBERING"). As an inline (rounds 8-22: `static taskFindParam` under inline TASK_HDR::GetParam/
+ * GetSeal/GetAi) the find's variables are numbered after EVERY named local of the handler, its
+ * block included, which took s4 in all thirteen; an outer inline's locals are numbered before the
+ * inlines it expands too (a whole-handler inline, its local block copy-propagation-proof, gave s4),
+ * so no inline shape numbers the block after the counter. The rest reproduces what the inline
+ * compiled to: its returns are the stores to `found` and the jumps to the label, the end of the
+ * arguments the `!(bool)p` materialised (sltu, xori) through a bool of its own (tested straight in
+ * the `if` MW branches on p), each `return p` a block of its own (`b` to the join: a `goto` alone
+ * folds into the compare). Then the argument's cast and its SEAL, as the inline's GetParam/GetSeal
+ * did; a handler adds its controller or AI. A macro: the original's spelling is unknown -- this is
+ * the one shape found that numbers the block between the counter and the list. */
+#define TASK_SEAL(T)                                                        \
+    unsigned int type = ai_cmdid[2];                                        \
+    int index = ((TASK_HDR *)hdr)->m_param;                                 \
+    int i;                                                                  \
+    T *cmd = (T *)hdr;                                                      \
+    CZAnimArgList *list = ZAnim.m_CurAnim->m_arg_list;                      \
+    _zanim_cmd_hdr *found;                                                  \
+                                                                            \
+    if (!list) {                                                            \
+        found = 0;                                                          \
+        goto found_it;                                                      \
+    }                                                                       \
+    for (i = 0;; i++) {                                                     \
+        _zanim_cmd_hdr *p = GetCmd__13CZAnimArgListFi(list, i);             \
+        bool end = !(bool)p;                                                \
+                                                                            \
+        if (end)                                                            \
+            break;                                                          \
+        if (p->data_type == type && index-- == 0) {                         \
+            found = p;                                                      \
+            goto found_it;                                                  \
+        }                                                                   \
+    }                                                                       \
+    found = 0;                                                              \
+found_it:                                                                   \
+    TASK_PARAM *param = found ? (TASK_PARAM *)found : 0;                    \
+    CZSealBody *seal = param ? param->m_seal : 0
 
 /* a block allocated and its header made: the type the registration left, the size (SOCOM II's
  * _calloc called without the file and line SOCOM 1's passed) */
@@ -703,8 +687,7 @@ _zanim_cmd_hdr *CTComm::Parse(_zrdr *rdr)
 /* (OVL2 0x5DD4F0) */
 void CTDrain::Begin(_zanim_cmd_hdr *hdr)
 {
-    CTDrain *cmd = (CTDrain *)hdr;
-    CZSealBody *seal = cmd->GetSeal();
+    TASK_SEAL(CTDrain);
     CEntityCtrl *ctrl = seal ? seal->m_control : 0;
     CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
 
@@ -715,8 +698,7 @@ void CTDrain::Begin(_zanim_cmd_hdr *hdr)
 /* (OVL2 0x5DD2A0) */
 void CTDrain::End(_zanim_cmd_hdr *hdr)
 {
-    CTDrain *cmd = (CTDrain *)hdr;
-    CZSealBody *seal = cmd->GetSeal();
+    TASK_SEAL(CTDrain);
     CEntityCtrl *ctrl = seal ? seal->m_control : 0;
     CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
 
@@ -906,26 +888,23 @@ _zanim_cmd_hdr *CTFireWeapon::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
-/* firing marked when the kit holds the weapon (OVL2 0x5DC6B0)
- * OPEN, 4 instructions: the AI's ternary: the target's call arm keeps the result in both arms (as SealAi gives GetAi); with the seal kept for the kit it takes the zero-first form here */
+/* firing marked when the kit holds the weapon (OVL2 0x5DC6B0) */
 void CTFireWeapon::Begin(_zanim_cmd_hdr *hdr)
 {
-    CTFireWeapon *cmd = (CTFireWeapon *)hdr;
-    CZSealBody *seal = cmd->GetSeal();
-    CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
+    TASK_SEAL(CTFireWeapon);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (ai && seal->m_kit.HasItem((EQUIP_ITEM)cmd->m_item))
         cmd->SetFiring(true);
 }
 
-/* (OVL2 0x5DB730)
- * OPEN, 29 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR), and the seal/controller/AI triple's registers */
+/* (OVL2 0x5DB730: the find written out, TASK_SEAL; the AI's ternary through SealAi keeps the call's
+ * result in its own arm) */
 void CTGoto::Begin(_zanim_cmd_hdr *hdr)
 {
-    CTGoto *cmd = (CTGoto *)hdr;
-    CZSealBody *seal = cmd->GetSeal();
+    TASK_SEAL(CTGoto);
     CEntityCtrl *ctrl = seal ? seal->m_control : 0;
-    CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (!seal || !ctrl || !ai)
         return;
@@ -939,14 +918,12 @@ void CTGoto::Begin(_zanim_cmd_hdr *hdr)
     }
 }
 
-/* (OVL2 0x5DB350)
- * OPEN, 29 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR), and the seal/controller/AI triple's registers */
+/* (OVL2 0x5DB350: as Begin) */
 void CTGoto::End(_zanim_cmd_hdr *hdr)
 {
-    CTGoto *cmd = (CTGoto *)hdr;
-    CZSealBody *seal = cmd->GetSeal();
+    TASK_SEAL(CTGoto);
     CEntityCtrl *ctrl = seal ? seal->m_control : 0;
-    CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (!seal || !ctrl || !ai)
         return;
@@ -961,34 +938,31 @@ void CTGoto::End(_zanim_cmd_hdr *hdr)
     }
 }
 
-/* (OVL2 0x5D9430)
- * OPEN, 10 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) -- nothing else differs */
+/* (OVL2 0x5D9430) */
 void CTGroup::End(_zanim_cmd_hdr *hdr)
 {
-    CTGroup *cmd = (CTGroup *)hdr;
-    CSealCtrlAi *ai = cmd->GetAi();
+    TASK_SEAL(CTGroup);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     cmd->m_14 = 0;
 }
 
-/* the hold over: the AI's mode put back, unless it never began (OVL2 0x5D8E20)
- * OPEN, 10 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) -- nothing else differs */
+/* the hold over: the AI's mode put back, unless it never began (OVL2 0x5D8E20) */
 void CTHold::End(_zanim_cmd_hdr *hdr)
 {
-    CTHold *cmd = (CTHold *)hdr;
-    CSealCtrlAi *ai = cmd->GetAi();
+    TASK_SEAL(CTHold);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (ai && cmd->m_timer != -1.0f)
         RestoreAiMode__11CSealCtrlAiFv(ai);
 }
 
-/* the wait run down (OVL2 0x5D8F60)
- * OPEN, 12 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) */
+/* the wait run down (OVL2 0x5D8F60) */
 bool CTHold::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
-    CTHold *cmd = (CTHold *)hdr;
+    TASK_SEAL(CTHold);
 
-    if (!cmd->GetAi()) {
+    if (!(seal ? SealAi(seal) : 0)) {
         *dT = 0.0f;
         return true;
     }
@@ -1067,12 +1041,11 @@ _zanim_cmd_hdr *CTHold::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
-/* the wait drawn, the AI held in mode 2 for it (OVL2 0x5D90E0)
- * OPEN, 14 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) */
+/* the wait drawn, the AI held in mode 2 for it (OVL2 0x5D90E0) */
 void CTHold::Begin(_zanim_cmd_hdr *hdr)
 {
-    CTHold *cmd = (CTHold *)hdr;
-    CSealCtrlAi *ai = cmd->GetAi();
+    TASK_SEAL(CTHold);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (ai) {
         cmd->m_timer = cmd->m_wait;
@@ -1081,27 +1054,24 @@ void CTHold::Begin(_zanim_cmd_hdr *hdr)
     }
 }
 
-/* the look drawn (OVL2 0x5D7850)
- * OPEN, 31 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR), and the seal/controller pair's registers */
+/* the look drawn (OVL2 0x5D7850: the bit cleared in place gives the byte mask `andi 0xfb`; through
+ * the int setter it is `li -5; and`) */
 void CTLookAt::Begin(_zanim_cmd_hdr *hdr)
 {
-    CTLookAt *cmd = (CTLookAt *)hdr;
-    CZSealBody *seal = cmd->GetSeal();
+    TASK_SEAL(CTLookAt);
     CEntityCtrl *ctrl = seal ? seal->m_control : 0;
     CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
 
     if (!seal || !ctrl)
         return;
     cmd->m_timer = cmd->m_wait;
-    cmd->SetLooking(cmd->m_looking & ~4);
+    cmd->m_looking &= ~4;
 }
 
-/* the look cleared (OVL2 0x5D7290)
- * OPEN, 17 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR), and the seal/controller pair's registers */
+/* the look cleared (OVL2 0x5D7290) */
 void CTLookAt::End(_zanim_cmd_hdr *hdr)
 {
-    CTLookAt *cmd = (CTLookAt *)hdr;
-    CZSealBody *seal = cmd->GetSeal();
+    TASK_SEAL(CTLookAt);
     CEntityCtrl *ctrl = seal ? seal->m_control : 0;
     CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
 
@@ -1111,21 +1081,19 @@ void CTLookAt::End(_zanim_cmd_hdr *hdr)
         ClearLook__9CSealCtrlF7AI_LOOK((CSealCtrl *)ctrl, 3);
 }
 
-/* the anim looked up by name (OVL2 0x5D7040)
- * OPEN, 11 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) */
+/* the anim looked up by name (OVL2 0x5D7040) */
 void CTMacro::Begin(_zanim_cmd_hdr *hdr)
 {
-    CTMacro *cmd = (CTMacro *)hdr;
+    TASK_SEAL(CTMacro);
 
-    if (cmd->GetAi())
+    if (seal ? SealAi(seal) : 0)
         cmd->m_anim = ZAnim.GetAnim(cmd->m_name.m_str, 0);
 }
 
 /* (OVL2 0x5D5A20) */
 void CTMove::End(_zanim_cmd_hdr *hdr)
 {
-    CTMove *cmd = (CTMove *)hdr;
-    CZSealBody *seal = cmd->GetSeal();
+    TASK_SEAL(CTMove);
     CEntityCtrl *ctrl = seal ? seal->m_control : 0;
     CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
 
@@ -1154,20 +1122,23 @@ bool CTPaint::Tick(_zanim_cmd_hdr *hdr, float *dT)
     return true;
 }
 
-/* (OVL2 0x5D4080)
- * OPEN, 4 instructions: the target keeps the unused AI pointer, `b; move v1,v0` / `move v1,zero`, which MW drops here */
+/* (OVL2 0x5D4080: the AI tested and nothing done -- the test keeps the ternary's moves into v1 that
+ * an unused AI loses, its branch to the epilogue removed after allocation) */
 void CTPursue::End(_zanim_cmd_hdr *hdr)
 {
-    CTPursue *cmd = (CTPursue *)hdr;
-    CSealCtrlAi *ai = cmd->GetAi();
+    TASK_SEAL(CTPursue);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!ai)
+        return;
 }
 
 /* running while the AI pursues (OVL2 0x5D4190): the script-state test is the controller's AiStateIs
  * (zseal.h: the stack's const GetState called -- the kit lane, round 21) */
 bool CTPursue::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
-    CTPursue *cmd = (CTPursue *)hdr;
-    CSealCtrlAi *ai = cmd->GetAi();
+    TASK_SEAL(CTPursue);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (!ai) {
         *dT = 0.0f;
@@ -1179,12 +1150,11 @@ bool CTPursue::Tick(_zanim_cmd_hdr *hdr, float *dT)
     return r;
 }
 
-/* the pursuit pushed, its duration the command's (OVL2 0x5D4300)
- * OPEN, 10 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) */
+/* the pursuit pushed, its duration the command's (OVL2 0x5D4300) */
 void CTPursue::Begin(_zanim_cmd_hdr *hdr)
 {
-    CTPursue *cmd = (CTPursue *)hdr;
-    CSealCtrlAi *ai = cmd->GetAi();
+    TASK_SEAL(CTPursue);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (ai && ai->PushAiState(AI_STATE_PURSUE, 0)) {
         CAiState *s = ai->GetAiState();
@@ -1205,12 +1175,11 @@ _zanim_cmd_hdr *CTPursue::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
-/* the stance taken, its timer started (OVL2 0x5D09F0)
- * OPEN, 13 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) */
+/* the stance taken, its timer started (OVL2 0x5D09F0) */
 void CTStance::Begin(_zanim_cmd_hdr *hdr)
 {
-    CTStance *cmd = (CTStance *)hdr;
-    CSealCtrlAi *ai = cmd->GetAi();
+    TASK_SEAL(CTStance);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (ai) {
         SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, (SEAL_STANCE)cmd->m_stance);
@@ -1219,12 +1188,11 @@ void CTStance::Begin(_zanim_cmd_hdr *hdr)
     }
 }
 
-/* back to standing, unless the stance was for no time or was prone (OVL2 0x5D08A0)
- * OPEN, 11 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) */
+/* back to standing, unless the stance was for no time or was prone (OVL2 0x5D08A0) */
 void CTStance::End(_zanim_cmd_hdr *hdr)
 {
-    CTStance *cmd = (CTStance *)hdr;
-    CSealCtrlAi *ai = cmd->GetAi();
+    TASK_SEAL(CTStance);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     if (ai && cmd->m_time != 0.0f && cmd->m_peek != STANCE_PRONE)
         SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb(ai, STANCE_PRONE, true, 0.0f);
@@ -1352,12 +1320,11 @@ _zanim_cmd_hdr *CTWait::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
-/* the wait drawn (OVL2 0x5CDDA0)
- * OPEN, 14 instructions: the command block's register: the target keeps it in s1, between the find's list (s0) and its counter (s2), the find's type and index in s4/s3; here the block takes s4 (see TASK_HDR) */
+/* the wait drawn (OVL2 0x5CDDA0) */
 void CTWait::Begin(_zanim_cmd_hdr *hdr)
 {
-    CTWait *cmd = (CTWait *)hdr;
-    CSealCtrlAi *ai = cmd->GetAi();
+    TASK_SEAL(CTWait);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
 
     cmd->m_wait.Reset();
 }
