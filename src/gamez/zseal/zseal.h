@@ -135,6 +135,9 @@ const T &_min(const T &a, const T &b)
 }
 }
 
+/* the weapons' stash, an ammunition pickup's contents (zwep_weapon.cpp's) */
+class CZItemStash;
+
 /* the SEAL's kit: its weapons and gear (SOCOM 1's CZKit, 0x87c bytes there; only its start here) */
 class CZKit {
 public:
@@ -173,6 +176,9 @@ public:
      * let go (SOCOM 1's; OVL2 0x5C8750, 0x5B9F00, the kit lane's -- CreateNetAmmoPickup asks them) */
     int GetAmmoIndex(EQUIP_AMMO ammo, int rounds);
     void RemoveAmmo(int index);
+    /* the kit's ammunition put into a stash, every item's (-1) or one index's (SOCOM 1's; OVL2
+     * 0x5BA040, the kit lane's -- DropAmmo calls it) */
+    void FillAmmoPickupInstance(CZItemStash *stash, int index);
     /* the items' set-up finished (SOCOM 1's; OVL2 0x5C7840, the kit lane's -- the SEAL's OnMissionStart
      * calls it) */
     void PostSetupItems();

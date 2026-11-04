@@ -95,6 +95,13 @@ public:
     static float GetWeaponEffectiveRange(CZWeapon *w);
 };
 
+/* the weapons' stash, an ammunition pickup's contents (zwep_weapon.cpp's CZItemStash, three
+ * parallel lists out of line in OVL1: only the append the kit calls, 0x3CFEF0) */
+class CZItemStash {
+public:
+    void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);
+};
+
 class CZKit {
 public:
     void ResetScreenOffsetXY();
@@ -366,6 +373,9 @@ public:
     /* an item's ammunition let go (OVL2 0x5B9F00; SOCOM 1's) and whether an item has room for more
      * rounds (OVL2 0x5BA5B0; SOCOM 1's, the count unread) */
     void RemoveAmmo(int index);
+    /* the kit's ammunition put into a stash -- every item's (-1) or one index's (OVL2 0x5BA040;
+     * SOCOM 1's FillAmmoPickupInstance: the SEAL's DropAmmo calls it) */
+    void FillAmmoPickupInstance(CZItemStash *stash, int index);
     bool CanAddAmmo(int index, int count);
     /* rounds added to an item's magazines, the rest returned (OVL2 0x5BA3D0; SOCOM 1's) */
     int AddAmmo(int index, int rounds);

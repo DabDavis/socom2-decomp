@@ -1575,16 +1575,58 @@ int CZKit::AddAmmo(int index, int rounds)
     return rounds;
 }
 
+extern "C" {
+/* CZSealBody::WepWaitOn (OVL2 0x5DFFC0, seal_weapon.cpp's) */
+void WepWaitOn__10CZSealBodyFv(CZSealBody *body);
+}
+
+/* the kit's ammunition put into a stash, every item's (-1) or one index's: a held item's
+ * ammunition, its rounds counted, added with the item -- none for a rifle or sidearm, which stay
+ * -- when a magazine holds rounds and the item is not of class 185; the ammunition let go, the item
+ * too unless kept or a launcher, the magazines emptied; then the items closed up, the count made
+ * the last item's place plus one, the selection reset when it fell off (OVL2 0x5BA040; SOCOM 1's
+ * FillAmmoPickupInstance, the class tests, the launcher's keeping and the tail new) */
+void CZKit::FillAmmoPickupInstance(CZItemStash *stash, int index)
+{
+    for (int i = 0; i < m_num_items; i++) {
+        if (index == -1 || index == i) {
+            CZFTSWeapon *w = m_item[i];
+
+            if (w) {
+                /* (the class declared first: it takes the id's register, s3, the id s2) */
+                EQUIP_IDTYPE type;
+                EQUIP_ITEM id = w->m_ID;
+
+                type = (EQUIP_IDTYPE)w->GetIDType();
+
+                if (CZWeapon::IsPrimary(id) || CZWeapon::IsSecondary(id))
+                    w = 0;
+                void *ammo = m_ammo[i];
+                int total = GetAmmoTotal(i);
+
+                if (ammo && ItemHasAmmo(i) && type != 185)
+                    stash->Add(w, (CZAmmo *)ammo, total);
+                m_ammo[i] = 0;
+                if (w && !w->IsLauncherWeapon())
+                    m_item[i] = 0;
+                ClearReloads(i);
+            }
+        }
+    }
+    CompactItems();
+    UpdateNumItems();
+    if (m_selected_item > m_num_items || !m_item[m_selected_item]) {
+        m_selected_item = 0;
+        WepWaitOn__10CZSealBodyFv(m_body);
+        m_weaponinfoChanged = true;
+    }
+}
+
 /* an item's ammunition let go: its magazines emptied, its pointer cleared, the index wrapped
  * twice as the inlines do (OVL2 0x5B9F00; SOCOM 1's RemoveAmmo, which wrapped through unwrap) */
 void CZKit::RemoveAmmo(int index)
 {
     ClearAmmo(index);
-}
-
-extern "C" {
-/* CZSealBody::WepWaitOn (OVL2 0x5DFFC0, seal_weapon.cpp's) */
-void WepWaitOn__10CZSealBodyFv(CZSealBody *body);
 }
 
 /* the first item of a kind with ammunition, else the last of the kind, let go (OVL2 0x5B9E10, new
