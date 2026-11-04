@@ -39,10 +39,15 @@ enum MENU_STATE {
     stateLast = 6
 };
 
-/* the view the player looks through (SOCOM 1's DWARF, a signed byte: SetCurZoomState's argument) */
+/* the view the player looks through (SOCOM 1's DWARF, a signed byte: SetCurZoomState's argument)
+ * with SOCOM II's numbers -- thirteen states, the turret's thermal view new at 2 and SOCOM 1's
+ * others one place on (DecrZoomState, IncrZoomState and SetCurZoomState switch on them; the
+ * thermal view's name ours) */
 enum ZOOMSTATE {
-    ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1, ZOOMSTATE_NVG = 2,
-    ZOOMSTATE_BINOCS = 3, ZOOMSTATE_WEAPONDEF1 = 4, NUM_ZOOMSTATES = 12
+    ZOOMSTATE_UNKNOWN = -1, ZOOMSTATE_3RDPERSON = 0, ZOOMSTATE_1STPERSON = 1, ZOOMSTATE_THERMAL = 2,
+    ZOOMSTATE_NVG = 3, ZOOMSTATE_BINOCS = 4, ZOOMSTATE_WEAPONDEF1 = 5, ZOOMSTATE_WEAPONDEF2 = 6,
+    ZOOMSTATE_WEAPONDEF3 = 7, ZOOMSTATE_WEAPONDEF4 = 8, ZOOMSTATE_WEAPONDEF5 = 9, ZOOMSTATE_WEAPONDEF6 = 10,
+    ZOOMSTATE_WEAPONDEF7 = 11, ZOOMSTATE_WEAPONDEF8 = 12, NUM_ZOOMSTATES = 13
 };
 
 /* what a SEAL holds (SOCOM 1's SEAL_ITEM, a byte enum: zweapon.h keeps a word-sized stand-in of
