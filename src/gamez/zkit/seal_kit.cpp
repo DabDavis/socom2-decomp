@@ -650,7 +650,8 @@ FIREMODE CZKit::GetCurFireMode()
  * two arms both do; MW folds the zero into a `beqz` to the end here (the launcher arm's `||` keeps
  * its block, being shared). Tried: the ternary either way round, `== 0`, the weapon in a local, an
  * if/else, a result local (0x1DC), a static inline capacity helper (three bodies, either arm), a
- * shared `return 0` at the end, a goto */
+ * shared `return 0` at the end, a goto, `== 0` and `!(bool)` in the if, the item through
+ * GetItemByIndex (9) */
 int CZKit::GetMaxAmmoCount(int index)
 {
     index = wrap(index, m_num_items);
