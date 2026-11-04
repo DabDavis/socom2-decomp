@@ -1094,10 +1094,20 @@ ZOOMSTATE CZSealBody::DecrZoomState()
     return zs;
 }
 
-extern "C" {
-/* the turret's six nodes' +0x9C set to 1 or 0 (OVL1 0x3AA020, unowned: a CTurret member) */
-void func_003AA020(CTurret *t, bool on);
-}
+/* a turret (zveh.h's CTurret, whose header clashes with zseal.h's stand-ins: only its thermal look,
+ * at zveh.h's offset, and the six nodes' opacity and visibility -- SetOpacity and SetVisible, OVL1
+ * 0x3A9FB0 and 0x3AA020, the weapons' veh_turret.cpp) */
+class CTurret : public CEntity {
+public:
+    virtual ~CTurret();
+    void SetThermal(zdb::CNode *node, bool thermal);
+    void SetOpacity(float f);
+    void SetVisible(bool on);
+
+    unsigned char _170[0x298 - 0x170];
+    bool m_thermal;   // 0x298
+};
+
 
 /* the view stepped in one place (OVL2 0x5445B0; SOCOM 1's switch with SOCOM II's states: out of the
  * third person a turret's thermal view (2) when it has one; out of the first person, nothing while a
@@ -1123,7 +1133,7 @@ ZOOMSTATE CZSealBody::IncrZoomState()
     case ZOOMSTATE_3RDPERSON:
         if (TurretHasThermal()) {
             zs = ZOOMSTATE_THERMAL;
-            func_003AA020(GetTurret(), false);
+            GetTurret()->SetVisible(false);
         } else
             zs = ZOOMSTATE_1STPERSON;
         break;
@@ -1743,17 +1753,6 @@ extern "C" void func_00543B90(CZSealBody *seal)
         unit->IssueCommand(seal, (FT_COMMAND)31, 0, false);
 }
 
-/* a turret (zveh.h's CTurret, whose header clashes with zseal.h's stand-ins: only its thermal look
- * here, at zveh.h's offset) */
-class CTurret : public CEntity {
-public:
-    virtual ~CTurret();
-    void SetThermal(zdb::CNode *node, bool thermal);
-
-    unsigned char _170[0x298 - 0x170];
-    bool m_thermal;   // 0x298
-};
-
 /* the entity the SEAL works as a turret, if it is one */
 static inline CTurret *AsTurret(CEntity *e)
 {
@@ -1871,11 +1870,6 @@ bool CZSealBody::TurretHasThermal()
     return r;
 }
 
-extern "C" {
-/* the turret's six nodes given a value at +0x9C (OVL1 0x3A9FB0, unowned) */
-void func_003A9FB0(CTurret *t, float f);
-}
-
 /* the turret the SEAL works given the value, its scope's look set by the SEAL's thermal vision
  * (OVL2 0x543200; HandleNewZoom passes 1) */
 void CZSealBody::UpdateTurretScope(float f)
@@ -1883,7 +1877,7 @@ void CZSealBody::UpdateTurretScope(float f)
     CTurret *t = GetTurret();
 
     if (t) {
-        func_003A9FB0(t, f);
+        t->SetOpacity(f);
         t->SetThermal(0, HasThermal(m_eb8));
     }
 }
