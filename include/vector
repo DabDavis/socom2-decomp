@@ -890,11 +890,14 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
      *     13, one copy kept at link) unless the unit holds an identical unit-local one, which it reuses;
      *   - so THE SHAPE THAT GIVES BOTH: vector<T *>::reserve forwarding here (neutral over every
      *     hand-written unit, 8460 before and after) and, in fts_mission.cpp, `#pragma
-     *     inline_max_auto_size(17)` beside the states lane's `inline_max_size(180)`, with an own
+     *     inline_max_auto_size(17)` (which also cuts CUIVariable() in resize: the states lane's
+     *     inline_max_size(180) is then not needed; at 20 fadeToEndMissionTick is lost), with an own
      *     function reserving a pointer vector ahead of the tail (CMission::Open 0x2AC410 does: jal
-     *     0x1EEBA0; a stand-in appended as a probe): resize<CUIVariable> 0x2B1390 and 0x2B1600 both
-     *     byte-exact, the unit 65 -> 68 (CreateCustomCharTypes(CVehicleRdr *, _zrdr *) with them),
-     *     nothing lost; the auto limit alone loses fadeToEndMissionTick. 0x2B1600 renamed for it.
+     *     0x1EEBA0): resize<CUIVariable> 0x2B1390, 0x2B1600 and the CUIVariable() pieces 0x2B17A0,
+     *     0x2B17C0, 0x2B17E0 byte-exact as a probe (merged master 04c038f5: the unit 72 -> 75 -- the
+     *     stand-in reserving function, appended at the file's end, itself costs CreateCustomCharTypes
+     *     (_zrdr *) and __sinit_fts_mission.cpp; the real CMission::Open goes at its own place). 0x2B1600
+     *     renamed for it.
      * Tried on the way, not applied: the pod's reserve inline and exactly five high under the forwarder
      * (own code then calls 0x1EEBA0 and the copy inlines it, resize cut by height without the pragma --
      * but every inline function holding a reserve is cut too: CNode::_Copy, 0x3BEBD0, MarkNodes,

@@ -1795,10 +1795,11 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     limit a reserve forwarder's copy is an 8-byte `j` whatever its form, however the copy is forced, at any
     inline_max_size; at 17 and up it inlines the pod's reserve whole -- 0x2B1600 (renamed
     reserve__Q23std54vector<P10UIVarMixin,...>FUi). include/vector's vector<T *>::reserve forwarder (neutral:
-    8460 before and after) plus, in fts_mission.cpp, `#pragma inline_max_auto_size(17)` beside the lane's
-    `inline_max_size(180)` and an own function reserving a pointer vector ahead of the tail (CMission::Open
-    0x2AC410 does) make resize<CUIVariable> 0x2B1390 and 0x2B1600 byte-exact as a probe, the unit 65 -> 68,
-    nothing lost; the auto limit set project-wide is -104 (the original kept the default for its own code), and
+    8460 before and after) plus, in fts_mission.cpp, `#pragma inline_max_auto_size(17)` (it cuts CUIVariable()
+    in resize as well: no inline_max_size(180) needed) and an own function reserving a pointer vector ahead of
+    the tail (CMission::Open 0x2AC410 does) make resize<CUIVariable> 0x2B1390, 0x2B1600 and CUIVariable()'s
+    three pieces byte-exact as a probe (a stand-in appended at the file's end costs two of the unit's own, so
+    the real Open belongs at its place); the auto limit set project-wide is -104 (the original kept the default for its own code), and
     the pod's reserve made inline and five high under the forwarder does it by height but cuts every inline
     helper holding a reserve (8460 -> 8459, not applied);
   - A BY-VALUE ARGUMENT IS COPIED THROUGH A USER-DECLARED COPY CONSTRUCTOR, BITWISE ONLY WHEN THE COPY IS
