@@ -72,8 +72,11 @@ int CZAnimMain::UnloadCmdSet(int index)
 
 
 /* a command by name in a set, made when asked; not made, it is looked for in the other sets.
- * OPEN, 8 instructions: the second search's set, command and index registers permuted (s2/s3/s0
- * against the target's s3/s2/s0); reusing s and cmd, or hoisting its locals, is further off. */
+ * OPEN, 6 instructions: the second search's command and the sets' strength-reduced offset trade
+ * s3/s0 (the command declared ahead of its set fixes the set's s2, round 12: 8 -> 6; the offset
+ * is an optimiser temporary, numbered after every named local, so it colours first). Reusing s
+ * and cmd, hoisting the locals, the index declared first (10), the set a reference (8), the
+ * command indexed (0x1F4) or the set read in place (0x1F0) are further off */
 int CZAnimMain::GetCmd(int set, char *name, bool create)
 {
     _zanim_cmd_set *s = &m_cmdset_list[set];
@@ -93,9 +96,10 @@ int CZAnimMain::GetCmd(int set, char *name, bool create)
     }
     for (int j = 0; j < m_cmdset_count; j++) {
         if (j != set) {
+            zanim_cmd *c;
             _zanim_cmd_set *o = &m_cmdset_list[j];
-            zanim_cmd *c = o->cmd_list;
 
+            c = o->cmd_list;
             for (int i = 0; i < o->count; i++, c++)
                 if (!strcmp(name, c->name))
                     return i;
@@ -318,9 +322,11 @@ void CZAnimMain::ResumeSequence(const char *name)
     }
 }
 
-/* OPEN, 8 bytes long: the target enters the loop through a jump to its test and leaves with a
- * break, where `for`/`while` with a break (SequenceExists' shape, which matches) duplicate the
- * test at the top, and `!found` in the condition (this, the closest) tests found each pass. */
+/* whether a sequence of the name is running (SOCOM 1's). The loop tests `!found` and breaks too:
+ * with the flag in its condition MW enters the loop at its test (no copy of it on top, as
+ * SequenceExists' plain break gets), and the break threads the found path straight out while the
+ * back edge, the flag known false there, skips the flag's test -- the target's shape (either alone
+ * is 8 or 0x20 bytes long) */
 bool CZAnimMain::SequenceRunning(const char *name)
 {
     bool found = false;
@@ -329,8 +335,10 @@ bool CZAnimMain::SequenceRunning(const char *name)
     if (!name)
         return false;
     for (SeqFirst(); !found && SeqValid(); SeqNext()) {
-        if (!strcmp(m_CurAnim->GetName(m_CurSeq->name_index), name) && StateRunning(m_CurSeq->state))
+        if (!strcmp(m_CurAnim->GetName(m_CurSeq->name_index), name) && StateRunning(m_CurSeq->state)) {
             found = true;
+            break;
+        }
     }
     m_CurSeq = save;
     return found;

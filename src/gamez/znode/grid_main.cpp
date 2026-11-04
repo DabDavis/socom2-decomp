@@ -567,25 +567,32 @@ void CGrid::Update(CNode *node)
 
 /* a cell's index, the cell held inside the grid (gridGetAtomBasePtr's clamp, the index given
  * back; the name is ours) */
-inline int GridAtomIndex(const tag_SIZE &n, int x, int z)
+inline int GridAtomIndex(const CGrid *grid, int x, int z)
 {
     x = MAX(0, x);
-    x = MIN(n.cx - 1, x);
+    x = MIN(grid->m_CellCount.cx - 1, x);
     z = MAX(0, z);
-    z = MIN(n.cy - 1, z);
-    return x + z * n.cx;
+    z = MIN(grid->m_CellCount.cy - 1, z);
+    return x + z * grid->m_CellCount.cx;
+}
+
+/* the grid itself, through an inline (a stand-in, the name ours, for whatever call the original
+ * made there: its result is a loop invariant MW hoists out of Create's cell loop, which lays the
+ * inner loop's preheader after the function's last block as the target's -- folded back into
+ * `this`, the preheader keeps only its entry test) */
+static inline CGrid *ThisGrid(CGrid *grid)
+{
+    return grid;
 }
 
 /* the grid built over the world's box: the parameters and the origin kept, the extents and the
  * tolerances derived, the atoms allocated and threaded on the free list, then one cell per square
  * -- named for its index, made the world's child, given an atom of its own (SOCOM 1's; SOCOM II
- * fixes the atom count and threads its spare atoms).
- * OPEN (0x36C of 0x380): everything to the cell loop is the target's, and the index's clamp (as
- * gridGetAtomBasePtr's); the target enters the inner loop through a preheader laid out after the
- * function's last block -- `b` to it, its `0 < cx` test, then `b` back to the loop's own bottom
- * test -- where MW rotates the loop here (the test inline before the body): SortNearToFar's
- * open shape. Not a while loop, the counter declared outside, the test reversed; the order of the
- * atom's three stores (Prev, the table, Next in the target) waits on it */
+ * fixes the atom count and threads its spare atoms). The cell's index through ThisGrid (the round
+ * 11 preheader rule: the target enters the inner loop through a preheader after the return, `b`
+ * to it, its `0 < cx` test, `b` back to the loop's test); the atom's table slot taken before its
+ * links are cleared (the target's Prev, slot, Next stores: written in that order with the slot
+ * indexed in place, the Prev store rises above m_Atoms' load) */
 bool CGrid::Create(CWorld *world, const tag_GRID_PARAMS *params)
 {
     m_world = world;
@@ -616,7 +623,7 @@ bool CGrid::Create(CWorld *world, const tag_GRID_PARAMS *params)
             pos.x = (float)x * m_CellDim;
             pos.y = 0.0f;
             pos.z = (float)z * m_CellDim;
-            int idx = GridAtomIndex(m_CellCount, x, z);
+            int idx = GridAtomIndex(ThisGrid(this), x, z);
             CCell *cell = new CCell(&pos, m_CellDim);
 
             sprintf(name, "cell%06d", idx);
@@ -630,8 +637,10 @@ bool CGrid::Create(CWorld *world, const tag_GRID_PARAMS *params)
                 atom = 0;
             atom->Ent = cell;
             atom->Ent->InsertAtom(atom);
-            m_Atoms[idx] = atom;
+            CGridAtom **slot = &m_Atoms[idx];
+
             atom->Prev = 0;
+            *slot = atom;
             atom->Next = 0;
         }
     }

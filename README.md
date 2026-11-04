@@ -2060,6 +2060,52 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 23** (CFileIO::fseek at last, the hangul split, SkbStartDisplay to 1):
+  - a `switch` with `default` written first lays the default block right after the compare chain and the cases after it
+    in source order, an if/else-if chain puts the default last (CFileIO::fseek 0x39E720, open since round 2: the host
+    path a switch -- default, case 1, case 2 --, the package offset a plain if/else into a local declared first, the
+    sector sum through a local `s + start`: MW puts the start sector first in `start + ((pos + base) >> 11)` either way);
+  - a plain if/else assigning a local in both arms keeps the target's zero-in-the-delay-slot plus a leftover else block,
+    a ternary, an inline returning it or a zeroed local all if-convert it; in an inlined helper `x = c == 0 ? d : x;`
+    leaves the join unpadded, `!c ? d : x` gives two arms, `if (!c) x = d;` pads it (SkbStartDisplay 0x395540: 1 off, the
+    legend multiply's operand order);
+  - `k > n || ...` branches on `slt at`, `n < k || ...` puts the compare in v0 (CSkbSplit(n, k) 0x391F80, through a
+    local reverse iterator CSkbRevIter -- a stand-in: include/vector has no rbegin() for the scalar vectors); an unrolled
+    loop's hoisted vector address with the preheader after the remainder loop comes from a reference-returning accessor
+    in the loop body; the scalar vectors' class end() through `__iter(const &p)` explains two stack temporaries joined by
+    an FPR copy.
+- **Tells from the engine core, round 12** (SortNearToFar and CGrid::Create by the preheader rule, zar's Insert and FetchAll):
+  - an inline result that is loop-invariant (an address, or the object itself) is hoisted into a preheader laid after
+    the function's last block, the loop entered with a `b` and the entry test repeated there; a reference or pointer
+    local declared before the loop computes it before the entry test and keeps the preheader inline
+    (DiIntersect::SortNearToFar 0x2D4E10: the tail through an inline accessor in the loop, the count test an early
+    return; zdb::CGrid::Create 0x2D5C80: the cell index through an inline returning the grid, folded back to `this`);
+  - `if (n <= 0) return;` sends the false edge to the epilogue, an `if` around the body to the body's closing `b`; a flag
+    in the loop condition plus a `break` enters the loop at its test and threads the found path straight out
+    (CZAnimMain::SequenceRunning 0x269520, TRUE_COLOR_SCALE's tick 0x2642F0); `i <= 3` branches on `slti at`, `i < 4`
+    puts the test in v0;
+  - a field read through a base class's const accessor is not merged with a derived class's inline read of the same
+    field (UIClearUIVar 0x2780A0: the type through _zrdr's Type() const); a field read at each use is one shared temporary
+    numbered after the scalarised iterator; `T t = { 0 };` compiles to MW's null-tested byte-clear loop;
+  - MW copies a struct's scalar words one by one and an array member as a block, so the copy shows where the array starts
+    (zar.h's TAIL: SOCOM II's extra word is `padded` at 0x10, ahead of reserved[16]); a store written before an address's
+    load is scheduled above it, the address taken into a local first keeps the target's order; the key ring's iterator
+    shapes read off the subtitle walk 0x34D740 for the MSL lane (an out-of-line copy constructor, a pointer-reference
+    constructor, a base accessor in ==, != as !(==), postfix ++ as t(*this); ++*this; return t).
+- **Tells from the SEALs, round 33** (0x557190 whole, the const-view rule's closes, the map inserts from a real std::map):
+  - an inline taking a struct's fields by reference keeps their addresses in saved registers from before the struct is
+    built (AvoidPoint: 0x557190 all 767 instructions, with `t *= s_slow;` as its own statement); `t *= k; f(t);`
+    multiplies in t's register and moves it to $f12, `f(t * k)` multiplies straight into $f12;
+  - the kit's const-view rule also covers a member read again after a sqrt or a compare (CSealCtrlAi::SetAiBit2
+    0x56D890, 0x572240, CSealCtrl::SetGoalDir 0x56D920 with its sum in SOCOM 1's x-first order); a byte-enum argument
+    passed to a parameter of another type goes narrowed, to its own type as it came (CZSealBody::ActionSelectionMask
+    0x544C80);
+  - in `it != map.end()` the end() sits one inline level deeper; taking it into a local first keeps the inlined callers'
+    copies whole -- seal_cfg.cpp's bodyPartNames_map a real std::map<std::string, int> emits OVL2's find_or_insert /
+    insert_node_at 0x58CEF0 / 0x58D2B0 (the MSL's round 22 ovl-copies);
+  - a loop-invariant address assigned again in the loop body gives the preheader after the return (0x57D5E0 9 off,
+    0x57D710 14: the hoisted addiu where the target has it in the entry b's delay slot); AnimSignal 0x562030 written over
+    the list's reverse walk (0x174 vs 0x180: slot 0xC's signal type, and inline_depth(8) inlining the end pair's second()).
 - **Tells from the HUD, round 41** (tcmAddKindItems, the reticule's two timer bars, the list box's text and clear):
   - calls written as another call's arguments run last to first: a target that fetches them in argument order had named
     locals (tcmAddKindItems 0x2329F0, the cache builder's twenty calls); a byte-enum return held in an enum local isn't
