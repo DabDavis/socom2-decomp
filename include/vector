@@ -871,37 +871,34 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     iterator erase(iterator position) { return __iter(__base::erase((unsigned int *)position.m_p)); }
     void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
     void swap(__vector_imp &x) { __base::swap(x); }
-    /* NO reserve of its own: every own function reserving a pointer vector calls the pod's reserve
-     * (0x1EEBA0: CNode::ReserveChildren's `j`, CCompass::Open, CSnd::Init, CZAnimExVector::Add ...).
-     * OPEN, the states lane's round 22 request (the MSL headers round 16, build/p16/rsv*.cpp, untracked):
-     * 0x2B1600, which fts_mission.cpp's resize<CUIVariable> 0x2B1390 calls from its one-level cut of
-     * CUIVariable() (the watchers' reserve(16), where CUIVariable's copy constructor 0x386BF0 calls
-     * 0x1EEBA0 for the same member), is the pod reserve's body again -- its "vector::reserve length
-     * error\n" fts_mission.cpp's own (0x3F1D00, shared with that unit's class reserve 0x2B00E0), its
-     * "Memory allocation failure" the image-wide one every pod and deque function uses (0x3E2220): the
-     * copy of a forwarder with the pod's reserve INLINED. Measured:
-     *   - MW never inlines an out-of-class (non-inline) template member into an inline function's
-     *     out-of-line copy: an in-class forwarder, one declared inline out of class, or a non-inline
-     *     out-of-class one, its copy forced by an address, a static or a size cut in tail code, the
-     *     pod's reserve requested first by own code or a static, inline_max_size 40/256/2000 -- always
-     *     the 8-byte `j` (the pod's at() through the at() forwarder alike);
-     *   - a literal: an inline function's string is a deduplicated `@STRING@<function>` symbol
-     *     (bind 13, one copy kept at link) -- unless the unit holds an identical unit-local literal,
-     *     which it then reuses (an inline pod reserve beside a class reserve shares the class one's
-     *     `@N`) -- so the image's literals do not rule out an inline pod reserve;
-     *   - THE SHAPE THAT GIVES BOTH, as a mechanism: the pod's reserve inline and exactly five high
-     *     (allocate wrapped three levels deeper, ours), under `void reserve(unsigned int n) {
-     *     __base::reserve(n); }` here and in the scalar vectors: own code inlines the six-high forwarder
-     *     one level and calls 0x1EEBA0 (byte-exact), the forwarder's copy inlines it whole (0x2B1600
-     *     byte-exact as reserve__Q23std62__vector_imp<P10UIVarMixin,Q23std24allocator<P10UIVarMixin>,1>FUi),
-     *     and CUIVariable() is then cut by HEIGHT in resize: resize<CUIVariable> the target's size with
-     *     only that call unnamed, its pieces 0x2B17A0/0x2B17C0/0x2B17E0 byte-exact, no pragma -- but
-     *     every inline function holding a reserve is then too tall and cut one level too (ReadDecalSet's
-     *     `new CZDecalSet` calls size() and the forwarder out of line), losing CNode::_Copy 0x316820,
-     *     0x3BEBD0, CWaterRipple::MarkNodes 0x3C1820 and ReadDecalSet 0x3D0630 (and three units' copies
-     *     of 0x1EEBA0 no longer emitted): fts_mission.cpp +3 (+5 with 0x2B1600 renamed), 8460 -> 8459
-     *     over every hand-written unit (8461 renamed). No height or size of the forwarder tells
-     *     CUIVariable() in resize from those helpers; not applied */
+    /* No reserve of its own: vector<T *> forwards to the pod's (below). The states lane's round 22
+     * request, SETTLED (the MSL headers round 16, build/p16/rsv*.cpp, untracked): 0x2B1600, which
+     * fts_mission.cpp's resize<CUIVariable> 0x2B1390 calls from its one-level cut of CUIVariable() (the
+     * watchers' reserve(16), where CUIVariable's copy constructor 0x386BF0 calls 0x1EEBA0 for the same
+     * member), is the pod reserve's body again -- its "vector::reserve length error\n" fts_mission.cpp's
+     * own (0x3F1D00, shared with that unit's class reserve 0x2B00E0), its "Memory allocation failure"
+     * the image-wide one every pod and deque function uses (0x3E2220): the forwarder's out-of-line copy
+     * with the pod's reserve INLINED. Measured:
+     *   - MW inlines an out-of-class (non-inline) template member into an inline function's out-of-line
+     *     copy only under its AUTO-inline size limit, `#pragma inline_max_auto_size` -- the pod's
+     *     reserve needs 17 (the default stops it: the copy is an 8-byte `j`, whatever the forwarder's
+     *     form, however its copy is forced, inline_max_size 40 to 2000) -- and only when that member was
+     *     generated first (an own function of the unit reserving a pointer vector);
+     *   - the auto limit is per unit: at 20 project-wide (set from this header) every hand-written unit
+     *     gives 8357 against 8460 (-104, +15) -- the original kept the default for its own code;
+     *   - a literal: an inline function's string is a deduplicated `@STRING@<function>` symbol (bind
+     *     13, one copy kept at link) unless the unit holds an identical unit-local one, which it reuses;
+     *   - so THE SHAPE THAT GIVES BOTH: vector<T *>::reserve forwarding here (neutral over every
+     *     hand-written unit, 8460 before and after) and, in fts_mission.cpp, `#pragma
+     *     inline_max_auto_size(17)` beside the states lane's `inline_max_size(180)`, with an own
+     *     function reserving a pointer vector ahead of the tail (CMission::Open 0x2AC410 does: jal
+     *     0x1EEBA0; a stand-in appended as a probe): resize<CUIVariable> 0x2B1390 and 0x2B1600 both
+     *     byte-exact, the unit 65 -> 68 (CreateCustomCharTypes(CVehicleRdr *, _zrdr *) with them),
+     *     nothing lost; the auto limit alone loses fadeToEndMissionTick. 0x2B1600 renamed for it.
+     * Tried on the way, not applied: the pod's reserve inline and exactly five high under the forwarder
+     * (own code then calls 0x1EEBA0 and the copy inlines it, resize cut by height without the pragma --
+     * but every inline function holding a reserve is cut too: CNode::_Copy, 0x3BEBD0, MarkNodes,
+     * ReadDecalSet, 8460 -> 8459) */
     T *&at(unsigned int n)
     {
         return (T *&)__vector_pod<unsigned int, allocator<unsigned int> >::at(n);
@@ -1533,6 +1530,8 @@ public:
     explicit vector(unsigned int n, T *const &value = 0) : __vector_imp<T *, Allocator, true>(n, value) {}
     void clear() { __vector_imp<T *, Allocator, true>::clear(); }
     void swap(vector &x) { __vector_imp<T *, Allocator, true>::swap(x); }
+    /* a forwarder to the pod's reserve, as the class vector's (see __vector_imp<T *>'s comment) */
+    void reserve(unsigned int n) { __vector_imp<T *, Allocator, true>::reserve(n); }
 };
 
 }

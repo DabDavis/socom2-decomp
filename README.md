@@ -1790,16 +1790,17 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     function in OVL1, across units (0x1EEBA0, 0x1FE340, 0x259B90, 0x259D20, 0x3C45B0, the deques' 0x2858B0,
     0x2CF970, 0x2E0E10, 0x3341C0, 0x3A6490 ...), one per class serves the class vectors' deleters (four in
     fts_mission.cpp); build/p16/strrefs.py lists a string's copies and every function addressing each;
-  - MW NEVER INLINES AN OUT-OF-CLASS TEMPLATE MEMBER INTO AN INLINE FUNCTION'S OUT-OF-LINE COPY (the states'
-    round 22 request): a reserve forwarder in class, declared inline out of class, or non-inline out of class,
-    its copy forced by an address, a static or a size cut in tail code, the pod's reserve requested first by own
-    code or a static, inline_max_size 40 to 2000 -- always the 8-byte `j` (the pod's at() alike). 0x2B1600 is
-    such a copy with the pod's reserve inlined; the mechanism that reproduces it is the pod's reserve inline and
-    exactly at the level limit under a forwarder one level higher (own code then cuts the forwarder and calls
-    0x1EEBA0, the forwarder's copy inlines it whole, and resize<CUIVariable> cuts CUIVariable() by height
-    without the pragma: fts_mission.cpp +3, +5 with 0x2B1600 renamed) -- but every inline function holding a
-    reserve is then cut too (CNode::_Copy, 0x3BEBD0, MarkNodes, ReadDecalSet: 8460 -> 8459). Not applied; the
-    numbers are in the pointer __vector_imp's comment;
+  - AN OUT-OF-CLASS TEMPLATE MEMBER INLINES INTO AN INLINE FUNCTION'S OUT-OF-LINE COPY ONLY UNDER
+    `#pragma inline_max_auto_size`, and only once generated first (the states' round 22 request): at the default
+    limit a reserve forwarder's copy is an 8-byte `j` whatever its form, however the copy is forced, at any
+    inline_max_size; at 17 and up it inlines the pod's reserve whole -- 0x2B1600 (renamed
+    reserve__Q23std54vector<P10UIVarMixin,...>FUi). include/vector's vector<T *>::reserve forwarder (neutral:
+    8460 before and after) plus, in fts_mission.cpp, `#pragma inline_max_auto_size(17)` beside the lane's
+    `inline_max_size(180)` and an own function reserving a pointer vector ahead of the tail (CMission::Open
+    0x2AC410 does) make resize<CUIVariable> 0x2B1390 and 0x2B1600 byte-exact as a probe, the unit 65 -> 68,
+    nothing lost; the auto limit set project-wide is -104 (the original kept the default for its own code), and
+    the pod's reserve made inline and five high under the forwarder does it by height but cuts every inline
+    helper holding a reserve (8460 -> 8459, not applied);
   - A BY-VALUE ARGUMENT IS COPIED THROUGH A USER-DECLARED COPY CONSTRUCTOR, BITWISE ONLY WHEN THE COPY IS
     IMPLICIT (lh/sh through an address register), and an implicit copy reads each anonymous union as its FIRST
     member (the UI's round 15 request): AddKeyProps' key copy and value come out the target's word for word with
