@@ -130,6 +130,9 @@ public:
                                      unsigned char c, bool flag);
     void RemoteWeaponDamageVictim(DAMAGE_LOCATION where, float damage, float f, CZSealBody *victim,
                                   CZSealBody *shooter, unsigned char c, bool flag);
+    /* a console's request for a pickup answered (OVL2 0x59E830; SOCOM 1's, the id and the asker
+     * ints in SOCOM II) */
+    void CanPickupNetItem(unsigned short count, int id, unsigned short *items, int client);
 };
 
 class CZVehicle {
@@ -301,7 +304,6 @@ void NetFreeObject(int index);
 void func_002BD640(CZSealBody *body, int arg);   /* CZSealState::UpdateLocalSeal */
 int func_002C3B10(int arg);
 void func_002F9690(void *lobby, int arg, int mode);
-void func_0059E830(CZSealBody *body, unsigned short who, int id, void *c, int obj);
 void func_002C0040(bool on);
 void func_002C4290(int me);   /* CZPersonaState::RequestTeamSwitch (SOCOM II's one argument) */
 void func_002C34F0(int value);
@@ -1396,7 +1398,7 @@ int PickupMayIPacketHandler(int, int, int, void *data)
     CZSealBody *body = CZSealState::GetBodyFromObjectIndex((unsigned short)CPickup::GetEntityIDFromNetID(p->m_0));
 
     if (body)
-        func_0059E830(body, p->m_16, p->m_0, p->m_4, p->m_14);
+        body->CanPickupNetItem(p->m_16, p->m_0, (unsigned short *)p->m_4, p->m_14);
     return 24;
 }
 
