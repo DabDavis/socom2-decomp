@@ -6655,6 +6655,77 @@ is unchanged. automatch over the lane's three ranges (`--max-size 0x400 --emit -
 pointer sum, a TImode operation, one nested load past the repair's rounds), none byte-exact -- every
 draft that builds misses: what the generator leaves here is near misses, now nearly all measurable.
 
+**The tools, round 25a**: (1) **Metrowerks statics qualify as `NAME@UNIT`** (the engine core's
+request): `scdiff.qualify_statics` renames an MW object's LOCAL statics too -- MW names a file static
+by its own name (grid_di.cpp's and grid_clutter.cpp's `static CStack` are both `stack`, SOCOM 1's
+names), so data.txt can hold grid_di's bare and grid_clutter's as `stack@grid_clutter`; a
+function-local `name$N` is never renamed. (2) **A unit's overlay is where its functions' rows lie**
+(the kit's question): sccheck took a unit's lowest row as its home, and seal_tasks.cpp (OVL2)
+instantiates `ai::_max<unsigned char>` explicitly -- a global, the unit's own, its name OVL1's
+0x2AFC40 -- so the instance scored, and was credited, at OVL1's row, OVL2's copy 0x5DEE70 never.
+`sccheck.unit_overlay` is the directive's overlay, else the one most of the unit's own functions'
+rows lie in, counting the names the map holds once; `scoring_row` is the row rule, shared by sccheck,
+tools/try.py (which ignored copies without a directive) and automatch's `hand_defined` (which took a
+unit's first function); `unit_span` keeps to that overlay (zrndr_pipe.cpp's ran 0x1EA250-0x5101C0
+over an unmarked copy); a definition of a name with a row per overlay supersedes a draft only where
+it matched, as a copy does. **Every such row**: of the map's 82 `ovl-copy:` rows (78 names, 76 emitted
+by a unit) 0x5DEE70 is the one a unit in that overlay emits byte-exact and sccheck did not credit;
+and 0x1EA2D0 (func_001EA2D0, unmarked) is an OVL1 copy of OVL2's `~__list_deleter<const void *>`
+(0x510110): zrndr_pipe.cpp's copy matches it byte-exact (`--target`) but scores WRONG against the
+named row -- an `ovl-copy:` mark there fixes it (its draft credits the address meanwhile). (3)
+**automatch's GCC repair** reads nested loads (`*((*var_a7 * 4) + p)`, an `M2C_FIELD` operand, a load
+after a binary operator, a store made as the type m2c casts its value to: `GCC_NESTED_LOADS`) and
+m2c's self-relative fixups as byte sums (`GCC_PTRSUM`). (4) `sccheck.main` takes the tree to build
+(`root`): the canary's supersede test builds its own fixture draft (OVL1's ~vector<CZDecalDef>,
+deleted from src/auto once the game states matched it) beside seal_env.cpp in a scratch copy of the
+hand-written tree. **Proved**: master 7bcb97fc's sccheck.py, scdiff.py and scdecomp.py and these,
+every unit (`--files .`, `-v`, 2 jobs, one frozen snapshot, each comparison's address logged:
+`build/scratch/gcc/scored.py`): the 14,347 output lines identical, and of the 13,371 comparisons one
+moves -- `_max<Uc>` 0x2AFC40 -> 0x5DEE70 (MATCHED.txt moves with it); re-proved after merging master
+48202c10 with this map under both. The canary gains `test_mw_statics_qualify_by_unit` and
+`test_explicit_instance_scores_in_its_units_overlay`, each failing under master's rule. **automatch**
+(`--max-size 0x400 --emit --no-prune --jobs 2`, the lane's whole private build as `--obj-dir`; each
+range with the two repairs off and on): MAIN `18DB90 1C4CC0` 51 tried, 0 hits; OVL1 `1E7F58 1E8FD4` 2,
+0; `243000 256FD0` 96, 0; OVL2's recogniser `4C5380 50DC50` 53, 0 (build failures 11 -> 4); Medius
+`60FB50 668000` 91, 0 (5): 293 tried, none byte-exact, build failures 21 -> 13, the only verdicts
+changed build -> miss. The 13 left: calls through an int, a frame slot or a miscounted function pointer
+(3), m2c's undeclared frame names (3), TImode arithmetic (2), a pointer plus a frame slot (1),
+-funroll-loops' preconditioned loops -- a jump table into the unrolled body, case labels outside any
+switch, whose source is the plain loop (3) -- and a call m2c gives no arguments (1).
+
+**Round 25a** (2026-11-04, the tools first, then round 24a's lead): 15 rows newly byte-exact (18
+functions written byte-exact, three over matched drafts) -- libkernl's SIF RPC 13 -> 22 of 23
+(`sdk/sifrpc.c`), libdbc whole (`sdk/libdbc.c` 18 of 18: sceDbcGetDepNumber, 0x1902B0), and a new
+`sdk/libmrpc.c` (Sony's multi-thread SIF RPC client, the demo's object 0x379AB0: 7 of 9) -- and 4 rows
+and 6 data rows named (libmrpc's sceSifMExitRpc and its
+three statics `_sceRpcGetPacket@libmrpc`, `_sceRpcFreePacket@libmrpc`, `_request_end@libmrpc` by the
+demo's object order; `_packet_buffer@sifrpc`, `_free_buffer`, `_free_buffer2`, `_data_table@libmrpc`
+by the demo's labels; libdbc's send buffers `dbcSendData2Buf`, `dbcSendData3Buf`, ours). What they
+showed:
+
+- **Strict aliasing reads the vendor's field types off the schedule** (round 24a's lead, measured):
+  under it GCC moves a load above a store only when their types' alias sets differ, so sifrpc's
+  packet and client types were swept field by field -- a variants file of every combination
+  (`build/scratch/gcc/v_sifrpc.py`), the functions scored under each -- until every schedule was the
+  target's: the reply packets' words u_int, the client's serve and the queue's end void *, the serve
+  data's paddr and receive u_int, the call packet's client void *. Not the public header's types, but
+  the partition into alias sets the vendor's code had; round 11a's four handlers closed at once.
+- **The newer release's shapes, read off the target**: the clients' wait path first (`if (!(mode &
+  1)) {...}`, the no-wait one laid out last), sceSifExecRequest's reply DMA'd in two descriptors and
+  retried in a do-while (one call, its test re-read after the delay loop), sceSifCallRpc's single
+  write-back when the send and receive buffers are one; sceSifInitRpc's early return gives 991111's
+  void-context sibling call; _sceRpcGetPacket's counter is tested in memory (`d->pid++; if (d->pid ==
+  1)`: one of fifteen spellings -- through a variable, cse knows the 1 and drops the target's `li`).
+- **A constant-size memcpy's moves follow its operands' alignment**: libdbc's 64-byte copy of the
+  dbcman work area is ldl/ldr, sdl/sdr both sides only from an `unsigned char` area (an int array's
+  alignment gives word moves).
+- **Open, diagnosed in place**: sceSifCallRpc (17 words, right size: the client's four stores and the
+  packet's seven schedule otherwise -- the packet's in all 5,040 orders and jointly with the client's
+  in 5,040 more, the nearest 16), libmrpc's sceSifMCallRpc (the same function with the lock and the
+  alignment checks, a word short) and sceSifMUnBindRpc (4 words: the rpc_id's register decides
+  whether reorg sends the null check's `li v0,-1` straight to the epilogue). Not reached:
+  sceGsSetDefDispEnv, sceCdStRead (their round 22a/24a diagnoses stand), OVL1's codec stretches.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
