@@ -18,15 +18,19 @@
 #include "zanim_menu.h"
 #include "../zsys/zsys.h"
 
-/* the lobby objects the handlers also reach (not named yet) */
-class CZLANLobby;
+/* the lobby objects the handlers also reach (the LAN lobby: zonline.h's CZLANLobby, its object not
+ * named yet) */
+class CZLANLobby {
+public:
+    bool GameHasPassword(const char *game);   /* 0x303730 */
+    void CreateGame();                        /* 0x303F40 */
+    bool RefreshGameList(C2D *list);          /* 0x3042B0 */
+    void Disconnect();                        /* 0x3043E0 */
+    bool IsActive();                          /* 0x3045B0: whether the LAN lobby is the one in use */
+};
 extern "C" {
 extern CZLANLobby data_0044FE10;           /* a second lobby: the LAN game's */
-bool func_003045B0(CZLANLobby *lan);        /* whether the LAN lobby is the one in use */
-void func_003043E0(CZLANLobby *lan);
-void func_00303F40(CZLANLobby *lan);
 bool func_003039B0(CZLANLobby *lan, const char *game);
-bool func_00303730(CZLANLobby *lan, const char *game);
 void func_0030D770(CZNetwork *net);
 void func_0030E3A0(CZNetwork *net, int arg);
 extern int data_00441470;
@@ -53,17 +57,22 @@ struct CharTypeFigures {
     float m_scale;   // 0x14
 };
 
+/* a character type's voice (zchar.h's CVoiceFont: only its six figures) */
+class CVoiceFont {
+public:
+    float GetWhisperFactor() const;    /* 0x53B010 */
+    float GetRoboSquash() const;       /* 0x53B020 */
+    float GetRoboOffset() const;       /* 0x53B030 */
+    float GetSpectralLedge() const;    /* 0x53B040 */
+    float GetSpectralFactor() const;   /* 0x53B050 */
+    float GetPitchOffset() const;      /* 0x53B060 */
+};
+
 extern "C" {
 extern COnlineArmoryView *data_0045B718;
 void func_0030E6E0(COnlineArmoryView *p, int arg);
 void func_0030E490(COnlineArmoryView *p);
 void func_0030E6A0(COnlineArmoryView *p, CharTypeFigures *figures);
-float func_0053B060(void *stats);
-float func_0053B050(void *stats);
-float func_0053B040(void *stats);
-float func_0053B030(void *stats);
-float func_0053B020(void *stats);
-float func_0053B010(void *stats);
 }
 
 class CZGameState {
@@ -484,7 +493,7 @@ bool UIHostLANGame(C2DAnimCmdHdr *hdr, float *dT)
     bool ok = false;
 
     theMission.CreateNetGame();
-    if (func_003045B0(&data_0044FE10)) {
+    if (data_0044FE10.IsActive()) {
         if (DMEConnectToGameServer()) {
             theLobby.ReleaseUIResources();
             ok = true;
@@ -501,7 +510,7 @@ bool UIConnectToGameServer(C2DAnimCmdHdr *hdr, float *dT)
 
     theMission.CreateNetGame();
     if (func_002B85C0()) {
-        if (func_003045B0(&data_0044FE10))
+        if (data_0044FE10.IsActive())
             theLobby.ReleaseUIResources();
         ok = true;
     } else {
@@ -514,14 +523,14 @@ bool UIConnectToGameServer(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIDisconnectFromGameServer(C2DAnimCmdHdr *hdr, float *dT)
 {
-    if (!func_003045B0(&data_0044FE10) && theNetwork.m_bSessionMaster
+    if (!data_0044FE10.IsActive() && theNetwork.m_bSessionMaster
         && theNetwork.zNetGetValidGameClientCount() == 1)
         theLobby.SendEndGameReport();
     ftsNetworkGameUninit();
     DMEDisconnectFromGameServer();
     theLobby.RejoinRoom();
     theMission.DestroyNetGame();
-    if (func_003045B0(&data_0044FE10))
+    if (data_0044FE10.IsActive())
         theLobby.CreateUIResources();
     return true;
 }
@@ -606,7 +615,7 @@ bool UIDoesSlotHaveGame(C2DAnimCmdHdr *hdr, float *dT)
     sprintf(s_savename, "SaveGame%d", slot);
     if (theMemCard.Exists(s_savename)) {
         sprintf(s_savename, "SaveGame%d", slot);
-        func_0033D4A0(theMemCard.m_configSave, s_savename, 12, &info);
+        theMemCard.m_configSave->GetHeader(s_savename, 12, (CSaveManager::CSaveHeader *)&info);
         if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
             has = true;
     }
@@ -624,7 +633,7 @@ bool UIGetNumSavedGames(C2DAnimCmdHdr *hdr, float *dT)
         sprintf(s_savename, "SaveGame%d", i);
         if (theMemCard.Exists(s_savename)) {
             sprintf(s_savename, "SaveGame%d", i);
-            func_0033D4A0(theMemCard.m_configSave, s_savename, 12, &info);
+            theMemCard.m_configSave->GetHeader(s_savename, 12, (CSaveManager::CSaveHeader *)&info);
             if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
                 count++;
         }
@@ -686,8 +695,8 @@ bool UIGetAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIRefreshGameList(C2DAnimCmdHdr *hdr, float *dT)
 {
-    if (func_003045B0(&data_0044FE10))
-        return func_003042B0(&data_0044FE10, GetCommandC2D(hdr->node_ref_index));
+    if (data_0044FE10.IsActive())
+        return data_0044FE10.RefreshGameList(GetCommandC2D(hdr->node_ref_index));
     return theLobby.RefreshGameList(GetCommandC2D(hdr->node_ref_index));
 }
 
@@ -721,8 +730,8 @@ bool UIRefreshGamePlayerList(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UICreateMPGame(C2DAnimCmdHdr *hdr, float *dT)
 {
-    if (func_003045B0(&data_0044FE10)) {
-        func_00303F40(&data_0044FE10);
+    if (data_0044FE10.IsActive()) {
+        data_0044FE10.CreateGame();
         return true;
     }
     return theLobby.CreateGame();
@@ -734,7 +743,7 @@ bool UIJoinMPGame(C2DAnimCmdHdr *hdr, float *dT)
     bool ok;
 
     name = !strcmp(name, "INPUT_STRING") ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : name;
-    if (func_003045B0(&data_0044FE10))
+    if (data_0044FE10.IsActive())
         ok = func_003039B0(&data_0044FE10, name);
     else
         ok = theLobby.JoinGame(name);
@@ -789,8 +798,8 @@ bool UIGameHasPassword(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *game = ArgText(ArgName(hdr));
 
-    if (func_003045B0(&data_0044FE10))
-        return func_00303730(&data_0044FE10, game);
+    if (data_0044FE10.IsActive())
+        return data_0044FE10.GameHasPassword(game);
     return theLobby.GameIsPasswordProtected(game);
 }
 
@@ -1213,8 +1222,8 @@ bool UIPlayMPEGNoFade(C2DAnimCmdHdr *hdr, float *dT)
 
     data_00414EA8 = !was;
     if (!was) {
-        func_001EDA60(theGame.m_cinematicSubState, ArgName(hdr), 0, 0);
-        func_002CF380(&theGame, theGame.m_cinematicSubState, 0);
+        ((CCinematicState *)theGame.m_cinematicSubState)->SetMovie(ArgName(hdr), 0, 0);
+        theGame.Push((CGameState *)theGame.m_cinematicSubState, 0);
     }
     return was;
 }
@@ -1570,12 +1579,12 @@ bool UIChangeCharacterType(C2DAnimCmdHdr *hdr, float *dT)
         CharTypeFigures figures;
         void *stats = ct->m_stats;
 
-        figures.m_0 = func_0053B060(stats);
-        figures.m_4 = func_0053B050(stats);
-        figures.m_8 = func_0053B040(stats);
-        figures.m_min = func_0053B030(stats);
-        figures.m_max = func_0053B020(stats);
-        figures.m_scale = func_0053B010(stats);
+        figures.m_0 = ((const CVoiceFont *)stats)->GetPitchOffset();
+        figures.m_4 = ((const CVoiceFont *)stats)->GetSpectralFactor();
+        figures.m_8 = ((const CVoiceFont *)stats)->GetSpectralLedge();
+        figures.m_min = ((const CVoiceFont *)stats)->GetRoboOffset();
+        figures.m_max = ((const CVoiceFont *)stats)->GetRoboSquash();
+        figures.m_scale = ((const CVoiceFont *)stats)->GetWhisperFactor();
         if (figures.m_min < 0.0f || figures.m_max < 0.0f) {
             figures.m_min = 0.0f;
             figures.m_max = 0.0f;
@@ -1647,8 +1656,8 @@ bool UIHaveBeenBannedFromGame(C2DAnimCmdHdr *hdr, float *dT)
 bool UIGameStatePopCommand(C2DAnimCmdHdr *hdr, float *dT)
 {
     theGame.m_menuState.SetDefaultMenu(ArgText(ArgName(hdr)));
-    func_002CF2F0(&theGame, 0);
-    func_002CF410(&theGame, &theGame.m_menuState, 0);
+    theGame.Pop(0);
+    theGame.Switch((CGameState *)&theGame.m_menuState, 0);
     return true;
 }
 
@@ -1817,13 +1826,11 @@ bool UIClearUIVar(C2DAnimCmdHdr *hdr, float *dT)
             } else if (type == 3) {
                 *var = "";
             } else if (type == 4) {
-                NetCnfRdr rdr;
+                CRdrEditor rdr;
 
-                func_00333AE0(&rdr);
-                func_003339B0(&rdr, 0);
-                func_00333770(&rdr);
-                func_00386460(var, &rdr);
-                func_00333A20(&rdr, -1);
+                rdr.push(0);
+                rdr.pop();
+                var->Set(&rdr);
             }
         }
     }
@@ -1850,14 +1857,12 @@ bool UINetCnfUninit(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UINetCnfClose(C2DAnimCmdHdr *hdr, float *dT)
 {
-    NetCnfRdr rdr;
+    CRdrEditor rdr;
 
-    func_00333AE0(&rdr);
-    func_003339B0(&rdr, 0);
-    func_00333770(&rdr);
-    theUIVarManager.Add("NETCNF_DB", (_zrdr *)&rdr, UIVAR_SESSION);
+    rdr.push(0);
+    rdr.pop();
+    theUIVarManager.Add("NETCNF_DB", &rdr, UIVAR_SESSION);
     strncpy(data_003DF360, "", 256);
-    func_00333A20(&rdr, -1);
     return true;
 }
 
@@ -1916,27 +1921,30 @@ bool UINetCnfSelectCombo(C2DAnimCmdHdr *hdr, float *dT)
 }
 
 /* the network interfaces listed into the UI variable the argument names, "vendor/product" each.
- * OPEN, 10 instructions, all stack offsets: the target's frame is 48 bytes larger (0xED0), the
+ * OPEN, 12 instructions, all stack offsets: the target's frame is 48 bytes larger (0xED0), the
  * text at 0xE00 and the reader at 0xE80 with a hole between the list's end (0xDD0) and the text --
  * a local the original kept a slot for (an unused array is dropped here; a 176-byte text buffer
- * fixes the frame but not the text's offset; the list's 0x240 stride is fixed by the loop) */
+ * fixes the frame but not the text's offset; the list's 0x240 stride is fixed by the loop). Since
+ * the respell the reader is a CRdrEditor whose constructor runs where the target's does (after the
+ * list and the variable), so it is declared there and sits lowest (0x50); the target keeps it at
+ * the top though it is built third -- declared first it is built first (48 off), and a block, the
+ * text in the loop or the text after it all leave the 12 (the placeholder form, an 80-byte POD
+ * declared first, was 10 off) */
 bool UINetGetInterfaceList(C2DAnimCmdHdr *hdr, float *dT)
 {
-    NetCnfRdr rdr;
     char text[128];
     NetInterfaceInfo list[6];
     int n = func_0030BD40(list, 6);
     CUIVariable *var = theUIVarManager.Add(ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+    CRdrEditor rdr;
 
-    func_00333AE0(&rdr);
-    func_003339B0(&rdr, 0);
+    rdr.push(0);
     for (int i = 0; i < n; i++) {
         sprintf(text, "%s/%s", list[i].m_vendor, list[i].m_product);
-        func_00333610(&rdr, text);
+        rdr.addstringnode(text);
     }
-    func_00333770(&rdr);
-    func_00386460(var, &rdr);
-    func_00333A20(&rdr, -1);
+    rdr.pop();
+    var->Set(&rdr);
     return true;
 }
 
@@ -1988,7 +1996,7 @@ void AuxNetCensorText(const char *text, void *var)
 
 bool UINetCensorText(C2DAnimCmdHdr *hdr, float *dT)
 {
-    if (theNetwork.m_bNetwork && !func_003045B0(&data_0044FE10)) {
+    if (theNetwork.m_bNetwork && !data_0044FE10.IsActive()) {
         const char *name;
         CZAnim *anim = ZAnim.m_CurAnim;
 
@@ -2156,30 +2164,28 @@ extern "C" CSMInitNetwork *data_00414EB8;
  * LobbyConnect call it) */
 void UpdatePersonaList(const char *host, int port)
 {
-    NetCnfRdr rdr;
+    CRdrEditor rdr;
 
-    func_00333AE0(&rdr);
-    int n = func_002FB920(data_0044FC60, host, port);
+    int n = data_0044FC60.Count(host, port);
     int i = 0;
 
-    func_003339B0(&rdr, 0);
+    rdr.push(0);
     for (; i < n; i++) {
-        const char *name = func_002FD510(data_0044FC60, host, port, i);
+        const char *name = data_0044FC60.GetName(host, port, i);
 
-        func_003339B0(&rdr, 0);
-        func_00333700(&rdr, i);
-        func_00333610(&rdr, name);
-        func_00333770(&rdr);
+        rdr.push(0);
+        rdr.addintnode(i);
+        rdr.addstringnode(name);
+        rdr.pop();
     }
     for (; i < 3; i++) {
-        func_003339B0(&rdr, 0);
-        func_00333700(&rdr, -1);
-        func_00333610(&rdr, "<New Persona>");
-        func_00333770(&rdr);
+        rdr.push(0);
+        rdr.addintnode(-1);
+        rdr.addstringnode("<New Persona>");
+        rdr.pop();
     }
-    func_00333770(&rdr);
-    func_00386460(theUIVarManager.Add("PLAYERPERSONALIST", 0, UIVAR_SESSION), &rdr);
-    func_00333A20(&rdr, -1);
+    rdr.pop();
+    (theUIVarManager.Add("PLAYERPERSONALIST", 0, UIVAR_SESSION))->Set(&rdr);
 }
 
 /* the network started: the lobby's events handed to the menu, the machine made and run until it
@@ -2252,7 +2258,7 @@ bool UIMUISPersonaExists(C2DAnimCmdHdr *hdr, float *dT)
     const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
     CUIVariable *port = theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT);
 
-    return func_002FBBF0(data_0044FC60, host, port->Int(), name);
+    return data_0044FC60.Find(host, port->Int(), name);
 }
 
 bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
@@ -2260,12 +2266,12 @@ bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
     const char *level = ArgName(hdr);
 
     level = !strcmp(level, "INPUT_STRING") ? ZAnim.m_CurAnim->m_arg_list->GetCharP(0) : level;
-    bool ok = func_002FD6E0(data_0044FC60, level);
+    bool ok = data_0044FC60.VerifyPatchLevel(level);
 
     if (!ok) {
         CUIVariable *var = theUIVarManager.Add("PatchServerURL", 0, UIVAR_SESSION);
 
-        *var = func_002FD610(data_0044FC60, level);
+        *var = data_0044FC60.GetPatchURL(level);
     }
     return ok;
 }
@@ -2346,6 +2352,13 @@ _zanim_cmd_hdr *UICharacterProfileParse(const char *name, _zrdr *rdr)
 
 /* the account's details sent to the lobby server (its host and port, the name, password, home town,
  * gender and whether the password is kept secure), then the personas listed again */
+/* CZUniversInformationServer::CAcctDB::SetAcctInfo (0x2FD0D0) through its placeholder: the row's name
+ * takes the gender as an int, and every int spelling of the argument loses the target's li/movz
+ * select (`x ? 1 : 0` folds to sltu, an enum converted adds its andi); only the byte enum passed
+ * straight gives it -- so the call stays raw until the callee's parameter type is settled */
+extern "C" void func_002FD0D0(CZUniversInformationServer::CAcctDB *db, const char *host, int port, const char *name,
+                              const char *password, const char *hometown, ACCT_GENDER gender, bool secure);
+
 bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
     CUIVariable *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT);
@@ -2356,8 +2369,7 @@ bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
     CValve *gender = CValve::Create("PLAYERGENDER", (VALVE_TYPE)3);
     bool secure = CValve::Create("SecurePassword", (VALVE_TYPE)1)->m_value != 0;
 
-    func_002FD0D0(data_0044FC60, host->String(), port->Int(), name->String(), password->String(),
-                  hometown->String(), gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
+    func_002FD0D0(&data_0044FC60, host->String(), port->Int(), name->String(), password->String(), hometown->String(), gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
     UpdatePersonaList(host->String(), port->Int());
     return true;
 }
@@ -2420,8 +2432,8 @@ _zanim_cmd_hdr *UICompareValuesParse(const char *name, _zrdr *rdr)
 
 bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)
 {
-    if (func_003045B0(&data_0044FE10))
-        func_003043E0(&data_0044FE10);
+    if (data_0044FE10.IsActive())
+        data_0044FE10.Disconnect();
     else
         theLobby.Close();
     return true;
@@ -2436,21 +2448,19 @@ bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)
 bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
     CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
-    NetCnfRdr rdr;
+    CRdrEditor rdr;
 
-    func_00333AE0(&rdr);
-    func_003339B0(&rdr, 0);
-    func_00333610(&rdr, func_002FDA50(data_0044FC60, valve->m_value));
-    func_00333610(&rdr, "\n\n");
-    for (int i = 0; i < func_002FDEC0(data_0044FC60); i++)
-        func_00333610(&rdr, func_002FDEA0(data_0044FC60, i));
-    func_00333770(&rdr);
-    theUIVarManager.Add("SERVER_NEWS", (_zrdr *)&rdr, UIVAR_SESSION);
+    rdr.push(0);
+    rdr.addstringnode(data_0044FC60.GetUniverseDescription(valve->m_value));
+    rdr.addstringnode("\n\n");
+    for (int i = 0; i < data_0044FC60.GetNewsCount(); i++)
+        rdr.addstringnode(data_0044FC60.GetNewsLine(i));
+    rdr.pop();
+    theUIVarManager.Add("SERVER_NEWS", &rdr, UIVAR_SESSION);
     CUIVariable *name = theUIVarManager.Add("SERVER_NAME", 0, UIVAR_SESSION);
 
     if (name)
-        *name = func_002FDAA0(data_0044FC60, valve->m_value);
-    func_00333A20(&rdr, -1);
+        *name = data_0044FC60.GetUniverseName(valve->m_value);
     return true;
 }
 
