@@ -2589,11 +2589,6 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
 }
 
 extern "C" {
-/* a weapon's model name (OVL1 0x3D2750, an out-of-line accessor: CZWeapon::m_modelname) */
-char *func_003D2750(CZWeapon *w);
-}
-
-extern "C" {
 /* the stats' events (seal.cpp's: a hostage killed, a suicide, a team-mate killed, an enemy killed,
  * and two tallies by a count -- OVL2 0x545390, 0x545C90, 0x545C10, 0x545290, 0x5451A0, 0x5451C0),
  * the network game's side test (OVL1 0x2C30B0, unowned), whether a time of the AI's lies within a
@@ -2685,7 +2680,7 @@ void CZSealBody::CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *p
     if (!w)
         return;
     zdb::CNode *node = zdb::CNode::CreateInstance(
-        (zdb::CModel *)zdb::CWorld::GetModel(func_003D2750(w)), pos, rot);
+        (zdb::CModel *)zdb::CWorld::GetModel(w->GetModelName()), pos, rot);
 
     if (!node)
         return;
