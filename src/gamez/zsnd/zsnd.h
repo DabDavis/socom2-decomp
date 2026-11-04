@@ -130,6 +130,11 @@ public:
     static CSnd *GetSoundByName(const char *name);
     static void AddNewCSnd(CSnd *sound);
     static void SetGroupVol(int group, float vol);
+    /* SOCOM 1's: up to seven groups' volumes lowered to a part for a time, their own kept; SOCOM
+     * II's reset moves them back over five seconds, a step at a time (0x3412F0, 0x3410D0) */
+    static void SetGroupVolTemp(float time, float pct, int g0, int g1, int g2, int g3, int g4, int g5,
+                                int g6);
+    static void ResetGroupVolTemp(float dT);
     static void LoadReverbs(_zrdr *rdr);
     static void LoadIndoorReverbs(_zrdr *rdr);
     static void LoadOutdoorReverbs(_zrdr *rdr);
@@ -157,6 +162,15 @@ public:
                                                 pushes onto it, UnloadAllSounds deletes them) */
     static CMatrix m_listenermatrix;    /* 0x48DD40: the listener (SOCOM 1's: CalcVolPan transforms
                                            by it) */
+    /* the group fade (SOCOM 1's statics, but the lowered volumes and the reset's position, SOCOM
+     * II's, the names ours): the groups (-1 for none), their own and their lowered volumes, the
+     * time left (1e9 held), the part, and the reset's position (0 to 1; 100 at start: done) */
+    static int m_fadegroup[7];          /* 0x48DDB0 */
+    static int m_fade_oldvol[7];        /* 0x48DDD0 */
+    static int m_fade_newvol[7];        /* 0x48DDF0 */
+    static float m_fadetime;            /* 0x48DE10 */
+    static float m_fadepct;             /* 0x48DE18 */
+    static float m_fadeRestore;         /* 0x3DFFE0 */
 
     float m_vol;                        /* 0x04 */
     char *m_name;                       /* 0x08 */

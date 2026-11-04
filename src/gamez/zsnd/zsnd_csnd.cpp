@@ -457,16 +457,73 @@ void CSnd::SetGroupVol(int group, float vol)
     snd_SetMasterVolume(group, (int)(1024.0f * vol));
 }
 
-/* SOCOM II's group-volume fade (0x3410D0, not written) restarted when idle (names not known) */
-extern float data_0048DE10;     /* the fade's time (1e9: held) */
-extern float data_003DFFE0;     /* the fade's position, 0-1 */
-extern "C" void func_003410D0(float step);
+/* SOCOM 1's: the groups' volumes lowered to a part of their own for a time -- while a fade runs
+ * only its time lengthened; a reset still running finished first, then each group's own volume
+ * kept and the lowered one set */
+void CSnd::SetGroupVolTemp(float time, float pct, int g0, int g1, int g2, int g3, int g4, int g5, int g6)
+{
+    if (m_fadetime > 0.0f) {
+        if (time > m_fadetime)
+            m_fadetime = time;
+        return;
+    }
+    if (m_fadeRestore < 1.0f) {
+        m_fadeRestore = 1.0f;
+        ResetGroupVolTemp(0.0f);
+    }
+    m_fadepct = pct;
+    m_fadetime = time;
+    m_fadegroup[0] = g0;
+    m_fadegroup[1] = g1;
+    m_fadegroup[2] = g2;
+    m_fadegroup[3] = g3;
+    m_fadegroup[4] = g4;
+    m_fadegroup[5] = g5;
+    m_fadegroup[6] = g6;
+    m_fadeRestore = 0.0f;
+    for (int i = 0; i < 7; i++) {
+        if (m_fadegroup[i] != -1) {
+            int vol = snd_GetMasterVolume(m_fadegroup[i]);
+            int low = (int)(vol * m_fadepct);
 
+            m_fade_newvol[i] = low;
+            m_fade_oldvol[i] = vol;
+            snd_SetMasterVolume(m_fadegroup[i], low);
+        }
+    }
+}
+
+/* SOCOM 1's ResetGroupVolTemp, SOCOM II's over five seconds: the reset's position stepped, each
+ * group set between its lowered and its own volume by it, the fade forgotten once it is done. The
+ * step's two products are named: MW orders a commutative float operation's operands its own way
+ * (the global's load first, the converted int last) whatever the expression's order */
+void CSnd::ResetGroupVolTemp(float dT)
+{
+    m_fadeRestore += dT / 5.0f;
+    if (m_fadeRestore > 1.0f)
+        m_fadeRestore = 1.0f;
+    for (int i = 0; i < 7; i++) {
+        if (m_fadegroup[i] != -1) {
+            float d = m_fade_oldvol[i] - m_fade_newvol[i];
+            float v = d * m_fadeRestore;
+
+            SetGroupVol(m_fadegroup[i], (v + m_fade_newvol[i]) / 1024.0f);
+        }
+    }
+    if (m_fadeRestore >= 1.0f) {
+        m_fadepct = 0.0f;
+        m_fadetime = 0.0f;
+        for (int i = 0; i < 7; i++)
+            m_fadegroup[i] = -1;
+    }
+}
+
+/* SOCOM II's group-volume fade restarted when idle (name not known) */
 extern "C" void func_00341060()
 {
-    if (data_0048DE10 != 0.0f || data_0048DE10 == 1.0e9f) {
-        data_003DFFE0 = 1.0f;
-        func_003410D0(0.01f);
+    if (CSnd::m_fadetime != 0.0f || CSnd::m_fadetime == 1.0e9f) {
+        CSnd::m_fadeRestore = 1.0f;
+        CSnd::ResetGroupVolTemp(0.01f);
     }
 }
 

@@ -6123,9 +6123,9 @@
 0x00340FA0 0x68 func_00340FA0  # OVL1
 0x00341010 0x50 func_00341010  # OVL1
 0x00341060 0x64 func_00341060  # OVL1
-0x003410D0 0x17C func_003410D0  # OVL1
+0x003410D0 0x17C ResetGroupVolTemp__4CSndFf  # OVL1; s1:calls by hand, the world lane round 9 (SOCOM 1's ResetGroupVolTemp, called from PostTick as SOCOM 1's: SOCOM II's takes a step and moves the groups back over five seconds -- the position at 0x3DFFE0 stepped by dT/5 to 1, each group's volume set (SetGroupVol inlined) between its lowered and its own volume, the part, the time and the groups cleared at 1) -- zsnd_csnd.cpp
 0x00341250 0x94 func_00341250  # OVL1
-0x003412F0 0x1B4 func_003412F0  # OVL1
+0x003412F0 0x1B4 SetGroupVolTemp__4CSndFffiiiiiii  # OVL1; s1:order by hand, the world lane round 9 (SOCOM 1's SetGroupVolTemp(float, float, int x7), the same signature: a running fade only lengthened, a running reset finished through ResetGroupVolTemp(0), then the seven groups kept and each one's own volume read, kept and lowered by the part) -- zsnd_csnd.cpp
 0x003414B0 0x8 func_003414B0  # OVL1
 0x003414C0 0x8 func_003414C0  # OVL1
 0x003414D0 0x24 SetGroupVol__4CSndFif  # OVL1; s1:order by hand (SOCOM 1's SetGroupVol, the same body: 1024 times the level to snd_SetMasterVolume for the group passed through)
