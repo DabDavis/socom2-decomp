@@ -314,6 +314,14 @@ public:
     }
 };
 
+/* a progress bar's spec (zui_spec.h's CHProgressBarSpec: an image's, then a string -- SOCOM 1's at
+ * 0x20, SOCOM II's at 0x28; the name ours) */
+class CHProgressBarSpec : public CImageSpec {
+public:
+    unsigned char _24[0x28 - 0x24];
+    CSaferStr m_text;   // 0x28
+};
+
 class CTextSpec : public CDlgObjSpec {
 public:
     /* the colour by value (ours: the target copies it through a return slot on the stack) */
@@ -609,6 +617,8 @@ public:
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void Tick(float dT);
     virtual void UpdateUIVar(CUIVariable *var);
+    /* a slot of its own, +0x84 (zui_2d.h's) */
+    virtual void LoadSpec(const CHProgressBarSpec &spec, zdb::CTexHandle *tex);
 
     float m_fill;   // 0xa0: 0 to 1
     int m_width;   // 0xa4: the full bar's width (Draw converts it)
@@ -1005,6 +1015,21 @@ void CHProgressBar::UpdateUIVar(CUIVariable *var)
 }
 
 /* slot 12: filled at its rate, to full */
+/* set up from its spec (SOCOM 1's CHProgressBar::LoadSpec, 0x38B890 there): the plain bitmap's own
+ * (the pulse, the spec's variable watched, the bitmap loaded), the variable watched again, the
+ * full width the spec's, empty, and the spec's text kept */
+void CHProgressBar::LoadSpec(const CHProgressBarSpec &spec, zdb::CTexHandle *tex)
+{
+    CPlainBmp::LoadSpec(spec, tex);
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+    m_width = spec.m_sizex;
+    m_fill = 0.0f;
+    m_str = spec.m_text.c_str();
+}
+
 void CHProgressBar::Tick(float dT)
 {
     m_fill += dT / m_time;

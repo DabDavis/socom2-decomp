@@ -6875,7 +6875,7 @@
 0x00371680 0x134 HandlePad__9CCheckBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003717C0 0x21C Draw__13CHProgressBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003719E0 0x30 Tick__13CHProgressBarFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00371A10 0x18C func_00371A10  # OVL1
+0x00371A10 0x18C LoadSpec__13CHProgressBarFRC17CHProgressBarSpecPQ23zdb10CTexHandle  # OVL1; s1:vtable by hand (the HUD lane, round 38: zui_2d.cpp -- the last slot (+0x84) of CHProgressBar's table 0x407550, after its UIVarMixin part (zui_2d.h's 'a slot of its own'); SOCOM 1's CHProgressBar::LoadSpec: CPlainBmp::LoadSpec inlined (the pulse, the variable watched, the bitmap loaded), the variable watched again, m_width the spec's width, m_fill 0, the spec's string +0x28 into m_str through CSaferStr's operator=)
 0x00371BA0 0xA8 UpdateUIVar__13CHProgressBarFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D0A0 (-128, CHProgressBar's UIVarMixin table) jumps to it; the variable's number into the bar's time at 0xA8, the fill zeroed, as SOCOM 1's CHProgressBar::UpdateUIVar)
 0x00371C50 0xB0 UpdateUIVar__10CSliderBarFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D080 (-192, CSliderBar's UIVarMixin table) jumps to it; a real mapped about the centre at 0x450 into the value at 0x440, as SOCOM 1's CSliderBar::UpdateUIVar)
 0x00371D00 0x4D8 func_00371D00  # OVL1
