@@ -10,10 +10,10 @@
 /* the flare system (OVL1 bss 0x488F10; no rows yet): a flare made at a point with a size (its
  * handle back), moved, moved and sized, asked whether it shows, and released */
 struct CFlareSystem {
+    int Add(const CPnt3D *pos, float size);
     void Release(int handle);
 };
 extern CFlareSystem data_00488F10;
-extern "C" int func_00336650(CFlareSystem *system, CPnt3D *pos, float size);
 extern "C" void func_00336580(CFlareSystem *system, int handle, CPnt3D *pos);
 extern "C" void func_003365E0(CFlareSystem *system, int handle, CPnt3D *pos, float size);
 extern "C" bool func_00336520(CFlareSystem *system, int handle, void *query);
@@ -57,7 +57,7 @@ void CLensFlareManager::ReInit()
             flare->m_pos = CPnt3D::zero;
             flare->m_node->TransformToWorld(flare->m_pos);
             if (flare->m_handle < 0)
-                flare->m_handle = func_00336650(&data_00488F10, &flare->m_pos, flare->m_size);
+                flare->m_handle = data_00488F10.Add(&flare->m_pos, flare->m_size);
             else
                 func_003365E0(&data_00488F10, flare->m_handle, &flare->m_pos, flare->m_size);
         }
