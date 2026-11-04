@@ -8258,11 +8258,11 @@
 0x003CCC90 0xF8 SetAllFlag18__16CZProjectileListFv  # OVL1; by hand (the wep lane: SOCOM II's -- flag 18 set on every charge and every projectile in use; _OnMissionComplete calls it; the name ours)
 0x003CCD90 0x118 ForgetHitNode__16CZProjectileListFPQ23zdb5CNode  # OVL1; by hand (the wep lane: SOCOM II's -- CZProjectile::ForgetHitNode on every charge and every projectile in use; ~CZSealBody calls it; the name ours)
 0x003CCEB0 0x2A0 Clear__16CZProjectileListFi10EQUIP_ITEM  # OVL1; by hand (the wep lane: SOCOM 1's CZProjectileList::Clear(int) with a weapon id added -- a shooter's charges (of that weapon) and, with none given, his projectiles made to explode and taken out; CZSealBody::Destroy and _OnMissionComplete call it)
-0x003CD150 0x24C func_003CD150  # OVL1
-0x003CD3A0 0x70 func_003CD3A0  # OVL1
-0x003CD410 0x40 func_003CD410  # OVL1
-0x003CD450 0x8 func_003CD450  # OVL1
-0x003CD460 0x14 func_003CD460  # OVL1
+0x003CD150 0x24C Clear__16CZProjectileListFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's Clear__16CZProjectileListFv 0x31B2A0, between Clear(int) and Init as here -- the charges reported, their pickups destroyed, deleted and erased, the charges' vector freed, then the slots' projectiles up to the last used, a network game's only the player's, set to 3, reported and freed; UnInit and CZWeapon::Close call it, as SOCOM 1's UnInit); zwep_projlist.cpp
+0x003CD3A0 0x70 __dt__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>Fv  # OVL1; by hand (the weapons lane, round 23: CZProjectileList::Clear()'s FreeVector of the charges -- the temporary's destructor, called with -1, three this-tests; byte-exact as zwep_projlist.cpp emits it); zwep_projlist.cpp
+0x003CD410 0x40 swap__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>FRQ23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>  # OVL1; by hand (the weapons lane, round 23: CZProjectileList::Clear()'s FreeVector swap, out of line; byte-exact as zwep_projlist.cpp emits it); zwep_projlist.cpp
+0x003CD450 0x8 clear__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>Fv  # OVL1; by hand (the weapons lane, round 23: CZProjectileList::Clear()'s FreeVector clear, the size zeroed, out of line; byte-exact as zwep_projlist.cpp emits it); zwep_projlist.cpp
+0x003CD460 0x14 __ct__Q23std64vector<P15PlacedExplosive,Q23std29allocator<P15PlacedExplosive>>Fv  # OVL1; by hand (the weapons lane, round 23: CZProjectileList::Clear()'s FreeVector temporary's constructor, out of line; byte-exact as zwep_projlist.cpp emits it); zwep_projlist.cpp
 0x003CD480 0x22C Init__16CZProjectileListFv  # OVL1; s1:calls
 0x003CD6B0 0x88 __dt__16CZProjectileListFv  # OVL1; s1:align
 0x003CD740 0xD0 __ct__16CZProjectileListFi  # OVL1; by hand (the wep lane: CZWeapon::CreateProjectileList news 0x208 bytes -- CZProjectileList's size -- and calls it with the block and its count, as SOCOM 1's CreateProjectileList__8CZWeaponFi calls __ct__16CZProjectileListFi; not written)

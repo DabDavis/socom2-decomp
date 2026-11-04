@@ -972,6 +972,9 @@ public:
     /* a shooter's charges (of one weapon, when given one) and, unless a weapon is given, his
      * projectiles: each set to explode, reported and taken out (SOCOM 1's took the shooter only) */
     void Clear(int shooter, EQUIP_ITEM item);
+    /* every charge and, in a network game only the player's, every projectile taken out, the
+     * charges' storage given up (SOCOM 1's; 0x3CD150: UnInit and CZWeapon::Close call it) */
+    void Clear();
     bool GetNextIndirectFireDI(zdb::DiIntersect **di, int *handle);
     void ReleaseIndirectFireDI(zdb::DiIntersect **di, int *handle);
     bool GetNextDirectFireDI(zdb::DiIntersect **di, int *handle);

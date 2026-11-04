@@ -125,20 +125,19 @@ bool CZFTSWeapon::IsGrenadeLauncherAmmo()
     return false;
 }
 
-/* the class 185 (new in SOCOM II, not named). OPEN, 3 instructions (the target's size): the target
- * calls GetIDType twice and tests only the second result -- a first test MW folded away, its call
- * kept. Round 21: `(unsigned int)f() > 0xFFFFFFFFu` folds the test and keeps the call, the target's
- * size, but the folded branch leaves its label (the return-true block's) padded where the target
- * pads the return-false block's -- an if/else, a negated test, a result local set in each arm or a
- * ternary move nothing; `< 0u`, `!(>= 0u)` and an unsigned-char cast fold the call away too (0x38).
- * Earlier: an out-of-range class (0x1B9) is compared, not folded (0x60); `< 0` and `>= 0 &&` fold
- * but keep a branch (0x58); the call as a statement of its own materialises the test (0x38); a dead
- * local holding the first result (initialised, re-assigned, assigned in the test) gives 0x38 too,
- * as do `(f() && false) ||`, `(f(), false) ||`, `(f() * 0) ||`; `> 255`, `>= 256`, `== -1`,
- * `== 0x100`, `(f() & 0)` are compared, not folded (0x60) */
+/* the class 185 (new in SOCOM II, not named): the target calls GetIDType twice and tests only the
+ * second result -- a first test MW folds away, its call kept. The first test always TRUE and
+ * `&&`-joined (round 23): its folded branch went to the return-false block, which the second test
+ * labels anyway, so only that block is padded, as the target's. Always false and `||`-joined
+ * (round 21's `(unsigned int)f() > 0xFFFFFFFFu ||`) the folded branch left the return-true block a
+ * label, padded (3 off); an if/else, a negated test, a result local or a ternary moved nothing.
+ * `>= 0u` folds the call away too (0x38); an out-of-range class (0x1B9) is compared, not folded
+ * (0x60); `< 0` and `>= 0 &&` fold but keep a branch (0x58); the call as a statement of its own
+ * materialises the test (0x38), as does a dead local holding the first result; `> 255`, `>= 256`,
+ * `== -1`, `== 0x100`, `(f() & 0)` are compared (0x60) */
 extern "C" bool func_003C5C20(CZFTSWeapon *w)
 {
-    if ((unsigned int)w->GetIDType() > 0xFFFFFFFFu || w->GetIDType() == 185)
+    if ((unsigned int)w->GetIDType() <= 0xFFFFFFFFu && w->GetIDType() == 185)
         return true;
     return false;
 }

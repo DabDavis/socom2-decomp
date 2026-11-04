@@ -7,6 +7,7 @@
 #include "../znode/node_world.h"
 #include "zweapon.h"
 #include "../zseal/zseal.h"
+#include "../zsys/zsys.h"
 
 using zdb::DiIntersect;
 
@@ -127,6 +128,46 @@ CZProjectileList::CZProjectileList(int count)
     m_firstfree = 0;
     m_lastused = -1;
     Init();
+}
+
+/* every charge made to explode, reported and taken out (its weapon's name fetched, its pickup
+ * destroyed, unlisted, deleted and erased) and the charges' storage given up; then the projectiles
+ * up to the last slot used -- in a network game only the player's -- each made to explode,
+ * reported and freed (SOCOM 1's Clear(), 0x31B2A0, between Clear(int) and Init as 0x3CD150 is:
+ * UnInit and CZWeapon::Close call it. SOCOM 1 tested the network and the player's bit for the
+ * charges too, and called FindLastUsed out of line; SOCOM II's FreeVector calls its four pieces
+ * out of line, 0x3CD3A0-0x3CD460 right after) */
+void CZProjectileList::Clear()
+{
+    if (m_used) {
+        std::vector<PlacedExplosive *>::iterator it;
+
+        for (it = m_explosives.begin(); it != m_explosives.end();) {
+            PlacedExplosive *e = *it;
+
+            e->m_weapon->GetName();
+            (*it)->m_grenadestate = (GRENADE_STATE)3;
+            (*it)->ReportGrenadeStatus();
+            CPickup::Destroy(e->m_pickup);
+            CZWeapon::m_placedExplosives.Remove(e);
+            delete e;
+            it = m_explosives.erase(it);
+        }
+        FreeVector(m_explosives);
+
+        int i;
+        int last = m_lastused;
+
+        if (last != -1 && m_projectiles) {
+            for (i = 0; i <= last; i++) {
+                if (m_used[i] == 1 && (!theNetwork.m_9 || m_projectiles[i].m_isplayer)) {
+                    m_projectiles[i].m_grenadestate = (GRENADE_STATE)3;
+                    m_projectiles[i].ReportGrenadeStatus();
+                    Free(i);
+                }
+            }
+        }
+    }
 }
 
 /* a shooter's charges, of the given weapon unless it is none, each made to explode, reported and
