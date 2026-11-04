@@ -24,11 +24,10 @@ int zrdr_free(CRdrFile *file);
 
 /* zar::CZAR's members zar.h does not declare (placeholders, the archive first): the archive
  * opened (SOCOM 1's Open(const char *, int, unsigned, unsigned), a word more in SOCOM II), a key
- * made under the open key, the archive written out */
+ * made under the open key */
 extern "C" bool func_00258920(zar::CZAR *zar, const char *name, int flags, unsigned int mode, unsigned int align,
                               int a);
 extern "C" zar::CKey *func_00258740(zar::CZAR *zar, const char *name);
-extern "C" void func_00258BD0(zar::CZAR *zar);
 
 /* the module list sorted (SOCOM 1's sort<less<const void *> > of the pointer list, this unit's
  * template tail: not written yet) */
@@ -170,7 +169,7 @@ bool CSaveManager::Save(const char *name, int flags, int version, char *desc, ch
             archive.CloseKey(modules);
         }
         ok = true;
-        func_00258BD0(&archive);
+        archive.Flush();
         if (m_pFile->Open(name, 26)) {
             char *data = buf.m_buffer;
 
