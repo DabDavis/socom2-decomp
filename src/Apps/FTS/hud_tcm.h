@@ -172,6 +172,8 @@ public:
 
     void Hold(bool reset, float t);
     CTCMNode *GetColumn(unsigned int depth);
+    /* hud_tcmcmds.cpp's layout (the names ours) */
+    void AlignRoot(CTCMNode *cur);
     /* the tree unit's (hud_tcmtree.cpp; the names ours) */
     void Tick(CPad *pad, float dt);
     void TalkTick(float dt);

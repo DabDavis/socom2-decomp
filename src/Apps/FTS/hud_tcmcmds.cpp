@@ -255,6 +255,49 @@ static inline const std::list<CEntity *> &tcmEntities()
 
 /* -------------------------------------------------------------------------------------------- */
 
+/* the layout's statics (OVL1 data 0x3DC9F0 on: 8-byte-spaced file statics, the target loads them
+ * with lwc1) -- the two the initialiser reads */
+static float s_tcmColumnX = 20.0f;   // 0x3DC9F0
+static float s_tcmLeftX = -256.0f;   // 0x3DCA80
+/* computed by the unit's initialiser (0x3FF430), in this order: the first column's left, the
+ * columns' span, the cursor's colour (the layout reads its three components, the slide its alpha) */
+static float s_tcmLeft = s_tcmColumnX;   // 0x413020
+static float s_tcmSpan = s_tcmColumnX - s_tcmLeftX;   // 0x413028
+static CPnt4D s_tcmCursorColor(160.0f, 250.0f, 250.0f, 100.0f);   // 0x413030
+
+/* the menu's columns (constructed by the initialiser 0x3FF430) */
+CTCMColumn g_tcmColumns[8];
+
+/* the layout of one column and its children from a depth on (0x230870, not written yet: recursive;
+ * the parameter order is the call's set-up order) */
+extern "C" void func_00230870(CTCM *tcm, CTCMNode *cur, float x, float y, float dir, unsigned int depth,
+                              bool b);
+
+/* the root column laid out again at the left edge unless its first shown item is there already
+ * (0x231060, the menu layout 0x231690's last call; the name ours) */
+void CTCM::AlignRoot(CTCMNode *cur)
+{
+    float x = s_tcmLeftX - 99.9f;
+    CTCMNode *column = GetColumn(0);
+
+    /* the node declared ahead of the count and the index (the index takes the lower register) */
+    if (column && !column->NoChildren()) {
+        CTCMNode *node;
+        unsigned int n = column->GetNumChildren();
+
+        for (unsigned int i = 0; i < n; i++) {
+            node = column->GetChild(i);
+
+            if (node->m_state == TCM_SHOWN && !node->m_741) {
+                x = node->m_back.m_tris[0].m_vertex[0][0];
+                break;
+            }
+        }
+    }
+    if (x != s_tcmLeftX)
+        func_00230870(this, cur, s_tcmLeftX, 0.0f, -1.0f, 0, false);
+}
+
 /* an item made and kept, unless the name is too long or already held (its out-of-line Find is
  * inlined here; the entry lives in memory: push_back takes its address) */
 CTCMEntry *CTCMCache::Add(const char *name, TCMFunc action, int actionArg, TCMFunc update, int updateArg)
@@ -300,19 +343,6 @@ CTCMEntry *CTCMCache::Find(const char *name)
     }
     return found;
 }
-
-/* the layout's statics (OVL1 data 0x3DC9F0 on: 8-byte-spaced file statics, the target loads them
- * with lwc1) -- the two the initialiser reads */
-static float s_tcmColumnX = 20.0f;   // 0x3DC9F0
-static float s_tcmLeftX = -256.0f;   // 0x3DCA80
-/* computed by the unit's initialiser (0x3FF430), in this order: the first column's left, the
- * columns' span, the cursor's colour (the layout reads its three components, the slide its alpha) */
-static float s_tcmLeft = s_tcmColumnX;   // 0x413020
-static float s_tcmSpan = s_tcmColumnX - s_tcmLeftX;   // 0x413028
-static CPnt4D s_tcmCursorColor(160.0f, 250.0f, 250.0f, 100.0f);   // 0x413030
-
-/* the menu's columns (constructed by the initialiser 0x3FF430) */
-CTCMColumn g_tcmColumns[8];
 
 /* a node opened: its children shown in a new column, which slides in as the last slides out (an
  * item's command that returns 1 opens its node so: the tree's 0x234F40 calls it with no player) */
