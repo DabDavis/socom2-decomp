@@ -213,6 +213,72 @@ bool CVisual::DrawLOD(CLOD_band *band, float d, float *opacity)
     return true;
 }
 
+/* the tint's switch and its time left (0x4B4A68, 0x4B4A78: 0x3B7170 steps the tints while the switch
+ * is up and the time runs) */
+extern "C" unsigned char data_004B4A68;
+extern "C" float data_004B4A78;
+
+/* libvu0's difference (MAIN 0x1BFE38; libvu0.h does not declare it) */
+extern "C" void sceVu0SubVector(sceVu0FVECTOR v0, sceVu0FVECTOR v1, sceVu0FVECTOR v2);
+
+/* a 4D point's difference by value through VU0, its result copied out of the temporary as
+ * operator* and operator+'s are (zmath.h's CPnt4D has no operator-: this unit's own, inline) */
+static inline CPnt4D operator-(const CPnt4D &a, const CPnt4D &b)
+{
+    CPnt4D r;
+    sceVu0SubVector((float *)&r, (float *)&a, (float *)&b);
+    return r;
+}
+
+/* every channel's tint set toward a colour over a time (0x3B78D0; ours): the colour's rgb to a
+ * third, its alpha thrice, kept in $f20-$f23 across the walk; at once (every tint and target the
+ * colour) for no time, else each target the colour and each rate the step from the tint over the
+ * time. The inverse of the time is a named local: numbered before the scalarised colour's fields it
+ * takes $f24, the colour $f20-$f23 (x, w, z, y) -- `* (1.0f / time)` hoisted is a temporary numbered
+ * among them (32 instructions of FPRs) */
+void CVisual::SetLightTints(PNT4D color, float time)
+{
+    data_004B4A68 = 1;
+    data_004B4A78 = time;
+    CPnt4D c;
+
+    c.x = color.x * 0.33f;
+    c.y = color.y * 0.33f;
+    c.z = color.z * 0.33f;
+    c.w = color.w * (1.0f / 0.33f);
+    if (time == 0.0f) {
+        for (int i = 0; i < 4; i++) {
+            m_lightTintTarget[i] = c;
+            m_lightTint[i] = c;
+        }
+    } else {
+        float inv = 1.0f / time;
+
+        for (int i = 0; i < 4; i++) {
+            m_lightTintTarget[i] = c;
+            m_lightTintRate[i] = (m_lightTintTarget[i] - m_lightTint[i]) * inv;
+        }
+    }
+}
+
+/* one channel's tint set toward a colour over a time (0x3B76B0; ours): the colour's rgb to a third,
+ * its alpha thrice (the constructor's arguments evaluated right to left: w's product first); at once
+ * for no time, else the target the colour and the rate the step from the tint over the time */
+void CVisual::SetLightTint(PNT4D color, int i, float time)
+{
+    data_004B4A68 = 1;
+    data_004B4A78 = time;
+    CPnt4D c(color.x * 0.33f, color.y * 0.33f, color.z * 0.33f, color.w * (1.0f / 0.33f));
+
+    if (time == 0.0f) {
+        m_lightTintTarget[i] = c;
+        m_lightTint[i] = c;
+    } else {
+        m_lightTintTarget[i] = c;
+        m_lightTintRate[i] = (m_lightTintTarget[i] - m_lightTint[i]) * (1.0f / time);
+    }
+}
+
 /* an entry of two static tables of four floats, by value (new in SOCOM II, not named: the particles'
  * Draw functions read the first, 0x4B4C70, CameraZoom::LoadLensFx the second, 0x4B4CB0). The named
  * local is the target's: built on the stack and copied out, where a returned temporary is built in
@@ -232,6 +298,53 @@ extern "C" CPnt4D func_003B7590(int i)
     CPnt4D t(data_004B4C70[i].x, data_004B4C70[i].y, data_004B4C70[i].z, data_004B4C70[i].w);
 
     return t;
+}
+
+/* the frame's colour step (0x3B7170; new in SOCOM II, the name ours -- CPipe::RenderWorld calls it
+ * with the frame's time): the lens colours multiplied into the lens scale (w summed, plus 0.5), and
+ * while the tint switch is up -- kept up only while a target or a tint is off the default (0.33,
+ * 0.33, 0.33, 0) -- the tints stepped by their rates over the time, set to their targets once the
+ * time runs out. Each later loop has a counter of its own (declared in its `for`): one counter
+ * reused across the loops swaps each walk's counter and pointer registers (the flag walks' a1/a2,
+ * the step's s0/s2: 35 instructions); the first's `i++` in the copy's index keeps the target's
+ * `move a1,zero; addiu a1,a1,1` and its entry test */
+void CVisual::UpdateLightTints(float dT)
+{
+    int i = 0;
+
+    m_lensScale = m_lensColor[i++];
+    for (; i < 4; i++) {
+        m_lensScale.x *= m_lensColor[i].x;
+        m_lensScale.y *= m_lensColor[i].y;
+        m_lensScale.z *= m_lensColor[i].z;
+        m_lensScale.w += m_lensColor[i].w;
+    }
+    m_lensScale.w += 0.5f;
+    if (data_004B4A68) {
+        data_004B4A68 = 0;
+        for (int j = 0; j < 4 && !data_004B4A68; j++)
+            if (m_lightTintTarget[j].x != 0.33f || m_lightTintTarget[j].y != 0.33f ||
+                m_lightTintTarget[j].z != 0.33f || m_lightTintTarget[j].w != 0.0f)
+                data_004B4A68 = 1;
+        for (int j = 0; j < 4 && !data_004B4A68; j++)
+            if (m_lightTint[j].x != 0.33f || m_lightTint[j].y != 0.33f || m_lightTint[j].z != 0.33f ||
+                m_lightTint[j].w != 0.0f)
+                data_004B4A68 = 1;
+        if (data_004B4A68) {
+            data_004B4A78 -= dT;
+            for (int k = 0; k < 4; k++) {
+                CPnt4D rate = m_lightTintRate[k];
+                CPnt4D step = rate * dT;
+
+                sceVu0AddVector((float *)&m_lightTint[k], (float *)&m_lightTint[k], (float *)&step);
+            }
+            if (data_004B4A78 <= 0.0f) {
+                data_004B4A78 = 0.0f;
+                for (int m = 0; m < 4; m++)
+                    m_lightTint[m] = m_lightTintTarget[m];
+            }
+        }
+    }
 }
 
 /* the alpha switch: an int flag, the z buffer's writes off while it is on (SOCOM 1's AlphaEnable --

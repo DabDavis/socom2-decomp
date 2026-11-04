@@ -491,6 +491,13 @@ public:
     static CPnt4D m_lensScale;
     static CPnt4D m_lensColor[4];
     static CPnt4D m_projectedColor;
+    /* the light maps' tint set, one channel (0x3B76B0) or all four (0x3B78D0), toward a colour over
+     * a time -- at once for none (new in SOCOM II: ZAnim's SCALE_COLOR and CameraZoom's lens effects
+     * call them; the names ours) */
+    static void SetLightTint(PNT4D color, int i, float time);
+    static void SetLightTints(PNT4D color, float time);
+    /* the frame's step of the lens scale and the tints (0x3B7170: CPipe::RenderWorld's call; ours) */
+    static void UpdateLightTints(float dT);
     /* the fog and lighting switches a translucent visual is kept with (SOCOM 1's statics, 1 byte
      * each, just ahead of m_GlobalLightScale: OVL1 0x3E1468, 0x3E1470) */
     static bool m_fogEnable;

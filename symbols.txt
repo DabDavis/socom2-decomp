@@ -7881,11 +7881,11 @@
 0x003B7080 0xA4 AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D  # OVL1; s1:align
 0x003B7130 0x1C LandmarkEnable__Q23zdb7CVisualFb  # OVL1; s1:order by hand (the wep lane, round 18: SOCOM 1's LandmarkEnable instruction for instruction -- the flag 0x4B4A58 stored, m_lightingEnable the inverse -- after AddLocalLight as SOCOM 1's follows it; the world lane's round 8 lead); vis_vu.cpp
 0x003B7150 0x18 AlphaEnable__Q23zdb7CVisualFb  # OVL1; s1:order by hand (the wep lane, round 18: SOCOM 1's AlphaEnable -- the int flag 0x4B4A20 stored, then a tail call to zVid_ZTestOnWriteSet, here with the flag inverted -- right after LandmarkEnable as in SOCOM 1); vis_vu.cpp
-0x003B7170 0x414 func_003B7170  # OVL1
+0x003B7170 0x414 UpdateLightTints__Q23zdb7CVisualFf  # OVL1; the wep lane, round 20: ours (new in SOCOM II) -- the frame's colour step CPipe::RenderWorld calls with dT: the lens colours multiplied into m_lensScale (w summed, plus 0.5), the tint switch 0x4B4A68 kept up while a target or tint is off (0.33, 0.33, 0.33, 0), the tints stepped by their rates and set to their targets when the time 0x4B4A78 runs out
 0x003B7590 0x84 func_003B7590  # OVL1
 0x003B7620 0x84 func_003B7620  # OVL1
-0x003B76B0 0x214 func_003B76B0  # OVL1
-0x003B78D0 0x2B4 func_003B78D0  # OVL1
+0x003B76B0 0x214 SetLightTint__Q23zdb7CVisualF5PNT4Dif  # OVL1; the wep lane, round 20: ours (new in SOCOM II) -- one light-map tint channel set toward a colour over a time (rgb to a third, alpha thrice; at once for none, else the target and the rate per second), the tint switch 0x4B4A68 up and its time 0x4B4A78 set; ZAnim's SCALE_COLOR (func_00264580) calls it per channel bit; byte-exact from vis_vu.cpp
+0x003B78D0 0x2B4 SetLightTints__Q23zdb7CVisualF5PNT4Df  # OVL1; the wep lane, round 20: ours (new in SOCOM II) -- every light-map tint channel set toward a colour over a time (SetLightTint's four-channel twin); SCALE_COLOR's all-channels case, CameraZoom's ResetLensColors/HoldLensFx/ReleaseLensFx and OVL2's 0x5C1800 call it; byte-exact from vis_vu.cpp
 0x003B7B90 0x100 DrawLOD__Q23zdb7CVisualFPQ23zdb9CLOD_bandfPf  # OVL1; s1:align
 0x003B7C90 0x60 __dt__Q23std33deque<PCv,Q23std14allocator<PCv>>Fv  # OVL1; s1:align; the MSL headers round 18 (the weapons' round 19 request): NOT ~CVisBase -- the pointer deque's base destructor, one this-tested level (~__deque_imp<PCv> inlined) then ~__deque_buf<PCv> 0x2CEFB0 called with 0, as include/deque's chain; ~stack<Pv> 0x3B7D50 calls it; vis_vu.cpp's tail emits it byte-exact once the unit defines CVisual::m_stack_vid
 0x003B7CF0 0x58 __ct__Q23zdb10AddonPointFv  # OVL1; s1:exact
