@@ -258,19 +258,27 @@ zdb::CNode *GetMenuNode()
 }
 
 
+/* (pinned: __sinit_zanim_menu.cpp calls it, where MW would inline it into the initialiser) */
+#pragma auto_inline off
 CMenuStack::CMenuStack()
 {
     m_top = 0;
     m_count = 0;
     m_popup = 0;
 }
+#pragma auto_inline reset
 
 /* OPEN, 1 instruction (round 2: the size now right, written as FlushHistory(true) and CleanPopup()):
  * the history's member destruction reads m_free's data_ through the pointer its this-tests use,
  * `addiu v0,s2,3636 ... lw a0,8(v0)`, where MW folds it into lw a0,0xE3C(s2) -- m_used's, destroyed
  * after, is folded in the target too (lw a0,2096(s2)). Round 1: with FlushHistory written out the
  * same instruction was left; m_used as CMenuHistory's base gives the same fold. include/vector's
- * pointer back() and push_back a level lower would likely settle the first form */
+ * pointer back() and push_back a level lower would likely settle the first form. Round 3 (the core
+ * lane): a user-declared ~CMenuHistory() {}, m_free or m_used as vector<void *>/<const char *>, a
+ * CMenuHistory reference local, FlushHistory written out, the constructor defined after the
+ * destructor or with mem-initializers -- the same instruction each time. (Our unit also emits an
+ * out-of-line ~CMenuHistory and Flush the image does not hold; whether the linker strips them is
+ * not known) */
 CMenuStack::~CMenuStack()
 {
     FlushHistory(true);
@@ -2455,7 +2463,10 @@ bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
-extern CMenuStack g_MenuStack;
+/* the menu's screen stack (SOCOM 1's g_MenuStack, 0x414ED0): the unit's one dynamically built
+ * static, so its initialiser (__sinit_zanim_menu.cpp, 0x3FFCA0: CMenuStack's constructor, then
+ * ~CMenuStack registered) sits first of the body code's in the table, ahead of bone_init.cpp's */
+CMenuStack g_MenuStack;
 
 CMenuStack *GetMenuStack()
 {

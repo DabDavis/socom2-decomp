@@ -8519,7 +8519,7 @@
 0x003FFB70 0x64 func_003FFB70  # OVL1 data area; a static initialiser
 0x003FFBE0 0x50 func_003FFBE0  # OVL1 data area; a static initialiser
 0x003FFC30 0x64 func_003FFC30  # OVL1 data area; a static initialiser
-0x003FFCA0 0x3C func_003FFCA0  # OVL1 data area; a static initialiser; s1~ si_script.cpp (shape 0.60, a hint)
+0x003FFCA0 0x3C __sinit_zanim_menu.cpp  # OVL1 data area; a static initialiser; s1~ si_script.cpp (shape 0.60, a hint); by hand, the core lane round 1 (it constructs g_MenuStack at 0x414ED0 through CMenuStack's constructor and registers ~CMenuStack 0x27F590: zanim_menu.cpp's one dynamic static; first of the body code's initialisers in the table, ahead of __sinit_bone_init.cpp, as the units link -- the s1~ si_script.cpp hint was the shape's)
 0x003FFCE0 0xE4 __sinit_bone_init.cpp  # OVL1 data area; a static initialiser; s1:calls (it builds boneArchive and mapBoneArchive and registers ~CScriptArchive, 0x288750, for both -- bone_init.cpp's static initialiser) -- the body lane
 0x003FFDD0 0x190 func_003FFDD0  # OVL1 data area; a static initialiser
 0x003FFF60 0x44 __sinit_con_ps2.cpp  # OVL1 data area; a static initialiser; s1~ body.cpp (shape 0.52, a hint); s1:unit by hand (the entity lane: builds CConsole::m_console with "default console" and registers ~CConsole -- con_ps2.cpp's initialiser, as s1units guessed; the s1~ body.cpp hint was wrong)
