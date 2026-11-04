@@ -72,6 +72,10 @@ public:
     void Initialize();
     void UnInitialize();
     bool TenSecondLaunch(bool launch);
+    unsigned int DecrementRoundClockSec(int sec);
+
+    /* the round's clock in whole seconds (SOCOM 1's CNetClock accessors, zfts.h: `0.001f * ms`) */
+    unsigned int GetMaxGameTimeSec() { return 0.001f * m_max_game_time; }
     void SetE3RoundCount(int count);
     MP_MAJOR_GAME_STATE MPMajorGameState(MP_MAJOR_GAME_STATE state);
     MP_MAJOR_GAME_STATE MyMajorGameState(MP_MAJOR_GAME_STATE state);
@@ -115,7 +119,8 @@ public:
     unsigned char m_d9;   // 0xd9: SOCOM II's
     unsigned char _da[0xdc - 0xda];
     bool m_respawn;   // 0xdc: respawning on (with the valve "Respawn")
-    unsigned char _dd[0xe4 - 0xdd];
+    unsigned char _dd[0xe0 - 0xdd];
+    unsigned int m_max_game_time;   // 0xe0: the round's clock in milliseconds (SOCOM 1's m_clock.m_max_game_time, at 0xa0)
     int m_launch_time;   // 0xe4 (SOCOM 1's at 0xa8)
     unsigned char _e8[0xec - 0xe8];
     unsigned int m_round_clock;   // 0xec: the round's time left, in milliseconds (the name ours)
@@ -779,6 +784,22 @@ unsigned int CMission::GetTimeLeft()
     if (theNetwork.m_1 && m_pNetGame)
         return 0.001f * m_pNetGame->m_round_clock;
     return (int)m_e8;
+}
+
+/* the round's clock cut by some seconds -- to one second when no more are left -- and its seconds
+ * returned (SOCOM 1's DecrementRoundClockSec, the saved copy gone; CZGameState::UpdateLocalGame calls
+ * it with 60; OVL1 0x2A6960) */
+unsigned int CZNetGame::DecrementRoundClockSec(int sec)
+{
+    if (theNetwork.m_bSessionMaster) {
+        int left = GetMaxGameTimeSec();
+
+        if (sec < left)
+            m_max_game_time = (left - sec) * 1000;
+        else if (left)
+            m_max_game_time = 1000;
+    }
+    return GetMaxGameTimeSec();
 }
 
 /* the online game let go of: its state and clocks cleared, the rounds back to none (OVL1 0x2A75F0,

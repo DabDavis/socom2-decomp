@@ -3803,7 +3803,7 @@
 0x002A54E0 0xE5C func_002A54E0  # OVL1
 0x002A6340 0x610 func_002A6340  # OVL1
 0x002A6950 0xC func_002A6950  # OVL1
-0x002A6960 0x158 func_002A6960  # OVL1
+0x002A6960 0x158 DecrementRoundClockSec__9CZNetGameFi  # OVL1; s1:order by hand (the states lane, round 23: SOCOM 1's DecrementRoundClockSec -- the session master's test, the clock's seconds (0.001f * ms, the CNetClock accessor) against the argument, (left - sec) * 1000 else 1000 when any is left, the seconds returned -- without its saved copy, the clock at SOCOM II's 0xE0 for SOCOM 1's 0xA0; after it as in SOCOM 1 the 12-byte setter 0x2A6AC0 and TenSecondLaunch; UpdateLocalGame calls it with 60)
 0x002A6AC0 0xC func_002A6AC0  # OVL1
 0x002A6AD0 0xC0 GetTimeLeft__8CMissionFv  # OVL1; by hand (the states lane, round 14; the name ours): the round's seconds left -- 0.001 times the online game's clock at 0x1808->0xEC in a network game, else the float at 0xE8 truncated; SetupTimerText, CHUD::On, CreateLocalBomb and CanPlaceBomb call it
 0x002A6B90 0xB8 TenSecondLaunch__9CZNetGameFb  # OVL1; s1:align
