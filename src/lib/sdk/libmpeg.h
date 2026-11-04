@@ -17,6 +17,11 @@ typedef int u_long128 __attribute__((mode(TI)));
 #define IPU_CTRL	((volatile u_int *)0x10002010)
 #define IPU_BP		((volatile u_int *)0x10002020)
 #define IPU_TOP		((volatile u_long *)0x10002030)
+/* the same registers through plain pointers: GCC folds a non-volatile access's constant address into
+ * the instruction, which GNU as expands (`ld $4,0x10002030` -> `lui $4,0x1000; ld $4,0x2030($4)`, a
+ * store through $at) -- the target's IPU_TOP reads and the BDEC error's IPU reset (GCC round 20a) */
+#define IPU_TOP_NV	((u_long *)0x10002030)
+#define IPU_CTRL_NV	((u_int *)0x10002010)
 #define D3_CHCR		((volatile u_int *)0x1000B000)
 #define D3_MADR		((volatile u_int *)0x1000B010)
 #define D3_QWC		((volatile u_int *)0x1000B020)

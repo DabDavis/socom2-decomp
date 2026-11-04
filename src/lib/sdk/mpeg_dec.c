@@ -1,15 +1,18 @@
 /* sc: compiler=ee-gcc2.9-991111-01-dtls13010; flags=-O2 -G0 */
 /* libmpeg's decoder (MAIN 0x1B5160-0x1B9EE0): Sony's SDK, the demo's object 0x152F60 (C). This
  * unit holds, in the demo's order, the reference interpolators (_rix_000 ... _copyRefImage, inline
- * asm), _ipuSetMPEG1 and _dmVector, the IPU command and wait primitives (_sendIpuCommand ...
- * _nextStartCode) and the header parsers (_sliceB ... _copyrightExtension); the motion
- * compensation before them (_motionComp0 ... _doMC), the macroblock layer between (_waitBdecOut,
- * 0x1B6ED0, ... _motionVector) and most of the picture output after them are not written yet (their
- * rows stand as drafts or open); GCC round 19a wrote the picture layer's _decPicture (its switch's
- * frame case first: the target lays case 3's body right after the dispatch tree) and _outputFrame
- * (the field pair chosen into locals, one call), _isOutSizeOK and the object's last function,
- * receiveDataFromIPU. _updateTempTackData is left to its matching draft. Names are SOCOM 1's
- * (s1:exact).
+ * asm), _ipuSetMPEG1, BDEC's wait and _dmVector, the IPU command and wait primitives
+ * (_sendIpuCommand ... _nextStartCode) and the header parsers (_sliceB ... _copyrightExtension); the
+ * motion compensation before them (_motionComp0 ... _doMC) and most of the picture output after them
+ * are not written yet (their rows stand as drafts or open); GCC round 19a wrote the picture layer's
+ * _decPicture (its switch's frame case first: the target lays case 3's body right after the dispatch
+ * tree) and _outputFrame (the field pair chosen into locals, one call), _isOutSizeOK and the object's
+ * last function, receiveDataFromIPU; GCC round 20a the macroblock and slice layers (_waitBdecOut,
+ * _mbAddressIncrement ... _motionVector) -- the MPEG Software Simulation Group's mpeg2decode text
+ * (getpic.c's picture_data, start_of_slice and slice, macroblock.c's decode_macroblock with its
+ * macroblock_modes in line and skipped_macroblock, motion.c), the VLCs the IPU's VDEC tables, the
+ * blocks BDEC's, every byte-exact as that text reads but where the IPU changed it. _updateTempTackData
+ * is left to its matching draft. Names are SOCOM 1's (s1:exact).
  *
  * The IPU's idle wait and the command write are macros, expanded inside the readers
  * (_ipuVdec, _peepBit, _flushBuf, _nextBit) as well as being functions of their own: the
@@ -17,11 +20,14 @@
  * into _isDirty shifts as the command's own type does: unsigned in _flushBuf and _nextBit (srl),
  * signed in _ipuVdec (sra). _nextHeader's cases are laid out in source order (sequence, GOP,
  * picture); _pictureDisplayExtension tests progressive_sequence first; _nextBit takes its result
- * before resetting nbits.
+ * before resetting nbits. IPU_TOP is read through a plain pointer (IPU_TOP_NV: GCC folds the
+ * constant address into the `ld`, which GNU as expands through the destination register), after
+ * IPU_BP, and nbits is stored in each arm (cross-jumped after reload into one store at the join:
+ * _ipuVdec, open since round 10a, and _waitBdecOut, whose third store would weigh `d` too heavily
+ * for global-alloc); _ipuVdec returns the command word itself (this cc1 truncates DI to HI with an
+ * `andi 0xffff`: a mask written before it is a second one).
  *
- * OPEN: _ipuVdec (0x180 against 0x178: the target reads IPU_TOP as `lui; ld 0x2030(reg)` and
- * IPU_BP as `lui; ori; lw`, and returns from the command word's register -- two words longer
- * here, in the tail); _extensionAndUserData (0x11C against 0x128: the target hoists both start
+ * OPEN: _extensionAndUserData (0x11C against 0x128: the target hoists both start
  * codes, 0x1B5 and 0x1B2, into saved registers and tests them at the loop's foot; the `while
  * (a == X || a == Y)` written here keeps only one). */
 
@@ -1101,6 +1107,69 @@ void _ipuSetMPEG1(int mpeg1)
 	*IPU_CTRL = (*IPU_CTRL & ~0x800000) | (mpeg1 << 23);
 }
 
+extern int DIntr(void);
+extern int EIntr(void);
+
+/* BDEC's output, the demo's _waitBdecOut: the wait until the fromIPU channel has drained (feeding
+ * the toIPU channel through the no-data callback when it stops) or the IPU reports an error, then
+ * the bit buffer re-read; an error resets the IPU between the stop and restart callbacks and stops
+ * the fromIPU channel -- and SOCOM II's newer stop request (_10a0, func_001BBA70) stops both
+ * channels and resets the IPU before anything is read (GCC round 20a) */
+int _waitBdecOut(MpegDec *d)
+{
+	sceMpegCbData cb;
+	sceMpegCbData cberr;
+	int ret = 1;
+	long top;
+	u_int bp;
+	int ie;
+
+	_waitIpuIdle(d);
+	while (*D3_QWC && !(*IPU_CTRL & 0x4000)) {
+		if (*D4_QWC == 0 && !(*D4_CHCR & 0x100)) {
+			cb.type = sceMpegCbNodata;
+			_dispatchMpegCallback(d->mp, &cb);
+		}
+	}
+	if (d->_10a0) {
+		ie = DIntr();
+		*D_ENABLEW = *D_ENABLER | 0x10000;
+		*D4_CHCR = 0;
+		*D3_CHCR = 0;
+		*D_ENABLEW = *D_ENABLER & ~0x10000;
+		if (ie)
+			EIntr();
+		*D3_QWC = 0;
+		*D4_QWC = 0;
+		*IPU_CTRL = 0x40000000;
+		return 0;
+	}
+	bp = *IPU_BP;
+	top = *IPU_TOP_NV;
+	d->bits = top;
+	if (top < 0)
+		d->nbits = (bp & 0x1F) ? 32 - (bp & 0x1F) : 0;
+	else
+		d->nbits = 32;
+	if (*IPU_CTRL & 0x4000) {
+		_Error(d, "Error code detected(BDEC)");
+		cberr.type = sceMpegCbStopDMA;
+		_dispatchMpegCallback(d->mp, &cberr);
+		*IPU_CTRL_NV = 0x40000000;
+		cberr.type = sceMpegCbRestartDMA;
+		_dispatchMpegCallback(d->mp, &cberr);
+		ie = DIntr();
+		*D_ENABLEW = *D_ENABLER | 0x10000;
+		*D3_CHCR = 0;
+		*D_ENABLEW = *D_ENABLER & ~0x10000;
+		if (ie)
+			EIntr();
+		ret = 0;
+		*D3_QWC = 0;
+	}
+	return ret;
+}
+
 int _dmVector(MpegDec *d)
 {
 	return _ipuVdec(d, 3);
@@ -1144,12 +1213,15 @@ short _ipuVdec(MpegDec *d, int tbl)
 			i = 0;
 		}
 	}
-	top = *IPU_TOP;
 	bp = *IPU_BP;
+	top = *IPU_TOP_NV;
 	d->bits = top;
-	d->nbits = (top < 0) ? -(bp & 0x1F) & 0x1F : 32;
+	if (top < 0)
+		d->nbits = -(bp & 0x1F) & 0x1F;
+	else
+		d->nbits = 32;
 	d->Fault_Flag = ((int)r == 0);
-	return r & 0xFFFF;
+	return r;
 }
 
 u_int _peepBit(MpegDec *d, int n)
@@ -1430,7 +1502,6 @@ int _mbAddressIncrement(MpegDec *d)
 	return val;
 }
 
-extern int func_001B6ED0(MpegDec *d);
 extern int _motionComp0(MpegDec *d, int MBA, int MBAinc, int macroblock_type, int motion_type,
 			int PMV[2][2][2], int motion_vertical_field_select[2][2], int dmvector[2]);
 extern void _doMC(MpegDec *d, int n);
@@ -1461,7 +1532,7 @@ int _pictureData0(MpegDec *d)
 	} while (ret == 1 || ret == 3);
 
 	_waitIpuIdle(d);
-	if (!func_001B6ED0(d)) {
+	if (!_waitBdecOut(d)) {
 		if (d->_10a0) {
 			d->_10a0 = 0;
 			ret = 4;
@@ -1544,7 +1615,7 @@ static int _slice0(MpegDec *d, int MBAmax)
 			return 0; /* all macroblocks decoded */
 
 		d->mb[d->_810].noCoef = 0;
-		if (!func_001B6ED0(d)) {
+		if (!_waitBdecOut(d)) {
 			if (d->_10a0) {
 				d->_10a0 = 0;
 				return 4;
@@ -1634,6 +1705,140 @@ static int _skipMB0(MpegDec *d, int PMV[2][2][2], int *motion_type,
 	return ret;
 }
 
+void receiveDataFromIPU(void *addr, int size);
+void _motionVectors(MpegDec *d, int PMV[2][2][2], int dmvector[2],
+		    int motion_vertical_field_select[2][2], int s, int motion_vector_count,
+		    int mv_format, int h_r_size, int v_r_size, int dmv, int mvscale);
+void _motionVector(MpegDec *d, int *PMV, int *dmvector, int h_r_size, int v_r_size, int dmv,
+		   int mvscale, int full_pel_vector);
+
+/* a coded macroblock: mpeg2decode's decode_macroblock (macroblock.c) with its macroblock_modes in
+ * line, both writing through the caller's pointers, the blocks BDEC's into the current record
+ * (GCC round 20a): the picture type into IPU_CTRL, the modes, the vectors, then BDEC */
+static int _decMB0(MpegDec *d, int *macroblock_type, int *motion_type, int *dct_type,
+		   int PMV[2][2][2], int motion_vertical_field_select[2][2], int dmvector[2])
+{
+	int motion_vector_count, mv_format, dmv, mvscale;
+
+	*IPU_CTRL = (*IPU_CTRL & ~0x07000000) | (d->picture_coding_type << 24);
+
+	/* get macroblock_type */
+	*macroblock_type = _ipuVdec(d, 1);
+	if (*macroblock_type == 0) {
+		_Error(d, "Invalid macroblock_type code: 0");
+		d->Fault_Flag = 1;
+		return 0;
+	}
+
+	/* get frame/field motion type */
+	if (*macroblock_type & (8 | 4)) {
+		if (d->picture_structure == 3 && d->frame_pred_frame_dct)
+			*motion_type = 2;
+		else /* frame_motion_type or field_motion_type */
+			*motion_type = _nextBit(d, 2);
+	} else if ((*macroblock_type & 1) && d->concealment_motion_vectors) {
+		/* concealment motion vectors */
+		*motion_type = (d->picture_structure == 3) ? 2 : 1;
+	}
+
+	/* derive motion_vector_count, mv_format and dmv, (table 6-17, 6-18) */
+	if (d->picture_structure == 3) {
+		motion_vector_count = (*motion_type == 1) ? 2 : 1;
+		mv_format = (*motion_type == 2) ? 1 : 0;
+	} else {
+		motion_vector_count = (*motion_type == 2) ? 2 : 1;
+		mv_format = 0;
+	}
+
+	dmv = (*motion_type == 3); /* dual prime */
+
+	/* field mv predictions in frame pictures have to be scaled */
+	mvscale = ((mv_format == 0) && (d->picture_structure == 3));
+
+	/* get dct_type (frame DCT / field DCT) */
+	*dct_type = (d->picture_structure == 3)
+		    && (!d->frame_pred_frame_dct)
+		    && (*macroblock_type & (2 | 1))
+		    ? _nextBit(d, 1)
+		    : 0;
+
+	if (*macroblock_type & 16)
+		d->quantizer_scale_code = _nextBit(d, 5);
+
+	/* decode forward motion vectors */
+	if ((*macroblock_type & 8)
+	    || ((*macroblock_type & 1) && d->concealment_motion_vectors)) {
+		if (d->mpeg2)
+			_motionVectors(d, PMV, dmvector, motion_vertical_field_select, 0,
+				       motion_vector_count, mv_format, d->f_code[0][0] - 1,
+				       d->f_code[0][1] - 1, dmv, mvscale);
+		else
+			_motionVector(d, PMV[0][0], dmvector, d->forward_f_code - 1,
+				      d->forward_f_code - 1, 0, 0, d->full_pel_forward_vector);
+	}
+
+	if (d->Fault_Flag)
+		return 0; /* trigger: go to next slice */
+
+	/* decode backward motion vectors */
+	if (*macroblock_type & 4) {
+		if (d->mpeg2)
+			_motionVectors(d, PMV, dmvector, motion_vertical_field_select, 1,
+				       motion_vector_count, mv_format, d->f_code[1][0] - 1,
+				       d->f_code[1][1] - 1, 0, mvscale);
+		else
+			_motionVector(d, PMV[0][1], dmvector, d->backward_f_code - 1,
+				      d->backward_f_code - 1, 0, 0, d->full_pel_backward_vector);
+	}
+
+	if (d->Fault_Flag)
+		return 0; /* trigger: go to next slice */
+
+	if ((*macroblock_type & 1) && d->concealment_motion_vectors)
+		_flushBuf(d, 1); /* remove marker_bit */
+
+	if (*macroblock_type & (2 | 1)) {
+		receiveDataFromIPU((void *)d->mb[d->_810].coef, 768);
+		_waitIpuIdle(d);
+		_sendIpuCommand(d, 0x20000000 | ((*macroblock_type & 1) << 27) | (d->dcr << 26)
+				   | (*dct_type << 25) | (d->quantizer_scale_code << 16));
+	} else
+		d->mb[d->_810].noCoef = 1;
+
+	d->dcr = 0;
+	if (d->Fault_Flag)
+		return 0; /* trigger: go to next slice */
+
+	/* reset intra_dc predictors */
+	if (!(*macroblock_type & 1))
+		d->dcr = 1;
+
+	/* reset motion vector predictors */
+	if ((*macroblock_type & 1) && !d->concealment_motion_vectors) {
+		/* intra mb without concealment motion vectors */
+		PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
+		PMV[0][1][0] = PMV[0][1][1] = PMV[1][1][0] = PMV[1][1][1] = 0;
+	}
+
+	/* special "No_MC" macroblock_type case */
+	if ((d->picture_coding_type == 2) && !(*macroblock_type & (8 | 1))) {
+		/* non-intra mb without forward mv in a P picture */
+		PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
+
+		/* derive motion_type */
+		if (d->picture_structure == 3)
+			*motion_type = 2;
+		else {
+			*motion_type = 1;
+			/* predict from field of same parity */
+			motion_vertical_field_select[0][0] = (d->picture_structure == 2);
+		}
+	}
+
+	/* successfully decoded macroblock */
+	return 1;
+}
+
 /* a motion vector component from its code and residual: the MPEG Software Simulation Group's
  * mpeg2decode text (motion.c's decode_motion_vector), as written there (GCC round 19a) */
 void _decode_motion_vector(int *pred, int r_size, int motion_code, int motion_residual,
@@ -1655,9 +1860,6 @@ void _decode_motion_vector(int *pred, int r_size, int motion_code, int motion_re
 	}
 	*pred = full_pel_vector ? (vec << 1) : vec;
 }
-
-void _motionVector(MpegDec *d, int *PMV, int *dmvector, int h_r_size, int v_r_size, int dmv,
-		   int mvscale, int full_pel_vector);
 
 /* one prediction's motion vectors (and dual-prime's differentials): mpeg2decode's motion_vectors
  * (motion.c), as written there, the IPU's VLC decoding standing for Get_motion_code and

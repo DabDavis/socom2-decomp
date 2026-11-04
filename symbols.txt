@@ -997,7 +997,7 @@
 0x001B6DE8 0x5C _copyAddRefImage  # MAIN unaligned; s1:exact
 0x001B6E48 0x60 _copyRefImage  # MAIN unaligned; s1:exact
 0x001B6EA8 0x28 _ipuSetMPEG1  # MAIN unaligned; s1:exact
-0x001B6ED0 0x29C func_001B6ED0  # MAIN
+0x001B6ED0 0x29C _waitBdecOut  # MAIN; s1:order (GCC r20a: the demo's _waitBdecOut 0x154CD0 at the same place in libmpeg's decoder object, between _ipuSetMPEG1 and _dmVector; called from _pictureData0 and _slice0 as there; its body the demo's but for SOCOM II's stop-request block)
 0x001B7170 0x1C _dmVector  # MAIN; s1:exact
 0x001B7190 0x184 _dualPrimeVector  # MAIN; s1:exact
 0x001B7318 0x110 _mbAddressIncrement  # MAIN unaligned; s1:exact
