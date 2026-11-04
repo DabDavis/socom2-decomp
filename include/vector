@@ -1387,7 +1387,17 @@ T *__vector_imp<T, Allocator, IsPOD>::erase(T *position)
  *    object declared ahead of the length test (no change), m through the iterator's operator- (no
  *    change), e through an inline returning the end pointer (no change), every cursor an iterator object
  *    (-32)). The renumbering replays show it is the order of e against m alone (subset.py: AcctRecord's
- *    target needs m and the else j after the end, FriendInvitationItem's m before it) */
+ *    target needs m and the else j after the end, FriendInvitationItem's m before it).
+ *    The MSL headers round 20 (build/p20/ig/vwin.py, untracked: one vreg's every renumbering window
+ *    against the target's colouring): FriendInvitationItem's end may sit anywhere from just after m
+ *    (before i, j, k) to a late temporary (v112), AcctRecord's anywhere before m -- so the end need
+ *    not be copy_backward's temp in the first population, only after m; a plain `T *e` declared after
+ *    m (m assigned below it) makes FriendInvitationItem and IgnoreItem byte-exact and loses CMovieCue,
+ *    UniverseStatus and all five of the second population (20 of the board's 65, against 41: the
+ *    remaining first-population inserts need the else loop's cursor below the end as well). Both
+ *    populations compile the same in-place code; only the cut construct() separates them, and no
+ *    declared, scalarised or split variable tried takes a number before m in one and after it in the
+ *    other */
 template <class T, class Allocator, bool IsPOD>
 void __vector_imp<T, Allocator, IsPOD>::insert(T *position, unsigned int n, const T &x)
 {
