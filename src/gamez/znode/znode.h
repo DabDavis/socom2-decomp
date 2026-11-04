@@ -469,6 +469,11 @@ public:
     int Release();
     /* the texture light maps project by default (SOCOM 1's static) */
     static CTexHandle *m_lightMapTexture;
+    /* the other map textures a world loads, cleared after it in UnloadTheWorld (SOCOM 1's statics,
+     * 0x4B4D90, 0x4B4E48, 0x4B4E50: data.txt's; a band's texture falls back on the first) */
+    static CTexHandle *m_specMapTexture;
+    static CTexHandle *m_envFrontMapTexture;
+    static CTexHandle *m_envBackMapTexture;
     /* the camera the visuals are drawn from (SOCOM 1's static; CWorld::Initalize sets it) */
     static CCamera *m_camera;
     /* the colour added to the lighting and the lights' scale (SOCOM 1's statics: the pipe's

@@ -51,6 +51,7 @@ class CZAmmo;
 class CZWeaponList;
 class CZProjectile;
 class CZProjectileList;
+class CValve;
 
 /* a cartridge type (SOCOM 1's DWARF: a byte enum, AMMO_NONE 255 and AMMO_END 254) */
 enum EQUIP_AMMO {
@@ -145,6 +146,19 @@ public:
     void AddAmmo(CZAmmo *ammo);
 };   // 0xc bytes
 
+/* the weapons rdr's reader (SOCOM 1's ZWepReader, an empty class: its Read took the archive and
+ * both lists; SOCOM II's reads a file and hands each AMMO and WEAPONS entry to a reader of its
+ * own -- 0x3CD810, 0x3CDA30, 0x3CEDB0, the destructor 0x3CF190; the readers' names ours) */
+class ZWepReader {
+public:
+    ZWepReader();
+    ~ZWepReader();
+    void Read(const char *file);
+    void ReadWeapon(_zrdr *entry);
+    /* one AMMO entry: a new CZAmmo, its fields set (lengths scaled to the world's), listed */
+    void ReadAmmo(_zrdr *entry);
+};
+
 /* how a weapon weighs on its carrier (SOCOM 1's DWARF: a byte enum) */
 enum ENCUMBRANCE {
     LIGHTLY_ENCUMBERED = 0,
@@ -171,6 +185,13 @@ public:
      * member one handing it the id, 0x3D1E10) */
     static EQUIP_ITEM GetIDType(EQUIP_ITEM id);
     EQUIP_ITEM GetIDType();
+    /* the valve that enables an item in the menus ("Enable_<item>"), none for the rest (SOCOM II's,
+     * 0x3CF1F0, zwep_weapon.cpp's first function: the kit's slot test reads its flags; the name
+     * ours) */
+    static CValve *GetEnableValve(EQUIP_ITEM item);
+    /* an item's place in the weapon menus, the value UiWeapon holds; -1 for none (SOCOM II's,
+     * 0x3D3230; the name ours) */
+    static int GetMenuValue(EQUIP_ITEM item);
     /* the name and the description (zwep_weapon.cpp's, out of line: 0x3D2840, 0x3D2830 -- in
      * SOCOM 1's order, GetDescription before GetName) */
     char *GetName() const;
@@ -215,6 +236,8 @@ public:
      * an overload that reads the rdr the mark list loaded and never looks at the name (0x3D0870) */
     static void OpenDecals();
     static void OpenDecals(const char *file);
+    /* the flyout machine set up and zweapon.rdr read (SOCOM 1's Init, 0x3D0420) */
+    static bool Init();
     /* the name, packed with the ammo into a word for the network (SOCOM 1's statics) */
     static unsigned short PackItemAndAmmoEnums(EQUIP_ITEM item, EQUIP_AMMO ammo);
     static void UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo);
@@ -671,6 +694,15 @@ public:
     /* the fuse and the removal timer run out, unless a network game's copy of another machine's
      * shot (SOCOM 1's, 0x3C99A0: always false now) */
     bool HandleTimers();
+    /* a hit dealt with: an impact (0x3C8920), a bounce (0x3C8F50: SOCOM II's never reads the
+     * time, its callers pass it), no hit this frame (0x3C9530); each returns what became of the
+     * shot (SOCOM 1's, HandleShotgunImpact gone) */
+    unsigned char HandleImpact(zdb::IntersectStruct *hit, float dT, float dist, CPnt3D *pos);
+    unsigned char HandleBounce(zdb::IntersectStruct *hit, float dT, CPnt3D *pos);
+    unsigned char DoMiss(float dT, CPnt3D *pos);
+    /* the frame's hits walked nearest first until one is dealt with or none is left (SOCOM 1's,
+     * 0x3C9B70) */
+    bool HandleIntersections(float dT);
     /* the node shown along the frame's travel: a stretched tracer flown every fourth frame when
      * asked, or the shot's own orientation (SOCOM 1's; nothing returned -- no path sets v0) */
     void SetModelOrientation(bool b, const CPnt3D *dir);
@@ -774,13 +806,20 @@ public:
     CPnt3D m_frameendpos;   // 0x54
     CPnt3D m_vel;   // 0x60
     CPnt3D m_lastPlayerHitPos;   // 0x6c
-    CPnt3D m_lastVolumetricHit;   // 0x78
+    /* not SOCOM 1's m_lastVolumetricHit point: a word HandleImpact (0x3C8920) compares and sets,
+     * and the node the shot came to rest on -- HandleBounce stores the hit's node, the
+     * intersection walk and PreTick test it (the names ours) */
+    unsigned int m_78;   // 0x78
+    zdb::CNode *m_restnode;   // 0x7c
+    float m_80;   // 0x80
     float m_84;   // 0x84 (SOCOM II's, as 0x88)
     float m_88;   // 0x88
     float m_time;   // 0x8c ("never" at first: 9999999; SOCOM 1: 0x74)
     float m_removaltime;   // 0x90
     float m_currange;   // 0x94
-    int m_98;   // 0x98 (SOCOM II's)
+    /* SOCOM II's: a delay PreTick runs down, the hits not looked at until it is out (the name
+     * ours) */
+    float m_98;   // 0x98
     float m_heading;   // 0x9c (SOCOM 1: 0x80)
     float m_pitch;   // 0xa0
     float m_roll;   // 0xa4
