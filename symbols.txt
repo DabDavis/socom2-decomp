@@ -3292,7 +3292,7 @@
 0x002801C0 0x394 func_002801C0  # OVL1
 0x00280560 0x208 func_00280560  # OVL1
 0x00280770 0x14 func_00280770  # OVL1
-0x00280790 0x138 func_00280790  # OVL1
+0x00280790 0x138 OnIsEquipmentSelected__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 3 (registered as "IsEquipmentSelected" in both builds' UI command tables: SOCOM 1's OnIsEquipmentSelected, zanim_menu.cpp's anonymous namespace -- the same walk of the selected characters' weapons for the item, Advance called out of line)
 0x002808D0 0x8 func_002808D0  # OVL1
 0x002808E0 0x47C func_002808E0  # OVL1
 0x00280D60 0x130 func_00280D60  # OVL1
@@ -3316,10 +3316,10 @@
 0x00282420 0xD4 UIChooseEquip3__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip3" (id 0x8, record 7; slot 4)
 0x00282500 0xD4 UIChooseEquip2__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip2" (id 0x7, record 6; slot 3)
 0x002825E0 0xD4 UIChooseEquip1__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip1" (id 0x6, record 5; slot 2 to the per-character pick 0x282C20)
-0x002826C0 0x11C func_002826C0  # OVL1
+0x002826C0 0x11C UIChooseSecondary__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 3: the handler registered as "ChooseSecondary" (SOCOM 1's table has none, so UI<command> by its convention): each selected character's second weapon set up as the item, through an inlined per-character pick
 0x002827E0 0xCC UIChoosePrimary__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChoosePrimary" (id 0x4, the UI command table's record 3); SOCOM 1's table has none, so UI<command> by its convention
 0x002828B0 0xCC ExecuteChooseEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "ChooseEquipment" in both builds' UI command tables: SOCOM 1's ExecuteChooseEquipment, zanim_menu.cpp's anonymous namespace, the same walk over ChooseEquipmentForCharacter)
-0x00282980 0x108 func_00282980  # OVL1
+0x00282980 0x108 ExecuteChooseDefaultEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 3 (registered as "ChooseDefaultEquipment" in both builds' UI command tables: SOCOM 1's ExecuteChooseDefaultEquipment, zanim_menu.cpp's anonymous namespace -- the type's default weapons assigned, or the list cleared; SOCOM II pads the slots)
 0x00282A90 0x184 ChooseEquipmentForCharacter__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEM  # OVL1; s1:callee by hand, the core lane round 2 (ExecuteChooseEquipment calls it with the iterator and the item in its loop where SOCOM 1's calls ChooseEquipmentForCharacter, 0x1D74B0)
 0x00282C20 0x290 func_00282C20  # OVL1
 0x00282EB0 0x70 func_00282EB0  # OVL1
@@ -3331,11 +3331,11 @@
 0x00284360 0x2DC func_00284360  # OVL1
 0x00284640 0xB0 func_00284640  # OVL1
 0x002846F0 0x30 func_002846F0  # OVL1
-0x00284720 0x420 func_00284720  # OVL1
+0x00284720 0x420 func_00284720  # OVL1; the core lane round 3: OVL1's copy of do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v (0x53f370), zanim_menu.cpp's template tail -- ExecuteChooseDefaultEquipment 0x282980 calls it for the vector's inlined operator= where SOCOM 1's calls do_assign<PC14CCharacterWeap> 0x1D7700 (not OVL2's words: CCharacterWeap's constructor and destructor are out of line in this unit); ovl-copy: do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v
 0x00284B40 0x54 push_back__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fc  # OVL1; the character stored to a stack temporary and replaced in at the end through the template replace (0x1EE780) -- basic_string::push_back(char), zanim_menu.cpp's template tail -- the UI-widgets lane
 0x00284BA0 0x220 func_00284BA0  # OVL1
 0x00284DC0 0x470 func_00284DC0  # OVL1
-0x00285230 0x7C func_00285230  # OVL1
+0x00285230 0x7C func_00285230  # OVL1; the core lane round 3: OVL1's copy of clear__Q23std70__vector_deleter<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>>Fv (0x540910), zanim_menu.cpp's template tail -- ExecuteChooseDefaultEquipment 0x282980 calls it where SOCOM 1's calls clear__...<14CCharacterWeap...> 0x1D7EF0 (each element's destructor called out of line, 0x53EF50, where OVL2's char_type.cpp inlines the empty one); ovl-copy: clear__Q23std70__vector_deleter<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>>Fv
 0x002852B0 0x2F0 func_002852B0  # OVL1
 0x002855A0 0xB8 func_002855A0  # OVL1
 0x00285660 0x244 resize__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FUi  # OVL1; s1:calls (the deque's push_back's resize(1), SOCOM II's taking the size alone where SOCOM 1's took a fill value too) -- the states lane
