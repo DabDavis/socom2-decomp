@@ -50,7 +50,9 @@ CHeap::~CHeap()
  * lane's round 8: a function-scoped `#pragma opt_propagation off` (the stand-in three other
  * functions need) fixes the store -- 6 -- but not the head's schedule, under any spelling of the
  * rounding tried (`~3 & (size + 3)`, `& -4`, `4 + ...`, `>> 2 << 2`, the rounding in its own local,
- * `need` declared first or after `exact`: 6 to 29; build/scratch/wld/v_alloc*.py) */
+ * `need` declared first or after `exact`: 6 to 29; build/scratch/wld/v_alloc*.py). Round 14: best
+ * assigned after its declaration, the split written through `found` from its start (7), `found =
+ * bestBlock` moved to the end (54) */
 void *CHeap::Alloc(unsigned int size)
 {
     Block *found = 0;
@@ -98,10 +100,12 @@ void *CHeap::Alloc(unsigned int size)
     return _malloc(size, 0, 0);
 }
 
-/* OPEN, 2 instructions short (0x1A4 of 0x1AC), the same blocks: the target materialises the
- * address test (sltu, xori, bnez) where MW here branches on sltu, and gives prev v1 and cur a1
- * (here the other way round). Tried: `!(b < cur)`, this inline bool (== false too), a bool local,
- * cur declared first */
+/* the block given back to the free list in address order, merged with its neighbours when they
+ * touch; a pointer outside the heap freed by the allocator. The walk's cursor is
+ * defined ahead of `prev`: MW numbers a variable at its first definition, so cur then takes a1 and
+ * prev v1, as the target's (declared first but assigned in the for, cur is numbered after prev);
+ * and the skip test is a bool local, which keeps the target's materialised sltu/xori -- either
+ * alone leaves the function 2 instructions short (the world lane's round 14) */
 unsigned int CHeap::Free(void *p)
 {
     if ((char *)p < m_base || (char *)p > m_end) {
@@ -112,11 +116,13 @@ unsigned int CHeap::Free(void *p)
 
     unsigned int size = *(unsigned int *)((char *)p - 4);
     Block *b = (Block *)((char *)p - 4);
+    Block *cur = m_free;
     Block *prev = 0;
-    Block *cur;
 
-    for (cur = m_free; cur; prev = cur, cur = cur->next) {
-        if (b >= cur)
+    for (; cur; prev = cur, cur = cur->next) {
+        bool after = !(b < cur);
+
+        if (after)
             continue;
         if (prev) {
             if ((char *)prev + prev->size == (char *)b) {

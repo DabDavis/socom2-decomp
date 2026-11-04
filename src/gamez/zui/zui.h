@@ -49,13 +49,14 @@ struct _zrdr {
     ~_zrdr();
     void DeleteChildren();
     void Clone(_zrdr *src, CSTable *strings);
-    bool IsArray() const;
+    bool IsArray() const { return type == 4; }
+    bool IsString() const { return type == 3; }
 
     /* (ours) */
     bool IsReal() { return type == 2; }
     /* the value's type, an array's count and its items (ours, as zrdr.h's) */
     unsigned int Type() const { return type; }
-    unsigned int Count() const { return type == 4 ? length : 0; }
+    unsigned int Count() const { return IsArray() ? length : 0; }
     _zrdr *Item(unsigned int i) const { return i < Count() ? &array[i] : 0; }
     /* a number: a real as it is, an integer converted, anything else 0 (ours, as zanim.h's) */
     float Real()
@@ -90,7 +91,7 @@ struct _zrdr {
         else
             return 0;
     }
-    const char *String() const { return type == 3 ? string : 0; }
+    const char *String() const { return IsString() ? string : 0; }
 };   // 0x8 bytes
 
 /* how long a variable lives (SOCOM 1's DWARF, names and values; a dormant variable is a free

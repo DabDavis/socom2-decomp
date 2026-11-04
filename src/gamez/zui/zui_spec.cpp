@@ -28,7 +28,15 @@
  * 0x3836E0-0x3855FF; the ActionItem and CDesignDlgObj erases (0x383E00 and 0x384410) need MSL's destroy loop
  * in the class vector's erase (probed: erase<ActionItem> byte-exact with `for (p = first + n; p < e;
  * ++p) p->~T();` after the copy -- a request), the CDesignDlgObj ones also MSL's out-of-line
- * std::copy (0x3845B0) and its kin (0x384AA0, 0x384B00, 0x384B70). */
+ * std::copy (0x3845B0) and its kin (0x384AA0, 0x384B00, 0x384B70).
+ * Round 20: those four byte-exact once CDesignDlgObj's assignment is no longer pinned (MW's own
+ * refusal to inline it propagates to the helpers and the copy constructor, as in the target).
+ * OPEN: erase<CDesignDlgObj> 0x384410 (the target's size, 19 instructions: the end and the
+ * count/destroy cursor in s0/s1 swapped -- the MSL headers' round 18 measured that a string
+ * element's erase wants `iterator e = end()`, which loses 28 other erases); insert<CDesignDlgObj>
+ * 0x384620 (0x540 against 0x478: the copy constructor inlined at the six construct sites where the
+ * target calls it after the out-of-line placement new -- include/vector's construct cut, the
+ * integrator's accepted loss of round 20). */
 
 #include "zui_2d.h"
 
@@ -564,8 +572,12 @@ CDesignDlgObj::~CDesignDlgObj()
 }
 
 /* a copy of another's: the old spec deleted and the other's copied through its Copy slot, the
- * position, opacity, name and parent assigned (SOCOM 1's CDesignDlgObj assignment; out of line) */
-#pragma auto_inline off
+ * position, opacity, name and parent assigned (SOCOM 1's CDesignDlgObj assignment; out of line).
+ * NOT pinned (the UI lane's round 20): MW refuses to auto-inline it on its own, and the refusal
+ * propagates (the engine core's round 5) -- std::copy's, copy_backward's and fill_n's helpers over
+ * CDesignDlgObj (0x3845B0, 0x384B00, 0x384AA0) are then refused in turn and called out of line
+ * from the tail's erase and insert, each calling this out of line, as in the target; pinned with
+ * `#pragma auto_inline off`, the helpers inlined whole and their three rows were never emitted */
 void CDesignDlgObj::operator=(const CDesignDlgObj &o)
 {
     delete m_spec;
@@ -576,7 +588,6 @@ void CDesignDlgObj::operator=(const CDesignDlgObj &o)
     m_name = o.m_name;
     m_childOf = o.m_childOf;
 }
-#pragma auto_inline reset
 
 /* the map's corners, its ELEMENTS (each an object spec at an offset, added to the design objects)
  * and its ANIMATIONS (SOCOM 1's; CDlgObjSpec's constructor inlined) *

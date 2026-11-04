@@ -1199,9 +1199,8 @@ CZBodyAnimBlend *CZSealBody::BlendedClimb(float h)
 }
 
 extern "C" {
-/* (OVL2 0x5AC1F0 and 0x5A0950, seal_env.cpp's, not written yet: a fall's damage taken, and an anim
- * type chosen by a kind and a variant) */
-void func_005AC1F0(CZSealBody *seal, float damage);
+/* (OVL2 0x5A0950, seal_env.cpp's, not written yet: an anim type chosen by a kind and a variant; a
+ * fall's damage is CZSealBody::HandleFallingDamage, 0x5AC1F0) */
 AnimType func_005A0950(CZSealBody *seal, int kind, int variant);
 }
 
@@ -1218,7 +1217,7 @@ extern "C" bool func_00580360(CZSealBody *seal, float t)
     seal->m_jumped = false;
     if (Invincible(seal) || seal->IsRemote())
         return true;
-    func_005AC1F0(seal, 1.2f * t);
+    seal->HandleFallingDamage(1.2f * t);
     if (!seal->m_isAlive) {
         CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00555170(&seal->m_blends);
         int n = 12;

@@ -71,7 +71,8 @@ struct CMaterialEx {
     CSnd *m_runsound;   // 0x8
     CSnd *m_walksound;   // 0xc
     CSnd *m_pronesound;   // 0x10
-    unsigned char _14[0x3c - 0x14];
+    CSnd *m_fallsound;   // 0x14: a landing's (HandleFallingDamage plays it)
+    unsigned char _18[0x3c - 0x18];
     /* int_material.h's flags: only PICKUP here (bit 4) */
     unsigned int m_flags0 : 4;   // 0x3c
     unsigned int m_pickup : 1;   // bit 4: PICKUP
@@ -697,9 +698,8 @@ extern "C" void func_005B61A0()
 }
 
 extern "C" {
-/* a pickup taken offline (OVL2 0x59F0C0), told to the network as this console's own or another's
- * (OVL2 0x59E830; OVL1 0x2BA2C0, the net code's) */
-void func_0059F0C0(CZSealBody *seal, CPickup *pickup);
+/* (a pickup taken offline is CZSealBody::PickupItem, OVL2 0x59F0C0) told to the network as this
+ * console's own or another's (OVL2 0x59E830; OVL1 0x2BA2C0, the net code's) */
 void func_0059E830(CZSealBody *seal, int a, unsigned int netid, short *ids, unsigned int id);
 void func_002BA2C0(int a, unsigned int netid, short *ids, unsigned int id, unsigned int owner);
 }
@@ -726,7 +726,7 @@ extern "C" void func_0059F610(CZSealBody *seal, CPickup *pickup)
         else
             func_002BA2C0(1, pickup->GetPickupNetEntityID(), ids, id, owner);
     } else
-        func_0059F0C0(seal, pickup);
+        seal->PickupItem(pickup);
 }
 
 extern "C" {
@@ -1573,11 +1573,6 @@ void CZSealBody::Uninit_ReInitDatabaseHandles()
     CZWeapon::RemoveWeaponEventCallback(HandleWeaponEvent);
 }
 
-extern "C" {
-/* one of the six values started, with a kind (OVL2 0x5A54D0, not written yet) */
-void func_005A54D0(CZSealBody *seal, unsigned char i, int kind);
-}
-
 /* the six values' average weighted by their rates, the first counted three times, for a living SEAL
  * (OVL2 0x5A56D0, new in SOCOM II; the names ours) */
 extern "C" float func_005A56D0(CZSealBody *seal)
@@ -1604,6 +1599,48 @@ extern "C" float func_005A56D0(CZSealBody *seal)
     return sum;
 }
 
+/* the health taken from the six locations' values: dead when the head's or the body's has run out
+ * or the SEAL was dead already -- a bullet in the head then a head shot -- the health zeroed with the
+ * death's kind and, for a SEAL alive till now, a death anim played (unless remote, a fall or a
+ * grenade) and the HUD's hit flag set; else the health their weighted average, and when that fell a
+ * damage anim played in the SEAL's stance (the same exceptions) and the flag set (OVL2 0x5A54D0;
+ * SOCOM 1's UpdateHealth, its five health pairs six values now, the drops gone) */
+void CZSealBody::UpdateHealth(DAMAGE_LOCATION where, SEAL_DEATH_TYPE type)
+{
+    float old = m_health;
+    bool alive = m_isAlive;
+    bool dead = false;
+
+    /* (the flag compared == false: its andi before the branch) */
+    if (m_ffc[0] <= 0.0f || m_ffc[3] <= 0.0f || alive == false) {
+        dead = true;
+        if (where == 0 && type == DEATH_BULLET)
+            type = DEATH_HEADSHOT;
+    }
+    if (dead) {
+        SetHealth(0.0f, type);
+        if (alive) {
+            if (!IsRemote() && type != DEATH_FALLING && type != DEATH_GRENADE) {
+                bool b;
+
+                WeaponHitAnim(FindRandomDeathAnim(where, &b), stateDead);
+            }
+            SetHudHitFlag();
+        }
+    } else {
+        SetHealth(func_005A56D0(this), DEATH_NONE);
+        if (m_health < old) {
+            if (!IsRemote() && type != DEATH_FALLING && type != DEATH_GRENADE) {
+                bool b;
+                AnimType anim = FindRandomDamageAnim(where, &b);
+
+                WeaponHitAnim(anim, GetStance(false));
+            }
+            SetHudHitFlag();
+        }
+    }
+}
+
 /* one of the six values set to its rate times a factor, none below zero, and when it changed started
  * -- value 3 with kind 5, value 0 with 3, any other with 0 (OVL2 0x5A5790, new in SOCOM II; the names
  * ours. The case tests run in reverse source order) */
@@ -1618,16 +1655,91 @@ extern "C" void func_005A5790(CZSealBody *seal, unsigned char i, float f)
             *p = 0.0f;
         switch (i) {
         case 3:
-            func_005A54D0(seal, i, 5);
+            seal->UpdateHealth((DAMAGE_LOCATION)i, DEATH_BULLET);
             break;
         case 0:
-            func_005A54D0(seal, i, 3);
+            seal->UpdateHealth((DAMAGE_LOCATION)i, DEATH_HEADSHOT);
             break;
         default:
-            func_005A54D0(seal, i, 0);
+            seal->UpdateHealth((DAMAGE_LOCATION)i, DEATH_NONE);
             break;
         }
     }
+}
+
+extern "C" {
+/* (OVL1 0x2C2FD0, the network game's: whether a SEAL's hits go unfelt -- the player's by a valve,
+ * another's by its client's flag; the name unknown) */
+bool func_002C2FD0(CZSealBody *seal);
+/* two of seal_body.cpp's (OVL2 0x57E770, 0x585FF0; not written) */
+void func_0057E770(CZSealBody *seal);
+void func_00585FF0(CZSealBody *seal);
+}
+
+/* a weapon's hit: online, none when the SEAL's hits go unfelt and none from a team-mate without
+ * friendly fire; none from a grenade (item 121) not gone off; a living SEAL's controller told, then
+ * -- unless an AI navy SEAL's own team's grenades or flashbangs (121, 126) while it is in state 10,
+ * or anyone's item 159, from itself or a team-mate -- the adrenaline raised, the hit kept and the
+ * damage taken; a dead one, unless remote, thrown by a death anim; the shooter's id kept (OVL2
+ * 0x5AC670; SOCOM 1's OnWeaponHit, CSealEx::OnWeaponHit tail-calls it, with the grenade and the
+ * state-10 tests and the two calls after) */
+int CZSealBody::OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj)
+{
+    if (theNetwork.m_9 && func_002C2FD0(this))
+        return 0;
+    m_lastshooter_id = proj->m_shooterID;
+    if (theNetwork.m_9) {
+        CZSealBody *shooter = AsSeal(CEntity::m_list.GetEntityById(m_lastshooter_id));
+
+        if (m_lastshooter_id && !m_allow_friendly_fire && shooter && (shooter->m_team & m_team) &&
+            !(m_team & 0x20000) && this != shooter)
+            return 0;
+    }
+    if (proj && proj->m_weapon && proj->m_weapon->GetIDType() == 121 && !proj->WasDetonated())
+        return 0;
+    if (m_isAlive && GetNode()->m_active) {
+        ((CSealCtrl *)m_control)->OnWeaponHit(hit, proj);
+        CZWeapon *w = proj ? proj->m_weapon : 0;
+        EQUIP_ITEM item = w ? w->m_ID : (EQUIP_ITEM)255;
+        CSealCtrlAi *ai = ((CSealCtrl *)m_control)->GetSealCtrlAi();
+
+        if (ai) {
+            if (ai->IsNavySeal() && (item == 121 || item == 126) && (ai->m_stateStack.m_10 & (1 << 10))) {
+                CEntity *e = CEntity::m_list.GetEntityById(proj->m_shooterID);
+
+                if (e && (e == this || (m_team & e->m_team)))
+                    return 0;
+            } else if (item == 159) {
+                CEntity *e = CEntity::m_list.GetEntityById(proj->m_shooterID);
+
+                if (e && (e == this || (m_team & e->m_team)))
+                    return 0;
+            }
+        }
+        AdrenalineIncr(0.99f);
+        if (hit) {
+            m_wephit.m_pos = hit->m_pos;
+            m_wephit.m_norm = hit->m_norm;
+            m_wephit.m_node = hit->m_node;
+        } else
+            m_wephit.m_node = 0;
+        HandleDamage(proj);
+    } else if (!IsRemote()) {
+        bool b;
+
+        WeaponHitAnim(FindRandomDeathAnim((DAMAGE_LOCATION)3, &b), stateDead);
+    }
+    func_0057E770(this);
+    func_00585FF0(this);
+    return 0;
+}
+
+/* the last weapon hit forgotten, the blend stack's top taken (OVL2 0x5AC660; SOCOM 1's HandleWepHit
+ * word for word, the hit held now) */
+void CZSealBody::HandleWepHit()
+{
+    m_wephit.m_node = 0;
+    TopBlend();
 }
 
 /* six values run down at their rates, none below zero (OVL2 0x5AC620, new in SOCOM II: the arrays at
@@ -1639,6 +1751,99 @@ extern "C" void func_005AC620(CZSealBody *seal, float dT)
         if (seal->m_ffc[i] < 0.0f)
             seal->m_ffc[i] = 0.0f;
     }
+}
+
+extern "C" {
+/* the kill credited to its shooter (OVL2 0x547AA0, seal.cpp's) and the death's kind kept, the victim
+ * struck down (OVL2 0x547A90, seal.cpp's: the word at 0xFC0, then 0x547860) */
+void func_00547AA0(CZSealBody *seal, unsigned int id, bool b);
+void func_00547A90(CZSealBody *seal, int kind);
+}
+
+CZSealBody *ftsGetPlayer();
+
+/* a landing's damage by its speed: by the dynamics' three landing speeds none, light, hard or a fall
+ * that hurts (none in states 8 and 10), the ground's landing sound -- and the bones' break on the two
+ * hardest -- played at the SEAL; then, for this console's SEAL, the adrenaline raised by the middle
+ * two, the six values cut by the share of the speed past the first, the health updated as a fall's
+ * and a death this made the player's kill, its kind 253; the severity returned (OVL2 0x5AC1F0; SOCOM
+ * 1's HandleFallingDamage, the damage scaled now, a sound for every severity, the kill credited) */
+LANDING_TYPE CZSealBody::HandleFallingDamage(float speed)
+{
+    /* (the grade declared first, uninitialised: it takes s2, the alive flag s1) */
+    LANDING_TYPE sev;
+    bool alive = m_isAlive;
+    CSnd *snd = MaterialEx(m_last_altitude.GetMaterial())->m_fallsound;
+    float frac;
+
+    if (m_state == 8 || m_state == 10)
+        frac = 0.0f;
+    else {
+        float lo = theCharacterDynamics.m_landSpeed[0];
+        float hi = theCharacterDynamics.m_landSpeed[2];
+
+        if (speed <= lo)
+            frac = 0.0f;
+        else if (speed >= hi)
+            frac = 1.0f;
+        else
+            frac = (speed - lo) / (hi - lo);
+    }
+    if (m_state == 8 || m_state == 10)
+        sev = LANDING_NONE;
+    else if (speed <= theCharacterDynamics.m_landSpeed[0])
+        sev = LANDING_NONE;
+    else if (speed <= theCharacterDynamics.m_landSpeed[1])
+        sev = LANDING_SOFT;
+    else if (speed < theCharacterDynamics.m_landSpeed[2])
+        sev = LANDING_HARD;
+    else
+        sev = LANDING_HURT;
+    switch (sev) {
+    case LANDING_NONE:
+        if (snd)
+            snd->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        break;
+    case LANDING_SOFT:
+        if (snd)
+            snd->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        break;
+    case LANDING_HARD:
+        if (data_0044D580)
+            data_0044D580->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        break;
+    case LANDING_HURT:
+        if (snd)
+            snd->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        if (data_0044D580)
+            data_0044D580->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        break;
+    }
+    if (IsRemote())
+        return LANDING_NONE;
+    switch (sev) {
+    case LANDING_SOFT:
+        AdrenalineIncr(0.33f);
+        break;
+    case LANDING_HARD:
+        AdrenalineIncr(0.66f);
+        break;
+    case LANDING_NONE:
+        break;
+    case LANDING_HURT:
+        break;
+    }
+    for (int i = 0; i < 6; i++) {
+        m_ffc[i] -= m_1014[i] * frac;
+        if (m_ffc[i] < 0.0f)
+            m_ffc[i] = 0.0f;
+    }
+    UpdateHealth((DAMAGE_LOCATION)3, DEATH_FALLING);
+    if (alive && !m_isAlive && frac > 0.0f) {
+        func_00547AA0(this, ftsGetPlayer()->m_id, false);
+        func_00547A90(this, 253);
+    }
+    return sev;
 }
 
 /* an explosion's damage: online, nothing for another console's SEAL; the projectile's bit 1
@@ -1666,6 +1871,184 @@ void CZSealBody::HandleDamageExplosive(CZProjectile *proj, CZBodyPart *part, DAM
 
             world->RegIgnoreNodeDelayed(m_projectiledi, GetNode());
         }
+    }
+}
+
+extern "C" {
+/* a location's damage taken from a projectile (OVL2 0x5A5A80, new in SOCOM II: SOCOM 1's DamageHead,
+ * DamageBody and the limbs' in one, the location first), a damage and an armour pierce dealt to a
+ * location (OVL2 0x5A5830), the pellets of a shot from a point that reach the SEAL (OVL2 0x5A1620)
+ * and the blowback from a point (OVL2 0x57ED10, seal_body.cpp's) -- the first three not written; the
+ * names unknown */
+void func_005A5A80(CZSealBody *seal, DAMAGE_LOCATION where, CZProjectile *proj);
+void func_005A5830(CZSealBody *seal, DAMAGE_LOCATION where, float damage, float pierce);
+int func_005A1620(CZSealBody *seal, const CPnt3D *from);
+bool func_0057ED10(CZSealBody *seal, const CPnt3D *p, float a, float b);
+}
+
+/* one pellet's damage, at a location picked at random by the odds -- the body when none is picked
+ * (an inline: 0x5A0E70 and HandleDamageNonExplosive share its tables, OVL2 data 0x6508D0 and
+ * 0x6508E0; the name ours) */
+static inline void PelletDamage(CZSealBody *seal, CZProjectile *proj, DAMAGE_LOCATION &where)
+{
+    static const DAMAGE_LOCATION locs[6] = {
+        (DAMAGE_LOCATION)0, (DAMAGE_LOCATION)3, (DAMAGE_LOCATION)2,
+        (DAMAGE_LOCATION)1, (DAMAGE_LOCATION)5, (DAMAGE_LOCATION)4
+    };
+    static const float odds[6] = { 0.3f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
+    float damage = proj->GetDamage(&seal->m_posW, 0.0f);
+    float pierce = proj->m_ammo->GetArmorPierce();
+    float r = Rand01();
+
+    where = (DAMAGE_LOCATION)3;
+    for (int i = 0; i < 6; i++) {
+        if (r < odds[i]) {
+            where = locs[i];
+            break;
+        }
+    }
+    func_005A5830(seal, where, damage, pierce);
+}
+
+/* a bullet's damage on a part: online only a player's projectile counts; not twice from the last
+ * grenade; a shotgun's (kind 81) pellets each at a random location -- online the body taken whole --
+ * unless the last projectile was one too; else the part's location, handed back; then, offline or
+ * for this console's SEAL, a shotgun's blowback from its shooter (OVL2 0x5ABBC0; SOCOM 1's
+ * HandleDamageNonExplosive with its six Damage calls one, the shotgun and the blowback new) */
+void CZSealBody::HandleDamageNonExplosive(CZProjectile *proj, CZBodyPart *part, DAMAGE_LOCATION *where)
+{
+    /* (the bit as a bool, compared: SOCOM 1's sltu too) */
+    if (theNetwork.m_9 && (bool)proj->m_isplayer == false)
+        return;
+    EQUIP_ITEM type = proj->m_weapon->GetIDType();
+
+    if (m_lastprojectile == proj && (type == 171 || type == 121))
+        return;
+    if (proj->m_weapon->GetIDType() == 81) {
+        if (!m_lastprojectile || m_lastprojectile->m_weapon->GetIDType() != 81) {
+            if (theNetwork.m_9)
+                func_005A5A80(this, (DAMAGE_LOCATION)3, proj);
+            else {
+                DAMAGE_LOCATION loc = (DAMAGE_LOCATION)6;
+                int n = func_005A1620(this, &proj->m_framestartpos);
+
+                for (int i = 0; i < n; i++)
+                    PelletDamage(this, proj, loc);
+                if (loc != 6)
+                    UpdateHealth(loc, DEATH_BULLET);
+            }
+            m_lastprojectile = proj;
+        }
+    } else if (part == m_head || part == m_neck) {
+        func_005A5A80(this, (DAMAGE_LOCATION)0, proj);
+        *where = (DAMAGE_LOCATION)0;
+        m_lastprojectile = proj;
+    } else if (part == m_lbicep || part == m_lforearm) {
+        *where = (DAMAGE_LOCATION)2;
+        func_005A5A80(this, (DAMAGE_LOCATION)2, proj);
+    } else if (part == m_rbicep || part == m_rforearm) {
+        *where = (DAMAGE_LOCATION)1;
+        func_005A5A80(this, (DAMAGE_LOCATION)1, proj);
+    } else if (part == m_spinehi || part == m_spinelo || part == m_hips) {
+        *where = (DAMAGE_LOCATION)3;
+        func_005A5A80(this, (DAMAGE_LOCATION)3, proj);
+        m_lastprojectile = proj;
+    } else if (part == m_lthigh || part == m_lcalf) {
+        *where = (DAMAGE_LOCATION)5;
+        func_005A5A80(this, (DAMAGE_LOCATION)5, proj);
+    } else if (part == m_rthigh || part == m_rcalf) {
+        *where = (DAMAGE_LOCATION)4;
+        func_005A5A80(this, (DAMAGE_LOCATION)4, proj);
+    }
+    CZWeapon *weapon = proj->m_weapon;
+    CZAmmo *ammo = proj->m_ammo;
+
+    if (theNetwork.m_9 && IsRemote())
+        return;
+    if (!ammo)
+        return;
+    if (!weapon)
+        return;
+    if (weapon->GetIDType() != 81)
+        return;
+    float damage = proj->GetDamage(&m_posW, 0.0f);
+    CEntity *e = CEntity::m_list.GetEntityById(proj->m_shooterID);
+    CZSealBody *shooter = 0;
+
+    if (e)
+        shooter = AsSeal(e);
+    if (!shooter)
+        return;
+    CPnt3D d = shooter->m_posW - m_posW;
+
+    func_0057ED10(this, &shooter->m_posW, damage * ammo->GetBlowbackScale(d.x * d.x + d.y * d.y + d.z * d.z), 100.0f);
+}
+
+extern "C" {
+/* (the kill's credit, 0x547AA0, takes whether the weapon was one of five: the id kept, then 0x547860
+ * and 0x59EE20 -- ExecuteAction_CQBAttack inlines it) the five items (OVL1 0x3C5AC0,
+ * zwep_ftsweapon.cpp's) and the stats' death (OVL2 0x545D10, seal.cpp's) */
+bool func_003C5AC0(EQUIP_ITEM id);
+void func_00545D10(CSealStats *s, const CZSealBody *seal);
+}
+
+/* a projectile's damage: none from no ammunition or from the explosive already taken (a detonated
+ * one with damage is kept); the part the last weapon hit names takes it, explosive when the
+ * ammunition has a radius and went off; the health updated -- online, only for a hit no SEAL of
+ * another console scored -- and a death this made credited to the shooter, its kind the weapon's
+ * (OVL2 0x5AB850; SOCOM 1's HandleDamage, the location now handed back by address, the projectile's
+ * detonation asked as well, and the kill's credit through 0x547AA0) */
+void CZSealBody::HandleDamage(CZProjectile *proj)
+{
+    bool alive = m_isAlive;
+
+    if (!(proj && proj->m_ammo && proj != m_lastprojectile))
+        return;
+    if (proj->m_ammo->GetExplosionDamage() > 0.0f && proj->WasDetonated())
+        m_lastprojectile = proj;
+    std::vector<CZBodyPart *> parts(m_body_parts);
+    zdb::IntersectStruct *hit = m_wephit.m_node ? &m_wephit : 0;
+    DAMAGE_LOCATION where = (DAMAGE_LOCATION)0;
+    bool searching = true;
+
+    for (std::vector<CZBodyPart *>::iterator it = parts.begin(); searching && it != parts.end(); ++it) {
+        CZBodyPart *part = *it;
+
+        if (part && part->m_id >= 0 && part->m_node == hit->m_node) {
+            if (proj->m_ammo->GetExplosionRadius() > 0.0f && proj->WasDetonated())
+                HandleDamageExplosive(proj, part, &where);
+            else
+                HandleDamageNonExplosive(proj, part, &where);
+            searching = false;
+        }
+    }
+    if (theNetwork.m_9) {
+        unsigned int id = proj->m_shooterID;
+        CEntity *e = CEntity::m_list.GetEntityById(id);
+        CZSealBody *shooter = 0;
+
+        if (e)
+            shooter = AsSeal(e);
+        if (!id || (shooter && !shooter->IsRemote()))
+            UpdateHealth(where, DEATH_BULLET);
+    } else
+        UpdateHealth(where, DEATH_BULLET);
+    if (alive && !m_isAlive) {
+        unsigned int id = proj->m_shooterID;
+        CEntity *e = CEntity::m_list.GetEntityById(id);
+        CZSealBody *killer = 0;
+
+        if (e)
+            killer = AsSeal(e);
+        if (killer) {
+            ((CSealCtrl *)killer->m_control)->NotifyTargetDown(this);
+            bool b = false;
+
+            if (func_003C5AC0(proj->m_weapon->m_ID))
+                b = true;
+            func_00547AA0(this, id, b);
+        } else
+            func_00545D10(&m_stats, this);
     }
 }
 
@@ -1972,12 +2355,203 @@ union AckUnion {
         unsigned char m_weapon : 1;
         unsigned char m_rest : 7;
     } bits;
+    /* an ammunition pickup's answer: a bit per entry of its stash (CheckForAmmoPickups; the names
+     * ours) */
+    struct {
+        unsigned char m_0 : 1;
+        unsigned char m_1 : 1;
+        unsigned char m_2 : 1;
+        unsigned char m_3 : 1;
+        unsigned char m_4 : 1;
+        unsigned char m_5 : 1;
+        unsigned char m_6 : 1;
+        unsigned char m_7 : 1;
+    } ammo;
     unsigned char b;
 };
 
+/* an ammunition pickup's contents: the weapons' stash (zwep_weapon.cpp's CZItemStash, three parallel
+ * lists of words -- a weapon, an ammunition and a count per entry -- out of line in OVL1; only what
+ * the pickups call) and the pickup's view of it (zseal.h's CPickupAmmo; the name ours) */
+class CZItemStash {
+public:
+    int Count();
+    bool Get(int i, int *a, int *b, int *c);
+    void Clear(int i);
+};
+
+class CPickupAmmo : public CZItemStash {
+};
+
+/* the answer's ammunition bit for an entry set (an inline: the chain's tests run 0 to 7, each bit
+ * stored as `(on & 1) << i`, the & shared by all; the name ours) */
+static inline void SetAckAmmo(AckUnion *ack, int i, bool on)
+{
+    if (i == 0)
+        ack->ammo.m_0 = on;
+    else if (i == 1)
+        ack->ammo.m_1 = on;
+    else if (i == 2)
+        ack->ammo.m_2 = on;
+    else if (i == 3)
+        ack->ammo.m_3 = on;
+    else if (i == 4)
+        ack->ammo.m_4 = on;
+    else if (i == 5)
+        ack->ammo.m_5 = on;
+    else if (i == 6)
+        ack->ammo.m_6 = on;
+    else if (i == 7)
+        ack->ammo.m_7 = on;
+}
+
+extern "C" {
+/* the rounds of a weapon's ammunition taken into the kit (OVL2 0x5BB000, the kit lane's range:
+ * SOCOM 1's CZKit::PickupAmmo by HandlePickupAck's call) and an ammunition pickup walked with a
+ * label (OVL2 0x541910, pickup_main.cpp's) */
+void func_005BB000(CZKit *kit, int weapon, int ammo, int *rounds);
+void func_00541910(CPickup *p, const char *label);
+}
+
+/* an entry of an ammunition pickup taken: its weapon's rounds into the kit, the entry cleared, the
+ * pickup walked (an inline: each of HandlePickupAck's eight answers runs it, every copy with its
+ * own three words; the name ours) */
+static inline void TakeAmmoEntry(CZSealBody *seal, CPickup *p, int i)
+{
+    CPickupAmmo *ammo = p->GetAmmo();
+    int w = 0;
+    int a = 0;
+    int n = 0;
+
+    ammo->Get(i, &w, &a, &n);
+    func_005BB000(&seal->m_kit, w, a, &n);
+    ammo->Clear(i);
+    func_00541910(p, "pickup");
+}
+
+/* each entry of an ammunition pickup with rounds left matched against the items asked for -- an
+ * item a weapon in its high byte and an ammunition in its low one -- and the answer's bit for the
+ * entry set (OVL2 0x59E580; SOCOM 1's CheckForAmmoPickups, the entries the stash's now) */
+void CZSealBody::CheckForAmmoPickups(int count, CPickupAmmo *ammo, unsigned short *items, AckUnion *ack)
+{
+    for (int i = 0; i < ammo->Count(); i++) {
+        int n = 0;
+        int w = 0;
+        int a = 0;
+
+        ammo->Get(i, &w, &a, &n);
+        for (int j = 0; j < count; j++) {
+            unsigned short weapon = items[j] >> 8;
+            unsigned short round = (unsigned short)(items[j] << 8) >> 8;
+            EQUIP_ITEM wid = w ? ((CZWeapon *)w)->m_ID : (EQUIP_ITEM)255;
+            EQUIP_AMMO aid = a ? ((CZAmmo *)a)->m_ID : (EQUIP_AMMO)255;
+
+            if (round == aid && weapon == wid && n > 0)
+                SetAckAmmo(ack, i, true);
+        }
+    }
+}
+
+/* a console's answer to this SEAL's pickup request: for each bit set, while the count lasts, a weapon
+ * pickup (the first bit only) taken or the ammunition entry of the bit taken into the kit; the kit's
+ * request finished and the ammunition pickup cleaned up (OVL2 0x59DFB0; SOCOM 1's HandlePickupAck,
+ * its eight blocks counting the answers now, the entries the stash's) */
+void CZSealBody::HandlePickupAck(int count, int id, AckUnion *ack)
+{
+    CPickup *p = CPickup::FindPickup(id);
+
+    if (!p)
+        return;
+    int n = 0;
+
+    if (ack->ammo.m_0 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            PickupItem(p);
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 0);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_1 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 1);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_2 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 2);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_3 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 3);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_4 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 4);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_5 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 5);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_6 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 6);
+            break;
+        }
+        n++;
+    }
+    if (ack->ammo.m_7 && n < count) {
+        switch (p->m_type) {
+        case 8:
+            break;
+        case 9:
+            TakeAmmoEntry(this, p, 7);
+            break;
+        }
+        n++;
+    }
+    m_kit.PendingPickupHandled();
+    CPickup::CleanupAmmoPickup(p);
+}
+
 /* (called through its map name with an int first parameter: this caller zero-extends the count at
  * both calls, as it would for an int -- passed to an unsigned short parameter it would go as it is) */
-extern "C" void SendPickupAckMessage__FUsii8AckUnion(int who, int id, int obj, AckUnion ack);
+extern "C" void SendPickupAckMessage__Fiii8AckUnion(int who, int id, int obj, AckUnion ack);
 
 /* a console's request for a pickup answered: none found, the pickups dumped and an empty answer
  * sent; else for each of the count, an ammunition pickup's rounds taken by 0x59E580, a weapon's
@@ -1993,7 +2567,7 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
     ack.b = 0;
     if (!p) {
         CPickup::DebugPickups();
-        SendPickupAckMessage__FUsii8AckUnion(count, id, client, ack);
+        SendPickupAckMessage__Fiii8AckUnion(count, id, client, ack);
         return;
     }
     for (int i = 0; i < count; i++) {
@@ -2007,7 +2581,7 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
                 ack.bits.m_weapon = true;
         }
     }
-    SendPickupAckMessage__FUsii8AckUnion(count, id, client, ack);
+    SendPickupAckMessage__Fiii8AckUnion(count, id, client, ack);
     CEntity *e = CEntity::m_list.GetEntityById(client);
 
     if (e) {
@@ -2017,6 +2591,134 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
             seal->HandlePickupAck(count, id, &ack);
             CPickup::CleanupAmmoPickup(p);
         }
+    }
+}
+
+extern "C" {
+/* a weapon's model name (OVL1 0x3D2750, an out-of-line accessor: CZWeapon::m_modelname) and an
+ * item's kind (OVL2 0x5B8820, the kit lane's range: 2 a pistol, the slot ITEM_PISTOL names) */
+char *func_003D2750(CZWeapon *w);
+SEAL_ITEM_BYTE func_005B8820(EQUIP_ITEM item);
+}
+
+extern "C" {
+/* the stats' events (seal.cpp's: a hostage killed, a suicide, a team-mate killed, an enemy killed,
+ * and two tallies by a count -- OVL2 0x545390, 0x545C90, 0x545C10, 0x545290, 0x5451A0, 0x5451C0),
+ * the network game's side test (OVL1 0x2C30B0, unowned), whether a time of the AI's lies within a
+ * span of now (OVL2 0x564CF0, seal_ai.cpp's) and the animation set the stats skip (OVL1 bss
+ * 0x44D400, seal.cpp's) */
+unsigned short func_00545390(CSealStats *s, const CZSealBody *seal);
+void func_00545C90(CSealStats *s, const CZSealBody *seal);
+void func_00545C10(CSealStats *s, const CZSealBody *seal);
+void func_00545290(CSealStats *s, const CZSealBody *seal);
+void func_005451A0(CSealStats *s, int n);
+void func_005451C0(CSealStats *s, int n);
+int func_002C30B0(const CZSealBody *seal);
+bool func_00564CF0(CSealCtrlAi *ai, float t);
+extern AnimSet *data_0044D400;
+}
+
+/* a valve's value read through a const pointer (an inline: the step re-reads the field for SetValue's
+ * test, as a const accessor of CValve's would make it -- read plainly, MW shares the one load; the
+ * name ours) */
+static inline unsigned int ValveValue(const CValve *v)
+{
+    return v->m_value;
+}
+
+/* a kill credited: the killer kept and, a SEAL, given a hostage's kill (online the side's valve
+ * stepped), a suicide, a team-mate's or -- unless the victim's animation set is the skipped one --
+ * an enemy's, a head shot offline and, against an AI, a kill of note: within ten seconds of its
+ * mark when the flag is set, under four otherwise; the victim's death counted (OVL2 0x59EE20; SOCOM
+ * 1's HandleKiller, the flag and the AI's tallies new) */
+void CZSealBody::HandleKiller(int killer, bool b)
+{
+    if (m_fc4 == killer || killer == 255)
+        return;
+    CEntity *e = CEntity::m_list.GetEntityById(killer);
+
+    m_fc4 = killer;
+    CZSealBody *k = 0;
+
+    if (e)
+        k = AsSeal(e);
+    bool hostage = (m_team & 0x20000) != 0;
+
+    if (k) {
+        if (hostage) {
+            CNetGameState *g = data_00437CE8;
+
+            if (g && theNetwork.m_9) {
+                CValve *v = 0;
+
+                if (func_002C30B0(k))
+                    v = g->m_3c;
+                else if (func_002C31D0(k))
+                    v = g->m_38;
+                if (v)
+                    v->SetValue(ValveValue(v) + 1);
+            }
+            func_00545390(&k->m_stats, k);
+        } else if (this == k)
+            func_00545C90(&m_stats, this);
+        else if (k->m_team & m_team)
+            func_00545C10(&k->m_stats, k);
+        else if (m_animset != data_0044D400) {
+            if (k && !(k->m_team & m_team))
+                func_00545290(&k->m_stats, k);
+            if (!theNetwork.m_9 && m_deathType == DEATH_HEADSHOT)
+                func_005459C0(&k->m_stats, k);
+            CSealCtrlAi *ai = ((CSealCtrl *)m_control)->GetSealCtrlAi();
+
+            if (ai) {
+                if (b) {
+                    if (!func_00564CF0(ai, 10.0f)) {
+                        func_005451A0(&k->m_stats, 1);
+                        func_005451C0(&k->m_stats, 3);
+                    }
+                } else if (ai->m_5c4 < 4)
+                    func_005451C0(&k->m_stats, 1);
+            }
+        }
+    }
+    func_00545D10(&m_stats, this);
+}
+
+/* another console's dropped weapon made here, with the pickups open, unless this SEAL is a player:
+ * the weapon's model instanced at the point and turned, made dynamic and a character node with its
+ * textures and polygons, then a network pickup of kind 8 of that id -- a pistol's secondary -- and
+ * the drop anim run on its node; with no pickup the node let go (OVL2 0x59EC60; SOCOM 1's
+ * CreateNetWeaponPickup, the item and the id handed in now -- WeaponPUPacketHandler's call -- where
+ * SOCOM 1's took the item out of the SEAL's own kit) */
+void CZSealBody::CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *pos, CQuat *rot)
+{
+    if (!CPickup::m_isOpen)
+        return;
+    if (IsPlayer())
+        return;
+    CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)item);
+
+    if (!w)
+        return;
+    zdb::CNode *node = zdb::CNode::CreateInstance(
+        (zdb::CModel *)zdb::CWorld::GetModel(func_003D2750(w)), pos, rot);
+
+    if (!node)
+        return;
+    node->SetDynamic(true, true);
+    node->m_socom2_a1_bits.bit2 = 1;
+    node->m_bumpmap = 1;
+    zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+    node->SetDescendantDI(true);
+    CPickup *p = CPickup::NetworkCreate(netid, (CPickup::PU_TYPE)8, node, w);
+
+    if (p) {
+        p->m_secondary = func_005B8820(w->m_ID) == ITEM_PISTOL;
+        if (data_0044D508)
+            ((CZAnim *)data_0044D508)->ActivateArg(1, 3, p->m_node, 0);
+    } else {
+        zdb::CWorld::m_world->DeleteTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+        zdb::CNode::Delete(node);
     }
 }
 
