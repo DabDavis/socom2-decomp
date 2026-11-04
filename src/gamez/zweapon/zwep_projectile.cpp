@@ -35,6 +35,12 @@ public:
     static void Destroy(CPickup *pickup);
 };
 
+/* the marks left by hits (zwep_weapon.cpp's class, its layout there: only the call here) */
+class CZMarkList {
+public:
+    void AddNewMark(zdb::IntersectStruct *is, CZProjectile *proj, float size);
+};
+
 /* MSL's, in double (MAIN's copy) */
 extern "C" double tan(double x);
 
@@ -394,6 +400,73 @@ void CZProjectile::ForgetHitNode(zdb::CNode *node)
 
         if (hit && hit->m_node == node)
             hit->m_node = 0;
+    }
+}
+
+/* the detonation: its mark on the ground under it (SOCOM 1's HandleDetonateExplosion, which then
+ * handed each hit to its node's extension -- SOCOM II's leaves that to HandleNextHit), detonated,
+ * the hit index back at the first, and the hits reordered, pass after pass until none moves: each
+ * plain hit's place taken by a later instance's (0x3C7AF0; HandleDelayedDetonate calls it). The
+ * shapes the target fixed: the node tests written out, each with its doubled null test (inline
+ * bool predicates materialise their values); the flags set ahead of the three copies, each copy
+ * indexing the array afresh; `j <= i` (the compare in at; `!(i < j)` materialises it);
+ * `again = false` ahead of the search flag; the two di tests nested ifs (their exits share the
+ * loop's); and the pass loop a `while (again)` -- as a do-while the loop optimiser numbers the
+ * two strength-reduced offsets the other way round (s0/s1 swapped) */
+void CZProjectile::HandleDetonateExplosion()
+{
+    if (!m_di)
+        return;
+
+    IntersectStruct *ground = CWorld::m_world->GetAltitude(&m_framestartpos, 10.0f);
+
+    if (ground) {
+        ground->GetRegion();
+        CZWeapon::m_pMarklist->AddNewMark(ground, this, 1.0f);
+    }
+
+    DiIntersect *di = m_di;
+
+    if (di) {
+        m_state = PROJECTILE_WAS_DETONATED;
+        m_hitindex = 0;
+        if (di->m_Cnt > 0) {
+            bool again = true;
+            int i = 0;
+            int j = 0;
+
+            while (again) {
+                if (i < di->m_Cnt - 1) {
+                    IntersectStruct *a = &di->m_Intersects[i];
+
+                    if (a->m_node && a->m_node &&
+                        (!(a->m_node->m_socom2_a1 & 4) || a->m_node->m_socom2_a1_bits.bit3)) {
+                        again = false;
+                        bool searching = true;
+
+                        if (j <= i)
+                            j = i + 1;
+                        for (; searching && j < di->m_Cnt; j++) {
+                            if (di->m_Intersects[j].m_node && di->m_Intersects[j].m_node &&
+                                (di->m_Intersects[j].m_node->m_socom2_a1 & 4) &&
+                                !a->m_node->m_socom2_a1_bits.bit3) {
+                                IntersectStruct t;
+
+                                t.m_poly = 0;
+                                t.m_node = 0;
+                                again = true;
+                                searching = false;
+                                memcpy(&t, &di->m_Intersects[i], sizeof(IntersectStruct));
+                                memcpy(&di->m_Intersects[i], &di->m_Intersects[j], sizeof(IntersectStruct));
+                                memcpy(&di->m_Intersects[j], &t, sizeof(IntersectStruct));
+                            }
+                        }
+                    }
+                    i++;
+                } else
+                    again = false;
+            }
+        }
     }
 }
 

@@ -652,6 +652,8 @@ public:
     /* the next hit on a node extension not reached yet given a delayed ray to its node's centre,
      * true when none is left (SOCOM II's, 0x3C7EE0; the name ours) */
     bool RegisterNextHit();
+    /* the detonation's ground mark and its hits reordered, instances first (SOCOM 1's, 0x3C7AF0) */
+    void HandleDetonateExplosion();
     void Detonate();
     /* the detonation's damage dealt once its proximity test has run (SOCOM 1's, 0x3C8330 -- not
      * written) */
