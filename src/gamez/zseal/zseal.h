@@ -513,6 +513,9 @@ public:
      * taken -- a kind at least the current one's; SOCOM II's SetDefaultLookParams takes whether
      * the look's point changed kind, and SetLookPosW gained a cell's and an entity's overloads */
     void ClearLook(AI_LOOK look);
+    /* an AI event of the controller's SEAL made (OVL2 0x572FA0; SOCOM 1's CreateAiEvent, by its
+     * order and the voice's call; the event's id returned) */
+    int CreateAiEvent(CAiEvent::EVENT event, float a, float b, bool c, const CPnt3D *pos, unsigned int d);
     bool SetLookDirR(AI_LOOK look, const CPnt3D *dir, bool exact);
     bool SetLookDirW(AI_LOOK look, CAiMap::DIR dir);
     bool SetLookDirW(AI_LOOK look, const CPnt3D *dir, bool exact);

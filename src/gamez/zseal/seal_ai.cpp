@@ -513,10 +513,6 @@ void CSealCtrlAi::Initalize()
 /* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
  * OVL2 0x50F4C0 by its address) */
 extern "C" float func_0050F4C0(CAiEvent::EVENT event);
-/* CSealCtrl::CreateAiEvent (SOCOM 1's CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi by
- * its order and its call here; OVL2 0x572FA0, called by its address) */
-extern "C" int func_00572FA0(CSealCtrl *ctrl, CAiEvent::EVENT event, float a, float b, bool c,
-                             const CPnt3D *pos, unsigned int d);
 /* the voice's reach scale (OVL2 data 0x650380, read as a variable) */
 extern "C" float data_00650380;
 
@@ -529,7 +525,7 @@ extern "C" int func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
     if (event != CAiEvent::AIE_NONE) {
         float range = func_0050F4C0(event);
 
-        r = func_00572FA0(ctrl, CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW, event);
+        r = ctrl->CreateAiEvent(CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW, event);
     }
     return r;
 }
@@ -1085,10 +1081,6 @@ extern "C" bool func_0056D530(const CAiMap::region *r, unsigned int team)
     return found;
 }
 
-extern "C" {
-/* CSealCtrl::ClearLook(AI_LOOK) (OVL2 0x600D40, the kit lane's seal_look.cpp) */
-void func_00600D40(CSealCtrl *ctrl, int look);
-}
 
 /* the leg to walk: with a planned path's points, from the cell to the path's last point -- both
  * centres flat on the ground, the direction and length between them, the leg's words cleared; else
@@ -1104,7 +1096,7 @@ extern "C" void func_0056C080(CSealCtrlAi *ai, CAiPath *path, const CAiMapLoc *l
         ai->m_60c = 0;
         loc = loc->x == CAiMapLoc::invalid.x && loc->y == CAiMapLoc::invalid.y ? &e->m_mapLocValid : loc;
         ai->m_leg_cell = *loc;
-        func_00600D40(ai, 9);
+        ai->ClearLook(AIL_DEPLOY);
     } else {
         ai->m_leg_cell = *loc;
         AiMaps.GetCellCenter(*loc, &ai->m_leg_from);
