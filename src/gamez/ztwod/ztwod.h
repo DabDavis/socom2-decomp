@@ -208,6 +208,8 @@ public:
     void UpdatePos();
     void Draw(zdb::CTextureRelocMgr *mgr, zdb::CCamera *cam, int depth);
     void MakePacket(zdb::CTextureRelocMgr *mgr, int depth);
+    /* a character's advance in pixels (SOCOM II's, 0x363C20; the name ours) */
+    int GetCharWidth(unsigned short c);
 
     C2DFont *m_font;   // 0x18
     char *m_string;   // 0x1c
@@ -218,7 +220,7 @@ public:
     int m_Ustringlen_max;   // 0x30
     int m_numUChars;   // 0x34
     float m_charwidth;   // 0x38
-    float m_charheight;   // 0x3c
+    float m_charheight;   // 0x3c: the text's LENGTH in pixels -- SOCOM 1's m_length (AddCharacter adds each character's advance to it, the HUD right-aligns by it); the name kept for its users in other lanes' units
     float m_scale;   // 0x40
     int m_numLines;   // 0x44
     float m_color[4];   // 0x48 (SOCOM 1's CPnt4D at 0x50; the HUD writes it a float at a time)

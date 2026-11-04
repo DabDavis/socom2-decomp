@@ -6690,7 +6690,7 @@
 0x00363B30 0xC8 Tick__9C2DStringFf  # OVL1; s1:align
 0x00363C00 0x8 On__9C2DStringFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00363C10 0x8 Off__9C2DStringFv  # OVL1; s1:callee
-0x00363C20 0x124 func_00363C20  # OVL1
+0x00363C20 0x124 GetCharWidth__9C2DStringFUs  # OVL1; ours (the HUD lane, round 33: c2dstring.cpp -- SOCOM II's, between Off and ClearAndWipe: the font's glyph for a character through a two-word glyph reference on the stack, its width less one at the string's two scales (0x40, 0x78) and the font's (0x34), rounded, plus the font's padding (0x28); 0 without a glyph; 0x3625E0's one call)
 0x00363D50 0x60 ClearAndWipe__9C2DStringFv  # OVL1; s1:align
 0x00363DB0 0x98 __dt__9C2DStringFv  # OVL1; s1:align
 0x00363E50 0xC func_00363E50  # OVL1
