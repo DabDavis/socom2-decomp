@@ -74,11 +74,17 @@ int func_0018F8A0(void)
 	return func_0018FB50(0, 0, 0, 3, &data_001D6218);
 }
 
-/* OPEN (0x190 against 0x188, 65 words): laid out as the target's -- the blocking loop inline, the
- * single read last -- but each stream call's result is copied out of v0 (`move a2,v0`) before
- * it is split, where the target splits v0 itself (i into s1, the error half into s0, mode's
- * register), and the hoisted %hi's and `last` take s5-s7 in another order; seven spellings of the
- * split, the declarations and last's assignment alike (build/scratch/gcc/vf/v_st.c, GCC r22a). */
+/* OPEN (right size, 10 words: registers only). Laid out as the target's -- the blocking loop
+ * inline, the single read last. GCC r24a (from r22a's 65 words, 0x190 against 0x188): each path
+ * splits its own block-local result (one `ret` for both is a pseudo live in two blocks: global-alloc
+ * gave it a2 and both splits read a copy, where local-alloc ties a block's own to v0), and the
+ * single read's error half goes through e (s0, mode's register, as the target's). Left: `last` and
+ * SCE_CD_debug's %hi tie in global-alloc's priority -- 4 refs over 88 insns and 5 over 110, both
+ * 909 -- and the lower pseudo, last (declared at the top), takes s6 first; the target's %hi has s6
+ * and last s7. Any extra RTL insn where both live breaks the tie the target's way, but none of 14
+ * spellings tried keeps one past CSE (the split's masks, the buffer's shift and pointer forms, the
+ * loop as for/while with breaks, the tests' orders: build/scratch/gcc/v_cdst.py); `last = 0`
+ * before the started test breaks it too, but re-allocates that test's v0/v1 (3 words). */
 int sceCdStRead(u_int size, u_int *buf, u_int mode, u_int *err)
 {
 	u_int rbuff, i, e, ret, last;
@@ -108,9 +114,10 @@ int sceCdStRead(u_int size, u_int *buf, u_int mode, u_int *err)
 			scePrintf("sceCdStRead BLK Read Ended\n");
 		*err = last;
 	} else {
-		ret = func_0018FB50(0, size, buf, 2, &data_001D6218);
-		rbuff = ret & 0xffff;
-		*err = ret >> 16;
+		u_int r = func_0018FB50(0, size, buf, 2, &data_001D6218);
+		rbuff = r & 0xffff;
+		e = r >> 16;
+		*err = e;
 	}
 	return rbuff;
 }
