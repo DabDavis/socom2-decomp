@@ -422,7 +422,7 @@ void CSoftKeyboard::ParseLook(_zrdr *rdr)
     float lh = 0.0f;
 
     zrdr_findreal(rdr, "UserStringLineHeight", &lh, 1);
-    *(float *)&m_c4 = lh;
+    m_c4 = lh;
     m_c8 = SkbFindInt(rdr, "CursorY", 0);
     m_cc = SkbFindInt(rdr, "CursorY2nd", 0);
     CIntPair csize = ReadIntPair(rdr, "CursorSize");
