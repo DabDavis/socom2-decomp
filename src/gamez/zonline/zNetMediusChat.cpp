@@ -1336,9 +1336,10 @@ static bool PlayerNameLess(RoomPlayer &a, RoomPlayer &b)
 /* the room's players shown: sorted by name, each a row of its account id, its name, its state --
  * "Disconnecting", "Logging In", "In Lobby" in the lobby's colour or the game it is in -- and its
  * clan's tag (MessageID: "[tag]", or 1 in its first byte for none) in the tag colour, handed to
- * the room player list (SOCOM II's; OVL1 0x2F1670: the players' pages and their infos call it;
+ * the room player list (SOCOM 1's UpdateRoomPlayerListDisplay, grown: the sort and the tags SOCOM
+ * II's; OVL1 0x2F1670: the players' pages and their infos call it;
  * std::sort's instance follows it, 0x2F1980-0x2F3EEF with its two helpers) */
-extern "C" void func_002F1670()
+void UpdateRoomPlayerListDisplay()
 {
     BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
 
@@ -1464,11 +1465,11 @@ void func_002F13F0(int, int, int, MediusLobbyWorldPlayerListResponse *resp)
                 else
                     ++i;
             }
-            func_002F1670();
+            UpdateRoomPlayerListDisplay();
             data_0044F9F0 = 0;
         }
     } else {
-        func_002F1670();
+        UpdateRoomPlayerListDisplay();
         data_0044F9F0 = 0;
     }
 }
@@ -1508,7 +1509,6 @@ void func_002F1240(C2D *page)
 }
 }
 
-extern "C" void func_002F1670();   /* the room's players shown (below) */
 
 /* a room player's info come in (the 'PlayerListInfo' requests 0x2F0EA0 makes, the account in the
  * message id): the player found in the room we are in, its clan's tag shown in its record's
@@ -1532,7 +1532,7 @@ extern "C" void func_002F10B0(int, int, int, MediusPlayerInfoResponse *resp)
 
                         sprintf(tag, "[%s]", stats.m_clan);
                         CopyTo((*i).MessageID, tag, MEDIUS_MESSAGEID_MAXLEN);
-                        func_002F1670();
+                        UpdateRoomPlayerListDisplay();
                     } else {
                         (*i).MessageID[0] = 1;
                     }
