@@ -13,12 +13,11 @@
  * CSaferStr and CDlgDesignModel instances into the tail: resize<CSaferStr> 0x383800, the model
  * vector's insert 0x384ED0 with its __fill_n 0x385370 and __copy_backward 0x385410, its __copy
  * 0x384D50, CSaferStr's assignment 0x384E00 and the model deleter's clear 0x36AE50 byte-exact.
- * OPEN, the tail's string pieces: resize<CDesignDlgObj> 0x383960 (6) and resize<CDlgDesignModel>
- * 0x383AA0 (5) differ only in the temporary's SECOND string's inlined destructor -- the target keeps
- * the member's address in a0 and reads the text pointer through it (`lw a0,8(a0)`), MW here reads
- * it from the frame (`lw a0,36(sp)`; the first member, at offset 0, is the target's in both);
- * `#pragma inline_max_auto_size(16..40)` at the unit's end changes neither (include/string's
- * destructor shape, the MSL lane's); the CSaferStr erase 0x383BC0 (15) and __copy 0x383D00 (the
+ * resize<CDesignDlgObj> 0x383960 and resize<CDlgDesignModel> 0x383AA0 are byte-exact since the MSL
+ * headers' round 17: the temporary's SECOND string's inlined destructor keeps the member's address in
+ * a0 and reads the text pointer through it (`lw a0,8(a0)`) once include/string's destructor reads the
+ * text as a `charT *` through the words (its comment).
+ * OPEN, the tail's string pieces: the CSaferStr erase 0x383BC0 (15) and __copy 0x383D00 (the
  * copy here calls is_long() out of line), the model vector's erase 0x384BD0 (20) and copy
  * constructor 0x3854C0 (one saved register short: the strings' copy constructors' shape).
  * OPEN, not written yet: the button family's constructors (CButtonSpec's 0x380620, 0xC8C bytes,

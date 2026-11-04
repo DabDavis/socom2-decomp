@@ -566,11 +566,20 @@ inline bool operator<(const basic_string<charT, traits, Allocator> &lhs,
     return lhs.compare(rhs) < 0;
 }
 
+/* the long form's text freed. Out of class, so inlined only in tail code generated after it. The text
+ * is read as a pointer through the words (`((charT **)w_)[2]`), not a word cast to one: inlined on a
+ * member at a non-zero offset of a frame object -- whose `this` tests MW keeps -- the target reads both
+ * words through the member's address (`lw v1,0(a0)` ... `lw a0,8(a0)`), where `(void *)w_[2]` let MW
+ * fold the second read into the frame (`lw a0,36(sp)`); a member at offset 0, its tests folded, reads
+ * both from the frame either way (the UI's zui_spec.cpp tail: resize<CDesignDlgObj> 0x383960 and
+ * resize<CDlgDesignModel> 0x383AA0 byte-exact so, the MSL headers round 17, nothing lost over every
+ * hand-written unit; `l_.data_` through a long-form struct in the union, `this` or w_ taken into a
+ * local, the test through is_long() and an early return all keep one or the other wrong) */
 template <class charT, class traits, class Allocator>
 basic_string<charT, traits, Allocator>::~basic_string()
 {
     if (w_[0] & 1)
-        operator delete((void *)w_[2]);
+        operator delete(((charT **)w_)[2]);
 }
 
 typedef basic_string<char> string;
