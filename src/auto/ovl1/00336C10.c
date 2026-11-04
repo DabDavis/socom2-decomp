@@ -4,19 +4,20 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_00336A60(s32, s32);                    /* extern */
+M2C_UNK RenderUiNodeRecursive__5CPipeFPQ23zdb5CNode(s32, s32); /* extern */
 M2C_UNK sceVu0CopyMatrix(s32, M2C_UNK *);           /* extern */
-extern s32 data_003DF330;
-extern s32 data_003DF338;
-extern M2C_UNK data_003F6470;
+extern M2C_UNK identity__7CMatrix;
+extern s32 m_pointer__6CStack;
+extern s32 m_top__6CStack;
 
 void RenderUiNode__5CPipeFPQ23zdb5CNode(s32 arg0, s32 arg1) {
-    data_003DF330 += 1;
-    data_003DF338 += 0x40;
-    sceVu0CopyMatrix(data_003DF338, &data_003F6470);
-    func_00336A60(arg0, arg1);
-    data_003DF330 -= 1;
-    data_003DF338 -= 0x40;
+    m_pointer__6CStack += 1;
+    m_top__6CStack += 0x40;
+    sceVu0CopyMatrix(m_top__6CStack, &identity__7CMatrix);
+    RenderUiNodeRecursive__5CPipeFPQ23zdb5CNode(arg0, arg1);
+    m_pointer__6CStack -= 1;
+    m_top__6CStack -= 0x40;
 }

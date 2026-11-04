@@ -1315,6 +1315,9 @@ public:
     }
     /* the snake's length: none empties the path, a new one cuts and reserves the points (SOCOM 1's) */
     void SetSnakeLength(unsigned int len);
+    /* the snake's head moved to a cell, a point found among the first `search` cutting those
+     * before it off, the flags on the head (SOCOM 1's AddSnakePoint took the cell alone: 0x524D50) */
+    void AddSnakePoint(const CAiMapLoc &loc, unsigned int search, unsigned int flags);
     /* each leg smoothed, the invalid points dropped and the points' storage trimmed to them, when
      * the plan is complete and smoothing is on or forced (SOCOM 1's took no flag) */
     bool SmoothPath(bool force);
@@ -1349,6 +1352,17 @@ public:
     void IncrementPathId();
     CAiMap *GetLegMap(int leg);
     bool GetLegPoints(CAiMapLoc &start, CAiMapLoc &goal, int leg) const;
+    /* the points' length, the straight distances between neighbours on one map summed -- kept,
+     * and summed again when none is kept or when forced; 0 without points (SOCOM 1's GetLength,
+     * the demo's 0x196510, by its place and its call from CAiMaps::CreateGraph: 0x527E70) */
+    float GetLength(bool force);
+    /* another path's finished plan taken over, unless this one is queued or planning (new in SOCOM
+     * II, the name ours: 0x527FD0) */
+    bool CopyPlan(const CAiPath *path);
+    /* a cell to step aside to, put into the path: lines walked square to the way from a cell to
+     * the path's last point, out from a point, for a cell both legs reach (new in SOCOM II, the name
+     * ours: 0x524170) */
+    bool FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapLoc &goal, int cells);
 
     CAiStar *m_astar;   // 0x0
     CAiPlanner *m_planner;   // 0x4
@@ -1439,6 +1453,27 @@ extern float s_preemptPriority;
 /* an empty function of ai_astar.cpp's, called when a path preempted the queue (0x510D00; SOCOM 1's
  * stretch has an MSL accessor there) */
 extern "C" void func_00510D00();
+/* std::find over the planner queue, one inline level taller than include/algorithm's: the search
+ * through a helper taking the first iterator by reference (the AI core's round 20). Specialised for
+ * this list alone, as ai_events.cpp's push_back is: CAiPathQueue::Contains is then six high and
+ * AbortPathPlan inlines it one level -- begin(), end() twice, find and != out of line, the path's
+ * copy as find's value, as the target (0x5107B0) -- and find's own copy (0x510970) still walks its
+ * first parameter in memory (a by-value helper keeps the iterators in registers, 0x40) */
+namespace std {
+template <class InputIterator, class T>
+inline void __find_x(InputIterator &first, const InputIterator &last, const T &value)
+{
+    while (!(first == last) && !(*first == value))
+        ++first;
+}
+template <>
+inline list<CAiPath *>::iterator find(list<CAiPath *>::iterator first, list<CAiPath *>::iterator last,
+                                      CAiPath *const &value)
+{
+    __find_x(first, last, value);
+    return first;
+}
+}
 namespace ai {
 class CAiPathQueue : public std::list<CAiPath *> {
 public:

@@ -329,6 +329,37 @@ def test_shared_stem_qualifies_by_path():
     ck(not any(b == "kCopy@exit" for _, b in bare), "a bare row of a shared stem resolves for neither")
 
 
+def test_mw_function_static_resolves_by_its_function():
+    """Metrowerks names a function-local static of a function emitted once `name$N` and its guard
+    `@GUARD@name$N`, N a per-unit counter no map row can carry (an inline function's own are
+    `@LOCAL@<fn>@name`, `@GUARD@<fn>@name`). The data map names both kinds the second way, and the
+    first resolves through the compared function's row: the HUD lane's ShowArrows reads its
+    `static CPnt3D s_grey` under its guard (8 references, unchecked before). Its rows moved in the
+    map must fail; its rows gone, the references are unchecked again -- never passed."""
+    img, st = E.image(), E.symbols()
+    unit = HERE / "src" / "Apps" / "FTS" / "hud_mpweaponsel.cpp"
+    obj = BUILD / "hud_mpweaponsel.o"
+    D.compile_obj(unit, obj, includes=[HERE / "include", HERE / "src"])
+    sym = st.get("ShowArrows__19CMPWeaponCategoriesFv")
+    guard, local = (f"@{k}@{sym.name}@s_grey" for k in ("GUARD", "LOCAL"))
+    r = D.compare(obj, sym.name, sym, img, st)
+    ck(r.match and not r.reloc_unchecked, f"s_grey and its guard resolve by their rows: {r.verdict}")
+    ck(sum(f.symbol == guard and f.status == "ok" for f in r.relocs) == 2
+       and sum(f.symbol == local and f.status == "ok" for f in r.relocs) == 6, "two guard, six object references")
+    rows = HERE / "build" / "tmp" / f"data_fnstatic.{os.getpid()}.txt"
+    rows.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        rows.write_text(E.DATA.read_text().replace(f"0x004147D0 0xC {local} ", f"0x004147E0 0xC {local} "))
+        r = D.compare(obj, sym.name, sym, img, E.SymbolTable(E.SYMBOLS, rows))
+        ck(not r.match and any(f.symbol == local and f.status == "MISMATCH" for f in r.relocs),
+           "the object mapped elsewhere fails")
+        rows.write_text("".join(l for l in E.DATA.read_text().splitlines(True) if "@s_grey " not in l))
+        r = D.compare(obj, sym.name, sym, img, E.SymbolTable(E.SYMBOLS, rows))
+        ck(r.match and len(r.reloc_unchecked) == 8, "with no rows, unchecked as before")
+    finally:
+        rows.unlink()
+
+
 def test_padding_after_a_function_must_be_zero():
     """A candidate one instruction short of a function whose next word is code fails."""
     img, st = E.image(), E.symbols()

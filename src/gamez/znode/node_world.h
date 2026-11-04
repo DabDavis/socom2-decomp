@@ -170,6 +170,9 @@ struct IntersectStruct {
     bool GetIntersectedEdgePointsY(CPnt3D *out);
     /* the hit polygon's flag at bit 27 (new in SOCOM II; the name ours) */
     bool GetPolyFlag27();
+    /* the hit polygon's first word, or every bit for none (OVL1 0x2DC1B0; the SEAL's ground
+     * probes pass it to DiIntersect::SetMask) */
+    unsigned int GetRegion();
 };
 
 /* a ray's intersection set (SOCOM 1's DWARF; SOCOM II adds the mask at 0x44, so its hits are 4
@@ -362,7 +365,9 @@ public:
     unsigned char _0[0x4c];   // 0x0: a matrix (the constructor makes it the unit one), a size
     CNode *m_node;   // 0x4c: the node casting the shadow (the constructor's argument)
     CTexture *m_texture;   // 0x50: its first visual's first dynamic texture (UpdateShadowCasters)
-    unsigned char _54[0x70 - 0x54];
+    CBBox m_bbox;   // 0x54: the box a node's sphere must meet to take its projection (the pipe's
+                    //   BuildProjectedMapList)
+    unsigned char _6c[0x70 - 0x6c];
 };   // 0x70 bytes
 
 }

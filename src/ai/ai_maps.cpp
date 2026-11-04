@@ -200,7 +200,9 @@ bool CAiMaps::GetSporeLocation(unsigned int id, unsigned int n, CPnt3D *pos, CPn
  * 0x14 and at a node's 8, where the per-map graph's fixups in ai_mapio.cpp keep a route and a region) */
 class CGEdge {
 public:
-    unsigned char _0[0x14];
+    unsigned char _0[0x4];
+    float m_length;   // 0x4: graph_tree.h's m_4 (CreateGraph stores the walk's length)
+    unsigned char _8[0xc];
     CAiMap::link *m_link;   // 0x14
 };
 
@@ -297,6 +299,97 @@ CGEdge *CAiMaps::FindLinkEdge(const CAiMapLoc &from, const CAiMapLoc &to)
         found = best;
     }
     return found;
+}
+
+/* graph_tree.cpp's edge flag: bit 30 set or cleared, on setting it the two ends replaced when the
+ * first differs (OVL1 0x2D1410, the states lane's extern "C" stand-in) */
+extern "C" void func_002D1410(CGEdge *edge, bool on, CGNode *from, CGNode *to);
+
+/* whether a step from a cell in a direction ends on a cell a step may end on (new in SOCOM II, the
+ * name ours): GetNeighbor's step, then CAiMap::IsTraversable's test -- too tall to inline whole, so
+ * CreateGraph inlines it one level and calls GetMapId, GetCell and the cell's test out of line */
+inline bool step_traversable(CAiMap *map, const CAiMapLoc &loc, CAiMap::DIR dir, CAiMapLoc &n)
+{
+    int x = loc.x + CAiMap::neighbor[dir][0];
+    int y = loc.y + CAiMap::neighbor[dir][1];
+
+    if (x >= 0 && x < map->m_nx && y >= 0 && y < map->m_ny) {
+        n.x = x;
+        n.y = y;
+        n.m_mapid = map->GetMapId();
+        CAiCell *cell = map->GetCell(n, 0);
+
+        return cell ? cell->IsTraversable() : false;
+    }
+    return false;
+}
+
+/* the map set's graph built unless it is there and not forced: every link of every map a node at
+ * each end and an edge between them (a link with a side, its kind, made one-way: toward its own
+ * cell when the step off that side may end there), and every earlier link of the same map that a
+ * plan reaches an edge as long as the plan (SOCOM 1's; the one-way edges, the edge's link and the
+ * flags' reset new in SOCOM II). Byte-exact, the AI core's round 20, by these shapes: the link a
+ * plain pointer (SOCOM 1's MSL iterator was one) compared through the class iterator -- as an
+ * iterator object the scalariser's temporary numbers it below the nodes and its saved register
+ * moves (s4 for s1); the map walk's iterator ASSIGNED from begin() before its end is taken into a
+ * local, so begin's load comes first and the end, a variable, spills to the frame's 160 for want of
+ * a saved register (end() in the test is rematerialised from `this`, 0x3F8; taken before the
+ * assignment the two set-ups swap registers); the neighbour's cell the caller's (an inline's own
+ * CAiMapLoc is a call to its empty constructor where the inline is cut one level), and the map
+ * handed to the inline non-const (a const view hoists &m_nx and &m_ny out of the walk) */
+void CAiMaps::CreateGraph(bool force)
+{
+    if (force || !m_graph) {
+        CGraph *g = CGraph::Create("AiMap Graph");
+        iterator i;
+        CAiMapLoc n;
+
+        i = begin();
+        iterator last = end();
+
+        for (; i != last; ++i) {
+            CAiMap *map = *i;
+            CAiMap::links &links = map->m_linksTable;
+
+            for (CAiMap::link *l = &*links.begin(); CAiMap::links::iterator(l) != links.end(); ++l) {
+                CGNode *a = g->GetNodeByNodeEx(l);
+
+                if (!a) {
+                    a = g->CreateNode();
+                    a->m_link = l;
+                    CAiMap *far = GetMapByIndex(l->m_link.m_mapid);
+                    CAiMap::link *back = far->GetCellLink(l->m_link);
+                    CGNode *b = g->CreateNode();
+
+                    b->m_link = back;
+                    CGEdge *e = g->CreateEdge(a, b);
+
+                    e->m_link = l;
+                    e->m_length = 0.0f;
+                    if (l->m_kind != 8) {
+                        if (!step_traversable(map, l->m_loc, (CAiMap::DIR)l->m_kind, n))
+                            func_002D1410(e, true, a, b);
+                        else
+                            func_002D1410(e, true, b, a);
+                    }
+                }
+                for (CAiMap::links::iterator o = links.begin(); o != l; ++o) {
+                    CGNode *b = g->GetNodeByNodeEx(&*o);
+
+                    ai::FlushPlannerQueue();
+                    CAiPath path;
+
+                    path.m_flags = 0;
+                    if (ai::PathPlanImmediate(map, l->m_loc, (*o).m_loc, &path)) {
+                        CGEdge *e = g->CreateEdge(a, b);
+
+                        e->m_length = path.GetLength(false);
+                    }
+                }
+            }
+        }
+        m_graph = g;
+    }
 }
 
 /* every map's links checked: each link given its map's index, and a link whose far cell has no link
@@ -491,6 +584,87 @@ unsigned int CAiMaps::GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b)
     if (ma->TransformTo(a, m0, la) && mb->TransformTo(b, m0, lb))
         return loc_delta(la, lb);
     return ai::_max(ma->GetCellCount(), mb->GetCellCount());
+}
+
+/* ai_path.cpp's, not written yet: a cell appended to a path on its map (SOCOM 1's AppendPathLoc,
+ * by its place after InsertPathLoc and its calls here, where the demo's ExtendPath calls it), and
+ * the path finished after an extension (SOCOM 1's ExtendPath ended in SmoothPath and
+ * UpdateTurnAngles) */
+extern "C" bool func_00526F20(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
+extern "C" void func_00526540(CAiPath *path, CAiMaps *maps, bool smooth);
+
+/* a path stretched to a cell (SOCOM 1's ExtendPath, the demo's 0x199220 after UpdateActionTables
+ * as here; SOCOM II takes the walk's first cell too): an empty path takes the cell when the feet
+ * reach it from the first cell; a path starting on it is done; a one-point path
+ * has its point moved there when the feet reach it; else the cell is appended when the feet reach
+ * it from the path's first point, or, on a path following a template (flag 8), the template's points
+ * between the two cells are appended in order and then the cell -- the path finished after either.
+ * The shapes: the size read in each test (a local numbers it ahead of the compares' temporaries), the
+ * points through data_ (operator[]'s data() reference takes &data_ into a saved register), the
+ * template declared ahead of the first point (their saved registers swap otherwise), the step an
+ * if/else on `i <= i1` (branching on the compare; `if (i1 < i) step = -1` lays the -1 out after),
+ * the walk top-tested (`if (i != i1) do ... while`: a `for` is entered at its bottom test).
+ * OPEN, 2 instructions: the target loads i1 before the step's 1 and i0 after it, this build i0 first
+ * (i0's load in the compare, an uninitialised i assigned after the step, `i1 >= i`, the ok store
+ * moved: no change or worse) */
+bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &to)
+{
+    bool smooth = false;
+    bool ok = false;
+    bool post = false;
+
+    if (path.m_points.size() == 0) {
+        if (CanTravelLine(from, to, 0)) {
+            ok = true;
+            func_00526F20(&path, to, 0);
+        }
+    } else {
+        CAiPath *t;
+        CAiPath::point *first = path.m_points.data_;
+
+        if (first->m_loc == to) {
+            ok = true;
+        } else if (path.m_points.size() == 1 && CanTravelLine(from, to, 0)) {
+            path.m_points.data_[path.m_points.size() - 1].m_loc = to;
+            path.IncrementPathId();
+        } else if (CanTravelLine(first->m_loc, to, 0)) {
+            func_00526F20(&path, to, 0);
+            ok = smooth = post = true;
+        } else if (path.m_flags & 8) {
+            unsigned int i0;
+            unsigned int i1;
+
+            t = path.m_template;
+
+            if (t && t->PointInPath(first->m_loc, &i0) && t->PointInPath(to, &i1)) {
+                int step;
+                unsigned int i = i0;
+
+                ok = true;
+                if (i <= i1)
+                    step = 1;
+                else
+                    step = -1;
+                if (i != i1) {
+                    do {
+                        CAiPath::point &p = t->m_points[t->m_points.size() - i - 1];
+
+                        if (!func_00526F20(&path, p.m_loc, GetMapByIndex(p.m_loc.m_mapid))) {
+                            ok = false;
+                            break;
+                        }
+                        i += step;
+                    } while (i != i1);
+                }
+                if (ok)
+                    ok = func_00526F20(&path, to, GetMapByIndex(to.m_mapid));
+                smooth = post = true;
+            }
+        }
+        if (post)
+            func_00526540(&path, this, smooth);
+    }
+    return ok;
 }
 
 /* whether the line between two cells of one map is clear to the feet, to the eye (SOCOM 1's;

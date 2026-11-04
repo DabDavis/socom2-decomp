@@ -151,6 +151,8 @@ public:
     /* the index'th string argument (SOCOM 1's; the menu's handlers take their text from it) */
     char *GetCharP(int index);
     void ParseNetworkPacketArgs(CZAnim *anim, ZAnimNetworkPacket *packet);
+    /* the index'th argument's valve (SOCOM 1's; 0x2721C0, valve_main.cpp's VWATCH calls it) */
+    CValve *GetValve(int index);
 };   // 0x10 bytes
 
 class _zanim_anim_params {

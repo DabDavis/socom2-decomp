@@ -98,8 +98,6 @@ CValve *VALVE_CMD_DATA::ParseValveName(const char *name, int &index)
 
 bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
 void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
-/* an argument list's valve (zanim's CZAnimArgList::GetValve(int), SOCOM 1's, its row not named) */
-extern "C" CValve *func_002721C0(CZAnimArgList *args, int index);
 
 /* SOCOM II's VWATCH command (RegisterCommands' third; the names ours): a valve named once at
  * parse time -- an anim's own (its valve index) or, by its INPUT_VALVE name, an argument's -- and
@@ -118,7 +116,7 @@ static inline CValve *ArgValve(CZAnim *anim, int ref)
 {
     CZAnimArgList *args = anim->m_arg_list;
 
-    return args ? func_002721C0(args, ref) : 0;
+    return args ? args->GetValve(ref) : 0;
 }
 
 /* the watched valve marked (its bit 26), whichever way the command names it; always done */
