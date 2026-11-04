@@ -13,6 +13,7 @@
 
 #include "../zar/zar.h"
 #include <deque>
+#include <map>
 #include <stack>
 
 class CSTable;
@@ -146,6 +147,10 @@ public:
     ~CSTable();
     void LoadTable(void *table, unsigned int bytes, bool copy);
     char *CreateString(const char *s);
+    /* the strings packed into one buffer, fn called for each user (CRdrFile::Pack's _fixup), and the
+     * packed strings moved to a buffer of the caller's (util_stable.h's) */
+    unsigned int Pack(void (*fn)(CSTable *, void *), void *data);
+    int Relocate(void *buf, unsigned int reserve, bool owner);
 
     unsigned char _0[0xC];   // 0x0: util_stable.h's base vector<char *>
     /* util_stable.h's first three virtuals, its vtable pointer here at 0xC (_fixup calls FindString
@@ -153,7 +158,9 @@ public:
     virtual void Clear();   // 0x08
     virtual void Destroy();   // 0x0C
     virtual char *FindString(const char *str);   // 0x10
-    unsigned char _10[0x10];   // 0x10
+    unsigned char _10[8];   // 0x10: util_stable.h's owner flag and buffer
+    unsigned int m_bytes;   // 0x18: the packed strings' bytes (util_stable.h's)
+    unsigned int m_reserve;   // 0x1c
 };   // 0x20 bytes
 
 class CRdrIO;
@@ -170,7 +177,13 @@ public:
     bool ReadPacked(CFileIO &io, unsigned int size);
     zar::CKey *Insert(zar::CZAR *zar, zar::CKey *key);
     bool Resolve(bool pack);
-    void Pack();
+    /* the tree packed into one buffer of its own: its equal arrays shared, the strings packed, the
+     * values copied after them (SOCOM 1's; SOCOM II's gives the buffer's size back) */
+    unsigned int Pack();
+    /* an array's values copied to dst and the array pointed at them, its arrays in turn, a shared
+     * array (nofree) pointed at its owner's copy through the map of the copies made -- the next free
+     * value given back (SOCOM 1's Pack(_zrdr *, _zrdr *, int), grown) */
+    _zrdr *Pack(_zrdr *rdr, _zrdr *dst, int *remaining, int delta, std::map<_zrdr *, _zrdr *> &copies);
     /* the parser (zrdr_parse.cpp): SOCOM 1's, reading from the file given rather than its file
      * stack's top, an array's depth passed down */
     _zrdr *ReadArray(CRdrIO *io, int depth);
