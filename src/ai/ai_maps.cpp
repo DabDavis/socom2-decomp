@@ -602,11 +602,11 @@ extern "C" void func_00526540(CAiPath *path, CAiMaps *maps, bool smooth);
  * The shapes: the size read in each test (a local numbers it ahead of the compares' temporaries), the
  * points through data_ (operator[]'s data() reference takes &data_ into a saved register), the
  * template declared ahead of the first point (their saved registers swap otherwise), the step an
- * if/else on `i <= i1` (branching on the compare; `if (i1 < i) step = -1` lays the -1 out after),
- * the walk top-tested (`if (i != i1) do ... while`: a `for` is entered at its bottom test).
- * OPEN, 2 instructions: the target loads i1 before the step's 1 and i0 after it, this build i0 first
- * (i0's load in the compare, an uninitialised i assigned after the step, `i1 >= i`, the ok store
- * moved: no change or worse) */
+ * if/else on `(i = i0) <= i1` (branching on the compare; `if (i1 < i) step = -1` lays the -1 out
+ * after; the walk's start assigned inside the compare's left operand loads i1 first, as the target
+ * does -- the right operand is evaluated first -- where `unsigned int i = i0;` ahead of the compare
+ * loads i0 first, and `i = i0;` after the step reloads it), the walk top-tested (`if (i != i1) do
+ * ... while`: a `for` is entered at its bottom test) */
 bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &to)
 {
     bool smooth = false;
@@ -638,10 +638,10 @@ bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &
 
             if (t && t->PointInPath(first->m_loc, &i0) && t->PointInPath(to, &i1)) {
                 int step;
-                unsigned int i = i0;
+                unsigned int i;
 
                 ok = true;
-                if (i <= i1)
+                if ((i = i0) <= i1)
                     step = 1;
                 else
                     step = -1;
