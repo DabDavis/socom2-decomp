@@ -163,7 +163,7 @@ public:
     {
         forward_iterator_tag category;
 
-        return *(basic_string *)func_001EE780(this, pos, n, 0, 0, category);
+        return replace(pos, n, (const charT *)0, (const charT *)0, category);
     }
 
     size_type max_size() const { return 0x7FFFFFFE; }
