@@ -172,6 +172,7 @@ public:
     /* the tree unit's (hud_tcmtree.cpp; the names ours) */
     void Tick(CPad *pad, float dt);
     void TalkTick(float dt);
+    int Select(const char *name);
     void Next();
     void ShowRoot();
     void Open();

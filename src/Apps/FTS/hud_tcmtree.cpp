@@ -4,12 +4,16 @@
  * hud_tcm.cpp's mode setter (0x236250) out of line, and has no initialiser (its statics
  * 0x4130A0-0x4130BF).
  *
- * Written: the node's state update, search, children, captions, name, delay, and the sounds. Not
- * yet: the subtree's display (0x231BA0) and the delay's tick (0x232260) -- both recursive and
- * self-inlined, their vector accessors' out-of-line copies after each (0x231DD0-0x231E30,
- * 0x232460-0x232480) --, the node's constructor and destructor, the cache builders (0x2329F0,
- * 0x232BC0, 0x2344E0) and the menu's input (0x234F40-0x2360D0). Defined in reverse of their image
- * order (-inline deferred). */
+ * Written: CTCMNode's constructor and destructor (the children a vector subclass: four this-tests),
+ * its state update, search, children, captions, name and delay, the self-inlined display-off and
+ * delay tick (HideAll five copies deep, Tick three: each copy calls the accessor chains one level
+ * shallower, so their ten out-of-line copies 0x231DD0-0x231E30 and 0x232460-0x232480 name the
+ * chains' levels -- CTCMNode's accessor, CTCMNodeList's, the vector's), the sounds, and CTCM's
+ * tick, push-to-talk, close, open, root, next and the item searches. OPEN: RemoveChild,
+ * ShowRoot, Select (registers). Not yet: the voice items' adder 0x2329F0 (its loop passes the
+ * third block's caption register as the item's argument -- an uninitialised local?), the cache
+ * builders 0x232BC0/0x2344E0, the open menu's and closed menu's pad handlers 0x235D40/0x2359A0.
+ * Defined in reverse of their image order (-inline deferred). */
 
 #include <string.h>
 
@@ -92,9 +96,11 @@ static inline CPad *GetPad(unsigned int n)
     return n < CInput::NUM_PADS ? CInput::m_pads[n] : 0;
 }
 
-/* hud_tcmcmds.cpp's: the node an item's test runs for */
+/* hud_tcmcmds.cpp's: the node an item's test runs for, a node opened, the recogniser's mode */
 void tcmSetCurNode(CTCMNode *node);
 void tcmClearCurNode();
+int tcmOpenNode(CZSealBody *player, CTCMNode *node);
+void tcmSetRecoMode(bool on);
 
 /* the menu's sounds (their virtual's slot 1: CSnd::PlaySound, as hud_weaponsel.cpp's) */
 class CSnd {
@@ -340,6 +346,71 @@ void CTCM::Close(bool selected)
     if (!theNetwork.m_bNetwork)
         theReco.Suspend(false);
     CInput::Flush();
+}
+
+/* the recogniser's word: the open column's item of that name selected and run -- a submenu opened,
+ * else the menu closed with the back sound (a hidden item's command run in the recogniser's mode);
+ * whether one was found (the counter an int, kept in memory for push_back's reference; the child
+ * declared first; the column assigned in its test).
+ * OPEN, 21 instructions, the size right: the target reads the count through v0 (the column's copy
+ * in the test's delay slot) where MW reads it through the copy, and sets the result flag with
+ * `move s5,zero ... movn s5,a0,v1` (the 1 the state's compare loaded) where MW gives `sltu` -- an
+ * unsigned char or bool flag, `r = 0; if (size) r = 1;`, `!empty()`, the count assigned in the
+ * column's test all tried */
+int CTCM::Select(const char *name)
+{
+    int done = 0;
+    CTCMNode *c;
+
+    if (name && strlen(name)) {
+        CTCMNode *column;
+
+        if ((column = GetColumn(m_path.size() - 1)) != 0) {
+            unsigned int n = column->m_children.size();
+
+            if (n)
+                for (int i = 0; i < n && !done; i++) {
+                    c = column->m_children[i];
+                    const char *s = c ? c->m_name : 0;
+
+                    if (s && strlen(s) && s && !strcasecmp(s, name)) {
+                        m_path.pop_back();
+                        m_path.push_back(i);
+                        int r = c->m_children.size() ? 1 : 0;
+                        CTCMEntry *e = c->m_entry;
+
+                        if (c->m_state != TCM_HIDDEN) {
+                            if (e->m_action) {
+                                tcmSetCurNode(c);
+                                r = e->m_action(ftsGetPlayer(), e->m_actionArg);
+                                tcmClearCurNode();
+                            }
+                            switch ((unsigned char)r) {
+                            case 1:
+                                tcmOpenNode(0, c);
+                                break;
+                            case 0:
+                                m_sounds.Play(TCM_SND_BACK);
+                                Close(true);
+                                theReco.Suspend(true);
+                                break;
+                            }
+                            done = 1;
+                        } else {
+                            tcmSetRecoMode(true);
+                            if (e->m_action)
+                                e->m_action(ftsGetPlayer(), e->m_actionArg);
+                            tcmSetRecoMode(false);
+                            m_sounds.Play(TCM_SND_BACK);
+                            Close(true);
+                            theReco.Suspend(true);
+                            done = 1;
+                        }
+                    }
+                }
+        }
+    }
+    return done;
 }
 
 /* push-to-talk while the menu is closed in a network game: the radio on while the button is held

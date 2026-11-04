@@ -2206,7 +2206,7 @@
 0x002329F0 0x1CC func_002329F0  # OVL1
 0x00232BC0 0x1918 func_00232BC0  # OVL1
 0x002344E0 0xA54 func_002344E0  # OVL1
-0x00234F40 0x25C func_00234F40  # OVL1
+0x00234F40 0x25C Select__4CTCMFPCc  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the recogniser's word: the open column's child of that name (+0x698) put on the path and run through its entry's command at +0x60 between tcmSetCurNode/tcmClearCurNode, a submenu opened (tcmOpenNode) or the menu closed with the back sound; a hidden item's command in the recogniser's mode; cbrecoResult calls it)
 0x002351A0 0x154 TalkTick__4CTCMFf  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- push-to-talk on button 10 in a network game with the menu in mode 4: the radio switch 0x30E6E0 on the global 0x45B718, the talk time against 10, a 1.0 hold on release; 0x236430 calls it)
 0x00235300 0x140 Close__4CTCMFb  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the menu closed: the controller's menu state, the player's flag (0x5AA620, 0), a 0.3 hold unless mode 6, mode 2 or 3, the eight columns' -1 slides, the compass on, theReco suspended offline, CInput::Flush; CHUD::Tick, ReInit_Uninit and the recogniser's callback call it)
 0x00235440 0x11C Open__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 27: hud_tcmtree.cpp -- the menu opened: the player's flag, the controller's TCM state and rumble stopped, the pad's call (11, 1), UpdateState(true), ShowRoot, mode 0, the compass off, the first column's slides, the root on, the layout, theReco resumed offline)
