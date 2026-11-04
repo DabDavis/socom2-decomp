@@ -26,6 +26,7 @@ public:
     virtual ~CMsgEditor();
     void SetMaxLength(int n);
     void DeleteCharacter();
+    void Cancel();
     void AddCharacter(char c);
     void Clear();
     void Init(C2DFont *font);
@@ -133,6 +134,14 @@ void CMsgEditor::DeleteCharacter()
         m_text.SetString(buf, true);
         m_text.UpdatePos();
     }
+}
+
+/* the line dropped unsent: the text emptied (OVL1 0x2C9CC0: the chat keyboard's escape key,
+ * fts_controller.cpp's 0x2C6C70; the name ours) */
+void CMsgEditor::Cancel()
+{
+    m_text.SetString(0, true);
+    m_text.UpdatePos();
 }
 
 /* the line entered: a "/w" command's arguments handed to the whisper's parser, then the text
