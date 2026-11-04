@@ -1927,6 +1927,23 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the UI, round 16** (the dialog design's loaders and their template tail, zui_spec.cpp):
+  - an `int` counter compared with an unsigned count (`sltu`) keeps `i*8` recomputed each pass; an `unsigned` counter is
+    strength-reduced to a byte offset stepped by 8 (LoadFromRdr's SCRIPT_LIBRARY loop);
+  - MW keeps a class object in memory only as the source or destination of a bitwise copy: a pair passed by value to an
+    inline is built member-wise in one slot, copied bitwise into the parameter and read from there; with a user copy
+    constructor the copy is elided and the parameter broken into registers (AddKeyProps by value reaches the target's
+    0x124, 27 off: one bitwise copy too many);
+  - CGameDlgDesign::LoadFromRdr 0x381550 and LoadModels 0x3812B0 are SOCOM 1's (both builds read ROTX, ROTY and ROTZ into
+    the same float); CGameDlgDesign is 0x74 bytes, a third string at 0x24 (zui.cpp's 0x367430 constructs it),
+    CDlgDesignModel 0x34;
+  - two map rows carried a wrong mangled length (`70` for `72__vector_deleter<15CDlgDesignModel,...>`, 0x36AE50 and
+    0x36ACF0): as spelled no source could match them;
+  - open: LoadDlgObjects 0x383360 (0x29C vs 0x2B8: the target keeps an orphaned else-block, seven words, at each inlined
+    Count()/Item() ternary), resize<CDesignDlgObj> 0x383960 (6) and resize<CDlgDesignModel> 0x383AA0 (5: the inlined
+    destructor of the temporary's second string reads the text pointer through the member's address in the target, `lw
+    a0,8(a0)`), erase<CSaferStr> 0x383BC0 (15), __copy<CSaferStr> 0x383D00 (is_long called out of line here),
+    erase<CDlgDesignModel> 0x384BD0 (20), CDlgDesignModel's copy constructor 0x3854C0 (one saved register short).
 - **Tells from the weapons, round 18** (a new vis_load.cpp; OpenDecals, NodeSetup, LandmarkEnable, AlphaEnable):
   - two bool calls guarding a cleanup, written `bool ok = f(); if (ok) ok = g(); if (!ok) X;`, give the target's padded join
     label before the second branch (`andi; nop; bnez`); `f() == false || g() == false` pads after the branch instead;
