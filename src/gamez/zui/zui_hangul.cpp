@@ -33,8 +33,13 @@
  * CSkbVec's, vector's, __vector_imp's, the deleter's and the capacity's constructors) and the target
  * inlines it whole, while its destructor keeps the two this-tests and ~vector's call.
  * OPEN, not written yet: the recursive index stepper 0x3903A0, the composer 0x391670 and its rule
- * matcher 0x3919D0, 0x391E70 (a sum of an index vector's first n), 0x391F80 (the index walker's
- * constructor); everything they call out of line keeps its placeholder.
+ * matcher 0x3919D0, the split's sum 0x391E70 (12 off as measured: CSkbSplit's note); everything
+ * they call out of line keeps its placeholder or its draft. Round 23 wrote the split (CSkbSplit:
+ * its constructor 0x391F80, Part 0x391E50) and a sequence's jamo read 0x391E20, byte-exact; the
+ * composer and matcher call the parts' operator[] 0x391D80, end() 0x391D40 (the scalar vector's
+ * class end(), out of line: only the matcher's call emits it), the reverse iterator's operator*
+ * 0x391D30 and the vector's constructor 0x391DA0 out of line, and keep their counters in stack
+ * slots past nine saved registers.
  * OPEN, written: SkbParseKoreanRules (0x4DC against 0x464), SkbParseComplete (0x318 against 0x2A4):
  * the rdr walks' loop counters (the target keeps the productions' in a stack slot) and the inlined
  * Item()s' shapes; SkbHangulBack (0x19C/0x190: from the start to the resize byte-exact, but the

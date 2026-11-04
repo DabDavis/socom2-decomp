@@ -605,7 +605,14 @@ int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out);
  * through its address (`addiu v0,sp,372; lw v1,0(v0)`) and materialises `!= -1 && != 0` with two
  * branches and an assigned true (daddiu); CDFileOpen by value gives nor/sltu. Taking it by `const
  * int &` gives the target's size (8 instructions off) but costs IsOpen and Close their matches;
- * `if (...) return true; return false;` and a bool local cost them too. The rest matches. */
+ * `if (...) return true; return false;` and a bool local cost them too. The rest matches.
+ * Round 23, measured again: the helper by `const int &` or `const int *` gives LoadHddIconFile the
+ * target's size and its jump form, 3 instructions off (the field read folded, `lw v1,372(sp)`,
+ * where the target builds the address), and costs IsOpen 0x39EF80 and Close 0x39E8A0 7 each (both
+ * keep the value form in the target); the reference read into a local first keeps those two and
+ * changes nothing here. Everywhere else in the target the file's m_file and m_flags go through
+ * saved registers (sp+372 into s0, sp+384 into s1, set up with the inlined constructor): only the
+ * inlined IsOpen reads them afresh, so its copy here is not the out-of-line one's source. */
 int LoadHddIconFile(const char *dir, const char *name, HDDICONFILE *out)
 {
     CFileIO file;
