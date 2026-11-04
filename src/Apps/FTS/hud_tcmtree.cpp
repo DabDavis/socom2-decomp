@@ -9,8 +9,8 @@
  * delay tick (HideAll five copies deep, Tick three: each copy calls the accessor chains one level
  * shallower, so their ten out-of-line copies 0x231DD0-0x231E30 and 0x232460-0x232480 name the
  * chains' levels -- CTCMNode's accessor, CTCMNodeList's, the vector's), the sounds, and CTCM's
- * tick, push-to-talk, close, open, root, next and the item searches. OPEN: RemoveChild,
- * ShowRoot, Select (registers). Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its
+ * tick, push-to-talk, close, open, root, next and the item searches (ShowRoot since round 42).
+ * OPEN: RemoveChild, Select (registers). Written in round 41: one kind's items, tcmAddKindItems 0x2329F0 (its
  * entries go under the third group item's caption, which an inline returns). Not yet: the cache
  * builders 0x232BC0/0x2344E0, the open menu's and closed menu's pad handlers 0x235D40/0x2359A0.
  * Defined in reverse of their image order (-inline deferred). */
@@ -261,20 +261,21 @@ void CTCM::Next()
 
 /* the root's items shown: the first one shown or with no test opened, the select sound, the
  * layout (the pushed selection a ternary: its temporary stored in each arm, the count declared
- * first).
- * OPEN, 4 instructions, one register pair: the target keeps the walked child in v1 (the address
- * temporary's register) and its state byte in a1, MW the child in a1 and the byte in v1 -- a named
- * child at the top, after the counters, through GetChild or CTCMNodeList::Get, or none (the
- * element read twice) all tried */
+ * first). The state a local declared, uninitialised, ahead of the walked child (round 42): numbered
+ * below the child, it is coloured after it, so the child keeps v1 (its address temporary's register)
+ * and the byte takes a1, as the target has them (the state read straight off the child, the byte is
+ * the later temporary and takes v1 first) */
 void CTCM::ShowRoot()
 {
     unsigned int n = m_children.size();
     int first = -1;
 
     for (unsigned int i = 0; i < n && first == -1; i++) {
+        TCM_STATE st;
         CTCMNode *c = m_children[i];
 
-        if (c->m_state == TCM_SHOWN)
+        st = c->m_state;
+        if (st == TCM_SHOWN)
             first = i;
         if (c->m_entry && !c->m_entry->m_update)
             first = i;
