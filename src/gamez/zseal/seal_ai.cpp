@@ -3238,21 +3238,19 @@ extern float data_0064FE48;
 }
 
 /* the range narrowed by a factor unless it stands (an inline: the factor, its argument, is loaded
- * ahead of the test, and the range read again for the product) */
+ * ahead of the test; the test reads the range through a const view, so the product reads it again --
+ * plain reads MW merges) */
 static inline void ScaleRange(CSealCtrlAi *ai, float k)
 {
-    if (data_0064FE48 != ai->m_6f4)
+    if (data_0064FE48 != ((const CSealCtrlAi *)ai)->m_6f4)
         ai->m_6f4 *= k;
 }
 
 /* an alert taken in: its amount (a default for none) summed, its point filled, its word kept, the range
  * narrowed unless it stands, then the pair OnDeath makes (OVL2 0x572240, new in SOCOM II; the name
- * unknown).
- * OPEN, 0xBC against 0xC4: through the inline the factor loads ahead of the test and the compare is the
- * target's (constant first), but the target reads the range again for the product (`lwc1; mul.s
- * $f0,$f0,$f2`) and pads the block, where MW here reuses the compare's load. Tried: the product as
- * `= m * k`, `= k * m`, through a pointer, a local copy, the test through an accessor or a cast
- * address, the test negated, the factor and the test written out in the function. */
+ * unknown). Byte-exact since round 33: the range's second load (`lwc1; mul.s $f0,$f0,$f2`) is the
+ * const view's in ScaleRange -- the kit's round-34 rule for two loads of one member with nothing
+ * between */
 extern "C" void func_00572240(CSealCtrlAi *ai, CAiAlert *alert, float amount)
 {
     if (alert) {
@@ -3355,16 +3353,13 @@ bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance)
 /* a direction as the goal, unless a goal of a higher kind is set: flattened, and made a unit
  * vector unless it came flat and asked to stay so; a position of another kind cleared (SetGoalPos
  * inlined), the facing's dot product with it returned -- none clears the direction, and the kind
- * once no position is left (OVL2 0x56D920; SOCOM 1's, its sqrtf now sqrt.s).
- * OPEN, 8 instructions (the size right): the target reads x again for the scaling after the sqrt
- * (`lwc1 $f0,0x174(a0)` after `mtc1 1.0`), x and z loaded into f1/f2, x*x in the mula, the root in
- * f2; MW here keeps the x it loaded for the length in a register across the sqrt and the test, as
- * the matched CPnt3D::Normalize does in the target (so sqrt.s is no barrier). The sum is written
- * z first, which gets the rest (`x*x + z*z`, SOCOM 1's order, is 18 off: x in f2 kept). Tried: the
- * components by value into a length inline, the scaling or the whole normalisation through an
- * inline taking the point by pointer, a scalar copy of the point, `len = 1.0f / len`, the two
- * scalings each `*= 1.0f / len`. The three-float constructor gives the stores (z loaded first) and
- * m_matrix's elements read straight give the dot's operand order (through operator() they swap) */
+ * once no position is left (OVL2 0x56D920; SOCOM 1's, its sqrtf now sqrt.s). Byte-exact since round
+ * 33: the target reads x again for its scaling after the sqrt (`lwc1 $f0,0x174(a0)` after `mtc1 1.0`)
+ * -- x scaled through a const view of the controller, the kit's round-34 rule, where a plain read lets
+ * MW keep the length's x across the sqrt; with it the sum is SOCOM 1's order, x*x first (round 32's 8
+ * instructions, its z-first sum a fit to the merged load). The three-float constructor gives the
+ * stores (z loaded first) and m_matrix's elements read straight give the dot's operand order (through
+ * operator() they swap) */
 float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
 {
     float dot = 1.0f;
@@ -3374,12 +3369,12 @@ float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
     if (dir) {
         m_goal_dir = CPnt3D(dir->x, 0.0f, dir->z);
         if (!flat || dir->y != 0.0f) {
-            float len = sqrtf(m_goal_dir.z * m_goal_dir.z + m_goal_dir.x * m_goal_dir.x);
+            float len = sqrtf(m_goal_dir.x * m_goal_dir.x + m_goal_dir.z * m_goal_dir.z);
 
             if (len != 0.0f) {
                 float inv = 1.0f / len;
 
-                m_goal_dir.x *= inv;
+                m_goal_dir.x = ((const CSealCtrl *)this)->m_goal_dir.x * inv;
                 m_goal_dir.z *= inv;
             }
         }
