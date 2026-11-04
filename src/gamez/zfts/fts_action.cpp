@@ -291,7 +291,10 @@ void CNodeAction::Reset()
  * entry of `actions`, its node found in the world, its valve made, an action put on the node unless
  * it already has an extension -- its anim, bitmap, range and elevation, then SOCOM II's settings:
  * the descriptor, no_netlog, one_shot, points, the type by name, the extra anims, the team (its two
- * sides swapped when the network game swaps them) and tcm */
+ * sides swapped when the network game swaps them) and tcm. Byte-exact (round 35): the action made
+ * and listed through the inline Add, the type by name through the inline GetActionType(const char *)
+ * returning early, and the anims tag and each extra anim assigned in their tests (the value tested
+ * in v0, the variable set in the delay slot) */
 int CNodeAction::Open(zdb::CWorld *world, const char *name)
 {
     _zrdr *rdr = zrdr_read(name, 0, 0);
@@ -464,7 +467,7 @@ extern const char *data_003DE6C8;      /* "Breach doorway under reticule" */
 }
 
 /* the action described for the UI: its own description, else its type's (SOCOM II's; OVL1
- * 0x2B4760 -- SOCOM 1's GetUIString beside it, 0x2B4820, is the same switch over the names) */
+ * 0x2B4760 -- 0x2B4820 and GetUIString 0x2B48E0 beside it are the same switch over two more name tables) */
 extern "C" const char *func_002B4760(CNodeAction *action)
 {
     const char *s = action->m_uidesc;
