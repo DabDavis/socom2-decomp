@@ -209,6 +209,9 @@ public:
      * SOCOM II, the name ours -- InitializeWeapons is every one's only caller) */
     char *GetDecalSetName();
     char *GetIconTextureName() const;
+    /* the model's name (SOCOM 1's, 0x3D2750: the pickups and the fire command pass it to
+     * CWorld::GetModel) */
+    char *GetModelName() const;
     bool AllocateHitAnimMem();
     bool AllocateSpecialMaterialAnimMem();
     char *GetFireAnimName();

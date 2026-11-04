@@ -547,6 +547,14 @@ int CZWeapon::GetNumMags()
     return m_nummags;
 }
 
+/* the model's name (SOCOM 1's GetModelName, 0x31EBE0, between GetIconTextureName and
+ * GetAssociatedGearName as 0x3D2750 is here: m_modelname, 0x18 in SOCOM 1; the pickups, the fire
+ * command and the AI map's fixup hand it to CWorld::GetModel) */
+char *CZWeapon::GetModelName() const
+{
+    return m_modelname;
+}
+
 char *CZWeapon::GetIconTextureName() const
 {
     return m_icontexname;
@@ -1426,47 +1434,58 @@ void CZWeapon::RemoveExplosivesInRange(const CPnt3D *pos, float range)
     m_pProjectilelist->RemoveExplosivesInRange(pos, range);
 }
 
-/* CZItemStash (0x3CFB20-0x3CFFAF, its rows named): a 0x28-byte object of three parallel lists of
- * words (0, 0xC, 0x18) and a word (0x24) -- an entry is its three words at one index, live while its
- * third is non-zero. The kit and the pickups use it (the class and its names ours) */
+/* CZItemStash (0x3CFB00-0x3CFFAF, its rows named): a 0x28-byte object of three parallel lists -- a
+ * weapon, an ammunition and a count of rounds per entry (0, 0xC, 0x18) -- and the animation the
+ * pickup it fills plays (0x24); an entry is live while its count is non-zero. The kit and the
+ * pickups use it (the class and its names ours). The three lists are three vector types: OVL2's
+ * pickup_main.cpp deletes a stash (CreateNetAmmoPickup 0x59E9E0, CPickup::Destroy, 0x59FD50)
+ * through three out-of-line destructors, one per member and identical (0x5427E0 the weapons',
+ * 0x542850 the ammunitions', 0x5428C0 the counts'); every writer pushes a CZWeapon * (the weapon
+ * list's GetWeapon, the kit's slot), a CZAmmo * (GetAmmo, the kit's) and a count, and every reader
+ * reads the weapon's and the ammunition's m_ID through the first two and compares the count signed
+ * (`n > 0`). All three run on the 4-byte pod (Add's three pushes through 0x1FE340). The words in and
+ * out stay ints: the rows' names, which seal_env.cpp and seal_airesponse.cpp call by */
 class CZItemStash {
 public:
     CZItemStash();
     int Count();
-    void Add(int a, int b, int c);
-    void Set(int i, int a, int b, int c);
+    void Add(CZWeapon *weapon, CZAmmo *ammo, int rounds);
+    void Set(int i, CZWeapon *weapon, CZAmmo *ammo, int rounds);
     bool Get(int i, int *a, int *b, int *c);
     void Clear(int i);
     void Compact();
+    void SetAnim(CZAnim *anim);
+    CZAnim *GetAnim();
 
-    std::vector<int> m_a;   // 0x0
-    std::vector<int> m_b;   // 0xc
-    std::vector<int> m_c;   // 0x18
-    int m_24;   // 0x24
+    std::vector<CZWeapon *> m_weapons;   // 0x0
+    std::vector<CZAmmo *> m_ammo;   // 0xc
+    std::vector<int> m_rounds;   // 0x18
+    CZAnim *m_anim;   // 0x24
 };
 
 /* the three lists empty (0x3CFF80: the kit and the pickups build theirs with it) */
 CZItemStash::CZItemStash()
 {
-    m_24 = 0;
+    m_anim = 0;
 }
 
-/* an entry's three words appended */
-void CZItemStash::Add(int a, int b, int c)
+/* an entry appended (its three pushes bind the parameters themselves: cast from ints, each
+ * push takes a temporary, 0xC longer) */
+void CZItemStash::Add(CZWeapon *weapon, CZAmmo *ammo, int rounds)
 {
-    m_a.push_back(a);
-    m_b.push_back(b);
-    m_c.push_back(c);
+    m_weapons.push_back(weapon);
+    m_ammo.push_back(ammo);
+    m_rounds.push_back(rounds);
 }
 
-/* the live entries: the third list's non-zero words. The postfix step is the target's: with it MW
+/* the live entries: the counts' non-zero words. The postfix step is the target's: with it MW
  * hoists the whole end into a preheader after the loop (entered with a `b`, the entry test repeated
  * there, the data's load shared with begin's); `++i` re-reads the data every pass, 0x18 short */
 int CZItemStash::Count()
 {
     int n = 0;
 
-    for (std::vector<int>::iterator i = m_c.begin(); i != m_c.end(); i++)
+    for (std::vector<int>::iterator i = m_rounds.begin(); i != m_rounds.end(); i++)
         if (*i)
             n++;
     return n;
@@ -1474,13 +1493,13 @@ int CZItemStash::Count()
 
 /* entry i's three words set when enough entries are live (`if (i > Count()) return;` branches
  * straight to the epilogue on `slt at`, as the target; the if-block form keeps a join) */
-void CZItemStash::Set(int i, int a, int b, int c)
+void CZItemStash::Set(int i, CZWeapon *weapon, CZAmmo *ammo, int rounds)
 {
     if (i > Count())
         return;
-    m_a[i] = a;
-    m_b[i] = b;
-    m_c[i] = c;
+    m_weapons[i] = weapon;
+    m_ammo[i] = ammo;
+    m_rounds[i] = rounds;
 }
 
 /* entry i's three words out; false when fewer entries are live */
@@ -1488,9 +1507,9 @@ bool CZItemStash::Get(int i, int *a, int *b, int *c)
 {
     if (Count() < i)
         return false;
-    *a = m_a[i];
-    *b = m_b[i];
-    *c = m_c[i];
+    *a = (int)m_weapons[i];
+    *b = (int)m_ammo[i];
+    *c = m_rounds[i];
     return true;
 }
 
@@ -1499,29 +1518,41 @@ void CZItemStash::Clear(int i)
 {
     if (i > Count())
         return;
-    m_c[i] = 0;
-    m_b[i] = 0;
-    m_a[i] = 0;
+    m_rounds[i] = 0;
+    m_ammo[i] = 0;
+    m_weapons[i] = 0;
 }
 
-/* every entry whose third word is zero erased from all three lists */
+/* every entry whose count is zero erased from all three lists */
 void CZItemStash::Compact()
 {
-    std::vector<int>::iterator a = m_a.begin();
-    std::vector<int>::iterator b = m_b.begin();
-    std::vector<int>::iterator c = m_c.begin();
+    std::vector<CZWeapon *>::iterator a = m_weapons.begin();
+    std::vector<CZAmmo *>::iterator b = m_ammo.begin();
+    std::vector<int>::iterator c = m_rounds.begin();
 
-    while (a != m_a.end()) {
+    while (a != m_weapons.end()) {
         if (*c == 0) {
-            a = m_a.erase(a);
-            b = m_b.erase(b);
-            c = m_c.erase(c);
+            a = m_weapons.erase(a);
+            b = m_ammo.erase(b);
+            c = m_rounds.erase(c);
         } else {
             ++c;
             ++a;
             ++b;
         }
     }
+}
+
+/* the pickup's animation, kept (0x3CFB10: CreateNetAmmoPickup and 0x59FAC0 store ActivateArg's
+ * result; the name ours) and handed back (0x3CFB00: CPickup::Destroy reads it before the delete) */
+void CZItemStash::SetAnim(CZAnim *anim)
+{
+    m_anim = anim;
+}
+
+CZAnim *CZItemStash::GetAnim()
+{
+    return m_anim;
 }
 
 /* the menus' valve for an item -- "Enable_" and its name -- none for any other (SOCOM II's, 0x3CF1F0:

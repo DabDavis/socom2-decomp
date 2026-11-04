@@ -8272,14 +8272,14 @@
 0x003CF190 0x44 __dt__10ZWepReaderFv  # OVL1; s1:align
 0x003CF1E0 0x8 __ct__10ZWepReaderFv  # OVL1; by hand (the weapons lane, round 22: an empty class's constructor handing back this, right after ~ZWepReader 0x3CF190 at the end of the reader's unit; zwep_reader.cpp defines both)
 0x003CF1F0 0x90C GetEnableValve__8CZWeaponF10EQUIP_ITEM  # OVL1; by hand (the weapons lane, round 22: a switch over items, each returning CValve::GetByName("Enable_<item>") -- Enable_LAW, Enable_M16 ...; none for the rest; zanim_menu.cpp's slot test reads the valve's flags at +4, as the engine core's round 7 found; the name ours); zwep_weapon.cpp
-0x003CFB00 0x8 func_003CFB00  # OVL1
-0x003CFB10 0x8 func_003CFB10  # OVL1
+0x003CFB00 0x8 GetAnim__11CZItemStashFv  # OVL1; by hand (the weapons lane, round 23: CZItemStash's word at 0x24 returned -- the CZAnim * CreateNetAmmoPickup and 0x59FAC0 store through 0x3CFB10 from CZAnim::ActivateArg's result; CPickup::Destroy reads it before deleting the stash; the name ours); zwep_weapon.cpp
+0x003CFB10 0x8 SetAnim__11CZItemStashFP6CZAnim  # OVL1; by hand (the weapons lane, round 23: CZItemStash's word at 0x24 set -- CreateNetAmmoPickup 0x59E9E0 and 0x59FAC0/0x59FD50 pass it CZAnim::ActivateArg's result (a CZAnim *); the name ours); zwep_weapon.cpp
 0x003CFB20 0x118 Compact__11CZItemStashFv  # OVL1; by hand (the wep lane: a 0x28-byte object of three parallel pod vectors at 0/0xC/0x18 and a word at 0x24; erases, through the pod vector's erase 0x28F220, every entry whose third word is zero; CPickup::CleanupAmmoPickup calls it; the class and its names ours); zwep_weapon.cpp
 0x003CFC40 0xA8 Clear__11CZItemStashFi  # OVL1; by hand (the wep lane: zeroes entry i of all three lists when the live count reaches i; OVL2's 0x59DFB0 calls it for eight slots; the name ours); zwep_weapon.cpp
 0x003CFCF0 0x78 Count__11CZItemStashFv  # OVL1; by hand (the wep lane: the third list's non-zero entries counted; the kit and the pickups call it; the name ours); zwep_weapon.cpp
 0x003CFD70 0xC8 Get__11CZItemStashFiPiPiPi  # OVL1; by hand (the wep lane: entry i's three words out, false when fewer are live; the name ours); zwep_weapon.cpp
-0x003CFE40 0xA8 Set__11CZItemStashFiiii  # OVL1; by hand (the wep lane: entry i's three words set when enough are live; the kit calls it; the name ours); zwep_weapon.cpp
-0x003CFEF0 0x88 Add__11CZItemStashFiii  # OVL1; by hand (the wep lane: the three words pushed through the pod insert 0x1FE340; the pickups call it; the name ours); zwep_weapon.cpp
+0x003CFE40 0xA8 Set__11CZItemStashFiP8CZWeaponP6CZAmmoi  # OVL1; by hand (the wep lane: entry i's three words set when enough are live; the kit calls it; the name ours); zwep_weapon.cpp; by hand (the weapons lane, round 23: the parameters typed as the stash's three vectors -- a CZWeapon *, a CZAmmo *, a count; no hand-written caller spells the old name, the kit's 0x5BB990 calls it); zwep_weapon.cpp
+0x003CFEF0 0x88 Add__11CZItemStashFP8CZWeaponP6CZAmmoi  # OVL1; by hand (the wep lane: the three words pushed through the pod insert 0x1FE340; the pickups call it; the name ours); zwep_weapon.cpp; by hand (the weapons lane, round 23: the parameters typed as the stash's three vectors -- CreateNetAmmoPickup pushes CZWeaponList::GetWeapon's and CZAmmoList::GetAmmo's results and a count, the kit's 0x5BA040 its slot's weapon and ammunition pointers; no hand-written caller spells the old name); zwep_weapon.cpp
 0x003CFF80 0x30 __ct__11CZItemStashFv  # OVL1; by hand (the wep lane: zeroes the 0x28-byte CZItemStash -- its three word vectors and the word at 0x24 -- right after CZItemStash::Add; the kit (0x59E9E0, 0x59FAC0, 0x59FD50) and 0x2A8140 build theirs with it; the name ours)
 0x003CFFB0 0x10 RemoveExplosivesInRange__8CZWeaponFPC6CPnt3Df  # OVL1; by hand (the wep lane: tail-calls CZProjectileList::RemoveExplosivesInRange on m_pProjectilelist with its point and range; 0x25CC80 calls it; the name ours)
 0x003CFFC0 0xC TimerCleared__8CZWeaponFv  # OVL1; s1:order (SOCOM 1's CZWeapon::TimerCleared 0x31C9A0, first of its timer statics as here: returns m_timer_bTimerCleared, 0x4B52D0)
@@ -8372,7 +8372,7 @@
 0x003D2610 0x6C func_003D2610  # OVL1
 0x003D2680 0xC0 IsLegalAmmo__8CZWeaponFP6CZAmmo  # OVL1; s1:align confirmed by hand (the wep lane: walks m_LegalAmmoList (0xC4) comparing CZAmmo::GetName's strings, as SOCOM 1's); zwep_weapon.cpp
 0x003D2740 0x8 GetIconTextureName__8CZWeaponCFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons tests it and passes it to CWorld::GetTexHandle as SOCOM 1's does; returns m_icontexname, 0x14)
-0x003D2750 0x8 func_003D2750  # OVL1
+0x003D2750 0x8 GetModelName__8CZWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetModelName__8CZWeaponCFv 0x31EBE0, between GetIconTextureName and GetAssociatedGearName as here -- m_modelname, 0x18 in SOCOM 1 and 0x1C here, both neighbours shifted by the same word; its callers hand it to CWorld::GetModel); zwep_weapon.cpp
 0x003D2760 0x8 GetAssociatedGearName__8CZWeaponFv  # OVL1; s1:calls by hand (the kit lane's round 12, vetted by the integrator: called where SOCOM 1's SetItemByIndex calls CZWeapon::GetAssociatedGearName, with the same arguments)
 0x003D2770 0x34 func_003D2770  # OVL1
 0x003D27B0 0x8 func_003D27B0  # OVL1
