@@ -234,6 +234,39 @@ void SkbParseComplete(CSkbCompleteVec *complete, _zrdr *rdr, const char *tag)
     }
 }
 
+/* a split of n jamo into k consecutive parts, the composer's walk over every split (ours, 16
+ * bytes: the total, then the parts). Its members, not written but these: the constructor 0x391F80
+ * (k-1 parts of 1, the last n-k+1, the parts resized through OVL1's pod resize 0x28B0E0 with a
+ * pooled 0), the stepper 0x3903A0 (recursive), the sum of the first n parts 0x391E70 (unrolled by
+ * 8), the destructor 0x390690 (its draft matches) and the test that a split is left 0x391DF0 (the
+ * parts' size). Measured (the UI's round 23): the sum reaches the target's 0xD0 only with the parts
+ * read through a reference-returning accessor in the body (`Parts()[i]`: the vector's address
+ * hoisted into the test block laid after the remainder loop, the round-22 preheader rule), 12
+ * instructions off then in a t3/t4/t5 rotation of the unroller's temporaries (the counter's
+ * declaration, the sum's form, a while loop, CSkbVec or unsigned parts: no change); the
+ * constructor is 0x178 of 0x190, its last part stored through two class iterators (an FPR copy
+ * between stack temporaries: include/vector's class end() and back()) where the pod vector the
+ * resize names has raw pointers */
+class CSkbSplit {
+public:
+    unsigned int Part(int i);
+
+    int m_n;   // 0x0
+    std::vector<unsigned int> m_parts;   // 0x4
+};
+
+/* a split's part i (0x391E50; the composer calls it out of line; ours) */
+unsigned int CSkbSplit::Part(int i)
+{
+    return m_parts[i];
+}
+
+/* a sequence's jamo i, sign-extended (0x391E20; the composer calls it out of line; ours) */
+char SkbSeqJamo(SKBSEQ *seq, int i)
+{
+    return seq->m_jamo[i];
+}
+
 /* the jamo being composed set again from the last piece's (0x3914A0, after a composition; the name
  * ours) */
 void SkbHangulRestart(CSkbPieces *pieces)

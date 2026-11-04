@@ -7363,10 +7363,10 @@
 0x00391DE0 0x8 func_00391DE0  # OVL1
 0x00391DF0 0xC func_00391DF0  # OVL1
 0x00391E00 0x14 func_00391E00  # OVL1
-0x00391E20 0x10 func_00391E20  # OVL1
+0x00391E20 0x10 SkbSeqJamo__FP6SKBSEQi  # OVL1; the UI lane round 23: ours, by its body and its caller (zui_hangul.cpp: a SKBSEQ's jamo byte i, sign-extended -- the composer 0x391670 calls it with the sequence from SKBRULE::Seq and compares it with the jamo string's byte; byte-exact)
 0x00391E30 0xC func_00391E30  # OVL1
 0x00391E40 0x8 func_00391E40  # OVL1
-0x00391E50 0x14 func_00391E50  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta)
+0x00391E50 0x14 Part__9CSkbSplitFi  # OVL1; tu: zui_cleanup.cpp~ (1.0 beta); the UI lane round 23: ours, by its body and its caller (zui_hangul.cpp: the composer's split, a total and a vector of parts at 4 -- its part i; the composer 0x391670 calls it with the split built by 0x391F80 at sp+256; byte-exact)
 0x00391E70 0xD0 func_00391E70  # OVL1
 0x00391F40 0x8 func_00391F40  # OVL1
 0x00391F50 0x10 func_00391F50  # OVL1
