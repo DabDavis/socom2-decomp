@@ -726,8 +726,14 @@ void CHUD::ReInit_Uninit()
 
 extern "C" int sprintf(char *buf, const char *fmt, ...);
 
+/* the projectiles' last delayed detonation (zweapon.h's static members, the weapons lane's names:
+ * ClearNewExplosion 0x3C6980 clears its flag) */
+class CZProjectile {
+public:
+    static void ClearNewExplosion();
+};
+
 /* not named yet: SOCOM II's own re-inits and resets */
-extern "C" void func_003C6980();
 extern "C" void func_0022D190();
 extern "C" void func_00242B20(CSpectatorInfo *info);
 extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, int c, float time);
@@ -741,7 +747,7 @@ void CHUD::ReInit_Init()
 {
     if (appCamera)
         StopShake__10CAppCameraFv(appCamera);
-    func_003C6980();
+    CZProjectile::ClearNewExplosion();
     theHUD->On();
     theHUD->m_letterbox.RemoveLetterbox();
     for (unsigned int i = 0; i < 6; i++) {
