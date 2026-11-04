@@ -119,21 +119,19 @@ inline char *ZString(_zrdr *z)
     return z->type == 3 ? z->string : 0;
 }
 
-/* the running mission's number, 0 none. Round 15 (build/scratch/onl/sp_lan.py): CreateGame's,
- * GetGameInfo's and the world report's targets (0x2EF590, the chat unit's) all branch the inner
- * zero arm straight to the final join -- or, in CreateGame, merge it into the outer zero arm --
- * which a nested ternary's inner join never allows; `if (p && *p) return atoi(p + 2); return 0;`
- * gives 8 and 20 here (one zero arm where the targets have two), the nested ifs the right joins
- * but not the delay slots (the `== 0` ternary 0x36C/0x22C). Not applied. Round 17: read as IR, both
- * targets are ONE zero block reached from both tests -- `&&` code, the inner test `bnez` to atoi and a
- * `b` to the zero (CreateGame's outer beqz steals the zero's move into its slot, GetGameInfo's inner
- * `b` does) -- but every `&&` spelling has MW fold the bnez/b pair into one beqz (`if (p && *p) return
- * atoi(p + 2); return 0;`, as a ternary the && is materialised); an inline bool test (`HasMission() ?
- * atoi : 0`, returned or as an if) 0x35C/24 off; `if (p) return *p == 0 ? 0 : atoi(..); return 0;` and
- * four more 0x36C/0x22C or 10/21 (build/scratch/onl/mn.sh) */
+/* the running mission's number, 0 none. Read as IR, the three targets (CreateGame's, GetGameInfo's
+ * and the chat unit's world report 0x2EF590) are ONE zero block reached from both tests: the
+ * inner test `bnez` to atoi, its fall-through a `b` to the zero, the && ternary's own code (round 17's
+ * reading). Round 18: it is `p && *p ? atoi(p + 2) : 0` over the pointer IN A LOCAL -- with the global
+ * read in place MW materialises the && into a bool and tests that (round 17's "as a ternary the && is
+ * materialised"), with the if-forms it folds the bnez/b pair into one beqz; CConsole::FindHandler's
+ * `name && h->m_name ? !strcmp(..) : 0` (con_ps2.cpp, 0x29D080) has the same blocks, found by
+ * build/scratch/onl/pat_bz.py (matched rows holding an unfolded branch around an empty goto) */
 inline int MissionNumber()
 {
-    return data_004364FC ? (*data_004364FC ? atoi(data_004364FC + 2) : 0) : 0;
+    const char *p = data_004364FC;
+
+    return p && *p ? atoi(p + 2) : 0;
 }
 
 /* whether the menus came from the LAN menu */
@@ -222,11 +220,7 @@ bool CZLANLobby::RefreshGameList(C2D *page)
 
 /* a LAN game hosted: the game server's connection info ours, the game's info made from the
  * menus' valves and variables (the passwords only when their valves say so; the shape the chat
- * unit's CreateNewGameStateHandler has).
- * OPEN, 10 instructions, all in the inlined mission number (GetGameInfo's open): the target
- * branches on the name's first byte with `bnez` to the atoi block and reaches the zero through a
- * `b`; ternaries, if/else chains and early returns tried (try.py, 14 spellings) give `beqz` or a
- * block more */
+ * unit's CreateNewGameStateHandler has; byte-exact since round 18's mission number, above) */
 bool CZLANLobby::CreateGame()
 {
     const char *name = "testgame";
@@ -365,13 +359,9 @@ bool CZLANLobby::JoinGame(const char *name)
     return true;
 }
 
-/* the game we host as its info goes out: the players and the mission brought up to date.
- * OPEN, 21 instructions (all in the inlined mission number): the target tests the name's first
- * byte with `bnez` to the atoi block placed after the zero arm (and gives the outer null test a
- * zero block of its own); every spelling tried -- the ternary either way round, `== 0`, an if/else
- * chain into a local, early returns, the name in a local -- either puts the atoi block first or
- * adds a block (CreateLANGame's copy of the same inline schedules its zero into the outer test's
- * delay slot) */
+/* the game we host as its info goes out: the players and the mission brought up to date (byte-exact
+ * since round 18's mission number: the delay-slot filler puts the zero block's move in the inner `b`
+ * here, in the outer test's slot in CreateGame -- one IR) */
 void CZLANLobby::GetGameInfo(LANGameInfo *out)
 {
     data_0044FE10.m_info.m_players = theNetwork.zNetGetValidGameClientCount();

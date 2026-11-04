@@ -720,35 +720,23 @@ extern char *data_004364FC;
 extern LANMissionRules *data_00437CE8;
 }
 
-/* the running mission's number, 0 none (the LAN lobby's inline, its first-byte test written
- * `== 0` here: that lays the zero arm out before atoi's as the world report's target does) */
+/* the running mission's number, 0 none (the LAN lobby's inline: the && ternary over the pointer in a
+ * local -- round 18, zNetLANLobby.cpp's comment) */
 inline int MissionNumber()
 {
-    return data_004364FC ? (*data_004364FC == 0 ? 0 : atoi(data_004364FC + 2)) : 0;
+    const char *p = data_004364FC;
+
+    return p && *p ? atoi(p + 2) : 0;
 }
 
 /* the game's world reported to the server, the time to the next report returned -- 25 seconds,
  * 5 with no mission: its name (the lobby's game-name variable, else "testgame"), rules, players'
  * and spectators' room, the rules' flags and mission, our three figures and its state, the game's
- * clients pinged (SOCOM 1's report, inlined in its READY_TO_CONNECT tick; OVL1 0x2EF590).
- * OPEN, 9 instructions, all at the mission number's joins: the blocks are the target's (the inner
- * zero arm, atoi's, the outer zero falling into the store through &rep.GameLevel), but the target
- * threads the inner zero arm's branch straight to the store and fills atoi's `b` from it (`b +4;
- * addiu v1,sp,452`), where MW here keeps the inner ternary's join (`b` to atoi's `b; nop`) and pads
- * the outer zero with a nop (the target's nop follows `li s3,5000` instead). Tried (hv.py specs
- * sp_wr*.py, 25 spellings): the ternary either way round, `== 0`/`!`, if/else chains and early
- * returns in the inline, the expression written in the caller, an out-parameter (pointer,
- * reference, returned reference), the delay's test as ==/ternary/if-else, a pointer or reference
- * to the field -- 9 at best (SOCOM 1's inlined report has the target's shape exactly, 0x32CFB0).
- * Round 15: the miss is jump threading -- the inner zero arm must branch to the final join, so the
- * inner and outer arms assign ONE variable (no inner-ternary temporary left at an inner join): an
- * if/else chain into one local does thread (12: the `b`s go straight to the join) but schedules
- * `p + 2` into atoi's delay slot where the nested ternary leaves it for the bnez's; `p + 2` taken
- * into a local first, the per-arm stores, `&&`/`||` forms and ten more inline spellings are no
- * nearer. GetGameInfo 0x303780 inlines the same expression and its target threads the same way
- * (written `== 0` there it misses exactly as here); CreateGame 0x303F40's target merges the two
- * zero arms instead. The report's GenericField1 is LobbyWorldID (0x66A538: the source said
- * 0x66A5C8 until round 15, a wrong reference the instruction count did not show) */
+ * clients pinged (SOCOM 1's report, inlined in its READY_TO_CONNECT tick; OVL1 0x2EF590). Byte-exact
+ * since round 18: the mission number is ONE zero block reached from both tests (the && ternary over
+ * the pointer in a local, MissionNumber above), which the nested ternaries and if-chains of rounds
+ * 13-17 (34 spellings) never gave. The report's GenericField1 is LobbyWorldID (0x66A538: the source
+ * said 0x66A5C8 until round 15, a wrong reference the instruction count did not show) */
 extern "C" int func_002EF590(CValve *locked)
 {
     MediusWorldReport rep;
