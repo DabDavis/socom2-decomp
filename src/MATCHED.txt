@@ -2706,6 +2706,7 @@
 0x00271950 ActivateSequence__6CZAnimFPCc
 0x002719B0 __dt__13CZAnimArgListFv
 0x00271AE0 __dt__9CZAnimArgFv
+0x00271B30 ParseNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket
 0x00271EE0 AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket
 0x002720E0 GetCmd__13CZAnimArgListFi
 0x002721C0 GetValve__13CZAnimArgListFi
@@ -2727,6 +2728,7 @@
 0x00272BB0 ActivateArg__6CZAnimFie
 0x002732C0 ActivateEx__6CZAnimFie
 0x00273320 ActivateExV__6CZAnimFPc
+0x00273780 func_00273780
 0x00273950 func_00273950
 0x00273960 func_00273960
 0x00273980 GetHealth__6CZAnimFv
@@ -3376,7 +3378,9 @@
 0x002A2D10 SetPoint__14CCompassAnchorFi
 0x002A2D40 AddPoint__14CCompassAnchorFPC6CPnt3D
 0x002A2E30 __dt__8CCompassFv
+0x002A2EB0 ftsGetAltitudeApprox__FPC6CPnt3Dfb
 0x002A3930 func_002A3930
+0x002A3950 func_002A3950
 0x002A3AF0 func_002A3AF0
 0x002A3B00 GetIntersect__8CDIDummyFPQ23zdb11DiIntersect
 0x002A3B10 GetAltitude__8CDIDummyFPQ23zdb11DiIntersect
@@ -4143,6 +4147,7 @@
 0x002DD2B0 GetEdgeIntersectsY__Q23zdb3CDIFP6CPnt3DP6CPnt3D
 0x002DD4D0 GetEdgeIntersects__Q23zdb3CDIFP6CPnt3DP6CPnt3DP6CPnt3D
 0x002DD690 intersect2d__FPC6CPnt3DPC6CPnt3DPC6CPnt3DP6CPnt3D
+0x002DD8E0 GetAltitude__Q23zdb7CDIPolyFPQ23zdb11DiIntersect
 0x002DDAB0 __dt__Q23zdb7CDIBBoxFv
 0x002DDB30 __ct__Q23zdb7CDIBBoxFv
 0x002DDB70 __dt__Q23zdb7CDIPolyFv

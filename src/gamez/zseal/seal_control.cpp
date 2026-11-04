@@ -220,9 +220,18 @@ bool func_002C30B0(const CZSealBody *seal);
 /* the two teams' bomb sites (OVL1 bss, past theMission's mapped size; the names ours) */
 extern zdb::CNode *data_00437DCC;
 extern zdb::CNode *data_00437DD0;
-/* the time the mission has left (OVL1 0x2A6AD0, on theMission) */
-int func_002A6AD0(void *mission);
-extern unsigned char data_004364E0[];
+}
+
+/* the mission, only the time it has left (CMission::GetTimeLeft, OVL1 0x2A6AD0, on theMission, OVL1
+ * bss 0x4364E0: fts_state.h's class, which this unit does not include) */
+class CMission {
+public:
+    int GetTimeLeft();
+};
+
+extern CMission theMission;
+
+extern "C" {
 /* (OVL2 0x5A7DE0 is CZSealBody::CanFire, zseal.h's) the kit's wait before the next use (OVL2
  * 0x5C0AD0, the kit lane's) */
 float func_005C0AD0(CZKit *kit);
@@ -246,7 +255,7 @@ bool CSealCtrl::CanPlaceBomb(CNodeAction *action)
         site = true;
     bool time = true;
 
-    if (theNetwork.m_9 && (float)func_002A6AD0(data_004364E0) <= 0.0f)
+    if (theNetwork.m_9 && (float)theMission.GetTimeLeft() <= 0.0f)
         time = false;
     if (m_244 <= 0.0f && seal && time && seal->m_kit.HasItem((EQUIP_ITEM)154) &&
         seal->m_kit.ItemHasAmmo((EQUIP_ITEM)154) && seal->CanFire(true, false) &&
