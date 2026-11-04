@@ -14,10 +14,24 @@
  * 0x357BC0 and Hookup 0x3571D0 are rows outside the lane), 0x369880 (reads a string member of
  * theGame, +0x8C, for a sound), and the vector instances closing the unit (0x36AE50 among the
  * clears). Generated drafts stand for the rest. Round 15 wrote RunEventAnim (0x367810) and
- * CDblBufTextureRelocator's PreGetSprPacket (0x365210), both byte-exact. */
+ * CDblBufTextureRelocator's PreGetSprPacket (0x365210), both byte-exact. Round 18 wrote Init
+ * (0x368570, SOCOM 1's) and the design loader it calls, LoadDesign (0x367430, ours: the block SOCOM
+ * 1's Init and SwitchMenu inlined), whose design's inline constructor and destructor name the vector
+ * copies after it (0x3676D0-0x3677F0) -- LoadDesign is byte-exact once 0x22BAD0, the copy of
+ * ~vector<CSaferStr> its design's two string vectors are destroyed through (an earlier unit's, kept by
+ * the linker; only LoadDesign calls it), carries that name (a row outside the lane: measured with it
+ * renamed, 40 relocations resolved). */
 
 #include "zui_2d.h"
+#include <stdio.h>
 #include <iostream>   /* (its pair opens __sinit_zui.cpp, 0x403620) */
+
+/* the rdr reader (zrdr.h's: the file it returns is a _zrdr, CGameDlgDesign::LoadFromRdr's) */
+class CRdrFile : public _zrdr {};
+CRdrFile *zrdr_read(const char *name, const char *path, int flags);
+void zrdr_free(CRdrFile *file);
+
+class CZAnimZAR;
 
 /* the menus' task scheduler (zanim.h's CSched_Manager, 0x20 bytes: a list of tasks; only its
  * constructor and destructor here, both out of line, 0x34E860/0x34EA70) */
@@ -162,8 +176,18 @@ public:
     /* the actions on an event run, each with the argument given or its own (SOCOM 1's; SOCOM II
      * looks the animation up twice) */
     bool RunEventAnim(ActionItem::EVENT event, const char *arg);
+    /* the menu emptied (0x369210, SOCOM 1's) and built from a design (0x367950, SOCOM 1's) */
+    void Clear();
+    void LoadFromDesign(const CGameDlgDesign &design, CZAnimZAR *zar);
+    /* the design an rdr names read and the menu built from it (SOCOM 1's Init and SwitchMenu inlined
+     * it; the name ours) */
+    void LoadDesign(const char *name, CZAnimZAR *zar);
+    /* the menu set up over a relocator, its own rdr's design loaded (SOCOM 1's) */
+    bool Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar);
 
-    unsigned char _0[0x278];
+    unsigned char _0[0xc0];
+    CZAnimZAR *m_zar;             // 0xc0 (SOCOM 1's at 0xc0 too)
+    unsigned char _c4[0x278 - 0xc4];
     bool m_movierunning;          // 0x278 (SOCOM 1's at 0x244)
     bool m_has_mpeg_background;   // 0x279
     bool m_loopMPEG;              // 0x27a: SOCOM II's (TickMPEG loops the movie when set; the name ours)
@@ -207,10 +231,15 @@ void zSysFifoEnable(unsigned int mode);
 void zSysFifoDisable();
 extern "C" int sceGsSyncPath(int mode, unsigned short timeout);
 
-/* the video state (zvid.h's _zvid_public: only the page TickMPEG hands the movie) */
+/* the video state (zvid.h's _zvid_public: the run time a load's message stamps, the page TickMPEG
+ * hands the movie, the CRTC flag Init clears) */
 struct _zvid_public {
-    unsigned char _0[0x34];
+    unsigned char _0[0x20];
+    float runTime;            // 0x20
+    unsigned char _24[0x34 - 0x24];
     unsigned int renderBuf;   // 0x34
+    unsigned char _38[0x7d - 0x38];
+    unsigned char pcrtcDo;    // 0x7d
 };
 extern _zvid_public zVid;
 
@@ -246,6 +275,27 @@ extern COurGame theGame;
 
 /* the sound PlayCountSound plays (SOCOM 1's gp static; the name ours) */
 static CSnd *s_countSound;
+
+/* the flags a design's rdr is read with (SOCOM 1's global, a byte there: 0x49EA70, loaded as a word) */
+int LoadDialogsFromReader;
+
+/* the message a design's load prints into (0x49EAB0, 0x100 bytes up to zui_2d.cpp's statics; the
+ * name ours) */
+static char s_loadMsg[0x100];
+
+/* a dialog design read from the rdr it is named by, through the reader's flags, its message printed
+ * first (ours: SOCOM II's, inlined into CGameMenu::LoadDesign) */
+static inline bool LoadDlgDesign(CGameDlgDesign &design, const char *name)
+{
+    sprintf(s_loadMsg, "(%.2f)CGameDlgDesign::LoadFromRdr(): %s\n", zVid.runTime, name);
+    CRdrFile *rdr = zrdr_read(name, "data/common/zrdr/dialog", LoadDialogsFromReader);
+
+    if (!rdr)
+        return false;
+    design.LoadFromRdr(rdr);
+    zrdr_free(rdr);
+    return true;
+}
 
 /* the left stick as the menu last read it, -1 to 1 (SOCOM 1's gp statics; the names ours), and
  * whether it has come back to the centre since it last moved */
@@ -403,6 +453,23 @@ const char *CGameMenu::GetReaderFileName()
     return m_ReaderName.c_str();
 }
 
+/* the menu emptied, set up over the relocator given (else the batch relocator) and its own rdr's
+ * design loaded inside one batch (0x368570, SOCOM 1's Init: the load is SOCOM II's LoadDesign) */
+bool CGameMenu::Init(zdb::CTextureRelocMgr *mgr, CZAnimZAR *zar)
+{
+    Clear();
+    m_zar = zar;
+    zVid.pcrtcDo = 0;
+    if (!mgr)
+        m_Reloc = &g_relocBatch;
+    else
+        m_Reloc = mgr;
+    m_Reloc->StartBatchReloc();
+    LoadDesign(GetReaderFileName(), m_zar);
+    m_Reloc->EndBatchReloc();
+    return true;
+}
+
 /* the actions on an event run (0x367810, SOCOM 1's RunEventAnim): each event action of the event
  * starts its animation with the argument given, else its own, else bare; whether one ran. SOCOM II
  * looks the animation up twice, the first result unused (SOCOM 1 asked the menu's set first) */
@@ -427,6 +494,19 @@ bool CGameMenu::RunEventAnim(ActionItem::EVENT event, const char *arg)
         }
     }
     return ran;
+}
+
+/* the design an rdr names read, and once it is the menu's reader is that name and the menu is built
+ * from it (0x367430: SOCOM 1's Init and SwitchMenu inlined this; SOCOM II's call it, Init with its
+ * own rdr's name) */
+void CGameMenu::LoadDesign(const char *name, CZAnimZAR *zar)
+{
+    CGameDlgDesign design;
+
+    if (!LoadDlgDesign(design, name))
+        return;
+    m_ReaderName = name;
+    LoadFromDesign(design, zar);
 }
 
 /* the background movie stopped, if one runs (SOCOM 1's HaltBackgroundMPEG, 0x366B10) */
