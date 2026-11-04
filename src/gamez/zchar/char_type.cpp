@@ -50,24 +50,23 @@ public:
 
 /* every gear let go: its model and its count zeroed; the first one still held makes a walk of the
  * types whose body was compiled out (a debug report, likely) -- new in SOCOM II, the name ours (OVL1's
- * 0x2AB3F0 calls it before CleanupTemporary; 0x53F0B0).
- * OPEN (0xD0 against 0xF0): the inner walk's layout -- the target enters the empty walk of the types
- * through a block placed after the outer loop (`b` forward with the flag's zero in the slot, the end
- * computed and tested there, then `b` back into the loop), README's "the inner loop entered through
- * a block placed after the function's end" (SortNearToFar, CGrid::Create); it also keeps the gear
- * list's address in a0 and reads its size and data each pass. A reference local to the list was
- * tried */
+ * 0x2AB3F0 calls it before CleanupTemporary; 0x53F0B0). The empty walk of the types steps postfix:
+ * MW hoists its end into a preheader after the function's last block (`b` forward with the flag's
+ * zero in the slot, the end computed and tested there, then `b` back into the loop -- the online
+ * lane's postfix rule; open since round 11 at 0xD0 against 0xF0 with `++t`). The gear list's
+ * reference declared before the flag gives the target's a0 for the list, v1 for the flag (the AI
+ * core round 25) */
 void CCharacterType::ResetGears()
 {
-    bool first = true;
     std::vector<CCharacterGear *> &gears = m_gear_list;
+    bool first = true;
 
     for (std::vector<CCharacterGear *>::iterator i = gears.begin(); i != gears.end(); ++i) {
         CCharacterGear *gear = *i;
 
         if (gear->m_ref_count && first) {
             first = false;
-            for (CCharTypeVec::iterator t = m_char_list.begin(); t != m_char_list.end(); ++t)
+            for (CCharTypeVec::iterator t = m_char_list.begin(); t != m_char_list.end(); t++)
                 ;
         }
         gear->m_model = 0;
