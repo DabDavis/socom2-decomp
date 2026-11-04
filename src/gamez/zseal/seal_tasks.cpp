@@ -573,9 +573,41 @@ struct CTRegion : TASK_HDR {
  * CTCreate's handlers read it as a word; the name ours) */
 extern int data_00650AA8;
 
-/* ai::SETANIMSET (SOCOM 1's CTSetAnimSet, the name now a name of the running anim's): the SEAL's
- * anim set changed -- to the bored one (flag 2), or a named one; flag 4 the default's, and an
- * entity it applies to (the names ours but the tags') */
+/* an anim name a task holds: the unit's none, then the running anim's name for it (inline: its
+ * `this` kept in s0 across AddName; the names ours) */
+struct TASK_ANIMNAME {
+    void Set(const char *name)
+    {
+        m_name = data_00650AA8;
+        if (name && ZAnim.m_CurAnim)
+            m_name = ZAnim.m_CurAnim->AddName(name);
+    }
+
+    short m_name;
+};
+
+/* ai::CREATE (SOCOM II's): an entity cloned from another under a new name (mode 2: the tag "clone"
+ * and its two names) or destroyed (4: "destroy" and its name) -- the names ours but the tags' */
+struct CTCreate : TASK_HDR {
+    /* a block made (inline: its arguments read before the allocation, right to left) */
+    static CTCreate *Create(const char *src, const char *dst, short mode)
+    {
+        CTCreate *c = NewTask<CTCreate>();
+
+        c->m_src.Set(src);
+        c->m_dst.Set(dst);
+        c->m_mode = mode;
+        return c;
+    }
+
+    short m_mode;   // 0x8
+    TASK_ANIMNAME m_src;   // 0xa
+    TASK_ANIMNAME m_dst;   // 0xc
+    unsigned char _e[0x170 - 0xe];   // 0x170 bytes
+
+    static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+};
+
 /* ai::SIGNAL (SOCOM 1's CTSignal): an AI signal sent, to an entity or the SEAL */
 struct CTSignal : TASK_HDR {
     /* a signal's name, AISIG_UNKNOWN past the seven (inline: SOCOM 1's had six -- its
@@ -620,6 +652,9 @@ struct CTSignal : TASK_HDR {
     static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
+/* ai::SETANIMSET (SOCOM 1's CTSetAnimSet, the name now a name of the running anim's): the SEAL's
+ * anim set changed -- to the bored one (flag 2), or a named one; flag 4 the default's, and an
+ * entity it applies to (the names ours but the tags') */
 struct CTSetAnimSet : TASK_HDR {
     unsigned int m_flags;   // 0x8
     short m_set;   // 0xc: the tag "name", as a name of the running anim's
@@ -686,6 +721,7 @@ struct CTInState : TASK_HDR {
     TASK_ENT m_ent;   // 0xc
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     /* a block made (inline: its arguments read before the allocation) */
     static CTInState *Create(AI_STATE state, bool stack, const char *name)
     {
@@ -1396,6 +1432,25 @@ _zanim_cmd_hdr *CTEvent::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
+/* an entity cloned ("clone": the source's name, then the new one) or destroyed ("destroy": its
+ * name) (OVL2 0x5DDD60; new in SOCOM II: the name assigned inside the test, which tests v0 with
+ * the copy in the delay slot) */
+_zanim_cmd_hdr *CTCreate::Parse(_zrdr *rdr)
+{
+    CTCreate *cmd = 0;
+    _zrdr *clone = zrdr_findtag(rdr, "clone");
+
+    if (clone && zrdr_isitemtype(clone, 0, 3) && zrdr_isitemtype(clone, 1, 3))
+        cmd = Create(clone->Item(0)->String(), clone->Item(1)->String(), 2);
+    else {
+        const char *name;
+
+        if ((name = zrdr_findstring(rdr, "destroy")) != 0)
+            cmd = Create(name, 0, 4);
+    }
+    return &cmd->hdr;
+}
+
 /* the first item a text, on or off; an integer gives none (OVL2 0x5DD7C0) */
 _zanim_cmd_hdr *CTDebug::Parse(_zrdr *rdr)
 {
@@ -1796,6 +1851,52 @@ _zanim_cmd_hdr *CTInState::Parse(_zrdr *rdr)
     if (state != 0)
         return &Create(state, stack, name)->hdr;
     return 0;
+}
+
+/* a remote SEAL's AI state as its network state carries it (the low byte of the word
+ * CSealCtrl::GetAiNetState sends -- copied out by memcpy; the names ours) */
+struct TASK_NETSTATE {
+    unsigned char m_state;   // 0x0: an AI_STATE
+    unsigned char _1[3];
+};
+
+/* a SEAL's AI, or 0 (inline: its by-value parameter keeps the tested value, v0, for the call
+ * where an assignment's variable would be read; the name ours) */
+static inline CSealCtrlAi *TaskAiOf(CZSealBody *s)
+{
+    return s ? SealAi(s) : 0;
+}
+
+/* whether the SEAL (the task's, or the entity named, when it is a SEAL) is in a state: its AI's
+ * current state, or anywhere on its stack (the stack's bits); a remote SEAL's by its network state
+ * (OVL2 0x5D8840; SOCOM 1's, the remote test new; the time left as it is). The entity's SEAL
+ * assigned in TaskAiOf's argument (v0 tested and used, the copy in the delay slot); the type read
+ * through a const view, so Get's switch reloads it; the network state declared before the word
+ * (the later-declared 4-byte local takes the lower slot) */
+bool CTInState::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTInState);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (((const TASK_ENT *)&cmd->m_ent)->m_type)
+        ai = TaskAiOf(seal = (CZSealBody *)cmd->m_ent.GetTyped(CEntity::ENT_TYPE_SEAL));
+    bool r = false;
+
+    if (seal) {
+        if (ai) {
+            if (!cmd->m_stack)
+                r = ai->AiStateIs((AI_STATE)cmd->m_state);
+            else
+                r = (ai->m_stateStack.m_10 & (1 << (AI_STATE)cmd->m_state)) != 0;
+        } else if (seal->IsRemote()) {
+            TASK_NETSTATE ns;
+            unsigned int v = ((CSealCtrl *)seal->m_control)->GetAiNetState();
+
+            memcpy(&ns, &v, sizeof(ns));
+            r = cmd->m_state == ns.m_state;
+        }
+    }
+    return r;
 }
 
 /* the wait as a tagged range, the reader's own range, or its bool (true holds for good: -1)
