@@ -145,14 +145,13 @@ void UpdatePersonaList(const char *host, int port);
 /* a command's type by its name (zanim_menu.cpp's) */
 int GetUICommandType(const char *name);
 
-/* the reader's lookups the parsers use (SOCOM 1's zrdr_findstring; the others not named yet:
- * a tag's bool, its rectangle, a string in an array) */
+/* the reader's lookups the parsers use (zrdr.h's: SOCOM 1's zrdr_findstring; a tag's bool, its
+ * rectangle, a string in an array -- the rectangle's byte result as the parsers store it) */
+struct tag_RECT;
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
-extern "C" {
-bool func_0032DC00(_zrdr *rdr, const char *tag, bool *out);
-unsigned char func_0032DC40(_zrdr *rdr, const char *tag, int *out);
-bool func_0032DF80(_zrdr *rdr, const char *tag, char **out);
-}
+bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
+unsigned char zrdr_findRECT(const _zrdr *rdr, const char *tag, tag_RECT *out);
+bool zrdr_findSTRING(const _zrdr *rdr, const char *tag, const char **out);
 
 /* a UI command's handler: whether the command is done */
 typedef bool (*UICommandFunc)(C2DAnimCmdHdr *hdr, float *dT);
@@ -227,35 +226,31 @@ enum UIVAR_LONGEVITY {
     UIVAR_PERMANENT = 2
 };
 
-class CUIVariable;
-extern "C" {
-void func_0032F350(_zrdr *value);           /* (a value's storage let go of) */
-void func_003863D0(CUIVariable *var);       /* (a variable's change told to what it is attached to) */
-}
-
 class CUIVariable : public _zrdr {
 public:
     /* a number set, unless it already holds it (ours: ClearUIVar's and the options' inline) */
     void SetInt(int value)
     {
         if (type != 1 || integer != value) {
-            func_0032F350(this);
+            DeleteChildren();
             type = 1;
             integer = value;
-            func_003863D0(this);
+            UpdateDependents();
         }
     }
     void SetReal(float value)
     {
         if (type != 2 || real != value) {
-            func_0032F350(this);
+            DeleteChildren();
             type = 2;
             real = value;
-            func_003863D0(this);
+            UpdateDependents();
         }
     }
     /* a string set (zui.h's, 0x3862A0: the lobby callbacks' and the patch downloader's setter) */
     CUIVariable &operator=(const char *str);
+    /* (zui.h's, 0x3863D0: the variable's change told to what it is attached to) */
+    void UpdateDependents();
 
     char *m_varname;   // 0x8
     unsigned char m_attached_items[0xc];   // 0xc: SOCOM 1's vector
@@ -267,6 +262,8 @@ class CUIVarManager {
 public:
     /* a variable made, or found by its name (zui.h's, 0x3857C0) */
     CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+    /* a variable found by its name (zui.h's, 0x385900) */
+    CUIVariable *Find(const char *name);
 
     unsigned char _0[0x8064];
 };
@@ -382,6 +379,8 @@ class CZNetwork {
 public:
     int zNetGetValidGameClientCount();
     unsigned int zNetGetTime();
+    unsigned int zNetGetLocalTime();   /* 0x30D540 (SOCOM 1's) */
+    bool zNetInitialize();   /* 0x30DBB0 */
 
     bool m_bSessionMaster;   // 0x0 (SOCOM 1's at 8)
     bool m_bNetwork;   // 0x1
@@ -432,6 +431,7 @@ class CRdrFile;
 class CMission {
 public:
     void CreateNetGame();
+    void DestroyNetGame();   /* 0x2A9EF0 */
 
     unsigned char _0[0x1c];
     char *m_database;   // 0x1c (SOCOM 1's)
@@ -615,6 +615,7 @@ class CCharacterWeapList;
 
 class CCharacterType {
 public:
+    static CCharacterType *GetByNameMod(const char *name);   /* 0x53E170 (SOCOM 1's) */
     unsigned char _0[0x2e8];
     unsigned char m_weapons[0xc];   // 0x2e8 (SOCOM 1's CCharacterWeapList at 0x250)
     unsigned char _2f4[0x388 - 0x2f4];
@@ -634,8 +635,6 @@ typedef void (CSimpleStateMachine::*SSMState)(unsigned char event);
 
 extern "C" {
 void func_002852B0(void *queue, SSMState state);    /* the state queue's push */
-void func_003A5C30(CSimpleStateMachine *sm);        /* (the machine's tick) */
-bool func_003A5C10(CSimpleStateMachine *sm);        /* (whether it is done: no thread and the flag) */
 }
 
 class CSimpleStateMachine {
@@ -685,6 +684,47 @@ public:
     CValve *m_valve;   // 0x38
 };
 
+/* ---- the functions the handlers call, by their map rows (the owners' units define them) ---- */
+
+/* the controller configurations (fts_controller.cpp's CCtrlrConfigs: only the selection) */
+class CCtrlrConfigs {
+public:
+    static void SelectConfig(const char *name);   /* 0x2C5D60 (SOCOM 1's) */
+};
+
+/* the reader's archives (zrdr.h's CRdrArchive: only the removal) */
+class CRdrArchive {
+public:
+    static void RemoveArchive(const char *archive, const char *name);   /* 0x32C2B0 (SOCOM 1's) */
+};
+
+/* the languages (util_loc.cpp's, the names its own) */
+enum LANGUAGE {
+    LANG_STATES,
+    LANG_UK,
+    LANG_FRANCE,
+    LANG_GERMANY,
+    LANG_SPAIN,
+    LANG_ITALY,
+    LANG_JAPAN,
+    LANG_KOREA,
+    LANG_TEST,
+    LANG_COUNT,
+    LANG_UNSET = 99
+};
+LANGUAGE LanguageFromName(const char *name);   /* 0x3A40E0 */
+void SetLanguage(LANGUAGE lang);               /* 0x3A44B0 */
+
+extern "C" int ezNetCnfGetNetcnfifData(const char *device, const char *name, void *out);   /* 0x1E8910 */
+void SetFinalStatsUiVars();          /* 0x2241C0 (st_mpexit.cpp's) */
+bool DMEJoinGameServer();            /* 0x2B83E0 (SOCOM 1's, by UIJoinGameServer) */
+bool MediusInit();                   /* 0x300840 */
+void zSysPostInit();                 /* 0x34F950 (SOCOM 1's) */
+void UiSetTtySpeedFactor(float f);       /* 0x37B980 (SOCOM 1's) */
+void UiSetCounterSpeedFactor(float f);   /* 0x37B990 */
+void SetPlayAutoMessages(bool on);   /* 0x5E7FB0 (seal_unit.cpp's) */
+bool GetPlayAutoMessages();          /* 0x5E7FC0 */
+
 /* ---- placeholders: methods and functions not named yet (SOCOM 1's names, by the call SOCOM 1's
  * handler makes at the same place, in the comments) ---- */
 extern "C" {
@@ -693,10 +733,8 @@ bool func_002E5FE0(CZOnlineLobby *lobby);                           /* (more inv
 bool func_002F8CE0(CZOnlineLobby *lobby);                           /* (switch teams OK) */
 
 /* CUIVarManager::Add (SOCOM 1's Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY) */
-CUIVariable *func_003857C0(CUIVarManager *vars, const char *name, _zrdr *value, UIVAR_LONGEVITY life);
 
 /* CZNetwork::zNetGetLocalTime (SOCOM 1's) */
-unsigned int func_0030D540(CZNetwork *net);
 
 /* the career stats (an object at 0x437E30) */
 void func_002A3BC0(void *stats);
@@ -717,23 +755,11 @@ void func_0030C6A0();
 void func_0030C6E0();
 
 /* the memory card's calls (SOCOM 1's names: Exists, mkdir, chdir, GetFreeSpace; LoadConfig) */
-bool func_003A0950(CMemCard *card, const char *name);
-bool func_003A0890(CMemCard *card, const char *name);
-bool func_003A07D0(CMemCard *card, const char *name);
-int func_003A1210(CMemCard *card);
 int func_003A1060(CMemCard *card, int arg);
-void func_003A1730(CMemCard *card, const char *name);
-void func_003A1C60(CMemCard *card);
-void func_003A17E0(CMemCard *card, const char *name, int arg);
-void func_003A1880(CMemCard *card);
-void func_003A1EA0(CMemCard *card, const char *name, const char *text);
 
 /* a UI variable's text set (SOCOM 1's CUIVariable::Set) */
-void func_003862A0(CUIVariable *var, const char *text);
 
 /* the automatic messages' switch, and its state */
-void func_005E7FB0(int on);
-int func_005E7FC0();
 
 /* the text entry the chat commands open (SOCOM II's) */
 void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
@@ -745,31 +771,17 @@ bool func_0030BF20();                                               /* (whether 
 void func_0033D4A0(void *src, const char *name, int what, MemCardFileInfo *info);   /* (a file's information) */
 int func_002FBBF0(void *svc, const char *host, int port, const char *name);         /* (whether a persona exists) */
 void func_002ACC10(CMission *mission, const char *name);            /* (the mission set by name) */
-void func_0034F9B0(CIOPManager *iop, int mode);                     /* CIOPManager::RebootIOP (named: zinput.h does not declare it) */
 bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
 bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */
 bool func_002F8C60(CZOnlineLobby *lobby, const char *name);         /* (clan game closed) */
 bool func_002B85C0();                                               /* (connect to the game server) */
-int func_003A1CF0(CMemCard *card);                                  /* (the card's error code) */
 bool func_003A1370(CMemCard *card, int arg, int *slot);             /* (the card changed) */
-void *func_003A40E0(const char *name);                              /* (a locale by name) */
-void func_003A44B0(void *locale);                                   /* (the locale selected) */
-void func_0034F950();                                               /* zSysPostInit (SOCOM 1's) */
-bool func_00300840();                                               /* (Medius initialised) */
 void func_002EFE50(CZOnlineLobby *lobby, const char *name, int what);   /* (a player's info) */
-bool func_0030DBB0(CZNetwork *net);                                 /* (the DME initialised) */
 void func_002B8660();
-CUIVariable *func_00385900(CUIVarManager *vars, const char *name);  /* CUIVarManager::Find (SOCOM 1's) */
 void func_002E6000(CZOnlineLobby *lobby, const char *name);         /* (clan member's info) */
 void func_001F3BB0(CMenuState *state, float time);                  /* (the menu's input suspended) */
 void func_001F3BD0(CMenuState *state, const char *movie);           /* (the background film set) */
 bool func_001F3BE0(CMenuState *state);                              /* (the background film stopped: whether one was playing) */
-void func_003A1E10(CMemCard *card, const char *name);               /* (a saved game loaded) */
-double func_00191478(const char *s);                                /* atof */
-void func_0037B980(float f);                                        /* UiSetTtySpeedFactor (SOCOM 1's) */
-void func_0037B990(float f);                                        /* UiSetCounterSpeedFactor */
-void func_002C5D60(const char *name);                               /* CCtrlrConfigs::SelectConfig (SOCOM 1's) */
-CCharacterType *func_0053E170(const char *name);                    /* CCharacterType::GetByNameMod (SOCOM 1's) */
 char *func_0039C580();
 void func_002CF2F0(COurGame *game, unsigned int arg);               /* CGame::Pop (the states lane's note) */
 void func_002CF410(COurGame *game, void *state, unsigned int arg);  /* CGame::Switch */
@@ -854,7 +866,6 @@ struct NetCnfList {
 extern NetCnfList data_00457C40;
 extern char data_004567C0[];
 NetCnfEntry *ezNetCnfGetDefault(NetCnfList *list);                       /* (the configuration in use) */
-int func_001E8910(const char *device, const char *name, void *out); /* (a configuration selected) */
 unsigned char func_002E99E0();                                      /* (the lobby's game state) */
 void func_002BADA0();                                               /* (the side swap finished) */
 
@@ -882,12 +893,10 @@ const char *func_002FDEA0(void *svc, int line);     /* (a line of the news) */
 
 /* the network configuration's device path ("mc0:" in data) */
 extern char data_003DF360[];                                              /* (a path: the game's directory?) */
-void func_0032C2B0(const char *archive, const char *name);          /* CRdrArchive::RemoveArchive (SOCOM 1's) */
 
 /* SOCOM II's: whether the player is a terrorist, whether the player was banned */
 bool func_002C31A0();
 bool func_002C3550();
-void func_002241C0();
 }
 
 #endif

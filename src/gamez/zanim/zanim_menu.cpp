@@ -29,8 +29,6 @@ bool func_003039B0(CZLANLobby *lan, const char *game);
 bool func_00303730(CZLANLobby *lan, const char *game);
 void func_0030D770(CZNetwork *net);
 void func_0030E3A0(CZNetwork *net, int arg);
-void func_002A9EF0(CMission *mission);
-bool func_002B83E0();                       /* DMEJoinGameServer (SOCOM 1's, by UIJoinGameServer) */
 extern int data_00441470;
 extern char data_00437E30[];               /* the career stats */
 }
@@ -109,13 +107,13 @@ namespace {
 
 bool OnSetCounterSpeedFactor(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_0037B990(func_00191478(ArgText(ArgName(hdr))));
+    UiSetCounterSpeedFactor(atof(ArgText(ArgName(hdr))));
     return true;
 }
 
 bool OnSetTtySpeedFactor(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_0037B980(func_00191478(ArgText(ArgName(hdr))));
+    UiSetTtySpeedFactor(atof(ArgText(ArgName(hdr))));
     return true;
 }
 
@@ -123,7 +121,7 @@ bool OnSetTtySpeedFactor(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIUpdateMpFinalStatsUiVars(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_002241C0();
+    SetFinalStatsUiVars();
     return true;
 }
 
@@ -171,7 +169,7 @@ namespace {
 
 bool UISetControllerConfig(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_002C5D60(ArgText(ArgName(hdr)));
+    CCtrlrConfigs::SelectConfig(ArgText(ArgName(hdr)));
     return true;
 }
 
@@ -190,7 +188,7 @@ bool _SaveSavedGame(C2DAnimCmdHdr *hdr, float *dT)
     char title[264];
     int slot = atoi(ArgText(ArgName(hdr)));
 
-    func_003A1C60(&theMemCard);
+    theMemCard.DeleteScratchpad();
     sceCdReadClock(&clock);
     sceScfGetLocalTimefromRTC(&clock);
     int difficulty = CValve::Create("ai_difficulty", (VALVE_TYPE)1)->m_value;
@@ -201,8 +199,8 @@ bool _SaveSavedGame(C2DAnimCmdHdr *hdr, float *dT)
             FROM_BCD(clock.day), FROM_BCD(clock.year), FROM_BCD(clock.hour), FROM_BCD(clock.minute),
             FROM_BCD(clock.second));
     sprintf(s_savename, "SaveGame%d", slot);
-    func_003A1EA0(&theMemCard, s_savename, title);
-    func_003A1880(&theMemCard);
+    theMemCard.SaveConfig(s_savename, title);
+    theMemCard.CreateReserveFiles();
     CValve *valve = CValve::GetByName("SavingSavedGame");
 
     if (valve)
@@ -217,7 +215,7 @@ bool _LoadSavedGame(C2DAnimCmdHdr *hdr, float *dT)
     CValve *valve = CValve::GetByName("LoadingSavedGame");
 
     sprintf(s_savename, "SaveGame%d", slot);
-    func_003A1E10(&theMemCard, s_savename);
+    theMemCard.LoadConfig(s_savename);
     if (valve)
         SetValveValue(valve, 0);
     return true;
@@ -361,7 +359,7 @@ void Unload_MissionReader()
 
         func_0039C580();
         strcat(path, db);
-        func_0032C2B0("readerm.zar", db);
+        CRdrArchive::RemoveArchive("readerm.zar", db);
     }
 }
 
@@ -432,7 +430,7 @@ bool UISetMission(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *name = ArgText(ArgName(hdr));
     bool background = func_001F3BE0(&theGame.m_menuState);
-    CUIVariable *var = func_00385900(&theUIVarManager, name);
+    CUIVariable *var = theUIVarManager.Find(name);
 
     if (var && var->type == 3)
         name = var->String();
@@ -491,7 +489,7 @@ bool UIHostLANGame(C2DAnimCmdHdr *hdr, float *dT)
             theLobby.ReleaseUIResources();
             ok = true;
         } else {
-            func_002A9EF0(&theMission);
+            theMission.DestroyNetGame();
         }
     }
     return ok;
@@ -508,7 +506,7 @@ bool UIConnectToGameServer(C2DAnimCmdHdr *hdr, float *dT)
         ok = true;
     } else {
         theLobby.RejoinRoom();
-        func_002A9EF0(&theMission);
+        theMission.DestroyNetGame();
         ok = false;
     }
     return ok;
@@ -522,7 +520,7 @@ bool UIDisconnectFromGameServer(C2DAnimCmdHdr *hdr, float *dT)
     ftsNetworkGameUninit();
     DMEDisconnectFromGameServer();
     theLobby.RejoinRoom();
-    func_002A9EF0(&theMission);
+    theMission.DestroyNetGame();
     if (func_003045B0(&data_0044FE10))
         theLobby.CreateUIResources();
     return true;
@@ -531,7 +529,7 @@ bool UIDisconnectFromGameServer(C2DAnimCmdHdr *hdr, float *dT)
 bool UIJoinGameServer(C2DAnimCmdHdr *hdr, float *dT)
 {
     if (!theMission.m_pNetGame->m_late_joiner) {
-        if (!func_002B83E0())
+        if (!DMEJoinGameServer())
             return false;
         if (!theNetwork.m_bSessionMaster && !data_00441470)
             return false;
@@ -591,7 +589,7 @@ bool UIIsMemCardFormatted(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIIsMemcardSaveOK(C2DAnimCmdHdr *hdr, float *dT)
 {
-    int error = func_003A1CF0(&theMemCard);
+    int error = theMemCard.GetCardStatus();
 
     SetValveValue(CValve::Create("memcard_error_code", (VALVE_TYPE)2), error);
     return error == 0;
@@ -606,7 +604,7 @@ bool UIDoesSlotHaveGame(C2DAnimCmdHdr *hdr, float *dT)
     MemCardFileInfo info;
 
     sprintf(s_savename, "SaveGame%d", slot);
-    if (func_003A0950(&theMemCard, s_savename)) {
+    if (theMemCard.Exists(s_savename)) {
         sprintf(s_savename, "SaveGame%d", slot);
         func_0033D4A0(theMemCard.m_configSave, s_savename, 12, &info);
         if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
@@ -624,7 +622,7 @@ bool UIGetNumSavedGames(C2DAnimCmdHdr *hdr, float *dT)
 
     for (int i = 0; i < 10; i++) {
         sprintf(s_savename, "SaveGame%d", i);
-        if (func_003A0950(&theMemCard, s_savename)) {
+        if (theMemCard.Exists(s_savename)) {
             sprintf(s_savename, "SaveGame%d", i);
             func_0033D4A0(theMemCard.m_configSave, s_savename, 12, &info);
             if (info.m_text[0] == 'm' && strcmp(info.m_text, "This game is a dummy game."))
@@ -642,8 +640,8 @@ bool UIFormatMemCard(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UILobbyRegister(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *name = func_003857C0(&theUIVarManager, "PLAYERNAMEVAR", 0, UIVAR_SESSION);
-    CUIVariable *password = func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, UIVAR_SESSION);
+    CUIVariable *name = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION);
+    CUIVariable *password = theUIVarManager.Add("PLAYERPASSWORD", 0, UIVAR_SESSION);
     const char *n = name->String();
     const char *p = password->String();
 
@@ -654,8 +652,8 @@ bool UILobbyRegister(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UILobbyLogin(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *name = func_003857C0(&theUIVarManager, "PLAYERNAMEVAR", 0, UIVAR_SESSION);
-    CUIVariable *password = func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, UIVAR_SESSION);
+    CUIVariable *name = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION);
+    CUIVariable *password = theUIVarManager.Add("PLAYERPASSWORD", 0, UIVAR_SESSION);
     const char *n = name->String();
     const char *p = password->String();
 
@@ -848,9 +846,9 @@ unsigned int g_can_use_switch;
 
 bool UISwitchSides(C2DAnimCmdHdr *hdr, float *dT)
 {
-    if (func_0030D540(&theNetwork) > g_can_use_switch) {
+    if (theNetwork.zNetGetLocalTime() > g_can_use_switch) {
         NetSendRequestTeamSwitch(theMission.m_pNetGame->m_persona_object_index);
-        g_can_use_switch = func_0030D540(&theNetwork) + 5000;
+        g_can_use_switch = theNetwork.zNetGetLocalTime() + 5000;
     }
     return true;
 }
@@ -893,14 +891,14 @@ unsigned int g_can_use_ready;
 
 bool UIReadyToLoad(C2DAnimCmdHdr *hdr, float *dT)
 {
-    if (func_0030D540(&theNetwork) > g_can_use_ready) {
+    if (theNetwork.zNetGetLocalTime() > g_can_use_ready) {
         if (theMission.m_pNetGame->m_late_joiner) {
             theMission.m_pNetGame->MyMajorGameState(CZNetGame::MP_MAJOR_LOADING);
             theMission.m_pNetGame->MyMinorGameState(CZNetGame::MP_MINOR_NOTREADY);
         } else {
             CZPersonaState::ToggleReady();
         }
-        g_can_use_ready = func_0030D540(&theNetwork) + 5000;
+        g_can_use_ready = theNetwork.zNetGetLocalTime() + 5000;
     }
     return true;
 }
@@ -922,44 +920,44 @@ bool UISetFilters(C2DAnimCmdHdr *hdr, float *dT)
     /* (the out-of-line call written out: through ArgName the inline's result would take its
      * saved register after the named locals) */
     const char *name = ZAnim.m_CurAnim->GetName(hdr->m_argument_index);
-    CUIVariable *gametype = func_003857C0(&theUIVarManager, "FILTER_GAMETYPE", 0, UIVAR_SESSION);
-    CUIVariable *ratecategory = func_003857C0(&theUIVarManager, "FILTER_RATECATEGORY", 0, UIVAR_SESSION);
-    CUIVariable *map = func_003857C0(&theUIVarManager, "FILTER_MAP", 0, UIVAR_SESSION);
-    CUIVariable *clanaffiliation = func_003857C0(&theUIVarManager, "FILTER_CLANAFFILIATION", 0, UIVAR_SESSION);
-    CUIVariable *responsetime = func_003857C0(&theUIVarManager, "FILTER_RESPONSETIME", 0, UIVAR_SESSION);
-    CUIVariable *buddies = func_003857C0(&theUIVarManager, "FILTER_BUDDIES", 0, UIVAR_SESSION);
-    CUIVariable *clanonly = func_003857C0(&theUIVarManager, "FILTER_CLANONLY", 0, UIVAR_SESSION);
-    CUIVariable *raterequirement = func_003857C0(&theUIVarManager, "FILTER_RATEREQUIREMENT", 0, UIVAR_SESSION);
+    CUIVariable *gametype = theUIVarManager.Add("FILTER_GAMETYPE", 0, UIVAR_SESSION);
+    CUIVariable *ratecategory = theUIVarManager.Add("FILTER_RATECATEGORY", 0, UIVAR_SESSION);
+    CUIVariable *map = theUIVarManager.Add("FILTER_MAP", 0, UIVAR_SESSION);
+    CUIVariable *clanaffiliation = theUIVarManager.Add("FILTER_CLANAFFILIATION", 0, UIVAR_SESSION);
+    CUIVariable *responsetime = theUIVarManager.Add("FILTER_RESPONSETIME", 0, UIVAR_SESSION);
+    CUIVariable *buddies = theUIVarManager.Add("FILTER_BUDDIES", 0, UIVAR_SESSION);
+    CUIVariable *clanonly = theUIVarManager.Add("FILTER_CLANONLY", 0, UIVAR_SESSION);
+    CUIVariable *raterequirement = theUIVarManager.Add("FILTER_RATEREQUIREMENT", 0, UIVAR_SESSION);
 
     if (!strcasecmp(name, "GameType"))
-        func_003862A0(gametype, "Game Type");
+        *gametype = "Game Type";
     else if (!strcasecmp(name, "RateCategory"))
-        func_003862A0(ratecategory, "Rate Category");
+        *ratecategory = "Rate Category";
     else if (!strcasecmp(name, "Map"))
-        func_003862A0(map, "Map");
+        *map = "Map";
     else if (!strcasecmp(name, "ClanAffiliation"))
-        func_003862A0(clanaffiliation, "Clan Affiliation");
+        *clanaffiliation = "Clan Affiliation";
     else if (!strcasecmp(name, "ResponseTime"))
-        func_003862A0(responsetime, "Response Time");
+        *responsetime = "Response Time";
     else if (!strcasecmp(name, "BuddiesOnly"))
-        func_003862A0(buddies, "Buddies Only");
+        *buddies = "Buddies Only";
     else if (!strcasecmp(name, "ClanOnly"))
-        func_003862A0(clanonly, "Clan Only");
+        *clanonly = "Clan Only";
     else if (!strcasecmp(name, "RateRequirement"))
-        func_003862A0(raterequirement, "Rate Requirement");
+        *raterequirement = "Rate Requirement";
     return true;
 }
 
 bool UIToggleAutoMessages(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *var = func_003857C0(&theUIVarManager, "AUTOMESSAGES", 0, UIVAR_SESSION);
+    CUIVariable *var = theUIVarManager.Add("AUTOMESSAGES", 0, UIVAR_SESSION);
 
-    if (func_005E7FC0()) {
-        func_003862A0(var, "OFF");
-        func_005E7FB0(0);
+    if (GetPlayAutoMessages()) {
+        *var = "OFF";
+        SetPlayAutoMessages(false);
     } else {
-        func_003862A0(var, "ON");
-        func_005E7FB0(1);
+        *var = "ON";
+        SetPlayAutoMessages(true);
     }
     return true;
 }
@@ -1037,9 +1035,9 @@ bool UISetStickPreset(C2DAnimCmdHdr *hdr, float *dT)
 
         if (preset < 3) {
             pad->SetPreset(1, preset);
-            CUIVariable *sensitivity = func_003857C0(&theUIVarManager, "STICK_SENSITIVITY", 0, UIVAR_SESSION);
-            CUIVariable *inertia = func_003857C0(&theUIVarManager, "STICK_INERTIA", 0, UIVAR_SESSION);
-            CUIVariable *deadzone = func_003857C0(&theUIVarManager, "STICK_DEADZONE", 0, UIVAR_SESSION);
+            CUIVariable *sensitivity = theUIVarManager.Add("STICK_SENSITIVITY", 0, UIVAR_SESSION);
+            CUIVariable *inertia = theUIVarManager.Add("STICK_INERTIA", 0, UIVAR_SESSION);
+            CUIVariable *deadzone = theUIVarManager.Add("STICK_DEADZONE", 0, UIVAR_SESSION);
 
             sensitivity->SetReal(pad->GetAcceleration(1));
             inertia->SetReal(1.0f - pad->m_stickType[1].m_socom2_20);
@@ -1051,7 +1049,7 @@ bool UISetStickPreset(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIIsSpaceForSaveGameFile(C2DAnimCmdHdr *hdr, float *dT)
 {
-    int space = func_003A1210(&theMemCard);
+    int space = theMemCard.GetFreeSpace();
 
     if (space <= 3000)
         space += func_003A1060(&theMemCard, 0);
@@ -1069,12 +1067,12 @@ bool UIMC_Changed(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIMC_ChDir(C2DAnimCmdHdr *hdr, float *dT)
 {
-    return func_003A07D0(&theMemCard, ArgName(hdr));
+    return theMemCard.chdir(ArgName(hdr));
 }
 
 bool UIMC_MkDir(C2DAnimCmdHdr *hdr, float *dT)
 {
-    return func_003A0890(&theMemCard, ArgName(hdr));
+    return theMemCard.mkdir(ArgName(hdr));
 }
 
 bool UIMC_ChPort(C2DAnimCmdHdr *hdr, float *dT)
@@ -1099,7 +1097,7 @@ bool UIMC_ChSlot(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIMC_Exists(C2DAnimCmdHdr *hdr, float *dT)
 {
-    return func_003A0950(&theMemCard, ArgName(hdr));
+    return theMemCard.Exists(ArgName(hdr));
 }
 
 bool UIMC_CreateIconFiles(C2DAnimCmdHdr *hdr, float *dT)
@@ -1110,14 +1108,14 @@ bool UIMC_CreateIconFiles(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UILoadConfig(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_003A1730(&theMemCard, ArgName(hdr));
-    CUIVariable *var = func_003857C0(&theUIVarManager, "AUTOMESSAGES", 0, UIVAR_SESSION);
+    theMemCard.LoadGame(ArgName(hdr));
+    CUIVariable *var = theUIVarManager.Add("AUTOMESSAGES", 0, UIVAR_SESSION);
 
     if (var->type == 3) {
         if (!strcasecmp(var->String(), "ON"))
-            func_005E7FB0(0);
+            SetPlayAutoMessages(false);
         else
-            func_005E7FB0(1);
+            SetPlayAutoMessages(true);
     }
     return true;
 }
@@ -1126,16 +1124,16 @@ bool UISaveConfig(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *name = ArgName(hdr);
 
-    func_003A1C60(&theMemCard);
-    func_003A17E0(&theMemCard, name, 0);
+    theMemCard.DeleteScratchpad();
+    theMemCard.SaveGame(name, 0);
     for (int i = 0; i < 7; i++) {
         sprintf(s_savename, "SaveGame%d", i);
-        if (!func_003A0950(&theMemCard, s_savename)) {
+        if (!theMemCard.Exists(s_savename)) {
             sprintf(s_savename, "SaveGame%d", i);
-            func_003A1EA0(&theMemCard, s_savename, "This game is a dummy game.");
+            theMemCard.SaveConfig(s_savename, "This game is a dummy game.");
         }
     }
-    func_003A1880(&theMemCard);
+    theMemCard.CreateReserveFiles();
     return true;
 }
 
@@ -1171,11 +1169,11 @@ _zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
         cmd->SetArgument(buf);
     }
     cmd->m_fade = true;
-    func_0032DC00(rdr, "FADE", &cmd->m_fade);
+    zrdr_findbool(rdr, "FADE", &cmd->m_fade);
     cmd->m_ingame = true;
-    func_0032DC00(rdr, "INGAME", &cmd->m_ingame);
+    zrdr_findbool(rdr, "INGAME", &cmd->m_ingame);
     cmd->m_interlace = true;
-    func_0032DC00(rdr, "INTERLACE", &cmd->m_interlace);
+    zrdr_findbool(rdr, "INTERLACE", &cmd->m_interlace);
     cmd->m_stream_type = 0;
     cmd->m_stream = 0;
     stream = zrdr_findtag(rdr, "AUDIOSTREAM");
@@ -1185,19 +1183,19 @@ _zanim_cmd_hdr *UIPlayMPEGParse(const char *name, _zrdr *rdr)
             cmd->m_stream = stream->Int();
         } else {
             var = 0;
-            if (func_0032DF80(stream, "VALVE", &var)) {
+            if (zrdr_findSTRING(stream, "VALVE", (const char **)&var)) {
                 cmd->m_stream_type = 1;
                 cmd->m_stream = ZAnim.m_CurAnim->AddName(var);
-            } else if (func_0032DF80(stream, "UIVAR", &var)) {
+            } else if (zrdr_findSTRING(stream, "UIVAR", (const char **)&var)) {
                 cmd->m_stream_type = 2;
                 cmd->m_stream = ZAnim.m_CurAnim->AddName(var);
             }
         }
     }
-    cmd->m_has_dest = func_0032DC40(rdr, "DEST_RECT", cmd->m_dest);
-    func_0032DC40(rdr, "SOURCE_RECT", cmd->m_source);
+    cmd->m_has_dest = zrdr_findRECT(rdr, "DEST_RECT", (tag_RECT *)cmd->m_dest);
+    zrdr_findRECT(rdr, "SOURCE_RECT", (tag_RECT *)cmd->m_source);
     cmd->m_bilinear = false;
-    func_0032DC00(rdr, "BILINEAR", &cmd->m_bilinear);
+    zrdr_findbool(rdr, "BILINEAR", &cmd->m_bilinear);
     return (_zanim_cmd_hdr *)cmd;
 }
 
@@ -1241,7 +1239,7 @@ bool UISetCareerStatsUIVars(C2DAnimCmdHdr *hdr, float *dT)
 bool UICreateClan(C2DAnimCmdHdr *hdr, float *dT)
 {
     CZAnim *anim = ZAnim.m_CurAnim;
-    CUIVariable *var = func_003857C0(&theUIVarManager, "CLANNAMEVAR", 0, UIVAR_SESSION);
+    CUIVariable *var = theUIVarManager.Add("CLANNAMEVAR", 0, UIVAR_SESSION);
 
     if (var && var->type == 3) {
         theLobby.CreateClan(var->String());
@@ -1280,7 +1278,7 @@ bool UICanInviteMorePlayersToClan(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIInvitePlayerToClan(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *var = func_003857C0(&theUIVarManager, "PLAYER_INVITE_NAME", 0, UIVAR_SESSION);
+    CUIVariable *var = theUIVarManager.Add("PLAYER_INVITE_NAME", 0, UIVAR_SESSION);
 
     if (var->type == 3) {
         CSaferStr name;
@@ -1394,7 +1392,7 @@ bool UIDeleteClanMessage(C2DAnimCmdHdr *hdr, float *dT)
 bool UIModifyClanMessage(C2DAnimCmdHdr *hdr, float *dT)
 {
     int index = atoi(ArgText(ArgName(hdr)));
-    CUIVariable *var = func_003857C0(&theUIVarManager, "SEND_CLAN_MESSAGE", 0, UIVAR_SESSION);
+    CUIVariable *var = theUIVarManager.Add("SEND_CLAN_MESSAGE", 0, UIVAR_SESSION);
 
     if (var && var->type == 3)
         theLobby.ModifyClanMessage(index, var->String());
@@ -1409,7 +1407,7 @@ bool UIGetLeaderMessages(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIAddFriend(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *var = func_003857C0(&theUIVarManager, "PLAYER_FRIEND_NAME", 0, UIVAR_SESSION);
+    CUIVariable *var = theUIVarManager.Add("PLAYER_FRIEND_NAME", 0, UIVAR_SESSION);
 
     theLobby.AddFriend(var->String());
     return true;
@@ -1426,7 +1424,7 @@ bool UIAddFriendDirectly(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UIAddToIgnore(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *var = func_003857C0(&theUIVarManager, "PLAYER_IGNORE_NAME", 0, UIVAR_SESSION);
+    CUIVariable *var = theUIVarManager.Add("PLAYER_IGNORE_NAME", 0, UIVAR_SESSION);
 
     theLobby.AddToIgnore(var->String());
     return true;
@@ -1537,7 +1535,7 @@ bool UIRemoveFromIgnore(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UISendClanMessage(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *var = func_003857C0(&theUIVarManager, "SEND_CLAN_MESSAGE", 0, UIVAR_SESSION);
+    CUIVariable *var = theUIVarManager.Add("SEND_CLAN_MESSAGE", 0, UIVAR_SESSION);
 
     if (var->type == 3) {
         CSaferStr text;
@@ -1566,7 +1564,7 @@ bool UIChangeCharacterType(C2DAnimCmdHdr *hdr, float *dT)
 
     strncpy(game->m_chartype, type, 31);
     game->m_chartype[30] = 0;
-    CCharacterType *ct = func_0053E170(type);
+    CCharacterType *ct = CCharacterType::GetByNameMod(type);
 
     if (ct) {
         CharTypeFigures figures;
@@ -1637,7 +1635,7 @@ bool UIAdvanceMPMission(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UISelectLocale(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_003A44B0(func_003A40E0(ArgText(ArgName(hdr))));
+    SetLanguage(LanguageFromName(ArgText(ArgName(hdr))));
     return true;
 }
 
@@ -1742,7 +1740,7 @@ bool HardDriveOperationCallback(int result)
 /* the UI variable the argument names trimmed of its leading and trailing spaces */
 bool UIPruneUIVarSpaces(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *var = func_00385900(&theUIVarManager, ArgText(ArgName(hdr)));
+    CUIVariable *var = theUIVarManager.Find(ArgText(ArgName(hdr)));
 
     if (!var || var->type != 3)
         return true;
@@ -1763,7 +1761,7 @@ bool UIPruneUIVarSpaces(C2DAnimCmdHdr *hdr, float *dT)
 
         while (*start == ' ')
             start++;
-        func_003862A0(var, start);
+        *var = start;
     }
     return true;
 }
@@ -1776,7 +1774,7 @@ bool UITestUIVar(C2DAnimCmdHdr *hdr, float *dT)
     const char *name = ArgName(hdr);
 
     if (name) {
-        CUIVariable *var = func_00385900(&theUIVarManager, name);
+        CUIVariable *var = theUIVarManager.Find(name);
 
         if (var) {
             int type = var->type;
@@ -1807,7 +1805,7 @@ bool UIClearUIVar(C2DAnimCmdHdr *hdr, float *dT)
     const char *name = ArgName(hdr);
 
     if (name) {
-        CUIVariable *var = func_00385900(&theUIVarManager, name);
+        CUIVariable *var = theUIVarManager.Find(name);
 
         if (var) {
             int type = var->type;
@@ -1817,7 +1815,7 @@ bool UIClearUIVar(C2DAnimCmdHdr *hdr, float *dT)
             } else if (type == 2) {
                 var->SetReal(0.0f);
             } else if (type == 3) {
-                func_003862A0(var, "");
+                *var = "";
             } else if (type == 4) {
                 NetCnfRdr rdr;
 
@@ -1857,7 +1855,7 @@ bool UINetCnfClose(C2DAnimCmdHdr *hdr, float *dT)
     func_00333AE0(&rdr);
     func_003339B0(&rdr, 0);
     func_00333770(&rdr);
-    func_003857C0(&theUIVarManager, "NETCNF_DB", (_zrdr *)&rdr, UIVAR_SESSION);
+    theUIVarManager.Add("NETCNF_DB", (_zrdr *)&rdr, UIVAR_SESSION);
     strncpy(data_003DF360, "", 256);
     func_00333A20(&rdr, -1);
     return true;
@@ -1907,7 +1905,7 @@ bool UINetCnfSelectCombo(C2DAnimCmdHdr *hdr, float *dT)
                 NetCnfEntry *e = data_00457C40.Entry(i);
 
                 if (e && e->m_type >= 0 && index++ == valve->m_value) {
-                    if (func_001E8910(data_003DF360, e->m_name, data_004567C0) >= 0)
+                    if (ezNetCnfGetNetcnfifData(data_003DF360, e->m_name, data_004567C0) >= 0)
                         ok = true;
                     break;
                 }
@@ -1928,7 +1926,7 @@ bool UINetGetInterfaceList(C2DAnimCmdHdr *hdr, float *dT)
     char text[128];
     NetInterfaceInfo list[6];
     int n = func_0030BD40(list, 6);
-    CUIVariable *var = func_003857C0(&theUIVarManager, ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+    CUIVariable *var = theUIVarManager.Add(ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
 
     func_00333AE0(&rdr);
     func_003339B0(&rdr, 0);
@@ -1961,18 +1959,18 @@ bool UIStopAllSounds(C2DAnimCmdHdr *hdr, float *dT)
 /* the IOP rebooted for what comes next (SOCOM 1's took the mode's name the same way) */
 bool UIRebootIOP(C2DAnimCmdHdr *hdr, float *dT)
 {
-    int mode = 2;
+    CIOPManager::RebootMode mode = (CIOPManager::RebootMode)2;
     const char *text = ArgText(ArgName(hdr));
 
     if (!strcasecmp(text, "Singleplayer"))
-        mode = 2;
+        mode = (CIOPManager::RebootMode)2;
     else if (!strcasecmp(text, "Multiplayer"))
-        mode = 3;
+        mode = (CIOPManager::RebootMode)3;
     else if (!strcasecmp(text, "NetConfig"))
-        mode = 4;
+        mode = (CIOPManager::RebootMode)4;
     else if (!strcasecmp(text, "MainMenu"))
-        mode = 5;
-    func_0034F9B0(&theIOPManager, mode);
+        mode = (CIOPManager::RebootMode)5;
+    theIOPManager.RebootIOP(mode);
     return true;
 }
 
@@ -1985,7 +1983,7 @@ bool UIFadeAllSounds(C2DAnimCmdHdr *hdr, float *dT)
 void AuxNetCensorText(const char *text, void *var)
 {
     if (var)
-        func_003862A0((CUIVariable *)var, text);
+        *((CUIVariable *)var) = text;
 }
 
 bool UINetCensorText(C2DAnimCmdHdr *hdr, float *dT)
@@ -1997,7 +1995,7 @@ bool UINetCensorText(C2DAnimCmdHdr *hdr, float *dT)
         name = anim->GetName(hdr->m_argument_index);
         if (name && !strcasecmp("$1", name))
             name = anim->m_arg_list->GetCharP(0);
-        CUIVariable *var = func_00385900(&theUIVarManager, name);
+        CUIVariable *var = theUIVarManager.Find(name);
 
         if (var && var->type == 3)
             theLobby.Censor(var->String(), AuxNetCensorText, var);
@@ -2013,7 +2011,7 @@ bool UIForceMediusStatusReport(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UISetPlayerDescription(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *var = func_003857C0(&theUIVarManager, "PlayerDescription", 0, UIVAR_SESSION);
+    CUIVariable *var = theUIVarManager.Add("PlayerDescription", 0, UIVAR_SESSION);
 
     if (var && var->type == 3)
         theLobby.SetPlayerDescription(var->String());
@@ -2070,7 +2068,7 @@ bool UISysPostInit(C2DAnimCmdHdr *hdr, float *dT)
     } else {
         reopen = false;
     }
-    func_0034F950();
+    zSysPostInit();
     if (reopen)
         CSnd::UIOpen();
     return true;
@@ -2095,7 +2093,7 @@ bool UICheckTeamStatus(C2DAnimCmdHdr *hdr, float *dT)
 
 bool UISuspendMenuInput(C2DAnimCmdHdr *hdr, float *dT)
 {
-    func_001F3BB0(&theGame.m_menuState, func_00191478(ArgText(ArgName(hdr))));
+    func_001F3BB0(&theGame.m_menuState, atof(ArgText(ArgName(hdr))));
     return true;
 }
 
@@ -2180,7 +2178,7 @@ void UpdatePersonaList(const char *host, int port)
         func_00333770(&rdr);
     }
     func_00333770(&rdr);
-    func_00386460(func_003857C0(&theUIVarManager, "PLAYERPERSONALIST", 0, UIVAR_SESSION), &rdr);
+    func_00386460(theUIVarManager.Add("PLAYERPERSONALIST", 0, UIVAR_SESSION), &rdr);
     func_00333A20(&rdr, -1);
 }
 
@@ -2202,8 +2200,8 @@ bool UIInitNetwork(C2DAnimCmdHdr *hdr, float *dT)
         data_00414EB8 = new CSMInitNetwork(valve);
         data_00414EB8->Start();
     } else {
-        func_003A5C30(data_00414EB8);
-        if (func_003A5C10(data_00414EB8)) {
+        data_00414EB8->Tick();
+        if (data_00414EB8->IsDone()) {
             delete data_00414EB8;
             data_00414EB8 = 0;
             done = true;
@@ -2228,7 +2226,7 @@ bool UIDMEInit(C2DAnimCmdHdr *hdr, float *dT)
     CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
 
     theLobby.DMEInit();
-    if (!func_0030DBB0(&theNetwork)) {
+    if (!theNetwork.zNetInitialize()) {
         func_0030E3A0(&theNetwork, 1);
         func_002B8660();
         SetValveValue(valve, 1);
@@ -2242,7 +2240,7 @@ bool UIMediusInit(C2DAnimCmdHdr *hdr, float *dT)
 {
     CValve *valve = CValve::Create(ArgName(hdr), (VALVE_TYPE)2);
 
-    SetValveValue(valve, func_00300840());
+    SetValveValue(valve, MediusInit());
     return true;
 }
 
@@ -2251,8 +2249,8 @@ bool UIMediusInit(C2DAnimCmdHdr *hdr, float *dT)
 bool UIMUISPersonaExists(C2DAnimCmdHdr *hdr, float *dT)
 {
     const char *name = ArgText(ArgName(hdr));
-    const char *host = func_003857C0(&theUIVarManager, "LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
-    CUIVariable *port = func_003857C0(&theUIVarManager, "LOBBY_PORT", 0, UIVAR_PERMANENT);
+    const char *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT)->String();
+    CUIVariable *port = theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT);
 
     return func_002FBBF0(data_0044FC60, host, port->Int(), name);
 }
@@ -2265,9 +2263,9 @@ bool UIVerifyPatchLevel(C2DAnimCmdHdr *hdr, float *dT)
     bool ok = func_002FD6E0(data_0044FC60, level);
 
     if (!ok) {
-        CUIVariable *var = func_003857C0(&theUIVarManager, "PatchServerURL", 0, UIVAR_SESSION);
+        CUIVariable *var = theUIVarManager.Add("PatchServerURL", 0, UIVAR_SESSION);
 
-        func_003862A0(var, func_002FD610(data_0044FC60, level));
+        *var = func_002FD610(data_0044FC60, level);
     }
     return ok;
 }
@@ -2289,7 +2287,7 @@ bool UIGetMissionInformation(C2DAnimCmdHdr *hdr, float *dT)
         for (std::vector<MPMissionInfo *>::iterator it = data_00441650.begin(); it != data_00441650.end(); ++it) {
             if (multiplayer == (*it)->m_multiplayer) {
                 if (n == want) {
-                    func_003862A0(func_003857C0(&theUIVarManager, name, 0, UIVAR_SESSION), (*it)->m_name.c_str());
+                    *(theUIVarManager.Add(name, 0, UIVAR_SESSION)) = (*it)->m_name.c_str();
                     SetValveValue(CValve::Create(number, (VALVE_TYPE)1), (*it)->m_number);
                     break;
                 }
@@ -2350,11 +2348,11 @@ _zanim_cmd_hdr *UICharacterProfileParse(const char *name, _zrdr *rdr)
  * gender and whether the password is kept secure), then the personas listed again */
 bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
-    CUIVariable *host = func_003857C0(&theUIVarManager, "LOBBY_HOST", 0, UIVAR_PERMANENT);
-    CUIVariable *port = func_003857C0(&theUIVarManager, "LOBBY_PORT", 0, UIVAR_PERMANENT);
-    CUIVariable *name = func_003857C0(&theUIVarManager, "PLAYERNAMEVAR", 0, UIVAR_SESSION);
-    CUIVariable *password = func_003857C0(&theUIVarManager, "PLAYERPASSWORD", 0, UIVAR_SESSION);
-    CUIVariable *hometown = func_003857C0(&theUIVarManager, "PLAYERHOMETOWN", 0, UIVAR_SESSION);
+    CUIVariable *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT);
+    CUIVariable *port = theUIVarManager.Add("LOBBY_PORT", 0, UIVAR_PERMANENT);
+    CUIVariable *name = theUIVarManager.Add("PLAYERNAMEVAR", 0, UIVAR_SESSION);
+    CUIVariable *password = theUIVarManager.Add("PLAYERPASSWORD", 0, UIVAR_SESSION);
+    CUIVariable *hometown = theUIVarManager.Add("PLAYERHOMETOWN", 0, UIVAR_SESSION);
     CValve *gender = CValve::Create("PLAYERGENDER", (VALVE_TYPE)3);
     bool secure = CValve::Create("SecurePassword", (VALVE_TYPE)1)->m_value != 0;
 
@@ -2447,11 +2445,11 @@ bool UIUpdateServerInfo(C2DAnimCmdHdr *hdr, float *dT)
     for (int i = 0; i < func_002FDEC0(data_0044FC60); i++)
         func_00333610(&rdr, func_002FDEA0(data_0044FC60, i));
     func_00333770(&rdr);
-    func_003857C0(&theUIVarManager, "SERVER_NEWS", (_zrdr *)&rdr, UIVAR_SESSION);
-    CUIVariable *name = func_003857C0(&theUIVarManager, "SERVER_NAME", 0, UIVAR_SESSION);
+    theUIVarManager.Add("SERVER_NEWS", (_zrdr *)&rdr, UIVAR_SESSION);
+    CUIVariable *name = theUIVarManager.Add("SERVER_NAME", 0, UIVAR_SESSION);
 
     if (name)
-        func_003862A0(name, func_002FDAA0(data_0044FC60, valve->m_value));
+        *name = func_002FDAA0(data_0044FC60, valve->m_value);
     func_00333A20(&rdr, -1);
     return true;
 }
@@ -2572,7 +2570,7 @@ void CSelectedCharsItr::Advance()
 {
     for (m_index++; Valid(); m_index++) {
         if ((1 << m_index) & m_mask) {
-            CCharacterType *type = func_0053E170(GetCustomCharTypeName(m_index));
+            CCharacterType *type = CCharacterType::GetByNameMod(GetCustomCharTypeName(m_index));
 
             m_weapons = type ? type->m_weapons : 0;
             if (m_weapons)

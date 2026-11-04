@@ -498,6 +498,8 @@ struct _zrdr {
         _zrdr *array;
     };   // 0x4
 
+    /* the value's storage let go of (zrdr.h's, 0x32F350) */
+    void DeleteChildren();
     /* (ours; the count unsigned: LoadNodeNames' walk compares with sltu) */
     unsigned int Count() { return type == 4 ? length : 0; }
     _zrdr *Item(int i) { return i < Count() ? &array[i] : 0; }
