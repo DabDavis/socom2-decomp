@@ -754,7 +754,11 @@ namespace {
  * inlined pick behind a `daddiu a1,zero,1; beqz a1` test of its own), where a bool assigned a bool
  * call is a move. `ok = false; if (f()) ok = true;` in the two calling arms gives their first three
  * instructions (0x16C); ternaries, int-returning picks (sltu), if-return wrappers, `&&` forms and a
- * ternary chain fold or lose (build/scratch/core/v_cefc.py) */
+ * ternary chain fold or lose (build/scratch/core/v_cefc.py). Round 9: each pick `!= false`, `?
+ * true : false`, `!!`, `== true` or `!= 0`, and the three picks as an inline returning each (or
+ * through a bool local) -- 0x154 to 0x16C. The target's secondary arm tests a constant 1 (`daddiu
+ * a1,zero,1; beqz a1`) ahead of the inlined pick and narrows the pick's result (andi) at the join:
+ * the pick sits inside an inline of its own whose bool MW does not fold */
 bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
 {
     CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
