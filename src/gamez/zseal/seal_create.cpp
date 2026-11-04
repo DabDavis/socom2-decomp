@@ -152,22 +152,20 @@ void CZSealBody::DoRespawn()
     m_needs_respawn = 0;
 }
 
-/* a node's tree counted (OVL2 0x59A450: a walk of the child vector; the map's FindGear was SOCOM
- * 1's by position only) */
-extern "C" int func_0059A450(zdb::CNode *node);
-
-/* an iterator's `==` (the copy at 0x59A630 is a draft's) */
-static inline bool IterEqual(void *const *a, void *const *b)
+/* a node's tree counted, the node and its children's trees (OVL2 0x59A450: the map's FindGear was
+ * SOCOM 1's by position only; Create prints the count). MW inlines the recursion into itself twice:
+ * the outer copy walks the child vector inline, the middle calls begin/end/== and the postfix ++'s
+ * pieces, the inner every piece -- OVL2's copies of CNodeVector's iterator pieces, 0x59A630-0x59A720,
+ * after it */
+extern "C" int func_0059A450(zdb::CNode *node)
 {
-    return *a == *b;
-}
+    int n = 1;
+    zdb::CNodeVector &children = node->GetChildren();
+    zdb::CNodeVector::iterator i;
 
-/* an iterator's `!=` as `!(==)`, materialised (OVL2 0x59A680: one of the small iterator copies
- * after 0x59A450, which calls it twice -- a stand-in under the placeholder until that walk is
- * written) */
-extern "C" bool func_0059A680(void *const *a, void *const *b)
-{
-    return !IterEqual(a, b);
+    for (i = children.begin(); i != children.end(); i++)
+        n += func_0059A450(*i);
+    return n;
 }
 
 /* a gear by name, or none: the made gears walked (OVL2 0x59A730; SOCOM 1's FindGear walked a list,
