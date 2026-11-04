@@ -318,6 +318,47 @@ bool SkbShifted2(CPad *pad);
 void SkbToggleLock2();
 void SkbToggleShiftLock(bool toggle);
 
+/* a UI command as a menu's ZAnim sequence carries it (zanim_menu.h's C2DAnimCmdHdr, which the
+ * keyboard's units cannot include -- zui.h's rule: only its layout here) */
+class C2DAnimCmdHdr {
+public:
+    unsigned int header;               // 0x0: the _zanim_cmd_hdr
+    unsigned short node_ref_index;     // 0x4
+    unsigned char m_command_index;     // 0x6
+    unsigned short m_argument_index;   // 0x8: the argument, an index into the anim's names
+    unsigned char m_command_type;      // 0xa
+};
+
+/* a UI command whose record a parser builds (zanim_menu.h's UIParsedCmd: its halfword; a base, so
+ * the record's own fields start at its 0x10) */
+struct UIParsedCmd : public C2DAnimCmdHdr {
+    unsigned short m_c;   // 0xc
+};
+
+/* the keyboard's set-up command's record (SOCOM II's, a parsed command with what the keyboard opens
+ * for: its argument names the purpose; the names ours, read off SkbSetPurpose 0x397640 and its
+ * readers) */
+struct UISkbOpenCmd : public UIParsedCmd {
+    char m_caption[0x40];     // 0x10: the caption's plain text
+    int m_title1;             // 0x50: mode 1's caption, an anim name (MsgPlayer), or -1
+    int m_title2;             // 0x54: mode 2's (Action2)
+    char m_name[0x20];        // 0x58: the keyboard to open (KEYBOARD's when empty)
+    char m_uivar[0x20];       // 0x78: the UI variable the typed text goes to, by name
+    int m_maxBytes0;          // 0x98: string 0's limits, bytes and characters (0 none)
+    int m_maxChars0;          // 0x9c
+    int m_maxBytes1;          // 0xa0: string 1's
+    int m_maxChars1;          // 0xa4
+    bool m_noQuotes;          // 0xa8: a typed double quote becomes an apostrophe (0x399EC0)
+    bool m_allowEmpty;        // 0xa9: an empty text may be entered (OnEnterKey)
+};
+
+/* the display unit's set-up from the command (zui_skbview.cpp, 0x397640; the names ours): the
+ * keyboard's name returned; whether an empty text may be entered (0x395110: an int, OnEnterKey
+ * tests it through an int inline) and whether a double quote may be typed (0x396ED0) */
+const char *SkbSetPurpose(UISkbOpenCmd *cmd);
+int SkbEmptyAllowed();
+bool SkbQuotesAllowed();
+
 /* four words: a place and a size (a rectangle, the names ours; the look's rectangles) */
 struct CSkbRect {
     CSkbRect()

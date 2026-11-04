@@ -7278,7 +7278,7 @@
 0x0038D670 0x8 clear__Q23std60vector<P13CSoftKeyboard,Q23std27allocator<P13CSoftKeyboard>>Fv  # OVL1; by hand (the pointer vector's clear out of line, size_ zeroed: ZuiUnInit's FreeVector) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038D680 0x14 __ct__Q23std60vector<P13CSoftKeyboard,Q23std27allocator<P13CSoftKeyboard>>Fv  # OVL1; by hand (the pointer vector's constructor out of line, three words zeroed: FreeVector's temporary in ZuiUnInit) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038D6A0 0xC4 ZuiInit__Fv  # OVL1; s1:calls by hand (SOCOM 1's ZuiInit: UiParams.rdr from data/common read, each of its SoftKeyboards made by CreateSoftKeyboard, the file freed; CMenuState::Init calls it) -- zui_skb.cpp
-0x0038D770 0x174 SkbOpen__Fv  # OVL1; by hand (the UI lane, round 12, ours: the UI command opening the keyboard the display unit names (0x397640; KEYBOARD when empty) with the empty text 0x49EC70 through ShowSkb, the display root g_skbDisplayNode on, the valve skb_done set to whether none was found, the sound 0 played; returns true -- the command table handler 0x2808D0 jumps here; zui_skb.cpp)
+0x0038D770 0x174 SkbOpen__FP13C2DAnimCmdHdrPf  # OVL1; by hand (the UI lane, round 12, ours: the UI command opening the keyboard the display unit names (0x397640; KEYBOARD when empty) with the empty text 0x49EC70 through ShowSkb, the display root g_skbDisplayNode on, the valve skb_done set to whether none was found, the sound 0 played; returns true -- the command table handler 0x2808D0 jumps here; zui_skb.cpp); the UI lane round 20: the handler's parameters (the command table's 0x2808D0 jumps here with the command and the time step, as SOCOM 1's OnSetSkbPurpose jumps to UiSetSkbPurpose(C2DAnimCmdHdr *, float *)); the command is passed on in a0 to SkbSetPurpose 0x397640, whose record it is -- byte-identical code
 0x0038D8F0 0x17C SkbTick__FP9CGameMenubf  # OVL1; the UI lane round 14: ours, by its body (zui_skb.cpp: the showing keyboard g_pActiveSkb ticked -- the display tick 0x3949C0's events handled through 0x38DFE0 with CInput::m_pads[0] and the menu when a1 is set, the USB bitmaps 0x520/0x5D0 shown by KeyboardAttached, the scaling 0x394DA0's result 1 or 2 handled; CGameMenu's tick 0x3654C0 calls it)
 0x0038DA70 0x184 StrToSkbKey__21@unnamed@zui_skb_cpp@FPCc  # OVL1; the UI lane round 15: SOCOM 1's StrToSkbKey__21@unnamed@zui_skb_cpp@FPCc by its body (zui_skb.cpp: SOCOM II's adds the Switch<n> keys and the jamo; the key a name in the rdr gives -- none, a single character, Switch<n> (row 3), the five named characters, the fourteen action keys (row 1), else a jamo through FindJamo (row 2); ParseKeyProps and CreateSoftKeyboard call it), byte-exact
 0x0038DC00 0xA4 func_0038DC00  # OVL1
@@ -7417,7 +7417,7 @@
 0x003949C0 0x3D4 func_003949C0  # OVL1
 0x00394DA0 0x1B4 func_00394DA0  # OVL1
 0x00394F60 0x1A8 SkbPadKeyEvent__FP4CPad  # OVL1; ours (the UI lane round 19: the pad's key event through a {dir, button, event} table, then cross/L2/R2 as 5-7; 0x38DC00 hands a nonzero one to SkbHandleKey)
-0x00395110 0xC func_00395110  # OVL1
+0x00395110 0xC SkbEmptyAllowed__Fv  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: s_allowEmpty 0x4A0A50 returned -- the set-up command's byte at 0xA9; OnEnterKey 0x38C040 counts an empty text only when it is clear)
 0x00395120 0x14 func_00395120  # OVL1
 0x00395140 0x1B0 func_00395140  # OVL1
 0x003952F0 0xC func_003952F0  # OVL1
@@ -7439,13 +7439,13 @@
 0x00396D40 0x118 SkbTextFits__FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>b  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a std::string within the look's byte and UTF-8 character limits for string 0 or 1, 0x4A10C8-0x4A10E0; 0x399EC0 asks)
 0x00396E60 0x54 SkbShifted__FP4CPad  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: CPad's L1 state, 0xD, held or falling, against bitmap 5's node active -- the shift lock; SkbTypeJamo 0x399070 asks)
 0x00396EC0 0x10 func_00396EC0  # OVL1
-0x00396ED0 0x14 func_00396ED0  # OVL1
+0x00396ED0 0x14 SkbQuotesAllowed__Fv  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: !s_noQuotes 0x4A0A58 -- the set-up command's byte at 0xA8; 0x399EC0 types a double quote (34) as an apostrophe (39) when it is false)
 0x00396EF0 0x14 func_00396EF0  # OVL1
 0x00396F10 0x14 func_00396F10  # OVL1
 0x00396F30 0x134 SkbForgetDisplay__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the bitmaps' nodes, the 40 key-row bitmaps' through slot 0x30, the six sounds, the display's root node 0x49ED50 and the caption's node zeroed, the caption's text set to none; InvalidateSkbsDisplay calls it)
 0x00397070 0x520 func_00397070  # OVL1
 0x00397590 0xA8 SkbPlaceCursor__FP12CSkbKeyProps  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 2 reloaded at the key's size with its own texture, its node put at the key's place, the key's button SetActive through a member pointer {0, 0x50, 0xC})
-0x00397640 0x1FC func_00397640  # OVL1
+0x00397640 0x1FC SkbSetPurpose__FP12UISkbOpenCmd  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: the keyboard set up from its command's record -- the purpose string s_openText from the argument's anim name, "$1" the anim's first argument as UINetCensorText reads it, then the UI variable's name, the two strings' limits, the caption and its two titles (MsgPlayer, Action2: "... title too long!" past 0x7F bytes), the two flags, the pad's kept key cleared, the record's keyboard name at 0x58 returned); SOCOM 1's UiSetSkbPurpose(C2DAnimCmdHdr *, float *) 0x3A7150 is its first part; SkbOpen 0x38D770 calls it with the command
 0x00397840 0xC func_00397840  # OVL1
 0x00397850 0x3C SkbGetText__Fb  # OVL1; ours (zui_skbview.cpp: the edited text's buffer 0x4A0A30, or the c_str() of the string the keyboard opened with, 0x4A1300; 0x3998A0 and 0x399D20 call it)
 0x00397890 0x2C func_00397890  # OVL1

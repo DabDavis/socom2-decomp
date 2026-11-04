@@ -62,8 +62,13 @@ static CSkbBmpRows s_keyRows;
 static char s_captionText0[0x40];
 static char s_captionText1[0x80];
 static char s_captionText2[0x80];
-/* the name of the UI variable the typed text goes to (0x4A0A30) */
-static char s_editText[0x30];
+/* the name of the UI variable the typed text goes to (0x4A0A30: the set-up's command copies a
+ * 0x20-byte field into it) */
+static char s_editText[0x20];
+/* the set-up's two flags: an empty text may be entered (0x4A0A50) and a typed double quote becomes
+ * an apostrophe (0x4A0A58; the names ours) */
+static bool s_allowEmpty;
+static bool s_noQuotes;
 /* the caption's mode: 0 plain, 1 or 2 the modes 0x394840 and 0x394920 toggle (0x4A0A60) */
 enum CAPTIONMODE { CAPTION_PLAIN, CAPTION_1, CAPTION_2 };
 static CAPTIONMODE s_captionMode;
@@ -246,6 +251,84 @@ void CSkbKeyProps::SetShown(bool on)
 {
     if (m_node)
         m_node->SetActive(on);
+}
+
+/* the animations (zanim.h's CZAnimMain, CZAnim and CZAnimArgList: only the set-up's reach -- a
+ * name by index, the first argument's string; ZAnim OVL1 bss 0x414BB0) */
+class CZAnimArgList {
+public:
+    char *GetCharP(int index);
+};
+
+class CZAnim {
+public:
+    const char *GetName(int index);
+
+    unsigned char _0[0x18];
+    CZAnimArgList *m_arg_list;   // 0x18
+};
+
+class CZAnimMain {
+public:
+    unsigned char _0[0x38];
+    CZAnim *m_CurAnim;   // 0x38: the animation being run
+};
+
+extern CZAnimMain ZAnim;
+
+/* a caption title: the anim's name at the index (none for a negative one), the message given when
+ * it does not fit the title's 0x80 bytes, the empty string for none (ours) */
+static inline const char *SkbTitle(CZAnim *anim, int index, const char *tooLong)
+{
+    const char *t = index >= 0 ? anim->GetName(index) : 0;
+
+    if (t) {
+        if (strlen(t) >= 0x80)
+            t = tooLong;
+    } else
+        t = "";
+    return t;
+}
+
+/* the keyboard set up by its command's record: the purpose (the argument's name -- "$1" the anim's
+ * first argument, as UINetCensorText reads it), the UI variable the text goes to, the two strings'
+ * limits, the caption and the two titles, the two flags; the pad's kept key cleared; the name of the
+ * keyboard to open returned (0x397640; ours: SOCOM 1's UiSetSkbPurpose is its first part, SkbOpen
+ * calls it with the command) */
+const char *SkbSetPurpose(UISkbOpenCmd *cmd)
+{
+    CZAnim *anim = ZAnim.m_CurAnim;
+    const char *name = anim->GetName(cmd->m_argument_index);
+
+    if (name && !strcasecmp("$1", name))
+        name = anim->m_arg_list->GetCharP(0);
+    s_openText = name;
+    strcpy(s_editText, cmd->m_uivar);
+    s_maxBytes0 = cmd->m_maxBytes0;
+    s_maxChars0 = cmd->m_maxChars0;
+    s_maxBytes1 = cmd->m_maxBytes1;
+    s_maxChars1 = cmd->m_maxChars1;
+    strcpy(s_captionText0, cmd->m_caption);
+    SetCaption(cmd->m_caption);
+    strcpy(s_captionText1, SkbTitle(anim, cmd->m_title1, "MsgPlayer title too long!"));
+    strcpy(s_captionText2, SkbTitle(anim, cmd->m_title2, "Action2 title too long!"));
+    s_noQuotes = cmd->m_noQuotes;
+    s_allowEmpty = cmd->m_allowEmpty;
+    s_keyEvent = 0;
+    s_keyHeld = 0.0f;
+    return cmd->m_name;
+}
+
+/* whether an empty text may be entered (0x395110; ours: OnEnterKey asks) */
+int SkbEmptyAllowed()
+{
+    return s_allowEmpty;
+}
+
+/* whether a double quote may be typed as it is (0x396ED0; ours: 0x399EC0 asks) */
+bool SkbQuotesAllowed()
+{
+    return !s_noQuotes;
 }
 
 /* the cursor's bitmap (2) sized to a key and put on it, the key's button made active (0x397590;

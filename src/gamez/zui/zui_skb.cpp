@@ -186,8 +186,6 @@ void SkbPlaySound(unsigned char which);
 
 extern "C" {
 
-int func_00395110();
-
 void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu);
 }
 bool SkbTextUnchanged();
@@ -362,8 +360,7 @@ void CSoftKeyboard::ShowElements(bool on)
         (*it).second->SetShown(on);
 }
 
-/* the display unit's: the name of the keyboard to open (0x397640) and its root node */
-extern "C" const char *func_00397640();
+/* the display unit's root node (SkbSetPurpose, which names the keyboard to open, is zui_skb.h's) */
 extern zdb::CNode *g_skbDisplayNode;
 
 /* the pads (zinput.h's CInput, which this unit cannot include beside zui_spec.h: its pads only) and
@@ -472,14 +469,16 @@ char s_openText[0x40];
 
 }
 
-/* the UI command opening the keyboard the display unit names (KEYBOARD's when it names none) with
- * the empty text, the display's root on, skb_done set to whether none was found, the sound played
- * (0x38D770; the name ours: the command table's handler 0x2808D0 jumps here). The valve's value
+/* the UI command opening the keyboard its record names (KEYBOARD's when it names none) once the
+ * display unit has set up from it, with the empty text, the display's root on, skb_done set to
+ * whether none was found, the sound played (0x38D770; the name ours: the command table's handler
+ * 0x2808D0 jumps here with the command and the time step, as SOCOM 1's OnSetSkbPurpose jumps to
+ * UiSetSkbPurpose -- the command passed on to SkbSetPurpose in a0 untouched). The valve's value
  * a ternary: the target computes it at each of the setter's uses, after the value's load (`!skb`
  * is computed once, ahead of it) */
-bool SkbOpen()
+bool SkbOpen(C2DAnimCmdHdr *hdr, float *dT)
 {
-    const char *p = func_00397640();
+    const char *p = SkbSetPurpose((UISkbOpenCmd *)hdr);
     const char *name;
 
     if (*p)
@@ -583,7 +582,7 @@ void CSoftKeyboard::OnEnterKey(CGameMenu *menu)
             unchanged = true;
         bool empty = false;
 
-        if (IsNone(func_00395110()) && IsNone(SkbTypedTextNotBlank()))
+        if (IsNone(SkbEmptyAllowed()) && IsNone(SkbTypedTextNotBlank()))
             empty = true;
         if (unchanged || empty) {
             func_0038C000(this, menu);
