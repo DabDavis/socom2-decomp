@@ -2033,6 +2033,37 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 30** (CSealUnit's state push, centre, distances, aware counter, leave):
+  - a const walk whose iterator is ASSIGNED (`const_iterator i; for (i = l.begin(); ...)`) gives the target's four copies of
+    begin() (store, bitwise, word, bitwise) with the iterator in memory (GetAwareCounter 0x5E76D0, SOCOM 1's); taking a
+    walk's end into a local ahead of the iterator (`for (iterator e = l.end(), i = l.begin(); ...)`) fixes the temporary
+    registers too -- iterator v1/a1, end a0/a2 (SealLeaveUnit 0x5EDF90, Revive);
+  - `*l.begin()` in place of `l.front()` reuses the sentinel's `&end_.next_` an earlier walk computed, front() reads it
+    afresh (SealLeaveUnit's new leader); `return w && f(w) ? x : 0;` keeps the `&&`'s exits as separate blocks (`bnez
+    v0,T; nop; b F; nop`) where `if (w && f(w))`, a switch, `== true` and a loop all fail (CZKit::GetFiremodeGraphic
+    0x5BE1D0, open since round 28);
+  - SOCOM II's inlined by-value CPnt3D operators (a Scale or Sub into a temporary, then an ld/sd + lwc1/swc1 copy) are
+    reproduced by a static inline returning a named point (GetCenter 0x5E7030's `*out += Scaled(c, k)`); PushAiState
+    0x5E6AB0 (ClearAiStates' twin), GetMaxDistSq 0x5E7230; open: Revive 0x5EDE40 (3), GetMyPointOutAnimStart 0x5E7390
+    (16), GetTeamSeals 0x5EA8C0 (0x1B8 vs 0x1B0).
+- **Tells from the online lobby, round 18** (the LAN lobby's game info and creation, the world report, the stats parser):
+  - `p && *p ? f(p) : 0` keeps the inner test's bnez/b pair (one zero block reached from both tests) only with the pointer
+    in a local; read in place, MW turns the `&&` into a bool first, and the if-forms fold into one beqz -- the mission
+    number `const char *p = data_004364FC; return p && *p ? atoi(p + 2) : 0;` closes CZLANLobby::GetGameInfo 0x303780,
+    CreateGame 0x303F40 and the world report 0x2EF590 (open since rounds 13-15; CConsole::FindHandler 0x29D080 has the same
+    blocks: build/scratch/online-r18/pat_bz.py finds them);
+  - a template instance the unit's own code requests is generated in the tail's first round (it calls the deleter's clear
+    out of line and tests placement new's result on v0); requested only from an inline constructor through the initialiser
+    it comes later and inlines clear -- a constructor defined out of class, which the link strips, gives the target's
+    (reserve<AcctRecord> 0x2FECB0, ~vector<AcctRecord> 0x2FD070 from source: `CAcctDB()` out of class, no row, no-target);
+  - a byte-enum bit-field is loaded with lb and extracted with dsrl when copied or stored, with lbu when compared (a signed
+    char bit-field extracts with dsra) -- one enum declaration explains both readings; a ternary between two enumerators
+    into an enum bit-field keeps its branches, an int ternary or if/else into an int is if-converted to sltu; `p = 0; if
+    (q) p = q->f();` gives the if-assign layout (the zero in the null test's delay slot), `q ? q->f() : 0` branches over it;
+    a constant 14-pass copy loop unrolls seven at a time;
+  - the stats parser 0x2F9AC0 (0x854: SOCOM II's older records 'N'/'Q', 'A'-'D' upgraded to 'E') and the player info pages
+    0x2F0020 (0xE7C); open: Remove 0x301CF0 / cbRoomPlayerList (the erase walk), setLoadImageTags (2), the tree swap
+    0x305BE0 (SOCOM 1's paired-field tree layout).
 - **Tells from the engine core, round 9** (zanim_menu.cpp's equipment slots, ChoosePrimaryForCharacter under K):
   - an inline taking a switch's value by value colours the index computation into v0 ahead of the switch's constant, by
     const reference or written out it is the target's (HasSlotsForItem 0x284120: both item-slot switches written out in
