@@ -292,13 +292,59 @@ basic_filebuf<charT, traits>::pbackfail(int_type c)
     return traits::not_eof(c);
 }
 
-/* NOT WRITTEN (round 3): a placeholder body -- the target's overflow is 0x474 (char) / 0x4C4
- * (wchar_t): the put area, unshift on the switch to output, write2 when converting */
+/* the put area written out (round 6, both byte-exact; SOCOM 1's DWARF: fstream lines 667-721, a local
+ * p in each branch): an unbuffered-so-far file gets its put area (the get area's position given back
+ * to the file first), then each character goes out -- as it is, through putc, when the facet does no
+ * conversion, else through write2 -- the unwritten tail kept at the front on a failure; c last. The
+ * no-conversion branch's last test is a flag set in two steps (`a && b`, an if over a bool local
+ * initialised from a, all keep a saved-register flag the target does not have); write2 is defined
+ * after the class instantiations, so it is called, as the image's late write2 are. */
 template <class charT, class traits>
 typename basic_filebuf<charT, traits>::int_type
 basic_filebuf<charT, traits>::overflow(int_type c)
 {
-    return traits::eof();
+    if (file_ == 0)
+        return traits::eof();
+    if (buffered_ && this->pptr() == 0) {
+        if (this->gptr() < this->egptr()) {
+            if (seekoff(0, ios_base::cur, ios_base::in) == pos_type(off_type(-1)))
+                return traits::eof();
+        }
+        this->setp(input_buffer_, input_buffer_ + sizeof(input_buffer_) / sizeof(char_type));
+    }
+    overflow_called_last_ = true;
+    if (always_noconv_) {
+        for (char_type *p = this->pbase(); p < this->pptr(); ++p) {
+            if (traits::eq_int_type(write1(*p), traits::eof())) {
+                if (this->pbase() < p) {
+                    memcpy(this->pbase(), p, (this->pptr() - p) * sizeof(char_type));
+                    this->pbump(int(this->pbase() - p));
+                }
+                return traits::eof();
+            }
+        }
+        this->pbump(int(this->pbase() - this->pptr()));
+        bool failed = !traits::eq_int_type(c, traits::eof());
+        if (failed)
+            failed = traits::eq_int_type(write1(traits::to_char_type(c)), traits::eof());
+        if (failed)
+            return traits::eof();
+    } else {
+        int width = a_codecvt_->encoding();
+        for (char_type *p = this->pbase(); p < this->pptr(); ++p) {
+            if (traits::eq_int_type(write2(width, *p), traits::eof())) {
+                if (this->pbase() < p) {
+                    memcpy(this->pbase(), p, (this->pptr() - p) * sizeof(char_type));
+                    this->pbump(int(this->pbase() - p));
+                }
+                return traits::eof();
+            }
+        }
+        this->pbump(int(this->pbase() - this->pptr()));
+        if (!traits::eq_int_type(c, traits::eof()) && traits::eq_int_type(write2(width, traits::to_char_type(c)), traits::eof()))
+            return traits::eof();
+    }
+    return traits::not_eof(c);
 }
 
 template <class charT, class traits>
@@ -390,32 +436,6 @@ basic_filebuf<charT, traits>::read3(bool peek)
     return traits::to_int_type(intern_buf);
 }
 
-template <class charT, class traits>
-typename basic_filebuf<charT, traits>::int_type
-basic_filebuf<charT, traits>::write2(int n, char_type intern_buf)
-{
-    char extern_buf[12];
-    char *extern_end;
-    const char_type *intern_end;
-    switch (a_codecvt_->out(state_, &intern_buf, &intern_buf + 1, intern_end,
-                            extern_buf, extern_buf + sizeof(extern_buf), extern_end)) {
-    case codecvt_base::error:
-    case codecvt_base::partial:
-        return traits::eof();
-    case codecvt_base::noconv:
-        n = sizeof(char_type);
-        memcpy(extern_buf, &intern_buf, (unsigned int)n);
-        break;
-    case codecvt_base::ok:
-        n = extern_end - extern_buf;
-        break;
-    }
-    for (int i = 0; i < n; ++i) {
-        if (putc(extern_buf[i], file_) == EOF)
-            return traits::eof();
-    }
-    return traits::to_int_type(intern_buf);
-}
 
 
 /* The stream classes (round 2): basic_istream/basic_ostream over a virtual basic_ios (MW's layout:
@@ -658,6 +678,35 @@ _RefCountedPtr<T, Destructor>::_RefCountedPtr(const _RefCountedPtr &other)
 {
     if (refCount_)
         ++*refCount_;
+}
+
+/* one character converted and written (overflow's, defined after the instantiations so that it is
+ * generated after overflow and called, as the image's write2<char> 0x1892A0 is) */
+template <class charT, class traits>
+typename basic_filebuf<charT, traits>::int_type
+basic_filebuf<charT, traits>::write2(int n, char_type intern_buf)
+{
+    char extern_buf[12];
+    char *extern_end;
+    const char_type *intern_end;
+    switch (a_codecvt_->out(state_, &intern_buf, &intern_buf + 1, intern_end,
+                            extern_buf, extern_buf + sizeof(extern_buf), extern_end)) {
+    case codecvt_base::error:
+    case codecvt_base::partial:
+        return traits::eof();
+    case codecvt_base::noconv:
+        n = sizeof(char_type);
+        memcpy(extern_buf, &intern_buf, (unsigned int)n);
+        break;
+    case codecvt_base::ok:
+        n = extern_end - extern_buf;
+        break;
+    }
+    for (int i = 0; i < n; ++i) {
+        if (putc(extern_buf[i], file_) == EOF)
+            return traits::eof();
+    }
+    return traits::to_int_type(intern_buf);
 }
 
 /* the conversion state shifted back to its initial state, its bytes written out (the target's

@@ -965,6 +965,8 @@ private:
     typedef codecvt<charT, char, int> cvt;
 
     bool unshift();
+    /* one character put as it is (overflow's no-conversion path; always expanded) */
+    int_type write1(char_type c) { return putc(c, file_) == EOF ? traits::eof() : traits::to_int_type(c); }
     int_type read1(bool peek);
     int_type read2(int n, bool peek);
     int_type read3(bool peek);
