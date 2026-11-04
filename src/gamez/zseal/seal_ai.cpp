@@ -3158,7 +3158,9 @@ void CAiStamp::Reset()
     m_20 = 0;
 }
 
-/* an alert's level record (the names ours: 0x558030, 0x5582C0 and 0x558440 keep one each) */
+/* an alert's level record (the names ours: 0x558030, 0x5582C0 and 0x558440 keep one each) -- the
+ * AI's stamp (zseal.h's CAiStamp at 0x324, whose Reset restarts it) with what each keeps of its
+ * cause: the cell, the entity and its flag (0x558440), the point (0x5582C0) */
 struct CAlertLevel {
     float m_time;   // 0x0: when the level was raised, on the game's clock
     float m_amount;   // 0x4
@@ -3167,6 +3169,15 @@ struct CAlertLevel {
     int m_c;   // 0xc: cleared on any change
     unsigned char _10[0x14 - 0x10];
     AI_MODE m_mode;   // 0x14: the AI's mode at the change, 1 without an AI
+    unsigned char _15[0x18 - 0x15];
+    CAiMapLoc m_loc;   // 0x18: the cause's cell
+    CZSealBody *m_who;   // 0x1c: the SEAL that caused it (CAiStamp's m_1c)
+    unsigned char m_avoid;   // 0x20: whether the SEAL is one to avoid (CAiStamp's m_20)
+    unsigned char _21[0x24 - 0x21];
+    CPnt3D m_pos;   // 0x24: the cause's point
+
+    /* restarted (CAiStamp::Reset, this unit's own function, inlined) */
+    void Reset() { ((CAiStamp *)this)->Reset(); }
 };
 
 extern "C" {
@@ -3205,6 +3216,83 @@ extern "C" ALERT_CHANGE func_00557F60(CAlertLevel *a, CSealCtrlAi *ai, unsigned 
     if (r != ALERT_NONE)
         a->m_c = 0;
     return r;
+}
+
+/* a point's distance from another flat on the ground, squared (an inline: the difference built by the
+ * three-float constructor, its y a zero -- the target subtracts x first, as only it or locals declared
+ * z first give) */
+static inline float FlatDistSq(const CPnt3D *a, const CPnt3D *b)
+{
+    CPnt3D d(a->x - b->x, 0.0f, a->z - b->z);
+
+    return d.x * d.x + d.y * d.y + d.z * d.z;
+}
+
+/* (OVL2 data 0x6504A0: how far, squared, a noise may move before it counts as a new one -- 100,
+ * read as a variable) */
+extern "C" float data_006504A0;
+
+/* a noise heard at a point (level 4): a first one keeps the point and its cell; more of it add up
+ * unless it moved ten or more away, which restarts the record on the new point; whether the record
+ * now holds an untaken level 4 (OVL2 0x5582C0, new in SOCOM II: 0x5582B0 tail-calls it, 0x5B0420
+ * calls it; the name unknown) */
+extern "C" bool func_005582C0(CAlertLevel *a, CSealCtrlAi *ai, const CPnt3D *pos, float amount)
+{
+    switch (func_00557F60(a, ai, 4, amount)) {
+    case ALERT_NONE:
+        break;
+    case ALERT_SET:
+        a->m_pos = *pos;
+        AiMaps.GetLocation(&a->m_pos, a->m_loc);
+        break;
+    case ALERT_ADDED:
+        if (!(FlatDistSq(&a->m_pos, pos) < data_006504A0)) {
+            a->Reset();
+            func_00557F60(a, ai, 4, amount);
+            a->m_pos = *pos;
+            AiMaps.GetLocation(&a->m_pos, a->m_loc);
+        }
+        break;
+    }
+    return a->m_c == 0 && a->m_level == 4;
+}
+
+/* whether one SEAL should keep away from another within a range (seal_airesponse.cpp's), and the
+ * range here (OVL2 data 0x651028: 25, five squared -- read as a variable) */
+bool ShouldAvoid(CZSealBody *a, CZSealBody *b, float d2);
+extern "C" float data_00651028;
+
+/* another SEAL seen (level 1), unless it is the AI's own or, asked to, one it need not avoid within
+ * five: a first sighting keeps its cell, the SEAL and the flag; more of the same SEAL add up, another
+ * restarts the record on it; whether the record now holds an untaken level 1 (OVL2 0x558440, new in
+ * SOCOM II: 0x54F7E0 calls it four times, 0x567900 once; the name unknown) */
+extern "C" bool func_00558440(CAlertLevel *a, CSealCtrlAi *ai, CZSealBody *seal, bool avoid, float amount)
+{
+    if (seal && seal != ai->m_entity) {
+        if (!avoid || ShouldAvoid((CZSealBody *)ai->m_entity, seal, data_00651028)) {
+            switch (func_00557F60(a, ai, 1, amount)) {
+            case ALERT_NONE:
+                break;
+            case ALERT_SET:
+                a->m_loc = seal->m_mapLocValid;
+                a->m_who = seal;
+                a->m_avoid = avoid;
+                break;
+            case ALERT_ADDED:
+                if (a->m_who != seal) {
+                    a->Reset();
+                    a->m_loc = seal->m_mapLocValid;
+                    a->m_who = seal;
+                    a->m_amount = amount;
+                    a->m_avoid = avoid;
+                } else if (!avoid) {
+                    a->m_avoid = false;
+                }
+                break;
+            }
+        }
+    }
+    return a->m_c == 0 && a->m_level == 1;
 }
 
 /* whether a map's cell (its first layer's) lies inside: CAiMap::GetCell inlined one level, its pieces

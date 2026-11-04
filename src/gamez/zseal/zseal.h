@@ -690,7 +690,9 @@ public:
     void Reset();
 
     float m_time;   // 0x0
-    unsigned int m_4;   // 0x4
+    /* (a float: the alert records' amount -- 0x5582C0's inlined Reset stores the 0.0 its distance
+     * holds in $f2) */
+    float m_4;   // 0x4
     unsigned char m_8;   // 0x8
     unsigned char _9[0x1c - 0x9];
     unsigned int m_1c;   // 0x1c
