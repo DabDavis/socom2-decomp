@@ -1031,8 +1031,6 @@ struct BlurEffect {
 };
 
 extern BlurEffect data_00488EA0;
-/* a float driven by an expression (not named yet) */
-extern "C" void func_0025C880(float *out, char *expr, int len, float t);
 
 /* BLUR3D: set the blur's level (flag 1) and amount (2), or drive the amount by an expression;
  * its blend from the record's selectors and alpha (4) or an expression (8); over a time */
@@ -1073,7 +1071,7 @@ extern "C" bool func_00264A40(_zanim_cmd_hdr *hdr, float *dT)
     if (cmd->expr_len > 0) {
         float f;
 
-        func_0025C880(&f, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
+        zAnimRGBAExpr((unsigned char *)&f, (char *)cmd + cmd->expr_off, cmd->expr_len, *dT + ZAnim.m_CurSeq->cmd_timer);
         int v;
 
         memcpy(&v, &f, sizeof v);
@@ -1286,7 +1284,6 @@ static inline void SetRGB(PNT4D *c, float r, float g, float b)
     c->y = g;
     c->z = b;
 }
-extern "C" void func_0025C6E0(PNT4D *color, char *expr, int len, int channel, float t);
 
 extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
 {
@@ -1324,7 +1321,7 @@ extern "C" bool func_002642F0(_zanim_cmd_hdr *hdr, float *dT)
 
             c = from;
         }
-        func_0025C6E0(&c, expr, cmd->expr_len, first, t);
+        zAnimColorExpr(&c, expr, cmd->expr_len, first, t);
         for (int i = 0; i < 4; i++)
             if (cmd->channels & (1 << i))
                 (PNT4D &)zdb::CVisual::m_lensColor[i] = c;

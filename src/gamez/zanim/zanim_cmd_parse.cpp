@@ -3,8 +3,8 @@
  * commands' handlers sit at the unit's end. The unit name is SOCOM 1's (its __sinit_zanim_cmd_parse.cpp
  * is the <iostream> pair alone, linked right before zanim_cmd_tick.cpp's, as SOCOM II's 0x3FFB00 is --
  * the integrator's initialiser research). Defined in reverse of their image order (-inline deferred);
- * not written yet: zAnimFireWeaponTick 0x25CCB0, 0x25CB00, 0x25C880, 0x25C6E0, the alpha expression
- * 0x25C5F0 (zanim_cmd_tick.cpp calls it) and InitCommands 0x25BC20. */
+ * not written yet: zAnimFireWeaponTick 0x25CCB0 and InitCommands 0x25BC20. Between them SOCOM II's
+ * key-track evaluators (alpha, colour, four bytes) and the heading's direction (core round 8). */
 
 #include <string.h>
 #include <iostream>   /* (its pair is all __sinit_zanim_cmd_parse.cpp builds, 0x3FFB00) */
@@ -46,6 +46,103 @@ struct ZANIM_EXPR_KEY {
     float t;
     float v;
 };
+
+/* a key of a colour track: a time and the colour there (SOCOM II's; the name ours) */
+struct ZANIM_COLOR_KEY {
+    float t;
+    PNT4D c;
+};
+
+/* a heading in degrees made a direction on the ground, pitched by the second angle over 90 degrees
+ * and shortened by as much (SOCOM II's; the motion and call-anim begins' -- the name ours) */
+void zAnimHeadingToDir(CPnt3D *dir, float heading, float pitch)
+{
+    float a = 0.017453292f * heading;
+
+    dir->x = sinf(a);
+    dir->z = cosf(a);
+    dir->x = -dir->x;
+    dir->y = 0.0f;
+    dir->z = -dir->z;
+    dir->y = 0.011111111f * pitch;
+
+    float s = dir->y >= 0.0f ? 1.0f - dir->y : 1.0f + dir->y;
+
+    dir->x *= s;
+    dir->z *= s;
+}
+
+/* a colour track at a time made four bytes, 128 for 1, rounded: nothing at or before its first key,
+ * else the colour interpolated between the keys about the time, the last key's past them (SOCOM
+ * II's, the BLUR3D tick's amount; the name ours) */
+void zAnimRGBAExpr(unsigned char *rgba, char *expr, int n, float t)
+{
+    ZANIM_COLOR_KEY *keys = (ZANIM_COLOR_KEY *)expr;
+
+    if (t <= keys[0].t)
+        return;
+
+    PNT4D c;
+    bool found = false;
+
+    for (int i = 0; i < n - 1; i++) {
+        bool in = t <= keys[i + 1].t;
+
+        if (in) {
+            float f = (t - keys[i].t) / (keys[i + 1].t - keys[i].t);
+
+            c.x = keys[i].c.x + f * (keys[i + 1].c.x - keys[i].c.x);
+            c.y = keys[i].c.y + f * (keys[i + 1].c.y - keys[i].c.y);
+            c.z = keys[i].c.z + f * (keys[i + 1].c.z - keys[i].c.z);
+            c.w = keys[i].c.w + f * (keys[i + 1].c.w - keys[i].c.w);
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+        c = keys[n - 1].c;
+    rgba[0] = (unsigned int)(0.5f + 128.0f * c.x);
+    rgba[1] = (unsigned int)(0.5f + 128.0f * c.y);
+    rgba[2] = (unsigned int)(0.5f + 128.0f * c.z);
+    rgba[3] = (unsigned int)(0.5f + 128.0f * c.w);
+}
+
+/* a colour track at a time: before its first key the colour eased toward that key by the time
+ * over the key's, else interpolated between the keys about the time, the last key's past them
+ * (SOCOM II's, the TRUECOLOR tick's -- the channel it passes unread; the name ours) */
+void zAnimColorExpr(PNT4D *color, char *expr, int n, int channel, float t)
+{
+    ZANIM_COLOR_KEY *keys = (ZANIM_COLOR_KEY *)expr;
+
+    if (t < keys[0].t) {
+        float f = t / keys[0].t;
+
+        color->x = color->x + f * (keys[0].c.x - color->x);
+        color->y = color->y + f * (keys[0].c.y - color->y);
+        color->z = color->z + f * (keys[0].c.z - color->z);
+        color->w = color->w + f * (keys[0].c.w - color->w);
+        return;
+    }
+
+    bool found = false;
+
+    for (int i = 0; i < n - 1; i++) {
+        bool in = t <= keys[i + 1].t;
+
+        if (in) {
+            float f = (t - keys[i].t) / (keys[i + 1].t - keys[i].t);
+
+            color->x = keys[i].c.x + f * (keys[i + 1].c.x - keys[i].c.x);
+            color->y = keys[i].c.y + f * (keys[i + 1].c.y - keys[i].c.y);
+            color->z = keys[i].c.z + f * (keys[i + 1].c.z - keys[i].c.z);
+            color->w = keys[i].c.w + f * (keys[i + 1].c.w - keys[i].c.w);
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+        *color = keys[n - 1].c;
+}
 
 /* Byte-exact: the key test a bool local (the target materialises it, li/move then xori, before
  * the branch; `if (t <= ...)` branches on the compare), the bound `n - 1` in the loop's test (a

@@ -564,6 +564,12 @@ struct GsAlpha {
 
 /* an alpha driven by an expression track (zanim_cmd_parse.cpp's, 0x25C5F0; the name ours) */
 void zAnimAlphaExpr(GsAlpha *alpha, char *expr, int n, float t);
+/* a colour driven by an expression track (0x25C6E0; the channel unread -- the name ours) */
+void zAnimColorExpr(PNT4D *color, char *expr, int n, int channel, float t);
+/* the same made four bytes (0x25C880; the name ours) */
+void zAnimRGBAExpr(unsigned char *rgba, char *expr, int n, float t);
+/* a heading and pitch in degrees made a direction (0x25CB00; the name ours) */
+void zAnimHeadingToDir(CPnt3D *dir, float heading, float pitch);
 
 /* the wildcard search over node names (anim_main.cpp) */
 const char *ZAnimWildcardApply(const char *name);
