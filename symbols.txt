@@ -11094,13 +11094,13 @@
 0x005C9340 0x74 GetWeaponAccuracy__10CAiWepHintFP8CZWeaponfb  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponAccuracy -- AI_PARAMS::GetAccuracy of the weapon (0 without one), now doubled when the bool is set and _saturate'd to [0, 1] -- before GetWeaponEffectiveRange as there
 0x005C93C0 0x38 GetWeaponEffectiveRange__10CAiWepHintFP8CZWeapon  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponEffectiveRange -- the same 0.5 * (max + min) of the weapon's AI_PARAMS (SOCOM II's at 0x70), 0 without a weapon -- the kit unit's last as there, after GetWeaponAccuracy
 0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005C9520 0x200 func_005C9520  # OVL2
+0x005C9520 0x200 UpdateViewCone__9CSealCtrlFv  # OVL2; by hand (the kit lane, round 35): CSealCtrl's vtable slot +0xA8 (0x669558, the slot CSealCtrlAi's UpdateViewCone 0x5C9400 overrides at the same offset), right after it as SOCOM 1's UpdateViewCone__9CSealCtrlFv follows the AI's; SOCOM II looks from the app camera when it shows the SEAL; byte-exact from seal_sensors.cpp
 0x005C9720 0x78 SetViewFOV__9CSealCtrlFf  # OVL2; s1:calls
 0x005C97A0 0x30 push_back__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>FRCPQ27CDiPool3dir  # OVL2; by hand (the kit lane, round 25): the request list's push_back (include/list's: the base's insert at the sentinel), out of line -- target_post_tick's cut of CDiPool::PostTick calls it (and 0x5CC120); seal_sensors.cpp's copy, the first
 0x005C97D0 0x58 func_005C97D0  # OVL2
 0x005C9830 0x74 func_005C9830  # OVL2
 0x005C98B0 0x7C func_005C98B0  # OVL2
-0x005C9930 0x1CC func_005C9930  # OVL2
+0x005C9930 0x1CC EnemyCallout__11CSealCtrlAiFP7CEntityP7CEntity  # OVL2; by hand (the kit lane, round 35): SOCOM 1's EnemyCallout__11CSealCtrlAiFPC7CTargetP7CEntity by its body (the same squad Notify, is_moving at 800, the conjugated quaternion's Apply, the 0.15 high test, get_clock_direction + base, + 12 when high, PlayAiSound through slot +0x24) after CSealCtrl::UpdateViewCone as in SOCOM 1's seal_sensors.cpp; SOCOM II passes the entity (OnSetTargetVisible 0x5CA470 hands it target.m_ent and ftsGetPlayer()) and keeps a squad bit; byte-exact from seal_sensors.cpp
 0x005C9B00 0x8 NotifyTargetDown__9CSealCtrlFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9B10 0x20 NotifyTargetDown__11CSealCtrlAiFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9B30 0x63C func_005C9B30  # OVL2

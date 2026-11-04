@@ -1052,6 +1052,9 @@ public:
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
     virtual void UpdateViewCone();
+    /* an enemy first seen by the squad called out, by its place on the player's clock (SOCOM 1's,
+     * which took the CTarget; OVL2 0x5C9930, the kit lane's seal_sensors.cpp) */
+    void EnemyCallout(CEntity *e, CEntity *player);
     /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
