@@ -39,9 +39,18 @@ namespace zdb {
 void EmptyAssetRecycleBin();   /* 0x321D30 */
 }
 
+enum UIVAR_LONGEVITY {
+    UIVL_DORMANT = 0,
+    UIVL_TEMPORARY = 1,
+    UIVL_PERMANENT = 2,
+    UIVL_PERSISTENT = 3
+};
+
+class CUIVariable;
 class CUIVarManager {
 public:
     void Reset();   /* 0x385C30 */
+    CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);   /* 0x3857C0 */
 };
 extern CUIVarManager theUIVarManager;
 
@@ -171,6 +180,124 @@ extern "C" void func_001F38F0(CObjectiveCounts *counts, const std::list<CMission
         counts->primary.fraction = (float)counts->primary.complete / (float)counts->primary.total;
     else
         counts->primary.fraction = 0.0f;
+}
+
+/* the round's ratings, each a percentage put in the UI's variables (SetRoundStatUiVars' four;
+ * the names ours) -- what they read: */
+
+/* a SEAL's stats (zseal.h's CSealStats: SOCOM II's halfword counters at the SEAL's +0x58C) */
+class CSealStats {
+public:
+    unsigned short m_count[0x3c / 2];   // 0x0
+};
+
+/* a named value (zanim.h's CValve: only its lookup and its value) */
+class CValve {
+public:
+    static CValve *GetByName(const char *name);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;   // 0x4
+    unsigned int m_flags : 8;   // 0x4
+};
+
+/* a ZRDR value (zrdr.h's _zrdr, whose header this unit's CRdrArchive cannot meet: its fields and
+ * DeleteChildren) */
+enum ZRDR_TYPE {
+    ZRDR_NULL = 0,
+    ZRDR_INTEGER = 1,
+    ZRDR_REAL = 2,
+    ZRDR_STRING = 3,
+    ZRDR_ARRAY = 4
+};
+
+struct _zrdr {
+    unsigned int type : 8;   // 0x0
+    unsigned int isclone : 1;   // 0x0
+    unsigned int packed : 1;   // 0x0
+    unsigned int nofree : 1;   // 0x0
+    unsigned int unused : 5;   // 0x0
+    unsigned int length : 16;   // 0x0
+    union {
+        float real;
+        int integer;
+        char *string;
+        _zrdr *array;
+    };   // 0x4
+
+    void DeleteChildren();
+};
+
+/* the UI's variables (zui.h's CUIVariable: only the integer assignment) */
+class CUIVariable : public _zrdr {
+public:
+    void UpdateDependents();
+    /* an integer, the watchers told only when it changes (st_mpexit.cpp's) */
+    CUIVariable &operator=(int i)
+    {
+        if (type != ZRDR_INTEGER || integer != i) {
+            DeleteChildren();
+            type = ZRDR_INTEGER;
+            integer = i;
+            UpdateDependents();
+        }
+        return *this;
+    }
+};
+
+/* a temporary UI variable by name (ours) */
+inline CUIVariable &UIVar(const char *name)
+{
+    return *theUIVarManager.Add(name, 0, UIVL_TEMPORARY);
+}
+
+/* the stealth rating (OVL1 0x1F3290): 35 less the times seen, the stealth kills up to 30, 35 less
+ * 35 for each alarm the "scoring_alarm" valve counts -- none under 45 seconds of mission -- as a
+ * percentage; the stealth kills, the alarms, the enemy's shots and the rating shown.
+ * OPEN, 48 instructions (the target's size), scheduling only: every register is the target's (the
+ * first term counted down from a 35 in its own variable, s3; the alarms' 35 numbered before the
+ * kills, s2 and s1; the sum a variable of its own, s3), but with the alarms defined ahead of the
+ * kills MW fills the kills clamp's delay slot with their `li s2,35`, where the target loads it
+ * just before the valve lookup. Defined after the kills the two trade registers (`int alarms;`
+ * declared ahead changes nothing); a dead first definition ahead (`int alarms = 0;`) gives both
+ * the registers and the li's place, but MW then fills GetByName's delay slot with the li where the
+ * target fills it with the name's addiu, and the score's clamp takes a nop more (0x2C0). Tried:
+ * the valve's alarms as `35 - 35 * n`, `-=`, a ternary, the valve declared ahead, the kills through
+ * an inline clamp, the sum's three spellings */
+extern "C" float func_001F3290(CSealStats **stats)
+{
+    int score = 35;
+
+    score -= stats[0]->m_count[16];
+    if (score < 0)
+        score = 0;
+    int alarms = 35;
+    int kills = stats[0]->m_count[18];
+
+    if (kills < 0)
+        kills = 0;
+    if (kills > 30)
+        kills = 30;
+    CValve *alarm = CValve::GetByName("scoring_alarm");
+
+    if (alarm)
+        alarms -= 35 * alarm->m_value;
+    if (alarms < 0)
+        alarms = 0;
+    int pct = alarms + (score + kills);
+
+    if (theMission.m_timer < 45.0f)
+        pct = 0;
+    if (pct < 0)
+        pct = 0;
+    if (pct > 100)
+        pct = 100;
+    UIVar("StatStealthKills") = stats[0]->m_count[17];
+    UIVar("StatAlarmsTriggered") = alarm ? alarm->m_value : 0;
+    UIVar("StatEnemyShotsFired") = stats[0]->m_count[5];
+    UIVar("StatStealthPct") = pct;
+    return 0.01f * pct;
 }
 
 /* a fraction as a whole percentage, and a value rounded (the names ours) */
