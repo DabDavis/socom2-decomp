@@ -783,6 +783,8 @@ class CAiSTarget : public CAiState {
 public:
     CAiSTarget() : CAiState(AI_STATE_TARGET) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x604880, seal_airesponse.cpp's) */
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x14 (0x604BF0): over once the AI's target no longer holds */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual ~CAiSTarget();
