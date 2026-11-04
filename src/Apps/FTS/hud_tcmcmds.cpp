@@ -94,10 +94,19 @@ public:
     bool IsEnabled() const { return m_enabled; }
 };
 
+/* a command's id (zseal.h's; SOCOM 1's DWARF: a byte, 0..66) -- a SIGNED byte here: the calls load the
+ * member with lb, where an unsigned byte enum (0..66, or zseal.h's CMD_LAST 255) folds the narrowing
+ * into an lbu (the respell's measurement, the HUD lane round 37) */
+enum FT_COMMAND { CMD_NONE = -1, CMD_UNKNOWN = 0, CMD_ACTION = 1, CMD_MAX = 66 };
+
 /* a squad of SEALs (zseal.h's CSealUnit: its orders) */
 class CSealUnit {
 public:
     static CSealUnit *GetUnitByTeam(unsigned int team);
+    /* the order confirmed, and the squad's canned answer to a voice order (the kit's, OVL2
+     * 0x5EABA0 and 0x5EAD70, named in its round 29) */
+    bool ConfirmCommand(FT_COMMAND cmd, unsigned char item, int flags);
+    bool AcknowledgeCommand(FT_COMMAND cmd, unsigned char item, int flags);
     void *GetDataPtr();
     CEntity *GetLeader() const;   // OVL2 0x5E8A90 (SOCOM 1's const GetLeader)
 
@@ -183,8 +192,6 @@ extern "C" {
 /* the SEAL lane's, no names yet */
 void func_005EAF20(CSealUnit *unit, int msg, int flags, float rate);
 void func_005EAEB0(CSealUnit *unit);
-void func_005EAD70(CSealUnit *unit, int member, unsigned char cmd, int flags);
-void func_005EABA0(CSealUnit *unit, int member, unsigned char cmd, int flags);
 bool func_0058DFA0(unsigned char member);
 /* the mission's */
 void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
@@ -453,14 +460,14 @@ int tcmTeamMember(CZSealBody *player, int member)
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4)
-            func_005EAD70(unit, s_tcmMember, 0, 0);
+            unit->AcknowledgeCommand((FT_COMMAND)s_tcmMember, 0, 0);
         return 1;
     }
     if (!func_0058DFA0(m)) {
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4) {
-            func_005EABA0(unit, s_tcmMember, 0, 0);
+            unit->ConfirmCommand((FT_COMMAND)s_tcmMember, 0, 0);
             unit->Order(player, s_tcmMember, 0, 0);
             r = 0;
         }
@@ -492,13 +499,13 @@ int tcmTeamCommand(CZSealBody *player, int cmd)
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4)
-            func_005EAD70(unit, s_tcmMember, c, 0);
+            unit->AcknowledgeCommand((FT_COMMAND)s_tcmMember, c, 0);
         return 1;
     }
     CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
     if (unit && player && player->m_socom2_e1_4) {
-        func_005EABA0(unit, s_tcmMember, c, 0);
+        unit->ConfirmCommand((FT_COMMAND)s_tcmMember, c, 0);
         unit->Order(player, s_tcmMember, c, 0);
         r = 0;
     }
@@ -772,7 +779,7 @@ void tcmRecoCancel()
     CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
     if (unit && player && player->m_socom2_e1_4)
-        func_005EAD70(unit, 0, 0, 0);
+        unit->AcknowledgeCommand(CMD_UNKNOWN, 0, 0);
 }
 
 int tcmUpdateVoteAll(CZSealBody *player, int arg)
@@ -821,7 +828,7 @@ int tcmNodeAction(CZSealBody *player, int arg)
         CSealUnit *unit = CSealUnit::GetUnitByTeam(s_tcmTeam);
 
         if (unit && player && player->m_socom2_e1_4)
-            func_005EAD70(unit, 1, 0, 0);
+            unit->AcknowledgeCommand(CMD_ACTION, 0, 0);
         return 1;
     }
     CNodeAction *action = s_tcmCurNode->m_action;
