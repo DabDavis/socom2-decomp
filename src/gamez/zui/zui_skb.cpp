@@ -193,10 +193,9 @@ int SkbTypedTextNotBlank();
 int SkbEnterKana(CSoftKeyboard *skb);
 void SkbTakeText(CGameMenu *menu);
 
-/* (the next unit's node lists' layout from a grid size, 0x395140) */
-extern "C" {
-void func_00395140(int w, int h, CSkbTexLists *lists, CSoftKeyboard *skb);
-}
+/* the shared key bitmaps given the keyboard's textures (the display unit's, 0x395140) */
+void SkbSetKeyTextures(zdb::CTexHandle *tex6, zdb::CTexHandle *tex7, std::vector<zdb::CTexHandle *> *lists,
+                       CSkbLook *look);
 
 /* (this unit's out-of-line copies of SOCOM 1's CIntPair members and the look's start position,
  * after their first caller 0x38B440 -- SOCOM 1's zui_skb.cpp called its CIntPair's members out of
@@ -237,7 +236,7 @@ void CSoftKeyboard::ShowSkb(const char *text)
         func_0038B550(&pos, func_0038B570(this));
         int x = func_0038B540(&pos) - 1;
         func_0038B8A0(this, x, func_0038B530(&pos) - 1);
-        func_00395140(m_17c, m_180, &m_texLists, this);
+        SkbSetKeyTextures(m_17c, m_180, m_texLists.m_lists, this);
         func_00398EA0(this, &m_fonts, text);
         func_00395540(this, &m_fonts.m_fonts[1]);
         m_node->SetActive(true);
@@ -375,24 +374,26 @@ bool KeyboardAttached();
 
 extern "C" {
 /* the display unit's: the display ticked, its count of key events (0x3949C0); the next event's key
- * (0x3978C0); whether the display is busy (0x396EC0); the keyboard's scaling stepped, 1 grown, 2
- * shrunk away (0x394DA0); the scaled-in hook (0x398BB0). This unit's key handler (0x38DFE0) */
+ * (0x3978C0); whether the display is busy (0x396EC0); the scaled-in hook (0x398BB0). This unit's
+ * key handler (0x38DFE0) */
 int func_003949C0(CSoftKeyboard *skb);
 int func_003978C0();
 int func_00396EC0();
-unsigned char func_00394DA0(CSoftKeyboard *skb, float dT);
 void func_00398BB0();
 
 }
+/* the keyboard's scaling stepped, 1 scaled up, 2 scaled down (the display unit's SkbScale) */
+unsigned char SkbScale(CSoftKeyboard *skb, float dT);
 
 extern "C" {
 /* the cursor moved in a direction (0x38DFC0: through 0x38CB80, SkbMoveCursor's jump); the cursor's
- * key pressed (0x38D200); the two edit keys (0x399530, 0x399320) */
+ * key pressed (0x38D200) */
 void func_0038DFC0(unsigned char dir, CPad *pad);
 void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
-void func_00399320(CSoftKeyboard *skb);
 }
+/* the two edit keys: the cursor back and on a character (the keys unit's) */
 void SkbCursorBack(CSoftKeyboard *skb);
+void SkbCursorForward(CSoftKeyboard *skb);
 
 /* a key event of the showing keyboard: the four cursor moves (events 1-4 move up, down, left and
  * right: 3, 1, 2, 4 -- ours), the cursor's key (5), the two edit keys (6, 7) (0x38DFE0; the name
@@ -419,7 +420,7 @@ void SkbHandleKey(int key, CPad *pad, CGameMenu *menu)
         SkbCursorBack(g_pActiveSkb);
         break;
     case 7:
-        func_00399320(g_pActiveSkb);
+        SkbCursorForward(g_pActiveSkb);
         break;
     }
 }
@@ -448,7 +449,7 @@ void SkbTick(CGameMenu *menu, bool input, float dT)
                 skb->m_530.m_node->SetActive(on);
         }
         /* an if chain: a switch tests 2 first */
-        unsigned char scaled = func_00394DA0(skb, dT);
+        unsigned char scaled = SkbScale(skb, dT);
 
         if (scaled == 1) {
             skb->ShowElements(1);
@@ -613,7 +614,7 @@ void CSoftKeyboard::ShutdownBegin(CGameMenu *menu)
  * active one and its two element sets shown (SOCOM II's; the name ours) */
 void CSoftKeyboard::SwitchTo(CSoftKeyboard *to)
 {
-    func_00395140(to->m_17c, to->m_180, &to->m_texLists, to);
+    SkbSetKeyTextures(to->m_17c, to->m_180, to->m_texLists.m_lists, to);
     void (C2DButton::*normal)() = &C2DButton::SetNormal;
 
     SetCurKeyState(normal);
