@@ -1765,7 +1765,7 @@
 0x00207870 0x138 Tick__15CZObjectiveListFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002079B0 0x50 Init__15CZObjectiveListFv  # OVL1; s1:calls
 0x00207A00 0x460 func_00207A00  # OVL1
-0x00207E60 0xF8 func_00207E60  # OVL1
+0x00207E60 0xF8 __ct__15CZObjectiveListFv  # OVL1; s1:order by hand (the HUD lane, round 29: hud_objectives.cpp -- SOCOM 1's CZObjectiveList(), its body's stores in its order (reserve(4), -1, three zeros and the byte 1); CZNewHudMap's constructor calls it for its member at 0xE0)
 0x00207F60 0x2C test_bit__Q23std30vector<b,Q23std12allocator<b>>FUi  # OVL1; s1:calls by hand (SOCOM 1's Select*Objective call vector<bool>::test_bit at the same place; a bit test on the data word at +8, out of line in hud_objectives.cpp's template tail)
 0x00207F90 0x40 swap__Q23std30vector<b,Q23std12allocator<b>>FRQ23std30vector<b,Q23std12allocator<b>>  # OVL1; s1:exact
 0x00207FD0 0x6C func_00207FD0  # OVL1
@@ -1822,7 +1822,7 @@
 0x0020CE30 0x1C func_0020CE30  # OVL1
 0x0020CE50 0x1C __arraydtor$2546  # OVL1; s1:exact
 0x0020CE70 0x70 __dt__Q227@unnamed@hud_newhudmap_cpp@12COverlayLineFv  # OVL1; s1:ref (taken by address where SOCOM 1 takes __dt__Q227@unnamed@hud_newhudmap_cpp@12COverlayLineFv's)
-0x0020CEE0 0x54 func_0020CEE0  # OVL1
+0x0020CEE0 0x54 __ct__Q227@unnamed@hud_newhudmap_cpp@12COverlayLineFv  # OVL1; s1:exact name by hand (the HUD lane, round 29: hud_newhudmap.cpp -- SOCOM 1's COverlayLine() out of line, 0x54 in both: C2DLine(), its table, SetColor(64, 192, 255); __sinit_hud_newhudmap.cpp's __construct_array takes it)
 0x0020CF40 0xB0 __dt__15CZMPBombMapItemFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020CFF0 0x14 Draw__15CZMPBombMapItemFPQ23zdb7CCamera  # OVL1; s1:size (SOCOM 1's Draw, 0x14: a tail call through the graphic's vtable, the vtable's slot 2; the row had run on into Tick)
 0x0020D010 0x300 Tick__15CZMPBombMapItemFP11CZNewHudMapf  # OVL1; s1:vtable (the vtable's slot 1, code alike)

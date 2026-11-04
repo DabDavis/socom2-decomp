@@ -15,6 +15,7 @@ class CWorld;
 
 class CCircleClip {
 public:
+    CCircleClip() : m_Cx(0), m_Cy(0), m_Radius(0) {}
     /* the circle placed at once: its centre and radius computed before any is stored (the name
      * is ours) */
     void Set(float cx, float cy, float radius)
@@ -31,17 +32,21 @@ public:
     float m_Radius;   // 0x10
 };
 
-/* the map's objective list (hud_objectives.cpp defines the class, its constructor 0x207E60): a
- * stand-in, as far as the map reaches into it -- 0x734 bytes to CZNewHudMap's words at 0x814 */
+/* the map's objective list (hud_objectives.cpp defines the class): a stand-in, as far as the map
+ * reaches into it -- 0x730 bytes (its last member a byte at 0x72C, the class 16-aligned) */
 class CMissionObjectiveCam;
 
 class CZObjectiveList {
 public:
+    CZObjectiveList();
     CMissionObjectiveCam *GetCurrentObjective() const;
     void MissionEndCleanup();
 
-    unsigned char _0[0x734];
+    unsigned char _0[0x730];
 };
+
+class CHUD;
+class CSnd;
 
 class CZClaymoreMapItem;
 class CZMPBombMapItem;
@@ -50,6 +55,9 @@ class CZProjectile;
 class CZNewHudMap : public C2D {
 public:
     CZNewHudMap();
+    /* declared, not defined here: its draft (0x20BA00) inlines the real objective list's destructor,
+     * which the stand-in above cannot give -- defined, the unit's implicit copy would replace it */
+    virtual ~CZNewHudMap();
     CPnt3D MapPoint(const CPnt3D *p) const;
     CZClaymoreMapItem *FindClaymoreItem(CZProjectile *projectile);
     CZMPBombMapItem *FindMPBombItem();
@@ -95,7 +103,13 @@ public:
     unsigned char m_oldmenustate;   // 0xdd (SOCOM 1's MENU_STATE)
     unsigned char _de[0xe0 - 0xde];
     CZObjectiveList m_objectivelist;   // 0xe0 (SOCOM 1's, at 0x4d0)
-    unsigned char _814[0x830 - 0x814];
+    CHUD *m_parent;   // 0x810 (SOCOM 1's last three, after the list as there)
+    CSnd *m_zoominsound;   // 0x814
+    CSnd *m_zoomoutsound;   // 0x818
+    int m_socom2_81c;   // 0x81c: SOCOM II's three, zeroed by the constructor
+    int m_socom2_820;   // 0x820
+    int m_socom2_824;   // 0x824
+    unsigned char _828[0x830 - 0x828];
 };   // 0x830 bytes (CHUD's constructor news it)
 
 #endif

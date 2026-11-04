@@ -94,12 +94,30 @@ static inline void SetTranslation(CMatrix &m, float x, float y, float z)
 }
 
 namespace {
-/* the full-screen map's legend labels (the legend's builder 0x20C080 loads each from the string
- * table; SOCOM 1's one g_strNorthIndN grown to nine -- the name ours). The unit's statics run
- * 0x409F20-0x40BE7F (its initialiser 0x3FDE80): two COverlayLine arrays (7 and 9) first, these at
- * 0x40A940, then nine CPlainBmps, four C2DBitmapPolys and three COverlayLines */
+/* a line over the map, coloured as the north indicator's (SOCOM 1's class; its constructor's copy
+ * 0x20CEE0 is __construct_array's, its destructor 0x20CE70) */
+class COverlayLine : public C2DLine {
+public:
+    COverlayLine() { SetColor(64.0f, 192.0f, 255.0f); }
+};
+
+/* the unit's statics, 0x409F20-0x40BE7F (its initialiser 0x3FDE80), in SOCOM 1's order: the grid
+ * lines (SOCOM 1's names; its sixty hash lines gone), then SOCOM II's nine C2DStrings -- the
+ * full-screen map legend's labels (the legend's builder 0x20C080 loads each from the string table;
+ * [0] takes SOCOM 1's g_strNorthIndN's colour in the constructor, and UninitMap blanks all nine as
+ * SOCOM 1 blanked the one: the name ours) -- nine CPlainBmps (0x40AEB0) and the four scroll
+ * bitmaps (C2DBitmapPolys from 0x40B470, SOCOM 1's g_bmpScroll*), not modelled yet, and the north
+ * indicator's three lines */
+COverlayLine g_arrHorGridLines[7];
+COverlayLine g_arrVertGridLines[9];
 C2DString g_strLegend[9];
+COverlayLine g_lineNorthIndBarb;
+COverlayLine g_lineNorthIndFrontShaft;
+COverlayLine g_lineNorthIndRearShaft;
 }
+
+/* the grid lines' alpha (a variable: read with lwc1) */
+static float s_gridTrans = 24.0f;
 
 /* the narrowest world window (a variable: read with lwc1, where MW builds a constant) */
 static float s_minWorldWidth = 1300.0f;
@@ -111,6 +129,42 @@ inline void CZNewHudMap::SetWorldView(float cx, float cy, float width)
     m_width = width;
     m_worldcenterx = cx;
     m_worldcentery = cy;
+}
+
+/* the map's members and the unit's lines set up (SOCOM 1's, with SOCOM II's three words zeroed;
+ * the lines' SetTrans goes through the vtable, COverlayLine inheriting it) */
+CZNewHudMap::CZNewHudMap()
+{
+    m_viewer = 0;
+    m_radar_distance = 100.0f;
+    m_screeny2 = 0.0f;
+    m_screenx2 = 0.0f;
+    m_screeny1 = 0.0f;
+    m_screenx1 = 0.0f;
+    m_worldcentery = 0.0f;
+    m_worldcenterx = 0.0f;
+    m_width = 0.0f;
+    m_screencentery = 0.0f;
+    m_screencenterx = 0.0f;
+    m_scale = 1.0f;
+    m_circleclipper = new CCircleClip;
+    m_centerx = 0.0f;
+    m_centerz = 0.0f;
+    m_isFullScreen = false;
+    m_zoomoutsound = 0;
+    m_zoominsound = 0;
+    m_socom2_81c = 0;
+    m_socom2_820 = 0;
+    m_socom2_824 = 0;
+    g_strLegend[0].SetColor(64.0f, 192.0f, 255.0f);
+    g_lineNorthIndFrontShaft.SetTrans(128.0f);
+    g_lineNorthIndRearShaft.SetTrans(128.0f);
+    g_lineNorthIndBarb.SetTrans(128.0f);
+    g_strLegend[0].SetTrans(128.0f);
+    for (unsigned int i = 0; i < 7; i++)
+        g_arrHorGridLines[i].SetTrans(s_gridTrans);
+    for (unsigned int i = 0; i < 9; i++)
+        g_arrVertGridLines[i].SetTrans(s_gridTrans);
 }
 
 /* the larger of two, through a temporary (the name ours) */

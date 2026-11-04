@@ -95,6 +95,7 @@ public:
         unsigned int n_;
     };
 
+    vector() : capacity_(0), size_(0), data_(0) {}
     ~vector() { if (data_) operator delete(data_); }
     reference operator[](unsigned int n) { return reference(*this, n); }
     bool test_bit(unsigned int n);
@@ -118,6 +119,7 @@ bool vector<bool, allocator<bool> >::test_bit(unsigned int n)
  * Tick, emits it (first in the image, 0x205C40) */
 class CZObjectiveList : public C2D {
 public:
+    CZObjectiveList();
     virtual void Draw(zdb::CCamera *cam);
     virtual void Tick(float dT);
     void Init();
@@ -216,6 +218,18 @@ public:
     zdb::CTexHandle *m_checktex;   // 0x728
     unsigned char m_increment;   // 0x72c
 };
+
+/* the members built, room for four names, nothing selected (SOCOM 1's constructor, its body's
+ * stores in its order; CZNewHudMap's constructor calls it for its member at 0xE0) */
+CZObjectiveList::CZObjectiveList()
+{
+    m_objectivenames.reserve(4);
+    m_selected_objective = -1;
+    m_checkboxtex = 0;
+    m_checktex = 0;
+    m_increment = 1;
+    m_cur_selected_objective = 0;
+}
 
 /* the list's three textures looked up by name */
 void CZObjectiveList::Init()
