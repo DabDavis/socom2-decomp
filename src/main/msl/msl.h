@@ -204,6 +204,33 @@ basic_string<charT, traits, Allocator>::~basic_string()
         operator delete((void *)w_[2]);
 }
 
+/* <iterator>'s tags: the template replace takes the range's category by value (an empty class: a byte
+ * loaded off the stack and never stored) */
+struct input_iterator_tag {};
+struct forward_iterator_tag : public input_iterator_tag {};
+
+/* MAIN's own copies of the string's out-of-line pieces, which throw (the library has exceptions on):
+ * reserve 0x18D8C0 and the template replace 0x18D3E0 are not written -- called by address */
+extern "C" void func_0018D8C0(void *str, unsigned int n);     /* reserve(n) */
+extern "C" void *func_0018D3E0(void *str, unsigned int pos, unsigned int n1, const char *first,
+                               const char *last, forward_iterator_tag);   /* replace(pos, n1, first, last, cat) */
+
+/* from a C string (0x18D2C0, MAIN's copy of OVL1's 0x2396F0, include/string's shape): the words
+ * zeroed, the length taken, the room reserved, the text replaced in (locale.cpp's __locale_imp name) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::basic_string(const charT *s)
+{
+    unsigned int (&a)[3] = w_;
+
+    for (unsigned int i = 0; i < 3; ++i)
+        a[i] = 0;
+    unsigned int n = strlen(s);
+    forward_iterator_tag category;
+
+    func_0018D8C0(this, n);
+    func_0018D3E0(this, 0, 0, s, s + n, category);
+}
+
 typedef basic_string<char> string;
 
 class exception {
