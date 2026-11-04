@@ -36,6 +36,7 @@ class CZWeapon {
 public:
     static void DestroyProjectileList();   /* 0x3D3930 */
     static void DestroyMarkList();   /* 0x3D37E0 */
+    static bool PostTick(float dT, void *data);   /* 0x3D1F50 (the weapons lane's round 16) */
 
     static CZProjectileList *m_pProjectilelist;
     static CZMarkList *m_pMarklist;
@@ -88,7 +89,6 @@ bool func_005CCCD0(float dT, void *data);        /* CSealCtrlAi::PreTick */
 bool func_003D1F90(float dT, void *data);        /* CZWeapon::PreTick */
 bool func_0054F570(float dT, void *data);
 bool func_0060BC40(float dT, void *data);
-bool func_003D1F50(float dT, void *data);        /* CZWeapon::PostTick */
 bool func_0060B8F0(float dT, void *data);
 bool func_005CCA30(float dT, void *data);        /* CSealCtrlAi::PostTick */
 
@@ -250,7 +250,6 @@ int func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
 void func_0033CD50(void *arg);
 void func_0033B5B0(CPipe *pipe);
 void func_0033B570(CPipe *pipe);
-void func_0033BF30(CPipe *pipe, void *texbuffer);   /* CPipe::FIFO_Signal (SOCOM 1's second argument gone) */
 CTickItem *func_0022D590();
 void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
 }
@@ -643,7 +642,7 @@ bool CCoreState::Init()
     zTaskScheduler.AddTask("entity_preposttick", CEntity::PrePostTickAll, 4.7f, 0);
     zTaskScheduler.AddTask("target_pretick", func_0060BC40, 4.8f, 0);
     zTaskScheduler.AddTask("entity_post_tick", CEntity::PostTickAll, 6.0f, 0);
-    zTaskScheduler.AddTask("weapon_post_tick", func_003D1F50, 8.0f, 0);
+    zTaskScheduler.AddTask("weapon_post_tick", CZWeapon::PostTick, 8.0f, 0);
     zTaskScheduler.AddTask("ai_route_planner", ai::TickPathPlanner, 10.5f, 0);
     zTaskScheduler.AddTask("target_post_tick", func_0060B8F0, 10.6f, 0);
     zTaskScheduler.AddTask("ai_posttick", func_005CCA30, 10.7f, 0);
@@ -751,14 +750,14 @@ bool CCoreState::Tick(float dT)
         func_003B7150(1);
         thePipe.m_assetHUD2 =
             zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[39 + data_00408C08]];
-        func_0033BF30(&thePipe, thePipe.m_assetHUD2);
+        thePipe.FIFO_Load(thePipe.m_assetHUD2);
         thePipe.FIFO_Signal(thePipe.m_assetHUD1);
         m_hud->DrawPhase(zdb::RENDER_PHASE_12, cam);
         thePipe.m_assetHUDX = zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[42]];
-        func_0033BF30(&thePipe, thePipe.m_assetHUDX);
+        thePipe.FIFO_Load(thePipe.m_assetHUDX);
         thePipe.FIFO_Signal(thePipe.m_assetHUD2);
         m_hud->DrawPhase(zdb::RENDER_PHASE_13, cam);
-        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
+        thePipe.FIFO_Load(zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
         thePipe.FIFO_Signal(thePipe.m_assetHUDX);
         m_hud->DrawPhase(zdb::RENDER_PHASE_14, cam);
         m_hud->m_compass.Draw(cam);
@@ -769,7 +768,7 @@ bool CCoreState::Tick(float dT)
         func_0022D590()->Draw(cam);
         func_003B7150(0);
     } else {
-        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
+        thePipe.FIFO_Load(zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
     }
     if (!theNetwork.m_9 && theGame.m_6c)
         CVideo::Clear(true, 0, 0, 0, 0);
