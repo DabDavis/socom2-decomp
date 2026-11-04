@@ -334,6 +334,7 @@ public:
 };
 
 class CAiMap;
+class CAiOverlay;
 
 /* a cell handed to a walk's callback (below CAiMap: it points at a CAiMap::region) */
 struct MAP_FOREACH_STRUCT;
@@ -778,10 +779,22 @@ public:
         }
         return false;
     }
-    /* a cell's altitude (new in SOCOM II, the names ours: ai_map.cpp's 0x516940 from the cell; by
-     * its location too big to inline whole -- GetCell is past inline_max_size -- so a caller
-     * inlines it one level and calls GetCell and the first out of line, CAiMaps::GetAltitude) */
-    bool GetAltitude(const CAiCell *cell, float &alt) const;
+    /* a cell's altitude: the box's floor plus the quantum times the cell's ten altitude bits, true;
+     * false for no cell (new in SOCOM II, the names ours). From the cell an inline: OVL1 has its
+     * copy (0x210630) and OVL1's GetCellCenter copy 0x20F220 inlines it whole; OVL2's copy 0x516940
+     * follows ai_map.cpp's first caller cutting a walk one level (0x516180, after it GetCellCenter's
+     * other copies 0x5168E0-0x516920) -- every OVL2 caller reaches it through an inline cut so (the
+     * HUD's round 35 made it inline in hud_linemap.cpp alone). By its location too big to inline
+     * whole -- GetCell is past inline_max_size -- so a caller inlines it one level and calls GetCell
+     * and the first out of line, CAiMaps::GetAltitude */
+    bool GetAltitude(const CAiCell *cell, float &alt) const
+    {
+        if (cell) {
+            alt = m_bbox.m_min.y + m_alt_quant * (float)cell->m_altitude;
+            return true;
+        }
+        return false;
+    }
     bool GetAltitude(const CAiMapLoc &loc, float &alt) const
     {
         CAiCell *cell = GetCell(loc, 0);
@@ -889,10 +902,19 @@ public:
      * Tile(region, value, flags); the layer new: the walker unit's 0x536230) */
     bool Tile(const region *r, unsigned int value, unsigned int flags, int layer);
     /* a vehicle's footprint moved: the region's cells cleared of the occupied bit (flags 32), the
-     * region rebuilt from the four corners (0x515900, not written yet), its cells set again; true
-     * (new in SOCOM II, the name ours: 0x515880, CVehicle::Tick's call with the vehicle's four
-     * transformed corners at +408 and its region at +368) */
+     * region rebuilt from the four corners (0x515900), its cells set again; true (new in SOCOM II,
+     * the name ours: 0x515880, CVehicle::Tick's call with the vehicle's four transformed corners at
+     * +408 and its region at +368 -- an overlay: the region, then each row's run) */
     bool TileFootprint(const CPnt3D *corners, region *r);
+    /* the overlay rebuilt from a footprint's four corners: their box, clipped to the map's in x and
+     * z, as a region of cells, then each row's run of cells whose centres lie inside the four
+     * edges; false when the box misses the map (new in SOCOM II, the names ours: 0x515900 and the
+     * rows' scan 0x516180) */
+    bool BuildFootprint(const CPnt3D *corners, CAiOverlay *o);
+    bool ScanFootprint(const CPnt3D *corners, const region &r, CAiOverlay *o);
+    /* the map's box (new in SOCOM II, the name ours: out of line where the footprint's region is
+     * fitted, inlined one level -- 0x516130) */
+    const CBBox &GetBBox() const { return m_bbox; }
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
     /* each direction's step in cells, x then y, N to NW (SOCOM 1's CAiMap::neighbor, the demo's
@@ -1002,6 +1024,9 @@ public:
     void DestroyGraph();
     void CreateGraph(bool force);
     void ValidateRoutes(bool force);
+    /* a route's path rebuilt between its way points (SOCOM 1's ReRoute, 0x52F8F0: ValidateRoutes calls
+     * it when asked, after _invalid_route in both builds) */
+    void ReRoute(route *r);
     /* every name, action and link checked against the cells, the regions given the map's id,
      * every cell validated; the links on a cell no step may end on counted (SOCOM 1's) */
     int ValidateCells();

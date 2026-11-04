@@ -174,6 +174,8 @@ public:
     /* the frame's kit work before the SEAL's (SOCOM 1's PreTick; OVL2 0x5C1660, seal_kit.cpp's range:
      * WeaponsTick calls it last, as SOCOM 1's does) */
     void PreTick(float dT);
+    /* an explosive set down (SOCOM 1's HandlePlacingExlosive, sic; OVL2 0x5C0020, kit.h's) */
+    void HandlePlacingExlosive(EQUIP_ITEM item, float a, float b);
 
     /* kit.h's flags (the kit lane's names): only bit 12 here */
     unsigned int m_bits0 : 12;   // 0x0
@@ -227,11 +229,23 @@ class CValve;
 
 class CNodeAction {
 public:
+    /* the anim run on a SEAL (SOCOM 1's; OVL1 0x2B44E0, fts_action.cpp's) */
+    int ExecuteAction(class CZSealBody *body, unsigned int index);
+    /* the action a node offers, searched down its tree (SOCOM 1's; OVL2 0x5AA470, seal_env.cpp's) */
+    static CNodeAction *GetAction(zdb::CNode *node, bool deep);
+
     unsigned char _0[0x14];
-    unsigned int m_team;   // 0x14: the team it is for (CanPlaceBomb matches it; the name ours)
+    /* (SOCOM 1's m_node: CanPlaceBomb matches it against the sides' bomb sites, TickMPBomb against the
+     * bomb's node) */
+    zdb::CNode *m_node;   // 0x14
     CValve *m_valve;   // 0x18
     unsigned char _1c[0x24 - 0x1c];
     NODEACTION_TYPE m_type;   // 0x24
+    unsigned char _25[0x30 - 0x25];
+    unsigned int m_teams;   // 0x30: the sides that may use it (fts_action.cpp's m_30)
+    unsigned int m_owner;   // 0x34: the entity using it, CEntity::invalidId for none (SOCOM II's)
+    unsigned char _38[0x3c - 0x38];
+    unsigned short m_id;   // 0x3c (SOCOM 1's at 0x2c)
 };
 
 /* the AI's maps (SOCOM 1's CAiMaps; the global AiMaps, OVL2 bss) -- only the cell's centre */
@@ -244,6 +258,8 @@ public:
     class CAiMap *GetMapByIndex(unsigned int i) const;
     /* a location's cell (ai_maps.h's, OVL2 0x52D6A0) */
     CAiCell *GetCell(const CAiMapLoc &loc);
+    /* an action by its id, its cell and its record (ai_maps.h's, OVL2 0x52DAA0) */
+    bool GetActionById(unsigned int id, CAiMapLoc &loc, CAiMap::action **pa);
     /* a path planned from a cell through a list of cells, and a cell's region (ai_maps.h's, OVL2
      * 0x52C5C0, 0x52D950) */
     bool RegisterPathPlan(const CAiMapLoc &start, const CAiMapLoc *locs, int count, CAiPath *path);
@@ -271,6 +287,10 @@ public:
     CZSealBody *GetSealByIndex(int index, int depth);
     /* the squad's leader (SOCOM 1's const GetLeader; OVL2 0x5E8A90, the kit lane's) */
     CZSealBody *GetLeader() const;
+    /* the squad's order data as a pointer, and set to one (OVL2 0x5E6D60, 0x5E6DD0: the kit lane's
+     * seal_unit.cpp, which declares them alike) */
+    void *GetDataPtr();
+    bool SetDataPtr(void *p);
 
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
@@ -545,6 +565,9 @@ public:
     bool UpdateHudWeapon();
     void SetCameraZoom(float level, float increment);
     void MPBomb_TimerAvailable(bool on);
+    /* the MP bomb worked at: its timer run while the reticule stays on it, then the defusal or the
+     * planting done (SOCOM 1's; OVL2 0x5920C0: SOCOM II's InitMPBomb is gone) */
+    void TickMPBomb(float dT);
     /* SOCOM II's takes whether to keep the weapon's timer (the HUD passes false) */
     void SetMenuState(MENU_STATE state, bool keep);
     void SetTrigger(bool down);
@@ -608,7 +631,13 @@ public:
     int m_HudDoPickup;   // 0x148 (SOCOM 1's 0x144)
     int m_curpickup_ID;   // 0x14c
     int m_curpickup_secondary_ID;   // 0x150
-    unsigned char _154[0x16c - 0x154];
+    int m_curMPBOMBpickup_ID;   // 0x154 (SOCOM 1's 0x150)
+    /* the bomb being defused, and the one being worked with its timer (SOCOM 1's, 0x154-0x15c there:
+     * TickMPBomb) */
+    zdb::CNode *m_bomb_defusal_node;   // 0x158
+    zdb::CNode *m_mpbomb_node;   // 0x15c
+    float m_mpbomb_timer;   // 0x160
+    unsigned char _164[0x16c - 0x164];
     /* the entity the SEAL may work (new in SOCOM II, SOCOM 1 has no member between m_corpsebody and
      * the bits: 0x5A88C0 asks its slot 0x5C for action 19; the name ours) */
     CEntity *m_16c;   // 0x16c
@@ -645,7 +674,9 @@ public:
     float m_event_time[15];   // 0x1c8
     unsigned char _204[0x221 - 0x204];
     MENU_STATE m_menustate;   // 0x221 (as SOCOM 1's)
-    unsigned char _222[0x240 - 0x222];
+    unsigned char _222[0x238 - 0x222];
+    float m_bombpickuptimer;   // 0x238 (as SOCOM 1's: TickMPBomb sets it once a defusal starts)
+    unsigned char _23c[0x240 - 0x23c];
     float m_240;   // 0x240: how long the reload button has been held (0x594B70; the name ours)
     float m_244;   // 0x244: CanPlaceBomb's wait, set to 1.5 when it refuses (the name ours)
     unsigned char _248[0x250 - 0x248];
@@ -1553,6 +1584,9 @@ public:
     int CanClimbLadder();
     void HandleBombDefuse();
     void AttemptBombDefuse();
+    /* the action under the reticule, or near it (SOCOM 1's GetReticuleAction, by its order after the
+     * pickup tests 0x5A9C70-0x5AA110 and its call of CNodeAction::GetAction 0x5AA470; OVL2 0x5AA240) */
+    class CNodeAction *GetReticuleAction(bool b);
     /* the MP bomb picked up (SOCOM 1's; OVL2 0x59DEF0) */
     void HandlePickupMPBomb(CPickup *pickup);
     /* a console's request for one of the SEAL's pickups answered: the ammunition taken and the

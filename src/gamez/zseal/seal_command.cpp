@@ -10,6 +10,171 @@ extern "C" {
 extern unsigned char data_0066B030;
 }
 
+extern "C" {
+/* the action whose node is nearest a point and its distance, and whether an action can start (OVL1
+ * 0x2B4B40, 0x2B46F0: fts_action.cpp's -- the second's bool taken as an int, as the target's caller
+ * reads it with no andi) */
+CNodeAction *func_002B4B40(const CPnt3D *pos, float *dist, float height);
+int func_002B46F0(CNodeAction *action);
+}
+
+/* whether a living SEAL may send another to an action near itself: its team's bit 18 set, the other
+ * on its side (an inline, the name ours: the AI's controller asked for and dropped) */
+static inline bool CanSendToNearAction(CZSealBody *seal, CZSealBody *other)
+{
+    if (!seal || !seal->m_isAlive)
+        return false;
+    unsigned int team = seal->m_team;
+    bool bit = (team & 0x40000) != 0;
+    bool same = other ? (other->m_team & team) != 0 : true;
+    bool r = false;
+
+    if (same && bit && other) {
+        seal->GetSealCtrlAi();
+        r = true;
+    }
+    return r;
+}
+
+/* the action an order names: the squad's order data (1), or the other SEAL's reticule action (0) (an
+ * inline, the name ours: the squad read before the switch, the result left in v0) */
+static inline CNodeAction *OrderAction(CSealUnit *unit, CZSealBody *other, unsigned char which)
+{
+    CNodeAction *a = 0;
+
+    switch (which) {
+    case 1:
+        a = (CNodeAction *)unit->GetDataPtr();
+        break;
+    case 0:
+        if (other)
+            a = other->GetReticuleAction(false);
+        break;
+    }
+    return a;
+}
+
+/* the action an order to another SEAL is about: the squad's order data (1), or the other's reticule
+ * action (0); failing those, the action nearest the SEAL within 20 when the inline allows -- one of
+ * kind 2 only within 250 (OVL2 0x591380, new in SOCOM II: CSealCtrlAi::OnCommand and 0x5911F0 ask
+ * it; the name unknown). Pinned: both callers call it, and 0x5911F0 would inline it */
+#pragma auto_inline off
+extern "C" CNodeAction *func_00591380(CZSealBody *seal, CZSealBody *other, unsigned int which)
+{
+    CSealCtrlAi *ai = seal->GetSealCtrlAi();
+    CNodeAction *action = 0;
+
+    if (ai && other) {
+        action = OrderAction(ai->m_unit, other, which);
+        if (!action && CanSendToNearAction(seal, other)) {
+            float dist = 0.0f;
+
+            action = func_002B4B40(&seal->m_posW, &dist, 20.0f);
+            if (action && action->m_type == 2 && !(dist <= 250.0f))
+                action = 0;
+        }
+    }
+    return action;
+}
+#pragma auto_inline reset
+
+extern "C" {
+/* whether the game is online (OVL2 0x5750A0, seal_ai.cpp's: theNetwork's second byte) and the SEAL a
+ * SEAL is looking at, its cached one or its reticule node's (OVL2 0x5AA690, seal_env.cpp's) */
+int func_005750A0(void);
+CZSealBody *func_005AA690(CZSealBody *seal);
+/* a switch that lets any order through (OVL2 bss; the name ours) */
+extern bool data_0066B3B8;
+}
+
+/* the steps between two cells, across and down (an inline, the name ours: both differences ints -- the
+ * x field's compare is unsigned all the same, the y's, read as a halfword, signed) */
+static inline unsigned int CellSteps(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    int dx = a.x > b.x ? a.x - b.x : b.x - a.x;
+    int dy = a.y > b.y ? a.y - b.y : b.y - a.y;
+
+    return dx + dy;
+}
+
+/* whether a SEAL is one an order may concern: alive; the switch let through, or a hostage (team bit 17)
+ * restrained and not in AI state 17 or online -- and, with another SEAL named, that one on its side,
+ * looking at it and within 20 cells (OVL2 0x591DC0, new in SOCOM II: CSealCtrlAi::AllowCommand's
+ * cases 8-13 and AllowCommandHOLDPOS/FOLLOW ask it; the name unknown) */
+extern "C" bool func_00591DC0(CZSealBody *seal, CZSealBody *other)
+{
+    if (!seal || !seal->m_isAlive)
+        return false;
+    bool state17 = false;
+    unsigned int team = seal->m_team;
+    bool hostage = (team & 0x20000) != 0;
+    bool restrained = seal->m_restrained;
+    bool same = other ? (other->m_team & team) != 0 : true;
+    CSealCtrlAi *ai = seal->GetSealCtrlAi();
+
+    if (ai)
+        state17 = ai->AiStateIs((AI_STATE)17);
+    bool r = data_0066B3B8;
+
+    if (!r) {
+        r = (hostage && restrained && !state17) || (hostage && func_005750A0());
+        if (r && other) {
+            r = same && seal == func_005AA690(other);
+            if (r)
+                r = CellSteps(seal->MapLocValid(), other->MapLocValid()) < 20;
+        }
+    }
+    return r;
+}
+
+/* whether an order to act may go to another SEAL: the action it names (0x591380) for the SEAL's side,
+ * able to start and not in use, the AI free to take it on (state 11); a map action of kind 3 always, of
+ * kind 1 or 2 only for a Navy SEAL -- the squad's order data then pointed at it (OVL2 0x5911F0, new in
+ * SOCOM II: CSealCtrlAi::AllowCommand's case 1, where SOCOM 1 tested the reticule's action in place;
+ * the name unknown) */
+/* an entity's team bits (an inline, the name ours: expanded ahead of the `&`, the bits load first though
+ * they are its right operand -- the HUD's command menu reads its player's the same way) */
+static inline unsigned int TeamOf(const CEntity *e) { return e->m_team; }
+
+extern "C" bool func_005911F0(CSealCtrl *ctrl, CZSealBody *other, void *data)
+{
+    CSealCtrlAi *ai = ctrl->GetSealCtrlAi();
+    bool ok = false;
+
+    if (ai && other) {
+        CZSealBody *seal = (CZSealBody *)ctrl->m_entity;
+        CNodeAction *action = 0;
+        CSealUnit *unit = ai->m_unit;
+
+        action = func_00591380(seal, other, (unsigned int)data);
+        if (action) {
+            bool b = (action->m_teams & TeamOf(seal)) != 0;
+
+            if (b)
+                b = func_002B46F0(action) != 0;
+            if (b && action->m_owner == CEntity::invalidId && ai->CanPushAiState((AI_STATE)11, 0)) {
+                CAiMapLoc loc;
+                CAiMap::action *mapaction = 0;
+
+                if (AiMaps.GetActionById(action->m_id, loc, &mapaction)) {
+                    switch (mapaction->GetType()) {
+                    case 1:
+                    case 2:
+                        ok = ai->m_navyseal != 0;
+                        break;
+                    case 3:
+                        ok = true;
+                        break;
+                    }
+                }
+                if (ok)
+                    unit->SetDataPtr(action);
+            }
+        }
+    }
+    return ok;
+}
+
 /* whether an item can be deployed at an action: held, with ammunition, and a breaching charge only
  * at a breach unless the switch is on (OVL2 0x591130; SOCOM 1's with the switch) */
 bool CanDeploy(CZKit *kit, EQUIP_ITEM item, CNodeAction *action)

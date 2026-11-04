@@ -681,7 +681,11 @@ void FriendInvitationVector::Add(FriendInvitationItem *item)
  * across the loop -- the guard tests the value it just stored, the step is `addiu v0,v0,64` in the
  * found test's delay slot -- while re-reading the stored iterator for the dereference; MW here
  * reloads it for the guard and steps the reloaded copy behind a `b`. Assigned or initialised,
- * prefix or postfix ++, (*i). or i->, while or for: all the same 35 */
+ * prefix or postfix ++, (*i). or i->, while or for: all the same 35. Round 17: the target forwards the
+ * value just stored to the guard (entry) and to the step, yet reloads it for the dereference and the
+ * bottom test; the arms swapped (`if (id != ...) ++i; else i = erase(i);`) give the target's size, 33
+ * off; `i = c ? erase(i) : i + 1`, `i = i + 1`, `i += 1`, a `continue`, a stepped raw pointer: 0xC4 or
+ * longer (build/scratch/onl/rm.sh) */
 void FriendInvitationVector::Remove(int id)
 {
     iterator i;

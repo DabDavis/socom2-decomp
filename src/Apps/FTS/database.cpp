@@ -22,10 +22,17 @@ static zar::CZAR archive(0, 0);
 /* the world loaded (SOCOM 1's global, 0x408B78) */
 extern zdb::CWorld *theWorld;
 
-/* the app camera (camera.h's: only its teardown) */
+class CZSealBody;
+
+/* the app camera (camera.h's: its teardown, its attach -- the second virtual -- and its camera) */
 class CAppCamera {
 public:
     ~CAppCamera();
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);
+
+    unsigned char _4[0xb4 - 0x4];
+    zdb::CNode *m_camera;   // 0xb4 (camera.h's zdb::CCamera *; SOCOM 1: 0x34)
 };
 
 extern CAppCamera *appCamera;
@@ -50,6 +57,78 @@ extern "C" {
 extern zdb::CTexHandle *data_004B4D90;
 extern zdb::CTexHandle *data_004B4E48;
 extern zdb::CTexHandle *data_004B4E50;
+
+/* the frame's end (the video lane's, 0x3B05E0: the FIFO ended, the GS path synced) */
+void func_003B05E0();
+/* UnloadTheWorld below, called by its row's placeholder (the row stays func_ for its draft) */
+void func_001E8FE0();
+}
+
+/* the database's name (zanim_menu.cpp's) */
+const char *GetDatabase();
+
+/* the reader archives (zrdr.h's: only the removal) */
+class CRdrArchive {
+public:
+    static bool RemoveArchive(const char *name, const char *path);   /* 0x32C2B0 */
+};
+
+/* the weapons' world lists (zweapon.h's, SOCOM 1's) */
+class CZWeapon {
+public:
+    static bool CreateWeaponList();
+    static bool CreateMarkList();
+    static bool CreateProjectileList(int count);
+};
+
+/* the mission (fts_mission.cpp's: only its open and close) */
+class CMission {
+public:
+    bool Open(const char *name);
+    void Close();
+};
+
+extern CMission theMission;
+
+CZSealBody *ftsGetPlayer();
+
+/* the sound system's listener (zsnd.h's CSnd: SOCOM 1's static, 0x48DB48 -- the camera's node) */
+class CSnd {
+public:
+    static zdb::CNode *m_listener;
+};
+
+bool LoadWorld(const char *database);
+
+/* the world loaded for a mission (SOCOM 1's): the UI's reader archive dropped, the world loaded,
+ * the weapons' projectile, mark and weapon lists made, the mission opened (by name alone: SOCOM 1's
+ * load flags from the debug switches are gone, the target leaves a2 unset), the camera attached to
+ * the player and the listener set to the camera's node; loaded only with a player (OVL1 0x1EA720) */
+bool testLoad()
+{
+    const char *database = GetDatabase();
+
+    CRdrArchive::RemoveArchive("readerc.zar", "run/ui");
+    if (!LoadWorld(database))
+        return false;
+    CZWeapon::CreateProjectileList(100);
+    CZWeapon::CreateMarkList();
+    CZWeapon::CreateWeaponList();
+    theMission.Open(database);
+    appCamera->AttachTo(ftsGetPlayer());
+    CSnd::m_listener = appCamera->m_camera;
+    return ftsGetPlayer() != 0;
+}
+
+/* the mission's world let go of (SOCOM 1's, the frame ended first: SOCOM II's): the mission closed,
+ * the listener cleared, the world unloaded (OVL1 0x1EA6E0) */
+bool testUnload()
+{
+    func_003B05E0();
+    theMission.Close();
+    CSnd::m_listener = 0;
+    func_001E8FE0();
+    return true;
 }
 
 /* the world torn down (SOCOM 1's): the app camera deleted, the world's landmark and light lists

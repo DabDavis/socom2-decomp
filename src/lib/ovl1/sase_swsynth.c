@@ -4,7 +4,10 @@
  * encoder's minimal-standard RNG again, SWSynth.c:359; libmath.c's 0x24AEB0 is the same text).
  * Asserting as the codec does (file and line by `#line`, as in sase_encsc.c); the decoder is
  * built at -G0 (sase_decapi.c), so its float constants are lui/ori immediates, not .lit4 entries.
- * Written in the GCC lane's round 19a: the noise generator 0x256380. Round 18a: the onset phase 0x256AB0 (its rounded turn count an int
+ * Written in the GCC lane's round 27a: the frame wrappers 0x256190 and 0x256280 (the gain pair
+ * chosen by if/else into a pointer of its own -- the target's `move v0,v1` and `addiu v0,v1,8` from
+ * the parameter kept in v1; a conditional expression shares one register, a pre-assignment is a
+ * word short). Round 19a: the noise generator 0x256380. Round 18a: the onset phase 0x256AB0 (its rounded turn count an int
  * of its own: the conversion inside the product puts 2 pi's lui/ori in both arms, 32 words; an
  * if/else into a float, 7). Placeholders: the codec's names
  * are not in SOCOM 1. Built as sase_decapi.c is (ee-gcc 2.96, -O2 -G0). */
@@ -139,6 +142,68 @@ float func_00256130(float fX)
 	if (fX > 97.0F)
 		return fX * (fX * -0x1.a3fffep-10F + 0x1.670000p+0F) + 0x1.ca0000p+0F;
 	return fX * 0x1.450000p+0F;
+}
+
+/* a frame's synthesis state: the synthesiser's six buffers, the rate and the position in the
+ * period (in samples, 160 a frame at rate 1), a hold flag, the synthesiser's own state */
+typedef struct {
+	void *pv0, *pv4, *pv8, *pv12, *pv16, *pv20;
+	int ai24[5];
+	float fRate;
+	float fPos;
+	int ai52[3];
+	short sHold;
+	short s66;
+	int iState;
+} SWSynthFrame;
+
+extern void func_00256420(void *pv0, int iX, void *pv4, void *pv8, void *pv12, void *pv16, void *pv20,
+                          int *piState, float fA, float fB, float fRatio);
+extern void func_002566D8(void *pv0, int iX, void *pv4, void *pv8, void *pv12, void *pv16, void *pv20,
+                          int *piState, int iY, int iZ, float fA, float fB, float fRatio);
+
+/* one frame synthesised while the position lies inside the period (from the pair of gains for
+ * its first or last quarter), the position stepped by 80 and wrapped unless held */
+void func_00256190(SWSynthFrame *p, const float *pfPair, int iX, int *piPos)
+{
+	const float *pf;
+	float fLen, fRatio;
+
+	fLen = p->fRate * 160.0F;
+	if (p->fPos <= fLen) {
+		fRatio = p->fPos / fLen;
+		if (fRatio < 0.75F)
+			pf = pfPair;
+		else
+			pf = pfPair + 2;
+		func_00256420(p->pv0, iX, p->pv4, p->pv8, p->pv12, p->pv16, p->pv20, &p->iState, pf[0], pf[1], fRatio);
+		*piPos += 80;
+		p->fPos += 80.0F;
+	}
+	if (p->sHold == 0 && fLen < p->fPos)
+		p->fPos -= fLen;
+}
+
+/* the same through the other synthesiser, two more arguments passed on */
+void func_00256280(SWSynthFrame *p, const float *pfPair, int iX, int *piPos, int iY, int iZ)
+{
+	const float *pf;
+	float fLen, fRatio;
+
+	fLen = p->fRate * 160.0F;
+	if (p->fPos <= fLen) {
+		fRatio = p->fPos / fLen;
+		if (fRatio < 0.75F)
+			pf = pfPair;
+		else
+			pf = pfPair + 2;
+		func_002566D8(p->pv0, iX, p->pv4, p->pv8, p->pv12, p->pv16, p->pv20, &p->iState, iY, iZ,
+		              pf[0], pf[1], fRatio);
+		p->fPos += 80.0F;
+		*piPos += 80;
+	}
+	if (p->sHold == 0 && fLen < p->fPos)
+		p->fPos -= fLen;
 }
 
 /* a block freed through the host and its pointer cleared */
