@@ -1315,6 +1315,9 @@ public:
     }
     /* the snake's length: none empties the path, a new one cuts and reserves the points (SOCOM 1's) */
     void SetSnakeLength(unsigned int len);
+    /* the snake's head moved to a cell, a point found among the first `search` cutting those
+     * before it off, the flags on the head (SOCOM 1's AddSnakePoint took the cell alone: 0x524D50) */
+    void AddSnakePoint(const CAiMapLoc &loc, unsigned int search, unsigned int flags);
     /* each leg smoothed, the invalid points dropped and the points' storage trimmed to them, when
      * the plan is complete and smoothing is on or forced (SOCOM 1's took no flag) */
     bool SmoothPath(bool force);

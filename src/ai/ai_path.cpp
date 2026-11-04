@@ -5,7 +5,17 @@
  * and the constructor (0x528340);
  * defined here in reverse of the image's order (-inline deferred). */
 
-#include "ai.h"
+#include "ai_maps.h"
+
+/* ai.h's _min defined (as ai_map.cpp does: MW auto-inlines no template function -- the unsigned
+ * instance, AddSnakePoint's, sits in this unit's template tail, 0x528510) */
+namespace ai {
+template <class T>
+const T &_min(const T &a, const T &b)
+{
+    return a <= b ? a : b;
+}
+}
 
 /* what the path's functions call that is not written yet (this unit's) */
 extern "C" void func_00525520(CAiPath *path);   /* SOCOM 1's UpdateTurnAngles, by position */
@@ -282,6 +292,79 @@ void CAiPath::SetSnakeLength(unsigned int len)
         SetFlags(4, 0);
         m_state = COMPLETE;
     }
+}
+
+/* the snake's head moved to a cell (SOCOM 1's AddSnakePoint, the demo's 0x193930, between SetPathType
+ * and SetSnakeLength as here: CZSealBody::UpdateAiMapLoc's call 0x5B7DE8). The first point reserves
+ * the snake and is pushed; SOCOM II then looks for the cell among the first `search` points -- the
+ * head itself only takes the flags, a later one cuts the points before it off -- and otherwise,
+ * as SOCOM 1, keeps the longest step from the old head as the length, grows the snake by one up to
+ * its length, shifts the points down and puts the cell first. The head's width is 0 under flag 8,
+ * else the rings of open cells around it, up to 5; the path's id moves on. Byte-exact, the AI core's
+ * round 20, by these shapes: the search's end the plain vector's (hoisted: points::end() re-reads
+ * the count), its compare the cell's own ==, the moves through operator[] (data()'s reference: the
+ * address of data_ is taken once, ahead of the first move, as the target's s3) and the shift's count
+ * in a local (_min's call written in memmove's arguments loads data_ before it) */
+void CAiPath::AddSnakePoint(const CAiMapLoc &loc, unsigned int search, unsigned int flags)
+{
+    if (!m_snake_len)
+        return;
+    unsigned int n = m_points.size();
+
+    if (n == 0) {
+        m_points.reserve(m_snake_len);
+        m_points.push_back(point(loc));
+        m_points[0].m_flags = flags;
+    } else {
+        int found = -1;
+
+        if (search) {
+            unsigned int i = 0;
+
+            for (points::iterator it = m_points.begin(); it != m_points.std::vector<point>::end() && i <= search; ++it, ++i) {
+                if ((*it).m_loc == loc) {
+                    found = i;
+                    break;
+                }
+            }
+        }
+        if (found == 0) {
+            m_points[0].m_flags = flags;
+        } else if (found > 0) {
+            n -= found;
+            memmove(&m_points[0], &m_points[found], n * sizeof(point));
+            m_points.resize(n);
+            m_points[0].m_flags = flags;
+        } else {
+            point &last = m_points.back();
+
+            if (last.m_loc.m_mapid == loc.m_mapid) {
+                int dx = last.m_loc.x > loc.x ? last.m_loc.x - loc.x : loc.x - last.m_loc.x;
+                int dy = last.m_loc.y > loc.y ? last.m_loc.y - loc.y : loc.y - last.m_loc.y;
+                float d = dx + dy;
+
+                if (!(d <= m_length))
+                    m_length = d;
+            }
+            if (n < m_snake_len)
+                m_points.resize(n + 1);
+            unsigned int k = m_snake_len - 1;
+            unsigned int count = ai::_min(n, k);
+
+            memmove(&m_points[1], &m_points[0], count * sizeof(point));
+            m_points[0] = point(loc);
+            m_points[0].m_flags = flags;
+        }
+    }
+    if (flags & 8) {
+        m_points[0].m_width = 0;
+    } else {
+        CAiMap *map = AiMaps.GetMapByIndex(loc.m_mapid);
+
+        if (map)
+            m_points[0].m_width = map->GetLocationWidth(loc, 5);
+    }
+    m_pathId++;
 }
 
 /* the last point taken off, its cell handed back when asked (new in SOCOM II, the name ours: the
