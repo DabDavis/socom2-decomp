@@ -19,9 +19,7 @@
 #include <algorithm>
 
 extern "C" {
-/* a CSealCtrlAi function (OVL2 0x56D090, the SEAL lane's range), called twice on leaving the
- * unknown state */
-void func_0056D090(CSealCtrlAi *ai);
+/* (CSealCtrlAi::RestoreAiMode, OVL2 0x56D090, zseal.h's: called twice on leaving the unknown state) */
 /* the AI's mode, a byte (OVL2 0x560A60, the SEAL lane's range) */
 unsigned char func_00560A60(CSealCtrlAi *ai);
 }
@@ -71,24 +69,19 @@ bool func_00555810(CSealCtrlAi *ai);
 void func_00555820(CSealCtrlAi *ai, int x);
 unsigned char func_005558A0(CSealCtrlAi *ai);
 void func_005558D0(CSealCtrlAi *ai);
-void func_00563100(CSealCtrlAi *ai, signed char stance, float delay);
 void func_005E7660(void *unit);
-/* a CSealCtrl call taking a signed byte (OVL2 0x600D40, unwritten) and CZSealBody's weapon state
- * (named) */
-void func_00600D40(CSealCtrlAi *ai, int x);
+/* CZSealBody's weapon state (named; CSealCtrl::ClearLook, OVL2 0x600D40, is zseal.h's) */
 void SetWeaponState__10CZSealBodyF12WEAPON_STATE(CEntity *seal, int state);
 /* CPickup's and the AI maps' (OVL1 0x5416C0 named; OVL2 0x52DC70, 0x529A30, the AI core's rows:
- * a cell for a point, and SOCOM 1's free FindTraversableNeighbor) */
+ * CAiMaps::GetLocation and GetTraversableLocation, by their mangled names) */
 unsigned int GetPickupNetEntityID__7CPickupFv(CPickup *p);
-bool func_0052DC70(CAiMaps *maps, const CPnt3D *pos, void *loc);
-bool func_00529A30(CAiMaps *maps, const CPnt3D *pos, void *loc);
+bool GetLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(CAiMaps *maps, const CPnt3D *pos, void *loc);
+bool GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(CAiMaps *maps, const CPnt3D *pos, void *loc);
 /* the goto pushed to a cell (OVL2 0x5F0830, this unit's: the AI, the cell, a mode, a kind and
  * the step to come back to -- the reading ours) */
 bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step);
 void PickupObject__10CZSealBodyFP7CPickup(CEntity *seal, CPickup *pickup);
-/* CSealCtrlAi::SetStance (SOCOM 1's SetStance__11CSealCtrlAiF11SEAL_STANCE, called from the same
- * Ticks; OVL2 0x5631A0, the SEAL lane's row) */
-void func_005631A0(CSealCtrlAi *ai, int stance);
+/* (CSealCtrlAi::SetStance, SOCOM 1's, called from the same Ticks; OVL2 0x5631A0: zseal.h's) */
 /* CZSealBody::CanUseCQB (SOCOM 1's CanUseCQB__10CZSealBodyFP10CZSealBody, called from the same
  * CQB Tick; OVL2 0x5A9500, the SEAL lane's row) */
 bool func_005A9500(CEntity *seal, CEntity *target);
@@ -515,12 +508,11 @@ CAiState *CAiState::Create(AI_STATE state)
 
 extern "C" {
 /* the state's signal handed on (OVL2 0x5F6350, unwritten: the state, the AI, the signal), the
- * stack emptied (0x5F7920, a byte-exact draft), a squad's member (0x5EDBB0, seal_unit.cpp's,
- * unwritten), and the controller's calls (0x56D890, 0x5631B0, 0x570F90: the SEAL lane's rows) */
+ * stack emptied (0x5F7920, a byte-exact draft), a squad's member (CSealUnit::GetSealByIndex,
+ * 0x5EDBB0: seal_unit.cpp's, by its mangled name), and the controller's calls (0x570F90; SetAiBit2
+ * and SetDesiredStance, 0x56D890 and 0x5631B0, are zseal.h's) */
 void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig);
-CEntity *func_005EDBB0(void *unit, int a, int b);
-void func_0056D890(CSealCtrlAi *ai, bool on);
-void func_005631B0(CSealCtrlAi *ai, int a, int b, float f);
+CEntity *GetSealByIndex__9CSealUnitFii(void *unit, int a, int b);
 void func_00570F90(CSealCtrlAi *ai, float t);
 /* the last state popped: its result and its kind (OVL1 bss 0x44D628, 0x44D630: the stack's pop
  * stores them, the stop signal tests them -- unnamed) */
@@ -568,7 +560,7 @@ void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCt
         break;
     case SIGNAL_2:
         func_005F6350(state, ai, sig);
-        func_0056D890(ai, 0);
+        ai->SetAiBit2(false);
         break;
     case SIGNAL_3:
         func_005F6350(state, ai, sig);
@@ -579,26 +571,26 @@ void CAiState::Signal(CAiStateStack *stack, CAiState *state, SIGNAL sig, CSealCt
     if (own && ai) {
         ((CSealSignalBits *)seal)->m_signalled = true;
         if (ai->m_26c == 2 && ((CAiCtrl10C *)ai)->m_10c) {
-            CEntity *leader = func_005EDBB0(((CAiCtrl10C *)ai)->m_10c, 1, 0);
+            CEntity *leader = GetSealByIndex__9CSealUnitFii(((CAiCtrl10C *)ai)->m_10c, 1, 0);
 
             if (leader)
                 ((CSealSignalBits *)leader)->m_signalled = true;
         }
         ai->SetTrigger(false);
         ai->SetTrigger(false);
-        func_005631B0(ai, 2, 1, 0.0f);
+        ai->SetDesiredStance((SEAL_STANCE)2, 0.0f, true);
         switch (sig) {
         case SIGNAL_4:
             break;
         case SIGNAL_0:
             ai->SetAiMode((AI_MODE)1);
             func_00570F90(ai, 1.0f);
-            func_0056D890(ai, 0);
+            ai->SetAiBit2(false);
             ai->ClearGoal(GOAL_NONE);
             break;
         case SIGNAL_1:
             ai->ClearGoal(GOAL_NONE);
-            func_0056D890(ai, 0);
+            ai->SetAiBit2(false);
             break;
         case SIGNAL_2:
             ai->ClearGoal(GOAL_NONE);
@@ -956,8 +948,8 @@ extern "C" void func_005F6350(CAiState *s, CSealCtrlAi *ai, CAiState::SIGNAL sig
         s->m_loc = CAiMapLoc(ai->m_entity->m_mapLocValid);
         break;
     case CAiState::SIGNAL_3:
-        func_00563100(ai, (SEAL_STANCE)s->m_nibble5, -1.0f);
-        func_0056D890(ai, s->m_bit4);
+        ai->SetStanceDelayed((SEAL_STANCE)s->m_nibble5, -1.0f);
+        ai->SetAiBit2(s->m_bit4);
         ai->SetAiMode((AI_MODE)s->m_nibble9);
         func_00570F90(ai, s->m_4c);
         break;
@@ -1286,8 +1278,8 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     switch (sig) {
     case SIGNAL_0:
         ai->ClearGoal(GOAL_NONE);
-        func_00600D40(ai, -1);
-        func_005631A0(ai, 1);
+        ai->ClearLook(AIL_ALL);
+        ai->SetStance((SEAL_STANCE)1);
         SetBit264_13(ai, false);
         break;
     case SIGNAL_1:
@@ -1373,7 +1365,7 @@ void CAiSGoto::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_0:
         if (NavySeal(ai) == false)
-            func_00563100(ai, 0, 0.5f);
+            ai->SetStanceDelayed((SEAL_STANCE)0, 0.5f);
         SetMask488(ai, 0x20, 0);
         func_005E7660(((CAiCtrl10C *)ai)->m_10c);
         break;
@@ -1408,10 +1400,10 @@ void CAiSPickup::SetPickup(CPickup *p, unsigned int flags)
     SetFlags(flags, 0);
 }
 
+/* the nearest pickup to a point (FindNearestPickup, OVL2 0x6084B0, unwritten: the point, a kind
+ * mask, a range) and the range the AI looks within (OVL2 data 0x650B30, read as a variable) */
+CPickup *FindNearestPickup(const CPnt3D *pos, unsigned char mask, float range);
 extern "C" {
-/* the nearest pickup to a point (OVL2 0x6084B0, unwritten: the point, a kind mask, a range) and
- * the range the AI looks within (OVL2 data 0x650B30, read as a variable) */
-CPickup *func_006084B0(const CPnt3D *pos, int mask, float range);
 extern float data_00650B30;
 }
 
@@ -1420,7 +1412,7 @@ extern float data_00650B30;
  * unnamed: its second argument unread) */
 extern "C" bool func_005F51A0(CSealCtrlAi *ai, int x, unsigned int flags)
 {
-    CPickup *p = func_006084B0(&ai->m_entity->m_posW, 255, data_00650B30);
+    CPickup *p = FindNearestPickup(&ai->m_entity->m_posW, 255, data_00650B30);
     bool r = false;
 
     if (p && ai->PushAiState(AI_STATE_PICKUP, flags)) {
@@ -1457,7 +1449,7 @@ int CAiSPickup::Tick(CSealCtrlAi *ai)
     case STEP_0: {
         unsigned int loc;
 
-        if (!func_0052DC70(&AiMaps, p->GetPosW(), &loc) && !func_00529A30(&AiMaps, m_pickup->GetPosW(), &loc))
+        if (!GetLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(&AiMaps, p->GetPosW(), &loc) && !GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(&AiMaps, m_pickup->GetPosW(), &loc))
             step = STEP_5;
         else {
             step = STEP_6;
@@ -1523,8 +1515,8 @@ void CAiSUnknown::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_1:
     case SIGNAL_2:
-        func_0056D090(ai);
-        func_0056D090(ai);
+        ai->RestoreAiMode();
+        ai->RestoreAiMode();
         break;
     }
 }
@@ -1631,7 +1623,7 @@ int CAiSCQBAttack::Tick(CSealCtrlAi *ai)
             phase = 1;
         break;
     case 1:
-        func_005631A0(ai, 0);
+        ai->SetStance((SEAL_STANCE)0);
         if (func_005A9500(seal, m_target)) {
             ExecuteAction_CQBAttack__10CZSealBodyFP10CZSealBody(seal, m_target);
             m_time = StateTimer(ai) + 2.5f;

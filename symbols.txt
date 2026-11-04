@@ -10931,7 +10931,7 @@
 0x005B82D0 0x8 func_005B82D0  # OVL2
 0x005B82E0 0x2B8 func_005B82E0  # OVL2
 0x005B85A0 0x8C ShowProjectile__5CZKitFv  # OVL2; by hand (the kit lane, round 15): for the current item 186 or 146 (its m_ID, lbu), the body's fire point (CZSealBody slot 0x64, OVL2 0x5DFAD0: SOCOM 1's GetFirepointNode) asked for its child "projectile" (CNode slot 0x24, FindChild(name, true)) and that made active (slot 0x38, SetActive(true)); 0x5A78C0 jumps to it; new in SOCOM II, the name ours
-0x005B8630 0x124 func_005B8630  # OVL2
+0x005B8630 0x124 GetFireClassIndex__5CZKitFQ25CZKit10FIRE_CLASS  # OVL2; by hand (the kit lane, round 20): the first item whose fire class (GetCurItemFireClass's tests, inlined) is the one asked, or -1 -- CZSealBody::Tick and the environment's pickup code call it; the name ours
 0x005B8760 0xB8 GetCurItemFireClass__5CZKitFv  # OVL2; by hand (the kit lane, round 15): the current item's class by its GetIDType (OVL1 0x3D1A60) through three of CZWeapon's class tests (0x3D1DB0 rifles 1, 0x3D1DA0 the pistol 2, 0x3D1D90 class 145 4) then 121/151 3, else 0 -- a byte CZSealBody's 0x5DFAD0 (SOCOM 1's GetFirepointNode) indexes its fire-point slots at 0x388 with; CHUD::Tick and five SEAL functions call it; new in SOCOM II, the name ours
 0x005B8820 0xA0 func_005B8820  # OVL2
 0x005B88C0 0x5C func_005B88C0  # OVL2
@@ -10954,16 +10954,16 @@
 0x005B9990 0x14 IsUsingScope__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingScope, before SetWeaponInfoChanged as there: the body's byte at least 5 where SOCOM 1's is 4)
 0x005B99B0 0x1C SetWeaponInfoChanged__5CZKitFv  # OVL2; s1:exact
 0x005B99D0 0x24 PendingPickupHandled__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's PendingPickupHandled, after SetWeaponInfoChanged as there: a flag bit cleared (bit 14, SOCOM 1's 13) and the pickup wait zeroed, 0x8B8 here, SOCOM 1's 0x878)
-0x005B9A00 0x1A8 func_005B9A00  # OVL2
+0x005B9A00 0x1A8 CompactItems__5CZKitFv  # OVL2; by hand (the kit lane, round 20): RemoveItemAndAmmo's callee (new in SOCOM II) -- every slot past an empty one moved down (state, item, ammunition, magazines, current magazine, fire mode, gear, in-use byte, the pointer vector one place on), the slot looked at again; the name ours
 0x005B9BB0 0x258 RemoveItemAndAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 12): SOCOM 1's RemoveItemAndAmmo__5CZKitFi (0x2A5830 there) opens alike -- the index wrapped on m_num_items, the item's slot, magazines and ammunition cleared, the count made the last item's place plus one, the selection reset -- with SOCOM II's closing up (0x5B9A00) and WepWaitOn added; RemoveItem (0x5B9E10) calls it; seal_kit.cpp byte-exact
 0x005B9E10 0xEC RemoveItem__5CZKitF10EQUIP_ITEM  # OVL2; by hand (the kit lane, round 11): HandlePlaceMPBomb (0x5BC200) drops the MP bomb, item 154, through it where SOCOM 1's HandlePlaceMPBomb dropped it inline; FindItemWithAmmo inlined, then 0x5B9BB0 (by its place and its opening wrap SOCOM 1's RemoveItemAndAmmo(int)) on the index -- new in SOCOM II, the name ours
-0x005B9F00 0x134 func_005B9F00  # OVL2
+0x005B9F00 0x134 RemoveAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 20): SOCOM 1's RemoveAmmo (0x2A5A80), after RemoveItemAndAmmo and before FillAmmoPickupInstance as there -- the index wrapped twice (SOCOM 1's inline wrap then unwrap), the ten magazines zeroed, m_ammo cleared
 0x005BA040 0x390 func_005BA040  # OVL2
-0x005BA3D0 0x1E0 func_005BA3D0  # OVL2
-0x005BA5B0 0x1C0 func_005BA5B0  # OVL2
+0x005BA3D0 0x1E0 AddAmmo__5CZKitFii  # OVL2; s1:order by hand (the kit lane, round 20): SOCOM 1's AddAmmo (0x2A5EB0), after FillAmmoPickupInstance and before CanAddAmmo as there -- the same magazine count, item-194 doubling and top-up walk; its tail (the item 153/187 swap) moved into 0x5C74E0
+0x005BA5B0 0x1C0 CanAddAmmo__5CZKitFii  # OVL2; s1:calls by hand (the kit lane, round 20): SOCOM 1's CanAddAmmo (0x2A6160) -- the same 10-slot and count tests, GetNumMags/GetAmmoCapacity, the item-194 (SOCOM 1's 188) find, the six classes doubled, the magazine walk; the second int unread in both builds
 0x005BA770 0x4C0 func_005BA770  # OVL2
-0x005BAC30 0x228 func_005BAC30  # OVL2
-0x005BAE60 0x194 func_005BAE60  # OVL2
+0x005BAC30 0x228 HasPickupSlot__5CZKitFv  # OVL2; by hand (the kit lane, round 20): no launcher held (an inlined walk of IsLauncherWeapon) and GetPickupSlot(-1) inlined whole not -1 -- the SEAL's pickup tests (0x5A9C70, 0x5A9F40) call it; the name ours
+0x005BAE60 0x194 GetPickupSlot__5CZKitFi  # OVL2; by hand (the kit lane, round 20): of slots 2-4 but one, the count when the slot lies past it, a slot whose item uses ammunition (ten kinds excepted, a switch) and has none (ItemHasAmmo inlined), or one holding item 255; else -1 -- the environment's pickup code calls it, 0x5BAC30 inlines it; the name ours
 0x005BB000 0x98C func_005BB000  # OVL2
 0x005BB990 0x578 func_005BB990  # OVL2
 0x005BBF10 0x2E4 PickupMPBomb__5CZKitFv  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): SOCOM 1's PickupMPBomb's callee sequence -- CPickup::GetMPBomb, CZWeaponList::GetWeapon, CZAmmoList::GetAmmo, SetItemByIndex, the add-ammo call, CPickup::Destroy, EnableMPBombGear, the compass anchors -- in the same order

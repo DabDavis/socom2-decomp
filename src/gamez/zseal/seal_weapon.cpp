@@ -36,9 +36,8 @@ inline void SetAimGoalValid(CZSealBody *seal, bool b)
     ((CSealAimBits *)seal)->m_aim_goal_valid = b;
 }
 
-/* the SEAL's state at 0x174 (CBody's short) and, in state 3, the base blend's (OVL2 0x57DC20,
- * seal_body.cpp's: SOCOM 1's PeekBaseState) */
-extern "C" unsigned char func_0057DC20(CZSealBody *seal);
+/* (in state 3 the base blend's state: CZSealBody::PeekBaseState, OVL2 0x57DC20, seal_body.cpp's --
+ * zseal.h's member) */
 
 /* a goal for the aim along a direction: the direction itself when it lies inside the stance's
  * limits (their cosines: pitch up or down by the direction's y, and yaw), else what CalcGoalDir
@@ -51,7 +50,7 @@ bool CZSealBody::CalcAimGoal(const CPnt3D *from, const CPnt3D *dir, CPnt3D *goal
     float maxPitch, minPitch, maxYaw;
 
     if (m_state == 3)
-        state = (SEAL_STATE)func_0057DC20(this);
+        state = (SEAL_STATE)PeekBaseState();
 
     switch (state) {
     case 0:
