@@ -103,11 +103,19 @@ public:
             return 0;
     }
 
+    /* an array's count and its items (zrdr.h's _zrdr::Count and Item: 4 an array) */
+    bool IsArray() const { return m_type == 4; }
+    unsigned int Count() const { return IsArray() ? m_length : 0; }
+    CUIVariable *Item(unsigned int i) const { return i < Count() ? &m_array[i] : 0; }
+
     unsigned char m_type;   // 0x0
+    unsigned char _1;
+    unsigned short m_length;   // 0x2: an array's count (zrdr.h's 16-bit length)
     union {
         const char *m_str;   // 0x4
         float m_real;
         int m_int;
+        CUIVariable *m_array;   // an array's items, 8 bytes each
     };
 };
 
@@ -2766,26 +2774,87 @@ public:
     /* every item erased and deleted, then the box's own font (SOCOM II's, 0x375C70, the name ours:
      * UpdateUIVar and 0x372980 call it) */
     void RemoveAllItems();
+    /* the secondary table's slot (0x4076E0: after the thunk 0x37D060): the variable's list shown */
+    virtual void UpdateUIVar(CUIVariable *var);
+
+    /* the highlighted row set and the window scrolled to it (inline: UpdateUIVar and the
+     * focus command do it alike, the row read back for the product) */
+    void Highlight(int idx)
+    {
+        m_highlighted = idx;
+        m_scroll = 0;
+        m_offset = m_highlighted * m_lineHeight;
+    }
 
     C2DFont *m_font;   // 0xa0
-    unsigned char _a4[0xbc - 0xa4];
+    unsigned char _a4[0xac - 0xa4];
+    int m_lineHeight;   // 0xac: a row's height (the spec's)
+    int m_offset;   // 0xb0: the highlighted row's offset in the list
+    unsigned char _b4[0xb8 - 0xb4];
+    int m_scroll;   // 0xb8
     C2DFont *m_ownFont;   // 0xbc: a font of the box's own, deleted with its items
     std::list<ListItem *> m_items;   // 0xc0
     float m_scale;   // 0xcc: the items' scale
     unsigned char _d0[0xd4 - 0xd0];
     std::vector<ColumnData *> m_columns;   // 0xd4
     int m_highlightAlpha;   // 0xe0
-    unsigned char _e4[0x130 - 0xe4];
+    unsigned char _e4[0xe9 - 0xe4];
+    bool m_followEnd;   // 0xe9: a new list highlights its last row (the spec's byte at 0x35)
+    unsigned char _ea[0x130 - 0xea];
     CPnt3D m_color;   // 0x130: the rows' colour
     unsigned char _13c[0x154 - 0x13c];
     CPnt3D m_highlightColor;   // 0x154
-    unsigned char _160[0x174 - 0x160];
+    float m_seqStart;   // 0x160: the first row's sequence start
+    float m_seqLength;   // 0x164: each row's sequence length
+    unsigned char _168[0x174 - 0x168];
     float m_pulseMin;   // 0x174
     float m_pulseMax;   // 0x178
     float m_pulseTime;   // 0x17c
     unsigned char _180[0x194 - 0x180];
     int m_highlighted;   // 0x194
+    unsigned char _198[0x420 - 0x198];
+    ActionItem m_actions[30];   // 0x420: the box's actions (the spec's ANIMATIONS)
+    int m_numActions;   // 0x600
 };
+
+/* a list variable shown (nothing else): every item removed, one made from each of its values with
+ * the box's columns, font and scale -- a string's own text set -- and added at the end; the last
+ * row highlighted when the box follows its end; the rows' sequences laid one after another from the
+ * box's start; then the actions on event 46 run (SOCOM II's: SOCOM 1's built its rows otherwise).
+ * The counter an int (unsigned, MW strength-reduces Item's i*8 into a sixth saved register).
+ * OPEN, 7 instructions: the sequence walk's iterator and end node swap s0/s1 */
+void CUIListBox::UpdateUIVar(CUIVariable *var)
+{
+    if (var->IsArray()) {
+        RemoveAllItems();
+        for (int i = 0; i < var->Count(); i++) {
+            CUIVariable *e = var->Item(i);
+            ListItem *item = new ListItem(e, m_columns, m_font, m_scale);
+
+            if (e && e->IsString())
+                item->SetString(e->GetString());
+            AddItem(item, -1);
+        }
+        if (m_followEnd)
+            Highlight(m_items.size() - 1);
+
+        float t = m_seqStart;
+
+        for (std::list<ListItem *>::iterator it = m_items.begin(); it != m_items.end(); ++it)
+            t = (*it)->SetSequenceTime(t, m_seqLength);
+        for (int i = 0; i < m_numActions; i++)
+            if (m_actions[i].Type == 1 && m_actions[i].Event == 46) {
+                CZAnim *anim = ZAnim.GetAnim(m_actions[i].Animation, 0);
+
+                if (anim) {
+                    if (m_actions[i].Argument)
+                        anim->ActivateArg(1, 8, m_actions[i].Argument, 0);
+                    else
+                        anim->Activate(0);
+                }
+            }
+    }
+}
 
 /* each item's node erased before the item is deleted, the next iterator kept apart and ASSIGNED
  * the erase's result (its conversion's temporary then copied through a float register; initialised
