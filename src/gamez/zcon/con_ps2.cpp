@@ -489,7 +489,11 @@ unsigned int CPacketMsg::GetArgCount() const
  * with `index >= argc` materialised (sltu v0) to its own return 0 -- this form has the second half
  * exactly, but branches over an early return 0 first (`bnez`, the zero in a b's delay slot). Through
  * the inline GetArgCount() the null case merges into the count (also 4 long); nested ifs, an else
- * on either test and ternaries are 4 or 12 bytes long */
+ * on either test and ternaries are 4 or 12 bytes long. Round 4 (the core lane): `if (m_data) {
+ * if (index >= argc) return 0; return m_args[index]; } return 0;` has the target's blocks in its
+ * order -- the null's zero last -- but joins the inner returns before the epilogue (0x50); with
+ * else arms the same; `m_data ? (index < argc ? a : 0) : 0` 0x48 (the inner test sltu at/beqz);
+ * an inline helper over the inner test 0x40-0x50 */
 void *CPacketMsg::GetArg(unsigned int index) const
 {
     if (!m_data)
