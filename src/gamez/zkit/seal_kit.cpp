@@ -568,6 +568,52 @@ void CZKit::SetupBinocular()
         SetItem(m_num_items, EQUIP_BINOCULARS);
 }
 
+/* the gears' models, shared by name (char_type.cpp's CCharacterModelCache, a static there) */
+class CCharacterModelCache {
+public:
+    static zdb::CModelVector m_ModelCache;
+};
+
+/* an item's model -- from the character model cache, else the world's (its tree mode set, then
+ * cached) -- lit, instanced at the origin unless it is the grenade, named, and the node (or 0)
+ * pushed onto the item nodes; whether there was a model (OVL2 0x5C72C0; SOCOM 1's InitItemModel,
+ * whose models came from zdb's cache and whose grenade node was the body's). The three pushed
+ * words are named locals declared up front in the order of their frame slots, highest first (node,
+ * none, kept), the model pushed through a copy assigned after SetModeTree so it stays in its
+ * register, and the cache's result tested as the assignment (`bnez v0` with the copy into s0 in the
+ * delay slot) */
+bool CZKit::InitItemModel(const char *model, const char *name)
+{
+    CPnt3D pos = CPnt3D::zero;
+    CQuat rot = CQuat::identity;
+    zdb::CNode *node;
+    zdb::CNode *none;
+    zdb::CModel *kept;
+    zdb::CModel *m;
+
+    if (!(m = CCharacterModelCache::m_ModelCache.GetModel(model))) {
+        m = (zdb::CModel *)zdb::CWorld::GetModel(model);
+        if (m) {
+            m->SetModeTree(2);
+            kept = m;
+            CCharacterModelCache::m_ModelCache.push_back(kept);
+        }
+    }
+    if (m) {
+        m->SetDynamicLight(true, true);
+        node = 0;
+        if (!name || strcmp(name, "grenade")) {
+            node = zdb::CNode::CreateInstance(m, &pos, &rot);
+            node->SetName(name);
+        }
+        m_itemptr.push_back(node);
+        return true;
+    }
+    none = 0;
+    m_itemptr.push_back(none);
+    return false;
+}
+
 extern "C" {
 /* an item kind of class 145, and a pistol's (4: SOCOM 1's CZWeapon::IsSecondary) -- CZWeapon's
  * statics before IsPrimary (OVL1 0x3D1CB0, 0x3D1CE0, unclaimed) */

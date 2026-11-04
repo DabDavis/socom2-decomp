@@ -474,7 +474,9 @@ extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
  * OPEN, 0x9C against 0xA4: the target zero-extends the byte it tests (`lbu; dsll32 v0,v0,0;
  * dsrl32 v0,v0,0; beqz`) -- an unsigned int widened to 64 bits; an unsigned char, an 8-bit
  * bitfield in a char, int or long container, `(unsigned long)` and `& ~0u` all branch on the lbu
- * result directly */
+ * result directly. Round 32: compared `!= 0L` (or `!= 0UL`, the byte or an 8-bit bitfield of an
+ * unsigned int or long) it is 1 off -- the int is widened, but signed (dsra32); every spelling
+ * that makes it unsigned first (a cast, an unsigned accessor) lets MW drop the widening again */
 int CAiSShotAt::Virtual14(CSealCtrlAi *ai, CAiState *sub)
 {
     if (!(m_phaseTime < s_shotAtTime))
