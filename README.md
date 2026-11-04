@@ -2033,6 +2033,23 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 28** (the command tests, TickMPBomb, CheckDILadder, the held item's place, the probes):
+  - `mul.s $f0,$f0,$f1` then `mov.s $f12,$f0` at a call is an inline multiplying its parameter in place (`v *= 2; return
+    v;`: the held item's place 0x54E8F0); a switch whose result stays in v0, its shared operand loaded before the switch,
+    is an inline returning the pick that takes that operand as an argument (the action an order names 0x591380, pinned
+    out of line); in `a & b`, a right operand loaded first is read through an inline accessor (`action->m_teams &
+    TeamOf(seal)`: AllowCommand's case 1 0x5911F0);
+  - a 13-bit unsigned bitfield read as a word compares with `sltu`, read as a halfword with `slt` -- both differences are
+    `int` (`unsigned int` moves registers: the order test 0x591DC0); a caller passing a full register to a byte switch
+    means the callee's parameter is int-width (an `unsigned char` parameter makes the caller narrow it); `bool r = global;
+    if (!r) {...} return r;` returns the byte unconverted only if the global is declared `bool`;
+  - `p.x = p.z = 0.0f; p.y = h;` stores z first, the three-float constructor zeroes x first (the side-room probe
+    0x596D60); `if (!hit || t != 2) return false; return true;` puts the true block last behind `beq`
+    (CZSealBody::CheckDILadder 0x5B0EB0);
+  - CNodeAction's +0x14 is m_node (SOCOM 1's DWARF; it was read as a team), with m_teams 0x30, m_owner 0x34 and m_id 0x3C
+    at fts_action.cpp's offsets; CSealCtrl::TickMPBomb 0x5920C0, GetReticuleAction 0x5AA240 and CNodeAction::GetAction
+    0x5AA470 (recursive, the same cast chain) by SOCOM 1's order; open: 0x54A6D0 (2: MW copies the float parameter into
+    $f20 in the null test's delay slot, the target the hit pointer's).
 - **Tells from the AI core, round 24** (CAiMap(int) and ~CAiMap, the footprint, the routes' removals, GetAltitude inline):
   - MW COPIES A MEMBER THAT IS ITSELF A CLASS AS A BLOCK -- all three loads, then all three stores, through the member's
     address; a CPnt3D or PNT3D assigned through a pointer interleaves the loads and stores instead; `*a = *b` on a CBBox
