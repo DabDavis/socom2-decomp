@@ -25,7 +25,12 @@
  * OPEN, the initialiser 0x403770 (0x78 against 0x84): s_complete's type needs a level above CSkbVec
  * for its destructor 0x394170 (two this-tests, ~vector called) and none for its constructor (three
  * stores inline): CSkbCompleteVec gives the first and calls CSkbVec's constructor out of line; a
- * typedef gives the second and loses 0x394170 (a user-declared empty destructor: neither).
+ * typedef gives the second and loses 0x394170 (a user-declared empty destructor: neither). A LEVEL
+ * CUT (round 17, measured): at -inline level=6 the unit as it stands gives the initialiser and
+ * resize<SKBCOMPLETE> 0x392770 byte-exact and loses CInit<Us,0>() 0x392760 (inlined everywhere, no
+ * copy left) -- 44 against 43 of the unit's rows; CSkbCompleteVec() is six high here (itself,
+ * CSkbVec's, vector's, __vector_imp's, the deleter's and the capacity's constructors) and the target
+ * inlines it whole, while its destructor keeps the two this-tests and ~vector's call.
  * OPEN, not written yet: the recursive index stepper 0x3903A0, the composer 0x391670 and its rule
  * matcher 0x3919D0, 0x391E70 (a sum of an index vector's first n), 0x391F80 (the index walker's
  * constructor); everything they call out of line keeps its placeholder.

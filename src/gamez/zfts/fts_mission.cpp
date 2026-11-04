@@ -1333,6 +1333,9 @@ void Open();   /* 0x324B20 */
 class CMaterialExArray {
 public:
     static void SetDefaultMaterial(int index);   /* 0x2DDC30 */
+    static bool ReadMaterials(CRdrFile *file);   /* 0x2DDE40 */
+    static bool UnInit();   /* 0x2DE750 */
+    static int ResolveMaterialIndex(const char *name);   /* 0x2DE9E0 */
 };
 
 /* the character models' cache (zchar's CCharacterModelCache: only its vector) */
@@ -1465,8 +1468,6 @@ int sprintf(char *buf, const char *fmt, ...);
 void func_00344450(const char *db);   /* (the mission's sounds loaded) */
 void func_00344910(const char *db);
 void func_003448D0(const char *name);   /* (the jukebox's lists) */
-void func_002DDE40(CRdrFile *rdr);   /* (SOCOM 1's CMaterialExArray::ReadMaterials) */
-int func_002DE9E0(const char *name);   /* (SOCOM 1's CMaterialExArray::ResolveMaterialIndex) */
 extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
 void func_00574C30();   /* (OVL2) */
 void func_002B2E50(CMission *mission);   /* (SOCOM 1's CMission::LoadVehicles) */
@@ -1527,9 +1528,9 @@ bool CMission::Open(const char *name, int load_ai)
     func_00344910(m_database);
     func_003448D0("sndjukeboxm.rdr");
     CSndJukebox::Start();
-    func_002DDE40(m_materialsRdr);
+    CMaterialExArray::ReadMaterials(m_materialsRdr);
     CMaterialExArray::SetDefaultMaterial(world->m_default_soiltype =
-                                             func_002DE9E0(world->m_default_soiltype_name));
+                                             CMaterialExArray::ResolveMaterialIndex(world->m_default_soiltype_name));
     m_valve_complete = CValve::Create("mission_complete", VALVE_PERM);
     m_valve_failure = CValve::Create("mission_failure", VALVE_PERM);
     m_valve_abort = CValve::Create("mission_abort", VALVE_PERM);
@@ -1684,8 +1685,6 @@ bool CMission::LoadMissionCams(CRdrFile *rdr)
     return true;
 }
 
-extern "C" bool func_00268250(CZAnimMain *main, const char *name, const char *set);   /* (SOCOM 1's
-                                                  CZAnimMain::Load(rdr, set): `return true` in SOCOM II) */
 
 /* the mission's anims: from the data directories' rdrs (the paths added first), or from the
  * mission's mzanim.zar -- with the common czanim.zar when that loads, else its zanim.zar (SOCOM 1's,
@@ -1725,9 +1724,9 @@ bool CMission::ZAnimLoad()
         }
     }
     if (!ZAnim.m_LoadFromZAR) {
-        func_00268250(&ZAnim, "data/common/zrdr/czanim.rdr", "common");
+        ZAnim.Load("data/common/zrdr/czanim.rdr", "common");
         sprintf(rdr, "data/%s/zrdr/zanim.rdr", m_database);
-        func_00268250(&ZAnim, rdr, "mission");
+        ZAnim.Load(rdr, "mission");
     }
     return true;
 }
@@ -1836,7 +1835,6 @@ public:
 
 extern "C" {
 CZAnimSet *GetAnimSet__10CZAnimMainFPCc(CZAnimMain *main, const char *name);
-void func_002DE750();
 void func_00574BD0();   /* (OVL2: SOCOM 1's CSealCtrlAi::ReleaseDatabaseHandles here) */
 }
 
@@ -1898,7 +1896,7 @@ void CMission::Close()
         theHUD->m_newmap->m_cur_selected_objective = 0;
     CCharacterModelCache::m_ModelCache.clear();
     CCharacterType::ClearMultiplayerMessageSounds();
-    func_002DE750();
+    CMaterialExArray::UnInit();
     CZSealBody::UninitDatabaseHandles();
     func_00574BD0();
     CZDecalSet::DestroyDecalSet();

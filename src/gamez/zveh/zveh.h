@@ -15,6 +15,9 @@
 #include "../zentity/zentity.h"
 #include "../zweapon/zweapon.h"
 #include "../zseal/zseal.h"
+
+/* MSL's, in float (CTurretDef::SetMaxAngle's) */
+extern "C" float tanf(float);
 #include "../zrdr/zrdr.h"
 #include "../zsys/zsys.h"
 
@@ -172,6 +175,15 @@ public:
      * them; without one MW expands end() and size() ahead of the out-of-line constructor) */
     ~CTurretDef() {}
     void Parse(const char *name, _zrdr *rdr);
+    /* the largest limit held in 0.01..pi/2, made the AI's field of view, and its half's tangent
+     * (ours, inline: Parse's -- its by-value angle, saturated in place, takes the frame's lowest
+     * slot, below the call's temporaries) */
+    void SetMaxAngle(float a)
+    {
+        _saturate(&a, 0.01f, 1.5707964f);
+        m_aiParams.visual_fov = m_maxAngle = a;
+        m_tanHalfAngle = tanf(0.5f * a);
+    }
     bool GetFlag(unsigned int mask) const { return (m_flags.m_bits & mask) != 0; }
     void SetFlag(unsigned int mask, bool on)
     {

@@ -1076,3 +1076,13 @@ void CZPersonaState::ClearPersonaList()
         m_PersonaList[i].m_data = 0;
     }
 }
+
+/* the list cleared at start-up: the unit's initialiser __sinit_fts_net_persona.cpp 0x4006C0 is
+ * ClearPersonaList's loop inlined, with no object of its own stored -- an empty static whose
+ * constructor clears it (the class and the static ours) */
+class CPersonaListInit {
+public:
+    CPersonaListInit() { CZPersonaState::ClearPersonaList(); }
+};
+
+static CPersonaListInit s_personaListInit;

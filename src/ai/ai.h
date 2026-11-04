@@ -585,6 +585,8 @@ public:
         }
         /* whether the line map shows it (the name ours; materialised where it is tested) */
         bool IsDisplayed() const { return !m_nodisplay; }
+        /* the rectangle between two cells, either corner first (new in SOCOM II, the name ours: 0x515DE0) */
+        void SetCorners(const CAiMapLoc &a, const CAiMapLoc &b);
 
         CAiMapLoc m_loc;   // 0x0
         unsigned int m_dx : 16;   // 0x4
@@ -886,6 +888,11 @@ public:
      * boundary, the occupied bit, as the flags choose -- whether any cell changed (SOCOM 1's
      * Tile(region, value, flags); the layer new: the walker unit's 0x536230) */
     bool Tile(const region *r, unsigned int value, unsigned int flags, int layer);
+    /* a vehicle's footprint moved: the region's cells cleared of the occupied bit (flags 32), the
+     * region rebuilt from the four corners (0x515900, not written yet), its cells set again; true
+     * (new in SOCOM II, the name ours: 0x515880, CVehicle::Tick's call with the vehicle's four
+     * transformed corners at +408 and its region at +368) */
+    bool TileFootprint(const CPnt3D *corners, region *r);
     bool ResetCells();
     static CPnt3D &GetDirVec(DIR dir, CPnt3D &v);
     /* each direction's step in cells, x then y, N to NW (SOCOM 1's CAiMap::neighbor, the demo's
@@ -1001,6 +1008,10 @@ public:
     bool FindActionLocation(unsigned int id, CAiMapLoc &loc, action **pa);
     action *GetCellAction(const CAiMapLoc &loc) const;
     bool GetLocation(const char *name, CAiMapLoc &loc);
+    /* the cell under a point: inside the box in x and z, the offsets in cells truncated on VU0, the
+     * cell given this map's id, whether it is on the map (SOCOM 1's, which gave the cell id 0;
+     * 0x515F80, the footprint's two calls) */
+    bool GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const;
     name *GetCellName(const CAiMapLoc &loc);
     region *GetRegion(const char *name, CAiMapLoc &loc);
     region *GetRegion(const CAiMapLoc &loc);
@@ -1138,6 +1149,7 @@ inline bool CAiMap::ForEachCell(const region *pr, bool (*f)(const MAP_FOREACH_ST
 class CAiStar;
 class CAiOverlay;
 class CAiPlanner;
+class CAiMaps;
 
 /* cells laid over a map that the planners and the searches keep off -- the vehicles' (the name
  * ours, after SOCOM 1's CAiPath::m_overlay's class): a region and each row's run of cells */
@@ -1330,6 +1342,14 @@ public:
      * ours: SOCOM 1's SmoothPath removed them itself) */
     int RemoveInvalidPoints();
     void UpdatePathWidth(unsigned int width);
+    /* the points' flags set, last to first: 2 where a leg crosses maps, 1 before an action's cell,
+     * 4 before cover (SOCOM 1's UpdatePointFlags, the demo's 0x1940A0, after UpdatePathWidth in
+     * both builds: 0x525520) */
+    void UpdatePointFlags();
+    /* the legs rebuilt from a finished path's points, a new leg wherever the points cross maps, and
+     * the path smoothed when asked (new in SOCOM II, the name ours: 0x526540, CAiMaps::ExtendPath's
+     * last call) */
+    void RebuildLegs(CAiMaps *maps, bool smooth);
     /* the path drawn for debugging, under a name (SOCOM 1's took none) */
     void PrintPath(const char *name) const;
     /* the last point taken off, its cell handed back when asked; false when there is none (new

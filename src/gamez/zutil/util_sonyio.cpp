@@ -108,8 +108,8 @@ public:
 
     void *m_header;   // 0x0
 };
-/* the package state (SOCOM II's; the package unit's statics: the package and its entry opened) */
-extern CPackage data_004A15F8;
+/* the package state (SOCOM II's: util_main.cpp's thePackage 0x4A15F8 and its entry opened, 0x4A15FC) */
+extern CPackage thePackage;
 extern PAKENTRY *data_004A15FC;
 /* the root path, the file suffix (";1" on the CD) and the root's directory */
 extern char data_003E0520[];
@@ -237,14 +237,14 @@ bool CFileIO::Open(const char *name, unsigned int mode)
     m_file = -1;
     m_flags = 0;
     MakeFileName(upath, name);
-    if (data_004A15F8.m_header) {
-        PAKENTRY *e = data_004A15F8.Find(upath);
+    if (thePackage.m_header) {
+        PAKENTRY *e = thePackage.Find(upath);
 
         if (e) {
             CFileIO *pak;
 
-            data_004A15F8.Seek(e->offset, 0);
-            pak = data_004A15F8.GetFile();
+            thePackage.Seek(e->offset, 0);
+            pak = thePackage.GetFile();
             m_file = pak->m_file;
             m_flags = pak->m_flags | 0x100;
             m_filesize = e->size;
@@ -304,7 +304,7 @@ bool CFileIO::Open(const char *name, unsigned int mode)
 
 void CFileIO::Close()
 {
-    if (data_004A15F8.m_header && (m_flags & 0x100)) {
+    if (thePackage.m_header && (m_flags & 0x100)) {
         m_file = -1;
         data_004A15FC = 0;
         return;

@@ -83,10 +83,33 @@ public:
         opacity = 128.0f;
         _fWidth = 1.0f;
     }
+    /* a type's look given (the default table's: SOCOM 1's initialiser builds each entry as a
+     * temporary, opacity and width first, then the colour, and copies it in) */
+    LINE_DATA(float r, float g, float b, float o, float w)
+    {
+        opacity = o;
+        _fWidth = w;
+        color.x = r;
+        color.y = g;
+        color.z = b;
+    }
 
     PNT3D color;   // 0x0
     float opacity;   // 0xc
     float _fWidth;   // 0x10
+};
+
+/* the line map's clip buffers (SOCOM 1's statics: m_pi, m_rgbi, m_uvi, m_po, m_rgbo, m_uvo, two
+ * CPnt4Ds each -- the points, colours and UVs in and out of the clipper; OVL1 bss 0x40BF80-0x40C03F,
+ * built by the initialiser through __construct_array with CPnt4D's empty constructor, 0x2110E0) */
+class CZLineMap {
+public:
+    static CPnt4D m_pi[2];
+    static CPnt4D m_rgbi[2];
+    static CPnt4D m_uvi[2];
+    static CPnt4D m_po[2];
+    static CPnt4D m_rgbo[2];
+    static CPnt4D m_uvo[2];
 };
 
 namespace {
@@ -98,6 +121,27 @@ std::map<int, LINE_DATA> g_mapLineProps;
 std::map<int, LINE_DATA> g_mapPolyProps;
 
 }
+
+/* the default looks, nine (SOCOM 1's file static _linedata, 180 bytes; OVL1 .data 0x3E42D0-0x3E4383,
+ * stored by the unit's initialiser) */
+static LINE_DATA _linedata[9] = {
+    LINE_DATA(200.0f, 200.0f, 200.0f, 100.0f, 1.0f),
+    LINE_DATA(200.0f, 0.0f, 200.0f, 100.0f, 1.0f),
+    LINE_DATA(0.0f, 255.0f, 0.0f, 100.0f, 1.0f),
+    LINE_DATA(30.0f, 255.0f, 30.0f, 255.0f, 1.0f),
+    LINE_DATA(60.0f, 60.0f, 60.0f, 100.0f, 1.0f),
+    LINE_DATA(200.0f, 200.0f, 0.0f, 100.0f, 1.0f),
+    LINE_DATA(0.0f, 0.0f, 255.0f, 100.0f, 1.0f),
+    LINE_DATA(255.0f, 0.0f, 0.0f, 100.0f, 1.0f),
+    LINE_DATA(0.0f, 255.0f, 0.0f, 100.0f, 1.0f),
+};
+
+CPnt4D CZLineMap::m_pi[2];
+CPnt4D CZLineMap::m_rgbi[2];
+CPnt4D CZLineMap::m_uvi[2];
+CPnt4D CZLineMap::m_po[2];
+CPnt4D CZLineMap::m_rgbo[2];
+CPnt4D CZLineMap::m_uvo[2];
 
 /* a type's colour, opacity (0-1, kept as 0-127) and width out of the reader (SOCOM 1's one line:
  * an inline) */
@@ -132,4 +176,18 @@ void hudAddPolyType(_zrdr *pRdr)
 
     zrdr_findint(pRdr, "Type", &type, 1);
     ReadLineData(pRdr, g_mapPolyProps[type]);
+}
+
+namespace {
+
+/* the tactical map's pulse, as an alpha (SOCOM 1's file static: CZLineMap::Tick drives it; OVL1
+ * .data 0x3DC4C0, 60 at first) */
+float g_fPulseTrans = 60.0f;
+
+}
+
+/* the pulse for the other map items (SOCOM 1's: CZPlayerMapItem::SetViewCone reads it) */
+float hudGetTacMapPulseTrans()
+{
+    return g_fPulseTrans;
 }

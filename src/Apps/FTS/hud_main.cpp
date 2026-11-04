@@ -435,6 +435,8 @@ public:
     static CZSealBody *GetHUDOwner();
     static bool ReleaseHUD(CHUD **ppHud);
 
+    static CPnt4D m_hud_textcolor;   /* the HUD's text colour (OVL1 bss 0x408E40) */
+
     C2DString m_socom2_0;   // 0x0
     zdb::CDynTexList m_dyntexlist;   // 0x98 (znode.h's: the classes over the pointer vectors)
     signed char m_hudrettype;   // 0xb0
@@ -505,6 +507,13 @@ public:
 };   // 0x1acd0 bytes
 
 extern CHUD *theHUD;
+
+/* the unit's dynamically initialised statics, in SOCOM 1's order (__sinit_hud_main.cpp 0x3FDA40
+ * stores the colour's four words, then builds the bitmap and registers ~C2DBitmap 0x1FCB10; SOCOM
+ * 1's built the colour through a temporary, 86/63/27/128 there) */
+CPnt4D CHUD::m_hud_textcolor(120.0f, 60.0f, 95.0f, 80.0f);
+/* SOCOM 1's file static X_WeaponBackground (0x80 bytes, OVL1 bss 0x408E70): Init sets it up */
+static C2DBitmap X_WeaponBackground;
 
 /* the HUD's members built in order; then it is the HUD, the map is new'ed for a single-player
  * game (none in a network game), and the HUD's string table registered */

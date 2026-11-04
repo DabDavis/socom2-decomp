@@ -529,6 +529,100 @@ bool CAiMap::GetAltitude(const CAiCell *cell, float &alt) const
     return false;
 }
 
+/* a value within a span, ends included, all three by reference (the name ours: GetLocation's two
+ * box tests, each materialised as an inline bool's, the value loaded first) */
+inline bool _in_span(const float &v, const float &lo, const float &hi)
+{
+    return v >= lo && v <= hi;
+}
+
+/* whether a point lies over the box in x and z (the name ours) */
+inline bool _over_box(const CBBox &b, const CPnt3D *pos)
+{
+    bool r = false;
+
+    if (_in_span(pos->x, b.m_min.x, b.m_max.x) && _in_span(pos->z, b.m_min.z, b.m_max.z))
+        r = true;
+    return r;
+}
+
+/* whether the cell's row is on the map: the halfword bitfield compared signed (the name ours) */
+inline bool _on_rows(const CAiMapLoc &loc, unsigned int ny)
+{
+    return loc.y >= 0 && loc.y < ny;
+}
+
+/* the cell under a point (SOCOM 1's GetLocation(CPnt3D *, loc), the demo's 0x19B0F0: the box test
+ * in x and z, the offsets scaled by the inverse cell sizes and truncated on VU0 in place, the cell
+ * stored field by field -- SOCOM II gives it the map's id where SOCOM 1 gave 0 -- and whether the
+ * cell is on the map; 0x515F80, after SetCorners, which 0x515900 calls twice).
+ * OPEN, 2 instructions long (0x1A0 against 0x198; the AI core round 22, build/scratch/ai/v_gl*.py):
+ * the box tests, the VU0 truncation and the cell's stores are the target's; the row test is not --
+ * MW loads m_ny ahead of the `bltz` and narrows the materialised bool (andi 0xff) before the column
+ * test, where the target loads m_ny at its compare and branches on the bool unnarrowed. Tried: the
+ * count by value, by reference and through the map; the y store narrowed or not; the box tests
+ * by value (0x1B0), `lo <= v` (loads swap), `!(v < lo)` (0x1D0) */
+bool CAiMap::GetLocation(const CPnt3D *pos, CAiMapLoc &loc) const
+{
+    bool inside = _over_box(m_bbox, pos);
+
+    if (inside) {
+        sceVu0FVECTOR v;
+        float *p = v;
+
+        v[0] = m_idx * (pos->x - m_bbox.m_min.x);
+        v[1] = m_idy * (pos->z - m_bbox.m_min.z);
+        asm volatile {
+            lqc2 vf3, 0(p)
+            vftoi0.xyzw vf3, vf3
+            sqc2 vf3, 0(p)
+        }
+        loc.x = ((int *)p)[0];
+        loc.y = (unsigned short)((int *)p)[1];
+        loc.m_mapid = (unsigned char)GetMapId();
+        return _on_rows(loc, m_ny) && loc.x < m_nx;
+    }
+    return false;
+}
+
+/* the rectangle between two cells, either corner first: the map of the first, the lesser x and y
+ * as the corner, the spans inclusive (new in SOCOM II, the name ours: 0x515DE0, which 0x515900 calls
+ * after the footprint's two corner cells). The tests `a <= b` (`b >= a` lays the arms out 8 bytes
+ * short); x compares unsigned off the word, y signed off the halfword, as the target's (the AI core
+ * round 22; were 0x515900 written here, -inline auto would want this pinned: the target calls it) */
+void CAiMap::region::SetCorners(const CAiMapLoc &a, const CAiMapLoc &b)
+{
+    m_loc.m_mapid = a.m_mapid;
+    if (a.x <= b.x) {
+        m_loc.x = a.x;
+        m_dx = b.x - a.x + 1;
+    } else {
+        m_loc.x = b.x;
+        m_dx = a.x - b.x + 1;
+    }
+    if (a.y <= b.y) {
+        m_loc.y = a.y;
+        m_dy = b.y - a.y + 1;
+    } else {
+        m_loc.y = b.y;
+        m_dy = a.y - b.y + 1;
+    }
+}
+
+/* the region rebuilt from a footprint's corners (0x515900, unwritten: GetLocation for corners, the
+ * region from two cells 0x515DE0) */
+extern "C" void func_00515900(CAiMap *map, const CPnt3D *corners, CAiMap::region *r);
+
+/* the footprint's old cells cleared, the region rebuilt, the new ones set (new in SOCOM II, the name
+ * ours) */
+bool CAiMap::TileFootprint(const CPnt3D *corners, region *r)
+{
+    Tile(r, 0, 32, 0);
+    func_00515900(this, corners, r);
+    Tile(r, 1, 32, 0);
+    return true;
+}
+
 /* whether the cell is under the overlay: inside its region (the region's Contains, materialised),
  * then on its row's run, the row and column taken again from the region's corner (new in SOCOM II,
  * the name ours: the base planner's cost and FindTraversable call it) */

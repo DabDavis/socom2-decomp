@@ -2,7 +2,11 @@
  * it, Z:\dev\Apps\FTS\hud_lensflare.cpp), between the letterbox and the pause menu as there. SOCOM
  * II replaced CLensFlareSaturate with a manager of flare entries. Written: the manager's Tick,
  * PreDITick, Init, ReInit and Reset (the unit's first functions in the image); Clear open. Defined
- * in reverse of their image order (-inline deferred). */
+ * in reverse of their image order (-inline deferred). Its initialiser, 0x3FDAB0, builds only
+ * <iostream>'s two init objects (SOCOM 1's built only the header CSTable SOCOM II dropped: SOCOM
+ * II's unit includes <iostream>). */
+
+#include <iostream>
 
 #include "../../gamez/znode/znode.h"
 #include "hud_lensflare.h"
