@@ -658,6 +658,47 @@ static inline std::pair<CSkbKey, CSkbKeyProps *> SkbKeyPair(CSkbKey key, CSkbKey
     return std::pair<CSkbKey, CSkbKeyProps *>(key, props);
 }
 
+/* an int the rdr may give, else the default (ours: as the display unit's) */
+static inline int SkbFindInt(_zrdr *rdr, const char *tag, int def)
+{
+    int i = def;
+
+    zrdr_findint(rdr, tag, &i, 1);
+    return i;
+}
+
+/* a rectangle from a place and a size (ours: built in place, as the display unit's out-of-line
+ * 0x396C80 builds it) */
+static inline CSkbRect SkbRect(const CIntPair &pos, const CIntPair &size)
+{
+    CSkbRect r;
+
+    r.Set(pos, size);
+    return r;
+}
+
+/* the keys' props a keyboard's KeyProps list gives: each item's Key (a name, or a code), its Pos and
+ * Size and its ButtonSpec (0x38DCB0; CreateSoftKeyboard calls it; the name ours).
+ * OPEN, 0x220 against 0x1F0 (written round 15, untuned): the calls and their order are the target's
+ * (SkbRdrCount each pass, Size read before Pos, the ButtonSpec tag before the inlined FindKeyProps);
+ * the frame differs -- the target keeps the code path's key at 212, StrToSkbKey's at 216, the key at
+ * 220, the pairs at 184/192 and the rectangle at 160, with sp+214, 222, 196 and 164 hoisted into
+ * s4/s6/s7/s8, `this` in s2 and this+360 in s3; here the rectangle's own addresses are hoisted and
+ * `this` is s5 (SkbRect's named result, and the ternary key, are the first suspects) */
+void CSoftKeyboard::ParseKeyProps(_zrdr *rdr)
+{
+    _zrdr *list = zrdr_findtag(rdr, "KeyProps");
+
+    for (int i = 0; i < (int)SkbRdrCount(list); i++) {
+        _zrdr *item = list->Item(i);
+        const char *name = zrdr_findstring(item, "Key");
+        CSkbKey key = name ? StrToSkbKey(name) : CSkbKey(0, SkbFindInt(item, "Key", 0));
+
+        AddKeyProps(key, SkbRect(ReadIntPair(item, "Pos"), ReadIntPair(item, "Size")));
+        FindKeyProps(key)->SetSpec(zrdr_findtag(item, "ButtonSpec"));
+    }
+}
+
 /* a key's props found, or made and mapped -- a key of row 2 sets 0x174 -- then given the key's
  * place and size (0x38B770; ParseKeyProps calls it; the name ours). Written round 15 for the map's
  * insert_one 0x38EC10 and insert_node_at 0x38EF50, byte-exact through it.
