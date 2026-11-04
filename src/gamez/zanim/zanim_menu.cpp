@@ -260,12 +260,48 @@ inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM 
     return true;
 }
 
+/* a weapon's definition as the slot test reads it: its flags at 4 (0x3CF1F0's result, zwep_weapon.cpp's
+ * lookup by item -- not named yet; the stand-in type ours) */
+struct CItemDefFlags {
+    int _0;
+    unsigned short m_flags;   // 0x4: 0x30 an item that keeps its slot
+};
+extern "C" CItemDefFlags *func_003CF1F0(EQUIP_ITEM item);
+
+/* the new choosers' slot helpers (SOCOM II's, the names ours), each called out of line: pinned. Their
+ * image order (IsSlotLocked 0x281950, FindItemSlot 0x282EB0, NextFreeSlot 0x284640) is their
+ * generation order, the reverse of this definition order -- which is load-bearing: a caller
+ * generated after its callee knows the registers it writes, so NextFreeSlot keeps `slot` in a2
+ * across FindItemSlot (defined ahead of its callees here, it saved the slot in s1: 12 bytes long) */
 namespace {
 
-/* the slot of a character's first weapon of the item past the one to skip, among the first five,
- * or -1 (SOCOM II's, 0x282EB0: the new choosers' search -- the name ours). Called out of line
- * everywhere: pinned */
+int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip);
+bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item);
+
 #pragma auto_inline off
+/* the slot an item goes into: the first empty one past the given, else the next of the equipment
+ * slots (2 to 4, round) that is not locked (0x284640) */
+int NextFreeSlot(const CSelectedCharsItr &it, int slot)
+{
+    int s = FindItemSlot(it, EQUIP_NONE, slot);
+
+    if (s == -1) {
+        s = slot + 1;
+        if (s >= 5)
+            s = 2;
+        if (s < 2)
+            s = 2;
+        while (s == -1 || IsSlotLocked(it, s, EQUIP_NONE)) {
+            s++;
+            if (s >= 5)
+                s = 2;
+        }
+    }
+    return s;
+}
+
+/* the slot of a character's first weapon of the item past the one to skip, among the first five,
+ * or -1 (0x282EB0) */
 int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip)
 {
     CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
@@ -277,6 +313,28 @@ int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip)
         if ((*w).m_wepId == item && i != skip)
             found = i;
     return found;
+}
+
+/* whether a slot keeps what it holds against the item: not when it holds the item itself; yes for
+ * items 141 and 185, for 186 when no other slot holds one, for a weapon's padding (EQUIP_END) and for
+ * an item whose definition is flagged 0x30 (0x281950; the true cases one ||'d test, their shared
+ * `return true` block as the target's). The character by value: the callee's copy (12 bytes
+ * through the FPRs) */
+bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item)
+{
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+    EQUIP_ITEM cur = EQUIP_NONE;
+
+    if (slot < weapons->size())
+        cur = (*weapons)[slot].m_wepId;
+    CItemDefFlags *def = func_003CF1F0(cur);
+
+    if (cur == item)
+        return false;
+    if (cur == 141 || cur == 185 || (cur == 186 && FindItemSlot(it, cur, slot) == -1) ||
+        cur == EQUIP_END || (def && (def->m_flags & 0x30)))
+        return true;
+    return false;
 }
 #pragma auto_inline reset
 
