@@ -14,6 +14,8 @@
 
 /* the root key's name and a deleted key's (SOCOM 1's file statics, "ROOT" and "DELETED"; OVL1
  * 0x3DD000 and 0x3DD008, 8 bytes apart as MW 3.0 lays such statics out) */
+/* zsys_memory.cpp's calloc (not in zutil.h) */
+void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
 /* MSL's strtok (MAIN; not in include/string.h) */
 extern "C" char *strtok(char *s, const char *delim);
 
@@ -268,5 +270,53 @@ void CZAR::FreeDirectory()
     m_stable->Destroy();
 }
 #pragma auto_inline reset
+
+/* OPEN, 13 instructions (right size): the target keeps the block's size in a3 and the fresh flag in
+ * a1 where this has a1 and a2, and leaves the first growth's join label unpadded (a nop at the
+ * first block's end instead). Measured: `!m_data` materialises the flag as the target's sltu/xori/
+ * andi (`== 0` gives xor/sltiu); the base taken before `n += size` gives its li/addu pair; `end`
+ * declared ahead of `at` gives at s0 and end s1; the second growth as a ternary unpads its join as
+ * the target's -- the first as a ternary is 8 bytes short (the realloc's size moved into the test's
+ * delay slot, a1 being free here); the flag's and the base's declaration orders change nothing */
+unsigned int CZARBuffer::Write(const void *data, unsigned int size)
+{
+    if (m_size < m_used + size) {
+        bool fresh = !m_data;
+        unsigned int n = fresh ? 4096 : m_size * m_grows + 0x80000;
+
+        n += size;
+        if (m_size < n) {
+            if (fresh)
+                m_data = (char *)_calloc(n, 1, 0, 0);
+            else
+                m_data = (char *)_realloc(m_data, n, 0, 0);
+            m_size = n;
+            m_grows++;
+        }
+    }
+
+    unsigned int end;
+    unsigned int at = m_used;
+
+    end = at + size;
+
+    if (at < end) {
+        if (m_size < end) {
+            m_data = m_data ? (char *)_realloc(m_data, end, 0, 0) : (char *)_calloc(end, 1, 0, 0);
+            m_size = end;
+            m_grows++;
+        }
+        m_used = end;
+    }
+    memcpy(m_data + at, data, size);
+    return size;
+}
+
+unsigned int CZAR::WriteBuffer(const void *data, unsigned int size)
+{
+    if (!m_34)
+        m_34 = new CZARBuffer;
+    return m_34->Write(data, size);
+}
 
 }

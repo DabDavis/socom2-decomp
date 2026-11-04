@@ -70,23 +70,27 @@ public:
 class CKeyVec : public std::vector<CKey> {
 };
 
-/* SOCOM II's: a 16-byte buffer the archive owns at 0x34 (Close frees its block and zeroes its
- * words before deleting it; the names ours) */
+/* SOCOM II's: a 16-byte growing byte buffer the archive owns at 0x34, made by its first write
+ * (Close frees its block and zeroes its words before deleting it; the names ours) */
 struct CZARBuffer {
+    CZARBuffer() : m_data(0), m_size(0), m_used(0), m_grows(0) {}
     ~CZARBuffer()
     {
         if (m_data)
             _free(m_data, 0, 0);
         m_data = 0;
-        m_4 = 0;
-        m_8 = 0;
-        m_c = 0;
+        m_size = 0;
+        m_used = 0;
+        m_grows = 0;
     }
+    /* the bytes appended, the block grown first when they do not fit -- 4 KB past them the first
+     * time, then by half a megabyte more than the block times its growths (0x257050) */
+    unsigned int Write(const void *data, unsigned int size);
 
-    void *m_data;   // 0x0
-    int m_4;   // 0x4
-    int m_8;   // 0x8
-    int m_c;   // 0xc
+    char *m_data;   // 0x0
+    unsigned int m_size;   // 0x4: the block's bytes
+    unsigned int m_used;   // 0x8
+    unsigned int m_grows;   // 0xc: how often the block grew
 };   // 0x10 bytes
 
 class CZAR {
@@ -124,6 +128,9 @@ public:
     /* the files closed, the second deleted, the directory freed (SOCOM 1's Close(bool): SOCOM II's
      * callers pass true, its body never reads the flag -- as SOCOM 1's) */
     void Close(bool);
+    /* bytes appended to the buffer at 0x34, made on the first write (SOCOM II's, 0x256FD0: Insert
+     * writes a key's data through it; the name ours) */
+    unsigned int WriteBuffer(const void *data, unsigned int size);
     /* the directory forgotten: the root's children (deleted when the key buffer holds none of
      * the keys), the key buffer, the open keys, the string table (SOCOM II's, 0x257320: the
      * closes' common tail; the name ours) */

@@ -2692,8 +2692,8 @@
 0x00256F98 0xC func_00256F98  # OVL1 unaligned
 0x00256FA8 0xC func_00256FA8  # OVL1 unaligned
 0x00256FB8 0xC func_00256FB8  # OVL1 unaligned
-0x00256FD0 0x78 func_00256FD0  # OVL1
-0x00257050 0x178 func_00257050  # OVL1
+0x00256FD0 0x78 WriteBuffer__Q23zar4CZARFPCvUi  # OVL1; ours, the core lane round 5 (SOCOM II's: Insert(CKey *, data, size) 0x25A120 calls it twice; the 16-byte buffer at 0x34 made by new on the first write, its four words zeroed, then appended to through 0x257050)
+0x00257050 0x178 Write__Q23zar10CZARBufferFPCvUi  # OVL1; ours, the core lane round 5 (SOCOM II's: the buffer at 0x34 grown by _calloc/_realloc when the bytes do not fit -- 4 KB past them the first time, the block times its growths plus 0x80000 after -- then the bytes memcpy'd at the used mark; returns the size)
 0x002571D0 0x144 NewKey__Q23zar4CZARFPCc  # OVL1; s1:calls by hand (CKey::Read 0x25AF10 calls it with a null name where SOCOM 1's Read calls zar::CZAR::NewKey(const char *); zar_main.cpp's, MW code below the GCC libraries' 0x258000)
 0x00257320 0xC0 FreeDirectory__Q23zar4CZARFv  # OVL1; ours, the core lane round 5 (SOCOM II's: the tail both closes call -- the root's children through 0x25B580 (deleted when the key buffer is empty), the key buffer cleared and FreeVector'd, the open keys FreeVector'd, the string table's Destroy through its vtable at 0xC; SOCOM 1's Close(bool) did the same inline)
 0x002573E0 0x70 __dt__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector over vector<CKey *>: the temporary's destructor, three this-tests)
