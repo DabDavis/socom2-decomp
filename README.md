@@ -2033,6 +2033,21 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 22** (a new zwep_reader.cpp, CZWeapon's valve and menu value, the map-texture statics):
+  - a float argument scaled through an inline that multiplies its by-value parameter in place (`f *= k; return f;`) loads
+    straight into $f12 and multiplies there, written `f * k` or through a named local it takes a register of its own;
+    `n = (arr = f())->Count()` reads the count through the finder's v0 with the array copy in the branch's delay slot
+    (the target's if/else shape), with the assignment its own statement MW if-converts the count;
+  - `if (x > 0) n = 0; else n = c;` gives a branch-to-else with the zero in the delay slot and the next statement
+    duplicated into both arms (the `<=` forms and ternaries if-convert); a switch whose cases assign one result local (`v =
+    f(); break;`) keeps v in v0 from the top -- the default's zero in the first delay slot, the switch value in v1, the
+    case constants in a0; with ten integer variables live across a loop MW spills a bool to the frame (sb/lbu at sp+176);
+  - zwep_reader.cpp is a unit of its own (0x3CD810-0x3CF1EF: ZWepReader::Read calls CZWeapon::SetSoundDistance out of
+    line, which auto-inlines if Read sits in zwep_weapon.cpp; CZWeapon::Init calls the reader's empty constructor and
+    destructor out of line): Read 0x3CD810 and ReadAmmo 0x3CEDB0 byte-exact, CZWeapon::GetEnableValve 0x3CF1F0 (a CValve
+    *); HandleImpact, DoMiss, HandleIntersections by SOCOM 1's positions; znode.h's CVisual declares its three map-texture
+    statics; open: HandleIntersections 0x3C9B70 (2: the id copied with lb and narrowed before the compares and again after
+    the join -- GetDamage's miss).
 - **Tells from the kit and AI states, round 30** (CSealUnit's state push, centre, distances, aware counter, leave):
   - a const walk whose iterator is ASSIGNED (`const_iterator i; for (i = l.begin(); ...)`) gives the target's four copies of
     begin() (store, bitwise, word, bitwise) with the iterator in memory (GetAwareCounter 0x5E76D0, SOCOM 1's); taking a
