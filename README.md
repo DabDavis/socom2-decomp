@@ -1965,6 +1965,25 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 25** (SOCOM 1's request pool CDiPool, the target ticks, the Cur ammo wrappers):
+  - when every small piece of a walk (begin, end, !=, *, the assignment, postfix ++) is a separate call, the walk is an
+    inline member inlined only one level: write it inside an inline and call that -- SOCOM 1's CDiPool in a new
+    seal_dipool.h (shared by seal_sensors.cpp and ai_target.cpp) brought dirlist's DeleteAll and Free, CleanupDiPool,
+    target_pretick/target_post_tick and their pieces;
+  - an iterator kept in memory and re-stored at each step was assigned from begin() (the wrapper's implicit, bitwise
+    assignment) with the end taken into a local first -- not for_each, whose by-value parameter goes to a register;
+  - a ternary whose result shows in both arms (`b; move v1,v0` / `move v1,zero`) with no label padding comes from an inline
+    function's return (written in the caller, the labels pad); `x == 0 ? 0 : y % x` puts the zero arm first, `x ? y % x :
+    0` the other way; a field's value declared in a local before the local holding its address gives the target's a2/a1
+    (a reference to the field swaps them);
+  - a by-hand constructor or destructor call can use its mangled name in an `extern "C"` declaration only where the header
+    declares that member out of line (inline ones collide with the emitted copy: CAiTimer(float), CAiMapLoc(), Rfloat(float)
+    stay by address);
+  - GetCurMaxAmmoCount 0x5C3CE0 and GetCurAmmoCount 0x5C3890 are tail calls with the selected item (round 24's lead);
+    ReParentToRifle/Pistol 0x5C6A40/0x5C6DA0 and ScanTick 0x600550 named (the SEALs' leads); target_pretick/target_post_tick
+    keep their placeholder names (declaring SOCOM 1's statics in zseal.h would hide CSealCtrl's virtual PreTick/PostTick);
+  - open: ai_posttick 0x5CCA30 (3, new in SOCOM II: three round-robin entity windows -- the target's add is `addu
+    a1,v1,a1`, every spelling `addu a1,a1,v1`).
 - **Tells from the world, rdr and sound, round 11** (a new node_wave.cpp, COverlayLoader::Load, Destruction_Instance):
   - calling a function through one extra inline level expands it later, so its temporaries take lower stack slots (the
     erase in CRipple::Tick 0x321F50, through a small inline Erase(i): include/list's list<T *> has no erase of its own);
