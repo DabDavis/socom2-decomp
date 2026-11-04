@@ -2060,6 +2060,25 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 11** (the entity's target list and its vector<CTarget> tail, TestCellMid, ActivateExV):
+  - A HOISTED LOOP INVARIANT MAKES A PREHEADER AFTER THE FUNCTION'S END: when MW hoists a value set inside a loop body (a
+    local holding a global list's end(), assigned in the body), it lays the preheader after the function's last block and
+    enters the loop with a `b` to it -- the shape the zdb world's round 6 could not explain in SortNearToFar and
+    CGrid::Create, and the UI's round 21 in SkbSetKeyTextures / SkbForgetDisplay;
+  - a list element in a named local (`CEntity *ent = *i;`) is numbered before the scalariser's iterator temporaries, `*i`
+    at each use becomes a CSE temporary numbered after them (CEntity::OnUpdateTargetList 0x2A0A10: a three-way register
+    rotation fixed); `bool r = a || b;` declared before `bool changed = false;` keeps the value form narrowed with `andi`
+    at the join, declared after it MW branches; `float d = t.m; c = d < p && d < q;` materialises each compare, reading
+    the member twice gives the jump form;
+  - in an inline, `if (c) return true; return false;` gives the jump form materialised once at the end, `return c;` the
+    value form; a ternary leaves the modulo arm's label unpadded where the same code as if/else pads it, as the target;
+  - a member read through an inline accessor inside an expression is loaded before the expression's out-of-line call and
+    held in a saved register, read directly it loads after the call (CClutterAnimManager::TestCellMid 0x2D8770); an inline
+    taking a pointer by value and pushing it by reference homes only its parameter's copy, after the caller's own stores
+    through the pointer (CZAnim::ActivateExV 0x273320); `l.erase(l.begin(), l.end())` written out gives its temporaries
+    other frame slots than `clear()`;
+  - ent_target.cpp's tail: vector<CTarget>'s resize 0x2A1160, sort / __sort132 / __selection_sort, swap<CTarget>, the
+    iterator's operator*; OVL1's pod-vector resize 0x28B0E0 from si_script.cpp's member call (include/vector has resize).
 - **Tells from the HUD, round 39** (zui_2d.cpp's map control complete, hud_actionbitmap.cpp 8 of 8, hud_tcm.cpp's bars):
   - `c = f(); c = c && g(); ...` gives the target's materialised bool test at every join, a single `&&` chain branches
     straight through (CUIMapCtrl::ZoomOut 0x36BFF0, OnPan 0x36CA30); `frame <= s + 1` gives `slt at`, `s + 1 >= frame` puts
