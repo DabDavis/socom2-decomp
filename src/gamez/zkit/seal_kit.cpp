@@ -648,7 +648,8 @@ FIREMODE CZKit::GetCurFireMode()
  * its block, being shared). Tried: the ternary either way round, `== 0`, the weapon in a local, an
  * if/else, a result local (0x1DC), a static inline capacity helper (three bodies, either arm), a
  * shared `return 0` at the end, a goto, `== 0` and `!(bool)` in the if, the item through
- * GetItemByIndex (9) */
+ * GetItemByIndex (9); round 30, the launcher arm as one ternary over `i != -1 && m_item[i]` (the shape
+ * that closed GetFiremodeGraphic: 0x1F4) */
 int CZKit::GetMaxAmmoCount(int index)
 {
     index = wrap(index, m_num_items);
@@ -977,23 +978,18 @@ const char *CZKit::GetItemName(int index)
 }
 
 /* a grenade launcher's ammunition's icon (OVL2 0x5BE1D0; SOCOM 1's GetFiremodeName and
- * GetFiremodeGraphic in one, the index no longer wrapped).
- * OPEN, 0x70 against 0x68: the target tests the null item with the zero in the delay slot
- * (beqz s0,end; move v0,zero) and then branches over a branch on the call's result (bnez
- * v0,L3; nop; b L4; nop; L3: b end; lw v0,188(s0); L4: move v0,zero) -- neither an early return,
- * nested ifs, a ternary nor a result local gives that pair (nested ifs: 8 differing, the shared
- * return-0 block) */
+ * GetFiremodeGraphic in one, the index no longer wrapped). One ternary over an `&&`: the target's
+ * null test with the zero in its delay slot, then the call's branch over a branch (`bnez v0,L3; nop;
+ * b L4; nop; L3: b end; lw v0,188(s0); L4: move v0,zero`) -- the `&&`'s true and false exits kept
+ * as blocks of their own (an early return, nested ifs, `if (w && ...)` -- 8 differing --, a switch,
+ * `== true`, a loop and a result local all fold them) */
 void *CZKit::GetFiremodeGraphic(int index)
 {
     if (index == -1)
         return 0;
     CZFTSWeapon *w = m_item[index];
 
-    if (!w)
-        return 0;
-    if (w->IsGrenadeLauncherAmmo())
-        return w->m_icon;
-    return 0;
+    return w && w->IsGrenadeLauncherAmmo() ? w->m_icon : 0;
 }
 
 /* an item's icon, wrapped, and the selected one's (OVL2 0x5BE110, 0x5BE050; SOCOM 1's had only
