@@ -308,9 +308,6 @@ extern "C" void func_00230870(CTCM *tcm, CTCMNode *cur, float x, float y, float 
                               bool b);
 
 
-/* the node the menu's path selects (0x236B20, hud_tcm.cpp's, not written yet) */
-extern "C" CTCMNode *func_00236B20(CTCM *tcm);
-
 /* the menu laid out for its mode (0x231690; the tree's Open and ShowRoot call it with 0, the menu
  * object's tick with the frame's time; the name ours): opening, the cursor fades in as the root
  * slides in, then the menu is open (1); open, the cursor and the columns placed, and closed when the
@@ -319,7 +316,7 @@ extern "C" CTCMNode *func_00236B20(CTCM *tcm);
  * node hidden); shut, the root kept at the left edge; listening (5, 6), the cursor and the columns */
 void CTCM::Layout(float t)
 {
-    CTCMNode *cur = func_00236B20(this);
+    CTCMNode *cur = GetSelected();
 
     switch (m_mode.m_mode) {
     case 0: {

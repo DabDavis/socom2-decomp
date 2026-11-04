@@ -259,12 +259,15 @@ void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
 static void LoadThreadEntry(void *arg);
 
 /* MSL 3.0's basic_string members that close the unit in its template tail (OVL1 0x1EEB40,
- * 0x1EEB70, 0x1EF390, 0x1EF400; the template replace taking two iterators and their category,
- * 0x1EE780, between them is still a placeholder): out-of-class template members, over a copy of
- * include/string's representation -- fts_state.h keeps its own std::basic_string, so <string>
- * cannot come in. assign, append and replace(pos, n1, s) are fts_state.h's stand-in's members under
- * the map's names (the states lane, round 21); assign(first, last) stays a stand-in under its
- * placeholder. Pinned, or one would take another in (the same-unit stand-in rule) */
+ * 0x1EEB70, 0x1EF390; the template replace taking two iterators and their category, 0x1EE780, and
+ * the assign(first, last) it calls for its temporary, 0x1EF400, are include/string's, emitted by
+ * every unit that includes <string>): out-of-class template members, over a copy of include/
+ * string's representation -- fts_state.h keeps its own std::basic_string, so <string> cannot come
+ * in. assign, append and replace(pos, n1, s) are fts_state.h's stand-in's members under the map's
+ * names (the states lane, round 21). The stand-in that copied assign(first, last) under its
+ * placeholder is gone (round 34: nothing here called it, and its row carries the member
+ * template's name since the MSL headers' round 21). Pinned, or one would take another in (the
+ * same-unit stand-in rule) */
 namespace {
 /* include/string's twelve bytes: the long form's capacity | 1, size and text, the short form's
  * size in the first byte's upper seven bits */
@@ -285,17 +288,6 @@ struct CTailString {
 }
 
 #pragma auto_inline off
-extern "C" {
-/* assign(first, last): the whole text replaced by the range (0x1EF400) */
-void *func_001EF400(void *str, const char *first, const char *last)
-{
-    std::forward_iterator_tag category;
-
-    return std::func_001EE780(str, 0, ((CTailString *)str)->size(), first, last, category);
-}
-
-}
-
 namespace std {
 /* replace(pos, n1, const char *): the range s..s+strlen(s) handed to the template replace
  * (0x1EF390) */
@@ -305,7 +297,7 @@ basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::
 {
     forward_iterator_tag category;
 
-    return *(basic_string *)func_001EE780(this, pos, n1, s, s + strlen(s), category);
+    return replace(pos, n1, s, s + strlen(s), category);
 }
 
 /* append(const char *): replace(size(), 0, s), a tail call (0x1EEB70) */

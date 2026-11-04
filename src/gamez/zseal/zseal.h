@@ -567,7 +567,10 @@ public:
      * same body; CreepTick and 0x567900 call the slot with the heading, &m_goal_dir and a float) */
     virtual float ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot);   /* +0x9C */
     virtual void NotifyTargetDown(CZSealBody *seal);
-    virtual bool GetJumpFlag() const { return false; }                     /* +0xA4 */
+    /* +0xA4: the controller's current AI state kind (the base: none) -- typed AI_STATE, not bool:
+     * CSealCtrlAi's 0x574800 has SOCOM 1's GetAiStateEnum body and GetAiNetState sends its value as the
+     * network state's code (compared with 17 and 9); the name stays the map's (the SEALs' round 31) */
+    virtual AI_STATE GetJumpFlag() const { return AI_STATE_UNKNOWN; }      /* +0xA4 */
     virtual void UpdateViewCone();
     virtual void OnSetTargetVisible(CTarget &target, bool visible, zdb::DiIntersect *di);
     virtual void SetTarget(CTarget *target);                                /* +0xB0 */
@@ -1042,7 +1045,7 @@ public:
     /* the state sent to the other consoles, as a word's bits (OVL2 0x56F6C0, slot 0x6C) */
     virtual unsigned int GetAiNetState() const;
     /* slot 0xA4 (OVL2 0x574800: the current state's kind, or 0 -- SOCOM 1's GetAiStateEnum's body) */
-    virtual bool GetJumpFlag() const;
+    virtual AI_STATE GetJumpFlag() const;
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
@@ -1231,7 +1234,7 @@ public:
     virtual void OnMissionEnd();
     virtual void SetAiNetState(unsigned int state);
     virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
-    virtual bool GetJumpFlag() const;
+    virtual AI_STATE GetJumpFlag() const;
 
     /* (inline: CreateRemoteSeal's new expands it after CSealCtrl's, the table then the fades) */
     CRemoteCtrl() : m_fade_min(0.001f), m_fade_time(2.0f) {}

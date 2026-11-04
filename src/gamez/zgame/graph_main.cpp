@@ -97,7 +97,9 @@ extern "C" const unsigned int data_003F3500;   /* (the version the reader takes)
  * cursor s4 and everything else agree. Tried (build/try-st): the two nodes as named locals (11),
  * the first one named in the loop or declared at the top or before the loop (9-11), the counter
  * declared once for both loops, before the header, as an int, or copied from a second counter
- * (all 5), a walking record pointer (0x258) */
+ * (all 5), a walking record pointer (0x258); round 34: the first node, or both, as const locals
+ * (11), the count in a const local (0x248), the record through a const reference, the counter a
+ * copy of an outer one (5) */
 bool CGraph::Read(CFileIO &f, NodeFixup node, EdgeFixup edge, void *data)
 {
     GraphHeader hdr = {0};

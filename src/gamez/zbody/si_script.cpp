@@ -13,10 +13,6 @@
 /* newlib's (include/string.h lacks it) */
 extern "C" int strncasecmp(const char *a, const char *b, size_t n);
 
-/* the pod vector's resize, OVL1's out-of-line copy (include/vector has no resize; MAIN's
- * 0x18B050 carries the name) */
-extern "C" void func_0028B0E0(void *vec, unsigned int n, const unsigned int &x);
-
 int CZSIScript::m_version = 5;
 unsigned int siNumBodyObjects = 32;
 int numSiScript;
@@ -41,7 +37,9 @@ CZSIScriptCommon::CZSIScriptCommon()
     SetDefaults();
     unsigned int zero = 0;
 
-    func_0028B0E0(&m_objects_for_body, siNumBodyObjects, zero);
+    /* the pod base's resize, out of line (OVL1's copy 0x28B0E0, emitted here after its first
+     * caller; MAIN's 0x18B050 carries the name) */
+    m_objects_for_body.resize(siNumBodyObjects, zero);
     m_root = 0;
     numSiCommon++;
 }

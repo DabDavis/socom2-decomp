@@ -376,3 +376,45 @@ void CAiTarget::Tick(CEntity *self, float dT)
     if (!func_0060A850(this) || (((CTargetEntity *)m_ent)->m_team & ((CTargetEntity *)self)->m_team))
         SetTarget(0);
 }
+
+namespace ai {
+bool CheckLineOfFire(const CEntity *e, const CTarget *t, float radius);
+}
+
+/* whether the target is the first of the entity's targets met -- false once a live friend (a side
+ * in common) stands within the radius of the line from the entity to the target, each place raised
+ * by half a man's height (OVL2 0x609DF0; SOCOM 1's, which read the places through GetPosW -- SOCOM
+ * II reads them straight, its targets 0x30 bytes). The result declared first and assigned before
+ * the walk (initialised there it is zeroed at the top), the list through a reference (its address
+ * kept in s1), each target's entity in a local (its sides loaded before the entity's own) */
+bool ai::CheckLineOfFire(const CEntity *e, const CTarget *t, float radius)
+{
+    if (!t || !t->m_ent)
+        return true;
+
+    bool clear;
+    const CTargetList &targets = e->m_targets;
+    static float height = 18.0f;
+    static CPnt3D offset(0.0f, 0.5f * height, 0.0f);
+    CPnt3D from = e->m_posW + offset;
+    CPnt3D to = *TargetPos(t) + offset;
+
+    clear = false;
+
+    for (CTargetList::const_iterator i = targets.begin(); i != targets.end(); ++i) {
+        if ((*i).m_ent == t->m_ent) {
+            clear = true;
+            break;
+        }
+        CEntity *o = (*i).m_ent;
+
+        if (o->m_isAlive && (o->m_team & e->m_team)) {
+            CPnt3D p = o->m_posW + offset;
+            float d;
+
+            if (p.DistToVector(&from, &to, &d) && d < radius)
+                break;
+        }
+    }
+    return clear;
+}

@@ -99,17 +99,14 @@ bool GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(CAiMaps *maps, void *c
 void func_005F0830(CSealCtrlAi *ai, unsigned int *loc, int mode, int kind, int step);
 /* (OVL2 0x563050, a goal set with a float) */
 void ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(CSealCtrlAi *ai, int a, int b, float f);
-/* a look or a goal at a point (OVL2 0x561110, the SEAL lane's row) */
-void func_00561110(CSealCtrlAi *ai, int kind, const CPnt3D *pos, float t);
 /* (OVL2 0x5628F0, 0x5B3890: the SEAL lane's rows -- the first on the controller, the second on
  * the SEAL) and a byte of the SEAL lane's (OVL2 bss 0x66AFE0, cleared by a hold) */
 void func_005628F0(CSealCtrlAi *ai);
 void func_005B3890(CEntity *seal, int x);
 extern unsigned char data_0066AFE0;
-/* the AI's mode, a byte (OVL2 0x560A60); an order given (0x571010) with a target this unit
- * picks (0x609530); the stance set after a delay (0x563100); a CSealCtrl call taking a signed
- * byte (0x600D40, this lane's range, unwritten) -- the SEAL lane's rows but 0x609530/0x600D40 */
-unsigned char func_00560A60(CSealCtrlAi *ai);
+/* an order given (OVL2 0x571010) with a target this unit picks (0x609530); the stance set after a
+ * delay (0x563100); a CSealCtrl call taking a signed byte (0x600D40, this lane's range, unwritten)
+ * -- the SEAL lane's rows but 0x609530/0x600D40 */
 enum ORDER_KIND { ORDER_KIND_0 = 0, ORDER_KIND_LAST = 255 };
 void func_00571010(CSealCtrlAi *ai, void *target, int a, ORDER_KIND kind);
 void *func_00609530(int x);
@@ -406,7 +403,7 @@ void CAiSShotAt::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_0:
         m_stance = ai->m_stance;
         m_time = Random(0.05f, 0.2f);
-        if (func_00560A60(ai) < 2)
+        if (ai->GetAiAware() < AIA_GENERAL)
             func_00571010(ai, func_00609530(0), 2, (ORDER_KIND)11);
         break;
     case SIGNAL_1:
@@ -456,7 +453,7 @@ extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
         ai->PlayAiSound((CHARACTER_SOUND)72, 0.25f, 0);
         if (chance < callChance && func_00584B00(seal))
             func_0057E540(seal);
-        else if (chance < sprayChance && func_00560A60(ai) > 2)
+        else if (chance < sprayChance && ai->GetAiAware() > AIA_GENERAL)
             ai->SetSprayTimer(0.15f);
         break;
     case CAiState::STEP_3:
@@ -464,7 +461,7 @@ extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
             func_0057E540(seal);
         break;
     case CAiState::STEP_4:
-        if (chance < sprayChance && func_00560A60(ai) > 2)
+        if (chance < sprayChance && ai->GetAiAware() > AIA_GENERAL)
             ai->SetSprayTimer(0.75f);
         break;
     case CAiState::STEP_6:
@@ -477,7 +474,9 @@ extern "C" void func_00609190(CAiState *s, CSealCtrlAi *ai)
  * OPEN, 0x9C against 0xA4: the target zero-extends the byte it tests (`lbu; dsll32 v0,v0,0;
  * dsrl32 v0,v0,0; beqz`) -- an unsigned int widened to 64 bits; an unsigned char, an 8-bit
  * bitfield in a char, int or long container, `(unsigned long)` and `& ~0u` all branch on the lbu
- * result directly */
+ * result directly. Round 32: compared `!= 0L` (or `!= 0UL`, the byte or an 8-bit bitfield of an
+ * unsigned int or long) it is 1 off -- the int is widened, but signed (dsra32); every spelling
+ * that makes it unsigned first (a cast, an unsigned accessor) lets MW drop the widening again */
 int CAiSShotAt::Virtual14(CSealCtrlAi *ai, CAiState *sub)
 {
     if (!(m_phaseTime < s_shotAtTime))
@@ -521,9 +520,9 @@ void CAiSEvent::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_1:
         if (m_flags & 0x100) {
-            func_00561110(ai, 3, (m_flags & 1) ? &m_pos2 : &m_pos, -1.0f);
+            ai->SetAiAware(AIA_DIRECTION, (m_flags & 1) ? &m_pos2 : &m_pos, -1.0f);
         } else if (m_flags & 0x80)
-            func_00561110(ai, 2, 0, -1.0f);
+            ai->SetAiAware(AIA_GENERAL, 0, -1.0f);
         ClearLook__9CSealCtrlF7AI_LOOK(ai, 5);
         break;
     case SIGNAL_2:
@@ -685,36 +684,32 @@ void CAiSHold::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
-/* a hold with its flags' bit 5 or 7 set (an inline bool: its true is daddiu, the result narrowed) */
+/* a hold with its flags' bit 5 or 7 set (an inline bool: its true is daddiu, the result narrowed;
+ * `else r = r;` keeps the flags test a branch -- without the arm MW if-converts it into sltu -- and
+ * vanishes itself, the kit lane's round 33) */
 inline bool HoldBroken(const CAiState *s)
 {
-    return s->m_state == AI_STATE_HOLD ? ((s->m_flags & 0xa0) ? true : false) : false;
+    bool r = false;
+
+    if (s->m_state == AI_STATE_HOLD) {
+        if (s->m_flags & 0xa0)
+            r = true;
+        else
+            r = r;
+    }
+    return r;
 }
 
 /* whether the AI's current state is a hold with its flags' bit 5 or 7 set (OVL2 0x607830: the SEAL
- * lane's 0x558AE0 and 0x563E10 call it; the name ours).
- * OPEN, 6 instructions at the right size (round 24; 0x7C against 0x6C before -- the earlier notes
- * follow): the target keeps the hold test in a1 -- zero in the state compare's
- * delay slot, `daddiu a1,zero,1` for true, `b; andi v0,a1,0xff` at the join, and a separate
- * `move v0,zero` for no state. The ternary over the inline (here) puts the andi on a block of its
- * own; `if (s) return HoldBroken(s); return false;` is 0x68, the true in v0 and no andi; a bool
- * local `r = false; if (a && b) r = true;` (inline or not, nested ifs too) is if-converted into
- * sltu; `? true : false` and `HoldBroken(s) != false` miss further; the materialised `&&` written
- * in the ternary's arm is 0x68 with the test in v1 (the kit lane, round 12). The stack is read
- * through a const reference: the target calls its const GetState (0x5F8330), the non-const copy
- * 0x5F8360 otherwise. Round 24: the AI taken as `const CSealCtrlAi *` with the stack read in place
- * gives the target's head (the size read at ai+0x41C, the address formed in the call's delay slot)
- * and, with the hold test a ternary over a `? true : false`, the right size -- 6 off: the flags test
- * if-converts into `sltu v0` where the target keeps r in a1 (`move a1,zero` in the state compare's
- * delay slot, `daddiu a1,zero,1`, `andi v0,a1,0xff` at the join); the `&&` forms materialise the
- * state compare (xori/sltiu), nested ifs with a bool local and a one-case switch fold too */
+ * lane's 0x558AE0 and 0x563E10 call it; the name ours). The stack is read through a const AI (its
+ * const GetState called, 0x5F8330, the size read at ai+0x41C); byte-exact in the kit lane's round
+ * 33 with HoldBroken's self-assigning else arm and the ternary over it (open since round 12: every
+ * form without the arm if-converted the flags test) */
 extern "C" bool func_00607830(const CSealCtrlAi *ai)
 {
     const CAiState *s = ai->m_stateStack.size() == 0 ? 0 : ai->m_stateStack.GetState();
 
-    if (s)
-        return HoldBroken(s);
-    return false;
+    return s ? HoldBroken(s) : false;
 }
 
 /* the response states' callouts, looked up by name once the sounds are open: forty-three cue

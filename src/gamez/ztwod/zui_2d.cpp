@@ -29,6 +29,7 @@
 #include <string>
 
 #include "ztwod.h"
+#include "../zvid/zvid.h"
 
 /* a ZAnim command's header (zanim.h's _zanim_cmd_hdr, SOCOM 1's DWARF) */
 struct _zanim_cmd_hdr {
@@ -172,6 +173,9 @@ public:
 class CDlgObjSpec {
 public:
     virtual ~CDlgObjSpec();
+    /* (zui_spec.h's slots 0x0C and 0x10: the map control's LoadSpec makes its children so) */
+    virtual CDlgObjSpec *Copy() = 0;
+    virtual C2D *CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const = 0;
     CUIVariable *GetUIVar() const
     {
         return m_var ? theUIVarManager.Add(m_var->m_name, m_var->m_value, m_var->m_longevity) : 0;
@@ -1832,9 +1836,39 @@ int CPopUpDialog::GetZAnimCmdType(const char *name)
  * destructor its key function, so this unit takes its table 0x407260) */
 class CUIMapCtrlAnimCmdHdr;
 
+/* a design's object (zui_spec.h's CDesignDlgObj, 0x28 bytes: its spec and its place, then the
+ * opacity and two strings) */
+class CDesignDlgObj {
+public:
+    CDlgObjSpec *m_spec;   // 0x0: SPEC
+    int m_xpos;   // 0x4: XPOS
+    int m_ypos;   // 0x8: YPOS
+    unsigned char _c[0x28 - 0xc];
+};   // 0x28 bytes
+
+/* the map control's spec (zui_spec.h's CUIMapCtrlSpec, 0x30 bytes: its corners, its elements and
+ * its animations) */
+class CUIMapCtrlSpec : public CDlgObjSpec {
+public:
+    virtual ~CUIMapCtrlSpec();
+
+    IPNT2D m_upperLeft;   // 0x8: UPPERLEFT
+    IPNT2D m_lowerRight;   // 0x10: LOWERRIGHT
+    std::vector<CDesignDlgObj> m_elements;   // 0x18: ELEMENTS
+    std::vector<ActionItem> m_animations;   // 0x24: ANIMATIONS
+};   // 0x30 bytes
+
+/* set when a menu object takes actions (zui.cpp's global, SOCOM 1's g_hasAnims at gp-25344 there;
+ * OVL1 bss 0x49EAA0) */
+extern unsigned char g_hasAnims;
+
 class CUIMapCtrl : public C2D {
 public:
+    CUIMapCtrl();
     virtual ~CUIMapCtrl();
+    /* the rectangle, the actions and the children from the spec (SOCOM 1's, the library unused) */
+    void LoadSpec(const CUIMapCtrlSpec &spec, C2DFont *font, zdb::CAssetLib *lib,
+                  zdb::CTextureRelocMgr *mgr);
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
@@ -1847,6 +1881,26 @@ public:
     void ZoomIn(float scale, zdb::CNode *node, float dT);
     void ZoomOut(float scale, zdb::CNode *node, float dT);
     virtual bool HandlePad(const CPad *pad, int port);
+    /* whether a screen point lies on one of the children's bitmaps, the map placed at pos and
+     * scaled (SOCOM 1's IsCovered, 0x386400: OnPan and the zooms test their corners with it) */
+    bool IsCovered(float x, float y, const CPnt3D &pos, float scale) const;
+    /* all four corners covered (ours: ZoomOut's two tests, each corner's x converted once; the
+     * answer a bool and-ed a corner at a time -- the target re-tests it at each step, where one `&&`
+     * chain branches straight through) */
+    bool AllCovered(const CPnt3D &pos, float scale) const
+    {
+        float l = m_left;
+        float r = m_right;
+        bool c = IsCovered(l, m_top, pos, scale);
+
+        c = c && IsCovered(r, m_top, pos, scale);
+        c = c && IsCovered(l, m_bottom, pos, scale);
+        c = c && IsCovered(r, m_bottom, pos, scale);
+        return c;
+    }
+    /* the zoomed-out position held against the side the four corners' covered flags leave (SOCOM
+     * II's: ZoomOut's, 0x36D510; the name ours) */
+    void AnchorZoom(CPnt3D &out, const bool *covered, const CPnt3D &pos, float zoom);
 
     ActionItem m_actions[30];   // 0x18
     int m_numActions;   // 0x1f8 (the destructor zeroes it)
@@ -1857,6 +1911,12 @@ public:
     int m_bottom;   // 0x208
     zdb::CNode *m_node;   // 0x20c: the map's node (the pad's zooms move it)
 };
+
+/* built with no actions and no node (SOCOM 1's CUIMapCtrl(), 0x386DA0 there: CUIMapCtrlSpec::
+ * CreateDisplayObj calls it, then LoadSpec) */
+CUIMapCtrl::CUIMapCtrl() : m_numActions(0), m_node(0)
+{
+}
 
 /* the children deleted, each taken off the list first, the actions forgotten (SOCOM 1's, its count
  * at 0x1FC there). The walk's iterator is assigned from begin() and end() taken once (it lives in
@@ -1897,14 +1957,6 @@ public:
     void SetScale(float s);
     void SetPosition(float x, float y, float z);
     void SetPosition(const CPnt3D &p) { SetPosition(p.x, p.y, p.z); }
-    /* ours, a probe of ZoomIn's copies (by value, then into a local): see its OPEN note */
-    void SetPositionV(CPnt3D p)
-    {
-        CPnt3D q;
-
-        q = p;
-        SetPosition(q.x, q.y, q.z);
-    }
     CPnt3D GetPosition() const { return *(const CPnt3D *)m_matrix.m_matrix[3]; }
 
     CMatrix m_matrix;   // 0x0
@@ -1958,17 +2010,26 @@ void CHProgressBar::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
         node->SetPosition(p[1].x, p[0].y, 0.0f);
 }
 
+/* a position zoomed about a point (ours: the zooms' step, the position copied and its x and y
+ * pulled toward the point) */
+inline CPnt3D ZoomAbout(const CPnt3D &pos, float x, float y, float zoom)
+{
+    CPnt3D p = pos;
+
+    p.x = x - zoom * (x - pos.x);
+    p.y = y - zoom * (y - pos.y);
+    return p;
+}
+
 /* the node zoomed in about the control's centre, by half the time's step at the given rate, no
  * further than twice its unit scale: its position pulled out from the centre by the step, its
- * scale multiplied by it (SOCOM II's; the name ours).
- * OPEN, 0x160 against 0x174: everything to the clamp is the target's (the clamp a MIN ternary --
- * `if (!(z < m)) z = m;` inverts the branch); the position's copies are not. The target stores
- * GetPosition's value through one pointer into a temporary (sp+80), block-copies it (ld/sd,
- * lwc1/swc1) into the point (sp+48), computes x and y from the TEMPORARY's fields into the point,
- * block-copies the point again (sp+64), copies that field by field back into sp+80 and passes
- * those three to SetPosition(fff). Tried: `CPnt3D pos = node->GetPosition();` with
- * SetPosition(const CPnt3D &) (the value built in place: 0x12C), an assigned point and a by-value
- * SetPosition copying into a local (this, 0x160) */
+ * scale multiplied by it (SOCOM II's; the name ours). The clamp is a MIN ternary (`if (!(z < m))
+ * z = m;` inverts the branch); the position's copies are the inline ZoomAbout's -- the value
+ * initialised from GetPosition, the inline's copy of it block-copied, its x and y computed from the
+ * value's fields, returned by a block copy and assigned back field by field (AnchorZoom's tail is
+ * the same inline) -- byte-exact since the HUD's round 39 (open since round 30). Pinned: ten
+ * statements, -inline auto would take it into TickZAnimCmd and HandlePad, which call it */
+#pragma auto_inline off
 void CUIMapCtrl::ZoomIn(float scale, zdb::CNode *node, float dT)
 {
     float cx = 0.5f * (m_left + m_right);
@@ -1978,13 +2039,234 @@ void CUIMapCtrl::ZoomIn(float scale, zdb::CNode *node, float dT)
 
     zoom = zoom < maxzoom ? zoom : maxzoom;
 
-    CPnt3D pos;
+    CPnt3D pos = node->GetPosition();
 
-    pos = node->GetPosition();
-    pos.x = cx - zoom * (cx - pos.x);
-    pos.y = cy - zoom * (cy - pos.y);
-    node->SetPositionV(pos);
+    pos = ZoomAbout(pos, cx, cy, zoom);
+    node->SetPosition(pos.x, pos.y, pos.z);
     node->SetScale(zoom * node->GetScale());
+}
+#pragma auto_inline reset
+
+/* the point a zoom out holds still, by which of the corners (top left, top right, bottom left,
+ * bottom right: bits 3 to 0) are still covered -- a corner or an edge's middle, none when no corner
+ * or every corner is (SOCOM II's table, 0x3F8F50) */
+static const unsigned char s_zoomAnchor[16] = {0, 1, 2, 5, 3, 6, 0, 1, 4, 0, 7, 2, 8, 3, 4, 0};
+
+/* the position zoomed out about that point (SOCOM II's: ZoomOut's, when some corner is no longer
+ * covered; the name ours) */
+void CUIMapCtrl::AnchorZoom(CPnt3D &out, const bool *covered, const CPnt3D &pos, float zoom)
+{
+    float x, y;
+
+    switch (s_zoomAnchor[covered[0] << 3 | covered[1] << 2 | covered[2] << 1 | covered[3]]) {
+    case 1:
+        x = m_left;
+        y = m_top;
+        break;
+    case 2:
+        x = m_right;
+        y = m_top;
+        break;
+    case 3:
+        x = m_left;
+        y = m_bottom;
+        break;
+    case 4:
+        x = m_right;
+        y = m_bottom;
+        break;
+    case 5:
+        x = 0.5f * (m_left + m_right);
+        y = m_top;
+        break;
+    case 8:
+        x = 0.5f * (m_left + m_right);
+        y = m_bottom;
+        break;
+    case 6:
+        x = m_left;
+        y = 0.5f * (m_top + m_bottom);
+        break;
+    case 7:
+        x = m_right;
+        y = 0.5f * (m_top + m_bottom);
+        break;
+    default:
+        return;
+    }
+    out = ZoomAbout(pos, x, y, zoom);
+}
+
+/* the frame the last pan step was taken in and how long the pan has run (SOCOM II's statics, OVL1
+ * 0x3E0430 and bss 0x49EBF0; the names ours) */
+static int s_panFrame = -1;
+static float s_panTime;
+
+/* a step of the pan: the animation's node moved in the command's direction by its speed and its
+ * acceleration over the pan's time, no more than its limit, while the map still covers the
+ * control's corners; when it would not, crept from where it is by the speed alone for as long as
+ * it does (SOCOM 1's CUIMapCtrl::OnPan, its time SOCOM II's). `frame <= s_panFrame + 1` gives the
+ * target's `slt at` (the reversed compare materialises into v0), `if (step > max)` its one-arm clamp
+ * (a MIN ternary is branchy here) */
+void CUIMapCtrl::OnPan(const CUIMapCtrlAnimCmdHdr &cmd, float dT) const
+{
+    ZAnim.m_CurAnim->Refresh(false);
+
+    zdb::CNode *node = ZAnim.m_CurAnim->GetNode(cmd.node_ref_index, false);
+    CPnt3D pos = node->GetPosition();
+    int frame = zVid.frameNumber;
+    float t;
+
+    if (frame <= s_panFrame + 1)
+        t = s_panTime + dT;
+    else
+        t = 0.0f;
+    s_panFrame = frame;
+    s_panTime = t;
+
+    float step = cmd.m_speed * dT + cmd.m_accel * t;
+    float max = cmd.m_limit * dT;
+
+    if (step > max)
+        step = max;
+    switch (cmd.m_dir) {
+    case 0:
+        pos.y += step;
+        break;
+    case 1:
+        pos.y -= step;
+        break;
+    case 2:
+        pos.x += step;
+        break;
+    case 3:
+        pos.x -= step;
+        break;
+    }
+    if (AllCovered(pos, node->GetScale())) {
+        node->SetPosition(pos.x, pos.y, pos.z);
+        return;
+    }
+
+    CPnt3D p = node->GetPosition();
+
+    for (;;) {
+        CPnt3D q = p;
+
+        switch (cmd.m_dir) {
+        case 0:
+            q.y += cmd.m_speed * dT;
+            break;
+        case 1:
+            q.y -= cmd.m_speed * dT;
+            break;
+        case 2:
+            q.x += cmd.m_speed * dT;
+            break;
+        case 3:
+            q.x -= cmd.m_speed * dT;
+            break;
+        }
+        if (!AllCovered(q, node->GetScale()))
+            break;
+        p = q;
+    }
+    node->SetPosition(p.x, p.y, p.z);
+}
+
+/* the node zoomed out about the control's centre, by a third of the time's step at the given rate,
+ * while the map still covers the control's four corners; when it would not, zoomed about the
+ * point the covered corners leave instead, and only if that covers them all (SOCOM II's; the name
+ * ours) */
+void CUIMapCtrl::ZoomOut(float scale, zdb::CNode *node, float dT)
+{
+    float cx = 0.5f * (m_left + m_right);
+    float cy = 0.5f * (m_top + m_bottom);
+    float zoom = 1.0f - 0.33333f * dT * scale;
+    const CPnt3D &cur = *(const CPnt3D *)node->m_matrix.m_matrix[3];
+    CPnt3D pos = ZoomAbout(cur, cx, cy, zoom);
+    float newscale = zoom * node->GetScale();
+
+    if (AllCovered(pos, newscale)) {
+        node->SetPosition(pos.x, pos.y, pos.z);
+        node->SetScale(newscale);
+        return;
+    }
+
+    float l = m_left;
+    float r = m_right;
+    bool tl = IsCovered(l, m_top, pos, newscale);
+    bool tr = IsCovered(r, m_top, pos, newscale);
+    bool bl = IsCovered(l, m_bottom, pos, newscale);
+    bool br = IsCovered(r, m_bottom, pos, newscale);
+    bool covered[4];
+
+    covered[0] = tl;
+    covered[1] = tr;
+    covered[2] = bl;
+    covered[3] = br;
+    AnchorZoom(pos, covered, cur, zoom);
+    if (AllCovered(pos, newscale)) {
+        node->SetPosition(pos.x, pos.y, pos.z);
+        node->SetScale(newscale);
+    }
+}
+
+/* the control's rectangle from the spec's corners, its actions copied (each marking the menu as
+ * having actions), and each element made from its spec, placed at its offset and added as a child
+ * (SOCOM 1's CUIMapCtrl::LoadSpec, 0x3866C0 there; the library unused) */
+void CUIMapCtrl::LoadSpec(const CUIMapCtrlSpec &spec, C2DFont *font, zdb::CAssetLib *lib,
+                          zdb::CTextureRelocMgr *mgr)
+{
+    IPNT2D ul = spec.m_upperLeft;
+
+    m_left = ul.x;
+    m_top = ul.y;
+
+    IPNT2D lr = spec.m_lowerRight;
+
+    m_right = lr.x;
+    m_bottom = lr.y;
+    for (int i = 0; i < (int)spec.m_animations.size(); i++) {
+        g_hasAnims = 1;
+        m_numActions++;
+        m_actions[i] = spec.m_animations[i];
+    }
+    for (int i = 0; i < (int)spec.m_elements.size(); i++) {
+        const CDesignDlgObj &e = spec.m_elements[i];
+        C2D *obj = e.m_spec->CreateDisplayObj(font, mgr);
+
+        obj->SetMapOffset(e.m_xpos, e.m_ypos);
+        push_back(obj);
+    }
+}
+
+/* each child that is a plain bitmap, its corner and size scaled about pos, tested against the
+ * point (SOCOM 1's CUIMapCtrl::IsCovered, the walk's const pieces inlined in SOCOM II) */
+bool CUIMapCtrl::IsCovered(float x, float y, const CPnt3D &pos, float scale) const
+{
+    for (const_iterator i = begin(); i != end(); ++i) {
+        CPlainBmp *bmp = dynamic_cast<CPlainBmp *>(*i);
+
+        if (bmp) {
+            float left = pos.x + scale * bmp->m_x;
+            float top = pos.y + scale * bmp->m_y;
+            float right = left + scale * bmp->m_iWidth;
+            float bottom = top + scale * bmp->m_iHeight;
+            bool inx = false;
+
+            if (left <= x && x <= right)
+                inx = true;
+
+            bool iny = false;
+
+            if (top <= y && y <= bottom)
+                iny = true;
+            if (inx && iny)
+                return true;
+        }
+    }
+    return false;
 }
 
 /* PAN: a step of the pan; ZOOM_IN and ZOOM_OUT: the current animation refreshed and the zoom made
