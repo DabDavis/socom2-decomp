@@ -427,36 +427,24 @@ extern "C" bool func_002BD270(NetFieldCompare *cmp)
 }
 
 /* how a schedule decides a field has changed enough to send (SOCOM 1's NetThresholdMethod: its
- * position schedules 2 with a threshold, its flags 1 with none; the names ours) */
+ * position schedules 2 with a threshold, its flags 1 with none; the names ours) -- znet.h's, which
+ * this unit cannot include while its own CZNetwork carries the members znet.h's lacks
+ * (GetGameConnectionIndex, zNetGetGameSessionMasterClientIndex, zNetGetObject, the fix's byte) */
 enum NetThresholdMethod {
     NET_THRESHOLD_ANY = 1,
-    NET_THRESHOLD_DELTA = 2
+    NET_THRESHOLD_DELTA = 2,
+    NetThresholdMethod_Extent = 0x7FFFFFFF
 };
 
 /* a field's broadcast schedule (SOCOM 1's CZBroadcastSchedule, 16 bytes here: SOCOM 1's double
- * threshold is a float, or a compare function in its place, and SOCOM II adds a byte). Its two
- * constructors are the network unit's (OVL1 0x30E3F0 and 0x30E3D0, unnamed yet), so the inline
- * ones here forward to them -- the same call */
-class CZBroadcastSchedule;
-
-extern "C" {
-CZBroadcastSchedule *func_0030E3F0(CZBroadcastSchedule *s, unsigned int rate, NetThresholdMethod method,
-                                   float threshold, unsigned char c);
-CZBroadcastSchedule *func_0030E3D0(CZBroadcastSchedule *s, unsigned int rate, NetThresholdMethod method,
-                                   bool (*compare)(NetFieldCompare *), unsigned char c);
-}
-
+ * threshold is a float, or a compare function in its place, and SOCOM II adds a byte) -- znet.h's
+ * declaration: both constructors are zNetDme.cpp's (OVL1 0x30E3F0, 0x30E3D0: the online lobby's
+ * round 15) */
 class CZBroadcastSchedule {
 public:
-    CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, float threshold, unsigned char c)
-    {
-        func_0030E3F0(this, rate, method, threshold, c);
-    }
+    CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, float threshold, unsigned char c);
     CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, bool (*compare)(NetFieldCompare *),
-                        unsigned char c)
-    {
-        func_0030E3D0(this, rate, method, compare, c);
-    }
+                        unsigned char c);
 
     unsigned int m_rate;   // 0x0: in ms
     NetThresholdMethod m_method;   // 0x4

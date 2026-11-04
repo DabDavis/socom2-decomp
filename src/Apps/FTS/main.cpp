@@ -15,7 +15,6 @@ unsigned int strlen(const char *s);
 
 /* unnamed yet (SOCOM 1's names in the comments, where it had them) */
 void func_003AFF30(bool wait, bool swap);        /* zVid_Swap */
-void func_002ACC10(CMission *mission, const char *database);   /* CMission::PreOpen */
 
 void func_001EABD0(int argc, char **argv);       /* (the command line taken up) */
 void func_001EAC80();                            /* (the command line let go of) */
@@ -99,7 +98,7 @@ bool COurGame::StartEngine()
         CValve::Create("R_NAME_SIZE", 31, (VALVE_TYPE)1);
         CValve::Create("MAX_CHAT_TEXT_LENGTH", 99, (VALVE_TYPE)1);
         if (GetDatabase() && strlen(GetDatabase()))
-            func_002ACC10(&theMission, GetDatabase());
+            theMission.PreOpen(GetDatabase());
         ((unsigned char *)zdb::CAssetMgr::GetLoadedLibRef("common/assetlib/font"))[0x2c] = 0;
         theLobby.Init();
         started = true;

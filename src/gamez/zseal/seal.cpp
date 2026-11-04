@@ -51,6 +51,35 @@ extern "C" void *func_00555170(CIndexedArray *a)
 }
 #pragma auto_inline reset
 
+/* the application's camera (camera.h's CAppCamera, OVL1 bss 0x415FF0: its first two virtuals, its
+ * zdb camera and the SEAL it shows) */
+class CAppCamera {
+public:
+    virtual void Tick(float dT);
+    virtual bool AttachTo(CZSealBody *prey);
+
+    unsigned char _4[0xb4 - 0x4];
+    zdb::CCamera *m_camera;   // 0xb4
+    zdb::CNode *m_camera_effects;   // 0xb8
+    CZSealBody *m_bc;   // 0xbc: the SEAL the camera shows
+};
+
+extern CAppCamera *appCamera;
+
+/* the player (fts_player.cpp's CftsPlayer, OVL1 bss 0x440C38: its SEAL first) */
+class CftsPlayer {
+public:
+    CZSealBody *m_body;   // 0x0
+    int m_4;   // 0x4
+};
+
+extern CftsPlayer ftsPlayer;
+
+extern "C" {
+/* a SEAL a spectator may not watch online (OVL1 0x2C2FD0, unowned: hud_tcmcmds.cpp's reading) */
+bool func_002C2FD0(CZSealBody *seal);
+}
+
 /* the SEAL's stats, CSealStats, are zseal.h's (CZSealBody::m_stats) */
 
 CZSealBody *ftsGetPlayer();
@@ -261,6 +290,144 @@ typedef void (CSealStats::*SEAL_STATS_EVENT)(const CZSealBody *seal, bool teamma
 static inline CZSealBody *AsSeal(CEntity *e)
 {
     return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+/* an entity's team bits, by reference (an inline: the address is taken once, ahead of the walk) */
+static inline const unsigned int &TeamOf(const CEntity *e)
+{
+    return e->m_team;
+}
+
+extern "C" {
+/* the death's end, once its anim has run (OVL2 0x5A0040, seal_env.cpp's range, not written yet) */
+void func_005A0040(CZSealBody *seal);
+/* the spectator's walks (below) */
+void func_00547170(CZSealBody *seal, bool team);
+void func_00546FA0(CZSealBody *seal, bool team);
+}
+
+/* bit 12 of the flags at 0x1060 set (an inline setter: the constant is masked and shifted in place,
+ * `andi zero,1; sll 4`) */
+static inline void SetDeathPending(CZSealBody *seal, bool b)
+{
+    seal->m_1060_bit12 = b;
+}
+
+/* the dead SEAL's tick (OVL2 0x547350, CZSealBody's own virtual at +0x8C, new in SOCOM II): a death
+ * pending ended by 0x5A0040 and, unless remote, its network life set to 3 (IsRemote asked again,
+ * the answer unused); online a respawn asked for brought about -- the node made inactive while it is
+ * still drawn -- and, out of the menus, the spectator walked to the next or previous SEAL (of the
+ * team unless the player may not watch); offline only the respawn */
+void CZSealBody::Virtual8C()
+{
+    if (m_1060_bit12) {
+        func_005A0040(this);
+        SetDeathPending(this, false);
+        if (!IsRemote() && m_netlife != 3) {
+            m_netlife = 3;
+            IsRemote();
+        }
+    }
+    if (theNetwork.m_9) {
+        if (m_needs_respawn) {
+            if (GetNode()->Rendered(2))
+                GetNode()->SetActive(false);
+            else
+                RemoteRespawn(true);
+        }
+        if (!((CSealCtrl *)m_control)->m_menustate && (m_spectate_next || m_spectate_prev)) {
+            bool team = true;
+
+            if (theNetwork.m_9 && func_002C2FD0(ftsGetPlayer()))
+                team = false;
+            if (m_spectate_next)
+                func_00547170(this, team);
+            else if (m_spectate_prev)
+                func_00546FA0(this, team);
+        }
+    } else if (m_needs_respawn) {
+        if (GetNode()->Rendered(2))
+            GetNode()->SetActive(false);
+        else
+            DoRespawn();
+    }
+}
+
+/* the spectator's camera moved to the SEAL after the one it shows in the entity list, round to the
+ * start and once round at most, by 0x546FA0's tests (OVL2 0x547170; new in SOCOM II, its name
+ * unknown -- n declared ahead of the SEALs here, after them there: the two number them so) */
+extern "C" void func_00547170(CZSealBody *seal, bool team)
+{
+    int i = CEntity::GetEntityIndex(appCamera->m_bc);
+    int start = i;
+    unsigned int n = (unsigned int)-1;
+    CZSealBody *s = ftsPlayer.m_body;
+    CZSealBody *player = s;
+
+    i++;
+    while (i != start) {
+        n++;
+        s = (CZSealBody *)CEntity::m_list.GetEntityByIndex(i);
+        if (!s) {
+            s = ftsPlayer.m_body;
+            i = 0;
+        } else {
+            s = AsSeal(s);
+            if (s && theNetwork.m_9 && func_002C2FD0(s))
+                s = 0;
+            if (s && (s->m_isAlive || player == s) && s->m_type == CEntity::ENT_TYPE_SEAL &&
+                (!team || ((TeamOf(seal) & TeamOf(s)) && !(TeamOf(s) & 0x20000))))
+                break;
+            if (++i >= CEntity::m_list.size()) {
+                i = 0;
+                s = ftsPlayer.m_body;
+            }
+        }
+        if (CEntity::m_list.size() < n)
+            i = start;
+    }
+    if (i != start) {
+        appCamera->AttachTo(s);
+        s->m_kit.SetWeaponInfoChanged();
+    }
+}
+
+/* the spectator's camera moved to the SEAL before the one it shows in the entity list, round to the
+ * end and once round at most: a living SEAL, or the player, that may be watched -- of the SEAL's
+ * team when asked, and not one of team bit 17's (OVL2 0x546FA0; new in SOCOM II, its name unknown) */
+extern "C" void func_00546FA0(CZSealBody *seal, bool team)
+{
+    int i = CEntity::GetEntityIndex(appCamera->m_bc);
+    int start = i;
+    CZSealBody *s = ftsPlayer.m_body;
+    CZSealBody *player = s;
+    unsigned int n = (unsigned int)-1;
+
+    i--;
+    while (i != start) {
+        n++;
+        if (i < 0)
+            i = CEntity::m_list.size() - 1;
+        s = (CZSealBody *)CEntity::m_list.GetEntityByIndex(i);
+        if (!s) {
+            s = ftsPlayer.m_body;
+            i--;
+        } else {
+            s = AsSeal(s);
+            if (s && theNetwork.m_9 && func_002C2FD0(s))
+                s = 0;
+            if (s && (s->m_isAlive || player == s) && s->m_type == CEntity::ENT_TYPE_SEAL &&
+                (!team || ((TeamOf(seal) & TeamOf(s)) && !(TeamOf(s) & 0x20000))))
+                break;
+            i--;
+        }
+        if (CEntity::m_list.size() < n)
+            i = start;
+    }
+    if (i != start) {
+        appCamera->AttachTo(s);
+        s->m_kit.SetWeaponInfoChanged();
+    }
 }
 
 /* the stats' event handed to the SEAL's teammates: each living SEAL of its team but itself has its
@@ -745,7 +912,8 @@ void CZSealBody::NetworkPlayerCreate()
 }
 
 /* a player's targets forgotten as seen: each one's bit 9 cleared and its visibility zeroed (OVL2
- * 0x544B60, new in SOCOM II: SetCurZoomState calls it twice) */
+ * 0x544B60, new in SOCOM II: SetCurZoomState calls it twice -- out of line, so pinned) */
+#pragma auto_inline off
 void CZSealBody::ResetTargetsSeen()
 {
     if (IsPlayer()) {
@@ -757,6 +925,255 @@ void CZSealBody::ResetTargetsSeen()
             i->m_visibility = 0.0f;
         }
     }
+}
+#pragma auto_inline reset
+
+/* the mission's view preferences by weapon class (theMission, OVL1 bss 0x4364E0: night vision
+ * wanted or not, when set, for the primaries and the sidearms; only these here, the names ours) */
+struct CZoomPref {
+    unsigned char m_set;   // 0x0
+    int m_nvg;   // 0x4
+};
+
+class CMission {
+public:
+    unsigned char _0[0x194];
+    CZoomPref m_primary_zoom;   // 0x194
+    CZoomPref m_secondary_zoom;   // 0x19c
+};
+
+extern CMission theMission;
+
+extern "C" {
+/* the kit's two words at +0x20 zeroed (OVL2 0x5B9020, seal_kit.cpp's first row, the kit lane's) */
+void func_005B9020(CZKit *kit);
+}
+
+extern "C" {
+/* a ZAnim let go (OVL1 0x2707C0, unowned: seal_ai.cpp's reading) */
+void func_002707C0(CZAnim *anim, bool now);
+/* the night-vision goggles' sounds (OVL1 bss 0x44CE30, 0x44CE38: seal_env.cpp's
+ * ReInitDatabaseHandles looks up ".NV_GOGGLES_ON" and ".NV_GOGGLES_OFF" into them) */
+extern CSnd *data_0044CE30;
+extern CSnd *data_0044CE38;
+}
+
+/* the view set (OVL2 0x5448A0; SOCOM 1's with SOCOM II's states: the goggles' sound in or out of
+ * night vision where SOCOM 1 reset the power, the screen offsets zeroed off the first person, the
+ * zoom's anim held while the binoculars or a weapon's zoom are up) */
+void CZSealBody::SetCurZoomState(ZOOMSTATE zs)
+{
+    if (zs == m_zoomstate)
+        return;
+    m_zoomstate_prev = m_zoomstate;
+    m_zoomstate = zs;
+    m_zoomstate_echo = 1;
+    if (m_zoomstate_prev == 3) {
+        if (data_0044CE38)
+            data_0044CE38->PlaySound((CSndInstance *)0, 255);
+    } else if (m_zoomstate == 3) {
+        if (data_0044CE30)
+            data_0044CE30->PlaySound((CSndInstance *)0, 255);
+    }
+    if (IsPlayer())
+        m_iszooming = true;
+    if (m_zoomstate != ZOOMSTATE_1STPERSON) {
+        appCamera->m_camera->SetScreenOffsetX(0.0f);
+        appCamera->m_camera->SetScreenOffsetY(0.0f);
+    }
+    switch (m_zoomstate) {
+    case 0:
+        m_zoom_range = 1.0f;
+        if (m_zoom_anim) {
+            func_002707C0(m_zoom_anim, false);
+            m_zoom_anim = 0;
+        }
+        break;
+    case 1:
+    case 2:
+        m_zoom_range = 1.01f;
+        if (m_zoom_anim) {
+            func_002707C0(m_zoom_anim, false);
+            m_zoom_anim = 0;
+        }
+        break;
+    case 3:
+        m_zoom_range = 1.01f;
+        ResetTargetsSeen();
+        if (m_zoom_anim) {
+            func_002707C0(m_zoom_anim, false);
+            m_zoom_anim = 0;
+        }
+        break;
+    case 4:
+        m_zoom_range = 9.0f;
+        ResetTargetsSeen();
+        if (!m_zoom_anim) {
+            m_zoom_anim = ZAnim.GetAnim("zoom_control", 0);
+            if (m_zoom_anim)
+                m_zoom_anim->Activate(0);
+        }
+        m_kit.InitializeSniperKick();
+        break;
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12: {
+        CZFTSWeapon *w = m_kit.GetCurItem();
+
+        if (w && m_zoomstate - 4 < w->m_zoommode.size())
+            m_zoom_range = w->GetZoomRange(m_zoomstate - 4);
+        if (m_zoomstate_prev != 6)
+            m_kit.InitializeSniperKick();
+        if (!m_zoom_anim) {
+            m_zoom_anim = ZAnim.GetAnim("zoom_control", 0);
+            if (m_zoom_anim)
+                m_zoom_anim->Activate(0);
+        }
+        break;
+    }
+    }
+}
+
+/* the view stepped out one place (OVL2 0x544400; SOCOM 1's switch with SOCOM II's states and its
+ * view preference: out of the first weapon zoom, night vision when the mission's preference for the
+ * class in hand says so, else when the mission is at night) */
+ZOOMSTATE CZSealBody::DecrZoomState()
+{
+    ZOOMSTATE zs = m_zoomstate;
+    bool pref = false;
+    bool nvg = false;
+    CZFTSWeapon *item = m_kit.GetCurItem();
+
+    if (theMission.m_primary_zoom.m_set && CZWeapon::IsPrimary(item->m_ID)) {
+        pref = true;
+        nvg = theMission.m_primary_zoom.m_nvg;
+    } else if (theMission.m_secondary_zoom.m_set && CZWeapon::IsSecondary(item->m_ID)) {
+        pref = true;
+        nvg = theMission.m_secondary_zoom.m_nvg;
+    }
+    switch (m_zoomstate) {
+    case 1:
+        zs = ZOOMSTATE_3RDPERSON;
+        break;
+    case 2:
+        zs = ZOOMSTATE_3RDPERSON;
+        break;
+    case 3:
+        zs = ZOOMSTATE_1STPERSON;
+        break;
+    case 4:
+        zs = ZOOMSTATE_1STPERSON;
+        func_005B9020(&m_kit);
+        break;
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12: {
+        CZFTSWeapon *w = m_kit.GetCurItem();
+
+        if (w) {
+            int level = m_zoomstate - 4;
+
+            if (level - 1 <= 0) {
+                if ((!pref && zdb::CWorld::m_world->m_night_mission) || nvg)
+                    zs = (ZOOMSTATE)3;
+                else
+                    zs = ZOOMSTATE_1STPERSON;
+                func_005B9020(&m_kit);
+            } else if (level - 1 < (int)w->m_zoommode.size())
+                zs = (ZOOMSTATE)(m_zoomstate - 1);
+        }
+        break;
+    }
+    }
+    SetCurZoomState(zs);
+    return zs;
+}
+
+extern "C" {
+/* the turret's six nodes' +0x9C set to 1 or 0 (OVL1 0x3AA020, unowned: a CTurret member), and the
+ * kit's weapon in its launcher mode (OVL2 0x5BD7E0, the kit lane's: WeaponIsLauncherMode of the
+ * current item) */
+void func_003AA020(CTurret *t, bool on);
+bool func_005BD7E0(CZKit *kit);
+}
+
+/* the view stepped in one place (OVL2 0x5445B0; SOCOM 1's switch with SOCOM II's states: out of the
+ * third person a turret's thermal view (2) when it has one; out of the first person, nothing while a
+ * turret or a launcher is worked, else night vision as DecrZoomState picks it, else the weapon's
+ * first zoom or the binoculars) */
+ZOOMSTATE CZSealBody::IncrZoomState()
+{
+    ZOOMSTATE zs = m_zoomstate;
+    bool pref = false;
+    bool nvg = false;
+    CZFTSWeapon *item = m_kit.GetCurItem();
+
+    if (theMission.m_primary_zoom.m_set && CZWeapon::IsPrimary(item->m_ID)) {
+        pref = true;
+        nvg = theMission.m_primary_zoom.m_nvg;
+    } else if (theMission.m_secondary_zoom.m_set && CZWeapon::IsSecondary(item->m_ID)) {
+        pref = true;
+        nvg = theMission.m_secondary_zoom.m_nvg;
+    }
+    CZFTSWeapon *w = m_kit.GetCurItem();
+
+    switch (m_zoomstate) {
+    case 0:
+        if (TurretHasThermal()) {
+            zs = (ZOOMSTATE)2;
+            func_003AA020(GetTurret(), false);
+        } else
+            zs = ZOOMSTATE_1STPERSON;
+        break;
+    case 1:
+        if (m_eb8)
+            break;
+        if (item && CZWeapon::IsLauncher(item->m_ID))
+            break;
+        if (func_005BD7E0(&m_kit))
+            break;
+        if ((!pref && zdb::CWorld::m_world->m_night_mission) || nvg)
+            zs = (ZOOMSTATE)3;
+        else if (w && w->m_zoommode.size() > 1)
+            zs = (ZOOMSTATE)5;
+        else
+            zs = (ZOOMSTATE)4;
+        break;
+    case 3:
+    case 4:
+        if (w && w->m_zoommode.size() > 1)
+            zs = (ZOOMSTATE)5;
+        break;
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+        if (w) {
+            /* (unsigned: an int folds the two steps into one `addiu -3`, as the target does not) */
+            unsigned int level = m_zoomstate - 4;
+
+            if (level + 1 < w->m_zoommode.size())
+                zs = (ZOOMSTATE)(m_zoomstate + 1);
+        }
+        break;
+    case 12:
+        break;
+    }
+    SetCurZoomState(zs);
+    return zs;
 }
 
 /* the life the network reports set: a remote SEAL coming back up (1) from down (2 or 3) is marked
@@ -1317,6 +1734,72 @@ inline CTurret *CZSealBody::GetTurret()
     return m_eb8 ? AsTurret(m_eb8) : 0;
 }
 
+extern "C" {
+/* whether the top blend is one of two anims (OVL2 0x588030, seal_body.cpp's range, unwritten) and the
+ * SEAL put on a turret offline (OVL2 0x5463C0, not written yet) */
+bool func_00588030(CZSealBody *seal);
+void func_005463C0(CZSealBody *seal, CEntity *e);
+/* two of the weapon changes' anims (OVL1 data: seal_env.cpp's IsChangingWeapons reads them too) */
+extern short data_003DF108;
+extern short data_003DF110;
+}
+
+/* the network's platform message (OVL1's CZPlatformState: only the turret's send here) */
+class CZPlatformState {
+public:
+    static void SendPlatform(CTurret *t);
+};
+
+/* whether an entity has a controller (an inline bool written `? true : false`: the target
+ * materialises it, sltu, before the branch) */
+static inline bool HasController(const CEntity *e)
+{
+    return e->m_control ? true : false;
+}
+
+/* whether the SEAL's top blend is in state 8 (an inline: the call and the compare come ahead of
+ * the `||` it is in) */
+static inline bool TopBlendIn8(CZSealBody *seal)
+{
+    return ((CZBodyAnimBlend *)func_00555170((CIndexedArray *)&seal->m_blends))->m_state == 8;
+}
+
+/* a turret boarded when it may be: one no one works, the SEAL alive and its top blend not in state
+ * 8, none of 0x588030's anims nor the two weapon changes', nothing worked or carried -- online the
+ * platform sent, offline 0x5463C0 boards it; whether it was (OVL2 0x546210, new in SOCOM II:
+ * CSealCtrl::OnActionButton and CAiSUseVehicle::Board call it; the name unknown) */
+extern "C" bool func_00546210(CZSealBody *seal, CEntity *e)
+{
+    bool ok = true;
+    CTurret *t = AsTurret(e);
+
+    if (t && HasController(t))
+        ok = false;
+    /* (a value of its own: the target makes the call and the compare ahead of the alive test) */
+    bool in8 = TopBlendIn8(seal);
+
+    if (!seal->m_isAlive || in8)
+        ok = false;
+    if (func_00588030(seal))
+        ok = false;
+    if (ok && (!e || seal->m_eb8))
+        ok = false;
+    if (ok && (seal->IsCurrentBlend((AnimType)data_003DF108) || seal->IsCurrentBlend((AnimType)data_003DF110)))
+        ok = false;
+    if (seal->m_carry)
+        ok = false;
+    if (ok) {
+        if (theNetwork.m_9) {
+            CTurret *turret = AsTurret(e);
+
+            if (turret)
+                CZPlatformState::SendPlatform(turret);
+        } else
+            func_005463C0(seal, e);
+    }
+    return ok;
+}
+
 /* whether the SEAL sees thermally: with nothing worked, by the goggles (item 195); with a turret, by
  * its thermal scope (OVL2 0x5433C0) */
 bool CZSealBody::HasThermal(CEntity *e)
@@ -1335,16 +1818,17 @@ bool CZSealBody::HasThermal(CEntity *e)
     return r;
 }
 
-/* whether the SEAL works a turret with a thermal scope (OVL2 0x5432F0).
- * OPEN, 6 instructions (0xB0 against 0xC8): the target's inlined HasThermal keeps GetTurret's
- * fallback (`beqz a1; b; lw a1,0xEB8(a0)`) though its entity is the 0xEB8 it just loaded; MW here
- * sees the two loads equal and collapses `e ? e : m_eb8` to e (out of line, HasThermal keeps it, as
- * the target's does). Tried: nested ifs, the entity in a local, `r = HasThermal(...)`. */
+/* whether the SEAL works a turret with a thermal scope (OVL2 0x5432F0). The target's inlined
+ * HasThermal keeps GetTurret's fallback (`beqz a1; b; lw a1,0xEB8(a0)`) though the entity passed is
+ * the 0xEB8 it just loaded -- here and in IncrZoomState's copy, where UpdateTurretScope's copy folds
+ * it away -- so the entity is read through a volatile (a STAND-IN: MW then cannot see the two loads
+ * equal; a volatile fallback in GetTurret matched these two and lost UpdateTurretScope) */
 bool CZSealBody::TurretHasThermal()
 {
     bool r = false;
+    CEntity *e = *(CEntity *volatile *)&m_eb8;
 
-    if (m_eb8 && HasThermal(m_eb8))
+    if (e && HasThermal(e))
         r = true;
     return r;
 }

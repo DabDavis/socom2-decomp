@@ -1424,7 +1424,7 @@
 0x001E9120 0x94 func_001E9120  # OVL1
 0x001E91C0 0x1090 func_001E91C0  # OVL1
 0x001EA250 0x78 __dt__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>Fv  # OVL1; the pointer lists' __list_imp destructor out of line (include/list's: its this test, the deleter's inlined -- a second this test and the range erase over end_.next_..&end_ -- then delete): ~CEntityList (0x2A00C0) calls it through the implicit ~list<CEntity *>
-0x001EA2D0 0x70 func_001EA2D0  # OVL1; the pointer lists' deleter destructor out of line (__dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv: the range erase over end_.next_..&end_, then delete; 0x3177C0 calls it) -- left unnamed so the generated drafts calling it can spell it
+0x001EA2D0 0x70 func_001EA2D0  # OVL1; ovl-copy: __dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv (OVL1's copy of OVL2's 0x510110: zrndr_pipe.cpp's copy is byte-exact here, scored WRONG against 0x510110 before -- the world lane's round 12 and GCC round 25a, marked at integration); the pointer lists' deleter destructor out of line (__dt__Q23std42__list_deleter<PCv,Q23std14allocator<PCv>>Fv: the range erase over end_.next_..&end_, then delete; 0x3177C0 calls it) -- left unnamed so the generated drafts calling it can spell it
 0x001EA340 0x78 __dt__Q23zdb11CNodeVectorFv  # OVL1; ~CNodeVector: SOCOM 1's __sinit_zparticle.cpp registers it for the node pool; four this-tests; node_world.cpp's copy byte-exact against it (the world lane's round 10, renamed at integration)
 0x001EA3C0 0x70 __dt__Q23std54vector<PQ23zdb5CNode,Q23std24allocator<PQ23zdb5CNode>>Fv  # OVL1; by hand (Unload destroys the save's parents at 0x24 with it: the one copy linked, an earlier unit's)
 0x001EA430 0x80 func_001EA430  # OVL1
@@ -2692,18 +2692,18 @@
 0x00256F98 0xC func_00256F98  # OVL1 unaligned
 0x00256FA8 0xC func_00256FA8  # OVL1 unaligned
 0x00256FB8 0xC func_00256FB8  # OVL1 unaligned
-0x00256FD0 0x78 func_00256FD0  # OVL1
-0x00257050 0x178 func_00257050  # OVL1
+0x00256FD0 0x78 WriteBuffer__Q23zar4CZARFPCvUi  # OVL1; ours, the core lane round 5 (SOCOM II's: Insert(CKey *, data, size) 0x25A120 calls it twice; the 16-byte buffer at 0x34 made by new on the first write, its four words zeroed, then appended to through 0x257050)
+0x00257050 0x178 Write__Q23zar10CZARBufferFPCvUi  # OVL1; ours, the core lane round 5 (SOCOM II's: the buffer at 0x34 grown by _calloc/_realloc when the bytes do not fit -- 4 KB past them the first time, the block times its growths plus 0x80000 after -- then the bytes memcpy'd at the used mark; returns the size)
 0x002571D0 0x144 NewKey__Q23zar4CZARFPCc  # OVL1; s1:calls by hand (CKey::Read 0x25AF10 calls it with a null name where SOCOM 1's Read calls zar::CZAR::NewKey(const char *); zar_main.cpp's, MW code below the GCC libraries' 0x258000)
-0x00257320 0xC0 func_00257320  # OVL1
-0x002573E0 0x70 func_002573E0  # OVL1
-0x00257450 0x40 func_00257450  # OVL1
-0x00257490 0x8 func_00257490  # OVL1
-0x002574A0 0x14 func_002574A0  # OVL1
-0x002574C0 0x60 func_002574C0  # OVL1
-0x00257520 0x40 func_00257520  # OVL1
-0x00257560 0x8 func_00257560  # OVL1
-0x00257570 0x14 func_00257570  # OVL1
+0x00257320 0xC0 FreeDirectory__Q23zar4CZARFv  # OVL1; ours, the core lane round 5 (SOCOM II's: the tail both closes call -- the root's children through 0x25B580 (deleted when the key buffer is empty), the key buffer cleared and FreeVector'd, the open keys FreeVector'd, the string table's Destroy through its vtable at 0xC; SOCOM 1's Close(bool) did the same inline)
+0x002573E0 0x70 __dt__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector over vector<CKey *>: the temporary's destructor, three this-tests)
+0x00257450 0x40 swap__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>FRQ23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>  # OVL1; the core lane round 5 (FreeVector over vector<CKey *>: the swap)
+0x00257490 0x8 clear__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector over vector<CKey *>: the clear)
+0x002574A0 0x14 __ct__Q23std52vector<PQ23zar4CKey,Q23std23allocator<PQ23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector of the open keys and of DeleteChildren's child rings: the temporary)
+0x002574C0 0x60 __dt__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s temporary's destructor: two this-tests, then the deleter's destructor with 0)
+0x00257520 0x40 swap__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>FRQ23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s swap, as CVehicleRdr::Close's: zar_main.cpp's inline copy)
+0x00257560 0x8 clear__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s clear, a j to the deleter's clear: zar_main.cpp's inline copy)
+0x00257570 0x14 __ct__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (FreeVector<vector<CKey> >'s temporary in ~CZAR and FreeDirectory: zar_main.cpp's inline copy)
 0x00257590 0x358 WriteDirectory__Q23zar4CZARFv  # OVL1; s1:callee by hand, the core lane round 4 (Close() 0x258CE0 calls it at +0x90 where SOCOM 1's Close() calls WriteDirectory at +0x8C; the new flush 0x258BD0 calls it when the modified byte 0x25 is set, clearing it after)
 0x002578F0 0x294 func_002578F0  # OVL1
 0x00257B90 0x8 func_00257B90  # OVL1
@@ -2724,18 +2724,18 @@
 0x00257ED0 0x8 func_00257ED0  # OVL1
 0x00257EE0 0xAC ReadString__Q23zar4CZARFPPc  # OVL1; ours, the core lane round 4 (SOCOM II's: a length word read through m_pFile's fread, then when 4 bytes came and the length is positive a _malloc'd zeroed copy of length+1 filled by a second fread; the bytes read returned -- CIO::fwrite(const char *)'s record read back; CZSIObject::Read calls it for the object's name)
 0x00257F90 0x70 ReleaseDataBuffer__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site)
-0x00258000 0x510 func_00258000  # OVL1
+0x00258000 0x510 ReadDirectory__Q23zar4CZARFiUi  # OVL1; SOCOM 1 name, the core lane round 5 (Open 0x258920 calls it with (dir, mode) right after the file opens, where SOCOM 1's Open calls ReadDirectory(int, unsigned int) 0x1D87B0: 0x510 bytes against SOCOM 1's 0x518)
 0x00258510 0x58 GetSize__Q23zar4CZARFPCc  # OVL1; s1:order by hand (SOCOM 1's GetSize 0x1D8CD0, between ReadDirectory and GetOpenKey there as here: the open key's FindKey, its size or -1; Fetch(const char *, char **) calls it where SOCOM 1's does)
 0x00258570 0x30 GetOpenKey__Q23zar4CZARFv  # OVL1; s1:callee by hand (LoadZAR, CZAnimSet::Load and the name tables call it where SOCOM 1's call GetOpenKey; the open-key stack's top or the root -- a vector here, SOCOM 1's a list)
 0x002585A0 0x54 OpenKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR opens each set's key with it where SOCOM 1's calls OpenKey(CKey *); pushes a non-null key)
 0x00258600 0x4C FindKey__Q23zar4CZARFPCc  # OVL1; s1:order (SOCOM 1's GetOpenKey, OpenKey(CKey *), FindKey(const char *), OpenKey(const char *), CloseKey; FindKey on the open key, as SOCOM 1's)
 0x00258650 0xD0 OpenKey__Q23zar4CZARFPCc  # OVL1; s1:callee by hand (LoadZAR opens Anim_Sets with it where SOCOM 1's calls OpenKey(const char *); FindKey on the open key, then the push)
 0x00258720 0x20 CloseKey__Q23zar4CZARFPQ23zar4CKey  # OVL1; s1:callee by hand (LoadZAR closes each key with it where SOCOM 1's calls CloseKey; pops the stack)
-0x00258740 0x1DC func_00258740  # OVL1
-0x00258920 0x21C func_00258920  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed)
+0x00258740 0x1DC CreateKey__Q23zar4CZARFPCc  # OVL1; SOCOM 1 name, the core lane round 5 (byte-exact from SOCOM 1's CreateKey: nothing unless the file is open, NewKey inlined, the open key's InsertKey, OpenKey's push; CSaveManager::Save and SaveRdr call it)
+0x00258920 0x21C Open__Q23zar4CZARFPCciUiUib  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed); SOCOM 1 name with a fifth argument, the core lane round 5 (byte-exact from source: SOCOM 1's Open(name, int, unsigned, unsigned) -- the file opened, SetFilename, the padding stored, ReadDirectory, Close on failure -- plus the dir stored at 0x94 and, with the fifth argument, a second file "<name>_tmp.<ext>" opened at 0x18; every caller passes t1 = 0, so bool is a guess)
 0x00258B40 0x90 ReOpen__Q23zar4CZARFiUi  # OVL1; tu: zar_main.cpp~ (1.0 beta); s1:calls (CRdrArchive::OpenAll and FindRdr call it with (1, 1) where SOCOM 1's call zar::CZAR::ReOpen) -- the rdr lane
 0x00258BD0 0x70 Flush__Q23zar4CZARFv  # OVL1; ours, the core lane round 4 (SOCOM II's: false unless the file is open -- the inline IsOpen -- then WriteDirectory when the modified byte 0x25 is set, the byte cleared, true; CSaveManager::Save calls it)
-0x00258C40 0xA0 func_00258C40  # OVL1
+0x00258C40 0xA0 Close__Q23zar4CZARFb  # OVL1; ours by SOCOM 1's, the core lane round 5 (SOCOM 1's Close(bool): the owned file closed and deleted or the given one closed, here the second file at 0x18 too, then the directory freed; both callers in 0x1E91C0 pass li a1,1 and neither build's body reads the flag; inlined whole into Close() 0x258CE0 as SOCOM 1's is into its Close)
 0x00258CE0 0x17C Close__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: the loaders close their archives through it where SOCOM 1's call CZAR::Close)
 0x00258E60 0x14 CloseKeepDir__Q23zar4CZARFv  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:order by hand, the core lane round 4 (SOCOM 1's CloseKeepDir 0x1D98F0, the same 0x14 bytes -- m_pFile's Close through its table, a tail call -- between Close() and SetFilename as here)
 0x00258E80 0x9C SetFilename__Q23zar4CZARFPCc  # OVL1; s1:order by hand, the core lane round 4 (SOCOM 1's SetFilename 0x1D9910 after CloseKeepDir and before ~CZAR as here: m_filename (0xA4 here, SOCOM 1's 0x90) freed unless the default name's pointer or the name itself, then the name _strdup'd or DEFAULT_ZAR_NAME)
@@ -2743,10 +2743,10 @@
 0x002590A0 0x190 __ct__Q23zar4CZARFPCcP3CIO  # OVL1; s1:callee by hand (OpenZAR calls it on the fresh CZAnimZAR with (0, 0) where SOCOM 1's OpenZAR calls zar::CZAR::CZAR(const char *, CIO *))
 0x00259230 0xC func_00259230  # OVL1
 0x00259240 0xC func_00259240  # OVL1
-0x00259250 0x558 func_00259250  # OVL1
+0x00259250 0x558 insert__Q23std58__vector_imp<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>,0>FPQ23zar4CKeyUiRCQ23zar4CKey  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey calls it twice with (end, 1, key) where SOCOM 1 calls its insert at 0x1D9ED0: the key buffer's class insert, zar_main.cpp's template tail)
 0x002597B0 0x1F4 func_002597B0  # OVL1
-0x002599B0 0x7C func_002599B0  # OVL1
-0x00259A30 0xB8 func_00259A30  # OVL1
+0x002599B0 0x7C clear__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's clear, ~CKey with -1 from the back; zar_main.cpp's template tail)
+0x00259A30 0xB8 __dt__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv  # OVL1; the core lane round 5 (SOCOM 1 name: the key buffer's deleter destructor, its clear inlined: zar_main.cpp's template tail)
 0x00259AF0 0x4C __as__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1; the MSL headers round 10: include/vector's 4-byte pod operator= (out of class, the char pod's: assign over the other's words unless this one), byte-exact as a probe (build/p10/e/podas.cpp); calls 0x259D20
 0x00259B40 0x4C __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>>  # OVL1 ; SOCOM 1 name (its copy of the pointer vectors' implementation, the same 0x4C: zeroed, then init over the other's elements)
 0x00259B90 0x190 init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v  # OVL1 ; SOCOM 1 name with MW 3.0's return type (_v); the copy calls it as SOCOM 1's does
@@ -2771,7 +2771,7 @@
 0x0025B2F0 0x8 func_0025B2F0  # OVL1
 0x0025B300 0x240 func_0025B300  # OVL1
 0x0025B540 0x38 InsertKey__Q23zar4CKeyFPQ23zar4CKey  # OVL1; s1:order by hand (SOCOM 1's CKey::InsertKey 0x1DC450 after CKey::Write, as here: push_back and return the key; CreateKey 0x258740 and 0x25A2F0 call it)
-0x0025B580 0x398 func_0025B580  # OVL1
+0x0025B580 0x398 DeleteChildren__Q23zar4CKeyFb  # OVL1; ours, the core lane round 5 (FreeDirectory 0x257320 calls it on the root with true when the key buffer holds no keys and false otherwise; with true each child key is deleted after its own children; signature from the call sites: a0 the key, a1 a bool tested beqz)
 0x0025B920 0x8 func_0025B920  # OVL1
 0x0025B930 0x8 func_0025B930  # OVL1
 0x0025B940 0x8 func_0025B940  # OVL1
@@ -2786,7 +2786,7 @@
 0x0025BAE0 0x40 func_0025BAE0  # OVL1
 0x0025BB20 0x24 func_0025BB20  # OVL1
 0x0025BB50 0x88 __dt__Q23zar4CKeyFv  # OVL1; by hand: Insert(const char *, const void *, int) 0x25A2F0 deletes the key it could not write through it, (key, 1), where SOCOM 1's inlines ~CKey (its list's destructor, then delete)
-0x0025BBE0 0x20 func_0025BBE0  # OVL1
+0x0025BBE0 0x20 __ct__Q23zar4CKeyFv  # OVL1; SOCOM 1 name, the core lane round 5 (NewKey builds its nameless key with it where SOCOM 1 calls CKey() 0x1DC4A0: the ring and the three fields zeroed; before CKey(const char *) as in SOCOM 1)
 0x0025BC00 0x20 __ct__Q23zar4CKeyFPCc  # OVL1; s1:order by hand (SOCOM 1's CKey(const char *) 0x1DC4E0, last of its zar_search.cpp: the list (here the vector) built, the name stored, size and offset zeroed; CZAR's constructor calls it with "" for the root)
 0x0025BC20 0x9D0 InitCommands__10CZAnimMainFv  # OVL1; s1:calls by hand (registers the core ZAnim commands through AddCmd, as SOCOM 1's InitCommands does; SOCOM II adds 11 to its 49)
 0x0025C5F0 0xE8 func_0025C5F0  # OVL1
@@ -3837,9 +3837,9 @@
 0x002AA890 0x7C func_002AA890  # OVL1
 0x002AA910 0x1F0 _OnMissionComplete__Fv  # OVL1; s1:calls by hand (the states lane: FadeToEndMissionTick, byte-exact, calls it with no arguments exactly where SOCOM 1's calls _OnMissionComplete__Fv, between clearing m_DelayEndMission and the screen clear; its body opens differently -- the common anim set fetched first -- so the name is the call site's)
 0x002AAB00 0x20 tick__8CMissionFfPv  # OVL1; s1:align
-0x002AAB20 0x734 func_002AAB20  # OVL1
+0x002AAB20 0x734 Read__8CMissionFP5_zrdr  # OVL1; s1:order by hand (the states lane, round 29): SOCOM 1's CMission::Read, between tick and Close in both builds and called only from PreOpen (0x2ACC10 here, 0x1F8750 there); it resets m_ai_params (0x2AB360; SOCOM 1's expands the reset) and reads goal_completion_time, description, elevation, init_aim_pitch and the ai_params tags (weather_factor, respawn_time/fade/range, SOCOM II's light/shadow/noise scales and limits, fireteam_command)
 0x002AB260 0xFC GetPoint__8CCamPathFiiP6CPnt3DP6CPnt3DPPCc  # OVL1; by hand (the states lane, round 16; the names ours): a camera path's point `step` on from an index, wrapping both ways (an unsigned modulo forward), its position, direction and name read out through at() -- the path is the vector at 0x437DF0 (0x98-byte points), stepped by 0x295260 with +1, 0 and -1; fts_mission.cpp
-0x002AB360 0x84 func_002AB360  # OVL1
+0x002AB360 0x84 Reset__Q28CMission9AI_PARAMSFv  # OVL1; by hand (the states lane, round 29; the class's scope and the name ours): the mission's AI parameters' defaults -- SOCOM 1's CMission::m_ai_params (an AI_PARAMS) reset to the seven values SOCOM 1's constructor and Read expand in place (the recycle time stored ahead of the range), SOCOM II's six more after them; CMission() (through AI_PARAMS()) and Read 0x2AAB20 call it on this+0x144; it sets no v0 (a member, not a constructor); nested in CMission because the unit also uses the characters' top-level AI_PARAMS
 0x002AB3F0 0x604 Close__8CMissionFv  # OVL1; s1:calls by hand (the states lane, round 24): SOCOM 1's CMission::Close sequence (StopAllSounds, RemoveDecals, UpdateMissionArchive(m_database, 0), the objective and mission camera lists deleted and erased, the anim sets stopped and unloaded, ... CCompass::Close, the vectors freed) with SOCOM II's additions; this in a0
 0x002ABA00 0x60 __dt__Q23std72vector<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>Fv  # OVL1; s1:align; by hand (the states lane, round 25; round 24's finding): NOT the free swap its s1:align name said -- two this-tests (~vector, ~__vector_imp inlined) and ~__vector_deleter<SObjectiveCam_Anchor> 0x2B1220 called with 0, then the block freed on a positive flag: the vector's destructor, FreeVector's temporary torn down by CMission::Close with -1; fts_mission.cpp emits it under this name byte-exact
 0x002ABA60 0x40 swap__Q23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>FRQ23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>  # OVL1; by hand (the states lane, round 25): the deleter's member swap out of line with the free swap inlined (the this test, capacity, data, size), what vector::swap reaches in CMission::Close's FreeVector(m_objanchor_vec) -- the real swap round 24 found; fts_mission.cpp emits it under this name byte-exact
@@ -3852,7 +3852,7 @@
 0x002AC410 0x614 Open__8CMissionFPCci  # OVL1; s1:align
 0x002ACA30 0x98 func_002ACA30  # OVL1
 0x002ACAD0 0x138 CreateCompassNavPoints__8CMissionFv  # OVL1; s1:align
-0x002ACC10 0x680 func_002ACC10  # OVL1
+0x002ACC10 0x680 PreOpen__8CMissionFPCc  # OVL1; s1:callers by hand (the states lane, round 29): SOCOM 1's PreOpen__8CMissionFPCc's four callers are this function's four (COurGame::StartEngine, UIAdvanceMPMission, UISetMission, CMission::UnSerialize), and it calls Read 0x2AAB20 as SOCOM 1's calls Read; it reads TacMapZoom (the zoom getters' globals, round 26)
 0x002AD290 0x6A4 Init__8CMissionFv  # OVL1; s1:align
 0x002AD940 0x27C __dt__8CMissionFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002ADBC0 0x350 __ct__8CMissionFv  # OVL1; by hand (the states lane, round 22): __sinit_fts_mission.cpp 0x400160 calls it on theMission (0x4364E0) and registers ~CMission 0x2AD940 for it, where SOCOM 1's __sinit_fts_mission.cpp calls __ct__8CMissionFv; it builds the CSaveModule base (theMemCard.m_configSave) and stores CMission's vtable 0x406290 as ~CMission does
@@ -3901,7 +3901,7 @@
 0x002B00E0 0x180 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi  # OVL1; s1:align
 0x002B0260 0x684 insert__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>FP11CLadderDataUiRC11CLadderData  # OVL1; s1:calls by hand (the states lane, round 23): CreateLadderTable's push_back calls it with (end, 1, the new CLadderData) where SOCOM 1's calls the same instance (the demo's 0x1FB300); fts_mission.cpp's template tail
 0x002B08F0 0x734 func_002B08F0  # OVL1
-0x002B1030 0x1F0 func_002B1030  # OVL1
+0x002B1030 0x1F0 reserve__Q23std66__vector_imp<13SCamPathPoint,Q23std26allocator<13SCamPathPoint>,0>FUi  # OVL1; by hand (the states lane, round 29): the camera path's reserve -- CMission() 0x2ADBC0 calls it last with (this+0x1910, 16), m_campath.reserve(16); the 0x98-byte element copied as two CPnt3Ds and its 128-byte name, the temporary's teardown inlined (fts_mission.cpp's tail)
 0x002B1220 0x68 __dt__Q23std82__vector_deleter<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>>Fv  # OVL1; by hand (the states lane, round 25): the objective cameras' anchor vector's deleter destructor -- `clear(); if (data_) delete` with the trivial element's clear inlined (sw zero to the count, the block freed), as include/vector's; ~vector<SObjectiveCam_Anchor> 0x2ABA00 and ~CMission (m_objanchor_vec at +0x128) call it with 0 after their this-tests; fts_mission.cpp emits it under this name
 0x002B1290 0x8 clear__Q23std64__vector_deleter<11CLadderData,Q23std24allocator<11CLadderData>>Fv  # OVL1; by hand (the states lane, round 25): the ladder vector's deleter clear (the count zeroed) -- CMission::Close calls it on m_ladders before the delete, as SOCOM 1's Close calls clear__Q23std64__vector_deleter<11CLadderData,...>Fv; fts_mission.cpp emits it under this name
 0x002B12A0 0x68 __dt__Q23std64__vector_deleter<11CLadderData,Q23std24allocator<11CLadderData>>Fv  # OVL1; by hand (the states lane, round 25): the ladder vector's deleter destructor -- CMission::Close's `delete m_ladders` calls it after two this-tests (~vector, ~__vector_imp inlined; SOCOM 1's Close calls ~__vector_imp<CLadderData> out of line there); fts_mission.cpp emits it under this name
@@ -7881,11 +7881,11 @@
 0x003B7080 0xA4 AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D  # OVL1; s1:align
 0x003B7130 0x1C LandmarkEnable__Q23zdb7CVisualFb  # OVL1; s1:order by hand (the wep lane, round 18: SOCOM 1's LandmarkEnable instruction for instruction -- the flag 0x4B4A58 stored, m_lightingEnable the inverse -- after AddLocalLight as SOCOM 1's follows it; the world lane's round 8 lead); vis_vu.cpp
 0x003B7150 0x18 AlphaEnable__Q23zdb7CVisualFb  # OVL1; s1:order by hand (the wep lane, round 18: SOCOM 1's AlphaEnable -- the int flag 0x4B4A20 stored, then a tail call to zVid_ZTestOnWriteSet, here with the flag inverted -- right after LandmarkEnable as in SOCOM 1); vis_vu.cpp
-0x003B7170 0x414 func_003B7170  # OVL1
+0x003B7170 0x414 UpdateLightTints__Q23zdb7CVisualFf  # OVL1; the wep lane, round 20: ours (new in SOCOM II) -- the frame's colour step CPipe::RenderWorld calls with dT: the lens colours multiplied into m_lensScale (w summed, plus 0.5), the tint switch 0x4B4A68 kept up while a target or tint is off (0.33, 0.33, 0.33, 0), the tints stepped by their rates and set to their targets when the time 0x4B4A78 runs out
 0x003B7590 0x84 func_003B7590  # OVL1
 0x003B7620 0x84 func_003B7620  # OVL1
-0x003B76B0 0x214 func_003B76B0  # OVL1
-0x003B78D0 0x2B4 func_003B78D0  # OVL1
+0x003B76B0 0x214 SetLightTint__Q23zdb7CVisualF5PNT4Dif  # OVL1; the wep lane, round 20: ours (new in SOCOM II) -- one light-map tint channel set toward a colour over a time (rgb to a third, alpha thrice; at once for none, else the target and the rate per second), the tint switch 0x4B4A68 up and its time 0x4B4A78 set; ZAnim's SCALE_COLOR (func_00264580) calls it per channel bit; byte-exact from vis_vu.cpp
+0x003B78D0 0x2B4 SetLightTints__Q23zdb7CVisualF5PNT4Df  # OVL1; the wep lane, round 20: ours (new in SOCOM II) -- every light-map tint channel set toward a colour over a time (SetLightTint's four-channel twin); SCALE_COLOR's all-channels case, CameraZoom's ResetLensColors/HoldLensFx/ReleaseLensFx and OVL2's 0x5C1800 call it; byte-exact from vis_vu.cpp
 0x003B7B90 0x100 DrawLOD__Q23zdb7CVisualFPQ23zdb9CLOD_bandfPf  # OVL1; s1:align
 0x003B7C90 0x60 __dt__Q23std33deque<PCv,Q23std14allocator<PCv>>Fv  # OVL1; s1:align; the MSL headers round 18 (the weapons' round 19 request): NOT ~CVisBase -- the pointer deque's base destructor, one this-tested level (~__deque_imp<PCv> inlined) then ~__deque_buf<PCv> 0x2CEFB0 called with 0, as include/deque's chain; ~stack<Pv> 0x3B7D50 calls it; vis_vu.cpp's tail emits it byte-exact once the unit defines CVisual::m_stack_vid
 0x003B7CF0 0x58 __ct__Q23zdb10AddonPointFv  # OVL1; s1:exact
@@ -7894,7 +7894,7 @@
 0x003B7E30 0xB0 init<Q33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iterator>__Q23std31deque<Pv,Q23std13allocator<Pv>>FQ33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iteratorQ33std39__deque_imp<PCv,Q23std14allocator<PCv>>8iteratorQ23std20forward_iterator_tag_v  # OVL1; the MSL headers round 18: deque<void *>'s range init, called by its copy constructor 0x3B7DB0, handing the two iterators converted to the base's do_assign 0x3B8000 (the rdr editor's 0x333BB0 alike; OPEN: 0x88 against 0xB0)
 0x003B7EE0 0x5C end__Q23std31deque<Pv,Q23std13allocator<Pv>>CFv  # OVL1; the MSL headers round 18: deque<void *>::end() const -- make_iterator(size_) 0x334AA0 copied out (the rdr editor's 0x333CD0 alike); the copy constructor 0x3B7DB0 calls it; vis_vu.cpp's tail emits it byte-exact
 0x003B7F40 0x5C begin__Q23std31deque<Pv,Q23std13allocator<Pv>>CFv  # OVL1; the MSL headers round 18: deque<void *>::begin() const -- make_iterator(0) 0x334AA0 copied out (the rdr editor's 0x333D30 alike); the copy constructor 0x3B7DB0 calls it; vis_vu.cpp's tail emits it byte-exact
-0x003B7FA0 0x28 func_003B7FA0  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); the MSL headers round 18: deque<void *>'s default constructor, __ct__Q23std31deque<Pv,Q23std13allocator<Pv>>Fv (__sinit_vis_vu.cpp builds the stack's temporary with it; it calls the middle level 0x334120 as the rdr editor's deque() 0x3340F0 does) -- left unnamed while only its draft matches it (vis_vu.cpp's copy is 0x30 against 0x28, include/deque's open default-constructor level): rename it with the draft's re-emission
+0x003B7FA0 0x28 __ct__Q23std31deque<Pv,Q23std13allocator<Pv>>Fv  # OVL1; tu: vis_mesh.cpp~ (1.0 beta); the MSL headers round 18: deque<void *>'s default constructor, __ct__Q23std31deque<Pv,Q23std13allocator<Pv>>Fv (__sinit_vis_vu.cpp builds the stack's temporary with it; it calls the middle level 0x334120 as the rdr editor's deque() 0x3340F0 does) -- left unnamed while only its draft matches it (vis_vu.cpp's copy is 0x30 against 0x28, include/deque's open default-constructor level): rename it with the draft's re-emission; the wep lane, round 20: renamed with its draft's as= line, as the row asked -- __sinit_vis_vu.cpp 0x404570 calls it by this name for m_stack_vid's Container() temporary (byte-exact once it resolves); vis_vu.cpp's own copy stays 0x30 against 0x28 (include/deque's open middle level), so the draft keeps the match
 0x003B7FD0 0x30 __ct__Q23zdb15tag_GlobalLightFv  # OVL1; s1:exact
 0x003B8000 0x3A4 func_003B8000  # OVL1
 0x003B83B0 0x14 func_003B83B0  # OVL1
@@ -10000,7 +10000,7 @@
 0x00546E40 0x158 TeleportTo__10CZSealBodyFPC6CPnt3DPC5CQuat  # OVL2; slot 0x3C of __vt__10CZSealBody; calls CEntity's TeleportTo(pos, quat), as SOCOM 1's
 0x00546FA0 0x1D0 func_00546FA0  # OVL2
 0x00547170 0x1D8 func_00547170  # OVL2
-0x00547350 0x21C func_00547350  # OVL2
+0x00547350 0x21C Virtual8C__10CZSealBodyFv  # OVL2; by hand (the SEALs, round 25): slot 0x8C of __vt__10CZSealBody, zseal.h's Virtual8C (CZSealBody's own virtual after CBody's table, called through the primary pointer) -- the dead SEAL's tick: the pending death ended, the respawn asked for, the spectator's walks 0x547170/0x546FA0 (the name a placeholder of the slot, as Virtual60/Virtual68)
 0x00547570 0x190 PickupObject__10CZSealBodyFP7CPickup  # OVL2; s1:calls
 0x00547700 0x7C _rethrow_grenade__FP6CValvePv  # OVL2; s1:order (seal.cpp: after PickupObject, which registers it as a valve callback with the pickup, before ResetToInitialState, as SOCOM 1's); SOCOM 1's two statics (80, 150) and SetVelW, the pickup's fields a word on
 0x00547780 0x14 ResetToInitialState__10CZSealBodyFv  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:vtable (the same slot of the same class's vtable in both builds, code alike)
