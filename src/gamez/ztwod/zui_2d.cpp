@@ -1357,6 +1357,7 @@ int CPopUpDialog::GetZAnimCmdType(const char *name)
 class CUIMapCtrl : public C2D {
 public:
     virtual ~CUIMapCtrl();
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual int GetZAnimCmdType(const char *name);
 
     ActionItem m_actions[30];   // 0x18
@@ -1381,6 +1382,64 @@ CUIMapCtrl::~CUIMapCtrl()
         i = next;
     }
     m_numActions = 0;
+}
+
+/* a pan of the map control as its command keeps it (SOCOM 1's CUIMapCtrlAnimCmdHdr: SOCOM II's 32
+ * bytes, the direction and the three rates after the 16-byte header; the names ours) */
+class CUIMapCtrlAnimCmdHdr : public C2DAnimCmdHdr {
+public:
+    int m_dir;   // 0x10: UP, DOWN, LEFT, RIGHT
+    int m_speed;   // 0x14
+    int m_accel;   // 0x18
+    int m_limit;   // 0x1c
+};   // 0x20 bytes
+
+/* PAN with its direction and rates, or ZOOM_IN, or ZOOM_OUT, as a command (SOCOM 1's); anything
+ * else none. The direction is UP unless the name says otherwise; each rate 0 unless given */
+C2DAnimCmdHdr *CUIMapCtrl::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+    _zrdr *pan = zrdr_findtag(rdr, "PAN");
+
+    if (pan) {
+        CUIMapCtrlAnimCmdHdr *pc =
+            (CUIMapCtrlAnimCmdHdr *)_calloc(1, sizeof(CUIMapCtrlAnimCmdHdr), 0, 0);
+
+        pc->header.timeless = 1;
+        pc->header.data_size = sizeof(CUIMapCtrlAnimCmdHdr);
+        pc->m_type = GetZAnimCmdType("PAN");
+
+        const char *dir = zrdr_findstring(pan, "DIRECTION");
+
+        pc->m_dir = 0;
+        if (!strcmp(dir, "UP"))
+            pc->m_dir = 0;
+        else if (!strcmp(dir, "DOWN"))
+            pc->m_dir = 1;
+        else if (!strcmp(dir, "LEFT"))
+            pc->m_dir = 2;
+        else if (!strcmp(dir, "RIGHT"))
+            pc->m_dir = 3;
+        pc->m_speed = 0;
+        zrdr_findint(pan, "SPEED", &pc->m_speed, 1);
+        pc->m_accel = 0;
+        zrdr_findint(pan, "ACCEL", &pc->m_accel, 1);
+        pc->m_limit = 0;
+        zrdr_findint(pan, "LIMIT", &pc->m_limit, 1);
+        cmd = pc;
+    } else if (zrdr_findtag(rdr, "ZOOM_IN")) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("ZOOM_IN");
+    } else if (zrdr_findtag(rdr, "ZOOM_OUT")) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("ZOOM_OUT");
+    } else
+        cmd = 0;
+    return cmd;
 }
 
 /* the map control's commands: panning and the two zooms, after the UI's own (SOCOM 1's; SOCOM
