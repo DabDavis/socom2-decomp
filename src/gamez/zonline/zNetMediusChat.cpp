@@ -13,17 +13,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <algorithm>
 #include "zonline.h"
+#include "../zmath/zmath.h"
 #include "../znet/znet.h"
 
-/* The unit's inline size limit, lowered (measured, round 10): the target's initialiser inlines the
- * chat queues' constructor one level -- its own body, the queue's members called out of line
- * (0x2F5EE0, 0x2F5EC0, 0x2F5ED0, the queue's constructor 0x2F5F50) -- the size cut of an expanded
- * body past the limit. With these MSL headers that constructor expands to between 100 and 200
- * units, under the default 256, where the original's (deeper) MSL put it over; every other
- * function of the unit compiles the same at 100. The pragma acts through its state at the unit's
- * end, so it is set here, once. */
-#pragma inline_max_size(100)
+/* The unit's inline size limit was lowered to 100 in round 10 (`#pragma inline_max_size(100)`):
+ * the target's initialiser inlines the chat queues' constructor one level -- its own body, the
+ * queue's members called out of line (0x2F5EE0, 0x2F5EC0, 0x2F5ED0, the queue's constructor
+ * 0x2F5F50) -- and the round-10 headers expanded it under the default 256. Round 15: with today's
+ * deeper include/deque the initialiser and the queue's pieces come out the same at the default,
+ * while at 100 the room players' std::sort (0x2F1980, its __sort132 and __selection_sort) calls
+ * the iterator's operator* and swap<RoomPlayer> out of line -- so the pragma is gone (58 -> 61
+ * of the unit's rows, nothing lost). */
 
 /* --- the Medius requests the state handlers make (SOCOM 1's; only what is passed) ----------- */
 
@@ -1323,6 +1325,74 @@ bool CZOnlineLobby::SendChat(const char *text, const char *to)
         Censor(msg.Message, cbFilterChat, &msg);
     }
     return true;
+}
+
+/* the room's players in name order (the sort's comparator; OVL1 0x2F1950, the name ours) */
+static bool PlayerNameLess(RoomPlayer &a, RoomPlayer &b)
+{
+    return strcmp(a.AccountName, b.AccountName) <= 0;
+}
+
+/* the room's players shown: sorted by name, each a row of its account id, its name, its state --
+ * "Disconnecting", "Logging In", "In Lobby" in the lobby's colour or the game it is in -- and its
+ * clan's tag (MessageID: "[tag]", or 1 in its first byte for none) in the tag colour, handed to
+ * the room player list (SOCOM II's; OVL1 0x2F1670: the players' pages and their infos call it;
+ * std::sort's instance follows it, 0x2F1980-0x2F3EEF with its two helpers) */
+extern "C" void func_002F1670()
+{
+    BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+
+    if (room)
+        std::sort(room->m_players.begin(), room->m_players.end(), PlayerNameLess);
+    PNT3D tagColor;
+    PNT3D lobbyColor;
+
+    tagColor.x = 128.0f;
+    tagColor.y = 64.0f;
+    tagColor.z = 32.0f;
+    lobbyColor.x = 91.0f;
+    lobbyColor.y = 72.0f;
+    lobbyColor.z = 36.0f;
+    CRdrEditor ed;
+
+    ed.push(0);
+    if (room) {
+        for (std::vector<RoomPlayer>::iterator i = room->m_players.begin(); i != room->m_players.end(); ++i) {
+            char id[32];
+
+            ed.push(0);
+            sprintf(id, "%d", (*i).AccountID);
+            ed.addstringnode(id);
+            ed.addstringnode((*i).AccountName);
+            switch ((*i).OnlineState.ConnectStatus) {
+            case 0:
+                ed.addstringnode("Disconnecting");
+                break;
+            case 1:
+                ed.addstringnode("Logging In");
+                break;
+            case 2:
+                ed.push(0);
+                ed.addSTRING("VALUE", "In Lobby");
+                ed.addPNT3D("COLOR", lobbyColor);
+                ed.pop();
+                break;
+            case 3:
+                ed.addstringnode((*i).OnlineState.GameName);
+                break;
+            }
+            ed.push(0);
+            if ((*i).MessageID[0] != 1)
+                ed.addSTRING("VALUE", (*i).MessageID);
+            else
+                ed.addSTRING("VALUE", "");
+            ed.addPNT3D("COLOR", tagColor);
+            ed.pop();
+            ed.pop();
+        }
+    }
+    ed.pop();
+    theLobby.uiv_RoomPlayerList->Set(&ed);
 }
 
 /* the room's players asked for (the SDK's MediusLobbyWorldPlayerListRequest: no session key) */

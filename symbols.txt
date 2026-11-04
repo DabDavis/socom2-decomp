@@ -4918,7 +4918,7 @@
 0x002F1240 0x1AC func_002F1240  # OVL1
 0x002F13F0 0x278 func_002F13F0  # OVL1
 0x002F1670 0x2E0 func_002F1670  # OVL1
-0x002F1950 0x28 func_002F1950  # OVL1
+0x002F1950 0x28 PlayerNameLess__FR10RoomPlayerR10RoomPlayer  # OVL1; ours, the online lane round 15 (the room players' sort comparator: strcmp of the account names <= 0 -- the third argument of the std::sort<RoomPlayer> call in 0x2F1670, the instance's mangled name's PFR10RoomPlayerR10RoomPlayer_b; zNetMediusChat.cpp, a file static, byte-exact)
 0x002F1980 0xDB8 sort<Q33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iterator,PFR10RoomPlayerR10RoomPlayer_b>__3stdFQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorQ33std60__vector_imp<10RoomPlayer,Q23std23allocator<10RoomPlayer>,0>8iteratorPFR10RoomPlayerR10RoomPlayer_b_v  # OVL1; ours (the MSL headers round 6: include/algorithm's std::sort, SOCOM 1's MSL; sort of the chat unit's room players (0x2F1670 calls it; SOCOM 1's _roomplayer_sort_aux by address, R/R non-const); the probe build/p6/chat.cpp; byte-exact as written, its shuffle static's relocations aside)
 0x002F2740 0x64C func_002F2740  # OVL1
 0x002F2D90 0x64C func_002F2D90  # OVL1
