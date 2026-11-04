@@ -149,6 +149,7 @@ public:
     void SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     void RenderDelayedNodes();
     bool PushNodeOpacity(zdb::CNode *node);
+    bool TestFlare(const CPnt3D *pos, CPnt4D *out, float pull);
     void RenderUiNodeRecursive(zdb::CNode *node);
     /* SOCOM 1's RenderVisual (0x3374C0, not written) */
     void RenderVisual(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
@@ -223,16 +224,33 @@ extern "C" void func_003B0CC0(unsigned int v);
 /* the lens flares' system (OVL1 bss 0x488F10, after thePipe; the HUD lane's name, hud_lensflare.cpp
  * calls it): its flares a pointer vector at 4, each with an active bit first (the names ours) */
 struct CFlare {
-    unsigned char m_active : 1;   // 0x0
-
+    /* a new flare's three bits set in the initialiser list (a word read-mask-write each) */
+    CFlare(const CPnt3D *pos, float size) : m_active(true), m_test(true), m_visible(true)
+    {
+        m_pos.x = pos->x;
+        m_pos.y = pos->y;
+        m_pos.z = pos->z;
+        m_size = size;
+    }
+    bool IsActive() const { return m_active; }
     void SetActive(bool on) { m_active = on; }
-};
+    void SetVisible(bool on) { m_visible = on; }
+
+    unsigned int m_active : 1;   // 0x0
+    unsigned int m_test : 1;   // 0x0: tested against the depth buffer each tick
+    unsigned int m_visible : 1;   // 0x0: the last test's verdict
+    CPnt3D m_pos;   // 0x4
+    float m_depth;   // 0x10: the projected point's w at the last test
+    float m_size;   // 0x14: how far the test point is pulled toward the camera
+};   // 0x18 bytes
 class CFlareSystem {
 public:
     /* the byte first cleared, then the vector built (the unit's initialiser; ours) */
     CFlareSystem() : m_0(0) {}
+    void Tick();
     void Clear();
     void Release(int handle);
+    int Add(const CPnt3D *pos, float size);
 
     unsigned char m_0;   // 0x0
     std::vector<CFlare *> m_flares;   // 0x4
@@ -760,6 +778,74 @@ void CPipe::PushOpacity(float opacity)
 }
 #pragma auto_inline reset
 
+/* zcamera's: a world point projected to the screen, false behind the camera (0x290450, not named)
+ * -- and zvid_init.cpp's depth under a screen point, false off the screen */
+extern "C" bool func_00290450(zdb::CCamera *camera, const CPnt3D *p, CPnt4D *out);
+extern "C" bool func_003B0E70(const float *p, unsigned int *z);
+
+/* SOCOM II's (the name ours; pinned: CFlareSystem::Tick calls it out of line): whether a point is in
+ * front of what the depth buffer holds under it -- pulled first toward the camera by `pull` -- its
+ * projection left in `out` */
+#pragma auto_inline off
+bool CPipe::TestFlare(const CPnt3D *pos, CPnt4D *out, float pull)
+{
+    bool visible = false;
+    CPnt4D local;
+    CPnt3D moved;
+    CPnt4D *o = out ? out : &local;
+
+    if (pull != 0.0f) {
+        CPnt3D dir = *(CPnt3D *)m_camera->m_matrix.m_matrix[3] - *pos;
+
+        dir.Normalize();
+        dir.Scale(pull);
+        CPnt3D p = *pos + dir;
+
+        moved = p;
+        pos = &moved;
+    }
+    if (func_00290450(m_camera, pos, o)) {
+        unsigned int z;
+
+        if (func_003B0E70((float *)o, &z))
+            visible = o->z >= (float)z;
+    }
+    return visible;
+}
+#pragma auto_inline reset
+
+/* SOCOM II's (the name ours; hud_lensflare.cpp's): a flare added -- the first inactive one taken
+ * over, else a new one pushed (the storage grown by ten) -- its handle given back */
+int CFlareSystem::Add(const CPnt3D *pos, float size)
+{
+    int handle = -1;
+
+    if (m_flares.size()) {
+        for (unsigned int i = 0; i < m_flares.size() && handle < 0; i++) {
+            CFlare *f = m_flares.at(i);
+
+            if (f->IsActive() == false) {
+                handle = i;
+                f->m_pos.x = pos->x;
+                f->m_pos.y = pos->y;
+                f->m_pos.z = pos->z;
+                f->m_size = size;
+                f->SetActive(true);
+            }
+        }
+    }
+    if (handle < 0) {
+        CFlare *f = new CFlare(pos, size);
+
+        if (m_flares.size() == m_flares.capacity())
+            m_flares.reserve(m_flares.size() + 10);
+        m_flares.push_back(f);
+        handle = m_flares.size() - 1;
+    }
+    m_0 = 1;
+    return handle;
+}
+
 /* SOCOM II's: a flare let go of -- its active bit cleared, when the handle is one */
 void CFlareSystem::Release(int handle)
 {
@@ -775,4 +861,28 @@ void CFlareSystem::Clear()
         delete *i;
     m_flares.clear();
     FreeVector(m_flares);
+}
+
+/* zmath's CPnt4D() out of line (0x2110E0, an empty constructor): the flare's projection is built
+ * through it -- called by hand, the original's spelling unknown (zmath.h's is inline) */
+extern "C" void func_002110E0(CPnt4D *p);
+
+/* SOCOM II's (the name ours; CCoreState::Tick calls it): with any flare added, each one's verdict
+ * cleared and, for an active one to test, taken again with its projection's depth */
+void CFlareSystem::Tick()
+{
+    if (m_0) {
+        for (std::vector<CFlare *>::iterator i = m_flares.begin(); i != m_flares.end(); ++i) {
+            CFlare *f = *i;
+
+            f->SetVisible(false);
+            if (f->m_active && f->m_test) {
+                CPnt4D p;
+
+                func_002110E0(&p);
+                f->SetVisible(thePipe.TestFlare(&f->m_pos, &p, f->m_size));
+                f->m_depth = p.w;
+            }
+        }
+    }
 }

@@ -5952,7 +5952,7 @@
 0x00335C00 0x214 func_00335C00  # OVL1
 0x00335E20 0x1A8 func_00335E20  # OVL1
 0x00335FD0 0x258 zRndrInit__Fv  # OVL1; s1:calls
-0x00336230 0x10C func_00336230  # OVL1
+0x00336230 0x10C Tick__12CFlareSystemFv  # OVL1; the world lane round 8: ours -- the flare system's tick (CCoreState::Tick calls it on 0x488F10): each flare's visible bit cleared, an active one to test given TestFlare's verdict
 0x00336340 0xA8 Clear__12CFlareSystemFv  # OVL1; the rdr lane: SOCOM II's, the name ours (CFlareSystem at 0x488F10: every flare of the pointer vector at 4 deleted, its size zeroed, FreeVector's pieces called -- 0x3364B0, 0x3364A0, 0x336460, 0x3363F0; 0x33B720 calls it)
 0x003363F0 0x70 __dt__Q23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>Fv  # OVL1; the rdr lane: the flare system's pointer vector's destructor (three this tests, the pod's storage deleted), FreeVector's temporary's in CFlareSystem::Clear (zrndr_pipe.cpp's inline copy); the element class name ours
 0x00336460 0x40 swap__Q23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>FRQ23std44vector<P6CFlare,Q23std19allocator<P6CFlare>>  # OVL1; the rdr lane: the flare system's pointer vector's swap, FreeVector's in CFlareSystem::Clear (zrndr_pipe.cpp's inline copy)
@@ -5962,8 +5962,8 @@
 0x00336520 0x60 func_00336520  # OVL1
 0x00336580 0x58 func_00336580  # OVL1
 0x003365E0 0x6C func_003365E0  # OVL1
-0x00336650 0x1B4 func_00336650  # OVL1
-0x00336810 0x16C func_00336810  # OVL1
+0x00336650 0x1B4 Add__12CFlareSystemFPC6CPnt3Df  # OVL1; the world lane round 8: ours -- the flare system's add (CLensFlareManager::ReInit calls it with a position and a size, keeps the handle it returns): the first inactive flare reused, else a new one pushed
+0x00336810 0x16C TestFlare__5CPipeFPC6CPnt3DP6CPnt4Df  # OVL1; the world lane round 8: ours -- CPipe's (a0 thePipe, the camera at 0x628): a point pulled toward the camera, projected, compared with the depth buffer under it; the flare system's tick calls it
 0x00336980 0x88 PushOpacity__5CPipeFf  # OVL1; the rdr lane: SOCOM II's, the name ours (the opacity stack at 0x668 -- SOCOM 1's m_opacity_stack at 0x648, its size and index after it -- grown by _realloc a slot at a time, the new top the product with the one under it; 0x336A10 pushes a node's 0x9C opacity through it when under 0.992)
 0x00336A10 0x44 PushNodeOpacity__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: ours -- SOCOM II's helper: PushOpacity(node->m_Opacity) when it is under 0.9921875, and whether it was; RenderUiNodeRecursive, RenderMesh and RenderNode call it where SOCOM 1's inlined the push
 0x00336A60 0x1A8 RenderUiNodeRecursive__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- called by itself and by RenderUiNode (0x336C10), as SOCOM 1's RenderUiNodeRecursive (0x241AB0) is
