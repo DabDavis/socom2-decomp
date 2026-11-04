@@ -3297,15 +3297,15 @@
 0x002808E0 0x47C func_002808E0  # OVL1
 0x00280D60 0x130 UICanCharactersSelectUIWeapon__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 7: the handler registered as "CanCharactersSelectUIWeapon" (id 0xCF, the UI command table's record at 0x3DE1A0) -- the item whose menu value (0x3D3230) the UiWeapon valve holds, and whether every UiCharSet character may take it (CanTakeItem 0x280E90)
 0x00280E90 0x1A0 CanTakeItem__24@unnamed@zanim_menu_cpp@F10EQUIP_ITEMRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr  # OVL1; ours, the core lane round 7 (SOCOM II's: whether a selected character may take an item with the weapons it has -- the class-195 item only on a class-101 primary, 186 beside a 146, 146/145 once, the M203 items, 176-179 on a 143, 181-183 on a 63; 0x280D60 and 0x283E60 call it; the name ours)
-0x00281030 0xC func_00281030  # OVL1
-0x00281040 0xC func_00281040  # OVL1
-0x00281050 0xC func_00281050  # OVL1
+0x00281030 0xC UIDoAllSelCharsHaveLockedEquip3__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 9: the handler registered as "DoAllSelCharsHaveLockedEquip3" (id 0xCB, the UI command table's record 201 at 0x3DE160; a jump to SelCharsHaveLockedEquip 0x2815D0 with 2)
+0x00281040 0xC UIDoAllSelCharsHaveLockedEquip2__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 9: the handler registered as "DoAllSelCharsHaveLockedEquip2" (id 0xCA, the UI command table's record 200 at 0x3DE150; a jump to SelCharsHaveLockedEquip 0x2815D0 with 1)
+0x00281050 0xC UIDoAllSelCharsHaveLockedEquip1__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 9: the handler registered as "DoAllSelCharsHaveLockedEquip1" (id 0xC9, the UI command table's record 199 at 0x3DE140; a jump to SelCharsHaveLockedEquip 0x2815D0 with 0)
 0x00281060 0xC func_00281060  # OVL1
 0x00281070 0xC func_00281070  # OVL1
 0x00281080 0xC func_00281080  # OVL1
 0x00281090 0xD0 UICopyUIVar__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "CopyUIVar" (id 0xBD, the UI command table's record 187, its second function UICopyUIVarParse 0x27FD70); SOCOM 1's table has no CopyUIVar, so UI<command> by its convention
 0x00281160 0x468 func_00281160  # OVL1
-0x002815D0 0x37C func_002815D0  # OVL1
+0x002815D0 0x37C SelCharsHaveLockedEquip__24@unnamed@zanim_menu_cpp@FiP13C2DAnimCmdHdr  # OVL1; ours, the core lane round 9 (SOCOM II's: whether an equipment slot, 0-2 for slots 2-4, is locked for a selected character -- UiCharLocked made the mask of every character's lock with UiCharSet widened to 255 on the network, else 15, then put back; the three DoAllSelCharsHaveLockedEquip handlers 0x281030-0x281050 jump to it with 2, 1, 0)
 0x00281950 0x11C IsSlotLocked__24@unnamed@zanim_menu_cpp@FQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItri10EQUIP_ITEM  # OVL1; ours, the core lane round 7 (SOCOM II's: whether a selected character's slot keeps what it holds against an item -- items 141/185, a lone 186, a weapon's padding, an item whose definition 0x3CF1F0 flags 0x30; the slot pickers 0x284640, 0x2815D0, 0x282F20 and 0x284120 call it; the name ours)
 0x00281A70 0x14C OnCloseAndSwitch__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "CloseAndSwitch" in both builds' UI command tables: SOCOM 1's handler OnCloseAndSwitch, zanim_menu.cpp's anonymous namespace, the same tests, Pop/Switch and MPMajorGameState(5); SOCOM II adds the loading image's restore)
 0x00281BC0 0x20 func_00281BC0  # OVL1

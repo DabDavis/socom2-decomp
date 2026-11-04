@@ -610,6 +610,72 @@ bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item)
 }
 #pragma auto_inline reset
 
+/* whether an equipment slot (0 to 2: slots 2 to 4) is locked for a selected character, with
+ * UiCharLocked made the mask of every character whose slot is -- the selection widened to all of
+ * them (eight on the network, else four) for the walk, then put back (SOCOM II's, 0x2815D0; the name
+ * ours, after the three DoAllSelCharsHaveLockedEquip commands that jump to it). Its lock test is
+ * IsSlotLocked's in another order, written out; a vector of items is made and never used (the
+ * have-equipment test's, 0x281160, parses the command's argument into one) */
+/* a valve's value read through a reference (ours): read so, MW keeps it apart from SetValue's own
+ * read of the same field -- the target reads m_value twice for the saved selection and the lock
+ * count, where a plain read merges with SetValue's */
+inline unsigned int ValveValue(const CValve &v) { return v.m_value; }
+
+bool SelCharsHaveLockedEquip(int equip, C2DAnimCmdHdr *hdr)
+{
+    int slot = equip + 2;
+    std::vector<char> items;
+    CValve *set = CValve::GetByName("UiCharSet");
+    unsigned int mask = ValveValue(*set);
+
+    if (theNetwork.m_bNetwork)
+        set->SetValue(255);
+    else
+        set->SetValue(15);
+
+    CValve *locked = CValve::Create("UiCharLocked", VALVE_PERM);
+
+    locked->SetValue(0);
+
+    int bit = 1;
+
+    for (CSelectedCharsItr c("UiCharSet"); c.Valid(); c.Advance()) {
+        CCharacterWeapList *weapons = (CCharacterWeapList *)c.m_weapons;
+        EQUIP_ITEM cur = EQUIP_NONE;
+
+        if (slot < weapons->size())
+            cur = (*weapons)[slot].m_wepId;
+        CItemDefFlags *def = func_003CF1F0(cur);
+
+        if ((cur == 186 && FindItemSlot(c, cur, slot) == -1) || cur == 185 || cur == 141 ||
+            cur == EQUIP_END || (def && (def->m_flags & 0x30))) {
+            unsigned int v = ValveValue(*locked);
+
+            locked->SetValue(v + bit);
+        }
+        bit <<= 1;
+    }
+    set->SetValue(mask);
+    return AnySlotLocked(slot, EQUIP_NONE);
+}
+
+}
+
+/* "DoAllSelCharsHaveLockedEquip1" to "3" (SOCOM II's commands 0xC9-0xCB, the UI command table's
+ * records 199-201 at 0x3DE140; the names ours, after the table's): equipment slots 0 to 2 */
+bool UIDoAllSelCharsHaveLockedEquip3(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveLockedEquip(2, hdr);
+}
+
+bool UIDoAllSelCharsHaveLockedEquip2(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveLockedEquip(1, hdr);
+}
+
+bool UIDoAllSelCharsHaveLockedEquip1(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return SelCharsHaveLockedEquip(0, hdr);
 }
 
 namespace {
