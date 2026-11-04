@@ -2060,6 +2060,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 33** (LoadVehicles and the box corners at last, the exit state's ratings):
+  - A CBBox PASSED BY VALUE IS COPIED AS ONE 24-BYTE BLOCK, a local or explicit temporary copy (`CBBox(x)`) as two 12-byte
+    blocks, min and max -- func_002A8C90 0x2A8C90 (104 off since round 29) passes `CBBox(*node->GetBBox())` to a corners
+    helper taking `const CBBox &`; a call that is the copy constructor's argument inside an inline call's argument stays a
+    call; a point's three fields stored into a matrix on the point itself keep a field's address in a register, read
+    through a pointer parameter they do not (a new SetTranslation(CMatrix *, const CPnt3D *) inline);
+  - an inline's variables are numbered after the caller's named locals AND after the caller's scalarised class-iterator
+    temporaries -- moving a block into an inline renumbers it; frame slots follow inline depth: `push_back(x)` puts insert's
+    iterator temporaries one level below the argument's temporary, `insert(end(), x)` at the same level -- together they
+    closed CMission::LoadVehicles 0x2B2E50 (41 off since round 29: the player-grid placement in an inline, `int cols,
+    rows;` in that order, the spawn through two inline levels);
+  - a loop end taken once into a local stays in a saved register, `it != l->end()` recomputes it every pass (LoadWorld's
+    list emptied 0x1EA4B0, the erase 0x1EAAF0 from source with it); float constants held in named locals change how a
+    weighted sum's registers are coloured (the objectives rating 0x1F3550; CExitState::Init's objective count 0x1F38F0
+    first try); CMission+0xE0 is SOCOM 1's float m_timer;
+  - open: the stealth rating 0x1F3290 (48, scheduling only), AddMission (MW computes each percentage at its use, the target
+    early -- all 720 orders alike), RemoteSealPostUpdateCallback (t at degree 25 = K: spill-cost order).
 - **Tells from the engine core, round 10** (the edge intersections, intersect2d, the CKey vector's iterator pieces):
   - an int local holding a bitfield read adds `andi 0xffff`, reading the field in place does not (CDI::GetEdgeIntersects
     0x2DD4D0 -- it returns the count: znode.h's declaration is int now); a count loop with no entry test after an early
