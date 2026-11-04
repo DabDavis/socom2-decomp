@@ -6900,7 +6900,7 @@
 0x00375040 0x488 Tick__10CUIListBoxFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003754D0 0x238 UpdateUIVar__10CUIListBoxFP11CUIVariable  # OVL1; by hand (the HUD lane, round 16): CUIListBox's secondary table (0x4076E0: RTTI, -128, @128@__dt__10CUIListBoxFv, the thunk 0x37D060, then this) holds it where CSliderBar's holds UpdateUIVar__10CSliderBarFP11CUIVariable; it reads the variable's type byte (4, a list) as the other UpdateUIVars do
 0x00375710 0x554 __dt__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00375C70 0x1A8 func_00375C70  # OVL1
+0x00375C70 0x1A8 RemoveAllItems__10CUIListBoxFv  # OVL1; ours by hand (the HUD lane, round 41: zui_2d.cpp -- every item's node erased and the item deleted (ListItem's inline destructor), then the box's own font at 0xBC deleted and cleared; UpdateUIVar 0x3754D0 and 0x372980 call it)
 0x00375E20 0x5F8 func_00375E20  # OVL1
 0x00376420 0x110 SetNormal__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376530 0x68 func_00376530  # OVL1
