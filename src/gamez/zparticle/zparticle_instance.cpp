@@ -13,6 +13,9 @@
 /* Sony's libvu0 (MAIN): v0 = v1 * t + v2 * (1 - t) */
 extern "C" void sceVu0InterVector(float *v0, float *v1, float *v2, float t);
 
+/* the draw buffer's count (zparticle_buf.cpp's unit; unnamed) */
+extern "C" int data_0045C4C0;
+
 namespace Particle {
 
 /* the live instances (SOCOM 1's Instance::list: the unit's initialiser 0x402C40 builds it after
@@ -126,6 +129,16 @@ void Destruction_Instance::SetVisual(zdb::CVisual *vis)
 }
 
 /* SOCOM II's: the dead instances recycled, then every pooled instance and piece deleted */
+/* SOCOM 1's Render(): the draw buffer emptied (its count, 0x45C4C0), then every live instance
+ * rendered -- SOCOM 1 handed each the camera's matrix, SOCOM II's Render takes none (RenderWorld
+ * calls this after its pass) */
+void Render()
+{
+    data_0045C4C0 = 0;
+    for (Instance *p = Instance::list.m_head; p; p = p->m_listNext)
+        p->Render();
+}
+
 void FreeInstances()
 {
     Instance *p;
@@ -246,7 +259,7 @@ Destruction_Instance *Destruction_Instance::Create(const CPnt4D &pos, const CPnt
 }
 
 /* the piece's node moved to it while it lives */
-void Destruction_Instance::Render(const CMatrix &m)
+void Destruction_Instance::Render()
 {
     if (m_age < m_lifespan && m_node) {
         m_node->SetPosition(m_pos[0], m_pos[1], m_pos[2]);

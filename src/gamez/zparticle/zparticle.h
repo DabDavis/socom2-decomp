@@ -310,7 +310,9 @@ public:
 
     virtual void Expire();   // +0x08
     virtual void Tick(float dT);   // +0x0c
-    virtual void Render(const CMatrix &m);   // +0x10
+    /* SOCOM 1's Render(const CMatrix &): SOCOM II's takes no matrix -- neither override reads a1,
+     * and Particle::Render's call (0x328040) sets none */
+    virtual void Render();   // +0x10
     /* SOCOM II's: expired and given back to the class's pool (the name ours) */
     virtual void Recycle();   // +0x14
 
@@ -354,7 +356,7 @@ public:
                                         float life, float opacity, CPnt3D axis, Props *props);
     void Expire();
     void Tick(float dT);
-    void Render(const CMatrix &m);
+    void Render();
     void Recycle();
     /* SOCOM II's: the piece's visual handed to its node (SOCOM 1 passed it to Create; the name
      * ours) */
