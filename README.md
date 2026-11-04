@@ -1927,6 +1927,24 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 17** (four initialisers, UVCompare, the weapon accessors, the callback list's destructor):
+  - AN UNNAMED INITIALISER CAN BE PLACED IN A UNIT BY WHERE ITS OBJECTS SIT IN BSS, beside which unit's statics:
+    __sinit_vis_decal.cpp 0x404A10, __sinit_vis_data.cpp 0x4049E0 (CMaterial_band::m_defaultColor a CPnt4D (0, 1, 0, 0)),
+    __sinit_zvid_init.cpp 0x404490 (its <iostream> pair beside zvid_init.cpp's statics), __sinit_zwep_global.cpp
+    0x404B70; 0x404500, the same pair beside vis_vu.cpp's statics, belongs to a third unit between zvid_init.cpp and
+    vis_vu.cpp;
+  - a static object's registered destructor names its class's destructor, and when MW's implicit destructor calls
+    something out of line that call names the base's -- 0x3C6880 is the callback list's __list_imp destructor (renamed:
+    ~CWepCallbackList 0x3C6920 compiles word for word and calls it; our copy 0xB8 vs 0x80 is include/list's open teardown
+    shape); look for a SOCOM II function at the same position between two SOCOM 1 anchors (zdb::UVCompare 0x3BF290);
+  - a min of three written `m = a; m = m < b ? m : b; m = m < c ? m : c;` loads a before b, `a < b ? a : b` loads b
+    first; a variable declared ahead of another and assigned after it takes the delay slot and swaps the two FPRs
+    (GetDamage's over/span: now 3 off); a byte enum held in a real variable (a join, or live across calls) is `lb` plus
+    `andi 0xff` at its compare, a plain single-assigned local folds to `lbu`;
+  - the sixteen accessors InitializeWeapons calls written in zwep_weapon.cpp (the pass sounds, the decal set and icon
+    names, the hit/special anim allocators and names); 0x2DE440 is CMaterialExArray::GetWeaponAnimMaterialEx (renamed at
+    integration: SOCOM 1's InitializeWeapons calls it at the same two places); open: InitializeWeapons 0x3C4700 (right
+    size, 51: the weapon-list walk's colouring), GetDamage (3), UnpackItemAndAmmoEnums, 0x3C5C20, CTurret::Fire.
 - **Tells from the kit and AI states, round 21** (AiStateIs where GetState is called, the unit's queries, CTPursue::Tick):
   - CSealCtrlAi::AiStateIs (the SEALs' round 18 shape) closes EVERY Is() whose target calls the const GetState 0x5F8330
     out of line: ShouldAvoid 0x602B20, CSealUnit::FindRescuedNear 0x5EEDB0, CAiGroup::AddMember 0x60D020 (open since round

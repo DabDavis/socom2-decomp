@@ -4628,7 +4628,7 @@
 0x002DDE20 0x8 func_002DDE20  # OVL1
 0x002DDE30 0x8 func_002DDE30  # OVL1
 0x002DDE40 0x5F4 func_002DDE40  # OVL1
-0x002DE440 0x68 func_002DE440  # OVL1
+0x002DE440 0x68 GetWeaponAnimMaterialEx__16CMaterialExArrayFUi  # OVL1; the integrator 2026-11-04, by the weapons lane round 17: SOCOM 1's InitializeWeapons calls GetWeaponAnimMaterialEx at the same two places, and the body indexes the material list at 0x44F354/0x44F358 (s1:calls)
 0x002DE4B0 0x29C func_002DE4B0  # OVL1
 0x002DE750 0x140 func_002DE750  # OVL1
 0x002DE890 0x70 func_002DE890  # OVL1
