@@ -2033,6 +2033,31 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from completing the MSL headers, round 19** (the deque's teardown level, the class insert's two populations;
+  probes build/scratch/msl-r19-p19/, untracked):
+  - THE IMAGE'S CLASS INSERTS ARE TWO POPULATIONS, by whether the element's construct() is cut to one level (placement new
+    0x2FECA0/0x51D210 called out of line): with placement new inlined the in-place branch's end is numbered after m (the
+    target's end is copy_backward's result temp, the else loop's cursor numbered below it), with it called the end is
+    numbered before m -- the end as an iterator object at function scope (`iterator e; e = this->end();` in both branches,
+    the else loop's own cursor) gives the first population: +35 over every hand-written unit (all seven witnesses -- the
+    online lobby's five, the states' CLadderData 0x2B0260, the world's delayed nodes 0x33C5C0 -- with CMovieCue,
+    CUIVariable, CVehicleDef, the A* nodes, the AI maps' copies, c2dfont.cpp's four, CMeshLOD), -5 (AcctRecord 0x2FE3E0,
+    CTurretDef 0x3ABD90, zrdr_sym 0x3325E0, CDlgDesignModel 0x384ED0, CVehicleRdrEntry 0x534630: OPEN, no form found does
+    both) -- applied by the integrator, include/vector's comment carries the measurements;
+  - a scalarised local object's member takes the number of the earliest temp it is copied into (copy_backward's result
+    parameter here), a declared pointer keeps its own in the same merge; with no such copy it gets a temp from a pass
+    between the loop optimiser and the hoisting pass; a variable assigned in two sub-branches has its second branch's range
+    renumbered by the loop optimiser, a cursor declared inside that branch keeps a declared-local number; live-range
+    splitting runs after CSE (a function-scope variable's second range is numbered after all of CSE's temps); the inliner
+    does not number call sites in source order (the reallocating branch's allocate temps before the in-place branch's
+    copy_backward temps);
+  - include/deque gains __deque_destroy between __deque_imp and __deque_buf, for elements with non-trivial destructors only
+    (picked by has_trivial_dtor; a base picked through a trait adds a class level for some element types only, and
+    `static_cast<Derived *>(this)` at offset 0 adds no null test): the chat deque's teardown 0x2F62B0 and ~__deque_buf
+    0x2F6BC0 byte-exact (0x2F62B0 renamed from ~__deque_buf's name); include/list's insert compiles byte-exact to
+    list<FT_COMMAND>'s 0x5EF6D0 (named: it counts once the kit writes IssueCommand);
+  - not reached: the vector's first test (CountAwareness), the list's sort / remove_if / ~list<CRipple *>, AnimSignal's
+    reverse_iterator, the tree's insert, the chat deque's copy constructor and do_assigns.
 - **Tells from the engine core, round 8** (WriteDirectory, InitCommands off the image, the camera's screen positions):
   - a ternary's result is a temporary numbered after locals declared later, a named local assigned in an if/else keeps
     the local's number (zar::CZAR::WriteDirectory 0x257590's pad needs `if (rem) pad = ...; else pad = 0;` -- SOCOM II's
