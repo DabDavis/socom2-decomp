@@ -1926,6 +1926,24 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 21** (AiStateIs where GetState is called, the unit's queries, CTPursue::Tick):
+  - CSealCtrlAi::AiStateIs (the SEALs' round 18 shape) closes EVERY Is() whose target calls the const GetState 0x5F8330
+    out of line: ShouldAvoid 0x602B20, CSealUnit::FindRescuedNear 0x5EEDB0, CAiGroup::AddMember 0x60D020 (open since round
+    17), CTPursue::Tick 0x5D4190 -- 24 more such rows wait in the SEALs' range (PrePostTick 0x5506A0, PlayAiSound
+    0x55FF60, SetAiMode 0x56CBF0, PreTick 0x56DE10, Tick 0x56FD00, OnStunDamage 0x571B10, OnCommand 0x58FBE0, the
+    AllowCommand family ...);
+  - taking a walk's end into a local before the iterator numbers the iterator after it (0x5EEDB0: iterator s0, end s1); a
+    byte-enum field read into a local before an `&&` loads first and is narrowed again at its compare inside an inline
+    taking it by value; a bool declared first but assigned after an early return keeps its early number while its zero
+    lands after the return; an inline `m_control ? ...->IsAi() : false` narrows the bool in each arm, zseal.h's if-form
+    IsAi once at the join; SOCOM II's GetMyLookDir uses the literals 0.7071f and 0.866f, not the exact roots -- check a
+    float constant's low mantissa bits;
+  - seal_unit.cpp follows SOCOM 1's order there (AllowCommand, the new 0x5EEDB0, GetMyLookDir, GetData and run_anim -- new
+    --, GetUnitByTeam); a lead: 0x5E7030 (0x1F8) sits where SOCOM 1's CheckPathProximity (0x1F8) would be;
+  - open: 0x60F760 (0x228 vs 0x240: the target re-reads the target list's size and data through its address each pass --
+    the AI core's round-18 reference-accessor rule), 0x5CB450 (8: the bit index masked before the shift in the target),
+    CAiGroup::Tick (AiStateIs at its GOING test moves it to 0x6EC vs 0x6E4; 285 register shifts), is_goal 0x5F8570,
+    GetTimeSinceLastSighting 0x60A590, 0x5F6270, CAiDodge::Destroy 0x5FAD50.
 - **Tells from the world, rdr and sound, round 7** (__sinit_zsnd_csnd.cpp, the headset queue, the pipe's atoms, the
   scheduler, the subtitle list):
   - 0x402FF0 IS __sinit_zsnd_csnd.cpp (the unit's header had said it has none): its statics in build order -- four

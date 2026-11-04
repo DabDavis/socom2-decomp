@@ -8834,6 +8834,7 @@
 0x005D2890 Tick__8CTSelectFP14_zanim_cmd_hdrPf
 0x005D28A0 Parse__8CTSelectFP5_zrdr
 0x005D29F0 Create__8CTSelectFP10CZSealBody
+0x005D4190 Tick__8CTPursueFP14_zanim_cmd_hdrPf
 0x005D4480 Parse__8CTPursueFP5_zrdr
 0x005D5700 Tick__7CTPaintFP14_zanim_cmd_hdrPf
 0x005D5A20 End__6CTMoveFP14_zanim_cmd_hdr
@@ -8972,6 +8973,8 @@
 0x005EE160 EscorteeJoinUnit__9CSealUnitFP10CZSealBody
 0x005EE4D0 __dt__9CSealUnitFv
 0x005EE6F0 __ct__9CSealUnitFUi
+0x005EEDB0 FindRescuedNear__9CSealUnitFP10CZSealBody
+0x005EEF80 GetMyLookDir__9CSealUnitFP6CPnt3DP6CPnt3DP10CZSealBody
 0x005EF1D0 GetData__9CSealUnitFPvUi
 0x005EF220 run_anim__FPCcPv
 0x005EF2F0 GetUnitByTeam__9CSealUnitFUi
@@ -9136,6 +9139,7 @@
 0x00601EB0 CanScan__11CAiSHostageCFv
 0x00601EC0 CanPushAiState__11CAiSHostageF8AI_STATEP11CSealCtrlAi
 0x00601F20 OnSignal__11CAiSHostageFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00602B20 ShouldAvoid__FP10CZSealBodyP10CZSealBodyf
 0x00602D10 OnSignal__9CAiSAvoidFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00603690 func_00603690
 0x00604340 func_00604340
@@ -9212,6 +9216,7 @@
 0x0060CD40 SetMemberLoc__8CAiGroupFUiRC9CAiMapLoc
 0x0060CDC0 EndStep__8CAiGroupFv
 0x0060CDD0 AddStep__8CAiGroupFUi
+0x0060D020 AddMember__8CAiGroupFP11CSealCtrlAi
 0x0060D280 Abort__8CAiGroupFv
 0x0060D310 __dt__8CAiGroupFv
 0x0060D400 __ct__8CAiGroupFv
