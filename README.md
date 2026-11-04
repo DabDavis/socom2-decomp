@@ -2060,6 +2060,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 31** (Revive, the AI-state list's remove_if, ShareTarget, RadioCommand, a build):
+  - a variable whose address is taken, read through a `T *const *` view of its slot, is not merged with the plain reads
+    but is still hoisted out of the loop, the address folding into the load (CSealUnit::Revive 0x5EDE40: each walk reloads
+    `lw a0,36(sp)` as the target does); a `volatile` view is merged like a plain read;
+  - when a search takes its predicate by reference, a functor member read into a local is re-read at every step (the
+    loop's call kills it) while the by-value copy is still hoisted -- remove_if / remove_copy_if<list<CAiState *>,
+    CAiStateDeleteKind> 0x5F8AF0 / 0x5F8C40 close in the functor (`AI_STATE k = m_state; if (k == s->m_state)`), not in
+    include/algorithm;
+  - dead first definitions before the real assignments fix the saved registers inside a loop body; if one of two reads of
+    a field across a call goes through `((const T *)p)->f`, the other reload is done in place (`lw a0,4(s2)`); an if/else-if
+    chain over one member keeps each test before its body, a switch tests every case first; an unsigned byte enum passed to
+    a signed char parameter is sign-extended even straight from a parameter -- a target passing it on unconverted means the
+    callee takes the same enum (UNIT_FORMATION moved into ai_states.h: CAiSFollow::SetFormation takes it);
+  - SEAL_AISTATE.CPP IS BUILT WITH 3.0b50 (its first line, at integration): the breach side test 0x5F3270 is b50's own Dot
+    form -- b52 fuses the second dot product's x and y terms into mula/madd and computes `0 * v.y` again, b50 once; 72
+    spellings under b52 stay 16-22 off -- and nothing else in the unit changes under b50; seal_tasks.cpp's CTDrain::Tick
+    needs b52, so the link is mixed (MAIN's runtime round 7 measured every unit under both builds).
 - **Tells from the game states, round 33** (LoadVehicles and the box corners at last, the exit state's ratings):
   - A CBBox PASSED BY VALUE IS COPIED AS ONE 24-BYTE BLOCK, a local or explicit temporary copy (`CBBox(x)`) as two 12-byte
     blocks, min and max -- func_002A8C90 0x2A8C90 (104 off since round 29) passes `CBBox(*node->GetBBox())` to a corners
