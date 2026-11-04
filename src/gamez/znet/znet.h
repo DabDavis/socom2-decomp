@@ -61,6 +61,9 @@ enum NetThresholdMethod {
  * the old value) */
 struct NetFieldCompare;
 
+/* a game client as the network keeps it (defined where it is read: fts_net_seal.cpp) */
+struct GameClient;
+
 /* a network field's broadcast schedule (SOCOM 1's CZBroadcastSchedule, 16 bytes here: SOCOM 1's
  * double threshold is a float, or a compare function in its place, and SOCOM II passes the byte at
  * 0xC that SOCOM 1 zeroed). The DME copies it whole when a field is registered with it (two ldl/ldr
@@ -130,6 +133,8 @@ public:
     int zNetGetGameSessionMasterClientIndex();
     /* an object by index, 0 when the DME has none (0x30D630, SOCOM 1's 0x321820) */
     NetObject *zNetGetObject(int index);
+    /* a client's record, by index (0x30D5E0; fts_net_seal.cpp reads its object) */
+    GameClient *zNetGetGameClient(int client);
     /* the game connection (an accessor, inlined: fts_remote.cpp's senders load it ahead of an
      * out-of-line call among their arguments, NetSendRequestTeamSwitch's master index) */
     int GetGameConnectionIndex() { return m_GameConnectionIndex; }

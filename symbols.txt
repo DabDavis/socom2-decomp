@@ -3930,7 +3930,7 @@
 0x002B2840 0x88 InitalizeTeamValves__8CMissionFv  # OVL1; s1:calls
 0x002B28D0 0x450 LoadVehicle__8CMissionFP16CVehicleRdrEntryb  # OVL1; s1:calls by hand (the states lane: CSpawners::Tick calls it on &theMission with the spawn's entry and false from the same instruction as SOCOM 1's calls LoadVehicle)
 0x002B2D20 0x124 func_002B2D20  # OVL1
-0x002B2E50 0x5D8 func_002B2E50  # OVL1
+0x002B2E50 0x5D8 LoadVehicles__8CMissionFv  # OVL1; s1:order by hand (the states lane, round 32): SOCOM 1's LoadVehicles__8CMissionFUi, its argument gone (the callers in CMission's Open paths pass this alone, a1 unset) -- the same calls in the same order: CreateRecycler and the spawners' insert for a recycled entry, LoadVehicle, LoadTurrets, the player grid's sqrtf/floorf, UpdateTargetList(true); after func_002B2D20 (its filter) as SOCOM 1's after LoadVehicle
 0x002B3430 0x38 CloseVehicleRdr__8CMissionFv  # OVL1; s1:align
 0x002B3470 0x2C OpenVehicleRdr__8CMissionFv  # OVL1; s1:calls
 0x002B34A0 0xE0 ParseTeamBlock__FP5_zrdr  # OVL1; s1:order by hand (the states lane: SOCOM 1's fts_player.cpp has ParseTeamBlock between OpenVehicleRdr and the player's getters, as here; both walk a _zrdr array's numbers into a 32-team mask; byte-exact in fts_player.cpp)
@@ -3957,7 +3957,7 @@
 0x002B3C70 0x20 func_002B3C70  # OVL1; OVL1's copy of CSealCtrl::SetDoAiMapCollide (slot 0xB4 of CSealCtrlCopy's table; OVL2's 0x592030, the same 0x20 bytes) -- the SEAL lane; ovl-copy: SetDoAiMapCollide__9CSealCtrlFb
 0x002B3C90 0xBC erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>Q33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>  # OVL1; s1:callee
 0x002B3D50 0x74 erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>  # OVL1; s1:align
-0x002B3DD0 0x108 func_002B3DD0  # OVL1
+0x002B3DD0 0x108 insert__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>RCQ29CSpawners9spawn_map  # OVL1; by hand (the states lane, round 32): the spawners' list insert, LoadVehicles' push_back (0x2B30F0 calls it on spawners+0xC, the end node at +0x10, an 8-byte spawn_map copied lw/sw); SOCOM 1's insert__Q23std80__list_deleter<...spawn_map...> at the same call; fts_player.cpp's tail emits it byte-exact
 0x002B3EE0 0x18 __ct__Q23std40__list_deleter<Ui,Q23std13allocator<Ui>>Fv  # OVL1; by hand (the states lane, round 16): the spawners' id list built (include/list's out-of-class constructor), called by fts_player.cpp's initialiser (0x400330) for spawners.m_ids; byte-exact from fts_player.cpp, which now defines spawners and ftsPlayer
 0x002B3F00 0x18 __ct__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; by hand (the states lane, round 16): the spawners' vehicle list built, called by fts_player.cpp's initialiser (0x400330) for spawners.m_spawns; byte-exact from fts_player.cpp
 0x002B3F20 0x60 __dt__Q23std70list<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; by hand (the states lane, round 21): this-tested, calls ~__list_deleter<spawn_map> (0x2B3F80) with 0 as its base, then deletes on a positive flag; ~CSpawners (0x2B4030) calls it with 0 for its list at +0xC after inlining ~list one level; corrected (the states lane, round 21): two this-tests and a call to ~__list_deleter<spawn_map> (0x2B3F80) with 0 -- ~__list_imp inlined one level between, so this is ~list; ~CSpawners reaches it through its spawn list's own class (a this-test, then the call with 0 as a base)
@@ -4037,7 +4037,7 @@
 0x002BA040 0x100 func_002BA040  # OVL1
 0x002BA140 0x5C SendVoteMessage__Fiib  # OVL1; s1:align
 0x002BA1A0 0x4C PickupAckPacketHandler__FiiiPv  # OVL1; s1:align
-0x002BA1F0 0x64 SendPickupAckMessage__FUsii8AckUnion  # OVL1; s1:align; SOCOM II's signature, by hand: its caller 0x59E830 zero-extends the first argument (andi 0xffff) and passes an int second and third; the callee stores the second whole (sw) and the third with sh, neither extended -- SOCOM 1's (int, ushort, uchar) would add two andi; the packet is 8 bytes, the id first (fts_remote.cpp)
+0x002BA1F0 0x64 SendPickupAckMessage__Fiii8AckUnion  # OVL1; s1:align; SOCOM II's signature, by hand: its caller 0x59E830 zero-extends the first argument (andi 0xffff) and passes an int second and third; the callee stores the second whole (sw) and the third with sh, neither extended -- SOCOM 1's (int, ushort, uchar) would add two andi; the packet is 8 bytes, the id first (fts_remote.cpp); the first parameter an int (states r32): fts_remote.cpp's definition taking int is byte-exact, and the caller 0x59E830 zero-extends the count (andi 0xffff) before both calls, as MW passes an unsigned short to an int parameter (the SEALs' round 27)
 0x002BA260 0x54 PickupMayIPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BA2C0 0xA4 func_002BA2C0  # OVL1
 0x002BA370 0x74 AmmoPUPacketHandler__FiiiPv  # OVL1; s1:align
@@ -5777,7 +5777,7 @@
 0x0032C4F0 0x78 CloseAll__11CRdrArchiveFv  # OVL1; s1:order (SOCOM 1's CloseAll: CZAR::Close on every archive of the list)
 0x0032C570 0x80 OpenAll__11CRdrArchiveFv  # OVL1; s1:order (SOCOM 1's OpenAll: ReOpen(1, 1) on every archive of the list)
 0x0032C5F0 0x60 __dt__15CRdrArchiveListFv  # OVL1; s1:order (SOCOM 1's CRdrArchiveList destructor: __sinit_zrdr_archive.cpp's 0x402D70 registers it for the list at 0x488510)
-0x0032C650 0x10 func_0032C650  # OVL1
+0x0032C650 0x10 IsString__5_zrdrCFv  # OVL1; the integrator 2026-11-04, by the UI lane round 20: the body is `type == 3` (lbu, xori 3, sltiu), zrdr.h's `bool IsString() const`; _Refresh 0x385EA0 its only caller
 0x0032C660 0x10 IsArray__5_zrdrCFv  # OVL1; tu: zanim_cmd_parse.cpp~ (1.0 beta); s1:exact
 0x0032C670 0xA0 ReadPacked__8CRdrFileFR7CFileIOUi  # OVL1; s1:align (SOCOM 1's ReadPacked(CFileIO &, unsigned): the buffer malloc'd and read through the file's fread slot, the root an array, Resolve(false); CAiMap::read_readers calls it as SOCOM 1's does)
 0x0032C710 0x1F8 Create__8CRdrFileFPvUii  # OVL1; the name ours (SOCOM II's: a buffer whose first halfword is the format's version made a new CRdrFile (0x34 bytes, the constructor inlined), resolved, deleted if that fails; SOCOM 1's Load built the file in place)
@@ -5933,9 +5933,9 @@
 0x003352C0 0xC func_003352C0  # OVL1
 0x003352D0 0x14 func_003352D0  # OVL1
 0x003352F0 0x404 func_003352F0  # OVL1
-0x00335700 0x1C func_00335700  # OVL1
-0x00335720 0x40 func_00335720  # OVL1
-0x00335760 0x40 func_00335760  # OVL1
+0x00335700 0x1C String__5_zrdrCFv  # OVL1; the integrator 2026-11-04, by the UI lane round 20: the body is `type == 3 ? string : 0`, zrdr.h's inline `char *String() const` out of line; called by _Refresh and 0x3352F0, 0x3357C0, 0x335E20
+0x00335720 0x40 Int__5_zrdrCFv  # OVL1; the world lane round 14: the body is `type == 1 ? integer : type == 2 ? (int)real : 0`, zrdr.h's inline `int Int() const` out of line (ZRDR_INTEGER 1, ZRDR_REAL 2); String 0x335700's sibling, called in pairs by 0x3352F0, 0x3357C0 and 0x335E20
+0x00335760 0x40 Real__5_zrdrCFv  # OVL1; the world lane round 14: the body is `type == 2 ? real : type == 1 ? (float)integer : 0.0f`, zrdr.h's inline `float Real() const` out of line; String 0x335700's sibling, called in pairs by 0x3352F0, 0x3357C0 and 0x335E20
 0x003357A0 0xC func_003357A0  # OVL1
 0x003357B0 0xC func_003357B0  # OVL1
 0x003357C0 0x1FC func_003357C0  # OVL1
@@ -7104,7 +7104,7 @@
 0x00384620 0x478 insert__Q23std66__vector_imp<13CDesignDlgObj,Q23std26allocator<13CDesignDlgObj>,0>FP13CDesignDlgObjUiRC13CDesignDlgObj  # OVL1; s1:order (SOCOM 1's insert__...<13CDesignDlgObj>: resize 0x383960 calls it) -- zui_spec.cpp's template tail
 0x00384AA0 0x60 __fill_n<P13CDesignDlgObj,Ui,13CDesignDlgObj>__3stdFP13CDesignDlgObjUiRC13CDesignDlgObj_v  # OVL1; the UI lane round 16: include/algorithm's fill_n helper over CDesignDlgObj by its body (n counted down behind a test of n, each element assigned through 0x37D910, nothing returned) and its caller, insert<CDesignDlgObj> 0x384620
 0x00384B00 0x64 __copy_backward<P13CDesignDlgObj,P13CDesignDlgObj>__3stdFP13CDesignDlgObjP13CDesignDlgObjP13CDesignDlgObj_P13CDesignDlgObj  # OVL1; the UI lane round 16: include/algorithm's copy_backward helper over CDesignDlgObj by its body (both ends stepped down 40 first, each assigned through 0x37D910) and its caller, insert<CDesignDlgObj> 0x384620
-0x00384B70 0x54 func_00384B70  # OVL1
+0x00384B70 0x54 __ct__13CDesignDlgObjFRC13CDesignDlgObj  # OVL1; the UI lane round 20: by its body (zui_spec.h's inline copy constructor: spec, place and the two strings' words zeroed, the opacity 1.0f, then the assignment 0x37D910 called) and its callers (insert<CDesignDlgObj> 0x384620's six construct sites, each after the out-of-line placement new 0x2FECA0); the draft keeps the code until it is re-emitted under this name
 0x00384BD0 0x178 erase__Q23std70__vector_imp<15CDlgDesignModel,Q23std28allocator<15CDlgDesignModel>,0>FP15CDlgDesignModelP15CDlgDesignModel  # OVL1; the UI lane round 16: vector<CDlgDesignModel>'s range erase by its caller (resize<CDlgDesignModel> 0x383AA0's shrinking arm passes begin() + n and end()) and body (52-byte elements, the tail copied down through 0x384D50, the strings past the new end destroyed)
 0x00384D50 0xA4 __copy<P15CDlgDesignModel,P15CDlgDesignModel>__3stdFP15CDlgDesignModelP15CDlgDesignModelP15CDlgDesignModel_P15CDlgDesignModel  # OVL1; the UI lane round 16: include/algorithm's copy helper over CDlgDesignModel by its body (while first < last, each element assigned: 0x384E00 for the strings at 0 and 0xC, the six floats and the flag copied) and its caller, erase<CDlgDesignModel> 0x384BD0
 0x00384E00 0xCC __as__9CSaferStrFRC9CSaferStr  # OVL1; the UI lane round 16: CSaferStr's implicit assignment's out-of-line copy by its body (basic_string's assignment inlined: both short, the three words through the FPRs, else the template replace 0x1EE780 with the source's text and size; returns this) and its callers, the CDlgDesignModel copy helpers 0x384D50/0x385370/0x385410, two calls per element (the strings at 0 and 0xC)
@@ -7122,8 +7122,8 @@
 0x00385CE0 0xA8 __dt__13CUIVarManagerFv  # OVL1; s1:calls
 0x00385D90 0x5C DetachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls by hand (the HUD lane: UIVarMixin's destructor makes this call where SOCOM 1's calls DetachUIVar)
 0x00385DF0 0x5C AttachUIVar__10UIVarMixinFP11CUIVariable  # OVL1; s1:calls (SystemTuner's constructor calls it with the new variable where SOCOM 1's calls AttachUIVar; detaches the old variable first, as SOCOM 1's)
-0x00385E50 0x48 func_00385E50  # OVL1
-0x00385EA0 0x248 func_00385EA0  # OVL1
+0x00385E50 0x48 RefreshUIVar__FP11CUIVariableP7CSTable  # OVL1; the UI lane round 20: ours, by its body (zui_var.cpp: a variable's name re-created in the table, then its value's strings through _Refresh 0x385EA0 -- what SOCOM 1's CollectGarbage inlined; SOCOM II's CollectGarbage 0x385A60 calls it for every variable)
+0x00385EA0 0x248 _Refresh__FP5_zrdrP7CSTable  # OVL1; the UI lane round 20: s1:order by hand (SOCOM 1's _Refresh(_zrdr *, CSTable *) 0x39E420, at the same place in zui_var.cpp's run between IsAttached and Format: the same recursive walk -- a string re-created in the table, an array's items walked, the walk inlining itself twice -- over SOCOM II's arrays, the count in the length from item 0); 0x385E50 calls it on a variable after re-creating its name
 0x003860F0 0x1B0 Format__11CUIVariableFP5_zrdrPci  # OVL1; s1:order by hand (the UI lane round 19: SOCOM 1's Format__11CUIVariableFP5_zrdrPci between _Refresh and operator=(const char *) as here, its switch, sprintf formats and recursion over an array the same -- SOCOM II drops the strcat of a separator after each item)
 0x003862A0 0x124 __as__11CUIVariableFPCc  # OVL1; s1:calls (the lobby callbacks' (variable, string) setter, as SOCOM 1's) -- the online lane
 0x003863D0 0x8C UpdateDependents__11CUIVariableFv  # OVL1; s1:calls (SyncGameClock calls it third, as SOCOM 1's) -- the online lane
@@ -7278,7 +7278,7 @@
 0x0038D670 0x8 clear__Q23std60vector<P13CSoftKeyboard,Q23std27allocator<P13CSoftKeyboard>>Fv  # OVL1; by hand (the pointer vector's clear out of line, size_ zeroed: ZuiUnInit's FreeVector) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038D680 0x14 __ct__Q23std60vector<P13CSoftKeyboard,Q23std27allocator<P13CSoftKeyboard>>Fv  # OVL1; by hand (the pointer vector's constructor out of line, three words zeroed: FreeVector's temporary in ZuiUnInit) -- zui_skb.cpp; the UI lane round 9: out of zui_skb.cpp's unnamed namespace with the keyboard's classes, now zui_skb.h's (SOCOM II's RTTI string is plain "CBmpWithNode" where SOCOM 1's is "@unnamed@zui_skb_cpp@::CBmpWithNode"; the display unit takes zui_skb.cpp's CBmpWithNode copies, 0x398AA0/0x398A40/0x403800; ~CSkbKeyProps 0x394370 is the Korean unit's, called from here): byte-identical code under the new name
 0x0038D6A0 0xC4 ZuiInit__Fv  # OVL1; s1:calls by hand (SOCOM 1's ZuiInit: UiParams.rdr from data/common read, each of its SoftKeyboards made by CreateSoftKeyboard, the file freed; CMenuState::Init calls it) -- zui_skb.cpp
-0x0038D770 0x174 SkbOpen__Fv  # OVL1; by hand (the UI lane, round 12, ours: the UI command opening the keyboard the display unit names (0x397640; KEYBOARD when empty) with the empty text 0x49EC70 through ShowSkb, the display root g_skbDisplayNode on, the valve skb_done set to whether none was found, the sound 0 played; returns true -- the command table handler 0x2808D0 jumps here; zui_skb.cpp)
+0x0038D770 0x174 SkbOpen__FP13C2DAnimCmdHdrPf  # OVL1; by hand (the UI lane, round 12, ours: the UI command opening the keyboard the display unit names (0x397640; KEYBOARD when empty) with the empty text 0x49EC70 through ShowSkb, the display root g_skbDisplayNode on, the valve skb_done set to whether none was found, the sound 0 played; returns true -- the command table handler 0x2808D0 jumps here; zui_skb.cpp); the UI lane round 20: the handler's parameters (the command table's 0x2808D0 jumps here with the command and the time step, as SOCOM 1's OnSetSkbPurpose jumps to UiSetSkbPurpose(C2DAnimCmdHdr *, float *)); the command is passed on in a0 to SkbSetPurpose 0x397640, whose record it is -- byte-identical code
 0x0038D8F0 0x17C SkbTick__FP9CGameMenubf  # OVL1; the UI lane round 14: ours, by its body (zui_skb.cpp: the showing keyboard g_pActiveSkb ticked -- the display tick 0x3949C0's events handled through 0x38DFE0 with CInput::m_pads[0] and the menu when a1 is set, the USB bitmaps 0x520/0x5D0 shown by KeyboardAttached, the scaling 0x394DA0's result 1 or 2 handled; CGameMenu's tick 0x3654C0 calls it)
 0x0038DA70 0x184 StrToSkbKey__21@unnamed@zui_skb_cpp@FPCc  # OVL1; the UI lane round 15: SOCOM 1's StrToSkbKey__21@unnamed@zui_skb_cpp@FPCc by its body (zui_skb.cpp: SOCOM II's adds the Switch<n> keys and the jamo; the key a name in the rdr gives -- none, a single character, Switch<n> (row 3), the five named characters, the fourteen action keys (row 1), else a jamo through FindJamo (row 2); ParseKeyProps and CreateSoftKeyboard call it), byte-exact
 0x0038DC00 0xA4 func_0038DC00  # OVL1
@@ -7402,11 +7402,11 @@
 0x00394090 0x60 __dt__Q23std54vector<11SKBCOMPLETE,Q23std24allocator<11SKBCOMPLETE>>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, ~vector<SKBCOMPLETE> (two this-tests, the deleter's destructor 0x393DD0 called)
 0x003940F0 0x78 __dt__18CSkbVec<P7SKBRULE>Fv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_rules' destructor (four this-tests; the initialiser registers it)
 0x00394170 0x60 __dt__15CSkbCompleteVecFv  # OVL1; the UI lane round 10: zui_hangul.cpp's tail, s_complete's destructor (the initialiser registers it; ~vector 0x394090 called); the UI lane round 10: zui_hangul.cpp, s_complete's destructor (the initialiser registers it; two this-tests, ~vector<SKBCOMPLETE> 0x394090 called)
-0x003941D0 0x34 func_003941D0  # OVL1
+0x003941D0 0x34 SetShown__12CSkbKeyPropsFb  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: the key props' node at 0x18 shown or hidden through CNode's virtual SetActive, if there is one -- CBmpWithNode::SetShown's body; CSoftKeyboard::ShowElements 0x38B580 calls it for every key of the map)
 0x00394210 0x80 SetSpec__12CSkbKeyPropsFP5_zrdr  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the key props' button spec at 0x10 deleted through its virtual destructor, then a new CButtonSpec(rdr) of 0x118 bytes, or none)
 0x00394290 0x88 PrepForDisplay__12CSkbKeyPropsFPQ23zdb16CTextureRelocMgrP7C2DFontPQ23zdb5CNode  # OVL1; by hand (the UI lane, round 12, ours: the key's button made by its spec's CreateDisplayObj(font, mgr), put on a node of its own under the parent through zui.cpp's 0x36AB20, at the key's place -- CSoftKeyboard::PrepForDisplay calls it for every key; zui_skbview.cpp, byte-exact)
 0x00394320 0x44 InvalidateDisplay__12CSkbKeyPropsFv  # OVL1; by hand (the UI lane, round 12, ours: the key's node forgotten and its button deleted through its virtual destructor -- CSoftKeyboard::InvalidateDisplay 0x38C4D0 calls it for every key of its props map; zui_skbview.cpp, byte-exact)
-0x00394370 0x68 func_00394370  # OVL1
+0x00394370 0x68 __dt__12CSkbKeyPropsFv  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: the key props' spec at 0x10 deleted through its virtual destructor, the delete flag tested -- the destructor zui_skb.h declares; ~CSoftKeyboard 0x38CCA0 calls it for every key, between InvalidateDisplay 0x394320 and SkbLoadUiParams in the same unit's stretch)
 0x003943E0 0x40 SkbLoadUiParams__Fv  # OVL1; ours (zui_hangul.cpp: UiParams.rdr from data/common held for the call to the display unit's 0x397070 and freed, ZuiInit's holder; CMission::Init calls it)
 0x00394420 0xFC func_00394420  # OVL1
 0x00394520 0x2A4 func_00394520  # OVL1
@@ -7417,7 +7417,7 @@
 0x003949C0 0x3D4 func_003949C0  # OVL1
 0x00394DA0 0x1B4 func_00394DA0  # OVL1
 0x00394F60 0x1A8 SkbPadKeyEvent__FP4CPad  # OVL1; ours (the UI lane round 19: the pad's key event through a {dir, button, event} table, then cross/L2/R2 as 5-7; 0x38DC00 hands a nonzero one to SkbHandleKey)
-0x00395110 0xC func_00395110  # OVL1
+0x00395110 0xC SkbEmptyAllowed__Fv  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: s_allowEmpty 0x4A0A50 returned -- the set-up command's byte at 0xA9; OnEnterKey 0x38C040 counts an empty text only when it is clear)
 0x00395120 0x14 func_00395120  # OVL1
 0x00395140 0x1B0 func_00395140  # OVL1
 0x003952F0 0xC func_003952F0  # OVL1
@@ -7439,13 +7439,13 @@
 0x00396D40 0x118 SkbTextFits__FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>b  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: a std::string within the look's byte and UTF-8 character limits for string 0 or 1, 0x4A10C8-0x4A10E0; 0x399EC0 asks)
 0x00396E60 0x54 SkbShifted__FP4CPad  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: CPad's L1 state, 0xD, held or falling, against bitmap 5's node active -- the shift lock; SkbTypeJamo 0x399070 asks)
 0x00396EC0 0x10 func_00396EC0  # OVL1
-0x00396ED0 0x14 func_00396ED0  # OVL1
+0x00396ED0 0x14 SkbQuotesAllowed__Fv  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: !s_noQuotes 0x4A0A58 -- the set-up command's byte at 0xA8; 0x399EC0 types a double quote (34) as an apostrophe (39) when it is false)
 0x00396EF0 0x14 func_00396EF0  # OVL1
 0x00396F10 0x14 func_00396F10  # OVL1
 0x00396F30 0x134 SkbForgetDisplay__Fv  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: the bitmaps' nodes, the 40 key-row bitmaps' through slot 0x30, the six sounds, the display's root node 0x49ED50 and the caption's node zeroed, the caption's text set to none; InvalidateSkbsDisplay calls it)
 0x00397070 0x520 func_00397070  # OVL1
 0x00397590 0xA8 SkbPlaceCursor__FP12CSkbKeyProps  # OVL1; the UI lane round 11: ours, by its body (zui_skbview.cpp: bitmap 2 reloaded at the key's size with its own texture, its node put at the key's place, the key's button SetActive through a member pointer {0, 0x50, 0xC})
-0x00397640 0x1FC func_00397640  # OVL1
+0x00397640 0x1FC SkbSetPurpose__FP12UISkbOpenCmd  # OVL1; the UI lane round 20: ours, by its body (zui_skbview.cpp: the keyboard set up from its command's record -- the purpose string s_openText from the argument's anim name, "$1" the anim's first argument as UINetCensorText reads it, then the UI variable's name, the two strings' limits, the caption and its two titles (MsgPlayer, Action2: "... title too long!" past 0x7F bytes), the two flags, the pad's kept key cleared, the record's keyboard name at 0x58 returned); SOCOM 1's UiSetSkbPurpose(C2DAnimCmdHdr *, float *) 0x3A7150 is its first part; SkbOpen 0x38D770 calls it with the command
 0x00397840 0xC func_00397840  # OVL1
 0x00397850 0x3C SkbGetText__Fb  # OVL1; ours (zui_skbview.cpp: the edited text's buffer 0x4A0A30, or the c_str() of the string the keyboard opened with, 0x4A1300; 0x3998A0 and 0x399D20 call it)
 0x00397890 0x2C func_00397890  # OVL1
@@ -10060,7 +10060,7 @@
 0x00555140 0x8 func_00555140  # OVL2; s1~ OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: OnWeaponHit__Q23zdb7CNodeExFPQ23zdb5CNodePQ23zdb15IntersectStructP12CZProjectile (OVL2's copy, li v0,-1 as OVL1's 0x2742F0)
 0x00555150 0x8 func_00555150  # OVL2; s1~ OnAction__Q23zdb7CNodeExFPQ23zdb5CNodePv (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: Slot0C__Q23zdb7CNodeExFv (OVL2's copy: slot 0xC of __vt__7CSealEx, returns 0 as OVL1's 0x274300)
 0x00555160 0x8 func_00555160  # OVL2; ovl-copy: Slot10__Q23zdb7CNodeExFf (OVL2's copy: slot 0x10 of __vt__7CSealEx, returns false as OVL1's 0x216760)
-0x00555170 0x28 func_00555170  # OVL2; the same words as Top__26RTStack<15CZBodyAnimBlend>Fv (0x219390) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x00555170 0x28 func_00555170  # OVL2; the same words as Top__26RTStack<15CZBodyAnimBlend>Fv (0x219390) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: Top__26RTStack<15CZBodyAnimBlend>Fv (the SEALs, round 29: HandleWepHit 0x5AC660, SOCOM 1's word for word, tail-calls it on CBody+0x50, the blend stack, where SOCOM 1's HandleWepHit calls Top__26RTStack<15CZBodyAnimBlend>Fv)
 0x005551A0 0x14 func_005551A0  # OVL2
 0x005551C0 0x4C func_005551C0  # OVL2
 0x00555210 0x68 func_00555210  # OVL2
@@ -10079,7 +10079,7 @@
 0x005553B0 0x8 CanPursue__8CAiStateCFP11CSealCtrlAi  # OVL2; slot 0x2C of __vt__8CAiState, SOCOM 1's slot 0x24 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553C0 0x8 Virtual34__8CAiStateFP11CSealCtrlAiP8CAiEventP10CZSealBodyb  # OVL2; s1:vtable by hand (slot 0x34 of __vt__8CAiState and of the states that keep it: returns true, as ai_states.h's inline; seal_ai.cpp emits the copy) (the SEAL lane, round 5); slot 0x34's parameters (the kit lane, round 5): its one call, 0x5F95D0's, passes the AI, the event, the owner when a SEAL and a bool in t0; both overrides read the event and the bool
 0x005553D0 0x8 Virtual38__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x38 of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
-0x005553E0 0x8 Virtual3C__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x3C of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
+0x005553E0 0x8 Virtual3C__8CAiStateFP11CSealCtrlAi  # OVL2; s1:vtable by hand (slot 0x3C of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5); by hand (the kit lane, round 29, outside its range: ai_states.h's base declaration): slot +0x3C takes the AI -- both callers (0x5FDE30, 0x5586E8) pass it in a1 after testing its bit 13; the base answers true
 0x005553F0 0x8 Virtual40__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x40 of __vt__8CAiState and of the states that keep it: returns false) (the SEAL lane, round 5)
 0x00555400 0x8 Virtual44__8CAiStateF8AI_STATE  # OVL2; s1:vtable by hand (slot 0x44 of __vt__8CAiState and of every state but CAiSPursue, which overrides it at 0x575950: returns false) (the SEAL lane, round 5)
 0x00555410 0x8 Virtual48__8CAiStateFiP8CAiState  # OVL2; s1:vtable by hand (slot 0x48 of __vt__8CAiState and of every state but CAiSPursue, which overrides it at 0x55A7D0: returns false) (the SEAL lane, round 5)
@@ -10304,7 +10304,7 @@
 0x00572D70 0x228 UpdateEventMask__11CSealCtrlAiFv  # OVL2; s1:order by hand (the SEALs, round 22, the kit lane's round-23 lead: CTTeam::Tick calls it in its join and leave cases where SOCOM 1's CTTeam::Tick calls UpdateEventMask; between OnWeaponEvent's and CreateAiEvent's places as in SOCOM 1; the same three MakeMaskEx statics plus a fourth, the mask at 0x65C as SOCOM 1's m_eventMask at 0x4B8, the team bits 26/28/17 and bits 8/9 as SOCOM 1's m_sleeping/m_snoozing, cleared online)
 0x00572FA0 0x164 CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi  # OVL2; s1:order (seal_ai.cpp: after OnWeaponEvent and the event-mask update, before the AI brain's set-up, as SOCOM 1's CreateAiEvent__9CSealCtrlFQ28CAiEvent5EVENTffbPC6CPnt3DUi; the voice's caller 0x55FEE0 passes its arguments in that order: the kind in a1, two floats, false in a2, the position in a3, an id in t0) -- the SEAL lane, round 4
 0x00573110 0x20 func_00573110  # OVL2
-0x00573130 0xA4C func_00573130  # OVL2
+0x00573130 0xA4C InitAiBrain__11CSealCtrlAiFv  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's InitAiBrain__11CSealCtrlAiFv, between CreateAiEvent and OnMissionEnd in both builds (SOCOM II's new 0x573110 between); CMission::LoadVehicle, RemoteRespawn and DoRespawn call it as SOCOM 1's three call InitAiBrain
 0x00573B80 0x4C OnMissionEnd__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00573BD0 0x144 OnMissionStart__11CSealCtrlAiFv  # OVL2; slot 0x5C of __vt__11CSealCtrlAi (CSealCtrl's OnMissionStart slot)
 0x00573D20 0x134 Initalize__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10724,18 +10724,18 @@
 0x0059DFB0 0x5C4 HandlePickupAck__10CZSealBodyFiiP8AckUnion  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's HandlePickupAck__10CZSealBodyFiUsP8AckUnion, after EnableMPBombGear in both builds and called last by CanPickupNetItem (0x59E830) on the asker's SEAL as SOCOM 1's is -- SOCOM II passes the pickup's id as an int (unmasked); not written yet
 0x0059E580 0x2B0 CheckForAmmoPickups__10CZSealBodyFiP11CPickupAmmoPUsP8AckUnion  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's CheckForAmmoPickups__10CZSealBodyFiP20CZAmmoPickupInstancePUsP8AckUnion, before CanPickupNetItem (0x59E830) in both builds, called from it with (count, the pickup's GetAmmo, the items, &ack) as SOCOM 1's is; walks the ammo stash (CZItemStash Count/Get) where SOCOM 1 walked a pod vector -- the second parameter's type ours (the pickup's CPickupAmmo), not written yet
 0x0059E830 0x1AC CanPickupNetItem__10CZSealBodyFUsiPUsi  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's CanPickupNetItem__10CZSealBodyFUsUsPUsUc, after CheckForAmmoPickups (0x59E580) and HandlePickupAck (0x59DFB0) in both builds and calling both as SOCOM 1's does -- the pickup found (FindPickup for SOCOM 1's FindNetPickup), DebugPickups and an empty ack when none, the count's loop over the ammo (9) and weapon (8) kinds, SendPickupAckMessage, the asker's SEAL by GetEntityById; the id and the asker ints in SOCOM II (fts_remote.cpp's caller)
-0x0059E9E0 0x280 func_0059E9E0  # OVL2
-0x0059EC60 0x1B4 func_0059EC60  # OVL2
-0x0059EE20 0x294 func_0059EE20  # OVL2
-0x0059F0C0 0x548 func_0059F0C0  # OVL2
+0x0059E9E0 0x280 CreateNetAmmoPickup__10CZSealBodyFUsPUsPUsiP6CPnt3D  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's CreateNetAmmoPickup__10CZSealBodyFUsPUsPUsUsP6CPnt3D, between CanPickupNetItem and CreateNetWeaponPickup in both builds; AmmoPUPacketHandler calls it with the packet's item byte, its two short arrays, its id and the place (the types fts_remote.cpp's prototype); it news a CZItemStash and fills it from the kit, unpacking each item's weapon and ammunition (UnpackItemAndAmmoEnums) -- not written; the count an unsigned short (the callee re-extends a1 with andi 0xffff before its loop test, as for an unsigned short parameter: SOCOM 1's Us), the id passed to NetworkCreate unextended (an int); the stash it news is deleted through three out-of-line vector destructors (OVL2 0x5428C0, 0x542850, 0x5427E0 -- pickup_main.cpp's region, three types: to name before it can be written)
+0x0059EC60 0x1B4 CreateNetWeaponPickup__10CZSealBodyFUsiP6CPnt3DP5CQuat  # OVL2; s1:calls by hand (the SEALs, round 29): SOCOM 1's CreateNetWeaponPickup__10CZSealBodyFUsUsP6CPnt3DP5CQuat's job -- the weapon's model instanced at the point, made dynamic, AddTextureAssetCharacter and SetDescendantDI, CPickup::NetworkCreate of kind 8 and the drop anim -- with the item and the net id handed in (WeaponPUPacketHandler 0x2BA4E0 calls it with the packet's unsigned short item, its int id, the place and the rotation, as SOCOM 1's handler calls CreateNetWeaponPickup) where SOCOM 1's took the item out of the SEAL's kit; after CanPickupNetItem in both builds
+0x0059EE20 0x294 HandleKiller__10CZSealBodyFib  # OVL2; s1:calls by hand (the SEALs, round 29): SOCOM 1's HandleKiller__10CZSealBodyFi -- the killer looked up by GetEntityById and cast to a SEAL, the stats' kill or team-kill deduction and death, a valve's MakeCallbacks -- called right after the killer's id is kept (0x547AA0, which HandleDamage and HandleFallingDamage call, and ExecuteAction_CQBAttack/KnifeAttack inline) where SOCOM 1's HandleDamage calls HandleKiller after storing m_killer_index; SOCOM II adds a flag (0x547AA0 passes whether the weapon was one of 0x3C5AC0's five, the attacks 0): bool, unproven
+0x0059F0C0 0x548 PickupItem__10CZSealBodyFP7CPickup  # OVL2; s1:calls by hand (the SEALs, round 29): HandlePickupAck's weapon-pickup arm (kind 8, the answer's first bit) calls it with the pickup where SOCOM 1's HandlePickupAck calls PickupItem__10CZSealBodyFP7CPickup; 0x59F610 (a weapon pickup taken offline) calls it too
 0x0059F610 0xDC func_0059F610  # OVL2
 0x0059F6F0 0x34 func_0059F6F0  # OVL2
 0x0059F730 0x388 func_0059F730  # OVL2
 0x0059FAC0 0x284 func_0059FAC0  # OVL2
 0x0059FD50 0x2E8 func_0059FD50  # OVL2
 0x005A0040 0x228 func_005A0040  # OVL2
-0x005A0270 0x484 func_005A0270  # OVL2
-0x005A0700 0x244 func_005A0700  # OVL2
+0x005A0270 0x484 FindRandomDamageAnim__10CZSealBodyF15DAMAGE_LOCATIONPb  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's FindRandomDamageAnim__10CZSealBodyF15DAMAGE_LOCATIONPb, right before FindRandomDeathAnim in both builds (SOCOM 1's DropAllItems, the two finders, SetArmor, the three armour setups of 0xC8-0xCC bytes and DamageRandomLocation; SOCOM II's 0x5A0040, 0x5A0270, 0x5A0700, the new 0x5A0950, 0x5A0B60/0x5A0BB0, 0x5A0C00/0x5A0CD0/0x5A0DA0 of 0xC8 each and 0x5A0E70 on the pellet tables); UpdateHealth's living branch asks it for a hurt SEAL's anim (location, &flag) and plays it in the SEAL's stance
+0x005A0700 0x244 FindRandomDeathAnim__10CZSealBodyF15DAMAGE_LOCATIONPb  # OVL2; s1:calls by hand (the SEALs, round 29): UpdateHealth's dying branch and OnWeaponHit's dead-SEAL branch call it with (the location or 3, &flag) and hand the anim to WeaponHitAnim with state 8, as SOCOM 1's call FindRandomDeathAnim__10CZSealBodyF15DAMAGE_LOCATIONPb; after FindRandomDamageAnim in both builds
 0x005A0950 0x210 func_005A0950  # OVL2
 0x005A0B60 0x48 func_005A0B60  # OVL2
 0x005A0BB0 0x48 func_005A0BB0  # OVL2
@@ -10753,7 +10753,7 @@
 0x005A2390 0xF8 func_005A2390  # OVL2
 0x005A2490 0x1E8 func_005A2490  # OVL2
 0x005A2680 0x8 func_005A2680  # OVL2
-0x005A2690 0x900 func_005A2690  # OVL2
+0x005A2690 0x900 WeaponHitAnim__10CZSealBodyF8AnimType10SEAL_STATE  # OVL2; s1:calls by hand (the SEALs, round 29): UpdateHealth and OnWeaponHit hand it FindRandomDeathAnim's anim with state 8 where SOCOM 1's call WeaponHitAnim__10CZSealBodyF8AnimType10SEAL_STATEb with (anim, 8, false); SOCOM II's takes no flag (a1 the 2-byte AnimType, a2 the state byte, a3 unread) and finds a death anim itself for an undefined one
 0x005A2F90 0xD4 CheckForRegionTrigger__10CZSealBodyFUi  # OVL2; s1:calls
 0x005A3070 0xF0 GetHeadParams__10CZSealBodyFP6CPnt3DP6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's GetHeadParams__10CZSealBodyFP6CPnt3DP6CPnt3D, after CheckForRegionTrigger in both builds: the head part's place through PartInSpace and the node's matrix, the look's direction through its rotation -- SOCOM II tests each pointer first) -- the SEAL lane, round 12
 0x005A3160 0x58 GetNeckPosW__10CZSealBodyFP6CPnt3D  # OVL2; slot 0x38 of __vt__10CZSealBody (CEntity's slot 0x38, GetNeckPosW in zentity.h; the name ours)
@@ -10788,7 +10788,7 @@
 0x005A5430 0x1C SetHudHitFlag__10CZSealBodyFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order (SOCOM 1's SetHudHitFlag__10CZSealBodyFv word for word, first of the three: bit 1 of the flag byte set, 0x105C here against 0xF58) (the SEAL lane, round 3)
 0x005A5450 0x38 HudUpdateViewCone__10CZSealBodyFv  # OVL2; s1:order (SOCOM 1's HudUpdateViewCone__10CZSealBodyFv, second of the three: bit 0 of 0x105C taken once) (the SEAL lane, round 3)
 0x005A5490 0x40 GetHudHitFlag__10CZSealBodyFv  # OVL2; s1:order (SOCOM 1's GetHudHitFlag__10CZSealBodyFv, third of the three: bit 1 of 0x105C taken once) (the SEAL lane, round 3)
-0x005A54D0 0x1F8 func_005A54D0  # OVL2
+0x005A54D0 0x1F8 UpdateHealth__10CZSealBodyF15DAMAGE_LOCATION15SEAL_DEATH_TYPE  # OVL2; s1:calls by hand (the SEALs, round 29): HandleDamage calls it with (location, 5) in both arms where SOCOM 1's calls UpdateHealth__10CZSealBodyF15DAMAGE_LOCATION15SEAL_DEATH_TYPE with (0, 5); it calls SetHealth(0, type) as SOCOM 1's does, the type compared with 5 (andi) and the location narrowed inside (andi): two byte enums
 0x005A56D0 0xC0 func_005A56D0  # OVL2
 0x005A5790 0x9C func_005A5790  # OVL2
 0x005A5830 0x250 func_005A5830  # OVL2
@@ -10840,13 +10840,13 @@
 0x005AA6E0 0xAD4 func_005AA6E0  # OVL2
 0x005AB1C0 0x3CC func_005AB1C0  # OVL2
 0x005AB590 0x2B4 func_005AB590  # OVL2
-0x005AB850 0x364 func_005AB850  # OVL2
-0x005ABBC0 0x4B0 func_005ABBC0  # OVL2
+0x005AB850 0x364 HandleDamage__10CZSealBodyFP12CZProjectile  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's HandleDamage__10CZSealBodyFP12CZProjectile, before HandleDamageNonExplosive and HandleDamageExplosive in both builds and calling them from the same arms of the same body-part walk (the alive bit first, the last projectile kept, CBody::m_body_parts copied into a local vector, UpdateHealth(loc, 5) online and off, NotifyTargetDown and the stats' death) -- SOCOM II passes the location by address
+0x005ABBC0 0x4B0 HandleDamageNonExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's HandleDamageNonExplosive, between HandleDamage and HandleDamageExplosive in both builds; HandleDamage's non-explosive arm calls it where SOCOM 1's does, the location by address as HandleDamageExplosive's (0x5AC070)
 0x005AC070 0x17C HandleDamageExplosive__10CZSealBodyFP12CZProjectileP10CZBodyPartP15DAMAGE_LOCATION  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's HandleDamageExplosive, after HandleDamageNonExplosive (0x5ABBC0) in both builds, called first from HandleDamage (0x5AB850) as SOCOM 1's is; the same body -- the projectile's bit cleared, a delayed intersection from it to the head (PartInSpace, Apply, Add) and the node ignored -- the location an out-parameter, as the caller's &sp+159 shows
-0x005AC1F0 0x424 func_005AC1F0  # OVL2
+0x005AC1F0 0x424 HandleFallingDamage__10CZSealBodyFf  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's HandleFallingDamage__10CZSealBodyFf, between HandleDamageExplosive and HandleWepHit in both builds: the altitude hit's material, the state 8/10 test and the dynamics' three landing speeds (theCharacterDynamics+0x30) grading the landing 0-3, the material's sound, AdrenalineIncr(0.33/0.66) for grades 1 and 2, UpdateHealth(3, 7) and the grade returned, as SOCOM 1's
 0x005AC620 0x40 func_005AC620  # OVL2
-0x005AC660 0xC func_005AC660  # OVL2
-0x005AC670 0x394 func_005AC670  # OVL2
+0x005AC660 0xC HandleWepHit__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's HandleWepHit__10CZSealBodyFv word for word -- the weapon hit's node cleared (SOCOM II holds the IntersectStruct at 0x10E0: m_wephit.m_node 0x10FC) and a tail call to the blend stack's Top (OVL2's copy 0x555170 on CBody+0x50), after HandleFallingDamage in both builds
+0x005AC670 0x394 OnWeaponHit__10CZSealBodyFPQ23zdb15IntersectStructP12CZProjectile  # OVL2; s1:order by hand (the SEALs, round 29): SOCOM 1's OnWeaponHit__10CZSealBodyFPQ23zdb15IntersectStructP12CZProjectile, after HandleWepHit in both builds and called (a tail call) by CSealEx::OnWeaponHit 0x5B8260 as SOCOM 1's CSealEx calls it: the network and friendly-fire tests, the controller's OnWeaponHit (slot 0x4C), AdrenalineIncr(0.99), the hit kept in m_wephit and HandleDamage; a dead SEAL's death anim through 0x5A0700/0x5A2690 (SOCOM 1's FindRandomDeathAnim(3, ..)/WeaponHitAnim(.., 8))
 0x005ACA10 0x5C func_005ACA10  # OVL2
 0x005ACA70 0x98C func_005ACA70  # OVL2
 0x005AD400 0xC8 ApplyBlinkAnim__10CZSealBodyFv  # OVL2; s1:order by hand (SOCOM 1's ApplyBlinkAnim__10CZSealBodyFv, first of the look stretch ApplyBlinkAnim, ApplyEyeLookAnim, GetLookDir, ApplyLookAnim, BlinkTick ... in both builds; the same body: both lids aligned from unit_nz to the blink's direction, SOCOM 1's 0x2e8/0x2ec = SOCOM II's 0x360/0x364, the blink held at 0x1270) -- the SEAL lane, round 12
@@ -10907,7 +10907,7 @@
 0x005B6240 0x250 func_005B6240  # OVL2
 0x005B6490 0x360 func_005B6490  # OVL2
 0x005B67F0 0xA0 func_005B67F0  # OVL2
-0x005B6890 0x4C func_005B6890  # OVL2; the same words as __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x005B6890 0x4C func_005B6890  # OVL2; the same words as __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (the SEALs, round 29: HandleDamage 0x5AB850 copies CBody::m_body_parts into a local vector through it, where SOCOM 1's HandleDamage calls the pod vector's copy constructor; seal_env.cpp emits it)
 0x005B68E0 0x2E8 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs  # OVL2; s1:calls; the MSL headers round 16: include/vector's 2-byte pod insert (the char pod's, memmove/memcpy, the fill re-reading the value as a signed half -- lh, where SOCOM 1's 0x2CD740 has lhu), byte-exact in seal_env.cpp's template tail (push_back's, the death and flinch readers)
 0x005B6BD0 0x110 reserve__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FUi  # OVL2; by hand (the SEAL lane, round 19): the pod vector's reserve for a 2-byte element (new(n * 2), the old block memcpy'd over and deleted, 'vector::reserve length error'): InitDeathAndFlinchAnimations reserves 8 in each anim-type table with it, as SOCOM 1's reserves its vector<AnimType>s; beside insert__...<Us> (0x5B68E0); the MSL headers round 16: include/vector's 2-byte pod reserve (the 4-byte pod's with memcpy), byte-exact in seal_env.cpp's template tail
 0x005B6CE0 0x4C4 func_005B6CE0  # OVL2; the SEAL lane, round 21: the class vector<CZDecalDef>'s insert, OVL2's copy (OVL1's 0x3D3D90 is 0x4CC): InitDecalHandles pushes each blood decal through it (end(), 1, the def) where SOCOM 1's calls insert__Q23std60__vector_imp<10CZDecalDef,...>; ovl-copy: insert__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FP10CZDecalDefUiRC10CZDecalDef
@@ -10915,7 +10915,7 @@
 0x005B7350 0x5BC func_005B7350  # OVL2
 0x005B7910 0x8 func_005B7910  # OVL2; the MSL headers round 17: OVL2's copy of the deleter's clear (the size zeroed) -- vector::clear() 0x5A3D00 jumps to it; ovl-copy: clear__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv
 0x005B7920 0x68 __dt__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL2; by hand (the MSL headers round 17): the deleter's destructor, clear inlined (the size zeroed, the data freed) -- OVL2's ~vector<CZDecalDef> 0x5A3C60 calls it; seal_env.cpp's tail emits it byte-exact once UninitDatabaseHandles' FreeVector generates clear and it ahead of the reserve 0x5B71B0 and insert 0x5B6CE0, which then inline it
-0x005B7990 0x190 func_005B7990  # OVL2; the same words as init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v (0x259b90) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
+0x005B7990 0x190 func_005B7990  # OVL2; the same words as init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v (0x259b90) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies); ovl-copy: init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v (the SEALs, round 29: the OVL2 pod copy constructor 0x5B6890 calls it, as OVL1's 0x259B40 calls 0x259B90; seal_env.cpp emits it)
 0x005B7B20 0x74 func_005B7B20  # OVL2; the same words as __dt__6CStackFv (0x2d4fe0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005B7BA0 0x5EC UpdateAiMapLoc__10CZSealBodyFv  # OVL2; slot 0x48 of __vt__10CZSealBody (CEntity's UpdateAiMapLoc slot; SOCOM II's takes no argument, as UpdateAiMapLoc__7CEntityFv)
 0x005B8190 0xC8 ftmask_create__FP5_zrdr  # OVL2; s1:order by hand (the kit lane, round 10): SOCOM 1's ftmask_create__FP5_zrdr sits right before CSealEx::OnWeaponHit as this does before 0x5B8260 -- the same array walk, a bit per number (SOCOM II's arrays count in length, items from 0)
@@ -11375,12 +11375,12 @@
 0x005EA880 0x34 IsAi__10CZSealBodyFv  # OVL2; by hand (the kit lane, round 14): the SEAL's controller tested and its IsAi (CSealCtrl slot 0x30) called, the shape of zseal.h's IsPlayer/IsRemote; an inline's copy among IssueCommand's (IssueCommand calls it on 0x5EEDB0's SEAL) -- the name ours
 0x005EA8C0 0x1B0 func_005EA8C0  # OVL2
 0x005EAA70 0x128 GetAiModes__9CSealUnitFPScPSc  # OVL2; by hand (the kit lane, round 19; the name ours): the two AI mode bytes (SEAL_AI_PARAMS 0x26C/0x26D) of the squad's first AI SEAL, else from each sub-squad (recursive); 0x5EABA0 calls it for the team command menu
-0x005EABA0 0x1C4 func_005EABA0  # OVL2
-0x005EAD70 0x13C func_005EAD70  # OVL2
+0x005EABA0 0x1C4 ConfirmCommand__9CSealUnitF10FT_COMMANDUci  # OVL2; s1:order by hand (the kit lane, round 29): SOCOM 1's ConfirmCommand (0x2D2030) -- both read ShouldConfirmVoiceCommands first and return at once without it, both build the command's sound name with sprintf and play it, and both sit after IssueCommand; SOCOM II's takes the command, an item byte and an unused int (the HUD's menu orders, tcmTeamMember/tcmTeamCommand, pass (unit, s_tcmMember, c, 0)): 55 for the moves, 12 for the item commands, else SND_<mode><mode>_<command>[<item>] from GetAiModes and the two name tables (0x58EF80, 0x58EB00)
+0x005EAD70 0x13C AcknowledgeCommand__9CSealUnitF10FT_COMMANDUci  # OVL2; by hand (the kit lane, round 29; the name ours): new in SOCOM II -- the squad's canned answer to a command when ShouldConfirmVoiceCommands (0x3DF1D0) is set: 84, or 55 for the moves (3-6, 17), 56 else (0x5EAF20); the HUD's voice-recognition orders call it (tcmTeamMember/tcmTeamCommand in reco mode pass (unit, s_tcmMember, c, 0)); SOCOM 1's ConfirmCommand is 0x5EABA0
 0x005EAEB0 0x68 func_005EAEB0  # OVL2
 0x005EAF20 0x270 func_005EAF20  # OVL2
 0x005EB190 0x3E8 func_005EB190  # OVL2
-0x005EB580 0x148 func_005EB580  # OVL2
+0x005EB580 0x148 FollowSeal__9CSealUnitFP10CZSealBody  # OVL2; by hand (the kit lane, round 29; the name ours): new in SOCOM II -- IssueCommand's four calls (0x5E97B8, 0x5E9A48, 0x5E9BF8, 0x5E9C90): the SEAL made the follow's source (+0xB4, SOCOM 1's m_follow_source), the new byte +0xA2 set, the follow (4) given every other SEAL, the escortees with the first and every squad under it (their table's IssueCommand), 0x5E7830 when no SEAL took the escortees; the SEAL returned
 0x005EB6D0 0x1CC func_005EB6D0  # OVL2
 0x005EB8A0 0x70 func_005EB8A0  # OVL2
 0x005EB910 0x240 func_005EB910  # OVL2
@@ -11556,11 +11556,11 @@
 0x005F8900 0x8 CanAttack__13CAiSSuspendedCFv  # OVL2; by hand: CAiSSuspended's vtable slot +0x24 (CanAttack; SOCOM 1's in the same tail position)
 0x005F8910 0x8 CanPursue__13CAiSSuspendedCFP11CSealCtrlAi  # OVL2; by hand: CAiSSuspended's vtable slot +0x2C (CanPursue; SOCOM 1's in the same tail position)
 0x005F8920 0x8 CanPursue__10CAiSBreachCFP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x2C (CanPursue, jr ra; move v0,zero as SOCOM 1's)
-0x005F8930 0x8 Virtual3C__10CAiSBreachFv  # OVL2; by hand: CAiSBreach's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): false (the base's is true)
+0x005F8930 0x8 Virtual3C__10CAiSBreachFP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): false (the base's is true); by hand (the kit lane, round 29): slot +0x3C takes the AI (its callers 0x5FDE30, 0x5586E8 pass it in a1)
 0x005F8940 0x78 __dt__10CAiSScriptFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F89C0 0x78 __dt__8CAiSGotoFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8A40 0x8 Virtual40__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x40, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true (the base's is false)
-0x005F8A50 0x14 Virtual3C__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2
+0x005F8A50 0x14 Virtual3C__8CAiSGotoFP11CSealCtrlAi  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2; by hand (the kit lane, round 29): slot +0x3C takes the AI (its callers 0x5FDE30, 0x5586E8 pass it in a1)
 0x005F8A70 0x78 __dt__10CAiSPickupFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8AF0 0x110 remove_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 5): std::remove_if over the state stack with CAiStateDeleteKind (Remove's, 0x5F81E0), the template tail of seal_aistate.cpp; find_if and the functor inlined
 0x005F8C00 0x18 func_005F8C00  # OVL2
@@ -11593,8 +11593,8 @@
 0x005FD6F0 0x94 func_005FD6F0  # OVL2
 0x005FD790 0x33C func_005FD790  # OVL2
 0x005FDAD0 0x224 func_005FDAD0  # OVL2
-0x005FDD00 0x38 Virtual3C__10CAiSFollowFv  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C
-0x005FDD40 0x180 func_005FDD40  # OVL2
+0x005FDD00 0x38 Virtual3C__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C; by hand (the kit lane, round 29): slot +0x3C takes the AI -- both callers (0x5FDE30, 0x5586E8) pass it in a1 after testing its bit 13; the code reads none of it
+0x005FDD40 0x180 CheckMaster__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 29; the name ours): CAiSFollow::Tick's first call (0x5FB220) -- the AI's follow master (+0x5D4) made the state's (+0x58; a new one restarts the step, UpdatePhase(0) inlined), true while it lives (CEntity's m_isAlive), flag 8 (+0x6C) set when a navy SEAL's AI-driven master's AI has bit 13 and its state's +0x3C answers, else SetFollowMaster(0); open, 0x178 against 0x180
 0x005FDEC0 0xB8 GetStatus__10CAiSFollowCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FDF80 0x270 OnSignal__10CAiSFollowFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x8 (OnSignal)
 0x005FE1F0 0x2C8 func_005FE1F0  # OVL2
@@ -11612,7 +11612,7 @@
 0x005FF090 0x60 __dt__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FF0F0 0x104 __ct__15CSealCtrlSquirmFv  # OVL2; s1:calls (ftsCreateSeal's squirm branch, where SOCOM 1's calls __ct__15CSealCtrlSquirmFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x005FF200 0xEC SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat  # OVL2; by hand (the kit lane, round 7): CAiTrigger's times set -- the first Rfloat to m_dn_time (+8), the second to m_up_time (+0), m_marker = (float)m_up_time, m_timer = m_marker + (float)m_dn_time; the squirm's and SEAL_AI_PARAMS' constructors call it with (0.5-1.2, 0.1-0.5), SOCOM 1's inline CAiTrigger() -- the name ours
-0x005FF2F0 0xAB8 func_005FF2F0  # OVL2
+0x005FF2F0 0xAB8 DrawOctahedron__2aiFQ22ai9LINE_TYPEPC6CPnt3Dff  # OVL2; by hand (the kit lane, round 29; the name ours): new in SOCOM II, seal_ailines.cpp's first function -- twelve lines about a point (four corners half the width out in x/z, two tips half the height up and down, the width the height's when -1), DrawLine's kind test once and its body written out per line under the unit's dont_inline (the copies 0x5FFDB0-0x5FFDEF follow it); CAiSFollow::Tick calls it with (512, goal, 4, 3)
 0x005FFDB0 0xC StackTop__2aiFR6CStack  # OVL2; by hand (the kit lane, round 28; the class and name ours): the out-of-line copy of the lines' matrix stack's top (CStack::m_top read, this -- the CStack at OVL2 bss 0x66BB08 the unit's initialiser 0x668FB0 builds -- dropped; DrawLine, LineTo and 0x5FF2F0 call it) -- seal_ailines.cpp; by hand (the kit lane, round 28): the stand-in's name -- the stack (CStack at bss 0x66BB08) handed in a0 and dropped, CStack::m_top returned; likely a CStack member in the original
 0x005FFDC0 0x8 LineColor__2aiFRC6CPnt3D  # OVL2; by hand (the kit lane, round 28; the name ours): the out-of-line copy of seal_ailines.cpp's colour accessor (a0 handed back: DrawLine, LineTo and 0x5FF2F0 call it on ai_line_color 0x66BAE0, the unit compiled without inlining) -- seal_ailines.cpp
 0x005FFDD0 0x18 __ct__6CPnt4DFffff  # OVL2; s1:exact
@@ -11742,7 +11742,7 @@
 0x0060A850 0xE8 func_0060A850  # OVL2
 0x0060A940 0xDC __ct__9CAiTargetFv  # OVL2; by hand (the kit lane, round 6): CAiTarget's constructor -- SEAL_AI_PARAMS's constructor (0x60BF40) calls it on +0x42C (the controller's 0x67C, after the event queue, as SOCOM 1's CSealCtrlAi constructor calls __ct__9CAiTargetFv on m_target after m_eventQueue), CTurret's constructor (0x3AA478) too; SOCOM 1's CheckLineOfFire/CAiTarget unit closes with it, and SOCOM II's sits after CheckLineOfFire (0x609DF0)
 0x0060AA20 0x57C func_0060AA20  # OVL2
-0x0060AFA0 0x174 func_0060AFA0  # OVL2
+0x0060AFA0 0x174 func_0060AFA0  # OVL2; by hand (the kit lane, round 29; the name unknown): the target visibility update from its finished ray -- the request (CTarget+0x28) taken when registered, 0x60AA20 (SOCOM 1s ComputeVisibility by place) blended between -0.15 and 1.15, scaled by the rays age, added to the visibility (+0x18), seen at 1, saturated; SOCOM 1s CSealCtrl::SensorTick did it inline; the OVL1 turret code 0x3A82C0 calls it
 0x0060B120 0x344 func_0060B120  # OVL2
 0x0060B470 0x37C func_0060B470  # OVL2
 0x0060B7F0 0xF8 func_0060B7F0  # OVL2

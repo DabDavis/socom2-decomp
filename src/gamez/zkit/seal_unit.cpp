@@ -21,11 +21,13 @@
  * order (-inline deferred) where it matters. */
 
 #include <list>
+#include <stdio.h>
 #include <string.h>
 
 #include "../../ai/ai_states.h"
 #include "../zanim/zanim.h"
 #include "../znet/znet.h"
+#include "../zsnd/zsnd.h"
 
 extern "C" {
 /* CSealCtrlAi::GetAiState (OVL2 0x5F6010, seal_aistate.cpp's; zseal.h's CSealCtrlAi does not
@@ -71,6 +73,8 @@ public:
      * and IsRemote; the name ours) -- an inline whose out-of-line copy follows IssueCommand (OVL2
      * 0x5EA880), defined here until IssueCommand is written */
     bool IsAi();
+    /* an order given to the SEAL (OVL2 0x590AC0, zseal.h's) */
+    void IssueCommand(CZSealBody *from, FT_COMMAND cmd, void *data, bool b);
 
     unsigned char _170[0x1060 - sizeof(CEntity)];
     unsigned int m_do_drop_weapons : 1;   // 0x1060 (zseal.h's bits)
@@ -266,7 +270,7 @@ public:
     clist m_commands;   // 0x94 (SOCOM 1's at 0x70): the squad's orders
     unsigned char m_a0;   // 0xa0: set when an escortee joins so (SOCOM 1's m_issue_unit_follow, 0x7c)
     unsigned char m_a1;   // 0xa1 (SOCOM 1's m_issue_sub_unit_follow)
-    unsigned char _a2;
+    unsigned char m_a2;   // 0xa2 (new in SOCOM II: set when the squad is told to follow a SEAL -- 0x5EB580; the name ours)
     unsigned char m_a3;   // 0xa3 (SOCOM 1's m_member_died)
     unsigned char m_a4;   // 0xa4 (SOCOM 1's m_ambush)
     unsigned char _a5[0xa8 - 0xa5];
@@ -292,6 +296,20 @@ public:
      * last squad under it that has one; whether any had (OVL2 0x5EAA70, new in SOCOM II: the team
      * command menu asks it through 0x5EABA0; the name ours) */
     bool GetAiModes(signed char *a, signed char *b);
+    /* a command voiced when the option asks for it (ShouldConfirmVoiceCommands), true when it does
+     * not: ConfirmCommand the order itself, a sound named from the squad's two AI modes, the command's
+     * name and the item's -- SOCOM 1's ConfirmCommand by that, by its test of the flag first and its
+     * place after IssueCommand, its arguments SOCOM II's (OVL2 0x5EABA0, the HUD's menu orders);
+     * AcknowledgeCommand the squad's answer, one of three canned sounds (OVL2 0x5EAD70, new in SOCOM
+     * II: the HUD's voice-recognition orders; the name ours). Both take the command, a byte the item
+     * commands ask and an int no caller sets but 0 */
+    bool ConfirmCommand(FT_COMMAND cmd, unsigned char item, int flags);
+    bool AcknowledgeCommand(FT_COMMAND cmd, unsigned char item, int flags);
+    /* the squad told to follow a SEAL: it made the follow's source, every other SEAL of the squad,
+     * the escortees with the first of them, and every squad under it given the follow (4) -- with no
+     * SEAL to give it the escortees are seen to at once (0x5E7830); the SEAL handed back (OVL2
+     * 0x5EB580, IssueCommand's four calls; new in SOCOM II, the name ours) */
+    CZSealBody *FollowSeal(CZSealBody *seal);
 };
 
 bool CSealUnit::m_created_units_test;
@@ -822,7 +840,139 @@ extern "C" {
 /* the squad's awareness (0x5E76D0: SOCOM 1's GetAwareCounter by position), a squad sound by number
  * with a chance (0x5EAF20) and the squad's formation set (0x5EB6D0) */
 int func_005E76D0(CSealUnit *unit);
-void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
+bool func_005EAF20(CSealUnit *unit, int sound, bool b, float chance);
+/* (the sound's answer and its bool argument: the two command voicings use the one and pass the
+ * other unextended), and a command that takes an item (seal_cfg.cpp's 0x58DFA0, the SEALs': kinds 2, 9-13 and 16) */
+bool func_0058DFA0(unsigned char item);
+/* a command's and an item's names (seal_cfg.cpp's 0x58EF80 -- "CMD_" and the name, the prefix skipped
+ * here -- and 0x58EB00, the SEALs') */
+const char *func_0058EF80(unsigned char cmd);
+const char *func_0058EB00(unsigned char item);
+}
+
+/* whether the squads answer orders over the radio (SOCOM 1's ShouldConfirmVoiceCommands, gp-30916
+ * there: its ConfirmCommand reads it first; SOCOM II's OVL1 data 0x3DF1D0, which UIStoreOptions sets
+ * from the ORDER_RESPONSE_CONTROLLER valve -- ConfirmCommand and AcknowledgeCommand read it first) */
+extern bool ShouldConfirmVoiceCommands;
+
+/* (OVL2 0x5EB580: the walks' ends taken into locals first -- the end before the iterator in each:
+ * the iterators s0/s4, the ends s1/s5, as the target's; tested against end() the two swap) */
+CZSealBody *CSealUnit::FollowSeal(CZSealBody *seal)
+{
+    m_follow_source = seal;
+    m_a2 = 1;
+    bool escort = !m_escortees.empty();
+
+    slist::iterator end = m_seals.end();
+
+    for (slist::iterator i = m_seals.begin(); i != end; ++i) {
+        if (*i != seal)
+            (*i)->IssueCommand(seal, (FT_COMMAND)4, 0, true);
+        if (escort) {
+            for (slist::iterator ee = m_escortees.end(), e = m_escortees.begin(); e != ee; ++e)
+                (*e)->IssueCommand(seal, (FT_COMMAND)4, 0, true);
+            escort = false;
+        }
+    }
+    if (escort)
+        func_005E7830(this);
+    ulist::iterator uend = m_sub_units.end();
+
+    for (ulist::iterator u = m_sub_units.begin(); u != uend; ++u)
+        (*u)->IssueCommand(seal, (FT_COMMAND)4, 0, true);
+    return seal;
+}
+
+/* an AI mode as GetAiModes hands it back (zseal.h's AI_MODE, a byte enum: loaded with lb, widened with
+ * andi for sprintf) */
+enum UNIT_AI_MODE { UNIT_AI_MODE_0 = 0, UNIT_AI_MODE_LAST = 255 };
+
+/* (OVL2 0x5EABA0): the moves (1, 14, 16, 19) sound 55, the item commands (9, 10, 12) sound 12; any
+ * other its own sound, "SND_<mode><mode>_<command>" with the item's name after it when there is one
+ * (commands 11, 13 and 23 never name one), played at full volume. The result one bool, preset to the
+ * option's negation, as AcknowledgeCommand's; the two modes copied out of GetAiModes' bytes into
+ * byte-enum locals (lb, widened with andi for sprintf) declared first and assigned second-then-first
+ * -- the target's load order with its registers; initialised in place they load first-then-second */
+bool CSealUnit::ConfirmCommand(FT_COMMAND cmd, unsigned char item, int flags)
+{
+    bool r = !ShouldConfirmVoiceCommands;
+    bool first = m_unit_num == 1;
+
+    if (!r) {
+        switch (cmd) {
+        case 1:
+        case 16:
+        case 19:
+        case 14:
+            r = func_005EAF20(this, 55, first, 1.0f);
+            break;
+        case 10:
+        case 9:
+        case 12:
+            r = func_005EAF20(this, 12, first, 1.0f);
+            break;
+        case 13:
+        case 11:
+        case 23:
+            item = 0;
+        default: {
+            UNIT_AI_MODE a, b;
+            char name[64];
+
+            UNIT_AI_MODE ma, mb;
+
+            GetAiModes((signed char *)&a, (signed char *)&b);
+            mb = b;
+            ma = a;
+            const char *what = func_0058EF80(cmd) + 4;
+
+            if (item == 0)
+                sprintf(name, "SND_%d%d_%s", mb, ma, what);
+            else
+                sprintf(name, "SND_%d%d_%s%s", mb, ma, what, func_0058EB00(item));
+            CSnd *snd = CSnd::GetSoundByName(name);
+
+            if (snd) {
+                snd->PlaySoundVol(1.0f, 0, 255);
+                r = true;
+            }
+        }
+        }
+    }
+    return r;
+}
+
+/* (OVL2 0x5EAD70): none asked -- or an item command with no item -- sound 84; the moves (3-6, 17)
+ * 55; any other 56; the squad numbered 1 says so (the sound's third argument, a bool: an int
+ * parameter adds an andi). One result, preset to the option's negation: the early answer is that
+ * value narrowed (`andi v0,a2,0xff`), each sound's bool narrowed into it; the byte tested `== 0`
+ * (re-extended before the branch, as the target; `!item` branches on the register) */
+bool CSealUnit::AcknowledgeCommand(FT_COMMAND cmd, unsigned char item, int flags)
+{
+    bool r = !ShouldConfirmVoiceCommands;
+    bool first = m_unit_num == 1;
+
+    if (!r) {
+        if (cmd == CMD_UNKNOWN)
+            r = func_005EAF20(this, 84, first, 1.0f);
+        else if (func_0058DFA0(cmd) && item == 0)
+            r = func_005EAF20(this, 84, first, 1.0f);
+        else {
+            switch (cmd) {
+            case 3:
+            case 4:
+            case 5:
+            case 6:
+            case 17:
+                r = func_005EAF20(this, 55, first, 1.0f);
+                break;
+            default:
+                r = func_005EAF20(this, 56, first, 1.0f);
+                break;
+            }
+        }
+    }
+    return r;
 }
 
 extern "C" {

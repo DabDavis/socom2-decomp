@@ -77,7 +77,13 @@ void CRipple::Uninit()
  * copy, an assignment, a brace-initialised PNT3D, a packing helper or a normal setter taking the
  * floats (0x90-0x98), a const reference to a temporary (0xF0, the products in the walk), the shorts
  * computed ahead of the walk; a function-scoped `#pragma opt_propagation off` comes nearest (0xF4:
- * the products hoisted into f20/f21, their conversions left in the walk) */
+ * the products hoisted into f20/f21, their conversions left in the walk). The world lane's round 14
+ * (build/scratch/wld/v_flat*.py): the target's dsll32/dsra32 in its preheader say the hoisted values
+ * are narrowed shorts held in registers -- under the pragma, `int x = (short)(sc * up.x)` (and y, z)
+ * with `float sc = 32767.5f` hoists the whole conversion and reaches the right size, 8 instructions
+ * off (the two products computed y first, and the constants in f3/f2 against the target's f2/f1/f0;
+ * every declaration and operand order tried keeps 8 or more); a const reference to a temporary
+ * gives the target's out-of-line preheader (the entry test repeated) with the vector in memory */
 #pragma auto_inline off
 void CRipple::Flatten()
 {

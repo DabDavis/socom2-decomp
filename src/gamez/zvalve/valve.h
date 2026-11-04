@@ -39,20 +39,22 @@ extern CValvePool valvePool;        /* 0x49E820 (SOCOM 1's static of valve_list.
                                        initialiser builds it, 0x4034F0) */
 
 /* Close's, Reset's and Uninit's remove_if predicate: a valve of the type (any, for 0) deleted, or
- * given back to the pool, its name freed (SOCOM 1's functor; the type a byte, read unsigned).
+ * given back to the pool, its name freed (SOCOM 1's functor; the type a byte enum).
  * Inline: its out-of-line copy follows remove_if's instance, with the iterator's pieces */
 struct CValveOpDelete {
     CValveOpDelete(VALVE_TYPE type) : m_type(type) {}
-    /* its out-of-line copy in valve_list.cpp's tail is 0x352610: OPEN, 6 instructions, registers
-     * only -- the target loads m_type into a0 (this dying there) and builds the test's bool in v1,
-     * here the other way round. Tried: the test through an inline bool member (as the condition or
-     * into the local), m_type read into a local first, the comparison's operands swapped; the world
-     * lane's round 7: an if-assigned or ternary bool, the kept copy declared first, the type through
-     * a byte accessor, static helpers taking the type before or after the valve (all 6 words, or
-     * longer) -- build/scratch/wld/v_vod*.py */
+    /* its out-of-line copy in valve_list.cpp's tail is 0x352610 (byte-exact, and remove_copy_if
+     * 0x352710 with it, since the world lane's round 14): the type read into a local of the byte
+     * enum. Straight off the member the two copies miss together -- the out-of-line one numbers the
+     * type's load after the bool (the type in v1, the bool in a0: the target's other way round),
+     * and the loop's copy hoists the member's load into an in-line preheader where the target's
+     * sits after the loop, repeating the entry test; an int or unsigned local gives the loop and
+     * turns the out-of-line copy's branches into xor/sltiu values -- only the enum gives both
+     * (build/scratch/wld/v_vod.py) */
     bool operator()(CValve *valve)
     {
-        bool del = valve->m_type == m_type || m_type == 0;
+        VALVE_TYPE type = m_type;
+        bool del = valve->m_type == type || type == VALVE_ANY;
 
         if (del) {
             /* the copy the push takes by reference: only it goes to memory (stored ahead of the
@@ -69,7 +71,7 @@ struct CValveOpDelete {
         return false;
     }
 
-    unsigned char m_type;
+    VALVE_TYPE m_type;
 };
 
 /* a valve command's data (SOCOM 1's struct name, from its mangled members): the valve, and the
