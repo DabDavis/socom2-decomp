@@ -9,16 +9,44 @@
 
 #include "../../gamez/ztwod/ztwod.h"
 
-/* an action's entry (0xE0 bytes; only the bitmap at 0x10 placed: the name ours) */
-struct ACTION_ENTRY {
-    unsigned char _0[0x10];
-    C2DBitmap m_bitmap;   // 0x10
-    unsigned char _90[0xe0 - 0x90];
+#include <string.h>
+
+/* an action's name before it has one (OVL1 .data 0x3DC680, a pointer variable: the entries'
+ * constructor and 0x2209C0 load it; the name ours) */
+static const char *c_szUnknownAction = "UNKNOWN";
+
+/* an action's icon (SOCOM 1's CActionTxtr, its DWARF: 0xE0 bytes -- the texture, the action, the
+ * bitmap at 0x10, the name at 0x90; SOCOM II's action a byte and its flag at 0xD1). Its inline
+ * constructor's and implicit destructor's copies are this unit's tail (0x220CA0, 0x220C30), the
+ * array's __construct_array and __arraydtor 0x220C10 calling them; the destructor byte-exact.
+ * OPEN, the constructor (0x48 against 0x54): the target reaches the name's load through a folded
+ * test -- `b` over a dead `b; move a1,zero` arm, a ternary `COND ? c_szUnknownAction : 0` whose
+ * condition MW knew true -- where the plain copy loads the pointer straight. Tried: `true ?`,
+ * `1 ?`, the pointer itself, `this` (a real beqz, 5 off), m_name, &m_2DBitmap, &c_szUnknownAction */
+class CActionTxtr {
+public:
+    CActionTxtr()
+    {
+        m_texhandle = 0;
+        m_action_id = 0;
+        strcpy(m_name, c_szUnknownAction);
+        m_active = false;
+    }
+
+    zdb::CTexHandle *m_texhandle;   // 0x0
+    unsigned char m_action_id;   // 0x4
+    C2DBitmap m_2DBitmap;   // 0x10
+    char m_name[64];   // 0x90
+    unsigned char m_d0;   // 0xd0
+    bool m_active;   // 0xd1
 };
 
-/* the unit's statics (bss; the initialiser builds them; no rows yet): the action entries and the
- * string the action's prompt is written in */
-extern ACTION_ENTRY data_0040C200[22];
+/* the action icons (OVL1 bss 0x40C200, 22 of them: the unit's initialiser 0x3FE550 builds them;
+ * SOCOM 1's machine held them by pointer -- the name ours) */
+CActionTxtr g_arrActionTxtrs[22];
+
+/* the string the action's prompt is written in (the texture machine's at 0x40D550 + 0x14, by
+ * address until the machine is written) */
 extern C2DString data_0040D564;
 
 class CZActionBitmap : public C2DBitmap {
@@ -36,7 +64,7 @@ void CZActionBitmap::UnInit()
 
     text.ClearAndWipe();
     for (unsigned int i = 0; i < 22; i++) {
-        data_0040C200[i].m_bitmap.SetTrans(0.0f);
-        data_0040C200[i].m_bitmap.Off();
+        g_arrActionTxtrs[i].m_2DBitmap.SetTrans(0.0f);
+        g_arrActionTxtrs[i].m_2DBitmap.Off();
     }
 }

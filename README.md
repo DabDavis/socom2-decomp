@@ -1965,6 +1965,41 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 3** (five static initialisers, a new zanim_cmd_parse.cpp, the equipment pickers):
+  - a search loop that breaks on a hit, followed by `i != e`, makes MW narrow the iterator's `!=` result with `andi 0xff` and
+    reuse it after the loop (ChooseEquipmentForCharacter 0x282A90);
+  - a unit that only declares an element's constructors and destructor emits different class-vector instances from the
+    unit that defines them -- OVL1's do_assign and clear call them out of line where OVL2's inline them: the special members
+    were non-inline in the original (CCharacterWeap's three, 0x53EF50-0x53EFD0, named at integration; with them zanim_menu.cpp's
+    do_assign 0x284720 and clear 0x285230 copies are byte-exact); do_assign's reallocation branch instantiates the class
+    clear() in the tail even when the unit's own code never calls clear();
+  - a static initialiser running an inline constructor stores fields in the constructor body's statement order, not member
+    order (__sinit_anim_main.cpp 0x3FFBE0: ZAnim); `insert(i, x)`'s by-reference parameter needs a copy (`added = t`) to keep
+    `t` in a register (AddTask: passing `t` itself sends it to memory, 0x1CC vs 0x1B0); a draft's `sc: as=` line keeps a
+    renamed row matched while its hand source is still off;
+  - the world's zanim.h requests made: CValveList as a class (__sinit_valve_list.cpp, ~CValveList 0x352900),
+    CSched_Manager() (__sinit_zsys_sched.cpp, its constructor and destructor); __sinit_con_ps2.cpp by
+    `CConsole::m_console("default console")`; zanim_cmd_parse.cpp is SOCOM 1's file (0x25BC20-0x25D22F: its initialiser the
+    <iostream> pair); CBody::AddBodyPart returns its part;
+  - open: AddTask 0x34E6B0 (9: the three insert calls' iterator temporaries' slots), OnIsEquipmentSelected 0x280790 (0x120
+    vs 0x138: the target re-reads the weapon list's size and data each pass), ChooseEquipmentForCharacter (0x154 vs 0x184:
+    the three picks' bools by branches), CConsole's constructor 0x29D7B0 (3, left on its draft).
+- **Tells from the AI core, round 22** (the maps' initialisers, SetRegionType, GetRandomLoc, the vehicle footprint):
+  - a `rand()` draw written as an inline function of its own makes its arm end on a label padded to 8 bytes (the target's
+    nop after `mfhi`); written inline in the arm, MW leaves the join unpadded and fills the `b` delay slot -- GetRandomLoc
+    0x529EE0 (open since round 10) and CVehicleRdrEntry::Randomize 0x533040, and MakeNoise's joins lined up;
+  - a non-const local copied from a const pointer parameter is numbered after the parameters; a byte-enum parameter stored
+    into a bit-field as `(int)` reuses the compare's narrowed value (SetRegionType 0x529C00);
+  - a static whose constructor is defined out of line and dead-stripped is inlined by the initialiser whole or not at all,
+    and that out-of-line definition lets the initialiser inline the out-of-class template members it uses
+    (__sinit_ai_maps.cpp 0x668710: byte-exact only at inline depth 6 -- another level-6 case; CAiMaps() is in ABSENT.txt);
+  - MW deletes a branch whose body it can see is empty -- an empty asm, a dead raw load, an inlined accessor whose callees
+    it also inlined (plan_legcomplete: `asm volatile { nop }` gives the size);
+  - __sinit_ai_path.cpp 0x668680 builds CAiMapLoc::invalid (every bit set); CAiMap::TileFootprint 0x515880 and
+    region::SetCorners 0x515DE0 (CVehicle::Tick's; names ours); CAiPath::UpdatePointFlags (SOCOM 1's) and RebuildLegs
+    (ours) as members;
+  - open: MakeNoise (19) and MakeNoiseXZ (13, right size: two saved float registers swapped), GetStartMatrix (66, right
+    size), CAiMap::GetLocation(point) 0x515F80 (0x1A0 vs 0x198: m_ny loaded early, the bool narrowed), remove_if<_tick>.
 - **Tells from the weapons, round 19** (CTurretDef::Parse, __sinit_zwep_weapon.cpp, the explosion statics):
   - an inline's by-value float whose address is taken (saturated in place) gets the frame's lowest slot, below the caller's
     temporaries; a named local sits above them; `m_b = m_a = x` stores both from one register where two statements reload an

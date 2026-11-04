@@ -58,6 +58,11 @@ namespace zdb {
 class CTexHandle;
 class CTexPalette;
 class CModel;
+/* a visual, as much as the particles read (znode.h's tag_VISUAL_HEAD flags word) */
+class CVisual {
+public:
+    unsigned int m_flags;   // 0x0: tested by mask (znode.h's)
+};
 /* a buffer's dynamic textures (znode.h's classes: two pointer vectors) */
 class CTexList : public std::vector<CTexHandle *> {
 };
@@ -76,7 +81,10 @@ class CNodeVector : public std::vector<CNode *> {
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
-    unsigned char _0[0x60];   // 0x0: tag_NODE_PARAMS
+    unsigned char _0[0x5c];   // 0x0: tag_NODE_PARAMS
+    unsigned int _5c : 7;   // 0x5c
+    unsigned int m_transparent : 1;   // 0x5c: bit 7
+    unsigned int _5c_8 : 24;
 
     /* SOCOM II's vtable order (znode.h's), the pointer at 0x60; declared only */
     virtual ~CNode();
@@ -97,6 +105,10 @@ public:
     static void Delete(CNode *node);
     void SetPosition(float x, float y, float z);
     void DeleteVisuals();
+    void AddVisual(CVisual *vis);
+
+    unsigned char _64[0x9c - 0x64];
+    float m_Opacity;   // 0x9c
 };
 
 class CCamera {
@@ -108,7 +120,7 @@ class CWorld : public CNode {
 public:
     static CWorld *m_world;
 
-    unsigned char _64[0x128 - 0x64];
+    unsigned char _a0[0x128 - 0xa0];
     CCamera *m_camera;   // 0x128
 };
 }
@@ -296,7 +308,7 @@ public:
     float m_lifespan;   // 0x48
     unsigned char _4c[4];   // 0x4c
     Instance *m_listNext;   // 0x50: the next live instance (List's link), cleared when recycled
-    unsigned char _54[4];   // 0x54
+    float m_opacity;   // 0x54 (Destruction_Instance::SetVisual hands it to the node; the name ours)
 };   // 0x58 bytes
 
 /* a piece of a destroyed object flying off (SOCOM 1's Destruction_Instance): its life at 0x48, the
@@ -308,6 +320,9 @@ public:
     void Tick(float dT);
     void Render(const CMatrix &m);
     void Recycle();
+    /* SOCOM II's: the piece's visual handed to its node (SOCOM 1 passed it to Create; the name
+     * ours) */
+    void SetVisual(zdb::CVisual *vis);
 
     static InstancePool<Destruction_Instance> m_instance_pool;   // 0x488468
 
