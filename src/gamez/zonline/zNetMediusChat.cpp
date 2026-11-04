@@ -713,7 +713,6 @@ void func_00621F90(int conn, int clients, void (*cb)(int, int));   /* (the DME's
 void func_002EFA60(int, int);   /* its callback */
 void func_002F7C40(void *rules);   /* the game's rules filled in (the lobby unit's) */
 int func_002E99F0();   /* (the clan unit's) */
-extern int data_0066A5C8;
 extern int data_0066A838;   /* our performance figure */
 extern char *data_004364FC;
 extern LANMissionRules *data_00437CE8;
@@ -738,7 +737,16 @@ inline int MissionNumber()
  * sp_wr*.py, 25 spellings): the ternary either way round, `== 0`/`!`, if/else chains and early
  * returns in the inline, the expression written in the caller, an out-parameter (pointer,
  * reference, returned reference), the delay's test as ==/ternary/if-else, a pointer or reference
- * to the field -- 9 at best (SOCOM 1's inlined report has the target's shape exactly, 0x32CFB0) */
+ * to the field -- 9 at best (SOCOM 1's inlined report has the target's shape exactly, 0x32CFB0).
+ * Round 15: the miss is jump threading -- the inner zero arm must branch to the final join, so the
+ * inner and outer arms assign ONE variable (no inner-ternary temporary left at an inner join): an
+ * if/else chain into one local does thread (12: the `b`s go straight to the join) but schedules
+ * `p + 2` into atoi's delay slot where the nested ternary leaves it for the bnez's; `p + 2` taken
+ * into a local first, the per-arm stores, `&&`/`||` forms and ten more inline spellings are no
+ * nearer. GetGameInfo 0x303780 inlines the same expression and its target threads the same way
+ * (written `== 0` there it misses exactly as here); CreateGame 0x303F40's target merges the two
+ * zero arms instead. The report's GenericField1 is LobbyWorldID (0x66A538: the source said
+ * 0x66A5C8 until round 15, a wrong reference the instruction count did not show) */
 extern "C" int func_002EF590(CValve *locked)
 {
     MediusWorldReport rep;
@@ -771,7 +779,7 @@ extern "C" int func_002EF590(CValve *locked)
     rep.GameLevel = MissionNumber();
     if (!rep.GameLevel)
         delay = 5000;
-    rep.GenericField1 = data_0066A5C8;
+    rep.GenericField1 = LobbyWorldID;
     rep.GenericField2 = data_0066A838;
     rep.GenericField3 = func_002E99F0();
     if (locked->m_value)
