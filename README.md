@@ -2060,6 +2060,23 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 38** (hud_mpweaponsel.cpp's selector and categories, zui_2d.cpp's radio strip):
+  - a member pointer read straight each time (`m_selected[i].m_weapon->...`) becomes a CSE temporary numbered after the
+    inlines' variables, a named local, slot pointer or reference swaps its register with an inline parameter's
+    (CMPWeaponSel::CanSelect 0x23E910); a byte enum passed by value to two inlines from one read gives one `lb` and an
+    `andi` at each compare, held in a named local MW folds it into `lbu`; a caller copying a byte-enum field with `lb`
+    means the callee's parameter is that enum (an int parameter makes it `lbu`: SlotList::NextWeapon's two last);
+  - a one-case switch gives `beq` to the case with the preset in the delay slot and a `b` over it, the `if` form branches
+    the other way; two list walks -- an iterator initialised for the first and reassigned for the second -- live in two
+    frame slots (two webs), and each walk needs an end local of its own for its saved register (CRadioStrip::PressActive
+    0x370DB0);
+  - a lookup over C2D's inline base must go through an inline for every count and for the fallback -- calling
+    `GetUICommandType(0)` directly flips the last test's block layout (CUIListBox::GetZAnimCmdType 0x373640); a store
+    ending in a call's delay slot was last in program order (SlotList's m_owner zeroed after its slot loop);
+  - CMPWeaponSel's SetCharacterWeapons 0x23E5E0, SetState 0x240B90, Open 0x23E370 (On inlined) and constructor 0x241A90,
+    CMPWeaponCategories' Move 0x23D060 and TickArrows 0x23D2B0 (its two static colours guarded), CRadioStrip::HandlePad,
+    CHProgressBar::LoadSpec (SOCOM 1's); hud_weaponsel.h's inline constructors renumbered hud_scorepopup.cpp's
+    __arraydtor$N statics (no-target before and after).
 - **Tells from the kit and AI states, round 31** (Revive, the AI-state list's remove_if, ShareTarget, RadioCommand, a build):
   - a variable whose address is taken, read through a `T *const *` view of its slot, is not merged with the plain reads
     but is still hoisted out of the loop, the address folding into the load (CSealUnit::Revive 0x5EDE40: each walk reloads
