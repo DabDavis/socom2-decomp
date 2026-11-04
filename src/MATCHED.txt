@@ -1678,8 +1678,10 @@
 0x0020D310 __ct__15CZMPBombMapItemFPQ23zdb5CNode
 0x0020D390 Draw__9CZLineMapFPQ23zdb7CCamera
 0x0020D5E0 Draw__9CPlainBmpFPQ23zdb7CCamera
+0x0020DF70 TickRegions__9CZLineMapFRC6CAiMapb
 0x0020E370 TickLines__9CZLineMapFRC6CAiMapfb
 0x0020E470 TickLine__9CZLineMapFRCQ26CAiMap4linefb
+0x0020EBD0 Tick__9CZLineMapFP11CZNewHudMapf
 0x0020EF50 SetupWideLine__9CZLineMapFRCQ26CAiMap4lineRC9LINE_DATA
 0x0020F100 FindValid__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrFv
 0x0020F1C0 IsValid__Q225@unnamed@hud_linemap_cpp@12CAiLinePtItrCFv
@@ -1816,6 +1818,7 @@
 0x00222130 __ct__10PoseBitmapFv
 0x00222190 __dt__15CZPlayerMapItemFv
 0x002222B0 MissionEndCleanup__15CZPlayerMapItemFv
+0x00222C80 GetBlipID__15CZPlayerMapItemFP10CZSealBody
 0x00222EB0 DrawAlphaBravo__15CZPlayerMapItemFPQ23zdb7CCamera
 0x00222F10 PostDraw__15CZPlayerMapItemFPQ23zdb7CCamera
 0x00222F30 Draw__15CZPlayerMapItemFPQ23zdb7CCamera
@@ -2699,6 +2702,7 @@
 0x00271950 ActivateSequence__6CZAnimFPCc
 0x002719B0 __dt__13CZAnimArgListFv
 0x00271AE0 __dt__9CZAnimArgFv
+0x00271EE0 AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket
 0x002720E0 GetCmd__13CZAnimArgListFi
 0x002721C0 GetValve__13CZAnimArgListFi
 0x002722A0 FindNode__13CZAnimArgListFPQ23zdb5CNode
@@ -2742,6 +2746,7 @@
 0x00274930 GetMenuStack__Fv
 0x00274C00 UIUpdateServerInfo__FP13C2DAnimCmdHdrPf
 0x00274D60 UILobbyDisconnect__FP13C2DAnimCmdHdrPf
+0x00274DB0 UICompareValues__FP13C2DAnimCmdHdrPf
 0x00274FC0 UICompareValuesParse__FPCcP5_zrdr
 0x00275130 UIUpdateAcctInfo__FP13C2DAnimCmdHdrPf
 0x002756A0 UIPersonaParse__FPCcP5_zrdr
@@ -2796,6 +2801,7 @@
 0x00278D60 UISetDefaultMenuScreen__FP13C2DAnimCmdHdrPf
 0x00278DF0 UIGameStatePopCommand__FP13C2DAnimCmdHdrPf
 0x00278EA0 UIHaveBeenBannedFromGame__FP13C2DAnimCmdHdrPf
+0x002791E0 UIRemoveNonSuppressionMaps__FP13C2DAnimCmdHdrPf
 0x00279400 UISelectLocale__FP13C2DAnimCmdHdrPf
 0x00279490 UIAdvanceMPMission__FP13C2DAnimCmdHdrPf
 0x002795D0 UIIsClanChallengeGame__FP13C2DAnimCmdHdrPf
@@ -2864,6 +2870,7 @@
 0x0027C750 UIToggleAutoMessages__FP13C2DAnimCmdHdrPf
 0x0027C7E0 UIClearGameState__FP13C2DAnimCmdHdrPf
 0x0027C7F0 UIFlushMenuHistory__FP13C2DAnimCmdHdrPf
+0x0027C8D0 __dt__12CPopUpDialogFv
 0x0027C9F0 UISetMenuState__FP13C2DAnimCmdHdrPf
 0x0027CAF0 UIReadyToLoad__FP13C2DAnimCmdHdrPf
 0x0027CB80 UISendChatText__FP13C2DAnimCmdHdrPf
@@ -2920,6 +2927,7 @@
 0x0027EF60 FetchMissionFontsRdr__Fv
 0x0027EF70 Unload_MissionReader__Fv
 0x0027EFF0 PopUpDialog__10CMenuStackFPCc
+0x0027F190 GetPopUp__10CMenuStackFv
 0x0027F250 __ct__12CWrappedTextFv
 0x0027F3F0 AddToHistory__10CMenuStackFPCc
 0x0027F460 HandleCommand__10CMenuStackFPCc
@@ -2936,9 +2944,10 @@
 0x0027FF00 UIUpdateMpFinalStatsUiVars__FP13C2DAnimCmdHdrPf
 0x0027FF20 OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x0027FFB0 OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
-0x00280040 func_00280040
+0x00280040 OnReplayMission__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x002800C0 OnRemoveEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
-0x00280770 func_00280770
+0x00280560 GetMissionTitle__24@unnamed@zanim_menu_cpp@FPCc
+0x00280770 OnIsMissionSuccessful__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf
 0x002808D0 func_002808D0
 0x00280D60 UICanCharactersSelectUIWeapon__FP13C2DAnimCmdHdrPf
 0x00280E90 CanTakeItem__24@unnamed@zanim_menu_cpp@F10EQUIP_ITEMRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr
@@ -6619,7 +6628,7 @@
 0x00391350 SkbHangulClear__Fv
 0x00391450 KeyToJamo__Fc
 0x003914A0 SkbHangulRestart__FP10CSkbPieces
-0x00391D30 func_00391D30
+0x00391D30 __ml__Q23std75reverse_iterator<Q33std40__vector_imp<Ui,Q23std13allocator<Ui>,1>8iterator>CFv
 0x00391D80 func_00391D80
 0x00391D90 func_00391D90
 0x00391DA0 func_00391DA0
@@ -6669,6 +6678,7 @@
 0x003948F0 SkbToggleLock2__Fv
 0x00394920 SkbToggleCaption2__FP13CSoftKeyboard
 0x00394DA0 SkbScale__FP13CSoftKeyboardf
+0x00394F60 SkbPadKeyEvent__FP4CPad
 0x00395110 SkbEmptyAllowed__Fv
 0x00395120 func_00395120
 0x00395140 SkbSetKeyTextures__FPQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>P8CSkbLook
@@ -8335,6 +8345,7 @@
 0x0050F990 func_0050F990
 0x0050FA50 func_0050FA50
 0x0050FAD0 func_0050FAD0
+0x0050FBD0 erase__Q23std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>FQ33std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>19generic_iterator<0>Q33std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>19generic_iterator<0>
 0x0050FC90 insert__Q23std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>FQ33std68__list_deleter<14CAiEventHandle,Q23std27allocator<14CAiEventHandle>>19generic_iterator<0>RC14CAiEventHandle
 0x0050FD90 remove_copy_if<Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>,Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>,5_tick>__3stdFQ33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>5_tick_Q33std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>19generic_iterator<0>
 0x0050FE80 push_back__Q23std46list<P8CAiEvent,Q23std21allocator<P8CAiEvent>>FRCP8CAiEvent
@@ -8397,6 +8408,7 @@
 0x005128C0 clear__Q23std48vector<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv
 0x005128D0 __ct__Q23std48vector<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>>Fv
 0x005128F0 Init__7CAiStarFv
+0x00512CB0 is_traversable__18CRestrainedPlannerFP6CAiMapP7CAiPathRC9CAiMapLocQ26CAiMap3DIRR9CAiMapLocRP7CAiCell
 0x005132A0 clear__Q23std48__vector_deleter<4node,Q23std16allocator<4node>>Fv
 0x005132B0 push_heap<Q33std46__vector_imp<4node,Q23std16allocator<4node>,0>8iterator,Q23std14greater<4node>>__3stdFQ33std46__vector_imp<4node,Q23std16allocator<4node>,0>8iteratorQ33std46__vector_imp<4node,Q23std16allocator<4node>,0>8iteratorQ23std14greater<4node>_v
 0x00513460 pop_heap<Q33std46__vector_imp<4node,Q23std16allocator<4node>,0>8iterator,Q23std14greater<4node>>__3stdFQ33std46__vector_imp<4node,Q23std16allocator<4node>,0>8iteratorQ33std46__vector_imp<4node,Q23std16allocator<4node>,0>8iteratorQ23std14greater<4node>_v
@@ -8826,6 +8838,7 @@
 0x0053EFA0 __ct__14CCharacterWeapFRC14CCharacterWeap
 0x0053EFD0 __ct__14CCharacterWeapFv
 0x0053EFF0 FindGear__18CCharacterGearListFPCc
+0x0053F0B0 ResetGears__14CCharacterTypeFv
 0x0053F1A0 remove_if<Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator,PFP14CCharacterType_b>__3stdFQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorQ33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iteratorPFP14CCharacterType_b_Q33std70__vector_imp<P14CCharacterType,Q23std28allocator<P14CCharacterType>,1>8iterator
 0x0053F290 remove_if<Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator,12compare_item>__3stdFQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iteratorQ33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator12compare_item_Q33std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>8iterator
 0x0053F370 do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v
@@ -8914,7 +8927,7 @@
 0x00544C30 CurrentPickup__10CZSealBodyFv
 0x00544C40 CompassAnchor_MPBase__10CZSealBodyFP14CCompassAnchor
 0x00544C60 CompassAnchor_MPBomb__10CZSealBodyFP14CCompassAnchor
-0x00544C80 ActionSelectionMask__10CZSealBodyFUc
+0x00544C80 ActionSelectionMask__10CZSealBodyFi
 0x00544CA0 ActionAvailableMask__10CZSealBodyFUcb
 0x00544CF0 func_00544CF0
 0x00544FC0 func_00544FC0
@@ -9024,6 +9037,7 @@
 0x005558D0 func_005558D0
 0x00555B80 func_00555B80
 0x005561C0 func_005561C0
+0x00556280 func_00556280
 0x00557190 func_00557190
 0x00557D90 func_00557D90
 0x00557DC0 __pl__6CPnt3DCFRC6CPnt3D
@@ -9165,6 +9179,7 @@
 0x00571000 func_00571000
 0x00571100 func_00571100
 0x00571150 func_00571150
+0x005712F0 func_005712F0
 0x00571420 OnStateChange__11CSealCtrlAiF10SEAL_STATE10SEAL_STATE
 0x00571AB0 OnSetHealth__11CSealCtrlAiFff
 0x00572190 func_00572190
@@ -9232,18 +9247,21 @@
 0x005762E0 func_005762E0
 0x005765F0 func_005765F0
 0x00576700 func_00576700
+0x00576E30 CombineRotations__9CSealAnimFii
+0x00577700 AnimPop__9CSealAnimFv
+0x00577DF0 func_00577DF0
 0x00577E40 IsCurrentBlend__10CZSealBodyCF8AnimType
 0x005780E0 func_005780E0
 0x00578110 func_00578110
 0x00578150 AdrenalineIncr__10CZSealBodyFf
 0x005781B0 Adrenaline__10CZSealBodyFv
-0x005788E0 func_005788E0
-0x00578900 func_00578900
-0x00578940 func_00578940
-0x00578950 func_00578950
-0x00578960 func_00578960
-0x00578970 func_00578970
-0x00578980 func_00578980
+0x005788E0 end__Q23std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>Fv
+0x00578900 __pp__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorFi
+0x00578940 GetName__7AnimSetFv
+0x00578950 __ml__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorCFv
+0x00578960 __as__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorFRCQ33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iterator
+0x00578970 begin__Q23std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>Fv
+0x00578980 __ct__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorFv
 0x00578D10 func_00578D10
 0x00579210 func_00579210
 0x00579DA0 func_00579DA0
@@ -9340,6 +9358,7 @@
 0x0058BAB0 func_0058BAB0
 0x0058BB50 GetMaxXMotion__10CZSealBodyFRfRf
 0x0058BC00 GetMaxZMotion__10CZSealBodyFRfRf
+0x0058BCB0 SetMaxMotion__10CZSealBodyFv
 0x0058C2B0 func_0058C2B0
 0x0058C2F0 func_0058C2F0
 0x0058C350 BindAnimSet__10CZSealBodyFP7AnimSet8AnimType10SEAL_STATEb
@@ -9348,6 +9367,7 @@
 0x0058C5D0 func_0058C5D0
 0x0058C820 func_0058C820
 0x0058C960 func_0058C960
+0x0058C970 func_0058C970
 0x0058C9E0 func_0058C9E0
 0x0058CA60 func_0058CA60
 0x0058CB30 func_0058CB30
@@ -9508,6 +9528,7 @@
 0x005A1FF0 ReportWeaponHitDamage__10CZSealBodyFP12CZProjectileii15DAMAGE_LOCATIONffbUc
 0x005A21B0 func_005A21B0
 0x005A2390 func_005A2390
+0x005A2490 func_005A2490
 0x005A2680 func_005A2680
 0x005A2F90 CheckForRegionTrigger__10CZSealBodyFUi
 0x005A3070 GetHeadParams__10CZSealBodyFP6CPnt3DP6CPnt3D
@@ -9607,6 +9628,7 @@
 0x005B0EB0 CheckDILadder__10CZSealBodyFv
 0x005B10B0 PostCheckDILadder__10CZSealBodyFv
 0x005B1350 func_005B1350
+0x005B14E0 func_005B14E0
 0x005B1570 func_005B1570
 0x005B1750 func_005B1750
 0x005B1890 func_005B1890
@@ -9799,6 +9821,8 @@
 0x005CE040 Tick__7CTValveFP14_zanim_cmd_hdrPf
 0x005CE8E0 Parse__8CTTurretFP5_zrdr
 0x005CEC40 Parse__6CTTeamFP5_zrdr
+0x005CF290 Parse__8CTRegionFP5_zrdr
+0x005CF480 Tick__7CTRangeFP14_zanim_cmd_hdrPf
 0x005CF6F0 Parse__7CTRangeFP5_zrdr
 0x005CF800 Tick__9CTStopAllFP14_zanim_cmd_hdrPf
 0x005CF860 Parse__9CTStopAllFP5_zrdr
@@ -9809,6 +9833,8 @@
 0x005D1210 End__7CTSoundFP14_zanim_cmd_hdr
 0x005D1250 Begin__7CTSoundFP14_zanim_cmd_hdr
 0x005D2310 Parse__12CTSetAnimSetFP5_zrdr
+0x005D2480 Tick__9CTSetModeFP14_zanim_cmd_hdrPf
+0x005D2630 Parse__9CTSetModeFP5_zrdr
 0x005D2890 Tick__8CTSelectFP14_zanim_cmd_hdrPf
 0x005D28A0 Parse__8CTSelectFP5_zrdr
 0x005D29F0 Create__8CTSelectFP10CZSealBody
@@ -9844,6 +9870,7 @@
 0x005DC6B0 Begin__12CTFireWeaponFP14_zanim_cmd_hdr
 0x005DC800 Parse__12CTFireWeaponFP5_zrdr
 0x005DC8A0 Tick__10CTFireModeFP14_zanim_cmd_hdrPf
+0x005DCE70 Tick__7CTEventFP14_zanim_cmd_hdrPf
 0x005DD0D0 Begin__7CTEventFP14_zanim_cmd_hdr
 0x005DD0E0 Parse__7CTEventFP5_zrdr
 0x005DD2A0 End__7CTDrainFP14_zanim_cmd_hdr
@@ -11690,6 +11717,7 @@
 0x00668540 __sinit_ai_astar.cpp
 0x00668630 __sinit_ai_map.cpp
 0x00668680 __sinit_ai_path.cpp
+0x006687D0 __sinit_ai_vismap.cpp
 0x006687E0 __sinit_seal_ai.cpp
 0x00668940 __sinit_seal_body.cpp
 0x00668DB0 __sinit_seal_kit.cpp

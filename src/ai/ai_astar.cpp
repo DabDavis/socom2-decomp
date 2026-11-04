@@ -89,21 +89,23 @@ CAiPathQueue path_queue;
 }
 
 /* the restrained planner's step: the search limited to 5000 cells, the base's test, no soil 6,
- * and no closed door (SOCOM 1's CRestrainedTravel, the same tests). The soil read once (the base's
- * test written out, so MW shares its load with the soil-6 test; through CAiCell::IsTraversable it
- * reloads it), the action's type through an inline byte enum compared `== 0` (only that order puts
- * the valid arm first without materialising the bit).
- * OPEN, right size, 24 instructions: registers only -- the target keeps the cell in a0, the soil
- * in a3 and the inlined test's bool in a2 (so `move a0,a1` for GetCellAction cannot take the
- * branch's delay slot), this build the cell in a2, the soil in a0, the bool in a3. IsTraversable
- * called on the cell gives the target's a0/a2 but loses the shared load; a local copy of the cell,
- * an unsigned char soil, the call unqualified were tried */
+ * and no closed door (SOCOM 1's CRestrainedTravel, the same tests). The soil read once into a
+ * byte-enum local ahead of the base's test (written out, so MW shares its load with the soil-6
+ * test; through CAiCell::IsTraversable it reloads it), the action's type through an inline byte
+ * enum compared `== 0` (only that order puts the valid arm first without materialising the bit).
+ * The soil a named local of the caller's (the AI core round 25): numbered before the inlined
+ * test's bool, with the cell's load a later temporary, it gives the target's colouring -- the cell
+ * in a0, the bool in a2, the soil in a3 (open since round 14 at 24 instructions with the soil read
+ * in the test: soil a0, cell a2, bool a3); as an int local it colours the same but compares
+ * without the target's `andi 0xff`, which the enum (or an `(unsigned char)` cast) restores */
 bool CRestrainedPlanner::is_traversable(CAiMap *map, CAiPath *path, const CAiMapLoc &from,
                                         CAiMap::DIR dir, CAiMapLoc &to, CAiCell *&cell)
 {
     if (path->m_search_limit > 5000)
         path->m_search_limit = 5000;
-    if (!CAiPlanner::is_traversable(map, path, from, dir, to, cell) || cell->m_soil == 6)
+    CAiMap::SOIL soil = (CAiMap::SOIL)cell->m_soil;
+
+    if (!CAiPlanner::is_traversable(map, path, from, dir, to, cell) || soil == CAiMap::SOIL_CLIMB)
         return false;
     if (cell->m_action) {
         CAiMap::action *a = map->GetCellAction(to);

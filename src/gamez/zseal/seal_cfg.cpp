@@ -537,19 +537,12 @@ int CZSealBody::MixAnims(CActiveAnimList *list, CBlendable *blendable, float sca
 /* the anim set's speeds set, then the prone crawl's forward and back, its two strafes and the ladder's
  * from their scripts' distance units scaled by the factor, 0 for an anim the set lacks (OVL2 0x58BCB0:
  * SOCOM 1's SetMaxMotion, after GetMaxZMotion in both builds -- SOCOM 1's took the body's anims'
- * maximum velocities).
- * OPEN, 4 instructions (the size right): in the two strafe lookups the target loads the AnimTypes
- * static (a1) before the set (a0, in the call's delay slot), as a right-to-left argument order would;
- * MW loads the set first here. `a` declared ahead of `set` gives their saved registers and the factor
- * through the by-value accessor its $f20 (both needed); tried: the static through a const reference or
- * a short cast, the set in a block-local, an inline member wrapper and a real AnimSet member call (the
- * same order), the product's operands swapped. Round 18, with 0x5E3D90 named AnimSet::GetScript(type)
- * (the kit lane's round 19 predicted the member call would load the type first): spelled as the member
- * call, still 4 -- and so are the type in a block-local (AnimType, short, int), through an inline
- * (`AsType(short)`, `RStrafe()`), the call wrapped in an inline (`Id(...)`, a store helper taking the
- * result) or reached through a static inline taking the body. BlendedClimb's identical call (nested in
- * GetActiveAnim's argument list, after a branch) does load the type first: the order is the scheduler's,
- * set by the block's context, not by the call's spelling */
+ * maximum velocities). `a` declared ahead of `set` gives their saved registers and the factor through
+ * the by-value accessor its $f20. In the two strafe lookups the target loads the AnimTypes static (a1)
+ * before the set (a0, in the call's delay slot): the two statics are AnimTypes themselves, passed with
+ * no conversion (round 34) -- as shorts cast to the enum, MW loads the set first (4 off since round 17,
+ * whatever the call's spelling); an argument needing a conversion is evaluated after `this`, one
+ * needing none before it (0x5B14E0's unsigned index the other way round). */
 void CZSealBody::SetMaxMotion()
 {
     CZSIScriptCommon *a;
@@ -566,12 +559,12 @@ void CZSealBody::SetMaxMotion()
         set->m_aparams.m_prone_max_fwd = 0.0f;
         set->m_aparams.m_prone_max_back = 0.0f;
     }
-    a = m_animset->GetScript((AnimType)AnimTypes::ProneRStrafe);
+    a = m_animset->GetScript(AnimTypes::ProneRStrafe);
     if (a)
         set->m_aparams.m_prone_max_rt = a->DistanceScale() * Factor(a);
     else
         set->m_aparams.m_prone_max_rt = 0.0f;
-    a = m_animset->GetScript((AnimType)AnimTypes::ProneLStrafe);
+    a = m_animset->GetScript(AnimTypes::ProneLStrafe);
     if (a)
         set->m_aparams.m_prone_max_left = a->DistanceScale() * Factor(a);
     else
@@ -841,21 +834,26 @@ extern "C" const char *func_0058E900(unsigned char cmd)
 }
 
 /* an anim type for the item in hand: item 1's and item 2's variants, any other the type itself (OVL2
- * 0x58C970, new in SOCOM II; 0x57A330 asks it).
- * OPEN, 2 instructions: the target's default arm is `b epilogue; move v0,a1` -- a branch to the very
- * next instruction -- where MW here lets it fall through (`move v0,a1; nop`). Tried: the return after
- * the switch, a dead return after it, a result local with breaks, the default first, case 2 first, an
- * if/else-if chain (0x54 bytes), a copy of the type in a local. */
+ * 0x58C970, new in SOCOM II; 0x57A330 asks it). Its neighbour 0x58C9E0's shape (round 34): the two
+ * calls into a result local, broken out to `return r`, the default returning the type straight -- the
+ * empty `return r` block between the default's branch and the epilogue is what leaves the target's
+ * `b epilogue; move v0,a1` a branch to the very next instruction (every case returning straight lets
+ * the default fall through, 2 off). */
 extern "C" AnimType func_0058C970(CZSealBody *seal, AnimType type, unsigned char item)
 {
+    AnimType r;
+
     switch (item) {
     case 1:
-        return seal->m_animset->m_animsbyfp->RifleFPAnim(type);
+        r = seal->m_animset->m_animsbyfp->RifleFPAnim(type);
+        break;
     case 2:
-        return seal->m_animset->m_animsbyfp->PistolFPAnim(type);
+        r = seal->m_animset->m_animsbyfp->PistolFPAnim(type);
+        break;
     default:
         return type;
     }
+    return r;
 }
 
 /* the forward and backward limits for the state: standing, crouched, prone or on a ladder (OVL2

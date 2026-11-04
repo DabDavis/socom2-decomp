@@ -13,3 +13,4 @@ zError                        # zlib zutil.c: never referenced
 AfterCloseFirst__16CInGameWeaponSelFv # hud_ingame_weaponsel.cpp: only UnInit calls it in SOCOM II, which inlines it (SOCOM 1 linked a copy, 0x3FB040); then stripped
 Shutdown__7CAiStarFv          # ai_astar.cpp: the A* lists' storage freed (the name ours) -- never called, dead-stripped; its FreeVector<vector<CAiMapLoc> > copies 0x512820-0x5128DF survive for CAiMaps::FreeTables
 __ct__7CAiMapsFv              # ai_maps.cpp: CAiMaps' constructor (the name the class's), out of line; __sinit_ai_maps.cpp inlines it (whole at -inline level=6), so the linker stripped it
+Clear__9CAiEventQFv           # ai_events.cpp: the event queue emptied (the name ours) -- never called, dead-stripped; the handle list's range erase it instantiates survives in the tail, 0x50FBD0 (~CAiEventQ and OnDeath call it)

@@ -440,7 +440,11 @@ bool _invalid_route(CAiMap::route &r)
  * data_ that the target shares with [0]'s load -- 0x448, its tail one copy longer than the target's
  * (result -> i -> erase's argument, where the target copies the result straight into the argument).
  * Assigned in the for (declared outside), postfix steps, ->, begin()/end()-1 for the way points, the
- * end reused as i, i reused for begin: none keeps i in memory alone (build/scratch/ai/v_vr*.py) */
+ * end reused as i, i reused for begin: none keeps i in memory alone (build/scratch/ai/v_vr*.py).
+ * The AI core round 25: `ReRoute((route *&)i)` puts i in memory (0x418) but MW then keeps one load
+ * of it per pass where the target reloads it at each use; `i = m_routeTable.erase(...)` (0x400) and
+ * the result into a fresh local (0x3FC) leave it in a register. The target's tail slots run e 72,
+ * erase's copies 76/80, begin 84, the result 88 and i 92 (this build: e highest) */
 void CAiMap::ValidateRoutes(bool force)
 {
     for (routes::iterator i = m_routeTable.begin(); i != m_routeTable.end(); ++i) {
