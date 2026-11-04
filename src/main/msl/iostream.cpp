@@ -13,10 +13,15 @@
  * the pod vector's insert copy 0x18B810 and the two class vector inserts 0x18BE10/0x18C510, the same
  * statements over the range maps' entries (msl.h) -- every row of the unit byte-exact.
  *
- * THE COMPILER (README "MAIN's Metrowerks runtime"): 3.0b38/3.0b50/3.0b52 -- showmanyc<wchar_t>
+ * THE COMPILER (README "MAIN's Metrowerks runtime"): 3.0b50 or 3.0b52 -- showmanyc<wchar_t>
  * and setbuf<wchar_t> need a 4-byte wchar_t (3.0b22-020926 and later); ctype<wchar_t>::do_widen's
  * six-instruction loop keeps an empty delay slot and two nops only under 3.0b38+ (3.0b22-020926
- * fills the slot, 7 words off); the game's 3.0b52 here. -Cpp_exceptions ON (getloc keeps its frame
+ * fills the slot, 7 words off); and round 7: NOT 3.0b38 -- six of this unit's rows are byte-exact
+ * under 3.0b50 and 3.0b52 and not under 3.0b38, every one an unrolled copy loop (xsputn<wchar_t>
+ * 0x185C20 and xsgetn<wchar_t> 0x185EB0, 0x30 short under b38, the pod insert and erase copies
+ * 0x18B810/0x18B6F0 and both class inserts, 0x10-0x20 short: 3.0b38 folds each step's `p + 4` into
+ * the offsets, b50/b52 keep a register per step); nothing in MAIN separates b50 from b52
+ * (build/scratch/rt/r7/cmpbuilds.py), the game's 3.0b52 here. -Cpp_exceptions ON (getloc keeps its frame
  * around the copy constructor's call; off, it is `j`), -wchar_t on (the `w` in every name), and
  * NOT deferred: SOCOM 1's DWARF lines rise with the addresses in this library (locale.cpp's
  * ctype<char> 221..288), the order SOCOM II keeps. The inline depth is explicit (`bottomup`): ios.cpp's
