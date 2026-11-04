@@ -1636,6 +1636,9 @@ public:
     void CanPickupNetItem(unsigned short count, int id, unsigned short *items, int client);
     void CheckForAmmoPickups(int count, class CPickupAmmo *ammo, unsigned short *items, union AckUnion *ack);
     void HandlePickupAck(int count, int id, union AckUnion *ack);
+    /* another console's dropped weapon made here as a network pickup (SOCOM 1's; OVL2 0x59EC60 --
+     * WeaponPUPacketHandler calls it with the packet's item, id and place) */
+    void CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *pos, CQuat *rot);
     /* the MP bomb made a pickup at a point (SOCOM 1's; OVL2 0x59DAB0, not written yet) and every
      * item dropped (SOCOM 1's; OVL2 0x59DDB0) */
     static class CPickup *CreateMPBombPickup(const CPnt3D *pos, bool b);

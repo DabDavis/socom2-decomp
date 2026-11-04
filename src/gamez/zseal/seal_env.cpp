@@ -2405,6 +2405,51 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
 }
 
 extern "C" {
+/* a weapon's model name (OVL1 0x3D2750, an out-of-line accessor: CZWeapon::m_modelname) and an
+ * item's kind (OVL2 0x5B8820, the kit lane's range: 2 a pistol, the slot ITEM_PISTOL names) */
+char *func_003D2750(CZWeapon *w);
+SEAL_ITEM_BYTE func_005B8820(EQUIP_ITEM item);
+}
+
+/* another console's dropped weapon made here, with the pickups open, unless this SEAL is a player:
+ * the weapon's model instanced at the point and turned, made dynamic and a character node with its
+ * textures and polygons, then a network pickup of kind 8 of that id -- a pistol's secondary -- and
+ * the drop anim run on its node; with no pickup the node let go (OVL2 0x59EC60; SOCOM 1's
+ * CreateNetWeaponPickup, the item and the id handed in now -- WeaponPUPacketHandler's call -- where
+ * SOCOM 1's took the item out of the SEAL's own kit) */
+void CZSealBody::CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *pos, CQuat *rot)
+{
+    if (!CPickup::m_isOpen)
+        return;
+    if (IsPlayer())
+        return;
+    CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon((EQUIP_ITEM)item);
+
+    if (!w)
+        return;
+    zdb::CNode *node = zdb::CNode::CreateInstance(
+        (zdb::CModel *)zdb::CWorld::GetModel(func_003D2750(w)), pos, rot);
+
+    if (!node)
+        return;
+    node->SetDynamic(true, true);
+    node->m_socom2_a1_bits.bit2 = 1;
+    node->m_bumpmap = 1;
+    zdb::CWorld::m_world->AddTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+    node->SetDescendantDI(true);
+    CPickup *p = CPickup::NetworkCreate(netid, (CPickup::PU_TYPE)8, node, w);
+
+    if (p) {
+        p->m_secondary = func_005B8820(w->m_ID) == ITEM_PISTOL;
+        if (data_0044D508)
+            ((CZAnim *)data_0044D508)->ActivateArg(1, 3, p->m_node, 0);
+    } else {
+        zdb::CWorld::m_world->DeleteTextureAssetCharacter(zdb::CHARSETCOMMON, node);
+        zdb::CNode::Delete(node);
+    }
+}
+
+extern "C" {
 /* (the kit's item at an index let go is CZKit::RemoveItemAndAmmo, zseal.h's; OVL2 0x5B9BB0, the kit
  * lane's) the ground under a point within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540,
  * seal_body.cpp's) and the item it takes (OVL1 data 0x3DEB48, a short) */
