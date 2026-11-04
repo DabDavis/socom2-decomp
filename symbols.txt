@@ -3343,7 +3343,7 @@
 0x00285A50 0x160 reserve__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FUi  # OVL1; s1:calls (the deque's push_back starts it with reserve(2) where SOCOM 1's does) -- the states lane
 0x00285BB0 0x120 func_00285BB0  # OVL1
 0x00285CD0 0x8 alloc__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>CFv  # OVL1; the MSL headers round 7: include/deque -- the circular buffer's allocator at 0 (the buffers' copy constructors 0x333E40/0x3A6160/0x2E0AC0 pass it to 0x2E0D20; 0x285BB0 reads its max_size); byte-exact copies in zrdr_edit.cpp and util_ssm.cpp
-0x00285CE0 0x50 func_00285CE0  # OVL1
+0x00285CE0 0x50 max_size__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>CFv  # OVL1; cdeque<const void *>'s max_size (a guarded static holding the allocator's max - 1): the lobby's do_assign 0x2E0E10 emits a call under that name; callers 0x285A50, 0x2E0E10, 0x2F5940, 0x3341C0, 0x3A6490 (the online lobby's round 15, renamed at integration)
 0x00285D30 0x428 func_00285D30  # OVL1
 0x00286160 0x868 func_00286160  # OVL1
 0x002869D0 0x1A4 PartInSpace__5CBodyCFP10CZBodyPartPC6CPnt3DP6CPnt3DP5CQuat  # OVL1; s1:calls
