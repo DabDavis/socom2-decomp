@@ -6847,7 +6847,7 @@
 0x0036E790 0x9C SetCaptionStyle__13C3StateButtonFRC6CPnt3Dbfff  # OVL1; ours (the HUD lane, round 20: zui_2d.cpp -- the caption's colour (the inline float SetColor, z/y/x loaded first), SetTrans(100) through its vtable, m_Type pulse or normal and the fade's time/max/min, the fields SOCOM 1's SetCanHandleInput set inline; an inline's out-of-line copy after SetCanHandleInput, its caller with a button state's fields)
 0x0036E830 0x8 func_0036E830  # OVL1
 0x0036E840 0x20 func_0036E840  # OVL1
-0x0036E860 0x1C func_0036E860  # OVL1
+0x0036E860 0x1C func_0036E860  # OVL1; OVL1's copy of basic_string<char>::c_str (OVL2 0x578920, the same words and the only body like it: the SEALs' round 34); called only from the unwritten CPopUpDialog::TickZAnimCmd (the HUD's round 42); ovl-copy: c_str__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFv
 0x0036E880 0x1390 ParseZAnimCmd__12CPopUpDialogFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036FC10 0xA8 GetZAnimCmdType__17CRenderableStringFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036FCC0 0x17C TickZAnimCmd__17CRenderableStringFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 22: slot +0x64 of CRenderableString's own table 0x407A90)
