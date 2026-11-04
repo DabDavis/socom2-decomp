@@ -10232,9 +10232,9 @@
 0x005668F0 0x48 func_005668F0  # OVL2
 0x00566940 0x3B0 SlideTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00566CF0 0xC4 SlideTick__11CSealCtrlAiFf  # OVL2; slot 0x8C of __vt__11CSealCtrlAi (CSealCtrl's SlideTick slot, 0x566940 in the base)
-0x00566DC0 0x57C CreepTick__9CSealCtrlFf  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
+0x00566DC0 0x57C CreepTick__9CSealCtrlFfb  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the SEAL lane, round 20: SOCOM II's CreepTick takes a bool after dT -- CSealCtrlAi's (0x567350) tests its own a1 and hands it here, PreTick passes a local set true with daddiu, 0x567690 its own flag
 0x00567340 0x10 func_00567340  # OVL2; s1~ SetThrottle__11CEntityCtrlFUif (one of 2 out-of-line copies of an inline, by s1:vtable); ovl-copy: SetThrottle__11CEntityCtrlFUif (OVL2's copy of the inline; slot 0x20 of the OVL2 controllers' tables)
-0x00567350 0x33C CreepTick__11CSealCtrlAiFf  # OVL2; slot 0x88 of __vt__11CSealCtrlAi (CSealCtrl's CreepTick slot, 0x566DC0 in the base)
+0x00567350 0x33C CreepTick__11CSealCtrlAiFfb  # OVL2; slot 0x88 of __vt__11CSealCtrlAi (CSealCtrl's CreepTick slot, 0x566DC0 in the base); the SEAL lane, round 20: (float, bool) as the base's, 0x566DC0 -- it tests a1, clears it and passes it on; 0x567690 calls the slot with its own flag
 0x00567690 0x1AC func_00567690  # OVL2
 0x00567840 0xA4 StopThrottles__11CSealCtrlAiFb  # OVL2; ours (new in SOCOM II): CSealCtrlAi::OnCommand and CAiSSuspended::OnSignal call it; SetThrottle (slot 0x20) with 0 for axes 1, 2, 0, 3, then unless the flag is set the four throttles at 8-0x14 zeroed in the same order -- the SEAL lane, round 9
 0x005678F0 0x10 SetThrottle__11CSealCtrlAiFUif  # OVL2; slot 0x20 of __vt__11CSealCtrlAi (CEntityCtrl's SetThrottle slot); a float array at 0x254 indexed

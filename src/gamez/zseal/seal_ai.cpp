@@ -1531,6 +1531,98 @@ extern "C" bool func_005608B0(const float &chance)
     return Rfloat(0.0f, 1.0f) <= chance;
 }
 
+/* a direction to look in from a map spot (OVL2 0x559580, not written: its arguments are what
+ * 0x567690 passes) */
+extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, int a, unsigned int mask, int b, int n, int c);
+
+/* the AI's glance around before it creeps: while it has a target or acts the countdown is held at 0;
+ * else run down, and on expiry restarted at a random 10 to 15 (a guarded function-local Rfloat,
+ * 0x66B208/0x66B210) and -- with no look of a higher mode -- a normal look set toward a direction the
+ * map gives the SEAL's spot; then the creep (OVL2 0x567690, new in SOCOM II: PreTick and 0x56AF50
+ * call it; the name unknown) */
+/* whether a look of a mode may be set: none of a higher mode holds (an inline, the name ours) */
+static inline bool LookAllowed(CSealCtrlAi *ai, AI_LOOK look)
+{
+    return look >= ai->m_look_mode;
+}
+
+extern "C" void func_00567690(CSealCtrlAi *ai, float dT, bool b)
+{
+    CEntity *e = ai->m_entity;
+    static Rfloat s_wait(10.0f, 5.0f);
+
+    if (!func_0060A850(ai->m_67c) && !ai->AiStateIs(AI_STATE_ACTION)) {
+        ai->m_3fc -= dT;
+        if (ai->m_3fc < 0.0f) {
+            ai->m_3fc = s_wait;
+            if (LookAllowed(ai, AIL_NORMAL)) {
+                if (ai->SetLookDirW(AIL_NORMAL, func_00559580(&e->m_mapLocValid, 0, 0x40000, 0, 20, 0)))
+                    ai->ModifyLookFlags(1, 2);
+            }
+        }
+    } else
+        ai->m_3fc = 0.0f;
+    ai->CreepTick(dT, b);
+}
+
+/* what the AI's line walk carries to its callback (0x56A2E0) and hands back: the walk stopped, an
+ * entity met and where, the follow's restraint, a distance, the target cell, the way back and the
+ * controller (new in SOCOM II; the layout read off 0x56A130 and the callback, the names ours) */
+struct SEAL_LINEWALK {
+    unsigned char m_blocked;   // 0x0
+    unsigned char _1;
+    unsigned char m_met;   // 0x2: an entity in the way
+    unsigned char _3[9 - 3];
+    bool m_restrained;   // 0x9
+    unsigned char _a[0xc - 0xa];
+    CAiMapLoc m_metloc;   // 0xc
+    float m_dist;   // 0x10
+    float m_scale;   // 0x14
+    CAiMapLoc m_to;   // 0x18
+    CPnt3D m_back;   // 0x1c: the SEAL's facing, reversed
+    unsigned char _28[4];
+    CSealCtrlAi *m_ai;   // 0x2c
+};
+
+extern "C" {
+bool func_0056A2E0(const MAP_LINEWALK_STRUCT &s, void *data);
+CEntity *func_00569AA0(CEntity *e, const CAiMapLoc *loc);
+}
+
+/* whether the AI can walk the line from its SEAL's cell to another of the same map: the walk's
+ * data filled -- the follow state offline also carrying the SEAL's restraint -- the line walked in
+ * steps of 0.2, an entity met in the way forgotten when none stands there or it is the SEAL itself
+ * (OVL2 0x56A130, new in SOCOM II: CreepTick, 0x567900 and CAiSAction::Tick call it; the name
+ * unknown) */
+extern "C" bool func_0056A130(CSealCtrlAi *ai, const CAiMapLoc &to, SEAL_LINEWALK *w, float dist)
+{
+    CEntity *e = ai->m_entity;
+    const CAiMapLoc &from = e->m_mapLoc;
+
+    if (to.m_mapid != from.m_mapid)
+        return false;
+    CAiMap *map = AiMaps.GetMapByIndex(from.m_mapid);
+    const CMatrix &m = e->m_node->m_matrix;
+
+    w->m_ai = ai;
+    w->m_back.x = -m.m_matrix[2][0];
+    w->m_back.y = -m.m_matrix[2][1];
+    w->m_back.z = -m.m_matrix[2][2];
+    w->m_to = to;
+    w->m_dist = dist;
+    w->m_scale = 1.0f;
+    if (ai->AiStateIs(AI_STATE_FOLLOW) && !theNetwork.m_9)
+        w->m_restrained = ((CZSealBody *)e)->m_restrained;
+    map->WalkLine(from, to, func_0056A2E0, w, 0.2f);
+    if (w->m_met) {
+        CEntity *met = func_00569AA0(e, &w->m_metloc);
+
+        if (!met || met == e)
+            w->m_met = false;
+    }
+    return !(w->m_blocked || w->m_met);
+}
+
 /* whether the body holds a weapon of the kind: kind 1 is rows 2 and 3 (OVL2 0x5609F0).
  * OPEN, 15 instructions: the target materialises each row's test (xor, sltiu) and branches on the
  * first, the entity in a2; MW here compares with beq and reuses the 1 the kind test left in v0.

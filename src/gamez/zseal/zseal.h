@@ -454,7 +454,9 @@ public:
     virtual void PerformReticleActions();                                   /* +0x7C */
     virtual void PerformProximityActions();
     virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
-    virtual void CreepTick(float dT);                                       /* +0x88 */
+    /* SOCOM II's takes a flag (PreTick passes a bool set with daddiu, 0x567690 its own; the AI's
+     * clears it and hands it to the base's) */
+    virtual void CreepTick(float dT, bool b);                               /* +0x88 */
     virtual bool SlideTick(float dT);   /* SOCOM II's returns whether the SEAL slid */
     /* +0x90-0x98, new in SOCOM II: the fudge velocities set (the names ours) */
     virtual void SetFudgeVelM(const CPnt3D *v) { m_fudge_velM = *v; }
@@ -713,7 +715,10 @@ public:
     /* a mode (7 keeps the AI-map collision off; the name ours): an AI_MODE, copied with lb (0x557F60) */
     AI_MODE m_3f4;   // 0x3f4
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
-    unsigned char _3f6[0x400 - 0x3f6];
+    unsigned char _3f6[0x3fc - 0x3f6];
+    /* the countdown to the next glance around: 0x567690 runs it down and restarts it at a random 10
+     * to 15, zeroed while the AI has a target or acts (SetAiMode sets it; the name ours) */
+    float m_3fc;   // 0x3fc
     /* a Navy SEAL's anger at the player: Tick and OnDeath raise it by 60 a second, 0x561B90 cools it
      * and turns the squad on the player past 190 (new in SOCOM II; the name ours) */
     float m_400;   // 0x400
