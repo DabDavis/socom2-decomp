@@ -34,6 +34,22 @@ enum KEY_STATE {
     KEY_RISING = 3
 };
 
+/* a byte enum's value as a char (ours: THE BYTE-ENUM FAMILY'S `lb; andi 0xff`, states round 26).
+ * A use reading the stored enum through a temporary of this, built at each use, keeps the char's
+ * load (lb, the constructor's copy) and its zero-extension (the conversion) apart: two uses build
+ * two temporaries, whose loads MW merges and whose conversions it merges only after the peephole
+ * pass that folds a single-use lb/andi pair into lbu has run -- so the pair survives, where one
+ * read of the enum, any local, parameter, reference or cast folds into lbu
+ * (build/scratch/states/p11.cpp's t3, p12.cpp's q1/q2b: `#pragma opt_common_subs off` shows the
+ * two andi's apart, `#pragma peephole off` the pair kept) */
+template <class E> class CByteEnum {
+public:
+    CByteEnum(E e) : m_v((char)e) {}
+    operator E() const { return (E)(unsigned char)m_v; }
+
+    char m_v;
+};
+
 /* a stick a layout gives a function, none, the left or the right (a byte; the names ours) */
 enum STICK {
     STICK_NONE = 0,
@@ -45,6 +61,9 @@ enum STICK {
  * raw and dilated, each stick's x then y) */
 class CPad {
 public:
+    void SetButtonState(PAD_BUTTON button, KEY_STATE state);   /* 0x2DA160 */
+    bool GetDoubleClick(PAD_BUTTON button);   /* 0x2DA1C0 */
+
     /* a button's pressure, none for no button (the name ours: the button arrives through an
      * inline taking the enum -- loaded with lb, narrowed inside) */
     float GetPressure(PAD_BUTTON btn) const
@@ -160,12 +179,18 @@ public:
     CCtrlrConfig(const char *name) : m_name(name) {}
 
     PAD_BUTTON GetButton(int func) const { return m_btns.m_btn[func].m_btn; }
+    /* the same, through a byte temporary (CByteEnum: each use its own) */
+    CByteEnum<PAD_BUTTON> Button(int func) const { return m_btns.m_btn[func].m_btn; }
     /* a function's button's state on the pad, up for no button */
     KEY_STATE GetButtonState(int func, const CPad *pad) const
     {
         return m_btns.m_btn[func].m_btn != PAD_BUTTON_NONE ? pad->m_state[m_btns.m_btn[func].m_btn] : KEY_UP;
     }
     bool IsDown(int func, const CPad *pad) const { return GetButtonState(func, pad) == KEY_DOWN; }
+    KEY_STATE ButtonState(int func, const CPad *pad) const
+    {
+        return Button(func) != PAD_BUTTON_NONE ? pad->m_state[Button(func)] : KEY_UP;
+    }
     bool HoldsLook() const { return m_11.m_on; }
 
     CSaferStr m_name;   // 0x0: SelectConfig's key
@@ -188,6 +213,10 @@ public:
     static std::vector<CCtrlrConfig *> m_configs;
 };
 
+/* the layouts (0x4415C8: the unit's initialiser 0x400730 clears its three words and registers its
+ * destructor's copy 0x2C6ED0) */
+std::vector<CCtrlrConfig *> CCtrlrConfigs::m_configs;
+
 extern "C" int strcasecmp(const char *a, const char *b);
 
 namespace {
@@ -202,6 +231,38 @@ extern CCtrlrConfig *data_004415B0;   /* (a second layout: the one being edited)
 /* one layout read from its rdr item and added to the layouts (SOCOM II's, out of the loader's
  * loop; OVL1 0x2C67F0, not written yet) */
 extern "C" void func_002C67F0(_zrdr *config);
+
+namespace {
+/* a button by its controller.rdr name, none for an unknown one (SOCOM 1's ReadBtnName -- nested in
+ * CCtrlrConfigs there, a namespace in SOCOM 1 --, the same chain with SOCOM II's Select and Pause
+ * after X; OVL1 0x2C6670: the parser 0x2C67F0's) */
+PAD_BUTTON ReadBtnName(const char *name)
+{
+    if (!strcasecmp(name, "Circle"))
+        return (PAD_BUTTON)7;
+    if (!strcasecmp(name, "L1"))
+        return (PAD_BUTTON)12;
+    if (!strcasecmp(name, "L2"))
+        return (PAD_BUTTON)13;
+    if (!strcasecmp(name, "LeftStickTap"))
+        return (PAD_BUTTON)15;
+    if (!strcasecmp(name, "R1"))
+        return (PAD_BUTTON)10;
+    if (!strcasecmp(name, "R2"))
+        return (PAD_BUTTON)11;
+    if (!strcasecmp(name, "RightStickTap"))
+        return (PAD_BUTTON)14;
+    if (!strcasecmp(name, "Square"))
+        return (PAD_BUTTON)8;
+    if (!strcasecmp(name, "X"))
+        return (PAD_BUTTON)9;
+    if (!strcasecmp(name, "Select"))
+        return (PAD_BUTTON)1;
+    if (!strcasecmp(name, "Pause"))
+        return PAD_BUTTON_0;
+    return PAD_BUTTON_NONE;
+}
+}
 
 #pragma auto_inline off
 /* the pitch from the sticks a layout gives it -- the held set while function 1's button is down
@@ -285,6 +346,20 @@ extern "C" float func_002C6290(const CPad *pad)
     return 0.0f;
 }
 
+/* whether a function's button is down on the pad (OVL1 0x2C60C0: the button's lb/andi through its
+ * byte temporary, KEY_DOWN's runtime narrowing -- `li a2,2` in the test's delay slot, `andi` at the
+ * join -- through one of its own on the compare's right).
+ * OPEN, 2 instructions: the join's two andi's in the other order (the target narrows the constant
+ * first, into v1, then the state; this the state first), the xor alike. The constant's temporary on
+ * the LEFT folds its narrowing away (daddiu), as a named local, a member operator== or the
+ * in-place ternary do (xori); through g_pCurrentConfig without the local, 7 off */
+extern "C" bool func_002C60C0(unsigned char func, const CPad *pad)
+{
+    const CCtrlrConfig *config = g_pCurrentConfig;
+
+    return config->ButtonState(func, pad) == CByteEnum<KEY_STATE>(KEY_DOWN);
+}
+
 /* the strafe: the layout's stick's x when it has one, else its two buttons, left -1 and right 1
  * (OVL1 0x2C6110; the buttons' value through a result local -- returned straight, the 1.0f's
  * branch lands on the zero's nop) */
@@ -324,6 +399,45 @@ void CCtrlrConfigs::Init()
     }
 }
 
+/* the first pad's y flags set from the pitch's stick masks when function 1's button goes down (the
+ * held set) or up (the other) (OVL1 0x2C5C90: the state's ternary in place -- through an inline
+ * taking the pad its index's add takes the pad first --, the mask a char narrowed after the join,
+ * the rising test's return its own block) */
+extern "C" void func_002C5C90(CPad *pad)
+{
+    const CCtrlrConfig *config = g_pCurrentConfig;
+    char mask;
+
+    KEY_STATE state = config->Button(1) != PAD_BUTTON_NONE ? pad->m_state[config->Button(1)] : KEY_UP;
+
+    if (state == KEY_FALLING)
+        mask = config->m_pitchSticksHeld.m_mask;
+    else {
+        if (state != KEY_RISING)
+            return;
+        mask = config->m_pitchSticks.m_mask;
+    }
+    unsigned char m = mask;
+
+    pad->m_leftFlagY = (m & 1) != 0;
+    pad->m_rightFlagY = (m & 2) != 0;
+}
+
+/* a function's button's state set on a pad (OVL1 0x2C5D10: the layout read ahead of the pad's
+ * test -- it loads in the test's delay slot; the button a local, passed raw and compared narrowed:
+ * the lb/andi pair a second use gives) */
+extern "C" void func_002C5D10(CPad *pad, unsigned char func, KEY_STATE state)
+{
+    const CCtrlrConfig *config = g_pCurrentConfig;
+
+    if (pad) {
+        PAD_BUTTON btn = config->GetButton(func);
+
+        if (btn != PAD_BUTTON_NONE)
+            pad->SetButtonState(btn, state);
+    }
+}
+
 /* the layout of a name made the current one (and the edited one), the first pad's stick flags set
  * from it: x by the stick at 0xE, y by the pitch's sticks at 0x10 (OVL1 0x2C5D60; SOCOM 1's walk,
  * which stopped at the current one). Pinned: the loader calls it out of line */
@@ -346,6 +460,23 @@ void CCtrlrConfigs::SelectConfig(const char *name)
     }
 }
 #pragma auto_inline reset
+
+/* a function's button's state on the pad, up for no button (OVL1 0x2C64E0: the button read at
+ * each use through its byte temporary, the ternary's arms apart) */
+extern "C" KEY_STATE func_002C64E0(unsigned char func, const CPad *pad)
+{
+    return g_pCurrentConfig->Button(func) != PAD_BUTTON_NONE ? pad->m_state[g_pCurrentConfig->Button(func)]
+                                                             : KEY_UP;
+}
+
+/* whether a function's button was double-clicked on the pad (OVL1 0x2C6490: CPad::GetDoubleClick
+ * through the layout's button) */
+extern "C" bool func_002C6490(unsigned char func, CPad *pad)
+{
+    PAD_BUTTON btn = g_pCurrentConfig->GetButton(func);
+
+    return btn != PAD_BUTTON_NONE ? pad->GetDoubleClick(btn) : false;
+}
 
 /* the edited layout's button for a function, set (OVL1 0x2C6460) */
 extern "C" bool func_002C6460(unsigned char func, PAD_BUTTON btn)
@@ -386,7 +517,9 @@ extern "C" PAD_BUTTON func_002C6430(unsigned char func)
  * an unsigned char and narrowing it inside folds to lbu like the rest */
 extern "C" float func_002C63F0(unsigned char func, const CPad *pad)
 {
-    return pad->GetPressure(g_pCurrentConfig->m_btns.m_btn[func].m_btn);
+    if (g_pCurrentConfig->Button(func) != PAD_BUTTON_NONE)
+        return pad->m_pressure[g_pCurrentConfig->Button(func)];
+    return 0.0f;
 }
 
 /* whether jump and action are on one button (OVL1 0x2C63D0; SOCOM 1's, the same code: jump's
@@ -400,19 +533,20 @@ bool CCtrlrConfigs::IsJumpAndActionShared()
 extern "C" int func_001BDA78(int port, unsigned char *data, int n);   /* (libpad2: the pad read) */
 
 /* function 2's button's pressure as the pad reports it, for the two buttons it is asked of (10 and
- * 9: the pad's bytes 29 and 26), none for any other (OVL1 0x2C6350: CSealCtrl::PreTick's).
- * OPEN, 1 instruction (0x7C against 0x80): the byte-enum family's lb/andi pair -- the target loads
- * the button with lb and narrows it with andi 0xff before the first compare, this folds both into
- * one lbu (the tests' order and the two calls are the target's) */
+ * 9: the pad's bytes 29 and 26), none for any other (OVL1 0x2C6350: CSealCtrl::PreTick's; the
+ * button read at each test through its byte temporary -- the lb/andi pair --, the result a local:
+ * returned straight, the second call's branch lands on the zero's padding nop) */
 extern "C" float func_002C6350(CPad *pad)
 {
-    PAD_BUTTON btn = g_pCurrentConfig->GetButton(2);
+    float r;
 
-    if (btn == 10)
-        return func_001BDA78(pad->m_port, pad->m_e4, 29);
-    if (btn == 9)
-        return func_001BDA78(pad->m_port, pad->m_e4, 26);
-    return 0.0f;
+    if (g_pCurrentConfig->Button(2) == 10)
+        r = func_001BDA78(pad->m_port, pad->m_e4, 29);
+    else if (g_pCurrentConfig->Button(2) == 9)
+        r = func_001BDA78(pad->m_port, pad->m_e4, 26);
+    else
+        r = 0.0f;
+    return r;
 }
 
 /* the pitch from the current layout's sticks (OVL1 0x2C6280) */

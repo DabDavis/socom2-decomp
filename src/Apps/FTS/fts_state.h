@@ -218,6 +218,8 @@ public:
 
 class CVisual {
 public:
+    static void AlphaEnable(bool on);   /* 0x3B7150 */
+
     static CCamera *m_camera;
 };
 

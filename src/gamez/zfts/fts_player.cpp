@@ -62,6 +62,13 @@ public:
 
 };
 
+/* the SEALs' units (zseal's CSealUnit: only a SEAL's unit set up, OVL2 0x5EC9F0 -- SOCOM II's
+ * second argument the unit to join, null for its own) */
+class CSealUnit {
+public:
+    static void InitalizeSealUnit(CZSealBody *seal, CSealUnit *unit);
+};
+
 enum SEAL_CONTROL_TYPE {
     SEAL_CONTROL_PLAYER,
     SEAL_CONTROL_AI,
@@ -180,8 +187,6 @@ extern CMission theMission;
 
 extern "C" {
 extern bool data_003DF188;   /* (SOCOM II's: the spawners wait while it is clear) */
-void func_005EC9F0(CZSealBody *seal, int arg);   /* CSealUnit::InitalizeSealUnit (SOCOM II's second
-                                                    argument) */
 void func_0026ADA0(CZAnimMain *zanim, zdb::CNode *node);
 }
 
@@ -511,7 +516,8 @@ void CSpawners::Tick(float dT)
 
                 if (e) {
                     CEntity::RecycleEntity(spawn->index, e, true);
-                    func_005EC9F0(e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0, 0);
+                    CSealUnit::InitalizeSealUnit(
+                        e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0, 0);
                     e->OnMissionStart();
                 }
                 m_spawns.erase(std::list<spawn_map>::iterator(first));
