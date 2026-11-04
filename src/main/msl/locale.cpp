@@ -23,8 +23,11 @@
  * replace's throw, generated right after it), reserve 0x18D8C0 (MAIN's copy of OVL1's 0x1E7C90) and
  * assign(first, last) 0x18DB40 (the replace's temporary) -- the library's ~length_error, ~logic_error
  * and the counted pointer's pieces are its other units' copies (the linker kept those). The same
- * source, compiled with the game's flags and `throw` as MSL's __msl_error report, is OVL1's reserve,
- * replace and assign word for word (build/scratch/rt/r7/g1.cpp). min, which the replace inlines, is
+ * source in its exceptions-off forms -- each throw MSL's __msl_error report (fprintf to stderr, abort),
+ * the allocation's result tested ("Memory allocation failure"), reserve's failed shrink a `return` in
+ * place of the try -- compiled with the game's flags is OVL1's reserve 0x1E7C90, replace 0x1EE780 and
+ * assign 0x1EF400 and OVL2's copies 0x541290, 0x540D00, 0x541240 word for word
+ * (build/scratch/rt/r7/g1.cpp). min, which the replace inlines, is
  * defined here (msl.h declares it; iostream.cpp defines its own after do_length). The static
  * initialiser 0x1D4C20 is this
  * unit's: it fills std::__ctype_map's entries 9-127, the multi-bit masks (alpha 0x1, blank 0x2,
