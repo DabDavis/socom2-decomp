@@ -181,7 +181,8 @@ public:
     unsigned char m_bank;               /* 0x10: 255 for none (SOCOM 1's int m_bank) */
     unsigned short m_ID;                /* 0x12: 0xFFFF for none (SOCOM 1's int m_ID) */
     int m_14;                           /* 0x14 */
-    int m_18;                           /* 0x18 */
+    unsigned int m_18;                  /* 0x18: the name's hash, the sound list's order (compared
+                                           unsigned: AddNewCSnd) */
     unsigned int m_isStreamed : 1;      /* 0x1C bit 0 (SOCOM 1's byte at 0x1C) */
     unsigned int m_socom2_bit1 : 1;     /* bit 1 */
     unsigned int m_isOneShot : 1;       /* bit 2 (SOCOM 1's byte at 0x1D: the bool overloads') */
