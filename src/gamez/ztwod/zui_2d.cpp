@@ -1193,13 +1193,36 @@ int CPopUpDialog::GetZAnimCmdType(const char *name)
     return C2D::GetZAnimCmdType(name);
 }
 
-/* the map control (SOCOM 1's CUIMapCtrl, a C2D: only its command lookup here; its destructor
- * declared first so that this unit does not take its table) */
+/* the map control (SOCOM 1's CUIMapCtrl, a C2D: its destructor and command lookup here -- the
+ * destructor its key function, so this unit takes its table 0x407260) */
 class CUIMapCtrl : public C2D {
 public:
     virtual ~CUIMapCtrl();
     virtual int GetZAnimCmdType(const char *name);
+
+    ActionItem m_actions[30];   // 0x18
+    int m_numActions;   // 0x1f8 (the destructor zeroes it)
 };
+
+/* the children deleted, each taken off the list first, the actions forgotten (SOCOM 1's, its count
+ * at 0x1FC there). The walk's iterator is assigned from begin() and end() taken once (it lives in
+ * s0); the erase's answer is ASSIGNED to a next declared without it -- initialised from it, MW
+ * builds it in place and the copy through the frame is lost -- and kept until the child is gone */
+CUIMapCtrl::~CUIMapCtrl()
+{
+    iterator i;
+    iterator e = end();
+
+    for (i = begin(); i != e;) {
+        C2D *p = *i;
+        iterator next;
+
+        next = erase(i);
+        delete p;
+        i = next;
+    }
+    m_numActions = 0;
+}
 
 /* the map control's commands: panning and the two zooms, after the UI's own (SOCOM 1's; SOCOM
  * II's counts four) */
