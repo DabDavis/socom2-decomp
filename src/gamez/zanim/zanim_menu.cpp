@@ -151,20 +151,71 @@ public:
  * ones it has -- RemoveEquipment, ListSavedGames, IsEquipmentSelected, CloseAndSwitch, the equipment
  * choices -- in zanim_menu.cpp's anonymous namespace, so the stretch is this unit's) ---- */
 
-/* the weapons as the equipment handlers see them (zweapon.h's: SOCOM 1's EQUIP_ITEM, a signed byte
- * -- EQUIP_NONE is -1 -- and the four lookups they make) */
-enum EQUIP_ITEM { EQUIP_NONE = -1, EQUIP_PISTOL = 0 };
+/* the weapons as the equipment handlers see them (zweapon.h's: SOCOM 1's EQUIP_ITEM, an UNSIGNED byte
+ * -- EQUIP_NONE is 255: the weapon walks compare it zero-extended, andi 0xff against lbu -- and the
+ * four lookups they make) */
+enum EQUIP_ITEM { EQUIP_PISTOL = 0, EQUIP_END = 254, EQUIP_NONE = 255 };
 class CZWeapon {
 public:
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
     static bool IsPrimary(EQUIP_ITEM item);            /* 0x3D1D10 */
     static bool IsSecondary(EQUIP_ITEM item);          /* 0x3D1CE0 */
 };
-class CCharacterWeapList {
+/* a character's weapon (zchar.h's CCharacterWeap, SOCOM 1's DWARF: 12 bytes, the item first). Its
+ * constructors and destructor are char_type.cpp's (OVL2 0x53EFD0, 0x53EFA0 member by member, and
+ * 0x53EF50), out of line here: the tail's clear 0x285230 calls the destructor, its range assign
+ * 0x284720 the copy and the destructor, the selection valves' update 0x282140 the default one. The
+ * tail's two copies are byte-exact from this unit once those three OVL2 rows carry the names
+ * (measured with them renamed; the rows are the AI core's: the integrator's) -- until then they
+ * miss on the relocations alone, and 0x285230 keeps its draft's match */
+enum EQUIP_AMMO { AMMO_END = 254, AMMO_NONE = 255 };
+class CCharacterWeap {
+public:
+    CCharacterWeap();                             /* 0x53EFD0 (OVL2: char_type.cpp's) */
+    CCharacterWeap(const CCharacterWeap &w);      /* 0x53EFA0 (OVL2: member by member) */
+    ~CCharacterWeap();                            /* 0x53EF50 (OVL2: char_type.cpp's) */
+    void SetupCharacterWeapon(EQUIP_ITEM item);   /* 0x53EEE0 */
+
+    EQUIP_ITEM m_wepId;   // 0x0
+    EQUIP_AMMO m_ammoId;   // 0x1
+    int m_ammoCount;   // 0x4
+    int m_magCount;   // 0x8
+};
+/* a type's weapons (zchar.h's: a class vector -- its size at 4, its elements at 8) */
+class CCharacterWeapList : public std::vector<CCharacterWeap> {
 public:
     bool RemoveWeapon(EQUIP_ITEM item);   /* 0x53B300 */
+    void PadWeaponSlots();                 /* 0x53B070 */
 };
 void UpdateCharWeaponUiVars(int index);   /* 0x2AF190 */
+const char *GetDefCharTypeName(int index);   /* 0x2AF760 */
+
+namespace {
+
+/* whether any selected character carries the item the argument names (SOCOM 1's). OPEN, 6
+ * instructions short (0x120 against 0x138): the target re-reads the list's size and data at every
+ * step of the walk (`lw 4(a2); lw 8(a2)` before each test: the end recomputed, the list kept in
+ * a2), where MW hoists them out of the loop here -- SOCOM 1's computed the end once, as this does.
+ * Tried, all 0x120 or shorter: the walk through a reference, a const reference and const
+ * iterators, the iterator assigned, postfix/`+= 1`/`i = i + 1` steps, a while, a do-while behind
+ * an if, a goto loop, a found flag with break (0x130), the walk as an inline member or free function
+ * (21 off), the end spelled `begin() + size()` or through raw pointers, an index loop (0x100); the
+ * item's unsigned compare (andi/lbu) is EQUIP_ITEM's (build/scratch/core/v_iseq.py) */
+bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
+{
+    EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
+
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+
+        for (CCharacterWeapList::iterator i = weapons->begin(); i != weapons->end(); ++i)
+            if ((*i).m_wepId == item)
+                return true;
+    }
+    return false;
+}
+
+}
 
 namespace {
 
@@ -184,10 +235,64 @@ bool OnRemoveEquipment(C2DAnimCmdHdr *hdr, float *dT)
 
 }
 
+/* the per-character picks the new choosers make (SOCOM II's, not named yet): a primary weapon, an
+ * item into one of the three equipment slots (2 to 4) */
+extern "C" bool func_00284360(const CSelectedCharsItr &it, EQUIP_ITEM item);
+extern "C" bool func_00282C20(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+/* the selection's item valves brought up to date (SOCOM II's, not named yet: UpdateSelItemValves
+ * 0x282410 is a jump to it) */
+extern "C" void func_00282140();
+
+/* the secondary weapon given to one selected character: its second weapon set up as the item unless
+ * it is that already, its UI variables and the selection's valves updated (SOCOM II's; the name ours,
+ * after ChooseEquipmentForCharacter) -- true either way */
+inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
+{
+    CCharacterWeap &w = (*(CCharacterWeapList *)it.m_weapons)[1];
+
+    if (item == w.m_wepId)
+        return true;
+    w.SetupCharacterWeapon(item);
+    UpdateCharWeaponUiVars(it.m_index);
+    func_00282140();
+    return true;
+}
+
 namespace {
 
-/* the item put on one selected character, or as much of it as fits (SOCOM 1's; not written yet) */
-bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item);
+/* the item put on one selected character: none when the character has it already or carries fewer
+ * than two weapons, else a primary or a secondary through its pick, anything else into the first free
+ * equipment slot (-1); whether it took, the character's UI variables updated (SOCOM 1's, which set the
+ * two weapons up itself and pushed the rest when four slots allowed). OPEN, 0x154 against 0x184:
+ * the walk and the early return are the target's (its `i != e` narrowed and reused after the loop;
+ * a1/a2 swapped), the three picks are not -- the target materialises each pick's result into the
+ * bool (`move s0,zero; beqz v0; daddiu s0,zero,1; andi s0,s0,0xff` in every arm, the secondary's
+ * inlined pick behind a `daddiu a1,zero,1; beqz a1` test of its own), where a bool assigned a bool
+ * call is a move. `ok = false; if (f()) ok = true;` in the two calling arms gives their first three
+ * instructions (0x16C); ternaries, int-returning picks (sltu), if-return wrappers, `&&` forms and a
+ * ternary chain fold or lose (build/scratch/core/v_cefc.py) */
+bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
+{
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+    CCharacterWeapList::iterator i = weapons->begin(), e = weapons->end();
+
+    for (; i != e; ++i)
+        if ((*i).m_wepId == item)
+            break;
+    if (i != e || weapons->size() < 2)
+        return false;
+
+    bool ok;
+
+    if (CZWeapon::IsPrimary(item))
+        ok = func_00284360(it, item);
+    else if (CZWeapon::IsSecondary(item))
+        ok = ChooseSecondaryForCharacter(it, item);
+    else
+        ok = func_00282C20(it, item, -1);
+    UpdateCharWeaponUiVars(it.m_index);
+    return ok;
+}
 
 /* the item the argument names put on every selected character: whether any took it (SOCOM 1's) */
 bool ExecuteChooseEquipment(C2DAnimCmdHdr *hdr, float *dT)
@@ -203,10 +308,28 @@ bool ExecuteChooseEquipment(C2DAnimCmdHdr *hdr, float *dT)
 
 }
 
-/* the per-character picks the new choosers make (SOCOM II's, not named yet): a primary weapon, an
- * item into one of the three equipment slots (2 to 4) */
-extern "C" bool func_00284360(const CSelectedCharsItr &it, EQUIP_ITEM item);
-extern "C" bool func_00282C20(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+namespace {
+
+/* the default weapons of each selected character's type given to it, padded, or its weapons emptied
+ * when the type has none (SOCOM 1's; SOCOM II pads the slots) -- the vector's assignment inlined:
+ * the self test, then the range assign called */
+bool ExecuteChooseDefaultEquipment(C2DAnimCmdHdr *hdr, float *dT)
+{
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance()) {
+        CCharacterType *type = CCharacterType::GetByNameMod(GetDefCharTypeName(it.m_index));
+        CCharacterWeapList *def = type ? (CCharacterWeapList *)type->m_weapons : 0;
+
+        if (def) {
+            *(CCharacterWeapList *)it.m_weapons = *def;
+            ((CCharacterWeapList *)it.m_weapons)->PadWeaponSlots();
+        } else
+            ((CCharacterWeapList *)it.m_weapons)->clear();
+        UpdateCharWeaponUiVars(it.m_index);
+    }
+    return true;
+}
+
+}
 
 /* the primary the argument names given to every selected character: whether all took it (SOCOM II's;
  * the name ours by the command's) */
@@ -219,6 +342,19 @@ bool UIChoosePrimary(C2DAnimCmdHdr *hdr, float *dT)
         if (!func_00284360(it, item))
             ok = false;
     return ok;
+}
+
+/* the secondary the argument names given to every selected character: whether any took it (SOCOM
+ * II's; the name ours by the command's) */
+bool UIChooseSecondary(C2DAnimCmdHdr *hdr, float *dT)
+{
+    EQUIP_ITEM item = CZWeapon::GetWeaponId(ArgName(hdr));
+    bool chosen = false;
+
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
+        if (ChooseSecondaryForCharacter(it, item))
+            chosen = true;
+    return chosen;
 }
 
 /* the item the argument names put into an equipment slot of every selected character: whether any
@@ -1254,7 +1390,7 @@ bool UIIsSpaceForSaveGameFile(C2DAnimCmdHdr *hdr, float *dT)
     int space = theMemCard.GetFreeSpace();
 
     if (space <= 3000)
-        space += func_003A1060(&theMemCard, 0);
+        space += theMemCard.GetUsedSpace(0);
     return space >= 3000;
 }
 
@@ -1656,9 +1792,9 @@ bool UIGetGameInfo(C2DAnimCmdHdr *hdr, float *dT)
 
     if (game) {
         if (!strcasecmp(game, "CurrentGame"))
-            func_002E24D0(&theLobby);
+            theLobby.GetCurrentGameInfo();
         else
-            func_002E1F20(&theLobby, game);
+            theLobby.GetGameInfo(game);
     }
     return true;
 }
@@ -2306,7 +2442,7 @@ void CSMInitNetwork::WaitForNetwork(unsigned char event)
 
     switch (event) {
     case 0:
-        if (!func_0030DEE0(&theNetwork)) {
+        if (!theNetwork.zNetLoadIRX()) {
             theLobby.ChangeState(CONNECT_ERROR);
             theLobby.Tick();
             sprintf(text, "Network Initialization Error: %s (%d)", "Cannot Initialize Network", 0);
@@ -2545,13 +2681,9 @@ _zanim_cmd_hdr *UICharacterProfileParse(const char *name, _zrdr *rdr)
 
 /* the account's details sent to the lobby server (its host and port, the name, password, home town,
  * gender and whether the password is kept secure), then the personas listed again */
-/* CZUniversInformationServer::CAcctDB::SetAcctInfo (0x2FD0D0) through its placeholder: the row's name
- * takes the gender as an int, and every int spelling of the argument loses the target's li/movz
- * select (`x ? 1 : 0` folds to sltu, an enum converted adds its andi); only the byte enum passed
- * straight gives it -- so the call stays raw until the callee's parameter type is settled */
-extern "C" void func_002FD0D0(CZUniversInformationServer::CAcctDB *db, const char *host, int port, const char *name,
-                              const char *password, const char *hometown, ACCT_GENDER gender, bool secure);
-
+/* the gender a ternary of ACCT_GENDER's enumerators passed straight to SetAcctInfo's enum parameter
+ * (the target's li/movz select: `x ? 1 : 0` to an int folds to sltu; the online lane's round 14
+ * settled the parameter's type) */
 bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
 {
     CUIVariable *host = theUIVarManager.Add("LOBBY_HOST", 0, UIVAR_PERMANENT);
@@ -2562,7 +2694,8 @@ bool UIUpdateAcctInfo(C2DAnimCmdHdr *hdr, float *dT)
     CValve *gender = CValve::Create("PLAYERGENDER", (VALVE_TYPE)3);
     bool secure = CValve::Create("SecurePassword", (VALVE_TYPE)1)->m_value != 0;
 
-    func_002FD0D0(&data_0044FC60, host->String(), port->Int(), name->String(), password->String(), hometown->String(), gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
+    data_0044FC60.SetAcctInfo(host->String(), port->Int(), name->String(), password->String(), hometown->String(),
+                              gender->m_value ? ACCT_FEMALE : ACCT_MALE, secure);
     UpdatePersonaList(host->String(), port->Int());
     return true;
 }

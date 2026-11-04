@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <list>
+#include <string>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -148,6 +149,8 @@ struct DeletePacket {
 /* the packets sent that wait for an acknowledgement (SOCOM 1's; a pointer list and a timeout) */
 class CAckList : public std::list<CPacket *> {
 public:
+    /* ten seconds to wait (inline: the console's constructor stores it after the list's) */
+    CAckList() : m_timeout(10.0f) {}
     /* (0x29E3E0, a draft: Clear, then the list's teardown) */
     ~CAckList();
     void Clear();
@@ -159,6 +162,8 @@ public:
 /* the console (SOCOM 1's; the DECI2 socket at 0x30, -1 when closed; the members' names are ours) */
 class CConsole {
 public:
+    /* named, both lists made and emptied, not connected, then initialised (SOCOM 1's) */
+    CConsole(const char *name);
     virtual ~CConsole();
     virtual void OnDestroy();
     virtual void OnDisconnect();
@@ -183,8 +188,10 @@ public:
 
     /* the debug level (0x3DE2D0) */
     static int m_debug;
+    /* the one console (SOCOM 1's; the unit's initialiser 0x3FFF60 builds it) */
+    static CConsole m_console;
 
-    unsigned char _4[0xc];   // 0x4: the console's name (MSL's basic_string)
+    std::string m_name;   // 0x4: the console's name
     CAckList m_acks;   // 0x10
     std::list<CHandler *> m_handlers;   // 0x20
     bool m_connected;   // 0x2c
@@ -200,6 +207,10 @@ public:
     int m_54;   // 0x54
     volatile int m_writing;   // 0x58: 1 while a write is in flight
 };
+
+/* the console (SOCOM 1's CConsole::m_console, between _counter and _wbuf in the bss: the unit's
+ * initialiser 0x3FFF60 builds it and registers ~CConsole) */
+CConsole CConsole::m_console("default console");
 
 /* every function of the unit is called out of line where it is called (Send's Debug and CopyTo,
  * FindPacket's Compare, RecvPacket's handler lookups and GetFlags, Tick's RecvPacket), as in SOCOM
@@ -508,6 +519,15 @@ void _on_ping(CPacket *packet, CConsole *console, void *data)
 void _on_error(CPacket *packet, CConsole *console, void *data)
 {
 }
+
+/* CConsole(const char *) 0x29D7B0 is its draft's (src/auto/ovl1/0029D7B0.c, renamed by its `as=`
+ * line). Written here it is 3 instructions long (0xB0 against 0xA4): `CConsole(const char *name) :
+ * m_name(name) { m_connected = false; m_handlers.clear(); m_acks.clear(); Initalize(); }` over the
+ * ack list's inline `CAckList() : m_timeout(10.0f) {}` gives every call and store but keeps the
+ * inlined constructor's `this` (s0 + 16) in s1 across the list's out-of-line constructor, where
+ * the target stores the timeout at 28(s0); the timeout in the list's constructor body, through a
+ * parameter (`m_acks(10.0f)`, a default argument), with the base named, or in the console's body
+ * (late: 10 off) change nothing (build/scratch/core/v_conctor.py) */
 
 CPacketMsg *CPacket::GetPacketMsg()
 {

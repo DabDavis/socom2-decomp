@@ -621,10 +621,11 @@ public:
 
     /* a part's position and rotation in the body's space: up its chain of parents (SOCOM 1's) */
     void PartInSpace(CZBodyPart *part, const CPnt3D *offset, CPnt3D *pos, CQuat *rot) const;
-    /* the parts: one made for a node (its bone id from the node's name), filed by id, and a
-     * node's whole tree of them (SOCOM 1's) */
+    /* the parts: one made for a node (its bone id from the node's name), filed by id -- the part
+     * given back (SOCOM II's: AddWeapon 0x553290 uses AddBodyPart's v0) -- and a node's whole tree
+     * of them (SOCOM 1's) */
     CZBodyPart *NewBodyPart(CNode *node, CZBodyPart *parent);
-    void AddBodyPart(CNode *node, CZBodyPart *parent);
+    CZBodyPart *AddBodyPart(CNode *node, CZBodyPart *parent);
     CZBodyPart *BodySetup(CNode *node, CZBodyPart *parent);
     /* everything freed: the overlay, the blends, the parts (SOCOM 1's) */
     void Destroy();
