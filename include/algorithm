@@ -52,7 +52,14 @@ inline ForwardIterator remove(ForwardIterator first, ForwardIterator last, const
 }
 
 /* the iterators and the operation by value, as for_each's (CWorld::ClearShadowList and
- * ClearLightMapList copy all three through the stack) */
+ * ClearLightMapList copy all three through the stack). A pointer-vector walk whose three iterators
+ * live in the frame through the whole loop -- each built in a begin()/end() temporary, copied in
+ * through $f0 and re-read and re-stored at every step -- is this, `transform(v.begin(), v.end(),
+ * v.begin(), op)`: the parameters (first 48, last 44, result 40 above their arguments' temporaries
+ * 52-60) are what stays in memory, which no declared iterator of include/vector's does (the MSL
+ * headers round 17: the kit's CZKit::UnInit 0x5C7CE0 byte-exact so, the operation deleting each
+ * parentless node and returning 0; build/p17/uninit.cpp, untracked, has the iterator shapes that
+ * came closest without it) */
 template <class InputIterator, class OutputIterator, class UnaryOperation>
 inline OutputIterator transform(InputIterator first, InputIterator last, OutputIterator result,
                                 UnaryOperation op)
