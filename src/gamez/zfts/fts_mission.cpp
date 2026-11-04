@@ -1872,6 +1872,32 @@ const char *GetDefCharTypeName(int i)
     return g_arrDefCharTypeNames[i];
 }
 
+namespace {
+/* the AI map visibility lists the mission's rdr names: every list emptied, then from
+ * "ai_map_visibility" up to 32 lists of up to 31 map numbers each (SOCOM 1's, its 10 lists of 9
+ * SOCOM II's 32 of 31; OVL1 0x2AF550). The bounds are the arrays' own sizes, unsigned */
+void LoadMissionMapVisibilities(CRdrFile *rdr)
+{
+    for (int i = 0; i < sizeof(g_arrMapVisCounts) / sizeof(g_arrMapVisCounts[0]); i++)
+        g_arrMapVisCounts[i] = 0;
+    _zrdr *vis = zrdr_findtag((const _zrdr *)rdr, "ai_map_visibility");
+    int n = vis ? vis->Count() : 0;
+
+    if (n > 32)
+        n = 32;
+    for (int i = 0; i < n; i++) {
+        if (i >= sizeof(g_arrMapVisCounts) / sizeof(g_arrMapVisCounts[0]))
+            break;
+        _zrdr *list = vis->Item(i);
+        int count = list ? list->Count() : 0;
+
+        g_arrMapVisCounts[i] = count < 32 ? count : 31;
+        for (int j = 0; j < g_arrMapVisCounts[i]; j++)
+            g_arrMapVis[i][j] = list->Item(j)->Integer();
+    }
+}
+}
+
 /* the mission's extra string tables: their count, then their names, ten characters each (the
  * names ours) */
 struct MissionBankList {

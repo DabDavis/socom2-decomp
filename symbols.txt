@@ -3888,7 +3888,7 @@
 0x002AF190 0x1C8 UpdateCharWeaponUiVars__Fi  # OVL1; s1:calls by hand (the states lane, round 13: both CreateCustomCharTypes call it with the type's index after Create, as SOCOM 1's call UpdateCharWeaponUiVars__Fi; the same callees -- GetByNameMod, CZWeaponList::GetWeapon, then CUIVarManager::Add and CUIVariable's assignment per weapon)
 0x002AF360 0xA8 func_002AF360  # OVL1
 0x002AF410 0x140 func_002AF410  # OVL1
-0x002AF550 0x204 func_002AF550  # OVL1
+0x002AF550 0x204 LoadMissionMapVisibilities__25@unnamed@fts_mission_cpp@FP8CRdrFile  # OVL1; s1:order by hand (the states lane, round 24): SOCOM 1's LoadMissionMapVisibilities (0x1FA500) in the same place (after UpdateCharWeaponUiVars, before GetDefCharTypeName -- SOCOM II's extra string tables 0x2AF410 between): the visibility counts zeroed, then "ai_map_visibility"'s lists read into g_arrMapVis/g_arrMapVisCounts, 32 of 31 where SOCOM 1's were 10 of 9; PreOpen (0x2ACC10) calls it
 0x002AF760 0x14 GetDefCharTypeName__Fi  # OVL1; s1:exact
 0x002AF780 0x28 GetCustomCharTypeName__Fi  # OVL1; s1:align
 0x002AF7B0 0x90 ftsIsMapInVisibleList__FUiUi  # OVL1; s1:order by hand (the states lane: between GetCustomCharTypeName and ftsGetVisibleMap as in SOCOM 1; the same walk of a list's maps, over SOCOM II's 32 lists of 31)
