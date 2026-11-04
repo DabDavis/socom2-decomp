@@ -148,6 +148,10 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* the sniper's kick made ready (SOCOM 1's; OVL2 0x5B9180, kit.h's: SetCurZoomState calls it) */
+    void InitializeSniperKick();
+    /* the weapon's display marked changed (SOCOM 1's; OVL2 0x5B99B0, kit.h's) */
+    void SetWeaponInfoChanged();
     /* the class of the item in hand (kit.h's byte enum; OVL2 0x5B8760, the kit lane's) */
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
@@ -1214,6 +1218,17 @@ public:
     /* a player's targets forgotten as seen (OVL2 0x544B60, new in SOCOM II: SetCurZoomState calls
      * it; the name ours) */
     void ResetTargetsSeen();
+    /* the view stepped out and in one place, and the view set (SOCOM 1's; OVL2 0x544400, 0x5445B0,
+     * 0x5448A0 --
+     * SOCOM II's states are SOCOM 1's with one inserted at 2: night vision is 3, the binoculars 4,
+     * the weapon's zooms from 5, thirteen in all) */
+    ZOOMSTATE DecrZoomState();
+    ZOOMSTATE IncrZoomState();
+    void SetCurZoomState(ZOOMSTATE zs);
+    /* a remote SEAL brought back, and the local SEAL's respawn (SOCOM 1's; OVL2 0x598B90, 0x5994A0,
+     * seal_create.cpp's range: Virtual8C calls them) */
+    void RemoteRespawn(bool b);
+    void DoRespawn();
     /* the SEAL's stats (OVL2 0x545890: the stats events reach a teammate's through it, by member
      * pointer; the name ours) */
     class CSealStats *GetStats();
@@ -1573,7 +1588,13 @@ public:
     static int m_heartbeat_curindex;
 
     ZOOMSTATE m_zoomstate;   // 0x200 (SOCOM 1's 0x160: DecrZoomState reads it, lb)
-    unsigned char _201[0x20c - 0x201];
+    /* the view before, the change flagged, the field of view (SOCOM 1's DWARF names, its 0x161-0x167;
+     * SetCurZoomState sets them) */
+    ZOOMSTATE m_zoomstate_prev;   // 0x201
+    unsigned char m_zoomstate_echo;   // 0x202
+    unsigned char _203;
+    float m_zoom_range;   // 0x204
+    unsigned char _208[0x20c - 0x208];
     /* the material underfoot and the feet's step flags (SOCOM 1's 0x168-0x16D; HandleSealStep and
      * HandleFootfallSound read them) */
     int m_onMaterial;   // 0x20c
@@ -1672,7 +1693,10 @@ public:
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
     unsigned char _530[0x534 - 0x530];
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
-    unsigned char _536[0x540 - 0x536];
+    unsigned char _536[0x53c - 0x536];
+    /* the zoom's anim, "zoom_control", while a scope or the binoculars are up (new in SOCOM II:
+     * SetCurZoomState starts and releases it; the name ours) */
+    class CZAnim *m_zoom_anim;   // 0x53c
     class CCharacterType *m_charType;   // 0x540 (SOCOM 1's 0x468: TickStun reads its recovery factor)
     unsigned char _544[0x58c - 0x544];
     /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its
@@ -1728,7 +1752,11 @@ public:
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
     unsigned char _fc0[0xfc8 - 0xfc0];
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
-    unsigned char _fcc[0xfcf - 0xfcc];
+    unsigned char _fcc;
+    /* the spectator's next and previous SEAL asked for (new in SOCOM II: Virtual8C walks to them;
+     * the names ours) */
+    unsigned char m_spectate_next;   // 0xfcd
+    unsigned char m_spectate_prev;   // 0xfce
     unsigned char m_needs_respawn;   // 0xfcf (SOCOM 1's 0xec5, the byte before m_stunned)
     /* SOCOM 1's m_stunned, m_full_update_time and m_movespeedmod (0xec6, 0xec8, 0xecc there) in the
      * same order: HandleStunDamage sets the byte, CreateRemoteSeal zeroes the time and sets the

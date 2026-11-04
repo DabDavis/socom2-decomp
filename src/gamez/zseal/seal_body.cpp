@@ -1173,6 +1173,19 @@ extern "C" bool func_00588080(CZSealBody *seal)
 }
 
 extern "C" {
+/* two anim types' ids (OVL1 data 0x3DEED0, 0x3DEED8) */
+extern short data_003DEED0;
+extern short data_003DEED8;
+}
+
+/* whether one of two anim types is the blend on top (OVL2 0x588030; new in SOCOM II, its name
+ * unknown -- seal.cpp's turret boarding 0x546210 asks it) */
+extern "C" bool func_00588030(CZSealBody *seal)
+{
+    return seal->IsCurrentBlend((AnimType)data_003DEED0) || seal->IsCurrentBlend((AnimType)data_003DEED8);
+}
+
+extern "C" {
 /* (seal.cpp's 0x555170: the blend stack's top) */
 void *func_00555170(void *v);
 }

@@ -2024,9 +2024,10 @@ static inline bool CanTakeLadder(CZSealBody *seal, int index)
     bool free = LadderFree(index);
 
     if (free) {
-        /* (the bool tested `!= false`: the target narrows it at the if-form's join, `move v1,v0`
-         * then `andi`) */
-        if (seal->IsAi() != false) {
+        /* (IsAi written as IsPlayer's ternary: the target keeps the call's bool with `move v1,v0`
+         * and narrows it once at the join, as SetCurZoomState's IsPlayer does -- zseal.h's if-form
+         * narrows it in the call's arm too) */
+        if (seal->m_control ? ((CSealCtrl *)seal->m_control)->IsAi() : false) {
             CSealCtrlAi *c = seal->GetSealCtrlAi();
 
             free = c->m_3f4 == 7 && (c->m_448 & 7) != 0;
@@ -2038,11 +2039,7 @@ static inline bool CanTakeLadder(CZSealBody *seal, int index)
 /* a ladder taken by the SEAL when it may and no one holds it: the SEAL its owner, the taking passed on
  * (OVL2 0x5B1350, new in SOCOM II: OVL1's 0x2B9F10 and 0x2B9F60 call it; the name unknown). The byte
  * an int here, narrowed at the call (`andi a1,s2,0xff`).
- * OPEN, 1 instruction (the size right): in the inlined IsAi the target keeps the call's bool with a
- * `move v1,v0` and narrows it once at the join; here MW narrows it in the call's arm too (`andi
- * v1,v0,0xff`). Tried: IsAi in the `&&`, in its own if, into a bool, unsigned char or int local, the
- * if-form written out over a bool, unsigned char or int result, `== true`, `(bool)x != false`; only
- * `!= false` gives the join's andi and the size. */
+ * Byte-exact with IsAi written as a ternary in CanTakeLadder (round 24's 1-instruction open). */
 extern "C" void func_005B1350(CZSealBody *seal, int b, int index)
 {
     CLadderData *ladder = theMission.m_ladders->GetLadderByIndex(index);
