@@ -2345,6 +2345,7 @@
 0x00257520 swap__Q23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>FRQ23std60__vector_deleter<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>
 0x00257560 clear__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv
 0x00257570 __ct__Q23std50vector<Q23zar4CKey,Q23std22allocator<Q23zar4CKey>>Fv
+0x00257590 WriteDirectory__Q23zar4CZARFv
 0x00257B90 func_00257B90
 0x00257BA0 func_00257BA0
 0x00257BC0 func_00257BC0
@@ -2399,7 +2400,7 @@
 0x0025B2B0 func_0025B2B0
 0x0025B2C0 func_0025B2C0
 0x0025B2E0 func_0025B2E0
-0x0025B2F0 func_0025B2F0
+0x0025B2F0 RecordSize__Q23zar4CKeyFv
 0x0025B540 InsertKey__Q23zar4CKeyFPQ23zar4CKey
 0x0025B920 func_0025B920
 0x0025B930 func_0025B930
@@ -2415,6 +2416,11 @@
 0x0025BB50 __dt__Q23zar4CKeyFv
 0x0025BBE0 __ct__Q23zar4CKeyFv
 0x0025BC00 __ct__Q23zar4CKeyFPCc
+0x0025BC20 InitCommands__10CZAnimMainFv
+0x0025C5F0 zAnimAlphaExpr__FP7GsAlphaPcif
+0x0025C6E0 zAnimColorExpr__FP5PNT4DPciif
+0x0025C880 zAnimRGBAExpr__FPUcPcif
+0x0025CB00 zAnimHeadingToDir__FP6CPnt3Dff
 0x0025CBD0 zAnimCmdAddData__FP14_zanim_cmd_hdrPvi
 0x0025CC70 zAnimDebugTick__FP14_zanim_cmd_hdrPf
 0x0025CC80 zAnimRemoveSatchelsTick__FP14_zanim_cmd_hdrPf
@@ -3071,6 +3077,8 @@
 0x00290290 __ct__21RTList<11ACTIVE_ANIM>FUi
 0x00290340 __ct__Q221RTList<11ACTIVE_ANIM>9LIST_ITEMFv
 0x00290360 IsCell__Q23zdb5CNodeFv
+0x00290370 GetScreenPos__Q23zdb7CCameraFPC6CPnt3DP6CPnt3D
+0x00290450 GetScreenPosPers__Q23zdb7CCameraFPC6CPnt3DP6CPnt4D
 0x002904E0 GetVuMtxSet__Q23zdb7CCameraFv
 0x002904F0 TestLandmarkFOG__Q23zdb7CCameraFPC6CPnt3Df
 0x00290600 TestFOG__Q23zdb7CCameraFPC6CPnt3Df
@@ -3141,6 +3149,7 @@
 0x0029BBB0 CmdParse3rdPersonTest__10CAppCameraFP5_zrdr
 0x0029BC20 RegisterAnimCommands__10CAppCameraFv
 0x0029BDF0 ResetView__10CAppCameraFv
+0x0029CBB0 ClipChord__10CAppCameraFP6CPnt3DP6CPnt3DP6CPnt3D
 0x0029CD20 GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D
 0x0029CEC0 Dispatch__8CHandlerFP7CPacketP8CConsole
 0x0029CF10 __dt__8CHandlerFv

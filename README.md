@@ -2033,6 +2033,24 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 8** (WriteDirectory, InitCommands off the image, the camera's screen positions):
+  - a ternary's result is a temporary numbered after locals declared later, a named local assigned in an if/else keeps
+    the local's number (zar::CZAR::WriteDirectory 0x257590's pad needs `if (rem) pad = ...; else pad = 0;` -- SOCOM II's
+    own version: the data padded with 0xAF, the second file copied in 16 MB blocks, the file padded with 0xBD up to the
+    size held at +0x2C);
+  - in one expression `x % m` loads m first, into a saved register held across the left side's calls, `n %= m` on a named
+    local loads it after; a float compare materialised before the branch (li/move, then xori) comes from a bool local or
+    an inline bool, `if (t <= k)` and `!(t > k)` branch on the compare directly;
+  - A RECURSIVE FUNCTION'S SELF-INLINED COPIES ARE CUT BY `inline_max_size`, NOT BY THE INLINE LEVEL: _countKeys 0x2578F0
+    (0x1C4 vs 0x294) inlines itself four levels in the target and three here, levels 6-8 change nothing and
+    `inline_max_size(320)` gives four copies (0x274) -- the original's vector pieces cost fewer units; its second level
+    calls the base's raw begin() and an iterator constructor taking the raw pointer by reference (`==` through an
+    accessor), and 0x257CB0/0x257BA0 carry __vector_pod<Ui>'s begin/end words as other instances (include/vector has
+    neither shape: the MSL lane's lead) -- it blocks fixupKey, CountKeys and DeleteChildren;
+  - CZAnimMain::InitCommands 0x25BC20 (0x9D0: its 60 AddCmd calls decoded off the image, build/scratch/core-r8/initcmds.py;
+    it returns bool), the zAnim key-track and heading helpers 0x25C5F0-0x25CB00, zdb::CCamera::GetScreenPos /
+    GetScreenPosPers, CKey::RecordSize, CAppCamera::ClipChord; open: ChoosePrimaryForCharacter 0x284360 (36: the narrowed
+    item's temporary has 26 neighbours, one over K).
 - **Tells from the SEALs, round 28** (the command tests, TickMPBomb, CheckDILadder, the held item's place, the probes):
   - `mul.s $f0,$f0,$f1` then `mov.s $f12,$f0` at a call is an inline multiplying its parameter in place (`v *= 2; return
     v;`: the held item's place 0x54E8F0); a switch whose result stays in v0, its shared operand loaded before the switch,
