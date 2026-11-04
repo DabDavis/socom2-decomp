@@ -2033,6 +2033,20 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 9** (zanim_menu.cpp's equipment slots, ChoosePrimaryForCharacter under K):
+  - an inline taking a switch's value by value colours the index computation into v0 ahead of the switch's constant, by
+    const reference or written out it is the target's (HasSlotsForItem 0x284120: both item-slot switches written out in
+    the body); a field read through a by-reference inline accessor is not merged with SetValue's own read of it, which
+    reproduces the target's double `lhu` of a valve's value (SelCharsHaveLockedEquip 0x2815D0);
+  - locals declared at the top and first defined inside a branch (`int s; ... s = FindItemSlot(...)`) give the parameters
+    the lower saved registers, and a byte-enum item read once into a local gives `lb` plus `andi` with the argument
+    register kept for the later call (PutInSlot 0x282F20: 55 -> 23 -> match); a loop over a local copy of a global buffer
+    recomputes `&s[i]` each pass as the target does, reassigning the parameter makes MW step a pointer instead;
+  - the UI's round 18 under-K rule held again: a `const EQUIP_ITEM first = (*weapons)[0].m_wepId;` numbered just below the
+    narrowed item's temporary (26 neighbours, K = 25) drops it under K -- ChoosePrimaryForCharacter 0x284360, 36 off before;
+    the slot helpers are defined in reverse image order (generation order decides which callees' registers a caller
+    knows); the UI commands 199-201 are UIDoAllSelCharsHaveLockedEquip1-3 (the command table's records);
+  - open: ZAnimWildcardApply (10), GetNextCell / SetCellBoundary (9), ChooseEquipmentForCharacter (0x154 vs 0x184).
 - **Tells from the SEALs, round 29** (HandleDamage's family, UpdateHealth, DoRespawn, the net pickups, HandleKiller):
   - a pointer local's field passed into an inline that re-reads it is shared as one load, read through a const-pointer
     inline MW loads it again (HandleKiller 0x59EE20's `SetValue(v + 1)`); `IsAi()`'s if-assign form lets MW skip the zero
