@@ -5,13 +5,15 @@
  * then the thunks) between zui_spec.cpp's tail and zui_cleanup.cpp; no assert names the file, so
  * zui_var.cpp is ours (the press beta's zui.cpp may be it).
  *
- * OPEN, not written yet: the manager's Serialize (it saves through CRdrEditor and CValve), the
- * variable's assignment from a string, its formatting (0x3860F0), _Refresh (0x385E50-0x3860EF) and
+ * Round 19: the manager's Serialize and the variable's Format (0x3860F0, SOCOM 1's) byte-exact.
+ * OPEN, not written yet: _Refresh (0x385E50-0x3860EF) and
  * 0x3866F0; DetachUIVar, ~CUIVarManager, the revival 0x386B80, the watcher vector's iterator pieces
  * (0x386910-0x3869EF, 0x386AB0) and the thunks stand as generated drafts. Round 13: CUIVariable's
  * copy constructor 0x386BF0 byte-exact (zui.h's CUIVariable : _zrdr, UIVarMixin); Attach written,
  * open (below). */
 
+#include <stdio.h>
+#include <string.h>
 #include "zui.h"
 
 /* an rdr value packed into a buffer, its size returned (zrdr_pack, 0x334DB0); by address: two values the
@@ -162,6 +164,43 @@ void CUIVariable::UpdateDependents()
 
     for (i = m_attached_items.begin(); i != m_attached_items.end(); ++i)
         (*i)->UpdateUIVar(this);
+}
+
+/* a value written as text into a buffer of that size -- a number when 16 bytes are left, a string
+ * when it fits with two to spare (an empty one for none), an array's items one after another when 6
+ * are left; the buffer returned (SOCOM 1's Format: SOCOM II's array is its items in place, and no
+ * separator follows each). `size > 15` branches on `slti at` (`size >= 16` computes v0 first); the
+ * counter an int, so `i * 8` is recomputed each pass (unsigned, it is strength-reduced into a
+ * fifth saved register) */
+char *CUIVariable::Format(_zrdr *value, char *buf, int size)
+{
+    switch (value->type) {
+    case 1:
+        if (size > 15)
+            sprintf(buf, "%d", value->integer);
+        break;
+    case 2:
+        if (size > 15)
+            sprintf(buf, "%f", value->real);
+        break;
+    case 3:
+        if (value->string) {
+            if (strlen(value->string) + 2 < size)
+                sprintf(buf, "%s", value->string);
+        } else
+            sprintf(buf, "");
+        break;
+    case 4:
+        if (size > 5) {
+            for (int i = 0; i < value->Count(); i++) {
+                int len = strlen(buf);
+
+                Format(value->Item(i), buf + len, size - len);
+            }
+        }
+        break;
+    }
+    return buf;
 }
 
 /* the mixin made a watcher of the variable, its old one detached first (SOCOM 1's AttachUIVar
