@@ -1927,6 +1927,29 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 22** (CSealUnit's creators; CZKit's lase, detonation and 2X ammo):
+  - a walk over a static list that two functions share, written as a static inline helper, puts its iterator below the
+    callers' temporaries in the frame and keeps its end in a saved register; written in place, the iterator takes an
+    earlier slot and the end is rebuilt each pass (CreateMultiPlayerUnits 0x5ECCD0 through `UpdateUnits()`, taking the
+    end into a local);
+  - an int local passed by address to an inline (`SetData(&data, 4)`) takes the slot right under the function's first
+    named iterator, an inline's by-value parameter (SetDataPtr) lands lower; a list push_back reached through one more
+    inline level puts the insert's temporaries under a later walk's;
+  - in a leaf, a field read in place at each test, not taken into a local, keeps the target's temporary registers
+    (InitalizeSealUnit 0x5EC9F0's team); a member vector reached through a reference local has its address computed once
+    into a register, through the global MW folds the address into each load;
+  - a pointer-vector walk `for (it = begin(), e = end(); ...)` gives the iterator s2 and the end s1 (the end declared ahead
+    swaps them); a pointer local declared before a struct copy-initialisation (`CPnt3D c = CPnt3D::zero`) loads before the
+    copy;
+  - CMission::Open picks CreateSinglePlayerUnits 0x5EC6A0 or CreateMultiPlayerUnits on theNetwork.m_bNetwork, as SOCOM 1
+    does; FetchLaseTarget 0x5BFE60, DetonateRemoteExplosives 0x5C0130 and Setup2XAmmo 0x5C75F0 sit in SOCOM 1's order;
+    0x5C7E00 is CZKit::Init by order and calls (unwritten);
+  - open: CreateSinglePlayerUnits (11: the "units made" flag's store scheduled after the walk's first-node load in the
+    target -- the order-5 test a one-case switch, the data an int local and push_back one inline level deeper got it this
+    close), CZKit::UnInit 0x5C7CE0 (0xCC vs 0x120: the target keeps its three pointer-vector iterators in the frame and
+    copies them through $f0; include/vector's pointer iterator stays in registers in every form tried),
+    GetTimeSinceLastSighting 0x60A590 (3: the clock always in $f0, under 3.0b50, 3.0b38 and 3.0b22 too), 0x5F6270 (0x48 vs
+    0x44).
 - **Tells from the HUD, round 28** (a new c2dfont.cpp: SOCOM II's font and its Korean composer, 0x359820-0x35F8EF):
   - pieces written `(it - 1)->field` a statement at a time, the iterator kept on the stack (end() stored, then copied
     through a float register), are a reverse iterator -- a class holding end() and dereferencing `current - 1`: AddPiece
