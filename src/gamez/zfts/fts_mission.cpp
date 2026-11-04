@@ -2439,15 +2439,17 @@ void UpdateCharWeaponUiVars(int i)
         *theUIVarManager.Add(names[i][n], 0, UIVL_TEMPORARY) = "<NONE>";
 }
 
-/* the mission's package (util_main.cpp's CPackage: only its open and close; the object ours) */
+/* the mission's package (util_main.cpp's CPackage: only its open and close) and the package itself
+ * (util_main.cpp's thePackage, 0x4A15F8) */
 class CPackage {
 public:
     bool Close();   /* 0x39C3F0 */
     bool Open(const char *name);   /* 0x39C440 */
 };
 
+extern CPackage thePackage;
+
 extern "C" {
-extern CPackage data_004A15F8;
 unsigned int strlen(const char *s);
 }
 
@@ -2467,14 +2469,14 @@ void UpdateMissionArchive(const char *olddb, const char *newdb)
             path += "sp/";
         path += olddb;
         CRdrArchive::RemoveArchive("readerm.zar", path.c_str());
-        data_004A15F8.Close();
+        thePackage.Close();
     }
     if (newdb && strlen(newdb)) {
         char name[32] = "run/";
 
         strcat(name, newdb);
         strcat(name, ".zdb");
-        data_004A15F8.Open(name);
+        thePackage.Open(name);
         CSaferStr path;
 
         path = "run/";

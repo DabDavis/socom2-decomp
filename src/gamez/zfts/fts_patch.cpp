@@ -37,6 +37,11 @@ struct HTTPResponse {
     int length;   // 0x20
 };
 
+/* the overlays' loader (zsys_overlay.cpp's, 0x49E7E8): the IOP's module sets switched through its
+ * Load, 0x3515D0 (unnamed yet, so called as a placeholder on the object) */
+class COverlayLoader;
+extern COverlayLoader theOverlayLoader;
+
 extern "C" {
 int func_00534830();                                 /* (the HTTP library started) */
 int func_00544860();                                 /* (sceHTTPTerminate) */
@@ -63,7 +68,6 @@ int func_00539D50(int size, unsigned int unpacked, void *data);
 extern "C" {
 CValve *func_002846F0(C2DAnimCmdHdr *hdr);       /* CValve::Create(ArgName(hdr), 2) */
 bool func_003515D0(void *modules, unsigned char set);
-extern unsigned char data_0049E7E8[];            /* the IOP's module sets */
 extern float data_004A449C;                      /* the frame's time */
 }
 
@@ -188,7 +192,7 @@ public:
         if (func_00544860())
             theGame.m_menuState.RunEventAnim("MP_DOWNLOAD_ERROR", "Download Error: sceHTTPTerminate failed\n");
         func_004C73F0();
-        func_003515D0(data_0049E7E8, 2);
+        func_003515D0(&theOverlayLoader, 2);
         SetState(&CSimpleStateMachine::Finish);
     }
     /* a failure: the menu told, the valve off */
@@ -578,7 +582,7 @@ bool CSMDownloadPatch::Start()
 {
     CSimpleStateMachine::Start();
     *m_stateName = "Start";
-    if (func_003515D0(data_0049E7E8, 3))
+    if (func_003515D0(&theOverlayLoader, 3))
         SetState((SSMState)&CSMDownloadPatch::InitializeDNAS);
     if (func_005447D8() < 0)
         return false;

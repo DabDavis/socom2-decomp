@@ -59,6 +59,11 @@ struct DNASAuthReq {
     int *size;   // 0x10
 };
 
+/* the overlays' loader (zsys_overlay.cpp's, 0x49E7E8): the IOP's module sets switched through its
+ * Load, 0x3515D0 (unnamed yet, so called as a placeholder on the object) */
+class COverlayLoader;
+extern COverlayLoader theOverlayLoader;
+
 extern "C" {
 int func_004C6C28(DNASTitleAuthData *data, int priority, int a2, int a3, int a4);  /* (sceDNAS2Init) */
 int func_004C7238(DNASUniqueIDReq *req);    /* (the unique ID asked for) */
@@ -84,7 +89,6 @@ void func_0039DDB0(CFileCD *file);                     /* CFileCD::Close */
 /* CIOPManager::UnRegisterRebootCallback (zinput.h's CIOPManager declares only the register) */
 void UnRegisterRebootCallback__11CIOPManagerFi(CIOPManager *iop, int id);
 
-extern unsigned char data_0049E7E8[];   /* the IOP's module sets */
 extern int data_0049E2D4;               /* the ticks one wait sleeps */
 
 int RotateThreadReadyQueue(int priority);   /* the kernel's */
@@ -130,7 +134,7 @@ public:
     {
         UnRegisterRebootCallback__11CIOPManagerFi(&theIOPManager, m_reboot);
         func_004C73F0();
-        func_003515D0(data_0049E7E8, 2);
+        func_003515D0(&theOverlayLoader, 2);
         SetState(&CSimpleStateMachine::Finish);
     }
     /* a failure: its number in DNAS_ERROR_CODE (negated), the valve off, the menu told */
@@ -380,7 +384,7 @@ bool CSMDNASAuthenticate::RebootCallback(CIOPManager::RebootPhase phase, CIOPMan
 bool CSMDNASAuthenticate::Start()
 {
     CSimpleStateMachine::Start();
-    if (func_003515D0(data_0049E7E8, 3)) {
+    if (func_003515D0(&theOverlayLoader, 3)) {
         m_reboot = theIOPManager.RegisterRebootCallback(RebootCallback, this);
         SetState((SSMState)&CSMDNASAuthenticate::LoadAuthFile);
     }
