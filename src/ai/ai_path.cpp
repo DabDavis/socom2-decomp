@@ -239,7 +239,12 @@ void CAiPath::IncrementPathId()
  * whole as well; an inline taking a CONST path, declared before this function and defined after it,
  * keeps both branches and the reloads of m_planleg after them -- but calls the pointer vector's const
  * operator[] out of line inside them (0xC8): the shape the target's is, with the access inlined away
- * after the branches were built (build/scratch/ai/v_plc.py) */
+ * after the branches were built (build/scratch/ai/v_plc.py). The AI core round 22 (v_plc*.py): with
+ * the const operator[] instantiated by an own function first, that inline takes it and the whole is
+ * deleted again (0x7C), as are raw `data_[i]` loads in it (const or not, by value or pointer) and
+ * empty asm statements (`asm {}`, `asm volatile ("")`); `asm volatile { nop }` as each body gives the
+ * target's size and branches, the nop the only difference -- the target's bodies are empty after a
+ * front end that could not see them so */
 bool CAiPath::plan_legcomplete(PATH_STATE state)
 {
     bool more = false;
