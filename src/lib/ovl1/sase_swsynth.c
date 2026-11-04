@@ -23,6 +23,25 @@ typedef struct {
 #define INV_TWOPI	0x1.45f306p-3F		/* 1 / (2 pi) */
 #define TWOPI		0x1.921fb4p+2F
 
+/* the band offsets and their pitch thresholds (GCC round 26a, 0x256A18's) */
+static const float afBandOffset[6] = {
+	0x1.dd6bf0p+1F, 0x1.d4c4dcp+1F, 0x1.cbbfccp+1F, 0x1.c24facp+1F, 0x1.b86406p+1F, 0x1.ade7bep+1F,
+};
+static const float afBandThresh[5] = { 96.0F, 88.0F, 80.0F, 72.0F, 64.0F };
+
+extern float func_002517D8(float fX);	/* the encoder's fast log2 (shared) */
+
+/* the gain offset of the band fX falls in, plus half the log2 of fY */
+float func_00256A18(float fX, float fY)
+{
+	int i;
+
+	for (i = 0; i < 5; i++)
+		if (afBandThresh[i] < fX)
+			break;
+	return afBandOffset[i] + func_002517D8(fY) * 0.5F + -0x1.42e68p+2F;
+}
+
 /* the noise generator: libmath.c's minimal-standard RNG (0x24AEB0) again, the same text, its
  * assert at SWSynth.c:359 -- the high half the accumulator, updated in place (GCC round 19a) */
 void func_00256380(int *plSeed)

@@ -137,6 +137,26 @@ extern void func_0024C458(float *pfWindow, int iLength);
 extern void func_002518E8(const float *pfSig, int iLength, float *pfSpec, int iLog2N);
 extern void func_0024E8D0(const float *pfIn, float *pfRe, float *pfIm, int iLength);
 
+/* the long frame's analysis (GCC round 26a): 291 samples out of the input ring, windowed by the
+ * 291-point table at 0x3E7C00, its mean energy kept, transformed (512 points: the 514-float
+ * buffer holds the packed spectrum) and handed to the pitch analysis (LDPDA.c's 0x249FA8) */
+#define ENC_LONG_FRAME 291
+extern const float data_003E7C00[ENC_LONG_FRAME];
+extern void func_0024C4D8(const float *pIn, const float *pWin, float *pOut, int iLength);
+extern float func_00248F60(const float *pfA, const float *pfB, int iLength);
+extern void func_00249FA8(float *pfSpec, void *pvLdpda);
+
+void func_002499A8(CircMblk *pvCircMblk, void *pvLdpda, float *pfEnergy)
+{
+	float afFrame[512 + 2];
+
+	func_0024C7D0(pvCircMblk, ENC_DELAY_SIZE, ENC_LONG_FRAME, afFrame);
+	func_0024C4D8(afFrame, data_003E7C00, afFrame, ENC_LONG_FRAME);
+	*pfEnergy = func_00248F60(afFrame, afFrame, ENC_LONG_FRAME) * 0x1.c26b52p-9F;
+	func_002518E8(afFrame, ENC_LONG_FRAME, afFrame, 9);
+	func_00249FA8(afFrame, pvLdpda);
+}
+
 void func_00249A38(void *pvState, CircMblk *pvCircMblk, float *pfRe, float *pfIm, int *piLength,
 		   int *piWinShift)
 {
