@@ -503,6 +503,7 @@ struct CTDebug : TASK_HDR {
     TASK_NAME m_text;   // 0xc
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     /* a block made for a text, or none (inline) */
     static CTDebug *Create(const char *text)
     {
@@ -521,6 +522,7 @@ struct CTDebug : TASK_HDR {
 struct CTDrain : TASK_HDR {
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);
 };
 
@@ -552,6 +554,7 @@ struct CTStance : TASK_HDR {
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);
     /* a block made (inline: its by-value arguments read before the allocation) */
     static CTStance *Create(SEAL_STANCE stance, SEAL_STANCE peek, float time)
@@ -613,11 +616,18 @@ struct CTLookAt : TASK_HDR {
     static void End(_zanim_cmd_hdr *hdr);
 };
 
+/* a scripted AI group (ai_group.cpp's class, OVL2 0x60C190-0x60EDFF: its Find by id, 0x60E460) */
+class CAiGroup {
+public:
+    static CAiGroup *Find(int id);
+};
+
 /* ai::GROUP (SOCOM II's) */
 struct CTGroup : TASK_HDR {
     unsigned char _8[0x14 - 0x8];
-    unsigned int m_14;   // 0x14
+    unsigned int m_14;   // 0x14: the group's id (CAiGroup::Find's), 0 once ended
 
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
     static void End(_zanim_cmd_hdr *hdr);
 };
 
@@ -644,6 +654,29 @@ struct CTFireWeapon : TASK_HDR {
 
     static _zanim_cmd_hdr *Parse(_zrdr *rdr);
     static void Begin(_zanim_cmd_hdr *hdr);
+};
+
+/* ai::FIREMODE (SOCOM 1's CTFireMode) */
+struct CTFireMode : TASK_HDR {
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
+};
+
+/* a valve command's data as a task holds it (SOCOM 1's VALVE_CMD_DATA, zvalve/valve.h's, which this
+ * unit does not include): the valve set before the compare and cleared after (OVL1 0x353FD0) */
+struct VALVE_CMD_DATA {
+    CValve *m_valve;   // 0x0
+    unsigned char _4[0xc - 0x4];
+
+    bool Compare();
+};
+
+/* ai::VALVE (SOCOM 1's CTValve): an AI valve compared -- the valve the SEAL's AI holds, a word its
+ * Parse stores, narrowed to the byte enum at the call (`lbu`; the names ours) */
+struct CTValve : TASK_HDR {
+    VALVE_CMD_DATA m_data;   // 0x8
+    int m_valve;   // 0x14: a SEAL_VALVE
+
+    static bool Tick(_zanim_cmd_hdr *hdr, float *dT);
 };
 
 /* ai::COMM (SOCOM 1's CTComm): a squad command to a team */
@@ -693,6 +726,21 @@ void CTDrain::Begin(_zanim_cmd_hdr *hdr)
 
     if (!seal || !ctrl)
         return;
+}
+
+/* done at once (OVL2 0x5DD3C0) */
+bool CTDrain::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTDrain);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? ((CSealCtrl *)seal->m_control)->GetSealCtrlAi() : 0;
+
+    if (!seal || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    *dT = 0.0f;
+    return true;
 }
 
 /* (OVL2 0x5DD2A0) */
@@ -867,6 +915,28 @@ _zanim_cmd_hdr *CTDebug::Parse(_zrdr *rdr)
     return &cmd->hdr;
 }
 
+/* the AI's debug switched by the mode (OVL2 0x5DD620: SOCOM 1's called SetDebug(true) for 1 and
+ * SetDebug(false) for 0, then the AI's Debug(text) -- SOCOM II stores 0 in the bit both ways and
+ * prints nothing, the debug build's code gone) */
+bool CTDebug::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTDebug);
+    CEntityCtrl *ctrl = seal ? seal->m_control : 0;
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!seal || !ctrl) {
+        *dT = 0.0f;
+        return true;
+    }
+    if (ai) {
+        if (cmd->m_mode == 1)
+            ai->m_debug = false;
+        else if (cmd->m_mode == 0)
+            ai->m_debug = false;
+    }
+    return true;
+}
+
 /* (OVL2 0x5DD610) */
 _zanim_cmd_hdr *CTDrain::Parse(_zrdr *rdr)
 {
@@ -876,6 +946,19 @@ _zanim_cmd_hdr *CTDrain::Parse(_zrdr *rdr)
 /* (OVL2 0x5DD0D0) */
 void CTEvent::Begin(_zanim_cmd_hdr *hdr)
 {
+}
+
+/* done at once, the time kept unless there is no AI (OVL2 0x5DC8A0) */
+bool CTFireMode::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTFireMode);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!ai) {
+        *dT = 0.0f;
+        return true;
+    }
+    return true;
 }
 
 /* (OVL2 0x5DC800) */
@@ -936,6 +1019,19 @@ void CTGoto::End(_zanim_cmd_hdr *hdr)
         if (script)
             func_005F3FC0(script, ai, false);
     }
+}
+
+/* running until the group is gone (OVL2 0x5D9710) */
+bool CTGroup::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTGroup);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+    bool done = false;
+
+    if (!CAiGroup::Find(cmd->m_14))
+        done = true;
+    *dT = 0.0f;
+    return done;
 }
 
 /* (OVL2 0x5D9430) */
@@ -1198,6 +1294,21 @@ void CTStance::End(_zanim_cmd_hdr *hdr)
         SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb(ai, STANCE_PRONE, true, 0.0f);
 }
 
+/* the stance's time run down (OVL2 0x5D0730) */
+bool CTStance::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTStance);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!ai) {
+        *dT = 0.0f;
+        return true;
+    }
+    cmd->m_timer -= *dT;
+    *dT = 0.0f;
+    return cmd->m_timer <= 0.0f;
+}
+
 /* the entity named and the range, 1000 unless given (OVL2 0x5CF6F0) */
 _zanim_cmd_hdr *CTRange::Parse(_zrdr *rdr)
 {
@@ -1307,6 +1418,23 @@ void CTSound::Begin(_zanim_cmd_hdr *hdr)
     cmd->SetStarted(true);
     cmd->SetBit7(false);
     cmd->m_inst = 0;
+}
+
+/* the valve the AI holds compared, done at once (OVL2 0x5CE040; SOCOM 1's the same) */
+bool CTValve::Tick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    TASK_SEAL(CTValve);
+    CSealCtrlAi *ai = seal ? SealAi(seal) : 0;
+
+    if (!ai) {
+        *dT = 0.0f;
+        return true;
+    }
+    cmd->m_data.m_valve = ai->GetValve((SEAL_VALVE)cmd->m_valve);
+    bool r = cmd->m_data.Compare();
+
+    cmd->m_data.m_valve = 0;
+    return r;
 }
 
 /* the wait read, and drawn twice (OVL2 0x5CDF00; SOCOM 1's the same) */
