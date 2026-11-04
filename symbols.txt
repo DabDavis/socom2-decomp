@@ -3027,11 +3027,11 @@
 0x00271EE0 0x1FC AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:align
 0x002720E0 0xD8 GetCmd__13CZAnimArgListFi  # OVL1; s1:calls (the kit lane's round 8, vetted by the integrator: the find inlined into every task handler calls it with (list, i) exactly as SOCOM 1's taskFindParam calls GetCmd__13CZAnimArgListFi)
 0x002721C0 0xD8 GetValve__13CZAnimArgListFi  # OVL1; the integrator 2026-11-04, by the world lane round 7: CValve's VWATCH tick calls it on the anim's argument list (s1:calls)
-0x002722A0 0xF0 func_002722A0  # OVL1
-0x00272390 0xE8 func_00272390  # OVL1
+0x002722A0 0xF0 FindNode__13CZAnimArgListFPQ23zdb5CNode  # OVL1; ours, the core lane round 4 (SOCOM II's: the list's empty test, then the first TYPE 3 node argument's node returned when it is the node given; func_00270570 calls it on each anim's list with the node)
+0x00272390 0xE8 GetNode__13CZAnimArgListFi  # OVL1; ours, the core lane round 4 (SOCOM II's: CZAnim::GetNode calls it for index 250 -- 0 for any other index or an empty list, else the first TYPE 3 node argument's node)
 0x00272480 0xD8 GetCharP__13CZAnimArgListFi  # OVL1; s1:callee
-0x00272560 0xD8 func_00272560  # OVL1
-0x00272640 0xD8 func_00272640  # OVL1
+0x00272560 0xD8 GetInt__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; ours, the core lane round 4 (SOCOM II's: the first argument of the type's value at 12; zAnimFireWeaponTick asks for TYPE 9, CZAnimArgInt's, after HasArg)
+0x00272640 0xD8 HasArg__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; ours, the core lane round 4 (SOCOM II's: whether an argument of the type is there; zAnimFireWeaponTick asks it for TYPE 9 before GetInt)
 0x00272720 0xD8 GetPnt3D__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; s1:callee by hand (called where SOCOM 1's zAnimRangeTestTick calls it)
 0x00272800 0x60 Copy__12CZAnimArgIntFv  # OVL1; by vtable (__vt__12CZAnimArgInt's second slot: a copy, the type and the value at 12)
 0x00272860 0x70 Copy__14CZAnimArgPnt3DFv  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact

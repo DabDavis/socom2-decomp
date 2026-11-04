@@ -158,7 +158,7 @@ struct CZAnimArgFind {
     {
         CZAnimArg *arg = (CZAnimArg *)p;
 
-        if (arg->m_type == type) {
+        if (type == arg->m_type) {
             if (count == n)
                 return true;
             count++;
@@ -171,31 +171,118 @@ struct CZAnimArgFind {
     int count;
 };
 
-/* the first point argument of a type.
- * OPEN, as the destructor below: the target keeps the found iterator (and the destructor's walk)
- * in a stack slot, copied bitwise out of a temporary, where <list>'s iterators here stay in
- * registers -- every shape tried (const_iterator, assignment, a pointer-list wrapper, a
- * destructor, free comparisons) either keeps that or stops the inlining. Known since: the copy
- * is the bitwise one of a trivially copied iterator out of a returned temporary (find_if's
- * return slot here, begin()'s in the destructor), which MW elided in every probe
- * (build/scratch/inl/t8.cpp: a wrapper over a raw node built from the base's by value or by
- * reference, derived from or holding the base's, begin() converting implicitly or not, no
- * begin() of its own, a const_iterator, an assigned iterator); a destructor on the iterator
- * keeps the temporary but stops begin() inlining. erase takes its iterators by address in
- * SOCOM 1 too (the base iterator's copy is user-declared, const_iterator's implicit). */
+/* the first point argument of a type. Byte-exact, as the seven getters below and the destructor
+ * (the core lane round 4): the found iterator is ASSIGNED (`iterator it; it = std::find_if(...)`),
+ * so it lives in its stack slot, copied bitwise out of find_if's return temporary as the target
+ * keeps it (the MSL headers' round 15 tell) -- initialised, it stays in a register; the test is
+ * `if (it != end()) return ...; return 0;` (the zero block after, as the target places it), and the
+ * predicate compares `type == arg->m_type` (its own type loaded second) */
 CPnt3D *CZAnimArgList::GetPnt3D(CZAnimArg::TYPE type)
 {
-    iterator it = std::find_if(begin(), end(), CZAnimArgFind(type, 0));
+    iterator it;
 
-    if (it == end())
-        return 0;
-    return &((CZAnimArgPnt3D *)*it)->m_pnt;
+    it = std::find_if(begin(), end(), CZAnimArgFind(type, 0));
+    if (it != end())
+        return &((CZAnimArgPnt3D *)*it)->m_pnt;
+    return 0;
 }
 
-/* the arguments deleted with the list */
+/* SOCOM II's: whether the list has an argument of a type (zAnimFireWeaponTick asks for the shooter's
+ * id, TYPE_INT, before GetInt; the name ours) */
+bool CZAnimArgList::HasArg(CZAnimArg::TYPE type)
+{
+    iterator it;
+
+    it = std::find_if(begin(), end(), CZAnimArgFind(type, 0));
+    if (it != end())
+        return true;
+    return false;
+}
+
+/* SOCOM II's: the first integer argument of a type (the name ours) */
+int CZAnimArgList::GetInt(CZAnimArg::TYPE type)
+{
+    iterator it;
+
+    it = std::find_if(begin(), end(), CZAnimArgFind(type, 0));
+    if (it != end())
+        return ((CZAnimArgInt *)*it)->m_value;
+    return 0;
+}
+
+/* the index'th string argument (SOCOM 1's) */
+char *CZAnimArgList::GetCharP(int index)
+{
+    iterator it;
+
+    it = std::find_if(begin(), end(), CZAnimArgFind(CZAnimArg::TYPE_CHARP, index));
+    if (it != end())
+        return ((CZAnimArgCharP *)*it)->m_str;
+    return 0;
+}
+
+/* SOCOM II's: the node argument, by CZAnim::GetNode's index (only 250, an argument's node, has
+ * one; the name ours) */
+CNode *CZAnimArgList::GetNode(int index)
+{
+    if (index == 250 && !empty()) {
+        iterator it;
+
+        it = std::find_if(begin(), end(), CZAnimArgFind(CZAnimArg::TYPE_NODE, 0));
+        if (it != end())
+            return ((CZAnimArgNode *)*it)->m_node;
+    }
+    return 0;
+}
+
+/* SOCOM II's: the node argument if it is the node given (func_00270570 asks it of every anim; the
+ * name ours) */
+CNode *CZAnimArgList::FindNode(CNode *node)
+{
+    if (!empty()) {
+        iterator it;
+
+        it = std::find_if(begin(), end(), CZAnimArgFind(CZAnimArg::TYPE_NODE, 0));
+        if (it != end()) {
+            CNode *n = ((CZAnimArgNode *)*it)->m_node;
+
+            if (n == node)
+                return n;
+        }
+    }
+    return 0;
+}
+
+/* the index'th argument's valve (SOCOM 1's) */
+CValve *CZAnimArgList::GetValve(int index)
+{
+    iterator it;
+
+    it = std::find_if(begin(), end(), CZAnimArgFind(CZAnimArg::TYPE_VALVE, index));
+    if (it != end())
+        return ((CZAnimArgValve *)*it)->m_valve;
+    return 0;
+}
+
+/* the index'th command argument (SOCOM 1's) */
+_zanim_cmd_hdr *CZAnimArgList::GetCmd(int index)
+{
+    iterator it;
+
+    it = std::find_if(begin(), end(), CZAnimArgFind(CZAnimArg::TYPE_CMD, index));
+    if (it != end())
+        return (_zanim_cmd_hdr *)((CZAnimArgCmd *)*it)->m_cmd;
+    return 0;
+}
+
+/* the arguments deleted with the list: the walk's iterator assigned (it lives in its slot, as the
+ * target's) and the end taken into a local first (kept in a saved register) */
 CZAnimArgList::~CZAnimArgList()
 {
-    for (iterator it = begin(); it != end(); ++it)
+    iterator it;
+    iterator e = end();
+
+    for (it = begin(); it != e; ++it)
         delete (CZAnimArg *)*it;
     clear();
 }
@@ -647,9 +734,6 @@ extern "C" void func_002707C0(CZAnim *anim, bool now)
     ZAnim.m_CurSeq = seq;
 }
 
-/* an argument's use of a node, by the argument list (0x2722A0; not named) */
-extern "C" bool func_002722A0(CZAnimArgList *list, CNode *node);
-
 /* the reference to a node, if the anim has one (inlined into func_00270570; the name ours) */
 inline _zanim_node_ref *CZAnim::GetNodeRef(CNode *node)
 {
@@ -669,7 +753,7 @@ inline _zanim_node_ref *CZAnim::GetNodeRef(CNode *node)
 extern "C" void func_00270570(CZAnim *anim, CNode *node)
 {
     if (anim->Running()) {
-        if (anim->GetNodeRef(node) || (anim->m_arg_list && func_002722A0(anim->m_arg_list, node))) {
+        if (anim->GetNodeRef(node) || (anim->m_arg_list && anim->m_arg_list->FindNode(node))) {
             if (!anim->m_in_cleanup) {
                 func_002707C0(anim, true);
                 anim->StopLights(true);
@@ -862,9 +946,6 @@ void CZAnim::GetNodes()
     CreateInstanceNode();
 }
 
-/* an argument's node, by index: the argument list's (CZAnimArgList, 0x272390; not named) */
-extern "C" CNode *func_00272390(CZAnimArgList *list, int index);
-
 /* the anim's own node: its instance, else its root reference's node (SOCOM II's; inlined into
  * GetNode, the name ours) */
 inline CNode *CZAnim::GetRootNode()
@@ -887,7 +968,7 @@ CNode *CZAnim::GetNode(int index, bool lookup)
     if (!index)
         return 0;
     if (index == 250)
-        return m_arg_list ? func_00272390(m_arg_list, 250) : 0;
+        return m_arg_list ? m_arg_list->GetNode(250) : 0;
     if (index == 249)
         return GetRootNode();
     while (index >= m_node_ref_count)
