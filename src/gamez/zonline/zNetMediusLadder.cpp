@@ -470,6 +470,57 @@ struct compare_ladder {
     bool operator()(LadderItem *a, LadderItem *b) const { return a->m_position < b->m_position; }
 };
 
+/* the player ladder around us sorted and handed to the menus: each one's figure, name, position,
+ * medal and clan, ours in colour; the menus told (SOCOM II's, the clan ladder's UpdateClanLadderList
+ * over the players; OVL1 0x2EB900: the pages' callback 0x2EB6A0 calls it; the name ours) */
+void UpdateLadderListDisplay()
+{
+    CRdrEditor ed;
+
+    std::sort(LadderLeaders.begin(), LadderLeaders.end(), compare_ladder());
+    ed.push(0);
+    for (LadderList::iterator i = LadderLeaders.begin(); i != LadderLeaders.end(); ++i) {
+        char pos[32];
+        char stat[32];
+
+        sprintf(pos, "%d", (*i)->m_position);
+        sprintf(stat, "%d", (*i)->m_a4);
+        int level = theLobby.GetRankLevel((*i)->m_position);
+
+        ed.push(0);
+        ed.addstringnode(stat);
+        if (!strcmp((*i)->GetName(), AccountInfo.AccountName)) {
+            PNT3D color;
+
+            color.x = 91.0f;
+            color.y = 72.0f;
+            color.z = 36.0f;
+            ed.push(0);
+            ed.addSTRING("VALUE", (*i)->GetName());
+            ed.addPNT3D("COLOR", color);
+            ed.pop();
+            ed.push(0);
+            ed.addSTRING("VALUE", pos);
+            ed.addPNT3D("COLOR", color);
+            ed.pop();
+            ed.addintnode(level);
+            ed.push(0);
+            ed.addSTRING("VALUE", (*i)->GetClan());
+            ed.addPNT3D("COLOR", color);
+            ed.pop();
+        } else {
+            ed.addstringnode((*i)->GetName());
+            ed.addstringnode(pos);
+            ed.addintnode(level);
+            ed.addstringnode((*i)->GetClan());
+        }
+        ed.pop();
+    }
+    ed.pop();
+    theLobby.uiv_MediusLadderRanking->Set(&ed);
+    LobbyEvent("ON_LADDER_REFRESH", 0);
+}
+
 /* the player ladder's best sorted and handed to the menus: each one's position, name and clan
  * (SOCOM II's; OVL1 0x2EB7A0; the name ours). The names through the item's accessors (zonline.h) */
 void UpdateLadderBestDisplay()
