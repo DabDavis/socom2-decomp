@@ -42,7 +42,10 @@ typedef struct DISTSIL {
     int f184;                           /* +184 */
     char pad188[8];
     void *f196[10];                     /* +196 */
-    char pad236[80];
+    char pad236[56];
+    void *f292;                         /* +292 */
+    char pad296[16];
+    void **f312;                        /* +312: a table whose first word is a table too */
 } DISTSIL;                              /* 316 bytes (ConstructDistCalc's) */
 
 /* a codebook of the language's (12 bytes): its two tables */
@@ -136,8 +139,43 @@ static void FreeLanguage(DISTSIL *d)
     }
 }
 
-/* (0x4FF380 .. InitCalculateDistances, -0x500DF8, are not written but InitDistSilProcess's and
- * ControlDistSilProcess's prototypes) */
+/* the block's memory given back and the block destroyed: the tables at +312 and +292, both codebook
+ * lists, the ten byte tables, the caches and the cached distances (only the last cleared). SOCOM
+ * 1's FreeDistCalc's place (0x25C there, 0x224 here), the tables' counter an int (reversed by
+ * loop.c: the target's `li s2,9`, against FreeLanguage's unsigned one).
+ * OPEN (round 21c, 31 words, the right size, registers only): d and each codebook expansion's
+ * scheduler pointer trade s2/s3 -- a tie in global-alloc's priority, d 17 refs over 119 insns and
+ * each expansion's pointer 6 over 21, both exactly 4/7 (build/scratch/gcc/prio.py), broken by pseudo
+ * number in d's favour; the target's pointers rank first. The ten tables walked by a pointer, a
+ * do-while, the caches' frees in one statement leave it; the +312 table through a local is 13 words
+ * (build/scratch/gcc/v_fd1.py) */
+static int FreeDistCalc(DISTSIL *d)
+{
+    TOS *tos = d->b.tos;
+    int i;
+
+    heap_Free(tos->heap, *d->f312);
+    heap_Free(tos->heap, d->f312);
+    heap_Free(tos->heap, d->f292);
+    FreeCodeBooks(d, (DSCODEBOOK **)&d->f112, &d->n112, 0);
+    FreeCodeBooks(d, (DSCODEBOOK **)&d->f116, &d->n116, 0);
+    for (i = 0; i < 10; i++)
+        if (d->f196[i] != 0)
+            heap_Free(tos->heap, d->f196[i]);
+    if (d->f176 != 0) {
+        heap_Free(tos->heap, d->f176);
+        heap_Free(tos->heap, d->f180);
+    }
+    if (d->f108 != 0) {
+        heap_Free(tos->heap, d->f108);
+        d->f108 = 0;
+    }
+    tosBaseBlockDestruct(&d->b);
+    return 0;
+}
+
+/* (InitDistSilProcess .. InitCalculateDistances, -0x500DF8, are not written but
+ * InitDistSilProcess's and ControlDistSilProcess's prototypes) */
 extern int InitDistSilProcess(DISTSIL *d);
 extern int ControlDistSilProcess(DISTSIL *d, unsigned char cmd, void *arg, void *arg2);
 static void IdleDistCalcProcess(DISTSIL *d, void **in);
