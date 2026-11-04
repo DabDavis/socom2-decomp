@@ -456,7 +456,12 @@ public:
 
 CSealUnit::ulist CSealUnit::m_list;
 
-/* the sensors' query pool (SOCOM 1's seal_sensors.cpp's _diPool, a CDiPool): six queries of
+/* the sensors' query pool (SOCOM 1's seal_sensors.cpp's _diPool, a CDiPool -- the kit lane's
+ * seal_dipool.h has its users' view: its dirlist is this unit's CDiList, the used list, and its
+ * dirlist::DeleteAll this unit's CDirList::DeleteAll, OVL2's copy 0x5CC6C0 of OVL1's 0x2CD9F0 -- but
+ * ~CDiPool, which only this unit emits, shows the free list's class apart: a user destructor calling
+ * DeleteAll, a word after the list the initialiser stores through the list's own address, and
+ * list<dir *> its direct base, its destructor 0x2CD690 called with 0): six queries of
  * thirty-two hits each, malloc'd and built in place, the free ones and the directions handed out
  * kept in lists -- SOCOM II's has three counts and three more words. The destructor (0x2CD8A0) tears
  * the queries down and frees them, empties the free list, and the members go: the directions list
@@ -522,7 +527,7 @@ public:
     int m_38;   // 0x38
 };   // 0x3c bytes
 
-static CDiPool _diPool;
+CDiPool _diPool;
 
 /* the dodges and the scripted groups (SOCOM 1's seal_aimoves.cpp: CAiDodge::CList; SOCOM II's
  * CAiGroup the same, the class's name ours) */
