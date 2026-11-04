@@ -2032,6 +2032,26 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 7** (six register misses closed by const locals, the equipment slots, the VBIT pair):
+  - A `const` LOCAL SURVIVES MW'S COPY PROPAGATION AND KEEPS A NAMED VARIABLE'S NUMBER, where a plain local copy folds into
+    its use -- that alone fixed float and GPR pair swaps in CZBodyAnimBlend::ThisFoot 0x28C220 (`const float t =
+    m_tfrac;`), CBlendOverlay::Tick 0x28D170 and zar::CZARBuffer::Write 0x257050 (a const block size, both growths as
+    ternaries); a local read, modified and written back survives too (CEntity::JoinTeam 0x29ECE0, zAnimObjectOpacity-
+    FromToTick 0x25F880);
+  - MW creates a float constant's register before any load's (the register dumps show it): a load is coloured after the
+    constant only as a surviving named variable; a caller generated after its callee knows which registers the callee
+    writes and keeps an argument register live across the call (NextFreeSlot 0x284640 keeps the slot in a2) -- so
+    definition order matters beyond where functions land in the image;
+  - a `return false` the target keeps as its own block, with a nop in the last test's delay slot, is an inline's return
+    (zAnimLODTestTick 0x25DD40: the tick's body an inline, the enum compared with the byte uncast); a member compared with
+    a call's result in one expression is loaded before the call, the result taken into a local first keeps the load after;
+  - zanim_menu.cpp's equipment slots (FindItemSlot 0x282EB0, IsSlotLocked 0x281950, NextFreeSlot, CanTakeItem 0x280E90:
+    names ours) and the UI commands 0xCF (UICanCharactersSelectUIWeapon 0x280D60) and 0x8F (UIChooseDefaultEquipmentOnly
+    0x281BE0); the VBIT pair 0x353260/0x353270 are CValve statics now; 0x2578F0 is SOCOM 1's _countKeys and 0x257CC0
+    CKey::fixupKey (WriteDirectory stores the first's count and hands the second to CSTable::Pack);
+  - open: GetNextCell / SetCellBoundary (9: the target colours the lookup's z before the clamped x), CClutterList::Add
+    (13), GetCmd (8: the strength-reduced j*12 offset wanted just after j), CPacketMsg::GetArg (4 bytes),
+    SetTraversalExtents (4).
 - **Tells from the kit and AI states, round 28** (seal_ailines.cpp whole, CAiTarget's tick and setters, the breach door):
   - IN DEFERRED MODE `#pragma dont_inline` ACTS BY ITS STATE AT THE UNIT'S END: set around two functions and reset, or
     flushed with `defer_codegen` off/on, every inline still expands; left on, every inline stays a call -- the implicit
