@@ -1138,6 +1138,7 @@ inline bool CAiMap::ForEachCell(const region *pr, bool (*f)(const MAP_FOREACH_ST
 class CAiStar;
 class CAiOverlay;
 class CAiPlanner;
+class CAiMaps;
 
 /* cells laid over a map that the planners and the searches keep off -- the vehicles' (the name
  * ours, after SOCOM 1's CAiPath::m_overlay's class): a region and each row's run of cells */
@@ -1330,6 +1331,14 @@ public:
      * ours: SOCOM 1's SmoothPath removed them itself) */
     int RemoveInvalidPoints();
     void UpdatePathWidth(unsigned int width);
+    /* the points' flags set, last to first: 2 where a leg crosses maps, 1 before an action's cell,
+     * 4 before cover (SOCOM 1's UpdatePointFlags, the demo's 0x1940A0, after UpdatePathWidth in
+     * both builds: 0x525520) */
+    void UpdatePointFlags();
+    /* the legs rebuilt from a finished path's points, a new leg wherever the points cross maps, and
+     * the path smoothed when asked (new in SOCOM II, the name ours: 0x526540, CAiMaps::ExtendPath's
+     * last call) */
+    void RebuildLegs(CAiMaps *maps, bool smooth);
     /* the path drawn for debugging, under a name (SOCOM 1's took none) */
     void PrintPath(const char *name) const;
     /* the last point taken off, its cell handed back when asked; false when there is none (new

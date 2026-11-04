@@ -472,6 +472,32 @@ bool CAiMaps::ReadMapSet(const char *name, const char *path)
     return ok;
 }
 
+/* the mission's maps (SOCOM 1's AiMaps; 0x66A1B0, 0x2E0 bytes): __sinit_ai_maps.cpp (0x668710)
+ * builds it -- the list and the spores inline, the arrays' element constructors called through
+ * __construct_array (their copies, CAiMapLocVec() 0x52EB00 and CAiMap::names() 0x52EB20, right
+ * after ~CAiMaps), the graph and the cookie zeroed -- and registers ~CAiMaps.
+ * OPEN at -inline level=5 (0x3C against 0xB4: the initialiser calls the constructor), BYTE-EXACT
+ * AT LEVEL 6 (`#pragma inline_depth(6)` at the unit's end, measured): the constructor is an own
+ * function of the unit, dead-stripped (ABSENT.txt) -- written out of line it instantiates the pointer
+ * list's out-of-class deleter constructor, which the target's initialiser inlines (no function of
+ * the image's ai_maps.cpp calls OVL2's copy 0x50FFA0, so the instantiating function is gone), and
+ * the initialiser takes it whole (-inline auto: all or nothing) only if its tree is at most the
+ * level high: the spores' chain (CAiMaps(), spores(), vector(), __vector_imp(), the deleter's,
+ * __vector_capacity()) is six. As an inline in-class constructor it is cut to one level at 5 (0x98:
+ * list() and spores() called) and needs `inline_depth(6)` plus an own function building a pointer
+ * list (0xA4 with neither) */
+CAiMaps AiMaps;
+
+CAiMaps::CAiMaps() : m_graph(0), m_cookie(0) {}
+
+/* the set's graph destroyed and cleared; the members' destructors follow (SOCOM 1's ~CAiMaps, the
+ * demo's 0x19D790: the last of the unit's functions in both builds) */
+CAiMaps::~CAiMaps()
+{
+    CGraph::Destroy(m_graph);
+    m_graph = 0;
+}
+
 /* every map deleted, front first, then the tables (SOCOM 1's Close inlined this). Pinned: Close
  * calls it, where -inline auto takes it whole (its erase called out of line does not stop it) */
 #pragma auto_inline off
@@ -591,7 +617,6 @@ unsigned int CAiMaps::GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b)
  * the path finished after an extension (SOCOM 1's ExtendPath ended in SmoothPath and
  * UpdateTurnAngles) */
 extern "C" bool func_00526F20(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
-extern "C" void func_00526540(CAiPath *path, CAiMaps *maps, bool smooth);
 
 /* a path stretched to a cell (SOCOM 1's ExtendPath, the demo's 0x199220 after UpdateActionTables
  * as here; SOCOM II takes the walk's first cell too): an empty path takes the cell when the feet
@@ -662,7 +687,7 @@ bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &
             }
         }
         if (post)
-            func_00526540(&path, this, smooth);
+            path.RebuildLegs(this, smooth);
     }
     return ok;
 }

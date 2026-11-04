@@ -22,6 +22,13 @@ public:
  * map, each lookup by name every map in turn, giving the cell the index of the one that knew it */
 class CAiMaps : public std::list<CAiMap *>, public AIMAPS_PARAMS {
 public:
+    /* the maps' list, the tables and the graph empty, the cookie 0 (SOCOM 1's: its
+     * __sinit_ai_maps.cpp builds the same members in the same order, the graph and the cookie
+     * stored last); out of line in ai_maps.cpp, dead-stripped -- the initialiser inlines it (see there) */
+    CAiMaps();
+    /* the set's graph destroyed, then the members' destructors (SOCOM 1's ~CAiMaps 0x19D790; SOCOM
+     * II's 0x52EA10, the destructor __sinit_ai_maps.cpp registers) */
+    ~CAiMaps();
     /* every map's cells reset and the overlays dropped (SOCOM 1's Reset: CMission::ReOpen_Load
      * calls it; the overlays new) */
     void Reset();
