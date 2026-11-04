@@ -12,7 +12,12 @@
  * (getpic.c's picture_data, start_of_slice and slice, macroblock.c's decode_macroblock with its
  * macroblock_modes in line and skipped_macroblock, motion.c), the VLCs the IPU's VDEC tables, the
  * blocks BDEC's, every byte-exact as that text reads but where the IPU changed it. _updateTempTackData
- * is left to its matching draft. Names are SOCOM 1's (s1:exact).
+ * is left to its matching draft. GCC round 30a the picture output's _dispRefImage (as first written)
+ * and _dispRefImageField (`d->_080 = pts` before `d->_088 = 1`: the long store may alias the long load,
+ * so it stays below it) and _getPtsDtsFlags (each product of the PTS interpolation a DImode __muldi3;
+ * `last + (half + odd)`; the flags ORed from the highest bit down -- fold pairs the six terms and each
+ * pair's operands follow the source's order), over libmpeg.h's MpegRef with its time stamps, flags, centre offsets and display
+ * size named. Names are SOCOM 1's (s1:exact).
  *
  * The IPU's idle wait and the command write are macros, expanded inside the readers
  * (_ipuVdec, _peepBit, _flushBuf, _nextBit) as well as being functions of their own: the
@@ -2036,6 +2041,136 @@ int _isOutSizeOK(MpegDec *d, MpegRef *ref)
 		_Error(d, buf);
 	}
 	return ok;
+}
+
+/* GCC round 30a: a frame output -- its time stamps and flags into the caller's sceMpeg, the
+ * aspect code its flags select (a 16-entry table, 0x1CE3E0), its display size and centre offsets;
+ * the picture stored colour-converted or as RAW8 when the buffer holds it and the picture is valid */
+extern void _csc_storeRefImage(MpegDec *d, MpegRef *ref);
+extern void _cpr8(MpegDec *d, MpegRef *ref);
+extern void _markOutput(MpegDec *d);
+extern u_int data_001CE3E0[16];
+
+/* a picture's time stamps and flags: with the default PTS gap set, a picture without a PTS is
+ * given the last one plus half the gap times its field count (the odd half alternated by a parity
+ * count); a PTM set by sceSetPtm overrides it once; the flags packed from the picture's */
+void _getPtsDtsFlags(MpegDec *d, MpegRef *ref, long *pts, long *dts, u_long *flags)
+{
+	if (d->ptsGapSet && ref->pts < 0 && d->_080 >= 0) {
+		int n = d->_088;
+		int odd = (n & 1) * (d->ptsGap & 1) * (d->_090 & 1);
+
+		*pts = d->_080 + ((int)((d->ptsGap * n) >> 1) + odd);
+		if ((n & 1) * (d->ptsGap & 1))
+			d->_090++;
+	} else
+		*pts = ref->pts;
+	if (d->ptmSet == 2 && d->ptm >= 0) {
+		*pts = d->ptm;
+		d->ptmSet = 0;
+		d->ptm = -1;
+	}
+	*dts = ref->dts;
+	*flags = ((u_long)ref->_34 << 8) | ((u_long)ref->_38 << 7) | ((u_long)ref->_3c << 6) |
+		((u_long)ref->_40 << 5) | ((u_long)ref->_30 << 3) | (u_long)ref->_2c;
+}
+
+void _dispRefImage(MpegDec *d, MpegRef *ref, int frameNo)
+{
+	_getPtsDtsFlags(d, ref, &d->mp->pts, &d->mp->dts, &d->mp->flags);
+	d->_080 = d->mp->pts;
+	d->_088 = data_001CE3E0[(int)(d->mp->flags >> 5) & 0xf];
+	d->dispWidth = ref->dispWidth;
+	d->dispHeight = ref->dispHeight;
+	d->_0b4 = ref->centre[0];
+	d->_0b8 = ref->centre[1];
+	d->_0bc = ref->centre[2];
+	d->_0c0 = ref->centre[3];
+	d->_0c4 = ref->centre[4];
+	d->_0c8 = ref->centre[5];
+	if (_isOutSizeOK(d, ref) && ref->valid == 1) {
+		if (d->csc)
+			_csc_storeRefImage(d, ref);
+		else
+			_cpr8(d, ref);
+		_markOutput(d);
+	}
+}
+
+/* a field pair output: each field's time stamps and flags (the first field's into pts/dts/flags,
+ * the second's into the 2nd set, both flagged 64 when the top field is first), the first field's
+ * display size and centre offsets with the second's alternate ones; the top field stored at twice
+ * its macroblock height */
+void _dispRefImageField(MpegDec *d, MpegRef *top, MpegRef *bottom, int frameNo)
+{
+	MpegRef *first, *second;
+	int flag = 0;
+
+	if (d->picture_structure == 2) {
+		first = top;
+		second = bottom;
+		flag = 64;
+	} else {
+		first = bottom;
+		second = top;
+	}
+	_getPtsDtsFlags(d, first, &d->mp->pts, &d->mp->dts, &d->mp->flags);
+	d->_080 = d->mp->pts;
+	d->_088 = 1;
+	_getPtsDtsFlags(d, second, &d->mp->pts2nd, &d->mp->dts2nd, &d->mp->flags2nd);
+	d->_080 = d->mp->pts2nd;
+	d->_088 = 1;
+	d->mp->flags |= flag;
+	d->mp->flags2nd |= flag;
+	d->dispWidth = first->dispWidth;
+	d->dispHeight = first->dispHeight;
+	d->_0b4 = first->centre[0];
+	d->_0b8 = second->centre[1];
+	d->_0c0 = first->centre[3];
+	d->_0c4 = second->centre[4];
+	if (_isOutSizeOK(d, top) && top->valid == 1 && bottom->valid == 1) {
+		top->mbh <<= 1;
+		if (d->csc)
+			_csc_storeRefImage(d, top);
+		else
+			_cpr8(d, top);
+		top->mbh >>= 1;
+		_markOutput(d);
+	}
+}
+
+/* the motion compensation's reference blocks fetched to the scratchpad: a chain of REF tags, two
+ * per block (the last one REFE), sent by channel 9 (the tags in the demo's function-local
+ * `_sprtagdata.24`, 0x1E0440: this compile numbers the static otherwise, so its reference stays
+ * unchecked).
+ * OPEN (GCC round 30a, 12 words, right size): registers only -- the loop's index and tag pointer
+ * trade t3/t2, the hoisted `n - 1` is allocated before the two bases (t7 against the target's t5)
+ * and the id's xor schedules after the index's mult. The count is a local read once (in the loop
+ * test the target hoists it and n - 1: through the field it is reloaded, 0x190) and the tag id a
+ * variable between the two stores (as a conditional expression in the OR, fold makes it a branch:
+ * 0x164; before the first store, 18 words); the 48 declaration orders all give these 12
+ * (build/scratch/gcc/v_dmaref*.py). */
+void dmaRefImage(MpegDec *d)
+{
+	static u_long _sprtagdata[64] __attribute__((aligned(64)));
+	u_long *t = (u_long *)(((u_int)_sprtagdata & 0x0fffffff) | 0x20000000);
+	int i, n, ie, id;
+
+	n = d->mb[d->_810].nRef;
+	for (i = 0; i < n; i++) {
+		t[0] = ((u_long)(d->mb[d->_810].src[i] & 0x0fffffff) << 32) | 0x30000030;
+		id = (i == n - 1) ? 0 : 3;
+		t[2] = ((u_long)(d->mb[d->_810].dst[i] & 0x0fffffff) << 32) | ((u_long)id << 28) | 48;
+		t += 4;
+	}
+	ie = DIntr();
+	asm volatile ("sync.l");
+	*D9_SADR = d->mb[d->_810].mc;
+	*D9_TADR = (u_int)_sprtagdata;
+	*D9_QWC = 0;
+	*D9_CHCR = 0x105;
+	if (ie)
+		EIntr();
 }
 
 /* the IPU's output DMA (channel 3) into the scratchpad */

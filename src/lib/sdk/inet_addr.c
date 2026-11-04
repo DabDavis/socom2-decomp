@@ -16,6 +16,16 @@
  *   (`sll; andi; sll; or; srl; andi; or; srl; jr; or`); -O2 schedules the pieces apart (7-10 words),
  *   -O1 and -O2 without both schedulers come within two (the last shift lands in a0, not v1); no
  *   spelling tried gives the target's (build/scratch/gcc/v_htonl.c: five forms, five flag sets).
+ *   GCC round 30a: htonl is byte-exact through ONE reused temporary (`r = x << 24; t = x & 0xff00;
+ *   t <<= 8; r |= t; t = x >> 8; t &= 0xff00; r |= t; t = x >> 24; r |= t;` -- the temporary is
+ *   v1 throughout, the last shift's too) but only with both schedulers off (`-fno-schedule-insns
+ *   -fno-schedule-insns2`, or -O1): -O2 hoists the andi above the first sll, 2 words, and no flag
+ *   of this unit's other functions allows that. htons's parameter is no u_short (the target never
+ *   zero-extends a0: an int or u_int), and every C spelling puts its second term in the dying a0
+ *   where the target's is v1 (3 words without the schedulers, 5 with). Both read as code no
+ *   scheduler touched -- a separate object (-O1, or BSD's MIPS htonl.S/htons.S style assembly, two
+ *   registers, the delay slot GNU as's) -- which the demo cannot tell: this library is not in it
+ *   (build/scratch/gcc/v_htonl.py, v_htons.py).
  * OPEN: inet_network -- right size, one instruction placed apart: the hex digit's sum goes through
  *   v0 and a move into val's t0 (the decimal digit's goes straight). Its isxdigit tests an
  *   UNINITIALISED variable for the digit case -- the target computes `(u_char)(x - '0') < 10` of a
