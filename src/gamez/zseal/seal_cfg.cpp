@@ -4,6 +4,7 @@
  * (-inline deferred). */
 
 #include "zseal.h"
+#include <map>
 
 /* a blend's anims (anim.cpp's CBlendable, the kit lane's: only the test here) and its four speed
  * bands, each an anim and the speeds it covers, the first unused band's type -1 (MixAnims reads
@@ -31,30 +32,19 @@ struct AnimSetByFP {
     CAnimsByFP *m_byfp;   // 0x5c
 };
 
-/* a name-to-id map (MSL's map<string, int>: a tree node's links, then the pair; OVL1 bss 0x44AF60, its
- * header node at +4). OVL2 calls its find and its operator[]'s insert out of line (0x58D090, 0x58CEF0
- * -- the string-keyed tree is not modelled in include/tree), as it does the string's constructor and
- * destructor (0x58CE70, 0x53FAD0: ovl-copy rows) */
-struct CNameIdNode {
-    unsigned char _0[0xc];
-    std::string m_key;   // 0xc
-    int m_id;   // 0x18
-};
-
-struct CNameIdPair {
-    std::string first;   // 0x0
-    int second;   // 0xc
-};
+/* the body parts' names to their ids (SOCOM 1's seal_cfg.cpp's bodyPartNames_map, a map<string, int>:
+ * OVL1 bss 0x44AF60, fts_ovl2statics.cpp's). This unit's tail emits OVL2's copies of the tree's find
+ * 0x58D090, find_or_insert 0x58CEF0 (operator[]'s half) and insert_node_at 0x58D2B0 -- the material
+ * unit's word for word (the MSL headers' round 22: include/map as it stands) -- as it does the string's
+ * constructor and destructor (0x58CE70, 0x53FAD0: ovl-copy rows) */
+extern std::map<std::string, int> bodyPartNames_map;
 
 extern "C" {
-extern unsigned char data_0044AF60[];
 /* whether the map is filled (OVL1 bss 0x44AF70), and the next id handed out (OVL1 data 0x3DE930) */
 extern bool data_0044AF70;
 extern int data_003DE930;
 /* the map filled (OVL2 0x58CC30, not written yet) */
 void func_0058CC30();
-void func_0058D090(CNameIdNode **it, void *map, const std::string &key);
-CNameIdPair *func_0058CEF0(void *map, const std::string &key);
 }
 
 extern "C" {
@@ -68,38 +58,39 @@ extern unsigned int data_003DE928;
 /* (zbody.h declares it, as an int) */
 extern "C" int func_0058CB30(const char *name)
 {
-    CNameIdNode *it;
-
     if (!data_0044AF70)
         func_0058CC30();
-    func_0058D090(&it, data_0044AF60, std::string(name));
-    if (it != (CNameIdNode *)(data_0044AF60 + 4))
-        return it->m_id;
+    std::map<std::string, int>::iterator it = bodyPartNames_map.find(std::string(name));
+
+    if (it != bodyPartNames_map.end())
+        return (*it).second;
 
     unsigned int id = data_003DE928;
 
     if (id >= siNumBodyObjects - 4)
         return -1;
-    func_0058CEF0(data_0044AF60, std::string(name))->second = id;
+    bodyPartNames_map[std::string(name)] = id;
     data_003DE928++;
     return id;
 }
 
 /* a name's id: the map filled once, the name found -- or given the next id (OVL2 0x58CA60, new in
- * SOCOM II; the names ours) */
+ * SOCOM II; the names ours). The end taken into a local: compared straight (`it != map.end()`), the
+ * end() an argument of the iterator's != sits a level deeper, and both AddItems -- which inline this --
+ * call the tree's tail() out of line (8 bytes each; the out-of-line copy matches either way) */
 extern "C" int func_0058CA60(const char *name)
 {
-    CNameIdNode *it;
-
     if (!data_0044AF70)
         func_0058CC30();
-    func_0058D090(&it, data_0044AF60, std::string(name));
-    if (it != (CNameIdNode *)(data_0044AF60 + 4))
-        return it->m_id;
+    std::map<std::string, int>::iterator it = bodyPartNames_map.find(std::string(name));
+    std::map<std::string, int>::iterator e = bodyPartNames_map.end();
+
+    if (it != e)
+        return (*it).second;
 
     int id = data_003DE930;
 
-    func_0058CEF0(data_0044AF60, std::string(name))->second = id;
+    bodyPartNames_map[std::string(name)] = id;
     data_003DE930++;
     return id;
 }
