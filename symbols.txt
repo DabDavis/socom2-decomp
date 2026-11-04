@@ -3863,8 +3863,8 @@
 0x002AD290 0x6A4 Init__8CMissionFv  # OVL1; s1:align
 0x002AD940 0x27C __dt__8CMissionFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002ADBC0 0x350 __ct__8CMissionFv  # OVL1; by hand (the states lane, round 22): __sinit_fts_mission.cpp 0x400160 calls it on theMission (0x4364E0) and registers ~CMission 0x2AD940 for it, where SOCOM 1's __sinit_fts_mission.cpp calls __ct__8CMissionFv; it builds the CSaveModule base (theMemCard.m_configSave) and stores CMission's vtable 0x406290 as ~CMission does
-0x002ADF10 0x140 func_002ADF10  # OVL1
-0x002AE050 0x2F0 func_002AE050  # OVL1
+0x002ADF10 0x140 NVGNoiseTick__FP14_zanim_cmd_hdrPf  # OVL1; by hand (the states lane, round 24): CMission::Init (0x2AD290) registers it as the NVG_NOISE command's tick, with 0x2AE050 its parser (AddCmd's t0 and a2); it sets the HUD's 0x15EF4 to 128 times the weight or the WEIGHT_SEQUENCE keys' interpolation -- SOCOM II's command, the name ours
+0x002AE050 0x2F0 NVGNoiseParse__FP5_zrdr  # OVL1; by hand (the states lane, round 24): CMission::Init (0x2AD290) registers it as the NVG_NOISE command's parser (AddCmd's a2), its tick 0x2ADF10; it reads WEIGHT_SEQUENCE's {time, weight} keys or a WEIGHT -- SOCOM II's command, the name ours
 0x002AE340 0x5C func_002AE340  # OVL1
 0x002AE3A0 0x148 func_002AE3A0  # OVL1
 0x002AE4F0 0x20 HUDClearTimerTick__FP14_zanim_cmd_hdrPf  # OVL1; tu: fts_mission.cpp~ (1.0 beta); s1:align; corrected (the states lane, round 21; the name ours): it calls CZWeapon::ClearTimer(0) and returns true -- the tick of the bare command 0x2AE510 parses -- where SOCOM 1's HUDStartDefuseTimerTick, the name the alignment gave it, calls hudStartDefuseTimer; that one is 0x2AE580

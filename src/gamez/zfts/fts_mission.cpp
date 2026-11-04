@@ -24,7 +24,9 @@ public:
     void On() { m_ison = true; }
     void Off() { m_ison = false; }
 
-    unsigned char _0[0x1a100];
+    unsigned char _0[0x15ef4];
+    float m_nvg_noise;   // 0x15ef4: SOCOM II's night vision noise, 0 to 128 (NVG_NOISE sets it; the name ours)
+    unsigned char _15ef8[0x1a100 - 0x15ef8];
     CLetterBox m_letterbox;   // 0x1a100 (SOCOM 1's at 0x14280)
     unsigned char _1a230[0x1a2d0 - 0x1a230];
     unsigned char m_flashes[0xc];   // 0x1a2d0: a CFlashFXVector
@@ -2180,6 +2182,123 @@ bool HUDClearTimerTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     CZWeapon::ClearTimer(0);
     return true;
+}
+
+/* NVG_NOISE: the night vision's noise, a WEIGHT, or a WEIGHT_SEQUENCE of {time, weight} keys appended
+ * to the command, timed by its last key (SOCOM II's; the names ours) */
+struct _nvg_noise_cmd {
+    _zanim_cmd_hdr hdr;
+    unsigned short keys;   // 0x4: the keys' offset from the command, 0 without
+    unsigned short count;   // 0x6
+    float weight;   // 0x8
+    float time;   // 0xc
+};
+
+struct nvg_noise_key {
+    float t;
+    float v;
+};
+
+void _free(void *p, const char *file, int line);
+bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
+
+/* NVG_NOISE's parser: each key's weight held to 1 at most, the command timeless without a key past
+ * 0 (OVL1 0x2AE050).
+ * OPEN, 6 instructions, registers only: the loop's two induction temporaries trade t0 and t1 -- the
+ * target's keys cursor is t1 and the items' offset t0, here the other way round (the keys walked by
+ * a named pointer, a reference to keys[i] first in the body, an int counter, the body under an if
+ * instead of the continue, keys declared first: no better). The assignment in the sequence's test
+ * gives the target's `beqz v0` and Type() its reuse of the type byte */
+_zanim_cmd_hdr *NVGNoiseParse(_zrdr *rdr)
+{
+    _nvg_noise_cmd *cmd;
+
+    if (!rdr)
+        return 0;
+    cmd = (_nvg_noise_cmd *)_calloc(1, sizeof(_nvg_noise_cmd), 0, 0);
+    cmd->hdr.data_size = sizeof(_nvg_noise_cmd);
+    cmd->hdr.timeless = 1;
+    cmd->time = 0.0f;
+    _zrdr *seq;
+
+    if ((seq = zrdr_findtag(rdr, "WEIGHT_SEQUENCE")) != 0) {
+        if (seq->Type() == 4) {
+            nvg_noise_key *keys = (nvg_noise_key *)_calloc(sizeof(nvg_noise_key), seq->Count(), 0, 0);
+
+            for (unsigned int i = 0; i < seq->Count(); i++) {
+                _zrdr *item = seq->Item(i);
+
+                if (item->Count() < 2)
+                    continue;
+                float t = item->Item(0)->Real();
+
+                keys[i].t = t;
+                if (!(t <= cmd->time))
+                    cmd->time = t;
+                float w = item->Item(1)->Real();
+
+                keys[i].v = w;
+                if (!(w <= 1.0f))
+                    keys[i].v = 1.0f;
+            }
+            cmd->count = seq->Count();
+            cmd->keys = cmd->hdr.data_size;
+            cmd = (_nvg_noise_cmd *)zAnimCmdAddData(&cmd->hdr, keys, cmd->count * sizeof(nvg_noise_key));
+            _free(keys, 0, 0);
+        }
+    } else
+        zrdr_findreal(rdr, "WEIGHT", &cmd->weight, 1);
+    if (!(cmd->time <= 0.0f))
+        cmd->hdr.timeless = false;
+    return &cmd->hdr;
+}
+
+/* NVG_NOISE's tick: the weight, or the keys' weight at the command's time, set as the HUD's noise
+ * (times 128); done once its time has passed (OVL1 0x2ADF10) */
+bool NVGNoiseTick(_zanim_cmd_hdr *hdr, float *dT)
+{
+    _nvg_noise_cmd *cmd = (_nvg_noise_cmd *)hdr;
+    bool done = true;
+    float v = cmd->weight;
+
+    if (cmd->keys > 0) {
+        nvg_noise_key *key = (nvg_noise_key *)((char *)cmd + cmd->keys);
+        float t = *dT + ZAnim.m_CurSeq->cmd_timer;
+
+        if (!(t <= key[0].t)) {
+            bool found;
+            int i;
+
+            found = false;
+            for (i = 0; i < cmd->count - 1; i++) {
+                bool in = t <= key[i + 1].t;
+
+                if (in) {
+                    found = true;
+                    v = key[i].v + (t - key[i].t) / (key[i + 1].t - key[i].t) * (key[i + 1].v - key[i].v);
+                    break;
+                }
+            }
+            if (!found)
+                v = key[cmd->count - 1].v;
+        }
+    }
+    theHUD->m_nvg_noise = 128.0f * v;
+    float time = cmd->time;
+
+    if (!(time <= 0.0f)) {
+        float t = ZAnim.m_CurSeq->cmd_timer;
+        float step = *dT;
+
+        if (!(step + t <= time)) {
+            done = true;
+            *dT -= time - t;
+        } else {
+            done = false;
+            *dT = 0.0f;
+        }
+    }
+    return done;
 }
 
 /* the auto-inline limit raised by two statements: MW inlines an out-of-class template member into an
