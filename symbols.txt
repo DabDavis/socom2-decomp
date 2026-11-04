@@ -11376,7 +11376,7 @@
 0x005EA8C0 0x1B0 func_005EA8C0  # OVL2
 0x005EAA70 0x128 GetAiModes__9CSealUnitFPScPSc  # OVL2; by hand (the kit lane, round 19; the name ours): the two AI mode bytes (SEAL_AI_PARAMS 0x26C/0x26D) of the squad's first AI SEAL, else from each sub-squad (recursive); 0x5EABA0 calls it for the team command menu
 0x005EABA0 0x1C4 func_005EABA0  # OVL2
-0x005EAD70 0x13C func_005EAD70  # OVL2
+0x005EAD70 0x13C ConfirmCommand__9CSealUnitF10FT_COMMANDUci  # OVL2; s1:order by hand (the kit lane, round 29): SOCOM 1's ConfirmCommand (0x2D2030) -- both read ShouldConfirmVoiceCommands first and return at once without it, and both sit after IssueCommand; SOCOM II's takes the command, an item byte and an unused int (the HUD's tcmTeamMember/tcmTeamCommand pass (unit, s_tcmMember, c, 0)) and answers with a squad sound, 84 / 55 / 56 by the command (0x5EAF20)
 0x005EAEB0 0x68 func_005EAEB0  # OVL2
 0x005EAF20 0x270 func_005EAF20  # OVL2
 0x005EB190 0x3E8 func_005EB190  # OVL2

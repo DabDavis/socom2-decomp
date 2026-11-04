@@ -292,6 +292,11 @@ public:
      * last squad under it that has one; whether any had (OVL2 0x5EAA70, new in SOCOM II: the team
      * command menu asks it through 0x5EABA0; the name ours) */
     bool GetAiModes(signed char *a, signed char *b);
+    /* a command answered over the radio when the option asks for it: true when it does not (OVL2
+     * 0x5EAD70; SOCOM 1's ConfirmCommand by its test of ShouldConfirmVoiceCommands and its place
+     * after IssueCommand, its arguments SOCOM II's -- the command, a byte the item commands ask, an
+     * int no caller sets but 0 -- the name s1's) */
+    bool ConfirmCommand(FT_COMMAND cmd, unsigned char item, int flags);
 };
 
 bool CSealUnit::m_created_units_test;
@@ -822,7 +827,48 @@ extern "C" {
 /* the squad's awareness (0x5E76D0: SOCOM 1's GetAwareCounter by position), a squad sound by number
  * with a chance (0x5EAF20) and the squad's formation set (0x5EB6D0) */
 int func_005E76D0(CSealUnit *unit);
-void func_005EAF20(CSealUnit *unit, int sound, int b, float chance);
+bool func_005EAF20(CSealUnit *unit, int sound, bool b, float chance);
+/* (the sound's answer and its bool argument: ConfirmCommand uses the one and passes the other
+ * unextended) a command that takes an item (seal_cfg.cpp's 0x58DFA0, the SEALs': kinds 2, 9-13 and 16) */
+bool func_0058DFA0(unsigned char item);
+}
+
+/* whether the squads answer orders over the radio (SOCOM 1's ShouldConfirmVoiceCommands, gp-30916
+ * there: its ConfirmCommand reads it first; SOCOM II's OVL1 data 0x3DF1D0, which UIStoreOptions sets
+ * from the ORDER_RESPONSE_CONTROLLER valve) */
+extern bool ShouldConfirmVoiceCommands;
+
+/* (OVL2 0x5EAD70): none asked -- or an item command with no item -- sound 84; the moves (3-6, 17)
+ * 55; any other 56; the squad numbered 1 says so (the sound's third argument, a bool: an int
+ * parameter adds an andi). One result, preset to the option's negation: the early answer is that
+ * value narrowed (`andi v0,a2,0xff`), each sound's bool narrowed into it; the byte tested `== 0`
+ * (re-extended before the branch, as the target; `!item` branches on the register) */
+bool CSealUnit::ConfirmCommand(FT_COMMAND cmd, unsigned char item, int flags)
+{
+    bool r = !ShouldConfirmVoiceCommands;
+    bool first = m_unit_num == 1;
+
+    if (!r) {
+        if (cmd == CMD_UNKNOWN)
+            r = func_005EAF20(this, 84, first, 1.0f);
+        else if (func_0058DFA0(cmd) && item == 0)
+            r = func_005EAF20(this, 84, first, 1.0f);
+        else {
+            switch (cmd) {
+            case 3:
+            case 4:
+            case 5:
+            case 6:
+            case 17:
+                r = func_005EAF20(this, 55, first, 1.0f);
+                break;
+            default:
+                r = func_005EAF20(this, 56, first, 1.0f);
+                break;
+            }
+        }
+    }
+    return r;
 }
 
 extern "C" {
