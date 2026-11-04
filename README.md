@@ -2060,6 +2060,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 33** (0x557190 whole, the const-view rule's closes, the map inserts from a real std::map):
+  - an inline taking a struct's fields by reference keeps their addresses in saved registers from before the struct is
+    built (AvoidPoint: 0x557190 all 767 instructions, with `t *= s_slow;` as its own statement); `t *= k; f(t);`
+    multiplies in t's register and moves it to $f12, `f(t * k)` multiplies straight into $f12;
+  - the kit's const-view rule also covers a member read again after a sqrt or a compare (CSealCtrlAi::SetAiBit2
+    0x56D890, 0x572240, CSealCtrl::SetGoalDir 0x56D920 with its sum in SOCOM 1's x-first order); a byte-enum argument
+    passed to a parameter of another type goes narrowed, to its own type as it came (CZSealBody::ActionSelectionMask
+    0x544C80);
+  - in `it != map.end()` the end() sits one inline level deeper; taking it into a local first keeps the inlined callers'
+    copies whole -- seal_cfg.cpp's bodyPartNames_map a real std::map<std::string, int> emits OVL2's find_or_insert /
+    insert_node_at 0x58CEF0 / 0x58D2B0 (the MSL's round 22 ovl-copies);
+  - a loop-invariant address assigned again in the loop body gives the preheader after the return (0x57D5E0 9 off,
+    0x57D710 14: the hoisted addiu where the target has it in the entry b's delay slot); AnimSignal 0x562030 written over
+    the list's reverse walk (0x174 vs 0x180: slot 0xC's signal type, and inline_depth(8) inlining the end pair's second()).
 - **Tells from the HUD, round 41** (tcmAddKindItems, the reticule's two timer bars, the list box's text and clear):
   - calls written as another call's arguments run last to first: a target that fetches them in argument order had named
     locals (tcmAddKindItems 0x2329F0, the cache builder's twenty calls); a byte-enum return held in an enum local isn't
