@@ -13,11 +13,12 @@
 extern "C" unsigned short func_0025A390(zar::CZAR *zar, int (*f)(zar::CZAR &, const char *, void *, int, void *),
                                         void *user);
 /* the SEAL's anim tables: an archive's anim filed under its index, and every one of an index
- * taken out (OVL2, not named yet) */
-extern "C" {
-void func_005E5B10(int index, int id);
-void func_005E5BF0(int index);
-}
+ * taken out (OVL2's CAnimTypeRec, by its map rows: only the two statics the archives call) */
+class CAnimTypeRec {
+public:
+    static void MarkStateAll(int index, int id);   /* 0x5E5B10 */
+    static void ClearStateAll(int index);          /* 0x5E5BF0 */
+};
 
 
 void CScriptArchive::Init()
@@ -79,12 +80,12 @@ void CScriptArchive::Register()
     int index = m_index;
 
     for (std::vector<CZSIScriptCommon *>::iterator i = m_commons.begin(); i != m_commons.end(); ++i)
-        func_005E5B10(index, (*i)->m_id);
+        CAnimTypeRec::MarkStateAll(index, (*i)->m_id);
 }
 
 void CScriptArchive::Unregister()
 {
-    func_005E5BF0(m_index);
+    CAnimTypeRec::ClearStateAll(m_index);
     SetIndex(0);
 }
 

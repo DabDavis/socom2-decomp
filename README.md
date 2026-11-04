@@ -1776,6 +1776,44 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 17** (the instances other lanes waited on; probes build/p17/, untracked):
+  - THE CLASS VECTOR'S COPY CONSTRUCTOR IS SOCOM 1's MSL (its Props::Branch 0x237ED0 calls every piece out of line): the
+    deleter built from the other's `alloc() const`, then init over the other's RAW `begin()/end() const` (a pointer in v0).
+    So include/vector's deleter has alloc() const and a constructor from an allocator, __vector_imp's const ends are SOCOM
+    1's raw pair, and vector<T> takes the base's ends by using-declarations and keeps a class-returning const pair of its own
+    (SOCOM II's const walks return a class: the AI core's 0x52F3E0/0x52F310, renamed vector's). Where the copy is itself a
+    cut level -- c2dfont.cpp's tail, the glyph pair's copy calling the piece vector's -- each piece is called as the
+    target's (0x35D420 and 0x35D490-0x35D4E0 byte-exact, +5); every other copy inlines them as before;
+  - A TEMPLATE TAIL GENERATES WHAT ITS OWN FUNCTIONS FREE FIRST: seal_env.cpp's UninitDatabaseHandles written
+    FreeVector(m_blooddriptexhandles) (its four pieces were placeholders) generates the deleter's clear and destructor in the
+    unit's first round, so InitDecalHandles' reserve 0x5B71B0 and insert 0x5B6CE0 inline the temporary's destructor with its
+    clear as the target's; with CZDecalDef's empty user constructor (zwep_weapon.cpp's: member-by-member copies) the unit
+    gains seven rows;
+  - ~basic_string reads the long text as a POINTER through the words (`((charT **)w_)[2]`): inlined on a member at a
+    non-zero offset of a frame object (its `this` tests kept), MW then reads both words through the member's address
+    (`lw a0,8(a0)`), where the word cast to a pointer let it fold the second read into the frame -- the UI's resize<
+    CDesignDlgObj> 0x383960 and resize<CDlgDesignModel> 0x383AA0 byte-exact; a long-form struct member, `this` or w_ in a
+    local, is_long() and an early return each keep one of the four resizes wrong;
+  - A POINTER-VECTOR WALK WHOSE ITERATORS LIVE IN THE FRAME IS std::transform: CZKit::UnInit 0x5C7CE0 is
+    `transform(begin(), end(), begin(), op)` -- the three by-value parameters (first 48, last 44, result 40, above their
+    arguments' temporaries 52-60) stay in memory, copied in through $f0 and re-read and re-stored at every step (measured in
+    the kit's seal_kit.cpp, 104 -> 105, the kit lane's to apply). Declared iterators never do it: a wrapper holding the base
+    iterator by value with the walk's three iterators ASSIGNED gives every instruction but the six slots, mirrored
+    (build/p17/uninit.cpp);
+  - THE IMAGE'S 4D POINT COPIES TAKE THREE SHAPES, no one class (build/p17/fpu4scan.py: every callee copying a 16-byte
+    argument through four FPRs): SeeFarther's lq/sq (16-aligned implicit: zmath.h's CPnt4D), Props::Branch's out-of-line
+    copy constructor 0x328D60 (written: zparticle.h's), RenderLineWorld's callee copies through the FPRs (4-aligned
+    implicit) -- the last is zmath.h's own PNT4D: RenderLineWorld over PNT4D parameters is byte-exact (zmath.h's comment);
+    c2dfont.cpp's glyph colour is the same 4-aligned block at a 16-aligned member (four ints with a member-level
+    `aligned(16)`, or `int m_20[4] aligned(16)`, make the pair's copy 0x35D370 byte-exact: the HUD lane's c2dfont.h);
+  - A WALK'S end() REUSES begin()'s DATA LOAD WHEN EVERY PATH TO THE TEST HAS ONE: MSL's pointer-vector insert(position,
+    x) -- the offset taken first, the pod's insert, `begin() + n` returned -- re-loads the data pointer right after its call,
+    so the world's CSnd::AddNewCSnd 0x343F90, calling it with the result unused, keeps the pointer in one register for
+    every test (byte-exact, zsnd_csnd.cpp 57 of 57 with `m_soundlist.insert(i, sound)`: the world lane's to write); no form
+    of the pod's end() changes it (build/p17/podend.py). include/vector has the member now;
+  - not reached: the class insert's end register (insert<CLadderData> 0x2B0260, the delayed nodes' 0x33C5C0: no new
+    shape), AddKeyProps' pair temporary, GetSealCount's outer copy, the deques' make_iterator; 0x359740 is __list_imp<PCv>::
+    advance_to, placed right after C2DBitmapPoly() 0x359640 -- the unit before c2dfont.cpp emitted it first.
 - **Tells from completing the MSL headers, round 16** (the instances other lanes waited on; probes build/p16/, untracked):
   - THE 2-BYTE POD IS THE CHAR POD OVER HALVES: include/vector's `__vector_pod<unsigned short>` (a partial
     specialisation beside the char pod) gives seal_env.cpp's tail insert<Us> 0x5B68E0 and reserve<Us> 0x5B6BD0
@@ -1927,6 +1965,100 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 2** (zanim_menu.cpp's equipment handlers, three initialisers, 249 respells):
+  - a function template declared but not defined gives a call to the instance an earlier unit emits, and emits no copy of
+    its own (zin_pad.cpp's `_saturate<f>`);
+  - passing an int to a parameter of a single-enumerator byte enum adds a conversion, a local of the enum type removes it
+    (UIRebootIOP); for an int `x ? 1 : 0` folds to sltu -- the target's li/movz select comes from a byte-enum ternary
+    passed straight;
+  - an auto-inline helper with no caller in its unit inlines the moment a caller is written: pin it where the target calls
+    it (CSelectedCharsItr::Advance);
+  - 0x2800C0 up to the deques is zanim_menu.cpp's own tail (SOCOM 1 names six of its handlers in the unit's anonymous
+    namespace); camera.cpp's statics (SOCOM 1's dilr0-dilr3 and tetherPos, three new points) bring __sinit_camera.cpp
+    0x3FFDD0 once camera.h's DiIntersect declares DiIntersect(int) and ~DiIntersect(); CZAnimMain::Load 0x268250 is SOCOM
+    1's Load(name, set) reduced to `return true`; CBody::SmoothPart takes the fraction first (the SEALs' round 22);
+  - placeholders left raw: SetAcctInfo 0x2FD0D0 (the row's int gender loses the caller's li/movz select), GetUsedSpace
+    0x3A1060 (the call passes an argument the row's name does not take);
+  - open: UINetGetInterfaceList (12: the CRdrEditor takes the lowest frame slot under every declaration order), ThisFoot
+    (2: the FPR pair).
+- **Tells from the kit and AI states, round 24** (CZKit::UnInit by std::transform, isSelectableItem):
+  - CZKit::UnInit 0x5C7CE0 is `std::transform(v.begin(), v.end(), v.begin(), op)` over a function object (an empty user
+    constructor; its `operator()` deletes an unparented node and returns 0): the target's frame-resident iterators are the
+    algorithm's by-value parameters (found by the MSL lane's round 17);
+  - CZKit::isSelectableItem 0x5BDC30 (SOCOM 1's with SOCOM II's launcher test): `r = true` assigned after the early return,
+    not at its declaration; the range test written `id > 201` gives the `slti at` form;
+  - MW folds a lone `if (!p) return 0; return p->f();` into a beqz to the end; only a return-0 block shared by two tests
+    (an `||`) keeps its own block (GetMaxAmmoCount 0x5C3CF0, 4 off);
+  - open: CurMagHasAmmo 0x5BD530 (named by SOCOM 1's order; 31, right size: the inlined FindItemWithAmmo's counter and
+    temporaries swap v0/v1), 0x607830 (6, now the right size), GetTimeSinceLastSighting (3), RemoveMember (6).
+- **Tells from the HUD, round 30** (zui_2d.cpp's ListItem and ZAnim commands, CZNewHudMap::Draw):
+  - stack slots follow the front end's creation order: a walk's iterator below its begin() temporary is an inline taking
+    begin() by const reference and assigning it into its own local (a by-value iterator parameter goes to a register);
+    `k <= 8` as a loop test gives `slti at`, `k < 9` gives `slti v0`;
+  - a new-expression's constructor arguments are evaluated after the allocation and skipped with the construction when
+    it fails: code that formats into the new object only on success is a constructor taking that argument
+    (CListItemStringTypeImpl(const char *));
+  - a local CSaferStr destroys its std::string base with flag 0, a plain std::string local passes -1; `return *done =
+    true;` gives the command ticks' `daddiu v0,zero,1`; the clamp `z = z < m ? z : m;` keeps the target's branch layout,
+    `if (!(z < m)) z = m;` inverts it;
+  - a unit's `__arraydtor$N` number depends only on what precedes the static, headers included -- unusable as a row name;
+    scdiff compares such a local reference by its raw bytes (relocation fields included), so __sinit_hud_newhudmap.cpp
+    0x3FDE80, code-exact, scores WRONG REFERENCE until the tools resolve it;
+  - CZNewHudMap::Draw 0x209790 with the unit's remaining statics defined (the legend's nine CPlainBmps, a show-legend
+    bool, SOCOM 1's four scroll bitmaps, three computed floats at 0x3E4090-0x3E40A0); the ListItem constructors and
+    DrawPrep, the ZAnim Parse/Tick pairs of C2DButton, CRenderableString and CUIMapCtrl byte-exact;
+  - open: CUIMapCtrl::ZoomIn 0x36C3B0 (0x160 vs 0x174: the target copies the node's position three times through stack
+    slots).
+- **Tells from the SEALs, round 22** (UpdateEventMask, CreateAiEvent, the sleep pair, seal_cfg.cpp's cell search):
+  - a float parameter's place in the signature shows only in the caller's load order (MW evaluates arguments left to
+    right; an inline wrapper cannot change it): CBody::SmoothPart takes the fraction first -- the SEALs' 0x576700 (twenty
+    body parts eased toward their saved poses) matches only so;
+  - `s = s && s->m_state == K ? s : 0;` leaves the target's two delay slots empty, an if or a cast through an inline fills
+    them; a materialised `!(a || b)` over two bits (sltu, bnez, sltu, xori) is `int r = a != 0; if (!r) r = b != 0;
+    return r ^ 1;` -- a bool local adds a second sltu at the join;
+  - a switch inlined from a function in the same unit reuses the outer switch's case constants in its compare chain (the
+    radio order's addressee 0x58DBB0 and its group-name switch 0x58DD70); a constructor's `m_loc(CAiMapLoc::invalid)`
+    copies the cell's bit-fields one by one, the same field assigned later from a local copies as one word;
+  - UpdateEventMask 0x572D70 is SOCOM 1's, in SOCOM 1's place (its MakeMaskEx statics, the team bits, bits 8/9 SOCOM 1's
+    m_sleeping/m_snoozing; SOCOM II adds a fourth guarded static); CreateAiEvent 0x572FA0 returns the event where SOCOM
+    1's returned a bool; the round-23 numbering rule did not close Crouch/InStateHang or InitDecalHandles;
+  - open: CombineRotations 0x576E30 (0x1C0 vs 0x1CC: AnimPop's miss -- the target loads the record count once before
+    the loop and re-reads the global only for the entry test; opt_common_subs off gives the size, 75 off).
+- **Tells from the AI core, round 21** (ExtendPath, FindDetour, the reverse walks):
+  - `(i = i0) <= i1` loads the right operand first; `T i = i0;` before the compare loads i0 first, and `i = i0;` after an
+    if/else reloads it (CAiMaps::ExtendPath 0x52BDF0);
+  - writing into an out-parameter (`negate(&p, &p)`) folds the input's loads into sp offsets while the stores keep MW's
+    field-address registers, written in place both go through the registers (FindDetour 0x524170's turned side); an `&&`
+    spelled `b = A; if (b) b = B;` with a bool local narrows A (andi 0xff) and materialises B into the same register, an
+    inline bool gives the `daddiu 1` form (FindDetour's head test);
+  - a reverse walk with end()/begin() stored and copied through $f0 at each test is a reverse_iterator with
+    rbegin()/rend() as inlines (UpdatePathWidth 0x525340 and the points' flags pass 0x525520 -- c2dfont.cpp's shape); a
+    postfix `&*i++` gives `move a0,s4; addiu s4,s4,-8; addiu s2,a0,-8`; an `||` chain of `==` on one value folds into a bit
+    test (range check, sllv, mask) held in a bool, a switch gives a compare chain; a local declared ahead of another and
+    assigned after it takes the earlier register number;
+  - 0x510110 is the const-void pointer list deleter's destructor (ai_events.cpp's and ai_astar.cpp's copies byte-exact);
+  - open: CopyPlan (21; a reference local to the visited cells gets 8), plan_legcomplete (0x7C vs 0xAC), remove_if<_tick>
+    (4), SetRegionType (10: a non-const region local gives the registers, then MW reuses the loaded byte), GetNextEvent (2).
+- **Tells from the game states, round 26** (the zoom getters, the byte-enum family, ~CMission, CMsgEditor):
+  - THE BYTE-ENUM FAMILY's `lb; andi 0xff` comes from reading the stored button at each use through a one-byte temporary
+    of its own (a wrapper around a char: CByteEnum, the name ours), so each function reads it twice -- the two loads
+    merge, but the two zero-extensions merge only after the peephole that would fold a single-use pair into `lbu` has run
+    (`#pragma opt_common_subs off` shows the two andi, `#pragma peephole off` keeps the pair but drops label alignment); a
+    wrapper temporary on the right of a built-in `==` keeps a constant's narrowing at runtime (`li` in the delay slot,
+    `andi` at the join): fts_controller.cpp 28 of 30;
+  - an `inline` function's string literal is pooled and MW keeps null tests on its address; a non-inline function
+    auto-inlined from the same unit keeps its literal local, the tests fold and the vanished arm leaves a `b` to the next
+    instruction (~CMessageQueue); a class whose only own virtual is its destructor emits its vtable and copies of the
+    base's inline virtuals wherever that destructor is defined (CMsgEditor); a member of a class derived from a vector or
+    list costs one extra this-test (CObjAnchorVec); a global read into a local before a parameter's null test loads in
+    the test's delay slot;
+  - the zoom getters: 0x2AF860 ftsGetTacMapZoomNear, 0x2AF870 ftsGetTacMapZoomFar, 0x2AF880 ftsGetTacMapZoom -- SOCOM 1's
+    order, their globals' order, PreOpen 0x2ACC10 reading "TacMapZoom" items 0-2 (1.0, 2.2, 0.55) into them and the
+    callers agree (SOCOM II's SwitchMapToFullScreen is 0x20A780 and calls the zoom, the zoom step 0x20A330 and
+    FrameObjective the far one) -- the HUD's round-29 reading was the call site's, not the map's;
+  - fts_controller.cpp's initialiser is 0x400730; ~CMission 0x2AD940 shows CMission derives from CSaveModule (vtable
+    0x406290; Serialize/UnSerialize 0x2A6340/0x2A54E0 from its slots 3 and 4);
+  - open: 0x2C60C0 (2: the two andi at the join in the other order), 0x2C6290 (6: two registers trade).
 - **Tells from the world, rdr and sound, round 9** (the jukebox, the sound banks, include/string's substrings, zrdr's stack):
   - a container accessor used as the object of an inline call (`s.top()->push_back(x)`) is checked one level deeper and
     calls its callee out of line; used as an initialiser it inlines whole -- zrdr.h's stack is the real include/stack now
@@ -4581,7 +4713,10 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   deleting it -- three matches had been lost that way and restored by hand. A
   hand-written unit's inline copy supersedes a draft only when it is byte-exact (sccheck and
   automatch alike): a copy that misses leaves the draft's match standing, as the linker keeps
-  a strong definition over the copies.
+  a strong definition over the copies -- and only AT THE ADDRESS IT MATCHED (2026-11-04): an
+  instance with a row in each overlay (`ovl-copy:`) can be matched by hand in one and by its draft
+  in the other (seal_env.cpp's byte-exact ~vector<CZDecalDef> is OVL2's 0x5A3C60; OVL1's 0x2CDB30
+  stays its draft's, which sccheck had stopped scoring by name).
 
 ## The map: `symbols.txt`
 
@@ -4756,7 +4891,7 @@ are counted apart by `sccheck.py`, and are **not finished source**: placeholder 
   of them -- the overlays were built with the toolchain zlib settled, throughout);
 - a correct starting body for whoever writes the real TU;
 - disposable: hand-written source supersedes them (sccheck skips a generated function the
-  hand tier defines, or emits a byte-exact inline copy of, and says so), and
+  hand tier defines, or emits a byte-exact inline copy of at the same address, and says so), and
   `automatch.py --emit` deletes superseded files.
 
 Data references in a draft are `data_<VA>` placeholders (BSS included) or `data.txt` names,

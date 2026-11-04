@@ -100,7 +100,19 @@ public:
 /* SOCOM II's CPnt4D has a written copy constructor through PNT4D's (its copy 0x328D60;
  * zparticle.h's stand-in declares it), but not here: declared, it loses SeeFarther (thezoom.cpp,
  * whose 128-bit copies need the implicit one) and gains nothing in any hand-written unit
- * (re-measured by the MSL lane, 2026-10-25: 3005 -> 3004) */
+ * (re-measured by the MSL lane, 2026-10-25: 3005 -> 3004).
+ * THE IMAGE'S 4D POINT COPIES, surveyed (the MSL headers round 17, build/p17/fpu4scan.py: every
+ * callee copying a 16-byte argument through four FPRs): three shapes, no one class -- SeeFarther's
+ * by-value colour and its global copied with lq/sq (16-aligned, implicit: this class); Props::Branch
+ * calling the copy constructor 0x328D60 out of line for a member at +0x30 (written, as SOCOM 1's
+ * 0x2366F0: zparticle.h); RenderLineWorld 0x33B5F0 copying its four by-value points in the callee
+ * through the FPRs (4-aligned, implicit). That last is PNT4D above as it stands: RenderLineWorld
+ * written over PNT4D parameters is byte-exact in zrndr_pipe.cpp (its `as=` line naming the map's
+ * RenderLineWorld__F6CPnt4D...), so the world lane's CPnt4D_4 stand-in needs no second class here.
+ * The image's other FPR copies of an argument are the deques' 16-byte iterators, CheckExtents'
+ * explicit `CPnt4D q(p)` and two larger by-value records (0x334940, 0x598860); c2dfont.cpp's glyph
+ * colour (four ints, copied so inside the glyph's implicit copy) is the same 4-aligned block at a
+ * 16-aligned member */
 class CPnt4D : public PNT4D {
 public:
     CPnt4D() {}

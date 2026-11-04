@@ -518,21 +518,69 @@ extern "C" bool func_0058C2F0(CZSealBody *seal, CZSIScriptCommon *anim, CPnt3D *
     return false;
 }
 
-/* a cell search's query and its answer (0x58F230 passes this callback; the names ours) */
-struct CCellQuery {
-    unsigned char _0[0xc];
-    CAiMapLoc m_loc;   // 0xc
-    int m_10;   // 0x10
-};
-
+/* a cell search's answer: the line walks' callbacks below take the walk (ai.h's MAP_LINEWALK_STRUCT)
+ * and this as their data (0x58F230 and 0x58F6E0 pass them; the names ours) */
 struct CCellAnswer {
+    /* none yet (0x58F6E0 builds one so: the invalid cell copied field by field) */
+    CCellAnswer() : m_found(false), m_loc(CAiMapLoc::invalid) {}
+
     bool m_found;   // 0x0
     CAiMapLoc m_loc;   // 0x4
 };
 
+/* whether a cell can be taken: on the maps, traversable, and under no overlay when occupied -- the
+ * cell looked up when none is given (OVL2 0x58FA70, new in SOCOM II: the cell searches' steps
+ * 0x58F8A0 and 0x58F960 ask it; the name unknown) */
+extern "C" bool func_0058FA70(const CAiMapLoc &loc, const CAiCell *cell)
+{
+    bool r = false;
+
+    if (!cell)
+        cell = AiMaps.GetCell(loc);
+    if (cell && cell->IsTraversable())
+        r = !ai::overlays.Contains(cell, loc);
+    return r;
+}
+
 extern "C" {
-/* (OVL2 0x58FA70: whether the cell can be taken) */
-int func_0058FA70(CAiMapLoc *loc, int n);
+/* how far above the search's height a marked cell may lie (OVL2 data 0x6505A0, read as a variable) */
+extern float data_006505A0;
+}
+
+/* the cell's bit 21 as a bool (an inline: the target materialises it before its branch; the name
+ * ours) */
+static inline bool IsMarked(const CAiCell *cell)
+{
+    return cell->m_mes ? true : false;
+}
+
+/* a cell search's step that keeps to a height: a marked cell lying too far above the search's height
+ * is passed over; a cell taken ends it, found (OVL2 0x58F960, new in SOCOM II: a callback, as
+ * 0x58F8A0; the altitude CAiMap::GetAltitude's body, 0x516940, written out) */
+extern "C" bool func_0058F960(const MAP_LINEWALK_STRUCT &q, CCellAnswer *a)
+{
+    bool skip = false;
+    const CAiCell *cell = q.m_cell;
+
+    if (IsMarked(cell)) {
+        const CAiMap *map = q.m_map;
+        float h;
+        bool ok;
+
+        if (cell) {
+            h = map->m_bbox.m_min.y + map->m_alt_quant * (float)cell->m_altitude;
+            ok = true;
+        } else
+            ok = false;
+        if (ok && !(h - q.m_pos.y <= data_006505A0))
+            skip = true;
+    }
+    if (!skip && func_0058FA70(q.m_loc, q.m_cell)) {
+        a->m_found = true;
+        a->m_loc = q.m_loc;
+        return false;
+    }
+    return true;
 }
 
 /* whether a cell is on a map: either coordinate off the invalid cell's (an inline bool: the target
@@ -545,18 +593,44 @@ static inline bool IsMapped(const CAiMapLoc &loc)
 /* a cell search's step: a cell taken ends it, found; otherwise the answer is whether the cell it
  * holds is on a map, and the search goes on (OVL2 0x58F8A0, new in SOCOM II: a callback 0x58F230
  * passes by address) */
-extern "C" bool func_0058F8A0(CCellQuery *q, CCellAnswer *a)
+extern "C" bool func_0058F8A0(const MAP_LINEWALK_STRUCT &q, CCellAnswer *a)
 {
     bool done = true;
 
-    if (!func_0058FA70(&q->m_loc, q->m_10)) {
+    if (!func_0058FA70(q.m_loc, q.m_cell)) {
         a->m_found = IsMapped(a->m_loc);
         done = false;
     } else {
-        a->m_loc = q->m_loc;
+        a->m_loc = q.m_loc;
         a->m_found = true;
     }
     return done;
+}
+
+/* a line walk's callback (ai.h's type: the steps above take their answer typed) */
+typedef bool (*CELL_WALK)(const MAP_LINEWALK_STRUCT &s, void *data);
+
+/* a cell that can be taken near a point: the point's own, else the first along a line -- from that
+ * cell toward the second point on its own map, or between the two points over the maps -- passing
+ * marked cells too far above the line; whether one was found, and it (OVL2 0x58F6E0, new in SOCOM II;
+ * the name unknown) */
+extern "C" bool func_0058F6E0(const CPnt3D *from, const CPnt3D *to, CAiMapLoc *out, bool along)
+{
+    CCellAnswer ans;
+    CAiMapLoc loc;
+
+    if (AiMaps.GetLocation(from, loc)) {
+        if (func_0058FA70(loc, 0)) {
+            ans.m_found = true;
+            ans.m_loc = loc;
+        } else if (along)
+            AiMaps.GetMapByIndex(loc.m_mapid)->WalkLine(loc, to, (CELL_WALK)func_0058F960, &ans, 0.2f);
+        else
+            AiMaps.WalkLine(from, to, (CELL_WALK)func_0058F960, &ans, 0.2f);
+    }
+    if (ans.m_found)
+        *out = ans.m_loc;
+    return ans.m_found;
 }
 
 /* a slot for an item kind: 3 for kind 2, 17 for kind 16, 21 for kinds 9-13, none otherwise -- asked
@@ -584,6 +658,59 @@ extern "C" bool func_0058DFA0(unsigned char item)
         break;
     }
     return slot != ITEM_SLOT_NONE;
+}
+
+/* a radio order's group named (OVL2 0x58DD70, new in SOCOM II; the name unknown): 0x58DBB0 below
+ * inlines it. The cases listed in reverse of the target's compare chain */
+extern "C" const char *func_0058DD70(unsigned char who)
+{
+    switch (who) {
+    case 1:
+        return "FIRETEAM";
+    case 2:
+        return "ABLE";
+    case 3:
+        return "BRAVO";
+    case 17:
+        return "ESCORTEE";
+    case 18:
+        return "FRIENDLY";
+    case 26:
+        return "NEUTRAL";
+    case 27:
+        return "TURRETS";
+    case 29:
+        return "SUPPORT";
+    case 28:
+        return "HOSTAGE";
+    case 30:
+        return "ENEMIES";
+    case 31:
+        return "ALLIES";
+    default:
+        return "FT_UNKNOWN";
+    }
+}
+
+/* a radio order's addressee for the HUD: the team, its elements, an escortee and the air support
+ * described, any other group by its name (OVL2 0x58DBB0, new in SOCOM II: OVL1's radio menu builder
+ * 0x232BC0 asks it; the name unknown) -- the names' switch inlined, its compares reusing this one's
+ * constants */
+extern "C" const char *func_0058DBB0(unsigned char who)
+{
+    switch (who) {
+    case 1:
+        return "Issue an order to the entire team . . .";
+    case 2:
+        return "Issue an order to team Able . . .";
+    case 3:
+        return "Issue an order to team Bravo . . .";
+    case 17:
+        return "Issue an order to an Escortee . . .";
+    case 29:
+        return "Call in for air support";
+    }
+    return func_0058DD70(who);
 }
 
 /* an order's name for the HUD (OVL2 0x58E950, a switch over 24 orders; its draft matches) */
