@@ -19,6 +19,14 @@ class CMeshDecal;
  * m_permPool; the member names ours) */
 class CDecalPool {
 public:
+    /* empty: no array, nothing counted (inline: this unit's initialiser zeroes the four pools'
+     * array, count and overflow, in that order) */
+    CDecalPool()
+    {
+        m_pool = 0;
+        m_count = 0;
+        m_overflow = 0;
+    }
     /* the most and the extra kept, the pool's array made for both, recycling (SOCOM 1's) */
     void Init(unsigned int count, unsigned int extra);
     CDecal *Get(bool b);
@@ -36,6 +44,12 @@ public:
 /* the same over the mesh decals (SOCOM 1's) */
 class CMeshDecalPool {
 public:
+    CMeshDecalPool()
+    {
+        m_pool = 0;
+        m_count = 0;
+        m_overflow = 0;
+    }
     void Init(unsigned int count, unsigned int extra);
     /* the array deleted and the counts zeroed (SOCOM 1's) */
     void Uninit();
@@ -112,6 +126,48 @@ using namespace zdb;
 
 /* a cached pointer from its uncached or accelerated mirror */
 #define CACHED(p) ((void *)((unsigned int)(p) & 0x0FFFFFFF))
+
+namespace zdb {
+
+/* the four pools (SOCOM 1's statics) and the square a decal's UVs must reach into, -1.2 to 1.2
+ * (new in SOCOM II, where SOCOM 1 tested 0 to 1: 1 and -1 widened by uvSlop, the float at 0x3E14C8)
+ * -- defined in the order this unit's initialiser (0x404A10) builds them; the names ours */
+CDecalPool CDecal::m_tempPool;
+CDecalPool CDecal::m_permPool;
+CMeshDecalPool CMeshDecal::m_tempPool;
+CMeshDecalPool CMeshDecal::m_permPool;
+float uvSlop = 0.2f;
+float uvMax = 1.0f + uvSlop;
+float uvMin = -1.0f - uvSlop;
+
+/* whether a triangle's UVs, by their bounding box, reach into the square (SOCOM 1's UVCompare,
+ * after CDecalPool::Init in both units; the VU0 decal builder 0x3B8680 and 0x3B3AB0 call it) */
+bool UVCompare(CPnt3D *a, CPnt3D *b, CPnt3D *c)
+{
+    float m;
+
+    m = a->x;
+    m = m < b->x ? m : b->x;
+    m = m < c->x ? m : c->x;
+    if (m > uvMax)
+        return false;
+    m = a->x > b->x ? a->x : b->x;
+    m = m > c->x ? m : c->x;
+    if (m < uvMin)
+        return false;
+    m = a->y;
+    m = m < b->y ? m : b->y;
+    m = m < c->y ? m : c->y;
+    if (m > uvMax)
+        return false;
+    m = a->y > b->y ? a->y : b->y;
+    m = m > c->y ? m : c->y;
+    if (m < uvMin)
+        return false;
+    return true;
+}
+
+}
 
 void CDecalPool::Init(unsigned int count, unsigned int extra)
 {

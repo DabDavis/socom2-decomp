@@ -44,6 +44,7 @@ enum FIREMODE {
 class CZAnim;
 namespace zdb {
 class CTexture;
+class CTexHandle;
 class CNode;
 }
 class CZAmmo;
@@ -182,6 +183,29 @@ public:
     /* the fire animation, the zoomed one or not (SOCOM 1's, 0x3D22B0: `zoomed ? m_zoomedfireanim :
      * m_fireanim`; CTurret::Fire calls it, its draft defines it) */
     CZAnim *GetFireAnim(bool zoomed);
+    /* what CZWeaponList::InitializeWeapons reads and sets, out of line (SOCOM 1's names, called at
+     * the same places of its InitializeWeapons; the zoomed thermal fire animation's setter is new in
+     * SOCOM II, the name ours -- InitializeWeapons is every one's only caller) */
+    char *GetDecalSetName();
+    char *GetIconTextureName() const;
+    bool AllocateHitAnimMem();
+    bool AllocateSpecialMaterialAnimMem();
+    char *GetFireAnimName();
+    void SetFireAnim(CZAnim *anim);
+    void SetZoomedFireAnim(CZAnim *anim);
+    void SetZoomedFireAnimTT(CZAnim *anim);
+    char *GetHitAnimName();
+    char *GetDefaultSpecialAnimName();
+    void SetDefaultSpecialAnim(CZAnim *anim);
+    char *GetSpecialMaterialAnimName();
+    /* the sounds of a round passing close, the bullets' (SOCOM 1's static) and the rockets' (new in
+     * SOCOM II, ".ROCKET_BY"; the names ours); the SEAL's weapon event plays them */
+    static void SetBulletPassSound(CSnd *snd);
+    static CSnd *GetBulletPassSound();
+    static void SetRocketPassSound(CSnd *snd);
+    static CSnd *GetRocketPassSound();
+    static CSnd *m_bulletpassSound;
+    static CSnd *m_rocketpassSound;
     /* the id by value (inline: GetWeapon(EQUIP_ITEM) narrows its argument into a register of its
      * own only so; the name is ours) */
     EQUIP_ITEM GetId() const { return m_ID; }
@@ -323,8 +347,10 @@ public:
     CZAnim **m_hitanim;   // 0x80 (SOCOM 1: 0x64; ClearAnims frees it)
     CZAnim *m_fireanim;   // 0x84
     CZAnim *m_zoomedfireanim;   // 0x88
-    CZAnim *m_defaultspecialanim;   // 0x8c
-    CZAnim *m_socom2_90;   // 0x90 (SOCOM II's: ClearAnims clears it with the others)
+    /* the zoomed fire animation's thermal-scope variant, "<fire>_zoom_TT" (SOCOM II's, between SOCOM
+     * 1's zoomed and default special ones: InitializeWeapons sets it third; the name ours) */
+    CZAnim *m_zoomedfireanimTT;   // 0x8c
+    CZAnim *m_defaultspecialanim;   // 0x90 (SOCOM 1: 0x70)
     CZAnim **m_specialmaterialanim;   // 0x94 (SOCOM 1: 0x74)
     CSnd *m_reloadsound;   // 0x98 (SOCOM 1: 0x78)
     char *m_reloadsoundname;   // 0x9c
@@ -335,8 +361,10 @@ public:
     char *m_defaultspecialanimname;   // 0xb0
     char *m_specialmaterialanimname;   // 0xb4
     zdb::CTexture *m_texture;   // 0xb8 (SOCOM 1: 0x90)
-    /* the weapon's icon (the kit lane's: kit.h reads a texture there; the name ours) */
-    zdb::CTexture *m_icon;   // 0xbc
+    /* the weapon's icon: SOCOM 1's m_icontex, a texture handle (its DWARF; InitializeWeapons stores
+     * CWorld::GetTexHandle's result when the handle has a texture; the HUD's weapon selector loads
+     * its bitmap from it -- the name the kit lane's) */
+    zdb::CTexHandle *m_icon;   // 0xbc
     /* its decal set (CZMarkList::AddNewMark takes the material's decal from it and its permanence
      * byte; the name ours) */
     class CZDecalSet *m_decalSet;   // 0xc0

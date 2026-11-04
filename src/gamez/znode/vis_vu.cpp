@@ -6,8 +6,11 @@
  * (round 10, not acted on): its tail holds CVisual::m_stack_vid's deque copy-constructor chain
  * (0x3B7DB0 and its pieces 0x3B7E30-0x3B83D0 -- SOCOM 1's deque<unsigned int> copy constructor
  * 0x30E4B0 closes its vis_main.cpp the same way), and the initialiser that builds that static
- * (0x404570, its call to 0x3B7DB0) sits between zvid_init.cpp's (0x404500) and the decal pools' in
- * the ctors table, as this unit sits between zvid_init.cpp and vis_mesh.cpp. Only some of its
+ * (0x404570, its call to 0x3B7DB0) sits between zvid_init.cpp's (0x404490, round 17) and the decal
+ * pools' in the ctors table, as this unit sits between zvid_init.cpp and vis_mesh.cpp. Round 17:
+ * 0x404500, between the two, is a third unit's <iostream> pair (its objects at 0x4B45F0, beside
+ * this unit's statics; zvid_init.cpp's at 0x4A4160, beside its own) -- a unit between
+ * zvid_init.cpp and this one, perhaps the unwritten 0x3B1BF0-0x3B36EF stretch. Only some of its
  * functions so far; the rest stay placeholders. Defined in reverse of their image order (-inline
  * deferred).
  *
