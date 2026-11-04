@@ -4606,7 +4606,7 @@
 0x002DCDA0 0x280 GetIntersect__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD020 0x8 GetAltitude__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD030 0xF4 SetEdgeVecsAndNorm__Q23zdb3CDIFv  # OVL1; s1:calls
-0x002DD130 0x1C func_002DD130  # OVL1
+0x002DD130 0x1C LoadPlaneVU0__Q23zdb3CDIFv  # OVL1; ours, the core lane round 4 (SOCOM II's: the DI's points (0x10) loaded into vf4-vf6, three quadwords, and vcallms 0x70; the grid's node walks 0x2D2890 and 0x2D3030 call it with the DI)
 0x002DD150 0xC0 GetIntersect__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD210 0x9C func_002DD210  # OVL1
 0x002DD2B0 0x21C GetEdgeIntersectsY__Q23zdb3CDIFP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePointsY calls it where SOCOM 1's calls GetEdgeIntersectsY, after LoadTipAndTail as there)
