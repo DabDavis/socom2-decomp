@@ -217,6 +217,42 @@ int func_001904F8(int *p)
 	return data_001D62C0[1];
 }
 
+extern int WaitSema(int sema);
+extern int SignalSema(int sema);
+
+/* Function 0x80001319, under the library's semaphore: the data copied in after the size; the size
+ * written back from the reply when its result is not negative. The buffer's address is taken
+ * after the wait (its first store goes through the %lo, the rest through the register: as a local
+ * initialised at its declaration it is held across WaitSema).
+ * OPEN (right size, 21 words; GCC r22a): the buffer's base takes s3 and the size pointer s2 here,
+ * the other way round in the target, whose `i = 0` sits in the size test's delay slot and whose
+ * copy runs through a base made in the loop's preheader (`addiu a2,s2,12`); copying through
+ * `((char *)&p[3])[i]` instead folds the 12 into the store (`sb v1,12(a0)`, 0x124). */
+int sceDbcSendData(int s, int a1, int *size, char *buf)
+{
+	unsigned int *p;
+	char *d;
+	int i;
+
+	WaitSema(data_001D9800);
+	p = data_001D62C0;
+	p[0] = s;
+	p[1] = a1;
+	p[2] = *size;
+	d = (char *)&p[3];
+	for (i = 0; i < *size; i++)
+		d[i] = buf[i];
+	if (sceSifCallRpc(&data_001D6248, 0x80001319, 0, data_001D62C0, 640, data_001D62C0, 640, 0, 0) < 0) {
+		func_00190BA0("sceDbcSendData: rpc error\n");
+		SignalSema(data_001D9800);
+		return 0;
+	}
+	if ((int)p[131] >= 0)
+		*size = p[2];
+	SignalSema(data_001D9800);
+	return p[131];
+}
+
 /* OPEN (61 words, a frame 16 bytes smaller in the target): the target holds the buffer's address
  * in s0, size and buf in s1/s2 and copies through a base made once (`addiu a2,s0,12`); this build
  * keeps the buffer's %hi in a fourth saved register. */
