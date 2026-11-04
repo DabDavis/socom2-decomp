@@ -54,6 +54,7 @@ and data reference resolved to the address the shipped code uses.
 | `tools/ccperm.py` | every order of a marked block of statements, for GCC's scheduled stores: which source order gives the target's |
 | `tools/ccflags.py` | a GCC range's drafts recompiled with a flag added: a flag the vendor used loses none (how strict aliasing was told apart) |
 | `tools/ccdump.py` | a GCC unit compiled under its own `sc:` toolchain and flags with cc1's register-allocation and scheduler dumps (`-dl -dg -dS -dR -fsched-verbose=4`, the 2.9-991111 builds' spellings handled); `-f FUNC` splits one function's sections and prints its allocation order and each pseudo's final register -- for register-only misses (GCC round 14c's harness, promoted in 15a) |
+| `tools/treesearch.py` | which source trees of a sum give the target's: every tree over a spec's leaves compiled under its GCC directive, each function's dataflow read back from cc1's RTL dump (2.96's fold regroups sums; the recogniser lane's round 18c, promoted in GCC round 20a) |
 | `tools/asmunit.py` | an assembler unit (`.s`) for a library object that was assembly: the rows transcribed (canonical instructions, labels, map names, %hi/%lo of the symbols the code addresses, the unit's own `.bss` labels), assembled by the toolchain named and scored until every function matches |
 | `symbols.txt` | **the map** — `0xADDR SIZE name  # note`, kept by hand from here on |
 | `data.txt` | the map of global data, the same format and namespace |
@@ -5445,6 +5446,64 @@ names). What they showed:
 hits (13 build failures, 16 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0 hits (5 refusals), OVL1 `1E7F58
 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22, 8): 247 tried, none byte-exact (round
 18a: 288, 0) -- the drafts that build all miss; the 35 that do not are round 16a's kinds.
+
+**Round 20a** (2026-11-04, by hand, libmpeg's macroblock layer first): 31 functions written byte-exact
+of 35 -- 25 rows newly byte-exact, 6 matched drafts superseded -- the lane's `src/lib`
+sdk/libc/libgcc/libm/ovl1 rows 1,071 -> 1,102 of 1,166 scored, none lost -- and 1 row named. libmpeg's
+slice and macroblock layers (`sdk/mpeg_dec.c` +10: _waitBdecOut, _mbAddressIncrement, _pictureData0,
+_sliceA0, _slice0, _skipMB0, _decMB0, _motionVectors, _motionVector, and _ipuVdec, open since round 10a;
+libmpeg 113 of 119; `sdk/libmpeg.h` types the two 0x140-byte macroblock records at 0x590 and names
+Fault_Flag, dcr, quantizer_scale_code), a new `sdk/inet_sock.c` (the socket layer over libinet,
+0x1C1CD0-0x1C4CC0, not in SOCOM 1: 13 of 17 written -- the lock, the socket lookup, libinet's error
+map, the free descriptor, three option setters, and six matched drafts' functions; its allocator and
+thread context OPEN) and a new `sdk/libpad2.c` (Sony's libpad2 over libdbc, 0x1BD588-: 8 of 8). Named:
+_waitBdecOut (func_001B6ED0, `s1:order`: the demo's 0x154CD0 at the same place in the decoder object,
+called from the same two functions). What they showed:
+
+- **libmpeg's slice and macroblock layers are mpeg2decode's text over the IPU**: getpic.c's picture_data,
+  start_of_slice and slice, macroblock.c's decode_macroblock (its macroblock_modes in line, writing
+  through the caller's pointers) and skipped_macroblock, motion.c's motion_vector(s) -- byte-exact as
+  that text reads wherever the IPU did not change it (VDEC tables for the VLCs, BDEC for the blocks and
+  the DC predictors, Fault_Flag kept, the slice's return codes renumbered). The demo's copy is a release
+  older (_pictureData0 0x108, _slice0 0x1F0, _waitBdecOut 0x1FC): SOCOM II's adds a stop request
+  (`_10a0`, set by func_001BBA70) that stops both IPU channels mid-picture.
+- **A register read through a plain pointer keeps its constant address**: GCC folds a non-volatile
+  access's address into the instruction (`ld $4,0x10002030`), which GNU as expands through the
+  destination register (`lui a0,0x1000; ld a0,0x2030(a0)`) -- or `$at` for a store (`sw
+  v1,0x2010($at)`, BDEC's error reset) -- where a volatile one is formed in a register (`lui; ori; ld
+  0(reg)`). The target's IPU_TOP reads are the plain kind (`IPU_TOP_NV`): round 10a's "lui; ld
+  0x2030(reg)" open, read after IPU_BP.
+- **This cc1 truncates DImode to HImode with `andi 0xffff`** (mips.md's truncdihi2): `return r & 0xFFFF;`
+  from a `short` function is two andis, the target's one `return r;`.
+- **A store in each arm sits at the join's head**: cross-jumping merges the two after reload, so through
+  allocation and scheduling there were two (`if (top < 0) d->nbits = ...; else d->nbits = 32;`, where
+  the conditional expression's one store is scheduled late) -- and each store is a reference, which
+  moves global-alloc's priority (refs x log2(refs) / live length): _waitBdecOut's nested third store
+  gives `d` s1, two give the target's s2, one the demo's s3.
+- **A case tree compares unsigned when the switch's operand is** (`sltiu` in _mbAddressIncrement's {0,
+  34, 35} tree: `u_int code`), and a case body's last statement decides what cross-jumping merges (case
+  35's `cont = 1` before `val += 33`, so case 34 shares the flush's tail).
+- **A loop's int counter keeps a signed compare after strength reduction** (libpad2's port loops test
+  the address giv with `slt`); a pair of buffers returned as `b[b[0]->count < b[1]->count]` is the
+  target's two-word stack array indexed by a compare; a frame test is guard clauses returning 0 first.
+- **Open, diagnosed in place**: inet_sock.c's first-fit allocation (0x1C1D40, a word short: the
+  remainder from the loop's own load of the block size), its release and set-up (0x1C1E90, 0x1C2028)
+  and the thread context (0x1C2160, right size: an unsigned mask loaded before the buffer's allocation
+  into the thread id's freed s1). Not reached: libmpeg's picture output (_updateRefImage ...
+  dmaRefImage) and colour conversion, the demux, libmrpc (sifrpc's aliasing cause), the socket calls
+  0x1C28F8-0x1C4C20, OVL1's codec.
+
+**The tools, round 20a**: `tools/treesearch.py`, the recogniser lane's tsearch2.py (round 18c)
+promoted: SPEC.py's leaves, every tree compiled under the spec's directive (`DIRECTIVE`, default the
+recogniser's) with cc1's RTL dump through tools/ccdump.py, each function's dataflow rebuilt and compared
+with `WANT`; the prelude from the spec (`PRELUDE`, `PRELUDE_FILE`), the batches under
+build/scratch/gcc/treesearch/. Proved: over round 18c's own spec (t_pm2.py, 30,240 trees, 59 s) it gives
+the 128 source trees of round 18c's pm2_hits.txt, line for line. It scores nothing: scdiff.py,
+sccheck.py, scdecomp.py and `include/` are master's, so no MW or GCC unit can score differently.
+automatch over the lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the
+lane's `src/lib` build): MAIN `18DB90 1C4CC0` 116 tried, 0 hits (12 build failures, 16 m2c refusals),
+`1CCD78 1CE2A4` 6 tried, 0 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96
+tried, 0 hits (22, 8): 220 tried, none byte-exact (round 19a: 247, 0).
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
