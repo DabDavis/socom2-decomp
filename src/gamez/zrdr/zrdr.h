@@ -147,7 +147,13 @@ public:
     void LoadTable(void *table, unsigned int bytes, bool copy);
     char *CreateString(const char *s);
 
-    unsigned char _0[0x20];
+    unsigned char _0[0xC];   // 0x0: util_stable.h's base vector<char *>
+    /* util_stable.h's first three virtuals, its vtable pointer here at 0xC (_fixup calls FindString
+     * through it) */
+    virtual void Clear();   // 0x08
+    virtual void Destroy();   // 0x0C
+    virtual char *FindString(const char *str);   // 0x10
+    unsigned char _10[0x10];   // 0x10
 };   // 0x20 bytes
 
 class CRdrIO;
