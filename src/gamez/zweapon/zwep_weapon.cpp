@@ -1,5 +1,5 @@
 /* zwep_weapon.cpp -- CZWeapon (SOCOM 1's zwep_weapon.cpp, by its static initialiser and the press
- * beta's asserts): OVL1 0x3CF1F0?-0x3D425F, after ZWepReader and before zwep_ammo.cpp's CZAmmo. SOCOM
+ * beta's asserts): OVL1 0x3CF1F0-0x3D425F, after ZWepReader (zwep_reader.cpp) and before zwep_ammo.cpp's CZAmmo. SOCOM
  * 1's unit also holds CZDecalSet and CZMarkList. Only some of its functions so far; the rest stay
  * generated drafts or placeholders. Defined in reverse of their image order (-inline deferred). */
 
