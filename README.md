@@ -2033,6 +2033,24 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 24** (CAiMap(int) and ~CAiMap, the footprint, the routes' removals, GetAltitude inline):
+  - MW COPIES A MEMBER THAT IS ITSELF A CLASS AS A BLOCK -- all three loads, then all three stores, through the member's
+    address; a CPnt3D or PNT3D assigned through a pointer interleaves the loads and stores instead; `*a = *b` on a CBBox
+    gives a block per corner, as does a struct holding one CPnt3D or a `float[3]` (closed CAiMap(int) 0x518450 and ~CAiMap
+    0x5181F0, open since round 16, BuildFootprint 0x515900 and the box copy 0x516140 -- and a lead for zmath: SOCOM II's
+    CPnt3D assignment may be a block copy in the original);
+  - assigning from a named temporary reads its second corner back through the register it was stored through, straight
+    from a cast temporary it is addressed at +12 from the first; a CAiMapLoc built with its three-field constructor gives
+    three word read-modify-writes after all the source loads, assigned field by field it stores the map id as a byte and y
+    as a halfword; in the box grow `p <= min ? p : min` and `p >= max ? p : max` give the target's compares and arm order
+    (MW lowers `a >= b` as `!(a < b)`);
+  - an iterator reused for an out-of-line call's returned iterator stays in memory for its whole life (ValidateRoutes
+    0x52F4A0: 0x448 vs 0x438 that way, only a0/a1 swapped -- its remove_if 0x5311E0 and remove_copy_if 0x5328E0 came out
+    byte-exact with it); GetLocation(point) and SetCorners are inlines whose copies sit after BuildFootprint in reverse
+    order of first use; the colouring dump names procedures unmangled (`is_traversable@0x8`): igv regexes must match those;
+  - CAiMap::GetAltitude(cell) is an inline in ai.h now (hud_linemap.cpp's and ai_map.cpp's definitions gone, 0x516940
+    still matching); ScanFootprint 0x516180 (0x75C), GetBBox 0x516130, ReRoute (SOCOM 1's, after _invalid_route in both
+    builds); 0x53AA50 marked an ovl-copy of MAIN's 0x18B050; open: is_traversable (24), GetNextEvent (2), ValidateRoutes.
 - **Tells from the game states, round 31** (testLoad/testUnload, the persona callback, UnInitialize, CMission::Open's name):
   - MW 3.0 KEEPS v0 LIVE FROM THE ENTRY AT A VOID OR INT RETURN along any path with no call, so temporaries there take v1;
     a float return uses $f0 and leaves v0 free (build/scratch/states-r31/p_ret.cpp) -- SOCOM 1's older build used v0 in
