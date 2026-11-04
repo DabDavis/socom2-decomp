@@ -6617,6 +6617,61 @@ LOCALs at the same positions, each body checked: CalculateDistance4Bit, ExpandGa
 CalcNrNodes@isowdp, IdleProcess@isowdp -- the N-best object's copies keep the bare names). No tool
 changed.
 
+**Round 18c: the language file's sums are fold's, the context-tree object, InitNewUtterance.**
+
+- **2.96's fold regroups a sum: the target's grouping is not the source's.** Read off the `-dr` dump
+  (`build/scratch/gcc/lang/fold2.c`): `(A + B) + (C + D)` is regrouped `(A + C) + (B + D)`, `A + (B + C)`
+  becomes `(A + B) + C` when C is a sum, `(M + x) + N` becomes `(M + N) + x` for products M, N, and two
+  products of one power of two are factored (`w * 8 + x * 2` is `(w * 4 + x) * 2`, `a * c + b * c` is
+  `(a + b) * c`). So round 5c's 45 and rounds 16c/17c's spellings chased fold's output.
+  `build/scratch/gcc/lang/treesearch.py` and `tsearch2.py` compile every tree of a sum's terms (30,240
+  for six, 1,500 functions a file) and read each one's expanded dataflow back from the dump: 50 trees
+  give `_langGetpErgodicPenalty`'s sum, the sections in file order among them (`int off = 0xE4 + (w * 4 +
+  s * c + es + ses + ep + sep) * 2`); 128 give `_cdbGetpProbMatrix`'s, the tables in file order past the
+  header (`(int *)(cdb + 1)`, CDB the 24-byte header -- an array member's ADDR_EXPR base keeps the 24
+  apart); 55 give the codebooks' start (`_langGetpCodeBook`). The phenomes' getter keeps the gastone base
+  an integer of its own (`int g = w * 8 + (int)d`: as a pointer or in one expression fold factors `w * 8`
+  into the halfword index).
+- **A count copied before it is rounded**: `_contextGetpSyntax` (open since round 5c) reads the word count
+  into a local and rounds it there (`n = EVEN(n)`) before the table's address is formed -- the local is
+  live across pron + word, the target's `move a0,a3` -- and adds it last through a pointer of its own
+  (the header's 192 then goes in before the halfword index).
+- **The store that frees two registers goes first** (InitNewUtterance; round 17c's 120 orders kept it
+  first): the closing `f96 = f100` is the block's last use of e, so sched1's register weight (round 14c)
+  stores it as soon as its load lands, the zero stores, which free nothing, last; the word's first state
+  as a pointer of its own makes the next word's table entry the address's last use -- loaded first, as
+  the target's.
+- **The context-tree object is a unit** (`asr/ctxtree.c`, SOCOM 1's 0x343B58, OVL2 0x4D3318-0x4D5B18):
+  SOCOM II inlines FreeTree into SetIsolatedWordDpActiveWords, _FreeTree's first level into FreeTree,
+  CalcNrNodes' at a budget of 12 into CalcNrNodes10 (`aNodesFr[12]` read directly) and the word walks'
+  into GetIsolatedWordDpActiveWords, their own copies after SetIsolatedWordDpActiveWords in declaration
+  order. Named: SetIsolatedWordDpActiveWords and FreeTree `s1:calls` (SOCOM 1's casrSetActiveWords and
+  FreeCtxInfo call them where ours call these rows), CalcAccuracyCtxTree, _FreeTree, CalcNrNodes@ctxtree,
+  _CountWordsInTree, _GetWordsInTree `s1:order` with each body checked. casr.h gains FASTALLO, the tree
+  node, the scheduler's allocator at +84 (its 3-word free list +116 takes the root), the tree's buffers
+  at +1080-+1128 and two language slots -- the same layout, every casr.h unit scoring as before.
+- **Unrolling follows the arm's exit**: `_CountWordsInTree`'s children sum returns inside its positive
+  test and 2.96 unrolls it by four, as the target's; `_GetWordsInTree`'s loop falls into the arms' join and
+  stays rolled, as the target's (SOCOM 1's compiler unrolled both). A list walked by an index of its own
+  lets combine fold `~w != -1` into the target's `beqz w`.
+- **An unsigned short converts through its promotion**: `node->nchildren > *maxc * 0.1` is `lhu` and
+  litodp, the target's; `(double)node->nchildren` converts the unsigned short itself (`lh` and a 65536
+  fixup). An `int` accessor result narrowed at the call gives CalcAccuracyCtxTree's `andi`.
+- **Open, diagnosed in place**: `_cdbGetCodeBookSize` and `_cdbGetpSmoothMatrix` (combine forms the
+  multiply-add, but its addend costs the same in GR_REGS and LO_REG -- 36 each in the `.lreg` dump -- and
+  global gives it v0 where the target's sits in LO; the second size's reload, which SOCOM 1's copy shares),
+  the four walkers after `_langGetpCodeBook` (the count's reload, SOCOM 1's too: the source keeps two reads
+  of nbr_codebook that CSE merges here), SetIsolatedWordDpActiveWords (6 words, the frame: with the
+  tables' pair first, the two `&vt` arguments are merged by CSE into a saved register). Not reached:
+  DynProgScoreUserWords, the 0x4E8000 and 0x4F8000 buckets' small rows.
+
+Hand-written in round 18c: `asr/isowdp.c` (InitNewUtterance closed: 8 of 8), `asr/language.c` (+4:
+`_langGetpErgodicPhenomes`, `_langGetpErgodicPenalty`, `_cdbGetpProbMatrix`, `_langGetpCodeBook`; 69 of
+76), `asr/contextv2.c` (`_contextGetpSyntax` closed: 21 of 21), `asr/ctxtree.c` (new: 7 of 8 -- FreeTree,
+_FreeTree, CalcNrNodes@ctxtree, CalcNrNodes10, CalcAccuracyCtxTree, _CountWordsInTree, _GetWordsInTree)
+-- 13 rows new to the map's byte-exact rows (3,580 bytes), none superseding a draft; `src/lib/asr` 483 of
+522 (470 of 514 before). 7 rows named. No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and

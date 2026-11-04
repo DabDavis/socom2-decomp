@@ -2286,28 +2286,28 @@
 0x0023B990 0x14 SetTrans__12SelectedSlotFf  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); by hand (the HUD lane: slot 11 of SelectedSlot's vtable 0x405D00 -- its name's SetTrans)
 0x0023B9B0 0x2A0 func_0023B9B0  # OVL1
 0x0023BC50 0x2B4 func_0023BC50  # OVL1
-0x0023BF10 0x10 func_0023BF10  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
-0x0023BF20 0x34 func_0023BF20  # OVL1
-0x0023BF60 0x10C func_0023BF60  # OVL1
-0x0023C070 0x54 func_0023C070  # OVL1
-0x0023C0D0 0x14C func_0023C0D0  # OVL1
-0x0023C220 0x7C func_0023C220  # OVL1
-0x0023C2A0 0x10 func_0023C2A0  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
-0x0023C2B0 0xA4 func_0023C2B0  # OVL1
-0x0023C360 0x8 func_0023C360  # OVL1
-0x0023C370 0x8 func_0023C370  # OVL1
-0x0023C380 0x8 func_0023C380  # OVL1
+0x0023BF10 0x10 SetColor__12SelectedSlotFfff  # OVL1; tu: zui_2d.cpp~ (1.0 beta); by hand (the HUD lane, round 26): slot +0x78 of SelectedSlot's table 0x405D00, a slot of its own (the name ours) -- the name's colour (m_name's three floats at 0x68); hud_mpweaponsel.cpp, byte-exact
+0x0023BF20 0x34 SetPos__12SelectedSlotFff  # OVL1; by hand (the HUD lane, round 26): slot +0x74 of SelectedSlot's table 0x405D00, CWeaponSlot's SetPos (the name ours) -- the name placed at the slot's offset (two 2.0 statics); hud_mpweaponsel.cpp, byte-exact
+0x0023BF60 0x10C SetWeapon__12SelectedSlotFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): slot +0x70 of SelectedSlot's table 0x405D00, CWeaponSlot's SetWeapon (the name ours) -- the weapon kept at 0x18, the name off for none, else the weapon's GetDescription upper-cased into a static 80-byte buffer and loaded at 0.9; hud_mpweaponsel.cpp, byte-exact
+0x0023C070 0x54 Draw__12SelectedSlotFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane, round 26): slot 1 of SelectedSlot's table 0x405D00 -- the name drawn while on; hud_mpweaponsel.cpp, byte-exact
+0x0023C0D0 0x14C SetWeapon__12CategorySlotFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): slot +0x70 of CategorySlot's table 0x405D80 (the name ours) -- the weapon kept, the bitmap and name off for none, else the weapon's icon (CZWeapon+0xBC) loaded and its description shown as SelectedSlot's; hud_mpweaponsel.cpp, byte-exact
+0x0023C220 0x7C Draw__12CategorySlotFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane, round 26): slot 1 of CategorySlot's table 0x405D80 -- the bitmap and the name drawn, each while on; hud_mpweaponsel.cpp, byte-exact
+0x0023C2A0 0x10 SetColor__12CategorySlotFfff  # OVL1; tu: zui_2d.cpp~ (1.0 beta); by hand (the HUD lane, round 26): slot +0x78 of CategorySlot's table 0x405D80, a slot of its own (the name ours) -- the name's colour (0xE8); hud_mpweaponsel.cpp, byte-exact
+0x0023C2B0 0xA4 SetPos__12CategorySlotFff  # OVL1; by hand (the HUD lane, round 26): slot +0x74 of CategorySlot's table 0x405D80 (the name ours) -- the bitmap at the slot's offset (4, 2 statics), the name 4 above; hud_mpweaponsel.cpp, byte-exact
+0x0023C360 0x8 SetPos__11CWeaponSlotFff  # OVL1; by hand (the HUD lane, round 26): slot +0x74 of CWeaponSlot's table 0x405E00, the class's second own slot (the name ours) -- empty; hud_mpweaponsel.cpp, byte-exact
+0x0023C370 0x8 SetWeapon__11CWeaponSlotFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): slot +0x70 of CWeaponSlot's table 0x405E00, the class's first own slot (the name ours) -- the weapon kept at 0x18; hud_mpweaponsel.cpp, byte-exact
+0x0023C380 0x8 Draw__11CWeaponSlotFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane, round 26): slot 1 of CWeaponSlot's table 0x405E00 -- empty; hud_mpweaponsel.cpp, byte-exact
 0x0023C390 0x354 func_0023C390  # OVL1
-0x0023C6F0 0x144 func_0023C6F0  # OVL1
+0x0023C6F0 0x144 NextWeapon__8SlotListFbiii  # OVL1; by hand (the HUD lane, round 26): SlotList's (the page's 0x23CD20 and 0x23D060 and the list's 0x23D860 call it, the list's +0x960 as this) -- recursive: the index stepped up or down CZWeapon::m_listWeapons (its count at 0) round the list, again while 0x23C390 refuses the weapon, a search start kept in .data 0x3DCEB0 (-1 between searches), 0 without the HUD's owner; the name ours; hud_mpweaponsel.cpp, OPEN (registers)
 0x0023C840 0x344 func_0023C840  # OVL1
-0x0023CB90 0x118 func_0023CB90  # OVL1
+0x0023CB90 0x118 NextClass__8SlotListFb10EQUIP_ITEM  # OVL1; by hand (the HUD lane, round 26): SlotList's (the list's 0x23C840 calls it on the category page's list +0x960; this unused) -- an id stepped up or down, then on round 0-254 until it is one of GetIDType's sixteen class starts (4, 31 ... 230: an inlined switch's bool); the name ours; hud_mpweaponsel.cpp, byte-exact
 0x0023CCB0 0x70 Draw__8SlotListFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane: slot 1 of SlotList's vtable 0x405E80 -- its five slot pointers drawn while it is on)
 0x0023CD20 0x33C func_0023CD20  # OVL1
 0x0023D060 0x144 func_0023D060  # OVL1
 0x0023D1B0 0xF8 func_0023D1B0  # OVL1
 0x0023D2B0 0x1A4 func_0023D2B0  # OVL1
-0x0023D460 0xD4 func_0023D460  # OVL1
-0x0023D540 0xC8 func_0023D540  # OVL1
+0x0023D460 0xD4 ShowArrows__19CMPWeaponCategoriesFv  # OVL1; by hand (the HUD lane, round 26): the category page's (the selector's Tick 0x240600 calls it on +0x220) -- its four arrow polys (0x1A0, stride 0x1F0) off while the byte 0x4147C0 is set, else coloured from a guarded static CPnt3D (100, 100, 100; guard 0x4147C8, object 0x4147D0); the name ours; hud_mpweaponsel.cpp, byte-exact
+0x0023D540 0xC8 SetWeapon__19CMPWeaponCategoriesFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): the category page's (the selector's state switch 0x240B90 and 0x23E370/0x23EAE0 call it on CMPWeaponSel+0x220) -- the weapon's index in CZWeapon::m_listWeapons, its GetIDType and its kind (0 primary, 1 secondary, 2 neither) at 0xF20-0xF27, item 255 shown as item 121; the name ours; hud_mpweaponsel.cpp, byte-exact
 0x0023D610 0x1F8 func_0023D610  # OVL1
 0x0023D810 0x50 SetTrans__12CategorySlotFf  # OVL1; by hand (the HUD lane: slot 11 of CategorySlot's vtable 0x405D80 -- its name's and bitmap's SetTrans through their tables)
 0x0023D860 0x714 func_0023D860  # OVL1
@@ -2319,7 +2319,7 @@
 0x0023E700 0xF8 Off__12CMPWeaponSelFv  # OVL1; by hand (CHUD::Off calls it on the network weapon selector at CHUD+0x38E0 in a network game, among the other selectors' Off; it calls slot 4, Off, of each list and bitmap it holds)
 0x0023E800 0x108 On__12CMPWeaponSelFv  # OVL1; by hand (CHUD::On calls it on CHUD+0x38E0 in a network game, as Off its pair; slot 5, On, of each list and bitmap)
 0x0023E910 0x1C4 func_0023E910  # OVL1
-0x0023EAE0 0xE0 func_0023EAE0  # OVL1
+0x0023EAE0 0xE0 Scroll__12CMPWeaponSelFSc  # OVL1; by hand (the HUD lane, round 26): the selector's (its signed-char step, re-extended in the callee): the cursor m_list.m_34 a slot on (2) or back (-2) round the five, itself again while 0x23E910 refuses the slot, then the category page's SetWeapon with the slot's weapon and the update 0x23E030; the name ours; hud_mpweaponsel.cpp
 0x0023EBC0 0xD4 func_0023EBC0  # OVL1
 0x0023ECA0 0x1250 func_0023ECA0  # OVL1
 0x0023FEF0 0x690 func_0023FEF0  # OVL1
@@ -6801,8 +6801,8 @@
 0x0036AFA0 0x8 Tick__17CRenderableStringFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036AFB0 0x8 func_0036AFB0  # OVL1
 0x0036AFC0 0x24 SetMapOffset__17CRenderableStringFii  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0036AFF0 0xAC func_0036AFF0  # OVL1
-0x0036B0A0 0x128 func_0036B0A0  # OVL1
+0x0036AFF0 0xAC SetString__11CSecureTextFPCcb  # OVL1; by hand (the HUD lane, round 26): slot 26 (+0x70) of CSecureText's table 0x406FA0, C2DString's SetString slot -- a star per UTF-8 character of the text (UTF8CharLen), set through C2DString::SetString untranslated; byte-exact from zui_2d.cpp
+0x0036B0A0 0x128 UpdateUIVar__8C2DClockFP11CUIVariable  # OVL1; by hand (the HUD lane, round 26): slot 5 (+0x14) of C2DClock's mixin table 0x407220 and its thunk 0x37D130's target -- SOCOM 1's C2DClock::UpdateUIVar (0x3853F0 in the demo, the same code): the variable's seconds as "%02d:%02d"; byte-exact from zui_2d.cpp
 0x0036B1D0 0x14 AddToRdr__8ListItemFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16): the row ran 0x28 over two functions -- this one, ListItem's vtable slot 0 (0x407248), its look's slot 14 (lw t9,64) tail-called with the argument passed on, five words, then MW's pad and a separate `jr ra` at 0x36B1F0; the slot is SOCOM II's (SOCOM 1's ListItem has no vtable): the string look's copy (0x37BF40) writes the item's text into the CRdrEditor it is given as an int, real or string node -- the name ours
 0x0036B1F0 0x8 AddToRdr__17CListItemTypeImplFP10CRdrEditor  # OVL1; split by hand (the HUD lane, round 16) from 0x36B1D0's row: an empty function of its own, CListItemTypeImpl's vtable (0x4070F0) slot 14 (0x407130 holds it), the slot ListItem::AddToRdr calls; SOCOM II's (SOCOM 1's 13-slot table has none) -- the name ours, after the string look's override (0x37BF40)
 0x0036B200 0x8 Tick__17CListItemTypeImplFf  # OVL1; by hand (the HUD lane, round 25): slot 11 of CListItemTypeImpl's table, SOCOM 1's Tick default (empty); zui_2d.cpp
@@ -8758,14 +8758,14 @@
 0x004D4050 0x554 intCreateCtxTree  # OVL2; s1:callee
 0x004D45A8 0x208 CalcNrNodes10  # OVL2 unaligned; s1:calls
 0x004D47B0 0x8A4 GetIsolatedWordDpActiveWords  # OVL2; s1:calls (SOCOM 1's casrGetActiveWords calls GetIsolatedWordDpActiveWords where ours call this row, 1 call site; the same position in SOCOM 1's object)
-0x004D5058 0x2A0 func_004D5058  # OVL2 unaligned
+0x004D5058 0x2A0 SetIsolatedWordDpActiveWords  # OVL2 unaligned; s1:calls -- the gcc lane, round 18c: SOCOM 1's casrSetActiveWords calls SetIsolatedWordDpActiveWords where ours (casr.c) calls this row, for an isolated-word engine; the body is SOCOM 1's (the tree freed through FreeTree inlined, intCreateCtxTree, the scheduler's command 36), its command 36 now handed the user words' tables
 0x004D52F8 0x20 CreateCtxTree  # OVL2 unaligned; s1:exact
-0x004D5318 0xB0 func_004D5318  # OVL2 unaligned
-0x004D53C8 0x1CC func_004D53C8  # OVL2 unaligned
-0x004D5598 0x180 func_004D5598  # OVL2 unaligned
-0x004D5718 0x114 func_004D5718  # OVL2 unaligned
-0x004D5830 0x184 func_004D5830  # OVL2
-0x004D59B8 0xF0 func_004D59B8  # OVL2 unaligned
+0x004D5318 0xB0 CalcAccuracyCtxTree  # OVL2 unaligned; s1:order -- the gcc lane, round 18c: SOCOM 1's context-tree object's CalcAccuracyCtxTree (public), the same head and tail -- the iso-word tree (+604), the language's speech units (slot +168), CalcNrNodes10 from a zeroed maximum, `(unsigned)(x + 0.5f) + 135` -- its per-child loop moved into SOCOM II's CalcNrNodes10
+0x004D53C8 0x1CC FreeTree  # OVL2 unaligned; s1:calls -- the gcc lane, round 18c: SOCOM 1's FreeCtxInfo calls FreeTree where ours (0x4CE258) calls this row; SOCOM 1's body (the tree, the root to the 3-word free list at +116, the word lists at +1080) with _FreeTree's first level inlined and the user words' tables freed
+0x004D5598 0x180 _FreeTree  # OVL2 unaligned; s1:order+body -- the gcc lane, round 18c: SOCOM 1's LOCAL _FreeTree of the context-tree object (0x3448F0) instruction for instruction: each child's subtree, then the children's array to the free list of its size (fewer than 9) or the heap; FreeTree and SetIsolatedWordDpActiveWords call it for the root's children
+0x004D5718 0x114 CalcNrNodes@ctxtree  # OVL2 unaligned; s1:order+calls -- the gcc lane, round 18c: SOCOM 1's LOCAL CalcNrNodes of the context-tree object (0x3456B0, called by CalcNrNodes10 alone, as here): aNodesFr[budget] plus each child's weight while the phoneme's states leave budget; SOCOM II adds the user words' phoneme table. Qualified: SOCOM 1's iso-word object has its own CalcNrNodes (CalcNrNodes@isowdp)
+0x004D5830 0x184 _CountWordsInTree  # OVL2; s1:order+body -- the gcc lane, round 18c: SOCOM 1's LOCAL _CountWordsInTree (0x345928) instruction for instruction (a leaf's word, or its list's length; GetIsolatedWordDpActiveWords inlines its first level)
+0x004D59B8 0xF0 _GetWordsInTree  # OVL2 unaligned; s1:order+calls -- the gcc lane, round 18c: SOCOM 1's LOCAL _GetWordsInTree (0x345AB8, after _CountWordsInTree as here): a leaf's word or its list appended at *out, each child's in turn (SOCOM II's children loop is not unrolled); GetIsolatedWordDpActiveWords inlines its first level
 0x004D5AA8 0x10 CompareIDs  # OVL2 unaligned; s1:exact
 0x004D5AB8 0x60 CreateActiveWordsCtxTree  # OVL2 unaligned; s1:align
 0x004D5B18 0x888 func_004D5B18  # OVL2 unaligned
