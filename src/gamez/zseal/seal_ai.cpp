@@ -155,9 +155,9 @@ public:
     CPnt3D m_70;   // 0x70
     CAiMapLoc m_7c;   // 0x7c
     CAiMapLoc m_80;   // 0x80: the cell the dodge's plan heads for
-    /* the step after the run to the grenade: 4 the kick, 5 the throw back, 6 none (a signed byte:
-     * Tick copies it to its step with lb; the name ours) */
-    signed char m_84;   // 0x84
+    /* the step after the run to the grenade: 4 the kick, 5 the throw back, 6 none (compared with
+     * lbu; Tick's copies to its step reload it with lb -- open there; the name ours) */
+    unsigned char m_84;   // 0x84
     unsigned char _85[0xa0 - 0x85];
     /* the throw's velocity in the SEAL's frame (0x55C480 turns it by the body's matrix; the name
      * ours) */
@@ -3705,7 +3705,24 @@ static inline bool CellTraversable(const CAiMapLoc &loc)
  * friend, time left over the run to it), runs to it for a kick (4) or a throw back (5), else dodges
  * (3); step 2 runs, and once there pushes step 4 or 5, or gives up; step 3 pushes a plan away from
  * the blast; 4 and 5 push the animate state with its timed calls (the lists' inserts, 0x575E30 and
- * 0x576000, this function's alone); 6 goes prone or crouches by the blast's radius; 9 ends */
+ * 0x576000, this function's alone); 6 goes prone or crouches by the blast's radius; 9 ends.
+ * The data at 0x650428-0x650470 (8 apart) are the function-local statics below in their order, the
+ * guarded 0x66B2B0/0x66B2B8 s_flee and the bss byte 0x66B2C0 s_none_friendly; KickGrenade is
+ * SOCOM 1's AnimTypes::KickGrenade by position, "Return throw grenade" the string at 0x65C830.
+ * OPEN, the size right (0x1710, 1476 instructions; 127 differ by alignment, round 32): the code is
+ * the target's but for registers and frame slots -- the spilled locals' slots run the other way
+ * (the target: training 176, launcher 192, pos 208, ammo 224, close 255, cells 256, self 272; MW
+ * here close 191, cells 208, self 224, pos 240, ammo 256, training 272) and the CPnt3D temporaries
+ * sit 48 lower (the first Sub's at 384 against 432); the owner's null arm goes through v0 (`move
+ * v0,zero` in the test's delay slot, `move s8,v0` at the join -- the target `move s8,zero` in an
+ * arm of its own; if/else, the ternary, a zeroed first definition and the arms swapped alike); the
+ * Chance arm's 5 is not hoisted into the bc1f's delay slot (the if/else, the ternary and an
+ * initialised `next` all miss); the dodge's negation interleaves its loads in the target (written
+ * field by field it does, but then MW addresses away.y through a register: +8 bytes); and the
+ * copies `step = m_84` reload the byte with lb where the compares read it with lbu (a signed char
+ * field gives lb compares; unsigned char, a union or a signed cast all reuse the compare's lbu).
+ * Fixed on the way (MW's numbering): step declared before the pickup (s2/s1 as the target's), the
+ * plan cell declared after the count (608/612), the untrained wait a ternary, self after fuse */
 int CAiSGrenade::Tick(CSealCtrlAi *ai)
 {
     static float s_pick_time = 0.26f;
@@ -3720,9 +3737,9 @@ int CAiSGrenade::Tick(CSealCtrlAi *ai)
     static float s_cover_radius = 10.0f;
     static bool s_none_friendly;
 
+    STEP step = (STEP)m_phase;
     CPickup *p = (CPickup *)m_58;
     CEntity *seal = ai->m_entity;
-    STEP step = (STEP)m_phase;
     CZProjectile *proj = p ? (CZProjectile *)p->m_data : 0;
     CEntity *owner;
 
@@ -3739,12 +3756,7 @@ int CAiSGrenade::Tick(CSealCtrlAi *ai)
     if (!p || m_5c != p->GetPickupNetEntityID() || !proj || !owner) {
         if (!m_60) {
             m_60 = 1;
-            float h;
-
-            if (navy)
-                h = 0.0f;
-            else
-                h = 2.0f * (1.0f - *training);
+            float h = navy ? 0.0f : 2.0f * (1.0f - *training);
             if (step == STEP_8)
                 m_time = RandRange(1.0f, 1.8f + h);
             else
@@ -3764,8 +3776,8 @@ int CAiSGrenade::Tick(CSealCtrlAi *ai)
 
     away.y = 0.0f;
     float dist = away.Normalize();
-    bool self = seal == owner;
     float fuse = proj->m_time;
+    bool self = seal == owner;
     bool friendly = (owner->m_team & seal->m_team) != 0;
     float radius = ammo ? ammo->GetExplosionRadius() : 200.0f;
     const AI_PARAMS &params = ai->m_aiParams;
@@ -3858,8 +3870,8 @@ int CAiSGrenade::Tick(CSealCtrlAi *ai)
     case STEP_3: {
         bool found = false;
         CPnt3D dir;
-        CAiMapLoc cell;
         int got;
+        CAiMapLoc cell;
         CAiMap::DIR side;
 
         ai->ChangeStanceDelayed(STANCE_PRONE, STANCE_STAND, -1.0f);
