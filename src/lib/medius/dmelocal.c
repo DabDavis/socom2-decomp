@@ -34,14 +34,15 @@
 
 #define DME_MAX_PING_SLOTS  127
 
-typedef struct DmePingSlot {
-    int field_00;
-    int field_04;
-    int field_08;
-    int bInUse;                         /* 0x0C */
-    int field_10;
-    int field_14;
-    int field_18;
+typedef struct DmePingSlot {           /* a ping in flight (round 20b: 0x6192A0 fills one) */
+    unsigned char abIp[4];              /* 0x00: the address pinged, binary */
+    unsigned short nPort;               /* 0x04 */
+    short field_06;
+    int bTimebase;                      /* 0x08: 1 a timebase ping, its callback told world and client */
+    void (*pfnCallback)();              /* 0x0C: null when the slot is free */
+    unsigned int nSent;                 /* 0x10: the local time it was sent */
+    int nWorld;                         /* 0x14 */
+    int nClient;                        /* 0x18 */
 } DmePingSlot;                          /* 0x1C */
 
 typedef struct DmeAddress { int w[6]; } DmeAddress;    /* 24 bytes, copied whole */
@@ -612,6 +613,14 @@ int func_00614F58(unsigned int nStream, void **ppStream)
     *ppStream = &data_006511D0[nStream];
     return DME_OK;
 }
+
+extern int rt_time_get_local(unsigned int *pTime);
+
+/* NetGetLocalTime's body (0x615028, SOCOM 1's NetGetLocalTime with a null test) stands as its matched
+ * draft: written here (`if (!p) return 23; rt_time_get_local(&t); *p = t; return 0;`, byte-exact) it
+ * moves func_0061C7A8's registers after DMEmalloc (23s) -- round 14b's "an earlier function's
+ * spelling moves a later one's", a third time */
+extern int func_00615028(unsigned int *pnTime);
 
 /* NetGetTime's body (0x615068): SOCOM 1's NetGetTime with a null test */
 int func_00615068(int *pnTime)
@@ -1668,7 +1677,7 @@ int FindFreePingSlot(void)
     int i;
 
     for (i = 0; i < DME_MAX_PING_SLOTS; i++)
-        if (data_0067B7B8[i].bInUse == 0)
+        if (data_0067B7B8[i].pfnCallback == 0)
             return i;
     return DME_MAX_PING_SLOTS;
 }
@@ -1722,6 +1731,43 @@ void func_00619138(int nStatus, int nUnused, unsigned int nRoundTrip, int nRemot
         n = 0;
     pRecord->nNext = n;
     rt_time_get_time_stamp(pRecord->tStamp);
+}
+
+extern int NetSendMessage(char msgClass, int connIndex, int toClient, int reliable, int msgType, int len,
+                          void *msg);
+extern int data_00686A0C;               /* the timebase ping's message type */
+
+/* SOCOM 1's SendTimebaseCorrection grown (0x6192A0): the clock and a free ping slot sent to the client,
+ * the slot then filled -- the client's address and port, its world and index, the time sent and the
+ * callback 0x619138 (bTimebase 1: told world and client) */
+void func_006192A0(unsigned int nClient)
+{
+    struct {
+        int nTime;
+        char nSlot;
+        unsigned char bTimebase;
+    } msg;
+    DmeClientInfo *pClient = 0;
+
+    if (nClient >= DME_MAX_CLIENTS)
+        return;
+    msg.bTimebase = 1;
+    msg.nSlot = FindFreePingSlot();
+    if (msg.nSlot == DME_MAX_PING_SLOTS)
+        return;
+    msg.nTime = CurrentNetTime;
+    NetSendMessage(-128, data_00651178, nClient, 0, data_00686A0C, sizeof(msg), &msg);
+    if (func_0061C720(data_00651178, nClient, &pClient) != 0)
+        return;
+    if (pClient == 0)
+        return;
+    func_00615028(&data_0067B7B8[(unsigned char)msg.nSlot].nSent);
+    func_006148E0(data_0067B7B8[(unsigned char)msg.nSlot].abIp, pClient->szIp);
+    data_0067B7B8[(unsigned char)msg.nSlot].nPort = pClient->nPort;     /* tools/ccperm.py: 1 of 120 */
+    data_0067B7B8[(unsigned char)msg.nSlot].pfnCallback = func_00619138;
+    data_0067B7B8[(unsigned char)msg.nSlot].bTimebase = 1;
+    data_0067B7B8[(unsigned char)msg.nSlot].nWorld = data_00651178;
+    data_0067B7B8[(unsigned char)msg.nSlot].nClient = nClient;
 }
 
 /* a data stream's record (NetGetDataStream hands one out) */
@@ -2134,9 +2180,9 @@ int func_0061C998(unsigned int nWorld, int nValue)
 extern int rt_time_get_local(unsigned int *pTime);
 
 /* the pings unanswered for 30 seconds (0x61C9E8): each slot's callback told 14 and freed (six
- * arguments for a slot whose field_08 is 1, four otherwise). OPEN (16 bytes long): the target
- * reaches the port and field_14 off its walking pointer to the callback (`lhu t0,-8(s1)`, `lw
- * t0,8(s1)`) and field_08/field_18 by index; first shape only. */
+ * arguments for a timebase ping, four otherwise). Byte-exact since round 20b typed the slot as
+ * 0x6192A0 fills it -- the port a halfword (`lhu`), the in-use word the callback itself (round 13b's
+ * `int` port and `int` flag called through a cast were 16 bytes long). */
 int func_0061C9E8(void)
 {
     char szIp[16];
@@ -2145,16 +2191,16 @@ int func_0061C9E8(void)
 
     rt_time_get_local(&nNow);
     for (i = 0; i < DME_MAX_PING_SLOTS; i++) {
-        if (data_0067B7B8[i].bInUse != 0 && (int)(nNow - data_0067B7B8[i].field_10) - 30000 > 0) {
+        if (data_0067B7B8[i].pfnCallback != 0 && (int)(nNow - data_0067B7B8[i].nSent) - 30000 > 0) {
             NetIpBinaryToString(szIp, (unsigned char *)&data_0067B7B8[i]);
             NetIpBinaryToString(data_006766D0, (unsigned char *)&data_0067B7B8[i]);
-            data_0067B7A8 = data_0067B7B8[i].field_04;
-            if (data_0067B7B8[i].field_08 == 1)
-                ((void (*)())data_0067B7B8[i].bInUse)(14, szIp, 0, 0, data_0067B7B8[i].field_14,
-                                                     data_0067B7B8[i].field_18);
+            data_0067B7A8 = data_0067B7B8[i].nPort;
+            if (data_0067B7B8[i].bTimebase == 1)
+                data_0067B7B8[i].pfnCallback(14, szIp, 0, 0, data_0067B7B8[i].nWorld,
+                                         data_0067B7B8[i].nClient);
             else
-                ((void (*)())data_0067B7B8[i].bInUse)(14, szIp, 0, 0);
-            data_0067B7B8[i].bInUse = 0;
+                data_0067B7B8[i].pfnCallback(14, szIp, 0, 0);
+            data_0067B7B8[i].pfnCallback = 0;
         }
     }
     return DME_OK;
