@@ -1965,6 +1965,39 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 22** (the maps' initialisers, SetRegionType, GetRandomLoc, the vehicle footprint):
+  - a `rand()` draw written as an inline function of its own makes its arm end on a label padded to 8 bytes (the target's
+    nop after `mfhi`); written inline in the arm, MW leaves the join unpadded and fills the `b` delay slot -- GetRandomLoc
+    0x529EE0 (open since round 10) and CVehicleRdrEntry::Randomize 0x533040, and MakeNoise's joins lined up;
+  - a non-const local copied from a const pointer parameter is numbered after the parameters; a byte-enum parameter stored
+    into a bit-field as `(int)` reuses the compare's narrowed value (SetRegionType 0x529C00);
+  - a static whose constructor is defined out of line and dead-stripped is inlined by the initialiser whole or not at all,
+    and that out-of-line definition lets the initialiser inline the out-of-class template members it uses
+    (__sinit_ai_maps.cpp 0x668710: byte-exact only at inline depth 6 -- another level-6 case; CAiMaps() is in ABSENT.txt);
+  - MW deletes a branch whose body it can see is empty -- an empty asm, a dead raw load, an inlined accessor whose callees
+    it also inlined (plan_legcomplete: `asm volatile { nop }` gives the size);
+  - __sinit_ai_path.cpp 0x668680 builds CAiMapLoc::invalid (every bit set); CAiMap::TileFootprint 0x515880 and
+    region::SetCorners 0x515DE0 (CVehicle::Tick's; names ours); CAiPath::UpdatePointFlags (SOCOM 1's) and RebuildLegs
+    (ours) as members;
+  - open: MakeNoise (19) and MakeNoiseXZ (13, right size: two saved float registers swapped), GetStartMatrix (66, right
+    size), CAiMap::GetLocation(point) 0x515F80 (0x1A0 vs 0x198: m_ny loaded early, the bool narrowed), remove_if<_tick>.
+- **Tells from the weapons, round 19** (CTurretDef::Parse, __sinit_zwep_weapon.cpp, the explosion statics):
+  - an inline's by-value float whose address is taken (saturated in place) gets the frame's lowest slot, below the caller's
+    temporaries; a named local sits above them; `m_b = m_a = x` stores both from one register where two statements reload an
+    address-taken `x` in between; an inline taking a float by value keeps it in $f20 across two calls, reading the member
+    twice reloads it;
+  - CTurretDef::Parse 0x3AAD20 (0x8D0) matched with each findtag assigned inside its `if` test, the limits' sine and cosine
+    through a small inline and an inline SetMaxAngle in zveh.h; veh_turret.cpp emits its own ai::_max<float> 0x3AB970 (an
+    `ovl-copy:` of the AI template); __sinit_zwep_weapon.cpp with its four statics in order; zwep_projectile.cpp opens at
+    0x3C6980 (its last two functions read the unit's own statics);
+  - the vid stack's names are in question: the initialiser research made 0x3B7D50 the stack's destructor ~stack<Ui> (it is
+    registered for m_stack_vid), but its element type contradicts the stack<Pv> rows 0x321EF0/0x321F40, and 0x3B7C90,
+    named ~CVisBase, is a level of the stack's deque destructor (it calls ~__deque_buf<PCv> with 0 after two this-tests) --
+    __sinit_vis_vu.cpp 0x404570 waits on the chain's real names (0x3B7FA0 the deque's default constructor, 0x3B7DB0 its
+    copy);
+  - open: ApplyDecalRender 0x3B3950 (2: the copy call's second argument loaded before its first in the target -- the same
+    miss as CTurret::Fire's and the yaw joint's CopyMatrix call at 0x3A76D0; 3.0b50 gives the same), InitializeWeapons (52
+    under the numbering rule: the frame saves one register fewer than the target's s0-s5), UnpackItemAndAmmoEnums.
 - **Tells from the UI, round 17** (the soft keyboard's text tests, zui.cpp's initialiser, util_main.cpp's tail):
   - when the target keeps an object's address in a saved register from before its zeroing through later calls, the object
     is built by a constructor whose `this` is that variable (`struct CTypedText : CSaferStr { CTypedText() : CSaferStr(a)

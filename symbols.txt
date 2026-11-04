@@ -2795,7 +2795,7 @@
 0x0025CB00 0xD0 func_0025CB00  # OVL1
 0x0025CBD0 0x98 zAnimCmdAddData__FP14_zanim_cmd_hdrPvi  # OVL1; s1:calls (SOCOM 1's zAnimCmdAddData: CmdParseParams appends each key through it)
 0x0025CC70 0x8 zAnimDebugTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim DEBUG tick (InitCommands' #51, file id 0x34); s1:cmd (registered under "DEBUG" tick in both builds' InitCommands)
-0x0025CC80 0x28 func_0025CC80  # OVL1; ZAnim REMOVE_SATCHELS tick (InitCommands' #57, file id 0x3a)
+0x0025CC80 0x28 zAnimRemoveSatchelsTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim REMOVE_SATCHELS tick (InitCommands' #57, file id 0x3a); ours, the core lane round 3: ZAnim REMOVE_SATCHELS's tick by the command's name (SOCOM II's command; SOCOM 1's zAnim<Name>Tick convention) -- zanim_cmd_parse.cpp's, byte-exact
 0x0025CCB0 0x57C zAnimFireWeaponTick__FP14_zanim_cmd_hdrPf  # OVL1; ZAnim FIRE_WEAPON tick (InitCommands' #56, file id 0x39); s1:cmd (registered under "FIRE_WEAPON" tick in both builds' InitCommands)
 0x0025D230 0x38 zAnimStopSequenceTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:exact
 0x0025D270 0x38 zAnimCallSequenceTick__FP14_zanim_cmd_hdrPf  # OVL1; s1:exact
@@ -3292,7 +3292,7 @@
 0x002801C0 0x394 func_002801C0  # OVL1
 0x00280560 0x208 func_00280560  # OVL1
 0x00280770 0x14 func_00280770  # OVL1
-0x00280790 0x138 func_00280790  # OVL1
+0x00280790 0x138 OnIsEquipmentSelected__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 3 (registered as "IsEquipmentSelected" in both builds' UI command tables: SOCOM 1's OnIsEquipmentSelected, zanim_menu.cpp's anonymous namespace -- the same walk of the selected characters' weapons for the item, Advance called out of line)
 0x002808D0 0x8 func_002808D0  # OVL1
 0x002808E0 0x47C func_002808E0  # OVL1
 0x00280D60 0x130 func_00280D60  # OVL1
@@ -3316,10 +3316,10 @@
 0x00282420 0xD4 UIChooseEquip3__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip3" (id 0x8, record 7; slot 4)
 0x00282500 0xD4 UIChooseEquip2__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip2" (id 0x7, record 6; slot 3)
 0x002825E0 0xD4 UIChooseEquip1__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip1" (id 0x6, record 5; slot 2 to the per-character pick 0x282C20)
-0x002826C0 0x11C func_002826C0  # OVL1
+0x002826C0 0x11C UIChooseSecondary__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 3: the handler registered as "ChooseSecondary" (SOCOM 1's table has none, so UI<command> by its convention): each selected character's second weapon set up as the item, through an inlined per-character pick
 0x002827E0 0xCC UIChoosePrimary__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChoosePrimary" (id 0x4, the UI command table's record 3); SOCOM 1's table has none, so UI<command> by its convention
 0x002828B0 0xCC ExecuteChooseEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "ChooseEquipment" in both builds' UI command tables: SOCOM 1's ExecuteChooseEquipment, zanim_menu.cpp's anonymous namespace, the same walk over ChooseEquipmentForCharacter)
-0x00282980 0x108 func_00282980  # OVL1
+0x00282980 0x108 ExecuteChooseDefaultEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 3 (registered as "ChooseDefaultEquipment" in both builds' UI command tables: SOCOM 1's ExecuteChooseDefaultEquipment, zanim_menu.cpp's anonymous namespace -- the type's default weapons assigned, or the list cleared; SOCOM II pads the slots)
 0x00282A90 0x184 ChooseEquipmentForCharacter__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEM  # OVL1; s1:callee by hand, the core lane round 2 (ExecuteChooseEquipment calls it with the iterator and the item in its loop where SOCOM 1's calls ChooseEquipmentForCharacter, 0x1D74B0)
 0x00282C20 0x290 func_00282C20  # OVL1
 0x00282EB0 0x70 func_00282EB0  # OVL1
@@ -3331,11 +3331,11 @@
 0x00284360 0x2DC func_00284360  # OVL1
 0x00284640 0xB0 func_00284640  # OVL1
 0x002846F0 0x30 func_002846F0  # OVL1
-0x00284720 0x420 func_00284720  # OVL1
+0x00284720 0x420 func_00284720  # OVL1; the core lane round 3: OVL1's copy of do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v (0x53f370), zanim_menu.cpp's template tail -- ExecuteChooseDefaultEquipment 0x282980 calls it for the vector's inlined operator= where SOCOM 1's calls do_assign<PC14CCharacterWeap> 0x1D7700 (not OVL2's words: CCharacterWeap's constructor and destructor are out of line in this unit); ovl-copy: do_assign<PC14CCharacterWeap>__Q23std68__vector_imp<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>,0>FPC14CCharacterWeapPC14CCharacterWeapQ23std20forward_iterator_tag_v
 0x00284B40 0x54 push_back__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>Fc  # OVL1; the character stored to a stack temporary and replaced in at the end through the template replace (0x1EE780) -- basic_string::push_back(char), zanim_menu.cpp's template tail -- the UI-widgets lane
 0x00284BA0 0x220 func_00284BA0  # OVL1
 0x00284DC0 0x470 func_00284DC0  # OVL1
-0x00285230 0x7C func_00285230  # OVL1
+0x00285230 0x7C func_00285230  # OVL1; the core lane round 3: OVL1's copy of clear__Q23std70__vector_deleter<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>>Fv (0x540910), zanim_menu.cpp's template tail -- ExecuteChooseDefaultEquipment 0x282980 calls it where SOCOM 1's calls clear__...<14CCharacterWeap...> 0x1D7EF0 (each element's destructor called out of line, 0x53EF50, where OVL2's char_type.cpp inlines the empty one); ovl-copy: clear__Q23std70__vector_deleter<14CCharacterWeap,Q23std27allocator<14CCharacterWeap>>Fv
 0x002852B0 0x2F0 func_002852B0  # OVL1
 0x002855A0 0xB8 func_002855A0  # OVL1
 0x00285660 0x244 resize__Q210Metrowerks34cdeque<PCv,Q23std14allocator<PCv>>FUi  # OVL1; s1:calls (the deque's push_back's resize(1), SOCOM II's taking the size alone where SOCOM 1's took a fill value too) -- the states lane
@@ -3639,7 +3639,7 @@
 0x0029D3C0 0x2B4 RecvPacket__8CConsoleFP7CPacket  # OVL1; s1:calls by hand (Tick calls it with OnRecvPacket's packet and deletes the packet when it answers true, as SOCOM 1's Tick calls RecvPacket__8CConsoleFP7CPacket 0x1ECBA0)
 0x0029D680 0x8 GetPacketMsg__7CPacketFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029D690 0x114 __dt__8CConsoleFv  # OVL1; s1:align
-0x0029D7B0 0xA4 func_0029D7B0  # OVL1
+0x0029D7B0 0xA4 __ct__8CConsoleFPCc  # OVL1; s1:unit by hand, the core lane round 3 (the console's initialiser 0x3FFF60 calls it on CConsole::m_console with "default console" before registering ~CConsole, as SOCOM 1's __sinit_con_ps2.cpp builds m_console through __ct__8CConsoleFPCc: the name copied, the lists made and emptied, Initalize called -- byte-exact from con_ps2.cpp)
 0x0029D860 0x8 _on_error__FP7CPacketP8CConsolePv  # OVL1; s1:order by hand (SOCOM 1's _on_error 0x1ED250, jr ra: OnConnect registers it for id 3 in both builds)
 0x0029D870 0x8 _on_ping__FP7CPacketP8CConsolePv  # OVL1; s1:order by hand (SOCOM 1's _on_ping 0x1ED260, jr ra: OnConnect registers it for id 1 in both builds)
 0x0029D880 0x10 _on_status__FP7CPacketP8CConsolePv  # OVL1; a virtual tail call (vtable slot 0xC of a0's class: lw t9,0(a0); lw t9,12(t9); jr t9) -- split from the 0x18 row, which ran over the next function; s1:order by hand (SOCOM 1's _on_status 0x1ED270, the same virtual tail call to the packet's GetPacketMsg: OnConnect registers it for id 2 in both builds)
@@ -8508,9 +8508,9 @@
 0x003FF7F0 0x1D0 __sinit_hud_mpweaponsel.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 20): hud_mpweaponsel.cpp's static initialiser -- its file statics defined in address order, eight colour CPnt3Ds and fourteen places computed from the .data layout statics (s_listx, s_width, s_gap ...), byte-exact as MW emits them
 0x003FF9C0 0x88 __sinit_hud_healthbar.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane: hud_healthbar.cpp's initialiser -- it builds the bar's five colours, 0x4148B0-0x4148F0, which only CHealthBar's functions read)
 0x003FFA50 0xB0 func_003FFA50  # OVL1 data area; a static initialiser
-0x003FFB00 0x64 func_003FFB00  # OVL1 data area; a static initialiser
+0x003FFB00 0x64 __sinit_zanim_cmd_parse.cpp  # OVL1 data area; a static initialiser; s1:unit by hand, the core lane round 3 (the integrator's initialiser research: SOCOM 1's __sinit_zanim_cmd_parse.cpp, the <iostream> pair alone, linked right before __sinit_zanim_cmd_tick.cpp -- byte-exact from the new zanim_cmd_parse.cpp)
 0x003FFB70 0x64 __sinit_zanim_cmd_tick.cpp  # OVL1 data area; a static initialiser; s1:unit by the integrator's initialiser research (build/scratch/sinit/report.txt, MEDIUM: the second of the two pair-only initialisers SOCOM 1 links right before __sinit_anim_main.cpp, its objects ending where ZAnim begins), the core lane round 2: zanim_cmd_tick.cpp's <iostream> pair (0x414B88, 0x414BA0) byte-exact
-0x003FFBE0 0x50 func_003FFBE0  # OVL1 data area; a static initialiser
+0x003FFBE0 0x50 __sinit_anim_main.cpp  # OVL1 data area; a static initialiser; s1:unit by hand, the core lane round 3 (the integrator's initialiser research, HIGH: CZAnimMain's inline constructor on ZAnim 0x414BB0, SOCOM 1's __sinit_anim_main.cpp storing the same four fields -- byte-exact from anim_main.cpp's definition)
 0x003FFC30 0x64 __sinit_zanim_anim.cpp  # OVL1 data area; a static initialiser; s1:unit by the integrator's initialiser research (build/scratch/sinit/report.txt, MEDIUM: pair-only, between anim_main.cpp's statics and zanim_menu.cpp's, as SOCOM 1's __sinit_zanim_anim.cpp precedes __sinit_zanim_menu.cpp), the core lane round 2: zanim_anim.cpp's <iostream> pair (0x414DD8, 0x414DF0) byte-exact
 0x003FFCA0 0x3C __sinit_zanim_menu.cpp  # OVL1 data area; a static initialiser; s1~ si_script.cpp (shape 0.60, a hint); by hand, the core lane round 1 (it constructs g_MenuStack at 0x414ED0 through CMenuStack's constructor and registers ~CMenuStack 0x27F590: zanim_menu.cpp's one dynamic static; first of the body code's initialisers in the table, ahead of __sinit_bone_init.cpp, as the units link -- the s1~ si_script.cpp hint was the shape's)
 0x003FFCE0 0xE4 __sinit_bone_init.cpp  # OVL1 data area; a static initialiser; s1:calls (it builds boneArchive and mapBoneArchive and registers ~CScriptArchive, 0x288750, for both -- bone_init.cpp's static initialiser) -- the body lane
@@ -9412,10 +9412,10 @@
 0x00515580 0x194 Reset__7CAiCellFv  # OVL2; ours (SOCOM 1's CAiCell() body, 0x185200, as a function of its own: the constructor 0x515720 and the layers' allocation 0x516FC0 call it; the name ours)
 0x00515720 0x28 __ct__7CAiCellFv  # OVL2; tu: vis_mesh.cpp~ (1.0 beta); s1:order by hand (the demo's 0x185200, ai_map.cpp's first function: __sinit_ai_map.cpp (0x668630) builds the dummy cell with it as SOCOM 1's does; SOCOM II's body calls Reset, 0x515580)
 0x00515750 0x128 Contains__10CAiOverlayCFRC9CAiMapLoc  # OVL2; ours (an overlay's cell test: the region's Contains materialised, then the row's run in the scanlines vector at +0x1C; the overlay list's walks call it -- 0x53A500, fcost 0x512930)
-0x00515880 0x78 func_00515880  # OVL2
+0x00515880 0x78 TileFootprint__6CAiMapFPC6CPnt3DPQ26CAiMap6region  # OVL2; the AI core round 22: ours (new in SOCOM II, ai_map.cpp's, between CAiOverlay::Contains and 0x515900: CVehicle::Tick's call with the map, the vehicle's four transformed corners (+408) and its region (+368) -- the region tiled with 0 under flags 32 (the occupied bit), rebuilt from the corners by 0x515900, tiled with 1, true); byte-exact from ai_map.cpp
 0x00515900 0x4D4 func_00515900  # OVL2
-0x00515DE0 0x198 func_00515DE0  # OVL2
-0x00515F80 0x198 func_00515F80  # OVL2
+0x00515DE0 0x198 SetCorners__Q26CAiMap6regionFRC9CAiMapLocRC9CAiMapLoc  # OVL2; the AI core round 22: ours (new in SOCOM II, after 0x515900, which calls it once with the footprint's two corner cells: the region between two cells, the first's map, the lesser x and y as the corner, the spans inclusive -- x compared unsigned off the word, y signed off the halfword); byte-exact from ai_map.cpp
+0x00515F80 0x198 GetLocation__6CAiMapCFPC6CPnt3DR9CAiMapLoc  # OVL2; the AI core round 22: SOCOM 1's CAiMap::GetLocation(CPnt3D *, loc) const (the demo's 0x19B0F0, the same body but the cell's map id, this map's m_mapid where SOCOM 1 stored 0): the box test in x and z, the offsets truncated on VU0, the cell stored, its row and column tested; 0x515900 calls it twice; in ai_map.cpp after SetCorners (OPEN, 2 long)
 0x00516120 0x8 __ct__9CAiMapLocFv  # OVL2; CAiMapLoc's empty default constructor (jr ra; move v0,a0): CAiState::Create calls it for CAiState's member at +0x50 and every state's map cell -- SOCOM II's CAiMapLoc() reads nothing (zentity.h's stand-in, which reads invalid, is not it) -- the kit lane; (zentity.h's CAiMapLoc() is empty since the entity lane's round 8)
 0x00516130 0x8 func_00516130  # OVL2
 0x00516140 0x38 func_00516140  # OVL2
@@ -9447,7 +9447,7 @@
 0x005181F0 0x258 __dt__6CAiMapFv  # OVL2; s1:order by hand (the demo's ~CAiMap, between ValidateCells' callbacks and CAiMap(): the box and the size cleared, the cells, the extra data and the graph given up -- SOCOM II's first layer's FreeCells and DeleteLayers among them -- then the tables' destructors, ~readers and the layers' with -1)
 0x00518450 0x1DC __ct__6CAiMapFi  # OVL2; s1:order by hand (the demo's 0x186E40, after ~CAiMap in both builds: the nine tables built, the dummy cell's soil 10, an empty box, the sizes zeroed, floor -1, resolution 0.5, slope pi/4, version 23; SOCOM II takes the map id (0xE4) and pushes its first layer (0xA8, built by 0x53A9C0) onto m_layers; CAiMaps' 0x52B0D0 calls it)
 0x00518630 0x60 __dt__Q23std58vector<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, destroys its std::vector<spore> temporary with it, -1: two this-tests, the deleter's destructor 0x519960; ai_map.cpp's tail emits it first)
-0x00518690 0x68 func_00518690  # OVL2
+0x00518690 0x68 __dt__Q26CAiMap5namesFv  # OVL2; the AI core round 22: CAiMap::names' out-of-line destructor (the names deleter's destructor 0x5197A0 with 0, then the delete -- ~CAiMapLocVec's shape), byte-exact from ai_map.cpp, mid-unit after CAiMap(int); __sinit_ai_maps.cpp 0x668710 registers it with __construct_array for AiMaps.m_names[6] (+0x3C, 12-byte elements)
 0x00518700 0x60 __dt__Q23std56vector<Q26CAiMap4name,Q23std25allocator<Q26CAiMap4name>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, destroys its std::vector<name> temporary with it, -1: two this-tests, the deleter's destructor 0x5197A0 -- ~names, 0x518690, has three; ai_map.cpp's tail emits it first)
 0x00518760 0x78 GetSoilByName__6CAiMapFPCc  # OVL2; s1:order by hand (the demo's 0x1871D0: strcasecmp against each soil's name, 1 when none or no name; after CAiMap's construction in both builds)
 0x005187E0 0x118 GetSoilString__6CAiMapFQ26CAiMap4SOIL  # OVL2; ours (new in SOCOM II: the 14-case switch of soil names "nogo" .. "collision", default "default", that SOCOM 1's GetSoilByName had inline; GetSoilByName 0x518760 calls it)
@@ -9563,7 +9563,7 @@
 0x00525200 0x8 func_00525200  # OVL2
 0x00525210 0x12C SetSnakeLength__7CAiPathFUi  # OVL2; s1:order by hand (the SEAL lane's lead, vetted: the demo's 0x193D40 -- a zero length with a buffer set clears flag bit 2, a path planning (state 1-3) is aborted through AbortPathPlan, then the point and location vectors are cleared and the stats reset; SOCOM II's fields 0xC further on)
 0x00525340 0x1DC UpdatePathWidth__7CAiPathFUi  # OVL2; s1:callee by hand (PostProcess calls it with 5 when bit 2 of m_flags is set, as SOCOM 1's PostProcess calls UpdatePathWidth__7CAiPathFUi; 0x1DC against the demo's 0x1EC, after SetSnakeLength in both builds)
-0x00525520 0x2F0 func_00525520  # OVL2
+0x00525520 0x2F0 UpdatePointFlags__7CAiPathFv  # OVL2; the AI core round 22: SOCOM 1's UpdatePointFlags (the demo's 0x1940A0, right after UpdatePathWidth in both builds, and the same body: the points walked last to first, flag 2 on a leg's goal and the point after where the leg crosses maps, 1 before an action's cell, 4 before cover; SOCOM 1's UpdateTurnAngles after it is gone); PostProcess calls it after SmoothPath; byte-exact from ai_path.cpp
 0x00525810 0x450 func_00525810  # OVL2
 0x00525C60 0x18 func_00525C60  # OVL2
 0x00525C80 0x68C func_00525C80  # OVL2
@@ -9572,7 +9572,7 @@
 0x00526450 0x60 __dt__Q23std60vector<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>Fv  # OVL2; by hand (SmoothPath's trim destroys its copy with -1: the points' implicit destructor, ~__vector_deleter called); by hand: SmoothPath's trim copy is a std::vector<point>, as node_world.cpp's TrimVector<std::vector<CNode *> > (two this-tests; the points subclass's would be three)
 0x005264B0 0x40 swap__Q23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>FRQ23std70__vector_deleter<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>  # OVL2; by hand (SmoothPath's trim swaps the copy in through it: the this test, capacity, data, size)
 0x005264F0 0x4C __ct__Q23std60vector<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>FRCQ23std60vector<Q27CAiPath5point,Q23std27allocator<Q27CAiPath5point>>  # OVL2; by hand (SmoothPath's trim: the points' implicit copy, out of line after its first caller, the words zeroed and the range init called); by hand: the trim copy's constructor, std::vector<point>'s
-0x00526540 0x258 func_00526540  # OVL2
+0x00526540 0x258 RebuildLegs__7CAiPathFP7CAiMapsb  # OVL2; the AI core round 22: ours (new in SOCOM II, between SmoothPath and PostProcess: CAiMaps::ExtendPath's last call, (this path, the maps, smooth) -- the waypoints and the leg maps rebuilt from the points, a new leg wherever they cross maps); byte-exact from ai_path.cpp
 0x005267A0 0x68 PostProcess__7CAiPathFv  # OVL2; s1:callee by hand (plan_complete calls it between zeroing the leg counters and bumping the path id, as SOCOM 1's inlined plan_complete calls PostProcess__7CAiPathFv; the same tail: UpdatePathWidth(5) when flag 4, PrintPath when flag 0x40)
 0x00526810 0x3F4 func_00526810  # OVL2
 0x00526C10 0x310 func_00526C10  # OVL2
@@ -9667,9 +9667,9 @@
 0x0052E960 0x8 clear__Q23std58vector<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, clears m_spores with it: a tail call of the deleter's clear 0x51A300)
 0x0052E970 0x14 __ct__Q23std58vector<Q26CAiMap5spore,Q23std26allocator<Q26CAiMap5spore>>Fv  # OVL2; by hand, the AI core round 11 (CAiMaps::FreeTables 0x52E7C0, byte-exact from source, builds its FreeVector<std::vector<spore> > temporary with it: three zero words; ai_maps.cpp's copy after FreeTables)
 0x0052E990 0x74 FreeMaps__7CAiMapsFv  # OVL2; ours (new in SOCOM II: Close's only callee between FlushPlannerQueue and the overlays' clear -- SOCOM 1's Close's middle: every map erased from the front and deleted, then FreeTables)
-0x0052EA10 0xE8 func_0052EA10  # OVL2
-0x0052EB00 0x14 func_0052EB00  # OVL2
-0x0052EB20 0x14 func_0052EB20  # OVL2
+0x0052EA10 0xE8 __dt__7CAiMapsFv  # OVL2; the AI core round 22: SOCOM 1's ~CAiMaps (the demo's 0x19D790, the last of ai_maps.cpp's functions in both builds): CGraph::Destroy(m_graph), m_graph zeroed, the regions' and the names' arrays through __destroy_arr, the spores, the list; __sinit_ai_maps.cpp registers it for AiMaps
+0x0052EB00 0x14 __ct__12CAiMapLocVecFv  # OVL2; the AI core round 22: CAiMapLocVec's constructor (three words zeroed), out of line for __sinit_ai_maps.cpp's __construct_array over AiMaps.m_regions[7] (+0x84, paired with ~CAiMapLocVec 0x51C1C0); right after ~CAiMaps in ai_maps.cpp
+0x0052EB20 0x14 __ct__Q26CAiMap5namesFv  # OVL2; the AI core round 22: CAiMap::names' constructor (three words zeroed), out of line for __sinit_ai_maps.cpp's __construct_array over AiMaps.m_names[6] (+0x3C, paired with ~names 0x518690)
 0x0052EB40 0x18 _max<Ui>__2aiFRCUiRCUi_RCUi  # OVL2; s1:exact; by hand: MW 3.0 mangles the return type (SOCOM 1's _max<Ui>__2aiFRCUiRCUi)
 0x0052EB60 0x38 func_0052EB60  # OVL2; OVL2's copy of _close_enough<f> (OVL1 0x28F1E0, the same 0x38 bytes word for word; ai_maps.cpp's template tail after _max<Ui>, as SOCOM 1's 0x19D950 follows _max<Ui> at 0x19D930; CSealCtrlAi::Tick and 57 other OVL2 call sites call it); ovl-copy: _close_enough<f>__FRCfRCfRCf_b
 0x0052EBA0 0xB4 remove_copy<Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iterator,Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iterator,9CAiMapLoc>__3stdFQ33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iteratorQ33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iteratorQ33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iteratorRC9CAiMapLoc_Q33std56__vector_imp<9CAiMapLoc,Q23std21allocator<9CAiMapLoc>,0>8iterator  # OVL2; by hand (std::remove's remove_copy over the class iterators, ai_maps.cpp's template tail: CAiMaps::SetRegionType's Remove, inlined one level, calls it out of line; its copy emitted by ai_maps.cpp byte-exact at this address)
@@ -13349,8 +13349,8 @@
 0x00668480 0xB4 __sinit_ai_events.cpp  # OVL2 data area; a static initialiser; s1:unit ai_events.cpp (exact)
 0x00668540 0xE4 __sinit_ai_astar.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_astar.cpp builds ai::path_queue -- the list AbortPathPlan removes from, 0x49B160 there -- and three words after it; SOCOM II's builds the same at 0x66A180 (the list AbortPathPlan 0x5107B0 removes from) after three new statics)
 0x00668630 0x44 __sinit_ai_map.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (SOCOM 1's __sinit_ai_map.cpp builds the dummy cell through CAiCell(); SOCOM II's builds it at 0x66A198 through 0x515720, then 0.5f * sqrtf(2.0f) into 0x65AB38, GetDirCos's static)
-0x00668680 0x8C func_00668680  # OVL2 data area; a static initialiser
-0x00668710 0xB4 func_00668710  # OVL2 data area; a static initialiser
+0x00668680 0x8C __sinit_ai_path.cpp  # OVL2 data area; a static initialiser; the AI core round 22: ai_path.cpp's initialiser (between ai_map.cpp's 0x668630 and ai_maps.cpp's 0x668710 in the table, as the units link): it builds CAiMapLoc::invalid (.data 0x65AED0, just ahead of s_preemptPriority and PrintPath's strings) through CAiMapLoc's three-field constructor, every field's bits set; byte-exact from ai_path.cpp
+0x00668710 0xB4 __sinit_ai_maps.cpp  # OVL2 data area; a static initialiser; the AI core round 22: SOCOM 1's __sinit_ai_maps.cpp (the demo's 0x46A370: the same members built in the same order -- the list, the spores, __construct_array over the six name tables and the seven region lists, the graph and the cookie zeroed -- and ~CAiMaps registered) builds AiMaps 0x66A1B0
 0x006687D0 0x8 func_006687D0  # OVL2 data area; a static initialiser
 0x006687E0 0x158 __sinit_seal_ai.cpp  # OVL2 data area; a static initialiser; by hand (the SEALs, round 24, the integrator's lead from the AI core's round 22): seal_ai.cpp's initialiser -- it builds the AI's five frame slices (OVL2 bss 0x66B060-0x66B0FF, 0x20 apart) that CSealCtrlAi::PreTick, 0x558640, 0x56D2B0 and 0x574C30 read, in the ctors table between ai_maps.cpp's and __sinit_seal_body.cpp
 0x00668940 0x29C __sinit_seal_body.cpp  # OVL2 data area; a static initialiser; s1:unit by hand (the SEAL lane, round 17: SOCOM 1's __sinit_seal_body.cpp builds newanims through the RTList constructor, registers ~CActiveAnimList and stores the ten throw offsets' same values; SOCOM II adds three offsets first and drops the CSTable)

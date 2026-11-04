@@ -22,13 +22,11 @@ extern "C" int strcasecmp(const char *a, const char *b);
 
 /* the unit's statics, in its initialiser's order (0x4034F0, SOCOM 1's __sinit_valve_list.cpp):
  * every valve, then the pool -- their destructors ~CValveList 0x352900 and ~CValvePool 0x352870
- * close the template tail. OPEN, one relocation: SOCOM 1's m_list is a CValveList (a class over
- * the pointer list: its initialiser registers __dt__10CValveListFv, two this-tests deep as
- * 0x352900 is); zanim.h still declares a std::list<CValve *>, whose destructor this unit emits
- * instead. With `class CValveList : public std::list<CValve *> {};` ahead of CValve in zanim.h
- * (the engine core lane's) and this definition `CValveList CValve::m_list;`, the initialiser and
- * ~CValveList are byte-exact and the unit's other functions hold (build/scratch/wld/v_vlist.py) */
-std::list<CValve *> CValve::m_list;
+ * close the template tail. SOCOM 1's m_list is a CValveList (a class over the pointer list: its
+ * initialiser registers __dt__10CValveListFv, two this-tests deep as 0x352900 is), zanim.h's
+ * since the engine core's round 3 (the world lane's round 10 measured it: build/scratch/wld/
+ * v_vlist.py) */
+CValveList CValve::m_list;
 CValvePool valvePool;
 
 /* a valve deleted (ours: the pool's emptying deletes its valves through std::for_each, the
