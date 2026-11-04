@@ -14,6 +14,7 @@
 #include <algorithm>
 
 #include "../ztwod/ztwod.h"
+#include "../zrdr/zrdr.h"
 
 /* a string that is never null (zutil.h's, SOCOM 1's: MSL's basic_string and its assignment) */
 class CSaferStr : public std::string {
@@ -307,6 +308,8 @@ void SendWhisper(char *name, char *msg)
 /* a mission of the list (0x20 bytes, newed by the list's Add) */
 class CMultiMission {
 public:
+    CMultiMission(const _zrdr *rec);
+
     CSaferStr m_name;   // 0x0
     bool m_multi;   // 0xc: one of the multiplayer missions
     int m_id;   // 0x10
@@ -337,10 +340,108 @@ public:
     const char *GetName(int id, bool multi);
     void Purge();
     void Clear();
+    void Read(const _zrdr *rdr);
 
     CMultiMissionVector m_c;   // 0xc
     CMultiMissionVector m_18;   // 0x18
 };
+
+/* the game types a mission's TYPE names (the names ours, as the rdr spells them) */
+enum MISSION_TYPE {
+    MISSION_NONE,
+    MISSION_BREACH,
+    MISSION_DEMOLITION,
+    MISSION_ESCORT,
+    MISSION_EXTRACTION,
+    MISSION_SUPPRESSION
+};
+
+/* a mission from its rdr record: its name, number and version, whether it is a multiplayer one, its
+ * game type (OVL1 0x2C9540; the list's Read news each) */
+CMultiMission::CMultiMission(const _zrdr *rec)
+{
+    m_name = zrdr_findstring(rec, "NAME");
+    m_id = 0;
+    zrdr_findint(rec, "NUMBER", &m_id, 1);
+    m_version = 0;
+    zrdr_findint(rec, "VERSION", &m_version, 1);
+    if (zrdr_findtag(rec, "MULTIPLAYER"))
+        m_multi = true;
+    else
+        m_multi = false;
+    m_1c = 0;
+    const char *type = zrdr_findstring(rec, "TYPE");
+
+    if (!strcasecmp(type, "DEMOLITION"))
+        m_14 = MISSION_DEMOLITION;
+    else if (!strcasecmp(type, "EXTRACTION"))
+        m_14 = MISSION_EXTRACTION;
+    else if (!strcasecmp(type, "SUPPRESSION"))
+        m_14 = MISSION_SUPPRESSION;
+    else if (!strcasecmp(type, "BREACH"))
+        m_14 = MISSION_BREACH;
+    else if (!strcasecmp(type, "ESCORT"))
+        m_14 = MISSION_ESCORT;
+    else
+        m_14 = MISSION_NONE;
+}
+
+/* whether a mission is its name's newest (OVL1 0x2C94F0, a draft's match) */
+extern "C" bool func_002C94F0(CMultiMission *m);
+
+/* a valve (zanim.h's CValve: only its creation, its value and the callbacks told of a change) */
+enum VALVE_TYPE { VALVE_ANY = 0, VALVE_PERM = 1, VALVE_TEMP = 2, VALVE_PERSIST = 3 };
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
+class CValve {
+public:
+    static CValve *Create(const char *name, VALVE_TYPE type);
+    void MakeCallbacks(VALVE_STATE state);
+
+    char *m_name;   // 0x0
+    unsigned short m_value;   // 0x4
+};
+
+/* CValve::SetValue, inlined (fts_mission.cpp's helper) */
+inline void SetValveValue(CValve *valve, int value)
+{
+    VALVE_STATE state = VALVE_SAME;
+
+    if (valve->m_value != value)
+        state = value == 0 ? VALVE_OFF : VALVE_ON;
+    valve->m_value = value;
+    if (state != VALVE_SAME)
+        valve->MakeCallbacks(state);
+}
+
+/* the missions an rdr lists added, the multiplayer ones that are their names' newest counted into
+ * the "NumMultiMissions" valve (OVL1 0x2C8C10; CMission::Init calls it). The item taken into a
+ * local ahead of the new (written as the constructor's argument MW reads it after the allocation);
+ * an int counter against the unsigned count keeps the target's per-pass `sll` (unsigned, MW walks
+ * the address in a register of its own) */
+void CMultiMissionList::Read(const _zrdr *rdr)
+{
+    int count = 0;
+
+    if (rdr) {
+        _zrdr *list = rdr->Item(0);
+
+        reserve(size() + list->Count());
+        for (int i = 0; i < list->Count(); i++) {
+            _zrdr *item = list->Item(i);
+            CMultiMission *m = new CMultiMission(item);
+
+            push_back(m);
+            if (m->m_multi && func_002C94F0(m))
+                count++;
+        }
+    }
+    SetValveValue(CValve::Create("NumMultiMissions", VALVE_PERM), count);
+}
 
 /* every mission deleted and the three vectors emptied (OVL1 0x2C93E0; the destructor's first call) */
 void CMultiMissionList::Clear()
