@@ -2001,6 +2001,96 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 20** (__sinit_vis_vu.cpp, CVisual's light tints, the header's lights):
+  - AN INITIALISER'S STATICS, DEFINED IN ITS ORDER WITH THEIR OWN CONSTRUCTORS, REPRODUCE IT WHOLE: __sinit_vis_vu.cpp
+    0x404570 (0x470) is SOCOM 1's m_customGlobalLight[4], m_stack_vid (a plain std::stack<void *>), m_basefog_color,
+    localLightBuf (twenty CPnt4D), m_addColor, the four map lists (CLightMapVector / CProjectedMapVector: it registers
+    their destructors 0x3206E0 / 0x320660), m_WorldToModel and the file statics NoAltFogBottomV / NoAltFogVectorV /
+    decaldata, then SOCOM II's light tints, lens colours and their product, and the projected map's colour;
+  - a `static const` object with a constructor goes in .data; file statics outside a namespace keep their bare names
+    (`decaldata`, not `decaldata__3zdb`); a typedef'd `CPnt4D[2]` array is built by one __construct_array of CPnt4D() (a
+    struct of two, by its own constructor); a global assigned in a constructor body is copied a field at a time through
+    one FPR with a `lui` per field, copy-constructed in the initializer list its address is taken once;
+  - a loop-invariant float held in a named local is numbered ahead of a scalarised struct's fields (hoisted out of the
+    expression it is a temporary, numbered among them); one counter reused across several loops swaps each later loop's
+    counter and pointer registers -- a `for (int k ...)` per loop fixes it (35 instructions to 0); `x = a[i++]` after
+    `int i = 0` gives the target's `move a1,zero; addiu a1,a1,1` and the loop's entry test;
+  - CVisual::UpdateLightTints 0x3B7170 (the per-frame tint and lens-scale step, called from CPipe::RenderWorld),
+    SetLightTint 0x3B76B0 and SetLightTints 0x3B78D0 (ZAnim's SCALE_COLOR and the zoom's lens effects: PNT4D by value)
+    -- the names and six of the twelve data names ours; 0x3B6870 is the second half of SOCOM 1's VuObjectSetup (the
+    header's lights) and calls CCamera::GetZ through an `extern "C"` declaration under its mangled name (zcamera.h clashes
+    with vis_vu.cpp);
+  - open: deque<void *>() 0x3B7FA0 (0x30 vs 0x28, include/deque's middle level: its draft keeps the row -- the
+    thirteenth draft-only false regression), 0x3B6B20 (each light copied through a frame temporary whose field addresses
+    are hoisted), the argument-order miss (ApplyDecalRender, CTurret::Fire, the yaw joint: the target sets up the later
+    argument first and the first in the delay slot), InitializeWeapons (a std::list walk, the end computed in place in
+    this's register).
+- **Tells from the SEALs, round 25** (TurretHasThermal, the zoom-state switches, the spectator camera, the dead SEAL's tick):
+  - SOCOM II has 13 view states -- 0 third person, 1 first person, 2 the turret's thermal view (new), 3 night vision, 4
+    binoculars, 5-12 the weapon zooms: DecrZoomState 0x544400, IncrZoomState 0x5445B0 and SetCurZoomState 0x5448A0 are
+    SOCOM 1's switches on them (theMission's per-class view preferences at +0x194/+0x19C, the goggles' sounds
+    0x44CE30/0x44CE38, the "zoom_control" anim at +0x53C); zseal.h's ZOOMSTATE still carries SOCOM 1's numbers;
+  - MW folds `(x - 4) - 1` written as one expression into one `addiu`: an `int` local used twice keeps the two steps (used
+    once it folds), an `unsigned int` local keeps `(x - 4) + 1` unfolded; an empty `case 12: break;` keeps its jump-table
+    slot;
+  - IsAi written as IsPlayer's ternary narrows the bool ONCE at the join when it is an `if` test inside an inline (0x5B1350,
+    SetCurZoomState's IsPlayer) -- round 21's "in each arm" depends on context; a pointer's truth through a `? true :
+    false` inline keeps the `sltu` (`!= 0` folds it); when the target computes an inline's call and compare ahead of a
+    `||`, the value needs its own `bool` local;
+  - a member read in a loop through a reference-returning inline makes MW hoist the member's address into the preheader
+    (the target's); read plainly, the offset folds into each load; the target keeps GetTurret's fallback reload of m_eb8
+    in TurretHasThermal 0x5432F0 and IncrZoomState's copy but folds it in UpdateTurretScope -- the entity read through a
+    volatile in TurretHasThermal reproduces all three (a stand-in: a volatile in GetTurret loses UpdateTurretScope);
+  - open: 0x57D5E0 (0x57D710's out-of-line loop-entry guard, `b guard; ... guard: bltz i,exit; b bottom-test`: the image
+    holds four such guards -- 0x57D6D0, 0x57D7D8, vector<bool>::insert's 0x208218, 0x286990 -- none matched, so no recipe
+    yet; build/scratch/seal-r25/guardscan.py), 0x5B14E0 and 0x5A2490 (2 each: the ladder list's and index's load order).
+- **Tells from the engine core, round 5** (zar::CZAR's keys and directory, the CKeyRing template tail, SetIncludeInTargetList):
+  - MW's REFUSAL TO AUTO-INLINE PROPAGATES: a function calling one MW refused (for holding an uninlinable call) is refused
+    in turn; pinning the inner callee with `#pragma auto_inline off` stops it -- Close(bool) 0x258C40 then inlines into
+    Close() 0x258CE0 as in the target;
+  - writing a function that instantiates open template-tail rows can match them for free: NewKey 0x2571D0's push_back of a
+    CKey (whose implicit copy copies a pod vector) emits the CKeyRing pod's copy constructor, operator= 0x259AF0, init and
+    do_assign<PCUi> 0x259D20 byte-exact; the key buffer is SOCOM 1's CKeyVec (a vector of 24-byte CKeys), +0x18 a second
+    CIO file, +0x34 a 16-byte growing buffer; ~CZAR 0x258F20, FreeDirectory 0x257320, Open 0x258920 and CreateKey 0x258740
+    match (Open's fifth parameter a `bool` guess: every caller passes 0);
+  - removing from a pointer list through `__list_imp::remove` -- one inline level shallower than the wrapper's remove --
+    puts its binder in the frame's top slot, above later push_back temporaries: CEntity::SetIncludeInTargetList 0x2A0F70
+    matches at level 5 (off "Level 6, or 8?"'s list); `bool f = !p;` materialises as sltu/xori/andi, `p == 0` as
+    xor/sltiu;
+  - open: CZARBuffer::Write 0x257050 (13: two temporaries in a1/a2 where the target has a3/a1, a label pad), the
+    vector<CKey> insert 0x259250 (the level: __copy_backward/__fill_n out of line at 5, the target's size but 53 off at
+    6; `inline_max_size` changes nothing), CPacketMsg::GetArg (a result variable gives the target's order but pads three
+    labels, 0x50 vs 0x44), WriteDirectory (diverged from SOCOM 1: three new callees, its own buffer handling).
+- **Tells from the world, rdr and sound, round 12** (the particles' instances, the list deleter's merge, PostTick):
+  - MW NUMBERS A VARIABLE AT ITS FIRST DEFINITION, NOT WHERE IT IS DECLARED: a dead first definition overwritten before any use
+    gives the variable that place's number at no code cost (it closed CSndInstance::PostTick 0x347120 and the merge); a
+    variable declared with no initialiser and assigned later is numbered at the assignment, and merged copies keep the
+    earlier number;
+  - placement new written as a statement (`new (p) T(...);`, result unused) keeps `p` in its saved register across the
+    constructor, `p = new (p) T(...)` takes the constructor's return value instead (Destruction_Instance::Create 0x327620);
+    a walk through a reference accessor (`node->GetDIs().begin()`) keeps the vector's address in a saved register for the
+    end re-reads (Particle::PullVisuals 0x3245B0);
+  - include/list gains __list_deleter's merge and sort as out-of-class members (additive, proven over every unit):
+    merge<less<const void *>> 0x33E690 byte-exact; Particle::Instance::Render and Destruction_Instance::Render take no matrix
+    in SOCOM II (neither body reads one, the only caller passes none);
+  - a deleter destructor one level taller (`~__list_deleter() { erase(begin(), end()); }`) makes ~list<CRipple *> 0x322370
+    the target's 0x60 and keeps node_wave.cpp matching -- measured, not applied (~C2D wants the other shape: "Level 6, or
+    8?");
+  - open: sort 0x33E510 (0x1A4 vs 0x178: the temporary list's teardown calls begin, end and erase out of line -- the level
+    question).
+- **Tells from the kit and AI states, round 26** (the firepoint accessors, SetWeaponState, CZKit::PreTick, the CDiPool names):
+  - `ok = true; if (!a || !b) ok = false;` gives the target's `daddiu 1` preset with branch-and-zero (`a && b`, `a != 0 && b !=
+    0` and an if/else all give the wrong code); an empty `case K: return;` keeps its own `b end` block, `case K: break;`
+    folds the compare straight into the end;
+  - a MIN-style ternary of a call put in a local before the multiply gives the target's `mul.s` operand order (written
+    inline, MW puts the field first whichever way it is written); an index from a byte-enum call stored in an `int` local
+    gives `li` for constants and no re-narrowing (an `unsigned char` local gives daddiu plus andi; an inline helper's
+    parameter type must match); putting the use inside the table-test block makes that test's failure jump straight to
+    the return;
+  - CDiPool settled with the game states: CDiList over list<dir *> is the used list (+0x10, implicit destructor), CDirList
+    the free list (+0x1C: a user destructor calling DeleteAll, a count word at +0xC, inline Free/DeleteAll -- DeleteAll has a
+    copy in each overlay, 0x2CD9F0 and 0x5CC6C0, which only an inline gives); one CAiSlice in zseal.h;
+  - open: WeaponsTick 0x5DFC80 (5: case 1's hold test's float registers), GetNodePos 0x5DF930 (5: two temporaries swapped).
 - **Tells from the HUD, round 33** (C2DString's text functions, hud_main.cpp's help windows and hudInit, the popup triggers):
   - a const inline accessor reading a local object's member folds into a frame offset, a non-const one shares the saved
     address register the object's inline constructor and destructor keep (GetCharWidth 0x363C20, AddCharacter 0x362E00);
@@ -2074,7 +2164,8 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
 - **Tells from the kit and AI states, round 25** (SOCOM 1's request pool CDiPool, the target ticks, the Cur ammo wrappers):
   - when every small piece of a walk (begin, end, !=, *, the assignment, postfix ++) is a separate call, the walk is an
     inline member inlined only one level: write it inside an inline and call that -- SOCOM 1's CDiPool in a new
-    seal_dipool.h (shared by seal_sensors.cpp and ai_target.cpp) brought dirlist's DeleteAll and Free, CleanupDiPool,
+    seal_dipool.h (shared by seal_sensors.cpp and ai_target.cpp) brought the free list's DeleteAll and Free (CDirList since
+    round 26), CleanupDiPool,
     target_pretick/target_post_tick and their pieces;
   - an iterator kept in memory and re-stored at each step was assigned from begin() (the wrapper's implicit, bitwise
     assignment) with the end taken into a local first -- not for_each, whose by-value parameter goes to a register;
@@ -5191,7 +5282,7 @@ constructor -- zrdr_edit.cpp's copy is 0x30 against 0x28 since the MSL headers' 
 ~vector<CMovieCue> (0x60 against 0x80: generated early by FreeVector's temporary), 0x510080, OVL2's
 __list_imp destructor that seal_aistate.cpp's missing copy now reports "elsewhere", and, since the
 online lane's round 10 renamed their rows, the lobby and chat queues' 0x2E0D90, 0x2E0DC0, 0x2F6230
-and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape) -- ELEVEN rows in all -- 0x29FF60 and
+and ~CLobbySaveModule's copy 0x2FD070 (each draft carries an `sc: as=` line), and since the UI lane's round 12 the hangul pieces' clear 0x3929C0 (its element's destructor one inline level deeper in the original; a draft with an `sc: as=` line -- the keyboard grid's clear 0x38FEF0, listed with it, matches from source since the UI's round 13), and since the integrator's renames after the MSL headers' round 14 ~__vector_imp<zrdr_sym> 0x333330 (zrdr_parse.cpp's copy inlines the deleter's destructor, 0x108 against 0x58; its draft carries an `sc: as=` line), and since the weapons lane's round 17 renamed it, the callback list's ~__list_imp<WEAPON_CALLBACK_STRUCT> 0x3C6880 (zwep_global.cpp's copy 0xB8 against 0x80: include/list's open teardown shape), since the world's round 11 ~list<CRipple *> 0x322370 (node_wave.cpp's copy 0xD4 against 0x60: the deleter destructor one level taller), and since the weapons' round 20 deque<void *>() 0x3B7FA0 (vis_vu.cpp's copy 0x30 against 0x28: include/deque's middle level; its draft carries an `sc: as=` line) -- THIRTEEN rows in all -- 0x29FF60 and
 0x2D02B0 match from hand source since the MSL headers' completion): rerun with that draft's file
 included before believing one.
 
@@ -6654,6 +6745,77 @@ is unchanged. automatch over the lane's three ranges (`--max-size 0x400 --emit -
 152 tried, build failures 29 -> 5 (calls through an int, a frameless function's stack argument, a
 pointer sum, a TImode operation, one nested load past the repair's rounds), none byte-exact -- every
 draft that builds misses: what the generator leaves here is near misses, now nearly all measurable.
+
+**The tools, round 25a**: (1) **Metrowerks statics qualify as `NAME@UNIT`** (the engine core's
+request): `scdiff.qualify_statics` renames an MW object's LOCAL statics too -- MW names a file static
+by its own name (grid_di.cpp's and grid_clutter.cpp's `static CStack` are both `stack`, SOCOM 1's
+names), so data.txt can hold grid_di's bare and grid_clutter's as `stack@grid_clutter`; a
+function-local `name$N` is never renamed. (2) **A unit's overlay is where its functions' rows lie**
+(the kit's question): sccheck took a unit's lowest row as its home, and seal_tasks.cpp (OVL2)
+instantiates `ai::_max<unsigned char>` explicitly -- a global, the unit's own, its name OVL1's
+0x2AFC40 -- so the instance scored, and was credited, at OVL1's row, OVL2's copy 0x5DEE70 never.
+`sccheck.unit_overlay` is the directive's overlay, else the one most of the unit's own functions'
+rows lie in, counting the names the map holds once; `scoring_row` is the row rule, shared by sccheck,
+tools/try.py (which ignored copies without a directive) and automatch's `hand_defined` (which took a
+unit's first function); `unit_span` keeps to that overlay (zrndr_pipe.cpp's ran 0x1EA250-0x5101C0
+over an unmarked copy); a definition of a name with a row per overlay supersedes a draft only where
+it matched, as a copy does. **Every such row**: of the map's 82 `ovl-copy:` rows (78 names, 76 emitted
+by a unit) 0x5DEE70 is the one a unit in that overlay emits byte-exact and sccheck did not credit;
+and 0x1EA2D0 (func_001EA2D0, unmarked) is an OVL1 copy of OVL2's `~__list_deleter<const void *>`
+(0x510110): zrndr_pipe.cpp's copy matches it byte-exact (`--target`) but scores WRONG against the
+named row -- an `ovl-copy:` mark there fixes it (its draft credits the address meanwhile). (3)
+**automatch's GCC repair** reads nested loads (`*((*var_a7 * 4) + p)`, an `M2C_FIELD` operand, a load
+after a binary operator, a store made as the type m2c casts its value to: `GCC_NESTED_LOADS`) and
+m2c's self-relative fixups as byte sums (`GCC_PTRSUM`). (4) `sccheck.main` takes the tree to build
+(`root`): the canary's supersede test builds its own fixture draft (OVL1's ~vector<CZDecalDef>,
+deleted from src/auto once the game states matched it) beside seal_env.cpp in a scratch copy of the
+hand-written tree. **Proved**: master 7bcb97fc's sccheck.py, scdiff.py and scdecomp.py and these,
+every unit (`--files .`, `-v`, 2 jobs, one frozen snapshot, each comparison's address logged:
+`build/scratch/gcc/scored.py`): the 14,347 output lines identical, and of the 13,371 comparisons one
+moves -- `_max<Uc>` 0x2AFC40 -> 0x5DEE70 (MATCHED.txt moves with it); re-proved after merging master
+48202c10 with this map under both. The canary gains `test_mw_statics_qualify_by_unit` and
+`test_explicit_instance_scores_in_its_units_overlay`, each failing under master's rule. **automatch**
+(`--max-size 0x400 --emit --no-prune --jobs 2`, the lane's whole private build as `--obj-dir`; each
+range with the two repairs off and on): MAIN `18DB90 1C4CC0` 51 tried, 0 hits; OVL1 `1E7F58 1E8FD4` 2,
+0; `243000 256FD0` 96, 0; OVL2's recogniser `4C5380 50DC50` 53, 0 (build failures 11 -> 4); Medius
+`60FB50 668000` 91, 0 (5): 293 tried, none byte-exact, build failures 21 -> 13, the only verdicts
+changed build -> miss. The 13 left: calls through an int, a frame slot or a miscounted function pointer
+(3), m2c's undeclared frame names (3), TImode arithmetic (2), a pointer plus a frame slot (1),
+-funroll-loops' preconditioned loops -- a jump table into the unrolled body, case labels outside any
+switch, whose source is the plain loop (3) -- and a call m2c gives no arguments (1).
+
+**Round 25a** (2026-11-04, the tools first, then round 24a's lead): 15 rows newly byte-exact (18
+functions written byte-exact, three over matched drafts) -- libkernl's SIF RPC 13 -> 22 of 23
+(`sdk/sifrpc.c`), libdbc whole (`sdk/libdbc.c` 18 of 18: sceDbcGetDepNumber, 0x1902B0), and a new
+`sdk/libmrpc.c` (Sony's multi-thread SIF RPC client, the demo's object 0x379AB0: 7 of 9) -- and 4 rows
+and 6 data rows named (libmrpc's sceSifMExitRpc and its
+three statics `_sceRpcGetPacket@libmrpc`, `_sceRpcFreePacket@libmrpc`, `_request_end@libmrpc` by the
+demo's object order; `_packet_buffer@sifrpc`, `_free_buffer`, `_free_buffer2`, `_data_table@libmrpc`
+by the demo's labels; libdbc's send buffers `dbcSendData2Buf`, `dbcSendData3Buf`, ours). What they
+showed:
+
+- **Strict aliasing reads the vendor's field types off the schedule** (round 24a's lead, measured):
+  under it GCC moves a load above a store only when their types' alias sets differ, so sifrpc's
+  packet and client types were swept field by field -- a variants file of every combination
+  (`build/scratch/gcc/v_sifrpc.py`), the functions scored under each -- until every schedule was the
+  target's: the reply packets' words u_int, the client's serve and the queue's end void *, the serve
+  data's paddr and receive u_int, the call packet's client void *. Not the public header's types, but
+  the partition into alias sets the vendor's code had; round 11a's four handlers closed at once.
+- **The newer release's shapes, read off the target**: the clients' wait path first (`if (!(mode &
+  1)) {...}`, the no-wait one laid out last), sceSifExecRequest's reply DMA'd in two descriptors and
+  retried in a do-while (one call, its test re-read after the delay loop), sceSifCallRpc's single
+  write-back when the send and receive buffers are one; sceSifInitRpc's early return gives 991111's
+  void-context sibling call; _sceRpcGetPacket's counter is tested in memory (`d->pid++; if (d->pid ==
+  1)`: one of fifteen spellings -- through a variable, cse knows the 1 and drops the target's `li`).
+- **A constant-size memcpy's moves follow its operands' alignment**: libdbc's 64-byte copy of the
+  dbcman work area is ldl/ldr, sdl/sdr both sides only from an `unsigned char` area (an int array's
+  alignment gives word moves).
+- **Open, diagnosed in place**: sceSifCallRpc (17 words, right size: the client's four stores and the
+  packet's seven schedule otherwise -- the packet's in all 5,040 orders and jointly with the client's
+  in 5,040 more, the nearest 16), libmrpc's sceSifMCallRpc (the same function with the lock and the
+  alignment checks, a word short) and sceSifMUnBindRpc (4 words: the rpc_id's register decides
+  whether reorg sends the null check's `li v0,-1` straight to the epilogue). Not reached:
+  sceGsSetDefDispEnv, sceCdStRead (their round 22a/24a diagnoses stand), OVL1's codec stretches.
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
@@ -8367,7 +8529,8 @@ What is open across lanes, and what comes next:
   base's push_back (ai_events.cpp's two copies, 0x50F810/0x50FE80, whose map names are swapped)
   keeps CreateInstance(model) auto-inlined only at 6 (and costs the stack slots of Add2D,
   CZHudMissionCams::Init and GetLoadedLibRefs at any level). Measured at 6 with both: ~C2D,
-  CreateInstance x2, Release, SetIncludeInTargetList and end()'s copy match, but every chain
+  CreateInstance x2, Release, SetIncludeInTargetList (at 5 since the engine core's round 5,
+  its remove through `__list_imp::remove`) and end()'s copy match, but every chain
   fitted to 5 needs one level more -- the deleter's swap (the capacity pair as compressed_pair
   over compressed_pair_imp), TrimVector's pieces, fts_state.h's string constructor, the erase's
   node allocator (end_.first() through the pair), SelectNext/PreviousObjective's callees (their

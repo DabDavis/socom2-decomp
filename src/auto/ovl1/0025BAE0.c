@@ -7,11 +7,11 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK DeleteChildren__Q23zar4CKeyFb(char * arg0, u8 arg1);
 M2C_UNK __dt__Q23zar4CKeyFv(char * arg0, s16 arg1);
-M2C_UNK func_0025B580(s32 arg0, s32 arg1);
-void func_0025BAE0(s32 arg0) {
-    if (arg0 != 0) {
-        func_0025B580(arg0, 1);
-        __dt__Q23zar4CKeyFv((char *) arg0, 1);
+void func_0025BAE0(char *arg0) {
+    if (arg0 != NULL) {
+        DeleteChildren__Q23zar4CKeyFb(arg0, 1U);
+        __dt__Q23zar4CKeyFv(arg0, 1);
     }
 }

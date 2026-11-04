@@ -173,6 +173,8 @@
 0x001D61D0 0x0 cddr  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdDiskReady)
 0x001D6200 0x0 _i_mode  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdInit)
 0x001D6210 0x0 _dr_mode  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceCdDiskReady)
+0x001D6540 0x1100 dbcSendData2Buf  # MAIN bss; ours (libdbc is not in SOCOM 1's demo, which links libpad): sceDbcSendData2's RPC buffer -- the socket, a1 and the size, then at most 4224 bytes of data, sent and received in 4240 bytes on the second client (0x8000131B); 0x1100 to SendData3's buffer, the object's next; 1 reference (sceDbcSendData2, src/lib/sdk/libdbc.c) -- the GCC lane r25a
+0x001D7640 0x2100 dbcSendData3Buf  # MAIN bss; ours (as dbcSendData2Buf): sceDbcSendData3's RPC buffer -- the same header, at most 8320 bytes, 8336 sent and received on the third client (0x8000131C); 0x2100 to the work area at 0x1D9740, the object's next; 1 reference (sceDbcSendData3, src/lib/sdk/libdbc.c) -- the GCC lane r25a
 0x001D9808 0x0 sceDmaCurrentEnv  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceDmaGetEnv +1)
 0x001D9C20 0x0 topSema  # MAIN bss; s1:data-exact (size SOCOM 1's; via InitThread +4)
 0x001D9C28 0x0 topArg  # MAIN bss; s1:data-exact (size SOCOM 1's; via InitThread +3)
@@ -189,6 +191,9 @@
 0x001DA598 0x20 _data_table@sifcmd  # MAIN bss; s1:label (the GCC lane r14a: the demo's sifcmd object's _data_table, 4 after sif0_handleid, as here -- the command state ps2sdk calls struct cmd_data: receive buffer, IOP buffer, the two handler tables, soft registers; qualified: sifrpc's _data_table is 0x1DBF40; src/lib/sdk/sifcmd.c)
 0x001DA5C0 0x0 _sys_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifInitCmd)
 0x001DA6C0 0x0 soft_reg  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifGetSreg +2)
+0x001DA740 0x800 _packet_buffer@sifrpc  # MAIN bss; s1:label (the GCC lane r25a: the demo's sifrpc object's LOCAL _packet_buffer 0x4789C0, 0x800 before its _free_buffer as here; sceSifInitRpc's packet table, handed out uncached, its slot 1 the init command; qualified: libmrpc's copy holds the bare name, 0x1E0640; src/lib/sdk/sifrpc.c)
+0x001DAF40 0x800 _free_buffer  # MAIN bss; s1:label (the GCC lane r25a: the demo's sifrpc LOCAL _free_buffer 0x4791C0, 0x800 after its _packet_buffer as here; the reply ring _sceRpcGetFPacket hands out; src/lib/sdk/sifrpc.c)
+0x001DB740 0x800 _free_buffer2  # MAIN bss; s1:label (the GCC lane r25a: the demo's sifrpc LOCAL _free_buffer2 0x4799C0, 0x800 after _free_buffer as here; the replies by the client's slot, _sceRpcGetFPacket2; src/lib/sdk/sifrpc.c)
 0x001DBF40 0x40 _data_table  # MAIN bss; s1:label (the GCC lane r11a: the sifrpc object's state, the demo's _data_table at sceSifSetRpcQueue's reference, its .bss after _packet_buffer, _free_buffer and _free_buffer2 0x800 apart and 0x80 before _send_data, as here -- those three unnamed: libmrpc's copy holds _packet_buffer; the demo's sifcmd and libmrpc objects hold a _data_table of their own; src/lib/sdk/sifrpc.c)
 0x001DBFC0 0x0 _send_data  # MAIN bss; s1:data-exact (size SOCOM 1's; via _sceCallCode +19)
 0x001DCC00 0x0 _rcv_data_rpc  # MAIN bss; s1:data-exact (size SOCOM 1's; via _sceCallCode +19)
@@ -226,6 +231,7 @@
 0x001E0400 0x0 retval  # MAIN bss; s1:data-exact (size SOCOM 1's; via _lmcGetClientPtr +2)
 0x001E0440 0x200 _sprtagdata.24  # MAIN bss; s1:data-exact (size SOCOM 1's; via dmaRefImage)
 0x001E0640 0x0 _packet_buffer  # MAIN bss; s1:data-exact (size SOCOM 1's; via sceSifMInitRpc)
+0x001E0E40 0x18 _data_table@libmrpc  # MAIN bss; s1:label (the GCC lane r25a: the demo's libmrpc object's LOCAL _data_table 0x53B1C0, 0x800 after its _packet_buffer as here, 0x18 to the next object there; sceSifMInitRpc's packet state -- the id counter, the uncached table, its length; qualified: sifrpc's row holds the bare name; src/lib/sdk/libmrpc.c)
 0x001E6640 0x4 errno  # MAIN bss; by use (the GCC lane): the system layer's global errno that newlib's reent wrappers (_close_r, _read_r, _write_r ... reent/*.c, which undefine the errno macro) zero before the call and copy into ptr->_errno after a failure
 0x003D7540 0x0 vu0_CodeSegment  # OVL1; s1:data-seq (size SOCOM 1's; via zMath_Init__Fv)
 0x003D8270 0x0 vu1_CodeSegment1  # OVL1; SOCOM 1's (vu1_CodeSegment1, the VU1 microcode's DMA chain, .vutext): zRndrInit sends it second, by physical address, as SOCOM 1's; 1 reference in 1 function -- the rdr lane
@@ -644,6 +650,8 @@
 0x003FBC40 0x8 __RTTI__10CMemCardIO  # RTTI of CMemCardIO: found by its RTTI's name
 0x003FBFC0 0x8 __RTTI__7CTurret  # RTTI of CTurret: found by its RTTI's name
 0x003FC140 0x8 __RTTI__8CVehicle  # RTTI of CVehicle: found by its RTTI's name
+0x003FC200 0x10 NoAltFogBottomV  # OVL1 data; SOCOM 1's file static (the wep lane, round 20: __sinit_vis_vu.cpp 0x404570 builds it (0, -1e8, 0, 1) as SOCOM 1's __sinit_vis_main.cpp builds its NoAltFogBottomV; VuObjectSetup transforms it with NoAltFogVectorV when the camera's alternate fog is off; 1 reference in 1 function plus the initialiser's 4 stores)
+0x003FC210 0x10 NoAltFogVectorV  # OVL1 data; SOCOM 1's file static (the wep lane, round 20: __sinit_vis_vu.cpp 0x404570 builds it (0, 1, 0, 0) right after NoAltFogBottomV, as SOCOM 1's; read as the pair's second point; the initialiser's 4 stores)
 0x003FC2C8 0x8 __RTTI__Q23zdb5CMesh  # RTTI of zdb::CMesh: found by its RTTI's name
 0x003FC580 0x8 __RTTI__12CZProjectile  # RTTI of CZProjectile: found by its RTTI's name
 0x003FC598 0x8 __RTTI__15PlacedExplosive  # RTTI of PlacedExplosive: found by its RTTI's name
@@ -1502,16 +1510,26 @@
 0x004A4480 0xB0 zVid  # OVL1 bss; s1:data-seq (via Update__Q23zdb6CWorldFv); SOCOM 1's _zvid_public is 0x80, SOCOM II's runs to at least 0x92 (the game states set the byte at 0x91), so 0x94 to the word; 0xB0 (the integrator, the weapons lane r14's evidence: zVid_Init writes 0x94 and 0x98, dmaFrameRestore sits at 0xA0, and lodLevel starts at 0x4A4530 = +0xB0)
 0x004A4530 0x4 lodLevel  # OVL1 bss; s1:data by hand (the wep lane: the CValve * SetDynamicLOD sets to lodLevelLimits[level], as SOCOM 1's sets lodLevel; 1 reference in SetDynamicLOD)
 0x004B4810 0x4 m_camera__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's (CCoreState::Init sets it with the world's camera beside the pipe's, as SOCOM 1's): 10 references in 6 functions take 0x4B4810
+0x004B4820 0x200 m_customGlobalLight__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's static (the wep lane, round 20: __sinit_vis_vu.cpp 0x404570 builds it first, __construct_array of four tag_GlobalLight() 0x3B7FD0 of 0x80 bytes, as SOCOM 1's __sinit_vis_main.cpp builds m_customGlobalLight; no other reference)
 0x004B4A40 0x18 m_stack_vid__Q23zdb7CVisual  # OVL1 bss; s1:data by hand (the wep lane: CVisual::Init pushes 32 ids onto it through the pointer deque's push_back and pops them again, as SOCOM 1's Init does to m_stack_vid; vis's initialiser 0x404570 builds it; 9 references in 8 functions -- the pipe's renderers among them)
+0x004B4AB0 0x10 m_basefog_color__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's static (the wep lane, round 20: __sinit_vis_vu.cpp 0x404570 builds it (1, 1, 1, 0) after m_stack_vid, as SOCOM 1's; CSaveLoad::Load sets its w, SeeFarther takes its address; 9 references in 3 functions)
 0x004B4B00 0x140 localLightBuf__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's static (the wep lane: the local lights the VU code reads, ten 32-byte records -- position and squared range, colour and falloff -- as the demo's localLightBuf__Q23zdb7CVisual, 320 bytes at 0x5117C0; 2 references in 2 functions: AddLocalLight fills it, 0x3B6B20 reads it)
 0x004B4C40 0x28 localLightPtr__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's static (the wep lane: the ten local lights themselves, as the demo's localLightPtr__Q23zdb7CVisual, 40 bytes at 0x511900; 1 reference: AddLocalLight)
 0x004B4C68 0x4 m_local_light_cnt__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddLocalLight__Q23zdb7CVisualFPQ23zdb6CLightP6CPnt3D)
+0x004B4C70 0x40 m_lightTint__Q23zdb7CVisual  # OVL1 bss; SOCOM II's, the name ours (the wep lane, round 20: four CPnt4D (0.33, 0.33, 0.33, 0) __sinit_vis_vu.cpp builds after the local lights; 0x3B7170 steps them by m_lightTintRate toward m_lightTintTarget, VuLightMap reads them; 163 references in 6 functions)
+0x004B4CB0 0x40 m_lightTintTarget__Q23zdb7CVisual  # OVL1 bss; SOCOM II's, the name ours (the wep lane, round 20: four CPnt4D (0.33, 0.33, 0.33, 0); 0x3B7170 copies them into m_lightTint when its timer runs out; 138 references in 4 functions)
+0x004B4CF0 0x40 m_lightTintRate__Q23zdb7CVisual  # OVL1 bss; SOCOM II's, the name ours (the wep lane, round 20: four CPnt4D (1, 1, 1, 0); 0x3B7170 scales them by the frame's time and adds them to m_lightTint; 9 references in 3 functions)
+0x004B4D30 0x10 m_lensScale__Q23zdb7CVisual  # OVL1 bss; SOCOM II's, the name ours (the wep lane, round 20: (1, 1, 1, 0.5) at build; 0x3B7170 sets it to the lens colours' product -- xyz multiplied, w summed plus 0.5 -- VuObjectSetup copies it into the object header, 0x3B5A10 scales and offsets by it; 43 references in 4 functions)
+0x004B4D40 0x40 m_lensColor__Q23zdb7CVisual  # OVL1 bss; SOCOM II's, the name ours (the wep lane, round 20: four CPnt4D (1, 1, 1, 0) __sinit_vis_vu.cpp builds; CameraZoom's lens effects set them -- thezoom.cpp's CLensColors -- and 0x3B7170 multiplies them into m_lensScale; 170 references in 6 functions)
 0x004B4D80 0xC m_addColor__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV)
 0x004B4DA8 0xC m_specMapList__Q23zdb7CVisual  # OVL1 bss; s1:data by hand (the wep lane: CVisual::Flush frees this vector<CLightMap *> through a temporary's swap, as SOCOM 1's Flush frees m_specMapList; vis's static initialiser 0x404570 registers its destructor with the record at 0x4B4D98, as SOCOM 1's @1160 precedes m_specMapList; 2 references in Flush)
 0x004B4DC8 0x4 m_lightMapTexture__Q23zdb7CVisual  # OVL1 bss; s1:data-seq (size SOCOM 1's; via AddLightMap__Q23zdb6CWorldFPQ23zdb9CLightMap)
 0x004B4DE0 0xC m_lightMapList__Q23zdb7CVisual  # OVL1 bss; s1:data by hand (the wep lane: CVisual::Init resizes it to 16, as SOCOM 1's Init resizes m_lightMapList; 0x404570 builds it; 5 references in 3 functions)
 0x004B4E08 0xC m_shadowMapList__Q23zdb7CVisual  # OVL1 bss; s1:data by hand (the wep lane: CVisual::Init resizes it to 4, as SOCOM 1's Init resizes m_shadowMapList; 5 references in 3 functions)
 0x004B4E30 0xC m_projectedMapList__Q23zdb7CVisual  # OVL1 bss; s1:data by hand (the wep lane: CVisual::Init resizes it to 8, as SOCOM 1's Init resizes m_projectedMapList; 4 references in 3 functions)
+0x004B4E70 0x40 m_WorldToModel__Q23zdb7CVisual  # OVL1 bss; SOCOM 1's static (the wep lane, round 20: __sinit_vis_vu.cpp 0x404570 makes it a unit matrix after the map lists, as SOCOM 1's __sinit_vis_main.cpp does m_WorldToModel; NodeSetup inverts the model-to-world matrix into it; 10 references in 8 functions)
+0x004B4EE0 0x10 m_projectedColor__Q23zdb7CVisual  # OVL1 bss; SOCOM II's, the name ours (the wep lane, round 20: (128, 128, 128, 240) __sinit_vis_vu.cpp builds after the fog pair; VuProjectedMap reads it; 9 references in 1 function)
+0x004B4EF0 0x120 decaldata  # OVL1 bss; SOCOM 1's file static (the wep lane, round 20: six AddonPoint() 0x3B7CF0 of 0x30 bytes __sinit_vis_vu.cpp builds last, as SOCOM 1's __sinit_vis_main.cpp builds its decaldata; the decal builder 0x3B3AB0 takes its address; 1 reference in 1 function)
 0x004B5020 0x10 m_defaultColor__Q23zdb14CMaterial_band  # OVL1 bss; by hand (the wep lane, vis_data.cpp: 1 reference, four loads -- the default constructor of CMaterial_band copies it into a band's colour at 0x20, inlined in resize<CMaterial_band> 0x3BCAE0; nothing writes it; just ahead of vis_decal.cpp's m_tempPool, so this unit's; the name ours)
 0x004B5030 0x14 m_tempPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutTempDecal__Q23zdb6CDecalFPQ23zdb6CDecal +2)
 0x004B5050 0x14 m_permPool__Q23zdb6CDecal  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal +1)

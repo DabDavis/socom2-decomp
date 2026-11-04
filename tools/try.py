@@ -47,15 +47,15 @@ def score(file: Path, unit: Path, symbol: str, text: str | None, show: bool = Fa
     if obj is None:
         return "BUILD-FAIL " + (err.strip().splitlines() or ["?"])[-1][:100]
     img, st = E.image(), E.symbols()
+    overlay = sccheck.tu_options(WORK / rel_unit).get("overlay")
+    if overlay and sccheck.overlay_symbol(st, symbol, overlay) is None:
+        return f"NO SYMBOL in {overlay}: {symbol}"
     try:
-        sym = st.get(symbol)
+        # the row sccheck scores it against: in the overlay the unit is linked in, its copy there
+        # when the named row lies in another (`ovl-copy:`)
+        sym = sccheck.scoring_row(st, symbol, sccheck.unit_overlay(E.Elf.read(obj), st, overlay))
     except KeyError as e:
         return f"NO SYMBOL {e}"
-    overlay = sccheck.tu_options(WORK / rel_unit).get("overlay")
-    if overlay:
-        sym = sccheck.overlay_symbol(st, symbol, overlay)
-        if sym is None:
-            return f"NO SYMBOL in {overlay}: {symbol}"
     r = D.compare(obj, symbol, sym, img, st)
     if show and not r.match:
         print(D.report(r))
