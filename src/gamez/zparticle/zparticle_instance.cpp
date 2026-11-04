@@ -153,10 +153,61 @@ void Instance::Recycle()
     m_instance_pool.Push(this);
 }
 
+/* SOCOM 1's, the visual left to SetVisual: the base's three links cleared, the properties
+ * counted, the piece's motion copied in field by field, its node taken off the pool */
+Destruction_Instance::Destruction_Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &spin, float f,
+                                           float life, float opacity, CPnt3D axis, Props *props)
+{
+    props->m_refCount++;
+    m_pos[0] = pos.x;
+    m_pos[1] = pos.y;
+    m_pos[2] = pos.z;
+    m_pos[3] = pos.w;
+    m_vel[0] = vel.x;
+    m_vel[1] = vel.y;
+    m_vel[2] = vel.z;
+    m_vel[3] = vel.w;
+    m_age = 0.0f;
+    m_spin[0] = spin.x;
+    m_spin[1] = spin.y;
+    m_spin[2] = spin.z;
+    m_props = props;
+    m_opacity = opacity;
+    m_44 = f;
+    m_lifespan = life;
+    m_invLifespan = 1.0f / life;
+    m_node = GetFreeInstance();
+    m_axis[0] = axis.x;
+    m_axis[1] = axis.y;
+    m_axis[2] = axis.z;
+}
+
 /* the piece's node taken out of the world (SOCOM II's) */
 Destruction_Instance::~Destruction_Instance()
 {
     zdb::CWorld::m_world->DeleteChild(m_node);
+}
+
+/* SOCOM 1's: a piece off the pool, built in place, else a new one; linked in at the live list's
+ * head */
+Destruction_Instance *Destruction_Instance::Create(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &spin,
+                                                   float f, float life, float opacity, CPnt3D axis,
+                                                   Props *props)
+{
+    Destruction_Instance *p = m_instance_pool.m_head;
+
+    if (p) {
+        m_instance_pool.m_head = (Destruction_Instance *)p->m_next;
+        p->m_next = 0;
+    } else
+        p = 0;
+    if (p)
+        new (p) Destruction_Instance(pos, vel, spin, f, life, opacity, axis, props);
+    else
+        p = new Destruction_Instance(pos, vel, spin, f, life, opacity, axis, props);
+    p->m_listNext = Instance::list.m_head;
+    Instance::list.m_head = p;
+    return p;
 }
 
 /* the piece's node moved to it while it lives */

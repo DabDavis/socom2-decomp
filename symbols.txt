@@ -5704,9 +5704,9 @@
 0x003271D0 0x38C Tick__Q28Particle20Destruction_InstanceFf  # OVL1; s1:align
 0x00327560 0x4C Render__Q28Particle20Destruction_InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003275B0 0x70 func_003275B0  # OVL1
-0x00327620 0x14C func_00327620  # OVL1
+0x00327620 0x14C Create__Q28Particle20Destruction_InstanceFRC6CPnt4DRC6CPnt4DRC6CPnt3Dfff6CPnt3DPQ28Particle5Props  # OVL1; the world lane round 12: SOCOM 1's Destruction_Instance::Create without its CVisual * -- one off the class pool (0x488468) built in place, else new (116); linked at Instance::list's head (0x48848C); called from the destruction managers 0x322800/0x322DF0; byte-exact from zparticle_instance.cpp
 0x00327770 0x90 __dt__Q28Particle20Destruction_InstanceFv  # OVL1; the rdr lane: Destruction_Instance's destructor (its table stored, the world's DeleteChild on the node at 0x58, then Instance's: its table and the virtual Expire, deleted when the flag is positive); Particle::Close deletes the pooled pieces through it with 1
-0x00327800 0x10C func_00327800  # OVL1
+0x00327800 0x10C __ct__Q28Particle20Destruction_InstanceFRC6CPnt4DRC6CPnt4DRC6CPnt3Dfff6CPnt3DPQ28Particle5Props  # OVL1; the world lane round 12: SOCOM 1's Destruction_Instance constructor without its CVisual * (SOCOM II hands the visual over in SetVisual): Instance's and Destruction_Instance's tables stored, the base's three links cleared, the props counted, the position/velocity/spin copied, the life's inverse, GetFreeInstance's node, the by-value axis last (116 bytes, Create's new); byte-exact from zparticle_instance.cpp
 0x00327910 0x35C Render__Q28Particle8InstanceFRC7CMatrix  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00327C70 0x58 Expire__Q28Particle8InstanceFv  # OVL1; s1:align (slot 0x08 of Particle::Instance's table 0x406A00; SOCOM 1's Expire calls DecRefCount as this does, and ReleaseInstance, which SOCOM II's leaves to the pool)
 0x00327CD0 0x16C func_00327CD0  # OVL1

@@ -277,6 +277,14 @@ public:
     /* whether its source ages it at the LOD's rate (SOCOM 1's test of m_doAgeLOD; the name ours) */
     bool AgeLOD() const;
 
+    /* SOCOM 1's constructor's common part (inline: Destruction_Instance's constructor inlines it):
+     * no properties, no source, not linked -- stored in this order, as the target's */
+    Instance()
+    {
+        m_props = 0;
+        m_source = 0;
+        m_listNext = 0;
+    }
     /* inline: its table stored and the virtual Expire, in every destructor that inlines it (no
      * out-of-line copy in the image) */
     ~Instance() { Expire(); }
@@ -301,12 +309,12 @@ public:
     unsigned char _8[0x4];   // 0x8
     float m_age;   // 0xc
     unsigned char _10[0x10];   // 0x10
-    float m_pos[3];   // 0x20
-    unsigned char _2c[0x14];   // 0x2c
+    float m_pos[4];   // 0x20 (SOCOM 1's constructor copies a CPnt4D in)
+    float m_vel[4];   // 0x30: the velocity (a CPnt4D copied in; the name ours)
     Props *m_props;   // 0x40
-    unsigned char _44[4];   // 0x44
+    float m_44;   // 0x44: the constructor's first float (the name ours)
     float m_lifespan;   // 0x48
-    unsigned char _4c[4];   // 0x4c
+    float m_invLifespan;   // 0x4c: 1 / the life (ours)
     Instance *m_listNext;   // 0x50: the next live instance (List's link), cleared when recycled
     float m_opacity;   // 0x54 (Destruction_Instance::SetVisual hands it to the node; the name ours)
 };   // 0x58 bytes
@@ -315,7 +323,16 @@ public:
  * node it moves at 0x58 */
 class Destruction_Instance : public Instance {
 public:
+    /* SOCOM 1's, the visual dropped (SetVisual hands it over): the position and velocity, the
+     * spin, the first float, the life and the opacity, the axis (by value) and the properties,
+     * whose count it takes (0x327800) */
+    Destruction_Instance(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &spin, float f, float life,
+                         float opacity, CPnt3D axis, Props *props);
     ~Destruction_Instance();
+    /* SOCOM 1's: one off the pool, built in place, else a new one; linked at the live list's
+     * head (0x327620) */
+    static Destruction_Instance *Create(const CPnt4D &pos, const CPnt4D &vel, const CPnt3D &spin, float f,
+                                        float life, float opacity, CPnt3D axis, Props *props);
     void Expire();
     void Tick(float dT);
     void Render(const CMatrix &m);
@@ -327,11 +344,15 @@ public:
     static InstancePool<Destruction_Instance> m_instance_pool;   // 0x488468
 
     zdb::CNode *m_node;   // 0x58
-};
+    float m_spin[3];   // 0x5c (the names ours)
+    float m_axis[3];   // 0x68
+};   // 0x74 bytes (Create's new)
 
 /* SOCOM II's: the dead instances recycled and both pools emptied (zparticle_instance.cpp; the
  * name ours) */
 void FreeInstances();
+/* a node for an instance, off the pool or new (zparticle.cpp) */
+zdb::CNode *GetFreeInstance();
 
 
 /* the textures a particle draws with, registered with the draw buffer (0x324A10) */
