@@ -227,7 +227,10 @@ inline int GridCellIndex(float v, float o, float inv, const int &n)
  * out, the constant in a local (declared first or at the use), the operands reordered, reference
  * parameters, the store moved; the clamp's MAX/MIN forms, the const reference count and the
  * indexed loop fixed everything else. Round 9: GridCellIndex taking the coordinate, the origin,
- * the scale (each, pairs, all three) by const reference -- the same 4 */
+ * the scale (each, pairs, all three) by const reference -- the same 4. Round 10: the sum taken
+ * first (`(0.0001f + (v - o)) * inv`), the sum or the constant in a local (plain or const), by value
+ * or by reference -- the same 4 each (build/scratch/core/v_ste.py): the block's first load is placed
+ * by the scheduler, whatever the expression */
 void CGrid::SetTraversalExtents(const CPnt3D *pnts, int n, bool b)
 {
     m_LineWalk = b;

@@ -1,3 +1,6 @@
+/* sc: compiler=mwcps2-3.0b50-030527 */
+/* (the unit's build: 3.0b50, not the game's 3.0b52 -- the breach side test 0x5F3270 is b50's own Dot form, shared y-product
+ * and all, and no b52 spelling of 72 reproduces it; nothing else in the unit changes under b50: the integrator, 2026-11-04) */
 /* seal_aistate.cpp -- the AI states' core: CQB attack, unknown, suspended, breach, script, goto,
  * pickup (SOCOM 1's unit, __sinit_seal_aistate.cpp, with its static CAiSUnknown; SOCOM 1 filed it
  * beside the other seal_*.cpp under gamez/zseal, this tree keeps the AI states under src/ai).
@@ -691,17 +694,19 @@ AI_STATE CAiStateStack::Pop(CSealCtrlAi *ai)
 }
 
 /* a state of a kind deleted, for remove_if (Remove's; the template tail's remove_if and
- * remove_copy_if, 0x5F8AF0 and 0x5F8C40, inline it -- the name ours).
- * OPEN, both instances (include/algorithm's, the other lane's this round): the target's inlined
- * find_if reads the functor from remove_if's parameter slot at every step (`lbu a1,104(sp)`, the
- * functor's kind first in the bne), where include/algorithm's find_if takes its copy -- a byte
- * copied to a fresh slot and held in s0 -- so remove_if is 0x124 against 0x110; MSL's find_if
- * passing the predicate on without a copy (or by reference) should close both */
+ * remove_copy_if, 0x5F8AF0 and 0x5F8C40, inline it -- the name ours). The kind read into a local
+ * first, then compared on the left (round 31): remove_if's search, which reaches the functor through
+ * a reference, then re-reads its byte at every step (`lbu a1,104(sp)`, the virtual destructor's call
+ * in the loop kills it) while remove_copy_if's by-value copy is hoisted into s0 -- both instances
+ * byte-exact so; read in place, either operand order, through a reference, a `self` pointer or a
+ * non-const operator() MW hoists the read in both (0x114 and 0xE8 against 0x110 and 0x100) */
 struct CAiStateDeleteKind {
     CAiStateDeleteKind(AI_STATE state) : m_state(state) {}
     bool operator()(CAiState *s) const
     {
-        if (s->m_state == m_state) {
+        AI_STATE k = m_state;
+
+        if (k == s->m_state) {
             delete s;
             return true;
         }
@@ -1442,7 +1447,14 @@ void CAiSBreach::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
  * both (its x and z reassigned, or negated: 0x134), either dot first, Dot(v, p); round 28: the
  * right point's y taken from the left's (16), the y-term in a shared local with the dots written
  * out (22; the second's z-term first, 17). The 0 is the points' literal, not d.y: d is reloaded
- * after Normalize and its y never is */
+ * after Normalize and its y never is.
+ * BYTE-EXACT UNDER 3.0b50 as written (the MAIN runtime lane's round 7, confirmed in round 31 with an
+ * `sc: compiler=mwcps2-3.0b50-030527` line): b50 shares the y-product between the dots, b52 fuses
+ * the second dot's x and y terms into mula/madd and recomputes it. Round 31 under b52: 72 explicit
+ * shared-y-term spellings (either point first, either dot first, the y-term from either point, three
+ * groupings of each dot) give 17 or 22 -- and 17 under b50 too, so the target is b50's Dot form,
+ * not a written-out one; const points, temporaries bound to references or passed straight to Dot,
+ * one declaration for both dots and right.y taken from left.y all stay at 16; d.y as the zero 0x134 */
 extern "C" int func_005F3270(CAiSBreach *b, CSealCtrlAi *ai)
 {
     int r = 2;

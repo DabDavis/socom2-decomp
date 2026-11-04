@@ -513,10 +513,58 @@ inline bool IsFilterVehicle(CVehicleRdrEntry *entry)
     return strcasecmp(data_0066B010, entry->m_name) == 0;
 }
 
-/* a recycled vehicle put on the spawners' list (ours) */
+/* a recycled vehicle put on the spawners' list (ours): two inline levels with the insert written
+ * out -- the spawn made a level down, after the grid's points, the insert's two iterator temporaries
+ * at that level too, above the entity walk's end copy (as the target's frame has them: one level
+ * gives the spawn above the points, push_back the iterators below the end copy) */
+inline void AddSpawn(int index, CVehicleRdrEntry *entry)
+{
+    spawners.m_spawns.insert(spawners.m_spawns.end(), CSpawners::spawn_map(index, entry));
+}
+
 inline void AddSpawn(CVehicleRdrEntry *entry)
 {
-    spawners.m_spawns.push_back(CSpawners::spawn_map(CEntity::CreateRecycler()->m_index, entry));
+    AddSpawn(CEntity::CreateRecycler()->m_index, entry);
+}
+
+/* the first vehicle's copies placed on the mission's player grid, a copy loaded at every cell of the
+ * smallest grid of `count` cells at least as wide as it is deep, the vehicle's matrix carrying the
+ * cell (ours): an inline, so that its variables are numbered after the caller's -- and after the
+ * entry iterator's scalarised temporary, which the target's colouring needs (cols, then rows,
+ * declared in that order) */
+inline void PlaceCopies(CMission *m, CVehicleRdrEntry *entry, CEntity *v)
+{
+    int count = m->m_player_grid_count;
+
+    if (count) {
+        int cols, rows;
+
+        for (int d = (int)floorf(sqrtf((float)count)); d <= count; d++) {
+            if (count % d == 0) {
+                cols = d;
+                rows = count / d;
+                break;
+            }
+        }
+        CPnt3D base;
+
+        base.z = -m->m_player_grid_spacing;
+        base.x = 0.5f * ((cols - 1) * m->m_player_grid_spacing);
+        base.y = 0.0f;
+
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                CPnt3D p = base;
+
+                p.x += c * m->m_player_grid_spacing;
+                p.z -= r * m->m_player_grid_spacing;
+                v->m_node->m_matrix.Transform(&p, 1);
+                CEntity *copy = m->LoadVehicle(entry, true);
+
+                copy->TeleportTo(&p, &copy->m_quat);
+            }
+        }
+    }
 }
 
 /* the mission's vehicles (SOCOM 1's CMission::LoadVehicles, its argument gone; OVL1 0x2B2E50): the
@@ -529,17 +577,13 @@ inline void AddSpawn(CVehicleRdrEntry *entry)
  * in s0 -- func_002B7A90 assigns its own, two copies and the iterator in memory), the counts tested
  * `> 1` (slti at), the filter's bool compared `== false` (materialised, then bnez), the grid's base
  * stored z, x, y field by field (SOCOM 1's order: the three-float constructor evaluates x first and
- * is 8 bytes longer), the spawn pushed through an inline helper (its iterator temporaries then sit
- * below the walk's, as the target's frame has them).
- * OPEN, 41 instructions, registers only: MW's replayed colouring (build/scratch/states/ig/, igmap.py
- * against record 8) has eight vregs off -- the target pops c, r, rows, cols and THEN the entry
- * iterator (c s0, r s1, rows s2, cols s3, e s4, and turret s4, players s1, k/count s0 follow), ours
- * pops the iterator first (e s0, c s1, r s2, cols s3, rows s4). The replay reaches the target only
- * with the iterator's scalarised temp numbered before cols and rows (cols before rows): with it
- * last, as a temporary must be, the best of 9000 searched orders of the named locals is 4 off. Tried:
- * cols assigned before rows, the pair declared the other way, d outside the loop, dead first
- * definitions of the pair (they cut the uninitialised path: 16 bytes shorter), the walk through an
- * inline helper */
+ * is 8 bytes longer), the spawn put through an inline helper two levels deep (AddSpawn above), the
+ * grid placed through another (PlaceCopies above). The colouring (the states' rounds 32-33, MW's
+ * replayed with build/scratch/states/ig/): the target pops c, r, rows, cols and then the entry
+ * iterator (c s0, r s1, rows s2, cols s3, e s4) -- reached only with the iterator's scalarised temp
+ * numbered before cols and rows, which no order of the function's own named locals gives (round 32:
+ * best of 9000, 4 off) and the grid's variables as an inline's do (an inline's variables are numbered
+ * after the caller's named locals and its temporaries). */
 bool CMission::LoadVehicles()
 {
     CCharacterModelCache::m_ModelCache.clear();
@@ -599,37 +643,7 @@ bool CMission::LoadVehicles()
                         ((CSealCtrl *)AsSeal(v)->m_control)->m_copy_index = k;
                     }
                 }
-                int count = m_player_grid_count;
-
-                if (count) {
-                    int rows, cols;
-
-                    for (int d = (int)floorf(sqrtf((float)count)); d <= count; d++) {
-                        if (count % d == 0) {
-                            rows = count / d;
-                            cols = d;
-                            break;
-                        }
-                    }
-                    CPnt3D base;
-
-                    base.z = -m_player_grid_spacing;
-                    base.x = 0.5f * ((cols - 1) * m_player_grid_spacing);
-                    base.y = 0.0f;
-
-                    for (int r = 0; r < rows; r++) {
-                        for (int c = 0; c < cols; c++) {
-                            CPnt3D p = base;
-
-                            p.x += c * m_player_grid_spacing;
-                            p.z -= r * m_player_grid_spacing;
-                            v->m_node->m_matrix.Transform(&p, 1);
-                            CEntity *copy = LoadVehicle(&*e, true);
-
-                            copy->TeleportTo(&p, &copy->m_quat);
-                        }
-                    }
-                }
+                PlaceCopies(this, &*e, v);
             }
         }
     }
