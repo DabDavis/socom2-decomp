@@ -148,6 +148,9 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* whether a weapon picked up has a slot to go in (kit.h's; OVL2 0x5BAC30, the kit lane's: the
+     * SEAL's pickup tests 0x5A9C70 and 0x5A9F40 ask it) */
+    bool HasPickupSlot();
     /* the sniper's kick made ready (SOCOM 1's; OVL2 0x5B9180, kit.h's: SetCurZoomState calls it) */
     void InitializeSniperKick();
     /* the weapon's display marked changed (SOCOM 1's; OVL2 0x5B99B0, kit.h's) */
@@ -1673,8 +1676,11 @@ public:
      * m_rifle_as_gear and m_pistol_as_gear were the gear alone; the names ours) */
     CObjAnim m_item_gear[5];   // 0x388 (the rifle's 0x390, the pistol's 0x398)
     void *m_select;   // 0x3b0: a TASK_SELECT (SOCOM 1's 0x318), the AI's tasks' argument
-    unsigned char _3b4[0x3dc - 0x3b4];
-    zdb::CNode *m_3dc;   // 0x3dc: a node 0x5AA620 takes the SEAL of (the name ours)
+    unsigned char _3b4[0x3c0 - 0x3b4];
+    /* the hit under the reticule (SOCOM 1's m_last_reticule, 0x340 -- the name by SOCOM 1's
+     * reticule pair, which SOCOM II moved ahead of the altitude): the weapon pickup's test 0x5A9C70
+     * reads its point and material, the radio toggle 0x5AA620 takes the SEAL of its node (0x3dc) */
+    zdb::IntersectStruct m_last_reticule;   // 0x3c0
     unsigned char _3e0[0x400 - 0x3e0];
     zdb::IntersectStruct m_last_altitude;   // 0x400 (SOCOM 1's 0x320)
     unsigned char _420[0x428 - 0x420];
