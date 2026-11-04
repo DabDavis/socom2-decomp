@@ -39,6 +39,27 @@ CTCM theTCM;
 CTCMCache mpCache("mpCache");
 CTCMCache spCache("spCache");
 
+/* the item list's bars: a dark one at 110 and a blue-grey one opaque, both untextured over the same
+ * box, each turned on and added to the item list's bitmap, then the closing clock and its flag
+ * cleared */
+void CTCM::SetupItemBars()
+{
+    m_11c0.SetHasTexture(false);
+    m_11c0.SetColor(0.0f, 0.0f, 0.0f);
+    m_11c0.SetTrans(110.0f);
+    m_11c0.SetPos(136.0f, 100.0f, 140.0f, 132.0f);
+    m_11c0.On();
+    m_items.push_back(&m_11c0);
+    m_fd0.SetHasTexture(false);
+    m_fd0.SetColor(35.0f, 51.0f, 56.0f);
+    m_fd0.SetTrans(128.0f);
+    m_fd0.SetPos(136.0f, 100.0f, 140.0f, 132.0f);
+    m_fd0.On();
+    m_items.push_back(&m_fd0);
+    m_dd0 = 0.0f;
+    m_dce = 0;
+}
+
 /* the menu built: the root node, the mode 4, the three backing polys untextured, translucent and
  * black with two corners clear, the counters and the holds (SOCOM II's) */
 CTCM::CTCM() : m_cache(0), m_da8(0), m_dac(0), m_db0(1.0f), m_hold(-1.0f)

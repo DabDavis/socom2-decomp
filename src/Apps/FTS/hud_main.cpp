@@ -831,7 +831,6 @@ public:
 void hudResetPopupTriggers();
 extern "C" void func_00242B20(CSpectatorInfo *info);
 extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, int c, float time);
-extern "C" void func_002371A0(CTCM *tcm);
 
 
 /* the HUD made ready for the next mission: on, the letterbox and the piggyback strings put away,
@@ -891,7 +890,7 @@ void CHUD::ReInit_Init()
     m_bitmapReticule.HideTimer();
     m_ammodisplay.Reset();
     CameraZoom::Reset();
-    func_002371A0(&theTCM);
+    theTCM.SetupItemBars();
     m_weaponsel.ResetHotSwap(true);
     m_lensflares.ReInit();
     m_socom2_1a0e8 = 0.0f;
