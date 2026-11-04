@@ -71,7 +71,8 @@ struct CMaterialEx {
     CSnd *m_runsound;   // 0x8
     CSnd *m_walksound;   // 0xc
     CSnd *m_pronesound;   // 0x10
-    unsigned char _14[0x3c - 0x14];
+    CSnd *m_fallsound;   // 0x14: a landing's (HandleFallingDamage plays it)
+    unsigned char _18[0x3c - 0x18];
     /* int_material.h's flags: only PICKUP here (bit 4) */
     unsigned int m_flags0 : 4;   // 0x3c
     unsigned int m_pickup : 1;   // bit 4: PICKUP
@@ -1625,6 +1626,78 @@ extern "C" void func_005A5790(CZSealBody *seal, unsigned char i, float f)
     }
 }
 
+extern "C" {
+/* (OVL1 0x2C2FD0, the network game's: whether a SEAL's hits go unfelt -- the player's by a valve,
+ * another's by its client's flag; the name unknown) */
+bool func_002C2FD0(CZSealBody *seal);
+/* a death anim for a location and the weapon hit's anim played in a state (OVL2 0x5A0700 and
+ * 0x5A2690: SOCOM 1's FindRandomDeathAnim and WeaponHitAnim by these calls, SOCOM II's without the
+ * flag -- not written) and two of seal_body.cpp's (OVL2 0x57E770, 0x585FF0; not written) */
+AnimType func_005A0700(CZSealBody *seal, DAMAGE_LOCATION where, bool *b);
+void func_005A2690(CZSealBody *seal, AnimType anim, SEAL_STATE state);
+void func_0057E770(CZSealBody *seal);
+void func_00585FF0(CZSealBody *seal);
+}
+
+/* a weapon's hit: online, none when the SEAL's hits go unfelt and none from a team-mate without
+ * friendly fire; none from a grenade (item 121) not gone off; a living SEAL's controller told, then
+ * -- unless an AI navy SEAL's own team's grenades or flashbangs (121, 126) while it is in state 10,
+ * or anyone's item 159, from itself or a team-mate -- the adrenaline raised, the hit kept and the
+ * damage taken; a dead one, unless remote, thrown by a death anim; the shooter's id kept (OVL2
+ * 0x5AC670; SOCOM 1's OnWeaponHit, CSealEx::OnWeaponHit tail-calls it, with the grenade and the
+ * state-10 tests and the two calls after) */
+int CZSealBody::OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj)
+{
+    if (theNetwork.m_9 && func_002C2FD0(this))
+        return 0;
+    m_lastshooter_id = proj->m_shooterID;
+    if (theNetwork.m_9) {
+        CZSealBody *shooter = AsSeal(CEntity::m_list.GetEntityById(m_lastshooter_id));
+
+        if (m_lastshooter_id && !m_allow_friendly_fire && shooter && (shooter->m_team & m_team) &&
+            !(m_team & 0x20000) && this != shooter)
+            return 0;
+    }
+    if (proj && proj->m_weapon && proj->m_weapon->GetIDType() == 121 && !proj->WasDetonated())
+        return 0;
+    if (m_isAlive && GetNode()->m_active) {
+        ((CSealCtrl *)m_control)->OnWeaponHit(hit, proj);
+        CZWeapon *w = proj ? proj->m_weapon : 0;
+        EQUIP_ITEM item = w ? w->m_ID : (EQUIP_ITEM)255;
+        CSealCtrlAi *ai = ((CSealCtrl *)m_control)->GetSealCtrlAi();
+
+        if (ai) {
+            /* (the bit compared as a bool: its sltu) */
+            if ((bool)ai->m_navyseal != false && (item == 121 || item == 126) && (ai->m_stateStack.m_10 & (1 << 10))) {
+                CEntity *e = CEntity::m_list.GetEntityById(proj->m_shooterID);
+
+                if (e && (e == this || (m_team & e->m_team)))
+                    return 0;
+            } else if (item == 159) {
+                CEntity *e = CEntity::m_list.GetEntityById(proj->m_shooterID);
+
+                if (e && (e == this || (m_team & e->m_team)))
+                    return 0;
+            }
+        }
+        AdrenalineIncr(0.99f);
+        if (hit) {
+            m_wephit.m_pos = hit->m_pos;
+            m_wephit.m_norm = hit->m_norm;
+            m_wephit.m_node = hit->m_node;
+        } else
+            m_wephit.m_node = 0;
+        HandleDamage(proj);
+    } else if (!IsRemote()) {
+        bool b;
+
+        func_005A2690(this, func_005A0700(this, (DAMAGE_LOCATION)3, &b), stateDead);
+    }
+    func_0057E770(this);
+    func_00585FF0(this);
+    return 0;
+}
+
 /* the last weapon hit forgotten, the blend stack's top taken (OVL2 0x5AC660; SOCOM 1's HandleWepHit
  * word for word, the hit held now) */
 void CZSealBody::HandleWepHit()
@@ -1642,6 +1715,99 @@ extern "C" void func_005AC620(CZSealBody *seal, float dT)
         if (seal->m_ffc[i] < 0.0f)
             seal->m_ffc[i] = 0.0f;
     }
+}
+
+extern "C" {
+/* the kill credited to its shooter (OVL2 0x547AA0, seal.cpp's) and the death's kind kept, the victim
+ * struck down (OVL2 0x547A90, seal.cpp's: the word at 0xFC0, then 0x547860) */
+void func_00547AA0(CZSealBody *seal, unsigned int id, bool b);
+void func_00547A90(CZSealBody *seal, int kind);
+}
+
+CZSealBody *ftsGetPlayer();
+
+/* a landing's damage by its speed: by the dynamics' three landing speeds none, light, hard or a fall
+ * that hurts (none in states 8 and 10), the ground's landing sound -- and the bones' break on the two
+ * hardest -- played at the SEAL; then, for this console's SEAL, the adrenaline raised by the middle
+ * two, the six values cut by the share of the speed past the first, the health updated as a fall's
+ * and a death this made the player's kill, its kind 253; the severity returned (OVL2 0x5AC1F0; SOCOM
+ * 1's HandleFallingDamage, the damage scaled now, a sound for every severity, the kill credited) */
+LANDING_TYPE CZSealBody::HandleFallingDamage(float speed)
+{
+    /* (the grade declared first, uninitialised: it takes s2, the alive flag s1) */
+    LANDING_TYPE sev;
+    bool alive = m_isAlive;
+    CSnd *snd = MaterialEx(m_last_altitude.GetMaterial())->m_fallsound;
+    float frac;
+
+    if (m_state == 8 || m_state == 10)
+        frac = 0.0f;
+    else {
+        float lo = theCharacterDynamics.m_landSpeed[0];
+        float hi = theCharacterDynamics.m_landSpeed[2];
+
+        if (speed <= lo)
+            frac = 0.0f;
+        else if (speed >= hi)
+            frac = 1.0f;
+        else
+            frac = (speed - lo) / (hi - lo);
+    }
+    if (m_state == 8 || m_state == 10)
+        sev = LANDING_NONE;
+    else if (speed <= theCharacterDynamics.m_landSpeed[0])
+        sev = LANDING_NONE;
+    else if (speed <= theCharacterDynamics.m_landSpeed[1])
+        sev = LANDING_SOFT;
+    else if (speed < theCharacterDynamics.m_landSpeed[2])
+        sev = LANDING_HARD;
+    else
+        sev = LANDING_HURT;
+    switch (sev) {
+    case LANDING_NONE:
+        if (snd)
+            snd->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        break;
+    case LANDING_SOFT:
+        if (snd)
+            snd->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        break;
+    case LANDING_HARD:
+        if (data_0044D580)
+            data_0044D580->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        break;
+    case LANDING_HURT:
+        if (snd)
+            snd->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        if (data_0044D580)
+            data_0044D580->PlaySound3D(&m_posW, true, 1.0f, 0, 0, 255);
+        break;
+    }
+    if (IsRemote())
+        return LANDING_NONE;
+    switch (sev) {
+    case LANDING_SOFT:
+        AdrenalineIncr(0.33f);
+        break;
+    case LANDING_HARD:
+        AdrenalineIncr(0.66f);
+        break;
+    case LANDING_NONE:
+        break;
+    case LANDING_HURT:
+        break;
+    }
+    for (int i = 0; i < 6; i++) {
+        m_ffc[i] -= m_1014[i] * frac;
+        if (m_ffc[i] < 0.0f)
+            m_ffc[i] = 0.0f;
+    }
+    UpdateHealth((DAMAGE_LOCATION)3, DEATH_FALLING);
+    if (alive && !m_isAlive && frac > 0.0f) {
+        func_00547AA0(this, ftsGetPlayer()->m_id, false);
+        func_00547A90(this, 253);
+    }
+    return sev;
 }
 
 /* an explosion's damage: online, nothing for another console's SEAL; the projectile's bit 1
@@ -1783,10 +1949,9 @@ void CZSealBody::HandleDamageNonExplosive(CZProjectile *proj, CZBodyPart *part, 
 }
 
 extern "C" {
-/* the kill credited to its shooter, with whether the weapon was one of five (OVL2 0x547AA0,
- * seal.cpp's: the id kept, then 0x547860 and 0x59EE20 -- ExecuteAction_CQBAttack inlines it), the
- * five items (OVL1 0x3C5AC0, zwep_ftsweapon.cpp's) and the stats' death (OVL2 0x545D10, seal.cpp's) */
-void func_00547AA0(CZSealBody *seal, unsigned int id, bool b);
+/* (the kill's credit, 0x547AA0, takes whether the weapon was one of five: the id kept, then 0x547860
+ * and 0x59EE20 -- ExecuteAction_CQBAttack inlines it) the five items (OVL1 0x3C5AC0,
+ * zwep_ftsweapon.cpp's) and the stats' death (OVL2 0x545D10, seal.cpp's) */
 bool func_003C5AC0(EQUIP_ITEM id);
 void func_00545D10(CSealStats *s, const CZSealBody *seal);
 }

@@ -94,6 +94,10 @@ public:
 };
 
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */
+/* a landing's grade by its speed (HandleFallingDamage's: assigned with li, switched on with andi and
+ * returned as it is -- a byte enum; the names ours) */
+enum LANDING_TYPE { LANDING_NONE = 0, LANDING_SOFT = 1, LANDING_HARD = 2, LANDING_HURT = 3 };
+
 enum SEAL_DEATH_TYPE {
     DEATH_NONE = 0, DEATH_KNIFE_KILL = 1, DEATH_CQB = 2, DEATH_HEADSHOT = 3, DEATH_GRENADE = 4,
     DEATH_BULLET = 5, DEATH_GHOST = 6, DEATH_FALLING = 7, DEATH_MAX = 8
@@ -1572,6 +1576,14 @@ public:
     void HandleDamage(CZProjectile *proj);
     /* the last weapon hit forgotten and the blend stack's top taken (SOCOM 1's; OVL2 0x5AC660) */
     void HandleWepHit();
+    /* a weapon's hit, the damage taken (SOCOM 1's; OVL2 0x5AC670 -- CSealEx::OnWeaponHit tail-calls
+     * it) */
+    int OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *proj);
+    /* whether team-mates' hits count (SOCOM 1's m_allow_friendly_fire, set from the mission's
+     * mp_friendly_fire valve; OVL1 bss 0x44CDB8) */
+    static bool m_allow_friendly_fire;
+    /* a landing's damage by its speed, the severity returned (SOCOM 1's; OVL2 0x5AC1F0) */
+    LANDING_TYPE HandleFallingDamage(float speed);
     /* the health taken from the six locations' values: dead when the head's or the body's runs out
      * (a bullet in the head a head shot), else their weighted average (SOCOM 1's; OVL2 0x5A54D0 --
      * not written; the six values' setter 0x5A5790 calls it too) */
@@ -1680,6 +1692,9 @@ public:
     void CreateAiEvent();
     /* the SEAL's adrenaline, its level first (SOCOM 1's; OVL2 0x5781B0, seal_anim.cpp's last) */
     struct CAdrenaline *Adrenaline();
+    /* the adrenaline raised, to one at most (SOCOM 1's; OVL2 0x578150, seal_anim.cpp's -- the kit lane's
+     * seal_kit.cpp reaches it by its mangled name) */
+    void AdrenalineIncr(float amount);
     /* the heartbeat's loop kept at the adrenaline's pace (SOCOM 1's; OVL2 0x5437D0, seal.cpp), and
      * its statics: the three loops (OVL1 bss 0x44CE00), the one playing and its index (SOCOM 1's
      * m_heartbeat_sndisnt and m_heartbeat_curindex, OVL1 bss 0x44CE10, 0x44CE18) */
@@ -1856,7 +1871,7 @@ public:
     SEAL_DEATH_TYPE m_deathType;   // 0xfb0 (SOCOM 1's 0xea4)
     unsigned char _fb1[0xfb4 - 0xfb1];
     float m_time_of_death;   // 0xfb4 (SOCOM 1's 0xea8)
-    unsigned char _fb8[0xfbc - 0xfb8];
+    unsigned int m_lastshooter_id;   // 0xfb8: the last hit's shooter (OnWeaponHit keeps it; the name ours)
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
     unsigned char _fc0[0xfc8 - 0xfc0];
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
