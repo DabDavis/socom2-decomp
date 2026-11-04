@@ -6855,7 +6855,7 @@
 0x00370160 0x54 __ct__9C2DVisualFP3C2DPQ23zdb16CTextureRelocMgr  # OVL1; tu: zui_2d.cpp~ (1.0 beta); s1:exact
 0x003701C0 0xB4 HandlePad__11CScrollTextFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370280 0xBC Tick__11CScrollTextFf  # OVL1; s1:calls
-0x00370340 0x8 func_00370340  # OVL1
+0x00370340 0x8 LoadSpec__11CScrollTextFRC11CScrollSpec  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- CScrollSpec::CreateDisplayObj's call where SOCOM 1's calls CScrollText::LoadSpec; SOCOM II's is empty)
 0x00370350 0x2BC Draw__11CScrollTextFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00370610 0x74 func_00370610  # OVL1; tu: zui_2d.cpp~ (1.0 beta)
 0x00370690 0x28C Draw__12CPopUpDialogFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6866,7 +6866,7 @@
 0x00370D10 0x9C ShowChoice__11CRadioStripFv  # OVL1; ours by hand (the HUD lane, round 24: zui_2d.cpp -- the radio strip's buttons shown after a new choice, the chosen one through slot 18 (SetActive), the others slot 19 (SetNormal); CRadioStrip::TickZAnimCmd calls it out of line)
 0x00370DB0 0x1B0 func_00370DB0  # OVL1
 0x00370F60 0x15C func_00370F60  # OVL1
-0x003710C0 0xC func_003710C0  # OVL1
+0x003710C0 0xC LoadSpec__11CRadioStripFPC15CRadioStripSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CRadioStrip::LoadSpec (0x38AD50, the same 12 bytes, a spec pointer): CRadioStripSpec::CreateDisplayObj's call)
 0x003710D0 0xCC TickZAnimCmd__11CRadioStripFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003711A0 0xE8 ParseZAnimCmd__11CRadioStripFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00371290 0x108 GetZAnimCmdType__11CRadioStripFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6905,7 +6905,7 @@
 0x00376420 0x110 SetNormal__10CUIListBoxFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376530 0x68 func_00376530  # OVL1
 0x003765A0 0xEC HandlePad__14CHandlerButtonFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00376690 0x8 func_00376690  # OVL1
+0x00376690 0x8 LoadSpec__14CHandlerButtonFRC18CHandlerButtonSpec  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CHandlerButton::LoadSpec (0x38EC90, the same 8 bytes): CHandlerButtonSpec::CreateDisplayObj's call)
 0x003766A0 0x120 SetActive__9C2DButtonFv  # OVL1; by hand (the HUD lane, round 24: zui_2d.cpp -- slot 18 of every button's table, C2D's SetActive: the state at 0xFC shown and the button's type-1 event-2 actions run)
 0x003767C0 0xA8 GetZAnimCmdType__9C2DButtonFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00376870 0x150 TickZAnimCmd__9C2DButtonFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 22: slot +0x64 of C2DButton's table 0x407790; CRadioStrip::TickZAnimCmd 0x3710D0 falls through to it)

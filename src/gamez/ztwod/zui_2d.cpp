@@ -283,8 +283,11 @@ public:
 
 /* wrapped text scrolling by itself (SOCOM 1's CScrollText; SOCOM II's 0x270 bytes, zui_2d.h's
  * layout: the line to show at 0x258, the scroll position, a float, at 0x260) */
+class CScrollSpec;
+
 class CScrollText : public CWrappedText {
 public:
+    void LoadSpec(const CScrollSpec &spec);
     virtual ~CScrollText();
     virtual void Tick(float dT);
 
@@ -376,6 +379,17 @@ public:
     IPNT2D m_knobSize;   // 0x124
     float m_centerValue;   // 0x12c
     int m_numIntervals;   // 0x130
+};
+
+/* the radio strip's and the handler button's specs (zui_spec.h's: buttons' specs with fields of their
+ * own this unit does not read) and the scrolling text's (a wrapped text's) */
+class CRadioStripSpec : public CButtonSpec {
+};
+
+class CHandlerButtonSpec : public CButtonSpec {
+};
+
+class CScrollSpec : public CWrapSpec {
 };
 
 /* the font (SOCOM II's C2DFont: c2dfont.h, after the CSaferStr it holds) -- the renderable string
@@ -617,8 +631,10 @@ public:
     /* the strip's two refreshes after a new choice (SOCOM II's: SOCOM 1 walked the buttons inline;
      * 0x370D10, the name ours, and 0x370DB0, no row named yet) */
     void ShowChoice();
+    void LoadSpec(const CRadioStripSpec *spec, zdb::CTexHandle *tex);
 
     int m_choice;   // 0x440
+    bool m_444;   // 0x444: set by LoadSpec (SOCOM 1's at 0x414)
 } __attribute__((aligned(16)));   // 0x450 bytes
 
 extern "C" void func_00370DB0(CRadioStrip *strip);
@@ -673,6 +689,7 @@ class CHandlerButton : public C2DButton {
 public:
     virtual ~CHandlerButton();
     virtual bool HandlePad(const CPad *pad, int port);
+    void LoadSpec(const CHandlerButtonSpec &spec);
 } __attribute__((aligned(16)));   // 0x440 bytes
 
 /* the pop-up dialog as its command-type lookup sees it (slot 24 of its vtable, 0x36D970; the
@@ -2743,6 +2760,27 @@ inline void ActionItem::Run() const
         else
             anim->Activate(0);
     }
+}
+
+/* set up from its spec: the button's own (SOCOM 1's CHandlerButton::LoadSpec, 0x38EC90 there,
+ * the same eight bytes) */
+void CHandlerButton::LoadSpec(const CHandlerButtonSpec &spec)
+{
+    C2DButton::LoadSpec(spec);
+}
+
+/* set up from its spec, by address (SOCOM 1's CRadioStrip::LoadSpec, 0x38AD50 there, the same twelve
+ * bytes): the flag set, then the button's own; the texture unused */
+void CRadioStrip::LoadSpec(const CRadioStripSpec *spec, zdb::CTexHandle *tex)
+{
+    m_444 = true;
+    C2DButton::LoadSpec(*spec);
+}
+
+/* nothing of its own to set up (SOCOM II's: SOCOM 1's CScrollText::LoadSpec read DISPLAYABLELINES
+ * and called the string's; SOCOM II's CScrollSpec::CreateDisplayObj calls it last, empty) */
+void CScrollText::LoadSpec(const CScrollSpec &spec)
+{
 }
 
 /* set up from its spec and its check's texture (SOCOM 1's CCheckBox::LoadSpec, 0x38B380 there): the
