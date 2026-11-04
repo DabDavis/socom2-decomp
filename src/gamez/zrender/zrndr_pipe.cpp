@@ -167,6 +167,7 @@ public:
     void RenderAtom(zdb::CNode *node);
     void SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     void RenderDelayedNodes();
+    void RenderNodeShadow(zdb::CNode *node);
     bool PushNodeOpacity(zdb::CNode *node);
     bool TestFlare(const CPnt3D *pos, CPnt4D *out, float pull);
     void RenderUiNodeRecursive(zdb::CNode *node);
@@ -763,6 +764,58 @@ void CPipe::RenderDelayedNodes()
         m_opacity_stack_index--;
         s_stack.Pop();
     }
+}
+
+/* zmath's: whether a matrix is the unit one (0x3084F0, not named); CVisual's node set-up (0x3B6D10,
+ * SOCOM 1's NodeSetup, its fourth argument gone: no SOCOM II caller sets a3) and its light set-up
+ * (0x3B6B20, not named) */
+extern "C" bool func_003084F0(const CMatrix *m);
+extern "C" void func_003B6D10(zdb::CNode *atom, zdb::CNode *node, CMatrix *m);
+extern "C" void func_003B6B20(zdb::CNode *node, int n, float scale);
+
+/* SOCOM 1's: an active node with visuals drawn into the shadow pass with its children -- its matrix
+ * multiplied onto the stack unless it is the unit one (SOCOM II's test), its visuals set up and each
+ * drawn unless its level of detail says not at the camera's range */
+void CPipe::RenderNodeShadow(zdb::CNode *node)
+{
+    if (!node->m_active || !node->m_hasVisuals)
+        return;
+    bool identity = func_003084F0(&node->m_matrix);
+    CMatrix *m;
+
+    if (identity)
+        m = CStack::m_top;
+    else
+        m = s_stack.Multiply(&node->m_matrix, true);
+    if (node->GetFirstVisual()) {
+        func_003B6D10(m_node, node, m);
+        func_003B6B20(node, 1, 1.0f);
+        zdb::CVisualVector &v = node->m_visual;
+
+        for (zdb::CVisualVector::iterator i = v.begin(); i != v.end(); ++i) {
+            zdb::CVisual *vis = *i;
+
+            unsigned int lod = vis->m_5;
+
+            if (lod) {
+                zdb::CLOD_band *band = m_world->m_LOD_Object.GetBand(lod);
+
+                if (band) {
+                    float fade;
+
+                    if (!vis->DrawLOD(band, m_camera->GetScaledRangeSquared((CPnt3D *)m->m_matrix[3]), &fade))
+                        continue;
+                }
+            }
+            vis->Render(m);
+        }
+    }
+    zdb::CNodeVector &c = node->m_child;
+
+    for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i)
+        RenderNodeShadow(*i);
+    if (&node->m_matrix && !identity)
+        s_stack.Pop();
 }
 
 /* SOCOM 1's (inline there; 0x3379A0 out of line here, pinned: CPipe() calls it): the draw list and

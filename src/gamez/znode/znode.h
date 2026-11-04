@@ -1754,6 +1754,14 @@ public:
     CLOD_Object();
     ~CLOD_Object();
     void Read(CSaveLoad *io);
+    /* a band by its 1-based index, none for 0 or past the end (inline: the pipe's RenderNodeShadow
+     * tests the index twice, as GetMaterial; the name ours) */
+    CLOD_band *GetBand(unsigned int i)
+    {
+        if (i == 0)
+            return 0;
+        return i <= size_ ? &data_[i - 1] : 0;
+    }
 
     int m_bandMax;   // 0xc: 256
 };

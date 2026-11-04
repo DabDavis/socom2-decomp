@@ -5976,7 +5976,7 @@
 0x003378A0 0x100 __dt__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's ~CAlpha (inline in SOCOM 1's ~CPipe: the cursor back at the start, the draw list and the texture lists emptied, the buffer freed with SOCOM 1's line 2276); ~CPipe calls it out of line -- zrndr_pipe.cpp
 0x003379A0 0x60 __ct__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's CAlpha() (inline in SOCOM 1's CPipe(): the draw list, the texture lists, _malloc(0x36B00) into the walk's start and cursor); CPipe() calls it out of line -- zrndr_pipe.cpp
 0x00337A00 0x2D0 RenderMeshShadow__5CPipeFPQ23zdb5CNodePQ23zdb5CMeshP7CMatrix  # OVL1; s1:align
-0x00337CD0 0x264 func_00337CD0  # OVL1
+0x00337CD0 0x264 RenderNodeShadow__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- Multiply, GetFirstVisual, NodeSetup, GetScaledRangeSquared, DrawLOD, itself over the children, as SOCOM 1's RenderNodeShadow (0x242B70); RenderMeshShadow and RenderWorld call it
 0x00337F40 0x2AC RenderDelayedNodes__5CPipeFv  # OVL1; the world lane round 8: s1:calls -- the light lists (BuildLightMapList 0x339660, then SOCOM II's second), sceVu0CopyMatrix, RenderNode, as SOCOM 1's RenderDelayedNodes (0x242D40); RenderWorld (0x339DE0) its only caller
 0x003381F0 0x1FC SaveDelayedNode__5CPipeFP7CMatrixPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV  # OVL1; s1:align
 0x003383F0 0x88 AddAlphaTextures__5CPipeFPQ23zdb5CNode  # OVL1; the rdr lane: SOCOM II's, the name ours (CDynTexList::Add(CDynTexList *) of each of the node's visuals' lists (CNode 0x84, CVisual 0x48) into the alpha pass's at 0x650 = CAlpha (0x638) + 0x18, SOCOM 1's CAlpha::m_dyntexlist; SaveDelayedNode calls it)
