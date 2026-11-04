@@ -548,11 +548,11 @@ void SkbTogglePair(CBmpWithNode *a, CBmpWithNode *b, void (*onToggle)(bool))
 
 /* a bitmap loaded with a texture by name at a size, and hung under a node (0x395D50: PrepForDisplay
  * and 0x38B8F0 call it; the name ours) */
-void SkbLoadBitmap(CBmpWithNode *bmp, zdb::CNode *parent, int w, int h, const char *tex,
-                   zdb::CTextureRelocMgr *mgr)
+zdb::CNode *SkbLoadBitmap(CBmpWithNode *bmp, zdb::CNode *parent, int w, int h, const char *tex,
+                          zdb::CTextureRelocMgr *mgr)
 {
     bmp->Load(0.0f, 0.0f, (float)w, (float)h, PrepTexture(tex, mgr));
-    func_0036AB20(bmp, mgr, parent);
+    return func_0036AB20(bmp, mgr, parent);
 }
 
 /* the pair of ints a tag names (SOCOM 1's ReadIntPair; the look parser and zui_skb.cpp's 0x38DCB0

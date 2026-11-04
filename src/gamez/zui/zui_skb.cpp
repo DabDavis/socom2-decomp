@@ -318,8 +318,8 @@ static inline void SetValveValue(CValve *valve, bool value)
  * valve, ShowElements reads it) */
 static const char *s_chatRecipientValve = "ChatRecipient";
 
-/* the display unit's: which of the two caption bitmaps shows (0x397840: a byte it keeps at
- * 0x3E04C0; passed to Caption's unsigned char, it is narrowed at the call) */
+/* the display unit's: whether key 11 shows its wide cap (0x397840: a byte it keeps at 0x3E04C0;
+ * passed to KeyCap's unsigned char, it is narrowed at the call) */
 extern "C" unsigned char func_00397840();
 /* a key's node shown or hidden (the next unit's CSkbKeyProps member, 0x3941D0) */
 extern "C" void func_003941D0(CSkbKeyProps *props, bool on);
@@ -331,9 +331,9 @@ inline void CBmpWithNode::SetShown(bool on)
         m_node->SetActive(on);
 }
 
-/* the keyboard's elements shown or hidden: the background -- the chat recipient's while its valve
- * is on -- and one of the two caption bitmaps by the display's flag; hidden, the two the tick
- * shows for a USB keyboard as well; then every key's node (0x38B580; the name ours) */
+/* the keyboard's elements shown or hidden: the recipient key's state bitmap -- state 1 while the
+ * ChatRecipient valve is on -- and key 11's wide or narrow cap by the display's flag; hidden, the
+ * two the tick shows for a USB keyboard as well; then every key's node (0x38B580; the name ours) */
 void CSoftKeyboard::ShowElements(bool on)
 {
     if (m_1c0.HasNode()) {
@@ -341,15 +341,15 @@ void CSoftKeyboard::ShowElements(bool on)
             CValve *valve = CValve::GetByName(s_chatRecipientValve);
             int chat = valve ? valve->m_value : 0;
 
-            if (Background(chat).m_node)
-                Background(chat).m_node->SetActive(true);
+            if (RecipState(chat).m_node)
+                RecipState(chat).m_node->SetActive(true);
         } else {
             m_1c0.SetShown(false);
             m_270.SetShown(false);
         }
     }
     if (on)
-        Caption(func_00397840()).SetShown(true);
+        KeyCap(func_00397840()).SetShown(true);
     else {
         m_320.SetShown(false);
         m_3d0.SetShown(false);
@@ -791,6 +791,40 @@ void CSoftKeyboard::AddKeyProps(const CSkbKey &key, const CSkbRect &r)
 
 /* a key's properties, or none (SOCOM 1's): the found branch first -- `i == end() ? 0 : ...` and
  * its if/return lay out a bne and a b, 8 bytes longer */
+/* a bitmap loaded with a texture at a size and hung under a node, the node returned (the display
+ * unit's, 0x395D50) */
+zdb::CNode *SkbLoadBitmap(CBmpWithNode *bmp, zdb::CNode *parent, int w, int h, const char *tex,
+                          zdb::CTextureRelocMgr *mgr);
+
+/* two bitmaps of a key (row 1, the code given) loaded and placed, when the keyboard maps it: each
+ * under the keyboard's node at the key's place and size, its node handed to it (0x38B8F0; the name
+ * ours: PrepForDisplay's recipient key 1, its two states, and key 11, its wide and narrow caps).
+ * The test is the find written out over a named key (its slot then the iterator's, above the two
+ * later keys' temporaries: FindKeyProps there, or a temporary key, orders the slots otherwise),
+ * the props found again for each bitmap through FindKeyProps into variables of their own (one
+ * variable reassigned presets the second's null in the delay slot where the target gives each arm
+ * its block) */
+void CSoftKeyboard::PrepKeyBitmaps(CBmpWithNode *a, CBmpWithNode *b, unsigned char code, const char *texA,
+                                   const char *texB, zdb::CTextureRelocMgr *mgr)
+{
+    CSkbKey key(1, code);
+    CSkbKeyMap::iterator i = m_keyProps.find(key);
+    CSkbKeyMap::iterator e = m_keyProps.end();
+
+    if (i != e ? (*i).second : 0) {
+        CSkbKeyProps *props = FindKeyProps(CSkbKey(1, code));
+        zdb::CNode *node = SkbLoadBitmap(a, m_node, props->m_w, props->m_h, texA, mgr);
+
+        node->SetPosition(props->m_x, props->m_y, 0.0f);
+        a->Slot10(node);
+        CSkbKeyProps *props2 = FindKeyProps(CSkbKey(1, code));
+        zdb::CNode *node2 = SkbLoadBitmap(b, m_node, props2->m_w, props2->m_h, texB, mgr);
+
+        node2->SetPosition(props2->m_x, props2->m_y, 0.0f);
+        b->Slot10(node2);
+    }
+}
+
 CSkbKeyProps *CSoftKeyboard::FindKeyProps(const CSkbKey &key)
 {
     CSkbKeyMap::iterator i = m_keyProps.find(key);
