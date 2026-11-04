@@ -488,6 +488,8 @@ public:
     /* the sound (or a member of its group) waiting in the queue or streaming (SOCOM II's, 0x34A7B0;
      * name ours) */
     bool IsQueued(CSnd *sound);
+    /* SOCOM 1's: a channel's sound dropped from the queue and its stream stopped (0x34A910) */
+    void StopSound(int channel, CSnd *sound);
     /* the device found (ours: ftsGetHeadset's arguments load before the stores, as an inline's) */
     void SetDevice(int device, int format, unsigned char channels)
     {
