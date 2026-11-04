@@ -1,15 +1,17 @@
-/* sc: compiler=ee-gcc2.96; flags=-O2 -G0 */
+/* sc: compiler=ee-gcc2.96; flags=-O1 -G0 */
 /* The title's Medius server key (OVL2 0x64F4E0, before the fifteen 8-byte stubs at 0x64F580 and
- * kmsoftware.c), SCEA's glue for the title, prebuilt with ee-gcc 2.96 at -O2 -G0 (README "The GCC
- * front"). SOCOM 1 has no such object: the game's lobby copies the 64-byte key into its connection
- * parameters' server key (zNetMediusUniverse.cpp) when it connects securely, else zeroes it. The
- * unit's name is ours (no `$Header`, no demo counterpart).
+ * kmsoftware.c), the title's glue to SCEA's libraries. SOCOM 1 has no such object: the game's lobby
+ * copies the 64-byte key into its connection parameters' server key (zNetMediusUniverse.cpp) when it
+ * connects securely, else zeroes it. The unit's name is ours (no `$Header`, no demo counterpart).
  * The key is a byte record: the copy is the block move of a 1-aligned type (ldl/ldr and sdl/sdr on
  * both sides, as the target's), not memcpy of an array (DATA_ALIGNMENT word-aligns that); the copy
  * sits inside the positive test, the failure's own `jr ra` last (a guard clause if-converts it).
- * OPEN (37 words, registers only): the block move's source address takes v0 (high) and a3 and its
- * scratches v1, a1, a2 in the target, v1/t0 and a1-a3 here; memcpy, a void * or char * parameter
- * and the array's own copy all give these. */
+ *
+ * Built at -O1 -G0, as kmsoftware.c is -- the title's own build of its glue, not SCEA's -O2 (round
+ * 18b): at -O2 the first scheduling pass puts the return's `v0 = 0` above the copy, so v0 is live
+ * through it and the address and the block move's scratches all move up a register (37 words, rounds
+ * 15b-17b's open: "registers only", every return shape alike); -O1 has no scheduling and the null
+ * test's slot stays empty, the target's `nop`. */
 
 typedef struct SERVER_KEY {
     unsigned char abKey[64];

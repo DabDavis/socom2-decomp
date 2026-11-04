@@ -85,22 +85,22 @@ void PickupObject__10CZSealBodyFP7CPickup(CEntity *seal, CPickup *pickup);
 void func_00570F90(CSealCtrlAi *ai, float t);
 /* CSealCtrlAi::SetStance, SetRoute, SetDoReaction and GetRouteComplete (SOCOM 1's, called from
  * the same Ticks; OVL2 0x5631A0, 0x5623B0, 0x561E20, 0x5629B0 -- the SEAL lane's rows) */
-void func_005631A0(CSealCtrlAi *ai, int stance);
+void SetStance__11CSealCtrlAiF11SEAL_STANCE(CSealCtrlAi *ai, int stance);
 bool func_005623B0(CSealCtrlAi *ai, void *loc);
 void func_00561E20(CSealCtrlAi *ai, int on, int reaction);
 bool func_005629B0(CSealCtrlAi *ai);
 /* a traversable cell beside a point (SOCOM 1's free FindTraversableNeighbor, now on the AI maps;
  * OVL2 0x529A30, the AI core's row) */
-bool func_00529A30(CAiMaps *maps, const CPnt3D *pos, void *loc);
+bool GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(CAiMaps *maps, const CPnt3D *pos, void *loc);
 /* a cell to flee to, and its centre (OVL2 0x52A3C0, 0x529EE0, the AI core's rows) */
-void *func_0052A3C0(CAiMaps *maps, CAiMapLocCopy *from, int a, int b);
-bool func_00529EE0(CAiMaps *maps, void *cell, unsigned int *loc);
+void *GetClosestRegion__7CAiMapsFRC9CAiMapLocQ36CAiMap6region4TYPEb(CAiMaps *maps, CAiMapLocCopy *from, int a, int b);
+bool GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(CAiMaps *maps, void *cell, unsigned int *loc);
 /* the goto pushed to a cell (OVL2 0x5F0830, seal_aistate.cpp's) */
 void func_005F0830(CSealCtrlAi *ai, unsigned int *loc, int mode, int kind, int step);
 /* (OVL2 0x558590: the SEAL lane's row, on the controller's object at 0x324; 0x563050, a goal
  * set with a float) */
 void func_00558590(void *obj);
-void func_00563050(CSealCtrlAi *ai, int a, int b, float f);
+void ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(CSealCtrlAi *ai, int a, int b, float f);
 /* a look or a goal at a point (OVL2 0x561110, the SEAL lane's row) */
 void func_00561110(CSealCtrlAi *ai, int kind, const CPnt3D *pos, float t);
 /* (OVL2 0x5628F0, 0x5B3890: the SEAL lane's rows -- the first on the controller, the second on
@@ -115,11 +115,11 @@ unsigned char func_00560A60(CSealCtrlAi *ai);
 enum ORDER_KIND { ORDER_KIND_0 = 0, ORDER_KIND_LAST = 255 };
 void func_00571010(CSealCtrlAi *ai, void *target, int a, ORDER_KIND kind);
 void *func_00609530(int x);
-void func_00563100(CSealCtrlAi *ai, signed char stance, float delay);
-void func_00600D40(CSealCtrlAi *ai, int x);
+void SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf(CSealCtrlAi *ai, signed char stance, float delay);
+void ClearLook__9CSealCtrlF7AI_LOOK(CSealCtrlAi *ai, int x);
 /* (OVL2 0x567840, 0x570D60: the SEAL lane's rows -- a stun's controller calls, the second
  * taking a float) */
-void func_00567840(CSealCtrlAi *ai, int x);
+void StopThrottles__11CSealCtrlAiFb(CSealCtrlAi *ai, int x);
 /* the kit's reload (OVL2 0x5C2A90, seal_kit.cpp's range, unwritten: called on the SEAL's kit at
  * 0x5E0 by the reload state's sub-step) */
 void func_005C2A90(void *kit);
@@ -228,15 +228,15 @@ int CAiSNoAmmo::Tick(CSealCtrlAi *ai)
     switch (phase) {
     case 0:
         func_00570F90(ai, 1.0f);
-        func_005631A0(ai, 1);
+        SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 1);
         SetWeaponState__10CZSealBodyF12WEAPON_STATE(seal, 2);
         if ((m_pickup = func_006082E0(&seal->m_posW, 5000.0f, kit, w)) != 0) {
             unsigned int loc;
 
             *(unsigned int *)&m_pickupLoc = *(unsigned int *)&seal->m_mapLocValid;
-            if (func_00529A30(&AiMaps, m_pickup->GetPosW(), &loc) && func_005623B0(ai, &loc)) {
+            if (GetTraversableLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(&AiMaps, m_pickup->GetPosW(), &loc) && func_005623B0(ai, &loc)) {
                 phase = 1;
-                func_005631A0(ai, 0);
+                SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 0);
                 func_00570F90(ai, 1.0f);
                 routed = true;
             }
@@ -339,8 +339,8 @@ void CAiSShotAt::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
             func_00571010(ai, func_00609530(0), 2, (ORDER_KIND)11);
         break;
     case SIGNAL_1:
-        func_00563100(ai, m_stance, Random(0.25f, 0.25f));
-        func_00600D40(ai, 6);
+        SetStanceDelayed__11CSealCtrlAiF11SEAL_STANCEf(ai, m_stance, Random(0.25f, 0.25f));
+        ClearLook__9CSealCtrlF7AI_LOOK(ai, 6);
         ((CAiCtrl718 *)ai)->m_718 = 0;
         break;
     case SIGNAL_2:
@@ -411,7 +411,7 @@ void CAiSEvent::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
             func_00561110(ai, 3, (m_flags & 1) ? &m_pos2 : &m_pos, -1.0f);
         } else if (m_flags & 0x80)
             func_00561110(ai, 2, 0, -1.0f);
-        func_00600D40(ai, 5);
+        ClearLook__9CSealCtrlF7AI_LOOK(ai, 5);
         break;
     case SIGNAL_2:
         break;
@@ -551,15 +551,15 @@ void CAiSHold::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         SetBit17(ai, false);
         break;
     case SIGNAL_1:
-        func_00563050(ai, 2, 1, -1.0f);
-        func_00600D40(ai, s_holdCount);
+        ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(ai, 2, 1, -1.0f);
+        ClearLook__9CSealCtrlF7AI_LOOK(ai, s_holdCount);
         if (m_flags & 0x80)
             data_0066AFE0 = 0;
         ai->m_bit17 = true;
         func_005B3890(seal, 1);
         break;
     case SIGNAL_2:
-        func_00563050(ai, 2, 1, -1.0f);
+        ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(ai, 2, 1, -1.0f);
         ai->m_bit17 = true;
         break;
     case SIGNAL_3:
@@ -656,9 +656,9 @@ void CAiSPathRecover::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_0:
         ai->SetAiMode((AI_MODE)4);
-        func_00567840(ai, 0);
+        StopThrottles__11CSealCtrlAiFb(ai, 0);
         func_00558590((char *)ai + 0x324);
-        func_00563050(ai, 2, 0, 0.1f);
+        ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(ai, 2, 0, 0.1f);
         SetBit17(ai, false);
         m_58 = 0;
         m_time = 0.0f;
@@ -684,7 +684,7 @@ void CAiSAvoid::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_0:
         if (ai->m_stance == STANCE_PRONE)
-            func_005631A0(ai, 1);
+            SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 1);
         break;
     case SIGNAL_2:
         ai->ClearGoal(GOAL_AVOID);
@@ -697,7 +697,7 @@ void CAiSAvoid::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         break;
     case SIGNAL_3:
         if (ai->m_stance == STANCE_PRONE)
-            func_005631A0(ai, 1);
+            SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 1);
         UpdatePhase(0);
         break;
     }
@@ -726,7 +726,7 @@ void CAiSStunResponse::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         r.m_min = 0.0f;
         r.m_range = 0.75f;
         m_wait = r;
-        func_00567840(ai, 0);
+        StopThrottles__11CSealCtrlAiFb(ai, 0);
         func_00570D60(ai, 0, 0.0f);
         ai->SetAiMode((AI_MODE)2);
         break;
@@ -767,9 +767,9 @@ int CAiSReload::Virtual14(CSealCtrlAi *ai, CAiState *sub)
         }
         func_005C2A90((char *)seal + 0x5e0);
         if (m_flags & 4)
-            func_00563050(ai, 2, 1, -1.0f);
+            ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(ai, 2, 1, -1.0f);
         else
-            func_00563050(ai, 0, (m_flags & 2) ? 2 : 1, -1.0f);
+            ChangeStanceDelayed__11CSealCtrlAiF11SEAL_STANCE11SEAL_STANCEf(ai, 0, (m_flags & 2) ? 2 : 1, -1.0f);
         m_time = s_reloadWait;
         phase = 2;
         break;
@@ -832,15 +832,15 @@ int CAiSFlee::Tick(CSealCtrlAi *ai)
 
     switch (step) {
     case STEP_0: {
-        void *cell = func_0052A3C0(&AiMaps, &from, 2, 0);
+        void *cell = GetClosestRegion__7CAiMapsFRC9CAiMapLocQ36CAiMap6region4TYPEb(&AiMaps, &from, 2, 0);
 
         if (!cell)
             step = STEP_2;
-        else if (func_00529EE0(&AiMaps, cell, (unsigned int *)&m_cell)) {
+        else if (GetRandomLoc__7CAiMapsFPCQ26CAiMap6regionR9CAiMapLoc(&AiMaps, cell, (unsigned int *)&m_cell)) {
             step = STEP_2;
             func_005F0830(ai, (unsigned int *)&m_cell, 4, 1, 2);
             ai->PlayAiSound((CHARACTER_SOUND)72, 0.75f, -1);
-            func_005631A0(ai, 0);
+            SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, 0);
             func_00570F90(ai, 1.0f);
             ai->SetTarget(0);
         } else

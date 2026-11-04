@@ -588,6 +588,23 @@ void KM_Cleanup(int nKMID)
     }
 }
 
+/* rsa.c's two generators: SOCOM 1's (lintPrime) and SOCOM II's table-prime twin, each behind its own
+ * copy of SOCOM 1's KM_GenerateRSAKeyPair (round 18b) */
+extern void RSAGenerateKeyPair(RSAKey *pPublic, RSAKey *pPrivate);
+extern void func_0062B548(RSAKey *pPublic, RSAKey *pPrivate);
+
+void KM_GenerateRSAKeyPair(RSAKey *pPublic, RSAKey *pPrivate)
+{
+    InitializePRNG();
+    RSAGenerateKeyPair(pPublic, pPrivate);
+}
+
+void func_00630600(RSAKey *pPublic, RSAKey *pPrivate)
+{
+    InitializePRNG();
+    func_0062B548(pPublic, pPrivate);
+}
+
 void KM_CreateRandomRCKey(RCKey *pKey)
 {
     unsigned char i;

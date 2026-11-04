@@ -28,14 +28,14 @@
 extern "C" {
 /* CSealCtrlAi::GetAiState (OVL2 0x5F6010, seal_aistate.cpp's; zseal.h's CSealCtrlAi does not
  * declare it yet) */
-CAiState *func_005F6010(CSealCtrlAi *ai);
+CAiState *GetAiState__11CSealCtrlAiFv(CSealCtrlAi *ai);
 }
 
 /* the controller's current state if it is a breach (kind 17), else 0 (OVL2 0x5EA780, after
  * CAiState's constructor; the name ours) */
 CAiSBreach *GetBreachState(CSealCtrlAi *ai)
 {
-    CAiState *s = func_005F6010(ai);
+    CAiState *s = GetAiState__11CSealCtrlAiFv(ai);
 
     return s && s->m_state == 17 ? (CAiSBreach *)s : 0;
 }

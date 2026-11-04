@@ -281,12 +281,16 @@ void SkbToggleCaption2(CSoftKeyboard *skb);
 
 extern "C" {
 int func_00396EF0();
-/* CGameMenu::RunEventAnim (zui.cpp's 0x367810: the menu, an event, here the text) */
-void func_00367810(CGameMenu *menu, int event, const char *text);
 }
 
+/* the game menu (zui.cpp's: only its event runner) */
+class CGameMenu {
+public:
+    bool RunEventAnim(ActionItem::EVENT event, const char *arg);
+};
+
 /* the text taken: the typed text into the variable SkbGetText(false) names, string 0's into the
- * other's, the menu's event 15 (or 14, by 0x396EF0) run with it (0x399D20, OnEnterKey's; the name
+ * other's, the menu's ON_SKB_APPLY2 (or ON_SKB_APPLY, by 0x396EF0) run with it (0x399D20, OnEnterKey's; the name
  * ours).
  * OPEN, 2 instructions long: the target keeps the string's address in s1 from before its zeroing
  * through the assign and the append (and SkbTextUnchanged builds the same text the same way in a
@@ -303,7 +307,7 @@ void SkbTakeText(CGameMenu *menu)
     const char *s = ShownText(&s_textString0);
 
     *theUIVarManager.Add(SkbGetText(true), 0, UIVL_TEMPORARY) = s ? s : "";
-    func_00367810(menu, func_00396EF0() ? 15 : 14, text.c_str());
+    menu->RunEventAnim(func_00396EF0() ? ActionItem::ON_SKB_APPLY2 : ActionItem::ON_SKB_APPLY, text.c_str());
 }
 
 extern "C" {

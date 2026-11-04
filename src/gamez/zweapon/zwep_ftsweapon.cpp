@@ -128,12 +128,48 @@ bool CZFTSWeapon::IsGrenadeLauncherAmmo()
 /* the class 185 (new in SOCOM II, not named). OPEN, 0x58 against 0x50: the target calls GetIDType
  * twice and tests only the second result -- a first test MW folded away, its call kept. An
  * out-of-range class (0x1B9) is compared, not folded (0x60); `< 0` and `>= 0 &&` fold but keep a
- * branch (0x58); the call as a statement of its own materialises the test (0x38) */
+ * branch (0x58); the call as a statement of its own materialises the test (0x38). Round 16: the
+ * target's padded labels look like round 15's "separate variable" trigger, but a dead local
+ * holding the first result (initialised, re-assigned, assigned in the test) gives 0x38 too, as do
+ * `(f() && false) ||`, `(f(), false) ||`, `(f() * 0) ||`; `> 255`, `>= 256`, `== -1`, `== 0x100`,
+ * `(f() & 0)` are compared, not folded (0x60) */
 extern "C" bool func_003C5C20(CZFTSWeapon *w)
 {
     if (w->GetIDType() < 0 || w->GetIDType() == 185)
         return true;
     return false;
+}
+
+/* whether the weapon is one of a group's items, groups 1 to 5 (new in SOCOM II, not named: the
+ * kit's 0x5C3EE0 asks it for each group) */
+extern "C" bool func_003C5B20(CZFTSWeapon *w, unsigned char group)
+{
+    bool r = false;
+    EQUIP_ITEM id = w->m_ID;
+
+    switch (group) {
+    case 1:
+        if (id == 176 || id == 177 || id == 178 || id == 179)
+            r = true;
+        break;
+    case 2:
+        if (id == 171 || id == 172 || id == 173 || id == 175 || id == 174)
+            r = true;
+        break;
+    case 3:
+        if (id == 185)
+            r = true;
+        break;
+    case 4:
+        if (id == 186)
+            r = true;
+        break;
+    case 5:
+        if (id == 181 || id == 182 || id == 183)
+            r = true;
+        break;
+    }
+    return r;
 }
 
 bool CZFTSWeapon::IsGrenadeLauncherWeapon()

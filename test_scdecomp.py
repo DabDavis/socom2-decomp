@@ -301,6 +301,34 @@ def test_gnu_code_label_resolves_by_the_map():
        "the label mapped elsewhere fails")
 
 
+def test_shared_stem_qualifies_by_path():
+    """A GNU unit's statics score as `NAME@UNIT` rows; libkernl's ExecPS2 object (sdk/exit.c) and
+    newlib's (libc/exit.c) share the stem `exit`, so a bare `kCopy@exit` would score either
+    object's static `kCopy` as the one row. A shared stem qualifies only by a tail of the unit's
+    path (`kCopy@sdk/exit`): sdk/exit.c's static resolves so, libc/exit.c's does not, and the
+    bare-stem row no longer resolves for either -- while a unique stem (tlbfunc) still does."""
+    st = E.symbols()
+    sdk, libc = HERE / "src" / "lib" / "sdk" / "exit.c", HERE / "src" / "lib" / "libc" / "exit.c"
+    ck(D.unit_qualifiers(sdk) == ["lib/sdk/exit", "sdk/exit"], f"no bare stem: {D.unit_qualifiers(sdk)}")
+    ck("exit" not in D.unit_qualifiers(libc), "nor for the other unit of that stem")
+    ck(D.unit_qualifiers(HERE / "src" / "lib" / "sdk" / "tlbfunc.c")[-1] == "tlbfunc", "a unique stem stands")
+    opts = C.tu_options(sdk)
+    obj = build(sdk, "exit", opts["compiler"], opts["flags"].split())
+    ck(("kCopy", "kCopy@sdk/exit") in D.qualify_statics(obj, sdk, st), "sdk/exit.c's kCopy is its row")
+    obj = build(sdk, "exit", opts["compiler"], opts["flags"].split())
+    ck(not any(b == "kCopy@sdk/exit" for _, b in D.qualify_statics(obj, libc, st)),
+       "the other unit of that stem does not take it")
+    rows = HERE / "build" / "tmp" / f"syms_bare.{os.getpid()}.txt"
+    rows.parent.mkdir(parents=True, exist_ok=True)
+    rows.write_text(E.SYMBOLS.read_text().replace(" kCopy@sdk/exit ", " kCopy@exit "))
+    try:
+        obj = build(sdk, "exit", opts["compiler"], opts["flags"].split())
+        bare = D.qualify_statics(obj, sdk, E.SymbolTable(rows, E.DATA))
+    finally:
+        rows.unlink()
+    ck(not any(b == "kCopy@exit" for _, b in bare), "a bare row of a shared stem resolves for neither")
+
+
 def test_padding_after_a_function_must_be_zero():
     """A candidate one instruction short of a function whose next word is code fails."""
     img, st = E.image(), E.symbols()

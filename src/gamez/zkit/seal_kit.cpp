@@ -17,47 +17,28 @@
 #include <iostream>
 
 extern "C" {
+/* item 193 given for item 153 (OVL2 0x5C74E0, this unit's: a CZKit member, unnamed) */
+void func_005C74E0(CZKit *kit);
 /* CZSealBody::AdrenalineIncr (SOCOM 1's AdrenalineIncr__10CZSealBodyFf, tail-called from the same
  * InitializeSniperKick; OVL2 0x578150, the SEAL lane's row) */
-void func_00578150(CZSealBody *body, float amount);
-/* the weapon's grenade launcher: an M203 rifle, a launcher, or an item of class 145 (SOCOM 1's
- * IsM203Weapon and IsGrenadeLauncherWeapon in one; OVL1 0x3C5D80, unclaimed) */
-bool func_003C5D80(CZFTSWeapon *w);
-/* CZWeapon::GetIDType (SOCOM 1's GetIDType__8CZWeaponFv, called from the same GetCurItemIDType;
- * OVL1 0x3D1E10, unclaimed) */
-EQUIP_IDTYPE func_003D1E10(CZFTSWeapon *w);
-/* CZFTSWeapon::GetZoomRange (SOCOM 1's GetZoomRange__11CZFTSWeaponFUi, called from the same
- * GetCurZoom; OVL1 0x3C5980, unclaimed) */
-float func_003C5980(CZFTSWeapon *w, unsigned int mode);
-/* CZFTSWeapon::IsGrenadeLauncherAmmo and CZWeapon::GetName (SOCOM 1's, called from the same
- * GetFiremodeGraphic and GetItemName; OVL1 0x3C5D20, 0x3D2830, unclaimed) */
-bool func_003C5D20(CZFTSWeapon *w);
-const char *func_003D2830(CZFTSWeapon *w);
-/* an item kind's class (the static under CZWeapon::GetIDType; OVL1 0x3D1A60, unclaimed) and a
- * weapon's magazine size (OVL1 0x3D2810, unclaimed) */
-EQUIP_IDTYPE func_003D1A60(EQUIP_ITEM item);
-int func_003D2810(CZWeapon *w);
-/* a weapon's magazine count and its default ammunition (SOCOM 1's GetDefaultAmmo; OVL1
- * 0x3D2800, 0x3D1F00, unclaimed) and the list's weapon of a kind (SOCOM 1's
- * CZWeaponList::GetWeapon; OVL1 0x3C4B40, unclaimed) */
-int func_003D2800(CZWeapon *w);
-void *func_003D1F00(CZWeapon *w);
-CZWeapon *func_003C4B40(CZWeaponList *list, EQUIP_ITEM item);
+void AdrenalineIncr__10CZSealBodyFf(CZSealBody *body, float amount);
+/* (the weapons' members this unit calls -- IsLauncherWeapon, GetIDType, GetZoomRange,
+ * IsGrenadeLauncherAmmo, GetDescription, the static GetIDType and class tests, GetAmmoCapacity,
+ * GetNumMags, GetDefaultAmmo, CZWeaponList::GetWeapon, RegisterTimer2, CTargetMods' kick
+ * distances -- are zweapon.h's, called as members since the rows carry their names) */
 /* the current weapon in its grenade launcher's mode (OVL2 0x5BD7E0, this unit's, a byte-exact
  * draft: the index version 0x5BD7F0 on the selected item) */
 bool func_005BD7E0(CZKit *kit);
 /* a controller's word at 0x11C cleared (OVL2 0x592D40, the SEAL lane's row) */
 void func_00592D40(CKitCtrl *ctrl);
-/* a weapon's two shot waits (its floats at 0x60 and 0x5C; OVL1 0x3D2C20, 0x3D2C40, unclaimed) and
- * the weapons' shared record of a running delay: its address, value and a byte, marked set (OVL1
- * 0x3D00D0, unclaimed) */
+/* a weapon's two shot waits (its floats at 0x60 and 0x5C; OVL1 0x3D2C20, 0x3D2C40, unclaimed) */
 float func_003D2C20(CZFTSWeapon *w);
 /* the body able to fire: CZSealBody::CanFire(bool, bool) (OVL2 0x5A7DE0, the SEAL lane's, named
  * CanFire__10CZSealBodyFbb; SOCOM 1's took no flags), called from the same place in
- * HandlePlacingExlosive as SOCOM 1's -- spelled by its address because CZSealBody is incomplete
- * here (kit.h's stand-ins keep zseal.h out of this unit) -- and the placing allowed and the
+ * HandlePlacingExlosive as SOCOM 1's -- spelled by its mangled name because CZSealBody is
+ * incomplete here (kit.h's stand-ins keep zseal.h out of this unit) -- and the placing allowed and the
  * explosive placed (OVL2 0x5BD530, 0x5BE9A0: this unit's, unwritten) */
-bool func_005A7DE0(CZSealBody *body, bool a, bool b);
+bool CanFire__10CZSealBodyFbb(CZSealBody *body, bool a, bool b);
 bool func_005BD530(CZKit *kit);
 void func_005BE9A0(CZKit *kit, int index, float a, float b);
 /* a launcher's grenades of class 145's launcher (OVL1 0x3C5C20, unclaimed: GetFiringItem's test) */
@@ -72,14 +53,13 @@ struct CKitBodyPart {
 };
 CKitBodyPart *FindPart__5CBodyFPCc(void *body, const char *name);
 float func_003D2C40(CZFTSWeapon *w);
-void func_003D00D0(float *delay, float value, unsigned char flag);
 /* CSealCtrl::SetCameraZoom (OVL2 0x592C70, the SEAL lane's), CZWeapon::GetAssociatedGearName (SOCOM
  * 1's, called from the same SetItemByIndex; OVL1 0x3D2760, unclaimed) and the gear list's FindGear
  * (SOCOM 1's CCharacterGearList::FindGear, the same call; OVL2 0x53EFF0, unclaimed) on
  * CCharacterType's gear list (OVL1 bss 0x44CD68) */
 void SetCameraZoom__9CSealCtrlFff(CKitCtrl *ctrl, float level, float increment);
-const char *func_003D2760(CZWeapon *w);
-void *func_0053EFF0(void *list, const char *name);
+const char *GetAssociatedGearName__8CZWeaponFv(CZWeapon *w);
+void *FindGear__18CCharacterGearListFPCc(void *list, const char *name);
 extern unsigned char m_gear_list__14CCharacterType[12];
 }
 
@@ -97,7 +77,7 @@ enum SEAL_STANCE {
 extern "C" {
 /* the SEAL's stance, by its body (SOCOM 1's CZSealBody::GetStance(bool), called from the same places
  * in SOCOM 1's CZKit::Fire and CSealCtrlAi::PerturbAimVector; OVL2 0x58A720, the SEAL lane's row) */
-unsigned char func_0058A720(CZSealBody *seal, unsigned char flag);
+unsigned char GetStance__10CZSealBodyCFb(CZSealBody *seal, unsigned char flag);
 }
 
 namespace ai {
@@ -215,7 +195,7 @@ float CSealCtrlAi::GetAccuracyFactor()
     CZSealBody *body = GetBody();
     float f = m_d4;
 
-    switch (func_0058A720(body, false)) {
+    switch (GetStance__10CZSealBodyCFb(body, false)) {
     case STANCE_PRONE:
         f *= 1.5f;
         break;
@@ -392,7 +372,7 @@ float CZKit::GetCurZoom()
         unsigned int mode = ((CKitBody *)m_body)->m_200 - 4;
 
         if (mode < w->m_zoommode.size())
-            zoom = func_003C5980(w, mode);
+            zoom = w->GetZoomRange(mode);
     }
     return zoom;
 }
@@ -408,7 +388,7 @@ bool CZKit::CurReticuleTypeChanged()
 {
     if (m_reticuletypeChanged) {
         m_reticuletypeChanged = false;
-        func_00578150(m_body, 0.5f);
+        AdrenalineIncr__10CZSealBodyFf(m_body, 0.5f);
         return true;
     }
     return false;
@@ -457,7 +437,7 @@ EQUIP_IDTYPE CZKit::GetCurItemIDType()
     EQUIP_IDTYPE r = IDTYPE_NONE;
 
     if (w)
-        r = func_003D1E10(w);
+        r = (EQUIP_IDTYPE)w->GetIDType();
     return r;
 }
 
@@ -475,7 +455,7 @@ int CZKit::unwrap(int index, FIREMODE mode) const
         fm = mode;
     CZFTSWeapon *w = m_item[index];
 
-    if (w && func_003C5D80(w) && fm > AUTOFIRE) {
+    if (w && w->IsLauncherWeapon() && fm > AUTOFIRE) {
         int i = FindItemWithAmmo((EQUIP_ITEM)fm);
 
         if (i != -1)
@@ -510,6 +490,27 @@ void CZKit::SetupExplosiveDamage()
     }
 }
 
+/* item 193 given when the body's kit holds item 153 and this one lacks it, the weapon info then
+ * changed (OVL2 0x5C74E0, new in SOCOM II: SOCOM 1's AddAmmo did it inline, items 153 and 187 --
+ * a CZKit member, unnamed) */
+/* the body as far as its kit (zseal.h's CZSealBody::m_kit at 0x5E0; zseal.h stays out of this
+ * unit): taken into a local first, the member's offset folds into the inlined HasItem's loads --
+ * cast in place (or the kit's address taken into a local), MW adds it once into a register */
+struct CKitBodyKit {
+    unsigned char _0[0x5e0];
+    CZKit m_kit;   // 0x5e0
+};
+
+extern "C" void func_005C74E0(CZKit *kit)
+{
+    CKitBodyKit *b = (CKitBodyKit *)kit->m_body;
+
+    if (b->m_kit.HasItem((EQUIP_ITEM)153) && !kit->HasItem((EQUIP_ITEM)193)) {
+        kit->SetItem(kit->m_num_items, (EQUIP_ITEM)193);
+        kit->m_weaponinfoChanged = true;
+    }
+}
+
 /* the binoculars (190; SOCOM 1's 182) given unless already held (OVL2 0x5C7450; SOCOM 1's, through
  * SetItem where SOCOM 1's fetched the weapon itself) */
 void CZKit::SetupBinocular()
@@ -521,8 +522,6 @@ void CZKit::SetupBinocular()
 extern "C" {
 /* an item kind of class 145, and a pistol's (4: SOCOM 1's CZWeapon::IsSecondary) -- CZWeapon's
  * statics before IsPrimary (OVL1 0x3D1CB0, 0x3D1CE0, unclaimed) */
-bool func_003D1CB0(EQUIP_ITEM id);
-bool func_003D1CE0(EQUIP_ITEM id);
 }
 
 /* the first primary weapon, pistol and class-145 item, or -1 (OVL2 0x5C7230, 0x5C71A0, 0x5C7110:
@@ -538,7 +537,7 @@ int CZKit::GetPrimaryIndex()
 int CZKit::GetSecondaryIndex()
 {
     for (int i = 0; i < m_num_items; i++)
-        if (m_item[i] && func_003D1CE0(m_item[i]->m_ID))
+        if (m_item[i] && CZWeapon::IsSecondary(m_item[i]->m_ID))
             return i;
     return -1;
 }
@@ -546,7 +545,7 @@ int CZKit::GetSecondaryIndex()
 int CZKit::GetClass145Index()
 {
     for (int i = 0; i < m_num_items; i++)
-        if (m_item[i] && func_003D1CB0(m_item[i]->m_ID))
+        if (m_item[i] && CZWeapon::IsLauncher(m_item[i]->m_ID))
             return i;
     return -1;
 }
@@ -611,7 +610,7 @@ bool CZKit::SetCurFireMode(FIREMODE mode)
 
     if (!w)
         return false;
-    if ((mode > AUTOFIRE && func_003C5D80(w)) ||
+    if ((mode > AUTOFIRE && w->IsLauncherWeapon()) ||
         (mode <= w->m_maxfiremode && ItemHasAmmo(m_selected_item, mode)))
         m_firemode[m_selected_item] = mode;
     m_weaponinfoChanged = true;
@@ -649,7 +648,7 @@ CZFTSWeapon *CZKit::GetFiringItem(int index)
 {
     int i = unwrap(index, (FIREMODE)255);
 
-    if (m_item[i] && func_003C5D20(m_item[i])) {
+    if (m_item[i] && m_item[i]->IsGrenadeLauncherAmmo()) {
         if (func_003C5C20(m_item[i]))
             i = GetClass145Index();
         else
@@ -697,7 +696,7 @@ void CZKit::SetFireDelay(float delay, bool alt)
             m_fire_delay = func_003D2C40(w);
     } else
         m_fire_delay = delay;
-    func_003D00D0(&m_fire_delay, m_fire_delay, 0);
+    CZWeapon::RegisterTimer2(&m_fire_delay, m_fire_delay, 0);
     m_alt_firedelay = alt;
 }
 
@@ -716,7 +715,7 @@ void CZKit::HandlePlacingExlosive(EQUIP_ITEM item, float a, float b)
         }
         return;
     }
-    if (func_005A7DE0(m_body, false, false) && m_81c <= 0.0f && func_005BD530(this)) {
+    if (CanFire__10CZSealBodyFbb(m_body, false, false) && m_81c <= 0.0f && func_005BD530(this)) {
         func_005BE9A0(this, m_selected_item, a, b);
         return;
     }
@@ -794,7 +793,7 @@ const char *CZKit::GetItemName(int index)
 {
     int i = wrap(index, m_num_items);
 
-    return i != -1 ? func_003D2830(m_item[i]) : 0;
+    return i != -1 ? m_item[i]->GetDescription() : 0;
 }
 
 /* a grenade launcher's ammunition's icon (OVL2 0x5BE1D0; SOCOM 1's GetFiremodeName and
@@ -812,7 +811,7 @@ void *CZKit::GetFiremodeGraphic(int index)
 
     if (!w)
         return 0;
-    if (func_003C5D20(w))
+    if (w->IsGrenadeLauncherAmmo())
         return w->m_icon;
     return 0;
 }
@@ -844,7 +843,7 @@ void *CZKit::GetCurIcon()
  * stops its callers (no pin) */
 bool CZKit::SetItem(unsigned int index, EQUIP_ITEM item)
 {
-    CZWeapon *w = func_003C4B40(&CZWeapon::m_listWeapons, item);
+    CZWeapon *w = CZWeapon::m_listWeapons.GetWeapon(item);
 
     if (w && index < 30) {
         SetItemByIndex(index, w);
@@ -863,7 +862,7 @@ bool CZKit::SetItemAmmo(unsigned int index, void *ammo, int rounds, int count)
         CZFTSWeapon *w = m_item[index];
 
         if (w)
-            ammo = func_003D1F00(w);
+            ammo = w->GetDefaultAmmo();
     }
     if (ammo && index < 30 && m_item[index]) {
         for (int i = 0; i < count && i < 10; i++)
@@ -879,9 +878,9 @@ bool CZKit::SetItemAmmo(unsigned int index, void *ammo)
     bool r = false;
 
     if (index < 30 && m_item[index]) {
-        int size = func_003D2810(m_item[index]);
+        int size = m_item[index]->GetAmmoCapacity();
 
-        r = SetItemAmmo(index, ammo, size, func_003D2800(m_item[index]));
+        r = SetItemAmmo(index, ammo, size, m_item[index]->GetNumMags());
     }
     return r;
 }
@@ -984,7 +983,7 @@ CZProjectile *CZKit::FireGrenade(const CPnt3D *pos, const CPnt3D *vel)
 
     if (!w)
         return 0;
-    if (func_003D1E10(w) == IDTYPE_EXPLOSIVE)
+    if (w->GetIDType() == IDTYPE_EXPLOSIVE)
         return func_005BC730(this, pos, (char *)m_body + 0x50, 0, 0);
     return func_005C5340(this, m_selected_item, pos, vel, &v);
 }
@@ -1009,7 +1008,7 @@ bool CZKit::SetItem(unsigned int index, CZWeapon *w, void *ammo, int rounds)
     m_ammo[slot] = ammo;
     m_currentmag[slot] = 0;
     if (w) {
-        int size = func_003D2810(w);
+        int size = w->GetAmmoCapacity();
         int i = 0;
 
         while (rounds > 0) {
@@ -1051,7 +1050,7 @@ void CZKit::SetItemByIndex(int index, CZWeapon *w)
         m_item[index] = (CZFTSWeapon *)w;
         m_firemode[index] = 0;
         m_currentmag[index] = 0;
-        m_associatedgear[index] = func_0053EFF0(&m_gear_list__14CCharacterType, func_003D2760(w));
+        m_associatedgear[index] = FindGear__18CCharacterGearListFPCc(&m_gear_list__14CCharacterType, GetAssociatedGearName__8CZWeaponFv(w));
         bool cur = m_selected_item == index;
         CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
 
@@ -1074,7 +1073,7 @@ bool CZKit::ItemHasFiremodeGraphic(int index)
     if (!GetCurItem())
         r = false;
     else {
-        switch (func_003D1A60(GetCurItem()->m_ID)) {
+        switch (CZWeapon::GetIDType(GetCurItem()->m_ID)) {
         case 201:
         case IDTYPE_BINOCULARS:
         case 230:
@@ -1113,11 +1112,117 @@ void CZKit::SetHotSwap(bool b)
     m_hotswap = b;
 }
 
+/* whether a picked-up item has a slot: no launcher held, and a slot of 2-4 free for it (OVL2
+ * 0x5BAC30, new in SOCOM II: GetPickupSlot inlined whole; the SEAL's pickup tests call it -- the
+ * name ours).
+ * OPEN, 0x220 against 0x228: the saved registers numbered otherwise -- the target gives `this` s0,
+ * the launcher walk's cursor s1 and its index (the result) s2, here the index takes s0 and `this`
+ * s1; the inlined GetPickupSlot's registers follow (GetPickupSlot's own miss, below) */
+bool CZKit::HasPickupSlot()
+{
+    int l = GetLauncherIndex();
+
+    return l == -1 && GetPickupSlot(l) != -1;
+}
+
+/* the slot a picked-up item takes, of slots 2-4 but one: the count when the slot lies past it, a slot
+ * whose item uses ammunition and has none, or a slot holding item 255; else -1 (OVL2 0x5BAE60, new
+ * in SOCOM II: the environment's pickup code calls it; the name ours).
+ * OPEN, 39 instructions, registers only (the right size, every block in place): the target keeps the
+ * index in v1, the items' cursor in t9, the magazines' outer cursor in s0 and the inlined
+ * ItemHasAmmo's own cursor in t8 (its count s1, its flag s2) -- here the index takes a3, the outer
+ * cursors a2/v1 and the inner one s0; the ten switch constants hoisted alike, shifted by one */
+int CZKit::GetPickupSlot(int skip)
+{
+    for (int i = 2; i < 5; i++) {
+        if (i == skip)
+            continue;
+        if (m_num_items < i)
+            return m_num_items;
+        if (!ItemHasAmmo(i) && UsesAmmo(i))
+            return i;
+        if (m_item[i] && m_item[i]->m_ID == 255)
+            return i;
+    }
+    return -1;
+}
+
+/* whether an item has room for more rounds: never past the ten slots, always past the count (an
+ * item to come), else when one of its magazines (twice as many for a sidearm or rifle class while
+ * the kit holds item 194, ten at most) is short of full (OVL2 0x5BA5B0; SOCOM 1's CanAddAmmo, item
+ * 188 and the classes one lower there -- the count, unread in both builds). The item read in place each time: MW keeps its address,
+ * index first (a pointer local takes `this` first) */
+bool CZKit::CanAddAmmo(int index, int count)
+{
+    if (index >= 10)
+        return false;
+    if (index >= m_num_items)
+        return true;
+
+    int mags = m_item[index]->GetNumMags();
+    int cap = m_item[index]->GetAmmoCapacity();
+
+    if (m_item[index] && HasItem((EQUIP_ITEM)194)) {
+        EQUIP_IDTYPE t = (EQUIP_IDTYPE)m_item[index]->GetIDType();
+
+        if (t == IDTYPE_PISTOL || t == IDTYPE_SMG || t == IDTYPE_ASSAULT_RIFLE || t == IDTYPE_SHOTGUN ||
+            t == IDTYPE_MACHINEGUN || t == IDTYPE_SNIPER_RIFLE)
+            mags *= 2;
+    }
+    if (mags > 10)
+        mags = 10;
+    for (int i = 0; i < 10 && i < mags; i++)
+        if (cap - m_reloads[index][i] > 0)
+            return true;
+    return false;
+}
+
+/* rounds added to an item's magazines, each topped up in turn (as many as CanAddAmmo counts, the
+ * rest emptied); the item 193 given for item 153 (0x5C74E0), the weapon info changed; the rounds
+ * left over returned (OVL2 0x5BA3D0; SOCOM 1's AddAmmo, whose tail SOCOM II made 0x5C74E0) */
+int CZKit::AddAmmo(int index, int rounds)
+{
+    int mags = m_item[index]->GetNumMags();
+    int cap = m_item[index]->GetAmmoCapacity();
+
+    if (m_item[index] && HasItem((EQUIP_ITEM)194)) {
+        EQUIP_IDTYPE t = (EQUIP_IDTYPE)m_item[index]->GetIDType();
+
+        if (t == IDTYPE_PISTOL || t == IDTYPE_SMG || t == IDTYPE_ASSAULT_RIFLE || t == IDTYPE_SHOTGUN ||
+            t == IDTYPE_MACHINEGUN || t == IDTYPE_SNIPER_RIFLE)
+            mags *= 2;
+    }
+    if (mags > 10)
+        mags = 10;
+    for (int i = 0; i < 10; i++) {
+        if (i >= mags)
+            m_reloads[index][i] = 0;
+        else {
+            int room = cap - m_reloads[index][i];
+
+            if (room < rounds) {
+                m_reloads[index][i] += room;
+                rounds -= room;
+            } else {
+                m_reloads[index][i] += rounds;
+                rounds = 0;
+            }
+        }
+    }
+    func_005C74E0(this);
+    m_weaponinfoChanged = true;
+    return rounds;
+}
+
+/* an item's ammunition let go: its magazines emptied, its pointer cleared, the index wrapped
+ * twice as the inlines do (OVL2 0x5B9F00; SOCOM 1's RemoveAmmo, which wrapped through unwrap) */
+void CZKit::RemoveAmmo(int index)
+{
+    ClearAmmo(index);
+}
+
 extern "C" {
-/* the items closed up over the empty slots, each slot's state, ammunition, magazines, fire mode
- * and pointer moved with it (OVL2 0x5B9A00, new in SOCOM II: unwritten, the name to come) and
- * CZSealBody::WepWaitOn (OVL2 0x5DFFC0, seal_weapon.cpp's) */
-void func_005B9A00(CZKit *kit);
+/* CZSealBody::WepWaitOn (OVL2 0x5DFFC0, seal_weapon.cpp's) */
 void WepWaitOn__10CZSealBodyFv(CZSealBody *body);
 }
 
@@ -1143,12 +1248,53 @@ void CZKit::RemoveItemAndAmmo(int index)
 
     m_item[i] = 0;
     ClearAmmo(i);
-    func_005B9A00(this);
+    CompactItems();
     UpdateNumItems();
     if (m_selected_item > m_num_items || !m_item[m_selected_item]) {
         m_selected_item = 0;
         WepWaitOn__10CZSealBodyFv(m_body);
         m_weaponinfoChanged = true;
+    }
+}
+
+/* the items closed up over the empty slots: at each empty slot with an item after it, every later
+ * slot's state, item, ammunition, magazines, current magazine, fire mode, gear, in-use byte and
+ * pointer (one place on, in the vector at 0x834) moved down one, and the slot looked at again
+ * (OVL2 0x5B9A00, new in SOCOM II: RemoveItemAndAmmo calls it; the name ours). The slot test is an
+ * inline bool's (kit.h's AnyItemFrom: the target materialises `!SlotEmpty(j)`, sltu/xori), non-const
+ * (const, it reloads the count the loop holds); the pointer's next slot a local (written in place,
+ * MW hoists its shift into the size test's delay slot, eight bytes short).
+ * OPEN, 15 instructions, registers only: after the magazines' loop the target holds the moved
+ * values in t2, `this + j` in t3 and the next slot in t1 (its shift then into t3); here t1, t2 and
+ * t3 -- the slot local's place in the block changes nothing, tools/perm.py over the eight moves
+ * (3,284 steps) found no better */
+void CZKit::CompactItems()
+{
+    int i = 0;
+
+    while (i < m_num_items) {
+        if (!m_item[i] && AnyItemFrom(i)) {
+            for (int j = i; j < m_num_items; j++) {
+                if (j + 1 < 30) {
+                    m_itemstate[j] = m_itemstate[j + 1];
+                    m_item[j] = m_item[j + 1];
+                    m_ammo[j] = m_ammo[j + 1];
+                    for (int k = 0; k < 10; k++)
+                        m_reloads[j][k] = m_reloads[j + 1][k];
+                    m_currentmag[j] = m_currentmag[j + 1];
+                    m_firemode[j] = m_firemode[j + 1];
+                    m_associatedgear[j] = m_associatedgear[j + 1];
+                    m_iteminuse[j] = m_iteminuse[j + 1];
+                    int k2 = j + 2;
+
+                    if (k2 < m_itemptr.size()) {
+                        m_itemptr[j + 1] = m_itemptr[k2];
+                        m_itemptr[k2] = 0;
+                    }
+                }
+            }
+        } else
+            i++;
     }
 }
 
@@ -1183,7 +1329,7 @@ bool CZKit::IsUsingItem(EQUIP_ITEM item)
  * else its state's bit 3 (OVL2 0x5B97A0; SOCOM 1's) */
 bool CZKit::IsUsingItem(int index)
 {
-    EQUIP_IDTYPE type = func_003D1E10(m_item[index]);
+    EQUIP_IDTYPE type = (EQUIP_IDTYPE)m_item[index]->GetIDType();
 
     if (type == IDTYPE_BINOCULARS)
         return IsUsingBinocs() || IsUsingScope();
@@ -1205,8 +1351,6 @@ bool CZKit::IsUsingScope()
 extern "C" {
 /* the target mods' kick distances (SOCOM 1's CTargetMods::GetFireRifle_KickRandomDist and
  * GetFireRifle_KickBaseDist, const: OVL1 0x3C5F60 and 0x3C5F70 read 0x48 and 0x44, unclaimed) */
-float func_003C5F60(const CTargetMods *mods);
-float func_003C5F70(const CTargetMods *mods);
 int rand(void);
 }
 
@@ -1216,12 +1360,12 @@ int rand(void);
 void CZKit::StartSniperKick()
 {
     CZFTSWeapon *w = GetCurItem();
-    CTargetMods *mods = w->TargetMods(func_0058A720(m_body, true));
+    CTargetMods *mods = w->TargetMods(GetStance__10CZSealBodyCFb(m_body, true));
     CKitCtrl *ctrl = ((CKitBody *)m_body)->m_control;
 
     if (ctrl)
         m_firerifle_kick_baseline = ctrl->m_130;
-    m_firerifle_kick_movedist = func_003C5F70(mods) + func_003C5F60(mods) * (4.656613e-10f * rand());
+    m_firerifle_kick_movedist = mods->GetFireRifle_KickBaseDist() + mods->GetFireRifle_KickRandomDist() * (4.656613e-10f * rand());
     m_firerifle_kick_state = 1;
     m_firerifle_kick_accum = 0.0f;
 }
@@ -1235,7 +1379,7 @@ void CZKit::InitializeSniperKick()
 
     if (ctrl)
         m_firerifle_kick_baseline = ctrl->m_130;
-    func_00578150(m_body, 0.5f);
+    AdrenalineIncr__10CZSealBodyFf(m_body, 0.5f);
 }
 
 /* the binoculars put away or taken out: put away, the controller's word at 0x11C cleared (OVL2
@@ -1307,13 +1451,9 @@ void CZKit::SetItemPtr(int index, void *p)
     m_itemptr[index + 1] = p;
 }
 
-extern "C" {
-/* a class's tests (OVL1 0x3D1DB0: the rifles -- 31, 51, 81, 91, 141, 101 -- 0x3D1DA0: the pistol,
- * 4, 0x3D1D90: 145; CZWeapon's statics after IsSecondary, unclaimed -- the byte enum masked in each) */
-bool func_003D1DB0(EQUIP_IDTYPE t);
-bool func_003D1DA0(EQUIP_IDTYPE t);
-bool func_003D1D90(EQUIP_IDTYPE t);
-}
+/* (a class's tests -- OVL1 0x3D1DB0: the rifles, 31, 51, 81, 91, 141, 101; 0x3D1DA0: the pistol, 4;
+ * 0x3D1D90: 145 -- are zweapon.h's IsPrimaryType, IsSecondaryType and IsLauncherType, the byte enum
+ * masked in each) */
 
 /* the current item's fire class: 1 for the rifles, 2 the pistol, 4 class 145, 3 the grenades and
  * explosives (121, 151), else none (OVL2 0x5B8760, new in SOCOM II among the kit's additions at
@@ -1324,18 +1464,30 @@ CZKit::FIRE_CLASS CZKit::GetCurItemFireClass()
     CZFTSWeapon *w = m_item[m_selected_item];
 
     if (w) {
-        EQUIP_IDTYPE t = func_003D1A60(w->m_ID);
+        /* zweapon.h's GetIDType answers an EQUIP_ITEM: kept as one (converted to EQUIP_IDTYPE, MW
+         * narrows the copy it keeps with an andi) */
+        EQUIP_ITEM t = CZWeapon::GetIDType(w->m_ID);
 
-        if (func_003D1DB0(t))
+        if (CZWeapon::IsPrimaryType(t))
             c = FIRE_CLASS_RIFLE;
-        else if (func_003D1DA0(t))
+        else if (CZWeapon::IsSecondaryType(t))
             c = FIRE_CLASS_PISTOL;
-        else if (func_003D1D90(t))
+        else if (CZWeapon::IsLauncherType(t))
             c = FIRE_CLASS_145;
         else if (t == IDTYPE_GRENADE || t == IDTYPE_EXPLOSIVE)
             c = FIRE_CLASS_THROWN;
     }
     return c;
+}
+
+/* the first item of a fire class, or -1 (OVL2 0x5B8630, new in SOCOM II beside GetCurItemFireClass:
+ * CZSealBody::Tick and the environment's pickup code call it; the name ours) */
+int CZKit::GetFireClassIndex(FIRE_CLASS c)
+{
+    for (int i = 0; i < m_num_items; i++)
+        if (m_item[i] && FireClassOf(m_item[i]) == c)
+            return i;
+    return -1;
 }
 
 /* for the two items that show their round (186 and 146), the fire point's "projectile" child made

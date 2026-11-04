@@ -503,7 +503,11 @@ bool CZWeapon::IsLauncher(EQUIP_ITEM id)
 /* OPEN, 2 instructions short (SOCOM 1's is byte-identical): the target zero-extends the halfword's
  * 32 bits to 64 (dsll32, dsrl32) before storing the ammo byte, and shifts the item out with srl;
  * masks, a modulo and casts through unsigned long all fold it away, an unsigned int copy gives the
- * srl alone, and a union of two 8-bit bitfields (unsigned int or unsigned short) is 4 bytes long */
+ * srl alone, and a union of two 8-bit bitfields (unsigned int or unsigned short) is 4 bytes long.
+ * Round 16: `*item = packed / 256u; *ammo = packed % 256ul;` is one instruction off -- the
+ * int-promoted halfword is SIGN-extended to the unsigned long (dsll32/dsra32) and kept, where
+ * every unsigned int intermediate (casts, `/ 1u`, `| 0u`, `+ 0u`, `& 0xFFFFu`, `(unsigned)(int)`)
+ * lets MW fold the zero-extension away; `% 256L`, `& 0xFFL`, `& 0xFFFFFFFFUL` miss by more */
 void CZWeapon::UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo)
 {
     *item = (EQUIP_ITEM)(packed >> 8);

@@ -82,7 +82,7 @@ def main(argv=None) -> int:
         label = f"{v} " * bool(v) + f"{tc} {fl}"
         try:
             D.compile_obj(srcs[v], obj, tc, fl.split(), includes)
-            D.qualify_statics(obj, a.stem or a.src.stem, st)  # the unit's statics, as sccheck scores them
+            D.qualify_statics(obj, a.stem or a.src, st)  # the unit's statics, as sccheck scores them
         except Exception as e:                      # a failed build is not evidence
             return label, None, (str(e).strip().splitlines() or ["?"])[-1][:120]
         out = {}

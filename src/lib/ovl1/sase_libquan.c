@@ -46,3 +46,115 @@ float func_0024C000(const float *pfIn, const float *pfRef)
 	fD1 = pfIn[1] - pfRef[1];
 	return fD0 * fD0 + fD1 * fD1;
 }
+
+/* the scalar codebook's entry, an index past the end read as entry 0 */
+float func_0024B7E8(const float *pfCodeBook, int iLength, int iIndex)
+{
+#line 978 "../../SaseEncVad/source/libquan.c"
+	assert(pfCodeBook != NellyNull);
+	assert(iLength>0);
+	assert(iIndex<iLength);
+	assert(iIndex>=0);
+	if (iIndex >= iLength)
+		iIndex = 0;
+	return pfCodeBook[iIndex];
+}
+
+/* the nearest 2-D codeword */
+int func_0024B8B0(const float *pfVector, const float *pfCodeBook, int iEntries)
+{
+	float fD0, fD1, fDist, fMin;
+	int i, iBest;
+
+#line 1070 "../../SaseEncVad/source/libquan.c"
+	assert(pfVector != NellyNull);
+	assert(pfCodeBook != NellyNull);
+	iBest = 0;
+	fMin = 1e38f;
+	for (i = 0; i < iEntries; i++) {
+		fD0 = *pfCodeBook++ - pfVector[0];
+		fDist = fD0 * fD0;
+		fD0 = *pfCodeBook++ - pfVector[1];
+		fDist += fD0 * fD0;
+		if (fDist < fMin) {
+			fMin = fDist;
+			iBest = i;
+		}
+	}
+	return iBest;
+}
+
+/* the 2-D codeword at an index, one past the table read as entry 0 */
+void func_0024B990(int iIndex, const float *pfCodeBook, int iEntries, float *pfVector)
+{
+#line 1118 "../../SaseEncVad/source/libquan.c"
+	assert(pfCodeBook != NellyNull);
+	assert(pfVector != NellyNull);
+	assert(iIndex < (unsigned int) iEntries);
+	if (iIndex >= (unsigned int) iEntries)
+		iIndex = 0;
+	pfCodeBook += 2 * iIndex;
+	pfVector[0] = pfCodeBook[0];
+	pfVector[1] = pfCodeBook[1];
+}
+
+/* the prediction: each row of the matrix against the zero-mean coefficients */
+void func_0024BE70(const float *pfZMCoef, int iOrder, const float *pfMatrix, float *pfPredCoef,
+		   int iRows)
+{
+	const float *pfRow;
+	float fSum;
+	int i, j;
+
+#line 362 "../../SaseEncVad/source/libquan.c"
+	assert(pfZMCoef != NellyNull && pfPredCoef != NellyNull);
+	for (j = 0; j < iRows; j++) {
+		pfRow = &pfMatrix[j * iOrder];
+		fSum = 0.0F;
+		for (i = 0; i < iOrder; i++)
+			fSum += pfRow[i] * pfZMCoef[i];
+		pfPredCoef[j] = fSum;
+	}
+}
+
+/* the rotate-and-scale cell: a 2-D point times the entry's complex factor */
+void func_0024BF50(const float *pfIn, const float *pfRSMatrix, int iIndex, float *pfOut)
+{
+	const float *pfRS = pfRSMatrix + 2 * iIndex;
+
+#line 784 "../../SaseEncVad/source/libquan.c"
+	assert((pfIn != NellyNull) && (pfRSMatrix != NellyNull) && (pfOut != NellyNull));
+	pfOut[0] = pfRS[0] * pfIn[0] + pfRS[1] * pfIn[1];
+	pfOut[1] = -pfRS[1] * pfIn[0] + pfRS[0] * pfIn[1];
+}
+
+/* and its inverse: divided by the factor's squared norm */
+void func_0024C078(const float *pfIn, const float *pfRSMatrix, int iIndex, float *pfOut)
+{
+	const float *pfRS = pfRSMatrix + 2 * iIndex;
+	float fNorm;
+
+#line 818 "../../SaseEncVad/source/libquan.c"
+	assert((pfIn != NellyNull) && (pfRSMatrix != NellyNull) && (pfOut != NellyNull));
+	fNorm = pfRS[0] * pfRS[0] + pfRS[1] * pfRS[1];
+	fNorm = 1.0F / fNorm;
+	pfOut[0] = fNorm * (pfIn[0] * pfRS[0] - pfIn[1] * pfRS[1]);
+	pfOut[1] = fNorm * (pfIn[1] * pfRS[0] + pfIn[0] * pfRS[1]);
+}
+
+/* is the index one of the outer cells' */
+int func_0024C150(const int *piIndexOfOutCell, int iNumOutCell, int iIndex)
+{
+	int i, bFound;
+
+	bFound = 0;
+#line 855 "../../SaseEncVad/source/libquan.c"
+	assert(piIndexOfOutCell != NellyNull);
+	for (i = 0; i < iNumOutCell; i++) {
+		if (piIndexOfOutCell[i] == iIndex) {
+			bFound = 1;
+			break;
+		}
+	}
+	return bFound;
+}

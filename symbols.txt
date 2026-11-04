@@ -889,9 +889,9 @@
 0x001ACB80 0x10 GetEntryAddress@libosd  # MAIN; s1~ GetEntryAddress (one of 3); s1:order (the demo's InitExecPS2 object 0x164428: its static GetEntryAddress, the fourth, syscall 0x5B)
 0x001ACB90 0x68 PatchIsNeeded  # MAIN; s1:exact
 0x001ACBF8 0xAC InitExecPS2  # MAIN unaligned; s1:exact
-0x001ACCA8 0x10 Copy@exit  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static Copy, the first function, syscall 0x5A)
-0x001ACCB8 0x30 kCopy@exit  # MAIN unaligned; s1:exact; s1:order (the demo's ExecPS2 object 0x1645A8: its static kCopy, the byte copy; qualified as the other four objects' are)
-0x001ACCE8 0x10 setup@exit  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static setup, the third, syscall 0x74)
+0x001ACCA8 0x10 Copy@sdk/exit  # MAIN unaligned; s1~ Copy (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static Copy, the first function, syscall 0x5A)
+0x001ACCB8 0x30 kCopy@sdk/exit  # MAIN unaligned; s1:exact; s1:order (the demo's ExecPS2 object 0x1645A8: its static kCopy, the byte copy; qualified as the other four objects' are)
+0x001ACCE8 0x10 setup@sdk/exit  # MAIN unaligned; s1~ setup (one of 5); s1:order (the demo's ExecPS2 object 0x1645A8: its static setup, the third, syscall 0x74)
 0x001ACCF8 0x118 SetArg  # MAIN unaligned; s1:exact
 0x001ACE10 0x8 TerminateLibrary  # MAIN; s1:callee
 0x001ACE18 0x70 ExecPS2  # MAIN unaligned; s1:exact
@@ -6758,7 +6758,7 @@
 0x003677B0 0x14 func_003677B0  # OVL1
 0x003677D0 0x14 func_003677D0  # OVL1
 0x003677F0 0x14 func_003677F0  # OVL1
-0x00367810 0x138 func_00367810  # OVL1
+0x00367810 0x138 RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc  # OVL1; the UI lane round 15: SOCOM 1's RunEventAnim__9CGameMenuFQ210ActionItem5EVENTPCc by its body (the 30 commands at 0x6F8 walked to m_numCommands 0x8D8 as SOCOM 1's at 0x68C/0x86C, each event action of the event started through CZAnim::ActivateArg(1, 8, arg) or Activate(0); TickMPEG passes ONMPEGEND), byte-exact from zui.cpp
 0x00367950 0xBE8 LoadFromDesign__9CGameMenuFRC14CGameDlgDesignP9CZAnimZAR  # OVL1; s1:calls by hand (the menu's design loader: this, the design and the ZAR in a0-a2 as SOCOM 1's; its first call 0x369210 at +0x34 as SOCOM 1's Clear, then UiSetCounterSpeedFactor and UiSetTtySpeedFactor with 1.0 in that order, as SOCOM 1's at +0x44/+0x54; SOCOM II adds a flag block between; 0xBE8 against 0xBA4)
 0x00368540 0x8 NumChildren__11CDlgObjSpecCFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00368550 0x8 GetChild__11CDlgObjSpecCFi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -7255,7 +7255,7 @@
 0x0038B550 0x18 func_0038B550  # OVL1
 0x0038B570 0x8 func_0038B570  # OVL1
 0x0038B580 0x1EC func_0038B580  # OVL1
-0x0038B770 0x124 func_0038B770  # OVL1
+0x0038B770 0x124 AddKeyProps__13CSoftKeyboardFRC7CSkbKeyRC8CSkbRect  # OVL1; the UI lane round 15: ours, by its body (zui_skb.cpp: the key's props found through the inlined FindKeyProps, else newed zeroed and inserted into the key map at 0x164 -- the map's insert_one 0x38EC10 and insert_node_at 0x38EF50 byte-exact through it -- a row-2 key setting 0x174; then the place and size copied from the rectangle; ParseKeyProps 0x38DCB0 calls it)
 0x0038B8A0 0x48 func_0038B8A0  # OVL1
 0x0038B8F0 0x1B8 func_0038B8F0  # OVL1
 0x0038BAB0 0x8 func_0038BAB0  # OVL1
@@ -7287,9 +7287,9 @@
 0x0038D6A0 0xC4 ZuiInit__Fv  # OVL1; s1:calls by hand (SOCOM 1's ZuiInit: UiParams.rdr from data/common read, each of its SoftKeyboards made by CreateSoftKeyboard, the file freed; CMenuState::Init calls it) -- zui_skb.cpp
 0x0038D770 0x174 SkbOpen__Fv  # OVL1; by hand (the UI lane, round 12, ours: the UI command opening the keyboard the display unit names (0x397640; KEYBOARD when empty) with the empty text 0x49EC70 through ShowSkb, the display root g_skbDisplayNode on, the valve skb_done set to whether none was found, the sound 0 played; returns true -- the command table handler 0x2808D0 jumps here; zui_skb.cpp)
 0x0038D8F0 0x17C SkbTick__FP9CGameMenubf  # OVL1; the UI lane round 14: ours, by its body (zui_skb.cpp: the showing keyboard g_pActiveSkb ticked -- the display tick 0x3949C0's events handled through 0x38DFE0 with CInput::m_pads[0] and the menu when a1 is set, the USB bitmaps 0x520/0x5D0 shown by KeyboardAttached, the scaling 0x394DA0's result 1 or 2 handled; CGameMenu's tick 0x3654C0 calls it)
-0x0038DA70 0x184 func_0038DA70  # OVL1
+0x0038DA70 0x184 StrToSkbKey__21@unnamed@zui_skb_cpp@FPCc  # OVL1; the UI lane round 15: SOCOM 1's StrToSkbKey__21@unnamed@zui_skb_cpp@FPCc by its body (zui_skb.cpp: SOCOM II's adds the Switch<n> keys and the jamo; the key a name in the rdr gives -- none, a single character, Switch<n> (row 3), the five named characters, the fourteen action keys (row 1), else a jamo through FindJamo (row 2); ParseKeyProps and CreateSoftKeyboard call it), byte-exact
 0x0038DC00 0xA4 func_0038DC00  # OVL1
-0x0038DCB0 0x1F0 func_0038DCB0  # OVL1
+0x0038DCB0 0x1F0 ParseKeyProps__13CSoftKeyboardFP5_zrdr  # OVL1; the UI lane round 15: ours, by its body (zui_skb.cpp: CreateSoftKeyboard calls it after ParseLook, as the source has; each KeyProps item's Key through StrToSkbKey or as a code, its Pos and Size to AddKeyProps 0x38B770, its ButtonSpec to the key's props' SetSpec 0x394210)
 0x0038DEA0 0x98 PrepSkbsForDisplay__FPQ23zdb5CNodePQ23zdb16CTextureRelocMgrP7C2DFont  # OVL1; s1:calls by hand (SOCOM 1's PrepSkbsForDisplay: g_pActiveSkb cleared, each keyboard's PrepForDisplay with the manager and font; CGameMenu::LoadFromDesign calls it) -- zui_skb.cpp
 0x0038DF40 0x80 InvalidateSkbsDisplay__Fv  # OVL1; s1:calls by hand (SOCOM 1's InvalidateSkbsDisplay: g_pActiveSkb cleared, each keyboard's InvalidateDisplay; CGameMenu::Clear calls it) -- zui_skb.cpp
 0x0038DFC0 0x18 func_0038DFC0  # OVL1
@@ -7999,10 +7999,10 @@
 0x003BE9B0 0x6C Init__Q23zdb14CMeshDecalPoolFUiUi  # OVL1; s1:align
 0x003BEA20 0x3C func_003BEA20  # OVL1
 0x003BEA60 0x98 func_003BEA60  # OVL1
-0x003BEB00 0xB0 func_003BEB00  # OVL1
+0x003BEB00 0xB0 __dt__Q23zdb15CDecalBatchItemFv  # OVL1; by hand (the weapons lane round 16: the decal batch's item destructor -- 0x3BEBD0's __construct_array and 0x3BEA60's __destroy_arr take it; the names ours, vis_decal.cpp)
 0x003BEBB0 0x1C func_003BEBB0  # OVL1
 0x003BEBD0 0x70 func_003BEBD0  # OVL1
-0x003BEC40 0x50 func_003BEC40  # OVL1
+0x003BEC40 0x50 __ct__Q23zdb15CDecalBatchItemFv  # OVL1; by hand (the weapons lane round 16: the decal batch's item constructor -- 0x3BEBD0 passes it to __construct_array with 0x3BEB00, 40-byte items, 296 of them, at +0xC of the 0x2E50-byte batch the VU0 decal builder 0x3B8680 makes; the names ours, vis_decal.cpp)
 0x003BEC90 0x8 Tick__Q23zdb6CDecalFf  # OVL1; s1:calls (SOCOM 1's VisualEffectsTick calls CDecal::Tick first; SOCOM II's is empty)
 0x003BECA0 0x334 func_003BECA0  # OVL1
 0x003BEFE0 0x24 PutPermDecal__Q23zdb6CDecalFPQ23zdb6CDecal  # OVL1; s1:align
@@ -8199,7 +8199,7 @@
 0x003C6880 0x80 __dt__16CWepCallbackListFv  # OVL1; s1:align, checked by hand (erases WEAPON_CALLBACK_STRUCT nodes through that list's erase, 0x3C6610 -- the one list of that type)
 0x003C6900 0xC func_003C6900  # OVL1
 0x003C6910 0xC func_003C6910  # OVL1
-0x003C6920 0x60 func_003C6920  # OVL1
+0x003C6920 0x60 func_003C6920  # OVL1; s1~ __dt__7CFlyoutFv (align on the skeleton alone: it destroys a CWepCallbackList base (0, 0x3C6880) and deletes on the flag -- zwep_global.cpp's tail, not CFlyout, whose SOCOM 1 destructor deletes the node at 0; the weapons lane round 16)
 0x003C6980 0xC func_003C6980  # OVL1
 0x003C6990 0x28 func_003C6990  # OVL1
 0x003C69C0 0x100 OnWeaponHit__12CZProjectileFPQ23zdb15IntersectStructP12CZProjectile  # OVL1; by hand (the wep lane: CProjectileNodeEx's OnWeaponHit (0x3D4B80) hands it the hit and the other projectile; the other's GetDamage(&m_frameendpos, 1) non-zero detonates this one unless WasDetonated or the network holds it -- new in SOCOM II, the name ours)
@@ -8232,7 +8232,7 @@
 0x003C8740 0xC Detonate__12CZProjectileFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Detonate, the state byte set to 3, before Cleanup)
 0x003C8750 0x1CC Cleanup__12CZProjectileFv  # OVL1; s1:order by hand (the wep lane: SOCOM 1's Cleanup after Detonate; the destructor calls it first, as SOCOM 1's does)
 0x003C8920 0x630 func_003C8920  # OVL1
-0x003C8F50 0x5E0 func_003C8F50  # OVL1
+0x003C8F50 0x5E0 HandleBounce__12CZProjectileFPQ23zdb15IntersectStructP6CPnt3D  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's HandleBounce(IntersectStruct *, float, CPnt3D *) opening -- GetMaterial, the material table, the 0.99 bounce test, GetHitAnim, ActivateArg; SOCOM II's never reads $f12 before writing it, so the float parameter is gone; its callers 0x3C8920, 0x3C9B70 and PostTick pass this, the hit and a point)
 0x003C9530 0x46C func_003C9530  # OVL1
 0x003C99A0 0x1D0 func_003C99A0  # OVL1
 0x003C9B70 0x440 func_003C9B70  # OVL1
@@ -8340,7 +8340,7 @@
 0x003D1E20 0x74 IsDirectFire__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: false for the indirect classes of GetIDType(m_ID), true otherwise; after GetIDType() as in SOCOM 1)
 0x003D1EA0 0x5C GetDefaultAmmoId__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: GetDefaultAmmo inlined -- the legal ammo list's first, its id byte or 255)
 0x003D1F00 0x44 GetDefaultAmmo__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's: the legal ammo list's first ammo, none when it is empty)
-0x003D1F50 0x3C func_003D1F50  # OVL1
+0x003D1F50 0x3C PostTick__8CZWeaponFfPv  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's static, the same code -- the pause byte tested, else the projectile list's PostTick; st_core.cpp registers it as weapon_post_tick)
 0x003D1F90 0x6C func_003D1F90  # OVL1
 0x003D2000 0x8 func_003D2000  # OVL1
 0x003D2010 0x8 func_003D2010  # OVL1
@@ -8351,7 +8351,7 @@
 0x003D2060 0x8 func_003D2060  # OVL1
 0x003D2070 0x64 func_003D2070  # OVL1
 0x003D20E0 0x64 func_003D20E0  # OVL1
-0x003D2150 0x60 func_003D2150  # OVL1
+0x003D2150 0x60 SetDecalSetName__8CZWeaponFPCc  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's, the same code -- the name at 0x20 (SOCOM 1's 0x1C) freed and _strdup'ed; func_003CDA30 calls it)
 0x003D21B0 0x8 func_003D21B0  # OVL1
 0x003D21C0 0x60 ClearAnims__8CZWeaponFv  # OVL1; s1:order by hand (SOCOM 1's shape: m_hitanim freed, three anims cleared -- one more in SOCOM II -- m_specialmaterialanim freed)
 0x003D2220 0x50 GetTimer__8CZWeaponFi  # OVL1; by hand (the wep lane: 0xD8 + 4i, or the mission's float at theMission+0x1864 for the item 152, 9999999 when negative; HandleDelayedDetonate and the kit call it; the name ours); zwep_weapon.cpp
@@ -8385,7 +8385,7 @@
 0x003D27B0 0x8 func_003D27B0  # OVL1
 0x003D27C0 0x8 func_003D27C0  # OVL1
 0x003D27D0 0x8 func_003D27D0  # OVL1
-0x003D27E0 0x8 func_003D27E0  # OVL1
+0x003D27E0 0x8 GetEffectiveRange__8CZWeaponFv  # OVL1; s1:order by hand (the weapons lane round 16: the float at 0x40, m_effectiverange -- SOCOM 1's GetEffectiveRange (0x31EC70) right before GetMaxRange (0x31EC80), as 0x3D27E0 before 0x3D27F0; CZProjectile::GetDamage calls it where SOCOM 1's does)
 0x003D27F0 0x8 GetMaxRange__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane: the float at 0x3C -- SOCOM 1's m_maxrange at 0x38, shifted by the word SOCOM II inserts before m_ammocap; CZProjectile::Reset stores it to m_currange where SOCOM 1's Reset stores GetMaxRange's; right before GetNumMags, as SOCOM 1's is but for GetEncumbrance)
 0x003D2800 0x8 GetNumMags__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x2C, SOCOM 1's m_nummags at 0x28 four bytes on as m_maxfiremode is; in SOCOM 1's order, GetNumMags then GetAmmoCapacity before GetDescription)
 0x003D2810 0x8 GetAmmoCapacity__8CZWeaponFv  # OVL1; s1:order by hand (the wep lane, on the kit lane's lead: returns the word at 0x28, SOCOM 1's m_ammocap at 0x24)
@@ -8405,7 +8405,7 @@
 0x003D2A10 0x8 func_003D2A10  # OVL1
 0x003D2A20 0x8 func_003D2A20  # OVL1
 0x003D2A30 0x30 SetHasFireMode__8CZWeaponF8FIREMODE  # OVL1; s1:order by hand (SOCOM 1's: the mode's flag set at 0xD0, the maximum mode at 0x24 raised to it)
-0x003D2A60 0x20 func_003D2A60  # OVL1
+0x003D2A60 0x20 HasFireMode__8CZWeaponCFi  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's, the same code -- true past mode 4, else the byte at 0xD0+mode, SOCOM 1's 0xA8)
 0x003D2A80 0x40 SetMaxFireMode__8CZWeaponF8FIREMODE  # OVL1; by hand (new in SOCOM II, right after SetHasFireMode: the maximum mode stored at 0x24 and every mode up to it, at most five, flagged at 0xD0; the name is ours)
 0x003D2AC0 0x6C func_003D2AC0  # OVL1
 0x003D2B30 0x6C func_003D2B30  # OVL1
@@ -10769,7 +10769,7 @@
 0x005A3280 0x12C func_005A3280  # OVL2
 0x005A33B0 0x1B8 HandleBloodDrip__10CZSealBodyFf  # OVL2; s1:calls
 0x005A3570 0x434 func_005A3570  # OVL2
-0x005A39B0 0x198 func_005A39B0  # OVL2
+0x005A39B0 0x198 HandleFootfallSound__10CZSealBodyFP6CPnt3D  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's HandleFootfallSound__10CZSealBodyFP6CPnt3D, after HandleBloodDrip and HandleSealStep in both builds; the same material bound and bounds-checked read of CMaterialExArray's list, GetStance(false) == prone, the throttles within a half, the sound's PlaySound3D slot at the point; SOCOM II tests a third throttle and plays it flat for a player in first person)
 0x005A3B50 0x58 func_005A3B50  # OVL2
 0x005A3BB0 0xA8 UninitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:calls by hand (SOCOM 1's UninitDatabaseHandles__10CZSealBodyFv: _free of a buffer, the blood decals' vector emptied through the deleter's constructor, clear, swap and destructor on a stack temporary, a second buffer freed, RemoveWeaponEventCallback of the same callback, 0x5A4F80; SOCOM II zeroes three counts; seal_env.cpp)
 0x005A3C60 0x60 func_005A3C60  # OVL2
@@ -10782,14 +10782,14 @@
 0x005A4150 0x1C8 ReadFlinchAnimations__7AnimSetFP5_zrdrPCc15DAMAGE_LOCATION  # OVL2; s1:callee
 0x005A4320 0x1C8 ReadDeathAnimations__7AnimSetFP5_zrdrPCc15DAMAGE_LOCATION  # OVL2; s1:callee
 0x005A44F0 0x1C8 ReadTeammateDeathAnimations__7AnimSetFP5_zrdrPCc15DAMAGE_LOCATION  # OVL2; s1:callee
-0x005A46C0 0x180 func_005A46C0  # OVL2
+0x005A46C0 0x180 InitDeathAndFlinchAnimations__7AnimSetFv  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's InitDeathAndFlinchAnimations__7AnimSetFv, between ReadTeammateDeathAnimations and ReadDeathAndFlinchAnims in both builds; the same two loops, six locations by three states, reserving 8 in the same six tables in SOCOM 1's order; the set loader 0x5E30F0 calls it)
 0x005A4840 0x1A8 ReadDeathAndFlinchAnims__7AnimSetFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:exact
 0x005A49F0 0x2E8 func_005A49F0  # OVL2
 0x005A4CE0 0x8 func_005A4CE0  # OVL2
 0x005A4CF0 0x278 func_005A4CF0  # OVL2
 0x005A4F70 0x10 func_005A4F70  # OVL2
 0x005A4F80 0x11C HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv  # OVL2; s1:ref by hand (UninitDatabaseHandles, 0x5A3BB0, removes it with CZWeapon::RemoveWeaponEventCallback where SOCOM 1's UninitDatabaseHandles removes HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv; the callback's type is that static member's; seal_env.cpp, not written yet)
-0x005A50A0 0x1A4 func_005A50A0  # OVL2
+0x005A50A0 0x1A4 TickStun__10CZSealBodyFf  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's TickStun__10CZSealBodyFf, after HandleWeaponEvent and before HandleStunFromHit/HandleStunDamage in both builds; the same seven-kind walk of m_stunval run down by the character type's m_recovery_factor, HandleStunRecovery's jump table inlined; SOCOM II clears the stunned bit when not stunned)
 0x005A5250 0x174 func_005A5250  # OVL2
 0x005A53D0 0x5C HandleStunDamage__10CZSealBodyF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's HandleStunDamage__10CZSealBodyF9STUN_TYPEfPC6CPnt3D: the kind under 8, m_stunned set, the kind's m_stunval kept at its highest and passed to the controller's OnStunDamage (slot 0x50) with the kind and the source unchanged -- SOCOM II drops the recovery's switch; right before SetHudHitFlag in both builds; seal_env.cpp)
 0x005A5430 0x1C SetHudHitFlag__10CZSealBodyFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order (SOCOM 1's SetHudHitFlag__10CZSealBodyFv word for word, first of the three: bit 1 of the flag byte set, 0x105C here against 0xF58) (the SEAL lane, round 3)
@@ -10916,7 +10916,7 @@
 0x005B67F0 0xA0 func_005B67F0  # OVL2
 0x005B6890 0x4C func_005B6890  # OVL2; the same words as __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005B68E0 0x2E8 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs  # OVL2; s1:calls
-0x005B6BD0 0x110 func_005B6BD0  # OVL2
+0x005B6BD0 0x110 reserve__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FUi  # OVL2; by hand (the SEAL lane, round 19): the pod vector's reserve for a 2-byte element (new(n * 2), the old block memcpy'd over and deleted, 'vector::reserve length error'): InitDeathAndFlinchAnimations reserves 8 in each anim-type table with it, as SOCOM 1's reserves its vector<AnimType>s; beside insert__...<Us> (0x5B68E0)
 0x005B6CE0 0x4C4 func_005B6CE0  # OVL2
 0x005B71B0 0x198 func_005B71B0  # OVL2
 0x005B7350 0x5BC func_005B7350  # OVL2
@@ -10931,7 +10931,7 @@
 0x005B82D0 0x8 func_005B82D0  # OVL2
 0x005B82E0 0x2B8 func_005B82E0  # OVL2
 0x005B85A0 0x8C ShowProjectile__5CZKitFv  # OVL2; by hand (the kit lane, round 15): for the current item 186 or 146 (its m_ID, lbu), the body's fire point (CZSealBody slot 0x64, OVL2 0x5DFAD0: SOCOM 1's GetFirepointNode) asked for its child "projectile" (CNode slot 0x24, FindChild(name, true)) and that made active (slot 0x38, SetActive(true)); 0x5A78C0 jumps to it; new in SOCOM II, the name ours
-0x005B8630 0x124 func_005B8630  # OVL2
+0x005B8630 0x124 GetFireClassIndex__5CZKitFQ25CZKit10FIRE_CLASS  # OVL2; by hand (the kit lane, round 20): the first item whose fire class (GetCurItemFireClass's tests, inlined) is the one asked, or -1 -- CZSealBody::Tick and the environment's pickup code call it; the name ours
 0x005B8760 0xB8 GetCurItemFireClass__5CZKitFv  # OVL2; by hand (the kit lane, round 15): the current item's class by its GetIDType (OVL1 0x3D1A60) through three of CZWeapon's class tests (0x3D1DB0 rifles 1, 0x3D1DA0 the pistol 2, 0x3D1D90 class 145 4) then 121/151 3, else 0 -- a byte CZSealBody's 0x5DFAD0 (SOCOM 1's GetFirepointNode) indexes its fire-point slots at 0x388 with; CHUD::Tick and five SEAL functions call it; new in SOCOM II, the name ours
 0x005B8820 0xA0 func_005B8820  # OVL2
 0x005B88C0 0x5C func_005B88C0  # OVL2
@@ -10954,16 +10954,16 @@
 0x005B9990 0x14 IsUsingScope__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's IsUsingScope, before SetWeaponInfoChanged as there: the body's byte at least 5 where SOCOM 1's is 4)
 0x005B99B0 0x1C SetWeaponInfoChanged__5CZKitFv  # OVL2; s1:exact
 0x005B99D0 0x24 PendingPickupHandled__5CZKitFv  # OVL2; s1:order by hand (SOCOM 1's PendingPickupHandled, after SetWeaponInfoChanged as there: a flag bit cleared (bit 14, SOCOM 1's 13) and the pickup wait zeroed, 0x8B8 here, SOCOM 1's 0x878)
-0x005B9A00 0x1A8 func_005B9A00  # OVL2
+0x005B9A00 0x1A8 CompactItems__5CZKitFv  # OVL2; by hand (the kit lane, round 20): RemoveItemAndAmmo's callee (new in SOCOM II) -- every slot past an empty one moved down (state, item, ammunition, magazines, current magazine, fire mode, gear, in-use byte, the pointer vector one place on), the slot looked at again; the name ours
 0x005B9BB0 0x258 RemoveItemAndAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 12): SOCOM 1's RemoveItemAndAmmo__5CZKitFi (0x2A5830 there) opens alike -- the index wrapped on m_num_items, the item's slot, magazines and ammunition cleared, the count made the last item's place plus one, the selection reset -- with SOCOM II's closing up (0x5B9A00) and WepWaitOn added; RemoveItem (0x5B9E10) calls it; seal_kit.cpp byte-exact
 0x005B9E10 0xEC RemoveItem__5CZKitF10EQUIP_ITEM  # OVL2; by hand (the kit lane, round 11): HandlePlaceMPBomb (0x5BC200) drops the MP bomb, item 154, through it where SOCOM 1's HandlePlaceMPBomb dropped it inline; FindItemWithAmmo inlined, then 0x5B9BB0 (by its place and its opening wrap SOCOM 1's RemoveItemAndAmmo(int)) on the index -- new in SOCOM II, the name ours
-0x005B9F00 0x134 func_005B9F00  # OVL2
+0x005B9F00 0x134 RemoveAmmo__5CZKitFi  # OVL2; s1:order by hand (the kit lane, round 20): SOCOM 1's RemoveAmmo (0x2A5A80), after RemoveItemAndAmmo and before FillAmmoPickupInstance as there -- the index wrapped twice (SOCOM 1's inline wrap then unwrap), the ten magazines zeroed, m_ammo cleared
 0x005BA040 0x390 func_005BA040  # OVL2
-0x005BA3D0 0x1E0 func_005BA3D0  # OVL2
-0x005BA5B0 0x1C0 func_005BA5B0  # OVL2
+0x005BA3D0 0x1E0 AddAmmo__5CZKitFii  # OVL2; s1:order by hand (the kit lane, round 20): SOCOM 1's AddAmmo (0x2A5EB0), after FillAmmoPickupInstance and before CanAddAmmo as there -- the same magazine count, item-194 doubling and top-up walk; its tail (the item 153/187 swap) moved into 0x5C74E0
+0x005BA5B0 0x1C0 CanAddAmmo__5CZKitFii  # OVL2; s1:calls by hand (the kit lane, round 20): SOCOM 1's CanAddAmmo (0x2A6160) -- the same 10-slot and count tests, GetNumMags/GetAmmoCapacity, the item-194 (SOCOM 1's 188) find, the six classes doubled, the magazine walk; the second int unread in both builds
 0x005BA770 0x4C0 func_005BA770  # OVL2
-0x005BAC30 0x228 func_005BAC30  # OVL2
-0x005BAE60 0x194 func_005BAE60  # OVL2
+0x005BAC30 0x228 HasPickupSlot__5CZKitFv  # OVL2; by hand (the kit lane, round 20): no launcher held (an inlined walk of IsLauncherWeapon) and GetPickupSlot(-1) inlined whole not -1 -- the SEAL's pickup tests (0x5A9C70, 0x5A9F40) call it; the name ours
+0x005BAE60 0x194 GetPickupSlot__5CZKitFi  # OVL2; by hand (the kit lane, round 20): of slots 2-4 but one, the count when the slot lies past it, a slot whose item uses ammunition (ten kinds excepted, a switch) and has none (ItemHasAmmo inlined), or one holding item 255; else -1 -- the environment's pickup code calls it, 0x5BAC30 inlines it; the name ours
 0x005BB000 0x98C func_005BB000  # OVL2
 0x005BB990 0x578 func_005BB990  # OVL2
 0x005BBF10 0x2E4 PickupMPBomb__5CZKitFv  # OVL2; s1:calls by hand (the kit lane, round 5, from another lane's lead): SOCOM 1's PickupMPBomb's callee sequence -- CPickup::GetMPBomb, CZWeaponList::GetWeapon, CZAmmoList::GetAmmo, SetItemByIndex, the add-ammo call, CPickup::Destroy, EnableMPBombGear, the compass anchors -- in the same order
@@ -12251,17 +12251,17 @@
 0x00626D00 0x28 lintClearBit  # OVL2; s1:order (the gcc lane, round 8b): after lintSetBit as SOCOM 1's, its body (0x28, the bit and'ed out)
 0x00626D28 0x50 func_00626D28  # OVL2 unaligned
 0x00626D78 0x74 func_00626D78  # OVL2 unaligned
-0x00626DF0 0x180 func_00626DF0  # OVL2
-0x00626F70 0x180 func_00626F70  # OVL2
-0x006270F0 0x180 func_006270F0  # OVL2
+0x00626DF0 0x180 lintAdd  # OVL2; s1:order (round 18b: SOCOM 1's lintAdd after the in-place add and subtract, here after the carry pair; the sum into a third number through a copy; 0x180 against 0x17C)
+0x00626F70 0x180 lintSub  # OVL2; s1:order+calls (round 18b: after lintAdd as SOCOM 1's; RSAGenerateKeyPair calls it (b, a, b) where SOCOM 1's calls lintSub)
+0x006270F0 0x180 MOD  # OVL2; s1:calls (round 18b: lintPrime's fourth call, SOCOM 1's MOD there)
 0x00627270 0x310 func_00627270  # OVL2
-0x00627580 0x268 func_00627580  # OVL2
-0x006277E8 0x308 func_006277E8  # OVL2 unaligned
+0x00627580 0x268 QRMOD  # OVL2; s1:calls (round 18b: its ten calls are SOCOM 1's QRMOD's in order -- lintGetBits twice, lintSetSmallValue, ShiftLeft, ShiftRight, IsNotSmaller, lintSubIP, lintGetBits, lintSetBit, ShiftRight -- and RSAGenerateKeyPair calls it where SOCOM 1's calls QRMOD)
+0x006277E8 0x308 GCD  # OVL2 unaligned; s1:calls (round 18b: lintPrime's two GCD calls before IsOne, SOCOM 1's GCD there; 0x308 against 0x310)
 0x00627AF0 0x280 func_00627AF0  # OVL2
-0x00627D70 0x1F8 func_00627D70  # OVL2
-0x00627F68 0x150 func_00627F68  # OVL2 unaligned
-0x006280B8 0x100 func_006280B8  # OVL2 unaligned
-0x006281B8 0x1D8 func_006281B8  # OVL2 unaligned
+0x00627D70 0x1F8 lintIsbSPRP  # OVL2; s1:calls (round 18b: lintPrime's strong-probable-prime test, SOCOM 1's lintIsbSPRP there)
+0x00627F68 0x150 LucasTest  # OVL2 unaligned; s1:calls (round 18b: lintPrime's last test, SOCOM 1's LucasTest there; 0x150 both builds)
+0x006280B8 0x100 lintRandomize  # OVL2 unaligned; s1:calls (round 18b: lintPrime's first call, SOCOM 1's lintRandomize there)
+0x006281B8 0x1D8 lintPrime  # OVL2 unaligned; s1:calls (round 18b: RSAGenerateKeyPair's (p, 256) prime draw at SOCOM 1's lintPrime's places; its own thirteen calls are SOCOM 1's lintPrime's in order, with its assert "nBits == lintGetBits(pPrime)")
 0x00628390 0x64 func_00628390  # OVL2
 0x006283F8 0x74C func_006283F8  # OVL2 unaligned
 0x00628B48 0x80 lintGetBits  # OVL2 unaligned; s1:body+assert (the gcc lane, round 14b): LargeInt.c's prime search asserts `nBits == lintGetBits(pPrime)` on this call's result (0x628214, the string at 0x6640D8); hand-written EE assembly (plzcw on the top nonzero word), the first of the asm run 0x628B48-0x629A44
@@ -12275,7 +12275,7 @@
 0x006290B8 0x9C func_006290B8  # OVL2 unaligned
 0x00629154 0x84 lintSubIP  # OVL2 unaligned; s1:body (the gcc lane, round 14b): SOCOM 1's lintSubIP(a, b) in EE assembly -- a -= b in place over all 32 words, the borrow by dsra32; after the bit-limited add as lintSubIP follows lintAddIP there
 0x006291D8 0x9C func_006291D8  # OVL2 unaligned
-0x00629274 0x42C func_00629274  # OVL2 unaligned
+0x00629274 0x42C MODIP  # OVL2 unaligned; s1:calls (round 18b: MOD calls it in place where SOCOM 1's MOD calls MODIP; one of LargeInt's assembly primitives here, SOCOM 1's C)
 0x006296A0 0x1C8 func_006296A0  # OVL2
 0x00629868 0x1DC func_00629868  # OVL2 unaligned
 0x00629A48 0x5C func_00629A48  # OVL2 unaligned
@@ -12319,8 +12319,8 @@
 0x0062AE10 0x130 func_0062AE10  # OVL2
 0x0062AF40 0x14C func_0062AF40  # OVL2
 0x0062B090 0xD8 func_0062B090  # OVL2
-0x0062B168 0x3DC func_0062B168  # OVL2 unaligned
-0x0062B548 0x3D4 func_0062B548  # OVL2 unaligned
+0x0062B168 0x3DC RSAGenerateKeyPair  # OVL2 unaligned; s1:order+calls (round 18b: RSA.c's first function as SOCOM 1's object's; its two primes are lintPrime(p, 256) as SOCOM 1's, n = p*q, the inverse of 17; asserts at RSA.c:164; called through 0x6305C8, SOCOM 1's KM_GenerateRSAKeyPair shape)
+0x0062B548 0x3D4 func_0062B548  # OVL2 unaligned; s1:order (SOCOM 1's RSA object opens with it before RSAEncryptBlock, as here; the body draws two primes, n = p*q, the inverse of 17 mod phi, and asserts in /public/work/dev/rt_crypt/src/RSA.c); s1~ (round 18b: not SOCOM 1's RSAGenerateKeyPair after all -- that is 0x62B168; this is SOCOM II's table-prime twin, asserting at RSA.c:293, called through KM_GenerateRSAKeyPair's second twin 0x630600)
 0x0062B920 0x28 RSAEncryptBlock  # OVL2; s1:order (the gcc lane, round 17b): second of SOCOM 1's RSA object's five (0x409864) -- RSADecryptBlock with the public exponent 17, here a static 64-byte block (0x655530) where SOCOM 1's built it on the stack; its callee is the next row
 0x0062B948 0x298 RSADecryptBlock  # OVL2 unaligned; s1:order (the gcc lane, round 17b): third of the five, SOCOM 1's size (0x298) and body (the exponent, modulus and input copied into the low halves of three LINTs, the high halves cleared, EMOD 0x6283F8, the result's low half copied out)
 0x0062BBE0 0x2C RSAEncrypt  # OVL2; s1:order (the gcc lane, round 17b): fourth of the five (0x409B60) -- RSADecrypt with a static exponent 17 (0x655570)
@@ -12471,7 +12471,7 @@
 0x00630370 0x6C KM_DeleteKeys  # OVL2; s1:align
 0x006303E0 0x124 KM_Destroy  # OVL2; s1:calls
 0x00630508 0xBC KM_Cleanup  # OVL2 unaligned; s1:callee
-0x006305C8 0x38 func_006305C8  # OVL2 unaligned
+0x006305C8 0x38 KM_GenerateRSAKeyPair  # OVL2 unaligned; s1:order+body (round 18b: SOCOM 1's rt_crypt object has KM_Destroy, KM_Cleanup, KM_GenerateRSAKeyPair, KM_CreateRandomRCKey; here its body -- InitializePRNG, then RSAGenerateKeyPair -- sits between KM_Cleanup and KM_CreateRandomRCKey, with a twin 0x630600 for the table-prime generator)
 0x00630600 0x38 func_00630600  # OVL2
 0x00630638 0x58 KM_CreateRandomRCKey  # OVL2 unaligned; s1:align
 0x00630690 0x2A8 KM_Encrypt  # OVL2; s1:order (the gcc lane, round 12b): SOCOM 1's rt_crypt object ends KM_Encrypt, KM_Decrypt; this is its body grown -- GetKeyMaster, the 4-byte SHA of the data masked to 29 bits, GetKeyChain, then RCSaltyInitialize/RCEncrypt under the client's or the session's RC key (tags 0x60000000/0x20000000) or RSAEncrypt under the client's public key (0xE0000000), plus SOCOM II's KM_GetSoftwareKeyPair path (0x80000000)

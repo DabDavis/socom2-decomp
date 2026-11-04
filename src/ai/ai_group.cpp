@@ -133,11 +133,11 @@ bool func_005712F0(CSealCtrlAi *ai, short anim);
 void func_00571100(CSealCtrlAi *ai, short anim);
 /* the stack's bits brought up to date (OVL2 0x5F7470, seal_aistate.cpp's, unwritten), the object at
  * the AI's 0x324 reset (0x558590), an AI function (0x5604C0) and CSealCtrl::ClearLook (0x600D40,
- * s1:order) -- the SEAL lane's */
+ * s1:order; by its mangled name: zseal.h stays out of this unit) -- the SEAL lane's */
 void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
 void func_00558590(void *p);
 void func_005604C0(CSealCtrlAi *ai);
-void func_00600D40(CSealCtrlAi *ai, signed char look);
+void ClearLook__9CSealCtrlF7AI_LOOK(CSealCtrlAi *ai, signed char look);
 }
 
 /* the AI's maps, as far as the group asks them (SOCOM 1's CAiMaps; the global AiMaps) */
@@ -167,12 +167,13 @@ float cosf(float);
 /* a cell for a point near another (OVL2 0x58F6E0, unnamed: the members' ring points of a group
  * gathering without cells of their own) */
 bool func_0058F6E0(const CPnt3D *p, const CPnt3D *near, CAiMapLoc *loc, int x);
-/* CSealCtrl's look setters (seal_look.cpp's range, unwritten): SOCOM 1's SetLookDirR (OVL2
- * 0x600DD0), SetLookPosW (0x601330), SetLookFlags (0x601850) and SetLookTimer (0x601860) */
-void func_00600DD0(CSealCtrlAi *ai, signed char look, const CPnt3D *dir, bool b);
-void func_00601330(CSealCtrlAi *ai, signed char look, const CPnt3D *pos);
-void func_00601850(CSealCtrlAi *ai, unsigned int flags);
-void func_00601860(CSealCtrlAi *ai, float t);
+/* CSealCtrl's look setters (seal_look.cpp's, by their mangled names: zseal.h stays out of this
+ * unit): SOCOM 1's SetLookDirR (OVL2 0x600DD0), SetLookPosW (0x601330), SetLookFlags (0x601850)
+ * and SetLookTimer (0x601860) */
+void SetLookDirR__9CSealCtrlF7AI_LOOKPC6CPnt3Db(CSealCtrlAi *ai, signed char look, const CPnt3D *dir, bool b);
+void SetLookPosW__9CSealCtrlF7AI_LOOKPC6CPnt3D(CSealCtrlAi *ai, signed char look, const CPnt3D *pos);
+void SetLookFlags__9CSealCtrlFUi(CSealCtrlAi *ai, unsigned int flags);
+void SetLookTimer__9CSealCtrlFf(CSealCtrlAi *ai, float t);
 /* a controller's state of a kind (OVL2 0x560A60, the SEAL lane's: a byte) and two of its resets
  * a group's new member runs (0x56D0C0, 0x56D6A0), a setting (0x565B80) and another (0x5604D0) */
 unsigned char func_00560A60(CSealCtrlAi *ai);
@@ -589,7 +590,7 @@ void CAiGroup::RemoveMember(CSealCtrlAi *ai)
     ai->PopToAiState(AI_STATE_HOLD, true);
     ai->SetGroup(0);
     func_005604C0(ai);
-    func_00600D40(ai, data_00651130);
+    ClearLook__9CSealCtrlF7AI_LOOK(ai, data_00651130);
     e->SetIncludeInTargetList(true);
     func_005F7470(&ai->m_stateStack, ai, 1);
     ai->m_aibit19 = true;
@@ -694,8 +695,8 @@ bool CAiGroup::Tick()
                     FaceXZ(&at, &m_center, &m);
                     e->TeleportTo(&m);
                     ai->StopThrottles(true);
-                    func_00600DD0(ai, data_00651130, &CPnt3D::unit_nz, true);
-                    func_00601850(ai, data_00651138);
+                    SetLookDirR__9CSealCtrlF7AI_LOOKPC6CPnt3Db(ai, data_00651130, &CPnt3D::unit_nz, true);
+                    SetLookFlags__9CSealCtrlFUi(ai, data_00651138);
                     state = STEPPING;
                 } else if (ai->PushAiState(AI_STATE_GOTO, 0)) {
                     CAiState *s = ai->GetAiState();
@@ -714,10 +715,10 @@ bool CAiGroup::Tick()
             for (memberlist::iterator it = m_members.begin(); it != m_members.end(); ++it) {
                 CSealCtrlAi *ai = *it;
 
-                func_00600D40(ai, -1);
-                func_00601330(ai, data_00651130, &sum);
-                func_00601850(ai, data_00651138 | 1);
-                func_00601860(ai, data_00651140);
+                ClearLook__9CSealCtrlF7AI_LOOK(ai, -1);
+                SetLookPosW__9CSealCtrlF7AI_LOOKPC6CPnt3D(ai, data_00651130, &sum);
+                SetLookFlags__9CSealCtrlFUi(ai, data_00651138 | 1);
+                SetLookTimer__9CSealCtrlFf(ai, data_00651140);
             }
         }
         break;
@@ -749,8 +750,8 @@ bool CAiGroup::Tick()
             if (!(m_flags & 1) && func_00560A60(ai) == 4)
                 state = DONE;
             else {
-                func_00600DD0(ai, data_00651130, &CPnt3D::unit_nz, true);
-                func_00601850(ai, data_00651138);
+                SetLookDirR__9CSealCtrlF7AI_LOOKPC6CPnt3Db(ai, data_00651130, &CPnt3D::unit_nz, true);
+                SetLookFlags__9CSealCtrlFUi(ai, data_00651138);
             }
         }
         if (state != DONE) {

@@ -234,6 +234,57 @@ public:
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
     FIRE_CLASS GetCurItemFireClass();
+    /* an item's fire class (inline: GetFireClassIndex's -- GetCurItemFireClass's tests, the class
+     * zeroed after the call, as the target schedules it; the name ours) and the first item of one, or -1 (OVL2 0x5B8630, new in SOCOM II: the name ours) */
+    static FIRE_CLASS FireClassOf(CZFTSWeapon *w)
+    {
+        EQUIP_ITEM t = CZWeapon::GetIDType(w->m_ID);
+        FIRE_CLASS c = FIRE_CLASS_NONE;
+
+        if (CZWeapon::IsPrimaryType(t))
+            c = FIRE_CLASS_RIFLE;
+        else if (CZWeapon::IsSecondaryType(t))
+            c = FIRE_CLASS_PISTOL;
+        else if (CZWeapon::IsLauncherType(t))
+            c = FIRE_CLASS_145;
+        else if (t == IDTYPE_GRENADE || t == IDTYPE_EXPLOSIVE)
+            c = FIRE_CLASS_THROWN;
+        return c;
+    }
+    int GetFireClassIndex(FIRE_CLASS c);
+    /* whether a slot's item uses ammunition: held, and none of the ten kinds without (inline:
+     * GetPickupSlot's; the name ours) and the slot a picked-up item takes (OVL2 0x5BAE60, new in
+     * SOCOM II: the name ours) */
+    bool UsesAmmo(int i)
+    {
+        if (!m_item[i])
+            return false;
+        switch (m_item[i]->m_ID) {
+        case 190:
+        case 193:
+        case 11:
+        case 146:
+        case 141:
+        case 145:
+        case 194:
+        case 195:
+        case 254:
+        case 255:
+            return false;
+        }
+        return true;
+    }
+    int GetPickupSlot(int skip);
+    /* the first launcher held, or -1 (inline: HasPickupSlot's; the name ours) and whether a picked-up
+     * item has a slot (OVL2 0x5BAC30, new in SOCOM II: the name ours) */
+    int GetLauncherIndex()
+    {
+        for (int i = 0; i < m_num_items; i++)
+            if (m_item[i] && m_item[i]->IsLauncherWeapon())
+                return i;
+        return -1;
+    }
+    bool HasPickupSlot();
     /* the fire point's "projectile" child shown, for items 186 and 146 (OVL2 0x5B85A0; the name ours) */
     void ShowProjectile();
     bool HasSniperRifle();
@@ -267,6 +318,23 @@ public:
      * item's place plus one, the selection reset when it fell off (OVL2 0x5B9BB0; SOCOM 1's
      * RemoveItemAndAmmo(int), which SOCOM II's closing up and WepWaitOn join) */
     void RemoveItemAndAmmo(int index);
+    /* the items closed up over the empty slots (OVL2 0x5B9A00, new in SOCOM II: the name ours), and
+     * whether a slot from an index on holds one (inline, its test materialised: the names ours) */
+    void CompactItems();
+    bool SlotEmpty(int i) { return !m_item[i]; }
+    bool AnyItemFrom(int i)
+    {
+        for (int j = i; j < m_num_items; j++)
+            if (!SlotEmpty(j))
+                return true;
+        return false;
+    }
+    /* an item's ammunition let go (OVL2 0x5B9F00; SOCOM 1's) and whether an item has room for more
+     * rounds (OVL2 0x5BA5B0; SOCOM 1's, the count unread) */
+    void RemoveAmmo(int index);
+    bool CanAddAmmo(int index, int count);
+    /* rounds added to an item's magazines, the rest returned (OVL2 0x5BA3D0; SOCOM 1's) */
+    int AddAmmo(int index, int rounds);
 
     /* an index wrapped into [0, n), or -1 (SOCOM 1's unwrap__5CZKitFii, out of line there; SOCOM
      * II inlines it everywhere) */

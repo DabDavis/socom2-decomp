@@ -125,3 +125,84 @@ void func_00626D78(LINT *p, unsigned int n)
         }
     }
 }
+
+extern void *memcpy(void *d, const void *s, unsigned int n);
+extern void lintAddIP(LINT *a, LINT *b);       /* largeint_asm.s */
+extern void lintSubIP(LINT *a, LINT *b);
+
+/* the sum and difference into a third number, through a copy (round 18b: SOCOM 1's lintAdd and
+ * lintSub at their place, over the in-place assembly; memcpy both ways, GCC's block move with the
+ * run-time alignment test of the side it does not know) */
+void lintAdd(LINT *pResult, LINT *a, LINT *b)
+{
+    LINT t;
+
+    memcpy(&t, a, sizeof t);
+    lintAddIP(&t, b);
+    memcpy(pResult, &t, sizeof t);
+}
+
+void lintSub(LINT *pResult, LINT *a, LINT *b)
+{
+    LINT t;
+
+    memcpy(&t, a, sizeof t);
+    lintSubIP(&t, b);
+    memcpy(pResult, &t, sizeof t);
+}
+
+extern void MODIP(LINT *a, LINT *b);   /* largeint_asm.s: a %= b in place */
+
+/* the remainder into a third number, through a copy (SOCOM 1's MOD, lintPrime's call; round 18b) */
+void MOD(LINT *pResult, LINT *a, LINT *b)
+{
+    LINT t;
+
+    memcpy(&t, a, sizeof t);
+    MODIP(&t, b);
+    memcpy(pResult, &t, sizeof t);
+}
+
+extern unsigned int lintGetBits(LINT *p);       /* largeint_asm.s */
+extern int IsNotSmaller(LINT *a, LINT *b);
+extern void ShiftLeft(LINT *p, unsigned int n);
+extern void ShiftRight(LINT *p, unsigned int n);
+
+/* the quotient and remainder of a by b (SOCOM 1's QRMOD by its calls, in order): the
+ * divisor shifted up to the remainder's length, then subtracted down a bit at a time */
+void QRMOD(LINT *a, LINT *b, LINT *pQuot, LINT *pRem)
+{
+    LINT d;
+    unsigned int nBitsR;
+    unsigned int nBitsD;
+    unsigned int nBitsB;
+
+    memcpy(&d, b, sizeof d);
+    memcpy(pRem, a, sizeof d);
+    nBitsR = lintGetBits(pRem);
+    nBitsD = lintGetBits(&d);
+    nBitsB = nBitsD;
+    lintSetSmallValue(pQuot, 0);
+    if (nBitsD < nBitsR) {
+        ShiftLeft(&d, nBitsR - nBitsD);
+        nBitsD = nBitsR;
+    }
+    for (;;) {
+        if (nBitsR < nBitsB)
+            return;
+        if (nBitsR < nBitsD) {
+            ShiftRight(&d, nBitsD - nBitsR);
+            nBitsD = nBitsR;
+        }
+        if (IsNotSmaller(pRem, &d)) {
+            lintSubIP(pRem, &d);
+            nBitsR = lintGetBits(pRem);
+            lintSetBit(pQuot, nBitsD - nBitsB);
+        } else {
+            if (nBitsB >= nBitsD)
+                return;
+            ShiftRight(&d, 1);
+            nBitsD--;
+        }
+    }
+}

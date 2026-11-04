@@ -1888,6 +1888,71 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 20** (CZKit's ammo, the fire-class index, the Is() shape where GetState inlines):
+  - THE Is() FALSE ARM HOLDS ONLY WHERE GetState IS A CALL (the SEALs' 0x572190): in seal_aistate.cpp the target inlines
+    GetState and MW then turns the ternary's first operand into a plain branch -- probes show it stays materialised only
+    when the true arm holds a call, a loop, a switch, a store or a volatile read (a two-armed if/return inline folds it);
+    the one GetState body that keeps it (`s = 0; if (c) s = x;`) compiles out of line to 0x20 bytes, not the target's
+    0x24 -- about 40 spellings, so Pop 0x5F7990, PopTo 0x5F7B10, 0x5F43B0 and StateTick 0x5F55E0 stay open; 0x602B20
+    calls GetState out of line (AiStateIs should apply there);
+  - `T **p = &a[i]` puts `this` first in the address add, reading a[i] in place gives the index-first add and keeps the
+    address (CanAddAmmo); a member's offset folds into an inlined member's loads only when its base pointer is first
+    taken into a named local (cast in place MW adds the offset once into a register); a shift written inside an if
+    body is hoisted into the size test's delay slot, a local for the index keeps the target's nop; a const inline bool
+    helper reloads a count the caller's loop holds in a register, non-const it reuses it; declaring a local after a
+    call's result makes MW zero it after the call;
+  - RemoveAmmo, AddAmmo (by order) and CanAddAmmo (by calls) are SOCOM 1's; 0x5C74E0 gives item 193 for a held 153 (the
+    claymore: SOCOM 1 did it inside AddAmmo); 64 placeholders respelled (13 constructors/destructors called by hand stay
+    by address);
+  - open: CompactItems 0x5B9A00 (15, registers after the magazine loop: the permuter's 3,284 steps found nothing),
+    GetPickupSlot 0x5BAE60 (right size, 39, registers), HasPickupSlot 0x5BAC30 (0x220 vs 0x228: `this` in s0 in the
+    target).
+- **Tells from the SEALs, round 19** (seal_env.cpp's death and flinch readers, the footfall pair, the stun pair):
+  - SOCOM II's MSL runs a 2-byte vector (vector<AnimType>) on `__vector_pod<unsigned short>`: elements read back with `lh`,
+    and its reserve (0x5B6BD0, named by behaviour) copies with memcpy where the 4-byte pod loops -- include/vector's
+    generic reserve does not model it yet; the 2-byte pod's insert/reserve sit mid-range (0x5B68E0, 0x5B6BD0): a unit
+    boundary near 0x5B6BE0 is a candidate;
+  - saved registers follow declaration order, not first assignment (0x5A3280); float locals initialised in order take
+    $f4/$f3/$f2 (the later-declared the lower) and load before the tests, written straight into the condition each loads
+    lazily (HandleFootfallSound); `case 2: case 1:` sharing a body closes the compare chain with a `b` where `||` inverts
+    the last test; an inlined bool setter leaves its constant unfolded (`andi zero,1` before the bitfield store); MW puts a
+    float literal first in `c.eq.s` whichever way the comparison is written;
+  - the three readers (one macro body) are pinned with `auto_inline off` -- their callers would inline them;
+    InitDeathAndFlinchAnimations, HandleFootfallSound and TickStun by SOCOM 1's order; 0x5A5250 is SOCOM 1's
+    HandleStunFromHit by position (SOCOM II added a `const float *` scale: the placeholder name kept); AnimSet's six
+    `[6][3]` death tables in data.txt;
+  - open: 0x5AA110 (0x128 vs 0x130: the target's `c.eq.s field,zero`, the offset pick's block layout, the network test's
+    own `return 0` block); not reached: the Is() farm's SEAL functions, round 18's leftovers. Leads: 0x5A0950 and 0x5A0270
+    read the death tables, HandleSealStep 0x5A3570 calls the footprint/footfall pair.
+- **Tells from the UI, round 15** (PreGetSprPacket, RunEventAnim, HookupLib, StrToSkbKey, the key map's tree pieces):
+  - a class local returned by name is optimised into registers and copied at the return; to keep it in a stack slot return
+    it through a reference local (`T &r = k; return r;`), to build it in the hidden result use a constructor; a by-value
+    inline helper and make_pair / value_type(pair) still let MW optimise a pair temporary into registers -- a temporary
+    the target keeps on the stack points to something else (MSL's pair with its fields in a base class? untested);
+  - a walk whose end() reads through a register holding the vector's address means a reference local on the vector
+    (HookupLib); a member reached through a reference local to an array element gets a register of its own, indexed in
+    place it uses the loop's strength-reduced pointer (RunEventAnim: the 30 commands at 0x6F8, their count at 0x8D8);
+  - PreGetSprPacket is SOCOM II's three-buffer relocator (small textures to buffer 2, big ones alternating 0 and 1);
+    StrToSkbKey is SOCOM 1's with Switch<n> and jamo keys added; insert_one 0x38EC10 and insert_node_at 0x38EF50 match
+    once AddKeyProps creates them; ActionItem gets SOCOM 1's nested EVENT enum (0-24 named from ParseButtonAnim's
+    strings);
+  - open: AddKeyProps 0x38B770 (0xFC vs 0x124: the insert's three pair temporaries on the stack in the target),
+    ParseKeyProps 0x38DCB0 (0x220 vs 0x1F0: frame and registers).
+- **Tells from the weapons, round 16** (the item groups, the VU0 decal batch, GetTextureSelectBlock's return, the
+  texture-effect respells):
+  - an enum local read in a switch's case blocks is copied with `lb` and narrowed per compare; the same local compared in
+    an if chain becomes one `lbu`; MW folds none of `> 255`, `>= 256`, `== -1` or `== 0x100` on an unsigned byte enum
+    result;
+  - assigning a node's matrix row through a pointer copies field by field straight into an address-taken local, where
+    CNode::GetPosition() by value stores through a pointer register; a static member function shows at its call site by
+    the missing a0 (the mangled name cannot tell: ResolveFTSDamage is static); a user destructor's body statement lands
+    in the delay slot of the first member's this-test (0x3BEB00);
+  - CVisual::GetTextureSelectBlock returns `_word128 *` (ztex_main.cpp's caller func_003C3D90 can be respelled);
+    vis_texfx.h holds the texture-effect classes (zanim_cmd_tick.cpp calls theTextureFXManager.Scroll/SetSpeed,
+    byte-identical); CZWeapon's PostTick, SetDecalSetName, HasFireMode (SOCOM 1's code) and GetEffectiveRange named;
+  - open: GetDamage(pos, minimum) 0x3C7600 (5: the falloff product in f0 against f1, `dist - eff` not in the span test's
+    delay slot, the id test one lbu where the target copies with lb and narrows with andi), UnpackItemAndAmmoEnums (1:
+    `packed % 256ul` gives dsra32 where the target has dsrl32), 0x3C5C20.
 - **Tells from the world, rdr and sound, round 6** (the sound banks, the subtitle table, FIFO_Signal settled):
   - A CAST ON THE BASE OF AN INLINE ACCESSOR'S FIELD READ keeps that field's address in a saved register across calls,
     even for by-value or volatile reads: include/list's `((node *)node_)->data_` is what holds a walk's element address
@@ -4470,7 +4535,7 @@ functions written (154 of them assembler), four superseding drafts that matched 
 eight reentrant syscall wrappers (`closer.c` ... `writer.c`) and `strtod.c` (strtod; strtof OPEN):
 86 functions byte-exact of 88 written. What they showed:
 
-- **A static several objects define is `NAME@UNIT` in the map** (`Copy@tlbfunc`, `kCopy@exit`):
+- **A static several objects define is `NAME@UNIT` in the map** (`Copy@tlbfunc`; `kCopy@sdk/exit`, a path tail since round 18a -- the stem exit is newlib's too):
   libkernl links five objects with static `Copy`/`kCopy`/`setup`/`GetEntryAddress` syscall
   wrappers. A GNU object's local function `NAME` scores as the row `NAME@UNIT` (UNIT the source's
   stem) when the map has one (`scdiff.qualify_statics`; sccheck, ccsweep and scdiff apply it); a
@@ -5207,6 +5272,77 @@ lane's four ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the 
 `18DB90 1C4CC0` 145 tried, 0 hits (13 build failures, 16 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0
 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 137 tried, 0 hits (23, 8): 290
 tried, none byte-exact (round 16a: 349, 0).
+
+**Round 18a** (2026-11-04, by hand, OVL1's codec first): 27 rows newly byte-exact (5,908 bytes), two
+matched drafts superseded (0x24C5D0, 0x24C8C0) -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows
+1,021 -> 1,050 of 1,109 scored, none lost -- 29 functions written byte-exact of 31. Nellymoser's
+codec, a unit per source file its asserts name -- the decoder's `ovl1/sase_swsynth.c` (new: the
+high-frequency regeneration's onset phase 0x256AB0, its rounded turn count an int of its own), and in
+the encoder `sase_libquan.c` (+7: the codebook readers, the
+nearest 2-D codeword, the prediction, the rotate-and-scale pair, the outer-cell test), `sase_libtran.c`
+(new, 6 of 6 written: the de-interleave, k <-> ASK, the step-up recursion, the FFT driver and its bit
+reversal -- Numerical Recipes' four1 shape), `sase_libvect.c` whole (+2), `sase_libsnd.c` (new, the
+circular buffer whole -- round 12a's release moved there from sase_misc.c), `sase_libmath.c` (new: the
+fourth root; the RNG OPEN), `sase_ldpda.c` (+2), `sase_libsigproc.c` (+1), `sase_libspeech.c` (new: the
+parabolic peak), `sase_preproc.c` (new, whole: the DC-blocking high-pass), `sase_bitpackc.c` (new: the
+bit packer), `sase_packsc.c` (new, whole), `sase_encsc.c` (+1, the frame's spectrum); `sase_codepv.c`'s
+decode OPEN. No rows named (the codec is not in SOCOM 1). What they showed:
+
+- **2.96 if-converts an if/else, so its arms are not an assignment and an if**: `if (c) x = a; else x =
+  b;` becomes `x = b; if (c) x = a;` AFTER CSE -- the else's constant materialised again (0x24EF30's
+  reloaded 1.0, `fScale = 1.0F; if (...)` divides f20 by itself, 2 words short), or the assignment
+  placed after the compare it follows (0x24A9F0's `move` in the branch's slot; assigning first re-forms
+  the address from the copy, 2 words long), or the else's zero copied from the compare's (0x24D498:
+  `if (fA != 0.0F) ...; else fX = 0.0F;` -- the default first 4 words off, the test inverted 27). A
+  test of two arms that share one consequence is one conditional expression: PreProc.c's flush `if ((y
+  > 0) ? (y < 1e-5) : (y > -1e-5)) y = 0;` -- nested ifs give two zeroing blocks.
+- **An inline function's output is deferred to the end of the object**: libvect.c's scaled copy is
+  `__inline__` -- 0x24EF30 inlines it, assert and all, and its out-of-line copy is the same code -- and
+  the image holds the object's line-397 function first: GCC emits inline functions at the end, which is
+  why the codec's objects are not in line order (libquan.c 100 ... 1118, then 472, 632, 362 ...).
+- **The target's saved register is the parameter's**: a count decremented in place (`iLength--`, the
+  band edge 0x24A908), a pointer parameter swapped with the scratch array (the step-up 0x24EA68:
+  `pfT = pfA; pfA = pfPrev; pfPrev = pfT`), an offset added to (`iOffset += (n + 1) >> 1`, the ring's
+  centred read) -- each a new variable here moves the allocation.
+- **One temporary per value, as the vendor wrote it**: the fourth root's polynomial through one `fY`
+  (as one expression its product ties to the dying operand: 8 words), the inverse rotation's norm
+  inverted in place (`fNorm = 1.0F / fNorm`), the 2-D distance accumulated (`fDist = d * d; d = ...;
+  fDist += d * d`), the codebook walked `*pfCodeBook++` (an index stride of 2 is one `addiu 8`).
+- **A parameter converted where it is used**: the bit packer's data is an int made short after the
+  assert (a `short` parameter converts at the entry: 49 words); the frame packer's prototype takes an
+  unsigned char (the caller's `lbu` of each int index).
+- **A null test of a dereferenced pointer is deleted** (-fdelete-null-pointer-checks): libsnd.c's write
+  and read read the block's int fields at their declarations and the target tests only the buffer of
+  the assert's two; PreProc.c's float load from its block leaves the test that follows (both as written).
+- **Measured**: PackSC.c's packer block, three store orders of 720 (`tools/ccperm.py`).
+- **Open, diagnosed in place**: the RNG 0x24AEB0 (12 words: the high product in a1, the target's v0 --
+  its halves computed before the assert, else the call reloads the seed; the decoder's copy at 0x256380,
+  SWSynth.c:359, has the same text at -G0), CodePv.c's decode 0x2487E8 (6: two saved registers swapped).
+- **MAIN, the toolchain hunt**: `toolchains/dl/ee-gcc2.9-991111.tar.xz` holds a Linux build of 991111
+  that toolchains/ never linked (the linked `ee-gcc2.9-991111` is the PE32 `.tar.gz`); it compiles
+  fileio's no-wait four as every other 991111 build (98s/87s/126s/98s): no new toolchain. But
+  **sceSifInitIopHeap is byte-exact under `-fno-schedule-insns`**, which costs every other function of
+  iopheap.c 2-34 words: this cc1's first scheduler hoists the return's clear above `_bind`'s store
+  (no dependence, ISSUE_RATE 2) where the vendor's did not -- with the no-wait PRE (round 17a) and
+  adddate's GCSE (round 12a), the third place the vendor's cc1 does less than dtls13010's.
+
+**The tools, round 18a**: (1) **a static's `NAME@UNIT` qualifies by path where a stem is shared**
+(round 17a's hazard): `scdiff.unit_qualifiers` gives a unit's UNITs most specific first -- its path
+under src/ without the suffix and each tail of it (`lib/sdk/exit`, `sdk/exit`), and the bare stem only
+while no other unit in the tree shares it (`exit`, `locale`, `zsys_memory`, `zvid` recur; only
+`exit` is two GCC units', libkernl's and newlib's). sccheck, scdiff and ccsweep pass the unit's path
+(a probe outside the tree is its stem, ccsweep's `--stem` is taken as given); sdk/exit.c's three rows
+are `Copy@sdk/exit`, `kCopy@sdk/exit`, `setup@sdk/exit`. The canary's
+`test_shared_stem_qualifies_by_path` pairs it with its negatives (the bare row of a shared stem
+resolves for neither unit, a unique stem still does). **Proved** over every unit (`--files .`, 1 job,
+`build/scratch/gcc/proof.sh`): master 9fab136a's sccheck.py, scdiff.py and scdecomp.py with master's
+map, and these with this map, over one frozen snapshot of src/ and include/ -- 11,241 lines each,
+identical but the three renamed rows' names (match under both); after merging master 1cb92b57 every
+`src/lib` unit scores with no regression (2,445 of 2,604). automatch over the lane's four ranges
+(`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's build): MAIN `18DB90 1C4CC0` 143
+tried, 0 hits (13 build failures, 16 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0 hits (5 refusals),
+OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 137 tried, 0 hits (23, 8): 288 tried, none
+byte-exact (round 17a: 290, 0).
 
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
@@ -6722,6 +6858,49 @@ func_00614290 over their drafts; 77 of 87), `medius/rt_udp.c` (+1, 0x63E230 clos
 `medius/rt_msg_client.c` (+1, 0x638828: 88 of 93) -- 19 rows new to the map's byte-exact rows (4,812
 bytes; `src/lib/medius` 872 -> 912 of 970), 21 superseding matched drafts; 4 rows named (RSAEncryptBlock,
 RSADecryptBlock, RSAEncrypt, RSADecrypt: `s1:order`). No tool changed.
+
+**Round 18b: the server key is the title's -O1, codec.c and RSA.c whole, LargeInt's C by SOCOM 1's calls.**
+
+- **The server key object is built at -O1, as kmsoftware.c is** (the title's glue, not SCEA's): 0x64F4E0,
+  open since round 15b on "registers only" through eight return shapes, is byte-exact unchanged at
+  `-O1 -G0`. At -O2 the first scheduling pass hoists the return's `v0 = 0` above the block move, so v0 is
+  live through it and the key's address and the move's scratches each move up a register. A register-only
+  open in a glue object: try -O1 before shapes.
+- **RSA.c starts at 0x62B168, and there are two key-pair generators**: SOCOM 1's RSAGenerateKeyPair (its
+  primes two `lintPrime(p, 256)` draws, asserting at RSA.c:164) and a twin 0x62B548 whose primes come from
+  a table (RSA.c:293) -- a new `prime.c` (0x62A3B0, ours): a fixed 256-bit base plus the sum of the first
+  n of 8191 sixteen-bit gaps, n from the Mersenne twister seeded once. Each has its own copy of SOCOM 1's
+  KM_GenerateRSAKeyPair in rt_crypt.c (0x6305C8, named; 0x630600). Their check is `assert(0)` (the
+  expression text "0"), its line a `#line`. lintPrime's thirteen calls are SOCOM 1's in order, which names
+  its callees (`s1:calls`): lintRandomize, MOD, GCD, lintIsbSPRP, LucasTest; LargeInt's C then follows
+  SOCOM 1's bodies -- lintAdd, lintSub and MOD are a memcpy in, the assembly's in-place primitive (MODIP
+  named so), a memcpy out; QRMOD is SOCOM 1's algorithm.
+- **A loop whose exits are `return`s stays unrotated** (round 16b's rule met again): QRMOD's `for (;;)`
+  with `if (...) return;` at its head and in its else keeps the test at the loop's top, as the target
+  (and SOCOM 1's copy) has it; `while (cond)` and `break` rotate it.
+- **2.96 rotates a loop at the last exit within its first 30 insns, not only a leading test**: codec.c's
+  pass-through loop (`while (nIn > 0 || nOutSize > 0)`) has its full-output case -- store the input,
+  `break` -- moved to the loop's end with the test; in the source that case comes first in the body.
+  RSAGenerateKeyPair's inner `for (;;)` shows the same: its first branch (`... d = q; break;`) is laid
+  out last.
+- **Round 14b's guard rule closes a three-word open**: rt_udp's 0x641E30 shared-slot test written positive
+  (`if (gapUdp[n] == 0) {...} else return 17;`) gives the target's slot register and, through the changed
+  join, the port query's plain `bnez` too.
+- **codec.c's record, typed**: two switches on the codec type (one per kind, identical bodies: the stub
+  codecs' entry points at 0x64F580 for 34-36, the object's dummy for 33/63, cross-jumped once); the
+  dummy's create returns its call count as the context; a 480-byte coded and a 2048-byte PCM buffer give
+  the 0xA20; the field at 0x38 is the session's counters, handed to audio.c's tallies. Updates in the
+  orders tools/ccperm.py found.
+
+Hand-written in round 18b: `medius/serverkey.c` (1 of 1, the directive), `medius/rt_udp.c` (+1, 0x641E30: 39
+of 46), `medius/codec.c` (+3: the create and both frame calls; 14 of 14, whole), `medius/rsa.c` (+2:
+RSAGenerateKeyPair, 0x62B548; 6 of 6), `medius/prime.c` (1 of 1, new), `medius/rt_crypt.c` (+2:
+KM_GenerateRSAKeyPair and its twin over their drafts; 30 of 33), `medius/largeint.c` (+4: lintAdd, lintSub,
+MOD, QRMOD; 12 of 14) -- 14 functions byte-exact, 12 rows new to the map's byte-exact rows (8,196 bytes;
+`src/lib/medius` 912 -> 926 of 982), 2 superseding matched drafts; 12 rows named (RSAGenerateKeyPair
+moved to 0x62B168, 0x62B548 back to its placeholder; KM_GenerateRSAKeyPair `s1:order`; lintPrime,
+lintRandomize, MOD, GCD, lintIsbSPRP, LucasTest, QRMOD, MODIP `s1:calls`; lintAdd, lintSub `s1:order`).
+No tool changed.
 
 ## Open, and next
 
