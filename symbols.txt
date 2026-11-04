@@ -5934,8 +5934,8 @@
 0x003352D0 0x14 func_003352D0  # OVL1
 0x003352F0 0x404 func_003352F0  # OVL1
 0x00335700 0x1C String__5_zrdrCFv  # OVL1; the integrator 2026-11-04, by the UI lane round 20: the body is `type == 3 ? string : 0`, zrdr.h's inline `char *String() const` out of line; called by _Refresh and 0x3352F0, 0x3357C0, 0x335E20
-0x00335720 0x40 func_00335720  # OVL1
-0x00335760 0x40 func_00335760  # OVL1
+0x00335720 0x40 Int__5_zrdrCFv  # OVL1; the world lane round 14: the body is `type == 1 ? integer : type == 2 ? (int)real : 0`, zrdr.h's inline `int Int() const` out of line (ZRDR_INTEGER 1, ZRDR_REAL 2); String 0x335700's sibling, called in pairs by 0x3352F0, 0x3357C0 and 0x335E20
+0x00335760 0x40 Real__5_zrdrCFv  # OVL1; the world lane round 14: the body is `type == 2 ? real : type == 1 ? (float)integer : 0.0f`, zrdr.h's inline `float Real() const` out of line; String 0x335700's sibling, called in pairs by 0x3352F0, 0x3357C0 and 0x335E20
 0x003357A0 0xC func_003357A0  # OVL1
 0x003357B0 0xC func_003357B0  # OVL1
 0x003357C0 0x1FC func_003357C0  # OVL1
