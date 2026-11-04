@@ -1502,6 +1502,11 @@ public:
      * what it holds (SOCOM 1's; OVL2 0x5A8CB0) */
     bool IsThrowing(bool started);
     bool CanFire(bool a, bool b);
+    /* a weapon's node made and parented: the rifle's to the right hand when it is the item in hand,
+     * else the back, the pistol's to the hand or the hips, a throwable's to the hand -- the part
+     * kept as the item's and whether one was made (SOCOM 1's AddWeapon(SEAL_ITEM): zweapon.h's
+     * word-sized SEAL_ITEM stand-in takes that name, so the byte enum here; OVL2 0x553290) */
+    bool AddWeapon(SEAL_ITEM_BYTE item);
     /* the rifle, or the pistol, taken into the hand: the kit's own reparenting, the weapon into the
      * right hand (the pistol only when asked), the other worn (the pistol holstered only when asked),
      * the item in hand set (SOCOM 1's; OVL2 0x5A70F0, 0x5A7260) */
@@ -1592,7 +1597,9 @@ public:
     CZBodyPart *m_leyeball;   // 0x35c
     CZBodyPart *m_reyelid;   // 0x360
     CZBodyPart *m_leyelid;   // 0x364
-    unsigned char _368[0x374 - 0x368];
+    /* the nodes the SEAL made for itself, freed with it (SOCOM 1's m_deallocList, 0x2f0: AddWeapon
+     * pushes each weapon's node) */
+    std::vector<zdb::CNode *> m_deallocList;   // 0x368
     SEAL_STATE m_desiredState;   // 0x374 (SOCOM 1's 0x304; the HUD's pose bitmap reads it)
     SEAL_STANCE m_desiredStance;   // 0x375: the stance the AI asks for (0x5631B0; the name ours)
     unsigned char _376[0x37c - 0x376];

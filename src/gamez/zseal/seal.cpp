@@ -570,6 +570,46 @@ void CZSealBody::OnMissionEnd()
     ((CSealCtrl *)m_control)->OnMissionEnd();
 }
 
+extern "C" {
+/* CBody::AddBodyPart (OVL1 0x28EBE0), which returns the part it made -- NewBodyPart's, in v0: zbody.h
+ * (the engine core's) declares it void, so it is called by its mangled name here, the body by reference
+ * so no null test is made */
+CZBodyPart *AddBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart(CBody &body, zdb::CNode *node, CZBodyPart *parent);
+}
+
+/* a weapon's node made, kept for freeing and named, parented by the item: the rifle in hand to the
+ * right hand, slung to the back; the pistol to the hand or the hips; a throwable to the hand; its part
+ * the item's (OVL2 0x553290; SOCOM 1's AddWeapon, the constructor calls it twice in both builds --
+ * SOCOM II keeps the parts in m_item_gear) */
+bool CZSealBody::AddWeapon(SEAL_ITEM_BYTE item)
+{
+    CZBodyPart *parent = 0;
+    zdb::CNode *node = new zdb::CNode;
+
+    m_deallocList.push_back(node);
+    switch (item) {
+    case ITEM_RIFLE:
+        if (m_item == item)
+            parent = m_rhand;
+        else
+            parent = m_spinelo;
+        node->SetName("rifle");
+        break;
+    case ITEM_PISTOL:
+        if (m_item == item)
+            parent = m_rhand;
+        else
+            parent = m_hips;
+        node->SetName("pistol");
+        break;
+    case ITEM_THROWABLE:
+        parent = m_rhand;
+        node->SetName("grenade");
+        break;
+    }
+    return (m_item_gear[item].m_part = AddBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart(*this, node, parent)) != 0;
+}
+
 /* the root body part (OVL2 0x553DB0; SOCOM 1's, CBody's slot 0x10) */
 CZBodyPart *CZSealBody::GetRootPart() const
 {

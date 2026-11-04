@@ -1979,6 +1979,99 @@ extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
     climb->m_active = 0;
 }
 
+extern "C" {
+/* CPnt3D's implicit assignment, OVL2's out-of-line copy (OVL1's is 0x20F1F0, CHoming's reset's): the
+ * homing's points are set through it, the inline that sets them too tall for it to inline */
+CPnt3D *func_00539E90(CPnt3D *to, const CPnt3D *from);
+/* (OVL2 0x545EE0, seal.cpp's range: what a carried body's turret entity is told, with 1) */
+void func_00545EE0(CZSealBody *seal, int n);
+}
+
+/* a blend's homing aimed: the blend, its reference point, the wall's normal and the point it closes
+ * on, the reference direction -z and no target point, both counters cleared (an inline member: its
+ * `this`, the blend's homing, stays in a saved register as the copies go through the assignment's
+ * out-of-line copy -- zbody.h is another lane's, so a stand-in class over CHoming's layout; the names
+ * ours) */
+class CHomingAim : public CHoming {
+public:
+    void Aim(CZBodyAnimBlend *b, const CPnt3D *refpt, const CPnt3D *norm, const CPnt3D *intpt)
+    {
+        m_blend = b;
+        func_00539E90(&m_refpt_m, refpt);
+        func_00539E90(&m_norm_w, norm);
+        func_00539E90(&m_int_w, intpt);
+        func_00539E90(&m_refvec_m, &CPnt3D::unit_nz);
+        func_00539E90(&m_target_refpt_m, &CPnt3D::zero);
+        m_1c = 0;
+        m_2c = 0;
+    }
+};
+
+static inline CHomingAim *HomingOf(CZBodyAnimBlend *b)
+{
+    return (CHomingAim *)&b->m_homing;
+}
+
+/* a point turned about, in place (an inline, the name ours) */
+static inline void Negate(CPnt3D *p)
+{
+    p->x = -p->x;
+    p->y = -p->y;
+    p->z = -p->z;
+}
+
+/* a body carried: the top blend homed onto a point, along the flat reverse of a direction, its target
+ * the reference point itself; a carried body working an entity told so with 1 (OVL2 0x5B1750, new in
+ * SOCOM II: RestrainBuddy, StabBuddy and 0x579A30 call it; the name unknown).
+ * OPEN, the size right, registers only (55 words; 39 with Aim a static inline taking the homing, which
+ * 0x5B1890 refuses): the target gives the parameters s4-s1 in order, the blend s0, the homing's `this`
+ * dir's s1 once dir is dead, and the y's address (kept across Normalize) s5; MW here numbers the
+ * inline's parameters with the SEAL's -- refpt and intpt take s1/s0. Tried (build/scratch/seal/
+ * v_hom*.py, tools/perm.py 2444 steps, best 41): the direction copied before the blend, assigned, by
+ * value, its y through a reference or a pointer, the homing pointer declared first or written out, the
+ * negation written out */
+extern "C" void func_005B1750(CZSealBody *seal, const CPnt3D *refpt, const CPnt3D *intpt, const CPnt3D *dir)
+{
+    if (seal->m_carry) {
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        CPnt3D d = *dir;
+
+        d.y = 0.0f;
+        d.Normalize();
+        Negate(&d);
+        HomingOf(top)->Aim(top, refpt, &d, intpt);
+        top->m_homing.m_target_refpt_m = *refpt;
+        if (seal->m_carry->m_eb8)
+            func_00545EE0(seal->m_carry, 1);
+    }
+}
+
+/* the top blend homed onto its own goal: its goal marked unreached, the reference point a fixed offset
+ * lowered by 11.487 (0x4137CAC0: 11.4869995) less the goal's height over the SEAL, half a unit up
+ * again, the goal's normal turned about, the reference direction +z (OVL2 0x5B1890, new in SOCOM II:
+ * 0x589AA0 calls it; the name unknown). The goal's info through a reference (its address kept for the
+ * homing's normal), the goal assigned field by field and its height taken before the offset is built */
+extern "C" CZBodyAnimBlend *func_005B1890(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    REFPT_INFO &info = top->m_refpt_info;
+
+    info.m_valid = 0;
+    CPnt3D goal;
+    goal = info.m_goal_pos;
+    float h = goal.y - seal->m_posW.y;
+    CPnt3D off(0.347f, -1.412f, 3.2f);
+
+    goal.y += off.y;
+    off.y -= 11.4869995f;
+    off.y += h;
+    off.y += 0.5f;
+    Negate(&info.m_goal_norm);
+    HomingOf(top)->Aim(top, &off, &info.m_goal_norm, &goal);
+    top->m_homing.m_refvec_m = CPnt3D::unit_z;
+    return top;
+}
+
 /* whether the SEAL is on a given ladder (OVL2 0x59D6C0, new in SOCOM II; 0x56BD10 asks it) */
 extern "C" bool func_0059D6C0(CZSealBody *seal, CLadderData *ladder)
 {
