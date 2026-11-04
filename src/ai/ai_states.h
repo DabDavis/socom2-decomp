@@ -77,6 +77,26 @@ class CAiState;
  * movz` narrowed; the stack's tick returns 2 once its state is done -- the names ours) */
 enum AI_RESULT { AI_RUNNING = 0, AI_DONE = 1, AI_FINISHED = 2, AI_RESULT_LAST = 255 };
 
+/* a word of the stack's, held as an aggregate and read as the word (the name ours: see
+ * CAiStateStack's m_c) */
+class CAiStateWord {
+public:
+    CAiStateWord(unsigned int v) : m_v(v) {}
+    operator unsigned int() const { return m_v; }
+    CAiStateWord &operator&=(unsigned int v)
+    {
+        m_v &= v;
+        return *this;
+    }
+    CAiStateWord &operator|=(unsigned int v)
+    {
+        m_v |= v;
+        return *this;
+    }
+
+    unsigned int m_v;
+};
+
 /* the states a controller (or a state) runs, the current one at the front (SOCOM 1's DWARF:
  * CAiStateStack : list, 0xc bytes -- CSealCtrlAi::m_stateStack there, followed by m_stateTimer
  * and m_stateFlags; SOCOM II also gives every CAiState one, at +8). SOCOM II's is 0x20 bytes: its
@@ -159,9 +179,13 @@ public:
         m_14 |= set;
     }
 
-    int m_c;   // 0xc (-1 when new)
-    unsigned int m_10;   // 0x10: the kinds on the stack, a bit each (PopTo(AI_STATE) tests it)
-    unsigned int m_14;   // 0x14
+    /* the three words after the list are 4-byte aggregates: CAiState's implicit operator=
+     * (0x5EBDC0) copies each through the FPU, `lwc1/swc1 $f0` one after another, as it does the
+     * cell at 0x50 -- int members (or anonymous unions) copy with lw/sw, a 16-byte struct batches
+     * its four loads, and a base is copied member by member -- the timer, a float, with them */
+    CAiStateWord m_c;   // 0xc (-1 when new: every kind may be pushed)
+    CAiStateWord m_10;   // 0x10: the kinds on the stack, a bit each (PopTo(AI_STATE) tests it)
+    CAiStateWord m_14;   // 0x14
     float m_timer;   // 0x18: the time in the current state (SOCOM 1's CSealCtrlAi::m_stateTimer)
     int m_result;   // 0x1c: the last state's result (the name ours)
 };
@@ -303,13 +327,12 @@ public:
     CAiStateStack m_stack;   // 0x8: the state's own sub-states (new in SOCOM II)
     int m_done;   // 0x28: what the last Tick returned (the name ours)
     unsigned int m_flags;   // 0x2c (zeroed by the constructor; the overrides test single bits)
-    AI_STATE m_state;   // 0x30
-    unsigned char _31[0x34 - 0x31];
+    AI_STATE m_state;   // 0x30 (0x31-0x33 padding: the implicit operator= copies none of it)
     unsigned int m_phase;   // 0x34: the state's step (SOCOM 1's at 0x14; zeroed by Reset)
     float m_phaseTime;   // 0x38: the time in that step (the stack's tick adds dT to it)
     unsigned int m_nextPhase;   // 0x3c: the step a delay ends on (0x5F61E0)
     float m_delay;   // 0x40: that delay
-    unsigned char _44[0x48 - 0x44];
+    float m_44;   // 0x44 (copied through the FPU by the implicit operator=: a float)
     unsigned int m_48 : 16;   // 0x48 (never touched by the code read so far)
     unsigned int m_bit0 : 1;   // 0x4a bit 0 (set by Reset)
     unsigned int m_active : 1;   // bit 1: running (a state's Tick returns !m_active once it is cleared)
@@ -401,10 +424,12 @@ public:
     virtual ~CAiSBreach();
 
     CPnt3D m_58;   // 0x58
-    unsigned int m_64;   // 0x64
-    unsigned char _68[0x6c - 0x68];
-    unsigned int m_6c;   // 0x6c
-    unsigned int m_70;   // 0x70
+    /* the first and the last SEAL of a breach team, the SEAL's place in it and the team's valve
+     * (0x5EBB50 sets them from the squad's prototype; the names ours) */
+    CSealCtrlAi *m_64;   // 0x64
+    CSealCtrlAi *m_68;   // 0x68
+    int m_6c;   // 0x6c
+    class CValve *m_70;   // 0x70
     unsigned int m_74;   // 0x74
     /* 0x78: the door's action -- the side test 0x5F3270 reads its direction nibble, the centre
      * 0x5F3100 its six cells */
@@ -430,11 +455,19 @@ public:
     /* the hold bit set through a bool (the target's `daddiu 1` for true, `andi zero,1` for false;
      * the name ours) */
     void SetHold(bool b) { m_hold = b; }
+    /* (the else arm assigns r to itself: it keeps the call's test a branch, `daddiu s0,zero,1`
+     * after it, where without it MW if-converts the test into an sltu -- CanPushAiState 0x5F40F0) */
     bool Pursuable(CSealCtrlAi *ai)
     {
-        if (NotHeld() && CanPursue(ai))
-            return true;
-        return false;
+        bool r = false;
+
+        if (NotHeld()) {
+            if (CanPursue(ai))
+                r = true;
+            else
+                r = r;
+        }
+        return r;
     }
 
     unsigned int m_58;   // 0x58
@@ -591,6 +624,8 @@ public:
      * 0x5FDAD0 runs (OVL2 0x5FC7D0: SOCOM 1's HandleFollowTickHideCheck by its place; the names
      * ours) */
     bool HideCheck(CSealCtrlAi *ai, bool b, bool hide, char *out);
+    /* the follower's look while hiding, set once: true once it is (OVL2 0x5FDAD0; the name ours) */
+    bool SetHideLook(CSealCtrlAi *ai);
     /* the AI's follow master made the state's, a new one restarting its step; true while it
      * lives (flag 8 then says whether it closes in), else the master let go (OVL2 0x5FDD40,
      * CAiSFollow::Tick's first call; the name ours) */
@@ -748,6 +783,8 @@ class CAiSTarget : public CAiState {
 public:
     CAiSTarget() : CAiState(AI_STATE_TARGET) {}
     virtual void OnSignal(SIGNAL sig, CSealCtrlAi *ai);
+    /* +0x10 (0x604880, seal_airesponse.cpp's) */
+    virtual int Tick(CSealCtrlAi *ai);
     /* +0x14 (0x604BF0): over once the AI's target no longer holds */
     virtual int Virtual14(CSealCtrlAi *ai, CAiState *sub);
     virtual ~CAiSTarget();

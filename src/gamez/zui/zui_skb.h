@@ -481,6 +481,8 @@ public:
                         const char *texB, zdb::CTextureRelocMgr *mgr);
     void ShutdownBegin(CGameMenu *menu);
     void OnEnterKey(CGameMenu *menu);
+    /* the pad's buttons handled, then the USB keyboard's keys (0x38C990; ours) */
+    void HandlePad(CPad *pad, CGameMenu *menu);
 
     CSkbGrid m_grid;   // 0x158
     CSkbKeyMap m_keyProps;   // 0x164

@@ -376,6 +376,172 @@ int CAiSTarget::Virtual14(CSealCtrlAi *ai, CAiState *sub)
     return Result();
 }
 
+/* the controller's alert amount at 0x718, a float (the name ours) */
+struct CAiCtrl718f {
+    unsigned char _0[0x718];
+    float m_718;   // 0x718
+};
+
+/* the controller's target (SOCOM 1's CAiTarget, ai_target.cpp's: only what this unit calls) */
+class CAiTarget {
+public:
+    float GetTimeSinceLastSighting() const;
+
+    CEntity *m_entity;   // 0x0
+};
+
+/* the AI's look and moves toward a target (OVL2 0x5F0B30, 0x5F0990: seal_aistate.cpp's), the alert
+ * gathered by 0x572240 dropped (OVL2 0x572310, the SEAL lane's row) and two of the SEAL lane's
+ * tests (OVL2 0x558F80: the SEAL's kit holds a sniper rifle; 0x558FB0: the SEAL in a region of
+ * kind 6) */
+extern "C" {
+bool func_005F0990(CSealCtrlAi *ai, const CPnt3D *pos, int mode, int a, int b);
+void func_00572310(CSealCtrlAi *ai);
+bool func_00558F80(CSealCtrlAi *ai);
+bool func_00558FB0(CSealCtrlAi *ai);
+bool func_00607830(const CSealCtrlAi *ai);
+}
+/* (seal_airesponse.cpp's, defined with the event state below) */
+inline bool TargetHeld(CSealCtrlAi *ai);
+
+/* the target's entity's position, or 0 (an inline: the target re-reads it at each use) */
+static inline const CPnt3D *TargetPos(CSealCtrlAi *ai)
+{
+    CEntity *t = ((CAiTarget *)ai->m_67c)->m_entity;
+
+    return t ? &t->m_posW : 0;
+}
+
+/* the target lost: out of sight for over three seconds (an inline bool; the name ours) */
+static inline bool SightLost(CSealCtrlAi *ai)
+{
+    return ((CAiTarget *)ai->m_67c)->GetTimeSinceLastSighting() > 3.0f;
+}
+
+/* done with the target: it is gone, or neither held nor seen for three seconds (an inline bool;
+ * the name ours) */
+static inline bool TargetGone(CSealCtrlAi *ai)
+{
+    bool r = true;
+
+    if (func_0060A850(ai->m_67c)) {
+        if (!TargetHeld(ai))
+            r = SightLost(ai);
+        else
+            r = false;
+    }
+    return r;
+}
+
+/* the target held with an alert gathered (an inline bool: the target materialises the `&&`; the
+ * name ours) */
+static inline bool HeldAlerted(CSealCtrlAi *ai)
+{
+    return TargetHeld(ai) && ((CAiCtrl718f *)ai)->m_718 > 0.0f;
+}
+
+/* the AI too busy to go for the target: a broken hold (func_00607830's body: the target inlines it,
+ * the AI taken into a const local -- read through the parameter, MW hoists the stack's address for
+ * GetState above the size test where the target keeps it in the call's delay slot), a sniper rifle,
+ * or (not a SEAL of the player's side) in a region of kind 6. Inline bools, each a result preset
+ * and changed under nested tests with a self-assigning else arm (the kit lane's round 33: the
+ * target's preset-then-clear `||` and set-under-test `&&` -- `return a || b;` gives MW's value
+ * select, if-forms without the arm if-convert); `!m_navyseal` an inline of its own (materialised,
+ * sltu/xori). The names ours */
+inline bool HoldBroken(const CAiState *s);
+static inline bool HoldBrokenOf(CSealCtrlAi *ai)
+{
+    const CSealCtrlAi *c = ai;
+    const CAiState *s = c->m_stateStack.size() == 0 ? 0 : c->m_stateStack.GetState();
+
+    return s ? HoldBroken(s) : false;
+}
+
+static inline bool HoldOrSniper(CSealCtrlAi *ai)
+{
+    bool r = true;
+
+    if (!HoldBrokenOf(ai)) {
+        if (!func_00558F80(ai))
+            r = false;
+        else
+            r = r;
+    }
+    return r;
+}
+
+static inline bool NotNavySeal(CSealCtrlAi *ai)
+{
+    return !ai->m_navyseal;
+}
+
+static inline bool Region6(CSealCtrlAi *ai)
+{
+    bool r = false;
+
+    if (NotNavySeal(ai)) {
+        if (func_00558FB0(ai))
+            r = true;
+        else
+            r = r;
+    }
+    return r;
+}
+
+static inline bool StayPut(CSealCtrlAi *ai)
+{
+    bool r = true;
+
+    if (!HoldOrSniper(ai)) {
+        if (!Region6(ai))
+            r = false;
+        else
+            r = r;
+    }
+    return r;
+}
+
+/* a target state: once its time is up or the target gone, done (step 3); step 0 goes for the
+ * target's cell -- a look pushed while the target is held with an alert gathered, else a move --
+ * unless the AI should stay put, step 2 waits for the alert and 1.5 seconds before going again,
+ * step 1 for the route (OVL2 0x604880; SOCOM 1's only timed out; byte-exact in the kit lane's round
+ * 34: the shapes are the helpers') */
+int CAiSTarget::Tick(CSealCtrlAi *ai)
+{
+    STEP step = (STEP)m_phase;
+
+    if (!(ai->m_stateStack.m_timer < m_time) || TargetGone(ai))
+        step = STEP_3;
+    switch (step) {
+    case STEP_0:
+        if (!StayPut(ai)) {
+            CAiMapLoc loc;
+
+            if (AiMaps.GetLocation(TargetPos(ai), loc)) {
+                if (HeldAlerted(ai))
+                    func_005F0B30(ai, TargetPos(ai), 5, 2, 2);
+                else
+                    func_005F0990(ai, TargetPos(ai), 5, 2, 2);
+                func_00572310(ai);
+            }
+        }
+        step = STEP_2;
+        break;
+    case STEP_2:
+        if (((CAiCtrl718f *)ai)->m_718 > 0.0f && m_phaseTime >= 1.5f)
+            step = STEP_0;
+        break;
+    case STEP_1:
+        if (func_005629B0(ai))
+            step = STEP_2;
+        break;
+    }
+    UpdatePhase(step);
+    if (step == STEP_3)
+        SetActive(false);
+    return Result();
+}
+
 /* the controller's word at 0x718 (zseal.h does not name it -- the name ours) */
 struct CAiCtrl718 {
     unsigned char _0[0x718];
@@ -684,36 +850,32 @@ void CAiSHold::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
-/* a hold with its flags' bit 5 or 7 set (an inline bool: its true is daddiu, the result narrowed) */
+/* a hold with its flags' bit 5 or 7 set (an inline bool: its true is daddiu, the result narrowed;
+ * `else r = r;` keeps the flags test a branch -- without the arm MW if-converts it into sltu -- and
+ * vanishes itself, the kit lane's round 33) */
 inline bool HoldBroken(const CAiState *s)
 {
-    return s->m_state == AI_STATE_HOLD ? ((s->m_flags & 0xa0) ? true : false) : false;
+    bool r = false;
+
+    if (s->m_state == AI_STATE_HOLD) {
+        if (s->m_flags & 0xa0)
+            r = true;
+        else
+            r = r;
+    }
+    return r;
 }
 
 /* whether the AI's current state is a hold with its flags' bit 5 or 7 set (OVL2 0x607830: the SEAL
- * lane's 0x558AE0 and 0x563E10 call it; the name ours).
- * OPEN, 6 instructions at the right size (round 24; 0x7C against 0x6C before -- the earlier notes
- * follow): the target keeps the hold test in a1 -- zero in the state compare's
- * delay slot, `daddiu a1,zero,1` for true, `b; andi v0,a1,0xff` at the join, and a separate
- * `move v0,zero` for no state. The ternary over the inline (here) puts the andi on a block of its
- * own; `if (s) return HoldBroken(s); return false;` is 0x68, the true in v0 and no andi; a bool
- * local `r = false; if (a && b) r = true;` (inline or not, nested ifs too) is if-converted into
- * sltu; `? true : false` and `HoldBroken(s) != false` miss further; the materialised `&&` written
- * in the ternary's arm is 0x68 with the test in v1 (the kit lane, round 12). The stack is read
- * through a const reference: the target calls its const GetState (0x5F8330), the non-const copy
- * 0x5F8360 otherwise. Round 24: the AI taken as `const CSealCtrlAi *` with the stack read in place
- * gives the target's head (the size read at ai+0x41C, the address formed in the call's delay slot)
- * and, with the hold test a ternary over a `? true : false`, the right size -- 6 off: the flags test
- * if-converts into `sltu v0` where the target keeps r in a1 (`move a1,zero` in the state compare's
- * delay slot, `daddiu a1,zero,1`, `andi v0,a1,0xff` at the join); the `&&` forms materialise the
- * state compare (xori/sltiu), nested ifs with a bool local and a one-case switch fold too */
+ * lane's 0x558AE0 and 0x563E10 call it; the name ours). The stack is read through a const AI (its
+ * const GetState called, 0x5F8330, the size read at ai+0x41C); byte-exact in the kit lane's round
+ * 33 with HoldBroken's self-assigning else arm and the ternary over it (open since round 12: every
+ * form without the arm if-converted the flags test) */
 extern "C" bool func_00607830(const CSealCtrlAi *ai)
 {
     const CAiState *s = ai->m_stateStack.size() == 0 ? 0 : ai->m_stateStack.GetState();
 
-    if (s)
-        return HoldBroken(s);
-    return false;
+    return s ? HoldBroken(s) : false;
 }
 
 /* the response states' callouts, looked up by name once the sounds are open: forty-three cue

@@ -3,8 +3,8 @@
  * server (OVL1 0x1E89E8-0x1E8FD4), prebuilt with ee-gcc 2.96 at -O2 -G0 -fno-strict-aliasing as
  * libezcnf beside it (README "The GCC front"): the demo's object 0x425EA0 (C), its functions in the
  * same order and sizes -- the demo reached its flag by $gp, this build by lui. Names are the demo's
- * (s1:order, each RPC number checked) and the calls' own messages. Not yet written: exitEzNetCtl (a
- * draft), ezNetCtlSetProperties, dmaIOP. */
+ * (s1:order, each RPC number checked) and the calls' own messages. exitEzNetCtl stays a draft; dmaIOP
+ * byte-exact and ezNetCtlSetProperties 3 off (the states lane, round 34: OPEN below). */
 
 extern int scePrintf(const char *fmt, ...);
 extern int sceSifSearchModuleByName(const char *name);
@@ -29,9 +29,21 @@ typedef struct {
     char usrname[32];                   /* +272 */
 } EZCTL_RPC;                            /* 304 bytes each way */
 
+typedef struct {
+    unsigned int data;
+    unsigned int addr;
+    unsigned int size;
+    unsigned int mode;
+} sceSifDmaData;
+
+extern unsigned int sceSifSetDma(sceSifDmaData *sdd, int len);
+extern int sceSifDmaStat(unsigned int id);
+
 extern int data_003DC108;               /* 1 once bound to the eznetctl server */
 extern sceSifClientData data_00408900;
 extern EZCTL_RPC data_00408940;
+
+int dmaIOP(void *src, unsigned int dst, int size, int nowait);
 
 int initEzNetCtl(void)
 {
@@ -51,6 +63,38 @@ int initEzNetCtl(void)
             ;
     }
     return data_003DC108 = 1;
+}
+
+/* the network properties handed to the server: RPC 0 asks where its buffer is, the properties are
+ * DMAed there (4928 bytes), RPC 1 applies them (the demo's, 0x120 as here; the states lane, round
+ * 34: the rows lie in its range, the GCC lane not running).
+ * OPEN, 3 instructions: the -2 path. The target sets the -2 in v0 and jumps past the final reload
+ * to the epilogue (`li v0,-2; b; sw v0`); this, the demo's code exactly, keeps it in v1 and jumps
+ * to the reload. The else arm returning on its own puts RPC 1's `li a1,1` where the target has it
+ * (one shared return: 10 off); every early return of the -2 (the assignment returned, a local, a
+ * pointer to the word, the store then `return -2`, the arms inverted) rematerialises the constant
+ * for the return (0x128) */
+int ezNetCtlSetProperties(void *props)
+{
+    EZCTL_RPC *rpc = &data_00408940;
+
+    if (data_003DC108 == 0) {
+        scePrintf("**** eznetctl RPC server not currently running\n");
+        return -1;
+    }
+    sceSifCallRpc(&data_00408900, 0, 0, rpc, 4, rpc, 4, 0, 0);
+    if (rpc->data[0] == 0) {
+        scePrintf("%s> ", "libezctl.c");
+        scePrintf("eCtlGetPropertiesAddress returned 0\n");
+        rpc->data[0] = -2;
+    } else {
+        dmaIOP(props, rpc->data[0], 4928, 0);
+        sceSifCallRpc(&data_00408900, 1, 0, rpc, 4, rpc, 4, 0, 0);
+        scePrintf("%s> ", "libezctl.c");
+        scePrintf("ezNetCtlSetProperties returned %d\n", rpc->data[0]);
+        return rpc->data[0];
+    }
+    return rpc->data[0];
 }
 
 int ezNetCtlSetCombination(char *fname, char *usrname)
@@ -120,4 +164,28 @@ int ezNetCtlDownInterface(int id)
     rpc->data[0] = id;
     sceSifCallRpc(&data_00408900, 6, 0, rpc, 4, rpc, 4, 0, 0);
     return 0;
+}
+
+/* a block sent to the IOP over SIF DMA, its size padded to 16 (a warning when it is not), the
+ * transfer queued until it is taken and, unless told not to, waited for (the demo's, its printf
+ * calls scePrintf here) */
+int dmaIOP(void *src, unsigned int dst, int size, int nowait)
+{
+    sceSifDmaData d;
+    unsigned int id;
+
+    d.data = (unsigned int)src;
+    d.addr = dst;
+    d.size = (size + 15) & ~15;
+    d.mode = 0;
+    if (size & 0xf) {
+        scePrintf("%s> ", "libezctl.c");
+        scePrintf("warning: SIF DMA transfer size %d padded to %d\n", size, d.size);
+    }
+    while ((id = sceSifSetDma(&d, 1)) == 0)
+        ;
+    if (!nowait)
+        while (sceSifDmaStat(id) >= 0)
+            ;
+    return id;
 }

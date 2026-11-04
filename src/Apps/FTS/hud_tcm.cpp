@@ -11,21 +11,12 @@
 #include <string.h>
 
 #include "hud_tcm.h"
+#include "../../gamez/znode/znode.h"
 
-/* an item's node made from its cache entry (0x236D20, this unit's -- not written: the HUD's round 39
- * had it at the target's size, 51 instructions off, and took it out). Read off the target: for a
- * non-null entry, the nodes named by the second argument (theTCM.Find((const char *)arg, found,
- * true)) or theTCM itself (found.push_back(&theTCM)); for each a new CTCMNode given SetCaption(a2,
- * 0), SetName(a3), SetText2(t0), SetEntry(entry), m_741 = the last argument's byte, the back and the
- * bar on GetTexHandle("TCM.tif") (an inline setting the poly's and both triangles' texture to the
- * handle's +0xC or 0, then SetHasTexture), UVs (1,0,0,1) and (0.7,0,0.3,1), the icon on
- * "TCMarrow.tif", AddChild under the found node and its m_root pushed onto theTCM.m_root (the list's
- * address hoisted into a saved register: a reference local gives the size); 0 returned on every
- * path. Open: the target homes t0 and the flag (`sb t1`) at 188/187 in a 224-byte frame where the
- * draft took 240 -- and with a `bool` last parameter tcmAddItem would convert its int (it passes t1
- * through untouched) */
-extern "C" CTCMNode *func_00236D20(CTCMEntry *entry, int arg, const char *caption, const char *text2,
-                                   const char *name, int flags);
+/* an item's node made from its cache entry (0x236D20, below tcmAddItem: written in the HUD's round 41,
+ * 6 instructions off -- see its OPEN) */
+CTCMNode *tcmCreateItem(CTCMEntry *entry, const char *parent, const char *caption, const char *name,
+                        const char *text2, bool flag);
 
 /* the world's action points as the menu names them (zseal.h's CNodeAction: its prompt at 0x2C) and
  * the ones the radio menu lists (OVL1 0x2B4CD0: the enabled ones of the action list, pushed onto
@@ -185,16 +176,88 @@ void CTCM::Reset()
     m_items.clear();
 }
 
-/* an item's node, from the current cache's entry of this name (the captions default to it) */
-CTCMNode *tcmAddItem(const char *name, int arg, const char *caption, const char *text2, const char *nodename,
-                     int flags)
+/* an item's node, from the current cache's entry of this name, under every node named `parent` (the
+ * menu's root without one); the caption, the node's name and its second line default to the name.
+ * The last parameter is a bool: every one of the ~100 calls in the tree's two cache builders passes a
+ * constant 0 or 1, and the value goes through to the builder's byte store untouched */
+CTCMNode *tcmAddItem(const char *name, const char *parent, const char *caption, const char *nodename,
+                     const char *text2, bool flag)
 {
     CTCMEntry *entry = 0;
 
     if (theTCM.m_cache)
         entry = theTCM.m_cache->Find(name);
-    return func_00236D20(entry, arg, caption ? caption : name, text2 ? text2 : name, nodename ? nodename : name,
-                         flags);
+    return tcmCreateItem(entry, parent, caption ? caption : name, nodename ? nodename : name,
+                         text2 ? text2 : name, flag);
+}
+
+/* a poly textured from a handle, its two triangles with it (none without one), then told whether it
+ * has one (ours: the three stores and the virtual call, three times in the builder; a member -- the
+ * target computes `this` ahead of the call's argument, which a free helper's reference parameter
+ * does not) */
+inline void C2DBitmapPoly::SetTexture(zdb::CTexHandle *h)
+{
+    zdb::CTexture *tex = h ? h->m_texture : 0;
+
+    m_texture = tex;
+    m_tris[0].m_texture = tex;
+    m_tris[1].m_texture = tex;
+    SetHasTexture(tex != 0);
+}
+
+/* the item's node made under each node named `parent` (theTCM itself without a name), for a cache
+ * entry -- none without one: captioned, named, its second line and entry set, the flag stored, the
+ * back and the bar on "TCM.tif" (the bar's UVs the texture's right 70 %), the icon on "TCMarrow.tif",
+ * then added under its parent and its root listed in the menu's (0x236D20; tcmAddItem's builder, the
+ * name ours). 0 on every path. The handle's dead first definition after the count numbers it ahead
+ * of the loop's counter, as the target's s4/s3 (declared at its first use the two swap); the list
+ * reached through GetRoot() keeps &theTCM.m_root in a saved register from the loop's out-of-line
+ * entry test without hoisting its end node (a reference local spills that, 240 bytes of frame).
+ * OPEN, 6 instructions, one pair three times: at each SetHasTexture the target computes the poly
+ * (`addiu a0,s1,48`) right after the first texture store and the bool (`sltu a1,zero,v0`) in the
+ * call's delay slot -- the poly evaluated ahead of the argument; MW evaluates the argument first in
+ * every form tried: the setter a member, a free inline on a reference, a pointer or either
+ * parameter order, the bool a local, `!!t`, `(bool)t`, the texture a parameter, the stores
+ * chained or the value an assignment expression, the poly through an inline accessor, a copy of
+ * `this` or a C2D pointer (a cast or a local) */
+CTCMNode *tcmCreateItem(CTCMEntry *entry, const char *parent, const char *caption, const char *name,
+                        const char *text2, bool flag)
+{
+    if (entry) {
+        std::vector<CTCMNode *> found;
+
+        if (parent)
+            theTCM.Find(parent, found, true);
+        else
+            found.push_back(&theTCM);
+
+        unsigned int n = found.size();
+        zdb::CTexHandle *tex = 0;
+
+        if (n) {
+            for (unsigned int i = 0; i < n; i++) {
+                CTCMNode *at = found[i];
+                CTCMNode *node = new CTCMNode;
+
+                node->SetCaption(caption, 0);
+                node->SetName(name);
+                node->SetText2(text2);
+                node->SetEntry(entry);
+                node->m_741 = flag;
+
+                tex = zdb::CWorld::GetTexHandle("TCM.tif");
+
+                node->m_back.SetTexture(tex);
+                node->m_back.SetUV(1.0f, 0.0f, 0.0f, 1.0f);
+                node->m_bar.SetTexture(tex);
+                node->m_bar.SetUV(0.7f, 0.0f, 0.3f, 1.0f);
+                node->m_icon.SetTexture(zdb::CWorld::GetTexHandle("TCMarrow.tif"));
+                at->AddChild(node);
+                theTCM.GetRoot()->push_back(&node->m_root);
+            }
+        }
+    }
+    return 0;
 }
 
 void CTCM::SetCache(CTCMCache *cache)

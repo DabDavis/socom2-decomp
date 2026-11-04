@@ -85,12 +85,22 @@ class CAiSAnimate;
 typedef bool (*ANIM_CALL)(CAiSAnimate *state, CSealCtrlAi *ai, unsigned int data);
 
 struct ANIM_TIMED_CALL {
+    /* (a constructor of its own: the list's insert, 0x575E30, copies the value member by member --
+     * the time through an FPR, the call and the word through GPRs -- where a plain struct is one
+     * block through the FPRs) */
+    ANIM_TIMED_CALL(float time, ANIM_CALL func, unsigned int data) : m_time(time), m_func(func), m_data(data) {}
+
     float m_time;   // 0x0
     ANIM_CALL m_func;   // 0x4
     unsigned int m_data;   // 0x8
 };
 
 struct ANIM_SPAN_CALL {
+    ANIM_SPAN_CALL(float start, float end, ANIM_CALL func, unsigned int data)
+        : m_start(start), m_end(end), m_func(func), m_data(data)
+    {
+    }
+
     float m_start;   // 0x0
     float m_end;   // 0x4
     ANIM_CALL m_func;   // 0x8
@@ -132,16 +142,23 @@ public:
     virtual bool Virtual3C(CSealCtrlAi *ai) { return false; }
     virtual ~CAiSGrenade();
 
+    virtual int Tick(CSealCtrlAi *ai);
+
     /* (the names ours: what OnSignal's reset clears) */
-    unsigned int m_58;   // 0x58
-    unsigned int m_5c;   // 0x5c
+    unsigned int m_58;   // 0x58: the grenade's pickup
+    unsigned int m_5c;   // 0x5c: its network id when taken
     unsigned char m_60;   // 0x60
     unsigned char _61[0x6c - 0x61];
+    /* where the grenade will land, once 0x55CDC0 has found it, and its cell (Tick; the names ours) */
     unsigned char m_6c;   // 0x6c
-    unsigned char _6d[0x7c - 0x6d];
+    unsigned char _6d[0x70 - 0x6d];
+    CPnt3D m_70;   // 0x70
     CAiMapLoc m_7c;   // 0x7c
-    CAiMapLoc m_80;   // 0x80
-    unsigned char _84[0xa0 - 0x84];
+    CAiMapLoc m_80;   // 0x80: the cell the dodge's plan heads for
+    /* the step after the run to the grenade: 4 the kick, 5 the throw back, 6 none (compared with
+     * lbu; Tick's copies to its step reload it with lb -- open there; the name ours) */
+    unsigned char m_84;   // 0x84
+    unsigned char _85[0xa0 - 0x85];
     /* the throw's velocity in the SEAL's frame (0x55C480 turns it by the body's matrix; the name
      * ours) */
     CPnt3D m_vel;   // 0xa0
@@ -735,9 +752,7 @@ void CSealCtrlAi::AcquireDatabaseHandles()
     data_0066AFE8 = 0;
 }
 
-/* how far an event's kind carries (SOCOM 1's static CAiEvent::GetEventRange, ai.h's class lacks it:
- * OVL2 0x50F4C0 by its address) */
-extern "C" float func_0050F4C0(CAiEvent::EVENT event);
+/* (how far an event's kind carries: SOCOM 1's static CAiEvent::GetEventRange, OVL2 0x50F4C0 -- ai.h's) */
 /* the voice's reach scale (OVL2 data 0x650380, read as a variable) */
 extern "C" float data_00650380;
 
@@ -748,7 +763,7 @@ extern "C" CAiEvent *func_0055FEE0(CSealCtrl *ctrl, CAiEvent::EVENT event)
     CAiEvent *r = 0;
 
     if (event != CAiEvent::AIE_NONE) {
-        float range = func_0050F4C0(event);
+        float range = CAiEvent::GetEventRange(event);
 
         r = ctrl->CreateAiEvent(CAiEvent::AIE_VOICE, data_00650380, range, false, &ctrl->m_entity->m_posW, event);
     }
@@ -768,9 +783,8 @@ extern "C" {
  * state returned -- OVL2 0x5556A0, 0x5558A0) */
 bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRouteBytes *route);
 AI_ROUTE func_005558A0(CSealCtrlAi *ai);
-/* the kit's current item by its index (CZKit::SetCurItemByIndex, OVL2 0x5C4B10: zseal.h's kit is a
- * stand-in) and its fire mode (0x5C37B0, declared below) */
-void func_005C4B10(CZKit *kit, int index);
+/* the kit's fire mode (0x5C37B0, declared below; its current item by index is zseal.h's
+ * CZKit::SetCurItemByIndex, OVL2 0x5C4B10) */
 bool func_005C37B0(CZKit *kit, FIREMODE mode);
 }
 
@@ -815,7 +829,7 @@ void CAiSDeploy::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     case SIGNAL_1: {
         CZKit *kit = &seal->m_kit;
 
-        func_005C4B10(kit, 0);
+        kit->SetCurItemByIndex(0);
         func_005C37B0(kit, (FIREMODE)2);
         ai->ClearLook(AIL_11);
         ai->SetDesiredStance(STANCE_PRONE, 0.0f, false);
@@ -1310,6 +1324,55 @@ CValve *CSealCtrlAi::GetValve(SEAL_VALVE v) const
     if (v < 3)
         return m_valve[v];
     return 0;
+}
+
+extern "C" {
+/* the stack's bits brought up to date (OVL2 0x5F7470, seal_aistate.cpp's: the stack, the AI, a flag) */
+void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
+}
+
+/* an anim's signal taken: 1, 2, 3 and 6 handed to every state of the stack, the top last-first --
+ * through the stack's reverse iterator (include/list's rbegin()/rend(), the MSL headers' round 22: the
+ * end pair's second() its one call, 0x5621B0); 4 the suspended state pushed, kept only when it is the
+ * state on top, its flags set and marked running; 5 the suspended state popped; then the stack's bits
+ * brought up to date (OVL2 0x562030: SOCOM 1's AnimSignal, whose 0x404 bytes walked the stack forward
+ * for its signals 1 and 2).
+ * OPEN, 0x174 against 0x180, on two things outside the walk's spelling: (1) slot 0xC's types -- the
+ * target hands the signal on as it came (`move s0,a2`, the andi only the switch's), which a parameter
+ * of the signal's own type gives; ai_states.h's Virtual0C(int, int, CSealCtrlAi *) converts it (the
+ * narrowed copy kept instead). Measured through a stand-in slot (CZAnim *, AI_SIGNAL, CSealCtrlAi *):
+ * 0x17C, the rest left being (2) this unit's inline_depth(8) -- the MSL lane's probe at 5 calls the end
+ * pair's second() (0x5621B0) as the target does at each rbegin()/rend(); at 8 MW inlines it, holding
+ * the sentinel's next in a fourth saved register (the frame 96 bytes against 80). The probe's own
+ * last difference (the end pair's address kept, not rebuilt per call) sits behind that */
+void CSealCtrlAi::AnimSignal(CZAnim *anim, AI_SIGNAL sig)
+{
+    switch (sig) {
+    case 1:
+    case 2:
+    case 3:
+    case 6: {
+        CAiStateStack::reverse_iterator i;
+
+        for (i = m_stateStack.rbegin(); i != m_stateStack.rend(); ++i)
+            (*i)->Virtual0C((int)anim, sig, this);
+        break;
+    }
+    case 4:
+        if (PushAiState((AI_STATE)18, 1)) {
+            CAiState *s = GetAiState();
+
+            s = s && s->m_state == 18 ? s : 0;
+
+            s->SetFlags(7, 0);
+            s->m_active = true;
+        }
+        break;
+    case 5:
+        PopAiState((AI_STATE)18);
+        break;
+    }
+    func_005F7470(&m_stateStack, this, 1);
 }
 
 /* whether the SEAL may be taken hostage (state 23 pushed with no flags): for kind 3 a restrainable one,
@@ -1821,14 +1884,14 @@ extern "C" bool func_00561E20(CSealCtrlAi *ai, bool on, signed char c)
     return ai->m_aibit7;
 }
 
-/* (OVL2 0x56D890).
- * OPEN, 9 instructions: the target loads the team straight into a0 (`lw a0,4(a0); lw a0,0xC8(a0)`)
- * and reads m_entity again for the kit's test after the two team tests; MW here keeps the entity in
- * a1 across both (and moves `on` to s0 first). Tried: the kit through this inline, the team in a
- * local, every test through the inline, the tests unparenthesised. */
+/* (OVL2 0x56D890). Byte-exact since round 33 (the kit's round-34 measurement): both team tests read
+ * the team through a const view of the controller -- the target loads the entity and its team straight
+ * into a0 for each test and reads m_entity again for the kit's, where plain reads let MW keep the
+ * entity in a1 across all three (round 32's 9 instructions) */
 void CSealCtrlAi::SetAiBit2(bool on)
 {
-    if ((m_entity->m_team & 0x20000) || (m_entity->m_team & 0x4000000) || !SealOf(this)->m_kit.GetCurItem())
+    if ((((const CSealCtrlAi *)this)->m_entity->m_team & 0x20000) ||
+        (((const CSealCtrlAi *)this)->m_entity->m_team & 0x4000000) || !SealOf(this)->m_kit.GetCurItem())
         on = false;
     m_aibit2 = on;
 }
@@ -2541,7 +2604,8 @@ extern "C" float func_005698A0(CSealCtrlAi *ai)
 
 /* a direction to look in from a map spot (OVL2 0x559580, not written: its arguments are what
  * 0x567690 passes) */
-extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, int a, unsigned int mask, int b, int n, int c);
+extern "C" CAiMap::DIR func_00559580(const CAiMapLoc *loc, const CPnt3D *dir, unsigned int mask, CAiMapLoc *out,
+                                      int n, int *got);
 
 /* the AI's glance around before it creeps: while it has a target or acts the countdown is held at 0;
  * else run down, and on expiry restarted at a random 10 to 15 (a guarded function-local Rfloat,
@@ -2979,6 +3043,161 @@ extern "C" float func_00557D90(float x)
     return x >= 0.0f ? 1.0f : -1.0f;
 }
 
+/* a mover: where it is, its heading flattened, the heading's length and the room it keeps (the
+ * class and its names ours: 0x557190 builds one for each of its six tests) */
+struct CAiMover {
+    CAiMover(const CPnt3D &pos, const PNT3D &vel, float radius)
+        : m_pos(pos), m_dir(*(const CPnt3D *)&vel), m_radius(radius)
+    {
+        m_dir.y = 0.0f;
+        m_len = m_dir.Normalize();
+    }
+
+    CPnt3D m_pos;   // 0x0
+    CPnt3D m_dir;   // 0xc
+    float m_len;   // 0x18
+    float m_radius;   // 0x1c
+};
+
+/* whether a mover's path ahead passes within reach of a point, flat on the ground: the turn away
+ * handed back -- the way across the path, or turned about by the side the point lies on. An inline
+ * past inline_max_size, expanded one level: its own body only, its vector pieces called out of line
+ * (their copies 0x557D90-0x557E90 after 0x557190, in reverse first use; the names ours). The mover's
+ * fields come in as references (the round 33 fix): their addresses, bound as the inline's
+ * parameters, are what the mover's own stores and the Normalize go through -- the target's s1/s2 held
+ * from before each mover is built */
+static inline bool AvoidPoint(const CPnt3D &pos, const CPnt3D &dir, const float &radius, const CPnt3D &pt,
+                              CPnt3D &out, bool turn)
+{
+    static float s_reach = 20.0f;
+    static float s_side = 0.45f;
+    bool found = false;
+    float reach = s_reach;
+    CPnt3D side(-dir.z, 0.0f, dir.x);
+    CPnt3D p(pt.x, 0.0f, pt.z);
+    CPnt3D q(pos.x, 0.0f, pos.z);
+    CPnt3D d = p - q;
+
+    d.y = 0.0f;
+    d.Normalize();
+    float dot = Dot(d, side);
+    CPnt3D ahead = q + dir * radius;
+    CPnt3D aside = q + side * (s_side * (radius * func_00557D90(dot)));
+
+    aside.y = 0.0f;
+    ahead.y = 0.0f;
+    CPnt3D g = ahead - aside;
+    CPnt3D h(-g.z, 0.0f, g.x);
+    CPnt3D nearest;
+    float dist;
+
+    if (p.DistToVector(&aside, &ahead, &nearest, &dist) && dist < reach) {
+        if (turn)
+            out = h * func_00557D90(dot);
+        else
+            out = g;
+        found = true;
+    }
+    return found;
+}
+
+/* the AI's way past another entity (OVL2 0x557190, new in SOCOM II: 0x556370 calls it; the name
+ * unknown): with the player, both moving answers true; else whichever moves is tested against the
+ * other's place -- the AI's own move turned across the path, the other's turned about -- and a turn
+ * found is scaled and handed to the fudge velocity. With an AI both moving the same way the faster
+ * slows (the forward throttle by 0.95), else the same tests as with the player.
+ * The copies it leaves out of line match: CPnt3D's +, * and - (0x557DC0, 0x557E10, 0x557E90 -- the
+ * round 24 names) and the sign, 0x557D90 (the stand-in below).
+ * Byte-exact since round 33: the slowing product its own statement (`t *= s_slow;` -- the target's
+ * `mul.s $f20` then `mov.s $f12`, the two instructions round 32 was short), and AvoidPoint taking the
+ * mover's fields by reference: the two addresses held across the Normalize add the neighbours that
+ * keep the AI deferred past the other four (igdump: all five over K), so it colours first, s0 */
+extern "C" bool func_00557190(CSealCtrlAi *ai, CEntity *other)
+{
+    static float s_still = 25.0f;
+    static float s_room = 20.0f;
+    static float s_slow = 0.95f;
+    static float s_scale = 1.0f;
+    CEntity *e = ai->m_entity;
+    CPnt3D myVel(e->m_velW);
+    CPnt3D otherVel(other->m_velW);
+    CPnt3D myPos(e->m_posW);
+    CPnt3D otherPos(other->m_posW);
+    bool result = false;
+    bool meMoving = ai::is_moving(&myVel, s_still);
+    bool otherMoving = ai::is_moving(&otherVel, s_still);
+    static float s_radius = s_room;
+
+    if (other->m_control ? ((CSealCtrl *)other->m_control)->IsPlayer() : false) {
+        if (meMoving && otherMoving)
+            result = true;
+        else if (meMoving) {
+            CAiMover m(myPos, myVel, s_radius);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, otherPos, myVel, false);
+
+            result = found;
+            if (found) {
+                myVel.Scale(s_scale, &myVel);
+                ai->SetFudgeVelW(&myVel);
+                result = false;
+            }
+        } else if (otherMoving) {
+            CAiMover m(otherPos, otherVel, s_radius);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, myPos, myVel, true);
+
+            result = found;
+            if (found) {
+                myVel.Scale(s_scale, &myVel);
+                ai->SetFudgeVelW(&myVel);
+            }
+        }
+    } else if (other->m_control ? ((CSealCtrl *)other->m_control)->IsAi() : false) {
+        ((CSealCtrl *)other->m_control)->GetSealCtrlAi();
+        if (meMoving && otherMoving) {
+            CPnt3D d = otherPos - myPos;
+
+            if (Dot(myVel, otherVel) > 0.0f) {
+                if (Dot(d, myVel) > 0.0f) {
+                    float t = ai->m_throttle[0];
+
+                    if (t > fabsf(other->m_control->m_throttle[0])) {
+                        t *= s_slow;
+                        ai->SetThrottle(0, t);
+                    }
+                }
+            } else {
+                CAiMover m(otherPos, otherVel, s_radius);
+                bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, myPos, myVel, true);
+
+                result = found;
+                if (found) {
+                    myVel.Scale(s_scale, &myVel);
+                    ai->SetFudgeVelW(&myVel);
+                }
+            }
+        } else if (meMoving) {
+            CAiMover m(myPos, myVel, s_radius);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, otherPos, myVel, false);
+
+            result = found;
+            if (found) {
+                myVel.Scale(s_scale, &myVel);
+                ai->SetFudgeVelW(&myVel);
+            }
+        } else if (otherMoving) {
+            CAiMover m(otherPos, otherVel, s_radius);
+            bool found = AvoidPoint(m.m_pos, m.m_dir, m.m_radius, myPos, myVel, true);
+
+            result = found;
+            if (found) {
+                myVel.Scale(s_scale, &myVel);
+                ai->SetFudgeVelW(&myVel);
+            }
+        }
+    }
+    return result;
+}
+
 /* CZAnim::Stop, which SOCOM II gave a flag (zanim.h's declaration) */
 extern "C" void func_002707C0(CZAnim *anim, bool now);
 
@@ -3016,21 +3235,19 @@ extern float data_0064FE48;
 }
 
 /* the range narrowed by a factor unless it stands (an inline: the factor, its argument, is loaded
- * ahead of the test, and the range read again for the product) */
+ * ahead of the test; the test reads the range through a const view, so the product reads it again --
+ * plain reads MW merges) */
 static inline void ScaleRange(CSealCtrlAi *ai, float k)
 {
-    if (data_0064FE48 != ai->m_6f4)
+    if (data_0064FE48 != ((const CSealCtrlAi *)ai)->m_6f4)
         ai->m_6f4 *= k;
 }
 
 /* an alert taken in: its amount (a default for none) summed, its point filled, its word kept, the range
  * narrowed unless it stands, then the pair OnDeath makes (OVL2 0x572240, new in SOCOM II; the name
- * unknown).
- * OPEN, 0xBC against 0xC4: through the inline the factor loads ahead of the test and the compare is the
- * target's (constant first), but the target reads the range again for the product (`lwc1; mul.s
- * $f0,$f0,$f2`) and pads the block, where MW here reuses the compare's load. Tried: the product as
- * `= m * k`, `= k * m`, through a pointer, a local copy, the test through an accessor or a cast
- * address, the test negated, the factor and the test written out in the function. */
+ * unknown). Byte-exact since round 33: the range's second load (`lwc1; mul.s $f0,$f0,$f2`) is the
+ * const view's in ScaleRange -- the kit's round-34 rule for two loads of one member with nothing
+ * between */
 extern "C" void func_00572240(CSealCtrlAi *ai, CAiAlert *alert, float amount)
 {
     if (alert) {
@@ -3133,16 +3350,13 @@ bool CSealCtrl::SetGoalPos(GOAL_TYPE type, const CPnt3D *pos, float tolerance)
 /* a direction as the goal, unless a goal of a higher kind is set: flattened, and made a unit
  * vector unless it came flat and asked to stay so; a position of another kind cleared (SetGoalPos
  * inlined), the facing's dot product with it returned -- none clears the direction, and the kind
- * once no position is left (OVL2 0x56D920; SOCOM 1's, its sqrtf now sqrt.s).
- * OPEN, 8 instructions (the size right): the target reads x again for the scaling after the sqrt
- * (`lwc1 $f0,0x174(a0)` after `mtc1 1.0`), x and z loaded into f1/f2, x*x in the mula, the root in
- * f2; MW here keeps the x it loaded for the length in a register across the sqrt and the test, as
- * the matched CPnt3D::Normalize does in the target (so sqrt.s is no barrier). The sum is written
- * z first, which gets the rest (`x*x + z*z`, SOCOM 1's order, is 18 off: x in f2 kept). Tried: the
- * components by value into a length inline, the scaling or the whole normalisation through an
- * inline taking the point by pointer, a scalar copy of the point, `len = 1.0f / len`, the two
- * scalings each `*= 1.0f / len`. The three-float constructor gives the stores (z loaded first) and
- * m_matrix's elements read straight give the dot's operand order (through operator() they swap) */
+ * once no position is left (OVL2 0x56D920; SOCOM 1's, its sqrtf now sqrt.s). Byte-exact since round
+ * 33: the target reads x again for its scaling after the sqrt (`lwc1 $f0,0x174(a0)` after `mtc1 1.0`)
+ * -- x scaled through a const view of the controller, the kit's round-34 rule, where a plain read lets
+ * MW keep the length's x across the sqrt; with it the sum is SOCOM 1's order, x*x first (round 32's 8
+ * instructions, its z-first sum a fit to the merged load). The three-float constructor gives the
+ * stores (z loaded first) and m_matrix's elements read straight give the dot's operand order (through
+ * operator() they swap) */
 float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
 {
     float dot = 1.0f;
@@ -3152,12 +3366,12 @@ float CSealCtrl::SetGoalDir(GOAL_TYPE type, const CPnt3D *dir, bool flat)
     if (dir) {
         m_goal_dir = CPnt3D(dir->x, 0.0f, dir->z);
         if (!flat || dir->y != 0.0f) {
-            float len = sqrtf(m_goal_dir.z * m_goal_dir.z + m_goal_dir.x * m_goal_dir.x);
+            float len = sqrtf(m_goal_dir.x * m_goal_dir.x + m_goal_dir.z * m_goal_dir.z);
 
             if (len != 0.0f) {
                 float inv = 1.0f / len;
 
-                m_goal_dir.x *= inv;
+                m_goal_dir.x = ((const CSealCtrl *)this)->m_goal_dir.x * inv;
                 m_goal_dir.z *= inv;
             }
         }
@@ -3604,6 +3818,416 @@ int CAiSGrenade::Virtual14(CSealCtrlAi *ai, CAiState *sub)
         if (proj->m_time < 0.5f && ai->IsNavySeal())
             func_0057E540(seal);
     }
+    return Result();
+}
+
+extern "C" {
+/* the grenade's landing point solved from its flight, whether found (OVL2 0x55CDC0, not written
+ * yet), the dodge's look and sound (0x55C870, not written yet) and a path planned to a cell (the AI
+ * core's 0x526C10) */
+bool func_0055CDC0(CZProjectile *proj, CPnt3D *pos, float *fuse);
+void func_0055C870(CAiSGrenade *g, CSealCtrlAi *ai);
+bool func_00526C10(CAiPath *path, const CAiMapLoc *loc, int flags);
+/* (below: a map's cell inside; the AI states' range: a plan pushed to a cell) */
+bool func_005561C0(const CAiMap *map, const CAiMapLoc &loc);
+bool func_005F0830(CSealCtrlAi *ai, void *loc, unsigned int mode, int kind, int step);
+}
+
+/* an anim type by its name (anim.cpp's, OVL2 0x5E5000) */
+AnimType FindAnimType(const char *name);
+
+/* the AI's path dropped: its plan aborted, emptied, the default planner kind set and the search
+ * limit cleared -- whether it could be emptied (an inline: the grenade state's Tick, three times;
+ * the name ours) */
+static inline bool ResetPath(CSealCtrlAi *ai)
+{
+    ai::AbortPathPlan((CAiPath *)&ai->m_path);
+    if (((CAiPath *)&ai->m_path)->Clear()) {
+        if (((CAiPath *)&ai->m_path)->SetPathType((CAiPath::PATH_TYPE)0))
+            ai->m_path.m_type_bias = 1.0f;
+        ai->m_path.m_search_limit = 0;
+        return true;
+    }
+    return false;
+}
+
+/* the path neither holding points nor planning (an inline bool: the target materialises it) */
+static inline bool PathIdle(CSealCtrlAi *ai)
+{
+    if (((CAiPath *)&ai->m_path)->HasPoints() || ((CAiPath *)&ai->m_path)->IsPlanning())
+        return false;
+    return true;
+}
+
+/* a point turned about (the three loaded, negated and stored: a value built by the three-float
+ * constructor) */
+static inline CPnt3D Neg(const CPnt3D &p)
+{
+    return CPnt3D(-p.x, -p.y, -p.z);
+}
+
+/* the plan the dodge pushed (its own stack's top, a plan state) told to hurry, and a Navy SEAL's
+ * to preempt (an inline: three times in Tick; the name ours) */
+static inline void HurryPlan(CAiSGrenade *g, CSealCtrlAi *ai)
+{
+    CAiState *top = g->m_stack.GetState();
+    CAiSPlan *plan = top ? (top && top->m_state == AI_STATE_PLAN ? (CAiSPlan *)top : 0) : 0;
+
+    plan->m_12c = 1.0f;
+    if (ai->IsNavySeal())
+        *(float *)&plan->m_path[0x18] = ai::s_preemptPriority;
+}
+
+/* whether a cell's map holds it (the map's own test, none for no map), and whether it can be
+ * walked (the names ours) */
+static inline bool CellInside(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? func_005561C0(map, loc) : false;
+}
+
+static inline bool CellTraversable(const CAiMapLoc &loc)
+{
+    CAiMap *map = AiMaps.GetMap(loc);
+
+    return map ? map->IsTraversable(loc) : false;
+}
+
+/* the grenade state's tick (OVL2 0x55AC20, slot 0x10; SOCOM 1's Tick__11CAiSGrenadeFfP11CSealCtrlAi
+ * without its dT, 0x191C there). With its grenade gone the state waits a random while -- shorter
+ * for an untrained SEAL -- and ends. Else the grenade's landing point is found once; step 0 alerts
+ * the AI to it and, when it may (a launcher's round not yet taken, outside the map, its owner no
+ * friend, time left over the run to it), runs to it for a kick (4) or a throw back (5), else dodges
+ * (3); step 2 runs, and once there pushes step 4 or 5, or gives up; step 3 pushes a plan away from
+ * the blast; 4 and 5 push the animate state with its timed calls (the lists' inserts, 0x575E30 and
+ * 0x576000, this function's alone); 6 goes prone or crouches by the blast's radius; 9 ends.
+ * The data at 0x650428-0x650470 (8 apart) are the function-local statics below in their order, the
+ * guarded 0x66B2B0/0x66B2B8 s_flee and the bss byte 0x66B2C0 s_none_friendly; KickGrenade is
+ * SOCOM 1's AnimTypes::KickGrenade by position, "Return throw grenade" the string at 0x65C830.
+ * OPEN, the size right (0x1710, 1476 instructions; 127 differ by alignment, round 32): the code is
+ * the target's but for registers and frame slots -- the spilled locals' slots run the other way
+ * (the target: training 176, launcher 192, pos 208, ammo 224, close 255, cells 256, self 272; MW
+ * here close 191, cells 208, self 224, pos 240, ammo 256, training 272) and the CPnt3D temporaries
+ * sit 48 lower (the first Sub's at 384 against 432); the owner's null arm goes through v0 (`move
+ * v0,zero` in the test's delay slot, `move s8,v0` at the join -- the target `move s8,zero` in an
+ * arm of its own; if/else, the ternary, a zeroed first definition and the arms swapped alike); the
+ * Chance arm's 5 is not hoisted into the bc1f's delay slot (the if/else, the ternary and an
+ * initialised `next` all miss); the dodge's negation interleaves its loads in the target (written
+ * field by field it does, but then MW addresses away.y through a register: +8 bytes); and the
+ * copies `step = m_84` reload the byte with lb where the compares read it with lbu (a signed char
+ * field gives lb compares; unsigned char, a union or a signed cast all reuse the compare's lbu).
+ * Fixed on the way (MW's numbering): step declared before the pickup (s2/s1 as the target's), the
+ * plan cell declared after the count (608/612), the untrained wait a ternary, self after fuse */
+int CAiSGrenade::Tick(CSealCtrlAi *ai)
+{
+    static float s_pick_time = 0.26f;
+    static float s_throw_time = 0.76f;
+    static float s_kick_time = 0.4f;
+    static float s_fuse_margin = 1.5f;
+    static float s_timer_slack = 3.3f;
+    static float s_close_sq = 2500.0f;
+    static bool s_throw_back = true;
+    static float s_kick_range = 120.0f;
+    static int s_cell_slack = 2;
+    static float s_cover_radius = 10.0f;
+    static bool s_none_friendly;
+
+    STEP step = (STEP)m_phase;
+    CPickup *p = (CPickup *)m_58;
+    CEntity *seal = ai->m_entity;
+    CZProjectile *proj = p ? (CZProjectile *)p->m_data : 0;
+    CEntity *owner;
+
+    if (proj)
+        owner = CEntity::m_list.GetEntityById(proj->m_shooterID);
+    else
+        owner = 0;
+    float *training = &ai->m_aiParams.training;
+    bool navy = ai->IsNavySeal();
+    float hurry = 2.0f * (1.0f - *training);
+
+    if (navy || (seal->m_team & 0x20000))
+        hurry = 0.0f;
+    if (!p || m_5c != p->GetPickupNetEntityID() || !proj || !owner) {
+        if (!m_60) {
+            m_60 = 1;
+            float h = navy ? 0.0f : 2.0f * (1.0f - *training);
+            if (step == STEP_8)
+                m_time = RandRange(1.0f, 1.8f + h);
+            else
+                m_time = RandRange(2.1f, 2.9f + 1.5f * h);
+        } else {
+            m_time -= m_dT;
+            if (m_time < 0.0f)
+                SetActive(false);
+        }
+        return Result();
+    }
+
+    CZAmmo *ammo = proj->m_ammo;
+    CPnt3D *pos = &seal->m_posW;
+    CAiMapLoc *loc = &seal->m_mapLocValid;
+    CPnt3D away = proj->m_framestartpos - *pos;
+
+    away.y = 0.0f;
+    float dist = away.Normalize();
+    float fuse = proj->m_time;
+    bool self = seal == owner;
+    bool friendly = (owner->m_team & seal->m_team) != 0;
+    float radius = ammo ? ammo->GetExplosionRadius() : 200.0f;
+    const AI_PARAMS &params = ai->m_aiParams;
+    static float s_flee = 1.3f + s_fuse_margin;
+
+    p->m_bits.m_vec[seal->m_index >> 5] |= 1 << (seal->m_index & 31);
+    float spare = fuse - s_fuse_margin;
+    float k;
+
+    if (friendly)
+        k = 1.2f;
+    else
+        k = 0.5f * (1.0f - params.training) + 1.2f * params.training;
+    int cells = (int)(0.1f * (radius * k));
+
+    if (!m_6c) {
+        m_6c = func_0055CDC0(proj, &m_70, &fuse);
+        if (m_6c)
+            AiMaps.GetLocation(&m_70, m_7c);
+    }
+
+    switch (step) {
+    case STEP_0:
+        if (m_6c) {
+            if (m_6c)
+                ai->SetAiAware(AIA_DIRECTION, &m_70, -1.0f);
+            bool thrown = p->m_locked;
+            bool launcher = proj->m_weapon->GetIDType() == (EQUIP_ITEM)121;
+            bool close = false;
+            STEP next;
+
+            ai->ChangeStanceDelayed(STANCE_PRONE, STANCE_STAND, -1.0f);
+            if (self) {
+                CPnt3D d = m_70 - ai->m_774;
+
+                if (Dot(d, d) <= s_close_sq)
+                    close = false;
+            }
+            if (m_7c != CAiMapLoc::invalid) {
+                CPnt3D d = m_70 - *pos;
+                float len = d.Length();
+                float t = len / ai->GetSpeedFromThrottle(0.25f, 0);
+
+                if (s_throw_back && launcher && !thrown && !CellInside(m_7c) &&
+                    (!friendly || s_none_friendly || close) && !(fuse - t <= spare + hurry) &&
+                    !(seal->m_team & 2) && !(seal->m_team & 0x20000) && !(seal->m_team & 0x40000) &&
+                    !(seal->m_team & 0x10000000) && !data_0045A0C1 && AiMaps.CanTravelLine(*loc, m_7c, 0)) {
+                    func_00570F90(ai, 1.0f);
+                    if (*training > 0.8f) {
+                        if (len > s_kick_range)
+                            next = STEP_4;
+                        else
+                            next = STEP_5;
+                    } else {
+                        if (Chance(0.5f))
+                            next = STEP_4;
+                        else
+                            next = STEP_5;
+                    }
+                    p->SetLocked(true);
+                    ai->PlayAiSound((CHARACTER_SOUND)52, 1.0f, -1);
+                    func_0055C870(this, ai);
+                    if (ResetPath(ai) && func_00526C10((CAiPath *)&ai->m_path, &m_7c, 0)) {
+                        ai->SetAiMode((AI_MODE)3);
+                        step = STEP_2;
+                    } else {
+                        step = STEP_3;
+                        next = STEP_6;
+                        p->SetLocked(false);
+                    }
+                } else {
+                    if (navy && thrown) {
+                        step = STEP_6;
+                        SetFlags(1, 0);
+                    } else
+                        step = STEP_3;
+                    next = STEP_6;
+                }
+            } else {
+                step = STEP_3;
+                next = STEP_6;
+            }
+            m_84 = next;
+        } else {
+            ai->ChangeStanceDelayed(STANCE_PRONE, STANCE_STAND, -1.0f);
+            step = STEP_3;
+        }
+        if (step != STEP_3)
+            break;
+    case STEP_3: {
+        bool found = false;
+        CPnt3D dir;
+        int got;
+        CAiMapLoc cell;
+        CAiMap::DIR side;
+
+        ai->ChangeStanceDelayed(STANCE_PRONE, STANCE_STAND, -1.0f);
+        step = STEP_6;
+        if (m_6c) {
+            dir = *pos - m_70;
+            dir.y = 0.0f;
+            dir.Normalize();
+        } else {
+            dir = Neg(away);
+            CPnt3D vel = proj->m_vel;
+
+            vel.Normalize();
+            CPnt3D t = vel * Dot(dir, vel);
+
+            dir.Sub(&t, &dir);
+            dir.y = 0.0f;
+            dir.Normalize();
+        }
+        got = 0;
+        unsigned int mask = 0x10000;
+
+        if (!func_005664F0(proj->m_weapon->m_ID))
+            mask |= 0x20000;
+        func_00559580(loc, &dir, mask, &cell, cells + s_cell_slack, &got);
+        if (CellTraversable(cell) && got >= cells - s_cell_slack && func_005F0830(ai, &cell, 12, -1, -1)) {
+            HurryPlan(this, ai);
+            found = true;
+            m_80 = cell;
+        }
+        if (!found) {
+            CAiMap *map = AiMaps.GetMapByIndex(loc->m_mapid);
+
+            if (map && map->FindCoverLoc(*loc, &m_70, cell, side, (int)s_cover_radius) &&
+                func_005F0830(ai, &cell, 4, -1, -1)) {
+                HurryPlan(this, ai);
+                found = true;
+                m_80 = cell;
+            }
+        }
+        if (!found) {
+            if (CellTraversable(cell) && func_005F0830(ai, &cell, 12, -1, -1)) {
+                HurryPlan(this, ai);
+                found = true;
+                m_80 = cell;
+            }
+        }
+        if (!found) {
+            step = STEP_6;
+            ai->PlayAiSound((CHARACTER_SOUND)53, 1.0f, -1);
+        }
+        break;
+    }
+    case STEP_2: {
+        bool throwing = m_84 == 4 || m_84 == 5;
+
+        func_00570F90(ai, 1.0f);
+        if (navy && throwing && (ai->m_stamp.m_8 & 5)) {
+            m_84 = 6;
+            p->SetLocked(false);
+            step = STEP_3;
+            ResetPath(ai);
+            if (!data_0045A0C1) {
+                CZProjectile *g = GrenadeOf(this);
+
+                if (g)
+                    g->m_time += 1.0f;
+            }
+        } else {
+            if (PathIdle(ai)) {
+                CEntity *o = proj ? CEntity::m_list.GetEntityById(proj->m_shooterID) : 0;
+
+                if (navy && o && (m_84 == 4 || m_84 == 5)) {
+                    CPnt3D d = o->m_posW - seal->m_posW;
+
+                    d = Neg(d);
+                    if (ai->SetLookDirW((AI_LOOK)3, &d, true)) {
+                        ai->ModifyLookFlags(1, 0);
+                        ai->SetLookTimer(3.0f);
+                    }
+                }
+                step = (STEP)m_84;
+            } else {
+                if (!((CAiPath *)&ai->m_path)->IsPlanning() && throwing && navy && fuse < s_flee) {
+                    m_84 = 6;
+                    p->SetLocked(false);
+                    step = STEP_3;
+                    ResetPath(ai);
+                    if (!data_0045A0C1) {
+                        CZProjectile *g = GrenadeOf(this);
+
+                        if (g)
+                            g->m_time += 1.0f;
+                    }
+                }
+                hurry = navy || hurry <= 0.2f ? 0.2f : hurry;
+                if (ai->m_stateStack.m_timer > s_timer_slack + hurry || (navy && proj->m_time < 0.3f)) {
+                    if (m_84 == 6)
+                        step = (STEP)m_84;
+                }
+            }
+        }
+        break;
+    }
+    case STEP_4:
+        step = STEP_6;
+        if (ai->PushAiState(AI_STATE_ANIMATE, 0)) {
+            CAiState *s = ai->GetAiState();
+            CAiSAnimate *a = s && s->m_state == AI_STATE_ANIMATE ? (CAiSAnimate *)s : 0;
+
+            a->m_anim = (AnimType)AnimTypes::KickGrenade;
+            a->m_5a = 0;
+            ANIM_TIMED_CALL kick(s_kick_time, func_0055C740, (unsigned int)this);
+
+            a->m_timed.push_back(kick);
+            a->SetActive(true);
+        }
+        break;
+    case STEP_5:
+        step = STEP_6;
+        if (ai->PushAiState(AI_STATE_ANIMATE, 0)) {
+            CAiState *s = ai->GetAiState();
+            CAiSAnimate *a = s && s->m_state == AI_STATE_ANIMATE ? (CAiSAnimate *)s : 0;
+
+            a->m_anim = FindAnimType("Return throw grenade");
+            a->m_5a = 0;
+            ANIM_TIMED_CALL pick(s_pick_time, func_0055C690, (unsigned int)this);
+
+            a->m_timed.push_back(pick);
+            ANIM_TIMED_CALL thr(s_throw_time, func_0055C480, (unsigned int)this);
+
+            a->m_timed.push_back(thr);
+            ANIM_SPAN_CALL hold(s_pick_time, s_throw_time, func_0055C5E0, (unsigned int)this);
+
+            a->m_spans.push_back(hold);
+            a->SetActive(true);
+        }
+        break;
+    case STEP_6:
+        if (dist >= radius)
+            step = STEP_8;
+        else
+            step = STEP_7;
+        if (navy && step == STEP_7 && !p->m_locked && (m_flags & 1)) {
+            SetFlags(0, 1);
+            if (proj->m_time > 1.0f)
+                step = STEP_3;
+        }
+        break;
+    case STEP_7:
+        ai->SetStanceDelayed(STANCE_PRONE, -1.0f);
+        break;
+    case STEP_8:
+        ai->SetStanceDelayed(STANCE_CROUCH, -1.0f);
+        break;
+    case STEP_9:
+        SetActive(false);
+        break;
+    }
+    UpdatePhase(step);
     return Result();
 }
 

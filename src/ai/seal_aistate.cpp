@@ -176,14 +176,10 @@ bool CAiSAction::Virtual38()
     return m_phase < 6;
 }
 
-/* a script takes kinds 12 and 26 only when it may be pursued from (OVL2 0x5F40F0).
- * OPEN, 0x84 against 0x80: the target keeps the inlined test's result in s0, zeroed in the delay
- * slot of the !m_hold branch (materialised, sltu/xori, as NotHeld() gives it) and set to 1 after
- * the virtual CanPursue, then copies it with andi; here the inline's return true/false lands in
- * v0 at its own labels -- a result local assigned false first is if-converted into an sltu on
- * the call's result instead (0x6C), with == true or != false 0x74; round 28, Pursuable as `bool r;
- * if (...) r = true; else r = false;` (0x84), `r = false` with the two tests nested (0x6C), `return
- * NotHeld() && CanPursue(ai)` and the && into a local (0x6C) */
+/* a script takes kinds 12 and 26 only when it may be pursued from (OVL2 0x5F40F0; byte-exact in the
+ * kit lane's round 33: Pursuable's result local zeroed ahead of the tests, set by the call's test
+ * with a self-assigning else arm -- without it MW if-converts the test into an sltu on the call's
+ * result, 0x6C; `else r = false` leaves a `b` over the vanished arm) */
 bool CAiSScript::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
 {
     bool ok = true;
@@ -1135,17 +1131,12 @@ extern "C" bool func_005F61E0(CAiState *s)
     return r;
 }
 
-/* every `period` seconds of the controller's state clock, to a tenth (OVL2 0x5F6270).
- * OPEN, 0x48 against 0x44: the target builds 10.0 before it loads the clock and multiplies the
- * period first, with no load-delay nop; here the clock's load comes first. Tried: the inline
- * StateTimer, the products in either order, a shared constant local, the divisor in a local; round
- * 22: both products into float or int locals (the period's first), the timer into a local after the
- * period's, a named 10.0f, `period *= 10.0f`, a bool local, `!(a % b)` -- all 0x48; round 32: an
- * inline taking the two products (ints or floats, either order) or the timer and the period, under
- * 3.0b50 and b52 alike -- 0x48. */
+/* every `period` seconds of the controller's state clock, to a tenth (OVL2 0x5F6270; byte-exact in
+ * the kit lane's round 34, open since round 13: the clock read through a same-type cast -- the HUD's
+ * round-33 rule -- so MW builds 10.0 and multiplies the period first, as the target does) */
 extern "C" bool func_005F6270(CAiState *s, float period, CSealCtrlAi *ai)
 {
-    return (int)(10.0f * ai->m_stateStack.m_timer) % (int)(10.0f * period) == 0;
+    return (int)(10.0f * (float)ai->m_stateStack.m_timer) % (int)(10.0f * period) == 0;
 }
 
 /* a step taken now, or after a delay (the flags' bit 30 then set); the step the state is on

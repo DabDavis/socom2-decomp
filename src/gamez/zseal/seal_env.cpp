@@ -698,9 +698,9 @@ extern "C" void func_005B61A0()
 }
 
 extern "C" {
-/* (a pickup taken offline is CZSealBody::PickupItem, OVL2 0x59F0C0) told to the network as this
- * console's own or another's (OVL2 0x59E830; OVL1 0x2BA2C0, the net code's) */
-void func_0059E830(CZSealBody *seal, int a, unsigned int netid, short *ids, unsigned int id);
+/* (a pickup taken offline is CZSealBody::PickupItem, OVL2 0x59F0C0, one online
+ * CZSealBody::CanPickupNetItem, OVL2 0x59E830) told to the network as another console's (OVL1
+ * 0x2BA2C0, the net code's) */
 void func_002BA2C0(int a, unsigned int netid, short *ids, unsigned int id, unsigned int owner);
 }
 
@@ -722,7 +722,7 @@ extern "C" void func_0059F610(CZSealBody *seal, CPickup *pickup)
         unsigned int id = seal->m_id;
 
         if (owner == id)
-            func_0059E830(seal, 1, pickup->GetPickupNetEntityID(), ids, id);
+            seal->CanPickupNetItem(1, pickup->GetPickupNetEntityID(), (unsigned short *)ids, id);
         else
             func_002BA2C0(1, pickup->GetPickupNetEntityID(), ids, id, owner);
     } else
@@ -733,11 +733,8 @@ extern "C" {
 /* the body-part ids of the rifle and the pistol (OVL1 data, read as variables) */
 extern int data_003DF148;
 extern int data_003DF150;
-/* a third id, cleared as either weapon is taken (OVL1 data, read as a variable) and the kit's two
- * selections the takes start with (OVL2 0x5C6A40, 0x5C6DA0: the kit lane's range) */
+/* a third id, cleared as either weapon is taken (OVL1 data, read as a variable) */
 extern int data_003DF160;
-void func_005C6A40(CZKit *kit);
-void func_005C6DA0(CZKit *kit);
 }
 
 /* The weapons moved between the hand and where they are worn: the part's node taken from its parent's
@@ -846,7 +843,7 @@ void ParentPistolToRHandCallback(void *data, void *arg)
  * in the same place, after ChangeToRifleMode as here) */
 void CZSealBody::ChangeToPistolMode(bool hand)
 {
-    func_005C6DA0(&m_kit);
+    m_kit.ReParentToPistol();
     if (hand)
         func_005A7690(this);
     if (m_rifle->m_node) {
@@ -867,7 +864,7 @@ void CZSealBody::ChangeToPistolMode(bool hand)
  * 0x5C6A40 -- in the same place) */
 void CZSealBody::ChangeToRifleMode(bool holster)
 {
-    func_005C6A40(&m_kit);
+    m_kit.ReParentToRifle();
     func_005A7480(this);
     if (holster) {
         if (m_pistol->m_node) {
@@ -2406,10 +2403,7 @@ static inline void SetAckAmmo(AckUnion *ack, int i, bool on)
 }
 
 extern "C" {
-/* the rounds of a weapon's ammunition taken into the kit (OVL2 0x5BB000, the kit lane's range:
- * SOCOM 1's CZKit::PickupAmmo by HandlePickupAck's call) and an ammunition pickup walked with a
- * label (OVL2 0x541910, pickup_main.cpp's) */
-void func_005BB000(CZKit *kit, int weapon, int ammo, int *rounds);
+/* an ammunition pickup walked with a label (OVL2 0x541910, pickup_main.cpp's) */
 void func_00541910(CPickup *p, const char *label);
 }
 
@@ -2424,7 +2418,7 @@ static inline void TakeAmmoEntry(CZSealBody *seal, CPickup *p, int i)
     int n = 0;
 
     ammo->Get(i, &w, &a, &n);
-    func_005BB000(&seal->m_kit, w, a, &n);
+    seal->m_kit.PickupAmmo((CZFTSWeapon *)w, (CZAmmo *)a, &n);
     ammo->Clear(i);
     func_00541910(p, "pickup");
 }
@@ -2595,10 +2589,8 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
 }
 
 extern "C" {
-/* a weapon's model name (OVL1 0x3D2750, an out-of-line accessor: CZWeapon::m_modelname) and an
- * item's kind (OVL2 0x5B8820, the kit lane's range: 2 a pistol, the slot ITEM_PISTOL names) */
+/* a weapon's model name (OVL1 0x3D2750, an out-of-line accessor: CZWeapon::m_modelname) */
 char *func_003D2750(CZWeapon *w);
-SEAL_ITEM_BYTE func_005B8820(EQUIP_ITEM item);
 }
 
 extern "C" {
@@ -2616,14 +2608,6 @@ void func_005451C0(CSealStats *s, int n);
 int func_002C30B0(const CZSealBody *seal);
 bool func_00564CF0(CSealCtrlAi *ai, float t);
 extern AnimSet *data_0044D400;
-}
-
-/* a valve's value read through a const pointer (an inline: the step re-reads the field for SetValue's
- * test, as a const accessor of CValve's would make it -- read plainly, MW shares the one load; the
- * name ours) */
-static inline unsigned int ValveValue(const CValve *v)
-{
-    return v->m_value;
 }
 
 /* a kill credited: the killer kept and, a SEAL, given a hostage's kill (online the side's valve
@@ -2656,7 +2640,7 @@ void CZSealBody::HandleKiller(int killer, bool b)
                 else if (func_002C31D0(k))
                     v = g->m_38;
                 if (v)
-                    v->SetValue(ValveValue(v) + 1);
+                    v->SetValue(v->GetValue() + 1);   /* (CValve's const accessor: the step re-reads the field for SetValue's test) */
             }
             func_00545390(&k->m_stats, k);
         } else if (this == k)
@@ -2713,7 +2697,7 @@ void CZSealBody::CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *p
     CPickup *p = CPickup::NetworkCreate(netid, (CPickup::PU_TYPE)8, node, w);
 
     if (p) {
-        p->m_secondary = func_005B8820(w->m_ID) == ITEM_PISTOL;
+        p->m_secondary = CZKit::GetItemFireClass(w->m_ID) == CZKit::FIRE_CLASS_PISTOL;
         if (data_0044D508)
             ((CZAnim *)data_0044D508)->ActivateArg(1, 3, p->m_node, 0);
     } else {
@@ -3244,10 +3228,8 @@ extern "C" void func_005A0BB0(CZSealBody *seal)
 
 /* the hits under a point handled (SOCOM 1's SealProcessAltitude; OVL2 0x5B5D40, not written yet) */
 extern "C" void func_005B5D40(CZSealBody *seal, zdb::DiIntersect *di, CPnt3D *pos, float f);
-/* zdb::CWorld::GetAltitudes (OVL1 0x31DEA0): SOCOM II's takes no height -- none of its five callers
- * sets $f12 -- where znode.h declares SOCOM 1's (p, alt); called by its address until the zdb lane
- * drops the float */
-extern "C" zdb::DiIntersect *func_0031DEA0(zdb::CWorld *world, const CPnt3D *p);
+/* (zdb::CWorld::GetAltitudes, OVL1 0x31DEA0: SOCOM II's takes no height -- none of its five callers
+ * sets $f12 -- znode.h's since the zdb lane dropped the float; called by name) */
 
 /* the inline setter of the altitude query's character flag (the stores `(b & 1) << 1`) */
 static inline void SetAltitudeCharacters(zdb::DiIntersect *di, bool on)
@@ -3276,7 +3258,7 @@ void CZSealBody::SealGetAltitude(CPnt3D *pos, float f)
     chars = di->m_AltitudeCharacters;
     if (m_altitude_characters)
         SetAltitudeCharacters(di, true);
-    hits = func_0031DEA0(world, pos);
+    hits = world->GetAltitudes(pos);
     SetAltitudeCharacters(di, chars);
     node->SetActive(active);
     func_005B5D40(this, hits, pos, f);

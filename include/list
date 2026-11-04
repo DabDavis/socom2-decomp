@@ -507,15 +507,24 @@ public:
      * inlined into CAiState's implicit operator= 0x5EBDC0): the source's end, then the node at the
      * shorter length found from its nearer end, and the three handed to do_assign -- the arguments
      * evaluated right to left, so x.end() is taken first and min()'s two temporaries x.size() before
-     * size() */
+     * size(). The kit lane's round 33 (0x5EBDC0 byte-exact from seal_unit.cpp): x.begin() is read
+     * through the sentinel's reference, tail() (MW keeps &x.end_, x.end()'s, in a saved register and
+     * loads the first node 4 past it -- the const begin() folds to 16(x)); the node at the shorter
+     * length is found through a const view one inline level down (advance_to_c), so its returned
+     * iterator takes the frame's lowest slot, below x.end()'s and min()'s temporaries */
     __list_imp &operator=(const __list_imp &x)
     {
         typedef typename __list_deleter<T, Allocator>::const_iterator const_iterator;
 
         if (this != &x)
-            do_assign(x.begin(), const_iterator(((__list_imp &)x).advance_to(min(this->size(), x.size()))),
+            do_assign(const_iterator(x.tail().next_), x.advance_to_c(min(this->size(), x.size())),
                       x.end());
         return *this;
+    }
+    /* the n-th node's const iterator (advance_to through a const view: the assignment's; the name ours) */
+    typename __list_deleter<T, Allocator>::const_iterator advance_to_c(unsigned int n) const
+    {
+        return typename __list_deleter<T, Allocator>::const_iterator(((__list_imp *)this)->advance_to(n));
     }
     /* [first, last) assigned, mid the source's node at this list's length: past it a temporary list
      * built on this one's allocator, the overlap copied over the front and the temporary spliced in
@@ -770,6 +779,12 @@ public:
             ++*this;
             return tmp;
         }
+        /* (the reverse walks step back with it) */
+        generic_iterator &operator--()
+        {
+            --i_;
+            return *this;
+        }
         bool operator==(const generic_iterator &x) const { return i_ == x.i_; }
         bool operator!=(const generic_iterator &x) const { return i_ != x.i_; }
 
@@ -799,6 +814,29 @@ public:
         return iterator(typename base::iterator(t.next_));
     }
     iterator end() { return iterator(typename base::iterator(&this->end_)); }
+    /* the reverse walks (std::reverse_iterator, include/iterator): the ends through tail() -- the
+     * sentinel through the end pair -- each built into a local first. So CSealCtrlAi::AnimSignal
+     * 0x562030's walk over its state stack, `reverse_iterator i; for (i = s.rbegin(); i != s.rend();
+     * ++i)`, calls the end pair's second() (0x5621B0) and inlines everything else as the target:
+     * the iterator ASSIGNED, so kept in memory (76(sp), copied in through $f0), stepped and read
+     * through it. Built in the reverse iterator's argument, each end sits a level deeper: through
+     * the wrapper's end() the iterators' constructors are cut, through tail() tail() itself (the MSL
+     * headers round 22, build/p22/asig.cpp, untracked; the probe's one difference left in the walk
+     * is the end pair's address, which the target recomputes at each call and MW keeps in a saved
+     * register here) */
+    typedef std::reverse_iterator<iterator> reverse_iterator;
+    reverse_iterator rbegin()
+    {
+        iterator e = iterator(typename base::iterator(&this->tail()));
+
+        return reverse_iterator(e);
+    }
+    reverse_iterator rend()
+    {
+        iterator b = iterator(typename base::iterator(this->tail().next_));
+
+        return reverse_iterator(b);
+    }
     /* the const walks' begin(), written as begin(): the sentinel through tail() in a local, the
      * base's const_iterator built here (through the base's begin() const, a level deeper, the
      * innermost constructor is a call where a walk assigns it -- CEntity::TickAll) */

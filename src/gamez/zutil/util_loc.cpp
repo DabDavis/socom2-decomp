@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../zui/zui.h"
+#include "../zsnd/zsnd_subtitles.h"
 
 class CRdrFile : public _zrdr {};
 CRdrFile *zrdr_read(const char *name, const char *path, int flags);
@@ -73,24 +74,11 @@ void IncLanguageVersion();
 extern "C" {
 int sceScfGetLanguage();
 }
-extern char data_0048DC30[];
 /* the archives' open mode (zrdr_archive.cpp's?) */
 extern int data_003F7020;
 
-/* the languages, as the table of their names lists them (the names ours) */
-enum LANGUAGE {
-    LANG_STATES,
-    LANG_UK,
-    LANG_FRANCE,
-    LANG_GERMANY,
-    LANG_SPAIN,
-    LANG_ITALY,
-    LANG_JAPAN,
-    LANG_KOREA,
-    LANG_TEST,
-    LANG_COUNT,
-    LANG_UNSET = 99
-};
+/* the languages, as the table of their names lists them (the names ours): zsnd_subtitles.h's LANGUAGE,
+ * the subtitle table's (the two copies were the same enumerators; one now, the unit unchanged) */
 
 /* the languages' directory names, and whether the tables come from a ZAR per language */
 static const char *s_languageNames[LANG_COUNT] = {
@@ -98,8 +86,9 @@ static const char *s_languageNames[LANG_COUNT] = {
 };
 static bool s_useZar = true;
 
-/* the sound system's language (CSnd's global 0x48DC30) */
-extern "C" void func_0034D190(void *snd, LANGUAGE lang);
+/* the sound system's language: CSnd's subtitle table (zsnd_csnd.cpp's global 0x48DC30), its
+ * Load(LANGUAGE) 0x34D190 the language's VAG index (the world's round 15 named it) */
+extern CSubtitleTable data_0048DC30;
 
 /* the language chosen (LANG_UNSET until the system's is taken) */
 static LANGUAGE s_language;
@@ -219,7 +208,7 @@ void SetLanguage(LANGUAGE lang)
         s_language = lang;
         GetStringTables()->Reload(lang);
         IncLanguageVersion();
-        func_0034D190(data_0048DC30, lang);
+        data_0048DC30.Load(lang);
     }
     SetValveValue(CValve::Create("LanguageChoice", (VALVE_TYPE)2), lang);
 }

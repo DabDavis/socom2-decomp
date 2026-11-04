@@ -1319,6 +1319,7 @@
 0x001E8DC0 ezNetCtlSetAutoMode
 0x001E8E38 ezNetCtlUpInterface
 0x001E8EB0 ezNetCtlDownInterface
+0x001E8F28 dmaIOP
 0x001E8FE0 func_001E8FE0
 0x001E9120 FreeVector<Q23std64vector<Q23zdb10CTickLight,Q23std29allocator<Q23zdb10CTickLight>>>__FRQ23std64vector<Q23zdb10CTickLight,Q23std29allocator<Q23zdb10CTickLight>>_v
 0x001EA250 __dt__Q23std38__list_imp<PCv,Q23std14allocator<PCv>>Fv
@@ -1741,6 +1742,8 @@
 0x00213590 clear__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv
 0x002135A0 __dt__Q23std64__vector_deleter<11nav_package,Q23std24allocator<11nav_package>>Fv
 0x00213610 HideTimer__14BitmapReticuleFv
+0x00213680 TimerProgressTick__14BitmapReticuleFf
+0x00213840 ReloadTimerTick__14BitmapReticuleFfP10CZSealBody
 0x00215180 OnPauseTest__14BitmapReticuleFv
 0x002151A0 Off__14BitmapReticuleFv
 0x002151F0 On__14BitmapReticuleFv
@@ -1866,6 +1869,7 @@
 0x00228ED0 IsPlaying__16CZHudMissionCamsFv
 0x00229430 PlayCamera__16CZHudMissionCamsFPCc
 0x00229470 Draw__16CZHudMissionCamsFPQ23zdb7CCamera
+0x00229810 HudTick__16CZHudMissionCamsFP4CPadf
 0x002299F0 UnInit__16CZHudMissionCamsFv
 0x00229A70 Init__16CZHudMissionCamsFv
 0x00229B80 __dt__16CZHudMissionCamsFv
@@ -1990,6 +1994,7 @@
 0x00232950 Clear__10CTCMSoundsFv
 0x00232970 Load__10CTCMSoundsFv
 0x002329D0 __ct__10CTCMSoundsFv
+0x002329F0 tcmAddKindItems__FUc
 0x002351A0 TalkTick__4CTCMFf
 0x00235300 Close__4CTCMFb
 0x00235440 Open__4CTCMFv
@@ -2003,7 +2008,7 @@
 0x00236AA0 GetColumn__4CTCMFUi
 0x00236B20 GetSelected__4CTCMFv
 0x00236CA0 SetCache__4CTCMFP9CTCMCache
-0x00237000 tcmAddItem__FPCciPCcPCcPCci
+0x00237000 tcmAddItem__FPCcPCcPCcPCcPCcb
 0x002370D0 Reset__4CTCMFv
 0x002371A0 SetupItemBars__4CTCMFv
 0x00237310 ClearItems__4CTCMFv
@@ -2695,6 +2700,7 @@
 0x00272B20 Copy__14CZAnimArgCharPFv
 0x00272BB0 ActivateArg__6CZAnimFie
 0x002732C0 ActivateEx__6CZAnimFie
+0x00273320 ActivateExV__6CZAnimFPc
 0x00273950 func_00273950
 0x00273960 func_00273960
 0x00273980 GetHealth__6CZAnimFv
@@ -3028,6 +3034,7 @@
 0x0028ADA0 TrueLoopTime__16CZSIScriptCommonFv
 0x0028AE40 SetDefaults__16CZSIScriptCommonFv
 0x0028AFE0 __ct__16CZSIScriptCommonFv
+0x0028B0E0 func_0028B0E0
 0x0028B150 erase__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPUiPUi
 0x0028B270 AddCallback__22CZBodyAnimCallbackListFPCcf
 0x0028B450 ResetAnims__22CZBodyAnimCallbackListFv
@@ -3297,12 +3304,19 @@
 0x002A0190 FindTarget__11CTargetListFP7CEntity
 0x002A0200 AddTarget__11CTargetListFP7CEntityP7CEntity
 0x002A0310 RemoveTarget__11CTargetListFP7CEntity
+0x002A0A10 OnUpdateTargetList__7CEntityFbb
+0x002A0DE0 ReplaceTargetList__7CEntityFP7CEntityP7CEntity
 0x002A0F70 SetIncludeInTargetList__7CEntityFb
 0x002A10C0 SetUpdateTargetList__7CEntityFb
 0x002A1140 _sort_target__FRC7CTargetRC7CTarget
-0x002A19B0 func_002A19B0
+0x002A1160 resize__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FUi
+0x002A12E0 sort<Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator,PFRC7CTargetRC7CTarget_b>__3stdFQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorPFRC7CTargetRC7CTarget_b_v
+0x002A1880 swap<7CTarget>__3stdFR7CTargetR7CTarget_v
+0x002A19B0 __ml__Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorCFv
 0x002A19C0 erase__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FP7CTargetP7CTarget
 0x002A1AD0 insert__Q23std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>FP7CTargetUiRC7CTarget
+0x002A21D0 __sort132<Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator,PFRC7CTargetRC7CTarget_b>__3stdFQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorPFRC7CTargetRC7CTarget_b_v
+0x002A2370 __selection_sort<Q33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iterator,PFRC7CTargetRC7CTarget_b>__3stdFQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorQ33std52__vector_imp<7CTarget,Q23std19allocator<7CTarget>,0>8iteratorPFRC7CTargetRC7CTarget_b_v
 0x002A2510 UpdateNextPosition__7CEntityFv
 0x002A2560 ComputeNextPosition__7CEntityFf
 0x002A2670 PostTick__7CEntityFf
@@ -3619,6 +3633,7 @@
 0x002BD630 ClearRemoteGuyList__11CZSealStateFv
 0x002BDDA0 CreateLocalSeal__11CZSealStateFP10CZSealBodyb
 0x002BDEA0 UpdateRollandsUnitStuff__11CZSealStateFP10CZSealBodyPQ211CZSealState13TypeSealState
+0x002BE020 RemoteSealPostUpdateCallback__11CZSealStateFiii
 0x002BEE10 RemoteSealUpdateCallback__11CZSealStateFiii
 0x002BEF20 SealDeleteCleanup__11CZSealStateFi
 0x002BEF60 RemoteSealDeletionCallback__11CZSealStateFii
@@ -4029,6 +4044,7 @@
 0x002D7EA0 UnRegisterEffector__Q23zdb19CClutterAnimManagerFPCv
 0x002D7F30 RegisterEffector__Q23zdb19CClutterAnimManagerFPCvPC6CPnt3DfPC6CPnt3D
 0x002D8010 Tick__Q23zdb19CClutterAnimManagerFfPv
+0x002D8770 TestCellMid__Q23zdb19CClutterAnimManagerFP6CPnt3DP6CPnt3D
 0x002D88C0 ClearEffectors__Q23zdb19CClutterAnimManagerFv
 0x002D8950 ClearAnimations__Q23zdb19CClutterAnimManagerFb
 0x002D8A70 __dt__Q23zdb19CClutterAnimManagerFv
@@ -4173,6 +4189,7 @@
 0x002E2B00 cbGameList__FiiiP22MediusGameListResponse
 0x002E2CE0 UpdateGameListDisplay__FP12BriefingRoom
 0x002E3080 GamePassesFilters__FP8RoomGame
+0x002E31E0 GamePassesTypeFilter__FP8RoomGame
 0x002E33D0 func_002E33D0
 0x002E33E0 HasMissions__8RoomGameFv
 0x002E3490 AllowsType__8RoomGameFi
@@ -4685,6 +4702,7 @@
 0x00309560 Loop__5CMPEGFv
 0x003096C0 Done__5CMPEGFv
 0x003096F0 End__5CMPEGFv
+0x00309780 IdleTick__5CMPEGFv
 0x00309850 Tick__5CMPEGFi
 0x003098E0 Run__5CMPEGFPCcbbi
 0x00309A10 Uninit__5CMPEGFv
@@ -4959,6 +4977,7 @@
 0x0031B770 CmdTickWind__5CWindFP14_zanim_cmd_hdrPf
 0x0031C2F0 RegisterAnimCommands__5CWindFv
 0x0031C320 __ct__Q23zdb23CTextureAssetCharactersFPQ23zdb9CAssetLibPQ23zdb5CNodePQ23zdb11CDynTexList
+0x0031C770 TestFOV__Q23zdb26CTextureAssetCharacterListFPQ23zdb7CCameraPPQ23zdb23CTextureAssetCharacters
 0x0031C880 RemoveDecals__Q23zdb6CWorldFv
 0x0031C930 ClearShadowList__Q23zdb6CWorldFv
 0x0031CA60 __dt__Q23std66vector<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>>Fv
@@ -5275,8 +5294,9 @@
 0x00333CD0 end__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>CFv
 0x00333D30 begin__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>CFv
 0x00333E00 __ct__Q210Metrowerks98__compressed_pair_imp<Q23std14allocator<PCv>,Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>>FRCQ23std14allocator<PCv>RCQ210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>
+0x00333F90 end__Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>CFv
 0x003340A0 __ct__Q23std14allocator<PCv>FRCQ23std14allocator<PCv>
-0x003340B0 func_003340B0
+0x003340B0 __ct__Q210Metrowerks36cdeque<PPCv,Q23std15allocator<PPCv>>FRCQ23std15allocator<PPCv>
 0x003340D0 __ct<PCv>__Q23std15allocator<PPCv>FRCQ23std14allocator<PCv>_Pv
 0x003340E0 alloc__Q23std39__deque_buf<PCv,Q23std14allocator<PCv>>CFv
 0x003340F0 __ct__Q23std83deque<PQ210CRdrEditor11CRDRNodeVec,Q23std39allocator<PQ210CRdrEditor11CRDRNodeVec>>Fv
@@ -5487,6 +5507,7 @@
 0x003421D0 swap__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>FRQ23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>
 0x00342210 clear__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv
 0x00342220 __ct__Q23std46vector<8CSndBank,Q23std20allocator<8CSndBank>>Fv
+0x00342670 CalcVolPan__4CSndFPC6CPnt3DfPiPi
 0x003428A0 func_003428A0
 0x003428F0 func_003428F0
 0x00342910 PlaySoundVolPanPitch__4CSndFfiibP12CSndInstanceUi
@@ -5619,7 +5640,8 @@
 0x0034A6F0 Flush__7HeadsetFv
 0x0034A7B0 IsQueued__7HeadsetFP4CSnd
 0x0034A910 StopSound__7HeadsetFiP4CSnd
-0x0034AA70 func_0034AA70
+0x0034AA70 Interrupt__7HeadsetFv
+0x0034AAC0 Remove__7HeadsetFibb
 0x0034B3B0 Tick__7HeadsetFf
 0x0034B410 SoundSysCallback__7HeadsetFUi
 0x0034B4E0 StaticSoundSysCallback__7HeadsetFUiUl
@@ -5843,6 +5865,8 @@
 0x00358690 func_00358690
 0x00358700 func_00358700
 0x00358720 func_00358720
+0x00358730 Rotate_Zaxis__13C2DBitmapPolyFff
+0x003589D0 Rotate_Zaxis__13C2DBitmapPolyFf
 0x00358CC0 FlipImage_XYaxis__13C2DBitmapPolyFv
 0x00358D50 FlipImage_Yaxis__13C2DBitmapPolyFv
 0x00358E20 FlipImage_Xaxis__13C2DBitmapPolyFv
@@ -5920,6 +5944,7 @@
 0x0035F8E0 clear__Q23std58__vector_deleter<9CVowelRow,Q23std21allocator<9CVowelRow>>Fv
 0x0035F8F0 GetAssetLibs__7C2DLineFRQ23C2D8CLibList
 0x0035F9C0 clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4D
+0x00360030 Draw3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D
 0x00360260 SetClipInfo__7C2DLineFPA4_fPA4_fPA4_f
 0x003602F0 FillClipInfo__7C2DLineFPA4_fPA4_fPA4_f
 0x00360380 MakePacket__7C2DLineFPQ23zdb7CCamera
@@ -6161,6 +6186,8 @@
 0x00372870 GetZAnimCmdType__10CSliderBarFPCc
 0x00373640 GetZAnimCmdType__10CUIListBoxFPCc
 0x00374A50 func_00374A50
+0x00374B50 GetItemText__10CUIListBoxFi
+0x00375C70 RemoveAllItems__10CUIListBoxFv
 0x00376420 SetNormal__10CUIListBoxFv
 0x00376530 func_00376530
 0x00376690 LoadSpec__14CHandlerButtonFRC18CHandlerButtonSpec
@@ -6489,6 +6516,7 @@
 0x0038C4B0 func_0038C4B0
 0x0038C4C0 func_0038C4C0
 0x0038C4D0 InvalidateDisplay__13CSoftKeyboardFv
+0x0038C990 HandlePad__13CSoftKeyboardFP4CPadP9CGameMenu
 0x0038CB80 func_0038CB80
 0x0038CB90 GetCurKey__13CSoftKeyboardCFv
 0x0038CC50 FindKeyProps__13CSoftKeyboardFRC7CSkbKey
@@ -6608,6 +6636,7 @@
 0x00394370 __dt__12CSkbKeyPropsFv
 0x003943E0 SkbLoadUiParams__Fv
 0x00394420 func_00394420
+0x00394520 SkbShowKeyRows__FP4CPadP13CSoftKeyboardb
 0x003947D0 SkbToggleShiftLock__Fb
 0x00394840 SkbToggleCaption1__FP13CSoftKeyboard
 0x003948F0 SkbToggleLock2__Fv
@@ -6615,9 +6644,11 @@
 0x00394DA0 SkbScale__FP13CSoftKeyboardf
 0x00395110 SkbEmptyAllowed__Fv
 0x00395120 func_00395120
+0x00395140 SkbSetKeyTextures__FPQ23zdb10CTexHandlePQ23zdb10CTexHandlePQ23std66vector<PQ23zdb10CTexHandle,Q23std30allocator<PQ23zdb10CTexHandle>>P8CSkbLook
 0x003952F0 func_003952F0
 0x00395300 ReadIntPair__FP5_zrdrPCc
 0x00395440 SkbApplyCapLook__FP9C2DStringPQ23zdb5CNodeP13CSoftKeyboardUcP7C2DFontf
+0x003958D0 SkbPrepDisplay__FPQ23zdb5CNodePQ23zdb16CTextureRelocMgrP7C2DFontPFPQ23zdb5CNodePQ23zdb16CTextureRelocMgr_v
 0x00395D50 SkbLoadBitmap__FP12CBmpWithNodePQ23zdb5CNodeiiPCcPQ23zdb16CTextureRelocMgr
 0x00395DE0 SkbPlaySound__FUc
 0x00396220 SkbTogglePair__FP12CBmpWithNodeP12CBmpWithNodePFb_v
@@ -6629,10 +6660,12 @@
 0x00396CB0 SkbShifted2__FP4CPad
 0x00396D40 SkbTextFits__FRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>b
 0x00396E60 SkbShifted__FP4CPad
-0x00396EC0 func_00396EC0
+0x00396EC0 SkbScaling__Fv
 0x00396ED0 SkbQuotesAllowed__Fv
 0x00396EF0 func_00396EF0
-0x00396F10 func_00396F10
+0x00396F10 SkbTwoEdits__Fv
+0x00396F30 SkbForgetDisplay__Fv
+0x00397070 SkbReadUiParams__FP8CRdrFile
 0x00397590 SkbPlaceCursor__FP12CSkbKeyProps
 0x00397640 SkbSetPurpose__FP12UISkbOpenCmd
 0x00397840 func_00397840
@@ -6655,7 +6688,7 @@
 0x00398FC0 func_00398FC0
 0x00399040 func_00399040
 0x00399070 SkbTypeJamo__FiScP4CPad
-0x00399100 func_00399100
+0x00399100 SkbToggleTextSel__FP13CSoftKeyboard
 0x00399150 SkbSwitchText__FP13CSoftKeyboard
 0x00399200 SkbHangulTypeJamo__FiSc
 0x00399280 SkbCloseText0__FP13CSoftKeyboard
@@ -8961,7 +8994,10 @@
 0x00555B80 func_00555B80
 0x005561C0 func_005561C0
 0x00557D90 func_00557D90
-0x00557E60 func_00557E60
+0x00557DC0 __pl__6CPnt3DCFRC6CPnt3D
+0x00557E10 __ml__6CPnt3DCFf
+0x00557E60 Dot__FRC6CPnt3DRC6CPnt3D
+0x00557E90 __mi__6CPnt3DCFRC6CPnt3D
 0x00557EE0 SetDoAiMapCollide__11CSealCtrlAiFb
 0x00557F30 func_00557F30
 0x00557F60 func_00557F60
@@ -9153,7 +9189,9 @@
 0x00575CB0 _close_enough<i>__FRCiRCiRCi_b
 0x00575CF0 erase__Q23std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>FQ33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>Q33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>
 0x00575DB0 erase__Q23std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>FQ33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>
+0x00575E30 insert__Q23std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>FQ33std70__list_deleter<15ANIM_TIMED_CALL,Q23std28allocator<15ANIM_TIMED_CALL>>19generic_iterator<0>RC15ANIM_TIMED_CALL
 0x00575F40 erase__Q23std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>FQ33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>Q33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>
+0x00576000 insert__Q23std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>FQ33std68__list_deleter<14ANIM_SPAN_CALL,Q23std27allocator<14ANIM_SPAN_CALL>>19generic_iterator<0>RC14ANIM_SPAN_CALL
 0x00576120 func_00576120
 0x005761B0 func_005761B0
 0x005762E0 func_005762E0
@@ -9283,6 +9321,7 @@
 0x0058D020 func_0058D020
 0x0058D090 func_0058D090
 0x0058D150 func_0058D150
+0x0058D190 func_0058D190
 0x0058D250 func_0058D250
 0x0058D6D0 func_0058D6D0
 0x0058D6E0 func_0058D6E0
@@ -9883,7 +9922,9 @@
 0x005EAEB0 func_005EAEB0
 0x005EB580 FollowSeal__9CSealUnitFP10CZSealBody
 0x005EB8A0 func_005EB8A0
-0x005EBDA0 func_005EBDA0
+0x005EBB50 func_005EBB50
+0x005EBDA0 __as__8CAiTimerFRC8CAiTimer
+0x005EBDC0 __as__8CAiStateFRC8CAiState
 0x005EC9F0 InitalizeSealUnit__9CSealUnitFP10CZSealBodyP9CSealUnit
 0x005ECCD0 CreateMultiPlayerUnits__9CSealUnitFv
 0x005ECEF0 UnInit__9CSealUnitFv
@@ -9923,6 +9964,8 @@
 0x005EF380 Create__9CSealUnitFUi
 0x005EF610 erase__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>FQ33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>Q33std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>19generic_iterator<0>
 0x005EF7D0 __ct__Q23std60__list_deleter<10FT_COMMAND,Q23std23allocator<10FT_COMMAND>>Fv
+0x005EF7F0 func_005EF7F0
+0x005EF950 func_005EF950
 0x005EF9B0 func_005EF9B0
 0x005EF9D0 __dt__10CAiSActionFv
 0x005F0390 GetStatus__10CAiSActionCFv
@@ -9953,6 +9996,7 @@
 0x005F3FF0 Virtual0C__10CAiSScriptFiiP11CSealCtrlAi
 0x005F4080 CanAttack__10CAiSScriptCFv
 0x005F4090 CanPursue__10CAiSScriptCFP11CSealCtrlAi
+0x005F40F0 CanPushAiState__10CAiSScriptF8AI_STATEP11CSealCtrlAi
 0x005F4170 GetStatus__10CAiSScriptCFv
 0x005F4360 func_005F4360
 0x005F5010 OnSignal__8CAiSGotoFQ28CAiState6SIGNALP11CSealCtrlAi
@@ -9977,6 +10021,7 @@
 0x005F6100 func_005F6100
 0x005F6190 func_005F6190
 0x005F61E0 func_005F61E0
+0x005F6270 func_005F6270
 0x005F62C0 func_005F62C0
 0x005F6350 func_005F6350
 0x005F6550 Create__8CAiStateF8AI_STATE
@@ -10036,8 +10081,10 @@
 0x005FD050 SetFormation__10CAiSFollowF14UNIT_FORMATIONi
 0x005FD0E0 SetOffset__10CAiSFollowFPCi
 0x005FD3E0 func_005FD3E0
+0x005FD460 func_005FD460
 0x005FD620 func_005FD620
 0x005FD6F0 func_005FD6F0
+0x005FDAD0 SetHideLook__10CAiSFollowFP11CSealCtrlAi
 0x005FDD00 Virtual3C__10CAiSFollowFP11CSealCtrlAi
 0x005FDEC0 GetStatus__10CAiSFollowCFv
 0x005FE830 OnActionButton__15CSealCtrlSquirmFv
@@ -10100,6 +10147,7 @@
 0x006045B0 Tick__8CAiSFleeFP11CSealCtrlAi
 0x00604820 CanAttack__8CAiSFleeCFv
 0x00604830 OnSignal__8CAiSFleeFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00604880 Tick__10CAiSTargetFP11CSealCtrlAi
 0x00604BF0 Virtual14__10CAiSTargetFP11CSealCtrlAiP8CAiState
 0x00604C60 OnSignal__10CAiSTargetFQ28CAiState6SIGNALP11CSealCtrlAi
 0x00605770 func_00605770
@@ -10115,6 +10163,7 @@
 0x00607560 func_00607560
 0x006075C0 func_006075C0
 0x00607650 OnSignal__8CAiSHoldFQ28CAiState6SIGNALP11CSealCtrlAi
+0x00607830 func_00607830
 0x00607D10 CanPushAiState__13CAiSSurrenderF8AI_STATEP11CSealCtrlAi
 0x00608050 func_00608050
 0x00608060 Tick__10CAiSNoAmmoFP11CSealCtrlAi
@@ -10153,6 +10202,7 @@
 0x0060A2D0 func_0060A2D0
 0x0060A2F0 OnSetVisible__9CAiTargetFb
 0x0060A460 Tick__9CAiTargetFP7CEntityf
+0x0060A590 GetTimeSinceLastSighting__9CAiTargetCFv
 0x0060A5B0 func_0060A5B0
 0x0060A5F0 SetTarget__9CAiTargetFP7CTarget
 0x0060A6A0 func_0060A6A0
@@ -10227,6 +10277,7 @@
 0x0060F470 Board__14CAiSUseVehicleFP11CSealCtrlAi
 0x0060F5C0 SetTimeout__14CAiSUseVehicleFf
 0x0060F5D0 CanPushAiState__14CAiSUseVehicleF8AI_STATEP11CSealCtrlAi
+0x0060F5E0 OnSignal__14CAiSUseVehicleFQ28CAiState6SIGNALP11CSealCtrlAi
 0x0060F6C0 func_0060F6C0
 0x0060F9A0 func_0060F9A0
 0x0060F9B0 func_0060F9B0

@@ -60,8 +60,12 @@
  *     w->left_ before w->right_ on both sides.
  * The map's constructor passes a bare stack slot for its allocator (0x1FB3F0, 0x38E740, 0x3A2BE0,
  * the line map's initialiser 0x3FE190): include/memory's allocator() is inline since the MSL
- * headers' round 7. OPEN: OVL2's string-keyed map (0x58CEF0 has find_or_insert
- * <string, int>'s words, 0x58D2B0 its insert_node_at's) is not identified; zrdr_file.cpp's packer
+ * headers' round 7. OVL2's string-keyed map is std::map<std::string, int> (the MSL headers round 22):
+ * seal_cfg.cpp's name-to-id lookups (0x58CB30, 0x58CA60) call its find 0x58D090 and find_or_insert
+ * 0x58CEF0 on one map (0x44AF60), and 0x58CEF0 / its insert_node_at 0x58D2B0 are the material unit's
+ * 0x2DEC00 / 0x2DEE90 word for word bar the link's addresses -- byte-exact from this header as a probe
+ * (build/p22/map1.cpp, untracked), the rows marked `ovl-copy:` so the SEALs' unit scores them once it
+ * declares the map; zrdr_file.cpp's packer
  * uses a map keyed by a pointer (find_or_insert 0x32D780, insert_node_at 0x32DAD0) whose types SOCOM 1
  * does not name. */
 
