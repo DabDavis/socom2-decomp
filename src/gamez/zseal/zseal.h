@@ -1970,6 +1970,92 @@ public:
 
 extern CharacterDynamics theCharacterDynamics;
 
+/* a round-robin share of the AI's work over the frames (new in SOCOM II; the names the kit lane's):
+ * this frame's window of entity numbers, [m_start, m_end), wrapped past the m_total numbers into
+ * [0, m_wrap) -- m_size numbers a frame, m_count how many were served. Five of them, OVL2 bss
+ * 0x66B060 on, 0x20 apart (0x18 bytes each, aligned to 16: 0x66B0F8 is another word), built by
+ * __sinit_seal_ai.cpp (0x6687E0, seal_ai.cpp defines them): CSealCtrlAi::PreTick reads the first,
+ * second and fifth, 0x558640 the second, 0x56D2B0 the fifth, 0x574C30 resets those three, ai_posttick
+ * (0x5CCA30, seal_sensors.cpp) moves them on and ScanTick (0x600550) reads the first; only the
+ * initialiser touches the third and fourth. One class for both lanes' halves (the kit's round 26:
+ * the SEALs' round 24 built the initialiser on its own copy) */
+struct CAiSlice {
+    CAiSlice()
+    {
+        m_count = 0;
+        Reset();
+    }
+    /* (inline: 0x574C30 expands it three times, the sums last) */
+    void Reset()
+    {
+        m_start = 0;
+        m_size = 0;
+        m_total = 0;
+        m_wrap = 0;
+        m_end = m_start + m_size;
+    }
+    /* whether a number takes its turn this frame (an inline bool: the target materialises it,
+     * `daddiu 1` on the true arm) */
+    bool Has(int id) const
+    {
+        if (id < m_wrap || (id >= m_start && id < m_end))
+            return true;
+        return false;
+    }
+    /* the window resized: m_size numbers out of m_total, the part past the end wrapped (an inline:
+     * the target compares the arguments, held in registers, and reads the members back) */
+    void SetSize(int size, int total)
+    {
+        m_wrap = 0;
+        m_total = total;
+        m_size = size;
+        m_end = m_start + m_size;
+        if (size >= total)
+            m_wrap = size;
+        else if (m_end > total)
+            m_wrap = m_end - total;
+        else
+            m_wrap = 0;
+    }
+    /* the window moved on and resized to a new count (inline: ai_posttick's three -- not SetSize, whose
+     * stores run m_wrap, m_total, m_size where these run m_size, m_total, m_wrap). The zero arm of the
+     * wrap first (`m_total == 0 ? 0 : ...`, the target's `bnez total` to the divide) and the sum built
+     * in two steps from m_size (the target loads m_size first and keeps the sum in its register) */
+    void Next(int total, int size)
+    {
+        int start = m_size;
+
+        start += m_start;
+        if (start >= m_total)
+            start = m_total == 0 ? 0 : start % m_total;
+        m_start = start;
+        m_size = size;
+        m_total = total;
+        m_wrap = 0;
+        m_end = m_start + m_size;
+        if (size >= total)
+            m_wrap = size;
+        else if (m_end > total)
+            m_wrap = m_end - total;
+        else
+            m_wrap = 0;
+        m_count = 0;
+    }
+
+    int m_start;   // 0x0
+    int m_end;   // 0x4
+    int m_size;   // 0x8
+    int m_total;   // 0xc
+    int m_wrap;   // 0x10
+    int m_count;   // 0x14: the frame's takers
+};
+
+extern CAiSlice ai_slice0;
+extern CAiSlice ai_slice1;
+extern CAiSlice ai_slice2;
+extern CAiSlice ai_slice3;
+extern CAiSlice ai_slice4;
+
 /* a dying SEAL's visibility requests dropped and its targets' entries for it unhooked (SOCOM 1's
  * free function; OVL2 0x5CC8A0 -- CSealCtrlAi::OnDeath calls it; seal_sensors.cpp, the kit lane's) */
 void CleanupDiPool(CZSealBody *seal);

@@ -115,51 +115,10 @@ extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
     return go;
 }
 
-/* a round-robin share of the entities, a window [start, end) over their list that moves on by its
- * size each frame, wrapping past the count into [0, wrap) (SOCOM II's; five records 0x20 apart at
- * OVL2 bss 0x66B060-0x66B0F7, built by the OVL2 initialiser 0x6687E0 -- the SEALs' PreTick, ScanTick
- * and the AI's per-frame work test an index against them; the names ours) */
-struct CAiSlice {
-    int m_start;   // 0x0
-    int m_end;   // 0x4
-    int m_size;   // 0x8
-    int m_total;   // 0xc
-    int m_wrap;   // 0x10
-    int m_count;   // 0x14: the frame's takers
-
-    /* the window moved on and resized to a new count (inline: ai_posttick's three). The zero arm of
-     * the wrap first (`m_total == 0 ? 0 : ...`, the target's `bnez total` to the divide) and the sum
-     * built in two steps from m_size (the target loads m_size first and keeps the sum in its
-     * register) */
-    void Next(int total, int size)
-    {
-        int start = m_size;
-
-        start += m_start;
-        if (start >= m_total)
-            start = m_total == 0 ? 0 : start % m_total;
-        m_start = start;
-        m_size = size;
-        m_total = total;
-        m_wrap = 0;
-        m_end = m_start + m_size;
-        if (size >= total)
-            m_wrap = size;
-        else if (m_end > total)
-            m_wrap = m_end - total;
-        else
-            m_wrap = 0;
-        m_count = 0;
-    }
-};
-
-extern CAiSlice ai_slice0;
-extern CAiSlice ai_slice1;
-extern CAiSlice ai_slice4;
-
 /* the "ai_posttick" task (CCoreState::Init adds it at 10.7, after target_post_tick): three slices
- * moved on over the entity list, by the function's three static sizes (8-byte-spaced data in
- * definition order: 6, 5, 1) (OVL2 0x5CCA30, new in SOCOM II -- SOCOM 1's ai_post_tick was the
+ * (zseal.h's CAiSlice) moved on over the entity list, by the function's three static sizes
+ * (8-byte-spaced data in definition order: 6, 5, 1) (OVL2 0x5CCA30, new in SOCOM II -- SOCOM 1's
+ * ai_post_tick was the
  * pool's post-tick, ai_target.cpp's 0x60B8F0 here; the name unknown).
  * OPEN, 3 instructions, one in each slice: the target adds the window's start to the size it loaded
  * first as `addu a1,v1,a1` (the start's load first among the operands, the sum in the size's
