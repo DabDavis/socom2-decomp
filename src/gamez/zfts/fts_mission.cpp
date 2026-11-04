@@ -152,7 +152,7 @@ public:
     int zNetGetTime();
 
     unsigned char m_bSessionMaster;   // 0x0
-    unsigned char m_1;   // 0x1: no fade to the mission's end while set (the name ours)
+    unsigned char m_bNetwork;   // 0x1: a network game (SOCOM 1's at 0x9): no fade to the mission's end then
 };
 
 extern CZNetwork theNetwork;
@@ -163,9 +163,16 @@ public:
     unsigned int m_word;
 };
 
-/* a compass anchor (zentity.h's CCompassAnchor: only what the nav points set) */
+/* a compass anchor (zentity.h's CCompassAnchor: only what the nav points and Open set) */
 class CCompassAnchor {
 public:
+    /* (zentity.h's: a lock holds it off) */
+    void SetEnabled(bool on)
+    {
+        if (!m_locked)
+            m_enabled = on;
+    }
+
     unsigned int m_enabled : 1;   // 0x0
     unsigned int m_arrow_enabled : 1;
     unsigned int m_name_enabled : 1;
@@ -182,7 +189,12 @@ public:
 class CCompass {
 public:
     static CCompassAnchor *CreateAnchor(const CPnt3D &pos, const char *name);
+    void Open();   /* 0x2A2BF0 */
+
+    unsigned char _0[0xc];
 };
+
+extern CCompass theCompass;   /* 0x436390 */
 
 /* the AI maps' nav points: a cell and its name (SOCOM 1's, 24 bytes; the names ours) */
 struct CAiNavPoint {
@@ -190,22 +202,55 @@ struct CAiNavPoint {
     char m_name[20];   // 0x4
 };
 
-/* the AI's maps (OVL2's AiMaps: only the cell's centre and the nav points) */
-class CAiMaps {
+/* the AI's maps (OVL2's AiMaps, ai_maps.h's CAiMaps : list<CAiMap *>: only the list, the map set's
+ * read, the cell's centre and the nav points) */
+class CAiMap;
+class CAiMaps : public std::list<CAiMap *> {
 public:
     bool GetCellCenter(const CAiMapLoc &loc, CPnt3D *center);
+    void ReadMapSet(const char *file, const char *path);   /* OVL2 0x52B0D0 */
 
-    unsigned char _0[0x48];
+    unsigned char _c[0x48 - 0xc];
     std::vector<CAiNavPoint> m_navpoints;   // 0x48
 };
 
 extern CAiMaps AiMaps;
+
+/* an objective camera's compass anchor (SOCOM 1's DWARF, 8 bytes) */
+class CMissionObjectiveCam;
+class SObjectiveCam_Anchor {
+public:
+    SObjectiveCam_Anchor() {}
+
+    CMissionObjectiveCam *m_objective;   // 0x0
+    CCompassAnchor *m_anchor;   // 0x4
+};
+
+/* a mission's state (SOCOM 1's DWARF: a byte) */
+enum MISSION_STATE {
+    MISSION_UNLOADED = 0,
+    MISSION_RUNNING = 1,
+    MISSION_SUCCESS = 2,
+    MISSION_FAILURE = 3,
+    MISSION_ABORTED = 4,
+    MISSION_TIMEDOUT = 5
+};
+
+class CRdrFile;
+namespace zdb {
+class CNode;
+}
 
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 class CMission {
 public:
     CMission();    /* 0x2ADBC0 */
     ~CMission();   /* 0x2AD940 */
+    bool Open(const char *name, int load_ai);
+    static bool tick(float dT, void *data);   /* 0x2AAB00 */
+    void ZAnimLoad();   /* 0x2ABAD0 */
+    void InitalizeTeamValves();   /* 0x2B2840 */
+    void RefreshTeamValves();   /* 0x2B23A0 */
     void CreateCompassNavPoints();
     CZNetGame *CreateNetGame();
     bool ReOpen_Unload2();
@@ -220,8 +265,12 @@ public:
     void EndMission();
     void CreateLadderTable();
 
-    unsigned char _0[0xe0];
-    int m_e0;   // 0xe0: cleared before the second unload (SOCOM II's; the name ours)
+    unsigned char _0[0x18];
+    MISSION_STATE m_state;   // 0x18 (SOCOM 1's)
+    char *m_database;   // 0x1c (SOCOM 1's)
+    unsigned char _20[0x60 - 0x20];
+    char m_db_string[0x80];   // 0x60 (SOCOM 1's at 0x20)
+    int m_timer;   // 0xe0: cleared by Open and before the second unload (SOCOM 1's at 0x60)
     unsigned char _e4[0xe8 - 0xe4];
     float m_e8;   // 0xe8: the mission's own clock, in seconds (the name ours)
     unsigned char _ec[0xfc - 0xec];
@@ -229,13 +278,28 @@ public:
     unsigned char m_FadingToEndMission : 1;
     int m_fade_counter;   // 0x100 (SOCOM 1's at 0x74)
     float m_next_fade_time;   // 0x104 (SOCOM 1's at 0x78)
-    unsigned char _108[0x118 - 0x108];
+    float m_wait_before_falling;   // 0x108 (SOCOM 1's at 0x7c)
+    std::vector<CCompassAnchor *> m_anchor_extraction;   // 0x10c (SOCOM 1's at 0x80)
     std::vector<CCompassAnchor *> m_anchors;   // 0x118: the nav points' anchors (SOCOM 1's at 0x8c)
-    unsigned char _124[0x1804 - 0x124];
+    CCompassAnchor *m_whoistalking;   // 0x124: SOCOM II's (Open makes it "WhoIsTalking"; the name ours)
+    std::vector<SObjectiveCam_Anchor> m_objanchor_vec;   // 0x128 (SOCOM 1's CObjAnchorVec at 0x98)
+    unsigned char _134[0x1a4 - 0x134];
+    CValve *m_valve_complete;   // 0x1a4 (SOCOM 1's at 0xe0)
+    CValve *m_valve_failure;   // 0x1a8
+    CValve *m_valve_abort;   // 0x1ac
+    CValve *m_valve_timeout;   // 0x1b0
+    CValve *m_valve_nofade;   // 0x1b4
+    unsigned char _1b8[0x1804 - 0x1b8];
     class CLadderList *m_ladders;   // 0x1804 (SOCOM 1's at 0x580)
     CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
-    unsigned char _180c[0x1860 - 0x180c];
+    unsigned char m_chars_loaded;   // 0x180c (SOCOM 1's at 0x588)
+    unsigned char _180d[0x181c - 0x180d];
+    CRdrFile *m_materialsRdr;   // 0x181c (SOCOM 1's at 0x598)
+    unsigned char _1820[0x1860 - 0x1820];
     float m_music_hold;   // 0x1860: how long the music's raised intensity holds (SOCOM II's; the name ours)
+    unsigned char _1864[0x18ec - 0x1864];
+    zdb::CNode *m_sealbombshack;   // 0x18ec (SOCOM 1's at 0x658)
+    zdb::CNode *m_terroristbombshack;   // 0x18f0 (SOCOM 1's at 0x65c)
 };
 
 /* ---- the unit's statics with constructors, in the order its initialiser (0x400160) builds them,
@@ -294,14 +358,19 @@ extern "C" char *strncpy(char *dst, const char *src, unsigned int n);
 
 /* the world, the entities, the AI events, the scheduler and the sound (their units'; called by their
  * map names) */
+class CEntity;
+class CEntityList : public std::list<CEntity *> {
+};
 class CEntity {
 public:
     static void RemoveAll();
 
     static const unsigned int invalidId;   /* 0x3EFFB0 */
+    static CEntityList m_list;   /* 0x4362E0 */
 };
 class CAiEvent {
 public:
+    static void Open(unsigned int count);   /* OVL2 0x50F150 */
     static void Close();
 };
 extern CSched_Manager zTaskScheduler;
@@ -900,6 +969,261 @@ extern "C" float func_002ACA30(FadeRange *r, float x)
     return f;
 }
 
+/* ---- what CMission::Open calls (their units'; the placeholders by their map names) ---- */
+
+/* the archives (zrdr.h's CRdrArchive: only the two statics Open calls) */
+class CRdrArchive {
+public:
+    static CRdrArchive *AddArchive(const char *name, const char *path);   /* 0x32C1E0 */
+    static void OpenAll();   /* 0x32C570 */
+};
+
+const char *GetDatabase();   /* 0x27F800 */
+CRdrFile *zrdr_read(const char *name, const char *dir, int flags);   /* 0x32F630 */
+void zrdr_free(CRdrFile *file);   /* 0x32D6E0 */
+
+/* the localised string tables (util_loc.cpp's; only the load), the language a word as st_mpexit.cpp
+ * has it */
+enum LANGUAGE {
+    LANGUAGE_ALIGNMENT_HACK = 0x7FFFFFFF
+};
+LANGUAGE GetLanguage();   /* 0x3A4460 */
+
+class CStringTables {
+public:
+    void Load(const char *name, LANGUAGE language);   /* 0x3A3900 */
+};
+CStringTables *GetStringTables();   /* 0x361BC0 */
+
+/* the particles (zparticle.h's namespace: only its open) */
+namespace Particle {
+void Open();   /* 0x324B20 */
+}
+
+/* the materials (int_material.cpp's CMaterialExArray: only the default's setter) */
+class CMaterialExArray {
+public:
+    static void SetDefaultMaterial(int index);   /* 0x2DDC30 */
+};
+
+/* the character models' cache (zchar's CCharacterModelCache: only its vector) */
+class CCharacterModelCache {
+public:
+    static zdb::CModelVector m_ModelCache;   /* 0x44CDA8 */
+};
+
+/* the bullet marks (zweapon's CZMarkList: only its init) and the weapons' statics */
+class CZMarkList {
+public:
+    void Init();   /* 0x3D16B0 */
+};
+
+class CZWeapon {
+public:
+    static void Open();   /* 0x3D03D0 */
+    static void ClearTimer(float *pCurval);
+
+    static CZMarkList *m_pMarklist;   /* 0x4B5248 */
+};
+
+/* a character type's weapons (zchar's CCharacterWeapList: only the slots' padding, OVL2's) */
+class CCharacterWeapList {
+public:
+    void PadWeaponSlots();   /* OVL2 0x53B070 */
+};
+
+/* a character type (zchar's CCharacterType: only what the custom types and Open touch) */
+class CCharacterType {
+public:
+    static CCharacterType *RdrFetch_CharacterType(const char *name);
+    static const CCharacterType *GetByNameMod(const char *name);
+    static CCharacterType *Create(const char *name, const CCharacterType *base, bool temporary);
+    static void AcquireSoundHandles();   /* OVL2 0x53C200 */
+
+    char *m_name;   // 0x0
+    unsigned char _4[0x2e8 - 0x4];
+    CCharacterWeapList m_weapons;   // 0x2e8
+    unsigned char _2e9[0x300 - 0x2e9];
+    unsigned char m_custom;   // 0x300: a custom type (the name ours: stored with li, so no bool)
+};
+
+/* the player's SEAL and its controller (only the controller's state byte, and the network player's
+ * creation) */
+class CSealCtrl {
+public:
+    unsigned char _0[0x221];
+    unsigned char m_221;   // 0x221
+};
+
+class CZSealBody {
+public:
+    static void NetworkPlayerCreate();   /* OVL2 0x5442C0 */
+
+    unsigned char _0[0xc0];
+    CSealCtrl *m_control;   // 0xc0
+    unsigned char _c4[0xe1 - 0xc4];
+    unsigned char m_e1_0 : 4;   // 0xe1
+    unsigned char m_e1_4 : 1;   // 0xe1, bit 4: TRIGGER_POPUP's test (the name ours)
+};
+
+CZSealBody *ftsGetPlayer();
+
+/* the pickups (OVL2's CPickup: only its open) */
+class CPickup {
+public:
+    static void Open(unsigned int count);   /* OVL2 0x542FC0 */
+};
+
+extern "C" {
+int strncmp(const char *a, const char *b, unsigned int n);
+char *strcat(char *dst, const char *src);
+char *strcpy(char *dst, const char *src);
+int sprintf(char *buf, const char *fmt, ...);
+void func_00344450(const char *db);   /* (the mission's sounds loaded) */
+void func_00344910(const char *db);
+void func_003448D0(const char *name);   /* (the jukebox's lists) */
+void func_002DDE40(CRdrFile *rdr);   /* (SOCOM 1's CMaterialExArray::ReadMaterials) */
+int func_002DE9E0(const char *name);   /* (SOCOM 1's CMaterialExArray::ResolveMaterialIndex) */
+extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
+void func_002A4D30(CMission *mission, CRdrFile *rdr);   /* (SOCOM 1's CMission::LoadObjectiveCams) */
+void func_002A5290(CMission *mission, CRdrFile *rdr);   /* (SOCOM 1's CMission::LoadMissionCams) */
+void func_002B4F40(zdb::CWorld *world, const char *name);   /* (SOCOM 1's CNodeAction::Open) */
+void func_003D03C0();   /* (SOCOM 1's CZWeapon::OpenDecals) */
+void func_005A4CF0();   /* (OVL2: SOCOM 1's CZSealBody::InitDecalHandles) */
+void func_00574C30();   /* (OVL2) */
+void func_002B2E50(CMission *mission);   /* (SOCOM 1's CMission::LoadVehicles) */
+void func_005A4CE0();   /* (OVL2: SOCOM 1's CZSealBody::InitDatabaseHandles) */
+void func_00295660();
+void func_005EC6A0();   /* (OVL2: SOCOM 1's CSealUnit::CreateSinglePlayerUnits) */
+void func_005ECCD0();   /* (OVL2: SOCOM 1's CSealUnit::CreateMultiPlayerUnits) */
+void func_002A8140(CAiMap *map);   /* (SOCOM 1's ftsFixupAiMap) */
+void func_002A42B0(CMission *mission);   /* (SOCOM 1's CMission::Sample_ExtractionLoc) */
+}
+
+/* the mission opened: the database's archive and string tables, the vectors reserved, the compass,
+ * the scheduler's three tasks, the sounds and the jukebox, the materials, the mission's valves, the
+ * AI maps and the nav points, the talker's anchor (SOCOM II's), the particles, the anims, the
+ * objective and mission cameras, the actions, the ladders, the decals and marks, the SEALs, the
+ * vehicles, the weapons, the AI events, the pickups, the units, the AI maps fixed up, the world's
+ * descendants, the bomb shacks of a network game, the extraction point (SOCOM 1's Open, its sounds
+ * SOCOM II's own loaders; OVL1 0x2AC410) */
+bool CMission::Open(const char *name, int load_ai)
+{
+    m_wait_before_falling = 10.0f;
+    zdb::CWorld *world = zdb::CWorld::m_world;
+    char path[512] = "run/";
+    const char *db = GetDatabase();
+
+    if (db) {
+        if (!strncmp(db, "mp", 2))
+            strcat(path, "mp/");
+        else if (!strncmp(db, "m", 1))
+            strcat(path, "sp/");
+        strcat(path, db);
+        CRdrArchive::AddArchive("readerm.zar", path);
+        CStringTables *tables = GetStringTables();
+
+        tables->Load(name, GetLanguage());
+        CRdrArchive::OpenAll();
+    }
+    if (!name)
+        return false;
+    m_anchor_extraction.reserve(8);
+    m_objanchor_vec.reserve(16);
+    theCompass.Open();
+    if (name)
+        strcpy(m_database = m_db_string, name);
+    else
+        m_database = 0;
+    m_timer = 0;
+    m_chars_loaded = 0;
+    AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "diTick",
+                                            (bool (*)(float, void *))zdb::CWorld::diTick, 5.0f, 0);
+    AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "Mission", tick, 0.98f, this);
+    AddTask__14CSched_ManagerFPCcPFfPv_bfPv(&zTaskScheduler, "Update visual effects",
+                                            (bool (*)(float, void *))zdb::CNode::VisualEffectsTick, 0.5f, 0);
+    CSnd::Close();
+    CSnd::UnloadAllSounds();
+    func_00344450(m_database);
+    func_00344910(m_database);
+    func_003448D0("sndjukeboxm.rdr");
+    CSndJukebox::Start();
+    func_002DDE40(m_materialsRdr);
+    CMaterialExArray::SetDefaultMaterial(world->m_default_soiltype =
+                                             func_002DE9E0(world->m_default_soiltype_name));
+    m_valve_complete = CValve::Create("mission_complete", VALVE_PERM);
+    m_valve_failure = CValve::Create("mission_failure", VALVE_PERM);
+    m_valve_abort = CValve::Create("mission_abort", VALVE_PERM);
+    m_valve_timeout = CValve::Create("mission_timeout", VALVE_PERM);
+    CValve::Create("mission_replay", 0, VALVE_PERM);
+    m_valve_nofade = CValve::Create("nofade", VALVE_PERM);
+    InitalizeTeamValves();
+
+    char maps[1024];
+
+    if (!strncmp(m_database, "mp", 2))
+        sprintf(maps, "/run/mp/%s/", m_database);
+    else if (!strncmp(m_database, "m", 1))
+        sprintf(maps, "/run/sp/%s/", m_database);
+    else
+        sprintf(maps, "/run/%s/", m_database);
+    AiMaps.ReadMapSet(data_0064F950, maps);
+    CreateCompassNavPoints();
+    m_whoistalking = CCompass::CreateAnchor(CPnt3D(0.0f, 0.0f, 0.0f), "WhoIsTalking");
+    m_whoistalking->m_type = 9;
+    m_whoistalking->SetEnabled(false);
+    Particle::Open();
+    ZAnimLoad();
+    CRdrFile *rdr = zrdr_read("hudobjectives.rdr", 0, 0);
+
+    if (rdr) {
+        func_002A4D30(this, rdr);
+        zrdr_free(rdr);
+    }
+    rdr = zrdr_read("missioncams.rdr", 0, 0);
+    func_002A5290(this, rdr);
+    zrdr_free(rdr);
+    func_002B4F40(world, "actions.rdr");
+    CreateLadderTable();
+    CCharacterModelCache::m_ModelCache.clear();
+    func_003D03C0();
+    if (CZWeapon::m_pMarklist)
+        CZWeapon::m_pMarklist->Init();
+    if (theNetwork.m_bNetwork)
+        CZSealBody::NetworkPlayerCreate();
+    func_005A4CF0();
+    func_00574C30();
+    func_002B2E50(this);
+    CCharacterType::AcquireSoundHandles();
+    CZWeapon::Open();
+    world->AddCustomCharacters();
+    func_005A4CE0();
+    func_00295660();
+    unsigned int count = CEntity::m_list.size();
+
+    CAiEvent::Open(count);
+    if (!theNetwork.m_bNetwork)
+        CPickup::Open(count);
+    if (!theNetwork.m_bNetwork)
+        func_005EC6A0();
+    else
+        func_005ECCD0();
+    RefreshTeamValves();
+    CAiMaps::iterator i, e = AiMaps.end();
+
+    for (i = AiMaps.begin(); i != e; ++i)
+        func_002A8140(*i);
+    world->InitDescendantsDI();
+    world->InitDescendantsVisuals();
+    if (theNetwork.m_bNetwork) {
+        m_sealbombshack = world->FindChild("seal_tent", true);
+        m_terroristbombshack = world->FindChild("terrorist_tent", true);
+    }
+    func_002A42B0(this);
+    m_state = MISSION_RUNNING;
+    return true;
+}
+
 /* the task's callback (SOCOM 1's fadeToEndMissionTick, the same jump; OVL1 0x2A98A0) */
 bool CMission::fadeToEndMissionTick(float dT, void *data)
 {
@@ -910,7 +1234,7 @@ bool CMission::fadeToEndMissionTick(float dT, void *data)
  * OVL1 0x2A97C0) */
 void CMission::FadeToEndMission(float time, int counter)
 {
-    if (theNetwork.m_1)
+    if (theNetwork.m_bNetwork)
         return;
     if (!m_FadingToEndMission) {
         m_FadingToEndMission = 1;
@@ -933,7 +1257,7 @@ bool CMission::ReOpen_Unload2()
 {
     zdb::CWorld *world = zdb::CWorld::m_world;
 
-    m_e0 = 0;
+    m_timer = 0;
     CEntity::RemoveAll();
     CAiEvent::Close();
     world->ClearLightMapList();
@@ -1003,7 +1327,7 @@ extern "C" bool func_002A7560(CZNetGame *game, bool on)
  * OVL1 0x2A6AD0) */
 unsigned int CMission::GetTimeLeft()
 {
-    if (theNetwork.m_1 && m_pNetGame)
+    if (theNetwork.m_bNetwork && m_pNetGame)
         return 0.001f * m_pNetGame->m_round_clock;
     return (int)m_e8;
 }
@@ -1162,26 +1486,6 @@ int g_iNumUiVehicles;
 
 extern "C" const char *data_003F02B0[32];   /* GetCustomCharTypeName's c_arrCustomCharTypeNames */
 const char *GetCustomCharTypeName(int i);
-
-/* a character type's weapons (zchar's CCharacterWeapList: only the slots' padding, OVL2's) */
-class CCharacterWeapList {
-public:
-    void PadWeaponSlots();   /* OVL2 0x53B070 */
-};
-
-/* a character type (zchar's CCharacterType: only what the custom types touch) */
-class CCharacterType {
-public:
-    static CCharacterType *RdrFetch_CharacterType(const char *name);
-    static const CCharacterType *GetByNameMod(const char *name);
-    static CCharacterType *Create(const char *name, const CCharacterType *base, bool temporary);
-
-    char *m_name;   // 0x0
-    unsigned char _4[0x2e8 - 0x4];
-    CCharacterWeapList m_weapons;   // 0x2e8
-    unsigned char _2e9[0x300 - 0x2e9];
-    unsigned char m_custom;   // 0x300: a custom type (the name ours: stored with li, so no bool)
-};
 
 const char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
@@ -1350,21 +1654,6 @@ extern "C" {
 MissionBankList data_00440B80;
 }
 
-/* the localised string tables (util_loc.cpp's; only the load), the language a word as st_mpexit.cpp
- * has it */
-enum LANGUAGE {
-    LANGUAGE_ALIGNMENT_HACK = 0x7FFFFFFF
-};
-LANGUAGE GetLanguage();   /* 0x3A4460 */
-
-class CStringTables {
-public:
-    void Load(const char *name, LANGUAGE language);   /* 0x3A3900 */
-};
-CStringTables *GetStringTables();   /* 0x361BC0 */
-
-extern "C" char *strcpy(char *dst, const char *src);
-
 /* the extra string tables the mission's rdr lists, by name (SOCOM II's; PreOpen calls it; OVL1
  * 0x2AF410).
  * OPEN, 0x100 against 0x140: the target keeps two empty if/else tests on the count -- `0 < count`
@@ -1406,24 +1695,6 @@ extern "C" void func_002AF360(const char *bank)
         t->Load(data_00440B80.GetBank(i), GetLanguage());
     }
 }
-
-/* the player's SEAL and its controller (only the controller's state byte) */
-class CSealCtrl {
-public:
-    unsigned char _0[0x221];
-    unsigned char m_221;   // 0x221
-};
-
-class CZSealBody {
-public:
-    unsigned char _0[0xc0];
-    CSealCtrl *m_control;   // 0xc0
-    unsigned char _c4[0xe1 - 0xc4];
-    unsigned char m_e1_0 : 4;   // 0xe1
-    unsigned char m_e1_4 : 1;   // 0xe1, bit 4: TRIGGER_POPUP's test (the name ours)
-};
-
-CZSealBody *ftsGetPlayer();
 
 /* whether the player's controller is in none of states 2 to 5 (SOCOM II's; OVL1 0x2AA890). One
  * negated && chain of `!=` tests: the null test branches to the shared return-0 block, the four
@@ -1694,13 +1965,14 @@ bool HUDStartDefuseTimerTick(_zanim_cmd_hdr *hdr, float *dT)
 }
 
 /* the bare command's tick: the weapons' timer cleared (SOCOM II's, the name ours; OVL1 0x2AE4F0) */
-class CZWeapon {
-public:
-    static void ClearTimer(float *pCurval);
-};
-
 bool HUDClearTimerTick(_zanim_cmd_hdr *hdr, float *dT)
 {
     CZWeapon::ClearTimer(0);
     return true;
 }
+
+/* the auto-inline limit raised by two statements: MW inlines an out-of-class template member into an
+ * inline function's out-of-line copy only under it, and the pod's reserve needs 17 -- so the pointer
+ * vector's reserve 0x2B1600 that resize<CUIVariable> calls is the pod reserve inlined, as Open's own
+ * reserve generated it first (the MSL headers round 16, include/vector's pointer __vector_imp) */
+#pragma inline_max_auto_size(17)
