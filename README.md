@@ -2060,6 +2060,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 44** (zui_2d.cpp's list box on its real base, the teletype's commands):
+  - a list walk's end() in a local declared before the iterator gives the iterator s0, end() in the test swaps the two
+    (CUIListBox::UpdateUIVar 0x3754D0, TickZAnimCmd 0x372980 twice); sequential loops sharing one function-level `int i`
+    give the target's registers where loop-scoped counters swap each loop's counter with its end-node or pointer register
+    (LoadSpec 0x375E20, SetActive 0x374CB0);
+  - `push_back(x)` taking a pointer local by `const T &` makes MW reload it from its stack slot for its next use; reading
+    the element into a second local first keeps the loaded register; in an unrolled loop's remainder, a bound re-read every
+    pass comes from a `const` accessor or a const view, read straight MW hoists it;
+  - in an inline `operator=(const T &s)`, a reference local `const T &n = s;` used for the string and the trailing member
+    keeps the source's address across the call and gives the target's numbering (C2DButton::LoadSpec 0x376BD0); `float w
+    = a.x, h = a.y;` declared together loads both before converting; for `(h - s) * k` MW puts the load-only operand first
+    in the mult -- `int d = h - s; d * k` gives the target's order; a byte copied into a bool and an unsigned-char field
+    through a bool local avoids the conversion a chained assignment adds;
+  - CUIListBox derives from its real base CPlainBmp (vtable 0x407670), its commands 20-byte CListBoxCmd records
+    (ParseZAnimCmd 0x372F10, the teletype's 0x3787A0 -- both on the first try).
 - **Tells from the SEALs, round 35** (the typed stash's writers, the recursive node count, 0x571010 at last):
   - `delete` of a type with an empty user destructor keeps the delete's own null test behind an `if`; an implicit
     destructor inlined into a delete calls the vector members' destructors out of line with -1, last member first
