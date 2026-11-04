@@ -3327,7 +3327,7 @@
 0x00283170 0x9D8 func_00283170  # OVL1
 0x00283B50 0x304 func_00283B50  # OVL1
 0x00283E60 0x2C0 func_00283E60  # OVL1
-0x00284120 0x238 func_00284120  # OVL1
+0x00284120 0x238 HasSlotsForItem__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEMi  # OVL1; ours, the core lane round 9 (SOCOM II's: whether a selected character has room in its three equipment slots for an item -- the slots it takes against the three, more what the replaced slot's item takes, less each slot locked for any selected character against what it keeps; ChoosePrimaryForCharacter and 0x282C20 call it first and give up on false)
 0x00284360 0x2DC ChoosePrimaryForCharacter__FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEM  # OVL1; ours, the core lane round 8 (SOCOM II's: ChooseEquipmentForCharacter's pick for a primary -- 0x284120's check, the first weapon set up unless already the item, an M203's grenades 141 and 175, 143's 179, 142's 175 or 63's 183 into NextFreeSlot's slots through 0x282C20, each slot's old item kept in the 2-byte table 0x3DD060, the UI variables and valves updated)
 0x00284640 0xB0 NextFreeSlot__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItri  # OVL1; ours, the core lane round 7 (SOCOM II's: the slot an item goes into -- the first empty one past the given (FindItemSlot), else the next unlocked of slots 2-4, round; 0x284360 calls it five times; the name ours)
 0x002846F0 0x30 func_002846F0  # OVL1
