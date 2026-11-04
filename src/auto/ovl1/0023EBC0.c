@@ -4,25 +4,26 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0023EAE0(s32 arg0, s32 arg1);
+M2C_UNK Scroll__12CMPWeaponSelFSc(char * arg0, s8 arg1);
 M2C_UNK func_00240B90(s32 arg0, s32 arg1);
 s32 func_002C64E0(s32 arg0, s32 arg1);
-void func_0023EBC0(s32 arg0, char *arg1) {
-    if (M2C_FIELD(arg1, u8 *, 5) == 1) {
-        func_0023EAE0(arg0, -2);
+void func_0023EBC0(char *arg0, char *arg1) {
+    if (SC_MEMBER(arg1, u8 *, 5) == 1) {
+        Scroll__12CMPWeaponSelFSc(arg0, -2);
         return;
     }
-    if (M2C_FIELD(arg1, u8 *, 6) == 1) {
-        func_0023EAE0(arg0, 2);
+    if (SC_MEMBER(arg1, u8 *, 6) == 1) {
+        Scroll__12CMPWeaponSelFSc(arg0, 2);
         return;
     }
     if ((func_002C64E0(0, (s32) arg1) & 0xFF) == 1) {
-        func_00240B90(arg0, 3);
+        func_00240B90((s32) arg0, 3);
         return;
     }
-    if ((M2C_FIELD(arg1, u8 *, 7) == 1) || (M2C_FIELD(arg1, u8 *, 1) == 1) || ((func_002C64E0(4, (s32) arg1) & 0xFF) == 1)) {
-        func_00240B90(arg0, 0);
+    if ((SC_MEMBER(arg1, u8 *, 7) == 1) || (SC_MEMBER(arg1, u8 *, 1) == 1) || ((func_002C64E0(4, (s32) arg1) & 0xFF) == 1)) {
+        func_00240B90((s32) arg0, 0);
     }
 }

@@ -732,14 +732,11 @@ public:
          * 0x516910) */
         DIR GetDir() const { return (DIR)m_offset; }
         bool HasDirection() const { return m_direction != 8; }
-        /* a door of either kind, 1 or 4 (the name ours: the A* search materialises the test, the
-         * raw kind read once, before it branches) */
-        bool IsDoor() const
-        {
-            unsigned int t = m_type;
-
-            return t == DOOR || t == 4;
-        }
+        /* a door of either kind, 1 or 4 (the name ours: the A* search materialises the test into a
+         * bool -- daddiu 1 in the first beq's slot, `move zero` after the second -- and branches on
+         * it. The field read twice, MW sharing the load; through a local `t` the `||` folds into the
+         * branch, a narrower local adds an andi: the AI core round 19) */
+        bool IsDoor() const { return m_type == DOOR || m_type == 4; }
         /* the setters (the names ours: masked at run time) */
         void SetState(unsigned int s) { m_state = s; }
         void SetTypeInvalid(unsigned int b) { m_type_invalid = b; }

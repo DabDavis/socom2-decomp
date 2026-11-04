@@ -11,13 +11,10 @@
 
 #include "node_world.h"
 
-/* the archive's calls zar.h does not declare yet (SOCOM 1's names; each called where SOCOM 1's
- * code calls that one): Open (with a fifth argument, the s1~ note's) and ReleaseDataBuffer
- * (0x257F90, named: it gives the CBufferIO's buffer back, so a `void *ReleaseDataBuffer();` member
- * -- zar.h is another lane's) */
+/* the archive's call zar.h does not declare yet (SOCOM 1's name; called where SOCOM 1's code
+ * calls that one): Open, with a fifth argument (the s1~ note's) */
 extern "C" bool func_00258920(zar::CZAR *zar, const char *name, int version, unsigned int a,
                               unsigned int b, int c);
-extern "C" void *func_00257F90(zar::CZAR *zar);
 
 namespace zdb {
 
@@ -198,7 +195,7 @@ bool CSaveLoad::LoadTextures_PS2(CAssetLib *lib)
         }
         m_zfile.CloseKey(key);
     }
-    lib->m_texture_buffer = func_00257F90(&m_zfile);
+    lib->m_texture_buffer = m_zfile.ReleaseDataBuffer();
     return true;
 }
 

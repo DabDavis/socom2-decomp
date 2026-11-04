@@ -96,6 +96,69 @@ CValve *VALVE_CMD_DATA::ParseValveName(const char *name, int &index)
     return CValve::Create(name, (VALVE_TYPE)2);
 }
 
+bool zrdr_isitemtype(const _zrdr *rdr, int index, int type);
+void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
+/* an argument list's valve (zanim's CZAnimArgList::GetValve(int), SOCOM 1's, its row not named) */
+extern "C" CValve *func_002721C0(CZAnimArgList *args, int index);
+
+/* SOCOM II's VWATCH command (RegisterCommands' third; the names ours): a valve named once at
+ * parse time -- an anim's own (its valve index) or, by its INPUT_VALVE name, an argument's -- and
+ * marked when the command runs. A 16-byte block */
+struct VWATCH_CMD {
+    _zanim_cmd_hdr hdr;   // 0x0
+    int ref;   // 0x4: the anim's valve index, or the argument's (or a valve)
+    int _8;   // 0x8
+    unsigned char _c;   // 0xc
+    unsigned char isArg : 1;   // 0xd: ref is an argument's index
+    unsigned char isAnim : 1;   // 0xd: ref is the anim's valve index
+};   // 0x10 bytes
+
+/* an argument's valve of an anim, none when it has no arguments (ours) */
+static inline CValve *ArgValve(CZAnim *anim, int ref)
+{
+    CZAnimArgList *args = anim->m_arg_list;
+
+    return args ? func_002721C0(args, ref) : 0;
+}
+
+/* the watched valve marked (its bit 26), whichever way the command names it; always done */
+bool CValve::CmdTickVWatch(_zanim_cmd_hdr *hdr, float *dT)
+{
+    VWATCH_CMD *cmd = (VWATCH_CMD *)hdr;
+    CValve *valve;
+
+    if (cmd->isArg)
+        valve = ArgValve(ZAnim.m_CurAnim, cmd->ref);
+    else if (cmd->isAnim)
+        valve = ZAnim.m_CurAnim->GetValve(cmd->ref);
+    else
+        valve = (CValve *)cmd->ref;
+    if (valve)
+        valve->m_socom2_bit26 = true;
+    return true;
+}
+
+/* the command's block: the valve named by the first item -- an INPUT_VALVE name makes none --
+ * added to the current anim's valves */
+_zanim_cmd_hdr *CValve::CmdParseVWatch(_zrdr *rdr)
+{
+    VWATCH_CMD *cmd = 0;
+
+    if (zrdr_isitemtype(rdr, 0, 3)) {
+        int index = -1;
+        CValve *valve = VALVE_CMD_DATA::ParseValveName(rdr->Item(0)->String(), index);
+
+        if (valve) {
+            cmd = (VWATCH_CMD *)_calloc(1, sizeof(VWATCH_CMD), 0, 0);
+            cmd->hdr.data_size = sizeof(VWATCH_CMD);
+            cmd->isArg = index != -1;
+            cmd->isAnim = true;
+            cmd->ref = index != -1 ? index : (index = ZAnim.m_CurAnim->AddValve(valve->m_name));
+        }
+    }
+    return (_zanim_cmd_hdr *)cmd;
+}
+
 /* SOCOM 1's: the name freed, the callbacks deleted, the list emptied.
  * OPEN, 4 instructions short (0x134 of 0x144): DeleteCallbacks' list-header shape -- the target
  * keeps &end_.next_ (this+16) in a saved register of its own from the walk on and reads both

@@ -182,6 +182,7 @@ public:
     void SetOverlayTexture(zdb::CTexHandle *tex);   /* 0x33B420 */
     void KickOverlay();   /* 0x33B500 */
     void FIFO_Signal(zdb::CGSTexBuffer *buf);   /* 0x33BE70 */
+    void FIFO_Load(zdb::CGSTexBuffer *buf);   /* 0x33BF30 (SOCOM 1's FIFO_Signal minus the wait-time pointer: the world lane's round 6) */
 
     unsigned char _0[0x618];
     zdb::CGSTexBuffer *m_assetHUD1;   // 0x618 (SOCOM 1's CGSTexBuffer pointers, at the same offsets)

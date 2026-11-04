@@ -140,6 +140,7 @@ public:
     static void NetOpen();
     static void WaitForCDRead();
     static void PlayErrorSound();
+    static void UnloadAllSounds();
     static void OnListenerDeath();
     static bool GetSubtitles();
     static void SetSubtitles(bool on);
@@ -152,6 +153,10 @@ public:
     static bool m_hasreverb;            /* 0x48DD30 (SOCOM 1's) */
     static int m_bnkoffset;             /* 0x3DFFD0: the bank archive's disc offset (SOCOM 1's) */
     static zar::CZAR m_bnkArchive;      /* 0x48DC70: the bank archive (SOCOM 1's) */
+    static std::vector<CSnd *> m_soundlist;  /* 0x48DC08: every sound made (SOCOM 1's: AddNewCSnd
+                                                pushes onto it, UnloadAllSounds deletes them) */
+    static CMatrix m_listenermatrix;    /* 0x48DD40: the listener (SOCOM 1's: CalcVolPan transforms
+                                           by it) */
 
     float m_vol;                        /* 0x04 */
     char *m_name;                       /* 0x08 */
@@ -233,6 +238,9 @@ public:
 };   /* 0x58 bytes */
 
 /* the CD file system's flag that a sound stream owns the drive (SOCOM 1's static) */
+/* a file in the CD's table of contents (SOCOM 1's DWARF; util_sonyio.cpp defines it) */
+struct _FILECD;
+
 class CFileCD {
 public:
     /* (util_sonyio.cpp's real class, out of line there: the DNAS client reads its file so) */
@@ -240,6 +248,8 @@ public:
     ~CFileCD();
     int Read(char *buf, int size);
     bool OpenSector(unsigned int sector);
+    /* a file's TOC entry by name, 0 when the TOC has none (0x39DEF0, SOCOM 1's) */
+    static _FILECD *Find(const char *name);
 
     static bool m_streamingSndActive;
 
@@ -478,6 +488,11 @@ public:
     /* the sound (or a member of its group) waiting in the queue or streaming (SOCOM II's, 0x34A7B0;
      * name ours) */
     bool IsQueued(CSnd *sound);
+    /* SOCOM 1's: a channel's sound dropped from the queue and its stream stopped (0x34A910) */
+    void StopSound(int channel, CSnd *sound);
+    /* SOCOM 1's: a channel's sound queued (0x34B6C0), a channel's entries dropped (0x34AAC0) */
+    bool Queue(unsigned int id, CSnd *sound, int vol);
+    void Remove(int id, bool a, bool b);
     /* the device found (ours: ftsGetHeadset's arguments load before the stores, as an inline's) */
     void SetDevice(int device, int format, unsigned char channels)
     {

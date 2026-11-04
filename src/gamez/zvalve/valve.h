@@ -35,7 +35,10 @@ struct CValveOpDelete {
     /* its out-of-line copy in valve_list.cpp's tail is 0x352610: OPEN, 6 instructions, registers
      * only -- the target loads m_type into a0 (this dying there) and builds the test's bool in v1,
      * here the other way round. Tried: the test through an inline bool member (as the condition or
-     * into the local), m_type read into a local first, the comparison's operands swapped */
+     * into the local), m_type read into a local first, the comparison's operands swapped; the world
+     * lane's round 7: an if-assigned or ternary bool, the kept copy declared first, the type through
+     * a byte accessor, static helpers taking the type before or after the valve (all 6 words, or
+     * longer) -- build/scratch/wld/v_vod*.py */
     bool operator()(CValve *valve)
     {
         bool del = valve->m_type == m_type || m_type == 0;
