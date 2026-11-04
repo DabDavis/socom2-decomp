@@ -120,11 +120,12 @@ typedef struct NBESTDP {
     char pad16[8];
     int (*process)();                   /* +24: the scheduler's process slot */
     char pad28[12];
-    void *f40;                          /* +40 */
-    char pad44[8];
-    int (*f52)(void *);                 /* +52 */
-    int f56;                            /* +56 */
-    char pad60[4];
+    void *f40;                          /* +40: the scorer's context (command 35) */
+    int (*f44)(void *ctx, unsigned int phen);   /* +44: one phoneme's score */
+    void (*f48)(void *ctx, short *scores, void *frame, unsigned char flag, short base);  /* +48 */
+    short *(*f52)(void *ctx);           /* +52: the scores' table */
+    short *f56;                         /* +56: a score per phoneme, 32767 not yet scored */
+    unsigned int f60;                   /* +60: the phonemes */
     int f64;                            /* +64 */
     unsigned int f68;                   /* +68: the context's words; f144's last index */
     unsigned int f72;                   /* +72: a bit per word, in bytes */
@@ -133,9 +134,9 @@ typedef struct NBESTDP {
     short *f84;                         /* +84: a short per state */
     BTSTACK *stack;                     /* +88: the stack's first record */
     NBRESULT *results;                  /* +92 */
-    int f96;                            /* +96 */
-    void *f100;                         /* +100 */
-    void *f104;                         /* +104 */
+    unsigned int f96;                   /* +96: the garbage arrays' frames */
+    int *f100;                          /* +100: a garbage score per frame */
+    int *f104;                          /* +104: and the second garbage phoneme's */
     unsigned int frame;                 /* +108: the frames so far */
     NBTOKEN *tok7;                      /* +112 */
     NBTOKEN *tok5;                      /* +116 */
@@ -149,7 +150,9 @@ typedef struct NBESTDP {
     int *f148;                          /* +148: a word per word, and f152 more */
     unsigned int f152;                  /* +152 */
     unsigned short *flags;              /* +156: a word's flags (bit 0: in the pass) */
-    char pad160[12];
+    char pad160[4];
+    unsigned int f164;                  /* +164: the garbage phonemes (command 34) */
+    unsigned int f168;                  /* +168 */
     int f172;                           /* +172 */
     unsigned short f176;                /* +176 */
     char pad178[2];
@@ -173,7 +176,7 @@ typedef struct NBESTDP {
     unsigned char nhist;                /* +272 */
     char pad273;
     short f274;                         /* +274 */
-    int f276;                           /* +276 */
+    NBTOKEN *f276;                      /* +276: the best token */
     short f280;                         /* +280: profile 14 */
     char pad282[2];
     int f284;                           /* +284 */
@@ -209,7 +212,10 @@ extern void *heap_Alloc(void *heap, unsigned int size);
 extern unsigned char _tosErrorLog(void *log, unsigned short code);
 extern int DynProgAccNBestNoOptSil();
 extern int DynProgAccNBestOptSil();
-extern int NBestDynProgProcess();
+static void NBestDynProgProcess(NBESTDP *d, void **in);
+extern void ExpandGarbageArrays(NBESTDP *d);
+extern int IdleProcess();
+extern int _tosControl(void *b, unsigned char cmd, void *arg, int arg2);
 
 /* a record given back to the scheduler's free list of its size, its first word the link. The
  * list's address is a pointer of the push's own (`fl_`): loop.c hoists each as an invariant of its
@@ -745,6 +751,80 @@ static unsigned int FindBestBacktraces(NBESTDP *d, NBTRACE ***bt)
     } else
         *bt = 0;
     return n;
+}
+
+/* the best token's state ended a word the context flags as an end (bit 1), the same word as the
+ * frame before: the frames it has held so far against the beam (profile 6). An inline (SOCOM 1's
+ * too): its result zero-extended once at its join, the target's `andi v0,v0,0xff` */
+static __inline__ unsigned char WordEnded(NBESTDP *d)
+{
+    NBTOKEN *t = d->f276;
+    unsigned short *st;
+    unsigned int w;
+
+    if (t == 0)
+        return 0;
+    st = (unsigned short *)t->state;
+    while ((*st & 1) == 0)
+        st++;
+    w = st[1] + (st[2] << 16);
+    if ((d->flags[w] & 2) && w == d->f204)
+        d->f64++;
+    else
+        d->f64 = 0;
+    d->f204 = w;
+    return d->f64 > d->beam;
+}
+
+/* one frame: the phonemes' scores cleared and made by the scorer (the frame's flag byte, 1 when
+ * none), the frame run through the DP pass, then the two garbage phonemes' running scores; with
+ * end detection on (+172), the block stops once the best word has held long enough. SOCOM 1's
+ * body (0x334). Measured: each running score is one statement over a conditional (SCORE): 2.96's
+ * fold distributes the sum over the conditional's arms, `c ? prev + x + base : prev + y + base`,
+ * so each arm adds into the one temporary stored at the join (one `sw v0,0(s4)`, the call arm's
+ * halfword store first: the target's), the left side's address taken before the right side, and
+ * the right side's first operand -- an array reference -- made a SAVE_EXPR, read once before the
+ * test (the target's `lw s2` in the branch's slot); the pieces as statements of their own keep the
+ * adds but not the shared store, and put the four saved registers in another order. The frame
+ * pointer is a local (the fill loop's halfword stores would make in[1] a reload), the word-end
+ * test compares `f64 > beam` (its loads in that order) */
+/* a phoneme's score this frame, asked of the scorer the first time (32767: not yet scored) */
+#define SCORE(d, scores, k) \
+    ((scores)[k] != 32767 ? (scores)[k] : ((scores)[k] = (d)->f44((d)->f40, (k))))
+
+static void NBestDynProgProcess(NBESTDP *d, void **in)
+{
+    short *scores = d->f56;
+    void *frame = in[1];
+
+    if (frame != 0) {
+        unsigned char flag = 1;
+        unsigned int n = d->f60;
+        short base = d->f274;
+        unsigned int i;
+
+        if (in[0] != 0)
+            flag = *(unsigned char *)in[0];
+        d->f284 += base;
+        for (i = 0; i < n; i++)
+            scores[i] = 32767;
+        d->f48(d->f40, scores, frame, flag, base);
+        d->f176++;
+        if (d->pass(d) != 0) {
+            _tosErrorLog(d, 119);
+            d->process = IdleProcess;
+            if (_tosControl(d, 11, 0, 0) != 0)
+                return;
+        }
+        if (d->f176 >= d->f96)
+            ExpandGarbageArrays(d);
+        d->f100[d->f176 + 1] = d->f100[d->f176] + SCORE(d, scores, d->f164) + base;
+        d->f104[d->f176 + 1] = d->f104[d->f176] + SCORE(d, scores, d->f168) + base;
+        if (d->f172 != 0 && WordEnded(d)) {
+            d->process = IdleProcess;
+            _tosControl(d, 8, (void *)(unsigned int)d->f176, 0);
+        }
+    }
 }
 
 /* the N best word sequences: the best backtraces (sorted, best first) made relative to the best,
