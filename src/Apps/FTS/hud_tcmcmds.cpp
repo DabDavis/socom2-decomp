@@ -78,6 +78,8 @@ public:
 class CNodeAction {
 public:
     void ExecuteAction(CZSealBody *seal, unsigned int flags);
+    /* its prompt (SOCOM 1's GetUIString, OVL1 0x2B48E0) */
+    const char *GetUIString();
 
     unsigned char _0[0x10];
     int m_id;   // 0x10
@@ -196,7 +198,6 @@ bool func_0058DFA0(unsigned char member);
 /* the mission's */
 void func_002B6530(void *queue, const char *name, int a, int b, int c, float delay);
 int func_002B46F0(CNodeAction *action);
-void *func_002B48E0(void *data);
 void *func_002B4760(void *data);
 void *func_002B4820(void *data);
 /* the network game's: whether a SEAL is alive, on each side; the vote and the persona's flag */
@@ -668,7 +669,7 @@ int tcmUpdateTeamMember(CZSealBody *player, int member)
                     void *data = unit->GetDataPtr();
 
                     if (data) {
-                        const char *caption = (const char *)func_002B48E0(data);
+                        const char *caption = ((CNodeAction *)data)->GetUIString();
                         const char *text2 = (const char *)func_002B4760(data);
                         const char *name = (const char *)func_002B4820(data);
 
