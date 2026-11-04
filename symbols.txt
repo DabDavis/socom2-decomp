@@ -3474,7 +3474,7 @@
 0x0028DC90 0x320 PushBlend__5CBodyFP16CZSIScriptCommonsc  # OVL1; s1:order by hand (SOCOM 1's PushBlend took ids; SOCOM II's takes the script's common, a short id and a char state, as the code reads them)
 0x0028DFB0 0x8 BodySetState__5CBodyFi  # OVL1; s1:vtable by hand (CBody's slot 0x14 at 0x406100; the SEAL lane: called where SOCOM 1 calls CBody::BodySetState; the state's halfword at +4 stored)
 0x0028DFC0 0x80 SetPartActive__5CBodyFiP10CZBodyPart  # OVL1; ours (SOCOM II's: the part of a part's id, in range, has its bit 0 set or cleared)
-0x0028E040 0x90 SmoothPart__5CBodyFP10CZBodyPartf  # OVL1; ours (SOCOM II's: SmoothAnims for one part)
+0x0028E040 0x90 SmoothPart__5CBodyFfP10CZBodyPart  # OVL1; ours (SOCOM II's: SmoothAnims for one part); the SEALs lane r22: the fraction comes first -- the caller 0x576700 (seal_anim.cpp) matches word for word with (float, CZBodyPart *), MW evaluating float arguments left to right; the order shows only at the call site
 0x0028E0D0 0xE0 SmoothAnims__5CBodyFf  # OVL1; s1:order by hand (SOCOM 1's SmoothAnims(float): each live part's position interpolated toward its saved one, its rotation slerped)
 0x0028E1B0 0xD4 OrientAuxParts__5CBodyFv  # OVL1; ours (SOCOM II's: each auxiliary part with a node Orient()ed)
 0x0028E290 0xD4 OrientParts__5CBodyFv  # OVL1; ours (SOCOM II's: each part with a node Orient()ed)

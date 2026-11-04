@@ -316,7 +316,7 @@ void CBody::SmoothAnims(float t)
 }
 
 /* one live part eased likewise (SOCOM II's; the name ours) */
-void CBody::SmoothPart(CZBodyPart *part, float t)
+void CBody::SmoothPart(float t, CZBodyPart *part)
 {
     if (part) {
         CZBodyPart *p = m_body_parts[part->m_id];

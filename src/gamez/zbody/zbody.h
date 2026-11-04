@@ -636,7 +636,7 @@ public:
      * their poses saved, read back from their nodes (SOCOM II's; the names ours but SOCOM 1's
      * SmoothAnims) */
     void SetPartActive(int on, CZBodyPart *part);
-    void SmoothPart(CZBodyPart *part, float t);
+    void SmoothPart(float t, CZBodyPart *part);
     void SmoothAnims(float t);
     void OrientAuxParts();
     void OrientParts();
