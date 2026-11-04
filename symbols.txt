@@ -3766,10 +3766,10 @@
 0x002A2D10 0x30 SetPoint__14CCompassAnchorFi  # OVL1; new in SOCOM II: the anchor's current point (0x18), -1 when the index is negative or past the point list's size -- the name is ours; compass.cpp
 0x002A2D40 0xE8 AddPoint__14CCompassAnchorFPC6CPnt3D  # OVL1; new in SOCOM II: a point found in the anchor's list or pushed on it, its index returned -- the name is ours; compass.cpp
 0x002A2E30 0x80 __dt__8CCompassFv  # OVL1; s1:align by hand (SOCOM 1's __dt__8CCompassFv, 0x259040: the implicit destructor; five this-tests here -- CCompass, CCompassAnchorVec, the pointer vector's three); __sinit_compass.cpp registers it; compass.cpp
-0x002A2EB0 0x2C0 func_002A2EB0  # OVL1
+0x002A2EB0 0x2C0 ftsGetAltitudeApprox__FPC6CPnt3Dfb  # OVL1; s1:calls (the engine core round 13: SOCOM II's ftsGetAltitudeApprox(const CPnt3D *, float, bool), SOCOM 1's callee sequence; opens the unit 0x2A2EB0-0x2A3AF8 between compass.cpp and the CDIDummy rows)
 0x002A3170 0x7B4 func_002A3170  # OVL1
 0x002A3930 0x14 func_002A3930  # OVL1
-0x002A3950 0x198 func_002A3950  # OVL1
+0x002A3950 0x198 func_002A3950  # OVL1; OVL1's copy of CAiMap::GetLocation (OVL2 0x515F80, the same words: the engine core round 13); ovl-copy: GetLocation__6CAiMapCFPC6CPnt3DR9CAiMapLoc
 0x002A3AF0 0x8 func_002A3AF0  # OVL1
 0x002A3B00 0x8 GetIntersect__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002A3B10 0x8 GetAltitude__8CDIDummyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
