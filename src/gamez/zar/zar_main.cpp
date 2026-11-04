@@ -31,6 +31,17 @@ CZAR::CZAR(const char *name, CIO *io)
     m_root = new CKey(DEFAULT_ZAR_NAME);
 }
 
+bool CZAR::Flush()
+{
+    if (!IsOpen())
+        return false;
+    if (m_modified) {
+        WriteDirectory();
+        m_modified = 0;
+    }
+    return true;
+}
+
 /* the name copied in unless it is the one held: the old copy freed (never the default's own
  * pointer), no name or the default's kept as the default's pointer (SOCOM 1's) */
 void CZAR::SetFilename(const char *name)

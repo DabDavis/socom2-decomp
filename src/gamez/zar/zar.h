@@ -97,6 +97,11 @@ public:
      * characters (CIO::fwrite(const char *)'s record read back; the bytes read; SOCOM II's -- the
      * name ours: CZSIObject::Read reads the object's name with it) */
     int ReadString(char **str);
+    /* the directory written at the file's end (SOCOM 1's; 0x257590) */
+    void WriteDirectory();
+    /* the directory written if it changed, while the file is open: whether it is (SOCOM II's --
+     * CSaveManager::Save calls it; the name ours) */
+    bool Flush();
     /* the file reopened unless it still is (0x258B40, SOCOM 1's ReOpen; both callers pass 1, 1) */
     bool ReOpen(int, unsigned int);
     bool IsOpen() { return m_pFile ? m_pFile->IsOpen() : false; }
