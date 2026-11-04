@@ -3600,7 +3600,7 @@
 0x00299320 0x1B4 Shake__10CAppCameraFUc  # OVL1; the name ours (one of the camera's three shake presets at 0x50 begun, else the shake stopped; CmdBeginShake inlines it, OVL2 calls it)
 0x002994E0 0x21C BeginShake__10CAppCameraFffffffff  # OVL1; the name ours (SOCOM II's shake begun: the larger rates and decays kept, the amplitudes rolled with rand()%100; Shake and an OVL2 caller pass eight floats)
 0x00299700 0xE4 StopShake__10CAppCameraFv  # OVL1; the name ours (SOCOM II's shake stopped: its eight parameters -1, the echo off, the angles to a random quarter, the amplitudes 0; inlined in Shake and TickCameraWiggle)
-0x002997F0 0xFC func_002997F0  # OVL1
+0x002997F0 0xFC UpdateCameraRegions__10CAppCameraFv  # OVL1; ours, the engine core round 6: camera.cpp's (between StopShake and Tick), CZHudMissionCams::HudTick calls it on appCamera (0x415FF0); the camera's origin taken to the world, CWorld::m_world->GetAltitude(p, 0, true), unless a SEAL's node: SetCameraCanSeeRegions(-1 when func_002C2FD0(ftsGetPlayer()), else the hit's GetRegion), the material at 0x2C0, with a polygon IsInside at 0x2B8 and GetPolyFlag27 at 0x2BC; byte-exact
 0x002998F0 0x310 Tick__10CAppCameraFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00299C00 0xC func_00299C00  # OVL1
 0x00299C10 0x30 TickTask__10CAppCameraFfPv  # OVL1; the name ours (CCoreState::Init's appCamera_tick task: the app camera's virtual Tick)
