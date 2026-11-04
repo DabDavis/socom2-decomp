@@ -251,6 +251,9 @@ public:
     /* slots 1 and 11: the slots drawn while the list is on (0x23CCB0), all faded (0x240580) */
     virtual void Draw(zdb::CCamera *cam);
     virtual void SetTrans(float trans);
+    /* the next weapon class's first id up or down from a class, round 0-254 (0x23CB90; the name
+     * ours) */
+    EQUIP_ITEM NextClass(bool up, EQUIP_ITEM cls);
 
     class CMPWeaponSel *m_owner;   // 0x18: the selector (its Init sets the category page's)
     unsigned char _1c[0x20 - 0x1c];

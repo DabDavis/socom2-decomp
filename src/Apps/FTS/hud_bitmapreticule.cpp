@@ -237,3 +237,30 @@ void BitmapReticule::HideTimer()
     m_socom2_43a0.SetTrans(0.0f);
     m_socom2_4420.SetTrans(0.0f);
 }
+
+/* the body's blend stack (zbody.h's RTStack, SOCOM 1's; only its Top here): this unit's tail holds
+ * the one copy of Top for CZBodyAnimBlend (0x219390, after hudStartDefuseTimer), which body.cpp
+ * calls -- the reticule's unwritten 0x215C10 instantiates it, explicitly instantiated here until
+ * that is written */
+class CZBodyAnimBlend;
+
+template <class T>
+class RTStack {
+public:
+    T *Top();
+
+    T **m_stack;   // 0x0
+    int m_size;   // 0x4
+    int m_top;   // 0x8
+};
+
+/* the top item, none when empty (SOCOM 1's) */
+template <class T>
+T *RTStack<T>::Top()
+{
+    if (m_top < 0)
+        return 0;
+    return m_stack[m_top];
+}
+
+template class RTStack<CZBodyAnimBlend>;

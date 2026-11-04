@@ -374,6 +374,56 @@ void SlotList::Draw(zdb::CCamera *cam)
                 m_slots[i]->Draw(cam);
 }
 
+/* whether an id is the first of a weapon class (GetIDType's sixteen classes; the name ours: the
+ * target materialises the switch's answer, an inlined bool) */
+static inline bool IsClassStart(int id)
+{
+    bool start = false;
+
+    switch (id) {
+    case 4:
+    case 31:
+    case 51:
+    case 81:
+    case 91:
+    case 101:
+    case 121:
+    case 141:
+    case 145:
+    case 151:
+    case 171:
+    case 185:
+    case 190:
+    case 201:
+    case 205:
+    case 230:
+        start = true;
+    }
+    return start;
+}
+
+/* a step up or down, then on, round 0-254, to the first id of a class */
+EQUIP_ITEM SlotList::NextClass(bool up, EQUIP_ITEM cls)
+{
+    int id = cls;
+
+    if (up)
+        id++;
+    else
+        id--;
+    while (!IsClassStart(id)) {
+        if (up)
+            id++;
+        else
+            id--;
+        if (id > 254)
+            id = 0;
+        if (id < 0)
+            id = 254;
+    }
+    return (EQUIP_ITEM)id;
+}
+
 /* the slots' text: the weapon's description, upper-cased into a buffer of its own, at 0.9 (each slot
  * class its buffer, bss 0x414810 and 0x414860), and the slots' offsets (the unit's 8-byte-spaced
  * .data, 0x3DCE28 and 0x3DCEB8-0x3DCED0: variables, loaded with lwc1; the names ours) */

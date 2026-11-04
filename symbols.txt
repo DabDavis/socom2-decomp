@@ -2300,7 +2300,7 @@
 0x0023C390 0x354 func_0023C390  # OVL1
 0x0023C6F0 0x144 func_0023C6F0  # OVL1
 0x0023C840 0x344 func_0023C840  # OVL1
-0x0023CB90 0x118 func_0023CB90  # OVL1
+0x0023CB90 0x118 NextClass__8SlotListFb10EQUIP_ITEM  # OVL1; by hand (the HUD lane, round 26): SlotList's (the list's 0x23C840 calls it on the category page's list +0x960; this unused) -- an id stepped up or down, then on round 0-254 until it is one of GetIDType's sixteen class starts (4, 31 ... 230: an inlined switch's bool); the name ours; hud_mpweaponsel.cpp, byte-exact
 0x0023CCB0 0x70 Draw__8SlotListFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane: slot 1 of SlotList's vtable 0x405E80 -- its five slot pointers drawn while it is on)
 0x0023CD20 0x33C func_0023CD20  # OVL1
 0x0023D060 0x144 func_0023D060  # OVL1
