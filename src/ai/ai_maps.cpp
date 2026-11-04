@@ -586,6 +586,87 @@ unsigned int CAiMaps::GetLocationDelta(const CAiMapLoc &a, const CAiMapLoc &b)
     return ai::_max(ma->GetCellCount(), mb->GetCellCount());
 }
 
+/* ai_path.cpp's, not written yet: a cell appended to a path on its map (SOCOM 1's AppendPathLoc,
+ * by its place after InsertPathLoc and its calls here, where the demo's ExtendPath calls it), and
+ * the path finished after an extension (SOCOM 1's ExtendPath ended in SmoothPath and
+ * UpdateTurnAngles) */
+extern "C" bool func_00526F20(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
+extern "C" void func_00526540(CAiPath *path, CAiMaps *maps, bool smooth);
+
+/* a path stretched to a cell (SOCOM 1's ExtendPath, the demo's 0x199220 after UpdateActionTables
+ * as here; SOCOM II takes the walk's first cell too): an empty path takes the cell when the feet
+ * reach it from the first cell; a path starting on it is done; a one-point path
+ * has its point moved there when the feet reach it; else the cell is appended when the feet reach
+ * it from the path's first point, or, on a path following a template (flag 8), the template's points
+ * between the two cells are appended in order and then the cell -- the path finished after either.
+ * The shapes: the size read in each test (a local numbers it ahead of the compares' temporaries), the
+ * points through data_ (operator[]'s data() reference takes &data_ into a saved register), the
+ * template declared ahead of the first point (their saved registers swap otherwise), the step an
+ * if/else on `i <= i1` (branching on the compare; `if (i1 < i) step = -1` lays the -1 out after),
+ * the walk top-tested (`if (i != i1) do ... while`: a `for` is entered at its bottom test).
+ * OPEN, 2 instructions: the target loads i1 before the step's 1 and i0 after it, this build i0 first
+ * (i0's load in the compare, an uninitialised i assigned after the step, `i1 >= i`, the ok store
+ * moved: no change or worse) */
+bool CAiMaps::ExtendPath(CAiPath &path, const CAiMapLoc &from, const CAiMapLoc &to)
+{
+    bool smooth = false;
+    bool ok = false;
+    bool post = false;
+
+    if (path.m_points.size() == 0) {
+        if (CanTravelLine(from, to, 0)) {
+            ok = true;
+            func_00526F20(&path, to, 0);
+        }
+    } else {
+        CAiPath *t;
+        CAiPath::point *first = path.m_points.data_;
+
+        if (first->m_loc == to) {
+            ok = true;
+        } else if (path.m_points.size() == 1 && CanTravelLine(from, to, 0)) {
+            path.m_points.data_[path.m_points.size() - 1].m_loc = to;
+            path.IncrementPathId();
+        } else if (CanTravelLine(first->m_loc, to, 0)) {
+            func_00526F20(&path, to, 0);
+            ok = smooth = post = true;
+        } else if (path.m_flags & 8) {
+            unsigned int i0;
+            unsigned int i1;
+
+            t = path.m_template;
+
+            if (t && t->PointInPath(first->m_loc, &i0) && t->PointInPath(to, &i1)) {
+                int step;
+                unsigned int i = i0;
+
+                ok = true;
+                if (i <= i1)
+                    step = 1;
+                else
+                    step = -1;
+                if (i != i1) {
+                    do {
+                        CAiPath::point &p = t->m_points[t->m_points.size() - i - 1];
+
+                        if (!func_00526F20(&path, p.m_loc, GetMapByIndex(p.m_loc.m_mapid))) {
+                            ok = false;
+                            break;
+                        }
+                        i += step;
+                    } while (i != i1);
+                }
+                if (ok)
+                    ok = func_00526F20(&path, to, GetMapByIndex(to.m_mapid));
+                smooth = post = true;
+            }
+        }
+        if (post)
+            func_00526540(&path, this, smooth);
+    }
+    return ok;
+}
+
 /* whether the line between two cells of one map is clear to the feet, to the eye (SOCOM 1's;
  * false across maps) */
 bool CAiMaps::CanTravelLine(const CAiMapLoc &from, const CAiMapLoc &to, CAiMapLoc *out)
