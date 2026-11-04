@@ -1496,6 +1496,46 @@ extern "C" float func_0054ECD0(const CMatrix *m, const CPnt3D *dir, const CPnt3D
     return r.y;
 }
 
+/* where the item in hand is held out from the SEAL: the aim point's height on the SEAL's spot, and that
+ * spot pushed back along the node's forward axis by twice the item's width and m_f44 added, at the same
+ * height -- none without the item's part and node, each half only while its point is set (OVL2
+ * 0x54E8F0, new in SOCOM II: PostPreTick 0x54AA30 asks it; the name unknown) */
+static inline float Twice(float v)
+{
+    v *= 2.0f;
+    return v;
+}
+
+extern "C" bool func_0054E8F0(CZSealBody *seal, CPnt3D *pos, CPnt3D *pt)
+{
+    bool ok = false;
+    CZBodyPart *part = seal->m_item_gear[seal->m_item].m_part;
+
+    if (!part || !part->m_node)
+        return false;
+    ok = true;
+    if (seal->m_curr_aimpt) {
+        *pos = seal->m_posW;
+        pos->y += seal->m_root->m_pos.y;
+    } else
+        ok = false;
+    if (seal->m_curr_firept) {
+        *pt = *(CPnt3D *)seal->m_node->m_matrix.m_matrix[2];
+        pt->Scale(-1.0f, pt);
+        const CBBox *b = part->m_node->GetBBox();
+
+        if (b) {
+            pt->Scale(Twice(fabsf(b->m_max.x - b->m_min.x)), pt);
+            pt->Add(pos, pt);
+            pt->Add(&seal->m_f44, pt);
+            pt->y = pos->y;
+        } else
+            ok = false;
+    } else
+        ok = false;
+    return ok;
+}
+
 /* where a carrying SEAL holds the body it carries, in the world: moving up (m_velM.z over 0.01),
  * midway between the carried body's feet and 1.6 on, else 2.5 short of its head -- each part placed
  * in the SEAL's body, turned onto the world by its node and m_f44 added; the SEAL's own spot at the
@@ -1524,6 +1564,88 @@ extern "C" bool func_0054E760(CZSealBody *seal, CPnt3D *pos, CPnt3D *pt)
     pt->Add(&seal->m_f44, pt);
     *pos = *(CPnt3D *)seal->m_node->m_matrix.m_matrix[3];
     pos->y = pt->y;
+    return true;
+}
+
+extern "C" {
+/* the SEAL's ground hit kept, its point, normal and node -- or none (OVL2 0x5B0C10, seal_env.cpp's) */
+void func_005B0C10(CZSealBody *seal, zdb::IntersectStruct *hit);
+}
+
+/* the ground under the SEAL found again: a probe from 2.5 under its spot along its push m_f44 flat --
+ * five long when the push is all but none -- reaching 1.5 of it back, the SEAL's node switched off for
+ * the probe; the hit kept, or false (OVL2 0x54A8B0, new in SOCOM II: 0x59AD30 calls it twice; the name
+ * unknown) */
+extern "C" bool func_0054A8B0(CZSealBody *seal)
+{
+    CPnt3D from = seal->m_posW;
+
+    from.y -= 2.5f;
+    CPnt3D d = seal->m_f44;
+
+    d.y = 0.0f;
+    if (d.x * d.x + d.z * d.z < 0.099999994f) {
+        d.Normalize();
+        d.Scale(5.0f, &d);
+    }
+    from.Add(&d, &from);
+    d.Scale(-1.5f, &d);
+    CPnt3D to;
+
+    from.Add(&d, &to);
+    zdb::IntersectStruct *hit = 0;
+    bool active = seal->GetNode()->m_active;
+
+    seal->GetNode()->SetActive(false);
+    hit = zdb::CWorld::m_world->GetIntersect(&from, &to);
+
+    seal->GetNode()->SetActive(active);
+    if (!hit)
+        return false;
+    func_005B0C10(seal, hit);
+    return true;
+}
+
+/* a push taken out to a value of either sign: the larger of the same sign kept (an inline, the name
+ * ours: the zero loaded again for each) */
+static inline void PushOut(float &cur, float v)
+{
+    if (v >= 0.0f) {
+        if (cur < v)
+            cur = v;
+    } else if (v < 0.0f) {
+        if (cur > v)
+            cur = v;
+    }
+}
+
+/* the push off a wall: a step of r from the point into the hit's plane, against its normal and at the
+ * point's height; what of it the plane cuts off, 0.7 of it along the normal, taken into m_f44's x and z
+ * -- false with no node hit (OVL2 0x54A6D0, new in SOCOM II: ComputeNextPosition 0x54D9A0 calls it
+ * twice, the hit its ground's when that has a node; the name unknown). OPEN, 2 instructions: the body
+ * is the target's word for word, but MW copies r into $f20 in the null test's delay slot where the
+ * target copies the hit there and moves r just before its first use (`neg.s`) -- the float declared
+ * first, second or third, a local copy after the test, the body an inline taking r by value, the test
+ * as an if around the body or through a node local all compile the same */
+extern "C" bool func_0054A6D0(CZSealBody *seal, const CPnt3D *pos, zdb::IntersectStruct *hit, float r)
+{
+    if (!hit->m_node)
+        return false;
+    CPnt3D p = *pos;
+    CPnt3D n = hit->m_norm;
+
+    n.Scale(-r, &n);
+    p.Add(&n, &p);
+    p.y = pos->y;
+    float t = LineIntersectPlane(PlaneConstant(hit->m_norm, hit->m_pos), hit->m_norm, *pos, p);
+
+    if (t < 1.0f) {
+        CPnt3D push = hit->m_norm;
+
+        push.Scale(0.7f * (r * (1.0f - t)), &push);
+        PushOut(seal->m_f44.x, push.x);
+        PushOut(seal->m_f44.z, push.z);
+    }
     return true;
 }
 

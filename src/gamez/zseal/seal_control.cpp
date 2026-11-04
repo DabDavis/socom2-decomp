@@ -158,8 +158,8 @@ extern "C" {
 /* (OVL1, unowned: a SEAL's side in the game, both builds' net code; seal.cpp's too) */
 bool func_002C30B0(const CZSealBody *seal);
 /* the two teams' bomb sites (OVL1 bss, past theMission's mapped size; the names ours) */
-extern unsigned int data_00437DCC;
-extern unsigned int data_00437DD0;
+extern zdb::CNode *data_00437DCC;
+extern zdb::CNode *data_00437DD0;
 /* the time the mission has left (OVL1 0x2A6AD0, on theMission) */
 int func_002A6AD0(void *mission);
 extern unsigned char data_004364E0[];
@@ -180,9 +180,9 @@ bool CSealCtrl::CanPlaceBomb(CNodeAction *action)
 
     site = false;
 
-    if (side && action->m_team == data_00437DCC)
+    if (side && action->m_node == data_00437DCC)
         site = true;
-    if (!side && action->m_team == data_00437DD0)
+    if (!side && action->m_node == data_00437DD0)
         site = true;
     bool time = true;
 
@@ -667,6 +667,57 @@ void CSealCtrl::StopRumbler()
     m_rumblestr = 0.0f;
     CInput::Flush();
     CZSealBody::StopAllHeartbeatSounds();
+}
+
+extern "C" {
+/* the planting's second time (OVL2 data, read as a variable; SOCOM 1's was the constant 0.2) */
+extern float data_00650678;
+}
+
+/* the timer's flag cleared (an inline, the name ours: the constant left unfolded before the store) */
+inline void MPBomb_TimerEngaged(CSealCtrl *ctrl, bool on)
+{
+    ctrl->m_mpbomb_bTimerEngaged = on;
+}
+
+/* the MP bomb worked at: its timer runs while the reticule's action, the reticule's hit or the MP bomb
+ * is the bomb's node; run out, a defusal under way is attempted once the bomb is planted (state 3),
+ * else the charge is planted at a bomb action the controller can take -- not over a planted bomb --
+ * and the bomb let go (OVL2 0x5920C0; SOCOM 1's TickMPBomb, its proximity search gone) */
+void CSealCtrl::TickMPBomb(float dT)
+{
+    if (m_mpbomb_node) {
+        CNodeAction *action = 0;
+        CZSealBody *seal = (CZSealBody *)m_entity;
+
+        action = seal->GetReticuleAction(true);
+        zdb::CNode *bomb = CPickup::m_mpbombnode;
+
+        if (action && m_mpbomb_node == action->m_node)
+            m_mpbomb_timer -= dT;
+        else if (m_mpbomb_node == seal->m_last_reticule.m_node)
+            m_mpbomb_timer -= dT;
+        else if (m_mpbomb_node == bomb)
+            m_mpbomb_timer -= dT;
+        if (m_mpbomb_timer < 0.0f) {
+            if (m_bomb_defusal_node) {
+                if (CZBombState::m_BombStatus.m_state == 3) {
+                    m_bombpickuptimer = 1.0f;
+                    seal->AttemptBombDefuse();
+                    m_bomb_defusal_node = 0;
+                }
+            } else if (action && CanPerformAction(action) && action->m_type == NODEACTION_BOMB) {
+                CZSealBody *body = (CZSealBody *)m_entity;
+
+                if (CZBombState::m_BombStatus.m_state != 3) {
+                    action->ExecuteAction(body, 0);
+                    body->m_kit.HandlePlacingExlosive((EQUIP_ITEM)154, 1.0f, data_00650678);
+                }
+                MPBomb_TimerEngaged(this, false);
+            }
+            m_mpbomb_node = 0;
+        }
+    }
 }
 
 /* the MP bomb's timer offered (OVL2 0x5920A0) */
