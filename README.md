@@ -1965,6 +1965,16 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 24** (CZKit::UnInit by std::transform, isSelectableItem):
+  - CZKit::UnInit 0x5C7CE0 is `std::transform(v.begin(), v.end(), v.begin(), op)` over a function object (an empty user
+    constructor; its `operator()` deletes an unparented node and returns 0): the target's frame-resident iterators are the
+    algorithm's by-value parameters (found by the MSL lane's round 17);
+  - CZKit::isSelectableItem 0x5BDC30 (SOCOM 1's with SOCOM II's launcher test): `r = true` assigned after the early return,
+    not at its declaration; the range test written `id > 201` gives the `slti at` form;
+  - MW folds a lone `if (!p) return 0; return p->f();` into a beqz to the end; only a return-0 block shared by two tests
+    (an `||`) keeps its own block (GetMaxAmmoCount 0x5C3CF0, 4 off);
+  - open: CurMagHasAmmo 0x5BD530 (named by SOCOM 1's order; 31, right size: the inlined FindItemWithAmmo's counter and
+    temporaries swap v0/v1), 0x607830 (6, now the right size), GetTimeSinceLastSighting (3), RemoveMember (6).
 - **Tells from the HUD, round 30** (zui_2d.cpp's ListItem and ZAnim commands, CZNewHudMap::Draw):
   - stack slots follow the front end's creation order: a walk's iterator below its begin() temporary is an inline taking
     begin() by const reference and assigning it into its own local (a by-value iterator parameter goes to a register);
