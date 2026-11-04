@@ -162,6 +162,11 @@ public:
     static EQUIP_ITEM GetWeaponId(const char *name);   /* 0x3D19E0 */
     static bool IsPrimary(EQUIP_ITEM item);            /* 0x3D1D10 */
     static bool IsSecondary(EQUIP_ITEM item);          /* 0x3D1CE0 */
+    static EQUIP_ITEM GetIDType(EQUIP_ITEM item);      /* 0x3D1A60: the item's class */
+};
+class CZFTSWeapon {
+public:
+    static bool IsM203Weapon(EQUIP_ITEM item);         /* 0x3C5E10 */
 };
 /* a character's weapon (zchar.h's CCharacterWeap, SOCOM 1's DWARF: 12 bytes, the item first). Its
  * constructors and destructor are char_type.cpp's (OVL2 0x53EFD0, 0x53EFA0 member by member, and
@@ -338,6 +343,70 @@ bool IsSlotLocked(CSelectedCharsItr it, int slot, EQUIP_ITEM item)
 }
 #pragma auto_inline reset
 
+}
+
+namespace {
+
+/* whether a selected character may take an item with the weapons it has (SOCOM II's, 0x280E90 --
+ * the name ours): the class-195 item only with a class-101 primary, item 186 only beside a 146 and
+ * 146 or 145 only once; items 171/173/175 only on an M203 or item-142 primary, 176/178/179 only on
+ * a 143, 181 to 183 only on a 63. The item's own class is looked up and dropped */
+#pragma auto_inline off
+bool CanTakeItem(EQUIP_ITEM item, const CSelectedCharsItr &it)
+{
+    CZWeapon::GetIDType(item);
+    EQUIP_ITEM primary = (*(CCharacterWeapList *)it.m_weapons)[0].m_wepId;
+
+    if (CZWeapon::GetIDType(primary) != 101 && item == 195)
+        return false;
+    if (item == 186 && FindItemSlot(it, (EQUIP_ITEM)146, -1) == -1)
+        return false;
+    if (item == 146 && FindItemSlot(it, (EQUIP_ITEM)146, -1) != -1)
+        return false;
+    if (item == 145 && FindItemSlot(it, (EQUIP_ITEM)145, -1) != -1)
+        return false;
+    if (!CZFTSWeapon::IsM203Weapon(primary) && primary != 142 && (item == 171 || item == 173 || item == 175))
+        return false;
+    if (primary != 143 && (item == 176 || item == 178 || item == 179))
+        return false;
+    if (primary != 63 && (item == 181 || item == 182 || item == 183))
+        return false;
+    return true;
+}
+#pragma auto_inline reset
+
+}
+
+/* zwep_weapon.cpp's 0x3D3230 (not named yet): an item's weapon-menu value, what UiWeapon holds */
+extern "C" int func_003D3230(EQUIP_ITEM item);
+
+/* "CanCharactersSelectUIWeapon" (SOCOM II's command 0xCF, the UI command table's record at 0x3DE1A0;
+ * the name ours, after the table's): the item whose menu value UiWeapon holds -- the first of the
+ * items below EQUIP_END to give it -- and whether every selected character may take it. The value
+ * a local: compared in the call's expression, MW loads the valve's ahead of the call; the flag and
+ * the counter first set in the for's head, the flag first (s0 to the counter's s1, the counter's
+ * zero in the branch's delay slot) */
+bool UICanCharactersSelectUIWeapon(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CValve *v = CValve::GetByName("UiWeapon");
+
+    if (!v)
+        return false;
+    int i;
+    bool found;
+
+    for (found = false, i = 0; i < 254 && !found; i++) {
+        int value = func_003D3230((EQUIP_ITEM)i);
+
+        if (value == v->m_value)
+            found = true;
+    }
+    EQUIP_ITEM item = (EQUIP_ITEM)(i - 1);
+
+    for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
+        if (!CanTakeItem(item, it))
+            return false;
+    return true;
 }
 
 namespace {
