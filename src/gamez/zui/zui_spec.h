@@ -497,4 +497,45 @@ public:
     std::vector<ActionItem> m_animations;   // 0x24: ANIMATIONS
 };   // 0x30 bytes
 
+/* a model a dialog's design shows (SOCOM 1's CDlgDesignModel, 0x34 bytes: its vector's resize
+ * 0x383AA0 builds one with every word and the flag zeroed, its deleter's clear 0x36AE50 destroys
+ * the two strings; the members' names ours, from the tags LoadModels reads) */
+class CDlgDesignModel {
+public:
+    CDlgDesignModel() : m_azimuth(0.0f), m_elev(0.0f), m_distance(0.0f), m_rotX(0.0f), m_rotY(0.0f),
+                        m_rotZ(0.0f), m_useModelUIVar(false) {}
+
+    CSaferStr m_name;        // 0x0: NAME
+    CSaferStr m_model;       // 0xC: MODEL
+    float m_azimuth;         // 0x18: AZIMUTH
+    float m_elev;            // 0x1C: ELEV
+    float m_distance;        // 0x20: DISTANCE (20)
+    float m_rotX;            // 0x24: ROTX -- and ROTY and ROTZ, which both builds read into it too
+    float m_rotY;            // 0x28
+    float m_rotZ;            // 0x2C
+    bool m_useModelUIVar;    // 0x30: USEMODELUIVAR
+};   // 0x34 bytes
+
+/* a dialog's design read from its rdr (SOCOM 1's CGameDlgDesign: LoadFromRdr 0x381550, LoadModels
+ * 0x3812B0; SOCOM II's 0x74 bytes, the members' names ours from the tags) */
+class CGameDlgDesign {
+public:
+    void LoadFromRdr(_zrdr *rdr);
+    void LoadModels(_zrdr *rdr);
+
+    std::vector<CSaferStr> m_libraries;          // 0x0: LIBRARY, LIBRARIES (UIVAR <name> by a variable's value)
+    CSaferStr m_font;                            // 0xC: FONT
+    CSaferStr m_background;                      // 0x18: BACKGROUND's FILENAME
+    CSaferStr m_24;                              // 0x24: SOCOM 1's third string, which its loader clears and
+                                                 // SOCOM II's leaves (zui.cpp's 0x367430 constructs it)
+    unsigned char m_backgroundType;              // 0x30: BACKGROUND's TYPE: IMAGE 0, MPEG 1, MPEG_LOOPING 2
+    std::vector<CSaferStr> m_scriptLibraries;    // 0x34: SCRIPT_LIBRARY
+    std::vector<ActionItem> m_animations;        // 0x40: ANIMATIONS
+    std::vector<CDesignDlgObj> m_controls;       // 0x4C: CONTROLS
+    std::vector<CDesignDlgObj> m_objects;        // 0x58: OBJECTS
+    std::vector<CDlgDesignModel> m_models;       // 0x64: MODELS
+    bool m_fontLib;                              // 0x70: false under NOFONTLIB
+    bool m_usesMemcard;                          // 0x71: USES_MEMCARD
+};   // 0x74 bytes
+
 #endif

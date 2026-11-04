@@ -565,10 +565,6 @@ extern int data_0066AFD8;
 void func_00555420(CSealCtrlAi *ai, void *a, void *b);
 }
 
-extern "C" {
-/* the stack's current state (OVL2 0x5F8330, the AI-states lane's: CAiStateStack's) */
-CAiState *func_005F8330(void *stack);
-}
 
 /* a state of kind 2 with flag 0x80 (the answer through a local, as the target's daddiu shows) */
 static inline bool IsKind2Flag80(CAiState *s)
@@ -593,7 +589,7 @@ extern "C" bool func_00559000(CSealCtrlAi *ai)
     if (ai->m_stateStack.size() == 0)
         s = 0;
     else
-        s = func_005F8330(&ai->m_stateStack);
+        s = ((const CAiStateStack &)ai->m_stateStack).GetState();
 
     return s ? IsKind2Flag80(s) : false;
 }
@@ -681,7 +677,6 @@ extern "C" {
  * whether it took (SOCOM 1's CAiPath::SetPathType; OVL2 0x524CD0, the AI core's) */
 bool func_0052C5C0(CAiMaps *maps, const CAiMapLoc &start, const CAiMapLoc *locs, int count,
                    CAiPathBytes *path);
-bool func_00524CD0(CAiPathBytes *path, CAiPath::PATH_TYPE type);
 }
 
 /* whether the current state is of kind 8 with flag 1 (0x559000's shape, kind 2 and flag 0x80 there) */
@@ -734,7 +729,7 @@ bool CSealCtrlAi::SetRoute(const CAiMapLoc *locs, int count)
 
         float bias = GetDefaultRouteBias();
 
-        if (func_00524CD0(&m_path, GetDefaultRouteType()))
+        if (((CAiPath *)&m_path)->SetPathType(GetDefaultRouteType()))
             m_path.m_type_bias = bias;
         m_path.m_search_limit = 0;
         m_pathTolerance = 0.0f;
@@ -862,14 +857,12 @@ extern "C" AI_ROUTE func_005558A0(CSealCtrlAi *ai)
     return ai->m_route.m_state;
 }
 
-/* (OVL2 0x527310, the AI-core lane's: a CAiPath's plan aborted and its lists cleared) */
-extern "C" bool func_00527310(void *path);
 
 /* the route reset, and its state set: a running one (1 or 2) is ended first (OVL2 0x5557B0; the
  * path-recovery state calls it) */
 extern "C" void func_005557B0(CSealCtrlAi *ai, AI_ROUTE route)
 {
-    func_00527310(&ai->m_route.m_path);
+    ((CAiPath *)&ai->m_route.m_path)->Clear();
     switch (ai->m_route.m_state) {
     case ROUTE_1:
     case ROUTE_2:
@@ -883,7 +876,7 @@ extern "C" void func_005557B0(CSealCtrlAi *ai, AI_ROUTE route)
  * signals call it) */
 extern "C" void func_00555820(CSealCtrlAi *ai, bool keep)
 {
-    func_00527310(&ai->m_route.m_path);
+    ((CAiPath *)&ai->m_route.m_path)->Clear();
     switch (ai->m_route.m_state) {
     case ROUTE_1:
     case ROUTE_2:
@@ -894,9 +887,8 @@ extern "C" void func_00555820(CSealCtrlAi *ai, bool keep)
 
 extern "C" {
 /* a path started over from a cell of a map (OVL2 0x526810, the AI core's: the route's legs begun at the
- * SEAL's cell) and a path's plan copied from another, whether it held one (OVL2 0x527FD0, the AI core's) */
+ * SEAL's cell); a path's plan is copied from another by CAiPath::CopyPlan (OVL2 0x527FD0, ai.h's) */
 void func_00526810(CAiPathBytes *path, const CAiMapLoc &loc, CAiMap *map, int a, int b);
-bool func_00527FD0(CAiPathBytes *path, const CAiPathBytes *from);
 }
 
 /* a path's plan under way (states 1-3: ai.h's CAiPath::IsPlanning) and one held complete (state 4 with
@@ -918,7 +910,7 @@ extern "C" bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRout
 {
     CEntity *e = ai->m_entity;
 
-    func_00527310(&route->m_path);
+    ((CAiPath *)&route->m_path)->Clear();
     route->m_state = ROUTE_NONE;
 
     const CAiMapLoc &loc = e->m_mapLocValid;
@@ -932,7 +924,7 @@ extern "C" bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRout
         route->m_state = ROUTE_2;
         r = true;
     } else if (PathHeld(path)) {
-        func_00527FD0(&route->m_path, path);
+        ((CAiPath *)&route->m_path)->CopyPlan((const CAiPath *)path);
         func_00526810(&route->m_path, loc, AiMaps.GetMapByIndex(loc.m_mapid), 0, 1);
         route->m_state = ROUTE_1;
         r = true;
@@ -1459,6 +1451,52 @@ extern "C" bool func_005604D0(CSealCtrlAi *ai, int a)
     return r;
 }
 
+extern "C" int rand(void);
+
+/* a random value in a range (SOCOM 1's Rfloat: the minimum and the span; its inline operator's
+ * out-of-line copy at OVL2 0x560960, after 0x5605A0 its first caller, as SOCOM 1's 0x25ABA0 sits
+ * after CAiSPursue::Tick) */
+class Rfloat {
+public:
+    Rfloat(float min, float range) : m_min(min), m_range(range) {}
+    operator float() const;
+
+    float m_min;   // 0x0
+    float m_range;   // 0x4
+};
+
+/* a state's bit 2 as a bool (an inline: the byte read again and the test materialised, apart from
+ * the running bit's) */
+static inline bool StateBit2(const CAiState *s)
+{
+    return s->m_bit2 ? true : false;
+}
+
+/* a running state's nod, once: the SEAL looks at its leader -- the player when it leads itself -- a
+ * moment, and says so (sound 56, or 55 when asked), the state's bit 2 set (OVL2 0x560340, new in
+ * SOCOM II: the deploy, action, breach, goto and follow states' Ticks call it; the names ours) */
+extern "C" void func_00560340(CSealCtrlAi *ai, CAiState *state, bool b)
+{
+    if (!state || !state->m_active || StateBit2(state))
+        return;
+    ftsGetPlayer();
+    CEntity *leader = ai->m_unit->GetLeader();
+
+    /* (the ternary: an if leaves the join's label aligned with a nop) */
+    leader = leader == ai->m_entity ? ftsGetPlayer() : leader;
+    if (leader) {
+        CPnt3D pos;
+
+        if (ai->SetLookPosW((AI_LOOK)8, leader->GetTargetPosW(&pos)))
+            ai->SetLookTimer(Rfloat(0.5f, 1.0f));
+        if (!b)
+            ai->PlayAiSound((CHARACTER_SOUND)56, 1.0f, -1);
+        else
+            ai->PlayAiSound((CHARACTER_SOUND)55, 1.0f, -1);
+        state->SetBit2(true);
+    }
+}
+
 /* a sound played for an item, surely and with no AI event: the one given, or for none (-1) the item's
  * own -- 41 to 47 for items 128, 127, 151, 152, 121, 122 and 123, else 40 (OVL2 0x560280, new in SOCOM
  * II: CAiSDeploy::Tick calls it; the name unknown -- the cases written so, their tests run reversed) */
@@ -1492,20 +1530,6 @@ extern "C" void func_00560280(CSealCtrl *ctrl, unsigned char item, CHARACTER_SOU
     }
     ctrl->PlayAiSound(sound, 1.0f, -1);
 }
-
-extern "C" int rand(void);
-
-/* a random value in a range (SOCOM 1's Rfloat: the minimum and the span; its inline operator's
- * out-of-line copy at OVL2 0x560960, after 0x5605A0 its first caller, as SOCOM 1's 0x25ABA0 sits
- * after CAiSPursue::Tick) */
-class Rfloat {
-public:
-    Rfloat(float min, float range) : m_min(min), m_range(range) {}
-    operator float() const;
-
-    float m_min;   // 0x0
-    float m_range;   // 0x4
-};
 
 /* the random part through a local: written as one expression the join loses its pad and an
  * inlined copy (0x5608B0, PlayAiSound) its registers */

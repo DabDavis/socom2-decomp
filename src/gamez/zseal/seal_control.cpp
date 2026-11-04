@@ -12,8 +12,6 @@ extern "C" int rand(void);
 extern "C" {
 extern bool data_00650698;   /* the rumble switch (SOCOM 1's file static) */
 extern float data_006505E8;  /* (the weapon's raise time a closed menu restarts) */
-/* a team's squad (SOCOM 1's CSealUnit::GetUnitByTeam, by its use; OVL2 0x5EF2F0) */
-CSealUnit *func_005EF2F0(unsigned int team);
 extern CNetGameState *data_00437CE8;
 }
 
@@ -56,6 +54,44 @@ public:
 
     static STATUS m_BombStatus;   // OVL1 bss 0x4413B0
 };
+
+extern "C" {
+/* a pad button double-clicked and its state (OVL1 0x2C6490 -- CPad::GetDoubleClick through the
+ * button map --, 0x2C64E0, unowned: the HUD's readers call the second the same way) */
+unsigned char func_002C6490(int button, CPad *pad);
+unsigned char func_002C64E0(int button, CPad *pad);
+/* the kit's reload (OVL2 0x5C4600, the kit lane's) and how long the button is held for it (OVL2
+ * data: 0.4) */
+void func_005C4600(CZKit *kit);
+extern float data_00650670;
+}
+
+/* the reload button: double-clicked, or held past the limit, reloads the SEAL's kit; while held its
+ * time runs, else it is cleared (OVL2 0x594B70, new in SOCOM II: PreTick calls it; the name unknown).
+ * The double-click's result taken into a byte local first (the flag's zero after the call) and the
+ * held test stored `!= 0` (the target's second sltu) */
+extern "C" void func_00594B70(CSealCtrl *ctrl, float dT)
+{
+    CPad *pad = ctrl->m_padid < CInput::NUM_PADS ? CInput::m_pads[ctrl->m_padid] : 0;
+    unsigned char dbl = func_002C6490(3, pad);
+    bool reload = false;
+
+    if (dbl)
+        reload = true;
+    else {
+        ctrl->m_bit18 = (func_002C64E0(3, pad) == 2) != 0;
+        if (ctrl->m_bit18)
+            ctrl->m_240 += dT;
+        else
+            ctrl->m_240 = 0.0f;
+        if (!(ctrl->m_240 <= data_00650670)) {
+            ctrl->m_240 = 0.0f;
+            reload = true;
+        }
+    }
+    if (reload)
+        func_005C4600(&((CZSealBody *)ctrl->m_entity)->m_kit);
+}
 
 extern "C" {
 /* (OVL1, unowned: a SEAL's side in the game, both builds' net code; seal.cpp's too) */
@@ -297,7 +333,7 @@ void CSealCtrl::OnMissionStart()
 {
     if (theNetwork.m_9) {
         ClearGoal(GOAL_NONE);
-        CSealUnit *unit = func_005EF2F0(24);
+        CSealUnit *unit = CSealUnit::GetUnitByTeam(24);
 
         if (unit && !data_00437CE8->m_ghost)
             unit->IssueCommand((CZSealBody *)m_entity, (FT_COMMAND)35, 0, false);
@@ -347,7 +383,7 @@ void CSealCtrl::OnDeath()
     if (theNetwork.m_9) {
         if (!data_00437CE8->m_dc || data_00437CE8->m_ghost) {
             func_0030E6E0(data_0045B718, 0);
-            func_005EF2F0(24)->IssueCommand(seal, (FT_COMMAND)34, 0, false);
+            CSealUnit::GetUnitByTeam(24)->IssueCommand(seal, (FT_COMMAND)34, 0, false);
         } else
             func_00552780(seal, 2, 0.0f, 0.1f);
     }
@@ -462,7 +498,7 @@ void CSealCtrl::PerformReticleActions()
     CSealUnit *unit;
     CZSealBody *seal = (CZSealBody *)m_entity;
 
-    unit = func_005EF2F0(17);
+    unit = CSealUnit::GetUnitByTeam(17);
 
     if (unit) {
         if (unit->AllowCommand(seal, (FT_COMMAND)4, 0))

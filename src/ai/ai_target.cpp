@@ -147,7 +147,11 @@ extern "C" float func_0060B7F0(const CEntity *self, const CTarget *t)
  * OPEN, 3 instructions: the target loads the field into $f0 first and the clock into $f1 after
  * (`sub.s $f0,$f1,$f0`); every spelling tried loads the clock first -- the clock as a float
  * global, a volatile, theMission's member, through an inline accessor or a local; the field
- * through a local, an inline accessor; a negated reverse difference (0x18 bytes) */
+ * through a local, an inline accessor; a negated reverse difference (0x18 bytes). Round 22, all 3 off:
+ * both in named locals in either order, `d -= field`, the plain member, both through accessors, a
+ * static inline Since(t) / Elapsed(now, then) by value and by reference, and the unit built by
+ * 3.0b50, 3.0b38 and 3.0b22-020926 through an `sc: compiler=` line -- MW loads the field first in
+ * every form, but always colours the clock $f0 */
 float CAiTarget::GetTimeSinceLastSighting() const
 {
     return theMission.m_time - GetTimeLostSight();

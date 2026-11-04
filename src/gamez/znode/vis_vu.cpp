@@ -29,6 +29,9 @@
 #include "znode.h"
 #include "../zsys/zsys_public.h"
 
+/* the z buffer's write switch (zvid_init.cpp's) */
+void zVid_ZTestOnWriteSet(bool on);
+
 namespace zdb {
 
 /* the free view ids' stack (znode.h's CVisual::m_stack_vid; zrdr.h's own std::stack keeps <stack>
@@ -138,6 +141,27 @@ extern "C" CPnt4D func_003B7590(int i)
     return t;
 }
 
+/* the alpha switch: an int flag, the z buffer's writes off while it is on (SOCOM 1's AlphaEnable --
+ * there the flag itself went to the z-write switch; the pipe's CAlpha::Render and the core and
+ * cinematic states call it) */
+extern "C" int data_004B4A20;
+
+void CVisual::AlphaEnable(bool on)
+{
+    data_004B4A20 = on;
+    zVid_ZTestOnWriteSet(!on);
+}
+
+/* the landmark switch: its flag set, the lighting the other way (SOCOM 1's LandmarkEnable, the same
+ * code; the pipe's renderers call it) */
+extern "C" unsigned char data_004B4A58;
+
+void CVisual::LandmarkEnable(bool on)
+{
+    data_004B4A58 = on;
+    m_lightingEnable = !on;
+}
+
 /* a light added to the local lights: its position, its squared range, its colour and the inverse
  * of its falloff, the light listed and counted (SOCOM 1's, the same code: the minimum range's square
  * is taken ahead of the colour's copy, the maximum's reloaded after it) */
@@ -244,6 +268,36 @@ bool CVisual::GetChainData()
     } else
         data_004B4EC0 = 0;
     return DetailChain(this);
+}
+
+/* a node's render set-up: the model-to-world matrix kept and its inverse taken; lighting on for a
+ * node or atom that asks for it (unless 0x4B4A60 is set), the light scale from the atom's signed
+ * byte at 0xA0 (negative: full), and 0x3E1458 on unless the node is clutter (SOCOM 1's NodeSetup,
+ * its fourth argument gone: no SOCOM II caller sets a3). The scale's byte in a variable of its own
+ * pads the else label (MW's 8-byte label padding) */
+extern "C" CMatrix *data_004B4E60;
+extern "C" CMatrix data_004B4E70;
+extern "C" unsigned char data_004B4A60;
+extern "C" bool data_003E1458;
+extern "C" float m_GlobalLightScale__Q23zdb7CVisual;
+
+void CVisual::NodeSetup(CNode *atom, CNode *node, CMatrix *m)
+{
+    data_004B4E60 = m;
+    Vu0MatrixInverseWithUniformScale(&data_004B4E70, m);
+    if (!data_004B4A60 && (atom->m_dynamic_motion || node->m_dynamic_light)) {
+        m_lightingEnable = true;
+        signed char s = atom->m_socom2_a0;
+
+        if (s < 0)
+            m_GlobalLightScale__Q23zdb7CVisual = 1.0f;
+        else
+            m_GlobalLightScale__Q23zdb7CVisual = (1.0f / 127.0f) * s;
+        data_003E1458 = !node->m_clutter;
+    } else {
+        m_lightingEnable = false;
+        data_003E1458 = false;
+    }
 }
 
 /* the object header's statics: its second quadword (0x4B4D30, 0x3B5A10's scale and offset), the

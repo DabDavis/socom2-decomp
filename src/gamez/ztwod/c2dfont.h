@@ -41,23 +41,53 @@
 namespace zdb {
 class CTexHandle;
 }
+struct _zrdr;
 
-/* a piece of a glyph (ours: six halfwords and two floats, as 0x359820 fills one) */
+/* where a piece sits in its character cell and how it is scaled (ours: c2dfont.cpp's ReadPlacement
+ * reads it from a DispPos point and the HorScale/VertScale reals, y negated; default unscaled) */
+class C2DPlacement {
+public:
+    C2DPlacement() : x(0), y(0), sx(1.0f), sy(1.0f) {}
+
+    short x;   // 0x0
+    short y;   // 0x2
+    float sx;   // 0x4
+    float sy;   // 0x8
+};   // 0xc bytes
+
+/* a piece of a glyph (ours): its rectangle in the texture -- left, width, and the top and bottom
+ * rows counted up from the texture's last (c2dfont.cpp fills one from a CFontRect) -- and its
+ * placement (0x359820/0x35C2C0 fill one, 0x35A7B0 measures them) */
 class C2DGlyphPiece {
 public:
+    C2DGlyphPiece() : m_0(0), m_2(0), m_4(0), m_6(0) {}
+
     short m_0;   // 0x0
     short m_2;   // 0x2
     short m_4;   // 0x4
     short m_6;   // 0x6
-    short m_8;   // 0x8
-    short m_a;   // 0xa
-    float m_c;   // 0xc
-    float m_10;   // 0x10
+    C2DPlacement m_place;   // 0x8
 };   // 0x14 bytes
 
-/* a character's glyph (ours) */
+/* a glyph's colour, four ints (ours: LoadChar stores a PNT3D's components converted and 128;
+ * copied whole, word by word through the float registers) */
+struct C2DGlyphColor {
+    int r, g, b, a;
+} __attribute__((aligned(16)));
+
+/* a character's glyph (ours): its code, its pieces, a fixed advance (8 for the space, else -1),
+ * the baseline and the left and right kerning, the font texture's index, whether it has a colour
+ * of its own, and that colour */
 class C2DGlyph {
 public:
+    C2DGlyph() : m_code(0), m_10(-1), m_12(0), m_14(0), m_16(0), m_18(0), m_1a(0) {}
+
+    /* the widest piece's right edge (c2dfont.cpp, 0x35A7B0: C2DString's layout calls it) */
+    int GetWidth();
+    /* a piece from two rdr points, then its placement (c2dfont.cpp, 0x35C2C0 and 0x35BD80) */
+    C2DGlyphPiece *AddPiece(const _zrdr *ul, const _zrdr *lr, int height);
+    void LoadElems(const _zrdr *rdr, int height);
+
     unsigned short m_code;   // 0x0
     std::vector<C2DGlyphPiece> m_pieces;   // 0x4
     short m_10;   // 0x10
@@ -66,10 +96,42 @@ public:
     short m_16;   // 0x16
     short m_18;   // 0x18
     unsigned char m_1a;   // 0x1a
-    sceVu0FVECTOR m_20;   // 0x20
+    C2DGlyphColor m_20;   // 0x20
 };   // 0x30 bytes
 
-/* the font's unload (OVL1 0x35A650, the font unit's; no row named yet) */
+/* what GetGlyph hands back: a glyph of the font's, or one composed for the call and owned here
+ * (ours: C2DString's layout builds one on the stack, both words zeroed, and deletes the owned) */
+class C2DGlyphRef {
+public:
+    C2DGlyphRef() : m_glyph(0), m_owned(0) {}
+    ~C2DGlyphRef() { Release(); }
+
+    /* the owned glyph freed (c2dfont.cpp's GetGlyph does it before every answer) */
+    void Release()
+    {
+        delete m_owned;
+        m_owned = 0;
+    }
+    /* a glyph of the font's handed out */
+    void Set(C2DGlyph *g)
+    {
+        Release();
+        m_glyph = g;
+    }
+    /* a glyph made for the call handed out, owned */
+    void Own(C2DGlyph *g)
+    {
+        Release();
+        m_owned = g;
+    }
+
+    C2DGlyph *m_glyph;   // 0x0
+    C2DGlyph *m_owned;   // 0x4
+};
+
+class CHangulFont;
+
+/* the font's unload (OVL1 0x35A650, c2dfont.cpp's Unload: zui_skb.h calls it by this name) */
 class C2DFont;
 extern "C" void func_0035A650(C2DFont *font);
 
@@ -77,6 +139,24 @@ class C2DFont {
 public:
     C2DFont() { Reset(); }
     ~C2DFont() { func_0035A650(this); }
+
+    /* c2dfont.cpp's (OVL1 0x359740-0x35F8EF; the names ours): the faces rdr's entry by name -- the
+     * textures, the scales, the glow texture, the characters, the Korean composer and the drop
+     * shadow -- the glyph for a character, and the unload */
+    void Load(const _zrdr *rdr, const char *name);
+    void GetGlyph(C2DGlyphRef *ref, unsigned short code);
+    void Unload();
+    int LoadChar(const _zrdr *rdr);
+
+    /* a font texture by index, none out of range (inline: the loaders read a texture's height) */
+    zdb::CTexHandle *GetTexture(int i)
+    {
+        if (i < 0)
+            return 0;
+        if ((unsigned int)i >= m_textures.size())
+            return 0;
+        return m_textures[i];
+    }
 
     /* the scalars zeroed, the opacity and the two scales 1 (stored in this order: the target's) */
     void Reset()
@@ -100,14 +180,14 @@ public:
 
     std::map<unsigned short, C2DGlyph> m_glyphs;   // 0x0
     std::vector<zdb::CTexHandle *> m_textures;   // 0x10
-    int m_1c;   // 0x1c
+    zdb::CTexHandle *m_1c;   // 0x1c: the glow texture
     int m_displaytop;   // 0x20
     int m_displaybottom;   // 0x24
     int XPadding;   // 0x28
     float m_avgWidth;   // 0x2c
     float m_opacity;   // 0x30
     float m_scale_factor;   // 0x34
-    void *m_faces;   // 0x38
+    CHangulFont *m_faces;   // 0x38
     bool m_3c;   // 0x3c
     int m_40;   // 0x40
     int m_44;   // 0x44
