@@ -2362,7 +2362,7 @@ union AckUnion {
 
 /* (called through its map name with an int first parameter: this caller zero-extends the count at
  * both calls, as it would for an int -- passed to an unsigned short parameter it would go as it is) */
-extern "C" void SendPickupAckMessage__FUsii8AckUnion(int who, int id, int obj, AckUnion ack);
+extern "C" void SendPickupAckMessage__Fiii8AckUnion(int who, int id, int obj, AckUnion ack);
 
 /* a console's request for a pickup answered: none found, the pickups dumped and an empty answer
  * sent; else for each of the count, an ammunition pickup's rounds taken by 0x59E580, a weapon's
@@ -2378,7 +2378,7 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
     ack.b = 0;
     if (!p) {
         CPickup::DebugPickups();
-        SendPickupAckMessage__FUsii8AckUnion(count, id, client, ack);
+        SendPickupAckMessage__Fiii8AckUnion(count, id, client, ack);
         return;
     }
     for (int i = 0; i < count; i++) {
@@ -2392,7 +2392,7 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
                 ack.bits.m_weapon = true;
         }
     }
-    SendPickupAckMessage__FUsii8AckUnion(count, id, client, ack);
+    SendPickupAckMessage__Fiii8AckUnion(count, id, client, ack);
     CEntity *e = CEntity::m_list.GetEntityById(client);
 
     if (e) {

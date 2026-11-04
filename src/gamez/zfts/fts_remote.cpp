@@ -16,42 +16,7 @@
 
 struct ClientConnectArgs;
 
-/* the network (SOCOM 1's CZNetwork, at SOCOM II's offsets: only what this unit touches) */
-class CZNetwork {
-public:
-    unsigned char m_bSessionMaster;   // 0x0 (SOCOM 1's at 0x8)
-    unsigned char m_bNetwork;   // 0x1 (SOCOM 1's at 0x9)
-    unsigned char _2;
-    unsigned char m_bJoined;   // 0x3: the game server joined (SOCOM II's)
-    unsigned char _4[0xf4 - 0x4];
-    int m_GameConnectionIndex;   // 0xf4 (SOCOM 1's at 0xd0)
-    int _f8;
-    int m_master_index;   // 0xfc: the session master's client
-
-    /* the game connection (an accessor: a sender loads it ahead of an out-of-line call among its
-     * arguments, NetSendRequestTeamSwitch's master index, which only an inline explains) */
-    int GetGameConnectionIndex() { return m_GameConnectionIndex; }
-
-    void zNetSendApplicationMessage(char a, int conn, int to, int type, int size,
-                                    unsigned char *data, bool reliable);
-    int zNetGetValidGameClientCount();
-    int zNetGetGameSessionMasterClientIndex();
-    int zNetGetMyGameClientIndex();
-    int zNetGetTime();
-    int zNetJoin(void (*joins)(int, int), void (*leaves)(int, int));
-    int zNetConnect(void (*connects)(ClientConnectArgs *), void (*disconnects)(ClientConnectArgs *));
-    struct NetObject *zNetGetObject(int index);
-    void zNetSetMyClientObject(int object);   /* 0x30CDE0: this console's client object set */
-
-    /* an action the network put off to its next update (only what zRemoteDelayedAction reads:
-     * its kind, a byte, and the client) */
-    struct TypeRTimeFixStruct {
-        unsigned char m_kind;   // 0x0
-        int m_client;   // 0x4
-    };
-
-    void AddToFixList(TypeRTimeFixStruct *fix);   /* 0x30D870 */
-};
+#include "../znet/znet.h"
 
 
 /* a valve: a named 16-bit value whose changes call back (SOCOM 1's CValve) */
@@ -165,6 +130,9 @@ public:
                                      unsigned char c, bool flag);
     void RemoteWeaponDamageVictim(DAMAGE_LOCATION where, float damage, float f, CZSealBody *victim,
                                   CZSealBody *shooter, unsigned char c, bool flag);
+    /* a console's request for a pickup answered (OVL2 0x59E830; SOCOM 1's, the id and the asker
+     * ints in SOCOM II) */
+    void CanPickupNetItem(unsigned short count, int id, unsigned short *items, int client);
 };
 
 class CZVehicle {
@@ -315,11 +283,6 @@ public:
     static void HandleBombStateRequest(int who, unsigned char state, CPnt3D *pos);
 };
 
-/* a network object as CZNetwork's table hands it out (its kind a letter: 'S' a SEAL, 'T' ...) */
-struct NetObject {
-    unsigned char _0[0xc];
-    char m_type;   // 0xc
-};
 
 /* the pickups' network side (OVL2's CPickup: only its statics here) and a remote message played
  * (OVL2's) */
@@ -334,7 +297,6 @@ void PlayRemoteMsg(CEntity *e, int msg, int arg);   /* OVL2 0x5E7F20 */
 
 /* unnamed yet (SOCOM 1's names in the comments) */
 extern "C" {
-extern CZNetwork theNetwork;   /* see the head of the file */
 extern unsigned char data_004412D8;
 extern CZOnlineLobby theLobby;
 
@@ -342,7 +304,6 @@ void NetFreeObject(int index);
 void func_002BD640(CZSealBody *body, int arg);   /* CZSealState::UpdateLocalSeal */
 int func_002C3B10(int arg);
 void func_002F9690(void *lobby, int arg, int mode);
-void func_0059E830(CZSealBody *body, unsigned short who, int id, void *c, int obj);
 void func_002C0040(bool on);
 void func_002C4290(int me);   /* CZPersonaState::RequestTeamSwitch (SOCOM II's one argument) */
 void func_002C34F0(int value);
@@ -450,30 +411,11 @@ extern "C" bool func_002BD270(NetFieldCompare *cmp)
  * position schedules 2 with a threshold, its flags 1 with none; the names ours) -- znet.h's, which
  * this unit cannot include while its own CZNetwork carries the members znet.h's lacks
  * (GetGameConnectionIndex, zNetGetGameSessionMasterClientIndex, zNetGetObject, the fix's byte) */
-enum NetThresholdMethod {
-    NET_THRESHOLD_ANY = 1,
-    NET_THRESHOLD_DELTA = 2,
-    NetThresholdMethod_Extent = 0x7FFFFFFF
-};
 
 /* a field's broadcast schedule (SOCOM 1's CZBroadcastSchedule, 16 bytes here: SOCOM 1's double
  * threshold is a float, or a compare function in its place, and SOCOM II adds a byte) -- znet.h's
  * declaration: both constructors are zNetDme.cpp's (OVL1 0x30E3F0, 0x30E3D0: the online lobby's
  * round 15) */
-class CZBroadcastSchedule {
-public:
-    CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, float threshold, unsigned char c);
-    CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, bool (*compare)(NetFieldCompare *),
-                        unsigned char c);
-
-    unsigned int m_rate;   // 0x0: in ms
-    NetThresholdMethod m_method;   // 0x4
-    union {
-        float m_threshold;   // 0x8
-        bool (*m_compare)(NetFieldCompare *);
-    };
-    unsigned char m_c;   // 0xc (SOCOM II's)
-};
 
 /* the schedules, online and on the LAN (SOCOM 1's six were CZNetObject's statics: position,
  * rotation, flags, flash, grenade position and velocity -- SOCOM II's eighteen are file statics
@@ -1456,11 +1398,13 @@ int PickupMayIPacketHandler(int, int, int, void *data)
     CZSealBody *body = CZSealState::GetBodyFromObjectIndex((unsigned short)CPickup::GetEntityIDFromNetID(p->m_0));
 
     if (body)
-        func_0059E830(body, p->m_16, p->m_0, p->m_4, p->m_14);
+        body->CanPickupNetItem(p->m_16, p->m_0, (unsigned short *)p->m_4, p->m_14);
     return 24;
 }
 
-/* the pickup's acknowledgement (OVL1 0x2BA1F0): SOCOM II's packet is 8 bytes, the id first */
+/* the pickup's acknowledgement (OVL1 0x2BA1F0): SOCOM II's packet is 8 bytes, the id first; the
+ * first parameter an int (its caller 0x59E830 zero-extends the count with andi 0xffff before both
+ * calls, as MW passes an unsigned short to an int parameter -- the SEALs' round 27) */
 union AckUnion {
     unsigned char b;
 };
@@ -1472,7 +1416,7 @@ struct PickupAckPacket {
     AckUnion ack;   // 0x7
 };
 
-void SendPickupAckMessage(unsigned short who, int id, int obj, AckUnion ack)
+void SendPickupAckMessage(int who, int id, int obj, AckUnion ack)
 {
     PickupAckPacket p;
 
@@ -1808,7 +1752,7 @@ bool DMEJoinGameServer()
         }
     } else
         theNetwork.m_bSessionMaster = 0;
-    theNetwork.m_master_index = theNetwork.zNetGetGameSessionMasterClientIndex();
+    theNetwork.m_sessionmaster_index = theNetwork.zNetGetGameSessionMasterClientIndex();
     func_00310080(data_0045B718, 10000);
     func_0030FD90(data_0045B718, 11);
     return true;
