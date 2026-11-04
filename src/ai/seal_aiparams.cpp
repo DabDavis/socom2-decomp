@@ -22,13 +22,13 @@ extern "C" {
  * queue's list (0x60C170, the deleter's constructor), Rfloat's two constructors (0x5F6F30 from a
  * value, 0x5609D0 from a minimum and a maximum) and the trigger's times set (0x5FF200) */
 void *func_005585B0(void *p);
-void func_0055F6F0(void *p);
+void reset__13AI_FIREPARAMSFv(void *p);
 void *func_0060C170(void *list);
 class Rfloat;
 Rfloat *func_005F6F30(Rfloat *r, float f);
 Rfloat *func_005609D0(Rfloat *r, float min, float max);
 class CAiTrigger;
-void func_005FF200(CAiTrigger *t, const Rfloat *a, const Rfloat *b);
+void SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat(CAiTrigger *t, const Rfloat *a, const Rfloat *b);
 }
 
 /* the members built out of line, by their own constructors' names (OVL2 0x5F8520, 0x528340,
@@ -128,7 +128,7 @@ struct CAiParamsD4 {
 /* the fire parameters (SOCOM 1's AI_FIREPARAMS, 0x60 bytes there; 0x70 here): the word at 0x6C
  * zeroed, then the reset out of line */
 struct CAiFireParams {
-    CAiFireParams() : m_6c(0) { func_0055F6F0(this); }
+    CAiFireParams() : m_6c(0) { reset__13AI_FIREPARAMSFv(this); }
 
     unsigned int _0[0x6c / 4];
     unsigned int m_6c;   // 0x6c
@@ -207,5 +207,5 @@ SEAL_AI_PARAMS::SEAL_AI_PARAMS()
     Rfloat a;
     Rfloat b;
 
-    func_005FF200(&m_trigger, func_005609D0(&a, 0.5f, 1.2f), func_005609D0(&b, 0.1f, 0.5f));
+    SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat(&m_trigger, func_005609D0(&a, 0.5f, 1.2f), func_005609D0(&b, 0.1f, 0.5f));
 }

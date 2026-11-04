@@ -76,22 +76,22 @@ AI_STATE get_state_fixup(const char *name);
 
 extern "C" {
 /* the anim's index'th command argument (SOCOM 1's CZAnimArgList::GetCmd(int); OVL1 0x2720E0) */
-_zanim_cmd_hdr *func_002720E0(CZAnimArgList *list, int index);
+_zanim_cmd_hdr *GetCmd__13CZAnimArgListFi(CZAnimArgList *list, int index);
 /* the AI's mode put back to the one it saved, which is made 1 (OVL2 0x56D090, the SEAL lane's
  * row: SetAiMode with the byte at 0x3F5, then 1 stored there -- where SOCOM 1's CTHold::End called
  * SetAiMode with 1) */
-void func_0056D090(CSealCtrlAi *ai);
+void RestoreAiMode__11CSealCtrlAiFv(CSealCtrlAi *ai);
 /* the AI switched on or off, and its alarm (SOCOM 1's static CSealCtrlAi::SetAiEnabled(bool,
  * bool), which its CTStopAll::Tick calls so; OVL2 0x574830, the SEAL lane's row), and a static
  * SOCOM II added after it (OVL2 0x598840) */
-void func_00574830(bool enabled, bool alarm);
+void SetAiEnabled__11CSealCtrlAiFbb(bool enabled, bool alarm);
 void func_00598840(bool enabled);
 /* the AI's stance set, and set for a time (OVL2 0x5631A0, 0x5631B0: the SEAL lane's rows, where
  * SOCOM 1's CTStance::Begin called CSealCtrlAi::SetStance) */
-void func_005631A0(CSealCtrlAi *ai, SEAL_STANCE stance);
-void func_005631B0(CSealCtrlAi *ai, SEAL_STANCE stance, bool b, float time);
+void SetStance__11CSealCtrlAiF11SEAL_STANCE(CSealCtrlAi *ai, SEAL_STANCE stance);
+void SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb(CSealCtrlAi *ai, SEAL_STANCE stance, bool b, float time);
 /* CSealCtrl::ClearLook(AI_LOOK) (OVL2 0x600D40, seal_look.cpp's) */
-void func_00600D40(CSealCtrl *ctrl, int look);
+void ClearLook__9CSealCtrlF7AI_LOOK(CSealCtrl *ctrl, int look);
 /* the script state's hold bit 3 set or cleared for the AI (OVL2 0x5F3FC0, seal_aistate.cpp's
  * range) and a CSealCtrlAi function the goto's end calls first (OVL2 0x5628F0) */
 void func_005F3FC0(CAiSScript *s, CSealCtrlAi *ai, bool b);
@@ -106,9 +106,9 @@ FT_COMMAND func_0058E0A0(const char *name);
  * 0x529C00, the AI core's: zseal.h's CAiMaps stub, which this unit sees, declares none of them,
  * and ai_maps.h's CAiMaps cannot sit beside it) */
 struct CAiMapRegion;
-const CAiMapRegion *func_0052D950(CAiMaps *maps, const CAiMapLoc &loc);
-void func_0052A6B0(CAiMaps *maps, const CAiMapRegion *r, unsigned int value, unsigned int flags);
-bool func_00529C00(CAiMaps *maps, const CAiMapRegion *r, unsigned char type);
+const CAiMapRegion *GetRegion__7CAiMapsFRC9CAiMapLoc(CAiMaps *maps, const CAiMapLoc &loc);
+void Tile__7CAiMapsFPCQ26CAiMap6regionUiUi(CAiMaps *maps, const CAiMapRegion *r, unsigned int value, unsigned int flags);
+bool SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(CAiMaps *maps, const CAiMapRegion *r, unsigned char type);
 }
 
 /* the commands' ids (SOCOM 1's ai_cmdid, 0x18 bytes: RegisterCommands stores every command's id
@@ -157,7 +157,7 @@ static _zanim_cmd_hdr *taskFindParam(unsigned int type, int index)
     if (!list)
         return 0;
     for (i = 0;; i++) {
-        _zanim_cmd_hdr *p = func_002720E0(list, i);
+        _zanim_cmd_hdr *p = GetCmd__13CZAnimArgListFi(list, i);
 
         if (!(bool)p)
             break;
@@ -979,7 +979,7 @@ void CTHold::End(_zanim_cmd_hdr *hdr)
     CSealCtrlAi *ai = cmd->GetAi();
 
     if (ai && cmd->m_timer != -1.0f)
-        func_0056D090(ai);
+        RestoreAiMode__11CSealCtrlAiFv(ai);
 }
 
 /* the wait run down (OVL2 0x5D8F60)
@@ -1108,7 +1108,7 @@ void CTLookAt::End(_zanim_cmd_hdr *hdr)
     if (!seal || !ctrl)
         return;
     if (cmd->m_looking & 1)
-        func_00600D40((CSealCtrl *)ctrl, 3);
+        ClearLook__9CSealCtrlF7AI_LOOK((CSealCtrl *)ctrl, 3);
 }
 
 /* the anim looked up by name (OVL2 0x5D7040)
@@ -1138,16 +1138,16 @@ void CTMove::End(_zanim_cmd_hdr *hdr)
 bool CTPaint::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     CTPaint *cmd = (CTPaint *)hdr;
-    const CAiMapRegion *r = func_0052D950(&AiMaps, cmd->m_loc);
+    const CAiMapRegion *r = GetRegion__7CAiMapsFRC9CAiMapLoc(&AiMaps, cmd->m_loc);
 
     switch (cmd->m_mode) {
     case 1:
     case 2:
         if (r)
-            func_0052A6B0(&AiMaps, r, cmd->m_value, cmd->m_flags);
+            Tile__7CAiMapsFPCQ26CAiMap6regionUiUi(&AiMaps, r, cmd->m_value, cmd->m_flags);
         break;
     case 3:
-        func_00529C00(&AiMaps, r, (unsigned char)cmd->m_value);
+        SetRegionType__7CAiMapsFPCQ26CAiMap6regionQ36CAiMap6region4TYPE(&AiMaps, r, (unsigned char)cmd->m_value);
         break;
     }
     *dT = 0.0f;
@@ -1213,8 +1213,8 @@ void CTStance::Begin(_zanim_cmd_hdr *hdr)
     CSealCtrlAi *ai = cmd->GetAi();
 
     if (ai) {
-        func_005631A0(ai, (SEAL_STANCE)cmd->m_stance);
-        func_005631B0(ai, (SEAL_STANCE)cmd->m_peek, true, CAiTimer::infinite);
+        SetStance__11CSealCtrlAiF11SEAL_STANCE(ai, (SEAL_STANCE)cmd->m_stance);
+        SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb(ai, (SEAL_STANCE)cmd->m_peek, true, CAiTimer::infinite);
         cmd->m_timer = cmd->m_time;
     }
 }
@@ -1227,7 +1227,7 @@ void CTStance::End(_zanim_cmd_hdr *hdr)
     CSealCtrlAi *ai = cmd->GetAi();
 
     if (ai && cmd->m_time != 0.0f && cmd->m_peek != STANCE_PRONE)
-        func_005631B0(ai, STANCE_PRONE, true, 0.0f);
+        SetDesiredStance__11CSealCtrlAiF11SEAL_STANCEfb(ai, STANCE_PRONE, true, 0.0f);
 }
 
 /* the entity named and the range, 1000 unless given (OVL2 0x5CF6F0) */
@@ -1266,7 +1266,7 @@ bool CTStopAll::Tick(_zanim_cmd_hdr *hdr, float *dT)
     CTStopAll *cmd = (CTStopAll *)hdr;
     bool enabled = !cmd->m_enable;
 
-    func_00574830(enabled, !cmd->m_inactive);
+    SetAiEnabled__11CSealCtrlAiFbb(enabled, !cmd->m_inactive);
     func_00598840(enabled);
     return true;
 }

@@ -9,9 +9,9 @@ extern "C" {
  * the same Tick; OVL1 0x2BD640), SOCOM II's taking a further argument */
 void func_002BD640(CEntity *seal, int x);
 /* CZKit::SetCurItemByIndex and SetCurFireMode (SOCOM 1's, called from the same Initalize; OVL2
- * 0x5C4B10, 0x5C37B0 -- zseal.h's CZKit has no members to call them on yet) */
-void func_005C4B10(CZKit *kit, int index);
-void func_005C37B0(CZKit *kit, int mode);
+ * 0x5C4B10, 0x5C37B0 -- by their mangled names: zseal.h's CZKit has no members to call them on yet) */
+void SetCurItemByIndex__5CZKitFi(CZKit *kit, int index);
+void SetCurFireMode__5CZKitF8FIREMODE(CZKit *kit, int mode);
 }
 
 /* (OVL2 0x5FF0F0): the trigger built with its default times (its constructor inlined one level:
@@ -36,8 +36,8 @@ void CSealCtrlSquirm::Initalize()
     CZKit *kit = &((CZSealBody *)m_entity)->m_kit;
 
     if (kit) {
-        func_005C4B10(kit, 0);
-        func_005C37B0(kit, 3);
+        SetCurItemByIndex__5CZKitFi(kit, 0);
+        SetCurFireMode__5CZKitF8FIREMODE(kit, 3);
     }
     m_trigger.m_dn_time = 5.0f;
     m_trigger.m_up_time = 1.0f;

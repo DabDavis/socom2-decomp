@@ -25,8 +25,8 @@ inline void SetValveValue(CValve *valve, int value)
 extern "C" {
 /* CSealCtrl::AllowCommandFOLLOW and AllowCommandHOLDPOS (SOCOM 1's, called from the same switch;
  * OVL2 0x591AB0, 0x591770 -- the SEAL lane's rows) */
-bool func_00591AB0(CSealCtrl *ctrl, CZSealBody *seal);
-bool func_00591770(CSealCtrl *ctrl, CZSealBody *seal);
+bool AllowCommandFOLLOW__9CSealCtrlFP10CZSealBody(CSealCtrl *ctrl, CZSealBody *seal);
+bool AllowCommandHOLDPOS__9CSealCtrlFP10CZSealBody(CSealCtrl *ctrl, CZSealBody *seal);
 /* NetSendAiOrders (SOCOM 1's NetSendAiOrders__FUiUiUiPv; OVL1 0x2BB970), SOCOM II's call passing
  * no data */
 void func_002BB970(unsigned int seal, unsigned int from, unsigned int cmd, void *data);
@@ -90,10 +90,10 @@ bool CRemoteCtrl::AllowCommand(CZSealBody *seal, FT_COMMAND cmd, void *data)
 
     switch (cmd) {
     case 4:
-        ok = func_00591AB0(this, seal);
+        ok = AllowCommandFOLLOW__9CSealCtrlFP10CZSealBody(this, seal);
         break;
     case 5:
-        ok = func_00591770(this, seal);
+        ok = AllowCommandHOLDPOS__9CSealCtrlFP10CZSealBody(this, seal);
         break;
     }
     return ok;
