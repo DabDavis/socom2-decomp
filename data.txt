@@ -1007,7 +1007,15 @@
 0x00416020 0x4 data_00416020  # OVL1 bss; SOCOM II's shake: the x amplitude running: 13 references in 6 functions
 0x00416028 0x4 data_00416028  # OVL1 bss; SOCOM II's shake: the y amplitude running: 14 references in 6 functions
 0x00416038 0x1 camera_tether_intersects_something  # OVL1 bss; s1:data-seq (size SOCOM 1's; via GetNearestIntersectCamPoint__FPQ23zdb11DiIntersectP6CPnt3D)
+0x00416050 0x4C dilr0  # OVL1 bss; SOCOM 1's camera.cpp static (dilr0-dilr3, by __sinit_camera.cpp): the first of four zdb::DiIntersect(16), registered with ~DiIntersect 0x2DC680; 2 references (__sinit_camera.cpp), the core lane round 2
+0x004160B0 0x4C dilr1  # OVL1 bss; SOCOM 1's camera.cpp static: the second DiIntersect(16); 2 references (__sinit_camera.cpp), the core lane round 2
+0x00416110 0x4C dilr2  # OVL1 bss; SOCOM 1's camera.cpp static: the third DiIntersect(16); 2 references (__sinit_camera.cpp), the core lane round 2
+0x00416170 0x4C dilr3  # OVL1 bss; SOCOM 1's camera.cpp static: the fourth DiIntersect(16); 2 references (__sinit_camera.cpp), the core lane round 2
 0x004161C0 0x4 peekCur__20@unnamed@camera_cpp@  # OVL1 bss; s1 by hand (SOCOM 1's camera.cpp static, gp-29408: CAppCamera::Tick eases it toward the peek's goal and stores it back; SOCOM II's Tick does the same with 0x4161C0)
+0x004161C8 0xC tetherPos  # OVL1 bss; SOCOM 1's camera.cpp static, CPnt3D(0, 8, 40) as __sinit_camera.cpp stores it; 3 references (__sinit_camera.cpp), the core lane round 2
+0x004161D8 0xC firstPersonPos  # OVL1 bss; ours: a camera.cpp static new in SOCOM II, CPnt3D(0, 2.5, 4) (__sinit_camera.cpp; GetFirstPersonCamPos's, by the round-1 note); 3 references (__sinit_camera.cpp), the core lane round 2
+0x004161E8 0xC thirdPersonPos  # OVL1 bss; ours: a camera.cpp static new in SOCOM II, CPnt3D(0, 5.2, 15) (__sinit_camera.cpp; GetThirdPersonCamPos's); 3 references (__sinit_camera.cpp), the core lane round 2
+0x004161F8 0xC thirdPersonPos2  # OVL1 bss; ours: a camera.cpp static new in SOCOM II, the same CPnt3D(0, 5.2, 15) (__sinit_camera.cpp; 0x29A660's); 3 references (__sinit_camera.cpp), the core lane round 2
 0x00416208 0x4 DeltaRot  # OVL1 bss; SOCOM 1's (DeltaRot, camera.cpp's; ResetDeathCam zeroes it, as SOCOM 1's): 12 references in 3 functions (ResetDeathCam, 0x2956E0, 0x297A30)
 0x00416210 0x4 DeltaAim  # OVL1 bss; SOCOM 1's (DeltaAim; ResetDeathCam zeroes it next): 7 references in 3 functions (ResetDeathCam, 0x2956E0, 0x297A30)
 0x00416218 0x4 data_00416218  # OVL1 bss; SOCOM II's third delta beside DeltaRot and DeltaAim (ResetDeathCam zeroes it with them): 6 references in 3 functions (ResetDeathCam, 0x297410, 0x297A30)
@@ -1120,6 +1128,7 @@
 0x0044F098 0x4 zMaxCell  # OVL1 bss; SOCOM 1's grid_main.cpp file static (its symbol; the six 8 bytes apart here, 4 in SOCOM 1): the cell box CGrid::SetCellBoundary sets and GetNextCell (0x2D71C0) walks; 2 functions reference it
 0x0044F0A0 0x4 xCurCell  # OVL1 bss; SOCOM 1's grid_main.cpp file static (its symbol; the six 8 bytes apart here, 4 in SOCOM 1): the cell box CGrid::SetCellBoundary sets and GetNextCell (0x2D71C0) walks; 2 functions reference it
 0x0044F0A8 0x4 zCurCell  # OVL1 bss; SOCOM 1's grid_main.cpp file static (its symbol; the six 8 bytes apart here, 4 in SOCOM 1): the cell box CGrid::SetCellBoundary sets and GetNextCell (0x2D71C0) walks; 2 functions reference it
+0x0044F0F0 0x1 clutterStack  # OVL1 bss; ours (SOCOM 1's grid_clutter.cpp file static `stack`, a name grid_di.cpp's row 0x44D750 holds): the clutter's CStack, built by __sinit_grid_clutter.cpp (CStack(false), ~CStack 0x2D4FE0 registered) and read by CClutter::Render, CClutterAnimManager() and ClutterTick; 2 references (__sinit_grid_clutter.cpp), the core lane round 2
 0x0044F108 0x8 m_pads__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via DeletePad__6CInputFUi +1)
 0x0044F110 0x1 m_init__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)
 0x0044F118 0x4 m_keyboard__6CInput  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Init__6CInputFv)

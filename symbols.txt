@@ -2876,7 +2876,7 @@
 0x00267E70 0x124 OpenZAR__10CZAnimMainFPCc  # OVL1; s1:calls
 0x00267FA0 0x21C LoadZAR__10CZAnimMainFP9CZAnimZARPCc  # OVL1; s1:align
 0x002681C0 0x84 func_002681C0  # OVL1
-0x00268250 0x8 func_00268250  # OVL1
+0x00268250 0x8 Load__10CZAnimMainFPCcPCc  # OVL1; the core lane round 2: SOCOM 1's CZAnimMain::Load(name, set) as a return-true stub -- CMission::ZAnimLoad 0x2ABAD0 calls it twice with (&ZAnim, "data/common/zrdr/czanim.rdr", "common") and (&ZAnim, rdr, "mission") where SOCOM 1's ZAnimLoad calls Load__10CZAnimMainFPCcPCc 0x1C2200; also CGameMenu::LoadFromDesign 0x367950
 0x00268260 0xFC UnloadCmdSet__10CZAnimMainFi  # OVL1; s1:align
 0x00268360 0x48 UnloadSIScript__10CZAnimMainFP16_zanim_si_script  # OVL1; s1:align
 0x002683B0 0x118 Unload__10CZAnimMainFv  # OVL1; s1:align
@@ -3288,7 +3288,7 @@
 0x0027FF20 0x90 OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetTtySpeedFactor" in both builds' UI command tables: SOCOM II's id 0x75 at 0x3DDC00, SOCOM 1's UICommandTable id 0x83 -> OnSetTtySpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf); the HUD lane's lead agrees: SOCOM 1's body, UiSetTtySpeedFactor__Ff (0x37B980) called at +0x74
 0x0027FFB0 0x90 OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table (registered as "SetCounterSpeedFactor" in both builds' UI command tables: SOCOM II's id 0x76 at 0x3DDC10, SOCOM 1's UICommandTable id 0x84 -> OnSetCounterSpeedFactor__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf); the HUD lane's lead agrees: SOCOM 1's body, UiSetCounterSpeedFactor__Ff (0x37B990) called at +0x74
 0x00280040 0x74 func_00280040  # OVL1
-0x002800C0 0x100 func_002800C0  # OVL1
+0x002800C0 0x100 OnRemoveEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "RemoveEquipment" in both builds' UI command tables: SOCOM 1's OnRemoveEquipment, zanim_menu.cpp's anonymous namespace -- the same GetWeaponId/IsPrimary/IsSecondary tests and the UiCharSet walk over RemoveWeapon)
 0x002801C0 0x394 func_002801C0  # OVL1
 0x00280560 0x208 func_00280560  # OVL1
 0x00280770 0x14 func_00280770  # OVL1
@@ -3303,24 +3303,24 @@
 0x00281060 0xC func_00281060  # OVL1
 0x00281070 0xC func_00281070  # OVL1
 0x00281080 0xC func_00281080  # OVL1
-0x00281090 0xD0 func_00281090  # OVL1
+0x00281090 0xD0 UICopyUIVar__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "CopyUIVar" (id 0xBD, the UI command table's record 187, its second function UICopyUIVarParse 0x27FD70); SOCOM 1's table has no CopyUIVar, so UI<command> by its convention
 0x00281160 0x468 func_00281160  # OVL1
 0x002815D0 0x37C func_002815D0  # OVL1
 0x00281950 0x11C func_00281950  # OVL1
-0x00281A70 0x14C func_00281A70  # OVL1
+0x00281A70 0x14C OnCloseAndSwitch__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "CloseAndSwitch" in both builds' UI command tables: SOCOM 1's handler OnCloseAndSwitch, zanim_menu.cpp's anonymous namespace, the same tests, Pop/Switch and MPMajorGameState(5); SOCOM II adds the loading image's restore)
 0x00281BC0 0x20 func_00281BC0  # OVL1
 0x00281BE0 0x158 func_00281BE0  # OVL1
 0x00281D40 0x400 func_00281D40  # OVL1
 0x00282140 0x2C8 func_00282140  # OVL1
 0x00282410 0x8 func_00282410  # OVL1
-0x00282420 0xD4 func_00282420  # OVL1
-0x00282500 0xD4 func_00282500  # OVL1
-0x002825E0 0xD4 func_002825E0  # OVL1
+0x00282420 0xD4 UIChooseEquip3__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip3" (id 0x8, record 7; slot 4)
+0x00282500 0xD4 UIChooseEquip2__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip2" (id 0x7, record 6; slot 3)
+0x002825E0 0xD4 UIChooseEquip1__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChooseEquip1" (id 0x6, record 5; slot 2 to the per-character pick 0x282C20)
 0x002826C0 0x11C func_002826C0  # OVL1
-0x002827E0 0xCC func_002827E0  # OVL1
-0x002828B0 0xCC func_002828B0  # OVL1
+0x002827E0 0xCC UIChoosePrimary__FP13C2DAnimCmdHdrPf  # OVL1; ours, the core lane round 2: the handler registered as "ChoosePrimary" (id 0x4, the UI command table's record 3); SOCOM 1's table has none, so UI<command> by its convention
+0x002828B0 0xCC ExecuteChooseEquipment__24@unnamed@zanim_menu_cpp@FP13C2DAnimCmdHdrPf  # OVL1; s1:table by hand, the core lane round 2 (registered as "ChooseEquipment" in both builds' UI command tables: SOCOM 1's ExecuteChooseEquipment, zanim_menu.cpp's anonymous namespace, the same walk over ChooseEquipmentForCharacter)
 0x00282980 0x108 func_00282980  # OVL1
-0x00282A90 0x184 func_00282A90  # OVL1
+0x00282A90 0x184 ChooseEquipmentForCharacter__24@unnamed@zanim_menu_cpp@FRCQ224@unnamed@zanim_menu_cpp@17CSelectedCharsItr10EQUIP_ITEM  # OVL1; s1:callee by hand, the core lane round 2 (ExecuteChooseEquipment calls it with the iterator and the item in its loop where SOCOM 1's calls ChooseEquipmentForCharacter, 0x1D74B0)
 0x00282C20 0x290 func_00282C20  # OVL1
 0x00282EB0 0x70 func_00282EB0  # OVL1
 0x00282F20 0x248 func_00282F20  # OVL1
@@ -3474,7 +3474,7 @@
 0x0028DC90 0x320 PushBlend__5CBodyFP16CZSIScriptCommonsc  # OVL1; s1:order by hand (SOCOM 1's PushBlend took ids; SOCOM II's takes the script's common, a short id and a char state, as the code reads them)
 0x0028DFB0 0x8 BodySetState__5CBodyFi  # OVL1; s1:vtable by hand (CBody's slot 0x14 at 0x406100; the SEAL lane: called where SOCOM 1 calls CBody::BodySetState; the state's halfword at +4 stored)
 0x0028DFC0 0x80 SetPartActive__5CBodyFiP10CZBodyPart  # OVL1; ours (SOCOM II's: the part of a part's id, in range, has its bit 0 set or cleared)
-0x0028E040 0x90 SmoothPart__5CBodyFP10CZBodyPartf  # OVL1; ours (SOCOM II's: SmoothAnims for one part)
+0x0028E040 0x90 SmoothPart__5CBodyFfP10CZBodyPart  # OVL1; ours (SOCOM II's: SmoothAnims for one part); the SEALs lane r22: the fraction comes first -- the caller 0x576700 (seal_anim.cpp) matches word for word with (float, CZBodyPart *), MW evaluating float arguments left to right; the order shows only at the call site
 0x0028E0D0 0xE0 SmoothAnims__5CBodyFf  # OVL1; s1:order by hand (SOCOM 1's SmoothAnims(float): each live part's position interpolated toward its saved one, its rotation slerped)
 0x0028E1B0 0xD4 OrientAuxParts__5CBodyFv  # OVL1; ours (SOCOM II's: each auxiliary part with a node Orient()ed)
 0x0028E290 0xD4 OrientParts__5CBodyFv  # OVL1; ours (SOCOM II's: each part with a node Orient()ed)
@@ -4698,9 +4698,9 @@
 0x002E1D50 0xAC __ct__8RoomGameFP22MediusGameListResponse  # OVL1; ours (SOCOM 1's RoomGame constructor: the table at 0x190, the info cleared, its world -1, UpdateInfo inlined one level; LANGame's constructor passes 0, the game list's callback a response); (the info's struct is SOCOM 1's MediusGameListResponse)
 0x002E1E00 0x8 SetMission__8RoomGameFi  # OVL1; ours (the game's mission, the word at +0x28, set: UpdateInfo, inlined one level, calls it out of line with the sequence's first byte)
 0x002E1E10 0x108 __as__22MediusGameListResponseFRC22MediusGameListResponse  # OVL1; ours (the game info's implicit assignment, member by member -- 21 bytes, the words and halfwords, the name and rules two bytes a pass: too big to inline, its copy follows the game's constructor; UpdateInfo calls it); (the struct's name SOCOM 1's)
-0x002E1F20 0x5A0 func_002E1F20  # OVL1
+0x002E1F20 0x5A0 GetGameInfo__13CZOnlineLobbyFPCc  # OVL1; ours, the online lane round 14 (UIGetGameInfo calls it on theLobby with a game's name: the game found in the LAN lobby's room or the lobby's current one, GAME_INFO_DETAILS filled -- its mission's name, MEDLEY or its type, round count and time, friendly fire, respawn, the equipment limit -- when HasMissions, MISSION_AVAILABLE and game_info_rank_restrictions set, else UNAVAILABLE)
 0x002E24C0 0x8 GetMissionSequence__8RoomGameFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike); ours (RoomGame's one virtual, slot 0 of the three game tables 0x4066B0/C0/D0: it returns this + 0x1A2, the mission sequence JoinLANGame hands SetMissionSequence -- SOCOM 1's slot held IsPersistent, the s1:vtable name this row had)
-0x002E24D0 0x400 func_002E24D0  # OVL1
+0x002E24D0 0x400 GetCurrentGameInfo__13CZOnlineLobbyFv  # OVL1; ours, the online lane round 14 (UIGetGameInfo calls it on theLobby for our own game: GAME_INFO_DETAILS filled from our mission sequence's types -- MEDLEY when mixed, else the database's type by CMultiMissionList::GetMultiValue -- the mp_max_rounds and mp_max_round_time valves, friendly fire, respawn and EQlimit, a line each)
 0x002E28D0 0x4C RefreshGameList__13CZOnlineLobbyFP3C2D  # OVL1; s1:ui ('RefreshGameList' 0x27DB40, as SOCOM 1's UIRefreshGameList calls RefreshGameList; a1 live)
 0x002E2920 0x1D4 func_002E2920  # OVL1
 0x002E2B00 0x1E0 cbGameList__FiiiP22MediusGameListResponse  # OVL1; s1:name (SOCOM 1's cbGameList, the game list request's callback: the same request/update/new-game shape)
@@ -4856,7 +4856,7 @@
 0x002EB780 0xC func_002EB780  # OVL1
 0x002EB790 0xC func_002EB790  # OVL1
 0x002EB7A0 0x15C UpdateLadderBestDisplay__Fv  # OVL1; ours (the player ladder's best, LadderRanking 0x44F7E0, sorted -- std::sort's instance 0x2EC260 -- and built into uiv_MediusLadderTop10: '%d', the name and clan strings at +0x8C/+0x98)
-0x002EB900 0x318 func_002EB900  # OVL1
+0x002EB900 0x318 UpdateLadderListDisplay__Fv  # OVL1; ours, the online lane round 14 (the player ladder around us sorted by compare_ladder 0x2EC260 and handed to uiv_MediusLadderRanking -- each one's figure, name, position, GetRankLevel medal and clan, ours (AccountInfo's name) in colour -- then ON_LADDER_REFRESH: UpdateClanLadderList's shape over LadderLeaders 0x44F7B0; the pages' callback func_002EB6A0 calls it)
 0x002EBC20 0xC8 Find__10LadderListFPCc  # OVL1; ours (the MSL headers round 6, written in zNetMediusLadder.cpp: a player ladder's item by name, case-blind, none for no name -- the name read through LadderItem::GetName, the inlined c_str() folding the string's offset into the item's; the chat unit's player-info callback 0x2F0020 calls it); byte-exact
 0x002EBCF0 0x154 Add__14ClanLadderListFP31MediusGetClanLadderListResponse  # OVL1; ours (cbGetClanLadderList keeps a clan through it: the 0x48-byte response copied whole unless its position (+0x3c) is there, the highest position kept at +0xc; byte-exact)
 0x002EBE50 0x188 Add__10LadderListFP24MediusLadderListResponse  # OVL1; ours, the online lane round 8 (the player ladder's Add: the ladder pages' callback 0x2EB6A0 adds each TheRest/TheBest record to LadderLeaders/LadderRanking; a position already there skipped, the item made by an inline constructor cut to one level, its pointer pushed and the highest position kept, as ClanLadderList::Add; byte-exact)
@@ -5032,7 +5032,7 @@
 0x002FB9F0 0xE8 IndexOf__Q226CZUniversInformationServer7CAcctDBFPCciPCc  # OVL1; ours (the named account's place among the lobby server's, the walk broken on the name: UIGetMUISPersonaInfo 0x2754C0 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FBAE0 0x110 Delete__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account on a lobby server erased through the one-element erase 0x2FE230: UIDeleteMUISPersona 0x276340 calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FBBF0 0xE8 Find__Q226CZUniversInformationServer7CAcctDBFPCciPCc  # OVL1; ours (the account by host, port and name, 0 none: UIMUISPersonaExists 0x27668C calls it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
-0x002FBCE0 0x5A0 Add__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCciP5_zrdrb  # OVL1; ours (an account added -- push_back of a blank record, then memset -- or updated: host, port, name, password, town, gender, the SAVEPASSWORD flag, then PROFILE_CHECKSUM and PROFILE_INFO's SEAL/TERR equipment through SetLoadout; UnSerialize 0x2FC280 and SetAcctInfo 0x2FD0D0 call it)
+0x002FBCE0 0x5A0 Add__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCc11ACCT_GENDERP5_zrdrb  # OVL1; ours (an account added -- push_back of a blank record, then memset -- or updated: host, port, name, password, town, gender, the SAVEPASSWORD flag, then PROFILE_CHECKSUM and PROFILE_INFO's SEAL/TERR equipment through SetLoadout; UnSerialize 0x2FC280 and SetAcctInfo 0x2FD0D0 call it); the online lane round 14: the gender an int-sized ACCT_GENDER (the menus' enum name): see 0x2FD0D0
 0x002FC280 0x1B8 UnSerialize__Q226CZUniversInformationServer7CAcctDBFPCcP8CRdrFilei  # OVL1; ours (CSaveModule's UnSerialize(const char *, CRdrFile *, int) through the thunk 0x300610 (-0xC): each account of the profile file added -- HOST, NAME, TOWN, PASSWORD, PORT, GENDER, PROFILES, SAVEPASSWORD) -- byte-exact, zNetMediusUniverse.cpp
 0x002FC440 0x3B8 Serialize__Q226CZUniversInformationServer7CAcctDBFi  # OVL1; ours (CSaveModule's Serialize through the thunk 0x300620: the accounts written as the AcctInfo rdr through CRdrEditor and SaveRdr) -- byte-exact, zNetMediusUniverse.cpp
 0x002FC800 0x1D8 Load__Q226CZUniversInformationServer7CAcctDBFPCci  # OVL1; ours (CLobbySaveModule's slot 1 through the thunk 0x300650: the lobby's blob read back into the current account's missions through SetLoadout) -- byte-exact, zNetMediusUniverse.cpp; the online lane round 12: CLobbySaveModule's slot 0xC is zsav_lobby.h's Load(const char *data, int size) -- the manager's Load passes the entry's data and its size in a2 (0x33E928) -- so CAcctDB's override takes the size too
@@ -5041,7 +5041,7 @@
 0x002FCD60 0x294 Save__Q226CZUniversInformationServer7CAcctDBFi  # OVL1; ours (CLobbySaveModule's slot 0, CAcctDB's override through the thunk 0x300660 (-0x24): the current account's named missions written as the lobby's blob, a count byte and the 0x24-byte entries, through 0x33EEA0); the online lane round 12: CLobbySaveModule's slot 8 is zsav_lobby.h's Save(int flags) -- the manager's Save passes its flags in a1 to every module (0x33EC44)
 0x002FD000 0x68 __dt__16CLobbySaveModuleFv  # OVL1; ours, the online lane round 10 (CLobbySaveModule's destructor, its vtable 0x406740 stored and its name string destroyed out of line: 0x300570 calls it; open, 0x80 against 0x68 -- this unit's copy inlines the string's destructor)
 0x002FD070 0x60 __dt__Q23std52vector<10AcctRecord,Q23std23allocator<10AcctRecord>>Fv  # OVL1; ours, the online lane round 10 (the accounts vector's destructor: 0x300570 calls it; the draft stands, this unit's copy is 0x78 against 0x60)
-0x002FD0D0 0x34 SetAcctInfo__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCcib  # OVL1; ours (UIUpdateAcctInfo 0x2752BC calls it on theAcctDB: a named account's details through Add, the password only when it is to be kept, no profiles)
+0x002FD0D0 0x34 SetAcctInfo__Q226CZUniversInformationServer7CAcctDBFPCciPCcPCcPCc11ACCT_GENDERb  # OVL1; ours (UIUpdateAcctInfo 0x2752BC calls it on theAcctDB: a named account's details through Add, the password only when it is to be kept, no profiles); the online lane round 14: the gender an INT-SIZED enum (ACCT_GENDER, zanim_menu.h's name) -- UIUpdateAcctInfo 0x2752BC passes a two-enumerator ternary as li 1; movz straight into t2 (an int parameter gives sltu, an int one fed a byte enum's ternary adds andi 0xff), this passes it to Add untouched, Add spills it as a word and UnSerialize loads its local with lw; a one-byte enum costs this an andi (0x3C) or Add/UnSerialize 2 instructions each
 0x002FD110 0xFC GetGender__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's gender byte at 0x103, 0 none: the persona handlers call it on theAcctDB) -- byte-exact, zNetMediusUniverse.cpp
 0x002FD210 0xFC GetSavePassword__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's SAVEPASSWORD flag at 0x1314) -- byte-exact, zNetMediusUniverse.cpp
 0x002FD310 0xFC GetTown__Q226CZUniversInformationServer7CAcctDBFPCcii  # OVL1; ours (the index-th account's TOWN at 0xC4) -- byte-exact, zNetMediusUniverse.cpp
@@ -5299,7 +5299,7 @@
 0x0030CD80 0x8 func_0030CD80  # OVL1
 0x0030CD90 0x40 func_0030CD90  # OVL1
 0x0030CDD0 0x10 func_0030CDD0  # OVL1
-0x0030CDE0 0x8 func_0030CDE0  # OVL1
+0x0030CDE0 0x8 zNetSetMyClientObject__9CZNetworkFi  # OVL1; ours, the online lane round 14 (CZNetwork's forwarder: `j NetSetMyClientObject; move a0,a1`, this unused; its one caller ftsNetworkPlayerInit 0x2B7DA4 passes &theNetwork and the new seal's object where SOCOM 1's ftsNetworkPlayerInit calls NetSetMyClientObject itself; the name after the class's zNet* calls)
 0x0030CDF0 0x88 zNetRemoteObjectUpdateCallback__9CZNetworkFiii  # OVL1; s1 by hand (SOCOM 1's zNetRemoteObjectUpdateCallback, the first function of zNetDme.cpp in both builds: NetGetObject, the type's update callback from the list at +0x1114, the field-update flag at +0x10B set; zNetRegisterRemoteObjectCallback registers it with the DME as SOCOM 1's does)
 0x0030CE80 0x6C zNetRegisterRemoteObjectCallback__9CZNetworkFiPFii_vPFiii_vPFiii_vPFii_v  # OVL1; s1:calls (every zNetRegister* calls it last with the index and four callbacks, as SOCOM 1's; the same 0x6C) -- the states lane
 0x0030CEF0 0x100 zNetSendApplicationMessage__9CZNetworkFciiiiPUcb  # OVL1; s1:calls by hand (the states lane: every network sender calls it at SOCOM 1's call site, 39 of them, with the same register handling and calls; zNetDme.cpp's)
@@ -5329,7 +5329,7 @@
 0x0030DBB0 0x130 zNetInitialize__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 11 (SOCOM 1's zNetInitialize 0x321CA0: NetSetDefaultInitializeParams, NetInitialize, the network's init flag set when it answers no error, our address asked for into the object at 0xD0 (SOCOM 1's 0xAF), the 4096 object-field flags cleared, the error returned; SOCOM II's adds the DME state from DMEInit, a server-message callback 0x30DCE0 and the buffer sizes; UIDMEInit 0x276CF0 calls it on theNetwork)
 0x0030DCE0 0x148 func_0030DCE0  # OVL1
 0x0030DE30 0xAC zNetLookupHost__9CZNetworkFPCcPci  # OVL1; ours (the server list's connect 0x2FDF60 calls it on theNetwork: sceInetName2Address then sceInetAddress2String into the caller's buffer, 30 on failure)
-0x0030DEE0 0x37C func_0030DEE0  # OVL1
+0x0030DEE0 0x37C zNetLoadIRX__9CZNetworkFv  # OVL1; s1:calls by hand, the online lane round 14 (SOCOM 1's zNetLoadIRX 0x321E20: the same sequence -- CSnd::WaitForCDRead and Close, the netcnf combo's start-up when m_bNetCnfRequired, zSysLoadIRX of the modules by MP_CONNECTION, memcpy/PS2FileName/strcpy/strlen for inetctl's arguments, RegisterRebootCallback with smap, sceSifMInitRpc and the libnet client, CSnd::UIOpen, the loaded flag returned; SOCOM II drops the early return when loaded and loads inet.irx and netcnf.irx with the icon arguments first; CSMInitNetwork::WaitForNetwork 0x27702C calls it on theNetwork)
 0x0030E260 0x2C func_0030E260  # OVL1
 0x0030E290 0x64 func_0030E290  # OVL1
 0x0030E300 0x34 func_0030E300  # OVL1
@@ -8509,9 +8509,9 @@
 0x003FF9C0 0x88 __sinit_hud_healthbar.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane: hud_healthbar.cpp's initialiser -- it builds the bar's five colours, 0x4148B0-0x4148F0, which only CHealthBar's functions read)
 0x003FFA50 0xB0 func_003FFA50  # OVL1 data area; a static initialiser
 0x003FFB00 0x64 func_003FFB00  # OVL1 data area; a static initialiser
-0x003FFB70 0x64 func_003FFB70  # OVL1 data area; a static initialiser
+0x003FFB70 0x64 __sinit_zanim_cmd_tick.cpp  # OVL1 data area; a static initialiser; s1:unit by the integrator's initialiser research (build/scratch/sinit/report.txt, MEDIUM: the second of the two pair-only initialisers SOCOM 1 links right before __sinit_anim_main.cpp, its objects ending where ZAnim begins), the core lane round 2: zanim_cmd_tick.cpp's <iostream> pair (0x414B88, 0x414BA0) byte-exact
 0x003FFBE0 0x50 func_003FFBE0  # OVL1 data area; a static initialiser
-0x003FFC30 0x64 func_003FFC30  # OVL1 data area; a static initialiser
+0x003FFC30 0x64 __sinit_zanim_anim.cpp  # OVL1 data area; a static initialiser; s1:unit by the integrator's initialiser research (build/scratch/sinit/report.txt, MEDIUM: pair-only, between anim_main.cpp's statics and zanim_menu.cpp's, as SOCOM 1's __sinit_zanim_anim.cpp precedes __sinit_zanim_menu.cpp), the core lane round 2: zanim_anim.cpp's <iostream> pair (0x414DD8, 0x414DF0) byte-exact
 0x003FFCA0 0x3C __sinit_zanim_menu.cpp  # OVL1 data area; a static initialiser; s1~ si_script.cpp (shape 0.60, a hint); by hand, the core lane round 1 (it constructs g_MenuStack at 0x414ED0 through CMenuStack's constructor and registers ~CMenuStack 0x27F590: zanim_menu.cpp's one dynamic static; first of the body code's initialisers in the table, ahead of __sinit_bone_init.cpp, as the units link -- the s1~ si_script.cpp hint was the shape's)
 0x003FFCE0 0xE4 __sinit_bone_init.cpp  # OVL1 data area; a static initialiser; s1:calls (it builds boneArchive and mapBoneArchive and registers ~CScriptArchive, 0x288750, for both -- bone_init.cpp's static initialiser) -- the body lane
 0x003FFDD0 0x190 __sinit_camera.cpp  # OVL1 data area; a static initialiser; s1:unit by hand, the core lane round 1 (SOCOM 1's __sinit_camera.cpp builds the same four DiIntersect(16) statics dilr0-dilr3 and tetherPos (0, 8, 40); SOCOM II's builds <iostream>'s pair where SOCOM 1's built a CSTable, and three more points; its statics sit with appCamera and peekCur in camera.cpp's bss, 0x415FD0-0x416204)
@@ -8538,7 +8538,7 @@
 0x00401C10 0x64 __sinit_game_engine.cpp  # OVL1 data area; a static initialiser; s1~ zin_cheats.cpp (shape 0.52, a hint); __sinit_game_engine.cpp: MEDIUM by the initialisers' link order and the statics it builds (the integrator's research 2026-11-04, build/scratch/sinit/report.txt); unit unwritten: 0x2D0330-0x2D04EF
 0x00401C80 0x34 __sinit_graph_tree.cpp  # OVL1 data area; a static initialiser; __sinit_graph_tree.cpp: HIGH by the initialisers' link order and the statics it builds (the integrator's research 2026-11-04, build/scratch/sinit/report.txt); unit src/gamez/zgame/graph_tree.cpp
 0x00401CC0 0x24 __sinit_grid_di.cpp  # OVL1 data area; a static initialiser; s1:calls (it clears stack's owner byte and registers ~CStack -- grid_di.cpp's static initialiser; scores WRONG until zmath.h's CStack has a constructor that does not push) -- the zdb-world lane
-0x00401CF0 0x88 func_00401CF0  # OVL1 data area; a static initialiser
+0x00401CF0 0x88 __sinit_grid_clutter.cpp  # OVL1 data area; a static initialiser; s1:unit by the integrator's initialiser research (build/scratch/sinit/report.txt, HIGH: its CStack 0x44F0F0 is read by CClutter::Render, CClutterAnimManager() and ClutterTick, as SOCOM 1's __sinit_grid_clutter.cpp builds its own stack), the core lane round 2: <iostream>'s pair and CStack(false), ~CStack registered, byte-exact
 0x00401D80 0x28 __sinit_int_shapes.cpp  # OVL1 data area; a static initialiser; by hand (the split lane): int_shapes.cpp's initialiser -- builds diNorm (0x44F2E0) as (0, 1, 0, 0), the static only SetEdgeVecsAndNorm and CDIPoly::GetAltitude use; byte-exact in int_shapes.cpp
 0x00401DB0 0x78 __sinit_int_material.cpp  # OVL1 data area; a static initialiser; s1~ int_material.cpp (shape 0.54, a hint); s1:unit by hand, the core lane round 1 (SOCOM 1's __sinit_int_material.cpp: it builds CMaterialExArray::m_materialex_map at 0x44F330 through the map's constructor and registers ~map, then zeroes m_materialex_list at 0x44F350 and registers vector<CMaterialEx *>'s destructor 0x2DE890 -- the unit's two statics, in definition order)
 0x00401E30 0x3C __sinit_zNetMedius.cpp  # OVL1 data area; a static initialiser; ours, the online lane round 10 (zNetMedius.cpp's static initialiser: theLobby 0x44F370 constructed (0x2E0710) and its destructor 0x2E0630 registered; byte-exact)

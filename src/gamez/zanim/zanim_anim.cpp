@@ -19,6 +19,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <iostream>   /* (its pair is all __sinit_zanim_anim.cpp builds, 0x3FFC30) */
 
 #include "zanim.h"
 
@@ -1056,7 +1057,6 @@ void CZAnim::Priority(float priority)
 
 /* SOCOM 1's Particle::Source::Create, matched in its own unit under its address's name
  * (CWorld::GetTexHandle is znode.h's) */
-extern "C" Particle::Source *func_0032B120();
 
 /* a node reference by name under a parent, made when missing (ours; inline in both
  * branches of LoadNodeNames -- its returns are their jumps on) */
@@ -1243,7 +1243,7 @@ Particle::Source *CZAnim::GetParticleSource(int name_index)
     }
     if (ref) {
         if (!ref->particle)
-            ref->particle = func_0032B120();
+            ref->particle = Particle::Source::Create();
         source = ref->particle;
     }
     return source;

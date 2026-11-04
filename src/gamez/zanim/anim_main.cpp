@@ -791,6 +791,15 @@ int CZAnimMain::UnloadSIScript(_zanim_si_script *script)
     return 1;
 }
 
+/* a sequence file read into a set (SOCOM 1's Load(name, set), which read the rdr and filed its
+ * sequences): SOCOM II's sequences come from the ZARs, and the entry point is left returning true --
+ * CMission::ZAnimLoad still calls it with "data/common/zrdr/czanim.rdr" and "common", then the
+ * mission's rdr and "mission", where SOCOM 1's called its Load, and CGameMenu::LoadFromDesign too */
+bool CZAnimMain::Load(const char *name, const char *set)
+{
+    return true;
+}
+
 /* the current sequence's IF nesting, moved by delta: out of 0..255 it marks the anim instead */
 extern "C" int func_002681C0(CZAnimMain *main, int delta)
 {
