@@ -89,7 +89,11 @@ class CZSealBody {
 public:
     CNodeAction *GetReticuleAction(bool b);
     /* the action the HUD shows marked as the one selected (SOCOM 1's ActionSelectionMask by its call
-     * here, SOCOM II's taking the action alone, an int: OVL2 0x544C80 sets the mask word at 0xED4) */
+     * here, SOCOM II's taking the action alone: OVL2 0x544C80 sets the mask word at 0xED4). An int
+     * (the HUD's round 42: with an unsigned char parameter MW folds the conversion into an `lbu` of the
+     * reinterpreted byte in every spelling, where the target loads it with `lb`; the callee's `andi
+     * 0xff` rules out signed char) -- the row retyped ActionSelectionMask__10CZSealBodyFi by the SEALs'
+     * round 34, its body `1 << (unsigned char)id` */
     void ActionSelectionMask(int id);
     CPickup *CurrentPickupSecondary();
     CPickup *CurrentPickup();

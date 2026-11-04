@@ -17,7 +17,6 @@ extern int sceOpen(const char *name, int mode, ...);
 extern int sceRead(int fd, void *buf, int n);
 extern int sceClose(int fd);
 extern int atoi(const char *s);
-extern int scePrintf(const char *fmt, ...);
 
 static int checkModelVersion(void)
 {

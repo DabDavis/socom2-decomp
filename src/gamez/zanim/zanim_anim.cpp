@@ -275,6 +275,71 @@ _zanim_cmd_hdr *CZAnimArgList::GetCmd(int index)
     return 0;
 }
 
+/* the packet's room grown for n more bytes and the bytes copied in after what it holds (ours: the
+ * four appends inline it, each the same) */
+inline ZAnimNetworkPacket *AddToPacket(ZAnimNetworkPacket *packet, const void *data, int n)
+{
+    int size = packet->packet_size + n;
+
+    packet = ZAnim.GetNetworkPacket(size);
+    memcpy((char *)packet + packet->packet_size, data, n);
+    packet->packet_size = size;
+    return packet;
+}
+
+/* the arguments written into the packet after it: each one's type, then by type its node's index in
+ * the universe (-1 for none), its point, its integer -- SOCOM II's -- or, for a list, its own
+ * arguments; the packet, grown (SOCOM 1's, its cases in the same order). The target's table runs
+ * 0-10, so the empty cases are written; begin() is taken before end() (`this` lives past the first
+ * node's load, which takes a1 once the anim is saved); the node is read for the test into a local
+ * ahead of the -1 -- through a const view, the call's read is not merged with it -- so the load
+ * comes before the -1's store, which fills the branch's delay slot (the core lane round 13) */
+ZAnimNetworkPacket *CZAnimArgList::AddNetworkPacketArgs(CZAnim *anim, ZAnimNetworkPacket *packet)
+{
+    iterator it;
+
+    it = begin();
+    iterator e = end();
+    for (; it != e; ++it) {
+        CZAnimArg *arg = (CZAnimArg *)*it;
+        int type = arg->m_type;
+
+        packet = AddToPacket(packet, &type, 4);
+        switch (arg->m_type) {
+        case 0:
+        case 1:
+        case 4:
+        case 8:
+            break;
+        case 10:
+            packet = ((CZAnimArgList *)arg)->AddNetworkPacketArgs(anim, packet);
+            break;
+        case 2:
+        case 3: {
+            CNode *node = ((const CZAnimArgNode *)arg)->m_node;
+            int index = -1;
+
+            if (node && zdb::NodeUniverse)
+                index = zdb::NodeUniverse->GetIndex(((CZAnimArgNode *)arg)->m_node);
+            packet = AddToPacket(packet, &index, 4);
+            break;
+        }
+        case 5:
+        case 6:
+        case 7:
+            packet = AddToPacket(packet, &((CZAnimArgPnt3D *)arg)->m_pnt, 12);
+            break;
+        case 9: {
+            int value = ((CZAnimArgInt *)arg)->m_value;
+
+            packet = AddToPacket(packet, &value, 4);
+            break;
+        }
+        }
+    }
+    return packet;
+}
+
 /* the arguments deleted with the list: the walk's iterator assigned (it lives in its slot, as the
  * target's) and the end taken into a local first (kept in a saved register) */
 CZAnimArgList::~CZAnimArgList()

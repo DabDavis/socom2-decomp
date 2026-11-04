@@ -526,12 +526,14 @@ extern float data_003E5728;
 
 namespace {
 /* the pop-up's frame: its nine pieces loaded and UV'd from one texture (SOCOM 1's, the bottom now
- * the spectators' box's), and the sixteen bitmaps the tick places later.
- * OPEN, 2 instructions: the bottom-right corner's SetUV loads the corner u before v, where MW
- * schedules v's load first (it feeds the `1 - v`), as the target itself does for the bottom-left
- * corner; a local u or v, `-v + 1`, a local 1.0f all keep MW's order. Each corner is a block of four
- * locals (x0, y0, x1, y1 declared in that order give f23-f20; one set of locals reused across the
- * corners re-colours the second corner) */
+ * the spectators' box's), and the sixteen bitmaps the tick places later. The bottom-right corner's
+ * SetUV loads the corner u before v, where MW hoists v's load (it feeds the `1 - v`), as the target
+ * itself does for the bottom-left corner: a volatile read of u is the one shape found that keeps
+ * u's load first (round 42 -- a STAND-IN: the variable volatile throughout moves six other loads; a
+ * local u or v, `-v + 1`, a local 1.0f, an inline accessor, a `const &`, internal linkage for either,
+ * a folded `1.0f * u` or `u + 0.0f`, a same-type cast all keep MW's order). Each corner is a block of
+ * four locals (x0, y0, x1, y1 declared in that order give f23-f20; one set of locals reused across
+ * the corners re-colours the second corner) */
 void SetupBackgroundBox()
 {
     if (!data_00412E80) {
@@ -573,7 +575,7 @@ void SetupBackgroundBox()
         float y1 = s_specboxbottom;
 
         g_bmpLrCorner.Load(x0, y0, x1, y1, zdb::CAssetMgr::m_assets.GetTexHandle(s_specboxtex));
-        g_bmpLrCorner.SetUV(s_fCornerU, 1.0f - s_fCornerV, 1.0f, 1.0f);
+        g_bmpLrCorner.SetUV(*(volatile float *)&s_fCornerU, 1.0f - s_fCornerV, 1.0f, 1.0f);
     }
 
     float left = 20.0f + (float)data_0040F628;
