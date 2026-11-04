@@ -6,10 +6,13 @@
  * (m_materialex_map, m_materialex_list, the list a vector<CMaterialEx *>); no DWARF covers the unit,
  * so the members' names are ours, after the rdr's keys ReadMaterials reads them from.
  *
- * ONLY int_material.cpp includes this header: zweapon.h (the weapons), seal_env.cpp (the SEALs) and
- * fts_mission.cpp (the game states) keep stand-ins of CMaterialExArray (the weapons' spells the
- * element MATERIALEX, a name of theirs), and no unit may see two definitions of the class. The
- * stand-ins' members are spelled as here, so every mangled name agrees. */
+ * Three units include this header: int_material.cpp, and the weapons' zwep_list.cpp and
+ * zwep_projectile.cpp (since the weapons' round 19), each before zweapon.h. zweapon.h (the
+ * weapons), seal_env.cpp (the SEALs) and fts_mission.cpp (the game states) keep stand-ins of
+ * CMaterialExArray (the weapons' spells the element MATERIALEX, a name of theirs) -- zweapon.h's
+ * under `#ifndef INT_MATERIAL_H`, so a unit that included this header first sees the real class --
+ * and no unit may see two definitions of the class. The stand-ins' members are spelled as here, so
+ * every mangled name agrees. */
 
 #ifndef INT_MATERIAL_H
 #define INT_MATERIAL_H

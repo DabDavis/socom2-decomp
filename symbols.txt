@@ -2704,7 +2704,7 @@
 0x00257520 0x40 func_00257520  # OVL1
 0x00257560 0x8 func_00257560  # OVL1
 0x00257570 0x14 func_00257570  # OVL1
-0x00257590 0x358 func_00257590  # OVL1
+0x00257590 0x358 WriteDirectory__Q23zar4CZARFv  # OVL1; s1:callee by hand, the core lane round 4 (Close() 0x258CE0 calls it at +0x90 where SOCOM 1's Close() calls WriteDirectory at +0x8C; the new flush 0x258BD0 calls it when the modified byte 0x25 is set, clearing it after)
 0x002578F0 0x294 func_002578F0  # OVL1
 0x00257B90 0x8 func_00257B90  # OVL1
 0x00257BA0 0x14 func_00257BA0  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
@@ -2722,7 +2722,7 @@
 0x00257CC0 0x1F8 func_00257CC0  # OVL1
 0x00257EC0 0x10 func_00257EC0  # OVL1; tu: char_type.cpp~ (1.0 beta)
 0x00257ED0 0x8 func_00257ED0  # OVL1
-0x00257EE0 0xAC func_00257EE0  # OVL1
+0x00257EE0 0xAC ReadString__Q23zar4CZARFPPc  # OVL1; ours, the core lane round 4 (SOCOM II's: a length word read through m_pFile's fread, then when 4 bytes came and the length is positive a _malloc'd zeroed copy of length+1 filled by a second fread; the bytes read returned -- CIO::fwrite(const char *)'s record read back; CZSIObject::Read calls it for the object's name)
 0x00257F90 0x70 ReleaseDataBuffer__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: at SOCOM 1's call site)
 0x00258000 0x510 func_00258000  # OVL1
 0x00258510 0x58 GetSize__Q23zar4CZARFPCc  # OVL1; s1:order by hand (SOCOM 1's GetSize 0x1D8CD0, between ReadDirectory and GetOpenKey there as here: the open key's FindKey, its size or -1; Fetch(const char *, char **) calls it where SOCOM 1's does)
@@ -2734,11 +2734,11 @@
 0x00258740 0x1DC func_00258740  # OVL1
 0x00258920 0x21C func_00258920  # OVL1; s1~ Open__Q23zar4CZARFPCciUiUi (OpenZAR calls it where SOCOM 1's calls zar::CZAR::Open, but with a fifth argument, t1 = 0: the signature changed)
 0x00258B40 0x90 ReOpen__Q23zar4CZARFiUi  # OVL1; tu: zar_main.cpp~ (1.0 beta); s1:calls (CRdrArchive::OpenAll and FindRdr call it with (1, 1) where SOCOM 1's call zar::CZAR::ReOpen) -- the rdr lane
-0x00258BD0 0x70 func_00258BD0  # OVL1
+0x00258BD0 0x70 Flush__Q23zar4CZARFv  # OVL1; ours, the core lane round 4 (SOCOM II's: false unless the file is open -- the inline IsOpen -- then WriteDirectory when the modified byte 0x25 is set, the byte cleared, true; CSaveManager::Save calls it)
 0x00258C40 0xA0 func_00258C40  # OVL1
 0x00258CE0 0x17C Close__Q23zar4CZARFv  # OVL1; s1:calls by hand (the zdb-world lane: the loaders close their archives through it where SOCOM 1's call CZAR::Close)
-0x00258E60 0x14 func_00258E60  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding)
-0x00258E80 0x9C func_00258E80  # OVL1
+0x00258E60 0x14 CloseKeepDir__Q23zar4CZARFv  # OVL1; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:order by hand, the core lane round 4 (SOCOM 1's CloseKeepDir 0x1D98F0, the same 0x14 bytes -- m_pFile's Close through its table, a tail call -- between Close() and SetFilename as here)
+0x00258E80 0x9C SetFilename__Q23zar4CZARFPCc  # OVL1; s1:order by hand, the core lane round 4 (SOCOM 1's SetFilename 0x1D9910 after CloseKeepDir and before ~CZAR as here: m_filename (0xA4 here, SOCOM 1's 0x90) freed unless the default name's pointer or the name itself, then the name _strdup'd or DEFAULT_ZAR_NAME)
 0x00258F20 0x17C __dt__Q23zar4CZARFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002590A0 0x190 __ct__Q23zar4CZARFPCcP3CIO  # OVL1; s1:callee by hand (OpenZAR calls it on the fresh CZAnimZAR with (0, 0) where SOCOM 1's OpenZAR calls zar::CZAR::CZAR(const char *, CIO *))
 0x00259230 0xC func_00259230  # OVL1
@@ -3027,11 +3027,11 @@
 0x00271EE0 0x1FC AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:align
 0x002720E0 0xD8 GetCmd__13CZAnimArgListFi  # OVL1; s1:calls (the kit lane's round 8, vetted by the integrator: the find inlined into every task handler calls it with (list, i) exactly as SOCOM 1's taskFindParam calls GetCmd__13CZAnimArgListFi)
 0x002721C0 0xD8 GetValve__13CZAnimArgListFi  # OVL1; the integrator 2026-11-04, by the world lane round 7: CValve's VWATCH tick calls it on the anim's argument list (s1:calls)
-0x002722A0 0xF0 func_002722A0  # OVL1
-0x00272390 0xE8 func_00272390  # OVL1
+0x002722A0 0xF0 FindNode__13CZAnimArgListFPQ23zdb5CNode  # OVL1; ours, the core lane round 4 (SOCOM II's: the list's empty test, then the first TYPE 3 node argument's node returned when it is the node given; func_00270570 calls it on each anim's list with the node)
+0x00272390 0xE8 GetNode__13CZAnimArgListFi  # OVL1; ours, the core lane round 4 (SOCOM II's: CZAnim::GetNode calls it for index 250 -- 0 for any other index or an empty list, else the first TYPE 3 node argument's node)
 0x00272480 0xD8 GetCharP__13CZAnimArgListFi  # OVL1; s1:callee
-0x00272560 0xD8 func_00272560  # OVL1
-0x00272640 0xD8 func_00272640  # OVL1
+0x00272560 0xD8 GetInt__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; ours, the core lane round 4 (SOCOM II's: the first argument of the type's value at 12; zAnimFireWeaponTick asks for TYPE 9, CZAnimArgInt's, after HasArg)
+0x00272640 0xD8 HasArg__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; ours, the core lane round 4 (SOCOM II's: whether an argument of the type is there; zAnimFireWeaponTick asks it for TYPE 9 before GetInt)
 0x00272720 0xD8 GetPnt3D__13CZAnimArgListFQ29CZAnimArg4TYPE  # OVL1; s1:callee by hand (called where SOCOM 1's zAnimRangeTestTick calls it)
 0x00272800 0x60 Copy__12CZAnimArgIntFv  # OVL1; by vtable (__vt__12CZAnimArgInt's second slot: a copy, the type and the value at 12)
 0x00272860 0x70 Copy__14CZAnimArgPnt3DFv  # OVL1; tu: zanim_anim.cpp~ (1.0 beta); s1:exact
@@ -4606,7 +4606,7 @@
 0x002DCDA0 0x280 GetIntersect__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD020 0x8 GetAltitude__Q23zdb7CDIBBoxFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD030 0xF4 SetEdgeVecsAndNorm__Q23zdb3CDIFv  # OVL1; s1:calls
-0x002DD130 0x1C func_002DD130  # OVL1
+0x002DD130 0x1C LoadPlaneVU0__Q23zdb3CDIFv  # OVL1; ours, the core lane round 4 (SOCOM II's: the DI's points (0x10) loaded into vf4-vf6, three quadwords, and vcallms 0x70; the grid's node walks 0x2D2890 and 0x2D3030 call it with the DI)
 0x002DD150 0xC0 GetIntersect__Q23zdb7CDIPolyFPQ23zdb11DiIntersect  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002DD210 0x9C func_002DD210  # OVL1
 0x002DD2B0 0x21C GetEdgeIntersectsY__Q23zdb3CDIFP6CPnt3DP6CPnt3D  # OVL1; s1:callee by hand (the zdb-world lane: GetIntersectedEdgePointsY calls it where SOCOM 1's calls GetEdgeIntersectsY, after LoadTipAndTail as there)
@@ -4639,7 +4639,7 @@
 0x002DEE30 0x60 compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFRCQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>  # OVL1; ours (the MSL headers round 5: include/string's compare(const basic_string &), byte-exact as a probe -- the other's text and size in one short-first test, size() after, tail-jumping to compare(pos1, n1, s, n2); every string-keyed tree's comparator calls it and tests the sign, as SOCOM 1's map<CSaferStr,...> inlines it)
 0x002DEE90 0x194 insert_node_at__Q23std481__tree<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>,Q33std260map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>13value_compare,Q23std95allocator<Q23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>>>FPQ33std19__red_black_tree<1>9node_basebbRCQ23std76pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,i>  # OVL1; split by the integrator: ends at its jr ra (0x2DF01C, the frame popped in the delay slot), padded to 0x2DF030; ours (the MSL headers round 5: include/tree's instance for std::map<std::string, int>, byte-exact or alike but for its callees' names as a probe, build/p/mat0.cpp in the MSL lane's worktree; the key a plain std::string -- ~pair<const string, int> passes -1 to ~basic_string -- and the int SOCOM 1's int_material.cpp map<string, int>; the material unit's clear 0x2DEDF0 calls this destroy, an earlier unit's copy)
 0x002DF030 0x124 compare__Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>CFUiUiPCcUi  # OVL1; split from 0x2DEE90 by the integrator: a function reached only by the string compare 0x2DEE30's tail `j` (at 0x2DEE88), so the seed never cut it; ours (the MSL headers round 5: include/string's compare(pos1, n1, s, n2), byte-exact as a probe; SOCOM 1's compare__...CFUiUiPCcUi 0x14CF30 is the same code over the old string: "string compare: pos > len", min(size - pos1, n1), memcmp, -1/1/0)
-0x002DF160 0x3F4 func_002DF160  # OVL1
+0x002DF160 0x3F4 CircleSegmentClip__Q23zdb11CCircleClipFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:name by hand, the core lane round 4 (SOCOM 1's zdb::CCircleClip::CircleSegmentClip, 0x420 bytes at the demo's 0x220170 right after int_material.cpp's tree instances: the same twelve CPnt4D pointers, the same circle-segment clip with four sceVu0InterVector calls a branch; its one caller CZLineMap::Clip 0x20D5F0 calls it where SOCOM 1's Clip does); its own unit int_circleclip.cpp (the name ours)
 0x002DF560 0xD4 SyncGameClock__13CZOnlineLobbyFi  # OVL1; s1:calls
 0x002DF640 0xC MediusConnectionIndex__13CZOnlineLobbyFv  # OVL1; s1:calls by hand (the states lane: the network senders take the connection index through it where SOCOM 1's do)
 0x002DF650 0x4C UnInit__13CZOnlineLobbyFv  # OVL1; s1:callee

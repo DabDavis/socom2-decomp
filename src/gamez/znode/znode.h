@@ -184,6 +184,9 @@ public:
     virtual bool Read(CSaveLoad &io);
     /* one holder fewer, the count left given back (SOCOM 1's, 0x14 bytes in both) */
     int Release();
+    /* the first three points into VU0's vf4-vf6 and its microprogram at 0x70 started (SOCOM II's,
+     * the grid's node walks call it; 0x2DD130, the name ours) */
+    void LoadPlaneVU0();
     /* a polygon read from the archive's open key (SOCOM 1's static) */
     static CDI *Create(CSaveLoad &io);
     /* the faces a query skips (SOCOM 1's static: CGrid::GetAltitude sets 32) */

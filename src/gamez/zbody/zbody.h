@@ -453,27 +453,24 @@ public:
     CPnt3D m_goal_norm;   // 0x10
 };
 
-/* the 12-byte copy the homing's points are reset through, out of line wherever its reset is
- * inlined (OVL1 0x20F1F0, another unit's; its inline height is what keeps it a call) */
-extern "C" CPnt3D *func_0020F1F0(CPnt3D *to, const CPnt3D *from);
-
 /* a blend steering its reference point onto a target (SOCOM 1's DWARF: 0x40 bytes; SOCOM II's
  * 0x48, two words more) */
 class CHoming {
 public:
     CHoming() { Reset(); }
     ~CHoming() { Reset(); }
-    /* every point zeroed (SOCOM II's; the name ours) */
+    /* every point zeroed (SOCOM II's; the name ours): each assignment is CPnt3D's implicit one
+     * called out of line (OVL1 0x20F1F0, another unit's copy) wherever the reset is inlined */
     void Reset()
     {
         m_blend = 0;
-        func_0020F1F0(&m_refpt_m, &CPnt3D::zero);
-        func_0020F1F0(&m_norm_w, &CPnt3D::zero);
-        func_0020F1F0(&m_int_w, &CPnt3D::zero);
+        m_refpt_m = CPnt3D::zero;
+        m_norm_w = CPnt3D::zero;
+        m_int_w = CPnt3D::zero;
         m_1c = 0;
         m_2c = 0;
-        func_0020F1F0(&m_refvec_m, &CPnt3D::zero);
-        func_0020F1F0(&m_target_refpt_m, &CPnt3D::zero);
+        m_refvec_m = CPnt3D::zero;
+        m_target_refpt_m = CPnt3D::zero;
     }
 
     CPnt3D m_refpt_m;   // 0x0
@@ -849,9 +846,6 @@ public:
 
 class CZAnim;
 
-/* the pointer vectors' at(), out of line (OVL1 0x2679F0; include/vector has no at()) */
-extern "C" void *func_002679F0(void *vec, unsigned int i);
-
 /* a ZAnim an anim fires at a time, found by name once (SOCOM 1's, 0x18 bytes) */
 class CZBodyAnimCallback {
 public:
@@ -880,7 +874,7 @@ public:
     {
         if (i < 0 || i >= m_callbacks.size())
             return 0;
-        return *(CZBodyAnimCallback **)func_002679F0(&m_callbacks, i);
+        return m_callbacks.at(i);   /* the pod's at() out of line (OVL1 0x2679F0) */
     }
 
     std::vector<CZBodyAnimCallback *> m_callbacks;   // 0x0
