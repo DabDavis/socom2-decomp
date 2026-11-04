@@ -48,8 +48,7 @@ typedef struct CDB {                    /* a codebook */
     int second_size;                    /* +12 */
     int comp_start;                     /* +16 */
     int nbr_gastone;                    /* +20 */
-    int first[1];                       /* +24 */
-} CDB;
+} CDB;                                  /* the tables follow (cdb + 1) */
 
 typedef struct TRANSW {                 /* the transcribed words */
     int n0;
@@ -279,7 +278,15 @@ void FillLanguageVirtualTable(void **vt)
 
 /* OPEN (32 words, 4 short): the target reloads the second codebook's size inside the smoothing
  * test (a separate expression -- an inlined _cdbGetSmoothMatrixSize?) and adds the gastone term
- * with a madd at the join; here 2.96 hoists the square to the top */
+ * with a madd at the join; here 2.96 hoists the square to the top. Round 18c: combine does form
+ * the multiply-add here too (`*mul_acc_si_r5900`); the tables' size pseudo, its addend, costs the
+ * same in GR_REGS and LO_REG (36 each, the .lreg dump), so its class is their union and global
+ * gives it v0 -- the split alternative, `mult; addu` -- where the target's sits in LO (`mtlo` after
+ * the `+ 24`, before the branch), and the madd's result is another register (a0): the addend and
+ * the result are two values in the target. The square's reload SOCOM 1's copy has as well (its
+ * own compiler), so it is the source's; an inlined helper (a static inline probe), the gastone
+ * term added in each arm and seven statement shapes (build/scratch/gcc/lang/v_cbs*.py, v_sm.py,
+ * the same on _cdbGetpSmoothMatrix) leave both. */
 static int _cdbGetCodeBookSize(LANG *l, CDB *cdb)
 {
     int bits = l->data->bits;
@@ -654,26 +661,29 @@ static unsigned short *_transwGetpBeginOfTransWords(TRANSW *tw)
 
 static int *_cdbGetpFirstCdb(CDB *cdb)
 {
-    return cdb->first;
+    return (int *)(cdb + 1);
 }
 
 static int *_cdbGetpIndexInSecCdb(CDB *cdb)
 {
-    return cdb->first + cdb->dim * cdb->first_size;
+    return (int *)(cdb + 1) + cdb->dim * cdb->first_size;
 }
 
 static int *_cdbGetpSecondCdb(CDB *cdb)
 {
-    return cdb->first + cdb->dim * cdb->first_size + cdb->first_size * cdb->nbr_in_sec_search;
+    return (int *)(cdb + 1) + cdb->dim * cdb->first_size + cdb->first_size * cdb->nbr_in_sec_search;
 }
 
-/* OPEN (14 words), and _cdbGetpSmoothMatrix (17, the size sum as _cdbGetCodeBookSize's): the
- * target adds (first * nsec + second) * 4 to the codebook before the first table's 24 + dim *
- * first * 4, and dim * second * 4 last; nine spellings tried (build/scratch/gcc/spec_pm.py) */
+/* the tables in file order past the header -- the first codebook, the second's index, the second
+ * codebook, the second's sizes -- as the walkers lay them out: fold regroups the sum into the
+ * target's `(nsec * first + second) * 4 + cdb`, then the first table, then the second
+ * (build/scratch/gcc/lang/tsearch2.py: 128 of 30,240 trees give it, `cdb + 6 ints + each table in
+ * order` among them; `cdb->first` through an array member comes out otherwise -- an ADDR_EXPR
+ * base keeps the header's 24 apart) */
 static int *_cdbGetpProbMatrix(CDB *cdb)
 {
-    return cdb->first + cdb->dim * cdb->first_size + cdb->dim * cdb->second_size
-           + (cdb->first_size * cdb->nbr_in_sec_search + cdb->second_size);
+    return (int *)(cdb + 1) + cdb->dim * cdb->first_size + cdb->first_size * cdb->nbr_in_sec_search
+           + cdb->dim * cdb->second_size + cdb->second_size;
 }
 
 static int *_cdbGetpSmoothMatrix(LANG *l, CDB *cdb)
