@@ -9808,6 +9808,56 @@ InitDynprogContext, FreeLanguage, NormCorrection (`s1:order`, each body SOCOM 1'
 and DynProgAccNBestOptSil (`s1:order`, `s1:ref`: InitDynprogContext stores them by the context's silence
 flag as SOCOM 1's does), FreeDistCalc (`s1:order`, `s1:calls`). No tool changed.
 
+**Round 22c: FreeDistCalc's tie broken, the pitch combiner's rows named, the context tree's allocator.**
+
+- **A priority tie with the parameter cannot be renumbered away**: FreeDistCalc's d (17 refs over
+  119 insns) and each codebook expansion's scheduler pointer (6 over 21) both rank 5714
+  (`tools/ccdump.py -f`), and a tie goes to the lower pseudo -- d, the parameter, which assign_parms
+  numbers before anything an inline expansion makes. So the target's d lives 120 insns or more (5666):
+  ONE RTL insn more inside d's life and outside both expansions' -- after the second, or anywhere past
+  the codebook frees -- gives the target byte for byte; inside an expansion's life it lowers that
+  pointer instead. No natural statement tried leaves one: a result variable (constant-propagated), a
+  split `TOSBLOCK *` parameter, a duplicated tail for cross-jumping, a guard, a goto, a label, a
+  do-while(0), the inline's parameters in every order or `const`, its pointer passed in or loaded later
+  (19 insns: it then outranks the block's own pointer too) -- `build/scratch/gcc/fd/v1-v6.py`.
+  distsil.c carries `FREEDIST_STANDIN()`, an empty asm (it emits nothing and counts in the live
+  length), marked a stand-in as rt_udp.c's RT_UDP_BARRIER is.
+- **A constructor's slots name its block's three functions**: ConstructPitchCombiner passes 0x502298
+  (process), 0x502A08 (init) and 0x5028F0 (control) where SOCOM 1's passes ProcessPitchCombiner,
+  InitPitchCombiner and ControlPitchCombiner -- SOCOM II moved the control function before the init
+  (pitchcomb.c's note had it as a new function); the control's command 200 names PitchCombinerReset
+  (0x502658, `s1:calls`) and the object's first row is LogPitchProcessing (0x501A90, `s1:order`).
+- **Round 13c's definition-order rule moves a default's constant too**: ControlPitchCombiner's
+  `return 0` puts its `move v0,zero` in the `b`'s slot, as the target, only with PitchCombinerReset --
+  command 200's call, the branch's fall-through -- defined above it; declared only, reorg puts it in the
+  `beq`'s slot (3 words).
+- **A narrowing the target keeps is a variable's**: the ring length's `andi 0xffff` of a loaded byte
+  (both builds) is an int parameter narrowed into an `unsigned short` local (as an `unsigned short`
+  parameter the conversion folds away: 10 words short); the flush's counts are ints narrowed at the
+  loops' tests (the target's `andi` after the wrap test's join).
+- **sched1 issues a constant's last-use store first**: PitchCombinerReset is the target's but one
+  store -- whichever `= 1` flag comes last in the source holds the QImode constant's REG_DEAD and
+  outranks the ring cursors' stores, which free their own registers too and otherwise go in source
+  order (36 placements, a chained assignment, a local `one`: OPEN).
+- **Shapes, measured**: the free list tested before it is read (round 6c's `if (*list)`: the target's
+  `lw v0; beqz; move s0,v0`), the release's test positive (`n < 9` first), the two clears in the other
+  source order (AllocateNodeAndFreePrevious); a padding loop's cursor stepped in its store
+  (`*p->r96.wr++ = *s`, the field's address taken once -- round 17c's), a frame written through `*q++`
+  and its last value one store at the join (FlushPitchCombiner).
+- **Open, diagnosed in place**: PitchCombinerReset (above), FlushPitchCombiner (2 words short: the
+  target -- SOCOM 1's copy too -- reads +156 again for the count after the lead test; with the field
+  volatile every block is the target's and only two locals' registers differ, but the reset reads it
+  once for two uses), InitViterbi@nbestdp (the token count's position, all ten, does not move the
+  cross-jump).
+
+Hand-written in round 22c: `asr/distsil.c` (FreeDistCalc closed: 10 of 10), `asr/pitchcomb.c` (+3:
+ControlPitchCombiner, PitchCombinerReset and FlushPitchCombiner OPEN; the record's six rings typed,
+NormE_Processing respelled on them, the same code; 2 of 4), `asr/ctxtree.c` (+1,
+AllocateNodeAndFreePrevious: 12 of 12) -- 3 rows new to the map's byte-exact rows (1,132 bytes), none
+superseding a draft; `src/lib/asr` 510 of 544 (507 of 540 before). 5 rows named (ProcessPitchCombiner,
+InitPitchCombiner, ControlPitchCombiner `s1:slot`; PitchCombinerReset `s1:calls`; LogPitchProcessing
+`s1:order`). No tool changed.
+
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
 - **LargeInt's EE primitives are hand-written assembly** (0x628B48-0x629A44, between LargeInt.c's C and
