@@ -1927,6 +1927,24 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the HUD, round 27** (a new hud_tcmtree.cpp: the radio command menu's tree):
+  - IN A SELF-INLINED RECURSIVE FUNCTION THE OUT-OF-LINE ACCESSOR COPIES EACH COPY CALLS SHOW THE ACCESSOR CHAIN'S LEVELS:
+    each deeper copy calls a level shallower, and a call made as the receiver of the recursive call is cut one level more
+    -- giving the chains those levels made HideAll and Tick byte-exact (the ten accessors' split is reconstructed);
+  - four this-tests before a member vector's delete mean a class derived from the pointer vector (CTCMNodeList), a plain
+    member gives three; ~CTCMNode calls RemoveChild(this) on the node itself (a0 still `this` at the call); a signed inner
+    loop counter (`int j < unsigned n`) stops MW unrolling a copy loop 8x; pushing an unsigned counter onto a vector<int>
+    makes a converted temporary, so the counter stays in a register -- a counter living in memory, as the target's, is an
+    int; a jump-table switch lays its case blocks out in source order;
+  - hud_tcmtree.cpp is 0x231A30-0x23624F (the name ours): CTCMNode's UpdateState, HideAll, Find, AddChild,
+    DeleteChildren, SetText2, SetCaption, Tick, constructor and destructor, CTCM's TalkTick, Close, Open, Next, FindPrev,
+    FindNext and Tick (17 new), the accessor copies and CTCMSounds from source (17 more); its float pool 0x3DCAF0-0x3DCB20,
+    its bss push-to-talk statics 0x4130A0/0x4130A8/0x4130B8; CTCMColumn::m_4 and CTCM::m_dc8 are floats;
+  - a function-local static in a non-inline function is `@GUARD@s_grey$N` / `s_grey$N` in the object (N a per-unit
+    counter), so `@GUARD@<fn>@<name>` rows cannot resolve it -- ShowArrows' guard and object stay unchecked (a tools
+    request: map `name$N` to the diffed function's rows);
+  - open: RemoveChild 0x232030 (5), ShowRoot 0x235560 (4), Select 0x234F40 (21), all registers; not written: the
+    voice-item adder 0x2329F0, the builders 0x232BC0 and 0x2344E0, the pad handlers 0x235D40 and 0x2359A0.
 - **Tells from the weapons, round 17** (four initialisers, UVCompare, the weapon accessors, the callback list's destructor):
   - AN UNNAMED INITIALISER CAN BE PLACED IN A UNIT BY WHERE ITS OBJECTS SIT IN BSS, beside which unit's statics:
     __sinit_vis_decal.cpp 0x404A10, __sinit_vis_data.cpp 0x4049E0 (CMaterial_band::m_defaultColor a CPnt4D (0, 1, 0, 0)),
