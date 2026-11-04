@@ -391,7 +391,9 @@ def test_mw_statics_qualify_by_unit():
         ck(("stack", "stack@grid_clutter") in pairs, f"the clutter's `stack` is its unit's row: {pairs}")
         ck(r.match and any(f.symbol == "stack@grid_clutter" and f.want == 0x44F0F0 and f.status == "ok"
                            for f in r.relocs), f"and its initialiser resolves it there: {r.verdict}")
-        pairs, r = score(None if var == "stack" else clutter)
+        # the map itself holds the qualified row since the engine core's round 6 renamed the
+        # static: take it out (an unqualified name at 0x44F0F0) rather than score the map as is
+        pairs, r = score("0x0044F0F0 0x1 clutterStack  # the canary's: no qualified row\n")
         ck(not pairs and not r.match and any(f.symbol == "stack" and f.got == 0x44D750 and f.status == "MISMATCH"
                                              for f in r.relocs), "with no qualified row, the bare name is grid_di's: fails")
         pairs, r = score(qual.replace("0x0044F0F0", "0x0044F100"))

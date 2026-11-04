@@ -481,6 +481,11 @@ CZAnim *CZWeapon::GetHitAnim(int material)
     return 0;
 }
 
+CZAnim *CZWeapon::GetDefaultSpecialAnim()
+{
+    return m_defaultspecialanim;
+}
+
 void CZWeapon::SetZoomedFireAnim(CZAnim *anim)
 {
     m_zoomedfireanim = anim;
@@ -600,7 +605,11 @@ bool CZWeapon::IsLauncher(EQUIP_ITEM id)
  * Round 16: `*item = packed / 256u; *ammo = packed % 256ul;` is one instruction off -- the
  * int-promoted halfword is SIGN-extended to the unsigned long (dsll32/dsra32) and kept, where
  * every unsigned int intermediate (casts, `/ 1u`, `| 0u`, `+ 0u`, `& 0xFFFFu`, `(unsigned)(int)`)
- * lets MW fold the zero-extension away; `% 256L`, `& 0xFFL`, `& 0xFFFFFFFFUL` miss by more */
+ * lets MW fold the zero-extension away; `% 256L`, `& 0xFFL`, `& 0xFFFFFFFFUL` miss by more. Round
+ * 21: bit-field unions (unsigned int or unsigned long words, as locals) and a bit-field view
+ * through a pointer go through memory (0x20-0x24); an unsigned long or unsigned long long local, a
+ * `w : 32` field, `% 0x100000000ul` and a subtracted product fold or grow; an int, unsigned short
+ * or int-cast local with `% 256ul` is the same 1 off (dsra32) */
 void CZWeapon::UnpackItemAndAmmoEnums(unsigned short packed, EQUIP_ITEM *item, EQUIP_AMMO *ammo)
 {
     *item = (EQUIP_ITEM)(packed >> 8);
@@ -1195,6 +1204,9 @@ float *CZWeapon::m_timer_pCurval;
 bool CZWeapon::m_timer_bTimerRegistered;
 bool CZWeapon::m_timer_bTimerCleared;
 bool CZWeapon::m_timer_bIncrTimer = true;
+bool CZWeapon::m_allowFireAnimations = true;
+bool CZWeapon::m_allowImpactAnimations = true;
+bool CZWeapon::m_allowWeaponIntersection = true;
 
 void CZWeapon::RegisterTimer(float *pCurval, float maxval, bool bIncr)
 {

@@ -271,25 +271,24 @@ void CZAR::FreeDirectory()
 }
 #pragma auto_inline reset
 
-/* OPEN, 13 instructions (right size): the target keeps the block's size in a3 and the fresh flag in
- * a1 where this has a1 and a2, and leaves the first growth's join label unpadded (a nop at the
- * first block's end instead). Measured: `!m_data` materialises the flag as the target's sltu/xori/
- * andi (`== 0` gives xor/sltiu); the base taken before `n += size` gives its li/addu pair; `end`
- * declared ahead of `at` gives at s0 and end s1; the second growth as a ternary unpads its join as
- * the target's -- the first as a ternary is 8 bytes short (the realloc's size moved into the test's
- * delay slot, a1 being free here); the flag's and the base's declaration orders change nothing */
+/* The block's size in a CONST local: it survives copy propagation as a named variable numbered
+ * before the fresh flag, so the flag is coloured first (a1) and the size after it (a3), as the
+ * target's -- read as the member, the size is a CSE temporary numbered after the flag (a1/a2, 13
+ * instructions). With a1 taken, both growths as ternaries unpad their joins as the target's.
+ * Measured: `!m_data` materialises the flag as the target's sltu/xori/andi (`== 0` gives
+ * xor/sltiu); the base taken before `n += size` gives its li/addu pair; `end` declared ahead of `at`
+ * gives at s0 and end s1 */
 unsigned int CZARBuffer::Write(const void *data, unsigned int size)
 {
-    if (m_size < m_used + size) {
+    const unsigned int cur = m_size;
+
+    if (cur < m_used + size) {
         bool fresh = !m_data;
-        unsigned int n = fresh ? 4096 : m_size * m_grows + 0x80000;
+        unsigned int n = fresh ? 4096 : cur * m_grows + 0x80000;
 
         n += size;
-        if (m_size < n) {
-            if (fresh)
-                m_data = (char *)_calloc(n, 1, 0, 0);
-            else
-                m_data = (char *)_realloc(m_data, n, 0, 0);
+        if (cur < n) {
+            m_data = fresh ? (char *)_calloc(n, 1, 0, 0) : (char *)_realloc(m_data, n, 0, 0);
             m_size = n;
             m_grows++;
         }
