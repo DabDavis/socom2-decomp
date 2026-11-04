@@ -825,8 +825,6 @@ public:
     U operator[](const T &x) const;
 private:
     struct entry {
-        entry(const T &x1, const T &x2, const U &y1, const U &y2)
-            : x1_(x1), x2_(x2), m_(x2 == x1 ? U(0) : U((y2 - y1) / (x2 - x1))), b_(U(y1 - m_ * x1)) {}
         bool contains(const T &x) const { return !(x < x1_) && !(x2_ < x); }
         /* the lookup's miss test: one inline level more keeps the negation a value (sltu, xori,
          * then the branch), as the target's operator[]s have it */
@@ -841,17 +839,24 @@ private:
     std::vector<entry> table_;
 };
 
-/* OPEN, 0x264/0x234 against 0x260/0x240 (0x18B0C0, 0x18B320): the walk and the three class-vector
- * inserts are the target's; the frame is 0x10 larger and one more saved register (this in s3, &e.x2_ in
- * s1 against s2/s0), and the entry's slope test is laid out the other way (the target falls through to
- * the division, the zero arm after it) -- `x2 != x1 ? ... : 0`, an if/else body and declaring oldi
- * ahead of pos were tried (build/scratch/rt/ri1.py) */
+/* a range mapped linearly, installed over what the table held there: the entries it covers whole
+ * replaced, one it cuts split around it (0x18B0C0, 0x18B320, both byte-exact since round 6). THE
+ * ENTRY HAS NO CONSTRUCTOR: MW copies a class with a user constructor member by member (lhu/sh),
+ * one without as words through the FPRs on copy construction -- the target's `oldi = *i` -- and
+ * member by member on assignment (`*i = e`), so e is filled in field by field here
+ * (build/scratch/rt/pe3.cpp); then the overlap test is the entries' operator< (`e < *i` re-reads the
+ * iterator), the slope `x1 != x2 ? ... : 0`, ++pos ahead of the call (the target's delay slot) and
+ * the last position assigned to i first (its slot reused) -- build/scratch/rt/ri3.py */
 template <class T, class U>
 void range_map<T, U>::insert(const T &x1, const T &x2, const U &y1, const U &y2)
 {
-    entry e(x1, x2, y1, y2);
+    entry e;
+    e.x1_ = x1;
+    e.x2_ = x2;
+    e.m_ = x1 != x2 ? U((y2 - y1) / (x2 - x1)) : U(0);
+    e.b_ = U(y1 - e.m_ * x1);
     typename std::vector<entry>::iterator i = std::lower_bound(table_.begin(), table_.end(), e);
-    if (i == table_.end() || e.x2_ < i->x1_) {
+    if (i == table_.end() || e < *i) {
         table_.insert(i, e);
         return;
     }
@@ -859,13 +864,14 @@ void range_map<T, U>::insert(const T &x1, const T &x2, const U &y1, const U &y2)
     entry oldi = *i;
     if (oldi.x1_ < e.x1_) {
         i->x2_ = T(e.x1_ - 1);
-        table_.insert(++i, e);
         ++pos;
+        table_.insert(++i, e);
     } else
         *i = e;
     if (e.x2_ < oldi.x2_) {
+        i = table_.begin() + (pos + 1);
         oldi.x1_ = T(e.x2_ + 1);
-        table_.insert(table_.begin() + (pos + 1), oldi);
+        table_.insert(i, oldi);
     }
 }
 
