@@ -350,10 +350,11 @@ public:
     unsigned char _1c[0x4e0 - 0x1c];
 };   // 0x4e0 bytes (the queues' stride)
 
-/* the message editor, the chat line (fts_missionlist.cpp's CMsgEditor, the states lane's: a C2D,
- * 0x150 bytes -- its Clear 0x2CA0B0) */
+/* the message editor, the chat line (fts_msgeditor.cpp's CMsgEditor, the states lane's: a C2D,
+ * 0x150 bytes -- its Clear 0x2CA0B0, its UnInit 0x2CA050) */
 class CMsgEditor : public C2D {
 public:
+    void UnInit();
     void Clear();
 
     unsigned char _18[0x150 - 0x18];
@@ -434,6 +435,13 @@ public:
     static void HudText_to_upper(char *instr);
     static CZSealBody *GetHUDOwner();
     static bool ReleaseHUD(CHUD **ppHud);
+    /* the range finder's text, m_socom2_0 (SOCOM II's: BitmapReticule's code prints "%dm" or
+     * "RANGE(m): ----" into it and places it; SOCOM 1's DoRangeText was CHUD's own) -- the names
+     * ours */
+    void SetRangeText(const char *text);
+    void SetRangeTextPos(float x, float y);
+    void ShowRangeText();
+    void HideRangeText();
 
     static CPnt4D m_hud_textcolor;   /* the HUD's text colour (OVL1 bss 0x408E40) */
 
@@ -612,7 +620,6 @@ public:
 extern CReco theReco;
 extern unsigned char data_003DC3E0;
 void tcmResetVoteAll();   // hud_tcmcmds.cpp's: VOTE ALL's choice cleared
-extern "C" void func_002CA050(CMsgEditor *q);
 extern "C" void func_00363E60(float f);
 extern "C" void func_00363E50(float f);
 
@@ -640,7 +647,7 @@ CHUD::~CHUD()
     theHUD = 0;
     GetStringTables()->Unload("HudCommon");
     CameraZoom::Reset();
-    func_002CA050(&theMission.m_messages4);
+    theMission.m_messages4.UnInit();
     func_00363E60(0.0f);
     func_00363E50(0.0f);
     data_003DC3E0 = 1;
@@ -719,8 +726,14 @@ void CHUD::ReInit_Uninit()
 
 extern "C" int sprintf(char *buf, const char *fmt, ...);
 
+/* the projectiles' last delayed detonation (zweapon.h's static members, the weapons lane's names:
+ * ClearNewExplosion 0x3C6980 clears its flag) */
+class CZProjectile {
+public:
+    static void ClearNewExplosion();
+};
+
 /* not named yet: SOCOM II's own re-inits and resets */
-extern "C" void func_003C6980();
 extern "C" void func_0022D190();
 extern "C" void func_00242B20(CSpectatorInfo *info);
 extern "C" void func_002B6530(C2DMessage_Q *q, const char *text, int a, int b, int c, float time);
@@ -734,7 +747,7 @@ void CHUD::ReInit_Init()
 {
     if (appCamera)
         StopShake__10CAppCameraFv(appCamera);
-    func_003C6980();
+    CZProjectile::ClearNewExplosion();
     theHUD->On();
     theHUD->m_letterbox.RemoveLetterbox();
     for (unsigned int i = 0; i < 6; i++) {
@@ -1437,6 +1450,33 @@ void CHUD::SetupTimerText()
         m_timertext.SetString("", false);
         m_socom2_4ec0.Off();
     }
+}
+
+/* the range text given, or blanked while it is off (BitmapReticule's tick, 0x216770, passes the
+ * range it printed; the four range-text members are the unit's first in the image, so defined
+ * last -- the names ours) */
+void CHUD::SetRangeText(const char *text)
+{
+    m_socom2_0.SetString(m_socom2_0.IsOn() ? text : "", true);
+}
+
+/* the range text moved (whole pixels) */
+void CHUD::SetRangeTextPos(float x, float y)
+{
+    m_socom2_0.SetPos((int)x, (int)y);
+}
+
+/* the range text shown */
+void CHUD::ShowRangeText()
+{
+    m_socom2_0.On();
+}
+
+/* the range text hidden and moved off the screen */
+void CHUD::HideRangeText()
+{
+    m_socom2_0.Off();
+    m_socom2_0.SetPos(-100, -100);
 }
 
 float g_fElemsFadeInTime = -1.0f;

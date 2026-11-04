@@ -8,6 +8,10 @@
 #include "zanim.h"
 #include "../zsys/zsys.h"
 
+/* the interpreter (SOCOM 1's ZAnim, the unit's first static: its initialiser 0x3FFBE0 runs the inline
+ * constructor on it) */
+CZAnimMain ZAnim;
+
 /* the wildcard search (SOCOM 1's statics): a pattern's stars, up to five, stand for digits that
  * count up together, the last star the lowest */
 extern char *_input_str_ptr;

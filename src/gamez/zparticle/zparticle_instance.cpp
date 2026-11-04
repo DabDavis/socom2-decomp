@@ -111,6 +111,19 @@ void Instance::List::Uninit()
     }
 }
 
+/* SOCOM II's: the piece given its visual (DestructionManager calls it after Create) -- added to the
+ * node, the node transparent when the visual's first flag is set and its ninth is not, the piece's
+ * opacity copied, the node activated */
+void Destruction_Instance::SetVisual(zdb::CVisual *vis)
+{
+    if (m_node && vis) {
+        m_node->AddVisual(vis);
+        m_node->m_transparent = ((vis->m_flags & 1) & ((vis->m_flags & 0x100) == 0)) != 0;
+        m_node->m_Opacity = m_opacity;
+        m_node->SetActive(true);
+    }
+}
+
 /* SOCOM II's: the dead instances recycled, then every pooled instance and piece deleted */
 void FreeInstances()
 {

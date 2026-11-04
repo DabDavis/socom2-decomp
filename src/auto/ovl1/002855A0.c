@@ -8,7 +8,7 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK __dl__FPv(u32);                             /* extern */
-M2C_UNK func_0053EF50(u32, M2C_UNK);                /* extern */
+M2C_UNK __dt__14CCharacterWeapFv(u32, M2C_UNK);     /* extern */
 
 char *func_002855A0(char *arg0, s64 arg1) {
     u32 temp_a0;
@@ -21,7 +21,7 @@ char *func_002855A0(char *arg0, s64 arg1) {
         if (temp_s0 < var_s3) {
             do {
                 var_s3 -= 0xC;
-                func_0053EF50(var_s3, -1);
+                __dt__14CCharacterWeapFv(var_s3, -1);
             } while (temp_s0 < var_s3);
         }
         SC_MEMBER(arg0, s32 *, 4) = 0;

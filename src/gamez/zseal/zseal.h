@@ -993,6 +993,11 @@ public:
      * in both builds) */
     static float aiAccuracyAngle;
     static void SetAiAccuracyAngle(float angle);
+    /* the visibility tests' request pool closed and opened (SOCOM 1's statics; OVL2 0x5CC5F0,
+     * 0x5CC890 -- ReleaseDatabaseHandles 0x574BD0 and AcquireDatabaseHandles 0x574C30 call them;
+     * seal_sensors.cpp, the kit lane's) */
+    static void CloseDiPool();
+    static void OpenDiPool();
     /* a spray of fire timed, when the item in hand fires fully automatic (SOCOM 1's; OVL2 0x565AE0) */
     void SetSprayTimer(float t);
     /* the aim turned off its line by the target's error (slot +0x74, SOCOM 1's; OVL2 0x5C9250, the
@@ -1938,5 +1943,9 @@ public:
 };   // 0x1bc bytes
 
 extern CharacterDynamics theCharacterDynamics;
+
+/* a dying SEAL's visibility requests dropped and its targets' entries for it unhooked (SOCOM 1's
+ * free function; OVL2 0x5CC8A0 -- CSealCtrlAi::OnDeath calls it; seal_sensors.cpp, the kit lane's) */
+void CleanupDiPool(CZSealBody *seal);
 
 #endif

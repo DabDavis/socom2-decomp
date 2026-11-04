@@ -6,6 +6,7 @@
  * deferred). */
 
 #include "../gamez/zentity/zentity.h"
+#include "../gamez/zseal/seal_dipool.h"
 
 /* the mission's clock, which the target's times are taken on (theMission's float at 0xE0, OVL1
  * 0x4365C0: SOCOM 1's at 0x60 of its theMission, as its GetTimeSinceLastSighting reads it) --
@@ -75,6 +76,27 @@ public:
     float m_time_lost_sight;   // 0x54 (SOCOM 1's at 0x40)
     unsigned char _58[0x78 - 0x58];
 };
+
+/* the "target_pretick" task (CCoreState::Init adds it at 4.8, after the entities' pre-post-tick):
+ * the visibility pool's rays registered with the world for its delayed intersection pass (OVL2
+ * 0x60BC40, new in SOCOM II: CDiPool::PreTick inlined one level, its callees out of line -- the
+ * request list's pieces seal_sensors.cpp emits, the world accessor 0x60BF30 and the DiIntersect
+ * setter 0x60BF10, whose copies follow; the name unknown) */
+extern "C" bool func_0060BC40(float dT, void *data)
+{
+    _diPool.PreTick(dT);
+    return false;
+}
+
+/* the "target_post_tick" task (CCoreState::Init adds it at 10.6, after the route planner): the pool's
+ * requests settled after the world's pass (OVL2 0x60B8F0, new in SOCOM II: CDiPool::PostTick inlined
+ * one level -- its local list's constructor and destructor, the erase, the iterator's copy and
+ * prefix step and the request test out of line after it, 0x60BAF0-0x60BC37; the name unknown) */
+extern "C" bool func_0060B8F0(float dT, void *data)
+{
+    _diPool.PostTick();
+    return false;
+}
 
 /* whether the target still counts: an entity, alive, and -- when it is a SEAL an AI drives -- that AI
  * with neither bit 8 nor bit 9 of its word at 0x264 set (OVL2 0x60A850, new in SOCOM II: some fifty
