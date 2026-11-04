@@ -128,12 +128,85 @@ public:
     UIVarMixin() { m_uivar = 0; }
     virtual ~UIVarMixin() { DetachUIVar(0); }
     void DetachUIVar(CUIVariable *var);
+    void AttachUIVar(CUIVariable *var);
+    /* watched and applied at once (ours: the LoadSpecs' pair, the update through the mixin's own
+     * table) */
+    void WatchUIVar(CUIVariable *var)
+    {
+        AttachUIVar(var);
+        UpdateUIVar(var);
+    }
     /* the variable changed (an override takes a new primary slot after all the tables, so the
      * secondary tables' offsets stand) */
     virtual void UpdateUIVar(CUIVariable *var);
 
     CUIVariable *m_uivar;   // 0x4
 };   // 8 bytes
+
+/* the UI variables (zui.h's: the manager makes or finds one by name, with its value and lifetime)
+ * and the specs' variable block (zui_spec.h's CUIVariableSpec: the name, the value, the longevity at
+ * 0x28, a byte enum) -- what the LoadSpecs read */
+enum UIVAR_LONGEVITY {
+    UIVL_DORMANT = 0,
+    UIVL_TEMPORARY = 1,
+    UIVL_PERMANENT = 2,
+    UIVL_PERSISTENT = 3
+};
+
+class CUIVarManager {
+public:
+    CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+};
+extern CUIVarManager theUIVarManager;
+
+class CUIVariableSpec {
+public:
+    char *m_name;   // 0x0
+    _zrdr *m_value;   // 0x4
+    unsigned char _8[0x28 - 0x8];
+    UIVAR_LONGEVITY m_longevity;   // 0x28
+};
+
+/* a dialog object's spec (zui_spec.h's CDlgObjSpec: its variable block at 4 and the inline that
+ * makes the variable) */
+class CDlgObjSpec {
+public:
+    virtual ~CDlgObjSpec();
+    CUIVariable *GetUIVar() const
+    {
+        return m_var ? theUIVarManager.Add(m_var->m_name, m_var->m_value, m_var->m_longevity) : 0;
+    }
+
+    CUIVariableSpec *m_var;   // 0x4
+};
+
+/* a text's spec and a teletype's (zui_spec.h's CTextSpec, 0x34 bytes, and CTtySpec: INTERVAL,
+ * MAXLENGTH, SPACING, PULSERATE, MAXHEIGHT and the cursor's two flags) */
+class CTextSpec : public CDlgObjSpec {
+public:
+    unsigned char _8[0x34 - 0x8];
+};
+
+class CTtySpec : public CTextSpec {
+public:
+    float m_interval;   // 0x34
+    float m_maxLength;   // 0x38
+    float m_spacing;   // 0x3c
+    float m_pulseRate;   // 0x40
+    int m_maxHeight;   // 0x44
+    bool m_noCursor;   // 0x48
+    bool m_fadeCursor;   // 0x49
+};
+
+/* an image's spec (zui_spec.h's CImageSpec: the file name's string, the size, the pulse) */
+class CImageSpec : public CDlgObjSpec {
+public:
+    unsigned char _8[0x14 - 0x8];
+    int m_sizex;   // 0x14: the size (zui_spec.h's IPNT2D)
+    int m_sizey;   // 0x18
+    bool m_pulse;   // 0x1c
+    float m_pulseRate;   // 0x20
+};
 
 /* a plain bitmap of the UI's (SOCOM 1's DWARF): it may pulse, and a string variable names its
  * texture */
@@ -153,6 +226,7 @@ public:
     virtual void Tick(float dT);
     virtual void SetMapOffset(int x, int y);
     void SetPulse(float period);
+    void LoadSpec(const CImageSpec &spec, zdb::CTexHandle *tex);
 
     bool m_pulsing;   // 0x88
     float m_period;   // 0x8c
@@ -173,6 +247,7 @@ public:
     virtual void Update();
     virtual void UpdateUIVar(CUIVariable *var);
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    void LoadSpec(const CTextSpec &spec);
 
     C2DFont *m_alternateFont;   // 0xa0
     CPnt3D m_offset;   // 0xa4
@@ -242,21 +317,24 @@ public:
     virtual void Tick(float dT);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual void SetString(const char *s, bool translate);
+    void LoadSpec(const CTtySpec &spec);
 
     CSaferStr m_text;   // 0xc0
     int m_cc;   // 0xcc
     int m_len;   // 0xd0: the text's length
     int m_typed;   // 0xd4: the characters shown
     int m_d8;   // 0xd8
-    unsigned char _dc[0xe4 - 0xdc];
-    int m_shown;   // 0xe4: the lines the window shows
-    int m_e8;   // 0xe8
-    unsigned char _ec[0xf0 - 0xec];
-    int m_f0;   // 0xf0
+    float m_interval;   // 0xdc: the spec's INTERVAL
+    float m_maxLength;   // 0xe0: MAXLENGTH (100000 when none)
+    int m_shown;   // 0xe4: the lines the window shows (the spec's MAXHEIGHT)
+    float m_e8;   // 0xe8: a float (LoadSpec's 0.0f takes the FP temporary the target numbers there)
+    float m_pulseRate;   // 0xec: the cursor's PULSERATE (1 when none)
+    float m_f0;   // 0xf0
     unsigned char _f4[0x100 - 0xf4];
     CPlainBmp m_cursor;   // 0x100
     int m_1a0;   // 0x1a0
-    int m_1a4;   // 0x1a4
+    bool m_showCursor;   // 0x1a4: no NOCURSOR
+    bool m_fadeCursor;   // 0x1a5: FADECURSOR
     int m_1a8;   // 0x1a8
 } __attribute__((aligned(16)));   // 0x1b0 bytes
 
@@ -550,6 +628,31 @@ void CRenderableString::UpdateUIVar(CUIVariable *var)
     }
 }
 
+/* set up from its spec (SOCOM 1's CTeleType::LoadSpec, which inlined the string's): the string's
+ * own first, then the typing's interval and length (100000 when none), the window's height, the
+ * spacing, the text emptied, the cursor's pulse (1 when none), the cursor bitmap untextured and
+ * opaque, and its two flags */
+void CTeleType::LoadSpec(const CTtySpec &spec)
+{
+    CRenderableString::LoadSpec(spec);
+    m_interval = spec.m_interval;
+    m_e8 = 0.0f;
+    m_f0 = 0.0f;
+    m_maxLength = spec.m_maxLength;
+    m_shown = spec.m_maxHeight;
+    m_height = spec.m_spacing;
+    if (!m_maxLength)
+        m_maxLength = 100000.0f;
+    C2DString::SetString("", true);
+    m_pulseRate = spec.m_pulseRate;
+    if (m_pulseRate == 0.0f)
+        m_pulseRate = 1.0f;
+    m_cursor.SetHasTexture(false);
+    m_cursor.SetTrans(128.0f);
+    m_showCursor = !spec.m_noCursor;
+    m_fadeCursor = spec.m_fadeCursor;
+}
+
 /* the text to type out (looked up first when asked): the string shown emptied, the counters
  * cleared and the text kept, then the string brought up to date -- nothing to type, the length
  * and the count zeroed (SOCOM 1's CTeleType::SetString, sprintf'ing into a buffer; SOCOM II's
@@ -696,6 +799,21 @@ void CPlainBmp::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
         }
     }
     C2DBitmap::Draw(m, mgr);
+}
+
+/* set up from an image spec and its texture (SOCOM 1's, 0x390D40 there): the pulse, the spec's
+ * variable made and watched, the bitmap loaded at the origin in the spec's size */
+void CPlainBmp::LoadSpec(const CImageSpec &spec, zdb::CTexHandle *tex)
+{
+    m_pulsing = spec.m_pulse;
+    m_period = spec.m_pulseRate;
+    if (m_pulsing)
+        m_curtrans = 0.0f;
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+    Load(0.0f, 0.0f, spec.m_sizex, spec.m_sizey, tex);
 }
 
 /* slot 12: a pulsing bitmap's alpha rides a sine, once round per period, between 0 and 128 */
