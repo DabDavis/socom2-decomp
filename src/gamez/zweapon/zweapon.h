@@ -210,6 +210,26 @@ public:
     char *GetDecalSetName();
     /* the decal set's name kept (SOCOM 1's; ZWepReader::ReadWeapon calls it) */
     void SetDecalSetName(const char *name);
+    /* SOCOM 1's setters ZWepReader::ReadWeapon calls (zwep_weapon.cpp 0x3D24C0-0x3D2BA0; the gravity's
+     * SOCOM II's, the name ours) */
+    void SetSpecialMaterialAnimName(const char * name);
+    void SetDefaultSpecialAnimName(const char * name);
+    void SetFireAnimName(const char * name);
+    void SetHitAnimName(const char * name);
+    void SetIconTextureName(const char * name);
+    void SetModelName(const char * name);
+    void SetAssociatedGearName(const char * name);
+    void SetGravity(float v);
+    void SetMuzzleVelocity(float v);
+    void SetImpactRadius(float v);
+    void SetEffectiveRange(float v);
+    void SetMaxRange(float v);
+    void SetEncumbrance(ENCUMBRANCE v);
+    void SetSoundRadius(float v);
+    void SetNumMags(int v);
+    void SetAmmoCapacity(int v);
+    void SetDescription(const char * name);
+    void SetName(const char * name);
     char *GetIconTextureName() const;
     /* the model's name (SOCOM 1's, 0x3D2750: the pickups and the fire command pass it to
      * CWorld::GetModel) */
@@ -364,8 +384,8 @@ public:
     float m_maxrange;   // 0x3c
     float m_effectiverange;   // 0x40
     float m_muzzlevel;   // 0x44
-    float m_impactradius;   // 0x48 (-1 in SOCOM II's constructor)
-    float m_socom2_4c;   // 0x4c (SOCOM II's)
+    float m_gravity;   // 0x48 (SOCOM II's: ReadWeapon's Gravity_Acceleration, -1 in the constructor)
+    float m_impactradius;   // 0x4c (SOCOM 1: 0x44; ReadWeapon's ImpactRadius)
     float m_firewait;   // 0x50
     float m_reloadtime;   // 0x54
     unsigned char m_reloadAfterShot;   // 0x58

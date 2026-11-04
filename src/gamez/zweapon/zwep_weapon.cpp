@@ -251,8 +251,8 @@ CZWeapon::CZWeapon()
     m_decalsetname = 0;
     m_decalSet = 0;
     m_muzzlevel = 0;
-    m_impactradius = -1.0f;
-    m_socom2_4c = 0;
+    m_gravity = -1.0f;
+    m_impactradius = 0;
     m_reloadsoundname = 0;
     m_socom2_a4 = 0;
     m_socom2_a0 = 0;
@@ -522,6 +522,24 @@ void CZWeapon::PlayFireSound(const CPnt3D *pos)
         snd->PlaySound3D(pos, 1.0f, 0, 0, 255);
 }
 
+/* the names kept, a copy of each (SOCOM 1's setters, in its order: the old copy freed and the
+ * member cleared first, then the new copy or none) */
+void CZWeapon::SetName(const char *name)
+{
+    if (m_name)
+        _free(m_name, 0, 0);
+    m_name = 0;
+    m_name = name ? _strdup(name, 0, 0) : 0;
+}
+
+void CZWeapon::SetDescription(const char *name)
+{
+    if (m_description)
+        _free(m_description, 0, 0);
+    m_description = 0;
+    m_description = name ? _strdup(name, 0, 0) : 0;
+}
+
 /* every mode up to the maximum flagged (new in SOCOM II; the name is ours) */
 void CZWeapon::SetMaxFireMode(FIREMODE mode)
 {
@@ -535,6 +553,78 @@ void CZWeapon::SetHasFireMode(FIREMODE mode)
     m_hasFireModes[mode] = 1;
     if (m_maxfiremode < mode)
         m_maxfiremode = mode;
+}
+
+/* SOCOM 1's setters ReadWeapon calls, in its order at SOCOM II's offsets; the gravity (0x48:
+ * Gravity_Acceleration, the constructor's -1) is SOCOM II's, the name ours */
+void CZWeapon::SetAmmoCapacity(int v)
+{
+    m_ammocap = v;
+}
+
+void CZWeapon::SetNumMags(int v)
+{
+    m_nummags = v;
+}
+
+void CZWeapon::SetSoundRadius(float v)
+{
+    m_soundradius = v;
+    m_soundradiusSq = v * v;
+}
+
+void CZWeapon::SetEncumbrance(ENCUMBRANCE v)
+{
+    m_encumb = v;
+}
+
+void CZWeapon::SetMaxRange(float v)
+{
+    m_maxrange = v;
+}
+
+void CZWeapon::SetEffectiveRange(float v)
+{
+    m_effectiverange = v;
+}
+
+void CZWeapon::SetImpactRadius(float v)
+{
+    m_impactradius = v;
+}
+
+void CZWeapon::SetMuzzleVelocity(float v)
+{
+    m_muzzlevel = v;
+}
+
+void CZWeapon::SetGravity(float v)
+{
+    m_gravity = v;
+}
+
+void CZWeapon::SetAssociatedGearName(const char *name)
+{
+    if (m_associatedgearname)
+        _free(m_associatedgearname, 0, 0);
+    m_associatedgearname = 0;
+    m_associatedgearname = name ? _strdup(name, 0, 0) : 0;
+}
+
+void CZWeapon::SetModelName(const char *name)
+{
+    if (m_modelname)
+        _free(m_modelname, 0, 0);
+    m_modelname = 0;
+    m_modelname = name ? _strdup(name, 0, 0) : 0;
+}
+
+void CZWeapon::SetIconTextureName(const char *name)
+{
+    if (m_icontexname)
+        _free(m_icontexname, 0, 0);
+    m_icontexname = 0;
+    m_icontexname = name ? _strdup(name, 0, 0) : 0;
 }
 
 int CZWeapon::GetAmmoCapacity()
@@ -573,6 +663,38 @@ bool CZWeapon::IsLegalAmmo(CZAmmo *ammo)
             return true;
     }
     return false;
+}
+
+void CZWeapon::SetHitAnimName(const char *name)
+{
+    if (m_hitanimname)
+        _free(m_hitanimname, 0, 0);
+    m_hitanimname = 0;
+    m_hitanimname = name ? _strdup(name, 0, 0) : 0;
+}
+
+void CZWeapon::SetFireAnimName(const char *name)
+{
+    if (m_fireanimname)
+        _free(m_fireanimname, 0, 0);
+    m_fireanimname = 0;
+    m_fireanimname = name ? _strdup(name, 0, 0) : 0;
+}
+
+void CZWeapon::SetDefaultSpecialAnimName(const char *name)
+{
+    if (m_defaultspecialanimname)
+        _free(m_defaultspecialanimname, 0, 0);
+    m_defaultspecialanimname = 0;
+    m_defaultspecialanimname = name ? _strdup(name, 0, 0) : 0;
+}
+
+void CZWeapon::SetSpecialMaterialAnimName(const char *name)
+{
+    if (m_specialmaterialanimname)
+        _free(m_specialmaterialanimname, 0, 0);
+    m_specialmaterialanimname = 0;
+    m_specialmaterialanimname = name ? _strdup(name, 0, 0) : 0;
 }
 
 /* a table of an animation per material (SOCOM 1's; its true is the table's own test) */

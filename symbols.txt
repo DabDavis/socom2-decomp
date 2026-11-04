@@ -8366,10 +8366,10 @@
 0x003D2410 0x8 GetHitAnimName__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: the "%s_%s" hit animations' prefix, as SOCOM 1's; m_hitanimname, 0xA8)
 0x003D2420 0x44 AllocateHitAnimMem__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons calls it first of the two allocators, as SOCOM 1's; m_hitanim, 0x80, _malloc'd for the materials)
 0x003D2470 0x44 AllocateSpecialMaterialAnimMem__8CZWeaponFv  # OVL1; s1:calls by hand (the wep lane, round 17: the second allocator, m_specialmaterialanim, 0x94)
-0x003D24C0 0x6C func_003D24C0  # OVL1
-0x003D2530 0x6C func_003D2530  # OVL1
-0x003D25A0 0x6C func_003D25A0  # OVL1
-0x003D2610 0x6C func_003D2610  # OVL1
+0x003D24C0 0x6C SetSpecialMaterialAnimName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetSpecialMaterialAnimName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_specialmaterialanimname); ReadWeapon calls it for "SpecialMaterialAnimName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2530 0x6C SetDefaultSpecialAnimName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetDefaultSpecialAnimName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_defaultspecialanimname); ReadWeapon calls it for "DefaultSpecialAnimName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D25A0 0x6C SetFireAnimName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetFireAnimName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_fireanimname); ReadWeapon calls it for "FireAnimName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2610 0x6C SetHitAnimName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetHitAnimName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_hitanimname); ReadWeapon calls it for "HitAnimName" where SOCOM 1's Read calls it); zwep_weapon.cpp
 0x003D2680 0xC0 IsLegalAmmo__8CZWeaponFP6CZAmmo  # OVL1; s1:align confirmed by hand (the wep lane: walks m_LegalAmmoList (0xC4) comparing CZAmmo::GetName's strings, as SOCOM 1's); zwep_weapon.cpp
 0x003D2740 0x8 GetIconTextureName__8CZWeaponCFv  # OVL1; s1:calls by hand (the wep lane, round 17: InitializeWeapons tests it and passes it to CWorld::GetTexHandle as SOCOM 1's does; returns m_icontexname, 0x14)
 0x003D2750 0x8 GetModelName__8CZWeaponCFv  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's GetModelName__8CZWeaponCFv 0x31EBE0, between GetIconTextureName and GetAssociatedGearName as here -- m_modelname, 0x18 in SOCOM 1 and 0x1C here, both neighbours shifted by the same word; its callers hand it to CWorld::GetModel); zwep_weapon.cpp
@@ -8385,24 +8385,24 @@
 0x003D2820 0x8 func_003D2820  # OVL1
 0x003D2830 0x8 GetDescription__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 8, SOCOM 1's m_description; next to GetName as in SOCOM 1's zwep_weapon.cpp)
 0x003D2840 0x8 GetName__8CZWeaponCFv  # OVL1; s1:order by hand (returns the word at 4, m_name; CZWeaponList::GetWeapon(name) compares it)
-0x003D2850 0x6C func_003D2850  # OVL1
-0x003D28C0 0x6C func_003D28C0  # OVL1
-0x003D2930 0x6C func_003D2930  # OVL1
-0x003D29A0 0x8 func_003D29A0  # OVL1
-0x003D29B0 0x8 func_003D29B0  # OVL1
-0x003D29C0 0x8 func_003D29C0  # OVL1
-0x003D29D0 0x8 func_003D29D0  # OVL1
-0x003D29E0 0x8 func_003D29E0  # OVL1
-0x003D29F0 0x8 func_003D29F0  # OVL1
-0x003D2A00 0x10 func_003D2A00  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta)
-0x003D2A10 0x8 func_003D2A10  # OVL1
-0x003D2A20 0x8 func_003D2A20  # OVL1
+0x003D2850 0x6C SetIconTextureName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetIconTextureName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_icontexname); ReadWeapon calls it for "IconTextureName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D28C0 0x6C SetModelName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetModelName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_modelname); ReadWeapon calls it for "ModelName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2930 0x6C SetAssociatedGearName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetAssociatedGearName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_associatedgearname); ReadWeapon calls it for "AssociatedGear" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29A0 0x8 SetGravity__8CZWeaponFf  # OVL1; by hand (the weapons lane, round 23: new in SOCOM II among SOCOM 1's setters, before SetMuzzleVelocity -- the float at 0x48, ReadWeapon's Gravity_Acceleration (9.8 scaled by default), -1 in the constructor; the name ours); zwep_weapon.cpp
+0x003D29B0 0x8 SetMuzzleVelocity__8CZWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetMuzzleVelocity__8CZWeaponFf in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_muzzlevel); ReadWeapon calls it for "Muzzle_Velocity" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29C0 0x8 SetImpactRadius__8CZWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetImpactRadius__8CZWeaponFf in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_impactradius); ReadWeapon calls it for "ImpactRadius" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29D0 0x8 SetEffectiveRange__8CZWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetEffectiveRange__8CZWeaponFf in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_effectiverange); ReadWeapon calls it for "Effective_Range" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29E0 0x8 SetMaxRange__8CZWeaponFf  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetMaxRange__8CZWeaponFf in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_maxrange); ReadWeapon calls it for "Maximum_Range" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D29F0 0x8 SetEncumbrance__8CZWeaponF11ENCUMBRANCE  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetEncumbrance__8CZWeaponF11ENCUMBRANCE in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_encumb); ReadWeapon calls it for "Encumbrance" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2A00 0x10 SetSoundRadius__8CZWeaponFf  # OVL1; tu: zwep_weapon.cpp~ (1.0 beta); s1:order by hand (the weapons lane, round 23: SOCOM 1's SetSoundRadius__8CZWeaponFf, the radius and its square at 0x30/0x34, between SetEncumbrance and SetNumMags as here; ReadWeapon's Sound_Radius); zwep_weapon.cpp
+0x003D2A10 0x8 SetNumMags__8CZWeaponFi  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetNumMags__8CZWeaponFi in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_nummags); ReadWeapon calls it for "NumMags" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2A20 0x8 SetAmmoCapacity__8CZWeaponFi  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetAmmoCapacity__8CZWeaponFi in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_ammocap); ReadWeapon calls it for "Ammo_Capacity" where SOCOM 1's Read calls it); zwep_weapon.cpp
 0x003D2A30 0x30 SetHasFireMode__8CZWeaponF8FIREMODE  # OVL1; s1:order by hand (SOCOM 1's: the mode's flag set at 0xD0, the maximum mode at 0x24 raised to it)
 0x003D2A60 0x20 HasFireMode__8CZWeaponCFi  # OVL1; s1:align, checked by hand (the weapons lane round 16: SOCOM 1's, the same code -- true past mode 4, else the byte at 0xD0+mode, SOCOM 1's 0xA8)
 0x003D2A80 0x40 SetMaxFireMode__8CZWeaponF8FIREMODE  # OVL1; by hand (new in SOCOM II, right after SetHasFireMode: the maximum mode stored at 0x24 and every mode up to it, at most five, flagged at 0xD0; the name is ours)
 0x003D2AC0 0x6C func_003D2AC0  # OVL1
-0x003D2B30 0x6C func_003D2B30  # OVL1
-0x003D2BA0 0x6C func_003D2BA0  # OVL1
+0x003D2B30 0x6C SetDescription__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetDescription__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_description); ReadWeapon calls it for "DisplayName" where SOCOM 1's Read calls it); zwep_weapon.cpp
+0x003D2BA0 0x6C SetName__8CZWeaponFPCc  # OVL1; s1:order by hand (the weapons lane, round 23: SOCOM 1's SetName__8CZWeaponFPCc in the same run of CZWeapon's accessors (0x31E930-0x31EF80 there), at SOCOM II's offset of the same DWARF member (m_name); ReadWeapon calls it for "InternalName" where SOCOM 1's Read calls it); zwep_weapon.cpp
 0x003D2C10 0x8 func_003D2C10  # OVL1
 0x003D2C20 0x8 func_003D2C20  # OVL1
 0x003D2C30 0x8 func_003D2C30  # OVL1

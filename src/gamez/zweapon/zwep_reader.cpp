@@ -101,32 +101,14 @@ void ZWepReader::ReadAmmo(_zrdr *entry)
 /* CZWeapon's and CZFTSWeapon's setters ReadWeapon calls that are not named yet (zwep_weapon.cpp's
  * 0x3D2010-0x3D2C30 and zwep_ftsweapon.cpp's 0x3C5960/0x3C5A90: placeholders, by their rdr keys) */
 extern "C" {
-void func_003D2BA0(CZWeapon *w, const char *s);   /* InternalName */
-void func_003D2B30(CZWeapon *w, const char *s);   /* DisplayName */
 void func_003D2AC0(CZWeapon *w, const char *s);   /* Description */
-void func_003D29B0(CZWeapon *w, float f);   /* Muzzle_Velocity */
-void func_003D29A0(CZWeapon *w, float f);   /* Gravity_Acceleration */
-void func_003D29C0(CZWeapon *w, float f);   /* ImpactRadius */
-void func_003D29D0(CZWeapon *w, float f);   /* Effective_Range */
-void func_003D29E0(CZWeapon *w, float f);   /* Maximum_Range */
-void func_003D2A10(CZWeapon *w, int n);   /* NumMags */
 void func_003D2770(CZWeapon *w, CZAmmo *ammo);   /* AMMO_TYPES' NAME */
-void func_003D2A20(CZWeapon *w, int n);   /* Ammo_Capacity */
 void func_003D2060(CZWeapon *w, float f);   /* Damage_Modifier */
 void func_003D2040(CZWeapon *w, float f);   /* ArmingDistance */
-void func_003D2A00(CZWeapon *w, float f);   /* Sound_Radius */
-void func_003D29F0(CZWeapon *w, ENCUMBRANCE e);   /* Encumbrance */
-void func_003D2850(CZWeapon *w, const char *s);   /* IconTextureName */
-void func_003D2930(CZWeapon *w, const char *s);   /* AssociatedGear */
-void func_003D28C0(CZWeapon *w, const char *s);   /* ModelName */
 void func_003D20E0(CZWeapon *w, const char *s);   /* ReloadSound */
 void func_003D2070(CZWeapon *w, const char *s);   /* ReloadAfterShotSound */
 void func_003D2C30(CZWeapon *w, float f);   /* ReloadDelay */
 void func_003D2C10(CZWeapon *w, float f);   /* ReloadDelayAfterShot */
-void func_003D25A0(CZWeapon *w, const char *s);   /* FireAnimName */
-void func_003D2610(CZWeapon *w, const char *s);   /* HitAnimName */
-void func_003D2530(CZWeapon *w, const char *s);   /* DefaultSpecialAnimName */
-void func_003D24C0(CZWeapon *w, const char *s);   /* SpecialMaterialAnimName */
 void func_003C5960(CZFTSWeapon *w, int n);   /* SlotCost */
 void func_003D2020(CZWeapon *w, bool on);   /* HasBackblast */
 void func_003D2010(CZWeapon *w, float f);   /* RecoilPct */
@@ -149,10 +131,10 @@ void ZWepReader::ReadWeapon(_zrdr *entry)
 
     if (!zrdr_findSTRING(entry, "InternalName", &str))
         str = notfound;
-    func_003D2BA0(w, str);
+    w->SetName(str);
     if (!zrdr_findSTRING(entry, "DisplayName", &str))
         str = notfound;
-    func_003D2B30(w, str);
+    w->SetDescription(str);
     if (str && strstr(str, "M60E3"))
         printf("");
     if (!zrdr_findSTRING(entry, "Description", &str))
@@ -292,25 +274,25 @@ void ZWepReader::ReadWeapon(_zrdr *entry)
     if (zrdr_findreal(entry, "AccScalar_Max", &f, 1))
         w->AccuracyScalar_Max(f);
     if (zrdr_findreal(entry, "Muzzle_Velocity", &f, 1))
-        func_003D29B0(w, WorldScaled(f));
+        w->SetMuzzleVelocity(WorldScaled(f));
     if (zrdr_findreal(entry, "Gravity_Acceleration", &f, 1))
-        func_003D29A0(w, WorldScaled(f));
+        w->SetGravity(WorldScaled(f));
     else
-        func_003D29A0(w, WorldScaled(9.8f));
+        w->SetGravity(WorldScaled(9.8f));
     if (zrdr_findreal(entry, "ImpactRadius", &f, 1))
-        func_003D29C0(w, WorldScaled(f));
+        w->SetImpactRadius(WorldScaled(f));
     if (!zrdr_findreal(entry, "Effective_Range", &f, 1))
         f = 0.0f;
-    func_003D29D0(w, WorldScaled(f));
+    w->SetEffectiveRange(WorldScaled(f));
     if (!zrdr_findreal(entry, "Maximum_Range", &f, 1))
         f = 0.0f;
-    func_003D29E0(w, WorldScaled(f));
+    w->SetMaxRange(WorldScaled(f));
     if (!zrdr_findint(entry, "ID", &i, 1))
         i = 0;
     w->m_ID = (EQUIP_ITEM)i;
     if (!zrdr_findint(entry, "NumMags", &i, 1))
         i = 0;
-    func_003D2A10(w, i);
+    w->SetNumMags(i);
 
     _zrdr *types = zrdr_findtag(entry, "AMMO_TYPES");
     int ntypes = types->Count();
@@ -326,7 +308,7 @@ void ZWepReader::ReadWeapon(_zrdr *entry)
     }
     if (!zrdr_findint(entry, "Ammo_Capacity", &i, 1))
         i = 0;
-    func_003D2A20(w, i);
+    w->SetAmmoCapacity(i);
     if (!zrdr_findreal(entry, "Damage_Modifier", &f, 1))
         f = 0.0f;
     func_003D2060(w, f);
@@ -335,11 +317,11 @@ void ZWepReader::ReadWeapon(_zrdr *entry)
     func_003D2040(w, WorldScaled(f));
     if (!zrdr_findreal(entry, "Sound_Radius", &f, 1))
         f = 0.0f;
-    func_003D2A00(w, WorldScaled(f));
+    w->SetSoundRadius(WorldScaled(f));
     w->m_ai_params.Read(zrdr_findtag(entry, "ai_params"));
     if (!zrdr_findint(entry, "Encumbrance", &i, 1))
         i = 0;
-    func_003D29F0(w, (ENCUMBRANCE)i);
+    w->SetEncumbrance((ENCUMBRANCE)i);
     if (!zrdr_findint(entry, "MaxFireMode", &i, 1))
         i = 0;
     w->SetMaxFireMode((FIREMODE)i);
@@ -351,13 +333,13 @@ void ZWepReader::ReadWeapon(_zrdr *entry)
         w->SetHasFireMode(AUTOFIRE);
     if (!zrdr_findSTRING(entry, "IconTextureName", &str))
         str = notfound;
-    func_003D2850(w, str);
+    w->SetIconTextureName(str);
     if (!zrdr_findSTRING(entry, "AssociatedGear", &str))
         str = notfound;
-    func_003D2930(w, str);
+    w->SetAssociatedGearName(str);
     if (!zrdr_findSTRING(entry, "ModelName", &str))
         str = notfound;
-    func_003D28C0(w, str);
+    w->SetModelName(str);
     if (!zrdr_findSTRING(entry, "ReloadSound", &str))
         str = notfound;
     func_003D20E0(w, str);
@@ -377,16 +359,16 @@ void ZWepReader::ReadWeapon(_zrdr *entry)
         w->m_reloadAfterShot = 1;
     if (!zrdr_findSTRING(entry, "FireAnimName", &str))
         str = notfound;
-    func_003D25A0(w, str);
+    w->SetFireAnimName(str);
     if (!zrdr_findSTRING(entry, "HitAnimName", &str))
         str = notfound;
-    func_003D2610(w, str);
+    w->SetHitAnimName(str);
     if (!zrdr_findSTRING(entry, "DefaultSpecialAnimName", &str))
         str = notfound;
-    func_003D2530(w, str);
+    w->SetDefaultSpecialAnimName(str);
     if (!zrdr_findSTRING(entry, "SpecialMaterialAnimName", &str))
         str = notfound;
-    func_003D24C0(w, str);
+    w->SetSpecialMaterialAnimName(str);
     if (!zrdr_findreal(entry, "Timer1", &f, 1))
         f = 9999999.0f;
     w->SetTimer(0, f);
