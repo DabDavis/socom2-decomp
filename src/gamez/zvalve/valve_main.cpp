@@ -83,6 +83,63 @@ void CValveSaveManager::UnSerialize(const char *name, CRdrFile *file, int flags)
     }
 }
 
+/* an operator's name to its code, 0 for none. SOCOM 1's chain (the comparisons 1-6, = += -= *=
+ * 7-10, then MOD, NCH, SET and CLR tested with empty arms -- `beqz v0` to the return) with SOCOM
+ * II's bit operators: the tests | & |~ &~ take 7-10, the assignments move to 11-14, and |=~ |= &=~
+ * &= follow as 17, 15, 18, 16 (the strings' order, 0x3F81C0-0x3F826F) */
+int CValve::ParseOperator(const char *op)
+{
+    int code = 0;
+
+    if (op) {
+        if (!strcmp(op, "=="))
+            code = 2;
+        else if (!strcmp(op, "!="))
+            code = 1;
+        else if (!strcmp(op, ">="))
+            code = 5;
+        else if (!strcmp(op, "<="))
+            code = 6;
+        else if (!strcmp(op, ">"))
+            code = 3;
+        else if (!strcmp(op, "<"))
+            code = 4;
+        else if (!strcmp(op, "|"))
+            code = 7;
+        else if (!strcmp(op, "&"))
+            code = 8;
+        else if (!strcmp(op, "|~"))
+            code = 9;
+        else if (!strcmp(op, "&~"))
+            code = 10;
+        else if (!strcmp(op, "="))
+            code = 11;
+        else if (!strcmp(op, "+="))
+            code = 12;
+        else if (!strcmp(op, "-="))
+            code = 13;
+        else if (!strcmp(op, "*="))
+            code = 14;
+        else if (!strcmp(op, "|=~"))
+            code = 17;
+        else if (!strcmp(op, "|="))
+            code = 15;
+        else if (!strcmp(op, "&=~"))
+            code = 18;
+        else if (!strcmp(op, "&="))
+            code = 16;
+        else if (!strcmp(op, "MOD"))
+            ;
+        else if (!strcmp(op, "NCH"))
+            ;
+        else if (!strcmp(op, "SET"))
+            ;
+        else if (!strcmp(op, "CLR"))
+            ;
+    }
+    return code;
+}
+
 /* a ZAnim argument instead of a valve: "INPUT_VALVE<n>" names argument n, anything else a valve,
  * created if new (SOCOM 1's; its debug walk of the argument table after the create is gone) */
 CValve *VALVE_CMD_DATA::ParseValveName(const char *name, int &index)

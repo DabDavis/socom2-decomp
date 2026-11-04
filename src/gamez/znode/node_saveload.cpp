@@ -11,10 +11,6 @@
 
 #include "node_world.h"
 
-/* the archive's call zar.h does not declare yet (SOCOM 1's name; called where SOCOM 1's code
- * calls that one): Open, with a fifth argument (the s1~ note's) */
-extern "C" bool func_00258920(zar::CZAR *zar, const char *name, int version, unsigned int a,
-                              unsigned int b, int c);
 
 namespace zdb {
 
@@ -92,7 +88,7 @@ namespace zdb {
  * ours) */
 inline bool OpenZed(CSaveLoad *io)
 {
-    bool ok = func_00258920(&io->m_zfile, io->m_zed_filename, CWorld::GetVersion(), 1, 16, 0);
+    bool ok = io->m_zfile.Open(io->m_zed_filename, CWorld::GetVersion(), 1, 16, 0);
 
     if (!ok)
         io->m_zfile.Close();
