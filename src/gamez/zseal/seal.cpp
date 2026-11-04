@@ -1237,6 +1237,52 @@ bool CZSealBody::Virtual5C(CZSealBody *seal, CTurret *turret)
     return false;
 }
 
+extern "C" {
+/* whether the SEAL may take a state now (OVL2 0x552EC0, new in SOCOM II: UpdateStance asks it with
+ * the desired state; not written yet), and an empty kit stub (OVL2 0x5BE2F0, the kit lane's) */
+bool func_00552EC0(CZSealBody *seal, SEAL_STATE state);
+void func_005BE2F0(CZKit *kit);
+/* (OVL2 0x584B00, seal_body.cpp's, and 0x57E540, not written yet) */
+bool func_00584B00(CZSealBody *seal);
+void func_0057E540(CZSealBody *seal);
+}
+
+/* the desired state taken when the SEAL may take it: the stance's change flagged, the stance's blend
+ * asked for -- in state 2 an AI SEAL that 0x584B00 allows takes 0x57E540's instead of Prone -- and the
+ * state set, then the kit told (OVL2 0x552D60; SOCOM 1's UpdateStance, in the same place -- after
+ * UpdateLODFlags, before AddWeapon -- with SOCOM II's state test ahead of the switch) */
+void CZSealBody::UpdateStance()
+{
+    if (func_00552EC0(this, m_desiredState)) {
+        switch (m_desiredState) {
+        case stateStand:
+            m_stancechanged = true;
+            Stand(1);
+            SetStance(stateStand);
+            break;
+        case stateCrouch:
+            m_stancechanged = true;
+            Crouch();
+            SetStance(stateCrouch);
+            break;
+        case stateProne:
+            m_stancechanged = true;
+            /* (the AI test as IsPlayer's ternary: the bool narrowed once, in v0 -- the IsAi inline's
+             * result local takes a1) */
+            if (m_control ? ((CSealCtrl *)m_control)->IsAi() : false) {
+                if (func_00584B00(this))
+                    func_0057E540(this);
+                else
+                    Prone();
+            } else
+                Prone();
+            SetStance(stateProne);
+            break;
+        }
+        func_005BE2F0(&m_kit);
+    }
+}
+
 /* a fade of the SEAL's opacity asked for, unless a higher priority's runs: the target and rate kept,
  * the rate turned toward the target, the fade started when the node is not there already (OVL2
  * 0x552780, new in SOCOM II: CSealCtrl::OnDeath and ReCreate ask it; the name unknown) */

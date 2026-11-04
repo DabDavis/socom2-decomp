@@ -1438,6 +1438,11 @@ public:
     void SetIsTurning(bool on) { m_is_turning = on; }
     /* the stance's change taken, once (seal_body.cpp) */
     bool StanceChanged();
+    /* the state set: its blend and the body's state (SOCOM 1's; OVL2 0x581ED0, seal_body.cpp's -- not
+     * written yet: 0 or 1 back), and the desired state taken when it may be (SOCOM 1's; OVL2 0x552D60,
+     * seal.cpp) */
+    bool SetStance(SEAL_STATE state);
+    void UpdateStance();
     /* the state of the topmost blend not in state 3, else 0 (SOCOM 1's PeekBaseState; OVL2
      * 0x57DC20, seal_body.cpp's -- CalcAimGoal asks it in state 3) */
     unsigned char PeekBaseState();
@@ -1890,6 +1895,16 @@ inline void *CSealCtrlAi::GetSelect()
 {
     return ((CZSealBody *)m_entity)->m_select;
 }
+
+/* a SEAL's node extension: the SEAL the node belongs to (SOCOM 1's CSealEx, seal_ex.cpp's -- its RTTI
+ * 0x65C238 and table 0x669570 OVL2 data, OnWeaponHit 0x5B8260; CZSealBody::GetSeal casts a node's
+ * extension to it) */
+class CSealEx : public zdb::CNodeEx {
+public:
+    virtual int OnWeaponHit(zdb::CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
+
+    CZSealBody *m_seal;   // 0x4
+};
 
 /* the character's dynamics: its physics, its aim and look limits, its cameras, read once from its
  * .rdr (SOCOM 1's DWARF: CharacterDynamics, 0x1bc bytes -- SOCOM II's Load writes every member at

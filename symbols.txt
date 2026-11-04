@@ -10042,7 +10042,7 @@
 0x00551EC0 0x8BC PreTick__10CZSealBodyFf  # OVL2; slot 0x14 of __vt__10CZSealBody (CEntity's PreTick slot)
 0x00552780 0xD0 func_00552780  # OVL2
 0x00552850 0x508 func_00552850  # OVL2
-0x00552D60 0x158 func_00552D60  # OVL2
+0x00552D60 0x158 UpdateStance__10CZSealBodyFv  # OVL2; s1:order by hand (the SEALs, round 27): SOCOM 1's UpdateStance__10CZSealBodyFv in the same place -- after UpdateLODFlags, before AddWeapon -- the same switch over the desired state (0x374, SOCOM 1's 0x304), m_stancechanged set and Stand(1)/Crouch/Prone then SetStance per case; SOCOM II adds the state test 0x552EC0 ahead of it and the kit's stub after
 0x00552EC0 0x3C4 func_00552EC0  # OVL2
 0x00553290 0x14C AddWeapon__10CZSealBodyF14SEAL_ITEM_BYTE  # OVL2; s1:order by hand (the SEALs, round 23): SOCOM 1's AddWeapon__10CZSealBodyF9SEAL_ITEM (0x256E90), right before ~CZSealBody in both builds and called twice by the constructor in both, the same code (a node new'd, pushed on m_deallocList through the pod insert, parented by the item's switch with the names rifle/pistol/grenade, AddBodyPart) -- SOCOM II files the part in m_item_gear and returns part != 0; the parameter is zseal.h's byte enum SEAL_ITEM_BYTE (zweapon.h's word-sized SEAL_ITEM stand-in holds SOCOM 1's enum name); seal.cpp
 0x005533E0 0x974 __dt__10CZSealBodyFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
