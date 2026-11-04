@@ -10772,10 +10772,10 @@
 0x005A39B0 0x198 HandleFootfallSound__10CZSealBodyFP6CPnt3D  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's HandleFootfallSound__10CZSealBodyFP6CPnt3D, after HandleBloodDrip and HandleSealStep in both builds; the same material bound and bounds-checked read of CMaterialExArray's list, GetStance(false) == prone, the throttles within a half, the sound's PlaySound3D slot at the point; SOCOM II tests a third throttle and plays it flat for a player in first person)
 0x005A3B50 0x58 func_005A3B50  # OVL2
 0x005A3BB0 0xA8 UninitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:calls by hand (SOCOM 1's UninitDatabaseHandles__10CZSealBodyFv: _free of a buffer, the blood decals' vector emptied through the deleter's constructor, clear, swap and destructor on a stack temporary, a second buffer freed, RemoveWeaponEventCallback of the same callback, 0x5A4F80; SOCOM II zeroes three counts; seal_env.cpp)
-0x005A3C60 0x60 func_005A3C60  # OVL2
-0x005A3CC0 0x40 func_005A3CC0  # OVL2
-0x005A3D00 0x8 func_005A3D00  # OVL2
-0x005A3D10 0x14 func_005A3D10  # OVL2
+0x005A3C60 0x60 func_005A3C60  # OVL2; the MSL headers round 17: OVL2's ~vector<CZDecalDef> (two this-tests, the deleter's destructor 0x5B7920 called) -- UninitDatabaseHandles' FreeVector temporary; ovl-copy: __dt__Q23std52vector<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv
+0x005A3CC0 0x40 swap__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>FRQ23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>  # OVL2; by hand (the MSL headers round 17): the deleter's member swap out of line (the free swap inlined: this test, capacity, data, size) -- UninitDatabaseHandles' FreeVector, byte-exact (fts_mission.cpp's 0x2ABA60 alike)
+0x005A3D00 0x8 clear__Q23std52vector<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL2; by hand (the MSL headers round 17): vector::clear() out of line, a `j` to the deleter's clear 0x5B7910 -- UninitDatabaseHandles' FreeVector, byte-exact (fts_mission.cpp's 0x2ABAA0 alike)
+0x005A3D10 0x14 __ct__Q23std52vector<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL2; by hand (the MSL headers round 17): FreeVector's temporary built out of line (three words zeroed) -- UninitDatabaseHandles 0x5A3BB0 written FreeVector(m_blooddriptexhandles) emits it byte-exact, as fts_mission.cpp's 0x2ABAB0
 0x005A3D30 0x160 func_005A3D30  # OVL2
 0x005A3E90 0x160 func_005A3E90  # OVL2
 0x005A3FF0 0x160 func_005A3FF0  # OVL2
@@ -10920,8 +10920,8 @@
 0x005B6CE0 0x4C4 func_005B6CE0  # OVL2; the SEAL lane, round 21: the class vector<CZDecalDef>'s insert, OVL2's copy (OVL1's 0x3D3D90 is 0x4CC): InitDecalHandles pushes each blood decal through it (end(), 1, the def) where SOCOM 1's calls insert__Q23std60__vector_imp<10CZDecalDef,...>; ovl-copy: insert__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FP10CZDecalDefUiRC10CZDecalDef
 0x005B71B0 0x198 reserve__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FUi  # OVL2; by hand (the SEAL lane, round 21): the class vector<CZDecalDef>'s reserve -- InitDecalHandles reserves the blood decals' count on m_blooddriptexhandles through it where SOCOM 1's InitDecalHandles calls reserve__Q23std60__vector_imp<10CZDecalDef,Q23std23allocator<10CZDecalDef>,0>FUi
 0x005B7350 0x5BC func_005B7350  # OVL2
-0x005B7910 0x8 func_005B7910  # OVL2
-0x005B7920 0x68 func_005B7920  # OVL2
+0x005B7910 0x8 func_005B7910  # OVL2; the MSL headers round 17: OVL2's copy of the deleter's clear (the size zeroed) -- vector::clear() 0x5A3D00 jumps to it; ovl-copy: clear__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv
+0x005B7920 0x68 __dt__Q23std62__vector_deleter<10CZDecalDef,Q23std23allocator<10CZDecalDef>>Fv  # OVL2; by hand (the MSL headers round 17): the deleter's destructor, clear inlined (the size zeroed, the data freed) -- OVL2's ~vector<CZDecalDef> 0x5A3C60 calls it; seal_env.cpp's tail emits it byte-exact once UninitDatabaseHandles' FreeVector generates clear and it ahead of the reserve 0x5B71B0 and insert 0x5B6CE0, which then inline it
 0x005B7990 0x190 func_005B7990  # OVL2; the same words as init<PCUi>__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FPCUiPCUiQ23std20forward_iterator_tag_v (0x259b90) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005B7B20 0x74 func_005B7B20  # OVL2; the same words as __dt__6CStackFv (0x2d4fe0) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005B7BA0 0x5EC UpdateAiMapLoc__10CZSealBodyFv  # OVL2; slot 0x48 of __vt__10CZSealBody (CEntity's UpdateAiMapLoc slot; SOCOM II's takes no argument, as UpdateAiMapLoc__7CEntityFv)
