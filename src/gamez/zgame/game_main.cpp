@@ -67,6 +67,12 @@ extern CConsole data_00416240;   /* SOCOM 1's theConsole, ticked here */
 /* the voice chat's pre-tick in SOCOM 1's place (SOCOM II's, unnamed) */
 extern "C" void func_003B05E0(void);
 
+/* the game's name, 1 for SOCOM II (camera.cpp and st_core.cpp test it; a byte): set at run time by
+ * the unit's initialiser __sinit_game_main.cpp 0x401BC0, as SOCOM 1's -- the inline returning it
+ * ours */
+static inline unsigned char GameName() { return 1; }
+unsigned char OurGameName = GameName();
+
 /* the network tick thread's state: running, its period, its stack (SOCOM 1's gp-relative statics;
  * the names ours) */
 extern volatile bool data_003DF1F0;   /* the thread runs while set; it sets it again on leaving */

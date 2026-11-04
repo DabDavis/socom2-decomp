@@ -4,6 +4,8 @@
  * SOCOM II's 0x4003A0 does). OVL1 0x2B4190-0x2B582F. Defined in reverse of their image order
  * (-inline deferred). */
 
+#include <algorithm>
+
 #include "../zentity/zentity.h"
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
@@ -59,7 +61,19 @@ public:
      * declared only, so this unit emits no table */
     virtual int OnWeaponHit(zdb::CNode *node, zdb::IntersectStruct *hit, CZProjectile *projectile);
 
+    /* SOCOM II's, inlined into Close (no out-of-line copy in the image): the valve destroyed, the
+     * description freed, the anims' vector after (SOCOM 1's called out of line) */
+    ~CNodeAction()
+    {
+        CValve::Destroy(m_valve);
+        m_valve = 0;
+        if (m_uidesc)
+            _free((void *)m_uidesc, 0, 0);
+        m_uidesc = 0;
+    }
+
     static void SyncActionsMP(int who);
+    static void Close();
     static void Reset();
     static CNodeAction *GetActionById(unsigned int id);
     static CNodeAction *FindActionByValve(const CValve *valve);
@@ -144,6 +158,10 @@ extern "C" {
 extern CAiMaps data_0066A1B0;   /* (OVL2: the AI maps, SOCOM 1's theAiMaps) */
 }
 
+/* every action (its initialiser __sinit_fts_action.cpp 0x4003A0 builds the list through the
+ * deleter's constructor, 0x1EABB0, and registers ~Container 0x2B57D0, as SOCOM 1's does) */
+CNodeAction::Container CNodeAction::m_actions;
+
 /* an action's valve changed: the AI map's action of the same id takes the valve's value (SOCOM 1's,
  * the id at SOCOM II's offset; OVL1 0x2B5760) */
 void _actionValveCallback(CValve *valve, void *data)
@@ -157,6 +175,32 @@ void _actionValveCallback(CValve *valve, void *data)
         if (data_0066A1B0.GetActionById(action->m_id, loc, &a))
             a->m_state = valve->m_value;
     }
+}
+
+/* an action let go of: its node's extension cleared when it is the action, the action deleted
+ * and its slot left null (std::transform's operation, inlined; the name ours) */
+static inline CNodeAction *_close_action(CNodeAction *action)
+{
+    if (action && action->m_node && action->m_node->m_nodeEx == action)
+        action->m_node->SetNodeEx(0, false);
+    delete action;
+    return 0;
+}
+
+/* every action deleted and the list emptied (SOCOM 1's CNodeAction::Close, the walk a
+ * std::transform as SOCOM 1's two iterators show; OVL1 0x2B55E0, CMission::Close's call). It is
+ * also what makes the unit's tail call ~__list_imp from ~Container, as the target does: the clear
+ * instantiates the range erase (README "Out-of-class template members"). OPEN, 0xE0 of 0x154
+ * bytes: the target inlines the delete's ~CNodeAction into the op with the anims' vector's chain
+ * (three this-tests), whose pod destructor calls two 8-byte pieces out of line (0x2B5750 and
+ * 0x2B5740, each returning its argument: CW 2.5's alloc()/cap()-style accessors, cut a level
+ * short); here the op's tree is six high (op, ~CNodeAction, the vector's four), so the op is
+ * inlined one level and ~CNodeAction called (with flag 1, SOCOM 1's shape) -- the level-6
+ * question (README "Level 6, or 8?") */
+void CNodeAction::Close()
+{
+    std::transform(m_actions.begin(), m_actions.end(), m_actions.begin(), _close_action);
+    m_actions.clear();
 }
 
 /* every action back to its start: its valve off, no anim, no user (OVL1 0x2B5510) */

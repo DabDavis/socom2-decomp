@@ -6,6 +6,7 @@
 #include "zseal.h"
 #include "../zanim/zanim.h"
 #include "../zsys/zsys.h"
+#include "../zweapon/zweapon.h"
 #include <stdio.h>
 
 /* the bomb's state machine (SOCOM 1's CZBombState, OVL1's) -- only the request */
@@ -240,8 +241,7 @@ bool CZSealBody::PostCheckDILadder()
     return CheckDILadder();
 }
 
-/* where a hit lands (SOCOM 1's DAMAGE_LOCATION, a byte: only the name matters here) */
-enum DAMAGE_LOCATION { DAMAGE_LOCATION_0 = 0, DAMAGE_LOCATION_LAST = 255 };
+/* (where a hit lands: zseal.h's DAMAGE_LOCATION) */
 
 /* an animation set's anims by the item in hand (anim.cpp's CAnimsByFP: only the setter) */
 class CAnimsByFP {
@@ -467,6 +467,69 @@ void func_00588AB0(CZSealBody *seal, int time, unsigned int anim);
 void *func_00555170(void *stack);
 }
 
+extern "C" {
+/* the SEAL off its ladder, and its hold on a ladder let go (OVL2 0x59D750, 0x5B14E0: this unit's,
+ * defined below -- the deaths inline them) */
+void func_0059D750(CZSealBody *seal);
+void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal);
+/* the death's end, once its anim has run (OVL2 0x5A0040, not written yet), the overlay's anims let
+ * go (OVL2 0x5781C0, the unclaimed stretch before seal_body.cpp) and 0x5A5DA0 (not written yet) */
+void func_005A0040(CZSealBody *seal);
+void func_005781C0(CZSealBody *seal);
+void func_005A5DA0(CZSealBody *seal);
+/* the anim at the end of the death (AnimTypes' static short at OVL1 0x3DEED8) and the network's
+ * push of anim 34 (OVL2 0x588B40, seal_body.cpp's) */
+extern short data_003DEED8;
+void func_00588B40(CZSealBody *seal, int time);
+}
+
+/* a death's callback, at the anim's end: the death finished (OVL2 0x5A2680, new in SOCOM II: the
+ * two deaths below hang it on their blends; the name ours) */
+extern "C" void func_005A2680(void *body, void *data)
+{
+    func_005A0040((CZSealBody *)body);
+}
+
+/* a dying SEAL's anim: the blend's representative anim's length, the callback hung on a short one
+ * (the names ours) */
+static inline void HangDeathCallback(CZBodyAnimBlend *b)
+{
+    float t = b->Representative()->m_anim->m_34;
+
+    if (t < 1.0f) {
+        b->m_callback.m_func = func_005A2680;
+        b->m_callback.m_tfrac = t;
+        b->m_callback.m_userdata = 0;
+    }
+}
+
+/* a death by an anim type: the overlay's anims and 0x5A5DA0 first, the SEAL off its ladder and its
+ * hold let go, unstunned, the blends cleared to the base and the anim pushed dead (state 8, kind 13)
+ * with the death's callback, the push told to the network as event 14 (OVL2 0x5A2490, new in SOCOM
+ * II; the name unknown).
+ * OPEN, 2 instructions (the size right): 0x5B14E0's miss exactly, inlined -- in the hold's ladder
+ * lookup the target loads the ladder list (a0) right after its lui and the index (a1) in the call's
+ * delay slot, MW here the index first and the list in the slot. Fixing 0x5B14E0 fixes this. Tried
+ * on both (build/scratch/seal/v_climb*.py): the list through an inline member accessor of CMission,
+ * a static inline accessor, a CMission::GetLadder(i) wrapper, a pointer local and an index local, the
+ * hold through a pointer or a reference local or an inline returning it; a ternary over the index
+ * (`climb == &seal->m_climb ? ... : ...`) matches 0x5B14E0 alone -- the inlined copy folds it -- and
+ * is not a real spelling */
+extern "C" CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type)
+{
+    func_005781C0(seal);
+    func_005A5DA0(seal);
+    func_0059D750(seal);
+    func_005B14E0(&seal->m_climb, seal);
+    seal->SetAmStunned(false);
+    seal->ClearToBase(false);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, type, stateDead, 0, 13);
+
+    HangDeathCallback(b);
+    func_00588AB0(seal, 14, type);
+    return b;
+}
+
 /* an anim pushed on a living SEAL, kind 13 with the blend's bits 2 and 1 set -- refused when its top
  * blend or itself is dead, or while it holds the entity at 0xEB8 -- and the push told to the network
  * as event 15 (OVL2 0x5A2390, new in SOCOM II: 0x5880E0 calls it; the name unknown) */
@@ -485,6 +548,82 @@ extern "C" CZBodyAnimBlend *func_005A2390(CZSealBody *seal, AnimType type)
     b->m_flags = func_0058A920(b->m_flags, 2, true);
     func_00588AB0(seal, 15, type);
     return b;
+}
+
+/* the death that ends a fall: the SEAL off its ladder, its hold dropped, unstunned, the blends
+ * cleared to the base and AnimTypes' 0x3DEED8 pushed dead with the death's callback; bit 9 set and
+ * 10 cleared, the kept velocity zeroed, the altitude where it stands, the push of anim 34 told to the
+ * network (OVL2 0x5A21B0, new in SOCOM II; the name unknown) */
+extern "C" CZBodyAnimBlend *func_005A21B0(CZSealBody *seal)
+{
+    func_0059D750(seal);
+    seal->m_climb.m_state = 0;
+    seal->m_climb.m_active = 0;
+    seal->SetAmStunned(false);
+    seal->ClearToBase(false);
+    CZBodyAnimBlend *b = (CZBodyAnimBlend *)func_00588BC0(seal, (AnimType)data_003DEED8, stateDead, 0, 13);
+
+    HangDeathCallback(b);
+    seal->SetBit9(true);
+    seal->SetBit10(false);
+    seal->m_1350 = CPnt3D::zero;
+    seal->m_alt = seal->m_posW.y;
+    func_00588B40(seal, 21);
+    return b;
+}
+
+extern "C" {
+/* the stats' events (seal.cpp's): a hit scored, a hit taken, a head shot (SOCOM 1's CSealStats::Hit,
+ * WasHit and HeadShot, by these calls; OVL2 0x5458A0, 0x544CF0, 0x5459C0) */
+void func_005458A0(CSealStats *s, const CZSealBody *seal, const CZSealBody *other);
+void func_00544CF0(CSealStats *s, const CZSealBody *seal);
+void func_005459C0(CSealStats *s, const CZSealBody *seal);
+}
+
+/* an entity that is a SEAL (kind 2), or none (the inline cast HandleWeaponEvent's walk and ReportWeaponHitDamage show) */
+static inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == (CEntity::TYPE)2 ? (CZSealBody *)e : 0;
+}
+
+/* the hit sent to the network (OVL1 0x2BBDA0, fts_remote.cpp's) */
+void SendHitMessage(int shooter, int victim, int part, float damage, float f, bool flag, unsigned char c);
+
+/* online, a hit on the SEAL reported: sent on when a SEAL shot, the hit counted for both when it
+ * counts, and a first head shot -- not a grenade's (items 121 and 171) -- credited to the shooter
+ * (OVL2 0x5A1FF0; SOCOM 1's ReportWeaponHitDamage, after RemoteWeaponDamageVictim in both builds --
+ * SOCOM II passes the projectile first and spares grenades the head shot) */
+void CZSealBody::ReportWeaponHitDamage(CZProjectile *proj, int shooter_id, int victim_id, DAMAGE_LOCATION where,
+                                       float damage, float pierce, bool hit, unsigned char weapon)
+{
+    if (theNetwork.m_9) {
+        CEntity *e = CEntity::m_list.GetEntityById(shooter_id);
+        CZSealBody *shooter = 0;
+
+        if (e)
+            shooter = AsSeal(e);
+        if (shooter)
+            SendHitMessage(shooter_id, victim_id, where, damage, pierce, hit, weapon);
+        if (hit) {
+            if (shooter)
+                func_005458A0(&shooter->m_stats, shooter, this);
+            func_00544CF0(&m_stats, this);
+        }
+        bool grenade = false;
+
+        if (proj->m_weapon) {
+            switch (proj->m_weapon->GetIDType()) {
+            case 171:
+            case 121:
+                grenade = true;
+            }
+        }
+        if (where == 0 && m_stats.m_count[1] <= 0 && !grenade) {
+            if (shooter)
+                func_005459C0(&shooter->m_stats, shooter);
+            m_stats.m_count[1]++;
+        }
+    }
 }
 
 extern "C" {
@@ -544,6 +683,11 @@ extern "C" {
 /* the body-part ids of the rifle and the pistol (OVL1 data, read as variables) */
 extern int data_003DF148;
 extern int data_003DF150;
+/* a third id, cleared as either weapon is taken (OVL1 data, read as a variable) and the kit's two
+ * selections the takes start with (OVL2 0x5C6A40, 0x5C6DA0: the kit lane's range) */
+extern int data_003DF160;
+void func_005C6A40(CZKit *kit);
+void func_005C6DA0(CZKit *kit);
 }
 
 /* The weapons moved between the hand and where they are worn: the part's node taken from its parent's
@@ -646,6 +790,49 @@ void ParentPistolToRHandCallback(void *data, void *arg)
     }
 }
 
+/* the pistol taken: the kit's pistol chosen, the pistol into the right hand when asked, the rifle
+ * slung on the back -- still the body's rifle --, the third part none, the pistol the item in hand
+ * (OVL2 0x5A7260; SOCOM 1's ChangeToPistolMode, its kit call ReParentToPistol -- OVL2 0x5C6DA0 --
+ * in the same place, after ChangeToRifleMode as here) */
+void CZSealBody::ChangeToPistolMode(bool hand)
+{
+    func_005C6DA0(&m_kit);
+    if (hand)
+        func_005A7690(this);
+    if (m_rifle->m_node) {
+        m_rifle->m_parent->m_node->DeleteChild(m_rifle->m_node);
+        m_rifle->m_parent = m_spinelo;
+        m_rifle->m_parent->m_node->AddChild(m_rifle->m_node);
+        SetBodyPart(data_003DF148, m_rifle);
+        m_rifle->SetActive(false);
+    }
+    SetBodyPart(data_003DF160, 0);
+    m_item = ITEM_PISTOL;
+}
+
+/* the rifle taken: the kit's rifle chosen, the rifle into the right hand, the pistol holstered as
+ * gear when asked -- the callback's work written through the SEAL, which the target reloads (the
+ * callback inlined keeps the member's address instead) --, the third part none, the rifle the item
+ * in hand (OVL2 0x5A70F0; SOCOM 1's ChangeToRifleMode, its kit call ReParentToRifle -- OVL2
+ * 0x5C6A40 -- in the same place) */
+void CZSealBody::ChangeToRifleMode(bool holster)
+{
+    func_005C6A40(&m_kit);
+    func_005A7480(this);
+    if (holster) {
+        if (m_pistol->m_node) {
+            m_pistol->m_parent->m_node->DeleteChild(m_pistol->m_node);
+            m_pistol->m_parent = m_rthigh;
+            m_pistol->m_parent->m_node->AddChild(m_pistol->m_node);
+            SetBodyPart(data_003DF150, 0);
+            m_pistol->SetActive(false);
+        }
+        SetPartAsGear(m_item_gear[2].m_part, m_item_gear[2].m_gear);
+    }
+    SetBodyPart(data_003DF160, 0);
+    m_item = ITEM_RIFLE;
+}
+
 extern "C" {
 /* the blend on top of the body's stack (seal.cpp's tail copy, OVL2 0x555170) */
 void *func_00555170(void *stack);
@@ -669,6 +856,90 @@ extern short data_003DF110;
 extern short data_003DEC68;
 extern short data_003DF0F0;
 extern short data_003DF0F8;
+}
+
+extern "C" {
+/* the anim set a throwable binds (OVL1 bss 0x44D408: seal_body.cpp's 0x580E80 tests the SEAL's set
+ * against it) */
+extern AnimSet *data_0044D408;
+}
+
+/* whether the rifle is the weapon in the right hand -- the pistol there says not, neither says it is
+ * (an inline: the three arms' bool assignments, the names ours) */
+static inline bool RifleInHand(CZSealBody *seal)
+{
+    if (seal->m_rifle->m_parent == seal->m_rhand)
+        return true;
+    if (seal->m_pistol->m_parent == seal->m_rhand)
+        return false;
+    return true;
+}
+
+/* whether a weapon change leaves the rifle: the item asked for says so, else the last item, else it
+ * does (an inline returning one constant from several arms, held in the compare's register -- the
+ * name ours) */
+static inline unsigned char ToRifle(CZSealBody *seal, SEAL_ITEM_BYTE item)
+{
+    if (item == ITEM_RIFLE)
+        return 1;
+    if (item == ITEM_PISTOL)
+        return 0;
+    if (seal->m_lastitem == ITEM_RIFLE)
+        return 1;
+    if (seal->m_lastitem == ITEM_PISTOL)
+        return 0;
+    return 1;
+}
+
+/* a weapon put away for an item: the blend for putting away the pistol, or the rifle, pushed -- a
+ * throwables' set its own two --, that weapon no longer the body's, the item in hand, the aim and
+ * fire points looked up again (OVL2 0x5A6B70, new in SOCOM II: SOCOM 1's ChangeWeapon did it inline;
+ * the name unknown) */
+extern "C" bool func_005A6B70(CZSealBody *seal, SEAL_ITEM_BYTE item)
+{
+    if (ToRifle(seal, item)) {
+        if (seal->m_animset != data_0044D408)
+            func_00588BC0(seal, (AnimType)data_003DF0F0, 0, 0, 0);
+        else
+            func_00588BC0(seal, (AnimType)data_003DF0E0, 0, 1, 0);
+        seal->SetBodyPart(data_003DF150, 0);
+    } else {
+        if (seal->m_animset != data_0044D408)
+            func_00588BC0(seal, (AnimType)data_003DF0F8, 0, 0, 0);
+        else
+            func_00588BC0(seal, (AnimType)data_003DF0E8, 0, 1, 0);
+        seal->SetBodyPart(data_003DF148, 0);
+    }
+    seal->m_item = item;
+    seal->m_curr_aimpt = seal->GetFirepointNode("aimpoint");
+    seal->m_curr_firept = seal->GetFirepointNode("firepoint");
+    return true;
+}
+
+/* a throwable taken: the throwables' anim set bound (anim 18, crouched), the blend for putting away
+ * the rifle or the pistol in hand pushed, the item kept as the last and none in hand (4), the
+ * throwable's part into the right hand, the aim and fire points looked up again (OVL2 0x5A6D30, new
+ * in SOCOM II: SOCOM 1's ChangeWeapon did it inline; the name unknown) */
+extern "C" bool func_005A6D30(CZSealBody *seal, SEAL_ITEM_BYTE item)
+{
+    seal->BindAnimSet(data_0044D408, (AnimType)18, stateCrouch, false);
+    if (RifleInHand(seal))
+        func_00588BC0(seal, (AnimType)data_003DF0E0, 1, 0, 0);
+    else
+        func_00588BC0(seal, (AnimType)data_003DF0E8, 1, 0, 0);
+    seal->m_lastitem = item;
+    seal->m_item = ITEM_DONE;
+    CZBodyPart *part = seal->m_item_gear[4].m_part;
+
+    if (part && part->m_node) {
+        part->m_parent->m_node->DeleteChild(part->m_node);
+        part->m_parent = seal->m_rhand;
+        part->m_parent->m_node->AddChild(part->m_node);
+        part->SetActive(false);
+    }
+    seal->m_curr_aimpt = seal->GetFirepointNode("aimpoint");
+    seal->m_curr_firept = seal->GetFirepointNode("firepoint");
+    return true;
 }
 
 /* whether the top blend is a throw's, the start's two too unless told not (OVL2 0x5A7D10; SOCOM 1's
@@ -853,6 +1124,16 @@ extern "C" bool func_005A81D0(CZSealBody *seal)
     return seal->CanFire(true, false);
 }
 
+/* a point turned round into another (an inline: written into an out-parameter, the input's loads
+ * fold into sp offsets while the stores keep their field-address registers -- the AI core's
+ * negate(&p, &p) in ai_path.cpp; the name ours) */
+static inline void NegateInto(const CPnt3D *in, CPnt3D *out)
+{
+    out->x = -in->x;
+    out->y = -in->y;
+    out->z = -in->z;
+}
+
 extern "C" {
 /* the CQB deaths, from in front and from behind (OVL1 data, anim types; SOCOM 1's small-data pair) */
 extern AnimType data_003DEE30;
@@ -862,18 +1143,18 @@ extern AnimType data_003DEE38;
 /* the death a CQB attack gives its victim: from behind or in front, by the attacker's offset against
  * the victim's facing, flattened (OVL2 0x5A9420; SOCOM 1's FindDeathAnimTypeCQB, after CanUseRestraint
  * in both builds, the same arithmetic).
- * OPEN, 0xDC against 0xD8: the target loads both nodes before the facing's three stores (the last in
- * the call's delay slot) and holds only &fwd.y in a register; MW here loads this node after the stores
- * and keeps &fwd.z in a register too. Tried: the nodes in locals first, the offset computed first, the
- * facing assigned after it, y through a pointer, Negate(fwd.y). */
+ * OPEN, 10 instructions (the size right since round 23): the target loads both nodes before the
+ * facing's three stores (the last in the call's delay slot); MW here loads this node after them. The
+ * negation is NegateInto(&fwd, &fwd) -- the out-parameter form folds the loads into sp offsets and keeps
+ * only &fwd.y in a register, as the target. Tried since: the nodes in locals (either order), the
+ * positions in pointer locals, the offset computed first, both points assigned, GetNode(). Before: the
+ * offset computed first, the facing assigned after it, y through a pointer, Negate(fwd.y). */
 AnimType CZSealBody::FindDeathAnimTypeCQB(CZSealBody *victim)
 {
     CPnt3D fwd(*(const CPnt3D *)victim->m_node->m_matrix.m_matrix[2]);
     CPnt3D d = *(const CPnt3D *)m_node->m_matrix.m_matrix[3] - *(const CPnt3D *)victim->m_node->m_matrix.m_matrix[3];
 
-    fwd.x = -fwd.x;
-    fwd.y = -fwd.y;
-    fwd.z = -fwd.z;
+    NegateInto(&fwd, &fwd);
     fwd.y = 0.0f;
     d.y = 0.0f;
     if (Dot(d, fwd) < 0.0f)
@@ -966,12 +1247,6 @@ extern void *data_0044D548;
 extern int data_0044D508;
 extern int data_0044D510;
 extern int data_0044D518;
-}
-
-/* an entity that is a SEAL (kind 2), or none (the inline cast the walk shows) */
-static inline CZSealBody *AsSeal(CEntity *e)
-{
-    return e && e->m_type == (CEntity::TYPE)2 ? (CZSealBody *)e : 0;
 }
 
 /* a weapon's event handed to every SEAL's controller (OVL2 0x5A4F80; SOCOM 1's
@@ -1712,6 +1987,86 @@ extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
     }
     climb->m_state = 0;
     climb->m_active = 0;
+}
+
+extern "C" {
+/* CPnt3D's implicit assignment, OVL2's out-of-line copy (OVL1's is 0x20F1F0, CHoming's reset's): the
+ * homing's points are set through it, the inline that sets them too tall for it to inline */
+CPnt3D *func_00539E90(CPnt3D *to, const CPnt3D *from);
+/* (OVL2 0x545EE0, seal.cpp's range: what a carried body's turret entity is told, with 1) */
+void func_00545EE0(CZSealBody *seal, int n);
+}
+
+/* a blend's homing aimed: the blend, its reference point, the wall's normal and the point it closes
+ * on, the reference direction -z and no target point, both counters cleared (an inline member: its
+ * `this`, the blend's homing, stays in a saved register as the copies go through the assignment's
+ * out-of-line copy -- zbody.h is another lane's, so a stand-in class over CHoming's layout; the names
+ * ours) */
+class CHomingAim : public CHoming {
+public:
+    void Aim(CZBodyAnimBlend *b, const CPnt3D *refpt, const CPnt3D *norm, const CPnt3D *intpt)
+    {
+        m_blend = b;
+        func_00539E90(&m_refpt_m, refpt);
+        func_00539E90(&m_norm_w, norm);
+        func_00539E90(&m_int_w, intpt);
+        func_00539E90(&m_refvec_m, &CPnt3D::unit_nz);
+        func_00539E90(&m_target_refpt_m, &CPnt3D::zero);
+        m_1c = 0;
+        m_2c = 0;
+    }
+};
+
+static inline CHomingAim *HomingOf(CZBodyAnimBlend *b)
+{
+    return (CHomingAim *)&b->m_homing;
+}
+
+/* a body carried: the top blend homed onto a point, along the flat reverse of a direction, its target
+ * the reference point itself; a carried body working an entity told so with 1 (OVL2 0x5B1750, new in
+ * SOCOM II: RestrainBuddy, StabBuddy and 0x579A30 call it; the name unknown). The direction is turned
+ * round by NegateInto(&d, &d): the in-place pointer form gives the y and z their own address registers
+ * and renumbers every saved register (55 words off) */
+extern "C" void func_005B1750(CZSealBody *seal, const CPnt3D *refpt, const CPnt3D *intpt, const CPnt3D *dir)
+{
+    if (seal->m_carry) {
+        CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+        CPnt3D d = *dir;
+
+        d.y = 0.0f;
+        d.Normalize();
+        NegateInto(&d, &d);
+        HomingOf(top)->Aim(top, refpt, &d, intpt);
+        top->m_homing.m_target_refpt_m = *refpt;
+        if (seal->m_carry->m_eb8)
+            func_00545EE0(seal->m_carry, 1);
+    }
+}
+
+/* the top blend homed onto its own goal: its goal marked unreached, the reference point a fixed offset
+ * lowered by 11.487 (0x4137CAC0: 11.4869995) less the goal's height over the SEAL, half a unit up
+ * again, the goal's normal turned about, the reference direction +z (OVL2 0x5B1890, new in SOCOM II:
+ * 0x589AA0 calls it; the name unknown). The goal's info through a reference (its address kept for the
+ * homing's normal), the goal assigned field by field and its height taken before the offset is built */
+extern "C" CZBodyAnimBlend *func_005B1890(CZSealBody *seal)
+{
+    CZBodyAnimBlend *top = (CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0);
+    REFPT_INFO &info = top->m_refpt_info;
+
+    info.m_valid = 0;
+    CPnt3D goal;
+    goal = info.m_goal_pos;
+    float h = goal.y - seal->m_posW.y;
+    CPnt3D off(0.347f, -1.412f, 3.2f);
+
+    goal.y += off.y;
+    off.y -= 11.4869995f;
+    off.y += h;
+    off.y += 0.5f;
+    NegateInto(&info.m_goal_norm, &info.m_goal_norm);
+    HomingOf(top)->Aim(top, &off, &info.m_goal_norm, &goal);
+    top->m_homing.m_refvec_m = CPnt3D::unit_z;
+    return top;
 }
 
 /* whether the SEAL is on a given ladder (OVL2 0x59D6C0, new in SOCOM II; 0x56BD10 asks it) */

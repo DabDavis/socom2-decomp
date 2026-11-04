@@ -14,10 +14,10 @@
 
 #include "zui.h"
 
-/* by address: an rdr value packed into a buffer, its size returned (0x334DB0); two values the
+/* an rdr value packed into a buffer, its size returned (zrdr_pack, 0x334DB0); by address: two values the
  * same (0x335E20); a variable's name and strings made again in a table (0x385E50) and the variable
  * revived as a new one (0x386B80) -- the drafts stand for them */
-extern "C" int func_00334DB0(_zrdr *value, char *buf, int size);
+unsigned int zrdr_pack(_zrdr *rdr, void *buf, unsigned int size);   /* (zrdr_pack.cpp's) */
 extern "C" int func_00335E20(_zrdr *a, _zrdr *b);
 extern "C" void func_00385E50(CUIVariable *var, CSTable *table);
 extern "C" void func_00386B80(CUIVariable *var, const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
@@ -214,7 +214,7 @@ void CUIVarManager::CollectGarbage()
     int left = 0x4000;
     for (i = begin(); i != end(); ++i) {
         if ((*i).type == 4) {
-            int n = func_00334DB0(&*i, buf, left);
+            int n = zrdr_pack(&*i, buf, left);
 
             if (!(*i).packed)
                 (*i).DeleteChildren();

@@ -18,7 +18,10 @@
  * (0x36B0A0), defined last; the inline copies before them (0x36AFA0-0x36AFEF, CSecureText's table's)
  * come with ~CSecureText (zui.cpp's 0x36AF30) and stay drafts.
  * The classes' layouts are zui_2d.h's (the UI lane's), redeclared here with the virtuals these
- * functions need. Defined in reverse of their image order (-inline deferred). */
+ * functions need. Defined in reverse of their image order (-inline deferred). Its initialiser,
+ * 0x4036C0, builds only <iostream>'s two init objects, as SOCOM 1's __sinit_zui_2d.cpp. */
+
+#include <iostream>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,12 +128,80 @@ public:
     UIVarMixin() { m_uivar = 0; }
     virtual ~UIVarMixin() { DetachUIVar(0); }
     void DetachUIVar(CUIVariable *var);
+    void AttachUIVar(CUIVariable *var);
+    /* watched and applied at once (ours: the LoadSpecs' pair, the update through the mixin's own
+     * table) */
+    void WatchUIVar(CUIVariable *var)
+    {
+        AttachUIVar(var);
+        UpdateUIVar(var);
+    }
     /* the variable changed (an override takes a new primary slot after all the tables, so the
      * secondary tables' offsets stand) */
     virtual void UpdateUIVar(CUIVariable *var);
 
     CUIVariable *m_uivar;   // 0x4
 };   // 8 bytes
+
+/* the UI variables (zui.h's: the manager makes or finds one by name, with its value and lifetime)
+ * and the specs' variable block (zui_spec.h's CUIVariableSpec: the name, the value, the longevity at
+ * 0x28, a byte enum) -- what the LoadSpecs read */
+enum UIVAR_LONGEVITY {
+    UIVL_DORMANT = 0,
+    UIVL_TEMPORARY = 1,
+    UIVL_PERMANENT = 2,
+    UIVL_PERSISTENT = 3
+};
+
+class CUIVarManager {
+public:
+    CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+};
+extern CUIVarManager theUIVarManager;
+
+class CUIVariableSpec {
+public:
+    char *m_name;   // 0x0
+    _zrdr *m_value;   // 0x4
+    unsigned char _8[0x28 - 0x8];
+    UIVAR_LONGEVITY m_longevity;   // 0x28
+};
+
+/* a dialog object's spec (zui_spec.h's CDlgObjSpec: its variable block at 4 and the inline that
+ * makes the variable) */
+class CDlgObjSpec {
+public:
+    virtual ~CDlgObjSpec();
+    CUIVariable *GetUIVar() const
+    {
+        return m_var ? theUIVarManager.Add(m_var->m_name, m_var->m_value, m_var->m_longevity) : 0;
+    }
+
+    CUIVariableSpec *m_var;   // 0x4
+};
+
+/* a text's spec and a teletype's (zui_spec.h's CTextSpec, 0x34 bytes, and CTtySpec: INTERVAL,
+ * MAXLENGTH, SPACING, PULSERATE, MAXHEIGHT and the cursor's two flags) */
+class CTextSpec;   // after CSaferStr, below
+class CTtySpec;
+
+/* a wrapped text's spec (zui_spec.h's CWrapSpec: WIDTH, SPACING, HEIGHT, DISPLAY_ONE_LINE, the two
+ * arrows' textures, offsets and sizes, AUTOSCROLL) */
+struct IPNT2D {
+    int x, y;
+};
+
+class CWrapSpec;   // after CSaferStr, below
+
+/* an image's spec (zui_spec.h's CImageSpec: the file name's string, the size, the pulse) */
+class CImageSpec : public CDlgObjSpec {
+public:
+    unsigned char _8[0x14 - 0x8];
+    int m_sizex;   // 0x14: the size (zui_spec.h's IPNT2D)
+    int m_sizey;   // 0x18
+    bool m_pulse;   // 0x1c
+    float m_pulseRate;   // 0x20
+};
 
 /* a plain bitmap of the UI's (SOCOM 1's DWARF): it may pulse, and a string variable names its
  * texture */
@@ -150,6 +221,7 @@ public:
     virtual void Tick(float dT);
     virtual void SetMapOffset(int x, int y);
     void SetPulse(float period);
+    void LoadSpec(const CImageSpec &spec, zdb::CTexHandle *tex);
 
     bool m_pulsing;   // 0x88
     float m_period;   // 0x8c
@@ -170,6 +242,7 @@ public:
     virtual void Update();
     virtual void UpdateUIVar(CUIVariable *var);
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
+    void LoadSpec(const CTextSpec &spec);
 
     C2DFont *m_alternateFont;   // 0xa0
     CPnt3D m_offset;   // 0xa4
@@ -189,17 +262,32 @@ public:
     /* the width it wraps to (out of line in the list item's look, 0x36B320) */
     void SetWidth(float w) { m_width = w; }
 
+    void LoadSpec(const CWrapSpec &spec, zdb::CTextureRelocMgr *mgr);
+
     float m_width;   // 0xc0: the width it wraps to (the list item's look sets 300)
     int m_shown;   // 0xc4: the lines the window shows (zui_2d.h's m_line, -1 at first)
     int m_c8;   // 0xc8
     float m_offset;   // 0xcc: the scroll, in the string's spacing
-    unsigned char _d0[0x250 - 0xd0];
+    bool m_autoScroll;   // 0xd0: the spec's AUTOSCROLL
+    zdb::CTexHandle *m_downTex;   // 0xd4: DOWN_ARROW's texture
+    zdb::CTexHandle *m_upTex;   // 0xd8: UP_ARROW's texture
+    IPNT2D m_downOffset;   // 0xdc
+    IPNT2D m_downSize;   // 0xe4
+    IPNT2D m_upOffset;   // 0xec
+    IPNT2D m_upSize;   // 0xf4
+    CPlainBmp m_upArrow;   // 0x100 (the destructor 0x379D90 destroys it after the down arrow)
+    CPlainBmp m_downArrow;   // 0x1a0
+    bool m_displayOneLine;   // 0x240: DISPLAY_ONE_LINE
+    unsigned char _241[0x250 - 0x241];
 };   // 0x250 bytes
 
 /* wrapped text scrolling by itself (SOCOM 1's CScrollText; SOCOM II's 0x270 bytes, zui_2d.h's
  * layout: the line to show at 0x258, the scroll position, a float, at 0x260) */
+class CScrollSpec;
+
 class CScrollText : public CWrappedText {
 public:
+    void LoadSpec(const CScrollSpec &spec);
     virtual ~CScrollText();
     virtual void Tick(float dT);
 
@@ -225,6 +313,85 @@ public:
     }
 };
 
+class CTextSpec : public CDlgObjSpec {
+public:
+    /* the colour by value (ours: the target copies it through a return slot on the stack) */
+    CPnt3D GetColor() const { return m_color; }
+
+    CSaferStr m_caption;   // 0x8: CAPTION
+    float m_scale;   // 0x14: SCALE
+    bool m_hasFont;   // 0x18: a FONT named
+    bool m_hcentered;   // 0x19: HCENTERED
+    bool m_rightJustified;   // 0x1a: RIGHT_JUSTIFIED
+    CSaferStr m_font;   // 0x1c: FONT
+    CPnt3D m_color;   // 0x28: COLOR
+};
+
+class CTtySpec : public CTextSpec {
+public:
+    float m_interval;   // 0x34
+    float m_maxLength;   // 0x38
+    float m_spacing;   // 0x3c
+    float m_pulseRate;   // 0x40
+    int m_maxHeight;   // 0x44
+    bool m_noCursor;   // 0x48
+    bool m_fadeCursor;   // 0x49
+};
+
+class CWrapSpec : public CTextSpec {
+public:
+    float m_width;   // 0x34
+    int m_spacing;   // 0x38
+    float m_height;   // 0x3c
+    bool m_displayOneLine;   // 0x40
+    CSaferStr m_upTexture;   // 0x44
+    CSaferStr m_downTexture;   // 0x50
+    IPNT2D m_upOffset;   // 0x5c
+    IPNT2D m_upSize;   // 0x64
+    IPNT2D m_downOffset;   // 0x6c
+    IPNT2D m_downSize;   // 0x74
+    bool m_autoScroll;   // 0x7c
+};
+
+class ActionItem;
+
+/* a button's spec (zui_spec.h's CButtonSpec, 0x118 bytes: only its size here) and a check box's
+ * (CCheckBoxSpec: the two actions, the check's place and size, its texture's name) */
+class CButtonSpec : public CDlgObjSpec {
+public:
+    unsigned char _8[0x118 - 0x8];
+};
+
+class CCheckBoxSpec : public CButtonSpec {
+public:
+    ActionItem *m_onCheck;   // 0x118: ONCHECK
+    ActionItem *m_onUncheck;   // 0x11c: ONUNCHECK
+    IPNT2D m_checkOffset;   // 0x120
+    IPNT2D m_checkSize;   // 0x128
+    CSaferStr m_checkTexture;   // 0x130
+};
+
+/* a slider's spec (zui_spec.h's CSliderBarSpec: the knob's texture name and size, the centre value,
+ * the intervals) */
+class CSliderBarSpec : public CButtonSpec {
+public:
+    CSaferStr m_knobTexture;   // 0x118
+    IPNT2D m_knobSize;   // 0x124
+    float m_centerValue;   // 0x12c
+    int m_numIntervals;   // 0x130
+};
+
+/* the radio strip's and the handler button's specs (zui_spec.h's: buttons' specs with fields of their
+ * own this unit does not read) and the scrolling text's (a wrapped text's) */
+class CRadioStripSpec : public CButtonSpec {
+};
+
+class CHandlerButtonSpec : public CButtonSpec {
+};
+
+class CScrollSpec : public CWrapSpec {
+};
+
 /* the font (SOCOM II's C2DFont: c2dfont.h, after the CSaferStr it holds) -- the renderable string
  * owns its alternate font */
 #include "c2dfont.h"
@@ -239,21 +406,24 @@ public:
     virtual void Tick(float dT);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual void SetString(const char *s, bool translate);
+    void LoadSpec(const CTtySpec &spec);
 
     CSaferStr m_text;   // 0xc0
     int m_cc;   // 0xcc
     int m_len;   // 0xd0: the text's length
     int m_typed;   // 0xd4: the characters shown
     int m_d8;   // 0xd8
-    unsigned char _dc[0xe4 - 0xdc];
-    int m_shown;   // 0xe4: the lines the window shows
-    int m_e8;   // 0xe8
-    unsigned char _ec[0xf0 - 0xec];
-    int m_f0;   // 0xf0
+    float m_interval;   // 0xdc: the spec's INTERVAL
+    float m_maxLength;   // 0xe0: MAXLENGTH (100000 when none)
+    int m_shown;   // 0xe4: the lines the window shows (the spec's MAXHEIGHT)
+    float m_e8;   // 0xe8: a float (LoadSpec's 0.0f takes the FP temporary the target numbers there)
+    float m_pulseRate;   // 0xec: the cursor's PULSERATE (1 when none)
+    float m_f0;   // 0xf0
     unsigned char _f4[0x100 - 0xf4];
     CPlainBmp m_cursor;   // 0x100
     int m_1a0;   // 0x1a0
-    int m_1a4;   // 0x1a4
+    bool m_showCursor;   // 0x1a4: no NOCURSOR
+    bool m_fadeCursor;   // 0x1a5: FADECURSOR
     int m_1a8;   // 0x1a8
 } __attribute__((aligned(16)));   // 0x1b0 bytes
 
@@ -301,6 +471,7 @@ public:
     ActionItem() : Type(0), Animation(0), Argument(0), State(1), Event(16) {}
     ~ActionItem();
     void Run() const;
+    ActionItem &operator=(const ActionItem &a);   // zui.cpp's, 0x369FA0
 
     unsigned char Type;   // 0x0: ACTION_TYPE
     char *Animation;   // 0x4: the animation it starts
@@ -368,6 +539,7 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
     virtual void UpdateUIVar(CUIVariable *var);
+    void LoadSpec(const CButtonSpec &spec);   // 0x376BD0, not written
 
     /* the four states (ButtonState, 0x34 bytes each: its destructor 0x36E650; the names ours) and
      * the one shown */
@@ -396,6 +568,7 @@ public:
     virtual void UpdateUIVar(CUIVariable *var) {}
     virtual void Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual bool HandlePad(const CPad *pad, int port);
+    void LoadSpec(const CCheckBoxSpec &spec, zdb::CTexHandle *tex);
 
     bool m_checked;   // 0x440
     /* the check's place against the button's and its size (the names ours) */
@@ -433,9 +606,12 @@ public:
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
+    void LoadSpec(const CSliderBarSpec &spec, zdb::CTexHandle *tex);
 
     float m_value;   // 0x440
-    unsigned char _444[0x450 - 0x444];
+    zdb::CTexHandle *m_knobTex;   // 0x444: the knob's texture
+    int m_knobW;   // 0x448: the knob's size
+    int m_knobH;   // 0x44c
     float m_center;   // 0x450: the variable's value at the slider's middle
     unsigned char _454[0x460 - 0x454];
     CPlainBmp m_knob;   // 0x460
@@ -455,8 +631,10 @@ public:
     /* the strip's two refreshes after a new choice (SOCOM II's: SOCOM 1 walked the buttons inline;
      * 0x370D10, the name ours, and 0x370DB0, no row named yet) */
     void ShowChoice();
+    void LoadSpec(const CRadioStripSpec *spec, zdb::CTexHandle *tex);
 
     int m_choice;   // 0x440
+    bool m_444;   // 0x444: set by LoadSpec (SOCOM 1's at 0x414)
 } __attribute__((aligned(16)));   // 0x450 bytes
 
 extern "C" void func_00370DB0(CRadioStrip *strip);
@@ -511,6 +689,7 @@ class CHandlerButton : public C2DButton {
 public:
     virtual ~CHandlerButton();
     virtual bool HandlePad(const CPad *pad, int port);
+    void LoadSpec(const CHandlerButtonSpec &spec);
 } __attribute__((aligned(16)));   // 0x440 bytes
 
 /* the pop-up dialog as its command-type lookup sees it (slot 24 of its vtable, 0x36D970; the
@@ -545,6 +724,31 @@ void CRenderableString::UpdateUIVar(CUIVariable *var)
         Format(func_003860F0(UIVarMixin::m_uivar, buf, 10499));
         Update();
     }
+}
+
+/* set up from its spec (SOCOM 1's CTeleType::LoadSpec, which inlined the string's): the string's
+ * own first, then the typing's interval and length (100000 when none), the window's height, the
+ * spacing, the text emptied, the cursor's pulse (1 when none), the cursor bitmap untextured and
+ * opaque, and its two flags */
+void CTeleType::LoadSpec(const CTtySpec &spec)
+{
+    CRenderableString::LoadSpec(spec);
+    m_interval = spec.m_interval;
+    m_e8 = 0.0f;
+    m_f0 = 0.0f;
+    m_maxLength = spec.m_maxLength;
+    m_shown = spec.m_maxHeight;
+    m_height = spec.m_spacing;
+    if (!m_maxLength)
+        m_maxLength = 100000.0f;
+    C2DString::SetString("", true);
+    m_pulseRate = spec.m_pulseRate;
+    if (m_pulseRate == 0.0f)
+        m_pulseRate = 1.0f;
+    m_cursor.SetHasTexture(false);
+    m_cursor.SetTrans(128.0f);
+    m_showCursor = !spec.m_noCursor;
+    m_fadeCursor = spec.m_fadeCursor;
 }
 
 /* the text to type out (looked up first when asked): the string shown emptied, the counters
@@ -693,6 +897,21 @@ void CPlainBmp::Draw(const CMatrix &m, zdb::CTextureRelocMgr *mgr)
         }
     }
     C2DBitmap::Draw(m, mgr);
+}
+
+/* set up from an image spec and its texture (SOCOM 1's, 0x390D40 there): the pulse, the spec's
+ * variable made and watched, the bitmap loaded at the origin in the spec's size */
+void CPlainBmp::LoadSpec(const CImageSpec &spec, zdb::CTexHandle *tex)
+{
+    m_pulsing = spec.m_pulse;
+    m_period = spec.m_pulseRate;
+    if (m_pulsing)
+        m_curtrans = 0.0f;
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+    Load(0.0f, 0.0f, spec.m_sizex, spec.m_sizey, tex);
 }
 
 /* slot 12: a pulsing bitmap's alpha rides a sine, once round per period, between 0 and 128 */
@@ -1036,6 +1255,31 @@ bool CRadioStrip::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
     return handled;
 }
 
+/* set up from its spec and its knob's texture (SOCOM 1's CSliderBar::LoadSpec, 0x38C0A0 there): the
+ * button's own first, the knob untextured when there is no texture, loaded white and opaque at the
+ * origin in its size, the centre value and the intervals, the spec's variable watched, and the
+ * slider brought to its variable's value */
+void CSliderBar::LoadSpec(const CSliderBarSpec &spec, zdb::CTexHandle *tex)
+{
+    C2DButton::LoadSpec(spec);
+    if (!tex)
+        m_knob.SetHasTexture(false);
+    m_knobTex = tex;
+    m_knobW = spec.m_knobSize.x;
+    m_knobH = spec.m_knobSize.y;
+    m_knob.Load(0.0f, 0.0f, m_knobW, m_knobH, m_knobTex);
+    m_knob.SetColor(255.0f, 255.0f, 255.0f);
+    m_knob.SetTrans(128.0f);
+    m_center = spec.m_centerValue;
+    m_intervals = spec.m_numIntervals;
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+    if (UIVarMixin::m_uivar)
+        UpdateUIVar(UIVarMixin::m_uivar);
+}
+
 /* SETVALUE: the value, a percentage, taken and handed to the slider's variable, the command done;
  * anything else the button's (the halfword converted as an unsigned int, the target's sequence;
  * divided in place, `v /= 100`, so the quotient keeps the dividend's register) */
@@ -1189,6 +1433,56 @@ bool C2DCounter::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
 /* Scroll_Up a line while above the top, Scroll_Down a line while the lines below the window
  * last; anything else the renderable string's (SOCOM II's; the compare chain tests the cases in
  * reverse, the bool through a local -- the base's result masked, true assigned) */
+_zrdr *FetchMissionFontsRdr();
+
+/* set up from its spec (SOCOM 1's CRenderableString::LoadSpec, 0x390FB0 there): the scale and the
+ * caption, the justification, the colour, a font of its own when the spec names one (made and
+ * loaded from the mission's fonts), deaf to the pad, the spec's variable watched */
+void CRenderableString::LoadSpec(const CTextSpec &spec)
+{
+    m_scale = spec.m_scale;
+    SetString(spec.m_caption.c_str(), true);
+    m_isCentered = spec.m_hcentered;
+    m_socom2_6a = spec.m_rightJustified;
+    m_Color = spec.GetColor();
+    SetColor(m_Color.x, m_Color.y, m_Color.z);
+    if (spec.m_hasFont) {
+        const char *name = spec.m_font.c_str();
+
+        m_alternateFont = new C2DFont;
+        m_alternateFont->Load(FetchMissionFontsRdr(), name);
+        SetFont(m_alternateFont);
+    }
+    SetCanHandleInput(false);
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+}
+
+/* set up from its spec (SOCOM 1's CWrappedText::LoadSpec): the width, the spacing and the window's
+ * height first, then the string's own, the arrows' textures made, their places, the scroll and
+ * the arrows pulsing once a second, and the one-line display */
+void CWrappedText::LoadSpec(const CWrapSpec &spec, zdb::CTextureRelocMgr *mgr)
+{
+    m_width = spec.m_width;
+    m_height = spec.m_spacing;
+    m_shown = (int)spec.m_height;
+    CRenderableString::LoadSpec(spec);
+    m_upTex = PrepTexture(spec.m_upTexture.c_str(), mgr);
+    m_downTex = PrepTexture(spec.m_downTexture.c_str(), mgr);
+    m_downOffset = spec.m_downOffset;
+    m_downSize = spec.m_downSize;
+    m_upOffset = spec.m_upOffset;
+    m_upSize = spec.m_upSize;
+    m_autoScroll = spec.m_autoScroll;
+    m_downArrow.m_pulsing = true;   // SetPulse(1.0f)'s arm, written out (SetPulse itself stays a call)
+    m_downArrow.m_period = 1.0f;
+    m_upArrow.m_pulsing = true;
+    m_upArrow.m_period = 1.0f;
+    m_displayOneLine = spec.m_displayOneLine;
+}
+
 bool CWrappedText::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
 {
     C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
@@ -2466,6 +2760,48 @@ inline void ActionItem::Run() const
         else
             anim->Activate(0);
     }
+}
+
+/* set up from its spec: the button's own (SOCOM 1's CHandlerButton::LoadSpec, 0x38EC90 there,
+ * the same eight bytes) */
+void CHandlerButton::LoadSpec(const CHandlerButtonSpec &spec)
+{
+    C2DButton::LoadSpec(spec);
+}
+
+/* set up from its spec, by address (SOCOM 1's CRadioStrip::LoadSpec, 0x38AD50 there, the same twelve
+ * bytes): the flag set, then the button's own; the texture unused */
+void CRadioStrip::LoadSpec(const CRadioStripSpec *spec, zdb::CTexHandle *tex)
+{
+    m_444 = true;
+    C2DButton::LoadSpec(*spec);
+}
+
+/* nothing of its own to set up (SOCOM II's: SOCOM 1's CScrollText::LoadSpec read DISPLAYABLELINES
+ * and called the string's; SOCOM II's CScrollSpec::CreateDisplayObj calls it last, empty) */
+void CScrollText::LoadSpec(const CScrollSpec &spec)
+{
+}
+
+/* set up from its spec and its check's texture (SOCOM 1's CCheckBox::LoadSpec, 0x38B380 there): the
+ * button's own first, the check's place and size, the two actions copied, the check bitmap loaded
+ * white and 100 opaque at the origin in its size, the spec's variable watched */
+void CCheckBox::LoadSpec(const CCheckBoxSpec &spec, zdb::CTexHandle *tex)
+{
+    C2DButton::LoadSpec(spec);
+    m_checkX = spec.m_checkOffset.x;
+    m_checkY = spec.m_checkOffset.y;
+    m_checkW = spec.m_checkSize.x;
+    m_checkH = spec.m_checkSize.y;
+    m_action0 = *spec.m_onCheck;
+    m_action1 = *spec.m_onUncheck;
+    m_check.Load(0.0f, 0.0f, m_checkW, m_checkH, tex);
+    m_check.SetColor(255.0f, 255.0f, 255.0f);
+    m_check.SetTrans(100.0f);
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
 }
 
 /* a release of button 9 (SOCOM 1's button 27) toggles the check, running the action of the state

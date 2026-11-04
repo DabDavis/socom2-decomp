@@ -1965,6 +1965,60 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 23** (PostTick, AddWeapon, the damage report, the rifle/pistol swaps, the homings, Tick):
+  - an out-parameter negate, `NegateInto(&d, &d)` writing `out->x = -in->x` and so on, loads the fields straight off sp and
+    keeps one field-address register for the stores (the AI core's round-21 rule again): the carry's homing 0x5B1750 went
+    from 55 words off to byte-exact, and FindDeathAnimTypeCQB to the right size; the in-place pointer form renumbers every
+    saved register;
+  - an inline returning `unsigned char` 1 or 0 from several arms narrows the shared compare-constant register (`andi
+    v0,a0,0xff`), a member read inside the inline rather than passed in keeps its load lazy (0x5A6B70); a helper written as
+    an inline member keeps its `this` (a member's address) in a saved register across calls, a static inline taking the
+    pointer folds it into offsets (the goal's homing 0x5B1890);
+  - a byte parameter tested `== 0` keeps its `andi 0xff` before the branch, `!x` drops it (ReportWeaponHitDamage 0x5A1FF0:
+    SOCOM 1's with SOCOM II's projectile parameter in front); `T x; x = *p;` copies in load/store pairs where `T x = *p`
+    loads all three fields first;
+  - declaration order fixed the saved registers twice: Dump's target list ahead of the AI pointer, Tick's `bool turning;`
+    ahead of the SEAL pointer (CSealCtrl::Tick 0x596F10, its `_close_enough<f>` scored against OVL2's copy 0x52EB60);
+    CZSealBody::PostTick 0x550570 inlines SOCOM 1's GetMaxRegionShift as a unit-local helper;
+  - CBody::AddBodyPart 0x28EBE0 returns the part it made (AddWeapon 0x553290 uses v0; zbody.h declares it void -- queued
+    for the engine core);
+  - open: 0x5A2490 (2: 0x5B14E0's miss inlined -- the target loads the list before the index), FindDeathAnimTypeCQB
+    0x5A9420 (10: the SEAL's node loaded before the facing's stores in the target).
+- **Tells from the game states, round 27** (sixteen static initialisers, CGame's engine pair, fts_msgeditor.cpp):
+  - a static whose class's implicit constructor only runs a member's empty inline constructor emits an empty `__sinit`
+    (`jr ra; nop`): CZBombState::m_BombStatus with its CPnt3D -- 0x4006B0 is __sinit_fts_net_bomb.cpp; an initialiser whose
+    body is another function's: an empty static with an inline constructor calling a same-unit function auto-inlines it
+    (ClearPersonaList);
+  - a base's word stored after the members' words in an initialiser is a reset in the class's constructor body -- dead-store
+    elimination of the base's first store (`CMultiMissionList() { clear(); }`); an initialiser calling an unnamed out-of-line
+    constructor matches through an inline constructor forwarding to the placeholder (the schedules');
+  - a class whose virtuals are all declared but not defined in a unit emits no vtable there, so an inline constructor can
+    store a table defined in another unit (st_menu.cpp's CDblBufTextureRelocator);
+  - a `while` inside an `if` gets its test, call included, copied above the loop; the target's jump-to-the-bottom-test entry
+    comes from an early return before the loop (the chat key handler 0x2C6C70); `m == f()` against `f() == m` sets the
+    xor's operand order;
+  - units: fts_msgeditor.cpp (0x2C9810-0x2CA32F, the file name ours) split out of fts_missionlist.cpp and complete;
+    game_engine.cpp (0x2D0330-0x2D04EF: CGame's Stop/StartEngine, Stop/StartPlay), fts_main.cpp (0x2A2EB0-0x2A3BBF: its
+    statics and CDIDummy) and database.cpp (0x1E8FE0-0x1EB03F: its initialiser so far) new;
+  - open: CNodeAction::Close 0x2B55E0 (0xE0 of 0x154: its operation's tree is six levels high -- the level-6 question),
+    0x2C60C0 (2), 0x2C6290 (6); the 0x134C-byte initialiser 0x400870 (about sixty statics of OVL2 classes, in order) not
+    started.
+- **Tells from the HUD, round 31** (six static initialisers, zui_2d.cpp's LoadSpecs, the glyph pair's copy):
+  - a member stored `0.0f` rather than int `0` gives the same `sw zero` but creates an FP temporary at that point, which
+    fixes the later float registers (CTeleType::LoadSpec's f0/f1); a copy through a stack slot, re-read from the member,
+    comes from an inline by-value accessor (CRenderableString::LoadSpec's colour);
+  - a virtual call through a secondary base's vptr with no null test of `this` is an inline member of that base
+    (UIVarMixin::WatchUIVar); a pointer cast adds a null test, a pointer local a saved register;
+  - 12-byte CPnt3D file statics sit 16 bytes apart in bss; a static array of a class with an empty user constructor builds
+    through `__construct_array`, which emits that constructor out of line (hud_linemap.cpp's clip buffers);
+  - the initialisers by the research: hud_linemap.cpp's (SOCOM 1's `_linedata`, nine LINE_DATA entries, CZLineMap's six
+    CPnt4D[2] clip buffers), hud_main.cpp's (m_hud_textcolor, SOCOM 1's X_WeaponBackground), hud_lensflare.cpp's and
+    zui_2d.cpp's (<iostream>'s pair only), hud_pausemenu.cpp's (five CPnt3D colours), c2dstring.cpp's (its span starts at
+    0x361B00, as the research said); __sinit_hud_newhudmap.cpp matches since GCC 24a's local-function check;
+  - the glyph pair's copy 0x35D370 matched with the colour type 4-aligned and the m_20 member 16-aligned (the MSL lane's
+    measurement); zui_2d.cpp's LoadSpecs are SOCOM 1's names;
+  - open: __sinit_hud_tcm.cpp 0x3FF4A0 (2 instructions short: for each cache's strcpy the target takes the name off the
+    object's address register, `addiu a0,v0,12`, where MW folds the name's address into one lui/addiu pair).
 - **Tells from the world, rdr and sound, round 10** (eight initialisers, AddNewCSnd, ~CValvePool, the rdr packers):
   - a user-declared constructor, even an empty one, makes the implicit copy member by member (words through v0, a bool with
     lbu/sb); a trivial class copies as an FPU block (the CRegistrant vector's reserve 0x3506B0);

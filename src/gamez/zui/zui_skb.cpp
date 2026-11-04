@@ -185,12 +185,14 @@ public:
 void SkbPlaySound(unsigned char which);
 
 extern "C" {
-int func_003999D0();
+
 int func_00395110();
-int func_003996B0();
+
 void func_0038C000(CSoftKeyboard *skb, CGameMenu *menu);
 }
 bool SkbTextUnchanged();
+int SkbTypedTextNotBlank();
+int SkbEnterKana(CSoftKeyboard *skb);
 void SkbTakeText(CGameMenu *menu);
 
 /* (the next unit's node lists' layout from a grid size, 0x395140; this unit's elements shown or
@@ -344,9 +346,9 @@ extern "C" {
  * key pressed (0x38D200); the two edit keys (0x399530, 0x399320) */
 void func_0038DFC0(unsigned char dir, CPad *pad);
 void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
-void func_00399530(CSoftKeyboard *skb);
 void func_00399320(CSoftKeyboard *skb);
 }
+void SkbCursorBack(CSoftKeyboard *skb);
 
 /* a key event of the showing keyboard: the four cursor moves (events 1-4 move up, down, left and
  * right: 3, 1, 2, 4 -- ours), the cursor's key (5), the two edit keys (6, 7) (0x38DFE0; the name
@@ -370,7 +372,7 @@ void SkbHandleKey(int key, CPad *pad, CGameMenu *menu)
         func_0038D200(g_pActiveSkb->GetCurKey(), g_pActiveSkb, pad, menu);
         break;
     case 6:
-        func_00399530(g_pActiveSkb);
+        SkbCursorBack(g_pActiveSkb);
         break;
     case 7:
         func_00399320(g_pActiveSkb);
@@ -527,14 +529,14 @@ static inline bool IsNone(int n)
  * name ours) */
 void CSoftKeyboard::OnEnterKey(CGameMenu *menu)
 {
-    if (!func_003999D0()) {
+    if (!SkbEnterKana(this)) {
         bool unchanged = false;
 
         if (g_bIgnoreUnchanged && SkbTextUnchanged())
             unchanged = true;
         bool empty = false;
 
-        if (IsNone(func_00395110()) && IsNone(func_003996B0()))
+        if (IsNone(func_00395110()) && IsNone(SkbTypedTextNotBlank()))
             empty = true;
         if (unchanged || empty) {
             func_0038C000(this, menu);

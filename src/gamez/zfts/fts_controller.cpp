@@ -4,8 +4,9 @@
  * 0x2C5E70, with the copies its inlined layout constructor calls, 0x2C5FF0-0x2C60BF), the edited
  * layout's buttons, the pressures, the jump/action test, and SOCOM II's stick readers (the strafe
  * 0x2C6110, a function's button held 0x2C61E0, a stick's axis 0x2C6520, the pitch 0x2C65B0 and its
- * caller, the look 0x2C6290 open). Not yet: the per-layout parser 0x2C67F0 and its button-name
- * reader 0x2C6670. Defined in reverse of their image order (-inline deferred). */
+ * caller, the look 0x2C6290 open), and the chat line's USB keyboard (0x2C6C70, its last function
+ * before the layouts' destructor). Not yet: the per-layout parser 0x2C67F0. Defined in reverse of
+ * their image order (-inline deferred). */
 
 #include <string>
 #include <vector>
@@ -226,6 +227,105 @@ CCtrlrConfig *g_pCurrentConfig;
 
 extern "C" {
 extern CCtrlrConfig *data_004415B0;   /* (a second layout: the one being edited) */
+}
+
+/* the chat line's keyboard (only what the handler below reads or calls): a key read this frame
+ * (zin_keyboard.cpp's KeyInput: the code, the shift key, the caps lock light), the network's
+ * online flag, and the mission's message editor (theMission +0x1060, fts_msgeditor.cpp's) */
+struct KeyInput {
+    unsigned char code;   // 0x0: the USB keyboard's code
+    int shift;   // 0x4
+    int ctrl;   // 0x8
+    int alt;   // 0xc
+    int _10;   // 0x10
+    int caps;   // 0x14
+    int _18[2];
+};
+
+int GetKeyReadThisFrame(KeyInput *key);   /* 0x2DBD90 */
+
+class CZNetwork {
+public:
+    unsigned char m_8;   // 0x0
+    unsigned char m_9;   // 0x1: an online game
+};
+
+extern CZNetwork theNetwork;
+
+class CMsgEditor {
+public:
+    void AddCharacter(char c);   /* 0x2C9D90 */
+    void DeleteCharacter();   /* 0x2C9D00 */
+    void Submit();   /* 0x2C9B80 */
+    void Cancel();   /* 0x2C9CC0 */
+};
+
+class CMissionChat {
+public:
+    unsigned char _0[0x1060];
+    CMsgEditor m_messages4;   // 0x1060: the chat line
+};
+
+extern CMissionChat theMission;
+
+/* the keys typed into the chat line while online (SOCOM II's; OVL1 0x2C6C70, the name ours): a
+ * letter (codes 4-29, upper case with shift or caps lock but not both), the digit row (30-39) and
+ * the punctuation (45-56) with or without shift, the keypad's digits (89-99), space and the
+ * keypad's four operators each typed; otherwise backspace (42), enter (40) and escape (41) delete,
+ * send and drop -- each switch's cases in the reverse of their compare chain's order */
+extern "C" void func_002C6C70()
+{
+    KeyInput key;
+
+    if (!theNetwork.m_9)
+        return;
+    while (GetKeyReadThisFrame(&key)) {
+        char c = 0;
+
+        if (key.code >= 4 && key.code < 30) {
+            c = key.code + 93;
+            c = (key.shift != 0) ^ (key.caps != 0) ? c - 32 : c;
+        } else if (key.code >= 30 && key.code < 40)
+            c = (key.shift ? "!@#$%^&*()" : "1234567890")[key.code - 30];
+        else if (key.code >= 45 && key.code < 57)
+            c = (key.shift ? "_+{}|}:\"~<>?" : "-=[]\\];'`,./")[key.code - 45];
+        else if (key.code >= 89 && key.code < 100)
+            c = "1234567890."[key.code - 89];
+        else {
+            switch (key.code) {
+            case 44:
+                c = ' ';
+                break;
+            case 84:
+                c = '/';
+                break;
+            case 85:
+                c = '*';
+                break;
+            case 86:
+                c = '-';
+                break;
+            case 87:
+                c = '+';
+                break;
+            }
+        }
+        if (c)
+            theMission.m_messages4.AddCharacter(c);
+        else {
+            switch (key.code) {
+            case 42:
+                theMission.m_messages4.DeleteCharacter();
+                break;
+            case 40:
+                theMission.m_messages4.Submit();
+                break;
+            case 41:
+                theMission.m_messages4.Cancel();
+                break;
+            }
+        }
+    }
 }
 
 /* one layout read from its rdr item and added to the layouts (SOCOM II's, out of the loader's

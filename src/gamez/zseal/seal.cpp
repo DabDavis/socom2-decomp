@@ -570,6 +570,46 @@ void CZSealBody::OnMissionEnd()
     ((CSealCtrl *)m_control)->OnMissionEnd();
 }
 
+extern "C" {
+/* CBody::AddBodyPart (OVL1 0x28EBE0), which returns the part it made -- NewBodyPart's, in v0: zbody.h
+ * (the engine core's) declares it void, so it is called by its mangled name here, the body by reference
+ * so no null test is made */
+CZBodyPart *AddBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart(CBody &body, zdb::CNode *node, CZBodyPart *parent);
+}
+
+/* a weapon's node made, kept for freeing and named, parented by the item: the rifle in hand to the
+ * right hand, slung to the back; the pistol to the hand or the hips; a throwable to the hand; its part
+ * the item's (OVL2 0x553290; SOCOM 1's AddWeapon, the constructor calls it twice in both builds --
+ * SOCOM II keeps the parts in m_item_gear) */
+bool CZSealBody::AddWeapon(SEAL_ITEM_BYTE item)
+{
+    CZBodyPart *parent = 0;
+    zdb::CNode *node = new zdb::CNode;
+
+    m_deallocList.push_back(node);
+    switch (item) {
+    case ITEM_RIFLE:
+        if (m_item == item)
+            parent = m_rhand;
+        else
+            parent = m_spinelo;
+        node->SetName("rifle");
+        break;
+    case ITEM_PISTOL:
+        if (m_item == item)
+            parent = m_rhand;
+        else
+            parent = m_hips;
+        node->SetName("pistol");
+        break;
+    case ITEM_THROWABLE:
+        parent = m_rhand;
+        node->SetName("grenade");
+        break;
+    }
+    return (m_item_gear[item].m_part = AddBodyPart__5CBodyFPQ23zdb5CNodeP10CZBodyPart(*this, node, parent)) != 0;
+}
+
 /* the root body part (OVL2 0x553DB0; SOCOM 1's, CBody's slot 0x10) */
 CZBodyPart *CZSealBody::GetRootPart() const
 {
@@ -819,6 +859,54 @@ void CZSealBody::CreateAiEvent()
     m_aiEvent->m_pos = m_posW;
     m_aiEvent->m_owner = m_id;
     CAiEvent::Create(m_aiEvent);
+}
+
+extern "C" {
+/* the SEALs' queued ground probes, run as one batch (OVL1 bss: the count at 0x44D598, the list at
+ * 0x44D588; OVL2 0x5B0800, seal_env.cpp's range, passes both to the world's GetIntersectBatch and
+ * clears the count -- new in SOCOM II, the names unknown), and 0x5B0420 (seal_env.cpp's range: its
+ * work done once the batch has run) */
+extern int data_0044D598;
+void func_005B0800();
+void func_005B0420(CZSealBody *seal);
+}
+
+/* the highest bit of a region mask as a shift, none 0 (SOCOM 1's zdb::IntersectStruct::
+ * GetMaxRegionShift, a static member SOCOM 1 calls out of line from here, the copy right after it;
+ * SOCOM II inlines it -- node_world.h is another lane's, so the helper is the unit's) */
+static inline unsigned int GetMaxRegionShift(unsigned int mask)
+{
+    unsigned int shift = 0;
+
+    if (mask) {
+        shift = -1;
+        while (mask) {
+            mask >>= 1;
+            shift++;
+        }
+    }
+    return shift;
+}
+
+/* the queued probes run, then 0x5B0420; seen by the player's camera, the node's region shift is the
+ * camera's highest region; carrying a body, the carried node takes the SEAL's shift (OVL2 0x550570,
+ * slot 0x24; SOCOM 1's, which then ran the carry's and the CQB's anims -- SOCOM II adds the batch, the
+ * call and the carry's null test) */
+void CZSealBody::PostTick(float dT)
+{
+    if (data_0044D598 > 0)
+        func_005B0800();
+    func_005B0420(this);
+    zdb::CCamera *cam = ((CWorldCamera *)zdb::CWorld::m_world)->m_camera;
+
+    if (cam->PlayerCanSeeRegion(m_last_altitude.GetRegion()))
+        GetNode()->m_region_shift = GetMaxRegionShift(cam->GetPlayerCanSeeRegion());
+    if (m_state == stateCarrying) {
+        CZSealBody *carry = m_carry;
+
+        if (carry)
+            carry->GetNode()->m_region_shift = GetNode()->m_region_shift;
+    }
 }
 
 extern "C" {
