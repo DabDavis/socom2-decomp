@@ -39,7 +39,7 @@ public:
 struct MATERIALEX {
     char *m_name;   // 0x0
 };
-extern "C" MATERIALEX *func_002DE440(unsigned int i);
+/* (zweapon.h declares CMaterialExArray::GetWeaponAnimMaterialEx) */
 
 /* ---- CZAmmoList (0x3C4E80-0x3C519F) ---- */
 
@@ -208,7 +208,10 @@ static inline zdb::CTexture *HandleTexture(zdb::CTexHandle *h)
  * here the weapon s0, the iterator s2 and this s1, the end recomputed into v1 at each test (with
  * `e = end()` in the for: this s0, the end s1, the iterator s2). The weapon or the iterators
  * declared at the top, before the loop or in the for, postfix steps, `!(it == end())`, `end() !=
- * it`, the weapon cast out through `it.i_` and a while walk move none of it */
+ * it`, the weapon cast out through `it.i_` and a while walk move none of it. Round 18: the end taken
+ * into a local before the iterator (the kit's round-21 rule) gives the iterator s1, the end s2, the weapon s0 (this's
+ * register reused), 52 off -- the target computes the end in place in this's register (`addiu s1,s1,4`);
+ * an iterator assigned from begin() ahead of the end local (the AI core's round 20) is 0x3C8 long */
 void CZWeaponList::InitializeWeapons()
 {
     CZWeapon::SetBulletPassSound(CSnd::GetSoundByName(".BUL_PASSING"));
@@ -269,7 +272,7 @@ void CZWeaponList::InitializeWeapons()
             unsigned int n = CMaterialExArray::m_materialex_list.size();
 
             for (unsigned int i = 0; i < n; i++) {
-                MATERIALEX *m = func_002DE440(i);
+                MATERIALEX *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
 
                 if (m) {
                     char name[32];
@@ -300,7 +303,7 @@ void CZWeaponList::InitializeWeapons()
             unsigned int n = CMaterialExArray::m_materialex_list.size();
 
             for (unsigned int i = 0; i < n; i++) {
-                MATERIALEX *m = func_002DE440(i);
+                MATERIALEX *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
 
                 if (m) {
                     char name[32];

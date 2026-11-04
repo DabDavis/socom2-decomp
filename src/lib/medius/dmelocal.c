@@ -34,14 +34,15 @@
 
 #define DME_MAX_PING_SLOTS  127
 
-typedef struct DmePingSlot {
-    int field_00;
-    int field_04;
-    int field_08;
-    int bInUse;                         /* 0x0C */
-    int field_10;
-    int field_14;
-    int field_18;
+typedef struct DmePingSlot {           /* a ping in flight (round 20b: 0x6192A0 fills one) */
+    unsigned char abIp[4];              /* 0x00: the address pinged, binary */
+    unsigned short nPort;               /* 0x04 */
+    short field_06;
+    int bTimebase;                      /* 0x08: 1 a timebase ping, its callback told world and client */
+    void (*pfnCallback)();              /* 0x0C: null when the slot is free */
+    unsigned int nSent;                 /* 0x10: the local time it was sent */
+    int nWorld;                         /* 0x14 */
+    int nClient;                        /* 0x18 */
 } DmePingSlot;                          /* 0x1C */
 
 typedef struct DmeAddress { int w[6]; } DmeAddress;    /* 24 bytes, copied whole */
@@ -58,7 +59,7 @@ extern int func_006437E0(void *p);
 extern int func_00618B38();
 extern int func_0061BC68(int);
 extern int func_0061CCA8(int);
-extern int func_00614888(void **ppMemory);
+extern void func_00614888(void **ppMemory);
 extern char *strncpy(char *dst, const char *src, unsigned int n);
 
 extern int data_00651178;               /* the world this client is in */
@@ -110,6 +111,64 @@ extern void (*data_0067A728[16])(int nClient, int nIndex, int nField);
 extern void (*data_0067A768[16])(int nClient, int nIndex);
 extern int data_00651180;               /* NetInitialize has run */
 extern int data_00686A30;               /* the object-deletion message's type */
+
+int func_00614168(unsigned short *pCount);
+extern int func_0061D448(int nClient);
+extern int data_00686A50;               /* this client's state report's message type */
+
+/* this client's state report (16 bytes) */
+typedef struct DmeClientReport {
+    unsigned char nState;               /* 0x00 */
+    unsigned char nClient;              /* 0x01 */
+    unsigned char field_02;             /* 0x02 */
+    unsigned char field_03;             /* 0x03 */
+    unsigned short nObjects;            /* 0x04: the live objects it made (func_00614168) */
+    int nValue;                         /* 0x08 */
+    int nWorldValue;                    /* 0x0C */
+} DmeClientReport;
+
+/* new in SOCOM II (0x613FD0, DmeLocal.c's first function): this client's state report, sent to one
+ * client or (nTarget -1) to every other connected one */
+void func_00613FD0(unsigned int nWorld, int nTarget)
+{
+    DmeClientReport msg;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    unsigned int nMyClient;
+    unsigned int i;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(nWorld, &pWorld) != 0)
+        return;
+    if (pWorld == 0)
+        return;
+    nMyClient = pWorld->nMyClient;
+    if (nMyClient >= DME_MAX_CLIENTS)
+        return;
+    if (func_0061C720(nWorld, nMyClient, &pClient) != 0)
+        return;
+    if (pClient == 0)
+        return;
+    msg.nClient = func_0061D448(nMyClient);
+    msg.nState = pClient->nState;
+    msg.field_02 = pClient->field_18;
+    msg.field_03 = pClient->field_1C;
+    msg.nValue = pClient->nValue;
+    msg.nWorldValue = pWorld->field_448;
+    if (func_00614168(&msg.nObjects) != 0)
+        return;
+    if (nTarget == -1) {
+        for (i = 0; i < DME_MAX_CLIENTS; i++) {
+            if (func_0061C720(nWorld, i, &pClient) != 0)
+                return;
+            if (pClient != 0 && pClient->bConnected == 1 && i != nMyClient)
+                func_00615DE0(80, nWorld, i, data_00686A50, sizeof(msg), &msg);
+        }
+        return;
+    }
+    func_00615DE0(80, nWorld, nTarget, data_00686A50, sizeof(msg), &msg);
+}
 
 int func_00614168(unsigned short *pCount)
 {
@@ -170,7 +229,8 @@ int func_00614290(int nA, int nB)
 typedef struct DmeDelayRecord {
     unsigned int anDelay[100];          /* 0x000 */
     unsigned int nCount;                /* 0x190 */
-    int field_194[3];
+    int nNext;                          /* 0x194: the next sample's slot */
+    int tStamp[2];                      /* 0x198: the last sample's time */
 } DmeDelayRecord;
 
 extern int func_0061C510(unsigned int nClient, void **ppRecord);
@@ -398,6 +458,14 @@ int func_006147E0(void)
     return -1;
 }
 
+extern int CurrentNetTime;              /* SOCOM 1's name: the network clock's base */
+
+/* SOCOM 1's NetResetTime (0x614838), byte-identical, before DMEmalloc as there */
+void NetResetTime(int nTime)
+{
+    CurrentNetTime = nTime;
+}
+
 void *DMEmalloc(unsigned int nSize)
 {
     void *pMemory = 0;
@@ -405,6 +473,16 @@ void *DMEmalloc(unsigned int nSize)
     if (rt_memory_allocate_init_zero(&pMemory, nSize) != 0)
         printf("rt_memory_allocate failed \n");
     return pMemory;
+}
+
+extern int rt_memory_free(void **ppMemory);
+
+/* SOCOM 1's DmeFree (0x614888, round 5b's name by the handlers' calls): the block freed when there
+ * is one -- a sibling call under the frame it keeps for the other path */
+void func_00614888(void **ppMemory)
+{
+    if (*ppMemory != 0)
+        rt_memory_free(ppMemory);
 }
 
 extern unsigned int strlen(const char *s);
@@ -536,6 +614,22 @@ int func_00614F58(unsigned int nStream, void **ppStream)
     return DME_OK;
 }
 
+extern int rt_time_get_local(unsigned int *pTime);
+
+/* NetGetLocalTime's body (0x615028, SOCOM 1's NetGetLocalTime with a null test) stands as its matched
+ * draft: written here (`if (!p) return 23; rt_time_get_local(&t); *p = t; return 0;`, byte-exact) it
+ * moves func_0061C7A8's registers after DMEmalloc (23s) -- round 14b's "an earlier function's
+ * spelling moves a later one's", a third time */
+extern int func_00615028(unsigned int *pnTime);
+
+/* NetGetTime's body (0x615068): SOCOM 1's NetGetTime with a null test */
+int func_00615068(int *pnTime)
+{
+    if (pnTime == 0)
+        return DME_ERR_ARGUMENT;
+    *pnTime = CurrentNetTime;
+    return DME_OK;
+}
 
 int func_00615090(int *pValue, unsigned int nWorld)
 {
@@ -907,6 +1001,66 @@ void RemoteObjectDelete(unsigned int nClient, unsigned int nIndex)
         return;
     if (data_0067A768[pObject->nClass] != 0)
         data_0067A768[pObject->nClass](nClient, nIndex);
+}
+
+/* an object's allocated parts (0x1C-0x37), freed with it */
+typedef struct DmeObjectParts {
+    char field_00[0x1C];
+    void *pPart1C;                      /* 0x1C */
+    void *pPart20;                      /* 0x20 */
+    char field_24[0x0C];
+    void *pPart30;                      /* 0x30 */
+    void *pPart34;                      /* 0x34 */
+} DmeObjectParts;
+
+extern int func_006126E8(void **ppClient, unsigned int nWorld, unsigned int nClient);
+
+/* SOCOM 1's NetFreeRemoteObject grown (0x615FC8): the deletion callback, then the object looked up
+ * again; its status 1, back to 0 unless the index lies in its creator's block; four parts freed where
+ * SOCOM 1 freed two unconditionally, then the table's slot and the record */
+int NetFreeRemoteObject(int nIndex)
+{
+    DmeObjectParts *pObject;
+    DmeClient *pClient = 0;
+
+    if (nIndex < 0 || nIndex >= DME_MAX_OBJECTS)
+        return DME_ERR_ARGUMENT;
+    if ((unsigned int)data_00651178 >= DME_MAX_WORLDS)
+        return DME_ERR_RANGE;
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject == 0)
+        return DME_ERR_RANGE;
+    RemoteObjectDelete(((DmeObject *)pObject)->nCreator, nIndex);
+    func_00614EC8((void **)&pObject, nIndex);
+    if (pObject != 0) {
+        NetObjectStatus[nIndex] = 1;
+        if (data_00651178 < DME_MAX_WORLDS) {
+            func_006126E8((void **)&pClient, data_00651178, ((DmeObject *)pObject)->nCreator);
+            if (pClient != 0) {
+                if (nIndex < pClient->nFirstObject || nIndex >= pClient->nFirstObject + pClient->nObjects)
+                    NetObjectStatus[nIndex] = 0;
+            }
+        }
+        if (pObject->pPart20 != 0) {
+            func_00614888(&pObject->pPart20);
+            pObject->pPart20 = 0;
+        }
+        if (pObject->pPart1C != 0) {
+            func_00614888(&pObject->pPart1C);
+            pObject->pPart1C = 0;
+        }
+        if (pObject->pPart30 != 0) {
+            func_00614888(&pObject->pPart30);
+            pObject->pPart30 = 0;
+        }
+        if (pObject->pPart34 != 0) {
+            func_00614888(&pObject->pPart34);
+            pObject->pPart34 = 0;
+        }
+        data_006766E0[nIndex] = 0;
+        func_00614888((void **)&pObject);
+    }
+    return DME_OK;
 }
 
 int NetFreeLocalObject(unsigned int nIndex)
@@ -1523,9 +1677,97 @@ int FindFreePingSlot(void)
     int i;
 
     for (i = 0; i < DME_MAX_PING_SLOTS; i++)
-        if (data_0067B7B8[i].bInUse == 0)
+        if (data_0067B7B8[i].pfnCallback == 0)
             return i;
     return DME_MAX_PING_SLOTS;
+}
+
+
+
+extern int rt_time_get_time_stamp(void *t);
+
+/* the timebase ping's callback (0x619138, after FindFreePingSlot where SOCOM 1's TimeBasePingCallback
+ * is, rewritten): half the round trip recorded as the client's next delay sample; the session master's
+ * answer, with its time, re-bases the clock unless the median delay is shorter */
+void func_00619138(int nStatus, int nUnused, unsigned int nRoundTrip, int nRemoteTime, unsigned int nWorld,
+                   int nClient)
+{
+    DmeWorld *pWorld = 0;
+    DmeDelayRecord *pRecord;
+    int nHost;
+    int nBase;
+    int nMedian;
+    int nDelay;
+    int n;
+
+    if (func_0061C600(nWorld, &pWorld) != 0)
+        return;
+    if (pWorld == 0)
+        return;
+    if (nWorld != data_00651178)
+        return;
+    if (nClient >= pWorld->field_444)
+        return;
+    if (nStatus != 0)
+        return;
+    nHost = 256;
+    pRecord = 0;
+    func_0061C510(nClient, (void **)&pRecord);
+    if (pRecord == 0)
+        return;
+    nDelay = nRoundTrip / 2;
+    n = pRecord->nNext;
+    pRecord->anDelay[n++] = nDelay;
+    if (pRecord->nCount < 100)
+        pRecord->nCount++;
+    func_00615090(&nHost, nWorld);
+    if (nWorld == data_00651178 && nClient == nHost && nRemoteTime != 0) {
+        func_00615068(&nBase);
+        func_00614380((unsigned int *)&nMedian, nClient);
+        if (nMedian >= nDelay)
+            NetResetTime(nRemoteTime + nDelay);
+    }
+    if (n >= 100)
+        n = 0;
+    pRecord->nNext = n;
+    rt_time_get_time_stamp(pRecord->tStamp);
+}
+
+extern int NetSendMessage(char msgClass, int connIndex, int toClient, int reliable, int msgType, int len,
+                          void *msg);
+extern int data_00686A0C;               /* the timebase ping's message type */
+
+/* SOCOM 1's SendTimebaseCorrection grown (0x6192A0): the clock and a free ping slot sent to the client,
+ * the slot then filled -- the client's address and port, its world and index, the time sent and the
+ * callback 0x619138 (bTimebase 1: told world and client) */
+void func_006192A0(unsigned int nClient)
+{
+    struct {
+        int nTime;
+        char nSlot;
+        unsigned char bTimebase;
+    } msg;
+    DmeClientInfo *pClient = 0;
+
+    if (nClient >= DME_MAX_CLIENTS)
+        return;
+    msg.bTimebase = 1;
+    msg.nSlot = FindFreePingSlot();
+    if (msg.nSlot == DME_MAX_PING_SLOTS)
+        return;
+    msg.nTime = CurrentNetTime;
+    NetSendMessage(-128, data_00651178, nClient, 0, data_00686A0C, sizeof(msg), &msg);
+    if (func_0061C720(data_00651178, nClient, &pClient) != 0)
+        return;
+    if (pClient == 0)
+        return;
+    func_00615028(&data_0067B7B8[(unsigned char)msg.nSlot].nSent);
+    func_006148E0(data_0067B7B8[(unsigned char)msg.nSlot].abIp, pClient->szIp);
+    data_0067B7B8[(unsigned char)msg.nSlot].nPort = pClient->nPort;     /* tools/ccperm.py: 1 of 120 */
+    data_0067B7B8[(unsigned char)msg.nSlot].pfnCallback = func_00619138;
+    data_0067B7B8[(unsigned char)msg.nSlot].bTimebase = 1;
+    data_0067B7B8[(unsigned char)msg.nSlot].nWorld = data_00651178;
+    data_0067B7B8[(unsigned char)msg.nSlot].nClient = nClient;
 }
 
 /* a data stream's record (NetGetDataStream hands one out) */
@@ -1938,9 +2180,9 @@ int func_0061C998(unsigned int nWorld, int nValue)
 extern int rt_time_get_local(unsigned int *pTime);
 
 /* the pings unanswered for 30 seconds (0x61C9E8): each slot's callback told 14 and freed (six
- * arguments for a slot whose field_08 is 1, four otherwise). OPEN (16 bytes long): the target
- * reaches the port and field_14 off its walking pointer to the callback (`lhu t0,-8(s1)`, `lw
- * t0,8(s1)`) and field_08/field_18 by index; first shape only. */
+ * arguments for a timebase ping, four otherwise). Byte-exact since round 20b typed the slot as
+ * 0x6192A0 fills it -- the port a halfword (`lhu`), the in-use word the callback itself (round 13b's
+ * `int` port and `int` flag called through a cast were 16 bytes long). */
 int func_0061C9E8(void)
 {
     char szIp[16];
@@ -1949,16 +2191,16 @@ int func_0061C9E8(void)
 
     rt_time_get_local(&nNow);
     for (i = 0; i < DME_MAX_PING_SLOTS; i++) {
-        if (data_0067B7B8[i].bInUse != 0 && (int)(nNow - data_0067B7B8[i].field_10) - 30000 > 0) {
+        if (data_0067B7B8[i].pfnCallback != 0 && (int)(nNow - data_0067B7B8[i].nSent) - 30000 > 0) {
             NetIpBinaryToString(szIp, (unsigned char *)&data_0067B7B8[i]);
             NetIpBinaryToString(data_006766D0, (unsigned char *)&data_0067B7B8[i]);
-            data_0067B7A8 = data_0067B7B8[i].field_04;
-            if (data_0067B7B8[i].field_08 == 1)
-                ((void (*)())data_0067B7B8[i].bInUse)(14, szIp, 0, 0, data_0067B7B8[i].field_14,
-                                                     data_0067B7B8[i].field_18);
+            data_0067B7A8 = data_0067B7B8[i].nPort;
+            if (data_0067B7B8[i].bTimebase == 1)
+                data_0067B7B8[i].pfnCallback(14, szIp, 0, 0, data_0067B7B8[i].nWorld,
+                                         data_0067B7B8[i].nClient);
             else
-                ((void (*)())data_0067B7B8[i].bInUse)(14, szIp, 0, 0);
-            data_0067B7B8[i].bInUse = 0;
+                data_0067B7B8[i].pfnCallback(14, szIp, 0, 0);
+            data_0067B7B8[i].pfnCallback = 0;
         }
     }
     return DME_OK;

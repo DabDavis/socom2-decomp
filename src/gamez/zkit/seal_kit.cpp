@@ -477,6 +477,33 @@ int CZKit::GetCurNumMags()
     return 0;
 }
 
+/* (OVL2 0x5C7CE0; SOCOM 1's UnInit over its m_items_avail -- SOCOM II's item pointers -- and its
+ * light map).
+ * OPEN, 0xCC against 0x120: the target keeps the three iterators in the frame -- out, end and the
+ * walk's, in that order, each copied through $f0 from a begin()/end() temporary (40 from 52, 44 from
+ * 56, 48 from 60) and re-read and re-stored at every step, as list<T *>'s assigned wrapper iterators
+ * are -- where include/vector's pointer-vector iterator (one raw pointer) is scalarised here in every
+ * form tried: initialised, assigned in each declaration order, postfix steps. Likely the original
+ * MSL's iterator over a nested base iterator (the MSL lane's); the rest of the body is SOCOM 1's */
+void CZKit::UnInit()
+{
+    std::vector<void *>::iterator out = m_itemptr.begin();
+    std::vector<void *>::iterator e = m_itemptr.end();
+
+    for (std::vector<void *>::iterator i = m_itemptr.begin(); i != e; ++i, ++out) {
+        zdb::CNode *n = (zdb::CNode *)*i;
+
+        if (n && !n->GetParent())
+            zdb::CNode::Delete(n);
+        *out = 0;
+    }
+    m_itemptr.clear();
+    if (m_lightMap) {
+        delete m_lightMap;
+        m_lightMap = 0;
+    }
+}
+
 /* the first explosive's (151) ammunition's damage kept, none without one (OVL2 0x5C77B0, new in
  * SOCOM II: PostSetupItems calls it; the name ours) */
 void CZKit::SetupExplosiveDamage()
@@ -486,6 +513,32 @@ void CZKit::SetupExplosiveDamage()
         if (m_item[i] && m_item[i]->m_ID == 151) {
             m_explosiveDamage = ((CZAmmo *)GetAmmoByIndex(i))->GetExplosionDamage();
             break;
+        }
+    }
+}
+
+/* with item 194 held, every weapon of id types 4, 31, 51, 81, 91 and 101 gets twice its magazines:
+ * the extra ones (up to ten) filled as the first is, the rest emptied (OVL2 0x5C75F0; SOCOM 1's
+ * Setup2XAmmo, its item 188 and its count of magazines asked of the weapon list's own weapon in
+ * SOCOM II) */
+void CZKit::Setup2XAmmo()
+{
+    if (HasItem((EQUIP_ITEM)194)) {
+        for (int i = 0; i < m_num_items; i++) {
+            if (m_item[i]) {
+                EQUIP_ITEM t = m_item[i]->GetIDType();
+
+                if (t == 4 || t == 31 || t == 51 || t == 81 || t == 91 || t == 101) {
+                    int n = CZWeapon::m_listWeapons.GetWeapon(m_item[i]->m_ID)->GetNumMags();
+                    int j;
+
+                    for (j = n; j < 2 * n; j++)
+                        if (j < 10)
+                            m_reloads[i][j] = m_reloads[i][0];
+                    for (; j < 10; j++)
+                        m_reloads[i][j] = 0;
+                }
+            }
         }
     }
 }
@@ -700,6 +753,27 @@ void CZKit::SetFireDelay(float delay, bool alt)
     m_alt_firedelay = alt;
 }
 
+/* every remote charge the SEAL set down within 500 of him set off, then the detonator (153) taken
+ * up and the count stepped (OVL2 0x5C0130; SOCOM 1's DetonateRemoteExplosives, its unused pod
+ * vector kept -- zeroed at entry, freed at the end -- the position read straight off the SEAL where
+ * SOCOM 1 asked a virtual, and the remote test PlacedExplosive's own). The walk's begin and end
+ * initialised together, the iterator first: the end declared ahead swaps their registers */
+void CZKit::DetonateRemoteExplosives()
+{
+    std::vector<unsigned int> unused;
+    CZProjectileList *list = CZWeapon::m_pProjectilelist;
+    unsigned int id = ((CEntity *)m_body)->m_id;
+
+    for (std::vector<PlacedExplosive *>::iterator it = list->m_explosives.begin(), e = list->m_explosives.end(); it != e; ++it) {
+        PlacedExplosive *x = *it;
+
+        if (id == x->m_shooterID && x->IsRemote() && x->IsInRange(&((CEntity *)m_body)->m_posW, 500.0f))
+            x->RemoteDetonate();
+    }
+    SetCurItemEnum((EQUIP_ITEM)153);
+    m_burst_count++;
+}
+
 /* (OVL2 0x5C0020) */
 void CZKit::HandlePlacingExlosive(EQUIP_ITEM item, float a, float b)
 {
@@ -721,6 +795,79 @@ void CZKit::HandlePlacingExlosive(EQUIP_ITEM item, float a, float b)
     }
     SetCurItemByIndex(m_last_selected);
     m_hotswap = false;
+}
+
+/* the AI maps' laser-target names (CAiMaps::m_names[3], AiMaps+0x60: a vector of CAiMap::name, 0x18
+ * bytes -- ai_maps.h's, which this unit does not include: the views ours), the anim's state byte
+ * (zanim.h's _zanim_anim_params::m_state) and the SEAL's aim point (zseal.h's CZSealBody at
+ * 0x1458, SOCOM 1's m_aim_point after m_aim_dir and m_aim_goal) */
+struct CKitMapName {
+    CAiMapLoc m_loc;   // 0x0
+    char m_name[16];   // 0x4
+    unsigned char m_14;   // 0x14
+    unsigned char m_15;   // 0x15
+};
+struct CKitAiMapsView {
+    unsigned char _0[0x60];
+    std::vector<CKitMapName> m_lase_names;   // 0x60
+};
+struct CKitAnimView {
+    unsigned char _0[3];
+    unsigned char m_state;   // 0x3
+};
+struct CKitAimView {
+    unsigned char _0[0x1458];
+    CPnt3D m_aim_point;   // 0x1458
+};
+extern CKitAiMapsView AiMaps;
+class CZAnimMain;
+extern CZAnimMain ZAnim;
+
+extern "C" {
+/* CAiMaps::GetLocation(const CPnt3D *, CAiMapLoc &) and GetCellCenter (OVL2 0x52DC70, 0x52D480),
+ * CZAnimMain::GetAnim(name, set) (OVL1 0x26A250) */
+bool GetLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(CKitAiMapsView *maps, const CPnt3D *pos, CAiMapLoc &loc);
+CPnt3D *GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D(CKitAiMapsView *maps, const CAiMapLoc &loc, CPnt3D *c);
+CZAnim *GetAnim__10CZAnimMainFPCcPCc(CZAnimMain *zanim, const char *name, const char *set);
+/* the laser's reach (an int, converted at the compare) and its time (OVL1 data 0x3DF1E0, 0x3DF1D8) */
+extern int data_003DF1E0;
+extern float data_003DF1D8;
+}
+
+/* (OVL2 0x5BFE60; SOCOM 1's FetchLaseTarget, its grid distance a point's squared distance in SOCOM II).
+ * The SEAL in a local declared first (its load leads the zero's copy), the location's bool tested
+ * `== false` (the andi), the names through a reference (their address computed once) */
+bool CZKit::FetchLaseTarget()
+{
+    CKitAimView *body = (CKitAimView *)m_body;
+    CPnt3D c = CPnt3D::zero;
+    CAiMapLoc loc;
+
+    if (GetLocation__7CAiMapsFPC6CPnt3DR9CAiMapLoc(&AiMaps, &body->m_aim_point, loc) == false)
+        return false;
+    std::vector<CKitMapName> &names = AiMaps.m_lase_names;
+
+    for (std::vector<CKitMapName>::iterator n = names.begin(), e = names.end(); n != e; ++n) {
+        if (GetCellCenter__7CAiMapsFRC9CAiMapLocP6CPnt3D(&AiMaps, n->m_loc, &c)) {
+            CPnt3D d;
+
+            c.Sub(&((CEntity *)m_body)->m_posW, &d);
+            if (d.x * d.x + d.y * d.y + d.z * d.z < (float)data_003DF1E0) {
+                const char *name = n->m_name;
+                CZAnim *a = name ? GetAnim__10CZAnimMainFPCcPCc(&ZAnim, name, 0) : 0;
+
+                if (a && ((CKitAnimView *)a)->m_state == 1) {
+                    m_lase_mapname = &*n;
+                    m_lase_anim = a;
+                    m_lase_timer = 0.0001f;
+                    m_lase_echo = true;
+                    CZWeapon::RegisterTimer(&m_lase_timer, data_003DF1D8, true);
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 /* the fire delay still running (OVL2 0x5C2400, new in SOCOM II; the name ours) */

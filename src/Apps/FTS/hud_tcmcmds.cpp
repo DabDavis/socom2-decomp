@@ -320,13 +320,13 @@ int tcmOpenNode(CZSealBody *player, CTCMNode *node)
         g_tcmColumns[i].m_dir = 1.0f;
         if (i - 1 >= 0)
             g_tcmColumns[i - 1].m_dir = -1.0f;
-        func_002356D0(&theTCM);
+        theTCM.Next();
         node->m_text2.Off();
         unsigned int n = node->m_children.size();
 
         for (unsigned int j = 0; j < n; j++)
             node->m_children[j]->m_root.On();
-        func_00232890(&theTCM.m_sounds, 1);
+        theTCM.m_sounds.Play(TCM_SND_SELECT);
         r = 0;
     }
     if (!theNetwork.m_bNetwork)
@@ -339,7 +339,7 @@ void tcmCloseNode(CTCMNode *node)
 {
     CTCMNode *parent = node->m_parent;
 
-    func_00231BA0(parent);
+    parent->HideAll();
     parent->m_root.On();
     /* a temporary bound to a reference: the colour stays in the frame (y and z then kept in
      * saved registers, x reloaded for each call), where a named CPnt4D is scalarised */
@@ -382,8 +382,8 @@ int tcmUpdateTeam(CZSealBody *player, int team)
 
                 if (name && strstr(name, "CHA SOLDIER"))
                     name = "SOLDIER";
-                func_00232170(s_tcmCurNode, name, 0);
-                func_00232100(s_tcmCurNode, name);
+                s_tcmCurNode->SetCaption(name, 0);
+                s_tcmCurNode->SetName(name);
             }
         }
     }
@@ -425,13 +425,13 @@ int tcmUpdateTeamMember(CZSealBody *player, int member)
                         const char *name = (const char *)func_002B4820(data);
 
                         if (caption && text2) {
-                            func_00232170(s_tcmCurNode, caption, 0);
-                            func_002320E0(s_tcmCurNode, text2);
+                            s_tcmCurNode->SetCaption(caption, 0);
+                            s_tcmCurNode->SetText2(text2);
                         } else {
                             r = 1;
                         }
                         if (name)
-                            func_00232100(s_tcmCurNode, name);
+                            s_tcmCurNode->SetName(name);
                     }
                 }
             }
@@ -534,7 +534,7 @@ int tcmSendMessage(CZSealBody *player, int msg)
         }
         SendMessageMessage(player->m_id, to, (unsigned char)msg);
         PlayRemoteMsg(player, (unsigned char)msg, 0);
-        func_00232240(s_tcmCurNode, 5.0f);
+        s_tcmCurNode->SetDelay(5.0f);
     }
     return 0;
 }
@@ -567,7 +567,7 @@ int tcmUpdateMessage(CZSealBody *player, int msg)
             caption = TranslateString(s);
         else
             caption = "<NONE>";
-        func_00232170(s_tcmCurNode, caption, 32);
+        s_tcmCurNode->SetCaption(caption, 32);
         break;
     }
     case 49:
@@ -582,7 +582,7 @@ int tcmUpdateMessage(CZSealBody *player, int msg)
             caption = TranslateString(s);
         else
             caption = "<NONE>";
-        func_00232170(s_tcmCurNode, caption, 32);
+        s_tcmCurNode->SetCaption(caption, 32);
         break;
     }
     }
@@ -602,7 +602,7 @@ int tcmCharacterTaunt(CZSealBody *player, int arg)
         msg = rand() % 7 + 59;
         SendMessageMessage(player->m_id, to, msg);
         PlayRemoteMsg(player, msg, 0);
-        func_00232240(s_tcmCurNode, 5.0f);
+        s_tcmCurNode->SetDelay(5.0f);
     }
     return 0;
 }
