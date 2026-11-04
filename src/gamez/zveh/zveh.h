@@ -294,6 +294,12 @@ public:
     void SetActive(bool on);
     /* the scope's two looks shown, one or the other (new in SOCOM II; the name ours) */
     void SetThermal(zdb::CNode *node, bool thermal);
+    /* the six nodes' opacity (CNode::m_Opacity) set: the scopes, the joints, the fire point's node
+     * and the root (new in SOCOM II, 0x3A9FB0: the SEAL's UpdateTurretScope passes its value; the
+     * name ours), and its bool form, shown whole or hidden (0x3AA020: the zoom-state switches hide
+     * the turret for its thermal view and show it again; the name ours) */
+    void SetOpacity(float opacity);
+    void SetVisible(bool visible);
 
     CAiTimer m_fireTimer;   // 0x170
     unsigned char _17c[0x194 - 0x17c];

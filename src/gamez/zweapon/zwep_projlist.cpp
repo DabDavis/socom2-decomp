@@ -135,7 +135,9 @@ CZProjectileList::CZProjectileList(int count)
  * OPEN, 4 instructions short: the weapon test's `andi` sits in the filter branch's delay slot here
  * where the target leaves it a nop and pads after the id compare; the id and charge registers
  * (v1/s2/s3 in the target: a1/s3/s2 here) follow. The tests as `filter && item != id` first, `id ==
- * item`, `filter == false` (an extra saved register) and an unsigned char id do not give it */
+ * item`, `filter == false` (an extra saved register) and an unsigned char id do not give it. Round
+ * 21 (HandleTimers' assigned-result lead): the flag set in an if after a false or true default (94
+ * off), as a ternary (the same 16 short), the id as a ternary (8 short) or an if/else (8 long) */
 void CZProjectileList::Clear(int shooter, EQUIP_ITEM item)
 {
     bool filter = item != EQUIP_NONE;

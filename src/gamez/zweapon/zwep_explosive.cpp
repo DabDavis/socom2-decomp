@@ -159,9 +159,6 @@ struct DI_FLAGS {
     unsigned int _b20 : 12;
 };
 
-/* the projectile's detonation's handling (0x3C7EE0, not named) */
-extern "C" void func_003C7EE0(CZProjectile *proj);
-
 /* to be detonated: its proximity registered with the world at the blast's radius, and the
  * detonation handed on; detonated, handled once (SOCOM 1's had only the first; SOCOM II's skips
  * either while both of its two new flags are set) */
@@ -183,7 +180,7 @@ bool PlacedExplosive::PreTick(float dT)
         return true;
     }
     if (m_state == PROJECTILE_WAS_DETONATED && !held) {
-        func_003C7EE0(this);
+        RegisterNextHit();
         return true;
     }
     return true;
