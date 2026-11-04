@@ -20,6 +20,9 @@ const T &_min(const T &a, const T &b)
 /* what the path's functions call that is not written yet (this unit's) */
 extern "C" void func_00525520(CAiPath *path);   /* SOCOM 1's UpdateTurnAngles, by position */
 extern "C" void func_00525810(CAiPath *path, unsigned int leg);   /* SOCOM 1's SmoothPathLeg */
+/* a cell put into the path on its map (FindDetour's last call: SOCOM 1's InsertPathLoc or
+ * AppendPathLoc, by its place after PostProcess) */
+extern "C" bool func_00526C10(CAiPath *path, const CAiMapLoc &loc, CAiMap *map);
 
 
 /* a vector's storage cut to its size: a copy of it swapped in (node_world.cpp's, the name ours):
@@ -454,4 +457,101 @@ bool CAiPath::PointInPath(const CAiMapLoc &loc, unsigned int *index)
         }
     }
     return false;
+}
+
+/* a cell on a map (ai_astar.cpp's: through the reference MW shares the x the found cell's `!=` read,
+ * which then stays a materialised bool) */
+inline CAiMapLoc on_map(const CAiMapLoc &l, unsigned int id)
+{
+    return CAiMapLoc(l.x, l.y, id);
+}
+
+/* what FindDetour's walks carry (the name ours): the two ends a detour joins, the cell found
+ * (CAiMapLoc::invalid for none) and how far a walk goes */
+struct DETOUR_DATA {
+    CAiMapLoc m_from;   // 0x0
+    CAiMapLoc m_to;   // 0x4
+    CAiMapLoc m_found;   // 0x8
+    float m_range;   // 0xc
+};
+
+/* a walk's cell taken as the detour when the feet reach it from the first end and the second end
+ * from it; the walk goes on to its range (new in SOCOM II, the name ours: 0x524660) */
+static bool _DetourLineCallback(const MAP_LINEWALK_STRUCT &s, void *data)
+{
+    DETOUR_DATA *d = (DETOUR_DATA *)data;
+
+    if (s.m_loc == d->m_from)
+        return true;
+    if (s.m_map->CanTravelLine(d->m_from, s.m_loc, 0) && s.m_map->CanTravelLine(s.m_loc, d->m_to, 0)) {
+        d->m_found = s.m_loc;
+        return false;
+    }
+    if (!(s.m_dist <= d->m_range))
+        return false;
+    return true;
+}
+
+/* a cell to step aside to, put into the path: from the cell toward the path's last point (the one
+ * before when the last is the goal), lines walked out from the point square to that way -- one
+ * side, then the other -- for a cell both legs reach (new in SOCOM II, the name ours: 0x524170,
+ * called by an AI state's 0x602270). The found cell rebuilt through on_map, so its `!=` stays the
+ * target's materialised bool (the AI core's round 19 rule: the x its first operand read is used after).
+ * OPEN, 22 instructions, the right size: (1) the head -- the target materialises the test of the last
+ * point as `v0 = !empty()`, NARROWED (andi 0xff), then `if (v0) v0 = m_state == COMPLETE` and branches
+ * on v0, where HasPoints() as a ternary's condition (or through a bool local, an if, a helper returning
+ * the point, `!= false`, `&& true`) gives MW's branch form with a `daddiu 1` bool (SmoothPath's
+ * HasPoints, in an `&&`, has the target's shape without the andi); (2) the second walk's turn -- the
+ * target loads side.y and side.z off sp and stores them through the field-address registers s7/s8,
+ * this build loads through the registers too (a negating helper by value or by pointer, a copy, a
+ * pointer local and the three-float constructor tried) */
+bool CAiPath::FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapLoc &goal, int cells)
+{
+    bool ok = false;
+    point *p = HasPoints() ? &m_points[m_points.size() - 1] : 0;
+
+    if (!p)
+        return false;
+    CAiMapLoc to(p->m_loc);
+
+    if (to == goal && !m_points.empty()) {
+        PopPoint(0);
+        p = &m_points[m_points.size() - 1];
+        if (!p)
+            return false;
+        to = p->m_loc;
+    }
+    if (from.m_mapid != to.m_mapid)
+        return false;
+    CAiMap *map = AiMaps.GetMapByIndex(from.m_mapid);
+    CPnt3D v;
+
+    CAiMap::GetDirVec(CAiMap::GetClosestDir(from, to), v);
+    DETOUR_DATA d;
+
+    d.m_from = from;
+    d.m_to = to;
+    d.m_found = CAiMapLoc::invalid;
+    d.m_range = 10.0f * cells;
+    CPnt3D side;
+
+    side.x = -v.z;
+    side.y = 0.0f;
+    side.z = v.x;
+    CPnt3D end = *pos + side * d.m_range;
+
+    map->WalkLine(from, &end, _DetourLineCallback, &d, 0.2f);
+    if (d.m_found == CAiMapLoc::invalid) {
+        side.x = -side.x;
+        side.y = -side.y;
+        side.z = -side.z;
+        end = *pos + side * d.m_range;
+        map->WalkLine(from, &end, _DetourLineCallback, &d, 0.2f);
+    }
+    if (d.m_found != CAiMapLoc::invalid) {
+        CAiMapLoc l = on_map(d.m_found, map->m_mapid);
+
+        ok = func_00526C10(this, l, map);
+    }
+    return ok;
 }

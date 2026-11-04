@@ -1356,6 +1356,10 @@ public:
      * and summed again when none is kept or when forced; 0 without points (SOCOM 1's GetLength,
      * the demo's 0x196510, by its place and its call from CAiMaps::CreateGraph: 0x527E70) */
     float GetLength(bool force);
+    /* a cell to step aside to, put into the path: lines walked square to the way from a cell to
+     * the path's last point, out from a point, for a cell both legs reach (new in SOCOM II, the name
+     * ours: 0x524170) */
+    bool FindDetour(const CAiMapLoc &from, const CPnt3D *pos, const CAiMapLoc &goal, int cells);
 
     CAiStar *m_astar;   // 0x0
     CAiPlanner *m_planner;   // 0x4
