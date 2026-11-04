@@ -822,6 +822,54 @@ void CZSealBody::CreateAiEvent()
 }
 
 extern "C" {
+/* the SEALs' queued ground probes, run as one batch (OVL1 bss: the count at 0x44D598, the list at
+ * 0x44D588; OVL2 0x5B0800, seal_env.cpp's range, passes both to the world's GetIntersectBatch and
+ * clears the count -- new in SOCOM II, the names unknown), and 0x5B0420 (seal_env.cpp's range: its
+ * work done once the batch has run) */
+extern int data_0044D598;
+void func_005B0800();
+void func_005B0420(CZSealBody *seal);
+}
+
+/* the highest bit of a region mask as a shift, none 0 (SOCOM 1's zdb::IntersectStruct::
+ * GetMaxRegionShift, a static member SOCOM 1 calls out of line from here, the copy right after it;
+ * SOCOM II inlines it -- node_world.h is another lane's, so the helper is the unit's) */
+static inline unsigned int GetMaxRegionShift(unsigned int mask)
+{
+    unsigned int shift = 0;
+
+    if (mask) {
+        shift = -1;
+        while (mask) {
+            mask >>= 1;
+            shift++;
+        }
+    }
+    return shift;
+}
+
+/* the queued probes run, then 0x5B0420; seen by the player's camera, the node's region shift is the
+ * camera's highest region; carrying a body, the carried node takes the SEAL's shift (OVL2 0x550570,
+ * slot 0x24; SOCOM 1's, which then ran the carry's and the CQB's anims -- SOCOM II adds the batch, the
+ * call and the carry's null test) */
+void CZSealBody::PostTick(float dT)
+{
+    if (data_0044D598 > 0)
+        func_005B0800();
+    func_005B0420(this);
+    zdb::CCamera *cam = ((CWorldCamera *)zdb::CWorld::m_world)->m_camera;
+
+    if (cam->PlayerCanSeeRegion(m_last_altitude.GetRegion()))
+        GetNode()->m_region_shift = GetMaxRegionShift(cam->GetPlayerCanSeeRegion());
+    if (m_state == stateCarrying) {
+        CZSealBody *carry = m_carry;
+
+        if (carry)
+            carry->GetNode()->m_region_shift = GetNode()->m_region_shift;
+    }
+}
+
+extern "C" {
 /* three anim types the code reads as variables (OVL1 data, -1 in the image) */
 extern short data_003DEF40;
 extern short data_003DEF50;

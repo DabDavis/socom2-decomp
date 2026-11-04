@@ -547,7 +547,11 @@ public:
     /* SOCOM 1's AI_LOOK, a signed byte (AIL_ALL is -1: compared with `lb`); the enum is
      * seal_look.cpp's (the kit lane's), so a plain signed char here -- 9 is AIL_DEPLOY */
     signed char m_look_mode;   // 0x24 (SOCOM 1's 0x20)
-    unsigned char _25[0xa8 - 0x25];
+    unsigned char _25[0x60 - 0x25];
+    /* the scan's reach, scaling the yaw throttle's look in Tick (SOCOM 1's m_scan_limits, at 0x60 in
+     * both builds: the scan timer ends there in each) */
+    float m_scan_limits;   // 0x60
+    unsigned char _64[0xa8 - 0x64];
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
     unsigned char _b4[0xd8 - 0xb4];
     float m_d8;   // 0xd8: a range 0x570D90 falls back to (the name ours)
@@ -1252,6 +1256,7 @@ public:
 
     /* (0x5533E0, not written yet: declared so no unit emits an implicit one) */
     virtual ~CZSealBody();
+    virtual void PostTick(float dT);                                        /* +0x24 */
     virtual void OnMissionStart();                                          /* +0x4C */
     virtual void OnMissionEnd();
     virtual void OnRecycleEntity(CEntity *e);                               /* +0x54 */
