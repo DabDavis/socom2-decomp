@@ -2060,6 +2060,21 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the weapons, round 23** (ZWepReader::ReadWeapon, the projectile list's Clear(), the item stash typed):
+  - a call whose result MW folds away: write it `(unsigned int)f() <= 0xFFFFFFFFu && ...` (always true) and the folded
+    branch targets the false block, so only that block is padded; the always-false `|| ...` form leaves the true block
+    labelled and padded (the item-class-185 test 0x3C5C20);
+  - frame slots follow declaration order, not first definition: `float zoom; int n; float wait = 0.1f;` puts `wait`
+    lowest though it is initialised first; a call duplicated into both arms comes from an if/else making it in each arm --
+    one trailing call left the function 0x20 short (ZWepReader::ReadWeapon 0x3CDA30, 0x137C and 275 relocations, calling
+    18 CZWeapon setters as members -- 54 accessors and setters named by SOCOM 1's DWARF order at SOCOM II's offsets, each
+    setter matching the rdr key SOCOM 1's Read passes it);
+  - template pieces sit right after the function that first asks for them, even mid-unit (the vector<PlacedExplosive *>
+    pieces 0x3CD3A0-0x3CD460 between CZProjectileList::Clear() 0x3CD150 and Init);
+  - CZItemStash is vector<CZWeapon *> / vector<CZAmmo *> / vector<int> and a CZAnim * at 0x24 (every writer pushes a weapon,
+    an ammo and a count; every reader reads m_ID through the first two and compares the count signed); OVL2's three
+    identical 4-byte pod destructors 0x5427E0 / 0x542850 / 0x5428C0 named by the target's destruction order of the
+    members, the third an ovl-copy of vector<int>'s 0x2C7290.
 - **Tells from the UI, round 23** (CFileIO::fseek at last, the hangul split, SkbStartDisplay to 1):
   - a `switch` with `default` written first lays the default block right after the compare chain and the cases after it
     in source order, an if/else-if chain puts the default last (CFileIO::fseek 0x39E720, open since round 2: the host

@@ -220,9 +220,7 @@ struct AI_SOUND_PRIORITY {
     unsigned int m_rest : 24;
 };
 
-/* an anim's signal to its controller (SOCOM 1's AI_SIGNAL by AnimSignal's mangled name; a byte -- the
- * switch narrows it with andi -- its cases 1 to 6, the names unknown) */
-enum AI_SIGNAL { AI_SIGNAL_0 = 0, AI_SIGNAL_LAST = 255 };
+/* an anim's signal to its controller (AI_SIGNAL) is ai_states.h's: CAiState's slot +0x0C takes it */
 
 /* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
@@ -1067,6 +1065,9 @@ public:
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
     virtual void UpdateViewCone();
+    /* an enemy first seen by the squad called out, by its place on the player's clock (SOCOM 1's,
+     * which took the CTarget; OVL2 0x5C9930, the kit lane's seal_sensors.cpp) */
+    void EnemyCallout(CEntity *e, CEntity *player);
     /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);

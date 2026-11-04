@@ -11094,13 +11094,13 @@
 0x005C9340 0x74 GetWeaponAccuracy__10CAiWepHintFP8CZWeaponfb  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponAccuracy -- AI_PARAMS::GetAccuracy of the weapon (0 without one), now doubled when the bool is set and _saturate'd to [0, 1] -- before GetWeaponEffectiveRange as there
 0x005C93C0 0x38 GetWeaponEffectiveRange__10CAiWepHintFP8CZWeapon  # OVL2; s1:order by hand (the kit lane, round 11): SOCOM 1's CAiWepHint::GetWeaponEffectiveRange -- the same 0.5 * (max + min) of the weapon's AI_PARAMS (SOCOM II's at 0x70), 0 without a weapon -- the kit unit's last as there, after GetWeaponAccuracy
 0x005C9400 0x118 UpdateViewCone__11CSealCtrlAiFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x005C9520 0x200 func_005C9520  # OVL2
+0x005C9520 0x200 UpdateViewCone__9CSealCtrlFv  # OVL2; by hand (the kit lane, round 35): CSealCtrl's vtable slot +0xA8 (0x669558, the slot CSealCtrlAi's UpdateViewCone 0x5C9400 overrides at the same offset), right after it as SOCOM 1's UpdateViewCone__9CSealCtrlFv follows the AI's; SOCOM II looks from the app camera when it shows the SEAL; byte-exact from seal_sensors.cpp
 0x005C9720 0x78 SetViewFOV__9CSealCtrlFf  # OVL2; s1:calls
 0x005C97A0 0x30 push_back__Q23std56list<PQ27CDiPool3dir,Q23std26allocator<PQ27CDiPool3dir>>FRCPQ27CDiPool3dir  # OVL2; by hand (the kit lane, round 25): the request list's push_back (include/list's: the base's insert at the sentinel), out of line -- target_post_tick's cut of CDiPool::PostTick calls it (and 0x5CC120); seal_sensors.cpp's copy, the first
 0x005C97D0 0x58 func_005C97D0  # OVL2
 0x005C9830 0x74 func_005C9830  # OVL2
 0x005C98B0 0x7C func_005C98B0  # OVL2
-0x005C9930 0x1CC func_005C9930  # OVL2
+0x005C9930 0x1CC EnemyCallout__11CSealCtrlAiFP7CEntityP7CEntity  # OVL2; by hand (the kit lane, round 35): SOCOM 1's EnemyCallout__11CSealCtrlAiFPC7CTargetP7CEntity by its body (the same squad Notify, is_moving at 800, the conjugated quaternion's Apply, the 0.15 high test, get_clock_direction + base, + 12 when high, PlayAiSound through slot +0x24) after CSealCtrl::UpdateViewCone as in SOCOM 1's seal_sensors.cpp; SOCOM II passes the entity (OnSetTargetVisible 0x5CA470 hands it target.m_ent and ftsGetPlayer()) and keeps a squad bit; byte-exact from seal_sensors.cpp
 0x005C9B00 0x8 NotifyTargetDown__9CSealCtrlFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9B10 0x20 NotifyTargetDown__11CSealCtrlAiFP10CZSealBody  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005C9B30 0x63C func_005C9B30  # OVL2
@@ -11284,7 +11284,7 @@
 0x005E1DF0 0x12FC func_005E1DF0  # OVL2
 0x005E30F0 0x624 func_005E30F0  # OVL2
 0x005E3720 0x18 Get__12CAnimAuxDataFUi  # OVL2; s1:exact
-0x005E3740 0x200 func_005E3740  # OVL2
+0x005E3740 0x200 Inherit__7AnimSetFP7AnimSet  # OVL2; by hand (the kit lane, round 35): SOCOM 1's Inherit__7AnimSetFP7AnimSet by its body (the self test, the base's includes resolved while this set is not ready -- SOCOM 1's walk inline, SOCOM II's call to 0x5E3940 --, the records put at their types' places, the anims-by-item groups copied, m_ready set; 312 groups where SOCOM 1 had 300), in SOCOM 1's place after Load; byte-exact from anim.cpp
 0x005E3940 0x180 func_005E3940  # OVL2
 0x005E3AC0 0x60 TypeBit1__7AnimSetF8AnimType  # OVL2; by hand (the kit lane, round 10): AnimSet's per-type record (the vector at 0x44, as BaseAnim reads it) tested for its byte-5 bit 1; new in SOCOM II, the name ours
 0x005E3B20 0xFC GetVariantScript__7AnimSetF8AnimTypeii  # OVL2; by hand (the kit lane, round 19; the name ours): AnimSet's script of a type's variant by kind and index -- GetVariant, then GetGroup's state naming the archive (1 zBoneArchive, 2 zBoneMapArchive), m_byRdr[variant]; 0 without one
@@ -11449,7 +11449,7 @@
 0x005F0180 0x204 func_005F0180  # OVL2
 0x005F0390 0xD8 GetStatus__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x18 (GetStatus, the CAiState table read from every SOCOM 1 override)
 0x005F0470 0x240 OnSignal__10CAiSActionFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x8 (OnSignal)
-0x005F06B0 0x90 Virtual0C__10CAiSActionFiiP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x0C (the base's 0x5F6050 takes the same id, event byte and controller): its object's id told event 1 drops it, event 6 sets the flags' bit 2; the AI's stack bit 0 set either way (the kit lane, round 3)
+0x005F06B0 0x90 Virtual0C__10CAiSActionFP6CZAnim9AI_SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSAction's vtable slot +0x0C (the base's 0x5F6050 takes the same id, event byte and controller): its object's id told event 1 drops it, event 6 sets the flags' bit 2; the AI's stack bit 0 set either way (the kit lane, round 3); by hand (the kit lane, round 35, the SEALs' round-33 request): slot +0x0C retyped to the caller's (CZAnim *, AI_SIGNAL, CSealCtrlAi *) -- CSealCtrlAi::AnimSignal 0x562030 hands each state the anim and the signal as it came; code-identical, byte-exact from seal_aistate.cpp
 0x005F0740 0x60 Virtual34__10CAiSActionFP11CSealCtrlAiP8CAiEventP10CZSealBodyb  # OVL2; by hand (the kit lane, round 5): CAiSAction's vtable slot +0x34 -- true while m_phase < 6, else for a friend's event of kind 3 or 6 (the name ours, by slot)
 0x005F07A0 0xC Virtual38__10CAiSActionFv  # OVL2; by hand: CAiSAction's vtable slot +0x38, one of SOCOM II's six new CAiState slots (the name ours, by its slot): the word at +0x34 below 6
 0x005F07B0 0x10 CanAttack__10CAiSActionCFv  # OVL2; by hand: CAiSAction's vtable slot +0x24 (CanAttack)
@@ -11481,7 +11481,7 @@
 0x005F37C0 0x3D4 Tick__10CAiSScriptFP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike); the kit lane, round 6: slot 0x10 takes no frame time -- CAiStateStack::Tick (0x5F8030) never sets $f12 for it and no override reads $f12 before writing it (they read the m_dT static) -- and returns an int
 0x005F3BA0 0x414 OnSignal__10CAiSScriptFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F3FC0 0x28 func_005F3FC0  # OVL2
-0x005F3FF0 0x90 Virtual0C__10CAiSScriptFiiP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 6): CAiSScript's vtable slot +0x0C (0x669860+0xC) -- its own sequence id (0x58) told an event: 1 clears the id, 2 and 3 set and clear the hold bit (0x5C bit 0) through a bool, the byte at 0x5F made 255
+0x005F3FF0 0x90 Virtual0C__10CAiSScriptFP6CZAnim9AI_SIGNALP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 6): CAiSScript's vtable slot +0x0C (0x669860+0xC) -- its own sequence id (0x58) told an event: 1 clears the id, 2 and 3 set and clear the hold bit (0x5C bit 0) through a bool, the byte at 0x5F made 255; by hand (the kit lane, round 35, the SEALs' round-33 request): slot +0x0C retyped to the caller's (CZAnim *, AI_SIGNAL, CSealCtrlAi *) -- CSealCtrlAi::AnimSignal 0x562030 hands each state the anim and the signal as it came; code-identical, byte-exact from seal_aistate.cpp
 0x005F4080 0x8 CanAttack__10CAiSScriptCFv  # OVL2; by hand: CAiSScript's vtable slot +0x24 (CanAttack)
 0x005F4090 0x60 CanPursue__10CAiSScriptCFP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x2C (CanPursue; SOCOM 1's 0x6C bytes, this 0x60)
 0x005F40F0 0x80 CanPushAiState__10CAiSScriptF8AI_STATEP11CSealCtrlAi  # OVL2; by hand: CAiSScript's vtable slot +0x1C (CanPushAiState)
@@ -11510,7 +11510,7 @@
 0x005F5FC0 0x8 FindAiState__11CSealCtrlAiCF8AI_STATE  # OVL2; s1:order by hand (SOCOM 1's FindAiState, between ClearAiState and GetAiState() const there and here; SOCOM II's tail-calls the stack's walk 0x5F8270 on its stack at 0x41C; the states call it with a kind -- the kit lane, round 3)
 0x005F5FD0 0x38 GetAiState__11CSealCtrlAiCFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState() const, after ClearAiState as there: the state stack at 0x41C (SOCOM 1's 0x324), empty -> the static unknown state at 0x66B990 (SOCOM 1's at 0x509870), else its front)
 0x005F6010 0x38 GetAiState__11CSealCtrlAiFv  # OVL2; s1:order by hand (SOCOM 1's GetAiState(), next: the same code, non-const)
-0x005F6050 0xA8 Virtual0C__8CAiStateFiiP11CSealCtrlAi  # OVL2; by hand: CAiState's vtable slot +0x0C, the base's own (not inline): the AI's script state (kind 1, through FindAiState) running sequence `id` and told event 2 ends this state (the name ours, by slot; the kit lane, round 3)
+0x005F6050 0xA8 Virtual0C__8CAiStateFP6CZAnim9AI_SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiState's vtable slot +0x0C, the base's own (not inline): the AI's script state (kind 1, through FindAiState) running sequence `id` and told event 2 ends this state (the name ours, by slot; the kit lane, round 3); by hand (the kit lane, round 35, the SEALs' round-33 request): slot +0x0C retyped to the caller's (CZAnim *, AI_SIGNAL, CSealCtrlAi *) -- CSealCtrlAi::AnimSignal 0x562030 hands each state the anim and the signal as it came; code-identical, byte-exact from seal_aistate.cpp
 0x005F6100 0x8C func_005F6100  # OVL2
 0x005F6190 0x48 func_005F6190  # OVL2
 0x005F61E0 0x88 func_005F61E0  # OVL2
