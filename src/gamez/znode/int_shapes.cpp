@@ -11,8 +11,8 @@
  * unit's name is ours. Written so far: the shapes' constructors and destructors,
  * CDIBBox::GetAltitude, SetEdgeVecsAndNorm, LoadPlaneVU0, GetBBoxCorners and (round 10) the edge
  * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690), and
- * DiIntersect::LoadTipAndTail (0x2DD210, open). Unwritten, in image order: SetCDIBBox,
- * CDIBBox::GetIntersect, CDIPoly::GetIntersect and CDIPoly::GetAltitude -- VU0 code throughout.
+ * DiIntersect::LoadTipAndTail (0x2DD210) and CDIPoly::GetIntersect (both open). Unwritten, in
+ * image order: SetCDIBBox, CDIBBox::GetIntersect and CDIPoly::GetAltitude -- VU0 code throughout.
  * Defined in reverse of their image order (-inline deferred). */
 
 #include "node_world.h"
@@ -83,6 +83,52 @@ bool intersect2d(const CPnt3D *p, const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
 }
 
 namespace zdb {
+
+/* the ray against the polygon, edge by edge on VU0 (the tip and tail already loaded): the last
+ * point and the first through the microprogram at 0x10, then each next point through 0x20 -- its
+ * result, the hit point with a word at 12 the program zeroes for a miss, into the next hit's slot,
+ * and from 0x20 the plane's normal into the slot's +0x10 -- whether every edge kept the hit (SOCOM
+ * 1's, slimmed: SOCOM II syncs once a call and leaves the poly and count to the caller).
+ * OPEN, 0xB0 against 0xC0: every instruction is the target's but the registers (p a3, the normal's
+ * address a1 and the count v1 where the target has a1, v1 and a3), the order of the result's lwc1
+ * and the zero's mtc1 (the target loads first, then a nop before c.eq.s, at both tests) and the two
+ * loop-label pads that follow. GCC-style asm (the lwc1 inside or outside) and these asm blocks
+ * compile alike; the normal's address hoisted to a local and `p + n - 1` give the target's set-up */
+int CDIPoly::GetIntersect(DiIntersect *di)
+{
+    IntersectStruct *is = &di->m_Intersects[di->m_Cnt];
+    CPnt3D *norm = &is->m_norm;
+    int n = m_flags.m_ptcount;
+    CPnt4D *p = m_pnts;
+    CPnt4D *last = p + n - 1;
+    float w;
+
+    asm volatile {
+        lqc2 vf4, 0(last)
+        lqc2 vf5, 0(p)
+        vcallms 0x10
+        qmtc2.i a0, vf0
+        sqc2 vf29, 0(is)
+        lwc1 w, 12(is)
+    }
+    if (w == 0.0f)
+        return 0;
+    do {
+        p++;
+        asm volatile {
+            vadd.xyz vf4, vf5, vf0
+            lqc2 vf5, 0(p)
+            vcallms 0x20
+            qmtc2.i a0, vf0
+            sqc2 vf29, 0(is)
+            sqc2 vf3, 0(norm)
+            lwc1 w, 12(is)
+        }
+        if (w == 0.0f)
+            return 0;
+    } while (--n);
+    return 1;
+}
 
 /* the model-space tip and tail as points (w 1), the tail's w then the back-face mask's bits, loaded
  * into VU0 -- the tip in vf1, the tail in vf2 -- for the polygon queries' microprograms (SOCOM 1's,
