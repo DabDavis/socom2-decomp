@@ -11,6 +11,11 @@
  * %hi in v0 and clears v0 for the return after the store; here the return's clear is scheduled
  * first and the %hi takes v1 (return _bind = 0, return _bind: the same; round 17a: the store and
  * return inside the loop, 0x90, or the bind test positive with -1 after the loop, 0x8C, neither).
+ * GCC round 18a: byte-exact as written under -fno-schedule-insns (sched1 off: the return's clear
+ * stays after the store, so the %hi may take v0), which costs every other function of the object
+ * 2-34 words -- this build's first scheduler hoists the clear (no dependence, ISSUE_RATE 2) where
+ * the vendor's did not: with fileio's no-wait PRE and libscf's adddate GCSE, a third place the
+ * vendor's cc1 differs from dtls13010's, not a source shape.
  * cd and rdata are data.txt's cd@iopheap and rdata@iopheap (round 17a: the IOP reset and loadfile
  * objects label statics of the same names). */
 

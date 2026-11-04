@@ -4,8 +4,9 @@
  * passes them: the `#line`s give __FILE__ and __LINE__ the text the target's strings hold) and sets
  * one encoder parameter, marking it changed (the flag's store first: the target's registers). The
  * four flag setters read the parameter block before the assert, as a declaration's initialiser. Called one each by the encoder API's setters
- * (sase_encapi.c). Placeholders: the codec's names are not in SOCOM 1. Built as nelly.c is
- * (ee-gcc 2.96, -O2 -G8). */
+ * (sase_encapi.c). GCC round 18a: the frame's spectrum 0x249A38 (line 586), byte-exact as first
+ * written (its 1,056-byte frame a float[264]). Placeholders: the codec's names are not in SOCOM 1.
+ * Built as nelly.c is (ee-gcc 2.96, -O2 -G8). */
 
 #define NellyNull 0
 extern void __assert(const char *file, int line, const char *expr);
@@ -121,4 +122,35 @@ void func_00249968(EncMemBlk *pEncMemBlk)
 #line 1003 "../../SaseEncVad/source/EncSC.c"
 	assert(pEncMemBlk != NellyNull);
 	p->f44 = 0;
+}
+
+/* the frame's spectrum (GCC round 18a): the window's length and shift, the frame read centred
+ * out of the input ring, doubled, Hamming-windowed, transformed and split into its two halves */
+#define ENC_DELAY_SIZE 145
+
+typedef struct CircMblk CircMblk;
+extern int func_00251748(void);
+extern int func_00249C88(void *pvState, CircMblk *pvCircMblk, int iDelay, int iLength, float *pfWork);
+extern void func_0024C7D0(CircMblk *pvCircMblk, int iOffset, int iLength, float *pfOutBuff);
+extern void func_0024EEA0(const float *pfIn, int iLength, float *pfOut, float fScale);
+extern void func_0024C458(float *pfWindow, int iLength);
+extern void func_002518E8(const float *pfSig, int iLength, float *pfSpec, int iLog2N);
+extern void func_0024E8D0(const float *pfIn, float *pfRe, float *pfIm, int iLength);
+
+void func_00249A38(void *pvState, CircMblk *pvCircMblk, float *pfRe, float *pfIm, int *piLength,
+		   int *piWinShift)
+{
+	float afFrame[264];
+	int iLength;
+
+	iLength = func_00251748();
+	*piWinShift = func_00249C88(pvState, pvCircMblk, ENC_DELAY_SIZE, iLength, afFrame);
+#line 586 "../../SaseEncVad/source/EncSC.c"
+	assert((iLength>>1) <= (ENC_DELAY_SIZE+*piWinShift));
+	func_0024C7D0(pvCircMblk, ENC_DELAY_SIZE + *piWinShift, iLength, afFrame);
+	func_0024EEA0(afFrame, iLength, afFrame, 2.0F);
+	func_0024C458(afFrame, iLength);
+	func_002518E8(afFrame, iLength, pfRe, 9);
+	func_0024E8D0(pfRe, pfRe, pfIm, 256);
+	*piLength = iLength;
 }
