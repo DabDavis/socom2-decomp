@@ -5882,6 +5882,80 @@ alphabetical order). What they showed:
   Not reached: libmpeg's last six, libgraph and libipu (0x1A13D0-0x1A3448), libkernl's
   tty and SIF objects, OVL1's codec.
 
+**Round 22a** (2026-11-04, newlib from newlib's own text, then Sony's objects by the demo's layout):
+25 rows newly byte-exact (12,124 bytes) and 12 matched drafts superseded -- the lane's `src/lib`
+sdk/libc/libgcc/libm/ovl1 rows 1,119 -> 1,156 of 1,228 scored, none lost -- 37 functions written
+byte-exact of 42, and 10 rows and 8 data rows named. newlib's malloc family whole (`libc/mallocr.c`
+_malloc_r and malloc_extend_top, `freer.c` _free_r and _malloc_trim_r, `reallocr.c`, `malignr.c`,
+over a shared `mallocr.h`; the EE port's `mlock.c` and the locked wrappers `malloc.c`, `malign.c`,
+`realloc.c`), `_vfiprintf_r` (0xBF8), vfprintf.c's `exponent` (`_vfprintf_r` and `cvt` OPEN),
+vfscanf.c's `__sccl`; Sony's libipu whole (`sdk/libipu.c`, `sdk/ipu_init.c`, the demo's two
+objects); libgraph's sceGsResetPath, checkModelVersion and _GetGsDxDyOffset (sceGsSetDefDispEnv
+OPEN); libdbc's init, end and version query; libcdvd's streaming object (`sdk/cd_stream.c`, 9 of
+10). Named: _memalign_r, memalign, exponent, __sccl (by body: newlib's text compiles to each byte
+for byte), setD4_CHCR@libipu and @ipu_init (the demo's objects), sceCdStRead, sceCdStPause,
+sceCdStResume, sceCdStStat (their own messages); data.txt: mallocr.o's seven globals
+(`__malloc_av_` ... `__malloc_current_mallinfo`) and `__mb_cur_max`, the demo's names and sizes.
+What they showed:
+
+- **newlib's own text compiles as it stands, once the EE's configuration is right**: mallocr.c
+  (Doug Lea's 2.6.4) is byte-exact in four objects -- built as newlib builds it, one per
+  `DEFINE_*` macro -- under MALLOC_ALIGNMENT 16 and **SIZE_T_SMALLER_THAN_LONG** (size_t a word,
+  long 64-bit: every remainder is long_sub_size_t's conditional `(x < y) ? -(long)(y - x) : x - y`;
+  without it _malloc_r is 0x660 against 0x728). newlib 1.9.0's text is at
+  `raw.githubusercontent.com/mirror/newlib-cygwin/newlib-1_9_0/newlib/...` (the lane fetched it
+  into build/scratch/gcc/newlib/), 1.8.2's at sourceware.org/pub/newlib.
+- **The toolchain's newlib is a snapshot older than 1.9.0**: _vfiprintf_r has 1.9.0's text but for
+  `char *xdigs;` (1.9.0 stores `= NULL`), and vfprintf.c's FLOATING_POINT body has the older `double
+  _double` (no union cleared), `int expsize;` and exponent's `char expbuf[MAXEXP]` (a 320-byte
+  frame) -- each an extra store or a frame the target does not have. Its vfscanf.c is neither
+  1.8.2's nor 1.9.0's: __svfscanf calls atol and sprintf where both (and the demo's 0xB08 copy)
+  convert through the ccfn pointer and atof; not written.
+- **newlib's va_arg is GCC 2.96's builtin** (`libc/gccstdarg.h`): `__builtin_va_list` is a 4-byte
+  pointer and `__builtin_va_arg` reads at it and then steps it by 8 (`move v0,s4; lw s8,0(v0);
+  addiu s4,s4,8`); the repo's include/stdarg.h (MW's) steps first and reads at -8 -- the same code
+  wherever a va_list is only passed on, not where va_arg reads one.
+- **The DFmode delay slots are the only difference left in vfprintf.c**: with the snapshot's
+  lines, _vfprintf_r is 0x1660 against 0x1670 and cvt 0x1B0 against 0x1C0, every other word the
+  target's -- the runtime compiler's `move a0,zero; jal dpsub; nop` against this one's filled slot
+  (round 4a), a fourth object with that one diagnosis.
+- **Sony's libipu**: the demo's DMA object's setD3/setD4_CHCR re-enable interrupts only if DIntr
+  found them on in SOCOM II (0x74; the demo's 0x64 always call EIntr, as ipu_init.c's copy still
+  does); sceIpuRestartDMA takes channel 4's address before its count (a0/a1 otherwise);
+  sceIpuInit reads each FIFO quadword through a volatile quadword -- MPEG's default intra matrix
+  in zigzag order and a row of 16s sent four times (a plain read is one CSE'd load, 0x228).
+- **libgraph and libdbc, small shapes**: checkModelVersion counts in an unsigned int (`sltiu`);
+  sceGsResetPath's VU1 reset is an asm with a zero input register (`move a0,zero` before `cfc2`);
+  libdbc's init has each bind's failure print and return on its own -- cross-jumping keeps one
+  copy, laid out after the semaphore's failure as in the target (a goto label at the end lays it
+  last: 0x234 against 0x23C).
+- **libcdvd's streaming calls are a newer object than the demo's libcdvd**: nine sceCdSt* calls
+  over one stream-command RPC (N-command RPC 9, the command numbers ps2sdk's reconstruction
+  gives); the stream RPC byte-exact as first written, its request built in `_sceCd_ncmdsdata` and
+  its reply read uncached.
+- **Open, diagnosed in place**: _vfprintf_r, cvt (above); sceGsSetDefDispEnv (0x3B8 against
+  0x374: the DISPLAY word's spelling -- DX summed in 64 bits and masked like DY with 0xfff, MAGH,
+  DW and DH unmasked); sceCdStRead (65 words: the stream result copied out of v0 before its split);
+  sceDbcSendData (right size, 21 words: the base and size pointer's s2/s3, the copy's base made in
+  the preheader). Not written: __svfscanf (above), libgraph's other setters (sceGsSetDef*,
+  sceGsExec*, sceGsSyncPath: GS register words built from bitfield structs still to be read off
+  the code), libmrpc, libcdvd's remaining calls, OVL1's codec.
+- **The map holds a kernel image as functions**: func_001CCD78 ... func_001CCF20 are `tlbsrc`
+  (data.txt's 0x330-byte row, s1:data-exact): code linked at 0x80075000 (_start, PutTLBEntry,
+  SetTLBEntry, GetTLBEntry, ProbeTLBEntry, ExpandScratchPad) that libkernl copies into kernel
+  memory -- their calls and table reference 0x8007xxxx, which no MAIN-linked unit can score -- and
+  func_001CD078 (0x122C) is data: tlbsrc's syscall table and the .data after it (tlbfunc.c's
+  SysEntry, `_kTLBRefillHandler` ...). Left as they are, for the integrator to retire.
+
+**The tools, round 22a**: no tool changed (scdiff.py, sccheck.py, scdecomp.py and `include/` are
+master's), so no unit can score differently; every hand-written unit after merging master
+0c351b2d (`--files '^(?!auto/)'`, 9,430 scored) gives 8,878 byte-exact, its only "regressions" the
+eleven rows only their drafts match (above, "Working in parallel"). automatch over the lane's four
+ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's `src/lib` build): MAIN
+`18DB90 1C4CC0` 68 tried, 0 hits (11 build failures, 13 m2c refusals), `1CCD78 1CE2A4` 6 tried, 0
+hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22, 8):
+172 tried, none byte-exact (round 21a: 195, 0) -- every draft that built missed.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
