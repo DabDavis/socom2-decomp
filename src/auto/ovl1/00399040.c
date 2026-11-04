@@ -8,9 +8,9 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define M2C_ERROR(x) 0
 #define NULL 0
 M2C_UNK SkbHangulClear__Fv();                       /* extern */
-M2C_UNK func_00399EC0();                            /* extern */
+M2C_UNK SkbInsertChar__FUsP13CSoftKeyboard();       /* extern */
 
 void func_00399040(void) {
-    func_00399EC0();
+    SkbInsertChar__FUsP13CSoftKeyboard();
     SkbHangulClear__Fv();
 }

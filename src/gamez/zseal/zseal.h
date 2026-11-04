@@ -292,6 +292,8 @@ public:
     /* the squad of a team, and a member by its index (OVL2 0x5EF2F0, 0x5EDBB0: the kit lane's
      * seal_unit.cpp, which declares them alike) */
     static CSealUnit *GetUnitByTeam(unsigned int team);
+    /* the squad's SEALs counted, with its sub-squads' to a depth (OVL2 0x5ED9B0, the kit lane's) */
+    int GetSealCount(int depth);
     CZSealBody *GetSealByIndex(int index, int depth);
     /* the squad's leader (SOCOM 1's const GetLeader; OVL2 0x5E8A90, the kit lane's) */
     CZSealBody *GetLeader() const;
@@ -551,7 +553,10 @@ public:
      * same body; CreepTick and 0x567900 call the slot with the heading, &m_goal_dir and a float) */
     virtual float ComputeTurnThrottle(const CPnt3D *dir, const CPnt3D *goal, float *dot);   /* +0x9C */
     virtual void NotifyTargetDown(CZSealBody *seal);
-    virtual bool GetJumpFlag() const { return false; }                     /* +0xA4 */
+    /* +0xA4: the controller's current AI state kind (the base: none) -- typed AI_STATE, not bool:
+     * CSealCtrlAi's 0x574800 has SOCOM 1's GetAiStateEnum body and GetAiNetState sends its value as the
+     * network state's code (compared with 17 and 9); the name stays the map's (the SEALs' round 31) */
+    virtual AI_STATE GetJumpFlag() const { return AI_STATE_UNKNOWN; }      /* +0xA4 */
     virtual void UpdateViewCone();
     virtual void OnSetTargetVisible(CTarget &target, bool visible, zdb::DiIntersect *di);
     virtual void SetTarget(CTarget *target);                                /* +0xB0 */
@@ -791,6 +796,30 @@ public:
     unsigned char _21[0x24 - 0x21];
 };
 
+/* the fire parameters (SOCOM 1's DWARF AI_FIREPARAMS, 0x60 bytes; SOCOM II's are 0x70, the flags
+ * at 0x6C -- the kit lane's seal_aiparams.cpp zeroes them there before the reset 0x55F6F0). Only
+ * the members SOCOM II's code shows at SOCOM 1's offsets are named */
+class AI_FIREPARAMS {
+public:
+    unsigned char _0[8];   // SOCOM 1: m_weapon, m_ammo
+    CPnt3D m_targetPos;   // 0x8
+    CPnt3D m_targetVel;   // 0x14
+    CPnt3D m_lookDirW;   // 0x20
+    CPnt3D m_aimPointW;   // 0x2c
+    CPnt3D m_aimDirM;   // 0x38
+    unsigned char _44[0x58 - 0x44];   // SOCOM 1: m_throwVec, m_throwPower
+    float m_timeout;   // 0x58: run up by FireWhenReady (0x563BD0; SOCOM 1's 0x54)
+    float m_dist;   // 0x5c: the target's distance (0x55EBE0; SOCOM 1's flags were here)
+    /* the spray's spread, zeroed with each burst (0x5659E0; the kit lane's ModifyAimDir call reads
+     * it -- the name ours) */
+    float m_spread;   // 0x60
+    /* under flag 0x40, the time left before the shot -- run down by FireWhenReady (new in SOCOM II;
+     * the name ours) */
+    float m_delay;   // 0x64
+    unsigned char _68[0x6c - 0x68];
+    unsigned int m_flags;   // 0x6c
+};
+
 /* the AI's data, CSealCtrlAi's second base (new in SOCOM II: CSealCtrlAi's RTTI, OVL2 0x65C6D0,
  * lists SEAL_AI_PARAMS at 0x250 -- after CEntityCtrl and CSealCtrl at 0 -- and SEAL_AI_PARAMS's own,
  * 0x65C660, no bases). It holds what SOCOM 1's CSealCtrlAi held, in the same order: its
@@ -861,9 +890,9 @@ public:
     CAiStamp m_stamp;   // 0x324 (restarted by the sleep setters, the avoid and path-recover states)
     unsigned char _348[0x364 - 0x348];
     CAiTimer m_stance_timer;   // 0x364: restarted with each desired stance (0x5631B0; the name ours)
-    unsigned char _370[0x3d0 - 0x370];
-    unsigned int m_3d0;   // 0x3d0: zeroed with each burst of the spray (0x5659E0; the name ours)
-    unsigned char _3d4[0x3e0 - 0x3d4];
+    /* the fire's parameters (the AI states hand them to FireWhenReady, 0x5B8920 its 0x55EAA0; the
+     * deploy's signals drop their aim) */
+    AI_FIREPARAMS m_fire;   // 0x370
     /* what 0x561E20 stores as it sets bit 7: a byte and 16 bytes zeroed (the names ours) */
     signed char m_3e0;   // 0x3e0
     unsigned char _3e1[0x3e4 - 0x3e1];
@@ -977,23 +1006,6 @@ public:
     unsigned char _76d[0x7c0 - 0x76d];
 };
 
-/* the fire parameters (SOCOM 1's DWARF AI_FIREPARAMS, 0x60 bytes; SOCOM II's are 0x70, the flags
- * at 0x6C -- the kit lane's seal_aiparams.cpp zeroes them there before the reset 0x55F6F0). Only
- * the members SOCOM II's code shows at SOCOM 1's offsets are named */
-class AI_FIREPARAMS {
-public:
-    unsigned char _0[8];   // SOCOM 1: m_weapon, m_ammo
-    CPnt3D m_targetPos;   // 0x8
-    CPnt3D m_targetVel;   // 0x14
-    CPnt3D m_lookDirW;   // 0x20
-    CPnt3D m_aimPointW;   // 0x2c
-    CPnt3D m_aimDirM;   // 0x38
-    unsigned char _44[0x5c - 0x44];   // SOCOM 1: m_throwVec, m_throwPower, m_timeout, m_stance
-    float m_dist;   // 0x5c: the target's distance (0x55EBE0; SOCOM 1's flags were here)
-    unsigned char _60[0x6c - 0x60];
-    unsigned int m_flags;   // 0x6c
-};
-
 class CSealCtrlAi : public CSealCtrl, public SEAL_AI_PARAMS {
 public:
     CSealCtrlAi();
@@ -1009,6 +1021,10 @@ public:
     virtual void OnSetHealth(float health, float old);
     virtual void OnMissionEnd();
     virtual void OnStateChange(SEAL_STATE from, SEAL_STATE to);
+    /* the state sent to the other consoles, as a word's bits (OVL2 0x56F6C0, slot 0x6C) */
+    virtual unsigned int GetAiNetState() const;
+    /* slot 0xA4 (OVL2 0x574800: the current state's kind, or 0 -- SOCOM 1's GetAiStateEnum's body) */
+    virtual AI_STATE GetJumpFlag() const;
     /* a target seen to fall called out (SOCOM 1's; OVL2 0x5C9B10, the kit lane's seal_sensors.cpp) */
     virtual void NotifyTargetDown(CZSealBody *seal);
     /* the view cone set from the head (SOCOM 1's; OVL2 0x5C9400, the kit lane's seal_sensors.cpp) */
@@ -1197,7 +1213,7 @@ public:
     virtual void OnMissionEnd();
     virtual void SetAiNetState(unsigned int state);
     virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
-    virtual bool GetJumpFlag() const;
+    virtual AI_STATE GetJumpFlag() const;
 
     /* (inline: CreateRemoteSeal's new expands it after CSealCtrl's, the table then the fades) */
     CRemoteCtrl() : m_fade_min(0.001f), m_fade_time(2.0f) {}
@@ -1537,6 +1553,10 @@ public:
     /* an order given to the SEAL's controller, which may refuse order 17; a given order flagged
      * (SOCOM 1's; OVL2 0x590AC0) */
     void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
+    /* a SEAL another console drove taken over by the AI when its console leaves, from the state that
+     * console last sent (SOCOM 1's AcquireRemoteAi; OVL2 0x56F210, seal_ai.cpp's: static -- the
+     * SEAL is its one argument, zDoClientLeavesCallback passes it in a0 and nothing in a1) */
+    static void AcquireRemoteAi(CZSealBody *seal);
     /* an action offered or withdrawn (SOCOM 1's took an unsigned int id) */
     void ActionAvailableMask(unsigned char id, bool on);
     /* the restraint flag set (an inline: its bool is stored as `(b & 1)`) */

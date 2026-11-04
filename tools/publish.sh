@@ -21,13 +21,25 @@ git remote get-url "$REMOTE" >/dev/null 2>&1 || git remote add "$REMOTE" "$URL"
 
 PRIVATE='/home/[a-z]|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}|\b(10|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.[0-9]+\.[0-9]+\.[0-9]+|gh[op]_[A-Za-z0-9]'
 ALLOWED='noreply@anthropic|madler@|jloup@|gzip\.org|zlib\.net|git@github\.com:'
+# One commit is scanned, split and named: HEAD read once. The split used to resolve HEAD as it began and the label
+# re-read it after, so a merge landing during the split (the integrator's lanes) printed a later commit than the one
+# published; and the scan reads the working tree, so it is held to that commit before and after (2026-11-04).
+PIN=$(git rev-parse HEAD)
+same_tree() {
+    git diff --quiet "$PIN" -- decomp || {
+        echo "refusing to publish: decomp/'s working tree differs from $(git rev-parse --short "$PIN") -- commit or stash first" >&2
+        exit 1
+    }
+}
+same_tree
 if hits=$(git ls-files -z decomp | xargs -0 grep -n -I -E "$PRIVATE" | grep -v -E "$ALLOWED"); then
     echo "refusing to publish; private-looking lines:" >&2
     echo "$hits" >&2
     exit 1
 fi
 
-SPLIT=$(git subtree split --prefix=decomp HEAD 2>/dev/null)
-echo "decomp/ at $(git rev-parse --short HEAD) -> split $(git rev-parse --short "$SPLIT"): $(git log -1 --format=%s "$SPLIT")"
+same_tree
+SPLIT=$(git subtree split --prefix=decomp "$PIN" 2>/dev/null)
+echo "decomp/ at $(git rev-parse --short "$PIN") -> split $(git rev-parse --short "$SPLIT"): $(git log -1 --format=%s "$SPLIT")"
 [ "${1:-}" = "--dry-run" ] && exit 0
 git push "$REMOTE" "$SPLIT:refs/heads/main"

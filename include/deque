@@ -254,6 +254,12 @@ public:
 
     class iterator {
     public:
+        /* what std::remove_if's dispatch reads (MSL's deque iterators are random access; no instance
+         * over a deque tells it -- code-neutral, the MSL headers round 21) */
+        typedef const void *value_type;
+        typedef int difference_type;
+        typedef std::random_access_iterator_tag iterator_category;
+
         iterator(value_type *p, value_type *first, value_type *last) : p_(p), first_(first), last_(last) {}
         value_type &operator*() const { return *p_; }
         iterator &operator++()
@@ -341,6 +347,10 @@ class cdeque<T *, Allocator> : public cdeque<const void *, std::allocator<const 
 public:
     class iterator {
     public:
+        typedef T *value_type;
+        typedef int difference_type;
+        typedef std::random_access_iterator_tag iterator_category;
+
         iterator(T **p, T **data, const unsigned int &start, const unsigned int &cap)
         {
             p_ = p;
@@ -549,6 +559,9 @@ public:
     class iterator {
     public:
         typedef typename __deque_buf<T, Allocator>::buf_type::iterator buf_iterator;
+        typedef T value_type;
+        typedef int difference_type;
+        typedef std::random_access_iterator_tag iterator_category;
 
         iterator(const buf_iterator &i, T *cur, T *last) : i_(i), cur_(cur), last_(last) {}
         T &operator*() const { return *cur_; }

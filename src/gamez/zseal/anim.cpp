@@ -11,6 +11,7 @@
 #include "zseal.h"
 
 #include <map>
+#include <string.h>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,8 @@ class CAnimsByFP {
 public:
     enum { MAX_TYPES = 312 };
 
+    /* (inline: AnimSet's destructor expands it -- the groups freed without a file or line) */
+    ~CAnimsByFP() { _free(m_animgroups, 0, 0); }
     void SetPistolAnim(AnimType rifle, AnimType pistol);
     /* a rifle anim type's first-person variants set (inline: AnimSet's setters expand them) */
     void SetRifleFPAnim(AnimType rifle, AnimType fp)
@@ -56,6 +59,19 @@ struct BLENDABLE_ANIM {
 
 class CBlendable {
 public:
+    /* (inline: AnimSet's constructor and destructor expand them, each its own slots cleared) */
+    CBlendable() { Clear(); }
+    ~CBlendable() { Clear(); }
+    /* every slot zeroed, none in use (a pointer stepped with the count: the target's two stores
+     * from the blend's base, then two from it 0x18 on -- indexed, MW folds all four) */
+    void Clear()
+    {
+        memset(m_blendable, 0, sizeof(m_blendable));
+        BLENDABLE_ANIM *b = m_blendable;
+
+        for (int i = 0; i < 4; i++, b++)
+            b->m_animtype = animTypeUndefined;
+    }
     bool Contains(AnimType type);
 
     BLENDABLE_ANIM m_blendable[4];   // 0x0
@@ -171,10 +187,24 @@ public:
     /* every set (SOCOM 1's AnimSet::List, a pointer vector; OVL1 bss 0x44D430) */
     static std::vector<AnimSet *> list;
 
-    unsigned char _0[0x44];
+    AnimSet();
+    ~AnimSet();
+
+    unsigned char m_aparams[0x34];   // 0x0: SOCOM 1's ANIMSET_PARAMS, thirteen floats
+    bool m_ready;   // 0x34
+    std::string m_name;   // 0x38
     std::vector<CAnimTypeRec *> m_types;   // 0x44: a record per anim type, or 0
-    unsigned char _50[0x5c - 0x50];
+    std::vector<std::string> m_included;   // 0x50 (SOCOM 1's, at 0x54 there)
     CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's m_animgps at 0x60)
+    /* the move blends (SOCOM 1's pointers at 0x64-0x80, held whole in SOCOM II) */
+    CBlendable m_move_anims;   // 0x60
+    CBlendable m_moveback_anims;   // 0x90
+    CBlendable m_strafeL_anims;   // 0xc0
+    CBlendable m_strafeR_anims;   // 0xf0
+    CBlendable m_crouchmove_anims;   // 0x120
+    CBlendable m_crouchmoveback_anims;   // 0x150
+    CBlendable m_crouchstrafeL_anims;   // 0x180
+    CBlendable m_crouchstrafeR_anims;   // 0x1b0
 };
 
 /* every record in use cleared of a state (OVL2 0x5E5BF0; the count kept but not returned) */
@@ -406,6 +436,21 @@ int CAnimTypeRec::MarkState(int state, int anim)
     return false;
 }
 
+/* (OVL2 0x5E5350: the loader's new AnimSet[n], 0x1E0 bytes each, passes it to
+ * __construct_new_array) */
+AnimSet::AnimSet() : m_ready(false)
+{
+    m_animsbyfp = 0;
+}
+
+/* (OVL2 0x5E50E0: new[]'s destructor, the anims by item deleted, then the members' -- the blends
+ * cleared again, the name list, the records, the name) */
+AnimSet::~AnimSet()
+{
+    delete m_animsbyfp;
+    m_animsbyfp = 0;
+}
+
 /* every set closed (SOCOM 1's CloseAll; OVL2 0x5E5070) */
 void AnimSet::CloseAll()
 {
@@ -595,15 +640,17 @@ bool AnimSet::TypeBit1(AnimType type)
 /* a rifle anim type's pistol variant (OVL2 0x5E1CF0), first-person rifle variant (0x5E1BF0) and
  * first-person pistol variant (0x5E1AF0) set, when both have anims: the group's types and the
  * variant's base.
- * OPEN, all three, 0xF8 against 0x100: the target extends each type once inside each inlined
- * AnimId (the extension dies in the index) and again from the parameter for the stores; MW keeps
- * the first extension here and reuses it. Two locals for the AnimIds (computed before both `> -1`
- * tests, slti as the target's) and AnimId's if-returns (each arm its own `b`) give the rest; tried
- * int parameters with casts (20 off), `(int)` arguments, the stores written out */
+ * The target extends each type once inside each inlined AnimId (the extension dies in the index)
+ * and again from the parameter for the stores: AnimId's argument cast to its own type
+ * (`AnimId((AnimType)rifle)`, a macro's spelling, likely) makes it an expression of its own, which
+ * MW does not share with the stores' -- written plainly, MW kept the first extension and reused it
+ * (0xF8 against 0x100; a local copy of the parameter does as well as the cast). Two locals for the
+ * AnimIds (computed before both `> -1` tests, slti as the target's) and AnimId's if-returns (each
+ * arm its own `b`) give the rest */
 void AnimSet::SetPistolAnim(AnimType rifle, AnimType pistol)
 {
-    int a = AnimId(rifle);
-    int b = AnimId(pistol);
+    int a = AnimId((AnimType)rifle);
+    int b = AnimId((AnimType)pistol);
 
     if (a > -1 && b > -1) {
         m_animsbyfp->SetPistolAnim(rifle, pistol);
@@ -613,8 +660,8 @@ void AnimSet::SetPistolAnim(AnimType rifle, AnimType pistol)
 
 void AnimSet::SetRifleFPAnim(AnimType rifle, AnimType fp)
 {
-    int a = AnimId(rifle);
-    int b = AnimId(fp);
+    int a = AnimId((AnimType)rifle);
+    int b = AnimId((AnimType)fp);
 
     if (a > -1 && b > -1) {
         m_animsbyfp->SetRifleFPAnim(rifle, fp);
@@ -624,8 +671,8 @@ void AnimSet::SetRifleFPAnim(AnimType rifle, AnimType fp)
 
 void AnimSet::SetPistolFPAnim(AnimType rifle, AnimType fp)
 {
-    int a = AnimId(rifle);
-    int b = AnimId(fp);
+    int a = AnimId((AnimType)rifle);
+    int b = AnimId((AnimType)fp);
 
     if (a > -1 && b > -1) {
         m_animsbyfp->SetPistolFPAnim(rifle, fp);

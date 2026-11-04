@@ -11,7 +11,11 @@
  * pins on each (con_ps2.cpp and ai_util.cpp are the same, README "The inlining mode, measured").
  *
  * OPEN, not written yet: the rest of the unit (0x39AE50-0x39BBB0 holds the string assign through
- * the template replace, 0x39B620, the MSL lane's request). */
+ * the template replace, 0x39B620, the MSL lane's request), the letter caser 0x39A8D0.
+ *
+ * Round 21: the text's editing core byte-exact -- SkbEraseBack 0x398C40, SkbCursorForward 0x399320,
+ * SkbInsertChar 0x399EC0, SkbCursorTo 0x39A1D0 with its two comparators 0x39A3E0/0x39A3F0,
+ * SkbCursorToEnd 0x39A400, SkbSetText 0x39A5B0 (SkbEditCharLen pinned: SkbEraseBack calls it). */
 
 #include "zui_skb.h"
 #include "zui_hangul.h"
@@ -303,14 +307,11 @@ void SkbUsbDigit(const SKBUSBKEY *key, int arg)
     func_00399040((key->m_shift ? s_shiftDigitChars : s_digitChars)[key->m_usage - 30], arg);
 }
 
-/* (the keyboard units' functions not yet written, by address: the text set and laid out, the
- * cursor drawn, the composition flushed, the keyboard's state; the edit mode switched, the text's
- * fields placed; a jamo typed; whether shift composes) */
-extern "C" {
-void func_0039A5B0(const char *text, CSoftKeyboard *skb);
-void func_0039A1D0(int a, CSoftKeyboard *skb, int b);
-void func_0039A400(CSoftKeyboard *skb);
-}
+/* the text set and laid out (0x39A5B0), the cursor put at a character (0x39A1D0) and after the
+ * text (0x39A400) */
+bool SkbSetText(const char *text, CSoftKeyboard *skb);
+void SkbCursorTo(int pos, CSoftKeyboard *skb, bool before);
+void SkbCursorToEnd(CSoftKeyboard *skb);
 void SkbPlaySound(unsigned char which);
 bool SkbToggleCaption1(CSoftKeyboard *skb);
 void SkbToggleCaption2(CSoftKeyboard *skb);
@@ -348,9 +349,10 @@ void SkbTakeText(CGameMenu *menu)
 
 extern "C" {
 void func_00398C00(unsigned short c, CSoftKeyboard *skb);
-void func_00398C40(CSoftKeyboard *skb);
 void func_003952F0();
 }
+/* the character before the cursor erased (below) */
+void SkbEraseBack(CSoftKeyboard *skb);
 int UTF8CharLen(const char *&s);
 
 /* two words of the text's (0x4A1348, 0x4A1350: one says whether string 1 counts, the other is
@@ -411,7 +413,7 @@ void SkbTypeOrBack(CSoftKeyboard *skb)
             n = 0;
         }
         if (s_textCount0 + n > 0)
-            func_00398C40(skb);
+            SkbEraseBack(skb);
         else
             func_003952F0();
     }
@@ -426,8 +428,8 @@ bool SkbClearText(CSoftKeyboard *skb)
 
     if (ShownText(EditString()) && *ShownText(EditString()))
         had = true;
-    func_0039A5B0("", skb);
-    func_0039A1D0(0, skb, 0);
+    SkbSetText("", skb);
+    SkbCursorTo(0, skb, false);
     SkbHangulClear();
     SkbPlaySound(3);
     return had;
@@ -504,8 +506,10 @@ int SkbEnterKana(CSoftKeyboard *skb)
 
 /* the byte length of the character at a byte offset of the text being edited -- string 0's while it
  * is edited, else string 1's with string 2's after it when string 2 has any (0x39A790; the name
- * ours: 0x398C40 calls it) -- the string default-built, then assigned (the target zeroes its words
- * before it reads the text), the test a ternary into a bool local (materialised, andi at the join) */
+ * ours: SkbEraseBack 0x398C40 calls it out of line, so pinned) -- the string default-built, then
+ * assigned (the target zeroes its words before it reads the text), the test a ternary into a bool
+ * local (materialised, andi at the join) */
+#pragma auto_inline off
 int SkbEditCharLen(int pos)
 {
     CSaferStr text;
@@ -516,6 +520,108 @@ int SkbEditCharLen(int pos)
     if (more)
         text += ShownText(&s_textString2);
     return CharLen(text.c_str() + pos);
+}
+#pragma auto_inline reset
+
+/* a string's characters counted into the caller's count, through the caller's flag (ours: the
+ * backspace's walk -- inside an inline its CharLen copy's stack slot is a level deeper, below the
+ * erase's category byte, as the target's frame has it; with the count and the flag the caller's own
+ * variables the saved registers stay the walk-in-place numbering) */
+static inline void SkbCountChars(int &n, bool &more, const char *p)
+{
+    n = 0;
+    while (TestChar(more, p)) {
+        n++;
+        p += CharLen(p);
+    }
+}
+
+/* the character before the cursor erased (0x398C40; the name ours: SkbTypeOrBack's back step when
+ * nothing is being composed): the text rebuilt as SkbEditCharLen builds it, the cursor's place in it
+ * counted (string 1's characters first while they count), the character before it erased, the text
+ * set again and the cursor put back a character */
+void SkbEraseBack(CSoftKeyboard *skb)
+{
+    CSaferStr text;
+
+    text = ShownText(EditString());
+    bool more2 = s_textSel ? false : HasChar(ShownText(&s_textString2));
+
+    if (more2)
+        text += ShownText(&s_textString2);
+    int n;
+
+    if (s_textCount1) {
+        bool more;
+
+        SkbCountChars(n, more, ShownText(&s_textString1));
+    } else {
+        n = 0;
+    }
+    int pos = s_textCount0 + n;
+    const char *s = text.c_str();
+    int off = 0;
+
+    for (int i = 0; i < pos - 1; i++)
+        off += CharLen(s + off);
+    text.erase(off, SkbEditCharLen(off));
+    SkbSetText(text.c_str(), skb);
+    SkbCursorTo(pos - 1, skb, true);
+}
+
+/* a character's UTF-8 appended to a string (util_stable.cpp's), whether a text keeps within the
+ * look's limits (the display unit's), the display told the text has none (0x3952F0) */
+void UTF8Append(std::string &s, unsigned short c);
+bool SkbTextFits(const std::string &s, bool second);
+extern "C" void func_003952F0();
+
+/* a character typed into the text at the cursor (0x399EC0; the name ours: 0x399040 calls it): a
+ * double quote made an apostrophe unless quotes are allowed, the text rebuilt as SkbEraseBack does
+ * and the character inserted at the cursor's place, the text set again if it keeps within the
+ * limits -- else the error sound and the display told -- and the cursor moved past it */
+bool SkbInsertChar(unsigned short c, CSoftKeyboard *skb)
+{
+    if (c == '"' && !SkbQuotesAllowed())
+        c = '\'';
+    /* a CSaferStr: its destructor is basic_string's with 0, a std::string's -1 */
+    CSaferStr ch;
+
+    UTF8Append(ch, c);
+    CSaferStr text;
+
+    text = ShownText(EditString());
+    bool more2 = s_textSel ? false : HasChar(ShownText(&s_textString2));
+
+    if (more2)
+        text += ShownText(&s_textString2);
+    int n;
+
+    if (s_textCount1) {
+        bool more;
+
+        SkbCountChars(n, more, ShownText(&s_textString1));
+    } else {
+        n = 0;
+    }
+    int pos = s_textCount0 + n;
+    const char *s = text.c_str();
+    int off = 0;
+
+    for (int i = 0; i < pos; i++)
+        off += CharLen(s + off);
+    text.replace(off, 0, ch);
+    bool fits = SkbTextFits(text, s_textSel);
+    bool ok = fits ? SkbSetText(text.c_str(), skb) : false;
+
+    if (!ok) {
+        SkbPlaySound(5);
+        func_003952F0();
+    }
+    if (!ok)
+        return false;
+    SkbCursorTo(pos + 1, skb, false);
+    SkbPlaySound(3);
+    return true;
 }
 
 /* the text cursor put at a place (0x395120, the display unit's: its node's position) */
@@ -541,6 +647,139 @@ static inline float LineOffset(const CSoftKeyboard *skb)
 
     return (float)s_textCount1 * h;
 }
+
+/* the cursor stepped on a character (0x399320; the name ours: SkbHandleKey's edit key 7 and the USB
+ * loop's right key): within the cursor's string its count up by one, or at its end, while string 1
+ * is the cursor's and string 2 holds characters, the cursor moved to string 2's start; then placed
+ * as SkbCursorBack places it and the composition cleared */
+void SkbCursorForward(CSoftKeyboard *skb)
+{
+    bool more;
+    const char *p = ShownText(CursorString());
+    int n = 0;
+
+    while (TestChar(more, p)) {
+        n++;
+        p += CharLen(p);
+    }
+    if (s_textCount0 < n) {
+        s_textCount0++;
+    } else if (!s_textCount1) {
+        if (s_textSel ? false : HasChar(ShownText(&s_textString2))) {
+            s_textCount0 = 0;
+            s_textCount1 = 1;
+        }
+    }
+    int count = s_textCount0;
+    float w = SkbTextWidth(CursorString(), count);
+    SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
+    float x = w + (float)skb->m_caps[props].m_0;
+    float y = (float)CursorY(skb) + LineOffset(skb);
+
+    func_00395120(x, y);
+    SkbHangulClear();
+}
+
+/* the cursor's two tests of a place against string 1's length, taken by address (0x39A3F0,
+ * 0x39A3E0; the names ours) */
+bool SkbBefore(int pos, int n)
+{
+    return pos < n;
+}
+
+bool SkbAtOrBefore(int pos, int n)
+{
+    return pos <= n;
+}
+
+/* the cursor put at a character of the text (0x39A1D0; the name ours: SkbClearText puts it at 0):
+ * past string 1's characters -- after them, or at their end too when not `before` -- and with string
+ * 2 holding any, it goes into string 2, the count taken from string 1's length; then placed as
+ * SkbCursorBack places it */
+void SkbCursorTo(int pos, CSoftKeyboard *skb, bool before)
+{
+    int n1 = -1;
+
+    if (!s_textSel) {
+        bool more;
+
+        n1 = 0;
+        const char *p = ShownText(&s_textString1);
+        while (TestChar(more, p)) {
+            n1++;
+            p += CharLen(p);
+        }
+    }
+    bool (*cmp)(int, int) = before ? SkbBefore : SkbAtOrBefore;
+
+    /* string 2's test a bool of its own (SkbEditCharLen's ternary): in one expression the && is
+     * made a flag of its own, 8 bytes longer */
+    bool more2 = s_textSel ? false : HasChar(ShownText(&s_textString2));
+
+    s_textCount1 = more2 && !cmp(pos, n1);
+    s_textCount0 = pos - (s_textCount1 ? n1 : 0);
+    int count = s_textCount0;
+    float w = SkbTextWidth(CursorString(), count);
+    SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
+    float x = w + (float)skb->m_caps[props].m_0;
+    float y = (float)CursorY(skb) + LineOffset(skb);
+
+    func_00395120(x, y);
+}
+
+/* the text set into the strings (0x39A5B0; the name ours: SkbClearText sets ""): wrapped to the
+ * look's width at the edited string's scale and its font's, refused when it takes more lines than
+ * there are -- one while string 0 is edited, else two when the look has a line height --, the first
+ * line the edited string's and the second string 2's */
+bool SkbSetText(const char *text, CSoftKeyboard *skb)
+{
+    float width = skb->m_c0;
+    C2DString *s = EditString();
+    C2DFont *font = s->m_font;
+    float scale = s->m_scale * (font ? font->m_scale_factor : 1.0f);
+    std::vector<CSaferStr> lines;
+
+    if (!SkbWrapText(lines, text, font, true, scale, width))
+        return false;
+    int n = lines.size();
+    int max = s_textSel ? 1 : (!skb->m_c4 ? 1 : 2);
+
+    if (max < n)
+        return false;
+    s->SetString(n ? lines[0].c_str() : "", true);
+    s->UpdatePos();
+    if (!s_textSel) {
+        s_textString2.SetString(n >= 2 ? lines[1].c_str() : "", true);
+        s_textString2.UpdatePos();
+    }
+    return true;
+}
+
+/* the cursor put after the text (0x39A400; the name ours: SkbCloseText0 and SkbSwitchText call it,
+ * out of line, so pinned): whether string 2 holds characters made the count's flag (SkbEditCharLen's
+ * ternary), the cursor's string's characters counted -- SkbCursorBack's walk -- and the cursor
+ * placed after them as SkbCursorBack places it */
+#pragma auto_inline off
+void SkbCursorToEnd(CSoftKeyboard *skb)
+{
+    s_textCount1 = s_textSel ? false : HasChar(ShownText(&s_textString2));
+    bool more;
+    const char *p = ShownText(CursorString());
+    int n = 0;
+
+    while (TestChar(more, p)) {
+        n++;
+        p += CharLen(p);
+    }
+    s_textCount0 = n;
+    float w = SkbTextWidth(CursorString(), n);
+    SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
+    float x = w + (float)skb->m_caps[props].m_0;
+    float y = (float)CursorY(skb) + LineOffset(skb);
+
+    func_00395120(x, y);
+}
+#pragma auto_inline reset
 
 /* the cursor stepped back a character (0x399530; the name ours: 0x38C630's left key and
  * SkbHandleKey call it with the showing keyboard): string 1's count down by one, or at its start,
@@ -604,7 +843,7 @@ void SkbCloseText0(CSoftKeyboard *skb)
     s->SetString(0, true);
     s_textString0.UpdatePos();
     if (was)
-        func_0039A400(skb);
+        SkbCursorToEnd(skb);
     SkbToggleCaption2(skb);
 }
 
@@ -631,7 +870,7 @@ void SkbSwitchText(CSoftKeyboard *skb)
     s_textSel = SkbToggleCaption1(skb);
     s_textNode->SetActive(s_textSel);
     if (s_textSel || was)
-        func_0039A400(skb);
+        SkbCursorToEnd(skb);
     C2DString *s = &s_textString0;
     s->SetString(0, true);
     s_textString0.UpdatePos();

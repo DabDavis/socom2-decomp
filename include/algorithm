@@ -146,8 +146,20 @@ OutputIterator remove_copy_if(InputIterator first, InputIterator last, OutputIte
  * above the copies (first 88, last 84) -- by-value parameters' slots, which come after the return
  * temporary's -- where named locals take the top; by value, MW evaluates last's copy first (4 off);
  * an inline helper returning either copy, in either argument, changes nothing (build/p20/d/, vF*).
+ * MEASURED (the MSL headers round 21, build/p21/vrif*.py, untracked, against ai_events.cpp's 0x50F670):
+ * the search taking its iterators BY VALUE gets every slot the target's -- the search's return
+ * temporary on top (108), the by-value parameters below it in parameter order (first 104, last 100)
+ * -- with explicit temporaries in the call (`find(ForwardIterator(first), ForwardIterator(last),
+ * pred)`), plain arguments, first alone a temporary, last by const reference to a temporary, or the
+ * result taken into a named local: 4 off in every one, MW initialising an inlined function's
+ * by-value parameters right to left (last's copy first, its store out of the branch's delay slot).
+ * So the target's copies are by-value parameters made in parameter order -- which no argument form
+ * tried gives -- or remove_if's own in an order that leaves the search's return temporary above
+ * them: the copies in a nested block (9 off) and a search object built from the two (0x10C) do
+ * neither.
  * The kit's 0x5F8AF0 is a different miss: the target re-reads the functor's byte at every step
- * (`lbu a1,104(sp)`), ours hoists it into s0 under every shape (0x114 against 0x110) */
+ * (`lbu a1,104(sp)`), ours hoists it into s0 under every shape (0x114 against 0x110) -- closed by the
+ * kit's round 31 in its own source (the functor reads its kind into a local) */
 template <class Category, class InputIterator, class Predicate>
 struct __remove_if_search {
     typedef InputIterator &walker;
