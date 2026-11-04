@@ -75,6 +75,48 @@ CAiPath::~CAiPath()
     Clear();
 }
 
+/* another path's finished plan taken over -- its flags, legs, maps, tallies, state, length, limits
+ * and points -- unless this one is queued or planning; the id moves on and the path is drawn when
+ * asked (new in SOCOM II, the name ours: 0x527FD0, the SEALs' 0x555420, 0x5556A0 and 0x562790 call it).
+ * The vectors through their assignments: the cells' and the stats' through do_assign<const
+ * CAiMapLoc *> (0x51E7A0), the maps' through the 4-byte pod's operator= (0x528C30), the points'
+ * through do_assign<const point *> (0x5287D0, this unit's tail, byte-exact). The state's two tests
+ * written out on one read (IsPlanning() reloads it and materialises the range test).
+ * OPEN, 21 instructions, the right size: the stats' copy -- the target takes the other stats' visited
+ * cells' address into a register before the nine words (v1; the words through v0) and reads their
+ * data through it, the size straight; the implicit CAiPathStats assignment here folds both reads into
+ * offsets of `path` and swaps the two registers. As a CAiMapLocVec (SOCOM 1's DWARF) the visited cells
+ * give the tag temporaries' slots (19 off) but cost CAiPath() a level (~CAiPath's note); a written
+ * inline assignment of the stats does not help (21 and 23) */
+bool CAiPath::CopyPlan(const CAiPath *path)
+{
+    bool ok = false;
+
+    if (m_state != INQUEUE && (unsigned int)(m_state - 1) > 2 && path->HasPoints()) {
+        ok = true;
+        m_flags = path->m_flags;
+        m_app_flags = path->m_app_flags;
+        m_legcount = path->m_legcount;
+        m_planleg = path->m_planleg;
+        m_curleg = path->m_curleg;
+        m_waypts = path->m_waypts;
+        m_maps = path->m_maps;
+        m_stats = path->m_stats;
+        m_state = path->m_state;
+        m_status = path->m_status;
+        m_length = path->m_length;
+        m_tolerance = path->m_tolerance;
+        m_search_limit = path->m_search_limit;
+        m_unk90 = path->m_unk90;
+        m_snake_len = path->m_snake_len;
+        m_points = path->m_points;
+        m_pathId++;
+        if (m_flags & 0x40)
+            PrintPath("dbg_path");
+    }
+    return ok;
+}
+
 /* the points' length: summed afresh when none is kept or when forced, each step between two
  * points on one map its straight distance; 0 without points (SOCOM 1's GetLength, the demo's
  * 0x196510, the same shape: SOCOM II's distance a sqrt.s where SOCOM 1 called sqrtf) */
