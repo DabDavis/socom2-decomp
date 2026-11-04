@@ -174,6 +174,14 @@ private:
         unsigned int w[3];
     };
     void copy_rep(const basic_string &str) { *(rep_words *)w_ = *(const rep_words *)str.w_; }
+    /* the long form's size BY REFERENCE (the MSL headers round 18, the UI's request): the copy
+     * constructor reads it through this. Its inlined reference temporary folds into the loads where
+     * the string is the function's own parameter (the out-of-line copy 0x22E560, a member at offset
+     * 0) and stays a variable where the string is an inlined argument at an offset -- the target's
+     * `addiu s3,s1,16` kept across reserve in CDlgDesignModel's copy 0x3854C0, byte-exact so (+1,
+     * nothing lost). A reference local does it at every site (0x22E560 then 0x9C), a by-reference
+     * helper parameter or a reference to the word array renumbers the rest */
+    const size_type &long_size() const { return w_[1]; }
 
     void init()
     {
@@ -231,10 +239,10 @@ basic_string<charT, traits, Allocator>::basic_string(const basic_string &str)
         copy_rep(str);
     else {
         init();
-        reserve(str.w_[1]);
+        reserve(str.long_size());
         forward_iterator_tag category;
 
-        func_001EE780(this, 0, 0, (const charT *)str.w_[2], (const charT *)str.w_[2] + str.w_[1], category);
+        func_001EE780(this, 0, 0, (const charT *)str.w_[2], (const charT *)str.w_[2] + str.long_size(), category);
     }
 }
 

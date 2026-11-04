@@ -116,7 +116,29 @@
  * CSE's; nine forms of begin(), make_iterator and the constructor tried), the pointer deques' pair
  * (0x333F90/0x334030, cdeque<const void **>) does not CSE the copy's addresses at all (0x98/0x68 against
  * 0xA0/0x70), and init (0x2E0B40) copies its by-address iterators as FPU blocks, as an implicit copy
- * would (0xC0 against 0xC8). */
+ * would (0xC0 against 0xC8).
+ * The MSL headers' round 18 (probes build/p18/d/, untracked), MEASURED, NOT APPLIED: EVERY do_assign
+ * CALLS ITS ITERATORS' OPERATORS OUT OF LINE -- the lobby's 0x2E1090, the rdr editor's 0x334440 and the
+ * vid stack's 0x3B8000 alike: the source's operator!= (0x2E1460 / 0x334860 / 0x3B83B0), its operator*
+ * (0x2E1540 / 0x334940 / 0x3B8430) and ++ (0x2E14E0 / 0x3348E0 / 0x3B83D0), the destination's * and ++
+ * (0x2E1550, 0x2E1480; the pointer deques' shared 0x3349B0, 0x334880) and, last, the destination
+ * iterator's copy constructor (0x2E1420 / 0x334820: six words member-wise, for std::copy's returned
+ * iterator) -- the operators of out-of-class members generated after do_assign, not in-class inlines;
+ * the two ++ (and the two *) are copies of identical code, so the source's class is not the
+ * destination's (a const_iterator class of its own; the pointer deques' sources are per element type,
+ * the destinations shared). The head is std::distance BY VALUE through a tag-dispatched helper: both
+ * iterators copied in through $f0 (24 bytes each, sp+304/272), then again with lq/sq (sp+176/144), the
+ * difference inlined over those copies in memory; the tail std::copy by value (the source's copies
+ * again, the destination straight from make_iterator(0)) with a `!=` loop. Measured on the lobby unit:
+ * a separate const_iterator alone changes no code (do_assign 0x36C against 0x384, the operators
+ * inlined); with *, ++ and != out of class the five operator copies are byte-exact as probes (aliased:
+ * 18 against 14 in zNetMedius.cpp's deque pieces) and do_assign calls them, 0x2CC; adding the by-value
+ * distance/copy pair and an out-of-class copy constructor for the destination makes 0x2E1420 byte-exact
+ * too (19), do_assign 0x31C -- the source's copies there go through the buffer iterator's user copy
+ * constructor (cdeque<T *>::iterator's, lw/sw and calls) where the target copies the source bitwise
+ * (lwc1/swc1, lq/sq): the const iterator's buffer iterator has an implicit copy (a const buffer
+ * iterator of its own), the destination's the user one. Every init/do_assign row name would move to
+ * `14const_iterator`; not applied until the whole chain closes. */
 
 #ifndef _MSL_DEQUE
 #define _MSL_DEQUE

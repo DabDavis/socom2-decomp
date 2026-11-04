@@ -42,6 +42,27 @@ void zRemoteDelayedAction(CZNetwork::TypeRTimeFixStruct *fix);
  * builds it and registers the implicit destructor 0x30E410, the unit's last function */
 CZNetwork theNetwork;
 
+/* a field's broadcast schedule, by a threshold (OVL1 0x30E3F0) or by a compare function (0x30E3D0):
+ * SOCOM 1's one constructor (rate, method, double), defined first in its zNetDme.cpp and so its last
+ * own function; fts_remote.cpp's eighteen file statics are built with them */
+CZBroadcastSchedule::CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method, float threshold,
+                                         unsigned char c)
+{
+    m_rate = rate;
+    m_method = method;
+    m_threshold = threshold;
+    m_c = c;
+}
+
+CZBroadcastSchedule::CZBroadcastSchedule(unsigned int rate, NetThresholdMethod method,
+                                         bool (*compare)(NetFieldCompare *), unsigned char c)
+{
+    m_rate = rate;
+    m_method = method;
+    m_compare = compare;
+    m_c = c;
+}
+
 /* the DME's join: the game connection's session joined by name, with the object and stream
  * counts, the client events to zNetClientCallback (SOCOM II's parameter block; the names ours) */
 struct NetClientEventInfo {

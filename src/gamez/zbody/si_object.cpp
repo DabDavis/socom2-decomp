@@ -10,8 +10,6 @@
 
 int numSiObject;
 
-/* a key's string read from the archive into a fresh copy (zar's, not named yet) */
-extern "C" void func_00257EE0(zar::CZAR *zar, char **str);
 
 /* a buffer freed and forgotten (SOCOM II passes no file or line) */
 #define SAFE_FREE(p)            \
@@ -50,7 +48,7 @@ bool CZSIObject::Read(CZSIScript *script, zar::CZAR &zar)
 {
     unsigned int flags;
 
-    func_00257EE0(&zar, &m_pName);
+    zar.ReadString(&m_pName);
     zar.m_pFile->fread(&flags, 4);
     m_constPos = (flags & 0x20) != 0;
     m_constRot = (flags & 0x10) != 0;

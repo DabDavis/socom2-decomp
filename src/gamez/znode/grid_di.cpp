@@ -14,9 +14,9 @@
 
 #include "node_world.h"
 
-/* MSL's qsort (MAIN 0x196D38, not named in the map: SOCOM 1's SortNearToFar calls qsort) */
-extern "C" void func_00196D38(void *base, unsigned int n, unsigned int size,
-                              int (*cmp)(const void *, const void *));
+/* MSL's qsort (MAIN 0x196D38: SOCOM 1's SortNearToFar calls qsort) */
+extern "C" void qsort(void *base, unsigned int n, unsigned int size,
+                      int (*cmp)(const void *, const void *));
 /* a node's tree searched for the hit set (CGrid's: GetIntersect and GetAltitude both call it where
  * SOCOM 1's called NodeGetIntersect and NodeGetAltitude -- SOCOM II's one walk, not named yet) */
 extern "C" void func_002D2890(zdb::CGrid *grid, zdb::CNode *node, zdb::DiIntersect *di);
@@ -83,7 +83,7 @@ void DiIntersect::SortNearToFar(int *idx, float *dist)
         if (m_Cnt > 1) {
             _cmpdi_rs = dist;
             _cmpdi_di = this;
-            func_00196D38(idx, m_Cnt, 4, _cmpdi);
+            qsort(idx, m_Cnt, 4, _cmpdi);
             _cmpdi_di = 0;
             _cmpdi_rs = 0;
         }
