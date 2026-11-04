@@ -177,3 +177,17 @@ void hudAddPolyType(_zrdr *pRdr)
     zrdr_findint(pRdr, "Type", &type, 1);
     ReadLineData(pRdr, g_mapPolyProps[type]);
 }
+
+namespace {
+
+/* the tactical map's pulse, as an alpha (SOCOM 1's file static: CZLineMap::Tick drives it; OVL1
+ * .data 0x3DC4C0, 60 at first) */
+float g_fPulseTrans = 60.0f;
+
+}
+
+/* the pulse for the other map items (SOCOM 1's: CZPlayerMapItem::SetViewCone reads it) */
+float hudGetTacMapPulseTrans()
+{
+    return g_fPulseTrans;
+}
