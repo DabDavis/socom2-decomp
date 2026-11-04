@@ -36,10 +36,9 @@ float func_003D2C20(CZFTSWeapon *w);
 /* the body able to fire: CZSealBody::CanFire(bool, bool) (OVL2 0x5A7DE0, the SEAL lane's, named
  * CanFire__10CZSealBodyFbb; SOCOM 1's took no flags), called from the same place in
  * HandlePlacingExlosive as SOCOM 1's -- spelled by its mangled name because CZSealBody is
- * incomplete here (kit.h's stand-ins keep zseal.h out of this unit) -- and the placing allowed and the
- * explosive placed (OVL2 0x5BD530, 0x5BE9A0: this unit's, unwritten) */
+ * incomplete here (kit.h's stand-ins keep zseal.h out of this unit) -- and the explosive placed
+ * (OVL2 0x5BE9A0: this unit's, unwritten) */
 bool CanFire__10CZSealBodyFbb(CZSealBody *body, bool a, bool b);
-bool func_005BD530(CZKit *kit);
 void func_005BE9A0(CZKit *kit, int index, float a, float b);
 /* a launcher's grenades of class 145's launcher (OVL1 0x3C5C20, unclaimed: GetFiringItem's test) */
 bool func_003C5C20(CZFTSWeapon *w);
@@ -813,7 +812,7 @@ void CZKit::HandlePlacingExlosive(EQUIP_ITEM item, float a, float b)
         }
         return;
     }
-    if (CanFire__10CZSealBodyFbb(m_body, false, false) && m_81c <= 0.0f && func_005BD530(this)) {
+    if (CanFire__10CZSealBodyFbb(m_body, false, false) && m_81c <= 0.0f && CurMagHasAmmo()) {
         func_005BE9A0(this, m_selected_item, a, b);
         return;
     }
@@ -1185,6 +1184,39 @@ bool CZKit::WeaponIsGrenadeLauncherMode(int index)
     if (w && w->IsGrenadeLauncherWeapon() && m_firemode[index] > AUTOFIRE)
         return true;
     return false;
+}
+
+/* the body as the magazine test reads it (zseal.h's CZSealBody::m_infiniteammo, bit 5 of the word at
+ * 0x105C, read as a byte; a view -- kit.h's stand-ins keep zseal.h out of this unit) */
+struct CKitAmmoBody {
+    unsigned char _0[0x105c];
+    unsigned int _bits : 5;
+    unsigned int m_infiniteammo : 1;   // bit 5
+};
+
+/* rounds in the current magazine: always with infinite ammunition; under a launcher's mode, in the
+ * current magazine of the item its ammunition is (the first of that kind with rounds, else the last);
+ * otherwise in the selected item's (OVL2 0x5BD530; SOCOM 1's, in its place before
+ * WeaponIsGrenadeLauncherMode -- SOCOM II still asks the current item's kind and no longer reads it,
+ * where SOCOM 1's answered true for two kinds).
+ * OPEN, 31 instructions at the right size, registers only: the target keeps the inlined
+ * FindItemWithAmmo's counter in v0 and its temporaries in v1 (ours the other way round), and the
+ * launcher arm's `&&` as a bool in v1 narrowed at the join (`b end; andi v0,v1,0xff`) where ours
+ * branches straight to the end with the zero. Tried: the index declared at the top, the `&&` in a
+ * bool local (declared there or at the top, or `r = i != -1; if (r) r = ...`), static inline
+ * helpers taking the index (the `&&`, the if-form, the return-true form, the find as the argument),
+ * GetAmmoItemIndex(GetCurFireMode()) and the fire mode through GetCurFireMode */
+bool CZKit::CurMagHasAmmo()
+{
+    if (((CKitAmmoBody *)m_body)->m_infiniteammo ? true : false)
+        return true;
+    if (func_005BD7E0(this)) {
+        int i = FindItemWithAmmo((EQUIP_ITEM)m_firemode[m_selected_item]);
+
+        return i != -1 && m_reloads[i][m_currentmag[i]] > 0;
+    }
+    GetCurItemEnum();
+    return m_reloads[m_selected_item][m_currentmag[m_selected_item]] > 0;
 }
 
 extern "C" {

@@ -10972,7 +10972,7 @@
 0x005BC730 0x900 func_005BC730  # OVL2
 0x005BD030 0xC8 FireGrenade__5CZKitFPC6CPnt3DPC6CPnt3D  # OVL2; s1:calls (called on the SEAL's kit at +0x5E0 where SOCOM 1's calls it) -- the states lane
 0x005BD100 0x424 func_005BD100  # OVL2
-0x005BD530 0x198 func_005BD530  # OVL2
+0x005BD530 0x198 CurMagHasAmmo__5CZKitFv  # OVL2; s1:order by hand (the kit lane, round 24): SOCOM 1's CurMagHasAmmo (0x2A7880) sits in the same place, right before WeaponIsGrenadeLauncherMode, with the same code -- the body's infinite-ammunition bit (0x105C bit 5) answers true, a launcher's mode reads the magazine of its ammunition's item, else the selected item's m_reloads[sel][m_currentmag[sel]] > 0; HandlePlacingExlosive and CSealCtrlSquirm::PreTick call it
 0x005BD6D0 0x8 func_005BD6D0  # OVL2
 0x005BD6E0 0xF4 WeaponIsGrenadeLauncherMode__5CZKitFi  # OVL2; s1:calls by hand (the kit lane, round 11): SOCOM 1's WeaponIsGrenadeLauncherMode(int) -- the index wrapped, the item's IsGrenadeLauncherWeapon, its fire mode past 3 -- the item now through 0x5C67D0; 0x5BD6D0 is its selected-item wrapper
 0x005BD7E0 0x8 func_005BD7E0  # OVL2
