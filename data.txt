@@ -353,6 +353,7 @@
 0x003DFF98 0x8 gSndCommandReturnDefPtr  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475380, 8 bytes) -- snd_StartSoundSystem points it at the two return-definition buffers
 0x003DFFA0 0x8 gReturnValuesPtr  # OVL1 data; the world lane r6: SOCOM 1's global (its symbol, 0x475388, 8 bytes) -- snd_StartSoundSystem points it at the two return-value buffers
 0x003DFFD0 0x4 m_bnkoffset__4CSnd  # OVL1 data; SOCOM 1's CSnd static (its symbol): CSnd::Init stores the bank archive's disc offset (CFileCD's entry for BNKSTORE.ZAR, word 1) in it as SOCOM 1's Init stores m_bnkoffset; 2 references in 2 functions
+0x003DFFE0 0x4 m_fadeRestore__4CSnd  # OVL1 data; SOCOM II's CSnd static (name ours; 100.0 at start, i.e. done): the world lane round 9 -- the group reset's position, ResetGroupVolTemp steps it by dT/5 to 1, SetGroupVolTemp zeroes it; 11 references in 5 functions
 0x003E0070 0x4 m_mastervol__12CSndInstance  # OVL1; s1:data-seq (size SOCOM 1's; via SetVol__12CSndInstanceFf)
 0x003E0080 0x1 m_jukebox_stopped__11CSndJukebox  # OVL1 data; SOCOM 1's CSndJukebox static (its symbol, 0x4755B0 there): Start clears it and Cleanup sets it in both builds (was m_inFight, ours); 4 references in 4 functions
 0x003E01B4 0x4 s_hddDisabled  # OVL1 data; SOCOM II's, name ours (zSysHddInit skips the disk when it is 1; 0 in the image); 1 reference -- the sound/system lane
@@ -1223,6 +1224,11 @@
 0x0048DD90 0x4 m_errorsound__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via PlayErrorSound__4CSndFv)
 0x0048DD98 0x4 m_max_num_vags__4CSnd  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
 0x0048DDA0 0x1 m_vagEnabled__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (gp-26504 there): UIVagStreaming sets it on before CSnd::UIOpen and clears it after CSnd::Close, as SOCOM 1's does, and CSnd::UIOpen reads it; 3 references in 2 functions (zsnd.h's CSnd does not declare it yet: zanim_menu.cpp reaches it through data_0048DDA0)
+0x0048DDB0 0x1C m_fadegroup__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol, 0x50E8A0 there, 28 bytes): the world lane round 9 -- SetGroupVolTemp stores the seven groups, ResetGroupVolTemp walks them and sets them -1 at its end, as SOCOM 1's; 16 references in 2 functions
+0x0048DDD0 0x1C m_fade_oldvol__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol, 0x50E8C0, the groups + 0x20 as here): the world lane round 9 -- the groups' own volumes, SetGroupVolTemp keeps them and ResetGroupVolTemp moves back to them; 2 references in 2 functions
+0x0048DDF0 0x1C m_fade_newvol__4CSnd  # OVL1 bss; SOCOM II's CSnd static (name ours): the world lane round 9 -- the lowered volumes, SetGroupVolTemp sets them, ResetGroupVolTemp moves from them; 2 references in 2 functions
+0x0048DE10 0x4 m_fadetime__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol, gp-26500 there): the world lane round 9 -- the fade's time left (1e9 held), SetGroupVolTemp sets or lengthens it, ResetGroupVolTemp clears it; 12 references in 6 functions
+0x0048DE18 0x4 m_fadepct__4CSnd  # OVL1 bss; SOCOM 1's CSnd static (its symbol, gp-26496 there): the world lane round 9 -- the part the groups are lowered to, SetGroupVolTemp sets it, ResetGroupVolTemp clears it; 3 references in 2 functions
 0x0048DF10 0x1 bnkArchiveIsOpen  # OVL1 bss; SOCOM 1's static of zsnd_csnd.cpp (LOCAL in its symbols): CSnd::Init sets it before opening the bank archive, once, as SOCOM 1's; 2 references in 1 function
 0x0048DF30 0x1 snd_system_initialized  # OVL1 bss; s1:data-seq (size SOCOM 1's; via WaitForCDRead__4CSndFv)
 0x0048DF80 0x1 m_paused__12CSndInstance  # OVL1 bss; CSndInstance static (name ours): Init clears it, PauseAllSounds sets it; 2 references in 2 functions

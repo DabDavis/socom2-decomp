@@ -98,6 +98,9 @@ public:
     basic_string(const charT *s);
     basic_string(const charT *s, size_type n);
     basic_string(const basic_string &str);
+    /* a substring's copy, with and without an allocator (out of class, below) */
+    basic_string(const basic_string &str, size_type pos, size_type n = npos);
+    basic_string(const basic_string &str, size_type pos, size_type n, const Allocator &a);
     ~basic_string();
 
     basic_string &operator=(const charT *s) { return assign(s); }
@@ -123,6 +126,13 @@ public:
     void reserve(size_type n);
     basic_string &replace(size_type pos, size_type n1, const basic_string &str);
     basic_string &replace(size_type pos, size_type n1, const charT *s);
+    basic_string &replace(size_type pos1, size_type n1, const basic_string &str, size_type pos2, size_type n2);
+    /* a substring (the world lane's round 9: 0x32FC40, `j` the allocator constructor with the
+     * string itself as the allocator's reference -- the allocator an empty base at 0 in MSL) */
+    basic_string substr(size_type pos = 0, size_type n = npos) const
+    {
+        return basic_string(*this, pos, n, *(const Allocator *)this);
+    }
     void push_back(charT c);
     int compare(const basic_string &str) const;
     int compare(size_type pos1, size_type n1, const charT *s, size_type n2) const;
@@ -228,6 +238,31 @@ basic_string<charT, traits, Allocator>::basic_string(const basic_string &str)
     }
 }
 
+/* a substring's copy (the world lane's round 9: zrdr_parse.cpp's tail, 0x332320 without the
+ * allocator, 0x332250 with it, the same code): the words zeroed, room for what is left after pos
+ * reserved -- none when pos is past the end, which the replace then reports -- and the substring
+ * replaced in through the five-argument replace */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::basic_string(const basic_string &str, size_type pos, size_type n)
+{
+    init();
+    size_type sz = str.size();
+
+    reserve(pos <= sz ? min(n, sz - pos) : 0);
+    replace(0, 0, str, pos, n);
+}
+
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::basic_string(const basic_string &str, size_type pos, size_type n,
+                                                     const Allocator &)
+{
+    init();
+    size_type sz = str.size();
+
+    reserve(pos <= sz ? min(n, sz - pos) : 0);
+    replace(0, 0, str, pos, n);
+}
+
 /* assigned from another (0x22E4D0): two short forms copied whole, else the whole text replaced */
 template <class charT, class traits, class Allocator>
 basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::assign(const basic_string &str)
@@ -257,6 +292,35 @@ basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::
         n = str.w_[1];
     }
     return *(basic_string *)func_001EE780(this, pos, n1, p, p + n, category);
+}
+
+/* a range replaced by part of another string (the world lane's round 9: 0x332CF0, zrdr_parse.cpp's
+ * tail): its text and size in one short-first test, MSL's out_of_range report for a start past its
+ * end, the count cut to what is left, then the template replace */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator> &basic_string<charT, traits, Allocator>::replace(size_type pos1, size_type n1,
+                                                                                        const basic_string &str,
+                                                                                        size_type pos2, size_type n2)
+{
+    const charT *p;
+    size_type sz;
+
+    if (!str.is_long()) {
+        p = str.s_.data_;
+        sz = (unsigned char)str.s_.size_;
+    } else {
+        p = (const charT *)str.w_[2];
+        sz = str.w_[1];
+    }
+    if (sz < pos2)
+        __msl_error("basic_string: out_of_range");
+    p += pos2;
+    size_type rlen = sz - pos2;
+
+    n2 = min(n2, rlen);
+    forward_iterator_tag category;
+
+    return *(basic_string *)func_001EE780(this, pos1, n1, p, p + n2, category);
 }
 
 /* the text replaced by a C string (0x1EEB40: replace(0, size(), s), a tail call) */

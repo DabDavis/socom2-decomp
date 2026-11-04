@@ -14,6 +14,7 @@ _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 #include "../zutil/util_stable.h"
 #include "zsnd_queue.h"
 #include "zsnd_subtitles.h"
+#include "../zsys/zsys_public.h"
 
 /* a loaded bank (SOCOM II's; the names ours): SOCOM 1's two vectors m_soundbank and m_bankloaded
  * made one of records -- the name LoadBank (0x343DD0) loaded it by, the bank, and 1 when it loaded
@@ -284,6 +285,106 @@ void CopyUpper(const char *src, char *dst, int max)
     dst[i] = 0;
 }
 
+extern char data_004A1750[];            /* CFileIO's file-name suffix (SOCOM 1's m_file_version) */
+
+/* the sound list searched by hash (0x344F20, a wrapper over the binary search 0x344EE0) */
+extern "C" CSnd *func_00344F20(const unsigned int *hash);
+
+/* a pointer inserted before an iterator (MSL's vector insert(position, x) over the pod's: the
+ * iterator taken by value, copied through the FPU) */
+static inline void insert_sound(std::vector<CSnd *> &v, std::vector<CSnd *>::iterator position, CSnd *const &x)
+{
+    v.insert((unsigned int *)position.m_p, 1, (const unsigned int &)x);
+}
+
+/* SOCOM 1's: a sound added to the list -- SOCOM II's keeps it in hash order (the binary search's):
+ * inserted before the first sound with a higher hash, else pushed at the end. The search's answer
+ * is not used.
+ * OPEN, 20 instructions (the target's size): the target holds the list's data pointer in a2 from
+ * begin()'s load across the walk -- each end() adds the re-read size to it, the pointer re-read
+ * only after the insert -- and `done` in a3; here every end() re-reads the data pointer (the pod
+ * end() reusing begin()'s load, the MSL headers' open item: "Open, and next"). Tried: the end as
+ * data() + size() by hand (0x10C-0x11C) */
+void CSnd::AddNewCSnd(CSnd *sound)
+{
+    if (m_isDisabled)
+        return;
+    func_00344F20(&sound->m_18);
+    bool done = false;
+    std::vector<CSnd *>::iterator i;
+
+    for (i = m_soundlist.begin(); i != m_soundlist.end() && !done; i++) {
+        if (*i && sound->m_18 < (*i)->m_18) {
+            insert_sound(m_soundlist, i, sound);
+            done = true;
+        }
+    }
+    if (i == m_soundlist.end())
+        m_soundlist.push_back(sound);
+}
+
+/* a key's data offset in the bank archive (SOCOM 1's code, inline in LoadBank in both builds; the
+ * name ours): SOCOM II's offset counts from the archive's data start */
+static inline bool GetBankKeyOffset(const char *name, unsigned int &offset)
+{
+    if (CSnd::m_isDisabled)
+        return false;
+    zar::CKey *key = CSnd::m_bnkArchive.FindKey(name);
+    bool found = key != 0;
+
+    if (key) {
+        offset = key->m_offset + CSnd::m_bnkArchive.m_data_start;
+        CSnd::m_bnkArchive.CloseKey(key);
+    }
+    return found;
+}
+
+/* SOCOM 1's: a bank loaded by name -- off the CD's bank archive when booted from the CD (its key's
+ * offset in sectors past the archive's own, the stream synced first), else from its file -- and
+ * recorded with whether it loaded; the bank cross-references resolved */
+bool CSnd::LoadBank(const char *name)
+{
+    if (m_isDisabled)
+        return false;
+    char path[1024];
+    bool ok = false;
+
+    sprintf(path, "%sRUN\\SOUNDS\\%s.BNK%s", data_003E0520, name, data_004A1750);
+    SoundBankPtr bank;
+
+    if (zSys.isCdBoot) {
+        sprintf(path, "%s.BNK", name);
+        unsigned int offset = 0;
+
+        int found = GetBankKeyOffset(path, offset);
+
+        if (found) {
+            int sector = m_bnkoffset + (offset >> 11);
+
+            snd_StreamSafeCdSync(0);
+            while (snd_StreamSafeCdSync(1) == 1)
+                ;
+            bank = snd_BankLoadByLoc(sector, offset & 0x7FF);
+        } else
+            bank = 0;
+    } else
+        bank = snd_BankLoad(path, 0);
+    int loaded = -1;
+
+    if (bank) {
+        loaded = 1;
+        ok = true;
+    }
+    CSndBank b;
+
+    strncpy(b.m_name, name, 15);
+    b.m_loaded = loaded;
+    b.m_bank = bank;
+    data_0048DBE8.push_back(b);
+    snd_ResolveBankXREFS();
+    return ok;
+}
+
 CSndInstance *CSnd::PlaySound(CSndInstance *inst, unsigned int flags)
 {
     if (m_isDisabled)
@@ -457,16 +558,73 @@ void CSnd::SetGroupVol(int group, float vol)
     snd_SetMasterVolume(group, (int)(1024.0f * vol));
 }
 
-/* SOCOM II's group-volume fade (0x3410D0, not written) restarted when idle (names not known) */
-extern float data_0048DE10;     /* the fade's time (1e9: held) */
-extern float data_003DFFE0;     /* the fade's position, 0-1 */
-extern "C" void func_003410D0(float step);
+/* SOCOM 1's: the groups' volumes lowered to a part of their own for a time -- while a fade runs
+ * only its time lengthened; a reset still running finished first, then each group's own volume
+ * kept and the lowered one set */
+void CSnd::SetGroupVolTemp(float time, float pct, int g0, int g1, int g2, int g3, int g4, int g5, int g6)
+{
+    if (m_fadetime > 0.0f) {
+        if (time > m_fadetime)
+            m_fadetime = time;
+        return;
+    }
+    if (m_fadeRestore < 1.0f) {
+        m_fadeRestore = 1.0f;
+        ResetGroupVolTemp(0.0f);
+    }
+    m_fadepct = pct;
+    m_fadetime = time;
+    m_fadegroup[0] = g0;
+    m_fadegroup[1] = g1;
+    m_fadegroup[2] = g2;
+    m_fadegroup[3] = g3;
+    m_fadegroup[4] = g4;
+    m_fadegroup[5] = g5;
+    m_fadegroup[6] = g6;
+    m_fadeRestore = 0.0f;
+    for (int i = 0; i < 7; i++) {
+        if (m_fadegroup[i] != -1) {
+            int vol = snd_GetMasterVolume(m_fadegroup[i]);
+            int low = (int)(vol * m_fadepct);
 
+            m_fade_newvol[i] = low;
+            m_fade_oldvol[i] = vol;
+            snd_SetMasterVolume(m_fadegroup[i], low);
+        }
+    }
+}
+
+/* SOCOM 1's ResetGroupVolTemp, SOCOM II's over five seconds: the reset's position stepped, each
+ * group set between its lowered and its own volume by it, the fade forgotten once it is done. The
+ * step's two products are named: MW orders a commutative float operation's operands its own way
+ * (the global's load first, the converted int last) whatever the expression's order */
+void CSnd::ResetGroupVolTemp(float dT)
+{
+    m_fadeRestore += dT / 5.0f;
+    if (m_fadeRestore > 1.0f)
+        m_fadeRestore = 1.0f;
+    for (int i = 0; i < 7; i++) {
+        if (m_fadegroup[i] != -1) {
+            float d = m_fade_oldvol[i] - m_fade_newvol[i];
+            float v = d * m_fadeRestore;
+
+            SetGroupVol(m_fadegroup[i], (v + m_fade_newvol[i]) / 1024.0f);
+        }
+    }
+    if (m_fadeRestore >= 1.0f) {
+        m_fadepct = 0.0f;
+        m_fadetime = 0.0f;
+        for (int i = 0; i < 7; i++)
+            m_fadegroup[i] = -1;
+    }
+}
+
+/* SOCOM II's group-volume fade restarted when idle (name not known) */
 extern "C" void func_00341060()
 {
-    if (data_0048DE10 != 0.0f || data_0048DE10 == 1.0e9f) {
-        data_003DFFE0 = 1.0f;
-        func_003410D0(0.01f);
+    if (CSnd::m_fadetime != 0.0f || CSnd::m_fadetime == 1.0e9f) {
+        CSnd::m_fadeRestore = 1.0f;
+        CSnd::ResetGroupVolTemp(0.01f);
     }
 }
 

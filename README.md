@@ -1927,6 +1927,64 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 9** (the jukebox, the sound banks, include/string's substrings, zrdr's stack):
+  - a container accessor used as the object of an inline call (`s.top()->push_back(x)`) is checked one level deeper and
+    calls its callee out of line; used as an initialiser it inlines whole -- zrdr.h's stack is the real include/stack now
+    (deque<CRDRNodeVec *>::back() 0x3335C0 byte-exact);
+  - MW orders a commutative float operation's operands its own way (the global's load first, the converted int last),
+    whatever the source writes: the target's other order needs the operands as named locals;
+  - a plain `char` static assigned from an unsigned-char enum parameter is stored from the raw argument register; with
+    `signed char` the conversion is CSE'd with the sign-extended copy the compares use (one saved register fewer); a bool
+    inline's result kept in an `int` local gives the target's second `andi 0xff` at the join, a `bool` local does not;
+  - include/string gained an in-class substr 0x32FC40, the two substring constructors 0x332250/0x332320 and replace(pos1,
+    n1, str, pos2, n2) 0x332CF0 -- MSL's `min` temporary sits above the iterator-category byte only when the remainder is
+    a named local; vector<CSndBank>::insert 0x345810 (0x5A4 bytes) matched straight from include/vector;
+  - CSndJukebox's Play 0x348DC0, Tick 0x3492B0 and PlayQueued 0x349100 (our name: SOCOM 1 inlined it five times; two
+    stand-ins -- `(signed char)m_mode` where the target uses lb, `*(MUSIC_MODE *)&m_queuedMode` where a cast would add an
+    andi), CSnd::SetGroupVolTemp, ResetGroupVolTemp(float) (SOCOM II added a step) and LoadBank;
+  - open: PlayRandom 0x348B20 (11: the target computes `&m_playlists[mode]` and then adds 8 for `.data_`, this source
+    folds the 8 into the relocation), AddNewCSnd 0x343F90 (20: a pod walk's end() reusing begin()'s data load -- the MSL
+    headers' question); CFlareSystem::Tick's CPnt4D() call is hud_linemap.cpp's weak copy (0x104 vs 0x10C in every inline
+    spelling: a stand-in).
+- **Tells from the kit and AI states, round 23** (the CT* task handlers: seal_tasks.cpp 33 -> 60 of 62):
+  - AN INLINE'S VARIABLES ARE NUMBERED AFTER ALL THE CALLER'S NAMED LOCALS, an outer inline's locals before its inner
+    inlines -- so no inline version of the parameter find could place the block between its counter and the list, and the
+    13 register-only Begin/End handlers stayed open from round 8: with the find's type, index and counter the handler's own
+    locals, declared before the block (seal_tasks.cpp's TASK_SEAL(T) macro -- a shape that reproduces the numbering, not
+    necessarily the original's), they and the Ticks match (type s4, index s3, counter s2, block s1, list s0);
+  - an inlined `if (!(bool)p) break;` is reproduced in the caller only through a bool local (`bool end = !(bool)p; if
+    (end) break;` keeps sltu/xori); an inlined `return p` inside a loop is `{ found = p; goto found_it; }` (a bare goto
+    folds into the compare);
+  - a local whose only use is `if (!x) return;` at the end of a void function keeps its assignment's moves, a local with
+    no use loses them (CTPursue::End); a by-value inline argument is read before the inline's first test (`Update(*dT)`
+    in CTWait::Tick);
+  - a jump-table switch over names with a default preset in a local and each case returning keeps a branch at the end of
+    every case, the last included -- assigning in the cases drops the last branch (get_param_name 0x5DEB10); the AI
+    pointer's ternary needs `seal ? SealAi(seal) : 0` (the call inside an inline) where the AI is used, the plain call
+    where it is not;
+  - CTPlay::Create 0x5D3F00 (SOCOM 1's, called from the same place in CTPlay::Parse); CTLookAt::Create 0x5D7E70 and
+    get_param_name named by us; 0x572D70 looks like SOCOM 1's CSealCtrlAi::UpdateEventMask (CTTeam::Tick calls it in its
+    join and leave cases, as SOCOM 1's does -- the SEALs' row);
+  - open: CTTeam::Tick 0x5CEA40 (20: the block and the counter trade saved registers -- all 60 declaration orders of the
+    find tried, best 17), CTMacro::Tick 0x5D6DC0 (8 bytes short: the target computes a bool in v0 and masks it into s4 at
+    the join); 0x5D9540 is a destructor nothing calls or references (a pointer vector's elements freed from the back);
+    seal_sensors.cpp's 0x5CC6C0/0x5CC800/0x5CC8A0 walk static lists through out-of-line iterator pieces.
+- **Tells from the engine core, round 1** (a new int_material.cpp, __sinit_zanim_menu.cpp, the zanim respells):
+  - after an early return on the same test, `if (n) do ... while (n)` keeps the loop's own top test; a `while`, or a `for`
+    with `break`, lets MW skip it (CMaterialExArray::UnInit 0x2DE750, 8 bytes);
+  - an auto-inlined function writing `end()` as `!=`'s argument matches out of line, but inlined into a caller the chain
+    lands one level too deep and `tail()` becomes a call -- `end()` taken into a local fixes both copies
+    (ResolveMaterialIndex 0x2DE9E0, and inside ReadMaterials);
+  - a unit's own constructor is inlined into its static initialiser: pin it with `#pragma auto_inline off` where the
+    target calls it -- CMenuStack() in __sinit_zanim_menu.cpp 0x3FFCA0, which builds g_MenuStack (not si_script.cpp's
+    statics, as the row's s1~ hint said: the initialisers' link order placed it);
+  - SOCOM 1's symbol table names classes even where it has no DWARF, through their constructors and template instances:
+    the material extension is CMaterialEx (`__ct__11CMaterialExFv`, `vector<P11CMaterialEx>`), its unit int_material.cpp
+    (0x2DDC30-0x2DF153; the next function, 0x2DF160's VU0 interpolation, opens another unit before the lobby's 0x2DF560);
+    the string-int map's tree constructor 0x2CD670 and ~map 0x2CE210 named at integration (the SEAL anim names'
+    initialiser 0x400870 and __sinit_int_material.cpp 0x401DB0 use them);
+  - open: ReadMaterials 0x2DDE40 (10: two inlined helpers' frame slots trade places), ~CMenuStack (1), CZAnimMain::GetCmd
+    (8: a strength-reduced temporary numbered low in the target, like the task handlers'), CEntity::JoinTeam (5).
 - **Tells from the HUD, round 29** (CZNewHudMap: CalcNewMatrix, UninitMap, RemoveItem, the constructor; the map's statics):
   - a struct the target keeps on the stack, where MW scalarises a named one, comes out of a reference bound to a
     default-constructed temporary whose address the filler takes: `const SealDir &d = SealDir(); Fill((SealDir *)&d);`;
