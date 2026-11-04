@@ -365,6 +365,15 @@ unsigned int CAiEvent::MakeMaskEx(EVENT e, ...)
     return mask;
 }
 
+/* every handle dropped (the name ours): never called, dead-stripped, but the handle list's range
+ * erase it instantiates survives in the unit's tail, 0x50FBD0 between the pointer lists' copies and
+ * the handle list's insert -- byte-exact so (the AI core round 25); ~CAiEventQ and
+ * CSealCtrlAi::OnDeath, in later units, call this copy */
+void CAiEventQ::Clear()
+{
+    clear();
+}
+
 /* the handle of an event, added if the queue has none (SOCOM 1's).
  * The walk's end taken into a local first (i in a0, the end in a2) and each handle's address a
  * local of its own (computed in the test's delay slot, then moved into h), the id compared
