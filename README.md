@@ -1775,6 +1775,42 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 16** (the instances other lanes waited on; probes build/p16/, untracked):
+  - THE 2-BYTE POD IS THE CHAR POD OVER HALVES: include/vector's `__vector_pod<unsigned short>` (a partial
+    specialisation beside the char pod) gives seal_env.cpp's tail insert<Us> 0x5B68E0 and reserve<Us> 0x5B6BD0
+    byte-exact (+2, nothing lost) -- memmove for the shift, memcpy for the runs and for the reserve's copy, a
+    counted fill loop where the char pod calls memset; MW does not fold a 2-byte pointer difference back to the
+    count, so each copy divides the byte length by two (bgez/sra) and shifts it back. The fill re-reads its value
+    as a SIGNED half (lh) where SOCOM 1's insert of the same pod (the demo's 0x2CD740, otherwise this one
+    instruction for instruction) has lhu: written `*(const short *)&value`;
+  - AN INLINE FUNCTION'S STRING LITERAL is a deduplicated `@STRING@<function>` symbol (bind 13, one copy kept
+    at link), an out-of-class member's a unit-local `@N` the unit reuses for identical strings -- and an inline
+    function's literal is merged into an identical unit-local one when the unit has it. So the image's
+    "Memory allocation failure" copies map MSL's allocators: ONE copy (0x3E2220) serves every pod and deque
+    function in OVL1, across units (0x1EEBA0, 0x1FE340, 0x259B90, 0x259D20, 0x3C45B0, the deques' 0x2858B0,
+    0x2CF970, 0x2E0E10, 0x3341C0, 0x3A6490 ...), one per class serves the class vectors' deleters (four in
+    fts_mission.cpp); build/p16/strrefs.py lists a string's copies and every function addressing each;
+  - MW NEVER INLINES AN OUT-OF-CLASS TEMPLATE MEMBER INTO AN INLINE FUNCTION'S OUT-OF-LINE COPY (the states'
+    round 22 request): a reserve forwarder in class, declared inline out of class, or non-inline out of class,
+    its copy forced by an address, a static or a size cut in tail code, the pod's reserve requested first by own
+    code or a static, inline_max_size 40 to 2000 -- always the 8-byte `j` (the pod's at() alike). 0x2B1600 is
+    such a copy with the pod's reserve inlined; the mechanism that reproduces it is the pod's reserve inline and
+    exactly at the level limit under a forwarder one level higher (own code then cuts the forwarder and calls
+    0x1EEBA0, the forwarder's copy inlines it whole, and resize<CUIVariable> cuts CUIVariable() by height
+    without the pragma: fts_mission.cpp +3, +5 with 0x2B1600 renamed) -- but every inline function holding a
+    reserve is then cut too (CNode::_Copy, 0x3BEBD0, MarkNodes, ReadDecalSet: 8460 -> 8459). Not applied; the
+    numbers are in the pointer __vector_imp's comment;
+  - A BY-VALUE ARGUMENT IS COPIED THROUGH A USER-DECLARED COPY CONSTRUCTOR, BITWISE ONLY WHEN THE COPY IS
+    IMPLICIT (lh/sh through an address register), and an implicit copy reads each anonymous union as its FIRST
+    member (the UI's round 15 request): AddKeyProps' key copy and value come out the target's word for word with
+    std::make_pair by value and CSkbKey's copy implicit, its m_row/m_code views first and its assignment written
+    (zui_skb.cpp keeps its 98) -- 0x10C against 0x124: the pair temporary between them folds in every form
+    (include/utility's comment), so nothing is applied; SOCOM 1's soft keyboard has the same three temporaries
+    (make_pair by value, its pair constructor 0x3A8E40 out of line);
+  - the AI core's lead (a walk re-reads size and data when end() reads the count through a reference accessor):
+    the class vector's end() over `unsigned int &sz()` loses six walks that keep size*k hoisted (GetRouteIndex,
+    GetRegionContaining, GetClosestRegion, CMesh::SetLOD, FindPlayer, 0x2F10B0) and gains none -- the plain
+    `size_` read stays; the deques' make_iterator objects are the same in-memory question as the pair's.
 - **Tells from completing the MSL headers, round 15** (the instances other lanes waited on; probes build/p15/, untracked):
   - AN ITERATOR ASSIGNED FROM begin() STAYS IN ITS STACK SLOT, re-read and re-stored at each step with the base iterator
     copied in through $f0 (the wrapper's implicit assignment); initialised from begin() it lives in a register. That is
@@ -1909,9 +1945,9 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     target).
 - **Tells from the SEALs, round 19** (seal_env.cpp's death and flinch readers, the footfall pair, the stun pair):
   - SOCOM II's MSL runs a 2-byte vector (vector<AnimType>) on `__vector_pod<unsigned short>`: elements read back with `lh`,
-    and its reserve (0x5B6BD0, named by behaviour) copies with memcpy where the 4-byte pod loops -- include/vector's
-    generic reserve does not model it yet; the 2-byte pod's insert/reserve sit mid-range (0x5B68E0, 0x5B6BD0): a unit
-    boundary near 0x5B6BE0 is a candidate;
+    and its reserve (0x5B6BD0, named by behaviour) copies with memcpy where the 4-byte pod loops -- modelled since
+    the MSL headers' round 16 (include/vector's 2-byte pod: both byte-exact in seal_env.cpp's tail); the 2-byte pod's
+    insert/reserve sit mid-range (0x5B68E0, 0x5B6BD0): a unit boundary near 0x5B6BE0 is a candidate;
   - saved registers follow declaration order, not first assignment (0x5A3280); float locals initialised in order take
     $f4/$f3/$f2 (the later-declared the lower) and load before the tests, written straight into the condition each loads
     lazily (HandleFootfallSound); `case 2: case 1:` sharing a body closes the compare chain with a `b` where `||` inverts

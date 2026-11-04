@@ -746,7 +746,11 @@ class __vector_imp : public __vector_deleter<T, Allocator> {
     /* the end through a const local, as the pointer vectors' end() holds the base's: a walk then
      * re-reads the data pointer each pass and keeps only size*sizeof(T) (CMesh::SetLOD 0x3B94F0, the
      * weapons lane's round 8 request; the MSL headers round 5) -- built straight into the iterator,
-     * MW hoisted the whole end */
+     * MW hoisted the whole end. The count read plainly: through a reference accessor (`unsigned int
+     * &sz()` on the deleter, the AI core's round 18 lead -- CAiPath's count() re-reads size and data
+     * each pass) every walk re-reads the size too, -6 over every hand-written unit, nothing gained
+     * (GetRouteIndex, GetRegionContaining, CAiMaps::GetClosestRegion, CMesh::SetLOD, BriefingRoom::
+     * FindPlayer, the chat unit's 0x2F10B0 keep size*k hoisted: the MSL headers round 16) */
     iterator end()
     {
         T *const p = this->data() + this->size_;
@@ -867,6 +871,37 @@ class __vector_imp<T *, Allocator, true> : public __vector_pod<unsigned int, all
     iterator erase(iterator position) { return __iter(__base::erase((unsigned int *)position.m_p)); }
     void clear() { __vector_pod<unsigned int, allocator<unsigned int> >::clear(); }
     void swap(__vector_imp &x) { __base::swap(x); }
+    /* NO reserve of its own: every own function reserving a pointer vector calls the pod's reserve
+     * (0x1EEBA0: CNode::ReserveChildren's `j`, CCompass::Open, CSnd::Init, CZAnimExVector::Add ...).
+     * OPEN, the states lane's round 22 request (the MSL headers round 16, build/p16/rsv*.cpp, untracked):
+     * 0x2B1600, which fts_mission.cpp's resize<CUIVariable> 0x2B1390 calls from its one-level cut of
+     * CUIVariable() (the watchers' reserve(16), where CUIVariable's copy constructor 0x386BF0 calls
+     * 0x1EEBA0 for the same member), is the pod reserve's body again -- its "vector::reserve length
+     * error\n" fts_mission.cpp's own (0x3F1D00, shared with that unit's class reserve 0x2B00E0), its
+     * "Memory allocation failure" the image-wide one every pod and deque function uses (0x3E2220): the
+     * copy of a forwarder with the pod's reserve INLINED. Measured:
+     *   - MW never inlines an out-of-class (non-inline) template member into an inline function's
+     *     out-of-line copy: an in-class forwarder, one declared inline out of class, or a non-inline
+     *     out-of-class one, its copy forced by an address, a static or a size cut in tail code, the
+     *     pod's reserve requested first by own code or a static, inline_max_size 40/256/2000 -- always
+     *     the 8-byte `j` (the pod's at() through the at() forwarder alike);
+     *   - a literal: an inline function's string is a deduplicated `@STRING@<function>` symbol
+     *     (bind 13, one copy kept at link) -- unless the unit holds an identical unit-local literal,
+     *     which it then reuses (an inline pod reserve beside a class reserve shares the class one's
+     *     `@N`) -- so the image's literals do not rule out an inline pod reserve;
+     *   - THE SHAPE THAT GIVES BOTH, as a mechanism: the pod's reserve inline and exactly five high
+     *     (allocate wrapped three levels deeper, ours), under `void reserve(unsigned int n) {
+     *     __base::reserve(n); }` here and in the scalar vectors: own code inlines the six-high forwarder
+     *     one level and calls 0x1EEBA0 (byte-exact), the forwarder's copy inlines it whole (0x2B1600
+     *     byte-exact as reserve__Q23std62__vector_imp<P10UIVarMixin,Q23std24allocator<P10UIVarMixin>,1>FUi),
+     *     and CUIVariable() is then cut by HEIGHT in resize: resize<CUIVariable> the target's size with
+     *     only that call unnamed, its pieces 0x2B17A0/0x2B17C0/0x2B17E0 byte-exact, no pragma -- but
+     *     every inline function holding a reserve is then too tall and cut one level too (ReadDecalSet's
+     *     `new CZDecalSet` calls size() and the forwarder out of line), losing CNode::_Copy 0x316820,
+     *     0x3BEBD0, CWaterRipple::MarkNodes 0x3C1820 and ReadDecalSet 0x3D0630 (and three units' copies
+     *     of 0x1EEBA0 no longer emitted): fts_mission.cpp +3 (+5 with 0x2B1600 renamed), 8460 -> 8459
+     *     over every hand-written unit (8461 renamed). No height or size of the forwarder tells
+     *     CUIVariable() in resize from those helpers; not applied */
     T *&at(unsigned int n)
     {
         return (T *&)__vector_pod<unsigned int, allocator<unsigned int> >::at(n);
