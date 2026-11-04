@@ -533,11 +533,11 @@
 0x001A3058 0x3C func_001A3058  # MAIN unaligned
 0x001A3098 0x1C func_001A3098  # MAIN unaligned
 0x001A30B8 0x74 setD3_CHCR  # MAIN unaligned; s1:callee
-0x001A3130 0x74 func_001A3130  # MAIN; s1~ setD4_CHCR (one of 2)
+0x001A3130 0x74 setD4_CHCR@libipu  # MAIN; s1~ setD4_CHCR (one of 2); s1:order (the demo's libipu DMA object 0x15AA38 holds setD3_CHCR, setD4_CHCR, sceIpuStopDMA ... as here; sceIpuStopDMA and sceIpuRestartDMA call it; src/lib/sdk/libipu.c) -- the GCC lane r22a
 0x001A31A8 0xE4 sceIpuStopDMA  # MAIN unaligned; s1:exact
 0x001A3290 0x150 sceIpuRestartDMA  # MAIN; s1:exact
 0x001A33E0 0x68 sceIpuSync  # MAIN; s1:exact
-0x001A3448 0x64 func_001A3448  # MAIN unaligned; s1~ setD4_CHCR (one of 2)
+0x001A3448 0x64 setD4_CHCR@ipu_init  # MAIN unaligned; s1~ setD4_CHCR (one of 2); s1:order (the demo's libipu init object 0x15ADA8: its own static setD4_CHCR, then sceIpuInit, which calls it; src/lib/sdk/ipu_init.c) -- the GCC lane r22a
 0x001A34B0 0x238 sceIpuInit  # MAIN; s1:exact
 0x001A3700 0x10 RFU000_FullReset  # MAIN; s1:exact
 0x001A3710 0x10 ResetEE  # MAIN; s1:exact
