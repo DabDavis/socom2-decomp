@@ -24,9 +24,9 @@ M2C_UNK __ct__3C2DFv();                             /* extern */
 M2C_UNK __ct__9C2DBitmapFv(char *);                 /* extern */
 M2C_UNK __ct__9C2DStringFv(char *);                 /* extern */
 s32 __nwa__FUi(M2C_UNK);                            /* extern */
+extern M2C_UNK __ct__10CPauseItemFv;
+extern M2C_UNK __dt__10CPauseItemFv;
 extern M2C_UNK __vt__11CZPauseTest;
-extern M2C_UNK func_002057A0;
-extern M2C_UNK func_00205970;
 
 char *__ct__11CZPauseTestFv(char *arg0) {
     __ct__3C2DFv();
@@ -65,7 +65,7 @@ char *__ct__11CZPauseTestFv(char *arg0) {
     SC_MEMBER(arg0, s32 *, 0xBD4) = 0;
     SC_MEMBER(arg0, s32 *, 0xBD8) = 0;
     SC_MEMBER(arg0, s8 *, 0x1C) = -1;
-    SC_MEMBER(arg0, s32 *, 0x18) = __construct_new_array(__nwa__FUi(0x7C0), &func_00205970, &func_002057A0, 0xA4, 0xC);
+    SC_MEMBER(arg0, s32 *, 0x18) = __construct_new_array(__nwa__FUi(0x7C0), &__ct__10CPauseItemFv, &__dt__10CPauseItemFv, 0xA4, 0xC);
     SC_MEMBER(arg0, s8 *, 0xBDC) = 0;
     SC_MEMBER(arg0, s32 *, 0xBE0) = -1;
     SC_MEMBER(arg0, s8 *, 0xBE4) = 0;
