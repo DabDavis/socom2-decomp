@@ -671,6 +671,15 @@ public:
     /* the fuse and the removal timer run out, unless a network game's copy of another machine's
      * shot (SOCOM 1's, 0x3C99A0: always false now) */
     bool HandleTimers();
+    /* a hit dealt with: an impact (0x3C8920), a bounce (0x3C8F50: SOCOM II's never reads the
+     * time, its callers pass it), no hit this frame (0x3C9530); each returns what became of the
+     * shot (SOCOM 1's, HandleShotgunImpact gone) */
+    unsigned char HandleImpact(zdb::IntersectStruct *hit, float dT, float dist, CPnt3D *pos);
+    unsigned char HandleBounce(zdb::IntersectStruct *hit, float dT, CPnt3D *pos);
+    unsigned char DoMiss(float dT, CPnt3D *pos);
+    /* the frame's hits walked nearest first until one is dealt with or none is left (SOCOM 1's,
+     * 0x3C9B70) */
+    bool HandleIntersections(float dT);
     /* the node shown along the frame's travel: a stretched tracer flown every fourth frame when
      * asked, or the shot's own orientation (SOCOM 1's; nothing returned -- no path sets v0) */
     void SetModelOrientation(bool b, const CPnt3D *dir);
@@ -774,13 +783,20 @@ public:
     CPnt3D m_frameendpos;   // 0x54
     CPnt3D m_vel;   // 0x60
     CPnt3D m_lastPlayerHitPos;   // 0x6c
-    CPnt3D m_lastVolumetricHit;   // 0x78
+    /* not SOCOM 1's m_lastVolumetricHit point: a word HandleImpact (0x3C8920) compares and sets,
+     * and the node the shot came to rest on -- HandleBounce stores the hit's node, the
+     * intersection walk and PreTick test it (the names ours) */
+    unsigned int m_78;   // 0x78
+    zdb::CNode *m_restnode;   // 0x7c
+    float m_80;   // 0x80
     float m_84;   // 0x84 (SOCOM II's, as 0x88)
     float m_88;   // 0x88
     float m_time;   // 0x8c ("never" at first: 9999999; SOCOM 1: 0x74)
     float m_removaltime;   // 0x90
     float m_currange;   // 0x94
-    int m_98;   // 0x98 (SOCOM II's)
+    /* SOCOM II's: a delay PreTick runs down, the hits not looked at until it is out (the name
+     * ours) */
+    float m_98;   // 0x98
     float m_heading;   // 0x9c (SOCOM 1: 0x80)
     float m_pitch;   // 0xa0
     float m_roll;   // 0xa4
