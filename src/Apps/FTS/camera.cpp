@@ -102,6 +102,42 @@ public:
 
 extern CZNetwork theNetwork;
 
+/* the world's camera collision switch (seal_control.cpp's) and an entity's node (CEntity's,
+ * 0x29ED20: camera.h's SEAL is a stand-in, so called by its map name) */
+namespace zdb {
+void SetCameraCollideFlagRequired(bool on);
+}
+extern "C" zdb::CNode *GetNode__7CEntityFv(CZSealBody *e);
+
+/* the chord tested against the world with the followed SEAL's node, and that of the SEAL it
+ * carries (0xEAC, inside the stand-in's kit), switched off -- and the camera collision flag cleared --
+ * then both switched back: whether it hit, the nearest hit point given (SOCOM II's) */
+bool CAppCamera::ClipChord(CPnt3D *from, CPnt3D *to, CPnt3D *hit)
+{
+    bool found = false;
+    bool chars = m_cam_death_state != 0;
+    bool was = GetNode__7CEntityFv(m_entity)->SetActive(false);
+
+    zdb::SetCameraCollideFlagRequired(false);
+
+    CZSealBody *carried = m_bc ? *(CZSealBody **)((char *)m_bc + 0xeac) : 0;
+    bool carriedWas;
+
+    if (carried)
+        carriedWas = GetNode__7CEntityFv(carried)->SetActive(false);
+
+    zdb::IntersectStruct *is = GetNearestIntersectCamPoint(zdb::CWorld::m_world->GetIntersects(from, to, chars), from);
+
+    if (is) {
+        found = true;
+        *hit = is->m_pos;
+    }
+    GetNode__7CEntityFv(m_entity)->SetActive(was);
+    if (carried)
+        GetNode__7CEntityFv(carried)->SetActive(carriedWas);
+    return found;
+}
+
 /* the hit nearest the ray's tail, skipping hits on pieces of kind 1 too close to p0 (their
  * direction from p0 measured first); the camera's tether marked as hitting something */
 zdb::IntersectStruct *GetNearestIntersectCamPoint(zdb::DiIntersect *diSet, CPnt3D *p0)

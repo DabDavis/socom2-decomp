@@ -412,10 +412,62 @@ void CAiMap::reader::SetReader(CRdrFile *r)
     }
 }
 
+/* the region a route's end lies on (SOCOM 1's FindByLocation<regions, region>, inlined here) */
+inline CAiMap::region *find_region(CAiMap::regions &t, const CAiMapLoc &loc)
+{
+    for (CAiMap::regions::iterator i = t.begin(); i != t.end(); ++i)
+        if ((*i).m_loc == loc)
+            return &*i;
+    return 0;
+}
+
 /* whether a route is marked invalid (SOCOM 1's remove_if predicate for ValidateRoutes) */
 bool _invalid_route(CAiMap::route &r)
 {
     return (r.m_flags & 1) != 0;
+}
+
+/* the routes checked against the regions: one already invalid is skipped; one whose two regions are
+ * not both found, or whose first way point is not inside its first region of kind 4 or whose last is
+ * not inside its second, is marked invalid; the others are rerouted when asked; then the invalid
+ * ones are dropped, the end taken once for both remove_if and the erase (SOCOM 1's; SOCOM II's
+ * Contains tests the map too). Written in the AI core's round 24 for its instances: remove_if
+ * 0x5311E0 and remove_copy_if 0x5328E0 byte-exact through it.
+ * OPEN (0x3FC against 0x438): the target keeps the loop's iterator in memory (92(sp): loaded for
+ * every use, stored by the step) where this build keeps it in a register. One iterator reused for
+ * remove_if's result (`i = std::remove_if(...); erase(i, e);`) puts it in memory and gives the loop
+ * word for word but for a0/a1 swapped in the two region finds and back() reloading the way points'
+ * data_ that the target shares with [0]'s load -- 0x448, its tail one copy longer than the target's
+ * (result -> i -> erase's argument, where the target copies the result straight into the argument).
+ * Assigned in the for (declared outside), postfix steps, ->, begin()/end()-1 for the way points, the
+ * end reused as i, i reused for begin: none keeps i in memory alone (build/scratch/ai/v_vr*.py) */
+void CAiMap::ValidateRoutes(bool force)
+{
+    for (routes::iterator i = m_routeTable.begin(); i != m_routeTable.end(); ++i) {
+        if ((*i).m_flags & 1)
+            continue;
+        region *a = find_region(m_regionTable, (*i).m_region[0]);
+        region *b = find_region(m_regionTable, (*i).m_region[1]);
+
+        if (!a || !b) {
+            (*i).m_flags |= 1;
+            continue;
+        }
+        if (!a->Contains((*i).m_waypts[0]) || a->m_type != 4) {
+            (*i).m_flags |= 1;
+            continue;
+        }
+        if (!b->Contains((*i).m_waypts.back()) || b->m_type != 4) {
+            (*i).m_flags |= 1;
+            continue;
+        }
+        if (force)
+            ReRoute(&*i);
+    }
+    routes::iterator e = m_routeTable.end();
+    routes::iterator r = std::remove_if(m_routeTable.begin(), e, _invalid_route);
+
+    m_routeTable.erase(r, e);
 }
 
 /* the route of an index, or none (new in SOCOM II, the name ours) */
@@ -438,15 +490,6 @@ int CAiMap::GetRouteIndex(const route *r)
         if (&*i == r)
             return n;
     return -1;
-}
-
-/* the region a route's end lies on (SOCOM 1's FindByLocation<regions, region>, inlined here) */
-inline CAiMap::region *find_region(CAiMap::regions &t, const CAiMapLoc &loc)
-{
-    for (CAiMap::regions::iterator i = t.begin(); i != t.end(); ++i)
-        if ((*i).m_loc == loc)
-            return &*i;
-    return 0;
 }
 
 /* the map's graph built unless it has one and no rebuild is asked: a node per region of kind 4,
