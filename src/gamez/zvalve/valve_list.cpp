@@ -5,7 +5,15 @@
  * tail follows: remove_if (0x352500), the pieces it calls out of line in reverse of first use (the
  * iterator's copy, CValveOpDelete's operator(), *, !=, ++), remove_copy_if (0x352710), then the
  * statics' destructors (~CValvePool 0x352870, ~CValveList 0x352900). Defined in reverse of their
- * image order (-inline deferred). */
+ * image order (-inline deferred).
+ * OPEN, remove_if 0x352500 (4 instructions: include/algorithm's list instance -- the target copies
+ * find_if's first, then its last, into 88 and 84; ours last, then first). Measured in the world
+ * lane's round 14 through a unit-local specialisation (build/scratch/wld/v_vrif.py): the MSL lane's
+ * shape C (the search by const reference, its copies made in order), which closes the scheduler's
+ * own-code instance 0x34E8C0, costs 8 bytes here -- in tail code the iterator's copy constructor is
+ * out of line, so the two copies become calls; by-value parameters declared last-first give the
+ * order but swap the slots (the slots follow the declaration, the copies the right-to-left
+ * evaluation); copies by assignment, or built from the base iterator or the node, are 0x20 longer. */
 
 #include <algorithm>
 #include <string.h>
