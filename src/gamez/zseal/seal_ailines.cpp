@@ -1,8 +1,8 @@
 /* seal_ailines.cpp -- the AI's debug lines: DrawLine, LineTo, MoveTo, the line colour stack (SOCOM 1's
  * unit, __sinit_seal_ailines.cpp, after seal_squirm.cpp). OVL2 from ~0x5FF2F0 (after CAiTrigger's
  * SetTimes, seal_squirm.cpp's last) to before seal_look.cpp. So far DrawLine, LineTo, MoveTo, the
- * line-type test, the opacity and the colour (0x5FFDB0-0x600287; 0x5FF2F0, a box of twelve lines,
- * is not written). Defined in reverse of their image order (-inline deferred).
+ * line-type test, the opacity and the colour (0x5FFDB0-0x600287) and, round 29, the octahedron of
+ * twelve lines 0x5FF2F0 the unit opens with. Defined in reverse of their image order (-inline deferred).
  *
  * THE UNIT IS COMPILED WITHOUT INLINING (`#pragma dont_inline on`, its state at the unit's end: in
  * deferred mode MW decides every inline by it -- set over DrawLine and LineTo alone and reset, or
@@ -178,5 +178,81 @@ void DrawLine(LINE_TYPE type, const CPnt3D *a, const CPnt3D *b)
 }
 
 
+
+
+/* one line of DrawOctahedron: DrawLine's body written out, its kind already tested (the unit's pragma
+ * keeps DrawLine a call, so the body is spelled in place -- a macro here) */
+#define AI_OCTAHEDRON_LINE(ax, ay, az, bx, by, bz) \
+    { \
+        CPnt4D pa(ax, ay, az, 1.0f); \
+        CPnt4D pb(bx, by, bz, 1.0f); \
+        const CPnt3D &c = LineColor(ai_line_color); \
+        CPnt4D ca(c.x, c.y, c.z, ai_line_opacity); \
+        CPnt4D cb(c.x, c.y, c.z, ai_line_opacity); \
+        CMatrix *m = StackTop(ai_line_mstack); \
+        m->Transform(&pa, &pa, 1); \
+        m->Transform(&pb, &pb, 1); \
+        RenderLineWorld(pa, pb, ca, cb); \
+    }
+
+/* an octahedron of twelve lines about a point (OVL2 0x5FF2F0, new in SOCOM II; the name ours):
+ * four corners half the width out in x and z (the width the height's when -1), each joined to a
+ * tip half the height above and one below, then the corners joined in their own order (-x-z,
+ * +x-z, -x+z, +x+z: two of the four a diagonal) -- CAiSFollow::Tick marks its goal with one,
+ * (512, goal, 4, 3). DrawLine's kind test once, in place; then each line DrawLine's body.
+ * The tips' parts are numbered in the order w, h, x, the top's y, z, the bottom's y while the
+ * point's z is read before its x (the target's first loads: z, then the width's product, then
+ * x) -- a dead first definition of each in that order, MW numbering a variable at its first
+ * definition (README "Tells from the world, rdr and sound, round 12"); defined in their own
+ * order, either the registers or that schedule moves. Each corner-to-corner line reads the
+ * point into locals of its own (z first: x and y take $f20/$f21 across the first constructor),
+ * a coordinate the two ends share folded into its local. */
+void DrawOctahedron(LINE_TYPE type, const CPnt3D *pos, float height, float width)
+{
+    bool on = true;
+
+    if (type != LINE_ANY && (ai_line_mask & type) == 0)
+        on = false;
+    if (on) {
+        if (width == -1.0f)
+            width = height;
+        float w = 0.0f, h = 0.0f, tx = 0.0f, ty = 0.0f, tz = 0.0f, by = 0.0f;
+
+        w = 0.5f * width;
+        tz = pos->z;
+        tx = pos->x;
+        h = 0.5f * height;
+        ty = pos->y + h;
+        by = pos->y - h;
+        AI_OCTAHEDRON_LINE(pos->x - w, pos->y, pos->z - w, tx, ty, tz)
+        AI_OCTAHEDRON_LINE(pos->x + w, pos->y, pos->z - w, tx, ty, tz)
+        AI_OCTAHEDRON_LINE(pos->x - w, pos->y, pos->z + w, tx, ty, tz)
+        AI_OCTAHEDRON_LINE(pos->x + w, pos->y, pos->z + w, tx, ty, tz)
+        AI_OCTAHEDRON_LINE(pos->x - w, pos->y, pos->z - w, tx, by, tz)
+        AI_OCTAHEDRON_LINE(pos->x + w, pos->y, pos->z - w, tx, by, tz)
+        AI_OCTAHEDRON_LINE(pos->x - w, pos->y, pos->z + w, tx, by, tz)
+        AI_OCTAHEDRON_LINE(pos->x + w, pos->y, pos->z + w, tx, by, tz)
+        {
+            float z = pos->z - w, y = pos->y, x = pos->x;
+
+            AI_OCTAHEDRON_LINE(x - w, y, z, x + w, y, z)
+        }
+        {
+            float z = pos->z, y = pos->y, x = pos->x;
+
+            AI_OCTAHEDRON_LINE(x + w, y, z - w, x - w, y, z + w)
+        }
+        {
+            float z = pos->z + w, y = pos->y, x = pos->x;
+
+            AI_OCTAHEDRON_LINE(x - w, y, z, x + w, y, z)
+        }
+        {
+            float z = pos->z, y = pos->y, x = pos->x;
+
+            AI_OCTAHEDRON_LINE(x + w, y, z + w, x - w, y, z - w)
+        }
+    }
+}
 
 }   // namespace ai
