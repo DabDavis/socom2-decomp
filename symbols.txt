@@ -3893,9 +3893,9 @@
 0x002AF780 0x28 GetCustomCharTypeName__Fi  # OVL1; s1:align
 0x002AF7B0 0x90 ftsIsMapInVisibleList__FUiUi  # OVL1; s1:order by hand (the states lane: between GetCustomCharTypeName and ftsGetVisibleMap as in SOCOM 1; the same walk of a list's maps, over SOCOM II's 32 lists of 31)
 0x002AF840 0x20 ftsGetVisibleMap__FUii  # OVL1; s1:align
-0x002AF860 0xC func_002AF860  # OVL1
-0x002AF870 0xC func_002AF870  # OVL1
-0x002AF880 0xC func_002AF880  # OVL1
+0x002AF860 0xC ftsGetTacMapZoomNear__Fv  # OVL1; s1:order by hand (the states lane, round 26): SOCOM 1's ftsGetTacMapZoomNear 0x1FA850, first by order, reading 0x440BC0 (SOCOM 1's g_fTacMapZoomNear, gp-29324: TacMapZoom's item 1, default 2.2, in PreOpen 0x2ACC10); the zoom step 0x20A330 bounds the width below by 2200 over it, as SOCOM 1's TickFullScreenMap does at 0x3C47DC
+0x002AF870 0xC ftsGetTacMapZoomFar__Fv  # OVL1; s1:order by hand (the states lane, round 26): SOCOM 1's ftsGetTacMapZoomFar 0x1FA860, second by order, reading 0x440BC8 (SOCOM 1's g_fTacMapZoomFar, gp-29320: TacMapZoom's item 2, default 0.55, in PreOpen 0x2ACC10); its callers bound the map's width above by 2200 over it -- the zoom step 0x20A330 and FrameObjective 0x20B800, as SOCOM 1's TickFullScreenMap calls Far at 0x3C47A0 and 0x3C46D0 (NOT ftsGetTacMapZoom: SwitchMapToFullScreen 0x20A780 calls that, 0x2AF880)
+0x002AF880 0xC ftsGetTacMapZoom__Fv  # OVL1; s1:order by hand (the states lane, round 26): SOCOM 1's ftsGetTacMapZoom 0x1FA870, third of the three getters by order and reading the lowest of their statics (0x440BB8: SOCOM 1's g_fTacMapZoomInit, gp-29328), which PreOpen 0x2ACC10 fills from TacMapZoom's item 0 (default 1.0) as SOCOM 1's PreOpen does; SwitchMapToFullScreen 0x20A780 opens the map at 2200 over it as SOCOM 1's does (0x3C4F5C)
 0x002AF890 0x28 ftsGetNumVisibleMaps__FUi  # OVL1; s1:align
 0x002AF8C0 0x14C CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP5_zrdr  # OVL1; s1:align
 0x002AFA10 0x18C CreateCustomCharTypes__25@unnamed@fts_mission_cpp@FP11CVehicleRdrP5_zrdr  # OVL1; s1:align

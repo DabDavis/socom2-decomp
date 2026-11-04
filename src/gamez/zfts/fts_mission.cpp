@@ -1308,6 +1308,7 @@ class CZProjectileList;
 class CZWeapon {
 public:
     static void Close();   /* 0x3D0350 */
+    static void OpenDecals();   /* 0x3D03C0 */
     static void Open();   /* 0x3D03D0 */
     static void ClearTimer(float *pCurval);
 
@@ -1373,6 +1374,8 @@ class CZSealBody {
 public:
     static void NetworkPlayerCreate();   /* OVL2 0x5442C0 */
     static void UninitDatabaseHandles();   /* OVL2 0x5A3BB0 */
+    static void InitDatabaseHandles();   /* OVL2 0x5A4CE0 */
+    static void InitDecalHandles();   /* OVL2 0x5A4CF0 */
 
     unsigned char _0[0x4];
     unsigned int m_id;   // 0x4 (zentity.h's CEntity)
@@ -1384,6 +1387,14 @@ public:
 };
 
 CZSealBody *ftsGetPlayer();
+
+/* the SEALs' units (zkit's CSealUnit: only its statics) */
+class CSealUnit {
+public:
+    static void UnInit();   /* OVL2 0x5ECEF0 */
+    static void CreateSinglePlayerUnits();   /* OVL2 0x5EC6A0 */
+    static void CreateMultiPlayerUnits();   /* OVL2 0x5ECCD0 */
+};
 
 /* the map actions (fts_action.cpp's CNodeAction: only the static open) and the AI maps' fix-up
  * (SOCOM 1's names, at Open's calls) */
@@ -1413,14 +1424,9 @@ void func_003448D0(const char *name);   /* (the jukebox's lists) */
 void func_002DDE40(CRdrFile *rdr);   /* (SOCOM 1's CMaterialExArray::ReadMaterials) */
 int func_002DE9E0(const char *name);   /* (SOCOM 1's CMaterialExArray::ResolveMaterialIndex) */
 extern const char *data_0064F950;   /* (OVL2: "aimaps.mps") */
-void func_003D03C0();   /* (SOCOM 1's CZWeapon::OpenDecals) */
-void func_005A4CF0();   /* (OVL2: SOCOM 1's CZSealBody::InitDecalHandles) */
 void func_00574C30();   /* (OVL2) */
 void func_002B2E50(CMission *mission);   /* (SOCOM 1's CMission::LoadVehicles) */
-void func_005A4CE0();   /* (OVL2: SOCOM 1's CZSealBody::InitDatabaseHandles) */
 void func_00295660();
-void func_005EC6A0();   /* (OVL2: SOCOM 1's CSealUnit::CreateSinglePlayerUnits) */
-void func_005ECCD0();   /* (OVL2: SOCOM 1's CSealUnit::CreateMultiPlayerUnits) */
 }
 
 /* the mission opened: the database's archive and string tables, the vectors reserved, the compass,
@@ -1509,18 +1515,18 @@ bool CMission::Open(const char *name, int load_ai)
     CNodeAction::Open(world, "actions.rdr");
     CreateLadderTable();
     CCharacterModelCache::m_ModelCache.clear();
-    func_003D03C0();
+    CZWeapon::OpenDecals();
     if (CZWeapon::m_pMarklist)
         CZWeapon::m_pMarklist->Init();
     if (theNetwork.m_bNetwork)
         CZSealBody::NetworkPlayerCreate();
-    func_005A4CF0();
+    CZSealBody::InitDecalHandles();
     func_00574C30();
     func_002B2E50(this);
     CCharacterType::AcquireSoundHandles();
     CZWeapon::Open();
     world->AddCustomCharacters();
-    func_005A4CE0();
+    CZSealBody::InitDatabaseHandles();
     func_00295660();
     unsigned int count = CEntity::m_list.size();
 
@@ -1528,9 +1534,9 @@ bool CMission::Open(const char *name, int load_ai)
     if (!theNetwork.m_bNetwork)
         CPickup::Open(count);
     if (!theNetwork.m_bNetwork)
-        func_005EC6A0();
+        CSealUnit::CreateSinglePlayerUnits();
     else
-        func_005ECCD0();
+        CSealUnit::CreateMultiPlayerUnits();
     RefreshTeamValves();
     CAiMaps::iterator i, e = AiMaps.end();
 
@@ -1755,11 +1761,6 @@ public:
 class CAiDodge {
 public:
     static void Destroy();   /* OVL2 0x5FAD50 */
-};
-
-class CSealUnit {
-public:
-    static void UnInit();   /* OVL2 0x5ECEF0 */
 };
 
 class CSpawners {
@@ -2118,6 +2119,9 @@ namespace {
 char g_arrDefCharTypeNames[32][64];
 unsigned char g_arrMapVis[32][31];
 int g_arrMapVisCounts[32];
+float g_fTacMapZoomInit;   /* the "TacMapZoom" list's three: the zoom the full-screen map opens */
+float g_fTacMapZoomNear;   /* at (1), the nearest (2.2) and the farthest (0.55) it zooms to, */
+float g_fTacMapZoomFar;    /* each over 2200 a map width (PreOpen 0x2ACC10 reads them) */
 int g_iNumUiVehicles;
 }
 
@@ -2227,6 +2231,30 @@ int ftsGetNumVisibleMaps(unsigned int list)
     if (list < 32)
         return g_arrMapVisCounts[list];
     return 0;
+}
+
+/* the tactical map's zoom getters, SOCOM 1's three by order (0x1FA850 Near, 0x1FA860 Far, 0x1FA870
+ * the opening zoom) and by their statics' order (Init, Near, Far: SOCOM 1's gp-29328/-29324/-29320,
+ * here 0x440BB8/0x440BC0/0x440BC8, which PreOpen 0x2ACC10 fills from "TacMapZoom"'s items 0, 1
+ * and 2 as SOCOM 1's PreOpen does) -- and by their callers' roles: SwitchMapToFullScreen 0x20A780
+ * opens at 2200 / Zoom as SOCOM 1's does (0x3C4F5C), the zoom step 0x20A330 bounds the width by
+ * 2200 / Far above and 2200 / Near below, and FrameObjective 0x20B800 by 2200 / Far, as SOCOM 1's
+ * TickFullScreenMap does at 0x3C47A0/0x3C47DC and 0x3C46D0 (OVL1 0x2AF880) */
+float ftsGetTacMapZoom()
+{
+    return g_fTacMapZoomInit;
+}
+
+/* (OVL1 0x2AF870) */
+float ftsGetTacMapZoomFar()
+{
+    return g_fTacMapZoomFar;
+}
+
+/* (OVL1 0x2AF860) */
+float ftsGetTacMapZoomNear()
+{
+    return g_fTacMapZoomNear;
 }
 
 /* a list's map (OVL1 0x2AF840) */
