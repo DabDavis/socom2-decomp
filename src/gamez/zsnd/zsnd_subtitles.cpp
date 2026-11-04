@@ -5,13 +5,23 @@
  * (0x34D180, a wrapper of 0x34D190 with a null second argument), SetLanguage calls 0x34D190 again.
  * The unit sits between zsnd_vocalqueue.cpp and zsys_sched.cpp, closed by the records' reserve
  * (0x34DED0). Defined in reverse of their image order (-inline deferred).
- * Written so far: the constructor, the lookup and the empty walk it calls. Not written: the loader
- * 0x34D190, 0x34D460/0x34D470/0x34D480, 0x34D5D0, 0x34D740, 0x34DA00, the tail. */
+ * Written so far: the constructor, the lookup and the empty walk it calls, the loader (0x34D190:
+ * CSubtitleTable is the VAG location table -- each language's VAGS_<lang>.ZAR and VAGSTORE.ZAR, their
+ * files' offsets, sizes and name hashes) and its first call (0x34D180). Not written:
+ * 0x34D460/0x34D470/0x34D480 (drafts), CSubtitleList::Load 0x34D5D0 and the next-file walk 0x34D740
+ * (the key ring's vector<CKey *> iterator, which they call out of line through zar's pieces
+ * 0x257B90-0x257CB0 -- include/vector's class iterator has none of their shapes: a copy constructor
+ * returning this 0x257C00, a pointer-reference constructor 0x257CA0, an __iter taking the pointer's
+ * address 0x257C90, two raw-end copies 0x257BA0/0x34D920 -- model zar's key ring first, then name
+ * them; 0x34D740 inlines itself three times, each copy calling those pieces a level higher), the
+ * records' insert(pos, n, x) 0x34DA00, the tail. */
 
+#include <stdio.h>
 #include <vector>
 
 #include "zsnd.h"
 #include "zsnd_subtitles.h"
+#include "../zar/zar.h"
 
 /* the string hash the lookups key on (0x3A59C0, an earlier unit's: a tail call into the util
  * unit's hash, not named yet) */
@@ -54,4 +64,79 @@ CSubtitleTable::CSubtitleTable() : m_20(0)
 {
     m_entries.reserve(10);
     m_lines.reserve(11500);
+}
+
+/* the language's VAG index (VAGS_<lang>.ZAR, English for the two English languages, none for the
+ * rest) and VAGSTORE's read: each archive's start sector off the CD's table of contents, then its
+ * files listed (the VAG index's into the first list, VAGSTORE's into the second); whether VAGSTORE
+ * opened. The flag cleared first, set once a language is chosen; the lower-case name of each file
+ * is written and never read (the host's path, its use compiled out?) */
+bool CSubtitleTable::Load(LANGUAGE lang)
+{
+    char path[128];
+    char name[128];
+    bool ok;
+
+    if (m_20)
+        m_20 = 0;
+    if (lang == LANG_KOREA) {
+        sprintf(path, "RUN\\SOUNDS\\VAGS_KOR.ZAR");
+        sprintf(name, "run/sounds/vags_kor.zar");
+    } else if (lang == LANG_FRANCE) {
+        sprintf(path, "RUN\\SOUNDS\\VAGS_FRN.ZAR");
+        sprintf(name, "run/sounds/vags_frn.zar");
+    } else if (lang == LANG_GERMANY) {
+        sprintf(path, "RUN\\SOUNDS\\VAGS_GER.ZAR");
+        sprintf(name, "run/sounds/vags_ger.zar");
+    } else if (lang == LANG_SPAIN) {
+        sprintf(path, "RUN\\SOUNDS\\VAGS_SPN.ZAR");
+        sprintf(name, "run/sounds/vags_spn.zar");
+    } else if (lang == LANG_ITALY) {
+        sprintf(path, "RUN\\SOUNDS\\VAGS_ITL.ZAR");
+        sprintf(name, "run/sounds/vags_itl.zar");
+    } else if (lang == LANG_JAPAN) {
+        sprintf(path, "RUN\\SOUNDS\\VAGS_JPN.ZAR");
+        sprintf(name, "run/sounds/vags_jpn.zar");
+    } else if (lang == LANG_STATES || lang == LANG_UK) {
+        sprintf(path, "RUN\\SOUNDS\\VAGS_ENG.ZAR");
+        sprintf(name, "run/sounds/vags_eng.zar");
+    }
+    m_20 = 1;
+    {
+        char cd[128];
+
+        sprintf(cd, "%s;1", path);
+        _FILECD *f = CFileCD::Find(cd);
+        if (f)
+            m_18 = f->startSector;
+        zar::CZAR zar(0, 0);
+        ok = zar.Open(path, 0, 33, 16, false);
+        if (ok) {
+            m_entries.Load(&zar);
+            zar.Close();
+        }
+    }
+    sprintf(path, "RUN\\SOUNDS\\VAGSTORE.ZAR");
+    sprintf(name, "run/sounds/vagstore.zar");
+    char cd[128];
+
+    sprintf(cd, "%s;1", path);
+    _FILECD *f = CFileCD::Find(cd);
+    if (f)
+        m_1c = f->startSector;
+    else
+        m_1c = 0;
+    zar::CZAR zar(0, 0);
+    ok = zar.Open(path, 0, 33, 16, false);
+    if (ok) {
+        m_lines.Load(&zar);
+        zar.Close();
+    }
+    return ok;
+}
+
+/* the first load: the English index (CSnd::Init calls it; SetLanguage calls Load itself) */
+void CSubtitleTable::Init()
+{
+    Load(LANG_STATES);
 }
