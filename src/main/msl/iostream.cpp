@@ -679,12 +679,11 @@ _RefCountedPtr<T, Destructor> &_RefCountedPtr<T, Destructor>::operator=(const _R
 
 /* codecvt<wchar_t, char, int> */
 /* the wide conversion is no conversion at all: each wchar_t's four bytes as they lie in memory.
- * OPEN, 2 x 40 instructions (0x98 against 0xA0 each): the byte loop is MW's to unroll here (four
- * lb/sb pairs) and the target keeps it a loop (counter in a1, the source pointer stepped in the
- * delay slot); and the closing `?:` is a select here, branches in the target. Tried: int/size_t
- * counters, while/do forms, a variable bound, `*p++`; -O3,p and `-opt nounroll` change nothing;
- * only `#pragma opt_unroll_loops off` keeps the loop (then 2 instructions off in the scheduling)
- * -- SOCOM 1's copies (0x14A630, 0x14A6C0) have the loop too. */
+ * Both match since round 6: the byte copy is a do-while over an index with the other side's pointer
+ * stepped (MW unrolls the for-loop forms into four lb/sb pairs, the target keeps a loop: a do-while
+ * it does not unroll -- `#pragma opt_unroll_loops off` over the for-loop gives the same words), and
+ * the exit is an if (`?:` makes a select where the target branches). SOCOM 1's copies (0x14A630,
+ * 0x14A6C0) keep the loop too. */
 codecvt_base::result
 codecvt<wchar_t, char, int>::do_out(int &, const wchar_t *from, const wchar_t *from_end, const wchar_t *&from_next,
                                    char *to, char *to_limit, char *&to_next) const
@@ -693,10 +692,14 @@ codecvt<wchar_t, char, int>::do_out(int &, const wchar_t *from, const wchar_t *f
     to_next = to;
     for (; from_next < from_end && to_next < to_limit - (sizeof(wchar_t) - 1); ++from_next, to_next += sizeof(wchar_t)) {
         const char *p = (const char *)from_next;
-        for (size_t i = 0; i < sizeof(wchar_t); ++i)
-            to_next[i] = p[i];
+        size_t i = 0;
+        do
+            to_next[i] = *p++;
+        while (++i < sizeof(wchar_t));
     }
-    return from_next < from_end ? partial : ok;
+    if (from_next < from_end)
+        return partial;
+    return ok;
 }
 
 codecvt_base::result
@@ -707,10 +710,14 @@ codecvt<wchar_t, char, int>::do_in(int &, const char *from, const char *from_end
     to_next = to;
     for (; from_next < from_end - (sizeof(wchar_t) - 1) && to_next < to_limit; from_next += sizeof(wchar_t), ++to_next) {
         char *p = (char *)to_next;
-        for (size_t i = 0; i < sizeof(wchar_t); ++i)
-            p[i] = from_next[i];
+        size_t i = 0;
+        do
+            *p++ = from_next[i];
+        while (++i < sizeof(wchar_t));
     }
-    return from_next < from_end ? partial : ok;
+    if (from_next < from_end)
+        return partial;
+    return ok;
 }
 
 codecvt_base::result codecvt<wchar_t, char, int>::do_unshift(int &, char *to, char *, char *&to_next) const
