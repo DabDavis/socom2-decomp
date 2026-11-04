@@ -229,6 +229,48 @@ void CZProjectile::Init()
     m_hasrested = 0;
 }
 
+/* made ready to fly: a launcher's fire animation started on the node (SOCOM II's), the
+ * intersection taken from the direct- or the indirect-fire table and two flags cleared (SOCOM 1's
+ * whole body), a volatile round's node given its first child's collision pieces and its extension,
+ * and the node's pieces made its descendants' and its box rebuilt from them (SOCOM 1's
+ * PreFireProjectile, 0x3CAF60: CZWeapon::Fire's set-up, SOCOM II's 0x3CB1A0 calls it) */
+void CZProjectile::PreFireProjectile()
+{
+    EQUIP_ITEM type = CZWeapon::GetIDType(m_weapon->m_ID);
+
+    if (type == 121 || type == 171 || type == 185 || type == 230) {
+        CZAnim *anim = m_weapon->GetFireAnim(false);
+        CZAnim *inst = 0;
+
+        if (anim && CZWeapon::m_allowFireAnimations)
+            inst = anim->ActivateArg(1, 3, m_instance, 0);
+        m_animinstance = inst;
+    }
+    if (m_shottype == ONE_FRAME)
+        CZWeapon::m_pProjectilelist->GetNextDirectFireDI(&m_di, &m_di_handle);
+    else
+        CZWeapon::m_pProjectilelist->GetNextIndirectFireDI(&m_di, &m_di_handle);
+    SetFlag17(false);
+    SetFlag18(false);
+    if (m_ammo->IsVolatile()) {
+        CNode *first = 0;
+        CNodeVector children = m_instance->m_child;
+
+        if (children.size())
+            first = children[0];
+        if (first) {
+            CDIVector &src = first->m_di;
+            CDIVector dis = src;
+
+            for (int i = 0; i < dis.size(); i++)
+                m_instance->AddDI(dis[i]);
+        }
+        m_instance->SetNodeEx(&m_nodeex, false);
+    }
+    m_instance->SetDescendantDI(true);
+    m_instance->UpdateBBoxFromDI(true);
+}
+
 /* its velocity: none, at rest; else flying and not done (SOCOM 1's) */
 void CZProjectile::SetVelW(const CPnt3D *vel)
 {

@@ -413,10 +413,13 @@ public:
     static bool m_timer_bTimerRegistered;
     static bool m_timer_bTimerCleared;
     static bool m_timer_bIncrTimer;
-    /* whether hits and detonations start their animations (SOCOM 1's static, a byte in its
-     * .sdata; SOCOM II's at 0x3E1540, initialised true: only the projectile's three impact
-     * handlers read it) */
+    /* whether shots, hits and detonations start their animations, and whether shots intersect
+     * (SOCOM 1's statics, bytes in its .sdata in this order; SOCOM II's at 0x3E1538, 0x3E1540 and
+     * 0x3E1548, initialised true: the projectile's PreFireProjectile, its impact handlers and its
+     * PreTick read them) */
+    static bool m_allowFireAnimations;
     static bool m_allowImpactAnimations;
+    static bool m_allowWeaponIntersection;
     /* a second timer of the same kind, never cleared (new in SOCOM II, 0x3D0090-0x3D00FF: the kit
      * registers an item's use time with it, the HUD's timer tick takes it -- the names ours) */
     static void RegisterTimer2(float *pCurval, float maxval, bool bIncr);
@@ -672,6 +675,8 @@ public:
      * asked, or the shot's own orientation (SOCOM 1's; nothing returned -- no path sets v0) */
     void SetModelOrientation(bool b, const CPnt3D *dir);
     void SetVelW(const CPnt3D *vel);
+    /* the shot made ready to fly (SOCOM 1's, 0x3CAF60) */
+    void PreFireProjectile();
     /* SOCOM II's: a hit on the projectile itself from another (CProjectileNodeEx hands it on; the
      * name ours) */
     void OnWeaponHit(zdb::IntersectStruct *hit, CZProjectile *projectile);

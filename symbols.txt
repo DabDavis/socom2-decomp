@@ -8233,7 +8233,7 @@
 0x003CA5A0 0x63C PreTick__12CZProjectileFf  # OVL1; s1:vtable by hand (the wep lane: slot +0x08 of __vt__12CZProjectile, 0x4083D0, where SOCOM 1's has PreTick__12CZProjectileFf; PostTick, the next slot, already carries its name)
 0x003CABE0 0x300 SetModelOrientation__12CZProjectileFbPC6CPnt3D  # OVL1; s1:order by hand (the wep lane: SOCOM 1's SetModelOrientation, 0x300 bytes in both builds, after PreTick; UpdateGrenadePosition calls it as SOCOM 1's UpdateGrenade does)
 0x003CAEE0 0x80 SetVelW__12CZProjectileFPC6CPnt3D  # OVL1; s1:calls (called where SOCOM 1's calls it; 0x80 against SOCOM 1's 0x7C) -- the SEAL lane
-0x003CAF60 0x234 func_003CAF60  # OVL1
+0x003CAF60 0x234 PreFireProjectile__12CZProjectileFv  # OVL1; s1:calls by hand (the wep lane, round 21: zwep_projectile.cpp -- SOCOM 1's PreFireProjectile 0x319F90 as its middle: the shot type's direct- or indirect-fire DI from the projectile list, then the flags cleared; SOCOM II adds a launcher's fire anim ahead (m_allowFireAnimations, SOCOM 1's static) and a volatile round's DI copy after; 0x3CB1A0 calls it)
 0x003CB1A0 0x454 func_003CB1A0  # OVL1
 0x003CB600 0x1E0 Init__12CZProjectileFv  # OVL1; by hand (the wep lane: CZProjectile's constructor calls it between the owner's store and the extension's SetProjectile -- SOCOM 1's constructor's inline stores (rotation 0, time 9999999, the flags, handles -1, flyout index 1), with SOCOM II's members; the name ours)
 0x003CB7E0 0xC0 __dt__12CZProjectileFv  # OVL1; s1:align, checked by hand (stores __vt__12CZProjectile, cleans up; PlacedExplosive's destructor calls it as its base's)

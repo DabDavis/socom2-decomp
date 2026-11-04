@@ -1200,7 +1200,9 @@ float *CZWeapon::m_timer_pCurval;
 bool CZWeapon::m_timer_bTimerRegistered;
 bool CZWeapon::m_timer_bTimerCleared;
 bool CZWeapon::m_timer_bIncrTimer = true;
+bool CZWeapon::m_allowFireAnimations = true;
 bool CZWeapon::m_allowImpactAnimations = true;
+bool CZWeapon::m_allowWeaponIntersection = true;
 
 void CZWeapon::RegisterTimer(float *pCurval, float maxval, bool bIncr)
 {
