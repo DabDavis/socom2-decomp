@@ -1888,6 +1888,32 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the world, rdr and sound, round 7** (__sinit_zsnd_csnd.cpp, the headset queue, the pipe's atoms, the
+  scheduler, the subtitle list):
+  - 0x402FF0 IS __sinit_zsnd_csnd.cpp (the unit's header had said it has none): its statics in build order -- four
+    vector<int> reverb tables, a vector of 24-byte bank records (CSndBank, ours), CSnd::m_soundlist, the subtitle table,
+    m_bnkArchive, CSnd::m_listenermatrix, the subtitles' CSTable(0, 1024), a CSoundBufferIO (the RTTI's name; a plain
+    CBufferIO), the vocal queue; zsnd_csnd.cpp's tail runs 0x345F70-0x346260 with UnloadAllSounds' FreeVector copies
+    0x342090-0x342230 after it;
+  - a class iterator is a scalariser temporary numbered after named locals, a plain pointer compared through
+    `iterator(p) != end()` is a named local and takes the higher register (Find); binding a call's returned iterator to a
+    const reference, then assigning from it, gives the temporary its slot ahead of a later pushed copy (Tick); an
+    iterator assigned from begin() before `iterator e = end()` loads the first node while `this` is still live
+    (RemoveTask); a value re-read in a loop test (`k <= *skip[0]`) is hoisted into a temporary numbered after the
+    induction temporaries (DeQueue);
+  - `p = t; p++;` as separate statements keeps the offset as its own addiu after the relocation, `&t[1]` folds it
+    (zSysUnloadMcIRX); a member vector walked through a reference taken after an intervening call moves every saved
+    register (SaveDelayedNode); a constant argument shares its register with a byte store of the same constant just
+    before it (CSnd::Init's "flag in a2" was the 1 shared with Open(name, 1)); an element with a member-wise copy
+    constructor makes a class vector's reserve copy word by word through v0, not the FPU; three this-tests per member
+    before the deleter's destructor mean the members are a class derived from std::vector; `ref = idx != -1 ? idx : (idx
+    = f())` keeps the call's result in the index's saved register before the store;
+  - Find and Dump belong to the subtitle record vector (CSubtitleList: the table's lookup 0x34D480 calls Find on this+0xC
+    and then this; zsnd_subtitles.h); renamed at integration: 0x360030 Draw3DLine, 0x2721C0 CZAnimArgList::GetValve,
+    0x354470 CValve::RegisterCommands, 0x353D00 CmdTickCmp, 0x353FD0 VALVE_CMD_DATA::Compare;
+  - open: RenderLineWorld 0x33B5F0 (0xD4 vs 0x12C: the four by-value points copied through FPU registers in the target --
+    zmath.h's 16-byte-aligned CPnt4D copies with quadwords, a written copy constructor copies nothing: it needs a
+    4-aligned CPnt4D without one -- the MSL lane's call), CValveOpDelete (6), PostTick (3), CHeap::Alloc (7), PlayNext (17).
 - **Tells from the game states, round 23** (the ladder table, the multi-mission list, the persona names' packer):
   - MW evaluates a `new T(arg)` argument after the allocation, inside the null test -- the target's earlier evaluation
     means the argument was a local; an inline constructor's parameter order numbers the inlined temporaries, so it

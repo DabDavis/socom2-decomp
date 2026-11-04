@@ -3033,7 +3033,7 @@
 0x00271B30 0x3B0 ParseNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:calls (SOCOM 1's NetworkReceive calls it on the copy's list, as SOCOM II's func_00273780 does)
 0x00271EE0 0x1FC AddNetworkPacketArgs__13CZAnimArgListFP6CZAnimP18ZAnimNetworkPacket  # OVL1; s1:align
 0x002720E0 0xD8 GetCmd__13CZAnimArgListFi  # OVL1; s1:calls (the kit lane's round 8, vetted by the integrator: the find inlined into every task handler calls it with (list, i) exactly as SOCOM 1's taskFindParam calls GetCmd__13CZAnimArgListFi)
-0x002721C0 0xD8 func_002721C0  # OVL1
+0x002721C0 0xD8 GetValve__13CZAnimArgListFi  # OVL1; the integrator 2026-11-04, by the world lane round 7: CValve's VWATCH tick calls it on the anim's argument list (s1:calls)
 0x002722A0 0xF0 func_002722A0  # OVL1
 0x00272390 0xE8 func_00272390  # OVL1
 0x00272480 0xD8 GetCharP__13CZAnimArgListFi  # OVL1; s1:callee
@@ -6458,10 +6458,10 @@
 0x00353270 0x360 func_00353270  # OVL1
 0x003535D0 0x69C CmdParseCmp__6CValveFP5_zrdr  # OVL1; s1:align
 0x00353C70 0x8C ParseValveName__14VALVE_CMD_DATAFPCcRi  # OVL1; s1:align
-0x00353D00 0x8 func_00353D00  # OVL1
+0x00353D00 0x8 CmdTickCmp__6CValveFP14_zanim_cmd_hdrPf  # OVL1; the integrator 2026-11-04, by the world lane round 7: the CMP command's tick (8 bytes), registered beside its parser as SOCOM 1's
 0x00353D10 0x2C0 ParseOperator__6CValveFPCc  # OVL1; s1:align
-0x00353FD0 0x498 func_00353FD0  # OVL1
-0x00354470 0x98 func_00354470  # OVL1
+0x00353FD0 0x498 Compare__14VALVE_CMD_DATAFv  # OVL1; the integrator 2026-11-04, by the world lane round 7: SOCOM 1's VALVE_CMD_DATA::Compare by its call pattern
+0x00354470 0x98 RegisterCommands__6CValveFv  # OVL1; the integrator 2026-11-04, by the world lane round 7: SOCOM 1's CValve::RegisterCommands by its call pattern (it registers the VALVE and VWATCH command pairs)
 0x00354510 0xD4 Free__Q23zdb8CTexListFv  # OVL1; s1:order+calls (SOCOM 1's Free, Append, GetHandle(name) in the same order; ~CAssetLib calls it as SOCOM 1's does) -- the zdb-world lane
 0x003545F0 0x80 Append__Q23zdb8CTexListFPQ23zdb8CTextureb  # OVL1; s1:order+calls (after Free as SOCOM 1's; CAssetLib::AddTexture calls it with true as SOCOM 1's does) -- the zdb-world lane
 0x00354670 0x118 GetHandle__Q23zdb8CTexListFPCc  # OVL1; s1:order+calls (after Append as SOCOM 1's; CAssetList::GetTexHandle calls it at SOCOM 1's call site) -- the zdb-world lane
@@ -6631,7 +6631,7 @@
 0x0035F9C0 0x100 clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's first clip3DLine, 0xDC there, the same five calls to the four-argument one on the planes' pairs, a null test first)
 0x0035FAC0 0x21C clip3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's second clip3DLine, after the three-argument one as there (0x240 there); the three-argument one calls it five times with a plane pair; VU0 differences, inner products, the behind end moved onto the plane)
 0x0035FCE0 0x344 Draw2DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; s1:calls
-0x00360030 0x22C func_00360030  # OVL1
+0x00360030 0x22C Draw3DLine__FP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; the integrator 2026-11-04, by the world lane round 7: CPipe::RenderLineWorld calls it where SOCOM 1 calls Draw3DLine (s1:calls)
 0x00360260 0x8C SetClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's SetClipInfo before FillClipInfo, the two rows of vertex, colour and UV copied in; SOCOM II dropped its int parameter)
 0x003602F0 0x8C FillClipInfo__7C2DLineFPA4_fPA4_fPA4_f  # OVL1; s1:order by hand (c2dline.cpp: SOCOM 1's FillClipInfo, 0x9C there: the rows copied out)
 0x00360380 0x118 MakePacket__7C2DLineFPQ23zdb7CCamera  # OVL1; s1:callee
