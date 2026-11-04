@@ -2603,6 +2603,8 @@ public:
     int m_y;   // 0x10
     unsigned char m_justify;   // 0x14: the string's 0x6A
     float m_scale;   // 0x18: the string look's scale when not 0
+    std::vector<zdb::CTexHandle *> m_textures;   // 0x1c: an image column's, prepared by the box
+    CUIVariable m_texNames;   // 0x28: their names, a ZRDR array (as zui_2d.cpp's variable reads one)
 };
 
 /* a list box's item's look (SOCOM 1's CListItemTypeImpl, zui_2d.cpp's). SOCOM II's table (0x4070F0)
@@ -2755,6 +2757,53 @@ void ListItem::AddToRdr(CRdrEditor *ed)
     m_impl->AddToRdr(ed);
 }
 
+/* four ints the list box's spec gives it (rectangles, by their use; the name ours) */
+struct IRECT {
+    int l, t, r, b;
+};
+
+/* a list box's spec (zui_spec.h's CUIListBoxSpec, 0x120 bytes: an image's, then what the box's
+ * LoadSpec reads -- the names ours, by the box's fields they set; its three colours copied out
+ * through inline getters returning them by value, as the target's stack temporaries show) */
+class CUIListBoxSpec : public CImageSpec {
+public:
+    CPnt3D GetColor() const { return m_color; }
+    CPnt3D GetColor13C() const { return m_color13c; }
+    CPnt3D GetColor148() const { return m_color148; }
+
+    int m_lineHeight;   // 0x24
+    float m_scale;   // 0x28
+    int m_2c;   // 0x2c
+    int m_30;   // 0x30
+    bool m_hasFont;   // 0x34
+    bool m_followEnd;   // 0x35
+    bool m_noHighlight;   // 0x36
+    bool m_37;   // 0x37
+    CSaferStr m_font;   // 0x38
+    CSaferStr m_tex44;   // 0x44
+    CSaferStr m_tex50;   // 0x50
+    CSaferStr m_tex5c;   // 0x5c
+    CSaferStr m_tex68;   // 0x68
+    CSaferStr m_tex74;   // 0x74
+    CSaferStr m_tex80;   // 0x80
+    IRECT m_rect8c;   // 0x8c
+    IRECT m_rect9c;   // 0x9c
+    IRECT m_rectac;   // 0xac
+    std::vector<ColumnData *> m_columns;   // 0xbc
+    CPnt3D m_color;   // 0xc8
+    CPnt3D m_color13c;   // 0xd4
+    CPnt3D m_color148;   // 0xe0
+    std::vector<ListItem *> m_items;   // 0xec
+    std::vector<ActionItem> m_commands;   // 0xf8
+    float m_seqStart;   // 0x104
+    float m_seqLength;   // 0x108
+    float m_pulseMin;   // 0x10c
+    float m_pulseMax;   // 0x110
+    float m_pulseTime;   // 0x114
+    float m_118;   // 0x118
+    int m_11c;   // 0x11c
+};   // 0x120 bytes
+
 /* a list box command (SOCOM II's 20 bytes): the header's type and argument -- a valve's name added
  * to the animation's -- and a UI variable's name index at 0x10 */
 struct CListBoxCmd : public C2DAnimCmdHdr {
@@ -2772,6 +2821,10 @@ public:
     virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
     /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
     virtual int GetZAnimCmdType(const char *name);
+    /* slot 19: the rows shown normal (0x376420, its m2c draft matches) */
+    virtual void SetNormal();
+    /* set up from its spec (0x375E20: CUIListBoxSpec::CreateDisplayObj's call) */
+    void LoadSpec(const CUIListBoxSpec &spec, zdb::CTexHandle *tex, zdb::CTextureRelocMgr *mgr);
 
     /* the row's opacity, pulse time and limits: the highlighted row's own, the others' fixed */
     int GetAlpha(int idx) const { return m_highlighted == idx ? m_highlightAlpha : 80; }
@@ -2802,7 +2855,8 @@ public:
     }
 
     C2DFont *m_font;   // 0xa0
-    unsigned char _a4[0xac - 0xa4];
+    int m_a4;   // 0xa4 (the spec's 0x2C)
+    int m_a8;   // 0xa8 (the spec's 0x30)
     int m_lineHeight;   // 0xac: a row's height (the spec's)
     int m_offset;   // 0xb0: the highlighted row's offset in the list
     unsigned char _b4[0xb8 - 0xb4];
@@ -2813,20 +2867,35 @@ public:
     unsigned char _d0[0xd4 - 0xd0];
     std::vector<ColumnData *> m_columns;   // 0xd4
     int m_highlightAlpha;   // 0xe0
-    unsigned char _e4[0xe8 - 0xe4];
+    zdb::CTextureRelocMgr *m_mgr;   // 0xe4: the items' textures' relocator
     bool m_noHighlight;   // 0xe8: HIGHLIGHT_OFF's (the spec's byte at 0x36)
     bool m_followEnd;   // 0xe9: a new list highlights its last row (the spec's byte at 0x35)
-    unsigned char _ea[0x130 - 0xea];
+    bool m_ea;   // 0xea (the spec's 0x37)
+    zdb::CTexHandle *m_texEC;   // 0xec: the spec's textures, by their names at 0x50, 0x5C, 0x44
+    zdb::CTexHandle *m_texF0;   // 0xf0
+    zdb::CTexHandle *m_texF4;   // 0xf4
+    unsigned char _f8[0xfc - 0xf8];
+    zdb::CTexHandle *m_texFC;   // 0xfc: and 0x68
+    IRECT m_rect100;   // 0x100 (the spec's 0x8C)
+    IRECT m_rect110;   // 0x110 (the spec's 0xAC)
+    IRECT m_rect120;   // 0x120 (the spec's 0x9C)
     CPnt3D m_color;   // 0x130: the rows' colour
-    unsigned char _13c[0x154 - 0x13c];
+    CPnt3D m_color13c;   // 0x13c: the highlight's (SetActive copies it to 0x154)
+    CPnt3D m_color148;   // 0x148
     CPnt3D m_highlightColor;   // 0x154
     float m_seqStart;   // 0x160: the first row's sequence start
     float m_seqLength;   // 0x164: each row's sequence length
-    unsigned char _168[0x174 - 0x168];
+    float m_pulseMin0;   // 0x168: the pulse's limits and time as the spec gives them (SetActive's)
+    float m_pulseMax0;   // 0x16c
+    float m_pulseTime0;   // 0x170
     float m_pulseMin;   // 0x174
     float m_pulseMax;   // 0x178
     float m_pulseTime;   // 0x17c
-    unsigned char _180[0x194 - 0x180];
+    unsigned char _180[0x184 - 0x180];
+    float m_184;   // 0x184 (the spec's 0x118)
+    zdb::CTexHandle *m_tex188;   // 0x188: the spec's textures by their names at 0x80 and 0x74
+    zdb::CTexHandle *m_tex18c;   // 0x18c
+    int m_190;   // 0x190 (the spec's 0x11C)
     int m_highlighted;   // 0x194
     unsigned char _198[0x420 - 0x198];
     ActionItem m_actions[30];   // 0x420: the box's actions (the spec's ANIMATIONS)
@@ -2872,6 +2941,87 @@ void CUIListBox::UpdateUIVar(CUIVariable *var)
                 }
             }
     }
+}
+
+/* set up from its spec (SOCOM 1's CUIListBox::LoadSpec, 0x38E2E0 there; SOCOM II's columns and
+ * rows): the plain bitmap's own setup, the spec's sizes, scale, flags and timings, a font of its
+ * own when the spec names one; each column taken over, an image column's textures prepared from
+ * its names; each row prepared for the columns and taken over; the variable watched again; the
+ * actions; the textures, rectangles and colours; shown normal. One counter for the three walks
+ * (each loop's own swaps it with the push_back end node's and the action pointer's saved registers);
+ * the column and the row each read into a local of their own beside the one push_back takes by
+ * reference (through that one MW reloads it from its frame slot for the test and the call) */
+void CUIListBox::LoadSpec(const CUIListBoxSpec &spec, zdb::CTexHandle *tex, zdb::CTextureRelocMgr *mgr)
+{
+    int i;
+
+    CPlainBmp::LoadSpec(spec, tex);
+    m_tex188 = 0;
+    m_tex18c = 0;
+    m_mgr = mgr;
+    m_a4 = spec.m_2c;
+    m_a8 = spec.m_30;
+    m_lineHeight = spec.m_lineHeight;
+    m_scale = spec.m_scale;
+    m_noHighlight = spec.m_noHighlight;
+    m_followEnd = spec.m_followEnd;
+    m_ea = spec.m_37;
+    m_seqStart = spec.m_seqStart;
+    m_seqLength = spec.m_seqLength;
+    m_pulseMax0 = spec.m_pulseMax;
+    m_pulseMin0 = spec.m_pulseMin;
+    m_pulseTime0 = spec.m_pulseTime;
+    m_184 = spec.m_118;
+    m_190 = spec.m_11c;
+    if (spec.m_hasFont) {
+        const char *name = spec.m_font.c_str();
+
+        m_ownFont = new C2DFont;
+        m_ownFont->Load(FetchMissionFontsRdr(), name);
+        m_font = m_ownFont;
+    }
+    for (i = 0; i < (int)spec.m_columns.size(); i++) {
+        ColumnData *c = spec.m_columns[i];
+        ColumnData *col = c;
+
+        if (c->m_type == 0)
+            for (int j = 0; j < col->m_texNames.Count(); j++) {
+                zdb::CTexHandle *t = PrepTexture(col->m_texNames.Item(j)->GetString(), mgr);
+
+                col->m_textures.push_back(t);
+            }
+        m_columns.push_back(col);
+    }
+    for (i = 0; i < (int)spec.m_items.size(); i++) {
+        ListItem *p = spec.m_items[i];
+        ListItem *item = p;
+
+        p->PrepListItem(m_columns, m_font, m_scale, m_mgr);
+        m_items.push_back(item);
+    }
+
+    CUIVariable *var = spec.GetUIVar();
+
+    if (var)
+        WatchUIVar(var);
+    for (i = 0; i < (int)spec.m_commands.size(); i++) {
+        g_hasAnims = 1;
+        m_numActions++;
+        m_actions[i] = spec.m_commands[i];
+    }
+    m_texEC = PrepTexture(spec.m_tex50.c_str(), mgr);
+    m_texF0 = PrepTexture(spec.m_tex5c.c_str(), mgr);
+    m_texF4 = PrepTexture(spec.m_tex44.c_str(), mgr);
+    m_texFC = PrepTexture(spec.m_tex68.c_str(), mgr);
+    m_rect100 = spec.m_rect8c;
+    m_color = spec.GetColor();
+    m_color13c = spec.GetColor13C();
+    m_color148 = spec.GetColor148();
+    SetNormal();
+    m_tex18c = PrepTexture(spec.m_tex74.c_str(), mgr);
+    m_tex188 = PrepTexture(spec.m_tex80.c_str(), mgr);
+    m_rect110 = spec.m_rectac;
+    m_rect120 = spec.m_rect9c;
 }
 
 /* each item's node erased before the item is deleted, the next iterator kept apart and ASSIGNED
