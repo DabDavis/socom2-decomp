@@ -1,3 +1,6 @@
+/* sc: compiler=mwcps2-3.0b50-030527 */
+/* (the unit's build: 3.0b50, not the game's 3.0b52 -- the breach side test 0x5F3270 is b50's own Dot form, shared y-product
+ * and all, and no b52 spelling of 72 reproduces it; nothing else in the unit changes under b50: the integrator, 2026-11-04) */
 /* seal_aistate.cpp -- the AI states' core: CQB attack, unknown, suspended, breach, script, goto,
  * pickup (SOCOM 1's unit, __sinit_seal_aistate.cpp, with its static CAiSUnknown; SOCOM 1 filed it
  * beside the other seal_*.cpp under gamez/zseal, this tree keeps the AI states under src/ai).
