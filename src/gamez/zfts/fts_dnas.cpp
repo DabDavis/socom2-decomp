@@ -59,9 +59,20 @@ struct DNASAuthReq {
     int *size;   // 0x10
 };
 
-/* the overlays' loader (zsys_overlay.cpp's, 0x49E7E8): the IOP's module sets switched through its
- * Load, 0x3515D0 (unnamed yet, so called as a placeholder on the object) */
-class COverlayLoader;
+/* the overlays' loader (zsys_overlay.cpp's: only its load) and the loader itself (0x49E7E8): the
+ * overlay a kind names loaded into its slot unless the slot holds it -- 2 ZSEALETC, the game's, and
+ * 3 DNAS, the authentication's */
+enum OVERLAY_KIND {
+    OVERLAY_NONE = 0,
+    OVERLAY_FTSCORE = 1,
+    OVERLAY_ZSEALETC = 2,
+    OVERLAY_DNAS = 3
+};
+
+class COverlayLoader {
+public:
+    bool Load(OVERLAY_KIND kind);   /* 0x3515D0 */
+};
 extern COverlayLoader theOverlayLoader;
 
 extern "C" {
@@ -78,9 +89,6 @@ int func_004C73F0();                        /* (sceDNAS2Shutdown) */
 extern "C" {
 /* a command's valve: CValve::Create(ArgName(hdr), 2) (zanim_menu.cpp's, out of line) */
 CValve *func_002846F0(C2DAnimCmdHdr *hdr);
-/* the IOP's modules switched to a set (1, 2 the game's, 3 the network's; the object at 0x49E7E8):
- * whether it went */
-bool func_003515D0(void *modules, unsigned char set);
 /* a localised string built: the table's text for an id with its arguments substituted */
 void func_00363F60(char *out, int size, int id, const char **args, int nargs);
 /* the CD file read by sector (util_sonyio.cpp's CFileCD, zsnd.h's stand-in): its close, not yet
@@ -134,7 +142,7 @@ public:
     {
         UnRegisterRebootCallback__11CIOPManagerFi(&theIOPManager, m_reboot);
         func_004C73F0();
-        func_003515D0(&theOverlayLoader, 2);
+        theOverlayLoader.Load(OVERLAY_ZSEALETC);
         SetState(&CSimpleStateMachine::Finish);
     }
     /* a failure: its number in DNAS_ERROR_CODE (negated), the valve off, the menu told */
@@ -384,7 +392,7 @@ bool CSMDNASAuthenticate::RebootCallback(CIOPManager::RebootPhase phase, CIOPMan
 bool CSMDNASAuthenticate::Start()
 {
     CSimpleStateMachine::Start();
-    if (func_003515D0(&theOverlayLoader, 3)) {
+    if (theOverlayLoader.Load(OVERLAY_DNAS)) {
         m_reboot = theIOPManager.RegisterRebootCallback(RebootCallback, this);
         SetState((SSMState)&CSMDNASAuthenticate::LoadAuthFile);
     }

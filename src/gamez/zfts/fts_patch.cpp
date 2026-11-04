@@ -37,9 +37,20 @@ struct HTTPResponse {
     int length;   // 0x20
 };
 
-/* the overlays' loader (zsys_overlay.cpp's, 0x49E7E8): the IOP's module sets switched through its
- * Load, 0x3515D0 (unnamed yet, so called as a placeholder on the object) */
-class COverlayLoader;
+/* the overlays' loader (zsys_overlay.cpp's: only its load) and the loader itself (0x49E7E8): the
+ * overlay a kind names loaded into its slot unless the slot holds it -- 2 ZSEALETC, the game's, and
+ * 3 DNAS, the authentication's */
+enum OVERLAY_KIND {
+    OVERLAY_NONE = 0,
+    OVERLAY_FTSCORE = 1,
+    OVERLAY_ZSEALETC = 2,
+    OVERLAY_DNAS = 3
+};
+
+class COverlayLoader {
+public:
+    bool Load(OVERLAY_KIND kind);   /* 0x3515D0 */
+};
 extern COverlayLoader theOverlayLoader;
 
 extern "C" {
@@ -67,7 +78,6 @@ int func_00539D50(int size, unsigned int unpacked, void *data);
 
 extern "C" {
 CValve *func_002846F0(C2DAnimCmdHdr *hdr);       /* CValve::Create(ArgName(hdr), 2) */
-bool func_003515D0(void *modules, unsigned char set);
 extern float data_004A449C;                      /* the frame's time */
 }
 
@@ -192,7 +202,7 @@ public:
         if (func_00544860())
             theGame.m_menuState.RunEventAnim("MP_DOWNLOAD_ERROR", "Download Error: sceHTTPTerminate failed\n");
         func_004C73F0();
-        func_003515D0(&theOverlayLoader, 2);
+        theOverlayLoader.Load(OVERLAY_ZSEALETC);
         SetState(&CSimpleStateMachine::Finish);
     }
     /* a failure: the menu told, the valve off */
@@ -582,7 +592,7 @@ bool CSMDownloadPatch::Start()
 {
     CSimpleStateMachine::Start();
     *m_stateName = "Start";
-    if (func_003515D0(&theOverlayLoader, 3))
+    if (theOverlayLoader.Load(OVERLAY_DNAS))
         SetState((SSMState)&CSMDownloadPatch::InitializeDNAS);
     if (func_005447D8() < 0)
         return false;
