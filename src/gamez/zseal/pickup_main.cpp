@@ -8,13 +8,21 @@
 #include "../zweapon/zweapon.h"
 #include <algorithm>
 
+/* an ammunition pickup's contents: the weapons' stash (zwep_weapon.cpp's CZItemStash, three parallel
+ * lists of words -- a weapon, an ammunition and a count per entry, OVL1's: its rows Compact 0x3CFB20,
+ * Count 0x3CFCF0, Get 0x3CFD70 -- only what the pickups call; seal_env.cpp's stand-in too) and the
+ * pickup's view of it (zseal.h's CPickupAmmo) */
+class CZItemStash {
+public:
+    void Compact();
+    int Count();
+    bool Get(int i, int *a, int *b, int *c);
+};
+
+class CPickupAmmo : public CZItemStash {
+};
+
 extern "C" {
-/* the ammunition's (OVL1, unowned): its rounds tidied, and how many kinds it still holds */
-void func_003CFB20(CPickupAmmo *ammo);
-int func_003CFCF0(CPickupAmmo *ammo);
-/* an ammunition pickup's contents, one kind at a time: its weapon, its ammunition and its rounds
- * (OVL1, unowned) */
-void func_003CFD70(CPickupAmmo *ammo, int index, CZWeapon **weapon, CZAmmo **cartridge, int *rounds);
 /* a made pickup told to the other consoles: a weapon by its item, its id, place and turn;
  * ammunition by its kinds' packed ids and rounds (OVL1, unowned) */
 void func_002BA660(int item, unsigned int netid, const CPnt3D *pos, CQuat *quat);
@@ -356,8 +364,8 @@ void CPickup::CleanupAmmoPickup(CPickup *pickup)
     case CPickup::PU_AMMO: {
         CPickupAmmo *ammo = pickup->GetAmmo();
 
-        func_003CFB20(ammo);
-        if (!func_003CFCF0(ammo))
+        ammo->Compact();
+        if (!ammo->Count())
             Destroy(pickup);
         break;
     }
@@ -374,13 +382,13 @@ void CPickup::CleanupAmmoPickup(CPickup *pickup)
 extern "C" void func_00541AD0(CPickupAmmo *ammo, int *count, unsigned short *packed,
                               unsigned short *rounds)
 {
-    *count = func_003CFCF0(ammo);
+    *count = ammo->Count();
     for (int i = 0; i < *count; i++) {
         CZWeapon *weapon = 0;
         CZAmmo *cartridge = 0;
         int n = 0;
 
-        func_003CFD70(ammo, i, &weapon, &cartridge, &n);
+        ammo->Get(i, (int *)&weapon, (int *)&cartridge, &n);
         *rounds = n;
         EQUIP_ITEM item = weapon ? weapon->m_ID : EQUIP_NONE;
         EQUIP_AMMO id = cartridge ? cartridge->m_ID : AMMO_NONE;
@@ -424,13 +432,13 @@ extern "C" void func_00541910(CPickup *p, const char *label)
         CPickupAmmo *ammo = p->GetAmmo();
 
         if (ammo) {
-            int n = func_003CFCF0(ammo);
+            int n = ammo->Count();
             CZWeapon *weapon = 0;
             CZAmmo *cartridge = 0;
             int rounds;
 
             for (int i = 0; i < n; i++)
-                func_003CFD70(ammo, i, &weapon, &cartridge, &rounds);
+                ammo->Get(i, (int *)&weapon, (int *)&cartridge, &rounds);
         }
         break;
     }
