@@ -75,7 +75,7 @@ C2D *CTtySpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
     CTeleType *tty = new CTeleType;
 
     tty->SetFont(font);
-    func_00378B00(tty, this);
+    tty->LoadSpec(*this);
     return tty;
 }
 
@@ -99,16 +99,15 @@ CDlgObjSpec *CWrapSpec::Copy()
     return new CWrapSpec(*this);
 }
 
-/* wrapped text of the spec's (SOCOM 1's) *
- * OPEN until a row outside the lane is named: byte-exact with 0x20CD50 (hud_newhudmap.cpp's tail)
- * as __ct__9CPlainBmpFv -- CPlainBmp's inline constructor out of line, which CWrappedText's body
- * calls for its two arrows (measured with the row renamed) */
+/* wrapped text of the spec's (SOCOM 1's): CWrappedText's body calls CPlainBmp's inline
+ * constructor out of line for its two arrows (0x20CD50, hud_newhudmap.cpp's tail; byte-exact since
+ * the HUD's round 31 named it) */
 C2D *CWrapSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     CWrappedText *text = new CWrappedText;
 
     text->SetFont(font);
-    func_0037A430(text, this, mgr);
+    text->LoadSpec(*this, mgr);
     return text;
 }
 
@@ -123,7 +122,7 @@ C2D *CScrollSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) co
     CScrollText *text = new CScrollText;
 
     text->SetFont(font);
-    func_00370340(text, this);
+    text->LoadSpec(*this);
     return text;
 }
 
@@ -195,20 +194,19 @@ C2D *CRadioStripSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr
     CRadioStrip *strip = new CRadioStrip;
 
     strip->_strCaption.SetFont(font);
-    func_003710C0(strip, this, 0);
+    strip->LoadSpec(this, 0);
     InitializeButton(strip, mgr);
     return strip;
 }
 
-/* a handler button (SOCOM 1's) *
- * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
- * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+/* a handler button (SOCOM 1's): C2DButton's constructor out of line (0x377800,
+ * zui_2d.cpp's; byte-exact since the HUD's round 31 named it) */
 C2D *CHandlerButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     CHandlerButton *button = new CHandlerButton;
 
     button->_strCaption.SetFont(font);
-    func_00376690(button, this);
+    button->LoadSpec(*this);
     InitializeButton(button, mgr);
     return button;
 }

@@ -1965,6 +1965,80 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 22** (the maps' initialisers, SetRegionType, GetRandomLoc, the vehicle footprint):
+  - a `rand()` draw written as an inline function of its own makes its arm end on a label padded to 8 bytes (the target's
+    nop after `mfhi`); written inline in the arm, MW leaves the join unpadded and fills the `b` delay slot -- GetRandomLoc
+    0x529EE0 (open since round 10) and CVehicleRdrEntry::Randomize 0x533040, and MakeNoise's joins lined up;
+  - a non-const local copied from a const pointer parameter is numbered after the parameters; a byte-enum parameter stored
+    into a bit-field as `(int)` reuses the compare's narrowed value (SetRegionType 0x529C00);
+  - a static whose constructor is defined out of line and dead-stripped is inlined by the initialiser whole or not at all,
+    and that out-of-line definition lets the initialiser inline the out-of-class template members it uses
+    (__sinit_ai_maps.cpp 0x668710: byte-exact only at inline depth 6 -- another level-6 case; CAiMaps() is in ABSENT.txt);
+  - MW deletes a branch whose body it can see is empty -- an empty asm, a dead raw load, an inlined accessor whose callees
+    it also inlined (plan_legcomplete: `asm volatile { nop }` gives the size);
+  - __sinit_ai_path.cpp 0x668680 builds CAiMapLoc::invalid (every bit set); CAiMap::TileFootprint 0x515880 and
+    region::SetCorners 0x515DE0 (CVehicle::Tick's; names ours); CAiPath::UpdatePointFlags (SOCOM 1's) and RebuildLegs
+    (ours) as members;
+  - open: MakeNoise (19) and MakeNoiseXZ (13, right size: two saved float registers swapped), GetStartMatrix (66, right
+    size), CAiMap::GetLocation(point) 0x515F80 (0x1A0 vs 0x198: m_ny loaded early, the bool narrowed), remove_if<_tick>.
+- **Tells from the weapons, round 19** (CTurretDef::Parse, __sinit_zwep_weapon.cpp, the explosion statics):
+  - an inline's by-value float whose address is taken (saturated in place) gets the frame's lowest slot, below the caller's
+    temporaries; a named local sits above them; `m_b = m_a = x` stores both from one register where two statements reload an
+    address-taken `x` in between; an inline taking a float by value keeps it in $f20 across two calls, reading the member
+    twice reloads it;
+  - CTurretDef::Parse 0x3AAD20 (0x8D0) matched with each findtag assigned inside its `if` test, the limits' sine and cosine
+    through a small inline and an inline SetMaxAngle in zveh.h; veh_turret.cpp emits its own ai::_max<float> 0x3AB970 (an
+    `ovl-copy:` of the AI template); __sinit_zwep_weapon.cpp with its four statics in order; zwep_projectile.cpp opens at
+    0x3C6980 (its last two functions read the unit's own statics);
+  - the vid stack's names are in question: the initialiser research made 0x3B7D50 the stack's destructor ~stack<Ui> (it is
+    registered for m_stack_vid), but its element type contradicts the stack<Pv> rows 0x321EF0/0x321F40, and 0x3B7C90,
+    named ~CVisBase, is a level of the stack's deque destructor (it calls ~__deque_buf<PCv> with 0 after two this-tests) --
+    __sinit_vis_vu.cpp 0x404570 waits on the chain's real names (0x3B7FA0 the deque's default constructor, 0x3B7DB0 its
+    copy);
+  - open: ApplyDecalRender 0x3B3950 (2: the copy call's second argument loaded before its first in the target -- the same
+    miss as CTurret::Fire's and the yaw joint's CopyMatrix call at 0x3A76D0; 3.0b50 gives the same), InitializeWeapons (52
+    under the numbering rule: the frame saves one register fewer than the target's s0-s5), UnpackItemAndAmmoEnums.
+- **Tells from the UI, round 17** (the soft keyboard's text tests, zui.cpp's initialiser, util_main.cpp's tail):
+  - when the target keeps an object's address in a saved register from before its zeroing through later calls, the object
+    is built by a constructor whose `this` is that variable (`struct CTypedText : CSaferStr { CTypedText() : CSaferStr(a)
+    { *this += b; } };` -- a shape that reproduces the code); a local built in the caller folds the address into each use,
+    and an inline returning the class by value is never inlined;
+  - CSaferStr's implicit copy assignment is one inline level taller than a user-declared one calling `assign(s)`; `CSaferStr
+    s; s = p;` zeroes the words before reading `p`, `CSaferStr s(p)` reads `p` first;
+  - a callee whose result is tested through an `int` inline must be declared `int` (a `bool` return moves the caller:
+    OnEnterKey, 6 instructions); `bool b = c ? false : inlineBool();` gives the materialised bool with the `andi` at the join;
+    an inline returning `const int &` from a ternary selects the address and then loads once;
+  - `if (p) { const char *q = p; return f(q); } return 0;` keeps the store out of the test's delay slot and pads both
+    labels (the ternary and if-return forms fill the slot); an inline's `if (n < 0) return 0;` lays the zero arm out first,
+    `if (n >= 0) { ...; return x; } return 0;` puts the loop on the fall-through path;
+  - a declaration inside an `extern "C"` block keeps C linkage: respelling a placeholder there gives a WRONG REFERENCE --
+    move the declaration out of the block;
+  - zUtilInit 0x39C700 and zUtilUninit 0x39C6F0 are empty in SOCOM II (both games' main and StopEngine call them);
+    GetUsedSpace 0x3A1060 takes an int no caller sets but 0; util_main.cpp runs to 0x39CDB7; 0x1F3B40 is ~CFileIO (renamed
+    at integration: it completes __sinit_util_main.cpp);
+  - open: __sinit_zui_hangul.cpp (matches at level 6: the unit gains it and resize<SKBCOMPLETE> but loses CInit<Us,0>() --
+    left at 5), SkbCursorBack 0x399530 (13: SkbTypeOrBack's saved-register numbering), erase<CSaferStr> (two saved
+    registers), CDlgDesignModel's copy constructor (include/string's copy constructor keeps `&str.w_[1]` in a fourth saved
+    register).
+- **Tells from the SEALs, round 23** (PostTick, AddWeapon, the damage report, the rifle/pistol swaps, the homings, Tick):
+  - an out-parameter negate, `NegateInto(&d, &d)` writing `out->x = -in->x` and so on, loads the fields straight off sp and
+    keeps one field-address register for the stores (the AI core's round-21 rule again): the carry's homing 0x5B1750 went
+    from 55 words off to byte-exact, and FindDeathAnimTypeCQB to the right size; the in-place pointer form renumbers every
+    saved register;
+  - an inline returning `unsigned char` 1 or 0 from several arms narrows the shared compare-constant register (`andi
+    v0,a0,0xff`), a member read inside the inline rather than passed in keeps its load lazy (0x5A6B70); a helper written as
+    an inline member keeps its `this` (a member's address) in a saved register across calls, a static inline taking the
+    pointer folds it into offsets (the goal's homing 0x5B1890);
+  - a byte parameter tested `== 0` keeps its `andi 0xff` before the branch, `!x` drops it (ReportWeaponHitDamage 0x5A1FF0:
+    SOCOM 1's with SOCOM II's projectile parameter in front); `T x; x = *p;` copies in load/store pairs where `T x = *p`
+    loads all three fields first;
+  - declaration order fixed the saved registers twice: Dump's target list ahead of the AI pointer, Tick's `bool turning;`
+    ahead of the SEAL pointer (CSealCtrl::Tick 0x596F10, its `_close_enough<f>` scored against OVL2's copy 0x52EB60);
+    CZSealBody::PostTick 0x550570 inlines SOCOM 1's GetMaxRegionShift as a unit-local helper;
+  - CBody::AddBodyPart 0x28EBE0 returns the part it made (AddWeapon 0x553290 uses v0; zbody.h declares it void -- queued
+    for the engine core);
+  - open: 0x5A2490 (2: 0x5B14E0's miss inlined -- the target loads the list before the index), FindDeathAnimTypeCQB
+    0x5A9420 (10: the SEAL's node loaded before the facing's stores in the target).
 - **Tells from the game states, round 27** (sixteen static initialisers, CGame's engine pair, fts_msgeditor.cpp):
   - a static whose class's implicit constructor only runs a member's empty inline constructor emits an empty `__sinit`
     (`jr ra; nop`): CZBombState::m_BombStatus with its CPnt3D -- 0x4006B0 is __sinit_fts_net_bomb.cpp; an initialiser whose

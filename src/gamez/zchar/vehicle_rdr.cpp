@@ -167,6 +167,14 @@ void CVehicleRdrEntry::SetCharacterName(const char *name)
         m_character[0] = 0;
 }
 
+/* a draw below n, an inline of its own: its exit ends the pick's arm, the label MW pads to 8 bytes
+ * after the `mfhi` (the target's nop) -- the draw written in the arm leaves it unpadded (the AI core
+ * round 22, as CAiMaps::GetRandomLoc's; the name ours) */
+static inline int RandomDraw(int n)
+{
+    return rand() % n;
+}
+
 /* a random index up to max (the name ours: SOCOM 1's Randomize had the same `n - 1` and
  * modulo, its zero arm first) */
 static inline int RandomIndex(int max)
@@ -176,7 +184,7 @@ static inline int RandomIndex(int max)
     if (max == 0)
         i = 0;
     else
-        i = rand() % (max + 1);
+        i = RandomDraw(max + 1);
     return i;
 }
 
@@ -249,11 +257,10 @@ CVehicleRdrEntry::CVehicleRdrEntry()
 }
 
 /* the start, and the respawn start, picked at random, or the first when asked to reset or when
- * there are none (SOCOM 1's picked the one start).
- * OPEN (0x140 against 0x150): label padding only -- the target pads the random pick's block and
- * the store after its mfhi to 8 bytes (a nop each, both halves); the zero arm first, a ternary,
- * an early return, the pick written out, a non-inline helper and the tests inverted all compile
- * without the four nops */
+ * there are none (SOCOM 1's picked the one start). Byte-exact (the AI core round 22) once the draw
+ * went through RandomDraw: the four padding nops the target has after each pick's block and its
+ * `mfhi` -- the zero arm first, a ternary, an early return, the pick written out, a non-inline
+ * helper and the tests inverted had all compiled without them */
 void CVehicleRdrEntry::Randomize(bool reset)
 {
     if (reset || !m_start.m_count)
@@ -269,10 +276,11 @@ void CVehicleRdrEntry::Randomize(bool reset)
 /* the start's place as a matrix (SOCOM 1's): the start picked -- at random for -1, Randomize
  * inlined -- then its name and direction, its location, its cell's centre, the direction's rotation
  * with the centre as the translation; false at the first step that fails.
- * OPEN (0x21C against 0x22C): the inlined Randomize is Randomize's own question -- the target pads
- * each random pick's block and the store after its mfhi with a nop (16 bytes, Randomize's 0x140
- * against 0x150) -- and every saved register is one off (the target keeps this in s3, the matrix in
- * s2, the pick's count in s4; this build this in s4, the matrix in s3, the count in s0) */
+ * OPEN, the right size since the AI core round 22 (66 instructions, registers only: the inlined
+ * Randomize's padding is RandomDraw's, as Randomize's own): every saved register is one off -- the
+ * target keeps this in s3, the matrix in s2, the pick's count in s4 (numbered BELOW both
+ * parameters, which no local or inlined variable is); this build this in s4, the matrix in s3, the
+ * count in s0 */
 bool CVehicleRdrEntry::GetStartMatrix(CMatrix &m, unsigned int index)
 {
     if (index == (unsigned int)-1)

@@ -94,7 +94,7 @@ C2D *CImageSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) con
         name = m_filename.c_str();
     zdb::CTexHandle *tex = PrepTexture(name, mgr);
     CPlainBmp *bmp = new CPlainBmp;
-    func_00379080(bmp, this, tex);
+    bmp->LoadSpec(*this, tex);
     return bmp;
 }
 
@@ -182,7 +182,7 @@ C2D *CButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) co
     C2DButton *button = new C2DButton;
 
     button->_strCaption.SetFont(font);
-    func_00376BD0(button, this);
+    button->LoadSpec(*this);
     InitializeButton(button, mgr);
     return button;
 }
@@ -403,16 +403,15 @@ C2D *CHProgressBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *m
     return bar;
 }
 
-/* a slider of the spec's knob (SOCOM 1's) *
- * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
- * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+/* a slider of the spec's knob (SOCOM 1's): C2DButton's constructor out of line (0x377800,
+ * zui_2d.cpp's; byte-exact since the HUD's round 31 named it) */
 C2D *CSliderBarSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     CSliderBar *slider = new CSliderBar;
     zdb::CTexHandle *knob = PrepTexture(m_knobTexture.c_str(), mgr);
 
     slider->_strCaption.SetFont(font);
-    func_003724F0(slider, this, knob);
+    slider->LoadSpec(*this, knob);
     InitializeButton(slider, mgr);
     return slider;
 }
@@ -542,16 +541,15 @@ CCheckBoxSpec::CCheckBoxSpec(CCheckBoxSpec &spec) : CButtonSpec(spec)
     m_onUncheck = new ActionItem(*spec.m_onUncheck);
 }
 
-/* a check box of the spec's check (SOCOM 1's) *
- * OPEN until a row outside the lane is named: byte-exact with 0x377800 (zui_2d.cpp's) as
- * __ct__9C2DButtonFv -- C2DButton's constructor, out of line (measured with the row renamed) */
+/* a check box of the spec's check (SOCOM 1's): C2DButton's constructor out of line (0x377800,
+ * zui_2d.cpp's; byte-exact since the HUD's round 31 named it) */
 C2D *CCheckBoxSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
 {
     CCheckBox *box = new CCheckBox;
     zdb::CTexHandle *check = PrepTexture(m_checkTexture.c_str(), mgr);
 
     box->_strCaption.SetFont(font);
-    func_00371550(box, this, check);
+    box->LoadSpec(*this, check);
     InitializeButton(box, mgr);
     return box;
 }

@@ -18,6 +18,14 @@ inline void to_vec(sceVu0FVECTOR v, const CPnt3D &p)
     v[3] = 1.0f;
 }
 
+/* a draw in [0, 1), an inline of its own: the end of rand_range's second arm is then its exit,
+ * the join MW pads to 8 bytes (the target's `b join; nop` before the sign multiply) where the draw
+ * written in the arm let MW steal the multiply into the `b`'s delay slot (the name is ours) */
+inline float _frand()
+{
+    return 4.656613e-10f * rand();
+}
+
 /* a random value in [lo, lo + span): MakeNoise's draws inline it (the name is ours) */
 inline float rand_range(float lo, float span)
 {
@@ -26,7 +34,7 @@ inline float rand_range(float lo, float span)
     if (span == 0.0f)
         r = lo;
     else
-        r = lo + span * (4.656613e-10f * rand());
+        r = lo + span * _frand();
     return r;
 }
 
@@ -102,12 +110,14 @@ bool ai::is_moving(const CPnt3D *v, float speedSq)
 
 /* a random offset in a ring: each axis a random size in [range.x, range.y), a random sign
  * (SOCOM 1's; SOCOM II returns the point).
- * OPEN with MakeNoiseXZ (95 instructions here, 1 short there): the target's draws join before the
- * sign multiply (`b join; nop`, the join label padded to 8) where this build steals the multiply
- * into the `b`'s delay slot; and its saved float registers run lo f22, sign f21, span f20 where
- * this build gives span f21 and sign f20 -- declaration order, the sign as a ternary, an if/else
- * or inline in the product, the span a local or the helper's hi - lo, the range by reference
- * (SOCOM 1's PNT2D temporaries) all tried (build/scratch/ai/spec_noise*.py) */
+ * OPEN with MakeNoiseXZ (19 instructions here, 13 there, both the right size): the saved float
+ * registers alone -- the target's run lo f22, sign f21, span f20 where this build gives span f21
+ * and sign f20 (sign's three assignments are split live ranges, numbered after every named local;
+ * the target numbers span after them). The draws' joins are the target's since the AI core round
+ * 22 (_frand above: 95 and 1-short before). Tried: declaration order (all six), the sign as a
+ * ternary, an if/else or inline in the product, per-axis sign locals, the span a local, `hi - lo`
+ * or recomputed in each draw (0x1B4-0x1BC), the range by reference (SOCOM 1's PNT2D temporaries)
+ * (build/scratch/ai/spec_noise*.py, mn3.py) */
 CPnt3D *ai::MakeNoise(CPnt3D *out, const PNT2D &range)
 {
     float lo = range.x;
