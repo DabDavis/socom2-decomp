@@ -350,7 +350,12 @@ extern "C" float func_001F3290(CSealStats **stats)
  * waiting a nop after each mtc1, where this spreads them over $f1-$f3 and schedules three fewer
  * slots. Tried: the percentages inline in the averages, as locals ahead (in a-e order, the count's
  * conversion before, between or after them), `f + 0.5f`, the count converted implicitly, the sum
- * divided as an int */
+ * divided as an int; round 33: all 720 orders of the five percentages with the count's conversion at
+ * each place (every one 0x1EC: MW computes each at its use whatever the order -- the target's are
+ * computed ahead, pe before pd, held in a2/t0/a3/a1), const locals, the percentages in an array with
+ * an unrolled loop (0x228+), the constants in float locals or a defaulted parameter. The target's
+ * count conversion is $f3, not deferred: its degree must fall under 32, which only an early
+ * computation of the percentages gives */
 void CCareerStats::AddMission(float a, float b, float c, float d, float e)
 {
     int n = m_missions;
