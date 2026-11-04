@@ -38,27 +38,34 @@ public:
 static float s_pulserate = 1000.0f;
 /* an unselected name's alpha (data 0x3DC450) */
 static float s_unselectedtrans = 80.0f;
-/* an unselected name's colour (OVL1 bss 0x409EA0, three floats; no row yet) */
-extern PNT4D data_00409EA0;
-/* the backdrop over the whole screen, the map's frame, its box and four edges, the title bars and
- * the boxes RefreshStatics lays out (OVL1 bss from 0x4090F0, statics of this unit's, no rows yet) */
-extern C2DBitmapPoly data_004090F0;
-extern C2DBitmap data_004092F0;
-extern C2DBitmap data_00409380;
-extern C2DBitmap data_00409410[4];
-extern C2DBitmap data_00409620;
-extern C2DBitmap data_00409760;
-extern C2DBitmap data_004097F0;
-extern C2DBitmap data_00409930;
-extern C2DBitmap data_00409A70;
 /* the map frame's alpha (data 0x3DC440: a variable, read with lwc1) */
 static float s_frametrans = 128.0f;
-/* the strings RefreshStatics sets up (OVL1 bss 0x4096B0-0x409E8F, statics of this unit's, no rows
- * yet: called directly, as globals are) */
-extern C2DString data_004096B0;
-extern C2DString data_00409880;
-extern C2DString data_004099C0;
-extern C2DString data_00409B00[6];
+
+/* the unit's statics, OVL1 bss 0x4090F0-0x409ECF, in the order the unit's initialiser
+ * (__sinit_hud_objectives.cpp, 0x3FDBC0) builds them, each after its destructor record: the
+ * darkened screen, the map's frame, its box and four edges, the title bars, the strings and the
+ * boxes RefreshStatics lays out, and the four colours the items' tick 0x207A00 picks from (12-byte
+ * CPnt3Ds, 16 apart, stored by the initialiser) -- in SOCOM 1's anonymous namespace (its
+ * g_bmpMapTitleBg and g_bmpLegendBg are these two bars' names there); the other names ours */
+namespace {
+C2DBitmapPoly g_polyScreen;
+C2DBitmap g_bmpMapFrame;
+C2DBitmap g_bmpMapBox;
+C2DBitmap g_bmpMapEdges[4];
+C2DBitmap g_bmpMapTitleBg;
+C2DString g_strMapTitle;
+C2DBitmap g_bmpObjectivesBg;
+C2DBitmap g_bmpMovieBg;
+C2DString g_strPlayMovie;
+C2DBitmap g_bmpObjectivesTitleBg;
+C2DString g_strObjectivesTitle;
+C2DBitmap g_bmpLegendBg;
+C2DString g_strControls[6];
+CPnt3D g_colComplete(32.0f, 64.0f, 32.0f);
+CPnt3D g_colNormal(128.0f, 128.0f, 128.0f);
+CPnt3D g_colUnavailable(72.0f, 72.0f, 72.0f);
+CPnt3D g_colSelected(36.0f, 64.0f, 86.0f);
+}
 
 /* the mission: only its objectives (theMission, fts_state.h's CMission at 0x1854) */
 class CMissionCam {
@@ -186,7 +193,7 @@ public:
         if (ResolveIndex(index, &newindex)) {
             C2DString *curstring = m_objectivenames[newindex];
 
-            curstring->SetColor(data_00409EA0.x, data_00409EA0.y, data_00409EA0.z);
+            curstring->SetColor(g_colNormal.x, g_colNormal.y, g_colNormal.z);
             curstring->SetTrans(s_unselectedtrans);
         }
     }
@@ -406,11 +413,11 @@ void CZObjectiveList::MissionEndCleanup()
     m_strSquareLabel.ClearAndWipe();
     m_strTriLabel.ClearAndWipe();
     m_strXLabel.ClearAndWipe();
-    data_004096B0.ClearAndWipe();
-    data_00409880.ClearAndWipe();
-    data_004099C0.ClearAndWipe();
+    g_strMapTitle.ClearAndWipe();
+    g_strPlayMovie.ClearAndWipe();
+    g_strObjectivesTitle.ClearAndWipe();
     for (unsigned int i = 0; i < 6; i++)
-        data_00409B00[i].ClearAndWipe();
+        g_strControls[i].ClearAndWipe();
     m_arrAnchorStrings[0].ClearAndWipe();
     FreeList(true);
 }
@@ -440,77 +447,77 @@ void CZObjectiveList::RefreshStatics()
     unsigned int i;
     zdb::CTexHandle *tex = zdb::CAssetMgr::m_assets.GetTexHandle("newweapnbkrnd.tif");
 
-    push_back(&data_004090F0);
-    data_004090F0.SetPos(0.0f, 0.0f, zVid.renderWidth, zVid.renderHeight);
-    data_004090F0.SetHasTexture(false);
-    data_004090F0.SetColor(0.0f, 0.0f, 0.0f);
-    data_004090F0.SetTrans(100.0f);
-    data_004090F0.SetTrans(1, 0.0f);
-    data_004090F0.SetTrans(2, 0.0f);
-    data_004092F0.SetHasTexture(false);
-    data_004092F0.SetPos(230, 60, 630, 365);
-    data_004092F0.SetIsTrans(true);
-    data_004092F0.SetColor(0.0f, 0.0f, 0.0f);
-    data_004092F0.SetTrans(s_frametrans);
-    push_back(&data_004092F0);
-    data_00409380.Load(230.0f, 60.0f, 630.0f, 365.0f, tex);
-    push_back(&data_00409380);
-    data_00409380.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
-    data_00409380.SetTrans(72.0f);
+    push_back(&g_polyScreen);
+    g_polyScreen.SetPos(0.0f, 0.0f, zVid.renderWidth, zVid.renderHeight);
+    g_polyScreen.SetHasTexture(false);
+    g_polyScreen.SetColor(0.0f, 0.0f, 0.0f);
+    g_polyScreen.SetTrans(100.0f);
+    g_polyScreen.SetTrans(1, 0.0f);
+    g_polyScreen.SetTrans(2, 0.0f);
+    g_bmpMapFrame.SetHasTexture(false);
+    g_bmpMapFrame.SetPos(230, 60, 630, 365);
+    g_bmpMapFrame.SetIsTrans(true);
+    g_bmpMapFrame.SetColor(0.0f, 0.0f, 0.0f);
+    g_bmpMapFrame.SetTrans(s_frametrans);
+    push_back(&g_bmpMapFrame);
+    g_bmpMapBox.Load(230.0f, 60.0f, 630.0f, 365.0f, tex);
+    push_back(&g_bmpMapBox);
+    g_bmpMapBox.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    g_bmpMapBox.SetTrans(72.0f);
     for (i = 0; i < 4; i++) {
-        data_00409410[i].SetHasTexture(false);
-        data_00409410[i].SetColor(64.0f, 128.0f, 128.0f);
-        data_00409410[i].SetTrans(128.0f);
-        push_back(&data_00409410[i]);
+        g_bmpMapEdges[i].SetHasTexture(false);
+        g_bmpMapEdges[i].SetColor(64.0f, 128.0f, 128.0f);
+        g_bmpMapEdges[i].SetTrans(128.0f);
+        push_back(&g_bmpMapEdges[i]);
     }
-    data_00409410[0].SetPos(230, 60, 232, 365);
-    data_00409410[1].SetPos(230, 60, 630, 62);
-    data_00409410[2].SetPos(630, 60, 628, 365);
-    data_00409410[3].SetPos(230, 363, 630, 365);
-    data_00409620.Load(230.0f, 15.0f, 630.0f, 55.0f, tex);
-    push_back(&data_00409620);
-    data_00409620.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
-    data_00409620.SetTrans(128.0f);
-    data_004096B0.Load(1.5f, "TACTICAL MAP", theHUD->m_myfont, 430.0f, 48.0f, true);
-    push_back(&data_004096B0);
-    data_004096B0.m_isCentered = 1;
-    data_004096B0.UpdatePos();
-    data_00409760.Load(10.0f, 84.0f, 224.0f, 365.0f, tex);
-    data_00409760.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
-    data_00409760.SetTrans(72.0f);
-    push_back(&data_00409760);
-    data_004097F0.Load(10.0f, 60.0f, 224.0f, 84.0f, tex);
-    data_004097F0.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
-    data_004097F0.SetTrans(128.0f);
-    push_back(&data_004097F0);
-    data_00409880.Load(0.8f, "\xa6  PLAY MOVIE", theHUD->m_myfont, 20.0f, 77.0f, true);
-    push_back(&data_00409880);
-    data_00409930.Load(10.0f, 15.0f, 224.0f, 55.0f, tex);
-    push_back(&data_00409930);
-    data_00409930.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
-    data_00409930.SetTrans(128.0f);
-    data_004099C0.Load(1.5f, "OBJECTIVES", theHUD->m_myfont, 117.0f, 48.0f, true);
-    push_back(&data_004099C0);
-    data_004099C0.m_isCentered = 1;
-    data_004099C0.UpdatePos();
-    data_00409A70.Load(10.0f, 370.0f, 630.0f, 434.0f, tex);
-    push_back(&data_00409A70);
-    data_00409A70.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
-    data_00409A70.SetTrans(128.0f);
+    g_bmpMapEdges[0].SetPos(230, 60, 232, 365);
+    g_bmpMapEdges[1].SetPos(230, 60, 630, 62);
+    g_bmpMapEdges[2].SetPos(630, 60, 628, 365);
+    g_bmpMapEdges[3].SetPos(230, 363, 630, 365);
+    g_bmpMapTitleBg.Load(230.0f, 15.0f, 630.0f, 55.0f, tex);
+    push_back(&g_bmpMapTitleBg);
+    g_bmpMapTitleBg.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    g_bmpMapTitleBg.SetTrans(128.0f);
+    g_strMapTitle.Load(1.5f, "TACTICAL MAP", theHUD->m_myfont, 430.0f, 48.0f, true);
+    push_back(&g_strMapTitle);
+    g_strMapTitle.m_isCentered = 1;
+    g_strMapTitle.UpdatePos();
+    g_bmpObjectivesBg.Load(10.0f, 84.0f, 224.0f, 365.0f, tex);
+    g_bmpObjectivesBg.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    g_bmpObjectivesBg.SetTrans(72.0f);
+    push_back(&g_bmpObjectivesBg);
+    g_bmpMovieBg.Load(10.0f, 60.0f, 224.0f, 84.0f, tex);
+    g_bmpMovieBg.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    g_bmpMovieBg.SetTrans(128.0f);
+    push_back(&g_bmpMovieBg);
+    g_strPlayMovie.Load(0.8f, "\xa6  PLAY MOVIE", theHUD->m_myfont, 20.0f, 77.0f, true);
+    push_back(&g_strPlayMovie);
+    g_bmpObjectivesTitleBg.Load(10.0f, 15.0f, 224.0f, 55.0f, tex);
+    push_back(&g_bmpObjectivesTitleBg);
+    g_bmpObjectivesTitleBg.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    g_bmpObjectivesTitleBg.SetTrans(128.0f);
+    g_strObjectivesTitle.Load(1.5f, "OBJECTIVES", theHUD->m_myfont, 117.0f, 48.0f, true);
+    push_back(&g_strObjectivesTitle);
+    g_strObjectivesTitle.m_isCentered = 1;
+    g_strObjectivesTitle.UpdatePos();
+    g_bmpLegendBg.Load(10.0f, 370.0f, 630.0f, 434.0f, tex);
+    push_back(&g_bmpLegendBg);
+    g_bmpLegendBg.SetUV(0.3f, 0.3f, 0.4f, 0.4f);
+    g_bmpLegendBg.SetTrans(128.0f);
     for (unsigned int j = 0; j < 6; j++) {
-        data_00409B00[j].Load(0.8f, " ", theHUD->m_myfont, 0.0f, 0.0f, true);
-        push_back(&data_00409B00[j]);
+        g_strControls[j].Load(0.8f, " ", theHUD->m_myfont, 0.0f, 0.0f, true);
+        push_back(&g_strControls[j]);
     }
-    data_00409B00[0].SetString("\xb4  SNAP TO PLAYER", true);
-    data_00409B00[0].SetPos(20, 395);
-    data_00409B00[1].SetString("\xb7  SNAP TO OBJECTIVE", true);
-    data_00409B00[1].SetPos(20, 419);
-    data_00409B00[2].SetString("LEFT ANALOG STICK = MOVE MAP", true);
-    data_00409B00[2].SetPos(230, 395);
-    data_00409B00[3].SetString("RIGHT ANALOG STICK = ZOOM MAP", true);
-    data_00409B00[3].SetPos(230, 419);
-    data_00409B00[4].SetString("\xac  RESUME GAME", true);
-    data_00409B00[4].SetPos(500, 395);
-    data_00409B00[5].SetString("\xbe  LEGEND", true);
-    data_00409B00[5].SetPos(500, 419);
+    g_strControls[0].SetString("\xb4  SNAP TO PLAYER", true);
+    g_strControls[0].SetPos(20, 395);
+    g_strControls[1].SetString("\xb7  SNAP TO OBJECTIVE", true);
+    g_strControls[1].SetPos(20, 419);
+    g_strControls[2].SetString("LEFT ANALOG STICK = MOVE MAP", true);
+    g_strControls[2].SetPos(230, 395);
+    g_strControls[3].SetString("RIGHT ANALOG STICK = ZOOM MAP", true);
+    g_strControls[3].SetPos(230, 419);
+    g_strControls[4].SetString("\xac  RESUME GAME", true);
+    g_strControls[4].SetPos(500, 395);
+    g_strControls[5].SetString("\xbe  LEGEND", true);
+    g_strControls[5].SetPos(500, 419);
 }

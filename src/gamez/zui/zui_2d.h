@@ -96,9 +96,6 @@ public:
     float m_curtrans;   // 0x90
 } __attribute__((aligned(16)));   // 0xa0 bytes
 
-/* the bitmap set up from an image spec and its texture (SOCOM 1's CPlainBmp::LoadSpec; by address) */
-extern "C" void func_00379080(CPlainBmp *bmp, const CImageSpec *spec, zdb::CTexHandle *tex);
-
 /* a horizontal progress bar: a plain bitmap filled to its variable's value (SOCOM 1's
  * CHProgressBar; SOCOM II's 0xC0 bytes. Its UpdateUIVar takes CPlainBmp's slot after the tables,
  * +0x80, and its LoadSpec is a slot of its own, +0x84) */
@@ -140,9 +137,6 @@ public:
     bool m_240;                 // 0x240
 };   // 0x250 bytes
 
-/* the wrapped text set up from its spec (SOCOM 1's CWrappedText::LoadSpec; by address) */
-extern "C" void func_0037A430(CWrappedText *text, const CWrapSpec *spec, zdb::CTextureRelocMgr *mgr);
-
 /* wrapped text scrolling by itself (SOCOM 1's CScrollText; SOCOM II's 0x270 bytes) */
 class CScrollText : public CWrappedText {
 public:
@@ -157,9 +151,6 @@ public:
     int m_25c;                  // 0x25c
     int m_260;                  // 0x260
 };   // 0x270 bytes
-
-/* the scrolling text set up from its spec (by address: an eight-byte jump into the wrapped text's) */
-extern "C" void func_00370340(CScrollText *text, const CScrollSpec *spec);
 
 /* a teletype: text typed out, its cursor a plain bitmap (SOCOM 1's CTeleType; SOCOM II's 0x1B0) */
 class CTeleType : public CRenderableString {
@@ -176,9 +167,6 @@ public:
     CPlainBmp m_cursor;         // 0x100
     int m_1a0;                  // 0x1a0
 };   // 0x1b0 bytes
-
-/* the teletype set up from its spec (SOCOM 1's CTeleType::LoadSpec; by address) */
-extern "C" void func_00378B00(CTeleType *tty, const CTtySpec *spec);
 
 /* a button's caption and states (SOCOM 1's DWARF: : C2D; SOCOM II's 0xC0 bytes, its vtable 29 slots:
  * SetActive and SetNormal pure, three new, DrawBackground the last) */
@@ -216,9 +204,6 @@ public:
     unsigned char _c8[0x440 - 0xc8];
 } __attribute__((aligned(16)));   // 0x440 bytes
 
-/* the button set up from its spec (SOCOM 1's C2DButton::LoadSpec; by address) */
-extern "C" void func_00376BD0(C2DButton *button, const CButtonSpec *spec);
-
 /* a strip of choices (SOCOM 1's CRadioStrip; SOCOM II's 0x450 bytes) */
 class CRadioStrip : public C2DButton {
 public:
@@ -230,9 +215,6 @@ public:
     int m_choice;               // 0x440
 };   // 0x450 bytes
 
-/* the strip set up from its spec (SOCOM 1's CRadioStrip::LoadSpec, with a texture; by address) */
-extern "C" void func_003710C0(CRadioStrip *strip, const CRadioStripSpec *spec, zdb::CTexHandle *tex);
-
 /* a button showing a spec of its own (SOCOM 1's CHandlerButton; SOCOM II's 0x440 bytes) */
 class CHandlerButton : public C2DButton {
 public:
@@ -241,9 +223,6 @@ public:
     /* set up from its spec (0x376690, zui_2d.cpp's) */
     void LoadSpec(const CHandlerButtonSpec &spec);
 };   // 0x440 bytes
-
-/* the handler button set up from its spec (by address) */
-extern "C" void func_00376690(CHandlerButton *button, const CHandlerButtonSpec *spec);
 
 /* two words between flags a check box keeps twice (the names ours) */
 struct CCheckState {
@@ -272,9 +251,6 @@ public:
     CPlainBmp m_check;          // 0x480
 };   // 0x520 bytes
 
-/* the check box set up from its spec and its check's texture (by address) */
-extern "C" void func_00371550(CCheckBox *box, const CCheckBoxSpec *spec, zdb::CTexHandle *tex);
-
 /* a slider: a button with a knob (SOCOM 1's CSliderBar; SOCOM II's 0x510 bytes) */
 class CSliderBar : public C2DButton {
 public:
@@ -291,8 +267,5 @@ public:
     CPlainBmp m_knob;           // 0x460
     int m_intervals;            // 0x500: 10
 };   // 0x510 bytes
-
-/* the slider set up from its spec and its knob's texture (by address) */
-extern "C" void func_003724F0(CSliderBar *slider, const CSliderBarSpec *spec, zdb::CTexHandle *tex);
 
 #endif

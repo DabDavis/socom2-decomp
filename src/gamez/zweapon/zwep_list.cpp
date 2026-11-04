@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../znode/int_material.h"
 #include "zweapon.h"
 #include "../zsnd/zsnd.h"
 
@@ -36,10 +37,7 @@ class CZDecalSet {
 public:
     static CZDecalSet *GetDecalSetByName(const char *name);
 };
-struct MATERIALEX {
-    char *m_name;   // 0x0
-};
-/* (zweapon.h declares CMaterialExArray::GetWeaponAnimMaterialEx) */
+/* (int_material.h's CMaterialExArray::GetWeaponAnimMaterialEx and CMaterialEx: its name) */
 
 /* ---- CZAmmoList (0x3C4E80-0x3C519F) ---- */
 
@@ -272,7 +270,7 @@ void CZWeaponList::InitializeWeapons()
             unsigned int n = CMaterialExArray::m_materialex_list.size();
 
             for (unsigned int i = 0; i < n; i++) {
-                MATERIALEX *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
+                CMaterialEx *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
 
                 if (m) {
                     char name[32];
@@ -303,7 +301,7 @@ void CZWeaponList::InitializeWeapons()
             unsigned int n = CMaterialExArray::m_materialex_list.size();
 
             for (unsigned int i = 0; i < n; i++) {
-                MATERIALEX *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
+                CMaterialEx *m = CMaterialExArray::GetWeaponAnimMaterialEx(i);
 
                 if (m) {
                     char name[32];

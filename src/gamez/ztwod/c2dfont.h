@@ -133,10 +133,6 @@ public:
 
 class CHangulFont;
 
-/* the font's unload (OVL1 0x35A650, c2dfont.cpp's C2DFont::Unload) by its address: the UI lane's
- * zui_skb.h (CSkbFonts::Unload) still calls it by this name -- the destructor calls the member */
-class C2DFont;
-extern "C" void func_0035A650(C2DFont *font);
 
 class C2DFont {
 public:

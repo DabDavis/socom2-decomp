@@ -82,13 +82,15 @@ CZBodyPart *CBody::NewBodyPart(CNode *node, CZBodyPart *parent)
     return part;
 }
 
-/* a part made and filed by its id (SOCOM 1's) */
-void CBody::AddBodyPart(CNode *node, CZBodyPart *parent)
+/* a part made and filed by its id, and given back (SOCOM 1's; SOCOM II's AddWeapon 0x553290 reads
+ * the result, which stays in v0 from NewBodyPart's call) */
+CZBodyPart *CBody::AddBodyPart(CNode *node, CZBodyPart *parent)
 {
     CZBodyPart *part = NewBodyPart(node, parent);
 
     if (part)
         m_body_parts[part->m_id] = part;
+    return part;
 }
 
 /* an auxiliary node hung on a part, its rotation given as angles (SOCOM 1's) */
