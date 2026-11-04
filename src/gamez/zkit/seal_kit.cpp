@@ -643,6 +643,30 @@ FIREMODE CZKit::GetCurFireMode()
     return (FIREMODE)m_firemode[m_selected_item];
 }
 
+/* the rounds an item's magazine holds: under a launcher's mode, the capacity of the item its
+ * ammunition is -- the first of that kind with rounds, else the last -- none without one (OVL2
+ * 0x5C3CF0; SOCOM 1's, whose grenade launcher indexed its ammunition by the mode).
+ * OPEN, 4 instructions, the last arm's block order only: the target lays out the return-0 block
+ * (`bnez a0,call; move v0,zero; b end`) before the call, which falls into the epilogue -- as SOCOM 1's
+ * two arms both do; MW folds the zero into a `beqz` to the end here (the launcher arm's `||` keeps
+ * its block, being shared). Tried: the ternary either way round, `== 0`, the weapon in a local, an
+ * if/else, a result local (0x1DC), a static inline capacity helper (three bodies, either arm), a
+ * shared `return 0` at the end, a goto */
+int CZKit::GetMaxAmmoCount(int index)
+{
+    index = wrap(index, m_num_items);
+    if (WeaponIsLauncherMode(index)) {
+        int i = FindItemWithAmmo((EQUIP_ITEM)m_firemode[index]);
+
+        if (i == -1 || !m_item[i])
+            return 0;
+        return m_item[i]->GetAmmoCapacity();
+    }
+    if (!m_item[index])
+        return 0;
+    return m_item[index]->GetAmmoCapacity();
+}
+
 /* the rounds in all an item's magazines (OVL2 0x5C3C10, where SOCOM 1's EmptyAmmoCountTotal
  * sat -- that one emptied them; the name ours) */
 int CZKit::GetAmmoTotal(int index)
@@ -1028,6 +1052,56 @@ bool CZKit::SetItemAmmo(unsigned int index, void *ammo)
         int size = m_item[index]->GetAmmoCapacity();
 
         r = SetItemAmmo(index, ammo, size, m_item[index]->GetNumMags());
+    }
+    return r;
+}
+
+extern "C" {
+/* a launcher's fire mode past 3 found for an item (OVL2 0x5C45C0, this unit's draft) and the body's
+ * test the launcher's selection asks (OVL2 0x5857E0, the SEALs' row) */
+bool func_005C45C0(CZKit *kit, int index);
+bool func_005857E0(CZSealBody *body);
+}
+
+/* whether the weapon selector may pick an item: not a launcher's grenades, a launcher only with a
+ * mode past 3 and the body's leave, no item past 201 nor any of nine kinds -- the detonator (193)
+ * only while the SEAL has remote charges down (OVL2 0x5BDC30; SOCOM 1's, its kinds renumbered and
+ * the launcher's test new) */
+bool CZKit::isSelectableItem(int index)
+{
+    index = wrap(index, m_num_items);
+    bool r;
+
+    if (index == -1)
+        return false;
+    CZFTSWeapon *w = m_item[index];
+    EQUIP_ITEM id = w->m_ID;
+
+    r = true;
+
+    if (w->IsGrenadeLauncherAmmo())
+        return false;
+    if (CZWeapon::IsLauncher(id) && (!func_005C45C0(this, index) || !func_005857E0(m_body)))
+        return false;
+    if (id > 201)
+        r = false;
+    else {
+        switch (id) {
+        case 194:
+        case 154:
+        case 152:
+        case 195:
+        case 254:
+        case 151:
+        case 255:
+        case 141:
+            r = false;
+            break;
+        case 193:
+            if (!CZWeapon::m_pProjectilelist->GetNumRemoteExplosives(((CEntity *)m_body)->m_id))
+                return false;
+            break;
+        }
     }
     return r;
 }

@@ -227,11 +227,15 @@ public:
     bool ItemHasAmmo(int index, FIREMODE mode) const;
     bool CurItemHasAmmo();
     bool ItemHasAmmo(EQUIP_ITEM item);
+    /* whether the weapon selector may pick an item (SOCOM 1's; OVL2 0x5BDC30) */
+    bool isSelectableItem(int index);
     bool IsFireDelayed();
     FIREMODE GetCurFireMode();
     int GetNumMags(int index);
     int GetCurNumMags();
     int GetAmmoTotal(int index);
+    /* the rounds an item's magazine holds (SOCOM 1's; OVL2 0x5C3CF0) */
+    int GetMaxAmmoCount(int index);
     int unwrap(int index, FIREMODE mode) const;
     EQUIP_IDTYPE GetCurItemIDType();
     /* the current item's class as the body keeps its fire points (a byte: CZSealBody's 0x5DFAD0
