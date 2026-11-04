@@ -1033,3 +1033,85 @@ void SkbReadUiParams(CRdrFile *file)
         for (int j = 0; j < 10; j++)
             s_keyRows[i][j].SetTrans(trans);
 }
+
+/* a key read this frame (zin_keyboard.cpp's KeyInput, 32 bytes) and its reader */
+struct KeyInput {
+    unsigned char code;
+    int shift;
+    int ctrl;
+    int alt;
+    int _10;
+    int caps;
+    int _18[2];
+};
+int GetKeyReadThisFrame(KeyInput *key);
+
+/* the three toggles' bitmaps and the look rectangles they take (a table 0x395540 copies from
+ * 0x3E0500 into its frame; ours) */
+struct SKBTOGGLE {
+    unsigned char m_rect;
+    CBmpWithNode *m_bmp;
+};
+
+/* the display set going as a keyboard opens: the caption plain, two keys read away, the display
+ * placed at the look's position, the cursor (bitmap 2) hidden, the legend (bitmap 3) placed slid in,
+ * the plain background's keys shown, the caption given cap 1's look, the caret (bitmap 1) sized and
+ * hidden, the scaling up started, and the three toggles sized, placed at their rectangles and hidden
+ * (0x395540; ShowSkb calls it with the font; the name ours) */
+/* the legend (bitmap 3) placed slid in by t, a fraction of its width (ours: the 1.0f a caller
+ * passes is still multiplied) */
+static inline void SkbPlaceLegend(CSoftKeyboard *skb, float t)
+{
+    s_bmp3.m_node->SetPosition((float)skb->m_6c - t * (float)s_rect.m_size[0], 0.0f, 0.0f);
+}
+
+/* a node put at a place raised by dy (ours: the 0.0f a caller passes is still added) */
+static inline void SkbPlaceNode(zdb::CNode *node, int x, int y, float dy)
+{
+    node->SetPosition((float)x, dy + (float)y, 0.0f);
+}
+
+void SkbStartDisplay(CSoftKeyboard *skb, C2DFont *font)
+{
+    KeyInput key;
+
+    s_captionMode = CAPTION_PLAIN;
+    GetKeyReadThisFrame(&key);
+    GetKeyReadThisFrame(&key);
+    SkbPlaceNode(g_skbDisplayNode, skb->m_5c, skb->m_60, 0.0f);
+    if (s_bmp2.m_node)
+        s_bmp2.m_node->SetActive(false);
+    SkbPlaceLegend(skb, 1.0f);
+    if (s_bmp6.m_node)
+        s_bmp6.m_node->SetActive(true);
+    if (s_bmp7.m_node)
+        s_bmp7.m_node->SetActive(false);
+    int count = SkbPieces(skb, SKBLIST_PLAIN).size();
+
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 10; j++) {
+            CBmpWithNode &bmp = s_keyRows[i][j];
+            bool on = i == 0 ? j < count : false;
+
+            if (bmp.m_node)
+                bmp.m_node->SetActive(on);
+        }
+    SkbApplyCapLook(&s_caption, s_captionNode, skb, 1, font, 0.0f);
+    s_bmp1.Load(0.0f, 0.0f, (float)skb->m_d0, (float)skb->m_d4, s_bmp1.m_pTexHandle);
+    if (s_bmp1.m_node)
+        s_bmp1.m_node->SetActive(false);
+    s_scaleTime = 0.0f;
+    s_scaling = SKBSCALE_UP;
+    SKBTOGGLE toggles[3] = {{0, &s_bmp0}, {1, &s_bmp5}, {2, &s_bmp4}};
+
+    for (unsigned int k = 0; k < 3; k++) {
+        CSkbRect r = skb->m_rects[toggles[k].m_rect];
+        CBmpWithNode *bmp = toggles[k].m_bmp;
+        const CSkbRect *p = &r;
+
+        bmp->Load(0.0f, 0.0f, (float)p->m_size[0], (float)p->m_size[1], bmp->m_pTexHandle);
+        SkbPlaceNode(bmp->m_node, p->m_pos[0], p->m_pos[1], 0.0f);
+        if (bmp->m_node)
+            bmp->m_node->SetActive(false);
+    }
+}

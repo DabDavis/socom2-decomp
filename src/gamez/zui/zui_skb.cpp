@@ -215,12 +215,13 @@ void func_0038B8A0(CSoftKeyboard *skb, int x, int y);
 }
 
 /* (the units after this one, by address: the keyboard's captions and text shown with its fonts and
- * the text (0x398EA0), its key caps (0x395540); zui.cpp's menu fade, 0x36A210) */
+ * the text (0x398EA0); zui.cpp's menu fade, 0x36A210) */
 extern "C" {
 void func_00398EA0(CSoftKeyboard *skb, CSkbFonts *fonts, const char *text);
-void func_00395540(CSoftKeyboard *skb, C2DFont *font);
 void func_0036A210(float t);
 }
+/* the display set going as the keyboard opens (zui_skbview.cpp's, 0x395540) */
+void SkbStartDisplay(CSoftKeyboard *skb, C2DFont *font);
 
 /* the keyboard shown with a text, unless one is showing: its cursor at its start position, its
  * node lists laid out, its text, captions and caps made, its node on, the active one, its first
@@ -238,7 +239,7 @@ void CSoftKeyboard::ShowSkb(const char *text)
         func_0038B8A0(this, x, func_0038B530(&pos) - 1);
         SkbSetKeyTextures(m_17c, m_180, m_texLists.m_lists, this);
         func_00398EA0(this, &m_fonts, text);
-        func_00395540(this, &m_fonts.m_fonts[1]);
+        SkbStartDisplay(this, &m_fonts.m_fonts[1]);
         m_node->SetActive(true);
         g_pActiveSkb = this;
         ShowElements(0);
