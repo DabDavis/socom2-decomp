@@ -25,6 +25,10 @@ public:
 class CAnimsByFP {
 public:
     AnimType PistolAnim(AnimType type) const;
+    /* an anim type's rifle and pistol variants (OVL2 0x5E1A10, 0x5E19D0, anim.cpp's: the shorts at 4 and
+     * 6 of the type's 8-byte record, -1 past the 312 types) */
+    AnimType RifleFPAnim(AnimType type) const;
+    AnimType PistolFPAnim(AnimType type) const;
 };
 
 struct AnimSetByFP {
@@ -298,15 +302,8 @@ void CZSealBody::SetPartAsGear(CZBodyPart *part, CCharacterGear *gear)
     SetBodyPart(part->m_id, 0);
 }
 
-/* an animation set's anims by the item in hand (SOCOM 1's CAnimsByFP: an anim type's pistol and
- * rifle variants) -- only its two lookups (OVL2 0x5E1A10 and 0x5E19D0, the kit lane's range: the
- * shorts at 4 and 6 of an anim type's 8-byte record, -1 past the 312 types) */
-class CAnimsByFP;
-
-extern "C" {
-AnimType func_005E1A10(CAnimsByFP *anims, AnimType type);
-AnimType func_005E19D0(CAnimsByFP *anims, AnimType type);
-}
+/* (an animation set's anims by the item in hand -- SOCOM 1's CAnimsByFP: its two lookups declared
+ * above, called by name) */
 
 /* a SEAL's animations (SOCOM 1's DWARF: AnimSet, its speeds first) -- only those here */
 class AnimSet {
@@ -851,9 +848,9 @@ extern "C" AnimType func_0058C970(CZSealBody *seal, AnimType type, unsigned char
 {
     switch (item) {
     case 1:
-        return func_005E1A10(seal->m_animset->m_animsbyfp, type);
+        return seal->m_animset->m_animsbyfp->RifleFPAnim(type);
     case 2:
-        return func_005E19D0(seal->m_animset->m_animsbyfp, type);
+        return seal->m_animset->m_animsbyfp->PistolFPAnim(type);
     default:
         return type;
     }

@@ -14,6 +14,7 @@ public:
     CZSIScriptCommon *GetScript(AnimType type);
     CZSIScriptCommon *GetScript(AnimType type, int kind);
     int GetVariantIndex(AnimType type, int kind, int anim);
+    AnimType BaseAnim(AnimType type);
 };
 
 /* THE UNIT'S STATICS, in the order its initialiser builds them (__sinit_seal_body.cpp, OVL2 0x668940):
@@ -102,10 +103,8 @@ extern "C" bool func_0057D710(CZSealBody *seal, short weapon)
 }
 
 extern "C" {
-/* an anim type for an item (OVL2 0x58C820, seal_cfg.cpp's) and an anim type's base (AnimSet::BaseAnim,
- * OVL2 0x5E1A90, anim.cpp's) */
+/* an anim type for an item (OVL2 0x58C820, seal_cfg.cpp's) */
 AnimType func_0058C820(CZSealBody *seal, AnimType type, SEAL_ITEM_BYTE item);
-AnimType func_005E1A90(AnimSet *set, AnimType type);
 }
 
 /* every blend's anim type taken over to an item -- its type for the item, its anim looked up again (the
@@ -139,7 +138,7 @@ extern "C" void func_0057D5E0(CZSealBody *seal, SEAL_ITEM_BYTE item)
             rep->m_anim = anim;
     }
     seal->m_curblend = (AnimType)((CZBodyAnimBlend *)func_00555170((char *)seal + 0x1c0))->Representative()->m_id;
-    seal->m_curblend = func_005E1A90(seal->m_animset, seal->m_curblend);
+    seal->m_curblend = seal->m_animset->BaseAnim(seal->m_curblend);
 }
 
 /* the state of the topmost blend in state 0, 1 or 2, else 0 (OVL2 0x57DBB0; new in SOCOM II, its
