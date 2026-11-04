@@ -15,9 +15,9 @@ struct VC_0 {
     virtual s32 v_10(void);
 };
 extern "C" {
-s32 func_00258920(char *, s32, s32, s32, M2C_UNK, M2C_UNK); /* extern */
-
-s32 ReOpen__Q23zar4CZARFiUi(char *arg0, s32 arg1, s32 arg2) {
+s32 ReOpen__Q23zar4CZARFiUi(char * arg0, s32 arg1, u32 arg2);
+s32 Open__Q23zar4CZARFPCciUiUib(char * arg0, char * arg1, s32 arg2, u32 arg3, u32 arg4, u8 arg5);
+s32 ReOpen__Q23zar4CZARFiUi(char *arg0, s32 arg1, u32 arg2) {
     s32 var_v0;
     s32 var_v0_2;
     char **temp_a0;
@@ -31,7 +31,7 @@ s32 ReOpen__Q23zar4CZARFiUi(char *arg0, s32 arg1, s32 arg2) {
     if (var_v0_2 & 0xFF) {
         var_v0 = 1;
     } else {
-        var_v0 = func_00258920(arg0, SC_MEMBER(arg0, s32 *, 0xA4), arg1, arg2, 0x10, 0);
+        var_v0 = Open__Q23zar4CZARFPCciUiUib(arg0, SC_MEMBER(arg0, char **, 0xA4), arg1, arg2, 0x10U, 0U);
     }
     return var_v0 & 0xFF;
 }

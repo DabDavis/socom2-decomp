@@ -10,6 +10,7 @@
 #include <deque>
 #include <eetypes.h>
 #include <list>
+#include <stack>
 #include <vector>
 
 #include "../zmath/zmath.h"
@@ -407,6 +408,16 @@ namespace zdb {
 class CLight;
 class CLOD_band;
 class CVidStack;
+class CLightMapVector;
+class CProjectedMapVector;
+
+/* a custom global light: two matrices, unit ones when built (SOCOM 1's zdb::tag_GlobalLight by its
+ * constructor's name, 0x3B7FD0, two sceVu0UnitMatrix calls at +0 and +0x40 -- 0x80 bytes; the
+ * members' names ours) */
+struct tag_GlobalLight {
+    CMatrix m_0;   // 0x0
+    CMatrix m_40;   // 0x40
+};
 
 /* a detail layer of a visual (SOCOM 1's zdb::tag_DETAIL_PARAMS by VuDetailMap's mangled name, no
  * DWARF; the members' names ours): the squared distance it draws within, its textures, and the
@@ -464,6 +475,29 @@ public:
      * SaveDelayedNode keeps both with a delayed node) */
     static CPnt3D m_addColor;
     static float m_GlobalLightScale;
+    /* the custom global lights, the base fog colour (1, 1, 1, 0) and the world-to-model matrix
+     * (SOCOM 1's statics; __sinit_vis_vu.cpp builds them) */
+    static tag_GlobalLight m_customGlobalLight[4];
+    static CPnt4D m_basefog_color;
+    static CMatrix m_WorldToModel;
+    /* new in SOCOM II (__sinit_vis_vu.cpp builds them; the names ours): the light maps' tint colours
+     * now, the ones they blend to and the blend's rate per second (0x3B7170 steps them), the lens
+     * colours (the zoom's CLensColors: CameraZoom sets them) and their product -- xyz multiplied, w
+     * summed plus 0.5 -- that the object header carries (VuObjectSetup, 0x3B5A10), and the projected
+     * map's colour (VuProjectedMap) */
+    static CPnt4D m_lightTint[4];
+    static CPnt4D m_lightTintTarget[4];
+    static CPnt4D m_lightTintRate[4];
+    static CPnt4D m_lensScale;
+    static CPnt4D m_lensColor[4];
+    static CPnt4D m_projectedColor;
+    /* the light maps' tint set, one channel (0x3B76B0) or all four (0x3B78D0), toward a colour over
+     * a time -- at once for none (new in SOCOM II: ZAnim's SCALE_COLOR and CameraZoom's lens effects
+     * call them; the names ours) */
+    static void SetLightTint(PNT4D color, int i, float time);
+    static void SetLightTints(PNT4D color, float time);
+    /* the frame's step of the lens scale and the tints (0x3B7170: CPipe::RenderWorld's call; ours) */
+    static void UpdateLightTints(float dT);
     /* the fog and lighting switches a translucent visual is kept with (SOCOM 1's statics, 1 byte
      * each, just ahead of m_GlobalLightScale: OVL1 0x3E1468, 0x3E1470) */
     static bool m_fogEnable;
@@ -485,14 +519,11 @@ public:
     /* whether a level-of-detail band draws at a squared distance, its fade into the opacity
      * (SOCOM 1's; `this` unread) */
     bool DrawLOD(CLOD_band *band, float d, float *opacity);
-    /* the local lights: two quadwords each -- position and squared range, colour and falloff --
-     * the lights and their count (SOCOM 1's statics, 320 and 40 bytes) */
-    struct LOCAL_LIGHT {
-        float m_pos[3];   // 0x0
-        float m_rangeSq;   // 0xc
-        float m_color[3];   // 0x10
-        float m_invFalloff;   // 0x1c
-    };
+    /* the local lights: two quadwords each -- position and squared range, colour and the inverse of
+     * the falloff -- the lights and their count (SOCOM 1's statics, 320 and 40 bytes). The buffer is
+     * an array of CPnt4D: __sinit_vis_vu.cpp builds it with one __construct_array of twenty CPnt4D()
+     * (0x10 bytes each), as SOCOM 1's does -- a struct of two would be ten of its own constructor */
+    typedef CPnt4D LOCAL_LIGHT[2];
     static LOCAL_LIGHT localLightBuf[10];
     static CLight *localLightPtr[10];
     static int m_local_light_cnt;
@@ -508,18 +539,20 @@ public:
      * DMA reference and tag that send it (SOCOM 1's static, byte for byte) */
     /* the specular maps let go of (SOCOM 1's static; the wep lane's) */
     static void Flush();
-    static std::vector<CLightMap *> m_specMapList;
+    static CLightMapVector m_specMapList;
     /* the view ids' stack primed, the map lists sized, the meshes' statics set (SOCOM 1's static;
      * the wep lane's) */
     static void Init();
     /* the free view ids (SOCOM 1's stack<unsigned int>; SOCOM II's is a stack of pointers -- its
      * pushes and pops are the pointer deque's push_back and pop_back, and the out-of-line empty()
      * and top() GetVid calls, 0x321F40 and 0x321EF0, are std::stack<T *>'s byte for byte: the
-     * element's type is ours). Its type, CVidStack, is std::stack<void *> defined where it is used
-     * (vis_vu.cpp, vis_main.cpp): zrdr.h carries a std::stack of its own that <stack> would clash
-     * with. The light, shadow and projected maps' lists (SOCOM 1's statics: vis's initialiser
-     * 0x404570 builds them) */
-    static CVidStack m_stack_vid;
+     * element's type is ours). It is a plain std::stack<void *> (the MSL headers' round 18:
+     * __sinit_vis_vu.cpp registers ~stack<Pv> 0x3B7D50 for it, which a wrapper class would replace
+     * with its own destructor; include/stack is zrdr.h's too now). The light, shadow and projected
+     * maps' lists (SOCOM 1's statics: vis's initialiser 0x404570 builds them, registering
+     * ~CLightMapVector 0x3206E0 for the first three and ~CProjectedMapVector 0x320660 for the last,
+     * as SOCOM 1's) */
+    static std::stack<void *> m_stack_vid;
     /* the view id in use, the stack's top behind a `break` (inline, defined with CVidStack) */
     static unsigned int GetVid();
     /* a view's VU buffer copied for this visual: a new owner with its own block, its first list's
@@ -550,9 +583,9 @@ public:
      * blend word is the default or already the select's, the blend register's update (SOCOM 1's
      * static, 0x3B6FA0) */
     static void SaveTextureSelect(_word128 *select, CTexture *tex, unsigned long blend);
-    static std::vector<CLightMap *> m_lightMapList;
-    static std::vector<CLightMap *> m_shadowMapList;
-    static std::vector<void *> m_projectedMapList;
+    static CLightMapVector m_lightMapList;
+    static CLightMapVector m_shadowMapList;
+    static CProjectedMapVector m_projectedMapList;
     static _word128 *GetTextureSelectBlock_ver2(unsigned int n, _word128 **cursor, _word128 *ref,
                                            _word128 *tag);
     /* the same block allocated, its head returned (SOCOM 1's; CTexture::SetupSpecialTextures
@@ -665,6 +698,12 @@ public:
 class CLightMapVector : public std::vector<CLightMap *> {
 public:
     bool Exists(const CLightMap *light);
+};   // 0xc bytes
+
+/* the projected maps' list (SOCOM 1's class by its destructor's name, 0x320660, which
+ * __sinit_vis_vu.cpp registers for CVisual::m_projectedMapList: the same code as
+ * ~CLightMapVector's; CPipe::BuildProjectedMapList pushes the shadow casters onto it) */
+class CProjectedMapVector : public std::vector<void *> {
 };   // 0xc bytes
 
 class CSaveLoad;

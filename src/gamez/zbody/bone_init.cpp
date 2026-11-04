@@ -22,7 +22,6 @@
 /* the ZAR's functions zar.h does not declare: SOCOM II's five-argument Open, the key count and the
  * data buffer handed over (called by their map names) */
 extern "C" {
-void func_00258920(zar::CZAR *zar, const char *name, int version, unsigned int a, unsigned int b, int c);
 int func_0025B300(zar::CKey *key, int deep);
 void *ReleaseDataBuffer__Q23zar4CZARFv(zar::CZAR *zar);
 }
@@ -108,7 +107,7 @@ static inline bool OpenArchive(CScriptArchive *archive, const char *path)
     bool ok = false;
 
     if (archive->m_present && !archive->m_zar.IsOpen()) {
-        func_00258920(&archive->m_zar, path, bone_archive_version, 1, 16, 0);
+        archive->m_zar.Open(path, bone_archive_version, 1, 16, false);
         ok = archive->m_zar.IsOpen();
     }
     return ok;

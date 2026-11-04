@@ -231,6 +231,11 @@ class Parser:
             for j, sp in self.entity(m.end()).items():
                 if j < self.n and s[j] == "@" and IDENT.fullmatch(s, j + 1):
                     return sp
+                # @GUARD@<static member>: a class template's static member with a constructor is
+                # guarded by a byte of that name (`@GUARD@id__Q23std8ctype<w>`, MAIN's runtime round 6;
+                # SOCOM 1's 2.4 spelled it `__init__<member>`) -- the integrator, 2026-11-04
+                if j == self.n and m.group(1) == "GUARD":
+                    return sp
             return None
         m = re.match(r"@\d+@(?:\d+@)?", s)            # a thunk: @this-offset@[vtable offset@]<name>
         return self.entity(m.end() if m else 0).get(self.n)

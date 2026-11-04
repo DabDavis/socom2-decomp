@@ -197,8 +197,6 @@ bool CheckMediusCallbackStatus(const char *what, MediusCallbackStatus status);
 /* a universe's status, the response kept whole (the Medius SDK's MediusUniverseStatusListResponse:
  * copied member by member, a class with a constructor of its own -- the constructor is ours) */
 struct MediusUniverseStatusListResponse {
-    MediusUniverseStatusListResponse() {}
-
     char MessageID[21];   // 0x0
     MediusCallbackStatus StatusCode;   // 0x18
     char UniverseName[128];   // 0x1c
@@ -215,8 +213,12 @@ struct MediusUniverseStatusListResponse {
 };   // 0x338
 
 /* a universe as the list keeps it: its status, then the patch level and URL its extended
- * information carries */
-struct UniverseStatus {
+ * information carries. The response is the BASE: the implicit copy constructor (a class with
+ * constructors of its own) copies a plain base as one block and the arrays after it bytewise, while
+ * the implicit assignment goes member by member into the base's own arrays -- the target's reserve
+ * (0x300250) and insert (0x2FEE50) copy so; a member of the response's type is assigned as one
+ * block, and a response with a constructor of its own is copy-constructed member by member */
+struct UniverseStatus : public MediusUniverseStatusListResponse {
     UniverseStatus()
     {
         m_version[0] = 0;
@@ -231,8 +233,8 @@ struct UniverseStatus {
             char buf[0x80];
             char *t;
 
-            m_info = *resp;
-            strncpy(buf, m_info.ExtendedInfo, sizeof(buf));
+            *(MediusUniverseStatusListResponse *)this = *resp;
+            strncpy(buf, ExtendedInfo, sizeof(buf));
             t = strtok(buf, " \t");
             if (t)
                 strncpy(m_version, t, sizeof(m_version));
@@ -242,15 +244,15 @@ struct UniverseStatus {
         }
     }
 
-    MediusUniverseStatusListResponse m_info;   // 0x0
     char m_version[0x20];   // 0x338
     char m_url[0x80];   // 0x358
 };   // 0x3d8
 
-/* a line of the universe's news (the SDK's MediusGetUniverseNewsResponse) */
+/* a line of the universe's news (the SDK's MediusGetUniverseNewsResponse): a plain struct -- copied
+ * into raw storage as one block (the reserve 0x3000A0, the insert 0x2FF960's constructions), assigned
+ * member by member (the insert's moves); an empty constructor of its own made every copy member by
+ * member (0x1E0 against 0x1A8) */
 struct MediusGetUniverseNewsResponse {
-    MediusGetUniverseNewsResponse() {}
-
     char MessageID[21];   // 0x0
     MediusCallbackStatus StatusCode;   // 0x18
     char News[256];   // 0x1c
@@ -258,7 +260,9 @@ struct MediusGetUniverseNewsResponse {
 };   // 0x120
 
 /* the universes and the news: room for 16 of each at the start (the initialiser calls the two
- * reserves, 0x300250 and 0x3000A0; the classes' names ours) */
+ * reserves, 0x300250 and 0x3000A0, byte-exact; the classes' names ours). Their inserts are the
+ * target's size and OPEN on the class insert's in-place registers alone (include/vector's open:
+ * 0x2FEE50 150 instructions, 0x2FF960 45) */
 class UniverseStatusList : public std::vector<UniverseStatus> {
 public:
     UniverseStatusList() { reserve(16); }
@@ -428,7 +432,11 @@ public:
     class CAcctDB : public std::vector<AcctRecord>, public CSaveModule, public CLobbySaveModule {
     public:
         /* a module of the game save and of the lobby's, room for 48 accounts (theAcctDB's, built
-         * by the unit's initialiser 0x4022D0) */
+         * by the unit's initialiser 0x4022D0). The reserve 0x2FECB0 is OPEN, 0x194 against 0x19C:
+         * the target cuts its construct() to one level -- the placement new 0x2FECA0 and the copy
+         * constructor both called, as the accounts' insert 0x2FE3E0 does -- where here the reserve
+         * inlines the placement new and calls only the copy constructor (an own-code stand-in that
+         * copy-constructs an account first, before or after the unit's functions, changes nothing) */
         CAcctDB() : CSaveModule("CAcctDB", theMemCard.m_gameSave), CLobbySaveModule("CAcctDB", GetLobbySaveManager())
         {
             reserve(48);
@@ -775,10 +783,10 @@ void cbGetUniverseStatusList(int, int, int, MediusUniverseStatusListResponse *re
             ed.push(0);
             for (UniverseStatusList::iterator i = data_0044FD50.begin(); i != data_0044FD50.end(); ++i) {
                 ed.push(0);
-                ed.addstringnode((*i).m_info.UniverseName);
-                ed.addintnode(!(*i).m_info.Status);
-                ed.addintnode((*i).m_info.UserCount);
-                ed.addintnode((*i).m_info.MaxUsers);
+                ed.addstringnode((*i).UniverseName);
+                ed.addintnode(!(*i).Status);
+                ed.addintnode((*i).UserCount);
+                ed.addintnode((*i).MaxUsers);
                 ed.pop();
             }
             ed.pop();
@@ -794,7 +802,7 @@ void cbGetUniverseStatusList(int, int, int, MediusUniverseStatusListResponse *re
 const char *CAcctDB::GetUniverseName(unsigned int i)
 {
     if (i < data_0044FD50.size())
-        return data_0044FD50[i].m_info.UniverseName;
+        return data_0044FD50[i].UniverseName;
     return "";
 }
 
@@ -802,7 +810,7 @@ const char *CAcctDB::GetUniverseName(unsigned int i)
 const char *CAcctDB::GetUniverseDescription(unsigned int i)
 {
     if (i < data_0044FD50.size())
-        return data_0044FD50[i].m_info.UniverseDescription;
+        return data_0044FD50[i].UniverseDescription;
     return "";
 }
 
@@ -810,8 +818,8 @@ const char *CAcctDB::GetUniverseDescription(unsigned int i)
 const char *CAcctDB::GetUniverseDNS(const char *name)
 {
     for (UniverseStatusList::iterator i = data_0044FD50.begin(); i != data_0044FD50.end(); ++i)
-        if (!strcmp((*i).m_info.UniverseName, name))
-            return (*i).m_info.DNS;
+        if (!strcmp((*i).UniverseName, name))
+            return (*i).DNS;
     return 0;
 }
 
@@ -819,8 +827,8 @@ const char *CAcctDB::GetUniverseDNS(const char *name)
 int CAcctDB::GetUniversePort(const char *name)
 {
     for (UniverseStatusList::iterator i = data_0044FD50.begin(); i != data_0044FD50.end(); ++i)
-        if (!strcmp((*i).m_info.UniverseName, name))
-            return (*i).m_info.Port;
+        if (!strcmp((*i).UniverseName, name))
+            return (*i).Port;
     return 0;
 }
 
@@ -828,8 +836,8 @@ int CAcctDB::GetUniversePort(const char *name)
 int CAcctDB::GetUniverseStatus(const char *name)
 {
     for (UniverseStatusList::iterator i = data_0044FD50.begin(); i != data_0044FD50.end(); ++i)
-        if (!strcmp((*i).m_info.UniverseName, name))
-            return (*i).m_info.Status;
+        if (!strcmp((*i).UniverseName, name))
+            return (*i).Status;
     return 0;
 }
 
@@ -839,7 +847,7 @@ bool CAcctDB::VerifyPatchLevel(const char *level)
     bool ok = true;
 
     for (UniverseStatusList::iterator i = data_0044FD50.begin(); i != data_0044FD50.end(); ++i) {
-        if (!strcmp((*i).m_info.UniverseName, level)) {
+        if (!strcmp((*i).UniverseName, level)) {
             if ((*i).m_version[0])
                 ok = !strcmp("r0001", (*i).m_version);
             break;
@@ -854,7 +862,7 @@ const char *CAcctDB::GetPatchURL(const char *level)
     const char *url = 0;
 
     for (UniverseStatusList::iterator i = data_0044FD50.begin(); i != data_0044FD50.end(); ++i)
-        if (!strcmp((*i).m_info.UniverseName, level))
+        if (!strcmp((*i).UniverseName, level))
             url = (*i).m_url;
     return url;
 }

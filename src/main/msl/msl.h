@@ -91,12 +91,21 @@ struct char_traits<char> {
     static int_type to_int_type(const char_type &c) { return (unsigned char)c; }
 };
 
+/* the wide traits copy element by element through assign (round 6: the streambufs' xsgetn/xsputn
+ * <wchar_t>, 0x185EB0/0x185C20, byte-exact so -- the reference parameters keep each `p + 4` in a
+ * register of its own in MW's unrolled loop; a plain `*s1++ = *s2++` folds it into the offsets) */
 template <>
 struct char_traits<wchar_t> {
     typedef wchar_t char_type;
     typedef int int_type;
+    static void assign(char_type &c1, const char_type &c2) { c1 = c2; }
     static char_type *copy(char_type *s1, const char_type *s2, unsigned int n)
-        { memcpy(s1, s2, n * sizeof(char_type)); return s1; }
+    {
+        char_type *s = s1;
+        for (size_t i = 0; i < n; ++i)
+            assign(*s1++, *s2++);
+        return s;
+    }
     static int_type eof() { return -1; }
     static int_type not_eof(const int_type &c) { return eq_int_type(c, eof()) ? 0 : c; }
     static bool eq_int_type(const int_type &c1, const int_type &c2) { return c1 == c2; }
@@ -126,6 +135,8 @@ template <class T, class Destructor>
 class _RefCountedPtr {
 public:
     explicit _RefCountedPtr(T *ptr = 0);
+    /* the copy constructor and the assignment are defined by the units, where each must first be
+     * seen (ios.cpp at its top; iostream.cpp after the filebufs, whose constructors call the copy) */
     _RefCountedPtr(const _RefCountedPtr &other);
     ~_RefCountedPtr();
     _RefCountedPtr &operator=(const _RefCountedPtr &other);
@@ -135,14 +146,6 @@ private:
     T *ptr_;
     int *refCount_;
 };
-
-template <class T, class Destructor>
-_RefCountedPtr<T, Destructor>::_RefCountedPtr(const _RefCountedPtr &other)
-    : ptr_(other.ptr_), refCount_(other.refCount_)
-{
-    if (refCount_)
-        ++*refCount_;
-}
 
 template <class T, class Destructor>
 _RefCountedPtr<T, Destructor>::_RefCountedPtr(T *ptr)
@@ -201,6 +204,33 @@ basic_string<charT, traits, Allocator>::~basic_string()
         operator delete((void *)w_[2]);
 }
 
+/* <iterator>'s tags: the template replace takes the range's category by value (an empty class: a byte
+ * loaded off the stack and never stored) */
+struct input_iterator_tag {};
+struct forward_iterator_tag : public input_iterator_tag {};
+
+/* MAIN's own copies of the string's out-of-line pieces, which throw (the library has exceptions on):
+ * reserve 0x18D8C0 and the template replace 0x18D3E0 are not written -- called by address */
+extern "C" void func_0018D8C0(void *str, unsigned int n);     /* reserve(n) */
+extern "C" void *func_0018D3E0(void *str, unsigned int pos, unsigned int n1, const char *first,
+                               const char *last, forward_iterator_tag);   /* replace(pos, n1, first, last, cat) */
+
+/* from a C string (0x18D2C0, MAIN's copy of OVL1's 0x2396F0, include/string's shape): the words
+ * zeroed, the length taken, the room reserved, the text replaced in (locale.cpp's __locale_imp name) */
+template <class charT, class traits, class Allocator>
+basic_string<charT, traits, Allocator>::basic_string(const charT *s)
+{
+    unsigned int (&a)[3] = w_;
+
+    for (unsigned int i = 0; i < 3; ++i)
+        a[i] = 0;
+    unsigned int n = strlen(s);
+    forward_iterator_tag category;
+
+    func_0018D8C0(this, n);
+    func_0018D3E0(this, 0, 0, s, s + n, category);
+}
+
 typedef basic_string<char> string;
 
 class exception {
@@ -246,6 +276,7 @@ public:
             operator delete(data_);
     }
     size_t size() const { return size_; }
+    size_t capacity() const { return capacity_; }
     T &operator[](size_t i) { return data_[i]; }
     T *begin() { return data_; }
     T *end() { return data_ + size_; }
@@ -279,26 +310,36 @@ void __vector_pod<T, Allocator>::resize(size_t sz, const T &c)
 
 /* n copies of x at position: in place when the capacity holds them (x itself moved with the tail
  * when it lies there), else into a buffer grown by doubling from the old capacity (SOCOM 1's
- * <vector> 486-530: newcap, newsize, olddata, pos, xp, t1 -- MW's DWARF lists a block's locals in
- * REVERSE declaration order: flush's `failed` before its sentry `ok`).
- * OPEN (MAIN's copy 0x18B810), 0x470 against 0x488: the throw (length_error through the counted
- * string, its constructor inlined once flush has generated it), both branches and the 8x copies are
- * the target's; the registers are numbered otherwise (the target: this s3, position s2, n s1, xp s4
- * from entry, newsize s0, olddata s5, pos s6 -- here this s2, position s1, n s0, x s6) and the in-place
- * branch is 0x18 short. Written so that iostream.cpp emits ~logic_error, ~length_error and what(). */
+ * <vector> 486-530, one block: newcap, newsize, olddata, pos, xp, t1 -- MW's DWARF lists a block's
+ * locals in REVERSE declaration order: flush's `failed` before its sentry `ok`).
+ * OPEN (MAIN's copy 0x18B810), 0x488 like the target's, 20 instructions off (round 6: was 0x470): the
+ * throw (length_error through the counted string), both branches and the 8x copies are the target's,
+ * and every saved register since round 6 -- the six locals declared at the top in SOCOM 1's order
+ * (newsize s0, xp s4, olddata s5, pos s6) and the in-place test through capacity() (the accessor makes
+ * the growth branch re-read capacity_, which the plain field had kept in a saved register); `e - (t1 -
+ * n) <= xp` branches where `!(xp < ...)` made a bool, and the doubling loop's if/else gives the target's
+ * padding. What differs: the loop's max_size() constant is in v1 (the target's v0, its exit test in at)
+ * and the second copy loads data_ before size_ (the target size_ first) -- build/scratch/rt/pi1.py.
+ * Written so that iostream.cpp emits ~logic_error, ~length_error and what(). */
 template <class T, class Allocator>
 void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
 {
+    size_t t1;
+    const T *xp;
+    size_t pos;
+    T *olddata;
+    size_t newsize;
+    size_t newcap;
     if (n == 0)
         return;
     if (n > max_size() || size_ > max_size() - n)
         throw length_error("vector::insert length error");
-    size_t newsize = size_ + n;
-    if (newsize <= capacity_) {
+    newsize = size_ + n;
+    if (newsize <= capacity()) {
         T *e = data_ + size_;
-        size_t t1 = (size_t)(e - position);
-        const T *xp = &x;
-        if (!(xp < e - (t1 - n)) && xp < e)
+        t1 = (size_t)(e - position);
+        xp = &x;
+        if (e - (t1 - n) <= xp && xp < e)
             xp += n;
         if (t1 != 0)
             for (T *i = e, *j = e + n; position < i;)
@@ -307,11 +348,15 @@ void __vector_pod<T, Allocator>::insert(T *position, size_t n, const T &x)
             *position++ = *xp;
         size_ += n;
     } else {
-        T *olddata = data_;
-        size_t pos = (size_t)(position - olddata);
-        size_t newcap = capacity_ ? capacity_ : 1;
-        while (newcap < newsize)
-            newcap = newcap < max_size() / 2 ? newcap * 2 : max_size();
+        olddata = data_;
+        pos = (size_t)(position - olddata);
+        newcap = capacity_ ? capacity_ : 1;
+        while (newcap < newsize) {
+            if (newcap < max_size() / 2)
+                newcap *= 2;
+            else
+                newcap = max_size();
+        }
         data_ = (T *)operator new(newcap * sizeof(T));
         T *p = data_ + pos;
         for (size_t k = n; k != 0; --k)
@@ -543,7 +588,7 @@ public:
                     unitbuf = 0x2000, uppercase = 0x4000 };
     enum iostate { goodbit = 0, badbit = 1, eofbit = 2, failbit = 4 };
     enum openmode { app = 0x01, ate = 0x02, binary = 0x04, in = 0x08, out = 0x10, trunc = 0x20 };
-    enum seekdir { beg, cur, end };
+    enum seekdir { beg = 0x01, cur = 0x02, end = 0x04 };   /* a bitmask: seekoff's compare chain */
     enum event { erase_event, imbue_event, copyfmt_event };
     typedef void (*event_callback)(event, ios_base &, int index);
 
@@ -822,9 +867,10 @@ public:
     U operator[](const T &x) const;
 private:
     struct entry {
-        entry(const T &x1, const T &x2, const U &y1, const U &y2)
-            : x1_(x1), x2_(x2), m_(x2 == x1 ? U(0) : U((y2 - y1) / (x2 - x1))), b_(U(y1 - m_ * x1)) {}
         bool contains(const T &x) const { return !(x < x1_) && !(x2_ < x); }
+        /* the lookup's miss test: one inline level more keeps the negation a value (sltu, xori,
+         * then the branch), as the target's operator[]s have it */
+        bool operator!=(const T &x) const { return !contains(x); }
         bool operator<(const entry &e) const { return x2_ < e.x1_; }
         bool operator<(const T &x) const { return x2_ < x; }
         T x1_;
@@ -835,17 +881,24 @@ private:
     std::vector<entry> table_;
 };
 
-/* OPEN, 0x264/0x234 against 0x260/0x240 (0x18B0C0, 0x18B320): the walk and the three class-vector
- * inserts are the target's; the frame is 0x10 larger and one more saved register (this in s3, &e.x2_ in
- * s1 against s2/s0), and the entry's slope test is laid out the other way (the target falls through to
- * the division, the zero arm after it) -- `x2 != x1 ? ... : 0`, an if/else body and declaring oldi
- * ahead of pos were tried (build/scratch/rt/ri1.py) */
+/* a range mapped linearly, installed over what the table held there: the entries it covers whole
+ * replaced, one it cuts split around it (0x18B0C0, 0x18B320, both byte-exact since round 6). THE
+ * ENTRY HAS NO CONSTRUCTOR: MW copies a class with a user constructor member by member (lhu/sh),
+ * one without as words through the FPRs on copy construction -- the target's `oldi = *i` -- and
+ * member by member on assignment (`*i = e`), so e is filled in field by field here
+ * (build/scratch/rt/pe3.cpp); then the overlap test is the entries' operator< (`e < *i` re-reads the
+ * iterator), the slope `x1 != x2 ? ... : 0`, ++pos ahead of the call (the target's delay slot) and
+ * the last position assigned to i first (its slot reused) -- build/scratch/rt/ri3.py */
 template <class T, class U>
 void range_map<T, U>::insert(const T &x1, const T &x2, const U &y1, const U &y2)
 {
-    entry e(x1, x2, y1, y2);
+    entry e;
+    e.x1_ = x1;
+    e.x2_ = x2;
+    e.m_ = x1 != x2 ? U((y2 - y1) / (x2 - x1)) : U(0);
+    e.b_ = U(y1 - e.m_ * x1);
     typename std::vector<entry>::iterator i = std::lower_bound(table_.begin(), table_.end(), e);
-    if (i == table_.end() || e.x2_ < i->x1_) {
+    if (i == table_.end() || e < *i) {
         table_.insert(i, e);
         return;
     }
@@ -853,25 +906,26 @@ void range_map<T, U>::insert(const T &x1, const T &x2, const U &y1, const U &y2)
     entry oldi = *i;
     if (oldi.x1_ < e.x1_) {
         i->x2_ = T(e.x1_ - 1);
-        table_.insert(++i, e);
         ++pos;
+        table_.insert(++i, e);
     } else
         *i = e;
     if (e.x2_ < oldi.x2_) {
+        i = table_.begin() + (pos + 1);
         oldi.x1_ = T(e.x2_ + 1);
-        table_.insert(table_.begin() + (pos + 1), oldi);
+        table_.insert(i, oldi);
     }
 }
 
-/* OPEN, 0xDC/0xCC against 0xEC/0xDC (0x18CB70, 0x18CC60): the target materialises the range test
- * and negates it (sltu, xori before the branch -- not a bool's !, an int's) and re-reads the found
- * iterator's word for x1_ but not for x2_; `contains(x) == false` (0xE4), an int-returning contains
- * (0xE4) and the test written out (0xCC) were tried (build/scratch/rt/vc1.py, vc2.py) */
+/* the value at x: the entry lower_bound finds, if its range holds x (0x18CB70, 0x18CC60, both
+ * byte-exact since round 6: `*i != x` through the entry's operator!= -- the dereference re-reads the
+ * found iterator's word for x1_, the extra inline level keeps the negation a value; `!i->contains(x)`,
+ * `contains(x) == false`, an int-returning contains and the test written out were 0x8-0x20 off) */
 template <class T, class U>
 U range_map<T, U>::operator[](const T &x) const
 {
     typename std::vector<entry>::const_iterator i = std::lower_bound(table_.begin(), table_.end(), x);
-    if (i == table_.end() || !i->contains(x))
+    if (i == table_.end() || *i != x)
         return U(0);
     return U(i->m_ * x + i->b_);
 }
@@ -953,6 +1007,8 @@ private:
     typedef codecvt<charT, char, int> cvt;
 
     bool unshift();
+    /* one character put as it is (overflow's no-conversion path; always expanded) */
+    int_type write1(char_type c) { return putc(c, file_) == EOF ? traits::eof() : traits::to_int_type(c); }
     int_type read1(bool peek);
     int_type read2(int n, bool peek);
     int_type read3(bool peek);

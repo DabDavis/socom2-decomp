@@ -1,18 +1,24 @@
 /* zar_main.cpp -- zar::CZAR, the archive (OVL1 0x256FD0-0x259EDF, the README's zar units): its
  * file, its stack of open keys and what it fetches. The unit name is SOCOM 1's (the press beta's
  * asserts name it). Defined in reverse of their image order (-inline deferred). Written: the
- * constructor, SetFilename, CloseKeepDir, Flush, the key stack's six (CloseKey .. GetSize) and
- * ReadString. Not yet: ~CZAR 0x258F20 (it frees m_key_buffer, a vector<CKey> -- NewKey's 24-byte
- * pushes -- through four out-of-line pieces at 0x2574C0-0x257570, whose element type include/vector
- * must carry first), Close, the 0x258C40 close (SOCOM 1's Close(bool) without the flag), Open
- * 0x258920, NewKey, WriteDirectory, the buffer writers below 0x257590 and the CKey vector's class
- * insert 0x259250. */
+ * constructor, the destructor, SetFilename, both Closes, CloseKeepDir, Flush, the key stack's six
+ * (CloseKey .. GetSize), ReadString, NewKey and FreeDirectory -- whose FreeVectors give the vector<CKey>
+ * and vector<CKey *> pieces 0x2573E0-0x25757F right after it, and the key buffer's clear and
+ * deleter 0x2599B0/0x259A30 in the tail. Not yet: Open 0x258920, WriteDirectory, the
+ * buffer writers below 0x257320, the directory reader 0x258000 and the CKey vector's class insert
+ * 0x259250. */
 
 #include "zar.h"
 #include "../zutil/util_stable.h"
+#include "../zsys/zsys.h"
 
 /* the root key's name and a deleted key's (SOCOM 1's file statics, "ROOT" and "DELETED"; OVL1
  * 0x3DD000 and 0x3DD008, 8 bytes apart as MW 3.0 lays such statics out) */
+/* zsys_memory.cpp's calloc (not in zutil.h) */
+void *_calloc(unsigned int n, unsigned int size, const char *file, int line);
+/* MSL's strtok (MAIN; not in include/string.h) */
+extern "C" char *strtok(char *s, const char *delim);
+
 static const char *DEFAULT_ZAR_NAME = "ROOT";
 static const char *DELETED_ZAR_NAME = "DELETED";
 
@@ -23,7 +29,7 @@ namespace zar {
  * data padded to 16, a root key named DEFAULT_ZAR_NAME). Byte-exact: the file is a ternary (both
  * builds branch to the allocation and jump over an empty arm, which an `if (!io)` turns round) */
 CZAR::CZAR(const char *name, CIO *io)
-    : m_pFileAlloc(0), m_databuffer(0), m_databuffer_size(0), m_24(0), m_2c(0), m_root(0), m_stable(0),
+    : m_pFileAlloc(0), m_pDataFile(0), m_databuffer(0), m_24(0), m_2c(0), m_root(0), m_stable(0),
       m_filename(0), m_bCompress(0)
 {
     memset(&m_tail, 0, sizeof(m_tail));
@@ -35,6 +41,96 @@ CZAR::CZAR(const char *name, CIO *io)
     m_pFile = io ? io : (m_pFileAlloc = new CFileIO);
     m_data_padded = 16;
     m_root = new CKey(DEFAULT_ZAR_NAME);
+}
+
+/* (SOCOM 1's: closed, the string table deleted, the key buffer freed, the name set back to the
+ * default's and then to DELETED_ZAR_NAME, the root deleted -- SOCOM II calls Close out of line) */
+CZAR::~CZAR()
+{
+    Close();
+    delete m_stable;
+    FreeVector<std::vector<CKey> >(m_key_buffer);
+    SetFilename(DEFAULT_ZAR_NAME);
+    m_filename = (char *)DELETED_ZAR_NAME;
+    delete m_root;
+    m_root = 0;
+}
+
+/* called out of line by ~CZAR and Open (pinned: MW would inline it) */
+#pragma auto_inline off
+void CZAR::Close()
+{
+    if (IsOpen() && (m_pFile->GetMode() & 6))
+        Flush();
+    Close(true);
+    if (m_34) {
+        delete m_34;
+        m_34 = 0;
+    }
+}
+#pragma auto_inline reset
+
+void CZAR::Close(bool)
+{
+    if (m_pFileAlloc) {
+        m_pFileAlloc->Close();
+        delete m_pFileAlloc;
+        m_pFileAlloc = 0;
+        m_pFile = 0;
+    } else if (m_pFile)
+        m_pFile->Close();
+    if (m_pDataFile) {
+        m_pDataFile->Close();
+        delete m_pDataFile;
+        m_pDataFile = 0;
+    }
+    FreeDirectory();
+}
+
+bool CZAR::Open(const char *name, int dir, unsigned int mode, unsigned int padded, bool data)
+{
+    bool ok = false;
+
+    if (name) {
+        if (!m_pFile)
+            m_pFile = m_pFileAlloc = new CFileIO;
+        ok = m_pFile->Open(name, mode);
+        if (ok) {
+            SetFilename(name);
+            m_data_padded = padded;
+            ok = ReadDirectory(dir, mode);
+            if (!ok)
+                Close();
+            else
+                m_tail._5c = dir;
+        }
+    }
+    if (ok && data && name) {
+        char tmp[256];
+        char path[256];
+
+        if (!m_pDataFile)
+            m_pDataFile = new CFileIO;
+        strcpy(path, name);
+        strcpy(tmp, strtok(path, "."));
+        strcat(tmp, "_tmp.");
+        strcat(tmp, strtok(0, "."));
+        ok = m_pDataFile->Open(tmp, 60);
+    }
+    return ok;
+}
+
+/* (SOCOM 1's, the same code: NewKey, GetOpenKey and OpenKey inlined) */
+CKey *CZAR::CreateKey(const char *name)
+{
+    CKey *key = 0;
+
+    if (IsOpen()) {
+        key = NewKey(name);
+        GetOpenKey()->InsertKey(key);
+        OpenKey(key);
+    }
+    return key;
 }
 
 bool CZAR::Flush()
@@ -133,6 +229,94 @@ int CZAR::ReadString(char **str)
         n += m_pFile->fread(*str, len);
     }
     return n;
+}
+
+/* a fresh key: put in the key buffer when the file is read (its mode's bit 0), the name made a
+ * string of the table's -- else allocated on its own (SOCOM 1's, the same code; SOCOM II's
+ * nameless key built by CKey(), its temporary destroyed out of line; one result for both paths,
+ * as the target's single exit). Its push_backs instantiate the key buffer's class insert
+ * (0x259250) and, through CKey's implicit copies, the CKeyRing pod's copy constructor, operator=,
+ * init and do_assign (0x259AF0-0x259EDF, byte-exact in the tail). The insert stays OPEN: it calls
+ * __copy_backward and __fill_n out of line at -inline level=5 (0x4F8 against 0x558; CKey's
+ * assignment chain is one level too tall -- at level 6 it is the target's size, 53 instructions
+ * off), inline_max_size changes nothing */
+CKey *CZAR::NewKey(const char *name)
+{
+    CKey *key;
+
+    if (m_pFile->GetMode() & 1) {
+        if (name)
+            m_key_buffer.push_back(CKey(m_stable->CreateString(name)));
+        else
+            m_key_buffer.push_back(CKey());
+        key = &m_key_buffer.back();
+    } else
+        key = new CKey(m_stable->CreateString(name));
+    return key;
+}
+
+#pragma auto_inline off
+void CZAR::FreeDirectory()
+{
+    if (m_key_buffer.size() == 0)
+        m_root->DeleteChildren(true);
+    else {
+        m_root->DeleteChildren(false);
+        m_key_buffer.clear();
+        FreeVector<std::vector<CKey> >(m_key_buffer);
+    }
+    m_keys.clear();
+    FreeVector<std::vector<CKey *> >(m_keys);
+    m_stable->Destroy();
+}
+#pragma auto_inline reset
+
+/* OPEN, 13 instructions (right size): the target keeps the block's size in a3 and the fresh flag in
+ * a1 where this has a1 and a2, and leaves the first growth's join label unpadded (a nop at the
+ * first block's end instead). Measured: `!m_data` materialises the flag as the target's sltu/xori/
+ * andi (`== 0` gives xor/sltiu); the base taken before `n += size` gives its li/addu pair; `end`
+ * declared ahead of `at` gives at s0 and end s1; the second growth as a ternary unpads its join as
+ * the target's -- the first as a ternary is 8 bytes short (the realloc's size moved into the test's
+ * delay slot, a1 being free here); the flag's and the base's declaration orders change nothing */
+unsigned int CZARBuffer::Write(const void *data, unsigned int size)
+{
+    if (m_size < m_used + size) {
+        bool fresh = !m_data;
+        unsigned int n = fresh ? 4096 : m_size * m_grows + 0x80000;
+
+        n += size;
+        if (m_size < n) {
+            if (fresh)
+                m_data = (char *)_calloc(n, 1, 0, 0);
+            else
+                m_data = (char *)_realloc(m_data, n, 0, 0);
+            m_size = n;
+            m_grows++;
+        }
+    }
+
+    unsigned int end;
+    unsigned int at = m_used;
+
+    end = at + size;
+
+    if (at < end) {
+        if (m_size < end) {
+            m_data = m_data ? (char *)_realloc(m_data, end, 0, 0) : (char *)_calloc(end, 1, 0, 0);
+            m_size = end;
+            m_grows++;
+        }
+        m_used = end;
+    }
+    memcpy(m_data + at, data, size);
+    return size;
+}
+
+unsigned int CZAR::WriteBuffer(const void *data, unsigned int size)
+{
+    if (!m_34)
+        m_34 = new CZARBuffer;
+    return m_34->Write(data, size);
 }
 
 }
