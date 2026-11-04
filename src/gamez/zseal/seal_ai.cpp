@@ -291,10 +291,8 @@ void CSealCtrlAi::SetSprayTimer(float t)
 }
 
 extern "C" {
-/* the kit's fire mode set (CZKit::SetCurFireMode, the kit lane's; OVL2 0x5C37B0 -- by its address:
- * FIREMODE is zweapon.h's, which zseal.h's kit stand-in cannot see) and the target's word at 0x44
- * copied to 0x40 when asked (OVL2 0x60A2D0, the AI states' range) */
-bool func_005C37B0(CZKit *kit, FIREMODE mode);
+/* (the kit's fire mode set is CZKit::SetCurFireMode, zseal.h's; OVL2 0x5C37B0) the target's word
+ * at 0x44 copied to 0x40 when asked (OVL2 0x60A2D0, the AI states' range) */
 void func_0060A2D0(void *target, bool on);
 }
 
@@ -319,7 +317,7 @@ extern "C" bool func_005659E0(CSealCtrlAi *ai, float dT)
             ai->m_spraytimer -= dT;
             ai->m_fire.m_spread = 0;
             func_0060A2D0(ai->m_67c, true);
-            func_005C37B0(kit, AUTOFIRE);
+            kit->SetCurFireMode(AUTOFIRE);
             ai->SetTrigger(true, 0.0f);
             if (ai->m_spraytimer <= 0.0f)
                 ai->m_spraytimer = 0.0f;
@@ -783,9 +781,8 @@ extern "C" {
  * state returned -- OVL2 0x5556A0, 0x5558A0) */
 bool func_005556A0(CSealCtrlAi *ai, const CAiPathBytes *path, CAiRouteBytes *route);
 AI_ROUTE func_005558A0(CSealCtrlAi *ai);
-/* the kit's fire mode (0x5C37B0, declared below; its current item by index is zseal.h's
- * CZKit::SetCurItemByIndex, OVL2 0x5C4B10) */
-bool func_005C37B0(CZKit *kit, FIREMODE mode);
+/* (the kit's fire mode and its current item by index are zseal.h's CZKit::SetCurFireMode and
+ * SetCurItemByIndex, OVL2 0x5C37B0 and 0x5C4B10) */
 }
 
 /* the fire's aim dropped: the two aim flags off, its time restarted (an inline both FireWhenReady and
@@ -830,7 +827,7 @@ void CAiSDeploy::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
         CZKit *kit = &seal->m_kit;
 
         kit->SetCurItemByIndex(0);
-        func_005C37B0(kit, (FIREMODE)2);
+        kit->SetCurFireMode((FIREMODE)2);
         ai->ClearLook(AIL_11);
         ai->SetDesiredStance(STANCE_PRONE, 0.0f, false);
         DropAim(ai->m_fire);
@@ -4546,7 +4543,8 @@ struct CCellGather {
 extern "C" {
 /* (OVL2 0x511F80 and 0x52D280, the AI core's: a map's cell at a location, CAiMap::GetCell, and
  * whether the cell is inside, CAiCell::IsInside -- a bool: ai.h's inline, which the target calls out of
- * line here) */
+ * line here. Kept by their addresses (the round-35 respell): both are ai.h's in-class inlines, so
+ * the member spellings would inline them where the target calls) */
 void *func_00511F80(void *map, CAiMapLoc *loc, int a);
 bool func_0052D280(void *cell);
 }

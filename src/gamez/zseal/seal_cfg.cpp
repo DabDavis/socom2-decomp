@@ -200,8 +200,8 @@ struct ANIMSET_PARAMS {
 
 /* a piece of gear a character wears, CCharacterGear, is zseal.h's */
 
-/* (OVL1 0x2DE9E0: a material's index by name, -1 unknown; node_util.cpp's DI setters) */
-extern "C" int func_002DE9E0(const char *name);
+/* (a material's index by name, -1 unknown, is CMaterialExArray::ResolveMaterialIndex, zweapon.h's:
+ * OVL1 0x2DE9E0; node_util.cpp's DI setters) */
 void SetDIBBox(zdb::CNode *node, const CBBox *bbox, bool b);
 void SetMaterial(zdb::CNode *node, int material);
 
@@ -212,7 +212,7 @@ void SetMaterial(zdb::CNode *node, int material);
 void CZSealBody::AddDIPolys()
 {
     std::vector<CZBodyPart *> &parts = m_body_parts;
-    int mat = func_002DE9E0("PERSON");
+    int mat = CMaterialExArray::ResolveMaterialIndex("PERSON");
 
     for (std::vector<CZBodyPart *>::iterator i = parts.begin(); i != parts.end(); ++i) {
         CZBodyPart *p = *i;

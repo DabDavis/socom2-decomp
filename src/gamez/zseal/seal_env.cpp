@@ -1391,10 +1391,9 @@ void CZSealBody::HandleWeaponEvent(CZProjectile *proj, unsigned int event, void 
  * and a definition here would put this unit's span in OVL1) */
 
 extern "C" {
-/* the decals rdr (OVL1 bss, the weapons' 0x437D00) and a material's index by name (OVL1 0x2DE9E0,
- * SOCOM 1's CMaterialExArray::ResolveMaterialIndex -- not named) */
+/* the decals rdr (OVL1 bss, the weapons' 0x437D00; a material's index by name is
+ * CMaterialExArray::ResolveMaterialIndex, zweapon.h's: OVL1 0x2DE9E0) */
 extern _zrdr *data_00437D00;
-int func_002DE9E0(const char *name);
 }
 /* (zrdr.h's, which this unit cannot include beside zanim.h's _zrdr) */
 bool zrdr_findreal(const _zrdr *rdr, const char *tag, float *out, int n);
@@ -1429,7 +1428,7 @@ void CZSealBody::InitDecalHandles()
             item = ItemAt(steps, i);
             material = zrdr_findstring(item, "MATERIALNAME");
             texture = zrdr_findstring(item, "TEXTURENAME");
-            index = func_002DE9E0(material);
+            index = CMaterialExArray::ResolveMaterialIndex(material);
             ((zdb::CTexHandle **)data_0044D550)[index] = zdb::CWorld::GetTexHandle(texture);
         }
     }
@@ -2823,11 +2822,13 @@ void CZSealBody::DropAmmo(int rounds)
         stash->SetAnim(((CZAnim *)data_0044D508)->ActivateArg(1, 3, p->m_node, 0));
 }
 
+/* the ground under a point within a depth (fts_main.cpp's ftsGetAltitudeApprox, OVL1 0x2A2EB0) */
+zdb::IntersectStruct *ftsGetAltitudeApprox(const CPnt3D *p, float depth, bool chars);
+
 extern "C" {
 /* (the kit's item at an index let go is CZKit::RemoveItemAndAmmo, zseal.h's; OVL2 0x5B9BB0, the kit
- * lane's) the ground under a point within a depth (OVL1 0x2A2EB0), a weapon readied (OVL2 0x57D540,
- * seal_body.cpp's) and the item it takes (OVL1 data 0x3DEB48, a short) */
-zdb::IntersectStruct *func_002A2EB0(const CPnt3D *p, float depth, int chars);
+ * lane's) a weapon readied (OVL2 0x57D540, seal_body.cpp's) and the item it takes (OVL1 data
+ * 0x3DEB48, a short) */
 void func_0057D540(CZSealBody *seal, short item, int x);
 extern short data_003DEB48;
 }
@@ -2856,7 +2857,7 @@ void CZSealBody::DropAllItems()
     pos.z = m_posW.z;
 
     y += 1.0f;
-    zdb::IntersectStruct *hit = func_002A2EB0(&pos, 8.0f, 1);
+    zdb::IntersectStruct *hit = ftsGetAltitudeApprox(&pos, 8.0f, true);
 
     if (hit)
         y = hit->m_pos.y;

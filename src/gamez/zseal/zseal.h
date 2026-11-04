@@ -200,6 +200,9 @@ public:
     /* a weapon's ammunition taken in, the rounds read and handed back (SOCOM 1's PickupAmmo by its
      * arguments, the kit lane's round 32; OVL2 0x5BB000 -- HandlePickupAck's eight takes call it) */
     void PickupAmmo(class CZFTSWeapon *weapon, class CZAmmo *ammo, int *rounds);
+    /* the fire mode set (kit.h's; OVL2 0x5C37B0, the kit lane's -- FIREMODE comes through zchar.h's
+     * zweapon.h) */
+    bool SetCurFireMode(FIREMODE mode);
     /* the frame's kit work before the SEAL's (SOCOM 1's PreTick; OVL2 0x5C1660, seal_kit.cpp's range:
      * WeaponsTick calls it last, as SOCOM 1's does) */
     void PreTick(float dT);
@@ -334,6 +337,9 @@ public:
      * seal_unit.cpp, which declares them alike) */
     void *GetDataPtr();
     bool SetDataPtr(void *p);
+    /* a SEAL's squad's own clean-up of it (OVL2 0x5EDF90, the kit lane's seal_unit.cpp, which
+     * declares it alike) */
+    static void SealLeaveUnit(CZSealBody *seal);
 
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);

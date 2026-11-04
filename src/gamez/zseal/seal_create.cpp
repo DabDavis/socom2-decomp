@@ -18,18 +18,19 @@ public:
     static void SealDeleteCleanup(int id);
 };
 
-extern "C" {
-/* CZWeapon's projectile list (OVL1 bss 0x4B5220, data.txt's m_pProjectilelist__8CZWeapon) and its
- * clear of an owner's projectiles (SOCOM 1's Clear__16CZProjectileListFi, a further int in SOCOM
- * II; OVL1 0x3CCEB0) */
-extern CZProjectileList *data_004B5220;
-void func_003CCEB0(CZProjectileList *list, int id, int a);
-/* CMission::RefreshTeamValves (SOCOM 1's, called here; OVL1 0x2B23A0) on theMission (0x4364E0) */
-void func_002B23A0(void *mission);
-extern unsigned char data_004364E0[];
-/* a squad's own clean-up of the SEAL (OVL2 0x5EDF90, the kit lane's range) */
-void func_005EDF90(CZSealBody *seal);
-}
+/* (CZWeapon's projectile list, m_pProjectilelist, and its clear of a shooter's projectiles,
+ * CZProjectileList::Clear(int, EQUIP_ITEM) -- SOCOM 1's took the shooter only; OVL1 0x3CCEB0 --
+ * are zweapon.h's; a squad's clean-up of the SEAL is CSealUnit::SealLeaveUnit, zseal.h's) */
+
+/* the mission, only its team valves' refresh (SOCOM 1's CMission::RefreshTeamValves, OVL1
+ * 0x2B23A0, on theMission, OVL1 bss 0x4364E0: fts_state.h's class, which this unit does not
+ * include) */
+class CMission {
+public:
+    void RefreshTeamValves();
+};
+
+extern CMission theMission;
 
 /* a remote SEAL unmade: its node's name dropped, its projectiles and its state cleared, dead, no
  * team, its id invalid, state 8, the team valves refreshed, its squad told (OVL2 0x5998B0; SOCOM
@@ -46,21 +47,21 @@ void CZSealBody::Destroy(CZSealBody *seal)
     seal->m_node->SetName("");
     if (id == CEntity::invalidId)
         return;
-    if (data_004B5220)
-        func_003CCEB0(data_004B5220, id, 255);
+    if (CZWeapon::m_pProjectilelist)
+        CZWeapon::m_pProjectilelist->Clear(id, (EQUIP_ITEM)255);
     CZSealState::SealDeleteCleanup(id);
     seal->SetHealth(0.0f, DEATH_NONE);
     seal->m_time_of_death = 0.0f;
     seal->SetTeamMask(0);
     seal->m_id = CEntity::invalidId;
     seal->BodySetState(8);
-    func_002B23A0(data_004364E0);
+    theMission.RefreshTeamValves();
     CSealUnit *unit = ((CSealCtrl *)seal->m_control)->m_unit;
 
     if (unit) {
         if (theNetwork.m_8)
             unit->Notify(seal, UNIT_MESSAGE_DEATH, 0);
-        func_005EDF90(seal);
+        CSealUnit::SealLeaveUnit(seal);
     }
 }
 
