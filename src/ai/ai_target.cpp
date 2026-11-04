@@ -256,22 +256,13 @@ extern "C" bool func_0060AFA0(void *viewer, CTarget *t)
 }
 
 /* the time since the target was last seen (OVL2 0x60A590; SOCOM 1's, the same 0x14 bytes with the
- * field 0x14 on).
- * OPEN, 3 instructions: the target loads the field into $f0 first and the clock into $f1 after
- * (`sub.s $f0,$f1,$f0`); every spelling tried loads the clock first -- the clock as a float
- * global, a volatile, theMission's member, through an inline accessor or a local; the field
- * through a local, an inline accessor; a negated reverse difference (0x18 bytes). Round 22, all 3 off:
- * both in named locals in either order, `d -= field`, the plain member, both through accessors, a
- * static inline Since(t) / Elapsed(now, then) by value and by reference, and the unit built by
- * 3.0b50, 3.0b38 and 3.0b22-020926 through an `sc: compiler=` line -- MW loads the field first in
- * every form, but always colours the clock $f0. Round 28: MW's float colouring (the igdump tools)
- * has three vregs, coloured highest-numbered first -- the result, then the clock (f0), then the field
- * (f1): the field is numbered before the clock in every spelling, the clock through a static inline
- * MissionNow() with the field read in place or through its accessor and a Since(t) taking the field
- * by value included (all 3 off) */
+ * field 0x14 on). Byte-exact in the kit lane's round 34 (open since round 7): the clock through a
+ * same-type cast and the field read in place -- the HUD's round-33 rule; every earlier spelling (the
+ * clock as a float global, a volatile, a local, an accessor; the field through its accessor; the
+ * unit under 3.0b50/b38/b22) coloured the clock $f0 */
 float CAiTarget::GetTimeSinceLastSighting() const
 {
-    return theMission.m_time - GetTimeLostSight();
+    return (float)theMission.m_time - m_time_lost_sight;
 }
 
 /* (OVL2 0x60A2F0; SOCOM 1's, its aim bits gone and the counter's copy new) */
