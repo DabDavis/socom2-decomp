@@ -387,12 +387,13 @@ unsigned char SkbScale(CSoftKeyboard *skb, float dT);
 
 extern "C" {
 /* the cursor moved in a direction (0x38DFC0: through 0x38CB80, SkbMoveCursor's jump); the cursor's
- * key pressed (0x38D200); the two edit keys (0x399530, 0x399320) */
+ * key pressed (0x38D200) */
 void func_0038DFC0(unsigned char dir, CPad *pad);
 void func_0038D200(const CSkbKey &key, CSoftKeyboard *skb, CPad *pad, CGameMenu *menu);
-void func_00399320(CSoftKeyboard *skb);
 }
+/* the two edit keys: the cursor back and on a character (the keys unit's) */
 void SkbCursorBack(CSoftKeyboard *skb);
+void SkbCursorForward(CSoftKeyboard *skb);
 
 /* a key event of the showing keyboard: the four cursor moves (events 1-4 move up, down, left and
  * right: 3, 1, 2, 4 -- ours), the cursor's key (5), the two edit keys (6, 7) (0x38DFE0; the name
@@ -419,7 +420,7 @@ void SkbHandleKey(int key, CPad *pad, CGameMenu *menu)
         SkbCursorBack(g_pActiveSkb);
         break;
     case 7:
-        func_00399320(g_pActiveSkb);
+        SkbCursorForward(g_pActiveSkb);
         break;
     }
 }

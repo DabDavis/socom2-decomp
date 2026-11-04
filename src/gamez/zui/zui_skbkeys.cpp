@@ -539,6 +539,38 @@ static inline float LineOffset(const CSoftKeyboard *skb)
     return (float)s_textCount1 * h;
 }
 
+/* the cursor stepped on a character (0x399320; the name ours: SkbHandleKey's edit key 7 and the USB
+ * loop's right key): within the cursor's string its count up by one, or at its end, while string 1
+ * is the cursor's and string 2 holds characters, the cursor moved to string 2's start; then placed
+ * as SkbCursorBack places it and the composition cleared */
+void SkbCursorForward(CSoftKeyboard *skb)
+{
+    bool more;
+    const char *p = ShownText(CursorString());
+    int n = 0;
+
+    while (TestChar(more, p)) {
+        n++;
+        p += CharLen(p);
+    }
+    if (s_textCount0 < n) {
+        s_textCount0++;
+    } else if (!s_textCount1) {
+        if (s_textSel ? false : HasChar(ShownText(&s_textString2))) {
+            s_textCount0 = 0;
+            s_textCount1 = 1;
+        }
+    }
+    int count = s_textCount0;
+    float w = SkbTextWidth(CursorString(), count);
+    SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
+    float x = w + (float)skb->m_caps[props].m_0;
+    float y = (float)CursorY(skb) + LineOffset(skb);
+
+    func_00395120(x, y);
+    SkbHangulClear();
+}
+
 /* the cursor's two tests of a place against string 1's length, taken by address (0x39A3F0,
  * 0x39A3E0; the names ours) */
 bool SkbBefore(int pos, int n)
