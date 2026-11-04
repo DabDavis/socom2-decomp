@@ -2237,6 +2237,33 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     (the language's VAG index); CWorld::m_scale declared in znode.h (CWorld's class body is there); the subtitle walk
     0x34D5D0 / 0x34D740 / 0x34DA00 waits on the key ring's iterator shapes (a copy constructor returning `this`, a
     constructor from a pointer reference, an `__iter` taking the pointer's address, two raw-end copies).
+- **Tells from completing the MSL headers, round 22** (the instances other lanes waited on; probes build/p22/, untracked):
+  - AN INLINE CALL IN A CALL'S ARGUMENT SITS A LEVEL DEEPER THAN THE SAME CALL TAKEN INTO A LOCAL (round 15's self-call
+    tell, generalised): `return reverse_iterator(end());` cuts the iterators' constructors under end(), `iterator e =
+    end(); return reverse_iterator(e);` inlines them, and an assignment `i = c.rbegin()` puts rbegin() itself in
+    operator='s argument. include/iterator has MSL's std::reverse_iterator (current, base(), * through a stepped-back
+    copy, ++ as --current, == / != over base()), the pointer list its iterator's operator-- and rbegin()/rend() through
+    tail() into a local: CSealCtrlAi::AnimSignal 0x562030's walk over its state stack, `reverse_iterator i; for (i =
+    s.rbegin(); i != s.rend(); ++i)`, then calls only the end pair's second() (0x5621B0) and keeps the ASSIGNED iterator
+    in memory, copied in through $f0, as the target -- one difference left in the walk: MW keeps the end pair's address
+    (this+0x420) in a saved register where the target recomputes it at each call (a pointer local, an inline stack member
+    and the plain forms tried; the SEALs' function, build/p22/asig.cpp);
+  - OVL2's string-keyed map is std::map<std::string, int>: 0x58CEF0 / 0x58D2B0 are the material unit's find_or_insert /
+    insert_node_at (0x2DEC00 / 0x2DEE90) word for word, called by seal_cfg.cpp's name-to-id lookups beside its find
+    0x58D090 on one map -- byte-exact from include/map as it stands once both rows carry their `ovl-copy:` notes (marked):
+    the SEALs' seal_cfg.cpp scores them by declaring the map so;
+  - cdeque<T *>::iterator's constructor as an initialiser list (the zdb world's round 16 measurement, applied): cdeque<
+    PPCv>'s end() 0x333F90 byte-exact; its begin() (0x334030, and the lobby's 0x2E0CB0 alike) stays 14 off in the
+    colouring alone -- the target numbers the index's shift, shared by p and first_, before the in-memory iterator's three
+    field addresses, this header after them (ten spellings in include/deque's comment);
+  - THE CLASS INSERT'S SECOND POPULATION IS NOT THE ONE WHOSE copy_backward IS CALLED: AcctRecord 0x2FE3E0 and
+    CVehicleRdrEntry 0x534630 inline copy_backward and fill_n (CTurretDef, zrdr_sym and CDlgDesignModel call them), so
+    the end's number there does not come from copy_backward's result temporary; the five share only the one-level
+    construct() (include/vector's insert comment). Not met this round, nor the list remove_ifs (0x352500 / 0x50F670: no
+    form beyond round 21's seven), the pointer pod's destructor level (the world's +4 / -6 is level 6's split: the
+    gainers' `delete` needs a fifth destructor level, the six losers the deallocate level), the deques' default
+    constructors (0x334120 / 0x334150 repeat __deque_buf<PCv>() / __cdeque_buf<PCv>()'s words, 0x2CEE40 / 0x2CEE70,
+    in the same overlay: other levels, cut by the rdr unit's tail order).
 - **Tells from completing the MSL headers, round 21** (the library string's pieces in include/string, the list's assignment;
   probes build/scratch/msl-r21-p21/, untracked):
   - include/string's reserve, template replace and assign(first, last) out of class, from the same statements as MAIN's

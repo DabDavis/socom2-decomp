@@ -413,6 +413,17 @@ public:
     cdeque() {}
     explicit cdeque(const Allocator &a);
     cdeque(const cdeque &x);
+    /* OPEN, begin() (0x334030 the rdr editor's, 0x2E0CB0 the lobby's: the target's size, 14 off --
+     * the colouring alone): the target numbers start*4, which p and first_ share, BEFORE the three
+     * field addresses of the in-memory t (it is coloured after them: t1, the addresses t0/a3/a2),
+     * this header after them (a2; the addresses t1/t0/a3) -- as if the target's CSE of the index
+     * were the optimiser's and ours the code generator's. Measured (the MSL headers round 22,
+     * build/p22/dqv.py, untracked; end() 0x333F90 / 0x2E0C10 kept by all but where noted): make_
+     * iterator's index taken as `&data_[n]`, the data in a local, p in a local first (14 each);
+     * make_iterator taking n by const reference, begin() reading start_ into a local, begin()
+     * building t itself or returning the constructor (27-28: t scalarised, out of memory); the
+     * iterator constructor taking start/cap by value (19, end() lost) or reading data rather than
+     * data_ (22, end() lost); make_iterator returning the constructor straight (27, end() lost) */
     iterator make_iterator(unsigned int n) const
     {
         iterator t((T **)this->data_ + n, (T **)this->data_, this->start_, this->capacity_);
