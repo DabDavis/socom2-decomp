@@ -355,8 +355,8 @@ int CZNetwork::zNetUpdate()
                 NetObject *obj;
 
                 NetGetObject(&obj, i);
-                if (obj && m_ObjectPostUpdateCallbackList[obj->m_type])
-                    m_ObjectPostUpdateCallbackList[obj->m_type]((int)obj->m_data, i, -1);
+                if (obj && m_ObjectPostUpdateCallbackList[obj->m_type_index])
+                    m_ObjectPostUpdateCallbackList[obj->m_type_index](obj->m_client, i, -1);
                 m_ObjectFieldUpdate[i] = 0;
             }
         }
@@ -729,8 +729,8 @@ void CZNetwork::zNetRemoteObjectUpdateCallback(int client, int index, int field)
     NetObject *obj;
 
     NetGetObject(&obj, index);
-    if (obj && theNetwork.m_ObjectUpdateCallbackList[obj->m_type])
-        theNetwork.m_ObjectUpdateCallbackList[obj->m_type]((int)obj->m_data, index, field);
+    if (obj && theNetwork.m_ObjectUpdateCallbackList[obj->m_type_index])
+        theNetwork.m_ObjectUpdateCallbackList[obj->m_type_index](obj->m_client, index, field);
     theNetwork.m_ObjectFieldUpdate[index] = 1;
 }
 
