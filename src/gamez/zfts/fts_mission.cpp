@@ -645,6 +645,116 @@ extern "C" void func_002A94E0(CornerBox *box)
     }
 }
 
+/* a ladder (SOCOM 1's CLadderData, 0x28 bytes, SOCOM II's laid out again: its box first, then its
+ * node, the SEALs on it and the one holding it -- seal_env.cpp's -- and its place in the list; the
+ * last three names ours) */
+class CLadderData {
+public:
+    CBBox m_bbox;   // 0x0 (SOCOM 1's at 0xc, after its normal)
+    zdb::CNode *m_node;   // 0x18
+    int m_users;   // 0x1c
+    unsigned int m_owner;   // 0x20
+    int m_index;   // 0x24
+};
+
+/* the bit a ladder's index carries out of GetClosestLadder (SOCOM 1's global, OVL1 0x3DE5F8) */
+extern int LADDER_MASK;
+
+/* the mission's ladders (SOCOM 1's CLadderList : vector<CLadderData>) */
+class CLadderList : public std::vector<CLadderData> {
+public:
+    int GetClosestLadder(const CPnt3D *pos, float range);
+    CLadderData *GetLadderByNode(zdb::CNode *node, int depth);
+    CLadderData *GetLadderByIndex(int index);
+};
+
+/* a point less another by value, through Sub (the copy out of the temporary: the target's) */
+static inline CPnt3D Minus(const CPnt3D *a, const CPnt3D *b)
+{
+    CPnt3D r;
+
+    a->Sub(b, &r);
+    return r;
+}
+
+/* the ground-plane length, the x and z made a unit direction (ours) */
+static inline float NormalizeXZ(CPnt3D *v)
+{
+    float len = sqrtf(v->x * v->x + v->z * v->z);
+
+    if (len != 0.0f) {
+        float inv = 1.0f / len;
+
+        v->x *= inv;
+        v->z *= inv;
+    }
+    return len;
+}
+
+/* the ladder at an index, the mask's bit taken off it, or none (SOCOM 1's; OVL1 0x2A9210) */
+CLadderData *CLadderList::GetLadderByIndex(int index)
+{
+    index &= ~LADDER_MASK;
+    if (index < 0 || (unsigned int)index >= size())
+        return 0;
+    return &(*this)[index];
+}
+
+/* the ladder a node is, else one among its children to some depth (SOCOM II's; the world's ladder
+ * walk 0x2A9260 and the SEALs call it; OVL1 0x2A90F0) */
+CLadderData *CLadderList::GetLadderByNode(zdb::CNode *node, int depth)
+{
+    CLadderData *found = 0;
+
+    if (node) {
+        for (iterator i = begin(); i != end(); ++i) {
+            if (i->m_node == node) {
+                found = &*i;
+                break;
+            }
+        }
+    }
+    if (!found && depth > 0) {
+        zdb::CNodeVector &children = node->GetChildren();
+
+        for (zdb::CNodeVector::iterator c = children.begin(); c != children.end(); ++c) {
+            found = GetLadderByNode(*c, depth - 1);
+            if (found)
+                break;
+        }
+    }
+    return found;
+}
+
+/* the ladder nearest a point in the ground plane, of those whose foot or top is level with it
+ * (within 15), closer than a range: its index with the mask's bit, else -1 (SOCOM 1's
+ * GetClosestLadder: SOCOM II's tolerance a constant, the mask set at the find; OVL1 0x2A8F50).
+ * The iterator is taken before the unused matrix is built, as both builds load begin() ahead of
+ * sceVu0UnitMatrix; the normalise's z store is dead (the target keeps only x's) */
+int CLadderList::GetClosestLadder(const CPnt3D *pos, float range)
+{
+    int index = 0;
+    iterator i = begin();
+    CMatrix unused;
+    int closest = -1;
+
+    for (; i != end(); ++i, ++index) {
+        if (_close_enough(pos->y, i->m_bbox.m_min.y, 15.0f) || _close_enough(pos->y, i->m_bbox.m_max.y, 15.0f)) {
+            CPnt3D mid;
+
+            i->m_bbox.GetCenter(&mid);
+            CPnt3D d = Minus(pos, &mid);
+            float dist = NormalizeXZ(&d);
+
+            if (dist < range) {
+                range = dist;
+                closest = index | LADDER_MASK;
+            }
+        }
+    }
+    return closest;
+}
+
 /* a range kept at 0xF4 (the top) and 0xF8 (the bottom) of the object 0x341A60 asks (SOCOM II's; the
  * names ours) */
 struct FadeRange {
