@@ -77,6 +77,8 @@ public:
     static void Reset();
     static CNodeAction *GetActionById(unsigned int id);
     static CNodeAction *FindActionByValve(const CValve *valve);
+    static void GetTCMActions(std::vector<CNodeAction *> *list);
+    const char *GetUIString();
     int ExecuteAction(CZSealBody *body, unsigned int index);
 
     /* whether the action's state goes to the other clients (the name ours) */
@@ -85,7 +87,7 @@ public:
     /* the flags set one by one (the constructor's order; the names ours) */
     void SetNetworked(bool b) { m_networked = b; }
     void SetNetworkLog(bool b) { m_network_log = b; }
-    void SetFlag2(bool b) { m_3f_2 = b; }
+    void SetTCM(bool b) { m_tcm = b; }
     void SetFlag3(bool b) { m_3f_3 = b; }
     void SetBits4(int n) { m_3f_4 = n; }
 
@@ -106,12 +108,13 @@ public:
     unsigned char m_3e;   // 0x3e
     unsigned char m_networked : 1;   // 0x3f (SOCOM 1's at 0x2e)
     unsigned char m_network_log : 1;
-    unsigned char m_3f_2 : 1;
+    unsigned char m_tcm : 1;   // bit 2: offered in the command menu (Open's `tcm` tag)
     unsigned char m_3f_3 : 1;
     unsigned char m_3f_4 : 4;
 
-    /* the flag at bit 2 of 0x3f (the name ours) */
-    bool IsFlag2() { return m_3f_2 ? true : false; }
+    /* whether the command menu offers the action (bit 2 of 0x3f, set by Open's `tcm` tag; the
+     * name ours) */
+    bool IsTCM() { return m_tcm ? true : false; }
 
     static Container m_actions;
 };
@@ -266,16 +269,17 @@ CNodeAction *CNodeAction::FindActionByValve(const CValve *valve)
     return found;
 }
 
-/* every action flagged at bit 2 of 0x3f appended to a vector (SOCOM II's; OVL1 0x2B4CD0) */
-extern "C" void func_002B4CD0(std::vector<CNodeAction *> *list)
+/* every action the command menu offers appended to a vector (SOCOM II's; OVL1 0x2B4CD0, the HUD's
+ * tcmSetNodeActions 0x236260 calls it: the actions Open tagged `tcm`; the name ours) */
+void CNodeAction::GetTCMActions(std::vector<CNodeAction *> *list)
 {
     if (list) {
-        CNodeAction::Container::iterator e = CNodeAction::m_actions.end();
+        Container::iterator e = m_actions.end();
 
-        for (CNodeAction::Container::iterator i = CNodeAction::m_actions.begin(); i != e; ++i) {
+        for (Container::iterator i = m_actions.begin(); i != e; ++i) {
             CNodeAction *action = *i;
 
-            if (action && action->IsFlag2())
+            if (action && action->IsTCM())
                 list->push_back(action);
         }
     }
@@ -395,7 +399,7 @@ CNodeAction::CNodeAction(zdb::CNode *node, CZAnim *anim, CValve *valve, zdb::CTe
     m_3e = 0;
     SetNetworked(true);
     SetNetworkLog(false);
-    SetFlag2(false);
+    SetTCM(false);
     SetFlag3(false);
     SetBits4(0);
     m_range = 32.0f;
@@ -420,6 +424,51 @@ extern "C" bool func_002B49A0(CNodeAction *action, unsigned int who)
         taken = true;
     }
     return taken;
+}
+
+/* the action types' names (SOCOM 1's UISTR_ACT_* pointers, a set of SOCOM II's own for each of the
+ * three describers: the door's pair by its valve, then one each) */
+extern "C" {
+extern const char *data_003DE628[2];   /* "CLOSE DOOR", "OPEN DOOR" */
+extern const char *data_003DE630;      /* "FLIP SWITCH" */
+extern const char *data_003DE638;      /* "TAKE ITEM" */
+extern const char *data_003DE640;      /* "DEFUSE BOMB" */
+extern const char *data_003DE648;      /* "MP BOMB" */
+extern const char *data_003DE650;      /* "PLACE SATCHEL" */
+extern const char *data_003DE658;      /* "BREACH" */
+}
+
+/* the action's type named for the UI (SOCOM 1's GetUIString(), returning the name where SOCOM 1's
+ * string overload filled one; OVL1 0x2B48E0: CActionTxtrMachine::Add 0x2209C0 calls it where SOCOM
+ * 1's Add calls GetUIString) */
+const char *CNodeAction::GetUIString()
+{
+    const char *s = 0;
+
+    switch (m_type) {
+    case 0:
+        s = m_valve->m_value ? data_003DE628[0] : data_003DE628[1];
+        break;
+    case 2:
+        s = data_003DE630;
+        break;
+    case 7:
+        s = data_003DE638;
+        break;
+    case 3:
+        s = data_003DE640;
+        break;
+    case 4:
+        s = data_003DE648;
+        break;
+    case 6:
+        s = data_003DE650;
+        break;
+    case 5:
+        s = data_003DE658;
+        break;
+    }
+    return s;
 }
 
 /* an anim's done callback set (CZAnim's fields at 0x1c/0x20; the anim a copy, so both stores go

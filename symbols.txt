@@ -3975,12 +3975,12 @@
 0x002B4750 0xC OnAction__11CNodeActionFPQ23zdb5CNodePv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x002B4760 0xC0 func_002B4760  # OVL1
 0x002B4820 0xB8 func_002B4820  # OVL1
-0x002B48E0 0xB8 func_002B48E0  # OVL1
+0x002B48E0 0xB8 GetUIString__11CNodeActionFv  # OVL1; by hand (the states lane, round 35, the HUD's round-39 lead): SOCOM 1's CNodeAction::GetUIString() -- CActionTxtrMachine::Add 0x2209C0 calls it where SOCOM 1's Add calls GetUIString(); the same switch over the action type (0 a door by its valve, 2, 7, 3, 4, 6, 5) returning SOCOM II's own name table 0x3DE628 ('CLOSE DOOR', 'OPEN DOOR', ...); byte-exact from fts_action.cpp
 0x002B49A0 0x30 func_002B49A0  # OVL1
 0x002B49D0 0x20 func_002B49D0  # OVL1
 0x002B49F0 0x148 __ct__11CNodeActionFPQ23zdb5CNodeP6CZAnimP6CValvePQ23zdb10CTexHandle  # OVL1; by hand (the states lane, round 16: SOCOM 1s constructor by its stores -- the zdb::CNodeEx table then CNodeActions, the anim vector at 4, node 0x14, valve 0x18, the texture 0x28, the anim pushed when given; byte-exact from fts_action.cpp)
 0x002B4B40 0x184 func_002B4B40  # OVL1
-0x002B4CD0 0xB0 func_002B4CD0  # OVL1
+0x002B4CD0 0xB0 GetTCMActions__11CNodeActionFPQ23std56vector<P11CNodeAction,Q23std25allocator<P11CNodeAction>>  # OVL1; ours (the states lane, round 35, the HUD's round-39 lead): every action of the list at 0x440C5C (CNodeAction::m_actions) with bit 2 of +0x3F set pushed onto the vector passed -- the bit Open 0x2B4F40 sets for the rdr tag 'tcm' (0x3F21C8), so the command menu's actions; the HUD's tcmSetNodeActions 0x236260 calls it; byte-exact from fts_action.cpp (a static member: it walks m_actions)
 0x002B4D80 0x80 GetActionById__11CNodeActionFUi  # OVL1; s1:calls by hand: SOCOM 1's ActionAnimPacketHandler calls GetActionById(the packet's action id, lhu) where SOCOM II's (0x2BB770) calls 0x2B4D80, on the action's own halfword; 0x2B4D80 walks the list at 0x440C5C that fts_action.cpp's static initialiser builds (CNodeAction's container)
 0x002B4E00 0x80 FindActionByValve__11CNodeActionFPC6CValve  # OVL1; s1:order by hand (the states lane: after GetActionById as in SOCOM 1; walks m_actions for the action whose valve, +0x18, is its argument)
 0x002B4E80 0xC0 func_002B4E80  # OVL1
