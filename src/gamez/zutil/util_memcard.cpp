@@ -19,8 +19,9 @@ int sceMcWrite(int fd, const void *buf, int size);
 int sceMcMkdir(int port, int slot, const char *name);
 int sceMcGetInfo(int port, int slot, int *type, int *free, int *format);
 int sceMcGetDir(int port, int slot, const char *name, unsigned int mode, int maxent, void *table);
-/* a directory entry (Sony's sceMcTblGetDir, 64-aligned as libmc.h has it: the out-of-line Exists' 192-byte frame) */
-struct sceMcTblGetDir {
+/* a directory entry (Sony's sceMcTblGetDir, 64-aligned on the typedef as libmc.h has it: the out-of-line
+ * Exists' 192-byte frame, while its inlined copies' tables are 16-aligned -- CreateReserveFile's note) */
+typedef struct _sceMcTblGetDir {
     unsigned char _Create[8];
     unsigned char _Modify[8];
     unsigned int FileSizeByte;   // 0x10
@@ -29,7 +30,7 @@ struct sceMcTblGetDir {
     unsigned int Reserve2;
     unsigned int PdaAplNo;
     unsigned char EntryName[32];
-} __attribute__((aligned(64)));
+} sceMcTblGetDir __attribute__((aligned(64)));
 /* libmc's (SOCOM 1's names, the same order in MAIN) */
 int sceMcInit(void);
 int sceMcEnd(void);
@@ -202,13 +203,13 @@ void CMemCard::LoadConfig(const char *name)
 }
 
 /* a file of the given kilobytes made on the card unless it exists, its last kilobyte written
- * with 0xEE (ours).
- * OPEN (with CreateReserveFiles and GetUsedSpace below): only their frames differ. Where Exists
- * is inlined the target lays its table out 16-aligned (sp+0x50 here, 0x30 in CreateReserveFiles,
- * frames of 1200 and 128), while the out-of-line Exists' frame is 192 with the table at 0x40 --
- * what aligned(64) gives. With aligned(16) this function and its caller's table match and
- * Exists does not; no one spelling of the table serves both yet (an inlined copy that drops the
- * alignment, or an out-of-line Exists with a second local?) */
+ * with 0xEE (ours). Where Exists is inlined (here, CreateReserveFiles and GetUsedSpace) the target
+ * lays its table out 16-aligned (sp+0x50 here, 0x30 in CreateReserveFiles, frames of 1200 and 128),
+ * while the out-of-line Exists' frame is 192 with the table at 0x40, 64-aligned: libmc.h's spelling
+ * does both -- the alignment on the TYPEDEF (`typedef struct {...} sceMcTblGetDir
+ * __attribute__((aligned(64)))`): a function's own local of the typedef is 64-aligned, an inlined
+ * function's copy keeps only the struct's own (the UI lane round 18; open from round 1 with the
+ * attribute on the struct, which keeps 64 everywhere) */
 bool CMemCard::CreateReserveFile(const char *name, int kb)
 {
     int cmd, result, fd;
@@ -402,11 +403,9 @@ int CMemCard::GetFreeSpace()
     return free;
 }
 
-/* the kilobytes the save directory's files take, with libmc's directory overhead (ours).
- * OPEN, 4 instructions: only the frame differs -- the target puts the twenty-entry table at
- * sp+0x40 and the inlined Exists' one-entry table above it at sp+0x570; MW here puts Exists'
- * table at the bottom and the array above it. Tried: the array declared first, after the
- * Exists test, in a nested block, inside a struct, 16-aligned. */
+/* the kilobytes the save directory's files take, with libmc's directory overhead (ours): the
+ * twenty-entry table at sp+0x40, the inlined Exists' one-entry table above it at sp+0x570 (16-
+ * aligned: the typedef's alignment, CreateReserveFile's note) */
 int CMemCard::GetUsedSpace(int)
 {
     int n = -1;

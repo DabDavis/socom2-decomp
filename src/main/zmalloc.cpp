@@ -38,7 +38,8 @@ class _zmalloc {
 public:
     _zmalloc(unsigned int size);
     void init_page();
-    void *acquire(unsigned int size)
+    /* a block of the pool's size; when the pool is spent, one from the caller's allocator */
+    void *acquire(unsigned int size, void *(*alloc)(unsigned int, const char *, int))
     {
         void *result;
 
@@ -46,7 +47,7 @@ public:
             return 0;
         if (m_head == 0) {
             m_overflow++;
-            return _malloc(size, "unknown", 0);
+            return alloc(sizeof(T), "unknown", 0);
         }
         m_count++;
         m_total++;
@@ -115,42 +116,48 @@ static _zmalloc<twelve> s_pool12(11600);        /* 0x1D5720 */
 static _zmalloc<eight> s_pool8(5000);           /* 0x1D5750 */
 static _zmalloc<four> s_pool4(8800);            /* 0x1D5780 */
 
-/* OPEN, 0x508 vs 0x4E0 (and func_001805A0 below, 0x500 vs 0x4DC, the same miss): the switch's
- * compare chain (24 down to 4, the bodies 4 up to 24 -- cases written ascending) is the target's,
- * but the target loads each case constant into a0 with every beq's delay slot empty, and the case
- * bodies pass that a0 to _new/_malloc as the size (the constant standing for `size` in its case);
- * here the constants go to v0, alternate slots are filled and a0 keeps the parameter. Tried: the
- * result tested per case (`if (p) return p;`, 0x500), p zeroed before the switch (0x4D0), a
- * default label -- none moves the constants to a0. */
+/* the pool of the size asked for, else the system's allocator (byte-exact since round 6, as
+ * func_001805A0 below): the switch's compare chain runs 24 down to 4, the bodies 4 up to 24 (cases
+ * written ascending), each case testing its own result. The pool's overflow allocates sizeof(T) from
+ * the allocator its caller names (_new here, _malloc for the C pools): MW keeps that constant in a0
+ * from the compare (`li a0,4; beq s0,a0`), every delay slot empty -- a `size` argument had put the
+ * constants in v0, the parameter in a0 (rounds 1-5's open). */
 void *operator new(unsigned int size)
 {
     void *p;
 
     switch (size) {
     case 4:
-        p = s_pool4.acquire(size);
+        p = s_pool4.acquire(size, _new);
+        if (p)
+            return p;
         break;
     case 8:
-        p = s_pool8.acquire(size);
+        p = s_pool8.acquire(size, _new);
+        if (p)
+            return p;
         break;
     case 12:
-        p = s_pool12.acquire(size);
+        p = s_pool12.acquire(size, _new);
+        if (p)
+            return p;
         break;
     case 16:
-        p = s_pool16.acquire(size);
+        p = s_pool16.acquire(size, _new);
+        if (p)
+            return p;
         break;
     case 20:
-        p = s_pool20.acquire(size);
+        p = s_pool20.acquire(size, _new);
+        if (p)
+            return p;
         break;
     case 24:
-        p = s_pool24.acquire(size);
-        break;
-    default:
-        p = 0;
+        p = s_pool24.acquire(size, _new);
+        if (p)
+            return p;
         break;
     }
-    if (p)
-        return p;
     return _new(size, "unknown", 0);
 }
 
@@ -184,29 +191,36 @@ extern "C" void *func_001805A0(unsigned int size)
 
     switch (size) {
     case 4:
-        p = s_pool4.acquire(size);
+        p = s_pool4.acquire(size, _malloc);
+        if (p)
+            return p;
         break;
     case 8:
-        p = s_pool8.acquire(size);
+        p = s_pool8.acquire(size, _malloc);
+        if (p)
+            return p;
         break;
     case 12:
-        p = s_pool12.acquire(size);
+        p = s_pool12.acquire(size, _malloc);
+        if (p)
+            return p;
         break;
     case 16:
-        p = s_pool16.acquire(size);
+        p = s_pool16.acquire(size, _malloc);
+        if (p)
+            return p;
         break;
     case 20:
-        p = s_pool20.acquire(size);
+        p = s_pool20.acquire(size, _malloc);
+        if (p)
+            return p;
         break;
     case 24:
-        p = s_pool24.acquire(size);
-        break;
-    default:
-        p = 0;
+        p = s_pool24.acquire(size, _malloc);
+        if (p)
+            return p;
         break;
     }
-    if (p)
-        return p;
     return _malloc(size, 0, 0);
 }
 
