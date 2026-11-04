@@ -43,7 +43,9 @@ public:
     unsigned short node_ref_index;   // 0x4
     unsigned char m_type;   // 0x6
     unsigned short m_arg;   // 0x8
-    unsigned char _a[0x10 - 0xa];
+    unsigned char _a[0xc - 0xa];
+    unsigned short m_stringid;   // 0xc: a string table id (the renderable string's caption)
+    unsigned char _e[0x10 - 0xe];
 };   // 0x10 bytes
 
 _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
@@ -211,7 +213,8 @@ public:
 /* a string whose destructor runs MSL's as a base's (passing 0: SOCOM 1's CSaferStr) */
 class CSaferStr : public std::string {
 public:
-    CSaferStr();
+    /* inline (zonline.h's, SOCOM 1's): the renderable string's parser builds one on the stack */
+    CSaferStr() {}
     /* never null: no text empties it (SOCOM 1's zutil.h; nothing returned, as 0x22DCC0) */
     void operator=(const char *sz)
     {
@@ -876,6 +879,36 @@ void CPlainBmp::SetPulse(float period)
     }
 }
 #pragma auto_inline reset
+
+/* the caption: from the string table when the command carries an id, else the animation's name,
+ * then the string updated -- done at once; VALVE: the valve's value printed, "0" when the name is
+ * empty (as the button's); anything else not the string's */
+bool CRenderableString::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
+{
+    C2DAnimCmdHdr *cmd = (C2DAnimCmdHdr *)hdr;
+    CZAnim *anim = ZAnim.m_CurAnim;
+
+    switch (cmd->m_type - C2D::GetZAnimCmdType(0)) {
+    case 1:
+        if (cmd->m_stringid)
+            SetStringId(cmd->m_stringid);
+        else
+            SetString(anim->GetName(cmd->m_arg), true);
+        Update();
+        return *done = true;
+    case 2: {
+        char buf[64] = "0";
+        const char *name = anim->GetName(cmd->m_arg);
+
+        if (name && *name)
+            sprintf(buf, "%d", CValve::Create(name, VALVE_PERM)->m_value);
+        SetString(buf, true);
+        return true;
+    }
+    default:
+        return false;
+    }
+}
 
 /* CAPTION: the caption taken from the animation's names (SOCOM 1's); VALVE (SOCOM II's): the
  * valve's value printed as the caption, "0" when the name is empty -- into a buffer on the stack,
@@ -1930,6 +1963,55 @@ static inline const char *RdrString(const ZRdrNode *r) { return r->type == 3 ? r
 static inline ZRdrNode *RdrElem(const ZRdrNode *r, unsigned int i)
 {
     return i < RdrCount(r) ? &r->array[i] : 0;
+}
+
+/* the string table's id for a name, 0 if it has none (ztwod's, 0x361B20) */
+int GetStringId(const char *name);
+
+/* CAPTION as a command: an array of several strings joined into one name, or a single string --
+ * its string table id when it has one, else the name added to the animation's; VALVE's name
+ * added likewise; anything else none (SOCOM 1's took one CAPTION string) */
+C2DAnimCmdHdr *CRenderableString::ParseZAnimCmd(_zrdr *rdr)
+{
+    C2DAnimCmdHdr *cmd;
+    const ZRdrNode *r = (const ZRdrNode *)zrdr_findtag(rdr, "CAPTION");
+    const char *valve = zrdr_findstring(rdr, "VALVE");
+
+    if (r) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("CAPTION");
+        if (r->type == 4 && RdrCount(r) > 1) {
+            CSaferStr name;
+
+            name = "";
+            for (int i = 0; i < RdrCount(r); i++) {
+                if (RdrElem(r, i)->type == 3)
+                    name += RdrString(RdrElem(r, i));
+            }
+            cmd->m_arg = ZAnim.m_CurAnim->AddName(name.c_str());
+            cmd->m_stringid = 0;
+        } else {
+            const char *str = RdrString(RdrElem(r, 0));
+            int id = GetStringId(str);
+
+            if (id)
+                cmd->m_stringid = id;
+            else {
+                cmd->m_arg = ZAnim.m_CurAnim->AddName(str);
+                cmd->m_stringid = 0;
+            }
+        }
+    } else if (valve) {
+        cmd = (C2DAnimCmdHdr *)_calloc(1, sizeof(C2DAnimCmdHdr), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(C2DAnimCmdHdr);
+        cmd->m_type = GetZAnimCmdType("VALVE");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+    } else
+        cmd = 0;
+    return cmd;
 }
 
 /* an item per string of the reader's array, as many as there are columns (SOCOM 1's; ready while
