@@ -20,6 +20,19 @@ extern "C" int strcasecmp(const char *, const char *);
  * ordinary auto-inline function, which the initialiser then inlines; uninstantiated by the unit's
  * own functions, it is called there (0x50FFC0) and emitted in the tail, as the target has it */
 
+/* the event list's push_back as SOCOM II's MSL has it: through the base's push_back, which is
+ * insert(end(), x) -- SOCOM 1's chain (include/list's push_back comment, "variant vc"), one level
+ * taller than include/list's pointer-list push_back. Specialised for this list alone: the short
+ * form is what CNode::CreateInstance and the other units need at level 5. With it the tail is the
+ * target's: _tick::operator() inlines this one level and calls the base's (0x50F810), remove_copy_if
+ * inlines _tick one level and calls this (0x50FE80, whose copy calls end() and insert), and
+ * Release's push_back temporaries take the lowest slots (the AI core round 19) */
+template <>
+inline void std::list<CAiEvent *, std::allocator<CAiEvent *> >::push_back(CAiEvent *const &x)
+{
+    std::__list_deleter<const void *, std::allocator<const void *> >::push_back((const void *const &)x);
+}
+
 unsigned int CAiEvent::bit_count = 32;
 unsigned int CAiEvent::nextId;
 CAiEventList CAiEvent::m_pool;
@@ -209,23 +222,20 @@ const float CAiEvent::NoExpire = -99.0f;
 
 /* the running events counted down, the expired ones back to the pool (SOCOM 1's function
  * object).
- * OPEN, operator()'s out-of-line copy (0x9C against 0x8C) and remove_copy_if (0x144 against 0xEC):
- * list heights. The target's operator() inlines Tick(float), keeps its bool in s0 and CALLS the
- * event list's push_back (0x50F810, which inlines end() around insert); remove_copy_if inlines the
- * predicate one level -- Tick(float) called -- and calls the pointer lists' BASE push_back
- * (0x50FE80: end() and insert called). include/list's list<T *>::push_back goes straight to the
- * base's insert, two high, so both inline it whole here: SOCOM II's must be taller (through the
- * base's push_back?), the entity lane's header to settle -- written as a bool local it is the
- * same 0x9C */
+ * The target's operator() inlines Tick(float), keeps its bool in s0 (a local, returned) and calls
+ * the base's push_back out of line (0x50F810: end() inlined around insert); remove_copy_if inlines
+ * the predicate one level -- Tick(float) called -- and calls the event list's own push_back
+ * (0x50FE80: end() and insert called): byte-exact through the push_back specialised above (the
+ * AI core round 19; 0x9C and 0x144 before) */
 struct _tick {
     _tick(CAiEventList &pool, float dT) : m_pool(&pool), m_dT(dT) {}
     bool operator()(CAiEvent *e)
     {
-        if (e->Tick(m_dT)) {
+        bool done = e->Tick(m_dT);
+
+        if (done)
             m_pool->push_back(e);
-            return true;
-        }
-        return false;
+        return done;
     }
 
     CAiEventList *m_pool;
@@ -351,15 +361,19 @@ unsigned int CAiEvent::MakeMaskEx(EVENT e, ...)
 }
 
 /* the handle of an event, added if the queue has none (SOCOM 1's).
- * OPEN (right size, 9 instructions): the walk's registers and the push_back's temporaries (the
- * handle at sp+44, the end iterator at sp+36) -- list shapes, left for the list remodel */
+ * The walk's end taken into a local first (i in a0, the end in a2) and each handle's address a
+ * local of its own (computed in the test's delay slot, then moved into h), the id compared
+ * parameter first (the AI core round 19; 9 instructions off before) */
 CAiEventHandle *CAiEventQ::Create(unsigned int id)
 {
     CAiEventHandle *h = 0;
+    iterator last = end();
 
-    for (iterator i = begin(); i != end(); ++i) {
-        if ((*i).m_id == id) {
-            h = &*i;
+    for (iterator i = begin(); i != last; ++i) {
+        CAiEventHandle *e = &*i;
+
+        if (id == e->m_id) {
+            h = e;
             break;
         }
     }
