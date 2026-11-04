@@ -23,7 +23,9 @@
  * open here: VuUpdate (0xCC4: its tail calls even 8-byte helpers out of line, the out-of-line
  * copies at 0x3B5250-0x3B52C0 following it, so its inline budget runs out -- likely
  * inline_max_total_size), 0x3B5F20, 0x3B41D0 (the decal program), 0x3B6870/0x3B6B20 (the local
- * lights' setup), 0x3B7170/0x3B76B0/0x3B78D0 (the lens colours), the deque copy chain. */
+ * lights' setup), 0x3B7170/0x3B76B0/0x3B78D0 (the lens colours), the deque copy chain's init
+ * 0x3B7E30, do_assign 0x3B8000 and default constructor 0x3B7FA0 (the rest of the chain is
+ * byte-exact since the MSL headers' round 18: m_stack_vid, below). */
 
 #include <stack>
 #include "znode.h"
@@ -38,6 +40,21 @@ namespace zdb {
  * out of znode.h) */
 class CVidStack : public std::stack<void *> {
 };
+
+/* the free view ids (0x4B4A40): __sinit_vis_vu.cpp 0x404570 builds it second, after a static
+ * tag_GlobalLight[4] (0x4B4820) -- a temporary deque<void *> default-built (0x3B7FA0), copied in
+ * (0x3B7DB0) and torn down to ~__deque_buf with 0, the stack's destructor registered (0x3B7D50).
+ * Defined here, the unit's tail emits the stack's chain (the MSL headers round 18): ~deque<PCv>
+ * 0x3B7C90 (one this-tested level, then ~__deque_buf: the pointer deque's base, not CVisBase), the
+ * deque<void *> copy 0x3B7DB0 with its begin/end 0x3B7F40/0x3B7EE0, byte-exact. The stack is
+ * std::stack<void *> itself in the target: 0x3B7D50, the destructor the initialiser registers, is
+ * ~stack<Pv> inlining ~deque<Pv> and calling ~deque<PCv> -- a plain stack static compiles to it
+ * byte for byte (build/p18/vis/stk.cpp), where this CVidStack wrapper registers its own destructor
+ * and cuts the chain a level higher (znode.h declares the wrapper; the integrator's to change). OPEN
+ * here: the initialiser's other statics, deque<void *>() 0x3B7FA0 (0x30 vs 0x28: the default
+ * constructors' middle level 0x334120) and init 0x3B7E30 (0x88 vs 0xB0: its iterators copied once
+ * more in the target, around two empty converters) */
+CVidStack CVisual::m_stack_vid;
 
 /* the view id in use, the stack's top -- a `break` if the stack is empty (the wep lane, round 13:
  * SOCOM 1's GetChainData and VuUpdate test the size and break the same way ahead of the top; the

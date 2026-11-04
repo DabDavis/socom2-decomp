@@ -1776,6 +1776,42 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
   - ztex_manager.cpp's share from 0x357000 (CGSTexBuffer's Setup/Add/RelocateAll, CDynTexList's
     Adds) is SOCOM 1's order; the unit itself starts near 0x3557xx, so the two halves become one
     file once the rest is written.
+- **Tells from completing the MSL headers, round 18** (the instances other lanes waited on; probes build/p18/, untracked):
+  - AN INLINE REFERENCE ACCESSOR'S TEMPORARY FOLDS OFF THE FUNCTION'S OWN PARAMETER AND STAYS A VARIABLE OFF AN INLINED
+    ARGUMENT AT AN OFFSET: include/string's copy constructor reading the long size through `const size_type &long_size()
+    const` keeps the out-of-line copy 0x22E560 (and a member at offset 0) folding `lw 4(s1)`, while CDlgDesignModel's
+    second string (+12) holds `&str.w_[1]` in s3 across reserve -- 0x3854C0 byte-exact (+1, the UI's request); a
+    reference local is a variable at every site (0x22E560 grows to 0x9C), a by-reference helper parameter or a reference
+    to the word array renumbers the rest;
+  - THE VID STACK IS std::stack<void *> (the weapons' round 19 request, settled): 0x3B7D50, the destructor
+    __sinit_vis_vu.cpp registers for m_stack_vid, is ~stack<Pv> inlining ~deque<Pv> and calling 0x3B7C90 -- ~deque<PCv>,
+    the POINTER deque's base (one this-tested level, then ~__deque_buf<PCv> with 0), not ~CVisBase -- and a plain
+    `std::stack<void *>` static compiles to both byte for byte (build/p18/vis/stk.cpp); vis_vu.cpp now defines
+    CVisual::m_stack_vid and its tail emits the chain: 0x3B7C90, 0x3B7D50, the deque<void *> copy 0x3B7DB0 and its
+    begin()/end() const 0x3B7F40/0x3B7EE0 byte-exact (+5; rows named, init 0x3B7E30 too). znode.h's CVidStack wrapper
+    registers a destructor of its own, so __sinit_vis_vu.cpp needs the static declared `std::stack<void *>` (a shared
+    header: the integrator's); deque<void *>() 0x3B7FA0 (calling the rdr editor's middle level 0x334120) stays open with
+    0x3340F0 and keeps its placeholder name while only its draft matches;
+  - EVERY DEQUE do_assign CALLS ITS ITERATORS' OPERATORS OUT OF LINE (the online lobby's two operator++ copies, generalised):
+    the lobby's 0x2E1090, the rdr editor's 0x334440 and the vid stack's 0x3B8000 call the source's !=, * and ++, the
+    destination's * and ++ and the destination iterator's copy constructor (std::copy's returned iterator) -- out-of-class
+    members generated after do_assign; the source and destination are different classes (identical copies of ++ and *),
+    the pointer deques' sources per element type and their destinations shared. The head is std::distance by value (two
+    by-value levels: $f0 copies, then lq/sq, the difference over the copies in memory), the tail std::copy by value with a
+    `!=` loop. As probes the lobby's six operator copies come out byte-exact (0x2E1420-0x2E1550) with *, ++, != and the
+    destination's copy constructor out of class; do_assign stays 0x31C against 0x384 while the source is copied through
+    the buffer iterator's user copy constructor (the target's source copy is bitwise: a const buffer iterator without
+    one). Recorded in include/deque's comment, not applied (every init/do_assign row would be renamed `14const_iterator`);
+  - THE CLASS ERASE'S END IS PER ELEMENT, as the insert's: the string-element erases (CSaferStr's 0x383BC0,
+    CDlgDesignModel's 0x384BD0, zrdr_sym's) want the end coloured before the count and cursor -- `iterator e = end()`, a
+    scalarised object numbered after the named locals, makes all three byte-exact and loses 28 (9232 -> 9209): the ends
+    there are the plain local's (include/vector's erase comment); not applied;
+  - not reached: the class insert's end register (insert<CLadderData> 0x2B0260, the delayed nodes' 0x33C5C0), the deques'
+    make_iterator, ~CAssetLib's two data addresses (the target keeps `&m_models.data_` and `&m_palettes.data_` -- this+16,
+    this+40 -- in saved registers from the walks to the vectors' inlined destructors: the reference-accessor tell's
+    pattern, no pod form found), AddKeyProps' pair temporary, GetSealCount's outer copy, remove_if<_tick>, 0x359740's
+    requester; CreateSoftKeyboard's grid store (the code read through a reference accessor, the ternary passed straight)
+    moves nothing.
 - **Tells from completing the MSL headers, round 17** (the instances other lanes waited on; probes build/p17/, untracked):
   - THE CLASS VECTOR'S COPY CONSTRUCTOR IS SOCOM 1's MSL (its Props::Branch 0x237ED0 calls every piece out of line): the
     deleter built from the other's `alloc() const`, then init over the other's RAW `begin()/end() const` (a pointer in v0).
@@ -8310,7 +8346,9 @@ What is open across lanes, and what comes next:
   element copies and four destructors (about 15) evidence not found. The flag stays at 5, the headers
   at their level-5 shapes, seal_ai.cpp's pragma with them.
 - **MSL pieces not modelled yet**: the deque's copy constructor chain's generation order (its
-  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short), the tree's erase
+  structure is in since round 7: include/deque's comment; back() is in, pop_back() 8 bytes short) and
+  its iterator classes (every do_assign calls separate source and destination operators out of line,
+  std::distance and std::copy by value: the MSL headers' round 18), the tree's erase
   (0x306030), the CSaferStr trees (0x3A2D60-0x3A2F60 and OVL2's string-keyed map, through the
   string's out-of-line compare 0x2DEE30), zrdr_file.cpp's pointer-keyed map (0x32D780)
   (include/tree), the list instances of std::remove_if (0x29FE70, 0x3C6560, 0x352500, 0x50F670,
