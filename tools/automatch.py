@@ -64,8 +64,11 @@ TRIPLES = ("mipsee-gcc-c", "mipsee-mwcc-c")   # the second converts about 1 % mo
 # other's pieces); its draft carries the directive of the one that matched.
 # (lo, hi, [(toolchain, flags), ...], what)
 # the SDK's own build is dtls13010 (README "The GCC front": libvu0's inline asm, the broken sibling
-# call); its C compiles as 991111's but where that sibling call shows, so it goes first
-SDK, LIBC = ("ee-gcc2.9-991111-01-dtls13010", "-O2 -G0"), ("ee-gcc2.96", "-O2 -G0")
+# call); its C compiles as 991111's but where that sibling call shows, so it goes first. The runtime
+# (newlib's libc and libm, libgcc) was built with GCC's CFLAGS_FOR_TARGET, -g -O2 (SCE's patch adds
+# -G0): under -g GNU as fills none of the delay slots GCC leaves it (a double's move), cc1's output
+# the same (GCC round 23a)
+SDK, LIBC = ("ee-gcc2.9-991111-01-dtls13010", "-O2 -G0"), ("ee-gcc2.96", "-O2 -G0 -g")
 GCC_RANGES = [
     (0x18DB90, 0x191410, [SDK, LIBC], "MAIN: libcdvd, libdma (Sony's SDK 2.7)"),
     (0x191410, 0x1A13D0, [LIBC, SDK], "MAIN: newlib's libc, libgcc and fp-bit"),

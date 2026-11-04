@@ -4787,7 +4787,7 @@ flag set, every function it defines scored; the probes are `build/scratch/gcc/p*
 | range | library | toolchain, flags | evidence |
 |---|---|---|---|
 | MAIN 0x18DB90-0x191410, 0x1A13D0-0x1AD088, 0x1B3970-0x1C4CC0, 0x1CCD78-0x1CE2A4 | Sony's SDK 2.7: libcdvd, libdma, libgraph, libipu, libkernl, libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ... | `ee-gcc2.9-991111-01-dtls13010` `-O2 -G0` (991111 compiles their C the same) | libvu0's inline asm: 32 of 32 only under the dtls13010 build, whose GNU as fills the delay slots 991111's leaves empty and encodes vsqrt as 2.96's does not (below); `memclr` is byte-exact only under 2.9-ee-991111 and its -01, a and dtls rebuilds: 990721 lacks the short loop's nops (8s), every 2.95.x fills the delay slot (2), 2.96 misses by 4, 3.2 by 7; `sceDmaGetChan` is 12s under 2.96, `sceCdSearchFile` 6s |
-| MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s); libgcc2's `__muldi3` 2.96 only (2.95.3 19 words, 2.9 29). Not quite this 2.96: the runtime's compiler never fills a delay slot with a double's register move (round 4a) |
+| MAIN 0x191410-0x1A13D0, 0x1AD088-0x1B3970 | newlib's libc, libgcc's fp-bit, libm: the toolchain's own runtime | `ee-gcc2.96` `-O2 -G0` **`-g`** (libm `-fno-builtin` too) | `atof`, `atol`: a sibling call under a frame it no longer needs (`sd ra; ...; ld ra; j strtol`) -- 2.96's; no 2.9x or 2.95.x makes a sibling call at all (6s, 5s); libgcc2's `__muldi3` 2.96 only (2.95.3 19 words, 2.9 29). Built with GCC's CFLAGS_FOR_TARGET, `-g -O2` (SCE's patch appends `-G0`): under `-g` GNU as fills none of the delay slots GCC leaves it -- a double's register move, length 2 to reorg -- which rounds 4a-22a read as "the runtime's compiler never fills a delay slot with a double's register move" (round 23a: cc1's output is the same with and without `-g`) |
 | OVL1 0x1E7F58-0x1E8FD4 | the microphone input (`openmic`, `getsamples`, `Sid*`, over lgAud) and Sony's libezcnf/libezctl (1.0 beta) | `ee-gcc2.96` `-O2 -G0 -fno-strict-aliasing` | found 2026-11-02, the only run outside the first ranges that saves s-registers with `sd` and never `sq`; `closemic`, `SidClose` byte-exact under 2.96 only (every other toolchain 9-13 words off); `SidGetSamples` reloads its read position after storing through `out` -- byte-exact only without strict aliasing |
 | OVL1 0x2430F0-0x243840 | the recogniser's heap (`heap_*`, ScanSoft's) | `ee-gcc2.96` `-O2 -G0` **`-funroll-loops`** (the unit carries the recogniser's `-fno-strict-aliasing` too, untold) | SearchFor's loop unrolled by four: byte-exact only with the flag (without: 50s) -- round 3a |
 | OVL1 0x243840-0x248350 | lgAud (the USB headset, liblgaud 1.08.002), SCEA's libnetb/inet | `ee-gcc2.96` `-O2 -G0` | `lgAudASync`, `sceBInetControl`, func_00246CE0: 2.96 only (2.9-991111 15s/10s/6s, 2.95.3-136 15s/6/6s, 3.2 11s/9s/=) |
@@ -5976,6 +5976,69 @@ ranges (`--max-size 0x400 --emit --no-prune --jobs 1 --obj-dir` the lane's `src/
 hits (5 refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22, 8):
 172 tried, none byte-exact (round 21a: 195, 0) -- every draft that built missed.
 
+**Round 23a** (2026-11-04, the toolchain question first, then newlib from its own text): 26 rows
+newly byte-exact (34,308 bytes) -- the lane's `src/lib` sdk/libc/libgcc/libm/ovl1 rows 1,156 -> 1,182
+of 1,244 scored, none lost -- and 2 rows and 1 data row named. **The runtime is whole but one row**:
+newlib's libc (`_vfprintf_r` and `cvt`, `__svfscanf`, `_strtod_r`, `strtof`, `_ulp`, `_ratio`, a new
+`libc/dtoa.c` -- quorem, `_dtoa_r` -- over a new `libc/mprec.h`), libgcc (`__fixdfdi`, `__fixunsdfdi`,
+`__floatdidf`) and libm (`fabs`, `tan`, `scalbn`, and the double routines in eleven new units --
+`e_exp.c`, `e_pow.c`, `e_rem_pio2.c`, `e_sqrt.c`, `k_cos.c`, `k_rem_pio2.c`, `k_sin.c`, `k_tan.c`,
+`s_cos.c`, `s_floor.c`, `s_sin.c` -- each newlib 1.8.2's text unchanged after its `#include`, every one
+byte-exact as first written); `_d2b` stays OPEN. Named: 0x191970 `_dtoa_r` (cvt's call at that
+instruction, as the demo's cvt calls its `_dtoa_r`), 0x191740 `quorem` (`_dtoa_r`'s two calls);
+data.txt's `__infinity` (0x1D0BB8, the demo's 8-byte GLOBAL OBJECT). What they showed:
+
+- **The runtime's "double moves" were GNU as under `-g`**: GCC gives a DFmode register move
+  (`movdf_internal2`, a double in one 64-bit GPR under soft float) a length of two instructions
+  (`-dp`: `[length = 8]`), so reorg never puts one in a delay slot and leaves the call's slot to
+  GNU as -- which fills it (`move s0,a0; jal g` becomes `jal g; move s0,a0`) unless it runs under
+  `-g`, which tc-mips.c reads as `-O0`: no instruction swapped into any slot. GCC's target
+  libraries are built with `CFLAGS_FOR_TARGET`, `-g -O2` (SCE's patch to the top-level Makefile
+  appends `-G0`). cc1's output is identical with and without `-g` (modulo label numbers) in all
+  eight objects it closed (`build/scratch/gcc/gcmp.py`); over every runtime unit (`gsweep.py`, 188
+  functions) `-g` loses none and gains eight, and with it the "different 2.96 build" of rounds
+  4a-22a, `__fixunsdfdi`'s "older expand_float" included, is gone: every runtime unit's directive
+  is `-O2 -G0 -g` (libm's `-fno-builtin` too).
+- **newlib's own text compiles as it stands under `-g`**: the eleven double libm objects, dtoa.c and
+  `_strtod_r` are 1.8.2's and 1.9.0's text unchanged (the two releases differ there only in
+  parenthesis). Two names their headers give were read off the target: the R5900's float.h
+  `FLT_ROUNDS` is 0 (round toward zero: `_strtod_r`'s fast path `nd <= DBL_DIG && FLT_ROUNDS == 1`
+  drops out -- with 1 it is 0xFDC against 0xF14) and math.h's `HUGE_VAL` is `__infinity[0].d`
+  (`_HAVE_STDC`: the overflow loads it, `ld s3,%lo(__infinity)`).
+- **The toolchain's newlib is a snapshot of no release**: `__svfscanf` is 1.9.0's text -- its float
+  conversion's leading-zeroes fix is where round 22a's atol and sprintf calls come from (1.9.0 has
+  them; 1.8.2 has no fix) -- but for 1.8.2's suppressed-%c test `(n = fp->_r) < width` (the
+  target's `sltu`; 1.9.0 casts to int) and the fix's `leading_zeroes` and `exp_start` declared
+  without initialisers (the target stores neither; live from the block's entry, `leading_zeroes`
+  goes to the stack, the target's `sd s6,616(sp)`); and `_vfprintf_r`'s 'f' fraction is 1.10.0's
+  `if (expt || ndig)` (1.9.0's `if (ndig)` is three words short) where round 22a found pre-1.9.0
+  lines.
+- **Open, diagnosed in place**: `_d2b` (5 words: the low word `y` in v0 and its store in the
+  branch's slot here, in a1 and the lo0bits call's slot there; 1.8.2's doubled `d.d = _d` changes
+  nothing). Not reached: sceGsSetDefDispEnv, sceCdStRead, sceDbcSendData (round 22a's diagnoses
+  stand), the densest stretches (OVL1's codec 0x248000-0x256000, libmrpc 0x1BC000, libmpeg's last
+  six, libkernl's tty/SIF objects).
+
+**The tools, round 23a**: (1) **`tools/manglecheck.py`, the UI lane's request**: every mangled row of
+symbols.txt and data.txt (7,741) parsed by a backtracking parser of Metrowerks' grammar as the map
+uses it (`Q<n>` names, `<len>name<args>` templates, `@unnamed@<file>@`, `F...` and `F..._<ret>`,
+`M<class>`, `A<n>_`, `T<n>`/`N<n><m>`, thunks `@N@[M@]`, `@LOCAL@`/`@GUARD@`); a length is accepted
+only when the whole name parses with it, and a slip is printed with the one correction that makes it
+parse (`clear__Q23std70__vector_deleter<...>` -> 72, the UI's round-16 slip). A length too long by
+one can still parse (`9bad_castCFv` swallows the const qualifier), so a second tier flags a name a
+length spells nowhere else in the map when the other length spells a common one; a constructor,
+destructor or operator must be a function. The map: **0 slips, 0 suspects** (the UI's two were fixed
+in its round 16). Measured: every length of every mangled name moved by 1 or 2 (97,791 mutants):
+89,218 fail the grammar, 8,281 the vocabulary, 292 pass (names spelled once in the map). The canary's
+`test_mangled_names_spell_their_lengths` holds the map to it (negatives: the UI's slip, a swallowed
+`C`, a destructor read as data). (2) **The map retires libkernl's tlbsrc**: func_001CCD78 ...
+func_001CCF20 and func_001CD078 (round 22a's finding) deleted from symbols.txt, data.txt's tlbsrc row
+saying what it holds; the seed's MAIN_TEXT and automatch's GCC_RANGES drop 0x1CCD78-0x1CE2A4. The
+scorer's totals: 13,367 -> 13,360 rows, 3,920,664 -> 3,915,296 bytes in the map; master's 10,839
+byte-exact (1,844,036 bytes) 47.03 % -> 47.10 %. (3) automatch's runtime toolchain is `-O2 -G0 -g`
+(`LIBC`). No tool that scores changed: scdiff.py, sccheck.py, scdecomp.py and `include/` are master's,
+so no MW or GCC unit can score differently; the retired rows are named by no unit. automatch over the lane's three ranges (`--max-size 0x400 --emit --no-prune --jobs 2 --obj-dir` the lane's `src/lib` build): MAIN `18DB90 1C4CC0` 54 tried, 0 hits (7 build failures, 13 m2c refusals), OVL1 `1E7F58 1E8FD4` 2 tried, 0 hits, `243000 256FD0` 96 tried, 0 hits (22, 8): 152 tried, none byte-exact (round 22a: 172, 0) -- every draft that built missed; the rows -g opened were written by hand first.
+
 **Next**: the libraries by hand, module by module, as their vendors wrote them (each `src/lib`
 unit's header says what it covers); GCC's scheduler moves independent stores, and which source
 order gives the target's is easier measured than predicted (`tools/ccperm.py PROBE
@@ -5983,8 +6046,7 @@ FUNCTION` tries every order of a marked block). libkernl's thread, tty/printf an
 (sifcmd, sifrpc, the libmrpc copy), fileio, libgraph, libipu/libmpeg, libmc, libpad (its version
 is not the demo's: its rows are unnamed), libcdvd (its first object is dtls13010's: the sibling call
 above; it reads its semaphores and callback number through volatile and plain globals the target
-schedules apart), newlib's stdio bodies (_vfprintf_r, __svfscanf, findfp.c, fflush, __sfvwrite,
-mallocr) and libm's fdlibm functions (the double moves above will hold some open) are open; the
+schedules apart) are open -- newlib's libc, libm and libgcc are whole but `_d2b` (round 23a); the
 network library at 0x1C0948-0x1C4CC0 (inet_aton at -O2 beside RPC stubs built at -O0: frame pointer,
 spilled arguments) holds BIND's inet_ntop.c (round 5a: Sony's SDK toolchain, inet_ntop's returned
 calls jal-and-return); in OVL1 lgAudInit (registers), libnetb's Open, Recv/RecvFrom, Send/SendTo,
