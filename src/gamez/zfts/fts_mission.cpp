@@ -1367,12 +1367,16 @@ extern "C" char *strcpy(char *dst, const char *src);
 
 /* the extra string tables the mission's rdr lists, by name (SOCOM II's; PreOpen calls it; OVL1
  * 0x2AF410).
- * OPEN, 0x10C against 0x140: the target keeps two empty if/else tests on the count -- `0 < count`
+ * OPEN, 0x100 against 0x140: the target keeps two empty if/else tests on the count -- `0 < count`
  * before it is cleared, `count + 1 < count` before each increment -- both arms empty, the else arm
  * a jump placed after the epilogue: a fixed array's resize(n) whose element loops vanish for char
  * names. MW folds every empty arm tried away: empty inline helpers (plain or template), empty for
- * loops. The rest (the list's Count/Item/String, the name's address recomputed each pass) is
- * written as the target reads */
+ * loops; round 23 added the resize as a ternary over the two helpers, int loops over a 10-byte
+ * struct with a pseudo-destructor and a placement new (all folded), and loops MW cannot delete
+ * (pointer loops with a user-declared empty destructor 0x280, a dead `while (k-- > 0)` 0x1C0). The
+ * rest (the list's Count/Item/String, the name's address recomputed each pass) is written as the
+ * target reads; the count is an `unsigned short` here where the target's lhu has no andi (an int
+ * there, once the arms are found) */
 extern "C" void func_002AF410(const _zrdr *rdr)
 {
     data_00440B80.Resize(0);
