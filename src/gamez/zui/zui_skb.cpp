@@ -381,10 +381,11 @@ extern "C" {
  * key handler (0x38DFE0) */
 int func_003949C0(CSoftKeyboard *skb);
 int func_003978C0();
-int func_00396EC0();
 void func_00398BB0();
 
 }
+/* whether the display is busy scaling (the display unit's SkbScaling, 0x396EC0) */
+bool SkbScaling();
 /* the keyboard's scaling stepped, 1 scaled up, 2 scaled down (the display unit's SkbScale) */
 unsigned char SkbScale(CSoftKeyboard *skb, float dT);
 
@@ -443,7 +444,7 @@ void SkbTick(CGameMenu *menu, bool input, float dT)
         }
         CSoftKeyboard *skb = g_pActiveSkb;
 
-        if (!func_00396EC0() && skb->m_480.m_node) {
+        if (!SkbScaling() && skb->m_480.m_node) {
             bool on = KeyboardAttached();
 
             if (skb->m_480.m_node)
@@ -572,6 +573,65 @@ void SkbMoveCursor(CSoftKeyboard *skb, unsigned char dir)
 static inline bool IsNone(int n)
 {
     return !n;
+}
+
+/* the key rows shown for the piece list in use (the display unit's, 0x394520) */
+void SkbShowKeyRows(CPad *pad, CSoftKeyboard *skb, bool row2);
+/* the text cursor's or the composition's back step (zui_skbkeys.cpp's, 0x399C20) */
+void SkbTypeOrBack(CSoftKeyboard *skb);
+/* a key read this frame (zin_keyboard.cpp's KeyInput, 32 bytes) and its reader */
+struct KeyInput {
+    unsigned char code;
+    int shift;
+    int ctrl;
+    int alt;
+    int _10;
+    int caps;
+    int _18[2];
+};
+int GetKeyReadThisFrame(KeyInput *key);
+extern "C" {
+/* the USB keyboard's key handled (0x38C630) and SELECT's toggle (zui_skbkeys.cpp's, 0x399100), not
+ * written yet */
+void func_0038C630(CSoftKeyboard *skb, CGameMenu *menu, KeyInput *key);
+void func_00399100(CSoftKeyboard *skb);
+}
+
+/* the pad's buttons handled, while the keyboard is not scaling: cross pressed and let go presses
+ * and lights the cursor's key, circle enters, triangle closes (the menu's event 29 run first), R1
+ * toggles the second lock, square types or steps back, select toggles; L1 pressed or let go shows
+ * the shifted keys; then the USB keyboard's keys read this frame (0x38C990; ours: SOCOM 1's
+ * HandleInput did it all in one) */
+void CSoftKeyboard::HandlePad(CPad *pad, CGameMenu *menu)
+{
+    if (SkbScaling())
+        return;
+    if (pad->m_state[PAD_CROSS] == KEY_FALLING) {
+        void (C2DButton::*pressed)() = &C2DButton::Slot27;
+
+        SetCurKeyState(pressed);
+    } else if (pad->m_state[PAD_CROSS] == KEY_RISING) {
+        void (C2DButton::*active)() = &C2DButton::SetActive;
+
+        SetCurKeyState(active);
+    } else if (pad->m_state[PAD_CIRCLE] == KEY_FALLING)
+        OnEnterKey(menu);
+    else if (pad->m_state[PAD_TRIANGLE] == KEY_FALLING) {
+        menu->RunEventAnim((ActionItem::EVENT)29, 0);
+        ShutdownBegin(menu);
+    } else if (pad->m_state[PAD_TRIGGER_R1] == KEY_FALLING) {
+        SkbToggleLock2();
+        SkbShowKeyRows(pad, this, m_174);
+    } else if (pad->m_state[PAD_SQUARE] == KEY_FALLING)
+        SkbTypeOrBack(this);
+    else if (pad->m_state[PAD_SELECT] == KEY_FALLING)
+        func_00399100(this);
+    if (pad->m_state[PAD_TRIGGER_L1] == KEY_FALLING || pad->m_state[PAD_TRIGGER_L1] == KEY_RISING)
+        SkbShowKeyRows(pad, this, m_174);
+    KeyInput key;
+
+    while (GetKeyReadThisFrame(&key))
+        func_0038C630(this, menu, &key);
 }
 
 /* the enter key: nothing while 0x3999D0 says so; an unchanged string (when that counts) or an

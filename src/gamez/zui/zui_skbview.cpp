@@ -1165,3 +1165,9 @@ void SkbPrepDisplay(zdb::CNode *parent, zdb::CTextureRelocMgr *mgr, C2DFont *fon
         bmp->Slot10(SkbLoadBitmap(bmp, g_skbDisplayNode, 0, 0, "SkbHighlight.tif", mgr));
     }
 }
+
+/* whether the keyboard is scaling up or down (0x396EC0; HandlePad asks; the name ours) */
+bool SkbScaling()
+{
+    return s_scaling != SKBSCALE_NONE;
+}
