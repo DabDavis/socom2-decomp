@@ -999,11 +999,19 @@ struct ChatSlot {
 /* the text filter's answer awaited: the caller's callback and its data (SOCOM 1's Censor kept
  * them likewise) */
 typedef void (*CensorCallback)(const char *text, void *data);
-/* a chat line's colour (a byte enum: assigned with li, compared through andi; the names ours) */
-enum CHAT_COLOR {
+/* a chat line's colour: the mission's message type (fts_state.h's MSGTYPE, the same three values --
+ * 0 white, 1 yellow, 5 red; a byte enum: assigned with li, compared through andi; the enumerators'
+ * names the chat's, ours) */
+enum MSGTYPE {
     CHAT_WHITE = 0,
     CHAT_CLAN = 1,
     CHAT_PRIVATE = 5
+};
+
+/* the mission's ring of messages for the player (fts_mission.cpp's class: theMission + 0x11B0) */
+class CMessageQueue {
+public:
+    void Enqueue(const char *text, MSGTYPE type, const char *name);
 };
 
 /* the chat turned on or off (SOCOM 1's MediusChatToggle; int-sized) */
@@ -1105,8 +1113,7 @@ void func_00300670();   /* the Medius library closed */
 void func_0030D770(CZNetwork *net);   /* the DME left (CZNetwork's) */
 void func_0030E3A0(CZNetwork *net, int);   /* and closed (CZNetwork's) */
 MediusErrorCode MediusSendChatMessage(MediusSendDirectMessageRequest *req);   /* the direct message sent */
-void func_002A4050(void *chat, const char *text, CHAT_COLOR color, const char *name);   /* a line added to the chat */
-extern char data_00437690[];   /* the chat's window */
+extern char data_00437690[];   /* theMission's message ring (CMission::m_netQueue) */
 }
 
 extern "C" {
@@ -1376,7 +1383,7 @@ void CZOnlineLobby::RecoverFromNetError(int err)
  * a clan one (SOCOM 1's cbChatMessage, MediusInit's first callback; OVL1 0x2F4EF0) */
 void cbChatMessage(int, int, int, MediusChatFwdMessage *msg)
 {
-    CHAT_COLOR color = CHAT_WHITE;
+    MSGTYPE color = CHAT_WHITE;
 
     switch (msg->MessageType) {
     case 0:
@@ -1394,7 +1401,7 @@ void cbChatMessage(int, int, int, MediusChatFwdMessage *msg)
         char *name = msg->OriginatorAccountName;
 
         sprintf(text, "%s: %s", name, msg->Message);
-        func_002A4050(data_00437690, text, color, name);
+        ((CMessageQueue *)data_00437690)->Enqueue(text, color, name);
     }
 }
 

@@ -85,6 +85,8 @@ public:
                                           NetUpdateObjectCallback postupdate,
                                           NetDestroyObjectCallback destroy);
     static void zNetRemoteObjectUpdateCallback(int client, int index, int field);
+    /* this console's client object set (SOCOM II's forwarder to the DME, 0x30CDE0) */
+    void zNetSetMyClientObject(int object);
 
     unsigned char m_bSessionMaster;   // 0x0 (SOCOM 1's at 0x8)
     unsigned char m_bNetwork;   // 0x1

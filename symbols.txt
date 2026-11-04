@@ -5299,7 +5299,7 @@
 0x0030CD80 0x8 func_0030CD80  # OVL1
 0x0030CD90 0x40 func_0030CD90  # OVL1
 0x0030CDD0 0x10 func_0030CDD0  # OVL1
-0x0030CDE0 0x8 func_0030CDE0  # OVL1
+0x0030CDE0 0x8 zNetSetMyClientObject__9CZNetworkFi  # OVL1; ours, the online lane round 14 (CZNetwork's forwarder: `j NetSetMyClientObject; move a0,a1`, this unused; its one caller ftsNetworkPlayerInit 0x2B7DA4 passes &theNetwork and the new seal's object where SOCOM 1's ftsNetworkPlayerInit calls NetSetMyClientObject itself; the name after the class's zNet* calls)
 0x0030CDF0 0x88 zNetRemoteObjectUpdateCallback__9CZNetworkFiii  # OVL1; s1 by hand (SOCOM 1's zNetRemoteObjectUpdateCallback, the first function of zNetDme.cpp in both builds: NetGetObject, the type's update callback from the list at +0x1114, the field-update flag at +0x10B set; zNetRegisterRemoteObjectCallback registers it with the DME as SOCOM 1's does)
 0x0030CE80 0x6C zNetRegisterRemoteObjectCallback__9CZNetworkFiPFii_vPFiii_vPFiii_vPFii_v  # OVL1; s1:calls (every zNetRegister* calls it last with the index and four callbacks, as SOCOM 1's; the same 0x6C) -- the states lane
 0x0030CEF0 0x100 zNetSendApplicationMessage__9CZNetworkFciiiiPUcb  # OVL1; s1:calls by hand (the states lane: every network sender calls it at SOCOM 1's call site, 39 of them, with the same register handling and calls; zNetDme.cpp's)

@@ -645,10 +645,13 @@ void NetSetMyClientObject(int a);
 int func_0030BE80(void);   /* (the network start-up's: the time since the link changed) */
 }
 
-/* (OVL1 0x30CDE0) */
-extern "C" void func_0030CDE0(CZNetwork *net, int a)
+/* this console's client object set: the DME's own call, `this` unused (`j NetSetMyClientObject;
+ * move a0,a1` -- SOCOM II's forwarder: SOCOM 1's ftsNetworkPlayerInit calls NetSetMyClientObject
+ * itself at the point SOCOM II's 0x2B7DA4 calls this; the name ours, after the class's zNet* calls;
+ * OVL1 0x30CDE0) */
+void CZNetwork::zNetSetMyClientObject(int object)
 {
-    NetSetMyClientObject(a);
+    NetSetMyClientObject(object);
 }
 
 /* (OVL1 0x30CDD0) */
