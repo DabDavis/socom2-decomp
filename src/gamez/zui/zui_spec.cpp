@@ -258,6 +258,120 @@ C2D *CCounterSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) c
     return counter;
 }
 
+namespace {
+void LoadDlgObjects(std::vector<CDesignDlgObj> *objs, _zrdr *rdr, const char *tag,
+                    CDlgObjSpec *(*getSpec)(_zrdr *, const char *));
+}
+
+/* the design read from a dialog's rdr (SOCOM 1's; SOCOM II added the UIVAR libraries, USES_MEMCARD,
+ * the MPEG backgrounds and the SCRIPT_LIBRARY list): everything cleared, the LIBRARY and LIBRARIES
+ * -- `UIVAR <name>` naming a variable whose value is the library --, the font, the background, the
+ * ANIMATIONS, CONTROLS and OBJECTS, then the MODELS (0x381550) */
+void CGameDlgDesign::LoadFromRdr(_zrdr *rdr)
+{
+    m_libraries.clear();
+    m_font = 0;
+    m_background = 0;
+    m_backgroundType = 0;
+    m_animations.clear();
+    m_controls.clear();
+    m_objects.clear();
+    m_models.clear();
+    m_scriptLibraries.clear();
+
+    const char *lib = zrdr_findstring(rdr, "LIBRARY");
+    if (lib) {
+        m_libraries.resize(m_libraries.size() + 1);
+        m_libraries.back() = lib;
+    }
+    _zrdr *libs = zrdr_findtag(rdr, "LIBRARIES");
+    for (int i = 0; i < (libs ? (int)libs->Count() : 0); i++) {
+        _zrdr *item = libs->Item(i);
+        const char *name = 0;
+
+        if (item->type == 3)
+            name = item->String();
+        if (!strcasecmp(name, "UIVAR") && i < (libs ? (int)libs->Count() : 0) - 1) {
+            _zrdr *var = libs->Item(++i);
+
+            if (var && var->type == 3) {
+                CUIVariable *v = theUIVarManager.Add(var->String(), 0, UIVL_TEMPORARY);
+
+                if (v && v->type == 3)
+                    name = v->String();
+            }
+        }
+        if (name) {
+            m_libraries.resize(m_libraries.size() + 1);
+            m_libraries.back() = name;
+        }
+    }
+    m_usesMemcard = zrdr_findtag(rdr, "USES_MEMCARD") != 0;
+    m_font = zrdr_findstring(rdr, "FONT");
+    if (zrdr_findtag(rdr, "NOFONTLIB"))
+        m_fontLib = false;
+    else
+        m_fontLib = true;
+    _zrdr *bg = zrdr_findtag(rdr, "BACKGROUND");
+    if (bg) {
+        const char *type = zrdr_findstring(bg, "TYPE");
+
+        if (type) {
+            if (!strcasecmp(type, "IMAGE"))
+                m_backgroundType = 0;
+            else if (!strcasecmp(type, "MPEG"))
+                m_backgroundType = 1;
+            else if (!strcasecmp(type, "MPEG_LOOPING"))
+                m_backgroundType = 2;
+        }
+        m_background = zrdr_findstring(bg, "FILENAME");
+    }
+    _zrdr *anims = zrdr_findtag(rdr, "ANIMATIONS");
+    for (int j = 0; j < (anims ? (int)anims->Count() : 0); j++) {
+        m_animations.resize(m_animations.size() + 1);
+        ParseButtonAnim(anims->Item(j), &m_animations.back());
+    }
+    LoadDlgObjects(&m_controls, rdr, "CONTROLS", GetControlSpec);
+    LoadDlgObjects(&m_objects, rdr, "OBJECTS", GetObjectSpec);
+    _zrdr *scripts = zrdr_findtag(rdr, "SCRIPT_LIBRARY");
+    if (scripts) {
+        /* an int counter against the unsigned count (sltu): an unsigned one is strength-reduced to a
+         * byte offset stepped by 8, the target shifts the index each pass */
+        for (int k = 0; k < scripts->Count(); k++) {
+            _zrdr *item = scripts->Item(k);
+
+            if (item->type == 3)
+                m_scriptLibraries.push_back(CSaferStr(item->String()));
+        }
+    }
+    LoadModels(rdr);
+}
+
+/* the design's MODELS: each one's NAME and MODEL, where the camera sits (AZIMUTH, ELEV, DISTANCE --
+ * 20 unless given) and its rotation, and whether it takes its model from a UI variable (0x3812B0;
+ * SOCOM 1's -- both builds read ROTX, ROTY and ROTZ into the same member) */
+void CGameDlgDesign::LoadModels(_zrdr *rdr)
+{
+    _zrdr *models = zrdr_findtag(rdr, "MODELS");
+
+    for (int i = 0; i < (models ? (int)models->Count() : 0); i++) {
+        m_models.resize(m_models.size() + 1);
+        CDlgDesignModel &m = m_models.back();
+        _zrdr *item = models->Item(i);
+
+        m.m_name = zrdr_findstring(item, "NAME");
+        m.m_model = zrdr_findstring(item, "MODEL");
+        m.m_azimuth = FindReal(item, "AZIMUTH", 0.0f);
+        m.m_elev = FindReal(item, "ELEV", 0.0f);
+        m.m_distance = FindReal(item, "DISTANCE", 20.0f);
+        m.m_rotX = FindReal(item, "ROTX", 0.0f);
+        m.m_rotX = FindReal(item, "ROTY", 0.0f);
+        m.m_rotX = FindReal(item, "ROTZ", 0.0f);
+        if (zrdr_findtag(item, "USEMODELUIVAR"))
+            m.m_useModelUIVar = true;
+    }
+}
+
 CDlgObjSpec *CCounterSpec::Copy()
 {
     return new CCounterSpec(*this);
@@ -302,6 +416,55 @@ CHProgressBarSpec::CHProgressBarSpec(_zrdr *rdr) : CImageSpec(rdr)
     m_leadingEdgeNode = zrdr_findstring(rdr, "LEADING_EDGE_NODE");
 }
 #pragma auto_inline reset
+
+namespace {
+
+/* a design's CONTROLS or OBJECTS (the tag): each item's NAME, TYPE, XPOS, YPOS and OPACITY, its SPEC
+ * made by the given parser (GetControlSpec or GetObjectSpec), the object added only when one is made
+ * -- unnamed ones called "unnamed" -- with its CHILDOF (0x383360; SOCOM 1's @unnamed@zui_spec_cpp@
+ * LoadDlgObjects, which LoadFromRdr calls twice).
+ * OPEN, 0x29C against 0x2B8 (written round 16): the calls, stack slots and stores are the target's;
+ * the target lays out the loop head's inlined Count() and Item() ternaries -- and the bottom test's
+ * -- as then-arm, `b join`, else-arm, the else's `move ...,zero` copied into the branch's delay slot
+ * and the branch retargeted past it, leaving the else block orphaned (seven words in all), where MW
+ * here drops the else block and lets the then-arm fall into the join (LoadModels and LoadFromRdr,
+ * the same inlines, come out the target's). getSpec's `move a1,type` goes into the jalr's delay
+ * slot there, into the null test's here. Tried: the item assigned after its declaration, the spec
+ * through a ternary, an `&&`, `(*getSpec)(...)`, the spec declared first; declared `inline` the
+ * function is absorbed into LoadFromRdr (0x954) */
+void LoadDlgObjects(std::vector<CDesignDlgObj> *objs, _zrdr *rdr, const char *tag,
+                    CDlgObjSpec *(*getSpec)(_zrdr *, const char *))
+{
+    _zrdr *list = zrdr_findtag(rdr, tag);
+
+    for (int i = 0; i < (list ? (int)list->Count() : 0); i++) {
+        _zrdr *item = list->Item(i);
+        const char *name = zrdr_findstring(item, "NAME");
+        const char *type = zrdr_findstring(item, "TYPE");
+        int x = 0;
+        int y = 0;
+        float opacity = 1.0f;
+
+        zrdr_findint(item, "XPOS", &x, 1);
+        zrdr_findint(item, "YPOS", &y, 1);
+        zrdr_findreal(item, "OPACITY", &opacity, 1);
+        _zrdr *specRdr = zrdr_findtag(item, "SPEC");
+        if (specRdr) {
+            CDlgObjSpec *spec = getSpec(specRdr, type);
+            if (spec) {
+                objs->resize(objs->size() + 1);
+                CDesignDlgObj &o = objs->back();
+                o.SetSpec(spec);
+                o.SetPos(x, y);
+                o.m_opacity = opacity;
+                o.SetName(name);
+                o.m_childOf = zrdr_findstring(item, "CHILDOF");
+            }
+        }
+    }
+}
+
+}
 
 /* the spec's UI variable, if its rdr declares one (SOCOM 1's; inlined in each spec's constructor,
  * the copy at 0x3832E0) */
