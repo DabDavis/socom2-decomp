@@ -285,7 +285,9 @@ CAiEvent::iterator CAiEvent::GetFirstEvent(EVENT_CLASS c)
  * word (andi, srl, li, sllv, sll, lw: SOCOM 1's order too); this build steals the bit test's srl
  * into the delay slot instead. Every spelling of the test compiles to the same block here --
  * operand orders, the mask or the word in locals first, if/else on a bool, an early-return
- * inline taking the kind (build/scratch/ai/spec_gne.py) -- so it is structural, not the test */
+ * inline taking the kind (build/scratch/ai/spec_gne.py) -- so it is structural, not the test; the
+ * AI core round 19 added the inverted ternary (`type != AIE_ENTITY ? Test : false`, with and without
+ * an inner `? true : false`) and a `seen` bool local (if-assigned or a ternary): the same 0x19C */
 CAiEvent *CAiEvent::GetNextEvent(const CPnt3D *pos, iterator &it, float scale)
 {
     CAiEvent *found = 0;
