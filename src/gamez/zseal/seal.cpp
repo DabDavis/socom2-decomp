@@ -298,6 +298,61 @@ static inline const unsigned int &TeamOf(const CEntity *e)
     return e->m_team;
 }
 
+extern "C" {
+/* the death's end, once its anim has run (OVL2 0x5A0040, seal_env.cpp's range, not written yet) */
+void func_005A0040(CZSealBody *seal);
+/* the spectator's walks (below) */
+void func_00547170(CZSealBody *seal, bool team);
+void func_00546FA0(CZSealBody *seal, bool team);
+}
+
+/* bit 12 of the flags at 0x1060 set (an inline setter: the constant is masked and shifted in place,
+ * `andi zero,1; sll 4`) */
+static inline void SetDeathPending(CZSealBody *seal, bool b)
+{
+    seal->m_1060_bit12 = b;
+}
+
+/* the dead SEAL's tick (OVL2 0x547350, CZSealBody's own virtual at +0x8C, new in SOCOM II): a death
+ * pending ended by 0x5A0040 and, unless remote, its network life set to 3 (IsRemote asked again,
+ * the answer unused); online a respawn asked for brought about -- the node made inactive while it is
+ * still drawn -- and, out of the menus, the spectator walked to the next or previous SEAL (of the
+ * team unless the player may not watch); offline only the respawn */
+void CZSealBody::Virtual8C()
+{
+    if (m_1060_bit12) {
+        func_005A0040(this);
+        SetDeathPending(this, false);
+        if (!IsRemote() && m_netlife != 3) {
+            m_netlife = 3;
+            IsRemote();
+        }
+    }
+    if (theNetwork.m_9) {
+        if (m_needs_respawn) {
+            if (GetNode()->Rendered(2))
+                GetNode()->SetActive(false);
+            else
+                RemoteRespawn(true);
+        }
+        if (!((CSealCtrl *)m_control)->m_menustate && (m_spectate_next || m_spectate_prev)) {
+            bool team = true;
+
+            if (theNetwork.m_9 && func_002C2FD0(ftsGetPlayer()))
+                team = false;
+            if (m_spectate_next)
+                func_00547170(this, team);
+            else if (m_spectate_prev)
+                func_00546FA0(this, team);
+        }
+    } else if (m_needs_respawn) {
+        if (GetNode()->Rendered(2))
+            GetNode()->SetActive(false);
+        else
+            DoRespawn();
+    }
+}
+
 /* the spectator's camera moved to the SEAL after the one it shows in the entity list, round to the
  * start and once round at most, by 0x546FA0's tests (OVL2 0x547170; new in SOCOM II, its name
  * unknown -- n declared ahead of the SEALs here, after them there: the two number them so) */

@@ -10000,7 +10000,7 @@
 0x00546E40 0x158 TeleportTo__10CZSealBodyFPC6CPnt3DPC5CQuat  # OVL2; slot 0x3C of __vt__10CZSealBody; calls CEntity's TeleportTo(pos, quat), as SOCOM 1's
 0x00546FA0 0x1D0 func_00546FA0  # OVL2
 0x00547170 0x1D8 func_00547170  # OVL2
-0x00547350 0x21C func_00547350  # OVL2
+0x00547350 0x21C Virtual8C__10CZSealBodyFv  # OVL2; by hand (the SEALs, round 25): slot 0x8C of __vt__10CZSealBody, zseal.h's Virtual8C (CZSealBody's own virtual after CBody's table, called through the primary pointer) -- the dead SEAL's tick: the pending death ended, the respawn asked for, the spectator's walks 0x547170/0x546FA0 (the name a placeholder of the slot, as Virtual60/Virtual68)
 0x00547570 0x190 PickupObject__10CZSealBodyFP7CPickup  # OVL2; s1:calls
 0x00547700 0x7C _rethrow_grenade__FP6CValvePv  # OVL2; s1:order (seal.cpp: after PickupObject, which registers it as a valve callback with the pickup, before ResetToInitialState, as SOCOM 1's); SOCOM 1's two statics (80, 150) and SetVelW, the pickup's fields a word on
 0x00547780 0x14 ResetToInitialState__10CZSealBodyFv  # OVL2; size 0x14 (a tail call through t9; the seed ran on into the padding); s1:vtable (the same slot of the same class's vtable in both builds, code alike)

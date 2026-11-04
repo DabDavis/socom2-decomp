@@ -1222,6 +1222,10 @@ public:
     ZOOMSTATE DecrZoomState();
     ZOOMSTATE IncrZoomState();
     void SetCurZoomState(ZOOMSTATE zs);
+    /* a remote SEAL brought back, and the local SEAL's respawn (SOCOM 1's; OVL2 0x598B90, 0x5994A0,
+     * seal_create.cpp's range: Virtual8C calls them) */
+    void RemoteRespawn(bool b);
+    void DoRespawn();
     /* the SEAL's stats (OVL2 0x545890: the stats events reach a teammate's through it, by member
      * pointer; the name ours) */
     class CSealStats *GetStats();
@@ -1736,7 +1740,11 @@ public:
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
     unsigned char _fc0[0xfc8 - 0xfc0];
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
-    unsigned char _fcc[0xfcf - 0xfcc];
+    unsigned char _fcc;
+    /* the spectator's next and previous SEAL asked for (new in SOCOM II: Virtual8C walks to them;
+     * the names ours) */
+    unsigned char m_spectate_next;   // 0xfcd
+    unsigned char m_spectate_prev;   // 0xfce
     unsigned char m_needs_respawn;   // 0xfcf (SOCOM 1's 0xec5, the byte before m_stunned)
     /* SOCOM 1's m_stunned, m_full_update_time and m_movespeedmod (0xec6, 0xec8, 0xecc there) in the
      * same order: HandleStunDamage sets the byte, CreateRemoteSeal zeroes the time and sets the
