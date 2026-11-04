@@ -160,6 +160,11 @@ public:
     static int m_NetStructIndexBombObject;
 };
 
+/* the bomb's status: its CPnt3D's empty inline constructor gives it an implicit constructor that
+ * inlines to nothing, so the unit's initialiser __sinit_fts_net_bomb.cpp 0x4006B0 is empty (SOCOM
+ * 1's built its header CSTable as well) */
+CZBombState::TypeBombStatus CZBombState::m_BombStatus;
+
 /* the bomb's network data: 20 bytes (SOCOM 1's 16) */
 struct TypeBombObject {
     PNT3D pos;   // 0x0
