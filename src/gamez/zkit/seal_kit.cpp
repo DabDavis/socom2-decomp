@@ -1112,6 +1112,41 @@ void CZKit::SetHotSwap(bool b)
     m_hotswap = b;
 }
 
+/* whether a picked-up item has a slot: no launcher held, and a slot of 2-4 free for it (OVL2
+ * 0x5BAC30, new in SOCOM II: GetPickupSlot inlined whole; the SEAL's pickup tests call it -- the
+ * name ours).
+ * OPEN, 0x220 against 0x228: the saved registers numbered otherwise -- the target gives `this` s0,
+ * the launcher walk's cursor s1 and its index (the result) s2, here the index takes s0 and `this`
+ * s1; the inlined GetPickupSlot's registers follow (GetPickupSlot's own miss, below) */
+bool CZKit::HasPickupSlot()
+{
+    int l = GetLauncherIndex();
+
+    return l == -1 && GetPickupSlot(l) != -1;
+}
+
+/* the slot a picked-up item takes, of slots 2-4 but one: the count when the slot lies past it, a slot
+ * whose item uses ammunition and has none, or a slot holding item 255; else -1 (OVL2 0x5BAE60, new
+ * in SOCOM II: the environment's pickup code calls it; the name ours).
+ * OPEN, 39 instructions, registers only (the right size, every block in place): the target keeps the
+ * index in v1, the items' cursor in t9, the magazines' outer cursor in s0 and the inlined
+ * ItemHasAmmo's own cursor in t8 (its count s1, its flag s2) -- here the index takes a3, the outer
+ * cursors a2/v1 and the inner one s0; the ten switch constants hoisted alike, shifted by one */
+int CZKit::GetPickupSlot(int skip)
+{
+    for (int i = 2; i < 5; i++) {
+        if (i == skip)
+            continue;
+        if (m_num_items < i)
+            return m_num_items;
+        if (!ItemHasAmmo(i) && UsesAmmo(i))
+            return i;
+        if (m_item[i] && m_item[i]->m_ID == 255)
+            return i;
+    }
+    return -1;
+}
+
 /* whether an item has room for more rounds: never past the ten slots, always past the count (an
  * item to come), else when one of its magazines (twice as many for a sidearm or rifle class while
  * the kit holds item 194, ten at most) is short of full (OVL2 0x5BA5B0; SOCOM 1's CanAddAmmo, item
@@ -1187,10 +1222,7 @@ void CZKit::RemoveAmmo(int index)
 }
 
 extern "C" {
-/* the items closed up over the empty slots, each slot's state, ammunition, magazines, fire mode
- * and pointer moved with it (OVL2 0x5B9A00, new in SOCOM II: unwritten, the name to come) and
- * CZSealBody::WepWaitOn (OVL2 0x5DFFC0, seal_weapon.cpp's) */
-void func_005B9A00(CZKit *kit);
+/* CZSealBody::WepWaitOn (OVL2 0x5DFFC0, seal_weapon.cpp's) */
 void WepWaitOn__10CZSealBodyFv(CZSealBody *body);
 }
 
@@ -1216,12 +1248,53 @@ void CZKit::RemoveItemAndAmmo(int index)
 
     m_item[i] = 0;
     ClearAmmo(i);
-    func_005B9A00(this);
+    CompactItems();
     UpdateNumItems();
     if (m_selected_item > m_num_items || !m_item[m_selected_item]) {
         m_selected_item = 0;
         WepWaitOn__10CZSealBodyFv(m_body);
         m_weaponinfoChanged = true;
+    }
+}
+
+/* the items closed up over the empty slots: at each empty slot with an item after it, every later
+ * slot's state, item, ammunition, magazines, current magazine, fire mode, gear, in-use byte and
+ * pointer (one place on, in the vector at 0x834) moved down one, and the slot looked at again
+ * (OVL2 0x5B9A00, new in SOCOM II: RemoveItemAndAmmo calls it; the name ours). The slot test is an
+ * inline bool's (kit.h's AnyItemFrom: the target materialises `!SlotEmpty(j)`, sltu/xori), non-const
+ * (const, it reloads the count the loop holds); the pointer's next slot a local (written in place,
+ * MW hoists its shift into the size test's delay slot, eight bytes short).
+ * OPEN, 15 instructions, registers only: after the magazines' loop the target holds the moved
+ * values in t2, `this + j` in t3 and the next slot in t1 (its shift then into t3); here t1, t2 and
+ * t3 -- the slot local's place in the block changes nothing, tools/perm.py over the eight moves
+ * (3,284 steps) found no better */
+void CZKit::CompactItems()
+{
+    int i = 0;
+
+    while (i < m_num_items) {
+        if (!m_item[i] && AnyItemFrom(i)) {
+            for (int j = i; j < m_num_items; j++) {
+                if (j + 1 < 30) {
+                    m_itemstate[j] = m_itemstate[j + 1];
+                    m_item[j] = m_item[j + 1];
+                    m_ammo[j] = m_ammo[j + 1];
+                    for (int k = 0; k < 10; k++)
+                        m_reloads[j][k] = m_reloads[j + 1][k];
+                    m_currentmag[j] = m_currentmag[j + 1];
+                    m_firemode[j] = m_firemode[j + 1];
+                    m_associatedgear[j] = m_associatedgear[j + 1];
+                    m_iteminuse[j] = m_iteminuse[j + 1];
+                    int k2 = j + 2;
+
+                    if (k2 < m_itemptr.size()) {
+                        m_itemptr[j + 1] = m_itemptr[k2];
+                        m_itemptr[k2] = 0;
+                    }
+                }
+            }
+        } else
+            i++;
     }
 }
 
@@ -1378,10 +1451,9 @@ void CZKit::SetItemPtr(int index, void *p)
     m_itemptr[index + 1] = p;
 }
 
-extern "C" {
-/* a class's tests (OVL1 0x3D1DB0: the rifles -- 31, 51, 81, 91, 141, 101 -- 0x3D1DA0: the pistol,
- * 4, 0x3D1D90: 145; CZWeapon's statics after IsSecondary, unclaimed -- the byte enum masked in each) */
-}
+/* (a class's tests -- OVL1 0x3D1DB0: the rifles, 31, 51, 81, 91, 141, 101; 0x3D1DA0: the pistol, 4;
+ * 0x3D1D90: 145 -- are zweapon.h's IsPrimaryType, IsSecondaryType and IsLauncherType, the byte enum
+ * masked in each) */
 
 /* the current item's fire class: 1 for the rifles, 2 the pistol, 4 class 145, 3 the grenades and
  * explosives (121, 151), else none (OVL2 0x5B8760, new in SOCOM II among the kit's additions at
@@ -1406,6 +1478,16 @@ CZKit::FIRE_CLASS CZKit::GetCurItemFireClass()
             c = FIRE_CLASS_THROWN;
     }
     return c;
+}
+
+/* the first item of a fire class, or -1 (OVL2 0x5B8630, new in SOCOM II beside GetCurItemFireClass:
+ * CZSealBody::Tick and the environment's pickup code call it; the name ours) */
+int CZKit::GetFireClassIndex(FIRE_CLASS c)
+{
+    for (int i = 0; i < m_num_items; i++)
+        if (m_item[i] && FireClassOf(m_item[i]) == c)
+            return i;
+    return -1;
 }
 
 /* for the two items that show their round (186 and 146), the fire point's "projectile" child made
