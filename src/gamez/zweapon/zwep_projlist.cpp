@@ -1,5 +1,5 @@
-/* zwep_projlist.cpp -- CZProjectileList, the projectiles in flight: OVL1 0x3CB8F0?-0x3CDA2F, after
- * zwep_projectile.cpp's CZProjectile and before ZWepReader, as SOCOM 1's (0x31A4E0-0x31B91F in the
+/* zwep_projlist.cpp -- CZProjectileList, the projectiles in flight: OVL1 0x3CB8F0?-0x3CD80F, after
+ * zwep_projectile.cpp's CZProjectile and before ZWepReader (zwep_reader.cpp, 0x3CD810), as SOCOM 1's (0x31A4E0-0x31B91F in the
  * demo). SOCOM 1 gives the unit no static initialiser and no assert, so the file name is ours.
  * SOCOM II adds three functions after AcquireProjectile (0x3CB8F0-0x3CBDEF: GetNumExplosives, Dump,
  * RemoveExplosivesInRange), the unit's last-defined. Defined in reverse of their image order. */

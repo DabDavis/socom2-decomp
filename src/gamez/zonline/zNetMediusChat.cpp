@@ -720,35 +720,23 @@ extern char *data_004364FC;
 extern LANMissionRules *data_00437CE8;
 }
 
-/* the running mission's number, 0 none (the LAN lobby's inline, its first-byte test written
- * `== 0` here: that lays the zero arm out before atoi's as the world report's target does) */
+/* the running mission's number, 0 none (the LAN lobby's inline: the && ternary over the pointer in a
+ * local -- round 18, zNetLANLobby.cpp's comment) */
 inline int MissionNumber()
 {
-    return data_004364FC ? (*data_004364FC == 0 ? 0 : atoi(data_004364FC + 2)) : 0;
+    const char *p = data_004364FC;
+
+    return p && *p ? atoi(p + 2) : 0;
 }
 
 /* the game's world reported to the server, the time to the next report returned -- 25 seconds,
  * 5 with no mission: its name (the lobby's game-name variable, else "testgame"), rules, players'
  * and spectators' room, the rules' flags and mission, our three figures and its state, the game's
- * clients pinged (SOCOM 1's report, inlined in its READY_TO_CONNECT tick; OVL1 0x2EF590).
- * OPEN, 9 instructions, all at the mission number's joins: the blocks are the target's (the inner
- * zero arm, atoi's, the outer zero falling into the store through &rep.GameLevel), but the target
- * threads the inner zero arm's branch straight to the store and fills atoi's `b` from it (`b +4;
- * addiu v1,sp,452`), where MW here keeps the inner ternary's join (`b` to atoi's `b; nop`) and pads
- * the outer zero with a nop (the target's nop follows `li s3,5000` instead). Tried (hv.py specs
- * sp_wr*.py, 25 spellings): the ternary either way round, `== 0`/`!`, if/else chains and early
- * returns in the inline, the expression written in the caller, an out-parameter (pointer,
- * reference, returned reference), the delay's test as ==/ternary/if-else, a pointer or reference
- * to the field -- 9 at best (SOCOM 1's inlined report has the target's shape exactly, 0x32CFB0).
- * Round 15: the miss is jump threading -- the inner zero arm must branch to the final join, so the
- * inner and outer arms assign ONE variable (no inner-ternary temporary left at an inner join): an
- * if/else chain into one local does thread (12: the `b`s go straight to the join) but schedules
- * `p + 2` into atoi's delay slot where the nested ternary leaves it for the bnez's; `p + 2` taken
- * into a local first, the per-arm stores, `&&`/`||` forms and ten more inline spellings are no
- * nearer. GetGameInfo 0x303780 inlines the same expression and its target threads the same way
- * (written `== 0` there it misses exactly as here); CreateGame 0x303F40's target merges the two
- * zero arms instead. The report's GenericField1 is LobbyWorldID (0x66A538: the source said
- * 0x66A5C8 until round 15, a wrong reference the instruction count did not show) */
+ * clients pinged (SOCOM 1's report, inlined in its READY_TO_CONNECT tick; OVL1 0x2EF590). Byte-exact
+ * since round 18: the mission number is ONE zero block reached from both tests (the && ternary over
+ * the pointer in a local, MissionNumber above), which the nested ternaries and if-chains of rounds
+ * 13-17 (34 spellings) never gave. The report's GenericField1 is LobbyWorldID (0x66A538: the source
+ * said 0x66A5C8 until round 15, a wrong reference the instruction count did not show) */
 extern "C" int func_002EF590(CValve *locked)
 {
     MediusWorldReport rep;
@@ -804,11 +792,11 @@ extern "C" void func_002EF7F0()
     int now = theNetwork.zNetGetLocalTime();
 
     if (func_002C31A0())
-        data_0066A750.m_side = 0;
+        data_0066A750.m_side = STATS_SEALS;
     else if (func_002C3080())
-        data_0066A750.m_side = 1;
+        data_0066A750.m_side = STATS_TERRORISTS;
     else
-        data_0066A750.m_side = 2;
+        data_0066A750.m_side = STATS_SPECTATOR;
     func_002FAB80(data_0066A648);
     MediusPlayerReport rep;
 
@@ -1603,6 +1591,270 @@ bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list)
         }
     }
     return true;
+}
+}
+
+extern "C" {
+void func_002F3EE0(GamePlayerStats *stats);   /* the stats put in order (the unit's: an 8-byte row) */
+
+/* a player's info come in, made the menu's three pages: the name (with the clan's tag), the
+ * whereabouts and the ladder figures; the online state from the list the request's message id names
+ * (the ladder, the clan, the friends, else the room's players); a failure says so (SOCOM II's; OVL1
+ * 0x2F0020: MediusGetPlayerInfo's callback, func_002EFE50 asks for it). Round 18, byte-exact: the
+ * clan's and the friend's whereabouts read through a reference local (the target keeps the member's
+ * address, c + 0x140, in a register for the copy's two arrays: written straight the offsets fold, as
+ * the room player's and the ladder's do); the room player looked up if-assign (the zero in the null
+ * test's delay slot: a ternary branches over it) */
+void func_002F0020(int, int, int, MediusPlayerInfoResponse *resp)
+{
+    PNT3D color;
+    PlayerWhereabouts where;
+    char text[128];
+    GamePlayerStats stats;
+    char name[256];
+
+    color.x = 91.0f;
+    color.y = 72.0f;
+    color.z = 36.0f;
+    CUIVariable *info = theUIVarManager.Add("PLAYER_INFO_VAR1", 0, UIVL_TEMPORARY);
+    CUIVariable *figures = theUIVarManager.Add("PLAYER_INFO_VAR2", 0, UIVL_TEMPORARY);
+    CUIVariable *desc = theUIVarManager.Add("PLAYER_INFO_DESCRIPTION", 0, UIVL_TEMPORARY);
+
+    if (resp->StatusCode == 0) {
+        memset(&where, 0, sizeof(where));
+        func_002F9AC0(&stats, resp->Stats);
+        if (!strcmp(resp->MessageID, "LADDER")) {
+            LadderItem *l = LadderLeaders.Find(resp->AccountName);
+
+            if (l) {
+                where = *(PlayerWhereabouts *)&l->m_info;
+                stats.m_8 = l->m_position;
+            }
+        } else if (!strcmp(resp->MessageID, "CLAN")) {
+            ClanMemberItem *c = ClanMemberVec.Find(resp->AccountName);
+
+            if (c) {
+                const MediusPlayerOnlineState &s = c->OnlineState;
+
+                where = *(PlayerWhereabouts *)&s;
+                stats.m_8 = c->LadderPosition;
+            }
+        } else if (!strcmp(resp->MessageID, "FRIEND")) {
+            FriendItem *f = FriendVec.Find(resp->AccountName);
+
+            if (f) {
+                const MediusPlayerOnlineState &s = f->OnlineState;
+
+                where = *(PlayerWhereabouts *)&s;
+            }
+        } else {
+            BriefingRoom *room = data_0044F568.FindRoom(ZString(theLobby.uiv_LobbyWorldNameVar));
+            MediusLobbyWorldPlayerListResponse *p = 0;
+
+            if (room)
+                p = room->FindPlayer(resp->AccountName);
+
+            if (p)
+                where = *(PlayerWhereabouts *)&p->OnlineState;
+        }
+        func_002F3EE0(&stats);
+        if (stats.m_clan[0])
+            sprintf(name, "#C\x80@ [%s] #CSH$%s", stats.m_clan, resp->AccountName);
+        else
+            sprintf(name, "%s", resp->AccountName);
+        *theUIVarManager.Add("PLAYER_INFO_NAME_VAR", 0, UIVL_TEMPORARY) = name;
+        *theUIVarManager.Add("PLAYER_INFO_CHAT_NAME_VAR", 0, UIVL_TEMPORARY) = resp->AccountName;
+
+        CRdrEditor page;
+        CRdrEditor numbers;
+        CRdrEditor about;
+
+        page.push(0);
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.addintnode(theLobby.GetRankLevel(stats.m_8));
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        sprintf(text, "%s %s", stats.m_40, stats.m_2_7 ? "(Leader)" : "");
+        page.addstringnode(text);
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_8);
+        page.addstringnode("LADDER POSITION:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_rating);
+        page.addstringnode("SCORE:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_games);
+        page.addstringnode("TOTAL # OF GAMES:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_14);
+        page.addstringnode("ROUNDS WON:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        sprintf(text, "%d", stats.m_18);
+        page.addstringnode("ROUNDS LOST:");
+        page.addstringnode(text);
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        page.addstringnode(" ");
+        page.addstringnode(" ");
+        page.pop();
+        page.push(0);
+        sprintf(text, "%s", stats.m_town);
+        page.addstringnode("HOMETOWN:");
+        page.addstringnode(text);
+        page.pop();
+        if (where.ConnectStatus) {
+            page.push(0);
+            sprintf(text, "%d min.", stats.m_c);
+            page.addstringnode("ONLINE:");
+            page.addstringnode(text);
+            page.pop();
+            page.push(0);
+            if (!strncmp(where.LobbyName, "Medius", 6))
+                sprintf(text, "MAIN MENU");
+            else
+                sprintf(text, "%s", where.LobbyName);
+            page.addstringnode("BRIEFING ROOM:");
+            page.addstringnode(text);
+            page.pop();
+            page.push(0);
+            page.addstringnode("GAME:");
+            switch (where.ConnectStatus) {
+            case 0:
+                page.addstringnode("Disconnecting");
+                break;
+            case 1:
+                page.addstringnode("Logging In");
+                break;
+            case 2:
+                page.push(0);
+                page.addSTRING("VALUE", "In Lobby");
+                page.addPNT3D("COLOR", color);
+                page.pop();
+                break;
+            case 3:
+                page.addstringnode(where.GameName);
+                break;
+            default:
+                page.addstringnode(" ");
+                break;
+            }
+            page.pop();
+        } else {
+            page.push(0);
+            page.addstringnode("NOT CURRENTLY LOGGED IN\n");
+            page.addstringnode(" ");
+            page.pop();
+        }
+        page.pop();
+        info->Set(&page);
+        about.push(0);
+        about.push(0);
+        sprintf(text, "%s", stats.m_desc);
+        about.addstringnode("DESCRIPTION:\n");
+        about.addstringnode(text);
+        about.pop();
+        about.pop();
+        desc->Set(&about);
+        numbers.push(0);
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_kills);
+        numbers.addstringnode("KILLS:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_deaths);
+        numbers.addstringnode("DEATHS:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_2c);
+        numbers.addstringnode("SUICIDES:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_2e);
+        numbers.addstringnode("BOMBS PLANTED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_30);
+        numbers.addstringnode("BOMBS DEFUSED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_24);
+        numbers.addstringnode("HOSTAGES RESCUED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_26);
+        numbers.addstringnode("VIPs RESCUED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_28);
+        numbers.addstringnode("VIPs KILLED:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_20_22);
+        numbers.addstringnode("BONUS OBJECTIVES:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d %%", stats.m_1);
+        numbers.addstringnode("HIT PERCENTAGE:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d", stats.m_32);
+        numbers.addstringnode("HEAD SHOTS:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.push(0);
+        numbers.addstringnode(" ");
+        numbers.addstringnode(" ");
+        numbers.pop();
+        numbers.push(0);
+        sprintf(text, "%d : %.2d", stats.m_time / 3600, stats.m_time % 3600 / 60);
+        numbers.addstringnode("TOTAL PLAYING TIME:");
+        numbers.addstringnode(text);
+        numbers.pop();
+        numbers.pop();
+        figures->Set(&numbers);
+        return;
+    }
+    *info = "Could not retrieve player information.";
+    *figures = " ";
+    *desc = " ";
 }
 }
 

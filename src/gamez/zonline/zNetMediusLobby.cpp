@@ -412,7 +412,7 @@ inline GamePlayerStats *NewAccountStats()
     memset(&data_0044FB60, 0, sizeof(data_0044FB60));
     data_0044FB60.m_format = 'E';
     data_0044FB60.m_rating = 1000;
-    data_0044FB60.m_side = 0;
+    data_0044FB60.m_side = STATS_SEALS;
     data_0044FB60.m_late = 0;
     CValve *gender = CValve::Create("PLAYERGENDER", VALVE_TYPE_3);
 
@@ -465,6 +465,257 @@ bool CZOnlineLobby::Register(const char *name, const char *password)
     COPY_FIELD(data_0066A648, NewAccountStats(), sizeof(data_0066A648));
     ChangeState(ACCOUNT_REGISTRATION);
     return true;
+}
+
+/* --- the stats' older records (SOCOM II's: the parser below brings each up a version; the
+ * layouts read off its copies, the names ours) ------------------------------------------------ */
+
+/* 'N' or 'Q': the account's text form -- the rating's ten digits, the side ('S' the first), a 'j'
+ * (the late flag) and the description */
+struct GamePlayerStatsN {
+    char m_format;   // 0x0
+    char m_rating[10];   // 0x1
+    char m_side;   // 0xb
+    char m_j;   // 0xc
+    char m_desc[39];   // 0xd
+};
+
+/* a record copied from where the source is (the destination a local, its test is not folded:
+ * CopyField's; the rules' and the stats' parsers) */
+inline void CopyIn(void *dst, const void *src, unsigned int n)
+{
+    if (src)
+        memcpy(dst, src, n);
+}
+
+/* 'A': the first binary record (0x94) */
+struct GamePlayerStatsA {
+    char m_format;   // 0x0: 'A'
+    int m_rating;   // 0x4
+    char m_desc[39];   // 0x8
+    int m_30[14];   // 0x30
+    char m_68;   // 0x68
+    char m_town[39];   // 0x69
+    signed char m_90 : 4;   // 0x90
+    STATS_SIDE m_side : 2;
+    unsigned char m_late : 1;
+    unsigned char m_90_7 : 1;
+    char m_91;   // 0x91
+    char m_92;   // 0x92
+    char m_93;   // 0x93
+};   // 0x94
+
+/* 'B' (0xd0): the town longer, a word and 32 bytes more */
+struct GamePlayerStatsB {
+    char m_format;   // 0x0: 'B'
+    int m_rating;   // 0x4
+    char m_desc[39];   // 0x8
+    int m_30[14];   // 0x30
+    char m_68;   // 0x68
+    char m_town[63];   // 0x69
+    signed char m_a8 : 4;   // 0xa8
+    STATS_SIDE m_side : 2;
+    unsigned char m_late : 1;
+    unsigned char m_a8_7 : 1;
+    char m_a9;   // 0xa9
+    char m_aa;   // 0xaa
+    char m_ab;   // 0xab
+    int m_ac;   // 0xac
+    char m_b0[32];   // 0xb0
+};   // 0xd0
+
+/* 'C' (0xe8): 'B' with the clan's tag and two words after it */
+struct GamePlayerStatsC {
+    GamePlayerStatsB m_b;   // 0x0: 'C'
+    char m_clan[16];   // 0xd0
+    int m_e0;   // 0xe0
+    int m_e4;   // 0xe4
+};   // 0xe8
+
+/* 'D' (0x100): the figures each a word, the description longer */
+struct GamePlayerStatsD {
+    char m_format;   // 0x0: 'D'
+    int m_rating;   // 0x4
+    char m_desc[66];   // 0x8
+    int m_8;   // 0x4c
+    int m_kills;   // 0x50
+    int m_deaths;   // 0x54
+    int m_2c;   // 0x58
+    int m_2e;   // 0x5c
+    int m_30;   // 0x60
+    int m_24;   // 0x64
+    int m_26;   // 0x68
+    int m_28;   // 0x6c
+    int m_20_22;   // 0x70
+    int m_1;   // 0x74
+    int m_time;   // 0x78
+    int m_games;   // 0x7c
+    int m_c;   // 0x80
+    char m_town[63];   // 0x84
+    unsigned char m_2 : 5;   // 0xc3
+    STATS_SIDE m_side : 2;
+    unsigned char m_late : 1;
+    unsigned char m_2_7 : 1;   // 0xc4
+    PLAYER_GENDER m_gender : 2;
+    int m_32;   // 0xc8
+    char m_40[32];   // 0xcc
+    char m_clan[12];   // 0xec
+    int m_14;   // 0xf8
+    int m_18;   // 0xfc
+};   // 0x100
+
+extern "C" {
+/* a player's stats read out of their text: the record brought up a version at a time to the 'E' one
+ * and copied out -- 'N'/'Q' the account's text form (the rating's ten digits, the side's 'S', a
+ * 'j'), 'A' to 'D' the older records; anything else a new account's (SOCOM II's; OVL1 0x2F9AC0: the
+ * ladder's, the game players', the player info's and our own stats' readers call it). Round 18, written
+ * byte-exact off the target: 'E' an if ahead of the switch (tested first, `bne`), the switch's labels
+ * Q N A B C D (its compare chain runs D C B A N Q); each case's record a cast of `text` of its own (s1,
+ * the parameter dying at the cast); the side a BYTE ENUM bit-field (lb then dsrl when copied: a signed
+ * char field extracts with dsra), the text form's side its enumerators' ternary (branches, as the
+ * target's: an int ternary or if/else is if-converted to sltu); the 'A'/'B' words fourteen statements
+ * (a loop is unrolled seven at a time); 'C' to 'D' built without a memset */
+GamePlayerStats *func_002F9AC0(GamePlayerStats *stats, const char *text)
+{
+    if (*text == 'E') {
+        CopyField(stats, text, sizeof(GamePlayerStats));
+    } else {
+        switch (*text) {
+        case 'Q':
+        case 'N': {
+            const GamePlayerStatsN *n = (const GamePlayerStatsN *)text;
+            char rating[11];
+            GamePlayerStatsA a;
+
+            memset(&a, 0, sizeof(a));
+            a.m_format = 'A';
+            CopyIn(rating, n->m_rating, 10);
+            rating[10] = 0;
+            a.m_rating = atoi(rating);
+            a.m_side = n->m_side == 'S' ? STATS_SEALS : STATS_TERRORISTS;
+            a.m_late = n->m_j == 'j';
+            strncpy(a.m_desc, n->m_desc, 38);
+            return func_002F9AC0(stats, (const char *)&a);
+        }
+        case 'A': {
+            const GamePlayerStatsA *a = (const GamePlayerStatsA *)text;
+            GamePlayerStatsB b;
+
+            memset(&b, 0, sizeof(b));
+            b.m_format = 'B';
+            b.m_rating = a->m_rating;
+            strncpy(b.m_desc, a->m_desc, 38);
+            b.m_30[0] = a->m_30[0];
+            b.m_30[1] = a->m_30[1];
+            b.m_30[2] = a->m_30[2];
+            b.m_30[3] = a->m_30[3];
+            b.m_30[4] = a->m_30[4];
+            b.m_30[5] = a->m_30[5];
+            b.m_30[6] = a->m_30[6];
+            b.m_30[7] = a->m_30[7];
+            b.m_30[8] = a->m_30[8];
+            b.m_30[9] = a->m_30[9];
+            b.m_30[10] = a->m_30[10];
+            b.m_30[11] = a->m_30[11];
+            b.m_30[12] = a->m_30[12];
+            b.m_30[13] = a->m_30[13];
+            b.m_68 = a->m_68;
+            strncpy(b.m_town, a->m_town, 62);
+            b.m_a8 = a->m_90;
+            b.m_side = a->m_side;
+            b.m_late = a->m_late;
+            b.m_a8_7 = 0;
+            b.m_a9 = a->m_91;
+            b.m_aa = a->m_92;
+            b.m_ab = a->m_93;
+            b.m_ac = 0;
+            return func_002F9AC0(stats, (const char *)&b);
+        }
+        case 'B': {
+            GamePlayerStatsC c;
+
+            CopyIn(&c, text, sizeof(GamePlayerStatsB));
+            c.m_b.m_format = 'C';
+            c.m_clan[0] = 0;
+            c.m_e0 = 0;
+            c.m_e4 = 0;
+            return func_002F9AC0(stats, (const char *)&c);
+        }
+        case 'C': {
+            const GamePlayerStatsC *c = (const GamePlayerStatsC *)text;
+            GamePlayerStatsD d;
+
+            d.m_format = 'D';
+            d.m_rating = c->m_b.m_rating;
+            d.m_8 = c->m_b.m_30[0];
+            d.m_kills = c->m_b.m_30[1];
+            d.m_deaths = c->m_b.m_30[2];
+            d.m_2c = c->m_b.m_30[3];
+            d.m_2e = c->m_b.m_30[4];
+            d.m_30 = c->m_b.m_30[5];
+            d.m_24 = c->m_b.m_30[6];
+            d.m_26 = c->m_b.m_30[7];
+            d.m_28 = c->m_b.m_30[8];
+            d.m_20_22 = c->m_b.m_30[9];
+            d.m_1 = c->m_b.m_30[10];
+            d.m_time = c->m_b.m_30[11];
+            d.m_games = c->m_b.m_30[12];
+            d.m_c = c->m_b.m_30[13];
+            d.m_2 = c->m_b.m_a8;
+            d.m_side = c->m_b.m_side;
+            d.m_late = c->m_b.m_late;
+            d.m_2_7 = c->m_b.m_a8_7;
+            d.m_gender = (PLAYER_GENDER)c->m_b.m_68;
+            d.m_32 = c->m_b.m_ac;
+            d.m_14 = c->m_e0;
+            d.m_18 = c->m_e4;
+            strncpy(d.m_town, c->m_b.m_town, 62);
+            strncpy(d.m_40, c->m_b.m_b0, 31);
+            strncpy(d.m_clan, c->m_clan, 11);
+            strncpy(d.m_desc, c->m_b.m_desc, 65);
+            return func_002F9AC0(stats, (const char *)&d);
+        }
+        case 'D': {
+            const GamePlayerStatsD *d = (const GamePlayerStatsD *)text;
+            GamePlayerStats e;
+
+            memset(&e, 0, sizeof(e));
+            e.m_format = 'E';
+            e.m_rating = d->m_rating;
+            e.m_8 = d->m_8;
+            e.m_kills = d->m_kills;
+            e.m_deaths = d->m_deaths;
+            e.m_2c = d->m_2c;
+            e.m_2e = d->m_2e;
+            e.m_30 = d->m_30;
+            e.m_24 = d->m_24;
+            e.m_26 = d->m_26;
+            e.m_28 = d->m_28;
+            e.m_20_22 = d->m_20_22;
+            e.m_1 = d->m_1;
+            e.m_time = d->m_time;
+            e.m_games = d->m_games;
+            e.m_c = d->m_c;
+            e.m_2 = d->m_2;
+            e.m_side = d->m_side;
+            e.m_late = d->m_late;
+            e.m_2_7 = d->m_2_7;
+            e.m_gender = d->m_gender;
+            e.m_32 = d->m_32;
+            e.m_14 = d->m_14;
+            e.m_18 = d->m_18;
+            strncpy(e.m_town, d->m_town, 62);
+            strncpy(e.m_40, d->m_40, 31);
+            strncpy(e.m_clan, d->m_clan, 11);
+            strncpy(e.m_desc, d->m_desc, 65);
+            return func_002F9AC0(stats, (const char *)&e);
+        }
+        default:
+            COPY_FIELD(stats, NewAccountStats(), sizeof(GamePlayerStats));
+        }
+    }
+    return stats;
+}
 }
 
 extern "C" {
@@ -929,14 +1180,6 @@ struct GameRulesA {
     unsigned char m_missions[32];   // 0x5
 };   // 0x25
 
-/* a record copied from where the source is (the destination a local, its test is not folded:
- * CopyField's) */
-inline void CopyIn(void *dst, const void *src, unsigned int n)
-{
-    if (src)
-        memcpy(dst, src, n);
-}
-
 extern "C" {
 extern int data_00441458;   /* (the persona state's: the side) */
 
@@ -1141,17 +1384,6 @@ bool func_002C31A0();   /* we play on the game's first side (the states lane's) 
 bool func_002C3080();   /* or on its second (the states lane's) */
 bool func_002C2FA0();   /* or watch it (the states lane's) */
 
-/* the stats' side as this callback reads it: UNSIGNED (lbu, dsll32 25, dsrl32 30), where every store
- * to GamePlayerStats::m_side -- Login, Register, Open, 0x2EF7F0 -- loads the byte signed (lb), so no one
- * declaration of the field serves both (made unsigned it costs those four; `m_side & 3` extracts
- * signed and masks, an andi more). The original read a second declaration of the record's head; this
- * view reproduces it (the name ours) */
-struct GamePlayerSide {
-    unsigned char m_0, m_1;
-    unsigned char m_2 : 5;
-    unsigned char m_side : 2;   // byte 2, bits 5-6: 0 the SEALs, 1 the terrorists, 2 a spectator
-};
-
 /* the game's players as they come in, each put in the list of its side -- the SEALs', the
  * terrorists', the spectators' -- with its rank and, in its own colour, its clan's tag (we by our
  * own name, in the list of the side we are on, once we have one); the late joiners counted, and at
@@ -1205,7 +1437,7 @@ void func_002F7020(int, int, int, MediusGetGamePlayersResponse *resp)
                 }
             }
         } else {
-            int side = ((GamePlayerSide *)&stats)->m_side;
+            int side = stats.m_side;   /* (the enum compared: lbu, unsigned) */
 
             if (side == 0) {
                 data_0044FA70->push(0);

@@ -685,7 +685,15 @@ void FriendInvitationVector::Add(FriendInvitationItem *item)
  * value just stored to the guard (entry) and to the step, yet reloads it for the dereference and the
  * bottom test; the arms swapped (`if (id != ...) ++i; else i = erase(i);`) give the target's size, 33
  * off; `i = c ? erase(i) : i + 1`, `i = i + 1`, `i += 1`, a `continue`, a stepped raw pointer: 0xC4 or
- * longer (build/scratch/onl/rm.sh) */
+ * longer (build/scratch/onl/rm.sh). Round 18 (a stand-alone probe of the walk, build/scratch/onl/rm_t.cpp
+ * with pv.py: every variant 0xC4 unless noted): MW's pcode here reloads the slot for the guard right
+ * after begin's store (no forwarding at all), so the target's guard reads the begin VALUE and its step a
+ * register mirroring the slot -- a variable the source has, not a forwarded load. Tried: the iterator
+ * with a user copy constructor or assignment (0xA4, the slot gone), == / != non-const, free, by value,
+ * operator* non-const, ++ by value or void, the erase wrapper by const reference, through a pointer
+ * reference or a named return, `i.m_p` read or stepped directly, an explicit guard around a do-while
+ * (assigned or initialised), the arms swapped (33 off), and the walk under 3.0b50/b38/b22 and 3.0.1
+ * (0xC4, 0xB0, 0xB4). cbRoomPlayerList 0x2F13F0 has the same walk (its step `addiu v0,v0,208`) */
 void FriendInvitationVector::Remove(int id)
 {
     iterator i;

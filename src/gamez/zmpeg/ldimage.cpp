@@ -15,7 +15,11 @@
  * OPEN, 2 instructions, a register: the target swaps the height through v1 on its way to t0 where
  * MW takes v0 here, void or returning the call's int alike; round 17: a local copy of each argument
  * (height, dbp, width, image, tags, a named 1024, width and height in either order) changes nothing --
- * the node holding v0 in the target is not a local the source can name. */
+ * the node holding v0 in the target is not a local the source can name. Round 18: MW's own colouring
+ * (the igdump tools) has the height's copy with neighbours zero, a0-a3, t0, t1 only, so it takes the
+ * lowest free, v0: the target's v1 needs a node coloured v0 live across the shuffle that leaves no
+ * instruction. Const locals of each argument (the engine core's round 7 rule), a dead first
+ * definition, `-O4,s`, `-O3,p`, `-opt nopeephole`/`noschedule`: all 2 (SOCOM 1's 2.4 build has v1 too) */
 void setLoadImageTags(unsigned int *tags, void *image, int width, int height, unsigned int dbp)
 {
     setLoadImageTagsYX(tags, image, 1024, width, height, dbp);

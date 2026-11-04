@@ -13,11 +13,11 @@ M2C_UNK __destroy_new_array(s32, M2C_UNK *);        /* extern */
 M2C_UNK __dl__FPv(char *);                          /* extern */
 M2C_UNK __dt__3C2DFv(char *, M2C_UNK);              /* extern */
 M2C_UNK __dt__9C2DStringFv(char *, M2C_UNK);        /* extern */
+extern M2C_UNK __dt__10CPauseItemFv;
 extern M2C_UNK __dt__7C2DPolyFv;
 extern M2C_UNK __vt__11CZPauseTest;
 extern M2C_UNK __vt__13C2DBitmapPoly;
 extern M2C_UNK __vt__9C2DBitmap;
-extern M2C_UNK func_002057A0;
 
 char *__dt__11CZPauseTestFv(char *arg0, s64 arg1) {
     char *temp_a0;
@@ -34,7 +34,7 @@ char *__dt__11CZPauseTestFv(char *arg0, s64 arg1) {
     if (arg0 != NULL) {
         SC_MEMBER(arg0, M2C_UNK **, 0xC) = &__vt__11CZPauseTest;
         Clear__11CZPauseTestFv();
-        __destroy_new_array(SC_MEMBER(arg0, s32 *, 0x18), &func_002057A0);
+        __destroy_new_array(SC_MEMBER(arg0, s32 *, 0x18), &__dt__10CPauseItemFv);
         temp_a0 = arg0 + 0x1340;
         SC_MEMBER(arg0, s32 *, 0x18) = 0;
         if (temp_a0 != NULL) {
