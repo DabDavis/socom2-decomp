@@ -2033,6 +2033,36 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the game states, round 32** (the danger level, the spawners' insert, SendPickupAckMessage's int, znet.h):
+  - an iterator INITIALISED from `GetEntityList().begin()` gives one copy and lives in a register, ASSIGNED it gives two
+    copies and lives in memory (LoadVehicles 0x2B2E50 against 0x2B7A90); a push_back made inside an inline helper puts its
+    iterator temporaries below the caller's frame objects -- that fixed all of LoadVehicles' stack slots (it stays 41 off
+    in the colouring: the entry iterator wanted after c, r, rows and cols, which no declaration order reaches -- best of
+    9,000 orders searched offline with build/scratch/states-r32/ig/search.py: 4 off);
+  - a same-team test written as a positive inline used as a plain truth test, the other entity the inline's parameter,
+    keeps that member's address hoisted (spelled `!IsEnemy(...)` it keeps a sltu/xori pair); a local assigned from an
+    inline accessor's result is absorbed into the inline's temporary, numbered after later named locals; a byte read
+    through `*_max<Uc>()` into an int local is compared directly, an unsigned char local gets an `andi 0xff` (the danger
+    around the player 0x2A4A10, its tail emitting _max<Uc> 0x2AFC40);
+  - a box passed by value to an inline keeps GetBBox, written as that call's argument, out of line, a local copy inlines it
+    one level; the grid's base point is stored z, x, y field by field as in SOCOM 1 (the three-float constructor evaluates
+    x first, 8 bytes longer); SendPickupAckMessage 0x2BA1F0 takes an int first (renamed __Fiii8AckUnion, seal_env.cpp
+    respelled at integration); fts_remote.cpp and fts_net_seal.cpp include znet.h now (the online lobby's transform).
+- **Tells from the HUD, round 36** (hud_lensflare.cpp's loaders and entries, CUIMapCtrl::Tick, a unit boundary):
+  - a `const _zrdr *` lets MW read the type byte once for every inline test, a plain pointer reloads it after an
+    intervening null test (CLensFlareManager::LoadLightSource 0x1FF630 and LoadRdr 0x1FF4F0); the loader's first name is
+    not tested before the body runs -- the target is a do/while, a `for` adds that test;
+  - `delete p` on a class with no virtuals, a C2DBitmap member and an inline written destructor gives the target's single
+    merged null test, the implicit destructor keeps two; a constructor that stores no vtable and destroys a C2DBitmap
+    without a virtual call means the bitmap is a member, not a base (CFlareElement, a new 0xA0-byte class: Place 0x200C10;
+    CLensFlareEntry's Init, constructor and destructor);
+  - an int counter over `Item(i)` recomputes `i*8` each pass, an unsigned one is strength-reduced into an extra saved
+    register; six inline bool setters each passed `false` share one unfolded `andi rN,zero,1`, shifted once per bit; the
+    wildcard pair FirstFlareName 0x201050 / NextFlareName 0x200F30 expands `*` in a node name into digits (names ours);
+  - hud_lensflare.cpp ends at 0x2011EF -- 0x2011F0 is hud_pausemenu.cpp's (it ticks the pause menu's bitmaps and its
+    static 0x409080; the bss changes over at 0x409020); CUIMapCtrl::Tick 0x36C750 keeps dT in s_mapCtrlDT 0x49EBE8, the
+    static HandlePad zooms by; open: CFlareElement::Load 0x200D60 (3: one stack slot), CUIListBox::AddItem 0x373F20 (6:
+    push_back's temporaries a slot higher), tcmVote (5).
 - **Tells from completing the MSL headers, round 19** (the deque's teardown level, the class insert's two populations;
   probes build/scratch/msl-r19-p19/, untracked):
   - THE IMAGE'S CLASS INSERTS ARE TWO POPULATIONS, by whether the element's construct() is cut to one level (placement new
