@@ -436,8 +436,8 @@ int codecvt<char, char, int>::do_max_length() const
     return 1;
 }
 
-/* min<int> is called here before its definition (below) and generated after this, its first user
- * (0x18A530); do_length<wchar_t> inlines it */
+/* min<int> is called here before its definition (below) and generated right after this, its first
+ * user (0x18A530); do_length<wchar_t> inlines it */
 int codecvt<char, char, int>::do_length(int &, const char *from, const char *from_end, size_t max) const
 {
     return min(int(from_end - from), int(max));
@@ -448,6 +448,10 @@ inline const T &min(const T &a, const T &b)
 {
     return b < a ? b : a;
 }
+
+/* generated here, so later callers inline it (round 6: MW auto-inlines a function once it has been
+ * generated, a caller generated before keeping its call -- build/scratch/rt/pm2.cpp) */
+template const int &min<int>(const int &, const int &);
 
 template class fpos<int>;        /* generated first: seekoff/seekpos inline its constructor */
 template class basic_streambuf<char, char_traits<char> >;
@@ -727,11 +731,8 @@ bool codecvt<wchar_t, char, int>::do_always_noconv() const
     return false;
 }
 
-/* OPEN, 0x38 vs 0x3C: the target inlines min<int> here (generated after do_length<char>, its first
- * user, which calls it); this unit calls it. With min defined ahead of both, both inline it (and
- * do_length<char>, 0x34, misses instead); defined between them, neither does -- under -inline
- * auto, auto,level=5 and auto,bottomup,level=5 alike. Neither order of generation reproduces
- * "call it first, inline it after". */
+/* inlines min<int>, generated (explicitly instantiated) after do_length<char> called it -- round 6;
+ * rounds 2-5 had min defined ahead of both (both inline it) or between them (neither does) */
 int codecvt<wchar_t, char, int>::do_length(int &, const char *from, const char *from_end, size_t max) const
 {
     return min(int((from_end - from) / sizeof(wchar_t)), int(max)) * sizeof(wchar_t);
