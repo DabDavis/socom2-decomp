@@ -59,7 +59,7 @@ void func_00252AB0(void *h, short v);
 /* the radio's channel slots (only what is read here) */
 struct VoiceSlot {
     int m_client;   // 0x0: 256, none
-    int m_4;
+    int m_4;   // 0x4: the time it is held until
 };
 struct VoiceRadio {
     unsigned char m_state;   // 0x0: 3, talking
@@ -67,7 +67,10 @@ struct VoiceRadio {
     int m_slot;   // 0x24
     int m_channel;   // 0x28
     int m_team;   // 0x2c
-    unsigned char _30[0x4a - 0x30];
+    unsigned char _30[0x34 - 0x30];
+    int m_talktime;   // 0x34: how long a slot is held from the time it is given (VoiceChat's
+                      //   m_port2: the set-up's argument + 5000)
+    unsigned char _38[0x4a - 0x38];
     unsigned char m_quiet;   // 0x4a
     unsigned char _4b[0x60 - 0x4b];
     int m_radio_msg;   // 0x60: the "Radio" message
@@ -171,6 +174,7 @@ struct VoicePlayer {
 extern "C" {
 int lgAudStartPlayback(int handle);   /* (lgAud: the playback started) */
 int lgAudWrite(int handle, int mode, const void *buf, int *len);   /* (lgAud: written) */
+int lgAudRead(int handle, int mode, void *buf, int *len);   /* (lgAud: read) */
 }
 
 /* the playback started once (the name ours) */
@@ -216,6 +220,11 @@ struct VoiceDevice {
     int m_bits[2];   // 0x10c4
     int m_rate[2];   // 0x10cc
     int m_ms[2];   // 0x10d4
+
+    /* opened (a const view: the read's test and its call load the handle each, no address shared) */
+    bool IsOpen() const { return m_handle != -1; }
+    int Read(void *buf, int len);
+    void SetRecordingVolume(int vol);
 };
 
 extern "C" {
@@ -464,7 +473,8 @@ void func_0030E490(VoiceRadio *r)
 }
 
 /* a frame of samples encoded: the packed bytes handed out and their count returned, a carried
- * byte moved to the front (OVL1 0x310750) */
+ * byte moved to the front (OVL1 0x310750; pinned: its one caller, 0x30F990, calls it) */
+#pragma auto_inline off
 int func_00310750(VoiceEncoder *e, const void *samples, void *out)
 {
     memcpy(e->m_frame.m_in, samples, 320);
@@ -477,6 +487,7 @@ int func_00310750(VoiceEncoder *e, const void *samples, void *out)
     e->m_frame.m_length = 0;
     return n;
 }
+#pragma auto_inline reset
 
 /* the channel status packet: the twelve slots' clients, the bytes read returned (OVL1 0x30EB70:
  * registered as "Channel Status" with the radio's messages) */
@@ -487,8 +498,58 @@ int func_0030EB70(int, int, int, short *data)
     return 24;
 }
 
-/* the canceller's level read (OVL1 0x3103D0) */
-short func_003103D0(VoiceEcho *e)
+/* the channel status sent to everyone: the twelve slots' clients as halfwords (inlined in the
+ * "Radio" handler's two master cases; the name ours) */
+inline void SendChannelStatus(VoiceRadio *r)
+{
+    short data[12];
+
+    for (int i = 0; i < 12; i++)
+        data[i] = r->m_slots[i].m_client;
+    theNetwork.zNetSendApplicationMessage(64, theNetwork.m_GameConnectionIndex, -1, r->m_msg, 24,
+                                          (unsigned char *)data, false);
+}
+
+/* a "Radio" message (three bytes: a client, a slot, the request): the session master gives a free
+ * slot to the client asking for it (1) and takes one back from the client holding it (2), telling
+ * everyone the channel status each time; a client is told a slot is given (3) or free again (4).
+ * A slot given is held for the radio's talk time from now; the bytes read returned (OVL1 0x30E8E0,
+ * registered as "Radio" by 0x310210) */
+int func_0030E8E0(int, int, int client, void *data)
+{
+    VoiceRadio *r;
+    unsigned char *msg = (unsigned char *)data;
+
+    switch (msg[2]) {
+    case 1:
+        if (theNetwork.m_bSessionMaster && data_0045B718->m_slots[msg[1]].m_client == 256) {
+            data_0045B718->m_slots[msg[1]].m_client = client;
+            r = data_0045B718;
+            r->m_slots[msg[1]].m_4 = r->m_talktime + theNetwork.zNetGetTime();
+            SendChannelStatus(data_0045B718);
+        }
+        break;
+    case 3:
+        data_0045B718->m_slots[msg[1]].m_client = msg[0];
+        r = data_0045B718;
+        r->m_slots[msg[1]].m_4 = r->m_talktime + theNetwork.zNetGetTime();
+        break;
+    case 2:
+        if (theNetwork.m_bSessionMaster && data_0045B718->m_slots[msg[1]].m_client == msg[0]) {
+            data_0045B718->m_slots[msg[1]].m_client = 256;
+            SendChannelStatus(data_0045B718);
+        }
+        break;
+    case 4:
+        data_0045B718->m_slots[msg[1]].m_client = 256;
+        break;
+    }
+    return 3;
+}
+
+/* the canceller's level read (OVL1 0x3103D0; pinned: its one caller, 0x30F990, calls it) */
+#pragma auto_inline off
+int func_003103D0(VoiceEcho *e)
 {
     short a;
     short b;
@@ -497,6 +558,7 @@ short func_003103D0(VoiceEcho *e)
     func_00252BA0(e->m_handle, &b);
     return b;
 }
+#pragma auto_inline reset
 
 /* the canceller set up, the gain last (OVL1 0x310480: the voice object's set-up, its one caller,
  * calls it out of line, pinned) */
@@ -685,6 +747,100 @@ extern int data_0045BD80;   /* the decoded samples' bytes waiting */
 extern unsigned char data_0045BD90[];   /* and the samples */
 int func_0030F5F0(VoicePlayer *p, const short *in, int len);
 int func_003106A0(VoiceDecoder *d, const void *packet, short *out);
+
+/* a buffer of our voice to send: the format (the object's m_usecodec), the bytes and their room,
+ * and the bytes handed back (the names ours) */
+struct VoiceRecord {
+    int m_type;   // 0x0: 1, the codec's frames
+    unsigned char *m_buf;   // 0x4
+    int m_len;   // 0x8
+    int m_got;   // 0xc
+};
+
+/* the headset's samples read into a buffer, the bytes read returned (none with no device or when
+ * it is not recording; the name ours) */
+inline int VoiceDevice::Read(void *buf, int len)
+{
+    int n = 0;
+
+    if (!IsOpen())
+        return 0;
+    if (m_48 && len > 0 && buf) {
+        n = len;
+        if (lgAudRead(m_handle, 1, buf, &n))
+            n = 0;
+    }
+    return n;
+}
+
+/* the recording volume set, held within 20-100: a member, `this` taken after the argument (the
+ * name ours) */
+inline void VoiceDevice::SetRecordingVolume(int vol)
+{
+    if (vol < 20)
+        vol = 20;
+    if (vol > 100)
+        vol = 100;
+    lgAudSetRecordingVolume(m_handle, 0, vol);
+    m_recvol = vol;
+}
+
+extern "C" {
+void func_0030EC10(VoiceChat *v);   /* (the radio's own tick) */
+int func_00310750(VoiceEncoder *e, const void *samples, void *out);
+int func_003103D0(VoiceEcho *e);
+extern int data_0045B870;   /* the frames sent, counted */
+extern int data_0045B878;   /* the samples' bytes gathered */
+extern unsigned char data_0045B880[];   /* and the samples: four frames of 320 bytes */
+
+/* our voice read for sending: the radio ticked first; when the radio is talking, the codec's way
+ * gathers four frames of samples (1280 bytes) and encodes them into the buffer, the recording
+ * level turned down or up a step every fifth time the canceller hears it too loud or too soft;
+ * raw samples are read straight into the buffer (OVL1 0x30F990) */
+void func_0030F990(VoiceRecord *rec)
+{
+    if (rec) {
+        rec->m_got = 0;
+        rec->m_type = Voice()->m_usecodec;
+        func_0030EC10(Voice());
+        if (Voice()->m_state == 3) {
+            if (rec->m_type == 1) {
+                if (Voice()->m_codec) {
+                    int n = 0;
+                    unsigned char *out = rec->m_buf;
+
+                    if (data_0045B878 < 1280)
+                        data_0045B878 += ((VoiceDevice *)Voice())->Read(data_0045B880 + data_0045B878,
+                                                                        1280 - data_0045B878);
+                    if (data_0045B878 >= 1280) {
+                        for (int i = 0; i < 4; i++)
+                            n += func_00310750((VoiceEncoder *)Voice()->m_codec, data_0045B880 + i * 320,
+                                               out + n);
+                        data_0045B878 = 0;
+                        if (data_0045B870++ % 5 == 0) {
+                            int level = func_003103D0((VoiceEcho *)Voice()->m_codec);
+
+                            /* the new volume a local of the caller: numbered ahead of the inlined
+                             * setter's `this`, it takes the lower saved register */
+                            if (level < 0) {
+                                int vol = Voice()->m_recvol - 5;
+
+                                ((VoiceDevice *)Voice())->SetRecordingVolume(vol);
+                            } else if (level > 0) {
+                                int vol = Voice()->m_recvol + 5;
+
+                                ((VoiceDevice *)Voice())->SetRecordingVolume(vol);
+                            }
+                        }
+                        rec->m_got = n;
+                    }
+                }
+            } else
+                rec->m_got = ((VoiceDevice *)Voice())->Read(rec->m_buf, rec->m_len);
+        }
+    }
+}
+}
 
 /* a voice packet heard: from a client on our channel and not muted, the codec's frames decoded
  * and played one by one, raw samples played as they are; the talker kept (OVL1 0x30F7E0, the

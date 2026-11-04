@@ -5,6 +5,7 @@
  * before changing them, as SOCOM 1's do; RenderBBox, CheckExtents, the destructor and
  * Source::List::Uninit. */
 
+#include <iostream>
 #include "zparticle.h"
 
 /* SOCOM II's pointer-list begin() builds its first node from a reference to the sentinel's link,
@@ -19,6 +20,10 @@ inline PtrListBase::iterator ListEnd(PtrListBase &l) { return PtrListBase::itera
 inline void ListClear(PtrListBase &l) { l.erase(ListBegin(l), ListEnd(l)); }
 
 namespace Particle {
+
+/* the live sources (SOCOM 1's Source::list: the unit's initialiser 0x402CE0 builds it after
+ * <iostream>'s pair and registers ~List 0x32BFD0) */
+Source::List Source::list;
 
 /* SOCOM 1's: the box grown to hold a particle, the radius's square kept */
 void Source::CheckExtents(CPnt4D p, float r)

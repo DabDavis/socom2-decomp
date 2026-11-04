@@ -5,6 +5,7 @@
  * this order, ReleaseInstance to Init. Defined in reverse of their image order (-inline deferred).
  * Written so far: GetFreeInstance, FlushDynTexList, Close, FreeNodePool, Tick and Open. */
 
+#include <iostream>
 #include "zparticle.h"
 #include "../zsys/zsys.h"
 #include <list>
@@ -36,8 +37,9 @@ void ReleaseVector(std::vector<T *> &v)
 
 namespace Particle {
 
-/* the nodes visuals borrow (SOCOM 1's pool: 160 made at the start, handed out and taken back) */
-std::vector<zdb::CNode *> particle_node_free_list;   // 0x45C440
+/* the nodes visuals borrow (SOCOM 1's pool: 160 made at the start, handed out and taken back; a
+ * CNodeVector, as SOCOM 1's, whose FreeVector runs on the base vector, as node_world.cpp's) */
+zdb::CNodeVector particle_node_free_list;   // 0x45C440
 int particle_node_count;   // 0x45C428
 /* the textures particles draw with (SOCOM 1's) */
 zdb::CDynTexList m_dyntexlist;   // 0x45C460
@@ -74,7 +76,7 @@ void FreeNodePool()
 {
     std::for_each(particle_node_free_list.begin(), particle_node_free_list.end(), zdb::CNode::Delete);
     particle_node_free_list.clear();
-    FreeVector(particle_node_free_list);
+    FreeVector<std::vector<zdb::CNode *> >(particle_node_free_list);
 }
 
 /* SOCOM 1's: a node from the pool (one more made when it is empty, the pool grown ten at a time),

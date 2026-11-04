@@ -1,7 +1,14 @@
 /* zsys_sched.cpp -- the task scheduler: CSched_Manager's list of tasks, each a callback with its
  * user data, ticked by priority (OVL1 0x34E070-0x34EADF). The
  * file name is SOCOM 1's (its asserts name zsys_sched.cpp). Defined in reverse of their image order
- * (-inline deferred). */
+ * (-inline deferred).
+ * OPEN, waiting on zanim.h (the engine core lane's): the unit's initialiser 0x403420 builds
+ * zTaskScheduler through CSched_Manager() 0x34E860, which zanim.h's class does not declare. With
+ * `CSched_Manager();` declared there, these at the top of the unit (the constructor is its
+ * first-defined function, 0x34E860 the last of its own code) make __sinit_zsys_sched.cpp, the
+ * constructor and ~CSched_Manager 0x34EA70 byte-exact (measured, build/scratch/wld/):
+ *     CSched_Manager zTaskScheduler;
+ *     CSched_Manager::CSched_Manager() : m_inTick(false), m_priority(0.0f) { m_FreeList.clear(); } */
 
 #include <string.h>
 #include <algorithm>

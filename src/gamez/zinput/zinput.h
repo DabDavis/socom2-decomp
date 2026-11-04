@@ -26,6 +26,8 @@ public:
     typedef bool (*RebootCallback)(RebootPhase phase, RebootMode mode, void *data);
     int RegisterRebootCallback(RebootCallback cb, void *data);
     void UnRegisterRebootCallback(int id);
+    /* the IOP rebooted for what comes next (util_main.cpp's, 0x34F9B0) */
+    void RebootIOP(RebootMode mode);
 };
 
 extern CIOPManager theIOPManager;

@@ -14,6 +14,11 @@ class CRdrFile;
 void zrdr_free(CRdrFile *file);
 _zrdr *zrdr_read(const char *name, const char *file, int line);
 
+/* the playlists and their weights, by intensity: the unit's initialiser 0x4032E0 builds both arrays
+ * through __construct_array and registers their array destructors (0x349A50, 0x349A30) */
+std::vector<CSndSequence *> CSndJukebox::m_playlists[4];
+std::vector<float> CSndJukebox::m_weights[4];
+
 /* SOCOM 1's: the playlists freed, the music state reset */
 void CSndJukebox::Cleanup()
 {

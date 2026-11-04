@@ -145,14 +145,13 @@ void UpdatePersonaList(const char *host, int port);
 /* a command's type by its name (zanim_menu.cpp's) */
 int GetUICommandType(const char *name);
 
-/* the reader's lookups the parsers use (SOCOM 1's zrdr_findstring; the others not named yet:
- * a tag's bool, its rectangle, a string in an array) */
+/* the reader's lookups the parsers use (zrdr.h's: SOCOM 1's zrdr_findstring; a tag's bool, its
+ * rectangle, a string in an array -- the rectangle's byte result as the parsers store it) */
+struct tag_RECT;
 char *zrdr_findstring(const _zrdr *rdr, const char *tag);
-extern "C" {
-bool func_0032DC00(_zrdr *rdr, const char *tag, bool *out);
-unsigned char func_0032DC40(_zrdr *rdr, const char *tag, int *out);
-bool func_0032DF80(_zrdr *rdr, const char *tag, char **out);
-}
+bool zrdr_findbool(const _zrdr *rdr, const char *tag, bool *out);
+unsigned char zrdr_findRECT(const _zrdr *rdr, const char *tag, tag_RECT *out);
+bool zrdr_findSTRING(const _zrdr *rdr, const char *tag, const char **out);
 
 /* a UI command's handler: whether the command is done */
 typedef bool (*UICommandFunc)(C2DAnimCmdHdr *hdr, float *dT);
@@ -227,35 +226,33 @@ enum UIVAR_LONGEVITY {
     UIVAR_PERMANENT = 2
 };
 
-class CUIVariable;
-extern "C" {
-void func_0032F350(_zrdr *value);           /* (a value's storage let go of) */
-void func_003863D0(CUIVariable *var);       /* (a variable's change told to what it is attached to) */
-}
-
 class CUIVariable : public _zrdr {
 public:
     /* a number set, unless it already holds it (ours: ClearUIVar's and the options' inline) */
     void SetInt(int value)
     {
         if (type != 1 || integer != value) {
-            func_0032F350(this);
+            DeleteChildren();
             type = 1;
             integer = value;
-            func_003863D0(this);
+            UpdateDependents();
         }
     }
     void SetReal(float value)
     {
         if (type != 2 || real != value) {
-            func_0032F350(this);
+            DeleteChildren();
             type = 2;
             real = value;
-            func_003863D0(this);
+            UpdateDependents();
         }
     }
     /* a string set (zui.h's, 0x3862A0: the lobby callbacks' and the patch downloader's setter) */
     CUIVariable &operator=(const char *str);
+    /* (zui.h's, 0x3863D0: the variable's change told to what it is attached to) */
+    void UpdateDependents();
+    /* a value given to it (zui.h's, 0x386460) */
+    void Set(_zrdr *value);
 
     char *m_varname;   // 0x8
     unsigned char m_attached_items[0xc];   // 0xc: SOCOM 1's vector
@@ -267,19 +264,109 @@ class CUIVarManager {
 public:
     /* a variable made, or found by its name (zui.h's, 0x3857C0) */
     CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);
+    /* a variable found by its name (zui.h's, 0x385900) */
+    CUIVariable *Find(const char *name);
 
     unsigned char _0[0x8064];
 };
 extern CUIVarManager theUIVarManager;
 
+/* the lobby's states (SOCOM 1's DWARF; a byte: zonline.h's, which this unit does not include) */
+enum LOBBY_STATE {
+    ROOT_LOBBY_STATE = 0,
+    CONNECT_SUCCESS = 1,
+    CONNECT_ERROR = 2,
+    ACCOUNT_REGISTRATION = 3,
+    USER_REGISTRATION = 4,
+    SCREENNAME_REGISTRATION = 5,
+    REGISTRATION_FAILURE = 6,
+    ACCOUNT_LOGIN = 7,
+    USER_LOGIN = 8,
+    SCREENNAME_LOGIN = 9,
+    LOGIN_FAILURE = 10,
+    LOBBY_ACTIVE = 11,
+    SESSION_BEGIN = 12,
+    CREATE_NEW_GAME = 13,
+    CREATE_FAILURE = 14,
+    JOIN_GAME = 15,
+    LOBBY_SERVER_CONNECT = 16,
+    READY_TO_CONNECT = 17,
+    END_SESSION = 18,
+    JOIN_ROOM = 19,
+    CREATE_ROOM = 20,
+    RETRIEVE_CLAN_INFO = 21,
+    MAX_LOBBY_STATES = 22
+};
+
 /* the online lobby (SOCOM 1's DWARF: 0x98 bytes; the members the handlers read, at SOCOM II's
- * offsets) */
+ * offsets; the members the handlers call, by their map rows -- the online lane's names) */
 class CZOnlineLobby {
 public:
     int RemovePlayerFromClan(const char *name);
     bool OnCorrectClanTeam();
     bool GetClan();
     static void PasswordSecurity();
+    void CreateUIResources();
+    void ReleaseUIResources();
+    void Close();
+    void Tick();
+    void DMEInit();
+    bool RefreshGameList(C2D *list);
+    bool CanJoinRoom(const char *room);
+    void RejoinRoom();
+    bool JoinRoom(const char *room);
+    bool RefreshRoomList(C2D *list);
+    void DeleteClanMessage(int index);
+    void ModifyClanMessage(int index, const char *text);
+    void GetLeaderMessages();
+    bool IsLeaderOfClan(const char *name);
+    bool IsMemberOfClan();
+    void DisbandClan();
+    void GetClanRoster();
+    void GetInvitedPlayers();
+    bool ClanHasInvitations();
+    bool RevokeInvite(const char *name);
+    bool InvitePlayerToClan(const char *name);
+    void CreateClan(const char *name);
+    void UpdateClanStats();
+    void TransferLeadership(const char *name);
+    bool SendClanMessage(const char *text);
+    void GetClanMessages();
+    void CheckClanInvitations();
+    bool HasClanInvitations();
+    void DeclineClanInvitation(int index);
+    void AcceptClanInvitation(int index);
+    void QuitClan();
+    void GetClanRanking(int arg);
+    void ChangeState(LOBBY_STATE state);
+    void Bailout();
+    void SendChat(const char *text, const char *to);
+    void Censor(const char *text, void (*done)(const char *, void *), void *data);
+    bool RefreshGamePlayerList(C2D *list);
+    void GetAnnouncements();
+    void GetUsagePolicy();
+    void SendEndGameReport();
+    int AdvanceMissionSequence();
+    void ForceStatusReport();
+    bool JoinGame(const char *game);
+    bool GameIsPasswordProtected(const char *game);
+    bool CreateGame();
+    void BanSelfFromGame();
+    bool Register(const char *name, const char *password);
+    void Logout();
+    bool Login(const char *name, const char *password);
+    void SetPlayerDescription(const char *desc);
+    void ConfirmFriend(int index);
+    void RejectFriend(int index);
+    void AddFriendDirectly(int index);
+    void AddToIgnore(const char *name);
+    void GetIgnoreList();
+    void RemoveFromIgnore(int index);
+    void GetFriendInfo(int index);
+    void GetFriendInvitations();
+    void AddFriend(const char *name);
+    void RemoveFriend(int index);
+    void GetFriendsList();
 
     unsigned char _0[0x58];
     bool (*m_event_handler)(const char *eventname, const char *argument);   // 0x58 (SOCOM 1's): InitNetwork sets it
@@ -294,6 +381,8 @@ class CZNetwork {
 public:
     int zNetGetValidGameClientCount();
     unsigned int zNetGetTime();
+    unsigned int zNetGetLocalTime();   /* 0x30D540 (SOCOM 1's) */
+    bool zNetInitialize();   /* 0x30DBB0 */
 
     bool m_bSessionMaster;   // 0x0 (SOCOM 1's at 8)
     bool m_bNetwork;   // 0x1
@@ -312,6 +401,7 @@ public:
     void TenSecondLaunch(bool on);
     void MyMajorGameState(MP_MAJOR_GAME_STATE state);
     void MyMinorGameState(MP_MINOR_GAME_STATE state);
+    void MPMajorGameState(MP_MAJOR_GAME_STATE state);   /* 0x2A7490 (SOCOM 1's) */
 
     unsigned char _0[0x10];
     CValve *m_10;   // 0x10: a valve AdvanceMPMission tests (a longer wait when on)
@@ -322,7 +412,9 @@ public:
     unsigned char _b0[0xc8 - 0xb0];
     unsigned int m_c8;   // 0xc8: when the next mission launches (AdvanceMPMission)
     unsigned char m_late_joiner;   // 0xcc (SOCOM 1's at 0x94)
-    unsigned char _cd[0xd8 - 0xcd];
+    unsigned char _cd[0xd4 - 0xcd];
+    unsigned char m_game_over;   // 0xd4 (SOCOM 1's at 0x9B, four before the launch flag in both)
+    unsigned char _d5[0xd8 - 0xd5];
     unsigned char m_ten_second_launch;   // 0xd8 (SOCOM 1's at 0x9F)
     unsigned char m_joined;   // 0xd9: CheckJoinMP sets it (SOCOM II's; the name ours)
     unsigned char _da[0xe4 - 0xda];
@@ -344,6 +436,7 @@ class CRdrFile;
 class CMission {
 public:
     void CreateNetGame();
+    void DestroyNetGame();   /* 0x2A9EF0 */
 
     unsigned char _0[0x1c];
     char *m_database;   // 0x1c (SOCOM 1's)
@@ -400,7 +493,21 @@ public:
 
 class CGameState;
 
-class COurGame {
+/* the game's state stack (game_main.cpp's CGame: only what the handlers call) */
+class CGame {
+public:
+    void Pop(unsigned int arg);                        /* 0x2CF2F0 */
+    void Push(CGameState *state, unsigned int arg);    /* 0x2CF380 */
+    void Switch(CGameState *state, unsigned int arg);  /* 0x2CF410 */
+};
+
+/* the cinematic sub-state (fts_state.h's CCinematicState: only its film set) */
+class CCinematicState {
+public:
+    void SetMovie(const char *movie, unsigned char a, unsigned char b);   /* 0x1EDA60 */
+};
+
+class COurGame : public CGame {
 public:
     /* the state on top of the stack (SOCOM 1's CGame; the name ours) */
     CGameState *CurrentState()
@@ -527,6 +634,7 @@ class CCharacterWeapList;
 
 class CCharacterType {
 public:
+    static CCharacterType *GetByNameMod(const char *name);   /* 0x53E170 (SOCOM 1's) */
     unsigned char _0[0x2e8];
     unsigned char m_weapons[0xc];   // 0x2e8 (SOCOM 1's CCharacterWeapList at 0x250)
     unsigned char _2f4[0x388 - 0x2f4];
@@ -546,8 +654,6 @@ typedef void (CSimpleStateMachine::*SSMState)(unsigned char event);
 
 extern "C" {
 void func_002852B0(void *queue, SSMState state);    /* the state queue's push */
-void func_003A5C30(CSimpleStateMachine *sm);        /* (the machine's tick) */
-bool func_003A5C10(CSimpleStateMachine *sm);        /* (whether it is done: no thread and the flag) */
 }
 
 class CSimpleStateMachine {
@@ -597,48 +703,96 @@ public:
     CValve *m_valve;   // 0x38
 };
 
+/* ---- the functions the handlers call, by their map rows (the owners' units define them) ---- */
+
+/* the controller configurations (fts_controller.cpp's CCtrlrConfigs: only the selection) */
+class CCtrlrConfigs {
+public:
+    static void SelectConfig(const char *name);   /* 0x2C5D60 (SOCOM 1's) */
+};
+
+/* the reader's archives (zrdr.h's CRdrArchive: only the removal) */
+class CRdrArchive {
+public:
+    static void RemoveArchive(const char *archive, const char *name);   /* 0x32C2B0 (SOCOM 1's) */
+};
+
+/* the languages (util_loc.cpp's, the names its own) */
+enum LANGUAGE {
+    LANG_STATES,
+    LANG_UK,
+    LANG_FRANCE,
+    LANG_GERMANY,
+    LANG_SPAIN,
+    LANG_ITALY,
+    LANG_JAPAN,
+    LANG_KOREA,
+    LANG_TEST,
+    LANG_COUNT,
+    LANG_UNSET = 99
+};
+LANGUAGE LanguageFromName(const char *name);   /* 0x3A40E0 */
+void SetLanguage(LANGUAGE lang);               /* 0x3A44B0 */
+
+extern "C" int ezNetCnfGetNetcnfifData(const char *device, const char *name, void *out);   /* 0x1E8910 */
+void SetFinalStatsUiVars();          /* 0x2241C0 (st_mpexit.cpp's) */
+bool DMEJoinGameServer();            /* 0x2B83E0 (SOCOM 1's, by UIJoinGameServer) */
+bool MediusInit();                   /* 0x300840 */
+void zSysPostInit();                 /* 0x34F950 (SOCOM 1's) */
+void UiSetTtySpeedFactor(float f);       /* 0x37B980 (SOCOM 1's) */
+void UiSetCounterSpeedFactor(float f);   /* 0x37B990 */
+void SetPlayAutoMessages(bool on);   /* 0x5E7FB0 (seal_unit.cpp's) */
+bool GetPlayAutoMessages();          /* 0x5E7FC0 */
+
+/* a reader value built node by node (zrdr.h's CRdrEditor, 80 bytes on the handlers' stacks: a
+ * _zrdr first, which the UI variables take; its constructor 0x333AE0 and destructor 0x333A20) */
+class CRdrEditor : public _zrdr {
+public:
+    CRdrEditor();
+    ~CRdrEditor();
+    void addstringnode(const char *text);   /* 0x333610 */
+    void addintnode(int value);             /* 0x333700 */
+    void pop();                             /* 0x333770 */
+    void push(const char *name);            /* 0x3339B0 */
+
+    unsigned char _8[80 - 8];
+};
+
+/* the account database (the online lane's CZUniversInformationServer::CAcctDB: what the handlers ask
+ * of it -- the personas on a host, the patch level, the servers, the news) */
+enum ACCT_GENDER { ACCT_MALE = 0, ACCT_FEMALE = 1 };
+class CZUniversInformationServer {
+public:
+    class CAcctDB {
+    public:
+        int Count(const char *host, int port);                              /* 0x2FB920 */
+        int Find(const char *host, int port, const char *name);             /* 0x2FBBF0 */
+        void SetAcctInfo(const char *host, int port, const char *name, const char *password,
+                         const char *hometown, int gender, bool secure);    /* 0x2FD0D0 */
+        const char *GetName(const char *host, int port, int i);             /* 0x2FD510 */
+        const char *GetPatchURL(const char *level);                         /* 0x2FD610 */
+        bool VerifyPatchLevel(const char *level);                           /* 0x2FD6E0 */
+        const char *GetUniverseDescription(unsigned int server);            /* 0x2FDA50 */
+        const char *GetUniverseName(unsigned int server);                   /* 0x2FDAA0 */
+        const char *GetNewsLine(int line);                                  /* 0x2FDEA0 */
+        int GetNewsCount();                                                 /* 0x2FDEC0 */
+    };
+};
+
+/* the save files' manager (zsave.h's CSaveManager: only a file's header read) */
+class CSaveManager {
+public:
+    class CSaveHeader;
+    bool GetHeader(const char *name, int flags, CSaveHeader *header);   /* 0x33D4A0 */
+};
+
 /* ---- placeholders: methods and functions not named yet (SOCOM 1's names, by the call SOCOM 1's
  * handler makes at the same place, in the comments) ---- */
 extern "C" {
 /* CZOnlineLobby */
-bool func_002E3790(CZOnlineLobby *lobby, const char *room);         /* JoinRoom */
-bool func_002E72A0(CZOnlineLobby *lobby, const char *name);         /* RevokeInvite */
-bool func_002E6830(CZOnlineLobby *lobby);                           /* IsMemberOfClan */
-void func_002E6850(CZOnlineLobby *lobby);                           /* DisbandClan */
-void func_002E69F0(CZOnlineLobby *lobby);                           /* GetClanRoster */
-void func_002E6EA0(CZOnlineLobby *lobby);                           /* GetInvitedPlayers */
-bool func_002E7290(CZOnlineLobby *lobby);                           /* ClanHasInvitations */
-void func_002E7D70(CZOnlineLobby *lobby);                           /* UpdateClanStats */
-void func_002E8460(CZOnlineLobby *lobby);                           /* (clan messages) */
-void func_002E8650(CZOnlineLobby *lobby);                           /* CheckClanInvitations */
-bool func_002E8770(CZOnlineLobby *lobby);                           /* HasClanInvitations */
-void func_002E8EF0(CZOnlineLobby *lobby);                           /* QuitClan */
 bool func_002E5FE0(CZOnlineLobby *lobby);                           /* (more invitations?) */
-void func_002E6310(CZOnlineLobby *lobby);                           /* (leader messages) */
-void func_002EAB80(CZOnlineLobby *lobby, int arg);                  /* (clan ranking; mis-named Pop__5CGameFUi) */
-void func_002F4240(CZOnlineLobby *lobby);                           /* Bailout */
-void func_002F4860(CZOnlineLobby *lobby, const char *text, const char *to);   /* SendChat */
-void func_002F7710(CZOnlineLobby *lobby);                           /* GetAnnouncements */
-void func_002F79F0(CZOnlineLobby *lobby);                           /* (usage policy) */
-void func_002F8350(CZOnlineLobby *lobby);                           /* ForceStatusReport */
 bool func_002F8CE0(CZOnlineLobby *lobby);                           /* (switch teams OK) */
-void func_002F95F0(CZOnlineLobby *lobby);                           /* BanSelfFromGame */
-void func_002FA7F0(CZOnlineLobby *lobby, const char *desc);         /* SetPlayerDescription */
-void func_00300C50(CZOnlineLobby *lobby, const char *name);         /* (add to ignore) */
-void func_00300F00(CZOnlineLobby *lobby);                           /* (ignore list) */
-void func_003012F0(CZOnlineLobby *lobby);                           /* (friend invitations) */
-void func_003013C0(CZOnlineLobby *lobby, const char *name);         /* (add friend) */
-void func_00301750(CZOnlineLobby *lobby);                           /* (friends list) */
 
-/* CUIVarManager::Add (SOCOM 1's Add__13CUIVarManagerFPCcP5_zrdr15UIVAR_LONGEVITY) */
-CUIVariable *func_003857C0(CUIVarManager *vars, const char *name, _zrdr *value, UIVAR_LONGEVITY life);
-
-/* CZNetwork::zNetGetLocalTime (SOCOM 1's) */
-unsigned int func_0030D540(CZNetwork *net);
-
-/* the career stats (an object at 0x437E30) */
-void func_002A3BC0(void *stats);
-void func_002A3E20(void *stats);
 /* the single-player career's stats (fts_mission.cpp's CCareerStats, theMission's at 0x1950: only the
  * two the UI commands call) */
 class CCareerStats {
@@ -654,99 +808,37 @@ void func_00346C00();
 void func_0030C6A0();
 void func_0030C6E0();
 
-/* the memory card's calls (SOCOM 1's names: Exists, mkdir, chdir, GetFreeSpace; LoadConfig) */
-bool func_003A0950(CMemCard *card, const char *name);
-bool func_003A0890(CMemCard *card, const char *name);
-bool func_003A07D0(CMemCard *card, const char *name);
-int func_003A1210(CMemCard *card);
+/* the memory card's used space: the row 0x3A1060 is CMemCard::GetUsedSpace() (zutil.h's), yet the
+ * handler passes it an argument the name does not take -- left raw until its unit settles which */
 int func_003A1060(CMemCard *card, int arg);
-void func_003A1730(CMemCard *card, const char *name);
-void func_003A1C60(CMemCard *card);
-void func_003A17E0(CMemCard *card, const char *name, int arg);
-void func_003A1880(CMemCard *card);
-void func_003A1EA0(CMemCard *card, const char *name, const char *text);
-
-/* a UI variable's text set (SOCOM 1's CUIVariable::Set) */
-void func_003862A0(CUIVariable *var, const char *text);
-
-/* the automatic messages' switch, and its state */
-void func_005E7FB0(int on);
-int func_005E7FC0();
 
 /* the text entry the chat commands open (SOCOM II's) */
 void func_00281D40(C2DAnimCmdHdr *hdr, UITextCallback cb, int lobby);
 
 /* more of the lobby (SOCOM 1's names by the calls SOCOM 1's handlers make) */
-bool func_002E67D0(CZOnlineLobby *lobby, const char *name);         /* IsLeaderOfClan */
-bool func_002E7600(CZOnlineLobby *lobby, const char *name);         /* InvitePlayerToClan */
-bool func_002E8310(CZOnlineLobby *lobby, const char *text);         /* SendClanMessage */
-void func_002EFE20(CZOnlineLobby *lobby, int state);                /* (the lobby's state set) */
-void func_002DFE50(CZOnlineLobby *lobby);                           /* (the lobby reset) */
 void func_0030E290(CZNetwork *net);                                 /* (the network's initialisation started) */
 bool func_0030DEE0(CZNetwork *net);                                 /* (whether it started) */
 bool func_0030BF20();                                               /* (whether the network is up) */
-void func_0033D4A0(void *src, const char *name, int what, MemCardFileInfo *info);   /* (a file's information) */
-int func_002FBBF0(void *svc, const char *host, int port, const char *name);         /* (whether a persona exists) */
 void func_002ACC10(CMission *mission, const char *name);            /* (the mission set by name) */
-void func_0034F9B0(CIOPManager *iop, int mode);                     /* CIOPManager::RebootIOP (named: zinput.h does not declare it) */
-void func_002E81B0(CZOnlineLobby *lobby, const char *name);         /* TransferLeadership */
 bool func_002F8D50(CZOnlineLobby *lobby, const char *name);         /* (game has a spectator password) */
 bool func_002F8BC0(CZOnlineLobby *lobby, const char *name);         /* (game rejects the rank) */
 bool func_002F8C60(CZOnlineLobby *lobby, const char *name);         /* (clan game closed) */
 bool func_002B85C0();                                               /* (connect to the game server) */
-int func_003A1CF0(CMemCard *card);                                  /* (the card's error code) */
 bool func_003A1370(CMemCard *card, int arg, int *slot);             /* (the card changed) */
-void *func_003A40E0(const char *name);                              /* (a locale by name) */
-void func_003A44B0(void *locale);                                   /* (the locale selected) */
-void func_0034F950();                                               /* zSysPostInit (SOCOM 1's) */
-bool func_00300840();                                               /* (Medius initialised) */
 void func_002EFE50(CZOnlineLobby *lobby, const char *name, int what);   /* (a player's info) */
-void func_002E05D0(CZOnlineLobby *lobby);                           /* (the DME's start) */
-bool func_0030DBB0(CZNetwork *net);                                 /* (the DME initialised) */
 void func_002B8660();
-void func_002E60C0(CZOnlineLobby *lobby, int index, const char *text);   /* (a clan message changed) */
-CUIVariable *func_00385900(CUIVarManager *vars, const char *name);  /* CUIVarManager::Find (SOCOM 1's) */
-void func_002F4DF0(CZOnlineLobby *lobby, const char *text, void (*done)(const char *, void *), void *data);   /* Censor */
-void func_002E8980(CZOnlineLobby *lobby, int index);                /* DeclineClanInvitation */
-void func_002E89F0(CZOnlineLobby *lobby, int index);                /* AcceptClanInvitation */
 void func_002E6000(CZOnlineLobby *lobby, const char *name);         /* (clan member's info) */
-void func_002E6010(CZOnlineLobby *lobby, int index);                /* (clan message deleted) */
-void func_00300FE0(CZOnlineLobby *lobby, int index);                /* (removed from ignore) */
-void func_003016A0(CZOnlineLobby *lobby, int index);                /* (friend removed) */
-void func_00301140(CZOnlineLobby *lobby, int index);                /* (friend's info) */
-void func_00300AF0(CZOnlineLobby *lobby, int index);                /* (friend rejected) */
-void func_00300A70(CZOnlineLobby *lobby, int index);                /* (friend confirmed) */
-void func_00300B70(CZOnlineLobby *lobby, int index);                /* (friend added directly) */
 void func_001F3BB0(CMenuState *state, float time);                  /* (the menu's input suspended) */
 void func_001F3BD0(CMenuState *state, const char *movie);           /* (the background film set) */
 bool func_001F3BE0(CMenuState *state);                              /* (the background film stopped: whether one was playing) */
-void func_003A1E10(CMemCard *card, const char *name);               /* (a saved game loaded) */
-double func_00191478(const char *s);                                /* atof */
-void func_0037B980(float f);                                        /* UiSetTtySpeedFactor (SOCOM 1's) */
-void func_0037B990(float f);                                        /* UiSetCounterSpeedFactor */
-void func_002C5D60(const char *name);                               /* CCtrlrConfigs::SelectConfig (SOCOM 1's) */
-CCharacterType *func_0053E170(const char *name);                    /* CCharacterType::GetByNameMod (SOCOM 1's) */
 char *func_0039C580();
-bool func_002F6EC0(CZOnlineLobby *lobby, C2D *list);                /* RefreshGamePlayerList */
-bool func_002E3A30(CZOnlineLobby *lobby, C2D *list);                /* RefreshRoomList */
-bool func_002E34E0(CZOnlineLobby *lobby, const char *room);         /* (can join the room) */
-bool func_002F83B0(CZOnlineLobby *lobby, const char *game);         /* JoinGame */
-void func_002E7A10(CZOnlineLobby *lobby, const char *name);         /* CreateClan */
-bool func_002F8DD0(CZOnlineLobby *lobby, const char *game);         /* GameIsPasswordProtected */
-void func_002CF2F0(COurGame *game, unsigned int arg);               /* CGame::Pop (the states lane's note) */
-void func_002CF410(COurGame *game, void *state, unsigned int arg);  /* CGame::Switch */
-void func_002CF380(COurGame *game, void *state, unsigned int arg);  /* CGame::Push (SOCOM 1's, by UIPlayMPEG) */
-void func_001EDA60(void *cine, const char *movie, int a, int b);    /* CCinematicState::SetMovie (SOCOM 1's took the name only) */
 void func_002E24D0(CZOnlineLobby *lobby);                           /* (the current game's info) */
 void func_002E1F20(CZOnlineLobby *lobby, const char *game);         /* (a game's info) */
-bool func_002FA5A0(CZOnlineLobby *lobby, const char *name, const char *password);   /* Login */
-bool func_002FA320(CZOnlineLobby *lobby, const char *name, const char *password);   /* Register */
 bool func_001EB070(void *core, const char *eventname, const char *argument);       /* (CCoreState's RunEventAnim) */
 
-/* the online services' object at 0x44FC60 (patches, persona, account: not named yet) */
-extern char data_0044FC60[];
-bool func_002FD6E0(void *svc, const char *level);                   /* (the patch level verified) */
-const char *func_002FD610(void *svc, const char *level);            /* (the patch server's URL) */
+/* the online services' account database at 0x44FC60 (patches, personas, accounts, news: the
+ * online lane's CZUniversInformationServer::CAcctDB, its object not named yet) */
+extern CZUniversInformationServer::CAcctDB data_0044FC60;
 
 /* the auto-aim option (a byte, on in data) */
 extern unsigned char data_003DF1A0;
@@ -788,16 +880,12 @@ struct MPMissionInfo {
 };
 extern std::vector<MPMissionInfo *> data_00441650;
 MPMissionView *func_002C8DB0(void *missions, int number, int arg);
-MPMissionView *func_002C8840(void *missions, int arg);
 /* the same object as fts_missionlist.cpp's CMultiMissionList (a pointer vector of the missions,
  * OVL1 0x2C8840's this): only its random pick */
 class CMultiMissionList : public std::vector<MPMissionInfo *> {
 public:
     MPMissionView *GetRandom(bool multi);
 };
-int func_002F8120(CZOnlineLobby *lobby);
-bool func_003042B0(void *lan, C2D *list);
-bool func_002E28D0(CZOnlineLobby *lobby, C2D *list);
 bool func_002F0EA0(CZOnlineLobby *lobby, C2D *list);
 bool func_002F11F0(CZOnlineLobby *lobby, C2D *list);
 
@@ -820,40 +908,16 @@ struct NetCnfList {
 extern NetCnfList data_00457C40;
 extern char data_004567C0[];
 NetCnfEntry *ezNetCnfGetDefault(NetCnfList *list);                       /* (the configuration in use) */
-int func_001E8910(const char *device, const char *name, void *out); /* (a configuration selected) */
 unsigned char func_002E99E0();                                      /* (the lobby's game state) */
 void func_002BADA0();                                               /* (the side swap finished) */
 
-/* the network configurations as a reader value: an 80-byte object NetCnfClose builds on its stack
- * (its constructor and destructor not named yet, so called through their placeholders) */
-struct NetCnfRdr {
-    unsigned char _0[80];
-};
-void func_00333AE0(NetCnfRdr *rdr);                 /* (its constructor) */
-void func_00333A20(NetCnfRdr *rdr, int flags);      /* (its destructor) */
-void func_003339B0(NetCnfRdr *rdr, int arg);
-void func_00333770(NetCnfRdr *rdr);
-void func_00333610(NetCnfRdr *rdr, const char *text);
-void func_00386460(CUIVariable *var, NetCnfRdr *rdr);
-void func_00333700(NetCnfRdr *rdr, int value);
-int func_002FB920(void *svc, const char *host, int port);                   /* (the persona count) */
-enum ACCT_GENDER { ACCT_MALE = 0, ACCT_FEMALE = 1 };
-void func_002FD0D0(void *svc, const char *host, int port, const char *name, const char *password,
-                   const char *hometown, ACCT_GENDER gender, bool secure);  /* (the account's details) */
-const char *func_002FD510(void *svc, const char *host, int port, int i);    /* (a persona's name) */
-const char *func_002FDA50(void *svc, int server);   /* (a server's message) */
-const char *func_002FDAA0(void *svc, int server);   /* (a server's name) */
-int func_002FDEC0(void *svc);                       /* (the news' line count) */
-const char *func_002FDEA0(void *svc, int line);     /* (a line of the news) */
 
 /* the network configuration's device path ("mc0:" in data) */
 extern char data_003DF360[];                                              /* (a path: the game's directory?) */
-void func_0032C2B0(const char *archive, const char *name);          /* CRdrArchive::RemoveArchive (SOCOM 1's) */
 
 /* SOCOM II's: whether the player is a terrorist, whether the player was banned */
 bool func_002C31A0();
 bool func_002C3550();
-void func_002241C0();
 }
 
 #endif

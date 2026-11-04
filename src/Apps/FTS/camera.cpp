@@ -2,6 +2,7 @@
  * in reverse of their image order (-inline deferred). */
 
 #include <stdlib.h>
+#include <iostream>
 #include "camera.h"
 #include "../../gamez/zsys/zsys.h"
 
@@ -10,15 +11,20 @@ char *zrdr_findstring(const _zrdr *rdr, const char *tag);
 
 extern bool camera_tether_intersects_something;
 
-/* NOT YET DEFINED: the camera's file statics, as __sinit_camera.cpp (0x3FFDD0) builds them --
- * <iostream>'s pair (the unit includes <iostream>: its __nInit/__wInit at 0x415FD0/0x415FE8), then
- * four `static zdb::DiIntersect dilrN(16);` (SOCOM 1's dilr0-dilr3, 0x416050/0x4160B0/0x416110/
- * 0x416170, each registered with ~DiIntersect 0x2DC680), then the points' stores: SOCOM 1's
- * `static CPnt3D tetherPos(0, 8, 40)` (0x4161C8) and three new in SOCOM II, (0, 2.5, 4) at 0x4161D8
- * (GetFirstPersonCamPos's), (0, 5.2, 15) at 0x4161E8 (GetThirdPersonCamPos's) and at 0x4161F8
- * (0x29A660's). Written so, they compile only once camera.h's DiIntersect stand-in declares
- * DiIntersect(int) and ~DiIntersect() (node_world.h's real class has both) -- camera.h is the game
- * states' file */
+/* the camera's file statics, as __sinit_camera.cpp (0x3FFDD0) builds them after <iostream>'s pair
+ * (its __nInit/__wInit at 0x415FD0/0x415FE8): SOCOM 1's four intersection sets dilr0-dilr3
+ * (0x416050/0x4160B0/0x416110/0x416170, each registered with ~DiIntersect 0x2DC680), SOCOM 1's
+ * tetherPos (0x4161C8) and three points new in SOCOM II -- GetFirstPersonCamPos's (0x4161D8),
+ * GetThirdPersonCamPos's (0x4161E8) and 0x29A660's (0x4161F8); the three names ours. Their users
+ * still reach them by address, so they are referenced nowhere yet */
+static zdb::DiIntersect dilr0(16);
+static zdb::DiIntersect dilr1(16);
+static zdb::DiIntersect dilr2(16);
+static zdb::DiIntersect dilr3(16);
+static CPnt3D tetherPos(0.0f, 8.0f, 40.0f);
+static CPnt3D firstPersonPos(0.0f, 2.5f, 4.0f);
+static CPnt3D thirdPersonPos(0.0f, 5.2f, 15.0f);
+static CPnt3D thirdPersonPos2(0.0f, 5.2f, 15.0f);
 extern "C" bool func_002C2FD0(CZSealBody *seal);
 extern "C" CCameraPreset *data_0044C408;          /* the views' presets */
 extern "C" void func_002956E0(CAppCamera *cam, CZSealBody *prey, int arg);

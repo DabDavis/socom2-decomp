@@ -68,6 +68,11 @@ public:
     CTexList m_tex_list;   // 0x0
     CTexPalList m_pal_list;   // 0xc
 };   // 0x18 bytes
+class CNode;
+/* a vector of nodes (znode.h's class: the particles' node pool is one, SOCOM 1's
+ * __sinit_zparticle.cpp registering ~CNodeVector for it, SOCOM II's 0x1EA340 four this-tests deep) */
+class CNodeVector : public std::vector<CNode *> {
+};
 /* zdb::CNode, as much as the particles call (znode.h would bring zmath.h's CPnt4D with it) */
 class CNode {
 public:
@@ -238,6 +243,9 @@ public:
     /* the live instances (SOCOM 1's Instance::List; its members out of line) */
     class List : public std::list<Instance *> {
     public:
+        /* the head cleared (inline: zparticle_instance.cpp's initialiser stores it after the
+         * deleter's constructor, which it calls) */
+        List() : m_head(0) {}
         ~List();
         void Tick(float dT);
         void Uninit();
@@ -328,9 +336,15 @@ enum PARTICLE_TYPE {
  * so the members ahead of the list are opaque here */
 class Source {
 public:
+    /* a free source taken from the pool (0x32B120; ZAnim's particle commands call it) */
+    static Source *Create();
     /* the live sources (SOCOM 1's Source::List, a list of them) */
     class List : public std::list<Source *> {
     public:
+        /* every source deleted first (inline: its copy 0x32BFD0 in zparticle_source.cpp's tail,
+         * the initialiser's registered destructor, calls Uninit -- in tail code Uninit's clear
+         * counts the range erase, too tall to inline whole -- and ~__list_imp) */
+        ~List() { Uninit(); }
         void Uninit();
     };
 
