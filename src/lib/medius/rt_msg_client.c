@@ -697,7 +697,9 @@ typedef struct rt_msg_client_connection {
     char pad42[0x16];
     unsigned short nClientId;           /* 0x58: this client's id, the server's accept gives it */
     unsigned short nServerPort;         /* 0x5A: the port the accept names */
-    char szIP[0x1C];                    /* 0x5C: the server's address, dotted */
+    char szIP[16];                      /* 0x5C: the server's address, dotted */
+    char pad6C[4];
+    rt_msg_client_time tResend;         /* 0x70: 0x635E60 restarts it with each type-22 message */
     rt_msg_client_comm *apChannels[2];  /* 0x78: the connection's channels */
     rt_msg_client_comm *pComm;          /* 0x80: the one it sends on */
     /* 0x84: told when the connect fails while it waits (0x634A08: the last argument 1) */
@@ -1301,6 +1303,95 @@ unsigned char func_00634C48(rt_msg_client_connection *pConnection)
             result = rt_msg_client_change_state(pConnection, 4);
             if (result != 0)
                 return result;
+        }
+    }
+    return 0;
+}
+
+extern unsigned char rt_msg_client_tcp_aggregate_msg(rt_msg_client_comm *pComm);
+extern unsigned char rt_msg_client_send_circ_buf(rt_msg_client_comm *pComm);
+extern int rt_circ_buf_normalize_with_buf(void *pBuf, int bForce, void *pScratch);
+extern unsigned char func_00635898(void *pComm);
+extern unsigned char func_00635D98(rt_msg_client_comm *pComm, unsigned short nTarget);
+extern unsigned char func_00635E60(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm);
+
+/* one connection's channel sends (0x634DD8, update_connection's first loop): SOCOM 1's send half of
+ * update_connection, per channel -- a connected channel that keeps the timeout sends the one-byte
+ * keep-alive (type 5) when it is due; one in state 6 resends its type-22 message every 200 ms
+ * (0x635E60); a flagged message's target is flushed; the gathered messages go into the ring when
+ * they are due, a target was flagged or the connection is not up, and the ring is sent (once
+ * something was gathered) and gathered again when it was full (8). The keep-alive byte is a scalar
+ * initialised at its declaration, as SOCOM 1's (`li 165` at the entry, the frame's first slot); a
+ * one-byte array's element is `li -91`, its slot after nElapsed's */
+unsigned char func_00634DD8(rt_msg_client_connection *pConnection, rt_msg_client_comm *pComm)
+{
+    unsigned char nMsg = 165;
+    unsigned int nUsed = 0;
+    unsigned int nElapsed = 0;
+    unsigned char bGathered = 0;
+    unsigned char bFull = 0;
+    unsigned char result;
+
+    if (data_00655614 != 1)
+        return 5;
+    if (rt_msg_client_is_valid_connection(pConnection) != 1)
+        return 2;
+    if (func_00635898(pComm) != 1)
+        return 2;
+    if (pComm->bKind != 1)
+        return 2;
+    if (pConnection->nId != pComm->nId)
+        return 2;
+    if (pConnection->nState == RT_MSG_CLIENT_STATE_CONNECTED) {
+        if (pComm->bTimeout != 0) {
+            if (rt_time_elapsed(&pComm->t34, &nElapsed) != 0)
+                return 24;
+            if (nElapsed > (unsigned int)pComm->bTimeout) {
+                result = rt_msg_client_store_msg_in_send_buf(pComm, 5, 0xFFFF, &nMsg, 1, 0);
+                if (result != 0)
+                    return result;
+                if (rt_time_start(&pComm->t34) != 0)
+                    return 24;
+                pComm->n3C++;
+            }
+        }
+    } else if (pConnection->nState == 6 && pComm->nKind == 1) {
+        if (rt_time_elapsed(&pConnection->tResend, &nElapsed) != 0)
+            return 24;
+        if (nElapsed > 200) {
+            result = func_00635E60(pConnection, pComm);
+            if (result != 0)
+                return result;
+        }
+    }
+    if (pComm->bTargetSet == 1 && pComm->nLastTarget != 0xFFFF) {
+        result = func_00635D98(pComm, pComm->nLastTarget);
+        if (result != 0)
+            return result;
+    }
+    if (rt_time_elapsed(&pComm->tLastSend, &nElapsed) != 0)
+        return 24;
+    if (nElapsed > (unsigned int)pComm->nValue || pComm->nValue == 0 || pComm->bTargetSet == 1
+        || pConnection->nState != RT_MSG_CLIENT_STATE_CONNECTED) {
+        bGathered = 1;
+        if (rt_msg_client_tcp_aggregate_msg(pComm) == 8)
+            bFull = 1;
+        else
+            pComm->bTargetSet = 0;
+    }
+    if (rt_circ_buf_get_used(&pComm->sendBuf, &nUsed) != 0)
+        return 21;
+    if (nUsed != 0) {
+        if (bGathered == 1) {
+            result = rt_msg_client_send_circ_buf(pComm);
+            if (result != 0)
+                return result;
+            if (rt_circ_buf_normalize_with_buf(&pComm->sendBuf, 0, 0) != 0)
+                return 21;
+        }
+        if (bFull != 0) {
+            if (rt_msg_client_tcp_aggregate_msg(pComm) != 8)
+                pComm->bTargetSet = 0;
         }
     }
     return 0;
