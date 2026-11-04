@@ -2060,6 +2060,20 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the engine core, round 10** (the edge intersections, intersect2d, the CKey vector's iterator pieces):
+  - an int local holding a bitfield read adds `andi 0xffff`, reading the field in place does not (CDI::GetEdgeIntersects
+    0x2DD4D0 -- it returns the count: znode.h's declaration is int now); a count loop with no entry test after an early
+    return is a do/while that re-reads the member (GetEdgeIntersectsY 0x2DD2B0);
+  - a float local used by two later expressions keeps its load ahead of an intervening call, used once MW sinks the load to
+    its use (intersect2d 0x2DD690's `e.z`, SOCOM 1's); floats declared uninitialised at the top (`float s, t;`) reorder the
+    saved FPRs as a dead first definition does;
+  - in GCC-style asm the order of the operand list picks the address registers (DiIntersect::LoadTipAndTail 0x2DD210: 5 off,
+    the mask load and the 1.0f constant swap v1/a1); MW hoists a float zero's `mtc1` above a following `lwc1` whether the
+    load sits in C, in GCC asm or in an asm block (CDIPoly::GetIntersect 0x2DD150, 0xB0 vs 0xC0);
+  - the nine out-of-line pieces of vector<zar::CKey *> 0x257BC0-0x257C90 come out of zar_main.cpp in the image's exact
+    order right after _countKeys (0x257C10 new), with three target pieces between them (0x257B90, 0x257BA0, 0x257CA0)
+    include/vector's shapes do not give; CValve gains `unsigned int GetValue() const`; the one-byte pod vector local in
+    SelCharsHaveLockedEquip is no class vector<EQUIP_ITEM> (12 bytes more).
 - **Tells from the SEALs, round 30** (the alertness setters, GetDuckStance, an attack's reset, the ladder wait and hold):
   - a random value read through a `const float *` view recomputes each field's address off the controller across rand();
     the class's own operator, a `const Rfloat &` helper or the fields written out keep the range's address in a saved
