@@ -683,6 +683,130 @@ void cbClearGameListFilter(int, int, int, MediusClearGameListFilterResponse *res
     CheckMediusError(MediusSetGameListFilter(&req, cbSetGameListFilter));
 }
 
+void SetDatabase(const char *name);   /* the mission database by name (OVL1 0x27F810, SOCOM 1's) */
+
+extern "C" {
+int sprintf(char *s, const char *format, ...);
+int func_002F6D00(CZOnlineLobby *lobby);   /* we join as a spectator (above, unwritten) */
+bool func_002E34D0(RoomGame *game);   /* the game's friendly fire (its 0x30 flags' bit 0; the room unit's) */
+bool func_002E33D0(RoomGame *game);   /* and its respawns (bit 1) */
+}
+
+/* the random game asked for: the candidates let go, the game list's filter dropped -- its callback
+ * sets the filter the random game is picked by (an inline: its request lies below every local of
+ * JoinGame, the editor's included, as an inline's do; the name ours, after the callbacks' status
+ * texts "GetRandomGame::...") */
+inline void GetRandomGame()
+{
+    data_0044FAB0.DeleteGames();
+    MediusClearGameListFilterRequest req;
+
+    memset(&req, 0, sizeof(req));
+    SetSessionKey(req.SessionKey);
+    req.FilterID = 10;
+    CheckMediusError(MediusClearGameListFilter(&req, cbClearGameListFilter));
+}
+
+/* a game of the room joined by its name: "RANDOM" has the game list's filter dropped and a game
+ * picked from the list (cbClearGameListFilter goes on); a game the room has sets the menus' valves
+ * from its rules -- refused when it has no mission of ours, a spectator joining a game without
+ * spectator room taken as joined -- its world, clan team and passwords, takes its mission sequence
+ * and the database of the current mission (with no mission, the sequence is printed and the join
+ * refused); then the player lists cleared and the join (a world known) or the game's creation
+ * entered (SOCOM 1's, 0x574 bytes there; OVL1 0x2F83B0: the UI's JoinMPGame calls it) */
+bool CZOnlineLobby::JoinGame(const char *name)
+{
+    if (!m_isopen)
+        return false;
+    if (m_current_state != LOBBY_ACTIVE)
+        return false;
+    if (!strcmp(name, "RANDOM")) {
+        GetRandomGame();
+        return true;
+    }
+    BriefingRoom *room = data_0044F568.FindRoom(ZString(uiv_LobbyWorldNameVar));
+
+    if (!room)
+        return false;
+    data_0066A998 = 0;
+    MediusWorldID = -1;
+    RoomGame *game = room->FindGame(name);
+
+    if (game) {
+        if (!game->HasMissions())
+            return false;
+        if (func_002F6D00(&theLobby) && !game->m_maxSpectators)
+            return true;
+        CValve::Create("mp_game_sort_order", VALVE_TYPE_1)->SetValue(game->m_19f[1]);
+        CValve::Create("MaxPlayersValve", VALVE_TYPE_1)->SetValue(game->m_info.m_maxPlayers);
+        CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(game->m_maxSpectators);
+        CValve::Create("mp_friendly_fire", VALVE_TYPE_1)->SetValue(func_002E34D0(game));
+        CValve::Create("mp_allow_respawn", VALVE_TYPE_1)->SetValue(func_002E33D0(game));
+        CValve::Create("EQlimit", VALVE_TYPE_1)->SetValue(game->m_19f[0]);
+        CValve::Create("mp_max_rounds", VALVE_TYPE_1)->SetValue(game->m_19a[1]);
+        CValve::Create("mp_max_round_time", VALVE_TYPE_1)->SetValue(game->m_19a[2] * 60);
+        CValve::Create("mp_rank_restrictions", VALVE_TYPE_1)->SetValue(game->m_types);
+        data_0066A998 = game->m_info.m_players;
+        MediusWorldID = game->m_info.m_ip;
+        SetClanTeam(game->m_info.m_3c);
+        if (!(game->m_info.m_flags & 1))
+            *theUIVarManager.Add("PlayerGamePassword", 0, UIVL_PERMANENT) = "";
+        if (!(game->m_info.m_flags & 4))
+            *theUIVarManager.Add("SpectatorGamePassword", 0, UIVL_PERMANENT) = "";
+        unsigned char *seq = game->GetMissionSequence();
+
+        for (int i = 0; i < 32; i++)
+            m_MissionSequence[i] = seq[i];
+        m_curr_seq_idx = 0;
+        for (int i = 0; i < 31; i++) {
+            if (!m_MissionSequence[i + 1]) {
+                m_curr_seq_idx = i;
+                break;
+            }
+        }
+        if (m_MissionSequence[m_curr_seq_idx] > 0) {
+            char db[16];
+
+            sprintf(db, "mp%d", m_MissionSequence[m_curr_seq_idx]);
+            SetDatabase(db);
+        } else {
+            char text[256];
+
+            text[0] = 0;
+            for (int i = 0; i < 32; i++)
+                sprintf(text, "%s %d", text, m_MissionSequence[i]);
+            return false;
+        }
+    }
+    *uiv_GameNameVar = name;
+    CUIVariable *seals = theUIVarManager.Add("BSEALLISTVAR", 0, UIVL_PERMANENT);
+    CUIVariable *terrs = theUIVarManager.Add("BTERRLISTVAR", 0, UIVL_PERMANENT);
+    CUIVariable *specs = theUIVarManager.Add("BSPECLISTVAR", 0, UIVL_PERMANENT);
+    CRdrEditor ed;
+
+    ed.push(0);
+    ed.pop();
+    seals->Set(&ed);
+    terrs->Set(&ed);
+    specs->Set(&ed);
+    if (MediusWorldID > -1) {
+        ChangeState(JOIN_GAME);
+    } else {
+        CValve *password = CValve::Create("PasswordValve", VALVE_TYPE_1);
+        CUIVariable *spec = theUIVarManager.Add("SpectatorGamePassword", 0, UIVL_PERMANENT);
+
+        password->SetValue(0);
+        CValve::Create("MaxPlayersValve", VALVE_TYPE_1)->SetValue(16);
+        if (data_0044FE10.IsActive())
+            CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(4);
+        else
+            CValve::Create("MaxSpectatorsValve", VALVE_TYPE_1)->SetValue(8);
+        *spec = "";
+        ChangeState(CREATE_NEW_GAME);
+    }
+    return true;
+}
+
 /* the mission sequence handed out: its index and the 32 missions (SOCOM 1's 12; OVL1 0x2F82E0) */
 void CZOnlineLobby::GetMissionSequence(unsigned char *idx, unsigned char *seq)
 {
