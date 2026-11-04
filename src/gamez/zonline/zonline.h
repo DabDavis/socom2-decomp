@@ -1008,6 +1008,7 @@ public:
     void CreateClan(const char *name);
     void TransferLeadership(const char *name);
     void ChangeState(LOBBY_STATE state);
+    bool CreateGame();
     bool Login(const char *name, const char *password);
     bool Register(const char *name, const char *password);
     bool Logout();

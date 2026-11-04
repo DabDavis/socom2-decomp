@@ -77,12 +77,33 @@ enum VALVE_TYPE {
     VALVE_TYPE_3
 };
 
+enum VALVE_STATE {
+    VALVE_SAME,
+    VALVE_ON,
+    VALVE_OFF
+};
+
 class CValve {
 public:
     static CValve *Create(const char *name, VALVE_TYPE type);
     /* off (the name ours: the test is materialised, sltu and xori, before the branch -- an
      * inline bool returning the negation) */
     bool IsOff() { return !m_value; }
+    void MakeCallbacks(VALVE_STATE state);
+    /* the value set, the callbacks told when it turns on or off (zanim.h's, as the chat unit's) */
+    bool SetValue(int value)
+    {
+        VALVE_STATE state = VALVE_SAME;
+
+        if (m_value != value)
+            state = value == 0 ? VALVE_OFF : VALVE_ON;
+        m_value = value;
+        if (state != VALVE_SAME) {
+            MakeCallbacks(state);
+            return true;
+        }
+        return false;
+    }
 
     char *m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4
@@ -433,6 +454,39 @@ void CZOnlineLobby::BanSelfFromGame()
         req.MediusWorldID = MediusWorldID;
         CheckMediusError(MediusBanPlayer(&req, cbBanSelfFromGame));
     }
+}
+
+extern "C" void (*data_0044F3C8)(const char *msg, int arg);   /* the lobby's message box (the UI's) */
+extern "C" BriefingRoomDB data_0044F568;   /* the room list (the rooms' unit's) */
+
+/* a game of ours asked for, in the lobby proper: its name made unique to the room ("$~" and the
+ * room's name after the player's), refused when the room already has a game so named, the next
+ * game's valves reset and the creation state entered (SOCOM 1's, which pushed the state itself;
+ * OVL1 0x2F9410: the UI's CreateMPGame calls it) */
+bool CZOnlineLobby::CreateGame()
+{
+    if (!m_isopen)
+        return false;
+    if (m_current_state != LOBBY_ACTIVE)
+        return false;
+    std::string name(ZString(uiv_GameNameVar));
+
+    name.append("$~");
+    const char *world = ZString(uiv_LobbyWorldNameVar);
+
+    name.append(world);
+    *uiv_GameNameVar = name.c_str();
+    BriefingRoom *room = data_0044F568.FindRoom(world);
+
+    if (!room || room->FindGame(name.c_str())) {
+        if (data_0044F3C8)
+            data_0044F3C8("MP_GAME_NAME_EXISTS", 0);
+        return false;
+    }
+    CValve::Create("mp_persistent", VALVE_TYPE_1)->SetValue(0);
+    CValve::Create("mp_game_sort_order", VALVE_TYPE_1)->SetValue(127);
+    ChangeState(CREATE_NEW_GAME);
+    return true;
 }
 
 void SetClanTeam(unsigned int team);   /* (the clan unit's) */
