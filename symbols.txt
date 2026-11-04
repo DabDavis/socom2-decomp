@@ -4223,7 +4223,7 @@
 0x002C64E0 0x40 func_002C64E0  # OVL1
 0x002C6520 0x84 func_002C6520  # OVL1; split by the integrator: ends at its jr ra (0x2C65A0), padded to 0x2C65B0
 0x002C65B0 0xB8 func_002C65B0  # OVL1; split from 0x2C6520 by the integrator: a function reached only by 0x2C6280's tail `j`, so the seed never cut it (a byte read at +0x13 tested against 16, a signed byte of a table returned)
-0x002C6670 0x180 func_002C6670  # OVL1
+0x002C6670 0x180 ReadBtnName__28@unnamed@fts_controller_cpp@FPCc  # OVL1; s1:order by hand (the states lane, round 26): SOCOM 1's ReadBtnName 0x20A1E0 (nested in CCtrlrConfigs there, ReadBtnName__Q213CCtrlrConfigs23_$798fts_controller_cppFPCc: a namespace in SOCOM 1) -- the same strcasecmp chain, Circle 7 to X 9, with SOCOM II's Select 1 and Pause 0 added before the none (16); the per-layout parser 0x2C67F0 calls it; the name's scope ours (the unit's anonymous namespace)
 0x002C67F0 0x480 func_002C67F0  # OVL1
 0x002C6C70 0x254 func_002C6C70  # OVL1
 0x002C6ED0 0x70 func_002C6ED0  # OVL1

@@ -228,6 +228,38 @@ extern CCtrlrConfig *data_004415B0;   /* (a second layout: the one being edited)
  * loop; OVL1 0x2C67F0, not written yet) */
 extern "C" void func_002C67F0(_zrdr *config);
 
+namespace {
+/* a button by its controller.rdr name, none for an unknown one (SOCOM 1's ReadBtnName -- nested in
+ * CCtrlrConfigs there, a namespace in SOCOM 1 --, the same chain with SOCOM II's Select and Pause
+ * after X; OVL1 0x2C6670: the parser 0x2C67F0's) */
+PAD_BUTTON ReadBtnName(const char *name)
+{
+    if (!strcasecmp(name, "Circle"))
+        return (PAD_BUTTON)7;
+    if (!strcasecmp(name, "L1"))
+        return (PAD_BUTTON)12;
+    if (!strcasecmp(name, "L2"))
+        return (PAD_BUTTON)13;
+    if (!strcasecmp(name, "LeftStickTap"))
+        return (PAD_BUTTON)15;
+    if (!strcasecmp(name, "R1"))
+        return (PAD_BUTTON)10;
+    if (!strcasecmp(name, "R2"))
+        return (PAD_BUTTON)11;
+    if (!strcasecmp(name, "RightStickTap"))
+        return (PAD_BUTTON)14;
+    if (!strcasecmp(name, "Square"))
+        return (PAD_BUTTON)8;
+    if (!strcasecmp(name, "X"))
+        return (PAD_BUTTON)9;
+    if (!strcasecmp(name, "Select"))
+        return (PAD_BUTTON)1;
+    if (!strcasecmp(name, "Pause"))
+        return PAD_BUTTON_0;
+    return PAD_BUTTON_NONE;
+}
+}
+
 #pragma auto_inline off
 /* the pitch from the sticks a layout gives it -- the held set while function 1's button is down
  * -- summed and clamped to -1..1 (OVL1 0x2C65B0: 0x2C6280's tail call, out of line, pinned) */
