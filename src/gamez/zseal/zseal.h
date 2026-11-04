@@ -95,8 +95,11 @@ public:
      * 0x57D5E0, are looked up again unless it is on the stack) */
     static short SwapRifle;   // OVL1 0x3DEC78
     static short ClimbMedium;   // OVL1 0x3DEC90
-    static short ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
-    static short ProneLStrafe;   // OVL1 0x3DECD0
+    /* (SOCOM II's two strafes, AnimType itself, not short -- the SEALs, round 34: SetMaxMotion passes
+     * them to GetScript unconverted, the static loaded ahead of the set as an argument with no
+     * conversion is) */
+    static AnimType ProneRStrafe;   // OVL1 0x3DECC0 (SOCOM II adds one after ClimbMedium's four)
+    static AnimType ProneLStrafe;   // OVL1 0x3DECD0
 };
 
 /* how a SEAL died (SOCOM 1's DWARF, a byte) */

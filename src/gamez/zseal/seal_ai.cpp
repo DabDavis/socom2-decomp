@@ -1657,12 +1657,9 @@ extern "C" void *func_00555170(void *stack);
  * priority says so (bit 8), once the alertness's band passes its level (OVL2 0x5712F0, new in SOCOM
  * II: 0x571100, 0x571150 and the AI states' ticks ask it; the name unknown). The level is an int of
  * the word's low byte, taken before the band (its `andi` ahead of the walk), the band AlertBand's
- * enum (`li 4`).
- * OPEN, 3 instructions (the size right): the time test -- the target loads the clock (0x4365C0) into
- * $f1 before the anim's time into $f0, then `c.le.s $f1,$f0; bc1t`; here the time loads first
- * whatever the spelling: `!(now <= t)`, `now > t`, `t < now` and `!(t >= now)` (both c.lt.s), the
- * clock through an inline, float locals in either order, a reference to the time, the arms swapped
- * (40 off). */
+ * enum (`li 4`). The time test reads the clock through a same-type cast (round 34, the HUD's round 33
+ * rule): `(float)now > t` loads the clock (0x4365C0) into $f1 ahead of the anim's time, `c.le.s
+ * $f1,$f0; bc1t` as the target; plain, every spelling loads the time first (3 off). */
 extern "C" bool func_005712F0(CSealCtrlAi *ai, short anim)
 {
     if (anim == -1)
@@ -1672,7 +1669,7 @@ extern "C" bool func_005712F0(CSealCtrlAi *ai, short anim)
     bool r = top ? anim == top->m_animType : false;
 
     if (r && anim == ai->m_sound) {
-        if (!(data_004365C0 <= ai->m_sound_time)) {
+        if ((float)data_004365C0 > ai->m_sound_time) {
             ai->m_sound = -1;
             r = false;
         } else {
