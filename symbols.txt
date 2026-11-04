@@ -5983,7 +5983,7 @@
 0x00338480 0x538 RenderMesh__5CPipeFPQ23zdb5CNodePQ23zdb5CMeshP7CMatrixQ23zdb12tag_ZVIS_FOV  # OVL1; the world lane r7: s1:calls (RenderAtom calls it with (node, 0, 0, 0) for a node with a mesh where SOCOM 1's calls RenderMesh; its callers SOCOM 1's RenderMesh's alike: CClutter::Render, the UI node walk, itself, RenderNode)
 0x003389C0 0x5E0 RenderNode__5CPipeFPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV  # OVL1; the world lane r7: s1:calls (RenderAtom calls it with (node, 0) for a node without a mesh where SOCOM 1's calls RenderNode; its callers SOCOM 1's RenderNode's alike: CClutter::Render, the delayed nodes, itself, the world pass)
 0x00338FA0 0x4D0 func_00338FA0  # OVL1
-0x00339470 0x1F0 func_00339470  # OVL1
+0x00339470 0x1F0 BuildProjectedMapList__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: ours -- CVisual::m_projectedMapList (0x4B4E30) emptied and refilled with the world's shadow casters (0x580) whose box the node's sphere meets, for a pipe's node with bit 6 of 0xA1; called after BuildLightMapList by RenderDelayedNodes and PrepareAtom
 0x00339660 0x468 BuildLightMapList__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- GetBBox, Sub, Scale, Add, Transform, Sub, then CLightMapVector::Exists and the pod insert, twice, as SOCOM 1's BuildLightMapList (0x2442F0); called by RenderDelayedNodes and PrepareAtom
 0x00339AD0 0x218 func_00339AD0  # OVL1
 0x00339CF0 0xE8 RenderCell__5CPipeFPQ23zdb5CCell  # OVL1; the world lane round 8: ours -- CPipe's (a0 thePipe): a cell's fog test from its bounding box's centre, its first visual rendered when reflective, then CCell::RenderClutter; RenderWorld calls it three times

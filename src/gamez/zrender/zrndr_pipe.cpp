@@ -179,6 +179,7 @@ public:
     void RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb::tag_ZVIS_FOV fov);
     void RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     void RenderCell(zdb::CCell *cell);
+    void BuildProjectedMapList(zdb::CNode *node);
 
     unsigned int m_texIntIdx;   // 0x0
     unsigned int m_texLoadIdx;   // 0x4
@@ -231,10 +232,8 @@ public:
     unsigned char _71a[0x720 - 0x71a];   // 0x71a
 };   // 0x720 bytes
 
-/* the world's lighting switch (0x3B7130: a byte set and its inverse beside it) and SOCOM II's second
- * light list (0x339470, not written), after BuildLightMapList's */
+/* the world's lighting switch (0x3B7130: CVisual::m_lightingEnable set and its inverse beside it) */
 extern "C" void func_003B7130(bool on);
-extern "C" void func_00339470(CPipe *pipe, zdb::CNode *node);
 
 /* zvid_init.cpp's: the 21-quadword packet's word set, and the packet sent (it reads no argument;
  * the pipe passes one) */
@@ -568,7 +567,7 @@ void CPipe::PrepareAtom(zdb::CNode *node)
     } else {
         func_003B7130(false);
         BuildLightMapList(node);
-        func_00339470(this, node);
+        BuildProjectedMapList(node);
         m_doFog = node->m_fog ? m_camera->TestFOG((const CPnt3D *)node->m_matrix.m_matrix[3], node->GetRadius()) : false;
     }
 }
@@ -613,6 +612,55 @@ void CPipe::RenderCell(zdb::CCell *cell)
         v->Render(CStack::m_top);
     }
     cell->RenderClutter(cell);
+}
+
+/* a span about a value reaching into [lo, hi] (ours) */
+static inline bool SpanMeets(float v, float r, float lo, float hi)
+{
+    if (v + r >= lo && v - r <= hi)
+        return true;
+    return false;
+}
+
+/* a sphere meeting a box, axis by axis (ours) */
+static inline bool SphereMeetsBox(const CPnt3D *p, float r, const CBBox *b)
+{
+    return SpanMeets(p->x, r, b->m_min.x, b->m_max.x) && SpanMeets(p->y, r, b->m_min.y, b->m_max.y) &&
+           SpanMeets(p->z, r, b->m_min.z, b->m_max.z);
+}
+
+/* SOCOM II's (the name ours; RenderDelayedNodes and PrepareAtom call it after BuildLightMapList):
+ * with any shadow casters the projected maps listed afresh -- for a pipe's node marked to take them,
+ * each caster whose box the node's bounding sphere meets.
+ * OPEN, 42 instructions (the size the target's): the walk, its out-of-line preheader (the node's
+ * position hoisted into it), the pushed copy and the calls are the target's; the box test is not --
+ * the target takes the box's address into a register first (a2), presets each axis's false in the
+ * first compare's delay slot and sets true with daddiu after both, then folds the three as
+ * `xy = 0; if (x) if (y) xy = 1; xyz = 0; if (xy) if (z) xyz = 1;` (a0, a1 cleared up front).
+ * Tried (build/scratch/wld/v_bpml*.py): the span as `return a && b`, `if (a && b) return true;
+ * return false;` (this one, nearest), a bool local set in an if or an if/else, two early returns;
+ * the box as one `&&` chain, an XY inline under a Z one, bool locals set in nested ifs, either
+ * declaration order -- 42 to 0x220 bytes */
+void CPipe::BuildProjectedMapList(zdb::CNode *node)
+{
+    if (m_world->m_shadow_casters.size()) {
+        zdb::CVisual::m_projectedMapList.clear();
+        if (m_node->m_socom2_a1_bits.bit6 == 1) {
+            std::vector<zdb::CShadowCaster *> &casters = m_world->m_shadow_casters;
+
+            for (std::vector<zdb::CShadowCaster *>::iterator i = casters.begin(); i != casters.end(); ++i) {
+                zdb::CShadowCaster *c = *i;
+                float r = node->GetRadius();
+                const CPnt3D *pos = (const CPnt3D *)node->m_matrix.m_matrix[3];
+
+                if (SphereMeetsBox(pos, r, &c->m_bbox)) {
+                    zdb::CShadowCaster *kept = c;
+
+                    zdb::CVisual::m_projectedMapList.push_back(kept);
+                }
+            }
+        }
+    }
 }
 
 /* SOCOM II's: the dynamic textures of a node's visuals added to the alpha pass's. The list's
@@ -683,7 +731,7 @@ void CPipe::RenderDelayedNodes()
         if (m_node != d->m_atom) {
             m_node = d->m_atom;
             BuildLightMapList(m_node);
-            func_00339470(this, m_node);
+            BuildProjectedMapList(m_node);
         }
         s_stack.Push(&d->m_matrix);
         PushOpacity(d->m_opacity);
