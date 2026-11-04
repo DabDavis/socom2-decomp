@@ -381,6 +381,39 @@ def test_mw_function_static_resolves_by_its_function():
         rows.unlink()
 
 
+def test_mw_local_function_resolves_by_its_code():
+    """A Metrowerks static initialiser registers each static array's destructor, a local function
+    `__arraydtor$N` -- N a per-unit counter that shifts with any header edit, so no map row can carry
+    it. hud_newhudmap.cpp's __sinit_hud_newhudmap.cpp (0x3FDE80) takes four such addresses; compared
+    as a local object (raw bytes, relocation fields included) each was a CONTENT-MISMATCH and the
+    code-exact initialiser WRONG REFERENCE (the HUD lane's round 30). Each resolves by its code now:
+    the candidate's destructor against the target's function at the referenced address, masked, its
+    own relocations resolved. The target's destructor with another count (an unrelocated word) must
+    fail, so must its array's %lo pointing 16 bytes on (masked alike, so only the destructor's own
+    relocation check can see it) -- and with the resolution switched off the four fail again."""
+    img, st = E.image(), E.symbols()
+    unit = HERE / "src" / "Apps" / "FTS" / "hud_newhudmap.cpp"
+    obj = BUILD / "hud_newhudmap.o"
+    D.compile_obj(unit, obj, includes=[HERE / "include", HERE / "src"])
+    sym = st.get("__sinit_hud_newhudmap.cpp")
+    dtors = lambda r: [f for f in r.relocs if f.symbol.startswith("__arraydtor$")]
+    r = D.compare(obj, sym.name, sym, img, st)
+    ck(r.match and len(dtors(r)) == 4 and all(f.status == "content-ok" for f in dtors(r)),
+       f"the four array destructors resolve by their code: {r.verdict}")
+    ck(sorted(f.want for f in dtors(r)) == [0x20CD30, 0x20CE10, 0x20CE30, 0x20CE50], "at their own rows")
+    for addr, word, what in ((0x20CE68, 0x24070008, "another count"), (0x20CE58, 0x24849F30, "the array 16 bytes on")):
+        bad = _image_with_word(img, addr, word)
+        r = D.compare(obj, sym.name, sym, bad, st)
+        ck(not r.match and any(f.want == 0x20CE50 and f.status == "CONTENT-MISMATCH" for f in r.relocs),
+           f"a destructor with {what} fails: {r.verdict}")
+    depth, D.LOCAL_CODE_DEPTH = D.LOCAL_CODE_DEPTH, 0
+    try:
+        r = D.compare(obj, sym.name, sym, img, st)
+    finally:
+        D.LOCAL_CODE_DEPTH = depth
+    ck(not r.match and sum(f.status == "CONTENT-MISMATCH" for f in r.relocs) == 4, "switched off, the four fail")
+
+
 def test_padding_after_a_function_must_be_zero():
     """A candidate one instruction short of a function whose next word is code fails."""
     img, st = E.image(), E.symbols()
