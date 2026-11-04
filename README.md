@@ -1888,6 +1888,26 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the AI core, round 19** (CAiStar::find_path, the event queue, the map's lines and spores):
+  - WRAPPING A CALL IN ONE MORE INLINE LEVEL EXPANDS IT LATER, so its temporaries take the frame's lowest slots: what
+    looks like "one 8-byte temporary more" can be every other temporary shifted up -- find_path 0x510FF0 (0xF48) closed
+    with the open list's pop an inline of its own, s_typeBias stored ahead of the two bools, the first block's cost
+    written `cur.m_g + cur.m_h`, the cost scaled inside the `n.m_g` statement, IsDoor reading m_type twice, the trace-back
+    through `on_map(const CAiMapLoc &, id)` and `opposite(const DIR &)`;
+  - an `||` inside an inline bool stays materialised (`daddiu 1` in the first branch's delay slot, `move zero`, then
+    `bnez`) only when a value from its first operand is used afterwards -- otherwise MW lowers it to per-compare setcc's
+    (the same shape at 0x5F8570 is_goal, 0x524170, both WalkLines, 0x556370, 0x558030, 0x5A6D30); MW shares a field read
+    through an inline's reference parameter only with another read through a reference parameter; `i != end()` in the
+    loop test with a field read twice (no named locals) makes them temporaries numbered after the iterator (GetRange,
+    Find with `(*i)[0]`); `x >= n ? 0 : f(x)` puts the zero arm first and materialises `x < n`; `r = 0; if (p) r =
+    p->f;` keeps p out of v0;
+  - AN MSL CHAIN ONE LEVEL TALLER THAN include/* CAN BE GIVEN TO A SINGLE INSTANCE with an explicit specialisation inside
+    the unit, leaving the header alone (the event list's push_back: its two rows swapped to their right names, as
+    include/list's comment said);
+  - open: AbortPathPlan (0x174 vs 0x194: Contains inlined one level -- MSL's height), remove_if<_tick> (4: find_if's
+    iterator copies), GetNextEvent (2), plan_legcomplete (0x7C vs 0xAC), InflateRegion (21); every small open row left is
+    emitted only by an unwritten caller (_min<Ui> by 0x524D50, _close_enough<f> by GetLocation(point), 0x527E70 by
+    CreateGraph).
 - **Tells from the HUD, round 26** (CSecureText, C2DClock, the MP weapon selector's slots):
   - a loop test that materialises `!p` (sltu/xori) and then the whole `&&` into v1 is an inline `bool More(p) { return
     !IsNull(p) && *p; }` over an inline `IsNull(p) { return !p; }` (CSecureText::SetString); a switch inside an inlined
