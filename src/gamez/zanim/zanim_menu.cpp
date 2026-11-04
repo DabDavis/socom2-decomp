@@ -252,7 +252,9 @@ bool OnRemoveEquipment(C2DAnimCmdHdr *hdr, float *dT)
 /* the per-character picks the new choosers make (SOCOM II's, not named yet): a primary weapon, an
  * item into one of the three equipment slots (2 to 4) */
 bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item);
-extern "C" bool func_00282C20(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+namespace {
+bool ChooseSlotForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot);
+}
 /* the selection's item valves brought up to date (SOCOM II's, not named yet: UpdateSelItemValves
  * 0x282410 is a jump to it) */
 extern "C" void func_00282140();
@@ -274,6 +276,9 @@ inline bool ChooseSecondaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM 
 
 /* the item set into a slot after its old one is let go (SOCOM II's, 0x283170: not named yet) */
 extern "C" void func_00283170(const CSelectedCharsItr &it, int slot, EQUIP_ITEM item);
+/* the equipment slots a weapon takes in a loadout, 1 for an unknown item (zwep_weapon.cpp's 0x3D3750,
+ * not named yet: char_type.cpp declares it alike) */
+extern "C" int func_003D3750(EQUIP_ITEM item);
 /* what each selected character's equipment slots held before a primary's own items went in (SOCOM
  * II's, two items a character; not named yet) */
 struct CHAR_SLOT_PICKS {
@@ -358,26 +363,26 @@ bool ChoosePrimaryForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
         slot = NextFreeSlot(it, -1);
         if (slot < weapons->size())
             data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)141, slot);
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)141, slot);
         slot = NextFreeSlot(it, -1);
         if (slot < weapons->size())
             data_003DD060[it.m_index].b = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)175, slot);
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)175, slot);
     } else if (item == 143) {
         slot = NextFreeSlot(it, -1);
         if (slot < weapons->size())
             data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)179, slot);
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)179, slot);
     } else if (item == 142) {
         slot = NextFreeSlot(it, -1);
         if (slot < weapons->size())
             data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)175, slot);
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)175, slot);
     } else if (item == 63) {
         slot = NextFreeSlot(it, -1);
         if (slot < weapons->size())
             data_003DD060[it.m_index].a = (*weapons)[slot].m_wepId;
-        func_00282C20(it, (EQUIP_ITEM)183, slot);
+        ChooseSlotForCharacter(it, (EQUIP_ITEM)183, slot);
     }
     UpdateCharWeaponUiVars(it.m_index);
     func_00282140();
@@ -458,6 +463,61 @@ bool HasSlotsForItem(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot)
     return free >= need;
 }
 
+/* a weapon put into a selected character's slot (SOCOM II's, 0x282F20; the name ours): an item taking
+ * two slots first takes the next free one past it (round the equipment slots, past any locked) for
+ * its second -- 185 for a 145, 186 for a 146, else EQUIP_END: what the slot held let go and kept in
+ * the character's picks, or the second pushed on with the pick EQUIP_NONE -- then the UI variables
+ * and the selection's valves updated. The slot and the second declared at the top, the weapon's item
+ * read once into a local (lb, narrowed for the tests and passed on): the target's saved registers */
+void PutInSlot(const CSelectedCharsItr &it, const CCharacterWeap &w, int slot)
+{
+    int s;
+    EQUIP_ITEM second;
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+
+    if (func_003D3750(w.m_wepId) == 2) {
+        s = FindItemSlot(it, EQUIP_NONE, slot);
+
+        if (s == -1) {
+            s = slot + 1;
+            if (s >= 5)
+                s = 2;
+            while (s == -1 || IsSlotLocked(it, s, EQUIP_NONE)) {
+                s++;
+                if (s >= 5)
+                    s = 2;
+            }
+        }
+
+        EQUIP_ITEM id = w.m_wepId;
+
+        second = EQUIP_END;
+        if (id == 145)
+            second = (EQUIP_ITEM)185;
+        else if (id == 146)
+            second = (EQUIP_ITEM)186;
+        if (s < weapons->size()) {
+            func_00283170(it, s, id);
+            data_003DD060[it.m_index].a = (*weapons)[s].m_wepId;
+
+            CCharacterWeap tmp;
+
+            tmp.SetupCharacterWeapon(second);
+            (*weapons)[s] = tmp;
+        } else {
+            data_003DD060[it.m_index].a = EQUIP_NONE;
+
+            CCharacterWeap tmp;
+
+            tmp.SetupCharacterWeapon(second);
+            weapons->push_back(tmp);
+        }
+    }
+    (*weapons)[slot] = w;
+    UpdateCharWeaponUiVars(it.m_index);
+    func_00282140();
+}
+
 /* the slot of a character's first weapon of the item past the one to skip, among the first five,
  * or -1 (0x282EB0) */
 int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip)
@@ -471,6 +531,60 @@ int FindItemSlot(const CSelectedCharsItr &it, EQUIP_ITEM item, int skip)
         if ((*w).m_wepId == item && i != skip)
             found = i;
     return found;
+}
+
+/* an item put into a selected character's equipment slot, or the first free one (-1: past the weapons
+ * the slots hold, each its own count of slots, within the five) when it has room for it (SOCOM II's,
+ * 0x282C20; the name ours): true when it is there already, else what the slot held let go, the
+ * weapons padded with EQUIP_NONE up to an empty slot, the item set in through PutInSlot when the old
+ * one took one or two slots, the UI variables updated */
+bool ChooseSlotForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item, int slot)
+{
+    if (!HasSlotsForItem(it, item, slot))
+        return false;
+
+    CCharacterWeapList *weapons = (CCharacterWeapList *)it.m_weapons;
+
+    if (item == (*weapons)[slot].m_wepId)
+        return true;
+    if (slot == -1) {
+        for (slot = 2; slot < weapons->size(); slot += func_003D3750((*weapons)[slot].m_wepId))
+            ;
+        if (slot >= 5)
+            return false;
+    }
+
+    CCharacterWeap w;
+
+    w.SetupCharacterWeapon(item);
+
+    EQUIP_ITEM cur = EQUIP_NONE;
+
+    if (slot < weapons->size())
+        cur = (*weapons)[slot].m_wepId;
+    if (cur == item) {
+        UpdateCharWeaponUiVars(it.m_index);
+        return true;
+    }
+    func_00283170(it, slot, item);
+    if (cur == EQUIP_NONE) {
+        if (slot < weapons->size())
+            PutInSlot(it, w, slot);
+        else {
+            while (slot >= weapons->size()) {
+                CCharacterWeap pad;
+
+                pad.SetupCharacterWeapon(EQUIP_NONE);
+                weapons->push_back(pad);
+            }
+            PutInSlot(it, w, slot);
+        }
+    } else if (func_003D3750(cur) == 1)
+        PutInSlot(it, w, slot);
+    else if (func_003D3750(cur) == 2)
+        PutInSlot(it, w, slot);
+    UpdateCharWeaponUiVars(it.m_index);
+    return true;
 }
 
 /* whether a slot keeps what it holds against the item: not when it holds the item itself; yes for
@@ -593,7 +707,7 @@ bool ChooseEquipmentForCharacter(const CSelectedCharsItr &it, EQUIP_ITEM item)
     else if (CZWeapon::IsSecondary(item))
         ok = ChooseSecondaryForCharacter(it, item);
     else
-        ok = func_00282C20(it, item, -1);
+        ok = ChooseSlotForCharacter(it, item, -1);
     UpdateCharWeaponUiVars(it.m_index);
     return ok;
 }
@@ -695,7 +809,7 @@ bool UIChooseEquip1(C2DAnimCmdHdr *hdr, float *dT)
     bool chosen = false;
 
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
-        if (func_00282C20(it, item, 2))
+        if (ChooseSlotForCharacter(it, item, 2))
             chosen = true;
     return chosen;
 }
@@ -706,7 +820,7 @@ bool UIChooseEquip2(C2DAnimCmdHdr *hdr, float *dT)
     bool chosen = false;
 
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
-        if (func_00282C20(it, item, 3))
+        if (ChooseSlotForCharacter(it, item, 3))
             chosen = true;
     return chosen;
 }
@@ -717,7 +831,7 @@ bool UIChooseEquip3(C2DAnimCmdHdr *hdr, float *dT)
     bool chosen = false;
 
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
-        if (func_00282C20(it, item, 4))
+        if (ChooseSlotForCharacter(it, item, 4))
             chosen = true;
     return chosen;
 }
