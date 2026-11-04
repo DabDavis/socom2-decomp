@@ -17,22 +17,18 @@
  * unit's hash, not named yet) */
 extern "C" unsigned int func_003A59C0(const char *s);
 
-/* the records with the hash of a name: its two words given back and true; else the table walked
- * (its dump compiled out) and false.
- * OPEN, 9 instructions, registers only: the target reads the record's three words before the test
- * (hash, then the second, then the first in the branch's delay slot -- read into locals first, as
- * here, gives the right size; through the record by reference it is 8 bytes longer, a by-value
- * record copy 0x38 longer) and keeps the iterator in a3, the second word in a1, the first in a2,
- * comparing `bne record, hash`; every order of the three locals and of the iterator's declaration
- * tried leaves the iterator in a1 (build/scratch/wld/v_find*.py) */
-bool CSubtitleTable::Find(const char *name, int *a, int *b)
+/* the records with the hash of a name: its two words given back and true; else the records
+ * walked (their dump compiled out) and false. The cursor is a plain pointer compared as an
+ * iterator: a named local, numbered before the record's three words, it takes a3 as the target's
+ * (a class iterator is split into a temporary numbered after them, a1 -- round 6's nine words) */
+bool CSubtitleList::Find(const char *name, int *a, int *b)
 {
     unsigned int hash = func_003A59C0(name);
 
-    for (std::vector<CSubtitleEntry>::iterator i = m_entries.begin(); i != m_entries.end(); ++i) {
-        unsigned int h = (*i).m_hash;
-        int y = (*i).m_4;
-        int x = (*i).m_0;
+    for (CSubtitleEntry *e = begin().m_p; iterator(e) != end(); ++e) {
+        unsigned int h = e->m_hash;
+        int x = e->m_0;
+        int y = e->m_4;
 
         if (h == hash) {
             *a = x;
@@ -46,9 +42,9 @@ bool CSubtitleTable::Find(const char *name, int *a, int *b)
 
 /* the records walked, the print compiled out (out of line: Find calls it) */
 #pragma auto_inline off
-void CSubtitleTable::Dump()
+void CSubtitleList::Dump()
 {
-    for (std::vector<CSubtitleEntry>::iterator i = m_entries.begin(); i != m_entries.end(); i++)
+    for (iterator i = begin(); i != end(); i++)
         ;
 }
 #pragma auto_inline reset

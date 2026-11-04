@@ -6353,11 +6353,11 @@
 0x0034D470 0x8 func_0034D470  # OVL1
 0x0034D480 0x7C func_0034D480  # OVL1
 0x0034D500 0x54 __ct__14CSubtitleTableFv  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): the subtitle table's constructor -- two 12-byte-record vectors (three zero words each), the byte at 0x20 cleared, reserve(10) and reserve(11500) through 0x34DED0; zsnd_csnd.cpp's initialiser 0x402FF0 builds the global 0x48DC30 with it
-0x0034D560 0x68 Dump__14CSubtitleTableFv  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): an empty walk of the first vector's 12-byte records (its print compiled out), called by Find 0x34D940 when no record matches
+0x0034D560 0x68 Dump__13CSubtitleListFv  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): an empty walk of the first vector's 12-byte records (its print compiled out), called by Find 0x34D940 when no record matches; the world lane r7: the record vector class's (Find calls it on its own this)
 0x0034D5D0 0x168 func_0034D5D0  # OVL1
 0x0034D740 0x1D8 func_0034D740  # OVL1
 0x0034D920 0x14 func_0034D920  # OVL1; tu: ztex_manager.cpp~ (1.0 beta)
-0x0034D940 0xB8 Find__14CSubtitleTableFPCcPiPi  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): the first vector's record whose word at 8 is the name's hash (0x3A59C0) gives its words 0 and 4 back through a2/a3, true; else Dump 0x34D560 and false
+0x0034D940 0xB8 Find__13CSubtitleListFPCcPiPi  # OVL1; the world lane r6, zsnd_subtitles.cpp (names ours): the first vector's record whose word at 8 is the name's hash (0x3A59C0) gives its words 0 and 4 back through a2/a3, true; else Dump 0x34D560 and false; the world lane r7: a member of the record vector class (ours, a class over std::vector<CSubtitleEntry>): the table's lookup 0x34D480 calls it on this+0xC, then this
 0x0034DA00 0x4CC func_0034DA00  # OVL1
 0x0034DED0 0x1A0 reserve__Q23std68__vector_imp<14CSubtitleEntry,Q23std27allocator<14CSubtitleEntry>,0>FUi  # OVL1; the world lane r6, zsnd_subtitles.cpp: include/vector's class reserve for the subtitle table's 12-byte record (the element name ours) -- the constructor 0x34D500 calls it with 10 and 11500; it closes the unit
 0x0034E070 0x160 Tick__14CSched_ManagerFf  # OVL1; SOCOM 1's CSched_Manager::Tick by its body (the same walk: T0_COUNT start/stop stamps, the callback or the remove flag, erase into the free list) and its caller (CCoreState's tick passes zTaskScheduler and dT)
