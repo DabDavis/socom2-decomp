@@ -1,4 +1,6 @@
-/* c2dstring.cpp -- C2DString (OVL1 0x362B20-0x3641EF): SOCOM 1's functions in SOCOM 1's order
+/* c2dstring.cpp -- C2DString (OVL1 0x361B00-0x3641EF; its initialiser 0x4035C0 builds the string
+ * tables, so the unit opens with SOCOM II's string-table wrappers 0x361B00-0x361BCB, defined at the
+ * file's end, and four functions 0x361BD0-0x362B1F not written yet): SOCOM 1's functions in SOCOM 1's order
  * (SetFont, UpdatePos, NewLine, AddCharacter, the Loads, SetString, Format, MakePacket, the two
  * Draws, Tick, On, Off, ClearAndWipe, the destructor and constructor), with SOCOM II's own among
  * them: a character's delete before NewLine, SetPos and the scaled Load after the Loads, the
@@ -26,10 +28,27 @@ public:
 void *_malloc(unsigned int size, const char *file, int line);
 void _free(void *p, const char *file, int line);
 
-/* the string table's revision (OVL1 bss, ztwod's; no row yet) and the video's depth for 2D
- * (inside zVid: SOCOM II's) */
-extern int data_0049E9B0;
+/* the video's depth for 2D (inside zVid: SOCOM II's) */
 extern int data_004A44E8;
+
+/* the language's change count (OVL1 bss 0x49E9B0: a string built in an older language looks its id
+ * up again when drawn; IncLanguageVersion counts it -- the name ours) */
+int g_languageVersion;
+
+struct LOCENTRY;
+class CLocTable;
+
+/* the string tables (util_loc.cpp's class: a vector of the loaded tables and the entry found last;
+ * its members util_loc.cpp's) -- the unit's global, built with room for twelve */
+class CStringTables : public std::vector<CLocTable *> {
+public:
+    CStringTables() : m_last(0) { reserve(12); }
+    /* an int here (util_loc.cpp's is unsigned short): TranslateString tests the id unextended */
+    int GetId(const char *name, const char *table);
+    const char *GetString(int id, const char *table);
+
+    LOCENTRY *m_last;   // 0xc: the entry found last
+};
 
 /* empty strings of 15, white and opaque at the window's corner, no font; blended */
 C2DString::C2DString()
@@ -117,7 +136,7 @@ void C2DString::Draw(zdb::CCamera *cam)
     int depth = data_004A44E8;
 
     if (IsOn() && m_numChars && m_font) {
-        if (m_stringrev != data_0049E9B0)
+        if (m_stringrev != g_languageVersion)
             SetStringId(m_stringid);
         MakePacket(&reloc, depth);
         C2D::Draw(cam);
@@ -129,7 +148,7 @@ void C2DString::Draw(zdb::CTextureRelocMgr *mgr, zdb::CCamera *cam, int depth)
 {
     if (!(IsOn() && m_numChars && m_font))
         return;
-    if (m_stringrev != data_0049E9B0)
+    if (m_stringrev != g_languageVersion)
         SetStringId(m_stringid);
     MakePacket(mgr, depth);
     C2D::Draw(cam);
@@ -192,4 +211,44 @@ void C2DString::SetFont(C2DFont *font)
     m_font = font;
     if (m_color[3] == 128.0f)
         SetTrans(128.0f * m_font->m_opacity);
+}
+
+/* ---- the string tables' global and its wrappers (SOCOM II's: the image's head of the unit,
+ * 0x361B00-0x361BCB, so defined last; the initialiser 0x4035C0 builds the tables, registering their
+ * implicit destructor 0x364170, the unit's last function) ---- */
+
+/* OVL1 bss 0x49E9D0 (the name ours) */
+CStringTables g_stringTables;
+
+CStringTables *GetStringTables()
+{
+    return &g_stringTables;
+}
+
+/* a name's text when the tables know it, else the name itself */
+const char *TranslateString(const char *name)
+{
+    int id = g_stringTables.GetId(name, 0);
+
+    if (id > 0)
+        return g_stringTables.GetString(id, 0);
+    return name;
+}
+
+/* an id's text, in any table */
+const char *GetString(int id)
+{
+    return g_stringTables.GetString(id, 0);
+}
+
+/* a name's id, in any table */
+int GetStringId(const char *name)
+{
+    return g_stringTables.GetId(name, 0);
+}
+
+/* the language changed: strings built before it look themselves up again */
+void IncLanguageVersion()
+{
+    g_languageVersion++;
 }

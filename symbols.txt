@@ -2224,7 +2224,7 @@
 0x00237310 0x38 ClearItems__4CTCMFv  # OVL1; tu: node_world.cpp~ (1.0 beta); ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the item list bitmap's list at +0xDE0 cleared; CHUD calls it)
 0x00237350 0x3C Init__4CTCMFv  # OVL1; ours by hand (the HUD lane, round 23: hud_tcm.cpp -- the caches built (0x2344E0), the path and the root's children reserved)
 0x00237390 0x1E8 __ct__4CTCMFv  # OVL1; by hand (the HUD lane, round 24: hud_tcm.cpp -- the menu object's constructor: the root node's (0x232660) out of line, the mode 4, the path, the six polys, the sounds' constructor 0x2329D0; the initialiser 0x3FF4A0 builds theTCM with it)
-0x00237580 0x1E0 func_00237580  # OVL1
+0x00237580 0x1E0 __dt__4CTCMFv  # OVL1; by hand (the HUD lane, round 31: hud_tcm.cpp -- CTCM's implicit destructor, registered by __sinit_hud_tcm.cpp for theTCM: the six C2DBitmapPolys, the path vector, then ~CTCMNode 0x232490)
 0x00237760 0x3D8 Update__12CAmmoDisplayFv  # OVL1; by hand (the HUD lane: the ammo counts from the HUD owner's kit, the unit's first function in the image; the name ours)
 0x00237B40 0x1C0 SetMags__12CAmmoDisplayFiPQ23zdb10CTexHandle  # OVL1; by hand (the ammo unit's: a switch on a byte, 1-3 lighting the four magazine bitmaps at CAmmoDisplay+0x3C0, past that a texture argument in the first; On passes the cached count 0x3DCBD8 and texture 0x4145E0; the name ours); an int count, narrowed to a byte inside (andi 0xff) where On passes the cached word whole
 0x00237D00 0xD8 SetTrans__12CAmmoDisplayFf  # OVL1; by hand (the ammo unit's, between Off and the unit's 0x237B40: SetTrans on the poly (76.8 x), the bitmap and the four bitmaps (128 x), the two count strings by CHUD::m_hud_textcolor's alpha; the name ours)
@@ -6697,7 +6697,7 @@
 0x00363E60 0xC func_00363E60  # OVL1
 0x00363E70 0xF0 __ct__9C2DStringFv  # OVL1; s1:callee (it calls C2D's constructor and stores __vt__9C2DString; CZHudMissionCams constructs its strings with it)
 0x00363F60 0x210 func_00363F60  # OVL1
-0x00364170 0x78 func_00364170  # OVL1
+0x00364170 0x78 __dt__13CStringTablesFv  # OVL1; by hand (the HUD lane, round 31: c2dstring.cpp's template tail -- CStringTables' implicit destructor (util_loc.cpp's class, derived from the pointer vector: four this-tests), registered by __sinit_c2dstring.cpp)
 0x003641F0 0xD8 GetAssetLibs__9C2DBitmapFRQ23C2D8CLibList  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003642D0 0xB4 TickFade__9C2DBitmapFv  # OVL1; s1:align
 0x00364390 0x18 Reset__9C2DBitmapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -8485,7 +8485,7 @@
 0x003FD9D0 0x64 func_003FD9D0  # OVL1 data area; a static initialiser; s1~ zanim_cmd_parse.cpp (shape 0.46, a hint)
 0x003FDA40 0x6C __sinit_hud_main.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_main.cpp's initialiser -- CHUD::m_hud_textcolor's four words stored, then SOCOM 1's X_WeaponBackground built with C2DBitmap() and ~C2DBitmap 0x1FCB10 registered; the integrator's sinit report, HIGH)
 0x003FDAB0 0x64 __sinit_hud_lensflare.cpp  # OVL1 data area; a static initialiser; s1~ zanim_cmd_tick.cpp (shape 0.46, a hint); by hand (the HUD lane, round 31: hud_lensflare.cpp's initialiser -- <iostream>'s pair only, the unit's bss after it; the integrator's sinit report, HIGH)
-0x003FDB20 0xA0 func_003FDB20  # OVL1 data area; a static initialiser
+0x003FDB20 0xA0 __sinit_hud_pausemenu.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_pausemenu.cpp's initialiser -- the menu's five colours' fifteen stores, 0x409020-0x40906B; the integrator's sinit report, HIGH)
 0x003FDBC0 0x2BC func_003FDBC0  # OVL1 data area; a static initialiser
 0x003FDE80 0x308 __sinit_hud_newhudmap.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 30: hud_newhudmap.cpp's initialiser -- it builds the unit's statics in SOCOM 1's order, each __construct_array/__register_global_object pair at its record (0x409F10 ...), the four scroll C2DBitmapPolys, the north lines with COverlayLine's colour, then the three computed .data floats 0x3E4090-0x3E40A0 from hud_main.cpp's 365 and 60: CODE-EXACT from source, the four __arraydtor$N references compared by content fail on their relocation fields (scdiff has no mapping for a unit's numbered array destructors: see the HUD lane's round-30 report))
 0x003FE190 0x2B4 __sinit_hud_linemap.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_linemap.cpp's initialiser -- the unit emits it as is: the two map<int, LINE_DATA> statics, the 45 .data stores and the six CPnt4D pairs Clip reads; the integrator's sinit report, HIGH)
@@ -8501,7 +8501,7 @@
 0x003FF350 0x64 __sinit_st_shutdown.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 21, after the HUD lane's round 23): st_shutdown.cpp's initialiser -- <iostream>'s two init objects (0x412E98, 0x412EB0, their chain nodes 0x412E88, 0x412EA0) built and registered, just below the unit's s_hostElf 0x412EC0; the link's order (0x3FF350, 0x3FF3C0, hud_tcmcmds.cpp's 0x3FF430) is st_shutdown.cpp, st_reboot.cpp, hud_tcmcmds.cpp
 0x003FF3C0 0x64 __sinit_st_reboot.cpp  # OVL1 data area; a static initialiser; by hand (the states lane, round 21, after the HUD lane's round 23): st_reboot.cpp's initialiser -- <iostream>'s two init objects (0x412FD0, 0x412FE8, their chain nodes 0x412FC0, 0x412FD8) built and registered, just below hud_tcmcmds.cpp's statics 0x412FF0
 0x003FF430 0x70 __sinit_hud_tcmcmds.cpp  # OVL1 data area; a static initialiser; ours by hand (the HUD lane, round 23: hud_tcmcmds.cpp's static initialiser -- its layout statics s_tcmLeft/s_tcmSpan (off the data statics 0x3DC9F0, 0x3DCA80) and s_tcmCursorColor, then g_tcmColumns built through __construct_array)
-0x003FF4A0 0x168 func_003FF4A0  # OVL1 data area; a static initialiser
+0x003FF4A0 0x168 __sinit_hud_tcm.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: hud_tcm.cpp's initialiser -- the layout's five colours (the fifth a copy of the fourth), theTCM with CTCM() and its implicit destructor 0x237580 registered, mpCache and spCache built by name with ~CTCMCache 0x230620 registered; the integrator's sinit report, HIGH)
 0x003FF610 0x64 __sinit_hud_ammo.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_ammo.cpp's initialiser (between the radio menu's 0x3FF4A0 and hud_mpinfobox.cpp's 0x3FF680, as the code): its four bss floats computed off s_polyy and s_ammox (s_texty, s_magx, s_magy, s_bitmapy)
 0x003FF680 0x124 __sinit_hud_mpinfobox.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 17): hud_mpinfobox.cpp's initialiser (between hud_ammo.cpp's and 0x3FF7B0, as the code): thirteen bss floats of the box's places computed off its data variables, in their order
 0x003FF7B0 0x3C __sinit_reco.cpp  # OVL1 data area; a static initialiser; s1~ si_object.cpp (shape 0.45, a hint); ours (the HUD lane, round 19: reco.cpp's initialiser -- theReco (0x414680) constructed and its destructor registered; the old s1~ si_object.cpp hint was wrong)
@@ -8580,7 +8580,7 @@
 0x004034D0 0x1C func_004034D0  # OVL1 data area; a static initialiser
 0x004034F0 0x90 func_004034F0  # OVL1 data area; a static initialiser
 0x00403580 0x3C __sinit_ztex_manager.cpp  # OVL1 data area; a static initialiser; s1~ seal_aievent.cpp (shape 0.45, a hint); the world lane r2: ztex_manager.cpp's static initialiser (m_texmanager built through CTexManager() 0x356940, ~CTexManager 0x357E10 registered)
-0x004035C0 0x60 func_004035C0  # OVL1 data area; a static initialiser
+0x004035C0 0x60 __sinit_c2dstring.cpp  # OVL1 data area; a static initialiser; by hand (the HUD lane, round 31: c2dstring.cpp's initialiser -- the string tables g_stringTables 0x49E9D0 built (the vector and the last entry zeroed, reserve(12) through the pod's 0x1EEBA0) and ~CStringTables 0x364170 registered; the integrator's sinit report, HIGH: the unit starts at 0x361B00)
 0x00403620 0x9C func_00403620  # OVL1 data area; a static initialiser
 0x004036C0 0x64 __sinit_zui_2d.cpp  # OVL1 data area; a static initialiser; s1~ seal_aimoves.cpp (shape 0.50, a hint); by hand (the HUD lane, round 31: zui_2d.cpp's initialiser -- <iostream>'s pair only, as SOCOM 1's __sinit_zui_2d.cpp; the integrator's sinit report, HIGH)
 0x00403730 0x34 __sinit_zui_skb.cpp  # OVL1 data area; a static initialiser; by hand (g_arrSkbs zeroed and its destructor 0x38D5C0 registered: SOCOM 1's .p__sinit_zui_skb.cpp does the same) -- zui_skb.cpp's static initialiser
