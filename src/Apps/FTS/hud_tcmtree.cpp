@@ -108,6 +108,82 @@ public:
 /* the unit's float pool (0x3DCAF0-0x3DCB20, 8 bytes apart: function-local statics, written as file
  * statics -- scdiff compares them by content) */
 static float s_tcm_slidehold = 0.2f;   // 0x3DCAF0: the hold after a slide
+static float s_tcm_talkmax = 10.0f;   // 0x3DCB00: the longest push-to-talk, and the close test's wait
+static float s_tcm_releasehold = 1.0f;   // 0x3DCB08: the hold after a release
+
+/* the push-to-talk state (bss 0x4130A0-0x4130B8; the names ours) */
+static bool s_tcm_talking;   // 0x4130A0
+static float s_tcm_talktime;   // 0x4130A8
+static bool s_tcm_talkheld;   // 0x4130B8
+
+/* the pad's buttons as the controller unit reads them (OVL1 0x2C64E0, by address: a byte state) */
+enum TCM_BUTTON {
+    TCM_BUTTON_UP = 0,
+    TCM_BUTTON_PRESSED = 1,
+    TCM_BUTTON_HELD = 2
+};
+
+extern "C" TCM_BUTTON func_002C64E0(int button, CPad *pad);
+
+/* the radio's talk switch (OVL1 0x30E6E0 on the global 0x45B718, by address) and the HUD flag
+ * 0x44D4F8 that allows it */
+extern "C" void func_0030E6E0(void *radio, int on);
+extern void *data_0045B718;
+extern unsigned char data_0044D4F8;
+
+/* the menu's input by its mode (hud_tcmtree.cpp's 0x235D40 and 0x2359A0, not written yet) */
+extern "C" void func_00235D40(CTCM *tcm, CPad *pad);
+extern "C" void func_002359A0(CTCM *tcm, CPad *pad);
+
+/* the menu's tick: the hold run down, then by its mode -- 1 the open menu's input, 2 and 3 the
+ * controller's menu state off (2 moving on to 3), 4 the closed menu's, 5 a close once the button is
+ * let go or the wait is over, 6 a close once the button is let go */
+void CTCM::Tick(CPad *pad, float dt)
+{
+    if (!(m_hold <= 0.0f))
+        m_hold -= dt;
+    /* (the blocks lie in source order: 2, 1, 4, 3, 5, 6) */
+    switch (m_mode.m_mode) {
+    case 0:
+        break;
+    case 2:
+        m_mode.Set(3);
+        ftsGetPlayer()->m_ctrl->SetMenuState(MENU_STATE_NONE, false);
+        break;
+    case 1:
+        func_00235D40(this, pad);
+        break;
+    case 4:
+        func_002359A0(this, pad);
+        break;
+    case 3:
+        ftsGetPlayer()->m_ctrl->SetMenuState(MENU_STATE_NONE, false);
+        break;
+    case 5: {
+        TCM_BUTTON st = func_002C64E0(11, pad);
+        bool close = false;
+
+        if (!(m_dc8 <= s_tcm_talkmax))
+            close = true;
+        else if (st != TCM_BUTTON_HELD && st != TCM_BUTTON_PRESSED)
+            close = true;
+        if (close) {
+            func_0030E6E0(data_0045B718, 0);
+            Close(false);
+            Hold(false, s_tcm_releasehold);
+            m_dc8 = 0.0f;
+            m_dcc = 0;
+        }
+        break;
+    }
+    case 6:
+        if (func_002C64E0(11, pad) != TCM_BUTTON_HELD) {
+            m_dd4 = 0;
+            Close(false);
+        }
+        break;
+    }
+}
 
 /* the next selectable item of a column after the open one, wrapping round to the first; with no
  * other, the open one if asked (else -1). Members reading theTCM, not `this` (a0 is never read) */
@@ -264,6 +340,34 @@ void CTCM::Close(bool selected)
     if (!theNetwork.m_bNetwork)
         theReco.Suspend(false);
     CInput::Flush();
+}
+
+/* push-to-talk while the menu is closed in a network game: the radio on while the button is held
+ * (for at most the longest talk), off with a short hold when it is let go */
+void CTCM::TalkTick(float dt)
+{
+    if (data_0044D4F8 && theNetwork.m_bNetwork && m_mode.m_mode == 4) {
+        CPad *pad = GetPad(ftsGetPlayer()->m_ctrl->m_padIndex);
+
+        if (pad) {
+            TCM_BUTTON st = func_002C64E0(10, pad);
+
+            if (st == TCM_BUTTON_HELD && m_hold <= 0.0f && s_tcm_talktime < s_tcm_talkmax) {
+                s_tcm_talking = true;
+                s_tcm_talkheld = true;
+                s_tcm_talktime += dt;
+                func_0030E6E0(data_0045B718, 1);
+            } else if (st == TCM_BUTTON_UP) {
+                s_tcm_talktime = 0.0f;
+                s_tcm_talking = false;
+                if (s_tcm_talkheld) {
+                    Hold(false, s_tcm_releasehold);
+                    s_tcm_talkheld = false;
+                }
+                func_0030E6E0(data_0045B718, 0);
+            }
+        }
+    }
 }
 
 CTCMSounds::CTCMSounds()

@@ -21,6 +21,7 @@
 
 class CZSealBody;
 class CNodeAction;
+class CPad;
 
 /* what an item's command and its test return: the test's value is the node's state (a byte enum:
  * the tree copies it with lb, compares it with lbu) */
@@ -169,6 +170,8 @@ public:
     void Hold(bool reset, float t);
     CTCMNode *GetColumn(unsigned int depth);
     /* the tree unit's (hud_tcmtree.cpp; the names ours) */
+    void Tick(CPad *pad, float dt);
+    void TalkTick(float dt);
     void Next();
     void ShowRoot();
     void Open();
@@ -194,7 +197,7 @@ public:
     float m_db0;   // 0xdb0
     float m_hold;   // 0xdb4
     CTCMSounds m_sounds;   // 0xdb8
-    int m_dc8;   // 0xdc8
+    float m_dc8;   // 0xdc8 (a float: the close test compares it with 10)
     unsigned char m_dcc;   // 0xdcc
     unsigned char m_dcd;   // 0xdcd
     unsigned char m_dce;   // 0xdce
