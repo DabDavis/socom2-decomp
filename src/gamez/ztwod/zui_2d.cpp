@@ -2651,10 +2651,24 @@ void ListItem::AddToRdr(CRdrEditor *ed)
     m_impl->AddToRdr(ed);
 }
 
+/* a list box command (SOCOM II's 20 bytes): the header's type and argument -- a valve's name added
+ * to the animation's -- and a UI variable's name index at 0x10 */
+struct CListBoxCmd : public C2DAnimCmdHdr {
+    unsigned char m_var;   // 0x10
+};   // 0x14 bytes
+
 /* the list box as its items read it (SOCOM 1's CUIListBox: the highlighted row, its opacity and
- * its pulse -- what DrawPrep gives the row it draws; the rest stood in) */
-class CUIListBox {
+ * its pulse -- what DrawPrep gives the row it draws; the rest stood in). A plain bitmap first, as
+ * its vtable 0x407670 holds CPlainBmp's Draw and SetMapOffset and C2DBitmap's flag setters */
+class CUIListBox : public CPlainBmp {
 public:
+    /* slot 0 (0x375710, not written yet: its items, columns and fonts freed) */
+    virtual ~CUIListBox();
+    /* slot 22: the box's commands parsed (SOCOM 1's; SOCOM II's eleven) */
+    virtual C2DAnimCmdHdr *ParseZAnimCmd(_zrdr *rdr);
+    /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
+    virtual int GetZAnimCmdType(const char *name);
+
     /* the row's opacity, pulse time and limits: the highlighted row's own, the others' fixed */
     int GetAlpha(int idx) const { return m_highlighted == idx ? m_highlightAlpha : 80; }
     float GetPulseTime(int idx) const { return m_highlighted == idx ? m_pulseTime : 0.0f; }
@@ -2669,10 +2683,7 @@ public:
     /* every item erased and deleted, then the box's own font (SOCOM II's, 0x375C70, the name ours:
      * UpdateUIVar and 0x372980 call it) */
     void RemoveAllItems();
-    /* slot 24 of its table 0x407670: the box's eleven commands after C2D's (0x373640) */
-    int GetZAnimCmdType(const char *name);
 
-    unsigned char _0[0xa0];
     C2DFont *m_font;   // 0xa0
     unsigned char _a4[0xbc - 0xa4];
     C2DFont *m_ownFont;   // 0xbc: a font of the box's own, deleted with its items
@@ -2804,6 +2815,108 @@ int CUIListBox::GetZAnimCmdType(const char *name)
     if (!strcasecmp("GetContents", name))
         return C2DCmdType(0) + 10;
     return C2DCmdType(name);
+}
+
+/* the eleven commands, each a 20-byte record typed by slot 24: the four queries and RemoveItem take
+ * a valve's name, AddItem a valve's and a UI variable's, GetContents a UI variable's; anything else
+ * none -- C2D's parser is not asked (SOCOM 1's took fewer, in the same order) */
+C2DAnimCmdHdr *CUIListBox::ParseZAnimCmd(_zrdr *rdr)
+{
+    CListBoxCmd *cmd;
+
+    if (zrdr_findtag(rdr, "FINISH")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("FINISH");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "HIGHLIGHT_ON")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("HIGHLIGHT_ON");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "HIGHLIGHT_OFF")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("HIGHLIGHT_OFF");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "HAS_ITEMS")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("HAS_ITEMS");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "GetItemCount")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("GetItemCount");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "GetFocusIndex")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("GetFocusIndex");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "SetFocusIndex")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("SetFocusIndex");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "AddItem")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+        const char *var = zrdr_findstring(rdr, "UIVAR");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("AddItem");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = ZAnim.m_CurAnim->AddName(var);
+    } else if (zrdr_findtag(rdr, "RemoveItem")) {
+        const char *valve = zrdr_findstring(rdr, "VALVE");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("RemoveItem");
+        cmd->m_arg = ZAnim.m_CurAnim->AddName(valve);
+        cmd->m_var = 0;
+    } else if (zrdr_findtag(rdr, "GetContents")) {
+        const char *var = zrdr_findstring(rdr, "UIVAR");
+
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("GetContents");
+        cmd->m_arg = 0;
+        cmd->m_var = ZAnim.m_CurAnim->AddName(var);
+    } else if (zrdr_findtag(rdr, "RemoveAllItems")) {
+        cmd = (CListBoxCmd *)_calloc(1, sizeof(CListBoxCmd), 0, 0);
+        cmd->header.timeless = 1;
+        cmd->header.data_size = sizeof(CListBoxCmd);
+        cmd->m_type = GetZAnimCmdType("RemoveAllItems");
+        cmd->m_arg = 0;
+        cmd->m_var = 0;
+    } else
+        cmd = 0;
+    return cmd;
 }
 
 namespace {
