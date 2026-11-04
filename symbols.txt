@@ -5777,7 +5777,7 @@
 0x0032C4F0 0x78 CloseAll__11CRdrArchiveFv  # OVL1; s1:order (SOCOM 1's CloseAll: CZAR::Close on every archive of the list)
 0x0032C570 0x80 OpenAll__11CRdrArchiveFv  # OVL1; s1:order (SOCOM 1's OpenAll: ReOpen(1, 1) on every archive of the list)
 0x0032C5F0 0x60 __dt__15CRdrArchiveListFv  # OVL1; s1:order (SOCOM 1's CRdrArchiveList destructor: __sinit_zrdr_archive.cpp's 0x402D70 registers it for the list at 0x488510)
-0x0032C650 0x10 func_0032C650  # OVL1
+0x0032C650 0x10 IsString__5_zrdrCFv  # OVL1; the integrator 2026-11-04, by the UI lane round 20: the body is `type == 3` (lbu, xori 3, sltiu), zrdr.h's `bool IsString() const`; _Refresh 0x385EA0 its only caller
 0x0032C660 0x10 IsArray__5_zrdrCFv  # OVL1; tu: zanim_cmd_parse.cpp~ (1.0 beta); s1:exact
 0x0032C670 0xA0 ReadPacked__8CRdrFileFR7CFileIOUi  # OVL1; s1:align (SOCOM 1's ReadPacked(CFileIO &, unsigned): the buffer malloc'd and read through the file's fread slot, the root an array, Resolve(false); CAiMap::read_readers calls it as SOCOM 1's does)
 0x0032C710 0x1F8 Create__8CRdrFileFPvUii  # OVL1; the name ours (SOCOM II's: a buffer whose first halfword is the format's version made a new CRdrFile (0x34 bytes, the constructor inlined), resolved, deleted if that fails; SOCOM 1's Load built the file in place)
@@ -5933,7 +5933,7 @@
 0x003352C0 0xC func_003352C0  # OVL1
 0x003352D0 0x14 func_003352D0  # OVL1
 0x003352F0 0x404 func_003352F0  # OVL1
-0x00335700 0x1C func_00335700  # OVL1
+0x00335700 0x1C String__5_zrdrCFv  # OVL1; the integrator 2026-11-04, by the UI lane round 20: the body is `type == 3 ? string : 0`, zrdr.h's inline `char *String() const` out of line; called by _Refresh and 0x3352F0, 0x3357C0, 0x335E20
 0x00335720 0x40 func_00335720  # OVL1
 0x00335760 0x40 func_00335760  # OVL1
 0x003357A0 0xC func_003357A0  # OVL1
