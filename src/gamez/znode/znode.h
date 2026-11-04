@@ -197,7 +197,7 @@ public:
     /* the edges a point's vertical crosses, their count; the two edge points through a point
      * (SOCOM 1's) */
     int GetEdgeIntersectsY(CPnt3D *p, CPnt3D *out);
-    bool GetEdgeIntersects(CPnt3D *p, CPnt3D *a, CPnt3D *b);
+    int GetEdgeIntersects(CPnt3D *p, CPnt3D *a, CPnt3D *b);
 
     CPnt4D *m_pnts;   // 0x10: its points, 16 bytes each (Allocate mallocs them; the name ours)
 };

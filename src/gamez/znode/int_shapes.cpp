@@ -9,11 +9,11 @@
  * grid_clutter.cpp's and int_material.cpp's in the table). SOCOM 1 names no file for
  * these functions (the beta's int_main.cpp asserts end at DiIntersect(n), before SetCDIBBox); the
  * unit's name is ours. Written so far: the shapes' constructors and destructors,
- * CDIBBox::GetAltitude, SetEdgeVecsAndNorm and GetBBoxCorners. Unwritten, in image order:
- * SetCDIBBox, CDIBBox::GetIntersect, 0x2DD130 (the polygon's first three points loaded on VU0,
- * vcallms 0x70: new), CDIPoly::GetIntersect, DiIntersect::LoadTipAndTail (0x2DD210),
- * GetEdgeIntersectsY, GetEdgeIntersects, intersect2d (0x2DD690) and CDIPoly::GetAltitude -- VU0 code
- * throughout. Defined in reverse of their image order (-inline deferred). */
+ * CDIBBox::GetAltitude, SetEdgeVecsAndNorm, LoadPlaneVU0, GetBBoxCorners and (round 10) the edge
+ * queries GetEdgeIntersectsY, GetEdgeIntersects and intersect2d (0x2DD690). Unwritten, in image
+ * order: SetCDIBBox, CDIBBox::GetIntersect, CDIPoly::GetIntersect, DiIntersect::LoadTipAndTail
+ * (0x2DD210) and CDIPoly::GetAltitude -- VU0 code throughout. Defined in reverse of their image
+ * order (-inline deferred). */
 
 #include "node_world.h"
 
@@ -45,6 +45,104 @@ CDIBBox::CDIBBox()
 CDIBBox::~CDIBBox()
 {
     Free();
+}
+
+}
+
+/* where the point falls along the edge from a to b, measured in the xz plane: its projection
+ * onto the edge past either end (beyond a -1e-5 tolerance) is no crossing; at an end, the end
+ * itself goes into out, still no crossing; between them the point on the edge at that fraction
+ * goes into out (SOCOM 1's intersect2d, the same Sub calls, tolerance and frame). The two
+ * projections declared first (numbered before the points: s takes $f21, the edge's z -- read into a
+ * local ahead of the second Sub, as the target loads it -- and t share $f20) */
+bool intersect2d(const CPnt3D *p, const CPnt3D *a, const CPnt3D *b, CPnt3D *out)
+{
+    float s, t;
+    CPnt3D e = *b - *a;
+    float ez = e.z;
+    CPnt3D d = *p - *a;
+    s = e.x * d.x + ez * d.z;
+
+    if (s < -1e-5f)
+        return false;
+    if (s <= 0.0f) {
+        *out = *a;
+        return false;
+    }
+    CPnt3D d2 = *p - *b;
+    t = -(e.x * d2.x + ez * d2.z);
+
+    if (t < -1e-5f)
+        return false;
+    if (t <= 0.0f) {
+        *out = *b;
+        return false;
+    }
+    *out = *a + (*b - *a) * (s / (t + s));
+    return true;
+}
+
+namespace zdb {
+
+/* a polygon point as a CPnt3D (its w ignored; ours) */
+inline CPnt3D &Pnt3(CPnt4D &p) { return *(CPnt3D *)&p; }
+
+/* the polygon's edges whose height range holds the point's (each edge from the previous point, up
+ * or down), the point at that height on each kept in out -- the edge's first point when the edge is
+ * level; how many (SOCOM 1's) */
+int CDI::GetEdgeIntersectsY(CPnt3D *p, CPnt3D *out)
+{
+    if (m_flags.m_ptcount < 3)
+        return 0;
+    int count = 0;
+    int prev = m_flags.m_ptcount - 1;
+    int i = 0;
+
+    do {
+        if ((p->y > m_pnts[prev].y && p->y <= m_pnts[i].y) ||
+            (p->y >= m_pnts[i].y && p->y < m_pnts[prev].y)) {
+            float d = m_pnts[i].y - m_pnts[prev].y;
+
+            if (d == 0.0f)
+                out[count++] = Pnt3(m_pnts[prev]);
+            else
+                out[count++] = Pnt3(m_pnts[prev]) +
+                               (Pnt3(m_pnts[i]) - Pnt3(m_pnts[prev])) * ((p->y - m_pnts[prev].y) / d);
+        }
+        prev = i;
+    } while (++i < m_flags.m_ptcount);
+    return count;
+}
+
+/* the polygon's edges the point's line crosses (each edge from the previous point), their
+ * crossings kept -- at most four -- and the highest and the lowest of them handed back; how many
+ * (SOCOM 1's: the count read in place, no local -- an int local adds an andi -- and re-read at each
+ * pass of a do/while, which has no entry test; the second walk reuses the first's counter) */
+int CDI::GetEdgeIntersects(CPnt3D *p, CPnt3D *hi, CPnt3D *lo)
+{
+    if (m_flags.m_ptcount < 3)
+        return 0;
+    CPnt3D pts[4];
+    int count = 0;
+    int prev = m_flags.m_ptcount - 1;
+    int i = 0;
+
+    do {
+        if (intersect2d(p, (CPnt3D *)&m_pnts[prev], (CPnt3D *)&m_pnts[i], &pts[count]))
+            count++;
+        prev = i;
+    } while (++i < m_flags.m_ptcount);
+    if (count == 0)
+        return 0;
+    *hi = pts[0];
+    *lo = pts[0];
+    for (i = 1; i < count; i++) {
+        if (pts[i].y > hi->y)
+            *hi = pts[i];
+        if (pts[i].y < lo->y)
+            *lo = pts[i];
+    }
+    return count;
 }
 
 /* (hand-written VU0 code, an asm function: the points' pointer at 0x10, three quadwords) */
