@@ -74,7 +74,7 @@ The image is three pieces of one address space:
 
 | piece | base | source | code |
 |---|---|---|---|
-| MAIN | `0x00100000` | `SCUS_972.75`'s one non-empty LOAD | `0x180000-0x1CA3D0`, `0x1CCD78-0x1CE2A0`, `0x1D4B00-0x1D4F90` |
+| MAIN | `0x00100000` | `SCUS_972.75`'s one non-empty LOAD | `0x180000-0x1CA3D0`, `0x1D4B00-0x1D4F90` (`0x1CCD78-0x1CE2A0`, swept as code at first, is libkernl's tlbsrc -- a kernel image linked at 0x80075000 -- and .data: its rows retired, GCC round 23a) |
 | OVL1 | `0x001E7000` | `ftscore.bin` (FTSCore) | `0x1E7040-0x3D5980`; VU1 microcode `0x3D5980-0x3DBFF8` |
 | OVL2 | `0x004C5380` | `zsealetc.bin` (ZSealEtc) | `0x4C53C0-0x64F778` |
 

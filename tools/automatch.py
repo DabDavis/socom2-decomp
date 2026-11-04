@@ -72,7 +72,8 @@ GCC_RANGES = [
     (0x1A13D0, 0x1AD088, [SDK, LIBC], "MAIN: libgraph, libipu, libkernl"),
     (0x1AD088, 0x1B3970, [LIBC, SDK], "MAIN: newlib's libm"),
     (0x1B3970, 0x1C4CC0, [SDK, LIBC], "MAIN: libmc, libmpeg, libmrpc, libpad2, libscf, libvu0 ..."),
-    (0x1CCD78, 0x1CE2A4, [SDK, LIBC], "MAIN: the code after zlib's"),
+    # (0x1CCD78-0x1CE2A4, "the code after zlib's", is libkernl's .data: the tlbsrc kernel image
+    # linked at 0x80075000 and its syscall table, then tlbfunc.c's statics -- no rows since GCC 23a)
     (0x1E7F58, 0x1E8FD4, [("ee-gcc2.96", "-O2 -G0 -fno-strict-aliasing")],
      "OVL1: the microphone input (Sid*), libezcnf/libezctl"),
     # the heap is ScanSoft's (the demo links it inside the recogniser): SearchFor's loop is unrolled

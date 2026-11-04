@@ -68,7 +68,7 @@
 0x001CCD68 0x4 _bind  # MAIN; s1:data-exact (size SOCOM 1's; via sceSifAllocIopHeap +9)
 0x001CCD70 0x4 _bind_check  # MAIN; s1:data-exact (size SOCOM 1's; via _lf_bind +1)
 0x001CCD74 0x4 _lfwildcard  # MAIN; s1:data-seq (size SOCOM 1's; via _lf_version)
-0x001CCD78 0x330 tlbsrc  # MAIN; s1:data-exact (size SOCOM 1's; via InitTLBFunctions)
+0x001CCD78 0x330 tlbsrc  # MAIN; s1:data-exact (size SOCOM 1's; via InitTLBFunctions); the kernel-mode TLB image libkernl's tlbfunc.c copies to 0x80075000 (InitTLBFunctions: kCopy, sizeof 0x330) -- code linked there (_start 0x80075000, the syscall table's lookup; then PutTLBEntry, SetTLBEntry, GetTLBEntry, ProbeTLBEntry, ExpandScratchPad) and its syscall table at +0x300 ({0x55, 0x80075038} ...); no MAIN-linked unit can score it, so the map holds no rows here (GCC round 23a retired func_001CCD78 ... func_001CCF20 and func_001CD078, 0x122C: the table and the .data after it)
 0x001CD0A8 0x4 _kTLBRefillHandler  # MAIN; s1:data-exact (size SOCOM 1's; via SetTLBHandler)
 0x001CD0B0 0x40 _kDebugHandler  # MAIN; s1:data-exact (size SOCOM 1's; via SetDebugHandler)
 0x001CD0F0 0x4 _kExecArg  # MAIN; s1:data-exact (size SOCOM 1's; via ExecOSD +4)

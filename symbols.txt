@@ -1357,13 +1357,6 @@
 0x001CA2A0 0xEC uncompress  # MAIN
 0x001CA390 0x28 zcfree  # MAIN
 0x001CA3C0 0xC zcalloc  # MAIN; by position: three other thunks share its bytes
-0x001CCD78 0x38 func_001CCD78  # MAIN unaligned
-0x001CCDB0 0x90 func_001CCDB0  # MAIN
-0x001CCE40 0x3C func_001CCE40  # MAIN
-0x001CCE80 0x4C func_001CCE80  # MAIN
-0x001CCED0 0x4C func_001CCED0  # MAIN
-0x001CCF20 0x130 func_001CCF20  # MAIN
-0x001CD078 0x122C func_001CD078  # MAIN unaligned
 0x001CF830 0x44 inflate_mask  # MAIN data: zlib infutil.c, uInt[17]
 0x001D4B00 0x74 __sinit_zmalloc.cpp  # MAIN; by hand (MAIN runtime lane round 2): the pool unit's static initialiser -- constructs the six pools (24-byte first, 2200 blocks, ... 4-byte last, 8800) at 0x1D5690..0x1D5780; the unit's file name ours; src/main/zmalloc.cpp
 0x001D4B80 0x64 func_001D4B80  # MAIN
