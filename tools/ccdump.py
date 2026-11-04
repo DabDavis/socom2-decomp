@@ -17,7 +17,13 @@ the priority order, refs x log2(refs) / live length), .sched (haifa-sched before
 reload; -dR, else its verbose output goes to stderr) -- and the compiler's stderr. (The 2.9 builds'
 cc1 spells the verbosity `-fsched-verbose-4`: the `=` form is retried so when refused.) With -f, each
 dump's `;; Function NAME` section is written apart as `<dump>.NAME`, and the allocation order and
-the hard register each pseudo got (.greg's `Register dispositions`, named) are printed.
+the hard register each pseudo got (.greg's `Register dispositions`, named) are printed -- and, since
+GCC round 29a (the GCC c lane's round-21c prio.py folded in), each allocno's priority as global.c's
+allocno_compare computes it from .lreg's flow info (`Register N used R times across L insns`):
+(double)(floor_log2(R) x R) / L x 10000 x size, truncated, equal ones to the lower pseudo; the
+calls it crosses (X), its register, `tie` where a neighbour's priority is equal. The order those
+priorities give is checked against the order .greg printed, and a disagreement is said, never
+hidden (sceCdStRead: `last` and SCE_CD_debug's %hi, pseudos 92 and 94, 909 each -- round 24a's tie).
 
 Metrowerks writes no such dumps: an MW unit (or an assembler unit) is refused.
 """
@@ -56,14 +62,88 @@ def reg_name(n: int) -> str:
     return GPR[n] if n < 32 else f"$f{n - 32}" if n < 64 else f"hard{n}"
 
 
+def dispositions(greg: str) -> dict[int, int]:
+    """`;; Register dispositions:`: pseudo -> the hard register it got."""
+    m = re.search(r";; Register dispositions:\n(.*?)\n\n", greg, re.S)
+    return {int(p): int(h) for p, h in re.findall(r"(\d+) in (\d+)", m.group(1))} if m else {}
+
+
 def allocation(greg: str) -> list[str]:
     """Who got which register: global-alloc's priority order (`N regs to allocate: ...`) and the
     final `;; Register dispositions:` (pseudo in hard register, named)."""
     lines = [l for l in greg.splitlines() if "regs to allocate" in l]
-    m = re.search(r";; Register dispositions:\n(.*?)\n\n", greg, re.S)
-    if m:
-        pairs = re.findall(r"(\d+) in (\d+)", m.group(1))
-        lines.append(";; dispositions: " + "  ".join(f"{p}={reg_name(int(h))}" for p, h in pairs))
+    disp = dispositions(greg)
+    if disp:
+        lines.append(";; dispositions: " + "  ".join(f"{p}={reg_name(h)}" for p, h in disp.items()))
+    return lines
+
+
+def floor_log2(n: int) -> int:
+    return n.bit_length() - 1 if n > 0 else -1
+
+
+def reg_usage(lreg: str) -> dict[int, dict]:
+    """The flow info local-alloc's dump ends with, which global-alloc then reads: each pseudo's
+    `Register N used R times across L insns` -- REG_N_REFS, REG_LIVE_LENGTH -- the calls it
+    crosses and its size when not a word's (`; 4 bytes`)."""
+    out = {}
+    for m in re.finditer(r"^Register (\d+) used (\d+) times across (-?\d+) insns([^\n]*)", lreg, re.M):
+        rest = m.group(4)
+        calls = re.search(r"crosses (\d+) calls?", rest)
+        size = re.search(r"; (\d+) bytes", rest)
+        out[int(m.group(1))] = {"refs": int(m.group(2)), "live": int(m.group(3)),
+                                "calls": int(calls.group(1)) if calls else 0,
+                                "bytes": int(size.group(1)) if size else None}
+    return out
+
+
+def to_allocate(greg: str) -> list[tuple[list[int], int]]:
+    """global.c's dump_conflicts line, `;; N regs to allocate: 70 63+81 (2) ...`: each allocno in the
+    order global-alloc allocates it -- its pseudos (`a+b`: pseudos sharing one allocno, the
+    allocno's own last) and its size in hard registers (`(2)`, else 1)."""
+    m = re.search(r"regs to allocate:([^\n]*)", greg)
+    out: list[tuple[list[int], int]] = []
+    for tok in (m.group(1).split() if m else []):
+        if tok.startswith("(") and out:
+            out[-1] = (out[-1][0], int(tok.strip("()")))
+        elif re.fullmatch(r"\d+(\+\d+)*", tok):
+            out.append(([int(x) for x in tok.split("+")], 1))
+    return out
+
+
+def priorities(lreg: str, greg: str) -> list[str]:
+    """Global-alloc's priority of each allocno it allocates, as global.c's allocno_compare computes
+    it: (double)(floor_log2(refs) x refs) / live x 10000 x size, truncated to an int; equal ones go
+    to the lower allocno -- the lower first pseudo (the GCC c lane's round-21c prio.py, folded in by
+    GCC round 29a). refs sums an allocno's pseudos, live is the longest. The order these give is
+    checked against the order .greg printed (a stale or misread dump says so rather than mislead),
+    and each pseudo's final register is shown: a saved one for a call-crossing pseudo (X)."""
+    use, order, disp = reg_usage(lreg), to_allocate(greg), dispositions(greg)
+    if not order:
+        return []
+    rows = []
+    for pseudos, size in order:
+        missing = [p for p in pseudos if p not in use]
+        if missing:
+            return [f";; priorities: pseudo {missing[0]} is not in the .lreg dump's flow info"]
+        refs = sum(use[p]["refs"] for p in pseudos)
+        live = max(use[p]["live"] for p in pseudos) or -1        # global.c: a length of 0 is -1
+        pri = int((float(floor_log2(refs) * refs) / live) * 10000 * size)
+        calls = sum(use[p]["calls"] for p in pseudos)
+        rows.append((pseudos, size, refs, live, pri, calls))
+    want = sorted(rows, key=lambda r: (-r[4], min(r[0])))
+    same = [r[0] for r in want] == [r[0] for r in rows]
+    lines = [";; global-alloc's priorities, floor_log2(refs) x refs / live x 10000 x size (ties: the lower "
+             "pseudo) -- " + ("the order .greg printed" if same else
+                              "NOT the order .greg printed (computed: "
+                              + " ".join("+".join(map(str, r[0])) for r in want) + ")"),
+             ";;   pseudo   refs   live      prio  calls  reg"]
+    for i, (pseudos, size, refs, live, pri, calls) in enumerate(rows):
+        tie = any(j != i and rows[j][4] == pri for j in (i - 1, i + 1) if 0 <= j < len(rows))
+        reg = reg_name(disp[pseudos[-1]]) if pseudos[-1] in disp else "-"
+        name = "+".join(map(str, pseudos)) + (f" ({size})" if size != 1 else "")
+        lines.append(f";;   {name:>6} {refs:6d} {live:6d} {pri:9d}  {('X' * min(calls, 1)):>5}  {reg:<5}"
+                     + ("  tie" if tie else ""))
     return lines
 
 
@@ -127,8 +207,9 @@ def main(argv=None) -> int:
             print(f"{fn}: in no dump (a static GCC inlined everywhere, or a name the unit does not define)")
             continue
         greg = next((s[fn] for p, s in text.items() if p.name.endswith(".greg") and fn in s), "")
+        lreg = next((s[fn] for p, s in text.items() if p.name.endswith(".lreg") and fn in s), "")
         print(f"\n--- {fn}: " + ", ".join(f"{p.name}.{fn}" for p, s in text.items() if fn in s))
-        for line in allocation(greg):
+        for line in allocation(greg) + priorities(lreg, greg):
             print(line)
     return 0
 

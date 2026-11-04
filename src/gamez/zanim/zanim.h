@@ -160,6 +160,8 @@ public:
     CNode *GetNode(int index);
     CNode *FindNode(CNode *node);
     void ParseNetworkPacketArgs(CZAnim *anim, ZAnimNetworkPacket *packet);
+    /* the arguments written into a packet after it (SOCOM 1's; 0x271EE0) */
+    ZAnimNetworkPacket *AddNetworkPacketArgs(CZAnim *anim, ZAnimNetworkPacket *packet);
     /* the index'th argument's valve (SOCOM 1's; 0x2721C0, valve_main.cpp's VWATCH calls it) */
     CValve *GetValve(int index);
     /* the index'th command argument (SOCOM 1's; the task handlers' parameter find calls it) */

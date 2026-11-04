@@ -7,10 +7,10 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
+M2C_UNK Clear__16CZProjectileListFv();              /* extern */
 M2C_UNK __destroy_new_array(s32, M2C_UNK *);        /* extern */
 M2C_UNK __dla__FPv(s32);                            /* extern */
 M2C_UNK __dt__Q23zdb11DiIntersectFv(s32, M2C_UNK);  /* extern */
-M2C_UNK func_003CD150();                            /* extern */
 extern M2C_UNK __dt__12CZProjectileFv;
 
 void UnInit__16CZProjectileListFv(char *arg0) {
@@ -21,7 +21,7 @@ void UnInit__16CZProjectileListFv(char *arg0) {
     char *var_s1;
     char *var_s1_2;
 
-    func_003CD150();
+    Clear__16CZProjectileListFv();
     temp_a0 = SC_MEMBER(arg0, s32 *, 0);
     if (temp_a0 != 0) {
         __destroy_new_array(temp_a0, &__dt__12CZProjectileFv);

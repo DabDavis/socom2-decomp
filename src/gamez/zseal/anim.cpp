@@ -183,6 +183,8 @@ public:
      * the walk is all that is left) and every set closed (SOCOM 1's; CGame::StopEngine calls it) */
     void Close() {}
     static void CloseAll();
+    /* a set's anims taken from another (SOCOM 1's; OVL2 0x5E3740) */
+    void Inherit(AnimSet *base);
 
     /* every set (SOCOM 1's AnimSet::List, a pointer vector; OVL1 bss 0x44D430) */
     static std::vector<AnimSet *> list;
@@ -554,6 +556,50 @@ CZSIScriptCommon *AnimSet::GetVariantScript(AnimType type, int kind, int index)
         }
     }
     return 0;
+}
+
+/* a set's included sets inherited, each found by name in the list (OVL2 0x5E3940, unwritten: SOCOM
+ * 1's Inherit held the walk inline) */
+extern "C" void func_005E3940(AnimSet *set);
+
+/* a set's anims taken from another (SOCOM 1's Inherit; OVL2 0x5E3740): the other's own includes
+ * first while this one is not ready, then each of its type records in use (a non-negative anim)
+ * put at its type's place here -- the record list grown with nulls to reach it -- and its anims by
+ * the item in hand copied over where set; this set ready after. The record's dead first definition
+ * numbers it before the list's reference (the target's s3 to its s2: the reference keeps the list's
+ * address in a register for each pass's end()); `> -1` gives the target's slti, `>= 0` a bltz;
+ * this set's groups taken first, the other's after (the later-declared pointer the lower register) */
+void AnimSet::Inherit(AnimSet *base)
+{
+    if (this == base)
+        return;
+    if (!m_ready)
+        func_005E3940(base);
+    unsigned int i = 0;
+    CAnimTypeRec *rec = 0;
+    std::vector<CAnimTypeRec *> &types = base->m_types;
+
+    for (std::vector<CAnimTypeRec *>::iterator r = types.begin(); r != types.end(); r++, i++) {
+        rec = *r;
+
+        if (rec && rec->m_id > -1) {
+            while (i >= m_types.size())
+                m_types.push_back(0);
+            m_types[i] = rec;
+        }
+    }
+    CAnimsByFP *fp = m_animsbyfp;
+    ANIMTYPE_GROUP *g = base->m_animsbyfp->m_animgroups;
+
+    for (int k = 0; k < CAnimsByFP::MAX_TYPES; k++, g++) {
+        if (g->m_pistol_type > -1)
+            fp->SetPistolAnim(g->m_rifle_type, g->m_pistol_type);
+        if (g->m_rifle_fp_type > -1)
+            fp->SetRifleFPAnim(g->m_rifle_type, g->m_rifle_fp_type);
+        if (g->m_pistol_fp_type > -1)
+            fp->SetPistolFPAnim(g->m_rifle_type, g->m_pistol_fp_type);
+    }
+    m_ready = true;
 }
 
 /* (OVL2 0x5E3D90) */

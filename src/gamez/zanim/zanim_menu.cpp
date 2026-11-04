@@ -18,6 +18,9 @@
 #include "zanim_menu.h"
 #include "../zsys/zsys.h"
 
+/* MAIN's strncasecmp (0x1993C0, newlib's; include/string.h has none: declared as ai.h does) */
+extern "C" int strncasecmp(const char *a, const char *b, unsigned int n);
+
 /* the lobby objects the handlers also reach (the LAN lobby: zonline.h's CZLANLobby, its object not
  * named yet) */
 class CZLANLobby {
@@ -205,7 +208,6 @@ public:
 };
 void UpdateCharWeaponUiVars(int index);   /* 0x2AF190 */
 const char *GetDefCharTypeName(int index);   /* 0x2AF760 */
-
 namespace {
 
 /* whether any selected character carries the item the argument names (SOCOM 1's). OPEN, 6
@@ -239,6 +241,44 @@ bool OnIsEquipmentSelected(C2DAnimCmdHdr *hdr, float *dT)
 
 namespace {
 
+/* whether the mission was won (SOCOM 1's: the UI command table's IsMissionSuccessful, id 2) */
+bool OnIsMissionSuccessful(C2DAnimCmdHdr *hdr, float *dT)
+{
+    return theMission.m_state == MISSION_SUCCESS;
+}
+
+/* a single-player mission's title by its code's first three characters, "UU" for none (SOCOM II's;
+ * the name ours -- 0x2801C0 asks it of the mission it lists; the first four codes carry a space the
+ * three-character compare never reaches) */
+const char *GetMissionTitle(const char *code)
+{
+    if (!strncasecmp(code, "m51 ", 3))
+        return "Seeding Chaos";
+    if (!strncasecmp(code, "m52 ", 3))
+        return "Terminal Transaction";
+    if (!strncasecmp(code, "m53 ", 3))
+        return "Upland Assault";
+    if (!strncasecmp(code, "m61 ", 3))
+        return "Urban Sweep";
+    if (!strncasecmp(code, "m62", 3))
+        return "Stranglehold";
+    if (!strncasecmp(code, "m63", 3))
+        return "Hydroelectric";
+    if (!strncasecmp(code, "m71", 3))
+        return "Guardian Angels";
+    if (!strncasecmp(code, "m72", 3))
+        return "Protect and Serve";
+    if (!strncasecmp(code, "m73", 3))
+        return "Against the Tide";
+    if (!strncasecmp(code, "m81", 3))
+        return "Lockdown";
+    if (!strncasecmp(code, "m82", 3))
+        return "Guided Tour";
+    if (!strncasecmp(code, "m83", 3))
+        return "Doomsday Delivery";
+    return "UU";
+}
+
 /* the item the argument names taken from every selected character -- not a primary or a secondary,
  * which stay (SOCOM 1's) */
 bool OnRemoveEquipment(C2DAnimCmdHdr *hdr, float *dT)
@@ -250,6 +290,26 @@ bool OnRemoveEquipment(C2DAnimCmdHdr *hdr, float *dT)
     for (CSelectedCharsItr it("UiCharSet"); it.Valid(); it.Advance())
         if (((CCharacterWeapList *)it.m_weapons)->RemoveWeapon(item))
             UpdateCharWeaponUiVars(it.m_index);
+    return true;
+}
+
+}
+
+namespace {
+
+/* the mission played again: off the network the state popped back to it, on it the session's master
+ * moves the game on (SOCOM 1's, as OnCloseAndSwitch's network arm) */
+bool OnReplayMission(C2DAnimCmdHdr *hdr, float *dT)
+{
+    if (theNetwork.m_bNetwork) {
+        if (theNetwork.m_bSessionMaster) {
+            CZNetGame *game = theMission.m_pNetGame;
+
+            game->MPMajorGameState((CZNetGame::MP_MAJOR_GAME_STATE)5);
+            CZGameState::UpdateLocalGame(game);
+        }
+    } else
+        theGame.Pop(1);
     return true;
 }
 
@@ -1171,6 +1231,15 @@ void CMenuStack::AddToHistory(const char *name)
     m_history.m_free.pop_back();
     m_history.m_used.PtrVec::insert(m_history.m_used.PtrVec::end(), 1, (unsigned int &)slot);
     strcpy(slot, name);
+}
+
+/* the pop-up, made when there is none (SOCOM 1's, 0xBF0 bytes here: its constructor inlined, the
+ * bitmap's and the text's constructors called) */
+CPopUpDialog *CMenuStack::GetPopUp()
+{
+    if (!m_popup)
+        m_popup = new CPopUpDialog;
+    return m_popup;
 }
 
 /* the pop-up put on the stack with its argument (the text typed when the name says INPUT_STRING),
@@ -2488,6 +2557,33 @@ bool UISelectLocale(C2DAnimCmdHdr *hdr, float *dT)
     return true;
 }
 
+/* the UI variable the argument names, an array of missions, cut down to the suppression maps:
+ * every entry kept but an array whose first value names a mission of another multiplayer kind
+ * than 5 (SOCOM II's; the name ours) */
+bool UIRemoveNonSuppressionMaps(C2DAnimCmdHdr *hdr, float *dT)
+{
+    CUIVariable *var = theUIVarManager.Add(ArgText(ArgName(hdr)), 0, UIVAR_SESSION);
+
+    if (var && var->type == 4) {
+        CRdrEditor ed;
+
+        ed.push(0);
+        for (unsigned int i = 0; i < var->Count(); i++) {
+            _zrdr *e = var->Item(i);
+
+            if (e->type == 4) {
+                if ((unsigned char)static_cast<CMultiMissionList &>(data_00441650).GetMultiValue(e->Item(0)->Int()) == 5)
+                    ed.addrdrnode(e);
+            } else {
+                ed.addrdrnode(e);
+            }
+        }
+        ed.pop();
+        var->Set(&ed);
+    }
+    return true;
+}
+
 bool UIHaveBeenBannedFromGame(C2DAnimCmdHdr *hdr, float *dT)
 {
     return func_002C3550();
@@ -3266,6 +3362,48 @@ _zanim_cmd_hdr *UICompareValuesParse(const char *name, _zrdr *rdr)
     else
         cmd->m_after_formatting = 0;
     return (_zanim_cmd_hdr *)cmd;
+}
+
+/* CompareValues: the two values -- each a name, the typed text for INPUT_STRING, or the string of
+ * the UI variable it names -- compared as strings, case-insensitively when asked and after each is
+ * formatted when asked: whether they are the same (SOCOM II's; the name ours) */
+bool UICompareValues(C2DAnimCmdHdr *hdr, float *dT)
+{
+    UICompareValuesCmd *cmd = (UICompareValuesCmd *)hdr;
+    bool same = false;
+    C2DString s1, s2;
+    const char *a = CurAnim()->GetName(cmd->m_value1);
+    const char *b = CurAnim()->GetName(cmd->m_value2);
+
+    if (a && !strcmp(a, "INPUT_STRING"))
+        a = CurAnim()->m_arg_list->GetCharP(0);
+    if (b && !strcmp(b, "INPUT_STRING"))
+        b = CurAnim()->m_arg_list->GetCharP(0);
+    if (cmd->m_uivar1 == 1) {
+        CUIVariable *v = theUIVarManager.Add(a, 0, UIVAR_SESSION);
+
+        if (v->type == 3)
+            a = v->String();
+    }
+    if (cmd->m_uivar2 == 1) {
+        CUIVariable *v = theUIVarManager.Add(b, 0, UIVAR_SESSION);
+
+        if (v->type == 3)
+            b = v->String();
+    }
+    if (a && b && cmd->m_after_formatting) {
+        s1.Format(a);
+        a = s1.m_string + s1.m_firstCharPos;
+        s2.Format(b);
+        b = s2.m_string + s2.m_firstCharPos;
+    }
+    if (a && b) {
+        if (cmd->m_case_insensitive)
+            same = !strcasecmp(a, b);
+        else
+            same = !strcmp(a, b);
+    }
+    return same;
 }
 
 bool UILobbyDisconnect(C2DAnimCmdHdr *hdr, float *dT)

@@ -124,10 +124,10 @@ bool CAiSAction::CanAttack() const
 
 /* the object's id told an event: 1 drops it, 6 sets the flags' bit 2; the AI's stack bit 0 set
  * either way (OVL2 0x5F06B0) */
-void CAiSAction::Virtual0C(int id, int event, CSealCtrlAi *ai)
+void CAiSAction::Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai)
 {
-    if (id == m_84) {
-        switch ((unsigned char)event) {
+    if ((int)anim == m_84) {
+        switch (sig) {
         case 1:
             m_84 = 0;
             break;
@@ -195,10 +195,10 @@ bool CAiSScript::CanPushAiState(AI_STATE state, CSealCtrlAi *ai)
 
 /* the script's own sequence told an event: 1 ends it (its id cleared), 2 holds it and 3 lets it
  * go, the byte at 0x5F made 255 either way (OVL2 0x5F3FF0, CAiSScript's slot 0x0C) */
-void CAiSScript::Virtual0C(int id, int event, CSealCtrlAi *ai)
+void CAiSScript::Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai)
 {
-    if (id == m_58) {
-        switch ((unsigned char)event) {
+    if ((unsigned int)anim == m_58) {
+        switch (sig) {
         case 1:
             m_58 = 0;
             break;
@@ -1165,12 +1165,12 @@ CAiState *CSealCtrlAi::FindAiState(AI_STATE state) const
 
 /* the script state (kind 1) running sequence `id` and told event 2: this state is done (OVL2
  * 0x5F6050) */
-void CAiState::Virtual0C(int id, int event, CSealCtrlAi *ai)
+void CAiState::Virtual0C(CZAnim *anim, AI_SIGNAL sig, CSealCtrlAi *ai)
 {
     CAiState *s = ai->FindAiState((AI_STATE)1);
     CAiSScript *script = s && s->m_state == 1 ? (CAiSScript *)s : 0;
 
-    if (script && script->m_58 == id && (unsigned char)event == 2)
+    if (script && script->m_58 == (unsigned int)anim && sig == 2)
         m_active = false;
 }
 
