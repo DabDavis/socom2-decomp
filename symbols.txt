@@ -10769,7 +10769,7 @@
 0x005A3280 0x12C func_005A3280  # OVL2
 0x005A33B0 0x1B8 HandleBloodDrip__10CZSealBodyFf  # OVL2; s1:calls
 0x005A3570 0x434 func_005A3570  # OVL2
-0x005A39B0 0x198 func_005A39B0  # OVL2
+0x005A39B0 0x198 HandleFootfallSound__10CZSealBodyFP6CPnt3D  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's HandleFootfallSound__10CZSealBodyFP6CPnt3D, after HandleBloodDrip and HandleSealStep in both builds; the same material bound and bounds-checked read of CMaterialExArray's list, GetStance(false) == prone, the throttles within a half, the sound's PlaySound3D slot at the point; SOCOM II tests a third throttle and plays it flat for a player in first person)
 0x005A3B50 0x58 func_005A3B50  # OVL2
 0x005A3BB0 0xA8 UninitDatabaseHandles__10CZSealBodyFv  # OVL2; s1:calls by hand (SOCOM 1's UninitDatabaseHandles__10CZSealBodyFv: _free of a buffer, the blood decals' vector emptied through the deleter's constructor, clear, swap and destructor on a stack temporary, a second buffer freed, RemoveWeaponEventCallback of the same callback, 0x5A4F80; SOCOM II zeroes three counts; seal_env.cpp)
 0x005A3C60 0x60 func_005A3C60  # OVL2
@@ -10782,14 +10782,14 @@
 0x005A4150 0x1C8 ReadFlinchAnimations__7AnimSetFP5_zrdrPCc15DAMAGE_LOCATION  # OVL2; s1:callee
 0x005A4320 0x1C8 ReadDeathAnimations__7AnimSetFP5_zrdrPCc15DAMAGE_LOCATION  # OVL2; s1:callee
 0x005A44F0 0x1C8 ReadTeammateDeathAnimations__7AnimSetFP5_zrdrPCc15DAMAGE_LOCATION  # OVL2; s1:callee
-0x005A46C0 0x180 func_005A46C0  # OVL2
+0x005A46C0 0x180 InitDeathAndFlinchAnimations__7AnimSetFv  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's InitDeathAndFlinchAnimations__7AnimSetFv, between ReadTeammateDeathAnimations and ReadDeathAndFlinchAnims in both builds; the same two loops, six locations by three states, reserving 8 in the same six tables in SOCOM 1's order; the set loader 0x5E30F0 calls it)
 0x005A4840 0x1A8 ReadDeathAndFlinchAnims__7AnimSetFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:exact
 0x005A49F0 0x2E8 func_005A49F0  # OVL2
 0x005A4CE0 0x8 func_005A4CE0  # OVL2
 0x005A4CF0 0x278 func_005A4CF0  # OVL2
 0x005A4F70 0x10 func_005A4F70  # OVL2
 0x005A4F80 0x11C HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv  # OVL2; s1:ref by hand (UninitDatabaseHandles, 0x5A3BB0, removes it with CZWeapon::RemoveWeaponEventCallback where SOCOM 1's UninitDatabaseHandles removes HandleWeaponEvent__10CZSealBodyFP12CZProjectileUiPv; the callback's type is that static member's; seal_env.cpp, not written yet)
-0x005A50A0 0x1A4 func_005A50A0  # OVL2
+0x005A50A0 0x1A4 TickStun__10CZSealBodyFf  # OVL2; s1:order by hand (the SEAL lane, round 19: SOCOM 1's TickStun__10CZSealBodyFf, after HandleWeaponEvent and before HandleStunFromHit/HandleStunDamage in both builds; the same seven-kind walk of m_stunval run down by the character type's m_recovery_factor, HandleStunRecovery's jump table inlined; SOCOM II clears the stunned bit when not stunned)
 0x005A5250 0x174 func_005A5250  # OVL2
 0x005A53D0 0x5C HandleStunDamage__10CZSealBodyF9STUN_TYPEfPC6CPnt3D  # OVL2; s1:order by hand (SOCOM 1's HandleStunDamage__10CZSealBodyF9STUN_TYPEfPC6CPnt3D: the kind under 8, m_stunned set, the kind's m_stunval kept at its highest and passed to the controller's OnStunDamage (slot 0x50) with the kind and the source unchanged -- SOCOM II drops the recovery's switch; right before SetHudHitFlag in both builds; seal_env.cpp)
 0x005A5430 0x1C SetHudHitFlag__10CZSealBodyFv  # OVL2; tu: seal_env.cpp~ (1.0 beta); s1:order (SOCOM 1's SetHudHitFlag__10CZSealBodyFv word for word, first of the three: bit 1 of the flag byte set, 0x105C here against 0xF58) (the SEAL lane, round 3)
@@ -10916,7 +10916,7 @@
 0x005B67F0 0xA0 func_005B67F0  # OVL2
 0x005B6890 0x4C func_005B6890  # OVL2; the same words as __ct__Q23std38__vector_pod<Ui,Q23std13allocator<Ui>>FRCQ23std38__vector_pod<Ui,Q23std13allocator<Ui>> (0x259b40) bar the link's addresses (tools/ovlcopies.py) -- identical code, not proven the same instance (template instances for different types and look-alike accessors share bodies)
 0x005B68E0 0x2E8 insert__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FPUsUiRCUs  # OVL2; s1:calls
-0x005B6BD0 0x110 func_005B6BD0  # OVL2
+0x005B6BD0 0x110 reserve__Q23std38__vector_pod<Us,Q23std13allocator<Us>>FUi  # OVL2; by hand (the SEAL lane, round 19): the pod vector's reserve for a 2-byte element (new(n * 2), the old block memcpy'd over and deleted, 'vector::reserve length error'): InitDeathAndFlinchAnimations reserves 8 in each anim-type table with it, as SOCOM 1's reserves its vector<AnimType>s; beside insert__...<Us> (0x5B68E0)
 0x005B6CE0 0x4C4 func_005B6CE0  # OVL2
 0x005B71B0 0x198 func_005B71B0  # OVL2
 0x005B7350 0x5BC func_005B7350  # OVL2

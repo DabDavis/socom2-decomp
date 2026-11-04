@@ -315,6 +315,9 @@ public:
     /* a type's motion script with no weapon (anim.cpp's GetScript(type), OVL2 0x5E3D90: the 3-argument
      * GetScript tail-called with kind 0 -- the kit lane's round 19) */
     CZSIScriptCommon *GetScript(AnimType type);
+    /* a type's base type, and whether it carries bit 1 (anim.cpp's, OVL2 0x5E1A90 and 0x5E3AC0) */
+    AnimType BaseAnim(AnimType type);
+    bool TypeBit1(AnimType type);
 
     ANIMSET_PARAMS m_aparams;   // 0x0
     unsigned char _34[0x5c - 0x34];
@@ -324,6 +327,48 @@ public:
 extern "C" {
 /* the set's own speeds read (SOCOM 1's AnimSet::SetMaxMotion; OVL2 0x5E0450, anim.cpp's) */
 void func_005E0450(AnimSet *set);
+}
+
+/* an anim type for the item held: the rifle's base type, the pistol's own where the set marks the
+ * type, the type itself when either has none; for any other item the base blend's anim type picks
+ * (1 the rifle, else the pistol), with no base blend the item kept at 0xF78 (the rifle unless that is
+ * the rifle or the pistol) -- OVL2 0x58C820, which 0x58C960 tail-calls with the item in hand; new in
+ * SOCOM II, the names ours */
+extern "C" AnimType func_0058C820(CZSealBody *seal, AnimType type, SEAL_ITEM_BYTE item)
+{
+    AnimType r = animTypeUndefined;
+
+    if (item != ITEM_RIFLE && item != ITEM_PISTOL) {
+        CZBodyAnimBlend *base = seal->m_blends.m_stack[0];
+
+        if (!base) {
+            switch (seal->m_lastitem) {
+            case ITEM_PISTOL:
+            case ITEM_RIFLE:
+                item = seal->m_lastitem;
+                break;
+            default:
+                item = ITEM_RIFLE;
+            }
+        } else
+            item = base->m_animType == 1 ? ITEM_RIFLE : ITEM_PISTOL;
+    }
+    switch (item) {
+    case ITEM_RIFLE: {
+        AnimType b = seal->m_animset->BaseAnim(type);
+
+        if (b >= 0)
+            return b;
+        break;
+    }
+    case ITEM_PISTOL:
+        if (seal->m_animset->TypeBit1(type))
+            r = seal->m_animset->m_animsbyfp->PistolAnim(type);
+        if (r >= 0)
+            return r;
+        break;
+    }
+    return type;
 }
 
 extern "C" {

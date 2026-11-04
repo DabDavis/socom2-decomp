@@ -56,6 +56,60 @@ static inline float RandSize(float lo, float hi)
     return lo + Rand01() * (hi - hi);
 }
 
+/* a material's extension (int_material.cpp's, held in zweapon.h's CMaterialExArray): only the
+ * footfall sounds by gait (the names ours) */
+struct CMaterialEx {
+    unsigned char _0[8];
+    CSnd *m_runsound;   // 0x8
+    CSnd *m_walksound;   // 0xc
+    CSnd *m_pronesound;   // 0x10
+};
+
+/* a material's extension, the first one for an index past the table (SOCOM 1's bounds-checked
+ * read; the name ours) */
+static inline CMaterialEx *MaterialEx(unsigned int i)
+{
+    if (i >= CMaterialExArray::m_materialex_list.size())
+        i = 0;
+    return (CMaterialEx *)CMaterialExArray::m_materialex_list[i];
+}
+
+/* a footfall's sound at a point, by the material underfoot and the gait -- prone, a creep (each of
+ * the three throttles within a half) or a run -- heard flat by the player looking through his own
+ * eyes (OVL2 0x5A39B0; SOCOM 1's tested two throttles and played it at the point always) */
+void CZSealBody::HandleFootfallSound(CPnt3D *pos)
+{
+    int mat = m_onMaterial;
+
+    if (mat < (int)CMaterialExArray::m_materialex_list.size()) {
+        CMaterialEx *ex = MaterialEx(mat);
+
+        if (ex) {
+            CSnd *snd;
+
+            if (GetStance(false) == stateProne)
+                snd = ex->m_pronesound;
+            else {
+                float x = m_control->m_throttle[0];
+                float y = m_control->m_throttle[1];
+                float z = m_control->m_throttle[2];
+
+                if (x > 0.5f || y > 0.5f || x < -0.5f || y < -0.5f || z > 0.5f || z < -0.5f)
+                    snd = ex->m_runsound;
+                else
+                    snd = ex->m_walksound;
+            }
+            if (snd) {
+                if (IsPlayer() && m_zoomstate > ZOOMSTATE_3RDPERSON) {
+                    snd->PlaySound((CSndInstance *)0, 255);
+                    return;
+                }
+                snd->PlaySound3D(pos, 1.0f, 0, 0, 255);
+            }
+        }
+    }
+}
+
 /* now and then a wounded SEAL drips blood: offline only, a random decal of the set at random size
  * under it, along its altitude hit (OVL2 0x5A33B0; SOCOM 1's word for word, the timer at 0x214 --
  * its size range is min + r * (max - max), as both builds have it).
@@ -97,6 +151,43 @@ void CZSealBody::HandleBloodDrip(float dT)
                              def->m_texture, size, 0);
         }
     }
+}
+
+extern "C" {
+/* the decal textures by material (OVL1 bss: a buffer of handles UninitDatabaseHandles frees) */
+extern void *data_0044D550;
+}
+
+/* a footprint left at a point: on the polygon the SEAL last stood on, unless its decal node refuses
+ * decals, the texture its material names, 3.5 deep, turned as the hips face (OVL2 0x5A3280, just
+ * before HandleBloodDrip; new in SOCOM II, the name ours) */
+extern "C" void func_005A3280(CZSealBody *seal, CPnt3D *pos)
+{
+    zdb::CNode *node;
+    zdb::CNode *decal;
+    zdb::IntersectStruct *alt = &seal->m_last_altitude;
+
+    if (!alt->m_poly)
+        return;
+    node = GetVisualNode(alt->m_node);
+    if (!node)
+        return;
+    decal = GetDecalNode(alt->m_node);
+    if (decal && (decal->m_socom2_a1 & 4))
+        return;
+    int mat = alt->GetMaterial();
+
+    if (!((zdb::CTexHandle **)data_0044D550)[mat])
+        return;
+    CPnt3D dir;
+
+    alt->m_norm.Scale(-1.0f, &dir);
+    zdb::CNode *hips = seal->m_hips->m_node;
+    CMatrix m;
+
+    hips->m_matrix.Multiply(&seal->m_node->m_matrix, &m);
+    node->ApplyDecal(decal, 100.0f, pos, &dir, &projDirDown, ((zdb::CTexHandle **)data_0044D550)[mat],
+                     3.5f, (CPnt3D *)m.m_matrix[2]);
 }
 
 /* a float negated in place (an inline taking it by reference: the target negates the quaternion's
@@ -145,14 +236,50 @@ bool CZSealBody::PostCheckDILadder()
 /* where a hit lands (SOCOM 1's DAMAGE_LOCATION, a byte: only the name matters here) */
 enum DAMAGE_LOCATION { DAMAGE_LOCATION_0 = 0, DAMAGE_LOCATION_LAST = 255 };
 
-/* a SEAL's animations (SOCOM 1's DWARF: AnimSet) -- only its readers of the damage animations,
- * static: each reads a location's block, its STAND, CROUCH and PRONE lists */
+/* an animation set's anims by the item in hand (anim.cpp's CAnimsByFP: only the setter) */
+class CAnimsByFP {
+public:
+    void SetPistolAnim(AnimType rifle, AnimType pistol);
+};
+
+/* a list of anim types (SOCOM 1's vector<AnimType>): SOCOM II's MSL runs a 2-byte element on
+ * __vector_pod<unsigned short> (the insert's name, OVL2 0x5B68E0), and an element read back is
+ * the signed type again (lh) */
+class CAnimTypeVector : public std::__vector_pod<unsigned short, std::allocator<unsigned short> > {
+    typedef std::__vector_pod<unsigned short, std::allocator<unsigned short> > __base;
+
+public:
+    void push_back(const AnimType &x) { __base::push_back((const unsigned short &)x); }
+    unsigned int size() const { return size_; }
+    AnimType &operator[](unsigned int n) { return ((AnimType *)data())[n]; }
+};
+
+/* a SEAL's animations (SOCOM 1's DWARF: AnimSet) -- its readers of the damage animations, static:
+ * each reads a location's block, its STAND, CROUCH and PRONE lists; the tables they fill, by
+ * location and state (SOCOM 1's six static members of 0xD8 bytes, in its order; OVL1 bss
+ * 0x44CE70-0x44D3F7 here), the sets, and a set's anims by the item in hand */
 class AnimSet {
 public:
     static void ReadFlinchAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc);
     static void ReadDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc);
     static void ReadTeammateDeathAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION loc);
+    static void InitDeathAndFlinchAnimations();
+
+    static CAnimTypeVector deathanim[6][3];
+    static CAnimTypeVector pistoldeathanim[6][3];
+    static CAnimTypeVector teammatedeathanim[6][3];
+    static CAnimTypeVector teammatepistoldeathanim[6][3];
+    static CAnimTypeVector damageanim[6][3];
+    static CAnimTypeVector pistoldamageanim[6][3];
+    /* every set (SOCOM 1's AnimSet::List, a pointer vector; OVL1 bss 0x44D430) */
+    static std::vector<AnimSet *> list;
+
+    unsigned char _0[0x5c];
+    CAnimsByFP *m_animsbyfp;   // 0x5c (SOCOM 1's m_animgps at 0x60)
 };
+
+char *zrdr_findstring(const _zrdr *rdr, const char *tag);
+AnimType FindAnimType(const char *name);
 
 /* an array's item by an unsigned index (zrdr.h's Item, which this unit cannot include beside
  * zanim.h's _zrdr: the index unsigned keeps MW from strength-reducing an int counter's walk) */
@@ -162,11 +289,42 @@ static inline _zrdr *ItemAt(_zrdr *a, unsigned int i)
 }
 
 extern "C" {
-/* one animation of a list read into the location's and the state's tables: a flinch, a death, a
- * teammate's death (OVL2 0x5A3D30, 0x5A3E90, 0x5A3FF0; SOCOM 1's readers did it inline) */
-void func_005A3D30(_zrdr *anim, int state, DAMAGE_LOCATION loc);
-void func_005A3E90(_zrdr *anim, int state, DAMAGE_LOCATION loc);
-void func_005A3FF0(_zrdr *anim, int state, DAMAGE_LOCATION loc);
+/* one animation of a list read into the location's and the state's tables (its rifle and its
+ * pistol type) and the pistol type set as the rifle type's in the first set: a flinch, a death, a
+ * teammate's death (OVL2 0x5A3D30, 0x5A3E90, 0x5A3FF0, defined after the readers; SOCOM 1's
+ * readers did it inline) */
+void func_005A3D30(_zrdr *anim, SEAL_STATE state, DAMAGE_LOCATION loc);
+void func_005A3E90(_zrdr *anim, SEAL_STATE state, DAMAGE_LOCATION loc);
+void func_005A3FF0(_zrdr *anim, SEAL_STATE state, DAMAGE_LOCATION loc);
+}
+
+#define READ_DAMAGE_ANIM(f, rifles, pistols)                                                        \
+    void f(_zrdr *anim, SEAL_STATE state, DAMAGE_LOCATION loc)                                      \
+    {                                                                                               \
+        char *name = zrdr_findstring(anim, "NAME");                                                 \
+        char *pistol = zrdr_findstring(anim, "PISTOL_NAME");                                        \
+                                                                                                    \
+        AnimSet::rifles[loc][state].push_back(FindAnimType(name));                                  \
+        AnimSet::pistols[loc][state].push_back(FindAnimType(pistol));                               \
+        int last = AnimSet::rifles[loc][state].size() - 1;                                          \
+                                                                                                    \
+        AnimSet::list[0]->m_animsbyfp->SetPistolAnim(AnimSet::rifles[loc][state][last],              \
+                                                     AnimSet::pistols[loc][state][last]);            \
+    }
+
+/* room for eight anims in each table's every location and state (OVL2 0x5A46C0, which the set
+ * loader 0x5E30F0 calls; SOCOM 1's, between the readers and ReadDeathAndFlinchAnims as here) */
+void AnimSet::InitDeathAndFlinchAnimations()
+{
+    for (int i = 0; i < 6; i++)
+        for (int j = 0; j < 3; j++) {
+            deathanim[i][j].reserve(8);
+            pistoldeathanim[i][j].reserve(8);
+            teammatedeathanim[i][j].reserve(8);
+            teammatepistoldeathanim[i][j].reserve(8);
+            damageanim[i][j].reserve(8);
+            pistoldamageanim[i][j].reserve(8);
+        }
 }
 
 /* a location's teammate deaths: each list's animations by stance (OVL2 0x5A44F0; SOCOM 1's, the
@@ -255,6 +413,15 @@ void AnimSet::ReadFlinchAnimations(_zrdr *rdr, const char *name, DAMAGE_LOCATION
     for (int k = 0; k < np; k++)
         func_005A3D30(ItemAt(prone, k), stateProne, loc);
 }
+
+/* (short enough to auto-inline into the readers, which call them: pinned) */
+#pragma auto_inline off
+extern "C" {
+READ_DAMAGE_ANIM(func_005A3FF0, teammatedeathanim, teammatepistoldeathanim)
+READ_DAMAGE_ANIM(func_005A3E90, deathanim, pistoldeathanim)
+READ_DAMAGE_ANIM(func_005A3D30, damageanim, pistoldamageanim)
+}
+#pragma auto_inline reset
 
 /* the regions the SEAL stands in: on a change each region's OnEnterRegion anim run, region 0's
  * when it is in none (OVL2 0x5A2F90; SOCOM 1's word for word) */
@@ -561,6 +728,39 @@ extern "C" void func_005AA620(CZSealBody *seal, bool on)
         SetBit21c0(seal, false);
         seal->m_218 = 0;
     }
+}
+
+/* the fire point's offset, none while it is unset (an inline: its three compares with zero) */
+static inline const CPnt3D *FireOffset(const CZSealBody *seal)
+{
+    if (seal->m_curr_firepos.x == 0.0f && seal->m_curr_firepos.y == 0.0f && seal->m_curr_firepos.z == 0.0f)
+        return &CPnt3D::zero;
+    return &seal->m_curr_firepos;
+}
+
+/* online, the MP bomb lying within 20 of the SEAL's fire point, if any (OVL2 0x5AA110: TickPickups
+ * 0x593DA0 asks it; new in SOCOM II, the name ours).
+ * OPEN, 0x128 against 0x130, ~12 instructions: (1) the target compares each field with zero as
+ * `c.eq.s field,zero`, MW here always puts the literal first (`c.eq.s zero,field`) -- `x == 0.0f`,
+ * `0.0f == x` and `!=` alike; (2) after the three tests the target branches over the offset's
+ * &field block to the &zero block (`b`), the early-return inline here falls into &zero (the `==`
+ * forms) or inverts the last test (`!=`); the ternary materialises the &&; (3) the network test's
+ * return 0 is its own `b epilogue; move v0,zero` in the target, merged with the last return here */
+extern "C" CPickup *func_005AA110(CZSealBody *seal)
+{
+    if (!theNetwork.m_9)
+        return 0;
+    CPnt3D pos = seal->m_posW + *FireOffset(seal);
+    CPickup *bomb = CPickup::GetClosest(&pos, 20.0f, CPickup::PU_MPBOMB, 0, true);
+
+    if (bomb) {
+        CPnt3D d;
+
+        pos.Sub(bomb->GetPosW(), &d);
+        if (d.x * d.x + d.y * d.y + d.z * d.z < 400.0f)
+            return bomb;
+    }
+    return 0;
 }
 
 /* the head's place and its look's direction in the world, each when asked (OVL2 0x5A3070; SOCOM 1's
@@ -1354,22 +1554,92 @@ extern "C" bool func_0059D6C0(CZSealBody *seal, CLadderData *ladder)
     return theMission.m_ladders->GetLadderByIndex(seal->m_ladder) == ladder;
 }
 
-/* a hit's stun, by the item that hit (SOCOM 1's HandleStunFromHit by its place before
- * HandleStunDamage and its tests of items 122, 123, 125 and 127; OVL2 0x5A5250, not written yet:
- * SOCOM II's takes two more arguments) */
-extern "C" void func_005A5250(CZSealBody *seal, int item, const CPnt3D *from, int x);
+/* a hit's stun, by the item that hit: 123 two of kind 0, 125 (tear gas) three of kind 1, 122 (smoke)
+ * and 127 two of kind 3, anything else five of kind 4, scaled when a scale is given -- HandleStunDamage
+ * inlined in each (SOCOM 1's HandleStunFromHit by its place before HandleStunDamage and its tests of
+ * the items, in its order; OVL2 0x5A5250: SOCOM II's takes the scale, SOCOM 1's listed the kind-4
+ * items) */
+extern "C" void func_005A5250(CZSealBody *seal, EQUIP_ITEM item, const CPnt3D *from, const float *scale)
+{
+    switch (item) {
+    case 123:
+        seal->HandleStunDamage((STUN_TYPE)0, 2.0f, from);
+        break;
+    case 125:
+        seal->HandleStunDamage((STUN_TYPE)1, 3.0f, from);
+        break;
+    case 122:
+    case 127:
+        seal->HandleStunDamage((STUN_TYPE)3, 2.0f, from);
+        break;
+    default: {
+        float amount = 5.0f;
+
+        if (scale)
+            amount *= *scale;
+        seal->HandleStunDamage((STUN_TYPE)4, amount, from);
+    }
+    }
+}
+
+/* a kind's stun recovered: the stunned bit cleared, and a kind-5 stun leaving twenty of kind 6 (SOCOM
+ * 1's HandleStunRecovery, its other cases' additions gone -- their table slots kept; SOCOM II inlines
+ * it everywhere) */
+inline void CZSealBody::HandleStunRecovery(STUN_TYPE type)
+{
+    SetAmStunned(false);
+    switch (type) {
+    case 0:
+        break;
+    case 1:
+        break;
+    case 2:
+        break;
+    case 3:
+        break;
+    case 4:
+        break;
+    case 5:
+        HandleStunDamage((STUN_TYPE)6, 20.0f, 0);
+        break;
+    case 6:
+        break;
+    }
+}
+
+/* the stuns run down at the character's recovery rate, the SEAL stunned while any is left, each kind
+ * recovered as it reaches zero; not stunned, the bit cleared (OVL2 0x5A50A0; SOCOM 1's, the else
+ * new) */
+void CZSealBody::TickStun(float dT)
+{
+    if (m_stunned) {
+        m_stunned = 0;
+        for (int i = 0; i < 7; i++) {
+            bool was = m_stunval[i] > 0.0f;
+
+            if (m_stunval[i] > 0.0f && m_charType) {
+                m_stunval[i] -= (float)m_charType->m_recovery_factor * dT;
+                if (m_stunval[i] > 0.0f)
+                    m_stunned = 1;
+            }
+            if (was && m_stunval[i] <= 0.0f)
+                HandleStunRecovery((STUN_TYPE)i);
+        }
+    } else
+        SetAmStunned(false);
+}
 
 /* in tear gas (item 125): its stun taken and the flag set (OVL2 0x5A0B60; 0x5B5050 calls it) */
 extern "C" void func_005A0B60(CZSealBody *seal)
 {
-    func_005A5250(seal, 125, 0, 0);
+    func_005A5250(seal, (EQUIP_ITEM)125, 0, 0);
     seal->SetInGas(true);
 }
 
 /* in smoke (item 122): the same with the smoke flag (OVL2 0x5A0BB0; 0x5B5050 calls it) */
 extern "C" void func_005A0BB0(CZSealBody *seal)
 {
-    func_005A5250(seal, 122, 0, 0);
+    func_005A5250(seal, (EQUIP_ITEM)122, 0, 0);
     seal->SetInSmoke(true);
 }
 
