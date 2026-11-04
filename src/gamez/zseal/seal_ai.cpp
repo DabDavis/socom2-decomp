@@ -1329,6 +1329,55 @@ CValve *CSealCtrlAi::GetValve(SEAL_VALVE v) const
     return 0;
 }
 
+extern "C" {
+/* the stack's bits brought up to date (OVL2 0x5F7470, seal_aistate.cpp's: the stack, the AI, a flag) */
+void func_005F7470(CAiStateStack *stack, CSealCtrlAi *ai, int x);
+}
+
+/* an anim's signal taken: 1, 2, 3 and 6 handed to every state of the stack, the top last-first --
+ * through the stack's reverse iterator (include/list's rbegin()/rend(), the MSL headers' round 22: the
+ * end pair's second() its one call, 0x5621B0); 4 the suspended state pushed, kept only when it is the
+ * state on top, its flags set and marked running; 5 the suspended state popped; then the stack's bits
+ * brought up to date (OVL2 0x562030: SOCOM 1's AnimSignal, whose 0x404 bytes walked the stack forward
+ * for its signals 1 and 2).
+ * OPEN, 0x174 against 0x180, on two things outside the walk's spelling: (1) slot 0xC's types -- the
+ * target hands the signal on as it came (`move s0,a2`, the andi only the switch's), which a parameter
+ * of the signal's own type gives; ai_states.h's Virtual0C(int, int, CSealCtrlAi *) converts it (the
+ * narrowed copy kept instead). Measured through a stand-in slot (CZAnim *, AI_SIGNAL, CSealCtrlAi *):
+ * 0x17C, the rest left being (2) this unit's inline_depth(8) -- the MSL lane's probe at 5 calls the end
+ * pair's second() (0x5621B0) as the target does at each rbegin()/rend(); at 8 MW inlines it, holding
+ * the sentinel's next in a fourth saved register (the frame 96 bytes against 80). The probe's own
+ * last difference (the end pair's address kept, not rebuilt per call) sits behind that */
+void CSealCtrlAi::AnimSignal(CZAnim *anim, AI_SIGNAL sig)
+{
+    switch (sig) {
+    case 1:
+    case 2:
+    case 3:
+    case 6: {
+        CAiStateStack::reverse_iterator i;
+
+        for (i = m_stateStack.rbegin(); i != m_stateStack.rend(); ++i)
+            (*i)->Virtual0C((int)anim, sig, this);
+        break;
+    }
+    case 4:
+        if (PushAiState((AI_STATE)18, 1)) {
+            CAiState *s = GetAiState();
+
+            s = s && s->m_state == 18 ? s : 0;
+
+            s->SetFlags(7, 0);
+            s->m_active = true;
+        }
+        break;
+    case 5:
+        PopAiState((AI_STATE)18);
+        break;
+    }
+    func_005F7470(&m_stateStack, this, 1);
+}
+
 /* whether the SEAL may be taken hostage (state 23 pushed with no flags): for kind 3 a restrainable one,
  * or online one of team bit 17; otherwise one of team bit 17 already holding the state or free to take
  * it (OVL2 0x555B80, new in SOCOM II: 0x5784A0 and 0x5A90B0 ask it; the name unknown). A switch (the
@@ -1838,14 +1887,14 @@ extern "C" bool func_00561E20(CSealCtrlAi *ai, bool on, signed char c)
     return ai->m_aibit7;
 }
 
-/* (OVL2 0x56D890).
- * OPEN, 9 instructions: the target loads the team straight into a0 (`lw a0,4(a0); lw a0,0xC8(a0)`)
- * and reads m_entity again for the kit's test after the two team tests; MW here keeps the entity in
- * a1 across both (and moves `on` to s0 first). Tried: the kit through this inline, the team in a
- * local, every test through the inline, the tests unparenthesised. */
+/* (OVL2 0x56D890). Byte-exact since round 33 (the kit's round-34 measurement): both team tests read
+ * the team through a const view of the controller -- the target loads the entity and its team straight
+ * into a0 for each test and reads m_entity again for the kit's, where plain reads let MW keep the
+ * entity in a1 across all three (round 32's 9 instructions) */
 void CSealCtrlAi::SetAiBit2(bool on)
 {
-    if ((m_entity->m_team & 0x20000) || (m_entity->m_team & 0x4000000) || !SealOf(this)->m_kit.GetCurItem())
+    if ((((const CSealCtrlAi *)this)->m_entity->m_team & 0x20000) ||
+        (((const CSealCtrlAi *)this)->m_entity->m_team & 0x4000000) || !SealOf(this)->m_kit.GetCurItem())
         on = false;
     m_aibit2 = on;
 }

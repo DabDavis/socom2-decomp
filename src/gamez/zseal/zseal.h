@@ -218,6 +218,10 @@ struct AI_SOUND_PRIORITY {
     unsigned int m_rest : 24;
 };
 
+/* an anim's signal to its controller (SOCOM 1's AI_SIGNAL by AnimSignal's mangled name; a byte -- the
+ * switch narrows it with andi -- its cases 1 to 6, the names unknown) */
+enum AI_SIGNAL { AI_SIGNAL_0 = 0, AI_SIGNAL_LAST = 255 };
+
 /* the goals a controller pursues (SOCOM 1's DWARF, a byte) */
 enum GOAL_TYPE { GOAL_NONE = 0, GOAL_SCAN = 1, GOAL_LOOK = 2, GOAL_MOVE = 3, GOAL_SHOOT = 4, GOAL_AVOID = 5, GOAL_RECOVER = 6 };
 
@@ -1111,6 +1115,9 @@ public:
      * task's own arguments (SOCOM 1's; OVL2 0x561F00) */
     bool SetupAnimations();
     bool ActivateEx(SEAL_TASK task, bool b, ...);
+    /* an anim's signal taken: 1, 2, 3 and 6 handed to every state, the top last-first; 4 the suspended
+     * state pushed, 5 popped; then the stack's bits (SOCOM 1's AnimSignal; OVL2 0x562030) */
+    void AnimSignal(CZAnim *anim, AI_SIGNAL sig);
     /* the stance the body is to take, set when prone, when a target is held with its bit 9, or
      * when forced, its timer restarted with the delay (OVL2 0x5631B0, new in SOCOM II: CTStance's
      * Begin and End call it; the name ours) */
