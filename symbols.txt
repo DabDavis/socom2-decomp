@@ -2291,39 +2291,39 @@
 0x0023C370 0x8 SetWeapon__11CWeaponSlotFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): slot +0x70 of CWeaponSlot's table 0x405E00, the class's first own slot (the name ours) -- the weapon kept at 0x18; hud_mpweaponsel.cpp, byte-exact
 0x0023C380 0x8 Draw__11CWeaponSlotFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane, round 26): slot 1 of CWeaponSlot's table 0x405E00 -- empty; hud_mpweaponsel.cpp, byte-exact
 0x0023C390 0x354 func_0023C390  # OVL1
-0x0023C6F0 0x144 NextWeapon__8SlotListFbiii  # OVL1; by hand (the HUD lane, round 26): SlotList's (the page's 0x23CD20 and 0x23D060 and the list's 0x23D860 call it, the list's +0x960 as this) -- recursive: the index stepped up or down CZWeapon::m_listWeapons (its count at 0) round the list, again while 0x23C390 refuses the weapon, a search start kept in .data 0x3DCEB0 (-1 between searches), 0 without the HUD's owner; the name ours; hud_mpweaponsel.cpp, OPEN (registers)
+0x0023C6F0 0x144 NextWeapon__8SlotListFbi10EQUIP_ITEM11WEAPON_KIND  # OVL1; by hand (the HUD lane, round 26): SlotList's (the page's 0x23CD20 and 0x23D060 and the list's 0x23D860 call it, the list's +0x960 as this) -- recursive: the index stepped up or down CZWeapon::m_listWeapons (its count at 0) round the list, again while 0x23C390 refuses the weapon, a search start kept in .data 0x3DCEB0 (-1 between searches), 0 without the HUD's owner; the name ours; hud_mpweaponsel.cpp, OPEN (registers); retyped (the HUD lane, round 38): its last two parameters are the category page's class (an EQUIP_ITEM) and kind (a byte enum, WEAPON_KIND ours) -- the page's Move 0x23D060 copies both with lb, which an int parameter would make lbu, and the slot test 0x23C390 it passes them to masks each with andi before comparing
 0x0023C840 0x344 func_0023C840  # OVL1
 0x0023CB90 0x118 NextClass__8SlotListFb10EQUIP_ITEM  # OVL1; by hand (the HUD lane, round 26): SlotList's (the list's 0x23C840 calls it on the category page's list +0x960; this unused) -- an id stepped up or down, then on round 0-254 until it is one of GetIDType's sixteen class starts (4, 31 ... 230: an inlined switch's bool); the name ours; hud_mpweaponsel.cpp, byte-exact
 0x0023CCB0 0x70 Draw__8SlotListFPQ23zdb7CCamera  # OVL1; by hand (the HUD lane: slot 1 of SlotList's vtable 0x405E80 -- its five slot pointers drawn while it is on)
 0x0023CD20 0x33C func_0023CD20  # OVL1
-0x0023D060 0x144 func_0023D060  # OVL1
-0x0023D1B0 0xF8 func_0023D1B0  # OVL1
-0x0023D2B0 0x1A4 func_0023D2B0  # OVL1
+0x0023D060 0x144 Move__19CMPWeaponCategoriesFSc  # OVL1; ours (the HUD lane, round 38: hud_mpweaponsel.cpp -- the category page's cursor: a switch on a signed char, 2/-2 a weapon on or back through SlotList::NextWeapon, -1/1 the class through 0x23C840 (again past the grenades' 171 when the selector's m_203, m_gl and m_f2000 are all off) and the new class's first weapon; then the page's update 0x23D860; called four times by 0x23D1B0)
+0x0023D1B0 0xF8 HandlePad__19CMPWeaponCategoriesFP4CPad  # OVL1; ours (the HUD lane, round 38: hud_mpweaponsel.cpp -- the category page's buttons while its state +0xF22 is 3: the pad's m_state[UP/DOWN/LEFT/RIGHT] (+5/+6/+4/+3) falling step Move(-2/2/1/-1), triangle (+7) or start (+1) set 2, 0x2C64E0(0, pad) == 1 sets 1; from m2c's draft, which matched as it stood)
+0x0023D2B0 0x1A4 TickArrows__19CMPWeaponCategoriesFf  # OVL1; ours (the HUD lane, round 38: hud_mpweaponsel.cpp -- the category page's arrows pulsed: the blend +0xF28 up (bool +0xF2C) or down by dT times s_pulserate 0x3DCEA8, clamped to 1 and 0 where it turns, and each of the four polys +0x1A0 given grey (80, 80, 80) blended to yellow (255, 255, 128), two guarded function-local CPnt3Ds; the selector's tick 0x240600 calls it)
 0x0023D460 0xD4 ShowArrows__19CMPWeaponCategoriesFv  # OVL1; by hand (the HUD lane, round 26): the category page's (the selector's Tick 0x240600 calls it on +0x220) -- its four arrow polys (0x1A0, stride 0x1F0) off while the byte 0x4147C0 is set, else coloured from a guarded static CPnt3D (100, 100, 100; guard 0x4147C8, object 0x4147D0); the name ours; hud_mpweaponsel.cpp, byte-exact
 0x0023D540 0xC8 SetWeapon__19CMPWeaponCategoriesFP8CZWeapon  # OVL1; by hand (the HUD lane, round 26): the category page's (the selector's state switch 0x240B90 and 0x23E370/0x23EAE0 call it on CMPWeaponSel+0x220) -- the weapon's index in CZWeapon::m_listWeapons, its GetIDType and its kind (0 primary, 1 secondary, 2 neither) at 0xF20-0xF27, item 255 shown as item 121; the name ours; hud_mpweaponsel.cpp, byte-exact
 0x0023D610 0x1F8 func_0023D610  # OVL1
 0x0023D810 0x50 SetTrans__12CategorySlotFf  # OVL1; by hand (the HUD lane: slot 11 of CategorySlot's vtable 0x405D80 -- its name's and bitmap's SetTrans through their tables)
 0x0023D860 0x714 func_0023D860  # OVL1
-0x0023DF80 0x50 func_0023DF80  # OVL1
+0x0023DF80 0x50 __ct__12CategorySlotFv  # OVL1; by hand (the HUD lane, round 38: hud_mpweaponsel.cpp -- CategorySlot's implicit constructor (C2D's, CWeaponSlot's and CategorySlot's vtables, its bitmap and name), the out-of-line copy CMPWeaponSel's constructor 0x241A90 hands __construct_array for the page's four slots; m2c's draft matched it)
 0x0023DFD0 0x60 __dt__11CWeaponSlotFv  # OVL1; by hand (slot 0 of CWeaponSlot's vtable 0x405E00: the implicit destructor)
 0x0023E030 0x340 func_0023E030  # OVL1
-0x0023E370 0x268 func_0023E370  # OVL1
-0x0023E5E0 0x11C func_0023E5E0  # OVL1
+0x0023E370 0x268 Open__12CMPWeaponSelFv  # OVL1; ours (the HUD lane, round 38: hud_mpweaponsel.cpp -- the selector opened on the list: m_1530/m_1531 255, the five slots emptied and given the owner's character's first weapons (CCharacterType::GetWeaponByIndex read again when it reads 0, through CZWeaponList::GetWeapon), the page shown the list's slot, the cursor -1 then Scroll(2), On inlined, the update 0x23E030, the controller's SetMenuState(stateWeaponSel, false), both lists' m_owner, the state 2; SetState's list case calls it from closed)
+0x0023E5E0 0x11C SetCharacterWeapons__12CMPWeaponSelFv  # OVL1; ours (the HUD lane, round 38: hud_mpweaponsel.cpp -- this+0x11B0+i*0xB8 is m_selected[i].m_weapon; the HUD owner's character's weapons (CCharacterType+0x2E8) set up again from the five slots, the missing ones pushed by AddWeapon and set up unless 255; its one caller 0x240600 unwritten)
 0x0023E700 0xF8 Off__12CMPWeaponSelFv  # OVL1; by hand (CHUD::Off calls it on the network weapon selector at CHUD+0x38E0 in a network game, among the other selectors' Off; it calls slot 4, Off, of each list and bitmap it holds)
 0x0023E800 0x108 On__12CMPWeaponSelFv  # OVL1; by hand (CHUD::On calls it on CHUD+0x38E0 in a network game, as Off its pair; slot 5, On, of each list and bitmap)
-0x0023E910 0x1C4 func_0023E910  # OVL1
+0x0023E910 0x1C4 CanSelect__12CMPWeaponSelFi  # OVL1; ours (the HUD lane, round 38: hud_mpweaponsel.cpp -- Scroll's slot test: an empty slot can be chosen; items 141 and 254 never; 185 and 186 only when another equipment slot (2-4) holds the same, an inlined search twice; the C4 (151) not while the Enable_c4 valve's bit for the owner's side (16, or 32 when 0x2C30B0 says so) is set; byte-exact with the slot's weapon read straight each time (a CSE temporary) and the item passed by value to two inlines (one lb, two andi))
 0x0023EAE0 0xE0 Scroll__12CMPWeaponSelFSc  # OVL1; by hand (the HUD lane, round 26): the selector's (its signed-char step, re-extended in the callee): the cursor m_list.m_34 a slot on (2) or back (-2) round the five, itself again while 0x23E910 refuses the slot, then the category page's SetWeapon with the slot's weapon and the update 0x23E030; the name ours; hud_mpweaponsel.cpp
-0x0023EBC0 0xD4 func_0023EBC0  # OVL1
+0x0023EBC0 0xD4 HandlePad__12CMPWeaponSelFP4CPad  # OVL1; ours (the HUD lane, round 38: hud_mpweaponsel.cpp -- the selector list's buttons: the pad's UP/DOWN falling Scroll(-2/2), 0x2C64E0(0, pad) == 1 SetState(3), triangle, start or 0x2C64E0(4, pad) SetState(0); from m2c's draft, which matched as it stood; the selector's tick 0x240600 calls it)
 0x0023ECA0 0x1250 func_0023ECA0  # OVL1
 0x0023FEF0 0x690 func_0023FEF0  # OVL1
 0x00240580 0x68 SetTrans__8SlotListFf  # OVL1; by hand (the HUD lane: slot 11 of SlotList's vtable 0x405E80 -- each slot faded)
 0x002405F0 0x8 SetTrans__11CWeaponSlotFf  # OVL1; by hand (the HUD lane: slot 11 of CWeaponSlot's vtable 0x405E00 -- empty, right after SlotList::SetTrans)
 0x00240600 0x584 func_00240600  # OVL1
-0x00240B90 0x1BC func_00240B90  # OVL1
+0x00240B90 0x1BC SetState__12CMPWeaponSelF9SEL_STATE  # OVL1; ours (the HUD lane, round 38: hud_mpweaponsel.cpp -- the selector's state byte at +0 (SEL_STATE, ours: masked for the compare chain, stored whole): 2 the list (its slots filled by 0x23E370 when opened from closed, the page's backdrop +0x10C0 off), 3 the category page (On, the backdrop on, the update 0x23D860, the page's state 3, its SetWeapon with the list's slot), 0 closed (the backdrop off, the owner's controller back to stateNone), 1 and the rest nothing; UnInit, 0x23EBC0 and 0x240600 call it)
 0x00240D50 0x104 UnInit__12CMPWeaponSelFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's next, as SOCOM 1's); by hand (CHUD::ReInit_Uninit calls it on CHUD+0x38E0 only in a network game, the member 0x241A90 constructs -- a SOCOM II selector honouring the server's Enable_203FRAG.. valves; the class name ours; s1:calls had shifted SOCOM 1's names one member along)
 0x00240E60 0xC2C Init__12CMPWeaponSelFv  # OVL1; s1:calls by hand (the HUD lane: CHUD::Init calls it on CHUD+0x38E0, the network selector, only in a network game -- UnInit's test too; it lists the selected slots, loads the three backdrops and sets the Enable_203/GL/F2000 valves; after UnInit, before the constructor, as SOCOM 1's selector units end)
 0x00241A90 0x150 __ct__12CMPWeaponSelFv  # OVL1; by hand (CHUD's constructor builds CHUD+0x38E0 with it, after UnInit and Init at 0x240D50/0x240E60; no vtable, so no RTTI name: the class name ours)
-0x00241BE0 0x48 func_00241BE0  # OVL1
+0x00241BE0 0x48 __ct__12SelectedSlotFv  # OVL1; by hand (the HUD lane, round 38: hud_mpweaponsel.cpp -- SelectedSlot's implicit constructor (C2D's, CWeaponSlot's and SelectedSlot's vtables, its name), the out-of-line copy CMPWeaponSel's constructor 0x241A90 hands __construct_array for its five slots, right after it; m2c's draft matched it)
 0x00241C30 0x64 SetTrans__10CHealthBarFf  # OVL1; by hand (slot 11 of CHealthBar's vtable 0x405EF0, C2D's SetTrans: SetTrans on the bitmaps at +0x30, +0xB0, +0x130)
 0x00241CA0 0xC SetPos__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x1C/0x20; CMPInfoBox's Init and re-init call it on CMPInfoBox+0x20 before SetSize; the name ours)
 0x00241CB0 0xC SetSize__10CHealthBarFff  # OVL1; by hand (the floats at CHealthBar+0x24/0x28, after SetPos; the name ours)
@@ -6864,8 +6864,8 @@
 0x00370C20 0x88 func_00370C20  # OVL1
 0x00370CB0 0x58 func_00370CB0  # OVL1
 0x00370D10 0x9C ShowChoice__11CRadioStripFv  # OVL1; ours by hand (the HUD lane, round 24: zui_2d.cpp -- the radio strip's buttons shown after a new choice, the chosen one through slot 18 (SetActive), the others slot 19 (SetNormal); CRadioStrip::TickZAnimCmd calls it out of line)
-0x00370DB0 0x1B0 func_00370DB0  # OVL1
-0x00370F60 0x15C func_00370F60  # OVL1
+0x00370DB0 0x1B0 PressActive__11CRadioStripFv  # OVL1; s1:order by hand (the HUD lane, round 38: zui_2d.cpp -- SOCOM 1's CRadioStrip::PressActive (0x38A880 there): the same two walks over the strip's check boxes, a checked one not chosen unchecked and its second action (+0x464) run, the chosen one checked and its first (+0x454) run; SOCOM II's HandlePad calls it right after ShowChoice where SOCOM 1's called it alone) -- byte-exact with the first walk's iterator initialised and its end a local, the second's end a second local and the iterator reassigned
+0x00370F60 0x15C HandlePad__11CRadioStripFPC4CPadi  # OVL1; s1:vtable by hand (the HUD lane, round 38: zui_2d.cpp -- slot 15 (+0x44) of CRadioStrip's table 0x407430, SOCOM 1's CRadioStrip::HandlePad: CanHandleInput, then left (m_state[3]) steps m_choice back and right or cross (2, 9) on, round the strip's size, then ShowChoice, PressActive and PlaySelectionSound, taken)
 0x003710C0 0xC LoadSpec__11CRadioStripFPC15CRadioStripSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CRadioStrip::LoadSpec (0x38AD50, the same 12 bytes, a spec pointer): CRadioStripSpec::CreateDisplayObj's call)
 0x003710D0 0xCC TickZAnimCmd__11CRadioStripFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003711A0 0xE8 ParseZAnimCmd__11CRadioStripFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -6875,7 +6875,7 @@
 0x00371680 0x134 HandlePad__9CCheckBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003717C0 0x21C Draw__13CHProgressBarFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003719E0 0x30 Tick__13CHProgressBarFf  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00371A10 0x18C func_00371A10  # OVL1
+0x00371A10 0x18C LoadSpec__13CHProgressBarFRC17CHProgressBarSpecPQ23zdb10CTexHandle  # OVL1; s1:vtable by hand (the HUD lane, round 38: zui_2d.cpp -- the last slot (+0x84) of CHProgressBar's table 0x407550, after its UIVarMixin part (zui_2d.h's 'a slot of its own'); SOCOM 1's CHProgressBar::LoadSpec: CPlainBmp::LoadSpec inlined (the pulse, the variable watched, the bitmap loaded), the variable watched again, m_width the spec's width, m_fill 0, the spec's string +0x28 into m_str through CSaferStr's operator=)
 0x00371BA0 0xA8 UpdateUIVar__13CHProgressBarFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D0A0 (-128, CHProgressBar's UIVarMixin table) jumps to it; the variable's number into the bar's time at 0xA8, the fill zeroed, as SOCOM 1's CHProgressBar::UpdateUIVar)
 0x00371C50 0xB0 UpdateUIVar__10CSliderBarFP11CUIVariable  # OVL1; by hand (the HUD lane: the thunk 0x37D080 (-192, CSliderBar's UIVarMixin table) jumps to it; a real mapped about the centre at 0x450 into the value at 0x440, as SOCOM 1's CSliderBar::UpdateUIVar)
 0x00371D00 0x4D8 func_00371D00  # OVL1
@@ -6888,7 +6888,7 @@
 0x00372870 0x108 GetZAnimCmdType__10CSliderBarFPCc  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00372980 0x584 func_00372980  # OVL1
 0x00372F10 0x730 func_00372F10  # OVL1
-0x00373640 0x210 func_00373640  # OVL1
+0x00373640 0x210 GetZAnimCmdType__10CUIListBoxFPCc  # OVL1; s1:vtable by hand (the HUD lane, round 38: zui_2d.cpp -- slot 24 (+0x68) of CUIListBox's table 0x407670, SOCOM 1's CUIListBox::GetZAnimCmdType: Finish, Highlight_on/off, Has_Items, GetItemCount, Get/SetFocusIndex, AddItem, RemoveItem, RemoveAllItems (11) and GetContents (10) after C2D's count (GetUICommandType(0)), 12 for a null name; byte-exact with C2D's inline lookup standing in for every count and the fallback -- called straight, the last test lays its blocks the other way round)
 0x00373850 0x6CC Draw__10CUIListBoxFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00373F20 0xE4 AddItem__10CUIListBoxFP8ListItemi  # OVL1; ours (the HUD lane, round 36: zui_2d.cpp -- CUIListBox::UpdateUIVar 0x3754D0 and 0x372980 call it: the item given the box's font (+0xA0) and scale (+0xCC), then pushed onto the item list +0xC0 when the second argument is -1, else inserted before the highlighted row (+0x194); 6 instructions open, stack slots)
 0x00374010 0x2D8 func_00374010  # OVL1
