@@ -6165,7 +6165,7 @@
 0x003435A0 0xC GetSubtitles__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's GetSubtitles, a byte read, right after PlaySound in both builds)
 0x003435B0 0xC SetSubtitles__4CSndFb  # OVL1; s1:order by hand (SOCOM 1's SetSubtitles, the same byte stored)
 0x003435C0 0x810 func_003435C0  # OVL1
-0x00343DD0 0x1BC func_00343DD0  # OVL1
+0x00343DD0 0x1BC LoadBank__4CSndFPCc  # OVL1; s1:order by hand, the world lane round 9 (SOCOM 1's LoadBank, before AddNewCSnd in both builds, the same code but the record: the path built, off the bank archive when booted from the CD -- the key's offset inline, the stream synced, snd_BankLoadByLoc -- else snd_BankLoad, the name, bank and 1/-1 pushed as one 24-byte record, snd_ResolveBankXREFS) -- zsnd_csnd.cpp
 0x00343F90 0xFC AddNewCSnd__4CSndFP4CSnd  # OVL1; s1:calls by hand (LoadSoundGroups adds each group with it after LoadCSndGroup, as SOCOM 1's calls AddNewCSnd; after the bank loader as SOCOM 1's AddNewCSnd follows LoadBank) -- the sound lane
 0x00344090 0x32C func_00344090  # OVL1
 0x003443C0 0x90 CopyUpper__FPCcPci  # OVL1; SOCOM II's, name ours (a string copied upper-cased into a buffer of n characters, strlen and toupper)
@@ -6191,7 +6191,7 @@
 0x003455D0 0x4C __dt__4CSndFv  # OVL1; s1:align; s1:vtable (the same slot of the same class's vtable in both builds, code alike); was clear__Q23std503__tree<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>,Q33std271map<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd,Q23std73less<Q23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>>,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>13value_compare,Q23std100allocator<Q23std81pair<CQ23std59basic_string<c,Q23std14char_traits<c>,Q23std12allocator<c>>,P4CSnd>>>Fv
 0x00345620 0x1D8 __ct__4CSndFv  # OVL1; s1:order by hand (SOCOM 1's CSnd constructor, after the destructor in both builds: CSnd's vtable stored, nothing more when CSnd::m_isDisabled, the instance pool reserved to 48 as SOCOM 1's reserves its vector)
 0x00345800 0xC GetSoundRdrFile__Fv  # OVL1; s1:order by hand (SOCOM 1's GetSoundRdrFile, after the constructor in both builds: the sounds file Open reads)
-0x00345810 0x5A4 func_00345810  # OVL1
+0x00345810 0x5A4 insert__Q23std54__vector_imp<8CSndBank,Q23std20allocator<8CSndBank>,0>FP8CSndBankUiRC8CSndBank  # OVL1; the world lane round 9: vector<CSndBank>'s class insert (the 24-byte bank record), LoadBank's push_back calls it out of line -- zsnd_csnd.cpp's tail
 0x00345DC0 0x1B0 reserve__Q23std54__vector_imp<8CSndBank,Q23std20allocator<8CSndBank>,0>FUi  # OVL1; the world lane r7: the banks vector's reserve (CSnd::Init reserves 10; 24-byte elements copied whole), zsnd_csnd.cpp's template tail
 0x00345F70 0x8 clear__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>Fv  # OVL1; the world lane r7: the banks vector's deleter clear (the size zeroed; the vector's clear 0x342210 tail-calls it)
 0x00345F80 0x68 __dt__Q23std56__vector_deleter<8CSndBank,Q23std20allocator<8CSndBank>>Fv  # OVL1; the world lane r7: the banks vector's deleter destructor (~vector<CSndBank> 0x342170 calls it; clear inline)

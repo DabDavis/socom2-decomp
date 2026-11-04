@@ -14,6 +14,7 @@ _zrdr *zrdr_findtag(const _zrdr *rdr, const char *tag);
 #include "../zutil/util_stable.h"
 #include "zsnd_queue.h"
 #include "zsnd_subtitles.h"
+#include "../zsys/zsys_public.h"
 
 /* a loaded bank (SOCOM II's; the names ours): SOCOM 1's two vectors m_soundbank and m_bankloaded
  * made one of records -- the name LoadBank (0x343DD0) loaded it by, the bank, and 1 when it loaded
@@ -282,6 +283,70 @@ void CopyUpper(const char *src, char *dst, int max)
     for (i = 0; i < n && i < max; i++)
         dst[i] = toupper(src[i]);
     dst[i] = 0;
+}
+
+extern char data_004A1750[];            /* CFileIO's file-name suffix (SOCOM 1's m_file_version) */
+
+/* a key's data offset in the bank archive (SOCOM 1's code, inline in LoadBank in both builds; the
+ * name ours): SOCOM II's offset counts from the archive's data start */
+static inline bool GetBankKeyOffset(const char *name, unsigned int &offset)
+{
+    if (CSnd::m_isDisabled)
+        return false;
+    zar::CKey *key = CSnd::m_bnkArchive.FindKey(name);
+    bool found = key != 0;
+
+    if (key) {
+        offset = key->m_offset + CSnd::m_bnkArchive.m_data_start;
+        CSnd::m_bnkArchive.CloseKey(key);
+    }
+    return found;
+}
+
+/* SOCOM 1's: a bank loaded by name -- off the CD's bank archive when booted from the CD (its key's
+ * offset in sectors past the archive's own, the stream synced first), else from its file -- and
+ * recorded with whether it loaded; the bank cross-references resolved */
+bool CSnd::LoadBank(const char *name)
+{
+    if (m_isDisabled)
+        return false;
+    char path[1024];
+    bool ok = false;
+
+    sprintf(path, "%sRUN\\SOUNDS\\%s.BNK%s", data_003E0520, name, data_004A1750);
+    SoundBankPtr bank;
+
+    if (zSys.isCdBoot) {
+        sprintf(path, "%s.BNK", name);
+        unsigned int offset = 0;
+
+        int found = GetBankKeyOffset(path, offset);
+
+        if (found) {
+            int sector = m_bnkoffset + (offset >> 11);
+
+            snd_StreamSafeCdSync(0);
+            while (snd_StreamSafeCdSync(1) == 1)
+                ;
+            bank = snd_BankLoadByLoc(sector, offset & 0x7FF);
+        } else
+            bank = 0;
+    } else
+        bank = snd_BankLoad(path, 0);
+    int loaded = -1;
+
+    if (bank) {
+        loaded = 1;
+        ok = true;
+    }
+    CSndBank b;
+
+    strncpy(b.m_name, name, 15);
+    b.m_loaded = loaded;
+    b.m_bank = bank;
+    data_0048DBE8.push_back(b);
+    snd_ResolveBankXREFS();
+    return ok;
 }
 
 CSndInstance *CSnd::PlaySound(CSndInstance *inst, unsigned int flags)

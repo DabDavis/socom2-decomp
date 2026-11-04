@@ -128,6 +128,8 @@ public:
     float CalcVolPan(const CPnt3D *pos, float vol, int *outVol, int *outPan);
 
     static CSnd *GetSoundByName(const char *name);
+    /* SOCOM 1's: a bank loaded by name and recorded (0x343DD0) */
+    static bool LoadBank(const char *name);
     static void AddNewCSnd(CSnd *sound);
     static void SetGroupVol(int group, float vol);
     /* SOCOM 1's: up to seven groups' volumes lowered to a part for a time, their own kept; SOCOM
