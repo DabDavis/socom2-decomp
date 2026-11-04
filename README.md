@@ -2060,6 +2060,19 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 35** (the typed stash's writers, the recursive node count, 0x571010 at last):
+  - `delete` of a type with an empty user destructor keeps the delete's own null test behind an `if`; an implicit
+    destructor inlined into a delete calls the vector members' destructors out of line with -1, last member first
+    (CPickup::Destroy 0x542470: the stash's three destructors and remove_if's copy from source, a std::list<CPickup *>
+    push_back through the base's -- the AI core's "variant vc" -- and the kind read into a PU_TYPE local first);
+  - reading a switch's value into an enum local first swaps the switch's registers; `if (!a || (b && !c)) return;` makes
+    both returns share one `b` to the epilogue (DropAmmo 0x59FD50, SOCOM 1's; CreateNetAmmoPickup 0x59E9E0 on the first
+    try over the typed stash); bare declarations at the top set MW's register numbering in declaration order (the top
+    blend's let-go 0x5781C0, seal_body.cpp's last-defined);
+  - a by-value struct parameter is homed on the stack, a plain word stays in a register; `x <= y` branches on `slt at`
+    where `y >= x` puts the result in a register first (0x571010, open since round 30: the priority a plain word, its
+    low byte an int local at entry); the CNodeVector iterator headers' depths are right (0x59A450 inlines itself twice,
+    its 11 pieces 0x59A630-0x59A720 from source, marked ovl-copy).
 - **Tells from the engine core, round 14** (GetAltitude, ParseNetworkPacketArgs, ftsGetAltitudeApprox, NetworkReceive):
   - an inline that wraps an out-of-line call gives its result the lowest saved register (getting the map through one
     swapped the map and cell into the target's s0/s1: ftsGetAltitudeApprox 0x2A2EB0, with OVL1's CAiMap::GetLocation copy

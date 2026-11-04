@@ -7894,6 +7894,7 @@
 0x004D0980 Tone_Of_Final
 0x004D09A8 Calculate_NbrOfStatesInDict_ForChinese
 0x004D1B20 FreeSecondPassContext
+0x004D3318 AllocateNodeAndFreePrevious
 0x004D45A8 CalcNrNodes10
 0x004D5058 SetIsolatedWordDpActiveWords
 0x004D52F8 CreateCtxTree
@@ -8124,6 +8125,7 @@
 0x004FD3E8 CombinerControl
 0x004FD4E8 ResizeQueues
 0x004FF158 FreeLanguage
+0x004FF380 FreeDistCalc
 0x004FFAC0 NormCorrection
 0x00500DF8 ConstructDistCalc
 0x00500EB8 GetpCachedDistances
@@ -8145,6 +8147,7 @@
 0x005019B0 Median_Reset
 0x005019C8 InitMedian
 0x00501E20 NormE_Processing
+0x005028F0 ControlPitchCombiner
 0x00502F10 ConstructPitchCombiner
 0x005041C0 ControlSHS_VUV
 0x00504980 ConstructSHS_VUV
@@ -8896,6 +8899,7 @@
 0x005421F0 DestroyNetPickups__7CPickupFUi
 0x00542290 TickTimers__7CPickupFPC6CPnt3Df
 0x005423E0 NetTick__7CPickupFPC6CPnt3Df
+0x00542470 Destroy__7CPickupFP7CPickup
 0x005427E0 __dt__Q23std48vector<P8CZWeapon,Q23std21allocator<P8CZWeapon>>Fv
 0x00542850 __dt__Q23std44vector<P6CZAmmo,Q23std19allocator<P6CZAmmo>>Fv
 0x005428C0 func_005428C0
@@ -9187,6 +9191,7 @@
 0x00570E00 Dump__9CSealCtrlFv
 0x00570F90 func_00570F90
 0x00571000 func_00571000
+0x00571010 func_00571010
 0x00571100 func_00571100
 0x00571150 func_00571150
 0x005712F0 func_005712F0
@@ -9265,6 +9270,7 @@
 0x00578110 func_00578110
 0x00578150 AdrenalineIncr__10CZSealBodyFf
 0x005781B0 Adrenaline__10CZSealBodyFv
+0x005781C0 func_005781C0
 0x005788E0 end__Q23std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>Fv
 0x00578900 __pp__Q33std54__vector_imp<P7AnimSet,Q23std20allocator<P7AnimSet>,1>8iteratorFi
 0x00578940 GetName__7AnimSetFv
@@ -9484,6 +9490,7 @@
 0x00599820 DeleteCameraEffectsNode__10CZSealBodyFv
 0x005998B0 Destroy__10CZSealBodyFP10CZSealBody
 0x005999E0 Create__10CZSealBodyFPC14CCharacterTypePCcP9CSealCtrl
+0x0059A450 func_0059A450
 0x0059A630 func_0059A630
 0x0059A650 func_0059A650
 0x0059A670 func_0059A670
@@ -9524,10 +9531,12 @@
 0x0059DFB0 HandlePickupAck__10CZSealBodyFiiP8AckUnion
 0x0059E580 CheckForAmmoPickups__10CZSealBodyFiP11CPickupAmmoPUsP8AckUnion
 0x0059E830 CanPickupNetItem__10CZSealBodyFUsiPUsi
+0x0059E9E0 CreateNetAmmoPickup__10CZSealBodyFUsPUsPUsiP6CPnt3D
 0x0059EC60 CreateNetWeaponPickup__10CZSealBodyFUsiP6CPnt3DP5CQuat
 0x0059EE20 HandleKiller__10CZSealBodyFib
 0x0059F610 func_0059F610
 0x0059F6F0 func_0059F6F0
+0x0059FD50 DropAmmo__10CZSealBodyFi
 0x005A0B60 func_005A0B60
 0x005A0BB0 func_005A0BB0
 0x005A0C00 func_005A0C00
