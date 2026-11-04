@@ -555,17 +555,8 @@ static inline void HangDeathCallback(CZBodyAnimBlend *b)
 /* a death by an anim type: the overlay's anims and 0x5A5DA0 first, the SEAL off its ladder and its
  * hold let go, unstunned, the blends cleared to the base and the anim pushed dead (state 8, kind 13)
  * with the death's callback, the push told to the network as event 14 (OVL2 0x5A2490, new in SOCOM
- * II; the name unknown).
- * OPEN, 2 instructions (the size right): 0x5B14E0's miss exactly, inlined -- in the hold's ladder
- * lookup the target loads the ladder list (a0) right after its lui and the index (a1) in the call's
- * delay slot, MW here the index first and the list in the slot. Fixing 0x5B14E0 fixes this. Tried
- * on both (build/scratch/seal/v_climb*.py): the list through an inline member accessor of CMission,
- * a static inline accessor, a CMission::GetLadder(i) wrapper, a pointer local and an index local, the
- * hold through a pointer or a reference local or an inline returning it; a ternary over the index
- * (`climb == &seal->m_climb ? ... : ...`) matches 0x5B14E0 alone -- the inlined copy folds it -- and
- * is not a real spelling. Round 26 (build/scratch/seal/v_5b14e0.py): the release as an inline taking
- * the index, the SEAL or the list, and a Ladder(list, index) inline in either parameter order -- all
- * still the 2 */
+ * II; the name unknown). 0x5B14E0 inlined, its ladder lookup's load order the hold's unsigned index
+ * (round 34, below). */
 extern "C" CZBodyAnimBlend *func_005A2490(CZSealBody *seal, AnimType type)
 {
     func_005781C0(seal);
@@ -2589,11 +2580,6 @@ void CZSealBody::CanPickupNetItem(unsigned short count, int id, unsigned short *
 }
 
 extern "C" {
-/* a weapon's model name (OVL1 0x3D2750, an out-of-line accessor: CZWeapon::m_modelname) */
-char *func_003D2750(CZWeapon *w);
-}
-
-extern "C" {
 /* the stats' events (seal.cpp's: a hostage killed, a suicide, a team-mate killed, an enemy killed,
  * and two tallies by a count -- OVL2 0x545390, 0x545C90, 0x545C10, 0x545290, 0x5451A0, 0x5451C0),
  * the network game's side test (OVL1 0x2C30B0, unowned), whether a time of the AI's lies within a
@@ -2685,7 +2671,7 @@ void CZSealBody::CreateNetWeaponPickup(unsigned short item, int netid, CPnt3D *p
     if (!w)
         return;
     zdb::CNode *node = zdb::CNode::CreateInstance(
-        (zdb::CModel *)zdb::CWorld::GetModel(func_003D2750(w)), pos, rot);
+        (zdb::CModel *)zdb::CWorld::GetModel(w->GetModelName()), pos, rot);
 
     if (!node)
         return;
@@ -2878,11 +2864,12 @@ extern "C" void func_0059D750(CZSealBody *seal)
 
 /* the SEAL's hold on its ladder let go: the ladder's owner cleared if it is this SEAL, the hold
  * reset (OVL2 0x5B14E0, new in SOCOM II; OnDeath, the destructor and two more call it after 0x59D750
- * with the SEAL's m_climb). The states a switch: its chain tests 3, then 1, then branches past.
- * OPEN, 2 instructions: the target loads the ladder list (a0) right after its lui and the index (a1)
- * in the call's delay slot; MW here loads the index first and the list in the slot. Tried: the list
- * in a pointer local, a reference local, through an inline accessor, the index in a local, the hold
- * through a reference. */
+ * with the SEAL's m_climb). The states a switch: its chain tests 3, then 1, then branches past. The
+ * target loads the ladder list (a0) right after its lui and the index (a1) in the call's delay slot:
+ * the hold's index is an UNSIGNED int passed to GetLadderByIndex's int (round 34) -- the conversion
+ * moves its load after the list's; as an int MW loads it first and the list in the slot (2 off here
+ * and in 0x5A2490, which inlines this, since round 22; every accessor, local and inline order tried
+ * then kept the 2). */
 extern "C" void func_005B14E0(CZSealBody::CSealClimb *climb, CZSealBody *seal)
 {
     switch (seal->m_climb.m_state) {
