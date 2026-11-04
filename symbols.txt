@@ -7020,9 +7020,9 @@
 0x0037CE80 0x80 SetHeight__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 16 of the array look's table (through the items' own slot 2); the name ours; zui_2d.cpp
 0x0037CF00 0x80 SetWidth__Q220@unnamed@zui_2d_cpp@22CListItemArrayTypeImplFi  # OVL1; by hand (the HUD lane, round 25): slot 17 of the array look's table (through the items' own slot 3); the name ours; zui_2d.cpp
 0x0037CF80 0x70 __dt__10C2DCounterFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x0037CFF0 0x8 func_0037CFF0  # OVL1
+0x0037CFF0 0x8 @152@__dt__10C2DCounterFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37CF80` ~C2DCounter, `addiu a0,a0,-152`)
 0x0037D000 0x8 @152@__dt__17CRenderableStringFv  # OVL1; by hand (the HUD lane, round 25): MW's this-adjusting thunk (`j __dt__17CRenderableStringFv; addiu a0,a0,-152`), emitted with CRenderableString's table now that zui_2d.cpp defines its destructor
-0x0037D010 0x8 func_0037D010  # OVL1
+0x0037D010 0x8 @152@__dt__12CWrappedTextFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x379D90` ~CWrappedText, `addiu a0,a0,-152`)
 0x0037D020 0x8 @128@__dt__9CPlainBmpFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CPlainBmpFv` with `addiu a0,a0,-128`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D030 0x8 @152@__dt__9CTeleTypeFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CTeleTypeFv` with `addiu a0,a0,-152`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D040 0x8 @192@__dt__9C2DButtonFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9C2DButtonFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
@@ -7036,14 +7036,14 @@
 0x0037D0C0 0x8 @192@UpdateUIVar__9CCheckBoxFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9CCheckBoxFP11CUIVariable` with `addiu a0,a0,-192`, CCheckBox's UIVarMixin table's second slot; the HUD lane, round 16)
 0x0037D0D0 0x8 @192@__dt__9CCheckBoxFv  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j __dt__9CCheckBoxFv` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
 0x0037D0E0 0x8 @192@UpdateUIVar__9C2DButtonFP11CUIVariable  # OVL1; ours (MW's this-adjusting thunk name, @<offset>@<target>: `j UpdateUIVar__9C2DButtonFP11CUIVariable` with `addiu a0,a0,-192`; zui_2d.cpp's classes emit these thunks for their secondary bases -- the HUD lane's round 15, named by the integrator)
-0x0037D0F0 0x8 func_0037D0F0  # OVL1
+0x0037D0F0 0x8 @192@__dt__11CRadioStripFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37C1B0` ~CRadioStrip, `addiu a0,a0,-192`)
 0x0037D100 0x8 func_0037D100  # OVL1
-0x0037D110 0x8 func_0037D110  # OVL1
-0x0037D120 0x8 func_0037D120  # OVL1
-0x0037D130 0x8 func_0037D130  # OVL1
-0x0037D140 0x8 func_0037D140  # OVL1
+0x0037D110 0x8 @128@__dt__12CPopUpDialogFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x27C8D0` ~CPopUpDialog, `addiu a0,a0,-128`)
+0x0037D120 0x8 @152@__dt__11CScrollTextFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37C110` ~CScrollText, `addiu a0,a0,-152`)
+0x0037D130 0x8 @152@UpdateUIVar__8C2DClockFP11CUIVariable  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x36B0A0` C2DClock::UpdateUIVar, `addiu a0,a0,-152`)
+0x0037D140 0x8 @152@__dt__8C2DClockFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x37C020` ~C2DClock, `addiu a0,a0,-152`)
 0x0037D150 0x8 @152@UpdateUIVar__17CRenderableStringFP11CUIVariable  # OVL1; by hand (the HUD lane, round 22: the this-adjusting thunk in the UIVarMixin part of CRenderableString's and its subclasses' tables -- j 0x379260 with a0 -= 152 (UIVarMixin at 0x98); MW's name, SOCOM 1's @136@ at its offset)
-0x0037D160 0x8 func_0037D160  # OVL1
+0x0037D160 0x8 @152@__dt__11CSecureTextFv  # OVL1; the integrator 2026-11-04, by the HUD lane round 34: MW's this-adjusting thunk (`j 0x36AF30` ~CSecureText, `addiu a0,a0,-152`)
 0x0037D170 0xA0 __dt__10CClockSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D210 0xC GetType__10CClockSpecFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0037D220 0x84 CreateDisplayObj__10CClockSpecCFP7C2DFontPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
