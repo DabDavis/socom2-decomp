@@ -111,6 +111,64 @@ extern void (*data_0067A768[16])(int nClient, int nIndex);
 extern int data_00651180;               /* NetInitialize has run */
 extern int data_00686A30;               /* the object-deletion message's type */
 
+int func_00614168(unsigned short *pCount);
+extern int func_0061D448(int nClient);
+extern int data_00686A50;               /* this client's state report's message type */
+
+/* this client's state report (16 bytes) */
+typedef struct DmeClientReport {
+    unsigned char nState;               /* 0x00 */
+    unsigned char nClient;              /* 0x01 */
+    unsigned char field_02;             /* 0x02 */
+    unsigned char field_03;             /* 0x03 */
+    unsigned short nObjects;            /* 0x04: the live objects it made (func_00614168) */
+    int nValue;                         /* 0x08 */
+    int nWorldValue;                    /* 0x0C */
+} DmeClientReport;
+
+/* new in SOCOM II (0x613FD0, DmeLocal.c's first function): this client's state report, sent to one
+ * client or (nTarget -1) to every other connected one */
+void func_00613FD0(unsigned int nWorld, int nTarget)
+{
+    DmeClientReport msg;
+    DmeWorld *pWorld = 0;
+    DmeClientInfo *pClient = 0;
+    unsigned int nMyClient;
+    unsigned int i;
+
+    if (nWorld >= DME_MAX_WORLDS)
+        return;
+    if (func_0061C600(nWorld, &pWorld) != 0)
+        return;
+    if (pWorld == 0)
+        return;
+    nMyClient = pWorld->nMyClient;
+    if (nMyClient >= DME_MAX_CLIENTS)
+        return;
+    if (func_0061C720(nWorld, nMyClient, &pClient) != 0)
+        return;
+    if (pClient == 0)
+        return;
+    msg.nClient = func_0061D448(nMyClient);
+    msg.nState = pClient->nState;
+    msg.field_02 = pClient->field_18;
+    msg.field_03 = pClient->field_1C;
+    msg.nValue = pClient->nValue;
+    msg.nWorldValue = pWorld->field_448;
+    if (func_00614168(&msg.nObjects) != 0)
+        return;
+    if (nTarget == -1) {
+        for (i = 0; i < DME_MAX_CLIENTS; i++) {
+            if (func_0061C720(nWorld, i, &pClient) != 0)
+                return;
+            if (pClient != 0 && pClient->bConnected == 1 && i != nMyClient)
+                func_00615DE0(80, nWorld, i, data_00686A50, sizeof(msg), &msg);
+        }
+        return;
+    }
+    func_00615DE0(80, nWorld, nTarget, data_00686A50, sizeof(msg), &msg);
+}
+
 int func_00614168(unsigned short *pCount)
 {
     unsigned int i = 0;
