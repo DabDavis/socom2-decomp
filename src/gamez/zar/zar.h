@@ -43,6 +43,8 @@ struct TAIL {
 
 class CKey : public CKeyRing {
 public:
+    /* an empty key, no name (SOCOM 1's; NewKey pushes one for a nameless key) */
+    CKey();
     CKey(const char *name);
     /* out of line (0x25BB50): Insert(const char *, ...) deletes a key it could not write through it */
     ~CKey();
@@ -52,10 +54,44 @@ public:
     bool Read(CZAR *zar, CIO *io, int base);
     CKey *InsertKey(CKey *key);
 
+    /* the children forgotten, each deleted too when asked (SOCOM II's, 0x25B580: FreeDirectory
+     * deletes them when the key buffer holds none of the keys -- the keys then their own
+     * allocations; the name ours) */
+    void DeleteChildren(bool del);
+
     char* m_name;   // 0xc
     int m_size;   // 0x10
     int m_offset;   // 0x14
 };   // 0x18 bytes
+
+/* the archive's key buffer: the directory's keys held by value, 24 bytes each (SOCOM 1's CKeyVec,
+ * a vector<CKey>: ~CZAR destroys it three this-tests deep, its FreeVector's temporary two, as
+ * SOCOM II's FreeVector over the base std::vector gives) */
+class CKeyVec : public std::vector<CKey> {
+};
+
+/* SOCOM II's: a 16-byte growing byte buffer the archive owns at 0x34, made by its first write
+ * (Close frees its block and zeroes its words before deleting it; the names ours) */
+struct CZARBuffer {
+    CZARBuffer() : m_data(0), m_size(0), m_used(0), m_grows(0) {}
+    ~CZARBuffer()
+    {
+        if (m_data)
+            _free(m_data, 0, 0);
+        m_data = 0;
+        m_size = 0;
+        m_used = 0;
+        m_grows = 0;
+    }
+    /* the bytes appended, the block grown first when they do not fit -- 4 KB past them the first
+     * time, then by half a megabyte more than the block times its growths (0x257050) */
+    unsigned int Write(const void *data, unsigned int size);
+
+    char *m_data;   // 0x0
+    unsigned int m_size;   // 0x4: the block's bytes
+    unsigned int m_used;   // 0x8
+    unsigned int m_grows;   // 0xc: how often the block grew
+};   // 0x10 bytes
 
 class CZAR {
 public:
@@ -77,6 +113,8 @@ public:
     bool Fetch(const char *name, bool *value);
     /* a fresh key, named so (SOCOM 1's) */
     CKey *NewKey(const char *name);
+    /* a new key under the open one, and opened -- none unless the file is open (SOCOM 1's) */
+    CKey *CreateKey(const char *name);
     /* a key's size by name in the open key, -1 when it has none */
     int GetSize(const char *name);
     CKey *GetOpenKey();
@@ -84,7 +122,19 @@ public:
     CKey *OpenKey(const char *name);
     CKey *FindKey(const char *name);
     void CloseKey(CKey *key);
+    /* the directory written if the file is open for writing, then closed (Close(bool)) and the
+     * buffer at 0x34 deleted (SOCOM 1's, grown) */
     void Close();
+    /* the files closed, the second deleted, the directory freed (SOCOM 1's Close(bool): SOCOM II's
+     * callers pass true, its body never reads the flag -- as SOCOM 1's) */
+    void Close(bool);
+    /* bytes appended to the buffer at 0x34, made on the first write (SOCOM II's, 0x256FD0: Insert
+     * writes a key's data through it; the name ours) */
+    unsigned int WriteBuffer(const void *data, unsigned int size);
+    /* the directory forgotten: the root's children (deleted when the key buffer holds none of
+     * the keys), the key buffer, the open keys, the string table (SOCOM II's, 0x257320: the
+     * closes' common tail; the name ours) */
+    void FreeDirectory();
     /* the file closed, the directory kept (SOCOM 1's: the file's Close, a tail call) */
     void CloseKeepDir();
     /* the archive's file name: a copy of the name given, or DEFAULT_ZAR_NAME's own pointer for
@@ -102,6 +152,13 @@ public:
     /* the directory written if it changed, while the file is open: whether it is (SOCOM II's --
      * CSaveManager::Save calls it; the name ours) */
     bool Flush();
+    /* the archive opened over the named file: the directory read (dir and mode handed on), the
+     * data padded so; with data, a second file "<name>_tmp.<ext>" opened too (SOCOM 1's
+     * Open(name, int, unsigned, unsigned) with a fifth argument -- every caller passes 0, its type
+     * a guess) */
+    bool Open(const char *name, int dir, unsigned int mode, unsigned int padded, bool data);
+    /* the directory off the file (SOCOM 1's; 0x258000) */
+    bool ReadDirectory(int dir, unsigned int mode);
     /* the file reopened unless it still is (0x258B40, SOCOM 1's ReOpen; both callers pass 1, 1) */
     bool ReOpen(int, unsigned int);
     bool IsOpen() { return m_pFile ? m_pFile->IsOpen() : false; }
@@ -109,20 +166,21 @@ public:
     CKeyRing m_keys;   // 0x4: the open keys, innermost last
     CIO* m_pFileAlloc;   // 0x10
     CIO* m_pFile;   // 0x14
-    void* m_databuffer;   // 0x18
-    unsigned int m_databuffer_size;   // 0x1c
+    CIO* m_pDataFile;   // 0x18 (SOCOM 1: m_databuffer): SOCOM II's second file, Open's name with
+                        // another extension, a CFileIO the archive owns (the name ours)
+    void* m_databuffer;   // 0x1c (SOCOM 1: m_databuffer_size): what ReleaseDataBuffer hands over
     int m_data_size;   // 0x20: SOCOM II's (the name ours): the buffer's size the bone loaders take with it
     unsigned char m_24;   // 0x24: SOCOM II's (ReleaseDataBuffer clears it)
     unsigned char m_modified;   // 0x25 (SOCOM 1: 0x20): the directory to be written (0x258BD0)
     unsigned int m_data_padded;   // 0x28 (SOCOM 1: 0x24)
     int m_2c;   // 0x2c: SOCOM II's
     int m_data_start;   // 0x30 (new in SOCOM II, the name ours): the file offset the keys' offsets count from
-    int m_34;   // 0x34: SOCOM II's
+    CZARBuffer* m_34;   // 0x34: SOCOM II's (Close deletes it)
     TAIL m_tail;   // 0x38 (SOCOM 1: 0x28)
     CKey* m_root;   // 0x9c (SOCOM 1: 0x88)
     CSTable* m_stable;   // 0xa0 (SOCOM 1: 0x8c)
     char* m_filename;   // 0xa4 (SOCOM 1: 0x90): CRdrArchive's walks compare their names with it
-    std::vector<CKey *> m_key_buffer;   // 0xa8 (SOCOM 1's CKeyVec, a vector<CKey>: the element type here not settled)
+    CKeyVec m_key_buffer;   // 0xa8 (SOCOM 1: 0x94)
     unsigned char m_bCompress;   // 0xb4
     unsigned char m_bSecure;   // 0xb5
 };   // 0xb8 bytes (OpenZAR's new; SOCOM 1's 0xA4)

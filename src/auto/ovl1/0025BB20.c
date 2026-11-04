@@ -4,11 +4,12 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_0025B580(s32 arg0, s32 arg1);
-void func_0025BB20(s32 arg0) {
-    if (arg0 != 0) {
-        func_0025B580(arg0, 0);
+M2C_UNK DeleteChildren__Q23zar4CKeyFb(char * arg0, u8 arg1);
+void func_0025BB20(char *arg0) {
+    if (arg0 != NULL) {
+        DeleteChildren__Q23zar4CKeyFb(arg0, 0U);
     }
 }

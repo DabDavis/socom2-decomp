@@ -168,6 +168,10 @@ public:
 /* every entity, or a group of them (SOCOM 1's DWARF: a list of pointers and nothing more) */
 class CEntityList : public std::list<CEntity *> {
 public:
+    /* the pointer list's implementation, whose remove is one inline level shallower than the
+     * wrapper's (SetIncludeInTargetList removes through it, as node_world.h's CAssetList) */
+    typedef std::__list_imp<const void *, std::allocator<const void *> > list_imp;
+
     CEntity *GetEntity(const char *name) const;
     CEntity *GetEntityById(unsigned int id) const;
     CEntity *GetEntityByIndex(unsigned int index) const;

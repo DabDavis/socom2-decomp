@@ -148,10 +148,17 @@ public:
     /* whether a scope or the binoculars are up (SOCOM 1's; OVL2 0x5B9990, 0x5B90F0 -- kit.h's) */
     bool IsUsingScope();
     bool IsUsingBinocs();
+    /* the sniper's kick made ready (SOCOM 1's; OVL2 0x5B9180, kit.h's: SetCurZoomState calls it) */
+    void InitializeSniperKick();
+    /* the weapon's display marked changed (SOCOM 1's; OVL2 0x5B99B0, kit.h's) */
+    void SetWeaponInfoChanged();
     /* the class of the item in hand (kit.h's byte enum; OVL2 0x5B8760, the kit lane's) */
     enum FIRE_CLASS { FIRE_CLASS_NONE = 0, FIRE_CLASS_RIFLE = 1, FIRE_CLASS_PISTOL = 2,
                       FIRE_CLASS_THROWN = 3, FIRE_CLASS_145 = 4, FIRE_CLASS_LAST = 255 };
     FIRE_CLASS GetCurItemFireClass();
+    /* the frame's kit work before the SEAL's (SOCOM 1's PreTick; OVL2 0x5C1660, seal_kit.cpp's range:
+     * WeaponsTick calls it last, as SOCOM 1's does) */
+    void PreTick(float dT);
 
     /* kit.h's flags (the kit lane's names): only bit 12 here */
     unsigned int m_bits0 : 12;   // 0x0
@@ -1211,6 +1218,17 @@ public:
     /* a player's targets forgotten as seen (OVL2 0x544B60, new in SOCOM II: SetCurZoomState calls
      * it; the name ours) */
     void ResetTargetsSeen();
+    /* the view stepped out and in one place, and the view set (SOCOM 1's; OVL2 0x544400, 0x5445B0,
+     * 0x5448A0 --
+     * SOCOM II's states are SOCOM 1's with one inserted at 2: night vision is 3, the binoculars 4,
+     * the weapon's zooms from 5, thirteen in all) */
+    ZOOMSTATE DecrZoomState();
+    ZOOMSTATE IncrZoomState();
+    void SetCurZoomState(ZOOMSTATE zs);
+    /* a remote SEAL brought back, and the local SEAL's respawn (SOCOM 1's; OVL2 0x598B90, 0x5994A0,
+     * seal_create.cpp's range: Virtual8C calls them) */
+    void RemoteRespawn(bool b);
+    void DoRespawn();
     /* the SEAL's stats (OVL2 0x545890: the stats events reach a teammate's through it, by member
      * pointer; the name ours) */
     class CSealStats *GetStats();
@@ -1299,6 +1317,12 @@ public:
     /* the fire point of a name (OVL2 0x5DFAD0, seal_weapon.cpp's range: SOCOM 1's
      * GetFirepointNode, virtual in SOCOM II -- CEntity's slot +0x64) */
     virtual zdb::CNode *GetFirepointNode(const char *name);
+    /* where a named point of the item in hand lies in the world, if the item is worn (SOCOM 1's;
+     * OVL2 0x5DFB70, seal_weapon.cpp -- the bool its own) */
+    bool GetFirepointPos(CPnt3D &pos, const char *name);
+    /* where a node of the item in hand lies, in the world or turned into it (SOCOM 1's; OVL2 0x5DF930,
+     * seal_weapon.cpp) */
+    bool GetNodePos(const zdb::CNode *node, CPnt3D &pos, bool world);
     virtual bool Virtual68(CPnt3D *out);
     /* the root part and the state set (CBody's virtuals, overridden), with one of the SEAL's own
      * between them: MW lists them after the CBody table, from +0x88, and calls them through the
@@ -1412,6 +1436,9 @@ public:
     WEAPON_STATE GetWeaponState() const;
     /* the weapon's state set (SOCOM 1's; OVL2 0x5DFE30, the kit lane's seal_weapon.cpp range) */
     void SetWeaponState(WEAPON_STATE state);
+    /* the weapon state machine stepped, the aim and the kit after it (SOCOM 1's; OVL2 0x5DFC80,
+     * seal_weapon.cpp) */
+    void WeaponsTick(float dT);
     /* the aim's goal from a point along a direction, and the aim set along a direction -- whether a
      * goal came of it (made the unit -z when asked, should none) -- SOCOM 1's; OVL2 0x5DF600 and
      * 0x5DF8B0, seal_weapon.cpp (the kit lane) */
@@ -1561,7 +1588,13 @@ public:
     static int m_heartbeat_curindex;
 
     ZOOMSTATE m_zoomstate;   // 0x200 (SOCOM 1's 0x160: DecrZoomState reads it, lb)
-    unsigned char _201[0x20c - 0x201];
+    /* the view before, the change flagged, the field of view (SOCOM 1's DWARF names, its 0x161-0x167;
+     * SetCurZoomState sets them) */
+    ZOOMSTATE m_zoomstate_prev;   // 0x201
+    unsigned char m_zoomstate_echo;   // 0x202
+    unsigned char _203;
+    float m_zoom_range;   // 0x204
+    unsigned char _208[0x20c - 0x208];
     /* the material underfoot and the feet's step flags (SOCOM 1's 0x168-0x16D; HandleSealStep and
      * HandleFootfallSound read them) */
     int m_onMaterial;   // 0x20c
@@ -1660,7 +1693,10 @@ public:
     class AnimSet *m_default_animset;   // 0x52c (SOCOM 1's 0x460: BindAnimSet keeps the set it replaces)
     unsigned char _530[0x534 - 0x530];
     AnimType m_curblend;   // 0x534: the anim type on top of the blends (SOCOM 1's short at 0x464)
-    unsigned char _536[0x540 - 0x536];
+    unsigned char _536[0x53c - 0x536];
+    /* the zoom's anim, "zoom_control", while a scope or the binoculars are up (new in SOCOM II:
+     * SetCurZoomState starts and releases it; the name ours) */
+    class CZAnim *m_zoom_anim;   // 0x53c
     class CCharacterType *m_charType;   // 0x540 (SOCOM 1's 0x468: TickStun reads its recovery factor)
     unsigned char _544[0x58c - 0x544];
     /* (SOCOM 1's m_stats, 0x4c0, right before m_accuracy as here: the stats' events step its
@@ -1716,7 +1752,11 @@ public:
     unsigned int m_lastkiller_id;   // 0xfbc: the killer's entity id (SOCOM 1's 0xeb4)
     unsigned char _fc0[0xfc8 - 0xfc0];
     int m_ClientIndex;   // 0xfc8 (SOCOM 1's 0xeb8: CreateRemoteSeal stores its first argument in both)
-    unsigned char _fcc[0xfcf - 0xfcc];
+    unsigned char _fcc;
+    /* the spectator's next and previous SEAL asked for (new in SOCOM II: Virtual8C walks to them;
+     * the names ours) */
+    unsigned char m_spectate_next;   // 0xfcd
+    unsigned char m_spectate_prev;   // 0xfce
     unsigned char m_needs_respawn;   // 0xfcf (SOCOM 1's 0xec5, the byte before m_stunned)
     /* SOCOM 1's m_stunned, m_full_update_time and m_movespeedmod (0xec6, 0xec8, 0xecc there) in the
      * same order: HandleStunDamage sets the byte, CreateRemoteSeal zeroes the time and sets the
@@ -1969,6 +2009,92 @@ public:
 };   // 0x1bc bytes
 
 extern CharacterDynamics theCharacterDynamics;
+
+/* a round-robin share of the AI's work over the frames (new in SOCOM II; the names the kit lane's):
+ * this frame's window of entity numbers, [m_start, m_end), wrapped past the m_total numbers into
+ * [0, m_wrap) -- m_size numbers a frame, m_count how many were served. Five of them, OVL2 bss
+ * 0x66B060 on, 0x20 apart (0x18 bytes each, aligned to 16: 0x66B0F8 is another word), built by
+ * __sinit_seal_ai.cpp (0x6687E0, seal_ai.cpp defines them): CSealCtrlAi::PreTick reads the first,
+ * second and fifth, 0x558640 the second, 0x56D2B0 the fifth, 0x574C30 resets those three, ai_posttick
+ * (0x5CCA30, seal_sensors.cpp) moves them on and ScanTick (0x600550) reads the first; only the
+ * initialiser touches the third and fourth. One class for both lanes' halves (the kit's round 26:
+ * the SEALs' round 24 built the initialiser on its own copy) */
+struct CAiSlice {
+    CAiSlice()
+    {
+        m_count = 0;
+        Reset();
+    }
+    /* (inline: 0x574C30 expands it three times, the sums last) */
+    void Reset()
+    {
+        m_start = 0;
+        m_size = 0;
+        m_total = 0;
+        m_wrap = 0;
+        m_end = m_start + m_size;
+    }
+    /* whether a number takes its turn this frame (an inline bool: the target materialises it,
+     * `daddiu 1` on the true arm) */
+    bool Has(int id) const
+    {
+        if (id < m_wrap || (id >= m_start && id < m_end))
+            return true;
+        return false;
+    }
+    /* the window resized: m_size numbers out of m_total, the part past the end wrapped (an inline:
+     * the target compares the arguments, held in registers, and reads the members back) */
+    void SetSize(int size, int total)
+    {
+        m_wrap = 0;
+        m_total = total;
+        m_size = size;
+        m_end = m_start + m_size;
+        if (size >= total)
+            m_wrap = size;
+        else if (m_end > total)
+            m_wrap = m_end - total;
+        else
+            m_wrap = 0;
+    }
+    /* the window moved on and resized to a new count (inline: ai_posttick's three -- not SetSize, whose
+     * stores run m_wrap, m_total, m_size where these run m_size, m_total, m_wrap). The zero arm of the
+     * wrap first (`m_total == 0 ? 0 : ...`, the target's `bnez total` to the divide) and the sum built
+     * in two steps from m_size (the target loads m_size first and keeps the sum in its register) */
+    void Next(int total, int size)
+    {
+        int start = m_size;
+
+        start += m_start;
+        if (start >= m_total)
+            start = m_total == 0 ? 0 : start % m_total;
+        m_start = start;
+        m_size = size;
+        m_total = total;
+        m_wrap = 0;
+        m_end = m_start + m_size;
+        if (size >= total)
+            m_wrap = size;
+        else if (m_end > total)
+            m_wrap = m_end - total;
+        else
+            m_wrap = 0;
+        m_count = 0;
+    }
+
+    int m_start;   // 0x0
+    int m_end;   // 0x4
+    int m_size;   // 0x8
+    int m_total;   // 0xc
+    int m_wrap;   // 0x10
+    int m_count;   // 0x14: the frame's takers
+};
+
+extern CAiSlice ai_slice0;
+extern CAiSlice ai_slice1;
+extern CAiSlice ai_slice2;
+extern CAiSlice ai_slice3;
+extern CAiSlice ai_slice4;
 
 /* a dying SEAL's visibility requests dropped and its targets' entries for it unhooked (SOCOM 1's
  * free function; OVL2 0x5CC8A0 -- CSealCtrlAi::OnDeath calls it; seal_sensors.cpp, the kit lane's) */

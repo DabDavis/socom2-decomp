@@ -800,6 +800,9 @@ public:
      * ours, after SOCOM 1's CmdParseCmp/CmdTickCmp, VALVE's pair) */
     static _zanim_cmd_hdr *CmdParseVWatch(_zrdr *rdr);
     static bool CmdTickVWatch(_zanim_cmd_hdr *hdr, float *dT);
+    /* an operator's name to its code: 0x353D10, a chain of 22 strcmp calls, no `this` (the world
+     * lane's round 12 measured it; declared by the integrator for the world's unit to define) */
+    static int ParseOperator(const char *op);
     static void Destroy(CValve *valve);
     void DeleteCallbacks();
     void FreeName();

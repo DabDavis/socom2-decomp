@@ -48,6 +48,22 @@ zdb::CDynTexList m_dyntexlist;   // 0x45C460
 bool Tick(float dT, void *data);
 void FreeNodePool();
 
+/* SOCOM 1's: a node's DIs gathered, then its children's, then its model's when it is an instance
+ * (the destruction manager collects a hierarchy's collision pieces with it; the name SOCOM 1's) */
+void PullVisuals(zdb::CNode *node, zdb::CDIVector *out)
+{
+    if (!node)
+        return;
+    for (zdb::CDIVector::iterator d = node->GetDIs().begin(); d != node->GetDIs().end(); ++d)
+        out->push_back(*d);
+    for (zdb::CNodeVector::iterator i = node->GetChildren().begin(); i != node->GetChildren().end(); ++i)
+        PullVisuals(*i, out);
+    zdb::CNode *instance = node->m_type == 2 ? node : 0;
+
+    if (instance)
+        PullVisuals(instance->m_model, out);
+}
+
 /* SOCOM 1's: the dynamic textures let go of */
 void FlushDynTexList()
 {

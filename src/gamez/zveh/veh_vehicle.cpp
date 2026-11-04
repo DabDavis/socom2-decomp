@@ -11,11 +11,9 @@
 using namespace zdb;
 
 extern "C" {
-/* not yet written here (placeholders): the vehicle's half of the tick and the AI map's region
- * fill (OVL2) */
+/* not yet written here (placeholders): the vehicle's half of the tick */
 void func_003ACC10(CVehicle *vehicle, float dT);
 void func_003ADAB0(CVehicle *vehicle, CNode *node, const CVehicleDef *def);
-void func_00515880(void *map, CPnt3D *corners, void *region);
 /* the vehicles made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4120;
 extern int data_003E0860;
@@ -282,7 +280,7 @@ void CVehicle::PreTick(float dT)
 void CVehicle::Tick(float dT)
 {
     unsigned int loc;
-    void *map;
+    CAiMap *map;
 
     if (!GetFlag(1))
         return;
@@ -315,7 +313,7 @@ void CVehicle::Tick(float dT)
 
     m_root->BuildMTW(m);
     m.Transform(m_corners, 4);
-    func_00515880(map, m_corners, &m_region);
+    map->TileFootprint(m_corners, (CAiMap::region *)&m_region);
 }
 
 /* the node's frame sampled into 0x1E0: the cosine between its old and new Z (the turn), the step

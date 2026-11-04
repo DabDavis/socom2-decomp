@@ -745,6 +745,8 @@ public:
     static void RecoverFromNetError(int error);
     bool _RecoverFromNetError(int error);
     void Init();
+    /* the mission's rdr read ahead of Open (OVL1 0x2ACC10, fts_mission.cpp's: SOCOM 1's PreOpen) */
+    void PreOpen(const char *database);
     void ReOpen_Load();
     void ReOpen_Unload1();
     void ReOpen_Unload2();

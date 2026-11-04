@@ -7,12 +7,12 @@ typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK3
 #define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
-M2C_UNK func_001BCE48();                            /* extern */
 M2C_UNK sceLibnetTerminate(M2C_UNK *);              /* extern */
+M2C_UNK sceSifMExitRpc();                           /* extern */
 extern M2C_UNK data_00456780;
 
 s32 func_0030E260(void) {
     sceLibnetTerminate(&data_00456780);
-    func_001BCE48();
+    sceSifMExitRpc();
     return 0;
 }
