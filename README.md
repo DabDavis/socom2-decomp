@@ -9232,17 +9232,22 @@ byte-exact rows, none superseding a draft; `src/lib/asr` 498 of 530 (493 of 528 
   aliasing); InitDynprogContext's flags walked by a pointer taken before the loop (the load in the entry
   test's slot), a counter of its own per loop, the filter's out pointer declared before its table (30 of
   the 120 declaration orders); FindBestBacktraces' word id `st[1] + (st[2] << 16)`.
+- **A fifth object built with `-ffast-math`: the distance block's** (distsil.c): NormCorrection's
+  unrolled sum loads its first copy straight into the sum (`0 + x` folded); every other function of the
+  object compiles the same with the flag. Its rounding compares in double (`x < 0.0`, the target's
+  dpcmp on x converted once), and its clamp tests the upper bound first (both bounds if-converted into
+  a movn/movz pair; the lower bound first keeps a branch).
 - **Open, diagnosed in place**: FreeDistCalc (31 words, the right size: the priority tie above);
   InitViterbi@nbestdp not revisited.
 
 Hand-written in round 21c: `asr/dpscoreuw.c` (DynProgScoreUserWords: 12 of 12), `asr/nbestdp.c` (+6:
 InitDynprogContext, CleanUpParBTProc, CopyParBT, FindBestBacktraces, NBestDynProgProcess, and SOCOM II's
-own func_004EC130 -- the context's release -- over its draft; 12 of 13), `asr/distsil.c` (+2: FreeLanguage,
-FreeDistCalc OPEN; 8 of 9) -- 7 rows new to the map's byte-exact rows (5,076 bytes), one matched draft
-superseded (func_004EC130); `src/lib/asr` 506 of 539 (498 of 530 before). 5 rows named: InitDynprogContext,
-FreeLanguage (`s1:order`, each body SOCOM 1's), DynProgAccNBestNoOptSil and DynProgAccNBestOptSil
-(`s1:order`, `s1:ref`: InitDynprogContext stores them by the context's silence flag as SOCOM 1's does),
-FreeDistCalc (`s1:order`, `s1:calls`). No tool changed.
+own func_004EC130 -- the context's release -- over its draft; 12 of 13), `asr/distsil.c` (+3: FreeLanguage,
+NormCorrection, FreeDistCalc OPEN; 9 of 10) -- 8 rows new to the map's byte-exact rows (5,624 bytes), one
+matched draft superseded (func_004EC130); `src/lib/asr` 507 of 540 (498 of 530 before). 6 rows named:
+InitDynprogContext, FreeLanguage, NormCorrection (`s1:order`, each body SOCOM 1's), DynProgAccNBestNoOptSil
+and DynProgAccNBestOptSil (`s1:order`, `s1:ref`: InitDynprogContext stores them by the context's silence
+flag as SOCOM 1's does), FreeDistCalc (`s1:order`, `s1:calls`). No tool changed.
 
 **Round 14b: the "toolchain" opens were SCEA's shapes; LargeInt's core is assembly.**
 
