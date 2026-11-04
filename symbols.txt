@@ -11742,7 +11742,7 @@
 0x0060A850 0xE8 func_0060A850  # OVL2
 0x0060A940 0xDC __ct__9CAiTargetFv  # OVL2; by hand (the kit lane, round 6): CAiTarget's constructor -- SEAL_AI_PARAMS's constructor (0x60BF40) calls it on +0x42C (the controller's 0x67C, after the event queue, as SOCOM 1's CSealCtrlAi constructor calls __ct__9CAiTargetFv on m_target after m_eventQueue), CTurret's constructor (0x3AA478) too; SOCOM 1's CheckLineOfFire/CAiTarget unit closes with it, and SOCOM II's sits after CheckLineOfFire (0x609DF0)
 0x0060AA20 0x57C func_0060AA20  # OVL2
-0x0060AFA0 0x174 func_0060AFA0  # OVL2
+0x0060AFA0 0x174 func_0060AFA0  # OVL2; by hand (the kit lane, round 29; the name unknown): the target visibility update from its finished ray -- the request (CTarget+0x28) taken when registered, 0x60AA20 (SOCOM 1s ComputeVisibility by place) blended between -0.15 and 1.15, scaled by the rays age, added to the visibility (+0x18), seen at 1, saturated; SOCOM 1s CSealCtrl::SensorTick did it inline; the OVL1 turret code 0x3A82C0 calls it
 0x0060B120 0x344 func_0060B120  # OVL2
 0x0060B470 0x37C func_0060B470  # OVL2
 0x0060B7F0 0xF8 func_0060B7F0  # OVL2
