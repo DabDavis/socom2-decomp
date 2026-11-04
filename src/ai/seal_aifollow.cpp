@@ -242,7 +242,9 @@ static inline bool ClosingIn(CZSealBody *seal)
  * s3, the result s2, close s0) where ours gives it s3. Tried (build/scratch/kit/v_cm*.py, the kit
  * lane's round 29): the bit-13 test in the caller (the if-conversion makes it sltu/andi), an inline
  * on the AI or on the SEAL, `return a && b`, `if (...) return true; return false;`, nested ifs, the
- * inline's locals in both orders, the result preset or assigned in an else */
+ * inline's locals in both orders, the result preset or assigned in an else; round 30 (the shape that
+ * closed GetFiremodeGraphic), the `&&`s as ternary conditions, in the caller, the inline or both:
+ * 0x164-0x190 */
 bool CAiSFollow::CheckMaster(CSealCtrlAi *ai)
 {
     bool alive;

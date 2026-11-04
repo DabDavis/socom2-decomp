@@ -648,7 +648,8 @@ FIREMODE CZKit::GetCurFireMode()
  * its block, being shared). Tried: the ternary either way round, `== 0`, the weapon in a local, an
  * if/else, a result local (0x1DC), a static inline capacity helper (three bodies, either arm), a
  * shared `return 0` at the end, a goto, `== 0` and `!(bool)` in the if, the item through
- * GetItemByIndex (9) */
+ * GetItemByIndex (9); round 30, the launcher arm as one ternary over `i != -1 && m_item[i]` (the shape
+ * that closed GetFiremodeGraphic: 0x1F4) */
 int CZKit::GetMaxAmmoCount(int index)
 {
     index = wrap(index, m_num_items);
