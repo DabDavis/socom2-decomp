@@ -182,6 +182,10 @@ extern "C" void func_001F38F0(CObjectiveCounts *counts, const std::list<CMission
         counts->primary.fraction = 0.0f;
 }
 
+/* a fraction as a whole percentage, and a value rounded (the names ours) */
+static inline int Round(float f) { return (int)(0.5f + f); }
+static inline int Percent(float f) { return Round(100.0f * f); }
+
 /* the round's ratings, each a percentage put in the UI's variables (SetRoundStatUiVars' four;
  * the names ours) -- what they read: */
 
@@ -191,10 +195,17 @@ public:
     unsigned short m_count[0x3c / 2];   // 0x0
 };
 
-/* a named value (zanim.h's CValve: only its lookup and its value) */
+/* a valve's kind (zanim.h's: only the one made here) */
+enum VALVE_TYPE {
+    VALVE_TYPE_0,
+    VALVE_TYPE_1
+};
+
+/* a named value (zanim.h's CValve: its lookup, its making and its value) */
 class CValve {
 public:
     static CValve *GetByName(const char *name);
+    static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
 
     char *m_name;   // 0x0
     unsigned int m_value : 16;   // 0x4
@@ -252,6 +263,36 @@ inline CUIVariable &UIVar(const char *name)
     return *theUIVarManager.Add(name, 0, UIVL_TEMPORARY);
 }
 
+/* the objectives rating (OVL1 0x1F3550): each kind's complete and total counts shown, then the
+ * fractions weighed -- the primaries 0.7, the secondaries 0.23 and the hidden ones 0.07, a kind with
+ * none giving its share to the primaries -- shown as a percentage and kept in a valve of the same
+ * name; the weighed fraction returned (the two lesser weights in float locals: as constants in the
+ * sum MW colours the fractions' registers the other way) */
+extern "C" float func_001F3550(CObjectiveCounts *counts)
+{
+    UIVar("StatPrimaryObjectivesComplete") = counts->primary.complete;
+    UIVar("StatPrimaryObjectivesTotal") = counts->primary.total;
+    UIVar("StatSecondaryObjectivesComplete") = counts->secondary.complete;
+    UIVar("StatSecondaryObjectivesTotal") = counts->secondary.total;
+    UIVar("StatHiddenObjectivesComplete") = counts->third.complete;
+    UIVar("StatHiddenObjectivesTotal") = counts->third.total;
+    float primary = 0.7f;
+
+    if (counts->secondary.total == 0)
+        primary += 0.23f;
+    if (counts->third.total == 0)
+        primary += 0.07f;
+    float second = 0.23f;
+    float hidden = 0.07f;
+    float pct = primary * counts->primary.fraction + second * counts->secondary.fraction +
+                hidden * counts->third.fraction;
+    int shown = Percent(pct);
+
+    UIVar("StatObjectivesPct") = shown;
+    CValve::Create("StatObjectivesPct", shown, VALVE_TYPE_1);
+    return pct;
+}
+
 /* the stealth rating (OVL1 0x1F3290): 35 less the times seen, the stealth kills up to 30, 35 less
  * 35 for each alarm the "scoring_alarm" valve counts -- none under 45 seconds of mission -- as a
  * percentage; the stealth kills, the alarms, the enemy's shots and the rating shown.
@@ -300,9 +341,6 @@ extern "C" float func_001F3290(CSealStats **stats)
     return 0.01f * pct;
 }
 
-/* a fraction as a whole percentage, and a value rounded (the names ours) */
-static inline int Round(float f) { return (int)(0.5f + f); }
-static inline int Percent(float f) { return Round(100.0f * f); }
 
 /* a mission taken into the career (OVL1 0x1F1FB0; SetRoundStatUiVars 0x1F21B0 calls it on
  * theMission +0x1950, the name ours): each percentage averaged in over the missions so far, the
