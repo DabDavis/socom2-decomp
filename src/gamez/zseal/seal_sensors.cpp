@@ -66,10 +66,16 @@ inline void SetSensorBit(CBits *bits, unsigned int i)
 }
 
 /* and tested, the mask first (the target builds it before the word's address, as the set does --
- * CBits::Test indexes first; the name ours) */
+ * CBits::Test indexes first; the name ours). The mask a local ANDed in place: MW folds a mask local
+ * read once back into the expression and then evaluates the word's index first, whatever the order
+ * written (13 spellings, inlined helpers for either side included); `m &= word` (or `m = m & word`)
+ * keeps the mask first and every register but the result's (the kit's round 35: 8 -> 2) */
 inline bool TestSensorBit(const CBits *bits, unsigned int i)
 {
-    return (1 << (i & 31)) & bits->m_vec[i >> 5];
+    unsigned int m = 1 << (i & 31);
+
+    m &= bits->m_vec[i >> 5];
+    return m;
 }
 
 /* a weapon pickup seen: unless the AI already goes for a pickup or this SEAL has marked it, a Navy
@@ -77,11 +83,12 @@ inline bool TestSensorBit(const CBits *bits, unsigned int i)
  * pushed and handed it, flag 1); any other item is marked seen by this SEAL. Whether it went
  * (OVL2 0x5CB450: 0x5CB870 asks it; new in SOCOM II -- the name ours). `go` declared first and
  * assigned after the early return: the target numbers it before the SEAL (s2 to its s1).
- * OPEN, 8 instructions, the seen-bit test's registers only: the target masks the index first
- * (`andi a1,v1,0x1f` before `srl v1,v1,5`, the 1 in a0, the words in v0 -- the set below, which
- * matches, has the same allocation); every spelling here shifts first (srl a1, andi in place, the
- * 1 in v0): CBits::Test, the mask first or last, either in a local, the word's address in a local,
- * `(w >> s) & 1` (10) */
+ * OPEN, 2 instructions, the seen-bit test's AND only: the target's `and v0,a0,v0` puts the result in
+ * the word's register, TestSensorBit's `m &= word` in the mask's (`and a0,a0,v0`, the branch on a0).
+ * Every other way round MW evaluates the word's index first (8: CBits::Test, the mask first or last,
+ * in a local, the word's address in a local, `(w >> s) & 1`, inlined mask or word helpers, a
+ * reference to the word); `m = 1; m <<= i & 31; return m & word;` puts the AND in v0 but swaps the 1
+ * and the shift amount (4). 0x5CB630 below shares it */
 extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
 {
     bool go;
@@ -113,6 +120,132 @@ extern "C" bool func_005CB450(CSealCtrlAi *ai, CPickup *p, CZWeapon *w)
         pick->SetPickup(p, 1);
     }
     return go;
+}
+
+/* an ammunition pickup's contents: the weapons' stash (zwep_weapon.cpp's CZItemStash, three parallel
+ * lists of words -- a weapon, an ammunition and a count per entry -- out of line in OVL1; only what
+ * the scan calls) and the pickup's view of it (zseal.h's CPickupAmmo; seal_env.cpp's spelling) */
+class CZItemStash {
+public:
+    int Count();
+    bool Get(int i, int *a, int *b, int *c);
+};
+
+class CPickupAmmo : public CZItemStash {
+};
+
+/* an ammunition pickup seen: unless the AI already goes for a pickup or this SEAL has marked it, a
+ * Navy SEAL goes for it when it holds item 152 and the kit has none of that or none with ammunition
+ * (the pickup state pushed and handed it, flag 1); every other entry marks it seen by this SEAL.
+ * Whether it went (OVL2 0x5CB630: 0x5CB450's sibling for the stash, new in SOCOM II -- the name ours).
+ * OPEN, 2 instructions: the seen-bit test's AND, 0x5CB450's (TestSensorBit's note) */
+extern "C" bool func_005CB630(CSealCtrlAi *ai, CPickup *p, CPickupAmmo *a)
+{
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+
+    if (ai->AiStateIs(AI_STATE_PICKUP) || TestSensorBit((CBits *)p->m_bits, seal->m_index))
+        return false;
+    bool go = false;
+    CZKit *kit = &seal->m_kit;
+    int n = a->Count();
+
+    for (int i = 0; i < n; i++) {
+        int w = 0;
+        int b = 0;
+        int c = 0;
+
+        a->Get(i, &w, &b, &c);
+        EQUIP_ITEM item = w ? ((CSensorWeaponView *)w)->m_ID : (EQUIP_ITEM)255;
+
+        if (item == 152 && ai->IsNavySeal()) {
+            int k = kit->GetItemIndex(item);
+
+            if (k == -1 || !kit->ItemHasAmmo(k))
+                go = true;
+        } else
+            SetSensorBit((CBits *)p->m_bits, seal->m_index);
+    }
+    if (go && ai->PushAiState(AI_STATE_PICKUP, 0)) {
+        CAiState *s = ai->GetAiState();
+        CAiSPickup *pick = s && s->m_state == AI_STATE_PICKUP ? (CAiSPickup *)s : 0;
+
+        pick->SetPickup(p, 1);
+    }
+    return go;
+}
+
+/* a thrown grenade's pickup seen (OVL2 0x5CAC00) -- unwritten */
+extern "C" bool func_005CAC00(CSealCtrlAi *ai, CPickup *p, CZProjectile *proj);
+
+/* a projectile's fuse (zweapon.h's CZProjectile, which zseal.h declares only by name) */
+struct CSensorProjView {
+    unsigned char _0[0x8c];
+    float m_fuse;   // 0x8c
+};
+
+/* a grenade-like pickup's projectile, or none (inline: the null test of the pickup kept) */
+static inline CZProjectile *PickupProjectile(CPickup *p)
+{
+    return p ? (CZProjectile *)p->m_data : 0;
+}
+
+/* the pickup scan's view of the SEAL's team */
+struct CSensorTeamView {
+    unsigned char _0[0xc8];
+    unsigned int m_team;   // 0xc8
+};
+
+/* the pickups within 200 of the SEAL looked at in turn until one is taken up: a weapon (0x5CB450),
+ * ammunition (0x5CB630), or a grenade-like pickup whose fuse has 16 or less to run, when the AI may
+ * push the grenade state and -- breaching -- its thrower is no team-mate (0x5CAC00) (OVL2 0x5CB870:
+ * the pickup loop SOCOM 1's CSealCtrlAi::SensorPreTick held inline, split out; its one caller
+ * 0x5CBA20 -- the name ours). The pickup's dead first definition numbers it before the flag (the
+ * target's s3 to its s2); the team read through a view, so MW keeps its address in a saved register
+ * across the loop as the target does (s0: a member read in place folds its offset into the load) */
+extern "C" void func_005CB870(CSealCtrlAi *ai)
+{
+    static float range = 200.0f;
+    static float fuse = 16.0f;
+    CZSealBody *seal = (CZSealBody *)ai->m_entity;
+    CPickup::iterator it = CPickup::GetFirst();
+    CPickup *p = 0;
+    bool found = false;
+
+    while (!found && (p = CPickup::GetNext(it, &seal->m_posW, range, CPickup::PU_NONE)) != 0) {
+        switch (p->m_type) {
+        case CPickup::PU_TYPE_4:
+        case CPickup::PU_TYPE_5:
+        case CPickup::PU_TYPE_1:
+            if (ai->CanPushAiState(AI_STATE_GRENADE, 0)) {
+                CZProjectile *proj = PickupProjectile(p);
+
+                if (proj && ((CSensorProjView *)proj)->m_fuse <= fuse) {
+                    if (ai->m_stateStack.m_10 & (1 << AI_STATE_BREACH)) {
+                        CEntity *thrower = CEntity::m_list.GetEntityById(p->m_owner);
+
+                        if (thrower && (((CSensorTeamView *)seal)->m_team & thrower->m_team))
+                            break;
+                    }
+                    found = func_005CAC00(ai, p, proj);
+                }
+            }
+            break;
+        case CPickup::PU_AMMO: {
+            CPickupAmmo *a = p->GetAmmo();
+
+            if (a)
+                found = func_005CB630(ai, p, a);
+            break;
+        }
+        case CPickup::PU_WEAPON: {
+            CZWeapon *w = p->GetWeapon();
+
+            if (w)
+                found = func_005CB450(ai, p, w);
+            break;
+        }
+        }
+    }
 }
 
 /* the "ai_posttick" task (CCoreState::Init adds it at 10.7, after target_post_tick): three slices
