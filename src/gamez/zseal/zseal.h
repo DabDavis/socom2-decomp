@@ -2142,7 +2142,8 @@ public:
      * SOCOM II (0x5B14E0 lets go of it; the names ours) */
     struct CSealClimb {
         unsigned char m_active;   // 0x0
-        int m_ladder;   // 0x4
+        unsigned int m_ladder;   // 0x4: unsigned (the SEALs, round 34) -- passed to GetLadderByIndex's
+                                 // int, the conversion puts its load after the list's (0x5B14E0, 0x5A2490)
         unsigned char m_state;   // 0x8
     } m_climb;   // 0x1328
     AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)

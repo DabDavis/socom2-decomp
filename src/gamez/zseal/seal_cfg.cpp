@@ -841,21 +841,26 @@ extern "C" const char *func_0058E900(unsigned char cmd)
 }
 
 /* an anim type for the item in hand: item 1's and item 2's variants, any other the type itself (OVL2
- * 0x58C970, new in SOCOM II; 0x57A330 asks it).
- * OPEN, 2 instructions: the target's default arm is `b epilogue; move v0,a1` -- a branch to the very
- * next instruction -- where MW here lets it fall through (`move v0,a1; nop`). Tried: the return after
- * the switch, a dead return after it, a result local with breaks, the default first, case 2 first, an
- * if/else-if chain (0x54 bytes), a copy of the type in a local. */
+ * 0x58C970, new in SOCOM II; 0x57A330 asks it). Its neighbour 0x58C9E0's shape (round 34): the two
+ * calls into a result local, broken out to `return r`, the default returning the type straight -- the
+ * empty `return r` block between the default's branch and the epilogue is what leaves the target's
+ * `b epilogue; move v0,a1` a branch to the very next instruction (every case returning straight lets
+ * the default fall through, 2 off). */
 extern "C" AnimType func_0058C970(CZSealBody *seal, AnimType type, unsigned char item)
 {
+    AnimType r;
+
     switch (item) {
     case 1:
-        return seal->m_animset->m_animsbyfp->RifleFPAnim(type);
+        r = seal->m_animset->m_animsbyfp->RifleFPAnim(type);
+        break;
     case 2:
-        return seal->m_animset->m_animsbyfp->PistolFPAnim(type);
+        r = seal->m_animset->m_animsbyfp->PistolFPAnim(type);
+        break;
     default:
         return type;
     }
+    return r;
 }
 
 /* the forward and backward limits for the state: standing, crouched, prone or on a ladder (OVL2
