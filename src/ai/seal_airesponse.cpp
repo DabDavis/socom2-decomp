@@ -674,6 +674,62 @@ void CAiSPathRecover::OnSignal(SIGNAL sig, CSealCtrlAi *ai)
     }
 }
 
+/* standing or crouched (an inline taking the stance by value: its argument is read ahead of the
+ * `&&` it sits in, the compare narrows it again; the name ours) */
+inline bool Upright(SEAL_STANCE s)
+{
+    return s == STANCE_STAND || s == STANCE_CROUCH;
+}
+
+/* whether the AI drives a SEAL (CZSealBody::IsPlayer's ternary shape: each arm narrowed) and the
+ * AI's current state as an avoidance, or 0 (the names ours) */
+inline bool AiDriven(CZSealBody *s)
+{
+    return s->GetControl() ? ((CSealCtrl *)s->GetControl())->IsAi() : false;
+}
+inline CAiSAvoid *AvoidState(CSealCtrlAi *ai)
+{
+    CAiState *s = ai->GetAiState();
+
+    return s && s->m_state == AI_STATE_AVOID ? (CAiSAvoid *)s : 0;
+}
+
+/* whether SEAL `a`, `d2` (a squared distance) from SEAL `b`, should step out of its way: either
+ * moving and `a` up, when `b` is not the AI's; when it is, unless `b` lies prone, `b` not already
+ * avoiding `a`; never when `a` is the AI's and restrainable but not restrained (OVL2 0x602B20: the
+ * SEAL lane's 0x558440 asks it; new in SOCOM II, between CAiSAvoid's Tick and OnSignal -- the
+ * name ours). Is() where GetState is a call: AiStateIs (zseal.h) */
+bool ShouldAvoid(CZSealBody *a, CZSealBody *b, float d2)
+{
+    static float range = 225.0f;
+    static float speed = 50.0f;
+    bool r = false;
+
+    if (d2 < range) {
+        bool aMoving = ai::is_moving(&a->m_velW, speed);
+        bool bMoving = ai::is_moving(&b->m_velW, speed);
+        CSealCtrlAi *aAi = a->GetSealCtrlAi();
+
+        if (!AiDriven(b)) {
+            SEAL_STANCE st = aAi->m_stance;
+
+            r = (bMoving || aMoving) && Upright(st);
+        } else {
+            CSealCtrlAi *bAi = b->GetSealCtrlAi();
+
+            if (bAi->m_stance == STANCE_PRONE)
+                r = false;
+            else if (bAi->AiStateIs(AI_STATE_AVOID))
+                r = a != (CZSealBody *)AvoidState(bAi)->m_58;
+            else
+                r = true;
+        }
+        if (aAi && a->m_restrainable && !a->m_restrained)
+            r = false;
+    }
+    return r;
+}
+
 /* an avoidance's events: reset; up from prone on entry and on the way out; its goal dropped when
  * a sub-state takes over (1) or it is left (2, done) (OVL2 0x602D10; SOCOM 1's) */
 void CAiSAvoid::OnSignal(SIGNAL sig, CSealCtrlAi *ai)

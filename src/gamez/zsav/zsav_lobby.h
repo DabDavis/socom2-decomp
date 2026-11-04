@@ -7,7 +7,7 @@
  *           then the entries' data, each at its offset from the buffer's start.
  *
  * The manager is the global at 0x4364A0 (built by the memory card unit's initialiser 0x400160,
- * its destructor 0x33ED70 registered there; func_002AFBA0 returns it); theAcctDB is its one
+ * its destructor 0x33ED70 registered there; GetLobbySaveManager() returns it); theAcctDB is its one
  * module. zNetMediusUniverse.cpp (the online lane's round 12) includes this header: CAcctDB derives
  * from CLobbySaveModule and its overrides take what the manager passes. */
 #ifndef ZSAV_LOBBY_H
@@ -144,5 +144,8 @@ public:
     CLobbySaveManager *m_manager;   // 0x4
     CSaferStr m_name;   // 0x8
 };   // 0x14
+
+/* the lobby's save manager, the global above (0x2AFBA0, fts_mission.cpp's; the name ours) */
+CLobbySaveManager *GetLobbySaveManager();
 
 #endif

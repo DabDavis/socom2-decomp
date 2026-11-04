@@ -708,7 +708,12 @@ void CSoftKeyboard::ParseKeyProps(_zrdr *rdr)
  * MW scalarises every form tried: this by-value helper (SOCOM 1's make_pair takes its key by value:
  * its pair constructor 0x3A8E40 is out of line there), include/utility's make_pair, a named pair,
  * value_type(pair), a local key copy. Fields kept in memory point at MSL's pair holding them in a
- * base class (the deque iterator's tell, round 14 of the MSL headers) -- not tried */
+ * base class (the deque iterator's tell, round 14 of the MSL headers) -- tried in the MSL headers'
+ * round 16 (include/utility's comment): the base folds as well once the pair inlines; what does give
+ * the key copy and the value word for word (0x10C) is std::make_pair by value with CSkbKey's copy
+ * left implicit (a by-value argument is then copied bitwise, as the target's lh/sh), its m_row/m_code
+ * views first in their unions and its assignment written over m_urow/m_scode (this unit stays at 98)
+ * -- the pair temporary between them is still folded */
 void CSoftKeyboard::AddKeyProps(const CSkbKey &key, const CSkbRect &r)
 {
     CSkbKeyProps *props = FindKeyProps(key);

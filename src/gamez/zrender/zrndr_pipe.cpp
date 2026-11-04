@@ -28,6 +28,7 @@
 #include "../zsys/zsys_public.h"
 #include "../zsys/zsys.h"
 #include "../znode/node_world.h"
+#include "../zcamera/zcamera.h"
 
 /* the system's packet ring (zsys_main.cpp): a packet in scratchpad, and the packet kicked */
 u_long128 *zSysSprGetPacket(u_long128 **p);
@@ -73,10 +74,12 @@ struct tag_DelayedNode {
     signed char m_fov;   // 0x48 (zdb::tag_ZVIS_FOV: copied with lb)
     zdb::CCamera *m_camera;   // 0x4c
     zdb::CNode *m_node;   // 0x50
-    CPnt3D m_pos;   // 0x54
-    unsigned int m_flags;   // 0x60
+    CPnt3D m_addColor;   // 0x54: CVisual::m_addColor when saved
+    unsigned int m_flag0 : 1;   // 0x60
+    unsigned int m_fog : 1;   // 0x60: the pipe's m_doFog when saved
+    unsigned int m_flags : 30;   // 0x60
     float m_opacity;   // 0x64
-    float m_68;   // 0x68
+    float m_lightScale;   // 0x68: CVisual::m_GlobalLightScale when saved
 };   // 0x70 bytes
 
 /* SOCOM II's effect the pipe keeps at 0x688, with a unit of its own after this one (0x33CD50-
@@ -140,6 +143,13 @@ public:
     void FIFO_Flush();
     void RandomizeOverlay();
     void SetOverlayTexture(zdb::CTexHandle *tex);
+    void RenderAtom(zdb::CNode *node);
+    void SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
+    /* RenderAtom's callees (not written): SOCOM II's lighting and fog set-up (0x33B230, ours), SOCOM 1's
+     * RenderMesh (0x338480) and RenderNode (0x3389C0) */
+    void PrepareAtom(zdb::CNode *node);
+    void RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb::tag_ZVIS_FOV fov);
+    void RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
 
     unsigned int m_texIntIdx;   // 0x0
     unsigned int m_texLoadIdx;   // 0x4
@@ -175,7 +185,21 @@ public:
     /* SOCOM 1's flags (0x638 there), the first two set by the constructor's initialiser list */
     unsigned char m_wireframe;   // 0x70c
     unsigned char m_terrain;   // 0x70d
-    unsigned char _70e[0x720 - 0x70e];   // 0x70e
+    /* the rest of SOCOM 1's flags, in its DWARF's order (0x63a-0x645 there): PrepareAtom reads
+     * m_drawCharacters and sets m_doFog at SOCOM 1's offsets from m_wireframe */
+    unsigned char m_polys;   // 0x70e
+    unsigned char m_drawShadows;   // 0x70f
+    unsigned char m_drawReflections;   // 0x710
+    unsigned char m_simpletrans;   // 0x711
+    unsigned char m_drawCharacters;   // 0x712
+    unsigned char m_doFog;   // 0x713
+    unsigned char m_doUI;   // 0x714
+    unsigned char m_drawDI;   // 0x715
+    unsigned char m_drawNormal;   // 0x716
+    unsigned char m_drawBBox;   // 0x717
+    unsigned char m_LODFilter;   // 0x718
+    unsigned char m_reticuleDraw;   // 0x719
+    unsigned char _71a[0x720 - 0x71a];   // 0x71a
 };   // 0x720 bytes
 
 /* zvid_init.cpp's: the 21-quadword packet's word set, and the packet sent (it reads no argument;
@@ -399,6 +423,29 @@ void CPipe::Flush()
     m_overlay = 0;
 }
 
+/* c2dline.cpp's: the line clipped by the camera's planes (SOCOM 1's), the line drawn (SOCOM 1's
+ * Draw3DLine, its row not named), and the alpha pass's line (0x3373B0, not written) */
+int clip3DLine(CPnt4D *planes, CPnt4D *p0, CPnt4D *p1);
+extern "C" void func_00360030(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
+extern "C" void func_003373B0(CPipe::CAlpha *alpha, CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
+
+/* SOCOM 1's: a line in the world clipped to the view and drawn; SOCOM II defers a line either of
+ * whose colours is translucent to the alpha pass.
+ * OPEN, 0xD4 against 0x12C: the code is the target's but the four by-value points' copies into the
+ * frame -- the target copies each through four FPU registers (lwc1/swc1, as SOCOM 1's), zmath.h's
+ * 16-byte-aligned CPnt4D copies with lq/sq; with zparticle.h's written copy constructor the callee
+ * copies nothing at all (measured: 0xD4 again, the caller's copies used). A CPnt4D aligned to 4
+ * with no written copy constructor would give the target's -- zmath.h's shape, the MSL lane's */
+void RenderLineWorld(CPnt4D p0, CPnt4D p1, CPnt4D c0, CPnt4D c1)
+{
+    if (clip3DLine((CPnt4D *)&zdb::CWorld::m_world->m_camera->m_ClipSet, &p0, &p1)) {
+        if (c0.w < 0.9921875f || c1.w < 0.9921875f)
+            func_003373B0(&thePipe.m_alpha, &p0, &p1, &c0, &c1);
+        else
+            func_00360030(&p0, &p1, &c0, &c1);
+    }
+}
+
 /* SOCOM II's: the noise texture's DMA reference kicked through the FIFO, then the overlay's colour
  * and packet sent */
 void CPipe::KickOverlay()
@@ -442,10 +489,67 @@ void CPipe::RandomizeOverlay()
     }
 }
 
+/* the light lists (SOCOM 1's BuildLightMapList is likely 0x339660; neither written) and the
+ * world's lighting switch (0x3B7130: a byte set and its inverse beside it), and four of the light
+ * pass's counts (not named) */
+extern "C" void func_003B7130(bool on);
+class CPipe;
+extern "C" void func_00339660(CPipe *pipe, zdb::CNode *node);
+extern "C" void func_00339470(CPipe *pipe, zdb::CNode *node);
+extern int data_004B4DAC, data_004B4DE4, data_004B4E0C, data_004B4E34;
+
+/* SOCOM II's (the name ours): what SOCOM 1's RenderAtom did between its FOV mask and its draw --
+ * the fog flag cleared; a bump-mapped node only while the pass allows it; a landmark gets the
+ * plain mask, no lights and the landmark fog, any other node its light lists and the fog */
+void CPipe::PrepareAtom(zdb::CNode *node)
+{
+    m_doFog = false;
+    if (node->m_bumpmap && !m_drawCharacters)
+        return;
+    if (node->m_landmark) {
+        data_004B4DE4 = 0;
+        data_004B4E34 = 0;
+        data_004B4E0C = 0;
+        data_004B4DAC = 0;
+        m_camera->m_fovMask = 16175;
+        m_doFog = node->m_fog ? m_camera->TestLandmarkFOG((const CPnt3D *)node->m_matrix.m_matrix[3], node->GetRadius()) : false;
+        func_003B7130(!node->m_socom2_5a_bit2);
+    } else {
+        func_003B7130(false);
+        func_00339660(this, node);
+        func_00339470(this, node);
+        m_doFog = node->m_fog ? m_camera->TestFOG((const CPnt3D *)node->m_matrix.m_matrix[3], node->GetRadius()) : false;
+    }
+}
+
+/* SOCOM 1's: a node with visuals drawn -- unless it is all but transparent (SOCOM II's test) or
+ * clipped to a region the camera cannot see -- its FOV mask chosen by the clip bit, its light maps
+ * listed, then its mesh or its visuals rendered (SOCOM II dropped SOCOM 1's fog test) */
+void CPipe::RenderAtom(zdb::CNode *node)
+{
+    m_node = node;
+    if (node->m_hasVisuals) {
+        if (node->m_Opacity < 0.0078125f)
+            return;
+        if (node->m_apply_clip && !m_camera->CanSeeRegion(1 << node->m_region_shift))
+            return;
+        if (!node->m_apply_clip)
+            m_camera->m_fovMask = 16175;
+        else
+            m_camera->m_fovMask = 16191;
+        PrepareAtom(node);
+        if (node->m_hasMesh)
+            RenderMesh(node, 0, 0, (zdb::tag_ZVIS_FOV)0);
+        else
+            RenderNode(node, (zdb::tag_ZVIS_FOV)0);
+    }
+}
+
 /* SOCOM II's: the dynamic textures of a node's visuals added to the alpha pass's. The list's
  * address a local taken inside the guard (hoisted into a saved register; through the member, or
  * an inline's parameter or `this`, MW adds the offset at each call), the end before the first
- * element (i in s0) */
+ * element (i in s0). Pinned: SaveDelayedNode, below, calls it out of line */
+#pragma auto_inline off
 void CPipe::AddAlphaTextures(zdb::CNode *node)
 {
     if (node->m_visual.size()) {
@@ -454,6 +558,43 @@ void CPipe::AddAlphaTextures(zdb::CNode *node)
 
         for (; i != e; ++i)
             list->Add(&(*i)->m_dynTexList);
+    }
+}
+#pragma auto_inline reset
+
+/* SOCOM 1's: an active node with visuals kept for later -- the delayed nodes grown by 8 when full,
+ * the next one given the matrix on the stack's top times the node's, the pipe's node, the node and
+ * its FOV verdict, the opacity on top of its stack, the visuals' added colour and light scale, the
+ * fog flag; a translucent one's textures (and its active children's) go to the alpha pass
+ * (SOCOM II's AddAlphaTextures, which SOCOM 1 wrote out here) */
+void CPipe::SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov)
+{
+    if (!node->m_active || !node->m_hasVisuals)
+        return;
+    if (m_delayedNodeNum >= m_DelayedNodes.size())
+        m_DelayedNodes.resize(m_DelayedNodes.size() + 8);
+    tag_DelayedNode *d = &m_DelayedNodes[m_delayedNodeNum++];
+
+    sceVu0MulMatrix(d->m_matrix.m_matrix, matrix->m_matrix, CStack::m_top->m_matrix);
+    d->m_camera = (zdb::CCamera *)m_node;
+    d->m_node = node;
+    d->m_fov = fov;
+    d->m_opacity = m_opacity_stack[m_opacity_stack_index];
+    CPnt3D color(zdb::CVisual::m_addColor);
+
+    d->m_addColor = color;
+    d->m_lightScale = zdb::CVisual::m_GlobalLightScale;
+    d->m_fog = m_doFog;
+    if (d->m_opacity < 0.9921875f || node->m_transparent) {
+        /* the children by reference, taken after the node's own call: the walk then keeps their
+         * vector's address (s2) and every saved register is the target's -- walked through
+         * node->m_child, `this` drops from s0 to s3 and the rest shift (taken before the call,
+         * 8 bytes longer) */
+        AddAlphaTextures(node);
+        zdb::CNodeVector &c = node->m_child;
+        for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i)
+            if ((*i)->m_active && (*i)->m_hasVisuals)
+                AddAlphaTextures(*i);
     }
 }
 

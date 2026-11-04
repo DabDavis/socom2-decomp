@@ -244,7 +244,8 @@ public:
 
 /* a list of anim types (SOCOM 1's vector<AnimType>): SOCOM II's MSL runs a 2-byte element on
  * __vector_pod<unsigned short> (the insert's name, OVL2 0x5B68E0), and an element read back is
- * the signed type again (lh) */
+ * the signed type again (lh). include/vector's 2-byte pod gives this unit's tail its insert
+ * (0x5B68E0, push_back's) and reserve (0x5B6BD0) byte-exact (the MSL headers round 16) */
 class CAnimTypeVector : public std::__vector_pod<unsigned short, std::allocator<unsigned short> > {
     typedef std::__vector_pod<unsigned short, std::allocator<unsigned short> > __base;
 

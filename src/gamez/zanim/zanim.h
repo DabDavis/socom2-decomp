@@ -750,6 +750,10 @@ public:
     static CValve *GetByName(const char *name);
     void MakeCallbacks(VALVE_STATE state);
     /* the valve lane's (src/gamez/zvalve/) */
+    /* SOCOM II's VWATCH and VBIT ZAnim commands (RegisterCommands' third and second; the names
+     * ours, after SOCOM 1's CmdParseCmp/CmdTickCmp, VALVE's pair) */
+    static _zanim_cmd_hdr *CmdParseVWatch(_zrdr *rdr);
+    static bool CmdTickVWatch(_zanim_cmd_hdr *hdr, float *dT);
     static void Destroy(CValve *valve);
     void DeleteCallbacks();
     void FreeName();

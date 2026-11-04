@@ -148,18 +148,19 @@ void zSysLoadMcIRX()
     zSys.mcIrxLoaded = 1;
 }
 
-/* SOCOM II's: and unloaded, last first (name ours).
- * OPEN, 2 instructions short (0x7C of 0x84): the target builds the walk's start as
- * &s_mcModules + 24 in a separate addiu (MW folds it into the relocation here), puts a nop before
- * the loop head, and keeps the pointer in s2 and the counter in s1 (here the other way round).
- * Tried: a pointer walk from &s_mcModules[1], an index, a reference local, the count from sizeof,
- * `--i >= 0`, `i-- > 0`, `i > -1`, a char counter */
+/* SOCOM II's: and unloaded, last first (name ours). A named pointer started at the table and
+ * stepped to its last module as a statement of its own: the +24 then stays a separate addiu after
+ * the relocation, as the target's, and the pointer, a named local, takes s2 above the counter
+ * (indexing, or &s_mcModules[1], folds the offset and swaps the two) */
 void zSysUnloadMcIRX()
 {
-    for (int i = 1; i >= 0; i--) {
-        if (s_mcModules[i].id != -1) {
-            zSysUnloadIRX(s_mcModules[i].id);
-            s_mcModules[i].id = -1;
+    IRX_MODULE *m = s_mcModules;
+
+    m++;
+    for (int i = 1; i >= 0; i--, m--) {
+        if (m->id != -1) {
+            zSysUnloadIRX(m->id);
+            m->id = -1;
         }
     }
     zSys.mcIrxLoaded = 0;

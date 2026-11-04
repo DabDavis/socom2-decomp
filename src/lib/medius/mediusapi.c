@@ -1044,6 +1044,96 @@ MediusErrorCode MediusCloseBare(void)
     return MediusErrorNone;
 }
 
+/* what MediusConnect takes (0x100): SOCOM 1's grown by the second address block at 0x9C, the
+ * three words after the callback moved up by it */
+typedef struct MediusConnectInParams {
+    char ServerAddress[156];            /* 0x00: the connect parameters' 0x08 */
+    char ServerAddress2[84];            /* 0x9C: their 0xCC (new in SOCOM II) */
+    int Field_F0;                       /* 0xF0: their 0x04 */
+    void (*pfnConnectCallback)(int);    /* 0xF4: SOCOM 1's 0x9C */
+    int Field_F8;                       /* 0xF8: their 0xB4 */
+    int Field_FC;                       /* 0xFC: their 0xBC */
+} MediusConnectInParams;
+
+typedef struct MediusConnectOutParams {
+    int ConnectionIndex;                /* 0x00 */
+    MediusErrorCode Status;             /* 0x04 */
+} MediusConnectOutParams;
+
+/* DME's connect parameters (0x130; NetSetDefaultConnectParams fills them) and its answer */
+typedef struct NetConnectParams {
+    int Field_00;
+    int Field_04;                       /* 0x04 */
+    char ServerAddress[156];            /* 0x08 */
+    void (*pfnCallback)(NetConnectStatus *pStatus);    /* 0xA4 */
+    int Field_A8[3];
+    int Field_B4;                       /* 0xB4 */
+    int Field_B8;
+    int Field_BC;                       /* 0xBC */
+    int Field_C0[3];
+    char ServerAddress2[84];            /* 0xCC */
+    int Field_120[4];
+} NetConnectParams;
+
+typedef struct NetConnectOutParams {
+    int Field_00;
+    int Field_04;
+    int ConnectionIndex;                /* 0x08 */
+    int Field_0C;
+} NetConnectOutParams;
+
+extern int NetSetDefaultConnectParams(NetConnectParams *pParams);
+extern int NetConnect(NetConnectParams *pParams, NetConnectOutParams *pOut);
+
+/* SOCOM 1's MediusConnect, grown (round 19b): DME's connect parameters from the caller's, both
+ * address blocks by memcpy (GCC's block move, the run-time alignment test of the side it does not
+ * know -- the caller's, and the second block's destination at 0xCC), the caller's connect callback
+ * kept and DME handed MediusLocalConnectCallback in its place; a failed connect keeps DME's code
+ * and gives the caller the index it was handed, where SOCOM 1 disconnected. Each guard stores the
+ * status before the index, as SOCOM 1's: the other order leaves the two guards' blocks a two-insn
+ * common tail (the status store and the index's), and jump.c cross-jumps them */
+MediusErrorCode MediusConnect(MediusConnectInParams *pIn, MediusConnectOutParams *pOut)
+{
+    NetConnectParams params;
+    NetConnectOutParams out;
+    int result;
+
+    if (GlobalInitFlag != 1) {
+        pOut->Status = MediusErrorNotInitialized;
+        pOut->ConnectionIndex = -1;
+        return MediusErrorNotInitialized;
+    }
+    if (MyConnectionIndex >= 0) {
+        pOut->Status = MediusErrorAlreadyConnected;
+        pOut->ConnectionIndex = -1;
+        return MediusErrorAlreadyConnected;
+    }
+    NetSetDefaultConnectParams(&params);
+    memcpy(params.ServerAddress, pIn->ServerAddress, sizeof(params.ServerAddress));
+    params.Field_04 = pIn->Field_F0;
+    if (pIn->pfnConnectCallback != 0) {
+        MediusSetClientConnectCallback(pIn->pfnConnectCallback);
+        params.pfnCallback = MediusLocalConnectCallback;
+    } else
+        MediusSetClientConnectCallback(0);
+    params.Field_B4 = pIn->Field_F8;
+    params.Field_BC = pIn->Field_FC;
+    memcpy(params.ServerAddress2, pIn->ServerAddress2, sizeof(params.ServerAddress2));
+    result = NetConnect(&params, &out);
+    if (result != 0) {
+        LastDMENetError = result;
+        pOut->ConnectionIndex = out.ConnectionIndex;
+        pOut->Status = MediusErrorConnecting;
+        MediusClearClientConnectCallback();
+        return MediusErrorConnecting;
+    }
+    if (pIn->pfnConnectCallback == 0)
+        MyConnectionIndex = out.ConnectionIndex;
+    pOut->ConnectionIndex = out.ConnectionIndex;
+    pOut->Status = MediusErrorNone;
+    return MediusErrorNone;
+}
+
 MediusErrorCode MediusDisconnect(void)
 {
     int result;

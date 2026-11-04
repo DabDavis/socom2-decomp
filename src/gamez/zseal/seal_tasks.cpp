@@ -1162,8 +1162,8 @@ void CTPursue::End(_zanim_cmd_hdr *hdr)
     CSealCtrlAi *ai = cmd->GetAi();
 }
 
-/* running while the AI pursues (OVL2 0x5D4190)
- * OPEN, 2 instructions: 8 bytes short besides the block's register (not looked at closely) */
+/* running while the AI pursues (OVL2 0x5D4190): the script-state test is the controller's AiStateIs
+ * (zseal.h: the stack's const GetState called -- the kit lane, round 21) */
 bool CTPursue::Tick(_zanim_cmd_hdr *hdr, float *dT)
 {
     CTPursue *cmd = (CTPursue *)hdr;
@@ -1173,7 +1173,7 @@ bool CTPursue::Tick(_zanim_cmd_hdr *hdr, float *dT)
         *dT = 0.0f;
         return true;
     }
-    bool r = ai->m_stateStack.Is(AI_STATE_SCRIPT);
+    bool r = ai->AiStateIs(AI_STATE_SCRIPT);
 
     *dT = 0.0f;
     return r;

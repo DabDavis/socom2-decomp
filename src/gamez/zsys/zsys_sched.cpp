@@ -12,12 +12,9 @@
 #define T0_COUNT (*(volatile unsigned int *)0x10000000)
 
 /* every task ticked once in list order: a task flagged for removal, or whose callback returns
- * true, goes to the free list (SOCOM 1's, line for line).
- * OPEN, 4 instructions, stack slots only: the target lays the pushed copy of the task (116) after
- * the assignment's iterator temporary (120) and before erase's two (112, 108); a named copy takes
- * 120, ahead of the temporary, and an inline taking the task by value puts it after erase's.
- * Tried: a cast or sum as the argument (a temporary at the call), an inline doing the erase and
- * the insert */
+ * true, goes to the free list (SOCOM 1's, line for line). erase's result bound to a const reference
+ * and assigned from it: the temporary then takes its slot (120) ahead of the pushed copy's (116),
+ * the target's (round 6's four-word miss: `i = erase(i);` laid them the other way round) */
 bool CSched_Manager::Tick(float dT)
 {
     m_inTick = true;
@@ -37,7 +34,9 @@ bool CSched_Manager::Tick(float dT)
                 done = t->m_task ? t->m_task(dT, t->m_user_data) : true;
             }
             if (done) {
-                i = erase(i);
+                const iterator &n = erase(i);
+
+                i = n;
                 CSched_Task *kept = t;
 
                 m_FreeList.insert(m_FreeList.begin(), kept);
@@ -50,18 +49,18 @@ bool CSched_Manager::Tick(float dT)
     return r;
 }
 
-/* every task by this name flagged for removal, or the first only (SOCOM 1's).
- * OPEN, 3 instructions long (0xD0 of 0xC4): the walk matches its twin below, but across strcmp the
- * wrapper iterator's reference-returning * keeps the element's address (node + 8) in a fifth saved
- * register, where the target re-reads the node from the iterator in memory after the call; the
- * base deleter's iterator (the element cast out by value) keeps the iterator in a register
- * instead (0xB4) -- an include/list shape */
+/* every task by this name flagged for removal, or the first only (SOCOM 1's). The iterator assigned
+ * from begin() before the end is taken: the first node is loaded ahead of the sentinel's address,
+ * into a1 while `this` is still live, as the target's (the twin below takes the end first) */
 bool CSched_Manager::RemoveTask(const char *name, bool all)
 {
     bool found = false;
-    iterator i, e = end();
+    iterator i;
 
-    for (i = begin(); i != e; ++i) {
+    i = begin();
+    iterator e = end();
+
+    for (; i != e; ++i) {
         if (!strcmp((*i)->m_name, name)) {
             (*i)->m_remove = true;
             if (!all)
