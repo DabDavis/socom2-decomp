@@ -865,6 +865,77 @@ void CWorld::RemoveDecals()
     func_003BF050(&CDecal::m_permPool);
 }
 
+/* every set's visible nodes counted: the first set in view returned, the common characters' set
+ * (CHARSETCOMMON) given back apart, the first in view (SOCOM 1's, its render phase read ahead of
+ * the count). The cursor is assigned from begin() (a temporary copied in, below the found
+ * iterator's slot) and the end taken once, the found test re-deriving it */
+CTextureAssetCharacterList::iterator CTextureAssetCharacterList::TestFOV(CCamera *cam,
+                                                                        CTextureAssetCharacters **common)
+{
+    iterator it;
+    iterator e = end();
+    iterator found = e;
+
+    *common = 0;
+    for (it = begin(); it != e; ++it) {
+        _RenderPhase phase = (*it)->m_lib->m_renderphase;
+
+        if ((*it)->TestFOV(cam)) {
+            if (phase == CHARSETCOMMON) {
+                if (*common == 0)
+                    *common = *it;
+            } else if (found == end())
+                found = it;
+        }
+    }
+    return found;
+}
+
+/* a node's box through one inline level more than CNode::GetBBox (ours, a stand-in): the set's
+ * TestFOV and the shadow caster's constructor call GetBBox straight, with no one-level copy of its
+ * body -- what a wrapper inlined one level gives, the recursive GetBBox under it called out of
+ * line, where a direct call inlines GetBBox's body once (every other caller) */
+static inline const CBBox *NodeBBox(CNode *node)
+{
+    return node->GetBBox();
+}
+
+/* the set's nodes in view counted: each active node's box, its eight corners carried into the
+ * world by the node's matrix, tested against the camera's view, the node's in-view bit set from
+ * the answer (SOCOM 1's; SOCOM II tests the box's corners in 4D after the node's transform).
+ * OPEN, 44 instructions at the target's size, FRAME SLOTS ONLY (every register as the target's):
+ * the target keeps the box's copy at 0xA0 below the corners at 0xC0, this puts the corners at 0xA0
+ * and the copy above them at 0x120 -- the copy is created after the array in the target. Tried:
+ * the corners' bounds as two CPnt3D locals (80 off), declared after the array and assigned (the
+ * assignments' temporaries: 0x294 or 105 off), in an inner block, bound by reference to the box or
+ * to a by-value wrapper's result (with or without a named return value: 0x2DC-0x30C), declared
+ * uninitialised and assigned */
+int CTextureAssetCharacters::TestFOV(CCamera *cam)
+{
+    m_visible = 0;
+    for (CNodeVector::iterator it = m_nodes.begin(); it != m_nodes.end(); ++it) {
+        CNode *node = *it;
+
+        if (node->m_active) {
+            CBBox b = *NodeBBox(node);
+            CPnt4D c[8] = {
+                CPnt4D(b.m_min.x, b.m_min.y, b.m_max.z, 1.0f), CPnt4D(b.m_min.x, b.m_min.y, b.m_min.z, 1.0f),
+                CPnt4D(b.m_max.x, b.m_min.y, b.m_min.z, 1.0f), CPnt4D(b.m_max.x, b.m_min.y, b.m_max.z, 1.0f),
+                CPnt4D(b.m_min.x, b.m_max.y, b.m_max.z, 1.0f), CPnt4D(b.m_min.x, b.m_max.y, b.m_min.z, 1.0f),
+                CPnt4D(b.m_max.x, b.m_max.y, b.m_min.z, 1.0f), CPnt4D(b.m_max.x, b.m_max.y, b.m_max.z, 1.0f),
+            };
+
+            node->m_matrix.Transform(c, c, 8);
+            if (cam->TestFOV((PNT4D *)c, 0, true) == ZVIS_FOV_ALL_OUT)
+                node->m_socom2_a1_bits.bit4 = false;
+            else
+                node->m_socom2_a1_bits.bit4 = true;
+            m_visible += node->m_socom2_a1_bits.bit4 && node->m_active;
+        }
+    }
+    return m_visible;
+}
+
 /* a character set for a library's textures, in a buffer of its own named after the node (with a
  * dynamic list) or the library, its first node listed (SOCOM 1's; the node's presence is tested
  * and the answer dropped, as there) */

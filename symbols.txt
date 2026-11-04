@@ -5550,8 +5550,8 @@
 0x0031B9A0 0x94C CmdParseWind__5CWindFP5_zrdr  # OVL1; s1:align
 0x0031C2F0 0x2C RegisterAnimCommands__5CWindFv  # OVL1; tu: node_world.cpp~ (1.0 beta); s1:align
 0x0031C320 0x11C __ct__Q23zdb23CTextureAssetCharactersFPQ23zdb9CAssetLibPQ23zdb5CNodePQ23zdb11CDynTexList  # OVL1; s1:order by hand (SOCOM 1's CTextureAssetCharacters constructor, first after CWind's commands as there: the 3 words zeroed, the library at 4 and the buffer at 0x14 cleared, Exists then push_back of the node, sprintf of the node's or library's name, doAddBuffer on m_texmanager with TexBufParams, SetDynTexList or Add(lib, true))
-0x0031C440 0x324 func_0031C440  # OVL1
-0x0031C770 0x10C func_0031C770  # OVL1
+0x0031C440 0x324 TestFOV__Q23zdb23CTextureAssetCharactersFPQ23zdb7CCamera  # OVL1; s1:name by hand (the world lane round 16: SOCOM 1 0x22D880, called from the list's TestFOV 0x31C770 as there; m_visible cleared, each node's box tested)
+0x0031C770 0x10C TestFOV__Q23zdb26CTextureAssetCharacterListFPQ23zdb7CCameraPPQ23zdb23CTextureAssetCharacters  # OVL1; s1:name by hand (the world lane round 16: SOCOM 1 0x22DAF0, the same walk -- the end, *common cleared, each set's phase read ahead of its TestFOV, CHARSETCOMMON kept apart, else the first in view; the pipe's RenderWorld calls it with &m_TextureAssetCharacters)
 0x0031C880 0xA4 RemoveDecals__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's CWorld::RemoveDecals between TestFOV and ClearShadowList: RemoveDecals on every child by index; SOCOM II recycles the decal pools around it)
 0x0031C930 0x12C ClearShadowList__Q23zdb6CWorldFv  # OVL1; s1:order by hand (SOCOM 1's ClearShadowList after RemoveDecals: each shadow deleted through its vtable and its slot cleared, the list emptied, then cleared and swapped with an empty one -- SOCOM II calls those four pieces out of line, 0x31CA60-0x31CB2F)
 0x0031CA60 0x70 __dt__Q23std66vector<PQ23zdb10CRenderMap,Q23std30allocator<PQ23zdb10CRenderMap>>Fv  # OVL1; ClearShadowList's FreeVector temporary's destructor, out of line after it (the name what node_world.cpp emits)

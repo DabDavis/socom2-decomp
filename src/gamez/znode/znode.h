@@ -1672,6 +1672,10 @@ class CRenderMapVector : public std::vector<CRenderMap *> {
 
 /* the world's characters with textures of their own (SOCOM 1's DWARF: a list) */
 class CTextureAssetCharacterList : public std::list<CTextureAssetCharacters *> {
+public:
+    /* the first set in view, every set's visible nodes counted; the common set returned apart
+     * (SOCOM 1's, node_world.cpp: the pipe's RenderWorld calls it) */
+    iterator TestFOV(CCamera *cam, CTextureAssetCharacters **common);
 };   // 0xc bytes
 
 /* the per-band render tables a world reads (SOCOM 1's DWARF: each a vector of its bands and the
