@@ -16,7 +16,6 @@
 #include "../zsys/zsys.h"
 
 /* the node's atom count set (node_main.cpp's SOCOM 1 CNode::SetAtomCnt(int), not named yet) */
-extern "C" void func_003149D0(zdb::CNode *node, int n);
 /* MSL's abs (MAIN, 0x191428, named): called by its address, since MW expands a call spelled abs
  * through <stdlib.h> inline (its builtin) where addOrderedCellAtom's target calls it twice */
 extern "C" int func_00191428(int x);
@@ -197,7 +196,7 @@ void CGrid::gridRemoveNodeFromGrids(CNode *node)
         atom->Next = m_FreeAtoms;
         m_FreeAtoms = atom;
     }
-    func_003149D0(node, 0);
+    node->SetAtomCnt(0);
 }
 
 /* a coordinate's cell index: its offset from the origin, a ten-thousandth in, in cells, held
