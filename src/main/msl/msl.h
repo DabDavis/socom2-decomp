@@ -828,6 +828,9 @@ private:
         entry(const T &x1, const T &x2, const U &y1, const U &y2)
             : x1_(x1), x2_(x2), m_(x2 == x1 ? U(0) : U((y2 - y1) / (x2 - x1))), b_(U(y1 - m_ * x1)) {}
         bool contains(const T &x) const { return !(x < x1_) && !(x2_ < x); }
+        /* the lookup's miss test: one inline level more keeps the negation a value (sltu, xori,
+         * then the branch), as the target's operator[]s have it */
+        bool operator!=(const T &x) const { return !contains(x); }
         bool operator<(const entry &e) const { return x2_ < e.x1_; }
         bool operator<(const T &x) const { return x2_ < x; }
         T x1_;
@@ -866,15 +869,15 @@ void range_map<T, U>::insert(const T &x1, const T &x2, const U &y1, const U &y2)
     }
 }
 
-/* OPEN, 0xDC/0xCC against 0xEC/0xDC (0x18CB70, 0x18CC60): the target materialises the range test
- * and negates it (sltu, xori before the branch -- not a bool's !, an int's) and re-reads the found
- * iterator's word for x1_ but not for x2_; `contains(x) == false` (0xE4), an int-returning contains
- * (0xE4) and the test written out (0xCC) were tried (build/scratch/rt/vc1.py, vc2.py) */
+/* the value at x: the entry lower_bound finds, if its range holds x (0x18CB70, 0x18CC60, both
+ * byte-exact since round 6: `*i != x` through the entry's operator!= -- the dereference re-reads the
+ * found iterator's word for x1_, the extra inline level keeps the negation a value; `!i->contains(x)`,
+ * `contains(x) == false`, an int-returning contains and the test written out were 0x8-0x20 off) */
 template <class T, class U>
 U range_map<T, U>::operator[](const T &x) const
 {
     typename std::vector<entry>::const_iterator i = std::lower_bound(table_.begin(), table_.end(), x);
-    if (i == table_.end() || !i->contains(x))
+    if (i == table_.end() || *i != x)
         return U(0);
     return U(i->m_ * x + i->b_);
 }
