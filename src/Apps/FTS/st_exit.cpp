@@ -39,9 +39,18 @@ namespace zdb {
 void EmptyAssetRecycleBin();   /* 0x321D30 */
 }
 
+enum UIVAR_LONGEVITY {
+    UIVL_DORMANT = 0,
+    UIVL_TEMPORARY = 1,
+    UIVL_PERMANENT = 2,
+    UIVL_PERSISTENT = 3
+};
+
+class CUIVariable;
 class CUIVarManager {
 public:
     void Reset();   /* 0x385C30 */
+    CUIVariable *Add(const char *name, _zrdr *value, UIVAR_LONGEVITY longevity);   /* 0x3857C0 */
 };
 extern CUIVarManager theUIVarManager;
 
@@ -97,9 +106,241 @@ public:
     int m_sum[7];   // 0x18: [1] the kills
 };
 
+/* the mission's objectives counted: complete and total, and the fraction complete, for the
+ * primary, the secondary and the third kind (SOCOM 1 counted two in Init itself) */
+struct CObjectiveCount {
+    CObjectiveCount()
+    {
+        complete = 0;
+        total = 0;
+    }
+
+    float fraction;
+    int complete;
+    int total;
+};
+
+struct CObjectiveCounts {
+    CObjectiveCount primary;
+    CObjectiveCount secondary;
+    CObjectiveCount third;
+};
+
+
+/* an objective (fts_objectivecam.cpp's CMissionObjectiveCam: only its two tests and its kind's bits) */
+class CMissionObjectiveCam {
+public:
+    bool IsDisplayOn() const;   /* 0x2C70A0 */
+    bool IsComplete() const;   /* 0x2C70D0 */
+
+    unsigned char _0[0x40];
+    unsigned int m_isSecondary : 1;   // 0x40
+    unsigned int m_isSubObjective : 1;   // 0x40
+    unsigned int m_isCompass : 1;   // 0x40
+    unsigned int m_bExtraction : 1;   // 0x40
+    unsigned int m_bit4 : 1;   // 0x40: SOCOM II's, the third kind
+    unsigned int m_unused : 27;   // 0x40
+};
+
+/* the objectives counted (OVL1 0x1F38F0, Init's first call on theMission's list; SOCOM 1's Init
+ * counted inline): each objective's completion asked first; one of the third kind counts there,
+ * else one shown counts as a secondary or a primary; then each kind's fraction, none for none --
+ * the third's first (the name ours) */
+extern "C" void func_001F38F0(CObjectiveCounts *counts, const std::list<CMissionObjectiveCam *> *objectives)
+{
+    for (std::list<CMissionObjectiveCam *>::const_iterator it = objectives->begin(); it != objectives->end();
+         ++it) {
+        bool complete = (*it)->IsComplete();
+
+        if ((*it)->m_bit4) {
+            counts->third.total++;
+            if (complete)
+                counts->third.complete++;
+        } else if ((*it)->IsDisplayOn()) {
+            if ((*it)->m_isSecondary) {
+                counts->secondary.total++;
+                if (complete)
+                    counts->secondary.complete++;
+            } else {
+                counts->primary.total++;
+                if (complete)
+                    counts->primary.complete++;
+            }
+        }
+    }
+    if (counts->third.total > 0)
+        counts->third.fraction = (float)counts->third.complete / (float)counts->third.total;
+    else
+        counts->third.fraction = 0.0f;
+    if (counts->secondary.total > 0)
+        counts->secondary.fraction = (float)counts->secondary.complete / (float)counts->secondary.total;
+    else
+        counts->secondary.fraction = 0.0f;
+    if (counts->primary.total > 0)
+        counts->primary.fraction = (float)counts->primary.complete / (float)counts->primary.total;
+    else
+        counts->primary.fraction = 0.0f;
+}
+
 /* a fraction as a whole percentage, and a value rounded (the names ours) */
 static inline int Round(float f) { return (int)(0.5f + f); }
 static inline int Percent(float f) { return Round(100.0f * f); }
+
+/* the round's ratings, each a percentage put in the UI's variables (SetRoundStatUiVars' four;
+ * the names ours) -- what they read: */
+
+/* a SEAL's stats (zseal.h's CSealStats: SOCOM II's halfword counters at the SEAL's +0x58C) */
+class CSealStats {
+public:
+    unsigned short m_count[0x3c / 2];   // 0x0
+};
+
+/* a valve's kind (zanim.h's: only the one made here) */
+enum VALVE_TYPE {
+    VALVE_TYPE_0,
+    VALVE_TYPE_1
+};
+
+/* a named value (zanim.h's CValve: its lookup, its making and its value) */
+class CValve {
+public:
+    static CValve *GetByName(const char *name);
+    static CValve *Create(const char *name, unsigned int value, VALVE_TYPE type);
+
+    char *m_name;   // 0x0
+    unsigned int m_value : 16;   // 0x4
+    unsigned int m_type : 8;   // 0x4
+    unsigned int m_flags : 8;   // 0x4
+};
+
+/* a ZRDR value (zrdr.h's _zrdr, whose header this unit's CRdrArchive cannot meet: its fields and
+ * DeleteChildren) */
+enum ZRDR_TYPE {
+    ZRDR_NULL = 0,
+    ZRDR_INTEGER = 1,
+    ZRDR_REAL = 2,
+    ZRDR_STRING = 3,
+    ZRDR_ARRAY = 4
+};
+
+struct _zrdr {
+    unsigned int type : 8;   // 0x0
+    unsigned int isclone : 1;   // 0x0
+    unsigned int packed : 1;   // 0x0
+    unsigned int nofree : 1;   // 0x0
+    unsigned int unused : 5;   // 0x0
+    unsigned int length : 16;   // 0x0
+    union {
+        float real;
+        int integer;
+        char *string;
+        _zrdr *array;
+    };   // 0x4
+
+    void DeleteChildren();
+};
+
+/* the UI's variables (zui.h's CUIVariable: only the integer assignment) */
+class CUIVariable : public _zrdr {
+public:
+    void UpdateDependents();
+    /* an integer, the watchers told only when it changes (st_mpexit.cpp's) */
+    CUIVariable &operator=(int i)
+    {
+        if (type != ZRDR_INTEGER || integer != i) {
+            DeleteChildren();
+            type = ZRDR_INTEGER;
+            integer = i;
+            UpdateDependents();
+        }
+        return *this;
+    }
+};
+
+/* a temporary UI variable by name (ours) */
+inline CUIVariable &UIVar(const char *name)
+{
+    return *theUIVarManager.Add(name, 0, UIVL_TEMPORARY);
+}
+
+/* the objectives rating (OVL1 0x1F3550): each kind's complete and total counts shown, then the
+ * fractions weighed -- the primaries 0.7, the secondaries 0.23 and the hidden ones 0.07, a kind with
+ * none giving its share to the primaries -- shown as a percentage and kept in a valve of the same
+ * name; the weighed fraction returned (the two lesser weights in float locals: as constants in the
+ * sum MW colours the fractions' registers the other way) */
+extern "C" float func_001F3550(CObjectiveCounts *counts)
+{
+    UIVar("StatPrimaryObjectivesComplete") = counts->primary.complete;
+    UIVar("StatPrimaryObjectivesTotal") = counts->primary.total;
+    UIVar("StatSecondaryObjectivesComplete") = counts->secondary.complete;
+    UIVar("StatSecondaryObjectivesTotal") = counts->secondary.total;
+    UIVar("StatHiddenObjectivesComplete") = counts->third.complete;
+    UIVar("StatHiddenObjectivesTotal") = counts->third.total;
+    float primary = 0.7f;
+
+    if (counts->secondary.total == 0)
+        primary += 0.23f;
+    if (counts->third.total == 0)
+        primary += 0.07f;
+    float second = 0.23f;
+    float hidden = 0.07f;
+    float pct = primary * counts->primary.fraction + second * counts->secondary.fraction +
+                hidden * counts->third.fraction;
+    int shown = Percent(pct);
+
+    UIVar("StatObjectivesPct") = shown;
+    CValve::Create("StatObjectivesPct", shown, VALVE_TYPE_1);
+    return pct;
+}
+
+/* the stealth rating (OVL1 0x1F3290): 35 less the times seen, the stealth kills up to 30, 35 less
+ * 35 for each alarm the "scoring_alarm" valve counts -- none under 45 seconds of mission -- as a
+ * percentage; the stealth kills, the alarms, the enemy's shots and the rating shown.
+ * OPEN, 48 instructions (the target's size), scheduling only: every register is the target's (the
+ * first term counted down from a 35 in its own variable, s3; the alarms' 35 numbered before the
+ * kills, s2 and s1; the sum a variable of its own, s3), but with the alarms defined ahead of the
+ * kills MW fills the kills clamp's delay slot with their `li s2,35`, where the target loads it
+ * just before the valve lookup. Defined after the kills the two trade registers (`int alarms;`
+ * declared ahead changes nothing); a dead first definition ahead (`int alarms = 0;`) gives both
+ * the registers and the li's place, but MW then fills GetByName's delay slot with the li where the
+ * target fills it with the name's addiu, and the score's clamp takes a nop more (0x2C0). Tried:
+ * the valve's alarms as `35 - 35 * n`, `-=`, a ternary, the valve declared ahead, the kills through
+ * an inline clamp, the sum's three spellings */
+extern "C" float func_001F3290(CSealStats **stats)
+{
+    int score = 35;
+
+    score -= stats[0]->m_count[16];
+    if (score < 0)
+        score = 0;
+    int alarms = 35;
+    int kills = stats[0]->m_count[18];
+
+    if (kills < 0)
+        kills = 0;
+    if (kills > 30)
+        kills = 30;
+    CValve *alarm = CValve::GetByName("scoring_alarm");
+
+    if (alarm)
+        alarms -= 35 * alarm->m_value;
+    if (alarms < 0)
+        alarms = 0;
+    int pct = alarms + (score + kills);
+
+    if (theMission.m_timer < 45.0f)
+        pct = 0;
+    if (pct < 0)
+        pct = 0;
+    if (pct > 100)
+        pct = 100;
+    UIVar("StatStealthKills") = stats[0]->m_count[17];
+    UIVar("StatAlarmsTriggered") = alarm ? alarm->m_value : 0;
+    UIVar("StatEnemyShotsFired") = stats[0]->m_count[5];
+    UIVar("StatStealthPct") = pct;
+    return 0.01f * pct;
+}
+
 
 /* a mission taken into the career (OVL1 0x1F1FB0; SetRoundStatUiVars 0x1F21B0 calls it on
  * theMission +0x1950, the name ours): each percentage averaged in over the missions so far, the
@@ -109,7 +350,12 @@ static inline int Percent(float f) { return Round(100.0f * f); }
  * waiting a nop after each mtc1, where this spreads them over $f1-$f3 and schedules three fewer
  * slots. Tried: the percentages inline in the averages, as locals ahead (in a-e order, the count's
  * conversion before, between or after them), `f + 0.5f`, the count converted implicitly, the sum
- * divided as an int */
+ * divided as an int; round 33: all 720 orders of the five percentages with the count's conversion at
+ * each place (every one 0x1EC: MW computes each at its use whatever the order -- the target's are
+ * computed ahead, pe before pd, held in a2/t0/a3/a1), const locals, the percentages in an array with
+ * an unrolled loop (0x228+), the constants in float locals or a defaulted parameter. The target's
+ * count conversion is $f3, not deferred: its degree must fall under 32, which only an early
+ * computation of the percentages gives */
 void CCareerStats::AddMission(float a, float b, float c, float d, float e)
 {
     int n = m_missions;
@@ -204,28 +450,7 @@ CZSealBody &CEntityItr::GetSeal() const
     return *(CZSealBody *)(e && e->m_type == 2 ? e : 0);
 }
 
-/* the mission's objectives counted: complete and total, and the fraction complete, for the
- * primary, the secondary and the third kind (SOCOM 1 counted two in Init itself) */
-struct CObjectiveCount {
-    CObjectiveCount()
-    {
-        complete = 0;
-        total = 0;
-    }
-
-    float fraction;
-    int complete;
-    int total;
-};
-
-struct CObjectiveCounts {
-    CObjectiveCount primary;
-    CObjectiveCount secondary;
-    CObjectiveCount third;
-};
-
 extern "C" {
-void func_001F38F0(CObjectiveCounts *counts, void *objectives);
 void func_001F21B0(CObjectiveCounts *counts);   /* SetRoundStatUiVars */
 }
 
@@ -237,7 +462,7 @@ bool CExitState::Init()
 {
     CObjectiveCounts counts;
 
-    func_001F38F0(&counts, theMission.m_objectives);
+    func_001F38F0(&counts, (const std::list<CMissionObjectiveCam *> *)theMission.m_objectives);
     theMission.ReOpen_Unload1();
     func_001F21B0(&counts);
     theMission.ReOpen_Unload2();

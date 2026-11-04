@@ -87,8 +87,6 @@ public:
 
 extern CZNetwork theNetwork;
 
-/* hud_tcmcmds.cpp's (0x231690, not written yet): the menu laid out */
-extern "C" void func_00231690(CTCM *tcm, float t);
 
 /* a pad by its index, none past the last (SOCOM 1's inline over CInput's table) */
 static inline CPad *GetPad(unsigned int n)
@@ -291,7 +289,7 @@ void CTCM::ShowRoot()
     for (unsigned int i = 0; i < count; i++)
         m_children[i]->m_root.On();
     m_sounds.Play(TCM_SND_SELECT);
-    func_00231690(&theTCM, 0.0f);
+    theTCM.Layout(0.0f);
 }
 
 /* the menu opened: the player's controls in the menu state, the states updated, the root shown,
@@ -317,7 +315,7 @@ void CTCM::Open()
     g_tcmColumns[0].m_dir = 1.0f;
     g_tcmColumns[0].m_4 = 1.0f;
     m_root.On();
-    func_00231690(this, 0.0f);
+    Layout(0.0f);
     if (!theNetwork.m_bNetwork)
         theReco.Resume();
     m_13b0 = 0;

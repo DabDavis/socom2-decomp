@@ -4,12 +4,15 @@
  * advance it with), the protocol handler and the blocking write and read over DECI2 protocol
  * 0x210 ('E' to 'H'). Names are SOCOM 1's (s1:exact; tinfo, wbuf, rbuf and QueueInit's own q
  * the demo's labels). tinfo's socket is volatile (sceTtyInit reads it back after storing it) and so
- * is its writing flag (sceTtyWrite spins on it); the rest is plain (sceTtyRead, byte-exact only so).
+ * is its writing flag (sceTtyWrite spins on it), and so are the two lengths: sceTtyInit's success
+ * path keeps its stores in source order -- writing, wlen, rlen, the volatile three -- with the
+ * pointers' lui/addiu/or between them (plain lengths: 16 words; every field volatile puts a store
+ * first in the block, and reorg then fills the branch's slot from the failure path); the read queue
+ * is plain (sceTtyRead, byte-exact only so). The packet is set in field order, `reserved` first (GCC
+ * round 28a: sceTtyInit closed, open since round 11a).
  *
- * OPEN: sceTtyInit (16 words: the target's failure return jumps to the shared epilogue, b with
- * move v0,zero, and its success path keeps the tinfo stores in source order -- the single exit
- * through ret written here has the size, its own registers); sceTtyHandler (97s) and sceTtyWrite
- * (78s) are ps2sdk's reconstruction adapted to Sony's queue, not yet fitted. */
+ * OPEN: sceTtyHandler (97s) and sceTtyWrite (78s) are ps2sdk's reconstruction adapted to Sony's
+ * queue, not yet fitted. */
 
 typedef unsigned int u_int;
 typedef unsigned short u_short;
@@ -35,8 +38,8 @@ typedef struct {
 
 struct tinfo {
 	volatile int socket;
-	int wlen;
-	int rlen;
+	volatile int wlen;
+	volatile int rlen;
 	volatile int writing;
 	char *wptr;
 	char *rptr;
@@ -188,11 +191,11 @@ int sceTtyInit(void)
 	tinfo.rptr = (char *)((u_int)&rbuf | 0x20000000);
 	tinfo.wptr = (char *)((u_int)&wbuf | 0x20000000);
 	pkt = (tty_packet *)((u_int)&wbuf | 0x20000000);
+	pkt->reserved = 0;
 	pkt->protocol = 0x210;
 	pkt->source = 'E';
 	pkt->destination = 'H';
 	pkt->ttyp_reserved = 0;
-	pkt->reserved = 0;
 	tinfo.read_queue = QueueInit(256);
 		ret = 1;
 	}

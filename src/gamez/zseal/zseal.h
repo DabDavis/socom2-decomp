@@ -623,14 +623,20 @@ public:
     float m_scan_limits;   // 0x60
     unsigned char _64[0xa8 - 0x64];
     CAiDecay m_visrange;   // 0xa8 (as SOCOM 1's)
-    unsigned char _b4[0xd0 - 0xb4];
+    /* the alertness: its value and the goal it holds to (SOCOM 1's m_aware, 0xc0 there -- SOCOM II
+     * has no m_vissens before it; the SetAiAware pair 0x561110/0x5612F0 set it, the bands of its value
+     * are 0x560A60's) */
+    CAiDecay m_aware;   // 0xb4
+    unsigned char _c0[0xd0 - 0xc0];
     /* the character's AI parameters (new in SOCOM II, the vehicle entry's own type, zchar.h's: the
      * constructor builds AI_PARAMS() in place, DoRespawn copies the entry's in but the respawn count
      * and keeps the entry as m_veh, 0x570D90 falls back to the courage, the view range's setter
      * stores visual_range; the name ours) */
     AI_PARAMS m_aiParams;   // 0xd0
     CSealUnit *m_unit;   // 0x10c: the squad (SOCOM 1's 0xdc)
-    unsigned char _110[0x114 - 0x110];
+    /* the state the network last gave (SOCOM 1's m_ai_net_state, 0xe4 there: SOCOM II has no
+     * m_vismap before it; CRemoteCtrl::SetAiNetState stores it) */
+    unsigned int m_ai_net_state;   // 0x110
     unsigned int m_padid;   // 0x114 (SOCOM 1's 0xe8: SOCOM II dropped the ten button readings)
     TRIGGER m_trigger;   // 0x118 (SOCOM 1's 0xec)
     float m_trigger_power;   // 0x11c
@@ -706,6 +712,9 @@ enum AI_SOUND { AI_SOUND_NONE = -1, AI_SOUND_0 = 0, AI_SOUND_1 = 1, AI_SOUND_MAX
 /* the AI's modes (SOCOM 1's DWARF, a byte; only the size matters here) */
 enum AI_MODE { AI_MODE_0 = 0, AI_MODE_LAST = 255 };
 
+/* how alert the AI is, the bands of its alertness (SOCOM 1's DWARF: AI_AWARE, a byte) */
+enum AI_AWARE { AIA_UNAWARE = 0, AIA_SUSPICIOUS = 1, AIA_GENERAL = 2, AIA_DIRECTION = 3, AIA_SPECIFIC = 4 };
+
 /* the AI's valves (SOCOM 1's SEAL_VALVE, a byte: SOCOM II names two, the loops make three and 4 is
  * none -- the names ours but the valves') */
 enum SEAL_VALVE { SEAL_VALVE_0 = 0, SEAL_VALVE_ALIVE = 1, SEAL_VALVE_AWARE = 2, SEAL_VALVE_3 = 3, SEAL_VALVE_NONE = 4 };
@@ -729,6 +738,15 @@ void *__dt__9CAiEventQFv(void *queue, int flags);
 void *__dt__8CAiEventFv(void *event, int flags);
 void *func_00573F20(void *route, int flags);
 }
+
+/* what SEAL_AI_PARAMS's 0x444 points at while the AI climbs: only the ladder's index is read -- bits
+ * 4-19 of its second word (0x56BD10; the class and its names ours) */
+struct CAiLadderLeg {
+    unsigned int _0;   // 0x0
+    unsigned int m_4 : 4;   // 0x4
+    unsigned int m_ladder : 16;
+    unsigned int m_20 : 12;
+};
 
 /* a CAiPath's bytes (ai.h's class, 0xA8: built and destroyed by hand here, as ai.h does not
  * declare SOCOM II's ~CAiPath) and the fields the controller reads: the plan's state, the search's
@@ -818,7 +836,10 @@ public:
     unsigned int m_nosnooze : 1;   // bit 10 (SOCOM 1's: SetSnoozing refuses the doze with it set)
     unsigned int m_bits11 : 2;
     unsigned int m_aibit13 : 1;
-    unsigned int m_bits14 : 2;
+    unsigned int m_aibit14 : 1;
+    /* bit 15: with bit 8 (SOCOM 1's m_sleeping) set, the alertness is left alone (both SetAiAwares
+     * return at once; new in SOCOM II, the name ours) */
+    unsigned int m_aibit15 : 1;
     unsigned int m_aibit16 : 1;
     unsigned int m_aibit17 : 1;
     unsigned int m_bits18 : 14;
@@ -867,7 +888,9 @@ public:
     /* three words 0x56BEF0 clears -- the third's low half only -- as the AI leaves a ladder (SetAiMode
      * and 0x56AF50 read them, CanTraverse the third; new in SOCOM II, the names ours) */
     unsigned int m_440;   // 0x440
-    unsigned int m_444;   // 0x444
+    /* (a pointer: 0x56BD10 reads the ladder's index off what it points at, or takes none -- 0xFFFF --
+     * when it is null) */
+    struct CAiLadderLeg *m_444;   // 0x444
     unsigned int m_448;   // 0x448
     unsigned char _44c[0x450 - 0x44c];
     /* the anims the tasks play (SOCOM 1's m_task_anim[6], 0x33c there, its m_task_handle[6] 0x18
@@ -879,8 +902,16 @@ public:
     CAiRouteBytes m_route;   // 0x514: a route (its path reset at 0x527310, its state read after
                              // the update at 0x555420)
     float m_5c0;   // 0x5c0: a time 0x564CF0 measures a span from (the name ours)
-    unsigned char m_5c4;   // 0x5c4: a count HandleKiller tests under 4 (the name ours)
-    unsigned char _5c5[0x5d4 - 0x5c5];
+    /* the alertness's band before its value last changed (SetAiAware(float, unsigned int) 0x5612F0
+     * stores it; HandleKiller tests it under 4; the name ours) */
+    unsigned char m_5c4;   // 0x5c4
+    unsigned char _5c5[0x5c8 - 0x5c5];
+    unsigned int m_5c8;   // 0x5c8: zeroed when the alertness's band changes (0x5612F0; the name ours)
+    /* an alertness asked for with a delay, and the delay (SOCOM 1's m_awareTimer, 0x5cc there too:
+     * SetAiAware(AI_AWARE, const CPnt3D *, float) 0x561110 sets both; the second's name ours) */
+    float m_awareTimer;   // 0x5cc
+    AI_AWARE m_awarePending;   // 0x5d0
+    unsigned char _5d1[0x5d4 - 0x5d1];
     /* the SEAL followed and its entity id (SOCOM 1's SetFollowMaster sets them; SetFollowMaster
      * counts the master's followers -- the kit lane, round 19, the names ours) */
     class CZSealBody *m_follow_master;   // 0x5d4
@@ -926,7 +957,13 @@ public:
     unsigned char _71c[0x724 - 0x71c];
     CPnt3D m_724;   // 0x724
     int m_730;   // 0x730
-    unsigned char _734[0x74c - 0x734];
+    /* two random times, each an Rfloat {min, range} (the units' own class: read through a cast), and
+     * what an attack's reset rolled from them -- the first's, and the first's plus the second's
+     * (0x565B80; the names ours) */
+    float m_734[2];   // 0x734
+    float m_73c[2];   // 0x73c
+    float m_744;   // 0x744
+    float m_748;   // 0x748
     float m_spraytimer;   // 0x74c: SetSprayTimer's time (the name ours)
     CValve *m_valve[3];   // 0x750 (SOCOM 1's 0x5bc, four there)
     /* the sound the AI last made (0x571010: the sound, when it may be made again, and its
@@ -979,6 +1016,18 @@ public:
     /* the AI's own event set: its kind, its duration and where (SOCOM 1's, the same words with the
      * event at 0x628; OVL2 0x5FAD00, the kit lane's seal_aievent.cpp) */
     CAiEvent::EVENT SetAiEvent(CAiEvent::EVENT e, float duration, const CPnt3D *pos);
+    /* the alertness raised to a band's top, at once or (a positive time, or -1 for the difficulty's)
+     * after a delay, its event made when the band is DIRECTION and a point is given (SOCOM 1's
+     * SetAiAware(AI_AWARE, const CPnt3D *), the time new: OVL2 0x561110); its value and goal set,
+     * by the flags (1 the value, 2 the goal, 4 added to the goal), the goal kept up past GENERAL
+     * (SOCOM 1's SetAiAware(float, unsigned int): OVL2 0x5612F0) */
+    void SetAiAware(AI_AWARE aware, const CPnt3D *pos, float time);
+    void SetAiAware(float value, unsigned int flags);
+    /* the band the alertness's value lies in (SOCOM 1's; OVL2 0x560A60, inlined in seal_ai.cpp) */
+    AI_AWARE GetAiAware() const;
+    /* SOCOM 1's m_sleeping, and bit 15 (the target materialises each bit: `? true : false`) */
+    bool IsSleeping() const { return m_aibit8 ? true : false; }
+    bool IsAiBit15() const { return m_aibit15 ? true : false; }
 
     /* the scripted group the AI is in, or none (ai_group.cpp's, OVL2 0x60E7A0) */
     class CAiGroup *GetGroup();
@@ -1023,6 +1072,8 @@ public:
      * when forced, its timer restarted with the delay (OVL2 0x5631B0, new in SOCOM II: CTStance's
      * Begin and End call it; the name ours) */
     void SetDesiredStance(SEAL_STANCE stance, float delay, bool force);
+    /* whether to duck for the leader (or the squad's), and how (SOCOM 1's; OVL2 0x5632A0) */
+    bool GetDuckStance(class CZSealBody *leader, SEAL_STANCE &stance) const;
     /* a stance taken: remembered, the word at 0x280 cleared, then DoSetStance (SOCOM 1's SetStance
      * and DoSetStance: CTStance::Begin calls the first, which tail-calls the second; OVL2 0x5631A0,
      * 0x562B70) */
@@ -1993,7 +2044,11 @@ public:
     unsigned int m_ladder : 16;   // 0x1062
     unsigned char _1064[0x1070 - 0x1064];
     CQuat m_fwdlook;   // 0x1070 (SOCOM 1's 0xf60: RotateHead sets it, the app camera's transitions call that)
-    unsigned char _1080[0x10d0 - 0x1080];
+    unsigned char _1080[0x1090 - 0x1080];
+    /* a wall's hit the SEAL holds to (new in SOCOM II: held while its node is set -- 0x5B3890 drops
+     * it once the SEAL strays, faces off it or the ledge is out of reach; the name ours) */
+    zdb::IntersectStruct m_1090;   // 0x1090
+    unsigned char _10b0[0x10d0 - 0x10b0];
     float m_10d0;   // 0x10d0: set to 0.4 when the overlay plays out (0x579EF0)
     unsigned char _10d4[0x10e0 - 0x10d4];
     /* the last weapon hit (SOCOM 1's m_wephit, an IntersectStruct * at 0xf84; SOCOM II holds it:

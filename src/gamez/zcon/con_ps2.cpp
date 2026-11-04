@@ -500,7 +500,11 @@ unsigned int CPacketMsg::GetArgCount() const
  * without it (ternaries in either arm, if/else arms, a goto to the null's return) 0x48-0x50. Round 9:
  * `index >= argc ? 0 : m_args[index]` nested in either ternary or if, the count test written `<`
  * with the return inside, `!(index < argc)`, the test through a bool local, the count in a local,
- * GetArgCount() inlined, a goto to a trailing return 0 -- 0x48 to 0x74 */
+ * GetArgCount() inlined, a goto to a trailing return 0 -- 0x48 to 0x74. Round 10 (the target's
+ * labels are unpadded, as an inline's or an expression's are): the whole body an inline helper with
+ * the nested ifs gives the target's every block and branch but pads three labels (0x50); the null
+ * test in an inline over an inner inline or ternary gives its padding but joins the inner returns in
+ * one `b` (0x48) -- build/scratch/core/v_getarg*.py */
 void *CPacketMsg::GetArg(unsigned int index) const
 {
     if (!m_data)
