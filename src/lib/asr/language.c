@@ -240,14 +240,17 @@ static void *_LangVirtualTable[79] = {
     _exevGetpBeginOfItems,
 };
 
-/* the sections up to the first codebook (the four-aligned end of the ergodic penalties) */
+/* the sections up to the first codebook (the four-aligned end of the ergodic penalties): the
+ * phenomes' state lists and the penalties (2 * sep), then the sections before them in file order
+ * -- fold makes the target's `((2 * sep + 4 * w) + (ses + es)) + (sc + ep)` of it (55 of 30,240
+ * trees do, treesearch.py); _langGetpCodeBook matches so */
 #define CODEBOOKS(d) ((char *)(d) + ALIGN4(0xE4 + ((d)->nbr_state_ergodic_phenomes * 2 \
-        + (d)->nbr_warp_factors * 4 + ((d)->nbr_state_ergodic_states + (d)->nbr_ergodic_states) \
-        + ((d)->nbr_state * (d)->nbr_codebook + (d)->nbr_ergodic_phenomes)) * 2))
+        + ((d)->nbr_warp_factors * 4 + (d)->nbr_state * (d)->nbr_codebook + (d)->nbr_ergodic_states \
+           + (d)->nbr_state_ergodic_states + (d)->nbr_ergodic_phenomes)) * 2))
 
-/* OPEN, and the five section walkers below (_langGetpCodeBook .. _langGetpPhenUserWordTraining,
- * 16-94 words): m2c's shape, every one a walk over the codebooks (2.96 unrolls it by four), each
- * codebook four-aligned; they wait on _cdbGetCodeBookSize, whose shape is open. In SOCOM II the
+/* OPEN, and the walkers below but _langGetpCodeBook (the count's reload: _langGetpSpeechUnit's
+ * note): m2c's shape, every one a walk over the codebooks (2.96 unrolls it by four), each
+ * codebook four-aligned. In SOCOM II the
  * file opens with this function (SOCOM 1's with _langGetpPhenUserWordTraining and
  * _langGetpExtraEventContext), ahead of FillLanguageVirtualTable. */
 static unsigned short *_langGetpDimensionsOfToneConversionMatrix(LANG *l)
@@ -540,7 +543,7 @@ static short *_langGetpErgodicPenalty(LANG *l)
     return (short *)((char *)d + off);
 }
 
-/* OPEN: m2c's shape of the codebook walk */
+/* the n-th codebook: the walk from the first (2.96 unrolls it by four), each four-aligned */
 static CDB *_langGetpCodeBook(LANG *l, unsigned int n)
 {
     LANGDATA *d = l->data;
@@ -552,7 +555,13 @@ static CDB *_langGetpCodeBook(LANG *l, unsigned int n)
     return (CDB *)p;
 }
 
-/* OPEN */
+/* OPEN, and the four walkers after it (round 18c: the CODEBOOKS sum is the target's now --
+ * _langGetpCodeBook matches): the target reloads nbr_codebook for the count (`lw s1,136(a1)`)
+ * after loading it for the gastone term, and SOCOM 1's copy (its own compiler) reloads it too, so
+ * the source keeps the two reads apart -- the same as _cdbGetCodeBookSize's second_size; here CSE
+ * merges them (`move s4,t1`). The count set in an if/else gives the target's `movn` and the right
+ * size (44 words, the registers); through l, an inline, volatile, `?:` or the count first leave it
+ * (build/scratch/gcc/lang/v_su*.py). */
 static unsigned short *_langGetpSpeechUnit(LANG *l)
 {
     LANGDATA *d = l->data;
