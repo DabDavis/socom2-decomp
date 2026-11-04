@@ -648,16 +648,17 @@ public:
     virtual bool TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done);
     virtual int GetZAnimCmdType(const char *name);
 
-    /* the strip's two refreshes after a new choice (SOCOM II's: SOCOM 1 walked the buttons inline;
-     * 0x370D10, the name ours, and 0x370DB0, no row named yet) */
+    virtual bool HandlePad(const CPad *pad, int port);
+    /* the strip's two refreshes after a new choice: its buttons shown (SOCOM II's, 0x370D10, the name
+     * ours) and its check boxes set (SOCOM 1's PressActive, 0x370DB0) */
     void ShowChoice();
+    void PressActive();
     void LoadSpec(const CRadioStripSpec *spec, zdb::CTexHandle *tex);
 
     int m_choice;   // 0x440
     bool m_444;   // 0x444: set by LoadSpec (SOCOM 1's at 0x414)
 } __attribute__((aligned(16)));   // 0x450 bytes
 
-extern "C" void func_00370DB0(CRadioStrip *strip);
 
 /* a counting string (SOCOM 1's C2DCounter; zui_2d.h's layout: 0xD8 bytes), its destructor declared
  * first for the same reason */
@@ -1394,7 +1395,7 @@ bool CRadioStrip::TickZAnimCmd(_zanim_cmd_hdr *hdr, float *dT, bool *done)
         if (choice >= 0 && choice <= size() - 1) {
             m_choice = choice;
             ShowChoice();
-            func_00370DB0(this);
+            PressActive();
         }
         *done = true;
         handled = true;
@@ -2904,6 +2905,35 @@ CTeleType::~CTeleType()
 {
 }
 
+/* the strip's check boxes set to the choice: each checked one but the chosen unchecked, its second
+ * action run, then the chosen one checked, its first action run (SOCOM 1's CRadioStrip::PressActive,
+ * 0x38A880 there: the same two walks; SOCOM II's pad handler calls ShowChoice first) */
+void CRadioStrip::PressActive()
+{
+    int n = 0;
+    iterator e = end();
+    iterator i = begin();
+
+    for (; i != e; ++i, ++n) {
+        CCheckBox *box = (CCheckBox *)*i;
+
+        if (box && box->m_checked && n != m_choice) {
+            box->m_checked = false;
+            box->m_action1.Run();
+        }
+    }
+    n = 0;
+    iterator e2 = end();
+    for (i = begin(); i != e2; ++i, ++n) {
+        CCheckBox *box = (CCheckBox *)*i;
+
+        if (box && !box->m_checked && n == m_choice) {
+            box->m_checked = true;
+            box->m_action0.Run();
+        }
+    }
+}
+
 /* the strip's buttons shown, the chosen one active and the others normal (SOCOM II's; called out of
  * line by the command tick and the pad's handler: pinned; the end declared before the walk's
  * iterator, or the two trade saved registers) */
@@ -3137,6 +3167,46 @@ bool CPopUpDialog::HandlePad(const CPad *pad, int port)
         }
     }
     return true;
+}
+
+/* slot 15: while it takes input, left steps the choice back and right or cross on, round the
+ * strip; the buttons shown, the check boxes set and the selection sound played -- taken (SOCOM 1's
+ * CRadioStrip::HandlePad, 0x38AA70 there, with SOCOM II's ShowChoice before PressActive) */
+bool CRadioStrip::HandlePad(const CPad *pad, int port)
+{
+    if (!CanHandleInput())
+        return false;
+    if (pad->m_state[3] == 1) {   // left
+        if (m_choice == 0)
+            m_choice = size() - 1;
+        else
+            m_choice--;
+        ShowChoice();
+        PressActive();
+        PlaySelectionSound();
+        return true;
+    }
+    if (pad->m_state[2] == 1) {   // right
+        if (m_choice >= size() - 1)
+            m_choice = 0;
+        else
+            m_choice++;
+        ShowChoice();
+        PressActive();
+        PlaySelectionSound();
+        return true;
+    }
+    if (pad->m_state[9] == 1) {   // cross
+        if (m_choice >= size() - 1)
+            m_choice = 0;
+        else
+            m_choice++;
+        ShowChoice();
+        PressActive();
+        PlaySelectionSound();
+        return true;
+    }
+    return false;
 }
 
 /* set up from its spec: the button's own (SOCOM 1's CHandlerButton::LoadSpec, 0x38EC90 there,

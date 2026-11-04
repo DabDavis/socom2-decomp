@@ -6864,8 +6864,8 @@
 0x00370C20 0x88 func_00370C20  # OVL1
 0x00370CB0 0x58 func_00370CB0  # OVL1
 0x00370D10 0x9C ShowChoice__11CRadioStripFv  # OVL1; ours by hand (the HUD lane, round 24: zui_2d.cpp -- the radio strip's buttons shown after a new choice, the chosen one through slot 18 (SetActive), the others slot 19 (SetNormal); CRadioStrip::TickZAnimCmd calls it out of line)
-0x00370DB0 0x1B0 func_00370DB0  # OVL1
-0x00370F60 0x15C func_00370F60  # OVL1
+0x00370DB0 0x1B0 PressActive__11CRadioStripFv  # OVL1; s1:order by hand (the HUD lane, round 38: zui_2d.cpp -- SOCOM 1's CRadioStrip::PressActive (0x38A880 there): the same two walks over the strip's check boxes, a checked one not chosen unchecked and its second action (+0x464) run, the chosen one checked and its first (+0x454) run; SOCOM II's HandlePad calls it right after ShowChoice where SOCOM 1's called it alone) -- byte-exact with the first walk's iterator initialised and its end a local, the second's end a second local and the iterator reassigned
+0x00370F60 0x15C HandlePad__11CRadioStripFPC4CPadi  # OVL1; s1:vtable by hand (the HUD lane, round 38: zui_2d.cpp -- slot 15 (+0x44) of CRadioStrip's table 0x407430, SOCOM 1's CRadioStrip::HandlePad: CanHandleInput, then left (m_state[3]) steps m_choice back and right or cross (2, 9) on, round the strip's size, then ShowChoice, PressActive and PlaySelectionSound, taken)
 0x003710C0 0xC LoadSpec__11CRadioStripFPC15CRadioStripSpecPQ23zdb10CTexHandle  # OVL1; by hand (the HUD lane, round 31: zui_2d.cpp -- SOCOM 1's CRadioStrip::LoadSpec (0x38AD50, the same 12 bytes, a spec pointer): CRadioStripSpec::CreateDisplayObj's call)
 0x003710D0 0xCC TickZAnimCmd__11CRadioStripFP14_zanim_cmd_hdrPfPb  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x003711A0 0xE8 ParseZAnimCmd__11CRadioStripFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
