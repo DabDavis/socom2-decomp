@@ -11,8 +11,14 @@
  *
  * Round 11 wrote the locks and shift test (bitmaps 0 and 5, CPad's L1), the six sounds, the cursor,
  * the pair and bitmap-4 toggles, the bitmap loader, the caps' text look and the key props' spec.
- * OPEN, not written yet: the tick 0x3949C0, the display's builders 0x394520, 0x395140, 0x395540,
- * 0x3958D0, 0x397070, 0x397950, the cap look reader 0x397D30.
+ * OPEN, not written yet: the tick 0x3949C0, the display's scaler 0x397950, the cap look reader
+ * 0x397D30.
+ * Round 22: the key rows walked through CSkbBmpRows' and CSkbBmpRow's operator[]s (the nested
+ * reference accessors keep MW from rotating the inner loop: entered at its bottom test through a
+ * preheader after the return) -- SkbSetKeyTextures 0x395140 and SkbForgetDisplay 0x396F30 (open since
+ * rounds 21 and 11), SkbShowKeyRows 0x394520, SkbReadUiParams 0x397070 and SkbPrepDisplay 0x3958D0
+ * byte-exact, SkbScaling 0x396EC0 and SkbTwoEdits 0x396F10 from drafts; SkbStartDisplay 0x395540
+ * written, OPEN (8 bytes long, below).
  * Round 21: the scaling step SkbScale 0x394DA0 (its state an unsigned char, tested `== 0` first: `!`
  * re-extends the byte for the next test; the t >= 1 block written as the if's body, the return 0
  * after it) and SkbLoadUiParams 0x3943E0 (from zui_hangul.cpp), byte-exact.
