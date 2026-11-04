@@ -1466,9 +1466,9 @@ public:
  * names ours) */
 namespace ai {
 void ResetPathPlan();
-/* the priority from which a queued path stops a planning one (1.0f, OVL2 data: read with lwc1,
- * so a variable; the name ours) */
-extern float s_preemptPriority;
+/* the priority from which a queued path stops a planning one (1.0f, OVL2 data 0x65AED8: read with
+ * lwc1 -- defined in ai_path.cpp, a const by its place among the units' const objects; the name ours) */
+extern const float s_preemptPriority;
 }
 /* an empty function of ai_astar.cpp's, called when a path preempted the queue (0x510D00; SOCOM 1's
  * stretch has an MSL accessor there) */
