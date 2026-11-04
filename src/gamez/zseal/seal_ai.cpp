@@ -1194,25 +1194,24 @@ extern float data_004365C0;
 /* an AI sound made if its priority reaches the controller's alertness band (0x560A60 inlined); once
  * made, remembered with when the next may come and the band (OVL2 0x571010, new in SOCOM II: the
  * event and shot-at states call it, with a priority 2 and a stance 11; the name unknown).
- * OPEN, 0xE0 against 0xEC: the target narrows the priority's low byte into a1 at entry (`andi
- * a1,a2,0xff`), keeps the whole word in s0 for the store `(pri & ~0xFF) | band`, takes the band
- * from the inline's v0 into s3 (`andi s3,v0,0xff`) and branches on `slt at,a1,s3` -- the word in a
- * register throughout; the struct here is homed on the stack (sw a2, lbu). Tried: the priority as an
- * unsigned int with the masks written out (0xF4: the band in s0, the low byte taken late), its low
- * byte in a local first, the band an int, the made flag declared first, the test as `band <=
- * level`, the struct's level a plain byte (0x100). */
-extern "C" bool func_00571010(CSealCtrlAi *ai, short sound, AI_SOUND_PRIORITY pri, unsigned char stance)
+ * The priority is a plain word (a struct by value is homed on the stack, sw a2/lbu): its low byte
+ * taken first into an INT local (`andi a1,a2,0xff` at entry -- an unsigned char local takes it late
+ * and moves the band to s0, an unsigned int compares with sltu), the word kept in s0 for the store
+ * `(pri & ~0xFF) | band`; the test written `band <= level` branches on `slt at` (`level >= band`
+ * materialises into v1). The second parameter stays a short: as an AnimType MW narrows it again,
+ * 8 bytes longer (the kit's callers pass func_00609530's AnimType, the C linkage hides it). */
+extern "C" bool func_00571010(CSealCtrlAi *ai, short sound, unsigned int pri, unsigned char stance)
 {
+    int level = pri & 0xFF;
     unsigned char band = ai->GetAiAware();
     bool made = false;
 
-    if (pri.m_level >= band) {
+    if (band <= level) {
         made = func_00571150(ai, sound, (SEAL_STATE)stance);
         if (made) {
             ai->m_sound = sound;
             ai->m_sound_time = data_0064FE50 + data_004365C0;
-            ai->m_sound_priority = pri;
-            ai->m_sound_priority.m_level = band;
+            *(unsigned int *)&ai->m_sound_priority = (pri & ~0xFF) | band;
         }
     }
     return made;
