@@ -146,29 +146,30 @@ void CMPEG::Tick(int n)
 }
 
 /* the stream kept fed until the beam reaches the frame's last lines (SOCOM 1's, the line counts
- * per video mode SOCOM II's; OVL1 0x309780).
- * OPEN, 0xB4 against 0xC4, every instruction alike but the layout: the target keeps two jump-only
- * blocks after the loop (the early exit's `b` to the epilogue, and the chain's join, the loop's
- * entry `b` to its test) where MW threads both here; tried an enclosing `if (p_mp)`, `for`, a
- * do-while with a goto into its test, a switch (cases 2, 1, 0: the tests come first). */
+ * per video mode SOCOM II's; OVL1 0x309780). The two jump-only blocks after the loop (the loop's
+ * exit, which the null test's false arm shares, and the chain's join entering the loop) are a
+ * hoisted invariant's preheader (the engine core's round 11): the signed counts' conversion to
+ * unsigned for the modulo and the compare is loop-invariant, MW hoists it and lays its empty
+ * preheader after the function's last block; unsigned counts leave nothing to hoist and MW threads
+ * both jumps (0xB4). The loop inside `if (p_mp)`: an early return jumps straight to the epilogue */
 void CMPEG::IdleTick()
 {
-    unsigned int lines, last;
+    int lines, last;
 
-    if (!p_mp)
-        return;
-    if (zVid.syncMode == 0) {
-        lines = 525;
-        last = 500;
-    } else if (zVid.syncMode == 1) {
-        lines = 625;
-        last = 600;
-    } else if (zVid.syncMode == 2) {
-        lines = 1050;
-        last = 910;
+    if (p_mp) {
+        if (zVid.syncMode == 0) {
+            lines = 525;
+            last = 500;
+        } else if (zVid.syncMode == 1) {
+            lines = 625;
+            last = 600;
+        } else if (zVid.syncMode == 2) {
+            lines = 1050;
+            last = 910;
+        }
+        while (*(volatile unsigned int *)0x10000000 % lines < last)
+            fillBuff(p_mp, 0);
     }
-    while (*(volatile unsigned int *)0x10000000 % lines < last)
-        fillBuff(p_mp, 0);
 }
 
 /* the film stopped and freed, the stream closed, the buffers Run made freed (SOCOM 1's; OVL1
