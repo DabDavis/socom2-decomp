@@ -33,9 +33,6 @@ void func_003A78E0(CTurret *turret, float dT);
 void func_003A82C0(CTurret *turret);
 void func_003A84E0(CTurret *turret);
 void func_003A88C0(CTurret *turret, float dT);
-/* the weapon's fire animation, its zoomed one or not (SOCOM 1's GetFireAnim__8CZWeaponFb: 0x84 or
- * 0x88; zwep_weapon.cpp's draft) */
-CZAnim *func_003D22B0(CZWeapon *weapon, bool zoomed);
 /* the turrets made, and the most there may be (-1: no limit) -- the unit's statics */
 extern int data_004A4020;
 extern int data_003E0800;
@@ -538,7 +535,7 @@ void CTurret::Fire()
     if (c && c && c->m_entity && ZoomState(c->m_entity) > 0)
         zoomed = 1;
 
-    CZAnim *anim = func_003D22B0(m_weapon, zoomed);
+    CZAnim *anim = m_weapon->GetFireAnim(zoomed);
     const CPnt3D *pos = &m_380;
 
     if (anim)
