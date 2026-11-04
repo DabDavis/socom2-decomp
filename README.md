@@ -1993,8 +1993,8 @@ templates next), and the earlier rounds' opens; 3.0b38/b50/b52 still untold.
     FindNext and Tick (17 new), the accessor copies and CTCMSounds from source (17 more); its float pool 0x3DCAF0-0x3DCB20,
     its bss push-to-talk statics 0x4130A0/0x4130A8/0x4130B8; CTCMColumn::m_4 and CTCM::m_dc8 are floats;
   - a function-local static in a non-inline function is `@GUARD@s_grey$N` / `s_grey$N` in the object (N a per-unit
-    counter), so `@GUARD@<fn>@<name>` rows cannot resolve it -- ShowArrows' guard and object stay unchecked (a tools
-    request: map `name$N` to the diffed function's rows);
+    counter), so `@GUARD@<fn>@<name>` rows could not resolve it -- since GCC round 21a scdiff.fn_static_row maps
+    `name$N` to the compared function's @LOCAL@/@GUARD@ rows (ShowArrows' 8 references now checked);
   - open: RemoveChild 0x232030 (5), ShowRoot 0x235560 (4), Select 0x234F40 (21), all registers; not written: the
     voice-item adder 0x2329F0, the builders 0x232BC0 and 0x2344E0, the pad handlers 0x235D40 and 0x2359A0.
 - **Tells from the weapons, round 17** (four initialisers, UVCompare, the weapon accessors, the callback list's destructor):
