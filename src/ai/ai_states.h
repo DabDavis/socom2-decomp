@@ -455,11 +455,19 @@ public:
     /* the hold bit set through a bool (the target's `daddiu 1` for true, `andi zero,1` for false;
      * the name ours) */
     void SetHold(bool b) { m_hold = b; }
+    /* (the else arm assigns r to itself: it keeps the call's test a branch, `daddiu s0,zero,1`
+     * after it, where without it MW if-converts the test into an sltu -- CanPushAiState 0x5F40F0) */
     bool Pursuable(CSealCtrlAi *ai)
     {
-        if (NotHeld() && CanPursue(ai))
-            return true;
-        return false;
+        bool r = false;
+
+        if (NotHeld()) {
+            if (CanPursue(ai))
+                r = true;
+            else
+                r = r;
+        }
+        return r;
     }
 
     unsigned int m_58;   // 0x58
