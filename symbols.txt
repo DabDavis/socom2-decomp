@@ -1805,10 +1805,10 @@
 0x0020B050 0x80 SetMapScreenPos__11CZNewHudMapFffff  # OVL1; s1:exact by hand (hud_newhudmap.cpp; the clipper and flag moved up)
 0x0020B0D0 0x120 UninitMap__11CZNewHudMapFv  # OVL1; s1:calls (CHUD::ReInit_Uninit's first map call, as SOCOM 1's)
 0x0020B1F0 0x2C ReInit__11CZNewHudMapFv  # OVL1; s1:exact by hand (hud_newhudmap.cpp)
-0x0020B220 0x9C func_0020B220  # OVL1
+0x0020B220 0x9C RemoveItem__11CZNewHudMapFP9CZMapItem  # OVL1; ours by hand (the HUD lane, round 29: hud_newhudmap.cpp -- HudTick's one call per dead item, which it then deletes: the item taken off m_itemlist through remove() if found, returned; no SOCOM 1 counterpart)
 0x0020B2C0 0x520 InitMap__11CZNewHudMapFPQ23zdb6CWorld  # OVL1; s1:calls by hand (CHUD::ReInit_Init passes the new'ed map and zdb::CWorld::m_world, single player only, where SOCOM 1 calls InitMap(world))
 0x0020B7E0 0x18 GetZoomOut__11CZNewHudMapCFv  # OVL1; s1:exact by hand (hud_newhudmap.cpp)
-0x0020B800 0x1FC func_0020B800  # OVL1
+0x0020B800 0x1FC FrameObjective__11CZNewHudMapFv  # OVL1; ours by hand (the HUD lane, round 29: hud_newhudmap.cpp -- the full-screen tick's (0x209EE0) call: centred between the viewer and the current objective when the compass shows it, widened to fit both, CalcNewMatrix between; no SOCOM 1 counterpart)
 0x0020BA00 0x218 __dt__11CZNewHudMapFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0020BC20 0x1D4 __ct__11CZNewHudMapFv  # OVL1; by hand (stores CZNewHudMap's vtable 0x405440; CHUD's constructor news 0x830 bytes and builds them with it, after ~CZNewHudMap as SOCOM 1's)
 0x0020BE00 0x274 func_0020BE00  # OVL1

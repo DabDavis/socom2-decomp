@@ -50,18 +50,39 @@ public:
     static CEntityList m_list;
 };
 
+/* a mission objective as the map reads it (SOCOM 1's DWARF): its map position and whether the
+ * compass shows it */
+class CMissionObjectiveCam {
+public:
+    unsigned char _0[0x38];
+    PNT2D m_pos;   // 0x38
+    unsigned int m_isSecondary : 1;   // 0x40
+    unsigned int m_isSubObjective : 1;
+    unsigned int m_isCompass : 1;
+    unsigned int m_bExtraction : 1;
+    unsigned int m_unused : 28;
+};
+
+/* the tactical map's zoom (SOCOM 1's ftsGetTacMapZoom, 0x2AF870 here: a float global returned) */
+extern "C" float func_002AF870();
+/* an empty function of hud_linemap.cpp's (0x210120; SOCOM II's, unnamed) */
+extern "C" void func_00210120();
+
 extern "C" void sceVu0RotMatrixY(sceVu0FMATRIX m0, sceVu0FMATRIX m1, float ry);
 
 /* a seal's facing (SOCOM 1's DWARF: a CPnt3D of its own name) */
 class SealDir : public CPnt3D {
 };
 
-/* the way a seal faces: its node's forward axis, reversed (the name is ours) */
+/* the way a seal faces: its node's forward axis, reversed, the matrix through a reference (the name
+ * is ours) */
 static inline void GetSealDir(CZSealBody *seal, SealDir *dir)
 {
-    dir->x = -seal->m_node->m_matrix.m_matrix[2][0];
-    dir->y = -seal->m_node->m_matrix.m_matrix[2][1];
-    dir->z = -seal->m_node->m_matrix.m_matrix[2][2];
+    const CMatrix &m = seal->m_node->m_matrix;
+
+    dir->x = -m.m_matrix[2][0];
+    dir->y = -m.m_matrix[2][1];
+    dir->z = -m.m_matrix[2][2];
 }
 
 /* a matrix's translation row (the name is ours) */
@@ -72,10 +93,18 @@ static inline void SetTranslation(CMatrix &m, float x, float y, float z)
     m.m_matrix[3][2] = z;
 }
 
+namespace {
+/* the full-screen map's legend labels (the legend's builder 0x20C080 loads each from the string
+ * table; SOCOM 1's one g_strNorthIndN grown to nine -- the name ours). The unit's statics run
+ * 0x409F20-0x40BE7F (its initialiser 0x3FDE80): two COverlayLine arrays (7 and 9) first, these at
+ * 0x40A940, then nine CPlainBmps, four C2DBitmapPolys and three COverlayLines */
+C2DString g_strLegend[9];
+}
+
 /* the narrowest world window (a variable: read with lwc1, where MW builds a constant) */
 static float s_minWorldWidth = 1300.0f;
 
-inline void CZNewHudMap::SetWorldView(float width, float cx, float cy)
+inline void CZNewHudMap::SetWorldView(float cx, float cy, float width)
 {
     if (width < s_minWorldWidth)
         width = s_minWorldWidth;
@@ -84,15 +113,104 @@ inline void CZNewHudMap::SetWorldView(float width, float cx, float cy)
     m_worldcentery = cy;
 }
 
+/* the larger of two, through a temporary (the name ours) */
+static inline float MaxOf(float a, float b)
+{
+    return b > a ? b : a;
+}
+
+/* the full-screen map centred between the viewer and the current objective (if the compass shows
+ * it -- else left alone) and widened until both fit inside the frame, 20 units in, no wider than
+ * the tactical zoom allows (no SOCOM 1 counterpart; the name ours). The larger scale through
+ * `b > a ? b : a` (the false arm's copy through a temporary; `b <= a ? a : b` or a ternary into
+ * scale drops it), the width's clamp `w < maxw ? w : maxw` -- zmath.h's MAX/MIN shapes.
+ * OPEN, 4 instructions: the centre's average. The target sums z then x into temporaries (f2, f1),
+ * then multiplies x then z into the variables with 0.5 in f0; this `+=` form gets the loads, the
+ * constant and the order but adds into f20/f21 directly; `x = (x + ox) * 0.5f` (either statement
+ * first, named or helper temporaries, MidPoint-style inlines taking the sums, `/ 2.0f`, `0.5f *`,
+ * a PNT2D or CPnt3D local) makes the x sum first and puts 0.5 in f1 (5-8 instructions) */
+void CZNewHudMap::FrameObjective()
+{
+    float x, z;
+    CMissionObjectiveCam *obj;
+
+    z = m_viewer->m_posW.z;
+    x = m_viewer->m_posW.x;
+    obj = m_objectivelist.GetCurrentObjective();
+
+    if (obj && !obj->m_isCompass)
+        return;
+    if (obj) {
+        z += obj->m_pos.y;
+        x += obj->m_pos.x;
+        x *= 0.5f;
+        z *= 0.5f;
+    }
+    m_centerx = x;
+    m_centerz = z;
+    CalcNewMatrix();
+    if (obj) {
+        CPnt3D p = MapPoint(&m_viewer->m_posW);
+        float scale = 1.0f;
+        float d = fabsf(m_screencenterx - p.x);
+        float lim = m_screencenterx - m_screenx1 - 20.0f;
+
+        if (!(d <= lim))
+            scale = d / lim;
+        d = fabsf(m_screencentery - p.y);
+        lim = m_screencentery - m_screeny1 - 20.0f;
+        if (!(d <= lim))
+            scale = MaxOf(scale, d / lim);
+        float w = m_width * scale;
+        float maxw = 2200.0f / func_002AF870();
+
+        m_width = w < maxw ? w : maxw;
+        func_00210120();
+    }
+}
+
 float CZNewHudMap::GetZoomOut() const
 {
     return 0.000454545458f * m_width;   /* 1/2200 */
+}
+
+/* an item taken off the map if it is on it, given back for the caller to delete (HudTick's dead
+ * items; no SOCOM 1 counterpart, the name ours). The walk's iterator is assigned from begin(), so
+ * it stays in memory; remove() takes the item by reference, so the parameter is spilled */
+CZMapItem *CZNewHudMap::RemoveItem(CZMapItem *item)
+{
+    std::list<CZMapItem *>::iterator i;
+
+    for (i = m_itemlist.begin(); i != m_itemlist.end(); ++i) {
+        if (*i == item) {
+            m_itemlist.remove(item);
+            return item;
+        }
+    }
+    return 0;
 }
 
 void CZNewHudMap::ReInit()
 {
     if (m_isFullScreen)
         SwitchToCompassMap();
+}
+
+/* the map's items deleted and the list emptied, the objectives' end cleanup, the legend's labels
+ * blanked, and the map's own children dropped from the back (SOCOM 1's, the one north label grown
+ * to the legend's nine) */
+void CZNewHudMap::UninitMap()
+{
+    std::list<CZMapItem *>::iterator i;
+
+    for (i = m_itemlist.begin(); i != m_itemlist.end(); ++i)
+        delete *i;
+    m_itemlist.clear();
+    m_objectivelist.MissionEndCleanup();
+    for (unsigned int k = 0; k < 9; k++)
+        g_strLegend[k].SetString(0, true);
+    while (size())
+        pop_back();
 }
 
 /* the map's rectangle on screen and its centre; the compass map's clipping circle follows it */
@@ -111,7 +229,7 @@ void CZNewHudMap::SetMapScreenPos(float x1, float y1, float x2, float y2)
 
 void CZNewHudMap::SetWorldWidth(float width)
 {
-    SetWorldView(width, m_worldcenterx, m_worldcentery);
+    SetWorldView(m_worldcenterx, m_worldcentery, width);
 }
 
 /* a claymore item for every explosive out that has none yet, its owner the SEAL that set it (if
@@ -203,25 +321,24 @@ float CZNewHudMap::CalcDrawPos(float y) const
 
 /* the map's matrix from its viewer: the world moved to the viewer (the map's own centre in full
  * screen), turned to face up the way the viewer faces, scaled to the screen and centred there;
- * the world window follows the viewer (SOCOM 1's, with SOCOM II's window set at the end).
- * OPEN, 0x190 against 0x1A8: the target keeps the facing (a SealDir) on the stack at sp+128 --
- * stores x, y, z there, reloads x for atan2f -- where MW scalarises it (two registers, a frame 16
- * bytes smaller). Tried: filled through an inline taking its address, read through an inline's
- * const reference, a constructor from the matrix, from the seal, from three floats, a copy out of
- * an inline returning it by value (a return slot more) -- all scalarised. The rest lines up but
- * the clamp's FPRs at the end (width f1, centre f3/f2 in the target; f3, f2/f1 here) */
+ * the world window follows the viewer (SOCOM 1's, with SOCOM II's window set at the end). The
+ * facing lives on the stack (stored x, y, z at sp+128, x reloaded for atan2f) only as a reference
+ * bound to a temporary whose address the filler takes -- a named SealDir, or one filled through
+ * any inline, is scalarised; the filler reads the node's matrix through a reference local, or the
+ * node is reloaded after each store. The window's inline takes the width LAST: the clamp's FPRs
+ * (width f1, centre f3/f2) come out so, and SetWorldWidth holds */
 void CZNewHudMap::CalcNewMatrix()
 {
     float ScaleX;
     float newangle;
     float angle;
-    SealDir direction;
     CPnt3D *center;
 
     if (!m_viewer)
         return;
     center = &m_viewer->m_posW;
-    GetSealDir(m_viewer, &direction);
+    const SealDir &direction = SealDir();
+    GetSealDir(m_viewer, (SealDir *)&direction);
     angle = atan2f(direction.z, direction.x);
     m_matrix.SetIdentity();
     if (m_isFullScreen)
@@ -242,5 +359,5 @@ void CZNewHudMap::CalcNewMatrix()
     TmpMtx.m_matrix[3][0] = m_screencenterx;
     TmpMtx.m_matrix[3][1] = m_screencentery;
     sceVu0MulMatrix(m_matrix.m_matrix, TmpMtx.m_matrix, m_matrix.m_matrix);
-    SetWorldView(m_width, center->x, center->z);
+    SetWorldView(center->x, center->z, m_width);
 }

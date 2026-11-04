@@ -31,6 +31,18 @@ public:
     float m_Radius;   // 0x10
 };
 
+/* the map's objective list (hud_objectives.cpp defines the class, its constructor 0x207E60): a
+ * stand-in, as far as the map reaches into it -- 0x734 bytes to CZNewHudMap's words at 0x814 */
+class CMissionObjectiveCam;
+
+class CZObjectiveList {
+public:
+    CMissionObjectiveCam *GetCurrentObjective() const;
+    void MissionEndCleanup();
+
+    unsigned char _0[0x734];
+};
+
 class CZClaymoreMapItem;
 class CZMPBombMapItem;
 class CZProjectile;
@@ -47,14 +59,16 @@ public:
     void SetWorldWidth(float width);
     void SetMapScreenPos(float x1, float y1, float x2, float y2);
     void ReInit();
+    CZMapItem *RemoveItem(CZMapItem *item);
     void UninitMap();
     void InitMap(zdb::CWorld *world);
     float GetZoomOut() const;
+    void FrameObjective();
     void SwitchToCompassMap();
     void CalcNewMatrix();
-    /* the world window, its width (no narrower than the minimum) and centre at once: the width's
+    /* the world window, its centre and width (no narrower than the minimum) at once: the width's
      * setter passes the centre back in, read before the clamp (the name is ours) */
-    void SetWorldView(float width, float cx, float cy);
+    void SetWorldView(float cx, float cy, float width);
 
     std::list<CZMapItem *> m_itemlist;   // 0x18
     CZSealBody *m_viewer;   // 0x24
@@ -78,7 +92,10 @@ public:
     float m_centerx;   // 0xd4
     float m_centerz;   // 0xd8
     bool m_isFullScreen;   // 0xdc
-    unsigned char _dd[0x830 - 0xdd];
+    unsigned char m_oldmenustate;   // 0xdd (SOCOM 1's MENU_STATE)
+    unsigned char _de[0xe0 - 0xde];
+    CZObjectiveList m_objectivelist;   // 0xe0 (SOCOM 1's, at 0x4d0)
+    unsigned char _814[0x830 - 0x814];
 };   // 0x830 bytes (CHUD's constructor news it)
 
 #endif
