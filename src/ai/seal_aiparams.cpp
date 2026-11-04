@@ -25,7 +25,7 @@ void *func_005585B0(void *p);
 void reset__13AI_FIREPARAMSFv(void *p);
 void *func_0060C170(void *list);
 class Rfloat;
-Rfloat *func_005F6F30(Rfloat *r, float f);
+Rfloat *__ct__6RfloatFf(Rfloat *r, float f);
 Rfloat *__ct__6RfloatFff(Rfloat *r, float min, float max);
 class CAiTrigger;
 void SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat(CAiTrigger *t, const Rfloat *a, const Rfloat *b);
@@ -65,7 +65,7 @@ public:
 class Rfloat {
 public:
     Rfloat() {}
-    Rfloat(float f) { func_005F6F30(this, f); }
+    Rfloat(float f) { __ct__6RfloatFf(this, f); }
 
     float m_min;   // 0x0
     float m_range;   // 0x4
