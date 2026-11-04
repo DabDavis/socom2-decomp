@@ -18,18 +18,27 @@ public:
 };
 CLobbySaveManager *GetLobbySaveManager();   /* 0x2AFBA0 */
 
-/* a message from the network's queue: its type, then its text */
-struct CQueuedMessage {
+/* a message from the player's queue: its type, then its text (fts_mission.cpp's CQueuedMessage, its
+ * constructor out of line there) */
+class CQueuedMessage {
+public:
+    CQueuedMessage();   /* 0x2A4290 */
+
     MSGTYPE type;
     char text[0xaf];
+};
+
+/* the player's message queue (fts_mission.cpp's CMessageQueue, theMission's at 0x11B0: only what the
+ * menu calls) */
+class CMessageQueue {
+public:
+    bool HasMessages();   /* 0x2A4270 */
+    void Dequeue(CQueuedMessage *msg);   /* 0x2A3E60 */
 };
 
 extern "C" {
 void func_00341250(float dT);
 void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
-void func_002A4290(CQueuedMessage *msg);
-bool func_002A4270(void *queue);
-void func_002A3E60(void *queue, CQueuedMessage *msg);
 void func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 
@@ -123,18 +132,16 @@ void CMenuState::DisplayMessage(const char *text, const char *who, int a, int b,
 
 bool CMenuState::Tick(float dT)
 {
-    CQueuedMessage msg;
-
     m_menu->TickMPEG();
     CInput::Tick(dT);
     CSnd::PostTick(dT, 0);
     func_00341250(dT);
     func_003654C0(m_menu, dT);
-    void *queue = theMission.m_netQueue;
+    CMessageQueue *queue = (CMessageQueue *)theMission.m_netQueue;
+    CQueuedMessage msg;
 
-    func_002A4290(&msg);
-    while (func_002A4270(queue)) {
-        func_002A3E60(queue, &msg);
+    while (queue->HasMessages()) {
+        queue->Dequeue(&msg);
         DisplayMessage(msg.text, 0, 0, 0, 0, 1, 0, msg.type);
     }
     thePipe.m_uiNode = m_menu->m_pBackplaneNode;

@@ -220,6 +220,10 @@ class CSealUnit {
 public:
     /* a member's news handed to the squad (SOCOM 1's; OVL2 0x5ED7B0, the kit lane's) */
     void Notify(CZSealBody *seal, UNIT_MESSAGE msg, void *data);
+    /* the squad of a team, and a member by its index (OVL2 0x5EF2F0, 0x5EDBB0: the kit lane's
+     * seal_unit.cpp, which declares them alike) */
+    static CSealUnit *GetUnitByTeam(unsigned int team);
+    CZSealBody *GetSealByIndex(int index, int depth);
 
     unsigned int m_0;   // 0x0
     virtual void IssueCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
@@ -454,7 +458,9 @@ public:
     virtual void PerformReticleActions();                                   /* +0x7C */
     virtual void PerformProximityActions();
     virtual void OnCommand(CZSealBody *seal, FT_COMMAND cmd, void *data, bool b);
-    virtual void CreepTick(float dT);                                       /* +0x88 */
+    /* SOCOM II's takes a flag (PreTick passes a bool set with daddiu, 0x567690 its own; the AI's
+     * clears it and hands it to the base's) */
+    virtual void CreepTick(float dT, bool b);                               /* +0x88 */
     virtual bool SlideTick(float dT);   /* SOCOM II's returns whether the SEAL slid */
     /* +0x90-0x98, new in SOCOM II: the fudge velocities set (the names ours) */
     virtual void SetFudgeVelM(const CPnt3D *v) { m_fudge_velM = *v; }
@@ -507,6 +513,9 @@ public:
      * taken -- a kind at least the current one's; SOCOM II's SetDefaultLookParams takes whether
      * the look's point changed kind, and SetLookPosW gained a cell's and an entity's overloads */
     void ClearLook(AI_LOOK look);
+    /* an AI event of the controller's SEAL made (OVL2 0x572FA0; SOCOM 1's CreateAiEvent, by its
+     * order and the voice's call; the event's id returned) */
+    int CreateAiEvent(CAiEvent::EVENT event, float a, float b, bool c, const CPnt3D *pos, unsigned int d);
     bool SetLookDirR(AI_LOOK look, const CPnt3D *dir, bool exact);
     bool SetLookDirW(AI_LOOK look, CAiMap::DIR dir);
     bool SetLookDirW(AI_LOOK look, const CPnt3D *dir, bool exact);
@@ -713,7 +722,10 @@ public:
     /* a mode (7 keeps the AI-map collision off; the name ours): an AI_MODE, copied with lb (0x557F60) */
     AI_MODE m_3f4;   // 0x3f4
     AI_MODE m_3f5;   // 0x3f5: the mode RestoreAiMode returns to, then 1 (a byte enum, copied with lb; the name ours)
-    unsigned char _3f6[0x400 - 0x3f6];
+    unsigned char _3f6[0x3fc - 0x3f6];
+    /* the countdown to the next glance around: 0x567690 runs it down and restarts it at a random 10
+     * to 15, zeroed while the AI has a target or acts (SetAiMode sets it; the name ours) */
+    float m_3fc;   // 0x3fc
     /* a Navy SEAL's anger at the player: Tick and OnDeath raise it by 60 a second, 0x561B90 cools it
      * and turns the squad on the player past 190 (new in SOCOM II; the name ours) */
     float m_400;   // 0x400
@@ -723,7 +735,13 @@ public:
     /* the state on top of the stack (SOCOM 1's; OVL2 0x5F5FD0, 0x5F6010, the AI-states lane's
      * seal_aistate.cpp defines them -- which is const by SOCOM 1's order) */
     CAiStateStack m_stateStack;   // 0x41c (SOCOM 1's 0x324; 0x20 bytes in SOCOM II)
-    unsigned char _43c[0x450 - 0x43c];
+    unsigned char _43c[0x440 - 0x43c];
+    /* three words 0x56BEF0 clears -- the third's low half only -- as the AI leaves a ladder (SetAiMode
+     * and 0x56AF50 read them, CanTraverse the third; new in SOCOM II, the names ours) */
+    unsigned int m_440;   // 0x440
+    unsigned int m_444;   // 0x444
+    unsigned int m_448;   // 0x448
+    unsigned char _44c[0x450 - 0x44c];
     /* the anims the tasks play (SOCOM 1's m_task_anim[6], 0x33c there, its m_task_handle[6] 0x18
      * after: SetupAnimations binds [0] to <node>_start and [2] to <node>_ambient) -- so the
      * m_task_anim below, at 0x468, is SOCOM 1's m_task_handle[0] */
@@ -785,6 +803,23 @@ public:
     unsigned char _768[0x76c - 0x768];
     unsigned char m_weapon_kind;   // 0x76c: the kind 0x560540 reads off the body's weapon (the name ours)
     unsigned char _76d[0x7c0 - 0x76d];
+};
+
+/* the fire parameters (SOCOM 1's DWARF AI_FIREPARAMS, 0x60 bytes; SOCOM II's are 0x70, the flags
+ * at 0x6C -- the kit lane's seal_aiparams.cpp zeroes them there before the reset 0x55F6F0). Only
+ * the members SOCOM II's code shows at SOCOM 1's offsets are named */
+class AI_FIREPARAMS {
+public:
+    unsigned char _0[8];   // SOCOM 1: m_weapon, m_ammo
+    CPnt3D m_targetPos;   // 0x8
+    CPnt3D m_targetVel;   // 0x14
+    CPnt3D m_lookDirW;   // 0x20
+    CPnt3D m_aimPointW;   // 0x2c
+    CPnt3D m_aimDirM;   // 0x38
+    unsigned char _44[0x5c - 0x44];   // SOCOM 1: m_throwVec, m_throwPower, m_timeout, m_stance
+    float m_dist;   // 0x5c: the target's distance (0x55EBE0; SOCOM 1's flags were here)
+    unsigned char _60[0x6c - 0x60];
+    unsigned int m_flags;   // 0x6c
 };
 
 class CSealCtrlAi : public CSealCtrl, public SEAL_AI_PARAMS {
@@ -862,6 +897,8 @@ public:
     /* whether the SEAL is in a stance: the AI's own, or the one its body's state stands for (OVL2
      * 0x562FC0, new in SOCOM II: CAiSFollow::OnSignal asks it; the name ours) */
     bool InStance(SEAL_STANCE stance, bool fromState);
+    /* the weapon fired once ready (OVL2 0x563BD0; SOCOM 1's) */
+    bool FireWhenReady(AI_FIREPARAMS &params, float delay);
     /* the bit 2 at 0x264 set, never for a SEAL whose team has bit 17 or 26 or that holds no item
      * (OVL2 0x56D890: CAiSPlan::Tick and CAiState::Signal call it; the name ours) */
     void SetAiBit2(bool on);
@@ -1520,7 +1557,11 @@ public:
     unsigned int m_action_available;   // 0xed0: a bit per action (SOCOM 1's ActionAvailableMask word, 0xdc0)
     unsigned char _ed4[0xee0 - 0xed4];
     float m_wep_upT;   // 0xee0 (SOCOM 1's 0xdd0)
-    unsigned char _ee4[0xf74 - 0xee4];
+    unsigned char _ee4[0xf44 - 0xee4];
+    /* a motion the position code keeps (ComputeNextPosition and PostPreTick read and write it; the
+     * collision tick 0x54F570 stops checking once its length is all but zero -- the name ours) */
+    CPnt3D m_f44;   // 0xf44
+    unsigned char _f50[0xf74 - 0xf50];
     /* the weapon's state, bit 4 a flag GetWeaponState masks off (SOCOM 1's m_weapon_state, 0xe54) */
     unsigned int m_weapon_state;   // 0xf74
     /* an item the anim choice falls back on with no base blend (0x58C820 copies it with lb, tests it
@@ -1638,7 +1679,10 @@ public:
     } m_climb;   // 0x1328
     AnimType idlehack;   // 0x1334 (SOCOM 1's 0xfa4: SetStanceIdle keeps the idle anim it pushes)
     short m_weapon_id;   // 0x1336: the weapon in hand, looked up in the AI's kind table (the name ours)
-    unsigned char _1338[0x1350 - 0x1338];
+    unsigned char _1338[0x1340 - 0x1338];
+    float m_1340;   // 0x1340: a float the ground probes read -- not 0, 0x54F410 keeps a probe's height
+                    // (the constructor, 0x5483D0 and 0x54EDF0 set it; the name ours)
+    unsigned char _1344[0x1350 - 0x1344];
     CPnt3D m_1350;   // 0x1350: the velocity kept as 0x57DF20/0x57E050 set bit 9 (the name ours)
     unsigned char _135c[0x1440 - 0x135c];
     CPnt3D m_aim_dir;   // 0x1440 (SOCOM 1's 0x10a0: AimWeapon sets it)

@@ -639,6 +639,13 @@ unsigned int func_0030D540(CZNetwork *net);
 /* the career stats (an object at 0x437E30) */
 void func_002A3BC0(void *stats);
 void func_002A3E20(void *stats);
+/* the single-player career's stats (fts_mission.cpp's CCareerStats, theMission's at 0x1950: only the
+ * two the UI commands call) */
+class CCareerStats {
+public:
+    void Clear();   /* 0x2A3E20 */
+    void SetUIVars();   /* 0x2A3BC0 */
+};
 
 /* the sounds' stop (SOCOM 1's StopAllSounds) */
 void func_00346C00();
@@ -782,6 +789,12 @@ struct MPMissionInfo {
 extern std::vector<MPMissionInfo *> data_00441650;
 MPMissionView *func_002C8DB0(void *missions, int number, int arg);
 MPMissionView *func_002C8840(void *missions, int arg);
+/* the same object as fts_missionlist.cpp's CMultiMissionList (a pointer vector of the missions,
+ * OVL1 0x2C8840's this): only its random pick */
+class CMultiMissionList : public std::vector<MPMissionInfo *> {
+public:
+    MPMissionView *GetRandom(bool multi);
+};
 int func_002F8120(CZOnlineLobby *lobby);
 bool func_003042B0(void *lan, C2D *list);
 bool func_002E28D0(CZOnlineLobby *lobby, C2D *list);

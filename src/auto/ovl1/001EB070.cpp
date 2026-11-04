@@ -5,10 +5,11 @@ typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef uns
 typedef int s32; typedef unsigned int u32; typedef long s64; typedef unsigned long u64;
 typedef float f32; typedef double f64; typedef int M2C_UNK; typedef int M2C_UNK32;
 #define M2C_FIELD(expr, type, offset) (*(type)((char *)(expr) + (offset)))
+#define SC_MEMBER(base, type, offset) (*(type)((base) + (offset)))
 #define M2C_ERROR(x) 0
 #define NULL 0
 extern "C" {
-M2C_UNK func_002A4050(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
+M2C_UNK Enqueue__13CMessageQueueFPCc7MSGTYPEPCc(M2C_UNK *, M2C_UNK *, M2C_UNK, M2C_UNK); /* extern */
 s32 strcmp(s32, M2C_UNK *);                         /* extern */
 extern M2C_UNK data_003E1E90;
 extern M2C_UNK data_003E2240;
@@ -211,7 +212,7 @@ bool func_001EB070(s32 arg0, s32 arg1) {
         var_v0 = 0;
     }
     if ((var_v0 & 0xFF) == 5) {
-        func_002A4050(&data_00437690, &data_003E1E90, 1, 0);
+        Enqueue__13CMessageQueueFPCc7MSGTYPEPCc(&data_00437690, &data_003E1E90, 1, 0);
         var_s0 = true;
     }
     return var_s0;
