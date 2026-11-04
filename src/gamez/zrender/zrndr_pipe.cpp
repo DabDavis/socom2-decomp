@@ -168,6 +168,7 @@ public:
     void SaveDelayedNode(CMatrix *matrix, zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
     void RenderDelayedNodes();
     void RenderNodeShadow(zdb::CNode *node);
+    void RenderMeshShadow(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix);
     bool PushNodeOpacity(zdb::CNode *node);
     bool TestFlare(const CPnt3D *pos, CPnt4D *out, float pull);
     void RenderUiNodeRecursive(zdb::CNode *node);
@@ -815,6 +816,52 @@ void CPipe::RenderNodeShadow(zdb::CNode *node)
     for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i)
         RenderNodeShadow(*i);
     if (&node->m_matrix && !identity)
+        s_stack.Pop();
+}
+
+/* SOCOM 1's: a node of a skinned mesh drawn into the shadow pass -- its matrix multiplied onto the
+ * stack; a mesh of its own taken over (the unit matrix pushed for it); a sub-mesh's matrix written
+ * into its mesh's palette (uncached); each child a sub-mesh again or a plain node drawn under the
+ * mesh's matrix; its own mesh set up and drawn at its first level of detail; everything popped */
+void CPipe::RenderMeshShadow(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix)
+{
+    zdb::CMesh *own = node->GetMesh();
+
+    node->GetFirstVisual();
+    zdb::CSubMesh *sub = node->GetSubMesh();
+    CMatrix *m = s_stack.Multiply(&node->m_matrix, true);
+
+    if (own) {
+        mesh = own;
+        s_stack.Push(&CMatrix::identity);
+        matrix = m;
+    }
+    if (sub)
+        sceVu0CopyMatrix((float (*)[4])((unsigned int)mesh->m_palette[sub->m_index] | 0x20000000), m->m_matrix);
+    zdb::CNodeVector &c = node->m_child;
+
+    for (zdb::CNodeVector::iterator i = c.begin(); i != c.end(); ++i) {
+        zdb::CNode *child = *i;
+
+        if (child->GetSubMesh())
+            RenderMeshShadow(child, mesh, matrix);
+        else {
+            CMatrix t;
+
+            sceVu0MulMatrix(t.m_matrix, matrix->m_matrix, CStack::m_top->m_matrix);
+            s_stack.Push(&t);
+            RenderNodeShadow(child);
+            s_stack.Pop();
+        }
+    }
+    if (own) {
+        func_003B6D10(m_node, node, m);
+        func_003B6B20(node, 1, 1.0f);
+        own->SetLOD(0u, 1u);
+        own->Render(m);
+        s_stack.Pop();
+    }
+    if (&node->m_matrix)
         s_stack.Pop();
 }
 
