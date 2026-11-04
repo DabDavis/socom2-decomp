@@ -75,7 +75,7 @@ C2D *CTtySpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) const
     CTeleType *tty = new CTeleType;
 
     tty->SetFont(font);
-    func_00378B00(tty, this);
+    tty->LoadSpec(*this);
     return tty;
 }
 
@@ -108,7 +108,7 @@ C2D *CWrapSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) cons
     CWrappedText *text = new CWrappedText;
 
     text->SetFont(font);
-    func_0037A430(text, this, mgr);
+    text->LoadSpec(*this, mgr);
     return text;
 }
 
@@ -123,7 +123,7 @@ C2D *CScrollSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr) co
     CScrollText *text = new CScrollText;
 
     text->SetFont(font);
-    func_00370340(text, this);
+    text->LoadSpec(*this);
     return text;
 }
 
@@ -195,7 +195,7 @@ C2D *CRadioStripSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *mgr
     CRadioStrip *strip = new CRadioStrip;
 
     strip->_strCaption.SetFont(font);
-    func_003710C0(strip, this, 0);
+    strip->LoadSpec(this, 0);
     InitializeButton(strip, mgr);
     return strip;
 }
@@ -208,7 +208,7 @@ C2D *CHandlerButtonSpec::CreateDisplayObj(C2DFont *font, zdb::CTextureRelocMgr *
     CHandlerButton *button = new CHandlerButton;
 
     button->_strCaption.SetFont(font);
-    func_00376690(button, this);
+    button->LoadSpec(*this);
     InitializeButton(button, mgr);
     return button;
 }

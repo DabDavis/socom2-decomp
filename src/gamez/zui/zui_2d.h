@@ -88,6 +88,8 @@ public:
      * 0x1FDBE0 (zui_2d.cpp's stand-in defines it) */
     virtual ~CPlainBmp() {}
     virtual void UpdateUIVar(CUIVariable *var);
+    /* set up from an image spec and its texture (0x379080, zui_2d.cpp's) */
+    void LoadSpec(const CImageSpec &spec, zdb::CTexHandle *tex);
 
     bool m_pulsing;     // 0x88
     float m_period;     // 0x8c
@@ -122,6 +124,8 @@ class CWrappedText : public CRenderableString {
 public:
     CWrappedText() : m_line(-1), m_c8(0), m_cc(0), m_d0(false), m_d4(0), m_d8(0), m_240(false) {}
     virtual ~CWrappedText();
+    /* set up from its spec (0x37A430, zui_2d.cpp's) */
+    void LoadSpec(const CWrapSpec &spec, zdb::CTextureRelocMgr *mgr);
 
     int m_c0;                   // 0xc0
     int m_line;                 // 0xc4: -1
@@ -144,6 +148,8 @@ class CScrollText : public CWrappedText {
 public:
     CScrollText() : m_254(false), m_258(0), m_25c(0), m_260(0) {}
     virtual ~CScrollText();
+    /* set up from its spec (0x370340, zui_2d.cpp's) */
+    void LoadSpec(const CScrollSpec &spec);
 
     int m_250;                  // 0x250
     bool m_254;                 // 0x254
@@ -160,6 +166,8 @@ class CTeleType : public CRenderableString {
 public:
     CTeleType() : m_c0(0), m_c4(0), m_c8(0), m_1a0(0) {}
     virtual ~CTeleType();
+    /* set up from its spec (0x378B00, zui_2d.cpp's) */
+    void LoadSpec(const CTtySpec &spec);
 
     int m_c0;                   // 0xc0
     int m_c4;                   // 0xc4
@@ -202,6 +210,8 @@ public:
     virtual void Slot27();
     virtual void DrawBackground(const CMatrix &m, zdb::CTextureRelocMgr *mgr);
     virtual void UpdateUIVar(CUIVariable *var);
+    /* set up from its spec (0x376BD0, zui_2d.cpp's) */
+    void LoadSpec(const CButtonSpec &spec);
 
     unsigned char _c8[0x440 - 0xc8];
 } __attribute__((aligned(16)));   // 0x440 bytes
@@ -214,6 +224,8 @@ class CRadioStrip : public C2DButton {
 public:
     CRadioStrip() : m_choice(0) {}
     virtual ~CRadioStrip();
+    /* set up from its spec, by address, and a texture (0x3710C0, zui_2d.cpp's) */
+    void LoadSpec(const CRadioStripSpec *spec, zdb::CTexHandle *tex);
 
     int m_choice;               // 0x440
 };   // 0x450 bytes
@@ -226,6 +238,8 @@ class CHandlerButton : public C2DButton {
 public:
     CHandlerButton() {}
     virtual ~CHandlerButton();
+    /* set up from its spec (0x376690, zui_2d.cpp's) */
+    void LoadSpec(const CHandlerButtonSpec &spec);
 };   // 0x440 bytes
 
 /* the handler button set up from its spec (by address) */
@@ -247,6 +261,8 @@ class CCheckBox : public C2DButton {
 public:
     CCheckBox() : m_checked(false) {}
     virtual ~CCheckBox();
+    /* set up from its spec and its check's texture (0x371550, zui_2d.cpp's) */
+    void LoadSpec(const CCheckBoxSpec &spec, zdb::CTexHandle *tex);
 
     bool m_checked;             // 0x440
     unsigned char _441[0x454 - 0x441];
@@ -264,6 +280,8 @@ class CSliderBar : public C2DButton {
 public:
     CSliderBar() : m_value(0.5f), m_444(0), m_center(0.5f), m_intervals(10) {}
     virtual ~CSliderBar();
+    /* set up from its spec and its knob's texture (0x3724F0, zui_2d.cpp's) */
+    void LoadSpec(const CSliderBarSpec &spec, zdb::CTexHandle *tex);
 
     float m_value;              // 0x440: 0.5
     int m_444;                  // 0x444
