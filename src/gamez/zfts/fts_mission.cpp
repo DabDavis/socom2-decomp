@@ -1540,6 +1540,75 @@ int CLadderList::GetClosestLadder(const CPnt3D *pos, float range)
     return closest;
 }
 
+namespace ai {
+template <class T>
+const T &_min(const T &a, const T &b)
+{
+    return a <= b ? a : b;
+}
+}
+
+/* the eight corners of a box, round the bottom from the minimum's x and y at the far z, then the
+ * top (ours; round 30's probe): too big for inline_max_size, inlined one level where it is used,
+ * the corners' CPnt3D(fff) and assignments called (0x2A8F30, and an earlier unit's 0x20F1F0) */
+inline CPnt3D *BoxCorners(CPnt3D *p, CBBox b)
+{
+    p[0] = CPnt3D(b.m_min.x, b.m_min.y, b.m_max.z);
+    p[1] = b.m_min;
+    p[2] = CPnt3D(b.m_max.x, b.m_min.y, b.m_min.z);
+    p[3] = CPnt3D(b.m_max.x, b.m_min.y, b.m_max.z);
+    p[4] = CPnt3D(b.m_min.x, b.m_max.y, b.m_max.z);
+    p[5] = CPnt3D(b.m_min.x, b.m_max.y, b.m_min.z);
+    p[6] = CPnt3D(b.m_max.x, b.m_max.y, b.m_min.z);
+    p[7] = b.m_max;
+    return p;
+}
+
+extern "C" float *func_002A2EB0(const CPnt3D *pos, int a, float range);   /* (fts_main.cpp's: the ground under a point) */
+
+/* a node set down on the ground: the point dropped to the floor found under it, the node's box
+ * turned by the rotation and its lowest corner on the axis asked for put on the floor, an offset
+ * added, the node lit (SOCOM II's; OVL1 0x2A8C90, ftsFixupAiMap calls it twice -- the names ours).
+ * The box goes BY VALUE to the corners (the target calls GetBBox out of line, as an inline call's
+ * argument -- a local copy inlines it a level -- and copies it into the argument's slot; the corners
+ * helper is cut one level by its size, its sixteen leaves called and their copies emitted:
+ * CPnt3D(fff) 0x2A8F30 and _min<f>'s OVL1 copy 0x2AFC60 byte-exact from here).
+ * OPEN, 104 instructions, at the target's size: the target copies the box's min and max as two
+ * 12-byte copies through two address registers ($f2-$f0 each) where MW copies the CBBox as one
+ * 24-byte block ($f3-$f0) -- every later register and slot follows. Tried: the box by reference or
+ * pointer (GetBBox inlined a level, 0x23C), min and max as two by-value points (0x2A4), a local box
+ * assigned member by member (0x2A8) */
+extern "C" void func_002A8C90(zdb::CNode *node, const CPnt3D *at, int axis, const CPnt3D *offset,
+                              const CPnt3D *rot)
+{
+    CPnt3D pos = *at;
+    float *ground = func_002A2EB0(&pos, 0, 10.0f);
+
+    if (ground)
+        pos.y = ground[1];
+    CMatrix m;
+
+    m.SetIdentity();
+    if (rot)
+        m.SetRotate(rot);
+    CPnt3D pts[8];
+
+    BoxCorners(pts, *node->GetBBox());
+    m.Transform(pts, 8);
+    float lowest = (&pts[0].x)[axis];
+
+    for (int i = 1; i < 8; i++)
+        lowest = ai::_min((&pts[i].x)[axis], lowest);
+    pos.y -= lowest;
+    if (offset)
+        pos.Add(offset, &pos);
+    m.m_matrix[3][0] = pos.x;
+    m.m_matrix[3][1] = pos.y;
+    m.m_matrix[3][2] = pos.z;
+    node->SetMatrix(&m);
+    node->SetDynamicLight(true, true);
+}
+
 /* a range kept at 0xF4 (the top) and 0xF8 (the bottom) of the object 0x341A60 asks (SOCOM II's; the
  * names ours) */
 struct FadeRange {
