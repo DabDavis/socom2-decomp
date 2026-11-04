@@ -30,7 +30,6 @@ void func_003654C0(CGameMenu *menu, float dT);   /* CGameMenu::Tick */
 void func_002A4290(CQueuedMessage *msg);
 bool func_002A4270(void *queue);
 void func_002A3E60(void *queue, CQueuedMessage *msg);
-void func_0033BF30(CPipe *pipe, void *texbuffer);   /* CPipe::FIFO_Signal */
 void func_00339DE0(CPipe *pipe, zdb::CWorld *world);   /* CPipe::RenderWorld */
 void func_003AFF30(bool a, bool b);              /* zVid_Swap */
 
@@ -145,7 +144,7 @@ bool CMenuState::Tick(float dT)
     zdb::CTexManager::m_texmanager.m_buffer.data_[0]->Load(true);
     g_relocDblBuf.ClearSaved();
     if (zdb::CWorld::m_world) {
-        func_0033BF30(&thePipe, zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
+        thePipe.FIFO_Load(zdb::CTexManager::m_texmanager.m_buffer.data_[zdb::CTexManager::TexPhase[0]]);
         if (zdb::CWorld::m_world->m_camera)
             zdb::CWorld::m_world->m_camera->Update(zdb::ZCAM_TYPE_0);
         func_00339DE0(&thePipe, zdb::CWorld::m_world);

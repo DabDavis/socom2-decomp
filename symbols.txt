@@ -3803,7 +3803,7 @@
 0x002A54E0 0xE5C func_002A54E0  # OVL1
 0x002A6340 0x610 func_002A6340  # OVL1
 0x002A6950 0xC func_002A6950  # OVL1
-0x002A6960 0x158 func_002A6960  # OVL1
+0x002A6960 0x158 DecrementRoundClockSec__9CZNetGameFi  # OVL1; s1:order by hand (the states lane, round 23: SOCOM 1's DecrementRoundClockSec -- the session master's test, the clock's seconds (0.001f * ms, the CNetClock accessor) against the argument, (left - sec) * 1000 else 1000 when any is left, the seconds returned -- without its saved copy, the clock at SOCOM II's 0xE0 for SOCOM 1's 0xA0; after it as in SOCOM 1 the 12-byte setter 0x2A6AC0 and TenSecondLaunch; UpdateLocalGame calls it with 60)
 0x002A6AC0 0xC func_002A6AC0  # OVL1
 0x002A6AD0 0xC0 GetTimeLeft__8CMissionFv  # OVL1; by hand (the states lane, round 14; the name ours): the round's seconds left -- 0.001 times the online game's clock at 0x1808->0xEC in a network game, else the float at 0xE8 truncated; SetupTimerText, CHUD::On, CreateLocalBomb and CanPlaceBomb call it
 0x002A6B90 0xB8 TenSecondLaunch__9CZNetGameFb  # OVL1; s1:align
@@ -3823,10 +3823,10 @@
 0x002A8140 0xB48 func_002A8140  # OVL1
 0x002A8C90 0x298 func_002A8C90  # OVL1
 0x002A8F30 0x14 __ct__6CPnt3DFfff  # OVL1; by its body (the three floats stored at 0, 4, 8, this returned: zmath.h's inline CPnt3D(float, float, float) out of line) -- the UI-widgets lane
-0x002A8F50 0x19C func_002A8F50  # OVL1
-0x002A90F0 0x11C func_002A90F0  # OVL1
+0x002A8F50 0x19C GetClosestLadder__11CLadderListFPC6CPnt3Df  # OVL1; s1:align by hand (the states lane, round 23): SOCOM 1's GetClosestLadder -- the unused CMatrix, each ladder whose box's foot or top is _close_enough to the point's y, the centre (Interp 0.5) less the point, the ground-plane length against the range, LADDER_MASK (0x3DE5F8) or'd into the index -- with SOCOM II's constant tolerance (15.0 at 0x3DE600) and the box at the element's start; 0x2A8B78 calls it
+0x002A90F0 0x11C GetLadderByNode__11CLadderListFPQ23zdb5CNodei  # OVL1; ours (the states lane, round 23): the ladder whose node (+0x18) is the given one, else one among the node's children (CNode::m_child at 0x68) to a depth, recursing; the world's ladder walk 0x2A9260 calls it with depth 0 before and after its insert, the SEALs (0x5B28C4, 0x5B2BF4, 0x5B3E84) too
 0x002A9210 0x50 GetLadderByIndex__11CLadderListFi  # OVL1; s1:align
-0x002A9260 0x280 func_002A9260  # OVL1
+0x002A9260 0x280 CreateLadderTable__8CMissionFv  # OVL1; s1:calls by hand (the states lane, round 23): SOCOM 1's CreateLadderTable -- NodeUniverse walked, each node's DIs for the ladder app flags (2), the unit matrix BuildMTW fills, the node's box carried through it (the corners 0x2A96B0, their transform 0x2A9680, the box of them 0x2A9550), a CLadderData pushed when GetLadderByNode finds none; Open calls it where SOCOM 1's does
 0x002A94E0 0x68 func_002A94E0  # OVL1
 0x002A9550 0x128 func_002A9550  # OVL1
 0x002A9680 0x30 func_002A9680  # OVL1; s1:align; s1~ (the states lane, round 19: NOT a vector destructor -- it hands a matrix and an 8-point array to CMatrix::Transform(pts, pts, 8) and returns the points; called after 0x2A96B0's box corners and before 0x2A9550's bbox of them, by 0x2A9260 and by grid_main.cpp's gridAddNodeToGrids, which passes the node as the matrix: out-of-line copies of shared inlines, the first unit's kept; the s1:align name withdrawn)
@@ -3906,7 +3906,7 @@
 0x002AFC60 0x2C func_002AFC60  # OVL1; s1:align; OVL1's copy of ai::_min<float> (byte-identical to OVL2's 0x575C80, which carries the name; the states lane); ovl-copy: _min<f>__2aiFRCfRCf_RCf
 0x002AFC90 0x444 insert__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FP20SObjectiveCam_AnchorUiRC20SObjectiveCam_Anchor  # OVL1; s1:align
 0x002B00E0 0x180 reserve__Q23std80__vector_imp<20SObjectiveCam_Anchor,Q23std33allocator<20SObjectiveCam_Anchor>,0>FUi  # OVL1; s1:align
-0x002B0260 0x684 func_002B0260  # OVL1
+0x002B0260 0x684 insert__Q23std62__vector_imp<11CLadderData,Q23std24allocator<11CLadderData>,0>FP11CLadderDataUiRC11CLadderData  # OVL1; s1:calls by hand (the states lane, round 23): CreateLadderTable's push_back calls it with (end, 1, the new CLadderData) where SOCOM 1's calls the same instance (the demo's 0x1FB300); fts_mission.cpp's template tail
 0x002B08F0 0x734 func_002B08F0  # OVL1
 0x002B1030 0x1F0 func_002B1030  # OVL1
 0x002B1220 0x68 func_002B1220  # OVL1
@@ -4262,18 +4262,18 @@
 0x002C8560 0x180 reserve__Q23std116__vector_imp<Q215CZPlatformState19TypePendingPlatform,Q23std51allocator<Q215CZPlatformState19TypePendingPlatform>,0>FUi  # OVL1; by hand (the states lane, round 13: fts_net_platform.cpp's template tail -- the static initialiser's reserve(20))
 0x002C86E0 0x80 __dt__Q215CZPlatformState12CPendingListFv  # OVL1; by hand (the states lane, round 13: fts_net_platform.cpp's template tail -- the waiting list's implicit destructor, four this-tests, registered by 0x400770)
 0x002C8760 0xE0 Find__17CMultiMissionListFPCc  # OVL1; by hand (the states lane, round 15; the names ours): the newest version (the word at 0x18) of the list's missions named so -- a walk over the pointer vector at 0x441650 comparing each mission's string at 0 with strcmp; 0x2C94F0 compares its result with a mission
-0x002C8840 0x1B4 func_002C8840  # OVL1
+0x002C8840 0x1B4 GetRandom__17CMultiMissionListFb  # OVL1; ours (the states lane, round 23): a mission at random from one of two index pools at 0xC (the multiplayer missions that are their names' newest, 0x2C94F0) and 0x18 (the rest), rebuilt when their counts no longer add up to the list's; rand() * 2^-31 * 0.99 * (n - 1), mod n, the pick swapped to the pool's end and returned through at(); zanim_menu.cpp's random mission calls it on the list (0x441650) with 1
 0x002C8A00 0xD4 GetMultiValue__17CMultiMissionListFPCc  # OVL1; by hand (the states lane, round 15; the names ours): the multiplayer mission's byte at 0x14 for a code whose third character on is its id (atoi), 0 for a shorter code -- Find(id, true) inlined
 0x002C8AE0 0x98 GetName__17CMultiMissionListFib  # OVL1; by hand (the states lane, round 15; the names ours): the name of the mission of an id (0x10) and kind (the byte at 0xC), "unknown" without one -- 0x2C9040 inlined
 0x002C8B80 0x88 GetMultiValue__17CMultiMissionListFi  # OVL1; by hand (the states lane, round 15; the names ours): the signed byte at 0x14 of the multiplayer mission of an id, 0 without one -- 0x2C9040 inlined with the kind 1
-0x002C8C10 0x198 func_002C8C10  # OVL1
+0x002C8C10 0x198 Read__17CMultiMissionListFPC5_zrdr  # OVL1; ours (the states lane, round 23): the list's missions read from an rdr's first array -- reserved, each newed through 0x2C9540 and pushed, the multiplayer ones that are their names' newest (0x2C94F0) counted into the NumMultiMissions valve; CMission::Init calls it (0x2AD800)
 0x002C8DB0 0x284 func_002C8DB0  # OVL1
 0x002C9040 0x70 Find__17CMultiMissionListFib  # OVL1; by hand (the states lane, round 15; the names ours): the mission of an id (0x10) and kind (the bool at 0xC), returned through a result local
 0x002C90B0 0xE8 Purge__17CMultiMissionListFv  # OVL1; by hand (the states lane, round 15; the names ours): the missions whose byte at 0x1C is set erased (the pod's single erase, 0x28F220) and deleted
-0x002C91A0 0x238 func_002C91A0  # OVL1
+0x002C91A0 0x238 Add__17CMultiMissionListFPC11MissionDesc  # OVL1; ours (the states lane, round 23): a downloaded mission entered once -- Find(number, kind) inlined, else a new CMultiMission from the description (name at +7, number +2, kind +5, game type +6; an inline constructor, the version cleared) pushed and, for a multiplayer one, the NumMultiMissions valve recounted; 0x278B80 calls it
 0x002C93E0 0x108 Clear__17CMultiMissionListFv  # OVL1; by hand (the states lane, round 15; the names ours): every mission deleted through std::transform onto itself, then the three vectors (0, 0xC, 0x18) cleared; the list's destructor (0x2C9720) calls it first
 0x002C94F0 0x4C func_002C94F0  # OVL1
-0x002C9540 0x1D8 func_002C9540  # OVL1
+0x002C9540 0x1D8 __ct__13CMultiMissionFPC5_zrdr  # OVL1; ours (the states lane, round 23): a mission from its rdr record -- NAME into the CSaferStr at 0, NUMBER and VERSION by zrdr_findint, MULTIPLAYER's tag a bool at 0xC, the byte at 0x1C cleared, TYPE's five game types (DEMOLITION 2, EXTRACTION 4, SUPPRESSION 5, BREACH 1, ESCORT 3, else 0) at 0x14; the list's Read (0x2C8C10) news each
 0x002C9720 0xE8 func_002C9720  # OVL1
 0x002C9810 0x150 SendWhisper__FPcPc  # OVL1; by hand (the states lane, round 16; the name ours): a whisper sent by player name -- CEntity::m_list.GetEntity(name); another player on the same team (0xC8), alive or dead alike (CEntity's m_isAlive) and of the same persona byte (0x2C2FD0) gets theLobby.SendChat(msg, name) and the message echoed to theMission's first queue (C2DMessage_Q::Add_Message 0x2B6530), anyone else ":: Player \"%s\" is unavailable"; called only by ParseWhisper (0x2C9990); fts_missionlist.cpp
 0x002C9960 0x30 SetMaxLength__10CMsgEditorFi  # OVL1; by hand (the states lane, round 15; the method name ours, the class CMsgEditor's RTTI): the word at 0x140 (5 at construction, 0x2CA2D0) set from n, kept within 5 to 100
