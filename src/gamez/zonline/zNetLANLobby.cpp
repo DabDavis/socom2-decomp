@@ -124,7 +124,13 @@ inline char *ZString(_zrdr *z)
  * zero arm straight to the final join -- or, in CreateGame, merge it into the outer zero arm --
  * which a nested ternary's inner join never allows; `if (p && *p) return atoi(p + 2); return 0;`
  * gives 8 and 20 here (one zero arm where the targets have two), the nested ifs the right joins
- * but not the delay slots (the `== 0` ternary 0x36C/0x22C). Not applied */
+ * but not the delay slots (the `== 0` ternary 0x36C/0x22C). Not applied. Round 17: read as IR, both
+ * targets are ONE zero block reached from both tests -- `&&` code, the inner test `bnez` to atoi and a
+ * `b` to the zero (CreateGame's outer beqz steals the zero's move into its slot, GetGameInfo's inner
+ * `b` does) -- but every `&&` spelling has MW fold the bnez/b pair into one beqz (`if (p && *p) return
+ * atoi(p + 2); return 0;`, as a ternary the && is materialised); an inline bool test (`HasMission() ?
+ * atoi : 0`, returned or as an if) 0x35C/24 off; `if (p) return *p == 0 ? 0 : atoi(..); return 0;` and
+ * four more 0x36C/0x22C or 10/21 (build/scratch/onl/mn.sh) */
 inline int MissionNumber()
 {
     return data_004364FC ? (*data_004364FC ? atoi(data_004364FC + 2) : 0) : 0;
