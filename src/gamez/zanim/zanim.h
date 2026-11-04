@@ -642,7 +642,7 @@ public:
     void FreeNetworkPacketBuffer();
     void Close();
     void Open();
-    void InitCommands();
+    bool InitCommands();
     float InvExp(float x);
     void AddPath(const char *path);
     int Unload();
