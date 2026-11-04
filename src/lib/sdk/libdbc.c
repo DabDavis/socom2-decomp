@@ -8,8 +8,7 @@
  * The client data and the buffer are the object's own .bss, spelled by address here (data_<VA>).
  * Its init (0x18FD10: the three binds and the version check), end (0x18FF50) and version query
  * (0x18FCB8) keep placeholders (they print no name; sceDbcInit/sceDbcEnd by the API, not proven).
- * Not written: sceDbcGetDepNumber and 0x1902B0 (interrupts off around a cache sync), the
- * receive-and-send call and the two later sends (sceDbcSRData, SendData2, SendData3).
+ * Not written: sceDbcGetDepNumber and 0x1902B0 (interrupts off around a cache sync).
  * GCC r24a: a copy loop's base is assigned inside the loop (loop.c hoists it into the preheader,
  * where combine cannot fold it into the store), and the create request's two buffers are pointers
  * (their stores alias no int load under strict aliasing): CreateSocket, SendData and ReceiveData,
@@ -237,6 +236,39 @@ int func_001904F8(int *p)
 extern int WaitSema(int sema);
 extern int SignalSema(int sema);
 
+/* Function 0x80001318: a send and a receive in one call -- both sizes in, the data copied in after
+ * them, then on a result that is not negative both sizes and the reply's data (at word 132) copied
+ * back out; ReceiveData's shape, the bases assigned in the loops (GCC r24a). */
+int sceDbcSRData(int s, int a1, int *ssize, char *sbuf, int *rsize, char *rbuf)
+{
+	unsigned int *p;
+	char *d;
+	int i;
+
+	p = data_001D62C0;
+	p[0] = s;
+	p[1] = a1;
+	p[2] = *ssize;
+	p[3] = *rsize;
+	for (i = 0; i < *ssize; i++) {
+		d = (char *)&p[4];
+		d[i] = sbuf[i];
+	}
+	if (sceSifCallRpc(&data_001D6248, 0x80001318, 0, data_001D62C0, 640, data_001D62C0, 640, 0, 0) < 0) {
+		func_00190BA0("sceDbcSRData: rpc error\n");
+		return 0;
+	}
+	if ((int)p[260] >= 0) {
+		*ssize = p[2];
+		*rsize = p[3];
+		for (i = 0; i < (int)p[3]; i++) {
+			d = (char *)&p[132];
+			rbuf[i] = d[i];
+		}
+	}
+	return p[260];
+}
+
 /* Function 0x80001319, under the library's semaphore: the data copied in after the size; the size
  * written back from the reply when its result is not negative. The buffer's address is taken
  * after the wait (its first store goes through the %lo, the rest through the register: as a local
@@ -270,6 +302,80 @@ int sceDbcSendData(int s, int a1, int *size, char *buf)
 		*size = p[2];
 	SignalSema(data_001D9800);
 	return p[131];
+}
+
+extern unsigned int data_001D6540[1060];	/* SendData2's buffer (4240 bytes) */
+extern int sceSifCheckStatRpc(sceSifClientData *cd);
+
+/* Function 0x8000131B on the second client, no-wait: the data (at most 4224 bytes) copied in after
+ * the size as SendData's, refused while the last send is still in flight (GCC r24a). */
+int sceDbcSendData2(int s, int a1, int *size, char *buf)
+{
+	unsigned int *p;
+	char *d;
+	int i;
+
+	if (*size > 4224) {
+		func_00190BA0("libdbc: SendData2 data length too long [%d]\n", *size);
+		return 0;
+	}
+	WaitSema(data_001D9800);
+	p = data_001D6540;
+	p[0] = s;
+	p[1] = a1;
+	p[2] = *size;
+	for (i = 0; i < *size; i++) {
+		d = (char *)&p[3];
+		d[i] = buf[i];
+	}
+	if (sceSifCheckStatRpc(&data_001D6270) == 1) {
+		func_00190BA0("dbcman : SendData2 BUSY\n");
+		SignalSema(data_001D9800);
+		return 0;
+	}
+	if (sceSifCallRpc(&data_001D6270, 0x8000131B, 1, data_001D6540, 4240, data_001D6540, 4240, 0, 0) < 0) {
+		func_00190BA0("sceDbcSendData2: rpc error\n");
+		SignalSema(data_001D9800);
+		return 0;
+	}
+	SignalSema(data_001D9800);
+	return 1;
+}
+
+extern unsigned int data_001D7640[2084];	/* SendData3's buffer (8336 bytes) */
+
+/* Function 0x8000131C on the third client, no-wait, at most 8320 bytes: SendData2's shape, a failed
+ * call returning without a message (GCC r24a). */
+int sceDbcSendData3(int s, int a1, int *size, char *buf)
+{
+	unsigned int *p;
+	char *d;
+	int i;
+
+	if (*size > 8320) {
+		func_00190BA0("libdbc: SendData3 data length too long\n");
+		return 0;
+	}
+	WaitSema(data_001D9800);
+	p = data_001D7640;
+	p[0] = s;
+	p[1] = a1;
+	p[2] = *size;
+	for (i = 0; i < *size; i++) {
+		d = (char *)&p[3];
+		d[i] = buf[i];
+	}
+	if (sceSifCheckStatRpc(&data_001D6298) == 1) {
+		func_00190BA0("dbcman : SendData3 BUSY\n");
+		SignalSema(data_001D9800);
+		return 0;
+	}
+	if (sceSifCallRpc(&data_001D6298, 0x8000131C, 1, data_001D7640, 8336, data_001D7640, 8336, 0, 0) < 0) {
+		SignalSema(data_001D9800);
+		return 0;
+	}
+	SignalSema(data_001D9800);
+	return 1;
 }
 
 /* OPEN (61 words, a frame 16 bytes smaller in the target): the target holds the buffer's address
