@@ -1041,6 +1041,7 @@
 0x00416210 0x4 DeltaAim  # OVL1 bss; SOCOM 1's (DeltaAim; ResetDeathCam zeroes it next): 7 references in 3 functions (ResetDeathCam, 0x2956E0, 0x297A30)
 0x00416218 0x4 data_00416218  # OVL1 bss; SOCOM II's third delta beside DeltaRot and DeltaAim (ResetDeathCam zeroes it with them): 6 references in 3 functions (ResetDeathCam, 0x297410, 0x297A30)
 0x00416220 0x4 _counter  # OVL1 bss; s1:data-seq (size SOCOM 1's; via OnRecvPacket__7CPacketFPCv +1)
+0x00416240 0x5C m_console__8CConsole  # OVL1 bss; the core lane round 3: SOCOM 1's CConsole::m_console (its __sinit_con_ps2.cpp builds it), between _counter and _wbuf -- the console's initialiser 0x3FFF60 builds it with "default console" and registers ~CConsole on it (2 references in 1 function)
 0x004162C0 0x10000 _wbuf  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Initalize__8CConsoleFv +1)
 0x004262C0 0x10000 _rbuf  # OVL1 bss; s1:data-seq (size SOCOM 1's; via Initalize__8CConsoleFv +1)
 0x004362C0 0xC recycler  # OVL1 bss; s1:data-exact (size SOCOM 1's; via __sinit_ent_main.cpp)

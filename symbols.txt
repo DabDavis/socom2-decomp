@@ -3639,7 +3639,7 @@
 0x0029D3C0 0x2B4 RecvPacket__8CConsoleFP7CPacket  # OVL1; s1:calls by hand (Tick calls it with OnRecvPacket's packet and deletes the packet when it answers true, as SOCOM 1's Tick calls RecvPacket__8CConsoleFP7CPacket 0x1ECBA0)
 0x0029D680 0x8 GetPacketMsg__7CPacketFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0029D690 0x114 __dt__8CConsoleFv  # OVL1; s1:align
-0x0029D7B0 0xA4 func_0029D7B0  # OVL1
+0x0029D7B0 0xA4 __ct__8CConsoleFPCc  # OVL1; s1:unit by hand, the core lane round 3 (the console's initialiser 0x3FFF60 calls it on CConsole::m_console with "default console" before registering ~CConsole, as SOCOM 1's __sinit_con_ps2.cpp builds m_console through __ct__8CConsoleFPCc: the name copied, the lists made and emptied, Initalize called -- byte-exact from con_ps2.cpp)
 0x0029D860 0x8 _on_error__FP7CPacketP8CConsolePv  # OVL1; s1:order by hand (SOCOM 1's _on_error 0x1ED250, jr ra: OnConnect registers it for id 3 in both builds)
 0x0029D870 0x8 _on_ping__FP7CPacketP8CConsolePv  # OVL1; s1:order by hand (SOCOM 1's _on_ping 0x1ED260, jr ra: OnConnect registers it for id 1 in both builds)
 0x0029D880 0x10 _on_status__FP7CPacketP8CConsolePv  # OVL1; a virtual tail call (vtable slot 0xC of a0's class: lw t9,0(a0); lw t9,12(t9); jr t9) -- split from the 0x18 row, which ran over the next function; s1:order by hand (SOCOM 1's _on_status 0x1ED270, the same virtual tail call to the packet's GetPacketMsg: OnConnect registers it for id 2 in both builds)
