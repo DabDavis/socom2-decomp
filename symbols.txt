@@ -5969,9 +5969,9 @@
 0x00336A60 0x1A8 RenderUiNodeRecursive__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- called by itself and by RenderUiNode (0x336C10), as SOCOM 1's RenderUiNodeRecursive (0x241AB0) is
 0x00336C10 0x9C RenderUiNode__5CPipeFPQ23zdb5CNode  # OVL1; s1:callee
 0x00336CB0 0x2A4 Render__Q25CPipe6CAlphaFv  # OVL1; s1:align
-0x00336F60 0x244 func_00336F60  # OVL1
-0x003371B0 0x1F8 func_003371B0  # OVL1
-0x003373B0 0x10C func_003373B0  # OVL1
+0x00336F60 0x244 Insert__Q25CPipe6CAlphaFP15tag_DelayedNode  # OVL1; the world lane round 8: ours -- the alpha pass's draw-list insert by range (CAlpha::Add and AddLine call it with the record; a list iterator kept in a static across calls)
+0x003371B0 0x1F8 Add__Q25CPipe6CAlphaFPQ23zdb5CNodePQ23zdb5CNodePQ23zdb7CVisualQ23zdb12tag_ZVIS_FOVf  # OVL1; the world lane round 8: s1:calls -- sceVu0CopyMatrix from the stack's top, the view id (empty/top), Transform, GetScaledRangeSquared, then the sorted insert, as SOCOM 1's CAlpha::Add (0x241FF0); RenderVisual calls it
+0x003373B0 0x10C AddLine__Q25CPipe6CAlphaFP6CPnt4DP6CPnt4DP6CPnt4DP6CPnt4D  # OVL1; the world lane round 8: ours -- RenderLineWorld's translucent line (a0 &thePipe.m_alpha): the four points copied into the next record, its node cleared, its range from the camera, then the sorted insert 0x336F60
 0x003374C0 0x3DC RenderVisual__5CPipeFPQ23zdb5CNodeQ23zdb12tag_ZVIS_FOV  # OVL1; the world lane round 8: s1:calls -- GetScaledRangeSquared, DrawLOD, Transform, GetScaledRangeSquared, CAlpha's add, CDynTexList::Add, NodeSetup, as SOCOM 1's RenderVisual (0x2424F0); RenderUiNodeRecursive calls it with (node, 0) as SOCOM 1's does
 0x003378A0 0x100 __dt__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's ~CAlpha (inline in SOCOM 1's ~CPipe: the cursor back at the start, the draw list and the texture lists emptied, the buffer freed with SOCOM 1's line 2276); ~CPipe calls it out of line -- zrndr_pipe.cpp
 0x003379A0 0x60 __ct__Q25CPipe6CAlphaFv  # OVL1; the world lane r3: SOCOM 1's CAlpha() (inline in SOCOM 1's CPipe(): the draw list, the texture lists, _malloc(0x36B00) into the walk's start and cursor); CPipe() calls it out of line -- zrndr_pipe.cpp
@@ -5986,7 +5986,7 @@
 0x00339470 0x1F0 func_00339470  # OVL1
 0x00339660 0x468 BuildLightMapList__5CPipeFPQ23zdb5CNode  # OVL1; the world lane round 8: s1:calls -- GetBBox, Sub, Scale, Add, Transform, Sub, then CLightMapVector::Exists and the pod insert, twice, as SOCOM 1's BuildLightMapList (0x2442F0); called by RenderDelayedNodes and PrepareAtom
 0x00339AD0 0x218 func_00339AD0  # OVL1
-0x00339CF0 0xE8 func_00339CF0  # OVL1
+0x00339CF0 0xE8 RenderCell__5CPipeFPQ23zdb5CCell  # OVL1; the world lane round 8: ours -- CPipe's (a0 thePipe): a cell's fog test from its bounding box's centre, its first visual rendered when reflective, then CCell::RenderClutter; RenderWorld calls it three times
 0x00339DE0 0x1328 RenderWorld__5CPipeFPQ23zdb6CWorld  # OVL1; the world lane round 8: s1:calls -- CCoreState::Tick and CMenuState::Tick call it with thePipe and the world after the camera's Update, as SOCOM 1's RenderWorld (0x244780); it calls RenderDelayedNodes
 0x0033B110 0x114 RenderAtom__5CPipeFPQ23zdb5CNode  # OVL1; s1:align
 0x0033B230 0x134 PrepareAtom__5CPipeFPQ23zdb5CNode  # OVL1; the world lane r7: SOCOM II's, the name ours -- RenderAtom calls it where SOCOM 1's calls BuildLightMapList and then tests the fog: the fog flag at 0x713 cleared, a landmark's FOV mask and fog (TestLandmarkFOG), else the light lists (0x339660, 0x339470) and TestFOG

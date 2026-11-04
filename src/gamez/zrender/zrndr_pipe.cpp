@@ -72,14 +72,16 @@ extern "C" void func_001EA580(std::list<void *> *list);
 struct tag_DelayedNode {
     CMatrix m_matrix;   // 0x0
     float m_40;   // 0x40
-    unsigned int m_44;   // 0x44
+    zdb::CVisual *m_visual;   // 0x44: the visual CAlpha::Add keeps
     zdb::tag_ZVIS_FOV m_fov;   // 0x48 (a byte enum: passed on with lb)
     zdb::CNode *m_atom;   // 0x4c: the pipe's node when saved, its light lists rebuilt when it changes
     zdb::CNode *m_node;   // 0x50
     CPnt3D m_addColor;   // 0x54: CVisual::m_addColor when saved
-    unsigned int m_flag0 : 1;   // 0x60
-    unsigned int m_fog : 1;   // 0x60: the pipe's m_doFog when saved
-    unsigned int m_flags : 30;   // 0x60
+    unsigned int m_lighting : 1;   // 0x60: CVisual::m_lightingEnable (CAlpha::Add)
+    unsigned int m_fog : 1;   // 0x60: the pipe's m_doFog when saved, CVisual::m_fogEnable when added
+    unsigned int m_2 : 1;   // 0x60
+    unsigned int m_vid : 13;   // 0x60: the view id (CAlpha::Add)
+    unsigned int m_flags : 16;   // 0x60
     float m_opacity;   // 0x64
     float m_lightScale;   // 0x68: CVisual::m_GlobalLightScale when saved
 };   // 0x70 bytes
@@ -127,6 +129,23 @@ public:
             m_dyntexlist.Free();
         }
 
+        /* the next record of the buffer, none once its 2000 are used (SOCOM II's, inline in Add and
+         * AddLine: the record handed out is the one after the cursor, the cursor left past it --
+         * the name ours) */
+        tag_DelayedNode *Next()
+        {
+            if (m_next >= m_visualList + 2000)
+                return 0;
+            m_next++;
+            return m_next++;
+        }
+        /* a line kept for the pass (SOCOM II's; the name ours) and a record put in the draw list by
+         * its range (0x336F60, not written: its list iterator kept in memory across calls) */
+        void AddLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
+        void Add(zdb::CNode *atom, zdb::CNode *node, zdb::CVisual *visual, zdb::tag_ZVIS_FOV fov,
+                 float opacity);
+        void Insert(tag_DelayedNode *d);
+
         zdb::CCamera *m_camera;   // 0x0
         tag_DelayedNode *m_visualList;   // 0x4
         tag_DelayedNode *m_next;   // 0x8
@@ -159,6 +178,7 @@ public:
     void BuildLightMapList(zdb::CNode *node);
     void RenderMesh(zdb::CNode *node, zdb::CMesh *mesh, CMatrix *matrix, zdb::tag_ZVIS_FOV fov);
     void RenderNode(zdb::CNode *node, zdb::tag_ZVIS_FOV fov);
+    void RenderCell(zdb::CCell *cell);
 
     unsigned int m_texIntIdx;   // 0x0
     unsigned int m_texLoadIdx;   // 0x4
@@ -454,11 +474,9 @@ void CPipe::Flush()
     m_overlay = 0;
 }
 
-/* c2dline.cpp's: the line clipped by the camera's planes and the line drawn (SOCOM 1's both), and
- * the alpha pass's line (0x3373B0, not written) */
+/* c2dline.cpp's: the line clipped by the camera's planes and the line drawn (SOCOM 1's both) */
 int clip3DLine(CPnt4D *planes, CPnt4D *p0, CPnt4D *p1);
 void Draw3DLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
-extern "C" void func_003373B0(CPipe::CAlpha *alpha, CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1);
 
 /* a CPnt4D aligned to 4 with no written copy constructor -- what RenderLineWorld's four by-value
  * points are (STAND-IN, the unit's `as=` line gives the function its real name): the target copies
@@ -479,7 +497,7 @@ void RenderLineWorld(CPnt4D_4 p0, CPnt4D_4 p1, CPnt4D_4 c0, CPnt4D_4 c1)
         if (c0.w >= 0.9921875f && c1.w >= 0.9921875f)
             Draw3DLine((CPnt4D *)&p0, (CPnt4D *)&p1, (CPnt4D *)&c0, (CPnt4D *)&c1);
         else
-            func_003373B0(&thePipe.m_alpha, (CPnt4D *)&p0, (CPnt4D *)&p1, (CPnt4D *)&c0, (CPnt4D *)&c1);
+            thePipe.m_alpha.AddLine((CPnt4D *)&p0, (CPnt4D *)&p1, (CPnt4D *)&c0, (CPnt4D *)&c1);
     }
 }
 
@@ -576,6 +594,25 @@ void CPipe::RenderAtom(zdb::CNode *node)
         else
             RenderNode(node, (zdb::tag_ZVIS_FOV)0);
     }
+}
+
+/* SOCOM II's (the name ours; RenderWorld's three cell passes call it): a cell's fog flag from its
+ * centre and the grid's two tolerances, its own visual drawn when it is reflective and its clutter
+ * list says so (the type word -3 first), then its clutter */
+void CPipe::RenderCell(zdb::CCell *cell)
+{
+    CPnt3D center;
+
+    cell->GetBBox()->GetCenter(&center);
+    m_doFog = m_camera->TestFOG(&center, zdb::CWorld::m_world->m_grid.m_ClutterTol +
+                                             zdb::CWorld::m_world->m_grid.m_GridCellTol);
+    zdb::CVisual *v = cell->GetFirstVisual();
+
+    if (v && !cell->m_clutterList.m_socom2_18 && cell->m_reflective) {
+        v->m_1c = -3;
+        v->Render(CStack::m_top);
+    }
+    cell->RenderClutter(cell);
 }
 
 /* SOCOM II's: the dynamic textures of a node's visuals added to the alpha pass's. The list's
@@ -706,6 +743,81 @@ namespace zdb {
 class CVidStack : public std::stack<void *> {
 };
 }
+
+/* the view id in use, the stack's top -- a `break` if the stack is empty (vis_vu.cpp's inline,
+ * CVisual::GetVid: six levels high, so Add inlines it one level and calls empty() and top()) */
+inline unsigned int zdb::CVisual::GetVid()
+{
+    if (m_stack_vid.empty()) {
+        __I_break(0);
+        __I_nop();
+    }
+    return (unsigned int)m_stack_vid.top();
+}
+
+/* a point copied a float at a time (ours) */
+static inline void CopyPnt4D(PNT4D *d, const CPnt4D *s)
+{
+    d->x = s->x;
+    d->y = s->y;
+    d->z = s->z;
+    d->w = s->w;
+}
+
+/* SOCOM II's: a line with translucent colour kept for the alpha pass -- its two ends and their
+ * colours where a delayed node's matrix is, no node (the record's mark of a line), its range from
+ * the camera for the draw order */
+void CPipe::CAlpha::AddLine(CPnt4D *p0, CPnt4D *p1, CPnt4D *c0, CPnt4D *c1)
+{
+    tag_DelayedNode *d = Next();
+
+    if (d) {
+        PNT4D *line = (PNT4D *)&d->m_matrix;
+
+        CopyPnt4D(&line[0], p0);
+        CopyPnt4D(&line[1], p1);
+        CopyPnt4D(&line[2], c0);
+        CopyPnt4D(&line[3], c1);
+        d->m_atom = 0;
+        d->m_40 = m_camera->GetScaledRangeSquared((CPnt3D *)p0);
+        Insert(d);
+    }
+}
+
+/* SOCOM 1's: a translucent visual kept for the pass -- the next record given the stack's top matrix,
+ * the node saved with it and the node, the added colour and light scale, the FOV verdict, the visual,
+ * the lighting and fog switches, the view id and the opacity -- its range from the camera (an
+ * always-last visual far away; SOCOM II's test) for the draw order */
+void CPipe::CAlpha::Add(zdb::CNode *atom, zdb::CNode *node, zdb::CVisual *visual, zdb::tag_ZVIS_FOV fov,
+                        float opacity)
+{
+    tag_DelayedNode *d = Next();
+
+    if (d) {
+        sceVu0CopyMatrix(d->m_matrix.m_matrix, CStack::m_top->m_matrix);
+        d->m_atom = atom;
+        d->m_node = node;
+        CPnt3D color(zdb::CVisual::m_addColor);
+
+        d->m_addColor = color;
+        d->m_lightScale = zdb::CVisual::m_GlobalLightScale;
+        d->m_fov = fov;
+        d->m_visual = visual;
+        d->m_lighting = zdb::CVisual::m_lightingEnable;
+        d->m_fog = zdb::CVisual::m_fogEnable;
+        d->m_vid = zdb::CVisual::GetVid();
+        d->m_opacity = opacity;
+        CPnt3D pos;
+
+        CStack::m_top->Transform(&visual->m_centroid, &pos, 1);
+        if (d->m_visual->m_flags & 0x40000)
+            d->m_40 = 100000000.0f;
+        else
+            d->m_40 = m_camera->GetScaledRangeSquared(&pos);
+        Insert(d);
+    }
+}
+
 
 /* SOCOM II's light lists for a node's visuals (0x339AD0, not written: Exists and the pod's insert
  * twice, as BuildLightMapList) */
