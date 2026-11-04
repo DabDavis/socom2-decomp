@@ -1702,16 +1702,16 @@
 0x001FF370 0xE4 ReInit__17CLensFlareManagerFv  # OVL1; by hand (hud_lensflare.cpp: CHUD::ReInit_Init's last call on the manager at CHUD+0x1A698; the flares walked as Tick's and PreDITick's, each on a node placed at CPnt3D::zero through TransformToWorld and made (0x336650) or moved (0x3365E0) in the flare system; the name ours)
 0x001FF460 0x8C Reset__17CLensFlareManagerFv  # OVL1; by hand (CHUD::ReInit_Uninit's call on the manager: each flare's handle at 0x8C given back to the system at 0x488F10 and set to -1; the name ours)
 0x001FF4F0 0x140 LoadRdr__17CLensFlareManagerFPCc  # OVL1; by hand (Init's call with lensflare.rdr's name, as SOCOM 1's CLensFlareSaturate::LoadRdr took one)
-0x001FF630 0x270 func_001FF630  # OVL1
-0x001FF8A0 0x69C func_001FF8A0  # OVL1
-0x001FFF40 0x920 func_001FFF40  # OVL1
-0x00200860 0x110 func_00200860  # OVL1
+0x001FF630 0x270 LoadLightSource__17CLensFlareManagerFP5_zrdr  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- LoadRdr 0x1FF4F0 calls it with the record after each LightSourceDefinition string: when active is "on", group_node's name expanded through FirstFlareName/NextFlareName, each found as a landmark (CWorld slot +0x4C) or a node (FindChild), a new CLensFlareEntry pushed for each; byte-exact)
+0x001FF8A0 0x69C Tick__15CLensFlareEntryFf  # OVL1; by hand (the HUD lane, round 36: slot +0x38 of CLensFlareEntry's table 0x4052B0, C2D's Tick(float) by ztwod.h's slot order; it places each element through 0x200C10; unwritten)
+0x001FFF40 0x920 LoadFlare__15CLensFlareEntryFP5_zrdrPQ23zdb5CNode  # OVL1; ours (the HUD lane, round 36: the constructor 0x200AC0's last call, passing its record and node on: it reads the flare's settings and news its 0xA0-byte elements element1, element2, ... through 0x200D60; unwritten)
+0x00200860 0x110 Init__15CLensFlareEntryFv  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the constructor 0x200AC0's first call: the flags cleared through bool setters, no handle, the glare's defaults, SetColor(225, 224, 133), Off; byte-exact)
 0x00200970 0x150 __dt__15CLensFlareEntryFv  # OVL1; by hand (slot 0 of CLensFlareEntry's vtable 0x4052B0: the destructor)
-0x00200AC0 0x150 func_00200AC0  # OVL1
-0x00200C10 0x144 func_00200C10  # OVL1
-0x00200D60 0x1C8 func_00200D60  # OVL1
-0x00200F30 0x118 func_00200F30  # OVL1
-0x00201050 0x1A0 func_00201050  # OVL1
+0x00200AC0 0x150 __ct__15CLensFlareEntryFP5_zrdrPQ23zdb5CNode  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the 0xE0-byte entry LoadRdr's helper 0x1FF630 news with the record and the node it found; C2DBitmap() then the table 0x4052B0 and the element vector, Init, Load(0, 0, 640, 448), SetTrans(128), SetIsTrans(true), then 0x1FFF40 with both; byte-exact)
+0x00200C10 0x144 Place__13CFlareElementFfbPC6CPnt3D  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- an element of a flare, 0xA0 bytes with a C2DBitmap member at 0: shown at the point projected through appCamera's camera (0x290370), sized and faded through its ranges, else Off; called from CLensFlareEntry::Tick; byte-exact)
+0x00200D60 0x1C8 Load__13CFlareElementFP5_zrdr  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the element's record: texture, color, position_scale, size, opacity, scale; LoadFlare 0x1FFF40 calls it on each new element and keeps the element when it returns true; 3 instructions open)
+0x00200F30 0x118 NextFlareName__Fv  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the loader's next name: the wildcards' digits counted up as an odometer, 0 when they come round; byte-exact)
+0x00201050 0x1A0 FirstFlareName__FPc  # OVL1; ours (the HUD lane, round 36: hud_lensflare.cpp -- the flare loader 0x1FF630 calls it on a strdup'd node name, then 0x200F30 until it returns 0, finding a node by each: up to five '*' wildcards in the name counted through as digits; byte-exact)
 0x002011F0 0x384 func_002011F0  # OVL1
 0x00201580 0xC On__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x00201590 0x8 Off__11CZPauseTestFv  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -3930,7 +3930,7 @@
 0x002B2840 0x88 InitalizeTeamValves__8CMissionFv  # OVL1; s1:calls
 0x002B28D0 0x450 LoadVehicle__8CMissionFP16CVehicleRdrEntryb  # OVL1; s1:calls by hand (the states lane: CSpawners::Tick calls it on &theMission with the spawn's entry and false from the same instruction as SOCOM 1's calls LoadVehicle)
 0x002B2D20 0x124 func_002B2D20  # OVL1
-0x002B2E50 0x5D8 func_002B2E50  # OVL1
+0x002B2E50 0x5D8 LoadVehicles__8CMissionFv  # OVL1; s1:order by hand (the states lane, round 32): SOCOM 1's LoadVehicles__8CMissionFUi, its argument gone (the callers in CMission's Open paths pass this alone, a1 unset) -- the same calls in the same order: CreateRecycler and the spawners' insert for a recycled entry, LoadVehicle, LoadTurrets, the player grid's sqrtf/floorf, UpdateTargetList(true); after func_002B2D20 (its filter) as SOCOM 1's after LoadVehicle
 0x002B3430 0x38 CloseVehicleRdr__8CMissionFv  # OVL1; s1:align
 0x002B3470 0x2C OpenVehicleRdr__8CMissionFv  # OVL1; s1:calls
 0x002B34A0 0xE0 ParseTeamBlock__FP5_zrdr  # OVL1; s1:order by hand (the states lane: SOCOM 1's fts_player.cpp has ParseTeamBlock between OpenVehicleRdr and the player's getters, as here; both walk a _zrdr array's numbers into a 32-team mask; byte-exact in fts_player.cpp)
@@ -3957,7 +3957,7 @@
 0x002B3C70 0x20 func_002B3C70  # OVL1; OVL1's copy of CSealCtrl::SetDoAiMapCollide (slot 0xB4 of CSealCtrlCopy's table; OVL2's 0x592030, the same 0x20 bytes) -- the SEAL lane; ovl-copy: SetDoAiMapCollide__9CSealCtrlFb
 0x002B3C90 0xBC erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>Q33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>  # OVL1; s1:callee
 0x002B3D50 0x74 erase__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>  # OVL1; s1:align
-0x002B3DD0 0x108 func_002B3DD0  # OVL1
+0x002B3DD0 0x108 insert__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>FQ33std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>19generic_iterator<0>RCQ29CSpawners9spawn_map  # OVL1; by hand (the states lane, round 32): the spawners' list insert, LoadVehicles' push_back (0x2B30F0 calls it on spawners+0xC, the end node at +0x10, an 8-byte spawn_map copied lw/sw); SOCOM 1's insert__Q23std80__list_deleter<...spawn_map...> at the same call; fts_player.cpp's tail emits it byte-exact
 0x002B3EE0 0x18 __ct__Q23std40__list_deleter<Ui,Q23std13allocator<Ui>>Fv  # OVL1; by hand (the states lane, round 16): the spawners' id list built (include/list's out-of-class constructor), called by fts_player.cpp's initialiser (0x400330) for spawners.m_ids; byte-exact from fts_player.cpp, which now defines spawners and ftsPlayer
 0x002B3F00 0x18 __ct__Q23std80__list_deleter<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; by hand (the states lane, round 16): the spawners' vehicle list built, called by fts_player.cpp's initialiser (0x400330) for spawners.m_spawns; byte-exact from fts_player.cpp
 0x002B3F20 0x60 __dt__Q23std70list<Q29CSpawners9spawn_map,Q23std33allocator<Q29CSpawners9spawn_map>>Fv  # OVL1; by hand (the states lane, round 21): this-tested, calls ~__list_deleter<spawn_map> (0x2B3F80) with 0 as its base, then deletes on a positive flag; ~CSpawners (0x2B4030) calls it with 0 for its list at +0xC after inlining ~list one level; corrected (the states lane, round 21): two this-tests and a call to ~__list_deleter<spawn_map> (0x2B3F80) with 0 -- ~__list_imp inlined one level between, so this is ~list; ~CSpawners reaches it through its spawn list's own class (a this-test, then the call with 0 as a base)
@@ -4037,7 +4037,7 @@
 0x002BA040 0x100 func_002BA040  # OVL1
 0x002BA140 0x5C SendVoteMessage__Fiib  # OVL1; s1:align
 0x002BA1A0 0x4C PickupAckPacketHandler__FiiiPv  # OVL1; s1:align
-0x002BA1F0 0x64 SendPickupAckMessage__FUsii8AckUnion  # OVL1; s1:align; SOCOM II's signature, by hand: its caller 0x59E830 zero-extends the first argument (andi 0xffff) and passes an int second and third; the callee stores the second whole (sw) and the third with sh, neither extended -- SOCOM 1's (int, ushort, uchar) would add two andi; the packet is 8 bytes, the id first (fts_remote.cpp)
+0x002BA1F0 0x64 SendPickupAckMessage__Fiii8AckUnion  # OVL1; s1:align; SOCOM II's signature, by hand: its caller 0x59E830 zero-extends the first argument (andi 0xffff) and passes an int second and third; the callee stores the second whole (sw) and the third with sh, neither extended -- SOCOM 1's (int, ushort, uchar) would add two andi; the packet is 8 bytes, the id first (fts_remote.cpp); the first parameter an int (states r32): fts_remote.cpp's definition taking int is byte-exact, and the caller 0x59E830 zero-extends the count (andi 0xffff) before both calls, as MW passes an unsigned short to an int parameter (the SEALs' round 27)
 0x002BA260 0x54 PickupMayIPacketHandler__FiiiPv  # OVL1; s1:align
 0x002BA2C0 0xA4 func_002BA2C0  # OVL1
 0x002BA370 0x74 AmmoPUPacketHandler__FiiiPv  # OVL1; s1:align
@@ -6828,7 +6828,7 @@
 0x0036C3B0 0x174 ZoomIn__10CUIMapCtrlFfPQ23zdb5CNodef  # OVL1; ours (the HUD lane, round 30: CUIMapCtrl::TickZAnimCmd 0x36C600's ZOOM_IN case calls it with 1.0, the command's node (CZAnim::GetNode) and *dT -- set up f13, a1, f12, so the scale is first; unwritten)
 0x0036C530 0xD0 GetZAnimCmdType__10CUIMapCtrlFPCc  # OVL1; s1:calls
 0x0036C600 0x144 TickZAnimCmd__10CUIMapCtrlFP14_zanim_cmd_hdrPfPb  # OVL1; by hand (the HUD lane, round 30: slot +0x64 of CUIMapCtrl's table 0x407260; zui_2d.cpp -- PAN, ZOOM_IN, ZOOM_OUT relative to C2D's count, as the parser 0x36C760 makes them; byte-exact)
-0x0036C750 0xC func_0036C750  # OVL1
+0x0036C750 0xC Tick__10CUIMapCtrlFf  # OVL1; by hand (the HUD lane, round 36: slot +0x38 of CUIMapCtrl's table 0x407260 -- C2D's Tick(float) by ztwod.h's slot order; it stores dT to 0x49EBE8, which only CUIMapCtrl::HandlePad 0x36D2E0 reads, for its zooms; SOCOM 1's CUIMapCtrl has no Tick; zui_2d.cpp)
 0x0036C760 0x2CC ParseZAnimCmd__10CUIMapCtrlFP5_zrdr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x0036CA30 0x498 OnPan__10CUIMapCtrlCFRC20CUIMapCtrlAnimCmdHdrf  # OVL1; s1:name by its call (the HUD lane, round 30: CUIMapCtrl::TickZAnimCmd 0x36C600's PAN case calls it with the command and *dT, as SOCOM 1's TickZAnimCmd calls OnPan(const CUIMapCtrlAnimCmdHdr &, float) const; unwritten)
 0x0036CED0 0x18C func_0036CED0  # OVL1
@@ -6890,7 +6890,7 @@
 0x00372F10 0x730 func_00372F10  # OVL1
 0x00373640 0x210 func_00373640  # OVL1
 0x00373850 0x6CC Draw__10CUIListBoxFRC7CMatrixPQ23zdb16CTextureRelocMgr  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
-0x00373F20 0xE4 func_00373F20  # OVL1
+0x00373F20 0xE4 AddItem__10CUIListBoxFP8ListItemi  # OVL1; ours (the HUD lane, round 36: zui_2d.cpp -- CUIListBox::UpdateUIVar 0x3754D0 and 0x372980 call it: the item given the box's font (+0xA0) and scale (+0xCC), then pushed onto the item list +0xC0 when the second argument is -1, else inserted before the highlighted row (+0x194); 6 instructions open, stack slots)
 0x00374010 0x2D8 func_00374010  # OVL1
 0x003742F0 0x2E8 func_003742F0  # OVL1
 0x003745E0 0x46C HandlePad__10CUIListBoxFPC4CPadi  # OVL1; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
@@ -10079,7 +10079,7 @@
 0x005553B0 0x8 CanPursue__8CAiStateCFP11CSealCtrlAi  # OVL2; slot 0x2C of __vt__8CAiState, SOCOM 1's slot 0x24 (aligned as GetStatus__8CAiStateCFv); returns true as SOCOM 1's
 0x005553C0 0x8 Virtual34__8CAiStateFP11CSealCtrlAiP8CAiEventP10CZSealBodyb  # OVL2; s1:vtable by hand (slot 0x34 of __vt__8CAiState and of the states that keep it: returns true, as ai_states.h's inline; seal_ai.cpp emits the copy) (the SEAL lane, round 5); slot 0x34's parameters (the kit lane, round 5): its one call, 0x5F95D0's, passes the AI, the event, the owner when a SEAL and a bool in t0; both overrides read the event and the bool
 0x005553D0 0x8 Virtual38__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x38 of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
-0x005553E0 0x8 Virtual3C__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x3C of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5)
+0x005553E0 0x8 Virtual3C__8CAiStateFP11CSealCtrlAi  # OVL2; s1:vtable by hand (slot 0x3C of __vt__8CAiState and of the states that keep it: returns true) (the SEAL lane, round 5); by hand (the kit lane, round 29, outside its range: ai_states.h's base declaration): slot +0x3C takes the AI -- both callers (0x5FDE30, 0x5586E8) pass it in a1 after testing its bit 13; the base answers true
 0x005553F0 0x8 Virtual40__8CAiStateFv  # OVL2; s1:vtable by hand (slot 0x40 of __vt__8CAiState and of the states that keep it: returns false) (the SEAL lane, round 5)
 0x00555400 0x8 Virtual44__8CAiStateF8AI_STATE  # OVL2; s1:vtable by hand (slot 0x44 of __vt__8CAiState and of every state but CAiSPursue, which overrides it at 0x575950: returns false) (the SEAL lane, round 5)
 0x00555410 0x8 Virtual48__8CAiStateFiP8CAiState  # OVL2; s1:vtable by hand (slot 0x48 of __vt__8CAiState and of every state but CAiSPursue, which overrides it at 0x55A7D0: returns false) (the SEAL lane, round 5)
@@ -11375,12 +11375,12 @@
 0x005EA880 0x34 IsAi__10CZSealBodyFv  # OVL2; by hand (the kit lane, round 14): the SEAL's controller tested and its IsAi (CSealCtrl slot 0x30) called, the shape of zseal.h's IsPlayer/IsRemote; an inline's copy among IssueCommand's (IssueCommand calls it on 0x5EEDB0's SEAL) -- the name ours
 0x005EA8C0 0x1B0 func_005EA8C0  # OVL2
 0x005EAA70 0x128 GetAiModes__9CSealUnitFPScPSc  # OVL2; by hand (the kit lane, round 19; the name ours): the two AI mode bytes (SEAL_AI_PARAMS 0x26C/0x26D) of the squad's first AI SEAL, else from each sub-squad (recursive); 0x5EABA0 calls it for the team command menu
-0x005EABA0 0x1C4 func_005EABA0  # OVL2
-0x005EAD70 0x13C func_005EAD70  # OVL2
+0x005EABA0 0x1C4 ConfirmCommand__9CSealUnitF10FT_COMMANDUci  # OVL2; s1:order by hand (the kit lane, round 29): SOCOM 1's ConfirmCommand (0x2D2030) -- both read ShouldConfirmVoiceCommands first and return at once without it, both build the command's sound name with sprintf and play it, and both sit after IssueCommand; SOCOM II's takes the command, an item byte and an unused int (the HUD's menu orders, tcmTeamMember/tcmTeamCommand, pass (unit, s_tcmMember, c, 0)): 55 for the moves, 12 for the item commands, else SND_<mode><mode>_<command>[<item>] from GetAiModes and the two name tables (0x58EF80, 0x58EB00)
+0x005EAD70 0x13C AcknowledgeCommand__9CSealUnitF10FT_COMMANDUci  # OVL2; by hand (the kit lane, round 29; the name ours): new in SOCOM II -- the squad's canned answer to a command when ShouldConfirmVoiceCommands (0x3DF1D0) is set: 84, or 55 for the moves (3-6, 17), 56 else (0x5EAF20); the HUD's voice-recognition orders call it (tcmTeamMember/tcmTeamCommand in reco mode pass (unit, s_tcmMember, c, 0)); SOCOM 1's ConfirmCommand is 0x5EABA0
 0x005EAEB0 0x68 func_005EAEB0  # OVL2
 0x005EAF20 0x270 func_005EAF20  # OVL2
 0x005EB190 0x3E8 func_005EB190  # OVL2
-0x005EB580 0x148 func_005EB580  # OVL2
+0x005EB580 0x148 FollowSeal__9CSealUnitFP10CZSealBody  # OVL2; by hand (the kit lane, round 29; the name ours): new in SOCOM II -- IssueCommand's four calls (0x5E97B8, 0x5E9A48, 0x5E9BF8, 0x5E9C90): the SEAL made the follow's source (+0xB4, SOCOM 1's m_follow_source), the new byte +0xA2 set, the follow (4) given every other SEAL, the escortees with the first and every squad under it (their table's IssueCommand), 0x5E7830 when no SEAL took the escortees; the SEAL returned
 0x005EB6D0 0x1CC func_005EB6D0  # OVL2
 0x005EB8A0 0x70 func_005EB8A0  # OVL2
 0x005EB910 0x240 func_005EB910  # OVL2
@@ -11556,11 +11556,11 @@
 0x005F8900 0x8 CanAttack__13CAiSSuspendedCFv  # OVL2; by hand: CAiSSuspended's vtable slot +0x24 (CanAttack; SOCOM 1's in the same tail position)
 0x005F8910 0x8 CanPursue__13CAiSSuspendedCFP11CSealCtrlAi  # OVL2; by hand: CAiSSuspended's vtable slot +0x2C (CanPursue; SOCOM 1's in the same tail position)
 0x005F8920 0x8 CanPursue__10CAiSBreachCFP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x2C (CanPursue, jr ra; move v0,zero as SOCOM 1's)
-0x005F8930 0x8 Virtual3C__10CAiSBreachFv  # OVL2; by hand: CAiSBreach's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): false (the base's is true)
+0x005F8930 0x8 Virtual3C__10CAiSBreachFP11CSealCtrlAi  # OVL2; by hand: CAiSBreach's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): false (the base's is true); by hand (the kit lane, round 29): slot +0x3C takes the AI (its callers 0x5FDE30, 0x5586E8 pass it in a1)
 0x005F8940 0x78 __dt__10CAiSScriptFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F89C0 0x78 __dt__8CAiSGotoFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8A40 0x8 Virtual40__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x40, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true (the base's is false)
-0x005F8A50 0x14 Virtual3C__8CAiSGotoFv  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2
+0x005F8A50 0x14 Virtual3C__8CAiSGotoFP11CSealCtrlAi  # OVL2; by hand: CAiSGoto's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): true while the flag word (+0x2C) lacks bit 2; by hand (the kit lane, round 29): slot +0x3C takes the AI (its callers 0x5FDE30, 0x5586E8 pass it in a1)
 0x005F8A70 0x78 __dt__10CAiSPickupFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005F8AF0 0x110 remove_if<Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>,18CAiStateDeleteKind>__3stdFQ33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>18CAiStateDeleteKind_Q33std46list<P8CAiState,Q23std21allocator<P8CAiState>>19generic_iterator<0>  # OVL2; by hand (the kit lane, round 5): std::remove_if over the state stack with CAiStateDeleteKind (Remove's, 0x5F81E0), the template tail of seal_aistate.cpp; find_if and the functor inlined
 0x005F8C00 0x18 func_005F8C00  # OVL2
@@ -11593,8 +11593,8 @@
 0x005FD6F0 0x94 func_005FD6F0  # OVL2
 0x005FD790 0x33C func_005FD790  # OVL2
 0x005FDAD0 0x224 func_005FDAD0  # OVL2
-0x005FDD00 0x38 Virtual3C__10CAiSFollowFv  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C
-0x005FDD40 0x180 func_005FDD40  # OVL2
+0x005FDD00 0x38 Virtual3C__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x3C, one of SOCOM II's six new CAiState slots (the name ours, by its slot): a float at +0xF4 under the variable at 0x650C38 and flag bit 3 of +0x6C; by hand (the kit lane, round 29): slot +0x3C takes the AI -- both callers (0x5FDE30, 0x5586E8) pass it in a1 after testing its bit 13; the code reads none of it
+0x005FDD40 0x180 CheckMaster__10CAiSFollowFP11CSealCtrlAi  # OVL2; by hand (the kit lane, round 29; the name ours): CAiSFollow::Tick's first call (0x5FB220) -- the AI's follow master (+0x5D4) made the state's (+0x58; a new one restarts the step, UpdatePhase(0) inlined), true while it lives (CEntity's m_isAlive), flag 8 (+0x6C) set when a navy SEAL's AI-driven master's AI has bit 13 and its state's +0x3C answers, else SetFollowMaster(0); open, 0x178 against 0x180
 0x005FDEC0 0xB8 GetStatus__10CAiSFollowCFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FDF80 0x270 OnSignal__10CAiSFollowFQ28CAiState6SIGNALP11CSealCtrlAi  # OVL2; by hand: CAiSFollow's vtable slot +0x8 (OnSignal)
 0x005FE1F0 0x2C8 func_005FE1F0  # OVL2
@@ -11612,7 +11612,7 @@
 0x005FF090 0x60 __dt__15CSealCtrlSquirmFv  # OVL2; s1:vtable (the same slot of the same class's vtable in both builds, code alike)
 0x005FF0F0 0x104 __ct__15CSealCtrlSquirmFv  # OVL2; s1:calls (ftsCreateSeal's squirm branch, where SOCOM 1's calls __ct__15CSealCtrlSquirmFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x005FF200 0xEC SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat  # OVL2; by hand (the kit lane, round 7): CAiTrigger's times set -- the first Rfloat to m_dn_time (+8), the second to m_up_time (+0), m_marker = (float)m_up_time, m_timer = m_marker + (float)m_dn_time; the squirm's and SEAL_AI_PARAMS' constructors call it with (0.5-1.2, 0.1-0.5), SOCOM 1's inline CAiTrigger() -- the name ours
-0x005FF2F0 0xAB8 func_005FF2F0  # OVL2
+0x005FF2F0 0xAB8 DrawOctahedron__2aiFQ22ai9LINE_TYPEPC6CPnt3Dff  # OVL2; by hand (the kit lane, round 29; the name ours): new in SOCOM II, seal_ailines.cpp's first function -- twelve lines about a point (four corners half the width out in x/z, two tips half the height up and down, the width the height's when -1), DrawLine's kind test once and its body written out per line under the unit's dont_inline (the copies 0x5FFDB0-0x5FFDEF follow it); CAiSFollow::Tick calls it with (512, goal, 4, 3)
 0x005FFDB0 0xC StackTop__2aiFR6CStack  # OVL2; by hand (the kit lane, round 28; the class and name ours): the out-of-line copy of the lines' matrix stack's top (CStack::m_top read, this -- the CStack at OVL2 bss 0x66BB08 the unit's initialiser 0x668FB0 builds -- dropped; DrawLine, LineTo and 0x5FF2F0 call it) -- seal_ailines.cpp; by hand (the kit lane, round 28): the stand-in's name -- the stack (CStack at bss 0x66BB08) handed in a0 and dropped, CStack::m_top returned; likely a CStack member in the original
 0x005FFDC0 0x8 LineColor__2aiFRC6CPnt3D  # OVL2; by hand (the kit lane, round 28; the name ours): the out-of-line copy of seal_ailines.cpp's colour accessor (a0 handed back: DrawLine, LineTo and 0x5FF2F0 call it on ai_line_color 0x66BAE0, the unit compiled without inlining) -- seal_ailines.cpp
 0x005FFDD0 0x18 __ct__6CPnt4DFffff  # OVL2; s1:exact
@@ -11742,7 +11742,7 @@
 0x0060A850 0xE8 func_0060A850  # OVL2
 0x0060A940 0xDC __ct__9CAiTargetFv  # OVL2; by hand (the kit lane, round 6): CAiTarget's constructor -- SEAL_AI_PARAMS's constructor (0x60BF40) calls it on +0x42C (the controller's 0x67C, after the event queue, as SOCOM 1's CSealCtrlAi constructor calls __ct__9CAiTargetFv on m_target after m_eventQueue), CTurret's constructor (0x3AA478) too; SOCOM 1's CheckLineOfFire/CAiTarget unit closes with it, and SOCOM II's sits after CheckLineOfFire (0x609DF0)
 0x0060AA20 0x57C func_0060AA20  # OVL2
-0x0060AFA0 0x174 func_0060AFA0  # OVL2
+0x0060AFA0 0x174 func_0060AFA0  # OVL2; by hand (the kit lane, round 29; the name unknown): the target visibility update from its finished ray -- the request (CTarget+0x28) taken when registered, 0x60AA20 (SOCOM 1s ComputeVisibility by place) blended between -0.15 and 1.15, scaled by the rays age, added to the visibility (+0x18), seen at 1, saturated; SOCOM 1s CSealCtrl::SensorTick did it inline; the OVL1 turret code 0x3A82C0 calls it
 0x0060B120 0x344 func_0060B120  # OVL2
 0x0060B470 0x37C func_0060B470  # OVL2
 0x0060B7F0 0xF8 func_0060B7F0  # OVL2

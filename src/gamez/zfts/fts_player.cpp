@@ -15,7 +15,9 @@ public:
     CSealCtrl();
     virtual ~CSealCtrl();
 
-    unsigned char _4[0x171 - 0x4];
+    unsigned char _4[0x114 - 0x4];
+    int m_copy_index;   // 0x114: the player's copies' number (LoadVehicles sets it; the name ours)
+    unsigned char _118[0x171 - 0x118];
     unsigned char _171_0 : 3;
     unsigned char m_input_enabled : 1;   // 0x171, bit 3 (SOCOM 1's at 0x169)
     unsigned char _171_4 : 3;
@@ -104,12 +106,18 @@ public:
 class CVehicleRdrEntry {
 public:
     bool IsSingleOnly() { return m_15c_1 ? true : false; }
+    bool IsRecycled() { return m_recycle ? true : false; }
 
-    char m_name[0x11c];   // 0x0
+    char m_name[0x70];   // 0x0 (zchar.h's name, character and display name)
+    unsigned char m_kind;   // 0x70: 1 a mission vehicle, 2 a spawned one (zchar.h's m_unk70)
+    unsigned char _71[0x11c - 0x71];
     unsigned int m_teams;   // 0x11c
     unsigned char _120[0x15c - 0x120];
     unsigned char m_15c_0 : 1;   // 0x15c
     unsigned char m_15c_1 : 1;
+    unsigned char m_15c_2 : 1;
+    unsigned char m_15c_3 : 1;
+    unsigned char m_recycle : 1;   // bit 4 (zchar.h's m_recycle)
 };
 
 class CSpawners {
@@ -156,8 +164,8 @@ public:
 CSpawners spawners;
 CftsPlayer ftsPlayer;
 
-/* the vehicles' rdr (only its opening and closing) */
-class CVehicleRdr {
+/* the vehicles' rdr (zchar.h's: a vector of entries, only its opening and closing) */
+class CVehicleRdr : public std::vector<CVehicleRdrEntry> {
 public:
     void Open(const char *name);
     void Close();
@@ -165,17 +173,30 @@ public:
 
 /* the mission (only what this unit touches, at SOCOM II's offsets) */
 
+/* the network game (fts_mission.cpp's CZNetGame: only the byte LoadVehicles sets) */
+class CZNetGame {
+public:
+    unsigned char _0[0xdd];
+    unsigned char m_dd;   // 0xdd
+};
+
 class CMission {
 public:
     void RecycleEntity(CEntity *e);
     CEntity *LoadVehicle(CVehicleRdrEntry *entry, bool b);
+    bool LoadVehicles();
     void InitalizeTeamValves();
     void CloseVehicleRdr();
     void OpenVehicleRdr();
 
     unsigned char _0[0x140];
     unsigned int m_vehicleFilter;   // 0x140: SOCOM II's (the name ours): which vehicles a mission takes
-    unsigned char _144[0x1814 - 0x144];
+    unsigned char _144[0x180 - 0x144];
+    float m_player_grid_spacing;   // 0x180 (fts_mission.cpp's m_ai_params.player_grid_spacing)
+    unsigned int m_player_grid_count;   // 0x184 (its player_grid_count)
+    unsigned char _188[0x1808 - 0x188];
+    CZNetGame *m_pNetGame;   // 0x1808 (SOCOM 1's at 0x584)
+    unsigned char _180c[0x1814 - 0x180c];
     CVehicleRdr *m_vehicle_rdr;   // 0x1814 (SOCOM 1's at 0x590)
     unsigned char _1818[0x1868 - 0x1818];
     CValve *m_team_valves[32];   // 0x1868 (SOCOM 1's at 0x5d4)
@@ -418,6 +439,203 @@ void CMission::CloseVehicleRdr()
     CCharacterType::CleanupTemporary();
     if (m_vehicle_rdr)
         m_vehicle_rdr->Close();
+}
+
+/* the network (znet.h's CZNetwork: only its two flags) */
+class CZNetwork {
+public:
+    unsigned char m_bSessionMaster;   // 0x0
+    unsigned char m_bNetwork;   // 0x1
+};
+
+extern CZNetwork theNetwork;
+
+/* the vehicles' and turrets' loaders (zveh's, SOCOM 1's) */
+class CTurret {
+public:
+    static void LoadTurrets();   /* 0x3AA930 */
+};
+
+class CVehicle {
+public:
+    static void LoadVehicles();   /* 0x3AE1A0 */
+    static CEntity *Spawn(CVehicleRdrEntry *entry);   /* 0x3AE030 */
+};
+
+/* the gears' model cache (char_type.cpp's CCharacterModelCache: only the vector) */
+class CCharacterModelCache {
+public:
+    static zdb::CModelVector m_ModelCache;
+};
+
+void zBoneResetCallbacks();
+extern "C" float floorf(float);
+
+/* the controller's player test (CSealCtrl's slot 0x30, fts_remote.cpp's IsPlayer) */
+class CSealCtrlQuery {
+public:
+    virtual void _slot0();
+    virtual void _slot1();
+    virtual void _slot2();
+    virtual void _slot3();
+    virtual void _slot4();
+    virtual void _slot5();
+    virtual void _slot6();
+    virtual void _slot7();
+    virtual void _slot8();
+    virtual void _slot9();
+    virtual bool IsPlayer();   // 0x30
+};
+
+/* the entity as a SEAL or a turret, if it is one (fts_remote.cpp's) */
+inline CZSealBody *AsSeal(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_SEAL ? (CZSealBody *)e : 0;
+}
+
+inline CEntity *AsTurret(CEntity *e)
+{
+    return e && e->m_type == CEntity::ENT_TYPE_TURRET ? e : 0;
+}
+
+/* whether a SEAL is a player's (its controller asked; fts_remote.cpp's) */
+inline bool IsPlayerSeal(CZSealBody *seal)
+{
+    return seal->m_control ? ((CSealCtrlQuery *)seal->m_control)->IsPlayer() : false;
+}
+
+extern "C" bool func_002B2D20(CMission *mission, CVehicleRdrEntry *entry, bool first);
+extern "C" char data_0066B010[];
+
+/* whether a vehicle is the debug filter's (ours) */
+inline bool IsFilterVehicle(CVehicleRdrEntry *entry)
+{
+    return strcasecmp(data_0066B010, entry->m_name) == 0;
+}
+
+/* a recycled vehicle put on the spawners' list (ours) */
+inline void AddSpawn(CVehicleRdrEntry *entry)
+{
+    spawners.m_spawns.push_back(CSpawners::spawn_map(CEntity::CreateRecycler()->m_index, entry));
+}
+
+/* the mission's vehicles (SOCOM 1's CMission::LoadVehicles, its argument gone; OVL1 0x2B2E50): the
+ * model cache emptied; online, a client loads nothing -- the session master marks the game and
+ * looks for a player's SEAL and a turret already made; the turrets loaded if there is none, nothing
+ * more with a player; offline, the vehicles; then every entry the mission takes: a recycled one
+ * put on the spawners' list, the others loaded or spawned by their kind and numbered, the first
+ * one copied for every player after the first and placed again on the mission's player grid.
+ * The shape is the target's: the entity walk's iterator initialised (one begin() copy, the iterator
+ * in s0 -- func_002B7A90 assigns its own, two copies and the iterator in memory), the counts tested
+ * `> 1` (slti at), the filter's bool compared `== false` (materialised, then bnez), the grid's base
+ * stored z, x, y field by field (SOCOM 1's order: the three-float constructor evaluates x first and
+ * is 8 bytes longer), the spawn pushed through an inline helper (its iterator temporaries then sit
+ * below the walk's, as the target's frame has them).
+ * OPEN, 41 instructions, registers only: MW's replayed colouring (build/scratch/states/ig/, igmap.py
+ * against record 8) has eight vregs off -- the target pops c, r, rows, cols and THEN the entry
+ * iterator (c s0, r s1, rows s2, cols s3, e s4, and turret s4, players s1, k/count s0 follow), ours
+ * pops the iterator first (e s0, c s1, r s2, cols s3, rows s4). The replay reaches the target only
+ * with the iterator's scalarised temp numbered before cols and rows (cols before rows): with it
+ * last, as a temporary must be, the best of 9000 searched orders of the named locals is 4 off. Tried:
+ * cols assigned before rows, the pair declared the other way, d outside the loop, dead first
+ * definitions of the pair (they cut the uninitialised path: 16 bytes shorter), the walk through an
+ * inline helper */
+bool CMission::LoadVehicles()
+{
+    CCharacterModelCache::m_ModelCache.clear();
+    if (theNetwork.m_bNetwork && !theNetwork.m_bSessionMaster)
+        return true;
+    zBoneResetCallbacks();
+    bool player = false;
+    bool turret = false;
+
+    if (theNetwork.m_bNetwork) {
+        m_pNetGame->m_dd = 1;
+        for (CEntityList::const_iterator i = CEntity::GetEntityList().begin(); i != CEntity::GetEntityList().end();
+             ++i) {
+            CZSealBody *seal = AsSeal(*i);
+
+            if (seal && IsPlayerSeal(seal))
+                player = true;
+            if (AsTurret(*i))
+                turret = true;
+        }
+    }
+    if (!turret)
+        CTurret::LoadTurrets();
+    if (player)
+        return true;
+    if (!theNetwork.m_bNetwork)
+        CVehicle::LoadVehicles();
+    if (ftsPlayer.m_4 > 1)
+        m_vehicleFilter |= 8;
+    CVehicleRdr *rdr = m_vehicle_rdr;
+    int index = 0;
+
+    for (CVehicleRdr::iterator e = rdr->begin(); e != rdr->end(); ++e, ++index) {
+        bool first = index == 0;
+
+        if (e->IsRecycled() && func_002B2D20(this, &*e, first) && IsFilterVehicle(&*e) == false)
+            AddSpawn(&*e);
+        else {
+            CEntity *v = 0;
+
+            switch (e->m_kind) {
+            case 1:
+                v = LoadVehicle(&*e, first);
+                break;
+            case 2:
+                v = CVehicle::Spawn(&*e);
+                break;
+            }
+            if (v)
+                v->m_vehicle_index = index;
+            if (first && v) {
+                int players = ftsPlayer.m_4;
+
+                if (players > 1) {
+                    for (int k = 1; k < players; k++) {
+                        v = LoadVehicle(&*e, first);
+                        ((CSealCtrl *)AsSeal(v)->m_control)->m_copy_index = k;
+                    }
+                }
+                int count = m_player_grid_count;
+
+                if (count) {
+                    int rows, cols;
+
+                    for (int d = (int)floorf(sqrtf((float)count)); d <= count; d++) {
+                        if (count % d == 0) {
+                            rows = count / d;
+                            cols = d;
+                            break;
+                        }
+                    }
+                    CPnt3D base;
+
+                    base.z = -m_player_grid_spacing;
+                    base.x = 0.5f * ((cols - 1) * m_player_grid_spacing);
+                    base.y = 0.0f;
+
+                    for (int r = 0; r < rows; r++) {
+                        for (int c = 0; c < cols; c++) {
+                            CPnt3D p = base;
+
+                            p.x += c * m_player_grid_spacing;
+                            p.z -= r * m_player_grid_spacing;
+                            v->m_node->m_matrix.Transform(&p, 1);
+                            CEntity *copy = LoadVehicle(&*e, true);
+
+                            copy->TeleportTo(&p, &copy->m_quat);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    CEntity::UpdateTargetList(true);
+    CCharacterModelCache::m_ModelCache.clear();
+    return true;
 }
 
 /* whether the mission takes a vehicle (SOCOM II's; LoadVehicle and LoadVehicles ask it, OVL1 0x2B2D20):
