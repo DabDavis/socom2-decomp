@@ -112,6 +112,18 @@ public:
         delete m_owned;
         m_owned = 0;
     }
+    /* a glyph of the font's handed out */
+    void Set(C2DGlyph *g)
+    {
+        Release();
+        m_glyph = g;
+    }
+    /* a glyph made for the call handed out, owned */
+    void Own(C2DGlyph *g)
+    {
+        Release();
+        m_owned = g;
+    }
 
     C2DGlyph *m_glyph;   // 0x0
     C2DGlyph *m_owned;   // 0x4

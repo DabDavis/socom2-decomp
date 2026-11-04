@@ -549,6 +549,11 @@
 0x003F8168 0x8 __RTTI__17CValveSaveManager  # RTTI of CValveSaveManager: found by its RTTI's name
 0x003F8348 0x8 __RTTI__Q23zdb15CBatchRelocator  # RTTI of zdb::CBatchRelocator: found by its RTTI's name
 0x003F84E8 0x8 __RTTI__13C2DBitmapPoly  # RTTI of C2DBitmapPoly: found by its RTTI's name
+0x003F84F0 0x13 s_hangulLeads  # OVL1 data; c2dfont.cpp's static (the HUD lane, round 28; name ours): the 19 lead consonants as jamo (JAMO, a byte enum: copied with lb, indexed with lbu); 2 references in 2 functions (CHangulFont::Compose, LoadLeadUsage)
+0x003F8510 0x15 s_hangulVowels  # OVL1 data; c2dfont.cpp's static (the HUD lane, round 28; name ours): the 21 vowels as jamo; 2 references in 2 functions (CHangulFont::Compose, LoadLeadRangeLayouts)
+0x003F8530 0x1B s_hangulTrails  # OVL1 data; c2dfont.cpp's static (the HUD lane, round 28; name ours): the 27 trailing consonants as jamo; 2 references in 2 functions (CHangulFont::Compose as s_hangulTrails - 1 + trail, LoadVowelRangeLayouts)
+0x003F8770 0xCC s_hangulJamoNames  # OVL1 data; c2dfont.cpp's static (the HUD lane, round 28; name ours): the 51 jamo's rdr names, Kiyeok .. I (zui_hangul.cpp's s_jamoNames 0x3FB170 is another table); 4 references in 4 functions (CHangulFont::Load, LoadLeadUsage, LoadLeadRangeLayouts, LoadVowelRangeLayouts)
+0x003F8858 0xC s_hangulParts  # OVL1 data; c2dfont.cpp's static (the HUD lane, round 28; name ours): a layout's parts, "Lead", "Vowel", "Trail"; 1 reference in 1 function (CHangulFont::LoadCharLayouts)
 0x003F8B60 0x8 __RTTI__9C2DTriFan  # RTTI of C2DTriFan: found by its RTTI's name
 0x003F8B90 0x8 __RTTI__7C2DPoly  # RTTI of C2DPoly: found by its RTTI's name
 0x003F8C18 0x8 __RTTI__23CDblBufTextureRelocator  # RTTI of CDblBufTextureRelocator: found by its RTTI's name

@@ -6,7 +6,27 @@
  * from the HUD, round 12"). Its data opens 0x3F84F0 (the jamo tables, their names, the strings in
  * generation order). The unit's tail holds the glyph map's, the alternates' map's and the layout
  * vectors' template instances from 0x35C3A0. Defined in reverse of their image order (-inline
- * deferred). */
+ * deferred).
+ *
+ * Byte-exact (the HUD lane, round 28): Unload, GetWidth, ReadRect, LoadElems, LoadLeadUsage,
+ * AddPiece, CJamoGlyph's and CJamoPlace's constructors and destructors, the point reader's pieces
+ * (0x35A140-0x35A230), and in the tail both maps' find, find_or_insert<int>, insert_node_at, clear
+ * and destroy pieces, every resize but none of the inserts, three erases, the range init, the
+ * deleters' destructors and clears. What settled them: the pieces are written through a reverse
+ * iterator over the glyph's pieces (MSL's reverse_iterator shape: end() held, `current - 1` at
+ * every access, the iterator living in the frame -- CRevIter below; include/vector has no
+ * rbegin()); the table rows are arrays of a -1 index class, so their constructors are element
+ * loops MW does not unroll; ReadPoint is cut to one level (GetInt's chain one inline deeper).
+ * Open in the tail: find_or_insert<unsigned short> (0x35C3A0: the target copies a C2DGlyph
+ * temporary into the pair through the range init and destroys both inline), the glyph tree's
+ * swap (include/tree's swap, OPEN there too), the pair's and the piece vector's copy constructors
+ * (0x35D370, 0x35D420: the target calls begin(), end(), the deleter's constructor and the
+ * allocator out of line -- 0x35D490-0x35D4E0 -- where include/vector inlines them), the four
+ * inserts and the layout vector's erase (0x35E6D0, CJamoPlace's copy assignment, out of line
+ * there). Not emitted: FlatFindTag's copy 0x35A240 and the composer's member constructors
+ * 0x35A250-0x35A2B0 (the target inlines CHangulFont() one level into Load, calling them; here it
+ * inlines whole). 0x359740 (a list<const void *> piece only __list_imp::resize 0x3C0B14 calls) is
+ * left out: whose tail it is is not settled. */
 
 #include <map>
 #include <string>
@@ -262,7 +282,8 @@ static inline CFontPoint ReadPoint(const _zrdr *rdr)
     return p;
 }
 
-/* MSL's reverse_iterator over the pieces (a probe) */
+/* the glyph's last piece, MSL's reverse_iterator shape (ours: rbegin() as the original wrote it is
+ * likely; include/vector has none) -- end() held in the frame, `current - 1` at each access */
 class CRevIter {
 public:
     typedef std::vector<C2DGlyphPiece>::iterator It;
@@ -294,6 +315,7 @@ static inline int FindName(const std::vector<CSaferStr> &names, const char *s)
 /* a rectangle from two rdr points (0x35A840) */
 CFontRect ReadRect(const _zrdr *ul, const _zrdr *lr);
 /* a placement from an rdr block's DispPos, HorScale and VertScale (0x35AA80) */
+/* OPEN, 4 bytes long (0xF4 against 0xF0): DispPos's findtag -- see Load. */
 C2DPlacement ReadPlacement(const _zrdr *rdr);
 
 C2DGlyphPiece *C2DGlyph::AddPiece(const _zrdr *ul, const _zrdr *lr, int height)
@@ -312,6 +334,7 @@ C2DGlyphPiece *C2DGlyph::AddPiece(const _zrdr *ul, const _zrdr *lr, int height)
 
 /* a character of the faces rdr's charoffsets: by its Code, its pieces in Elems, or an item list
  * (the character, its corners); its baseline, kernings and colour; its width returned */
+/* OPEN, 8 bytes long (0x3CC against 0x3C4): the texture lookup, as Compose. */
 int C2DFont::LoadChar(const _zrdr *rdr)
 {
     int tex = 1;
@@ -385,6 +408,8 @@ void C2DGlyph::LoadElems(const _zrdr *rdr, int height)
 }
 
 /* CharLayouts: each layout named, its three parts placed, each part's alternates' ids */
+/* OPEN, 46 instructions: registers and the part loop's walkers (the target keeps the parts'
+ * name table and the layout's part in s8/s0). */
 void CHangulFont::LoadCharLayouts(std::vector<CSaferStr> &names, const _zrdr *rdr, const std::vector<CSaferStr> &jamoNames)
 {
     _zrdr *list = FlatFindTag(rdr, "CharLayouts");
@@ -410,6 +435,8 @@ void CHangulFont::LoadCharLayouts(std::vector<CSaferStr> &names, const _zrdr *rd
 
 /* the Korean block: the jamo and their alternates, the layouts, the trail rows by vowel, the vowel
  * rows by lead, each lead's row; the texture, baseline and kernings every syllable takes */
+/* OPEN, 20 instructions: the four name lists' frame slots and the order of the int reads'
+ * stores. */
 void CHangulFont::Load(const _zrdr *rdr)
 {
     _zrdr *jamo = FlatFindTag(rdr, "Jamo");
@@ -447,6 +474,9 @@ void CHangulFont::Load(const _zrdr *rdr)
 
 /* a jamo's rectangle, then its Styles: each style's layout name (added to the list if new) and the
  * rectangle the jamo takes there */
+/* OPEN, 0x20 short (0x31C against 0x33C): not yet compared closely -- the name loop's break and
+ * the push of a new name, and the alternate's copy into the map (the target copies the
+ * rectangle into a stack temporary and then the node through the float registers). */
 void CHangulFont::LoadJamo(std::vector<CSaferStr> &names, const _zrdr *rdr, JAMO which)
 {
     CFontRect r = ReadRect(FlatFindTag(rdr, "UL"), FlatFindTag(rdr, "LR"));
@@ -486,6 +516,10 @@ void CHangulFont::LoadLeadUsage(const _zrdr *rdr, const std::vector<CSaferStr> &
 }
 
 /* LeadRangeLayouts: each named row of vowel rows, by vowel, the Default's where one names none */
+/* OPEN, 21 instructions: registers only -- the target walks the row in s0 and keeps the two
+ * FindName strings apart (s1, s2), the default in s4 and the counter in s3; this build shares
+ * one register for the strings and puts the row in s4. The ternary store (rather than `if (v <
+ * 0) v = def;`) gives the target's doubled counter step, as in LoadLeadUsage. */
 void CHangulFont::LoadLeadRangeLayouts(std::vector<CSaferStr> &names, const _zrdr *rdr, const std::vector<CSaferStr> &vowelNames)
 {
     _zrdr *list = FlatFindTag(rdr, "LeadRangeLayouts");
@@ -508,6 +542,7 @@ void CHangulFont::LoadLeadRangeLayouts(std::vector<CSaferStr> &names, const _zrd
 
 /* VowelRangeLayouts: each named row of layouts, by trailing consonant (none first), the Default's
  * where one names none */
+/* OPEN, 26 instructions: registers, as LoadLeadRangeLayouts. */
 void CHangulFont::LoadVowelRangeLayouts(std::vector<CSaferStr> &names, const _zrdr *rdr, const std::vector<CSaferStr> &layoutNames)
 {
     _zrdr *list = FlatFindTag(rdr, "VowelRangeLayouts");
@@ -585,41 +620,44 @@ void C2DFont::Unload()
 
 /* the glyph for a character: the font's own; nothing for a carriage return; a Hangul syllable
  * composed; else a letter by the code's remainder, else the first glyph */
+/* OPEN, 4 bytes long (0x2B4 against 0x2B0): the target's frame is 0x50 (here 0x70, with s3
+ * saved): it keeps the found glyph in s2 across Release (Set's argument, as here) but holds the
+ * find's result and the code in two slots (sp+72, sp+66) where this build keeps three. Tried:
+ * the iterator initialised and assigned, Release written out. */
 void C2DFont::GetGlyph(C2DGlyphRef *ref, unsigned short code)
 {
-    std::map<unsigned short, C2DGlyph>::iterator i = m_glyphs.find(code);
+    std::map<unsigned short, C2DGlyph>::iterator i;
 
+    i = m_glyphs.find(code);
     if (i != m_glyphs.end()) {
-        ref->Release();
-        ref->m_glyph = &(*i).second;
+        ref->Set(&(*i).second);
         return;
     }
     if (code == '\r') {
-        ref->Release();
-        ref->m_glyph = 0;
+        ref->Set(0);
         return;
     }
     if (code >= 0xAC00 && code < 0xD7A4 && m_faces) {
         ref->m_glyph = 0;
-        ref->Release();
-        ref->m_owned = new C2DGlyph;
+        ref->Own(new C2DGlyph);
         if (m_faces->Compose(ref->m_owned, code, this))
             return;
         ref->Release();
     }
     i = m_glyphs.find((char)(code % 26 + 'A'));
-    if (i != m_glyphs.end()) {
-        ref->Release();
-        ref->m_glyph = &(*i).second;
-    } else if (m_glyphs.size()) {
-        ref->Release();
-        ref->m_glyph = &(*m_glyphs.begin()).second;
-    }
+    if (i != m_glyphs.end())
+        ref->Set(&(*i).second);
+    else if (m_glyphs.size())
+        ref->Set(&(*m_glyphs.begin()).second);
 }
 
 /* the faces rdr's entry for the name: the textures, the opacity and scale, the glow texture, the
  * characters (their mean width), the Korean composer, the cell's top and bottom, the spacing and
  * the drop shadow */
+/* OPEN, 4 bytes short (0x4F0 against 0x4F4): the drop shadow's offset -- the target calls the
+ * findtag wrapper out of line (0x35A240, FlatFindTag's copy: ReadPoint is cut to one level and
+ * its argument's call with it) and keeps its result in a2 across the point's out-of-line pieces,
+ * which it generated first; here the wrapper inlines. ReadPlacement misses the same way (4). */
 void C2DFont::Load(const _zrdr *rdr, const char *name)
 {
     m_name = name;
@@ -687,6 +725,11 @@ void C2DFont::Load(const _zrdr *rdr, const char *name)
 
 /* a Hangul syllable built: its lead, vowel and (if any) trail placed by the layout the tables
  * choose, the composer's baseline and kernings; false where a table has no entry */
+/* OPEN, 8 bytes long (0x274 against 0x26C): the font texture's lookup. The target branches on
+ * `index < 0` to a zero at the block's end and tests the size with the in-range load after a
+ * `b join; move zero` (an if/else per test); GetTexture written as two early returns, a nested
+ * ternary either way round and a local assigned in each arm all compile alike here. LoadChar
+ * (8 bytes long too) inlines the same lookup. */
 bool CHangulFont::Compose(C2DGlyph *glyph, C2DChar code, C2DFont *font)
 {
     glyph->m_code = 0;
@@ -738,6 +781,12 @@ bool CHangulFont::Compose(C2DGlyph *glyph, C2DChar code, C2DFont *font)
 
 /* one jamo's piece: its rectangle -- the first alternate the layout's part names, else its own --
  * at the part's placement */
+/* OPEN, 22 instructions: the size and code are the target's; its registers and two frame slots are
+ * not -- the target gives the jamo `this`'s register (s4), the rectangle the glyph's (s3) and the
+ * keys a fresh one (s6), and puts the find's iterator at sp+136 under the end() temporary at
+ * sp+140 (here: the iterator above it). Tried: the find through an inline member (frame right,
+ * 4 bytes short), the declarations of r, keys and jamo in every order, keys and the map as
+ * reference locals (the map's per pass is what puts it in s1 and its end after the call). */
 void CHangulFont::AddJamo(C2DGlyph *glyph, int part, JAMO which, CLayout *layout, int height)
 {
     glyph->m_pieces.resize(glyph->m_pieces.size() + 1);
