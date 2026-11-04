@@ -2060,6 +2060,24 @@ replace 0x1EE780 and assign 0x1EF400 and their OVL2 copies 0x541290, 0x540D00 an
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the kit and AI states, round 33** (CAiState's implicit operator=, the breach push, the list's tail copies):
+  - an implicit `operator=` block-copies a trivially-copyable member -- 4 bytes through `lwc1/swc1 $f0` one at a time, a
+    16-byte struct batching its four loads -- while a base class or an anonymous union is copied member by member (MW 3.0
+    has no anonymous structs): CAiState's operator= 0x5EBDC0 byte-exact from seal_unit.cpp, CAiStateStack's three words a
+    4-byte class CAiStateWord with a conversion operator, CAiTimer's own field-by-field operator= (aitimer.h) called out
+    of line as the target's 0x5EBDA0;
+  - include/list's `__list_imp::operator=` (APPROVED AT INTEGRATION, code-neutral elsewhere: objcmp's 3 differing units
+    the kit's own) reads x.begin() through the sentinel's reference, tail() -- MW keeps &x.end_ in a saved register and
+    loads the first node 4 past it -- and the node at the shorter length through a const view one inline level down
+    (advance_to_c): a by-value call result produced one inline level deeper takes the frame's lowest slot, below the
+    caller level's temporaries; advance_to 0x5EF7F0 and splice 0x5EF950 come out of the tail;
+  - in template tail code an in-class inline whose out-of-line copy was already generated mid-unit is inlined whole (the
+    destructors the constructor references: do_assign 0x5EF470 stays open on it, 0x1D8 vs 0x198);
+  - a bool zeroed first and set true under a test keeps that test a branch only with `else r = r;` (the arm itself
+    vanishes): without the arm MW if-converts into an `sltu`, with `else r = false` a `b` over the arm is left behind
+    (build/scratch/kit-r33/ifconv_scan.py finds the shape among open rows); `bool r = f(); if (r) { ...; r = true; } return
+    r;` gives the target's `andi` after the call and `daddiu` at the end (the breach push 0x5EBB50, new in SOCOM II);
+    CAiSScript::CanPushAiState 0x5F40F0 (open since round 6) and 0x607830 (open since round 12).
 - **Tells from the world, rdr and sound, round 16** (the texture-asset FOV test, CSnd's volume and pan, the headset):
   - a recursive inline like CNode::GetBBox reached through one extra inline level is called directly, where a direct
     call always inlines one copy of its body -- a bare `jal GetBBox` in the target means a wrapper (probes
