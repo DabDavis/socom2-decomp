@@ -2033,6 +2033,23 @@ exists); 3.0b38/b50/b52 still untold.
     RTArray<CDecal>'s destructor and the list family above;
   - the vector range assigns are MSL's do_assign (SOCOM 1's symtab; include/deque already spelled the deque's
     so): renamed with rows 0x259D20, 0x393FB0, 0x53F370, 0x53F730 -- no codegen change (7100 before and after).
+- **Tells from the SEALs, round 30** (the alertness setters, GetDuckStance, an attack's reset, the ladder wait and hold):
+  - a random value read through a `const float *` view recomputes each field's address off the controller across rand();
+    the class's own operator, a `const Rfloat &` helper or the fields written out keep the range's address in a saved
+    register (an attack's reset 0x565B80); an inline passed as an argument to another inline is expanded whole ahead of
+    that inline's test (the ladder wait 0x56BD10's ladder index);
+  - a redundant `r = false;` in an if's then-arm keeps it a separate block that branches to the shared return, `return r;`
+    returns a constant zero instead, and an empty arm or a goto inverts the test (0x56BD10); a byte flag tested by a
+    one-case switch gives `beq` to the case over a `b` out where an `if` branches straight past (the ladder hold's tick
+    0x5B1570);
+  - a by-value parameter copied into a local assigned between two memcpys takes s0, taking the parameter's own address
+    homes it on the stack (CRemoteCtrl::SetAiNetState 0x56F4C0); an inlined `return 4` assigned to an enum-typed local is
+    `li`, to an unsigned char local `daddiu` plus an extra `andi` (SetAiAware(float, unsigned) 0x5612F0; its sibling
+    0x561110 takes an AI_AWARE, a point and a float -- the AI_AWARE enum and CSealCtrl's m_aware CAiDecay at 0xB4 new);
+  - CSealCtrlAi's slot 0xA4 (0x574800, mapped GetJumpFlag) has SOCOM 1's GetAiStateEnum body, so GetAiNetState 0x56F6C0
+    (it compares the result with 17 and 9) waits on the slot's type; the OVL2 stash holds three different 4-byte vector
+    types (the three identical pod destructors 0x5427E0 / 0x542850 / 0x5428C0); open: 0x5B3890 (16: the flattened d.y
+    stored late, d.x loaded twice).
 - **Tells from the HUD, round 37** (the pause test, CTCM's layout functions, the hud_pausemenu boundary):
   - an `-enum min` enum with no negative value is unsigned (0..66 behaves as 0..255), so a signed-char argument becomes
     `lbu` -- hud_tcmcmds.cpp's FT_COMMAND must be a signed byte for the target's `lb` (its AcknowledgeCommand /
