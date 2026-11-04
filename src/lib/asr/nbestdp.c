@@ -189,7 +189,7 @@ extern unsigned int _tosGetProfileU32(void *b, unsigned short key, unsigned int 
 extern float _tosGetProfileFloat(void *b, unsigned short key, float def);
 
 extern unsigned int FindBestBacktraces(NBESTDP *d, NBTRACE ***bt);
-extern void CleanUpParBTProc(NBESTDP *d, BTREC *bt);
+static void CleanUpParBTProc(NBESTDP *d, BTREC *bt);
 static void ExtendBacktraceStack(NBESTDP *d, BTSTACK *top);
 extern NBRESULT *BacktraceWordsParBT(NBESTDP *d, NBTRACE *bt);
 extern void heap_Free(void *heap, void *p);
@@ -486,6 +486,82 @@ void func_004EC130(NBESTDP *d)
     }
 }
 
+/* a record pushed after `top` (the first one when top is null). An inline defined here, after
+ * InitViterbi (which calls it) and before CleanUpParBTProc (which holds its body twice): 2.96
+ * inlines only a body it has seen, and defers the function's own copy to the object's end, where
+ * the image has it (0x4F0C00, after ConstructNBestDynProg, as SOCOM 1's) */
+static __inline__ void ExtendBacktraceStack(NBESTDP *d, BTSTACK *top)
+{
+    DPTOS *tos = d->tos;
+    int **list = &tos->fa.free[3];
+    BTSTACK *e;
+
+    if (*list != 0) {
+        e = (BTSTACK *)*list;
+        *list = *(int **)e;
+    } else
+        e = (BTSTACK *)fastallo_AllocateMemoryFromChunk(&tos->fa, 3);
+    if (top != 0) {
+        top->next = e;
+        e->prev = top;
+    } else {
+        d->stack = e;
+        e->prev = 0;
+    }
+    e->next = 0;
+}
+
+/* a link of a backtrace's chain (three words): the backtrace it holds and the next link; a
+ * backtrace record (five words) heads its own chain with the same two fields */
+typedef struct BTLINK {
+    BTREC *bt;                          /* +0 */
+    struct BTLINK *next;                /* +4 */
+    int f8;
+} BTLINK;
+
+/* a backtrace with no user left given back, and every backtrace its chain held that this leaves
+ * without users, through the stack of records at +88 (an explicit recursion: each record's entry
+ * the backtrace to clean, the stack extended as it deepens); the chain's links to the scheduler's
+ * three-word list, the backtrace to its five-word list. SOCOM 1's body (0x180; 0x1A8 here with the
+ * free lists through pointers of their own, FREE_REC). The backtrace is given back after the
+ * chain's test, whether or not it had one. Measured: the next record's entry read through
+ * `top->prev` before top steps (the target's `lw v0,0(s0); lw s2,8(v0); move s0,v0`), and the
+ * chain's walker set before the test (the copy then stays out of the test's slot, which takes
+ * it from the fall-through instead) */
+static void CleanUpParBTProc(NBESTDP *d, BTREC *bt)
+{
+    BTSTACK *top = d->stack;
+    DPTOS *tos = d->tos;
+    BTLINK *p, *q;
+    BTREC *b, *r;
+
+    top->entry = (int)bt;
+    if (top->next == 0)
+        ExtendBacktraceStack(d, top);
+    top = top->next;
+    while (top != d->stack) {
+        b = (BTREC *)top->prev->entry;
+        top = top->prev;
+        p = (BTLINK *)b;
+        if (b != 0) {
+            do {
+                r = p->bt;
+                if (r != 0 && --r->users == 0) {
+                    top->entry = (int)r;
+                    if (top->next == 0)
+                        ExtendBacktraceStack(d, top);
+                    top = top->next;
+                }
+                q = p;
+                p = p->next;
+                if (q != (BTLINK *)b)
+                    FREE_REC(tos, 3, q);
+            } while (p != 0);
+        }
+        FREE_REC(tos, 5, b);
+    }
+}
+
 /* the pruning level's update, once the pass has run a while (or has seen 11 ...): the rate of the
  * last five frames' sums, a saturating fixed-point product, the level moved by it within the
  * maximum and not below a third of where it was; then this frame into the five-entry history.
@@ -600,28 +676,6 @@ int FindBestRecognised(NBESTDP *d)
     } else
         d->results = 0;
     return ret;
-}
-
-/* a record pushed after `top` (the first one when top is null) */
-static void ExtendBacktraceStack(NBESTDP *d, BTSTACK *top)
-{
-    DPTOS *tos = d->tos;
-    int **list = &tos->fa.free[3];
-    BTSTACK *e;
-
-    if (*list != 0) {
-        e = (BTSTACK *)*list;
-        *list = *(int **)e;
-    } else
-        e = (BTSTACK *)fastallo_AllocateMemoryFromChunk(&tos->fa, 3);
-    if (top != 0) {
-        top->next = e;
-        e->prev = top;
-    } else {
-        d->stack = e;
-        e->prev = 0;
-    }
-    e->next = 0;
 }
 
 /* the qsort comparator of the backtraces (pointers to them): ascending scores */
