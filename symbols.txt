@@ -11613,12 +11613,12 @@
 0x005FF0F0 0x104 __ct__15CSealCtrlSquirmFv  # OVL2; s1:calls (ftsCreateSeal's squirm branch, where SOCOM 1's calls __ct__15CSealCtrlSquirmFv; ftsCreateSeal byte-exact with it) -- the states lane
 0x005FF200 0xEC SetTimes__10CAiTriggerFRC6RfloatRC6Rfloat  # OVL2; by hand (the kit lane, round 7): CAiTrigger's times set -- the first Rfloat to m_dn_time (+8), the second to m_up_time (+0), m_marker = (float)m_up_time, m_timer = m_marker + (float)m_dn_time; the squirm's and SEAL_AI_PARAMS' constructors call it with (0.5-1.2, 0.1-0.5), SOCOM 1's inline CAiTrigger() -- the name ours
 0x005FF2F0 0xAB8 func_005FF2F0  # OVL2
-0x005FFDB0 0xC func_005FFDB0  # OVL2
-0x005FFDC0 0x8 func_005FFDC0  # OVL2
+0x005FFDB0 0xC StackTop__2aiFR6CStack  # OVL2; by hand (the kit lane, round 28; the class and name ours): the out-of-line copy of the lines' matrix stack's top (CStack::m_top read, this -- the CStack at OVL2 bss 0x66BB08 the unit's initialiser 0x668FB0 builds -- dropped; DrawLine, LineTo and 0x5FF2F0 call it) -- seal_ailines.cpp; by hand (the kit lane, round 28): the stand-in's name -- the stack (CStack at bss 0x66BB08) handed in a0 and dropped, CStack::m_top returned; likely a CStack member in the original
+0x005FFDC0 0x8 LineColor__2aiFRC6CPnt3D  # OVL2; by hand (the kit lane, round 28; the name ours): the out-of-line copy of seal_ailines.cpp's colour accessor (a0 handed back: DrawLine, LineTo and 0x5FF2F0 call it on ai_line_color 0x66BAE0, the unit compiled without inlining) -- seal_ailines.cpp
 0x005FFDD0 0x18 __ct__6CPnt4DFffff  # OVL2; s1:exact
-0x005FFDF0 0x118 func_005FFDF0  # OVL2
+0x005FFDF0 0x118 DrawLine__2aiFQ22ai9LINE_TYPEPC6CPnt3DPC6CPnt3D  # OVL2; s1:order by hand (the kit lane, round 28): SOCOM 1's DrawLine (0x2E2F90, before LineTo and MoveTo in seal_ailines.cpp, as here): the kind tested against ai_line_mask, both ends and the colour (alpha the opacity) as CPnt4Ds, both ends through CStack's top, RenderLineWorld -- CAiSFollow's 0x5FC4E4 calls it -- seal_ailines.cpp
 0x005FFF10 0x24 LineOn__2aiFQ22ai9LINE_TYPE  # OVL2; by hand (the kit lane, round 10): whether a kind of AI line is drawn -- none asked, or its bits in SOCOM 1's ai_line_mask (0x66BB10); DrawLine (0x5FFDF0) inlines the same test where SOCOM 1's did, CAiSFollow::Tick calls this copy with 512; the name ours
-0x005FFF40 0x124 func_005FFF40  # OVL2
+0x005FFF40 0x124 LineTo__2aiFRC6CPnt3D  # OVL2; s1:order by hand (the kit lane, round 28): SOCOM 1's LineTo (0x2E3110, between DrawLine and MoveTo there as here): from ai_line_pos (0x66BAC8, which it then sets) to the point, both through CStack's top -- seal_ai.cpp's 0x598A94/0x598B50 call it -- seal_ailines.cpp
 0x00600070 0x28 MoveTo__2aiFRC6CPnt3D  # OVL2; s1:exact
 0x006000A0 0x48 SetLineFuncOpacity__2aiFf  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's SetLineFuncOpacity(float), the same blend of the two opacities and _saturate tail call -- src/gamez/zseal/seal_ailines.cpp
 0x006000F0 0x14 SetLineFuncOpacity__2aiFff  # OVL2; s1:order by hand (the kit lane, round 18): SOCOM 1's SetLineFuncOpacity(float, float), the two stores -- seal_ailines.cpp
@@ -11733,11 +11733,11 @@
 0x00609DF0 0x20C CheckLineOfFire__2aiFPC7CEntityPC7CTargetf  # OVL2; s1:calls
 0x0060A000 0x2C8 ModifyAimDir__9CAiTargetFP6CPnt3Dff  # OVL2; s1:calls by hand (the kit lane, round 12): CSealCtrlAi::PerturbAimVector (0x5C9250) tail-calls it on its target (+0x67C) with (v, accuracy, aiAccuracyAngle) where SOCOM 1's PerturbAimVector calls ModifyAimDir__9CAiTargetFP6CPnt3Dff (0x2E9900 there) with the same three; first of CAiTarget's stretch after CheckLineOfFire, as SOCOM 1's; OVL1's 0x3A8D20 calls it too (SOCOM 1's CTurret::Fire does)
 0x0060A2D0 0x18 func_0060A2D0  # OVL2
-0x0060A2F0 0x16C func_0060A2F0  # OVL2
-0x0060A460 0x12C func_0060A460  # OVL2
+0x0060A2F0 0x16C OnSetVisible__9CAiTargetFb  # OVL2; s1:calls by hand (the kit lane, round 28): SOCOM 1's CAiTarget::OnSetVisible (0x2E99E0): the entity's position (0x1C) and velocity (0x38) into the last-known pair (0x58, 0x64), then the visible time (0x50) and the new counter copy or the lost-sight time (0x54) on theMission's clock -- the validity test 0x60A850 inlined; CSealCtrlAi's 0x5CA850/0x5CA948 call it -- ai_target.cpp
+0x0060A460 0x12C Tick__9CAiTargetFP7CEntityf  # OVL2; s1:calls by hand (the kit lane, round 28): SOCOM 1's CAiTarget::Tick(CEntity *, float) (0x2E9AD0): the target set to none when it no longer counts (the validity test 0x60A850 inlined, where SOCOM 1's tested the entity and its alive bit) or its entity's team word (0xC8) shares a bit with the entity's -- CSealCtrlAi::PreTick (0x56E888, dT restored into f12 first) and OVL1's 0x3A804C call it -- ai_target.cpp
 0x0060A590 0x14 GetTimeSinceLastSighting__9CAiTargetCFv  # OVL2; s1:order by hand (the kit lane, round 7): SOCOM 1's GetTimeSinceLastSighting__9CAiTargetCFv, the same 0x14 bytes (the clock less a field: SOCOM 1's m_time_lost_sight at 0x40, here 0x54 -- CAiTarget grew 0x14 before it), in the CAiTarget stretch after the response states as in SOCOM 1; 0x60A5F0 sets 0x54 to the clock when the target is seen
 0x0060A5B0 0x40 func_0060A5B0  # OVL2
-0x0060A5F0 0xAC func_0060A5F0  # OVL2
+0x0060A5F0 0xAC SetTarget__9CAiTargetFP7CTarget  # OVL2; s1:calls by hand (the kit lane, round 28): SOCOM 1's CAiTarget::SetTarget (0x2E9CA0) without its threat float (Tick passes none): the change test 0x60A6A0, then the acquired and visible times (0x4C, 0x50), the last place from the target's entity (0x58) and the lost-sight time (0x54), the new counter copied on a change -- ai_target.cpp
 0x0060A6A0 0x1A8 func_0060A6A0  # OVL2
 0x0060A850 0xE8 func_0060A850  # OVL2
 0x0060A940 0xDC __ct__9CAiTargetFv  # OVL2; by hand (the kit lane, round 6): CAiTarget's constructor -- SEAL_AI_PARAMS's constructor (0x60BF40) calls it on +0x42C (the controller's 0x67C, after the event queue, as SOCOM 1's CSealCtrlAi constructor calls __ct__9CAiTargetFv on m_target after m_eventQueue), CTurret's constructor (0x3AA478) too; SOCOM 1's CheckLineOfFire/CAiTarget unit closes with it, and SOCOM II's sits after CheckLineOfFire (0x609DF0)
