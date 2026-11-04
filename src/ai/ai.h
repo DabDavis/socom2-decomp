@@ -911,6 +911,7 @@ public:
      * edges; false when the box misses the map (new in SOCOM II, the names ours: 0x515900 and the
      * rows' scan 0x516180) */
     bool BuildFootprint(const CPnt3D *corners, CAiOverlay *o);
+    bool ScanFootprint(const CPnt3D *corners, const region &r, CAiOverlay *o);
     /* the map's box (new in SOCOM II, the name ours: out of line where the footprint's region is
      * fitted, inlined one level -- 0x516130) */
     const CBBox &GetBBox() const { return m_bbox; }

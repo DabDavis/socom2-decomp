@@ -7,7 +7,7 @@
  * SOCOM II adds the cell layers (CAiMapLayer, whose own code sits after vehicle_rdr.cpp, from
  * ~0x53A730). Its initialiser (0x668630) builds the dummy cell (0x66A198) and the cosine of 45
  * degrees (0x65AB38). Defined here in reverse of the image's order (-inline deferred).
- * Not written yet: the footprint rows' scan 0x516180 (BuildFootprint's last call), the
+ * Not written yet: the
  * repel parameters 0x5169B0/0x516F10, 0x517050, ValidateCells 0x517850 (the walk with
  * _validate_cell plus GetCell inlined one level -- IsCell 0x512140, IsLayer 0x512120 and the
  * pieces after them -- and out of line, 0x511F80), GetClosestDir(cell, point)
@@ -608,10 +608,83 @@ inline void CAiMap::region::SetCorners(const CAiMapLoc &a, const CAiMapLoc &b)
     }
 }
 
+/* a point's offset from another, by value through a temporary (the name ours: the footprint test's
+ * edges, each copied out of the Sub's result slot) */
+inline CPnt3D _offset(const CPnt3D &a, const CPnt3D &b)
+{
+    CPnt3D r;
+
+    a.Sub(&b, &r);
+    return r;
+}
+
+/* whether a point lies inside a footprint's four corners: on the inner side of every edge, the
+ * cross product's y of the edge and the point's offset from the edge's start not negative (the name
+ * ours) */
+inline bool _in_footprint(const CPnt3D *corners, const CPnt3D &p)
+{
+    bool in = true;
+
+    for (int k = 0; k < 4; k++) {
+        CPnt3D e = _offset(corners[(k + 1) % 4], corners[k]);
+        CPnt3D d = _offset(p, corners[k]);
+
+        if (e.z * d.x - e.x * d.z < 0.0f) {
+            in = false;
+            break;
+        }
+    }
+    return in;
+}
+
 /* each row's run of cells whose centres lie inside a footprint's four edges, the region copied into
- * the overlay first (0x516180, unwritten: GetCellCenter inlined one level twice, a row's first cell
- * inside, then its first cell outside) */
-extern "C" bool func_00516180(CAiMap *map, const CPnt3D *corners, const CAiMap::region &r, CAiOverlay *o);
+ * the overlay first (new in SOCOM II, the name ours: 0x516180, BuildFootprint's last call --
+ * GetCellCenter inlined one level twice, a row's first cell inside, then its first cell outside;
+ * its out-of-line pieces follow it, 0x5168E0-0x5169AF). The row's cell built through CAiMapLoc's
+ * three-field constructor (its mem-initializer list: three word read-mask-writes, every source field
+ * loaded first -- assigned field by field the map id is a byte store and y a halfword one); each
+ * edge and offset a by-value Sub copied out of its result slot (ld/sd, lwc1/swc1) */
+bool CAiMap::ScanFootprint(const CPnt3D *corners, const region &r, CAiOverlay *o)
+{
+    bool ok = false;
+
+    o->m_region = r;
+    int ny = o->m_region.m_dy;
+    int nx = o->m_region.m_dx;
+
+    if (ny > 0) {
+        ok = true;
+        o->m_scanlines.resize(ny);
+        for (int y = 0; y < ny; y++) {
+            scanline &sl = o->m_scanlines[y];
+
+            sl.m_start = 0;
+            sl.m_end = 0;
+            CAiMapLoc loc(o->m_region.m_loc.x, o->m_region.m_loc.y + y, o->m_region.m_loc.m_mapid);
+            CPnt3D c;
+            int x;
+
+            for (x = 0; x < nx; x++) {
+                loc.x = o->m_region.m_loc.x + x;
+                GetCellCenter(loc, &c);
+                if (_in_footprint(corners, c)) {
+                    sl.m_start = x;
+                    break;
+                }
+            }
+            if (x < nx) {
+                for (x++; x < nx; x++) {
+                    loc.x = o->m_region.m_loc.x + x;
+                    GetCellCenter(loc, &c);
+                    if (!_in_footprint(corners, c))
+                        break;
+                }
+                sl.m_end = x;
+            }
+        }
+    }
+    return ok;
+}
 
 /* a box over points (CBBox's layout, the name ours): both corners at the first point, then grown by
  * each -- a coordinate beyond a corner taken (`p <= min ? p : min`, `p >= max ? p : max`: the target's
@@ -681,7 +754,7 @@ bool CAiMap::BuildFootprint(const CPnt3D *corners, CAiOverlay *o)
     region r;
 
     if (_box_region(this, box, r))
-        ok = func_00516180(this, corners, r, o);
+        ok = ScanFootprint(corners, r, o);
     return ok;
 }
 
