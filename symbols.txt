@@ -7490,7 +7490,7 @@
 0x0039A1D0 0x20C func_0039A1D0  # OVL1
 0x0039A3E0 0xC func_0039A3E0  # OVL1
 0x0039A3F0 0x8 func_0039A3F0  # OVL1
-0x0039A400 0x1B0 func_0039A400  # OVL1
+0x0039A400 0x1B0 SkbCursorToEnd__FP13CSoftKeyboard  # OVL1; the UI lane round 21: ours, by its body (zui_skbkeys.cpp: s_textCount1 set from string 2 holding characters, the cursor's string's characters counted into s_textCount0, the cursor placed after them as SkbCursorBack 0x399530 places it; SkbCloseText0 and SkbSwitchText call it)
 0x0039A5B0 0x1DC func_0039A5B0  # OVL1
 0x0039A790 0x138 SkbEditCharLen__Fi  # OVL1; ours (the UI lane round 17: the byte length (UTF8CharLen) of the character at a byte offset of the edited text -- string 0's while it is edited (0x4A1330), else string 1's with string 2's appended when it has any; 0x398C40 calls it; zui_skbkeys.cpp)
 0x0039A8D0 0x424 func_0039A8D0  # OVL1

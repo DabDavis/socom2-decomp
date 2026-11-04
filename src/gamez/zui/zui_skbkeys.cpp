@@ -309,8 +309,8 @@ void SkbUsbDigit(const SKBUSBKEY *key, int arg)
 extern "C" {
 void func_0039A5B0(const char *text, CSoftKeyboard *skb);
 void func_0039A1D0(int a, CSoftKeyboard *skb, int b);
-void func_0039A400(CSoftKeyboard *skb);
 }
+void SkbCursorToEnd(CSoftKeyboard *skb);
 void SkbPlaySound(unsigned char which);
 bool SkbToggleCaption1(CSoftKeyboard *skb);
 void SkbToggleCaption2(CSoftKeyboard *skb);
@@ -542,6 +542,32 @@ static inline float LineOffset(const CSoftKeyboard *skb)
     return (float)s_textCount1 * h;
 }
 
+/* the cursor put after the text (0x39A400; the name ours: SkbCloseText0 and SkbSwitchText call it,
+ * out of line, so pinned): whether string 2 holds characters made the count's flag (SkbEditCharLen's
+ * ternary), the cursor's string's characters counted -- SkbCursorBack's walk -- and the cursor
+ * placed after them as SkbCursorBack places it */
+#pragma auto_inline off
+void SkbCursorToEnd(CSoftKeyboard *skb)
+{
+    s_textCount1 = s_textSel ? false : HasChar(ShownText(&s_textString2));
+    bool more;
+    const char *p = ShownText(CursorString());
+    int n = 0;
+
+    while (TestChar(more, p)) {
+        n++;
+        p += CharLen(p);
+    }
+    s_textCount0 = n;
+    float w = SkbTextWidth(CursorString(), n);
+    SKBPROPS props = s_textSel ? SKB_PROPS_MSGPLAYER : SKB_PROPS_USER;
+    float x = w + (float)skb->m_caps[props].m_0;
+    float y = (float)CursorY(skb) + LineOffset(skb);
+
+    func_00395120(x, y);
+}
+#pragma auto_inline reset
+
 /* the cursor stepped back a character (0x399530; the name ours: 0x38C630's left key and
  * SkbHandleKey call it with the showing keyboard): string 1's count down by one, or at its start,
  * while string 1 counts, string 1 given up and its characters counted into the count; then the
@@ -604,7 +630,7 @@ void SkbCloseText0(CSoftKeyboard *skb)
     s->SetString(0, true);
     s_textString0.UpdatePos();
     if (was)
-        func_0039A400(skb);
+        SkbCursorToEnd(skb);
     SkbToggleCaption2(skb);
 }
 
@@ -631,7 +657,7 @@ void SkbSwitchText(CSoftKeyboard *skb)
     s_textSel = SkbToggleCaption1(skb);
     s_textNode->SetActive(s_textSel);
     if (s_textSel || was)
-        func_0039A400(skb);
+        SkbCursorToEnd(skb);
     C2DString *s = &s_textString0;
     s->SetString(0, true);
     s_textString0.UpdatePos();
